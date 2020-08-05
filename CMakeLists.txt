@@ -127,8 +127,6 @@ add_executable("RavEngine_Test" ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS}
 
 # ====================== Linking ====================
 target_link_libraries("RavEngine" "SDL2")
-target_link_libraries("RavEngine" "rpc")
-target_link_libraries("RavEngine" "OpenAL")
 target_link_libraries("RavEngine" "PhysXExtensions")
 target_link_libraries("RavEngine" "PhysX")
 target_link_libraries("RavEngine" "PhysXPvdSDK")
@@ -147,7 +145,7 @@ target_link_libraries("RavEngine" "SceneQuery")
 target_link_libraries("RavEngine" "SimulationController")
 target_link_libraries("RavEngine" "bgfx")
 target_link_libraries("RavEngine" "bimg")
-target_link_libraries("RavEngine" "bimg_decode")
+#target_link_libraries("RavEngine" "bimg_decode")
 target_link_libraries("RavEngine" "bx")
 target_link_libraries("RavEngine" "fcpp")
 target_link_libraries("RavEngine" "glslang")
