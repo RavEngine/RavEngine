@@ -1,1 +1,1 @@
-find . -type d -name .git -delete
+find . -name .git -type d -exec rm -rf {} \;
