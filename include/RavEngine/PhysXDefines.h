@@ -8,6 +8,7 @@
 #pragma once
 
 //figure out defines for PhysX
+#define PX_PHYSX_STATIC_LIB 1   // required for PhysX static link
 #ifndef NDEBUG
     #define _DEBUG             
     #undef NDEBUG
