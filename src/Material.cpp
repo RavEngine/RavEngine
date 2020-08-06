@@ -1,6 +1,5 @@
 
 #include "Material.hpp"
-#include <filesystem>
 #include <sstream>
 #include <fstream>
 
@@ -28,8 +27,8 @@ bgfx::ShaderHandle loadShader(const string& filename)
     }
 
 //    auto path = pwd / filesystem::path(shaderPath) / filesystem::path(filename);
-    auto pwd = filesystem::current_path();
-    auto path = /*pwd / */std::filesystem::path(shaderPath + filename);
+    //auto pwd = filesystem::current_path();
+    auto path = /*pwd */ shaderPath + filename;
 
     ifstream fin(path, ios::binary);
     ostringstream data;
