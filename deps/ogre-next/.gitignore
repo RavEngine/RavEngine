@@ -10,8 +10,6 @@ syntax: glob
 *.rule
 *.sdf
 .DS_Store
-Dependencies/*
-iOSDependencies
 build/*
 SDK/OSX/sdk_contents
 SDK/iOS/sdk_contents

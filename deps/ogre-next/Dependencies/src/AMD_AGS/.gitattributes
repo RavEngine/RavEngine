@@ -1,0 +1,13 @@
+# This is a windows-only project. Force CRLF.
+* text eol=crlf
+
+# Explicit settings for specific file types.
+*.h         eol=crlf
+*.hlsl      eol=crlf
+*.txt       eol=crlf
+*.md        eol=crlf
+*.chm       binary
+*.pdf       binary
+*.png       binary
+*.dll       binary
+*.lib       binary
