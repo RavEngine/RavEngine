@@ -82,7 +82,7 @@ set(OGRE_CONFIG_THREAD_PROVIDER OFF)
 set(OGRE_BUILD_COMPONENT_SCENE_FORMAT ON)
 set(OGRE_BUILD_SAMPLES2 OFF)
 set(OGRE_BUILD_TESTS OFF)
-set(OGRE_DEPENDENCIES_DIR "${OGRE_ROOT}/Dependencies")
+set(OGRE_DEPENDENCIES_DIR "${OGRE_ROOT}/Dependencies/")
 set(OGRE_BUILD_LIBS_AS_FRAMEWORKS OFF)
 ProcessorCount(OGRE_CONFIG_THREADS)
 if(APPLE)
@@ -90,8 +90,9 @@ if(APPLE)
 elseif(WIN32)
 	set(CMAKE_CXX_STANDARD 11)
 endif()
-add_subdirectory("${DEPS_DIR}/ogre-next")
-	set(CMAKE_CXX_STANDARD 17)
+add_subdirectory("${OGRE_ROOT}")
+
+set(CMAKE_CXX_STANDARD 17)
 
 
 # ========== Building engine and test game ==============
