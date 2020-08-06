@@ -1,0 +1,255 @@
+compositor_node ScreenSpaceReflectionsRenderingNode
+{
+	texture gBufferNormals			target_width target_height PFG_R10G10B10A2_UNORM	msaa_auto explicit_resolve
+	texture gBufferShadowRoughness	target_width target_height PFG_RG16_UNORM			msaa_auto explicit_resolve
+	texture gBufferDepthBuffer		target_width target_height PFG_D32_FLOAT			msaa_auto
+
+	rtv mrtGBuffer
+	{
+		colour	gBufferNormals gBufferShadowRoughness
+		depth	gBufferDepthBuffer
+	}
+
+	target mrtGBuffer
+	{
+		pass render_scene
+		{
+			load
+			{
+				all clear
+				clear_colour 1 1 1 1
+			}
+			store
+			{
+				//Do not resolve
+				colour store
+			}
+
+			overlays	off
+			shadows		ScreenSpaceReflectionsShadowNode
+
+			is_prepass	on
+		}
+	}
+
+	out 0 gBufferDepthBuffer
+	out 1 gBufferNormals
+	out 2 gBufferShadowRoughness
+}
+
+compositor_node ScreenSpaceReflectionsMsaaDepthResolve
+{
+	in 0 gBufferDepthBuffer
+	//in 1 gBufferNormals
+	//in 2 gBufferShadowRoughness
+
+	texture resolvedDepthBuffer target_width target_height PFG_R32_FLOAT depth_pool 0
+
+	//We need to "downsample/resolve" mrtDepthBuffer because the impact
+	//performance on SSR/ScreenSpaceReflectionsVectors is gigantic.
+	target resolvedDepthBuffer
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material Ogre/Resolve/1xFP32_Subsample0
+			input 0 gBufferDepthBuffer
+		}
+	}
+
+	//out 0 gBufferDepthBuffer
+	//out 1 gBufferNormals
+	//out 2 gBufferShadowRoughness
+	out 0 resolvedDepthBuffer
+}
+
+compositor_node ScreenSpaceReflectionsPostprocessNode
+{
+	in 0 gBufferDepthBuffer
+	in 1 gBufferNormals
+	in 2 gBufferShadowRoughness
+	in 3 resolvedDepthBuffer
+	in 4 rt_renderwindow
+
+	//TODO: Add sRGB support
+	texture prevFrame				target_width target_height PFG_RGBA8_UNORM mipmap -1 uav depth_pool 0
+	//Needed to calculate the difference in depths (if it's too high, then we can't use this result)
+	texture prevFrameDepthBuffer	target_width target_height PFG_R32_FLOAT uav
+	texture rtt						target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+
+	rtv rtt
+	{
+		depth_stencil	gBufferDepthBuffer
+	}
+
+	texture rayTracingBuffer target_width_scaled 0.5 target_height_scaled 0.5 PFG_RGBA16_UNORM depth_pool 0
+	texture reflectionBuffer target_width target_height PFG_RGBA8_UNORM_SRGB depth_pool 0
+
+	target prevFrame
+	{
+		pass clear
+		{
+			colour_value 0 0 0 1
+			num_initial 1
+		}
+	}
+
+	target rayTracingBuffer
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			quad_normals	camera_far_corners_view_space_normalized_lh
+
+			material SSR/ScreenSpaceReflectionsVectors
+			input 0 resolvedDepthBuffer
+			input 1 gBufferNormals
+			input 2 prevFrameDepthBuffer
+		}
+	}
+
+	target reflectionBuffer
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			quad_normals	camera_far_corners_view_space_normalized_lh
+
+			material SSR/ScreenSpaceReflectionsCombine
+			input 0 resolvedDepthBuffer
+			input 1 gBufferNormals
+			input 2 gBufferShadowRoughness
+			input 3 prevFrame
+			input 4 rayTracingBuffer
+		}
+	}
+
+	//Use prevFrame as a temporary for ping pong (since we can discard prevFrame's contents now)
+	target prevFrame
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material SSR/Quincunx
+			input 0 reflectionBuffer
+		}
+	}
+	target reflectionBuffer
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material SSR/Quincunx
+			input 0 prevFrame
+		}
+	}
+
+	target rtt
+	{
+		pass render_scene
+		{
+			load
+			{
+				colour			clear
+				clear_colour	0.2 0.4 0.6 1
+			}
+
+			overlays	off
+			shadows		ScreenSpaceReflectionsShadowNode
+
+			use_prepass			gBufferNormals gBufferShadowRoughness gBufferDepthBuffer reflectionBuffer
+			lod_update_list		false
+		}
+	}
+
+	target prevFrame
+	{
+		/*pass render_quad
+		{
+			load { all dont_care }
+			material Ogre/Copy/4xFP32
+			input 0 rtt
+		}*/
+
+		pass compute
+		{
+			job SSR/CopyColourAndDepth
+
+			input 0 rtt
+			input 1 resolvedDepthBuffer
+
+			uav 0 prevFrame write
+			uav 1 prevFrameDepthBuffer write
+		}
+
+		pass generate_mipmaps
+		{
+			mipmap_method compute_hq
+		}
+	}
+
+	target rt_renderwindow
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material Ogre/Copy/4xFP32
+			input 0 rtt
+			//input 0 reflectionBuffer
+		}
+
+		pass render_scene
+		{
+			lod_update_list		false
+
+			//Render Overlays
+			overlays	on
+			rq_first	254
+			rq_last		255
+		}
+	}
+}
+
+compositor_node_shadow ScreenSpaceReflectionsShadowNode
+{
+	technique pssm
+
+	texture atlas 3072 2048 PFG_D32_FLOAT
+
+	num_splits		3
+	pssm_lambda		0.95
+	shadow_map 0 atlas uv 0.000000000000000 0.0 0.666666666666667 1.0 light 0 split 0
+	shadow_map 1 atlas uv 0.666666666666667 0.0 0.333333333333333 0.5 light 0 split 1
+	shadow_map 2 atlas uv 0.666666666666667 0.5 0.333333333333333 0.5 light 0 split 2
+
+	target atlas
+	{
+		pass clear
+		{
+			colour_value 1 1 1 1
+		}
+	}
+
+	shadow_map_target_type directional
+	{
+		shadow_map 0 1 2
+		{
+			pass render_scene
+			{
+			}
+		}
+	}
+}
+
+workspace ScreenSpaceReflectionsWorkspace
+{
+	connect			ScreenSpaceReflectionsRenderingNode	0 1 2 0	ScreenSpaceReflectionsPostprocessNode	0 1 2 3
+	connect_output												ScreenSpaceReflectionsPostprocessNode	4
+}
+workspace ScreenSpaceReflectionsWorkspaceMsaa
+{
+	connect			ScreenSpaceReflectionsRenderingNode		0		ScreenSpaceReflectionsMsaaDepthResolve	0
+	connect			ScreenSpaceReflectionsRenderingNode		0 1 2	ScreenSpaceReflectionsPostprocessNode	0 1 2
+	connect			ScreenSpaceReflectionsMsaaDepthResolve	0		ScreenSpaceReflectionsPostprocessNode	3
+	connect_output	ScreenSpaceReflectionsPostprocessNode	4
+}

@@ -1,0 +1,287 @@
+
+compositor_node HdrRenderingNode
+{
+	texture rt0			target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				//clear_colour	0.2 0.4 0.6 1
+				clear_colour	6.667 13.333 20 1
+				//clear_colour	13.333 26.667 40 1
+			}
+			store
+			{
+				depth			dont_care
+				stencil			dont_care
+			}
+			//lod_update_list	off					//Turn Lod off?
+			shadows				ShadowMapDebuggingShadowNode
+			overlays			off
+		}
+	}
+
+	//Initialize lumRt1 at startup, to avoid NaNs.
+	target oldLumRt
+	{
+		pass clear
+		{
+			num_initial 1
+			colour_value 0.01 0.01 0.01 1
+		}
+	}
+
+	out 0 rt0
+	out 1 oldLumRt
+}
+
+compositor_node HdrMsaaResolve
+{
+	in 0 hdr_msaa_rt
+	in 1 oldLumRt
+
+	texture resolvedRt target_width target_height PFG_RGBA16_FLOAT depth_pool 0
+
+	target resolvedRt
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material HDR/Resolve_4xFP32_HDR_Box
+			input 0 hdr_msaa_rt
+			input 1 oldLumRt
+		}
+	}
+
+	out 0 resolvedRt
+}
+
+compositor_node HdrPostprocessingNode
+{
+	in 0 rt0
+	in 1 lumRt1
+	in 2 rt_output
+
+	//For maximum quality use these as FLOAT16_RGBA, however they're slower on
+	//AMD cards (0.748ms slower on AMD Radeon HD 7770 at 1920x1080).
+	//texture rtBlur0	256 256 PFG_RGBA16_FLOAT	depth_pool 0
+	//texture rtBlur1	256 256 PFG_RGBA16_FLOAT	depth_pool 0
+
+	texture rtBlur0	256 256 PFG_R10G10B10A2_UNORM	depth_pool 0
+	texture rtBlur1	256 256 PFG_R10G10B10A2_UNORM	depth_pool 0
+
+	texture lumRt0	  1   1 PFG_R16_FLOAT	depth_pool 0
+	//texture lumRt1  1   1 PFG_R16_FLOAT	depth_pool 0
+	texture rtIter0	 64  64 PFG_R16_FLOAT	depth_pool 0
+	texture rtIter1	 16  16 PFG_R16_FLOAT	depth_pool 0
+	texture rtIter2	  4   4 PFG_R16_FLOAT	depth_pool 0
+
+	//Calculate luminosity
+	target rtIter0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale01_SumLumStart
+			input		0	rt0
+		}
+	}
+
+	target rtIter1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale02_SumLumIterative
+			input		0	rtIter0
+		}
+	}
+
+	target rtIter2
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale02_SumLumIterative
+			input		0	rtIter1
+		}
+	}
+
+	target lumRt0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale03_SumLumEnd
+			input		0	rtIter2
+			input		1	lumRt1
+		}
+	}
+
+	target lumRt1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	Ogre/Copy/1xFP32
+			input		0	lumRt0
+		}
+	}
+
+	//Perform Bloom
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BrightPass_Start
+			input		0	rt0
+			input		1	lumRt0
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurV
+			input		0	rtBlur1
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurV
+			input		0	rtBlur1
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur1
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur1
+		}
+	}
+
+	target rt_output
+	{
+		pass render_quad
+		{
+			load		{ colour dont_care }
+			store
+			{
+				//Required by Metal as the overlays in the next pass will break the render encoder,
+				//causing this pass to be resolved and then the overlays would render over a black
+				//background (unfortunately, this also causes a performance hit).
+				colour store
+			}
+			material	HDR/FinalToneMapping
+			input		0	rt0
+			input		1	lumRt0
+			input		2	rtBlur0
+		}
+	}
+
+	out 0 rt_output
+}
+
+compositor_node HdrRenderUi
+{
+	in 0 rt_output
+
+	target rt_output
+	{
+		pass render_scene
+		{
+			lod_update_list	off
+
+			//Render Overlays
+			overlays	on
+			rq_first	254
+			rq_last		255
+		}
+	}
+
+	//This output is not always used.
+	out 0 rt_output
+}
+
+workspace HdrWorkspace
+{
+	connect HdrRenderingNode 0		HdrPostprocessingNode 0
+	connect HdrRenderingNode 1		HdrPostprocessingNode 1
+	connect_output					HdrPostprocessingNode 2
+	connect	HdrPostprocessingNode 0	HdrRenderUi 0
+}
+
+workspace HdrWorkspaceMsaa
+{
+	connect HdrRenderingNode 0 HdrMsaaResolve 0
+	connect HdrRenderingNode 1 HdrMsaaResolve 1
+	connect HdrMsaaResolve 0 HdrPostprocessingNode 0
+	connect HdrRenderingNode 1 HdrPostprocessingNode 1
+	connect_output HdrPostprocessingNode 2
+	connect HdrPostprocessingNode 0 HdrRenderUi 0
+}

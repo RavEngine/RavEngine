@@ -1,0 +1,72 @@
+compositor_node Tutorial_ReconstructPosFromDepthNode
+{
+	in 0 rt_renderwindow
+	
+	//Inform that we want to use a depth texture, the format and pool ID must match
+	//We don't read the depth buffer directly from rt_renderwindow because OpenGL doesn't support it.
+	//(D3D11 does though, and will work)
+	texture rt0				target_width target_height PFG_RGBA8_UNORM_SRGB
+	texture depthTexture	target_width target_height PFG_D32_FLOAT
+
+	rtv rt0
+	{
+		depth_stencil depthTexture
+	}
+	
+	//This depthTexture will be a copy of the original. We can read from 'depthTexture' directly, however
+	//on a lot of HW reading from the depth texture means it needs to be decompressed. If you later
+	//need to keep rendering using the same depth buffer (something very common in most use cases
+	//for this technique) you will pay the performance price for using a decompressed buffer.
+	//See section '4.1.4.2 Depth Textures' of the manual for an explanation.
+	texture depthTextureCopy target_width target_height PFG_D32_FLOAT
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0.2 0.4 0.6 1
+			}
+			overlays	off
+		}
+	}
+	
+	target rt_renderwindow
+	{
+		pass render_quad
+		{
+			load
+			{
+				colour			dont_care
+			}
+
+			material ReconstructPosFromDepth
+			input 0 depthTexture
+
+			quad_normals	camera_far_corners_view_space
+		}
+		
+		pass render_scene
+		{
+			store
+			{
+				depth	dont_care
+				stencil	dont_care
+			}
+
+			lod_update_list	off
+
+			//Render Overlays
+			overlays	on
+			rq_first	254
+			rq_last		255
+		}
+	}
+}
+
+workspace Tutorial_ReconstructPosFromDepthWorkspace
+{
+	connect_output Tutorial_ReconstructPosFromDepthNode 0
+}

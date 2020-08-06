@@ -1,0 +1,68 @@
+compositor_node TutorialSMAA_RenderingNode
+{
+	texture rt0 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	texture rt1 target_width target_height PFG_RGBA8_UNORM_SRGB
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0.2 0.4 0.6 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth	dont_care
+				stencil	dont_care
+			}
+			overlays	off
+			shadows		ShadowMapDebuggingShadowNode
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+}
+
+compositor_node FinalComposition
+{
+	in 0 rt_output
+	in 1 rtN
+
+	target rt_output
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material Ogre/Copy/4xFP32
+			input 0 rtN
+		}
+
+		pass render_scene
+		{
+			store
+			{
+				depth	dont_care
+				stencil	dont_care
+			}
+			lod_update_list	off
+
+			//Render Overlays
+			overlays	on
+			rq_first	254
+			rq_last		255
+		}
+	}
+}
+
+workspace TutorialSMAA_Workspace
+{
+	connect TutorialSMAA_RenderingNode 0 SmaaNode 0
+	connect TutorialSMAA_RenderingNode 1 SmaaNode 1
+
+	connect_output FinalComposition 0
+	connect SmaaNode 0 FinalComposition 1
+}
