@@ -52,10 +52,12 @@ set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
 set(PHYSX_ROOT_DIR ${DEPS_DIR}/physx/physx)
 set(PXSHARED_PATH ${PHYSX_ROOT_DIR}/../pxshared)
 set(PXSHARED_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+set(PX_PHYSX_ ${CMAKE_INSTALL_PREFIX})
 set(CMAKEMODULES_VERSION "1.27")
 set(CMAKEMODULES_PATH ${PHYSX_ROOT_DIR}/../externals/cmakemodules)
 set(PX_OUTPUT_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR})
 set(PX_OUTPUT_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(PX_GENERATE_STATIC_LIBRARIES ON)
 #set(PX_FLOAT_POINT_PRECISE_MATH OFF)
 if (WIN32)
 	set(TARGET_BUILD_PLATFORM "windows")
@@ -134,6 +136,7 @@ target_link_libraries("RavEngine" "PhysXVehicle")
 target_link_libraries("RavEngine" "PhysXCharacterKinematic")
 target_link_libraries("RavEngine" "PhysXCooking")
 target_link_libraries("RavEngine" "PhysXCommon")
+#target_link_libraries("RavEngine" "PhysXGPU")
 target_link_libraries("RavEngine" "PhysXFoundation")
 target_link_libraries("RavEngine" "PhysXTask")
 #target_link_libraries("RavEngine" "SnippetUtils")
@@ -162,14 +165,16 @@ add_dependencies("RavEngine" "spirv-cross")
 
 # copy DLLs
 if (WIN32)
-	add_custom_command(TARGET "RavEngine" POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_directory
-			"${PROJECT_BINARY_DIR}/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
-			"$<TARGET_FILE_DIR:RavEngine>")
+	if(NOT PX_GENERATE_STATIC_LIBRARIES)
+		add_custom_command(TARGET "RavEngine" POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_directory
+				"${PROJECT_BINARY_DIR}/deps/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
+				"$<TARGET_FILE_DIR:RavEngine>")
+	endif()
 
 	add_custom_command(TARGET "RavEngine" POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_directory
-			"${PROJECT_BINARY_DIR}/SDL2/$<CONFIGURATION>"
+			"${PROJECT_BINARY_DIR}/deps/SDL2/$<CONFIGURATION>"
 			"$<TARGET_FILE_DIR:RavEngine>")
 
 	#startup project	
