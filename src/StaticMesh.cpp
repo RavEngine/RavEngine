@@ -32,26 +32,26 @@ static int triList[] = {
 
 StaticMesh::StaticMesh() : Component(), material(new Material()) {
    //make vertex declaration
-   pcvDecl.begin()
+ /*  pcvDecl.begin()
        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
        .end();
 
    vbh = bgfx::createVertexBuffer(bgfx::makeRef(vertices, sizeof(vertices)), pcvDecl);
-   ibh = bgfx::createIndexBuffer(bgfx::makeRef(triList, sizeof(triList)));
+   ibh = bgfx::createIndexBuffer(bgfx::makeRef(triList, sizeof(triList)));*/
 }
 
 void StaticMesh::Draw() {
-    bgfx::setVertexBuffer(0, vbh);
-    bgfx::setIndexBuffer(ibh);
+    //bgfx::setVertexBuffer(0, vbh);
+    //bgfx::setIndexBuffer(ibh);
 
-    //convert transform to bgfx matrix
-    auto owning = Ref<Entity>(owner);
-    auto transform = owning->transform();
-    float matrix[16];
-    transform->WorldMatrixToArray(matrix);
+    ////convert transform to bgfx matrix
+    //auto owning = Ref<Entity>(owner);
+    //auto transform = owning->transform();
+    //float matrix[16];
+    //transform->WorldMatrixToArray(matrix);
 
-    bgfx::setTransform(matrix);
+    //bgfx::setTransform(matrix);
 
     //render the object with its material
     GetMaterial()->Submit();

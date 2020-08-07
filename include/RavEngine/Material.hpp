@@ -7,7 +7,7 @@ public:
 	Material();
 
 	void Submit() {
-		bgfx::submit(0, program);
+		//bgfx::submit(0, program);
 	}
 
 protected:

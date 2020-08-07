@@ -44,7 +44,7 @@ bgfx::ShaderHandle loadShader(const string& filename)
 Create the default material. It draws vertex colors.
 */
 Material::Material() {
-    bgfx::ShaderHandle vsh = loadShader("vs_cubes.bin");
+    /*bgfx::ShaderHandle vsh = loadShader("vs_cubes.bin");
     bgfx::ShaderHandle fsh = loadShader("fs_cubes.bin");
-    program = bgfx::createProgram(vsh, fsh, true);
+    program = bgfx::createProgram(vsh, fsh, true);*/
 }

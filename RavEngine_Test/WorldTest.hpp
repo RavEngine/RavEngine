@@ -15,6 +15,7 @@ public:
     void posttick(float fpsScale) override;
     TestWorld();
     Ref<PlayerActor> player = new PlayerActor();
+
     virtual ~TestWorld() {
 
     }

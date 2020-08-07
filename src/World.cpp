@@ -22,9 +22,9 @@ void World::tick(){
 	auto now = clocktype::now();
 	deltaTimeMicroseconds = duration_cast<timeDiff>((now-lastFrameTime));
 	
-	bgfx::dbgTextPrintf(0, 4, 0x4f, "World @ %p",this);
-	bgfx::dbgTextPrintf(0, 2, 0x4f, "Frame Time: %ldms", deltaTimeMicroseconds/1000);
-	bgfx::dbgTextPrintf(0, 3, 0x4f, "FPS: %.g", std::chrono::duration<double>(1.0) / deltaTimeMicroseconds);
+	//bgfx::dbgTextPrintf(0, 4, 0x4f, "World @ %p",this);
+	//bgfx::dbgTextPrintf(0, 2, 0x4f, "Frame Time: %ldms", deltaTimeMicroseconds/1000);
+	//bgfx::dbgTextPrintf(0, 3, 0x4f, "FPS: %.g", std::chrono::duration<double>(1.0) / deltaTimeMicroseconds);
 
     float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
     float scale = deltaSeconds * evalNormal;
@@ -116,13 +116,13 @@ bool World::Destroy(Ref<Entity> e){
  @param fpsScale the scale factor to apply to all operations based on the frame rate
  */
 void World::tick(float fpsScale) {
-	bgfx::dbgTextPrintf(0, 5, 0x4f, "FPS Scale: %lf", fpsScale);
+	//bgfx::dbgTextPrintf(0, 5, 0x4f, "FPS Scale: %lf", fpsScale);
 
 	//Determine the number of threads needed
 	const long numthreads = std::min<long>(Entities.size(), numcpus);
 	const int tasksPerThread = ceil((double)Entities.size() / numthreads);
 
-	bgfx::dbgTextPrintf(0, 6, 0x4f, "Threads: %d (%d per, %d total)", numthreads, tasksPerThread, Entities.size());
+	//bgfx::dbgTextPrintf(0, 6, 0x4f, "Threads: %d (%d per, %d total)", numthreads, tasksPerThread, Entities.size());
 
 	/**
 	 The block which processes entities on a worker thread

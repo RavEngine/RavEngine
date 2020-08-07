@@ -22,7 +22,7 @@ GameplayStatics::vs GameplayStatics::VideoSettings;
 Ref<InputSystem> GameplayStatics::inputManager;
 int GameplayStatics::width = VideoSettings.width, GameplayStatics::height = VideoSettings.height;
 GameplayStatics::static_constructor GameplayStatics::statcons;
-SDL_Window* GameplayStatics::mainWindow = nullptr;
+//SDL_Window* GameplayStatics::mainWindow = nullptr;
 
 
 using namespace std;
@@ -73,131 +73,128 @@ inline void reset_screen(int width, int height) {
 
 GameplayStatics::static_constructor::static_constructor()
 {
-	SDL_Init(0);
-	SDL_Init(SDL_INIT_GAMECONTROLLER);
+	//SDL_Init(0);
+	//SDL_Init(SDL_INIT_GAMECONTROLLER);
 
-	mainWindow = SDL_CreateWindow("RavEngine Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+	//mainWindow = SDL_CreateWindow("RavEngine Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
-	sdlSetWindow(mainWindow);
-	bgfx::renderFrame();
+	//sdlSetWindow(mainWindow);
+	//bgfx::renderFrame();
 
-	//setup BGFX
-	{
-		bgfx::init();
+	////setup BGFX
+	//{
+	//	bgfx::init();
 
-		bgfx::reset(width, height, VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);		//add BGFX_RESET_VSYNC as an argument to enable vsync. Other flags: https://bkaradzic.github.io/bgfx/bgfx.html#reset
+	//	bgfx::reset(width, height, VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);		//add BGFX_RESET_VSYNC as an argument to enable vsync. Other flags: https://bkaradzic.github.io/bgfx/bgfx.html#reset
 
-		// Enable debug text.
-		bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
+	//	// Enable debug text.
+	//	bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
 
-		// Set view 0 clear state.
-		bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
-	}
+	//	// Set view 0 clear state.
+	//	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
+	//}
 
-	SDL_GetWindowSize(mainWindow, &width, &height);
-	reset_screen(width, height);
+	//SDL_GetWindowSize(mainWindow, &width, &height);
+	//reset_screen(width, height);
 }
 
-/**
- Start up the game
- @param startupWorld the world object to use as the initial world
- @note Uses values defined in GameplayStatics::VideoSettings when starting
- */
-void GameplayStatics::StartGame(Ref<World> startupWorld, const string& titlebarText){
-	
-	currentWorld = startupWorld;
-	inputManager->InitGameControllers();
-	
-#ifdef _WIN32
-	{
-		//convert to a wide string (note: only works if characters are a single byte)
-		string temp = titlebarText + " Output Window";
-		wstring wide(temp.begin(), temp.end());
-		//SetConsoleTitle(wide.c_str());
-	}
-#endif
-
-	SDL_SetWindowTitle(mainWindow, titlebarText.c_str());
-	
-	const auto title = string("RavEngine 0.0.1a - ") + RenderEngine::currentBackend();
-			
-	//process events first
-	bool exit = false;
-	SDL_Event event;
-	while (!exit) {
-		while (SDL_PollEvent(&event)) {
-			
-			switch (event.type) {
-				case SDL_QUIT:
-					exit = true;
-					break;
-					
-				case SDL_WINDOWEVENT: {
-					const SDL_WindowEvent& wev = event.window;
-					switch (wev.event) {
-						case SDL_WINDOWEVENT_RESIZED:
-						case SDL_WINDOWEVENT_SIZE_CHANGED:
-							SDL_GetWindowSize(mainWindow, &width, &height);
-							reset_screen(width, height);
-							break;
-							
-						case SDL_WINDOWEVENT_CLOSE:
-							exit = true;
-							break;
-					}
-				} break;
-				
-				case SDL_KEYDOWN:
-				case SDL_KEYUP:
-					inputManager->SDL_key(event.key.state, event.key.keysym.scancode);
-					break;
-				case SDL_MOUSEMOTION:
-					inputManager->SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel);
-					break;
-				case SDL_MOUSEBUTTONDOWN:
-				case SDL_MOUSEBUTTONUP:
-					inputManager->SDL_mousekey(event.button.state, event.button.button);
-					break;
-				case SDL_CONTROLLERAXISMOTION:
-				case SDL_CONTROLLER_AXIS_LEFTX:
-				case SDL_CONTROLLER_AXIS_LEFTY:
-					inputManager->SDL_ControllerAxis(event.caxis.axis + Special::CONTROLLER_AXIS_OFFSET, (event.caxis.value ) / ((float)SHRT_MAX));
-					break;
-				case SDL_CONTROLLERBUTTONDOWN:
-				case SDL_CONTROLLERBUTTONUP:
-					inputManager->SDL_mousekey(event.cbutton.state + Special::CONTROLLER_BUTTON_OFFSET, event.cbutton.button);
-					break;
-				case SDL_CONTROLLERDEVICEADDED:
-				case SDL_CONTROLLERDEVICEREMOVED:
-					break;
-				}
-		}
-
-		//process loaded inputs
-		GameplayStatics::inputManager->tick();
-
-		//blank screen to prepare for frame
-		bgfx::touch(0);
-		bgfx::dbgTextClear();
-		bgfx::dbgTextPrintf(0, 0, 0x4f,title.c_str());
-
-		//run the world
-		GameplayStatics::currentWorld->tick();
-
-		//render and advance to next frame
-		//bgfx::renderFrame();		//for multithreaded draw
-		bgfx::frame();
-	}
-	
-	bgfx::shutdown();
-	
-	//for multithreaded draw
-	//	while (bgfx::RenderFrame::NoContext != bgfx::renderFrame()) {
-	//	};
-	
-	SDL_DestroyWindow(mainWindow);
-	SDL_Quit();
-    
-    //unload physx
-    PhysicsSolver::ReleaseStatics();
-}
+///**
+// Start up the game
+// @param startupWorld the world object to use as the initial world
+// @note Uses values defined in GameplayStatics::VideoSettings when starting
+// */
+//void GameplayStatics::StartGame(Ref<World> startupWorld, const string& titlebarText){
+//	
+//	currentWorld = startupWorld;
+//	inputManager->InitGameControllers();
+//	
+//#ifdef _WIN32
+//	{
+//		//convert to a wide string (note: only works if characters are a single byte)
+//		string temp = titlebarText + " Output Window";
+//		wstring wide(temp.begin(), temp.end());
+//		//SetConsoleTitle(wide.c_str());
+//	}
+//#endif
+//
+//	SDL_SetWindowTitle(mainWindow, titlebarText.c_str());
+//	
+//	const auto title = string("RavEngine 0.0.1a - ") + RenderEngine::currentBackend();
+//			
+//	//process events first
+//	bool exit = false;
+//	SDL_Event event;
+//	while (!exit) {
+//		while (SDL_PollEvent(&event)) {
+//			
+//			switch (event.type) {
+//				case SDL_QUIT:
+//					exit = true;
+//					break;
+//					
+//				case SDL_WINDOWEVENT: {
+//					const SDL_WindowEvent& wev = event.window;
+//					switch (wev.event) {
+//						case SDL_WINDOWEVENT_RESIZED:
+//						case SDL_WINDOWEVENT_SIZE_CHANGED:
+//							SDL_GetWindowSize(mainWindow, &width, &height);
+//							reset_screen(width, height);
+//							break;
+//							
+//						case SDL_WINDOWEVENT_CLOSE:
+//							exit = true;
+//							break;
+//					}
+//				} break;
+//				
+//				case SDL_KEYDOWN:
+//				case SDL_KEYUP:
+//					inputManager->SDL_key(event.key.state, event.key.keysym.scancode);
+//					break;
+//				case SDL_MOUSEMOTION:
+//					inputManager->SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel);
+//					break;
+//				case SDL_MOUSEBUTTONDOWN:
+//				case SDL_MOUSEBUTTONUP:
+//					inputManager->SDL_mousekey(event.button.state, event.button.button);
+//					break;
+//				case SDL_CONTROLLERAXISMOTION:
+//				case SDL_CONTROLLER_AXIS_LEFTX:
+//				case SDL_CONTROLLER_AXIS_LEFTY:
+//					inputManager->SDL_ControllerAxis(event.caxis.axis + Special::CONTROLLER_AXIS_OFFSET, (event.caxis.value ) / ((float)SHRT_MAX));
+//					break;
+//				case SDL_CONTROLLERBUTTONDOWN:
+//				case SDL_CONTROLLERBUTTONUP:
+//					inputManager->SDL_mousekey(event.cbutton.state + Special::CONTROLLER_BUTTON_OFFSET, event.cbutton.button);
+//					break;
+//				case SDL_CONTROLLERDEVICEADDED:
+//				case SDL_CONTROLLERDEVICEREMOVED:
+//					break;
+//				}
+//		}
+//
+//		//blank screen to prepare for frame
+//		bgfx::touch(0);
+//		bgfx::dbgTextClear();
+//		bgfx::dbgTextPrintf(0, 0, 0x4f,title.c_str());
+//
+//		//run the world
+//		GameplayStatics::currentWorld->tick();
+//
+//		//render and advance to next frame
+//		//bgfx::renderFrame();		//for multithreaded draw
+//		bgfx::frame();
+//	}
+//	
+//	bgfx::shutdown();
+//	
+//	//for multithreaded draw
+//	//	while (bgfx::RenderFrame::NoContext != bgfx::renderFrame()) {
+//	//	};
+//	
+//	SDL_DestroyWindow(mainWindow);
+//	SDL_Quit();
+//    
+//    //unload physx
+//    PhysicsSolver::ReleaseStatics();
+//}
