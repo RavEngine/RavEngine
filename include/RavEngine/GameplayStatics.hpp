@@ -33,7 +33,7 @@ struct GameplayStatics{
 		static_constructor();
 	};
 	static static_constructor statcons;
-	static SDL_Window* mainWindow;
+	//static SDL_Window* mainWindow;
 	
-	static void StartGame(Ref<World>, const std::string&);
+	//static void StartGame(Ref<World>, const std::string&);
 };

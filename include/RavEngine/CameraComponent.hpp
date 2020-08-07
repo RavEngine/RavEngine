@@ -29,6 +29,6 @@ public:
 
 		float proj[16];
 		bx::mtxProj(proj, FOV, GameplayStatics::width / GameplayStatics::height, nearClip, farClip, bgfx::getCaps()->homogeneousDepth);
-		bgfx::setViewTransform(0, view, proj);
+		//bgfx::setViewTransform(0, view, proj);
 	}
 };
