@@ -65,6 +65,8 @@ elseif(APPLE)
 	set(TARGET_BUILD_PLATFORM "mac")
 elseif(LINUX)
 	set(TARGET_BUILD_PLATFORM "linux")
+	set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu")
+	#set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu")
 endif()
 
 # Call into PhysX's CMake scripts
