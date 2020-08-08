@@ -1,5 +1,4 @@
 #include "StaticMesh.hpp"
-#include <bx/math.h>
 #include "Entity.hpp"
 #include "mathtypes.h"
 

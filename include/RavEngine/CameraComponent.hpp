@@ -1,5 +1,4 @@
 #include "Component.h"
-#include <bx/math.h>
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
 
@@ -28,7 +27,7 @@ public:
 		bx::mtxQuatTranslation(view, bx::Quaternion{(float)rot.x,(float)rot.y,(float)rot.z,(float)rot.w},bx::Vec3(pos.x,pos.y,pos.z));*/
 
 		float proj[16];
-		bx::mtxProj(proj, FOV, GameplayStatics::width / GameplayStatics::height, nearClip, farClip, bgfx::getCaps()->homogeneousDepth);
+		//bx::mtxProj(proj, FOV, GameplayStatics::width / GameplayStatics::height, nearClip, farClip, bgfx::getCaps()->homogeneousDepth);
 		//bgfx::setViewTransform(0, view, proj);
 	}
 };

@@ -1,7 +1,6 @@
 
 #include "Component.h"
 #include <vector>
-#include <bgfx/bgfx.h>
 #include "Material.hpp"
 
 struct PosColorVertex
@@ -37,10 +36,6 @@ public:
 protected:
     //std::vector<PosColorVertex> vertices;
     //std::vector<int> triList;
-
-    bgfx::VertexBufferHandle vbh;
-    bgfx::IndexBufferHandle ibh;
-    bgfx::VertexLayout pcvDecl;
 
     //the default material
     Ref<Material> material;
