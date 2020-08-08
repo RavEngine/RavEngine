@@ -12,7 +12,12 @@ A C++ cross-platform game framework. Notable features
 
 ## Setup instructions
 1. Clone repository (use --depth=1)
-2. Run `init-mac.sh` or `init-win.sh` if using a custom build system, otherwise use `add_subdirectory` in your `CMakeLists.txt`
+2. Run one of `init-mac.sh` `init-win.sh` `init-linux.sh` if using a custom build system, otherwise use `add_subdirectory` in your `CMakeLists.txt` 
 3. Open `RavEngine.xcodeproj` or `RavEngine.sln` and press Build
 
+### Note for Linux users:
+You need to have these packages installed: 
+ - X11 dev, OpenGL dev, X11-Athena dev, X-toolkit, Xrandr dev.
+You also need a C++ compiler.
 
+These can be installed on Fedora Linux with `sudo dnf install libX11-devel mesa-libGL-devel libXaw-devel libXt libXrandr-devel`
