@@ -1,6 +1,5 @@
 
 #include "SharedObject.hpp"
-#include <bgfx/bgfx.h>
 
 class Material : public SharedObject {
 public:
@@ -11,5 +10,4 @@ public:
 	}
 
 protected:
-	bgfx::ProgramHandle program;
 };

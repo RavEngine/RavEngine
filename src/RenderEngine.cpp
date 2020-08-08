@@ -6,11 +6,9 @@
 //
 
 #include "RenderEngine.hpp"
-#include <bgfx/bgfx.h>
 #include <string>
 #include <fstream>
 #include <sstream>
-#include <bx/math.h>
 #include "GameplayStatics.hpp"
 #include "CameraComponent.hpp"
 #include "World.hpp"
@@ -61,7 +59,7 @@ void RenderEngine::Draw(){
 }
 
 const string RenderEngine::currentBackend(){
-	switch(bgfx::getRendererType()) {
+	/*switch(bgfx::getRendererType()) {
 		case bgfx::RendererType::Noop:		 return "No rendering";
 		case bgfx::RendererType::Direct3D9:  return "Direct3D 9";
 		case bgfx::RendererType::Direct3D11: return "Direct3D 11";
@@ -76,5 +74,6 @@ const string RenderEngine::currentBackend(){
 		case bgfx::RendererType::Count:      return "Count";
 		default:
 			return "Unknown";
-	}
+	}*/
+	return "unknown";
 }

@@ -10,7 +10,6 @@
 #include <iostream>
 #include <algorithm>
 #include "System.hpp"
-#include <bgfx/bgfx.h>
 #include "LockLogger.h"
 
 using namespace std;

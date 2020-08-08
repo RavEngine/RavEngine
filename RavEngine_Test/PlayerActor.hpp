@@ -2,7 +2,6 @@
 #include "CameraComponent.hpp"
 #include "GameplayStatics.hpp"
 #include <functional>
-#include <bgfx/bgfx.h>
 
 class PlayerActor : public Entity {
 protected:

@@ -7,12 +7,6 @@
 
 #include "GameplayStatics.hpp"
 
-#include <bgfx/bgfx.h>
-#include <bx/bx.h>
-#include <bimg/bimg.h>
-#include <bgfx/platform.h>
-#include <bx/mutex.h>
-#include <bx/thread.h>
 #include <SDL.h>
 #include <SDL_syswm.h>
 
@@ -62,13 +56,13 @@ using namespace std;
 //	return true;
 //}
 
-/**
- Call BGFX to reset the screen
- */
-inline void reset_screen(int width, int height) {
-	bgfx::reset(width, height, GameplayStatics::VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
-	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
-}
+///**
+// Call BGFX to reset the screen
+// */
+//inline void reset_screen(int width, int height) {
+//	bgfx::reset(width, height, GameplayStatics::VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
+//	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+//}
 
 
 GameplayStatics::static_constructor::static_constructor()

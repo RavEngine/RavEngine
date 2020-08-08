@@ -7,7 +7,6 @@
 
 #pragma once
 #include "Component.h"
-#include <bx/math.h>
 #include <atomic>
 #include <array>
 #include <mutex>
@@ -15,7 +14,6 @@
 #include <unordered_set>
 #include "mathtypes.h"
 #include "WeakRef.hpp"
-#include <bx/math.h>
 
 /**
  A thread-safe transform component
@@ -69,35 +67,35 @@ public:
 	*/
 	void WorldMatrixToArray(float matrix[16]) {
 
-		//start with an identity matrix
-		bx::mtxIdentity(matrix);
+		////start with an identity matrix
+		//bx::mtxIdentity(matrix);
 
-		//calculate the rotation matrix
-		float rotmatrix[16];
-		{
-			auto rot = glm::eulerAngles(GetWorldRotation());
-			bx::mtxRotateXYZ(rotmatrix, rot.x, rot.y, rot.z);
-		}
+		////calculate the rotation matrix
+		//float rotmatrix[16];
+		//{
+		//	auto rot = glm::eulerAngles(GetWorldRotation());
+		//	bx::mtxRotateXYZ(rotmatrix, rot.x, rot.y, rot.z);
+		//}
 
 
-		//calculate the translation matrix
-		float transmatrix[16];
-		{
-			auto pos = GetWorldPosition();
-			bx::mtxTranslate(transmatrix, pos.x, pos.y, pos.z);
-		}
+		////calculate the translation matrix
+		//float transmatrix[16];
+		//{
+		//	auto pos = GetWorldPosition();
+		//	bx::mtxTranslate(transmatrix, pos.x, pos.y, pos.z);
+		//}
 
-		//calculate the scale matrix
-		float scalematrix[16];
-		{
-			auto scale = GetLocalScale();
-			bx::mtxScale(scalematrix, scale.x);
-		}
+		////calculate the scale matrix
+		//float scalematrix[16];
+		//{
+		//	auto scale = GetLocalScale();
+		//	bx::mtxScale(scalematrix, scale.x);
+		//}
 
-		//rotate must come before translate
-		bx::mtxMul(matrix, matrix, scalematrix);
-		bx::mtxMul(matrix, matrix, rotmatrix);
-		bx::mtxMul(matrix, matrix, transmatrix);
+		////rotate must come before translate
+		//bx::mtxMul(matrix, matrix, scalematrix);
+		//bx::mtxMul(matrix, matrix, rotmatrix);
+		//bx::mtxMul(matrix, matrix, transmatrix);
 	}
 
 	/**

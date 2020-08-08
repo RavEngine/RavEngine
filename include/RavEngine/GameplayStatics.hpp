@@ -7,11 +7,8 @@
 
 #pragma once
 #include "World.hpp"
-#include <bgfx/bgfx.h>
 #include <string>
 #include "InputSystem.h"
-
-struct SDL_Window;
 
 struct GameplayStatics{
 	static Ref<World> currentWorld;
