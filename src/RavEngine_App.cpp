@@ -1,12 +1,11 @@
 
 #include "RavEngine_App.h"
+
 #include <GameplayStatics.hpp>
 
 #include <OgreArchiveManager.h>
 #include <OgreCamera.h>
 #include <OgreConfigFile.h>
-#include <OgreRoot.h>
-#include <OgreWindow.h>
 
 #include <OgreHlmsManager.h>
 #include <OgreHlmsPbs.h>
@@ -14,14 +13,8 @@
 
 #include <Compositor/OgreCompositorManager2.h>
 
-#include <OgreWindowEventUtilities.h>
-//#include <OgreGL3PlusRenderSystem.h>
 
-#ifdef __APPLE__
-    #include <OgreMetalRenderSystem.h>
-#elif defined _WIN32
-    #include <OgreD3D11RenderSystem.h>
-#endif
+//#include <OgreGL3PlusRenderSystem.h>
 
 #include <fstream>
 
@@ -39,32 +32,36 @@ int RavEngine_App::run(int argc, char** argv) {
 	OnStartup(argc, argv);
 
 	//in loop tick related things
-	{
-		//window events to feed to input manager
+    bool bQuit = false;
 
-		//process loaded inputs
-		GameplayStatics::inputManager->tick();
+    while (!bQuit)
+    {
+        WindowEventUtilities::messagePump();
 
-		//tick the world
-		GameplayStatics::currentWorld->tick();
+        //window events to feed to input manager
 
-		//render frame
-	}
+        //process loaded inputs
+        GameplayStatics::inputManager->tick();
+
+        //tick the world
+        GameplayStatics::currentWorld->tick();
+
+        //render frame
+        bQuit |= !root->renderOneFrame();
+        bQuit |= windowEventListener.getQuit();
+    }
+
+    //teardown
+    WindowEventUtilities::removeWindowEventListener(window, &windowEventListener);
+
+    OGRE_DELETE root;
+    root = nullptr;
+
+    delete renderSystem;
 
 	//invoke shutdown
 	return OnShutdown();
 }
-
-class MyWindowEventListener : public Ogre::WindowEventListener
-{
-    bool mQuit;
-
-public:
-    MyWindowEventListener() : mQuit(false) {}
-    virtual void windowClosed(Ogre::Window* rw) { mQuit = true; }
-
-    bool getQuit(void) const { return mQuit; }
-};
 
 void registerHlms(void)
 {
@@ -186,11 +183,11 @@ void RavEngine_App::setupwindow(){
     const char* pluginsFile = "plugins.cfg";
 #endif
 
-    Root* root = OGRE_NEW Root(pluginsFolder + pluginsFile,     //
+     root = OGRE_NEW Root(pluginsFolder + pluginsFile,     //
         writeAccessFolder + "ogre.cfg",  //
         writeAccessFolder + "Ogre.log");
 
-    {
+    /*{
         struct stat buf;
         auto cfgpath = pluginsFolder + string(pluginsFile);
         if (stat((cfgpath).c_str(), &buf) != 0) {
@@ -202,28 +199,25 @@ void RavEngine_App::setupwindow(){
     
     if (!root->showConfigDialog()) {
 
-    }
+    }*/
 
-#ifdef _WIN32
-    D3D11RenderSystem rs;
-    root->setRenderSystem(&rs);
-#elif defined __APPLE__
-    MetalRenderSystem rs;
-    root->setRenderSystem(&rs);
-#endif
+     renderSystem = new NativeRenderSystem();
+
+     root->setRenderSystem(renderSystem);
 
     // Initialize Root
     //auto opt = root->getRenderSystem()->getConfigOptions();
     root->getRenderSystem()->setConfigOption("sRGB Gamma Conversion", "Yes");
     root->getRenderSystem()->setConfigOption("Full Screen", "No");
     root->getRenderSystem()->setConfigOption("VSync", "Yes");
-    Window* window = root->initialise(true, "RavEngine 0.0.2a - DirectX 11");
+    
+    window = root->initialise(true, string("RavEngine 0.0.2a - ") + root->getRenderSystem()->getName());
 
     //registerHlms();
 
     // Create SceneManager
     const size_t numThreads = 1u;
-    SceneManager* sceneManager = root->createSceneManager(ST_GENERIC, numThreads, "ExampleSMInstance");
+    sceneManager = root->createSceneManager(ST_GENERIC, numThreads, "ExampleSMInstance");
 
     // Create & setup camera
     Camera* camera = sceneManager->createCamera("Main Camera");
@@ -243,20 +237,6 @@ void RavEngine_App::setupwindow(){
     compositorManager->createBasicWorkspaceDef(workspaceName, backgroundColour, IdString());
     compositorManager->addWorkspace(sceneManager, window->getTexture(), camera, workspaceName, true);
 
-    MyWindowEventListener myWindowEventListener;
-    WindowEventUtilities::addWindowEventListener(window, &myWindowEventListener);
-
-    bool bQuit = false;
-
-    while (!bQuit)
-    {
-        WindowEventUtilities::messagePump();
-        bQuit |= !root->renderOneFrame();
-        bQuit |= myWindowEventListener.getQuit();
-    }
-
-    WindowEventUtilities::removeWindowEventListener(window, &myWindowEventListener);
-
-    OGRE_DELETE root;
-    root = nullptr;
+    
+    WindowEventUtilities::addWindowEventListener(window, &windowEventListener);
 }
