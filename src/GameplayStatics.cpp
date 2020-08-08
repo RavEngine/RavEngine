@@ -32,35 +32,35 @@ using namespace std;
  @param _window the SDL window pointer (modified)
  @note supported platforms: Linux, BSD, OSX, Windows, SteamLink
  */
-inline bool sdlSetWindow(SDL_Window* _window)
-{
-	SDL_SysWMinfo wmi;
-	SDL_VERSION(&wmi.version);
-	if (!SDL_GetWindowWMInfo(_window, &wmi)) {
-		return false;
-	}
-	
-	bgfx::PlatformData pd;
-#if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
-	pd.ndt = wmi.info.x11.display;
-	pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
-#elif BX_PLATFORM_OSX
-	pd.ndt = NULL;
-	pd.nwh = wmi.info.cocoa.window;
-#elif BX_PLATFORM_WINDOWS
-	pd.ndt = NULL;
-	pd.nwh = wmi.info.win.window;
-#elif BX_PLATFORM_STEAMLINK
-	pd.ndt = wmi.info.vivante.display;
-	pd.nwh = wmi.info.vivante.window;
-#endif // BX_PLATFORM_
-	pd.context = NULL;
-	pd.backBuffer = NULL;
-	pd.backBufferDS = NULL;
-	bgfx::setPlatformData(pd);
-	
-	return true;
-}
+//inline bool sdlSetWindow(SDL_Window* _window)
+//{
+//	SDL_SysWMinfo wmi;
+//	SDL_VERSION(&wmi.version);
+//	if (!SDL_GetWindowWMInfo(_window, &wmi)) {
+//		return false;
+//	}
+//	
+//	bgfx::PlatformData pd;
+//#if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
+//	pd.ndt = wmi.info.x11.display;
+//	pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
+//#elif BX_PLATFORM_OSX
+//	pd.ndt = NULL;
+//	pd.nwh = wmi.info.cocoa.window;
+//#elif BX_PLATFORM_WINDOWS
+//	pd.ndt = NULL;
+//	pd.nwh = wmi.info.win.window;
+//#elif BX_PLATFORM_STEAMLINK
+//	pd.ndt = wmi.info.vivante.display;
+//	pd.nwh = wmi.info.vivante.window;
+//#endif // BX_PLATFORM_
+//	pd.context = NULL;
+//	pd.backBuffer = NULL;
+//	pd.backBufferDS = NULL;
+//	bgfx::setPlatformData(pd);
+//	
+//	return true;
+//}
 
 /**
  Call BGFX to reset the screen
