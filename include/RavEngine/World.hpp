@@ -17,6 +17,7 @@
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include "OgreStatics.hpp"
 
 
 typedef std::chrono::high_resolution_clock clocktype;
@@ -41,6 +42,8 @@ protected:
 	EntityStore Entities;
 	std::list<Ref<Entity>> PendingSpawn;
 	std::list<Ref<Entity>> PendingDestruction;
+
+	Ogre::SceneManager* ogrescene = nullptr;
 	
 	//Systems list (stores the systems that can exist in this World)
 	std::unordered_map<std::type_index, Ref<System>> Systems;
