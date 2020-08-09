@@ -8,7 +8,7 @@
 #pragma once
 
 #include "Entity.hpp"
-#include "PhysicsBodyComponent.h"
+#include "PhysicsBodyComponent.hpp"
 #include "WeakRef.hpp"
 
 class TestEntity : public Entity{

@@ -6,7 +6,7 @@
 //
 
 #include "PhysicsSolver.hpp"
-#include "PhysicsBodyComponent.h"
+#include "PhysicsBodyComponent.hpp"
 #ifndef _WIN32
 #define _DEBUG              //physx required macro
 #endif

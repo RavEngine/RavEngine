@@ -10,7 +10,7 @@
 #include <iostream>
 #include <algorithm>
 #include "System.hpp"
-#include "LockLogger.h"
+#include "LockLogger.hpp"
 
 using namespace std;
 using namespace std::chrono;
@@ -20,10 +20,6 @@ void World::tick(){
 	//setup framerate scaling for next frame
 	auto now = clocktype::now();
 	deltaTimeMicroseconds = duration_cast<timeDiff>((now-lastFrameTime));
-	
-	//bgfx::dbgTextPrintf(0, 4, 0x4f, "World @ %p",this);
-	//bgfx::dbgTextPrintf(0, 2, 0x4f, "Frame Time: %ldms", deltaTimeMicroseconds/1000);
-	//bgfx::dbgTextPrintf(0, 3, 0x4f, "FPS: %.g", std::chrono::duration<double>(1.0) / deltaTimeMicroseconds);
 
     float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
     float scale = deltaSeconds * evalNormal;

@@ -1,9 +1,9 @@
 
-#include "PhysicsBodyComponent.h"
+#include "PhysicsBodyComponent.hpp"
 #include "PhysicsSolver.hpp"
 #include <foundation/PxTransform.h>
 #include <foundation/PxVec3.h>
-#include "Transform.h"
+#include "Transform.hpp"
 #include "Entity.hpp"
 
 using namespace physx;

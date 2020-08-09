@@ -1,10 +1,23 @@
-#include "Component.h"
+#include "Component.hpp"
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
+#include "OgreStatics.hpp"
 
 class Camera : public Component {
+protected:
+	Ogre::Camera* cam;
 public:
-	Camera(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component() {}
+	Camera(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component() {
+		cam = GameplayStatics::ogreFactory.createCamera("a name");
+		cam->setFOVy(Ogre::Radian(FOV));
+		cam->setNearClipDistance(nearClip);
+		cam->setFarClipDistance(farClip);
+	}
+
+	virtual ~Camera() {
+		delete cam;
+	}
+
 	void RegisterAllAlternateTypes() override{}
 	bool isActive = false;
 

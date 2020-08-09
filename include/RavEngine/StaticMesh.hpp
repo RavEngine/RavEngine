@@ -1,5 +1,5 @@
 
-#include "Component.h"
+#include "Component.hpp"
 #include <vector>
 #include "Material.hpp"
 

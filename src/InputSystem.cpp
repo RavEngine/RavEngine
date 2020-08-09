@@ -1,5 +1,5 @@
 
-#include "InputSystem.h"
+#include "InputSystem.hpp"
 #include "GameplayStatics.hpp"
 #include <SDL_events.h>
 

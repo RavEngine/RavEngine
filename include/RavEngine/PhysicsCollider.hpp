@@ -1,11 +1,11 @@
 #pragma once
-#include "Component.h"
+#include "Component.hpp"
 #include "PhysXDefines.h"
 #include <PxMaterial.h>
 #include <PxPhysics.h>
 #include <PxSimulationEventCallback.h>
 #include <iostream>
-#include "mathtypes.h"
+#include "mathtypes.hpp"
 
 class PhysicsCollider : public Component
 {

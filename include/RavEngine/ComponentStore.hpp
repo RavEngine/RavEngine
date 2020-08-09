@@ -2,7 +2,7 @@
 #include "SharedObject.hpp"
 #include <typeindex>
 #include <unordered_set>
-#include "Component.h"
+#include "Component.hpp"
 #include <functional>
 
 //macro for checking type in template

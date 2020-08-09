@@ -8,7 +8,8 @@
 #pragma once
 #include "World.hpp"
 #include <string>
-#include "InputSystem.h"
+#include "InputSystem.hpp"
+#include "OgreStatics.hpp"
 
 struct GameplayStatics{
 	static Ref<World> currentWorld;
@@ -30,6 +31,8 @@ struct GameplayStatics{
 		static_constructor();
 	};
 	static static_constructor statcons;
+
+	static OgreStatics ogreFactory;
 	//static SDL_Window* mainWindow;
 	
 	//static void StartGame(Ref<World>, const std::string&);

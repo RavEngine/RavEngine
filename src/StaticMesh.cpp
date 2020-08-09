@@ -1,6 +1,6 @@
 #include "StaticMesh.hpp"
 #include "Entity.hpp"
-#include "mathtypes.h"
+#include "mathtypes.hpp"
 
 //default cube
 static PosColorVertex vertices[] = {

@@ -7,10 +7,10 @@
 
 #pragma once
 #include "SharedObject.hpp"
-#include "Component.h"
-#include "Transform.h"
+#include "Component.hpp"
+#include "Transform.hpp"
 #include "WeakRef.hpp"
-#include "PhysicsBodyComponent.h" 
+#include "PhysicsBodyComponent.hpp" 
 #include "ComponentStore.hpp"
 
 class PhysicsBodyComponent;

@@ -6,7 +6,7 @@
 //
 
 #include "PhysicsLinkSystem.hpp"
-#include "PhysicsBodyComponent.h"
+#include "PhysicsBodyComponent.hpp"
 
 void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Entity> e) const{
     //physx requires reads and writes to be sequential
