@@ -6,13 +6,13 @@
 //
 
 #pragma once
-#include "Component.h"
+#include "Component.hpp"
 #include <atomic>
 #include <array>
 #include <mutex>
 #include <glm/gtc/type_ptr.hpp>
 #include <unordered_set>
-#include "mathtypes.h"
+#include "mathtypes.hpp"
 #include "WeakRef.hpp"
 
 /**

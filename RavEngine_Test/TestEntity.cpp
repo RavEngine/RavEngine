@@ -8,7 +8,7 @@
 #include "TestEntity.hpp"
 #include "SkateSystem.h"
 #include "PhysicsLinkSystem.hpp"
-#include "PhysicsCollider.h"
+#include "PhysicsCollider.hpp"
 #include <PxMaterial.h>
 #include "PhysicsSolver.hpp"
 #include <iostream>

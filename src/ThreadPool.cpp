@@ -1,4 +1,4 @@
-#include "ThreadPool.h"
+#include "ThreadPool.hpp"
 
 // the destructor joins all threads
 ThreadPool::~ThreadPool() {

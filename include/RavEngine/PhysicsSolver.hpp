@@ -9,8 +9,8 @@
 
 #include "PhysXDefines.h"
 #include "SharedObject.hpp"
-#include "PhysicsCollider.h"
-#include "PhysicsBodyComponent.h"
+#include "PhysicsCollider.hpp"
+#include "PhysicsBodyComponent.hpp"
 #include "Entity.hpp"
 #include <PxPhysicsAPI.h>
 #include <list>

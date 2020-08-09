@@ -1,13 +1,13 @@
 #pragma once
 #include "PhysXDefines.h"
-#include "Component.h"
+#include "Component.hpp"
 #include <PxRigidBody.h>
 #include <PxRigidDynamic.h>
 #include <PxRigidStatic.h>
 #include <iostream>
 #include <functional>
 #include <eventpp/eventdispatcher.h>
-#include "mathtypes.h"
+#include "mathtypes.hpp"
 
 class PhysicsBodyComponent : public Component
 {

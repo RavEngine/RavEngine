@@ -1,5 +1,6 @@
 
-#include "RavEngine_App.h"
+#include "RavEngine_App.hpp"
+#include "OgreStatics.hpp"
 
 #include <GameplayStatics.hpp>
 
@@ -34,6 +35,9 @@ int RavEngine_App::run(int argc, char** argv) {
 	//in loop tick related things
     bool bQuit = false;
 
+    auto root = GameplayStatics::ogreFactory.GetRoot();
+    auto window = GameplayStatics::ogreFactory.GetWindow();
+
     while (!bQuit)
     {
         WindowEventUtilities::messagePump();
@@ -53,11 +57,6 @@ int RavEngine_App::run(int argc, char** argv) {
 
     //teardown
     WindowEventUtilities::removeWindowEventListener(window, &windowEventListener);
-
-    OGRE_DELETE root;
-    root = nullptr;
-
-    delete renderSystem;
 
 	//invoke shutdown
 	return OnShutdown();
@@ -183,9 +182,9 @@ void RavEngine_App::setupwindow(){
     const char* pluginsFile = "plugins.cfg";
 #endif
 
-     root = OGRE_NEW Root(pluginsFolder + pluginsFile,     //
-        writeAccessFolder + "ogre.cfg",  //
-        writeAccessFolder + "Ogre.log");
+     GameplayStatics::ogreFactory.init();
+
+     auto root = GameplayStatics::ogreFactory.GetRoot();
 
     /*{
         struct stat buf;
@@ -201,25 +200,15 @@ void RavEngine_App::setupwindow(){
 
     }*/
 
-     renderSystem = new NativeRenderSystem();
 
-     root->setRenderSystem(renderSystem);
-
-    // Initialize Root
-    //auto opt = root->getRenderSystem()->getConfigOptions();
-    root->getRenderSystem()->setConfigOption("sRGB Gamma Conversion", "Yes");
-    root->getRenderSystem()->setConfigOption("Full Screen", "No");
-    root->getRenderSystem()->setConfigOption("VSync", "Yes");
     
-    window = root->initialise(true, string("RavEngine 0.0.2a - ") + root->getRenderSystem()->getName());
-
+    
     //registerHlms();
 
     // Create SceneManager
-    const size_t numThreads = 1u;
-    sceneManager = root->createSceneManager(ST_GENERIC, numThreads, "ExampleSMInstance");
 
     // Create & setup camera
+    auto sceneManager = GameplayStatics::ogreFactory.GetSceneManager();
     Camera* camera = sceneManager->createCamera("Main Camera");
 
     // Position it at 500 in Z direction
@@ -231,12 +220,12 @@ void RavEngine_App::setupwindow(){
     camera->setAutoAspectRatio(true);
 
     // Setup a basic compositor with a blue clear colour
+    auto window = GameplayStatics::ogreFactory.GetWindow();
     CompositorManager2* compositorManager = root->getCompositorManager2();
     const String workspaceName("Demo Workspace");
     const ColourValue backgroundColour(0.2f, 0.4f, 0.6f);
     compositorManager->createBasicWorkspaceDef(workspaceName, backgroundColour, IdString());
-    compositorManager->addWorkspace(sceneManager, window->getTexture(), camera, workspaceName, true);
+    compositorManager->addWorkspace(sceneManager, window->getTexture(), camera, workspaceName, true);  
 
-    
     WindowEventUtilities::addWindowEventListener(window, &windowEventListener);
 }

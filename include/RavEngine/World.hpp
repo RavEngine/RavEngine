@@ -10,7 +10,7 @@
 #include "System.hpp"
 #include "PhysicsSolver.hpp"
 #include "RenderEngine.hpp"
-#include "ThreadPool.h"
+#include "ThreadPool.hpp"
 #include <chrono>
 #include "Entity.hpp"
 #include <mutex>

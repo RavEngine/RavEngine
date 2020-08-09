@@ -1,6 +1,6 @@
-#include "PhysicsCollider.h"
+#include "PhysicsCollider.hpp"
 #include "Entity.hpp"
-#include "PhysicsBodyComponent.h"
+#include "PhysicsBodyComponent.hpp"
 #include <extensions/PxRigidActorExt.h>
 #include "WeakRef.hpp"
 
