@@ -1,13 +1,22 @@
-#include "Transform.h"
+#include "Transform.hpp"
 #include "Entity.hpp"
 #include <list>
-#include "mathtypes.h"
+#include "mathtypes.hpp"
+#include "GameplayStatics.hpp"
 #include <cassert>
 
 using namespace std;
 using namespace glm;
 
-void Transform::GetParentMatrixStack(list<matrix4>& matrix) {
+Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale) {
+	sceneNode = GameplayStatics::ogreFactory.createSceneNode();
+	matrix.store(matrix4(1.0));
+	LocalTranslateDelta(inpos);
+	LocalRotateDelta(inrot);
+	LocalScaleDelta(inscale);
+}
+
+void Transform::GetParentMatrixStack(list<matrix4>& matrix) const{
 	WeakRef p = parent;
 
 	//get all the transforms by navigating up the hierarchy

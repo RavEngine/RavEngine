@@ -3,6 +3,7 @@
 #include <OgreSceneManager.h>
 #include <OgreRoot.h>
 #include <OgreCamera.h>
+#include <OgreSceneNode.h>
 #include <OgreWindowEventUtilities.h>
 
 class OgreStatics {
@@ -12,8 +13,6 @@ public:
 		delete manager;
 		delete root;
 	}
-
-
 	void init();
 
 	/**
@@ -23,11 +22,19 @@ public:
 	@param forCubeMapping True this camera will be used at least once in one of its passes as a cubemap (thus having to change the orientation but not position mid-rendering) 
 	@return the created camera. Must be added to a scene to use.
 	*/
-	Ogre::Camera* createCamera(const Ogre::String& name, bool notShadowCaster = true, bool forCubeMapping = false) {
+	Ogre::Camera* const createCamera(const Ogre::String& name, bool notShadowCaster = true, bool forCubeMapping = false) {
 		auto cam = manager->createCamera(name, notShadowCaster, forCubeMapping);
 		cam->detachFromParent();
 		return cam;
 	};
+
+	/**
+	Creates an instance of a SceneNode.
+	@param sceneType Dynamic if this node is to be updated frequently. Static if you don't plan to be updating this node in a long time (performance optimization).
+	*/
+	Ogre::SceneNode* const createSceneNode(Ogre::SceneMemoryMgrTypes sceneType = Ogre::SceneMemoryMgrTypes::SCENE_DYNAMIC) {
+		return manager->createSceneNode(sceneType);	//this does not add the node to the hierarcy, so no need to detatch
+	}
 
 	Ogre::Root* const GetRoot() const{
 		return root;

@@ -2,20 +2,28 @@
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
 #include "OgreStatics.hpp"
+#include <stduuid/uuid.h>
 
-class Camera : public Component {
+class CameraComponent : public Component {
 protected:
-	Ogre::Camera* cam;
+	Ogre::Camera* cam = nullptr;
 public:
-	Camera(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component() {
-		cam = GameplayStatics::ogreFactory.createCamera("a name");
+	CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component() {
+		auto const id = to_string(uuids::uuid_system_generator{}());
+		cam = GameplayStatics::ogreFactory.createCamera(id);
 		cam->setFOVy(Ogre::Radian(FOV));
 		cam->setNearClipDistance(nearClip);
 		cam->setFarClipDistance(farClip);
 	}
 
-	virtual ~Camera() {
-		delete cam;
+	virtual ~CameraComponent() {
+		cam->detachFromParent();
+		OGRE_DELETE cam;
+	}
+
+	void AddHook(const WeakRef<Entity>& e) override{
+		//add the camera to the root
+		e.get()->transform()->getNode()->attachObject(cam);
 	}
 
 	void RegisterAllAlternateTypes() override{}

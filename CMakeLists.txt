@@ -102,6 +102,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 # get header search paths
 include_directories("include/RavEngine/")
+include_directories("include/RavEngine/stduuid/")
 include_directories("${OGRE_ROOT}/OgreMain/include/")
 include_directories("${OGRE_ROOT}/include/")
 include_directories("${OGRE_ROOT}/Components/Hlms/Common/include")
