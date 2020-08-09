@@ -11,6 +11,7 @@
 #include <algorithm>
 #include "System.hpp"
 #include "LockLogger.hpp"
+#include <uuid.h>
 
 using namespace std;
 using namespace std::chrono;
@@ -70,6 +71,7 @@ void World::tick(){
 World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(40000);
+	ogrescene = GameplayStatics::ogreFactory.createSceneManager(to_string(uuids::uuid_system_generator{}()));
 }
 
 /**

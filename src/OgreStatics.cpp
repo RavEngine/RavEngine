@@ -46,6 +46,6 @@ void OgreStatics::init() {
 	window = root->initialise(true, string("RavEngine 0.0.2a - ") + root->getRenderSystem()->getName());
 
 	const size_t numThreads = 1u;
-	manager = root->createSceneManager(Ogre::SceneType::ST_GENERIC, numThreads, "FactoryManager");
+	managerFactory = root->createSceneManager(Ogre::SceneType::ST_GENERIC, numThreads, "FactoryManager");
 
 }
