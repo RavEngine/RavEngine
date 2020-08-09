@@ -41,11 +41,11 @@ int counter = 0;
 void RenderEngine::Draw(){
 	//get the active camera
 	auto components = Ref<World>(world.get())->Components();
-	auto allcams = components.GetAllComponentsOfType<Camera>();
+	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 
 	//set the view transform - all entities drawn will use this matrix
 	for (auto& cam : allcams) {
-		auto owning = Ref<Camera>(cam);
+		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive) {
 			owning->SetViewTransform();
 			break;

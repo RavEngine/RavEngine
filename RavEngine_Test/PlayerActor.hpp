@@ -50,7 +50,7 @@ public:
 	PlayerActor() : Entity() {
 		//create a child entity for the camera
 		cameraEntity = new Entity();
-		auto cam = cameraEntity->AddComponent<Camera>(new Camera());
+		auto cam = cameraEntity->AddComponent<CameraComponent>(new CameraComponent());
 
 		//set the active camera
 		cam->isActive = true;

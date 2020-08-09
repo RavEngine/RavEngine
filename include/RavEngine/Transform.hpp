@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include "mathtypes.hpp"
 #include "WeakRef.hpp"
+#include "OgreStatics.hpp"
 
 /**
  A thread-safe transform component
@@ -21,14 +22,12 @@
 class Transform : public Component {
 public:
 	typedef std::unordered_set<WeakRef<Transform>> childStore;
-	~Transform(){}
-	Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale)
-	{
-		matrix.store(matrix4(1.0));
-		LocalTranslateDelta(inpos);
-		LocalRotateDelta(inrot);
-		LocalScaleDelta(inscale);
+	~Transform(){
+		//remove ogre scenenode
+		sceneNode->detachAllObjects();
+		OGRE_DELETE sceneNode;
 	}
+	Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale);
 	Transform() : Transform(vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
 
 	void SetLocalPosition(const vector3&);
@@ -66,43 +65,13 @@ public:
 	Use `decimalType` as the array type, to keep the floating point model consistent. See mathtypes.h
 	*/
 	void WorldMatrixToArray(float matrix[16]) {
-
-		////start with an identity matrix
-		//bx::mtxIdentity(matrix);
-
-		////calculate the rotation matrix
-		//float rotmatrix[16];
-		//{
-		//	auto rot = glm::eulerAngles(GetWorldRotation());
-		//	bx::mtxRotateXYZ(rotmatrix, rot.x, rot.y, rot.z);
-		//}
-
-
-		////calculate the translation matrix
-		//float transmatrix[16];
-		//{
-		//	auto pos = GetWorldPosition();
-		//	bx::mtxTranslate(transmatrix, pos.x, pos.y, pos.z);
-		//}
-
-		////calculate the scale matrix
-		//float scalematrix[16];
-		//{
-		//	auto scale = GetLocalScale();
-		//	bx::mtxScale(scalematrix, scale.x);
-		//}
-
-		////rotate must come before translate
-		//bx::mtxMul(matrix, matrix, scalematrix);
-		//bx::mtxMul(matrix, matrix, rotmatrix);
-		//bx::mtxMul(matrix, matrix, transmatrix);
 	}
 
 	/**
 	Get the matrix list of all the parents. This does NOT include the current transform.
 	@param list the list to add the matrices to
 	*/
-	void GetParentMatrixStack(std::list<matrix4>& list);
+	void GetParentMatrixStack(std::list<matrix4>& list) const;
 
 	/**
 	Add a transform as a child object of this transform
@@ -116,11 +85,18 @@ public:
 	*/
 	void RemoveChild(const WeakRef<Transform>& child);
 
+
+	Ogre::SceneNode* const getNode() {
+		return sceneNode;
+	}
+
 protected:
+	std::mutex mtx;
 	std::atomic<vector3> position;
 	std::atomic<quaternion> rotation;
 	std::atomic<vector3> scale;
 	std::atomic<matrix4> matrix;
+	Ogre::SceneNode* sceneNode = nullptr;
 
 	childStore children;		//non-owning
 	WeakRef<Transform> parent;	//non-owning
@@ -157,6 +133,10 @@ inline void Transform::LocalTranslateDelta(const vector3& delta) {
 
 	//apply transform
 	matrix.store(glm::translate(matrix.load(), delta));
+
+	mtx.lock();
+	sceneNode->translate(Ogre::Vector3(delta.x, delta.y, delta.z));
+	mtx.unlock();
 }
 
 /**
@@ -171,6 +151,10 @@ inline void Transform::SetLocalPosition(const vector3& newPos) {
 	//set position value
 	position.store(newPos);
 	matrix.store(newMat);
+
+	mtx.lock();
+	sceneNode->setPosition(Ogre::Vector3(newPos.x,newPos.y,newPos.z));
+	mtx.unlock();
 }
 
 /**
@@ -188,6 +172,10 @@ inline void Transform::SetWorldPosition(const vector3& newPos) {
 		auto displacement = newPos - worldpos;
 		//update the local pos to that displacement
 		LocalTranslateDelta(displacement);
+
+		mtx.lock();
+		sceneNode->translate(Ogre::Vector3(displacement.x,displacement.y,displacement.z));
+		mtx.unlock();
 	}
 }
 
@@ -210,6 +198,10 @@ inline void Transform::SetLocalRotation(const quaternion& newRot) {
 	matrix.store(matrix.load() * allMatrix);
 
 	rotation.store(newRot);
+
+	mtx.lock();
+	sceneNode->setOrientation(Ogre::Quaternion(newRot.w,newRot.x,newRot.y,newRot.z));
+	mtx.unlock();
 }
 
 /**
@@ -229,6 +221,10 @@ inline void Transform::LocalRotateDelta(const quaternion& delta) {
 	auto appliedRot = matrix.load() * rotate;
 	matrix.store(matrix.load() * allMatrix);
 	rotation.store(glm::toQuat(appliedRot));
+
+	mtx.lock();
+	sceneNode->rotate(Ogre::Quaternion(delta.w, delta.x, delta.y, delta.z));
+	mtx.unlock();
 }
 
 /**
@@ -246,6 +242,10 @@ inline void Transform::SetWorldRotation(const quaternion& newRot) {
 		auto relative = glm::inverse(worldRot) * newRot;
 		//apply the rotation
 		LocalRotateDelta(relative);
+
+		mtx.lock();
+		sceneNode->rotate(Ogre::Quaternion(relative.w, relative.x, relative.y, relative.z));
+		mtx.unlock();
 	}
 }
 
@@ -257,11 +257,19 @@ inline void Transform::SetLocalScale(const vector3& newScale) {
 	//must undo current scale then scale to new size
 	matrix.store(glm::scale(glm::scale(matrix.load(), -scale.load()), newScale));	
 	scale.store(newScale);
+
+	mtx.lock();
+	sceneNode->setScale(Ogre::Vector3(newScale.x, newScale.y, newScale.z));
+	mtx.unlock();
 }
 
 inline void Transform::LocalScaleDelta(const vector3& delta) {
 	scale.store(scale.load() + delta);
 	matrix.store(glm::scale(matrix.load(),delta));
+
+	mtx.lock();
+	sceneNode->scale(Ogre::Vector3(delta.x,delta.y,delta.z));
+	mtx.unlock();
 }
 
 inline vector3 Transform::GetLocalPosition()

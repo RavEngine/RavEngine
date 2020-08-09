@@ -40,7 +40,7 @@ public:
 		eventsEnabled = trigger;
 	}
 
-	void AddHook(WeakRef<Entity> e) override;
+	void AddHook(const WeakRef<Entity>& e) override;
 
 	virtual void RegisterAllAlternateTypes() override {
 		RegisterAlternateQueryType<PhysicsCollider>();

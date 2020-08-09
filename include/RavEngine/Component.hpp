@@ -49,7 +49,7 @@ public:
 	 * Called by the parent entity after it is added. Override in subclasses
 	 * @param e the parent entity invoking the call
 	 */
-	virtual void AddHook(WeakRef<Entity> e) {}
+	virtual void AddHook(const WeakRef<Entity>& e) {}
 
 	/*
 	 * Get the list of alternate types this component may be queried as
