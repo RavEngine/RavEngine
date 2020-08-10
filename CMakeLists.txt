@@ -101,8 +101,8 @@ set(CMAKE_CXX_STANDARD 17)
 # ========== Building engine and test game ==============
 
 # get header search paths
-include_directories("include/RavEngine/")
-include_directories("include/RavEngine/stduuid/")
+include_directories("include/${PROJECT_NAME}/")
+include_directories("include/${PROJECT_NAME}/stduuid/")
 include_directories("${OGRE_ROOT}/OgreMain/include/")
 include_directories("${OGRE_ROOT}/include/")
 include_directories("${OGRE_ROOT}/Components/Hlms/Common/include")
@@ -127,80 +127,80 @@ include_directories("${DEPS_DIR}/physx/physx/snippets/")
 
 # get all sources for the library with glob
 file(GLOB SOURCES "src/*.cpp")
-file(GLOB CHEADERS "include/RavEngine/*.h")
-file(GLOB HEADERS "include/RavEngine/*.hpp")
+file(GLOB CHEADERS "include/${PROJECT_NAME}/*.h")
+file(GLOB HEADERS "include/${PROJECT_NAME}/*.hpp")
 
 # register the library
-add_library("RavEngine" ${SOURCES} ${CHEADERS} ${HEADERS})
+add_library("${PROJECT_NAME}" ${SOURCES} ${CHEADERS} ${HEADERS})
 
 # create the test executable
-file(GLOB TEST_SOURCES "RavEngine_Test/*.cpp")
-file(GLOB TEST_HEADERS "RavEngine_Test/*.hpp")
-file(GLOB TEST_CHEADERS "RavEngine_Test/*.h")
-add_executable("RavEngine_Test" ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
+file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp")
+file(GLOB TEST_HEADERS "${PROJECT_NAME}_Test/*.hpp")
+file(GLOB TEST_CHEADERS "${PROJECT_NAME}_Test/*.h")
+add_executable("${PROJECT_NAME}_Test" ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
 
 # ====================== Linking ====================
-#target_link_libraries("RavEngine" "SDL2")
-target_link_libraries("RavEngine" "PhysXExtensions")
-target_link_libraries("RavEngine" "PhysX")
-target_link_libraries("RavEngine" "PhysXPvdSDK")
-target_link_libraries("RavEngine" "PhysXVehicle")
-target_link_libraries("RavEngine" "PhysXCharacterKinematic")
-target_link_libraries("RavEngine" "PhysXCooking")
-target_link_libraries("RavEngine" "PhysXCommon")
-#target_link_libraries("RavEngine" "PhysXGPU")
-target_link_libraries("RavEngine" "PhysXFoundation")
-target_link_libraries("RavEngine" "PhysXTask")
-#target_link_libraries("RavEngine" "SnippetUtils")
-target_link_libraries("RavEngine" "FastXml")
-target_link_libraries("RavEngine" "LowLevel")
-target_link_libraries("RavEngine" "LowLevelAABB")
-target_link_libraries("RavEngine" "LowLevelDynamics")
-target_link_libraries("RavEngine" "SceneQuery")
-target_link_libraries("RavEngine" "SimulationController")
-#target_link_libraries("RavEngine" "bgfx")
-#target_link_libraries("RavEngine" "bimg")
-#target_link_libraries("RavEngine" "bimg_decode")
-#target_link_libraries("RavEngine" "bx")
-#target_link_libraries("RavEngine" "fcpp")
-#target_link_libraries("RavEngine" "glslang")
-#target_link_libraries("RavEngine" "glsl-optimizer")
-target_link_libraries("RavEngine" "OgreHlmsUnlit")
-target_link_libraries("RavEngine" "OgreMain")
-target_link_libraries("RavEngine" "OgreHlmsPbs")
+#target_link_libraries("${PROJECT_NAME}" "SDL2")
+target_link_libraries("${PROJECT_NAME}" "PhysXExtensions")
+target_link_libraries("${PROJECT_NAME}" "PhysX")
+target_link_libraries("${PROJECT_NAME}" "PhysXPvdSDK")
+target_link_libraries("${PROJECT_NAME}" "PhysXVehicle")
+target_link_libraries("${PROJECT_NAME}" "PhysXCharacterKinematic")
+target_link_libraries("${PROJECT_NAME}" "PhysXCooking")
+target_link_libraries("${PROJECT_NAME}" "PhysXCommon")
+#target_link_libraries("${PROJECT_NAME}" "PhysXGPU")
+target_link_libraries("${PROJECT_NAME}" "PhysXFoundation")
+target_link_libraries("${PROJECT_NAME}" "PhysXTask")
+#target_link_libraries("${PROJECT_NAME}" "SnippetUtils")
+target_link_libraries("${PROJECT_NAME}" "FastXml")
+target_link_libraries("${PROJECT_NAME}" "LowLevel")
+target_link_libraries("${PROJECT_NAME}" "LowLevelAABB")
+target_link_libraries("${PROJECT_NAME}" "LowLevelDynamics")
+target_link_libraries("${PROJECT_NAME}" "SceneQuery")
+target_link_libraries("${PROJECT_NAME}" "SimulationController")
+#target_link_libraries("${PROJECT_NAME}" "bgfx")
+#target_link_libraries("${PROJECT_NAME}" "bimg")
+#target_link_libraries("${PROJECT_NAME}" "bimg_decode")
+#target_link_libraries("${PROJECT_NAME}" "bx")
+#target_link_libraries("${PROJECT_NAME}" "fcpp")
+#target_link_libraries("${PROJECT_NAME}" "glslang")
+#target_link_libraries("${PROJECT_NAME}" "glsl-optimizer")
+target_link_libraries("${PROJECT_NAME}" "OgreHlmsUnlit")
+target_link_libraries("${PROJECT_NAME}" "OgreMain")
+target_link_libraries("${PROJECT_NAME}" "OgreHlmsPbs")
 if(WIN32)
-	target_link_libraries("RavEngine" "RenderSystem_Direct3D11")
-	#target_link_libraries("RavEngine" "RenderSystem_Direct3D9")
+	target_link_libraries("${PROJECT_NAME}" "RenderSystem_Direct3D11")
+	#target_link_libraries("${PROJECT_NAME}" "RenderSystem_Direct3D9")
 elseif(APPLE)
-	target_link_libraries("RavEngine" "RenderSystem_Metal")
+	target_link_libraries("${PROJECT_NAME}" "RenderSystem_Metal")
 endif()
-#target_link_libraries("RavEngine" "RenderSystem_GLES2")
-target_link_libraries("RavEngine" "RenderSystem_GL3Plus")
-target_link_libraries("RavEngine" "RenderSystem_NULL")
+#target_link_libraries("${PROJECT_NAME}" "RenderSystem_GLES2")
+target_link_libraries("${PROJECT_NAME}" "RenderSystem_GL3Plus")
+target_link_libraries("${PROJECT_NAME}" "RenderSystem_NULL")
 
-#add_dependencies("RavEngine" "geometryc")
-#add_dependencies("RavEngine" "shaderc")
-#add_dependencies("RavEngine" "spirv-cross")
-#add_dependencies("RavEngine" "spirv-opt")
+#add_dependencies("${PROJECT_NAME}" "geometryc")
+#add_dependencies("${PROJECT_NAME}" "shaderc")
+#add_dependencies("${PROJECT_NAME}" "spirv-cross")
+#add_dependencies("${PROJECT_NAME}" "spirv-opt")
 
 
 # copy DLLs
 if (WIN32)
 	if(NOT PX_GENERATE_STATIC_LIBRARIES)
-		add_custom_command(TARGET "RavEngine" POST_BUILD
+		add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
 				"${PROJECT_BINARY_DIR}/deps/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
-				"$<TARGET_FILE_DIR:RavEngine>")
+				"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 	endif()
 
-	# add_custom_command(TARGET "RavEngine" POST_BUILD
+	# add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
 	# 	COMMAND ${CMAKE_COMMAND} -E copy_directory
 	# 		"${PROJECT_BINARY_DIR}/deps/SDL2/$<CONFIGURATION>"
-	# 		"$<TARGET_FILE_DIR:RavEngine>")
+	# 		"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 
 	#startup project	
-	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "RavEngine_Test")
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}_Test")
 endif()
 # link test game with library
-target_link_libraries("RavEngine_Test" "RavEngine" )
+target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
