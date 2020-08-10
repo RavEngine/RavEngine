@@ -12,13 +12,13 @@
 
 using namespace glm;
 
-Ref<TransformComponent> Entity::transform(){
-	return components.GetComponent<TransformComponent>();
+Ref<Transform> Entity::transform(){
+	return components.GetComponent<Transform>();
 }
 
 
 Entity::Entity(){
-	AddComponent<TransformComponent>(new TransformComponent());
+	AddComponent<Transform>(new Transform());
 }
 
 void Entity::Draw() {

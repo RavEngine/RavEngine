@@ -10,7 +10,6 @@
 #include "Entity.hpp"
 #include <list>
 #include "WeakRef.hpp"
-#include "OgreStatics.hpp"
 
 class RenderEngine : public SharedObject{
 public:
@@ -24,5 +23,4 @@ public:
     WeakRef<World> world;
 
 protected:   
-    Ogre::SceneManager* ogrescene = nullptr;
 };

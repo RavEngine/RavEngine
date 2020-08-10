@@ -42,7 +42,7 @@ endif ()
 
 #add_subdirectory("${DEPS_DIR}/SDL2")
 
-add_subdirectory("${DEPS_DIR}/MethaneKit")
+#add_subdirectory("${DEPS_DIR}/MethaneKit")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -54,16 +54,16 @@ set(CMAKEMODULES_VERSION "1.27" CACHE INTERNAL "")
 set(CMAKEMODULES_PATH ${PHYSX_ROOT_DIR}/../externals/cmakemodules CACHE INTERNAL "")
 set(PX_OUTPUT_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
 set(PX_OUTPUT_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
-set(PX_GENERATE_STATIC_LIBRARIES ON)
+set(PX_GENERATE_STATIC_LIBRARIES ON CACHE INTERNAL "")
 #set(PX_FLOAT_POINT_PRECISE_MATH OFF)
 if (WIN32)
-	set(TARGET_BUILD_PLATFORM "windows")
+	set(TARGET_BUILD_PLATFORM "windows" CACHE INTERNAL "")
 elseif(APPLE)
-	set(TARGET_BUILD_PLATFORM "mac")
+	set(TARGET_BUILD_PLATFORM "mac" CACHE INTERNAL "")
 elseif(LINUX)
-	set(TARGET_BUILD_PLATFORM "linux")
+	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu" CACHE INTERNAL "")
-	#set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu")
+	#set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu" CACHE INTERNAL "")
 endif()
 
 # Call into PhysX's CMake scripts
@@ -78,6 +78,14 @@ include_directories("include/${PROJECT_NAME}/stduuid/")
 include_directories("${DEPS_DIR}/physx/physx/include/")
 include_directories("${DEPS_DIR}/physx/pxshared/include/")
 include_directories("${DEPS_DIR}/physx/physx/snippets/")
+set(METHANEKIT_MODULES "${DEPS_DIR}/MethaneKit/Modules/")
+set(METHANEKIT_EXTERNALS "${DEPS_DIR}/MethaneKit/Externals/")
+
+# file(GLOB_RECURSE METHANEKIT_MODULE_INCLUDES "${DEPS_DIR}/MethaneKit/Modules/*/Include")
+# file(GLOB_RECURSE METHANEKIT_EXTERNAL_INCLUDES "${DEPS_DIR}/MethaneKit/Modules/*/include")
+# include_directories(${METHANEKIT_MODULE_INCLUDES})
+# include_directories(${METHANEKIT_EXTERNAL_INCLUDES})
+
 
 # get all sources for the library with glob
 file(GLOB SOURCES "src/*.cpp")
@@ -112,7 +120,7 @@ target_link_libraries("${PROJECT_NAME}" "LowLevelAABB")
 target_link_libraries("${PROJECT_NAME}" "LowLevelDynamics")
 target_link_libraries("${PROJECT_NAME}" "SceneQuery")
 target_link_libraries("${PROJECT_NAME}" "SimulationController")
-
+#target_link_libraries("${PROJECT_NAME}" "MethaneGraphicsKit")
 
 
 # copy DLLs

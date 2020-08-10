@@ -4,13 +4,11 @@
 #include "mathtypes.hpp"
 #include "GameplayStatics.hpp"
 #include <cassert>
-#include "OgreStatics.hpp"
 
 using namespace std;
 using namespace glm;
 
-TransformComponent::TransformComponent(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
-	sceneNode = GameplayStatics::ogreFactory.createSceneNode();
+Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
 	matrix.store(matrix4(1.0));
 	LocalTranslateDelta(inpos);
 	LocalRotateDelta(inrot);
@@ -18,32 +16,32 @@ TransformComponent::TransformComponent(const vector3& inpos, const quaternion& i
 	isStatic = inStatic;
 }
 
-void TransformComponent::GetParentMatrixStack(list<matrix4>& matrix) const{
+void Transform::GetParentMatrixStack(list<matrix4>& matrix) const{
 	WeakRef p = parent;
 
 	//get all the transforms by navigating up the hierarchy
 	while (!p.isNull()) {
-		Ref<TransformComponent> e(p);
+		Ref<Transform> e(p);
 		matrix.push_front(e->GetMatrix());
 		p = e->parent;
 	}
 }
 
-void TransformComponent::AddChild(const WeakRef<TransformComponent>& child)
+void Transform::AddChild(const WeakRef<Transform>& child)
 {
 	//must be passing a transform!
-	Ref<TransformComponent>(child)->parent = WeakRef<TransformComponent>(this);
+	Ref<Transform>(child)->parent = WeakRef<Transform>(this);
 	children.insert(child);
 }
 
-void TransformComponent::RemoveChild(const WeakRef<TransformComponent>& child)
+void Transform::RemoveChild(const WeakRef<Transform>& child)
 {
 	//must be passing a transform!
-	Ref<TransformComponent>(child)->parent = nullptr;
+	Ref<Transform>(child)->parent = nullptr;
 	children.erase(child);
 }
 
-vector3 TransformComponent::GetWorldPosition()
+vector3 Transform::GetWorldPosition()
 {
 	if (!HasParent()) {
 		return GetLocalPosition();
@@ -63,7 +61,7 @@ vector3 TransformComponent::GetWorldPosition()
 	return GetMatrix() * finalPos;
 }
 
-quaternion TransformComponent::GetWorldRotation()
+quaternion Transform::GetWorldRotation()
 {	
 	if (!HasParent()) {
 		return GetLocalRotation();
@@ -86,7 +84,7 @@ quaternion TransformComponent::GetWorldRotation()
 	return glm::toQuat(finalRot);
 }
 
-vector3 TransformComponent::GetWorldScale()
+vector3 Transform::GetWorldScale()
 {
 	if (!HasParent()) {
 		return GetLocalScale();
@@ -105,6 +103,6 @@ vector3 TransformComponent::GetWorldScale()
 	return GetMatrix() * finalPos;
 }
 
-bool TransformComponent::HasParent() {
+bool Transform::HasParent() {
 	return !parent.isNull();
 }
