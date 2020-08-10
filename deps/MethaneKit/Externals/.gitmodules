@@ -1,0 +1,30 @@
+[submodule "CML"]
+	path = CML
+	url = https://github.com/egorodet/CML.git
+[submodule "CMRC"]
+	path = CMRC
+	url = https://github.com/egorodet/CMRC.git
+[submodule "Catch2"]
+	path = Catch2
+	url = https://github.com/egorodet/Catch2.git
+[submodule "Nowide"]
+	path = Nowide
+	url = https://github.com/egorodet/Nowide.git
+[submodule "STB"]
+	path = STB
+	url = https://github.com/egorodet/STB.git
+[submodule "DirectXLibraries"]
+	path = DirectXLibraries
+	url = https://github.com/egorodet/DirectXLibraries.git
+[submodule "DirectXTex"]
+	path = DirectXTex
+	url = https://github.com/egorodet/DirectXTex.git
+[submodule "CLI11"]
+	path = CLI11
+	url = https://github.com/egorodet/CLI11.git
+[submodule "IttApi"]
+	path = IttApi
+	url = https://github.com/egorodet/IttApi.git
+[submodule "CMakeModules"]
+	path = CMakeModules
+	url = https://github.com/egorodet/CMakeModules.git
