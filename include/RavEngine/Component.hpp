@@ -14,7 +14,6 @@
 //forward declarations
 class Entity;
 
-
 class Component : public SharedObject{
 protected:
 	WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component

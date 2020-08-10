@@ -1,24 +1,26 @@
 #include "Component.hpp"
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
-#include "OgreStatics.hpp"
 #include <stduuid/uuid.h>
 
 class CameraComponent : public Component {
 protected:
 	Ogre::Camera* cam = nullptr;
+	Ogre::CompositorWorkspace* compositor = nullptr;
 public:
-	CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component() {
-		auto const id = to_string(uuids::uuid_system_generator{}());
-		cam = GameplayStatics::ogreFactory.createCamera(id);
-		cam->setFOVy(Ogre::Radian(FOV));
-		cam->setNearClipDistance(nearClip);
-		cam->setFarClipDistance(farClip);
-	}
+	CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100);
 
 	virtual ~CameraComponent() {
 		cam->detachFromParent();
 		OGRE_DELETE cam;
+	}
+
+	/**
+	Get the backend camera directly. For internal use only. The engine will not be aware of changes made directly to this pointer.
+	@return a pointer to the camera
+	*/
+	Ogre::Camera* const getCamera() const {
+		return cam;
 	}
 
 	void AddHook(const WeakRef<Entity>& e) override{
@@ -27,28 +29,33 @@ public:
 	}
 
 	void RegisterAllAlternateTypes() override{}
-	bool isActive = false;
+
+	/**
+	Enable / disable this camera
+	@param newState the new enabled state for this camera. The renderer will choose the first active camera as the camera to use when drawing.
+	*/
+	void setActive(bool newState);
+
+	/**
+	@returns if this camera is active
+	*/
+	bool isActive() {
+		return active;
+	}
+
+	/**
+	For internal use
+	@return the compositor workspace for this camera.
+	*/
+	Ogre::CompositorWorkspace* const GetCompositor() {
+		return compositor;
+	}
+
+protected:
+	bool active = false;
 
 	//camera details
 	float FOV;
 	float nearClip;
 	float farClip;
-
-	/**
-	Using the camera's current state, set the view transform
-	*/
-	void SetViewTransform() {
-		Ref<Entity> entity = owner.get();
-		auto transform = entity->transform();
-		auto pos = transform->GetWorldPosition();
-		//calculate where to position the camera
-		float view[16];
-		transform->WorldMatrixToArray(view);
-		/*auto rot = transform->GetWorldRotation();
-		bx::mtxQuatTranslation(view, bx::Quaternion{(float)rot.x,(float)rot.y,(float)rot.z,(float)rot.w},bx::Vec3(pos.x,pos.y,pos.z));*/
-
-		float proj[16];
-		//bx::mtxProj(proj, FOV, GameplayStatics::width / GameplayStatics::height, nearClip, farClip, bgfx::getCaps()->homogeneousDepth);
-		//bgfx::setViewTransform(0, view, proj);
-	}
 };

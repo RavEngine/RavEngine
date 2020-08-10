@@ -71,7 +71,6 @@ void World::tick(){
 World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(40000);
-	ogrescene = GameplayStatics::ogreFactory.createSceneManager(to_string(uuids::uuid_system_generator{}()));
 }
 
 /**

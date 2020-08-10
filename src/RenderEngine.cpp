@@ -12,16 +12,46 @@
 #include "GameplayStatics.hpp"
 #include "CameraComponent.hpp"
 #include "World.hpp"
-#include <filesystem>
+#include <Compositor/OgreCompositorManager2.h>
+#include <OgreWindow.h>
 
 using namespace std;
+using namespace Ogre;
+
+constexpr char mainWorkspaceName[] = "MainWorkspace";
+
+/**
+Construct a render engine instance
+@param w the owning world for this engine instance
+*/
+RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
+	ogrescene = GameplayStatics::ogreFactory.createSceneManager(to_string(uuids::uuid_system_generator{}()));
+}
 
 /**
  Make the rendering system aware of an object
  @param e the entity to load
  */
 void RenderEngine::Spawn(Ref<Entity> e){
-    entities.push_back(e);
+	ogrescene->getRootSceneNode()->addChild(e->transform()->getNode());		//add to ogre scene
+
+	//is this a camera?
+	if (e->Components().HasComponentOfType<CameraComponent>()) {
+		auto camcomp = e->Components().GetComponent<CameraComponent>();
+		auto workspace = camcomp->GetCompositor();
+		//does the camera have a compositormanager?
+		if (workspace == nullptr) {
+			auto cam = camcomp->getCamera();
+			// Setup a compositor for this camera
+			auto window = GameplayStatics::ogreFactory.GetWindow();
+			auto root = GameplayStatics::ogreFactory.GetRoot();
+			CompositorManager2* compositorManager = root->getCompositorManager2();
+			const ColourValue backgroundColour(0.2f, 0.4f, 0.6f);
+			//workspaces are id'ed to the owning camera
+			compositorManager->createBasicWorkspaceDef(cam->getName(), backgroundColour, IdString());
+			workspace = compositorManager->addWorkspace(ogrescene, window->getTexture(), cam, cam->getName(), camcomp->isActive());
+		}
+	}
 }
 
 /**
@@ -29,9 +59,7 @@ void RenderEngine::Spawn(Ref<Entity> e){
  @param e the entity to remove
  */
 void RenderEngine::Destroy(Ref<Entity> e){
-    entities.remove_if([&](const Ref<Entity>& item) {
-        return e.get() == item.get();
-    });
+	ogrescene->getRootSceneNode()->removeChild(e->transform()->getNode());	//remove from ogre scene
 }
 
 int counter = 0;
@@ -40,40 +68,30 @@ int counter = 0;
  */
 void RenderEngine::Draw(){
 	//get the active camera
-	auto components = Ref<World>(world.get())->Components();
-	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
+	/*auto components = Ref<World>(world.get())->Components();
+	auto allcams = components.GetAllComponentsOfType<CameraComponent>();*/
 
 	//set the view transform - all entities drawn will use this matrix
-	for (auto& cam : allcams) {
+	/*for (auto& cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
-		if (owning->isActive) {
-			owning->SetViewTransform();
+		if (owning->isActive()) {
+			activeCamera = owning->getCamera();
 			break;
 		}
-	}
+	}*/
 
     //draw each entity
-    for (auto& entity : entities) {
-		entity->Draw();
+	auto worldOwning = Ref<World>(world);
+	auto entitylist = worldOwning->getEntities();
+	for (auto& entity : entitylist) {
+		entity->transform()->ApplyToSceneNode();
+		//entity->Draw();
     }
 }
 
+/**
+@return the name of the current rendering API
+*/
 const string RenderEngine::currentBackend(){
-	/*switch(bgfx::getRendererType()) {
-		case bgfx::RendererType::Noop:		 return "No rendering";
-		case bgfx::RendererType::Direct3D9:  return "Direct3D 9";
-		case bgfx::RendererType::Direct3D11: return "Direct3D 11";
-		case bgfx::RendererType::Direct3D12: return "Direct3D 12";
-		case bgfx::RendererType::Gnm:        return "GNM";
-		case bgfx::RendererType::Metal:      return "Metal";
-		case bgfx::RendererType::OpenGL:     return "OpenGL";
-		case bgfx::RendererType::OpenGLES:   return "OpenGL ES";
-		case bgfx::RendererType::Vulkan:     return "Vulkan";
-		case bgfx::RendererType::Nvn: 		 return "NVM";
-		case bgfx::RendererType::WebGPU:	 return "WebGPU";
-		case bgfx::RendererType::Count:      return "Count";
-		default:
-			return "Unknown";
-	}*/
-	return "unknown";
+	return GameplayStatics::ogreFactory.GetRoot()->getRenderSystem()->getName();
 }
