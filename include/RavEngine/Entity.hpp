@@ -143,7 +143,7 @@ public:
     /**
      @return a reference to the transform component, which all entities possess
      */
-	Ref<Transform> transform();
+	Ref<TransformComponent> transform();
 	
 	/**
 	 Tick logic on this Entity

@@ -12,9 +12,6 @@
 #include <OgreHlmsPbs.h>
 #include <OgreHlmsUnlit.h>
 
-#include <Compositor/OgreCompositorManager2.h>
-
-
 //#include <OgreGL3PlusRenderSystem.h>
 
 #include <fstream>
@@ -208,24 +205,6 @@ void RavEngine_App::setupwindow(){
     // Create SceneManager
 
     // Create & setup camera
-    auto sceneManager = GameplayStatics::ogreFactory.GetSceneManager();
-    Camera* camera = sceneManager->createCamera("Main Camera");
 
-    // Position it at 500 in Z direction
-    camera->setPosition(Vector3(0, 5, 15));
-    // Look back along -Z
-    camera->lookAt(Vector3(0, 0, 0));
-    camera->setNearClipDistance(0.2f);
-    camera->setFarClipDistance(1000.0f);
-    camera->setAutoAspectRatio(true);
-
-    // Setup a basic compositor with a blue clear colour
-    auto window = GameplayStatics::ogreFactory.GetWindow();
-    CompositorManager2* compositorManager = root->getCompositorManager2();
-    const String workspaceName("Demo Workspace");
-    const ColourValue backgroundColour(0.2f, 0.4f, 0.6f);
-    compositorManager->createBasicWorkspaceDef(workspaceName, backgroundColour, IdString());
-    compositorManager->addWorkspace(sceneManager, window->getTexture(), camera, workspaceName, true);  
-
-    WindowEventUtilities::addWindowEventListener(window, &windowEventListener);
+    WindowEventUtilities::addWindowEventListener(GameplayStatics::ogreFactory.GetWindow(), &windowEventListener);
 }

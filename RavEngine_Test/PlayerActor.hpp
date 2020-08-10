@@ -10,7 +10,7 @@ protected:
 	decimalType sensitivity = 0.1;
 
 	//transform cache
-	Ref<Transform> trans;
+	Ref<TransformComponent> trans;
 
 
 	decimalType scaleMovement(decimalType f) {
@@ -53,7 +53,7 @@ public:
 		auto cam = cameraEntity->AddComponent<CameraComponent>(new CameraComponent());
 
 		//set the active camera
-		cam->isActive = true;
+		cam->setActive(true);
 
 		trans = transform();
 		trans->AddChild(cameraEntity->transform());
