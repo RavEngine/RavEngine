@@ -10,7 +10,7 @@ protected:
 	decimalType sensitivity = 0.1;
 
 	//transform cache
-	Ref<TransformComponent> trans;
+	Ref<Transform> trans;
 
 
 	decimalType scaleMovement(decimalType f) {

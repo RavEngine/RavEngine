@@ -3,10 +3,6 @@
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <OgreQuaternion.h>
-#include <OgreVector2.h>
-#include <OgreVector3.h>
-#include <OgreVector4.h>
 #include <ostream>
 
 //defines the vector and quaternion types

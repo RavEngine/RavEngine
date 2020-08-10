@@ -9,7 +9,6 @@
 #include "World.hpp"
 #include <string>
 #include "InputSystem.hpp"
-#include "OgreStatics.hpp"
 
 struct GameplayStatics{
 	static Ref<World> currentWorld;
@@ -32,7 +31,6 @@ struct GameplayStatics{
 	};
 	static static_constructor statcons;
 
-	static OgreStatics ogreFactory;
 	//static SDL_Window* mainWindow;
 	
 	//static void StartGame(Ref<World>, const std::string&);

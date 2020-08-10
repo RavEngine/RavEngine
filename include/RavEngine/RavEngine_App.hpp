@@ -1,7 +1,3 @@
-#include <OgreRoot.h>
-#include <OgreWindow.h>
-#include <OgreWindowEventUtilities.h>
-
 
 class RavEngine_App {
 public:
@@ -26,19 +22,6 @@ protected:
 	virtual int OnShutdown() { return 0; };
 
 	void setupwindow();
-
-	class AppWindowEventListener : public Ogre::WindowEventListener
-	{
-		bool mQuit;
-
-	public:
-		AppWindowEventListener() : mQuit(false) {}
-		virtual void windowClosed(Ogre::Window* rw) { mQuit = true; }
-
-		bool getQuit(void) const { return mQuit; }
-	};
-
-	AppWindowEventListener windowEventListener;
 
 };
 #define START_APP(APP) int main(int argc, char** argv){APP a; return a.run(argc, argv);}
