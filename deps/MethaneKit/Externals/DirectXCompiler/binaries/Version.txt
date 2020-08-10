@@ -1,0 +1,2 @@
+DXC 3.7 eb33030b03ce91723f3c91ff6047601e0152e2a3 [eb33030b] (21 Feb 2020, 21:25)
+https://github.com/microsoft/DirectXShaderCompiler

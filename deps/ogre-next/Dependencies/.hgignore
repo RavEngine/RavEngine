@@ -1,8 +1,0 @@
-syntax: glob
-build
-bin
-include
-lib
-AndroidBuild
-emscripten-build
-src/Remotery/src/RemoteryConfig.h

@@ -1,2 +1,0 @@
-# python3 RunUnitTests.py gl ../../build/Debug/bin/ ./JSON ../../build/UnitTestsOutput/ ../../build/UnitTestsOutput_old/
-python3 RunUnitTests.py gl ../../build/Debug/bin/ ./JSON ../../build/UnitTestsOutput/

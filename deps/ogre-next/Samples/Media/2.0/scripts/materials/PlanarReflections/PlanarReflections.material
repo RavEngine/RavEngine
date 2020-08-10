@@ -1,5 +1,0 @@
-hlms GlassRoughness pbs
-{
-	roughness	1
-	roughness_map	GlassRoughness.png
-}
