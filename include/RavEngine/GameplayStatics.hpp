@@ -26,7 +26,7 @@ struct GameplayStatics{
 
 	//static constructor
 	//this ensures that bgfx and sdl are created and initialized before anything else runs
-	static struct static_constructor {
+    struct static_constructor {
 		static_constructor();
 	};
 	static static_constructor statcons;
