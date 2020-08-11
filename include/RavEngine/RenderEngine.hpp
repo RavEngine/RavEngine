@@ -11,6 +11,10 @@
 #include <list>
 #include "WeakRef.hpp"
 
+class View;
+class Engine;
+class Renderer;
+
 class RenderEngine : public SharedObject{
 public:
     virtual ~RenderEngine(){};
@@ -22,5 +26,8 @@ public:
 	static const std::string currentBackend();
     WeakRef<World> world;
 
-protected:   
+protected:
+    View* filamentView;
+    Engine* filamentEngine;
+    Renderer* filamentRenderer;
 };
