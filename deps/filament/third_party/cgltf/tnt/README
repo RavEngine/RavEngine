@@ -1,0 +1,10 @@
+This folder was last updated as follows:
+
+    export sha=33f6d6b
+    cd third_party
+    curl -L -O https://github.com/jkuhlmann/cgltf/archive/${sha}.zip
+    unzip ${sha}.zip
+    mv cgltf-* cgltf_new
+    rsync -r cgltf_new/ cgltf/ --delete --exclude tnt
+    rm -rf ${sha}.zip cgltf_new
+    git add cgltf ; git status

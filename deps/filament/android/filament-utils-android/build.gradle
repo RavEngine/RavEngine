@@ -1,0 +1,72 @@
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    flavorDimensions "functionality"
+    productFlavors {
+        full {
+            dimension "functionality"
+        }
+
+        lite {
+            dimension "functionality"
+        }
+    }
+
+    sourceSets {
+        main {
+            kotlin.srcDirs += "src/main/java"
+        }
+    }
+
+    // No need to package up the following shared libs, which arise as a side effect of our
+    // externalNativeBuild dependencies. When clients pick and choose from project-level gradle
+    // dependencies, these shared libs already get pulled in, so we need to avoid the error:
+    // "More than one file was found with OS independent path ..."
+    packagingOptions {
+        exclude 'lib/*/libfilament-jni.so'
+        exclude 'lib/*/libgltfio-jni.so'
+    }
+}
+
+configurations.all { config ->
+    // Hack to preserve the version of the dependencies
+    if (!config.name.endsWith('Publication')) {
+        resolutionStrategy {
+            dependencySubstitution {
+                substitute(module("com.google.android.filament:gltfio-android:${VERSION_NAME}")).with(project(":gltfio-android"))
+                substitute(module("com.google.android.filament:gltfio-android-lite:${VERSION_NAME}")).with(project(":gltfio-android"))
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation deps.kotlin
+    implementation deps.androidx.annotations
+    implementation project(':filament-android')
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.3'
+
+    fullImplementation module("com.google.android.filament:gltfio-android:${VERSION_NAME}")
+    liteImplementation module("com.google.android.filament:gltfio-android-lite:${VERSION_NAME}")
+}
+
+apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
+
+afterEvaluate {
+    publishing {
+        publications {
+            fullRelease(MavenPublication) {
+                artifactId = POM_ARTIFACT_ID_FULL
+                from components.fullRelease
+            }
+
+            liteRelease(MavenPublication) {
+                artifactId = POM_ARTIFACT_ID_LITE
+                from components.liteRelease
+            }
+        }
+    }
+}

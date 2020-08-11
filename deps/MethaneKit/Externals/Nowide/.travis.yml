@@ -1,8 +1,0 @@
-language: c
-compiler: gcc
-
-script:
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make && make test

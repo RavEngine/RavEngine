@@ -2,6 +2,7 @@
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
 #include <stduuid/uuid.h>
+class Camera;
 
 class CameraComponent : public Component {
 public:
@@ -29,6 +30,7 @@ public:
 
 protected:
 	bool active = false;
+    Camera* filamentCam;
 
 	//camera details
 	float FOV;

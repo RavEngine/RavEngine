@@ -1,0 +1,21 @@
+name: Web
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-web:
+    name: build-web
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2.0.0
+      - name: Run build script
+        run: |
+          cd build/web && printf "y" | ./build.sh continuous
+      - uses: actions/upload-artifact@v1.0.0
+        with:
+          name: filament-web
+          path: out/filament-release-web.tgz

@@ -3,6 +3,18 @@ include(ProcessorCount)
 project(RavEngine)
 set(OSX_ARCHITECTURES "${ARCHS_STANDARD}" CACHE INTERNAL "")
 
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+      LIST(APPEND dirlist ${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
+
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -42,7 +54,12 @@ endif ()
 
 #add_subdirectory("${DEPS_DIR}/SDL2")
 
-#add_subdirectory("${DEPS_DIR}/MethaneKit")
+set(FILAMENT_ENABLE_LTO ON CACHE INTERNAL "")
+set(FILAMENT_SUPPORTS_METAL ON CACHE INTERNAL "")
+set(FILAMENT_SUPPORTS_VULKAN ON CACHE INTERNAL "")
+set(FILAMENT_ENABLE_JAVA OFF CACHE INTERNAL "")
+set(FILAMENT_SKIP_SAMPLES ON CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/filament")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -78,14 +95,24 @@ include_directories("include/${PROJECT_NAME}/stduuid/")
 include_directories("${DEPS_DIR}/physx/physx/include/")
 include_directories("${DEPS_DIR}/physx/pxshared/include/")
 include_directories("${DEPS_DIR}/physx/physx/snippets/")
+include_directories("${DEPS_DIR}/filament/filament/include")
+
+# add filament header paths
+SUBDIRLIST(filament_libs "${DEPS_DIR}/filament/libs")
+FOREACH(subdir ${filament_libs})
+	include_directories("${DEPS_DIR}/filament/libs/${subdir}/include")
+ENDFOREACH()
+
+SUBDIRLIST(filament_deps "${DEPS_DIR}/filament/third_party")
+FOREACH(subdir ${filament_deps})
+	IF(EXISTS "${DEPS_DIR}/filament/third_party/${subdir}/include")
+		include_directories("${DEPS_DIR}/filament/third_party/${subdir}/include")
+	endif()
+ENDFOREACH()
+
+
 set(METHANEKIT_MODULES "${DEPS_DIR}/MethaneKit/Modules/")
 set(METHANEKIT_EXTERNALS "${DEPS_DIR}/MethaneKit/Externals/")
-
-# file(GLOB_RECURSE METHANEKIT_MODULE_INCLUDES "${DEPS_DIR}/MethaneKit/Modules/*/Include")
-# file(GLOB_RECURSE METHANEKIT_EXTERNAL_INCLUDES "${DEPS_DIR}/MethaneKit/Modules/*/include")
-# include_directories(${METHANEKIT_MODULE_INCLUDES})
-# include_directories(${METHANEKIT_EXTERNAL_INCLUDES})
-
 
 # get all sources for the library with glob
 file(GLOB SOURCES "src/*.cpp")
@@ -120,7 +147,14 @@ target_link_libraries("${PROJECT_NAME}" "LowLevelAABB")
 target_link_libraries("${PROJECT_NAME}" "LowLevelDynamics")
 target_link_libraries("${PROJECT_NAME}" "SceneQuery")
 target_link_libraries("${PROJECT_NAME}" "SimulationController")
-#target_link_libraries("${PROJECT_NAME}" "MethaneGraphicsKit")
+
+target_link_libraries("${PROJECT_NAME}" "filament")
+target_link_libraries("${PROJECT_NAME}" "filamentapp")
+target_link_libraries("${PROJECT_NAME}" "sdl2")
+target_link_libraries("${PROJECT_NAME}" "assimp")
+target_link_libraries("${PROJECT_NAME}" "filagui")
+target_link_libraries("${PROJECT_NAME}" "imgui")
+target_link_libraries("${PROJECT_NAME}" "camutils")
 
 
 # copy DLLs
