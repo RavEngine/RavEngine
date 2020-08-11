@@ -1,2 +1,0 @@
-add_subdirectory(Tutorials)
-add_subdirectory(Samples)

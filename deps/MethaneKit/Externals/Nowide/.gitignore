@@ -1,9 +1,0 @@
-*.opensdf
-*.sdf
-*.suo
-*.user
-.directory
-.DS_Store
-.vs
-MSVC
-build
