@@ -149,7 +149,6 @@ target_link_libraries("${PROJECT_NAME}" "SceneQuery")
 target_link_libraries("${PROJECT_NAME}" "SimulationController")
 
 target_link_libraries("${PROJECT_NAME}" "filament")
-target_link_libraries("${PROJECT_NAME}" "filamentapp")
 target_link_libraries("${PROJECT_NAME}" "sdl2")
 target_link_libraries("${PROJECT_NAME}" "assimp")
 target_link_libraries("${PROJECT_NAME}" "filagui")
