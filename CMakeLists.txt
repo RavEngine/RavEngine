@@ -53,13 +53,25 @@ endif ()
 # ==================== Dependencies =====================
 
 #add_subdirectory("${DEPS_DIR}/SDL2")
+if(MSVC)
+  add_definitions(/std:c++latest)
+endif()
 
-set(FILAMENT_ENABLE_LTO ON CACHE INTERNAL "")
-set(FILAMENT_SUPPORTS_METAL ON CACHE INTERNAL "")
-set(FILAMENT_SUPPORTS_VULKAN ON CACHE INTERNAL "")
+set(FILAMENT_ENABLE_LTO OFF CACHE INTERNAL "")
 set(FILAMENT_ENABLE_JAVA OFF CACHE INTERNAL "")
 set(FILAMENT_SKIP_SAMPLES ON CACHE INTERNAL "")
+IF(APPLE)
+	set(FILAMENT_SUPPORTS_METAL ON CACHE INTERNAL "")
+	set(FILAMENT_SUPPORTS_VULKAN OFF CACHE INTERNAL "")
+ELSE()
+	set(FILAMENT_SUPPORTS_METAL OFF CACHE INTERNAL "")
+	set(FILAMENT_SUPPORTS_VULKAN ON CACHE INTERNAL "")
+ENDIF()
 add_subdirectory("${DEPS_DIR}/filament")
+
+if(MSVC)
+	remove_definitions(/std:c++latest)
+endif()
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -155,7 +167,6 @@ target_link_libraries("${PROJECT_NAME}" "filagui")
 target_link_libraries("${PROJECT_NAME}" "imgui")
 target_link_libraries("${PROJECT_NAME}" "camutils")
 
-
 # copy DLLs
 if (WIN32)
 	if(NOT PX_GENERATE_STATIC_LIBRARIES)
@@ -165,10 +176,10 @@ if (WIN32)
 				"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 	endif()
 
-	# add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
-	# 	COMMAND ${CMAKE_COMMAND} -E copy_directory
-	# 		"${PROJECT_BINARY_DIR}/deps/SDL2/$<CONFIGURATION>"
-	# 		"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+	add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${PROJECT_BINARY_DIR}/deps/filament/samples/$<CONFIGURATION>"
+		"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 
 	#startup project	
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}_Test")

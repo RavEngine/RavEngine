@@ -13,9 +13,19 @@
 #include "CameraComponent.hpp"
 #include "World.hpp"
 
+#include <filament/Engine.h>
+#include <filament/SwapChain.h>
+#include <filament/Renderer.h>
+
+#include <SDL_syswm.h>
+#include <SDL.h>
+
 using namespace std;
 
-constexpr char mainWorkspaceName[] = "MainWorkspace";
+SDL_Window* RenderEngine::window;
+filament::SwapChain* RenderEngine::filamentSwapChain;
+filament::Engine* RenderEngine::filamentEngine;
+filament::Renderer* RenderEngine::filamentRenderer;
 
 /**
 Construct a render engine instance
@@ -71,4 +81,22 @@ void RenderEngine::Draw(){
 */
 const string RenderEngine::currentBackend(){
 	return "Unknown";
+}
+
+/**
+Initialize static singletons
+*/
+void RenderEngine::Init()
+{
+	//create SDL window
+
+	SDL_Init(SDL_INIT_EVENTS);
+	uint32_t windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
+
+	window = SDL_CreateWindow("SDL-Filament", 0, 0, 800, 480, windowFlags);
+
+
+	filamentEngine = filament::Engine::create();	//backend?
+	filamentSwapChain = filamentEngine->createSwapChain(window);
+	filamentRenderer = filamentEngine->createRenderer();
 }

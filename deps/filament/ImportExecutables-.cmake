@@ -4,7 +4,7 @@ if("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" LESS 2.5)
    message(FATAL_ERROR "CMake >= 2.6.0 required")
 endif()
 cmake_policy(PUSH)
-cmake_policy(VERSION 2.6)
+cmake_policy(VERSION 2.6...3.17)
 #----------------------------------------------------------------
 # Generated CMake target import file.
 #----------------------------------------------------------------
@@ -62,145 +62,145 @@ add_executable(glslminifier IMPORTED)
 # Import target "matc" for configuration "debug"
 set_property(TARGET matc APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
 set_target_properties(matc PROPERTIES
-  IMPORTED_LOCATION_DEBUG "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/matc/debug/matc"
+  IMPORTED_LOCATION_DEBUG "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/matc/debug/matc.exe"
   )
 
 # Import target "cmgen" for configuration "debug"
 set_property(TARGET cmgen APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
 set_target_properties(cmgen PROPERTIES
-  IMPORTED_LOCATION_DEBUG "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/cmgen/debug/cmgen"
+  IMPORTED_LOCATION_DEBUG "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/cmgen/debug/cmgen.exe"
   )
 
 # Import target "filamesh" for configuration "debug"
 set_property(TARGET filamesh APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
 set_target_properties(filamesh PROPERTIES
-  IMPORTED_LOCATION_DEBUG "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/filamesh/debug/filamesh"
+  IMPORTED_LOCATION_DEBUG "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/filamesh/debug/filamesh.exe"
   )
 
 # Import target "mipgen" for configuration "debug"
 set_property(TARGET mipgen APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
 set_target_properties(mipgen PROPERTIES
-  IMPORTED_LOCATION_DEBUG "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/mipgen/debug/mipgen"
+  IMPORTED_LOCATION_DEBUG "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/mipgen/debug/mipgen.exe"
   )
 
 # Import target "resgen" for configuration "debug"
 set_property(TARGET resgen APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
 set_target_properties(resgen PROPERTIES
-  IMPORTED_LOCATION_DEBUG "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/resgen/debug/resgen"
+  IMPORTED_LOCATION_DEBUG "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/resgen/debug/resgen.exe"
   )
 
 # Import target "glslminifier" for configuration "debug"
 set_property(TARGET glslminifier APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
 set_target_properties(glslminifier PROPERTIES
-  IMPORTED_LOCATION_DEBUG "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/glslminifier/debug/glslminifier"
+  IMPORTED_LOCATION_DEBUG "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/glslminifier/debug/glslminifier.exe"
   )
 
 # Import target "matc" for configuration "checked"
 set_property(TARGET matc APPEND PROPERTY IMPORTED_CONFIGURATIONS CHECKED)
 set_target_properties(matc PROPERTIES
-  IMPORTED_LOCATION_CHECKED "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/matc/checked/matc"
+  IMPORTED_LOCATION_CHECKED "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/matc/checked/matc.exe"
   )
 
 # Import target "cmgen" for configuration "checked"
 set_property(TARGET cmgen APPEND PROPERTY IMPORTED_CONFIGURATIONS CHECKED)
 set_target_properties(cmgen PROPERTIES
-  IMPORTED_LOCATION_CHECKED "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/cmgen/checked/cmgen"
+  IMPORTED_LOCATION_CHECKED "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/cmgen/checked/cmgen.exe"
   )
 
 # Import target "filamesh" for configuration "checked"
 set_property(TARGET filamesh APPEND PROPERTY IMPORTED_CONFIGURATIONS CHECKED)
 set_target_properties(filamesh PROPERTIES
-  IMPORTED_LOCATION_CHECKED "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/filamesh/checked/filamesh"
+  IMPORTED_LOCATION_CHECKED "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/filamesh/checked/filamesh.exe"
   )
 
 # Import target "mipgen" for configuration "checked"
 set_property(TARGET mipgen APPEND PROPERTY IMPORTED_CONFIGURATIONS CHECKED)
 set_target_properties(mipgen PROPERTIES
-  IMPORTED_LOCATION_CHECKED "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/mipgen/checked/mipgen"
+  IMPORTED_LOCATION_CHECKED "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/mipgen/checked/mipgen.exe"
   )
 
 # Import target "resgen" for configuration "checked"
 set_property(TARGET resgen APPEND PROPERTY IMPORTED_CONFIGURATIONS CHECKED)
 set_target_properties(resgen PROPERTIES
-  IMPORTED_LOCATION_CHECKED "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/resgen/checked/resgen"
+  IMPORTED_LOCATION_CHECKED "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/resgen/checked/resgen.exe"
   )
 
 # Import target "glslminifier" for configuration "checked"
 set_property(TARGET glslminifier APPEND PROPERTY IMPORTED_CONFIGURATIONS CHECKED)
 set_target_properties(glslminifier PROPERTIES
-  IMPORTED_LOCATION_CHECKED "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/glslminifier/checked/glslminifier"
+  IMPORTED_LOCATION_CHECKED "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/glslminifier/checked/glslminifier.exe"
   )
 
 # Import target "matc" for configuration "profile"
 set_property(TARGET matc APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
 set_target_properties(matc PROPERTIES
-  IMPORTED_LOCATION_PROFILE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/matc/profile/matc"
+  IMPORTED_LOCATION_PROFILE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/matc/profile/matc.exe"
   )
 
 # Import target "cmgen" for configuration "profile"
 set_property(TARGET cmgen APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
 set_target_properties(cmgen PROPERTIES
-  IMPORTED_LOCATION_PROFILE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/cmgen/profile/cmgen"
+  IMPORTED_LOCATION_PROFILE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/cmgen/profile/cmgen.exe"
   )
 
 # Import target "filamesh" for configuration "profile"
 set_property(TARGET filamesh APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
 set_target_properties(filamesh PROPERTIES
-  IMPORTED_LOCATION_PROFILE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/filamesh/profile/filamesh"
+  IMPORTED_LOCATION_PROFILE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/filamesh/profile/filamesh.exe"
   )
 
 # Import target "mipgen" for configuration "profile"
 set_property(TARGET mipgen APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
 set_target_properties(mipgen PROPERTIES
-  IMPORTED_LOCATION_PROFILE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/mipgen/profile/mipgen"
+  IMPORTED_LOCATION_PROFILE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/mipgen/profile/mipgen.exe"
   )
 
 # Import target "resgen" for configuration "profile"
 set_property(TARGET resgen APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
 set_target_properties(resgen PROPERTIES
-  IMPORTED_LOCATION_PROFILE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/resgen/profile/resgen"
+  IMPORTED_LOCATION_PROFILE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/resgen/profile/resgen.exe"
   )
 
 # Import target "glslminifier" for configuration "profile"
 set_property(TARGET glslminifier APPEND PROPERTY IMPORTED_CONFIGURATIONS PROFILE)
 set_target_properties(glslminifier PROPERTIES
-  IMPORTED_LOCATION_PROFILE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/glslminifier/profile/glslminifier"
+  IMPORTED_LOCATION_PROFILE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/glslminifier/profile/glslminifier.exe"
   )
 
 # Import target "matc" for configuration "release"
 set_property(TARGET matc APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(matc PROPERTIES
-  IMPORTED_LOCATION_RELEASE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/matc/release/matc"
+  IMPORTED_LOCATION_RELEASE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/matc/release/matc.exe"
   )
 
 # Import target "cmgen" for configuration "release"
 set_property(TARGET cmgen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(cmgen PROPERTIES
-  IMPORTED_LOCATION_RELEASE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/cmgen/release/cmgen"
+  IMPORTED_LOCATION_RELEASE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/cmgen/release/cmgen.exe"
   )
 
 # Import target "filamesh" for configuration "release"
 set_property(TARGET filamesh APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(filamesh PROPERTIES
-  IMPORTED_LOCATION_RELEASE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/filamesh/release/filamesh"
+  IMPORTED_LOCATION_RELEASE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/filamesh/release/filamesh.exe"
   )
 
 # Import target "mipgen" for configuration "release"
 set_property(TARGET mipgen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(mipgen PROPERTIES
-  IMPORTED_LOCATION_RELEASE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/mipgen/release/mipgen"
+  IMPORTED_LOCATION_RELEASE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/mipgen/release/mipgen.exe"
   )
 
 # Import target "resgen" for configuration "release"
 set_property(TARGET resgen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(resgen PROPERTIES
-  IMPORTED_LOCATION_RELEASE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/resgen/release/resgen"
+  IMPORTED_LOCATION_RELEASE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/resgen/release/resgen.exe"
   )
 
 # Import target "glslminifier" for configuration "release"
 set_property(TARGET glslminifier APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(glslminifier PROPERTIES
-  IMPORTED_LOCATION_RELEASE "/Users/main/Documents/ravengine-cmake/build/deps/filament/tools/glslminifier/release/glslminifier"
+  IMPORTED_LOCATION_RELEASE "C:/Users/Ravbug/Documents/RavEngine-CMake/build/deps/filament/tools/glslminifier/release/glslminifier.exe"
   )
 
 # This file does not depend on other imported targets which have
