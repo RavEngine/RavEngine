@@ -131,6 +131,8 @@ file(GLOB SOURCES "src/*.cpp")
 if(APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
+	add_definitions("-x objective-c++")
+	set(CMAKE_EXE_LINKER_FLAGS "-framework ServiceManagement -framework Foundation -framework Cocoa -framework Metal -framework QuartzCore")
 endif()
 file(GLOB CHEADERS "include/${PROJECT_NAME}/*.h")
 file(GLOB HEADERS "include/${PROJECT_NAME}/*.hpp")
