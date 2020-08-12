@@ -5,6 +5,8 @@
 #include "WeakRef.hpp"
 
 using namespace physx;
+using namespace RavEngine;
+
 
 void BoxCollider::AddHook(const WeakRef<Entity>& e) {
     auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();

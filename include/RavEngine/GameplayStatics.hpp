@@ -10,28 +10,30 @@
 #include <string>
 #include "InputSystem.hpp"
 
-struct GameplayStatics{
-	static Ref<World> currentWorld;
+namespace RavEngine {
+	struct GameplayStatics {
+		static Ref<World> currentWorld;
 
-	static Ref<InputSystem> inputManager;
-	
-	struct vs{
-		int width = 960; int height = 540;
-		bool vsync = true;
+		static Ref<InputSystem> inputManager;
+
+		struct vs {
+			int width = 960; int height = 540;
+			bool vsync = true;
+		};
+		static vs VideoSettings;
+
+		//current width and height
+		static int width, height;
+
+		//static constructor
+		//this ensures that bgfx and sdl are created and initialized before anything else runs
+		struct static_constructor {
+			static_constructor();
+		};
+		static static_constructor statcons;
+
+		//static SDL_Window* mainWindow;
+
+		//static void StartGame(Ref<World>, const std::string&);
 	};
-	static vs VideoSettings;
-
-	//current width and height
-	static int width, height;
-
-	//static constructor
-	//this ensures that bgfx and sdl are created and initialized before anything else runs
-    struct static_constructor {
-		static_constructor();
-	};
-	static static_constructor statcons;
-
-	//static SDL_Window* mainWindow;
-	
-	//static void StartGame(Ref<World>, const std::string&);
-};
+}

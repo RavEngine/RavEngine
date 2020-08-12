@@ -10,10 +10,12 @@
 #include <unordered_map>
 #include <mutex>
 
-class SharedObject;
+namespace RavEngine {
+    class SharedObject;
+}
 
 // helper base class to ensure static member is shared, do not use!
-class WeakRefBase{
+class WeakRefBase {
 protected:
     static std::mutex mtx;
     //this tracks all SharedObjects for weak pointer validity
@@ -25,9 +27,9 @@ protected:
 public:
     /**
     Remove a SharedObject from the WeakReferences map. This should only be done in SharedObject destructors.
-     @param obj the object to remove
-     */
-    static void Remove(SharedObject* obj) {
+        @param obj the object to remove
+        */
+    static void Remove(RavEngine::SharedObject* obj) {
         //only act if the structure is tracking this pointer
         auto addr = obj;
         mtx.lock();
@@ -55,26 +57,26 @@ template<typename T>
 class WeakRef : public WeakRefBase {
 protected:
     T* ptr;
-    
+
     /**
-     Update the tracking structure to know about this connection
-     @param obj the pointer to associate this WeakRef with
-     */
-    void Associate(T* obj){
-        if (ptr == nullptr){
+        Update the tracking structure to know about this connection
+        @param obj the pointer to associate this WeakRef with
+        */
+    void Associate(T* obj) {
+        if (ptr == nullptr) {
             return;
         }
         mtx.lock();
         WeakReferences[obj].insert(this);
         mtx.unlock();
     }
-    
+
     /**
     Update the tracking structure to forget about this connection
     @param obj the pointer to dissassociate this WeakRef with
     */
-    void Dissassociate(T* obj){
-        if (ptr == nullptr){
+    void Dissassociate(T* obj) {
+        if (ptr == nullptr) {
             return;
         }
         mtx.lock();
@@ -85,23 +87,23 @@ public:
 
     //construct from pointer
     WeakRef(T* obj) {
-        if (obj == nullptr){
+        if (obj == nullptr) {
             return;
         }
-        static_assert(std::is_base_of<SharedObject, T>::value, "T must derive from SharedObject!");
+        static_assert(std::is_base_of<RavEngine::SharedObject, T>::value, "T must derive from SharedObject!");
         //track this object
         Associate(obj);
         ptr = obj;
     }
     //construct from Ref
     WeakRef(const Ref<T>& other) : WeakRef(other.get()) {};
-    
+
     //copy assignment
     WeakRef<T>& operator=(const WeakRef<T>& other) {
         if (&other == this) {
             return *this;
         }
-        
+
         //dissasociate with old pointer
         Dissassociate(ptr);
         ptr = other.get();
@@ -125,23 +127,23 @@ public:
 
     /**
     Return the bare pointer. This should always be immediately converted into a SharedObjectRef owning pointer.
-     @return the pointer in this WeakReference, or nullptr if the pointer is not valid
-     */
+        @return the pointer in this WeakReference, or nullptr if the pointer is not valid
+        */
     T* get() const {
         return ptr;                 //this will become nullptr if the object was destroyed
     }
 
     /**
-     Check if this reference is a null reference
-     @return true if ptr is null
-     */
+        Check if this reference is a null reference
+        @return true if ptr is null
+        */
     bool isNull() const {
         return ptr == nullptr;
     }
 
     /**
-     Set this weakreference as a null reference
-     */
+        Set this weakreference as a null reference
+        */
     void setNull() {
         ptr = nullptr;
     }

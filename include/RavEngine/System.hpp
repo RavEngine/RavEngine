@@ -12,15 +12,17 @@
 
 class World;
 
-class System : public SharedObject{
-public:
-	//for sharedobject
-	virtual ~System(){}
-	
-	/**
-	 Tick the System on an Entity.
-	 @param fpsScale the frame rate scale factor computed by the World.
-	 @param e the Entity to operate on
-	 */
-	virtual void Tick(float fpsScale,Ref<Entity> e) const = 0;
-};
+namespace RavEngine {
+	class System : public SharedObject {
+	public:
+		//for sharedobject
+		virtual ~System() {}
+
+		/**
+		 Tick the System on an Entity.
+		 @param fpsScale the frame rate scale factor computed by the World.
+		 @param e the Entity to operate on
+		 */
+		virtual void Tick(float fpsScale, Ref<Entity> e) const = 0;
+	};
+}

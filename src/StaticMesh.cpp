@@ -2,6 +2,8 @@
 #include "Entity.hpp"
 #include "mathtypes.hpp"
 
+using namespace RavEngine;
+
 //default cube
 static PosColorVertex vertices[] = {
      {-1.0f,  1.0f,  1.0f, 0xff000000 },

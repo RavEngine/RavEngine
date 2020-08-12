@@ -4,6 +4,7 @@
 //#include <SDL_events.h>
 
 using namespace std;
+using namespace RavEngine;
 
 
 InputSystem::InputSystem() {

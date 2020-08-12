@@ -6,12 +6,14 @@
 //
 
 #include "GameplayStatics.hpp"
+using namespace RavEngine;
+
 
 //#include <SDL.h>
 //#include <SDL_syswm.h>
 
 //startup world
-Ref<World> GameplayStatics::currentWorld;
+Ref<RavEngine::World> GameplayStatics::currentWorld;
 GameplayStatics::vs GameplayStatics::VideoSettings;
 Ref<InputSystem> GameplayStatics::inputManager;
 int GameplayStatics::width = VideoSettings.width, GameplayStatics::height = VideoSettings.height;

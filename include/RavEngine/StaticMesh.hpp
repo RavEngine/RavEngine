@@ -11,32 +11,33 @@ struct PosColorVertex
     uint32_t abgr;
 };
 
+namespace RavEngine {
+    class StaticMesh : public Component {
+    public:
+        StaticMesh();
 
-class StaticMesh : public Component {
-public:
-    StaticMesh();
+        /**
+        Assign a material to this staticmesh
+        @param mat the material instance to assign
+        */
+        void SetMaterial(Ref<Material> mat) {
+            material = mat;
+        }
 
-    /**
-    Assign a material to this staticmesh
-    @param mat the material instance to assign
-    */
-    void SetMaterial(Ref<Material> mat) {
-        material = mat;
-    }
+        /**
+        @returns the currently assigned material
+        */
+        Ref<Material> GetMaterial() {
+            return material;
+        }
 
-    /**
-    @returns the currently assigned material
-    */
-    Ref<Material> GetMaterial() {
-        return material;
-    }
+        void Draw();
 
-    void Draw();
+    protected:
+        //std::vector<PosColorVertex> vertices;
+        //std::vector<int> triList;
 
-protected:
-    //std::vector<PosColorVertex> vertices;
-    //std::vector<int> triList;
-
-    //the default material
-    Ref<Material> material;
-};
+        //the default material
+        Ref<Material> material;
+    };
+}

@@ -10,9 +10,9 @@ class TestApp : public RavEngine_App{
 	
 	void OnStartup(int argc, char** argv) override{
 		{
-			WeakRef<SharedObject> w;
+			WeakRef<RavEngine::SharedObject> w;
 			{
-				Ref<SharedObject> re(new SharedObject());
+				Ref<RavEngine::SharedObject> re(new RavEngine::SharedObject());
 				w = re;
 				assert(w.get() == re.get());
 			}
@@ -20,13 +20,13 @@ class TestApp : public RavEngine_App{
 		}
 
 		//setup video settings
-		GameplayStatics::VideoSettings.vsync = true;
-		GameplayStatics::VideoSettings.width = 800;
-		GameplayStatics::VideoSettings.height = 480;
+		RavEngine::GameplayStatics::VideoSettings.vsync = true;
+		RavEngine::GameplayStatics::VideoSettings.width = 800;
+		RavEngine::GameplayStatics::VideoSettings.height = 480;
 
 		//setup inputs
 		//setup input
-		Ref<InputSystem> is = new InputSystem();
+		Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();
 		//setup control mappings
 		//is->AddAxisMap("MoveForward", SDL_SCANCODE_W);
 		//is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);   //go backwards
@@ -46,10 +46,10 @@ class TestApp : public RavEngine_App{
 
 		//is->BindAxis("SpawnTest", SpawnEntities);
 		//is->BindAction("Click", click, ActionState::Released);
-		GameplayStatics::inputManager = is;
+		RavEngine::GameplayStatics::inputManager = is;
 
 		//create a world
-		GameplayStatics::currentWorld = new TestWorld();
+		RavEngine::GameplayStatics::currentWorld = new TestWorld();
 	}
 
 	int OnShutdown() override {

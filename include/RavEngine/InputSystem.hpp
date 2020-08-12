@@ -75,56 +75,57 @@ struct Event{
 typedef std::function<void(float)> axisCallback;
 typedef std::function<void()> actionCallback;
 
+namespace RavEngine {
+    class InputSystem : public SharedObject
+    {
+    protected:
+        std::list<Event> actionValues;
+        std::unordered_set<int> awareActionValues;
+        std::unordered_map<int, std::list<std::string>> codeToAction;
+        std::unordered_map<std::string, std::list<std::pair<std::pair<actionCallback, std::type_index>, ActionState>>> actionMappings;
 
-class InputSystem : public SharedObject
-{
-protected:
-    std::list<Event> actionValues;
-    std::unordered_set<int> awareActionValues;
-    std::unordered_map<int, std::list<std::string>> codeToAction;
-    std::unordered_map<std::string, std::list<std::pair<std::pair<actionCallback, std::type_index>,ActionState>>> actionMappings;
-    
-    //axis storage
-    std::unordered_map<int, float> axisValues;                      //ids to current values
-    std::unordered_map<int, float> axisScalars;                     //ids to scalars
-    std::unordered_map<int, std::list<std::string>> codeToAxis;                //ids to strings
-    std::unordered_map<std::string, std::list<std::pair<axisCallback,std::type_index>>> axisMappings;     //strings to methods
+        //axis storage
+        std::unordered_map<int, float> axisValues;                      //ids to current values
+        std::unordered_map<int, float> axisScalars;                     //ids to scalars
+        std::unordered_map<int, std::list<std::string>> codeToAxis;                //ids to strings
+        std::unordered_map<std::string, std::list<std::pair<axisCallback, std::type_index>>> axisMappings;     //strings to methods
 
-    /**
-     Helper used for registering axis inputs inside the engine
-     */
-    void reg_axis(int code, float value) {
-        if (axisScalars.find(code) != axisScalars.end()) {
-            axisValues[code] = value;
+        /**
+         Helper used for registering axis inputs inside the engine
+         */
+        void reg_axis(int code, float value) {
+            if (axisScalars.find(code) != axisScalars.end()) {
+                axisValues[code] = value;
+            }
         }
-    }
 
-    //std::unordered_set<SDL_GameController*> connectedControllers;
-    
-public:
-	InputSystem();
-    
-    void InitGameControllers();
+        //std::unordered_set<SDL_GameController*> connectedControllers;
 
-    //based on the state of inputs, invoke bound actions
-	virtual void tick();
-    
-    //methods to get input values
-	void SDL_key(bool state, int charcode);
-	void SDL_mousemove(float x, float y, int xvel, int yvel);
-    void SDL_mousekey(bool state, int charcode);
-    void SDL_ControllerAxis(int axisID, float value);
+    public:
+        InputSystem();
 
-    void AddActionMap(const std::string& name, int Id);
-    void AddAxisMap(const std::string& name, int Id, float scale = 1);
-    void RemoveActionMap(const std::string& name, int Id);
-    void RemoveAxisMap(const std::string& name, int Id);
-    
-    void BindAction(const std::string&, const actionCallback&, ActionState);
-    void BindAxis(const std::string&, const axisCallback&);
-    void UnbindAction(const std::string&, const actionCallback&, ActionState);
-    void UnbindAxis(const std::string&, const axisCallback&);
+        void InitGameControllers();
 
-	virtual ~InputSystem();
+        //based on the state of inputs, invoke bound actions
+        virtual void tick();
 
-};
+        //methods to get input values
+        void SDL_key(bool state, int charcode);
+        void SDL_mousemove(float x, float y, int xvel, int yvel);
+        void SDL_mousekey(bool state, int charcode);
+        void SDL_ControllerAxis(int axisID, float value);
+
+        void AddActionMap(const std::string& name, int Id);
+        void AddAxisMap(const std::string& name, int Id, float scale = 1);
+        void RemoveActionMap(const std::string& name, int Id);
+        void RemoveAxisMap(const std::string& name, int Id);
+
+        void BindAction(const std::string&, const actionCallback&, ActionState);
+        void BindAxis(const std::string&, const axisCallback&);
+        void UnbindAction(const std::string&, const actionCallback&, ActionState);
+        void UnbindAxis(const std::string&, const axisCallback&);
+
+        virtual ~InputSystem();
+
+    };
+}

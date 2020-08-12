@@ -7,6 +7,7 @@
 #include "Entity.hpp"
 
 using namespace physx;
+using namespace RavEngine;
 
 RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
 	rigidActor = PhysicsSolver::phys->createRigidDynamic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
@@ -39,15 +40,15 @@ RigidBodyDynamicComponent::~RigidBodyDynamicComponent() {
 
 void PhysicsBodyComponent::OnColliderEnter(PhysicsBodyComponent* other)
 {
-	Ref<Entity>(owner)->OnColliderEnter(other);
+	Ref<RavEngine::Entity>(owner)->OnColliderEnter(other);
 }
 
 void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent* other)
 {
-	Ref<Entity>(owner)->OnColliderPersist(other);
+	Ref<RavEngine::Entity>(owner)->OnColliderPersist(other);
 }
 
 void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
 {
-	Ref<Entity>(owner)->OnColliderExit(other);
+	Ref<RavEngine::Entity>(owner)->OnColliderExit(other);
 }

@@ -30,6 +30,7 @@
 #endif
 
 using namespace std;
+using namespace RavEngine;
 //using namespace utils;
 
 SDL_Window* RenderEngine::window = nullptr;
