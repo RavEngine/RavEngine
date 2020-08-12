@@ -136,31 +136,17 @@ void RenderEngine::Init()
 	window = SDL_CreateWindow("RavEngine - Filament", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, windowFlags);
 
 	//get the native window 
-#ifdef _WIN32
-	//Windows implementation
-	SDL_SysWMinfo wmi;
-	SDL_VERSION(&wmi.version);
-	assert(SDL_GetWindowWMInfo(window, &wmi));
-	//HDC nativeWindow = (HDC)wmi.info.win.hdc;
-	HWND nativeWindow = wmi.info.win.window;
-#elif defined __APPLE__
-	//mac implementation
-	SDL_SysWMinfo wmi;
-	SDL_VERSION(&wmi.version);
-	NSWindow* win = (NSWindow*)wmi.info.cocoa.window;
-	NSView* view = [win contentView];
-	void* nativeWindow = view;
-#endif
-
+    void* nativeWindow = getNativeWindow(window);
+    
 #ifdef __APPLE__
-	auto backend = filament::Engine::Backend::Metal;
-	//also create a metal view and set as the nativeWindow
-	void* metalLayer = nullptr;	//this is passed to createSwapChain
+    //need to make a metal layer on Mac
+    nativeWindow = setUpMetalLayer(nativeWindow);
+	auto backend = filament::Engine::Backend::METAL;
 #else
 	auto backend = filament::Engine::Backend::VULKAN;
 #endif
 
-	filamentEngine = filament::Engine::create(backend);	//backend?
+	filamentEngine = filament::Engine::create(backend);	
 	filamentSwapChain = filamentEngine->createSwapChain((void*)nativeWindow);
 	filamentRenderer = filamentEngine->createRenderer();
 }
