@@ -21,7 +21,5 @@ protected:
 	*/
 	virtual int OnShutdown() { return 0; };
 
-	void setupwindow();
-
 };
 #define START_APP(APP) int main(int argc, char** argv){APP a; return a.run(argc, argv);}

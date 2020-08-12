@@ -16,22 +16,52 @@
 #include <filament/Engine.h>
 #include <filament/SwapChain.h>
 #include <filament/Renderer.h>
+#include <filament/View.h>
+#include <filament/Scene.h>
+#include <utils/Entity.h>
+#include <filament/RenderableManager.h>
+#include <utils/EntityManager.h>
 
 #include <SDL_syswm.h>
 #include <SDL.h>
 
-using namespace std;
+#ifdef __APPLE_
+#include <Cocoa/Cocoa.h>
+#endif
 
-SDL_Window* RenderEngine::window;
-filament::SwapChain* RenderEngine::filamentSwapChain;
-filament::Engine* RenderEngine::filamentEngine;
-filament::Renderer* RenderEngine::filamentRenderer;
+using namespace std;
+//using namespace utils;
+
+SDL_Window* RenderEngine::window = nullptr;
+filament::SwapChain* RenderEngine::filamentSwapChain = nullptr;
+filament::Engine* RenderEngine::filamentEngine = nullptr;
+filament::Renderer* RenderEngine::filamentRenderer = nullptr;
 
 /**
 Construct a render engine instance
 @param w the owning world for this engine instance
 */
 RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
+	if (filamentEngine == nullptr) {
+		Init();
+	}
+	filamentView = filamentEngine->createView();
+	filamentScene = filamentEngine->createScene();
+
+	filament::Camera* camera = filamentEngine->createCamera(utils::EntityManager::get().create());
+
+	filamentView->setCamera(camera);
+	filamentView->setScene(filamentScene);
+
+	utils::Entity renderable = utils::EntityManager::get().create();
+	// build a quad
+	/*filament::RenderableManager::Builder(1)
+		.boundingBox({ { -1, -1, -1 }, { 1, 1, 1 } })
+		.material(0, materialInstance)
+		.geometry(0, filament::RenderableManager::PrimitiveType::TRIANGLES, vertexBuffer, indexBuffer, 0, 6)
+		.culling(false)
+		.build(*engine, renderable);
+	scene->addEntity(renderable);*/
 }
 
 /**
@@ -74,6 +104,12 @@ void RenderEngine::Draw(){
 		//entity->transform()->ApplyToSceneNode();
 		//entity->Draw();
     }
+
+	if (filamentRenderer->beginFrame(filamentSwapChain)) {
+		// for each View
+		filamentRenderer->render(filamentView);
+		filamentRenderer->endFrame();
+	}
 }
 
 /**
@@ -84,19 +120,47 @@ const string RenderEngine::currentBackend(){
 }
 
 /**
-Initialize static singletons
+Initialize static singletons. Invoked automatically if needed.
 */
 void RenderEngine::Init()
 {
+	//if already initialized, don't do anything
+	if (filamentEngine != nullptr) {
+		return;
+	}
 	//create SDL window
 
 	SDL_Init(SDL_INIT_EVENTS);
 	uint32_t windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
 
-	window = SDL_CreateWindow("SDL-Filament", 0, 0, 800, 480, windowFlags);
+	window = SDL_CreateWindow("RavEngine - Filament", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, windowFlags);
 
+	//get the native window 
+#ifdef _WIN32
+	//Windows implementation
+	SDL_SysWMinfo wmi;
+	SDL_VERSION(&wmi.version);
+	assert(SDL_GetWindowWMInfo(window, &wmi));
+	//HDC nativeWindow = (HDC)wmi.info.win.hdc;
+	HWND nativeWindow = wmi.info.win.window;
+#elif defined __APPLE__
+	//mac implementation
+	SDL_SysWMinfo wmi;
+	SDL_VERSION(&wmi.version);
+	NSWindow* win = (NSWindow*)wmi.info.cocoa.window;
+	NSView* view = [win contentView];
+	void* nativeWindow = view;
+#endif
 
-	filamentEngine = filament::Engine::create();	//backend?
-	filamentSwapChain = filamentEngine->createSwapChain(window);
+#ifdef __APPLE__
+	auto backend = filament::Engine::Backend::Metal;
+	//also create a metal view and set as the nativeWindow
+	void* metalLayer = nullptr;	//this is passed to createSwapChain
+#else
+	auto backend = filament::Engine::Backend::VULKAN;
+#endif
+
+	filamentEngine = filament::Engine::create(backend);	//backend?
+	filamentSwapChain = filamentEngine->createSwapChain((void*)nativeWindow);
 	filamentRenderer = filamentEngine->createRenderer();
 }

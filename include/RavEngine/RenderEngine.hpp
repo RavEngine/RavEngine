@@ -15,6 +15,8 @@ namespace filament {
     class SwapChain;
     class Engine;
     class Renderer;
+    class View;
+    class Scene;
 }
 struct SDL_Window;
 
@@ -29,9 +31,15 @@ public:
 	static const std::string currentBackend();
     WeakRef<World> world;
 
-    static void Init();
+    static SDL_Window* const GetWindow(){
+        return window;
+    }
 
 protected:
+    filament::View* filamentView = nullptr;
+    filament::Scene* filamentScene = nullptr;
+
+    static void Init();
     static SDL_Window* window;
     static filament::SwapChain* filamentSwapChain;
     static filament::Engine* filamentEngine;
