@@ -10,7 +10,7 @@
 #import <QuartzCore/CAMetalLayer.h>
 
 // On Mac, this is the implementation of getNativeWindow
-void* RenderEngine::getNativeWindow(SDL_Window* sdlWindow) {
+void* RavEngine::RenderEngine::getNativeWindow(SDL_Window* sdlWindow) {
     SDL_SysWMinfo wmi;
     SDL_VERSION(&wmi.version);
     assert(SDL_GetWindowWMInfo(sdlWindow, &wmi));
@@ -19,7 +19,7 @@ void* RenderEngine::getNativeWindow(SDL_Window* sdlWindow) {
     return view;
 }
 
-void* RenderEngine::setUpMetalLayer(void* nativeView) {
+void* RavEngine::RenderEngine::setUpMetalLayer(void* nativeView) {
     NSView* view = (NSView*) nativeView;
     [view setWantsLayer:YES];
     CAMetalLayer* metalLayer = [CAMetalLayer layer];
@@ -45,7 +45,7 @@ void* RenderEngine::setUpMetalLayer(void* nativeView) {
     return metalLayer;
 }
 
-void* RenderEngine::resizeMetalLayer(void* nativeView) {
+void* RavEngine::RenderEngine::resizeMetalLayer(void* nativeView) {
     NSView* view = (NSView*) nativeView;
     CAMetalLayer* metalLayer = (CAMetalLayer*) view.layer;
     CGSize viewSize = view.bounds.size;
