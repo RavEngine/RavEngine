@@ -128,11 +128,15 @@ set(METHANEKIT_EXTERNALS "${DEPS_DIR}/MethaneKit/Externals/")
 
 # get all sources for the library with glob
 file(GLOB SOURCES "src/*.cpp")
+if(APPLE)
+	# also need to compile Objective-C++ files
+	file(GLOB MM_SOURCES "src/*.mm")
+endif()
 file(GLOB CHEADERS "include/${PROJECT_NAME}/*.h")
 file(GLOB HEADERS "include/${PROJECT_NAME}/*.hpp")
 
 # register the library
-add_library("${PROJECT_NAME}" ${SOURCES} ${CHEADERS} ${HEADERS})
+add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} ${CHEADERS} ${HEADERS})
 
 # create the test executable
 file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp")

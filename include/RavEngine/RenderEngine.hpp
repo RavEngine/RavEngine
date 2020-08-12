@@ -40,6 +40,12 @@ protected:
     filament::Scene* filamentScene = nullptr;
 
     static void Init();
+    static void* getNativeWindow(SDL_Window*);
+#ifdef __APPLE__
+    static void* setUpMetalLayer(void*);
+    static void* resizeMetalLayer(void* nativeView);
+#endif
+    
     static SDL_Window* window;
     static filament::SwapChain* filamentSwapChain;
     static filament::Engine* filamentEngine;
