@@ -10,7 +10,7 @@
 #include "World.hpp"
 #include "PlayerActor.hpp"
 
-class TestWorld : public World{
+class TestWorld : public RavEngine::World{
 public:
     void posttick(float fpsScale) override;
     TestWorld();

@@ -6,3 +6,5 @@
 //
 
 #include "SharedObject.hpp"
+using namespace RavEngine;
+

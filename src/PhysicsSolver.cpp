@@ -21,6 +21,8 @@
 
 using namespace physx;
 using namespace std;
+using namespace RavEngine;
+
 
 PxDefaultErrorCallback PhysicsSolver::gDefaultErrorCallback;
 PxDefaultAllocator PhysicsSolver::gDefaultAllocatorCallback;

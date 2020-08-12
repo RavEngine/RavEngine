@@ -16,6 +16,7 @@
 
 using namespace std;
 using namespace physx;
+using namespace RavEngine;
 
 
 TestEntity::TestEntity() : Entity(){

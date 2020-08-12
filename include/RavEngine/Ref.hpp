@@ -86,7 +86,7 @@ public:
 
 	template<typename U>
 	operator Ref<U>() const {
-		static_assert(std::is_base_of<SharedObject, U>::value, "U is not a base class of SharedObject");
+		static_assert(std::is_base_of<RavEngine::SharedObject, U>::value, "U is not a base class of SharedObject");
 		static_assert(std::is_base_of<U, T>::value || std::is_base_of<T,U>::value,"This conversion is not an upcast or downcast");
 		return static_cast<U*>(ptr);
 	}

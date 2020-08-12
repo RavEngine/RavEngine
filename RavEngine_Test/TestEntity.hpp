@@ -11,9 +11,9 @@
 #include "PhysicsBodyComponent.hpp"
 #include "WeakRef.hpp"
 
-class TestEntity : public Entity{
+class TestEntity : public RavEngine::Entity{
 public:
     TestEntity();
     void Tick(float scale) override;
-    void OnColliderEnter(const WeakRef<PhysicsBodyComponent>&) override;
+    void OnColliderEnter(const WeakRef<RavEngine::PhysicsBodyComponent>&) override;
 };

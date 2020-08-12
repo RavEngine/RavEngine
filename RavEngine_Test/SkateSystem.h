@@ -11,11 +11,11 @@
 /**
  This system simply moves an entity along one axis
  */
-class Skate : public System{
+class Skate : public RavEngine::System{
 public:
     virtual ~Skate(){}
     
-    virtual void Tick(float fpsScale, Ref<Entity> e) const{
+    virtual void Tick(float fpsScale, Ref<RavEngine::Entity> e) const override{
         auto newPos = e->transform()->GetLocalPosition();
         newPos += 5 * fpsScale;
         e->transform()->SetLocalPosition(newPos);

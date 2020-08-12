@@ -9,6 +9,7 @@
 #include "SharedObject.hpp"
 
 using namespace std;
+using namespace RavEngine;
 
 //static definitions
 mutex WeakRefBase::mtx;

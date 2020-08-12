@@ -6,3 +6,4 @@
 //
 
 #include "System.hpp"
+using namespace RavEngine;

@@ -11,24 +11,25 @@
 #include "World.hpp"
 
 using namespace glm;
+using namespace RavEngine;
 
-Ref<Transform> Entity::transform(){
+Ref<Transform> RavEngine::Entity::transform(){
 	return components.GetComponent<Transform>();
 }
 
 
-Entity::Entity(){
+RavEngine::Entity::Entity(){
 	AddComponent<Transform>(new Transform());
 }
 
-void Entity::Draw() {
+void RavEngine::Entity::Draw() {
 	//get the material and draw
 	if (components.HasComponentOfType<StaticMesh>()) {
 		components.GetComponent<StaticMesh>()->Draw();
 	}
 }
 
-Entity::~Entity(){
+RavEngine::Entity::~Entity(){
     components.clear();
     worldptr = nullptr;
 }

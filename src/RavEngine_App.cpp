@@ -6,6 +6,7 @@
 #include <SDL_events.h>
 
 using namespace std;
+using namespace RavEngine;
 
 int RavEngine_App::run(int argc, char** argv) {
 

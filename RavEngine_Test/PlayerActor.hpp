@@ -3,14 +3,14 @@
 #include "GameplayStatics.hpp"
 #include <functional>
 
-class PlayerActor : public Entity {
+class PlayerActor : public RavEngine::Entity {
 protected:
 	decimalType dt = 0;
 	decimalType movementSpeed = 0.3;
 	decimalType sensitivity = 0.1;
 
 	//transform cache
-	Ref<Transform> trans;
+	Ref<RavEngine::Transform> trans;
 
 
 	decimalType scaleMovement(decimalType f) {
@@ -50,7 +50,7 @@ public:
 	PlayerActor() : Entity() {
 		//create a child entity for the camera
 		cameraEntity = new Entity();
-		auto cam = cameraEntity->AddComponent<CameraComponent>(new CameraComponent());
+		auto cam = cameraEntity->AddComponent<RavEngine::CameraComponent>(new RavEngine::CameraComponent());
 
 		//set the active camera
 		cam->setActive(true);
@@ -60,7 +60,7 @@ public:
 	}
 
 	virtual void Start() override {
-		Ref<World>(GetWorld())->Spawn(cameraEntity);
+		Ref<RavEngine::World>(GetWorld())->Spawn(cameraEntity);
 	}
 
 	virtual ~PlayerActor(){}

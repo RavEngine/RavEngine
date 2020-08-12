@@ -15,8 +15,9 @@
 
 using namespace std;
 using namespace std::chrono;
+using namespace RavEngine;
 
-void World::tick(){
+void RavEngine::World::tick() {
 	
 	//setup framerate scaling for next frame
 	auto now = clocktype::now();
@@ -68,7 +69,7 @@ void World::tick(){
 }
 
 
-World::World(){
+RavEngine::World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(40000);
 }
@@ -79,7 +80,7 @@ World::World(){
  @param e the entity to spawn
  @return true if the spawn succeeded, false if it failed
  */
-bool World::Spawn(Ref<Entity> e){
+bool RavEngine::World::Spawn(Ref<Entity> e){
 	//if the entity is not already spawned or pending spawn
 	if (find(Entities.begin(), Entities.end(),e) == Entities.end() && find(PendingSpawn.begin(), PendingSpawn.end(),e) == PendingSpawn.end() ){
 		mtx.lock();
@@ -96,7 +97,7 @@ bool World::Spawn(Ref<Entity> e){
  @param e the entity to destroy
  @return true if destruction succeeded, false otherwise
  */
-bool World::Destroy(Ref<Entity> e){
+bool RavEngine::World::Destroy(Ref<Entity> e){
 	//if entity is not spawned, do nothing
 	if (find(Entities.begin(), Entities.end(),e) == Entities.end()){
 		return false;
@@ -111,7 +112,7 @@ bool World::Destroy(Ref<Entity> e){
  Tick all of the objects in the world, multithreaded
  @param fpsScale the scale factor to apply to all operations based on the frame rate
  */
-void World::tick(float fpsScale) {
+void RavEngine::World::tick(float fpsScale) {
 	//bgfx::dbgTextPrintf(0, 5, 0x4f, "FPS Scale: %lf", fpsScale);
 
 	//Determine the number of threads needed

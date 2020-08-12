@@ -28,41 +28,42 @@ struct FilterLayers {
     };
 };
 
+namespace RavEngine {
+    class PhysicsSolver : public SharedObject, public physx::PxSimulationEventCallback {
+    protected:
+        //static members must exist only once in the application
+        static physx::PxDefaultErrorCallback gDefaultErrorCallback;
+        static physx::PxDefaultAllocator gDefaultAllocatorCallback;
+        static physx::PxFoundation* foundation;
+    public:
+        static physx::PxPhysics* phys;
+        static physx::PxPvd* pvd;
+        physx::PxScene* scene;
 
-class PhysicsSolver : public SharedObject, public physx::PxSimulationEventCallback {
-protected:
-    //static members must exist only once in the application
-    static physx::PxDefaultErrorCallback gDefaultErrorCallback;
-    static physx::PxDefaultAllocator gDefaultAllocatorCallback;
-    static physx::PxFoundation* foundation;
-public:
-    static physx::PxPhysics* phys;
-    static physx::PxPvd* pvd;
-    physx::PxScene* scene;
+        void DeallocatePhysx();
+    protected:
+        std::list<Ref<PhysicsBodyComponent>> objects;
 
-    void DeallocatePhysx();
-protected:
-    std::list<Ref<PhysicsBodyComponent>> objects;
+        void setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask);
 
-    void setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask);
+        // PxSimulationEventCallback overrides
+        virtual void onConstraintBreak(physx::PxConstraintInfo* constraints, physx::PxU32 count) override {}
+        virtual void onWake(physx::PxActor** actors, physx::PxU32 count) override {}
+        virtual void onSleep(physx::PxActor** actors, physx::PxU32 count) override {}
+        virtual void onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs) override;
+        virtual void onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count) override;
+        virtual void onAdvance(const physx::PxRigidBody* const* bodyBuffer, const physx::PxTransform* poseBuffer, const physx::PxU32 count) override {}
 
-    // PxSimulationEventCallback overrides
-    virtual void onConstraintBreak(physx::PxConstraintInfo* constraints, physx::PxU32 count) override {}
-    virtual void onWake(physx::PxActor** actors, physx::PxU32 count) override {}
-    virtual void onSleep(physx::PxActor** actors, physx::PxU32 count) override {}
-    virtual void onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs) override;
-    virtual void onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count) override;
-    virtual void onAdvance(const physx::PxRigidBody* const* bodyBuffer, const physx::PxTransform* poseBuffer, const physx::PxU32 count) override {}
+    public:
+        //for sharedobject
+        virtual ~PhysicsSolver();
+        PhysicsSolver();
 
-public:
-    //for sharedobject
-    virtual ~PhysicsSolver();
-    PhysicsSolver();
-    
-    void Spawn(Ref<Entity>);
-    void Destroy(Ref<Entity>);
-    
-    void Tick(float deltaTime);
-    
-    static void ReleaseStatics();
-};
+        void Spawn(Ref<Entity>);
+        void Destroy(Ref<Entity>);
+
+        void Tick(float deltaTime);
+
+        static void ReleaseStatics();
+    };
+}

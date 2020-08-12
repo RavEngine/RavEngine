@@ -7,6 +7,8 @@
 #include "RenderEngine.hpp"
 #include <SDL_syswm.h>
 
+using namespace RavEngine;
+
 #ifndef __APPLE__
 void* RenderEngine::getNativeWindow(SDL_Window* sdlWindow) {
 #endif

@@ -13,7 +13,8 @@
 #include "PhysicsLinkSystem.hpp"
 #include "StaticMesh.hpp"
 
-Ref<Entity> anonymous;
+using namespace RavEngine;
+Ref<RavEngine::Entity> anonymous;
 
 void TestWorld::posttick(float fpsScale){
     auto pos = player->cameraEntity->transform()->GetWorldPosition();
@@ -31,7 +32,7 @@ TestWorld::TestWorld() : World() {
 
     player->transform()->LocalTranslateDelta(vector3(0,0,15));
 
-    anonymous = new Entity();
+    anonymous = new RavEngine::Entity();
     anonymous->AddComponent<StaticMesh>(new StaticMesh());
     Spawn(anonymous);
     anonymous->transform()->LocalTranslateDelta(vector3(0, 5, 0));

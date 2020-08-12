@@ -7,6 +7,7 @@
 
 using namespace std;
 using namespace glm;
+using namespace RavEngine;
 
 Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
 	matrix.store(matrix4(1.0));
