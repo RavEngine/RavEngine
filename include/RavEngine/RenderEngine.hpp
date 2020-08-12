@@ -11,9 +11,12 @@
 #include <list>
 #include "WeakRef.hpp"
 
-class View;
-class Engine;
-class Renderer;
+namespace filament {
+    class SwapChain;
+    class Engine;
+    class Renderer;
+}
+struct SDL_Window;
 
 class RenderEngine : public SharedObject{
 public:
@@ -26,8 +29,11 @@ public:
 	static const std::string currentBackend();
     WeakRef<World> world;
 
+    static void Init();
+
 protected:
-    View* filamentView;
-    Engine* filamentEngine;
-    Renderer* filamentRenderer;
+    static SDL_Window* window;
+    static filament::SwapChain* filamentSwapChain;
+    static filament::Engine* filamentEngine;
+    static filament::Renderer* filamentRenderer;
 };
