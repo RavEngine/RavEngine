@@ -144,7 +144,10 @@ add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} ${CHEADERS} ${HEADERS})
 file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp")
 file(GLOB TEST_HEADERS "${PROJECT_NAME}_Test/*.hpp")
 file(GLOB TEST_CHEADERS "${PROJECT_NAME}_Test/*.h")
-add_executable("${PROJECT_NAME}_Test" ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
+if (APPLE)
+	add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
+	set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist")
+endif()
 
 # ====================== Linking ====================
 #target_link_libraries("${PROJECT_NAME}" "SDL2")
