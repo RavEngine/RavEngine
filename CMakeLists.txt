@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 include(ProcessorCount)
 project(RavEngine)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(OSX_ARCHITECTURES "${ARCHS_STANDARD}" CACHE INTERNAL "")
 
 MACRO(SUBDIRLIST result curdir)
@@ -13,6 +14,31 @@ MACRO(SUBDIRLIST result curdir)
   ENDFOREACH()
   SET(${result} ${dirlist})
 ENDMACRO()
+
+function (add_subdirectory_with_folder folder_name)
+  function (add_library name type)
+    _add_library (${ARGV})
+    # Do not wrap creation of INTERFACE libraries
+    if (type STREQUAL INTERFACE)
+      return()
+    endif()
+
+    set_target_properties(${name}
+      PROPERTIES
+      FOLDER "${folder_name}"
+    )
+  endfunction()
+
+  function (add_executable name)
+    _add_executable (${ARGV})
+    set_target_properties(${name}
+      PROPERTIES
+      FOLDER "${folder_name}"
+    )
+  endfunction()
+
+  add_subdirectory (${ARGN})
+endfunction()
 
 
 set(CMAKE_CXX_STANDARD 17)
@@ -67,11 +93,12 @@ ELSE()
 	set(FILAMENT_SUPPORTS_METAL OFF CACHE INTERNAL "")
 	set(FILAMENT_SUPPORTS_VULKAN ON CACHE INTERNAL "")
 ENDIF()
-add_subdirectory("${DEPS_DIR}/filament")
+add_subdirectory_with_folder("Filament" "${DEPS_DIR}/filament")
 
 if(MSVC)
 	remove_definitions(/std:c++latest)
 endif()
+
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -96,8 +123,7 @@ elseif(LINUX)
 endif()
 
 # Call into PhysX's CMake scripts
-add_subdirectory(${PHYSX_ROOT_DIR}/compiler/public)
-
+add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
 
 # ========== Building engine and test game ==============
 
@@ -122,10 +148,6 @@ FOREACH(subdir ${filament_deps})
 	endif()
 ENDFOREACH()
 
-
-set(METHANEKIT_MODULES "${DEPS_DIR}/MethaneKit/Modules/")
-set(METHANEKIT_EXTERNALS "${DEPS_DIR}/MethaneKit/Externals/")
-
 # get all sources for the library with glob
 file(GLOB SOURCES "src/*.cpp")
 if(APPLE)
@@ -144,10 +166,14 @@ add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} ${CHEADERS} ${HEADERS})
 file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp")
 file(GLOB TEST_HEADERS "${PROJECT_NAME}_Test/*.hpp")
 file(GLOB TEST_CHEADERS "${PROJECT_NAME}_Test/*.h")
-if (APPLE)
-	add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
-	set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist")
-endif()
+
+# creates a mac app if applicable
+add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
+set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist")
+
+get_directory_property(targets BUILDSYSTEM_TARGETS)
+message(STATUS "Targets: ${targets}")
+set_target_properties(${BUILDSYSTEM_TARGETS} PROPERTIES FOLDER "Libraries")
 
 # ====================== Linking ====================
 #target_link_libraries("${PROJECT_NAME}" "SDL2")
