@@ -22,7 +22,7 @@ struct SDL_Window;
 namespace RavEngine {
     class RenderEngine : public SharedObject {
     public:
-        virtual ~RenderEngine() {};
+        virtual ~RenderEngine();
         void Spawn(Ref<Entity> e);
         void Destroy(Ref<Entity> e);
         RenderEngine(const WeakRef<World>& w);
