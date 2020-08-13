@@ -9,18 +9,26 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include "GameplayStatics.hpp"
 #include "CameraComponent.hpp"
 #include "World.hpp"
 
 #include <filament/Engine.h>
 #include <filament/SwapChain.h>
+#include <filament/Camera.h>
 #include <filament/Renderer.h>
+#include <filament/Viewport.h>
 #include <filament/View.h>
 #include <filament/Scene.h>
 #include <utils/Entity.h>
+#include <filament/Material.h>
+#include <filament/VertexBuffer.h>
+#include <filament/IndexBuffer.h>
 #include <filament/RenderableManager.h>
 #include <utils/EntityManager.h>
+#include <filament/TransformManager.h>
+#include <filament/Skybox.h>
 
 #include <SDL_syswm.h>
 #include <SDL.h>
@@ -28,15 +36,30 @@
 #ifdef __APPLE_
 #include <Cocoa/Cocoa.h>
 #endif
+#include <filamat/MaterialBuilder.h>
 
 using namespace std;
 using namespace RavEngine;
 //using namespace utils;
+using namespace filament;
 
 SDL_Window* RenderEngine::window = nullptr;
 filament::SwapChain* RenderEngine::filamentSwapChain = nullptr;
 filament::Engine* RenderEngine::filamentEngine = nullptr;
 filament::Renderer* RenderEngine::filamentRenderer = nullptr;
+
+struct Vertex {
+	filament::math::float2 position;
+	uint32_t color;
+};
+
+static const Vertex TRIANGLE_VERTICES[3] = {
+	{{1, 0}, 0xffff0000u},
+	{{cos(M_PI * 2 / 3), sin(M_PI * 2 / 3)}, 0xff00ff00u},
+	{{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
+};
+
+static constexpr uint16_t TRIANGLE_INDICES[3] = { 0, 1, 2 };
 
 /**
 Construct a render engine instance
@@ -50,19 +73,72 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	filamentScene = filamentEngine->createScene();
 
 	filament::Camera* camera = filamentEngine->createCamera(utils::EntityManager::get().create());
+	constexpr float ZOOM = 1.5f;
+	const uint32_t width = filamentView->getViewport().width;
+	const uint32_t height = filamentView->getViewport().height;
+	const float aspect = (float)width / height;
+	camera->setProjection(filament::Camera::Projection::ORTHO,
+		-aspect * ZOOM, aspect * ZOOM,
+		-ZOOM, ZOOM, 0, 1);
 
 	filamentView->setCamera(camera);
 	filamentView->setScene(filamentScene);
 
 	utils::Entity renderable = utils::EntityManager::get().create();
 	// build a quad
-	/*filament::RenderableManager::Builder(1)
+
+	//material
+	string mat;
+	{
+		auto pwd = filesystem::current_path();
+		ifstream fin("deps\\filament\\filament\\generated\\material\\defaultMaterial.filamat", ios::binary);
+		ostringstream buffer;
+		buffer << fin.rdbuf();
+		mat = buffer.str();
+	}
+	
+	Material* material = Material::Builder()
+		.package((void*)mat.c_str(), mat.size())
+		.build(*filamentEngine);
+	MaterialInstance* materialInstance = material->createInstance();
+	
+	auto vertexBuffer = VertexBuffer::Builder()
+		.vertexCount(3)
+		.bufferCount(1)
+		.attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 12)
+		.attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::UBYTE4, 8, 12)
+		.normalized(VertexAttribute::COLOR)
+		.build(*filamentEngine);
+	vertexBuffer->setBufferAt(*filamentEngine, 0, VertexBuffer::BufferDescriptor(TRIANGLE_VERTICES, 36, nullptr));
+
+	auto indexBuffer = IndexBuffer::Builder()
+		.indexCount(3)
+		.bufferType(IndexBuffer::IndexType::USHORT)
+		.build(*filamentEngine);
+
+	indexBuffer->setBuffer(*filamentEngine,IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
+
+	RenderableManager::Builder(1)
 		.boundingBox({ { -1, -1, -1 }, { 1, 1, 1 } })
-		.material(0, materialInstance)
-		.geometry(0, filament::RenderableManager::PrimitiveType::TRIANGLES, vertexBuffer, indexBuffer, 0, 6)
+		.material(0,material->getDefaultInstance())
+		.geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertexBuffer, indexBuffer, 0, 3)
 		.culling(false)
-		.build(*engine, renderable);
-	scene->addEntity(renderable);*/
+		.receiveShadows(false)
+		.castShadows(false)
+		.build(*filamentEngine, renderable);
+	filamentScene->addEntity(renderable);
+
+	auto skybox = Skybox::Builder().color({ 0.1, 0.125, 0.25, 1.0 }).build(*filamentEngine);
+	filamentScene->setSkybox(skybox);
+
+	auto& tcm = filamentEngine->getTransformManager();
+	tcm.setTransform(tcm.getInstance(renderable),filament::math::mat4f::rotation(0, filament::math::float3{ 0, 0, 1 }));
+}
+
+RavEngine::RenderEngine::~RenderEngine()
+{
+	filamentEngine->destroy(filamentView);
+	filamentEngine->destroy(filamentScene);
 }
 
 /**
@@ -144,7 +220,7 @@ void RenderEngine::Init()
     nativeWindow = setUpMetalLayer(nativeWindow);
 	auto backend = filament::Engine::Backend::METAL;
 #else
-	auto backend = filament::Engine::Backend::VULKAN;
+	auto backend = filament::Engine::Backend::OPENGL;
 #endif
 
 	filamentEngine = filament::Engine::create(backend);	
