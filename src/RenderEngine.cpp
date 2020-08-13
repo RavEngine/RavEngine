@@ -90,7 +90,6 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	//material
 	string mat;
 	{
-		auto pwd = filesystem::current_path();
 		ifstream fin("deps\\filament\\filament\\generated\\material\\defaultMaterial.filamat", ios::binary);
 		ostringstream buffer;
 		buffer << fin.rdbuf();
