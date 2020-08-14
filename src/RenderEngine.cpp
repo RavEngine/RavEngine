@@ -79,8 +79,12 @@ void test() {
 	//material
 	string mat;
 	{
-		auto path = "deps\\filament\\filament\\generated\\material\\defaultMaterial.filamat";
+		auto path = "../deps/filament/filament/generated/material/defaultMaterial.filamat";
+#ifdef _WIN32
+		path += 3;
+#endif
 		ifstream fin(path, ios::binary);
+		assert(fin.good());	//ensure file exists
 		ostringstream buffer;
 		buffer << fin.rdbuf();
 		mat = buffer.str();
