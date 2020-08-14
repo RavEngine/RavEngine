@@ -79,13 +79,14 @@ endif ()
 # ==================== Dependencies =====================
 
 #add_subdirectory("${DEPS_DIR}/SDL2")
+
+
 if(MSVC)
   add_definitions(/std:c++latest)
 endif()
 
 set(FILAMENT_ENABLE_LTO OFF CACHE INTERNAL "")
 set(FILAMENT_ENABLE_JAVA OFF CACHE INTERNAL "")
-set(FILAMENT_SKIP_SAMPLES ON CACHE INTERNAL "")
 IF(APPLE)
 	set(FILAMENT_SUPPORTS_METAL ON CACHE INTERNAL "")
 	set(FILAMENT_SUPPORTS_VULKAN OFF CACHE INTERNAL "")
@@ -93,6 +94,9 @@ ELSE()
 	set(FILAMENT_SUPPORTS_METAL OFF CACHE INTERNAL "")
 	set(FILAMENT_SUPPORTS_VULKAN ON CACHE INTERNAL "")
 ENDIF()
+set(FILAMENT_SKIP_SAMPLES OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/filamentapp")
+set(FILAMENT_SKIP_SAMPLES ON CACHE INTERNAL "")
 add_subdirectory_with_folder("Filament" "${DEPS_DIR}/filament")
 
 if(MSVC)
@@ -201,6 +205,7 @@ target_link_libraries("${PROJECT_NAME}" "assimp")
 target_link_libraries("${PROJECT_NAME}" "filagui")
 target_link_libraries("${PROJECT_NAME}" "imgui")
 target_link_libraries("${PROJECT_NAME}" "camutils")
+target_link_libraries("${PROJECT_NAME}" "filamentapp")
 
 # copy DLLs
 if (WIN32)
