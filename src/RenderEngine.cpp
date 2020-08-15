@@ -205,6 +205,9 @@ void RenderEngine::Draw(){
 	auto size = GetDrawableArea();
 	
 	filamentView->setViewport({0,0,size.width,size.height});
+#ifdef __APPLE__
+	resizeMetalLayer(getNativeWindow(window));
+#endif
 	
 
 	if (filamentRenderer->beginFrame(filamentSwapChain)) {
@@ -218,6 +221,13 @@ void RenderEngine::Draw(){
 @return the name of the current rendering API
 */
 const string RenderEngine::currentBackend(){
+	switch(filamentEngine->getBackend()){
+		case Engine::Backend::METAL: return "Metal"; break;
+		case Engine::Backend::OPENGL: return "OpenGL"; break;
+		case filament::backend::Backend::DEFAULT: return "Default";break;
+		case filament::backend::Backend::VULKAN: return "Vulkan"; break;
+		case filament::backend::Backend::NOOP: return "Null"; break;
+	}
 	return "Unknown";
 }
 
@@ -232,27 +242,25 @@ void RenderEngine::Init()
 	}
 
 	//create SDL window
-
 	SDL_Init(SDL_INIT_EVENTS);
 	uint32_t windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
 
-	window = SDL_CreateWindow("RavEngine - Filament", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, windowFlags);
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, windowFlags);
 
 	//get the native window 
     void* nativeWindow = getNativeWindow(window);
-    
-	auto backend = filament::Engine::Backend::OPENGL;
-
 	
-//#ifdef __APPLE__
-//    //need to make a metal layer on Mac
-//    nativeWindow = setUpMetalLayer(nativeWindow);
-//	auto backend = filament::Engine::Backend::METAL;
-//#else
-//	auto backend = filament::Engine::Backend::OPENGL;
-//#endif
+#ifdef __APPLE__
+    //need to make a metal layer on Mac
+    nativeWindow = setUpMetalLayer(nativeWindow);
+	auto backend = filament::Engine::Backend::METAL;
+#else
+	auto backend = filament::Engine::Backend::OPENGL;
+#endif
 
 	filamentEngine = filament::Engine::create(backend);	
 	filamentSwapChain = filamentEngine->createSwapChain((void*)nativeWindow);
 	filamentRenderer = filamentEngine->createRenderer();
+	
+	SDL_SetWindowTitle(window, (string("RavEngine - ") + currentBackend()).c_str());
 }
