@@ -32,7 +32,7 @@ int RavEngine_App::run(int argc, char** argv) {
 				case SDL_WINDOWEVENT_RESIZED:
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 					SDL_GetWindowSize(RenderEngine::GetWindow(), &width, &height);
-					//reset_screen(width, height);
+					GameplayStatics::currentWorld->resize();
 					break;
 
 				case SDL_WINDOWEVENT_CLOSE:
