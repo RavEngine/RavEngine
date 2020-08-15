@@ -255,7 +255,7 @@ void RenderEngine::Init()
     nativeWindow = setUpMetalLayer(nativeWindow);
 	auto backend = filament::Engine::Backend::METAL;
 #else
-	auto backend = filament::Engine::Backend::OPENGL;
+	auto backend = filament::Engine::Backend::VULKAN;
 #endif
 
 	filamentEngine = filament::Engine::create(backend);	
