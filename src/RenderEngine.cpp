@@ -177,12 +177,11 @@ void RenderEngine::Draw(){
 		}
 	}
 
-    //draw each entity
+    //draw each entity (TODO: multithread, skip statics)
 	auto worldOwning = Ref<World>(world);
 	auto entitylist = worldOwning->getEntities();
 	for (auto& entity : entitylist) {
-		//entity->transform()->Apply();
-		//entity->transform()->ApplyToSceneNode();
+		entity->transform()->Apply();
 		//entity->Draw();
     }
 	
