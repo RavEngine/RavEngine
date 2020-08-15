@@ -165,6 +165,8 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	}
 	filamentView = filamentEngine->createView();
 	filamentScene = filamentEngine->createScene();
+	
+	filamentView->setViewport({0,0,800,480});
 
 	filament::Camera* camera = filamentEngine->createCamera(utils::EntityManager::get().create());
 	constexpr float ZOOM = 1.5f;
@@ -184,7 +186,12 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	//material
 	string mat;
 	{
-		ifstream fin("deps\\filament\\filament\\generated\\material\\defaultMaterial.filamat", ios::binary);
+		auto path = "../deps/filament/filament/generated/material/defaultMaterial.filamat";
+#ifdef _WIN32
+		path += 3;
+#endif
+		ifstream fin(path, ios::binary);
+		assert(fin.good());	//ensure file exists
 		ostringstream buffer;
 		buffer << fin.rdbuf();
 		mat = buffer.str();
@@ -299,7 +306,7 @@ void RenderEngine::Init()
 		return;
 	}
 
-	test();
+	//test();
 
 	//create SDL window
 
@@ -311,13 +318,16 @@ void RenderEngine::Init()
 	//get the native window 
     void* nativeWindow = getNativeWindow(window);
     
-#ifdef __APPLE__
-    //need to make a metal layer on Mac
-    nativeWindow = setUpMetalLayer(nativeWindow);
-	auto backend = filament::Engine::Backend::METAL;
-#else
 	auto backend = filament::Engine::Backend::OPENGL;
-#endif
+
+	
+//#ifdef __APPLE__
+//    //need to make a metal layer on Mac
+//    nativeWindow = setUpMetalLayer(nativeWindow);
+//	auto backend = filament::Engine::Backend::METAL;
+//#else
+//	auto backend = filament::Engine::Backend::OPENGL;
+//#endif
 
 	filamentEngine = filament::Engine::create(backend);	
 	filamentSwapChain = filamentEngine->createSwapChain((void*)nativeWindow);
