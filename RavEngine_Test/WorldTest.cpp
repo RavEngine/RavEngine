@@ -30,12 +30,12 @@ TestWorld::TestWorld() : World() {
     //spawn player (it will make its camera active)
     Spawn(player);
 
-    player->transform()->LocalTranslateDelta(vector3(0,0,0));
+    player->transform()->LocalTranslateDelta(vector3(1,0,0));
 
     anonymous = new RavEngine::Entity();
     anonymous->AddComponent<StaticMesh>(new StaticMesh());
     Spawn(anonymous);
-    anonymous->transform()->LocalTranslateDelta(vector3(0, 5, 0));
+    anonymous->transform()->LocalTranslateDelta(vector3(0, 1, 0));
 
     //register the systems that are allowed to run in this World
     RegisterSystem(new Skate());

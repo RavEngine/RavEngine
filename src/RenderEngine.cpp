@@ -182,7 +182,6 @@ void RenderEngine::Draw(){
 	auto entitylist = worldOwning->getEntities();
 	for (auto& entity : entitylist) {
 		entity->transform()->Apply();
-		//entity->Draw();
     }
 	
 
