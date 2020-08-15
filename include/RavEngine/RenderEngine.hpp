@@ -45,6 +45,12 @@ namespace RavEngine {
         static void* setUpMetalLayer(void*);
         static void* resizeMetalLayer(void* nativeView);
 #endif
+		
+		struct WindowSize{
+			unsigned int width = 0, height = 0;
+		};
+		
+		static WindowSize GetDrawableArea();
 
         static SDL_Window* window;
         static filament::SwapChain* filamentSwapChain;
