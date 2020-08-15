@@ -60,7 +60,7 @@ typedef struct
 } SDL_DisplayMode;
 
 /**
- *  \brief The type used to identify a window
+ *  \brief The type us&ed to identify a window
  *
  *  \sa SDL_CreateWindow()
  *  \sa SDL_CreateWindowFrom()

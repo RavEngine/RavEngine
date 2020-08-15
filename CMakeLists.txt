@@ -95,7 +95,6 @@ ELSE()
 	set(FILAMENT_SUPPORTS_VULKAN ON CACHE INTERNAL "")
 ENDIF()
 set(FILAMENT_SKIP_SAMPLES OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/filamentapp")
 set(FILAMENT_SKIP_SAMPLES ON CACHE INTERNAL "")
 add_subdirectory_with_folder("Filament" "${DEPS_DIR}/filament")
 
@@ -205,7 +204,6 @@ target_link_libraries("${PROJECT_NAME}" "assimp")
 target_link_libraries("${PROJECT_NAME}" "filagui")
 target_link_libraries("${PROJECT_NAME}" "imgui")
 target_link_libraries("${PROJECT_NAME}" "camutils")
-target_link_libraries("${PROJECT_NAME}" "filamentapp")
 
 # copy DLLs
 if (WIN32)
