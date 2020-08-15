@@ -67,6 +67,14 @@ namespace RavEngine {
 
 	public:
 		void tick();
+
+		/**
+		Resize this world's viewport to fit its window
+		*/
+		void resize() {
+			Renderer->resize();
+		}
+
 		/**
 		Called before ticking components and entities synchronously
 		 @param fpsScale the scale factor calculated

@@ -75,22 +75,8 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	filamentView = filamentEngine->createView();
 	filamentScene = filamentEngine->createScene();
 	
-	{
-		auto size = GetDrawableArea();
-		
-		filamentView->setViewport({0,0,size.width,size.height});
-	}
+	resize();
 
-	filament::Camera* camera = filamentEngine->createCamera(utils::EntityManager::get().create());
-	constexpr float ZOOM = 1.5f;
-	const uint32_t width = filamentView->getViewport().width;
-	const uint32_t height = filamentView->getViewport().height;
-	const float aspect = (float)width / height;
-	camera->setProjection(filament::Camera::Projection::ORTHO,
-		-aspect * ZOOM, aspect * ZOOM,
-		-ZOOM, ZOOM, 0, 1);
-
-	filamentView->setCamera(camera);
 	filamentView->setScene(filamentScene);
 
 	utils::Entity renderable = utils::EntityManager::get().create();
@@ -148,11 +134,6 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	tcm.setTransform(tcm.getInstance(renderable),filament::math::mat4f::rotation(0, filament::math::float3{ 0, 0, 1 }));
 }
 
-RenderEngine::WindowSize RenderEngine::GetDrawableArea(){
-	int width; int height;
-	SDL_GL_GetDrawableSize(window, &width, &height);
-	return WindowSize{static_cast<unsigned int>(width),static_cast<unsigned int>(height)};
-}
 
 RavEngine::RenderEngine::~RenderEngine()
 {
@@ -165,7 +146,7 @@ RavEngine::RenderEngine::~RenderEngine()
  @param e the entity to load
  */
 void RenderEngine::Spawn(Ref<Entity> e){
-	
+	filamentScene->addEntity(e->transform()->getEntity());
 }
 
 /**
@@ -173,6 +154,7 @@ void RenderEngine::Spawn(Ref<Entity> e){
  @param e the entity to remove
  */
 void RenderEngine::Destroy(Ref<Entity> e){
+	filamentScene->remove(e->transform()->getEntity());
 }
 
 int counter = 0;
@@ -181,33 +163,28 @@ int counter = 0;
  */
 void RenderEngine::Draw(){
 	//get the active camera
-	/*auto components = Ref<World>(world.get())->Components();
-	auto allcams = components.GetAllComponentsOfType<CameraComponent>();*/
+	auto components = Ref<World>(world.get())->Components();
+	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 
 	//set the view transform - all entities drawn will use this matrix
-	/*for (auto& cam : allcams) {
+	for (auto& cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
-			activeCamera = owning->getCamera();
+			filamentView->setCamera(owning->getCamera());
+			auto size = GetDrawableArea();
+			owning->SetTargetSize(size.width, size.height);
 			break;
 		}
-	}*/
+	}
 
     //draw each entity
 	auto worldOwning = Ref<World>(world);
 	auto entitylist = worldOwning->getEntities();
 	for (auto& entity : entitylist) {
+		//entity->transform()->Apply();
 		//entity->transform()->ApplyToSceneNode();
 		//entity->Draw();
     }
-	
-	//fix the window size
-	auto size = GetDrawableArea();
-	
-	filamentView->setViewport({0,0,size.width,size.height});
-#ifdef __APPLE__
-	resizeMetalLayer(getNativeWindow(window));
-#endif
 	
 
 	if (filamentRenderer->beginFrame(filamentSwapChain)) {
@@ -229,6 +206,25 @@ const string RenderEngine::currentBackend(){
 		case filament::backend::Backend::NOOP: return "Null"; break;
 	}
 	return "Unknown";
+}
+
+RenderEngine::WindowSize RenderEngine::GetDrawableArea() {
+	int width; int height;
+	SDL_GL_GetDrawableSize(window, &width, &height);
+	return WindowSize{ static_cast<unsigned int>(width),static_cast<unsigned int>(height) };
+}
+
+/**
+Update the viewport to the correct size of the container window
+*/
+void RenderEngine::resize() {
+	//fix the window size
+	auto size = GetDrawableArea();
+
+	filamentView->setViewport({ 0,0,size.width,size.height });
+#ifdef __APPLE__
+	resizeMetalLayer(getNativeWindow(window));
+#endif
 }
 
 /**
@@ -255,7 +251,7 @@ void RenderEngine::Init()
     nativeWindow = setUpMetalLayer(nativeWindow);
 	auto backend = filament::Engine::Backend::METAL;
 #else
-	auto backend = filament::Engine::Backend::VULKAN;
+	auto backend = filament::Engine::Backend::OPENGL;
 #endif
 
 	filamentEngine = filament::Engine::create(backend);	

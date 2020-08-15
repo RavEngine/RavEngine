@@ -35,6 +35,15 @@ namespace RavEngine {
             return window;
         }
 
+        void resize();
+
+        /**
+        Get a const-pointer to the engine singleton
+        */
+        static filament::Engine* const getEngine() {
+            return filamentEngine;
+        }
+
     protected:
         filament::View* filamentView = nullptr;
         filament::Scene* filamentScene = nullptr;

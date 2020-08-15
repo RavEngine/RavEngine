@@ -4,17 +4,28 @@
 #include "mathtypes.hpp"
 #include "GameplayStatics.hpp"
 #include <cassert>
+#include <utils/Entity.h>
+#include <utils/EntityManager.h>
+#include <RenderEngine.hpp>
+#include <filament/Engine.h>
+#include <filament/TransformManager.h>
 
 using namespace std;
 using namespace glm;
 using namespace RavEngine;
+using namespace utils;
+using namespace filament::math;
 
 Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
+	filamentEntity = EntityManager::get().create();
+
 	matrix.store(matrix4(1.0));
 	LocalTranslateDelta(inpos);
 	LocalRotateDelta(inrot);
 	LocalScaleDelta(inscale);
 	isStatic = inStatic;
+
+	Apply();
 }
 
 void Transform::GetParentMatrixStack(list<matrix4>& matrix) const{
@@ -102,6 +113,23 @@ vector3 Transform::GetWorldScale()
 
 	//finally apply the local matrix
 	return GetMatrix() * finalPos;
+}
+
+void RavEngine::Transform::Apply()
+{
+	auto& tcm = RenderEngine::getEngine()->getTransformManager();
+	auto instance = tcm.getInstance(filamentEntity);
+
+	auto vec3 = GetWorldScale();
+	tcm.setTransform(instance, filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z }));
+	
+
+	auto rotation = GetWorldRotation();
+	tcm.setTransform(instance, filmat4::rotation(rotation.w, filvec3{ rotation.x, rotation.y, rotation.z }));
+
+
+	vec3 = GetWorldPosition();
+	tcm.setTransform(instance, filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z }));
 }
 
 bool Transform::HasParent() {

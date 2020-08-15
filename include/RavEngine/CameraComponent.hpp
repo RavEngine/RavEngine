@@ -2,7 +2,9 @@
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
 #include <stduuid/uuid.h>
-class Camera;
+namespace filament {
+	class Camera;
+}
 namespace RavEngine {
 	class CameraComponent : public Component {
 	public:
@@ -10,7 +12,7 @@ namespace RavEngine {
 
 		virtual ~CameraComponent() {}
 
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override {}
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 
 		void RegisterAllAlternateTypes() override {}
 
@@ -27,14 +29,31 @@ namespace RavEngine {
 			return active;
 		}
 
+		/**
+		Conversion to filament camera, for internal use only
+		*/
+		filament::Camera* const getCamera() {
+			return filamentCam;
+		}
+
+		/**
+		Set the size of the camera. This will recalculate its projection.
+		@param width the width of the target, in pixels
+		@param height the height of the target, in pixels
+		*/
+		void SetTargetSize(unsigned int inwidth, unsigned int inheight);
 
 	protected:
 		bool active = false;
-		Camera* filamentCam;
+		filament::Camera* filamentCam = nullptr;
 
 		//camera details
 		float FOV;
 		float nearClip;
 		float farClip;
+		float zoom = 1.5;
+
+		unsigned int width = 800;
+		unsigned int height = 480;
 	};
 }
