@@ -3,13 +3,10 @@
 #include <vector>
 #include "Material.hpp"
 
-struct PosColorVertex
-{
-    float x;
-    float y;
-    float z;
-    uint32_t abgr;
-};
+namespace filament {
+    class VertexBuffer;
+    class IndexBuffer;
+}
 
 namespace RavEngine {
     class StaticMesh : public Component {
@@ -30,8 +27,6 @@ namespace RavEngine {
         Ref<Material> GetMaterial() {
             return material;
         }
-
-        void Draw();
 
     protected:
         //std::vector<PosColorVertex> vertices;

@@ -153,10 +153,5 @@ namespace RavEngine {
 		 */
 		virtual void Tick(float timeScale) {};
 
-		/**
-		Render this entity
-		*/
-		virtual void Draw();
-
 	};
 }

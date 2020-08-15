@@ -22,13 +22,6 @@ RavEngine::Entity::Entity(){
 	AddComponent<Transform>(new Transform());
 }
 
-void RavEngine::Entity::Draw() {
-	//get the material and draw
-	if (components.HasComponentOfType<StaticMesh>()) {
-		components.GetComponent<StaticMesh>()->Draw();
-	}
-}
-
 RavEngine::Entity::~Entity(){
     components.clear();
     worldptr = nullptr;
