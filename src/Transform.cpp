@@ -121,12 +121,10 @@ void RavEngine::Transform::Apply()
 	auto instance = tcm.getInstance(filamentEntity);
 
 	auto vec3 = GetWorldScale();
-	tcm.setTransform(instance, filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z }));
-	
+	tcm.setTransform(instance, filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z }));	
 
 	auto rotation = GetWorldRotation();
 	tcm.setTransform(instance, filmat4::rotation(rotation.w, filvec3{ rotation.x, rotation.y, rotation.z }));
-
 
 	vec3 = GetWorldPosition();
 	tcm.setTransform(instance, filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z }));
