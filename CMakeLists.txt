@@ -228,5 +228,5 @@ target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
 INSTALL(CODE "
 	include(BundleUtilities)
-	fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/debug/${PROJECT_NAME}_Test.app\" \"\" \"\")
+	fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/$<CONFIGURATION>/${PROJECT_NAME}_Test.app\" \"\" \"\")
 	" COMPONENT Runtime)
