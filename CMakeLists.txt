@@ -175,11 +175,6 @@ file(GLOB TEST_CHEADERS "${PROJECT_NAME}_Test/*.h")
 add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
 set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist")
 
-INSTALL(CODE "
-	include(BundleUtilities)
-	fixup_bundle("${PROJECT_NAME}_Test.app" "" "")
-	" COMPONENT Runtime)
-
 get_directory_property(targets BUILDSYSTEM_TARGETS)
 message(STATUS "Targets: ${targets}")
 set_target_properties(${BUILDSYSTEM_TARGETS} PROPERTIES FOLDER "Libraries")
@@ -231,3 +226,7 @@ endif()
 # link test game with library
 target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
+INSTALL(CODE "
+	include(BundleUtilities)
+	fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/debug/${PROJECT_NAME}_Test.app\" \"\" \"\")
+	" COMPONENT Runtime)
