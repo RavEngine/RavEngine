@@ -65,8 +65,8 @@ int RavEngine_App::run(int argc, char** argv) {
 			case SDL_CONTROLLERDEVICEREMOVED:
 				break;
 			}
-			GameplayStatics::currentWorld->tick();
 		}
+		GameplayStatics::currentWorld->tick();
 	}
 
     return OnShutdown();

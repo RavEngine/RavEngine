@@ -51,19 +51,6 @@ filament::SwapChain* RenderEngine::filamentSwapChain = nullptr;
 filament::Engine* RenderEngine::filamentEngine = nullptr;
 filament::Renderer* RenderEngine::filamentRenderer = nullptr;
 
-struct Vertex {
-	filament::math::float2 position;
-	uint32_t color;
-};
-
-static const Vertex TRIANGLE_VERTICES[3] = {
-	{{1, 0}, 0xffff0000u},
-	{{cos(M_PI * 2 / 3), sin(M_PI * 2 / 3)}, 0xff00ff00u},
-	{{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
-};
-
-static constexpr uint16_t TRIANGLE_INDICES[3] = { 0, 1, 2 };
-
 /**
 Construct a render engine instance
 @param w the owning world for this engine instance
@@ -78,60 +65,9 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	resize();
 
 	filamentView->setScene(filamentScene);
-
-	utils::Entity renderable = utils::EntityManager::get().create();
-	// build a quad
-
-	//material
-	string mat;
-	{
-		auto path = "../deps/filament/filament/generated/material/defaultMaterial.filamat";
-#ifdef _WIN32
-		path += 3;
-#endif
-		ifstream fin(path, ios::binary);
-		assert(fin.good());	//ensure file exists
-		ostringstream buffer;
-		buffer << fin.rdbuf();
-		mat = buffer.str();
-	}
 	
-	Material* material = Material::Builder()
-		.package((void*)mat.c_str(), mat.size())
-		.build(*filamentEngine);
-	MaterialInstance* materialInstance = material->createInstance();
-	
-	auto vertexBuffer = VertexBuffer::Builder()
-		.vertexCount(3)
-		.bufferCount(1)
-		.attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 12)
-		.attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::UBYTE4, 8, 12)
-		.normalized(VertexAttribute::COLOR)
-		.build(*filamentEngine);
-	vertexBuffer->setBufferAt(*filamentEngine, 0, VertexBuffer::BufferDescriptor(TRIANGLE_VERTICES, 36, nullptr));
-
-	auto indexBuffer = IndexBuffer::Builder()
-		.indexCount(3)
-		.bufferType(IndexBuffer::IndexType::USHORT)
-		.build(*filamentEngine);
-
-	indexBuffer->setBuffer(*filamentEngine,IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
-
-	RenderableManager::Builder(1)
-		.boundingBox({ { -1, -1, -1 }, { 1, 1, 1 } })
-		.material(0,material->getDefaultInstance())
-		.geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertexBuffer, indexBuffer, 0, 3)
-		.culling(false)
-		.receiveShadows(false)
-		.castShadows(false)
-		.build(*filamentEngine, renderable);
-	filamentScene->addEntity(renderable);
-
 	auto skybox = Skybox::Builder().color({ 0.1, 0.125, 0.25, 1.0 }).build(*filamentEngine);
 	filamentScene->setSkybox(skybox);
-
-	auto& tcm = filamentEngine->getTransformManager();
-	tcm.setTransform(tcm.getInstance(renderable),filament::math::mat4f::rotation(0, filament::math::float3{ 0, 0, 1 }));
 }
 
 
@@ -146,7 +82,19 @@ RavEngine::RenderEngine::~RenderEngine()
  @param e the entity to load
  */
 void RenderEngine::Spawn(Ref<Entity> e){
-	filamentScene->addEntity(e->transform()->getEntity());
+	auto& tm = RenderEngine::getEngine()->getTransformManager();
+	auto entity = e->transform()->getEntity();
+	filamentScene->addEntity(entity);
+
+	//also add children
+	auto instance = tm.getInstance(entity);
+	const auto count = tm.getChildCount(instance);
+	if (count == 0) {
+		return;
+	}
+	vector<utils::Entity> children(count);
+	tm.getChildren(instance,&children.front(),count);
+	filamentScene->addEntities(&children.front(), count);
 }
 
 /**
@@ -154,7 +102,19 @@ void RenderEngine::Spawn(Ref<Entity> e){
  @param e the entity to remove
  */
 void RenderEngine::Destroy(Ref<Entity> e){
-	filamentScene->remove(e->transform()->getEntity());
+	auto& tm = RenderEngine::getEngine()->getTransformManager();
+	auto entity = e->transform()->getEntity();
+	filamentScene->remove(entity);
+
+	//also remove children
+	auto instance = tm.getInstance(entity);
+	const auto count = tm.getChildCount(instance);
+	if (count == 0) {
+		return;
+	}
+	vector<utils::Entity> children(count);
+	tm.getChildren(instance, &children.front(), count);
+	filamentScene->removeEntities(&children.front(), count);
 }
 
 int counter = 0;
