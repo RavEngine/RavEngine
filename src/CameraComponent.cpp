@@ -27,5 +27,13 @@ void RavEngine::CameraComponent::SetTargetSize(unsigned int inwidth, unsigned in
 	width = inwidth;
 	height = inheight;
 	const float aspect = (float)width / height;
-	filamentCam->setProjection(Camera::Projection::ORTHO, -aspect * zoom, aspect * zoom, -zoom, zoom, 0, 1);
+
+	switch (projection) {
+	case Mode::Perspective:
+		filamentCam->setLensProjection(35, aspect, nearClip, farClip);
+		break;
+	case Mode::Orthographic:
+		filamentCam->setProjection(Camera::Projection::ORTHO, -aspect * zoom, aspect * zoom, -zoom, zoom, 0, 1);
+		break;
+	}
 }

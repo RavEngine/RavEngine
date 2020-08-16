@@ -98,21 +98,22 @@ quaternion Transform::GetWorldRotation()
 
 vector3 Transform::GetWorldScale()
 {
-	if (!HasParent()) {
-		return GetLocalScale();
-	}
-	//list of transforms
-	list<matrix4> scales;
-	GetParentMatrixStack(scales);
+	return GetLocalScale();
+	//if (!HasParent()) {
+	//	return GetLocalScale();
+	//}
+	////list of transforms
+	//list<matrix4> scales;
+	//GetParentMatrixStack(scales);
 
-	//apply all the transforms
-	vector4 finalPos(0, 0, 0, 1);
-	for (auto& transform : scales) {
-		finalPos = transform * finalPos;
-	}
+	////apply all the transforms
+	//vector4 finalScale(0, 0, 0, 1);
+	//for (auto& transform : scales) {
+	//	finalScale = transform * finalScale;
+	//}
 
-	//finally apply the local matrix
-	return GetMatrix() * finalPos;
+	////finally apply the local matrix
+	//return GetMatrix() * finalScale;
 }
 
 void RavEngine::Transform::Apply()

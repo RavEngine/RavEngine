@@ -22,7 +22,7 @@ void TestWorld::posttick(float fpsScale){
     //bgfx::dbgTextPrintf(0, 7, 0x4f, "position (%f, %f, %f)", pos.x, pos.y, pos.z);
     //bgfx::dbgTextPrintf(0, 8, 0x4f, "rotation (%f, %f, %f)", rot.x, rot.y, rot.z);
 
-    auto rotation = quaternion(vector3(0, 0, 0.01));
+    auto rotation = quaternion(vector3(0, 0, 0.01 * fpsScale));
     anonymous->transform()->LocalRotateDelta(rotation);
 }
 
@@ -30,7 +30,7 @@ TestWorld::TestWorld() : World() {
     //spawn player (it will make its camera active)
     Spawn(player);
 
-    player->transform()->LocalTranslateDelta(vector3(1,0,0));
+    player->transform()->LocalTranslateDelta(vector3(1,0,8));
 
     anonymous = new RavEngine::Entity();
     anonymous->AddComponent<StaticMesh>(new StaticMesh());
