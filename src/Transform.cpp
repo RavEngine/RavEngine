@@ -122,17 +122,15 @@ void RavEngine::Transform::Apply()
 
 	{
 		vector3 vec3 = GetWorldScale();
-		filmat4 scaleMat = filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z });
+		const auto scaleMat = filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z });
 
-		auto rotation = glm::eulerAngles(GetWorldRotation());
-		auto rotationMat = filmat4::eulerYXZ(rotation.x, rotation.y, rotation.z);
+		const auto rotation = glm::eulerAngles(GetWorldRotation());
+		const auto rotationMat = filmat4::eulerYXZ(rotation.x, rotation.y, rotation.z);
 
 		vec3 = GetWorldPosition();
-		filmat4 positionMat = filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z });
+		const filmat4 positionMat = filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z });
 
-		auto transformMatrix = positionMat * rotationMat * scaleMat;
-
-		tcm.setTransform(instance, transformMatrix);
+		tcm.setTransform(instance, positionMat * rotationMat * scaleMat);
 	}
 
 }
