@@ -125,13 +125,12 @@ void RavEngine::Transform::Apply()
 		filmat4 scaleMat = filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z });
 
 		auto rotation = glm::eulerAngles(GetWorldRotation());
-		//filmat4 rotationMat = filmat4::rotation(rotation.w, filvec3{ rotation.x, rotation.y, rotation.z });
 		auto rotationMat = filmat4::eulerYXZ(rotation.x, rotation.y, rotation.z);
 
 		vec3 = GetWorldPosition();
 		filmat4 positionMat = filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z });
 
-		auto transformMatrix = positionMat * rotationMat;
+		auto transformMatrix = positionMat * rotationMat * scaleMat;
 
 		tcm.setTransform(instance, transformMatrix);
 	}
