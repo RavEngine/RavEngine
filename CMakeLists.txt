@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 include(ProcessorCount)
 project(RavEngine)
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(OSX_ARCHITECTURES "${ARCHS_STANDARD}" CACHE INTERNAL "")
 
@@ -173,6 +174,11 @@ file(GLOB TEST_CHEADERS "${PROJECT_NAME}_Test/*.h")
 # creates a mac app if applicable
 add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
 set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist")
+
+INSTALL(CODE "
+	include(BundleUtilities)
+	fixup_bundle("${PROJECT_NAME}_Test.app" "" "")
+	" COMPONENT Runtime)
 
 get_directory_property(targets BUILDSYSTEM_TARGETS)
 message(STATUS "Targets: ${targets}")
