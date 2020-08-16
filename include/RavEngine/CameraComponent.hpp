@@ -43,6 +43,11 @@ namespace RavEngine {
 		*/
 		void SetTargetSize(unsigned int inwidth, unsigned int inheight);
 
+		enum class Mode {
+			Perspective,
+			Orthographic
+		};
+
 	protected:
 		bool active = false;
 		filament::Camera* filamentCam = nullptr;
@@ -55,5 +60,7 @@ namespace RavEngine {
 
 		unsigned int width = 800;
 		unsigned int height = 480;
+
+		Mode projection = Mode::Perspective;
 	};
 }

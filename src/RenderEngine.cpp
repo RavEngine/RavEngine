@@ -117,7 +117,6 @@ void RenderEngine::Destroy(Ref<Entity> e){
 	filamentScene->removeEntities(&children.front(), count);
 }
 
-int counter = 0;
 /**
  Render one frame using the current state of every object in the world
  */
