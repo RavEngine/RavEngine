@@ -120,14 +120,22 @@ void RavEngine::Transform::Apply()
 	auto& tcm = RenderEngine::getEngine()->getTransformManager();
 	auto instance = tcm.getInstance(filamentEntity);
 
-	auto vec3 = GetWorldScale();
-	tcm.setTransform(instance, filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z }));	
+	{
+		vector3 vec3 = GetWorldScale();
+		filmat4 scaleMat = filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z });
 
-	auto rotation = GetWorldRotation();
-	tcm.setTransform(instance, filmat4::rotation(rotation.w, filvec3{ rotation.x, rotation.y, rotation.z }));
+		auto rotation = glm::eulerAngles(GetWorldRotation());
+		//filmat4 rotationMat = filmat4::rotation(rotation.w, filvec3{ rotation.x, rotation.y, rotation.z });
+		auto rotationMat = filmat4::eulerYXZ(rotation.x, rotation.y, rotation.z);
 
-	vec3 = GetWorldPosition();
-	tcm.setTransform(instance, filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z }));
+		vec3 = GetWorldPosition();
+		filmat4 positionMat = filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z });
+
+		auto transformMatrix = positionMat * rotationMat;
+
+		tcm.setTransform(instance, transformMatrix);
+	}
+
 }
 
 bool Transform::HasParent() {
