@@ -9,7 +9,6 @@
 #include "Component.hpp"
 #include <atomic>
 #include <array>
-#include <glm/gtc/type_ptr.hpp>
 #include <unordered_set>
 #include "mathtypes.hpp"
 #include "WeakRef.hpp"
@@ -89,7 +88,6 @@ namespace RavEngine {
 		std::atomic<vector3> position;
 		std::atomic<quaternion> rotation;
 		std::atomic<vector3> scale;
-		//std::atomic<matrix4> matrix;
 
 		utils::Entity filamentEntity;
 
