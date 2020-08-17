@@ -2,7 +2,7 @@
 #include <vector>
 #include "Material.hpp"
 #include <utils/Entity.h>
-#include <math/mat2.h>
+#include <math/mat3.h>
 
 namespace filament {
     class VertexBuffer;
@@ -11,8 +11,7 @@ namespace filament {
 
 
 struct Vertex {
-    filament::math::float2 position;
-    uint32_t color;
+    filament::math::float3 position;
 };
 
 namespace RavEngine {

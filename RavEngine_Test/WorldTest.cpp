@@ -38,6 +38,12 @@ void ExternalLookRight(float f) {
     Ref<TestWorld>(GameplayStatics::currentWorld)->player->LookRight(f);
 }
 
+void SpawnEntities(float f) {
+    if (f > 0.99) {
+        Ref<TestWorld>(GameplayStatics::currentWorld)->Spawn(new TestEntity());
+    }
+}
+
 void TestWorld::posttick(float fpsScale){
     auto pos = player->cameraEntity->transform()->GetWorldPosition();
     auto rot = glm::eulerAngles(player->cameraEntity->transform()->GetWorldRotation()); 
@@ -63,7 +69,7 @@ TestWorld::TestWorld() : World() {
     anonymousChild = new RavEngine::Entity();
     anonymousChild->AddComponent<StaticMesh>(new StaticMesh());
     anonymous->transform()->AddChild(anonymousChild->transform());
-    anonymousChild->transform()->LocalTranslateDelta(vector3(1,0,0));
+    anonymousChild->transform()->LocalTranslateDelta(vector3(3,0,0));
     Spawn(anonymousChild);
 
     //register the systems that are allowed to run in this World
@@ -98,7 +104,7 @@ TestWorld::TestWorld() : World() {
     is->BindAxis("LookUp", ExternalLookUp);
     is->BindAxis("LookRight", ExternalLookRight);
 
-    /*is->BindAxis("SpawnTest", SpawnEntities);
-    is->BindAction("Click", click, ActionState::Released);*/
+    is->BindAxis("SpawnTest", SpawnEntities);
+    //is->BindAction("Click", click, ActionState::Released);
     RavEngine::GameplayStatics::inputManager = is;
 };
