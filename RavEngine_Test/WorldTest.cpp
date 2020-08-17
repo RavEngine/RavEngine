@@ -88,8 +88,8 @@ TestWorld::TestWorld() : World() {
     is->AddAxisMap("MoveRight", SDL_SCANCODE_D);   //go left
     is->AddAxisMap("MoveUp", SDL_SCANCODE_SPACE);
     is->AddAxisMap("MoveUp", SDL_SCANCODE_LSHIFT, -1);
-    is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL);   //turn up
-    is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL);
+    is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL,-1);   //turn up
+    is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL,-1);
     is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
     //bind controls
     is->BindAxis("MoveForward", ExternalMove);

@@ -99,13 +99,12 @@ namespace RavEngine {
 		WeakRef<Transform> parent;	//non-owning
 	};
 
+	/**
+	Construct a transformation matrix out of this transform
+	@return glm matrix representing this transform
+	*/
 	inline matrix4 Transform::GetMatrix() {
-		matrix4 mtx(1);	//identity
-		mtx = glm::scale(mtx, scale.load());
-		mtx *= glm::toMat4(rotation.load());
-		mtx = glm::translate(mtx, position.load());
-
-		return mtx;
+		return glm::translate(matrix4(1), position.load()) * glm::toMat4(rotation.load()) * glm::scale(matrix4(1), scale.load());
 	}
 
 	/**
