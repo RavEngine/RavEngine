@@ -131,7 +131,12 @@ void RavEngine::Transform::Apply()
 		vec3 = GetWorldPosition();
 		const filmat4 positionMat = filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z });
 
-		tcm.setTransform(instance, positionMat * rotationMat * scaleMat);
+		auto finaltransform = filmat4::TMat44();
+		finaltransform = finaltransform * scaleMat;
+		finaltransform = finaltransform * rotationMat;
+		finaltransform = finaltransform * positionMat;
+
+		tcm.setTransform(instance, finaltransform);
 	}
 
 }

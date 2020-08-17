@@ -24,30 +24,6 @@ class TestApp : public RavEngine_App{
 		RavEngine::GameplayStatics::VideoSettings.width = 800;
 		RavEngine::GameplayStatics::VideoSettings.height = 480;
 
-		//setup inputs
-		//setup input
-		Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();
-		//setup control mappings
-		//is->AddAxisMap("MoveForward", SDL_SCANCODE_W);
-		//is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);   //go backwards
-		//is->AddAxisMap("MoveRight", SDL_SCANCODE_A, -1);   //go left
-		//is->AddAxisMap("MoveRight", SDL_SCANCODE_D);   //go left
-		//is->AddAxisMap("MoveUp", SDL_SCANCODE_SPACE);
-		//is->AddAxisMap("MoveUp", SDL_SCANCODE_LSHIFT, -1);
-		//is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL, -1);   //turn up
-		//is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL, -1);
-		//is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
-		////bind controls
-		//is->BindAxis("MoveForward", ExternalMove);
-		//is->BindAxis("MoveRight", ExternalMoveRight);
-		//is->BindAxis("MoveUp", ExternalMoveUp);
-		//is->BindAxis("LookUp", ExternalLookUp);
-		//is->BindAxis("LookRight", ExternalLookRight);
-
-		//is->BindAxis("SpawnTest", SpawnEntities);
-		//is->BindAction("Click", click, ActionState::Released);
-		RavEngine::GameplayStatics::inputManager = is;
-
 		//create a world
 		RavEngine::GameplayStatics::currentWorld = new TestWorld();
 	}

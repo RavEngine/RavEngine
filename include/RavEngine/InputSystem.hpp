@@ -1,8 +1,8 @@
 #pragma once
 #include "SharedObject.hpp"
-//#include <SDL_scancode.h>
-//#include <SDL_mouse.h>
-//#include <SDL_gamecontroller.h>
+#include <SDL_scancode.h>
+#include <SDL_mouse.h>
+#include <SDL_gamecontroller.h>
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
@@ -99,7 +99,7 @@ namespace RavEngine {
             }
         }
 
-        //std::unordered_set<SDL_GameController*> connectedControllers;
+        std::unordered_set<SDL_GameController*> connectedControllers;
 
     public:
         InputSystem();
