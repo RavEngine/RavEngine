@@ -67,6 +67,10 @@ int RavEngine_App::run(int argc, char** argv) {
 			}
 		}
 		GameplayStatics::currentWorld->tick();
+
+#ifdef LIMIT_TICK
+		this_thread::sleep_for(tickrate);
+#endif
 	}
 
     return OnShutdown();
