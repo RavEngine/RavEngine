@@ -45,6 +45,7 @@ public:
 
 	void Tick(float time) override{
 		dt = time;
+		std::cout << print_vec3(cameraEntity->transform()->GetWorldPosition()) << std::endl;
 	}
 
 	PlayerActor() : Entity() {

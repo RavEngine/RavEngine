@@ -19,7 +19,6 @@ using namespace filament::math;
 Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
 	filamentEntity = EntityManager::get().create();
 
-	matrix.store(matrix4(1.0));
 	LocalTranslateDelta(inpos);
 	LocalRotateDelta(inrot);
 	LocalScaleDelta(inscale);
@@ -64,13 +63,14 @@ vector3 Transform::GetWorldPosition()
 	GetParentMatrixStack(translations);
 
 	//apply all the transforms
-	vector4 finalPos(0,0,0,1);
+	matrix4 finalMatrix(1);
 	for (auto& transform : translations) {
-		finalPos = transform * finalPos;
+		finalMatrix *= transform;
 	}
+	finalMatrix *= GetMatrix();
 
 	//finally apply the local matrix
-	return GetMatrix() * finalPos;
+	return finalMatrix * vector4(GetLocalPosition(), 1);
 }
 
 quaternion Transform::GetWorldRotation()
@@ -86,34 +86,14 @@ quaternion Transform::GetWorldRotation()
 	matrix4 finalRot = matrix4(1.0);	//construct identity matrix
 	//apply all the transforms
 	for (auto& transform : rotations) {
-		finalRot = transform * finalRot;
+		finalRot *= transform;
 	}
 
 	//apply local rotation
-	finalRot = glm::toMat4(GetLocalRotation()) * finalRot;
+	finalRot *= glm::toMat4(GetLocalRotation());
 
 	//return the result as a quaternion
 	return glm::toQuat(finalRot);
-}
-
-vector3 Transform::GetWorldScale()
-{
-	return GetLocalScale();
-	//if (!HasParent()) {
-	//	return GetLocalScale();
-	//}
-	////list of transforms
-	//list<matrix4> scales;
-	//GetParentMatrixStack(scales);
-
-	////apply all the transforms
-	//vector4 finalScale(0, 0, 0, 1);
-	//for (auto& transform : scales) {
-	//	finalScale = transform * finalScale;
-	//}
-
-	////finally apply the local matrix
-	//return GetMatrix() * finalScale;
 }
 
 void RavEngine::Transform::Apply()
@@ -121,23 +101,29 @@ void RavEngine::Transform::Apply()
 	auto& tcm = RenderEngine::getEngine()->getTransformManager();
 	auto instance = tcm.getInstance(filamentEntity);
 
-	{
-		vector3 vec3 = GetWorldScale();
-		const auto scaleMat = filmat4::scaling(filvec3{ vec3.x, vec3.y, vec3.z });
+	//the list of transformations to apply
+	list<matrix4> translations;
+	GetParentMatrixStack(translations);
 
-		const auto rotation = glm::eulerAngles(GetWorldRotation());
-		const auto rotationMat = filmat4::eulerYXZ(rotation.x, rotation.y, rotation.z);
-
-		vec3 = GetWorldPosition();
-		const filmat4 positionMat = filmat4::translation(filvec3{ vec3.x, vec3.y, vec3.z });
-
-		auto finaltransform = filmat4::TMat44();
-		finaltransform = finaltransform * scaleMat;
-		finaltransform = finaltransform * rotationMat;
-		finaltransform = finaltransform * positionMat;
-
-		tcm.setTransform(instance, finaltransform);
+	//apply all the transforms
+	matrix4 finalMatrix(1);
+	for (auto& transform : translations) {
+		finalMatrix *= transform;
 	}
+	finalMatrix *= GetMatrix();
+
+	decimalType dArray[16] = { 0.0 };
+
+	const decimalType* pSource = (const decimalType*)glm::value_ptr(finalMatrix);
+	for (int i = 0; i < 16; ++i)
+		dArray[i] = pSource[i];
+
+	//copy glm matrix to filament matrix
+	auto finalTransform = filmat4::TMat44(dArray[0], dArray[1], dArray[2], dArray[3], dArray[4],
+		dArray[5], dArray[6], dArray[7], dArray[8], dArray[9], dArray[10], dArray[11], dArray[12],
+		dArray[13], dArray[14], dArray[15]);
+
+	tcm.setTransform(instance, finalTransform);
 
 }
 
