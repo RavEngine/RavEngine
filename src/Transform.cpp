@@ -3,12 +3,13 @@
 #include <list>
 #include "mathtypes.hpp"
 #include "GameplayStatics.hpp"
-#include <cassert>
 #include <utils/Entity.h>
 #include <utils/EntityManager.h>
 #include <RenderEngine.hpp>
 #include <filament/Engine.h>
 #include <filament/TransformManager.h>
+#include <glm/gtc/type_ptr.hpp>
+
 
 using namespace std;
 using namespace glm;
@@ -119,11 +120,7 @@ void RavEngine::Transform::Apply()
 		dArray[i] = pSource[i];
 
 	//copy glm matrix to filament matrix
-	auto finalTransform = filmat4::TMat44(dArray[0], dArray[1], dArray[2], dArray[3], dArray[4],
-		dArray[5], dArray[6], dArray[7], dArray[8], dArray[9], dArray[10], dArray[11], dArray[12],
-		dArray[13], dArray[14], dArray[15]);
-
-	tcm.setTransform(instance, finalTransform);
+	tcm.setTransform(instance, filmat4(dArray[0], dArray[1], dArray[2], dArray[3], dArray[4], dArray[5], dArray[6], dArray[7], dArray[8], dArray[9], dArray[10], dArray[11], dArray[12], dArray[13], dArray[14], dArray[15]));
 
 }
 
