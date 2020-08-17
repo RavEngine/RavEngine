@@ -51,11 +51,8 @@ namespace RavEngine {
 		quaternion GetWorldRotation();
 
 		vector3 GetLocalScale();
-		vector3 GetWorldScale();
 
-		matrix4 GetMatrix() {
-			return matrix.load();
-		}
+		matrix4 GetMatrix();
 
 		/**
 		Apply cached transformations to filament entity - for internal use only
@@ -87,11 +84,12 @@ namespace RavEngine {
 			return filamentEntity;
 		}
 
+
 	protected:
 		std::atomic<vector3> position;
 		std::atomic<quaternion> rotation;
 		std::atomic<vector3> scale;
-		std::atomic<matrix4> matrix;
+		//std::atomic<matrix4> matrix;
 
 		utils::Entity filamentEntity;
 
@@ -100,6 +98,15 @@ namespace RavEngine {
 		childStore children;		//non-owning
 		WeakRef<Transform> parent;	//non-owning
 	};
+
+	inline matrix4 Transform::GetMatrix() {
+		matrix4 mtx(1);	//identity
+		mtx = glm::scale(mtx, scale.load());
+		mtx *= glm::toMat4(rotation.load());
+		mtx = glm::translate(mtx, position.load());
+
+		return mtx;
+	}
 
 	/**
 	@return the vector pointing in the forward direction of this transform
@@ -129,9 +136,6 @@ namespace RavEngine {
 	inline void Transform::LocalTranslateDelta(const vector3& delta) {
 		//set position value
 		position.store(position.load() + delta);
-
-		//apply transform
-		matrix.store(glm::translate(matrix.load(), delta));
 	}
 
 	/**
@@ -139,13 +143,8 @@ namespace RavEngine {
 	@param newPos the new position of this transform
 	*/
 	inline void Transform::SetLocalPosition(const vector3& newPos) {
-		//apply transform (must translate to origin and then to new position)
-		//auto newMat = glm::translate(matrix.load(), vector3(3, 9, 5));
-		auto newMat = glm::translate(glm::translate(matrix.load(), -position.load()), newPos);	//undo the old move, then do the new move
-
 		//set position value
 		position.store(newPos);
-		matrix.store(newMat);
 	}
 
 	/**
@@ -171,19 +170,6 @@ namespace RavEngine {
 	@param newRot the new rotation to set
 	*/
 	inline void Transform::SetLocalRotation(const quaternion& newRot) {
-		//create transformation matrix back to origin
-		auto pos = GetLocalPosition();
-		matrix4 toOrigin(1), toPos(1);
-		toOrigin = glm::translate(toOrigin, -pos);
-		matrix4 undorotate = glm::toMat4(glm::conjugate(rotation.load()));
-		matrix4 rotate = glm::toMat4(newRot);
-		toPos = glm::translate(toPos, pos);
-
-		//undo the current rotation, then apply the new rotation
-		auto allMatrix = toOrigin * undorotate * rotate * toPos;
-
-		matrix.store(matrix.load() * allMatrix);
-
 		rotation.store(newRot);
 	}
 
@@ -192,18 +178,8 @@ namespace RavEngine {
 	@param delta the change in rotation to apply
 	*/
 	inline void Transform::LocalRotateDelta(const quaternion& delta) {
-		//create transformation matrix back to origin
-		auto pos = GetLocalPosition();
-		matrix4 toOrigin(1), toPos(1);
-		toOrigin = glm::translate(toOrigin, -pos);
-		matrix4 rotate = glm::toMat4(delta);
-		toPos = glm::translate(toPos, pos);
-
-		auto allMatrix = toOrigin * rotate * toPos;
-
-		auto appliedRot = matrix.load() * rotate;
-		matrix.store(matrix.load() * allMatrix);
-		rotation.store(glm::toQuat(appliedRot));
+		//sum two quaternions by multiplying them
+		rotation.store(glm::toQuat(glm::toMat4(rotation.load()) * glm::toMat4(delta)));
 	}
 
 	/**
@@ -230,13 +206,11 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalScale(const vector3& newScale) {
 		//must undo current scale then scale to new size
-		matrix.store(glm::scale(glm::scale(matrix.load(), -scale.load()), newScale));
 		scale.store(newScale);
 	}
 
 	inline void Transform::LocalScaleDelta(const vector3& delta) {
 		scale.store(scale.load() + delta);
-		matrix.store(glm::scale(matrix.load(), delta));
 	}
 
 	inline vector3 Transform::GetLocalPosition()

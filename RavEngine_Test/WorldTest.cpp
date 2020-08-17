@@ -15,6 +15,7 @@
 
 using namespace RavEngine;
 Ref<RavEngine::Entity> anonymous;
+Ref<RavEngine::Entity> anonymousChild;
 
 
 void ExternalMove(float f) {
@@ -45,18 +46,25 @@ void TestWorld::posttick(float fpsScale){
 
     auto rotation = quaternion(vector3(0, 0, 0.01 * fpsScale));
     anonymous->transform()->LocalRotateDelta(rotation);
+    //anonymous->transform()->LocalScaleDelta(vector3(0.01 * fpsScale,0,0));
 }
 
 TestWorld::TestWorld() : World() {
     //spawn player (it will make its camera active)
     Spawn(player);
 
-    player->transform()->LocalTranslateDelta(vector3(1,0,8));
+    player->transform()->LocalTranslateDelta(vector3(0,0,8));
 
     anonymous = new RavEngine::Entity();
     anonymous->AddComponent<StaticMesh>(new StaticMesh());
     Spawn(anonymous);
     anonymous->transform()->LocalTranslateDelta(vector3(0, 1, 0));
+
+    anonymousChild = new RavEngine::Entity();
+    anonymousChild->AddComponent<StaticMesh>(new StaticMesh());
+    anonymous->transform()->AddChild(anonymousChild->transform());
+    anonymousChild->transform()->LocalTranslateDelta(vector3(1,0,0));
+    Spawn(anonymousChild);
 
     //register the systems that are allowed to run in this World
     RegisterSystem(new Skate());
