@@ -16,6 +16,27 @@
 using namespace RavEngine;
 Ref<RavEngine::Entity> anonymous;
 
+
+void ExternalMove(float f) {
+    Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveForward(f);
+}
+
+void ExternalMoveRight(float f) {
+    Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveRight(f);
+}
+
+void ExternalMoveUp(float f) {
+    Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveUp(f);
+}
+
+void ExternalLookUp(float f) {
+    Ref<TestWorld>(GameplayStatics::currentWorld)->player->LookUp(f);
+}
+
+void ExternalLookRight(float f) {
+    Ref<TestWorld>(GameplayStatics::currentWorld)->player->LookRight(f);
+}
+
 void TestWorld::posttick(float fpsScale){
     auto pos = player->cameraEntity->transform()->GetWorldPosition();
     auto rot = glm::eulerAngles(player->cameraEntity->transform()->GetWorldRotation()); 
@@ -49,4 +70,27 @@ TestWorld::TestWorld() : World() {
     //dynamics world must be set in these so that locks can be managed correctly
     plsr->dynamicsWorld = Solver->scene;
     plsw->dynamicsWorld = Solver->scene;
+
+    //setup inputs
+    Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();
+    //setup control mappings
+    is->AddAxisMap("MoveForward", SDL_SCANCODE_W);
+    is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);   //go backwards
+    is->AddAxisMap("MoveRight", SDL_SCANCODE_A, -1);   //go left
+    is->AddAxisMap("MoveRight", SDL_SCANCODE_D);   //go left
+    is->AddAxisMap("MoveUp", SDL_SCANCODE_SPACE);
+    is->AddAxisMap("MoveUp", SDL_SCANCODE_LSHIFT, -1);
+    is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL);   //turn up
+    is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL);
+    is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
+    //bind controls
+    is->BindAxis("MoveForward", ExternalMove);
+    is->BindAxis("MoveRight", ExternalMoveRight);
+    is->BindAxis("MoveUp", ExternalMoveUp);
+    is->BindAxis("LookUp", ExternalLookUp);
+    is->BindAxis("LookRight", ExternalLookRight);
+
+    /*is->BindAxis("SpawnTest", SpawnEntities);
+    is->BindAction("Click", click, ActionState::Released);*/
+    RavEngine::GameplayStatics::inputManager = is;
 };

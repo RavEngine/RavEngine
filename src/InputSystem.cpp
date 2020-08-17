@@ -1,7 +1,7 @@
 
 #include "InputSystem.hpp"
 #include "GameplayStatics.hpp"
-//#include <SDL_events.h>
+#include <SDL_events.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -15,25 +15,25 @@ InputSystem::InputSystem() {
  * Initialize game controller inputs
  */
 void InputSystem::InitGameControllers() {
-    ////setup game controllers
-    //int numControllers = 0;
+    //setup game controllers
+    int numControllers = 0;
 
-    ////determine which are controllers
-    //int numJoysticks = SDL_NumJoysticks();
-    //for (int i = 0; i < numJoysticks; ++i) {
-    //    if (SDL_IsGameController(i)) {
-    //        ++numControllers;
-    //    }
-    //}
+    //determine which are controllers
+    int numJoysticks = SDL_NumJoysticks();
+    for (int i = 0; i < numJoysticks; ++i) {
+        if (SDL_IsGameController(i)) {
+            ++numControllers;
+        }
+    }
 
-    ////register all the controllers
-    //for (int i = 0; i < numControllers; ++i) {
-    //    SDL_GameController* controller = SDL_GameControllerOpen(i);
-    //    if (SDL_GameControllerGetAttached(controller) == 1) {
-    //        connectedControllers.insert(controller);
-    //    }
-    //}
-    //SDL_GameControllerEventState(SDL_ENABLE);
+    //register all the controllers
+    for (int i = 0; i < numControllers; ++i) {
+        SDL_GameController* controller = SDL_GameControllerOpen(i);
+        if (SDL_GameControllerGetAttached(controller) == 1) {
+            connectedControllers.insert(controller);
+        }
+    }
+    SDL_GameControllerEventState(SDL_ENABLE);
 }
 
 void InputSystem::tick() {

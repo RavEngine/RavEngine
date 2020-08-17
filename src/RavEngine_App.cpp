@@ -13,8 +13,8 @@ int RavEngine_App::run(int argc, char** argv) {
 	//invoke startup hook
 	OnStartup(argc, argv);
 
-	auto inputManager = GameplayStatics::inputManager;
 	int width = 0; int height = 0;
+	auto& inputManager = GameplayStatics::inputManager;
     
 	bool exit = false;
 	SDL_Event event;
@@ -66,6 +66,7 @@ int RavEngine_App::run(int argc, char** argv) {
 				break;
 			}
 		}
+		inputManager->tick();
 		GameplayStatics::currentWorld->tick();
 
 #ifdef LIMIT_TICK
