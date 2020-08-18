@@ -11,12 +11,13 @@
 #include "TestEntity.hpp"
 #include "GameplayStatics.hpp"
 #include "PhysicsLinkSystem.hpp"
+#include "PhysicsBodyComponent.hpp"
 #include "StaticMesh.hpp"
 
 using namespace RavEngine;
 Ref<RavEngine::Entity> anonymous;
 Ref<RavEngine::Entity> anonymousChild;
-
+Ref<RavEngine::Entity> floorplane;
 
 void ExternalMove(float f) {
     Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveForward(f);
@@ -73,7 +74,7 @@ TestWorld::TestWorld() : World() {
     Spawn(anonymousChild);
 
     //register the systems that are allowed to run in this World
-    RegisterSystem(new Skate());
+    RegisterSystem(Ref<Skate>(new Skate()));
     
     Ref<PhysicsLinkSystemRead> plsr = new PhysicsLinkSystemRead();
     RegisterSystem(plsr);
@@ -81,9 +82,22 @@ TestWorld::TestWorld() : World() {
     Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
     RegisterSystem(plsw);
 
+
+
     //dynamics world must be set in these so that locks can be managed correctly
     plsr->dynamicsWorld = Solver->scene;
     plsw->dynamicsWorld = Solver->scene;
+
+    floorplane = new RavEngine::Entity();
+    floorplane->AddComponent<StaticMesh>(new StaticMesh());
+    floorplane->transform()->LocalScaleDelta(vector3(10, 0.5, 10));
+    floorplane->transform()->LocalTranslateDelta(vector3(0, -20, 0));
+    auto mat = PhysicsSolver::phys->createMaterial(0.5, 0.5, 0.5);
+    floorplane->AddComponent<RigidBodyStaticComponent>(new RigidBodyStaticComponent());
+    floorplane->AddComponent<BoxCollider>(new BoxCollider(vector3(10, 0.5, 10), mat));
+    //floorplane->AddSystem<PhysicsLinkSystemRead>();
+    floorplane->AddSystem<PhysicsLinkSystemWrite>();
+    Spawn(floorplane);
 
     //setup inputs
     Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();

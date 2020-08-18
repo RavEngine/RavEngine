@@ -20,9 +20,9 @@ using namespace RavEngine;
 
 
 TestEntity::TestEntity() : Entity(){
-    AddSystem<Ref<PhysicsLinkSystemRead>>();
+    AddSystem<PhysicsLinkSystemRead>();
     //AddSystem<SkateRef>();
-    AddSystem<Ref<PhysicsLinkSystemWrite>>();
+    AddSystem<PhysicsLinkSystemWrite>();
 
     //set the filter layers
     auto r = AddComponent<RigidBodyDynamicComponent>(new RigidBodyDynamicComponent(FilterLayers::L0,FilterLayers::L0 | FilterLayers::L1));
@@ -30,7 +30,7 @@ TestEntity::TestEntity() : Entity(){
     //add a box collision to the PhysX component
     physx::PxReal val(0.5);
     auto mat = PhysicsSolver::phys->createMaterial(val,val,val);
-    AddComponent<BoxCollider>(new BoxCollider(vector3(5, 5, 5),mat));
+    AddComponent<BoxCollider>(new BoxCollider(vector3(1, 1, 1),mat));
 
     //default staticmesh
     AddComponent<StaticMesh>(new StaticMesh());
