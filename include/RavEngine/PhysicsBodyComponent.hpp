@@ -17,7 +17,7 @@ namespace RavEngine {
 		physx::PxU32 filterGroup = -1;
 		physx::PxU32 filterMask = -1;
 
-		virtual ~PhysicsBodyComponent() {}
+		virtual ~PhysicsBodyComponent();
 		virtual vector3 getPos();
 		virtual quaternion getRot();
 		virtual void setPos(const vector3&);

@@ -10,6 +10,7 @@
 #include <filament/RenderableManager.h>
 #include "RenderEngine.hpp"
 #include <utils/EntityManager.h>
+#include "filament/Engine.h"
 
 using namespace RavEngine;
 using namespace std;
@@ -41,17 +42,9 @@ static constexpr uint32_t indices[] = {
 	0,4, 1,5, 3,7, 2,6,
 };
 
-
-StaticMesh::StaticMesh() : Component(), material(new Material()) {
-	/*vb = {
-		{{1, 0}, 0xffff0000u},
-		{{cos(M_PI * 2 / 3), sin(M_PI * 2 / 3)}, 0xff00ff00u},
-		{{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
-	};
-
-	ib = { 0, 1, 2 };*/
-
-	//material
+filament::Material* material = nullptr;
+MaterialInstance* materialInstance = nullptr;
+void initMat() {
 	string mat;
 	{
 		auto path = "../deps/filament/filament/generated/material/defaultMaterial.filamat";
@@ -65,13 +58,30 @@ StaticMesh::StaticMesh() : Component(), material(new Material()) {
 		mat = buffer.str();
 	}
 
+	material = filament::Material::Builder()
+		.package((void*)mat.c_str(), mat.size())
+		.build(*RenderEngine::getEngine());
+	materialInstance = material->createInstance();
+}
+
+
+StaticMesh::StaticMesh() : Component(), material(new Material()) {
+	/*vb = {
+		{{1, 0}, 0xffff0000u},
+		{{cos(M_PI * 2 / 3), sin(M_PI * 2 / 3)}, 0xff00ff00u},
+		{{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
+	};
+
+	ib = { 0, 1, 2 };*/
+
+	//material
+	if (materialInstance == nullptr) {
+		initMat();
+	}
+
+
 	auto filamentEngine = RenderEngine::getEngine();
 	renderable = utils::EntityManager::get().create();
-
-	filament::Material* material = filament::Material::Builder()
-		.package((void*)mat.c_str(), mat.size())
-		.build(*filamentEngine);
-	MaterialInstance* materialInstance = material->createInstance();
 
 	auto vertexBuffer = VertexBuffer::Builder()
 		.vertexCount(8)
@@ -99,6 +109,14 @@ StaticMesh::StaticMesh() : Component(), material(new Material()) {
 		.priority(7)
 		.culling(true)
 		.build(*filamentEngine, renderable);
+}
+
+RavEngine::StaticMesh::~StaticMesh()
+{
+	auto engine = RenderEngine::getEngine();
+	engine->destroy(fvb);
+	engine->destroy(fib);
+	engine->destroy(renderable);
 }
 
 void RavEngine::StaticMesh::AddHook(const WeakRef<RavEngine::Entity>& e)
