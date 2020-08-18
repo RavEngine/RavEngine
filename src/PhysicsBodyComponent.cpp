@@ -9,26 +9,28 @@
 using namespace physx;
 using namespace RavEngine;
 
+/// Dynamic Body ========================================
+
 RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
 	rigidActor = PhysicsSolver::phys->createRigidDynamic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
 	RegisterAllAlternateTypes();
 }
 
-vector3 RigidBodyDynamicComponent::getPos() {
+vector3 PhysicsBodyComponent::getPos() {
 	auto pos = rigidActor->getGlobalPose();
 	return vector3(pos.p.x, pos.p.y, pos.p.z);
 }
 
-void RigidBodyDynamicComponent::setPos(const vector3& pos) {
+void PhysicsBodyComponent::setPos(const vector3& pos) {
 	rigidActor->setGlobalPose(PxTransform(PxVec3(pos.x, pos.y, pos.z),rigidActor->getGlobalPose().q));
 }
 
-quaternion RigidBodyDynamicComponent::getRot() {
+quaternion PhysicsBodyComponent::getRot() {
 	auto rot = rigidActor->getGlobalPose();
 	return quaternion(vector3(rot.q.x,rot.q.y,rot.q.z));
 }
 
-void RigidBodyDynamicComponent::setRot(const quaternion& quat) {
+void PhysicsBodyComponent::setRot(const quaternion& quat) {
 	rigidActor->setGlobalPose(PxTransform(rigidActor->getGlobalPose().p,PxQuat(quat.x,quat.y,quat.z,quat.w)));
 }
 
@@ -51,4 +53,16 @@ void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent* other)
 void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
 {
 	Ref<RavEngine::Entity>(owner)->OnColliderExit(other);
+}
+
+/// Static Body ========================================
+RigidBodyStaticComponent::RigidBodyStaticComponent() {
+	rigidActor = PhysicsSolver::phys->createRigidStatic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
+	RegisterAllAlternateTypes();
+}
+
+RigidBodyStaticComponent::~RigidBodyStaticComponent() {
+	if (rigidActor != nullptr) {
+		rigidActor->release();
+	}
 }

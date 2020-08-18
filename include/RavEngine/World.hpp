@@ -59,10 +59,10 @@ namespace RavEngine {
 
 		//initialize in
 
-		template<class ref>
-		void RegisterSystem(ref r_instance) {
+		template<class T>
+		void RegisterSystem(Ref<T> r_instance) {
 			//static_assert(std::is_convertible<ref, SystemRef>::value, "Must be a System Reference");
-			Systems.insert(std::make_pair(std::type_index(typeid(ref)), r_instance));
+			Systems.insert(std::make_pair(std::type_index(typeid(T)), r_instance));
 		}
 
 	public:

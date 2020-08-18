@@ -18,10 +18,10 @@ namespace RavEngine {
 		physx::PxU32 filterMask = -1;
 
 		virtual ~PhysicsBodyComponent() {}
-		virtual vector3 getPos() = 0;
-		virtual quaternion getRot() = 0;
-		virtual void setPos(const vector3&) = 0;
-		virtual void setRot(const quaternion&) = 0;
+		virtual vector3 getPos();
+		virtual quaternion getRot();
+		virtual void setPos(const vector3&);
+		virtual void setRot(const quaternion&);
 
 		void OnColliderEnter(PhysicsBodyComponent* other);
 
@@ -37,27 +37,22 @@ namespace RavEngine {
 			this->filterGroup = fg; this->filterMask = fm;
 		}
 		virtual ~RigidBodyDynamicComponent();
-		vector3 getPos() override;
-		quaternion getRot() override;
-		virtual void setPos(const vector3&) override;
-		virtual void setRot(const quaternion&) override;
 
 		void RegisterAllAlternateTypes() override {
 			RegisterAlternateQueryType<PhysicsBodyComponent>();
 		}
 	};
 
-	//class RigidBodyStatic : public PhysicsBody {
-	//protected:
-	//	physx::PxRigidStatic* rigidStatic;
-	//public:
-	//	virtual ~RigidBodyStatic();
-	//	Vector3 getPos() override;
-	//	Quaternion getRot() override;
-	//	virtual void setPos(const Vector3&);
-	//	virtual void setRot(const Quaternion&);
-	//};
+	class RigidBodyStaticComponent : public PhysicsBodyComponent {
+	public:
+		RigidBodyStaticComponent();
+		virtual ~RigidBodyStaticComponent();
+		RigidBodyStaticComponent(physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent() {
+			this->filterGroup = fg; this->filterMask = fm;
+		}
 
-	//soft body?
-
+		void RegisterAllAlternateTypes() override {
+			RegisterAlternateQueryType<PhysicsBodyComponent>();
+		}
+	};
 }

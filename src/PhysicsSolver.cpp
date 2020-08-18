@@ -173,7 +173,7 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
  @param deltaTime the scale factor to apply
  */
 void PhysicsSolver::Tick(float deltaTime){
-    scene->simulate(deltaTime);
+    scene->simulate(deltaTime / 10);
     scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
 }
 
