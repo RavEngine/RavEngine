@@ -10,8 +10,11 @@
 #include "Entity.hpp"
 #include "PhysicsBodyComponent.hpp"
 #include "WeakRef.hpp"
+#include "PhysicsMaterial.hpp"
 
 class TestEntity : public RavEngine::Entity{
+protected:
+    static Ref<RavEngine::PhysicsMaterial> sharedMat;
 public:
     TestEntity();
     void Tick(float scale) override;

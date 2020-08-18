@@ -153,5 +153,10 @@ namespace RavEngine {
 		 */
 		virtual void Tick(float timeScale) {};
 
+		/**
+		Remove this entity from the world. If there are no more references, it will be destroyed.
+		*/
+		void Destroy();
+
 	};
 }

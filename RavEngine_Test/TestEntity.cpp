@@ -18,6 +18,7 @@ using namespace std;
 using namespace physx;
 using namespace RavEngine;
 
+Ref<RavEngine::PhysicsMaterial> TestEntity::sharedMat;
 
 TestEntity::TestEntity() : Entity(){
     AddSystem<PhysicsLinkSystemRead>();
@@ -28,20 +29,23 @@ TestEntity::TestEntity() : Entity(){
     auto r = AddComponent<RigidBodyDynamicComponent>(new RigidBodyDynamicComponent(FilterLayers::L0,FilterLayers::L0 | FilterLayers::L1));
 
     //add a box collision to the PhysX component
-    physx::PxReal val(0.5);
-    auto mat = PhysicsSolver::phys->createMaterial(val,val,val);
-    AddComponent<BoxCollider>(new BoxCollider(vector3(1, 1, 1),mat));
+    if (sharedMat.isNull()) {
+        sharedMat = new PhysicsMaterial(0.5, 0.5, 0.5);
+    }
+    AddComponent<BoxCollider>(new BoxCollider(vector3(1, 1, 1),sharedMat));
 
     //default staticmesh
     AddComponent<StaticMesh>(new StaticMesh());
 }
 
 void TestEntity::Tick(float scale) {
-   /* auto vec = transform()->position.load();
-    cout << vec.X << " " << vec.Y << " " << vec.Z << endl;*/
+
+    //delete entities below y=-30
+    if (transform()->GetWorldPosition().y < -30) {
+        Destroy();
+    }
 }
 
 void TestEntity::OnColliderEnter(const WeakRef<PhysicsBodyComponent>& other)
 {
-    cout << this << " collided with " << other.get() << endl;
 }

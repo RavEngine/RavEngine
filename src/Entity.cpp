@@ -17,6 +17,9 @@ Ref<Transform> RavEngine::Entity::transform(){
 	return components.GetComponent<Transform>();
 }
 
+void Entity::Destroy() {
+	Ref<World>(GetWorld())->Destroy(this);
+}
 
 RavEngine::Entity::Entity(){
 	AddComponent<Transform>(new Transform());
