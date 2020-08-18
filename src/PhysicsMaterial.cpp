@@ -1,4 +1,5 @@
 #include "PhysicsMaterial.hpp"
+#include "PhysXDefines.h"
 #include <PxMaterial.h>
 #include "PhysicsSolver.hpp"
 
