@@ -16,6 +16,14 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
 	RegisterAllAlternateTypes();
 }
 
+RavEngine::PhysicsBodyComponent::~PhysicsBodyComponent()
+{
+	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
+	if (rigidActor != nullptr) {
+		rigidActor->release();
+	}
+}
+
 vector3 PhysicsBodyComponent::getPos() {
 	auto pos = rigidActor->getGlobalPose();
 	return vector3(pos.p.x, pos.p.y, pos.p.z);
@@ -35,9 +43,7 @@ void PhysicsBodyComponent::setRot(const quaternion& quat) {
 }
 
 RigidBodyDynamicComponent::~RigidBodyDynamicComponent() {
-	if (rigidActor != nullptr) {
-		rigidActor->release();
-	}
+	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it.
 }
 
 void PhysicsBodyComponent::OnColliderEnter(PhysicsBodyComponent* other)
@@ -62,7 +68,5 @@ RigidBodyStaticComponent::RigidBodyStaticComponent() {
 }
 
 RigidBodyStaticComponent::~RigidBodyStaticComponent() {
-	if (rigidActor != nullptr) {
-		rigidActor->release();
-	}
+	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
 }

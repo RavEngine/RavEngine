@@ -166,6 +166,8 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
     auto body = e->Components().GetComponent<PhysicsBodyComponent>();
     objects.remove(body);
     scene->removeActor(*(body->rigidActor));
+    body->rigidActor->release();
+    body->rigidActor = nullptr;
 }
 
 /**

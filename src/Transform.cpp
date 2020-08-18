@@ -17,6 +17,11 @@ using namespace RavEngine;
 using namespace utils;
 using namespace filament::math;
 
+RavEngine::Transform::~Transform()
+{
+	RenderEngine::getEngine()->destroy(filamentEntity);
+}
+
 Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
 	filamentEntity = EntityManager::get().create();
 

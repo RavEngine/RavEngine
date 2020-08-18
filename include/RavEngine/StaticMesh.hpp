@@ -18,6 +18,7 @@ namespace RavEngine {
     class StaticMesh : public Component {
     public:
         StaticMesh();
+        virtual ~StaticMesh();
 
         /**
         Assign a material to this staticmesh

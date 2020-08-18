@@ -8,17 +8,23 @@
 #include "mathtypes.hpp"
 #include "PhysicsMaterial.hpp"
 
+namespace physx {
+	class PxShape;
+}
+
 namespace RavEngine {
 	class Entity;
 	class PhysicsCollider : public Component
 	{
+	protected:
+		physx::PxShape* collider = nullptr;
 	public:
 		enum class CollisionType { Trigger, Collider };
 
 		bool eventsEnabled;
 		CollisionType Type;
 
-		virtual ~PhysicsCollider() {}
+		virtual ~PhysicsCollider();
 	};
 
 
