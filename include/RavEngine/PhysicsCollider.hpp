@@ -6,6 +6,7 @@
 #include <PxSimulationEventCallback.h>
 #include <iostream>
 #include "mathtypes.hpp"
+#include "PhysicsMaterial.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -24,7 +25,7 @@ namespace RavEngine {
 	class BoxCollider : public PhysicsCollider {
 	protected:
 		vector3 extent;
-		physx::PxMaterial* material = nullptr;
+		Ref<PhysicsMaterial> material;
 	public:
 
 		virtual ~BoxCollider() {}
@@ -35,7 +36,7 @@ namespace RavEngine {
 		 * @param ext the dimensions of the collider
 		 * @param mat the physics material to assign
 		 */
-		BoxCollider(const vector3& ext, physx::PxMaterial* mat, CollisionType contact = CollisionType::Collider, bool trigger = false) : BoxCollider() {
+		BoxCollider(const vector3& ext, Ref<PhysicsMaterial> mat, CollisionType contact = CollisionType::Collider, bool trigger = false) : BoxCollider() {
 			extent = ext;
 			material = mat;
 			Type = contact;

@@ -13,6 +13,7 @@
 #include "PhysicsLinkSystem.hpp"
 #include "PhysicsBodyComponent.hpp"
 #include "StaticMesh.hpp"
+#include "PhysicsMaterial.hpp"
 
 using namespace RavEngine;
 Ref<RavEngine::Entity> anonymous;
@@ -92,9 +93,8 @@ TestWorld::TestWorld() : World() {
     floorplane->AddComponent<StaticMesh>(new StaticMesh());
     floorplane->transform()->LocalScaleDelta(vector3(10, 0.5, 10));
     floorplane->transform()->LocalTranslateDelta(vector3(0, -20, 0));
-    auto mat = PhysicsSolver::phys->createMaterial(0.5, 0.5, 0.5);
     floorplane->AddComponent<RigidBodyStaticComponent>(new RigidBodyStaticComponent());
-    floorplane->AddComponent<BoxCollider>(new BoxCollider(vector3(10, 0.5, 10), mat));
+    floorplane->AddComponent<BoxCollider>(new BoxCollider(vector3(10, 0.5, 10), new PhysicsMaterial(0.5,0.5,0.5)));
     //floorplane->AddSystem<PhysicsLinkSystemRead>();
     floorplane->AddSystem<PhysicsLinkSystemWrite>();
     Spawn(floorplane);
