@@ -27,7 +27,7 @@ void PhysicsBodyComponent::setPos(const vector3& pos) {
 
 quaternion PhysicsBodyComponent::getRot() {
 	auto rot = rigidActor->getGlobalPose();
-	return quaternion(vector3(rot.q.x,rot.q.y,rot.q.z));
+	return quaternion(rot.q.w, rot.q.x,rot.q.y,rot.q.z);
 }
 
 void PhysicsBodyComponent::setRot(const quaternion& quat) {
