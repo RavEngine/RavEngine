@@ -43,7 +43,7 @@ static constexpr uint32_t indices[] = {
 };
 
 filament::Material* material = nullptr;
-MaterialInstance* materialInstance = nullptr;
+filament::MaterialInstance* materialInstance = nullptr;
 void initMat() {
 	string mat;
 	{
@@ -65,7 +65,7 @@ void initMat() {
 }
 
 
-StaticMesh::StaticMesh() : Component(), material(new Material()) {
+StaticMesh::StaticMesh() : Component() {
 	/*vb = {
 		{{1, 0}, 0xffff0000u},
 		{{cos(M_PI * 2 / 3), sin(M_PI * 2 / 3)}, 0xff00ff00u},
