@@ -25,22 +25,22 @@ namespace RavEngine {
         @param mat the material instance to assign
         */
         void SetMaterial(Ref<Material> mat) {
-            material = mat;
+            //material = mat;
         }
 
         /**
         @returns the currently assigned material
         */
-        Ref<Material> GetMaterial() {
+        /*Ref<Material> GetMaterial() {
             return material;
-        }
+        }*/
 
         void AddHook(const WeakRef<RavEngine::Entity>&) override;
 
     protected:
 
         //the default material
-        Ref<Material> material;
+        //Ref<Material> material;
 
         //index and vertex buffers, stores actual data
         std::vector<Vertex> vb;
