@@ -19,6 +19,7 @@ int RavEngine_App::run(int argc, char** argv) {
 	bool exit = false;
 	SDL_Event event;
 	while (!exit) {
+		auto windowflags = SDL_GetWindowFlags(RenderEngine::GetWindow());
 		while (SDL_PollEvent(&event)) {
 
 			switch (event.type) {
@@ -46,11 +47,15 @@ int RavEngine_App::run(int argc, char** argv) {
 				inputManager->SDL_key(event.key.state, event.key.keysym.scancode);
 				break;
 			case SDL_MOUSEMOTION:
-				inputManager->SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel);
+				if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
+					inputManager->SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel);
+				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 			case SDL_MOUSEBUTTONUP:
-				inputManager->SDL_mousekey(event.button.state, event.button.button);
+				if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
+					inputManager->SDL_mousekey(event.button.state, event.button.button);
+				}
 				break;
 			case SDL_CONTROLLERAXISMOTION:
 			case SDL_CONTROLLER_AXIS_LEFTX:
