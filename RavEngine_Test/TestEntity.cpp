@@ -40,9 +40,9 @@ TestEntity::TestEntity() : Entity(){
     if (sharedMatInstance.isNull()) {
         Ref<Material> defaultMat = new RavEngine::Material();
         sharedMatInstance = new MaterialInstance(defaultMat);
+
     }
     mesh->SetMaterial(sharedMatInstance);
-
 }
 
 void TestEntity::Tick(float scale) {
