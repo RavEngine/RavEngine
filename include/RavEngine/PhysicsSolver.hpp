@@ -54,6 +54,9 @@ namespace RavEngine {
         virtual void onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count) override;
         virtual void onAdvance(const physx::PxRigidBody* const* bodyBuffer, const physx::PxTransform* poseBuffer, const physx::PxU32 count) override {}
 
+        // If deltatime > this value, the system will substep
+        const float max_step_time = 0.03333;
+
     public:
         //for sharedobject
         virtual ~PhysicsSolver();
