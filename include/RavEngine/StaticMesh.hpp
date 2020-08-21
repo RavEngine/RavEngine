@@ -24,9 +24,7 @@ namespace RavEngine {
         Assign a material to this staticmesh
         @param mat the material instance to assign
         */
-        void SetMaterial(Ref<Material> mat) {
-            //material = mat;
-        }
+        void SetMaterial(Ref<MaterialInstance<Material>> mat);
 
         /**
         @returns the currently assigned material
@@ -40,7 +38,7 @@ namespace RavEngine {
     protected:
 
         //the default material
-        //Ref<Material> material;
+        Ref<MaterialInstance<Material>> material;
 
         //index and vertex buffers, stores actual data
         std::vector<Vertex> vb;

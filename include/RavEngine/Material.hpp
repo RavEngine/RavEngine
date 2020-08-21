@@ -1,14 +1,47 @@
-
+#pragma once
 #include "SharedObject.hpp"
+#include "RenderEngine.hpp"
+#include "filament/Engine.h"
 #include <unordered_map>
 #include <mutex>
 
+namespace filament {
+	class Material;
+	class MaterialInstance;
+}
+
 namespace RavEngine {
 	/**
-	Represents an instance of a material. Instances can be changed independently of one another, and are assigned to objects
+	Represents an instance of a material. Instances can be changed independently of one another, and are assigned to objects.
+	Subclass to expose more options.
 	*/
-	class MaterialInstance : public SharedObject {
 
+	template<class T>
+	class MaterialInstance : public SharedObject {
+	public:
+		MaterialInstance() {}
+
+		~MaterialInstance() {
+			RenderEngine::getEngine()->destroy(filamentInstance);
+		}
+
+		bool isNull() { return material.isNull(); }
+
+		/**
+		Create an instance of a material.
+		*/
+		MaterialInstance(Ref<T> mat) {
+			static_assert(std::is_base_of<T, RavEngine::Material>::value, "T is not a subclass of Material");
+			material = mat;
+			filamentInstance = material->makeInstance();
+		}
+
+		filament::MaterialInstance* const getFilamentInstance() {
+			return filamentInstance;
+		}
+	protected:
+		Ref<T> material;
+		filament::MaterialInstance* filamentInstance;
 	};
 
 	/**
@@ -23,12 +56,20 @@ namespace RavEngine {
 		*/
 		Material();
 
+		~Material();
+
 		const std::string& GetName() {
 			return name;
 		}
 
+		/**
+		@returns the filament material. For internal use only.
+		*/
+		filament::MaterialInstance* const makeInstance();
+
 	protected:
 		std::string name;
+		filament::Material* filamentMaterial;
 
 		//create a material from a filament shader
 		//trying to create a material that already exists will throw an exception
@@ -61,6 +102,6 @@ namespace RavEngine {
 		static void UnregisterMaterialByName(const std::string&);
 
 		//for internal use only
-		static void RegisterMaterial(Ref<Material>);
+		static void RegisterMaterial(Ref<RavEngine::Material>);
 	};
 }
