@@ -19,6 +19,7 @@ using namespace physx;
 using namespace RavEngine;
 
 Ref<RavEngine::PhysicsMaterial> TestEntity::sharedMat;
+Ref<RavEngine::MaterialInstance<RavEngine::Material>> TestEntity::sharedMatInstance;
 
 TestEntity::TestEntity() : Entity(){
     AddSystem<PhysicsLinkSystemRead>();
@@ -35,7 +36,13 @@ TestEntity::TestEntity() : Entity(){
     AddComponent<BoxCollider>(new BoxCollider(vector3(1, 1, 1),sharedMat));
 
     //default staticmesh
-    AddComponent<StaticMesh>(new StaticMesh());
+    auto mesh = AddComponent<StaticMesh>(new StaticMesh());
+    if (sharedMatInstance.isNull()) {
+        Ref<Material> defaultMat = new RavEngine::Material();
+        sharedMatInstance = new MaterialInstance(defaultMat);
+    }
+    mesh->SetMaterial(sharedMatInstance);
+
 }
 
 void TestEntity::Tick(float scale) {

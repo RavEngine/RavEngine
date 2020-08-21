@@ -2,6 +2,9 @@
 #include "Material.hpp"
 #include <sstream>
 #include <fstream>
+#include <RenderEngine.hpp>
+#include <filament/Engine.h>
+#include <filament/Material.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -9,18 +12,50 @@ using namespace RavEngine;
 MaterialManager::MaterialStore MaterialManager::materials;
 mutex MaterialManager::mtx;
 
+string defaultMatPath() {
+	auto path = "../deps/filament/filament/generated/material/defaultMaterial.filamat";
+#ifdef _WIN32
+	path += 3;
+#endif
+	return path;
+}
+
+filament::MaterialInstance* const RavEngine::Material::makeInstance()
+{
+	return filamentMaterial->createInstance();
+}
+
 /**
 Create a material given a shader. Also registers it in the material manager
 @param shader the path to the Filament shader
 */
-Material::Material(const std::string& shader, const std::string& name) : name(name) {
+Material::Material(const std::string& shaderPath, const std::string& name) : name(name) {
+	//check if material is already loaded
+	if (MaterialManager::HasMaterialByName(name)) {
+		throw new runtime_error("Material with name " + name + "is already allocated! Use GetMaterialByName to get it.");
+	}
+
 	//load material
+	ifstream fin(shaderPath, ios::binary);
+	assert(fin.good());	//ensure file exists
+	ostringstream buffer;
+	buffer << fin.rdbuf();
+	auto shaderData = buffer.str();
+
+	filamentMaterial = filament::Material::Builder()
+		.package((void*)shaderData.c_str(), shaderData.size())
+		.build(*RenderEngine::getEngine());
 
 	//register material
 	MaterialManager::RegisterMaterial(this);
 }
 
-Material::Material() : Material("path/to/defaultmat","defaultMaterial") {}
+Material::Material() : Material(defaultMatPath(),"defaultMaterial") {}
+
+Material::~Material() {
+	//destroy the filament material
+	RavEngine::RenderEngine::getEngine()->destroy(filamentMaterial);
+}
 
 /**
 @returns if a material with the given name has been loaded.

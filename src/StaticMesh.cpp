@@ -42,28 +42,6 @@ static constexpr uint32_t indices[] = {
 	0,4, 1,5, 3,7, 2,6,
 };
 
-filament::Material* material = nullptr;
-filament::MaterialInstance* materialInstance = nullptr;
-void initMat() {
-	string mat;
-	{
-		auto path = "../deps/filament/filament/generated/material/defaultMaterial.filamat";
-#ifdef _WIN32
-		path += 3;
-#endif
-		ifstream fin(path, ios::binary);
-		assert(fin.good());	//ensure file exists
-		ostringstream buffer;
-		buffer << fin.rdbuf();
-		mat = buffer.str();
-	}
-
-	material = filament::Material::Builder()
-		.package((void*)mat.c_str(), mat.size())
-		.build(*RenderEngine::getEngine());
-	materialInstance = material->createInstance();
-}
-
 
 StaticMesh::StaticMesh() : Component() {
 	/*vb = {
@@ -73,11 +51,6 @@ StaticMesh::StaticMesh() : Component() {
 	};
 
 	ib = { 0, 1, 2 };*/
-
-	//material
-	if (materialInstance == nullptr) {
-		initMat();
-	}
 
 
 	auto filamentEngine = RenderEngine::getEngine();
@@ -104,7 +77,6 @@ StaticMesh::StaticMesh() : Component() {
 	RenderableManager::Builder(1)
 		.boundingBox({ { 0, 0, 0 },
 					  { 1, 1, 1 } })
-		.material(0, materialInstance)
 		.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBuffer, indexBuffer, 0, 3 * 2 * 6)
 		.priority(7)
 		.culling(true)
@@ -117,6 +89,13 @@ RavEngine::StaticMesh::~StaticMesh()
 	engine->destroy(fvb);
 	engine->destroy(fib);
 	engine->destroy(renderable);
+}
+
+void RavEngine::StaticMesh::SetMaterial(Ref<MaterialInstance<Material>> mat)
+{
+	auto inst = RavEngine::RenderEngine::getEngine()->getRenderableManager().getInstance(renderable);
+	RavEngine::RenderEngine::getEngine()->getRenderableManager().setMaterialInstanceAt(inst, 0, mat->getFilamentInstance());
+	material = mat;
 }
 
 void RavEngine::StaticMesh::AddHook(const WeakRef<RavEngine::Entity>& e)
