@@ -175,8 +175,14 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
  @param deltaTime the scale factor to apply
  */
 void PhysicsSolver::Tick(float deltaTime){
-    scene->simulate(deltaTime / 20);
-    scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
+
+    //physics substepping
+    int nsteps = ceil((deltaTime / 20) / max_step_time);
+    float step_time = (deltaTime / 20) / nsteps;
+    for (int i = 0; i < nsteps; i++) {
+        scene->simulate(step_time);
+        scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
+    }
 }
 
 //constructor which configures PhysX
