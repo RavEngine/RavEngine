@@ -11,6 +11,7 @@ namespace filament {
 }
 
 namespace RavEngine {
+	class Material;
 	/**
 	Represents an instance of a material. Instances can be changed independently of one another, and are assigned to objects.
 	Subclass to expose more options.
