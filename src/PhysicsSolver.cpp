@@ -137,6 +137,14 @@ void PhysicsSolver::ReleaseStatics() {
     PX_RELEASE(foundation);
 }
 
+bool RavEngine::PhysicsSolver::Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit)
+{
+    PxRaycastBuffer hit;
+    bool result = scene->raycast(PxVec3(origin.x, origin.y, origin.z), PxVec3(direction.x, direction.y, direction.z), maxDistance, hit);
+
+    return result;
+}
+
 
 /**
  Make the physics system aware of an object

@@ -68,5 +68,20 @@ namespace RavEngine {
         void Tick(float deltaTime);
 
         static void ReleaseStatics();
+
+        //scene query methods
+        struct RaycastHit {
+          
+        };
+
+        /**
+        Perform a raycast in the scene.
+        @param origin the starting point of the vector
+        @param direction the direction to continue the vector
+        @param maxDistance the distance to continue the cast
+        @param out_hit the RaycastHit to write the data into
+        @returns true if the Raycast hit, false otherwise
+        */
+        bool Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit);
     };
 }
