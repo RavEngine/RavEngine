@@ -9,6 +9,9 @@ class ThreadPool {
 public:
     explicit ThreadPool() : ThreadPool(std::thread::hardware_concurrency()) {};
     explicit ThreadPool(size_t);
+    size_t NumThreads() {
+        return workers.size();
+    }
     template<class F, class... Args>
     decltype(auto) enqueue(F&& f, Args&&... args);
     ~ThreadPool();
