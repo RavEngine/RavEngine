@@ -23,10 +23,43 @@ namespace RavEngine {
 		virtual void setPos(const vector3&);
 		virtual void setRot(const quaternion&);
 
+		void SetGravityEnabled(bool);
+
+		/**
+		@returns true if gravity is enabled
+		*/
+		bool GetGravityEnabled();
+
+		void SetSleepNotificationsEnabled(bool);
+
+		/**
+		Returns true if sleep / wake notifications are enabled.
+		*/
+		bool GetSleepNotificationsEnabled();
+
+		void SetSimulationEnabled(bool);
+
+		/**
+		@returns true if simulation is enabled.
+		*/
+		bool GetSimulationEnabled();
+
+		/**
+		Invoked when a collider begins colliding with another body
+		@param other the second body
+		*/
 		void OnColliderEnter(PhysicsBodyComponent* other);
 
+		/**
+		Invoked when a collider has collided with another body for multiple frames
+		@param other the second body
+		*/
 		void OnColliderPersist(PhysicsBodyComponent* other);
 
+		/**
+		Invoked when a collider has exited another collider
+		@param other the second body
+		*/
 		void OnColliderExit(PhysicsBodyComponent* other);
 	};
 
@@ -41,6 +74,35 @@ namespace RavEngine {
 		void RegisterAllAlternateTypes() override {
 			RegisterAlternateQueryType<PhysicsBodyComponent>();
 		}
+		
+		/**
+		@returns the body's current linear velocity
+		*/
+		vector3 GetLinearVelocity();
+
+		/**
+		@returns the current body's angular velocity in euler angles
+		*/
+		vector3 GetAngularVelocity();
+
+		void SetLinearVelocity(const vector3&, bool);
+
+		void SetAngularVelocity(const vector3&, bool);
+
+		/**
+		Wake the body
+		*/
+		void Wake();
+
+		/**
+		Put the body to sleep
+		*/
+		void Sleep();
+
+		/**
+		@return true if the body is asleep.
+		*/
+		bool IsSleeping();
 	};
 
 	class RigidBodyStaticComponent : public PhysicsBodyComponent {

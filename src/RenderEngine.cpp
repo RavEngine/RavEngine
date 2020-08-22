@@ -142,7 +142,7 @@ void RenderEngine::Draw(){
 	for (auto& entity : entitylist) {
 		entity->transform()->Apply();
     }
-	
+
 
 	if (filamentRenderer->beginFrame(filamentSwapChain)) {
 		// for each View

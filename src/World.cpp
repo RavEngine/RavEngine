@@ -151,11 +151,11 @@ void RavEngine::World::tick(float fpsScale) {
 #define THREADPOOL
 #if defined THREADPOOL
 	//determine the iterators (TODO: meet in the middle on 2 threads)
-	list<EntityStore::iterator> iterators;
+	vector<EntityStore::iterator> iterators(numthreads);
 	{
 		auto it = Entities.begin();
 		for (int i = 0; i < numthreads; ++i) {
-			iterators.push_back(it);
+			iterators[i] = it;
 
 			//advance the iterator to the appropriate part of the list for the next thread
 			for (int k = 0; k < tasksPerThread && it != Entities.end(); ++k) {
@@ -165,9 +165,11 @@ void RavEngine::World::tick(float fpsScale) {
 	}
 	
 	//enqueue the tasks
-	list<future<void>> tasks;
+	vector<future<void>> tasks(iterators.size());
+	int count = 0;
 	for (const auto& begin_it : iterators) {
-		tasks.push_back(threadpool.enqueue([&] {ticker(begin_it); }));
+		tasks[count] = threadpool.enqueue([&] {ticker(begin_it); });
+		++count;
 	}
 
 	//get the results by waiting for all tasks to complete

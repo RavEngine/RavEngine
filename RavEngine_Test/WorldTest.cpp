@@ -46,6 +46,11 @@ void SpawnEntities(float f) {
     }
 }
 
+void ResetCamera() {
+    Ref<TestWorld>(GameplayStatics::currentWorld)->player->transform()->SetWorldPosition(vector3(0, -10, 50));
+    Ref<TestWorld>(GameplayStatics::currentWorld)->player->transform()->SetWorldRotation(quaternion());
+}
+
 void TestWorld::posttick(float fpsScale){
     auto pos = player->cameraEntity->transform()->GetWorldPosition();
     auto rot = glm::eulerAngles(player->cameraEntity->transform()->GetWorldRotation()); 
@@ -61,7 +66,7 @@ TestWorld::TestWorld() : World() {
     //spawn player (it will make its camera active)
     Spawn(player);
 
-    player->transform()->LocalTranslateDelta(vector3(0,0,8));
+    player->transform()->LocalTranslateDelta(vector3(0,-10,50));
 
     anonymous = new RavEngine::Entity();
     anonymous->AddComponent<StaticMesh>(new StaticMesh());
@@ -111,6 +116,7 @@ TestWorld::TestWorld() : World() {
     is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL,-1);   //turn up
     is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL,-1);
     is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
+    is->AddActionMap("ResetCam", SDL_SCANCODE_R);
     //bind controls
     is->BindAxis("MoveForward", ExternalMove);
     is->BindAxis("MoveRight", ExternalMoveRight);
@@ -119,6 +125,7 @@ TestWorld::TestWorld() : World() {
     is->BindAxis("LookRight", ExternalLookRight);
 
     is->BindAxis("SpawnTest", SpawnEntities);
+    is->BindAction("ResetCam", ResetCamera, ActionState::Pressed);
     //is->BindAction("Click", click, ActionState::Released);
     RavEngine::GameplayStatics::inputManager = is;
 };
