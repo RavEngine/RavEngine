@@ -21,8 +21,27 @@ namespace RavEngine {
 	public:
 		enum class CollisionType { Trigger, Collider };
 
-		bool eventsEnabled;
-		CollisionType Type;
+		/**
+		Set the state to collider or trigger.
+		@param the new state
+		*/
+		void SetType(CollisionType);
+
+		/**
+		@returns if the current collider is a trigger or not
+		*/
+		CollisionType GetType();
+
+		/**
+		Set whether the collider participates in scene queries (raycasts, overlaps, etc)
+		@param the new state
+		*/
+		void SetQueryable(bool);
+
+		/**
+		@return if the scene is queryable (see SetQueryable)
+		*/
+		bool GetQueryable();
 
 		virtual ~PhysicsCollider();
 	};
