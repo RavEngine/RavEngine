@@ -142,6 +142,31 @@ bool RavEngine::PhysicsSolver::Raycast(const vector3& origin, const vector3& dir
     PxRaycastBuffer hit;
     bool result = scene->raycast(PxVec3(origin.x, origin.y, origin.z), PxVec3(direction.x, direction.y, direction.z), maxDistance, hit);
 
+    //construct hit result
+    out_hit = RaycastHit(hit);
+    return result;
+}
+
+bool RavEngine::PhysicsSolver::BoxOverlap(const vector3& origin, const quaternion& r, const vector3& half_ext, OverlapHit& out_hit)
+{
+    return generic_overlap(PhysicsTransform(origin,r),PxBoxGeometry(half_ext.x, half_ext.y, half_ext.z),out_hit);
+}
+
+bool RavEngine::PhysicsSolver::SphereOverlap(const vector3& origin, decimalType radius, OverlapHit& out_hit)
+{
+    return generic_overlap(PhysicsTransform(origin,quaternion()),PxSphereGeometry(radius),out_hit);
+}
+
+bool RavEngine::PhysicsSolver::CapsuleOverlap(const vector3& origin, const quaternion& rotation, decimalType radius, decimalType halfheight, OverlapHit& out_hit)
+{
+    return generic_overlap(PhysicsTransform(origin,rotation),PxCapsuleGeometry(radius,halfheight),out_hit);
+}
+
+bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const PxGeometry& geo, OverlapHit& out_hit)
+{
+    PxOverlapBuffer hit;
+    bool result = scene->overlap(geo,PxTransform(PxVec3(t.pos.x,t.pos.y,t.pos.y),PxQuat(t.rot.x,t.rot.y,t.rot.z,t.rot.w)),hit);
+    out_hit = OverlapHit(hit);
     return result;
 }
 

@@ -46,6 +46,11 @@ void SpawnEntities(float f) {
     }
 }
 
+float scale = 1;
+void SampleFPS() {
+    std::cout << "FPS: " << RavEngine::World::evalNormal / scale << std::endl;
+}
+
 void ResetCamera() {
     Ref<TestWorld>(GameplayStatics::currentWorld)->player->transform()->SetWorldPosition(vector3(0, -10, 50));
     Ref<TestWorld>(GameplayStatics::currentWorld)->player->transform()->SetWorldRotation(quaternion());
@@ -60,6 +65,7 @@ void TestWorld::posttick(float fpsScale){
     auto rotation = quaternion(vector3(0, 0, 0.01 * fpsScale));
     anonymous->transform()->LocalRotateDelta(rotation);
     //anonymous->transform()->LocalScaleDelta(vector3(0.01 * fpsScale,0,0));
+    scale = fpsScale;
 }
 
 TestWorld::TestWorld() : World() {
@@ -117,6 +123,7 @@ TestWorld::TestWorld() : World() {
     is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL,-1);
     is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
     is->AddActionMap("ResetCam", SDL_SCANCODE_R);
+    is->AddActionMap("SampleFPS",SDL_SCANCODE_T);
     //bind controls
     is->BindAxis("MoveForward", ExternalMove);
     is->BindAxis("MoveRight", ExternalMoveRight);
@@ -126,6 +133,7 @@ TestWorld::TestWorld() : World() {
 
     is->BindAxis("SpawnTest", SpawnEntities);
     is->BindAction("ResetCam", ResetCamera, ActionState::Pressed);
+    is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
     //is->BindAction("Click", click, ActionState::Released);
     RavEngine::GameplayStatics::inputManager = is;
 };

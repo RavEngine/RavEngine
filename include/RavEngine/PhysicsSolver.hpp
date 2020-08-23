@@ -8,6 +8,7 @@
 #pragma once
 
 #include "PhysXDefines.h"
+#include <PxQueryReport.h>
 #include "SharedObject.hpp"
 #include "PhysicsCollider.hpp"
 #include "PhysicsBodyComponent.hpp"
@@ -71,7 +72,19 @@ namespace RavEngine {
 
         //scene query methods
         struct RaycastHit {
-          
+            RaycastHit() {}
+            RaycastHit(const physx::PxRaycastBuffer& hit) {
+                hasBlocking = hit.hasBlock;
+                hitPosition = vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z);
+                hitNormal = vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z);
+                hitDistance = hit.block.distance;
+                hitObject = ((PhysicsBodyComponent*)hit.block.actor->userData)->getOwner();
+            }
+            bool hasBlocking;
+            vector3 hitPosition;
+            vector3 hitNormal;
+            decimalType hitDistance;
+            Ref<Entity> hitObject;
         };
 
         /**
@@ -83,5 +96,59 @@ namespace RavEngine {
         @returns true if the Raycast hit, false otherwise
         */
         bool Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit);
+
+
+        struct OverlapHit {
+            OverlapHit() {}
+            OverlapHit(const physx::PxOverlapBuffer& hit) {
+                overlapObject = ((PhysicsBodyComponent*)hit.block.actor->userData)->getOwner();
+            }
+            Ref<Entity> overlapObject;
+        };
+
+        /**
+        Perform a box overlap
+        @param origin the center point of the box overlap
+        @param rotation the rotation of the box
+        @param half_ext the distance from the origin to the corner for each axis
+        @param out_hit the cast results to write the data into
+        @return true if the box overlap found data, false otherwise
+        */
+        bool BoxOverlap(const vector3& origin, const quaternion& rotation, const vector3& half_ext, OverlapHit& out_hit);
+
+        /**
+        Perform a sphere overlap
+        @param origin the center point of the sphere overlap
+        @param radius radius of the sphere
+        @param out_hit where to write the results
+        @return true if the overlap found data
+        */
+        bool SphereOverlap(const vector3& origin, decimalType radius, OverlapHit& out_hit);
+
+        /**
+        Perform a capsule overlap
+        @param origin the center of the capsule
+        @param rotation the rotation of the capsule
+        @param halfHeight the distance from the center of the capsule to a pole
+        @param out_hit the destination to write the results into
+        @return true if the capsule overlap found data
+        */
+        bool CapsuleOverlap(const vector3& origin, const quaternion& rotation, decimalType radius, decimalType halfheight, OverlapHit& out_hit);
+
+
+    protected:
+        struct PhysicsTransform {
+            vector3 pos;
+            quaternion rot;
+            PhysicsTransform(const vector3& p, const quaternion& q) : pos(p), rot(q) {}
+        };
+
+        /**
+        Generic version of overlap
+        @param transform the transform to pass
+        @param geo the geometry for the it
+        @param out_hit the destination to write the results
+        */
+        bool generic_overlap(const PhysicsTransform& transform, const physx::PxGeometry& geo, OverlapHit& out_hit);
     };
 }

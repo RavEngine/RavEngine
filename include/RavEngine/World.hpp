@@ -55,7 +55,6 @@ namespace RavEngine {
 		//last frame time, frame delta time, framerate scale
 		timePoint lastFrameTime = clocktype::now();
 		timeDiff deltaTimeMicroseconds;
-		const float evalNormal = 60;	//normal speed is 60 hz
 
 		//initialize in
 
@@ -66,6 +65,8 @@ namespace RavEngine {
 		}
 
 	public:
+		static const float evalNormal;	//normal speed is 60 hz
+
 		void tick();
 
 		/**
