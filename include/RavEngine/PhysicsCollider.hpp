@@ -24,26 +24,26 @@ namespace RavEngine {
 		/**
 		Set the state to collider or trigger.
 		@param the new state
-		@pre This component must be added to an entity before using this call.
+		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
 		void SetType(CollisionType);
 
 		/**
 		@returns if the current collider is a trigger or not
-		@pre This component must be added to an entity before using this call.
+		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
 		CollisionType GetType();
 
 		/**
 		Set whether the collider participates in scene queries (raycasts, overlaps, etc)
 		@param the new state
-		@pre This component must be added to an entity before using this call.
+		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
 		void SetQueryable(bool);
 
 		/**
 		@return if the scene is queryable (see SetQueryable)
-		@pre This component must be added to an entity before using this call.
+		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
 		bool GetQueryable();
 
@@ -64,13 +64,14 @@ namespace RavEngine {
 		 * Create a box collider with an extent and a physics material
 		 * @param ext the dimensions of the collider
 		 * @param mat the physics material to assign
+		 * @note The current scale of the transform is assumed to be the identity size for ResizeToFit.
 		 */
 		BoxCollider(const vector3& ext, Ref<PhysicsMaterial> mat) : BoxCollider() {
 			extent = ext;
 			material = mat;
 		}
 
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;	
 
 		virtual void RegisterAllAlternateTypes() override {
 			RegisterAlternateQueryType<PhysicsCollider>();
