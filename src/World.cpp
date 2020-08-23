@@ -17,6 +17,8 @@ using namespace std;
 using namespace std::chrono;
 using namespace RavEngine;
 
+const float RavEngine::World::evalNormal = 60;
+
 void RavEngine::World::tick() {
 	
 	//setup framerate scaling for next frame
