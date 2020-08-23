@@ -14,6 +14,7 @@ void BoxCollider::AddHook(const WeakRef<Entity>& e) {
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxBoxGeometry(extent.x, extent.y, extent.z), *material->getPhysXmat());
 }
 
+
 void RavEngine::PhysicsCollider::SetType(CollisionType type)
 {
 	switch (type) {
