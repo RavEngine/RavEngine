@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 include(ProcessorCount)
 project(RavEngine)
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
+set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(OSX_ARCHITECTURES "${ARCHS_STANDARD}" CACHE INTERNAL "")
 
@@ -52,7 +52,7 @@ if(MSVC)
   #add_definitions(/Ob1)		# required for SDL
 endif()
 
-set(DEPS_DIR "${CMAKE_SOURCE_DIR}/deps")
+set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
 
 # ========== CMake Boilerplate ==============
 
@@ -60,7 +60,7 @@ set(DEPS_DIR "${CMAKE_SOURCE_DIR}/deps")
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 #set(CMAKE_DISABLE_SOURCE_CHANGES  ON)
 
-if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
+if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
   message(SEND_ERROR "In-source builds are not allowed.")
 endif ()
 
@@ -211,13 +211,13 @@ if (WIN32)
 	if(NOT PX_GENERATE_STATIC_LIBRARIES)
 		add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
-				"${PROJECT_BINARY_DIR}/deps/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
+				"${CMAKE_CURRENT_BINARY_DIR}/deps/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
 				"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 	endif()
 
 	add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_directory
-		"${PROJECT_BINARY_DIR}/deps/filament/samples/$<CONFIGURATION>"
+		"${CMAKE_CURRENT_BINARY_DIR}/deps/filament/samples/$<CONFIGURATION>"
 		"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 
 	#startup project	
