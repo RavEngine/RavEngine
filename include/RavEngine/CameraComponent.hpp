@@ -1,7 +1,7 @@
 #include "Component.hpp"
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
-#include <stduuid/uuid.h>
+
 namespace filament {
 	class Camera;
 }
