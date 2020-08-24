@@ -2,9 +2,6 @@
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
 
-namespace filament {
-	class Camera;
-}
 namespace RavEngine {
 	class CameraComponent : public Component {
 	public:
@@ -30,13 +27,6 @@ namespace RavEngine {
 		}
 
 		/**
-		Conversion to filament camera, for internal use only
-		*/
-		filament::Camera* const getCamera() {
-			return filamentCam;
-		}
-
-		/**
 		Set the size of the camera. This will recalculate its projection.
 		@param width the width of the target, in pixels
 		@param height the height of the target, in pixels
@@ -50,7 +40,6 @@ namespace RavEngine {
 
 	protected:
 		bool active = false;
-		filament::Camera* filamentCam = nullptr;
 
 		//camera details
 		float FOV;

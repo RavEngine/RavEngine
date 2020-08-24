@@ -1,4 +1,0 @@
-LIBFILAMENT {
-  global: *filament*; JNI*;
-  local: *;
-};

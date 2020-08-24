@@ -2,17 +2,9 @@
 #include "Component.hpp"
 #include <vector>
 #include "Material.hpp"
-#include <utils/Entity.h>
-#include <math/mat3.h>
-
-namespace filament {
-    class VertexBuffer;
-    class IndexBuffer;
-}
 
 
 struct Vertex {
-    filament::math::float3 position;
 };
 
 namespace RavEngine {
@@ -44,11 +36,5 @@ namespace RavEngine {
         //index and vertex buffers, stores actual data
         std::vector<Vertex> vb;
         std::vector<unsigned int> ib;
-
-        //stores pointers into vectors for rendering (does not duplicate data)
-        filament::VertexBuffer* fvb = nullptr;
-        filament::IndexBuffer* fib = nullptr;
-
-        utils::Entity renderable;
     };
 }

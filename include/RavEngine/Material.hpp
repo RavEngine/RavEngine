@@ -1,14 +1,8 @@
 #pragma once
 #include "SharedObject.hpp"
 #include "RenderEngine.hpp"
-#include "filament/Engine.h"
 #include <unordered_map>
 #include <mutex>
-
-namespace filament {
-	class Material;
-	class MaterialInstance;
-}
 
 namespace RavEngine {
 	class Material;
@@ -23,7 +17,6 @@ namespace RavEngine {
 		MaterialInstance() {}
 
 		~MaterialInstance() {
-			RenderEngine::getEngine()->destroy(filamentInstance);
 		}
 
 		bool isNull() { return material.isNull(); }
@@ -34,15 +27,9 @@ namespace RavEngine {
 		MaterialInstance(Ref<T> mat) {
 			static_assert(std::is_base_of<T, RavEngine::Material>::value, "T is not a subclass of Material");
 			material = mat;
-			filamentInstance = material->makeInstance();
-		}
-
-		filament::MaterialInstance* const getFilamentInstance() {
-			return filamentInstance;
 		}
 	protected:
 		Ref<T> material;
-		filament::MaterialInstance* filamentInstance;
 	};
 
 	/**
@@ -63,16 +50,9 @@ namespace RavEngine {
 			return name;
 		}
 
-		/**
-		@returns the filament material. For internal use only.
-		*/
-		filament::MaterialInstance* const makeInstance();
-
 	protected:
 		std::string name;
-		filament::Material* filamentMaterial;
 
-		//create a material from a filament shader
 		//trying to create a material that already exists will throw an exception
 		Material(const std::string&, const std::string&);
 	};

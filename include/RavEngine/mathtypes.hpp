@@ -4,7 +4,6 @@
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/quaternion.hpp"
 #include <ostream>
-#include <math/mat4.h>
 
 //defines the vector and quaternion types
 //can change these to 32 bit float instead of 64 bit
@@ -12,19 +11,14 @@
 #define DOUBLE_PRECISION
 #ifdef DOUBLE_PRECISION
 
-using filmat4 = filament::math::mat4f;
 
 //a double-precision 3-component vector
 typedef glm::dvec3 vector3;
 typedef glm::dvec4 vector4;
 typedef glm::dvec2 vector2;
-//typedef filament::math::double3 filvec3;
-typedef filament::math::double3 filvec3;
-typedef filament::math::double4 filvec4;
 
 //a double-precision quaternion
 typedef glm::dquat quaternion;
-typedef filament::math::quat filquat;
 
 typedef glm::dmat4x4 matrix4;
 typedef glm::dmat3x3 matrix3;
@@ -40,18 +34,13 @@ typedef double decimalType;
 //}
 
 #else
-using filmat4 = filament::math::mat4f;
-
 //a float 3-component vector
 typedef glm::vec3 vector3;
 typedef glm::vec4 vector4;
 typedef glm::dvec2 vector2;
-typedef filament::math::float3 filvec3;
-typedef filament::math::float4 filvec4;
 
 //a float-precision quaternion
 typedef glm::quat quaternion;
-typedef filament::math::quatf filquat;
 
 typedef glm::mat4x4 matrix4;
 typedef glm::mat3x3 matrix3;

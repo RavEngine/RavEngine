@@ -12,7 +12,6 @@
 #include <unordered_set>
 #include "mathtypes.hpp"
 #include "WeakRef.hpp"
-#include <utils/Entity.h>
 
 
 namespace RavEngine {
@@ -54,7 +53,7 @@ namespace RavEngine {
 		matrix4 GetMatrix();
 
 		/**
-		Apply cached transformations to filament entity - for internal use only
+		Apply cached transformations to matrix - for internal use only
 		*/
 		void Apply();
 
@@ -76,20 +75,10 @@ namespace RavEngine {
 		*/
 		void RemoveChild(const WeakRef<Transform>& child);
 
-		/**
-		@returns Filament type, for internal use only
-		*/
-		const utils::Entity& getEntity() {
-			return filamentEntity;
-		}
-
-
 	protected:
 		std::atomic<vector3> position;
 		std::atomic<quaternion> rotation;
 		std::atomic<vector3> scale;
-
-		utils::Entity filamentEntity;
 
 		bool isStatic = false;
 

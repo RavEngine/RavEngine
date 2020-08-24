@@ -11,13 +11,6 @@
 #include <list>
 #include "WeakRef.hpp"
 
-namespace filament {
-    class SwapChain;
-    class Engine;
-    class Renderer;
-    class View;
-    class Scene;
-}
 struct SDL_Window;
 namespace RavEngine {
     class RenderEngine : public SharedObject {
@@ -37,16 +30,7 @@ namespace RavEngine {
 
         void resize();
 
-        /**
-        Get a const-pointer to the engine singleton
-        */
-        static filament::Engine* const getEngine() {
-            return filamentEngine;
-        }
-
     protected:
-        filament::View* filamentView = nullptr;
-        filament::Scene* filamentScene = nullptr;
 
         static void Init();
         static void* getNativeWindow(SDL_Window*);
@@ -62,8 +46,5 @@ namespace RavEngine {
 		static WindowSize GetDrawableArea();
 
         static SDL_Window* window;
-        static filament::SwapChain* filamentSwapChain;
-        static filament::Engine* filamentEngine;
-        static filament::Renderer* filamentRenderer;
     };
 }
