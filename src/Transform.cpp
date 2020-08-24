@@ -3,11 +3,7 @@
 #include <list>
 #include "mathtypes.hpp"
 #include "GameplayStatics.hpp"
-#include <utils/Entity.h>
-#include <utils/EntityManager.h>
 #include <RenderEngine.hpp>
-#include <filament/Engine.h>
-#include <filament/TransformManager.h>
 #include <glm/gtc/type_ptr.hpp>
 
 
@@ -15,15 +11,12 @@ using namespace std;
 using namespace glm;
 using namespace RavEngine;
 using namespace utils;
-using namespace filament::math;
 
 RavEngine::Transform::~Transform()
 {
-	RenderEngine::getEngine()->destroy(filamentEntity);
 }
 
 Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
-	filamentEntity = EntityManager::get().create();
 
 	LocalTranslateDelta(inpos);
 	LocalRotateDelta(inrot);
@@ -104,8 +97,6 @@ quaternion Transform::GetWorldRotation()
 
 void RavEngine::Transform::Apply()
 {
-	auto& tcm = RenderEngine::getEngine()->getTransformManager();
-	auto instance = tcm.getInstance(filamentEntity);
 
 	//the list of transformations to apply
 	list<matrix4> translations;
@@ -123,9 +114,6 @@ void RavEngine::Transform::Apply()
 	const decimalType* pSource = (const decimalType*)glm::value_ptr(finalMatrix);
 	for (int i = 0; i < 16; ++i)
 		dArray[i] = pSource[i];
-
-	//copy glm matrix to filament matrix
-	tcm.setTransform(instance, filmat4(dArray[0], dArray[1], dArray[2], dArray[3], dArray[4], dArray[5], dArray[6], dArray[7], dArray[8], dArray[9], dArray[10], dArray[11], dArray[12], dArray[13], dArray[14], dArray[15]));
 
 }
 

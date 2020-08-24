@@ -49,10 +49,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
   add_definitions(/MP)
   add_definitions(/Qpar)
-  #add_definitions(/Ob1)		# required for SDL
 endif()
 
 set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${DEPS_DIR}")
 
 # ========== CMake Boilerplate ==============
 
@@ -79,30 +79,14 @@ endif ()
 
 # ==================== Dependencies =====================
 
-#add_subdirectory("${DEPS_DIR}/SDL2")
+# use static SDL
+#set(SDL_STATIC ON CACHE INTERNAL "")
+#set(SDL_SHARED OFF CACHE INTERNAL "")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+add_subdirectory("${DEPS_DIR}/SDL2")
 
-
-if(MSVC)
-  add_definitions(/std:c++latest)
-endif()
-
-set(FILAMENT_ENABLE_LTO OFF CACHE INTERNAL "")
-set(FILAMENT_ENABLE_JAVA OFF CACHE INTERNAL "")
-IF(APPLE)
-	set(FILAMENT_SUPPORTS_METAL ON CACHE INTERNAL "")
-	set(FILAMENT_SUPPORTS_VULKAN OFF CACHE INTERNAL "")
-ELSE()
-	set(FILAMENT_SUPPORTS_METAL OFF CACHE INTERNAL "")
-	set(FILAMENT_SUPPORTS_VULKAN ON CACHE INTERNAL "")
-ENDIF()
-set(FILAMENT_SKIP_SAMPLES OFF CACHE INTERNAL "")
-set(FILAMENT_SKIP_SAMPLES ON CACHE INTERNAL "")
-add_subdirectory_with_folder("Filament" "${DEPS_DIR}/filament")
-
-if(MSVC)
-	remove_definitions(/std:c++latest)
-endif()
-
+add_subdirectory("${DEPS_DIR}/LLGL")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -112,8 +96,8 @@ set(PXSHARED_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE INTERNAL "")
 set(PX_PHYSX_ ${CMAKE_INSTALL_PREFIX} CACHE INTERNAL "")
 set(CMAKEMODULES_VERSION "1.27" CACHE INTERNAL "")
 set(CMAKEMODULES_PATH ${PHYSX_ROOT_DIR}/../externals/cmakemodules CACHE INTERNAL "")
-set(PX_OUTPUT_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
-set(PX_OUTPUT_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
+set(PX_OUTPUT_LIB_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} CACHE INTERNAL "")
+set(PX_OUTPUT_BIN_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} CACHE INTERNAL "")
 set(PX_GENERATE_STATIC_LIBRARIES ON CACHE INTERNAL "")
 #set(PX_FLOAT_POINT_PRECISE_MATH OFF)
 if (WIN32)
@@ -137,20 +121,8 @@ include_directories("include/${PROJECT_NAME}/stduuid/")
 include_directories("${DEPS_DIR}/physx/physx/include/")
 include_directories("${DEPS_DIR}/physx/pxshared/include/")
 include_directories("${DEPS_DIR}/physx/physx/snippets/")
-include_directories("${DEPS_DIR}/filament/filament/include")
+include_directories("${DEPS_DIR}/SDL2/include")
 
-# add filament header paths
-SUBDIRLIST(filament_libs "${DEPS_DIR}/filament/libs")
-FOREACH(subdir ${filament_libs})
-	include_directories("${DEPS_DIR}/filament/libs/${subdir}/include")
-ENDFOREACH()
-
-SUBDIRLIST(filament_deps "${DEPS_DIR}/filament/third_party")
-FOREACH(subdir ${filament_deps})
-	IF(EXISTS "${DEPS_DIR}/filament/third_party/${subdir}/include")
-		include_directories("${DEPS_DIR}/filament/third_party/${subdir}/include")
-	endif()
-ENDFOREACH()
 
 # get all sources for the library with glob
 file(GLOB SOURCES "src/*.cpp")
@@ -175,12 +147,15 @@ file(GLOB TEST_CHEADERS "${PROJECT_NAME}_Test/*.h")
 add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
 set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist")
 
+#startup project	
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}_Test")
+
 get_directory_property(targets BUILDSYSTEM_TARGETS)
 message(STATUS "Targets: ${targets}")
 set_target_properties(${BUILDSYSTEM_TARGETS} PROPERTIES FOLDER "Libraries")
 
 # ====================== Linking ====================
-#target_link_libraries("${PROJECT_NAME}" "SDL2")
+target_link_libraries("${PROJECT_NAME}" "SDL2")
 target_link_libraries("${PROJECT_NAME}" "PhysXExtensions")
 target_link_libraries("${PROJECT_NAME}" "PhysX")
 target_link_libraries("${PROJECT_NAME}" "PhysXPvdSDK")
@@ -198,30 +173,18 @@ target_link_libraries("${PROJECT_NAME}" "LowLevelAABB")
 target_link_libraries("${PROJECT_NAME}" "LowLevelDynamics")
 target_link_libraries("${PROJECT_NAME}" "SceneQuery")
 target_link_libraries("${PROJECT_NAME}" "SimulationController")
-
-target_link_libraries("${PROJECT_NAME}" "filament")
-target_link_libraries("${PROJECT_NAME}" "sdl2")
-target_link_libraries("${PROJECT_NAME}" "assimp")
-target_link_libraries("${PROJECT_NAME}" "filagui")
-target_link_libraries("${PROJECT_NAME}" "imgui")
-target_link_libraries("${PROJECT_NAME}" "camutils")
+target_link_libraries("${PROJECT_NAME}" "LLGL_Direct3D11")
 
 # copy DLLs
 if (WIN32)
+	# PhysX
 	if(NOT PX_GENERATE_STATIC_LIBRARIES)
 		add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
-				"${CMAKE_CURRENT_BINARY_DIR}/deps/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
+				"${CMAKE_BINARY_DIR}/deps/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
 				"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 	endif()
 
-	add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_directory
-		"${CMAKE_CURRENT_BINARY_DIR}/deps/filament/samples/$<CONFIGURATION>"
-		"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
-
-	#startup project	
-	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}_Test")
 endif()
 # link test game with library
 target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )

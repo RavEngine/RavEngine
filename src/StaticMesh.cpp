@@ -4,44 +4,10 @@
 #include <SDL_stdinc.h>
 #include <fstream>
 #include <sstream>
-#include <filament/Material.h>
-#include <filament/VertexBuffer.h>
-#include <filament/IndexBuffer.h>
-#include <filament/RenderableManager.h>
-#include "RenderEngine.hpp"
-#include <utils/EntityManager.h>
-#include "filament/Engine.h"
+
 
 using namespace RavEngine;
 using namespace std;
-using namespace filament;
-
-//default triangle
-static const filament::math::float3 vertices[] = {
-		{ -1, -1,  1},  // 0. left bottom far
-		{  1, -1,  1},  // 1. right bottom far
-		{ -1,  1,  1},  // 2. left top far
-		{  1,  1,  1},  // 3. right top far
-		{ -1, -1, -1},  // 4. left bottom near
-		{  1, -1, -1},  // 5. right bottom near
-		{ -1,  1, -1},  // 6. left top near
-		{  1,  1, -1} }; // 7. right top near
-
-static constexpr uint32_t indices[] = {
-	// solid
-	2,0,1, 2,1,3,  // far
-	6,4,5, 6,5,7,  // near
-	2,0,4, 2,4,6,  // left
-	3,1,5, 3,5,7,  // right
-	0,4,5, 0,5,1,  // bottom
-	2,6,7, 2,7,3,  // top
-
-	// wire-frame
-	0,1, 1,3, 3,2, 2,0,     // far
-	4,5, 5,7, 7,6, 6,4,     // near
-	0,4, 1,5, 3,7, 2,6,
-};
-
 
 StaticMesh::StaticMesh() : Component() {
 	/*vb = {
@@ -52,53 +18,18 @@ StaticMesh::StaticMesh() : Component() {
 
 	ib = { 0, 1, 2 };*/
 
-
-	auto filamentEngine = RenderEngine::getEngine();
-	renderable = utils::EntityManager::get().create();
-
-	auto vertexBuffer = VertexBuffer::Builder()
-		.vertexCount(8)
-		.bufferCount(1)
-		.attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3)
-		.build(*filamentEngine);
-
-	auto indexBuffer = IndexBuffer::Builder()
-		.indexCount(12 * 2 + 3 * 2 * 6)
-		.build(*filamentEngine);
-
-	vertexBuffer->setBufferAt(*filamentEngine, 0,
-		VertexBuffer::BufferDescriptor(
-			vertices, vertexBuffer->getVertexCount() * sizeof(vertices[0])));
-
-	indexBuffer->setBuffer(*filamentEngine,
-		IndexBuffer::BufferDescriptor(
-			indices, indexBuffer->getIndexCount() * sizeof(uint32_t)));
-
-	RenderableManager::Builder(1)
-		.boundingBox({ { 0, 0, 0 },
-					  { 1, 1, 1 } })
-		.geometry(0, RenderableManager::PrimitiveType::LINES, vertexBuffer, indexBuffer, 0, 3 * 2 * 6)
-		.priority(7)
-		.culling(true)
-		.build(*filamentEngine, renderable);
 }
 
 RavEngine::StaticMesh::~StaticMesh()
 {
-	auto engine = RenderEngine::getEngine();
-	engine->destroy(fvb);
-	engine->destroy(fib);
-	engine->destroy(renderable);
+
 }
 
 void RavEngine::StaticMesh::SetMaterial(Ref<MaterialInstance<Material>> mat)
 {
-	auto inst = RavEngine::RenderEngine::getEngine()->getRenderableManager().getInstance(renderable);
-	RavEngine::RenderEngine::getEngine()->getRenderableManager().setMaterialInstanceAt(inst, 0, mat->getFilamentInstance());
 	material = mat;
 }
 
 void RavEngine::StaticMesh::AddHook(const WeakRef<RavEngine::Entity>& e)
 {
-	filamentParentToEntity(e, renderable);
 }

@@ -39,13 +39,6 @@ namespace RavEngine {
 		 */
 		virtual void RegisterAllAlternateTypes() {}
 
-		/**
-		Helper method to parent a component's filament entity to a RavEngine Entity
-		@param newParent weak ref to the RavEngine parent
-		@param myFilamentEntity pointer to the entity which owns the filament component
-		*/
-		static void filamentParentToEntity(const WeakRef<Entity>& newParent, const utils::Entity& myFilamentEntity);
-
 	public:
 		bool Enabled = true;
 

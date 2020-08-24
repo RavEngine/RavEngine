@@ -3,8 +3,6 @@
 #include <sstream>
 #include <fstream>
 #include <RenderEngine.hpp>
-#include <filament/Engine.h>
-#include <filament/Material.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -19,15 +17,9 @@ string defaultMatPath() {
 #endif
 	return path;
 }
-
-filament::MaterialInstance* const RavEngine::Material::makeInstance()
-{
-	return filamentMaterial->createInstance();
-}
-
 /**
 Create a material given a shader. Also registers it in the material manager
-@param shader the path to the Filament shader
+@param shader the path to the shader
 */
 Material::Material(const std::string& shaderPath, const std::string& name) : name(name) {
 	//check if material is already loaded
@@ -42,9 +34,7 @@ Material::Material(const std::string& shaderPath, const std::string& name) : nam
 	buffer << fin.rdbuf();
 	auto shaderData = buffer.str();
 
-	filamentMaterial = filament::Material::Builder()
-		.package((void*)shaderData.c_str(), shaderData.size())
-		.build(*RenderEngine::getEngine());
+	//create shader program
 
 	//register material
 	MaterialManager::RegisterMaterial(this);
@@ -53,8 +43,6 @@ Material::Material(const std::string& shaderPath, const std::string& name) : nam
 Material::Material() : Material(defaultMatPath(),"defaultMaterial") {}
 
 Material::~Material() {
-	//destroy the filament material
-	RavEngine::RenderEngine::getEngine()->destroy(filamentMaterial);
 }
 
 /**
