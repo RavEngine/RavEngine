@@ -9,10 +9,13 @@
 #include "SharedObject.hpp"
 #include "Entity.hpp"
 #include <list>
+#include <memory>
 #include "WeakRef.hpp"
 
 struct SDL_Window;
 namespace RavEngine {
+    class SDLSurface;
+
     class RenderEngine : public SharedObject {
     public:
         virtual ~RenderEngine();
@@ -24,22 +27,14 @@ namespace RavEngine {
         static const std::string currentBackend();
         WeakRef<World> world;
 
-        static SDL_Window* const GetWindow() {
-            return window;
-        }
+        static SDL_Window* const GetWindow();
 
         void resize();
 
     protected:
 
         static void Init();
-		
-		struct WindowSize{
-			unsigned int width = 0, height = 0;
-		};
-		
-		static WindowSize GetDrawableArea();
 
-        static SDL_Window* window;
+        static std::shared_ptr<RavEngine::SDLSurface> surface;
     };
 }

@@ -22,6 +22,16 @@ namespace RavEngine {
 
 		bool ProcessEvents() override { return true; }
 
+		SDL_Window* const getWindowPtr() const{
+			return window;
+		}
+
+		struct WindowSize {
+			unsigned int width = 0, height = 0;
+		};
+
+		WindowSize GetDrawableArea();
+
 	private:
 		SDL_Window* createWindow();
 
