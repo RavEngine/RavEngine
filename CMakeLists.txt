@@ -125,6 +125,7 @@ include_directories("${DEPS_DIR}/physx/physx/include/")
 include_directories("${DEPS_DIR}/physx/pxshared/include/")
 include_directories("${DEPS_DIR}/physx/physx/snippets/")
 include_directories("${DEPS_DIR}/SDL2/include")
+include_directories("${DEPS_DIR}/LLGL/include")
 
 
 # get all sources for the library with glob

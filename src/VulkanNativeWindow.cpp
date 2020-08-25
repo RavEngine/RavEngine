@@ -4,20 +4,21 @@
 //
 //
 
-#include "RenderEngine.hpp"
+#include "SDLSurface.hpp"
+#include <cassert>
 #include <SDL_syswm.h>
 
 using namespace RavEngine;
 
 #ifndef __APPLE__
-void* RenderEngine::getNativeWindow(SDL_Window* sdlWindow) {
+void* SDLSurface::getNativeWindow(SDL_Window* sdlWindow) {
 #endif
     
 #ifdef _WIN32
     //Windows implementation
     SDL_SysWMinfo wmi;
     SDL_VERSION(&wmi.version);
-    assert(SDL_GetWindowWMInfo(window, &wmi));
+    assert(SDL_GetWindowWMInfo(sdlWindow, &wmi));
     //HDC nativeWindow = (HDC)wmi.info.win.hdc;
     HWND nativeWindow = wmi.info.win.window;
     return (void*)nativeWindow;

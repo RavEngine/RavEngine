@@ -13,6 +13,9 @@
 #include "GameplayStatics.hpp"
 #include "CameraComponent.hpp"
 #include "World.hpp"
+#include "SDLSurface.hpp"
+#include <memory>
+#include "LLGL/RenderSystem.h"
 
 #include <SDL_syswm.h>
 #include <SDL.h>
@@ -33,6 +36,7 @@ Construct a render engine instance
 */
 RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	//call Init()
+	Init();
 }
 
 
@@ -119,17 +123,14 @@ Initialize static singletons. Invoked automatically if needed.
 */
 void RenderEngine::Init()
 {
-	//TODO: if already initialized, don't do anything
-	
+	//create instance of surface
+	auto surface = std::make_shared<RavEngine::SDLSurface>(LLGL::Extent2D{ 800, 480 }, "RavEngine");
 
-	//create SDL window
-	SDL_Init(SDL_INIT_EVENTS);
-	uint32_t windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
+	std::unique_ptr<LLGL::RenderSystem> renderer = LLGL::RenderSystem::Load("Direct3D11");
 
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, windowFlags);
-
-	//get the native window 
-    void* nativeWindow = getNativeWindow(window);
+	LLGL::RenderContextDescriptor contextDesc;
+	contextDesc.videoMode.resolution = surface->GetContentSize();
+	LLGL::RenderContext* context = renderer->CreateRenderContext(contextDesc, surface);
 	
 #ifdef __APPLE__
     //need to make a metal layer on Mac
@@ -137,5 +138,5 @@ void RenderEngine::Init()
 #else
 #endif
 	
-	SDL_SetWindowTitle(window, (string("RavEngine - ") + currentBackend()).c_str());
+	//SDL_SetWindowTitle(window, (string("RavEngine - ") + currentBackend()).c_str());
 }
