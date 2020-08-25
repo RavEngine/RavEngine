@@ -113,7 +113,7 @@ void RenderEngine::resize() {
 	//TOOD: update renderer size
 
 #ifdef __APPLE__
-	resizeMetalLayer(getNativeWindow(window));
+	//resizeMetalLayer(getNativeWindow(window));
 #endif
 }
 
@@ -131,7 +131,12 @@ void RenderEngine::Init()
 	//create instance of surface
 	surface = std::make_shared<RavEngine::SDLSurface>(LLGL::Extent2D{ 800, 480 }, "RavEngine");
 
-	std::unique_ptr<LLGL::RenderSystem> renderer = LLGL::RenderSystem::Load("Direct3D11");
+#ifdef _WIN32
+	const string backend = "Direct3D11";
+#elif defined __APPLE__
+	const string backend = "Metal";
+#endif
+	std::unique_ptr<LLGL::RenderSystem> renderer = LLGL::RenderSystem::Load(backend);
 
 	LLGL::RenderContextDescriptor contextDesc;
 	contextDesc.videoMode.resolution = surface->GetContentSize();
@@ -139,7 +144,7 @@ void RenderEngine::Init()
 	
 #ifdef __APPLE__
     //need to make a metal layer on Mac
-    nativeWindow = setUpMetalLayer(nativeWindow);
+    //nativeWindow = setUpMetalLayer(nativeWindow);
 #else
 #endif
 	

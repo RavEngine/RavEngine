@@ -3,14 +3,16 @@
 //  RavEngine
 //
 
-#include "RenderEngine.hpp"
+#include "SDLSurface.hpp"
 #include <SDL_syswm.h>
 #import <AppKit/NSView.h>
 #import <AppKit/NSWindow.h>
 #import <QuartzCore/CAMetalLayer.h>
 
+using namespace RavEngine;
+
 // On Mac, this is the implementation of getNativeWindow
-void* RavEngine::RenderEngine::getNativeWindow(SDL_Window* sdlWindow) {
+void* SDLSurface::getNativeWindow(SDL_Window* sdlWindow) {
     SDL_SysWMinfo wmi;
     SDL_VERSION(&wmi.version);
     assert(SDL_GetWindowWMInfo(sdlWindow, &wmi));
@@ -19,7 +21,7 @@ void* RavEngine::RenderEngine::getNativeWindow(SDL_Window* sdlWindow) {
     return view;
 }
 
-void* RavEngine::RenderEngine::setUpMetalLayer(void* nativeView) {
+void* SDLSurface::setUpMetalLayer(void* nativeView) {
     NSView* view = (NSView*) nativeView;
     [view setWantsLayer:YES];
     CAMetalLayer* metalLayer = [CAMetalLayer layer];
@@ -45,7 +47,7 @@ void* RavEngine::RenderEngine::setUpMetalLayer(void* nativeView) {
     return metalLayer;
 }
 
-void* RavEngine::RenderEngine::resizeMetalLayer(void* nativeView) {
+void* SDLSurface::resizeMetalLayer(void* nativeView) {
     NSView* view = (NSView*) nativeView;
     CAMetalLayer* metalLayer = (CAMetalLayer*) view.layer;
     CGSize viewSize = view.bounds.size;
