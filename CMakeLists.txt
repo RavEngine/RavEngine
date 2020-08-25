@@ -86,6 +86,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory("${DEPS_DIR}/SDL2")
 
+if(APPLE)
+  set(LLGL_BUILD_RENDERER_METAL ON CACHE INTERNAL "")
+endif()
 add_subdirectory("${DEPS_DIR}/LLGL")
 
 # PhysX-specific CMake project setup
@@ -173,7 +176,11 @@ target_link_libraries("${PROJECT_NAME}" "LowLevelAABB")
 target_link_libraries("${PROJECT_NAME}" "LowLevelDynamics")
 target_link_libraries("${PROJECT_NAME}" "SceneQuery")
 target_link_libraries("${PROJECT_NAME}" "SimulationController")
-target_link_libraries("${PROJECT_NAME}" "LLGL_Direct3D11")
+if(MSVC)
+  target_link_libraries("${PROJECT_NAME}" "LLGL_Direct3D11")
+elseif(APPLE)
+  target_link_libraries("${PROJECT_NAME}" "LLGL_Metal")
+endif()
 
 # copy DLLs
 if (WIN32)
