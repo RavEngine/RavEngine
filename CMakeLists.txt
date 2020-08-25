@@ -182,6 +182,7 @@ if(MSVC)
 elseif(APPLE)
   target_link_libraries("${PROJECT_NAME}" "LLGL_Metal")
 endif()
+target_link_libraries("${PROJECT_NAME}" "LLGL_OpenGL")
 
 # copy DLLs
 if (WIN32)
