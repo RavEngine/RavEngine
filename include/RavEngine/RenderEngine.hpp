@@ -33,11 +33,6 @@ namespace RavEngine {
     protected:
 
         static void Init();
-        static void* getNativeWindow(SDL_Window*);
-#ifdef __APPLE__
-        static void* setUpMetalLayer(void*);
-        static void* resizeMetalLayer(void* nativeView);
-#endif
 		
 		struct WindowSize{
 			unsigned int width = 0, height = 0;
