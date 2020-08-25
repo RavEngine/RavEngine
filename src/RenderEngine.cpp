@@ -28,7 +28,7 @@
 using namespace std;
 using namespace RavEngine;
 
-SDL_Window* RenderEngine::window = nullptr;
+std::shared_ptr<SDLSurface> RenderEngine::surface;
 
 /**
 Construct a render engine instance
@@ -73,7 +73,7 @@ void RenderEngine::Draw(){
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
 			//TODO: set projection
-			auto size = GetDrawableArea();
+			auto size = surface->GetDrawableArea();
 			owning->SetTargetSize(size.width, size.height);
 			break;
 		}
@@ -98,10 +98,9 @@ const string RenderEngine::currentBackend(){
 	return "Unknown";
 }
 
-RenderEngine::WindowSize RenderEngine::GetDrawableArea() {
-	int width; int height;
-	SDL_GL_GetDrawableSize(window, &width, &height);
-	return WindowSize{ static_cast<unsigned int>(width),static_cast<unsigned int>(height) };
+SDL_Window* const RavEngine::RenderEngine::GetWindow()
+{
+	return surface->getWindowPtr();
 }
 
 /**
@@ -109,7 +108,7 @@ Update the viewport to the correct size of the container window
 */
 void RenderEngine::resize() {
 	//fix the window size
-	auto size = GetDrawableArea();
+	auto size = surface->GetDrawableArea();
 
 	//TOOD: update renderer size
 
@@ -123,8 +122,14 @@ Initialize static singletons. Invoked automatically if needed.
 */
 void RenderEngine::Init()
 {
+	// don't initialize again if already initialized
+	if (surface != nullptr)
+	{
+		return;
+	}
+
 	//create instance of surface
-	auto surface = std::make_shared<RavEngine::SDLSurface>(LLGL::Extent2D{ 800, 480 }, "RavEngine");
+	surface = std::make_shared<RavEngine::SDLSurface>(LLGL::Extent2D{ 800, 480 }, "RavEngine");
 
 	std::unique_ptr<LLGL::RenderSystem> renderer = LLGL::RenderSystem::Load("Direct3D11");
 

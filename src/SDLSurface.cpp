@@ -61,3 +61,10 @@ SDL_Window* SDLSurface::createWindow()
 
 	return SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, windowFlags);
 }
+
+
+SDLSurface::WindowSize SDLSurface::GetDrawableArea() {
+	int width; int height;
+	SDL_GL_GetDrawableSize(window, &width, &height);
+	return WindowSize{ static_cast<unsigned int>(width),static_cast<unsigned int>(height) };
+}
