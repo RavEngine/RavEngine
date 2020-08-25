@@ -198,7 +198,7 @@ endif()
 # link test game with library
 target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
-INSTALL(CODE "
-	include(BundleUtilities)
-	fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/$<CONFIGURATION>/${PROJECT_NAME}_Test.app\" \"\" \"\")
-	" COMPONENT Runtime)
+# INSTALL(CODE "
+# 	include(BundleUtilities)
+# 	fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/$<CONFIGURATION>/${PROJECT_NAME}_Test.app\" \"\" \"\")
+# 	" COMPONENT Runtime)

@@ -21,7 +21,18 @@ protected:
     //this tracks all SharedObjects for weak pointer validity
     //the first address is the address of the tracked object, and the second tracks the addresses of all weak pointers referring to it
     typedef std::unordered_map<void*, std::unordered_set<WeakRefBase*>> TrackedPtrStore;
-    static TrackedPtrStore WeakReferences;
+	
+	struct TrackedPtrWrapper{
+		bool isValid = true;
+		TrackedPtrStore WeakReferences;
+		
+		//if the static destructor gets called before ready, this flag is set to false
+		//Then code can check for it to avoid segmentation fault
+		~TrackedPtrWrapper(){
+			isValid = false;
+		}
+	};
+    static TrackedPtrWrapper ptrs;
 
     virtual void notifyDangling() = 0;
 public:
@@ -31,17 +42,20 @@ public:
         */
     static void Remove(RavEngine::SharedObject* obj) {
         //only act if the structure is tracking this pointer
+		if (!ptrs.isValid){
+			return;
+		}
         auto addr = obj;
         mtx.lock();
-        auto found = WeakReferences.find(addr);
-        if (found != WeakReferences.end()) {
-            const auto& set = WeakReferences.at(addr);
+        auto found = ptrs.WeakReferences.find(addr);
+        if (found != ptrs.WeakReferences.end()) {
+            const auto& set = ptrs.WeakReferences.at(addr);
             for (const auto& wr : set) {
                 //signal that the weak object's pointer has been invalidated
                 wr->notifyDangling();
             }
             //remove from the map
-            WeakReferences.erase(found);
+            ptrs.WeakReferences.erase(found);
         }
         mtx.unlock();
     }
@@ -63,11 +77,11 @@ protected:
         @param obj the pointer to associate this WeakRef with
         */
     void Associate(T* obj) {
-        if (ptr == nullptr) {
+        if (ptr == nullptr || !ptrs.isValid) {
             return;
         }
         mtx.lock();
-        WeakReferences[obj].insert(this);
+        ptrs.WeakReferences[obj].insert(this);
         mtx.unlock();
     }
 
@@ -76,11 +90,11 @@ protected:
     @param obj the pointer to dissassociate this WeakRef with
     */
     void Dissassociate(T* obj) {
-        if (ptr == nullptr) {
+        if (ptr == nullptr || !ptrs.isValid) {
             return;
         }
         mtx.lock();
-        WeakReferences[obj].erase(this);
+        ptrs.WeakReferences[obj].erase(this);
         mtx.unlock();
     }
 public:

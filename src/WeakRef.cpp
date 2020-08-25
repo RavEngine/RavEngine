@@ -13,4 +13,4 @@ using namespace RavEngine;
 
 //static definitions
 mutex WeakRefBase::mtx;
-WeakRefBase::TrackedPtrStore WeakRefBase::WeakReferences;
+WeakRefBase::TrackedPtrWrapper WeakRefBase::ptrs;
