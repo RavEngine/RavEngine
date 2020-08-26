@@ -151,13 +151,13 @@ void RenderEngine::Init()
     // Create render context
     LLGL::RenderContextDescriptor contextDesc;
     {
-        contextDesc.videoMode.resolution = { 800, 600 };
+        contextDesc.videoMode.resolution = surface->GetContentSize();
         contextDesc.vsync.enabled = true;
 #ifdef ENABLE_MULTISAMPLING
         contextDesc.samples = 8; // check if LLGL adapts sample count that is too high
 #endif
     }
-    LLGL::RenderContext* context = renderer->CreateRenderContext(contextDesc,surface);
+    surface->SetContext(renderer->CreateRenderContext(contextDesc,surface));
 
     // Print renderer information
     const auto& info = renderer->GetRendererInfo();
@@ -167,16 +167,10 @@ void RenderEngine::Init()
     std::cout << "Vendor:           " << info.vendorName << std::endl;
     std::cout << "Shading Language: " << info.shadingLanguageName << std::endl;
 
-    // Set window title and show window
-    //auto& window = LLGL::CastTo<LLGL::Window>(context->GetSurface());
-
-    /*window.SetTitle(L"LLGL Example: Hello Triangle");
-    window.Show();*/
-
     // Vertex data structure
     struct Vertex
     {
-        Gs::Vector2f        position;
+        float      position[2];
         LLGL::ColorRGBAub   color;
     };
 
@@ -210,6 +204,7 @@ void RenderEngine::Init()
         vertexBufferDesc.vertexAttribs = vertexFormat.attributes;          // Vertex format layout
     }
     LLGL::Buffer* vertexBuffer = renderer->CreateBuffer(vertexBufferDesc, vertices);
+    LLGL::Buffer* indexBuffer = renderer->CreateBuffer(,LLGL::Format::R32UInt);
 
     // Create shaders
     LLGL::Shader* vertShader = nullptr;
@@ -302,7 +297,7 @@ void RenderEngine::Init()
         LLGL::GraphicsPipelineDescriptor pipelineDesc;
         {
             pipelineDesc.shaderProgram = shaderProgram;
-            pipelineDesc.renderPass = context->GetRenderPass();
+            pipelineDesc.renderPass = surface->GetContext()->GetRenderPass();
 #ifdef ENABLE_MULTISAMPLING
             pipelineDesc.rasterizer.multiSampleEnabled = (contextDesc.samples > 1);
 #endif
@@ -360,7 +355,7 @@ void RenderEngine::Init()
         commands->Begin();
         {
             // Set viewport and scissor rectangle
-            commands->SetViewport(context->GetResolution());
+            commands->SetViewport(surface->GetContext()->GetResolution());
 
             // Set graphics pipeline
             commands->SetPipelineState(*pipeline);
@@ -369,7 +364,7 @@ void RenderEngine::Init()
             commands->SetVertexBuffer(*vertexBuffer);
 
             // Set the render context as the initial render target
-            commands->BeginRenderPass(*context);
+            commands->BeginRenderPass(*surface->GetContext());
             {
                 // Clear color buffer
                 commands->Clear(LLGL::ClearFlags::Color);
@@ -383,6 +378,6 @@ void RenderEngine::Init()
         queue->Submit(*commands);
 
         // Present the result on the screen
-        context->Present();
+        surface->GetContext()->Present();
     }
 }
