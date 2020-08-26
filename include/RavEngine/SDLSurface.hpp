@@ -66,7 +66,17 @@ namespace RavEngine {
 		*/
 		WindowSize GetDrawableArea();
 
-	private:
+		void SetContext(LLGL::RenderContext* c) {
+			context = c;
+		}
+
+		LLGL::RenderContext* const GetContext() const {
+			return context;
+		}
+
+	protected:
+		LLGL::RenderContext* context = nullptr;
+
 		SDL_Window* createWindow();
 
 		static void* getNativeWindow(SDL_Window*);
