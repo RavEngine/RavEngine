@@ -170,8 +170,8 @@ void RenderEngine::Init()
     // Vertex data structure
     struct Vertex
     {
-        float      position[2];
-        LLGL::ColorRGBAub   color;
+        float      position[3];
+        LLGL::ColorRGBf   color;
     };
 
     // Vertex data (3 vertices for our triangle)
@@ -179,10 +179,48 @@ void RenderEngine::Init()
 
     Vertex vertices[] =
     {
-        { {  0,  s }, { 255, 0, 0, 255 } }, // 1st vertex: center-top, red
-        { {  s, -s }, { 0, 255, 0, 255 } }, // 2nd vertex: right-bottom, green
-        { { -s, -s }, { 0, 0, 255, 255 } }, // 3rd vertex: left-bottom, blue
+        { {  0,  s , -1}, { 255, 0, 0 } }, // 1st vertex: center-top, red
+        { {  s, -s, -1 }, { 0, 255, 0 } }, // 2nd vertex: right-bottom, green
+        { { -s, -s, -1 }, { 0, 0, 255 } }, // 3rd vertex: left-bottom, blue
     };
+
+    struct Settings {
+        Gs::Matrix4f wvpMatrix; //todo: 16 byte pack alignment for constant buffers
+    } settings;
+
+    //calculate the model view projection matrix and set it in the uniform
+    Gs::Matrix4f worldMatrix;
+    worldMatrix.LoadIdentity();
+    Gs::Translate(worldMatrix,Gs::Vector3(0,0,0));
+    settings.wvpMatrix = Gs::ProjectionMatrix4f::Perspective(1.6666,0.1,100,Gs::Deg2Rad(45.0),0).ToMatrix4() * worldMatrix;
+    //settings.wvpMatrix = worldMatrix;
+
+    //maps the memory appropriately so uniforms can be set
+    uint32_t constantBufferIndex = 0;       //needs to be 1 on Metal
+    LLGL::PipelineLayoutDescriptor pldesc;
+    pldesc.bindings = {
+        LLGL::BindingDescriptor{
+            "Settings", LLGL::ResourceType::Buffer, LLGL::BindFlags::ConstantBuffer, 
+            (/*IsMetal() ? LLGL::StageFlags::ComputeStage | LLGL::StageFlags::VertexStage :*/ LLGL::StageFlags::AllTessStages),
+             constantBufferIndex
+        }
+    };
+
+    LLGL::PipelineLayout* pipelinelayout = renderer->CreatePipelineLayout(pldesc);
+
+    //create the CPU-mirror to update uniforms
+    LLGL::BufferDescriptor constantBufferDesc;
+    constantBufferDesc.size = sizeof(settings);
+    constantBufferDesc.cpuAccessFlags = LLGL::CPUAccessFlags::ReadWrite;
+    //constantBufferDesc.miscFlags = LLGL::MiscFlags::DynamicUsage;
+    LLGL::Buffer* constantBuffer = renderer->CreateBuffer(constantBufferDesc,&settings);
+
+    //create a resource heap with the constant buffer
+    LLGL::ResourceHeapDescriptor heapdesc;
+    heapdesc.pipelineLayout = pipelinelayout;
+    heapdesc.resourceViews = { constantBuffer };
+
+    LLGL::ResourceHeap* resourceHeap = renderer->CreateResourceHeap(heapdesc);
 
     // Vertex format
     LLGL::VertexFormat vertexFormat;
@@ -193,7 +231,7 @@ void RenderEngine::Init()
     // Append 3D unsigned byte vector for color
     vertexFormat.AppendAttribute({ "color",    LLGL::Format::RGBA8UNorm });
 
-    // Update stride in case out vertex structure is not 4-byte aligned
+    // Update stride in case our vertex structure is not 4-byte aligned
     vertexFormat.SetStride(sizeof(Vertex));
 
     // Create vertex buffer
@@ -204,7 +242,7 @@ void RenderEngine::Init()
         vertexBufferDesc.vertexAttribs = vertexFormat.attributes;          // Vertex format layout
     }
     LLGL::Buffer* vertexBuffer = renderer->CreateBuffer(vertexBufferDesc, vertices);
-    LLGL::Buffer* indexBuffer = renderer->CreateBuffer(,LLGL::Format::R32UInt);
+    //LLGL::Buffer* indexBuffer = renderer->CreateBuffer(,LLGL::Format::R32UInt);
 
     // Create shaders
     LLGL::Shader* vertShader = nullptr;
@@ -241,8 +279,8 @@ void RenderEngine::Init()
     }
     else if (std::find(languages.begin(), languages.end(), LLGL::ShadingLanguage::HLSL) != languages.end())
     {
-        vertShaderDesc = { LLGL::ShaderType::Vertex,   "Example.hlsl", "VS", "vs_4_0" };
-        fragShaderDesc = { LLGL::ShaderType::Fragment, "Example.hlsl", "PS", "ps_4_0" };
+        vertShaderDesc = { LLGL::ShaderType::Vertex,   "../src/Example.hlsl", "VS", "vs_4_0" };
+        fragShaderDesc = { LLGL::ShaderType::Fragment, "../src/Example.hlsl", "PS", "ps_4_0" };
     }
     else if (std::find(languages.begin(), languages.end(), LLGL::ShadingLanguage::Metal) != languages.end())
     {
@@ -275,8 +313,10 @@ void RenderEngine::Init()
     LLGL::ShaderProgram* shaderProgram = renderer->CreateShaderProgram(shaderProgramDesc);
 
     // Link shader program and check for errors
-    if (shaderProgram->HasErrors())
-        throw std::runtime_error(shaderProgram->GetReport());
+    if (shaderProgram->HasErrors()) {
+        cerr << shaderProgram->GetReport() << endl;
+        throw std::runtime_error("");
+    }
 
     // Create graphics pipeline
     LLGL::PipelineState* pipeline = nullptr;
@@ -301,6 +341,8 @@ void RenderEngine::Init()
 #ifdef ENABLE_MULTISAMPLING
             pipelineDesc.rasterizer.multiSampleEnabled = (contextDesc.samples > 1);
 #endif
+            pipelineDesc.pipelineLayout = pipelinelayout;
+
         }
 
 #ifdef ENABLE_CACHED_PSO
@@ -354,11 +396,20 @@ void RenderEngine::Init()
         // Begin recording commands
         commands->Begin();
         {
+
+            //commands->UpdateBuffer(*constantBuffer, 0, &settings, sizeof(settings));
+
             // Set viewport and scissor rectangle
             commands->SetViewport(surface->GetContext()->GetResolution());
 
+            if (resourceHeap) {
+                commands->SetResourceHeap(*resourceHeap);
+            }
+
             // Set graphics pipeline
             commands->SetPipelineState(*pipeline);
+
+            //commands->SetUniform(0, &settings.wvpMatrix, sizeof(settings.wvpMatrix));
 
             // Set vertex buffer
             commands->SetVertexBuffer(*vertexBuffer);
