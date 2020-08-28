@@ -191,9 +191,9 @@ void RenderEngine::Init()
     //calculate the model view projection matrix and set it in the uniform
     Gs::Matrix4f worldMatrix;
     worldMatrix.LoadIdentity();
-    Gs::Translate(worldMatrix,Gs::Vector3(0,0,0));
-    settings.wvpMatrix = Gs::ProjectionMatrix4f::Perspective(1.6666,0.1,100,Gs::Deg2Rad(45.0),0).ToMatrix4() * worldMatrix;
-    //settings.wvpMatrix = worldMatrix;
+    //Gs::Translate(worldMatrix,Gs::Vector3(0,0,0));
+    //settings.wvpMatrix = Gs::ProjectionMatrix4f::Perspective(1.6666,0.1,100,Gs::Deg2Rad(45.0),0).ToMatrix4() * worldMatrix;
+    settings.wvpMatrix = worldMatrix;
 
     //maps the memory appropriately so uniforms can be set
     uint32_t constantBufferIndex = 0;       //needs to be 1 on Metal
@@ -201,7 +201,7 @@ void RenderEngine::Init()
     pldesc.bindings = {
         LLGL::BindingDescriptor{
             "Settings", LLGL::ResourceType::Buffer, LLGL::BindFlags::ConstantBuffer, 
-            (/*IsMetal() ? LLGL::StageFlags::ComputeStage | LLGL::StageFlags::VertexStage :*/ LLGL::StageFlags::AllTessStages),
+            (/*IsMetal() ? LLGL::StageFlags::ComputeStage | LLGL::StageFlags::VertexStage :*/ LLGL::StageFlags::VertexStage),   //this makes the uniform availabe to the vertex stage. Change to make available to other shaders
              constantBufferIndex
         }
     };
@@ -212,6 +212,7 @@ void RenderEngine::Init()
     LLGL::BufferDescriptor constantBufferDesc;
     constantBufferDesc.size = sizeof(settings);
     constantBufferDesc.cpuAccessFlags = LLGL::CPUAccessFlags::ReadWrite;
+    constantBufferDesc.bindFlags = LLGL::BindFlags::ConstantBuffer;
     //constantBufferDesc.miscFlags = LLGL::MiscFlags::DynamicUsage;
     LLGL::Buffer* constantBuffer = renderer->CreateBuffer(constantBufferDesc,&settings);
 
@@ -344,29 +345,9 @@ void RenderEngine::Init()
             pipelineDesc.pipelineLayout = pipelinelayout;
 
         }
-
-#ifdef ENABLE_CACHED_PSO
-
-        // Create and cache graphics PSO
-        pipeline = renderer->CreatePipelineState(pipelineDesc, &pipelineCache);
-        if (pipelineCache)
-        {
-            std::cout << "Pipeline cache created: " << pipelineCache->GetSize() << " bytes" << std::endl;
-
-            // Store PSO cache to file
-            std::ofstream file{ cacheFilename, std::ios::out | std::ios::binary };
-            file.write(
-                reinterpret_cast<const char*>(pipelineCache->GetData()),
-                static_cast<std::streamsize>(pipelineCache->GetSize())
-            );
-        }
-
-#else
-
         // Create graphics PSO
         pipeline = renderer->CreatePipelineState(pipelineDesc);
 
-#endif
     }
 
     // Get command queue to record and submit command buffers
@@ -375,60 +356,44 @@ void RenderEngine::Init()
     // Create command buffer to submit subsequent graphics commands to the GPU
     LLGL::CommandBuffer* commands = renderer->CreateCommandBuffer();
 
-#ifdef ENABLE_TIMER
-    auto timer = LLGL::Timer::Create();
-    auto start = std::chrono::system_clock::now();
-#endif
-
-    // Enter main loop
-    //while (window.ProcessEvents())
+    
+    // Begin recording commands
+    commands->Begin();
     {
-#ifdef ENABLE_TIMER
-        timer->MeasureTime();
-        auto end = std::chrono::system_clock::now();
-        if (std::chrono::duration_cast<std::chrono::seconds>(end - start).count() > 0)
-        {
-            std::cout << "Rendertime: " << timer->GetDeltaTime() << ", FPS: " << 1.0 / timer->GetDeltaTime() << '\n';
-            start = end;
+        // Set graphics pipeline
+        commands->SetPipelineState(*pipeline);
+
+        commands->UpdateBuffer(*constantBuffer, 0, &settings, sizeof(settings));
+
+        // Set viewport and scissor rectangle
+        commands->SetViewport(surface->GetContext()->GetResolution());
+
+        if (resourceHeap) {
+            commands->SetResourceHeap(*resourceHeap);
         }
-#endif
 
-        // Begin recording commands
-        commands->Begin();
+        LLGL::ShaderReflection refl;
+        shaderProgram->Reflect(refl);
+        //commands->SetUniform(1, &settings.wvpMatrix, sizeof(settings.wvpMatrix));
+
+        // Set vertex buffer
+        commands->SetVertexBuffer(*vertexBuffer);
+
+        // Set the render context as the initial render target
+        commands->BeginRenderPass(*surface->GetContext());
         {
+            // Clear color buffer
+            commands->Clear(LLGL::ClearFlags::Color);
 
-            //commands->UpdateBuffer(*constantBuffer, 0, &settings, sizeof(settings));
-
-            // Set viewport and scissor rectangle
-            commands->SetViewport(surface->GetContext()->GetResolution());
-
-            if (resourceHeap) {
-                commands->SetResourceHeap(*resourceHeap);
-            }
-
-            // Set graphics pipeline
-            commands->SetPipelineState(*pipeline);
-
-            //commands->SetUniform(0, &settings.wvpMatrix, sizeof(settings.wvpMatrix));
-
-            // Set vertex buffer
-            commands->SetVertexBuffer(*vertexBuffer);
-
-            // Set the render context as the initial render target
-            commands->BeginRenderPass(*surface->GetContext());
-            {
-                // Clear color buffer
-                commands->Clear(LLGL::ClearFlags::Color);
-
-                // Draw triangle with 3 vertices
-                commands->Draw(3, 0);
-            }
-            commands->EndRenderPass();
+            // Draw triangle with 3 vertices
+            commands->Draw(3, 0);
         }
-        commands->End();
-        queue->Submit(*commands);
-
-        // Present the result on the screen
-        surface->GetContext()->Present();
+        commands->EndRenderPass();
     }
+    commands->End();
+    queue->Submit(*commands);
+
+    // Present the result on the screen
+    surface->GetContext()->Present();
+    
 }
