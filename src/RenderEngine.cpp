@@ -175,14 +175,23 @@ void RenderEngine::Init()
     };
 
     // Vertex data (3 vertices for our triangle)
-    const float s = 0.5f;
 
     Vertex vertices[] =
     {
-        { {  0,  s , -1}, { 255, 0, 0 } }, // 1st vertex: center-top, red
-        { {  s, -s, -1 }, { 0, 255, 0 } }, // 2nd vertex: right-bottom, green
-        { { -s, -s, -1 }, { 0, 0, 255 } }, // 3rd vertex: left-bottom, blue
+        {{ -1, -1, -1 }, {255,0,0}}, {{ -1,  1, -1 },{0,255,0}}, {{  1,  1, -1 },{0,0,255}}, {{  1, -1, -1 },{255,0,0}},
+        {{ -1, -1,  1 },{0,255,0}}, {{ -1,  1,  1 },{0,0,255}}, {{  1,  1,  1 },{255,0,0}}, {{  1, -1,  1 },{0,255,0}},
     };
+
+    uint32_t indices[] = {
+        0, 1, 2, 0, 2, 3, // front
+        3, 2, 6, 3, 6, 7, // right
+        4, 5, 1, 4, 1, 0, // left
+        1, 5, 6, 1, 6, 2, // top
+        4, 0, 3, 4, 3, 7, // bottom
+        7, 6, 5, 7, 5, 4, // back
+    };
+
+    cout << "vertex buffer size: " << sizeof(vertices) << ", index buffer size: " << sizeof(indices) << endl;
 
     struct Settings {
         Gs::Matrix4f wvpMatrix; //todo: 16 byte pack alignment for constant buffers
@@ -191,9 +200,9 @@ void RenderEngine::Init()
     //calculate the model view projection matrix and set it in the uniform
     Gs::Matrix4f worldMatrix;
     worldMatrix.LoadIdentity();
-    //Gs::Translate(worldMatrix,Gs::Vector3(0,0,0));
-    //settings.wvpMatrix = Gs::ProjectionMatrix4f::Perspective(1.6666,0.1,100,Gs::Deg2Rad(45.0),0).ToMatrix4() * worldMatrix;
-    settings.wvpMatrix = worldMatrix;
+    Gs::Translate(worldMatrix,Gs::Vector3(0,0,5));
+    Gs::RotateFree(worldMatrix, Gs::Vector3f(0.4, 1, 0), 1.0f);
+    settings.wvpMatrix = Gs::ProjectionMatrix4f::Perspective(1.6666,0.1,100,Gs::Deg2Rad(45.0),0).ToMatrix4() * worldMatrix;
 
     //maps the memory appropriately so uniforms can be set
     uint32_t constantBufferIndex = 0;       //needs to be 1 on Metal
@@ -201,7 +210,7 @@ void RenderEngine::Init()
     pldesc.bindings = {
         LLGL::BindingDescriptor{
             "Settings", LLGL::ResourceType::Buffer, LLGL::BindFlags::ConstantBuffer, 
-            (/*IsMetal() ? LLGL::StageFlags::ComputeStage | LLGL::StageFlags::VertexStage :*/ LLGL::StageFlags::VertexStage),   //this makes the uniform availabe to the vertex stage. Change to make available to other shaders
+            LLGL::StageFlags::VertexStage,   //this makes the uniform availabe to the vertex stage. Change to make available to other shaders
              constantBufferIndex
         }
     };
@@ -227,10 +236,10 @@ void RenderEngine::Init()
     LLGL::VertexFormat vertexFormat;
 
     // Append 2D float vector for position attribute
-    vertexFormat.AppendAttribute({ "position", LLGL::Format::RG32Float });
+    vertexFormat.AppendAttribute({ "position", LLGL::Format::RGB32Float });
 
     // Append 3D unsigned byte vector for color
-    vertexFormat.AppendAttribute({ "color",    LLGL::Format::RGBA8UNorm });
+    vertexFormat.AppendAttribute({ "color",    LLGL::Format::RGB32Float });
 
     // Update stride in case our vertex structure is not 4-byte aligned
     vertexFormat.SetStride(sizeof(Vertex));
@@ -243,7 +252,12 @@ void RenderEngine::Init()
         vertexBufferDesc.vertexAttribs = vertexFormat.attributes;          // Vertex format layout
     }
     LLGL::Buffer* vertexBuffer = renderer->CreateBuffer(vertexBufferDesc, vertices);
-    //LLGL::Buffer* indexBuffer = renderer->CreateBuffer(,LLGL::Format::R32UInt);
+
+    LLGL::BufferDescriptor indexBufferDesc;
+    indexBufferDesc.size = sizeof(indices);
+    indexBufferDesc.bindFlags = LLGL::BindFlags::IndexBuffer;
+    indexBufferDesc.format = LLGL::Format::R32UInt;
+    LLGL::Buffer* indexBuffer = renderer->CreateBuffer(indexBufferDesc,indices); 
 
     // Create shaders
     LLGL::Shader* vertShader = nullptr;
@@ -343,11 +357,12 @@ void RenderEngine::Init()
             pipelineDesc.rasterizer.multiSampleEnabled = (contextDesc.samples > 1);
 #endif
             pipelineDesc.pipelineLayout = pipelinelayout;
-
+            pipelineDesc.rasterizer.cullMode = LLGL::CullMode::Back;
+            pipelineDesc.rasterizer.frontCCW = false;
+            pipelineDesc.primitiveTopology = LLGL::PrimitiveTopology::TriangleList;
         }
         // Create graphics PSO
         pipeline = renderer->CreatePipelineState(pipelineDesc);
-
     }
 
     // Get command queue to record and submit command buffers
@@ -378,6 +393,7 @@ void RenderEngine::Init()
 
         // Set vertex buffer
         commands->SetVertexBuffer(*vertexBuffer);
+        commands->SetIndexBuffer(*indexBuffer);
 
         // Set the render context as the initial render target
         commands->BeginRenderPass(*surface->GetContext());
@@ -386,7 +402,7 @@ void RenderEngine::Init()
             commands->Clear(LLGL::ClearFlags::Color);
 
             // Draw triangle with 3 vertices
-            commands->Draw(3, 0);
+            commands->DrawIndexed(36, 0);
         }
         commands->EndRenderPass();
     }
