@@ -19,7 +19,7 @@ using namespace physx;
 using namespace RavEngine;
 
 Ref<RavEngine::PhysicsMaterial> TestEntity::sharedMat;
-Ref<RavEngine::MaterialInstance<RavEngine::Material>> TestEntity::sharedMatInstance;
+Ref<RavEngine::Material> TestEntity::sharedMatInstance;
 
 TestEntity::TestEntity() : Entity(){
     AddSystem<PhysicsLinkSystemRead>();
@@ -39,7 +39,7 @@ TestEntity::TestEntity() : Entity(){
     auto mesh = AddComponent<StaticMesh>(new StaticMesh());
     if (sharedMatInstance.isNull()) {
         Ref<Material> defaultMat = new RavEngine::Material();
-        sharedMatInstance = new MaterialInstance(defaultMat);
+        sharedMatInstance = new Material();
 
     }
     mesh->SetMaterial(sharedMatInstance);

@@ -32,7 +32,7 @@ void Transform::GetParentMatrixStack(list<matrix4>& matrix) const{
 	//get all the transforms by navigating up the hierarchy
 	while (!p.isNull()) {
 		Ref<Transform> e(p);
-		matrix.push_front(e->GetMatrix());
+		matrix.push_front(e->GenerateLocalMatrix());
 		p = e->parent;
 	}
 }
@@ -66,7 +66,7 @@ vector3 Transform::GetWorldPosition()
 	for (auto& transform : translations) {
 		finalMatrix *= transform;
 	}
-	finalMatrix *= GetMatrix();
+	finalMatrix *= GenerateLocalMatrix();
 
 	//finally apply the local matrix
 	return finalMatrix * vector4(GetLocalPosition(), 1);
@@ -107,14 +107,8 @@ void RavEngine::Transform::Apply()
 	for (auto& transform : translations) {
 		finalMatrix *= transform;
 	}
-	finalMatrix *= GetMatrix();
-
-	decimalType dArray[16] = { 0.0 };
-
-	const decimalType* pSource = (const decimalType*)glm::value_ptr(finalMatrix);
-	for (int i = 0; i < 16; ++i)
-		dArray[i] = pSource[i];
-
+	finalMatrix *= GenerateLocalMatrix();
+	matrix.store(finalMatrix);
 }
 
 bool Transform::HasParent() {

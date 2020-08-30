@@ -3,42 +3,21 @@
 #include "RenderEngine.hpp"
 #include <unordered_map>
 #include <mutex>
+#include "Gauss/Gauss.h"
+
+namespace LLGL {
+	class CommandBuffer;
+	class Buffer;
+	class ResourceHeap;
+	class PipelineState;
+}
 
 namespace RavEngine {
-	class Material;
-	/**
-	Represents an instance of a material. Instances can be changed independently of one another, and are assigned to objects.
-	Subclass to expose more options.
-	*/
-
-	template<class T>
-	class MaterialInstance : public SharedObject {
-	public:
-		MaterialInstance() {}
-
-		~MaterialInstance() {
-		}
-
-		bool isNull() { return material.isNull(); }
-
-		/**
-		Create an instance of a material.
-		*/
-		MaterialInstance(Ref<T> mat) {
-			static_assert(std::is_base_of<T, RavEngine::Material>::value, "T is not a subclass of Material");
-			material = mat;
-		}
-	protected:
-		Ref<T> material;
-	};
-
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
 	*/
 	class Material : public SharedObject {
 	public:
-		
-
 		/**
 		Create the default material. Override this constructor in subclasses, and from that, invoke the protected constructor.
 		*/
@@ -50,11 +29,31 @@ namespace RavEngine {
 			return name;
 		}
 
+		/**
+		Set the world space matrix to use when rendering this material
+		*/
+		void SetTransformMatrix(const matrix4&);
+
+		/**
+		Enqueue commands to execute on the GPU
+		@param commands the command buffer to write to
+		*/
+		void Draw(LLGL::CommandBuffer* const commands, LLGL::Buffer* vertexBuffer, LLGL::Buffer* indexBuffer);
+
 	protected:
 		std::string name;
 
 		//trying to create a material that already exists will throw an exception
-		Material(const std::string&, const std::string&);
+		Material(const std::string& name, const std::string& vertShader, const std::string& fragShader);
+
+		LLGL::ResourceHeap* resourceHeap = nullptr;
+		LLGL::PipelineState* pipeline = nullptr;
+		LLGL::Buffer* constantBuffer = nullptr;
+
+		struct Settings {
+			Gs::Matrix4f wvpMatrix; //todo: 16 byte pack alignment for constant buffers
+		} settings;
+
 	};
 
 	/**
@@ -66,6 +65,8 @@ namespace RavEngine {
 		typedef std::unordered_map<std::string, Ref<RavEngine::Material>> MaterialStore;
 		static MaterialStore materials;
 		static std::mutex mtx;
+
+		static matrix4 projectionMatrix;
 	public:
 		/**
 		Gets a material with a given name, casted to a particular type.
@@ -84,5 +85,20 @@ namespace RavEngine {
 
 		//for internal use only
 		static void RegisterMaterial(Ref<RavEngine::Material>);
+
+		/**
+		Set the current projection matrix. For internal use only.
+		*/
+		static void SetProjectionMatrix(const matrix4& mat) {
+			projectionMatrix = mat;
+		}
+
+		/**
+		Get a const-reference to the current global projection matrix
+		For internal use only
+		*/
+		static const matrix4& GetCurrentProjectionMatrix() {
+			return projectionMatrix;
+		}
 	};
 }

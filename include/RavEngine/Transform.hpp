@@ -50,7 +50,7 @@ namespace RavEngine {
 
 		vector3 GetLocalScale();
 
-		matrix4 GetMatrix();
+		matrix4 GenerateLocalMatrix();
 
 		/**
 		Apply cached transformations to matrix - for internal use only
@@ -75,10 +75,19 @@ namespace RavEngine {
 		*/
 		void RemoveChild(const WeakRef<Transform>& child);
 
+		/**
+		@returns the currently stored world matrix. This is not guarenteed to be up-to-date. 
+		To update it, call Apply()
+		*/
+		matrix4 GetCurrentWorldMatrix() {
+			return matrix.load();
+		}
+
 	protected:
 		std::atomic<vector3> position;
 		std::atomic<quaternion> rotation;
 		std::atomic<vector3> scale;
+		std::atomic<matrix4> matrix;
 
 		bool isStatic = false;
 
@@ -90,7 +99,7 @@ namespace RavEngine {
 	Construct a transformation matrix out of this transform
 	@return glm matrix representing this transform
 	*/
-	inline matrix4 Transform::GetMatrix() {
+	inline matrix4 Transform::GenerateLocalMatrix() {
 		return glm::translate(matrix4(1), position.load()) * glm::toMat4(rotation.load()) * glm::scale(matrix4(1), scale.load());
 	}
 

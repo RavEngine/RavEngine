@@ -1,14 +1,14 @@
 #pragma once
-#include "Component.hpp"
+#include "RenderableComponent.hpp"
 #include <vector>
 #include "Material.hpp"
 
-
-struct Vertex {
-};
+namespace LLGL {
+    class Commands;
+}
 
 namespace RavEngine {
-    class StaticMesh : public Component {
+    class StaticMesh : public RenderableComponent {
     public:
         StaticMesh();
         virtual ~StaticMesh();
@@ -17,7 +17,9 @@ namespace RavEngine {
         Assign a material to this staticmesh
         @param mat the material instance to assign
         */
-        void SetMaterial(Ref<MaterialInstance<Material>> mat);
+        void SetMaterial(Ref<Material> mat);
+
+        void Draw(LLGL::CommandBuffer*) override;
 
         /**
         @returns the currently assigned material
@@ -31,10 +33,13 @@ namespace RavEngine {
     protected:
 
         //the default material
-        Ref<MaterialInstance<Material>> material;
+        Ref<Material> material;
+
+        LLGL::Buffer* vertexBuffer = nullptr;
+        LLGL::Buffer* indexBuffer = nullptr;
 
         //index and vertex buffers, stores actual data
-        std::vector<Vertex> vb;
-        std::vector<unsigned int> ib;
+        //std::vector<Vertex> vb;
+        //std::vector<unsigned int> ib;
     };
 }
