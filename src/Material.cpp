@@ -18,20 +18,25 @@ mutex MaterialManager::mtx;
 
 void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
 {
-    //convert to a Gauss matrix and update the Settings struct
-    float m[16] = { 0.0 };
-
-    const decimalType* pSource = (const decimalType*)glm::value_ptr(mat);
-    for (int i = 0; i < 16; ++i)
-        m[i] = pSource[i];
-
-
-    //TODO: typdef this instead of hard-coding to float
-    settings.wvpMatrix = Gs::Matrix4f({m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],m[12],m[13],m[14],m[15]});
+    transformMatrix = mat;
 }
 
 void Material::Draw(LLGL::CommandBuffer* const commands,LLGL::Buffer* vertexBuffer, LLGL::Buffer* indexBuffer)
 {
+    //calculate wvp matrix
+    auto wvp = MaterialManager::GetCurrentProjectionMatrix() * transformMatrix;
+
+    //convert to a Gauss matrix and update the Settings struct
+    //TODO: typdef this instead of hard-coding to float?
+    float m[16] = { 0.0 };
+
+    const decimalType* pSource = (const decimalType*)glm::value_ptr(wvp);
+    for (int i = 0; i < 16; ++i) {
+        m[i] = pSource[i];
+    }
+
+    settings.wvpMatrix = Gs::Matrix4f({ m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],m[12],m[13],m[14],m[15] });
+
     // Set graphics pipeline
     commands->SetPipelineState(*pipeline);
 
@@ -47,8 +52,7 @@ void Material::Draw(LLGL::CommandBuffer* const commands,LLGL::Buffer* vertexBuff
     // Set vertex buffer
     commands->SetVertexBuffer(*vertexBuffer);
     commands->SetIndexBuffer(*indexBuffer);
-
-    commands->DrawIndexed(indexBuffer->GetDesc().size, 0);
+    commands->DrawIndexed(indexBuffer->GetDesc().size / sizeof(uint32_t), 0);
 }
 
 /**

@@ -44,13 +44,11 @@ namespace RavEngine {
 		matrix4 GenerateCameraMatrix() {
 			Ref<Entity> entity = owner.get();
 			auto transform = entity->transform();
-
+			transform->Apply();
 			//negate to convert world matrix to camera space
-			auto pos = - transform->GetWorldPosition();
-			auto rot = glm::inverse(transform->GetWorldRotation());
+			auto mtx = transform->GetCurrentWorldMatrix();
 
-			auto projection = matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip));
-			projection *= (glm::translate(matrix4(), pos) * glm::toMat4(rot));
+			auto projection = matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip)) * mtx;
 
 			return projection;
 		}

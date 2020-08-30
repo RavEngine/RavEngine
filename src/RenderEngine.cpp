@@ -53,8 +53,8 @@ RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 
 RavEngine::RenderEngine::~RenderEngine()
 {
-    delete queue; queue = nullptr;
-    delete commands; commands = nullptr;
+   /* delete queue; queue = nullptr;
+    delete commands; commands = nullptr;*/
 }
 
 /**
