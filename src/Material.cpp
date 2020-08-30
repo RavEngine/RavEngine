@@ -13,6 +13,7 @@ using namespace std;
 using namespace RavEngine;
 
 MaterialManager::MaterialStore MaterialManager::materials;
+matrix4 MaterialManager::projectionMatrix;
 mutex MaterialManager::mtx;
 
 void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
