@@ -16,7 +16,7 @@
 class TestEntity : public RavEngine::Entity{
 protected:
     static Ref<RavEngine::PhysicsMaterial> sharedMat;
-    static Ref<RavEngine::MaterialInstance<RavEngine::Material>> sharedMatInstance;
+    static Ref<RavEngine::Material> sharedMatInstance;
 public:
     TestEntity();
     void Tick(float scale) override;

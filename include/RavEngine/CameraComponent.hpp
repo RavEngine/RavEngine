@@ -38,6 +38,23 @@ namespace RavEngine {
 			Orthographic
 		};
 
+		/**
+		@return the projection matrix to use when rendering objects
+		*/
+		matrix4 GenerateCameraMatrix() {
+			Ref<Entity> entity = owner.get();
+			auto transform = entity->transform();
+
+			//negate to convert world matrix to camera space
+			auto pos = - transform->GetWorldPosition();
+			auto rot = glm::inverse(transform->GetWorldRotation());
+
+			auto projection = glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip);
+			projection *= (glm::translate(matrix4(), pos) * glm::toMat4(rot));
+
+			return projection;
+		}
+
 	protected:
 		bool active = false;
 
