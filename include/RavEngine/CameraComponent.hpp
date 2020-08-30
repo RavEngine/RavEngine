@@ -49,7 +49,7 @@ namespace RavEngine {
 			auto pos = - transform->GetWorldPosition();
 			auto rot = glm::inverse(transform->GetWorldRotation());
 
-			auto projection = glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip);
+			auto projection = matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip));
 			projection *= (glm::translate(matrix4(), pos) * glm::toMat4(rot));
 
 			return projection;
