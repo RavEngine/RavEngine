@@ -108,7 +108,7 @@ namespace RavEngine{
 		template<typename T>
 		std::list<Ref<T>> GetAllComponentsOfSubclass() {
 			C_REF_CHECK
-				auto& comp = componentsRedundant[std::type_index(typeid(T))];
+			auto& comp = componentsRedundant[std::type_index(typeid(T))];
 			std::list<Ref<T>> cpy;
 			for (auto& c : comp) {
 				auto casted = static_cast<T*>(*(c));

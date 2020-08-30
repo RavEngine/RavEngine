@@ -148,10 +148,6 @@ void RavEngine::World::tick(float fpsScale) {
 		}
 	};
 
-	//
-
-#define THREADPOOL
-#if defined THREADPOOL
 	//determine the iterators (TODO: meet in the middle on 2 threads)
 	vector<EntityStore::iterator> iterators(numthreads);
 	{
@@ -178,21 +174,4 @@ void RavEngine::World::tick(float fpsScale) {
 	for (auto& future : tasks) {
 		future.get();
 	}
-	
-#else
-	
-	list<thread> tasks;
-	for (int i = 0; i < numthreads; ++i) {
-		tasks.push_back(thread(ticker,it));	//start the thread
-
-		for (int k = 0; k < tasksPerThread && it != Entities.end(); ++k) {
-			++it;
-		}
-		//std::advance(it, tasksPerThread)
-	}
-	//wait for all threads to complete
-	for (auto& thread : tasks) {
-		thread.join();
-	}
-#endif
 }

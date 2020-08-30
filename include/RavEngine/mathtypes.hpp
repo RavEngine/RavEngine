@@ -25,8 +25,6 @@ typedef glm::dmat3x3 matrix3;
 
 typedef double decimalType;
 
-#define print_vec3(vec) "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")"
-
 //printing types
 //inline std::ostream& operator<<(std::ostream& os, const vector3& vec) {
 //	os << "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
@@ -52,3 +50,5 @@ typedef float decimalType;
 constexpr vector3 vector3_right = vector3(1, 0, 0);
 constexpr vector3 vector3_up = vector3(0, 1, 0);
 constexpr vector3 vector3_forward = vector3(0, 0, -1);
+
+#define print_vec3(vec) "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")"

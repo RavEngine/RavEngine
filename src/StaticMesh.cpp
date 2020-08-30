@@ -60,6 +60,8 @@ StaticMesh::StaticMesh() : RenderableComponent() {
     indexBufferDesc.bindFlags = LLGL::BindFlags::IndexBuffer;
     indexBufferDesc.format = LLGL::Format::R32UInt;
     indexBuffer = RenderEngine::GetRenderSystem()->CreateBuffer(indexBufferDesc, indices);
+
+    RegisterAllAlternateTypes();
 }
 
 RavEngine::StaticMesh::~StaticMesh()
@@ -75,6 +77,10 @@ void RavEngine::StaticMesh::SetMaterial(Ref<Material> mat)
 
 void RavEngine::StaticMesh::Draw(LLGL::CommandBuffer* commands)
 {
+    //skip draw if no material assigned
+    if (material.isNull()) {
+        return;
+    }
     //apply transform and set it for the material
     auto owner = Ref<Entity>(getOwner());
     owner->transform()->Apply();

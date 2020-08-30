@@ -50,6 +50,8 @@ namespace RavEngine {
 		LLGL::PipelineState* pipeline = nullptr;
 		LLGL::Buffer* constantBuffer = nullptr;
 
+		matrix4 transformMatrix;
+
 		struct Settings {
 			Gs::Matrix4f wvpMatrix; //todo: 16 byte pack alignment for constant buffers
 		} settings;
@@ -95,7 +97,7 @@ namespace RavEngine {
 
 		/**
 		Get a const-reference to the current global projection matrix
-		For internal use only
+		For internal use only.
 		*/
 		static const matrix4& GetCurrentProjectionMatrix() {
 			return projectionMatrix;
