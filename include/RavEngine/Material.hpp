@@ -76,8 +76,7 @@ namespace RavEngine {
 		@param name the name of the material to query 
 		@note Undefined Behavior occurs if the template parameter does not match the returned material or any of its base classes
 		*/
-		template<class T>
-		static Ref<T> GetMaterialByName(const std::string& name) {
+		static Ref<Material> GetMaterialByName(const std::string& name) {
 			mtx.lock();
 			auto mat = materials.at(name);
 			mtx.unlock();

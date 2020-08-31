@@ -66,8 +66,8 @@ StaticMesh::StaticMesh() : RenderableComponent() {
 
 RavEngine::StaticMesh::~StaticMesh()
 {
-    delete indexBuffer; indexBuffer = nullptr;
-    delete vertexBuffer; vertexBuffer = nullptr;
+    //delete indexBuffer; indexBuffer = nullptr;
+    //delete vertexBuffer; vertexBuffer = nullptr;
 }
 
 void RavEngine::StaticMesh::SetMaterial(Ref<Material> mat)

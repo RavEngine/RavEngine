@@ -57,7 +57,7 @@ namespace RavEngine {
 			auto rot = glm::inverse(transform->GetWorldRotation());
 			auto scale = vector3(1, 1, 1);
 
-			return glm::translate(matrix4(1), pos) * glm::toMat4(rot) * glm::scale(matrix4(1), scale);;
+			return glm::scale(matrix4(1), scale) * glm::toMat4(rot) * glm::translate(matrix4(1), pos);
 		}
 
 	protected:
