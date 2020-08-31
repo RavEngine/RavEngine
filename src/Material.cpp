@@ -190,7 +190,7 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 #endif
     pipelineDesc.pipelineLayout = pipelinelayout;
     pipelineDesc.rasterizer.cullMode = LLGL::CullMode::Back;
-    pipelineDesc.rasterizer.frontCCW = false;
+    pipelineDesc.rasterizer.frontCCW = true;
     pipelineDesc.primitiveTopology = LLGL::PrimitiveTopology::TriangleList;
 
     // Create graphics PSO
