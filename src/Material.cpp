@@ -8,6 +8,7 @@
 #include "SDLSurface.hpp"
 #include "mathtypes.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include <filesystem>
 
 using namespace std;
 using namespace RavEngine;
@@ -97,6 +98,8 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 
     LLGL::ShaderDescriptor vertShaderDesc, fragShaderDesc;
 
+    auto path = std::filesystem::current_path();
+
     if (std::find(languages.begin(), languages.end(), LLGL::ShadingLanguage::GLSL) != languages.end())
     {
 #if 0
@@ -124,8 +127,8 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
     }
     else if (std::find(languages.begin(), languages.end(), LLGL::ShadingLanguage::HLSL) != languages.end())
     {
-        vertShaderDesc = { LLGL::ShaderType::Vertex,   "../src/Example.hlsl", "VS", "vs_4_0" };
-        fragShaderDesc = { LLGL::ShaderType::Fragment, "../src/Example.hlsl", "PS", "ps_4_0" };
+        vertShaderDesc = { LLGL::ShaderType::Vertex,   "../../src/Example.hlsl", "VS", "vs_4_0" };
+        fragShaderDesc = { LLGL::ShaderType::Fragment, "../../src/Example.hlsl", "PS", "ps_4_0" };
     }
     else if (std::find(languages.begin(), languages.end(), LLGL::ShadingLanguage::Metal) != languages.end())
     {
@@ -192,7 +195,8 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
     pipelineDesc.rasterizer.cullMode = LLGL::CullMode::Back;
     pipelineDesc.rasterizer.frontCCW = true;
     pipelineDesc.primitiveTopology = LLGL::PrimitiveTopology::TriangleList;
-
+    pipelineDesc.depth.testEnabled = true;  //enable depth
+    pipelineDesc.depth.writeEnabled = true;
     // Create graphics PSO
     pipeline = RenderEngine::GetRenderSystem()->CreatePipelineState(pipelineDesc);
 

@@ -38,9 +38,12 @@ TestEntity::TestEntity() : Entity(){
     //default staticmesh
     auto mesh = AddComponent<StaticMesh>(new StaticMesh());
     if (sharedMatInstance.isNull()) {
-        Ref<Material> defaultMat = new RavEngine::Material();
-        sharedMatInstance = new Material();
-
+        if (MaterialManager::HasMaterialByName("defaultMaterial")) {
+            sharedMatInstance = MaterialManager::GetMaterialByName("defaultMaterial");
+        }
+        else {
+            sharedMatInstance = new Material();
+        }
     }
     mesh->SetMaterial(sharedMatInstance);
 }
