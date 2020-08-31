@@ -53,9 +53,7 @@ namespace RavEngine {
 			Ref<Entity> entity(owner);
 			auto transform = entity->transform();
 			transform->Apply();
-			//negate to convert world matrix to camera space
-			auto mtx = transform->GetCurrentWorldMatrix();
-			return mtx;
+			return transform->GetCurrentWorldMatrix();
 		}
 
 	protected:
