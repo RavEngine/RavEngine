@@ -2,3 +2,9 @@ build/
 *.DS_Store
 *.vscode
 deps/physx/physx/include/PxConfig.h
+deps/ShaderConductor/External/cxxopts/
+deps/ShaderConductor/External/DirectXShaderCompiler/
+deps/ShaderConductor/External/googletest/
+deps/ShaderConductor/External/SPIRV-Cross/
+deps/ShaderConductor/External/SPIRV-Header/
+deps/ShaderConductor/External/SPIRV-Tools/

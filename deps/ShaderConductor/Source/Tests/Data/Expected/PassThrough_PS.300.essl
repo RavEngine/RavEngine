@@ -1,0 +1,12 @@
+#version 300 es
+precision mediump float;
+precision highp int;
+
+in highp vec4 varying_COLOR;
+layout(location = 0) out highp vec4 out_var_SV_Target;
+
+void main()
+{
+    out_var_SV_Target = varying_COLOR;
+}
+
