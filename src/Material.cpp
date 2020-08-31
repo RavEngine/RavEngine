@@ -14,6 +14,7 @@ using namespace RavEngine;
 
 MaterialManager::MaterialStore MaterialManager::materials;
 matrix4 MaterialManager::projectionMatrix;
+matrix4 MaterialManager::viewMatrix;
 mutex MaterialManager::mtx;
 
 void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
@@ -24,7 +25,9 @@ void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
 void Material::Draw(LLGL::CommandBuffer* const commands,LLGL::Buffer* vertexBuffer, LLGL::Buffer* indexBuffer)
 {
     //calculate wvp matrix
-    auto wvp = MaterialManager::GetCurrentProjectionMatrix() * transformMatrix;
+    auto view = MaterialManager::GetCurrentViewMatrix();
+    auto projection = MaterialManager::GetCurrentProjectionMatrix();
+    auto wvp = projection * view * transformMatrix; //transformMatrix * view * projection;
 
     //convert to a Gauss matrix and update the Settings struct
     //TODO: typdef this instead of hard-coding to float?
@@ -34,16 +37,19 @@ void Material::Draw(LLGL::CommandBuffer* const commands,LLGL::Buffer* vertexBuff
     for (int i = 0; i < 16; ++i) {
         m[i] = pSource[i];
     }
-
     settings.wvpMatrix = Gs::Matrix4f({ m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],m[12],m[13],m[14],m[15] });
+
+    //temporary code
+    Gs::Matrix4f worldMatrix;
+    worldMatrix.LoadIdentity();
+    Gs::Translate(worldMatrix, Gs::Vector3(0, 0, 10));
+    //Gs::RotateFree(worldMatrix, Gs::Vector3f(0.4, 1, 0), 1.0f);
+    settings.wvpMatrix = Gs::ProjectionMatrix4f::Perspective(1.6666, 0.1, 100, Gs::Deg2Rad(45.0), 0).ToMatrix4() * worldMatrix;
 
     // Set graphics pipeline
     commands->SetPipelineState(*pipeline);
 
     commands->UpdateBuffer(*constantBuffer, 0, &settings, sizeof(settings));
-
-    // Set viewport and scissor rectangle
-    commands->SetViewport(RenderEngine::GetSurface()->GetContext()->GetResolution());
 
     if (resourceHeap) {
         commands->SetResourceHeap(*resourceHeap);

@@ -39,18 +39,23 @@ namespace RavEngine {
 		};
 
 		/**
-		@return the projection matrix to use when rendering objects
+		@return the projection matrix to use when rendering objects. For internal use only.
 		*/
-		matrix4 GenerateCameraMatrix() {
-			Ref<Entity> entity = owner.get();
+		matrix4 GenerateProjectionMatrix() {
+			auto projection = matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip));
+			return projection;
+		}
+
+		/**
+		@return the View matrix for this camera to use when rendering objects. For internal use only.
+		*/
+		matrix4 GenerateViewMatrix() {
+			Ref<Entity> entity(owner);
 			auto transform = entity->transform();
 			transform->Apply();
 			//negate to convert world matrix to camera space
 			auto mtx = transform->GetCurrentWorldMatrix();
-
-			auto projection = matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip)) * mtx;
-
-			return projection;
+			return mtx;
 		}
 
 	protected:
