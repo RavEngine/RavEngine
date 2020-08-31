@@ -50,7 +50,7 @@ namespace RavEngine {
 		LLGL::PipelineState* pipeline = nullptr;
 		LLGL::Buffer* constantBuffer = nullptr;
 
-		matrix4 transformMatrix;
+		matrix4 transformMatrix = matrix4(1);
 
 		struct Settings {
 			Gs::Matrix4f wvpMatrix; //todo: 16 byte pack alignment for constant buffers
@@ -69,6 +69,7 @@ namespace RavEngine {
 		static std::mutex mtx;
 
 		static matrix4 projectionMatrix;
+		static matrix4 viewMatrix;
 	public:
 		/**
 		Gets a material with a given name, casted to a particular type.
@@ -96,11 +97,25 @@ namespace RavEngine {
 		}
 
 		/**
-		Get a const-reference to the current global projection matrix
+		@retuurn a const-reference to the current global projection matrix
 		For internal use only.
 		*/
 		static const matrix4& GetCurrentProjectionMatrix() {
 			return projectionMatrix;
+		}
+
+		/**
+		Set the current view matrix. For interal use only.
+		*/
+		static void SetViewMatrix(const matrix4& mat) {
+			viewMatrix = mat;
+		}
+
+		/**
+		@return a const-reference to the current global view matrix. For internal use only
+		*/
+		static const matrix4& GetCurrentViewMatrix() {
+			return viewMatrix;
 		}
 	};
 }

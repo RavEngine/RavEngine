@@ -89,7 +89,8 @@ void RenderEngine::Draw(){
 			//TODO: set projection
 			auto size = surface->GetDrawableArea();
 			owning->SetTargetSize(size.width, size.height);
-            MaterialManager::SetProjectionMatrix(cam->GenerateCameraMatrix());
+            MaterialManager::SetProjectionMatrix(cam->GenerateProjectionMatrix());
+            MaterialManager::SetViewMatrix(cam->GenerateViewMatrix());
 			break;
 		}
 	}
@@ -106,6 +107,9 @@ void RenderEngine::Draw(){
     // Set the render context as the initial render target
     commands->BeginRenderPass(*surface->GetContext());
 
+    // Set viewport and scissor rectangle
+    commands->SetViewport(surface->GetContext()->GetResolution());
+
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {
         e->Draw(commands);
@@ -115,7 +119,6 @@ void RenderEngine::Draw(){
 
     commands->End();
     queue->Submit(*commands);
-
     // Present the result on the screen
     surface->GetContext()->Present();
 
