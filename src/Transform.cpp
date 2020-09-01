@@ -109,7 +109,7 @@ void RavEngine::Transform::Apply()
 		finalMatrix *= transform;
 	}
 	finalMatrix *= GenerateLocalMatrix();
-	matrix.store(finalMatrix);
+	matrix = finalMatrix;
 }
 
 bool Transform::HasParent() {

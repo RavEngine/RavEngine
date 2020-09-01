@@ -7,7 +7,7 @@
 
 #pragma once
 #include "Component.hpp"
-#include <atomic>
+#include "Atomic.hpp"
 #include <array>
 #include <unordered_set>
 #include "mathtypes.hpp"
@@ -80,14 +80,14 @@ namespace RavEngine {
 		To update it, call Apply()
 		*/
 		matrix4 GetCurrentWorldMatrix() {
-			return matrix.load();
+			return matrix;
 		}
 
 	protected:
-		std::atomic<vector3> position;
-		std::atomic<quaternion> rotation;
-		std::atomic<vector3> scale;
-		std::atomic<matrix4> matrix;
+		Atomic<vector3> position;
+		Atomic<quaternion> rotation;
+		Atomic<vector3> scale;
+		Atomic<matrix4> matrix;
 
 		bool isStatic = false;
 
@@ -100,28 +100,28 @@ namespace RavEngine {
 	@return glm matrix representing this transform
 	*/
 	inline matrix4 Transform::GenerateLocalMatrix() {
-		return glm::translate(matrix4(1), position.load()) * glm::toMat4(rotation.load()) * glm::scale(matrix4(1), scale.load());
+		return glm::translate(matrix4(1), (vector3)position) * glm::toMat4((quaternion)rotation) * glm::scale(matrix4(1), (vector3)scale);
 	}
 
 	/**
 	@return the vector pointing in the forward direction of this transform
 	*/
 	inline vector3 Transform::Forward() {
-		return rotation.load() * vector3_forward;
+		return (quaternion)rotation * vector3_forward;
 	}
 
 	/**
 	@return the vector pointing in the up direction of this transform
 	*/
 	inline vector3 Transform::Up() {
-		return rotation.load() * vector3_up;
+		return (quaternion)rotation * vector3_up;
 	}
 
 	/**
 	@return the vector pointing in the right direction of this transform
 	*/
 	inline vector3 Transform::Right() {
-		return rotation.load() * vector3_right;
+		return (quaternion)rotation * vector3_right;
 	}
 
 	/**
@@ -130,7 +130,7 @@ namespace RavEngine {
 	*/
 	inline void Transform::LocalTranslateDelta(const vector3& delta) {
 		//set position value
-		position.store(position.load() + delta);
+		position = (vector3)position + delta;
 	}
 
 	/**
@@ -139,7 +139,7 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalPosition(const vector3& newPos) {
 		//set position value
-		position.store(newPos);
+		position = newPos;
 	}
 
 	/**
@@ -165,7 +165,7 @@ namespace RavEngine {
 	@param newRot the new rotation to set
 	*/
 	inline void Transform::SetLocalRotation(const quaternion& newRot) {
-		rotation.store(newRot);
+		rotation = newRot;
 	}
 
 	/**
@@ -174,7 +174,7 @@ namespace RavEngine {
 	*/
 	inline void Transform::LocalRotateDelta(const quaternion& delta) {
 		//sum two quaternions by multiplying them
-		rotation.store(glm::toQuat(glm::toMat4(rotation.load()) * glm::toMat4(delta)));
+		rotation = glm::toQuat(glm::toMat4((quaternion)rotation) * glm::toMat4(delta));
 	}
 
 	/**
@@ -201,25 +201,25 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalScale(const vector3& newScale) {
 		//must undo current scale then scale to new size
-		scale.store(newScale);
+		scale = newScale;
 	}
 
 	inline void Transform::LocalScaleDelta(const vector3& delta) {
-		scale.store(scale.load() + delta);
+		scale = (vector3)scale + delta;
 	}
 
 	inline vector3 Transform::GetLocalPosition()
 	{
-		return position.load();
+		return position;
 	}
 
 	inline quaternion Transform::GetLocalRotation()
 	{
-		return rotation.load();
+		return rotation;
 	}
 
 	inline vector3 Transform::GetLocalScale()
 	{
-		return scale.load();
+		return scale;
 	}
 }
