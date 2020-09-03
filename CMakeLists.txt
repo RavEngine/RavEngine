@@ -93,7 +93,7 @@ endif()
 add_subdirectory("${DEPS_DIR}/LLGL")
 
 # ShaderCondutor
-add_subdirectory("${DEPS_DIR}/ShaderConductor")
+#add_subdirectory("${DEPS_DIR}/ShaderConductor")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -187,7 +187,7 @@ elseif(APPLE)
   target_link_libraries("${PROJECT_NAME}" "LLGL_Metal")
 endif()
 target_link_libraries("${PROJECT_NAME}" "LLGL_OpenGL")
-target_link_libraries("${PROJECT_NAME}" "ShaderConductor")
+#target_link_libraries("${PROJECT_NAME}" "ShaderConductor")
 
 # copy DLLs
 if (WIN32)

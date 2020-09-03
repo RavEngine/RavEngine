@@ -114,24 +114,6 @@ namespace RavEngine {
 		Entity();
 
 		/**
-		Called by a PhysicsBodyComponent when it has collided with another. Override in subclasses.
-		@param other the other component
-		*/
-		virtual void OnColliderEnter(const WeakRef<PhysicsBodyComponent>& other) {}
-
-		/**
-		Called by a PhysicsBodyComponent when it has exited collision with another. Override in subclasses.
-		@param other the other component
-		*/
-		virtual void OnColliderExit(const WeakRef<PhysicsBodyComponent>& other) {}
-
-		/**
-		Called by a PhysicsBodyComponent when it has collided with another and the collision has persisted. Override in subclasses.
-		@param other the other component
-		*/
-		virtual void OnColliderPersist(const WeakRef<PhysicsBodyComponent>& other) {}
-
-		/**
 		Called by the world when the entity is spawned.
 		*/
 		virtual void Start() {}

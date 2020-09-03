@@ -28,6 +28,7 @@ TestEntity::TestEntity() : Entity(){
 
     //set the filter layers
     auto r = AddComponent<RigidBodyDynamicComponent>(new RigidBodyDynamicComponent(FilterLayers::L0,FilterLayers::L0 | FilterLayers::L1));
+    r->AddReceiver(this);
 
     //add a box collision to the PhysX component
     if (sharedMat.isNull()) {
@@ -58,4 +59,5 @@ void TestEntity::Tick(float scale) {
 
 void TestEntity::OnColliderEnter(const WeakRef<PhysicsBodyComponent>& other)
 {
+    cout << "hit" << endl;
 }

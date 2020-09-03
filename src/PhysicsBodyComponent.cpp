@@ -6,6 +6,7 @@
 #include <PxRigidBody.h>
 #include "Transform.hpp"
 #include "Entity.hpp"
+#include "IPhysicsActor.hpp"
 
 using namespace physx;
 using namespace RavEngine;
@@ -15,6 +16,16 @@ using namespace RavEngine;
 RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
 	rigidActor = PhysicsSolver::phys->createRigidDynamic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
 	RegisterAllAlternateTypes();
+}
+
+void RavEngine::PhysicsBodyComponent::AddReceiver(IPhysicsActor* obj)
+{
+	receivers.insert(obj);
+}
+
+void RavEngine::PhysicsBodyComponent::RemoveReceiver(IPhysicsActor* obj)
+{
+	receivers.erase(obj);
 }
 
 RavEngine::PhysicsBodyComponent::~PhysicsBodyComponent()
@@ -140,17 +151,23 @@ bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
 
 void PhysicsBodyComponent::OnColliderEnter(PhysicsBodyComponent* other)
 {
-	Ref<RavEngine::Entity>(owner)->OnColliderEnter(other);
+	for (auto& reciever : receivers) {
+		reciever->OnColliderEnter(other);
+	}
 }
 
 void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent* other)
 {
-	Ref<RavEngine::Entity>(owner)->OnColliderPersist(other);
+	for (auto& reciever : receivers) {
+		reciever->OnColliderPersist(other);
+	}
 }
 
 void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
 {
-	Ref<RavEngine::Entity>(owner)->OnColliderExit(other);
+	for (auto& reciever : receivers) {
+		reciever->OnColliderPersist(other);
+	}
 }
 
 /// Static Body ========================================
