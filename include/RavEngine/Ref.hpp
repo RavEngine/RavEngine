@@ -1,3 +1,4 @@
+#pragma once
 #include "WeakRef.hpp"
 
 template<typename T>

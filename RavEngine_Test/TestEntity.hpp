@@ -12,8 +12,9 @@
 #include "WeakRef.hpp"
 #include "PhysicsMaterial.hpp"
 #include "Material.hpp"
+#include "IPhysicsActor.hpp"
 
-class TestEntity : public RavEngine::Entity{
+class TestEntity : public RavEngine::Entity, public RavEngine::IPhysicsActor{
 protected:
     static Ref<RavEngine::PhysicsMaterial> sharedMat;
     static Ref<RavEngine::Material> sharedMatInstance;
