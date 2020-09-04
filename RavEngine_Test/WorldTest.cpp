@@ -27,11 +27,6 @@ void TestWorld::SpawnEntities(float f) {
     }
 }
 
-float scale = 1;
-void SampleFPS() {
-    std::cout << "FPS: " << RavEngine::World::evalNormal / scale << std::endl;
-}
-
 void TestWorld::ResetCam() {
 	player->transform()->SetWorldPosition(vector3(0, -10, 50));
 	player->transform()->SetWorldRotation(quaternion());
@@ -62,7 +57,7 @@ TestWorld::TestWorld() : World() {
 
 
 	//setup inputs
-	Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();
+	Ref<RavEngine::InputManager> is = new RavEngine::InputManager();
 	//setup control mappings
 	is->AddAxisMap("MoveForward", SDL_SCANCODE_W);
 	is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);   //go backwards
@@ -91,7 +86,7 @@ TestWorld::TestWorld() : World() {
 
     is->BindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
     is->BindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
-	//is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
+	is->BindAction("SampleFPS",this, &TestWorld::SampleFPS,ActionState::Pressed);
 	//is->BindAction("Click", click, ActionState::Released);
 	RavEngine::GameplayStatics::inputManager = is;
 	

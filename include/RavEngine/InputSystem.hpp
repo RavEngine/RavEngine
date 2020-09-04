@@ -9,7 +9,7 @@
 #include <iostream>
 #include <functional>
 #include <typeindex>
-#include "IInputAction.hpp"
+#include "IInputListener.hpp"
 
 enum class ActionState{
   Released, Pressed
@@ -77,7 +77,7 @@ typedef std::function<void(float)> axisCallback;
 typedef std::function<void()> actionCallback;
 
 namespace RavEngine {
-    class InputSystem : public SharedObject
+    class InputManager : public SharedObject
     {
     protected:
 		//helper classes
@@ -184,7 +184,7 @@ namespace RavEngine {
 
     public:
 
-        InputSystem();
+        InputManager();
 
         void InitGameControllers();
 
@@ -262,7 +262,7 @@ namespace RavEngine {
 		 */
         void UnbindAllFor(IInputListener* act);
 
-        virtual ~InputSystem();
+        virtual ~InputManager();
 
     };
 }

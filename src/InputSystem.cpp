@@ -7,14 +7,14 @@ using namespace std;
 using namespace RavEngine;
 
 
-InputSystem::InputSystem() {
+InputManager::InputManager() {
     
 }
 
 /**
  * Initialize game controller inputs
  */
-void InputSystem::InitGameControllers() {
+void InputManager::InitGameControllers() {
     //setup game controllers
     int numControllers = 0;
 
@@ -36,7 +36,7 @@ void InputSystem::InitGameControllers() {
     SDL_GameControllerEventState(SDL_ENABLE);
 }
 
-void InputSystem::tick() {
+void InputManager::tick() {
     //action mappings
     for (Event& evt : actionValues){
         //get the list of functions to invoke
@@ -79,7 +79,7 @@ void InputSystem::tick() {
  * @param state true = pressed, false = released
  * @param charcode the keycode of the key central to the event
  */
-void InputSystem::SDL_key(bool state, int charcode)
+void InputManager::SDL_key(bool state, int charcode)
 {
     //axis mapping?
     if (axisScalars.find(charcode) != axisScalars.end()){
@@ -99,7 +99,7 @@ void InputSystem::SDL_key(bool state, int charcode)
  * @param xvel the x velocity of the cursor
  * @param yvel the y velocity of the cursor
  */
-void InputSystem::SDL_mousemove(float x, float y, int xvel, int yvel)
+void InputManager::SDL_mousemove(float x, float y, int xvel, int yvel)
 {
     //mouse movements are axis events only
     reg_axis(static_cast<int>(Special::MOUSEMOVE_X),x);
@@ -108,18 +108,18 @@ void InputSystem::SDL_mousemove(float x, float y, int xvel, int yvel)
     reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), yvel);
 }
 
-void InputSystem::SDL_mousekey(bool state, int charcode)
+void InputManager::SDL_mousekey(bool state, int charcode)
 {
     //clicks are treated the same as keyboard input
     SDL_key(state, charcode);
 }
 
-void InputSystem::SDL_ControllerAxis(int axisID, float value)
+void InputManager::SDL_ControllerAxis(int axisID, float value)
 {
     reg_axis(axisID, value);
 }
 
-InputSystem::~InputSystem() {
+InputManager::~InputManager() {
     //need to remove dynamic mapping
     for (auto& p : axisMappings) {
         auto l = p.second;
@@ -141,7 +141,7 @@ InputSystem::~InputSystem() {
  @param Id the input ID (scancode, etc) for the mapping
  @param scale the scalar to multiply against the axis value
  */
-void InputSystem::AddAxisMap(const std::string& name, int Id, float scale){
+void InputManager::AddAxisMap(const std::string& name, int Id, float scale){
     
     //add so that tick is aware of it
     axisScalars[Id] = scale;
@@ -153,21 +153,21 @@ Define an action mapping by name. If the mapping already exists, an additonal in
   @param name the string identifier for the mapping
  @param Id the input ID (scancode, etc) for the mapping
  */
-void InputSystem::AddActionMap(const std::string& name, int Id){
+void InputManager::AddActionMap(const std::string& name, int Id){
     
     //add so that tick is aware of this
     awareActionValues.insert(Id);
     codeToAction[Id].push_back(name);
 }
 
-void InputSystem::RemoveActionMap(const std::string& name, int Id)
+void InputManager::RemoveActionMap(const std::string& name, int Id)
 {
     //remove from ID tracking lists
     awareActionValues.erase(Id);
     codeToAction.erase(Id);
 }
 
-void InputSystem::RemoveAxisMap(const std::string& name, int Id)
+void InputManager::RemoveAxisMap(const std::string& name, int Id)
 {
     //remove from ID tracking lists
     axisValues.erase(Id);
@@ -175,7 +175,7 @@ void InputSystem::RemoveAxisMap(const std::string& name, int Id)
     codeToAction.erase(Id);
 }
 
-void RavEngine::InputSystem::UnbindAllFor(IInputListener* act)
+void RavEngine::InputManager::UnbindAllFor(IInputListener* act)
 {
 	//unbind axis maps
 	for(const auto& p : axisMappings){
