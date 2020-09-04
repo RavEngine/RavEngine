@@ -21,30 +21,9 @@ Ref<RavEngine::Entity> anonymous;
 Ref<RavEngine::Entity> anonymousChild;
 Ref<RavEngine::Entity> floorplane;
 
-
-void ExternalMove(float f) {
-    Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveForward(f);
-}
-
-void ExternalMoveRight(float f) {
-    Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveRight(f);
-}
-
-void ExternalMoveUp(float f) {
-    Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveUp(f);
-}
-
-void ExternalLookUp(float f) {
-    Ref<TestWorld>(GameplayStatics::currentWorld)->player->LookUp(f);
-}
-
-void ExternalLookRight(float f) {
-    Ref<TestWorld>(GameplayStatics::currentWorld)->player->LookRight(f);
-}
-
-void SpawnEntities(float f) {
+void TestWorld::SpawnEntities(float f) {
     if (f > 0.99) {
-        Ref<TestWorld>(GameplayStatics::currentWorld)->Spawn(new TestEntity());
+       Spawn(new TestEntity());
     }
 }
 
@@ -53,9 +32,9 @@ void SampleFPS() {
     std::cout << "FPS: " << RavEngine::World::evalNormal / scale << std::endl;
 }
 
-void ResetCamera() {
-    Ref<TestWorld>(GameplayStatics::currentWorld)->player->transform()->SetWorldPosition(vector3(0, -10, 50));
-    Ref<TestWorld>(GameplayStatics::currentWorld)->player->transform()->SetWorldRotation(quaternion());
+void TestWorld::ResetCam() {
+	player->transform()->SetWorldPosition(vector3(0, -10, 50));
+	player->transform()->SetWorldRotation(quaternion());
 }
 
 void TestWorld::posttick(float fpsScale){
@@ -103,8 +82,8 @@ TestWorld::TestWorld() : World() {
         }
     } ss;
 
-    InputSystem::AxisCallback a(&ss, &someStruct::go);
-    a(0.3);
+//    InputSystem::AxisCallback a(&ss, &someStruct::go);
+//    a(0.3);
 
     //dynamics world must be set in these so that locks can be managed correctly
     plsr->dynamicsWorld = Solver->scene;
@@ -141,9 +120,12 @@ TestWorld::TestWorld() : World() {
     is->BindAxis("LookUp", player.get(),&PlayerActor::LookUp);
     is->BindAxis("LookRight", player.get(), &PlayerActor::LookRight);
 
-    //is->BindAxis("SpawnTest", SpawnEntities);
-    is->BindAction("ResetCam", ResetCamera, ActionState::Pressed);
-    is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
+    is->BindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
+	is->BindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
+	
+	is->UnbindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
+	is->UnbindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
+    //is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
     //is->BindAction("Click", click, ActionState::Released);
     RavEngine::GameplayStatics::inputManager = is;
 };

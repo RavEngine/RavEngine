@@ -45,9 +45,9 @@ void InputSystem::tick() {
                 auto toInvoke = actionMappings.at(a);
 
                 //determine which to invoke
-                for (auto& pair : toInvoke) {
-                    if (pair.second == evt.value) {
-                        pair.first.first();
+                for (auto& action : toInvoke) {
+					if (action.IsCorrectState(evt.value)) {
+                        action();
                     }
                 }
             }
@@ -63,7 +63,7 @@ void InputSystem::tick() {
                 auto val = scale * axisValues[pair.first];
                 //cout << pair.second << " -> " << val << endl;
                 for (auto& f : axisMappings.at(a)) {
-                    f.first(val);
+                    f(val);
                 }
             }
         }
@@ -169,14 +169,16 @@ void RavEngine::InputSystem::UnbindAllFor(IInputListener* act)
 	//unbind axis maps
 	for(const auto& p : axisMappings){
 		auto key = p.second;
-		key.remove_if([&act](std::pair<axisCallback, RavEngine::IInputListener*>& v) -> bool {
-			return v.second == act;
+		key.remove_if([&act](AxisCallback& callback) -> bool {
+			return callback.ObjectsMatch(act);
 		});
 	}
 	//unbind action maps
 	for(const auto& p : actionMappings){
 		auto key = p.second;
-		//key.remove_if(
+		key.remove_if([&act](ActionCallback callback){
+			return callback.ObjectsMatch(act);
+		});
 	}
 }
 
