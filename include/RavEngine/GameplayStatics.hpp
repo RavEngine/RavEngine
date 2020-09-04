@@ -14,7 +14,7 @@ namespace RavEngine {
 	struct GameplayStatics {
 		static Ref<World> currentWorld;
 
-		static Ref<InputSystem> inputManager;
+		static Ref<InputManager> inputManager;
 
 		struct vs {
 			int width = 960; int height = 540;

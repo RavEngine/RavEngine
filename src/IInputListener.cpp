@@ -1,4 +1,4 @@
-#include "IInputAction.hpp"
+#include "IInputListener.hpp"
 #include "InputSystem.hpp"
 
 RavEngine::IInputListener::~IInputListener()
@@ -7,7 +7,7 @@ RavEngine::IInputListener::~IInputListener()
 		auto ref = p.first;
 		//remove this from sender
 		if (!ref.isNull()) {
-			Ref<InputSystem>(ref)->UnbindAllFor(this);
+			Ref<InputManager>(ref)->UnbindAllFor(this);
 		}
 	}
 }

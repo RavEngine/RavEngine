@@ -2,13 +2,13 @@
 #include "WeakRef.hpp"
 
 namespace RavEngine {
-	class InputSystem;
+	class InputManager;
 
 	struct IInputListener {
-		void OnRegister(const WeakRef<InputSystem>& i) {
+		void OnRegister(const WeakRef<InputManager>& i) {
 			senders[i]++;
 		}
-		void OnUnregister(const WeakRef<InputSystem>& i) {
+		void OnUnregister(const WeakRef<InputManager>& i) {
 			if (senders.find(i) != senders.end()) {
 				senders[i]--;
 			}
@@ -19,6 +19,6 @@ namespace RavEngine {
 
 		~IInputListener();
 	private:
-		std::unordered_map<WeakRef<InputSystem>, int> senders;
+		std::unordered_map<WeakRef<InputManager>, int> senders;
 	};
 }
