@@ -164,52 +164,19 @@ void InputSystem::RemoveAxisMap(const std::string& name, int Id)
     codeToAction.erase(Id);
 }
 
-/**
- Bind a function to an Action mapping
- @param name the Action mapping to bind to
- @param callback the function to call when the action occurs
- @param type The state of the action trigger required to invoke the Action mapping
- @note Before an object is destroyed, you must unbind its functions to this action
- */
-void InputSystem::BindAction(const std::string& name, const actionCallback& callback, ActionState type) {
-    auto finalPair = std::make_pair(std::make_pair(callback, std::type_index(typeid(callback))), type);
-    actionMappings[name].push_back(finalPair);
-}
-
-/**
- * Unbind an Action mapping
- * @param name the name of the action to unbind
- * @param callback the callback to remove
- * @param state the state to use to match the callback
- */
-void InputSystem::UnbindAction(const std::string& name, const actionCallback& callback, ActionState state)
-{
-    if (actionMappings.find(name) != actionMappings.end()) {
-        auto remove = make_pair(callback, state);
-        auto key = type_index(typeid(callback));
-        actionMappings.at(name).remove_if([&](std::pair<std::pair<actionCallback, std::type_index>, ActionState>& val) -> bool {
-            return val.first.second == key;
-        });
-    }
-}
-
-/**
- * Unbind an Axis mapping
- * @param name the name of the axis to unbind
- * @param callback the callback to remove
- */
-void InputSystem::UnbindAxis(const std::string& name, const axisCallback& callback)
-{
-    if (axisMappings.find(name) != axisMappings.end()) {
-        auto key = type_index(typeid(callback));
-        axisMappings.at(name).remove_if([&](std::pair<axisCallback, std::type_index>& val) -> bool {
-            return val.second == key;
-        });
-    }
-}
-
 void RavEngine::InputSystem::UnbindAllFor(IInputListener* act)
 {
-    //
+	//unbind axis maps
+	for(const auto& p : axisMappings){
+		auto key = p.second;
+		key.remove_if([&act](std::pair<axisCallback, RavEngine::IInputListener*>& v) -> bool {
+			return v.second == act;
+		});
+	}
+	//unbind action maps
+	for(const auto& p : actionMappings){
+		auto key = p.second;
+		//key.remove_if(
+	}
 }
 
