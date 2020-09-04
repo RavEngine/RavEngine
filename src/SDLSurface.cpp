@@ -52,7 +52,7 @@ void SDLSurface::ResetPixelFormat()
 
 SDL_Window* SDLSurface::createWindow()
 {
-	size_t sdlflags = SDL_INIT_EVENTS;
+	size_t sdlflags = SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER;
 	if (!SDL_WasInit(sdlflags)) {
 		SDL_Init(sdlflags);
 	}

@@ -2,13 +2,16 @@
 #include "InputSystem.hpp"
 #include "GameplayStatics.hpp"
 #include <SDL_events.h>
+#include <SDL.h>
 
 using namespace std;
 using namespace RavEngine;
 
+//default deadzone for default argument
+const float InputManager::AxisCallback::defaultDeadzone = 0.2;
 
 InputManager::InputManager() {
-    
+    InitGameControllers();
 }
 
 /**
@@ -60,10 +63,9 @@ void InputManager::tick() {
         for (auto& a : pair.second) {
             if (axisMappings.find(a) != axisMappings.end()) {
                 auto scale = axisScalars[pair.first];
-                auto val = scale * axisValues[pair.first];
-                //cout << pair.second << " -> " << val << endl;
+                auto val = /*scale * */ axisValues[pair.first];
                 for (auto& f : axisMappings.at(a)) {
-                    f(val);
+                    f(val, scale);
                 }
             }
         }

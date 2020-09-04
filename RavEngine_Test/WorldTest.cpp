@@ -60,9 +60,9 @@ TestWorld::TestWorld() : World() {
 	Ref<RavEngine::InputManager> is = new RavEngine::InputManager();
 	//setup control mappings
 	is->AddAxisMap("MoveForward", SDL_SCANCODE_W);
-	is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);   //go backwards
-	is->AddAxisMap("MoveRight", SDL_SCANCODE_A, -1);   //go left
-	is->AddAxisMap("MoveRight", SDL_SCANCODE_D);   //go left
+	is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);  //go backwards
+	is->AddAxisMap("MoveRight", SDL_SCANCODE_A, -1);    //go left
+	is->AddAxisMap("MoveRight", SDL_SCANCODE_D);        //turn left
 	is->AddAxisMap("MoveUp", SDL_SCANCODE_SPACE);
 	is->AddAxisMap("MoveUp", SDL_SCANCODE_LSHIFT, -1);
 	is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL,-1);   //turn up
@@ -70,6 +70,17 @@ TestWorld::TestWorld() : World() {
 	is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
 	is->AddActionMap("ResetCam", SDL_SCANCODE_R);
 	is->AddActionMap("SampleFPS",SDL_SCANCODE_T);
+
+    //game controller input
+    is->AddAxisMap("MoveForward", ControllerAxis::SDL_CONTROLLER_AXIS_LEFTY, -1);
+    is->AddAxisMap("MoveRight", ControllerAxis::SDL_CONTROLLER_AXIS_LEFTX);
+    is->AddAxisMap("LookRight", ControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX, -10);
+    is->AddAxisMap("LookUp", ControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY, -10);
+    is->AddAxisMap("SpawnTest", ControllerButton::SDL_CONTROLLER_BUTTON_A);
+    is->AddActionMap("ResetCam", ControllerButton::SDL_CONTROLLER_BUTTON_START);
+    is->AddActionMap("SampleFPS", ControllerButton::SDL_CONTROLLER_BUTTON_Y);
+
+
 	//bind controls
 	is->BindAxis("MoveForward", player.get(), &PlayerActor::MoveForward);
 	is->BindAxis("MoveRight", player.get(), &PlayerActor::MoveRight);
