@@ -9,6 +9,7 @@
 #include <iostream>
 #include <functional>
 #include <typeindex>
+#include "IInputAction.hpp"
 
 enum class ActionState{
   Released, Pressed
@@ -82,13 +83,13 @@ namespace RavEngine {
         std::list<Event> actionValues;
         std::unordered_set<int> awareActionValues;
         std::unordered_map<int, std::list<std::string>> codeToAction;
-        std::unordered_map<std::string, std::list<std::pair<std::pair<actionCallback, std::type_index>, ActionState>>> actionMappings;
+        std::unordered_map<std::string, std::list<std::pair<std::pair<actionCallback, IInputListener*>, ActionState>>> actionMappings;
 
         //axis storage
         std::unordered_map<int, float> axisValues;                      //ids to current values
         std::unordered_map<int, float> axisScalars;                     //ids to scalars
         std::unordered_map<int, std::list<std::string>> codeToAxis;                //ids to strings
-        std::unordered_map<std::string, std::list<std::pair<axisCallback, std::type_index>>> axisMappings;     //strings to methods
+        std::unordered_map<std::string, std::list<std::pair<axisCallback, IInputListener*>>> axisMappings;     //strings to methods
 
         /**
          Helper used for registering axis inputs inside the engine
@@ -102,6 +103,27 @@ namespace RavEngine {
         std::unordered_set<SDL_GameController*> connectedControllers;
 
     public:
+        template<typename T, typename U>
+        class AxisCallback {
+        public:
+            AxisCallback(T* thisptr, void(U::* f)(float)){
+                func = std::bind(f, thisptr,std::placeholders::_1);
+            }
+
+            void operator()(float val) {
+                func(val);
+            }
+        private:
+            std::function<void(float)> func;
+        };
+
+       /* template<typename T>
+        void Register(AxisCallback<IInputListener, T>* a) {
+            templatedList.push_back(a);
+        }
+        template<typename T>
+        std::list < AxisCallback<IInputListener, T>> templatedList;*/
+
         InputSystem();
 
         void InitGameControllers();
@@ -120,10 +142,25 @@ namespace RavEngine {
         void RemoveActionMap(const std::string& name, int Id);
         void RemoveAxisMap(const std::string& name, int Id);
 
+        //template<typename T, typename U>
         void BindAction(const std::string&, const actionCallback&, ActionState);
-        void BindAxis(const std::string&, const axisCallback&);
+
+        /**
+         Bind a function to an Axis mapping
+         */
+        template<typename U>
+        void BindAxis(const std::string&, IInputListener* thisptr, void(U::* f)(float)) {
+            axisCallback callback = std::bind(f, thisptr, std::placeholders::_1);
+
+            //need to store the original thisptr so that it can be identified later
+            axisMappings[name].push_back(std::make_pair(callback, thisptr));
+        }
+
         void UnbindAction(const std::string&, const actionCallback&, ActionState);
         void UnbindAxis(const std::string&, const axisCallback&);
+
+
+        void UnbindAllFor(IInputListener* act);
 
         virtual ~InputSystem();
 

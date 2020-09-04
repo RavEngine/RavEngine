@@ -2,8 +2,9 @@
 #include "CameraComponent.hpp"
 #include "GameplayStatics.hpp"
 #include <functional>
+#include "IInputAction.hpp"
 
-class PlayerActor : public RavEngine::Entity {
+class PlayerActor : public RavEngine::Entity, public RavEngine::IInputListener {
 protected:
 	decimalType dt = 0;
 	decimalType movementSpeed = 0.3;
@@ -23,22 +24,22 @@ protected:
 public:
 	Ref<Entity> cameraEntity;
 
-	void MoveForward(decimalType amt) {
+	void MoveForward(float amt) {
 		trans->LocalTranslateDelta(scaleMovement(amt) * trans->Forward());
 	}
-	void MoveRight(decimalType amt) {
+	void MoveRight(float amt) {
 		trans->LocalTranslateDelta(scaleMovement(amt) * trans->Right());
 	}
 
-	void MoveUp(decimalType amt) {
+	void MoveUp(float amt) {
 		trans->LocalTranslateDelta(scaleMovement(amt) * trans->Up());
 	}
 
-	void LookUp(decimalType amt) {
+	void LookUp(float amt) {
 		//framePitch = amt;
 		cameraEntity->transform()->LocalRotateDelta(vector3(scaleRotation(amt), 0, 0));
 	}
-	void LookRight(decimalType amt) {
+	void LookRight(float amt) {
 		//frameYaw = amt;
 		trans->LocalRotateDelta(quaternion(vector3(0, scaleRotation(amt), 0)));
 	}

@@ -165,16 +165,6 @@ void InputSystem::RemoveAxisMap(const std::string& name, int Id)
 }
 
 /**
- Bind a function to an Axis mapping
- @param name the Axis mapping to bind to
- @param callback the function to call with the axis' value
- @note Before an object is destroyed, you must unbind its functions to this axis
- */
-void InputSystem::BindAxis(const std::string& name, const axisCallback& callback){
-    axisMappings[name].push_back(std::make_pair(callback,type_index(typeid(callback))));
-}
-
-/**
  Bind a function to an Action mapping
  @param name the Action mapping to bind to
  @param callback the function to call when the action occurs
@@ -216,5 +206,10 @@ void InputSystem::UnbindAxis(const std::string& name, const axisCallback& callba
             return val.second == key;
         });
     }
+}
+
+void RavEngine::InputSystem::UnbindAllFor(IInputListener* act)
+{
+    //
 }
 

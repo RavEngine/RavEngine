@@ -16,9 +16,11 @@
 #include "PhysicsMaterial.hpp"
 
 using namespace RavEngine;
+using namespace std;
 Ref<RavEngine::Entity> anonymous;
 Ref<RavEngine::Entity> anonymousChild;
 Ref<RavEngine::Entity> floorplane;
+
 
 void ExternalMove(float f) {
     Ref<TestWorld>(GameplayStatics::currentWorld)->player->MoveForward(f);
@@ -95,8 +97,14 @@ TestWorld::TestWorld() : World() {
 
     Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
     RegisterSystem(plsw);
+    struct someStruct {
+        void go(float f) {
+            cout << "F! " << f << endl;
+        }
+    } ss;
 
-
+    InputSystem::AxisCallback a(&ss, &someStruct::go);
+    a(0.3);
 
     //dynamics world must be set in these so that locks can be managed correctly
     plsr->dynamicsWorld = Solver->scene;
@@ -127,13 +135,13 @@ TestWorld::TestWorld() : World() {
     is->AddActionMap("ResetCam", SDL_SCANCODE_R);
     is->AddActionMap("SampleFPS",SDL_SCANCODE_T);
     //bind controls
-    is->BindAxis("MoveForward", ExternalMove);
-    is->BindAxis("MoveRight", ExternalMoveRight);
-    is->BindAxis("MoveUp", ExternalMoveUp);
-    is->BindAxis("LookUp", ExternalLookUp);
-    is->BindAxis("LookRight", ExternalLookRight);
+    is->BindAxis("MoveForward", player.get(), &PlayerActor::MoveForward);
+    is->BindAxis("MoveRight", player.get(), &PlayerActor::MoveRight);
+    is->BindAxis("MoveUp", player.get(),&PlayerActor::MoveUp);
+    is->BindAxis("LookUp", player.get(),&PlayerActor::LookUp);
+    is->BindAxis("LookRight", player.get(), &PlayerActor::LookRight);
 
-    is->BindAxis("SpawnTest", SpawnEntities);
+    //is->BindAxis("SpawnTest", SpawnEntities);
     is->BindAction("ResetCam", ResetCamera, ActionState::Pressed);
     is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
     //is->BindAction("Click", click, ActionState::Released);
