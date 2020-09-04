@@ -106,22 +106,32 @@ namespace RavEngine {
 		 */
 		class AxisCallback : public Callback{
 			axisCallback exec;
+			float deadZone;
 		public:
+			static const float defaultDeadzone;
 			/**
 			 Construct an AxisCallback object.
 			 @param thisptr the object to invoke the function on
 			 @param f the function pointer to invoke.
 			 */
 			template<class U>
-			AxisCallback(IInputListener* thisptr, void(U::* f)(float)) : Callback(thisptr,&f){
+			AxisCallback(IInputListener* thisptr, void(U::* f)(float), float dz) : Callback(thisptr,&f), deadZone(dz){
 				exec = std::bind(f, static_cast<U*>(thisptr), std::placeholders::_1);
 			}
 			/**
 			 Execute the function on the stored pointer
 			 @param f the float to pass
+			 @param scale the amount to scale f
 			 */
-			void operator()(float f){
-				exec(f);
+			void operator()(float f, float scale){
+				//do not execute if below deadzone
+				if (abs(f) >= deadZone) {
+					exec(f * scale);
+				}
+			}
+
+			bool operator==(const AxisCallback& other) const {
+				return Callback::operator==(other) && deadZone == other.deadZone;
 			}
 		};
 		/**
@@ -221,10 +231,11 @@ namespace RavEngine {
 		 @param name the Axis mapping to bind to
 		 @param thisptr the object to bind to. Use `this` if within the class you want to bind to
 		 @param f the method to invoke when the action is triggered. Must take one float parameter. Use &Classname::Methodname.
+		 @param deadZone the minimum value (+/-) required to activate this binding
          */
         template<typename U>
-        void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)) {
-			AxisCallback axis(thisptr, f);
+        void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), float deadZone = AxisCallback::defaultDeadzone) {
+			AxisCallback axis(thisptr, f, deadZone);
             axisMappings[name].push_back(axis);
 			thisptr->OnRegister(this);
         }
@@ -248,10 +259,11 @@ namespace RavEngine {
 		 Unbind an Axis mapping
 		 @param thisptr the object to bind to. Use `this` if within the class you want to bind to
 		 @param f the method to invoke when the action is triggered. Must take one float parameter. Use &Classname::Methodname.
+		 @param deadZone the minimum value (+/-) required to activate this binding
 		 */
 		template<typename U>
-		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)){
-			AxisCallback axis(thisptr, f);
+		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), float deadZone = AxisCallback::defaultDeadzone){
+			AxisCallback axis(thisptr, f, deadZone);
 			axisMappings[name].remove(axis);
 			thisptr->OnUnregister(this);
 		}
