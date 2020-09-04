@@ -86,7 +86,7 @@ namespace RavEngine {
 			void* func;
 		public:
 			Callback(void* o, void* f) : obj(o), func(f){}
-			bool operator==(const Callback& other){
+			bool operator==(const Callback& other)const{
 				return func == other.func && obj == other.obj;
 			}
 			/**
@@ -110,7 +110,7 @@ namespace RavEngine {
 			 @param f the function pointer to invoke.
 			 */
 			template<class U>
-			AxisCallback(IInputListener* thisptr, void(U::* f)(float)) : Callback(thisptr,f){
+			AxisCallback(IInputListener* thisptr, void(U::* f)(float)) : Callback(thisptr,&f){
 				exec = std::bind(f, static_cast<U*>(thisptr), std::placeholders::_1);
 			}
 			/**
@@ -135,7 +135,7 @@ namespace RavEngine {
 			 @param t the state to bind
 			 */
 			template<class U>
-			ActionCallback(IInputListener* thisptr, void(U::* f)(), ActionState t) : Callback(thisptr, f){
+			ActionCallback(IInputListener* thisptr, void(U::* f)(), ActionState t) : Callback(thisptr, &f){
 				exec = std::bind(f, static_cast<U*>(thisptr));
 				type = t;
 			}
@@ -145,7 +145,7 @@ namespace RavEngine {
 			void operator()(){
 				exec();
 			}
-			bool operator==(const ActionCallback& other){
+			bool operator==(const ActionCallback& other)const{
 				return Callback::operator==(other) && type == other.type;
 			}
 			/**
@@ -180,26 +180,6 @@ namespace RavEngine {
         std::unordered_set<SDL_GameController*> connectedControllers;
 
     public:
-//        template<typename T, typename U>
-//        class AxisCallback {
-//        public:
-//            AxisCallback(T* thisptr, void(U::* f)(float)){
-//                func = std::bind(f, thisptr,std::placeholders::_1);
-//            }
-//
-//            void operator()(float val) {
-//                func(val);
-//            }
-//        private:
-//            std::function<void(float)> func;
-//        };
-
-       /* template<typename T>
-        void Register(AxisCallback<IInputListener, T>* a) {
-            templatedList.push_back(a);
-        }
-        template<typename T>
-        std::list < AxisCallback<IInputListener, T>> templatedList;*/
 
         InputSystem();
 

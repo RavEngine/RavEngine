@@ -50,6 +50,36 @@ void TestWorld::posttick(float fpsScale){
 }
 
 TestWorld::TestWorld() : World() {
+	//setup inputs
+	Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();
+	//setup control mappings
+	is->AddAxisMap("MoveForward", SDL_SCANCODE_W);
+	is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);   //go backwards
+	is->AddAxisMap("MoveRight", SDL_SCANCODE_A, -1);   //go left
+	is->AddAxisMap("MoveRight", SDL_SCANCODE_D);   //go left
+	is->AddAxisMap("MoveUp", SDL_SCANCODE_SPACE);
+	is->AddAxisMap("MoveUp", SDL_SCANCODE_LSHIFT, -1);
+	is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL,-1);   //turn up
+	is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL,-1);
+	is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
+	is->AddActionMap("ResetCam", SDL_SCANCODE_R);
+	is->AddActionMap("SampleFPS",SDL_SCANCODE_T);
+	//bind controls
+	is->BindAxis("MoveForward", player.get(), &PlayerActor::MoveForward);
+	is->BindAxis("MoveRight", player.get(), &PlayerActor::MoveRight);
+	is->BindAxis("MoveUp", player.get(),&PlayerActor::MoveUp);
+	is->BindAxis("LookUp", player.get(),&PlayerActor::LookUp);
+	is->BindAxis("LookRight", player.get(), &PlayerActor::LookRight);
+	
+	is->BindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
+	is->BindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
+	
+	is->UnbindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
+	is->UnbindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
+	//is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
+	//is->BindAction("Click", click, ActionState::Released);
+	RavEngine::GameplayStatics::inputManager = is;
+	
     //spawn player (it will make its camera active)
     Spawn(player);
 
@@ -98,34 +128,4 @@ TestWorld::TestWorld() : World() {
     //floorplane->AddSystem<PhysicsLinkSystemRead>();
     floorplane->AddSystem<PhysicsLinkSystemWrite>();
     Spawn(floorplane);
-
-    //setup inputs
-    Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();
-    //setup control mappings
-    is->AddAxisMap("MoveForward", SDL_SCANCODE_W);
-    is->AddAxisMap("MoveForward", SDL_SCANCODE_S, -1);   //go backwards
-    is->AddAxisMap("MoveRight", SDL_SCANCODE_A, -1);   //go left
-    is->AddAxisMap("MoveRight", SDL_SCANCODE_D);   //go left
-    is->AddAxisMap("MoveUp", SDL_SCANCODE_SPACE);
-    is->AddAxisMap("MoveUp", SDL_SCANCODE_LSHIFT, -1);
-    is->AddAxisMap("LookUp", Special::MOUSEMOVE_YVEL,-1);   //turn up
-    is->AddAxisMap("LookRight", Special::MOUSEMOVE_XVEL,-1);
-    is->AddAxisMap("SpawnTest", SDL_SCANCODE_G);		//press g to spawn objects
-    is->AddActionMap("ResetCam", SDL_SCANCODE_R);
-    is->AddActionMap("SampleFPS",SDL_SCANCODE_T);
-    //bind controls
-    is->BindAxis("MoveForward", player.get(), &PlayerActor::MoveForward);
-    is->BindAxis("MoveRight", player.get(), &PlayerActor::MoveRight);
-    is->BindAxis("MoveUp", player.get(),&PlayerActor::MoveUp);
-    is->BindAxis("LookUp", player.get(),&PlayerActor::LookUp);
-    is->BindAxis("LookRight", player.get(), &PlayerActor::LookRight);
-
-    is->BindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
-	is->BindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
-	
-	is->UnbindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
-	is->UnbindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
-    //is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
-    //is->BindAction("Click", click, ActionState::Released);
-    RavEngine::GameplayStatics::inputManager = is;
 };
