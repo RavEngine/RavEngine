@@ -119,9 +119,20 @@ void InputSystem::SDL_ControllerAxis(int axisID, float value)
     reg_axis(axisID, value);
 }
 
-//need to remove dynamic mapping
 InputSystem::~InputSystem() {
-    
+    //need to remove dynamic mapping
+    for (auto& p : axisMappings) {
+        auto l = p.second;
+        for (auto& entry : l) {
+            entry.GetObj()->OnUnregister(this);
+        }
+    }
+    for (auto& p : actionMappings) {
+        auto l = p.second;
+        for (auto& entry : l) {
+            entry.GetObj()->OnUnregister(this);
+        }
+    }
 }
 
 /**

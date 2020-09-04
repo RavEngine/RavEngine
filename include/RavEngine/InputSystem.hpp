@@ -82,10 +82,10 @@ namespace RavEngine {
     protected:
 		//helper classes
 		class Callback{
-			void* obj;
+			IInputListener* obj;
 			void* func;
 		public:
-			Callback(void* o, void* f) : obj(o), func(f){}
+			Callback(IInputListener* o, void* f) : obj(o), func(f){}
 			bool operator==(const Callback& other)const{
 				return func == other.func && obj == other.obj;
 			}
@@ -95,6 +95,9 @@ namespace RavEngine {
 			 */
 			bool ObjectsMatch(void* in) const{
 				return in == obj;
+			}
+			IInputListener* const GetObj() {
+				return obj;
 			}
 		};
 		
@@ -210,6 +213,7 @@ namespace RavEngine {
 		void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type){
 			ActionCallback action(thisptr,f,type);
 			actionMappings[name].push_back(action);
+			thisptr->OnRegister(this);
 		}
 
         /**
@@ -222,6 +226,7 @@ namespace RavEngine {
         void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)) {
 			AxisCallback axis(thisptr, f);
             axisMappings[name].push_back(axis);
+			thisptr->OnRegister(this);
         }
 
 		/**
@@ -235,6 +240,7 @@ namespace RavEngine {
 		void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type){
 			ActionCallback action(thisptr,f,type);
 			actionMappings[name].remove(action);
+			thisptr->OnUnregister(this);
 		}
 		
 		
@@ -247,6 +253,7 @@ namespace RavEngine {
 		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)){
 			AxisCallback axis(thisptr, f);
 			axisMappings[name].remove(axis);
+			thisptr->OnUnregister(this);
 		}
 
 		/**

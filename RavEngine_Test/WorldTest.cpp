@@ -50,6 +50,17 @@ void TestWorld::posttick(float fpsScale){
 }
 
 TestWorld::TestWorld() : World() {
+    //weak ref test
+    {
+        WeakRef<SharedObject> weak;
+        {
+            Ref<SharedObject> obj(new SharedObject());
+            weak = obj;
+        }
+        assert(weak.isNull());
+    }
+
+
 	//setup inputs
 	Ref<RavEngine::InputSystem> is = new RavEngine::InputSystem();
 	//setup control mappings
@@ -74,8 +85,12 @@ TestWorld::TestWorld() : World() {
 	is->BindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
 	is->BindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
 	
+    //test unbinding
 	is->UnbindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
 	is->UnbindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
+
+    is->BindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
+    is->BindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
 	//is->BindAction("SampleFPS",SampleFPS,ActionState::Pressed);
 	//is->BindAction("Click", click, ActionState::Released);
 	RavEngine::GameplayStatics::inputManager = is;
@@ -106,14 +121,6 @@ TestWorld::TestWorld() : World() {
 
     Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
     RegisterSystem(plsw);
-    struct someStruct {
-        void go(float f) {
-            cout << "F! " << f << endl;
-        }
-    } ss;
-
-//    InputSystem::AxisCallback a(&ss, &someStruct::go);
-//    a(0.3);
 
     //dynamics world must be set in these so that locks can be managed correctly
     plsr->dynamicsWorld = Solver->scene;
