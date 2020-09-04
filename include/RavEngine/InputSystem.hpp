@@ -142,24 +142,66 @@ namespace RavEngine {
         void RemoveActionMap(const std::string& name, int Id);
         void RemoveAxisMap(const std::string& name, int Id);
 
-        //template<typename T, typename U>
-        void BindAction(const std::string&, const actionCallback&, ActionState);
+		/**
+		 * Bind an action map to a member function
+		 * @param name the name of the action map to bind to
+		 * @param thisptr the object to bind to. Use `this` if within the class you want to bind to
+		 * @param f the method to invoke when the action is triggered. Must take no parameters. Use &Classname::Methodname.
+		 * @param type the required state of the action to invoke the method.
+		 */
+        template<typename U>
+		void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type){
+			actionCallback callback = std::bind(f, thisptr, std::placeholders::_1);
+			
+			//need to store the original thisptr so that it can be identified later
+			actionMappings[name].push_back(std::make_pair(std::make_pair(callback, thisptr), type));
+		}
 
         /**
          Bind a function to an Axis mapping
+		 @param name the Axis mapping to bind to
+		 @param thisptr the object to bind to. Use `this` if within the class you want to bind to
+		 @param f the method to invoke when the action is triggered. Must take one float parameter. Use &Classname::Methodname.
          */
         template<typename U>
-        void BindAxis(const std::string&, IInputListener* thisptr, void(U::* f)(float)) {
+        void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)) {
             axisCallback callback = std::bind(f, thisptr, std::placeholders::_1);
 
             //need to store the original thisptr so that it can be identified later
             axisMappings[name].push_back(std::make_pair(callback, thisptr));
         }
 
-        void UnbindAction(const std::string&, const actionCallback&, ActionState);
-        void UnbindAxis(const std::string&, const axisCallback&);
+		/**
+		 Bind a function to an Action mapping
+		 @param name the Action mapping to unbind
+		 @param thisptr the object to bind to. Use `this` if within the class you want to bind to
+		 @param f the method to invoke when the action is triggered. Must take no parameters. Use &Classname::Methodname.
+		 @param state the state to use to match the callback
+		 */
+		template<typename U>
+		void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(float),ActionState type){
+			actionCallback callback = std::bind(f, thisptr, std::placeholders::_1);
+			
+			actionMappings[name].remove(std::make_pair(std::make_pair(callback, thisptr), type));
+		}
+		
+		
+		/**
+		 Unbind an Axis mapping
+		 @param thisptr the object to bind to. Use `this` if within the class you want to bind to
+		 @param f the method to invoke when the action is triggered. Must take one float parameter. Use &Classname::Methodname.
+		 */
+		template<typename U>
+		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)){
+			axisCallback callback = std::bind(f, thisptr, std::placeholders::_1);
+			
+			axisMappings[name].remove(std::make_pair(callback, thisptr));
+		}
 
-
+		/**
+		 * Unbind all Action and Axis mappings for a given listener. Listeners automatically invoke this on destruction.
+		 * @param act the listener to unbind
+		 */
         void UnbindAllFor(IInputListener* act);
 
         virtual ~InputSystem();
