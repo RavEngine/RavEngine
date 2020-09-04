@@ -9,8 +9,9 @@
 
 #include "World.hpp"
 #include "PlayerActor.hpp"
+#include "IInputAction.hpp"
 
-class TestWorld : public RavEngine::World{
+class TestWorld : public RavEngine::World, public RavEngine::IInputListener{
 public:
     void posttick(float fpsScale) override;
     TestWorld();
@@ -19,5 +20,6 @@ public:
     virtual ~TestWorld() {
 
     }
-protected:
+	void ResetCam();
+	void SpawnEntities(float);
 };

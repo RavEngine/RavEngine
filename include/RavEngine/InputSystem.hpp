@@ -80,16 +80,93 @@ namespace RavEngine {
     class InputSystem : public SharedObject
     {
     protected:
+		//helper classes
+		class Callback{
+			void* obj;
+			void* func;
+		public:
+			Callback(void* o, void* f) : obj(o), func(f){}
+			bool operator==(const Callback& other){
+				return func == other.func && obj == other.obj;
+			}
+			/**
+			 Check if the stored pointer matches another
+			 @param in the pointer to check
+			 */
+			bool ObjectsMatch(void* in) const{
+				return in == obj;
+			}
+		};
+		
+		/**
+		 Describes an AxisCallback as stored internally. Defines function and equality operators
+		 */
+		class AxisCallback : public Callback{
+			axisCallback exec;
+		public:
+			/**
+			 Construct an AxisCallback object.
+			 @param thisptr the object to invoke the function on
+			 @param f the function pointer to invoke.
+			 */
+			template<class U>
+			AxisCallback(IInputListener* thisptr, void(U::* f)(float)) : Callback(thisptr,f){
+				exec = std::bind(f, static_cast<U*>(thisptr), std::placeholders::_1);
+			}
+			/**
+			 Execute the function on the stored pointer
+			 @param f the float to pass
+			 */
+			void operator()(float f){
+				exec(f);
+			}
+		};
+		/**
+		 Describes an ActionCallback as stored internally. Defines function and equality operators
+		 */
+		class ActionCallback : public Callback{
+			actionCallback exec;
+			ActionState type;
+		public:
+			/**
+			 Construct an ActionCallback object
+			 @param thisptr the object to invoke the function on
+			 @param f the function pointer to invoke
+			 @param t the state to bind
+			 */
+			template<class U>
+			ActionCallback(IInputListener* thisptr, void(U::* f)(), ActionState t) : Callback(thisptr, f){
+				exec = std::bind(f, static_cast<U*>(thisptr));
+				type = t;
+			}
+			/**
+			 Execute the function on the stored pointer
+			 */
+			void operator()(){
+				exec();
+			}
+			bool operator==(const ActionCallback& other){
+				return Callback::operator==(other) && type == other.type;
+			}
+			/**
+			 Determine if the states match
+			 @param state the state to check
+			 */
+			bool IsCorrectState(ActionState state) const{
+				return type == state;
+			}
+		};
+		
         std::list<Event> actionValues;
         std::unordered_set<int> awareActionValues;
         std::unordered_map<int, std::list<std::string>> codeToAction;
-        std::unordered_map<std::string, std::list<std::pair<std::pair<actionCallback, IInputListener*>, ActionState>>> actionMappings;
+        std::unordered_map<std::string, std::list<ActionCallback>> actionMappings;
 
         //axis storage
         std::unordered_map<int, float> axisValues;                      //ids to current values
         std::unordered_map<int, float> axisScalars;                     //ids to scalars
         std::unordered_map<int, std::list<std::string>> codeToAxis;                //ids to strings
-        std::unordered_map<std::string, std::list<std::pair<axisCallback, IInputListener*>>> axisMappings;     //strings to methods
+        std::unordered_map<std::string, std::list<AxisCallback>> axisMappings;     //strings to methods
 
         /**
          Helper used for registering axis inputs inside the engine
@@ -103,19 +180,19 @@ namespace RavEngine {
         std::unordered_set<SDL_GameController*> connectedControllers;
 
     public:
-        template<typename T, typename U>
-        class AxisCallback {
-        public:
-            AxisCallback(T* thisptr, void(U::* f)(float)){
-                func = std::bind(f, thisptr,std::placeholders::_1);
-            }
-
-            void operator()(float val) {
-                func(val);
-            }
-        private:
-            std::function<void(float)> func;
-        };
+//        template<typename T, typename U>
+//        class AxisCallback {
+//        public:
+//            AxisCallback(T* thisptr, void(U::* f)(float)){
+//                func = std::bind(f, thisptr,std::placeholders::_1);
+//            }
+//
+//            void operator()(float val) {
+//                func(val);
+//            }
+//        private:
+//            std::function<void(float)> func;
+//        };
 
        /* template<typename T>
         void Register(AxisCallback<IInputListener, T>* a) {
@@ -149,12 +226,10 @@ namespace RavEngine {
 		 * @param f the method to invoke when the action is triggered. Must take no parameters. Use &Classname::Methodname.
 		 * @param type the required state of the action to invoke the method.
 		 */
-        template<typename U>
+        template<class U>
 		void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type){
-			actionCallback callback = std::bind(f, thisptr, std::placeholders::_1);
-			
-			//need to store the original thisptr so that it can be identified later
-			actionMappings[name].push_back(std::make_pair(std::make_pair(callback, thisptr), type));
+			ActionCallback action(thisptr,f,type);
+			actionMappings[name].push_back(action);
 		}
 
         /**
@@ -165,10 +240,8 @@ namespace RavEngine {
          */
         template<typename U>
         void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)) {
-            axisCallback callback = std::bind(f, thisptr, std::placeholders::_1);
-
-            //need to store the original thisptr so that it can be identified later
-            axisMappings[name].push_back(std::make_pair(callback, thisptr));
+			AxisCallback axis(thisptr, f);
+            axisMappings[name].push_back(axis);
         }
 
 		/**
@@ -179,10 +252,9 @@ namespace RavEngine {
 		 @param state the state to use to match the callback
 		 */
 		template<typename U>
-		void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(float),ActionState type){
-			actionCallback callback = std::bind(f, thisptr, std::placeholders::_1);
-			
-			actionMappings[name].remove(std::make_pair(std::make_pair(callback, thisptr), type));
+		void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type){
+			ActionCallback action(thisptr,f,type);
+			actionMappings[name].remove(action);
 		}
 		
 		
@@ -193,9 +265,8 @@ namespace RavEngine {
 		 */
 		template<typename U>
 		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float)){
-			axisCallback callback = std::bind(f, thisptr, std::placeholders::_1);
-			
-			axisMappings[name].remove(std::make_pair(callback, thisptr));
+			AxisCallback axis(thisptr, f);
+			axisMappings[name].remove(axis);
 		}
 
 		/**
