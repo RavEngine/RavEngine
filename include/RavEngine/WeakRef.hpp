@@ -29,6 +29,12 @@ protected:
 		//if the static destructor gets called before ready, this flag is set to false
 		//Then code can check for it to avoid segmentation fault
 		~TrackedPtrWrapper(){
+            //notify all stored WeakRefs that they are now dangling
+            for (auto& p : WeakReferences) {
+                RavEngine::SharedObject* ptr = static_cast<RavEngine::SharedObject*>(p.first);
+                Remove(ptr);
+            }
+
 			isValid = false;
 		}
 	};

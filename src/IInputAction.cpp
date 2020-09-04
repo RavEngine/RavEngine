@@ -3,8 +3,11 @@
 
 RavEngine::IInputListener::~IInputListener()
 {
-	for (auto& i : senders) {
+	for (auto& p : senders) {
+		auto ref = p.first;
 		//remove this from sender
-		Ref<InputSystem>(i)->UnbindAllFor(this);
+		if (!ref.isNull()) {
+			Ref<InputSystem>(ref)->UnbindAllFor(this);
+		}
 	}
 }

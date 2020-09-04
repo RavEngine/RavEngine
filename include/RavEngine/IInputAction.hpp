@@ -6,14 +6,19 @@ namespace RavEngine {
 
 	struct IInputListener {
 		void OnRegister(const WeakRef<InputSystem>& i) {
-			senders.insert(i);
+			senders[i]++;
 		}
 		void OnUnregister(const WeakRef<InputSystem>& i) {
-			senders.erase(i);
+			if (senders.find(i) != senders.end()) {
+				senders[i]--;
+			}
+			if (senders[i] == 0) {
+				senders.erase(i);
+			}
 		}
 
 		~IInputListener();
 	private:
-		std::unordered_set<WeakRef<RavEngine::InputSystem>> senders;
+		std::unordered_map<WeakRef<InputSystem>, int> senders;
 	};
 }
