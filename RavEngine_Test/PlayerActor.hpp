@@ -1,8 +1,7 @@
-#include "Entity.hpp"
-#include "CameraComponent.hpp"
-#include "GameplayStatics.hpp"
-#include <functional>
-#include "IInputListener.hpp"
+#include "RavEngine/Entity.hpp"
+#include "RavEngine/CameraComponent.hpp"
+#include "RavEngine/GameplayStatics.hpp"
+#include "RavEngine/IInputListener.hpp"
 
 class PlayerActor : public RavEngine::Entity, public RavEngine::IInputListener {
 protected:

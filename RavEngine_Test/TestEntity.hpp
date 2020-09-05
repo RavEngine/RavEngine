@@ -7,12 +7,12 @@
 
 #pragma once
 
-#include "Entity.hpp"
-#include "PhysicsBodyComponent.hpp"
-#include "WeakRef.hpp"
-#include "PhysicsMaterial.hpp"
-#include "Material.hpp"
-#include "IPhysicsActor.hpp"
+#include "RavEngine/Entity.hpp"
+#include "RavEngine/PhysicsBodyComponent.hpp"
+#include "RavEngine/WeakRef.hpp"
+#include "RavEngine/PhysicsMaterial.hpp"
+#include "RavEngine/Material.hpp"
+#include "RavEngine/IPhysicsActor.hpp"
 
 class TestEntity : public RavEngine::Entity, public RavEngine::IPhysicsActor{
 protected:

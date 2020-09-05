@@ -127,7 +127,8 @@ file(GLOB HEADERS "include/${PROJECT_NAME}/*.hpp")
 add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} ${CHEADERS} ${HEADERS})
 
 # include paths
-target_include_directories("${PROJECT_NAME}" PUBLIC "include/${PROJECT_NAME}/")
+target_include_directories("${PROJECT_NAME}" PRIVATE "include/${PROJECT_NAME}/")
+target_include_directories("${PROJECT_NAME}" PUBLIC "include/")
 target_include_directories("${PROJECT_NAME}" PUBLIC 
 	"${DEPS_DIR}/physx/physx/include/" 
 	"${DEPS_DIR}/physx/pxshared/include/" 
@@ -147,8 +148,7 @@ set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}_Test")
 
 # ====================== Linking ====================
-target_link_libraries("${PROJECT_NAME}" PUBLIC 
-	"SDL2"
+target_link_libraries("${PROJECT_NAME}" PRIVATE 
 	"PhysXExtensions"
 	"PhysX"
 	"PhysXPvdSDK"
@@ -165,7 +165,11 @@ target_link_libraries("${PROJECT_NAME}" PUBLIC
 	"SceneQuery"
 	"SimulationController"
 	"LLGL_OpenGL"
-	)
+)
+target_link_libraries("${PROJECT_NAME}" PUBLIC 
+	"SDL2"
+)
+
 
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "PhysXGPU")
 
@@ -186,7 +190,7 @@ if (WIN32)
 		add_custom_command(TARGET "${PROJECT_NAME}" POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
 				"${CMAKE_BINARY_DIR}/deps/bin/win.x86_64.vc142.md/$<CONFIGURATION>"
-				"$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+				"$<TARGET_FILE_DIR:${PROJECT_NAME}>/$<CONFIGURATION>")
 	endif()
 
 endif()

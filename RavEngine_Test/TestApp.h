@@ -1,12 +1,12 @@
  
-#include <RavEngine_App.hpp>
-#include <WeakRef.hpp>
-#include <SharedObject.hpp>
+#include <RavEngine/RavEngine_App.hpp>
+#include <RavEngine/WeakRef.hpp>
+#include <RavEngine/SharedObject.hpp>
 #include <cassert>
-#include <GameplayStatics.hpp>
+#include <RavEngine/GameplayStatics.hpp>
 #include "WorldTest.hpp"
 
-class TestApp : public RavEngine_App{
+class TestApp : public RavEngine::App{
 	
 	void OnStartup(int argc, char** argv) override{
 		{
