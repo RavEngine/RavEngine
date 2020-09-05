@@ -8,7 +8,7 @@
 #pragma once
 #include "World.hpp"
 #include <string>
-#include "InputSystem.hpp"
+#include "InputManager.hpp"
 
 namespace RavEngine {
 	struct GameplayStatics {
