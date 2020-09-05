@@ -36,11 +36,9 @@ public:
 	}
 
 	void LookUp(float amt) {
-		//framePitch = amt;
 		cameraEntity->transform()->LocalRotateDelta(vector3(scaleRotation(amt), 0, 0));
 	}
 	void LookRight(float amt) {
-		//frameYaw = amt;
 		trans->LocalRotateDelta(quaternion(vector3(0, scaleRotation(amt), 0)));
 	}
 

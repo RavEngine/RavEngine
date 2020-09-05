@@ -1,20 +1,34 @@
 cmake_minimum_required(VERSION 3.17)
-include(ProcessorCount)
+
 project(RavEngine)
+
+# ========== CMake Boilerplate ==============
+
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(OSX_ARCHITECTURES "${ARCHS_STANDARD}" CACHE INTERNAL "")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${DEPS_DIR}")
+set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_COLOR_MAKEFILE   ON)
 
-MACRO(SUBDIRLIST result curdir)
-  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
-  SET(dirlist "")
-  FOREACH(child ${children})
-    IF(IS_DIRECTORY ${curdir}/${child})
-      LIST(APPEND dirlist ${child})
-    ENDIF()
-  ENDFOREACH()
-  SET(${result} ${dirlist})
-ENDMACRO()
+# ban in-source builds
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
+  message(SEND_ERROR "In-source builds are not allowed.")
+endif ()
+
+# linux detection
+if(UNIX AND NOT APPLE)
+	set(LINUX TRUE CACHE INTERNAL "")
+endif()
+
+# Remove 'lib' prefix for shared libraries on Windows
+if (WIN32)
+  set(CMAKE_SHARED_LIBRARY_PREFIX "")
+endif ()
+
 
 function (add_subdirectory_with_folder folder_name)
   function (add_library name type)
@@ -42,8 +56,9 @@ function (add_subdirectory_with_folder folder_name)
 endfunction()
 
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(MSVC)
+	list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
+endif()
 
 # enable multiprocessor compilation with vs
 if(MSVC)
@@ -51,31 +66,6 @@ if(MSVC)
   add_definitions(/Qpar)
 endif()
 
-set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${DEPS_DIR}")
-
-# ========== CMake Boilerplate ==============
-
-# ban in-source builds
-set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
-#set(CMAKE_DISABLE_SOURCE_CHANGES  ON)
-
-if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
-  message(SEND_ERROR "In-source builds are not allowed.")
-endif ()
-
-set(CMAKE_VERBOSE_MAKEFILE ON)
-set(CMAKE_COLOR_MAKEFILE   ON)
-
-# linux detection
-if(UNIX AND NOT APPLE)
-	set(LINUX TRUE CACHE INTERNAL "")
-endif()
-
-# Remove 'lib' prefix for shared libraries on Windows
-if (WIN32)
-  set(CMAKE_SHARED_LIBRARY_PREFIX "")
-endif ()
 
 # ==================== Dependencies =====================
 
@@ -122,16 +112,6 @@ add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
 
 # ========== Building engine and test game ==============
 
-# get header search paths
-include_directories("include/${PROJECT_NAME}/")
-include_directories("include/${PROJECT_NAME}/stduuid/")
-include_directories("${DEPS_DIR}/physx/physx/include/")
-include_directories("${DEPS_DIR}/physx/pxshared/include/")
-include_directories("${DEPS_DIR}/physx/physx/snippets/")
-include_directories("${DEPS_DIR}/SDL2/include")
-include_directories("${DEPS_DIR}/LLGL/include")
-
-
 # get all sources for the library with glob
 file(GLOB SOURCES "src/*.cpp")
 if(APPLE)
@@ -146,6 +126,14 @@ file(GLOB HEADERS "include/${PROJECT_NAME}/*.hpp")
 # register the library
 add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} ${CHEADERS} ${HEADERS})
 
+# include paths
+target_include_directories("${PROJECT_NAME}" PUBLIC "include/${PROJECT_NAME}/")
+target_include_directories("${PROJECT_NAME}" PUBLIC 
+	"${DEPS_DIR}/physx/physx/include/" 
+	"${DEPS_DIR}/physx/pxshared/include/" 
+	"${DEPS_DIR}/physx/physx/snippets/"
+	"include/${PROJECT_NAME}/stduuid/")
+
 # create the test executable
 file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp")
 file(GLOB TEST_HEADERS "${PROJECT_NAME}_Test/*.hpp")
@@ -158,35 +146,37 @@ set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST
 #startup project	
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}_Test")
 
-get_directory_property(targets BUILDSYSTEM_TARGETS)
-message(STATUS "Targets: ${targets}")
-set_target_properties(${BUILDSYSTEM_TARGETS} PROPERTIES FOLDER "Libraries")
-
 # ====================== Linking ====================
-target_link_libraries("${PROJECT_NAME}" "SDL2")
-target_link_libraries("${PROJECT_NAME}" "PhysXExtensions")
-target_link_libraries("${PROJECT_NAME}" "PhysX")
-target_link_libraries("${PROJECT_NAME}" "PhysXPvdSDK")
-target_link_libraries("${PROJECT_NAME}" "PhysXVehicle")
-target_link_libraries("${PROJECT_NAME}" "PhysXCharacterKinematic")
-target_link_libraries("${PROJECT_NAME}" "PhysXCooking")
-target_link_libraries("${PROJECT_NAME}" "PhysXCommon")
-#target_link_libraries("${PROJECT_NAME}" "PhysXGPU")
-target_link_libraries("${PROJECT_NAME}" "PhysXFoundation")
-target_link_libraries("${PROJECT_NAME}" "PhysXTask")
-#target_link_libraries("${PROJECT_NAME}" "SnippetUtils")
-target_link_libraries("${PROJECT_NAME}" "FastXml")
-target_link_libraries("${PROJECT_NAME}" "LowLevel")
-target_link_libraries("${PROJECT_NAME}" "LowLevelAABB")
-target_link_libraries("${PROJECT_NAME}" "LowLevelDynamics")
-target_link_libraries("${PROJECT_NAME}" "SceneQuery")
-target_link_libraries("${PROJECT_NAME}" "SimulationController")
+target_link_libraries("${PROJECT_NAME}" PUBLIC 
+	"SDL2"
+	"PhysXExtensions"
+	"PhysX"
+	"PhysXPvdSDK"
+	"PhysXVehicle"
+	"PhysXCharacterKinematic"
+	"PhysXCooking"
+	"PhysXCommon"
+	"PhysXFoundation"
+	"PhysXTask"
+	"FastXml"
+	"LowLevel"
+	"LowLevelAABB"
+	"LowLevelDynamics"
+	"SceneQuery"
+	"SimulationController"
+	"LLGL_OpenGL"
+	)
+
+#target_link_libraries("${PROJECT_NAME}" PUBLIC "PhysXGPU")
+
+#target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
+
 if(MSVC)
-  target_link_libraries("${PROJECT_NAME}" "LLGL_Direct3D11")
+  target_link_libraries("${PROJECT_NAME}" PUBLIC "LLGL_Direct3D11")
 elseif(APPLE)
-  target_link_libraries("${PROJECT_NAME}" "LLGL_Metal")
+  target_link_libraries("${PROJECT_NAME}" PUBLIC "LLGL_Metal")
 endif()
-target_link_libraries("${PROJECT_NAME}" "LLGL_OpenGL")
+
 #target_link_libraries("${PROJECT_NAME}" "ShaderConductor")
 
 # copy DLLs
@@ -200,6 +190,7 @@ if (WIN32)
 	endif()
 
 endif()
+
 # link test game with library
 target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
