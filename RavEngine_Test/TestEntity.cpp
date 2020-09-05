@@ -7,12 +7,12 @@
 
 #include "TestEntity.hpp"
 #include "SkateSystem.h"
-#include "PhysicsLinkSystem.hpp"
-#include "PhysicsCollider.hpp"
+#include "RavEngine/PhysicsLinkSystem.hpp"
+#include "RavEngine/PhysicsCollider.hpp"
 #include <PxMaterial.h>
-#include "PhysicsSolver.hpp"
+#include "RavEngine/PhysicsSolver.hpp"
 #include <iostream>
-#include "StaticMesh.hpp"
+#include "RavEngine/StaticMesh.hpp"
 
 using namespace std;
 using namespace physx;

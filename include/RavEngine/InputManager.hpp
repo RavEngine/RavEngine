@@ -1,6 +1,6 @@
 #pragma once
 #include "SharedObject.hpp"
-#include <SDL_scancode.h>
+#include "SDL_scancode.h"
 #include <SDL_mouse.h>
 #include <SDL_gamecontroller.h>
 #include <list>

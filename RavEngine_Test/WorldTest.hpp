@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include "World.hpp"
+#include "RavEngine/World.hpp"
 #include "PlayerActor.hpp"
-#include "IInputListener.hpp"
+#include "RavEngine/IInputListener.hpp"
 
 class TestWorld : public RavEngine::World, public RavEngine::IInputListener{
 public:
