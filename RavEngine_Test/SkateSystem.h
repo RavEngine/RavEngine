@@ -7,6 +7,7 @@
 
 #pragma once
 #include "RavEngine/System.hpp"
+#include "RavEngine/Transform.hpp"
 
 /**
  This system simply moves an entity along one axis
@@ -19,5 +20,9 @@ public:
         auto newPos = e->transform()->GetLocalPosition();
         newPos += 5 * fpsScale;
         e->transform()->SetLocalPosition(newPos);
+    }
+
+    std::list<std::type_index> QueryTypes() const override {
+        return { typeid(RavEngine::Transform) };
     }
 };

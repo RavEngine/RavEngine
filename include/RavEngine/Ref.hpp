@@ -92,9 +92,15 @@ public:
 		return static_cast<U*>(ptr);
 	}
 
-	//comparison
+	//equality
 	bool operator==(const Ref<T>& other) const {
 		return other.get() == get();
+	}
+
+	//less (requires T and U to have < operator defined
+	template<typename U>
+	bool operator<(const Ref<U>& other) const {
+		return *get() < *other.get();
 	}
 };
 
