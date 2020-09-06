@@ -6,7 +6,6 @@
 #include <PxRigidStatic.h>
 #include <iostream>
 #include <functional>
-#include "eventpp/eventdispatcher.h"
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
 #include <unordered_set>
