@@ -22,9 +22,13 @@ Ref<RavEngine::PhysicsMaterial> TestEntity::sharedMat;
 Ref<RavEngine::Material> TestEntity::sharedMatInstance;
 
 TestEntity::TestEntity() : Entity(){
+
+    //attach the script
+    auto script = AddComponent<TestEntityController>(new TestEntityController());
+
     //set the filter layers
     auto r = AddComponent<RigidBodyDynamicComponent>(new RigidBodyDynamicComponent(FilterLayers::L0,FilterLayers::L0 | FilterLayers::L1));
-    r->AddReceiver(this);
+    r->AddReceiver(script.get());
 
     //add a box collision to the PhysX component
     if (sharedMat.isNull()) {
@@ -45,7 +49,7 @@ TestEntity::TestEntity() : Entity(){
     mesh->SetMaterial(sharedMatInstance);
 }
 
-void TestEntity::Tick(float scale) {
+void TestEntityController::Tick(float scale) {
 
     //delete entities below y=-30
     if (transform()->GetWorldPosition().y < -30) {
@@ -53,7 +57,7 @@ void TestEntity::Tick(float scale) {
     }
 }
 
-void TestEntity::OnColliderEnter(const WeakRef<PhysicsBodyComponent>& other)
+void TestEntityController::OnColliderEnter(const WeakRef<PhysicsBodyComponent>& other)
 {
     //cout << "hit" << endl;
 }

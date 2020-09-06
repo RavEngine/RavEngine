@@ -14,6 +14,7 @@
 #include "RavEngine/PhysicsBodyComponent.hpp"
 #include "RavEngine/StaticMesh.hpp"
 #include "RavEngine/PhysicsMaterial.hpp"
+#include "RavEngine/ScriptSystem.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -33,8 +34,6 @@ void TestWorld::ResetCam() {
 }
 
 void TestWorld::posttick(float fpsScale){
-    auto pos = player->cameraEntity->transform()->GetWorldPosition();
-    auto rot = glm::eulerAngles(player->cameraEntity->transform()->GetWorldRotation()); 
     //bgfx::dbgTextPrintf(0, 7, 0x4f, "position (%f, %f, %f)", pos.x, pos.y, pos.z);
     //bgfx::dbgTextPrintf(0, 8, 0x4f, "rotation (%f, %f, %f)", rot.x, rot.y, rot.z);
 
@@ -82,11 +81,12 @@ TestWorld::TestWorld() : World() {
 
 
 	//bind controls
-	is->BindAxis("MoveForward", player.get(), &PlayerActor::MoveForward);
-	is->BindAxis("MoveRight", player.get(), &PlayerActor::MoveRight);
-	is->BindAxis("MoveUp", player.get(),&PlayerActor::MoveUp);
-	is->BindAxis("LookUp", player.get(),&PlayerActor::LookUp);
-	is->BindAxis("LookRight", player.get(), &PlayerActor::LookRight);
+    auto playerscript = player->Components().GetComponent<PlayerScript>().get();
+	is->BindAxis("MoveForward", playerscript, &PlayerScript::MoveForward);
+	is->BindAxis("MoveRight", playerscript, &PlayerScript::MoveRight);
+	is->BindAxis("MoveUp", playerscript,&PlayerScript::MoveUp);
+	is->BindAxis("LookUp", playerscript,&PlayerScript::LookUp);
+	is->BindAxis("LookRight", playerscript, &PlayerScript::LookRight);
 	
 	is->BindAxis("SpawnTest", this, &TestWorld::SpawnEntities);
 	is->BindAction("ResetCam", this, &TestWorld::ResetCam, ActionState::Pressed);
@@ -124,6 +124,8 @@ TestWorld::TestWorld() : World() {
 
     Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
     RegisterSystem(plsw);
+
+    RegisterSystem(Ref<ScriptSystem>(new ScriptSystem()));
 
     Ref<PhysicsLinkSystemRead> plsr = new PhysicsLinkSystemRead();
     RegisterSystem(plsr);

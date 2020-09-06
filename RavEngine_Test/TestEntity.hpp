@@ -13,6 +13,14 @@
 #include "RavEngine/PhysicsMaterial.hpp"
 #include "RavEngine/Material.hpp"
 #include "RavEngine/IPhysicsActor.hpp"
+#include "RavEngine/ScriptComponent.hpp"
+
+class TestEntityController : public RavEngine::ScriptComponent, public RavEngine::IPhysicsActor {
+public:
+    void Tick(float scale) override;
+
+    void OnColliderEnter(const WeakRef<RavEngine::PhysicsBodyComponent>&) override;
+};
 
 class TestEntity : public RavEngine::Entity, public RavEngine::IPhysicsActor{
 protected:
@@ -20,6 +28,4 @@ protected:
     static Ref<RavEngine::Material> sharedMatInstance;
 public:
     TestEntity();
-    void Tick(float scale) override;
-    void OnColliderEnter(const WeakRef<RavEngine::PhysicsBodyComponent>&) override;
 };

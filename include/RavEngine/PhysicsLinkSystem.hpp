@@ -10,6 +10,7 @@
 #include "PhysXDefines.h"
 #include <PxPhysicsAPI.h>
 #include "PhysicsBodyComponent.hpp"
+#include "ScriptSystem.hpp"
 
 namespace RavEngine {
     /**
@@ -24,6 +25,11 @@ namespace RavEngine {
 
         std::list<std::type_index> QueryTypes() const override {
             return { typeid(PhysicsBodyComponent) };
+        }
+
+        //must run before write system
+        bool MustRunBefore(const std::type_index& other) const override {
+            return other == std::type_index(typeid(ScriptSystem));
         }
     };
 
