@@ -17,7 +17,6 @@
 #include <memory>
 #include "LLGL/RenderSystem.h"
 #include "LLGL/LLGL.h"
-#include "Gauss/Gauss.h"
 #include "Material.hpp"
 
 #include "RenderableComponent.hpp"
