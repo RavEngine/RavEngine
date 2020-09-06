@@ -123,6 +123,34 @@ void RavEngine::World::tick(float fpsScale) {
 
 	//bgfx::dbgTextPrintf(0, 6, 0x4f, "Threads: %d (%d per, %d total)", numthreads, tasksPerThread, Entities.size());
 
+	for (auto& system : Systems) {
+		//get the query info
+		std::list<Ref<Entity>> entities;
+		auto queries = system->QueryTypes();
+		for (const auto& query : queries) {
+			auto temp = allcomponents.GetAllComponentsOfSubclassTypeIndex<Component>(query);
+			for (auto& e : temp) {
+				entities.push_back(e.get()->getOwner());
+			}
+		}
+
+		vector<future<void>> futures(entities.size());
+		int i = 0;
+		for (const auto& entity : entities) {
+			//execute the system on each component
+			auto ticker = [&]() {
+				system->Tick(fpsScale, entity);
+			};
+			futures[i] = (threadpool.enqueue(ticker));
+			++i;
+		}
+
+		//wait for all to complete
+		for (auto& f : futures) {
+			f.get();
+		}
+	}
+
 	/**
 	 The block which processes entities on a worker thread
 	 @param it the iterator marking the starting position in the Entities list to execute
@@ -131,18 +159,6 @@ void RavEngine::World::tick(float fpsScale) {
 		//process each entity
 		for (int j = 0; j < tasksPerThread && it != Entities.end(); ++j) {
 			Ref<Entity> e = *it;
-			//tick each system
-			auto systems = e->GetSystemsOrder();
-			for (auto& s : systems) {
-				//get the reference to the actual system
-				//try
-				{
-					const Ref<System>& r = Systems.at(s);
-					r->Tick(fpsScale, e);
-				}
-				//catch (exception& err) {};			//silently catch if the system is not present
-			}
-			//entity's global Tick()
 			e->Tick(fpsScale);
 			++it;
 		}

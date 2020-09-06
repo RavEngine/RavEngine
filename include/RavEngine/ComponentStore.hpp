@@ -49,15 +49,12 @@ namespace RavEngine{
 		Ref<T> GetComponent() {
 			C_REF_CHECK
 				auto& vec = components[std::type_index(typeid(T))];
-			if (vec.size() == 0) {
+			if (vec.empty()) {
 				//try base classes
 				return GetComponentOfSubclass<T>();
 			}
 			else {
-				//return ref(vec[0]);
-				//auto casted = static_cast<T*>(*(vec.front()));
-				auto r = Ref<T>(vec.front());
-				return r;
+				return vec.front();;
 			}
 		}
 
@@ -68,7 +65,7 @@ namespace RavEngine{
 		template<typename T>
 		bool HasComponentOfType() {
 			C_REF_CHECK
-				return (!components[std::type_index(typeid(T))].empty()) || (HasComponentOfSubclass<T>());
+			return (!components[std::type_index(typeid(T))].empty()) || (HasComponentOfSubclass<T>());
 		}
 
 		/**
@@ -78,7 +75,7 @@ namespace RavEngine{
 		template<typename T>
 		bool HasComponentOfSubclass() {
 			C_REF_CHECK
-				return !componentsRedundant[std::type_index(typeid(T))].empty();
+			return !componentsRedundant[std::type_index(typeid(T))].empty();
 		}
 
 		/**
@@ -95,27 +92,53 @@ namespace RavEngine{
 				throw std::runtime_error("No component of type");
 			}
 			else {
-				//return ref(vec[0]);
-				auto casted = static_cast<T*>(*(vec.front()));
-				return Ref<T>(casted);
+				return vec.front();
 			}
 		}
 
 		/**
-		 * Gets all of the references of a base class type.
+		For internal use only.
+		@param type the type_index to query for
+		@return all the components of a class or its base classes to a type index
+		*/
+		template<typename T>
+		std::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
+			C_REF_CHECK
+			//query both types
+			auto& toplevel = components[type];
+			auto& comp = componentsRedundant[type];
+
+			//insert into
+			std::list<Ref<T>> cpy;
+			cpy.insert(cpy.begin(), toplevel.begin(), toplevel.end());
+			cpy.insert(cpy.end(), comp.begin(), comp.end());
+			return cpy;
+
+		}
+
+		/**
+		For internal use only.
+		@param type the type_index to query for.
+		@return all the components of a type index. Does NOT search base classes
+		*/
+		template<typename T>
+		std::list<Ref<T>> GetAllComponentsOfTypeIndex(const std::type_index& index) {
+			C_REF_CHECK
+				auto& comp = components[index];
+			std::list<Ref<T>> cpy;
+			for (auto& c : comp) {
+				cpy.push_back(c);
+			}
+			return cpy;
+		}
+
+		/**
+		 Gets all of the references of a base class type.
 		 @return the list of all the refs of a base class type. The list may be empty.
 		 */
 		template<typename T>
 		std::list<Ref<T>> GetAllComponentsOfSubclass() {
-			C_REF_CHECK
-			auto& comp = componentsRedundant[std::type_index(typeid(T))];
-			std::list<Ref<T>> cpy;
-			for (auto& c : comp) {
-				auto casted = static_cast<T*>(*(c));
-				cpy.push_back(casted);
-			}
-			return cpy;
-
+			return GetAllComponentsOfSubclassTypeIndex<T>(std::type_index(typeid(T)));
 		}
 
 		/**
@@ -125,14 +148,7 @@ namespace RavEngine{
 		 */
 		template<typename T>
 		std::list<Ref<T>> GetAllComponentsOfType() {
-			C_REF_CHECK
-				auto& comp = components[std::type_index(typeid(T))];
-			std::list<Ref<T>> cpy;
-			for (auto& c : comp) {
-				auto casted = static_cast<T*>(*(c));
-				cpy.push_back(casted);
-			}
-			return cpy;
+			return GetAllComponentsOfTypeIndex<T>(std::type_index(typeid(T)));
 		}
 
 		/**

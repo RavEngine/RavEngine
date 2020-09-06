@@ -18,18 +18,12 @@
  */
 namespace RavEngine {
 	class PhysicsBodyComponent;
-	class SystemRef;
 	class World;
-
-	typedef std::list<std::type_index> SystemsList;
 
 	class Entity : public SharedObject {
 	protected:
 		//store the components on this Entity
 		ComponentStore components;
-
-		//store what Systems will run on this Entity, in the order they will run
-		SystemsList SystemsOrder;
 
 		WeakRef<World> worldptr;  //non-owning
 
@@ -72,31 +66,6 @@ namespace RavEngine {
 		}
 
 		/**
-		 Add a system to this entity.
-		 */
-		template<class ref>
-		void AddSystem() {
-			SystemsOrder.push_back(std::type_index(typeid(ref)));
-		}
-
-		/**
-		 Remove a system from this entity.
-		 */
-		template<class ref>
-		void RemoveSystem() {
-			SystemsOrder.remove(std::type_index(typeid(ref)));
-		}
-
-
-		/**
-		 Get the list of systems this entity needs to run, in the order that they must run in
-		 @return constant reference to this Entity's systems order
-		 */
-		const SystemsList& GetSystemsOrder() const {
-			return SystemsOrder;
-		}
-
-		/**
 		Add a component to this entity. Use this call to ensure the component post-add hook gets invoked, and ownership is set correctly.
 		@param componentRef the component to add
 		*/
@@ -109,7 +78,6 @@ namespace RavEngine {
 
 		/**
 		 Create an Entity. This constructor will add the components and their default values to the Entity.
-		 The constructor is also responsible for setting the SystemsOrder
 		 */
 		Entity();
 

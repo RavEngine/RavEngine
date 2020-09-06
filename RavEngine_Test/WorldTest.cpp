@@ -120,13 +120,13 @@ TestWorld::TestWorld() : World() {
     Spawn(anonymousChild);
 
     //register the systems that are allowed to run in this World
-    RegisterSystem(Ref<Skate>(new Skate()));
-    
-    Ref<PhysicsLinkSystemRead> plsr = new PhysicsLinkSystemRead();
-    RegisterSystem(plsr);
+    //RegisterSystem(Ref<Skate>(new Skate()));
 
     Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
     RegisterSystem(plsw);
+
+    Ref<PhysicsLinkSystemRead> plsr = new PhysicsLinkSystemRead();
+    RegisterSystem(plsr);
 
     //dynamics world must be set in these so that locks can be managed correctly
     plsr->dynamicsWorld = Solver->scene;
@@ -138,7 +138,5 @@ TestWorld::TestWorld() : World() {
     floorplane->transform()->LocalTranslateDelta(vector3(0, -20, 0));
     floorplane->AddComponent<RigidBodyStaticComponent>(new RigidBodyStaticComponent());
     floorplane->AddComponent<BoxCollider>(new BoxCollider(vector3(10, 0.5, 10), new PhysicsMaterial(0.5,0.5,0.5)));
-    //floorplane->AddSystem<PhysicsLinkSystemRead>();
-    floorplane->AddSystem<PhysicsLinkSystemWrite>();
     Spawn(floorplane);
 };

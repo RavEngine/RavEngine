@@ -22,10 +22,6 @@ Ref<RavEngine::PhysicsMaterial> TestEntity::sharedMat;
 Ref<RavEngine::Material> TestEntity::sharedMatInstance;
 
 TestEntity::TestEntity() : Entity(){
-    AddSystem<PhysicsLinkSystemRead>();
-    //AddSystem<SkateRef>();
-    AddSystem<PhysicsLinkSystemWrite>();
-
     //set the filter layers
     auto r = AddComponent<RigidBodyDynamicComponent>(new RigidBodyDynamicComponent(FilterLayers::L0,FilterLayers::L0 | FilterLayers::L1));
     r->AddReceiver(this);
@@ -59,5 +55,5 @@ void TestEntity::Tick(float scale) {
 
 void TestEntity::OnColliderEnter(const WeakRef<PhysicsBodyComponent>& other)
 {
-    cout << "hit" << endl;
+    //cout << "hit" << endl;
 }

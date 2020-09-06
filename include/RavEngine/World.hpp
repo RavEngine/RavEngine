@@ -17,6 +17,7 @@
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include <set>
 
 
 typedef std::chrono::high_resolution_clock clocktype;
@@ -44,8 +45,8 @@ namespace RavEngine {
 		std::list<Ref<Entity>> PendingSpawn;
 		std::list<Ref<Entity>> PendingDestruction;
 
-		//Systems list (stores the systems that can exist in this World)
-		std::unordered_map<std::type_index, Ref<System>> Systems;
+		//Systems list (stores the loaded systems), automatically sorted in dependency order
+		std::multiset<Ref<System>> Systems;
 
 		//physics system
 		Ref<PhysicsSolver> Solver = new PhysicsSolver();
@@ -56,12 +57,10 @@ namespace RavEngine {
 		timePoint lastFrameTime = clocktype::now();
 		timeDiff deltaTimeMicroseconds;
 
-		//initialize in
-
 		template<class T>
 		void RegisterSystem(Ref<T> r_instance) {
-			//static_assert(std::is_convertible<ref, SystemRef>::value, "Must be a System Reference");
-			Systems.insert(std::make_pair(std::type_index(typeid(T)), r_instance));
+			//static_assert(std::is_base_of<System, T>::value, "Can only register systems");
+			Systems.insert(r_instance);
 		}
 
 	public:
