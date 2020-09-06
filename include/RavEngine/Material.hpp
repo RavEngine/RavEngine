@@ -3,7 +3,6 @@
 #include "RenderEngine.hpp"
 #include <unordered_map>
 #include <mutex>
-#include "Gauss/Gauss.h"
 
 namespace LLGL {
 	class CommandBuffer;
@@ -53,7 +52,8 @@ namespace RavEngine {
 		matrix4 transformMatrix = matrix4(1);
 
 		struct Settings {
-			Gs::Matrix4f wvpMatrix; //todo: 16 byte pack alignment for constant buffers
+			//TODO: typdef this instead of hard-coding to float?
+			float wvpMatrix[16]; //todo: 16 byte pack alignment for constant buffers
 		} settings;
 
 	};

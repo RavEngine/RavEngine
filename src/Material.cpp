@@ -4,7 +4,6 @@
 #include <fstream>
 #include <RenderEngine.hpp>
 #include <LLGL/LLGL.h>
-#include "Gauss/Gauss.h"
 #include "SDLSurface.hpp"
 #include "mathtypes.hpp"
 #include "glm/gtc/type_ptr.hpp"
@@ -30,15 +29,10 @@ void Material::Draw(LLGL::CommandBuffer* const commands,LLGL::Buffer* vertexBuff
     auto projection = MaterialManager::GetCurrentProjectionMatrix();
     auto wvp = projection * view * transformMatrix; //transformMatrix * view * projection;
 
-    //convert to a Gauss matrix and update the Settings struct
-    //TODO: typdef this instead of hard-coding to float?
-    float m[16] = { 0.0 };
-
     const decimalType* pSource = (const decimalType*)glm::value_ptr(wvp);
     for (int i = 0; i < 16; ++i) {
-        m[i] = pSource[i];
+        settings.wvpMatrix[i] = pSource[i];
     }
-    settings.wvpMatrix = Gs::Matrix4f({ m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],m[12],m[13],m[14],m[15] }).Transposed();
 
     // Set graphics pipeline
     commands->SetPipelineState(*pipeline);

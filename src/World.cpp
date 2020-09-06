@@ -12,7 +12,6 @@
 #include "System.hpp"
 #include "LockLogger.hpp"
 #include "ScriptComponent.hpp"
-#include <uuid.h>
 
 using namespace std;
 using namespace std::chrono;
@@ -146,7 +145,6 @@ void RavEngine::World::tick(float fpsScale) {
 				entities.push_back(e.get()->getOwner());
 			}
 		}
-
 		vector<future<void>> futures(entities.size());
 		int i = 0;
 		for (const auto& entity : entities) {
