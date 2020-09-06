@@ -21,11 +21,14 @@ namespace RavEngine {
 		physx::PxU32 filterGroup = -1;
 		physx::PxU32 filterMask = -1;
 
+		void AddHook(const WeakRef<RavEngine::Entity>& e);
+
 		/**
 		Add a recipient for collision events. Must implement IPhysicsActor.
 		@param obj the interface implementer to recieve the events
 		*/
 		void AddReceiver(IPhysicsActor* obj);
+
 		/**
 		Remove a recipient for collision events. Must implement IPhysicsActor On deallocation, objects automatically remove themselves.
 		@param obj the object to remove

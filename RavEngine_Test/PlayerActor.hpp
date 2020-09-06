@@ -2,16 +2,18 @@
 #include "RavEngine/CameraComponent.hpp"
 #include "RavEngine/GameplayStatics.hpp"
 #include "RavEngine/IInputListener.hpp"
+#include "RavEngine/ScriptComponent.hpp"
 
-class PlayerActor : public RavEngine::Entity, public RavEngine::IInputListener {
-protected:
+class PlayerActor;
+
+
+class PlayerScript : public RavEngine::ScriptComponent, public RavEngine::IInputListener {
+public:
+	Ref<RavEngine::Entity> cameraEntity;
+	Ref<RavEngine::Transform> trans;
 	decimalType dt = 0;
 	decimalType movementSpeed = 0.3;
 	decimalType sensitivity = 0.1;
-
-	//transform cache
-	Ref<RavEngine::Transform> trans;
-
 
 	decimalType scaleMovement(decimalType f) {
 		return f * dt * movementSpeed;
@@ -20,8 +22,12 @@ protected:
 	decimalType scaleRotation(decimalType f) {
 		return glm::radians(sensitivity * dt * f);
 	}
-public:
-	Ref<Entity> cameraEntity;
+
+	void Start() override {
+		Ref<RavEngine::Entity> owner(getOwner());
+		trans = transform();
+		Ref<RavEngine::World>(GetWorld())->Spawn(cameraEntity);
+	}
 
 	void MoveForward(float amt) {
 		trans->LocalTranslateDelta(scaleMovement(amt) * trans->Forward());
@@ -41,24 +47,25 @@ public:
 		trans->LocalRotateDelta(quaternion(vector3(0, scaleRotation(amt), 0)));
 	}
 
-	void Tick(float time) override{
-		dt = time;
+	virtual void Tick(float scale) {
+		dt = scale;
 	}
+};
+
+class PlayerActor : public RavEngine::Entity, public RavEngine::IInputListener {
+public:
 
 	PlayerActor() : Entity() {
 		//create a child entity for the camera
-		cameraEntity = new Entity();
+		auto cameraEntity = new Entity();
 		auto cam = cameraEntity->AddComponent<RavEngine::CameraComponent>(new RavEngine::CameraComponent());
+		auto script = AddComponent<PlayerScript>(new PlayerScript());
+		script->cameraEntity = cameraEntity;
 
 		//set the active camera
 		cam->setActive(true);
 
-		trans = transform();
-		trans->AddChild(cameraEntity->transform());
-	}
-
-	virtual void Start() override {
-		Ref<RavEngine::World>(GetWorld())->Spawn(cameraEntity);
+		transform()->AddChild(cameraEntity->transform());
 	}
 
 	virtual ~PlayerActor(){}

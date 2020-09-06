@@ -11,6 +11,7 @@
 #include <algorithm>
 #include "System.hpp"
 #include "LockLogger.hpp"
+#include "ScriptComponent.hpp"
 #include <uuid.h>
 
 using namespace std;
@@ -33,7 +34,13 @@ void RavEngine::World::tick() {
 	for (auto& e : PendingSpawn){
 		Entities.insert(e);
         e->SetWorld(this);
+
+		//start all scripts
 		e->Start();
+		auto& coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
+		for (auto& c : coms) {
+			c->Start();
+		}
         
         //make the render engine and the physics system aware of this entity
         Solver->Spawn(e);
@@ -49,7 +56,13 @@ void RavEngine::World::tick() {
 	
 	//destroy objects that are pending removal
 	for( auto& e : PendingDestruction){
+		//stop all scripts
+		auto& coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
+		for (auto& c : coms) {
+			c->Stop();
+		}
 		e->Stop();
+
         e->SetWorld(nullptr);
 		//also remove its components
 		allcomponents.RemoveComponentsInOtherFromThis(e->Components());
@@ -149,45 +162,5 @@ void RavEngine::World::tick(float fpsScale) {
 		for (auto& f : futures) {
 			f.get();
 		}
-	}
-
-	/**
-	 The block which processes entities on a worker thread
-	 @param it the iterator marking the starting position in the Entities list to execute
-	 */
-	auto ticker = [&](EntityStore::iterator it) {
-		//process each entity
-		for (int j = 0; j < tasksPerThread && it != Entities.end(); ++j) {
-			Ref<Entity> e = *it;
-			e->Tick(fpsScale);
-			++it;
-		}
-	};
-
-	//determine the iterators (TODO: meet in the middle on 2 threads)
-	vector<EntityStore::iterator> iterators(numthreads);
-	{
-		auto it = Entities.begin();
-		for (int i = 0; i < numthreads; ++i) {
-			iterators[i] = it;
-
-			//advance the iterator to the appropriate part of the list for the next thread
-			for (int k = 0; k < tasksPerThread && it != Entities.end(); ++k) {
-				it = ++it;
-			}
-		}
-	}
-	
-	//enqueue the tasks
-	vector<future<void>> tasks(iterators.size());
-	int count = 0;
-	for (const auto& begin_it : iterators) {
-		tasks[count] = threadpool.enqueue([&] {ticker(begin_it); });
-		++count;
-	}
-
-	//get the results by waiting for all tasks to complete
-	for (auto& future : tasks) {
-		future.get();
 	}
 }

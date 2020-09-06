@@ -18,6 +18,12 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
 	RegisterAllAlternateTypes();
 }
 
+void RavEngine::PhysicsBodyComponent::AddHook(const WeakRef<RavEngine::Entity>& e)
+{
+	setPos(e.get()->transform()->GetWorldPosition());
+	setRot(e.get()->transform()->GetWorldRotation());
+}
+
 void RavEngine::PhysicsBodyComponent::AddReceiver(IPhysicsActor* obj)
 {
 	receivers.insert(obj);

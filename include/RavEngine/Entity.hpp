@@ -77,31 +77,24 @@ namespace RavEngine {
 		}
 
 		/**
+		Invoked by the world when the entity is added to the World
+		*/
+		virtual void Start() {}
+
+		/**
+		Invoked by the world when the entity is despawned, but despawning has not happened yet. Use to preemptively clean up data.
+		*/
+		virtual void Stop() {}
+
+		/**
 		 Create an Entity. This constructor will add the components and their default values to the Entity.
 		 */
 		Entity();
 
 		/**
-		Called by the world when the entity is spawned.
-		*/
-		virtual void Start() {}
-
-		/**
-		Called by the world when the entity has been despawned, but before despawn work has begun. It may not be deallocated immediately after depending on reference counts. However it is best to stop or destroy anything possible.
-		*/
-		virtual void Stop() {}
-
-		/**
 		 @return a reference to the transform component, which all entities possess
 		 */
 		Ref<Transform> transform();
-
-		/**
-		 Tick logic on this Entity
-		 @param timeScale the scale calculated by the World
-		 @note this may be called on any thread, so ensure resource access is thread-safe
-		 */
-		virtual void Tick(float timeScale) {};
 
 		/**
 		Remove this entity from the world. If there are no more references, it will be destroyed.
