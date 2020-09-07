@@ -48,10 +48,16 @@ namespace RavEngine {
 		}
 
 		/**
-		 * Called by the parent entity after it is added. Override in subclasses
+		 * Called by the parent entity after this component is added. Override in subclasses
 		 * @param e the parent entity invoking the call
 		 */
 		virtual void AddHook(const WeakRef<RavEngine::Entity>& e) {}
+
+		/**
+		 * Called by the parent entity before this component is removed. Override in subclasses
+		 * @param e the parent entity invoking the call
+		 */
+		virtual void RemoveHook(const WeakRef<RavEngine::Entity>& e) {}
 
 		/*
 		 * Get the list of alternate types this component may be queried as

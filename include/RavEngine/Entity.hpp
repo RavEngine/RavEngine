@@ -25,6 +25,9 @@ namespace RavEngine {
 		//store the components on this Entity
 		ComponentStore components;
 
+		ComponentStore addBuffer;
+		ComponentStore removalBuffer;
+
 		WeakRef<World> worldptr;  //non-owning
 
 	public:
@@ -62,7 +65,7 @@ namespace RavEngine {
 		 @note Does not investigate dangling pointer
 		 */
 		bool IsInWorld() const {
-			return worldptr.isNull();
+			return !worldptr.isNull();
 		}
 
 		/**
@@ -73,7 +76,25 @@ namespace RavEngine {
 		Ref<T> AddComponent(Ref<T> componentRef) {
 			componentRef->SetOwner(this);
 			componentRef->AddHook(this);
+
+			//synchronize with world
+			if (IsInWorld()) {
+				addBuffer.AddComponent(componentRef);
+				SyncAdds();
+			}
+
 			return components.AddComponent<T>(componentRef);
+		}
+
+		template<class T>
+		Ref<T> RemoveComponent(Ref<T> componentRef) {
+			componentRef->RemoveHook(this);
+			componentRef->SetOwner(nullptr);
+
+			if (IsInWorld()) {
+				removalBuffer.AddComponent(componentRef);
+				SyncRemovals();
+			}
 		}
 
 		/**
@@ -101,5 +122,8 @@ namespace RavEngine {
 		*/
 		void Destroy();
 
+	protected:
+		void SyncAdds();
+		void SyncRemovals();
 	};
 }
