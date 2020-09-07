@@ -32,7 +32,21 @@ namespace RavEngine {
 	class World : public SharedObject {
 	protected:
 		std::mutex mtx;
-		std::mutex components_mtx;
+		std::mutex component_op_mtx;
+
+		//for adding and removing components on spawned entities
+		struct component_operation {
+			bool add = true;
+			ComponentStore store;
+
+			/**
+			Create an add / remove operation
+			@param add true if the contents of this store should be merged, or used to delete
+			@param s the component store to process
+			*/
+			component_operation(bool add, const ComponentStore& s) : add(add), store(s) {}
+		};
+		std::queue<component_operation> component_addremove;
 
 		//number of cores on device
 		const int numcpus = std::thread::hardware_concurrency();
@@ -99,7 +113,7 @@ namespace RavEngine {
 		}
 
 		/**
-		@returns the componentstore for this world
+		@returns the componentstore for this world. Do not use in scripts!
 		*/
 		const ComponentStore& Components() {
 			return allcomponents;
@@ -117,15 +131,15 @@ namespace RavEngine {
 		}
 
 		void AddComponentsSpawnedEntity(const ComponentStore& store) {
-			components_mtx.lock();
-			allcomponents.AddComponentsFrom(store);
-			components_mtx.unlock();
+			component_op_mtx.lock();
+			component_addremove.emplace(true,store);
+			component_op_mtx.unlock();
 		}
 
 		void RemoveComponentsSpawnedEntity(const ComponentStore& store) {
-			components_mtx.lock();
-			allcomponents.RemoveComponentsInOtherFromThis(store);
-			components_mtx.unlock();
+			component_op_mtx.lock();
+			component_addremove.emplace(false,store);
+			component_op_mtx.unlock();
 		}
 	};
 }

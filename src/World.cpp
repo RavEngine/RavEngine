@@ -52,6 +52,18 @@ void RavEngine::World::tick() {
 	
 	//Tick the game code
 	tick(scale);
+
+	//process component add and removal on spawned entities
+	while (!component_addremove.empty()) {
+		auto& op = component_addremove.front();
+		if (op.add) {
+			allcomponents.AddComponentsFrom(op.store);
+		}
+		else {
+			allcomponents.RemoveComponentsInOtherFromThis(op.store);
+		}
+		component_addremove.pop();
+	}
 	
 	//destroy objects that are pending removal
 	for( auto& e : PendingDestruction){
