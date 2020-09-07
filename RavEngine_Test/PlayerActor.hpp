@@ -54,12 +54,15 @@ public:
 
 class PlayerActor : public RavEngine::Entity, public RavEngine::IInputListener {
 public:
-
+	Ref<PlayerScript> script;
 	PlayerActor() : Entity() {
+		script = AddComponent<PlayerScript>(new PlayerScript());
+	}
+
+	void Start() override {
 		//create a child entity for the camera
 		auto cameraEntity = new Entity();
 		auto cam = cameraEntity->AddComponent<RavEngine::CameraComponent>(new RavEngine::CameraComponent());
-		auto script = AddComponent<PlayerScript>(new PlayerScript());
 		script->cameraEntity = cameraEntity;
 
 		//set the active camera

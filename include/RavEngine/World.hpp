@@ -12,7 +12,6 @@
 #include "RenderEngine.hpp"
 #include "ThreadPool.hpp"
 #include <chrono>
-#include "Entity.hpp"
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -27,11 +26,13 @@ typedef std::chrono::time_point<clocktype> timePoint;
 
 
 namespace RavEngine {
+	class Entity;
 	typedef std::unordered_set<Ref<Entity>> EntityStore;
 
 	class World : public SharedObject {
 	protected:
 		std::mutex mtx;
+		std::mutex components_mtx;
 
 		//number of cores on device
 		const int numcpus = std::thread::hardware_concurrency();
@@ -113,6 +114,18 @@ namespace RavEngine {
 
 		virtual ~World() {
 			std::cout << "world destructor @ " << this << std::endl;
+		}
+
+		void AddComponentsSpawnedEntity(const ComponentStore& store) {
+			components_mtx.lock();
+			allcomponents.AddComponentsFrom(store);
+			components_mtx.unlock();
+		}
+
+		void RemoveComponentsSpawnedEntity(const ComponentStore& store) {
+			components_mtx.lock();
+			allcomponents.RemoveComponentsInOtherFromThis(store);
+			components_mtx.unlock();
 		}
 	};
 }

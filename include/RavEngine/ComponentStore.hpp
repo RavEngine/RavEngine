@@ -1,3 +1,4 @@
+#pragma once
 #include <unordered_map>
 #include "SharedObject.hpp"
 #include <typeindex>
@@ -149,6 +150,20 @@ namespace RavEngine{
 		template<typename T>
 		std::list<Ref<T>> GetAllComponentsOfType() {
 			return GetAllComponentsOfTypeIndex<T>(std::type_index(typeid(T)));
+		}
+
+		/**
+		Remove a component by value
+		@param component the component to remove
+		*/
+		template<typename T>
+		void RemoveComponent(Ref<T> component) {
+			components[std::type_index(typeid(T))].remove(component);
+
+			//add redundant types
+			for (const auto& alt : component->getAltTypes()) {
+				componentsRedundant[alt].remove(component);
+			}
 		}
 
 		/**
