@@ -1,8 +1,0 @@
-* text=auto
-*.hpp text
-*.cpp text
-*.hlsl text
-*.glsl text
-*.msl text
-*.dxil binary
-*.spv binary

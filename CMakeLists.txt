@@ -69,6 +69,9 @@ endif()
 
 # ==================== Dependencies =====================
 
+# shader compiler
+add_subdirectory("${DEPS_DIR}/shader-transpiler")
+
 # use static SDL
 #set(SDL_STATIC ON CACHE INTERNAL "")
 #set(SDL_SHARED OFF CACHE INTERNAL "")
@@ -81,9 +84,6 @@ if(APPLE)
   set(LLGL_BUILD_RENDERER_METAL ON CACHE INTERNAL "")
 endif()
 add_subdirectory("${DEPS_DIR}/LLGL")
-
-# ShaderCondutor
-#add_subdirectory("${DEPS_DIR}/ShaderConductor")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -176,12 +176,10 @@ target_link_libraries("${PROJECT_NAME}" PUBLIC
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
 if(MSVC)
-  target_link_libraries("${PROJECT_NAME}" PUBLIC "LLGL_Direct3D11")
+  target_link_libraries("${PROJECT_NAME}" PRIVATE "LLGL_Direct3D11")
 elseif(APPLE)
-  target_link_libraries("${PROJECT_NAME}" PUBLIC "LLGL_Metal")
+  target_link_libraries("${PROJECT_NAME}" PRIVATE "LLGL_Metal")
 endif()
-
-#target_link_libraries("${PROJECT_NAME}" "ShaderConductor")
 
 # copy DLLs
 if (WIN32)
