@@ -39,19 +39,20 @@ const vector<uint32_t> ShaderTranspiler::CompileGLSL(const std::filesystem::path
 	Shader.setStrings(&InputCString, 1);
 	
 	//=========== vulkan versioning (should alow this to be passed in, or find out from the system) ========
-	int ClientInputSemanticsVersion = 100; // maps to, say, #define VULKAN 100
-	glslang::EShTargetClientVersion VulkanClientVersion = glslang::EShTargetVulkan_1_0;
-	glslang::EShTargetLanguageVersion TargetVersion = glslang::EShTargetSpv_1_0;
+	const int DefaultVersion = 130;
+	
+	int ClientInputSemanticsVersion = DefaultVersion; // maps to, say, #define VULKAN 100
+	glslang::EShTargetClientVersion VulkanClientVersion = glslang::EShTargetVulkan_1_2;
+	glslang::EShTargetLanguageVersion TargetVersion = glslang::EShTargetSpv_1_5;
 	
 	Shader.setEnvInput(glslang::EShSourceGlsl, ShaderType, glslang::EShClientVulkan, ClientInputSemanticsVersion);
 	Shader.setEnvClient(glslang::EShClientVulkan, VulkanClientVersion);
 	Shader.setEnvTarget(glslang::EShTargetSpv, TargetVersion);
 	
-	TBuiltInResource Resources;
-	Resources = DefaultTBuiltInResource;
+	TBuiltInResource Resources(DefaultTBuiltInResource);
 	EShMessages messages = (EShMessages) (EShMsgSpvRules | EShMsgVulkanRules);
 	
-	const int DefaultVersion = 100;
+	
 	
 	// =============================== preprocess GLSL =============================
 	DirStackFileIncluder Includer;
@@ -73,7 +74,7 @@ const vector<uint32_t> ShaderTranspiler::CompileGLSL(const std::filesystem::path
 	Shader.setStrings(&PreprocessedCStr, 1);
 	
 	// ================ now parse the shader ================
-	if (!Shader.parse(&Resources, 100, false, messages))
+	if (!Shader.parse(&Resources, DefaultVersion, false, messages))
 	{
 		string msg = "GLSL Parsing Failed for: " + filename.string() + "\n" + Shader.getInfoLog() + "\n" + Shader.getInfoDebugLog();
 		throw std::runtime_error(msg);
@@ -165,7 +166,7 @@ CompileResult ShaderTranspiler::CompileTo(const CompileTask& task, TargetAPI api
 		case TargetAPI::OpenGL:
 			break;
 		case TargetAPI::Vulkan:
-			
+			//optimize spirv further
 			break;
 		case TargetAPI::DirectX11:
 			return CompileResult{SPIRVToHLSL(spirv),false, suffix + ".hlsl"};

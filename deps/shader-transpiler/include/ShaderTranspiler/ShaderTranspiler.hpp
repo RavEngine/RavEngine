@@ -50,7 +50,9 @@ protected:
 	std::string SPIRVtoMSL(const spirvbytes& bin, bool mobile = false);
 	
 	//see https://github.com/ForestCSharp/VkCppRenderer/blob/master/Src/Renderer/GLSL/ShaderCompiler.hpp for options
-	const TBuiltInResource DefaultTBuiltInResource{};
+	const TBuiltInResource DefaultTBuiltInResource{
+		.maxDrawBuffers = 32
+	};
 public:
 	CompileResult CompileTo(const CompileTask& task, TargetAPI platform);
 };
