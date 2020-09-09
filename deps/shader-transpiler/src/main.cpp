@@ -48,7 +48,8 @@ int main(int argc, const char** argv){
 		
 		ShaderTranspiler s;
 		
-		auto name = string("Example.json");
+		auto name = arguments["file"].as<std::string>();
+		path outdir(arguments["output"].as<std::string>());
 		
 		//read files
 		string metadata_src;
@@ -67,15 +68,26 @@ int main(int argc, const char** argv){
 		//compile each version
 		auto j = json::parse(metadata_src);
 		for (auto& definition : j){
-			path file = pwd / path(definition["file"]);
+			path leaf(definition["file"]);
+			path file = pwd / leaf;
 			auto stage = stagemap.at(string(definition["stage"]));
 			
 			auto task = CompileTask{file,stage};
-			auto result = s.CompileTo(task,TargetAPI::Metal_Mac);
 			
-			string finalpath = file.string().substr(0,file.string().size() - (file.extension().string().size())) + result.suffix;
+#ifdef __APPLE__
+			TargetAPI target = TargetAPI::Metal_Mac;
+#elif defined _WIN32
+			TargetAPI target = TargetAPI::DirectX11;
+#elif defined __linux__
+			TargetAPI target = TargetAPI::Vulkan;
+#else
+#error Platform not supported.
+#endif
+			auto result = s.CompileTo(task,target);
 			
-			ofstream output(finalpath);
+			string finalpath = leaf.string().substr(0,leaf.string().size() - (leaf.extension().string().size())) + result.suffix;
+			
+			ofstream output(outdir / finalpath);
 			if (output.good()){
 				output << result.data;
 			}
@@ -88,6 +100,10 @@ int main(int argc, const char** argv){
 	catch(runtime_error& err){
 		cerr << err.what() << endl;
 		return 1;
+	}
+	catch(cxxopts::option_has_no_value_exception& err){
+		cerr << "Argument Error: " << err.what() << endl;
+		return 2;
 	}
 	
 }
