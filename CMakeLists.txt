@@ -181,6 +181,8 @@ elseif(APPLE)
   target_link_libraries("${PROJECT_NAME}" PRIVATE "LLGL_Metal")
 endif()
 
+add_dependencies("${PROJECT_NAME}" "shader-transpiler")
+
 # copy DLLs
 if (WIN32)
 	# PhysX

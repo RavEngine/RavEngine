@@ -36,7 +36,7 @@ void RavEngine::World::tick() {
 
 		//start all scripts
 		e->Start();
-		auto& coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
+		auto coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
 		for (auto& c : coms) {
 			c->Start();
 		}
@@ -68,7 +68,7 @@ void RavEngine::World::tick() {
 	//destroy objects that are pending removal
 	for( auto& e : PendingDestruction){
 		//stop all scripts
-		auto& coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
+		auto coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
 		for (auto& c : coms) {
 			c->Stop();
 		}

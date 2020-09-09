@@ -37,6 +37,12 @@ class ShaderTranspiler{
 protected:
 	typedef std::vector<uint32_t> spirvbytes;
 	static bool glslAngInitialized;
+    
+    /**
+     * Factory
+     * @return instance of DefaultTBuiltInResource struct with appropriate fields set
+     */
+    static TBuiltInResource CreateDefaultTBuiltInResource();
 	
 	/**
 	 Compile GLSL to SPIR-V bytes
@@ -45,14 +51,33 @@ protected:
 	 */
 	const std::vector<uint32_t> CompileGLSL(const std::filesystem::path& filename, const EShLanguage ShaderType);
 	
+    /**
+     Decompile SPIR-V to OpenGL ES shader
+     @param bin the SPIR-V binary to decompile
+     @return OpenGL-ES source code
+     */
 	std::string SPIRVToESSL(const spirvbytes& bin);
+    
+    /**
+     Decompile SPIR-V to DirectX shader
+     @param bin the SPIR-V binary to decompile
+     @return HLSL source code
+     */
 	std::string SPIRVToHLSL(const spirvbytes& bin);
+    
+    /**
+     Decompile SPIR-V to Metal shader
+     @param bin the SPIR-V binary to decompile
+     @param mobile set to True to compile for Apple Mobile platforms
+     @return Metal shader source code
+     */
 	std::string SPIRVtoMSL(const spirvbytes& bin, bool mobile = false);
-	
-	//see https://github.com/ForestCSharp/VkCppRenderer/blob/master/Src/Renderer/GLSL/ShaderCompiler.hpp for options
-	const TBuiltInResource DefaultTBuiltInResource{
-		.maxDrawBuffers = 32
-	};
 public:
+    /**
+    Execute the shader transpiler.
+     @param task the CompileTask to execute. See CompileTask for information.
+     @param platform the target API to compile to.
+     @return A CompileResult representing the result of the compile.
+     */
 	CompileResult CompileTo(const CompileTask& task, TargetAPI platform);
 };
