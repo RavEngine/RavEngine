@@ -1,0 +1,21 @@
+@FIND_DEPENDENCIES@
+@PACKAGE_INIT@
+
+list(APPEND CMAKE_MODULE_PATH  @CMAKE_CURRENT_SOURCE_DIR@/cmake)
+
+if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake AND NOT TARGET @GUARD_TARGET@)
+  include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake)
+  if(NOT TARGET @PROJECT_NAME@::@PROJECT_NAME@)
+    if(TARGET Zipper-static)
+      set_target_properties(Zipper-static PROPERTIES IMPORTED_GLOBAL TRUE)
+      add_library(@PROJECT_NAME@::static ALIAS Zipper-static)
+    endif()
+    if(TARGET Zipper)
+      set_target_properties(Zipper PROPERTIES IMPORTED_GLOBAL TRUE)
+      add_library(@PROJECT_NAME@::shared ALIAS Zipper)
+      add_library(@PROJECT_NAME@::@PROJECT_NAME@ ALIAS Zipper)
+    elseif(TARGET Zipper-static)
+      add_library(@PROJECT_NAME@::@PROJECT_NAME@ ALIAS Zipper-static)
+    endif()
+  endif()
+endif()

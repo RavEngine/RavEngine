@@ -5,10 +5,12 @@
 #include <cassert>
 #include <iostream>
 #include "ShaderTranspiler.hpp"
+#include <zipper/zipper.h>
 
 using namespace std;
 using namespace std::filesystem;
 using namespace nlohmann;
+using namespace zipper;
 
 enum class TargetLang{
 	HLSL,
@@ -62,7 +64,12 @@ int main(int argc, const char** argv){
 			string m((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 			metadata_src = m;
 		}
-			
+		
+		//determine output path
+		auto final_file = path(path(name).filename()).replace_extension(".bin");
+		
+		Zipper output_file(outdir / final_file);
+		
 		//compile each version
 		auto j = json::parse(metadata_src);
 		for (auto& definition : j){
@@ -83,16 +90,11 @@ int main(int argc, const char** argv){
 #endif
 			auto result = s.CompileTo(task,target);
 			
-			string finalpath = leaf.string().substr(0,leaf.string().size() - (leaf.extension().string().size())) + result.suffix;
-			
-			ofstream output(outdir / finalpath);
-			if (output.good()){
-				output << result.data;
-			}
-			else{
-				throw runtime_error("Could not open '" + finalpath + "' for writing.");
-			}
+			istringstream for_zip(result.data);
+			output_file.add(for_zip, result.suffix);
 		}
+		
+		output_file.close();
 		return 0;
 	}
 	catch(exception& err){
