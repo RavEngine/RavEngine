@@ -7,6 +7,8 @@ add_subdirectory("${ST_DEPS_DIR}/glslang")
 add_subdirectory("${ST_DEPS_DIR}/SPIRV-Cross")
 #add_subdirectory("${ST_DEPS_DIR}/SPIRV-Tools")
 
+add_subdirectory("${ST_DEPS_DIR}/zipper")
+
 file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "include/ShaderTranspiler/*.hpp")
 file(GLOB CHEADERS "include/ShaderTranspiler/*.h")
@@ -26,4 +28,5 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
     "spirv-cross-hlsl"
     "spirv-cross-msl"
     "spirv-cross-reflect"
+    "staticZipper"
 )

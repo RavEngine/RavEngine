@@ -236,27 +236,27 @@ CompileResult ShaderTranspiler::CompileTo(const CompileTask& task, TargetAPI api
 	switch(task.stage){
 		case ShaderStage::Vertex:
 			type = EShLangVertex;
-			suffix = "_VS";
+			suffix = "VS";
 			break;
 		case ShaderStage::Fragment:
 			type = EShLangFragment;
-			suffix = "_FS";
+			suffix = "FS";
 			break;
 		case ShaderStage::TesseControl:
 			type = EShLangTessControl;
-			suffix = "_TC";
+			suffix = "TC";
 			break;
 		case ShaderStage::TessEval:
 			type = EShLangTessEvaluation;
-			suffix = "_TE";
+			suffix = "TE";
 			break;
 		case ShaderStage::Geometry:
 			type = EShLangGeometry;
-			suffix = "_G";
+			suffix = "G";
 			break;
 		case ShaderStage::Compute:
 			type = EShLangCompute;
-			suffix = "_C";
+			suffix = "C";
 			break;
 	}
 	
