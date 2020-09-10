@@ -181,9 +181,6 @@ elseif(APPLE)
   target_link_libraries("${PROJECT_NAME}" PRIVATE "LLGL_Metal")
 endif()
 
-# ensure shader compiler gets built
-add_dependencies("${PROJECT_NAME}" "shader-transpiler")
-
 # copy DLLs
 if (WIN32)
 	# PhysX
@@ -230,6 +227,7 @@ compile_shader_dir("shaders")
 # track all the shaders for compilation
 get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS ${all_shaders_property} "shader-transpiler")
+add_dependencies("${PROJECT_NAME}" "${PROJECT_NAME}_ShaderCompiler")
 
 # INSTALL(CODE "
 # 	include(BundleUtilities)
