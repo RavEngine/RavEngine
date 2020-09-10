@@ -199,6 +199,17 @@ endif()
 # link test game with library
 target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
+# ====================== Shader compiler =====================
+add_custom_command(
+	PRE_BUILD
+	OUTPUT "Example_VS.metal"
+	COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shader-transpiler" -f "${CMAKE_CURRENT_SOURCE_DIR}/shaders/Example.json" -o .
+	WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+	COMMENT "Compiling Shaders"
+	VERBATIM
+)
+add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS "Example_VS.metal" "shader-transpiler")
+
 # INSTALL(CODE "
 # 	include(BundleUtilities)
 # 	fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/$<CONFIGURATION>/${PROJECT_NAME}_Test.app\" \"\" \"\")
