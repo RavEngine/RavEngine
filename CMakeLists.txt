@@ -167,7 +167,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"LLGL_OpenGL"
 )
 target_link_libraries("${PROJECT_NAME}" PUBLIC 
-	"SDL2"
+	"SDL2-static"
 )
 
 
@@ -181,6 +181,7 @@ elseif(APPLE)
   target_link_libraries("${PROJECT_NAME}" PRIVATE "LLGL_Metal")
 endif()
 
+# ensure shader compiler gets built
 add_dependencies("${PROJECT_NAME}" "shader-transpiler")
 
 # copy DLLs
