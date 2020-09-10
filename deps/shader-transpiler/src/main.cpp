@@ -62,14 +62,12 @@ int main(int argc, const char** argv){
 			string m((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 			metadata_src = m;
 		}
-		
-		auto pwd = current_path();
-		
+			
 		//compile each version
 		auto j = json::parse(metadata_src);
 		for (auto& definition : j){
 			path leaf(definition["file"]);
-			path file = pwd / leaf;
+			path file = path(name).parent_path() / leaf;
 			auto stage = stagemap.at(string(definition["stage"]));
 			
 			auto task = CompileTask{file,stage};
@@ -97,13 +95,9 @@ int main(int argc, const char** argv){
 		}
 		return 0;
 	}
-	catch(runtime_error& err){
+	catch(exception& err){
 		cerr << err.what() << endl;
 		return 1;
-	}
-	catch(cxxopts::option_has_no_value_exception& err){
-		cerr << "Argument Error: " << err.what() << endl;
-		return 2;
 	}
 	
 }
