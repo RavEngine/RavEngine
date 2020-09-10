@@ -200,15 +200,36 @@ endif()
 target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
 # ====================== Shader compiler =====================
-add_custom_command(
-	PRE_BUILD
-	OUTPUT "Example_VS.metal"
-	COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shader-transpiler" -f "${CMAKE_CURRENT_SOURCE_DIR}/shaders/Example.json" -o .
-	WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
-	COMMENT "Compiling Shaders"
-	VERBATIM
-)
-add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS "Example_VS.metal" "shader-transpiler")
+define_property(GLOBAL PROPERTY ALL_SHADERS
+	BRIEF_DOCS "Aggregate shader list"
+    FULL_DOCS "Aggregate shader list")
+set_property(GLOBAL PROPERTY ALL_SHADERS "")
+
+function (compile_shader_dir shader_dir)
+	# get all the shader files
+	file(GLOB SHADERS "${shader_dir}/*.json")
+	foreach(SHADER ${SHADERS})
+		get_filename_component(output_file "${SHADER}" NAME_WE)
+		set(output_file "${output_file}.bin")
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS "${output_file}")
+		add_custom_command(
+			PRE_BUILD
+			OUTPUT "${output_file}"
+			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shader-transpiler" -f "${SHADER}" -o .
+			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+			COMMENT "Compiling Shader Descriptor ${SHADER} => ${output_file}"
+			VERBATIM
+		)
+	endforeach()
+endfunction()
+
+# compile all builtin shaders
+compile_shader_dir("shaders")
+# TODO: compile user-defined shaders
+
+# track all the shaders for compilation
+get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
+add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS ${all_shaders_property} "shader-transpiler")
 
 # INSTALL(CODE "
 # 	include(BundleUtilities)
