@@ -8,14 +8,30 @@
 #include "mathtypes.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include <filesystem>
+#include <zipper/zipper.h>
+#include <zipper/unzipper.h>
+#include "Common3D.hpp"
 
 using namespace std;
 using namespace RavEngine;
+using namespace zipper;
+using namespace std::filesystem;
 
 MaterialManager::MaterialStore MaterialManager::materials;
 matrix4 MaterialManager::projectionMatrix;
 matrix4 MaterialManager::viewMatrix;
 mutex MaterialManager::mtx;
+
+// mapping names to types
+const unordered_map<string, ShaderStage> stagemap{
+	{"VS",ShaderStage::Vertex},
+	{"FS",ShaderStage::Fragment},
+	{"G",ShaderStage::Geometry},
+	{"TE",ShaderStage::TessEval},
+	{"TC",ShaderStage::TessControl},
+	{"C",ShaderStage::Compute},
+	
+};
 
 void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
 {
@@ -58,7 +74,25 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 	if (MaterialManager::HasMaterialByName(name)) {
 		throw new runtime_error("Material with name " + name + "is already allocated! Use GetMaterialByName to get it.");
 	}
-	//create shader program
+	
+	struct shader_src{
+		ShaderStage type;
+		std::string source;
+		shader_src(ShaderStage t, const std::string& s) : type(t), source(s){}
+	};
+	vector<shader_src> uncompressed_shaders;
+	{
+		//create shader program
+		Unzipper uz(name + ".bin");
+		auto names = uz.entries();
+		for (const auto& n : names){
+			//uncompress shader
+			std::vector<unsigned char> unzipped_entry;
+			uz.extractEntryToMemory(n.name, unzipped_entry);
+			string name_only = path(n.name).replace_extension("");
+			uncompressed_shaders.emplace_back(stagemap.at(name_only),string(unzipped_entry.begin(),unzipped_entry.end()));
+		}
+	}
 
     //maps the memory appropriately so uniforms can be set
     uint32_t constantBufferIndex = 0;       //needs to be 1 on Metal
@@ -126,16 +160,24 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
     }
     else if (std::find(languages.begin(), languages.end(), LLGL::ShadingLanguage::Metal) != languages.end())
     {
-        vertShaderDesc = { LLGL::ShaderType::Vertex,   "Example.metal", "VS", "1.1" };
-        fragShaderDesc = { LLGL::ShaderType::Fragment, "Example.metal", "PS", "1.1" };
+		vertShaderDesc.source = uncompressed_shaders[0].source.c_str();
+		vertShaderDesc.sourceSize = uncompressed_shaders[0].source.size();
+		vertShaderDesc.sourceType = LLGL::ShaderSourceType::CodeString;
+		vertShaderDesc.type = LLGL::ShaderType::Vertex;
+		vertShaderDesc.profile = "1.1";
+		vertShaderDesc.entryPoint = "main0";
+
+		fragShaderDesc.source = uncompressed_shaders[1].source.c_str();
+		fragShaderDesc.sourceSize = uncompressed_shaders[1].source.size();
+		fragShaderDesc.sourceType = LLGL::ShaderSourceType::CodeString;
+		fragShaderDesc.type = LLGL::ShaderType::Fragment;
+		fragShaderDesc.profile = "1.1";
+		fragShaderDesc.entryPoint = "main0";
+		
+//		vertShaderDesc = { LLGL::ShaderType::Vertex,  "defaultMaterial/VS.metal", "main0", "1.1" };
+//		fragShaderDesc = { LLGL::ShaderType::Fragment, "defaultMaterial/FS.metal", "main0", "1.1" };
     }
 
-    // Vertex data structure
-    struct Vertex
-    {
-        float      position[3];
-        LLGL::ColorRGBf   color;
-    };
     LLGL::VertexFormat vertexFormat;
 
     // Append 2D float vector for position attribute

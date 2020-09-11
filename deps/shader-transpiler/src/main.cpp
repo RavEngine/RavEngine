@@ -68,6 +68,8 @@ int main(int argc, const char** argv){
 		//determine output path
 		auto final_file = path(path(name).filename()).replace_extension(".bin");
 		
+		//prevent merge and recreate
+		remove(outdir / final_file);
 		Zipper output_file(outdir / final_file);
 		
 		//compile each version

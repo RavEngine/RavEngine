@@ -1,0 +1,10 @@
+[
+	{
+		"file":"Example.vert",
+		"stage":"vertex"
+	},
+	{
+		"file":"Example.frag",
+		"stage":"fragment"
+	}
+]
