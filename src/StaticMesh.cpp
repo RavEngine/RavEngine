@@ -6,16 +6,12 @@
 #include <sstream>
 #include "LLGL/LLGL.h"
 #include "RenderEngine.hpp"
+#include "Common3D.hpp"
 
 using namespace RavEngine;
 using namespace std;
 
 // Vertex data structure
-struct Vertex
-{
-    float      position[3];
-    LLGL::ColorRGBf   color;
-};
 
 Vertex vertices[] =
 {

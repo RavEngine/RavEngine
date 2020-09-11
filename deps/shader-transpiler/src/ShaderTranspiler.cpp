@@ -226,6 +226,7 @@ std::string ShaderTranspiler::SPIRVtoMSL(const spirvbytes& bin, bool mobile){
 	spirv_cross::CompilerMSL msl(std::move(bin));
 	
 	spirv_cross::CompilerMSL::Options options;
+	options.set_msl_version(1,1);
 	msl.set_msl_options(options);
 	return msl.compile();
 }

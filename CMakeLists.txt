@@ -127,13 +127,16 @@ file(GLOB HEADERS "include/${PROJECT_NAME}/*.hpp")
 add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} ${CHEADERS} ${HEADERS})
 
 # include paths
-target_include_directories("${PROJECT_NAME}" PRIVATE "include/${PROJECT_NAME}/")
-target_include_directories("${PROJECT_NAME}" PUBLIC "include/")
-target_include_directories("${PROJECT_NAME}" PUBLIC 
+target_include_directories("${PROJECT_NAME}" 
+	PUBLIC 
+	"include/"
 	"${DEPS_DIR}/physx/physx/include/" 
 	"${DEPS_DIR}/physx/pxshared/include/" 
 	"${DEPS_DIR}/physx/physx/snippets/"
-	"include/${PROJECT_NAME}/stduuid/")
+	"include/${PROJECT_NAME}/stduuid/"
+	PRIVATE
+	"include/${PROJECT_NAME}/"
+)
 
 # create the test executable
 file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp")
@@ -165,11 +168,10 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"SceneQuery"
 	"SimulationController"
 	"LLGL_OpenGL"
-)
-target_link_libraries("${PROJECT_NAME}" PUBLIC 
+	"staticZipper"
+	PUBLIC
 	"SDL2-static"
 )
-
 
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "PhysXGPU")
 
@@ -228,6 +230,11 @@ compile_shader_dir("shaders")
 get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS ${all_shaders_property} "shader-transpiler")
 add_dependencies("${PROJECT_NAME}" "${PROJECT_NAME}_ShaderCompiler")
+
+# mark shaders as RESOURECS for MacOS .app and Linux .appimage
+set_target_properties("${PROJECT_NAME}" PROPERTIES
+	RESOURCE "${all_shaders_property}"
+)
 
 # INSTALL(CODE "
 # 	include(BundleUtilities)

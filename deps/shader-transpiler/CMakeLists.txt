@@ -28,5 +28,6 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
     "spirv-cross-hlsl"
     "spirv-cross-msl"
     "spirv-cross-reflect"
+    PUBLIC
     "staticZipper"
 )
