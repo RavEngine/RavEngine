@@ -110,7 +110,6 @@ void RenderEngine::Draw(){
 	for (auto& cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
-			//TODO: set projection
 			int width,height;
 			SDL_GL_GetDrawableSize(window, &width, &height);
 			owning->SetTargetSize(width, height);

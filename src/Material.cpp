@@ -48,15 +48,21 @@ bgfx::ShaderHandle loadShader(const std::string filename){
 void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer)
 {
     //calculate wvp matrix
-    auto view = MaterialManager::GetCurrentViewMatrix();
-    auto projection = MaterialManager::GetCurrentProjectionMatrix();
-    auto wvp = projection * view * transformMatrix; //transformMatrix * view * projection;
+    const auto& view = MaterialManager::GetCurrentViewMatrix();
+    const auto& projection = MaterialManager::GetCurrentProjectionMatrix();
+    //auto wvp = projection * view * transformMatrix; //transformMatrix * view * projection;
 
 	//copy into backend matrix
-    const decimalType* pSource = (const decimalType*)glm::value_ptr(wvp);
+	float viewmat[16];
+	float projmat[16];
+    const decimalType* vS = (const decimalType*)glm::value_ptr(view);
+	const decimalType* pS = (const decimalType*)glm::value_ptr(projection);
     for (int i = 0; i < 16; ++i) {
-        settings.wvpMatrix[i] = pSource[i];
+		viewmat[i] = vS[i];
+		projmat[i] = pS[i];
     }
+
+	bgfx::setViewTransform(0, viewmat, projmat);
 	
 	//set vertex and index buffer
 	bgfx::setVertexBuffer(0, vertexBuffer);
