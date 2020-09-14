@@ -70,7 +70,7 @@ endif()
 # ==================== Dependencies =====================
 
 # shader compiler
-add_subdirectory("${DEPS_DIR}/shader-transpiler")
+#add_subdirectory("${DEPS_DIR}/shader-transpiler")
 
 # use static SDL
 #set(SDL_STATIC ON CACHE INTERNAL "")
@@ -79,11 +79,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory("${DEPS_DIR}/SDL2")
 
-# LLGL
-if(APPLE)
-  set(LLGL_BUILD_RENDERER_METAL ON CACHE INTERNAL "")
-endif()
-add_subdirectory("${DEPS_DIR}/LLGL")
+# bgfx
+set(BGFX_BUILD_EXAMPLES OFF)
+set(BGFX_INSTALL_EXAMPLES OFF)
+set(BGFX_INSTALL OFF)
+#set(BGFX_CONFIG_RENDERER_WEBGPU ON)
+add_subdirectory("${DEPS_DIR}/bgfx.cmake")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -167,8 +168,9 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"LowLevelDynamics"
 	"SceneQuery"
 	"SimulationController"
-	"LLGL_OpenGL"
-	"staticZipper"
+	"bgfx"
+	"bx"
+	"bimg"
 	PUBLIC
 	"SDL2-static"
 )
@@ -176,12 +178,6 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "PhysXGPU")
 
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
-
-if(MSVC)
-  target_link_libraries("${PROJECT_NAME}" PRIVATE "LLGL_Direct3D11")
-elseif(APPLE)
-  target_link_libraries("${PROJECT_NAME}" PRIVATE "LLGL_Metal")
-endif()
 
 # copy DLLs
 if (WIN32)
@@ -223,18 +219,18 @@ function (compile_shader_dir shader_dir)
 endfunction()
 
 # compile all builtin shaders
-compile_shader_dir("shaders")
+#compile_shader_dir("shaders")
 # TODO: compile user-defined shaders
 
 # track all the shaders for compilation
-get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
-add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS ${all_shaders_property} "shader-transpiler")
-add_dependencies("${PROJECT_NAME}" "${PROJECT_NAME}_ShaderCompiler")
+# get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
+# add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS ${all_shaders_property} "shader-transpiler")
+# add_dependencies("${PROJECT_NAME}" "${PROJECT_NAME}_ShaderCompiler")
 
-# mark shaders as RESOURECS for MacOS .app and Linux .appimage
-set_target_properties("${PROJECT_NAME}" PROPERTIES
-	RESOURCE "${all_shaders_property}"
-)
+# # mark shaders as RESOURECS for MacOS .app and Linux .appimage
+# set_target_properties("${PROJECT_NAME}" PROPERTIES
+# 	RESOURCE "${all_shaders_property}"
+# )
 
 # INSTALL(CODE "
 # 	include(BundleUtilities)

@@ -3,13 +3,10 @@
 #include <sstream>
 #include <fstream>
 #include <RenderEngine.hpp>
-#include <LLGL/LLGL.h>
 #include "SDLSurface.hpp"
 #include "mathtypes.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include <filesystem>
-#include <zipper/zipper.h>
-#include <zipper/unzipper.h>
 #include "Common3D.hpp"
 
 using namespace std;
@@ -140,8 +137,8 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 #endif
         {
 #ifdef __APPLE__
-            vertShaderDesc = { LLGL::ShaderType::Vertex,   "Example.140core.vert" };
-            fragShaderDesc = { LLGL::ShaderType::Fragment, "Example.140core.frag" };
+            vertShaderDesc = { LLGL::ShaderType::Vertex,   "defaultMaterial.vert" };
+            fragShaderDesc = { LLGL::ShaderType::Fragment, "defaultMaterial.frag" };
 #else
             vertShaderDesc = { LLGL::ShaderType::Vertex,   "Example.vert" };
             fragShaderDesc = { LLGL::ShaderType::Fragment, "Example.frag" };
@@ -173,7 +170,7 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 		fragShaderDesc.type = LLGL::ShaderType::Fragment;
 		fragShaderDesc.profile = "1.1";
 		fragShaderDesc.entryPoint = "main0";
-		
+//
 //		vertShaderDesc = { LLGL::ShaderType::Vertex,  "defaultMaterial/VS.metal", "main0", "1.1" };
 //		fragShaderDesc = { LLGL::ShaderType::Fragment, "defaultMaterial/FS.metal", "main0", "1.1" };
     }
