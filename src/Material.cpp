@@ -55,14 +55,18 @@ void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::In
 	//copy into backend matrix
 	float viewmat[16];
 	float projmat[16];
+	float transmat[16];
     const decimalType* vS = (const decimalType*)glm::value_ptr(view);
 	const decimalType* pS = (const decimalType*)glm::value_ptr(projection);
+	const decimalType* tS = (const decimalType*)glm::value_ptr(transformMatrix);
     for (int i = 0; i < 16; ++i) {
 		viewmat[i] = vS[i];
 		projmat[i] = pS[i];
+		transmat[i] = tS[i];
     }
 
 	bgfx::setViewTransform(0, viewmat, projmat);
+	bgfx::setTransform(transmat);
 	
 	//set vertex and index buffer
 	bgfx::setVertexBuffer(0, vertexBuffer);

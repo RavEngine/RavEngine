@@ -126,6 +126,8 @@ void RenderEngine::Draw(){
 
 	bgfx::touch(0);
 	bgfx::dbgTextClear();
+	bgfx::dbgTextPrintf(0, 0, 0x4f, "RavEngine");
+
     //update viewport size if applicable
 
     //iterate through renderables and call Draw
@@ -160,12 +162,14 @@ void RenderEngine::Init()
 	{
 		return;
 	}
+	SDL_Init(0);
+	SDL_Init(SDL_INIT_GAMECONTROLLER);
 	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	
 	//must be in this order
+	sdlSetWindow(window);
 	bgfx::renderFrame();
 	bgfx::init();
-	sdlSetWindow(window);
 	
 	//TODO: refactor
 	int width, height;
@@ -177,5 +181,8 @@ void RenderEngine::Init()
 	
 	// Set view 0 clear state.
 	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
+	
+	bgfx::reset(width, height);
+	
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 }
