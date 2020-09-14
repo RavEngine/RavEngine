@@ -4,9 +4,9 @@
 #include <SDL_stdinc.h>
 #include <fstream>
 #include <sstream>
-#include "LLGL/LLGL.h"
 #include "RenderEngine.hpp"
 #include "Common3D.hpp"
+
 
 using namespace RavEngine;
 using namespace std;
@@ -30,33 +30,18 @@ uint32_t indices[] = {
 
 
 StaticMesh::StaticMesh() : RenderableComponent() {
-    // Vertex format
-    LLGL::VertexFormat vertexFormat;
-
-    // Append 2D float vector for position attribute
-    vertexFormat.AppendAttribute({ "position", LLGL::Format::RGB32Float });
-
-    // Append 3D unsigned byte vector for color
-    vertexFormat.AppendAttribute({ "color",    LLGL::Format::RGB32Float });
-
-    // Update stride in case our vertex structure is not 4-byte aligned
-    vertexFormat.SetStride(sizeof(Vertex));
-
-    // Create vertex buffer
-    LLGL::BufferDescriptor vertexBufferDesc;
-
-    vertexBufferDesc.size = sizeof(vertices);                 // Size (in bytes) of the vertex buffer
-    vertexBufferDesc.bindFlags = LLGL::BindFlags::VertexBuffer;    // Enables the buffer to be bound to a vertex buffer slot
-    vertexBufferDesc.vertexAttribs = vertexFormat.attributes;          // Vertex format layout
-
-    vertexBuffer = RenderEngine::GetRenderSystem()->CreateBuffer(vertexBufferDesc, vertices);
-
-    LLGL::BufferDescriptor indexBufferDesc;
-    indexBufferDesc.size = sizeof(indices);
-    indexBufferDesc.bindFlags = LLGL::BindFlags::IndexBuffer;
-    indexBufferDesc.format = LLGL::Format::R32UInt;
-    indexBuffer = RenderEngine::GetRenderSystem()->CreateBuffer(indexBufferDesc, indices);
-
+	bgfx::VertexLayout pcvDecl;
+	
+	//vertex format
+	pcvDecl.begin()
+	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+	.end();
+	
+	//create buffers
+	vertexBuffer = bgfx::createVertexBuffer(bgfx::makeRef(vertices, sizeof(vertices)), pcvDecl);
+	indexBuffer = bgfx::createIndexBuffer(bgfx::makeRef(indices, sizeof(indices)));
+   
     RegisterAllAlternateTypes();
 }
 
@@ -71,7 +56,7 @@ void RavEngine::StaticMesh::SetMaterial(Ref<Material> mat)
 	material = mat;
 }
 
-void RavEngine::StaticMesh::Draw(LLGL::CommandBuffer* commands)
+void RavEngine::StaticMesh::Draw()
 {
     //skip draw if no material assigned
     if (material.isNull()) {
@@ -81,7 +66,7 @@ void RavEngine::StaticMesh::Draw(LLGL::CommandBuffer* commands)
     auto owner = Ref<Entity>(getOwner());
     owner->transform()->Apply();
     material->SetTransformMatrix(owner->transform()->GetCurrentWorldMatrix());
-    material->Draw(commands, vertexBuffer, indexBuffer);
+    material->Draw(vertexBuffer, indexBuffer);
 }
 
 void RavEngine::StaticMesh::AddHook(const WeakRef<RavEngine::Entity>& e)

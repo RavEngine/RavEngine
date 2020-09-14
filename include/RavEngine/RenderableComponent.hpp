@@ -1,9 +1,6 @@
 #pragma once
 #include "Component.hpp"
 
-namespace LLGL {
-	class CommandBuffer;
-}
 
 namespace RavEngine{
 	/**
@@ -12,7 +9,7 @@ namespace RavEngine{
 	struct RenderableComponent : public Component {
 		RenderableComponent() : Component(){}
 
-		virtual void Draw(LLGL::CommandBuffer*){}
+		virtual void Draw(){}
 
 		//ensure all derived classes invoke this method, otherwise they will not render!
 		virtual void RegisterAllAlternateTypes() override {

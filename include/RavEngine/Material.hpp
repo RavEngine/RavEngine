@@ -3,13 +3,7 @@
 #include "RenderEngine.hpp"
 #include <unordered_map>
 #include <mutex>
-
-namespace LLGL {
-	class CommandBuffer;
-	class Buffer;
-	class ResourceHeap;
-	class PipelineState;
-}
+#include <bgfx/bgfx.h>
 
 namespace RavEngine {
 	/**
@@ -37,7 +31,7 @@ namespace RavEngine {
 		Enqueue commands to execute on the GPU
 		@param commands the command buffer to write to
 		*/
-		void Draw(LLGL::CommandBuffer* const commands, LLGL::Buffer* vertexBuffer, LLGL::Buffer* indexBuffer);
+		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer);
 
 	protected:
 		std::string name;
@@ -45,17 +39,15 @@ namespace RavEngine {
 		//trying to create a material that already exists will throw an exception
 		Material(const std::string& name, const std::string& vertShader, const std::string& fragShader);
 
-		LLGL::ResourceHeap* resourceHeap = nullptr;
-		LLGL::PipelineState* pipeline = nullptr;
-		LLGL::Buffer* constantBuffer = nullptr;
-
 		matrix4 transformMatrix = matrix4(1);
 
 		struct Settings {
 			//TODO: typdef this instead of hard-coding to float?
-			float wvpMatrix[16]; //todo: 16 byte pack alignment for constant buffers
+			float wvpMatrix[16];
 		} settings;
 
+		
+		bgfx::ProgramHandle program;
 	};
 
 	/**

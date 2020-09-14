@@ -2,10 +2,7 @@
 #include "RenderableComponent.hpp"
 #include <vector>
 #include "Material.hpp"
-
-namespace LLGL {
-    class Commands;
-}
+#include <bgfx/bgfx.h>
 
 namespace RavEngine {
     class StaticMesh : public RenderableComponent {
@@ -19,7 +16,7 @@ namespace RavEngine {
         */
         void SetMaterial(Ref<Material> mat);
 
-        void Draw(LLGL::CommandBuffer*) override;
+        void Draw() override;
 
         /**
         @returns the currently assigned material
@@ -34,9 +31,9 @@ namespace RavEngine {
 
         //the default material
         Ref<Material> material;
-
-        LLGL::Buffer* vertexBuffer = nullptr;
-        LLGL::Buffer* indexBuffer = nullptr;
+		
+		bgfx::VertexBufferHandle vertexBuffer;
+		bgfx::IndexBufferHandle indexBuffer;
 
         //index and vertex buffers, stores actual data
         //std::vector<Vertex> vb;

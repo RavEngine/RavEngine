@@ -4,6 +4,7 @@
 #include <GameplayStatics.hpp>
 #include "RenderEngine.hpp"
 #include <SDL_events.h>
+#include <bgfx/bgfx.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -79,5 +80,6 @@ int App::run(int argc, char** argv) {
 #endif
 	}
 
+	bgfx::shutdown();
     return OnShutdown();
 }

@@ -14,12 +14,6 @@
 
 struct SDL_Window;
 
-namespace LLGL {
-    class RenderSystem;
-    class CommandQueue;
-    class CommandBuffer;
-}
-
 namespace RavEngine {
     class SDLSurface;
 
@@ -34,27 +28,15 @@ namespace RavEngine {
         static const std::string currentBackend();
         WeakRef<World> world;
 
-        static SDL_Window* const GetWindow();
+		static SDL_Window* const GetWindow(){
+			return window;
+		}
 
         void resize();
 
-        //get reference to the render system - for internal use only
-        static std::unique_ptr<LLGL::RenderSystem>& GetRenderSystem() {
-            return renderer;
-        }
-
-        static std::shared_ptr<RavEngine::SDLSurface> GetSurface() {
-            return surface;
-        }
-
     protected:
-
+		static SDL_Window* window;
         static void Init();
 
-        static std::shared_ptr<RavEngine::SDLSurface> surface;
-        static std::unique_ptr<LLGL::RenderSystem> renderer;
-
-        LLGL::CommandQueue* queue = nullptr;
-        LLGL::CommandBuffer* commands = nullptr;;
     };
 }

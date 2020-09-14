@@ -13,11 +13,10 @@
 #include "GameplayStatics.hpp"
 #include "CameraComponent.hpp"
 #include "World.hpp"
-#include "SDLSurface.hpp"
 #include <memory>
-#include "LLGL/RenderSystem.h"
-#include "LLGL/LLGL.h"
 #include "Material.hpp"
+#include <bgfx/platform.h>
+#include <bx/bx.h>
 
 #include "RenderableComponent.hpp"
 #include <SDL_syswm.h>
@@ -31,8 +30,42 @@
 using namespace std;
 using namespace RavEngine;
 
-std::shared_ptr<SDLSurface> RenderEngine::surface;
-std::unique_ptr<LLGL::RenderSystem> RenderEngine::renderer;
+SDL_Window* RenderEngine::window = nullptr;
+
+/**
+ Create an SDL window for different platforms, and reference it to bgfx
+ @param _window the SDL window pointer (modified)
+ @note supported platforms: Linux, BSD, OSX, Windows, SteamLink
+ */
+inline bool sdlSetWindow(SDL_Window* _window)
+{
+	SDL_SysWMinfo wmi;
+	SDL_VERSION(&wmi.version);
+	if (!SDL_GetWindowWMInfo(_window, &wmi)) {
+		return false;
+	}
+	
+	bgfx::PlatformData pd;
+#if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
+	pd.ndt = wmi.info.x11.display;
+	pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
+#elif BX_PLATFORM_OSX
+	pd.ndt = NULL;
+	pd.nwh = wmi.info.cocoa.window;
+#elif BX_PLATFORM_WINDOWS
+	pd.ndt = NULL;
+	pd.nwh = wmi.info.win.window;
+#elif BX_PLATFORM_STEAMLINK
+	pd.ndt = wmi.info.vivante.display;
+	pd.nwh = wmi.info.vivante.window;
+#endif // BX_PLATFORM_
+	pd.context = NULL;
+	pd.backBuffer = NULL;
+	pd.backBufferDS = NULL;
+	bgfx::setPlatformData(pd);
+	
+	return true;
+}
 
 /**
 Construct a render engine instance
@@ -41,19 +74,11 @@ Construct a render engine instance
 RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
 	//call Init()
 	Init();
-
-    // Get command queue to record and submit command buffers
-    queue = renderer->GetCommandQueue();
-
-    // Create command buffer to submit subsequent graphics commands to the GPU
-    commands = renderer->CreateCommandBuffer();
 }
 
 
 RavEngine::RenderEngine::~RenderEngine()
 {
-   /* delete queue; queue = nullptr;
-    delete commands; commands = nullptr;*/
 }
 
 /**
@@ -86,8 +111,9 @@ void RenderEngine::Draw(){
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
 			//TODO: set projection
-			auto size = surface->GetDrawableArea();
-			owning->SetTargetSize(size.width, size.height);
+			int width,height;
+			SDL_GL_GetDrawableSize(window, &width, &height);
+			owning->SetTargetSize(width, height);
             MaterialManager::SetProjectionMatrix(cam->GenerateProjectionMatrix());
             MaterialManager::SetViewMatrix(cam->GenerateViewMatrix());
 			break;
@@ -96,32 +122,25 @@ void RenderEngine::Draw(){
 
     //apply transforms for only entities that need to be rendered
     auto toDraw = components.GetAllComponentsOfSubclass<RenderableComponent>();
+	
+	//clear buffers
 
-    // Begin recording commands
-    commands->Begin();
-
-    // Clear buffers
-    commands->Clear(LLGL::ClearFlags::Color | LLGL::ClearFlags::Depth);
-
-    // Set the render context as the initial render target
-    commands->BeginRenderPass(*surface->GetContext());
-
-    // Set viewport and scissor rectangle
-    commands->SetViewport(surface->GetContext()->GetResolution());
+	bgfx::touch(0);
+	bgfx::dbgTextClear();
+    //update viewport size if applicable
 
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {
-        e->Draw(commands);
+        e->Draw();
     }
+	bgfx::frame();
+}
 
-    commands->EndRenderPass();
-
-    commands->End();
-    queue->Submit(*commands);
-    // Present the result on the screen
-    surface->GetContext()->Present();
-
-	//iterate through materials to draw each one
+void RenderEngine::resize(){
+	int width, height;
+	SDL_GL_GetDrawableSize(window, &width, &height);
+	bgfx::reset(width, height, GameplayStatics::VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
+	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 }
 
 /**
@@ -132,70 +151,32 @@ const string RenderEngine::currentBackend(){
 	return "Unknown";
 }
 
-SDL_Window* const RavEngine::RenderEngine::GetWindow()
-{
-	return surface->getWindowPtr();
-}
-
-/**
-Update the viewport to the correct size of the container window
-*/
-void RenderEngine::resize() {
-	//fix the window size
-	auto size = surface->GetDrawableArea();
-
-	//TOOD: update renderer size
-
-#ifdef __APPLE__
-	//resizeMetalLayer(getNativeWindow(window));
-#endif
-}
-
 /**
 Initialize static singletons. Invoked automatically if needed.
 */
 void RenderEngine::Init()
 {
-	// don't initialize again if already initialized
-	if (surface != nullptr)
+	//setup bgfx if it is not already setup
+	if (window != nullptr)
 	{
 		return;
 	}
-
-#ifdef __APPLE__
-	//need to make a metal layer on Mac
-	//nativeWindow = setUpMetalLayer(nativeWindow);
-#else
-#endif
-
-	//create instance of surface
-	surface = std::make_shared<RavEngine::SDLSurface>(LLGL::Extent2D{ 800, 480 }, "RavEngine");
-
-#ifdef _WIN32
-	const string backend = "Direct3D11";
-#elif defined __APPLE__
-	const string backend = "Metal";
-#endif
-
-    // Load render system module
-    renderer = LLGL::RenderSystem::Load(backend);
-
-    // Create render context
-    LLGL::RenderContextDescriptor contextDesc;
-    
-    contextDesc.videoMode.resolution = surface->GetContentSize();
-    contextDesc.vsync.enabled = true;
-#ifdef ENABLE_MULTISAMPLING
-    contextDesc.samples = 8; // check if LLGL adapts sample count that is too high
-#endif
-    
-    surface->SetContext(renderer->CreateRenderContext(contextDesc,surface));
-
-    // Print renderer information
-    const auto& info = renderer->GetRendererInfo();
-
-    std::cout << "Renderer:         " << info.rendererName << std::endl;
-    std::cout << "Device:           " << info.deviceName << std::endl;
-    std::cout << "Vendor:           " << info.vendorName << std::endl;
-    std::cout << "Shading Language: " << info.shadingLanguageName << std::endl;
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+	
+	//must be in this order
+	bgfx::renderFrame();
+	bgfx::init();
+	sdlSetWindow(window);
+	
+	//TODO: refactor
+	int width, height;
+	SDL_GL_GetDrawableSize(window, &width, &height);
+	bgfx::reset(width, height, GameplayStatics::VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
+	
+	// Enable debug text.
+	bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
+	
+	// Set view 0 clear state.
+	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
+	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 }

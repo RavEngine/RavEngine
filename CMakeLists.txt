@@ -168,11 +168,11 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"LowLevelDynamics"
 	"SceneQuery"
 	"SimulationController"
+	PUBLIC
+	"SDL2-static"
 	"bgfx"
 	"bx"
 	"bimg"
-	PUBLIC
-	"SDL2-static"
 )
 
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "PhysXGPU")
