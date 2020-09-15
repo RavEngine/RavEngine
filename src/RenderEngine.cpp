@@ -126,9 +126,7 @@ void RenderEngine::Draw(){
 
 	bgfx::touch(0);
 	bgfx::dbgTextClear();
-	bgfx::dbgTextPrintf(0, 0, 0x4f, "RavEngine");
-
-    //update viewport size if applicable
+	bgfx::dbgTextPrintf(0, 0, 0x4f, (string("RavEngine - ") + currentBackend()).c_str());
 
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {
@@ -140,7 +138,7 @@ void RenderEngine::Draw(){
 void RenderEngine::resize(){
 	int width, height;
 	SDL_GL_GetDrawableSize(window, &width, &height);
-	bgfx::reset(width, height, GameplayStatics::VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
+	bgfx::reset(width, height);
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 }
 
@@ -149,7 +147,17 @@ void RenderEngine::resize(){
 */
 const string RenderEngine::currentBackend(){
 	
-	return "Unknown";
+	switch (bgfx::getRendererType()) {
+		case bgfx::RendererType::Noop:			return "Disabled";
+		case bgfx::RendererType::Direct3D9:		return "DirectX9"; 
+		case bgfx::RendererType::Direct3D11:	return "DirectX11";
+		case bgfx::RendererType::Direct3D12:	return "DirectX12";
+		case bgfx::RendererType::Gnm:			return "GNM";
+		case bgfx::RendererType::Metal:			return "Metal";
+		case bgfx::RendererType::OpenGL:		return "OpenGL";
+		case bgfx::RendererType::OpenGLES:		return "OpenGL ES";
+		case bgfx::RendererType::Vulkan:		return "Vulkan";
+	}
 }
 
 /**
@@ -185,4 +193,6 @@ void RenderEngine::Init()
 	bgfx::reset(width, height);
 	
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+
+	bgfx::setState(BGFX_STATE_DEFAULT);
 }

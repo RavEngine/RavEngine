@@ -26,17 +26,17 @@ static const Vertex vertices[] =
 };
 
 static const uint16_t indices[] = {
-	0, 1, 2,
+	0, 1, 2, // 0
 	1, 3, 2,
-	4, 6, 5,
+	4, 6, 5, // 2
 	5, 6, 7,
-	0, 2, 4,
+	0, 2, 4, // 4
 	4, 2, 6,
-	1, 5, 3,
+	1, 5, 3, // 6
 	5, 7, 3,
-	0, 4, 1,
+	0, 4, 1, // 8
 	4, 5, 1,
-	2, 3, 6,
+	2, 3, 6, // 10
 	6, 3, 7,
 };
 
@@ -59,8 +59,8 @@ StaticMesh::StaticMesh() : RenderableComponent() {
 
 RavEngine::StaticMesh::~StaticMesh()
 {
-    //delete indexBuffer; indexBuffer = nullptr;
-    //delete vertexBuffer; vertexBuffer = nullptr;
+	bgfx::destroy(vertexBuffer);
+	bgfx::destroy(indexBuffer);
 }
 
 void RavEngine::StaticMesh::SetMaterial(Ref<Material> mat)

@@ -52,10 +52,6 @@ void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::In
     const auto& projection = MaterialManager::GetCurrentProjectionMatrix();
     //auto wvp = projection * view * transformMatrix; //transformMatrix * view * projection;
 
-	//auto transt = glm::transpose(transformMatrix);
-	//auto viewt = glm::transpose(view);
-	//auto projt = glm::transpose(projection);
-
 	//copy into backend matrix
 	float viewmat[16];
 	float projmat[16];
@@ -76,7 +72,6 @@ void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::In
 	bgfx::setVertexBuffer(0, vertexBuffer);
 	bgfx::setIndexBuffer(indexBuffer);
 
-	//bgfx::setState(BGFX_STATE_DEFAULT);
 	bgfx::submit(0, program);
 }
 
