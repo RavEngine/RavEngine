@@ -4,8 +4,8 @@ namespace RavEngine{
 
 struct Vertex
 {
-	float   position[3];
-	float   color[4];
+	float		position[3];
+	uint32_t	abgr;	//color in alpha-blue-green-red
 };
 
 enum class ShaderStage{

@@ -13,7 +13,7 @@ using namespace std;
 
 // Vertex data structure
 
-const Vertex vertices[] =
+static const Vertex vertices[] =
 {
 	{-1.0f,  1.0f,  1.0f, 0xff000000 },
 	{ 1.0f,  1.0f,  1.0f, 0xff0000ff },
@@ -25,7 +25,7 @@ const Vertex vertices[] =
 	{ 1.0f, -1.0f, -1.0f, 0xffffffff },
 };
 
-const uint32_t indices[] = {
+static const uint16_t indices[] = {
 	0, 1, 2,
 	1, 3, 2,
 	4, 6, 5,
