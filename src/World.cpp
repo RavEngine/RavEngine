@@ -23,7 +23,8 @@ void RavEngine::World::tick() {
 	
 	//setup framerate scaling for next frame
 	auto now = clocktype::now();
-	deltaTimeMicroseconds = duration_cast<timeDiff>((now-lastFrameTime));
+	//will cause engine to run in slow motion if the frame rate is <= 1fps
+	deltaTimeMicroseconds = std::min(duration_cast<timeDiff>((now-lastFrameTime)),maxTimeStep);
 
     float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
     float scale = deltaSeconds * evalNormal;
