@@ -135,7 +135,6 @@ SSAPropagator::PropStatus CCPPass::VisitAssignment(Instruction* instr) {
     }
     return it->second;
   };
-  uint32_t next_id = context()->module()->IdBound();
   Instruction* folded_inst =
       context()->get_instruction_folder().FoldInstructionToConstant(instr,
                                                                     map_func);
@@ -144,14 +143,6 @@ SSAPropagator::PropStatus CCPPass::VisitAssignment(Instruction* instr) {
     // instructions.  When folding we can only generate new constants.
     assert(folded_inst->IsConstant() && "CCP is only interested in constant.");
     values_[instr->result_id()] = folded_inst->result_id();
-
-    // If the folded instruction has just been created, its result ID will
-    // match the previous ID bound. When this happens, we need to indicate
-    // that CCP has modified the IR, independently of whether the constant is
-    // actually propagated. See
-    // https://github.com/KhronosGroup/SPIRV-Tools/issues/3636 for details.
-    if (folded_inst->result_id() == next_id) created_new_constant_ = true;
-
     return SSAPropagator::kInteresting;
   }
 
@@ -275,22 +266,16 @@ SSAPropagator::PropStatus CCPPass::VisitInstruction(Instruction* instr,
 }
 
 bool CCPPass::ReplaceValues() {
-  // Even if we make no changes to the function's IR, propagation may have
-  // created new constants.  Even if those constants cannot be replaced in
-  // the IR, the constant definition itself is a change.  To reflect this,
-  // we initialize the IR changed indicator with the value of the
-  // created_new_constant_ indicator.  For an example, see the bug reported
-  // in https://github.com/KhronosGroup/SPIRV-Tools/issues/3636.
-  bool changed_ir = created_new_constant_;
+  bool retval = false;
   for (const auto& it : values_) {
     uint32_t id = it.first;
     uint32_t cst_id = it.second;
     if (!IsVaryingValue(cst_id) && id != cst_id) {
       context()->KillNamesAndDecorates(id);
-      changed_ir |= context()->ReplaceAllUsesWith(id, cst_id);
+      retval |= context()->ReplaceAllUsesWith(id, cst_id);
     }
   }
-  return changed_ir;
+  return retval;
 }
 
 bool CCPPass::PropagateConstants(Function* fp) {
@@ -328,8 +313,6 @@ void CCPPass::Initialize() {
       values_[inst.result_id()] = kVaryingSSAId;
     }
   }
-
-  created_new_constant_ = false;
 }
 
 Pass::Status CCPPass::Process() {

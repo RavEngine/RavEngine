@@ -26,14 +26,12 @@ set(SPIRV_TOOLS_REDUCE_SOURCES
         reduction_util.h
         remove_block_reduction_opportunity.h
         remove_block_reduction_opportunity_finder.h
+        remove_instruction_reduction_opportunity.h
         remove_function_reduction_opportunity.h
         remove_function_reduction_opportunity_finder.h
-        remove_instruction_reduction_opportunity.h
         remove_selection_reduction_opportunity.h
         remove_selection_reduction_opportunity_finder.h
-        remove_struct_member_reduction_opportunity.h
-        remove_unused_instruction_reduction_opportunity_finder.h
-        remove_unused_struct_member_reduction_opportunity_finder.h
+        remove_unreferenced_instruction_reduction_opportunity_finder.h
         structured_loop_to_selection_reduction_opportunity.h
         structured_loop_to_selection_reduction_opportunity_finder.h
         conditional_branch_to_simple_conditional_branch_opportunity_finder.h
@@ -59,9 +57,7 @@ set(SPIRV_TOOLS_REDUCE_SOURCES
         remove_instruction_reduction_opportunity.cpp
         remove_selection_reduction_opportunity.cpp
         remove_selection_reduction_opportunity_finder.cpp
-        remove_struct_member_reduction_opportunity.cpp
-        remove_unused_instruction_reduction_opportunity_finder.cpp
-        remove_unused_struct_member_reduction_opportunity_finder.cpp
+        remove_unreferenced_instruction_reduction_opportunity_finder.cpp
         structured_loop_to_selection_reduction_opportunity.cpp
         structured_loop_to_selection_reduction_opportunity_finder.cpp
         conditional_branch_to_simple_conditional_branch_opportunity_finder.cpp
@@ -70,14 +66,14 @@ set(SPIRV_TOOLS_REDUCE_SOURCES
         simple_conditional_branch_to_branch_reduction_opportunity.cpp
 )
 
-if(MSVC AND (NOT ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")))
+if(MSVC)
   # Enable parallel builds across four cores for this lib
   add_definitions(/MP4)
 endif()
 
 spvtools_pch(SPIRV_TOOLS_REDUCE_SOURCES pch_source_reduce)
 
-add_library(SPIRV-Tools-reduce STATIC ${SPIRV_TOOLS_REDUCE_SOURCES})
+add_library(SPIRV-Tools-reduce ${SPIRV_TOOLS_REDUCE_SOURCES})
 
 spvtools_default_compile_options(SPIRV-Tools-reduce)
 target_include_directories(SPIRV-Tools-reduce
@@ -89,7 +85,7 @@ target_include_directories(SPIRV-Tools-reduce
 )
 # The reducer reuses a lot of functionality from the SPIRV-Tools library.
 target_link_libraries(SPIRV-Tools-reduce
-  PUBLIC ${SPIRV_TOOLS}-static
+  PUBLIC ${SPIRV_TOOLS}
   PUBLIC SPIRV-Tools-opt)
 
 set_property(TARGET SPIRV-Tools-reduce PROPERTY FOLDER "SPIRV-Tools libraries")

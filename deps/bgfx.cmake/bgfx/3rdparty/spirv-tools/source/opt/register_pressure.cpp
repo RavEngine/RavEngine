@@ -163,7 +163,7 @@ class ComputeRegisterLiveness {
 
   // Propagates the register liveness information of each loop iterators.
   void DoLoopLivenessUnification() {
-    for (const Loop* loop : *loop_desc_.GetPlaceholderRootLoop()) {
+    for (const Loop* loop : *loop_desc_.GetDummyRootLoop()) {
       DoLoopLivenessUnification(*loop);
     }
   }

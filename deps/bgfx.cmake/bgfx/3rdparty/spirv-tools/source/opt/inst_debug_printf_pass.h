@@ -28,10 +28,11 @@ namespace opt {
 class InstDebugPrintfPass : public InstrumentPass {
  public:
   // For test harness only
-  InstDebugPrintfPass() : InstrumentPass(7, 23, kInstValidationIdDebugPrintf) {}
+  InstDebugPrintfPass()
+      : InstrumentPass(7, 23, kInstValidationIdDebugPrintf, 2) {}
   // For all other interfaces
   InstDebugPrintfPass(uint32_t desc_set, uint32_t shader_id)
-      : InstrumentPass(desc_set, shader_id, kInstValidationIdDebugPrintf) {}
+      : InstrumentPass(desc_set, shader_id, kInstValidationIdDebugPrintf, 2) {}
 
   ~InstDebugPrintfPass() override = default;
 

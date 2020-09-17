@@ -41,7 +41,6 @@ bool DeadBranchElimPass::GetConstCondition(uint32_t condId, bool* condVal) {
   bool condIsConst;
   Instruction* cInst = get_def_use_mgr()->GetDef(condId);
   switch (cInst->opcode()) {
-    case SpvOpConstantNull:
     case SpvOpConstantFalse: {
       *condVal = false;
       condIsConst = true;

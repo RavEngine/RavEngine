@@ -134,17 +134,8 @@ bool spvOpcodeIsDebug(SpvOp opcode);
 // where the order of the operands is irrelevant.
 bool spvOpcodeIsCommutativeBinaryOperator(SpvOp opcode);
 
-// Returns true for opcodes that represents linear algebra instructions.
-bool spvOpcodeIsLinearAlgebra(SpvOp opcode);
-
-// Returns true for opcodes that represents an image sample instruction.
-bool spvOpcodeIsImageSample(SpvOp opcode);
-
 // Returns a vector containing the indices of the memory semantics <id>
 // operands for |opcode|.
 std::vector<uint32_t> spvOpcodeMemorySemanticsOperandIndices(SpvOp opcode);
-
-// Returns true for opcodes that represents access chain instructions.
-bool spvOpcodeIsAccessChain(SpvOp opcode);
 
 #endif  // SOURCE_OPCODE_H_

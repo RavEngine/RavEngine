@@ -36,7 +36,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //
 
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
+#ifndef GLSLANG_WEB
 
 #include "localintermediate.h"
 #include "../Include/InfoSink.h"
@@ -1466,7 +1466,7 @@ void TIntermediate::output(TInfoSink& infoSink, bool tree)
     infoSink.debug << "Shader version: " << version << "\n";
     if (requestedExtensions.size() > 0) {
         for (auto extIt = requestedExtensions.begin(); extIt != requestedExtensions.end(); ++extIt)
-            infoSink.debug << "Requested " << *extIt << "\n";
+            infoSink.debug << "Requested " << extIt->first << "\n";
     }
 
     if (xfbMode)
@@ -1562,4 +1562,4 @@ void TIntermediate::output(TInfoSink& infoSink, bool tree)
 
 } // end namespace glslang
 
-#endif // !GLSLANG_WEB && !GLSLANG_ANGLE
+#endif // not GLSLANG_WEB

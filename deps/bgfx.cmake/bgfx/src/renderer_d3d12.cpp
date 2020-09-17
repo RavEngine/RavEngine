@@ -8,7 +8,7 @@
 #if BGFX_CONFIG_RENDERER_DIRECT3D12
 #	include "renderer_d3d12.h"
 
-#if !BX_PLATFORM_WINDOWS && !BX_PLATFORM_LINUX
+#if !BX_PLATFORM_WINDOWS
 #	include <inspectable.h>
 #	if BX_PLATFORM_WINRT
 #		include <windows.ui.xaml.media.dxinterop.h>
@@ -658,6 +658,8 @@ namespace bgfx { namespace d3d12
 			, m_lost(false)
 			, m_maxAnisotropy(1)
 			, m_depthClamp(false)
+			, m_fsChanges(0)
+			, m_vsChanges(0)
 			, m_backBufferColorIdx(0)
 			, m_rtMsaa(false)
 			, m_directAccessSupport(false)
@@ -989,9 +991,7 @@ namespace bgfx { namespace d3d12
 						resourceDesc.Width      = m_scd.width;
 						resourceDesc.Height     = m_scd.height;
 						resourceDesc.MipLevels  = 1;
-						resourceDesc.Format     = (m_resolution.reset & BGFX_RESET_SRGB_BACKBUFFER)
-													? s_textureFormat[m_resolution.format].m_fmtSrgb
-													: s_textureFormat[m_resolution.format].m_fmt;
+						resourceDesc.Format     = m_scd.format;
 						resourceDesc.SampleDesc = m_scd.sampleDesc;
 						resourceDesc.Layout     = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 						resourceDesc.Flags      = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -1920,7 +1920,7 @@ namespace bgfx { namespace d3d12
 				break;
 
 			default:
-				BX_ASSERT(false, "Invalid handle type?! %d", _handle.type);
+				BX_CHECK(false, "Invalid handle type?! %d", _handle.type);
 				break;
 			}
 		}
@@ -2080,19 +2080,17 @@ namespace bgfx { namespace d3d12
 						? s_textureFormat[m_resolution.format].m_fmtSrgb
 						: s_textureFormat[m_resolution.format].m_fmt;
 
-					if (1 < getResourceDesc(m_backBufferColor[ii]).DepthOrArraySize)
+					if (1 < m_backBufferColor[ii]->GetDesc().DepthOrArraySize)
 					{
-						rtvDesc.ViewDimension = (NULL == m_msaaRt) ?
-							D3D12_RTV_DIMENSION_TEXTURE2DARRAY : D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 						rtvDesc.Texture2DArray.FirstArraySlice = 0;
-						rtvDesc.Texture2DArray.ArraySize = getResourceDesc(m_backBufferColor[ii]).DepthOrArraySize;
+						rtvDesc.Texture2DArray.ArraySize = m_backBufferColor[ii]->GetDesc().DepthOrArraySize;
 						rtvDesc.Texture2DArray.MipSlice = 0;
 						rtvDesc.Texture2DArray.PlaneSlice = 0;
 					}
 					else
 					{
-						rtvDesc.ViewDimension = (NULL == m_msaaRt) ?
-							D3D12_RTV_DIMENSION_TEXTURE2D : D3D12_RTV_DIMENSION_TEXTURE2DMS;
+						rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 						rtvDesc.Texture2D.MipSlice = 0;
 						rtvDesc.Texture2D.PlaneSlice = 0;
 					}
@@ -2109,7 +2107,7 @@ namespace bgfx { namespace d3d12
 					{
 						ID3D12Resource* resource = m_backBufferColor[ii];
 
-						BX_ASSERT(DXGI_FORMAT_R8G8B8A8_UNORM == m_scd.format, "");
+						BX_CHECK(DXGI_FORMAT_R8G8B8A8_UNORM == m_scd.format, "");
 						const uint32_t size = m_scd.width*m_scd.height*4;
 
 						void* ptr;
@@ -2302,9 +2300,7 @@ namespace bgfx { namespace d3d12
 						resourceDesc.Width      = m_scd.width;
 						resourceDesc.Height     = m_scd.height;
 						resourceDesc.MipLevels  = 1;
-						resourceDesc.Format     = (m_resolution.reset & BGFX_RESET_SRGB_BACKBUFFER)
-													? s_textureFormat[m_resolution.format].m_fmtSrgb
-													: s_textureFormat[m_resolution.format].m_fmt;
+						resourceDesc.Format     = m_scd.format;
 						resourceDesc.SampleDesc = m_scd.sampleDesc;
 						resourceDesc.Layout     = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 						resourceDesc.Flags      = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -2330,13 +2326,15 @@ namespace bgfx { namespace d3d12
 
 		void setShaderUniform(uint8_t _flags, uint32_t _regIndex, const void* _val, uint32_t _numRegs)
 		{
-			if (_flags&kUniformFragmentBit)
+			if (_flags&BGFX_UNIFORM_FRAGMENTBIT)
 			{
 				bx::memCopy(&m_fsScratch[_regIndex], _val, _numRegs*16);
+				m_fsChanges += _numRegs;
 			}
 			else
 			{
 				bx::memCopy(&m_vsScratch[_regIndex], _val, _numRegs*16);
+				m_vsChanges += _numRegs;
 			}
 		}
 
@@ -2364,11 +2362,15 @@ namespace bgfx { namespace d3d12
 				uint32_t size = program.m_vsh->m_size;
 				bx::memCopy(data, m_vsScratch, size);
 				data += size;
+
+				m_vsChanges = 0;
 			}
 
 			if (NULL != program.m_fsh)
 			{
 				bx::memCopy(data, m_fsScratch, program.m_fsh->m_size);
+
+				m_fsChanges = 0;
 			}
 		}
 
@@ -2918,7 +2920,7 @@ namespace bgfx { namespace d3d12
 					dxbcHash(temp->data + 20, size - 20, temp->data + 4);
 
 					patchShader = 0 == bx::memCmp(program.m_fsh->m_code->data, temp->data, 16);
-					BX_ASSERT(patchShader, "DXBC fragment shader patching error (ShaderHandle: %d).", program.m_fsh - m_shaders);
+					BX_CHECK(patchShader, "DXBC fragment shader patching error (ShaderHandle: %d).", program.m_fsh - m_shaders);
 
 					if (!patchShader)
 					{
@@ -3156,7 +3158,7 @@ namespace bgfx { namespace d3d12
 
 #define CASE_IMPLEMENT_UNIFORM(_uniform, _dxsuffix, _type) \
 				case UniformType::_uniform: \
-				case UniformType::_uniform|kUniformFragmentBit: \
+				case UniformType::_uniform|BGFX_UNIFORM_FRAGMENTBIT: \
 						{ \
 							setShaderUniform(uint8_t(type), loc, data, num); \
 						} \
@@ -3165,7 +3167,7 @@ namespace bgfx { namespace d3d12
 				switch ( (uint32_t)type)
 				{
 				case UniformType::Mat3:
-				case UniformType::Mat3|kUniformFragmentBit:
+				case UniformType::Mat3|BGFX_UNIFORM_FRAGMENTBIT:
 					 {
 						 float* value = (float*)data;
 						 for (uint32_t ii = 0, count = num/3; ii < count; ++ii,  loc += 3*16, value += 9)
@@ -3395,6 +3397,8 @@ namespace bgfx { namespace d3d12
 
 		uint8_t m_fsScratch[64<<10];
 		uint8_t m_vsScratch[64<<10];
+		uint32_t m_fsChanges;
+		uint32_t m_vsChanges;
 
 		FrameBufferHandle m_fbh;
 		uint32_t m_backBufferColorIdx;
@@ -3824,7 +3828,7 @@ namespace bgfx { namespace d3d12
 			}
 		}
 
-		BX_ASSERT(0 == m_control.available(), "");
+		BX_CHECK(0 == m_control.available(), "");
 	}
 
 	bool CommandQueueD3D12::tryFinish(uint64_t _waitFence)
@@ -3966,7 +3970,7 @@ namespace bgfx { namespace d3d12
 	Ty& BatchD3D12::getCmd(Enum _type)
 	{
 		uint32_t index = m_num[_type];
-		BX_ASSERT(index < m_maxDrawPerBatch, "Memory corruption...");
+		BX_CHECK(index < m_maxDrawPerBatch, "Memory corruption...");
 		m_num[_type]++;
 		Ty* cmd = &reinterpret_cast<Ty*>(m_cmds[_type])[index];
 		return *cmd;
@@ -4506,7 +4510,7 @@ namespace bgfx { namespace d3d12
 			, count
 			);
 
-		uint8_t fragmentBit = fragment ? kUniformFragmentBit : 0;
+		uint8_t fragmentBit = fragment ? BGFX_UNIFORM_FRAGMENTBIT : 0;
 
 		if (0 < count)
 		{
@@ -4548,7 +4552,7 @@ namespace bgfx { namespace d3d12
 					m_predefined[m_numPredefined].m_type  = uint8_t(predefined|fragmentBit);
 					m_numPredefined++;
 				}
-				else if (0 == (kUniformSamplerBit & type) )
+				else if (0 == (BGFX_UNIFORM_SAMPLERBIT & type) )
 				{
 					const UniformRegInfo* info = s_renderD3D12->m_uniformReg.find(name);
 					BX_WARN(NULL != info, "User defined uniform '%s' is not found, it won't be set.", name);
@@ -4572,7 +4576,7 @@ namespace bgfx { namespace d3d12
 				BX_TRACE("\t%s: %s (%s), num %2d, r.index %3d, r.count %2d"
 					, kind
 					, name
-					, getUniformTypeName(UniformType::Enum(type&~kUniformMask) )
+					, getUniformTypeName(UniformType::Enum(type&~BGFX_UNIFORM_MASK) )
 					, num
 					, regIndex
 					, regCount
@@ -4959,7 +4963,7 @@ namespace bgfx { namespace d3d12
 					, numSrd
 					, srd
 					);
-				BX_ASSERT(0 != result, "Invalid size"); BX_UNUSED(result);
+				BX_CHECK(0 != result, "Invalid size"); BX_UNUSED(result);
 				BX_TRACE("Update subresource %" PRId64, result);
 
 				setState(commandList, state);
@@ -5021,39 +5025,18 @@ namespace bgfx { namespace d3d12
 
 		const uint32_t subres = _mip + (_side * m_numMips);
 		const uint32_t bpp    = bimg::getBitsPerPixel(bimg::TextureFormat::Enum(m_textureFormat) );
-		uint32_t rectpitch    = _rect.m_width*bpp/8;
-		if (bimg::isCompressed(bimg::TextureFormat::Enum(m_textureFormat)))
-		{
-			const bimg::ImageBlockInfo& blockInfo = bimg::getBlockInfo(bimg::TextureFormat::Enum(m_textureFormat));
-			rectpitch = (_rect.m_width / blockInfo.blockWidth) * blockInfo.blockSize;
-		}
-
-		const uint32_t srcpitch   = UINT16_MAX == _pitch ? rectpitch : _pitch;
-		const uint32_t slicepitch = rectpitch*_rect.m_height;
-
-		const bool convert = m_textureFormat != m_requestedFormat;
-
-		uint8_t* srcData = _mem->data;
-		uint8_t* temp = NULL;
-
-		if (convert)
-		{
-			temp = (uint8_t*)BX_ALLOC(g_allocator, slicepitch);
-			bimg::imageDecodeToBgra8(g_allocator, temp, srcData, _rect.m_width, _rect.m_height, srcpitch, bimg::TextureFormat::Enum(m_requestedFormat));
-			srcData = temp;
-		}
-
+		const uint32_t rectpitch = _rect.m_width*bpp/8;
+		const uint32_t srcpitch  = UINT16_MAX == _pitch ? rectpitch : _pitch;
 
 		D3D12_RESOURCE_DESC desc = getResourceDesc(m_ptr);
 
-		desc.Width  = _rect.m_width;
 		desc.Height = _rect.m_height;
 
 		uint32_t numRows;
 		uint64_t totalBytes;
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout;
 		s_renderD3D12->m_device->GetCopyableFootprints(&desc
-			, 0
+			, subres
 			, 1
 			, 0
 			, &layout
@@ -5065,22 +5048,15 @@ namespace bgfx { namespace d3d12
 		const uint32_t rowPitch = layout.Footprint.RowPitch;
 
 		ID3D12Resource* staging = createCommittedResource(s_renderD3D12->m_device, HeapProperty::Upload, totalBytes);
-		uint8_t* dstData;
+		uint8_t* data;
 
 		D3D12_RANGE readRange = { 0, 0 };
-		DX_CHECK(staging->Map(0, &readRange, (void**)&dstData) );
-
-		for (uint32_t ii = 0, height = numRows; ii < height; ++ii)
+		DX_CHECK(staging->Map(0, &readRange, (void**)&data) );
+		for (uint32_t ii = 0, height = _rect.m_height; ii < height; ++ii)
 		{
-			bx::memCopy(&dstData[ii*rowPitch], &srcData[ii*srcpitch], srcpitch);
+			bx::memCopy(&data[ii*rowPitch], &_mem->data[ii*srcpitch], srcpitch);
 		}
-
-		if (NULL != temp)
-		{
-			BX_FREE(g_allocator, temp);
-		}
-
-		D3D12_RANGE writeRange = { 0, numRows*rowPitch };
+		D3D12_RANGE writeRange = { 0, _rect.m_height*srcpitch };
 		staging->Unmap(0, &writeRange);
 
 		D3D12_BOX box;
@@ -5250,7 +5226,7 @@ namespace bgfx { namespace d3d12
 
 					if (bimg::isDepth(bimg::TextureFormat::Enum(texture.m_textureFormat) ) )
 					{
-						BX_ASSERT(!isValid(m_depth), "");
+						BX_CHECK(!isValid(m_depth), "");
 						m_depth = at.handle;
 						D3D12_CPU_DESCRIPTOR_HANDLE dsvDescriptor = getCPUHandleHeapStart(s_renderD3D12->m_dsvDescriptorHeap);
 						uint32_t dsvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -5401,7 +5377,7 @@ namespace bgfx { namespace d3d12
 					}
 					else
 					{
-						BX_ASSERT(false, "");
+						BX_CHECK(false, "");
 					}
 				}
 			}
@@ -6180,11 +6156,19 @@ namespace bgfx { namespace d3d12
 									bind.m_srvHandle = srvHandle[0];
 									bind.m_samplerStateIdx = getSamplerState(samplerFlags, maxComputeBindings, _render->m_colorPalette);
 									bindCached = bindLru.add(bindHash, bind, 0);
+
+									uint16_t samplerStateIdx = bindCached->m_samplerStateIdx;
+									if (samplerStateIdx != currentSamplerStateIdx)
+									{
+										currentSamplerStateIdx = samplerStateIdx;
+										m_commandList->SetComputeRootDescriptorTable(Rdt::Sampler, m_samplerAllocator.get(samplerStateIdx) );
+									}
+									m_commandList->SetComputeRootDescriptorTable(Rdt::SRV, bindCached->m_srvHandle);
+									m_commandList->SetComputeRootDescriptorTable(Rdt::UAV, bindCached->m_srvHandle);
 								}
 							}
 						}
-
-						if (NULL != bindCached)
+						else
 						{
 							uint16_t samplerStateIdx = bindCached->m_samplerStateIdx;
 							if (samplerStateIdx != currentSamplerStateIdx)
@@ -6484,10 +6468,19 @@ namespace bgfx { namespace d3d12
 								bind.m_srvHandle       = srvHandle[0];
 								bind.m_samplerStateIdx = getSamplerState(samplerFlags, BGFX_CONFIG_MAX_TEXTURE_SAMPLERS, _render->m_colorPalette);
 								bindCached = bindLru.add(bindHash, bind, 0);
+
+								uint16_t samplerStateIdx = bindCached->m_samplerStateIdx;
+								if (samplerStateIdx != currentSamplerStateIdx)
+								{
+									currentSamplerStateIdx = samplerStateIdx;
+									m_commandList->SetGraphicsRootDescriptorTable(Rdt::Sampler, m_samplerAllocator.get(samplerStateIdx) );
+								}
+
+								m_commandList->SetGraphicsRootDescriptorTable(Rdt::SRV, bindCached->m_srvHandle);
+								m_commandList->SetGraphicsRootDescriptorTable(Rdt::UAV, bindCached->m_srvHandle);
 							}
 						}
-
-						if (NULL != bindCached)
+						else
 						{
 							uint16_t samplerStateIdx = bindCached->m_samplerStateIdx;
 							if (samplerStateIdx != currentSamplerStateIdx)

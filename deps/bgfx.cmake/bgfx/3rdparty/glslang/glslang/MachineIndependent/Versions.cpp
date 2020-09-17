@@ -64,7 +64,6 @@
 //        checkDeprecated()
 //        requireNotRemoved()
 //        requireExtensions()
-//        extensionRequires()
 //
 //    Typically, only the first two calls are needed.  They go into a code path that
 //    implements Feature F, and will log the proper error/warning messages.  Parsing
@@ -79,11 +78,9 @@
 //     const char* const XXX_extension_X = "XXX_extension_X";
 //
 // 2) Add extension initialization to TParseVersions::initializeExtensionBehavior(),
-//    the first function below and optionally a entry to extensionData for additional
-//    error checks:
+//    the first function below:
 //
 //     extensionBehavior[XXX_extension_X] = EBhDisable;
-//     (Optional) exts[] = {XXX_extension_X, EShTargetSpv_1_4}
 //
 // 3) Add any preprocessor directives etc. in the next function, TParseVersions::getPreamble():
 //
@@ -143,8 +140,6 @@
 //    set of extensions that both enable them and are necessary, given the version of the symbol
 //    table. (There is a different symbol table for each version.)
 //
-// 7) If the extension has additional requirements like minimum SPIR-V version required, add them
-//    to extensionRequires()
 
 #include "parseVersions.h"
 #include "localintermediate.h"
@@ -160,20 +155,6 @@ namespace glslang {
 //
 void TParseVersions::initializeExtensionBehavior()
 {
-    typedef struct {
-        const char *const extensionName;
-        EShTargetLanguageVersion minSpvVersion;
-    } extensionData;
-
-    const extensionData exts[] = { {E_GL_EXT_ray_tracing, EShTargetSpv_1_4} };
-
-    for (size_t ii = 0; ii < sizeof(exts) / sizeof(exts[0]); ii++) {
-        // Add only extensions which require > spv1.0 to save space in map
-        if (exts[ii].minSpvVersion > EShTargetSpv_1_0) {
-            extensionMinSpv[E_GL_EXT_ray_tracing] = exts[ii].minSpvVersion;
-        }
-    }
-
     extensionBehavior[E_GL_OES_texture_3D]                   = EBhDisable;
     extensionBehavior[E_GL_OES_standard_derivatives]         = EBhDisable;
     extensionBehavior[E_GL_EXT_frag_depth]                   = EBhDisable;
@@ -347,9 +328,7 @@ void TParseVersions::initializeExtensionBehavior()
     extensionBehavior[E_GL_EXT_shader_subgroup_extended_types_int16]   = EBhDisable;
     extensionBehavior[E_GL_EXT_shader_subgroup_extended_types_int64]   = EBhDisable;
     extensionBehavior[E_GL_EXT_shader_subgroup_extended_types_float16] = EBhDisable;
-    extensionBehavior[E_GL_EXT_shader_atomic_float]                    = EBhDisable;
 }
-
 #endif // GLSLANG_WEB
 
 // Get code that is not part of a shared symbol table, is specific to this shader,
@@ -521,8 +500,6 @@ void TParseVersions::getPreamble(std::string& preamble)
             "#define GL_EXT_shader_subgroup_extended_types_int16 1\n"
             "#define GL_EXT_shader_subgroup_extended_types_int64 1\n"
             "#define GL_EXT_shader_subgroup_extended_types_float16 1\n"
-
-            "#define GL_EXT_shader_atomic_float 1\n"
             ;
 
         if (version >= 150) {
@@ -762,8 +739,7 @@ bool TParseVersions::checkExtensionsRequested(const TSourceLoc& loc, int numExte
 // Use when there are no profile/version to check, it's just an error if one of the
 // extensions is not present.
 //
-void TParseVersions::requireExtensions(const TSourceLoc& loc, int numExtensions, const char* const extensions[],
-    const char* featureDesc)
+void TParseVersions::requireExtensions(const TSourceLoc& loc, int numExtensions, const char* const extensions[], const char* featureDesc)
 {
     if (checkExtensionsRequested(loc, numExtensions, extensions, featureDesc))
         return;
@@ -782,8 +758,7 @@ void TParseVersions::requireExtensions(const TSourceLoc& loc, int numExtensions,
 // Use by preprocessor when there are no profile/version to check, it's just an error if one of the
 // extensions is not present.
 //
-void TParseVersions::ppRequireExtensions(const TSourceLoc& loc, int numExtensions, const char* const extensions[],
-    const char* featureDesc)
+void TParseVersions::ppRequireExtensions(const TSourceLoc& loc, int numExtensions, const char* const extensions[], const char* featureDesc)
 {
     if (checkExtensionsRequested(loc, numExtensions, extensions, featureDesc))
         return;
@@ -849,13 +824,9 @@ void TParseVersions::updateExtensionBehavior(int line, const char* extension, co
         error(getCurrentLoc(), "behavior not supported:", "#extension", behaviorString);
         return;
     }
-    bool on = behavior != EBhDisable;
 
     // check if extension is used with correct shader stage
     checkExtensionStage(getCurrentLoc(), extension);
-
-    // check if extension has additional requirements
-    extensionRequires(getCurrentLoc(), extension ,behaviorString);
 
     // update the requested extension
     updateExtensionBehavior(extension, behavior);
@@ -919,32 +890,6 @@ void TParseVersions::updateExtensionBehavior(int line, const char* extension, co
         updateExtensionBehavior(line, "GL_EXT_shader_explicit_arithmetic_types_int64", behaviorString);
     else if (strcmp(extension, "GL_EXT_shader_subgroup_extended_types_float16") == 0)
         updateExtensionBehavior(line, "GL_EXT_shader_explicit_arithmetic_types_float16", behaviorString);
-
-    // see if we need to update the numeric features
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types, on);
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types_int8") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types_int8, on);
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types_int16") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types_int16, on);
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types_int32") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types_int32, on);
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types_int64") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types_int64, on);
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types_float16") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types_float16, on);
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types_float32") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types_float32, on);
-    else if (strcmp(extension, "GL_EXT_shader_explicit_arithmetic_types_float64") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_explicit_arithmetic_types_float64, on);
-    else if (strcmp(extension, "GL_EXT_shader_implicit_conversions") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::shader_implicit_conversions, on);
-    else if (strcmp(extension, "GL_ARB_gpu_shader_fp64") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::gpu_shader_fp64, on);
-    else if (strcmp(extension, "GL_AMD_gpu_shader_int16") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::gpu_shader_int16, on);
-    else if (strcmp(extension, "GL_AMD_gpu_shader_half_float") == 0)
-        intermediate.updateNumericFeature(TNumericFeatures::gpu_shader_half_float, on);
 }
 
 void TParseVersions::updateExtensionBehavior(const char* extension, TExtensionBehavior behavior)
@@ -980,8 +925,8 @@ void TParseVersions::updateExtensionBehavior(const char* extension, TExtensionBe
         } else {
             if (iter->second == EBhDisablePartial)
                 warn(getCurrentLoc(), "extension is only partially supported:", "#extension", extension);
-            if (behavior != EBhDisable)
-                intermediate.addRequestedExtension(extension);
+            if (behavior == EBhEnable || behavior == EBhRequire || behavior == EBhDisable)
+                intermediate.updateRequestedExtension(extension, behavior);
             iter->second = behavior;
         }
     }
@@ -996,24 +941,6 @@ void TParseVersions::checkExtensionStage(const TSourceLoc& loc, const char * con
                      "#extension GL_NV_mesh_shader");
         profileRequires(loc, ECoreProfile, 450, 0, "#extension GL_NV_mesh_shader");
         profileRequires(loc, EEsProfile, 320, 0, "#extension GL_NV_mesh_shader");
-    }
-}
-
-// Check if extension has additional requirements
-void TParseVersions::extensionRequires(const TSourceLoc &loc, const char * const extension, const char *behaviorString)
-{
-    bool isEnabled = false;
-    if (!strcmp("require", behaviorString))
-        isEnabled = true;
-    else if (!strcmp("enable", behaviorString))
-        isEnabled = true;
-
-    if (isEnabled) {
-        unsigned int minSpvVersion = 0;
-        auto iter = extensionMinSpv.find(TString(extension));
-        if (iter != extensionMinSpv.end())
-            minSpvVersion = iter->second;
-        requireSpv(loc, extension, minSpvVersion);
     }
 }
 
@@ -1272,13 +1199,6 @@ void TParseVersions::requireSpv(const TSourceLoc& loc, const char* op)
 #ifndef GLSLANG_WEB
     if (spvVersion.spv == 0)
         error(loc, "only allowed when generating SPIR-V", op, "");
-#endif
-}
-void TParseVersions::requireSpv(const TSourceLoc& loc, const char *op, unsigned int version)
-{
-#ifndef GLSLANG_WEB
-    if (spvVersion.spv < version)
-        error(loc, "not supported for current targeted SPIR-V version", op, "");
 #endif
 }
 

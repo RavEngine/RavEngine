@@ -82,7 +82,7 @@ void TIntermediate::warn(TInfoSink& infoSink, const char* message)
 //
 void TIntermediate::merge(TInfoSink& infoSink, TIntermediate& unit)
 {
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
+#ifndef GLSLANG_WEB
     mergeCallGraphs(infoSink, unit);
     mergeModes(infoSink, unit);
     mergeTrees(infoSink, unit);
@@ -104,7 +104,7 @@ void TIntermediate::mergeCallGraphs(TInfoSink& infoSink, TIntermediate& unit)
     callGraph.insert(callGraph.end(), unit.callGraph.begin(), unit.callGraph.end());
 }
 
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
+#ifndef GLSLANG_WEB
 
 #define MERGE_MAX(member) member = std::max(member, unit.member)
 #define MERGE_TRUE(member) if (unit.member) member = unit.member;
@@ -153,7 +153,7 @@ void TIntermediate::mergeModes(TInfoSink& infoSink, TIntermediate& unit)
 
     if (vertices == TQualifier::layoutNotSet)
         vertices = unit.vertices;
-    else if (unit.vertices != TQualifier::layoutNotSet && vertices != unit.vertices) {
+    else if (vertices != unit.vertices) {
         if (language == EShLangGeometry || language == EShLangMeshNV)
             error(infoSink, "Contradictory layout max_vertices values");
         else if (language == EShLangTessControl)
@@ -172,12 +172,12 @@ void TIntermediate::mergeModes(TInfoSink& infoSink, TIntermediate& unit)
 
     if (inputPrimitive == ElgNone)
         inputPrimitive = unit.inputPrimitive;
-    else if (unit.inputPrimitive != ElgNone && inputPrimitive != unit.inputPrimitive)
+    else if (inputPrimitive != unit.inputPrimitive)
         error(infoSink, "Contradictory input layout primitives");
 
     if (outputPrimitive == ElgNone)
         outputPrimitive = unit.outputPrimitive;
-    else if (unit.outputPrimitive != ElgNone && outputPrimitive != unit.outputPrimitive)
+    else if (outputPrimitive != unit.outputPrimitive)
         error(infoSink, "Contradictory output layout primitives");
 
     if (originUpperLeft != unit.originUpperLeft || pixelCenterInteger != unit.pixelCenterInteger)
@@ -533,7 +533,7 @@ void TIntermediate::mergeImplicitArraySizes(TType& type, const TType& unitType)
 //
 void TIntermediate::mergeErrorCheck(TInfoSink& infoSink, const TIntermSymbol& symbol, const TIntermSymbol& unitSymbol, bool crossStage)
 {
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
+#ifndef GLSLANG_WEB
     bool writeTypeComparison = false;
 
     // Types have to match
@@ -1362,9 +1362,9 @@ unsigned int TIntermediate::computeTypeXfbSize(const TType& type, bool& contains
     // that component's size.  Aggregate types are flattened down to the component
     // level to get this sequence of components."
 
-    if (type.isSizedArray()) {
+    if (type.isArray()) {
         // TODO: perf: this can be flattened by using getCumulativeArraySize(), and a deref that discards all arrayness
-        // Unsized array use to xfb should be a compile error.
+        assert(type.isSizedArray());
         TType elementType(type, 0);
         return type.getOuterArraySize() * computeTypeXfbSize(elementType, contains64BitType, contains16BitType, contains16BitType);
     }
@@ -1550,9 +1550,7 @@ int TIntermediate::getBaseAlignment(const TType& type, int& size, int& stride, T
         RoundToPow2(size, alignment);
         stride = size;  // uses full matrix size for stride of an array of matrices (not quite what rule 6/8, but what's expected)
                         // uses the assumption for rule 10 in the comment above
-        // use one element to represent the last member of SSBO which is unsized array
-        int arraySize = (type.isUnsizedArray() && (type.getOuterArraySize() == 0)) ? 1 : type.getOuterArraySize();
-        size = stride * arraySize;
+        size = stride * type.getOuterArraySize();
         return alignment;
     }
 

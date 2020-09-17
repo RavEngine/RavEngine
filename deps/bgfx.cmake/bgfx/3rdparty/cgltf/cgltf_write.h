@@ -1,7 +1,7 @@
 /**
  * cgltf_write - a single-file glTF 2.0 writer written in C99.
  *
- * Version: 1.7
+ * Version: 1.5
  *
  * Website: https://github.com/jkuhlmann/cgltf
  *
@@ -75,8 +75,6 @@ cgltf_size cgltf_write(const cgltf_options* options, char* buffer, cgltf_size si
 #define CGLTF_EXTENSION_FLAG_LIGHTS_PUNCTUAL        (1 << 3)
 #define CGLTF_EXTENSION_FLAG_DRACO_MESH_COMPRESSION (1 << 4)
 #define CGLTF_EXTENSION_FLAG_MATERIALS_CLEARCOAT    (1 << 5)
-#define CGLTF_EXTENSION_FLAG_MATERIALS_IOR          (1 << 6)
-#define CGLTF_EXTENSION_FLAG_MATERIALS_TRANSMISSION (1 << 7)
 
 typedef struct {
 	char* buffer;
@@ -504,16 +502,6 @@ static void cgltf_write_material(cgltf_write_context* context, const cgltf_mater
 		context->extension_flags |= CGLTF_EXTENSION_FLAG_MATERIALS_CLEARCOAT;
 	}
 
-	if (material->has_transmission)
-	{
-		context->extension_flags |= CGLTF_EXTENSION_FLAG_MATERIALS_TRANSMISSION;
-	}
-
-	if (material->has_ior)
-	{
-		context->extension_flags |= CGLTF_EXTENSION_FLAG_MATERIALS_IOR;
-	}
-
 	if (material->has_pbr_metallic_roughness)
 	{
 		const cgltf_pbr_metallic_roughness* params = &material->pbr_metallic_roughness;
@@ -530,7 +518,7 @@ static void cgltf_write_material(cgltf_write_context* context, const cgltf_mater
 		cgltf_write_line(context, "}");
 	}
 
-	if (material->unlit || material->has_pbr_specular_glossiness || material->has_clearcoat || material->has_ior || material->has_transmission)
+	if (material->unlit || material->has_pbr_specular_glossiness || material->has_clearcoat)
 	{
 		cgltf_write_line(context, "\"extensions\": {");
 		if (material->has_clearcoat)
@@ -542,21 +530,6 @@ static void cgltf_write_material(cgltf_write_context* context, const cgltf_mater
 			CGLTF_WRITE_TEXTURE_INFO("clearcoatNormalTexture", params->clearcoat_normal_texture);
 			cgltf_write_floatprop(context, "clearcoatFactor", params->clearcoat_factor, 0.0f);
 			cgltf_write_floatprop(context, "clearcoatRoughnessFactor", params->clearcoat_roughness_factor, 0.0f);
-			cgltf_write_line(context, "}");
-		}
-		if (material->has_ior)
-		{
-			const cgltf_ior* params = &material->ior;
-			cgltf_write_line(context, "\"KHR_materials_ior\": {");
-			cgltf_write_floatprop(context, "ior", params->ior, 1.5f);
-			cgltf_write_line(context, "}");
-		}
-		if (material->has_transmission)
-		{
-			const cgltf_transmission* params = &material->transmission;
-			cgltf_write_line(context, "\"KHR_materials_transmission\": {");
-			CGLTF_WRITE_TEXTURE_INFO("transmissionTexture", params->transmission_texture);
-			cgltf_write_floatprop(context, "transmissionFactor", params->transmission_factor, 0.0f);
 			cgltf_write_line(context, "}");
 		}
 		if (material->has_pbr_specular_glossiness)
@@ -927,12 +900,6 @@ static void cgltf_write_extensions(cgltf_write_context* context, uint32_t extens
 	if (extension_flags & CGLTF_EXTENSION_FLAG_MATERIALS_CLEARCOAT) {
 		cgltf_write_stritem(context, "KHR_materials_clearcoat");
 	}
-	if (extension_flags & CGLTF_EXTENSION_FLAG_MATERIALS_IOR) {
-		cgltf_write_stritem(context, "KHR_materials_ior");
-	}
-	if (extension_flags & CGLTF_EXTENSION_FLAG_MATERIALS_TRANSMISSION) {
-		cgltf_write_stritem(context, "KHR_materials_transmission");
-	}
 }
 
 cgltf_size cgltf_write(const cgltf_options* options, char* buffer, cgltf_size size, const cgltf_data* data)
@@ -1116,8 +1083,6 @@ cgltf_size cgltf_write(const cgltf_options* options, char* buffer, cgltf_size si
 		cgltf_write_extensions(context, context->required_extension_flags);
 		cgltf_write_line(context, "]");
 	}
-
-	cgltf_write_extras(context, &data->extras);
 
 	CGLTF_SPRINTF("\n}\n");
 

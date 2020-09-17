@@ -41,10 +41,6 @@ namespace bx
 	void* dlsym(void* _handle, const StringView& _symbol);
 
 	///
-	template<typename ProtoT>
-	ProtoT dlsym(void* _handle, const StringView& _symbol);
-
-	///
 	bool getEnv(char* _out, uint32_t* _inOutSize, const StringView& _name);
 
 	///
@@ -57,7 +53,5 @@ namespace bx
 	void* exec(const char* const* _argv);
 
 } // namespace bx
-
-#include "inline/os.inl"
 
 #endif // BX_OS_H_HEADER_GUARD

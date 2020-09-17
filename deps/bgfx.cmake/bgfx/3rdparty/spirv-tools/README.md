@@ -324,7 +324,8 @@ The script `utils/git-sync-deps` can be used to checkout and/or update the
 contents of the repos under `external/` instead of manually maintaining them.
 
 ### Build using CMake
-You can build the project using [CMake][cmake]:
+You can build The project using [CMake][cmake] to generate platform-specific
+build configurations.
 
 ```sh
 cd <spirv-dir>
@@ -332,36 +333,8 @@ mkdir build && cd build
 cmake [-G <platform-generator>] <spirv-dir>
 ```
 
-Once the build files have been generated, build using the appropriate build
-command (e.g. `ninja`, `make`, `msbuild`, etc.; this depends on the platform
-generator used above), or use your IDE, or use CMake to run the appropriate build
-command for you:
-
-```sh
-cmake --build . [--config Debug]  # runs `make` or `ninja` or `msbuild` etc.
-```
-
-#### Note about the fuzzer
-
-The SPIR-V fuzzer, `spirv-fuzz`, can only be built via CMake, and is disabled by
-default. To build it, clone protobuf and use the `SPIRV_BUILD_FUZZER` CMake
-option, like so:
-
-```sh
-# In <spirv-dir> (the SPIRV-Tools repo root):
-git clone https://github.com/protocolbuffers/protobuf external/protobuf
-pushd external/protobuf
-git checkout v3.7.1
-popd
-
-# In your build directory:
-cmake [-G <platform-generator>] <spirv-dir> -DSPIRV_BUILD_FUZZER=ON
-cmake --build . --config Debug
-```
-
-You can also add `-DSPIRV_ENABLE_LONG_FUZZER_TESTS=ON` to build additional
-fuzzer tests.
-
+Once the build files have been generated, build using your preferred
+development environment.
 
 ### Build using Bazel
 You can also use [Bazel](https://bazel.build/) to build the project.

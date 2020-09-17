@@ -938,9 +938,6 @@ const char* CapabilityString(int info)
 
     case CapabilityIntegerFunctions2INTEL:              return "CapabilityIntegerFunctions2INTEL";
 
-    case CapabilityAtomicFloat32AddEXT:                     return "AtomicFloat32AddEXT";
-    case CapabilityAtomicFloat64AddEXT:                     return "AtomicFloat64AddEXT";
-
     default: return "Bad";
     }
 }
@@ -1315,8 +1312,6 @@ const char* OpcodeString(int op)
     case 4429: return "OpSubgroupAnyKHR";
     case 4430: return "OpSubgroupAllEqualKHR";
     case 4432: return "OpSubgroupReadInvocationKHR";
-
-    case OpAtomicFAddEXT: return "OpAtomicFAddEXT";
 
     case 5000: return "OpGroupIAddNonUniformAMD";
     case 5001: return "OpGroupFAddNonUniformAMD";
@@ -2264,11 +2259,6 @@ void Parameterize()
     InstructionDesc[OpAtomicIAdd].operands.push(OperandScope, "'Scope'");
     InstructionDesc[OpAtomicIAdd].operands.push(OperandMemorySemantics, "'Semantics'");
     InstructionDesc[OpAtomicIAdd].operands.push(OperandId, "'Value'");
-
-    InstructionDesc[OpAtomicFAddEXT].operands.push(OperandId, "'Pointer'");
-    InstructionDesc[OpAtomicFAddEXT].operands.push(OperandScope, "'Scope'");
-    InstructionDesc[OpAtomicFAddEXT].operands.push(OperandMemorySemantics, "'Semantics'");
-    InstructionDesc[OpAtomicFAddEXT].operands.push(OperandId, "'Value'");
 
     InstructionDesc[OpAtomicISub].operands.push(OperandId, "'Pointer'");
     InstructionDesc[OpAtomicISub].operands.push(OperandScope, "'Scope'");

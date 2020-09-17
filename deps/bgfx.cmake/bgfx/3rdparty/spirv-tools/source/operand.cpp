@@ -265,6 +265,7 @@ const char* spvOperandTypeStr(spv_operand_type_t type) {
     case SPV_OPERAND_TYPE_NONE:
       return "NONE";
     default:
+      assert(0 && "Unhandled operand type!");
       break;
   }
   return "unknown";
@@ -370,35 +371,13 @@ bool spvOperandIsConcreteMask(spv_operand_type_t type) {
 }
 
 bool spvOperandIsOptional(spv_operand_type_t type) {
-  switch (type) {
-    case SPV_OPERAND_TYPE_OPTIONAL_ID:
-    case SPV_OPERAND_TYPE_OPTIONAL_IMAGE:
-    case SPV_OPERAND_TYPE_OPTIONAL_MEMORY_ACCESS:
-    case SPV_OPERAND_TYPE_OPTIONAL_LITERAL_INTEGER:
-    case SPV_OPERAND_TYPE_OPTIONAL_LITERAL_NUMBER:
-    case SPV_OPERAND_TYPE_OPTIONAL_TYPED_LITERAL_INTEGER:
-    case SPV_OPERAND_TYPE_OPTIONAL_LITERAL_STRING:
-    case SPV_OPERAND_TYPE_OPTIONAL_ACCESS_QUALIFIER:
-    case SPV_OPERAND_TYPE_OPTIONAL_CIV:
-      return true;
-    default:
-      break;
-  }
-  // Any variable operand is also optional.
-  return spvOperandIsVariable(type);
+  return SPV_OPERAND_TYPE_FIRST_OPTIONAL_TYPE <= type &&
+         type <= SPV_OPERAND_TYPE_LAST_OPTIONAL_TYPE;
 }
 
 bool spvOperandIsVariable(spv_operand_type_t type) {
-  switch (type) {
-    case SPV_OPERAND_TYPE_VARIABLE_ID:
-    case SPV_OPERAND_TYPE_VARIABLE_LITERAL_INTEGER:
-    case SPV_OPERAND_TYPE_VARIABLE_LITERAL_INTEGER_ID:
-    case SPV_OPERAND_TYPE_VARIABLE_ID_LITERAL_INTEGER:
-      return true;
-    default:
-      break;
-  }
-  return false;
+  return SPV_OPERAND_TYPE_FIRST_VARIABLE_TYPE <= type &&
+         type <= SPV_OPERAND_TYPE_LAST_VARIABLE_TYPE;
 }
 
 bool spvExpandOperandSequenceOnce(spv_operand_type_t type,
@@ -476,7 +455,7 @@ bool spvIsInIdType(spv_operand_type_t type) {
     return false;
   }
   switch (type) {
-    // Deny non-input IDs.
+    // Blacklist non-input IDs.
     case SPV_OPERAND_TYPE_TYPE_ID:
     case SPV_OPERAND_TYPE_RESULT_ID:
       return false;

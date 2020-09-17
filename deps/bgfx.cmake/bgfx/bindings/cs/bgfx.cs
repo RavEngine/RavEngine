@@ -967,7 +967,7 @@ public static partial class bgfx
 		FlushAfterRender       = 0x00002000,
 	
 		/// <summary>
-		/// This flag specifies where flip occurs. Default behaviour is that flip occurs
+		/// This flag specifies where flip occurs. Default behavior is that flip occurs
 		/// before rendering new frame. This flag only has effect when `BGFX_CONFIG_MULTITHREADED=0`.
 		/// </summary>
 		FlipAfterRender        = 0x00004000,
@@ -1970,7 +1970,6 @@ public static partial class bgfx
 			public uint maxUniforms;
 			public uint maxOcclusionQueries;
 			public uint maxEncoders;
-			public uint minResourceCbSize;
 			public uint transientVbSize;
 			public uint transientIbSize;
 		}
@@ -2017,7 +2016,6 @@ public static partial class bgfx
 		public unsafe struct Limits
 		{
 			public ushort maxEncoders;
-			public uint minResourceCbSize;
 			public uint transientVbSize;
 			public uint transientIbSize;
 		}
@@ -2354,11 +2352,10 @@ public static partial class bgfx
 	/// <param name="_layout">Vertex stream layout.</param>
 	/// <param name="_data">Vertex stream.</param>
 	/// <param name="_num">Number of vertices in vertex stream.</param>
-	/// <param name="_index32">Set to `true` if input indices are 32-bit.</param>
 	/// <param name="_epsilon">Error tolerance for vertex position comparison.</param>
 	///
 	[DllImport(DllName, EntryPoint="bgfx_weld_vertices", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe uint weld_vertices(void* _output, VertexLayout* _layout, void* _data, uint _num, bool _index32, float _epsilon);
+	public static extern unsafe ushort weld_vertices(ushort* _output, VertexLayout* _layout, void* _data, ushort _num, float _epsilon);
 	
 	/// <summary>
 	/// Convert index buffer for use with different primitive topologies.
@@ -2439,7 +2436,7 @@ public static partial class bgfx
 	///
 	/// <param name="_width">Back-buffer width.</param>
 	/// <param name="_height">Back-buffer height.</param>
-	/// <param name="_flags">See: `BGFX_RESET_*` for more info.   - `BGFX_RESET_NONE` - No reset flags.   - `BGFX_RESET_FULLSCREEN` - Not supported yet.   - `BGFX_RESET_MSAA_X[2/4/8/16]` - Enable 2, 4, 8 or 16 x MSAA.   - `BGFX_RESET_VSYNC` - Enable V-Sync.   - `BGFX_RESET_MAXANISOTROPY` - Turn on/off max anisotropy.   - `BGFX_RESET_CAPTURE` - Begin screen capture.   - `BGFX_RESET_FLUSH_AFTER_RENDER` - Flush rendering after submitting to GPU.   - `BGFX_RESET_FLIP_AFTER_RENDER` - This flag  specifies where flip     occurs. Default behaviour is that flip occurs before rendering new     frame. This flag only has effect when `BGFX_CONFIG_MULTITHREADED=0`.   - `BGFX_RESET_SRGB_BACKBUFFER` - Enable sRGB backbuffer.</param>
+	/// <param name="_flags">See: `BGFX_RESET_*` for more info.   - `BGFX_RESET_NONE` - No reset flags.   - `BGFX_RESET_FULLSCREEN` - Not supported yet.   - `BGFX_RESET_MSAA_X[2/4/8/16]` - Enable 2, 4, 8 or 16 x MSAA.   - `BGFX_RESET_VSYNC` - Enable V-Sync.   - `BGFX_RESET_MAXANISOTROPY` - Turn on/off max anisotropy.   - `BGFX_RESET_CAPTURE` - Begin screen capture.   - `BGFX_RESET_FLUSH_AFTER_RENDER` - Flush rendering after submitting to GPU.   - `BGFX_RESET_FLIP_AFTER_RENDER` - This flag  specifies where flip     occurs. Default behavior is that flip occurs before rendering new     frame. This flag only has effect when `BGFX_CONFIG_MULTITHREADED=0`.   - `BGFX_RESET_SRGB_BACKBUFFER` - Enable sRGB backbuffer.</param>
 	/// <param name="_format">Texture format. See: `TextureFormat::Enum`.</param>
 	///
 	[DllImport(DllName, EntryPoint="bgfx_reset", CallingConvention = CallingConvention.Cdecl)]
@@ -3638,22 +3635,10 @@ public static partial class bgfx
 	/// <param name="_handle">Vertex buffer.</param>
 	/// <param name="_startVertex">First vertex to render.</param>
 	/// <param name="_numVertices">Number of vertices to render.</param>
-	///
-	[DllImport(DllName, EntryPoint="bgfx_encoder_set_vertex_buffer", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void encoder_set_vertex_buffer(Encoder* _this, byte _stream, VertexBufferHandle _handle, uint _startVertex, uint _numVertices);
-	
-	/// <summary>
-	/// Set vertex buffer for draw primitive.
-	/// </summary>
-	///
-	/// <param name="_stream">Vertex stream.</param>
-	/// <param name="_handle">Vertex buffer.</param>
-	/// <param name="_startVertex">First vertex to render.</param>
-	/// <param name="_numVertices">Number of vertices to render.</param>
 	/// <param name="_layoutHandle">Vertex layout for aliasing vertex buffer. If invalid handle is used, vertex layout used for creation of vertex buffer will be used.</param>
 	///
-	[DllImport(DllName, EntryPoint="bgfx_encoder_set_vertex_buffer_with_layout", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void encoder_set_vertex_buffer_with_layout(Encoder* _this, byte _stream, VertexBufferHandle _handle, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
+	[DllImport(DllName, EntryPoint="bgfx_encoder_set_vertex_buffer", CallingConvention = CallingConvention.Cdecl)]
+	public static extern unsafe void encoder_set_vertex_buffer(Encoder* _this, byte _stream, VertexBufferHandle _handle, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
 	
 	/// <summary>
 	/// Set vertex buffer for draw primitive.
@@ -3663,24 +3648,10 @@ public static partial class bgfx
 	/// <param name="_handle">Dynamic vertex buffer.</param>
 	/// <param name="_startVertex">First vertex to render.</param>
 	/// <param name="_numVertices">Number of vertices to render.</param>
+	/// <param name="_layoutHandle">Vertex layout for aliasing vertex buffer. If invalid handle is used, vertex layout used for creation of vertex buffer will be used.</param>
 	///
 	[DllImport(DllName, EntryPoint="bgfx_encoder_set_dynamic_vertex_buffer", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void encoder_set_dynamic_vertex_buffer(Encoder* _this, byte _stream, DynamicVertexBufferHandle _handle, uint _startVertex, uint _numVertices);
-	
-	[DllImport(DllName, EntryPoint="bgfx_encoder_set_dynamic_vertex_buffer_with_layout", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void encoder_set_dynamic_vertex_buffer_with_layout(Encoder* _this, byte _stream, DynamicVertexBufferHandle _handle, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
-	
-	/// <summary>
-	/// Set vertex buffer for draw primitive.
-	/// </summary>
-	///
-	/// <param name="_stream">Vertex stream.</param>
-	/// <param name="_tvb">Transient vertex buffer.</param>
-	/// <param name="_startVertex">First vertex to render.</param>
-	/// <param name="_numVertices">Number of vertices to render.</param>
-	///
-	[DllImport(DllName, EntryPoint="bgfx_encoder_set_transient_vertex_buffer", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void encoder_set_transient_vertex_buffer(Encoder* _this, byte _stream, TransientVertexBuffer* _tvb, uint _startVertex, uint _numVertices);
+	public static extern unsafe void encoder_set_dynamic_vertex_buffer(Encoder* _this, byte _stream, DynamicVertexBufferHandle _handle, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
 	
 	/// <summary>
 	/// Set vertex buffer for draw primitive.
@@ -3692,8 +3663,8 @@ public static partial class bgfx
 	/// <param name="_numVertices">Number of vertices to render.</param>
 	/// <param name="_layoutHandle">Vertex layout for aliasing vertex buffer. If invalid handle is used, vertex layout used for creation of vertex buffer will be used.</param>
 	///
-	[DllImport(DllName, EntryPoint="bgfx_encoder_set_transient_vertex_buffer_with_layout", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void encoder_set_transient_vertex_buffer_with_layout(Encoder* _this, byte _stream, TransientVertexBuffer* _tvb, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
+	[DllImport(DllName, EntryPoint="bgfx_encoder_set_transient_vertex_buffer", CallingConvention = CallingConvention.Cdecl)]
+	public static extern unsafe void encoder_set_transient_vertex_buffer(Encoder* _this, byte _stream, TransientVertexBuffer* _tvb, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
 	
 	/// <summary>
 	/// Set number of vertices for auto generated vertices use in conjuction
@@ -4195,19 +4166,6 @@ public static partial class bgfx
 	/// </summary>
 	///
 	/// <param name="_stream">Vertex stream.</param>
-	/// <param name="_handle">Vertex buffer.</param>
-	/// <param name="_startVertex">First vertex to render.</param>
-	/// <param name="_numVertices">Number of vertices to render.</param>
-	/// <param name="_layoutHandle">Vertex layout for aliasing vertex buffer. If invalid handle is used, vertex layout used for creation of vertex buffer will be used.</param>
-	///
-	[DllImport(DllName, EntryPoint="bgfx_set_vertex_buffer_with_layout", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void set_vertex_buffer_with_layout(byte _stream, VertexBufferHandle _handle, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
-	
-	/// <summary>
-	/// Set vertex buffer for draw primitive.
-	/// </summary>
-	///
-	/// <param name="_stream">Vertex stream.</param>
 	/// <param name="_handle">Dynamic vertex buffer.</param>
 	/// <param name="_startVertex">First vertex to render.</param>
 	/// <param name="_numVertices">Number of vertices to render.</param>
@@ -4220,38 +4178,12 @@ public static partial class bgfx
 	/// </summary>
 	///
 	/// <param name="_stream">Vertex stream.</param>
-	/// <param name="_handle">Dynamic vertex buffer.</param>
-	/// <param name="_startVertex">First vertex to render.</param>
-	/// <param name="_numVertices">Number of vertices to render.</param>
-	/// <param name="_layoutHandle">Vertex layout for aliasing vertex buffer. If invalid handle is used, vertex layout used for creation of vertex buffer will be used.</param>
-	///
-	[DllImport(DllName, EntryPoint="bgfx_set_dynamic_vertex_buffer_with_layout", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void set_dynamic_vertex_buffer_with_layout(byte _stream, DynamicVertexBufferHandle _handle, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
-	
-	/// <summary>
-	/// Set vertex buffer for draw primitive.
-	/// </summary>
-	///
-	/// <param name="_stream">Vertex stream.</param>
 	/// <param name="_tvb">Transient vertex buffer.</param>
 	/// <param name="_startVertex">First vertex to render.</param>
 	/// <param name="_numVertices">Number of vertices to render.</param>
 	///
 	[DllImport(DllName, EntryPoint="bgfx_set_transient_vertex_buffer", CallingConvention = CallingConvention.Cdecl)]
 	public static extern unsafe void set_transient_vertex_buffer(byte _stream, TransientVertexBuffer* _tvb, uint _startVertex, uint _numVertices);
-	
-	/// <summary>
-	/// Set vertex buffer for draw primitive.
-	/// </summary>
-	///
-	/// <param name="_stream">Vertex stream.</param>
-	/// <param name="_tvb">Transient vertex buffer.</param>
-	/// <param name="_startVertex">First vertex to render.</param>
-	/// <param name="_numVertices">Number of vertices to render.</param>
-	/// <param name="_layoutHandle">Vertex layout for aliasing vertex buffer. If invalid handle is used, vertex layout used for creation of vertex buffer will be used.</param>
-	///
-	[DllImport(DllName, EntryPoint="bgfx_set_transient_vertex_buffer_with_layout", CallingConvention = CallingConvention.Cdecl)]
-	public static extern unsafe void set_transient_vertex_buffer_with_layout(byte _stream, TransientVertexBuffer* _tvb, uint _startVertex, uint _numVertices, VertexLayoutHandle _layoutHandle);
 	
 	/// <summary>
 	/// Set number of vertices for auto generated vertices use in conjuction

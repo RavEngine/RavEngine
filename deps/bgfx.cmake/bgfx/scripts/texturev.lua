@@ -117,8 +117,9 @@ project ("texturev")
 			"GLESv2",
 		}
 
-	configuration { "wasm*" }
+	configuration { "asmjs" }
 		kind "ConsoleApp"
+		targetextension ".bc"
 
 	configuration { "linux-* or freebsd" }
 		links {

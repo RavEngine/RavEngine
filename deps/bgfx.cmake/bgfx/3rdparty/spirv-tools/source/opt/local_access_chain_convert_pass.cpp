@@ -77,15 +77,6 @@ void LocalAccessChainConvertPass::AppendConstantOperands(
 bool LocalAccessChainConvertPass::ReplaceAccessChainLoad(
     const Instruction* address_inst, Instruction* original_load) {
   // Build and append load of variable in ptrInst
-  if (address_inst->NumInOperands() == 1) {
-    // An access chain with no indices is essentially a copy.  All that is
-    // needed is to propagate the address.
-    context()->ReplaceAllUsesWith(
-        address_inst->result_id(),
-        address_inst->GetSingleWordInOperand(kAccessChainPtrIdInIdx));
-    return true;
-  }
-
   std::vector<std::unique_ptr<Instruction>> new_inst;
   uint32_t varId;
   uint32_t varPteTypeId;
@@ -118,18 +109,6 @@ bool LocalAccessChainConvertPass::ReplaceAccessChainLoad(
 bool LocalAccessChainConvertPass::GenAccessChainStoreReplacement(
     const Instruction* ptrInst, uint32_t valId,
     std::vector<std::unique_ptr<Instruction>>* newInsts) {
-  if (ptrInst->NumInOperands() == 1) {
-    // An access chain with no indices is essentially a copy.  However, we still
-    // have to create a new store because the old ones will be deleted.
-    BuildAndAppendInst(
-        SpvOpStore, 0, 0,
-        {{spv_operand_type_t::SPV_OPERAND_TYPE_ID,
-          {ptrInst->GetSingleWordInOperand(kAccessChainPtrIdInIdx)}},
-         {spv_operand_type_t::SPV_OPERAND_TYPE_ID, {valId}}},
-        newInsts);
-    return true;
-  }
-
   // Build and append load of variable in ptrInst
   uint32_t varId;
   uint32_t varPteTypeId;
@@ -267,13 +246,11 @@ Pass::Status LocalAccessChainConvertPass::ConvertLocalAccessChains(
           if (!GenAccessChainStoreReplacement(ptrInst, valId, &newInsts)) {
             return Status::Failure;
           }
-          size_t num_of_instructions_to_skip = newInsts.size() - 1;
           dead_instructions.push_back(&*ii);
           ++ii;
           ii = ii.InsertBefore(std::move(newInsts));
-          for (size_t i = 0; i < num_of_instructions_to_skip; ++i) {
-            ++ii;
-          }
+          ++ii;
+          ++ii;
           modified = true;
         } break;
         default:
@@ -304,7 +281,7 @@ void LocalAccessChainConvertPass::Initialize() {
   // Initialize collections
   supported_ref_ptrs_.clear();
 
-  // Initialize extension allowlist
+  // Initialize extension whitelist
   InitExtensions();
 }
 
@@ -315,11 +292,11 @@ bool LocalAccessChainConvertPass::AllExtensionsSupported() const {
   if (context()->get_feature_mgr()->HasCapability(
           SpvCapabilityVariablePointers))
     return false;
-  // If any extension not in allowlist, return false
+  // If any extension not in whitelist, return false
   for (auto& ei : get_module()->extensions()) {
     const char* extName =
         reinterpret_cast<const char*>(&ei.GetInOperand(0).words[0]);
-    if (extensions_allowlist_.find(extName) == extensions_allowlist_.end())
+    if (extensions_whitelist_.find(extName) == extensions_whitelist_.end())
       return false;
   }
   return true;
@@ -359,8 +336,8 @@ Pass::Status LocalAccessChainConvertPass::Process() {
 }
 
 void LocalAccessChainConvertPass::InitExtensions() {
-  extensions_allowlist_.clear();
-  extensions_allowlist_.insert({
+  extensions_whitelist_.clear();
+  extensions_whitelist_.insert({
       "SPV_AMD_shader_explicit_vertex_parameter",
       "SPV_AMD_shader_trinary_minmax",
       "SPV_AMD_gcn_shader",
@@ -405,7 +382,6 @@ void LocalAccessChainConvertPass::InitExtensions() {
       "SPV_KHR_ray_tracing",
       "SPV_KHR_ray_query",
       "SPV_EXT_fragment_invocation_density",
-      "SPV_KHR_terminate_invocation",
   });
 }
 

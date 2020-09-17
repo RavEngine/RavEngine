@@ -307,8 +307,6 @@ void SSARewriter::ProcessStore(Instruction* inst, BasicBlock* bb) {
   }
   if (pass_->IsTargetVar(var_id)) {
     WriteVariable(var_id, bb, val_id);
-    pass_->context()->get_debug_info_mgr()->AddDebugValueIfVarDeclIsVisible(
-        inst, var_id, val_id, inst);
 
 #if SSA_REWRITE_DEBUGGING_LEVEL > 1
     std::cerr << "\tFound store '%" << var_id << " = %" << val_id << "': "
@@ -439,8 +437,6 @@ bool SSARewriter::ApplyReplacements() {
 
   // Add Phi instructions from completed Phi candidates.
   std::vector<Instruction*> generated_phis;
-  // Add DebugValue instructions for Phi instructions.
-  std::vector<Instruction*> dbg_values_for_phis;
   for (const PhiCandidate* phi_candidate : phis_to_generate_) {
 #if SSA_REWRITE_DEBUGGING_LEVEL > 2
     std::cerr << "Phi candidate: " << phi_candidate->PrettyPrint(pass_->cfg())
@@ -451,10 +447,9 @@ bool SSARewriter::ApplyReplacements() {
            "Tried to instantiate a Phi instruction from an incomplete Phi "
            "candidate");
 
-    auto* local_var = pass_->get_def_use_mgr()->GetDef(phi_candidate->var_id());
-
     // Build the vector of operands for the new OpPhi instruction.
-    uint32_t type_id = pass_->GetPointeeTypeId(local_var);
+    uint32_t type_id = pass_->GetPointeeTypeId(
+        pass_->get_def_use_mgr()->GetDef(phi_candidate->var_id()));
     std::vector<Operand> phi_operands;
     uint32_t arg_ix = 0;
     std::unordered_map<uint32_t, uint32_t> already_seen;
@@ -484,16 +479,10 @@ bool SSARewriter::ApplyReplacements() {
     pass_->get_def_use_mgr()->AnalyzeInstDef(&*phi_inst);
     pass_->context()->set_instr_block(&*phi_inst, phi_candidate->bb());
     auto insert_it = phi_candidate->bb()->begin();
-    insert_it = insert_it.InsertBefore(std::move(phi_inst));
+    insert_it.InsertBefore(std::move(phi_inst));
     pass_->context()->get_decoration_mgr()->CloneDecorations(
         phi_candidate->var_id(), phi_candidate->result_id(),
         {SpvDecorationRelaxedPrecision});
-
-    // Add DebugValue for the new OpPhi instruction.
-    insert_it->SetDebugScope(local_var->GetDebugScope());
-    pass_->context()->get_debug_info_mgr()->AddDebugValueIfVarDeclIsVisible(
-        &*insert_it, phi_candidate->var_id(), phi_candidate->result_id(),
-        &*insert_it);
 
     modified = true;
   }
@@ -624,10 +613,6 @@ Pass::Status SSARewritePass::Process() {
   for (auto& fn : *get_module()) {
     status =
         CombineStatus(status, SSARewriter(this).RewriteFunctionIntoSSA(&fn));
-    // Kill DebugDeclares for target variables.
-    for (auto var_id : seen_target_vars_) {
-      context()->get_debug_info_mgr()->KillDebugDeclares(var_id);
-    }
     if (status == Status::Failure) {
       break;
     }

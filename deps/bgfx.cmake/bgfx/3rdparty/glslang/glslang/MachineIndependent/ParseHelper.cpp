@@ -751,11 +751,8 @@ TIntermTyped* TParseContext::handleBinaryMath(const TSourceLoc& loc, const char*
     }
 
     TIntermTyped* result = nullptr;
-    if (allowed) {
-        if ((left->isReference() || right->isReference()))
-            requireExtensions(loc, 1, &E_GL_EXT_buffer_reference2, "buffer reference math");
+    if (allowed)
         result = intermediate.addBinaryMath(op, left, right, loc);
-    }
 
     if (result == nullptr)
         binaryOpError(loc, str, left->getCompleteString(), right->getCompleteString());
@@ -1298,7 +1295,7 @@ TIntermTyped* TParseContext::handleBuiltInFunctionCall(TSourceLoc loc, TIntermNo
     TIntermTyped *result = intermediate.addBuiltInFunctionCall(loc, function.getBuiltInOp(),
                                                                function.getParamCount() == 1,
                                                                arguments, function.getType());
-    if (result != nullptr && obeyPrecisionQualifiers())
+    if (obeyPrecisionQualifiers())
         computeBuiltinPrecisions(*result, function);
 
     if (result == nullptr) {
@@ -1418,28 +1415,23 @@ TIntermNode* TParseContext::handleReturnValue(const TSourceLoc& loc, TIntermType
 #endif
 
     functionReturnsValue = true;
-    TIntermBranch* branch = nullptr;
     if (currentFunctionType->getBasicType() == EbtVoid) {
         error(loc, "void function cannot return a value", "return", "");
-        branch = intermediate.addBranch(EOpReturn, loc);
+        return intermediate.addBranch(EOpReturn, loc);
     } else if (*currentFunctionType != value->getType()) {
         TIntermTyped* converted = intermediate.addConversion(EOpReturn, *currentFunctionType, value);
         if (converted) {
             if (*currentFunctionType != converted->getType())
                 error(loc, "cannot convert return value to function return type", "return", "");
             if (version < 420)
-                warn(loc, "type conversion on return values was not explicitly allowed until version 420",
-                     "return", "");
-            branch = intermediate.addBranch(EOpReturn, converted, loc);
+                warn(loc, "type conversion on return values was not explicitly allowed until version 420", "return", "");
+            return intermediate.addBranch(EOpReturn, converted, loc);
         } else {
             error(loc, "type does not match, or is not convertible to, the function's return type", "return", "");
-            branch = intermediate.addBranch(EOpReturn, value, loc);
+            return intermediate.addBranch(EOpReturn, value, loc);
         }
     } else
-        branch = intermediate.addBranch(EOpReturn, value, loc);
-
-    branch->updatePrecision(currentFunctionType->getQualifier().precision);
-    return branch;
+        return intermediate.addBranch(EOpReturn, value, loc);
 }
 
 // See if the operation is being done in an illegal location.
@@ -1681,14 +1673,6 @@ TIntermTyped* TParseContext::addOutputArgumentConversions(const TFunction& funct
 
     return conversionTree;
 #endif
-}
-
-TIntermTyped* TParseContext::addAssign(const TSourceLoc& loc, TOperator op, TIntermTyped* left, TIntermTyped* right)
-{
-    if ((op == EOpAddAssign || op == EOpSubAssign) && left->isReference())
-        requireExtensions(loc, 1, &E_GL_EXT_buffer_reference2, "+= and -= on a buffer reference");
-
-    return intermediate.addAssign(op, left, right, loc);
 }
 
 void TParseContext::memorySemanticsCheck(const TSourceLoc& loc, const TFunction& fnCandidate, const TIntermOperator& callNode)
@@ -2121,14 +2105,7 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
             if (imageType.getQualifier().getFormat() != ElfR32i && imageType.getQualifier().getFormat() != ElfR32ui)
                 error(loc, "only supported on image with format r32i or r32ui", fnCandidate.getName().c_str(), "");
         } else {
-            bool isImageAtomicOnFloatAllowed = ((fnCandidate.getName().compare(0, 14, "imageAtomicAdd") == 0) ||
-                (fnCandidate.getName().compare(0, 15, "imageAtomicLoad") == 0) ||
-                (fnCandidate.getName().compare(0, 16, "imageAtomicStore") == 0) ||
-                (fnCandidate.getName().compare(0, 19, "imageAtomicExchange") == 0));
-            if (imageType.getSampler().type == EbtFloat && isImageAtomicOnFloatAllowed &&
-                (fnCandidate.getName().compare(0, 19, "imageAtomicExchange") != 0)) // imageAtomicExchange doesn't require GL_EXT_shader_atomic_float
-                requireExtensions(loc, 1, &E_GL_EXT_shader_atomic_float, fnCandidate.getName().c_str());
-            if (!isImageAtomicOnFloatAllowed)
+            if (fnCandidate.getName().compare(0, 19, "imageAtomicExchange") != 0)
                 error(loc, "only supported on integer images", fnCandidate.getName().c_str(), "");
             else if (imageType.getQualifier().getFormat() != ElfR32f && isEsProfile())
                 error(loc, "only supported on image with format r32f", fnCandidate.getName().c_str(), "");
@@ -2157,18 +2134,10 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
         if (argp->size() > 3) {
             requireExtensions(loc, 1, &E_GL_KHR_memory_scope_semantics, fnCandidate.getName().c_str());
             memorySemanticsCheck(loc, fnCandidate, callNode);
-            if ((callNode.getOp() == EOpAtomicAdd || callNode.getOp() == EOpAtomicExchange ||
-                callNode.getOp() == EOpAtomicLoad || callNode.getOp() == EOpAtomicStore) &&
-                (arg0->getType().isFloatingDomain())) {
-                requireExtensions(loc, 1, &E_GL_EXT_shader_atomic_float, fnCandidate.getName().c_str());
-            }
         } else if (arg0->getType().getBasicType() == EbtInt64 || arg0->getType().getBasicType() == EbtUint64) {
             const char* const extensions[2] = { E_GL_NV_shader_atomic_int64,
                                                 E_GL_EXT_shader_atomic_int64 };
             requireExtensions(loc, 2, extensions, fnCandidate.getName().c_str());
-        } else if ((callNode.getOp() == EOpAtomicAdd || callNode.getOp() == EOpAtomicExchange) &&
-                   (arg0->getType().isFloatingDomain())) {
-            requireExtensions(loc, 1, &E_GL_EXT_shader_atomic_float, fnCandidate.getName().c_str());
         }
         break;
     }
@@ -5204,12 +5173,6 @@ void TParseContext::setLayoutQualifier(const TSourceLoc& loc, TPublicType& publi
             }
         }
     }
-
-    if (id == "primitive_culling") {
-        requireExtensions(loc, 1, &E_GL_EXT_ray_flags_primitive_culling, "primitive culling");
-        publicType.shaderQualifiers.layoutPrimitiveCulling = true;
-        return;
-    }
 #endif
 
     error(loc, "unrecognized layout identifier, or qualifier requires assignment (e.g., binding = 4)", id.c_str(), "");
@@ -5807,8 +5770,6 @@ void TParseContext::layoutTypeCheck(const TSourceLoc& loc, const TType& type)
         int repeated = intermediate.addXfbBufferOffset(type);
         if (repeated >= 0)
             error(loc, "overlapping offsets at", "xfb_offset", "offset %d in buffer %d", repeated, qualifier.layoutXfbBuffer);
-        if (type.isUnsizedArray())
-            error(loc, "unsized array", "xfb_offset", "in buffer %d", qualifier.layoutXfbBuffer);
 
         // "The offset must be a multiple of the size of the first component of the first
         // qualified variable or block member, or a compile-time error results. Further, if applied to an aggregate
@@ -6143,8 +6104,6 @@ void TParseContext::checkNoShaderLayouts(const TSourceLoc& loc, const TShaderQua
         error(loc, message, "num_views", "");
     if (shaderQualifiers.interlockOrdering != EioNone)
         error(loc, message, TQualifier::getInterlockOrderingString(shaderQualifiers.interlockOrdering), "");
-    if (shaderQualifiers.layoutPrimitiveCulling)
-        error(loc, "can only be applied as standalone", "primitive_culling", "");
 #endif
 }
 
@@ -7316,8 +7275,6 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
         if (!node->getType().isCoopMat()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
                 node = intermediate.addConversion(type.getBasicType(), node);
-                if (node == nullptr)
-                    return nullptr;
             }
             node = intermediate.setAggregateOperator(node, EOpConstructCooperativeMatrix, type, node->getLoc());
         } else {
@@ -7496,8 +7453,8 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
             arraySizesCheck(memberLoc, currentBlockQualifier, memberType.getArraySizes(), nullptr, member == typeList.size() - 1);
         if (memberQualifier.hasOffset()) {
             if (spvVersion.spv == 0) {
-                profileRequires(memberLoc, ~EEsProfile, 440, E_GL_ARB_enhanced_layouts, "\"offset\" on block member");
-                profileRequires(memberLoc, EEsProfile, 300, E_GL_ARB_enhanced_layouts, "\"offset\" on block member");
+                requireProfile(memberLoc, ~EEsProfile, "offset on block member");
+                profileRequires(memberLoc, ~EEsProfile, 440, E_GL_ARB_enhanced_layouts, "offset on block member");
             }
         }
 
@@ -7636,8 +7593,6 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
     fixBlockLocations(loc, currentBlockQualifier, typeList, memberWithLocation, memberWithoutLocation);
     fixXfbOffsets(currentBlockQualifier, typeList);
     fixBlockUniformOffsets(currentBlockQualifier, typeList);
-    fixBlockUniformLayoutMatrix(currentBlockQualifier, &typeList, nullptr);
-    fixBlockUniformLayoutPacking(currentBlockQualifier, &typeList, nullptr);
     for (unsigned int member = 0; member < typeList.size(); ++member)
         layoutTypeCheck(typeList[member].loc, *typeList[member].type);
 
@@ -8008,101 +7963,6 @@ void TParseContext::fixBlockUniformOffsets(TQualifier& qualifier, TTypeList& typ
     }
 }
 
-//
-// Spread LayoutMatrix to uniform block member, if a uniform block member is a struct,
-// we need spread LayoutMatrix to this struct member too. and keep this rule for recursive.
-//
-void TParseContext::fixBlockUniformLayoutMatrix(TQualifier& qualifier, TTypeList* originTypeList,
-                                                TTypeList* tmpTypeList)
-{
-    assert(tmpTypeList == nullptr || originTypeList->size() == tmpTypeList->size());
-    for (unsigned int member = 0; member < originTypeList->size(); ++member) {
-        if (qualifier.layoutPacking != ElpNone) {
-            if (tmpTypeList == nullptr) {
-                if (((*originTypeList)[member].type->isMatrix() ||
-                     (*originTypeList)[member].type->getBasicType() == EbtStruct) &&
-                    (*originTypeList)[member].type->getQualifier().layoutMatrix == ElmNone) {
-                    (*originTypeList)[member].type->getQualifier().layoutMatrix = qualifier.layoutMatrix;
-                }
-            } else {
-                if (((*tmpTypeList)[member].type->isMatrix() ||
-                     (*tmpTypeList)[member].type->getBasicType() == EbtStruct) &&
-                    (*tmpTypeList)[member].type->getQualifier().layoutMatrix == ElmNone) {
-                    (*tmpTypeList)[member].type->getQualifier().layoutMatrix = qualifier.layoutMatrix;
-                }
-            }
-        }
-
-        if ((*originTypeList)[member].type->getBasicType() == EbtStruct) {
-            TQualifier* memberQualifier = nullptr;
-            // block member can be declare a matrix style, so it should be update to the member's style
-            if ((*originTypeList)[member].type->getQualifier().layoutMatrix == ElmNone) {
-                memberQualifier = &qualifier;
-            } else {
-                memberQualifier = &((*originTypeList)[member].type->getQualifier());
-            }
-
-            const TType* tmpType = tmpTypeList == nullptr ?
-                (*originTypeList)[member].type->clone() : (*tmpTypeList)[member].type;
-
-            fixBlockUniformLayoutMatrix(*memberQualifier, (*originTypeList)[member].type->getWritableStruct(),
-                                        tmpType->getWritableStruct());
-
-            const TTypeList* structure = recordStructCopy(matrixFixRecord, (*originTypeList)[member].type, tmpType);
-
-            if (tmpTypeList == nullptr) {
-                (*originTypeList)[member].type->setStruct(const_cast<TTypeList*>(structure));
-            }
-            if (tmpTypeList != nullptr) {
-                (*tmpTypeList)[member].type->setStruct(const_cast<TTypeList*>(structure));
-            }
-        }
-    }
-}
-
-//
-// Spread LayoutPacking to block member, if a  block member is a struct, we need spread LayoutPacking to
-// this struct member too. and keep this rule for recursive.
-//
-void TParseContext::fixBlockUniformLayoutPacking(TQualifier& qualifier, TTypeList* originTypeList,
-                                                 TTypeList* tmpTypeList)
-{
-    assert(tmpTypeList == nullptr || originTypeList->size() == tmpTypeList->size());
-    for (unsigned int member = 0; member < originTypeList->size(); ++member) {
-        if (qualifier.layoutPacking != ElpNone) {
-            if (tmpTypeList == nullptr) {
-                if ((*originTypeList)[member].type->getQualifier().layoutPacking == ElpNone) {
-                    (*originTypeList)[member].type->getQualifier().layoutPacking = qualifier.layoutPacking;
-                }
-            } else {
-                if ((*tmpTypeList)[member].type->getQualifier().layoutPacking == ElpNone) {
-                    (*tmpTypeList)[member].type->getQualifier().layoutPacking = qualifier.layoutPacking;
-                }
-            }
-        }
-
-        if ((*originTypeList)[member].type->getBasicType() == EbtStruct) {
-            // Deep copy the type in pool.
-            // Because, struct use in different block may have different layout qualifier.
-            // We have to new a object to distinguish between them.
-            const TType* tmpType = tmpTypeList == nullptr ?
-                (*originTypeList)[member].type->clone() : (*tmpTypeList)[member].type;
-
-            fixBlockUniformLayoutPacking(qualifier, (*originTypeList)[member].type->getWritableStruct(),
-                                         tmpType->getWritableStruct());
-
-            const TTypeList* structure = recordStructCopy(packingFixRecord, (*originTypeList)[member].type, tmpType);
-
-            if (tmpTypeList == nullptr) {
-                (*originTypeList)[member].type->setStruct(const_cast<TTypeList*>(structure));
-            }
-            if (tmpTypeList != nullptr) {
-                (*tmpTypeList)[member].type->setStruct(const_cast<TTypeList*>(structure));
-            }
-        }
-    }
-}
-
 // For an identifier that is already declared, add more qualification to it.
 void TParseContext::addQualifierToExisting(const TSourceLoc& loc, TQualifier qualifier, const TString& identifier)
 {
@@ -8411,16 +8271,6 @@ void TParseContext::updateStandaloneQualifierDefaults(const TSourceLoc& loc, con
     {
         checkIoArraysConsistency(loc);
     }
-
-    if (publicType.shaderQualifiers.layoutPrimitiveCulling) {
-        if (publicType.qualifier.storage != EvqTemporary)
-            error(loc, "layout qualifier can not have storage qualifiers", "primitive_culling","", "");
-        else {
-            intermediate.setLayoutPrimitiveCulling();
-        }
-        // Exit early as further checks are not valid
-        return;
-    }
 #endif 
     const TQualifier& qualifier = publicType.qualifier;
 
@@ -8569,44 +8419,6 @@ TIntermNode* TParseContext::addSwitch(const TSourceLoc& loc, TIntermTyped* expre
     switchNode->setLoc(loc);
 
     return switchNode;
-}
-
-//
-// When a struct used in block, and has it's own layout packing, layout matrix,
-// record the origin structure of a struct to map, and Record the structure copy to the copy table,
-//
-const TTypeList* TParseContext::recordStructCopy(TStructRecord& record, const TType* originType, const TType* tmpType)
-{
-    size_t memberCount = tmpType->getStruct()->size();
-    size_t originHash = 0, tmpHash = 0;
-    std::hash<size_t> hasher;
-    for (size_t i = 0; i < memberCount; i++) {
-        size_t originMemberHash = hasher(originType->getStruct()->at(i).type->getQualifier().layoutPacking +
-                                         originType->getStruct()->at(i).type->getQualifier().layoutMatrix);
-        size_t tmpMemberHash = hasher(tmpType->getStruct()->at(i).type->getQualifier().layoutPacking +
-                                      tmpType->getStruct()->at(i).type->getQualifier().layoutMatrix);
-        originHash = hasher((originHash ^ originMemberHash) << 1);
-        tmpHash = hasher((tmpHash ^ tmpMemberHash) << 1);
-    }
-    const TTypeList* originStruct = originType->getStruct();
-    const TTypeList* tmpStruct = tmpType->getStruct();
-    if (originHash != tmpHash) {
-        auto fixRecords = record.find(originStruct);
-        if (fixRecords != record.end()) {
-            auto fixRecord = fixRecords->second.find(tmpHash);
-            if (fixRecord != fixRecords->second.end()) {
-                return fixRecord->second;
-            } else {
-                record[originStruct][tmpHash] = tmpStruct;
-                return tmpStruct;
-            }
-        } else {
-            record[originStruct] = std::map<size_t, const TTypeList*>();
-            record[originStruct][tmpHash] = tmpStruct;
-            return tmpStruct;
-        }
-    }
-    return originStruct;
 }
 
 } // end namespace glslang

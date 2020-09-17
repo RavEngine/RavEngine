@@ -239,17 +239,8 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
     return dbg_line_insts_;
   }
 
-  const Instruction* dbg_line_inst() const {
-    return dbg_line_insts_.empty() ? nullptr : &dbg_line_insts_[0];
-  }
-
   // Clear line-related debug instructions attached to this instruction.
   void clear_dbg_line_insts() { dbg_line_insts_.clear(); }
-
-  // Set line-related debug instructions.
-  void set_dbg_line_insts(const std::vector<Instruction>& lines) {
-    dbg_line_insts_ = lines;
-  }
 
   // Same semantics as in the base class except the list the InstructionList
   // containing |pos| will now assume ownership of |this|.
@@ -300,22 +291,9 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
   // Sets DebugScope.
   inline void SetDebugScope(const DebugScope& scope);
   inline const DebugScope& GetDebugScope() const { return dbg_scope_; }
-  // Updates DebugInlinedAt of DebugScope and OpLine.
-  void UpdateDebugInlinedAt(uint32_t new_inlined_at);
-  inline uint32_t GetDebugInlinedAt() const {
-    return dbg_scope_.GetInlinedAt();
-  }
-  // Updates lexical scope of DebugScope and OpLine.
-  void UpdateLexicalScope(uint32_t scope);
-  // Updates OpLine and DebugScope based on the information of |from|.
-  void UpdateDebugInfoFrom(const Instruction* from);
   // Remove the |index|-th operand
   void RemoveOperand(uint32_t index) {
     operands_.erase(operands_.begin() + index);
-  }
-  // Insert an operand before the |index|-th operand
-  void InsertOperand(uint32_t index, Operand&& operand) {
-    operands_.insert(operands_.begin() + index, operand);
   }
 
   // The following methods are similar to the above, but are for in operands.
@@ -385,10 +363,6 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
   inline bool WhileEachInOperand(const std::function<bool(uint32_t*)>& f);
   inline bool WhileEachInOperand(
       const std::function<bool(const uint32_t*)>& f) const;
-
-  // Returns true if it's an OpBranchConditional instruction
-  // with branch weights.
-  bool HasBranchWeights() const;
 
   // Returns true if any operands can be labels
   inline bool HasLabels() const;
@@ -545,14 +519,6 @@ class Instruction : public utils::IntrusiveNodeBase<Instruction> {
   // it is not an OpenCL.100.DebugInfo instruction, just returns
   // OpenCLDebugInfo100InstructionsMax.
   OpenCLDebugInfo100Instructions GetOpenCL100DebugOpcode() const;
-
-  // Returns true if it is an OpenCL.DebugInfo.100 instruction.
-  bool IsOpenCL100DebugInstr() const {
-    return GetOpenCL100DebugOpcode() != OpenCLDebugInfo100InstructionsMax;
-  }
-
-  // Returns true if this instructions a non-semantic instruction.
-  bool IsNonSemanticInstruction() const;
 
   // Dump this instruction on stderr.  Useful when running interactive
   // debuggers.
@@ -739,21 +705,21 @@ inline void Instruction::ForEachInst(
 }
 
 inline void Instruction::ForEachId(const std::function<void(uint32_t*)>& f) {
-  for (auto& operand : operands_)
-    if (spvIsIdType(operand.type)) f(&operand.words[0]);
+  for (auto& opnd : operands_)
+    if (spvIsIdType(opnd.type)) f(&opnd.words[0]);
 }
 
 inline void Instruction::ForEachId(
     const std::function<void(const uint32_t*)>& f) const {
-  for (const auto& operand : operands_)
-    if (spvIsIdType(operand.type)) f(&operand.words[0]);
+  for (const auto& opnd : operands_)
+    if (spvIsIdType(opnd.type)) f(&opnd.words[0]);
 }
 
 inline bool Instruction::WhileEachInId(
     const std::function<bool(uint32_t*)>& f) {
-  for (auto& operand : operands_) {
-    if (spvIsInIdType(operand.type) && !f(&operand.words[0])) {
-      return false;
+  for (auto& opnd : operands_) {
+    if (spvIsInIdType(opnd.type)) {
+      if (!f(&opnd.words[0])) return false;
     }
   }
   return true;
@@ -761,9 +727,9 @@ inline bool Instruction::WhileEachInId(
 
 inline bool Instruction::WhileEachInId(
     const std::function<bool(const uint32_t*)>& f) const {
-  for (const auto& operand : operands_) {
-    if (spvIsInIdType(operand.type) && !f(&operand.words[0])) {
-      return false;
+  for (const auto& opnd : operands_) {
+    if (spvIsInIdType(opnd.type)) {
+      if (!f(&opnd.words[0])) return false;
     }
   }
   return true;
@@ -786,13 +752,13 @@ inline void Instruction::ForEachInId(
 
 inline bool Instruction::WhileEachInOperand(
     const std::function<bool(uint32_t*)>& f) {
-  for (auto& operand : operands_) {
-    switch (operand.type) {
+  for (auto& opnd : operands_) {
+    switch (opnd.type) {
       case SPV_OPERAND_TYPE_RESULT_ID:
       case SPV_OPERAND_TYPE_TYPE_ID:
         break;
       default:
-        if (!f(&operand.words[0])) return false;
+        if (!f(&opnd.words[0])) return false;
         break;
     }
   }
@@ -801,13 +767,13 @@ inline bool Instruction::WhileEachInOperand(
 
 inline bool Instruction::WhileEachInOperand(
     const std::function<bool(const uint32_t*)>& f) const {
-  for (const auto& operand : operands_) {
-    switch (operand.type) {
+  for (const auto& opnd : operands_) {
+    switch (opnd.type) {
       case SPV_OPERAND_TYPE_RESULT_ID:
       case SPV_OPERAND_TYPE_TYPE_ID:
         break;
       default:
-        if (!f(&operand.words[0])) return false;
+        if (!f(&opnd.words[0])) return false;
         break;
     }
   }
@@ -816,16 +782,16 @@ inline bool Instruction::WhileEachInOperand(
 
 inline void Instruction::ForEachInOperand(
     const std::function<void(uint32_t*)>& f) {
-  WhileEachInOperand([&f](uint32_t* operand) {
-    f(operand);
+  WhileEachInOperand([&f](uint32_t* op) {
+    f(op);
     return true;
   });
 }
 
 inline void Instruction::ForEachInOperand(
     const std::function<void(const uint32_t*)>& f) const {
-  WhileEachInOperand([&f](const uint32_t* operand) {
-    f(operand);
+  WhileEachInOperand([&f](const uint32_t* op) {
+    f(op);
     return true;
   });
 }

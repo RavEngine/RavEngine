@@ -774,7 +774,6 @@ function codegen.gen_flag_cdefine(flag)
 			local comment = ""
 			if item.comment then
 				if #item.comment > 1 then
-					s[#s+1] = ""
 					for _, c in ipairs(item.comment) do
 						s[#s+1] = "/// " .. c
 					end

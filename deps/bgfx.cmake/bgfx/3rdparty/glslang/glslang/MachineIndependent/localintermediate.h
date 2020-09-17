@@ -233,31 +233,6 @@ private:
     TMap<TString, int> maps[EsiCount];
 };
 
-class TNumericFeatures {
-public:
-    TNumericFeatures() : features(0) { }
-    TNumericFeatures(const TNumericFeatures&) = delete;
-    TNumericFeatures& operator=(const TNumericFeatures&) = delete;
-    typedef enum : unsigned int {
-        shader_explicit_arithmetic_types          = 1 << 0,
-        shader_explicit_arithmetic_types_int8     = 1 << 1,
-        shader_explicit_arithmetic_types_int16    = 1 << 2,
-        shader_explicit_arithmetic_types_int32    = 1 << 3,
-        shader_explicit_arithmetic_types_int64    = 1 << 4,
-        shader_explicit_arithmetic_types_float16  = 1 << 5,
-        shader_explicit_arithmetic_types_float32  = 1 << 6,
-        shader_explicit_arithmetic_types_float64  = 1 << 7,
-        shader_implicit_conversions               = 1 << 8,
-        gpu_shader_fp64                           = 1 << 9,
-        gpu_shader_int16                          = 1 << 10,
-        gpu_shader_half_float                     = 1 << 11,
-    } feature;
-    void insert(feature f) { features |= f; }
-    void erase(feature f) { features &= ~f; }
-    bool contains(feature f) const { return (features & f) != 0; }
-private:
-    unsigned int features;
-};
 
 //
 // Set of helper functions to help parse and build the tree.
@@ -266,10 +241,7 @@ class TIntermediate {
 public:
     explicit TIntermediate(EShLanguage l, int v = 0, EProfile p = ENoProfile) :
         language(l),
-#ifndef GLSLANG_ANGLE
-        profile(p), version(v),
-#endif
-        treeRoot(0),
+        profile(p), version(v), treeRoot(0),
         numEntryPoints(0), numErrors(0), numPushConstants(0), recursive(false),
         invertY(false),
         useStorageBuffer(false),
@@ -293,7 +265,6 @@ public:
         computeDerivativeMode(LayoutDerivativeNone),
         primitives(TQualifier::layoutNotSet),
         numTaskNVBlocks(0),
-        layoutPrimitiveCulling(false),
         autoMapBindings(false),
         autoMapLocations(false),
         flattenUniformArrays(false),
@@ -323,20 +294,9 @@ public:
 #endif
     }
 
-    void setVersion(int v)
-    {
-#ifndef GLSLANG_ANGLE
-        version = v;
-#endif
-    }
-    void setProfile(EProfile p)
-    {
-#ifndef GLSLANG_ANGLE
-        profile = p;
-#endif
-    }
-
+    void setVersion(int v) { version = v; }
     int getVersion() const { return version; }
+    void setProfile(EProfile p) { profile = p; }
     EProfile getProfile() const { return profile; }
     void setSpv(const SpvVersion& s)
     {
@@ -396,8 +356,15 @@ public:
     }
     const SpvVersion& getSpv() const { return spvVersion; }
     EShLanguage getStage() const { return language; }
-    void addRequestedExtension(const char* extension) { requestedExtensions.insert(extension); }
-    const std::set<std::string>& getRequestedExtensions() const { return requestedExtensions; }
+    void updateRequestedExtension(const char* extension, TExtensionBehavior behavior) { 
+        if(requestedExtensions.find(extension) != requestedExtensions.end()) {
+            requestedExtensions[extension] = behavior; 
+        } else {
+            requestedExtensions.insert(std::make_pair(extension, behavior)); 
+        }
+    }
+
+    const std::map<std::string, TExtensionBehavior>& getRequestedExtensions() const { return requestedExtensions; }
 
     void setTreeRoot(TIntermNode* r) { treeRoot = r; }
     TIntermNode* getTreeRoot() const { return treeRoot; }
@@ -432,7 +399,7 @@ public:
     void setSource(EShSource s) { source = s; }
     EShSource getSource() const { return source; }
 #else
-    void setSource(EShSource s) { assert(s == EShSourceGlsl); (void)s; }
+    void setSource(EShSource s) { assert(s == EShSourceGlsl); }
     EShSource getSource() const { return EShSourceGlsl; }
 #endif
 
@@ -443,15 +410,15 @@ public:
     TIntermSymbol* addSymbol(const TType&, const TSourceLoc&);
     TIntermSymbol* addSymbol(const TIntermSymbol&);
     TIntermTyped* addConversion(TOperator, const TType&, TIntermTyped*);
-    std::tuple<TIntermTyped*, TIntermTyped*> addPairConversion(TOperator op, TIntermTyped* node0, TIntermTyped* node1);
+    std::tuple<TIntermTyped*, TIntermTyped*> addConversion(TOperator op, TIntermTyped* node0, TIntermTyped* node1);
     TIntermTyped* addUniShapeConversion(TOperator, const TType&, TIntermTyped*);
     TIntermTyped* addConversion(TBasicType convertTo, TIntermTyped* node) const;
     void addBiShapeConversion(TOperator, TIntermTyped*& lhsNode, TIntermTyped*& rhsNode);
     TIntermTyped* addShapeConversion(const TType&, TIntermTyped*);
-    TIntermTyped* addBinaryMath(TOperator, TIntermTyped* left, TIntermTyped* right, const TSourceLoc&);
-    TIntermTyped* addAssign(TOperator op, TIntermTyped* left, TIntermTyped* right, const TSourceLoc&);
-    TIntermTyped* addIndex(TOperator op, TIntermTyped* base, TIntermTyped* index, const TSourceLoc&);
-    TIntermTyped* addUnaryMath(TOperator, TIntermTyped* child, const TSourceLoc&);
+    TIntermTyped* addBinaryMath(TOperator, TIntermTyped* left, TIntermTyped* right, TSourceLoc);
+    TIntermTyped* addAssign(TOperator op, TIntermTyped* left, TIntermTyped* right, TSourceLoc);
+    TIntermTyped* addIndex(TOperator op, TIntermTyped* base, TIntermTyped* index, TSourceLoc);
+    TIntermTyped* addUnaryMath(TOperator, TIntermTyped* child, TSourceLoc);
     TIntermTyped* addBuiltInFunctionCall(const TSourceLoc& line, TOperator, bool unary, TIntermNode*, const TType& returnType);
     bool canImplicitlyPromote(TBasicType from, TBasicType to, TOperator op = EOpNull) const;
     bool isIntegralPromotion(TBasicType from, TBasicType to) const;
@@ -465,7 +432,7 @@ public:
     TIntermAggregate* makeAggregate(TIntermNode* node);
     TIntermAggregate* makeAggregate(TIntermNode* node, const TSourceLoc&);
     TIntermAggregate* makeAggregate(const TSourceLoc&);
-    TIntermTyped* setAggregateOperator(TIntermNode*, TOperator, const TType& type, const TSourceLoc&);
+    TIntermTyped* setAggregateOperator(TIntermNode*, TOperator, const TType& type, TSourceLoc);
     bool areAllChildConst(TIntermAggregate* aggrNode);
     TIntermSelection* addSelection(TIntermTyped* cond, TIntermNodePair code, const TSourceLoc&);
     TIntermTyped* addSelection(TIntermTyped* cond, TIntermTyped* trueBlock, TIntermTyped* falseBlock, const TSourceLoc&);
@@ -494,11 +461,10 @@ public:
 
     // Low level functions to add nodes (no conversions or other higher level transformations)
     // If a type is provided, the node's type will be set to it.
-    TIntermBinary* addBinaryNode(TOperator op, TIntermTyped* left, TIntermTyped* right, const TSourceLoc&) const;
-    TIntermBinary* addBinaryNode(TOperator op, TIntermTyped* left, TIntermTyped* right, const TSourceLoc&,
-        const TType&) const;
-    TIntermUnary* addUnaryNode(TOperator op, TIntermTyped* child, const TSourceLoc&) const;
-    TIntermUnary* addUnaryNode(TOperator op, TIntermTyped* child, const TSourceLoc&, const TType&) const;
+    TIntermBinary* addBinaryNode(TOperator op, TIntermTyped* left, TIntermTyped* right, TSourceLoc) const;
+    TIntermBinary* addBinaryNode(TOperator op, TIntermTyped* left, TIntermTyped* right, TSourceLoc, const TType&) const;
+    TIntermUnary* addUnaryNode(TOperator op, TIntermTyped* child, TSourceLoc) const;
+    TIntermUnary* addUnaryNode(TOperator op, TIntermTyped* child, TSourceLoc, const TType&) const;
 
     // Constant folding (in Constant.cpp)
     TIntermTyped* fold(TIntermAggregate* aggrNode);
@@ -513,7 +479,11 @@ public:
     void addSymbolLinkageNodes(TIntermAggregate*& linkage, EShLanguage, TSymbolTable&);
     void addSymbolLinkageNode(TIntermAggregate*& linkage, const TSymbol&);
 
-    void setUseStorageBuffer() { useStorageBuffer = true; }
+    void setUseStorageBuffer()
+    {
+        useStorageBuffer = true;
+        processes.addProcess("use-storage-buffer");
+    }
     bool usingStorageBuffer() const { return useStorageBuffer; }
     void setDepthReplacing() { depthReplacing = true; }
     bool isDepthReplacing() const { return depthReplacing; }
@@ -772,8 +742,6 @@ public:
     void setLayoutDerivativeMode(ComputeDerivativeMode mode) { computeDerivativeMode = mode; }
     bool hasLayoutDerivativeModeNone() const { return computeDerivativeMode != LayoutDerivativeNone; }
     ComputeDerivativeMode getLayoutDerivativeModeNone() const { return computeDerivativeMode; }
-    void setLayoutPrimitiveCulling() { layoutPrimitiveCulling = true; }
-    bool getLayoutPrimitiveCulling() const { return layoutPrimitiveCulling; }
     bool setPrimitives(int m)
     {
         if (primitives != TQualifier::layoutNotSet)
@@ -885,25 +853,22 @@ public:
     bool getArithemeticInt8Enabled() const { return false; }
     bool getArithemeticInt16Enabled() const { return false; }
     bool getArithemeticFloat16Enabled() const { return false; }
-    void updateNumericFeature(TNumericFeatures::feature f, bool on) { }
 #else
     bool getArithemeticInt8Enabled() const {
-        return numericFeatures.contains(TNumericFeatures::shader_explicit_arithmetic_types) ||
-               numericFeatures.contains(TNumericFeatures::shader_explicit_arithmetic_types_int8);
+        return extensionRequested(E_GL_EXT_shader_explicit_arithmetic_types) ||
+               extensionRequested(E_GL_EXT_shader_explicit_arithmetic_types_int8);
     }
     bool getArithemeticInt16Enabled() const {
-        return numericFeatures.contains(TNumericFeatures::shader_explicit_arithmetic_types) ||
-               numericFeatures.contains(TNumericFeatures::gpu_shader_int16) ||
-               numericFeatures.contains(TNumericFeatures::shader_explicit_arithmetic_types_int16);
+        return extensionRequested(E_GL_EXT_shader_explicit_arithmetic_types) ||
+               extensionRequested(E_GL_AMD_gpu_shader_int16) ||
+               extensionRequested(E_GL_EXT_shader_explicit_arithmetic_types_int16);
     }
 
     bool getArithemeticFloat16Enabled() const {
-        return numericFeatures.contains(TNumericFeatures::shader_explicit_arithmetic_types) ||
-               numericFeatures.contains(TNumericFeatures::gpu_shader_half_float) ||
-               numericFeatures.contains(TNumericFeatures::shader_explicit_arithmetic_types_float16);
+        return extensionRequested(E_GL_EXT_shader_explicit_arithmetic_types) ||
+               extensionRequested(E_GL_AMD_gpu_shader_half_float) ||
+               extensionRequested(E_GL_EXT_shader_explicit_arithmetic_types_float16);
     }
-    void updateNumericFeature(TNumericFeatures::feature f, bool on)
-        { on ? numericFeatures.insert(f) : numericFeatures.erase(f); }
 #endif
 
 protected:
@@ -935,7 +900,23 @@ protected:
     bool specConstantPropagates(const TIntermTyped&, const TIntermTyped&);
     void performTextureUpgradeAndSamplerRemovalTransformation(TIntermNode* root);
     bool isConversionAllowed(TOperator op, TIntermTyped* node) const;
-    std::tuple<TBasicType, TBasicType> getConversionDestinationType(TBasicType type0, TBasicType type1, TOperator op) const;
+    std::tuple<TBasicType, TBasicType> getConversionDestinatonType(TBasicType type0, TBasicType type1, TOperator op) const;
+
+    // JohnK: I think this function should go away.
+    // This data structure is just a log to pass on to back ends.
+    // Versioning and extensions are handled in Version.cpp, with a rich
+    // set of functions for querying stages, versions, extension enable/disabled, etc.
+#ifdef GLSLANG_WEB
+    bool extensionRequested(const char *extension) const { return false; }
+#else
+    bool extensionRequested(const char *extension) const {
+        auto it = requestedExtensions.find(extension);
+        if (it != requestedExtensions.end()) {
+            return (it->second == EBhDisable) ? false : true;
+        }
+        return false;
+    }
+#endif
 
     static const char* getResourceName(TResourceType);
 
@@ -945,16 +926,11 @@ protected:
     typedef std::list<TCall> TGraph;
     TGraph callGraph;
 
-#ifdef GLSLANG_ANGLE
-    const EProfile profile = ECoreProfile;
-    const int version = 450;
-#else
     EProfile profile;                           // source profile
     int version;                                // source version
-#endif
     SpvVersion spvVersion;
     TIntermNode* treeRoot;
-    std::set<std::string> requestedExtensions;  // cumulation of all enabled or required extensions; not connected to what subset of the shader used them
+    std::map<std::string, TExtensionBehavior> requestedExtensions;  // cumulation of all enabled or required extensions; not connected to what subset of the shader used them
     TBuiltInResource resources;
     int numEntryPoints;
     int numErrors;
@@ -998,7 +974,6 @@ protected:
     ComputeDerivativeMode computeDerivativeMode;
     int primitives;
     int numTaskNVBlocks;
-    bool layoutPrimitiveCulling;
 
     // Base shift values
     std::array<unsigned int, EResCount> shiftBinding;
@@ -1025,7 +1000,6 @@ protected:
 
     std::unordered_map<std::string, int> uniformLocationOverrides;
     int uniformLocationBase;
-    TNumericFeatures numericFeatures;
 #endif
 
     std::unordered_set<int> usedConstantId; // specialization constant ids used

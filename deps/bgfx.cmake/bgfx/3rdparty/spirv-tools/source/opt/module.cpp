@@ -98,10 +98,7 @@ void Module::ForEachInst(const std::function<void(Instruction*)>& f,
   DELEGATE(ext_inst_debuginfo_);
   DELEGATE(annotations_);
   DELEGATE(types_values_);
-  for (auto& i : functions_) {
-    i->ForEachInst(f, run_on_debug_line_insts,
-                   /* run_on_non_semantic_insts = */ true);
-  }
+  for (auto& i : functions_) i->ForEachInst(f, run_on_debug_line_insts);
 #undef DELEGATE
 }
 
@@ -123,9 +120,8 @@ void Module::ForEachInst(const std::function<void(const Instruction*)>& f,
   for (auto& i : types_values_) DELEGATE(i);
   for (auto& i : ext_inst_debuginfo_) DELEGATE(i);
   for (auto& i : functions_) {
-    static_cast<const Function*>(i.get())->ForEachInst(
-        f, run_on_debug_line_insts,
-        /* run_on_non_semantic_insts = */ true);
+    static_cast<const Function*>(i.get())->ForEachInst(f,
+                                                       run_on_debug_line_insts);
   }
   if (run_on_debug_line_insts) {
     for (auto& i : trailing_dbg_line_info_) DELEGATE(i);

@@ -642,7 +642,7 @@ public:
 	}
 
 private:
-	void* blocks[24];
+	void* blocks[16];
 	size_t count;
 };
 

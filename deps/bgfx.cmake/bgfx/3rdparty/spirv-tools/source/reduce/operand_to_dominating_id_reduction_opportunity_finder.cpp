@@ -91,8 +91,7 @@ void OperandToDominatingIdReductionOpportunityFinder::
             // constant.  It is thus not relevant to this pass.
             continue;
           }
-          // Coherence check: we should not get here if the argument is a
-          // constant.
+          // Sanity check that we don't get here if the argument is a constant.
           assert(!context->get_constant_mgr()->GetConstantFromInst(def));
           if (def->type_id() != candidate_dominator->type_id()) {
             // The types need to match.

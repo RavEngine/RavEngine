@@ -174,9 +174,7 @@ void InstrumentPass::GenStageStreamWriteCode(uint32_t stage_idx,
           context()->GetBuiltinInputVarId(SpvBuiltInInstanceIndex),
           kInstVertOutInstanceIndex, base_offset_id, builder);
     } break;
-    case SpvExecutionModelGLCompute:
-    case SpvExecutionModelTaskNV:
-    case SpvExecutionModelMeshNV: {
+    case SpvExecutionModelGLCompute: {
       // Load and store GlobalInvocationId.
       uint32_t load_id = GenVarLoad(
           context()->GetBuiltinInputVarId(SpvBuiltInGlobalInvocationId),
@@ -887,6 +885,14 @@ bool InstrumentPass::InstProcessCallTreeFromRoots(InstProcessFunction& pfn,
 }
 
 bool InstrumentPass::InstProcessEntryPointCallTree(InstProcessFunction& pfn) {
+  // Check that format version 2 requested
+  if (version_ != 2u) {
+    if (consumer()) {
+      std::string message = "Unsupported instrumentation format requested";
+      consumer()(SPV_MSG_ERROR, 0, {0, 0, 0}, message.c_str());
+    }
+    return false;
+  }
   // Make sure all entry points have the same execution model. Do not
   // instrument if they do not.
   // TODO(greg-lunarg): Handle mixed stages. Technically, a shader module
@@ -916,7 +922,6 @@ bool InstrumentPass::InstProcessEntryPointCallTree(InstProcessFunction& pfn) {
       stage != SpvExecutionModelGLCompute &&
       stage != SpvExecutionModelTessellationControl &&
       stage != SpvExecutionModelTessellationEvaluation &&
-      stage != SpvExecutionModelTaskNV && stage != SpvExecutionModelMeshNV &&
       stage != SpvExecutionModelRayGenerationNV &&
       stage != SpvExecutionModelIntersectionNV &&
       stage != SpvExecutionModelAnyHitNV &&

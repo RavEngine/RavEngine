@@ -77,9 +77,11 @@
 #	define BX_NO_VTABLE
 #	define BX_PRINTF_ARGS(_format, _args) __attribute__( (format(__printf__, _format, _args) ) )
 
-#	if BX_CLANG_HAS_FEATURE(cxx_thread_local) \
-	|| (!BX_PLATFORM_OSX && (BX_COMPILER_GCC >= 40200) ) \
-	|| (BX_COMPILER_GCC >= 40500)
+#	if BX_CLANG_HAS_FEATURE(cxx_thread_local)
+#		define BX_THREAD_LOCAL __thread
+#	endif // BX_COMPILER_CLANG
+
+#	if (!BX_PLATFORM_OSX && (BX_COMPILER_GCC >= 40200)) || (BX_COMPILER_GCC >= 40500)
 #		define BX_THREAD_LOCAL __thread
 #	endif // BX_COMPILER_GCC
 
@@ -228,9 +230,9 @@
 #	define BX_CLASS(_class, ...) BX_MACRO_DISPATCHER(BX_CLASS_, __VA_ARGS__)(_class, __VA_ARGS__)
 #endif // BX_COMPILER_MSVC
 
-#ifndef BX_ASSERT
-#	define BX_ASSERT(_condition, ...) BX_NOOP()
-#endif // BX_ASSERT
+#ifndef BX_CHECK
+#	define BX_CHECK(_condition, ...) BX_NOOP()
+#endif // BX_CHECK
 
 #ifndef BX_TRACE
 #	define BX_TRACE(...) BX_NOOP()
@@ -238,7 +240,7 @@
 
 #ifndef BX_WARN
 #	define BX_WARN(_condition, ...) BX_NOOP()
-#endif // BX_ASSERT
+#endif // BX_CHECK
 
 // static_assert sometimes causes unused-local-typedef...
 BX_PRAGMA_DIAGNOSTIC_IGNORED_CLANG("-Wunused-local-typedef")
