@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
-
 project(RavEngine)
 
 # ========== CMake Boilerplate ==============
-
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -17,55 +15,21 @@ set(CMAKE_COLOR_MAKEFILE   ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
   message(SEND_ERROR "In-source builds are not allowed.")
-endif ()
+endif()
 
 # linux detection
 if(UNIX AND NOT APPLE)
 	set(LINUX TRUE CACHE INTERNAL "")
 endif()
 
-# Remove 'lib' prefix for shared libraries on Windows
-if (WIN32)
-  set(CMAKE_SHARED_LIBRARY_PREFIX "")
-endif ()
-
-
-function (add_subdirectory_with_folder folder_name)
-  function (add_library name type)
-    _add_library (${ARGV})
-    # Do not wrap creation of INTERFACE libraries
-    if (type STREQUAL INTERFACE)
-      return()
-    endif()
-
-    set_target_properties(${name}
-      PROPERTIES
-      FOLDER "${folder_name}"
-    )
-  endfunction()
-
-  function (add_executable name)
-    _add_executable (${ARGV})
-    set_target_properties(${name}
-      PROPERTIES
-      FOLDER "${folder_name}"
-    )
-  endfunction()
-
-  add_subdirectory (${ARGN})
-endfunction()
-
-
-if(MSVC)
-	list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
-endif()
-
 # enable multiprocessor compilation with vs
+# Remove 'lib' prefix for shared libraries on Windows
 if(MSVC)
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
   add_definitions(/MP)
   add_definitions(/Qpar)
+  list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
 endif()
-
 
 # ==================== Dependencies =====================
 
@@ -114,18 +78,16 @@ add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
 # ========== Building engine and test game ==============
 
 # get all sources for the library with glob
-file(GLOB SOURCES "src/*.cpp")
 if(APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
 	add_definitions("-x objective-c++")
 	set(CMAKE_EXE_LINKER_FLAGS "-framework ServiceManagement -framework Foundation -framework Cocoa -framework Metal -framework QuartzCore")
 endif()
-file(GLOB CHEADERS "include/${PROJECT_NAME}/*.h")
-file(GLOB HEADERS "include/${PROJECT_NAME}/*.hpp")
+file(GLOB SOURCES "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" "src/*.cpp")
 
 # register the library
-add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} ${CHEADERS} ${HEADERS})
+add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES})
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
@@ -140,12 +102,10 @@ target_include_directories("${PROJECT_NAME}"
 )
 
 # create the test executable
-file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp")
-file(GLOB TEST_HEADERS "${PROJECT_NAME}_Test/*.hpp")
-file(GLOB TEST_CHEADERS "${PROJECT_NAME}_Test/*.h")
+file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp" "${PROJECT_NAME}_Test/*.hpp" "${PROJECT_NAME}_Test/*.h")
 
 # creates a mac app if applicable
-add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES} ${TEST_HEADERS} ${TEST_CHEADERS})
+add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES})
 set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist")
 
 #startup project	
@@ -168,15 +128,13 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"LowLevelDynamics"
 	"SceneQuery"
 	"SimulationController"
+	#"PhysXGPU"
 	PUBLIC
 	"SDL2-static"
 	"bgfx"
 	"bx"
 	"bimg"
 )
-
-#target_link_libraries("${PROJECT_NAME}" PUBLIC "PhysXGPU")
-
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
 # copy DLLs
