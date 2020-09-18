@@ -1,0 +1,13 @@
+{
+	"varying" : "path/to/varying",
+	"stages":[
+		{
+			"file":"vs_cubes.sc",
+			"stage":"vertex"
+		},
+		{
+			"file":"fs_cubes.sc",
+			"stage":"fragment"
+		}
+	]
+}

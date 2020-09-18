@@ -44,9 +44,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory("${DEPS_DIR}/SDL2")
 
 # bgfx
-set(BGFX_BUILD_EXAMPLES OFF)
-set(BGFX_INSTALL_EXAMPLES OFF)
-set(BGFX_INSTALL OFF)
+set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
+set(BGFX_INSTALL OFF CACHE INTERNAL "")
 #set(BGFX_CONFIG_RENDERER_WEBGPU ON)
 add_subdirectory("${DEPS_DIR}/bgfx.cmake")
 
@@ -153,6 +153,16 @@ endif()
 target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
 # ====================== Shader compiler =====================
+
+set(SHADERCOMPILER "${PROJECT_NAME}_shaderc_auto")
+
+FILE(GLOB AUTOSHADERC "${SHADERCOMPILER}" "src/shaderc_auto/*.cpp")
+add_executable("${SHADERCOMPILER}" ${AUTOSHADERC})
+target_include_directories("${SHADERCOMPILER}" PRIVATE "${DEPS_DIR}/cxxopts/include" "${DEPS_DIR}/json/")
+
+add_dependencies("${SHADERCOMPILER}" "shaderc")	# shaderc must build before auto executable so that auto shader comp can work
+
+# define shader compilation actions
 define_property(GLOBAL PROPERTY ALL_SHADERS
 	BRIEF_DOCS "Aggregate shader list"
     FULL_DOCS "Aggregate shader list")
@@ -168,7 +178,7 @@ function (compile_shader_dir shader_dir)
 		add_custom_command(
 			PRE_BUILD
 			OUTPUT "${output_file}"
-			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shader-transpiler" -f "${SHADER}" -o .
+			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o .
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Shader Descriptor ${SHADER} => ${output_file}"
 			VERBATIM
@@ -176,19 +186,20 @@ function (compile_shader_dir shader_dir)
 	endforeach()
 endfunction()
 
+
 # compile all builtin shaders
-#compile_shader_dir("shaders")
-# TODO: compile user-defined shaders
+compile_shader_dir("shaders")
+#TODO: compile user-defined shaders
 
-# track all the shaders for compilation
-# get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
-# add_custom_target("${PROJECT_NAME}_ShaderCompiler" ALL DEPENDS ${all_shaders_property} "shader-transpiler")
-# add_dependencies("${PROJECT_NAME}" "${PROJECT_NAME}_ShaderCompiler")
+#track all the shaders for compilation
+get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
+add_custom_target("${SHADERCOMPILER}_Compile" ALL DEPENDS ${all_shaders_property} "${SHADERCOMPILER}")
+add_dependencies("${PROJECT_NAME}" "${SHADERCOMPILER}_Compile")
 
-# # mark shaders as RESOURECS for MacOS .app and Linux .appimage
-# set_target_properties("${PROJECT_NAME}" PROPERTIES
-# 	RESOURCE "${all_shaders_property}"
-# )
+# mark shaders as RESOURECS for MacOS .app and Linux .appimage
+set_target_properties("${PROJECT_NAME}" PROPERTIES
+	RESOURCE "${all_shaders_property}"
+)
 
 # INSTALL(CODE "
 # 	include(BundleUtilities)
