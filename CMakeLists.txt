@@ -178,7 +178,7 @@ function (compile_shader_dir shader_dir)
 		add_custom_command(
 			PRE_BUILD
 			OUTPUT "${output_file}"
-			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o .
+			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o . -i "${DEPS_DIR}/bgfx.cmake/bgfx/src"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Shader Descriptor ${SHADER} => ${output_file}"
 			VERBATIM
