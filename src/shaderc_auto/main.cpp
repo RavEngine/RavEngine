@@ -41,8 +41,8 @@ int main(int argc, char** argv){
 		platform = "osx";
 		profile = "metal";
 	#elif defined _WIN32
-		platform = "linux";
-		profile = "spirv";
+		platform = "windows";
+		//profile = "spirv";  //do not set a profile on Windows
 	#elif defined __linux__
 		platform = "linux";
 		profle = "spirv";
@@ -67,7 +67,12 @@ int main(int argc, char** argv){
 			path input = filename.parent_path() / path(string(stage["file"]));
 			string type = stage["stage"];
 			path out = outpath / (type+".bin");
-			string cmd = invocation + " -f \"" + input.string() + "\" -o \"" + out.string() + "\" -i \"" + includedir + "\" --type " + type + " --platform " + platform + " --profile " + profile + " --varyingdef " + varyingfile.string();
+			string cmd = invocation + " -f \"" + input.string() + "\" -o \"" + out.string() + "\" -i \"" + includedir + "\" --type " + type + " --platform " + platform + " --varyingdef " + varyingfile.string();
+
+			//no profile on windows directx
+			if (platform != "windows") {
+				cmd + " --profile " + profile;
+			}
 			
 			//flush before executing
 			cout.flush();
