@@ -94,7 +94,7 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 	MaterialManager::RegisterMaterial(this);
 }
 
-Material::Material() : Material("defaultMaterial","","") {}
+Material::Material() : Material("cubes","","") {}
 
 Material::~Material() {
 }

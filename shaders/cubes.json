@@ -1,5 +1,5 @@
 {
-	"varying" : "path/to/varying",
+	"varying" : "varying.def.sc",
 	"stages":[
 		{
 			"file":"vs_cubes.sc",

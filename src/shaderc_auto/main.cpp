@@ -2,6 +2,7 @@
 #include <fstream>
 #include <cxxopts.hpp>
 #include <nlohmann/json.hpp>
+#include <filesystem>
 
 using namespace std;
 using namespace nlohmann;
@@ -31,7 +32,7 @@ int main(int argc, char** argv){
 			data = json::parse(str);
 		}
 		
-		string varyingfile = data["varying"];
+		path varyingfile = filename.parent_path() / string(data["varying"]);
 		path outpath = current_path() / output;
 		string includedir = result["include"].as<string>();
 		
@@ -40,26 +41,33 @@ int main(int argc, char** argv){
 		platform = "osx";
 		profile = "metal";
 	#elif defined _WIN32
-		platform = "windows";
-		profile = "s_5";
+		platform = "linux";
+		profile = "spirv";
 	#elif defined __linux__
 		platform = "linux";
 		profle = "spirv";
 	#else
 		#error Platform not supported
 	#endif
+
+		string invocation =
+#ifdef _WIN32
+			"shaderc.exe";
+#elif defined __linux__ || defined __APPLE__
+			"./shaderc";
+#endif
 		
 		//make a directory for the shaders
 		outpath = outpath / "shaders";
 		create_directory(outpath);
 		outpath = outpath / filename.filename().replace_extension("");
 		create_directory(outpath);
-		
-		for(auto& stage : data["stages"]){
-			path input = filename.parent_path() / stage["file"];
+	
+		for(json& stage : data["stages"]){
+			path input = filename.parent_path() / path(string(stage["file"]));
 			string type = stage["stage"];
 			path out = outpath / (type+".bin");
-			string cmd = "./shaderc -f \"" + input.string() + "\" -o \"" + out.string() + "\" -i \"" + includedir + "\" --type " + type + " --platform " + platform + " -p " + profile;
+			string cmd = invocation + " -f \"" + input.string() + "\" -o \"" + out.string() + "\" -i \"" + includedir + "\" --type " + type + " --platform " + platform + " --profile " + profile + " --varyingdef " + varyingfile.string();
 			
 			//flush before executing
 			cout.flush();
