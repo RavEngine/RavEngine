@@ -20,12 +20,12 @@ mutex MaterialManager::mtx;
 
 // mapping names to types
 const unordered_map<string, ShaderStage> stagemap{
-	{"VS",ShaderStage::Vertex},
-	{"FS",ShaderStage::Fragment},
-	{"G",ShaderStage::Geometry},
-	{"TE",ShaderStage::TessEval},
-	{"TC",ShaderStage::TessControl},
-	{"C",ShaderStage::Compute},
+	{"vertex",ShaderStage::Vertex},
+	{"fragment",ShaderStage::Fragment},
+	{"geometry",ShaderStage::Geometry},
+	{"tesseval",ShaderStage::TessEval},
+	{"tesscontrol",ShaderStage::TessControl},
+	{"compute",ShaderStage::Compute},
 	
 };
 
@@ -34,7 +34,7 @@ void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
     transformMatrix = mat;
 }
 
-bgfx::ShaderHandle loadShader(const std::string filename){
+bgfx::ShaderHandle loadShader(const std::string& filename){
 	ifstream fin(filename, ios::binary);
 	ostringstream data;
 	data << fin.rdbuf();
@@ -82,13 +82,23 @@ Create a material given a shader. Also registers it in the material manager
 Material::Material(const std::string& name, const std::string& vertShaderSrc, const std::string& fragShaderSrc) : name(name) {
 	//check if material is already loaded
 	if (MaterialManager::HasMaterialByName(name)) {
-		throw new runtime_error("Material with name " + name + "is already allocated! Use GetMaterialByName to get it.");
+		throw runtime_error("Material with name " + name + "is already allocated! Use GetMaterialByName to get it.");
 	}
 	
-	//load from folder -> file
-	bgfx::ShaderHandle vsh = loadShader("vs_cubes.bin");
-	bgfx::ShaderHandle fsh = loadShader("fs_cubes.bin");
+	//get all shader files for this programs
+	path dir = path("shaders") / name;
+	
+	if (!exists(dir)){
+		throw runtime_error("Material at path " + dir.string() + " does not exist.");
+	}
+	
+	//must have a vertex and a fragment shader
+	bgfx::ShaderHandle vsh = loadShader(dir / "vertex.bin");
+	bgfx::ShaderHandle fsh = loadShader(dir / "fragment.bin");
 	program = bgfx::createProgram(vsh, fsh, true);
+	if (!bgfx::isValid(program)){
+		throw runtime_error("Material is invalid.");
+	}
 
 	//register material
 	MaterialManager::RegisterMaterial(this);

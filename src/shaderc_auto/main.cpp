@@ -71,7 +71,7 @@ int main(int argc, char** argv){
 
 			//no profile on windows directx
 			if (platform != "windows") {
-				cmd + " --profile " + profile;
+				cmd += " --profile " + profile;
 			}
 			
 			//flush before executing
