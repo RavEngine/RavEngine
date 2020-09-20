@@ -5,6 +5,7 @@
 #include "RenderEngine.hpp"
 #include <SDL_events.h>
 #include <bgfx/bgfx.h>
+#include "AppEnd.h"
 
 using namespace std;
 using namespace RavEngine;
@@ -81,5 +82,11 @@ int App::run(int argc, char** argv) {
 	}
 
 	bgfx::shutdown();
+	
+	atexit([](){
+		RAVENGINE_ATEXIT = true;
+		cout << "atexit" << endl;
+	});
+	
     return OnShutdown();
 }

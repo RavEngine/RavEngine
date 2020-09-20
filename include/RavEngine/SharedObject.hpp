@@ -16,13 +16,28 @@
 #include <cassert>
 #include "Ref.hpp"
 #include "SpinLock.hpp"
-#include <unordered_set>
+#include "AppEnd.h"
+#include <list>
 
 namespace RavEngine {
 	class SharedObject {
 		std::atomic<int> refcount = 0;
 		SpinLock lock;
-		std::unordered_set<WeakRefBase*> weakptrs;
+		
+		// for the hashmap - prevents investigating objects and instead only uses the addresses
+//		struct WeakHasherByPtr{
+//			size_t operator()(const WeakRefBase* ptr) const{
+//				return reinterpret_cast<size_t>(ptr);
+//			}
+//		};
+//
+//		struct WeakCompareByPtr{
+//			bool operator()(const WeakRefBase* ptr1, const WeakRefBase* ptr2) const{
+//				return reinterpret_cast<uintptr_t>(ptr1) == reinterpret_cast<uintptr_t>(ptr2);
+//			}
+//		};
+		
+		std::list<WeakRefBase*> weakptrs;
 	public:
 		virtual ~SharedObject() {
 			//notify all tracked WeakRefs
@@ -73,15 +88,19 @@ namespace RavEngine {
 		 Invoked by WeakRef<T> when they track a new sharedobject.
 		 */
 		void TrackWeak(WeakRefBase* weakptr){
-			lock.lock();
-			weakptrs.insert(weakptr);
-			lock.unlock();
+			if(!RAVENGINE_ATEXIT){
+				lock.lock();
+				weakptrs.push_back(weakptr);
+				lock.unlock();
+			}
 		}
 		
 		void UntrackWeak(WeakRefBase* weakptr){
-			lock.lock();
-			weakptrs.erase(weakptr);
-			lock.unlock();
+			if(!RAVENGINE_ATEXIT){
+				lock.lock();
+				weakptrs.remove(weakptr);
+				lock.unlock();
+			}
 		}
 	};
 }
