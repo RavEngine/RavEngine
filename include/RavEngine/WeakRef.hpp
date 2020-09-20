@@ -45,6 +45,7 @@ public:
     //construct from pointer
     WeakRef(T* obj) {
         if (obj == nullptr) {
+            ptr = nullptr;
             return;
         }
         static_assert(std::is_base_of<RavEngine::SharedObject, T>::value, "T must derive from SharedObject!");
@@ -62,10 +63,17 @@ public:
         }
 
         //dissasociate with old pointer
-        Dissassociate(reinterpret_cast<RavEngine::SharedObject*>(ptr));
+        if (ptr != nullptr) {
+            Dissassociate(reinterpret_cast<RavEngine::SharedObject*>(ptr));
+        }
         ptr = other.get();
         //associate with new pointer
-        Associate(reinterpret_cast<RavEngine::SharedObject*>(ptr));
+        if (ptr != nullptr) {
+            Associate(reinterpret_cast<RavEngine::SharedObject*>(ptr));
+        }
+        else {
+            setNull();
+        }
         return *this;
     }
 

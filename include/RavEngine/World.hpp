@@ -71,7 +71,7 @@ namespace RavEngine {
 		//last frame time, frame delta time, framerate scale, maximum frame time
 		timePoint lastFrameTime = clocktype::now();
 		timeDiff deltaTimeMicroseconds;
-		const timeDiff maxTimeStep = std::chrono::milliseconds((long)16.6);
+		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
 
 		template<class T>
 		void RegisterSystem(Ref<T> r_instance) {

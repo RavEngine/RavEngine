@@ -34,9 +34,6 @@ void TestWorld::ResetCam() {
 }
 
 void TestWorld::posttick(float fpsScale){
-    //bgfx::dbgTextPrintf(0, 7, 0x4f, "position (%f, %f, %f)", pos.x, pos.y, pos.z);
-    //bgfx::dbgTextPrintf(0, 8, 0x4f, "rotation (%f, %f, %f)", rot.x, rot.y, rot.z);
-
     auto rotation = quaternion(vector3(0, 0, 0.01 * fpsScale));
     anonymous->transform()->LocalRotateDelta(rotation);
     //anonymous->transform()->LocalScaleDelta(vector3(0.01 * fpsScale,0,0));
