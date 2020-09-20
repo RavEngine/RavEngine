@@ -41,5 +41,5 @@ RavEngine::Entity::Entity(){
 
 RavEngine::Entity::~Entity(){
     components.clear();
-    worldptr = nullptr;
+    //worldptr = nullptr;
 }

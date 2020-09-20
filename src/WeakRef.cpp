@@ -11,6 +11,16 @@
 using namespace std;
 using namespace RavEngine;
 
-//static definitions
-mutex WeakRefBase::mtx;
-WeakRefBase::TrackedPtrWrapper WeakRefBase::ptrs;
+void WeakRefBase::Associate(RavEngine::SharedObject* obj){
+	if (obj == nullptr){
+		return;
+	}
+	obj->TrackWeak(this);
+}
+
+void WeakRefBase::Dissassociate(RavEngine::SharedObject* obj){
+	if (obj == nullptr){
+		return;
+	}
+	obj->UntrackWeak(this);
+}

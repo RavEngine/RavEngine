@@ -6,8 +6,6 @@
 //
 
 # pragma once
-#include <unordered_set>
-#include <unordered_map>
 #include <mutex>
 
 namespace RavEngine {
@@ -17,55 +15,20 @@ namespace RavEngine {
 // helper base class to ensure static member is shared, do not use!
 class WeakRefBase {
 protected:
-    static std::mutex mtx;
-    //this tracks all SharedObjects for weak pointer validity
-    //the first address is the address of the tracked object, and the second tracks the addresses of all weak pointers referring to it
-    typedef std::unordered_map<void*, std::unordered_set<WeakRefBase*>> TrackedPtrStore;
+	/**
+	 Update the tracking structure to know about this connection
+	 @param obj the pointer to associate this WeakRef with
+	 */
+	void Associate(RavEngine::SharedObject* obj);
 	
-	struct TrackedPtrWrapper{
-		bool isValid = true;
-		TrackedPtrStore WeakReferences;
-		
-		//if the static destructor gets called before ready, this flag is set to false
-		//Then code can check for it to avoid segmentation fault
-		~TrackedPtrWrapper(){
-            //notify all stored WeakRefs that they are now dangling
-            for (auto& p : WeakReferences) {
-                RavEngine::SharedObject* ptr = static_cast<RavEngine::SharedObject*>(p.first);
-                Remove(ptr);
-            }
-
-			isValid = false;
-		}
-	};
-    static TrackedPtrWrapper ptrs;
-
-    virtual void notifyDangling() = 0;
+	/**
+	 Update the tracking structure to forget about this connection
+	 @param obj the pointer to dissassociate this WeakRef with
+	 */
+	void Dissassociate(RavEngine::SharedObject* obj);
+	
 public:
-    /**
-    Remove a SharedObject from the WeakReferences map. This should only be done in SharedObject destructors.
-        @param obj the object to remove
-        */
-    static void Remove(RavEngine::SharedObject* obj) {
-        //only act if the structure is tracking this pointer
-		if (!ptrs.isValid){
-			return;
-		}
-        auto addr = obj;
-        mtx.lock();
-        auto found = ptrs.WeakReferences.find(addr);
-        if (found != ptrs.WeakReferences.end()) {
-            const auto& set = ptrs.WeakReferences.at(addr);
-            for (const auto& wr : set) {
-                //signal that the weak object's pointer has been invalidated
-                wr->notifyDangling();
-            }
-            //remove from the map
-            ptrs.WeakReferences.erase(found);
-        }
-        mtx.unlock();
-    }
-
+	virtual void notifyDangling() = 0;
 };
 
 
@@ -77,32 +40,6 @@ template<typename T>
 class WeakRef : public WeakRefBase {
 protected:
     T* ptr;
-
-    /**
-        Update the tracking structure to know about this connection
-        @param obj the pointer to associate this WeakRef with
-        */
-    void Associate(T* obj) {
-        if (ptr == nullptr || !ptrs.isValid) {
-            return;
-        }
-        mtx.lock();
-        ptrs.WeakReferences[obj].insert(this);
-        mtx.unlock();
-    }
-
-    /**
-    Update the tracking structure to forget about this connection
-    @param obj the pointer to dissassociate this WeakRef with
-    */
-    void Dissassociate(T* obj) {
-        if (ptr == nullptr || !ptrs.isValid) {
-            return;
-        }
-        mtx.lock();
-        ptrs.WeakReferences[obj].erase(this);
-        mtx.unlock();
-    }
 public:
 
     //construct from pointer
@@ -125,10 +62,10 @@ public:
         }
 
         //dissasociate with old pointer
-        Dissassociate(ptr);
+        Dissassociate(reinterpret_cast<RavEngine::SharedObject*>(ptr));
         ptr = other.get();
         //associate with new pointer
-        Associate(ptr);
+        Associate(reinterpret_cast<RavEngine::SharedObject*>(ptr));
         return *this;
     }
 
@@ -140,7 +77,7 @@ public:
     ~WeakRef() {
         //untrack self
         if (ptr != nullptr) {
-            Dissassociate(ptr);
+            Dissassociate(reinterpret_cast<RavEngine::SharedObject*>(ptr));
             setNull();
         }
     }

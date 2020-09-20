@@ -1,5 +1,6 @@
 #pragma once
 #include "WeakRef.hpp"
+#include <unordered_map>
 
 namespace RavEngine {
 	class InputManager;

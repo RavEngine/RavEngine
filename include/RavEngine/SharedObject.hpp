@@ -15,14 +15,23 @@
 #include "WeakRef.hpp"
 #include <cassert>
 #include "Ref.hpp"
+#include "SpinLock.hpp"
+#include <unordered_set>
 
 namespace RavEngine {
 	class SharedObject {
 		std::atomic<int> refcount = 0;
+		SpinLock lock;
+		std::unordered_set<WeakRefBase*> weakptrs;
 	public:
 		virtual ~SharedObject() {
+			//notify all tracked WeakRefs
 			//so that WeakReferences know that their pointers are invalid
-			WeakRefBase::Remove(this);
+			lock.lock();
+			for(const auto& ptr : weakptrs){
+				ptr->notifyDangling();
+			}
+			lock.unlock();
 		}
 
 		/**
@@ -42,14 +51,6 @@ namespace RavEngine {
 			}
 		}
 
-		/**
-		 Get a safe non-owning reference to the current object
-		 @return a WeakReference to this object
-		 */
-		 /*WeakSharedObjectRef makeWeak(){
-			 return WeakSharedObjectRef(this);
-		 }*/
-
 		 /**
 		 The default hash function. Uses the pointer value, but may be overridden in subclasses.
 		 This function is used when hashing the ref objects.
@@ -66,6 +67,21 @@ namespace RavEngine {
 		*/
 		bool operator==(const SharedObject* other) const {
 			return reinterpret_cast<uintptr_t>(this) == reinterpret_cast<uintptr_t>(other);;
+		}
+		
+		/**
+		 Invoked by WeakRef<T> when they track a new sharedobject.
+		 */
+		void TrackWeak(WeakRefBase* weakptr){
+			lock.lock();
+			weakptrs.insert(weakptr);
+			lock.unlock();
+		}
+		
+		void UntrackWeak(WeakRefBase* weakptr){
+			lock.lock();
+			weakptrs.erase(weakptr);
+			lock.unlock();
 		}
 	};
 }
