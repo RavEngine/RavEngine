@@ -8,6 +8,18 @@ using namespace std;
 using namespace nlohmann;
 using namespace std::filesystem;
 
+string dx_profileprefix(const std::string& stage) {
+	if (stage == "vertex") {
+		return "v";		//vertex
+	}
+	else if (stage == "fragment") {
+		return "p";		//fragment
+	}
+	else {
+		return "c";		//compute
+	}
+}
+
 int main(int argc, char** argv){
 	cxxopts::Options options("RavEngine_shaderc_auto", "Automated shader compiler. Do not invoke directly.");
 	options.add_options()
@@ -42,7 +54,7 @@ int main(int argc, char** argv){
 		profile = "metal";
 	#elif defined _WIN32
 		platform = "windows";
-		//profile = "spirv";  //do not set a profile on Windows
+		profile = "s_5";  //do not set a profile on Windows
 	#elif defined __linux__
 		platform = "linux";
 		profle = "spirv";
@@ -72,6 +84,9 @@ int main(int argc, char** argv){
 			//no profile on windows directx
 			if (platform != "windows") {
 				cmd += " --profile " + profile;
+			}
+			else {
+				cmd += " --profile " + (dx_profileprefix(type) + profile + "_0");
 			}
 			
 			//flush before executing

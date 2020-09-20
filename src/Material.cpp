@@ -93,8 +93,8 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 	}
 	
 	//must have a vertex and a fragment shader
-	bgfx::ShaderHandle vsh = loadShader(dir / "vertex.bin");
-	bgfx::ShaderHandle fsh = loadShader(dir / "fragment.bin");
+	bgfx::ShaderHandle vsh = loadShader((dir / path("vertex.bin")).string());
+	bgfx::ShaderHandle fsh = loadShader((dir / path("fragment.bin")).string());
 	program = bgfx::createProgram(vsh, fsh, true);
 	if (!bgfx::isValid(program)){
 		throw runtime_error("Material is invalid.");

@@ -9,7 +9,7 @@ namespace RavEngine{
 class SpinLock{
 	std::atomic_flag flag;
 public:
-	SpinLock(): flag(ATOMIC_FLAG_INIT) {}
+	//SpinLock() : flag(ATOMIC_FLAG_INIT) {}
 	
 	void lock(){
 		while(flag.test_and_set());
@@ -19,4 +19,5 @@ public:
 		flag.clear();
 	}
 };
+
 }

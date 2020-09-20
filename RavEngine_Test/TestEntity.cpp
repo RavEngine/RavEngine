@@ -39,8 +39,8 @@ TestEntity::TestEntity() : Entity(){
     //default staticmesh
     auto mesh = AddComponent<StaticMesh>(new StaticMesh());
     if (sharedMatInstance.isNull()) {
-        if (MaterialManager::HasMaterialByName("defaultMaterial")) {
-            sharedMatInstance = MaterialManager::GetMaterialByName("defaultMaterial");
+        if (MaterialManager::HasMaterialByName("cubes")) {
+            sharedMatInstance = MaterialManager::GetMaterialByName("cubes");
         }
         else {
             sharedMatInstance = new Material();
