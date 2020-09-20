@@ -82,22 +82,6 @@ RavEngine::RenderEngine::~RenderEngine()
 }
 
 /**
- Make the rendering system aware of an object
- @param e the entity to load
- */
-void RenderEngine::Spawn(Ref<Entity> e){
-	
-}
-
-/**
- Remove an entity from the system. This does NOT destroy the entity from the world.
- @param e the entity to remove
- */
-void RenderEngine::Destroy(Ref<Entity> e){
-	
-}
-
-/**
  Render one frame using the current state of every object in the world
  */
 void RenderEngine::Draw(){

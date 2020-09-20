@@ -12,18 +12,16 @@
 #include "RenderEngine.hpp"
 #include "ThreadPool.hpp"
 #include <chrono>
-#include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
-
+#include "SpinLock.hpp"
 
 typedef std::chrono::high_resolution_clock clocktype;
 typedef std::chrono::microseconds timeDiff;
 typedef std::chrono::seconds deltaSeconds;
 typedef std::chrono::time_point<clocktype> timePoint;
-
 
 namespace RavEngine {
 	class Entity;
@@ -31,8 +29,8 @@ namespace RavEngine {
 
 	class World : public SharedObject {
 	protected:
-		std::mutex mtx;
-		std::mutex component_op_mtx;
+		SpinLock mtx;
+		SpinLock component_op_mtx;
 
 		//for adding and removing components on spawned entities
 		struct component_operation {

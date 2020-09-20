@@ -10,7 +10,6 @@
 #include <iostream>
 #include <algorithm>
 #include "System.hpp"
-#include "LockLogger.hpp"
 #include "ScriptComponent.hpp"
 
 using namespace std;
@@ -42,9 +41,8 @@ void RavEngine::World::tick() {
 			c->Start();
 		}
         
-        //make the render engine and the physics system aware of this entity
+        //make the physics system aware of this entity
         Solver->Spawn(e);
-        Renderer->Spawn(e);
 		
 		//for each type of component (pair of type : list), make it available to the World
 		allcomponents.AddComponentsFrom(e->Components());
@@ -79,8 +77,7 @@ void RavEngine::World::tick() {
 		//also remove its components
 		allcomponents.RemoveComponentsInOtherFromThis(e->Components());
         
-        //remove the objects from the Render and Physics systems
-        Renderer->Destroy(e);
+        //remove the objects from the Physics system
         Solver->Destroy(e);
 		Entities.erase(e);
 	}
