@@ -13,20 +13,10 @@
 #include "ScriptComponent.hpp"
 
 using namespace std;
-using namespace std::chrono;
 using namespace RavEngine;
 
-const float RavEngine::World::evalNormal = 60;
-
-void RavEngine::World::tick() {
+void RavEngine::World::Tick(float scale) {
 	
-	//setup framerate scaling for next frame
-	auto now = clocktype::now();
-	//will cause engine to run in slow motion if the frame rate is <= 1fps
-	deltaTimeMicroseconds = std::min(duration_cast<timeDiff>((now-lastFrameTime)),maxTimeStep);
-
-    float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
-    float scale = deltaSeconds * evalNormal;
     pretick(scale);
 	
 	//spawn entities that are pending spawn
@@ -50,7 +40,7 @@ void RavEngine::World::tick() {
 	PendingSpawn.clear();
 	
 	//Tick the game code
-	tick(scale);
+	TickHook(scale);
 
 	//process component add and removal on spawned entities
 	while (!component_addremove.empty()) {
@@ -87,9 +77,6 @@ void RavEngine::World::tick() {
     Renderer->Draw();
     
     posttick(scale);
-    
-	lastFrameTime = now;
-
 }
 
 
@@ -136,7 +123,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
  Tick all of the objects in the world, multithreaded
  @param fpsScale the scale factor to apply to all operations based on the frame rate
  */
-void RavEngine::World::tick(float fpsScale) {
+void RavEngine::World::TickHook(float fpsScale) {
 	//bgfx::dbgTextPrintf(0, 5, 0x4f, "FPS Scale: %lf", fpsScale);
 
 	//Determine the number of threads needed

@@ -11,17 +11,11 @@
 #include "PhysicsSolver.hpp"
 #include "RenderEngine.hpp"
 #include "ThreadPool.hpp"
-#include <chrono>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
 #include "SpinLock.hpp"
-
-typedef std::chrono::high_resolution_clock clocktype;
-typedef std::chrono::microseconds timeDiff;
-typedef std::chrono::seconds deltaSeconds;
-typedef std::chrono::time_point<clocktype> timePoint;
 
 namespace RavEngine {
 	class Entity;
@@ -66,21 +60,32 @@ namespace RavEngine {
 		//Render engine
 		Ref<RenderEngine> Renderer = new RenderEngine(this);
 
-		//last frame time, frame delta time, framerate scale, maximum frame time
-		timePoint lastFrameTime = clocktype::now();
-		timeDiff deltaTimeMicroseconds;
-		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
-
 		template<class T>
 		void RegisterSystem(Ref<T> r_instance) {
 			//static_assert(std::is_base_of<System, T>::value, "Can only register systems");
 			Systems.insert(r_instance);
 		}
 
-	public:
-		static const float evalNormal;	//normal speed is 60 hz
+		/**
+		Called before ticking components and entities synchronously
+		 @param fpsScale the scale factor calculated
+		 */
+		virtual void pretick(float fpsScale) {}
+		virtual void TickHook(float);
+		/**
+		 Called after physics and rendering synchronously
+		 @param fpsScale the scale factor calculated
+		 */
+		virtual void posttick(float fpsScale) {}
 
-		void tick();
+	public:
+
+		/**
+		* Evaluate the world given a scale factor. One tick = 1/App::EvalNormal
+		* @param the tick fraction to evaluate
+		* @note the GameplayStatics CurrentWorld is ticked automatically in the App
+		*/
+		void Tick(float);
 
 		/**
 		Resize this world's viewport to fit its window
@@ -89,17 +94,6 @@ namespace RavEngine {
 			Renderer->resize();
 		}
 
-		/**
-		Called before ticking components and entities synchronously
-		 @param fpsScale the scale factor calculated
-		 */
-		virtual void pretick(float fpsScale) {}
-		virtual void tick(float);
-		/**
-		 Called after physics and rendering synchronously
-		 @param fpsScale the scale factor calculated
-		 */
-		virtual void posttick(float fpsScale) {}
 		World();
 
 		//spawn function (takes an Entity)

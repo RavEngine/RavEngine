@@ -39,7 +39,7 @@ void InputManager::InitGameControllers() {
     SDL_GameControllerEventState(SDL_ENABLE);
 }
 
-void InputManager::tick() {
+void InputManager::Tick() {
     //action mappings
     for (Event& evt : actionValues){
         //get the list of functions to invoke
@@ -101,13 +101,15 @@ void InputManager::SDL_key(bool state, int charcode)
  * @param xvel the x velocity of the cursor
  * @param yvel the y velocity of the cursor
  */
-void InputManager::SDL_mousemove(float x, float y, int xvel, int yvel)
+void InputManager::SDL_mousemove(float x, float y, int xvel, int yvel, float scale)
 {
+    const float velscale = 1 / scale;
+
     //mouse movements are axis events only
     reg_axis(static_cast<int>(Special::MOUSEMOVE_X),x);
     reg_axis(static_cast<int>(Special::MOUSEMOVE_Y),y);
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_XVEL), xvel);
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), yvel);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_XVEL), xvel * velscale);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), yvel * velscale);
 }
 
 void InputManager::SDL_mousekey(bool state, int charcode)

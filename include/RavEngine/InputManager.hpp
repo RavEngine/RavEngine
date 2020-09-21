@@ -199,11 +199,11 @@ namespace RavEngine {
         void InitGameControllers();
 
         //based on the state of inputs, invoke bound actions
-        virtual void tick();
+        virtual void Tick();
 
         //methods to get input values
         void SDL_key(bool state, int charcode);
-        void SDL_mousemove(float x, float y, int xvel, int yvel);
+        void SDL_mousemove(float x, float y, int xvel, int yvel, float scale);
         void SDL_mousekey(bool state, int charcode);
         void SDL_ControllerAxis(int axisID, float value);
 

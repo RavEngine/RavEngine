@@ -6,9 +6,13 @@
 #include <SDL_events.h>
 #include <bgfx/bgfx.h>
 #include "AppEnd.h"
+#include <algorithm>
 
 using namespace std;
 using namespace RavEngine;
+using namespace std::chrono;
+
+const float RavEngine::App::evalNormal = 60;
 
 int App::run(int argc, char** argv) {
 
@@ -21,6 +25,13 @@ int App::run(int argc, char** argv) {
 	bool exit = false;
 	SDL_Event event;
 	while (!exit) {
+		//setup framerate scaling for next frame
+		auto now = clocktype::now();
+		//will cause engine to run in slow motion if the frame rate is <= 1fps
+		deltaTimeMicroseconds = std::min(duration_cast<timeDiff>((now - lastFrameTime)), maxTimeStep);
+		float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
+		float scale = deltaSeconds * evalNormal;
+
 		auto windowflags = SDL_GetWindowFlags(RenderEngine::GetWindow());
 		while (SDL_PollEvent(&event)) {
 
@@ -50,7 +61,7 @@ int App::run(int argc, char** argv) {
 				break;
 			case SDL_MOUSEMOTION:
 				if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
-					inputManager->SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel);
+					inputManager->SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel, scale);
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
@@ -73,12 +84,13 @@ int App::run(int argc, char** argv) {
 				break;
 			}
 		}
-		inputManager->tick();
-		GameplayStatics::currentWorld->tick();
+		inputManager->Tick();
+		GameplayStatics::currentWorld->Tick(scale);
 
 #ifdef LIMIT_TICK
 		this_thread::sleep_for(tickrate);
 #endif
+		lastFrameTime = now;
 	}
 
 	bgfx::shutdown();
