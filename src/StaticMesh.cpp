@@ -63,8 +63,8 @@ StaticMesh::StaticMesh() : RenderableComponent() {
 
 RavEngine::StaticMesh::~StaticMesh()
 {
-//	bgfx::destroy(vertexBuffer);
-//	bgfx::destroy(indexBuffer);
+	bgfx::destroy(vertexBuffer);
+	bgfx::destroy(indexBuffer);
 }
 
 void RavEngine::StaticMesh::SetMaterial(Ref<Material> mat)
