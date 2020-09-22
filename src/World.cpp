@@ -118,6 +118,33 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	return true;
 }
 
+void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
+    //get the query info
+    std::list<Ref<Entity>> entities;
+    auto queries = system->QueryTypes();
+    for (const auto& query : queries) {
+        auto temp = allcomponents.GetAllComponentsOfSubclassTypeIndex<Component>(query);
+        for (auto& e : temp) {
+            entities.push_back(e.get()->getOwner());
+        }
+    }
+    vector<future<void>> futures(entities.size());
+    int i = 0;
+    for (const auto& entity : entities) {
+        //execute the system on each component
+        auto ticker = [&]() {
+            system->Tick(fpsScale, entity);
+        };
+        futures[i] = (threadpool.enqueue(ticker));
+        ++i;
+    }
+
+    //wait for all to complete
+    for (auto& f : futures) {
+        f.get();
+    }
+}
+
 /**
  Tick all of the objects in the world, multithreaded
  @param fpsScale the scale factor to apply to all operations based on the frame rate
@@ -125,36 +152,11 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 void RavEngine::World::TickHook(float fpsScale) {
 	//bgfx::dbgTextPrintf(0, 5, 0x4f, "FPS Scale: %lf", fpsScale);
 
-	//Determine the number of threads needed
-	const long numthreads = std::min<long>(Entities.size(), numcpus);
-	const int tasksPerThread = ceil((double)Entities.size() / numthreads);
-
-	//bgfx::dbgTextPrintf(0, 6, 0x4f, "Threads: %d (%d per, %d total)", numthreads, tasksPerThread, Entities.size());
-
+    //tick the non-script systems
 	for (auto& system : Systems) {
-		//get the query info
-		std::list<Ref<Entity>> entities;
-		auto queries = system->QueryTypes();
-		for (const auto& query : queries) {
-			auto temp = allcomponents.GetAllComponentsOfSubclassTypeIndex<Component>(query);
-			for (auto& e : temp) {
-				entities.push_back(e.get()->getOwner());
-			}
-		}
-		vector<future<void>> futures(entities.size());
-		int i = 0;
-		for (const auto& entity : entities) {
-			//execute the system on each component
-			auto ticker = [&]() {
-				system->Tick(fpsScale, entity);
-			};
-			futures[i] = (threadpool.enqueue(ticker));
-			++i;
-		}
-
-		//wait for all to complete
-		for (auto& f : futures) {
-			f.get();
-		}
+        TickSystem(system, fpsScale);
 	}
+    
+    //now tick the ScriptSystem
+    TickSystem(Scripts, fpsScale);
 }

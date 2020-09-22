@@ -16,6 +16,8 @@
 #include <unordered_set>
 #include <set>
 #include "SpinLock.hpp"
+#include <type_traits>
+#include "ScriptSystem.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -57,10 +59,14 @@ namespace RavEngine {
 
 		//physics system
 		Ref<PhysicsSolver> Solver = new PhysicsSolver();
+        
+        //script system
+        Ref<ScriptSystem> Scripts = new ScriptSystem();
 
 		template<class T>
 		void RegisterSystem(Ref<T> r_instance) {
 			//static_assert(std::is_base_of<System, T>::value, "Can only register systems");
+            static_assert(!std::is_same<T, ScriptSystem>::value, "Cannot register ScriptSystem! It is already registered.");
 			Systems.insert(r_instance);
 		}
 
@@ -75,6 +81,13 @@ namespace RavEngine {
 		 @param fpsScale the scale factor calculated
 		 */
 		virtual void posttick(float fpsScale) {}
+        
+        /**
+         * Tick a System on all available threads. For internal use only. Blocks until all have finished.
+         * @param system the System to tick
+         * @param scale the frame rate scale to pass on to the System's tick method
+         */
+        void TickSystem(Ref<System> system, float scale);
 
 	public:
 

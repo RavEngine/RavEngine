@@ -124,8 +124,6 @@ TestWorld::TestWorld() : World() {
     Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
     RegisterSystem(plsw);
 
-    RegisterSystem(Ref<ScriptSystem>(new ScriptSystem()));
-
     Ref<PhysicsLinkSystemRead> plsr = new PhysicsLinkSystemRead();
     RegisterSystem(plsr);
 
