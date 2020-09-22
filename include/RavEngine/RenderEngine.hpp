@@ -8,8 +8,6 @@
 #pragma once
 #include "SharedObject.hpp"
 #include "Entity.hpp"
-#include <list>
-#include <memory>
 #include "WeakRef.hpp"
 
 struct SDL_Window;
@@ -20,11 +18,10 @@ namespace RavEngine {
     class RenderEngine : public SharedObject {
     public:
         virtual ~RenderEngine();
-        RenderEngine(const WeakRef<World>& w);
-        void Draw();
+        RenderEngine();
+        void Draw(Ref<World>);
 
         static const std::string currentBackend();
-        WeakRef<World> world;
 
 		static SDL_Window* const GetWindow(){
 			return window;

@@ -74,7 +74,6 @@ void RavEngine::World::Tick(float scale) {
 	PendingDestruction.clear();
 	
     Solver->Tick(scale);
-    Renderer->Draw();
     
     posttick(scale);
 }

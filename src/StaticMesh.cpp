@@ -53,6 +53,10 @@ StaticMesh::StaticMesh() : RenderableComponent() {
 	//create buffers
 	vertexBuffer = bgfx::createVertexBuffer(bgfx::makeRef(vertices, sizeof(vertices)), pcvDecl);
 	indexBuffer = bgfx::createIndexBuffer(bgfx::makeRef(indices, sizeof(indices)));
+	
+	if(! bgfx::isValid(vertexBuffer) || !bgfx::isValid(indexBuffer)){
+		throw runtime_error("Buffers could not be created.");
+	}
    
     RegisterAllAlternateTypes();
 }

@@ -46,7 +46,7 @@ int App::run(int argc, char** argv) {
 				case SDL_WINDOWEVENT_RESIZED:
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 					SDL_GetWindowSize(RenderEngine::GetWindow(), &width, &height);
-					GameplayStatics::currentWorld->resize();
+					Renderer->resize();
 					break;
 
 				case SDL_WINDOWEVENT_CLOSE:
@@ -86,6 +86,7 @@ int App::run(int argc, char** argv) {
 		}
 		inputManager->Tick();
 		GameplayStatics::currentWorld->Tick(scale);
+		Renderer->Draw(GameplayStatics::currentWorld);
 
 #ifdef LIMIT_TICK
 		this_thread::sleep_for(tickrate);

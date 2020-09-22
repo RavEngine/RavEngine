@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include "RenderEngine.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -40,6 +41,8 @@ namespace RavEngine {
 		timePoint lastFrameTime = clocktype::now();
 		timeDiff deltaTimeMicroseconds;
 		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
+		//Render engine
+		Ref<RenderEngine> Renderer = new RenderEngine();
 	};
 }
 #define START_APP(APP) int main(int argc, char** argv){APP a; return a.run(argc, argv);}

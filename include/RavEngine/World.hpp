@@ -57,8 +57,6 @@ namespace RavEngine {
 
 		//physics system
 		Ref<PhysicsSolver> Solver = new PhysicsSolver();
-		//Render engine
-		Ref<RenderEngine> Renderer = new RenderEngine(this);
 
 		template<class T>
 		void RegisterSystem(Ref<T> r_instance) {
@@ -86,13 +84,6 @@ namespace RavEngine {
 		* @note the GameplayStatics CurrentWorld is ticked automatically in the App
 		*/
 		void Tick(float);
-
-		/**
-		Resize this world's viewport to fit its window
-		*/
-		void resize() {
-			Renderer->resize();
-		}
 
 		World();
 

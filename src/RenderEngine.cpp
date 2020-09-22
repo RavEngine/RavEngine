@@ -71,7 +71,7 @@ inline bool sdlSetWindow(SDL_Window* _window)
 Construct a render engine instance
 @param w the owning world for this engine instance
 */
-RenderEngine::RenderEngine(const WeakRef<World>& w) : world(w) {
+RenderEngine::RenderEngine() {
 	//call Init()
 	Init();
 }
@@ -84,9 +84,8 @@ RavEngine::RenderEngine::~RenderEngine()
 /**
  Render one frame using the current state of every object in the world
  */
-void RenderEngine::Draw(){
+void RenderEngine::Draw(Ref<World> worldOwning){
 	//get the active camera
-    auto worldOwning = Ref<World>(world);
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 
