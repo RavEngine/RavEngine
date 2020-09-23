@@ -15,6 +15,7 @@
 #include "RavEngine/StaticMesh.hpp"
 #include "RavEngine/PhysicsMaterial.hpp"
 #include "RavEngine/ScriptSystem.hpp"
+#include "RavEngine/BuiltinMaterials.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -105,7 +106,7 @@ TestWorld::TestWorld() : World() {
 
     player->transform()->LocalTranslateDelta(vector3(0,-10,50));
 
-    auto material = new Material();
+    Ref<DefaultMaterialInstance> material(new DefaultMaterialInstance(new DefaultMaterial()));
 
     anonymous = new RavEngine::Entity();
     anonymous->AddComponent<StaticMesh>(new StaticMesh())->SetMaterial(material);

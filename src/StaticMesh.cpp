@@ -67,7 +67,7 @@ RavEngine::StaticMesh::~StaticMesh()
 	bgfx::destroy(indexBuffer);
 }
 
-void RavEngine::StaticMesh::SetMaterial(Ref<Material> mat)
+void RavEngine::StaticMesh::SetMaterial(Ref<MaterialInstanceBase> mat)
 {
 	material = mat;
 }
@@ -81,10 +81,5 @@ void RavEngine::StaticMesh::Draw()
     //apply transform and set it for the material
     auto owner = Ref<Entity>(getOwner());
     owner->transform()->Apply();
-    material->SetTransformMatrix(owner->transform()->GetCurrentWorldMatrix());
-    material->Draw(vertexBuffer, indexBuffer);
-}
-
-void RavEngine::StaticMesh::AddHook(const WeakRef<RavEngine::Entity>& e)
-{
+    material->Draw(vertexBuffer, indexBuffer, owner->transform()->GetCurrentWorldMatrix());
 }

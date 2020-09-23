@@ -19,7 +19,7 @@ using namespace physx;
 using namespace RavEngine;
 
 Ref<RavEngine::PhysicsMaterial> TestEntity::sharedMat;
-Ref<RavEngine::Material> TestEntity::sharedMatInstance;
+Ref<RavEngine::DefaultMaterialInstance> TestEntity::sharedMatInst;
 
 TestEntity::TestEntity() : Entity(){
 
@@ -38,15 +38,15 @@ TestEntity::TestEntity() : Entity(){
 
     //default staticmesh
     auto mesh = AddComponent<StaticMesh>(new StaticMesh());
-    if (sharedMatInstance.isNull()) {
+    if (sharedMatInst.isNull()) {
         if (MaterialManager::HasMaterialByName("cubes")) {
-            sharedMatInstance = MaterialManager::GetMaterialByName("cubes");
+            sharedMatInst = new DefaultMaterialInstance(MaterialManager::GetMaterialByName("cubes"));
         }
         else {
-            sharedMatInstance = new Material();
+            sharedMatInst = new DefaultMaterialInstance(new DefaultMaterial());
         }
     }
-    mesh->SetMaterial(sharedMatInstance);
+    mesh->SetMaterial(sharedMatInst);
 }
 
 void TestEntityController::Tick(float scale) {

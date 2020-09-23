@@ -14,29 +14,23 @@ namespace RavEngine {
         Assign a material to this staticmesh
         @param mat the material instance to assign
         */
-        void SetMaterial(Ref<Material> mat);
+        void SetMaterial(Ref<MaterialInstanceBase> mat);
 
         void Draw() override;
 
         /**
         @returns the currently assigned material
         */
-        /*Ref<Material> GetMaterial() {
+        Ref<MaterialInstanceBase> GetMaterial() {
             return material;
-        }*/
-
-        void AddHook(const WeakRef<RavEngine::Entity>&) override;
+        }
 
     protected:
 
         //the default material
-        Ref<Material> material;
+        Ref<MaterialInstanceBase> material;
 		
 		bgfx::VertexBufferHandle vertexBuffer;
 		bgfx::IndexBufferHandle indexBuffer;
-
-        //index and vertex buffers, stores actual data
-        //std::vector<Vertex> vb;
-        //std::vector<unsigned int> ib;
     };
 }

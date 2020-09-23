@@ -14,6 +14,7 @@
 #include "RavEngine/Material.hpp"
 #include "RavEngine/IPhysicsActor.hpp"
 #include "RavEngine/ScriptComponent.hpp"
+#include "RavEngine/BuiltinMaterials.hpp"
 
 class TestEntityController : public RavEngine::ScriptComponent, public RavEngine::IPhysicsActor {
 public:
@@ -25,7 +26,7 @@ public:
 class TestEntity : public RavEngine::Entity, public RavEngine::IPhysicsActor{
 protected:
     static Ref<RavEngine::PhysicsMaterial> sharedMat;
-    static Ref<RavEngine::Material> sharedMatInstance;
+    static Ref<RavEngine::DefaultMaterialInstance> sharedMatInst;
 public:
     TestEntity();
 };

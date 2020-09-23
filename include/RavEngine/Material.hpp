@@ -6,6 +6,7 @@
 #include <bgfx/bgfx.h>
 
 namespace RavEngine {
+
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
 	*/
@@ -14,9 +15,8 @@ namespace RavEngine {
 		/**
 		Create the default material. Override this constructor in subclasses, and from that, invoke the protected constructor.
 		*/
-		Material();
 
-		~Material();
+		virtual ~Material() {}
 
 		const std::string& GetName() {
 			return name;
@@ -37,17 +37,38 @@ namespace RavEngine {
 		std::string name;
 
 		//trying to create a material that already exists will throw an exception
-		Material(const std::string& name, const std::string& vertShader, const std::string& fragShader);
+		Material(const std::string& name);
 
 		matrix4 transformMatrix = matrix4(1);
 
 		struct Settings {
-			//TODO: typdef this instead of hard-coding to float?
 			float wvpMatrix[16];
 		} settings;
 
 		
 		bgfx::ProgramHandle program;
+	};
+
+	//for type conversions, do not use directly
+	class MaterialInstanceBase : public SharedObject {
+	public:
+		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix) = 0;
+	};
+
+	/**
+	* Represents the settings of a material. Subclass to expose more properties.
+	*/
+	template<typename T>
+	class MaterialInstance : public MaterialInstanceBase {
+	public:
+		virtual ~MaterialInstance() {}
+		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix){
+			mat->SetTransformMatrix(worldmatrix);
+			mat->Draw(vertexBuffer, indexBuffer);
+		}
+	protected:
+		MaterialInstance(Ref<T> m) : mat(m) {}
+		Ref<T> mat;
 	};
 
 	/**

@@ -82,7 +82,7 @@ void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::In
 Create a material given a shader. Also registers it in the material manager
 @param shader the path to the shader
 */
-Material::Material(const std::string& name, const std::string& vertShaderSrc, const std::string& fragShaderSrc) : name(name) {
+Material::Material(const std::string& name) : name(name) {
 	//check if material is already loaded
 	if (MaterialManager::HasMaterialByName(name)) {
 		throw runtime_error("Material with name " + name + "is already allocated! Use GetMaterialByName to get it.");
@@ -113,11 +113,6 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 
 	//register material
 	MaterialManager::RegisterMaterial(this);
-}
-
-Material::Material() : Material("cubes","","") {}
-
-Material::~Material() {
 }
 
 /**
