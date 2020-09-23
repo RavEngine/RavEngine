@@ -89,10 +89,10 @@ Material::Material(const std::string& name, const std::string& vertShaderSrc, co
 	}
 	
 	//get all shader files for this programs
-	path dir = (path("shaders") / name).replace_extension("tar");
+	string dir = "shaders/" + name + ".tar";
 	
 	if (!shaderfiles.exists(dir)){
-		throw runtime_error("Material at path " + dir.string() + " does not exist.");
+		throw runtime_error("Material at path " + dir + " does not exist.");
 	}
 	
 	//unpack the tar with the shaders
