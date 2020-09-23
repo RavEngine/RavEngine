@@ -31,6 +31,9 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
   list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
 endif()
 
+# include CMRC
+include("${DEPS_DIR}/cmrc/CMakeRC.cmake")
+
 # ==================== Dependencies =====================
 
 # shader compiler
@@ -74,6 +77,8 @@ endif()
 
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
+
+add_subdirectory("${DEPS_DIR}/tarlib")
 
 # ========== Building engine and test game ==============
 
@@ -130,6 +135,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"LowLevelDynamics"
 	"SceneQuery"
 	"SimulationController"
+	"tarlib"
 	#"PhysXGPU"
 	PUBLIC
 	"SDL2-static"
@@ -161,6 +167,7 @@ set(SHADERCOMPILER "${PROJECT_NAME}_shaderc_auto")
 FILE(GLOB AUTOSHADERC "${SHADERCOMPILER}" "src/shaderc_auto/*.cpp")
 add_executable("${SHADERCOMPILER}" ${AUTOSHADERC})
 target_include_directories("${SHADERCOMPILER}" PRIVATE "${DEPS_DIR}/cxxopts/include" "${DEPS_DIR}/json/")
+target_link_libraries("${SHADERCOMPILER}" PRIVATE "bgfx" "tarlib")
 
 add_dependencies("${SHADERCOMPILER}" "shaderc")	# shaderc must build before auto executable so that auto shader comp can work
 
@@ -175,12 +182,12 @@ function (compile_shader_dir shader_dir)
 	file(GLOB SHADERS "${shader_dir}/*.json")
 	foreach(SHADER ${SHADERS})
 		get_filename_component(output_file "${SHADER}" NAME_WE)
-		set(output_file "${output_file}.bin")
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS "${output_file}")
+		set(output_file "${output_file}.tar")
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS "${CMAKE_BINARY_DIR}/shaders/${output_file}")
 		add_custom_command(
 			PRE_BUILD
-			OUTPUT "${output_file}"
-			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o . -i "${DEPS_DIR}/bgfx.cmake/bgfx/src"
+			OUTPUT "${CMAKE_BINARY_DIR}/shaders/${output_file}"
+			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o .. -i "${DEPS_DIR}/bgfx.cmake/bgfx/src"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Shader Descriptor ${SHADER} => ${output_file}"
 			VERBATIM
@@ -198,10 +205,14 @@ get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 add_custom_target("${SHADERCOMPILER}_Compile" ALL DEPENDS ${all_shaders_property} "${SHADERCOMPILER}")
 add_dependencies("${PROJECT_NAME}" "${SHADERCOMPILER}_Compile")
 
-# mark shaders as RESOURECS for MacOS .app and Linux .appimage
-set_target_properties("${PROJECT_NAME}" PROPERTIES
-	RESOURCE "${all_shaders_property}"
+# Create the resource library using these paths
+cmrc_add_resource_library("${PROJECT_NAME}_RSC" ALIAS "${PROJECT_NAME}::RSC" 
+	"${all_shaders_property}"
+	WHENCE "${CMAKE_BINARY_DIR}/"
 )
+target_link_libraries("${PROJECT_NAME}" PRIVATE "${PROJECT_NAME}::RSC")
+message(${all_shaders_property})
+add_dependencies("${PROJECT_NAME}_RSC" "${SHADERCOMPILER}_Compile")	# force shaders to build before resource library
 
 # INSTALL(CODE "
 # 	include(BundleUtilities)

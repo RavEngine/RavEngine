@@ -3,9 +3,11 @@
 #include <cxxopts.hpp>
 #include <nlohmann/json.hpp>
 #include <filesystem>
+#include <tarball.hpp>
 
 using namespace std;
 using namespace nlohmann;
+using namespace Tar;
 using namespace std::filesystem;
 
 string dx_profileprefix(const std::string& stage) {
@@ -74,6 +76,9 @@ int main(int argc, char** argv){
 		create_directory(outpath);
 		outpath = outpath / filename.filename().replace_extension("");
 		create_directory(outpath);
+		
+		ofstream outtar(outpath.parent_path() / filename.filename().replace_extension("tar"));
+		TarWriter tarball(outtar);
 	
 		for(json& stage : data["stages"]){
 			path input = filename.parent_path() / path(string(stage["file"]));
@@ -96,7 +101,12 @@ int main(int argc, char** argv){
 				cerr << "Shader compilation failed!" << endl;
 				return 2;
 			}
+			
+			//add to TAR
+			tarball.putFile(out.string().c_str(),out.filename().string().c_str());
 		}
+		tarball.finish();
+		outtar.close();
 	}
 	catch(exception& e){
 		cerr << "ERROR: " << e.what() << endl;
