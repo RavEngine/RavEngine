@@ -39,6 +39,40 @@ void InputManager::InitGameControllers() {
     SDL_GameControllerEventState(SDL_ENABLE);
 }
 
+void InputManager::AggregateInput(const SDL_Event& event, uint32_t windowflags, float scale){
+	switch (event.type) {
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+			SDL_key(event.key.state, event.key.keysym.scancode);
+			break;
+		case SDL_MOUSEMOTION:
+			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
+				int width, height;
+				SDL_GetWindowSize(RenderEngine::GetWindow(), &width, &height);
+				SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel, scale);
+			}
+			break;
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
+				SDL_mousekey(event.button.state, event.button.button);
+			}
+			break;
+		case SDL_CONTROLLERAXISMOTION:
+		case SDL_CONTROLLER_AXIS_LEFTX:
+		case SDL_CONTROLLER_AXIS_LEFTY:
+			SDL_ControllerAxis(event.caxis.axis + Special::CONTROLLER_AXIS_OFFSET, (event.caxis.value) / ((float)SHRT_MAX));
+			break;
+		case SDL_CONTROLLERBUTTONDOWN:
+		case SDL_CONTROLLERBUTTONUP:
+			SDL_mousekey(event.cbutton.state + Special::CONTROLLER_BUTTON_OFFSET, event.cbutton.button);
+			break;
+		case SDL_CONTROLLERDEVICEADDED:
+		case SDL_CONTROLLERDEVICEREMOVED:
+			break;
+	}
+}
+
 void InputManager::Tick() {
     //action mappings
     for (Event& evt : actionValues){

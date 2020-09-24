@@ -9,6 +9,7 @@
 #include <iostream>
 #include <functional>
 #include <typeindex>
+#include <SDL_events.h>
 #include "IInputListener.hpp"
 
 enum class ActionState{
@@ -191,6 +192,12 @@ namespace RavEngine {
         }
 
         std::unordered_set<SDL_GameController*> connectedControllers;
+		
+		//methods to get input values
+		void SDL_key(bool state, int charcode);
+		void SDL_mousemove(float x, float y, int xvel, int yvel, float scale);
+		void SDL_mousekey(bool state, int charcode);
+		void SDL_ControllerAxis(int axisID, float value);
 
     public:
 
@@ -199,13 +206,9 @@ namespace RavEngine {
         void InitGameControllers();
 
         //based on the state of inputs, invoke bound actions
-        virtual void Tick();
-
-        //methods to get input values
-        void SDL_key(bool state, int charcode);
-        void SDL_mousemove(float x, float y, int xvel, int yvel, float scale);
-        void SDL_mousekey(bool state, int charcode);
-        void SDL_ControllerAxis(int axisID, float value);
+        void Tick();
+		
+		void AggregateInput(const SDL_Event&, uint32_t windowflags, float scale);
 
 		/**
 		 Create an action mapping entry. Action mappings correspond to items that have two states: pressed and released.
