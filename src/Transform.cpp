@@ -19,9 +19,9 @@ RavEngine::Transform::~Transform()
 Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic) {
 
 	matrix = matrix4(1);
-	LocalTranslateDelta(inpos);
-	LocalRotateDelta(inrot);
-	LocalScaleDelta(inscale);
+	SetLocalPosition(inpos);
+	SetLocalRotation(inrot);
+	SetLocalScale(inscale);
 	isStatic = inStatic;
 
 	Apply();
