@@ -197,3 +197,11 @@ void RavEngine::InputManager::UnbindAllFor(IInputListener* act)
 	}
 }
 
+void RavEngine::InputManager::SetRelativeMouseMode(bool mode){
+	SDL_SetRelativeMouseMode(mode ? SDL_TRUE : SDL_FALSE);
+}
+
+bool InputManager::GetRelativeMouseMode(){
+	return SDL_GetRelativeMouseMode();
+}
+

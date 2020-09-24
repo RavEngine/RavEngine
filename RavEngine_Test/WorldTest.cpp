@@ -100,6 +100,7 @@ TestWorld::TestWorld() : World() {
 	is->BindAction("SampleFPS",this, &TestWorld::SampleFPS,ActionState::Pressed);
 	//is->BindAction("Click", click, ActionState::Released);
 	RavEngine::GameplayStatics::inputManager = is;
+	InputManager::SetRelativeMouseMode(true);
 	
     //spawn player (it will make its camera active)
     Spawn(player);

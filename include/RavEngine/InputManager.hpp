@@ -207,10 +207,45 @@ namespace RavEngine {
         void SDL_mousekey(bool state, int charcode);
         void SDL_ControllerAxis(int axisID, float value);
 
+		/**
+		 Create an action mapping entry. Action mappings correspond to items that have two states: pressed and released.
+		 @param name the identifer to use when binding or unbinding actions
+		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
+		 */
         void AddActionMap(const std::string& name, int Id);
+		
+		/**
+		 Create an axis mapping entry. Axis mappings correspond to items that have a range of values, such as the mouse or analog sticks.
+		 @param name the identifer to use when binding or unbinding axes
+		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
+		 @param scale the scale factor to apply to all bindings mapped to this axis
+		 */
         void AddAxisMap(const std::string& name, int Id, float scale = 1);
+		
+		/**
+		 Remove an action mapping entry. Both the name and ID must match to complete removal.
+		 @param name the identifer to look for
+		 @param Id the button identifier to use. See the SDL key bindings for more information.
+		 */
         void RemoveActionMap(const std::string& name, int Id);
+		
+		/**
+		 Remove an axis mapping entry. Both the name and ID must match to complete removal.
+		 @param name the identifer to look for
+		 @param Id the button identifier to use. See the SDL key bindings for more information.
+		 */
         void RemoveAxisMap(const std::string& name, int Id);
+		
+		/**
+		 * Set the state of relative mouse mode. If true, the mouse will send events even if outside the application window. If false, the mouse will only send events if inside the application window.
+		 * @param mode the new state
+		 */
+		static void SetRelativeMouseMode(bool mode);
+		
+		/**
+		 * @returns the current relative mouse mode
+		 */
+		static bool GetRelativeMouseMode();
 
 		/**
 		 * Bind an action map to a member function

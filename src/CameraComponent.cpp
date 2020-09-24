@@ -7,10 +7,6 @@ using namespace utils;
 CameraComponent::CameraComponent(float inFOV, float inNearClip, float inFarClip) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component() {
 }
 
-void RavEngine::CameraComponent::AddHook(const WeakRef<RavEngine::Entity>& e)
-{
-}
-
 void CameraComponent::setActive(bool newState) {
 	active = newState;
 }

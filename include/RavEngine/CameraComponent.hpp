@@ -9,8 +9,6 @@ namespace RavEngine {
 
 		virtual ~CameraComponent() {}
 
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
-
 		void RegisterAllAlternateTypes() override {}
 
 		/**
