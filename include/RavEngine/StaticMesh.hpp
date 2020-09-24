@@ -2,13 +2,13 @@
 #include "RenderableComponent.hpp"
 #include <vector>
 #include "Material.hpp"
-#include <bgfx/bgfx.h>
+#include "MeshAsset.hpp"
 
 namespace RavEngine {
     class StaticMesh : public RenderableComponent {
     public:
-        StaticMesh();
-        virtual ~StaticMesh();
+        StaticMesh(Ref<MeshAsset>);
+		virtual ~StaticMesh(){}
 
         /**
         Assign a material to this staticmesh
@@ -16,6 +16,10 @@ namespace RavEngine {
         */
         void SetMaterial(Ref<MaterialInstanceBase> mat);
 
+		/**
+		 Render this Static Mesh
+		 @note if there is no material or mesh assigned, no draw will occur.
+		 */
         void Draw() override;
 
         /**
@@ -30,7 +34,6 @@ namespace RavEngine {
         //the default material
         Ref<MaterialInstanceBase> material;
 		
-		bgfx::VertexBufferHandle vertexBuffer;
-		bgfx::IndexBufferHandle indexBuffer;
+		Ref<MeshAsset> mesh;
     };
 }

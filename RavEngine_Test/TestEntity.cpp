@@ -20,6 +20,7 @@ using namespace RavEngine;
 
 Ref<RavEngine::PhysicsMaterial> TestEntity::sharedMat;
 Ref<RavEngine::DefaultMaterialInstance> TestEntity::sharedMatInst;
+Ref<MeshAsset> TestEntity::sharedMesh;
 
 TestEntity::TestEntity() : Entity(){
 
@@ -35,9 +36,13 @@ TestEntity::TestEntity() : Entity(){
         sharedMat = new PhysicsMaterial(0.5, 0.5, 0.5);
     }
     AddComponent<BoxCollider>(new BoxCollider(vector3(1, 1, 1),sharedMat));
+	
+	if (sharedMesh.isNull()){
+		sharedMesh = new MeshAsset();
+	}
 
     //default staticmesh
-    auto mesh = AddComponent<StaticMesh>(new StaticMesh());
+    auto mesh = AddComponent<StaticMesh>(new StaticMesh(sharedMesh));
     if (sharedMatInst.isNull()) {
         if (MaterialManager::HasMaterialByName("cubes")) {
             sharedMatInst = new DefaultMaterialInstance(MaterialManager::GetMaterialByName("cubes"));

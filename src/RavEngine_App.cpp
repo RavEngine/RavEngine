@@ -66,10 +66,13 @@ int App::run(int argc, char** argv) {
 		lastFrameTime = now;
 	}
 
-	bgfx::shutdown();
+	//GameplayStatics::currentWorld = nullptr;
+	
+	//bgfx::shutdown();
+	
+	RAVENGINE_ATEXIT = true;
 	
 	atexit([](){
-		RAVENGINE_ATEXIT = true;
 		cout << "atexit" << endl;
 	});
 	

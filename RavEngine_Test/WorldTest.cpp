@@ -109,13 +109,15 @@ TestWorld::TestWorld() : World() {
 
     Ref<DefaultMaterialInstance> material(new DefaultMaterialInstance(new DefaultMaterial()));
 
+	Ref<MeshAsset> sharedMesh = new MeshAsset();
+	
     anonymous = new RavEngine::Entity();
-    anonymous->AddComponent<StaticMesh>(new StaticMesh())->SetMaterial(material);
+    anonymous->AddComponent<StaticMesh>(new StaticMesh(sharedMesh))->SetMaterial(material);
     Spawn(anonymous);
     anonymous->transform()->LocalTranslateDelta(vector3(0, 1, 0));
 
     anonymousChild = new RavEngine::Entity();
-    anonymousChild->AddComponent<StaticMesh>(new StaticMesh())->SetMaterial(material);;
+    anonymousChild->AddComponent<StaticMesh>(new StaticMesh(sharedMesh))->SetMaterial(material);;
     anonymous->transform()->AddChild(anonymousChild->transform());
     anonymousChild->transform()->LocalTranslateDelta(vector3(3,0,0));
     Spawn(anonymousChild);
@@ -134,7 +136,7 @@ TestWorld::TestWorld() : World() {
     plsw->dynamicsWorld = Solver->scene;
 
     floorplane = new RavEngine::Entity();
-    floorplane->AddComponent<StaticMesh>(new StaticMesh())->SetMaterial(material);
+    floorplane->AddComponent<StaticMesh>(new StaticMesh(sharedMesh))->SetMaterial(material);
     floorplane->transform()->LocalScaleDelta(vector3(10, 0.5, 10));
     floorplane->transform()->LocalTranslateDelta(vector3(0, -20, 0));
     floorplane->AddComponent<RigidBodyStaticComponent>(new RigidBodyStaticComponent());
