@@ -41,7 +41,7 @@ MeshAsset::MeshAsset(const string& name){
 	//pull from cmrc
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFileFromMemory(str.c_str(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.c_str());
+	const aiScene* scene = aiImportFileFromMemory(str.c_str(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.string().c_str());
 	
 	
 	if (!scene){
