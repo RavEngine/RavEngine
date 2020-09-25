@@ -16,9 +16,9 @@ using namespace RavEngine;
 using namespace std::filesystem;
 using namespace Tar;
 
-CMRC_DECLARE(RavEngine_RSC);
+CMRC_DECLARE(RavEngine_RSC_Shaders);
 
-static const cmrc::embedded_filesystem shaderfiles = cmrc::RavEngine_RSC::get_filesystem();
+static const cmrc::embedded_filesystem shaderfiles = cmrc::RavEngine_RSC_Shaders::get_filesystem();
 
 MaterialManager::MaterialStore MaterialManager::materials;
 matrix4 MaterialManager::projectionMatrix;
@@ -97,6 +97,8 @@ Material::Material(const std::string& name) : name(name) {
 	
 	//unpack the tar with the shaders
 	auto file = shaderfiles.open(dir);
+	
+	//TODO: optimize this to not copy
 	stringstream input;
 	for(const char c : file){
 		input << c;

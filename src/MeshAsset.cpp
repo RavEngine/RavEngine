@@ -7,44 +7,42 @@
 #include <assimp/mesh.h>
 #include <vector>
 #include "mathtypes.hpp"
+#include <cmrc/cmrc.hpp>
+#include <sstream>
+#include <filesystem>
 
 using namespace RavEngine;
 
 // Vertex data structure
 using namespace std;
 
-static const Vertex vertices[] =
-{
-	{-1.0f,  1.0f,  1.0f, 0xff000000 },
-	{ 1.0f,  1.0f,  1.0f, 0xff0000ff },
-	{-1.0f, -1.0f,  1.0f, 0xff00ff00 },
-	{ 1.0f, -1.0f,  1.0f, 0xff00ffff },
-	{-1.0f,  1.0f, -1.0f, 0xffff0000 },
-	{ 1.0f,  1.0f, -1.0f, 0xffff00ff },
-	{-1.0f, -1.0f, -1.0f, 0xffffff00 },
-	{ 1.0f, -1.0f, -1.0f, 0xffffffff },
-};
+CMRC_DECLARE(RavEngine_RSC_Meshes);
 
-static const uint16_t indices[] = {
-	2, 1, 0, // 0
-	2, 3, 1,
-	5, 6, 4, // 2
-	7, 6, 5,
-	4, 2, 0, // 4
-	6, 2, 4,
-	3, 5, 1, // 6
-	3, 7, 5,
-	1, 4, 0, // 8
-	1, 5, 4,
-	6, 3, 2, // 10
-	7, 3, 6,
-};
+static const cmrc::embedded_filesystem meshFiles = cmrc::RavEngine_RSC_Meshes::get_filesystem();
 
-
-
-MeshAsset::MeshAsset(){
+MeshAsset::MeshAsset(const string& name){
+	string dir = "meshes/" + name;
+	
+	if (!meshFiles.exists(dir)){
+		throw runtime_error("Material at path " + dir + " does not exist.");
+	}
+	
+	//TODO: optimize this to not copy
+	auto file = meshFiles.open(dir);
+	string str;
+	{
+		stringstream input;
+		for(const char c : file){
+			input << c;
+		}
+		str = input.str();
+	}
+	
+	//pull from cmrc
+	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFile("orb.obj", aiProcessPreset_TargetRealtime_MaxQuality);
+	const aiScene* scene = aiImportFileFromMemory(str.c_str(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.c_str());
+	
 	
 	if (!scene){
 		throw runtime_error(string("cannot load: ") + aiGetErrorString());
@@ -67,7 +65,7 @@ MeshAsset::MeshAsset(){
 		for(int vi = 0; vi < mesh->mNumVertices; vi++){
 			auto vert = mesh->mVertices[vi];
 			Vertex v;
-			mp.vertices.push_back({vert.x,vert.y,vert.z,0xff00ff00});
+			mp.vertices.push_back({vert.x,vert.y,vert.z,0xCCCCCC});
 		}
 		
 		for(int ii = 0; ii < mesh->mNumFaces; ii++){

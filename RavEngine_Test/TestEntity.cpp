@@ -38,7 +38,7 @@ TestEntity::TestEntity() : Entity(){
     AddComponent<BoxCollider>(new BoxCollider(vector3(1, 1, 1),sharedMat));
 	
 	if (sharedMesh.isNull()){
-		sharedMesh = new MeshAsset();
+		sharedMesh = new MeshAsset("bunny_decimated.obj");
 	}
 
     //default staticmesh

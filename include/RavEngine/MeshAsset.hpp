@@ -7,7 +7,12 @@ namespace RavEngine{
 
 class MeshAsset : public SharedObject{
 public:
-	MeshAsset();
+	
+	/**
+	 Create a MeshAsset
+	 @param path the path to the asset in the embedded filesystem
+	 */
+	MeshAsset(const std::string& path);
 	
 	const bgfx::VertexBufferHandle& getVertexBuffer(){
 		return vertexBuffer;

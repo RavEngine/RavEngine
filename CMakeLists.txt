@@ -10,6 +10,13 @@ set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${DEPS_DIR}")
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_COLOR_MAKEFILE   ON)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+OPTION( BUILD_SHARED_LIBS
+  "Build package with shared libraries."
+  OFF
+)
 
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
@@ -39,8 +46,7 @@ include("${DEPS_DIR}/cmrc/CMakeRC.cmake")
 # use static SDL
 #set(SDL_STATIC ON CACHE INTERNAL "")
 #set(SDL_SHARED OFF CACHE INTERNAL "")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 add_subdirectory("${DEPS_DIR}/SDL2")
 
 # bgfx
@@ -209,13 +215,30 @@ add_custom_target("${SHADERCOMPILER}_Compile" ALL DEPENDS ${all_shaders_property
 add_dependencies("${PROJECT_NAME}" "${SHADERCOMPILER}_Compile")
 
 # Create the resource library using these paths
-cmrc_add_resource_library("${PROJECT_NAME}_RSC" ALIAS "${PROJECT_NAME}::RSC" 
+cmrc_add_resource_library("${PROJECT_NAME}_RSC_Shaders" ALIAS "${PROJECT_NAME}::RSC_Shaders" 
 	"${all_shaders_property}"
 	WHENCE "${CMAKE_BINARY_DIR}/"
 )
-target_link_libraries("${PROJECT_NAME}" PRIVATE "${PROJECT_NAME}::RSC")
-message(${all_shaders_property})
-add_dependencies("${PROJECT_NAME}_RSC" "${SHADERCOMPILER}_Compile")	# force shaders to build before resource library
+
+# add all the meshes
+define_property(GLOBAL PROPERTY ALL_MESHES
+	BRIEF_DOCS "Aggregate mesh list"
+    FULL_DOCS "Aggregate mesh list")
+set_property(GLOBAL PROPERTY ALL_MESHES "")
+function (add_mesh_dir mesh_dir)
+	file(GLOB MESHES "${mesh_dir}/*")
+	set_property(GLOBAL APPEND PROPERTY ALL_MESHES ${MESHES})
+endfunction()
+
+add_mesh_dir("meshes")
+get_property(all_meshes_prop GLOBAL PROPERTY ALL_MESHES)
+
+cmrc_add_resource_library("${PROJECT_NAME}_RSC_Meshes" ALIAS "${PROJECT_NAME}::RSC_Meshes" 
+	"${all_meshes_prop}"
+)
+
+target_link_libraries("${PROJECT_NAME}" PRIVATE "${PROJECT_NAME}::RSC_Shaders" "${PROJECT_NAME}::RSC_Meshes")
+add_dependencies("${PROJECT_NAME}_RSC_Shaders" "${SHADERCOMPILER}_Compile")	# force shaders to build before resource library
 
 # INSTALL(CODE "
 # 	include(BundleUtilities)
