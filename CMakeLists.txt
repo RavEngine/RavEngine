@@ -36,9 +36,6 @@ include("${DEPS_DIR}/cmrc/CMakeRC.cmake")
 
 # ==================== Dependencies =====================
 
-# shader compiler
-#add_subdirectory("${DEPS_DIR}/shader-transpiler")
-
 # use static SDL
 #set(SDL_STATIC ON CACHE INTERNAL "")
 #set(SDL_SHARED OFF CACHE INTERNAL "")
@@ -52,6 +49,11 @@ set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL OFF CACHE INTERNAL "")
 #set(BGFX_CONFIG_RENDERER_WEBGPU ON)
 add_subdirectory("${DEPS_DIR}/bgfx.cmake")
+
+# assimp
+SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
+SET(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/assimp")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -136,6 +138,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"SceneQuery"
 	"SimulationController"
 	"tarlib"
+	"assimp"
 	#"PhysXGPU"
 	PUBLIC
 	"SDL2-static"

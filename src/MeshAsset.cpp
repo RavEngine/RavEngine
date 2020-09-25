@@ -1,5 +1,12 @@
 #include "MeshAsset.hpp"
 #include "Common3D.hpp"
+#include <assimp/cimport.h>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <assimp/material.h>
+#include <assimp/mesh.h>
+#include <vector>
+#include "mathtypes.hpp"
 
 using namespace RavEngine;
 
@@ -36,6 +43,49 @@ static const uint16_t indices[] = {
 
 
 MeshAsset::MeshAsset(){
+	//uses a meta-flag to auto-triangulate the input file
+	const aiScene* scene = aiImportFile("orb.obj", aiProcessPreset_TargetRealtime_MaxQuality);
+	
+	if (!scene){
+		throw runtime_error(string("cannot load: ") + aiGetErrorString());
+	}
+	
+	//generate the vertex and index lists
+	
+	struct MeshPart{
+		vector<uint16_t> indices;
+		vector<Vertex> vertices;
+	};
+	
+	vector<MeshPart> meshes;
+	meshes.reserve(scene->mNumMeshes);
+	for(int i = 0; i < scene->mNumMeshes; i++){
+		aiMesh* mesh = scene->mMeshes[i];
+		MeshPart mp;
+		mp.indices.reserve(mesh->mNumFaces * 3);
+		mp.vertices.reserve(mesh->mNumVertices);
+		for(int vi = 0; vi < mesh->mNumVertices; vi++){
+			auto vert = mesh->mVertices[vi];
+			Vertex v;
+			mp.vertices.push_back({vert.x,vert.y,vert.z,0xff00ff00});
+		}
+		
+		for(int ii = 0; ii < mesh->mNumFaces; ii++){
+			//alert if encounters a degenerate triangle
+			assert(mesh->mFaces[ii].mNumIndices == 3);
+			
+			mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
+			mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
+			mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
+
+		}
+		
+		meshes.push_back(mp);
+	}
+	
+	//free afterward
+	aiReleaseImport(scene);
+	
 	bgfx::VertexLayout pcvDecl;
 	
 	//vertex format
@@ -44,9 +94,16 @@ MeshAsset::MeshAsset(){
 	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 	.end();
 	
+	//copy out of intermediate
+	auto v = meshes[0].vertices;
+	auto i = meshes[0].indices;
+	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(Vertex));
+	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(uint16_t));
+
 	//create buffers
-	vertexBuffer = bgfx::createVertexBuffer(bgfx::makeRef(vertices, sizeof(vertices)), pcvDecl);
-	indexBuffer = bgfx::createIndexBuffer(bgfx::makeRef(indices, sizeof(indices)));
+	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
+	indexBuffer = bgfx::createIndexBuffer(ibm);
+
 	
 	if(! bgfx::isValid(vertexBuffer) || !bgfx::isValid(indexBuffer)){
 		throw runtime_error("Buffers could not be created.");
