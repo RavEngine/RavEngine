@@ -16,13 +16,5 @@ using namespace RavEngine;
 Ref<RavEngine::World> GameplayStatics::currentWorld;
 GameplayStatics::vs GameplayStatics::VideoSettings;
 Ref<InputManager> GameplayStatics::inputManager;
-int GameplayStatics::width = VideoSettings.width, GameplayStatics::height = VideoSettings.height;
-GameplayStatics::static_constructor GameplayStatics::statcons;
-//SDL_Window* GameplayStatics::mainWindow = nullptr;
 
 using namespace std;
-
-GameplayStatics::static_constructor::static_constructor()
-{
-	
-}

@@ -22,18 +22,5 @@ namespace RavEngine {
 		};
 		static vs VideoSettings;
 
-		//current width and height
-		static int width, height;
-
-		//static constructor
-		//this ensures that bgfx and sdl are created and initialized before anything else runs
-		struct static_constructor {
-			static_constructor();
-		};
-		static static_constructor statcons;
-
-		//static SDL_Window* mainWindow;
-
-		//static void StartGame(Ref<World>, const std::string&);
 	};
 }

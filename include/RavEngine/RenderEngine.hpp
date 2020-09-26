@@ -26,12 +26,13 @@ namespace RavEngine {
 		static SDL_Window* const GetWindow(){
 			return window;
 		}
+		
 
         void resize();
 
     protected:
 		static SDL_Window* window;
         static void Init();
-
+		static uint32_t GetResetFlags();
     };
 }
