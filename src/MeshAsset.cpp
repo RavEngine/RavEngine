@@ -10,6 +10,7 @@
 #include <cmrc/cmrc.hpp>
 #include <sstream>
 #include <filesystem>
+#include <random>
 
 using namespace RavEngine;
 
@@ -54,6 +55,10 @@ MeshAsset::MeshAsset(const string& name){
 		vector<uint16_t> indices;
 		vector<Vertex> vertices;
 	};
+    
+    std::random_device rd; // obtain a random number from hardware
+   std::mt19937 gen(rd()); // seed the generator
+   std::uniform_int_distribution<> distr(0, 16777215); // define the range
 	
 	vector<MeshPart> meshes;
 	meshes.reserve(scene->mNumMeshes);
@@ -65,7 +70,7 @@ MeshAsset::MeshAsset(const string& name){
 		for(int vi = 0; vi < mesh->mNumVertices; vi++){
 			auto vert = mesh->mVertices[vi];
 			Vertex v;
-			mp.vertices.push_back({vert.x,vert.y,vert.z,0xCCCCCC});
+            mp.vertices.push_back({vert.x,vert.y,vert.z,static_cast<uint32_t>(distr(gen))});
 		}
 		
 		for(int ii = 0; ii < mesh->mNumFaces; ii++){
