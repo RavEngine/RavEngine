@@ -20,10 +20,10 @@ CMRC_DECLARE(RavEngine_RSC_Shaders);
 
 static const cmrc::embedded_filesystem shaderfiles = cmrc::RavEngine_RSC_Shaders::get_filesystem();
 
-MaterialManager::MaterialStore MaterialManager::materials;
-matrix4 MaterialManager::projectionMatrix;
-matrix4 MaterialManager::viewMatrix;
-mutex MaterialManager::mtx;
+Material::Manager::MaterialStore Material::Manager::materials;
+matrix4 Material::Manager::projectionMatrix;
+matrix4 Material::Manager::viewMatrix;
+mutex Material::Manager::mtx;
 
 // mapping names to types
 const unordered_map<string, ShaderStage> stagemap{
@@ -51,8 +51,8 @@ bgfx::ShaderHandle loadShader(const std::string& data){
 void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer)
 {
     //calculate wvp matrix
-    const auto& view = MaterialManager::GetCurrentViewMatrix();
-    const auto& projection = MaterialManager::GetCurrentProjectionMatrix();
+    const auto& view = Material::Manager::GetCurrentViewMatrix();
+    const auto& projection = Material::Manager::GetCurrentProjectionMatrix();
     //auto wvp = projection * view * transformMatrix; //transformMatrix * view * projection;
 
 	//copy into backend matrix
@@ -84,7 +84,7 @@ Create a material given a shader. Also registers it in the material manager
 */
 Material::Material(const std::string& name) : name(name) {
 	//check if material is already loaded
-	if (MaterialManager::HasMaterialByName(name)) {
+	if (Material::Manager::HasMaterialByName(name)) {
 		throw runtime_error("Material with name " + name + "is already allocated! Use GetMaterialByName to get it.");
 	}
 	
@@ -114,7 +114,7 @@ Material::Material(const std::string& name) : name(name) {
 	}
 
 	//register material
-	MaterialManager::RegisterMaterial(this);
+	Material::Manager::RegisterMaterial(this);
 }
 
 /**
@@ -122,7 +122,7 @@ Material::Material(const std::string& name) : name(name) {
 @param the name of the material to find
 
 */
-bool RavEngine::MaterialManager::HasMaterialByName(const std::string& name)
+bool Material::Manager::HasMaterialByName(const std::string& name)
 {
 	mtx.lock();
 	bool has = materials.find(name) != materials.end();
@@ -134,14 +134,14 @@ bool RavEngine::MaterialManager::HasMaterialByName(const std::string& name)
 Mark a material for deletion by name. The material will remain allocated until its last reference is released.
 @param name the name of the material to mark for deletion
 */
-void RavEngine::MaterialManager::UnregisterMaterialByName(const std::string& name)
+void Material::Manager::UnregisterMaterialByName(const std::string& name)
 {
 	mtx.lock();
 	materials.erase(name);
 	mtx.unlock();
 }
 
-void RavEngine::MaterialManager::RegisterMaterial(Ref<Material> mat)
+void Material::Manager::RegisterMaterial(Ref<Material> mat)
 {
 	mtx.lock();
 	materials.insert(std::make_pair(mat->GetName(), mat));

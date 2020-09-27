@@ -17,6 +17,9 @@ using namespace RavEngine;
 // Vertex data structure
 using namespace std;
 
+mutex MeshAsset::Manager::mtx;
+unordered_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
+
 CMRC_DECLARE(RavEngine_RSC_Meshes);
 
 static const cmrc::embedded_filesystem meshFiles = cmrc::RavEngine_RSC_Meshes::get_filesystem();
@@ -107,8 +110,41 @@ MeshAsset::MeshAsset(const string& name){
 	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
 	indexBuffer = bgfx::createIndexBuffer(ibm);
 
-	
 	if(! bgfx::isValid(vertexBuffer) || !bgfx::isValid(indexBuffer)){
 		throw runtime_error("Buffers could not be created.");
 	}
+	
+	Manager::RegisterMeshAsset(name, this);
+}
+
+bool MeshAsset::Manager::IsMeshAssetLoaded(const std::string& path){
+	bool result;
+	mtx.lock();
+	result = meshes.find(path) != meshes.end();
+	mtx.unlock();
+	return result;
+}
+
+Ref<MeshAsset> MeshAsset::Manager::GetLoadedMeshAsset(const std::string& path){
+	Ref<MeshAsset> result;
+	result.setNull();
+	mtx.lock();
+	try{
+		result = meshes.at(path);
+	}
+	catch(exception& e){}
+	mtx.unlock();
+	return result;
+}
+
+void MeshAsset::Manager::RemoveMeshAsset(const std::string& path){
+	mtx.lock();
+	meshes.erase(path);
+	mtx.unlock();
+}
+
+void MeshAsset::Manager::RegisterMeshAsset(const std::string& path, Ref<MeshAsset> m){
+	mtx.lock();
+	meshes[path] = m;
+	mtx.unlock();
 }

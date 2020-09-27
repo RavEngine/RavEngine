@@ -96,8 +96,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			int width,height;
 			SDL_GL_GetDrawableSize(window, &width, &height);
 			owning->SetTargetSize(width, height);
-            MaterialManager::SetProjectionMatrix(cam->GenerateProjectionMatrix());
-            MaterialManager::SetViewMatrix(cam->GenerateViewMatrix());
+            Material::Manager::SetProjectionMatrix(cam->GenerateProjectionMatrix());
+            Material::Manager::SetViewMatrix(cam->GenerateViewMatrix());
 			break;
 		}
 	}
