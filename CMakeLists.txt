@@ -88,7 +88,7 @@ add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
 
 add_subdirectory("${DEPS_DIR}/tarlib")
 
-# ========== Building engine and test game ==============
+# ========== Building engine ==============
 
 # get all sources for the library with glob
 if(APPLE)
@@ -113,18 +113,6 @@ target_include_directories("${PROJECT_NAME}"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 )
-
-# create the test executable
-file(GLOB TEST_SOURCES "${PROJECT_NAME}_Test/*.cpp" "${PROJECT_NAME}_Test/*.hpp" "${PROJECT_NAME}_Test/*.h")
-
-# creates a mac app if applicable
-add_executable("${PROJECT_NAME}_Test" MACOSX_BUNDLE ${TEST_SOURCES})
-set_target_properties("${PROJECT_NAME}_Test" PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}_Test/Info.plist"
-	VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
-)
-
-#startup project	
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "${PROJECT_NAME}_Test")
 
 # ====================== Linking ====================
 target_link_libraries("${PROJECT_NAME}" PRIVATE 
@@ -165,9 +153,6 @@ if (WIN32)
 	endif()
 
 endif()
-
-# link test game with library
-target_link_libraries("${PROJECT_NAME}_Test" "${PROJECT_NAME}" )
 
 # ====================== Shader compiler =====================
 
@@ -239,8 +224,3 @@ cmrc_add_resource_library("${PROJECT_NAME}_RSC_Meshes" ALIAS "${PROJECT_NAME}::R
 
 target_link_libraries("${PROJECT_NAME}" PRIVATE "${PROJECT_NAME}::RSC_Shaders" "${PROJECT_NAME}::RSC_Meshes")
 add_dependencies("${PROJECT_NAME}_RSC_Shaders" "${SHADERCOMPILER}_Compile")	# force shaders to build before resource library
-
-# INSTALL(CODE "
-# 	include(BundleUtilities)
-# 	fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/$<CONFIGURATION>/${PROJECT_NAME}_Test.app\" \"\" \"\")
-# 	" COMPONENT Runtime)
