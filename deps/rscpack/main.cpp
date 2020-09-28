@@ -6,6 +6,16 @@
 using namespace std;
 using namespace std::filesystem;
 
+std::string unix_path(const std::filesystem::path& p) {
+#ifdef _WIN32
+	auto prelim = p.string();
+	std::replace(prelim.begin(), prelim.end(), '\\', '/');
+	return prelim;
+#else
+	return path.string();
+#endif
+}
+
 /*
  Usage: rscpack -a AppResourceDir -e EngineResourceDir -o outfile
  */
@@ -31,7 +41,8 @@ int main(int argc, char** argv){
 					for(const path& item : directory_iterator(rootshaderpath)){
 						//go inside the directory
 						if (!is_directory(item)){
-							resources.write(item, path("shaders") / item.filename());
+							auto inarch = unix_path((path("shaders") / item.filename()).string());
+							resources.write(item.string(), inarch);
 						}
 					}
 				}
@@ -45,7 +56,7 @@ int main(int argc, char** argv){
 				for(const path& item : recursive_directory_iterator(rootpath)){
 					//make relative path
 					path rel = relative(item, rootpath);
-					resources.write(item,path("meshes") / rel);
+					resources.write(item.string(),unix_path((path("meshes") / rel).string()));
 				}
 			}
 		};
@@ -55,7 +66,7 @@ int main(int argc, char** argv){
 		generalpack(engrsc / "meshes", "meshes");
 		
 		//write final archive
-		resources.save(out);
+		resources.save(out.string());
 	}
 	catch (exception& e){
 		cerr << e.what() << endl;
