@@ -8,17 +8,11 @@
 #include <filesystem>
 #include "Common3D.hpp"
 #include <bgfx/bgfx.h>
-#include <cmrc/cmrc.hpp>
-#include <tarball.hpp>
+#include "RavEngine_App.hpp"
 
 using namespace std;
 using namespace RavEngine;
 using namespace std::filesystem;
-using namespace Tar;
-
-CMRC_DECLARE(RavEngine_RSC_Shaders);
-
-static const cmrc::embedded_filesystem shaderfiles = cmrc::RavEngine_RSC_Shaders::get_filesystem();
 
 Material::Manager::MaterialStore Material::Manager::materials;
 matrix4 Material::Manager::projectionMatrix;
@@ -41,10 +35,8 @@ void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
     transformMatrix = mat;
 }
 
-bgfx::ShaderHandle loadShader(const std::string& data){
-
+bgfx::ShaderHandle loadShader(const string& data){
 	const bgfx::Memory* mem = bgfx::copy(data.c_str(), data.size());
-	
 	return bgfx::createShader(mem);
 }
 
@@ -90,24 +82,14 @@ Material::Material(const std::string& name) : name(name) {
 	
 	//get all shader files for this programs
 	string dir = "shaders/" + name + ".tar";
-	
-	if (!shaderfiles.exists(dir)){
-		throw runtime_error("Material at path " + dir + " does not exist.");
-	}
-	
-	//unpack the tar with the shaders
-	auto file = shaderfiles.open(dir);
-	
-	//TODO: optimize this to not copy
-	stringstream input;
-	for(const char c : file){
-		input << c;
-	}
-	TarReader reader(input);
-	
+
+	//get the shader code
+	auto vertex_src = App::Resources->FileContentsAt("shaders/" + name + "/vertex.bin");
+	auto fragment_src = App::Resources->FileContentsAt("shaders/" + name + "/fragment.bin");
+
 	//must have a vertex and a fragment shader
-	bgfx::ShaderHandle vsh = loadShader(reader.GetFile("vertex.bin"));
-	bgfx::ShaderHandle fsh = loadShader(reader.GetFile("fragment.bin"));
+	bgfx::ShaderHandle vsh = loadShader(vertex_src);
+	bgfx::ShaderHandle fsh = loadShader(fragment_src);
 	program = bgfx::createProgram(vsh, fsh, true);
 	if (!bgfx::isValid(program)){
 		throw runtime_error("Material is invalid.");

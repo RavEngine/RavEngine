@@ -1,6 +1,7 @@
 #pragma once
 #include <chrono>
 #include "RenderEngine.hpp"
+#include "VirtualFileSystem.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -18,6 +19,8 @@ namespace RavEngine {
 		int run(int argc, char** argv);
 
 		static const float evalNormal;	//normal speed is 60 hz
+
+		static Ref<VirtualFilesystem> Resources;
 	protected:
 
 		//#define LIMIT_TICK
@@ -36,7 +39,7 @@ namespace RavEngine {
 		Invoked before destructor when the application is expected to shut down. You can return exit codes from here.
 		*/
 		virtual int OnShutdown() { return 0; };
-	protected:
+
 		//last frame time, frame delta time, framerate scale, maximum frame time
 		timePoint lastFrameTime = clocktype::now();
 		timeDiff deltaTimeMicroseconds;

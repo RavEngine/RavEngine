@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include <mutex>
 
+#define MESHLIBRARY(A) CMRC_DECLARE(A);
+
+
 namespace RavEngine{
 
 class MeshAsset : public SharedObject{

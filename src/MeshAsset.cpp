@@ -7,10 +7,9 @@
 #include <assimp/mesh.h>
 #include <vector>
 #include "mathtypes.hpp"
-#include <cmrc/cmrc.hpp>
-#include <sstream>
-#include <filesystem>
 #include <random>
+#include "RavEngine_App.hpp"
+#include <filesystem>
 
 using namespace RavEngine;
 
@@ -20,33 +19,15 @@ using namespace std;
 mutex MeshAsset::Manager::mtx;
 unordered_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
 
-CMRC_DECLARE(RavEngine_RSC_Meshes);
-
-static const cmrc::embedded_filesystem meshFiles = cmrc::RavEngine_RSC_Meshes::get_filesystem();
-
 MeshAsset::MeshAsset(const string& name){
 	string dir = "meshes/" + name;
 	
-	if (!meshFiles.exists(dir)){
-		throw runtime_error("Material at path " + dir + " does not exist.");
-	}
-	
-	//TODO: optimize this to not copy
-	auto file = meshFiles.open(dir);
-	string str;
-	{
-		stringstream input;
-		for(const char c : file){
-			input << c;
-		}
-		str = input.str();
-	}
+	auto str = App::Resources->FileContentsAt(dir);
 	
 	//pull from cmrc
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
 	const aiScene* scene = aiImportFileFromMemory(str.c_str(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.string().c_str());
-	
 	
 	if (!scene){
 		throw runtime_error(string("cannot load: ") + aiGetErrorString());

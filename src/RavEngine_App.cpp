@@ -13,6 +13,7 @@ using namespace RavEngine;
 using namespace std::chrono;
 
 const float RavEngine::App::evalNormal = 60;
+Ref<VirtualFilesystem> App::Resources;
 
 int App::run(int argc, char** argv) {
 

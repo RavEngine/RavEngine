@@ -49,6 +49,9 @@ include("${DEPS_DIR}/cmrc/CMakeRC.cmake")
 
 add_subdirectory("${DEPS_DIR}/SDL2")
 
+add_subdirectory("${DEPS_DIR}/RavTar")
+add_subdirectory("${DEPS_DIR}/miniz-cpp")
+
 # bgfx
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
@@ -75,18 +78,20 @@ set(PX_GENERATE_STATIC_LIBRARIES ON CACHE INTERNAL "")
 #set(PX_FLOAT_POINT_PRECISE_MATH OFF)
 if (WIN32)
 	set(TARGET_BUILD_PLATFORM "windows" CACHE INTERNAL "")
+	set(PLATFORM "Windows")
 elseif(APPLE)
 	set(TARGET_BUILD_PLATFORM "mac" CACHE INTERNAL "")
+	set(PLATFORM "macOS")
 elseif(LINUX)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu" CACHE INTERNAL "")
+	set(PLATFORM "Linux")
 	#set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu" CACHE INTERNAL "")
 endif()
 
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
-
-add_subdirectory("${DEPS_DIR}/tarlib")
+add_subdirectory("${DEPS_DIR}/ttvfs")
 
 # ========== Building engine ==============
 
@@ -110,8 +115,12 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/physx/pxshared/include/" 
 	"${DEPS_DIR}/physx/physx/snippets/"
 	"include/${PROJECT_NAME}/stduuid/"
+	"${DEPS_DIR}/ttvfs/ttvfs"
+	"${DEPS_DIR}/ttvfs/ttvfs_zip"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
+	"${DEPS_DIR}/miniz-cpp/"
+	
 )
 
 # ====================== Linking ====================
@@ -131,8 +140,10 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"LowLevelDynamics"
 	"SceneQuery"
 	"SimulationController"
-	"tarlib"
 	"assimp"
+	"ttvfs"
+	"ttvfs_zip"
+	"ravtar"
 	#"PhysXGPU"
 	PUBLIC
 	"SDL2-static"
@@ -160,8 +171,8 @@ set(SHADERCOMPILER "${PROJECT_NAME}_shaderc_auto")
 
 FILE(GLOB AUTOSHADERC "${SHADERCOMPILER}" "src/shaderc_auto/*.cpp")
 add_executable("${SHADERCOMPILER}" ${AUTOSHADERC})
-target_include_directories("${SHADERCOMPILER}" PRIVATE "${DEPS_DIR}/cxxopts/include" "${DEPS_DIR}/json/")
-target_link_libraries("${SHADERCOMPILER}" PRIVATE "bgfx" "tarlib")
+target_include_directories("${SHADERCOMPILER}" PRIVATE "${DEPS_DIR}/cxxopts/include" "${DEPS_DIR}/json/" "${DEPS_DIR}/miniz-cpp/")
+target_link_libraries("${SHADERCOMPILER}" PRIVATE "bgfx" "ravtar")
 
 add_dependencies("${SHADERCOMPILER}" "shaderc")	# shaderc must build before auto executable so that auto shader comp can work
 
@@ -171,17 +182,17 @@ define_property(GLOBAL PROPERTY ALL_SHADERS
     FULL_DOCS "Aggregate shader list")
 set_property(GLOBAL PROPERTY ALL_SHADERS "")
 
-function (compile_shader_dir shader_dir)
+function (compile_shader_dir shader_dir resource_root)
 	# get all the shader files
 	file(GLOB SHADERS "${shader_dir}/*.json")
 	foreach(SHADER ${SHADERS})
 		get_filename_component(output_file "${SHADER}" NAME_WE)
 		set(output_file "${output_file}.tar")
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS "${CMAKE_BINARY_DIR}/shaders/${output_file}")
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS "${CMAKE_BINARY_DIR}/${resource_root}/shaders/${output_file}")
 		add_custom_command(
 			PRE_BUILD
-			OUTPUT "${CMAKE_BINARY_DIR}/shaders/${output_file}"
-			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o .. -i "${DEPS_DIR}/bgfx.cmake/bgfx/src"
+			OUTPUT "${CMAKE_BINARY_DIR}/${resource_root}/shaders/${output_file}"
+			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o ../${resource_root} -i "${DEPS_DIR}/bgfx.cmake/bgfx/src"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Shader Descriptor ${SHADER} => ${output_file}"
 			VERBATIM
@@ -191,7 +202,7 @@ endfunction()
 
 
 # compile all builtin shaders
-compile_shader_dir("shaders")
+compile_shader_dir("shaders" "${PROJECT_NAME}")
 #TODO: compile user-defined shaders
 
 #track all the shaders for compilation
@@ -205,22 +216,16 @@ cmrc_add_resource_library("${PROJECT_NAME}_RSC_Shaders" ALIAS "${PROJECT_NAME}::
 	WHENCE "${CMAKE_BINARY_DIR}/"
 )
 
-# add all the meshes
-define_property(GLOBAL PROPERTY ALL_MESHES
-	BRIEF_DOCS "Aggregate mesh list"
-    FULL_DOCS "Aggregate mesh list")
-set_property(GLOBAL PROPERTY ALL_MESHES "")
-function (add_mesh_dir mesh_dir)
-	file(GLOB MESHES "${mesh_dir}/*")
-	set_property(GLOBAL APPEND PROPERTY ALL_MESHES ${MESHES})
-endfunction()
+# Mesh adding macro
+macro(add_meshes target meshes)
+	cmrc_add_resource_library("${target}_RSC_Meshes" ALIAS "${target}::RSC_Meshes" 
+		"${meshes}"
+	)	
+	target_link_libraries("${target}" PRIVATE "${target}::RSC_Meshes" )
+endmacro()
 
-add_mesh_dir("meshes")
-get_property(all_meshes_prop GLOBAL PROPERTY ALL_MESHES)
+file(GLOB MESHES "meshes/*.obj")
+add_meshes("${PROJECT_NAME}" ${MESHES})
 
-cmrc_add_resource_library("${PROJECT_NAME}_RSC_Meshes" ALIAS "${PROJECT_NAME}::RSC_Meshes" 
-	"${all_meshes_prop}"
-)
-
-target_link_libraries("${PROJECT_NAME}" PRIVATE "${PROJECT_NAME}::RSC_Shaders" "${PROJECT_NAME}::RSC_Meshes")
+target_link_libraries("${PROJECT_NAME}" PRIVATE "${PROJECT_NAME}::RSC_Shaders")
 add_dependencies("${PROJECT_NAME}_RSC_Shaders" "${SHADERCOMPILER}_Compile")	# force shaders to build before resource library
