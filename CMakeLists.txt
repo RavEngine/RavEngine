@@ -39,7 +39,6 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
 
 # include CMRC
-include("${DEPS_DIR}/cmrc/CMakeRC.cmake")
 
 # ==================== Dependencies =====================
 
@@ -51,6 +50,7 @@ add_subdirectory("${DEPS_DIR}/SDL2")
 
 add_subdirectory("${DEPS_DIR}/RavTar")
 add_subdirectory("${DEPS_DIR}/miniz-cpp")
+add_subdirectory("${DEPS_DIR}/rscpack")
 
 # bgfx
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
@@ -208,24 +208,22 @@ compile_shader_dir("shaders" "${PROJECT_NAME}")
 #track all the shaders for compilation
 get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 add_custom_target("${SHADERCOMPILER}_Compile" ALL DEPENDS ${all_shaders_property} "${SHADERCOMPILER}")
-add_dependencies("${PROJECT_NAME}" "${SHADERCOMPILER}_Compile")
-
-# Create the resource library using these paths
-cmrc_add_resource_library("${PROJECT_NAME}_RSC_Shaders" ALIAS "${PROJECT_NAME}::RSC_Shaders" 
-	"${all_shaders_property}"
-	WHENCE "${CMAKE_BINARY_DIR}/"
-)
+add_dependencies("${PROJECT_NAME}" "${SHADERCOMPILER}_Compile" "rscpack")
 
 # Mesh adding macro
 macro(add_meshes target meshes)
-	cmrc_add_resource_library("${target}_RSC_Meshes" ALIAS "${target}::RSC_Meshes" 
-		"${meshes}"
-	)	
-	target_link_libraries("${target}" PRIVATE "${target}::RSC_Meshes" )
+	foreach(MESH ${meshes})
+		# copy meshes pre-build if they are changed
+		get_filename_component(output_name "${MESH}" NAME)
+		add_custom_command(TARGET "${target}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${CMAKE_BINARY_DIR}/${target}/meshes/${output_name}")
+	endforeach()
 endmacro()
 
 file(GLOB MESHES "meshes/*.obj")
 add_meshes("${PROJECT_NAME}" ${MESHES})
 
-target_link_libraries("${PROJECT_NAME}" PRIVATE "${PROJECT_NAME}::RSC_Shaders")
-add_dependencies("${PROJECT_NAME}_RSC_Shaders" "${SHADERCOMPILER}_Compile")	# force shaders to build before resource library
+# pack resources
+macro(pack_resources target_rsc)
+	add_custom_command(TARGET "${target_rsc}" POST_BUILD COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${target_rsc} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.zip")
+	set_target_properties(${target_rsc} PROPERTIES RESOURCE "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.zip")
+endmacro()
