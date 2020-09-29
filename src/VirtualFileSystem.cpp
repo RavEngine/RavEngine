@@ -3,16 +3,33 @@
 #include <sstream>
 #include <filesystem>
 
+#ifdef __APPLE__
+    #include <CoreFoundation/CFBundle.h>
+#endif
+
 using namespace RavEngine;
 using namespace std;
 
 VirtualFilesystem::VirtualFilesystem(const std::string& path) {
+#ifdef __APPLE__
+    CFBundleRef AppBundle = CFBundleGetMainBundle();
+    CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(AppBundle);
+    CFStringRef resourcePath = CFURLCopyPath(resourcesURL);
+
+    string bundlepath = CFStringGetCStringPtr(resourcePath, kCFStringEncodingUTF8);
+    const char* cstr = (bundlepath + "/" + path).c_str();
+    
+    CFRelease(resourcePath);
+    CFRelease(resourcesURL);
+#else
+    const char* cstr = path.c_str();
+#endif
+    
 	//configure
 	vfs.AddLoader(new ttvfs::DiskLoader);
 	vfs.AddArchiveLoader(new ttvfs::VFSZipArchiveLoader);
 	
 	//mount the archive
-	const char* cstr = path.c_str();
 	vfs.AddArchive(cstr);
 
 	rootname = path + "/";
