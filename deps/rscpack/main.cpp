@@ -12,7 +12,7 @@ std::string unix_path(const std::filesystem::path& p) {
 	std::replace(prelim.begin(), prelim.end(), '\\', '/');
 	return prelim;
 #else
-	return path.string();
+	return p.string();
 #endif
 }
 
