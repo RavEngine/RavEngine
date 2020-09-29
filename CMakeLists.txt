@@ -219,8 +219,8 @@ macro(add_meshes target meshes)
 	endforeach()
 endmacro()
 
-file(GLOB MESHES "meshes/*.obj")
-add_meshes("${PROJECT_NAME}" ${MESHES})
+file(GLOB MESHES "meshes/*")
+add_meshes("${PROJECT_NAME}" "${MESHES}")
 
 # pack resources
 macro(pack_resources target_rsc)

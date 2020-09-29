@@ -14,5 +14,6 @@ public:
 	virtual ~VirtualFilesystem();
 protected:
 	ttvfs::Root vfs;
+	std::string rootname;
 };
 }

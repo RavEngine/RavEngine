@@ -13,21 +13,24 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	//mount the archive
 	const char* cstr = path.c_str();
 	vfs.AddArchive(cstr);
+
+	rootname = path + "/";
 }
 const std::string RavEngine::VirtualFilesystem::FileContentsAt(const std::string& path)
 {
-	ttvfs::File* vf = vfs.GetFile(path.c_str());
+	ttvfs::File* vf = nullptr;
+	vf = vfs.GetFile((rootname + path).c_str());
+
+	assert(vf != nullptr);
 
 	//try to locate and open
-	if (!vf || !vf->open("r")) {
-		//TODO: optimize - this is inefficient
-		ostringstream buffer;
-		for (int i = 0; i < vf->size(); ++i) {
-			char* c;
-			vf->read(c, 1);
-			buffer << c;
-		}
-		return buffer.str();
+	if (vf && vf->open("r")) {
+		const auto size = vf->size();
+		char* filedata = new char[size];
+		vf->read(filedata, size);
+		string cpy(filedata,size);	//force all bytes
+		delete[] filedata;
+		return cpy;
 	}
 	else {
 		throw runtime_error("Cannot open " + path);
@@ -36,8 +39,9 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const std::string
 
 bool RavEngine::VirtualFilesystem::Exists(const std::string& path)
 {
-	return vfs.GetFile(path.c_str()) != nullptr;
+	return vfs.GetFile((rootname + path).c_str()) != nullptr;
 }
+
 
 RavEngine::VirtualFilesystem::~VirtualFilesystem()
 {

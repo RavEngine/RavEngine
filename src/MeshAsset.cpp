@@ -22,12 +22,16 @@ unordered_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
 MeshAsset::MeshAsset(const string& name){
 	string dir = "meshes/" + name;
 	
+	if (!App::Resources->Exists(dir)) {
+		throw runtime_error("Cannot open resource: " + dir);
+	}
+
 	auto str = App::Resources->FileContentsAt(dir);
 	
 	//pull from cmrc
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFileFromMemory(str.c_str(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.string().c_str());
+	const aiScene* scene = aiImportFileFromMemory(str.data(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.string().c_str());
 	
 	if (!scene){
 		throw runtime_error(string("cannot load: ") + aiGetErrorString());

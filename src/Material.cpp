@@ -9,6 +9,7 @@
 #include "Common3D.hpp"
 #include <bgfx/bgfx.h>
 #include "RavEngine_App.hpp"
+#include <ravtar/tarball.hpp>
 
 using namespace std;
 using namespace RavEngine;
@@ -83,9 +84,14 @@ Material::Material(const std::string& name) : name(name) {
 	//get all shader files for this programs
 	string dir = "shaders/" + name + ".tar";
 
+	auto data = App::Resources->FileContentsAt(dir);
+
+	std::istringstream istr(data);
+	Tar::TarReader reader(istr);
+
 	//get the shader code
-	auto vertex_src = App::Resources->FileContentsAt("shaders/" + name + "/vertex.bin");
-	auto fragment_src = App::Resources->FileContentsAt("shaders/" + name + "/fragment.bin");
+	auto vertex_src = reader.GetFile("vertex.bin");
+	auto fragment_src = reader.GetFile("fragment.bin");
 
 	//must have a vertex and a fragment shader
 	bgfx::ShaderHandle vsh = loadShader(vertex_src);
