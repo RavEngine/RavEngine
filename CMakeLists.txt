@@ -224,6 +224,16 @@ add_meshes("${PROJECT_NAME}" "${MESHES}")
 
 # pack resources
 macro(pack_resources target_rsc)
-	add_custom_command(TARGET "${target_rsc}" POST_BUILD COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${target_rsc} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.zip")
-	set_target_properties(${target_rsc} PROPERTIES RESOURCE "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.zip")
+	set(outpack "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.zip")
+	if(APPLE)
+		set(outpack "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.app/Contents/Resources/${target_rsc}.zip")
+	endif()
+
+	add_custom_command(TARGET "${target_rsc}" POST_BUILD COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${target_rsc} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}")
+	# target_sources(${target_rsc} PUBLIC "${outpack}")
+
+	set_source_files_properties("${outpack}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+	set_target_properties(${target_rsc} PROPERTIES 
+		MACOSX_BUNDLE TRUE
+	)
 endmacro()

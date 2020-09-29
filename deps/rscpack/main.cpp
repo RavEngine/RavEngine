@@ -66,6 +66,7 @@ int main(int argc, char** argv){
 		generalpack(engrsc / "meshes", "meshes");
 		
 		//write final archive
+		create_directories(out.parent_path());
 		resources.save(out.string());
 	}
 	catch (exception& e){

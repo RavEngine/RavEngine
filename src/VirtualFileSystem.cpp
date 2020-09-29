@@ -1,6 +1,7 @@
 #include "VirtualFileSystem.hpp"
 #include <ttvfs_zip.h>
 #include <sstream>
+#include <filesystem>
 
 using namespace RavEngine;
 using namespace std;
@@ -21,8 +22,10 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const std::string
 	ttvfs::File* vf = nullptr;
 	vf = vfs.GetFile((rootname + path).c_str());
 
-	assert(vf != nullptr);
-
+	if (vf == nullptr){
+		throw runtime_error("cannot open " + filesystem::current_path().string() + "/" + rootname + path);
+	}
+	
 	//try to locate and open
 	if (vf && vf->open("r")) {
 		const auto size = vf->size();
