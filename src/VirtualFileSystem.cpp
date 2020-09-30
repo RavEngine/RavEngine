@@ -14,11 +14,14 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 #ifdef __APPLE__
     CFBundleRef AppBundle = CFBundleGetMainBundle();
     CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(AppBundle);
-    CFStringRef resourcePath = CFURLCopyPath(resourcesURL);
+	CFURLRef absoluteResourceURL = CFURLCopyAbsoluteURL(resourcesURL);
+	CFStringRef resourcePath = CFURLCopyPath( absoluteResourceURL);
 
     string bundlepath = CFStringGetCStringPtr(resourcePath, kCFStringEncodingUTF8);
-    const char* cstr = (bundlepath + "/" + path).c_str();
+	bundlepath = (bundlepath + path + "/");
+    const char* cstr = bundlepath.c_str();
     
+	CFRelease(absoluteResourceURL);
     CFRelease(resourcePath);
     CFRelease(resourcesURL);
 #else
@@ -32,7 +35,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	//mount the archive
 	vfs.AddArchive(cstr);
 
-	rootname = path + "/";
+	rootname = cstr;
 }
 const std::string RavEngine::VirtualFilesystem::FileContentsAt(const std::string& path)
 {
