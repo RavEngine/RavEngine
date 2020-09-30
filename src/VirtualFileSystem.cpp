@@ -25,7 +25,8 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
     CFRelease(resourcePath);
     CFRelease(resourcesURL);
 #else
-    const char* cstr = path.c_str();
+	string appn = path + "/";
+    const char* cstr = appn.c_str();
 #endif
     
 	//configure
