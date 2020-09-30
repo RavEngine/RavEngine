@@ -189,7 +189,7 @@ define_property(GLOBAL PROPERTY SC_INCLUDE_DIR
 )
 set_property(GLOBAL PROPERTY SC_INCLUDE_DIR "${DEPS_DIR}/bgfx.cmake/bgfx/src")
 
-function (compile_shader_dir shader_dir resource_root)
+function (compile_shader_dir resource_root shader_dir )
 	# get all the shader files
 	file(GLOB SHADERS "${shader_dir}/*.json")
 
@@ -222,10 +222,10 @@ function (compile_shader_dir shader_dir resource_root)
 	add_dependencies("${resource_root}" "${sc_comp_name}_${resource_root}_Compile" "rscpack" "RavEngine")
 endfunction()
 
-
 # compile all builtin shaders
-compile_shader_dir("shaders" "${PROJECT_NAME}")
+compile_shader_dir("${PROJECT_NAME}" "shaders")
 
+# ================================================= Mesh packing ==============================================
 # Mesh adding macro
 macro(add_meshes target meshes)
 	foreach(MESH ${meshes})
