@@ -72,10 +72,8 @@ int main(int argc, char** argv){
 #endif
 		
 		//make a directory for the shaders
-		outpath = outpath / "shaders";
-		create_directory(outpath);
-		outpath = outpath / filename.filename().replace_extension("");
-		create_directory(outpath);
+		outpath = outpath / "shaders" / filename.filename().replace_extension("");
+		create_directories(outpath);
 		
 		ofstream outtar(outpath.parent_path() / filename.filename().replace_extension("tar"));
 		TarWriter tarball(outtar);

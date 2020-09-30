@@ -177,38 +177,54 @@ target_link_libraries("${SHADERCOMPILER}" PRIVATE "bgfx" "ravtar")
 add_dependencies("${SHADERCOMPILER}" "shaderc")	# shaderc must build before auto executable so that auto shader comp can work
 
 # define shader compilation actions
-define_property(GLOBAL PROPERTY ALL_SHADERS
-	BRIEF_DOCS "Aggregate shader list"
-    FULL_DOCS "Aggregate shader list")
-set_property(GLOBAL PROPERTY ALL_SHADERS "")
+define_property(GLOBAL PROPERTY SC_COMP_NAME
+	BRIEF_DOCS "Shader compiler name"
+	FULL_DOCS "Shader compiler name"
+)
+set_property(GLOBAL PROPERTY SC_COMP_NAME "${SHADERCOMPILER}")
+
+define_property(GLOBAL PROPERTY SC_INCLUDE_DIR
+	BRIEF_DOCS "Shader include path"
+	FULL_DOCS "Shader include path"
+)
+set_property(GLOBAL PROPERTY SC_INCLUDE_DIR "${DEPS_DIR}/bgfx.cmake/bgfx/src")
 
 function (compile_shader_dir shader_dir resource_root)
 	# get all the shader files
 	file(GLOB SHADERS "${shader_dir}/*.json")
+
+	define_property(GLOBAL PROPERTY ALL_SHADERS
+		BRIEF_DOCS "Aggregate shader list"
+		FULL_DOCS "GLOBAL shader list"
+	)
+	set_property(GLOBAL PROPERTY ALL_SHADERS "")
+
+	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
+	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
+
 	foreach(SHADER ${SHADERS})
 		get_filename_component(output_file "${SHADER}" NAME_WE)
-		set(output_file "${output_file}.tar")
+		set(output_file "${output_file}.tar" )
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS "${CMAKE_BINARY_DIR}/${resource_root}/shaders/${output_file}")
 		add_custom_command(
 			PRE_BUILD
 			OUTPUT "${CMAKE_BINARY_DIR}/${resource_root}/shaders/${output_file}"
-			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${SHADERCOMPILER}" -f "${SHADER}" -o ../${resource_root} -i "${DEPS_DIR}/bgfx.cmake/bgfx/src"
+			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${sc_comp_name}" -f "${SHADER}" -o ../${resource_root} -i "${sc_include_dir}"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Shader Descriptor ${SHADER} => ${output_file}"
 			VERBATIM
 		)
 	endforeach()
+
+	#track all the shaders for compilation
+	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
+	add_custom_target("${sc_comp_name}_${resource_root}_Compile" ALL DEPENDS ${all_shaders_property} "RavEngine_shaderc_auto")
+	add_dependencies("${resource_root}" "${sc_comp_name}_${resource_root}_Compile" "rscpack" "RavEngine")
 endfunction()
 
 
 # compile all builtin shaders
 compile_shader_dir("shaders" "${PROJECT_NAME}")
-#TODO: compile user-defined shaders
-
-#track all the shaders for compilation
-get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
-add_custom_target("${SHADERCOMPILER}_Compile" ALL DEPENDS ${all_shaders_property} "${SHADERCOMPILER}")
-add_dependencies("${PROJECT_NAME}" "${SHADERCOMPILER}_Compile" "rscpack")
 
 # Mesh adding macro
 macro(add_meshes target meshes)
