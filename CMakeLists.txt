@@ -235,6 +235,7 @@ macro(add_meshes target meshes)
 	endforeach()
 endmacro()
 
+# add polygon primitives provided by engine
 file(GLOB MESHES "meshes/*")
 add_meshes("${PROJECT_NAME}" "${MESHES}")
 
