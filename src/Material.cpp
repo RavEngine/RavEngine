@@ -10,6 +10,7 @@
 #include <bgfx/bgfx.h>
 #include "RavEngine_App.hpp"
 #include <ravtar/tarball.hpp>
+#include <typeindex>
 
 using namespace std;
 using namespace RavEngine;
@@ -75,12 +76,7 @@ void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::In
 Create a material given a shader. Also registers it in the material manager
 @param shader the path to the shader
 */
-Material::Material(const std::string& name) : name(name) {
-	//check if material is already loaded
-	if (Material::Manager::HasMaterialByName(name)) {
-		throw runtime_error("Material with name " + name + "is already allocated! Use GetMaterialByName to get it.");
-	}
-	
+Material::Material(const std::string& name) : name(name) {	
 	//get all shader files for this programs
 	string dir = "shaders/" + name + ".tar";
 
@@ -100,38 +96,13 @@ Material::Material(const std::string& name) : name(name) {
 	if (!bgfx::isValid(program)){
 		throw runtime_error("Material is invalid.");
 	}
-
-	//register material
-	Material::Manager::RegisterMaterial(this);
 }
 
-/**
-@returns if a material with the given name has been loaded.
-@param the name of the material to find
 
-*/
-bool Material::Manager::HasMaterialByName(const std::string& name)
-{
+bool Material::Manager::HasMaterialByTypeIndex(const std::type_index& t){
+	bool result = false;
 	mtx.lock();
-	bool has = materials.find(name) != materials.end();
+	result = materials.find(t) != materials.end();
 	mtx.unlock();
-	return has;
-}
-
-/**
-Mark a material for deletion by name. The material will remain allocated until its last reference is released.
-@param name the name of the material to mark for deletion
-*/
-void Material::Manager::UnregisterMaterialByName(const std::string& name)
-{
-	mtx.lock();
-	materials.erase(name);
-	mtx.unlock();
-}
-
-void Material::Manager::RegisterMaterial(Ref<Material> mat)
-{
-	mtx.lock();
-	materials.insert(std::make_pair(mat->GetName(), mat));
-	mtx.unlock();
+	return result;
 }

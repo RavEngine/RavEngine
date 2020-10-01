@@ -40,34 +40,94 @@ namespace RavEngine {
 			friend class Material;
 		protected:
 			//materials are keyed by their shader name
-			typedef std::unordered_map<std::string, Ref<RavEngine::Material>> MaterialStore;
+			typedef std::unordered_map<std::type_index, Ref<RavEngine::Material>> MaterialStore;
 			static MaterialStore materials;
+			static std::unordered_set<std::string> loadedPaths;
 			static std::mutex mtx;
 			
 			static matrix4 projectionMatrix;
 			static matrix4 viewMatrix;
 			
 			//for internal use only
-			static void RegisterMaterial(Ref<RavEngine::Material>);
+			static bool HasMaterialByTypeIndex(const std::type_index&);
 		public:
+			
+			/**
+			 Add a material to the structure
+			 @param mat the material to register
+			 @throws if a material with the same type is already registered
+			 */
+			template<typename T>
+			static void RegisterMaterial(Ref<T> mat)
+			{
+				//check if material is already registered
+				if (HasMaterialByType<T>()) {
+					throw std::runtime_error("Material with type is already allocated! Use GetMaterialByType to get it.");
+				}
+				
+				std::type_index t(typeid(T));
+				mtx.lock();
+				materials.insert(std::make_pair(t, mat));
+				mtx.unlock();
+			}
 			/**
 			 Gets a material with a given name, casted to a particular type.
 			 @param name the name of the material to query
-			 @note Undefined Behavior occurs if the template parameter does not match the returned material or any of its base classes
+			 @return the material if it exists, or a null reference if there is none
 			 */
-			static Ref<Material> GetMaterialByName(const std::string& name) {
-				mtx.lock();
-				Ref<Material> mat;
+			template<typename T>
+			static Ref<T> GetMaterialByType() {
+				Ref<T> mat;
 				mat.setNull();
+				std::type_index t(typeid(T));
+				mtx.lock();
 				try{
-					mat = materials.at(name);
+					mat = materials.at(t);
 				}
 				catch(std::exception&){}
 				mtx.unlock();
 				return mat;
 			}
-			static bool HasMaterialByName(const std::string&);
-			static void UnregisterMaterialByName(const std::string&);
+			
+			template<typename T>
+			static bool HasMaterialByType(){
+				return HasMaterialByTypeIndex(typeid(T));
+			}
+			
+			/**
+			 Mark a material for deletion by name. The material will remain allocated until its last reference is released.
+			 @param T the type to remove.
+			 */
+			template<typename T>
+			static void UnregisterMaterialByType(){
+				mtx.lock();
+				materials.erase(typeid(T));
+				mtx.unlock();
+			}
+			
+			
+			/**
+			 Mark a material for deletion by reference. The material will remain allocated until its last reference is released.
+			 @param material the material to remove
+			 */
+			template<typename T>
+			static void UnregisterMaterial(Ref<T> material){
+				UnregisterMaterialByType<T>();
+			}
+			
+			/**
+			 Helper to get a material by type. If one is not allocated, it will be created. Supports constructors via parameter pack
+			 @param args arguments to pass to material constructor if needed
+			 */
+			template<typename T, typename ... A>
+			static Ref<T> AccessMaterialOfType(A ... args){
+				if (HasMaterialByType<T>()){
+					return GetMaterialByType<T>();
+				}
+				Ref<T> mat(new T(args...));
+				RegisterMaterial(mat);
+				return mat;
+			}
 			
 			/**
 			 Set the current projection matrix. For internal use only.
