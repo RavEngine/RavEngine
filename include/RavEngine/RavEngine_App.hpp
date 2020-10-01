@@ -2,6 +2,9 @@
 #include <chrono>
 #include "RenderEngine.hpp"
 #include "VirtualFileSystem.hpp"
+#include <functional>
+#include <queue>
+#include "SpinLock.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -21,7 +24,26 @@ namespace RavEngine {
 		static const float evalNormal;	//normal speed is 60 hz
 
 		static Ref<VirtualFilesystem> Resources;
+		
+		/**
+		 Dispatch a task to be executed on the main thread.
+		 @param f the block to execute
+		 @note To pass parameters, do not reference! Instead, you must explicitly copy the values you want to pass:
+		 @code
+ int x = 5; int y = 6;
+ RavEngine::App::DispatchMainThread([=]{
+	std::cout << x << y << std::endl;
+ })
+		 @endcode
+		 */
+		static void DispatchMainThread(const std::function<void(void)>& f){
+			queue_lock.lock();
+			main_tasks.push(f);
+			queue_lock.unlock();
+		}
 	protected:
+		static SpinLock queue_lock;
+		static std::queue<std::function<void(void)>> main_tasks;
 
 		//#define LIMIT_TICK
 #ifdef LIMIT_TICK

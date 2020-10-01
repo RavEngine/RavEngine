@@ -2,8 +2,8 @@
 #include "SharedObject.hpp"
 #include "RenderEngine.hpp"
 #include <unordered_map>
-#include <mutex>
 #include <bgfx/bgfx.h>
+#include "SpinLock.hpp"
 
 namespace RavEngine {
 
@@ -42,8 +42,7 @@ namespace RavEngine {
 			//materials are keyed by their shader name
 			typedef std::unordered_map<std::type_index, Ref<RavEngine::Material>> MaterialStore;
 			static MaterialStore materials;
-			static std::unordered_set<std::string> loadedPaths;
-			static std::mutex mtx;
+			static SpinLock mtx;
 			
 			static matrix4 projectionMatrix;
 			static matrix4 viewMatrix;
@@ -121,11 +120,17 @@ namespace RavEngine {
 			 */
 			template<typename T, typename ... A>
 			static Ref<T> AccessMaterialOfType(A ... args){
-				if (HasMaterialByType<T>()){
-					return GetMaterialByType<T>();
+				Ref<T> mat;
+				mtx.lock();
+				std::type_index t(typeid(T));
+				if (materials.find(t) != materials.end()){
+					mat = materials.at(t);
 				}
-				Ref<T> mat(new T(args...));
-				RegisterMaterial(mat);
+				else{
+					mat = new T(args...);
+					materials.insert(std::make_pair(t,mat));
+				}
+				mtx.unlock();
 				return mat;
 			}
 			

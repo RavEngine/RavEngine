@@ -15,6 +15,9 @@ using namespace std::chrono;
 const float RavEngine::App::evalNormal = 60;
 Ref<VirtualFilesystem> App::Resources;
 
+SpinLock App::queue_lock;
+queue<function<void(void)>> App::main_tasks;
+
 int App::run(int argc, char** argv) {
 
 	//invoke startup hook
@@ -59,6 +62,14 @@ int App::run(int argc, char** argv) {
 		}
 		inputManager->Tick();
 		GameplayStatics::currentWorld->Tick(scale);
+		
+		//process main thread tasks
+		while (!main_tasks.empty()){
+			auto& front = main_tasks.front();
+			front();
+			main_tasks.pop();
+		}
+		
 		Renderer->Draw(GameplayStatics::currentWorld);
 
 #ifdef LIMIT_TICK

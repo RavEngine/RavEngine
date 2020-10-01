@@ -19,7 +19,7 @@ using namespace std::filesystem;
 Material::Manager::MaterialStore Material::Manager::materials;
 matrix4 Material::Manager::projectionMatrix;
 matrix4 Material::Manager::viewMatrix;
-mutex Material::Manager::mtx;
+SpinLock Material::Manager::mtx;
 
 // mapping names to types
 const unordered_map<string, ShaderStage> stagemap{
