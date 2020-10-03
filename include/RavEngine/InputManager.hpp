@@ -75,28 +75,59 @@ struct Event{
 };
 
 //controller IDs
-struct CID{
-	enum{
-		C0 = 1 << 0,
-		C1 = 1 << 1,
-		C2 = 1 << 2,
-		C3 = 1 << 3,
-		C4 = 1 << 4,
-		C5 = 1 << 5,
-		C6 = 1 << 6,
-		C7 = 1 << 7,
-		
-		C8 = 1 << 8,
-		C9 = 1 << 9,
-		C10 = 1 << 10,
-		C11 = 1 << 11,
-		C12 = 1 << 12,
-		C13 = 1 << 13,
-		C14 = 1 << 14,
-		C15 = 1 << 15,
-		ANY = ~0
-	};
+enum class CID{
+	NONE = 0,
+	C0 = 1 << 0,
+	C1 = 1 << 1,
+	C2 = 1 << 2,
+	C3 = 1 << 3,
+	C4 = 1 << 4,
+	C5 = 1 << 5,
+	C6 = 1 << 6,
+	C7 = 1 << 7,
+	
+	C8 = 1 << 8,
+	C9 = 1 << 9,
+	C10 = 1 << 10,
+	C11 = 1 << 11,
+	C12 = 1 << 12,
+	C13 = 1 << 13,
+	C14 = 1 << 14,
+	C15 = 1 << 15,
+	ANY = ~0
 };
+//bitwise
+inline CID operator | (CID lhs, CID rhs)
+{
+	using T = std::underlying_type_t<CID>;
+	return static_cast<CID>(static_cast<T>(lhs) | static_cast<T>(rhs));
+}
+
+inline CID& operator |= (CID& lhs, CID rhs)
+{
+	lhs = lhs | rhs;
+	return lhs;
+}
+inline CID operator & (CID lhs, CID rhs)
+{
+	using T = std::underlying_type_t<CID>;
+	return static_cast<CID>(static_cast<T>(lhs) & static_cast<T>(rhs));
+}
+
+inline CID& operator &= (CID& lhs, CID rhs)
+{
+	lhs = lhs & rhs;
+	return lhs;
+}
+
+/**
+ Construct a Controller ID object
+ @param x the id of the controller
+ */
+static CID Make_CID(int x){
+	return static_cast<CID>(1 << x);
+}
+
 
 typedef std::function<void(float)> axisCallback;
 typedef std::function<void()> actionCallback;
@@ -107,12 +138,14 @@ namespace RavEngine {
     protected:
 		//helper classes
 		class Callback{
+		protected:
 			IInputListener* obj;
 			void* func;
+			CID controllers;
 		public:
-			Callback(IInputListener* o, void* f) : obj(o), func(f){}
+			Callback(IInputListener* o, void* f, CID con) : obj(o), func(f), controllers(con){}
 			bool operator==(const Callback& other)const{
-				return func == other.func && obj == other.obj;
+				return func == other.func && obj == other.obj && controllers == other.controllers;
 			}
 			/**
 			 Check if the stored pointer matches another
@@ -140,7 +173,7 @@ namespace RavEngine {
 			 @param f the function pointer to invoke.
 			 */
 			template<class U>
-			AxisCallback(IInputListener* thisptr, void(U::* f)(float), float dz) : Callback(thisptr,&f), deadZone(dz){
+			AxisCallback(IInputListener* thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
 				exec = std::bind(f, static_cast<U*>(thisptr), std::placeholders::_1);
 			}
 			/**
@@ -148,9 +181,9 @@ namespace RavEngine {
 			 @param f the float to pass
 			 @param scale the amount to scale f
 			 */
-			void operator()(float f, float scale){
-				//do not execute if below deadzone
-				if (abs(f) >= deadZone) {
+			void operator()(float f, float scale, CID incontrol){
+				//check controllers, and do not execute if below deadzone
+				if ((controllers & incontrol) != CID::NONE && abs(f) >= deadZone) {
 					exec(f * scale);
 				}
 			}
@@ -173,15 +206,18 @@ namespace RavEngine {
 			 @param t the state to bind
 			 */
 			template<class U>
-			ActionCallback(IInputListener* thisptr, void(U::* f)(), ActionState t) : Callback(thisptr, &f){
+			ActionCallback(IInputListener* thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
 				exec = std::bind(f, static_cast<U*>(thisptr));
 				type = t;
 			}
 			/**
 			 Execute the function on the stored pointer
 			 */
-			void operator()(){
-				exec();
+			void operator()(CID incontrol){
+				//check controllers
+				if ((controllers & incontrol) != CID::NONE){
+					exec();
+				}
 			}
 			bool operator==(const ActionCallback& other)const{
 				return Callback::operator==(other) && type == other.type;
@@ -194,23 +230,31 @@ namespace RavEngine {
 				return type == state;
 			}
 		};
+		
+		
+		struct InputOccurance{
+			CID controller;
+		};
+		struct ActionOccurance : public InputOccurance{
+			ActionState state;
+		};
+		struct AxisOccurance : public InputOccurance{
+			float currentValue;
+		};
+		
 		struct Record{
 			std::list<std::string> bindingNames;
 		};
 		
-		
 		struct ActionRecord : public Record{
-			
+			std::list<ActionOccurance> inputs;
 		};
 		
-		//axis storage
-
 		struct AxisRecord : public Record {
 			float scale = 1;
-			float currentValue = 0;
+			std::list<AxisOccurance> events;
 		};
 		
-        std::list<Event> actionValues;
         std::unordered_map<int, ActionRecord> codeToAction;
         std::unordered_map<std::string, std::list<ActionCallback>> actionMappings;
 
@@ -220,19 +264,19 @@ namespace RavEngine {
         /**
          Helper used for registering axis inputs inside the engine
          */
-        void reg_axis(int code, float value) {
+        void reg_axis(int code, float value, CID controller) {
             if (codeToAxis.find(code) != codeToAxis.end()) {
-				codeToAxis[code].currentValue = value;
+				codeToAxis[code].events.push_back({controller,value});
             }
         }
 
         std::unordered_set<SDL_GameController*> connectedControllers;
 		
 		//methods to get input values
-		void SDL_key(bool state, int charcode);
+		void SDL_key(bool state, int charcode, CID controllerID);
 		void SDL_mousemove(float x, float y, int xvel, int yvel, float scale);
-		void SDL_mousekey(bool state, int charcode);
-		void SDL_ControllerAxis(int axisID, float value);
+		void SDL_mousekey(bool state, int charcode, CID controllerId);
+		void SDL_ControllerAxis(int axisID, float value, CID controllerID);
 
     public:
 
@@ -293,8 +337,8 @@ namespace RavEngine {
 		 * @param type the required state of the action to invoke the method.
 		 */
         template<class U>
-		void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type){
-			ActionCallback action(thisptr,f,type);
+		void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
+			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].push_back(action);
 			thisptr->OnRegister(this);
 		}
@@ -307,8 +351,8 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
          */
         template<typename U>
-        void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), float deadZone = AxisCallback::defaultDeadzone) {
-			AxisCallback axis(thisptr, f, deadZone);
+        void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
+			AxisCallback axis(thisptr, f, deadZone,controllers);
             axisMappings[name].push_back(axis);
 			thisptr->OnRegister(this);
         }
@@ -321,8 +365,8 @@ namespace RavEngine {
 		 @param state the state to use to match the callback
 		 */
 		template<typename U>
-		void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type){
-			ActionCallback action(thisptr,f,type);
+		void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
+			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].remove(action);
 			thisptr->OnUnregister(this);
 		}
@@ -335,8 +379,8 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
 		 */
 		template<typename U>
-		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), float deadZone = AxisCallback::defaultDeadzone){
-			AxisCallback axis(thisptr, f, deadZone);
+		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
+			AxisCallback axis(thisptr, f, deadZone,controllers);
 			axisMappings[name].remove(axis);
 			thisptr->OnUnregister(this);
 		}

@@ -43,7 +43,7 @@ void InputManager::AggregateInput(const SDL_Event& event, uint32_t windowflags, 
 	switch (event.type) {
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
-			SDL_key(event.key.state, event.key.keysym.scancode);
+			SDL_key(event.key.state, event.key.keysym.scancode,Make_CID(0));
 			break;
 		case SDL_MOUSEMOTION:
 			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
@@ -55,17 +55,17 @@ void InputManager::AggregateInput(const SDL_Event& event, uint32_t windowflags, 
 		case SDL_MOUSEBUTTONDOWN:
 		case SDL_MOUSEBUTTONUP:
 			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
-				SDL_mousekey(event.button.state, event.button.button);
+				SDL_mousekey(event.button.state, event.button.button, Make_CID(0));
 			}
 			break;
 		case SDL_CONTROLLERAXISMOTION:
 		case SDL_CONTROLLER_AXIS_LEFTX:
 		case SDL_CONTROLLER_AXIS_LEFTY:
-			SDL_ControllerAxis(event.caxis.axis + Special::CONTROLLER_AXIS_OFFSET, (event.caxis.value) / ((float)SHRT_MAX));
+			SDL_ControllerAxis(event.caxis.axis + Special::CONTROLLER_AXIS_OFFSET, (event.caxis.value) / ((float)SHRT_MAX), Make_CID(event.cdevice.which + 1));
 			break;
 		case SDL_CONTROLLERBUTTONDOWN:
 		case SDL_CONTROLLERBUTTONUP:
-			SDL_mousekey(event.cbutton.state + Special::CONTROLLER_BUTTON_OFFSET, event.cbutton.button);
+			SDL_mousekey(event.cbutton.state + Special::CONTROLLER_BUTTON_OFFSET, event.cbutton.button,Make_CID(event.cdevice.which + 1));
 			break;
 		case SDL_CONTROLLERDEVICEADDED:
 		case SDL_CONTROLLERDEVICEREMOVED:
@@ -75,39 +75,51 @@ void InputManager::AggregateInput(const SDL_Event& event, uint32_t windowflags, 
 
 void InputManager::Tick() {
     //action mappings
-    for (Event& evt : actionValues){
-        //get the list of functions to invoke
-		for (auto& a : codeToAction[evt.ID].bindingNames) {
-            if (actionMappings.find(a) != actionMappings.end()) {
-                auto toInvoke = actionMappings.at(a);
-
-                //determine which to invoke
-                for (auto& action : toInvoke) {
-					if (action.IsCorrectState(evt.value)) {
-                        action();
-                    }
-                }
-            }
-        }
-    }
-    actionValues.clear();
+	//get the list of functions to invoke
+	for (auto& p : codeToAction) {
+		for(auto& a : p.second.bindingNames){
+			if (actionMappings.find(a) != actionMappings.end()) {
+				auto toInvoke = actionMappings.at(a);
+				
+				//determine which to invoke
+				for (auto& action : toInvoke) {
+					for(const auto& state : p.second.inputs){
+						if (action.IsCorrectState(state.state)) {
+							action(state.controller);
+						}
+					}
+				}
+			}
+		}
+		
+	}
     
+	
+	for(auto& p : codeToAction){
+		p.second.inputs.clear();
+	}
+	    
     //call all axis mappings
     for (auto& pair : codeToAxis){
 		for (auto& a : pair.second.bindingNames) {
             if (axisMappings.find(a) != axisMappings.end()) {
 				auto scale = codeToAxis[pair.first].scale;
-				auto val = codeToAxis[pair.first].currentValue;
-                for (auto& f : axisMappings.at(a)) {
-                    f(val, scale);
-                }
+				for(const auto& evt : codeToAxis[pair.first].events){
+					for (auto& f : axisMappings.at(a)) {
+						f(evt.currentValue, scale,evt.controller);
+					}
+				}
             }
         }
     }
 
+	
+	for(auto& p : codeToAxis){
+		p.second.events.clear();
+	}
     //mouse velocity needs to be cleared
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_XVEL), 0);
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), 0);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_XVEL), 0, CID::C0);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), 0, CID::C0);
 }
 
 /**
@@ -115,16 +127,16 @@ void InputManager::Tick() {
  * @param state true = pressed, false = released
  * @param charcode the keycode of the key central to the event
  */
-void InputManager::SDL_key(bool state, int charcode)
+void InputManager::SDL_key(bool state, int charcode, CID controller)
 {
     //axis mapping?
     if (codeToAxis.find(charcode) != codeToAxis.end()){
-		codeToAxis[charcode].currentValue = state;
+		codeToAxis[charcode].events.push_back({controller,(float)state});
     }
     
     //action mapping?
     if (codeToAction.find(charcode) != codeToAction.end()){
-        actionValues.push_back({charcode,static_cast<ActionState>(state)});
+		codeToAction[charcode].inputs.push_back({controller,static_cast<ActionState>(state)});
     }
 }
 
@@ -140,21 +152,21 @@ void InputManager::SDL_mousemove(float x, float y, int xvel, int yvel, float sca
     const float velscale = 1 / scale;
 
     //mouse movements are axis events only
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_X),x);
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_Y),y);
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_XVEL), xvel * velscale);
-    reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), yvel * velscale);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_X),x,CID::C0);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_Y),y,CID::C0);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_XVEL), xvel * velscale, CID::C0);
+    reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), yvel * velscale, CID::C0);
 }
 
-void InputManager::SDL_mousekey(bool state, int charcode)
+void InputManager::SDL_mousekey(bool state, int charcode, CID controller)
 {
     //clicks are treated the same as keyboard input
-    SDL_key(state, charcode);
+    SDL_key(state, charcode, controller);
 }
 
-void InputManager::SDL_ControllerAxis(int axisID, float value)
+void InputManager::SDL_ControllerAxis(int axisID, float value, CID controller)
 {
-    reg_axis(axisID, value);
+    reg_axis(axisID, value, controller);
 }
 
 InputManager::~InputManager() {
