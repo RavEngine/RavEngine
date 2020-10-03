@@ -74,6 +74,30 @@ struct Event{
     }
 };
 
+//controller IDs
+struct CID{
+	enum{
+		C0 = 1 << 0,
+		C1 = 1 << 1,
+		C2 = 1 << 2,
+		C3 = 1 << 3,
+		C4 = 1 << 4,
+		C5 = 1 << 5,
+		C6 = 1 << 6,
+		C7 = 1 << 7,
+		
+		C8 = 1 << 8,
+		C9 = 1 << 9,
+		C10 = 1 << 10,
+		C11 = 1 << 11,
+		C12 = 1 << 12,
+		C13 = 1 << 13,
+		C14 = 1 << 14,
+		C15 = 1 << 15,
+		ANY = ~0
+	};
+};
+
 typedef std::function<void(float)> axisCallback;
 typedef std::function<void()> actionCallback;
 
@@ -170,24 +194,35 @@ namespace RavEngine {
 				return type == state;
 			}
 		};
+		struct Record{
+			std::list<std::string> bindingNames;
+		};
+		
+		
+		struct ActionRecord : public Record{
+			
+		};
+		
+		//axis storage
+
+		struct AxisRecord : public Record {
+			float scale = 1;
+			float currentValue = 0;
+		};
 		
         std::list<Event> actionValues;
-        std::unordered_set<int> awareActionValues;
-        std::unordered_map<int, std::list<std::string>> codeToAction;
+        std::unordered_map<int, ActionRecord> codeToAction;
         std::unordered_map<std::string, std::list<ActionCallback>> actionMappings;
 
-        //axis storage
-        std::unordered_map<int, float> axisValues;                      //ids to current values
-        std::unordered_map<int, float> axisScalars;                     //ids to scalars
-        std::unordered_map<int, std::list<std::string>> codeToAxis;                //ids to strings
+        std::unordered_map<int, AxisRecord> codeToAxis;                //ids to records
         std::unordered_map<std::string, std::list<AxisCallback>> axisMappings;     //strings to methods
 
         /**
          Helper used for registering axis inputs inside the engine
          */
         void reg_axis(int code, float value) {
-            if (axisScalars.find(code) != axisScalars.end()) {
-                axisValues[code] = value;
+            if (codeToAxis.find(code) != codeToAxis.end()) {
+				codeToAxis[code].currentValue = value;
             }
         }
 

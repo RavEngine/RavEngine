@@ -77,7 +77,7 @@ void InputManager::Tick() {
     //action mappings
     for (Event& evt : actionValues){
         //get the list of functions to invoke
-        for (auto& a : codeToAction[evt.ID]) {
+		for (auto& a : codeToAction[evt.ID].bindingNames) {
             if (actionMappings.find(a) != actionMappings.end()) {
                 auto toInvoke = actionMappings.at(a);
 
@@ -94,10 +94,10 @@ void InputManager::Tick() {
     
     //call all axis mappings
     for (auto& pair : codeToAxis){
-        for (auto& a : pair.second) {
+		for (auto& a : pair.second.bindingNames) {
             if (axisMappings.find(a) != axisMappings.end()) {
-                auto scale = axisScalars[pair.first];
-                auto val = /*scale * */ axisValues[pair.first];
+				auto scale = codeToAxis[pair.first].scale;
+				auto val = codeToAxis[pair.first].currentValue;
                 for (auto& f : axisMappings.at(a)) {
                     f(val, scale);
                 }
@@ -118,12 +118,12 @@ void InputManager::Tick() {
 void InputManager::SDL_key(bool state, int charcode)
 {
     //axis mapping?
-    if (axisScalars.find(charcode) != axisScalars.end()){
-        axisValues[charcode] = state;
+    if (codeToAxis.find(charcode) != codeToAxis.end()){
+		codeToAxis[charcode].currentValue = state;
     }
     
     //action mapping?
-    if (awareActionValues.find(charcode) != awareActionValues.end()){
+    if (codeToAction.find(charcode) != codeToAction.end()){
         actionValues.push_back({charcode,static_cast<ActionState>(state)});
     }
 }
@@ -182,8 +182,8 @@ InputManager::~InputManager() {
 void InputManager::AddAxisMap(const std::string& name, int Id, float scale){
     
     //add so that tick is aware of it
-    axisScalars[Id] = scale;
-    codeToAxis[Id].push_back(name);
+	codeToAxis[Id].bindingNames.push_back(name);
+	codeToAxis[Id].scale = scale;
 }
 
 /**
@@ -194,22 +194,18 @@ Define an action mapping by name. If the mapping already exists, an additonal in
 void InputManager::AddActionMap(const std::string& name, int Id){
     
     //add so that tick is aware of this
-    awareActionValues.insert(Id);
-    codeToAction[Id].push_back(name);
+	codeToAction[Id].bindingNames.push_back(name);
 }
 
 void InputManager::RemoveActionMap(const std::string& name, int Id)
 {
     //remove from ID tracking lists
-    awareActionValues.erase(Id);
     codeToAction.erase(Id);
 }
 
 void InputManager::RemoveAxisMap(const std::string& name, int Id)
 {
     //remove from ID tracking lists
-    axisValues.erase(Id);
-    axisScalars.erase(Id);
     codeToAction.erase(Id);
 }
 
