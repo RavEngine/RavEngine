@@ -232,14 +232,9 @@ namespace RavEngine {
 		};
 		
 		
-		struct InputOccurance{
+		struct ActionOccurance{
 			CID controller;
-		};
-		struct ActionOccurance : public InputOccurance{
 			ActionState state;
-		};
-		struct AxisOccurance : public InputOccurance{
-			float currentValue;
 		};
 		
 		struct Record{
@@ -252,7 +247,7 @@ namespace RavEngine {
 		
 		struct AxisRecord : public Record {
 			float scale = 1;
-			std::list<AxisOccurance> events;
+			std::unordered_map<CID,float> values;
 		};
 		
         std::unordered_map<int, ActionRecord> codeToAction;
@@ -266,7 +261,7 @@ namespace RavEngine {
          */
         void reg_axis(int code, float value, CID controller) {
             if (codeToAxis.find(code) != codeToAxis.end()) {
-				codeToAxis[code].events.push_back({controller,value});
+				codeToAxis[code].values[controller] = value;
             }
         }
 

@@ -104,9 +104,9 @@ void InputManager::Tick() {
 		for (auto& a : pair.second.bindingNames) {
             if (axisMappings.find(a) != axisMappings.end()) {
 				auto scale = codeToAxis[pair.first].scale;
-				for(const auto& evt : codeToAxis[pair.first].events){
+				for(const auto& evt : codeToAxis[pair.first].values){
 					for (auto& f : axisMappings.at(a)) {
-						f(evt.currentValue, scale,evt.controller);
+						f(evt.second, scale,evt.first);
 					}
 				}
             }
@@ -114,9 +114,6 @@ void InputManager::Tick() {
     }
 
 	
-	for(auto& p : codeToAxis){
-		p.second.events.clear();
-	}
     //mouse velocity needs to be cleared
     reg_axis(static_cast<int>(Special::MOUSEMOVE_XVEL), 0, CID::C0);
     reg_axis(static_cast<int>(Special::MOUSEMOVE_YVEL), 0, CID::C0);
@@ -131,7 +128,7 @@ void InputManager::SDL_key(bool state, int charcode, CID controller)
 {
     //axis mapping?
     if (codeToAxis.find(charcode) != codeToAxis.end()){
-		codeToAxis[charcode].events.push_back({controller,(float)state});
+		codeToAxis[charcode].values[controller] = (float)state;
     }
     
     //action mapping?
