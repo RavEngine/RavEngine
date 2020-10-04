@@ -12,127 +12,128 @@
 #include <SDL_events.h>
 #include "IInputListener.hpp"
 
-enum class ActionState{
-  Released, Pressed
-};
-
-struct Special {
-    enum {
-        MOUSEMOVE_X = -500,
-        MOUSEMOVE_Y = -501,
-        MOUSEMOVE_XVEL = -502,
-        MOUSEMOVE_YVEL = -503,
-        CONTROLLER_AXIS_OFFSET = -8000,
-        CONTROLLER_BUTTON_OFFSET = -10000
-    };
-};
-
-//use this when binding controller buttons
-struct ControllerButton {
-    enum {
-        SDL_CONTROLLER_BUTTON_INVALID = -1,
-        SDL_CONTROLLER_BUTTON_A = Special::CONTROLLER_BUTTON_OFFSET,
-        SDL_CONTROLLER_BUTTON_B,
-        SDL_CONTROLLER_BUTTON_X,
-        SDL_CONTROLLER_BUTTON_Y,
-        SDL_CONTROLLER_BUTTON_BACK,
-        SDL_CONTROLLER_BUTTON_GUIDE,
-        SDL_CONTROLLER_BUTTON_START,
-        SDL_CONTROLLER_BUTTON_LEFTSTICK,
-        SDL_CONTROLLER_BUTTON_RIGHTSTICK,
-        SDL_CONTROLLER_BUTTON_LEFTSHOULDER,
-        SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,
-        SDL_CONTROLLER_BUTTON_DPAD_UP,
-        SDL_CONTROLLER_BUTTON_DPAD_DOWN,
-        SDL_CONTROLLER_BUTTON_DPAD_LEFT,
-        SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
-        SDL_CONTROLLER_BUTTON_MAX
-    };
-};
-
-//use this when binding controller axis
-struct ControllerAxis {
-    enum {
-        SDL_CONTROLLER_AXIS_INVALID = -1,
-        SDL_CONTROLLER_AXIS_LEFTX = Special::CONTROLLER_AXIS_OFFSET,
-        SDL_CONTROLLER_AXIS_LEFTY,
-        SDL_CONTROLLER_AXIS_RIGHTX,
-        SDL_CONTROLLER_AXIS_RIGHTY,
-        SDL_CONTROLLER_AXIS_TRIGGERLEFT,
-        SDL_CONTROLLER_AXIS_TRIGGERRIGHT,
-        SDL_CONTROLLER_AXIS_MAX
-    };
-};
-
-
-struct Event{
-    int ID;
-    ActionState value;
-    friend std::ostream& operator<<(std::ostream& os, const Event& dt){
-        os << "EVT id = " << dt.ID << " value = " << (dt.value == ActionState::Released ? "Released" : "Pressed");
-        return os;
-    }
-};
-
-//controller IDs
-enum class CID{
-	NONE = 0,
-	C0 = 1 << 0,
-	C1 = 1 << 1,
-	C2 = 1 << 2,
-	C3 = 1 << 3,
-	C4 = 1 << 4,
-	C5 = 1 << 5,
-	C6 = 1 << 6,
-	C7 = 1 << 7,
-	
-	C8 = 1 << 8,
-	C9 = 1 << 9,
-	C10 = 1 << 10,
-	C11 = 1 << 11,
-	C12 = 1 << 12,
-	C13 = 1 << 13,
-	C14 = 1 << 14,
-	C15 = 1 << 15,
-	ANY = ~0
-};
-//bitwise
-inline CID operator | (CID lhs, CID rhs)
-{
-	using T = std::underlying_type_t<CID>;
-	return static_cast<CID>(static_cast<T>(lhs) | static_cast<T>(rhs));
-}
-
-inline CID& operator |= (CID& lhs, CID rhs)
-{
-	lhs = lhs | rhs;
-	return lhs;
-}
-inline CID operator & (CID lhs, CID rhs)
-{
-	using T = std::underlying_type_t<CID>;
-	return static_cast<CID>(static_cast<T>(lhs) & static_cast<T>(rhs));
-}
-
-inline CID& operator &= (CID& lhs, CID rhs)
-{
-	lhs = lhs & rhs;
-	return lhs;
-}
-
-/**
- Construct a Controller ID object
- @param x the id of the controller
- */
-static CID Make_CID(int x){
-	return static_cast<CID>(1 << x);
-}
-
-
-typedef std::function<void(float)> axisCallback;
-typedef std::function<void()> actionCallback;
-
 namespace RavEngine {
+	enum class ActionState{
+		Released, Pressed
+	};
+
+	struct Special {
+		enum {
+			MOUSEMOVE_X = -500,
+			MOUSEMOVE_Y = -501,
+			MOUSEMOVE_XVEL = -502,
+			MOUSEMOVE_YVEL = -503,
+			CONTROLLER_AXIS_OFFSET = -8000,
+			CONTROLLER_BUTTON_OFFSET = -10000
+		};
+	};
+
+	//use this when binding controller buttons
+	struct ControllerButton {
+		enum {
+			SDL_CONTROLLER_BUTTON_INVALID = -1,
+			SDL_CONTROLLER_BUTTON_A = Special::CONTROLLER_BUTTON_OFFSET,
+			SDL_CONTROLLER_BUTTON_B,
+			SDL_CONTROLLER_BUTTON_X,
+			SDL_CONTROLLER_BUTTON_Y,
+			SDL_CONTROLLER_BUTTON_BACK,
+			SDL_CONTROLLER_BUTTON_GUIDE,
+			SDL_CONTROLLER_BUTTON_START,
+			SDL_CONTROLLER_BUTTON_LEFTSTICK,
+			SDL_CONTROLLER_BUTTON_RIGHTSTICK,
+			SDL_CONTROLLER_BUTTON_LEFTSHOULDER,
+			SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,
+			SDL_CONTROLLER_BUTTON_DPAD_UP,
+			SDL_CONTROLLER_BUTTON_DPAD_DOWN,
+			SDL_CONTROLLER_BUTTON_DPAD_LEFT,
+			SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
+			SDL_CONTROLLER_BUTTON_MAX
+		};
+	};
+
+	//use this when binding controller axis
+	struct ControllerAxis {
+		enum {
+			SDL_CONTROLLER_AXIS_INVALID = -1,
+			SDL_CONTROLLER_AXIS_LEFTX = Special::CONTROLLER_AXIS_OFFSET,
+			SDL_CONTROLLER_AXIS_LEFTY,
+			SDL_CONTROLLER_AXIS_RIGHTX,
+			SDL_CONTROLLER_AXIS_RIGHTY,
+			SDL_CONTROLLER_AXIS_TRIGGERLEFT,
+			SDL_CONTROLLER_AXIS_TRIGGERRIGHT,
+			SDL_CONTROLLER_AXIS_MAX
+		};
+	};
+
+
+	struct Event{
+		int ID;
+		ActionState value;
+		friend std::ostream& operator<<(std::ostream& os, const Event& dt){
+			os << "EVT id = " << dt.ID << " value = " << (dt.value == ActionState::Released ? "Released" : "Pressed");
+			return os;
+		}
+	};
+
+	//controller IDs
+	enum class CID{
+		NONE = 0,
+		C0 = 1 << 0,
+		C1 = 1 << 1,
+		C2 = 1 << 2,
+		C3 = 1 << 3,
+		C4 = 1 << 4,
+		C5 = 1 << 5,
+		C6 = 1 << 6,
+		C7 = 1 << 7,
+		
+		C8 = 1 << 8,
+		C9 = 1 << 9,
+		C10 = 1 << 10,
+		C11 = 1 << 11,
+		C12 = 1 << 12,
+		C13 = 1 << 13,
+		C14 = 1 << 14,
+		C15 = 1 << 15,
+		ANY = ~0
+	};
+	//bitwise
+	inline CID operator | (CID lhs, CID rhs)
+	{
+		using T = std::underlying_type_t<CID>;
+		return static_cast<CID>(static_cast<T>(lhs) | static_cast<T>(rhs));
+	}
+
+	inline CID& operator |= (CID& lhs, CID rhs)
+	{
+		lhs = lhs | rhs;
+		return lhs;
+	}
+	inline CID operator & (CID lhs, CID rhs)
+	{
+		using T = std::underlying_type_t<CID>;
+		return static_cast<CID>(static_cast<T>(lhs) & static_cast<T>(rhs));
+	}
+
+	inline CID& operator &= (CID& lhs, CID rhs)
+	{
+		lhs = lhs & rhs;
+		return lhs;
+	}
+
+	/**
+	 Construct a Controller ID object
+	 @param x the id of the controller
+	 */
+	inline static CID Make_CID(int x){
+		return static_cast<CID>(1 << x);
+	}
+
+
+	typedef std::function<void(float)> axisCallback;
+	typedef std::function<void()> actionCallback;
+
+
     class InputManager : public SharedObject
     {
     protected:

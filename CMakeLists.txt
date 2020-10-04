@@ -49,7 +49,6 @@ endif()
 add_subdirectory("${DEPS_DIR}/SDL2")
 
 add_subdirectory("${DEPS_DIR}/RavTar")
-add_subdirectory("${DEPS_DIR}/miniz-cpp")
 add_subdirectory("${DEPS_DIR}/rscpack")
 
 # bgfx
