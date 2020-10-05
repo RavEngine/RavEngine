@@ -1,7 +1,6 @@
 #pragma once
 #include <tweeny.h>
 #include "mathtypes.hpp"
-#include <vector>
 #include <functional>
 #include "RavEngine_App.hpp"
 
