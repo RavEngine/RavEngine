@@ -22,6 +22,8 @@ int App::run(int argc, char** argv) {
 
 	//invoke startup hook
 	OnStartup(argc, argv);
+	
+	lastFrameTime = clocktype::now();
 
 	auto& inputManager = GameplayStatics::inputManager;
     

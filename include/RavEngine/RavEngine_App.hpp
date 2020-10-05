@@ -63,7 +63,7 @@ namespace RavEngine {
 		virtual int OnShutdown() { return 0; };
 
 		//last frame time, frame delta time, framerate scale, maximum frame time
-		timePoint lastFrameTime = clocktype::now();
+		timePoint lastFrameTime;
 		timeDiff deltaTimeMicroseconds;
 		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
 		//Render engine

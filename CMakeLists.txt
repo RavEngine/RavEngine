@@ -47,7 +47,7 @@ endif()
 #set(SDL_SHARED OFF CACHE INTERNAL "")
 
 add_subdirectory("${DEPS_DIR}/SDL2")
-
+add_subdirectory("${DEPS_DIR}/tweeny")
 add_subdirectory("${DEPS_DIR}/RavTar")
 add_subdirectory("${DEPS_DIR}/rscpack")
 
@@ -145,6 +145,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ravtar"
 	#"PhysXGPU"
 	PUBLIC
+	"tweeny"
 	"SDL2-static"
 	"bgfx"
 	"bx"
