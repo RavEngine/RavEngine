@@ -6,10 +6,11 @@
 #include "RavEngine_App.hpp"
 
 namespace RavEngine{
+	template<typename ...Floats>
 	class Tween : public SharedObject{
 	protected:
-		tweeny::tween<decimalType> anim;
-		typedef std::function<bool(decimalType)> stepfunc;
+		tweeny::tween<Floats...> anim;
+		typedef std::function<bool(Floats...)> stepfunc;
 		
 	public:
 		Tween(){};
@@ -19,8 +20,8 @@ namespace RavEngine{
 		 @param step the function to invoke on each step.
 		 @param intialValue the starting value, set to 0 if not passed.
 		 */
-		Tween(const stepfunc& step, decimalType initialValue = 0){
-			anim = tweeny::from(initialValue).onStep(step);
+		Tween(const stepfunc& step, Floats ... initialValue){
+			anim = tweeny::from(initialValue...).onStep(step);
 		}
 		
 		Tween(const Tween& other){
@@ -43,8 +44,8 @@ namespace RavEngine{
 		 @param interpolation the interpolation function to use
 		 */
 		template<typename T>
-		Tween& AddKeyframe(decimalType value, decimalType time, T interpolation){
-			anim.to(value).during(time * App::evalNormal).via(interpolation);
+		Tween& AddKeyframe(decimalType time, T interpolation, Floats ... values){
+			anim.to(values...).during(time * App::evalNormal).via(interpolation);
 			return *this;
 		}
 		

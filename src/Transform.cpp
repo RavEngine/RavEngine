@@ -40,16 +40,26 @@ void Transform::GetParentMatrixStack(list<matrix4>& matrix) const{
 
 void Transform::AddChild(const WeakRef<Transform>& child)
 {
-	//must be passing a transform!
-	Ref<Transform>(child)->parent = WeakRef<Transform>(this);
+	Ref<Transform> ctrans(child);
+	auto worldPos = ctrans->GetWorldPosition();
+	auto worldRot = ctrans->GetWorldRotation();
+	
+	ctrans->parent = WeakRef<Transform>(this);
 	children.insert(child);
+	
+	ctrans->SetWorldPosition(worldPos);
+	ctrans->SetWorldRotation(worldRot);
 }
 
 void Transform::RemoveChild(const WeakRef<Transform>& child)
 {
-	//must be passing a transform!
-	Ref<Transform>(child)->parent = nullptr;
+	Ref<Transform> ctrans(child);
+	auto worldPos = ctrans->GetWorldPosition();
+	auto worldRot = ctrans->GetWorldRotation();
+	ctrans->parent = nullptr;
 	children.erase(child);
+	ctrans->SetWorldPosition(worldPos);
+	ctrans->SetWorldRotation(worldRot);
 }
 
 vector3 Transform::GetWorldPosition()
