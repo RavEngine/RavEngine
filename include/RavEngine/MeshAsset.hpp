@@ -4,9 +4,7 @@
 #include <bgfx/bgfx.h>
 #include <unordered_map>
 #include <mutex>
-
-#define MESHLIBRARY(A) CMRC_DECLARE(A);
-
+#include "mathtypes.hpp"
 
 namespace RavEngine{
 
@@ -17,7 +15,7 @@ public:
 	 Create a MeshAsset
 	 @param path the path to the asset in the embedded filesystem
 	 */
-	MeshAsset(const std::string& path);
+	MeshAsset(const std::string& path, const decimalType scale = 1.0);
 	
 	const bgfx::VertexBufferHandle& getVertexBuffer(){
 		return vertexBuffer;

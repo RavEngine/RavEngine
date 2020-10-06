@@ -6,7 +6,6 @@
 #include <assimp/material.h>
 #include <assimp/mesh.h>
 #include <vector>
-#include "mathtypes.hpp"
 #include <random>
 #include "RavEngine_App.hpp"
 #include <filesystem>
@@ -19,7 +18,7 @@ using namespace std;
 mutex MeshAsset::Manager::mtx;
 unordered_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
 
-MeshAsset::MeshAsset(const string& name){
+MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	string dir = "meshes/" + name;
 	
 	if (!App::Resources->Exists(dir)) {
@@ -32,6 +31,7 @@ MeshAsset::MeshAsset(const string& name){
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
 	const aiScene* scene = aiImportFileFromMemory(str.data(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.string().c_str());
+	
 	
 	if (!scene){
 		throw runtime_error(string("cannot load: ") + aiGetErrorString());
@@ -46,7 +46,9 @@ MeshAsset::MeshAsset(const string& name){
     
     std::random_device rd; // obtain a random number from hardware
    std::mt19937 gen(rd()); // seed the generator
-   std::uniform_int_distribution<> distr(0, 16777215); // define the range
+   std::uniform_int_distribution<> distr(0, 0xFFFFFF); // define the range
+	
+	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
 	
 	vector<MeshPart> meshes;
 	meshes.reserve(scene->mNumMeshes);
@@ -57,8 +59,11 @@ MeshAsset::MeshAsset(const string& name){
 		mp.vertices.reserve(mesh->mNumVertices);
 		for(int vi = 0; vi < mesh->mNumVertices; vi++){
 			auto vert = mesh->mVertices[vi];
-			Vertex v;
-            mp.vertices.push_back({vert.x,vert.y,vert.z,static_cast<uint32_t>(distr(gen))});
+			vector4 scaled(vert.x,vert.y,vert.z,1);
+			
+			scaled = scalemat * scaled;
+			
+			mp.vertices.push_back({static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z),static_cast<uint32_t>(distr(gen))});
 		}
 		
 		for(int ii = 0; ii < mesh->mNumFaces; ii++){
