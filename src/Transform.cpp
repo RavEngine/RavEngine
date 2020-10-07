@@ -30,12 +30,18 @@ Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector
 matrix4 Transform::CalculateWorldMatrix() const{	
 
 	//figure out the size
-	int depth = 0;
+	unsigned short depth = 0;
 	for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
 		depth++;
 	}
 
-	matrix4 transforms[depth];	//warning: C VLA used here, may not be portable
+#if __STDC_VERSION__ >=199901L		//Check for C99
+	matrix4 transforms[depth];		//prefer C VLA on supported systems
+#else
+	matrix4* transforms = (matrix4*)alloca(sizeof(matrix4) * depth);	//warning: alloca may not be supported in the future
+#endif
+
+
 	int tmp = 0;
 	for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
 		transforms[tmp] = p.get()->GenerateLocalMatrix();
