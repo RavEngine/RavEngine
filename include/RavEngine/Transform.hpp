@@ -50,7 +50,7 @@ namespace RavEngine {
 
 		vector3 GetLocalScale();
 
-		matrix4 GenerateLocalMatrix();
+		matrix4 GenerateLocalMatrix() const;
 
 		/**
 		Apply cached transformations to matrix - for internal use only
@@ -61,7 +61,7 @@ namespace RavEngine {
 		Get the matrix list of all the parents. This does NOT include the current transform.
 		@param list the list to add the matrices to
 		*/
-		void GetParentMatrixStack(std::list<matrix4>& list) const;
+		matrix4 CalculateWorldMatrix() const;
 
 		/**
 		Add a transform as a child object of this transform
@@ -93,13 +93,13 @@ namespace RavEngine {
 
 		childStore children;		//non-owning
 		WeakRef<Transform> parent;	//non-owning
-	};
+};
 
 	/**
 	Construct a transformation matrix out of this transform
 	@return glm matrix representing this transform
 	*/
-	inline matrix4 Transform::GenerateLocalMatrix() {
+	inline matrix4 Transform::GenerateLocalMatrix() const{
 		return glm::translate(matrix4(1), (vector3)position) * glm::toMat4((quaternion)rotation) * glm::scale(matrix4(1), (vector3)scale);
 	}
 

@@ -27,15 +27,26 @@ Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector
 	Apply();
 }
 
-void Transform::GetParentMatrixStack(list<matrix4>& matrix) const{
-	WeakRef p = parent;
+matrix4 Transform::CalculateWorldMatrix() const{	
 
+	list<matrix4> matrix;
+	
+	WeakRef p = parent;
+	
 	//get all the transforms by navigating up the hierarchy
 	while (!p.isNull()) {
 		Ref<Transform> e(p);
 		matrix.push_front(e->GenerateLocalMatrix());
 		p = e->parent;
 	}
+	
+	matrix4 finalMatrix(1);
+	for (auto& transform : matrix) {
+		finalMatrix *= transform;
+	}
+	finalMatrix *= GenerateLocalMatrix();
+	
+	return finalMatrix;
 }
 
 void Transform::AddChild(const WeakRef<Transform>& child)
@@ -67,18 +78,8 @@ vector3 Transform::GetWorldPosition()
 	if (!HasParent()) {
 		return GetLocalPosition();
 	}
-
-	//the list of transformations to apply
-	list<matrix4> translations;
-	GetParentMatrixStack(translations);
-
-	//apply all the transforms
-	matrix4 finalMatrix(1);
-	for (auto& transform : translations) {
-		finalMatrix *= transform;
-	}
-	finalMatrix *= GenerateLocalMatrix();
-
+	auto finalMatrix = CalculateWorldMatrix();
+	
 	//finally apply the local matrix
 	return finalMatrix * vector4(GetLocalPosition(), 1);
 }
@@ -88,19 +89,9 @@ quaternion Transform::GetWorldRotation()
 	if (!HasParent()) {
 		return GetLocalRotation();
 	}
-
-	//the list of transformations to apply
-	list<matrix4> rotations;
-	GetParentMatrixStack(rotations);
-
-	matrix4 finalRot = matrix4(1.0);	//construct identity matrix
-	//apply all the transforms
-	for (auto& transform : rotations) {
-		finalRot *= transform;
-	}
-
+	
 	//apply local rotation
-	finalRot *= glm::toMat4(GetLocalRotation());
+	auto finalRot = CalculateWorldMatrix();
 
 	//return the result as a quaternion
 	return glm::toQuat(finalRot);
@@ -108,18 +99,7 @@ quaternion Transform::GetWorldRotation()
 
 void RavEngine::Transform::Apply()
 {
-
-	//the list of transformations to apply
-	list<matrix4> translations;
-	GetParentMatrixStack(translations);
-
-	//apply all the transforms
-	matrix4 finalMatrix(1);
-	for (auto& transform : translations) {
-		finalMatrix *= transform;
-	}
-	finalMatrix *= GenerateLocalMatrix();
-	matrix = finalMatrix;
+	matrix = CalculateWorldMatrix();
 }
 
 bool Transform::HasParent() {
