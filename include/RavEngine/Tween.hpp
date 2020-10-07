@@ -9,7 +9,7 @@ namespace RavEngine{
 	class Tween : public SharedObject{
 	protected:
 		tweeny::tween<Floats...> anim;
-		typedef std::function<bool(Floats...)> stepfunc;
+		typedef std::function<void(Floats...)> stepfunc;
 		
 	public:
 		Tween(){};
@@ -20,7 +20,10 @@ namespace RavEngine{
 		 @param intialValue the starting value, set to 0 if not passed.
 		 */
 		Tween(const stepfunc& step, Floats ... initialValue){
-			anim = tweeny::from(initialValue...).onStep(step);
+			anim = tweeny::from(initialValue...).onStep([=](Floats... values) -> bool{
+				step(values...);
+				return false;
+			});
 		}
 		
 		Tween(const Tween& other){

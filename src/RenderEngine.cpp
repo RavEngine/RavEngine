@@ -140,6 +140,8 @@ const string RenderEngine::currentBackend(){
 		case bgfx::RendererType::OpenGL:		return "OpenGL";
 		case bgfx::RendererType::OpenGLES:		return "OpenGL ES";
 		case bgfx::RendererType::Vulkan:		return "Vulkan";
+		case bgfx::RendererType::Nvn:			return "NVN";
+		case bgfx::RendererType::WebGPU:		return "WebGPU";
 	}
 }
 
