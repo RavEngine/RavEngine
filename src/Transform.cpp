@@ -29,24 +29,26 @@ Transform::Transform(const vector3& inpos, const quaternion& inrot, const vector
 
 matrix4 Transform::CalculateWorldMatrix() const{	
 
-	list<matrix4> matrix;
-	
-	WeakRef p = parent;
-	
-	//get all the transforms by navigating up the hierarchy
-	while (!p.isNull()) {
-		Ref<Transform> e(p);
-		matrix.push_front(e->GenerateLocalMatrix());
-		p = e->parent;
+	//figure out the size
+	int depth = 0;
+	for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
+		depth++;
 	}
-	
-	matrix4 finalMatrix(1);
-	for (auto& transform : matrix) {
-		finalMatrix *= transform;
+
+	matrix4 transforms[depth];	//warning: C VLA used here, may not be portable
+	int tmp = 0;
+	for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
+		transforms[tmp] = p.get()->GenerateLocalMatrix();
+		++tmp;
 	}
-	finalMatrix *= GenerateLocalMatrix();
-	
-	return finalMatrix;
+
+	matrix4 mat(1);
+	for(int i = depth - 1; i >= 0; --i){
+		mat *= transforms[i];
+	}
+	mat *= GenerateLocalMatrix();
+
+	return mat;
 }
 
 void Transform::AddChild(const WeakRef<Transform>& child)
