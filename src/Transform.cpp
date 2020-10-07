@@ -35,7 +35,7 @@ matrix4 Transform::CalculateWorldMatrix() const{
 		depth++;
 	}
 
-#if __STDC_VERSION__ >=199901L		//Check for C99
+#if defined __APPLE__ || __STDC_VERSION__ >= 199901L		//Check for C99
 	matrix4 transforms[depth];		//prefer C VLA on supported systems
 #else
 	matrix4* transforms = (matrix4*)alloca(sizeof(matrix4) * depth);	//warning: alloca may not be supported in the future
