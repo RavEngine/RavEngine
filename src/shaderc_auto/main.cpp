@@ -5,7 +5,12 @@
 #include <filesystem>
 #include <ravtar/tarball.hpp>
 
-#include <unistd.h>
+#ifdef _WIN32
+#include <Windows.h>
+#include <process.h>
+#else
+#include <unistd.h
+#endif
 
 using namespace std;
 using namespace nlohmann;
@@ -48,7 +53,7 @@ int main(int argc, char** argv){
 			data = json::parse(str);
 		}
 		
-		path varyingfile = filename.parent_path() / string(data["varying"]);
+		string varyingfile = (filename.parent_path() / string(data["varying"])).string();
 		path outpath = current_path() / output;
 		string includedir = result["include"].as<string>();
 		
@@ -106,27 +111,63 @@ int main(int argc, char** argv){
 				const_cast<char*>(pstr.c_str())
 			};
 			
+#ifdef _WIN32
+			PROCESS_INFORMATION ProcessInfo;
+			STARTUPINFO startupInfo;
+
+			ZeroMemory(&startupInfo, sizeof(startupInfo));
+			startupInfo.cb = sizeof startupInfo; //Only compulsory field
+
+			//create command line string
+			std::unordered_set<unsigned int> pathIds = {1,3,5,11};
+			std::string cmd = invocation;
+			for (int i = 0; i < sizeof(args) / sizeof(args[0]); i++) {
+				if (pathIds.find(i) != pathIds.end()) {
+					cmd += " \"" + string(args[i]) + "\"";
+				}
+				else {
+					cmd += " " + string(args[i]);
+				}
+			}
+			DWORD exit_code;
+			if (CreateProcess(invocation.c_str(), LPSTR(cmd.c_str()), NULL, NULL, FALSE,0, NULL, NULL, &startupInfo, &ProcessInfo)) {
+				WaitForSingleObject(ProcessInfo.hProcess, INFINITE);
+				GetExitCodeProcess(ProcessInfo.hProcess, &exit_code);
+				if (exit_code != 0) {
+					cerr << "Shader compilation failed!" << endl;
+					exit(2);
+				}
+
+				CloseHandle(ProcessInfo.hThread);
+				CloseHandle(ProcessInfo.hProcess);
+			}
+			else {
+				std::cerr << "Failed to launch shader compiler" << endl;
+				exit(3);
+			}
+#else
 			//spawn worker child process
 			pid_t pid = fork();
 			int status;
-			if (pid == 0){
+			if (pid == 0) {
 				//in child process
-				execv(invocation.c_str(),args);
+				execv(invocation.c_str(), args);
 				//an error occured if code still running
 				cerr << "Shader compilation failed!" << endl;
 				exit(2);
 			}
-			else{
+			else {
 				//in parent process
 				//wait for child to terminate
 				pid_t pidc;
-				do{
+				do {
 					pidc = wait(&status);
-					if (pidc != pid){
+					if (pidc != pid) {
 						break;	//if child stopped, parent can continue
 					}
-				}while(pidc != pid);
+				} while (pidc != pid);
 			}
+#endif
 						
 			//add to TAR
 			tarball.putFile(out.string().c_str(),out.filename().string().c_str());
