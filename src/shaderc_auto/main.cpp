@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <ravtar/tarball.hpp>
 
+#include <unistd.h>
+
 using namespace std;
 using namespace nlohmann;
 using namespace Tar;
@@ -79,27 +81,53 @@ int main(int argc, char** argv){
 		TarWriter tarball(outtar);
 	
 		for(json& stage : data["stages"]){
-			path input = filename.parent_path() / path(string(stage["file"]));
+			string input = (filename.parent_path() / path(string(stage["file"]))).string();
 			string type = stage["stage"];
 			path out = outpath / (type+".bin");
-			string cmd = invocation + " -f \"" + input.string() + "\" -o \"" + out.string() + "\" -i \"" + includedir + "\" --type " + type + " --platform " + platform + " --varyingdef " + varyingfile.string();
-
-			//no profile on windows directx
-			if (platform != "windows") {
-				cmd += " --profile " + profile;
-			}
-			else {
-				cmd += " --profile " + (dx_profileprefix(type) + profile + "_0");
-			}
 			
-			//flush before executing
-			cout.flush();
-			int code = system(cmd.c_str());
-			if (code != 0){
+			string o = out.string();
+			
+			string pstr = (platform != "windows") ?  profile : (dx_profileprefix(type) + profile + "_0");
+			
+			char* args[] {
+				"-f",
+				const_cast<char*>(input.c_str()),
+				"-o",
+				const_cast<char*>(o.c_str()),
+				"-i",
+				const_cast<char*>(includedir.c_str()),
+				"--type",
+				const_cast<char*>(type.c_str()),
+				"--platform",
+				const_cast<char*>(platform.c_str()),
+				"--varyingdef",
+				const_cast<char*>(varyingfile.c_str()),
+				"--profile",
+				const_cast<char*>(pstr.c_str())
+			};
+			
+			//spawn worker child process
+			pid_t pid = fork();
+			int status;
+			if (pid == 0){
+				//in child process
+				execv(invocation.c_str(),args);
+				//an error occured if code still running
 				cerr << "Shader compilation failed!" << endl;
-				return 2;
+				exit(2);
 			}
-			
+			else{
+				//in parent process
+				//wait for child to terminate
+				pid_t pidc;
+				do{
+					pidc = wait(&status);
+					if (pidc != pid){
+						break;	//if child stopped, parent can continue
+					}
+				}while(pidc != pid);
+			}
+						
 			//add to TAR
 			tarball.putFile(out.string().c_str(),out.filename().string().c_str());
 		}
