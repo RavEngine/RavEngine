@@ -10,10 +10,9 @@
 #include "System.hpp"
 #include "PhysicsSolver.hpp"
 #include "RenderEngine.hpp"
-#include "ThreadPool.hpp"
-#include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include <queue>
 #include <set>
 #include "SpinLock.hpp"
 #include <type_traits>
@@ -41,10 +40,6 @@ namespace RavEngine {
 			component_operation(bool add, const ComponentStore& s) : add(add), store(s) {}
 		};
 		std::queue<component_operation> component_addremove;
-
-		//number of cores on device
-		const int numcpus = std::thread::hardware_concurrency();
-		ThreadPool threadpool;
 
 		//components data structure
 		ComponentStore allcomponents;

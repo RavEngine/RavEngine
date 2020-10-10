@@ -5,6 +5,8 @@
 #include <functional>
 #include <queue>
 #include "SpinLock.hpp"
+#include <thread>
+#include "ThreadPool.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -24,6 +26,12 @@ namespace RavEngine {
 		static const float evalNormal;	//normal speed is 60 hz
 
 		static Ref<VirtualFilesystem> Resources;
+		
+		//number of cores on device
+		const int numcpus = std::thread::hardware_concurrency();
+		
+		//global thread pool, threads = logical processors on CPU
+		static ThreadPool threadpool;
 		
 		/**
 		 Dispatch a task to be executed on the main thread.

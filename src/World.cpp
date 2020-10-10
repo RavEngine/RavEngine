@@ -11,6 +11,8 @@
 #include <algorithm>
 #include "System.hpp"
 #include "ScriptComponent.hpp"
+#include <future>
+#include "RavEngine_App.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -120,25 +122,16 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 
 void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
     //get the query info
-    std::list<Ref<Entity>> entities;
+    std::list<future<void>> futures;
     auto queries = system->QueryTypes();
     for (const auto& query : queries) {
         auto temp = allcomponents.GetAllComponentsOfSubclassTypeIndex<Component>(query);
         for (auto& e : temp) {
-            entities.push_back(e.get()->getOwner());
+			futures.push_back(App::threadpool.enqueue([=]{
+				system->Tick(fpsScale, e.get()->getOwner());
+			}));
         }
     }
-    vector<future<void>> futures(entities.size());
-    int i = 0;
-    for (const auto& entity : entities) {
-        //execute the system on each component
-        auto ticker = [&]() {
-            system->Tick(fpsScale, entity);
-        };
-        futures[i] = (threadpool.enqueue(ticker));
-        ++i;
-    }
-
     //wait for all to complete
     for (auto& f : futures) {
         f.get();

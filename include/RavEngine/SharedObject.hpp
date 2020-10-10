@@ -16,7 +16,6 @@
 #include <cassert>
 #include "Ref.hpp"
 #include "SpinLock.hpp"
-#include "AppEnd.h"
 #include <list>
 
 namespace RavEngine {
@@ -88,19 +87,15 @@ namespace RavEngine {
 		 Invoked by WeakRef<T> when they track a new sharedobject.
 		 */
 		void TrackWeak(WeakRefBase* weakptr){
-			if(!RAVENGINE_ATEXIT){
 				lock.lock();
 				weakptrs.push_back(weakptr);
 				lock.unlock();
-			}
 		}
 		
 		void UntrackWeak(WeakRefBase* weakptr){
-			if(!RAVENGINE_ATEXIT){
 				lock.lock();
 				weakptrs.remove(weakptr);
 				lock.unlock();
-			}
 		}
 	};
 }

@@ -1,11 +1,9 @@
-
 #include "RavEngine_App.hpp"
 
 #include <GameplayStatics.hpp>
 #include "RenderEngine.hpp"
 #include <SDL_events.h>
 #include <bgfx/bgfx.h>
-#include "AppEnd.h"
 #include <algorithm>
 
 using namespace std;
@@ -17,6 +15,7 @@ Ref<VirtualFilesystem> App::Resources;
 
 SpinLock App::queue_lock;
 queue<function<void(void)>> App::main_tasks;
+ThreadPool App::threadpool;
 
 int App::run(int argc, char** argv) {
 
@@ -83,12 +82,6 @@ int App::run(int argc, char** argv) {
 	//GameplayStatics::currentWorld = nullptr;
 	
 	//bgfx::shutdown();
-	
-	RAVENGINE_ATEXIT = true;
-	
-	atexit([](){
-		cout << "atexit" << endl;
-	});
-	
+		
     return OnShutdown();
 }
