@@ -12,7 +12,7 @@
 #include "System.hpp"
 #include "ScriptComponent.hpp"
 #include <future>
-#include "RavEngine_App.hpp"
+#include "App.hpp"
 
 using namespace std;
 using namespace RavEngine;

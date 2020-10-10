@@ -7,7 +7,7 @@
 #include <assimp/mesh.h>
 #include <vector>
 #include <random>
-#include "RavEngine_App.hpp"
+#include "App.hpp"
 #include <filesystem>
 
 using namespace RavEngine;

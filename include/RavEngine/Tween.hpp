@@ -2,7 +2,7 @@
 #include <tweeny.h>
 #include "mathtypes.hpp"
 #include <functional>
-#include "RavEngine_App.hpp"
+#include "App.hpp"
 
 namespace RavEngine{
 	template<typename ...Floats>
