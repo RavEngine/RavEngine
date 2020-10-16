@@ -5,6 +5,37 @@
 #include "App.hpp"
 
 namespace RavEngine{
+
+	//template wrappers around Tweeny
+	template<typename base>
+	struct TweenCurve : public base{
+		//enable this class to be called / converted to std::function
+		template<typename T>
+		T operator()(float pos, T a, T b) const{
+			return base::template run<float>(pos, a,b);
+		}
+	};
+
+	static constexpr struct DefaultCurveCL : public TweenCurve<tweeny::easing::defaultEasing>{} DefaultCurve;
+	static constexpr struct SteppedCurveCL : public TweenCurve<tweeny::easing::steppedEasing>{} SteppedCurve;
+	static constexpr struct LinearCurveCL : public TweenCurve<tweeny::easing::linearEasing>{} LinearCurve;
+	static constexpr struct QuadraticInCurveCL : public TweenCurve<tweeny::easing::quadraticInEasing>{} QuadraticInCurve;
+	static constexpr struct QuadraticOutCurveCL : public TweenCurve<tweeny::easing::quadraticOutEasing>{} QuadraticOutCurve;
+	static constexpr struct QuadraticInOutCurveCL : public TweenCurve<tweeny::easing::quadraticInOutEasing>{} QuadraticInOutCurve;
+	static constexpr struct CubicInCurveCL : public TweenCurve<tweeny::easing::cubicInEasing>{} CubicInCurve;
+	static constexpr struct CubicOutCurveCL : public TweenCurve<tweeny::easing::cubicOutEasing>{} CubicOutCurve;
+	static constexpr struct CubicInOutCurveCL : public TweenCurve<tweeny::easing::cubicInOutEasing>{} CubicInOutCurve;
+	static constexpr struct QuarticInCurveCL : public TweenCurve<tweeny::easing::quarticInEasing>{} QuarticInEasing;
+	static constexpr struct QuarticOutCurveCL : public TweenCurve<tweeny::easing::quarticOutEasing>{} QuarticOutCurve;
+	static constexpr struct QuarticInOutCurveCL : public TweenCurve<tweeny::easing::quarticInOutEasing>{} QuarticInOutCurve;
+	static constexpr struct QuinticInCurveCL : public TweenCurve<tweeny::easing::quinticInEasing>{} QuinticInCurve;
+	static constexpr struct QuinticOutCurveCL : public TweenCurve<tweeny::easing::quinticOutEasing>{} QuinticOutCurve;
+	static constexpr struct QuinticInOutCurveCL : public TweenCurve<tweeny::easing::quinticInOutEasing>{} QuinticInOutCurve;
+	static constexpr struct SinusoidalInCurveCL : public TweenCurve<tweeny::easing::sinusoidalInEasing>{} SinusoidalInCurve;
+	static constexpr struct SinusoidalOutCurveCL : public TweenCurve<tweeny::easing::sinusoidalOutEasing>{} SinusoidalOutCurve;
+	static constexpr struct SinusoidalInOutCurveCL : public TweenCurve<tweeny::easing::sinusoidalInOutEasing>{} SinusoidalInOutCurve;
+
+
 	template<typename ...Floats>
 	class Tween : public SharedObject{
 	protected:

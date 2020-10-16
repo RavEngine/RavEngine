@@ -82,7 +82,9 @@ int main(int argc, char** argv){
 		outpath = outpath / "shaders" / filename.filename().replace_extension("");
 		create_directories(outpath);
 		
-		ofstream outtar(outpath.parent_path() / filename.filename().replace_extension("tar"));
+		const auto tarpath = outpath.parent_path() / filename.filename().replace_extension("tar");
+		
+		ofstream outtar(tarpath);
 		TarWriter tarball(outtar);
 	
 		for(json& stage : data["stages"]){
@@ -95,19 +97,19 @@ int main(int argc, char** argv){
 			string pstr = (platform != "windows") ?  profile : (dx_profileprefix(type) + profile + "_0");
 			
 			char* args[] {
-				"-f",
+				(char*)"-f",
 				const_cast<char*>(input.c_str()),
-				"-o",
+				(char*)"-o",
 				const_cast<char*>(o.c_str()),
-				"-i",
+				(char*)"-i",
 				const_cast<char*>(includedir.c_str()),
-				"--type",
+				(char*)"--type",
 				const_cast<char*>(type.c_str()),
-				"--platform",
+				(char*)"--platform",
 				const_cast<char*>(platform.c_str()),
-				"--varyingdef",
+				(char*)"--varyingdef",
 				const_cast<char*>(varyingfile.c_str()),
-				"--profile",
+				(char*)"--profile",
 				const_cast<char*>(pstr.c_str())
 			};
 			
@@ -154,6 +156,8 @@ int main(int argc, char** argv){
 				execv(invocation.c_str(), args);
 				//an error occured if code still running
 				cerr << "Shader compilation failed!" << endl;
+				//delete the tar
+				filesystem::remove(tarpath);
 				exit(2);
 			}
 			else {
