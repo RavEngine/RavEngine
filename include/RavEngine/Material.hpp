@@ -2,7 +2,7 @@
 #include "SharedObject.hpp"
 #include "RenderEngine.hpp"
 #include <unordered_map>
-#include <bgfx/bgfx.h>
+#include "Buffers.hpp"
 #include "SpinLock.hpp"
 
 namespace RavEngine {
@@ -31,7 +31,7 @@ namespace RavEngine {
 		Enqueue commands to execute on the GPU
 		@param commands the command buffer to write to
 		*/
-		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer);
+		void Draw(const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer);
 		
 		/**
 		 Static singleton for managing materials
@@ -183,7 +183,7 @@ namespace RavEngine {
 	//for type conversions, do not use directly
 	class MaterialInstanceBase : public SharedObject {
 	public:
-		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix) = 0;
+		virtual void Draw(const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer, const matrix4& worldmatrix) = 0;
 	};
 
 	/**
@@ -193,7 +193,7 @@ namespace RavEngine {
 	class MaterialInstance : public MaterialInstanceBase {
 	public:
 		virtual ~MaterialInstance() {}
-		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix){
+		virtual void Draw(const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer, const matrix4& worldmatrix) override{
 			mat->SetTransformMatrix(worldmatrix);
 			mat->Draw(vertexBuffer, indexBuffer);
 		}

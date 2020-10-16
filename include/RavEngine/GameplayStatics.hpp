@@ -16,11 +16,5 @@ namespace RavEngine {
 
 		static Ref<InputManager> inputManager;
 
-		struct vs {
-			int width = 960; int height = 540;
-			bool vsync = true;
-		};
-		static vs VideoSettings;
-
 	};
 }

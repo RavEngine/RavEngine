@@ -82,25 +82,16 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	//free afterward
 	aiReleaseImport(scene);
 	
-	bgfx::VertexLayout pcvDecl;
-	
-	//vertex format
-	pcvDecl.begin()
-	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-	.end();
 	
 	//copy out of intermediate
 	auto v = meshes[0].vertices;
 	auto i = meshes[0].indices;
-	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(Vertex));
-	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(uint16_t));
 
 	//create buffers
-	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
-	indexBuffer = bgfx::createIndexBuffer(ibm);
+	vertexBuffer = VertexBuffer(v);
+	indexBuffer = IndexBuffer(i);
 
-	if(! bgfx::isValid(vertexBuffer) || !bgfx::isValid(indexBuffer)){
+	if(! vertexBuffer.IsValid() || !indexBuffer.IsValid()){
 		throw runtime_error("Buffers could not be created.");
 	}
 	

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SharedObject.hpp"
-#include <bgfx/bgfx.h>
+#include "Buffers.hpp"
 #include <unordered_map>
 #include <mutex>
 #include "mathtypes.hpp"
@@ -17,10 +17,10 @@ public:
 	 */
 	MeshAsset(const std::string& path, const decimalType scale = 1.0);
 	
-	const bgfx::VertexBufferHandle& getVertexBuffer(){
+	const VertexBuffer& getVertexBuffer(){
 		return vertexBuffer;
 	}
-	const bgfx::IndexBufferHandle& getIndexBuffer(){
+	const IndexBuffer& getIndexBuffer(){
 		return indexBuffer;
 	}
 	
@@ -67,8 +67,8 @@ public:
 	};
 	
 protected:
-	bgfx::VertexBufferHandle vertexBuffer;
-	bgfx::IndexBufferHandle indexBuffer;
+	VertexBuffer vertexBuffer;
+	IndexBuffer indexBuffer;
 };
 
 }

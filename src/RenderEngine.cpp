@@ -31,6 +31,7 @@ using namespace std;
 using namespace RavEngine;
 
 SDL_Window* RenderEngine::window = nullptr;
+RenderEngine::vs RenderEngine::VideoSettings;
 
 /**
  Create an SDL window for different platforms, and reference it to bgfx
@@ -146,7 +147,7 @@ const string RenderEngine::currentBackend(){
 }
 
 uint32_t RenderEngine::GetResetFlags(){
-	return (GameplayStatics::VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE) | BGFX_RESET_HIDPI | BGFX_RESET_MSAA_X8;
+	return (VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE) | BGFX_RESET_HIDPI | BGFX_RESET_MSAA_X8;
 }
 
 /**

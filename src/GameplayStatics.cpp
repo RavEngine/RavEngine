@@ -14,7 +14,6 @@ using namespace RavEngine;
 
 //startup world
 Ref<RavEngine::World> GameplayStatics::currentWorld;
-GameplayStatics::vs GameplayStatics::VideoSettings;
 Ref<InputManager> GameplayStatics::inputManager;
 
 using namespace std;

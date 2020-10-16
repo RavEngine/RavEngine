@@ -16,6 +16,9 @@ namespace RavEngine {
 
 	class App {
 	public:
+		App(const std::string& resourcesName){
+			Resources = new VirtualFilesystem(resourcesName + ".zip");
+		}
 		virtual ~App() {}
 
 		/**
