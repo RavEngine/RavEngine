@@ -65,7 +65,7 @@ void InputManager::AggregateInput(const SDL_Event& event, uint32_t windowflags, 
 			break;
 		case SDL_CONTROLLERBUTTONDOWN:
 		case SDL_CONTROLLERBUTTONUP:
-			SDL_mousekey(event.cbutton.state + Special::CONTROLLER_BUTTON_OFFSET, event.cbutton.button,Make_CID(event.cdevice.which + 1));
+			SDL_mousekey(event.cbutton.state, event.cbutton.button + Special::CONTROLLER_BUTTON_OFFSET,Make_CID(event.cdevice.which + 1));
 			break;
 		case SDL_CONTROLLERDEVICEADDED:
 		case SDL_CONTROLLERDEVICEREMOVED:
