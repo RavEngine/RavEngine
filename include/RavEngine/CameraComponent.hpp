@@ -49,13 +49,8 @@ namespace RavEngine {
 		*/
 		matrix4 GenerateViewMatrix() {
 			Ref<Entity> entity(owner);
-			auto transform = entity->transform();
-
-			auto pos = - transform->GetWorldPosition();
-			auto rot = glm::inverse(transform->GetWorldRotation());
-			auto scale = vector3(1, 1, 1);
-
-			return glm::scale(matrix4(1), scale) * glm::toMat4(rot) * glm::translate(matrix4(1), pos);
+			
+			return glm::inverse(entity->transform()->CalculateWorldMatrix());
 		}
 
 	protected:
