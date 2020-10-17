@@ -133,7 +133,10 @@ void InputManager::SDL_key(bool state, int charcode, CID controller)
     
     //action mapping?
     if (codeToAction.find(charcode) != codeToAction.end()){
-		codeToAction[charcode].inputs.push_back({controller,static_cast<ActionState>(state)});
+		auto inputs = codeToAction[charcode].inputs;
+		if (inputs.size() < inputs.max_size()) {
+			inputs.push_back({ controller,static_cast<ActionState>(state) });
+		}
     }
 }
 

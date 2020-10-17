@@ -38,9 +38,9 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
   list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
 endif()
 
-# include CMRC
-
 # ==================== Dependencies =====================
+
+add_subdirectory("${DEPS_DIR}/etl")
 
 # use static SDL
 #set(SDL_STATIC ON CACHE INTERNAL "")
@@ -145,6 +145,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ravtar"
 	#"PhysXGPU"
 	PUBLIC
+	"etl"
 	"tweeny"
 	"SDL2-static"
 	"bgfx"

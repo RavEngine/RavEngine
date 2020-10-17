@@ -10,6 +10,7 @@
 #include <functional>
 #include <typeindex>
 #include <SDL_events.h>
+#include <etl/vector.h>
 #include "IInputListener.hpp"
 
 namespace RavEngine {
@@ -137,6 +138,9 @@ namespace RavEngine {
     class InputManager : public SharedObject
     {
     protected:
+		//up to this many actions will be buffered within a frame, any beyond this will be discarded
+		static constexpr short max_inputs_per_frame = 10;
+
 		//helper classes
 		class Callback{
 		protected:
@@ -243,7 +247,7 @@ namespace RavEngine {
 		};
 		
 		struct ActionRecord : public Record{
-			std::list<ActionOccurance> inputs;
+			etl::vector<ActionOccurance,max_inputs_per_frame> inputs;
 		};
 		
 		struct AxisRecord : public Record {
