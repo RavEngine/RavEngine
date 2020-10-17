@@ -7,10 +7,8 @@
 
 #include "PhysicsSolver.hpp"
 #include "PhysicsBodyComponent.hpp"
-#ifndef _WIN32
-#define _DEBUG              //physx required macro
-#endif
-#undef NDEBUG
+#include "App.hpp"
+#include "PhysXDefines.h"
 
 #include <PxPhysicsVersion.h>
 #include <snippetcommon/SnippetPVD.h>
@@ -209,9 +207,11 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
  */
 void PhysicsSolver::Tick(float deltaTime){
 
+    auto step = deltaTime / 30;
+
     //physics substepping
-    int nsteps = ceil((deltaTime / 20) / max_step_time);
-    float step_time = (deltaTime / 20) / nsteps;
+    int nsteps = ceil(step / max_step_time);
+    float step_time = step / nsteps;
     for (int i = 0; i < nsteps; i++) {
         scene->simulate(step_time);
         scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated

@@ -13,6 +13,7 @@
 #include "ScriptComponent.hpp"
 #include <future>
 #include "App.hpp"
+#include "PhysicsLinkSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -152,4 +153,25 @@ void RavEngine::World::TickHook(float fpsScale) {
     
     //now tick the ScriptSystem
     TickSystem(Scripts, fpsScale);
+}
+
+bool RavEngine::World::InitPhysics() {
+	//check if physics is already loaded (TODO: optimize)
+	for (const auto& system : Systems) {
+		if (dynamic_cast<PhysicsLinkSystemRead*>(system.get()) != nullptr || dynamic_cast<PhysicsLinkSystemWrite*>(system.get()) != nullptr) {
+			return false;
+		}
+	}
+
+	Ref<PhysicsLinkSystemRead> plsr = new PhysicsLinkSystemRead();
+	RegisterSystem(plsr);
+
+	Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
+	RegisterSystem(plsw);
+
+	//dynamics world must be set in these so that locks can be managed correctly
+	plsr->dynamicsWorld = Solver->scene;
+	plsw->dynamicsWorld = Solver->scene;
+
+	return true;
 }

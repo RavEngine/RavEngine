@@ -18,7 +18,11 @@ namespace RavEngine {
 	{
 	protected:
 		physx::PxShape* collider = nullptr;
+		vector3 position = vector3(0,0,0);
+		quaternion rotation = quaternion(1.0,0.0,0.0,0.0);
 	public:
+		PhysicsCollider(vector3 position, quaternion rotation) : position(position), rotation(rotation) {}
+
 		enum class CollisionType { Trigger, Collider };
 
 		/**
@@ -58,7 +62,7 @@ namespace RavEngine {
 	public:
 
 		virtual ~BoxCollider() {}
-		BoxCollider() : PhysicsCollider() { RegisterAllAlternateTypes(); };
+		BoxCollider(vector3 position = vector3(0,0,0), quaternion rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation) { RegisterAllAlternateTypes(); };
 
 		/**
 		 * Create a box collider with an extent and a physics material
@@ -66,7 +70,7 @@ namespace RavEngine {
 		 * @param mat the physics material to assign
 		 * @note The current scale of the transform is assumed to be the identity size for ResizeToFit.
 		 */
-		BoxCollider(const vector3& ext, Ref<PhysicsMaterial> mat) : BoxCollider() {
+		BoxCollider(const vector3& ext, Ref<PhysicsMaterial> mat, vector3 position = vector3(0, 0, 0), quaternion rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : BoxCollider(position,rotation) {
 			extent = ext;
 			material = mat;
 		}

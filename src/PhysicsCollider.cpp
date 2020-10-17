@@ -12,6 +12,9 @@ void BoxCollider::AddHook(const WeakRef<Entity>& e) {
     auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
 	//add the physics body to the Entity's physics actor
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxBoxGeometry(extent.x, extent.y, extent.z), *material->getPhysXmat());
+
+	//set relative transformation
+	collider->setLocalPose(PxTransform(PxVec3(position.x,position.y,position.z),PxQuat(rotation.x,rotation.y,rotation.z,rotation.w)));
 }
 
 

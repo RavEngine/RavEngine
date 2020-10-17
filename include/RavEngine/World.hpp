@@ -85,6 +85,11 @@ namespace RavEngine {
         void TickSystem(Ref<System> system, float scale);
 
 	public:
+		/**
+		* Initializes the physics-related Systems.
+		* @return true if the systems were loaded, false if they were not loaded because they are already loaded
+		*/
+		bool InitPhysics();
 
 		/**
 		* Evaluate the world given a scale factor. One tick = 1/App::EvalNormal
