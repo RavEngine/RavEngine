@@ -32,28 +32,19 @@ string dx_profileprefix(const std::string& stage) {
 int main(int argc, char** argv){
 	cxxopts::Options options("RavEngine_shaderc_auto", "Automated shader compiler. Do not invoke directly.");
 	options.add_options()
-	("f,file", "Input JSON shader descriptor", cxxopts::value<string>())
+	("n,name", "Name of shader", cxxopts::value<string>())
+	("v,vertex", "Path to vertex shader source", cxxopts::value<string>())
+	("f,fragment", "Path to fragment shader source", cxxopts::value<string>())
+	("d,varying", "Path to varying.def source", cxxopts::value<string>())
 	("o,output", "Output directory for shader", cxxopts::value<string>())
 	("i,include", "bgfx/src directory", cxxopts::value<string>());
 	
 	try{
 		auto result = options.parse(argc, argv);
 		
-		json data;
-		path filename = result["file"].as<string>();
 		path output = result["output"].as<string>();
-		{
-			//parse if possible
-			ifstream infile(filename);
-			if (!infile.is_open()){
-				cerr << "ERROR: Could not open descriptor '" << filename << "' for reading."<< endl;
-				return 1;
-			}
-			string str((std::istreambuf_iterator<char>(infile)),std::istreambuf_iterator<char>());
-			data = json::parse(str);
-		}
 		
-		string varyingfile = (filename.parent_path() / string(data["varying"])).string();
+		string varyingfile = (result["varying"].as<string>());
 		path outpath = current_path() / output;
 		string includedir = result["include"].as<string>();
 		
@@ -79,17 +70,24 @@ int main(int argc, char** argv){
 #endif
 		
 		//make a directory for the shaders
-		outpath = outpath / "shaders" / filename.filename().replace_extension("");
+		outpath = outpath / "shaders" / result["name"].as<string>();
 		create_directories(outpath);
 		
-		const auto tarpath = outpath.parent_path() / filename.filename().replace_extension("tar");
+		const auto tarpath = outpath.parent_path() / (result["name"].as<string>() + ".tar");
 		
 		ofstream outtar(tarpath);
 		TarWriter tarball(outtar);
+				
+		struct stage{
+			string file;
+			string type;
+		};
+		
+		stage stages[] = {{result["vertex"].as<string>(),"vertex"},{result["fragment"].as<string>(),"fragment"}};
 	
-		for(json& stage : data["stages"]){
-			string input = (filename.parent_path() / path(string(stage["file"]))).string();
-			string type = stage["stage"];
+		for(stage& stage : stages){
+			string input = stage.file;
+			string type = stage.type;
 			path out = outpath / (type+".bin");
 			
 			string o = out.string();
@@ -113,6 +111,13 @@ int main(int argc, char** argv){
 				const_cast<char*>(pstr.c_str())
 			};
 			
+			string cmd = invocation;
+			for(const auto& str : args){
+				cmd += string(" ") + str;
+			}
+			cout << cmd << endl;
+			system(cmd.c_str());
+/*
 #ifdef _WIN32
 			PROCESS_INFORMATION ProcessInfo;
 			STARTUPINFO startupInfo;
@@ -172,7 +177,7 @@ int main(int argc, char** argv){
 				} while (pidc != pid);
 			}
 #endif
-						
+*/
 			//add to TAR
 			tarball.putFile(out.string().c_str(),out.filename().string().c_str());
 		}

@@ -192,32 +192,49 @@ define_property(GLOBAL PROPERTY SC_INCLUDE_DIR
 )
 set_property(GLOBAL PROPERTY SC_INCLUDE_DIR "${DEPS_DIR}/bgfx.cmake/bgfx/src")
 
-function (compile_shader_dir resource_root shader_dir )
-	# get all the shader files
-	file(GLOB SHADERS "${shader_dir}/*.json")
-
-	define_property(GLOBAL PROPERTY ALL_SHADERS
+# globals for managing state
+set(shader_target "default")
+define_property(GLOBAL PROPERTY ALL_SHADERS
 		BRIEF_DOCS "Aggregate shader list"
 		FULL_DOCS "GLOBAL shader list"
 	)
 	set_property(GLOBAL PROPERTY ALL_SHADERS "")
 
+# Define a shader
+# all paths must be absolute
+function(declare_shader shader_name vertex_src fragment_src varying_src)
+	
+
 	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
 	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
 
+	set(output_file "${shader_name}.tar" )
+	set(full_output_path "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${output_file}")
+	set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${full_output_path})
+	add_custom_command(
+		PRE_BUILD
+		OUTPUT "${full_output_path}"
+		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}"
+		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${sc_comp_name}" -n "${shader_name}" -v "${vertex_src}" -f "${fragment_src}" -d "${varying_src}" -o ../${shader_target} -i "${sc_include_dir}"
+		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+		COMMENT "Compiling Shader Descriptor ${shader_name} => ${output_file}"
+		VERBATIM
+	)
+endfunction()
+
+# load shader compile
+
+function (compile_shader_dir resource_root shader_dir )
+	# get all the shader files
+	file(GLOB SHADERS "${shader_dir}/*.cmake")
+
 	foreach(SHADER ${SHADERS})
-		get_filename_component(output_file "${SHADER}" NAME_WE)
-		set(output_file "${output_file}.tar" )
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS "${CMAKE_BINARY_DIR}/${resource_root}/shaders/${output_file}")
-		add_custom_command(
-			PRE_BUILD
-			OUTPUT "${CMAKE_BINARY_DIR}/${resource_root}/shaders/${output_file}"
-			COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${sc_comp_name}" -f "${SHADER}" -o ../${resource_root} -i "${sc_include_dir}"
-			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
-			COMMENT "Compiling Shader Descriptor ${SHADER} => ${output_file}"
-			VERBATIM
-		)
+		set(shader_target ${resource_root})	# so that the above function for declaring shaders knows the target to attach them to
+		include("${SHADER}")
 	endforeach()
+
+	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
+	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
 
 	#track all the shaders for compilation
 	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
