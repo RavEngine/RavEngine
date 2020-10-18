@@ -34,7 +34,7 @@ namespace RavEngine {
 			int width = 960; int height = 540;
 			bool vsync = true;
 		} VideoSettings;
-
+		
     protected:
 		static SDL_Window* window;
         static void Init();

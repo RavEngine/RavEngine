@@ -42,7 +42,7 @@ bgfx::ShaderHandle loadShader(const string& data){
 	return bgfx::createShader(mem);
 }
 
-void Material::Draw(const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer)
+void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer)
 {
     //calculate wvp matrix
     const auto& view = Material::Manager::GetCurrentViewMatrix();

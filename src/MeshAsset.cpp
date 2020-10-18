@@ -44,10 +44,6 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 		vector<Vertex> vertices;
 	};
     
-    std::random_device rd; // obtain a random number from hardware
-   std::mt19937 gen(rd()); // seed the generator
-   std::uniform_int_distribution<> distr(0, 0xFFFFFF); // define the range
-	
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
 	
 	vector<MeshPart> meshes;
@@ -63,7 +59,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 			
 			scaled = scalemat * scaled;
 			
-			mp.vertices.push_back({static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z),static_cast<uint32_t>(distr(gen))});
+			mp.vertices.push_back({static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z)});
 		}
 		
 		for(int ii = 0; ii < mesh->mNumFaces; ii++){
@@ -86,12 +82,22 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	//copy out of intermediate
 	auto v = meshes[0].vertices;
 	auto i = meshes[0].indices;
-
+	
+	bgfx::VertexLayout pcvDecl;
+	
+	//vertex format
+	pcvDecl.begin()
+	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.end();
+	
 	//create buffers
-	vertexBuffer = VertexBuffer(v);
-	indexBuffer = IndexBuffer(i);
+	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(Vertex));
+	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
+	
+	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(uint16_t));
+	indexBuffer = bgfx::createIndexBuffer(ibm);
 
-	if(! vertexBuffer.IsValid() || !indexBuffer.IsValid()){
+	if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
 		throw runtime_error("Buffers could not be created.");
 	}
 	

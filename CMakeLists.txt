@@ -39,6 +39,7 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
 
 # ==================== Dependencies =====================
+add_subdirectory("${DEPS_DIR}/im3d-cmake")
 
 add_subdirectory("${DEPS_DIR}/etl")
 
@@ -143,6 +144,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ttvfs"
 	"ttvfs_zip"
 	"ravtar"
+	"im3d"
 	#"PhysXGPU"
 	PUBLIC
 	"etl"

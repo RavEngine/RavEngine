@@ -1,10 +1,10 @@
 #pragma once
 
 #include "SharedObject.hpp"
-#include "Buffers.hpp"
 #include <unordered_map>
 #include <mutex>
 #include "mathtypes.hpp"
+#include <bgfx/bgfx.h>
 
 namespace RavEngine{
 
@@ -17,10 +17,10 @@ public:
 	 */
 	MeshAsset(const std::string& path, const decimalType scale = 1.0);
 	
-	const VertexBuffer& getVertexBuffer(){
+	const bgfx::VertexBufferHandle getVertexBuffer(){
 		return vertexBuffer;
 	}
-	const IndexBuffer& getIndexBuffer(){
+	const bgfx::IndexBufferHandle getIndexBuffer(){
 		return indexBuffer;
 	}
 	
@@ -67,8 +67,8 @@ public:
 	};
 	
 protected:
-	VertexBuffer vertexBuffer;
-	IndexBuffer indexBuffer;
+	bgfx::VertexBufferHandle vertexBuffer;
+	bgfx::IndexBufferHandle indexBuffer;
 };
 
 }

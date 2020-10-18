@@ -1,0 +1,14 @@
+{
+	"varying" : "debug_varying.def.sc",
+	"stages":[
+		{
+			"file":"vs_debug.sc",
+			"stage":"vertex"
+		},
+		{
+			"file":"fs_debug.sc",
+			"stage":"fragment"
+		}
+	]
+}
+
