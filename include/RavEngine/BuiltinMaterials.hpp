@@ -6,7 +6,7 @@
 namespace RavEngine {
 	class DefaultMaterial : public Material {
 	public:
-		DefaultMaterial() : Material("cubes") {}
+		DefaultMaterial() : Material("default") {}
 	};
 	class DefaultMaterialInstance : public MaterialInstance<DefaultMaterial> {
 	public:

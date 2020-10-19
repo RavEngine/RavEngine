@@ -44,7 +44,7 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const std::string
 	vf = vfs.GetFile((rootname + path).c_str());
 
 	if (vf == nullptr){
-		throw runtime_error("cannot open " + filesystem::current_path().string() + "/" + rootname + path);
+		throw runtime_error("cannot open " + (rootname + path));
 	}
 	
 	//try to locate and open

@@ -25,6 +25,7 @@
 #include <im3d.h>
 #include <BuiltinMaterials.hpp>
 #include "Common3D.hpp"
+#include "Debug.hpp"
 
 #ifdef __APPLE_
 #include <Cocoa/Cocoa.h>
@@ -80,7 +81,7 @@ Construct a render engine instance
 RenderEngine::RenderEngine() {
 	//call Init()
 	Init();
-	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());;
+	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -93,15 +94,13 @@ RavEngine::RenderEngine::~RenderEngine()
 void RenderEngine::Draw(Ref<World> worldOwning){
 	//debug draw
 	//TODO: compile-out in release build
-	Im3d::Context& ctx = Im3d::GetContext();
-	Im3d::AppData& ad = Im3d::GetAppData();
-	Im3d::NewFrame();
+	//Im3d::Context& ctx = Im3d::GetContext();
+	//Im3d::AppData& ad = Im3d::GetAppData();
 	
-	Im3d::PushMatrix(Im3d::Mat4(1.0f));
-	Im3d::PushDrawState();
+	//Im3d::SetMatrix(Im3d::Mat4(1.0f));
 	Im3d::SetSize(8.0f);
-	Im3d::SetColor(Im3d::Color(0,1,1.0,0.0));
-	Im3d::DrawCylinder(Im3d::Vec3(0,0,0), Im3d::Vec3(0,1,0), 3);
+	DebugDraw::DrawCylinder(Transformation({vector3(-1,-5,-3)}), vector3(1,1,1), 5,10);
+	DebugDraw::DrawSphere(Transformation({vector3(1,5,4)}), vector3(0,1,0), 3);
 
 	//get the active camera
 	auto components = worldOwning->Components();
@@ -137,7 +136,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//TODO: compile-out in release build
 	Im3d::EndFrame();
-	
+
 	
 	for(int i = 0, n = Im3d::GetDrawListCount(); i < n; ++i){
 		const Im3d::DrawList& drawList = Im3d::GetDrawLists()[i];
@@ -184,18 +183,17 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], converted.size() * sizeof(Vertex)), pcvDecl);
 		bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], indices.size() * sizeof(uint16_t)));
 	
-		auto col =vertexdata[0].m_color;
-		
-		mat->SetColor({col.getR(),col.getG(),col.getB(),col.getA()});
+		auto data = DebugDraw::InstanceAt(i);
+				
+		mat->SetColor({static_cast<float>(data.color.x),static_cast<float>(data.color.y),static_cast<float>(data.color.z),1});
 						
-		mat->Draw(vbuf,ibuf,matrix4(1));
-		
+		mat->Draw(vbuf,ibuf,data.transform);
 		bgfx::destroy(vbuf);
 		bgfx::destroy(ibuf);
 	}
-	
-	Im3d::PopDrawState();
-	Im3d::PopMatrix();
+	DebugDraw::Reset();
+	Im3d::NewFrame();
+
 }
 
 void RenderEngine::resize(){

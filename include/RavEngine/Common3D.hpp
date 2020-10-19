@@ -19,8 +19,11 @@ enum class ShaderStage{
 };
 
 struct Transformation{
-	vector3 position;
-	quaternion rotation;
-	vector3 scale;
+	vector3 position = vector3(0,0,0);
+	quaternion rotation = quaternion(1.0,0.0,0.0,0.0);
+	vector3 scale = vector3(1,1,1);
+	operator matrix4() const{
+		return glm::translate(matrix4(1), (vector3)position) * glm::toMat4((quaternion)rotation) * glm::scale(matrix4(1), (vector3)scale);
+	}
 };
 }
