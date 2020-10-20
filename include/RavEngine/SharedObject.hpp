@@ -16,27 +16,16 @@
 #include <cassert>
 #include "Ref.hpp"
 #include "SpinLock.hpp"
-#include <list>
+#include <unordered_set>
+#include <plf_colony.h>
 
 namespace RavEngine {
 	class SharedObject {
 		std::atomic<int> refcount = 0;
 		SpinLock lock;
 		
-		// for the hashmap - prevents investigating objects and instead only uses the addresses
-//		struct WeakHasherByPtr{
-//			size_t operator()(const WeakRefBase* ptr) const{
-//				return reinterpret_cast<size_t>(ptr);
-//			}
-//		};
-//
-//		struct WeakCompareByPtr{
-//			bool operator()(const WeakRefBase* ptr1, const WeakRefBase* ptr2) const{
-//				return reinterpret_cast<uintptr_t>(ptr1) == reinterpret_cast<uintptr_t>(ptr2);
-//			}
-//		};
-		
-		std::list<WeakRefBase*> weakptrs;
+		plf::colony<WeakRefBase*> weakptrs;
+		//std::unordered_set<WeakRefBase*> weakptrs;
 	public:
 		virtual ~SharedObject() {
 			//notify all tracked WeakRefs
@@ -88,14 +77,21 @@ namespace RavEngine {
 		 */
 		void TrackWeak(WeakRefBase* weakptr){
 				lock.lock();
-				weakptrs.push_back(weakptr);
+				weakptrs.insert(weakptr);
 				lock.unlock();
 		}
 		
 		void UntrackWeak(WeakRefBase* weakptr){
-				lock.lock();
-				weakptrs.remove(weakptr);
-				lock.unlock();
+			lock.lock();
+			//TODO: optimize by storing iterator and passing it to this method, then erase directly
+			plf::colony<WeakRefBase*>::iterator item = weakptrs.begin();
+			for( ; item != weakptrs.end(); ++item){
+				if (*item == weakptr){
+					weakptrs.erase(item);
+					break;
+				}
+			}
+			lock.unlock();
 		}
 	};
 }

@@ -117,6 +117,7 @@ target_include_directories("${PROJECT_NAME}"
 	"include/${PROJECT_NAME}/stduuid/"
 	"${DEPS_DIR}/ttvfs/ttvfs"
 	"${DEPS_DIR}/ttvfs/ttvfs_zip"
+	"${DEPS_DIR}/plf/"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"
@@ -203,8 +204,6 @@ define_property(GLOBAL PROPERTY ALL_SHADERS
 # Define a shader
 # all paths must be absolute
 function(declare_shader shader_name vertex_src fragment_src varying_src)
-	
-
 	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
 	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
 
