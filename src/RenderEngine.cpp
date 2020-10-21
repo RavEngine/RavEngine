@@ -160,10 +160,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//TODO: fill appdata struct to allow for auto LOD and culling of debug shapes
 
 	Im3d::SetSize(8.0f);
-	DebugDraw::DrawSphere(Transformation({vector3(1,5,4)}), vector3(0,1,0), 3);
-	DebugDraw::DrawCylinder(Transformation({vector3(-1,-5,-3)}), vector3(1,1,1), 5,10);
-	DebugDraw::DrawRectangularPrism(Transformation({vector3(-10,7,9)}), vector3(0,1,1), vector3(2,3,4));
-
+	DebugDraw::DrawSphere(Transformation({vector3(1,5,4)}), 0x00FF00FF, 3);
+	DebugDraw::DrawCapsule(Transformation({vector3(-1,-5,-3)}), 0xFFFFFFFF, 5,10);
+	DebugDraw::DrawRectangularPrism(Transformation({vector3(-10,7,9)}), 0xFF00FFFF, vector3(2,3,4));
+    DebugDraw::DrawPrism(Transformation({vector3(7,-5,-3)}), 0xFFFFFFFF, 5,4,6);
+    DebugDraw::DrawArrow(vector3(1,2,3), vector3(4,5,6), 0xFF00FFFF);
+    
 	//get the active camera
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
