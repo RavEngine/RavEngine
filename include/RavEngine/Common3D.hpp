@@ -9,6 +9,11 @@ struct Vertex
 	float		position[3];
 };
 
+struct VertexColor{
+	float		position[3];
+	color_t color;
+};
+
 enum class ShaderStage{
 	Vertex,
 	Fragment,

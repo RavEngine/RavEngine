@@ -9,6 +9,7 @@ using namespace std;
 SpinLock DebugDraw::mtx;
 vector<DebugDraw::drawinst> DebugDraw::instances;
 
+
 /**
  Matrix class converison
  @param m matrix input
@@ -31,15 +32,19 @@ void DebugDraw::DrawRectangularPrism(const matrix4 &transform, const vector3 &co
 
 void DebugDraw::DrawCylinder(const matrix4 &transform, const vector3 &c,decimalType radius, decimalType height){
 	mtx.lock();
-	instances.emplace_back(transform, c);
+	Im3d::PushMatrix(matrix4ToMat4(transform));
+	Im3d::SetColor(Im3d::Color(c.x,c.y,c.z,1));
 	Im3d::DrawCylinder(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
+	Im3d::PopMatrix();
 	mtx.unlock();
 }
 
 void DebugDraw::DrawSphere(const matrix4 &transform, const vector3 &c, decimalType radius){
 	mtx.lock();
-	instances.emplace_back(transform,c);
+	Im3d::PushMatrix(matrix4ToMat4(transform));
+	Im3d::SetColor(Im3d::Color(c.x,c.y,c.z,1));
 	Im3d::DrawSphere(Im3d::Vec3(0,0,0), radius);
+	Im3d::PopMatrix();
 	mtx.unlock();
 }
 

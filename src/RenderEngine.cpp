@@ -26,6 +26,7 @@
 #include <BuiltinMaterials.hpp>
 #include "Common3D.hpp"
 #include "Debug.hpp"
+#include <glm/gtc/type_ptr.hpp>
 
 #ifdef __APPLE_
 #include <Cocoa/Cocoa.h>
@@ -38,6 +39,8 @@ SDL_Window* RenderEngine::window = nullptr;
 RenderEngine::vs RenderEngine::VideoSettings;
 
 static Ref<DebugMaterialInstance> mat;
+
+static bgfx::VertexLayout pcvDecl;
 
 /**
  Create an SDL window for different platforms, and reference it to bgfx
@@ -74,6 +77,56 @@ inline bool sdlSetWindow(SDL_Window* _window)
 	return true;
 }
 
+void DebugRender(const Im3d::DrawList& drawList){
+	switch(drawList.m_primType){
+		case Im3d::DrawPrimitive_Triangles:
+			//Set BGFX state to triangles
+			bgfx::setState(BGFX_STATE_DEFAULT);
+			break;
+		case Im3d::DrawPrimitive_Lines:
+			bgfx::setState(0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_LINES);
+			//set BGFX state to lines
+			break;
+		case Im3d::DrawPrimitive_Points:
+			//set BGFX state to points
+			bgfx::setState(0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_POINTS);
+			break;
+		default:
+			throw runtime_error("Invalid Im3d state");
+			break;
+	}
+	//perform drawing here
+	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
+	const size_t verts = drawList.m_vertexCount;
+	
+	vector<VertexColor> converted;
+	converted.reserve(verts);
+	
+	for(int x = 0; x < verts; x++){
+		Im3d::VertexData d = vertexdata[x];
+		converted.push_back({d.m_positionSize.x,d.m_positionSize.y,d.m_positionSize.z,d.m_color});
+	}
+	vector<uint16_t> indices;
+	for(int i = 0; i < verts; i++){
+		indices.push_back(i);
+	}
+	
+	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], converted.size() * sizeof(VertexColor)), pcvDecl);
+	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], indices.size() * sizeof(uint16_t)));
+	
+	//auto data = DebugDraw::InstanceAt(i);
+		
+	auto& context = Im3d::GetContext();
+		
+	auto& drawmatrix = context.getMatrix();
+	
+	//matrix4 rvm = glm::transpose(glm::make_mat4(drawmatrix.m));
+	
+	mat->Draw(vbuf,ibuf,matrix4(1));
+	bgfx::destroy(vbuf);
+	bgfx::destroy(ibuf);
+}
+
 /**
 Construct a render engine instance
 @param w the owning world for this engine instance
@@ -82,11 +135,21 @@ RenderEngine::RenderEngine() {
 	//call Init()
 	Init();
 	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());
+	auto& data = Im3d::GetAppData();
+	data.drawCallback = &DebugRender;
+	
+	//vertex format
+	pcvDecl.begin()
+	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+	.end();
+	
 }
 
 RavEngine::RenderEngine::~RenderEngine()
 {
 }
+
 
 /**
  Render one frame using the current state of every object in the world
@@ -99,8 +162,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//Im3d::SetMatrix(Im3d::Mat4(1.0f));
 	Im3d::SetSize(8.0f);
-	DebugDraw::DrawCylinder(Transformation({vector3(-1,-5,-3)}), vector3(1,1,1), 5,10);
 	DebugDraw::DrawSphere(Transformation({vector3(1,5,4)}), vector3(0,1,0), 3);
+	DebugDraw::DrawCylinder(Transformation({vector3(-1,-5,-3)}), vector3(1,1,1), 5,10);
 
 	//get the active camera
 	auto components = worldOwning->Components();
@@ -132,67 +195,20 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     for (auto& e : toDraw) {
         e->Draw();
     }
-	bgfx::frame();
 	
 	//TODO: compile-out in release build
 	Im3d::EndFrame();
+	Im3d::GetContext().draw();
+	bgfx::frame();
 
 	
 	for(int i = 0, n = Im3d::GetDrawListCount(); i < n; ++i){
-		const Im3d::DrawList& drawList = Im3d::GetDrawLists()[i];
-		switch(drawList.m_primType){
-			case Im3d::DrawPrimitive_Triangles:
-				//Set BGFX state to triangles
-				bgfx::setState(BGFX_STATE_DEFAULT);
-				break;
-			case Im3d::DrawPrimitive_Lines:
-				bgfx::setState(0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_LINES);
-				//set BGFX state to lines
-				break;
-			case Im3d::DrawPrimitive_Points:
-				//set BGFX state to points
-				bgfx::setState(0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_POINTS);
-				break;
-			default:
-				throw runtime_error("Invalid Im3d state");
-				break;
-		}
-		//perform drawing here
-		const Im3d::VertexData* vertexdata = drawList.m_vertexData;
-		const size_t verts = drawList.m_vertexCount;
 		
-		vector<Vertex> converted;
-		converted.reserve(verts);
-		
-		for(int x = 0; x < verts; x++){
-			Im3d::VertexData d = vertexdata[x];
-			converted.push_back({d.m_positionSize.x,d.m_positionSize.y,d.m_positionSize.z});
-		}
-		vector<uint16_t> indices;
-		for(int i = 0; i < verts; i++){
-			indices.push_back(i);
-		}
-		
-		bgfx::VertexLayout pcvDecl;
-		
-		//vertex format
-		pcvDecl.begin()
-		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-		.end();
-		
-		bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], converted.size() * sizeof(Vertex)), pcvDecl);
-		bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], indices.size() * sizeof(uint16_t)));
-	
-		auto data = DebugDraw::InstanceAt(i);
-				
-		mat->SetColor({static_cast<float>(data.color.x),static_cast<float>(data.color.y),static_cast<float>(data.color.z),1});
-						
-		mat->Draw(vbuf,ibuf,data.transform);
-		bgfx::destroy(vbuf);
-		bgfx::destroy(ibuf);
 	}
 	DebugDraw::Reset();
 	Im3d::NewFrame();
+	Im3d::AppData& data = Im3d::GetAppData();
+	data.drawCallback = &DebugRender;
 
 }
 

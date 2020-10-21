@@ -1,9 +1,8 @@
-#include "common.sh"
+$input v_color0
 
-uniform vec4 u_debugcolor;
+#include "common.sh"
 
 void main()
 {
-	//gl_FragColor = u_debugcolor;
-	gl_FragColor = u_debugcolor;
+	gl_FragColor = v_color0;
 }
