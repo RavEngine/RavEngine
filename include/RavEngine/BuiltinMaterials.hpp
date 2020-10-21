@@ -22,6 +22,5 @@ namespace RavEngine {
 	public:
 		DebugMaterialInstance(Ref<DebugMaterial> m ) : MaterialInstance(m){};
 	protected:
-		Uniform drawcolor = Uniform("u_debugcolor",Uniform::Type::Vec4,4);
 	};
 }
