@@ -7,7 +7,6 @@ using namespace std;
 
 
 SpinLock DebugDraw::mtx;
-vector<DebugDraw::drawinst> DebugDraw::instances;
 
 
 /**
@@ -16,42 +15,39 @@ vector<DebugDraw::drawinst> DebugDraw::instances;
  @return Im3d::Mat4 representation
  */
 static inline Im3d::Mat4 matrix4ToMat4(const matrix4& m){
-	auto p = glm::value_ptr(m);
+	//need to transpose
+	auto transposed = glm::transpose(m);
+	auto p = glm::value_ptr(transposed);
 	
 	return Im3d::Mat4(p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14]);
 }
 
 
-void DebugDraw::DrawRectangularPrism(const matrix4 &transform, const vector3 &color){
-	//create matrix from transform
-	
-	//bind color uniform and set value
-	
-	//execute draw call
+void DebugDraw::DrawRectangularPrism(const matrix4 &transform, const vector3 &c, const vector3& d){
+	DrawHelper(transform, [&]{
+		Im3d::SetColor(Im3d::Color(c.x,c.y,c.z));
+		Im3d::DrawAlignedBox(Im3d::Vec3(-d.x/2,-d.y/2,-d.z/2), Im3d::Vec3(d.x/2,d.y/2,d.z/2));
+	});
 }
 
 void DebugDraw::DrawCylinder(const matrix4 &transform, const vector3 &c,decimalType radius, decimalType height){
-	mtx.lock();
-	Im3d::PushMatrix(matrix4ToMat4(transform));
-	Im3d::SetColor(Im3d::Color(c.x,c.y,c.z,1));
-	Im3d::DrawCylinder(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
-	Im3d::PopMatrix();
-	mtx.unlock();
+	DrawHelper(transform, [&]{
+		Im3d::SetColor(Im3d::Color(c.x,c.y,c.z));
+		Im3d::DrawCylinder(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
+	});
 }
 
 void DebugDraw::DrawSphere(const matrix4 &transform, const vector3 &c, decimalType radius){
+	DrawHelper(transform, [&]{
+		Im3d::SetColor(Im3d::Color(c.x,c.y,c.z));
+		Im3d::DrawSphere(Im3d::Vec3(0,0,0), radius);
+	});
+}
+
+void DebugDraw::DrawHelper(const matrix4 &transform, std::function<void()> impl){
 	mtx.lock();
 	Im3d::PushMatrix(matrix4ToMat4(transform));
-	Im3d::SetColor(Im3d::Color(c.x,c.y,c.z,1));
-	Im3d::DrawSphere(Im3d::Vec3(0,0,0), radius);
+	impl();
 	Im3d::PopMatrix();
 	mtx.unlock();
-}
-
-void DebugDraw::Reset(){
-	instances.clear();
-}
-
-const DebugDraw::drawinst DebugDraw::InstanceAt(size_t index){
-	return instances.at(index);
 }
