@@ -172,7 +172,7 @@ void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent* other)
 void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
 {
 	for (auto& reciever : receivers) {
-		reciever->OnColliderPersist(other);
+		reciever->OnColliderExit(other);
 	}
 }
 

@@ -12,6 +12,7 @@
 
 #include <PxPhysicsVersion.h>
 #include <snippetcommon/SnippetPVD.h>
+#include <extensions/PxDefaultSimulationFilterShader.h>
 #define PX_RELEASE(x)    if(x)    { x->release(); x = NULL;    }
 
 #include <thread>
@@ -30,7 +31,7 @@ PxPvd* PhysicsSolver::pvd = nullptr;
 
 
 //see https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/RigidBodyCollision.html#broad-phase-callback
-PxFilterFlags SampleFilterShader(physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0, physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1, physx::PxPairFlags & pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
+PxFilterFlags FilterShader(physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0, physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1, physx::PxPairFlags & pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
 {
     // let triggers through
     if (PxFilterObjectIsTrigger(attributes0) || PxFilterObjectIsTrigger(attributes1))
@@ -43,8 +44,8 @@ PxFilterFlags SampleFilterShader(physx::PxFilterObjectAttributes attributes0, ph
 
     // trigger the contact callback for pairs (A,B) where
     // the filtermask of A contains the ID of B and vice versa.
-    if ((filterData0.word0 & filterData1.word1) && (filterData1.word0 & filterData0.word1))
-        pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
+    if ((filterData0.word0 & filterData1.word1) || (filterData1.word0 & filterData0.word1))
+        pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_PERSISTS | PxPairFlag::eNOTIFY_TOUCH_LOST | PxPairFlag::eNOTIFY_CONTACT_POINTS;
 
     return PxFilterFlag::eDEFAULT;
 }
@@ -62,16 +63,15 @@ void PhysicsSolver::setupFiltering(PxRigidActor* actor, PxU32 filterGroup, PxU32
     filterData.word1 = filterMask;  // word1 = ID mask to filter pairs that trigger a
                                     // contact callback;
     const PxU32 numShapes = actor->getNbShapes();
-    //PxShape** shapes = (PxShape**)SAMPLE_ALLOC(sizeof(PxShape*) * numShapes);
-    PxShape** shapes = new PxShape*[sizeof(PxShape*) * numShapes];
+    //PxShape** shapes = new PxShape*[sizeof(PxShape*) * numShapes];
+	PxShape** shapes = (PxShape**)alloca(sizeof(PxShape*) * numShapes);
     actor->getShapes(shapes, numShapes);
     for (PxU32 i = 0; i < numShapes; i++)
     {
         PxShape* shape = shapes[i];
         shape->setSimulationFilterData(filterData);
     }
-    delete[] shapes;
-    //SAMPLE_FREE(shapes);
+    //delete[] shapes;
 }
 
 // Invoked by PhysX after simulation each tick
@@ -90,12 +90,12 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
             actor2->OnColliderEnter(actor1);
         }
 
-        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_LOST) {   //one must be a trigger
+        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_LOST) {
             actor1->OnColliderExit(actor2);
             actor2->OnColliderExit(actor1);
         }
 
-        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_PERSISTS) {   //none must be a trigger
+        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_PERSISTS) {
             actor1->OnColliderPersist(actor2);
             actor2->OnColliderPersist(actor1);
         }
@@ -247,7 +247,7 @@ PhysicsSolver::PhysicsSolver(){
     }
     desc.cpuDispatcher = cpuDispatcher;
 
-    desc.filterShader = SampleFilterShader;
+    desc.filterShader = FilterShader;
     desc.simulationEventCallback = this;
     
     //create the scene

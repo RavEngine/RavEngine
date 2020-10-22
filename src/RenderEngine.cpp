@@ -157,14 +157,7 @@ RavEngine::RenderEngine::~RenderEngine()
 void RenderEngine::Draw(Ref<World> worldOwning){
 	//debug draw
 	//TODO: compile-out in release build
-	//TODO: fill appdata struct to allow for auto LOD and culling of debug shapes
-
-	Im3d::SetSize(8.0f);
-	DebugDraw::DrawSphere(Transformation({vector3(1,5,4)}), 0x00FF00FF, 3);
-	DebugDraw::DrawCapsule(Transformation({vector3(-1,-5,-3)}), 0xFFFFFFFF, 5,10);
-	DebugDraw::DrawRectangularPrism(Transformation({vector3(-10,7,9)}), 0xFF00FFFF, vector3(2,3,4));
-    DebugDraw::DrawPrism(Transformation({vector3(7,-5,-3)}), 0xFFFFFFFF, 5,4,6);
-    DebugDraw::DrawArrow(vector3(1,2,3), vector3(4,5,6), 0xFF00FFFF);
+	//TODO: fill Im3d appdata struct to allow for auto LOD and culling of debug shapes
     
 	//get the active camera
 	auto components = worldOwning->Components();
@@ -198,7 +191,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     }
 	
 	//TODO: compile-out in release build
-	Im3d::EndFrame();
+	//Im3d::EndFrame();
 	Im3d::GetContext().draw();
 	bgfx::frame();
 
