@@ -84,6 +84,11 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
         auto actor1 = (PhysicsBodyComponent*)pairHeader.actors[0]->userData;
         auto actor2 = (PhysicsBodyComponent*)pairHeader.actors[1]->userData;
 
+		//if these actors do not exist in the scene anymore due to deallocation, do not process
+		if(actor1 == nullptr || actor2 == nullptr){
+			return;
+		}
+		
         //invoke events
         if (cp.events & PxPairFlag::eNOTIFY_TOUCH_FOUND) {
             actor1->OnColliderEnter(actor2);
@@ -176,7 +181,8 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
 void PhysicsSolver::Spawn(Ref<Entity> e){
     if (e->Components().HasComponentOfSubclass<PhysicsBodyComponent>()) {
         auto actor = e->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
-        actor->rigidActor->userData = actor.get();
+		PhysicsBodyComponent* data = actor.get();
+        actor->rigidActor->userData = data;
         scene->addActor(*(actor->rigidActor));
 
         //set filtering on the actor if its filtering is not disabled
@@ -197,8 +203,6 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
     auto body = e->Components().GetComponent<PhysicsBodyComponent>();
     objects.remove(body);
     scene->removeActor(*(body->rigidActor));
-    body->rigidActor->release();
-    body->rigidActor = nullptr;
 }
 
 /**
