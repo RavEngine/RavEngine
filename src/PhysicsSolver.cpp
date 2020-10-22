@@ -44,7 +44,7 @@ PxFilterFlags FilterShader(physx::PxFilterObjectAttributes attributes0, physx::P
 
     // trigger the contact callback for pairs (A,B) where
     // the filtermask of A contains the ID of B and vice versa.
-    if ((filterData0.word0 & filterData1.word1) || (filterData1.word0 & filterData0.word1))
+    if ((filterData0.word0 & filterData1.word1) && (filterData1.word0 & filterData0.word1))
         pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_PERSISTS | PxPairFlag::eNOTIFY_TOUCH_LOST | PxPairFlag::eNOTIFY_CONTACT_POINTS;
 
     return PxFilterFlag::eDEFAULT;
