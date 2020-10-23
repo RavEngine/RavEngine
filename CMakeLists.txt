@@ -265,9 +265,12 @@ macro(pack_resources target_rsc)
 		set(outpack "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.app/Contents/Resources/${target_rsc}.zip")
 	endif()
 
-	add_custom_command(TARGET "${target_rsc}" POST_BUILD COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${target_rsc} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}")
-	# target_sources(${target_rsc} PUBLIC "${outpack}")
-
+	add_custom_command(TARGET "${target_rsc}" POST_BUILD 
+		COMMENT "Packing resources for ${target_rsc}"
+		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${target_rsc} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}"
+		VERBATIM
+	)
+	
 	set_source_files_properties("${outpack}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	set_target_properties(${target_rsc} PROPERTIES 
 		MACOSX_BUNDLE TRUE

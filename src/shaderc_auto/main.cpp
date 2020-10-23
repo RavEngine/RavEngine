@@ -74,9 +74,8 @@ int main(int argc, char** argv){
 		create_directories(outpath);
 		
 		const auto tarpath = outpath.parent_path() / (result["name"].as<string>() + ".tar");
-		
-		ofstream outtar(tarpath);
-		TarWriter tarball(outtar);
+		//remove old TAR, so that if the compile fails, the engine will not load
+		filesystem::remove(tarpath);
 				
 		struct stage{
 			string file;
@@ -84,6 +83,13 @@ int main(int argc, char** argv){
 		};
 		
 		stage stages[] = {{result["vertex"].as<string>(),"vertex"},{result["fragment"].as<string>(),"fragment"}};
+
+		struct file {
+			string name;
+			string path;
+			file(const string& p, const string& n) : name(n), path(p) {};
+		};
+		vector<file> paths;
 	
 		for(stage& stage : stages){
 			string input = stage.file;
@@ -109,7 +115,9 @@ int main(int argc, char** argv){
 				const_cast<char*>(varyingfile.c_str()),
 				(char*)"--profile",
 				const_cast<char*>(pstr.c_str()),
+#ifndef _WIN32
 				NULL
+#endif
 			};
 			
 #ifdef _WIN32
@@ -130,6 +138,7 @@ int main(int argc, char** argv){
 					cmd += " " + string(args[i]);
 				}
 			}
+			cout << cmd << endl;
 			DWORD exit_code;
 			if (CreateProcess(invocation.c_str(), LPSTR(cmd.c_str()), NULL, NULL, FALSE,0, NULL, NULL, &startupInfo, &ProcessInfo)) {
 				WaitForSingleObject(ProcessInfo.hProcess, INFINITE);
@@ -137,8 +146,6 @@ int main(int argc, char** argv){
 				if (exit_code != 0) {
 					cerr << "Shader compilation failed!" << endl;
 					
-					//delete the tar
-					filesystem::remove(tarpath);
 					CloseHandle(ProcessInfo.hThread);
 					CloseHandle(ProcessInfo.hProcess);
 					exit(2);
@@ -148,7 +155,7 @@ int main(int argc, char** argv){
 				CloseHandle(ProcessInfo.hProcess);
 			}
 			else {
-				std::cerr << "Failed to launch shader compiler" << endl;
+				cerr << "Failed to launch shader compiler" << endl;
 				exit(3);
 			}
 #else
@@ -181,9 +188,16 @@ int main(int argc, char** argv){
 			}
 #endif
 
-			//add to TAR
-			tarball.putFile(out.string().c_str(),out.filename().string().c_str());
+			//add to path
+			paths.emplace_back(out.string(),out.filename().string());
 		}
+		ofstream outtar(tarpath);
+		TarWriter tarball(outtar);
+		//create the TAR
+		for (const auto& p : paths) {
+			tarball.putFile(p.path.c_str(),p.name.c_str());
+		}
+
 		tarball.finish();
 		outtar.close();
 	}
