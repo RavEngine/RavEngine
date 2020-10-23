@@ -108,16 +108,10 @@ int main(int argc, char** argv){
 				(char*)"--varyingdef",
 				const_cast<char*>(varyingfile.c_str()),
 				(char*)"--profile",
-				const_cast<char*>(pstr.c_str())
+				const_cast<char*>(pstr.c_str()),
+				NULL
 			};
 			
-			string cmd = invocation;
-			for(const auto& str : args){
-				cmd += string(" ") + str;
-			}
-			cout << cmd << endl;
-			system(cmd.c_str());
-/*
 #ifdef _WIN32
 			PROCESS_INFORMATION ProcessInfo;
 			STARTUPINFO startupInfo;
@@ -142,6 +136,11 @@ int main(int argc, char** argv){
 				GetExitCodeProcess(ProcessInfo.hProcess, &exit_code);
 				if (exit_code != 0) {
 					cerr << "Shader compilation failed!" << endl;
+					
+					//delete the tar
+					filesystem::remove(tarpath);
+					CloseHandle(ProcessInfo.hThread);
+					CloseHandle(ProcessInfo.hProcess);
 					exit(2);
 				}
 
@@ -156,11 +155,15 @@ int main(int argc, char** argv){
 			//spawn worker child process
 			pid_t pid = fork();
 			int status;
+			int link[2];
 			if (pid == 0) {
 				//in child process
 				execv(invocation.c_str(), args);
 				//an error occured if code still running
 				cerr << "Shader compilation failed!" << endl;
+				//print output
+				fprintf(stderr, "%s\n", "execv");
+				
 				//delete the tar
 				filesystem::remove(tarpath);
 				exit(2);
@@ -177,7 +180,7 @@ int main(int argc, char** argv){
 				} while (pidc != pid);
 			}
 #endif
-*/
+
 			//add to TAR
 			tarball.putFile(out.string().c_str(),out.filename().string().c_str());
 		}
