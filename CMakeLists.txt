@@ -260,19 +260,35 @@ add_meshes("${PROJECT_NAME}" "${MESHES}")
 
 # pack resources
 macro(pack_resources target_rsc)
-	set(outpack "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.zip")
-	if(APPLE)
-		set(outpack "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${target_rsc}.app/Contents/Resources/${target_rsc}.zip")
-	endif()
+	set(outpack "${CMAKE_BINARY_DIR}/${target_rsc}.zip")
 
-	add_custom_command(TARGET "${target_rsc}" POST_BUILD 
+	# allow inserting into the mac / ios resource bundle
+	set_target_properties(${target_rsc} PROPERTIES 
+		MACOSX_BUNDLE TRUE
+	)
+
+	# mark dependencies for incremental
+	FILE(GLOB assets 
+		CONFIGURE_DEPENDS
+		"${CMAKE_BINARY_DIR}/${target_rsc}/meshes/*" 
+		"${CMAKE_BINARY_DIR}/${target_rsc}/shaders/*.tar"
+		"${CMAKE_BINARY_DIR}/RavEngine/shaders/*.tar"
+		"${CMAKE_BINARY_DIR}/RavEngine/meshes/*"
+	)
+	message("assets = ${assets}")
+
+	# the command to rscpack
+	add_custom_command(
+		POST_BUILD 
+		OUTPUT "${outpack}"
+		DEPENDS "${assets}"
 		COMMENT "Packing resources for ${target_rsc}"
 		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${target_rsc} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}"
 		VERBATIM
 	)
-	
+
+	# make part of the target, and add to the resources folder if applicable
+	target_sources("${target_rsc}" PRIVATE "${outpack}")
 	set_source_files_properties("${outpack}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-	set_target_properties(${target_rsc} PROPERTIES 
-		MACOSX_BUNDLE TRUE
-	)
+	
 endmacro()
