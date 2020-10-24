@@ -124,10 +124,6 @@ void PhysicsSolver::DeallocatePhysx() {
     if (scene != nullptr) {
         PX_RELEASE(scene);
     }
-    //null out all of the physics objects
-    for (auto& body : objects) {
-        body->rigidActor = nullptr;
-    }
 }
 
 PhysicsSolver::~PhysicsSolver() {
@@ -189,9 +185,6 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
         if (actor->filterGroup != -1 && actor->filterMask != -1) {
             setupFiltering(actor->rigidActor, actor->filterGroup, actor->filterMask);
         }
-
-        //add to the scene list
-        objects.push_back(actor);
     }
 }
 
@@ -201,7 +194,6 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
  */
 void PhysicsSolver::Destroy(Ref<Entity> e){
     auto body = e->Components().GetComponent<PhysicsBodyComponent>();
-    objects.remove(body);
     scene->removeActor(*(body->rigidActor));
 }
 

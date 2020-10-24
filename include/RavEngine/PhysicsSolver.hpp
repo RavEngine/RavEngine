@@ -43,7 +43,6 @@ namespace RavEngine {
 
         void DeallocatePhysx();
     protected:
-        std::list<Ref<PhysicsBodyComponent>> objects;
 
         void setupFiltering(physx::PxRigidActor* actor, physx::PxU32 filterGroup, physx::PxU32 filterMask);
 
