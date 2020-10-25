@@ -221,14 +221,47 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 	)
 endfunction()
 
-# load shader compile
+define_property(GLOBAL PROPERTY ENG_DIR
+	BRIEF_DOCS "Engine Directory"
+	FULL_DOCS "Engine Directory"
+)
+set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
-function (compile_shader_dir resource_root shader_dir )
-	# get all the shader files
-	file(GLOB SHADERS "${shader_dir}/*.cmake")
+# pack resources
+function(pack_resources)
+	set(optional)
+	set(args TARGET)
+	set(list_args SHADERS MESHES)
+	cmake_parse_arguments(
+		PARSE_ARGV 0
+		ARGS
+		"${optional}"
+		"${args}"
+		"${list_args}"
+	)
 
-	foreach(SHADER ${SHADERS})
-		set(shader_target ${resource_root})	# so that the above function for declaring shaders knows the target to attach them to
+	message(WARNING "Unparsed arguments: ${ARGS_UNPARSED_ARGUMENTS}")
+	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
+
+	# add polygon primitives provided by engine
+	file(GLOB ENG_MESHES "${eng_dir}/meshes/*")
+
+	# add engine-provided shaders
+	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.cmake")
+
+	message("meshes = ${ARGS_MESHES} ${ENG_MESHES}")
+	message("shaders = ${ARGS_SHADERS} ${ENG_SHADERS}")
+	message("target = ${ARGS_TARGET}")
+
+	foreach(MESH ${ARGS_MESHES} ${ENG_MESHES})
+		# copy meshes pre-build if they are changed
+		get_filename_component(output_name "${MESH}" NAME)
+		add_custom_command(TARGET "${ARGS_TARGET}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/meshes/${output_name}")
+	endforeach()
+
+	# setup shader compiler
+	foreach(SHADER ${ARGS_SHADERS} ${ENG_SHADERS})
+		set(shader_target "${ARGS_TARGET}")
 		include("${SHADER}")
 	endforeach()
 
@@ -237,58 +270,30 @@ function (compile_shader_dir resource_root shader_dir )
 
 	#track all the shaders for compilation
 	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
-	add_custom_target("${sc_comp_name}_${resource_root}_Compile" ALL DEPENDS ${all_shaders_property} "RavEngine_shaderc_auto")
-	add_dependencies("${resource_root}" "${sc_comp_name}_${resource_root}_Compile" "rscpack" "RavEngine")
-endfunction()
+	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property} "RavEngine_shaderc_auto")
+	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine" "rscpack")
 
-# compile all builtin shaders
-compile_shader_dir("${PROJECT_NAME}" "shaders")
-
-# ================================================= Mesh packing ==============================================
-# Mesh adding macro
-macro(add_meshes target meshes)
-	foreach(MESH ${meshes})
-		# copy meshes pre-build if they are changed
-		get_filename_component(output_name "${MESH}" NAME)
-		add_custom_command(TARGET "${target}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${CMAKE_BINARY_DIR}/${target}/meshes/${output_name}")
-	endforeach()
-endmacro()
-
-# add polygon primitives provided by engine
-file(GLOB MESHES "meshes/*")
-add_meshes("${PROJECT_NAME}" "${MESHES}")
-
-# pack resources
-macro(pack_resources target_rsc)
-	set(outpack "${CMAKE_BINARY_DIR}/${target_rsc}.zip")
+	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.zip")
 
 	# allow inserting into the mac / ios resource bundle
-	set_target_properties(${target_rsc} PROPERTIES 
+	set_target_properties(${ARGS_TARGET} PROPERTIES 
 		MACOSX_BUNDLE TRUE
 	)
 
-	# mark dependencies for incremental
-	FILE(GLOB assets 
-		CONFIGURE_DEPENDS
-		"${CMAKE_BINARY_DIR}/${target_rsc}/meshes/*" 
-		"${CMAKE_BINARY_DIR}/${target_rsc}/shaders/*.tar"
-		"${CMAKE_BINARY_DIR}/RavEngine/shaders/*.tar"
-		"${CMAKE_BINARY_DIR}/RavEngine/meshes/*"
-	)
-	message("assets = ${assets}")
+	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_SHADERS})
 
 	# the command to rscpack
 	add_custom_command(
 		POST_BUILD 
 		OUTPUT "${outpack}"
 		DEPENDS "${assets}"
-		COMMENT "Packing resources for ${target_rsc}"
-		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${target_rsc} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}"
+		COMMENT "Packing resources for ${ARGS_TARGET}"
+		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${ARGS_TARGET} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}"
 		VERBATIM
 	)
 
 	# make part of the target, and add to the resources folder if applicable
-	target_sources("${target_rsc}" PRIVATE "${outpack}")
+	target_sources("${ARGS_TARGET}" PRIVATE "${outpack}")
 	set_source_files_properties("${outpack}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-	
-endmacro()
+endfunction()
+
