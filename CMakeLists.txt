@@ -199,7 +199,7 @@ define_property(GLOBAL PROPERTY ALL_SHADERS
 		BRIEF_DOCS "Aggregate shader list"
 		FULL_DOCS "GLOBAL shader list"
 	)
-	set_property(GLOBAL PROPERTY ALL_SHADERS "")
+set_property(GLOBAL PROPERTY ALL_SHADERS "")
 
 # Define a shader
 # all paths must be absolute
@@ -240,7 +240,10 @@ function(pack_resources)
 		"${list_args}"
 	)
 
-	message(WARNING "Unparsed arguments: ${ARGS_UNPARSED_ARGUMENTS}")
+	if(${ARGS_UNPARSED_ARGUMENTS})
+		message(WARNING "Unparsed arguments: ${ARGS_UNPARSED_ARGUMENTS}")
+	endif()
+
 	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
 
 	# add polygon primitives provided by engine
@@ -249,15 +252,14 @@ function(pack_resources)
 	# add engine-provided shaders
 	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.cmake")
 
-	message("meshes = ${ARGS_MESHES} ${ENG_MESHES}")
-	message("shaders = ${ARGS_SHADERS} ${ENG_SHADERS}")
-	message("target = ${ARGS_TARGET}")
-
 	foreach(MESH ${ARGS_MESHES} ${ENG_MESHES})
 		# copy meshes pre-build if they are changed
 		get_filename_component(output_name "${MESH}" NAME)
 		add_custom_command(TARGET "${ARGS_TARGET}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/meshes/${output_name}")
 	endforeach()
+
+	# clear global shaders property
+	set_property(GLOBAL PROPERTY ALL_SHADERS "")
 
 	# setup shader compiler
 	foreach(SHADER ${ARGS_SHADERS} ${ENG_SHADERS})
@@ -280,13 +282,13 @@ function(pack_resources)
 		MACOSX_BUNDLE TRUE
 	)
 
-	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_SHADERS})
+	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_MESHES})
 
 	# the command to rscpack
 	add_custom_command(
 		POST_BUILD 
 		OUTPUT "${outpack}"
-		DEPENDS "${assets}"
+		DEPENDS ${assets}
 		COMMENT "Packing resources for ${ARGS_TARGET}"
 		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${ARGS_TARGET} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}"
 		VERBATIM
