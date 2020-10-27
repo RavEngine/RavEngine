@@ -11,9 +11,6 @@
 #include "WeakRef.hpp"
 
 struct SDL_Window;
-namespace Im3d{
-	struct DrawList;
-}
 
 namespace RavEngine {
     class SDLSurface;

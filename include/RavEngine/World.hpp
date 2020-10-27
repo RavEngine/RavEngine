@@ -47,8 +47,8 @@ namespace RavEngine {
 
 		//Entity list
 		EntityStore Entities;
-		std::list<Ref<Entity>> PendingSpawn;
-		std::list<Ref<Entity>> PendingDestruction;
+		plf::list<Ref<Entity>> PendingSpawn;
+		plf::list<Ref<Entity>> PendingDestruction;
 
 		//Systems list (stores the loaded systems), automatically sorted in dependency order
 		std::multiset<Ref<System>> Systems;

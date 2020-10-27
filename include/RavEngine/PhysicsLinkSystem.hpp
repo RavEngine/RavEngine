@@ -25,7 +25,7 @@ namespace RavEngine {
         virtual ~PhysicsLinkSystemWrite() {}
         void Tick(float fpsScale, Ref<Entity> e) const override;
 
-        std::list<std::type_index> QueryTypes() const override {
+        plf::list<std::type_index> QueryTypes() const override {
             return { typeid(PhysicsBodyComponent) };
         }
 		//must run before write system
@@ -47,7 +47,7 @@ namespace RavEngine {
         virtual ~PhysicsLinkSystemRead() {}
         void Tick(float fpsScale, Ref<Entity> e) const override;
 
-        std::list<std::type_index> QueryTypes() const override {
+        plf::list<std::type_index> QueryTypes() const override {
             return {typeid(RigidBodyDynamicComponent)};
         }
 

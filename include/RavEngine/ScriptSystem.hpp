@@ -8,7 +8,7 @@ namespace RavEngine {
 	public:
 		ScriptSystem() : System() {}
 
-		std::list<std::type_index> QueryTypes() const override {
+		plf::list<std::type_index> QueryTypes() const override {
 			return {typeid(ScriptComponent)};
 		}
 

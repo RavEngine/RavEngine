@@ -12,7 +12,7 @@
 namespace RavEngine{
 	class ComponentStore {
 	protected:
-		typedef std::unordered_map<std::type_index, std::list<Ref<RavEngine::Component>>> ComponentStructure;
+		typedef std::unordered_map<std::type_index, plf::list<Ref<RavEngine::Component>>> ComponentStructure;
 		ComponentStructure components;
 		ComponentStructure componentsRedundant;
 
@@ -103,14 +103,14 @@ namespace RavEngine{
 		@return all the components of a class or its base classes to a type index
 		*/
 		template<typename T>
-		std::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
+		plf::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
 			C_REF_CHECK
 			//query both types
 			auto& toplevel = components[type];
 			auto& comp = componentsRedundant[type];
 
 			//insert into
-			std::list<Ref<T>> cpy;
+			plf::list<Ref<T>> cpy;
 			cpy.insert(cpy.begin(), toplevel.begin(), toplevel.end());
 			cpy.insert(cpy.end(), comp.begin(), comp.end());
 			return cpy;
@@ -123,10 +123,10 @@ namespace RavEngine{
 		@return all the components of a type index. Does NOT search base classes
 		*/
 		template<typename T>
-		std::list<Ref<T>> GetAllComponentsOfTypeIndex(const std::type_index& index) {
+		plf::list<Ref<T>> GetAllComponentsOfTypeIndex(const std::type_index& index) {
 			C_REF_CHECK
 				auto& comp = components[index];
-			std::list<Ref<T>> cpy;
+			plf::list<Ref<T>> cpy;
 			for (auto& c : comp) {
 				cpy.push_back(c);
 			}
@@ -138,7 +138,7 @@ namespace RavEngine{
 		 @return the list of all the refs of a base class type. The list may be empty.
 		 */
 		template<typename T>
-		std::list<Ref<T>> GetAllComponentsOfSubclass() {
+		plf::list<Ref<T>> GetAllComponentsOfSubclass() {
 			return GetAllComponentsOfSubclassTypeIndex<T>(std::type_index(typeid(T)));
 		}
 
@@ -148,7 +148,7 @@ namespace RavEngine{
 		 @returns the list of only the components of the high-level type. The list may be empty
 		 */
 		template<typename T>
-		std::list<Ref<T>> GetAllComponentsOfType() {
+		plf::list<Ref<T>> GetAllComponentsOfType() {
 			return GetAllComponentsOfTypeIndex<T>(std::type_index(typeid(T)));
 		}
 

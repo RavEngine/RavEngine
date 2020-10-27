@@ -21,7 +21,7 @@ namespace RavEngine {
 		//query method
 
 		//dependency method
-		virtual std::list<std::type_index> QueryTypes() const = 0;
+		virtual plf::list<std::type_index> QueryTypes() const = 0;
 
 		/**
 		Override in subclasses to determine execution order.

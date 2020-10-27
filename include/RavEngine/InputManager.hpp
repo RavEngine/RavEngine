@@ -3,7 +3,7 @@
 #include "SDL_scancode.h"
 #include <SDL_mouse.h>
 #include <SDL_gamecontroller.h>
-#include <list>
+#include <plf_list.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <iostream>
@@ -243,7 +243,7 @@ namespace RavEngine {
 		};
 		
 		struct Record{
-			std::list<std::string> bindingNames;
+			plf::list<std::string> bindingNames;
 		};
 		
 		struct ActionRecord : public Record{
@@ -256,10 +256,10 @@ namespace RavEngine {
 		};
 		
         std::unordered_map<int, ActionRecord> codeToAction;
-        std::unordered_map<std::string, std::list<ActionCallback>> actionMappings;
+        std::unordered_map<std::string, plf::list<ActionCallback>> actionMappings;
 
         std::unordered_map<int, AxisRecord> codeToAxis;                //ids to records
-        std::unordered_map<std::string, std::list<AxisCallback>> axisMappings;     //strings to methods
+        std::unordered_map<std::string, plf::list<AxisCallback>> axisMappings;     //strings to methods
 
         /**
          Helper used for registering axis inputs inside the engine

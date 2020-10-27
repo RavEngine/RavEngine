@@ -14,7 +14,6 @@
 #include "PhysicsBodyComponent.hpp"
 #include "Entity.hpp"
 #include <PxPhysicsAPI.h>
-#include <list>
 #include <PxFiltering.h>
 #include <iostream>
 #include <unordered_map>

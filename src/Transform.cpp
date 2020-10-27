@@ -1,6 +1,5 @@
 #include "Transform.hpp"
 #include "Entity.hpp"
-#include <list>
 #include "mathtypes.hpp"
 #include "GameplayStatics.hpp"
 #include <RenderEngine.hpp>

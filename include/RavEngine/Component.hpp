@@ -7,7 +7,7 @@
 
 #pragma once
 #include "SharedObject.hpp"
-#include <list>
+#include <plf_list.h>
 #include <typeindex>
 #include "WeakRef.hpp"
 
@@ -20,7 +20,7 @@ namespace RavEngine {
 	class Component : public SharedObject {
 	protected:
 		WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component
-		typedef std::list<std::type_index> alternateTypeStore;
+		typedef plf::list<std::type_index> alternateTypeStore;
 		alternateTypeStore alternateTypeRegister;
 
 		/**
