@@ -43,7 +43,8 @@ void RavEngine::World::Tick(float scale) {
 	PendingSpawn.clear();
 	
 	//Tick the game code
-	TickHook(scale);
+	midtick(scale);
+	TickECS(scale);
 
 	//process component add and removal on spawned entities
 	while (!component_addremove.empty()) {
@@ -76,7 +77,10 @@ void RavEngine::World::Tick(float scale) {
 	}
 	PendingDestruction.clear();
 	
+	//tick physics read
+	TickSystem(plsw,scale);
     Solver->Tick(scale);
+	TickSystem(plsr,scale);
     
     posttick(scale);
 }
@@ -85,6 +89,7 @@ void RavEngine::World::Tick(float scale) {
 RavEngine::World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(40000);
+	RegisterSystem(Ref<ScriptSystem>(new ScriptSystem));
 }
 
 /**
@@ -143,16 +148,13 @@ void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
  Tick all of the objects in the world, multithreaded
  @param fpsScale the scale factor to apply to all operations based on the frame rate
  */
-void RavEngine::World::TickHook(float fpsScale) {
+void RavEngine::World::TickECS(float fpsScale) {
 	//bgfx::dbgTextPrintf(0, 5, 0x4f, "FPS Scale: %lf", fpsScale);
-
-    //tick the non-script systems
+	
+    //tick the systems
 	for (auto& system : Systems) {
         TickSystem(system, fpsScale);
 	}
-    
-    //now tick the ScriptSystem
-    TickSystem(Scripts, fpsScale);
 }
 
 bool RavEngine::World::InitPhysics() {
@@ -163,15 +165,11 @@ bool RavEngine::World::InitPhysics() {
 		}
 	}
 
-	Ref<PhysicsLinkSystemRead> plsr = new PhysicsLinkSystemRead();
-	RegisterSystem(plsr);
+	plsr = new PhysicsLinkSystemRead(Solver->scene);
+	//RegisterSystem(plsr);
 
-	Ref<PhysicsLinkSystemWrite> plsw = new PhysicsLinkSystemWrite();
-	RegisterSystem(plsw);
-
-	//dynamics world must be set in these so that locks can be managed correctly
-	plsr->dynamicsWorld = Solver->scene;
-	plsw->dynamicsWorld = Solver->scene;
+	plsw = new PhysicsLinkSystemWrite(Solver->scene);
+	//RegisterSystem(plsw);
 
 	return true;
 }

@@ -9,6 +9,7 @@
 #include "SharedObject.hpp"
 #include "System.hpp"
 #include "PhysicsSolver.hpp"
+#include "PhysicsLinkSystem.hpp"
 #include "RenderEngine.hpp"
 #include <unordered_map>
 #include <unordered_set>
@@ -54,14 +55,12 @@ namespace RavEngine {
 
 		//physics system
 		Ref<PhysicsSolver> Solver = new PhysicsSolver();
+		Ref<PhysicsLinkSystemRead> plsr;
+		Ref<PhysicsLinkSystemWrite> plsw;
         
-        //script system
-        Ref<ScriptSystem> Scripts = new ScriptSystem();
-
 		template<class T>
 		void RegisterSystem(Ref<T> r_instance) {
 			//static_assert(std::is_base_of<System, T>::value, "Can only register systems");
-            static_assert(!std::is_same<T, ScriptSystem>::value, "Cannot register ScriptSystem! It is already registered.");
 			Systems.insert(r_instance);
 		}
 
@@ -70,7 +69,8 @@ namespace RavEngine {
 		 @param fpsScale the scale factor calculated
 		 */
 		virtual void pretick(float fpsScale) {}
-		virtual void TickHook(float);
+		virtual void midtick(float fpsScale) {}
+		void TickECS(float);
 		/**
 		 Called after physics and rendering synchronously
 		 @param fpsScale the scale factor calculated

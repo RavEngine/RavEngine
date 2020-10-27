@@ -11,7 +11,7 @@ using namespace RavEngine;
 
 void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Entity> e) const{
     //physx requires reads and writes to be sequential
-
+	
     //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
     auto rigid = e->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
     dynamicsWorld->lockRead();

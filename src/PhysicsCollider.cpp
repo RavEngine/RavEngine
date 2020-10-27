@@ -14,7 +14,15 @@ void BoxCollider::AddHook(const WeakRef<Entity>& e) {
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxBoxGeometry(extent.x, extent.y, extent.z), *material->getPhysXmat());
 
 	//set relative transformation
-	collider->setLocalPose(PxTransform(PxVec3(position.x,position.y,position.z),PxQuat(rotation.x,rotation.y,rotation.z,rotation.w)));
+	SetRelativeTransform(position, rotation);
+}
+
+void SphereCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
+	auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
+	
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxSphereGeometry(radius), *material->getPhysXmat());
+	
+	SetRelativeTransform(position, rotation);
 }
 
 
@@ -49,4 +57,8 @@ bool RavEngine::PhysicsCollider::GetQueryable()
 
 PhysicsCollider::~PhysicsCollider() {
 	//collider->release();
+}
+
+void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quaternion &rotation){
+	collider->setLocalPose(PxTransform(PxVec3(position.x,position.y,position.z),PxQuat(rotation.x,rotation.y,rotation.z,rotation.w)));
 }

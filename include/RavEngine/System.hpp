@@ -10,9 +10,9 @@
 #include "SharedObject.hpp"
 #include "Entity.hpp"
 
-class World;
-
 namespace RavEngine {
+	class World;
+
 	class System : public SharedObject {
 	public:
 		//for sharedobject
@@ -31,10 +31,19 @@ namespace RavEngine {
 		virtual bool MustRunBefore(const std::type_index& other) const{
 			return false;
 		}
+		
+		/**
+		 Override in subclasses to determine execution order.
+		 @param other the other system to compare against.
+		 @return true if this system must run after the other system, false otherwise
+		 */
+		virtual bool MustRunAfter(const std::type_index& other) const{
+			return false;
+		}
 
 		
 		bool operator<(const System& other) const {
-			return MustRunBefore(std::type_index(typeid(other)));
+			return MustRunBefore(std::type_index(typeid(other))) || other.MustRunAfter(std::type_index(typeid(this)));
 		}
 
 		/**

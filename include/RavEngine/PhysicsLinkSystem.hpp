@@ -19,6 +19,8 @@ namespace RavEngine {
     */
     class PhysicsLinkSystemWrite : public System {
     public:
+		PhysicsLinkSystemWrite(physx::PxScene* scene ) : dynamicsWorld(scene){}
+		
         physx::PxScene* dynamicsWorld = nullptr;
         virtual ~PhysicsLinkSystemWrite() {}
         void Tick(float fpsScale, Ref<Entity> e) const override;
@@ -26,11 +28,11 @@ namespace RavEngine {
         std::list<std::type_index> QueryTypes() const override {
             return { typeid(PhysicsBodyComponent) };
         }
-
-        //must run before write system
-        bool MustRunBefore(const std::type_index& other) const override {
-            return other == std::type_index(typeid(ScriptSystem));
-        }
+		//must run before write system
+		bool MustRunBefore(const std::type_index& other) const override{
+			return other == std::type_index(typeid(PhysicsLinkSystemWrite));
+		}
+       
     };
 
     /**
@@ -39,6 +41,8 @@ namespace RavEngine {
      */
     class PhysicsLinkSystemRead : public System {
     public:
+		PhysicsLinkSystemRead(physx::PxScene* scene ) : dynamicsWorld(scene){}
+		
         physx::PxScene* dynamicsWorld = nullptr;
         virtual ~PhysicsLinkSystemRead() {}
         void Tick(float fpsScale, Ref<Entity> e) const override;
@@ -47,9 +51,10 @@ namespace RavEngine {
             return {typeid(RigidBodyDynamicComponent)};
         }
 
-        //must run before write system
-        bool MustRunBefore(const std::type_index& other) const override{
-            return other == std::type_index(typeid(PhysicsLinkSystemWrite));
-        }
+		//must run before write system
+		bool MustRunBefore(const std::type_index& other) const override {
+			return other == std::type_index(typeid(ScriptSystem));
+		}
+        
     };
 }

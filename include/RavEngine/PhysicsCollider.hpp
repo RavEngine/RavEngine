@@ -20,8 +20,9 @@ namespace RavEngine {
 		physx::PxShape* collider = nullptr;
 		vector3 position = vector3(0,0,0);
 		quaternion rotation = quaternion(1.0,0.0,0.0,0.0);
+		Ref<PhysicsMaterial> material;
 	public:
-		PhysicsCollider(vector3 position, quaternion rotation) : position(position), rotation(rotation) {}
+		PhysicsCollider(const vector3& position, const quaternion& rotation) : position(position), rotation(rotation) {}
 
 		enum class CollisionType { Trigger, Collider };
 
@@ -50,6 +51,13 @@ namespace RavEngine {
 		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
 		bool GetQueryable();
+				
+		/**
+		 Set PxShape relative transformation
+		 @param position the relative location of the shape
+		 @param rotation the relative rotation of the shape
+		 */
+		void SetRelativeTransform(const vector3& position, const quaternion& rotation);
 
 		virtual ~PhysicsCollider();
 	};
@@ -58,11 +66,10 @@ namespace RavEngine {
 	class BoxCollider : public PhysicsCollider {
 	protected:
 		vector3 extent;
-		Ref<PhysicsMaterial> material;
 	public:
 
 		virtual ~BoxCollider() {}
-		BoxCollider(vector3 position = vector3(0,0,0), quaternion rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation) { RegisterAllAlternateTypes(); };
+		BoxCollider(const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation) { RegisterAllAlternateTypes(); };
 
 		/**
 		 * Create a box collider with an extent and a physics material
@@ -70,7 +77,7 @@ namespace RavEngine {
 		 * @param mat the physics material to assign
 		 * @note The current scale of the transform is assumed to be the identity size for ResizeToFit.
 		 */
-		BoxCollider(const vector3& ext, Ref<PhysicsMaterial> mat, vector3 position = vector3(0, 0, 0), quaternion rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : BoxCollider(position,rotation) {
+		BoxCollider(const vector3& ext, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0, 0, 0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : BoxCollider(position,rotation) {
 			extent = ext;
 			material = mat;
 		}
@@ -80,5 +87,25 @@ namespace RavEngine {
 		virtual void RegisterAllAlternateTypes() override {
 			RegisterAlternateQueryType<PhysicsCollider>();
 		}
+	};
+
+	class SphereCollider : public PhysicsCollider{
+	protected:
+		decimalType radius;
+	public:
+		SphereCollider(decimalType r, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation){
+			radius = r;
+			RegisterAllAlternateTypes();
+		};
+		
+		SphereCollider(decimalType radius, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : SphereCollider(radius, position, rotation){
+			material = mat;
+		};
+		
+		virtual void RegisterAllAlternateTypes() override {
+			RegisterAlternateQueryType<PhysicsCollider>();
+		}
+		
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	};
 }
