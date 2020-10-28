@@ -1,19 +1,20 @@
 #pragma once
 #include <typeindex>
 #include <array>
+#include <tuple>
 
 namespace RavEngine{
-
-//joins two std::arrays of different size at compile time
-template <typename Type, std::size_t... sizes>
-auto concat(const std::array<Type, sizes>&... arrays)
+//to_array, which converts a std::tuple into std::array
+template<typename Tuple,typename VTuple = std::remove_reference_t<Tuple>,std::size_t... Indices>
+constexpr std::array<std::common_type_t<std::tuple_element_t<Indices, VTuple>...>,sizeof...(Indices)>
+to_array(Tuple&& tuple, std::index_sequence<Indices...>)
 {
-	Type result[(sizes + ...)] = {std::type_index(typeid(Type))};
-	std::size_t index{};
-	
-	((std::copy_n(arrays.begin(), sizes, result.begin() + index), index += sizes), ...);
-	
-	return result;
+    return { std::get<Indices>(std::forward<Tuple>(tuple))... };
+}
+template<typename Tuple, typename VTuple = std::remove_reference_t<Tuple>>
+constexpr decltype(auto) to_array(Tuple&& tuple)
+{
+    return to_array(std::forward<Tuple>(tuple),std::make_index_sequence<std::tuple_size<VTuple>::value> {} );
 }
 
 template<typename ... types>
@@ -34,7 +35,8 @@ struct QueryableDelta{
 	inline static constexpr arraytype GetQueryTypes(){
 		const std::array<std::type_index,sizeof ... (types)> thisvalues{ std::type_index(typeid(types)) ...};
 		const typename base::arraytype basevalues = base::GetQueryTypes();
-		return concat(thisvalues, basevalues);
+        //concatenate arrays
+        return to_array(std::tuple_cat(thisvalues,basevalues));
 	}
 };
 }
