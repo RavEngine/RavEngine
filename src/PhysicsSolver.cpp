@@ -16,7 +16,6 @@
 #define PX_RELEASE(x)    if(x)    { x->release(); x = NULL;    }
 
 #include <thread>
-#include "GameplayStatics.hpp"
 
 using namespace physx;
 using namespace std;
@@ -131,7 +130,6 @@ PhysicsSolver::~PhysicsSolver() {
 }
 
 void PhysicsSolver::ReleaseStatics() {
-    GameplayStatics::currentWorld->DeallocatePhysics();
     PX_RELEASE(phys);
     PX_RELEASE(foundation);
 }

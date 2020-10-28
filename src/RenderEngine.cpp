@@ -10,7 +10,6 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include "GameplayStatics.hpp"
 #include "CameraComponent.hpp"
 #include "World.hpp"
 #include <memory>

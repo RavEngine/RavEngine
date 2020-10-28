@@ -1,6 +1,5 @@
 #include "Component.hpp"
 #include "Entity.hpp"
-#include "GameplayStatics.hpp"
 #include "Queryable.hpp"
 
 namespace RavEngine {

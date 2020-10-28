@@ -115,6 +115,15 @@ namespace RavEngine {
 			}
 			
 			/**
+			 Unregister ALL loaded materials
+			 */
+			static void RemoveAll(){
+				mtx.lock();
+				materials.clear();
+				mtx.unlock();
+			}
+			
+			/**
 			 Helper to get a material by type. If one is not allocated, it will be created. Supports constructors via parameter pack
 			 @param args arguments to pass to material constructor if needed
 			 */

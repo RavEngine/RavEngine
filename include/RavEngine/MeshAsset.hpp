@@ -54,6 +54,15 @@ public:
 		 */
 		static void RemoveMeshAsset(const std::string& path);
 		
+		/**
+		 Remove ALL loaded mesh assets
+		 */
+		static void RemoveAll(){
+			mtx.lock();
+			meshes.clear();
+			mtx.unlock();
+		}
+		
 	protected:
 		static std::mutex mtx;
 		static std::unordered_map<std::string,Ref<MeshAsset>> meshes;

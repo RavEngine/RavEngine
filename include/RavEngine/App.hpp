@@ -7,12 +7,16 @@
 #include "SpinLock.hpp"
 #include <thread>
 #include "ThreadPool.hpp"
+#include "World.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
 	typedef std::chrono::microseconds timeDiff;
 	typedef std::chrono::seconds deltaSeconds;
 	typedef std::chrono::time_point<clocktype> timePoint;
+	
+	class InputManager;
+	class World;
 
 	class App {
 	public:
@@ -20,7 +24,7 @@ namespace RavEngine {
 			Resources = new VirtualFilesystem(resourcesName + ".zip");
 			Renderer = new RenderEngine();
 		}
-		virtual ~App() {}
+		virtual ~App();
 
 		/**
 		Invoked automatically. Passes command line arguments.
@@ -53,6 +57,9 @@ namespace RavEngine {
 			main_tasks.push(f);
 			queue_lock.unlock();
 		}
+		
+		static Ref<InputManager> inputManager;
+		static Ref<World> currentWorld;
 	protected:
 		static SpinLock queue_lock;
 		static std::queue<std::function<void(void)>> main_tasks;

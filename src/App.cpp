@@ -1,9 +1,11 @@
 #include "App.hpp"
-#include <GameplayStatics.hpp>
 #include "RenderEngine.hpp"
 #include <SDL_events.h>
 #include <bgfx/bgfx.h>
 #include <algorithm>
+#include "InputManager.cpp"
+#include "MeshAsset.hpp"
+#include "Material.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -15,6 +17,8 @@ Ref<VirtualFilesystem> App::Resources;
 SpinLock App::queue_lock;
 queue<function<void(void)>> App::main_tasks;
 ThreadPool App::threadpool;
+Ref<InputManager> App::inputManager;
+Ref<World> App::currentWorld;
 
 int App::run(int argc, char** argv) {
 
@@ -22,9 +26,7 @@ int App::run(int argc, char** argv) {
 	OnStartup(argc, argv);
 	
 	lastFrameTime = clocktype::now();
-
-	auto& inputManager = GameplayStatics::inputManager;
-    
+	
 	bool exit = false;
 	SDL_Event event;
 	while (!exit) {
@@ -61,7 +63,7 @@ int App::run(int argc, char** argv) {
 			
 		}
 		inputManager->Tick();
-		GameplayStatics::currentWorld->Tick(scale);
+		currentWorld->Tick(scale);
 		
 		//process main thread tasks
 		while (!main_tasks.empty()){
@@ -70,17 +72,22 @@ int App::run(int argc, char** argv) {
 			main_tasks.pop();
 		}
 		
-		Renderer->Draw(GameplayStatics::currentWorld);
+		Renderer->Draw(currentWorld);
 
 #ifdef LIMIT_TICK
 		this_thread::sleep_for(tickrate);
 #endif
 		lastFrameTime = now;
 	}
-
-	//GameplayStatics::currentWorld = nullptr;
 	
-	//bgfx::shutdown();
+	//
 		
     return OnShutdown();
+}
+
+App::~App(){
+	inputManager = nullptr;
+	currentWorld = nullptr;
+	MeshAsset::Manager::RemoveAll();
+	Material::Manager::RemoveAll();
 }
