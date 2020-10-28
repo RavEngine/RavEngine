@@ -12,13 +12,13 @@
 #include <unordered_set>
 #include "mathtypes.hpp"
 #include "WeakRef.hpp"
-
+#include "Queryable.hpp"
 
 namespace RavEngine {
 	/**
 	 A thread-safe transform component
 	 */
-	class Transform : public Component {
+	class Transform : public Component, public Queryable<Transform> {
 	public:
 		typedef std::unordered_set<WeakRef<Transform>> childStore;
 		virtual ~Transform();

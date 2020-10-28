@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include "Component.hpp"
 #include <functional>
+#include <plf_list.h>
 
 //macro for checking type in template
 #define C_REF_CHECK static_assert(std::is_base_of<RavEngine::Component, T>::value, "Template parameter must be a Component subclass");
@@ -35,7 +36,7 @@ namespace RavEngine{
 				components[std::type_index(typeid(T))].push_back(componentRef);
 
 			//add redundant types
-			for (const auto& alt : componentRef->getAltTypes()) {
+			for (const auto& alt : T::GetQueryTypes()) {
 				componentsRedundant[alt].push_back(componentRef);
 			}
 			return componentRef;
@@ -161,7 +162,7 @@ namespace RavEngine{
 			components[std::type_index(typeid(T))].remove(component);
 
 			//add redundant types
-			for (const auto& alt : component->getAltTypes()) {
+			for (const auto& alt : T::GetQueryTypes()) {
 				componentsRedundant[alt].remove(component);
 			}
 		}

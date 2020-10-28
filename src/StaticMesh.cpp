@@ -13,7 +13,6 @@ using namespace std;
 
 StaticMesh::StaticMesh(Ref<MeshAsset> m) : RenderableComponent(), mesh(m) {
 	
-    RegisterAllAlternateTypes();
 }
 
 

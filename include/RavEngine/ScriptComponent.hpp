@@ -1,26 +1,15 @@
 #pragma once
 #include "Component.hpp"
 #include "Transform.hpp"
+#include "Queryable.hpp"
 
 namespace RavEngine {
 	class World;
 	/**
 	Define an Entity-side Script which can contain code. Subclass to add behavior. Be sure to invoke the base class constructor!
 	*/
-	class ScriptComponent : public Component {
-	protected:
-		void RegisterAllAlternateTypes() override{
-			RegisterAlternateQueryType<ScriptComponent>();
-		}
+	class ScriptComponent : public Component, public Queryable<ScriptComponent> {
 	public:
-
-		/**
-		Ensure this is invoked in subclasses.
-		*/
-		ScriptComponent() : Component() {
-			RegisterAllAlternateTypes();
-		};
-
 		/**
 		Override to provide cleanup behavior.
 		*/

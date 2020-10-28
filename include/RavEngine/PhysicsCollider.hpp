@@ -7,6 +7,7 @@
 #include <iostream>
 #include "mathtypes.hpp"
 #include "PhysicsMaterial.hpp"
+#include "Queryable.hpp"
 
 namespace physx {
 	class PxShape;
@@ -14,7 +15,7 @@ namespace physx {
 
 namespace RavEngine {
 	class Entity;
-	class PhysicsCollider : public Component
+	class PhysicsCollider : public Component, public Queryable<PhysicsCollider>
 	{
 	protected:
 		physx::PxShape* collider = nullptr;
@@ -63,10 +64,11 @@ namespace RavEngine {
 	};
 
 
-	class BoxCollider : public PhysicsCollider {
+	class BoxCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,BoxCollider> {
 	protected:
 		vector3 extent;
 	public:
+		using QueryableDelta<PhysicsCollider,BoxCollider>::GetQueryTypes;
 
 		virtual ~BoxCollider() {}
 		BoxCollider(const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation) { RegisterAllAlternateTypes(); };
@@ -82,17 +84,15 @@ namespace RavEngine {
 			material = mat;
 		}
 
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;	
-
-		virtual void RegisterAllAlternateTypes() override {
-			RegisterAlternateQueryType<PhysicsCollider>();
-		}
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	};
 
-	class SphereCollider : public PhysicsCollider{
+	class SphereCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,SphereCollider>{
 	protected:
 		decimalType radius;
 	public:
+		using QueryableDelta<PhysicsCollider,SphereCollider>::GetQueryTypes;
+		
 		SphereCollider(decimalType r, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation){
 			radius = r;
 			RegisterAllAlternateTypes();
@@ -101,10 +101,6 @@ namespace RavEngine {
 		SphereCollider(decimalType radius, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : SphereCollider(radius, position, rotation){
 			material = mat;
 		};
-		
-		virtual void RegisterAllAlternateTypes() override {
-			RegisterAlternateQueryType<PhysicsCollider>();
-		}
 		
 		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	};

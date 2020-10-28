@@ -1,15 +1,14 @@
 #include "Component.hpp"
 #include "Entity.hpp"
 #include "GameplayStatics.hpp"
+#include "Queryable.hpp"
 
 namespace RavEngine {
-	class CameraComponent : public Component {
+	class CameraComponent : public Component, public Queryable<CameraComponent> {
 	public:
 		CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100);
 
 		virtual ~CameraComponent() {}
-
-		void RegisterAllAlternateTypes() override {}
 
 		/**
 		Enable / disable this camera

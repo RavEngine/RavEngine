@@ -9,9 +9,10 @@
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
 #include <unordered_set>
+#include "Queryable.hpp"
 
 namespace RavEngine {
-	class PhysicsBodyComponent : public Component
+	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
 		std::unordered_set<IPhysicsActor*> receivers;
@@ -87,10 +88,6 @@ namespace RavEngine {
 			this->filterGroup = fg; this->filterMask = fm;
 		}
 		virtual ~RigidBodyDynamicComponent();
-
-		void RegisterAllAlternateTypes() override {
-			RegisterAlternateQueryType<PhysicsBodyComponent>();
-		}
 		
 		/**
 		@returns the body's current linear velocity
@@ -128,10 +125,6 @@ namespace RavEngine {
 		virtual ~RigidBodyStaticComponent();
 		RigidBodyStaticComponent(physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent() {
 			this->filterGroup = fg; this->filterMask = fm;
-		}
-
-		void RegisterAllAlternateTypes() override {
-			RegisterAlternateQueryType<PhysicsBodyComponent>();
 		}
 	};
 }

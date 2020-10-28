@@ -7,7 +7,6 @@
 
 #pragma once
 #include "SharedObject.hpp"
-#include <plf_list.h>
 #include <typeindex>
 #include "WeakRef.hpp"
 
@@ -20,19 +19,6 @@ namespace RavEngine {
 	class Component : public SharedObject {
 	protected:
 		WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component
-		typedef plf::list<std::type_index> alternateTypeStore;
-		alternateTypeStore alternateTypeRegister;
-
-		/**
-		Make the Engine aware of different types this Component may be queried as.
-		Do not register the most derived type, that is done automatically.
-		*/
-		template<typename T>
-		void RegisterAlternateQueryType() {
-			static_assert(std::is_base_of<Component, T>::value, "Must be a subclass of Component!");
-			//static_assert(std::is_convertible<ref, Ref<Component>>::value, "Must be a Component Reference");
-			alternateTypeRegister.push_back(std::type_index(typeid(T)));
-		}
 
 		/**
 		 * Override in base classes to set the query dynamic types of this Component
@@ -58,13 +44,6 @@ namespace RavEngine {
 		 * @param e the parent entity invoking the call
 		 */
 		virtual void RemoveHook(const WeakRef<RavEngine::Entity>& e) {}
-
-		/*
-		 * Get the list of alternate types this component may be queried as
-		 */
-		const alternateTypeStore& getAltTypes() {
-			return alternateTypeRegister;
-		}
 
 		//for SharedObject
 		virtual ~Component() {

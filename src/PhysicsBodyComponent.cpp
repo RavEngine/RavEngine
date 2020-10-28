@@ -15,7 +15,6 @@ using namespace RavEngine;
 
 RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
 	rigidActor = PhysicsSolver::phys->createRigidDynamic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
-	RegisterAllAlternateTypes();
 }
 
 void RavEngine::PhysicsBodyComponent::AddHook(const WeakRef<RavEngine::Entity>& e)
@@ -180,7 +179,6 @@ void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
 /// Static Body ========================================
 RigidBodyStaticComponent::RigidBodyStaticComponent() {
 	rigidActor = PhysicsSolver::phys->createRigidStatic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
-	RegisterAllAlternateTypes();
 }
 
 RigidBodyStaticComponent::~RigidBodyStaticComponent() {
