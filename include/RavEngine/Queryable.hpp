@@ -1,18 +1,19 @@
 #pragma once
 #include <typeindex>
+#include <array>
 
 namespace RavEngine{
 
 //joins two std::arrays of different size at compile time
-template <class Target=void, class... TupleLike>
-auto array_concat(TupleLike&&... tuples) {
-	return std::apply([](auto&& first, auto&&... rest){
-		using T = std::conditional_t<
-		!std::is_void<Target>::value, Target, std::decay_t<decltype(first)>>;
-		return std::array<T, sizeof...(rest)+1>{{
-			decltype(first)(first), decltype(rest)(rest)...
-		}};
-	}, std::tuple_cat(std::forward<TupleLike>(tuples)...));
+template <typename Type, std::size_t... sizes>
+auto concat(const std::array<Type, sizes>&... arrays)
+{
+	Type result[(sizes + ...)] = {std::type_index(typeid(Type))};
+	std::size_t index{};
+	
+	((std::copy_n(arrays.begin(), sizes, result.begin() + index), index += sizes), ...);
+	
+	return result;
 }
 
 template<typename ... types>
@@ -31,7 +32,9 @@ struct QueryableDelta{
 	typedef std::array<std::type_index,ntypes> arraytype;
 	
 	inline static constexpr arraytype GetQueryTypes(){
-		return array_concat({std::type_index(typeid(types)) ...}, base::GetQueryTypes());
+		const std::array<std::type_index,sizeof ... (types)> thisvalues{ std::type_index(typeid(types)) ...};
+		const typename base::arraytype basevalues = base::GetQueryTypes();
+		return concat(thisvalues, basevalues);
 	}
 };
 }
