@@ -20,18 +20,10 @@ namespace RavEngine {
 	protected:
 		WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component
 
-		/**
-		 * Override in base classes to set the query dynamic types of this Component
-		 */
-		virtual void RegisterAllAlternateTypes() {}
-
 	public:
 		bool Enabled = true;
 
-		//ensure the base class constructor is called if the constructor is overridden
-		Component() {
-			RegisterAllAlternateTypes();
-		}
+		Component() {}
 
 		/**
 		 * Called by the parent entity after this component is added. Override in subclasses

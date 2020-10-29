@@ -7,7 +7,6 @@
 using namespace physx;
 using namespace RavEngine;
 
-
 void BoxCollider::AddHook(const WeakRef<Entity>& e) {
     auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
 	//add the physics body to the Entity's physics actor
@@ -22,6 +21,14 @@ void SphereCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxSphereGeometry(radius), *material->getPhysXmat());
 	
+	SetRelativeTransform(position, rotation);
+}
+
+void CapsuleCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
+	auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
+
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxCapsuleGeometry(radius,halfHeight), *material->getPhysXmat());
+
 	SetRelativeTransform(position, rotation);
 }
 

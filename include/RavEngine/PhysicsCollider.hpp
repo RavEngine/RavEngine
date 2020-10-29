@@ -22,6 +22,7 @@ namespace RavEngine {
 		vector3 position = vector3(0,0,0);
 		quaternion rotation = quaternion(1.0,0.0,0.0,0.0);
 		Ref<PhysicsMaterial> material;
+		
 	public:
 		PhysicsCollider(const vector3& position, const quaternion& rotation) : position(position), rotation(rotation) {}
 
@@ -71,7 +72,7 @@ namespace RavEngine {
 		using QueryableDelta<PhysicsCollider,BoxCollider>::GetQueryTypes;
 
 		virtual ~BoxCollider() {}
-		BoxCollider(const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation) { RegisterAllAlternateTypes(); };
+		BoxCollider(const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation) { };
 
 		/**
 		 * Create a box collider with an extent and a physics material
@@ -93,14 +94,60 @@ namespace RavEngine {
 	public:
 		using QueryableDelta<PhysicsCollider,SphereCollider>::GetQueryTypes;
 		
+		/**
+		 Create a sphere collider
+		 @param r radius of the collider
+		 @param position the relative position of the shape
+		 @param rotation the relative rotation of the shape
+		 */
 		SphereCollider(decimalType r, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation){
 			radius = r;
-			RegisterAllAlternateTypes();
 		};
 		
+		/**
+		 Create a sphere collider with a material
+		 @param r radius of the collider
+		 @param mat the physics material of the shape
+		 @param position the relative position of the shape
+		 @param rotation the relative rotation of the shape
+		 */
 		SphereCollider(decimalType radius, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : SphereCollider(radius, position, rotation){
 			material = mat;
 		};
+		
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
+	};
+
+	class CapsuleCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,CapsuleCollider>{
+	protected:
+		decimalType radius;
+		decimalType halfHeight;
+	public:
+		using QueryableDelta<PhysicsCollider,CapsuleCollider>::GetQueryTypes;
+		
+		/**
+		 Create a capsule collider
+		 @param r radius of the collider
+		 @param h the half-height of the collider
+		 @param position the relative position of the shape
+		 @param rotation the relative rotation of the shape
+		 */
+		CapsuleCollider(decimalType r, decimalType hh, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation){
+			radius = r;
+			halfHeight = hh;
+		}
+		
+		/**
+		 Create a capsule collider with a material
+		 @param r radius of the collider
+		 @param h the half-height of the collider
+		 @param mat the physics material of the shape
+		 @param position the relative position of the shape
+		 @param rotation the relative rotation of the shape
+		 */
+		CapsuleCollider(decimalType r, decimalType hh, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : CapsuleCollider(r,hh,position,rotation){
+			material = mat;
+		}
 		
 		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	};
