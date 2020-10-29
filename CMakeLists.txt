@@ -296,5 +296,16 @@ function(pack_resources)
 	# make part of the target, and add to the resources folder if applicable
 	target_sources("${ARGS_TARGET}" PRIVATE "${outpack}")
 	set_source_files_properties("${outpack}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+	
+	# copy to target dir on Win
+	if(MSVC)
+		get_filename_component(outfile ${outpack} NAME)
+		add_custom_command(
+			TARGET "${ARGS_TARGET}"
+			DEPENDS "${outpack}"
+			COMMAND ${CMAKE_COMMAND}  -E  copy_if_different "${outpack}" "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}"
+			COMMENT "Copying assets package to executable directory"
+		)
+	endif()
 endfunction()
 
