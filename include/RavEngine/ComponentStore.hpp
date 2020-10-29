@@ -1,8 +1,7 @@
 #pragma once
-#include <unordered_map>
+#include <phmap.h>
 #include "SharedObject.hpp"
 #include <typeindex>
-#include <unordered_set>
 #include "Component.hpp"
 #include <functional>
 #include <plf_list.h>
@@ -13,7 +12,7 @@
 namespace RavEngine{
 	class ComponentStore {
 	protected:
-		typedef std::unordered_map<std::type_index, plf::list<Ref<RavEngine::Component>>> ComponentStructure;
+		typedef phmap::parallel_flat_hash_map<std::type_index, plf::list<Ref<RavEngine::Component>>> ComponentStructure;
 		ComponentStructure components;
 		ComponentStructure componentsRedundant;
 

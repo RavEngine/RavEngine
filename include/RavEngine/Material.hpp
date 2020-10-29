@@ -1,7 +1,7 @@
 #pragma once
 #include "SharedObject.hpp"
 #include "RenderEngine.hpp"
-#include <unordered_map>
+#include <phmap.h>
 #include "SpinLock.hpp"
 #include <bgfx/bgfx.h>
 
@@ -40,7 +40,7 @@ namespace RavEngine {
 			friend class Material;
 		protected:
 			//materials are keyed by their shader name
-			typedef std::unordered_map<std::type_index, Ref<RavEngine::Material>> MaterialStore;
+			typedef phmap::parallel_flat_hash_map<std::type_index, Ref<RavEngine::Material>> MaterialStore;
 			static MaterialStore materials;
 			static SpinLock mtx;
 			

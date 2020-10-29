@@ -1,6 +1,6 @@
 #pragma once
 #include "WeakRef.hpp"
-#include <unordered_map>
+#include <phmap.h>
 
 namespace RavEngine {
 	class InputManager;
@@ -11,6 +11,6 @@ namespace RavEngine {
 
 		~IInputListener();
 	private:
-		std::unordered_map<WeakRef<InputManager>, int> senders;
+		phmap::parallel_flat_hash_map<WeakRef<InputManager>, int> senders;
 	};
 }

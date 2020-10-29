@@ -16,7 +16,6 @@
 #include <PxPhysicsAPI.h>
 #include <PxFiltering.h>
 #include <iostream>
-#include <unordered_map>
 #include <cstdint>
 
 struct FilterLayers {

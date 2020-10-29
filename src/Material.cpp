@@ -22,7 +22,7 @@ matrix4 Material::Manager::viewMatrix;
 SpinLock Material::Manager::mtx;
 
 // mapping names to types
-const unordered_map<string, ShaderStage> stagemap{
+const phmap::flat_hash_map<string, ShaderStage> stagemap{
 	{"vertex",ShaderStage::Vertex},
 	{"fragment",ShaderStage::Fragment},
 	{"geometry",ShaderStage::Geometry},

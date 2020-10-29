@@ -8,14 +8,14 @@
 #include <functional>
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
-#include <unordered_set>
+#include <phmap.h>
 #include "Queryable.hpp"
 
 namespace RavEngine {
 	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
-		std::unordered_set<IPhysicsActor*> receivers;
+		phmap::flat_hash_set<IPhysicsActor*> receivers;
 	public:
 		physx::PxRigidActor* rigidActor = nullptr;
 		physx::PxU32 filterGroup = -1;

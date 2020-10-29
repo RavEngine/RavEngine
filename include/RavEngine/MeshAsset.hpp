@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SharedObject.hpp"
-#include <unordered_map>
+#include <phmap.h>
 #include <mutex>
 #include "mathtypes.hpp"
 #include <bgfx/bgfx.h>
@@ -65,7 +65,7 @@ public:
 		
 	protected:
 		static std::mutex mtx;
-		static std::unordered_map<std::string,Ref<MeshAsset>> meshes;
+		static phmap::parallel_flat_hash_map<std::string,Ref<MeshAsset>> meshes;
 		
 		/**
 		 Add a MeshAsset to the map

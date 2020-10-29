@@ -16,7 +16,7 @@
 #include <cassert>
 #include "Ref.hpp"
 #include "SpinLock.hpp"
-#include <unordered_set>
+#include <phmap.h>
 #include <plf_colony.h>
 
 namespace RavEngine {

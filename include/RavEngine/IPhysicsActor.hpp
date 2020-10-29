@@ -1,7 +1,6 @@
 #pragma once
 #include "WeakRef.hpp"
-#include <unordered_set>
-
+#include <phmap.h>
 /**
 Multi-inherit from this interface to provide delegates for collision events
 */
@@ -36,6 +35,6 @@ namespace RavEngine {
 
 		~IPhysicsActor();
 	private:
-		std::unordered_set<WeakRef<RavEngine::PhysicsBodyComponent>> senders;
+		phmap::flat_hash_set<WeakRef<RavEngine::PhysicsBodyComponent>> senders;
 	};
 }

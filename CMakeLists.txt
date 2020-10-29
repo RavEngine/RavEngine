@@ -40,7 +40,6 @@ endif()
 
 # ==================== Dependencies =====================
 add_subdirectory("${DEPS_DIR}/im3d-cmake")
-
 add_subdirectory("${DEPS_DIR}/etl")
 
 # use static SDL
@@ -118,10 +117,10 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/ttvfs/ttvfs"
 	"${DEPS_DIR}/ttvfs/ttvfs_zip"
 	"${DEPS_DIR}/plf/"
+	"${DEPS_DIR}/parallel-hashmap/parallel_hashmap"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
-	"${DEPS_DIR}/miniz-cpp/"
-	
+	"${DEPS_DIR}/miniz-cpp/"	
 )
 
 # ====================== Linking ====================

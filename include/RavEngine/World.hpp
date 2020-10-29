@@ -11,8 +11,7 @@
 #include "PhysicsSolver.hpp"
 #include "PhysicsLinkSystem.hpp"
 #include "RenderEngine.hpp"
-#include <unordered_map>
-#include <unordered_set>
+#include <phmap.h>
 #include <queue>
 #include <set>
 #include "SpinLock.hpp"
@@ -21,7 +20,7 @@
 
 namespace RavEngine {
 	class Entity;
-	typedef std::unordered_set<Ref<Entity>> EntityStore;
+	typedef phmap::parallel_flat_hash_set<Ref<Entity>> EntityStore;
 
 	class World : public SharedObject {
 	protected:

@@ -16,7 +16,7 @@ using namespace RavEngine;
 using namespace std;
 
 mutex MeshAsset::Manager::mtx;
-unordered_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
+phmap::parallel_flat_hash_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
 
 MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	string dir = "meshes/" + name;

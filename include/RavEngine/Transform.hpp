@@ -9,7 +9,7 @@
 #include "Component.hpp"
 #include "Atomic.hpp"
 #include <array>
-#include <unordered_set>
+#include <phmap.h>
 #include "mathtypes.hpp"
 #include "WeakRef.hpp"
 #include "Queryable.hpp"
@@ -20,7 +20,7 @@ namespace RavEngine {
 	 */
 	class Transform : public Component, public Queryable<Transform> {
 	public:
-		typedef std::unordered_set<WeakRef<Transform>> childStore;
+		typedef phmap::flat_hash_set<WeakRef<Transform>> childStore;
 		virtual ~Transform();
 		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false);
 		Transform() : Transform(vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}

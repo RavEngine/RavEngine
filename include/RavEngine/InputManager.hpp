@@ -4,8 +4,7 @@
 #include <SDL_mouse.h>
 #include <SDL_gamecontroller.h>
 #include <plf_list.h>
-#include <unordered_map>
-#include <unordered_set>
+#include <phmap.h>
 #include <iostream>
 #include <functional>
 #include <typeindex>
@@ -252,14 +251,14 @@ namespace RavEngine {
 		
 		struct AxisRecord : public Record {
 			float scale = 1;
-			std::unordered_map<CID,float> values;
+			phmap::flat_hash_map<CID,float> values;
 		};
 		
-        std::unordered_map<int, ActionRecord> codeToAction;
-        std::unordered_map<std::string, plf::list<ActionCallback>> actionMappings;
+		phmap::flat_hash_map<int, ActionRecord> codeToAction;
+		phmap::flat_hash_map<std::string, plf::list<ActionCallback>> actionMappings;
 
-        std::unordered_map<int, AxisRecord> codeToAxis;                //ids to records
-        std::unordered_map<std::string, plf::list<AxisCallback>> axisMappings;     //strings to methods
+		phmap::flat_hash_map<int, AxisRecord> codeToAxis;                //ids to records
+		phmap::flat_hash_map<std::string, plf::list<AxisCallback>> axisMappings;     //strings to methods
 
         /**
          Helper used for registering axis inputs inside the engine
@@ -270,7 +269,7 @@ namespace RavEngine {
             }
         }
 
-        std::unordered_set<SDL_GameController*> connectedControllers;
+		phmap::flat_hash_set<SDL_GameController*> connectedControllers;
 		
 		//methods to get input values
 		void SDL_key(bool state, int charcode, CID controllerID);
