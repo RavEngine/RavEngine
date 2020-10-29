@@ -3,8 +3,8 @@
 #include <SDL_events.h>
 #include <bgfx/bgfx.h>
 #include <algorithm>
-#include "InputManager.cpp"
 #include "MeshAsset.hpp"
+#include "InputManager.hpp"
 #include "Material.hpp"
 
 using namespace std;
