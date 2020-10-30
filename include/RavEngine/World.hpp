@@ -77,7 +77,7 @@ namespace RavEngine {
 		virtual void posttick(float fpsScale) {}
         
         /**
-         * Tick a System on all available threads. For internal use only. Blocks until all have finished.
+         * Tick a System on all available threads. Blocks until all have finished.
          * @param system the System to tick
          * @param scale the frame rate scale to pass on to the System's tick method
          */

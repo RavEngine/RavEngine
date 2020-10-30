@@ -14,7 +14,6 @@ namespace physx {
 }
 
 namespace RavEngine {
-	class Entity;
 	class PhysicsCollider : public Component, public Queryable<PhysicsCollider>
 	{
 	protected:
@@ -68,6 +67,7 @@ namespace RavEngine {
 	class BoxCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,BoxCollider> {
 	protected:
 		vector3 extent;
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	public:
 		using QueryableDelta<PhysicsCollider,BoxCollider>::GetQueryTypes;
 
@@ -85,12 +85,12 @@ namespace RavEngine {
 			material = mat;
 		}
 
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	};
 
 	class SphereCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,SphereCollider>{
 	protected:
 		decimalType radius;
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	public:
 		using QueryableDelta<PhysicsCollider,SphereCollider>::GetQueryTypes;
 		
@@ -115,13 +115,13 @@ namespace RavEngine {
 			material = mat;
 		};
 		
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	};
 
 	class CapsuleCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,CapsuleCollider>{
 	protected:
 		decimalType radius;
 		decimalType halfHeight;
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	public:
 		using QueryableDelta<PhysicsCollider,CapsuleCollider>::GetQueryTypes;
 		
@@ -149,6 +149,5 @@ namespace RavEngine {
 			material = mat;
 		}
 		
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	};
 }

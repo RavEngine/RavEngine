@@ -47,7 +47,6 @@ namespace RavEngine {
 			static matrix4 projectionMatrix;
 			static matrix4 viewMatrix;
 			
-			//for internal use only
 			static bool HasMaterialByTypeIndex(const std::type_index&);
 		public:
 			

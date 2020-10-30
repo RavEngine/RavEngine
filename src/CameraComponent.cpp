@@ -2,7 +2,6 @@
 #include "RenderEngine.hpp"
 
 using namespace RavEngine;
-using namespace utils;
 
 CameraComponent::CameraComponent(float inFOV, float inNearClip, float inFarClip) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component() {
 }

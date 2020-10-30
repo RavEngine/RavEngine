@@ -8,7 +8,6 @@
 using namespace std;
 using namespace glm;
 using namespace RavEngine;
-using namespace utils;
 
 RavEngine::Transform::~Transform()
 {

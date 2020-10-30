@@ -10,32 +10,28 @@
 #include <typeindex>
 #include "WeakRef.hpp"
 
-namespace utils {
-	class Entity;
-}
-
 namespace RavEngine {
 	class Entity;
 	class Component : public SharedObject {
 	protected:
 		WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component
-
-	public:
-		bool Enabled = true;
-
-		Component() {}
-
+		friend class Entity;
+		
 		/**
 		 * Called by the parent entity after this component is added. Override in subclasses
 		 * @param e the parent entity invoking the call
 		 */
 		virtual void AddHook(const WeakRef<RavEngine::Entity>& e) {}
-
+		
 		/**
 		 * Called by the parent entity before this component is removed. Override in subclasses
 		 * @param e the parent entity invoking the call
 		 */
 		virtual void RemoveHook(const WeakRef<RavEngine::Entity>& e) {}
+	public:
+		bool Enabled = true;
+
+		Component() {}
 
 		//for SharedObject
 		virtual ~Component() {

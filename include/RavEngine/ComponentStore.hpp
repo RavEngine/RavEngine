@@ -15,6 +15,42 @@ namespace RavEngine{
 		typedef phmap::parallel_flat_hash_map<std::type_index, plf::list<Ref<RavEngine::Component>>> ComponentStructure;
 		ComponentStructure components;
 		ComponentStructure componentsRedundant;
+		
+		friend class World;/**
+							For internal use only.
+							@param type the type_index to query for
+							@return all the components of a class or its base classes to a type index
+							*/
+		template<typename T>
+		plf::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
+			C_REF_CHECK
+			//query both types
+			auto& toplevel = components[type];
+			auto& comp = componentsRedundant[type];
+			
+			//insert into
+			plf::list<Ref<T>> cpy;
+			cpy.insert(cpy.begin(), toplevel.begin(), toplevel.end());
+			cpy.insert(cpy.end(), comp.begin(), comp.end());
+			return cpy;
+			
+		}
+		
+		/**
+		 For internal use only.
+		 @param type the type_index to query for.
+		 @return all the components of a type index. Does NOT search base classes
+		 */
+		template<typename T>
+		plf::list<Ref<T>> GetAllComponentsOfTypeIndex(const std::type_index& index) {
+			C_REF_CHECK
+			auto& comp = components[index];
+			plf::list<Ref<T>> cpy;
+			for (auto& c : comp) {
+				cpy.push_back(c);
+			}
+			return cpy;
+		}
 
 	public:
 		/**
@@ -95,42 +131,6 @@ namespace RavEngine{
 			else {
 				return vec.front();
 			}
-		}
-
-		/**
-		For internal use only.
-		@param type the type_index to query for
-		@return all the components of a class or its base classes to a type index
-		*/
-		template<typename T>
-		plf::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
-			C_REF_CHECK
-			//query both types
-			auto& toplevel = components[type];
-			auto& comp = componentsRedundant[type];
-
-			//insert into
-			plf::list<Ref<T>> cpy;
-			cpy.insert(cpy.begin(), toplevel.begin(), toplevel.end());
-			cpy.insert(cpy.end(), comp.begin(), comp.end());
-			return cpy;
-
-		}
-
-		/**
-		For internal use only.
-		@param type the type_index to query for.
-		@return all the components of a type index. Does NOT search base classes
-		*/
-		template<typename T>
-		plf::list<Ref<T>> GetAllComponentsOfTypeIndex(const std::type_index& index) {
-			C_REF_CHECK
-				auto& comp = components[index];
-			plf::list<Ref<T>> cpy;
-			for (auto& c : comp) {
-				cpy.push_back(c);
-			}
-			return cpy;
 		}
 
 		/**

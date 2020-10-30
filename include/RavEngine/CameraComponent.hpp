@@ -4,7 +4,10 @@
 #include "Queryable.hpp"
 
 namespace RavEngine {
+	class RenderEngine;
 	class CameraComponent : public Component, public Queryable<CameraComponent> {
+	protected:
+		friend class RenderEngine;
 	public:
 		CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100);
 

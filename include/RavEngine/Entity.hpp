@@ -75,7 +75,8 @@ namespace RavEngine {
 		template<class T>
 		Ref<T> AddComponent(Ref<T> componentRef) {
 			componentRef->SetOwner(this);
-			componentRef->AddHook(this);
+			Ref<Component> c(componentRef);
+			c->AddHook(this);
 
 			//synchronize with world
 			if (IsInWorld()) {
@@ -88,7 +89,8 @@ namespace RavEngine {
 
 		template<class T>
 		Ref<T> RemoveComponent(Ref<T> componentRef) {
-			componentRef->RemoveHook(this);
+			Ref<Component> c(componentRef);
+			c->RemoveHook(this);
 			componentRef->SetOwner(nullptr);
 
 			if (IsInWorld()) {
