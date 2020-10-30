@@ -8,6 +8,7 @@
 #include "mathtypes.hpp"
 #include "PhysicsMaterial.hpp"
 #include "Queryable.hpp"
+#include "Common3D.hpp"
 
 namespace physx {
 	class PxShape;
@@ -22,6 +23,11 @@ namespace RavEngine {
 		quaternion rotation = quaternion(1.0,0.0,0.0,0.0);
 		Ref<PhysicsMaterial> material;
 		
+		/**
+		 @return the world matrix including rotation and position offsets
+		 @pre This collider must be attached to an object
+		 */
+		matrix4 CalculateWorldMatrix() const;
 	public:
 		PhysicsCollider(const vector3& position, const quaternion& rotation) : position(position), rotation(rotation) {}
 
@@ -38,7 +44,7 @@ namespace RavEngine {
 		@returns if the current collider is a trigger or not
 		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
-		CollisionType GetType();
+		CollisionType GetType() const;
 
 		/**
 		Set whether the collider participates in scene queries (raycasts, overlaps, etc)
@@ -51,7 +57,7 @@ namespace RavEngine {
 		@return if the scene is queryable (see SetQueryable)
 		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
-		bool GetQueryable();
+		bool GetQueryable() const;
 				
 		/**
 		 Set PxShape relative transformation
@@ -59,6 +65,12 @@ namespace RavEngine {
 		 @param rotation the relative rotation of the shape
 		 */
 		void SetRelativeTransform(const vector3& position, const quaternion& rotation);
+		
+		/**
+		 Draw a wireframe shape representing the boundary of this collider
+		 @param color the hex color to use to draw, in format 0xRRGGBBAA
+		 */
+		virtual void DebugDraw(const color_t color = 0xFFFFFFFF) const = 0;
 
 		virtual ~PhysicsCollider();
 	};
@@ -84,6 +96,12 @@ namespace RavEngine {
 			extent = ext;
 			material = mat;
 		}
+		
+		/**
+		 Draw a wireframe shape representing the boundary of this collider
+		 @param color the hex color to use to draw, in format 0xRRGGBBAA
+		 */
+		void DebugDraw(const color_t color = 0xFFFFFFFF) const override;
 
 	};
 
@@ -115,6 +133,11 @@ namespace RavEngine {
 			material = mat;
 		};
 		
+		/**
+		 Draw a wireframe shape representing the boundary of this collider
+		 @param color the hex color to use to draw, in format 0xRRGGBBAA
+		 */
+		void DebugDraw(const color_t color = 0xFFFFFFFF) const override;
 	};
 
 	class CapsuleCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,CapsuleCollider>{
@@ -149,5 +172,10 @@ namespace RavEngine {
 			material = mat;
 		}
 		
+		/**
+		 Draw a wireframe shape representing the boundary of this collider
+		 @param color the hex color to use to draw, in format 0xRRGGBBAA
+		 */
+		void DebugDraw(const color_t color = 0xFFFFFFFF) const override;
 	};
 }

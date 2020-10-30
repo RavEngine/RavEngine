@@ -60,5 +60,9 @@ namespace RavEngine {
 		Get the current world for the attached entity
 		*/
 		Ref<World> GetWorld();
+		
+		Ref<Entity> GetEntity(){
+			return getOwner();
+		}
 	};
 }

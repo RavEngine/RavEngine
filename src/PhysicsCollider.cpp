@@ -3,6 +3,7 @@
 #include "PhysicsBodyComponent.hpp"
 #include <extensions/PxRigidActorExt.h>
 #include "WeakRef.hpp"
+#include "Debug.hpp"
 
 using namespace physx;
 using namespace RavEngine;
@@ -47,7 +48,7 @@ void RavEngine::PhysicsCollider::SetType(CollisionType type)
 	}
 }
 
-PhysicsCollider::CollisionType RavEngine::PhysicsCollider::GetType()
+PhysicsCollider::CollisionType RavEngine::PhysicsCollider::GetType() const
 {
 	return collider->getFlags() & PxShapeFlag::eTRIGGER_SHAPE ? CollisionType::Trigger : CollisionType::Collider;
 }
@@ -57,7 +58,7 @@ void RavEngine::PhysicsCollider::SetQueryable(bool state)
 	collider->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE,state);
 }
 
-bool RavEngine::PhysicsCollider::GetQueryable()
+bool RavEngine::PhysicsCollider::GetQueryable() const
 {
 	return collider->getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE;
 }
@@ -68,4 +69,20 @@ PhysicsCollider::~PhysicsCollider() {
 
 void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quaternion &rotation){
 	collider->setLocalPose(PxTransform(PxVec3(position.x,position.y,position.z),PxQuat(rotation.x,rotation.y,rotation.z,rotation.w)));
+}
+
+matrix4 PhysicsCollider::CalculateWorldMatrix() const{
+	return Ref<Entity>(getOwner())->transform()->CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
+}
+
+void BoxCollider::DebugDraw(const color_t color) const{
+	DebugDraw::DrawRectangularPrism(CalculateWorldMatrix(), color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
+}
+
+void SphereCollider::DebugDraw(const color_t color) const{
+	DebugDraw::DrawSphere(CalculateWorldMatrix(), color, radius);
+}
+
+void CapsuleCollider::DebugDraw(const color_t color) const{
+	DebugDraw::DrawCapsule(CalculateWorldMatrix(), color, radius, halfHeight * 2);
 }
