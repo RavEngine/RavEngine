@@ -1,4 +1,4 @@
-$input v_normal, v_position
+$input v_normal
 
 /*
  * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
