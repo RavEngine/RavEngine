@@ -41,7 +41,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	
 	struct MeshPart{
 		vector<uint16_t> indices;
-		vector<Vertex> vertices;
+		vector<VertexNormal> vertices;
 	};
     
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
@@ -59,7 +59,12 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 			
 			scaled = scalemat * scaled;
 			
-			mp.vertices.push_back({static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z)});
+			auto normal = mesh->mNormals[vi];
+			
+			mp.vertices.push_back({
+				static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z),	//coordinates
+				normal.x,normal.y,normal.z
+			});
 		}
 		
 		for(int ii = 0; ii < mesh->mNumFaces; ii++){
@@ -88,10 +93,11 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	//vertex format
 	pcvDecl.begin()
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
 	.end();
 	
 	//create buffers
-	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(Vertex));
+	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(VertexNormal));
 	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
 	
 	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(uint16_t));

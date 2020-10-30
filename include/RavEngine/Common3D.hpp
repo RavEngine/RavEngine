@@ -6,7 +6,11 @@ typedef uint32_t color_t;
 
 struct Vertex
 {
-	float		position[3];
+	float position[3];
+};
+
+struct VertexNormal : public Vertex{
+	float normal[3];
 };
 
 struct VertexColor : public Vertex{
