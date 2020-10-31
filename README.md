@@ -1,10 +1,17 @@
 # RavEngine
-A C++ cross-platform game framework. Notable features
-1. multithreaded object evaluation 
-   - ECS data-oriented and Actor-Tick object-oriented supported simultaneously
-2. GPU-accelerated or CPU-multithreaded physics (Nvidia PhysX)
-3. Supports native platform rendering APIs (Metal, DirectX)
-4. Easy integration with CMake
+A C++ cross-platform game framework, with emphasis on performance and ease of use. Notable features:
+1. Automatic multithreaded object evaluation 
+   - ECS data-oriented and Scripting-style object-oriented supported simultaneously
+   - the OOP scripting system is powered by ECS and automatically threaded
+2. CPU-multithreaded physics simulation (Nvidia PhysX 4.1)
+3. Easy memory management handled via automatic reference counting 
+4. Supports native platform rendering APIs (Metal, DirectX)
+5. Easy integration with CMake
+
+Note: RavEngine is a programmer's engine. As such, there is no GUI editor, and there unlikely will ever be one.
+
+## This is early alpha
+Expect bugs and frequent breaking changes. Do not use in serious projects. 
 
 ## Supported platforms
 1. macOS 10.15 or newer (no ARM currently)
@@ -15,9 +22,3 @@ A C++ cross-platform game framework. Notable features
 2. Run one of `init-mac.sh` `init-win.sh` `init-linux.sh` if using a custom build system, otherwise use `add_subdirectory` in your `CMakeLists.txt` 
 3. Open `RavEngine.xcodeproj` or `RavEngine.sln` and press Build
 
-### Note for Linux users:
-You need to have these packages installed: 
- - X11 dev, OpenGL dev, X11-Athena dev, X-toolkit, Xrandr dev.
-You also need a C++ compiler.
-
-These can be installed on Fedora Linux with `sudo dnf install libX11-devel mesa-libGL-devel libXaw-devel libXt libXrandr-devel`
