@@ -148,8 +148,6 @@ void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
  @param fpsScale the scale factor to apply to all operations based on the frame rate
  */
 void RavEngine::World::TickECS(float fpsScale) {
-	//bgfx::dbgTextPrintf(0, 5, 0x4f, "FPS Scale: %lf", fpsScale);
-	
     //tick the systems
 	for (auto& system : Systems) {
         TickSystem(system, fpsScale);

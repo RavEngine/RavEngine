@@ -181,7 +181,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//clear buffers
 
 	bgfx::touch(0);
-	bgfx::dbgTextClear();
 	bgfx::dbgTextPrintf(0, 0, 0x4f, (string("RavEngine - ") + currentBackend()).c_str());
 
     //iterate through renderables and call Draw
@@ -194,14 +193,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	Im3d::GetContext().draw();
 	bgfx::frame();
 
-	
-	for(int i = 0, n = Im3d::GetDrawListCount(); i < n; ++i){
-		
-	}
 	Im3d::NewFrame();
 	Im3d::AppData& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
-
+	bgfx::dbgTextClear();
 }
 
 void RenderEngine::resize(){
