@@ -8,7 +8,7 @@ A C++ cross-platform game framework, with emphasis on performance and ease of us
 4. Supports native platform rendering APIs (Metal, DirectX)
 5. Easy integration with CMake
 
-Note: RavEngine is a programmer's engine. As such, there is no GUI editor, and there unlikely will ever be one.
+Note: RavEngine does not have a GUI editor.
 
 ## This is early alpha
 Expect bugs and frequent breaking changes. Do not use in serious projects. 
