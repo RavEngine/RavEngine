@@ -85,7 +85,7 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
 
 		//if these actors do not exist in the scene anymore due to deallocation, do not process
 		if(actor1 == nullptr || actor2 == nullptr){
-			return;
+			continue;
 		}
 		
         //invoke events
@@ -111,11 +111,29 @@ void PhysicsSolver::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
 {
     for (PxU32 i = 0; i < count; ++i) {
         // ignore pairs when shapes have been deleted
-        if (pairs[i].flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER | PxTriggerPairFlag::eREMOVED_SHAPE_OTHER)) {
+		const PxTriggerPair& cp = pairs[i];
+        if (cp.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER | PxTriggerPairFlag::eREMOVED_SHAPE_OTHER)) {
             continue;
         }
-
-        //TODO: invoke callbacks
+		
+		auto other = (PhysicsBodyComponent*)cp.otherActor->userData;
+		auto trigger = (PhysicsBodyComponent*)cp.triggerActor->userData;
+		
+		//if these actors do not exist in the scene anymore due to deallocation, do not process
+		if(other == nullptr || trigger == nullptr){
+			continue;
+		}
+		
+		//process events
+		if(cp.status & (PxPairFlag::eNOTIFY_TOUCH_FOUND)){
+			other->OnTriggerEnter(trigger);
+			trigger->OnTriggerEnter(other);
+		}
+		
+		if(cp.status & (PxPairFlag::eNOTIFY_TOUCH_LOST)){
+			other->OnTriggerExit(trigger);
+			trigger->OnTriggerExit(other);
+		}
     }
 }
 

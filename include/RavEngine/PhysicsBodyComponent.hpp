@@ -79,6 +79,18 @@ namespace RavEngine {
 		@param other the second body
 		*/
 		void OnColliderExit(PhysicsBodyComponent* other);
+		
+		/**
+		 Called by a PhysicsBodyComponent when it has entered another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
+		 @param other the other component
+		 */
+		void OnTriggerEnter(PhysicsBodyComponent* other);
+		
+		/**
+		 Called by a PhysicsBodyComponent when it has exited another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
+		 @param other the other component
+		 */
+		void OnTriggerExit(PhysicsBodyComponent* other);
 	};
 
 	class RigidBodyDynamicComponent : public PhysicsBodyComponent {

@@ -176,6 +176,19 @@ void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
 	}
 }
 
+
+void PhysicsBodyComponent::OnTriggerEnter(PhysicsBodyComponent *other){
+	for (auto& reciever : receivers) {
+		reciever->OnTriggerEnter(other);
+	}
+}
+
+void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent *other){
+	for (auto& reciever : receivers) {
+		reciever->OnTriggerExit(other);
+	}
+}
+
 /// Static Body ========================================
 RigidBodyStaticComponent::RigidBodyStaticComponent() {
 	rigidActor = PhysicsSolver::phys->createRigidStatic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location

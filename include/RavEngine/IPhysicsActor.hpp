@@ -25,6 +25,18 @@ namespace RavEngine {
 		@param other the other component
 		*/
 		virtual void OnColliderPersist(const WeakRef<RavEngine::PhysicsBodyComponent>& other) {}
+		
+		/**
+		 Called by a PhysicsBodyComponent when it has entered another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
+		 @param other the other component
+		 */
+		virtual void OnTriggerEnter(const WeakRef<RavEngine::PhysicsBodyComponent>& other){}
+		
+		/**
+		 Called by a PhysicsBodyComponent when it has exited another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
+		 @param other the other component
+		 */
+		virtual void OnTriggerExit(const WeakRef<RavEngine::PhysicsBodyComponent>& other){}
 
 		virtual size_t Hash() {
 			return reinterpret_cast<size_t>(this);
