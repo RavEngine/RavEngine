@@ -56,7 +56,7 @@ int main(int argc, char** argv){
 				for(const path& item : recursive_directory_iterator(rootpath)){
 					//make relative path
 					path rel = relative(item, rootpath);
-					resources.write(item.string(),unix_path((path("meshes") / rel).string()));
+					resources.write(item.string(),unix_path((rootInArchive / rel).string()));
 				}
 			}
 		};
@@ -64,6 +64,7 @@ int main(int argc, char** argv){
 		//mesh dir
 		generalpack(apprsc / "meshes", "meshes");
 		generalpack(engrsc / "meshes", "meshes");
+		generalpack(apprsc / "textures", "textures");
 		
 		//write final archive
 		create_directories(out.parent_path());

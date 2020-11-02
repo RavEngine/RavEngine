@@ -40,6 +40,11 @@ public:
 	virtual ~Uniform(){
 		//bgfx::destroy(handle);
 	}
+	
+	operator bgfx::UniformHandle() const{
+		return handle;
+	}
+	
 protected:
 	bgfx::UniformHandle handle;
 };

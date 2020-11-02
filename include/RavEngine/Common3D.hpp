@@ -9,8 +9,9 @@ struct Vertex
 	float position[3];
 };
 
-struct VertexNormal : public Vertex{
+struct VertexNormalUV : public Vertex{
 	float normal[3];
+	uint16_t uv[2];
 };
 
 struct VertexColor : public Vertex{

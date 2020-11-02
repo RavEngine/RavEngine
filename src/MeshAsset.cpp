@@ -18,6 +18,8 @@ using namespace std;
 mutex MeshAsset::Manager::mtx;
 phmap::parallel_flat_hash_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
 
+typedef VertexNormalUV vertex_t;
+
 MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	string dir = "meshes/" + name;
 	
@@ -41,7 +43,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	
 	struct MeshPart{
 		vector<uint16_t> indices;
-		vector<VertexNormal> vertices;
+		vector<vertex_t> vertices;
 	};
     
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
@@ -61,9 +63,17 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 			
 			auto normal = mesh->mNormals[vi];
 			
+			//does mesh have uvs?
+			uint16_t uvs[2] = {0};
+			if(mesh->mTextureCoords[0]){
+				uvs[0] = mesh->mTextureCoords[0][i].x;
+				uvs[1] = mesh->mTextureCoords[0][1].y;
+			}
+			
 			mp.vertices.push_back({
 				static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z),	//coordinates
-				normal.x,normal.y,normal.z
+				normal.x,normal.y,normal.z,																//normals
+				uvs[0],uvs[1]																			//UVs
 			});
 		}
 		
@@ -94,10 +104,11 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	pcvDecl.begin()
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
 	.add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Int16,true,true)
 	.end();
 	
 	//create buffers
-	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(VertexNormal));
+	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(vertex_t));
 	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
 	
 	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(uint16_t));

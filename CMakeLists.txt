@@ -226,11 +226,16 @@ define_property(GLOBAL PROPERTY ENG_DIR
 )
 set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
+define_property(GLOBAL PROPERTY COPY_DEPENDS
+	BRIEF_DOCS "Engine Directory"
+	FULL_DOCS "Engine Directory"
+)
+
 # pack resources
 function(pack_resources)
 	set(optional)
 	set(args TARGET)
-	set(list_args SHADERS MESHES)
+	set(list_args SHADERS MESHES TEXTURES)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -251,11 +256,29 @@ function(pack_resources)
 	# add engine-provided shaders
 	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.cmake")
 
+	# clear copy-depends
+	set_property(GLOBAL PROPERTY COPY_DEPENDS "")
+	
+	set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
 	foreach(MESH ${ARGS_MESHES} ${ENG_MESHES})
 		# copy meshes pre-build if they are changed
 		get_filename_component(output_name "${MESH}" NAME)
-		add_custom_command(TARGET "${ARGS_TARGET}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/meshes/${output_name}")
+		set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/meshes/${output_name}")
+		add_custom_command(TARGET "${ARGS_TARGET}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${outname}")
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
 	endforeach()
+
+	foreach(TEXTURE ${ARGS_TEXTURES})
+		# copy meshes pre-build if they are changed
+		get_filename_component(output_name "${TEXTURE}" NAME)
+		set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/textures/${output_name}")
+		add_custom_command(TARGET "${ARGS_TARGET}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TEXTURE} "${outname}")
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
+	endforeach()
+
+	# get dependency outputs
+	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)
 
 	# clear global shaders property
 	set_property(GLOBAL PROPERTY ALL_SHADERS "")
@@ -281,7 +304,7 @@ function(pack_resources)
 		MACOSX_BUNDLE TRUE
 	)
 
-	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_MESHES})
+	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_MESHES} ${ARGS_TEXTURES} ${copy_depends})
 
 	# the command to rscpack
 	add_custom_command(
