@@ -36,8 +36,9 @@ Texture::Texture(const std::string& name){
 	
 	bool hasMipMaps = false;
 	uint16_t numlayers = 1;
-	auto format = bgfx::TextureFormat::RGB8;
-	const bgfx::Memory* textureData = bgfx::copy(bytes, size);
+	auto format = bgfx::TextureFormat::RGBA8;
+	auto uncompressed_size = width * height * channels;
+	const bgfx::Memory* textureData = bgfx::copy(bytes, uncompressed_size);
 	
 	int flags = BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT;
 	
