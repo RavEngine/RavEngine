@@ -258,8 +258,6 @@ function(pack_resources)
 	# clear copy-depends
 	set_property(GLOBAL PROPERTY COPY_DEPENDS "")
 	
-	set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
-
 	foreach(MESH ${ARGS_MESHES} ${ENG_MESHES})
 		# copy meshes pre-build if they are changed
 		get_filename_component(output_name "${MESH}" NAME)

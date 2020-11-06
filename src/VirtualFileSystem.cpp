@@ -29,12 +29,16 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
     CFRelease(resourcePath);
     CFRelease(resourcesURL);
 #else
-	string appn = path + "/";
-    const char* cstr = appn.c_str();
+    const char* cstr = path.c_str();
 #endif
 
 	//1 means add to end, can put 0 to make it first searched
 	PHYSFS_mount(cstr, "", 1);
+	auto root = PHYSFS_enumerateFiles("/");
+	if (*root == NULL) {
+		cerr << PHYSFS_WHY() << endl;
+		throw runtime_error(PHYSFS_WHY());
+	}
 	rootname = cstr;
 }
 const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
