@@ -20,10 +20,7 @@ namespace RavEngine {
 
 	class App {
 	public:
-		App(const std::string& resourcesName){
-			Resources = new VirtualFilesystem(resourcesName + ".zip");
-			Renderer = new RenderEngine();
-		}
+		App(const std::string& resourcesName);
 		virtual ~App();
 
 		/**
@@ -49,7 +46,7 @@ namespace RavEngine {
  int x = 5; int y = 6;
  RavEngine::App::DispatchMainThread([=]{
 	std::cout << x << y << std::endl;
- })
+ });
 		 @endcode
 		 */
 		static void DispatchMainThread(const std::function<void(void)>& f){

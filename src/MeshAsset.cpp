@@ -21,13 +21,13 @@ phmap::parallel_flat_hash_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::me
 typedef VertexNormalUV vertex_t;
 
 MeshAsset::MeshAsset(const string& name, const decimalType scale){
-	string dir = "meshes/" + name;
+	string dir = "/meshes/" + name;
 	
-	if (!App::Resources->Exists(dir)) {
+	if (!App::Resources->Exists(dir.c_str())) {
 		throw runtime_error("Cannot open resource: " + dir);
 	}
 
-	auto str = App::Resources->FileContentsAt(dir);
+	auto str = App::Resources->FileContentsAt(dir.c_str());
 	
 	//pull from cmrc
 	auto file_ext = filesystem::path(dir).extension();

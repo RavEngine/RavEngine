@@ -78,9 +78,9 @@ Create a material given a shader. Also registers it in the material manager
 */
 Material::Material(const std::string& name) : name(name) {	
 	//get all shader files for this programs
-	string dir = "shaders/" + name + ".tar";
+	string dir = "/shaders/" + name + ".tar";
 
-	auto data = App::Resources->FileContentsAt(dir);
+	auto data = App::Resources->FileContentsAt(dir.c_str());
 
 	std::istringstream istr(data);
 	Tar::TarReader reader(istr);

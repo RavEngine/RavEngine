@@ -50,6 +50,7 @@ add_subdirectory("${DEPS_DIR}/SDL2")
 add_subdirectory("${DEPS_DIR}/tweeny")
 add_subdirectory("${DEPS_DIR}/RavTar")
 add_subdirectory("${DEPS_DIR}/rscpack")
+add_subdirectory("${DEPS_DIR}/physfs")
 
 # bgfx
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
@@ -90,7 +91,6 @@ endif()
 
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
-add_subdirectory("${DEPS_DIR}/ttvfs")
 
 # ========== Building engine ==============
 
@@ -114,13 +114,13 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/physx/pxshared/include/" 
 	"${DEPS_DIR}/physx/physx/snippets/"
 	"include/${PROJECT_NAME}/stduuid/"
-	"${DEPS_DIR}/ttvfs/ttvfs"
-	"${DEPS_DIR}/ttvfs/ttvfs_zip"
+	"${DEPS_DIR}/physfs/src"
 	"${DEPS_DIR}/plf/"
 	"${DEPS_DIR}/parallel-hashmap/parallel_hashmap"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
+	"${DEPS_DIR}/stbi"
 )
 
 # ====================== Linking ====================
@@ -141,10 +141,9 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"SceneQuery"
 	"SimulationController"
 	"assimp"
-	"ttvfs"
-	"ttvfs_zip"
 	"ravtar"
 	"im3d"
+	"physfs-static"
 	#"PhysXGPU"
 	PUBLIC
 	"etl"

@@ -6,6 +6,7 @@
 #include "MeshAsset.hpp"
 #include "InputManager.hpp"
 #include "Material.hpp"
+#include <physfs.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -20,8 +21,16 @@ ThreadPool App::threadpool;
 Ref<InputManager> App::inputManager;
 Ref<World> App::currentWorld;
 
-int App::run(int argc, char** argv) {
+App::App(const std::string& resourcesName){
+	//initialize virtual file system library -- on unix systems this must pass argv[0]
+	PHYSFS_init("");
+	
+	Resources = new VirtualFilesystem(resourcesName + ".zip");
+	Renderer = new RenderEngine();
+}
 
+int App::run(int argc, char** argv) {
+	
 	//invoke startup hook
 	OnStartup(argc, argv);
 	
@@ -90,4 +99,5 @@ App::~App(){
 	currentWorld = nullptr;
 	MeshAsset::Manager::RemoveAll();
 	Material::Manager::RemoveAll();
+	PHYSFS_deinit();
 }
