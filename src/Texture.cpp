@@ -18,18 +18,9 @@ Texture::Texture(const std::string& name){
 	
 	int width, height,channels;
 	stbi_uc const* datastr = reinterpret_cast<const unsigned char* const>(data.c_str());
-	auto size = sizeof(stbi_uc) * data.size();
+	auto compressed_size = sizeof(stbi_uc) * data.size();
 	
-	ofstream out(name, ofstream::binary);
-
-	for(int i = 0; i < size; i++){
-		out.put(datastr[i]);
-	}
-
-	//out.write(data.c_str(),size);
-	out.close();
-	
-	unsigned char* bytes = stbi_load_from_memory(datastr, size, &width, &height, &channels, 4);
+	unsigned char* bytes = stbi_load_from_memory(datastr, compressed_size, &width, &height, &channels, 4);
 	if (bytes == nullptr){
 		throw(runtime_error(stbi_failure_reason()));
 	}
