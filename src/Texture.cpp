@@ -40,6 +40,6 @@ Texture::Texture(const std::string& name){
 	}
 }
 
-void Texture::Bind(int id, const Uniform &uniform){
+void Texture::Bind(int id, const SamplerUniform &uniform){
 	bgfx::setTexture(id, uniform, texture);
 }

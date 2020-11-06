@@ -13,7 +13,7 @@ public:
 		bgfx::destroy(texture);
 	}
 	
-	void Bind(int id, const Uniform& uniform);
+	void Bind(int id, const SamplerUniform& uniform);
 	
 protected:
 	bgfx::TextureHandle texture = BGFX_INVALID_HANDLE;
