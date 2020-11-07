@@ -199,9 +199,15 @@ namespace RavEngine {
 	*/
 	template<typename T>
 	class MaterialInstance : public MaterialInstanceBase {
+	protected:
+		/**
+		* Allows you to perform work before Draw executes. Use this to bind uniforms.
+		*/
+		virtual void DrawHook() {};
 	public:
 		virtual ~MaterialInstance() {}
-		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix) override{
+		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix) override{
+			DrawHook();
 			mat->SetTransformMatrix(worldmatrix);
 			mat->Draw(vertexBuffer, indexBuffer);
 		}
