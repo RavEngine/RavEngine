@@ -181,7 +181,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//clear buffers
 
 	bgfx::touch(0);
-	bgfx::dbgTextPrintf(0, 0, 0x4f, (string("RavEngine - ") + currentBackend()).c_str());
+	//bgfx::dbgTextPrintf(0, 0, 0x4f, (string("RavEngine - ") + currentBackend()).c_str());
 
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {

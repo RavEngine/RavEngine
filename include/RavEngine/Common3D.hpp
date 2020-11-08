@@ -11,7 +11,7 @@ struct Vertex
 
 struct VertexNormalUV : public Vertex{
 	float normal[3];
-	uint16_t uv[2];
+	float uv[2];
 };
 
 struct VertexColor : public Vertex{

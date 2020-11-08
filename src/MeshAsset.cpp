@@ -64,10 +64,10 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 			auto normal = mesh->mNormals[vi];
 			
 			//does mesh have uvs?
-			uint16_t uvs[2] = {0};
+			float uvs[2] = {0};
 			if(mesh->mTextureCoords[0]){
-				uvs[0] = mesh->mTextureCoords[0][i].x;
-				uvs[1] = mesh->mTextureCoords[0][1].y;
+				uvs[0] = mesh->mTextureCoords[0][vi].x;
+				uvs[1] = mesh->mTextureCoords[0][vi].y;
 			}
 			
 			mp.vertices.push_back({
@@ -104,7 +104,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	pcvDecl.begin()
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
 	.add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Int16,true,true)
+	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
 	.end();
 	
 	//create buffers
