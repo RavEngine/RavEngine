@@ -18,13 +18,16 @@ namespace RavEngine {
 		}
 
 		void DrawHook() override {
-			if (!albedo.isNull()) {
-				albedo->Bind(0, albedoTxUniform);
+			
+			if (albedo.isNull()) {
+				albedo = TextureManager::defaultTexture;
 			}
+			albedo->Bind(0, albedoTxUniform);
+
 		}
 	protected:
 		SamplerUniform albedoTxUniform = SamplerUniform("s_albedoTex");
-		Ref<Texture> albedo;
+		Ref<Texture> albedo = TextureManager::defaultTexture;
 	};
 
 	class DebugMaterial : public Material{

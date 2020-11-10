@@ -7,6 +7,7 @@
 #include "InputManager.hpp"
 #include "Material.hpp"
 #include <physfs.h>
+#include "Texture.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -31,6 +32,8 @@ App::App(const std::string& resourcesName){
 
 int App::run(int argc, char** argv) {
 	
+	TextureManager::defaultTexture = new RuntimeTexture(2,2,false,1,4,nullptr);
+
 	//invoke startup hook
 	OnStartup(argc, argv);
 	

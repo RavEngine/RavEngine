@@ -10,6 +10,7 @@
 using namespace std;
 using namespace RavEngine;
 
+Ref<RuntimeTexture> TextureManager::defaultTexture;
 
 Texture::Texture(const std::string& name){
 	//read from resource
@@ -27,19 +28,24 @@ Texture::Texture(const std::string& name){
 	
 	bool hasMipMaps = false;
 	uint16_t numlayers = 1;
+	
+	
+	CreateTexture(width, height, hasMipMaps, numlayers, channels, bytes);
+	
+}
+
+void Texture::Bind(int id, const SamplerUniform &uniform){
+	bgfx::setTexture(id, uniform, texture);
+}
+
+void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, int flags){
 	auto format = bgfx::TextureFormat::RGBA8;
-	auto uncompressed_size = width * height * channels;
-	const bgfx::Memory* textureData = bgfx::copy(bytes, uncompressed_size);
-	
-	int flags = BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT;
-	
+
+	auto uncompressed_size = width * height * numChannels * numlayers;
+	const bgfx::Memory* textureData = (data == nullptr) ? nullptr : bgfx::copy(data, uncompressed_size);
 	texture = bgfx::createTexture2D(width,height,hasMipMaps,numlayers,format,flags,textureData);
 	
 	if(!bgfx::isValid(texture)){
 		throw runtime_error("Cannot create texture");
 	}
-}
-
-void Texture::Bind(int id, const SamplerUniform &uniform){
-	bgfx::setTexture(id, uniform, texture);
 }
