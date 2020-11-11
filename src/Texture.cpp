@@ -29,7 +29,6 @@ Texture::Texture(const std::string& name){
 	bool hasMipMaps = false;
 	uint16_t numlayers = 1;
 	
-	
 	CreateTexture(width, height, hasMipMaps, numlayers, channels, bytes);
 	
 }

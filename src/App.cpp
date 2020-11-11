@@ -32,7 +32,11 @@ App::App(const std::string& resourcesName){
 
 int App::run(int argc, char** argv) {
 	
-	TextureManager::defaultTexture = new RuntimeTexture(2,2,false,1,4,nullptr);
+	{
+		//make the default texture white
+		uint8_t data[] = {0xCC,0xCC,0xCC,0xCC};
+		TextureManager::defaultTexture = new RuntimeTexture(1,1,false,1,4,data);
+	}
 
 	//invoke startup hook
 	OnStartup(argc, argv);
