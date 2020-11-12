@@ -17,6 +17,17 @@ Expect bugs and frequent breaking changes. Do not use in serious projects.
 ## Integrating and building
 Integrating this library with CMake is easy. 
 ```cmake
+cmake_minimum_required(VERSION 3.17)
+
+# require C++17
+set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# set output dirs
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 PROJECT(Example_RavEngine_Game)
 
 add_subdirectory("RavEngine") # configure the engine library
