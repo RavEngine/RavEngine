@@ -262,7 +262,7 @@ function(pack_resources)
 		# copy meshes pre-build if they are changed
 		get_filename_component(output_name "${MESH}" NAME)
 		set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/meshes/${output_name}")
-		add_custom_command(TARGET "${ARGS_TARGET}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${outname}")
+		add_custom_command(PRE_BUILD OUTPUT "${outname}" COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MESH} "${outname}" )
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
 	endforeach()
 
@@ -270,7 +270,7 @@ function(pack_resources)
 		# copy meshes pre-build if they are changed
 		get_filename_component(output_name "${TEXTURE}" NAME)
 		set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/textures/${output_name}")
-		add_custom_command(TARGET "${ARGS_TARGET}" PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TEXTURE} "${outname}")
+		add_custom_command(PRE_BUILD  OUTPUT "${outname}" COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TEXTURE} "${outname}")
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
 	endforeach()
 
