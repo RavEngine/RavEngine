@@ -61,7 +61,7 @@ declare_shader("shaderName" "${CMAKE_CURRENT_LIST_DIR}/vertexshader.glsl" "${CMA
 ```
 When you load a shader, RavEngine will use the name you specify as the first parameter. To learn how to write BGFX shaders, see documentation at [https://github.com/bkaradzic/bgfx](https://github.com/bkaradzic/bgfx)
 
-Then simply build with CMake as normal. Example scripts are provided. 
+Then simply build with CMake as normal. On Windows, you will need to run your initial configure twice before building. Example scripts are provided. 
 
 ## Supported platforms
 | Platform | Architecture | Compiler | CMake Generator | Rendering API |
