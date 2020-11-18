@@ -10,6 +10,8 @@
 #include <process.h>
 #else
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #endif
 
 using namespace std;
@@ -57,7 +59,7 @@ int main(int argc, char** argv){
 		profile = "s_5";  //do not set a profile on Windows
 	#elif defined __linux__
 		platform = "linux";
-		profle = "spirv";
+		profile = "spirv";
 	#else
 		#error Platform not supported
 	#endif

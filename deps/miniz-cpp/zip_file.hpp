@@ -32,6 +32,7 @@
 #include <string>
 #include <time.h>
 #include <vector>
+#include <cstring>
 
 /* miniz.c v1.15 - public domain deflate/inflate, zlib-subset, ZIP reading/writing/appending, PNG writing
    See "unlicense" statement at the end of this file.
@@ -515,7 +516,7 @@ typedef unsigned short mz_uint16;
 typedef unsigned int mz_uint32;
 typedef unsigned int mz_uint;
 typedef long long mz_int64;
-typedef unsigned long long mz_uint64;
+typedef std::uint64_t mz_uint64;
 typedef int mz_bool;
 
 #define MZ_FALSE (0)

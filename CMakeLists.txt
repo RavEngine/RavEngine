@@ -174,6 +174,7 @@ set(SHADERCOMPILER "${PROJECT_NAME}_shaderc_auto")
 FILE(GLOB AUTOSHADERC "${SHADERCOMPILER}" "src/shaderc_auto/*.cpp")
 add_executable("${SHADERCOMPILER}" ${AUTOSHADERC})
 target_include_directories("${SHADERCOMPILER}" PRIVATE "${DEPS_DIR}/cxxopts/include" "${DEPS_DIR}/json/" "${DEPS_DIR}/miniz-cpp/")
+add_dependencies("${SHADERCOMPILER}" "shaderc")
 target_link_libraries("${SHADERCOMPILER}" PRIVATE "bgfx" "ravtar")
 
 add_dependencies("${SHADERCOMPILER}" "shaderc")	# shaderc must build before auto executable so that auto shader comp can work

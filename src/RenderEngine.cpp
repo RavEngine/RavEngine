@@ -56,8 +56,8 @@ inline bool sdlSetWindow(SDL_Window* _window)
 	
 	bgfx::PlatformData pd;
 #if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
-	pd.ndt = wmi.info.x11.display;
-	pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
+	//pd.ndt = wmi.info.x11.display;
+	//pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
 #elif BX_PLATFORM_OSX
 	pd.ndt = NULL;
 	pd.nwh = wmi.info.cocoa.window;
