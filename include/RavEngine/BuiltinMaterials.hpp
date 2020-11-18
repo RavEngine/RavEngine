@@ -7,6 +7,10 @@ namespace RavEngine {
 	class DefaultMaterial : public Material {
 	public:
 		DefaultMaterial() : Material("default") {}
+        friend class DefaultMaterialInstance;
+    protected:
+        SamplerUniform albedoTxUniform = SamplerUniform("s_albedoTex");
+        Vector4Uniform albedoColorUniform = Vector4Uniform("albedoColor");
 	};
 
 	class DefaultMaterialInstance : public MaterialInstance<DefaultMaterial> {
@@ -16,18 +20,14 @@ namespace RavEngine {
 		void SetAlbedoTexture(Ref<Texture> texture) {
 			albedo = texture;
 		}
+        void SetAlbedoColor(const vector4& c){
+            color = c;
+        }
 
-		void DrawHook() override {
-			
-			if (albedo.isNull()) {
-				albedo = TextureManager::defaultTexture;
-			}
-			albedo->Bind(0, albedoTxUniform);
-
-		}
+        void DrawHook() override;
 	protected:
-		SamplerUniform albedoTxUniform = SamplerUniform("s_albedoTex");
 		Ref<Texture> albedo = TextureManager::defaultTexture;
+        vector4 color = vector4(1,1,1,1);
 	};
 
 	class DebugMaterial : public Material{
