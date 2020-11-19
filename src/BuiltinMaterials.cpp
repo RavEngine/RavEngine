@@ -9,5 +9,5 @@ void DefaultMaterialInstance::DrawHook(){
        albedo = TextureManager::defaultTexture;
    }
    albedo->Bind(0, mat->albedoTxUniform);
-    mat->albedoColorUniform.SetValues(glm::value_ptr(color), 4);
+    mat->albedoColorUniform.SetValues(glm::value_ptr(color), 1);
 }

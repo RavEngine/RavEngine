@@ -330,3 +330,5 @@ function(pack_resources)
 	endif()
 endfunction()
 
+# require rscpack and shadercompiler to build before engine
+add_dependencies("${PROJECT_NAME}" rscpack ${SHADERCOMPILER})
