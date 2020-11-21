@@ -68,9 +68,16 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 | --- | --- | --- | --- | --- |
 | macOS 10.15+ | Intel | Apple Clang | Xcode | Metal |
 | Windows 10 | x64 | MSVC++ | Visual Studio | DirectX 11 |
+| Linux | x64 | Clang++ | Ninja | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
+- x11-dev
+
+You will also need to use the clang++ compiler, g++ is currently not supported. To do this, simply execute the following command:
+```
+export CC=/usr/bin/clang; export CXX=/usr/bin/clang++; ./build-linux.sh
+```
 
 ## Example programs
 View a respository with code samples here: [https://github.com/ravbug/ravengine-samples](https://github.com/ravbug/ravengine-samples)

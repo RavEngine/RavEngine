@@ -323,7 +323,7 @@ function(pack_resources)
 	set_source_files_properties("${outpack}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	
 	# copy to target dir on Win
-	if(MSVC)
+	if(MSVC OR LINUX)
 		get_filename_component(outfile ${outpack} NAME)
 		add_custom_command(
 			TARGET "${ARGS_TARGET}"

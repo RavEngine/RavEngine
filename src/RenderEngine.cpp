@@ -18,6 +18,9 @@
 #include <bx/bx.h>
 
 #include "RenderableComponent.hpp"
+	#ifdef __linux__
+	#define SDL_VIDEO_DRIVER_X11 1	//Without this X11 support doesn't work
+#endif
 #include <SDL_syswm.h>
 #include <SDL.h>
 #include <SDL_video.h>
@@ -244,10 +247,16 @@ void RenderEngine::Init()
 	SDL_Init(SDL_INIT_GAMECONTROLLER);
 	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	
+	bgfx::Init settings;
+	
+	#ifdef __linux__
+	settings.type = bgfx::RendererType::Vulkan;	//use Vulkan on Linux
+	#endif
+	
 	//must be in this order
 	sdlSetWindow(window);
 	bgfx::renderFrame();
-	bgfx::init();
+	bgfx::init(settings);
 	
 	//TODO: refactor
 	int width, height;
