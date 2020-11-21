@@ -69,5 +69,8 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 | macOS 10.15+ | Intel | Apple Clang | Xcode | Metal |
 | Windows 10 | x64 | MSVC++ | Visual Studio | DirectX 11 |
 
+Note for Linux users: You must have the following shared libaries installed on your system:
+- libatomic
+
 ## Example programs
 View a respository with code samples here: [https://github.com/ravbug/ravengine-samples](https://github.com/ravbug/ravengine-samples)
