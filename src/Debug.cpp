@@ -1,10 +1,10 @@
 #include "Debug.hpp"
 #include <im3d.h>
 #include <glm/gtc/type_ptr.hpp>
+#include "PhysXDefines.h"
 
 using namespace RavEngine;
 using namespace std;
-
 
 SpinLock DebugDraw::mtx;
 
