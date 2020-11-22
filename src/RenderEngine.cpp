@@ -80,6 +80,7 @@ inline bool sdlSetWindow(SDL_Window* _window)
 }
 
 void DebugRender(const Im3d::DrawList& drawList){
+#ifdef _DEBUG
 	switch(drawList.m_primType){
 		case Im3d::DrawPrimitive_Triangles:
 			//Set BGFX state to triangles
@@ -127,6 +128,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 	mat->Draw(vbuf,ibuf,matrix4(1));
 	bgfx::destroy(vbuf);
 	bgfx::destroy(ibuf);
+#endif
 }
 
 /**
@@ -156,11 +158,7 @@ RavEngine::RenderEngine::~RenderEngine()
 /**
  Render one frame using the current state of every object in the world
  */
-void RenderEngine::Draw(Ref<World> worldOwning){
-	//debug draw
-	//TODO: compile-out in release build
-	//TODO: fill Im3d appdata struct to allow for auto LOD and culling of debug shapes
-    
+void RenderEngine::Draw(Ref<World> worldOwning){    
 	//get the active camera
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
@@ -182,23 +180,23 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     auto toDraw = components.GetAllComponentsOfSubclass<RenderableComponent>();
 	
 	//clear buffers
-
 	bgfx::touch(0);
-	//bgfx::dbgTextPrintf(0, 0, 0x4f, (string("RavEngine - ") + currentBackend()).c_str());
 
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {
         e->Draw();
     }
 	
-	//TODO: compile-out in release build
-	//Im3d::EndFrame();
+#ifdef _DEBUG
 	Im3d::GetContext().draw();
+#endif
 	bgfx::frame();
 
+#ifdef _DEBUG
 	Im3d::NewFrame();
 	Im3d::AppData& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
+#endif
 	bgfx::dbgTextClear();
 }
 
