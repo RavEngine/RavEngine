@@ -5,9 +5,10 @@
 using namespace RavEngine;
 
 void DefaultMaterialInstance::DrawHook(){
-   if (albedo.isNull()) {
-       albedo = TextureManager::defaultTexture;
-   }
-   albedo->Bind(0, mat->albedoTxUniform);
-    mat->albedoColorUniform.SetValues(glm::value_ptr(color), 1);
+	if (albedo.isNull()) {
+		albedo = TextureManager::defaultTexture;
+	}
+	albedo->Bind(0, mat->albedoTxUniform);
+		
+	mat->albedoColorUniform.SetValues(&color, 1);
 }

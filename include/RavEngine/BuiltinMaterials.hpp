@@ -2,6 +2,7 @@
 #include "Material.hpp"
 #include "Uniform.hpp"
 #include "Texture.hpp"
+#include "Common3D.hpp"
 
 namespace RavEngine {
 	class DefaultMaterial : public Material {
@@ -20,14 +21,14 @@ namespace RavEngine {
 		void SetAlbedoTexture(Ref<Texture> texture) {
 			albedo = texture;
 		}
-        void SetAlbedoColor(const vector4& c){
+        void SetAlbedoColor(const ColorRGBA& c){
             color = c;
         }
 
         void DrawHook() override;
 	protected:
 		Ref<Texture> albedo = TextureManager::defaultTexture;
-        vector4 color = vector4(1,1,1,1);
+		ColorRGBA color{1,1,1,1};
 	};
 
 	class DebugMaterial : public Material{

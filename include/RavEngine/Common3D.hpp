@@ -35,4 +35,11 @@ struct Transformation{
 		return glm::translate(matrix4(1), (vector3)position) * glm::toMat4((quaternion)rotation) * glm::scale(matrix4(1), (vector3)scale);
 	}
 };
+
+struct ColorRGBA{
+	float R;
+	float G;
+	float B;
+	float A;
+};
 }
