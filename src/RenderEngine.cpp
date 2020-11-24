@@ -2,7 +2,8 @@
 //  RenderEngine.cpp
 //  RavEngine_Static
 //
-//  Copyright © 2020 Ravbug. All rights reserved.
+//  Copyright © 2020 Ravbug.
+//	Some code adapted from: https://github.com/pezcode/Cluster/blob/master/src/Renderer/DeferredRenderer.cpp
 //
 
 #include "RenderEngine.hpp"
@@ -149,10 +150,21 @@ RenderEngine::RenderEngine() {
 	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 	.end();
 	
+	frameBuffer = createFrameBuffer(true,true);
+	bgfx::setName(frameBuffer, "Render framebuffer (pre-postprocessing)");
+	
+	//create the samplers for the textures
+	for(size_t i = 0; i < BX_COUNTOF(gBufferSamplers); i++)
+	{
+		gBufferSamplers[i] = bgfx::createUniform(gBufferSamplerNames[i], bgfx::UniformType::Sampler);
+	}
+	
+	
 }
 
 RavEngine::RenderEngine::~RenderEngine()
 {
+	
 }
 
 
@@ -208,6 +220,34 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 }
 
 void RenderEngine::resize(){
+	if(!bgfx::isValid(gBuffer))
+	{
+		gBuffer = createGBuffer();
+		
+		for(size_t i = 0; i < GBufferAttachment::Depth; i++)
+		{
+			gBufferTextures[i].handle = bgfx::getTexture(gBuffer, (uint8_t)i);
+		}
+		
+		// we can't use the G-Buffer's depth texture in the light pass framebuffer
+		// binding a texture for reading in the shader and attaching it to a framebuffer
+		// at the same time is undefined behaviour in most APIs
+		// https://www.khronos.org/opengl/wiki/Memory_Model#Framebuffer_objects
+		// we use a different depth texture and just blit it between the geometry and light pass
+		const uint64_t flags = BGFX_TEXTURE_BLIT_DST | gBufferSamplerFlags;
+		bgfx::TextureFormat::Enum depthFormat = findDepthFormat(flags);
+		lightDepthTexture = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, depthFormat, flags);
+		
+		gBufferTextures[GBufferAttachment::Depth].handle = lightDepthTexture;
+	}
+	
+	if(!bgfx::isValid(accumFrameBuffer))
+	{
+		const bgfx::TextureHandle textures[2] = { bgfx::getTexture(frameBuffer, 0),
+			bgfx::getTexture(gBuffer, GBufferAttachment::Depth) };
+		accumFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(textures), textures); // don't destroy textures
+	}
+	
 	int width, height;
 	SDL_GL_GetDrawableSize(window, &width, &height);
 	bgfx::reset(width, height, GetResetFlags());
@@ -231,6 +271,7 @@ const string RenderEngine::currentBackend(){
 		case bgfx::RendererType::Vulkan:		return "Vulkan";
 		case bgfx::RendererType::Nvn:			return "NVN";
 		case bgfx::RendererType::WebGPU:		return "WebGPU";
+		case bgfx::RendererType::Count: 		return "Error - Count";
 	}
 }
 
@@ -263,6 +304,10 @@ void RenderEngine::Init()
 	bgfx::renderFrame();
 	bgfx::init(settings);
 	
+	if(!DeferredSupported()){
+		throw runtime_error("Cannot initialize graphics: Deferred rendering is not supported on this system");
+	}
+	
 	//TODO: refactor
 	int width, height;
 	SDL_GL_GetDrawableSize(window, &width, &height);
@@ -279,4 +324,113 @@ void RenderEngine::Init()
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 
 	bgfx::setState(BGFX_STATE_DEFAULT);
+}
+
+bool RenderEngine::DeferredSupported(){
+	const bgfx::Caps* caps = bgfx::getCaps();
+	bool supported =  // SDR color attachment
+	(caps->formats[bgfx::TextureFormat::BGRA8] & BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER) != 0 &&
+	// HDR color attachment
+	(caps->formats[bgfx::TextureFormat::RGBA16F] & BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER) != 0 &&
+	// blitting depth texture after geometry pass
+	(caps->supported & BGFX_CAPS_TEXTURE_BLIT) != 0 &&
+	// multiple render targets
+	// depth doesn't count as an attachment
+	caps->limits.maxFBAttachments >= GBufferAttachment::Count - 1;
+	if(!supported)
+		return false;
+	
+	for(bgfx::TextureFormat::Enum format : gBufferAttachmentFormats)
+	{
+		if((caps->formats[format] & BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER) == 0)
+			return false;
+	}
+	
+	return true;
+}
+
+bgfx::FrameBufferHandle RenderEngine::createGBuffer()
+{
+	bgfx::TextureHandle textures[GBufferAttachment::Count];
+	
+	const uint64_t flags = BGFX_TEXTURE_RT | gBufferSamplerFlags;
+	
+	for(size_t i = 0; i < GBufferAttachment::Depth; i++)
+	{
+		assert(bgfx::isTextureValid(0, false, 1, gBufferAttachmentFormats[i], flags));
+		textures[i] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, gBufferAttachmentFormats[i], flags);
+	}
+	
+	bgfx::TextureFormat::Enum depthFormat = findDepthFormat(flags);
+	assert(depthFormat != bgfx::TextureFormat::Count);
+	textures[Depth] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, depthFormat, flags);
+	
+	bgfx::FrameBufferHandle gb = bgfx::createFrameBuffer((uint8_t)GBufferAttachment::Count, textures, true);
+	
+	if(!bgfx::isValid(gb))
+		throw runtime_error("Failed to create G-Buffer");
+	else
+		bgfx::setName(gb, "G-Buffer");
+	return gb;
+}
+
+bgfx::TextureFormat::Enum RenderEngine::findDepthFormat(uint64_t textureFlags, bool stencil){
+	const bgfx::TextureFormat::Enum depthFormats[] = { bgfx::TextureFormat::D16, bgfx::TextureFormat::D32 };
+	
+	const bgfx::TextureFormat::Enum depthStencilFormats[] = { bgfx::TextureFormat::D24S8 };
+	
+	const bgfx::TextureFormat::Enum* formats = stencil ? depthStencilFormats : depthFormats;
+	size_t count = stencil ? BX_COUNTOF(depthStencilFormats) : BX_COUNTOF(depthFormats);
+	
+	bgfx::TextureFormat::Enum depthFormat = bgfx::TextureFormat::Count;
+	for(size_t i = 0; i < count; i++)
+	{
+		if(bgfx::isTextureValid(0, false, 1, formats[i], textureFlags))
+		{
+			depthFormat = formats[i];
+			break;
+		}
+	}
+	
+	assert(depthFormat != bgfx::TextureFormat::Enum::Count);
+	
+	return depthFormat;
+}
+
+void RenderEngine::bindGBuffer(){
+	//set all the textures as active
+	for(size_t i = 0; i < GBufferAttachment::Count; i++)
+	{
+		bgfx::setTexture(gBufferTextureUnits[i], gBufferSamplers[i], gBufferTextures[i].handle);
+	}
+}
+
+bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
+{
+	bgfx::TextureHandle textures[2];
+	uint8_t attachments = 0;
+	
+	const uint64_t samplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT |
+	BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
+	
+	bgfx::TextureFormat::Enum format =
+	hdr ? bgfx::TextureFormat::RGBA16F : bgfx::TextureFormat::BGRA8; // BGRA is often faster (internal GPU format)
+	assert(bgfx::isTextureValid(0, false, 1, format, BGFX_TEXTURE_RT | samplerFlags));
+	textures[attachments++] =
+	bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | samplerFlags);
+	
+	if(depth)
+	{
+		bgfx::TextureFormat::Enum depthFormat = findDepthFormat(BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
+		assert(depthFormat != bgfx::TextureFormat::Enum::Count);
+		textures[attachments++] = bgfx::createTexture2D(
+														bgfx::BackbufferRatio::Equal, false, 1, depthFormat, BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
+	}
+	
+	bgfx::FrameBufferHandle fb = bgfx::createFrameBuffer(attachments, textures, true);
+	
+	if(!bgfx::isValid(fb))
+		throw runtime_error("Failed to create framebuffer");
+	
+	return fb;
 }
