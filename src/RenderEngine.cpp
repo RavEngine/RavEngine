@@ -16,6 +16,7 @@
 #include "Material.hpp"
 #include <bgfx/platform.h>
 #include <bx/bx.h>
+#include "Light.hpp"
 
 #include "RenderableComponent.hpp"
 	#ifdef __linux__
@@ -181,6 +182,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//clear buffers
 	bgfx::touch(0);
+	
+	//get all the lights
+	auto lights = components.GetAllComponentsOfSubclass<Light>();
+	for(const auto& light : lights){
+		light->DebugDraw();
+	}	
 
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {
