@@ -4,6 +4,7 @@
 #include <phmap.h>
 #include "SpinLock.hpp"
 #include <bgfx/bgfx.h>
+#include "glm/gtc/type_ptr.hpp"
 
 namespace RavEngine {
 
@@ -21,12 +22,7 @@ namespace RavEngine {
 		const std::string& GetName() {
 			return name;
 		}
-
-		/**
-		Set the world space matrix to use when rendering this material
-		*/
-		void SetTransformMatrix(const matrix4&);
-
+		
 		/**
 		Enqueue commands to execute on the GPU
 		@param commands the command buffer to write to
@@ -48,6 +44,8 @@ namespace RavEngine {
 			static matrix4 viewMatrix;
 			
 			static bool HasMaterialByTypeIndex(const std::type_index&);
+			
+			static matrix4 transformMatrix;
 		public:
 			
 			/**
@@ -170,6 +168,10 @@ namespace RavEngine {
 			static const matrix4& GetCurrentViewMatrix() {
 				return viewMatrix;
 			}
+			
+			static const matrix4& GetCurrentTransformMatrix(){
+				return transformMatrix;
+			}
 		};
 
 	protected:
@@ -177,8 +179,6 @@ namespace RavEngine {
 
 		//trying to create a material that already exists will throw an exception
 		Material(const std::string& name);
-
-		matrix4 transformMatrix = matrix4(1);
 
 		struct Settings {
 			float wvpMatrix[16];
@@ -208,7 +208,12 @@ namespace RavEngine {
 		virtual ~MaterialInstance() {}
 		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix) override{
 			DrawHook();
-			mat->SetTransformMatrix(worldmatrix);
+			float transmat[16];
+			const decimalType* tS = (const decimalType*)glm::value_ptr(worldmatrix);
+			for (int i = 0; i < 16; ++i) {
+				transmat[i] = tS[i];
+			}
+			bgfx::setTransform(transmat);
 			mat->Draw(vertexBuffer, indexBuffer);
 		}
 	protected:

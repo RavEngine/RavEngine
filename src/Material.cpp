@@ -19,6 +19,7 @@ using namespace std::filesystem;
 Material::Manager::MaterialStore Material::Manager::materials;
 matrix4 Material::Manager::projectionMatrix;
 matrix4 Material::Manager::viewMatrix;
+matrix4 Material::Manager::transformMatrix = matrix4(1);
 SpinLock Material::Manager::mtx;
 
 // mapping names to types
@@ -32,10 +33,6 @@ const phmap::flat_hash_map<string, ShaderStage> stagemap{
 	
 };
 
-void RavEngine::Material::SetTransformMatrix(const matrix4& mat)
-{
-    transformMatrix = mat;
-}
 
 bgfx::ShaderHandle loadShader(const string& data){
 	const bgfx::Memory* mem = bgfx::copy(data.c_str(), data.size());
@@ -43,28 +40,7 @@ bgfx::ShaderHandle loadShader(const string& data){
 }
 
 void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer)
-{
-    //calculate wvp matrix
-    const auto& view = Material::Manager::GetCurrentViewMatrix();
-    const auto& projection = Material::Manager::GetCurrentProjectionMatrix();
-    //auto wvp = projection * view * transformMatrix; //transformMatrix * view * projection;
-
-	//copy into backend matrix
-	float viewmat[16];
-	float projmat[16];
-	float transmat[16];
-    const decimalType* vS = (const decimalType*)glm::value_ptr(view);
-	const decimalType* pS = (const decimalType*)glm::value_ptr(projection);
-	const decimalType* tS = (const decimalType*)glm::value_ptr(transformMatrix);
-    for (int i = 0; i < 16; ++i) {
-		viewmat[i] = vS[i];
-		projmat[i] = pS[i];
-		transmat[i] = tS[i];
-    }
-
-	bgfx::setViewTransform(0, viewmat, projmat);
-	bgfx::setTransform(transmat);
-	
+{	
 	//set vertex and index buffer
 	bgfx::setVertexBuffer(0, vertexBuffer);
 	bgfx::setIndexBuffer(indexBuffer);
