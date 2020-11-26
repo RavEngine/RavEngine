@@ -9,6 +9,11 @@
 #include <physfs.h>
 #include "Texture.hpp"
 
+#ifdef _WIN32
+	#include <Windows.h>
+	#undef min
+#endif
+
 using namespace std;
 using namespace RavEngine;
 using namespace std::chrono;
@@ -32,6 +37,10 @@ App::App(const std::string& resourcesName){
 
 int App::run(int argc, char** argv) {
 	
+#ifdef _WIN32
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+#endif
+
 	{
 		//make the default texture white
 		uint8_t data[] = {0xCC,0xCC,0xCC,0xCC};
