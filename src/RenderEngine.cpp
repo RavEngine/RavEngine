@@ -186,31 +186,31 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	constexpr uint32_t BLACK = 0x000000FF;
 	
-	//touch all the views
-//	bgfx::setViewName(vGeometry, "Deferred geometry pass");
-//	bgfx::setViewClear(vGeometry, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, BLACK, 1.0f);
+	//touch (clear) all the views
+	bgfx::setViewName(vGeometry, "Deferred geometry pass");
+	bgfx::setViewClear(vGeometry, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, BLACK, 1.0f);
 //	bgfx::setViewRect(vGeometry, 0, 0, VideoSettings.width, VideoSettings.height);
-//	bgfx::setViewFrameBuffer(vGeometry, gBuffer);
-//	bgfx::touch(vGeometry);
-//	
-//	bgfx::setViewName(vFullscreenLight, "Deferred light pass (ambient + emissive)");
-//	bgfx::setViewClear(vFullscreenLight, BGFX_CLEAR_COLOR, 0x303030ff);
-//	bgfx::setViewRect(vFullscreenLight, 0, 0, VideoSettings.width, VideoSettings.height);
-//	bgfx::setViewFrameBuffer(vFullscreenLight, accumFrameBuffer);
-//	bgfx::touch(vFullscreenLight);
-//	
-//	bgfx::setViewName(vLight, "Deferred light pass (point lights)");
-//	bgfx::setViewClear(vLight, BGFX_CLEAR_NONE);
-//	bgfx::setViewRect(vLight, 0, 0, VideoSettings.width, VideoSettings.height);
-//	bgfx::setViewFrameBuffer(vLight, accumFrameBuffer);
-//	bgfx::touch(vLight);
-//	
-//	bgfx::setViewName(vTransparent, "Transparent forward pass");
-//	bgfx::setViewClear(vTransparent, BGFX_CLEAR_NONE);
-//	bgfx::setViewRect(vTransparent, 0, 0, VideoSettings.width, VideoSettings.height);
-//	bgfx::setViewFrameBuffer(vTransparent, accumFrameBuffer);
-//	bgfx::touch(vTransparent);
-//
+	bgfx::setViewFrameBuffer(vGeometry, gBuffer);
+	bgfx::touch(vGeometry);
+
+	bgfx::setViewName(vFullscreenLight, "Deferred light pass (ambient + emissive)");
+	bgfx::setViewClear(vFullscreenLight, BGFX_CLEAR_COLOR, 0x303030ff);
+	bgfx::setViewRect(vFullscreenLight, 0, 0, VideoSettings.width, VideoSettings.height);
+	bgfx::setViewFrameBuffer(vFullscreenLight, accumFrameBuffer);
+	bgfx::touch(vFullscreenLight);
+
+	bgfx::setViewName(vLight, "Deferred light pass (point lights)");
+	bgfx::setViewClear(vLight, BGFX_CLEAR_NONE);
+	bgfx::setViewRect(vLight, 0, 0, VideoSettings.width, VideoSettings.height);
+	bgfx::setViewFrameBuffer(vLight, accumFrameBuffer);
+	bgfx::touch(vLight);
+
+	bgfx::setViewName(vTransparent, "Transparent forward pass");
+	bgfx::setViewClear(vTransparent, BGFX_CLEAR_NONE);
+	bgfx::setViewRect(vTransparent, 0, 0, VideoSettings.width, VideoSettings.height);
+	bgfx::setViewFrameBuffer(vTransparent, accumFrameBuffer);
+	bgfx::touch(vTransparent);
+
 	
 	//copy into backend matrix
 	float viewmat[16];
@@ -223,7 +223,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
 	bgfx::setViewTransform(0, viewmat, projmat);
-	//bgfx::setTransform(transmat);
 	
 	//set the view transform - all entities drawn will use this matrix
 	for (auto& cam : allcams) {
@@ -241,10 +240,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
     //apply transforms for only entities that need to be rendered
     auto toDraw = components.GetAllComponentsOfSubclass<RenderableComponent>();
-	
-	//clear buffers
-	bgfx::touch(0);
-	
+		
 	//get all the lights
 	auto lights = components.GetAllComponentsOfSubclass<Light>();
 	for(const auto& light : lights){
@@ -253,6 +249,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {
+		//TODO: call geometry shader
+		//then do it again later with the other shaders
         e->Draw();
     }
 	
