@@ -15,6 +15,7 @@ struct SDL_Window;
 
 namespace RavEngine {
     class SDLSurface;
+	class DeferredGeometryMaterial;
 
     class RenderEngine : public SharedObject {
     public:
@@ -92,6 +93,8 @@ namespace RavEngine {
 			 bgfx::TextureHandle handle;
 			const char* name;
 		};
+		
+		Ref<DeferredGeometryMaterial> dgm;
 		
 		//framebuffers for gbuffers
 		TextureBuffer gBufferTextures[GBufferAttachment::Count + 1]; // includes depth, + null-terminated

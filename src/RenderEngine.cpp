@@ -159,6 +159,8 @@ RenderEngine::RenderEngine() {
 		gBufferSamplers[i] = bgfx::createUniform(gBufferSamplerNames[i], bgfx::UniformType::Sampler);
 	}
 	
+	//load deferred draw materials
+	dgm = Material::Manager::AccessMaterialOfType<DeferredGeometryMaterial>();
 	
 }
 

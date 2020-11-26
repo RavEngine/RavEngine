@@ -40,4 +40,11 @@ namespace RavEngine {
 	public:
 		DebugMaterialInstance(Ref<DebugMaterial> m ) : MaterialInstance(m){};		
 	};
+
+	class DeferredGeometryMaterial : public Material{
+	public:
+		DeferredGeometryMaterial() : Material("deferredGeometry"){}
+	protected:
+		//deferred uniforms
+	};
 }
