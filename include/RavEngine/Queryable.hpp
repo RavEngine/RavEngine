@@ -19,7 +19,7 @@ constexpr decltype(auto) to_array(Tuple&& tuple)
 
 template<typename ... types>
 struct Queryable{
-	inline static constexpr size_t ntypes = sizeof ... (types);
+	inline static constexpr std::size_t ntypes = sizeof ... (types);
 	typedef std::array<std::type_index,ntypes> arraytype;
 	
 	inline static constexpr arraytype GetQueryTypes(){
@@ -29,7 +29,7 @@ struct Queryable{
 
 template<typename base, typename ... types>
 struct QueryableDelta{
-	inline static constexpr size_t ntypes = sizeof ... (types) + base::ntypes;
+	inline static constexpr std::size_t ntypes = sizeof ... (types) + base::ntypes;
 	typedef std::array<std::type_index,ntypes> arraytype;
 	
 	inline static constexpr arraytype GetQueryTypes(){
