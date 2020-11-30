@@ -21,6 +21,13 @@ namespace RavEngine {
 		 @note if there is no material or mesh assigned, no draw will occur.
 		 */
         void Draw() override;
+		
+		template<typename T>
+		void Draw(Ref<MaterialInstance<T>> inst){
+			auto owner = Ref<Entity>(getOwner());
+			owner->transform()->Apply();
+			inst->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix());
+		}
 
         /**
         @returns the currently assigned material

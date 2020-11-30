@@ -18,6 +18,7 @@
 #include <bgfx/platform.h>
 #include <bx/bx.h>
 #include "Light.hpp"
+#include "StaticMesh.hpp"
 
 #include "RenderableComponent.hpp"
 	#ifdef __linux__
@@ -149,19 +150,6 @@ RenderEngine::RenderEngine() {
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
 	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 	.end();
-	
-	frameBuffer = createFrameBuffer(true,true);
-	bgfx::setName(frameBuffer, "Render framebuffer (pre-postprocessing)");
-	
-	//create the samplers for the textures
-	for(size_t i = 0; i < BX_COUNTOF(gBufferSamplers); i++)
-	{
-		gBufferSamplers[i] = bgfx::createUniform(gBufferSamplerNames[i], bgfx::UniformType::Sampler);
-	}
-	
-	//load deferred draw materials
-	dgm = Material::Manager::AccessMaterialOfType<DeferredGeometryMaterial>();
-	
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -178,40 +166,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 	
-	enum : bgfx::ViewId
-	{
-		vGeometry = 0,    // write G-Buffer
-		vFullscreenLight, // write ambient + emissive to output buffer
-		vLight,           // render lights to output buffer
-		vTransparent      // forward pass for transparency
-	};
-	
-	constexpr uint32_t BLACK = 0x000000FF;
-	
-	//touch (clear) all the views
-	bgfx::setViewName(vGeometry, "Deferred geometry pass");
-	bgfx::setViewClear(vGeometry, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, BLACK, 1.0f);
-//	bgfx::setViewRect(vGeometry, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::setViewFrameBuffer(vGeometry, gBuffer);
-	bgfx::touch(vGeometry);
-
-	bgfx::setViewName(vFullscreenLight, "Deferred light pass (ambient + emissive)");
-	bgfx::setViewClear(vFullscreenLight, BGFX_CLEAR_COLOR, 0x303030ff);
-	bgfx::setViewRect(vFullscreenLight, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::setViewFrameBuffer(vFullscreenLight, accumFrameBuffer);
-	bgfx::touch(vFullscreenLight);
-
-	bgfx::setViewName(vLight, "Deferred light pass (point lights)");
-	bgfx::setViewClear(vLight, BGFX_CLEAR_NONE);
-	bgfx::setViewRect(vLight, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::setViewFrameBuffer(vLight, accumFrameBuffer);
-	bgfx::touch(vLight);
-
-	bgfx::setViewName(vTransparent, "Transparent forward pass");
-	bgfx::setViewClear(vTransparent, BGFX_CLEAR_NONE);
-	bgfx::setViewRect(vTransparent, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::setViewFrameBuffer(vTransparent, accumFrameBuffer);
-	bgfx::touch(vTransparent);
 
 	
 	//copy into backend matrix
@@ -242,17 +196,17 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
     //apply transforms for only entities that need to be rendered
     auto toDraw = components.GetAllComponentsOfSubclass<RenderableComponent>();
-		
+	
+	auto geometry = components.GetAllComponentsOfSubclass<StaticMesh>();
+	
 	//get all the lights
 	auto lights = components.GetAllComponentsOfSubclass<Light>();
 	for(const auto& light : lights){
 		light->DebugDraw();
-	}	
+	}
 
     //iterate through renderables and call Draw
     for (auto& e : toDraw) {
-		//TODO: call geometry shader
-		//then do it again later with the other shaders
         e->Draw();
     }
 	
@@ -270,33 +224,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 }
 
 void RenderEngine::resize(){
-	if(!bgfx::isValid(gBuffer))
-	{
-		gBuffer = createGBuffer();
-		
-		for(size_t i = 0; i < GBufferAttachment::Depth; i++)
-		{
-			gBufferTextures[i].handle = bgfx::getTexture(gBuffer, (uint8_t)i);
-		}
-		
-		// we can't use the G-Buffer's depth texture in the light pass framebuffer
-		// binding a texture for reading in the shader and attaching it to a framebuffer
-		// at the same time is undefined behaviour in most APIs
-		// https://www.khronos.org/opengl/wiki/Memory_Model#Framebuffer_objects
-		// we use a different depth texture and just blit it between the geometry and light pass
-		const uint64_t flags = BGFX_TEXTURE_BLIT_DST | gBufferSamplerFlags;
-		bgfx::TextureFormat::Enum depthFormat = findDepthFormat(flags);
-		lightDepthTexture = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, depthFormat, flags);
-		
-		gBufferTextures[GBufferAttachment::Depth].handle = lightDepthTexture;
-	}
-	
-	if(!bgfx::isValid(accumFrameBuffer))
-	{
-		const bgfx::TextureHandle textures[2] = { bgfx::getTexture(frameBuffer, 0),
-			bgfx::getTexture(gBuffer, GBufferAttachment::Depth) };
-		accumFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(textures), textures); // don't destroy textures
-	}
 	
 	int width, height;
 	SDL_GL_GetDrawableSize(window, &width, &height);
@@ -354,10 +281,6 @@ void RenderEngine::Init()
 	bgfx::renderFrame();
 	bgfx::init(settings);
 	
-	if(!DeferredSupported()){
-		throw runtime_error("Cannot initialize graphics: Deferred rendering is not supported on this system");
-	}
-	
 	//TODO: refactor
 	int width, height;
 	SDL_GL_GetDrawableSize(window, &width, &height);
@@ -374,113 +297,4 @@ void RenderEngine::Init()
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 
 	bgfx::setState(BGFX_STATE_DEFAULT);
-}
-
-bool RenderEngine::DeferredSupported(){
-	const bgfx::Caps* caps = bgfx::getCaps();
-	bool supported =  // SDR color attachment
-	(caps->formats[bgfx::TextureFormat::BGRA8] & BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER) != 0 &&
-	// HDR color attachment
-	(caps->formats[bgfx::TextureFormat::RGBA16F] & BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER) != 0 &&
-	// blitting depth texture after geometry pass
-	(caps->supported & BGFX_CAPS_TEXTURE_BLIT) != 0 &&
-	// multiple render targets
-	// depth doesn't count as an attachment
-	caps->limits.maxFBAttachments >= GBufferAttachment::Count - 1;
-	if(!supported)
-		return false;
-	
-	for(bgfx::TextureFormat::Enum format : gBufferAttachmentFormats)
-	{
-		if((caps->formats[format] & BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER) == 0)
-			return false;
-	}
-	
-	return true;
-}
-
-bgfx::FrameBufferHandle RenderEngine::createGBuffer()
-{
-	bgfx::TextureHandle textures[GBufferAttachment::Count];
-	
-	const uint64_t flags = BGFX_TEXTURE_RT | gBufferSamplerFlags;
-	
-	for(size_t i = 0; i < GBufferAttachment::Depth; i++)
-	{
-		assert(bgfx::isTextureValid(0, false, 1, gBufferAttachmentFormats[i], flags));
-		textures[i] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, gBufferAttachmentFormats[i], flags);
-	}
-	
-	bgfx::TextureFormat::Enum depthFormat = findDepthFormat(flags);
-	assert(depthFormat != bgfx::TextureFormat::Count);
-	textures[Depth] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, depthFormat, flags);
-	
-	bgfx::FrameBufferHandle gb = bgfx::createFrameBuffer((uint8_t)GBufferAttachment::Count, textures, true);
-	
-	if(!bgfx::isValid(gb))
-		throw runtime_error("Failed to create G-Buffer");
-	else
-		bgfx::setName(gb, "G-Buffer");
-	return gb;
-}
-
-bgfx::TextureFormat::Enum RenderEngine::findDepthFormat(uint64_t textureFlags, bool stencil){
-	const bgfx::TextureFormat::Enum depthFormats[] = { bgfx::TextureFormat::D16, bgfx::TextureFormat::D32 };
-	
-	const bgfx::TextureFormat::Enum depthStencilFormats[] = { bgfx::TextureFormat::D24S8 };
-	
-	const bgfx::TextureFormat::Enum* formats = stencil ? depthStencilFormats : depthFormats;
-	size_t count = stencil ? BX_COUNTOF(depthStencilFormats) : BX_COUNTOF(depthFormats);
-	
-	bgfx::TextureFormat::Enum depthFormat = bgfx::TextureFormat::Count;
-	for(size_t i = 0; i < count; i++)
-	{
-		if(bgfx::isTextureValid(0, false, 1, formats[i], textureFlags))
-		{
-			depthFormat = formats[i];
-			break;
-		}
-	}
-	
-	assert(depthFormat != bgfx::TextureFormat::Enum::Count);
-	
-	return depthFormat;
-}
-
-void RenderEngine::bindGBuffer(){
-	//set all the textures as active
-	for(size_t i = 0; i < GBufferAttachment::Count; i++)
-	{
-		bgfx::setTexture(gBufferTextureUnits[i], gBufferSamplers[i], gBufferTextures[i].handle);
-	}
-}
-
-bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
-{
-	bgfx::TextureHandle textures[2];
-	uint8_t attachments = 0;
-	
-	const uint64_t samplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT |
-	BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
-	
-	bgfx::TextureFormat::Enum format =
-	hdr ? bgfx::TextureFormat::RGBA16F : bgfx::TextureFormat::BGRA8; // BGRA is often faster (internal GPU format)
-	assert(bgfx::isTextureValid(0, false, 1, format, BGFX_TEXTURE_RT | samplerFlags));
-	textures[attachments++] =
-	bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | samplerFlags);
-	
-	if(depth)
-	{
-		bgfx::TextureFormat::Enum depthFormat = findDepthFormat(BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
-		assert(depthFormat != bgfx::TextureFormat::Enum::Count);
-		textures[attachments++] = bgfx::createTexture2D(
-														bgfx::BackbufferRatio::Equal, false, 1, depthFormat, BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
-	}
-	
-	bgfx::FrameBufferHandle fb = bgfx::createFrameBuffer(attachments, textures, true);
-	
-	if(!bgfx::isValid(fb))
-		throw runtime_error("Failed to create framebuffer");
-	
-	return fb;
 }
