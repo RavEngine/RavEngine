@@ -150,13 +150,43 @@ RenderEngine::RenderEngine() {
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
 	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 	.end();
+	
+	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
+	BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
+	BGFX_SAMPLER_V_CLAMP;
+	
+	//create textures
+	attachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	
+	for(int i = 0; i < BX_COUNTOF(attachments); i++){
+		if (!bgfx::isValid(attachments[i])){
+			throw runtime_error("Failed to create gbuffer attachment");
+		}
+	}
+	
+	gBufferSamplers[0] = bgfx::createUniform("s_albedo",bgfx::UniformType::Sampler);
+	gBufferSamplers[1] = bgfx::createUniform("s_normal",bgfx::UniformType::Sampler);
+	gBufferSamplers[2] = bgfx::createUniform("s_pos",bgfx::UniformType::Sampler);
+	gBufferSamplers[3] = bgfx::createUniform("s_depth",bgfx::UniformType::Sampler);
+	
+	//create gbuffer and bind all the textures together
+	gBuffer = bgfx::createFrameBuffer(BX_COUNTOF(attachments), attachments, true);
+	
+	if(!bgfx::isValid(gBuffer)){
+		throw runtime_error("Failed to create gbuffer");
+	}
+	
+	dgmi = new DeferredGeometryMaterialInstance(Material::Manager::AccessMaterialOfType<DeferredGeometryMaterial>());
 }
 
 RavEngine::RenderEngine::~RenderEngine()
 {
-	
+	bgfx::destroy(gBuffer);	//automatically destroys attached textures
+	bgfx::destroy(frameBuffer);
 }
-
 
 /**
  Render one frame using the current state of every object in the world
@@ -166,7 +196,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 	
-
+	//TODO: activate views (for each render pass)
+	bgfx::setViewName(0, "Deferred Geometry");
+	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
+	bgfx::setViewRect(0, 0, 0, VideoSettings.width, VideoSettings.height);
+	bgfx::setViewFrameBuffer(0, gBuffer);
+	bgfx::touch(0);
 	
 	//copy into backend matrix
 	float viewmat[16];
@@ -193,6 +228,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			break;
 		}
 	}
+	
+	frameBuffer = createFrameBuffer(true,true);
+	
+	//bind gbuffer textures
+	for(int i = 0; i < BX_COUNTOF(attachments); i++){
+		bgfx::setTexture(gbufferTextureUnits[i], gBufferSamplers[i], attachments[i]);
+	}
 
     //apply transforms for only entities that need to be rendered
     auto toDraw = components.GetAllComponentsOfSubclass<RenderableComponent>();
@@ -200,19 +242,27 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto geometry = components.GetAllComponentsOfSubclass<StaticMesh>();
 	
 	//get all the lights
-	auto lights = components.GetAllComponentsOfSubclass<Light>();
-	for(const auto& light : lights){
-		light->DebugDraw();
-	}
+//	auto lights = components.GetAllComponentsOfSubclass<Light>();
+//	for(const auto& light : lights){
+//		light->DebugDraw();
+//	}
 
     //iterate through renderables and call Draw
-    for (auto& e : toDraw) {
-        e->Draw();
-    }
+//    for (auto& e : toDraw) {
+//        e->Draw(dgmi);
+//    }
+	
+	bgfx::setState(BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
+	for (auto& e : geometry) {
+	  e->Draw<DeferredGeometryMaterial>(dgmi);
+	}
+	
 	
 #ifdef _DEBUG
 	Im3d::GetContext().draw();
 #endif
+	//discard all previous state sets
+	bgfx::discard();
 	bgfx::frame();
 
 #ifdef _DEBUG
@@ -297,4 +347,36 @@ void RenderEngine::Init()
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 
 	bgfx::setState(BGFX_STATE_DEFAULT);
+}
+
+
+bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
+{
+	bgfx::TextureHandle textures[2];
+	uint8_t attachments = 0;
+	
+	const uint64_t samplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT |
+	BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
+	
+	bgfx::TextureFormat::Enum format =
+	hdr ? bgfx::TextureFormat::RGBA16F : bgfx::TextureFormat::BGRA8; // BGRA is often faster (internal GPU format)
+	assert(bgfx::isTextureValid(0, false, 1, format, BGFX_TEXTURE_RT | samplerFlags));
+	textures[attachments++] =
+	bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | samplerFlags);
+	
+	if(depth)
+	{
+		//bgfx::TextureFormat::Enum depthFormat = findDepthFormat(BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
+		bgfx::TextureFormat::Enum depthFormat = bgfx::TextureFormat::D32F;
+		assert(depthFormat != bgfx::TextureFormat::Enum::Count);
+		textures[attachments++] = bgfx::createTexture2D(
+														bgfx::BackbufferRatio::Equal, false, 1, depthFormat, BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
+	}
+	
+	bgfx::FrameBufferHandle fb = bgfx::createFrameBuffer(attachments, textures, true);
+	
+	if(!bgfx::isValid(fb))
+		throw runtime_error("Failed to create framebuffer");
+	
+	return fb;
 }
