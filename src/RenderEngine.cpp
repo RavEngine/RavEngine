@@ -166,6 +166,8 @@ RenderEngine::RenderEngine() {
 			throw runtime_error("Failed to create gbuffer attachment");
 		}
 	}
+    
+    frameBuffer = createFrameBuffer(true,true);
 	
 	gBufferSamplers[0] = bgfx::createUniform("s_albedo",bgfx::UniformType::Sampler);
 	gBufferSamplers[1] = bgfx::createUniform("s_normal",bgfx::UniformType::Sampler);
@@ -197,11 +199,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 	
 	//TODO: activate views (for each render pass)
-	bgfx::setViewName(0, "Deferred Geometry");
-	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
-	bgfx::setViewRect(0, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::setViewFrameBuffer(0, gBuffer);
-	bgfx::touch(0);
+	bgfx::setViewName(1, "Deferred Geometry");
+	bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
+	bgfx::setViewRect(1, 0, 0, VideoSettings.width, VideoSettings.height);
+	bgfx::setViewFrameBuffer(1, gBuffer);
+	bgfx::touch(1);
 	
 	//copy into backend matrix
 	float viewmat[16];
@@ -228,9 +230,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			break;
 		}
 	}
-	
-	frameBuffer = createFrameBuffer(true,true);
-	
+		
 	//bind gbuffer textures
 	for(int i = 0; i < BX_COUNTOF(attachments); i++){
 		bgfx::setTexture(gbufferTextureUnits[i], gBufferSamplers[i], attachments[i]);
