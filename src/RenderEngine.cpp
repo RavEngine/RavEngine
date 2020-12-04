@@ -156,9 +156,9 @@ RenderEngine::RenderEngine() {
 	BGFX_SAMPLER_V_CLAMP;
 	
 	//create textures
-	attachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	
 	for(int i = 0; i < BX_COUNTOF(attachments); i++){
@@ -216,6 +216,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
 	bgfx::setViewTransform(0, viewmat, projmat);
+    bgfx::setViewTransform(1, viewmat, projmat);
 	
 	//set the view transform - all entities drawn will use this matrix
 	for (auto& cam : allcams) {

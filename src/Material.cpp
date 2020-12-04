@@ -46,6 +46,10 @@ void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::In
 	bgfx::setIndexBuffer(indexBuffer);
 
 	bgfx::submit(0, program);
+    
+    bgfx::setVertexBuffer(0, vertexBuffer);
+    bgfx::setIndexBuffer(indexBuffer);
+    bgfx::submit(1, program);
 }
 
 /**
