@@ -11,3 +11,7 @@ rm -r SDL2/test
 
 # assimp
 rm -r assimp/samples
+
+# recast
+rm -r recastnavigation/RecastDemo
+rm -r recastnavigation/Tests

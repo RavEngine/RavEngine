@@ -68,6 +68,12 @@ SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
 SET(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/assimp")
 
+# recast
+SET(RECASTNAVIGATION_DEMO OFF CACHE INTERNAL "")
+SET(RECASTNAVIGATION_TESTS OFF CACHE INTERNAL "")
+SET(RECASTNAVIGATION_EXAMPLES OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/recastnavigation")
+
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
 set(PHYSX_ROOT_DIR ${DEPS_DIR}/physx/physx CACHE INTERNAL "")
@@ -156,6 +162,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"bgfx"
 	"bx"
 	"bimg"
+	"Recast"
 )
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
