@@ -27,7 +27,7 @@ namespace RavEngine {
 		Enqueue commands to execute on the GPU
 		@param commands the command buffer to write to
 		*/
-		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer);
+		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, int view = 0);
 		
 		/**
 		 Static singleton for managing materials
@@ -191,7 +191,7 @@ namespace RavEngine {
 	//for type conversions, do not use directly
 	class MaterialInstanceBase : public SharedObject {
 	public:
-		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix) = 0;
+		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) = 0;
 	};
 
 	/**
@@ -206,7 +206,7 @@ namespace RavEngine {
 		virtual void DrawHook() {};
 	public:
 		virtual ~MaterialInstance() {}
-		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix) override{
+		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
 			DrawHook();
 			float transmat[16];
 			const decimalType* tS = (const decimalType*)glm::value_ptr(worldmatrix);
@@ -214,7 +214,7 @@ namespace RavEngine {
 				transmat[i] = tS[i];
 			}
 			bgfx::setTransform(transmat);
-			mat->Draw(vertexBuffer, indexBuffer);
+			mat->Draw(vertexBuffer, indexBuffer, view);
 		}
 	protected:
 		MaterialInstance(Ref<T> m) : mat(m) {}

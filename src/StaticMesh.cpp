@@ -21,7 +21,7 @@ void RavEngine::StaticMesh::SetMaterial(Ref<MaterialInstanceBase> mat)
 	material = mat;
 }
 
-void RavEngine::StaticMesh::Draw()
+void RavEngine::StaticMesh::Draw(int view)
 {
     //skip draw if no material or MeshAsset assigned
 	if (material.isNull() || mesh.isNull()) {
@@ -30,5 +30,5 @@ void RavEngine::StaticMesh::Draw()
     //apply transform and set it for the material
     auto owner = Ref<Entity>(getOwner());
     owner->transform()->Apply();
-    material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix());
+    material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix(),view);
 }

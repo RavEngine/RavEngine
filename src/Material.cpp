@@ -39,17 +39,13 @@ bgfx::ShaderHandle loadShader(const string& data){
 	return bgfx::createShader(mem);
 }
 
-void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer)
+void Material::Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, int view)
 {	
 	//set vertex and index buffer
 	bgfx::setVertexBuffer(0, vertexBuffer);
 	bgfx::setIndexBuffer(indexBuffer);
 
-	bgfx::submit(0, program);
-    
-    bgfx::setVertexBuffer(0, vertexBuffer);
-    bgfx::setIndexBuffer(indexBuffer);
-    bgfx::submit(1, program);
+	bgfx::submit(view, program);
 }
 
 /**

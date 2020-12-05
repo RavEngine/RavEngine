@@ -20,13 +20,13 @@ namespace RavEngine {
 		 Render this Static Mesh
 		 @note if there is no material or mesh assigned, no draw will occur.
 		 */
-        void Draw() override;
+        void Draw(int view = 0) override;
 		
 		template<typename T>
-		void Draw(Ref<MaterialInstance<T>> inst){
+		void Draw(Ref<MaterialInstance<T>> inst, int view = 0){
 			auto owner = Ref<Entity>(getOwner());
 			owner->transform()->Apply();
-			inst->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix());
+			inst->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix(),view);
 		}
 
         /**

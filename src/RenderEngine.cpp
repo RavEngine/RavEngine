@@ -255,7 +255,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	bgfx::setState(BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
 	for (auto& e : geometry) {
-	  e->Draw<DeferredGeometryMaterial>(dgmi);
+        e->Draw<DeferredGeometryMaterial>(dgmi,1);
+        e->Draw<DeferredGeometryMaterial>(dgmi,0);
 	}
 	
 	

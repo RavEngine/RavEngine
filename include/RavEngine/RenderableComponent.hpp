@@ -9,13 +9,13 @@ class Material;
 	*/
 	struct RenderableComponent : public Component, public Queryable<RenderableComponent> {
 
-		virtual void Draw(){}
+		virtual void Draw(int view = 0){}
 		
 		/**
 		 Draw with a material override
 		 @param mat the material override
 		 */
-		virtual void Draw(Ref<Material> mat){}
+		virtual void Draw(Ref<Material> mat, int view = 0){}
 
 		virtual ~RenderableComponent() {}
 	};
