@@ -158,7 +158,7 @@ RenderEngine::RenderEngine() {
 	//create textures
 	attachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	
 	for(int i = 0; i < BX_COUNTOF(attachments); i++){
@@ -210,11 +210,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	float projmat[16];
 	const decimalType* vS = (const decimalType*)glm::value_ptr(Material::Manager::GetCurrentViewMatrix());
 	const decimalType* pS = (const decimalType*)glm::value_ptr(Material::Manager::GetCurrentProjectionMatrix());
-	for (int i = 0; i < 16; ++i) {
-		viewmat[i] = vS[i];
-		projmat[i] = pS[i];
-	}
-	
+    
+    copyMat4(vS, viewmat);
+    copyMat4(pS, projmat);
+
 	bgfx::setViewTransform(0, viewmat, projmat);
     bgfx::setViewTransform(1, viewmat, projmat);
 	
@@ -256,7 +255,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setState(BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
 	for (auto& e : geometry) {
         e->Draw<DeferredGeometryMaterial>(dgmi,1);
-        e->Draw<DeferredGeometryMaterial>(dgmi,0);
+        e->Draw(0);
 	}
 	
 	

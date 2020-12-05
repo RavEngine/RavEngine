@@ -5,6 +5,7 @@
 #include "SpinLock.hpp"
 #include <bgfx/bgfx.h>
 #include "glm/gtc/type_ptr.hpp"
+#include "Common3D.hpp"
 
 namespace RavEngine {
 
@@ -209,10 +210,7 @@ namespace RavEngine {
 		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
 			DrawHook();
 			float transmat[16];
-			const decimalType* tS = (const decimalType*)glm::value_ptr(worldmatrix);
-			for (int i = 0; i < 16; ++i) {
-				transmat[i] = tS[i];
-			}
+            copyMat4((const decimalType*)glm::value_ptr(worldmatrix), transmat);
 			bgfx::setTransform(transmat);
 			mat->Draw(vertexBuffer, indexBuffer, view);
 		}

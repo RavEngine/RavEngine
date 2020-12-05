@@ -43,3 +43,16 @@ struct ColorRGBA{
 	float A;
 };
 }
+
+/**
+ Copy an array of type T to an array of type U
+ @param input the source array
+ @param output the destination array
+ @param size optional size
+ */
+template<typename T, typename U>
+static inline void copyMat4(const T* input, U* output, int size = 16){
+    for(int i = 0; i < size; i++){
+        output[i] = input[i];
+    }
+}
