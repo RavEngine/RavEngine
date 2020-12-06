@@ -2,12 +2,16 @@ $input v_normal, v_tangent, v_texcoord0, v_worldpos
 
 #include "common.sh"
 #include <bgfx_shader.sh>
+#include "pbr_fs.glsl"
 
 void main()
 {
-//	// pack G-Buffer
-    gl_FragData[0] = vec4(1,0.5,0,1);
-	gl_FragData[1] = vec4(v_normal.xyz,1);
-	gl_FragData[2] = vec4(v_worldpos.xyz,1);
-	gl_FragData[3] = vec4(1,0.5,0,1);
+	//PBR material = PBR(,v_normal,v_worldpos);
+	PBR material = make_mat();
+	material.color = vec3(0,0.5,1);
+	material.normal = v_normal;
+	material.position = v_worldpos;
+	
+	store(material);
 }
+

@@ -193,6 +193,13 @@ int main(int argc, char** argv){
 			//add to path
 			paths.emplace_back(out.string(),out.filename().string());
 		}
+		for(const auto& p : paths){
+			if (!exists(p.path)){
+				cerr << "ERROR: shader file at '" << p.path << "' was not created" << endl;
+				exit(2);
+			}
+		}
+		
 		ofstream outtar(tarpath);
 		TarWriter tarball(outtar);
 		//create the TAR
