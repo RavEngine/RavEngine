@@ -2,7 +2,7 @@
 //  RenderEngine.hpp
 //  RavEngine_Static
 //
-//  Copyright © 2020 Ravbug. All rights reserved.
+//  Copyright © 2020 Ravbug.
 //
 
 #pragma once
@@ -16,7 +16,7 @@ struct SDL_Window;
 
 namespace RavEngine {
     class SDLSurface;
-	class DeferredGeometryMaterialInstance;
+    class DeferredBlitShader;
 
     class RenderEngine : public SharedObject {
     public:
@@ -75,7 +75,11 @@ namespace RavEngine {
 
 		bgfx::FrameBufferHandle gBuffer;	//full gbuffer
 		bgfx::FrameBufferHandle frameBuffer;
-		Ref<DeferredGeometryMaterialInstance> dgmi;
+        
+        bgfx::VertexBufferHandle screenSpaceQuadVert = BGFX_INVALID_HANDLE;
+        bgfx::IndexBufferHandle screenSpaceQuadInd = BGFX_INVALID_HANDLE;
+        
+        Ref<DeferredBlitShader> blitShader;
 		
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
     };

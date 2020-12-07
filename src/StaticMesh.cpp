@@ -16,7 +16,7 @@ StaticMesh::StaticMesh(Ref<MeshAsset> m) : RenderableComponent(), mesh(m) {
 }
 
 
-void RavEngine::StaticMesh::SetMaterial(Ref<MaterialInstanceBase> mat)
+void RavEngine::StaticMesh::SetMaterial(Ref<PBRMaterialInstance> mat)
 {
 	material = mat;
 }

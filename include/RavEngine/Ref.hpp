@@ -68,11 +68,13 @@ public:
 
 	//arrow operator
 	T* operator->() const {
+        assert(get() != nullptr); //you are performing null access!
 		return get();
 	}
 
 	//dereference
 	T* operator*() const {
+        assert(get() != nullptr); //you are performing null access!
 		return get();
 	}
 

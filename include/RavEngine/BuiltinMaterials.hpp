@@ -5,18 +5,26 @@
 #include "Common3D.hpp"
 
 namespace RavEngine {
-	class DefaultMaterial : public Material {
+    /**
+     PBR material surface shader.
+     Subclass this material to make custom surface shaders
+     */
+	class PBRMaterial : public Material {
 	public:
-		DefaultMaterial() : Material("default") {}
-        friend class DefaultMaterialInstance;
+		PBRMaterial() : Material("pbrmaterial") {}
+        friend class PBRMaterialInstance;
     protected:
         SamplerUniform albedoTxUniform = SamplerUniform("s_albedoTex");
         Vector4Uniform albedoColorUniform = Vector4Uniform("albedoColor");
 	};
 
-	class DefaultMaterialInstance : public MaterialInstance<DefaultMaterial> {
+    /**
+     Allows attaching a PBR material to an object.
+     Subclass to expose additional fields in a custom shader
+     */
+	class PBRMaterialInstance : public MaterialInstance<PBRMaterial> {
 	public:
-		DefaultMaterialInstance(Ref<DefaultMaterial> m) : MaterialInstance(m) { };
+		PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) { };
 
 		void SetAlbedoTexture(Ref<Texture> texture) {
 			albedo = texture;
@@ -31,25 +39,23 @@ namespace RavEngine {
 		ColorRGBA color{1,1,1,1};
 	};
 
+    /**
+     Used internally for debug primitives
+     */
 	class DebugMaterial : public Material{
 	public:
 		DebugMaterial() : Material("debug"){};
 	};
-
+    /**
+     Used internally for debug primitives
+     */
 	class DebugMaterialInstance : public MaterialInstance<DebugMaterial>{
 	public:
 		DebugMaterialInstance(Ref<DebugMaterial> m ) : MaterialInstance(m){};		
 	};
 
-	class DeferredGeometryMaterial : public Material{
-	public:
-		DeferredGeometryMaterial() : Material("deferredGeometry"){}
-	protected:
-		//deferred uniforms
-	};
-
-	class DeferredGeometryMaterialInstance : public MaterialInstance<DeferredGeometryMaterial>{
-	public:
-		DeferredGeometryMaterialInstance(Ref<DeferredGeometryMaterial> m) : MaterialInstance(m){}
-	};
+    class DeferredBlitShader : public Material{
+    public:
+        DeferredBlitShader() : Material("deferred_blit"){}
+    };
 }

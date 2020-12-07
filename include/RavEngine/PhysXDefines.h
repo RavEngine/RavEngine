@@ -2,7 +2,7 @@
 //  PhysXDefines.h
 //  RavEngine_Test
 //
-//  Copyright © 2020 Ravbug. All rights reserved.
+//  Copyright © 2020 Ravbug.
 //
 
 #pragma once

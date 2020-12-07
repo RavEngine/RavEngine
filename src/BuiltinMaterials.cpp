@@ -4,7 +4,7 @@
 
 using namespace RavEngine;
 
-void DefaultMaterialInstance::DrawHook(){
+void PBRMaterialInstance::DrawHook(){
 	if (albedo.isNull()) {
 		albedo = TextureManager::defaultTexture;
 	}

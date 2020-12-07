@@ -2,10 +2,8 @@
 //  SharedObject.hpp
 //  RavEngine_Static
 //
-//  Copyright © 2020 Ravbug. All rights reserved.
+//  Copyright © 2020 Ravbug.
 //
-// 	Inherit from this class to enable automatic reference counting
-//	memory management. Be sure to update the ref. Destructor must be virtual and public!
 //
 
 #pragma once

@@ -2,7 +2,7 @@
 //  PhysicsSolver.cpp
 //  RavEngine_Static
 //
-//  Copyright © 2020 Ravbug. All rights reserved.
+//  Copyright © 2020 Ravbug.
 //
 
 #include "PhysicsSolver.hpp"

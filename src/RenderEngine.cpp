@@ -180,8 +180,20 @@ RenderEngine::RenderEngine() {
 	if(!bgfx::isValid(gBuffer)){
 		throw runtime_error("Failed to create gbuffer");
 	}
-	
-	dgmi = new DeferredGeometryMaterialInstance(Material::Manager::AccessMaterialOfType<DeferredGeometryMaterial>());
+    
+    //create screenspace quad
+    const uint16_t indices[] = {0,1,3, 0,2,3};
+    const VertexUV vertices[] = {{0,0,0,0,0}, {0,1,0,0,1}, {1,0,0,1,0}, {1,1,0,1,1}};
+    bgfx::VertexLayout vl;
+    vl.begin()
+    .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+    .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
+    .end();
+    
+    screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
+    screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
+    blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
+
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -200,6 +212,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//TODO: activate views (for each render pass)
 	bgfx::setViewName(1, "Deferred Geometry");
+    bgfx::setViewName(0, "Final Blit");
 	bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewRect(1, 0, 0, VideoSettings.width, VideoSettings.height);
 	bgfx::setViewFrameBuffer(1, gBuffer);
@@ -246,18 +259,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 //	for(const auto& light : lights){
 //		light->DebugDraw();
 //	}
-
-    //iterate through renderables and call Draw
-//    for (auto& e : toDraw) {
-//        e->Draw(dgmi);
-//    }
 	
-	bgfx::setState(BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
+	//Deferred geometry pass
 	for (auto& e : geometry) {
-        e->Draw<DeferredGeometryMaterial>(dgmi,1);
-        e->Draw(0);
+        e->Draw(1);
 	}
-	
+    
+    //blit to view 0 using the fullscreen quad
+    bgfx::setTexture(0,gBufferSamplers[0],attachments[0]);
+    blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,0);
 	
 #ifdef _DEBUG
 	Im3d::GetContext().draw();
