@@ -156,10 +156,10 @@ RenderEngine::RenderEngine() {
 	BGFX_SAMPLER_V_CLAMP;
 	
 	//create textures
-	attachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	
 	for(int i = 0; i < BX_COUNTOF(attachments); i++){
 		if (!bgfx::isValid(attachments[i])){
@@ -182,8 +182,8 @@ RenderEngine::RenderEngine() {
 	}
     
     //create screenspace quad
-    const uint16_t indices[] = {0,1,3, 0,2,3};
-    const VertexUV vertices[] = {{0,0,0,0,0}, {0,1,0,0,1}, {1,0,0,1,0}, {1,1,0,1,1}};
+    const uint16_t indices[] = {0,2,1, 2,3,1};
+    const VertexUV vertices[] = {{-1,-1,0,0,1}, {-1,1,0,0,0}, {1,-1,0,1,1}, {1,1,0,1,0}};
     bgfx::VertexLayout vl;
     vl.begin()
     .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -266,7 +266,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
     
     //blit to view 0 using the fullscreen quad
-    bgfx::setTexture(0,gBufferSamplers[0],attachments[0]);
+	for(int i = 0; i < BX_COUNTOF(attachments); i++){
+		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+	}
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,0);
 	
 #ifdef _DEBUG
