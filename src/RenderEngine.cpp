@@ -157,7 +157,7 @@ RenderEngine::RenderEngine() {
 	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 
 	//lighting textures - light color, and share depth
-	lightingAttachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	lightingAttachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	lightingAttachments[1] = attachments[3];
 	
 	for(int i = 0; i < gbufferSize; i++){
@@ -262,12 +262,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     auto toDraw = components.GetAllComponentsOfSubclass<RenderableComponent>();
 	
 	auto geometry = components.GetAllComponentsOfSubclass<StaticMesh>();
-	
+    bgfx::setState( BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
 	//Deferred geometry pass
 	for (auto& e : geometry) {
         e->Draw(1);
 	}
 	
+   
 	//bind lighting textures
 	for(int i = 0; i < lightingAttachmentsSize; i++){
 		bgfx::setTexture(i, lightingSamplers[i], lightingAttachments[i]);
@@ -275,6 +276,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//render light volumes
 	auto lights = components.GetAllComponentsOfSubclass<Light>();
 	for(const auto& light : lights){
+        //must set before every draw call
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW |
+                       BGFX_STATE_BLEND_ADD);
 		light->DrawVolume(2);
 	}
 
@@ -289,8 +293,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	Im3d::GetContext().draw();
 #endif
 	//discard all previous state sets
-	bgfx::discard();
 	bgfx::frame();
+    bgfx::discard();
 
 #ifdef _DEBUG
 	Im3d::NewFrame();
