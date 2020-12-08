@@ -222,7 +222,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	bgfx::setViewName(2, "Lighting Volumes");
 	bgfx::setViewFrameBuffer(2, lightingBuffer);
-	bgfx::setViewClear(2, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
+	bgfx::setViewClear(2, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
 	bgfx::setViewRect(2, 0, 0, VideoSettings.width, VideoSettings.height);
 	bgfx::touch(2);
 	
@@ -282,6 +282,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(int i = 0; i < gbufferSize; i++){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
+	bgfx::setTexture(3, lightingSamplers[0], lightingAttachments[0]);
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,0);
 	
 #ifdef _DEBUG
