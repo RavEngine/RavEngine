@@ -119,15 +119,11 @@ void DebugRender(const Im3d::DrawList& drawList){
 	
 	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], converted.size() * sizeof(VertexColor)), pcvDecl);
 	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], indices.size() * sizeof(uint16_t)));
-	
-	//auto data = DebugDraw::InstanceAt(i);
-		
+			
 	auto& context = Im3d::GetContext();
 		
 	auto& drawmatrix = context.getMatrix();
-	
-	//matrix4 rvm = glm::transpose(glm::make_mat4(drawmatrix.m));
-	
+		
 	mat->Draw(vbuf,ibuf,matrix4(1));
 	bgfx::destroy(vbuf);
 	bgfx::destroy(ibuf);
@@ -139,7 +135,6 @@ Construct a render engine instance
 @param w the owning world for this engine instance
 */
 RenderEngine::RenderEngine() {
-	//call Init()
 	Init();
 	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());
 	auto& data = Im3d::GetAppData();
@@ -160,14 +155,13 @@ RenderEngine::RenderEngine() {
 	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	
-	for(int i = 0; i < BX_COUNTOF(attachments); i++){
+
+	for(int i = 0; i < gbufferSize; i++){
 		if (!bgfx::isValid(attachments[i])){
 			throw runtime_error("Failed to create gbuffer attachment");
 		}
 	}
     
-    frameBuffer = createFrameBuffer(true,true);
 	
 	gBufferSamplers[0] = bgfx::createUniform("s_albedo",bgfx::UniformType::Sampler);
 	gBufferSamplers[1] = bgfx::createUniform("s_normal",bgfx::UniformType::Sampler);
@@ -199,7 +193,6 @@ RenderEngine::RenderEngine() {
 RavEngine::RenderEngine::~RenderEngine()
 {
 	bgfx::destroy(gBuffer);	//automatically destroys attached textures
-	bgfx::destroy(frameBuffer);
 }
 
 /**
@@ -210,7 +203,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 	
-	//TODO: activate views (for each render pass)
 	bgfx::setViewName(1, "Deferred Geometry");
     bgfx::setViewName(0, "Final Blit");
 	bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
@@ -246,7 +238,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		
 	//bind gbuffer textures
 	for(int i = 0; i < BX_COUNTOF(attachments); i++){
-		bgfx::setTexture(gbufferTextureUnits[i], gBufferSamplers[i], attachments[i]);
+		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 
     //apply transforms for only entities that need to be rendered
@@ -266,7 +258,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
     
     //blit to view 0 using the fullscreen quad
-	for(int i = 0; i < BX_COUNTOF(attachments); i++){
+	for(int i = 0; i < gbufferSize; i++){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,0);

@@ -10,6 +10,7 @@ struct Light : public Queryable<Light>, public Component {
 	float Intensity = 1.0;
 	ColorRGBA color{0,0,0,1};
 	virtual void DebugDraw() const = 0;
+	virtual void DrawVolume(int view) const = 0;
 };
 
 /**
@@ -32,6 +33,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	}
 	
 	void DebugDraw() const override;
+	virtual void DrawVolume(int view) const override;
 };
 
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
@@ -45,5 +47,21 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 	}
 	
 	void DebugDraw() const override;
+	virtual void DrawVolume(int view) const override;
+};
+
+struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
+	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
+	
+	float radius = 1;
+	
+	bool IsInFrustum(Ref<CameraComponent> cam) const override{
+		//TODO: perform sphere intersection on camera bounds
+		return true;
+	}
+	
+	void DebugDraw() const override;
+	virtual void DrawVolume(int view) const override;
 };
 }
+
