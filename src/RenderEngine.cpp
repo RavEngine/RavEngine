@@ -156,20 +156,28 @@ RenderEngine::RenderEngine() {
 	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 
+	//lighting textures - light color, and share depth
+	lightingAttachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	lightingAttachments[1] = attachments[3];
+	
 	for(int i = 0; i < gbufferSize; i++){
 		if (!bgfx::isValid(attachments[i])){
 			throw runtime_error("Failed to create gbuffer attachment");
 		}
 	}
     
-	
 	gBufferSamplers[0] = bgfx::createUniform("s_albedo",bgfx::UniformType::Sampler);
 	gBufferSamplers[1] = bgfx::createUniform("s_normal",bgfx::UniformType::Sampler);
 	gBufferSamplers[2] = bgfx::createUniform("s_pos",bgfx::UniformType::Sampler);
 	gBufferSamplers[3] = bgfx::createUniform("s_depth",bgfx::UniformType::Sampler);
 	
+	lightingSamplers[0] = bgfx::createUniform("s_light", bgfx::UniformType::Sampler);
+	lightingSamplers[1] = gBufferSamplers[3];
+	
 	//create gbuffer and bind all the textures together
-	gBuffer = bgfx::createFrameBuffer(BX_COUNTOF(attachments), attachments, true);
+	gBuffer = bgfx::createFrameBuffer(gbufferSize, attachments, true);
+	
+	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
 	
 	if(!bgfx::isValid(gBuffer)){
 		throw runtime_error("Failed to create gbuffer");
@@ -193,6 +201,7 @@ RenderEngine::RenderEngine() {
 RavEngine::RenderEngine::~RenderEngine()
 {
 	bgfx::destroy(gBuffer);	//automatically destroys attached textures
+	bgfx::destroy(lightingBuffer);
 }
 
 /**
@@ -203,12 +212,19 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
 	
+	bgfx::setViewName(0, "Final Blit");
+	
 	bgfx::setViewName(1, "Deferred Geometry");
-    bgfx::setViewName(0, "Final Blit");
+	bgfx::setViewFrameBuffer(1, gBuffer);
 	bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewRect(1, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::setViewFrameBuffer(1, gBuffer);
 	bgfx::touch(1);
+	
+	bgfx::setViewName(2, "Lighting Volumes");
+	bgfx::setViewFrameBuffer(2, lightingBuffer);
+	bgfx::setViewClear(2, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
+	bgfx::setViewRect(2, 0, 0, VideoSettings.width, VideoSettings.height);
+	bgfx::touch(2);
 	
 	//copy into backend matrix
 	float viewmat[16];
@@ -221,6 +237,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 	bgfx::setViewTransform(0, viewmat, projmat);
     bgfx::setViewTransform(1, viewmat, projmat);
+	bgfx::setViewTransform(2, viewmat, projmat);
 	
 	//set the view transform - all entities drawn will use this matrix
 	for (auto& cam : allcams) {
@@ -246,17 +263,21 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	auto geometry = components.GetAllComponentsOfSubclass<StaticMesh>();
 	
-	//get all the lights
-//	auto lights = components.GetAllComponentsOfSubclass<Light>();
-//	for(const auto& light : lights){
-//		light->DebugDraw();
-//	}
-	
 	//Deferred geometry pass
 	for (auto& e : geometry) {
         e->Draw(1);
 	}
-    
+	
+	//bind lighting textures
+	for(int i = 0; i < lightingAttachmentsSize; i++){
+		bgfx::setTexture(i, lightingSamplers[i], lightingAttachments[i]);
+	}
+	//render light volumes
+	auto lights = components.GetAllComponentsOfSubclass<Light>();
+	for(const auto& light : lights){
+		light->DrawVolume(2);
+	}
+
     //blit to view 0 using the fullscreen quad
 	for(int i = 0; i < gbufferSize; i++){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
@@ -352,6 +373,9 @@ void RenderEngine::Init()
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 
 	bgfx::setState(BGFX_STATE_DEFAULT);
+	
+	//init lights
+	LightManager::Init();
 }
 
 

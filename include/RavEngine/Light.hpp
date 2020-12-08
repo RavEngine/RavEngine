@@ -3,8 +3,11 @@
 #include "CameraComponent.hpp"
 #include "Common3D.hpp"
 #include "Component.hpp"
+#include "BuiltinMaterials.hpp"
 
 namespace RavEngine{
+class MeshAsset;
+
 struct Light : public Queryable<Light>, public Component {
 	virtual bool IsInFrustum(Ref<CameraComponent> cam) const = 0;
 	float Intensity = 1.0;
@@ -62,6 +65,29 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	
 	void DebugDraw() const override;
 	virtual void DrawVolume(int view) const override;
+};
+
+
+class LightManager{
+public:
+	LightManager() = delete;
+	static void Init();
+	
+	friend class PointLight;
+	friend class DirectionaLight;
+	friend class AmbientLight;
+	
+private:
+	static Ref<MeshAsset> pointLightMesh;
+	class PointLightShader : public Material{
+	public:
+		PointLightShader() : Material("pointlightvolume"){}
+	};
+	class PointLightShaderInstance : public MaterialInstance<PointLightShader>{
+	public:
+		PointLightShaderInstance(Ref<PointLightShader> m ) : MaterialInstance(m){}
+	};
+	static Ref<PointLightShaderInstance> pointLightShader;
 };
 }
 

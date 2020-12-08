@@ -1,10 +1,20 @@
 #include "Light.hpp"
 #include "Debug.hpp"
 #include "PhysXDefines.h"
+#include <bgfx/bgfx.h>
+#include "MeshAsset.hpp"
 
 using namespace RavEngine;
 
 static constexpr color_t debug_color = 0x00FF00FF;
+
+Ref<MeshAsset> LightManager::pointLightMesh;
+Ref<LightManager::PointLightShaderInstance> LightManager::pointLightShader;
+
+void LightManager::Init(){
+	pointLightMesh = new MeshAsset("sphere.obj");
+	pointLightShader = new PointLightShaderInstance(Material::Manager::AccessMaterialOfType<PointLightShader>());
+}
 
 void DirectionalLight::DebugDraw() const{
 	auto pos = Ref<Entity>(getOwner())->transform();
@@ -31,6 +41,9 @@ void PointLight::DebugDraw() const{
 }
 
 void PointLight::DrawVolume(int view) const{
-	//TODO: draw light volume
 	//scale = radius
+	auto pos = Ref<Entity>(getOwner())->transform();
+	auto worldMat = glm::scale(pos->CalculateWorldMatrix(), vector3(radius,radius,radius));
+	
+	LightManager::pointLightShader->Draw(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), worldMat,view);
 }
