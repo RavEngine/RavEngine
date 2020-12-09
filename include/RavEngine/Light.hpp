@@ -4,6 +4,7 @@
 #include "Common3D.hpp"
 #include "Component.hpp"
 #include "BuiltinMaterials.hpp"
+#include "Uniform.hpp"
 
 namespace RavEngine{
 class MeshAsset;
@@ -82,10 +83,16 @@ private:
 	class PointLightShader : public Material{
 	public:
 		PointLightShader() : Material("pointlightvolume"){}
+		Vector4Uniform lightPosition = Vector4Uniform("u_lightPos");
+		Vector4Uniform lightColor = Vector4Uniform("u_lightColor");
 	};
 	class PointLightShaderInstance : public MaterialInstance<PointLightShader>{
 	public:
 		PointLightShaderInstance(Ref<PointLightShader> m ) : MaterialInstance(m){}
+		void SetPosColor(const ColorRGBA& pos, const ColorRGBA& color){
+			mat->lightColor.SetValues(&color, 1);
+			mat->lightPosition.SetValues(&pos, 1);
+		}
 	};
 	static Ref<PointLightShaderInstance> pointLightShader;
 };

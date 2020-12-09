@@ -45,5 +45,9 @@ void PointLight::DrawVolume(int view) const{
 	auto pos = Ref<Entity>(getOwner())->transform();
 	auto worldMat = glm::scale(pos->CalculateWorldMatrix(), vector3(radius,radius,radius));
 	
+	auto center = pos->GetWorldPosition();
+	
+	LightManager::pointLightShader->SetPosColor({static_cast<float>(center.x),static_cast<float>(center.y),static_cast<float>(center.z),1}, {0,0.5,1,1});
+	
 	LightManager::pointLightShader->Draw(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), worldMat,view);
 }

@@ -270,8 +270,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
    
 	//bind lighting textures
-	for(int i = 0; i < lightingAttachmentsSize; i++){
-		bgfx::setTexture(i, lightingSamplers[i], lightingAttachments[i]);
+//	for(int i = 0; i < lightingAttachmentsSize; i++){
+//		bgfx::setTexture(i, lightingSamplers[i], lightingAttachments[i]);
+//	}
+	for(int i = 0; i < gbufferSize; i++){
+		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	//render light volumes
 	auto lights = components.GetAllComponentsOfSubclass<Light>();
