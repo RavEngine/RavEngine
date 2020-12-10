@@ -12,8 +12,8 @@ void main()
 	//calculate sampling positions using fragment pos and view dimensions
 	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect[2], gl_FragCoord.y / u_viewRect[3]);
 	
-	float intensity = 3;	//replace with uniform
-	float radius = 3;	//replace with uniform
+	float intensity = 5;	//replace with uniform
+	float radius = 5;	//replace with uniform
 	
 	vec3 albedo = texture2D(s_albedo, texcoord);
 	vec3 normal = texture2D(s_normal, texcoord);
@@ -33,5 +33,5 @@ void main()
 	
 	vec3 diffuseLight = albedo * nDotL;
 	
-	gl_FragData[0] = intensity * attenuation * vec4(diffuseLight, 1.0);
+	gl_FragData[0] = intensity * attenuation * vec4(diffuseLight, 1.0) * u_lightColor;
 }
