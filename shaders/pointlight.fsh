@@ -12,12 +12,12 @@ void main()
 	//calculate sampling positions using fragment pos and view dimensions
 	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect[2], gl_FragCoord.y / u_viewRect[3]);
 	
-	float intensity = 1;	//replace with uniform
-	float radius = 1;	//replace with uniform
+	float intensity = 3;	//replace with uniform
+	float radius = 3;	//replace with uniform
 	
-	vec3 albedo = toLinear(texture2D(s_albedo, texcoord));
-	vec3 normal = toLinear(texture2D(s_normal, texcoord));
-	vec3 pos = toLinear(texture2D(s_pos, texcoord));
+	vec3 albedo = texture2D(s_albedo, texcoord);
+	vec3 normal = texture2D(s_normal, texcoord);
+	vec3 pos = texture2D(s_pos, texcoord);
 	
 	vec3 lightPosView = mul(u_modelView, vec4(u_lightPos) );
 
