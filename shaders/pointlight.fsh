@@ -12,15 +12,26 @@ void main()
 	//calculate sampling positions using fragment pos and view dimensions
 	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect[2], gl_FragCoord.y / u_viewRect[3]);
 	
+	float intensity = 1;	//replace with uniform
+	float radius = 1;	//replace with uniform
+	
 	vec3 albedo = toLinear(texture2D(s_albedo, texcoord));
 	vec3 normal = toLinear(texture2D(s_normal, texcoord));
 	vec3 pos = toLinear(texture2D(s_pos, texcoord));
 	
-	vec3 viewPos = vec3(u_view[2][0], u_view[2][1], u_view[2][2]);
-	vec3 viewDir = normalize(viewPos - pos);
+	vec3 lightPosView = mul(u_modelView, vec4(u_lightPos) );
+
+	vec3 toLight = pos - lightPosView;
 	
-	vec3 lightDir = normalize(u_lightPos - pos);
-	vec3 diffuse = max(dot(normal, lightDir), 0) * albedo * u_lightColor;
+	float dst = distance(pos,lightPosView);
+	float denom = (dst/radius+1);
+	float attenuation = 1.0/(denom * denom);
 	
-	gl_FragData[0] = vec4(diffuse,1);
+	toLight = normalize(toLight);
+	
+	float nDotL = max(dot(normal, toLight), 0);
+	
+	vec3 diffuseLight = albedo * nDotL;
+	
+	gl_FragData[0] = intensity * attenuation * vec4(diffuseLight, 1.0);
 }

@@ -13,7 +13,7 @@ void main()
 	PBR material = make_mat();
 	material.color = toLinear(texture2D(s_albedoTex, v_texcoord0) ) * albedoColor;
 	material.normal = v_normal;
-	material.position = v_worldpos;
+	material.position = (u_modelView * vec4(v_worldpos,1)).xyz;
 	
 	store(material);
 }
