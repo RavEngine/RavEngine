@@ -19,11 +19,11 @@ void main()
 	vec3 normal = texture2D(s_normal, texcoord);
 	vec3 pos = texture2D(s_pos, texcoord);
 	
-	vec3 lightPosView = mul(u_modelView, vec4(u_lightPos) );
+	//vec3 lightPosView = mul(u_modelView, vec4(u_lightPos) );
 
-	vec3 toLight = pos - lightPosView;
+	vec3 toLight = pos - u_lightPos;
 	
-	float dst = distance(pos,lightPosView);
+	float dst = distance(pos,u_lightPos);
 	float denom = (dst/radius+1);
 	float attenuation = 1.0/(denom * denom);
 	

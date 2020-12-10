@@ -1,4 +1,4 @@
-$input v_normal, v_tangent, v_texcoord0, v_worldpos
+$input v_normal, v_texcoord0, v_worldpos
 
 #include "common.sh"
 #include <bgfx_shader.sh>
@@ -13,7 +13,7 @@ void main()
 	PBR material = make_mat();
 	material.color = toLinear(texture2D(s_albedoTex, v_texcoord0) ) * albedoColor;
 	material.normal = v_normal;
-	material.position = (u_modelView * vec4(v_worldpos,1)).xyz;
+	material.position = v_worldpos;
 	
 	store(material);
 }
