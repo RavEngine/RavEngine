@@ -10,10 +10,24 @@ static constexpr color_t debug_color = 0x00FF00FF;
 
 Ref<MeshAsset> LightManager::pointLightMesh;
 Ref<LightManager::PointLightShaderInstance> LightManager::pointLightShader;
+Ref<LightManager::AmbientLightShaderInstance> LightManager::ambientLightShader;
+bgfx::VertexBufferHandle LightManager::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
+bgfx::IndexBufferHandle LightManager::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 
 void LightManager::Init(){
 	pointLightMesh = new MeshAsset("sphere.obj");
 	pointLightShader = new PointLightShaderInstance(Material::Manager::AccessMaterialOfType<PointLightShader>());
+	ambientLightShader = new AmbientLightShaderInstance(Material::Manager::AccessMaterialOfType<AmbientLightShader>());
+	
+	const uint16_t indices[] = {0,2,1, 2,3,1};
+	const Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
+	bgfx::VertexLayout vl;
+	vl.begin()
+	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.end();
+	
+	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
+	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
 }
 
 void DirectionalLight::DebugDraw() const{
@@ -32,7 +46,10 @@ void AmbientLight::DebugDraw() const{
 }
 
 void AmbientLight::DrawVolume(int view) const{
-	//uniform shape over entire view
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW |
+				   BGFX_STATE_BLEND_ADD);
+	LightManager::ambientLightShader->SetColor({color.R,color.B,color.G,Intensity});
+	LightManager::ambientLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
 }
 
 void PointLight::DebugDraw() const{
@@ -49,6 +66,7 @@ void PointLight::DrawVolume(int view) const{
 	auto center = pos->GetWorldPosition();
 	
 	LightManager::pointLightShader->SetPosColor({static_cast<float>(center.x),static_cast<float>(center.y),static_cast<float>(center.z),radius}, {color.R,color.B,color.G,Intensity});
-	
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW |
+				   BGFX_STATE_BLEND_ADD);
 	LightManager::pointLightShader->Draw(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), worldMat,view);
 }

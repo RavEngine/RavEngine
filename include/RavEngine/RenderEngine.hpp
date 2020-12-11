@@ -35,7 +35,7 @@ namespace RavEngine {
 			int width = 960; int height = 540;
 			bool vsync = true;
 		} VideoSettings;
-				
+						
     protected:
 		static SDL_Window* window;
         static void Init();
@@ -56,8 +56,8 @@ namespace RavEngine {
 		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
 		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize];
         
-        bgfx::VertexBufferHandle screenSpaceQuadVert = BGFX_INVALID_HANDLE;
-        bgfx::IndexBufferHandle screenSpaceQuadInd = BGFX_INVALID_HANDLE;
+        static bgfx::VertexBufferHandle screenSpaceQuadVert;
+        static bgfx::IndexBufferHandle screenSpaceQuadInd;
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
     };

@@ -43,6 +43,9 @@ using namespace RavEngine;
 SDL_Window* RenderEngine::window = nullptr;
 RenderEngine::vs RenderEngine::VideoSettings;
 
+bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
+bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
+
 static Ref<DebugMaterialInstance> mat;
 
 static bgfx::VertexLayout pcvDecl;
@@ -184,20 +187,6 @@ RenderEngine::RenderEngine() {
 	if(!bgfx::isValid(gBuffer)){
 		throw runtime_error("Failed to create gbuffer");
 	}
-    
-    //create screenspace quad
-    const uint16_t indices[] = {0,2,1, 2,3,1};
-    const VertexUV vertices[] = {{-1,-1,0,0,1}, {-1,1,0,0,0}, {1,-1,0,1,1}, {1,1,0,1,0}};
-    bgfx::VertexLayout vl;
-    vl.begin()
-    .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-    .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
-    .end();
-    
-    screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
-    screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
-    blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
-
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -275,19 +264,32 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 //	for(int i = 0; i < lightingAttachmentsSize; i++){
 //		bgfx::setTexture(i, lightingSamplers[i], lightingAttachments[i]);
 //	}
-	for(int i = 0; i < gbufferSize; i++){
-		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-	}
+	
 	//render light volumes
-	auto lights = components.GetAllComponentsOfSubclass<Light>();
-	for(const auto& light : lights){
-        //must set before every draw call
-        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW |
-                       BGFX_STATE_BLEND_ADD);
-		light->DrawVolume(2);
+	//TODO: optimize with GPU instancing
+	{
+		//must set before changing shaders
+		for(int i = 0; i < gbufferSize; i++){
+			bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+		}
+		auto lights = components.GetAllComponentsOfSubclass<PointLight>();
+		for(const auto& light : lights){
+			light->DrawVolume(2);
+		}
 	}
 
-    //blit to view 0 using the fullscreen quad
+	{
+		for(int i = 0; i < gbufferSize; i++){
+			bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+		}
+		auto lights = components.GetAllComponentsOfSubclass<AmbientLight>();
+		for(const auto& light : lights){
+			light->DrawVolume(2);
+		}
+
+		
+	}
+	//blit to view 0 using the fullscreen quad
 	for(int i = 0; i < gbufferSize; i++){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
@@ -383,6 +385,19 @@ void RenderEngine::Init()
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 
 	bgfx::setState(BGFX_STATE_DEFAULT);
+	
+	//create screenspace quad
+	const uint16_t indices[] = {0,2,1, 2,3,1};
+	const VertexUV vertices[] = {{-1,-1,0,0,1}, {-1,1,0,0,0}, {1,-1,0,1,1}, {1,1,0,1,0}};
+	bgfx::VertexLayout vl;
+	vl.begin()
+	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
+	.end();
+	
+	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
+	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
+	blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
 	
 	//init lights
 	LightManager::Init();

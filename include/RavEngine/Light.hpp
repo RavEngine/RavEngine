@@ -86,21 +86,48 @@ public:
 	
 private:
 	static Ref<MeshAsset> pointLightMesh;
-	class PointLightShader : public Material{
+	
+	class LightShader : public Material{
+	protected:
+		LightShader(const std::string& name) : Material(name){}
 	public:
-		PointLightShader() : Material("pointlightvolume"){}
-		Vector4Uniform lightPosition = Vector4Uniform("u_lightPos");
 		Vector4Uniform lightColor = Vector4Uniform("u_lightColor");
 	};
-	class PointLightShaderInstance : public MaterialInstance<PointLightShader>{
-	public:
+	
+	/**
+	 Material to draw point lights
+	 */
+	struct PointLightShader : public LightShader{
+		PointLightShader() : LightShader("pointlightvolume"){}
+		Vector4Uniform lightPosition = Vector4Uniform("u_lightPos");
+	};
+	/**
+	 Holds uniforms for point lights
+	 */
+	struct PointLightShaderInstance : public MaterialInstance<PointLightShader>{
 		PointLightShaderInstance(Ref<PointLightShader> m ) : MaterialInstance(m){}
 		void SetPosColor(const ColorRGBA& pos, const ColorRGBA& color){
 			mat->lightColor.SetValues(&color, 1);
 			mat->lightPosition.SetValues(&pos, 1);
 		}
 	};
+	
+	class AmbientLightShader : public LightShader{
+	public:
+		AmbientLightShader() : LightShader("ambientlightvolume"){}
+	};
+	struct AmbientLightShaderInstance : public MaterialInstance<AmbientLightShader>{
+		AmbientLightShaderInstance(Ref<AmbientLightShader> m ) : MaterialInstance(m){}
+		void SetColor(const ColorRGBA& color){
+			mat->lightColor.SetValues(&color,1);
+		}
+	};
+	
 	static Ref<PointLightShaderInstance> pointLightShader;
+	static Ref<AmbientLightShaderInstance> ambientLightShader;
+	
+	static bgfx::VertexBufferHandle screenSpaceQuadVert;
+	static bgfx::IndexBufferHandle screenSpaceQuadInd;
 };
 }
 
