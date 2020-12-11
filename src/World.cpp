@@ -130,12 +130,18 @@ void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
     plf::list<future<void>> futures;
     auto queries = system->QueryTypes();
     for (const auto& query : queries) {
-        auto temp = allcomponents.GetAllComponentsOfSubclassTypeIndex<Component>(query);
+        auto& temp = allcomponents.GetAllComponentsOfTypeIndexFastPath(query);
         for (auto& e : temp) {
 			futures.push_back(App::threadpool.enqueue([=]{
 				system->Tick(fpsScale, e.get()->getOwner());
 			}));
         }
+		auto& temp2 = allcomponents.GetAllComponentsOfTypeIndexSubclassFastPath(query);
+		for (auto& e : temp2) {
+			futures.push_back(App::threadpool.enqueue([=]{
+				system->Tick(fpsScale, e.get()->getOwner());
+			}));
+		}
     }
     //wait for all to complete
     for (auto& f : futures) {

@@ -16,11 +16,12 @@ namespace RavEngine{
 		ComponentStructure components;
 		ComponentStructure componentsRedundant;
 		
-		friend class World;/**
-							For internal use only.
-							@param type the type_index to query for
-							@return all the components of a class or its base classes to a type index
-							*/
+		friend class World;
+		/**
+		For internal use only.
+		@param type the type_index to query for
+		@return all the components of a class or its base classes to a type index
+		*/
 		template<typename T>
 		plf::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
 			C_REF_CHECK
@@ -52,6 +53,19 @@ namespace RavEngine{
 			return cpy;
 		}
 
+		/**
+		 Fast path for world ticking
+		 */
+		const plf::list<Ref<Component>>& GetAllComponentsOfTypeIndexFastPath(const std::type_index& index){
+			return components[index];
+		}
+		
+		/**
+		Fast path for world ticking
+		 */
+		const plf::list<Ref<Component>>& GetAllComponentsOfTypeIndexSubclassFastPath(const std::type_index& index){
+			return componentsRedundant[index];
+		}
 	public:
 		/**
 		Remove all components from this store
