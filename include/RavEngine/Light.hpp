@@ -12,7 +12,7 @@ class MeshAsset;
 struct Light : public Queryable<Light>, public Component {
 	virtual bool IsInFrustum(Ref<CameraComponent> cam) const = 0;
 	float Intensity = 1.0;
-	ColorRGBA color{0,0,0,1};
+	ColorRGBA color{1,1,1,1};
 	virtual void DebugDraw() const = 0;
 	virtual void DrawVolume(int view) const = 0;
 };
@@ -56,9 +56,7 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
-	
-	float radius = 1;
-	
+		
 	bool IsInFrustum(Ref<CameraComponent> cam) const override{
 		//TODO: perform sphere intersection on camera bounds
 		return true;
@@ -66,6 +64,14 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	
 	void DebugDraw() const override;
 	virtual void DrawVolume(int view) const override;
+private:
+	/**
+	 Caclulate the radius of the light using its current intensity
+	 @return the radius
+	 */
+	float CalculateRadius() const{
+		return Intensity*Intensity;
+	}
 };
 
 

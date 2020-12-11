@@ -37,17 +37,18 @@ void AmbientLight::DrawVolume(int view) const{
 
 void PointLight::DebugDraw() const{
 	auto pos = Ref<Entity>(getOwner())->transform();
-	DebugDraw::DrawSphere(pos->CalculateWorldMatrix(), debug_color, radius);
+	DebugDraw::DrawSphere(pos->CalculateWorldMatrix(), debug_color, CalculateRadius());
 }
 
 void PointLight::DrawVolume(int view) const{
 	//scale = radius
 	auto pos = Ref<Entity>(getOwner())->transform();
+	auto radius = CalculateRadius();
 	auto worldMat = glm::scale(pos->CalculateWorldMatrix(), vector3(radius,radius,radius));
 	
 	auto center = pos->GetWorldPosition();
 	
-	LightManager::pointLightShader->SetPosColor({static_cast<float>(center.x),static_cast<float>(center.y),static_cast<float>(center.z),1}, {0,0.5,1,1});
+	LightManager::pointLightShader->SetPosColor({static_cast<float>(center.x),static_cast<float>(center.y),static_cast<float>(center.z),radius}, {color.R,color.B,color.G,Intensity});
 	
 	LightManager::pointLightShader->Draw(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), worldMat,view);
 }
