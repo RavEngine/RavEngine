@@ -70,6 +70,26 @@ function bgfxProjectBase(_kind, _defines)
 				"pthread",
 			}
 
+		configuration { "android*" }
+			targetextension ".so"
+
+		configuration { "android*" ,"Debug"}
+			linkoptions {
+				"-Wl,-soname,libbgfx-shared-libDebug.so",
+			}
+
+		configuration { "android*" ,"Release"}
+			linkoptions {
+				"-Wl,-soname,libbgfx-shared-libRelease.so",
+			}
+
+		configuration {}
+	else
+		configuration { "android*" }
+			linkoptions {
+				"-Wl,--fix-cortex-a8",
+			}
+
 		configuration {}
 	end
 
@@ -79,9 +99,7 @@ function bgfxProjectBase(_kind, _defines)
 		path.join(BIMG_DIR, "include"),
 	}
 
-	defines {
-		_defines,
-	}
+	defines (_defines)
 
 	links {
 		"bx",
@@ -170,13 +188,13 @@ function bgfxProjectBase(_kind, _defines)
 
 		local generator = "out/VS2019"
 
-		configuration { "asmjs" }
+		configuration { "wasm*" }
 			defines {
 				"BGFX_CONFIG_RENDERER_OPENGL=0",
 				"BGFX_CONFIG_RENDERER_OPENGLES=0",
 			}
 
-		configuration { "not asmjs" }
+		configuration { "not wasm*" }
 			includedirs {
 				path.join(DAWN_DIR, "src"),
 				path.join(DAWN_DIR, "src/include"),
@@ -273,12 +291,12 @@ end
 
 if _OPTIONS["with-webgpu"] then
 	function usesWebGPU()
-		configuration { "asmjs" }
+		configuration { "wasm*" }
 			linkoptions {
 				"-s USE_WEBGPU=1",
 			}
 
-		configuration { "not asmjs" }
+		configuration { "not wasm*" }
 			--local generator = "out/Default"
 			local generator = "out/VS2019"
 

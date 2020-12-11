@@ -362,12 +362,13 @@ function exampleProjectDefaults()
 			"GLESv2",
 		}
 
-	configuration { "asmjs" }
+	configuration { "wasm*" }
 		kind "ConsoleApp"
 
 		linkoptions {
-			"-s TOTAL_MEMORY=256MB",
-			"--memory-init-file 1",
+			"-s TOTAL_MEMORY=32MB",
+			"-s ALLOW_MEMORY_GROWTH=1",
+			"--preload-file ../../../examples/runtime@/"
 		}
 
 		removeflags {
@@ -498,7 +499,22 @@ end
 dofile "bgfx.lua"
 
 group "libs"
-bgfxProject("", "StaticLib", {})
+
+local function userdefines()
+	local defines = {}
+	local BGFX_CONFIG = os.getenv("BGFX_CONFIG")
+	if BGFX_CONFIG then
+		for def in BGFX_CONFIG:gmatch "[^%s:]+" do
+			table.insert(defines, "BGFX_CONFIG_" .. def)
+		end
+	end
+
+	return defines
+end
+
+BGFX_CONFIG = userdefines()
+
+bgfxProject("", "StaticLib", BGFX_CONFIG)
 
 dofile(path.join(BX_DIR,   "scripts/bx.lua"))
 dofile(path.join(BIMG_DIR, "scripts/bimg.lua"))
@@ -537,7 +553,6 @@ or _OPTIONS["with-combined-examples"] then
 		, "14-shadowvolumes"
 		, "15-shadowmaps-simple"
 		, "16-shadowmaps"
-		, "17-drawstress"
 		, "18-ibl"
 		, "19-oit"
 		, "20-nanovg"
@@ -561,7 +576,13 @@ or _OPTIONS["with-combined-examples"] then
 		, "39-assao"
 		, "40-svt"
 		, "41-tess"
+		, "42-bunnylod"
 		)
+
+	-- 17-drawstress requires multithreading, does not compile for singlethreaded wasm
+--	if platform is not single-threaded then
+		exampleProject(false, "17-drawstress")
+--	end
 
 	-- C99 source doesn't compile under WinRT settings
 	if not premake.vstudio.iswinrt() then
@@ -571,7 +592,7 @@ end
 
 if _OPTIONS["with-shared-lib"] then
 	group "libs"
-	bgfxProject("-shared-lib", "SharedLib", {})
+	bgfxProject("-shared-lib", "SharedLib", BGFX_CONFIG)
 end
 
 if _OPTIONS["with-tools"] then

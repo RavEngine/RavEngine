@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Google LLC
+// Copyright (c) 2020 André Perez Maselco
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SOURCE_FUZZ_FUZZER_PASS_ADD_USEFUL_CONSTRUCTS_
-#define SOURCE_FUZZ_FUZZER_PASS_ADD_USEFUL_CONSTRUCTS_
+#ifndef SOURCE_FUZZ_FUZZER_PASS_REPLACE_LINEAR_ALGEBRA_INSTRUCTIONS_H_
+#define SOURCE_FUZZ_FUZZER_PASS_REPLACE_LINEAR_ALGEBRA_INSTRUCTIONS_H_
 
 #include "source/fuzz/fuzzer_pass.h"
 
 namespace spvtools {
 namespace fuzz {
 
-// An initial pass for adding useful ingredients to the module, such as boolean
-// constants, if they are not present.
-class FuzzerPassAddUsefulConstructs : public FuzzerPass {
+// This fuzzer pass replaces linear algebra instructions with its mathematical
+// definition.
+class FuzzerPassReplaceLinearAlgebraInstructions : public FuzzerPass {
  public:
-  FuzzerPassAddUsefulConstructs(
+  FuzzerPassReplaceLinearAlgebraInstructions(
       opt::IRContext* ir_context, TransformationContext* transformation_context,
       FuzzerContext* fuzzer_context,
       protobufs::TransformationSequence* transformations);
 
-  ~FuzzerPassAddUsefulConstructs() override;
+  ~FuzzerPassReplaceLinearAlgebraInstructions();
 
   void Apply() override;
-
- private:
-  void MaybeAddIntConstant(uint32_t width, bool is_signed,
-                           std::vector<uint32_t> data) const;
-
-  void MaybeAddFloatConstant(uint32_t width, std::vector<uint32_t> data) const;
 };
 
 }  // namespace fuzz
 }  // namespace spvtools
 
-#endif  // SOURCE_FUZZ_FUZZER_PASS_ADD_USEFUL_CONSTRUCTS_
+#endif  // SOURCE_FUZZ_FUZZER_PASS_REPLACE_LINEAR_ALGEBRA_INSTRUCTIONS_H_

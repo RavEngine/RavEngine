@@ -38,6 +38,10 @@ const uint32_t kExtInstInstructionInIdx = 1;
 const uint32_t kDebugScopeNumWords = 7;
 const uint32_t kDebugScopeNumWordsWithoutInlinedAt = 6;
 const uint32_t kDebugNoScopeNumWords = 5;
+
+// Number of operands of an OpBranchConditional instruction
+// with weights.
+const uint32_t kOpBranchConditionalWithWeightsNumOperands = 5;
 }  // namespace
 
 Instruction::Instruction(IRContext* c)
@@ -164,6 +168,15 @@ uint32_t Instruction::NumInOperandWords() const {
   for (uint32_t i = TypeResultIdCount(); i < operands_.size(); ++i)
     size += static_cast<uint32_t>(operands_[i].words.size());
   return size;
+}
+
+bool Instruction::HasBranchWeights() const {
+  if (opcode_ == SpvOpBranchConditional &&
+      NumOperands() == kOpBranchConditionalWithWeightsNumOperands) {
+    return true;
+  }
+
+  return false;
 }
 
 void Instruction::ToBinaryWithoutAttachedDebugInsts(
@@ -610,7 +623,19 @@ bool Instruction::IsFoldableByFoldScalar() const {
     return false;
   }
   Instruction* type = context()->get_def_use_mgr()->GetDef(type_id());
-  return folder.IsFoldableType(type);
+  if (!folder.IsFoldableType(type)) {
+    return false;
+  }
+
+  // Even if the type of the instruction is foldable, its operands may not be
+  // foldable (e.g., comparisons of 64bit types).  Check that all operand types
+  // are foldable before accepting the instruction.
+  return WhileEachInOperand([&folder, this](const uint32_t* op_id) {
+    Instruction* def_inst = context()->get_def_use_mgr()->GetDef(*op_id);
+    Instruction* def_inst_type =
+        context()->get_def_use_mgr()->GetDef(def_inst->type_id());
+    return folder.IsFoldableType(def_inst_type);
+  });
 }
 
 bool Instruction::IsFloatingPointFoldingAllowed() const {

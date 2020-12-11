@@ -291,6 +291,11 @@ namespace bx
 		return _a * _b + _c;
 	}
 
+	inline BX_CONSTEXPR_FUNC float rcp(float _a)
+	{
+		return 1.0f / _a;
+	}
+
 	inline BX_CONST_FUNC float mod(float _a, float _b)
 	{
 		return _a - _b * floor(_a / _b);
@@ -490,6 +495,16 @@ namespace bx
 			_a.y * _b,
 			_a.z * _b,
 		};
+	}
+
+	inline BX_CONSTEXPR_FUNC Vec3 div(const Vec3 _a, const Vec3 _b)
+	{
+		return mul(_a, rcp(_b) );
+	}
+
+	inline BX_CONSTEXPR_FUNC Vec3 div(const Vec3 _a, float _b)
+	{
+		return mul(_a, rcp(_b) );
 	}
 
 	inline BX_CONSTEXPR_FUNC Vec3 mad(const Vec3 _a, const float _b, const Vec3 _c)

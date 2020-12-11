@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "source/fuzz/protobufs/spirvfuzz_protobufs.h"
+#include "source/fuzz/transformation_context.h"
 #include "source/opt/basic_block.h"
 #include "source/opt/instruction.h"
 #include "source/opt/ir_context.h"
@@ -213,6 +214,17 @@ uint32_t MaybeGetPointerType(opt::IRContext* context, uint32_t pointee_type_id,
 // Returns true if and only if |type| is one of the types for which it is legal
 // to have an OpConstantNull value.
 bool IsNullConstantSupported(const opt::analysis::Type& type);
+
+// Returns true if and only if the SPIR-V version being used requires that
+// global variables accessed in the static call graph of an entry point need
+// to be listed in that entry point's interface.
+bool GlobalVariablesMustBeDeclaredInEntryPointInterfaces(
+    const opt::IRContext* context);
+
+// Adds |id| into the interface of every entry point of the shader.
+// Does nothing if SPIR-V doesn't require global variables, that are accessed
+// from an entry point function, to be listed in that function's interface.
+void AddVariableIdToEntryPointInterfaces(opt::IRContext* context, uint32_t id);
 
 }  // namespace fuzzerutil
 

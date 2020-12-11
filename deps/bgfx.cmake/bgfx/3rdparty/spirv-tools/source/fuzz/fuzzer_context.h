@@ -100,6 +100,9 @@ class FuzzerContext {
   // or to have been issued before.
   uint32_t GetFreshId();
 
+  // Returns a vector of |count| fresh ids.
+  std::vector<uint32_t> GetFreshIds(const uint32_t count);
+
   // Probabilities associated with applying various transformations.
   // Keep them in alphabetical order.
   uint32_t GetChanceOfAddingAccessChain() {
@@ -133,8 +136,14 @@ class FuzzerContext {
     return chance_of_adding_no_contraction_decoration_;
   }
   uint32_t GetChanceOfAddingStore() { return chance_of_adding_store_; }
+  uint32_t GetChanceOfAddingVectorShuffle() {
+    return chance_of_adding_vector_shuffle_;
+  }
   uint32_t GetChanceOfAddingVectorType() {
     return chance_of_adding_vector_type_;
+  }
+  uint32_t GetChanceOfAdjustingBranchWeights() {
+    return chance_of_adjusting_branch_weights_;
   }
   uint32_t GetChanceOfAdjustingFunctionControl() {
     return chance_of_adjusting_function_control_;
@@ -176,8 +185,14 @@ class FuzzerContext {
   uint32_t GetChanceOfPermutingParameters() {
     return chance_of_permuting_parameters_;
   }
+  uint32_t GetChanceOfPushingIdThroughVariable() {
+    return chance_of_pushing_id_through_variable_;
+  }
   uint32_t GetChanceOfReplacingIdWithSynonym() {
     return chance_of_replacing_id_with_synonym_;
+  }
+  uint32_t GetChanceOfReplacingLinearAlgebraInstructions() {
+    return chance_of_replacing_linear_algebra_instructions_;
   }
   uint32_t GetChanceOfSplittingBlock() { return chance_of_splitting_block_; }
   uint32_t GetChanceOfTogglingAccessChainInstruction() {
@@ -188,6 +203,29 @@ class FuzzerContext {
   // order.
   uint32_t GetMaximumEquivalenceClassSizeForDataSynonymFactClosure() {
     return max_equivalence_class_size_for_data_synonym_fact_closure_;
+  }
+  std::pair<uint32_t, uint32_t> GetRandomBranchWeights() {
+    std::pair<uint32_t, uint32_t> branch_weights = {0, 0};
+
+    while (branch_weights.first == 0 && branch_weights.second == 0) {
+      // Using INT32_MAX to do not overflow UINT32_MAX when the branch weights
+      // are added together.
+      branch_weights.first = random_generator_->RandomUint32(INT32_MAX);
+      branch_weights.second = random_generator_->RandomUint32(INT32_MAX);
+    }
+
+    return branch_weights;
+  }
+  std::vector<uint32_t> GetRandomComponentsForVectorShuffle(
+      uint32_t max_component_index) {
+    // Component count must be in range [2, 4].
+    std::vector<uint32_t> components(random_generator_->RandomUint32(2) + 2);
+
+    for (uint32_t& component : components) {
+      component = random_generator_->RandomUint32(max_component_index);
+    }
+
+    return components;
   }
   uint32_t GetRandomIndexForAccessChain(uint32_t composite_size_bound) {
     return random_generator_->RandomUint32(composite_size_bound);
@@ -230,7 +268,9 @@ class FuzzerContext {
   uint32_t chance_of_adding_matrix_type_;
   uint32_t chance_of_adding_no_contraction_decoration_;
   uint32_t chance_of_adding_store_;
+  uint32_t chance_of_adding_vector_shuffle_;
   uint32_t chance_of_adding_vector_type_;
+  uint32_t chance_of_adjusting_branch_weights_;
   uint32_t chance_of_adjusting_function_control_;
   uint32_t chance_of_adjusting_loop_control_;
   uint32_t chance_of_adjusting_memory_operands_mask_;
@@ -247,7 +287,9 @@ class FuzzerContext {
   uint32_t chance_of_obfuscating_constant_;
   uint32_t chance_of_outlining_function_;
   uint32_t chance_of_permuting_parameters_;
+  uint32_t chance_of_pushing_id_through_variable_;
   uint32_t chance_of_replacing_id_with_synonym_;
+  uint32_t chance_of_replacing_linear_algebra_instructions_;
   uint32_t chance_of_splitting_block_;
   uint32_t chance_of_toggling_access_chain_instruction_;
 
