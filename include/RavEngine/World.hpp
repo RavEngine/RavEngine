@@ -17,6 +17,7 @@
 #include "SpinLock.hpp"
 #include <type_traits>
 #include "ScriptSystem.hpp"
+#include <taskflow/taskflow.hpp>
 
 namespace RavEngine {
 	class Entity;
@@ -82,6 +83,8 @@ namespace RavEngine {
          * @param scale the frame rate scale to pass on to the System's tick method
          */
         void TickSystem(Ref<System> system, float scale);
+		
+		tf::Taskflow tasks;
 
 	public:
 		/**

@@ -7,6 +7,7 @@
 #include "SpinLock.hpp"
 #include <thread>
 #include "ThreadPool.hpp"
+#include <taskflow/taskflow.hpp>
 #include "World.hpp"
 
 namespace RavEngine {
@@ -36,7 +37,7 @@ namespace RavEngine {
 		const int numcpus = std::thread::hardware_concurrency();
 		
 		//global thread pool, threads = logical processors on CPU
-		static ThreadPool threadpool;
+		static tf::Executor executor;
 		
 		/**
 		 Dispatch a task to be executed on the main thread.

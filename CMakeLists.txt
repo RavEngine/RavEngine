@@ -56,6 +56,13 @@ add_subdirectory("${DEPS_DIR}/RavTar")
 add_subdirectory("${DEPS_DIR}/rscpack")
 add_subdirectory("${DEPS_DIR}/physfs")
 
+# taskflow
+SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "")
+SET(TF_BUILD_CUDA OFF CACHE INTERNAL "")
+SET(TF_BUILD_TESTS OFF CACHE INTERNAL "")
+SET(TF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/taskflow")
+
 # bgfx
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
@@ -127,6 +134,7 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/physfs/src"
 	"${DEPS_DIR}/plf/"
 	"${DEPS_DIR}/parallel-hashmap/parallel_hashmap"
+	"${DEPS_DIR}/taskflow"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	

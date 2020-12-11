@@ -23,7 +23,7 @@ Ref<VirtualFilesystem> App::Resources;
 
 SpinLock App::queue_lock;
 queue<function<void(void)>> App::main_tasks;
-ThreadPool App::threadpool;
+tf::Executor App::executor;
 Ref<InputManager> App::inputManager;
 Ref<World> App::currentWorld;
 

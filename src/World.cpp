@@ -127,26 +127,25 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 
 void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
     //get the query info
-    plf::list<future<void>> futures;
     auto queries = system->QueryTypes();
     for (const auto& query : queries) {
         auto& temp = allcomponents.GetAllComponentsOfTypeIndexFastPath(query);
         for (auto& e : temp) {
-			futures.push_back(App::threadpool.enqueue([=]{
+			tasks.emplace([=]{
 				system->Tick(fpsScale, e.get()->getOwner());
-			}));
+			});
         }
 		auto& temp2 = allcomponents.GetAllComponentsOfTypeIndexSubclassFastPath(query);
 		for (auto& e : temp2) {
-			futures.push_back(App::threadpool.enqueue([=]{
+			tasks.emplace([=]{
 				system->Tick(fpsScale, e.get()->getOwner());
-			}));
+			});
 		}
     }
-    //wait for all to complete
-    for (auto& f : futures) {
-        f.get();
-    }
+	//wait for all to complete
+	//TODO: don't do this, instead use Taskflow's precedence-setting
+	App::executor.run(tasks).wait();
+	tasks.clear();
 }
 
 /**
