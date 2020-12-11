@@ -47,6 +47,8 @@ static Ref<DebugMaterialInstance> mat;
 
 static bgfx::VertexLayout pcvDecl;
 
+static Ref<RavEngine::DeferredBlitShader> blitShader;
+
 /**
  Create an SDL window for different platforms, and reference it to bgfx
  @param _window the SDL window pointer (modified)

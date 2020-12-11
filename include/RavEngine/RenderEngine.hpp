@@ -15,7 +15,6 @@
 struct SDL_Window;
 
 namespace RavEngine {
-    class SDLSurface;
     class DeferredBlitShader;
 
     class RenderEngine : public SharedObject {
@@ -59,8 +58,6 @@ namespace RavEngine {
         
         bgfx::VertexBufferHandle screenSpaceQuadVert = BGFX_INVALID_HANDLE;
         bgfx::IndexBufferHandle screenSpaceQuadInd = BGFX_INVALID_HANDLE;
-        
-        Ref<DeferredBlitShader> blitShader;
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
     };
