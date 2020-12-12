@@ -1,8 +1,7 @@
 #pragma once
 #include "SharedObject.hpp"
 #include "RenderEngine.hpp"
-#include <phmap.h>
-#include "SpinLock.hpp"
+#include "Locked_Hashmap.hpp"
 #include <bgfx/bgfx.h>
 #include "glm/gtc/type_ptr.hpp"
 #include "Common3D.hpp"
@@ -37,9 +36,8 @@ namespace RavEngine {
 			friend class Material;
 		protected:
 			//materials are keyed by their shader name
-			typedef phmap::parallel_flat_hash_map<std::type_index, Ref<RavEngine::Material>> MaterialStore;
+			typedef locked_hashmap<std::type_index, Ref<RavEngine::Material>,SpinLock> MaterialStore;
 			static MaterialStore materials;
-			static SpinLock mtx;
 			
 			static matrix4 projectionMatrix;
 			static matrix4 viewMatrix;
@@ -63,9 +61,7 @@ namespace RavEngine {
 				}
 				
 				std::type_index t(typeid(T));
-				mtx.lock();
 				materials.insert(std::make_pair(t, mat));
-				mtx.unlock();
 			}
 			/**
 			 Gets a material with a given name, casted to a particular type.
@@ -77,12 +73,10 @@ namespace RavEngine {
 				Ref<T> mat;
 				mat.setNull();
 				std::type_index t(typeid(T));
-				mtx.lock();
 				try{
 					mat = materials.at(t);
 				}
 				catch(std::exception&){}
-				mtx.unlock();
 				return mat;
 			}
 			
@@ -97,9 +91,7 @@ namespace RavEngine {
 			 */
 			template<typename T>
 			static inline void UnregisterMaterialByType(){
-				mtx.lock();
 				materials.erase(typeid(T));
-				mtx.unlock();
 			}
 			
 			
@@ -116,9 +108,7 @@ namespace RavEngine {
 			 Unregister ALL loaded materials
 			 */
 			static inline void RemoveAll(){
-				mtx.lock();
 				materials.clear();
-				mtx.unlock();
 			}
 			
 			/**
@@ -128,7 +118,6 @@ namespace RavEngine {
 			template<typename T, typename ... A>
 			static Ref<T> AccessMaterialOfType(A ... args){
 				Ref<T> mat;
-				mtx.lock();
 				std::type_index t(typeid(T));
 				if (materials.find(t) != materials.end()){
 					mat = materials.at(t);
@@ -137,7 +126,6 @@ namespace RavEngine {
 					mat = new T(args...);
 					materials.insert(std::make_pair(t,mat));
 				}
-				mtx.unlock();
 				return mat;
 			}
 			

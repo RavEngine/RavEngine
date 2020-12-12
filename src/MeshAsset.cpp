@@ -15,8 +15,7 @@ using namespace RavEngine;
 // Vertex data structure
 using namespace std;
 
-mutex MeshAsset::Manager::mtx;
-phmap::parallel_flat_hash_map<std::string,Ref<MeshAsset>> MeshAsset::Manager::meshes;
+locked_hashmap<std::string, Ref<MeshAsset>> MeshAsset::Manager::meshes;
 
 typedef VertexNormalUV vertex_t;
 
@@ -123,32 +122,24 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 
 bool MeshAsset::Manager::IsMeshAssetLoaded(const std::string& path){
 	bool result;
-	mtx.lock();
 	result = meshes.find(path) != meshes.end();
-	mtx.unlock();
 	return result;
 }
 
 Ref<MeshAsset> MeshAsset::Manager::GetLoadedMeshAsset(const std::string& path){
 	Ref<MeshAsset> result;
 	result.setNull();
-	mtx.lock();
 	try{
 		result = meshes.at(path);
 	}
 	catch(exception& e){}
-	mtx.unlock();
 	return result;
 }
 
 void MeshAsset::Manager::RemoveMeshAsset(const std::string& path){
-	mtx.lock();
 	meshes.erase(path);
-	mtx.unlock();
 }
 
 void MeshAsset::Manager::RegisterMeshAsset(const std::string& path, Ref<MeshAsset> m){
-	mtx.lock();
 	meshes[path] = m;
-	mtx.unlock();
 }

@@ -64,6 +64,23 @@ namespace RavEngine{
 		inline const entry_type& GetAllComponentsOfTypeIndexSubclassFastPath(const std::type_index& index){
 			return componentsRedundant[index];
 		}
+		
+		/**
+		 Fast path for world ticking
+		 */
+		template<typename T>
+		inline const entry_type& GetAllComponentsOfTypeFastPath(){
+			return components[std::type_index(typeid(T))];
+		}
+		
+		/**
+		 Fast path for world ticking
+		 */
+		template<typename T>
+		inline const entry_type& GetAllComponentsOfTypeSubclassFastPath(){
+			return componentsRedundant[std::type_index(typeid(T))];
+		}
+		
 	public:
 		/**
 		Remove all components from this store

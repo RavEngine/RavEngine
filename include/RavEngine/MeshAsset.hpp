@@ -1,8 +1,7 @@
 #pragma once
 
 #include "SharedObject.hpp"
-#include <phmap.h>
-#include <mutex>
+#include "Locked_Hashmap.hpp"
 #include "mathtypes.hpp"
 #include <bgfx/bgfx.h>
 
@@ -58,14 +57,11 @@ public:
 		 Remove ALL loaded mesh assets
 		 */
 		static inline void RemoveAll(){
-			mtx.lock();
 			meshes.clear();
-			mtx.unlock();
 		}
 		
-	protected:
-		static std::mutex mtx;
-		static phmap::parallel_flat_hash_map<std::string,Ref<MeshAsset>> meshes;
+	protected:		
+		static locked_hashmap<std::string, Ref<MeshAsset>> meshes;
 		
 		/**
 		 Add a MeshAsset to the map

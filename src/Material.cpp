@@ -20,7 +20,6 @@ Material::Manager::MaterialStore Material::Manager::materials;
 matrix4 Material::Manager::projectionMatrix;
 matrix4 Material::Manager::viewMatrix;
 matrix4 Material::Manager::transformMatrix = matrix4(1);
-SpinLock Material::Manager::mtx;
 
 // mapping names to types
 const phmap::flat_hash_map<string, ShaderStage> stagemap{
@@ -77,8 +76,6 @@ Material::Material(const std::string& name) : name(name) {
 
 bool Material::Manager::HasMaterialByTypeIndex(const std::type_index& t){
 	bool result = false;
-	mtx.lock();
 	result = materials.find(t) != materials.end();
-	mtx.unlock();
 	return result;
 }

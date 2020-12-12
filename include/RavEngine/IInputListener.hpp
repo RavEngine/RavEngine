@@ -11,6 +11,6 @@ namespace RavEngine {
 
 		~IInputListener();
 	private:
-		phmap::parallel_flat_hash_map<WeakRef<InputManager>, int> senders;
+		phmap::flat_hash_map<WeakRef<InputManager>, int> senders;
 	};
 }

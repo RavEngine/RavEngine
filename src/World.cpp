@@ -28,8 +28,8 @@ void RavEngine::World::Tick(float scale) {
 
 		//start all scripts
 		e->Start();
-		auto coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
-		for (auto& c : coms) {
+		auto coms = e->Components().GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+		for (const Ref<ScriptComponent>& c : coms) {
 			c->Start();
 		}
         
@@ -60,8 +60,8 @@ void RavEngine::World::Tick(float scale) {
 	//destroy objects that are pending removal
 	for( auto& e : PendingDestruction){
 		//stop all scripts
-		auto coms = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
-		for (auto& c : coms) {
+		auto coms = e->Components().GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+		for (const Ref<ScriptComponent>& c : coms) {
 			c->Stop();
 		}
 		e->Stop();
@@ -98,8 +98,8 @@ RavEngine::World::World(){
  @return true if the spawn succeeded, false if it failed
  */
 bool RavEngine::World::Spawn(Ref<Entity> e){
-	//if the entity is not already spawned or pending spawn
-	if (find(Entities.begin(), Entities.end(),e) == Entities.end() && find(PendingSpawn.begin(), PendingSpawn.end(),e) == PendingSpawn.end() ){
+	//cannot spawn an entity that is already in a world
+	if (e->GetWorld().isNull()){
 		mtx.lock();
 		PendingSpawn.push_back(e);
 		mtx.unlock();
@@ -115,10 +115,11 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
  @return true if destruction succeeded, false otherwise
  */
 bool RavEngine::World::Destroy(Ref<Entity> e){
-	//if entity is not spawned, do nothing
-	if (find(Entities.begin(), Entities.end(),e) == Entities.end()){
+	//if entity is somehow not spawned, do nothing
+	if (e->GetWorld().isNull()){
 		return false;
 	}
+	
 	mtx.lock();
 	PendingDestruction.push_back(e);
 	mtx.unlock();
