@@ -9,6 +9,7 @@
 
 #include "SharedObject.hpp"
 #include "Entity.hpp"
+#include <plf_list.h>
 
 namespace RavEngine {
 	class World;
