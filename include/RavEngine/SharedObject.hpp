@@ -14,25 +14,20 @@
 #include <cassert>
 #include "Ref.hpp"
 #include "SpinLock.hpp"
-#include <phmap.h>
-#include <plf_colony.h>
+#include "Locked_Hashmap.hpp"
 
 namespace RavEngine {
 	class SharedObject {
 		std::atomic<int> refcount = 0;
-		SpinLock lock;
 		
-		plf::colony<WeakRefBase*> weakptrs;
-		//std::unordered_set<WeakRefBase*> weakptrs;
+		locked_hashset<WeakRefBase*,SpinLock> weakptrs;
 	public:
 		virtual ~SharedObject() {
 			//notify all tracked WeakRefs
 			//so that WeakReferences know that their pointers are invalid
-			lock.lock();
 			for(const auto& ptr : weakptrs){
 				ptr->notifyDangling();
 			}
-			lock.unlock();
 		}
 
 		/**
@@ -74,22 +69,11 @@ namespace RavEngine {
 		 Invoked by WeakRef<T> when they track a new sharedobject.
 		 */
 		inline void TrackWeak(WeakRefBase* weakptr){
-				lock.lock();
 				weakptrs.insert(weakptr);
-				lock.unlock();
 		}
 		
 		inline void UntrackWeak(WeakRefBase* weakptr){
-			lock.lock();
-			//TODO: optimize by storing iterator and passing it to this method, then erase directly
-			plf::colony<WeakRefBase*>::iterator item = weakptrs.begin();
-			for( ; item != weakptrs.end(); ++item){
-				if (*item == weakptr){
-					weakptrs.erase(item);
-					break;
-				}
-			}
-			lock.unlock();
+			weakptrs.erase(weakptr);
 		}
 	};
 }

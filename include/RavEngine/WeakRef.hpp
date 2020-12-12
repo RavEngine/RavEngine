@@ -6,7 +6,7 @@
 //
 
 # pragma once
-#include <mutex>
+#include <type_traits>
 
 namespace RavEngine {
     class SharedObject;
@@ -57,7 +57,7 @@ public:
     WeakRef(const Ref<T>& other) : WeakRef(other.get()) {};
 
     //copy assignment
-    WeakRef<T>& operator=(const WeakRef<T>& other) {
+    inline WeakRef<T>& operator=(const WeakRef<T>& other) {
         if (&other == this) {
             return *this;
         }
