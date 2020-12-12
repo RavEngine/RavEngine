@@ -81,7 +81,7 @@ public:
 	static void Init();
 	
 	friend class PointLight;
-	friend class DirectionaLight;
+	friend class DirectionalLight;
 	friend class AmbientLight;
 	
 private:
@@ -112,7 +112,7 @@ private:
 		}
 	};
 	
-	class AmbientLightShader : public LightShader{
+	struct AmbientLightShader : public LightShader{
 	public:
 		AmbientLightShader() : LightShader("ambientlightvolume"){}
 	};
@@ -123,8 +123,22 @@ private:
 		}
 	};
 	
+	struct DirectionalLightShader : public LightShader{
+		DirectionalLightShader() : LightShader("directionallightvolume"){}
+		Vector4Uniform lightDirection = Vector4Uniform("u_lightDir");
+	};
+	
+	struct DirectionalLightShaderInstance : public MaterialInstance<DirectionalLightShader>{
+		DirectionalLightShaderInstance(Ref<DirectionalLightShader> m ) : MaterialInstance(m){}
+		void SetColorDirection(const ColorRGBA& color, const ColorRGBA dir){
+			mat->lightColor.SetValues(&color,1);
+			mat->lightDirection.SetValues(&dir, 1);
+		}
+	};
+	
 	static Ref<PointLightShaderInstance> pointLightShader;
 	static Ref<AmbientLightShaderInstance> ambientLightShader;
+	static Ref<DirectionalLightShaderInstance> directionalLightShader;
 	
 	static bgfx::VertexBufferHandle screenSpaceQuadVert;
 	static bgfx::IndexBufferHandle screenSpaceQuadInd;

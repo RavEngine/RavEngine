@@ -259,36 +259,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         e->Draw(1);
 	}
 	
-   
 	//bind lighting textures
 //	for(int i = 0; i < lightingAttachmentsSize; i++){
 //		bgfx::setTexture(i, lightingSamplers[i], lightingAttachments[i]);
 //	}
 	
-	//render light volumes
-	//TODO: optimize with GPU instancing
-	{
-		//must set before changing shaders
-		for(int i = 0; i < gbufferSize; i++){
-			bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-		}
-		auto lights = components.GetAllComponentsOfSubclass<PointLight>();
-		for(const auto& light : lights){
-			light->DrawVolume(2);
-		}
-	}
-
-	{
-		for(int i = 0; i < gbufferSize; i++){
-			bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-		}
-		auto lights = components.GetAllComponentsOfSubclass<AmbientLight>();
-		for(const auto& light : lights){
-			light->DrawVolume(2);
-		}
-
-		
-	}
+	DrawLightsOfType<PointLight>(components);
+	DrawLightsOfType<AmbientLight>(components);
+	DrawLightsOfType<DirectionalLight>(components);
+	
 	//blit to view 0 using the fullscreen quad
 	for(int i = 0; i < gbufferSize; i++){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);

@@ -11,6 +11,7 @@ static constexpr color_t debug_color = 0x00FF00FF;
 Ref<MeshAsset> LightManager::pointLightMesh;
 Ref<LightManager::PointLightShaderInstance> LightManager::pointLightShader;
 Ref<LightManager::AmbientLightShaderInstance> LightManager::ambientLightShader;
+Ref<LightManager::DirectionalLightShaderInstance> LightManager::directionalLightShader;
 bgfx::VertexBufferHandle LightManager::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle LightManager::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 
@@ -18,6 +19,7 @@ void LightManager::Init(){
 	pointLightMesh = new MeshAsset("sphere.obj");
 	pointLightShader = new PointLightShaderInstance(Material::Manager::AccessMaterialOfType<PointLightShader>());
 	ambientLightShader = new AmbientLightShaderInstance(Material::Manager::AccessMaterialOfType<AmbientLightShader>());
+	directionalLightShader = new DirectionalLightShaderInstance(Material::Manager::AccessMaterialOfType<DirectionalLightShader>());
 	
 	const uint16_t indices[] = {0,2,1, 2,3,1};
 	const Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
@@ -36,7 +38,14 @@ void DirectionalLight::DebugDraw() const{
 }
 
 void DirectionalLight::DrawVolume(int view) const{
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW |
+				   BGFX_STATE_BLEND_ADD);
 	
+	auto tr = Ref<Entity>(getOwner())->transform();
+	auto rot = glm::eulerAngles(tr->GetWorldRotation());
+	
+	LightManager::directionalLightShader->SetColorDirection({color.R,color.B,color.G,Intensity}, {static_cast<float>(rot.x),static_cast<float>(rot.y),static_cast<float>(rot.z),0});
+	LightManager::directionalLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
 }
 
 void AmbientLight::DebugDraw() const{

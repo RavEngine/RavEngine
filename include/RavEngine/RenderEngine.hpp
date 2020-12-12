@@ -60,5 +60,20 @@ namespace RavEngine {
         static bgfx::IndexBufferHandle screenSpaceQuadInd;
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
+		
+		template<typename T>
+		void DrawLightsOfType(ComponentStore& components){
+			//must set before changing shaders
+			auto lights = components.GetAllComponentsOfSubclass<T>();
+			if (lights.size() == 0){
+				return;
+			}
+			for(int i = 0; i < gbufferSize; i++){
+				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+			}
+			for(const auto& light : lights){
+				light->DrawVolume(2);
+			}
+		}
     };
 }
