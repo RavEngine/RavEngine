@@ -22,7 +22,7 @@ namespace RavEngine {
 		/**
 		@returns if this camera is active
 		*/
-		bool isActive() {
+		inline bool isActive() {
 			return active;
 		}
 
@@ -41,7 +41,7 @@ namespace RavEngine {
 		/**
 		@return the projection matrix to use when rendering objects. For internal use only.
 		*/
-		matrix4 GenerateProjectionMatrix() {
+		inline matrix4 GenerateProjectionMatrix() {
 			auto projection = matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip));
 			return projection;
 		}
@@ -49,7 +49,7 @@ namespace RavEngine {
 		/**
 		@return the View matrix for this camera to use when rendering objects. For internal use only.
 		*/
-		matrix4 GenerateViewMatrix() {
+		inline matrix4 GenerateViewMatrix() {
 			Ref<Entity> entity(owner);
 			
 			return glm::inverse(entity->transform()->CalculateWorldMatrix());

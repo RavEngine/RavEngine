@@ -24,7 +24,7 @@ namespace RavEngine {
         void Draw(int view = 0) override;
 		
 		template<typename T>
-		void Draw(Ref<MaterialInstance<T>> inst, int view = 0){
+		inline void Draw(Ref<MaterialInstance<T>> inst, int view = 0){
             static_assert(std::is_base_of<PBRMaterial, T>::value, "StaticMeshes must use a PBR material");
 			auto owner = Ref<Entity>(getOwner());
 			owner->transform()->Apply();
@@ -34,7 +34,7 @@ namespace RavEngine {
         /**
         @returns the currently assigned material
         */
-        Ref<PBRMaterialInstance> GetMaterial() {
+        inline Ref<PBRMaterialInstance> GetMaterial() {
             return material;
         }
 

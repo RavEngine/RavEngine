@@ -38,13 +38,13 @@ namespace RavEngine {
 		/**
 		 Increment the reference count
 		 */
-		void retain() {
+		inline void retain() {
 			++refcount;
 		}
 		/**
 		 Decrement the reference count. If the reference count hits 0, the object is destroyed.
 		 */
-		void release() {
+		inline void release() {
 			--refcount;
 			if (refcount == 0) {
 				delete this;
@@ -66,20 +66,20 @@ namespace RavEngine {
 		@param other the other object to compare
 		@return true if the object addresses match.
 		*/
-		bool operator==(const SharedObject* other) const {
+		inline bool operator==(const SharedObject* other) const {
 			return reinterpret_cast<uintptr_t>(this) == reinterpret_cast<uintptr_t>(other);;
 		}
 		
 		/**
 		 Invoked by WeakRef<T> when they track a new sharedobject.
 		 */
-		void TrackWeak(WeakRefBase* weakptr){
+		inline void TrackWeak(WeakRefBase* weakptr){
 				lock.lock();
 				weakptrs.insert(weakptr);
 				lock.unlock();
 		}
 		
-		void UntrackWeak(WeakRefBase* weakptr){
+		inline void UntrackWeak(WeakRefBase* weakptr){
 			lock.lock();
 			//TODO: optimize by storing iterator and passing it to this method, then erase directly
 			plf::colony<WeakRefBase*>::iterator item = weakptrs.begin();

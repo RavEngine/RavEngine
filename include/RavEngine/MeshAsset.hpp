@@ -57,7 +57,7 @@ public:
 		/**
 		 Remove ALL loaded mesh assets
 		 */
-		static void RemoveAll(){
+		static inline void RemoveAll(){
 			mtx.lock();
 			meshes.clear();
 			mtx.unlock();

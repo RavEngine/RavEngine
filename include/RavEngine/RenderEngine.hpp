@@ -62,7 +62,7 @@ namespace RavEngine {
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
 		template<typename T>
-		void DrawLightsOfType(ComponentStore& components){
+		inline void DrawLightsOfType(ComponentStore& components){
 			//must set before changing shaders
 			auto lights = components.GetAllComponentsOfSubclass<T>();
 			if (lights.size() == 0){

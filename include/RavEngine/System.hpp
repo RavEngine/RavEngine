@@ -42,7 +42,7 @@ namespace RavEngine {
 		}
 
 		
-		bool operator<(const System& other) const {
+		inline bool operator<(const System& other) const {
 			return MustRunBefore(std::type_index(typeid(other))) || other.MustRunAfter(std::type_index(typeid(this)));
 		}
 

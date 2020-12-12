@@ -87,7 +87,7 @@ namespace RavEngine {
 			}
 			
 			template<typename T>
-			static bool HasMaterialByType(){
+			static inline bool HasMaterialByType(){
 				return HasMaterialByTypeIndex(typeid(T));
 			}
 			
@@ -96,7 +96,7 @@ namespace RavEngine {
 			 @param T the type to remove.
 			 */
 			template<typename T>
-			static void UnregisterMaterialByType(){
+			static inline void UnregisterMaterialByType(){
 				mtx.lock();
 				materials.erase(typeid(T));
 				mtx.unlock();
@@ -108,14 +108,14 @@ namespace RavEngine {
 			 @param material the material to remove
 			 */
 			template<typename T>
-			static void UnregisterMaterial(Ref<T> material){
+			static inline void UnregisterMaterial(Ref<T> material){
 				UnregisterMaterialByType<T>();
 			}
 			
 			/**
 			 Unregister ALL loaded materials
 			 */
-			static void RemoveAll(){
+			static inline void RemoveAll(){
 				mtx.lock();
 				materials.clear();
 				mtx.unlock();
@@ -144,7 +144,7 @@ namespace RavEngine {
 			/**
 			 Set the current projection matrix. For internal use only.
 			 */
-			static void SetProjectionMatrix(const matrix4& mat) {
+			static inline void SetProjectionMatrix(const matrix4& mat) {
 				projectionMatrix = mat;
 			}
 			
@@ -152,25 +152,25 @@ namespace RavEngine {
 			 @retuurn a const-reference to the current global projection matrix
 			 For internal use only.
 			 */
-			static const matrix4& GetCurrentProjectionMatrix() {
+			static inline const matrix4& GetCurrentProjectionMatrix() {
 				return projectionMatrix;
 			}
 			
 			/**
 			 Set the current view matrix. For interal use only.
 			 */
-			static void SetViewMatrix(const matrix4& mat) {
+			static inline void SetViewMatrix(const matrix4& mat) {
 				viewMatrix = mat;
 			}
 			
 			/**
 			 @return a const-reference to the current global view matrix. For internal use only
 			 */
-			static const matrix4& GetCurrentViewMatrix() {
+			static inline const matrix4& GetCurrentViewMatrix() {
 				return viewMatrix;
 			}
 			
-			static const matrix4& GetCurrentTransformMatrix(){
+			static inline const matrix4& GetCurrentTransformMatrix(){
 				return transformMatrix;
 			}
 		};
@@ -207,7 +207,7 @@ namespace RavEngine {
 		virtual void DrawHook() {};
 	public:
 		virtual ~MaterialInstance() {}
-		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
+		inline void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
 			DrawHook();
 			float transmat[16];
             copyMat4((const decimalType*)glm::value_ptr(worldmatrix), transmat);

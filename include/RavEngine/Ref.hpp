@@ -11,14 +11,14 @@ public:
 	/**
 	@returns if this ref is a null ref
 	*/
-	bool isNull() {
+	inline bool isNull() {
 		return ptr == nullptr;
 	}
 
 	/**
 	Makes this ref object a null ref. Releases any previously held pointer.
 	*/
-	void setNull() {
+	inline void setNull() {
 		if (!isNull()) {
 			ptr->release();
 		}
@@ -67,19 +67,19 @@ public:
 	}
 
 	//arrow operator
-	T* operator->() const {
+	inline T* operator->() const {
         assert(get() != nullptr); //you are performing null access!
 		return get();
 	}
 
 	//dereference
-	T* operator*() const {
+	inline T* operator*() const {
         assert(get() != nullptr); //you are performing null access!
 		return get();
 	}
 
 	//get bare pointer (caution!)
-	T* get() const {
+	inline T* get() const {
 		return ptr;
 	}
 
@@ -93,20 +93,20 @@ public:
 	}*/
 
 	template<typename U>
-	operator Ref<U>() const {
+	inline operator Ref<U>() const {
 		static_assert(std::is_base_of<RavEngine::SharedObject, U>::value, "U is not a base class of SharedObject");
 		static_assert(std::is_base_of<U, T>::value || std::is_base_of<T,U>::value,"This conversion is not an upcast or downcast");
 		return static_cast<U*>(ptr);
 	}
 
 	//equality
-	bool operator==(const Ref<T>& other) const {
+	inline bool operator==(const Ref<T>& other) const {
 		return other.get() == get();
 	}
 
 	//less (requires T and U to have < operator defined
 	template<typename U>
-	bool operator<(const Ref<U>& other) const {
+	inline bool operator<(const Ref<U>& other) const {
 		return *get() < *other.get();
 	}
 };
@@ -116,7 +116,7 @@ namespace std {
 	template<typename T>
 	struct hash<Ref<T>> {
 		//Strong pointer hash uses the object it is pointing at
-		std::size_t operator()(const Ref<T>& k) const
+		inline std::size_t operator()(const Ref<T>& k) const
 		{
 			return k->Hash();
 		}

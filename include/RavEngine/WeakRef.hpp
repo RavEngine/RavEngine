@@ -94,7 +94,7 @@ public:
     Return the bare pointer. This should always be immediately converted into a SharedObjectRef owning pointer.
         @return the pointer in this WeakReference, or nullptr if the pointer is not valid
         */
-    T* get() const {
+    inline T* get() const {
         return ptr;                 //this will become nullptr if the object was destroyed
     }
 
@@ -102,21 +102,21 @@ public:
         Check if this reference is a null reference
         @return true if ptr is null
         */
-    bool isNull() const {
+    inline bool isNull() const {
         return ptr == nullptr;
     }
 
     /**
         Set this weakreference as a null reference
         */
-    void setNull() {
+    inline void setNull() {
         ptr = nullptr;
     }
 
     /**
     Equality operator, compares null status and pointer values
     */
-    bool operator==(const WeakRef& other) const {
+    inline bool operator==(const WeakRef& other) const {
         if (isNull() == other.isNull()) {
             return true;
         }
@@ -127,7 +127,7 @@ public:
     /**
     update because the object this weakpointer points to was deallocated
     */
-    void notifyDangling() override {
+    inline void notifyDangling() override {
         setNull();
     }
 };
@@ -137,7 +137,7 @@ namespace std {
     template<typename T>
     struct hash<WeakRef<T>> {
         //weak pointer hash uses the object it is pointing at, or 0 if is null
-        std::size_t operator()(const WeakRef<T>& k) const {
+        inline std::size_t operator()(const WeakRef<T>& k) const {
             if (k.isNull()) {
                 return 0;
             }

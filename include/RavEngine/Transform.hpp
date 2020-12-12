@@ -79,7 +79,7 @@ namespace RavEngine {
 		@returns the currently stored world matrix. This is not guarenteed to be up-to-date. 
 		To update it, call Apply()
 		*/
-		matrix4 GetCurrentWorldMatrix() {
+		inline matrix4 GetCurrentWorldMatrix() {
 			return matrix;
 		}
 

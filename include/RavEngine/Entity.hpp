@@ -39,7 +39,7 @@ namespace RavEngine {
 		Get a const reference to the components in this entity
 		@return the components in this Entity
 		*/
-		ComponentStore& Components() {
+		inline ComponentStore& Components() {
 			return components;
 		}
 
@@ -47,7 +47,7 @@ namespace RavEngine {
 		 Get a pointer to the world that this entity is in. May be nullptr.
 		 @return the pointer to the world, or nullptr if there is no world
 		 */
-		WeakRef<World> GetWorld() const {
+		inline WeakRef<World> GetWorld() const {
 			return worldptr;
 		}
 
@@ -55,7 +55,7 @@ namespace RavEngine {
 		 Called by the world on Spawn and Destroy.
 		 @param world the pointer to the current world
 		 */
-		void SetWorld(const WeakRef<World>& world) {
+		inline void SetWorld(const WeakRef<World>& world) {
 			worldptr = world;
 		}
 
@@ -64,7 +64,7 @@ namespace RavEngine {
 		 @return true if the entity is in the world, false otherwise
 		 @note Does not investigate dangling pointer
 		 */
-		bool IsInWorld() const {
+		inline bool IsInWorld() const {
 			return !worldptr.isNull();
 		}
 

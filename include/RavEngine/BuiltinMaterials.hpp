@@ -26,10 +26,10 @@ namespace RavEngine {
 	public:
 		PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) { };
 
-		void SetAlbedoTexture(Ref<Texture> texture) {
+		inline void SetAlbedoTexture(Ref<Texture> texture) {
 			albedo = texture;
 		}
-        void SetAlbedoColor(const ColorRGBA& c){
+       inline void SetAlbedoColor(const ColorRGBA& c){
             color = c;
         }
 

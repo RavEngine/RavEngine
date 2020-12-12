@@ -50,7 +50,7 @@ namespace RavEngine {
  });
 		 @endcode
 		 */
-		static void DispatchMainThread(const std::function<void(void)>& f){
+		static inline void DispatchMainThread(const std::function<void(void)>& f){
 			queue_lock.lock();
 			main_tasks.push(f);
 			queue_lock.unlock();

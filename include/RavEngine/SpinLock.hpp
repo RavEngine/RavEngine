@@ -12,11 +12,11 @@ public:
 #ifndef _WIN32
 	SpinLock() : flag(ATOMIC_FLAG_INIT) {}	//required on macOS but incompatible with windows
 #endif
-	void lock(){
+	inline void lock(){
 		while(flag.test_and_set());
 	}
 	
-	void unlock(){
+	inline void unlock(){
 		flag.clear();
 	}
 };

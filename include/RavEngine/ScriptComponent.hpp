@@ -46,7 +46,7 @@ namespace RavEngine {
 		/**
 		@return true if the current ScriptComponent is attached to an Entity, false otherwise.
 		*/
-		bool IsAttached() {
+		inline bool IsAttached() {
 			return !getOwner().isNull();
 		}
 
@@ -61,7 +61,7 @@ namespace RavEngine {
 		*/
 		Ref<World> GetWorld();
 		
-		Ref<Entity> GetEntity(){
+		inline Ref<Entity> GetEntity(){
 			return getOwner();
 		}
 	};

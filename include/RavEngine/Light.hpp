@@ -10,11 +10,9 @@ namespace RavEngine{
 class MeshAsset;
 
 struct Light : public Queryable<Light>, public Component {
-	virtual bool IsInFrustum(Ref<CameraComponent> cam) const = 0;
 	float Intensity = 1.0;
 	ColorRGBA color{1,1,1,1};
 	virtual void DebugDraw() const = 0;
-	virtual void DrawVolume(int view) const = 0;
 };
 
 /**
@@ -32,12 +30,12 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	/**
 	 Ambient lights are always in the frustum
 	 */
-	bool IsInFrustum(Ref<CameraComponent> cam) const override{
+	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
 		return true;
 	}
 	
 	void DebugDraw() const override;
-	virtual void DrawVolume(int view) const override;
+	void DrawVolume(int view) const;
 };
 
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
@@ -46,30 +44,30 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 	/**
 	 Directional lights are always in the frustum
 	 */
-	bool IsInFrustum(Ref<CameraComponent> cam) const override{
+	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
 		return true;
 	}
 	
 	void DebugDraw() const override;
-	virtual void DrawVolume(int view) const override;
+	void DrawVolume(int view) const;
 };
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
 		
-	bool IsInFrustum(Ref<CameraComponent> cam) const override{
+	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
 		//TODO: perform sphere intersection on camera bounds
 		return true;
 	}
 	
 	void DebugDraw() const override;
-	virtual void DrawVolume(int view) const override;
+	void DrawVolume(int view) const;
 private:
 	/**
 	 Caclulate the radius of the light using its current intensity
 	 @return the radius
 	 */
-	float CalculateRadius() const{
+	inline float CalculateRadius() const{
 		return Intensity*Intensity;
 	}
 };
@@ -106,7 +104,7 @@ private:
 	 */
 	struct PointLightShaderInstance : public MaterialInstance<PointLightShader>{
 		PointLightShaderInstance(Ref<PointLightShader> m ) : MaterialInstance(m){}
-		void SetPosColor(const ColorRGBA& pos, const ColorRGBA& color){
+		inline void SetPosColor(const ColorRGBA& pos, const ColorRGBA& color){
 			mat->lightColor.SetValues(&color, 1);
 			mat->lightPosition.SetValues(&pos, 1);
 		}
@@ -118,7 +116,7 @@ private:
 	};
 	struct AmbientLightShaderInstance : public MaterialInstance<AmbientLightShader>{
 		AmbientLightShaderInstance(Ref<AmbientLightShader> m ) : MaterialInstance(m){}
-		void SetColor(const ColorRGBA& color){
+		inline void SetColor(const ColorRGBA& color){
 			mat->lightColor.SetValues(&color,1);
 		}
 	};
@@ -130,7 +128,7 @@ private:
 	
 	struct DirectionalLightShaderInstance : public MaterialInstance<DirectionalLightShader>{
 		DirectionalLightShaderInstance(Ref<DirectionalLightShader> m ) : MaterialInstance(m){}
-		void SetColorDirection(const ColorRGBA& color, const ColorRGBA dir){
+		inline void SetColorDirection(const ColorRGBA& color, const ColorRGBA dir){
 			mat->lightColor.SetValues(&color,1);
 			mat->lightDirection.SetValues(&dir, 1);
 		}

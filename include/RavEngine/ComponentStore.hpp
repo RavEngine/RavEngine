@@ -12,7 +12,7 @@
 namespace RavEngine{
 	class ComponentStore {
 	protected:
-		typedef phmap::parallel_flat_hash_map<std::type_index, plf::list<Ref<RavEngine::Component>>> ComponentStructure;
+		typedef phmap::flat_hash_map<std::type_index, plf::list<Ref<RavEngine::Component>>> ComponentStructure;
 		ComponentStructure components;
 		ComponentStructure componentsRedundant;
 		
@@ -23,7 +23,7 @@ namespace RavEngine{
 		@return all the components of a class or its base classes to a type index
 		*/
 		template<typename T>
-		plf::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
+		inline plf::list<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const std::type_index& type) {
 			C_REF_CHECK
 			//query both types
 			auto& toplevel = components[type];
@@ -43,7 +43,7 @@ namespace RavEngine{
 		 @return all the components of a type index. Does NOT search base classes
 		 */
 		template<typename T>
-		plf::list<Ref<T>> GetAllComponentsOfTypeIndex(const std::type_index& index) {
+		inline plf::list<Ref<T>> GetAllComponentsOfTypeIndex(const std::type_index& index) {
 			C_REF_CHECK
 			auto& comp = components[index];
 			plf::list<Ref<T>> cpy;
@@ -56,21 +56,21 @@ namespace RavEngine{
 		/**
 		 Fast path for world ticking
 		 */
-		const plf::list<Ref<Component>>& GetAllComponentsOfTypeIndexFastPath(const std::type_index& index){
+		inline const plf::list<Ref<Component>>& GetAllComponentsOfTypeIndexFastPath(const std::type_index& index){
 			return components[index];
 		}
 		
 		/**
 		Fast path for world ticking
 		 */
-		const plf::list<Ref<Component>>& GetAllComponentsOfTypeIndexSubclassFastPath(const std::type_index& index){
+		inline const plf::list<Ref<Component>>& GetAllComponentsOfTypeIndexSubclassFastPath(const std::type_index& index){
 			return componentsRedundant[index];
 		}
 	public:
 		/**
 		Remove all components from this store
 		*/
-		void clear() {
+		inline void clear() {
 			components.clear();
 			componentsRedundant.clear();
 		}
@@ -80,7 +80,7 @@ namespace RavEngine{
 		 @param componentRef the component to add to this Entity. Must pass a Ref class to a Component
 		 */
 		template<typename T>
-		Ref<T> AddComponent(Ref<T> componentRef) {
+		inline Ref<T> AddComponent(Ref<T> componentRef) {
 			C_REF_CHECK
 				components[std::type_index(typeid(T))].push_back(componentRef);
 
@@ -97,7 +97,7 @@ namespace RavEngine{
 		 @throws bad_cast if a cast fails
 		 */
 		template<typename T>
-		Ref<T> GetComponent() {
+		inline Ref<T> GetComponent() {
 			C_REF_CHECK
 				auto& vec = components[std::type_index(typeid(T))];
 			if (vec.empty()) {
@@ -114,7 +114,7 @@ namespace RavEngine{
 		 @return true if this entity has a component of type ref
 		 */
 		template<typename T>
-		bool HasComponentOfType() {
+		inline bool HasComponentOfType() {
 			C_REF_CHECK
 			return (!components[std::type_index(typeid(T))].empty()) || (HasComponentOfSubclass<T>());
 		}
@@ -124,7 +124,7 @@ namespace RavEngine{
 		 @return true if this entity has a component of type ref
 		 */
 		template<typename T>
-		bool HasComponentOfSubclass() {
+		inline bool HasComponentOfSubclass() {
 			C_REF_CHECK
 			return !componentsRedundant[std::type_index(typeid(T))].empty();
 		}
@@ -136,7 +136,7 @@ namespace RavEngine{
 		 @throws bad_cast if a cast fails
 		 */
 		template<typename T>
-		Ref<T> GetComponentOfSubclass() {
+		inline Ref<T> GetComponentOfSubclass() {
 			C_REF_CHECK
 				auto& vec = componentsRedundant[std::type_index(typeid(T))];
 			if (vec.size() == 0) {
@@ -152,7 +152,7 @@ namespace RavEngine{
 		 @return the list of all the refs of a base class type. The list may be empty.
 		 */
 		template<typename T>
-		plf::list<Ref<T>> GetAllComponentsOfSubclass() {
+		inline plf::list<Ref<T>> GetAllComponentsOfSubclass() {
 			return GetAllComponentsOfSubclassTypeIndex<T>(std::type_index(typeid(T)));
 		}
 
@@ -162,7 +162,7 @@ namespace RavEngine{
 		 @returns the list of only the components of the high-level type. The list may be empty
 		 */
 		template<typename T>
-		plf::list<Ref<T>> GetAllComponentsOfType() {
+		inline plf::list<Ref<T>> GetAllComponentsOfType() {
 			return GetAllComponentsOfTypeIndex<T>(std::type_index(typeid(T)));
 		}
 
@@ -171,7 +171,7 @@ namespace RavEngine{
 		@param component the component to remove
 		*/
 		template<typename T>
-		void RemoveComponent(Ref<T> component) {
+		inline void RemoveComponent(Ref<T> component) {
 			components[std::type_index(typeid(T))].remove(component);
 
 			//add redundant types
@@ -184,7 +184,7 @@ namespace RavEngine{
 		Copy components from one componentstore into this one
 		@param other the other component store to copy from
 		*/
-		void AddComponentsFrom(const ComponentStore& other) {
+		inline void AddComponentsFrom(const ComponentStore& other) {
 			for (const auto& c : other.components) {
 				//add the componets of the current type to the global list
 				components[c.first].insert(components[c.first].begin(), c.second.begin(), c.second.end());
@@ -199,7 +199,7 @@ namespace RavEngine{
 		Remove components from this store if they are also present in another
 		@param other the ComponentStore to compare
 		*/
-		void RemoveComponentsInOtherFromThis(const ComponentStore& other) {
+		inline void RemoveComponentsInOtherFromThis(const ComponentStore& other) {
 			//remove if the components are equal
 
 			auto check = [](ComponentStructure& removeFrom, const ComponentStructure& otherStructure) {

@@ -16,7 +16,7 @@ public:
 	Atomic(const Atomic<T>& other) : Atomic(other){}
 	
 	//copy assignment
-	Atomic& operator=(const Atomic<T> other){
+	inline Atomic& operator=(const Atomic<T> other){
 		if (&other == this){
 			return *this;
 		}
@@ -25,7 +25,7 @@ public:
 	}
 	
 	//conversion operator
-	operator T () const{
+	inline operator T () const{
 		return val.load();
 	}
 private:

@@ -336,7 +336,7 @@ namespace RavEngine {
 		 * @param type the required state of the action to invoke the method.
 		 */
         template<class U>
-		void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
+		inline void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
 			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].push_back(action);
 			thisptr->OnRegister(this);
@@ -350,7 +350,7 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
          */
         template<typename U>
-        void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
+		inline void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
 			AxisCallback axis(thisptr, f, deadZone,controllers);
             axisMappings[name].push_back(axis);
 			thisptr->OnRegister(this);
@@ -364,7 +364,7 @@ namespace RavEngine {
 		 @param state the state to use to match the callback
 		 */
 		template<typename U>
-		void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
+		inline void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
 			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].remove(action);
 			thisptr->OnUnregister(this);
@@ -378,7 +378,7 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
 		 */
 		template<typename U>
-		void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
+		inline void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
 			AxisCallback axis(thisptr, f, deadZone,controllers);
 			axisMappings[name].remove(axis);
 			thisptr->OnUnregister(this);

@@ -59,7 +59,7 @@ namespace RavEngine {
 		Ref<PhysicsLinkSystemWrite> plsw;
         
 		template<class T>
-		void RegisterSystem(Ref<T> r_instance) {
+		inline void RegisterSystem(Ref<T> r_instance) {
 			//static_assert(std::is_base_of<System, T>::value, "Can only register systems");
 			Systems.insert(r_instance);
 		}
@@ -107,21 +107,21 @@ namespace RavEngine {
 
 		bool Destroy(Ref<Entity>);
 
-		const EntityStore& getEntities() const {
+		inline const EntityStore& getEntities() const {
 			return Entities;
 		}
 
 		/**
 		@returns the componentstore for this world. Do not use in scripts!
 		*/
-		const ComponentStore& Components() {
+		inline const ComponentStore& Components() {
 			return allcomponents;
 		}
 
 		/**
 		 Called by GameplayStatics when the final world is being deallocated
 		 */
-		void DeallocatePhysics() {
+		inline void DeallocatePhysics() {
 			Solver->DeallocatePhysx();
 		}
 
@@ -129,13 +129,13 @@ namespace RavEngine {
 			std::cout << "world destructor @ " << this << std::endl;
 		}
 
-		void AddComponentsSpawnedEntity(const ComponentStore& store) {
+		inline void AddComponentsSpawnedEntity(const ComponentStore& store) {
 			component_op_mtx.lock();
 			component_addremove.emplace(true,store);
 			component_op_mtx.unlock();
 		}
 
-		void RemoveComponentsSpawnedEntity(const ComponentStore& store) {
+		inline void RemoveComponentsSpawnedEntity(const ComponentStore& store) {
 			component_op_mtx.lock();
 			component_addremove.emplace(false,store);
 			component_op_mtx.unlock();
