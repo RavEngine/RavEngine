@@ -65,6 +65,7 @@ namespace RavEngine{
 			return componentsRedundant[index];
 		}
 		
+	public:
 		/**
 		 Fast path for world ticking
 		 */
@@ -81,7 +82,6 @@ namespace RavEngine{
 			return componentsRedundant[std::type_index(typeid(T))];
 		}
 		
-	public:
 		/**
 		Remove all components from this store
 		*/

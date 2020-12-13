@@ -64,16 +64,38 @@ namespace RavEngine {
 		template<typename T>
 		inline void DrawLightsOfType(ComponentStore& components){
 			//must set before changing shaders
-			auto lights = components.GetAllComponentsOfSubclass<T>();
+			auto lights = components.GetAllComponentsOfTypeFastPath<T>();
 			if (lights.size() == 0){
 				return;
 			}
 			for(int i = 0; i < gbufferSize; i++){
 				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 			}
-			for(const auto& light : lights){
-				light->DrawVolume(2);
+			
+			const auto stride = T::InstancingStride();
+			const auto numLights = lights.size();	//TODO: factor in light frustum culling
+			
+			//create buffer for GPU instancing
+			bgfx::InstanceDataBuffer idb;
+			bgfx::allocInstanceDataBuffer(&idb, numLights, stride);
+			
+			//fill the buffer
+			int i = 0;
+			for(const Ref<T>& light : lights){	//TODO: factor in light frustum culling
+				float* ptr = (float*)(idb.data + i);
+				light->AddInstanceData(ptr);
+				i += stride;
 			}
+			
+			float* dbgbufferdata = (float*)idb.data;
+
+			bgfx::setInstanceDataBuffer(&idb);
+			
+			//set the required state for this light type
+			T::SetState();
+			
+			//execute instance draw call
+			T::Draw(2);	//view 2 is the lighting pass
 		}
     };
 }

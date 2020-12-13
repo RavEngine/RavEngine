@@ -60,3 +60,12 @@ static inline void copyMat4(const T* input, U* output, int size = 16){
         output[i] = input[i];
     }
 }
+
+/**
+ @param x the number to round
+ @param B the multiple base
+ @return the closest multiple of B to x in the upwards direction. If x is already a multiple of B, returns x.
+ */
+static inline constexpr int closest_multiple_of(int x, int B){
+	return ((x-1)|(B-1))+1;
+}

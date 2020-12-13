@@ -51,7 +51,7 @@ public:
 	}
 
 	//copy assignment
-	Ref<T>& operator=(const Ref<T>& other) {
+	inline Ref<T>& operator=(const Ref<T>& other) {
 		if (&other == this) {
 			return *this;
 		}
@@ -82,15 +82,6 @@ public:
 	inline T* get() const {
 		return ptr;
 	}
-
-	/*template<typename U>
-	explicit operator typename std::enable_if<std::is_base_of<U,T>::value, const Ref<U>&>::type() const {
-		return Ref<U>(ptr);
-	}
-	template<typename U>
-	explicit operator typename std::enable_if<std::is_base_of<U, T>::value, Ref<U>>::type() const {
-		return Ref<U>(ptr);
-	}*/
 
 	template<typename U>
 	inline operator Ref<U>() const {

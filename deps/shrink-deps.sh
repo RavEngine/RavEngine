@@ -1,10 +1,8 @@
 # PhysX
-rm -r physx/physx/documentation/
-rm -r physx/physx/samples/
+rm -r physx/physx/documentation/ physx/physx/samples/ physx/externals/cg-linux/lib physx/externals/cg-linux/bin physx/externals/glew-linux/lib physx/externals/glew/lib physx/externals/opengl/lib64
 
 # BGFX, BX
-rm -r bgfx.cmake/bgfx/examples
-rm -r bgfx.cmake/bx/tools
+rm -r bgfx.cmake/bgfx/examples bgfx.cmake/bx/tools
 
 # SDL
 rm -r SDL2/test

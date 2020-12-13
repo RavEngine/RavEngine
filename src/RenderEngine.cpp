@@ -259,14 +259,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         e->Draw(1);
 	}
 	
-	//bind lighting textures
-//	for(int i = 0; i < lightingAttachmentsSize; i++){
-//		bgfx::setTexture(i, lightingSamplers[i], lightingAttachments[i]);
-//	}
-	
-	DrawLightsOfType<PointLight>(components);
 	DrawLightsOfType<AmbientLight>(components);
 	DrawLightsOfType<DirectionalLight>(components);
+	DrawLightsOfType<PointLight>(components);
 	
 	//blit to view 0 using the fullscreen quad
 	for(int i = 0; i < gbufferSize; i++){

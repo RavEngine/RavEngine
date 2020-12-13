@@ -56,7 +56,7 @@ int main(int argc, char** argv){
 		profile = "metal";
 	#elif defined _WIN32
 		platform = "windows";
-		profile = "s_5";  //do not set a profile on Windows
+		profile = "s_5";
 	#elif defined __linux__
 		platform = "linux";
 		profile = "spirv";

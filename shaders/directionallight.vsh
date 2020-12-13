@@ -1,8 +1,11 @@
-$input a_position
+$input a_position, i_data0, i_data1
+$output lightdir, colorintensity
 
 #include "common.sh"
 
 void main()
 {
-	gl_Position = mul(u_modelViewProj, vec4(a_position, 1.0) );
+	colorintensity = i_data0;
+	lightdir = i_data1;
+	gl_Position = vec4(a_position, 1.0);
 }

@@ -37,15 +37,17 @@ void DirectionalLight::DebugDraw() const{
 	DebugDraw::DrawCapsule(pos->CalculateWorldMatrix(), debug_color, 1, 2);
 }
 
-void DirectionalLight::DrawVolume(int view) const{
-	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW |
-				   BGFX_STATE_BLEND_ADD);
-	
+void DirectionalLight::AddInstanceData(float* offset) const{
 	auto tr = Ref<Entity>(getOwner())->transform();
 	auto rot = glm::eulerAngles(tr->GetWorldRotation());
 	
-	LightManager::directionalLightShader->SetColorDirection({color.R,color.B,color.G,Intensity}, {static_cast<float>(rot.x),static_cast<float>(rot.y),static_cast<float>(rot.z),0});
-	LightManager::directionalLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
+	offset[0] = color.R;
+	offset[1] = color.G;
+	offset[2] = color.B;
+	offset[3] = Intensity;
+	offset[4] = rot.x;
+	offset[5] = rot.y;
+	offset[6] = rot.z;
 }
 
 void AmbientLight::DebugDraw() const{
@@ -54,11 +56,11 @@ void AmbientLight::DebugDraw() const{
 	DebugDraw::DrawSphere(pos->CalculateWorldMatrix(), debug_color, 1);
 }
 
-void AmbientLight::DrawVolume(int view) const{
-	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW |
-				   BGFX_STATE_BLEND_ADD);
-	LightManager::ambientLightShader->SetColor({color.R,color.B,color.G,Intensity});
-	LightManager::ambientLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
+void AmbientLight::AddInstanceData(float* offset) const{
+	offset[0] = color.R;
+	offset[1] = color.G;
+	offset[2] = color.B;
+	offset[3] = Intensity;
 }
 
 void PointLight::DebugDraw() const{
@@ -66,16 +68,36 @@ void PointLight::DebugDraw() const{
 	DebugDraw::DrawSphere(pos->CalculateWorldMatrix(), debug_color, CalculateRadius());
 }
 
-void PointLight::DrawVolume(int view) const{
+void PointLight::AddInstanceData(float* offset) const{
 	//scale = radius
 	auto pos = Ref<Entity>(getOwner())->transform();
 	auto radius = CalculateRadius();
 	auto worldMat = glm::scale(pos->CalculateWorldMatrix(), vector3(radius,radius,radius));
 	
+	//set [0:15] with transform matrix
+	copyMat4(glm::value_ptr(worldMat), offset);
+	
 	auto center = pos->GetWorldPosition();
 	
-	LightManager::pointLightShader->SetPosColor({static_cast<float>(center.x),static_cast<float>(center.y),static_cast<float>(center.z),radius}, {color.R,color.B,color.G,Intensity});
-	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW |
-				   BGFX_STATE_BLEND_ADD);
-	LightManager::pointLightShader->Draw(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), worldMat,view);
+	offset[16] = color.R;
+	offset[17] = color.G;
+	offset[18] = color.B;
+	offset[19] = Intensity;
+	
+	offset[20] = center.x;
+	offset[21] = center.y;
+	offset[22] = center.z;
+	offset[23] = CalculateRadius();
+}
+
+void DirectionalLight::Draw(int view){
+	LightManager::directionalLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
+}
+
+void PointLight::Draw(int view){
+	LightManager::pointLightShader->Draw(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), matrix4(),view);
+}
+
+void AmbientLight::Draw(int view){
+	LightManager::ambientLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
 }

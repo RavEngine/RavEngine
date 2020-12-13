@@ -35,7 +35,40 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	}
 	
 	void DebugDraw() const override;
-	void DrawVolume(int view) const;
+	
+	/**
+	 Structure:
+	 @code
+ [0] = color red
+ [1] = color green
+ [2] = color blue
+ [3] = intensity
+	 @endcode
+	 */
+	void AddInstanceData(float* offset) const;
+	
+	/**
+	 Calculate the Stride, or the number of bytes needed for each instance
+	 */
+	static inline constexpr size_t InstancingStride(){
+		//ambient light needs:
+			//light color (3 floats)
+			//light intensity (1 float)
+		
+		return closest_multiple_of(sizeof(float) * 4, 16);
+	}
+	
+	/**
+	 Set BGFX state needed to draw this light
+	 */
+	static inline void SetState(){
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD);
+	}
+	
+	/**
+	 Execute instanced draw call for this light type
+	 */
+	static void Draw(int view);
 };
 
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
@@ -49,7 +82,44 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 	}
 	
 	void DebugDraw() const override;
-	void DrawVolume(int view) const;
+	
+	/**
+	 Structure
+	 @code
+ [0] = color red
+ [1] = color green
+ [2] = color blue
+ [3] = intensity
+ [4] = rotation x
+ [5] = rotation y
+ [6] = rotation z
+	 @endcode
+	 */
+	void AddInstanceData(float* view) const;
+	
+	/**
+	 Set BGFX state needed to draw this light
+	 */
+	static inline void SetState(){
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD);
+	}
+	
+	/**
+	 Calculate the Stride, or the number of bytes needed for each instance
+	 */
+	static inline constexpr size_t InstancingStride(){
+		//directional light needs:
+		//light color (3 floats)
+		//light direction (3 floats)
+		//light intensity (1 float)
+		
+		return closest_multiple_of(sizeof(float) * (3+3+1), 16);
+	}
+	
+	/**
+	 Execute instanced draw call for this light type
+	 */
+	static void Draw(int view);
 };
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
@@ -61,7 +131,45 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	}
 	
 	void DebugDraw() const override;
-	void DrawVolume(int view) const;
+	
+	/**
+	 Structure
+	 @code
+	 [0:15] = transform matrix
+	 [16] = color R
+	 [17] = color G
+	 [18] = color B
+	 [19] = intensity
+	 [20] = pos x
+	 [21] = pos y
+	 [22] = pos z
+	 [23] = radius
+	 @endcode
+	 */
+	void AddInstanceData(float* offset) const;
+	
+	static inline void SetState(){
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
+	}
+	
+	/**
+	 Calculate the Stride, or the number of bytes needed for each instance
+	 */
+	static inline constexpr size_t InstancingStride(){
+		//point light needs:
+		//mvp matrix (1 float[16])
+		//light color (3 floats)
+		//light intensity (1 float)
+		//light position (3 floats)
+		//light radius (1 float)
+		
+		return closest_multiple_of(sizeof(float) * (3+3+1+1) + sizeof(float[16]), 16);
+	}
+	
+	/**
+	 Execute instanced draw call for this light type
+	 */
+	static void Draw(int view);
 private:
 	/**
 	 Caclulate the radius of the light using its current intensity
@@ -89,7 +197,6 @@ private:
 	protected:
 		LightShader(const std::string& name) : Material(name){}
 	public:
-		Vector4Uniform lightColor = Vector4Uniform("u_lightColor");
 	};
 	
 	/**
@@ -97,17 +204,12 @@ private:
 	 */
 	struct PointLightShader : public LightShader{
 		PointLightShader() : LightShader("pointlightvolume"){}
-		Vector4Uniform lightPosition = Vector4Uniform("u_lightPos");
 	};
 	/**
 	 Holds uniforms for point lights
 	 */
 	struct PointLightShaderInstance : public MaterialInstance<PointLightShader>{
 		PointLightShaderInstance(Ref<PointLightShader> m ) : MaterialInstance(m){}
-		inline void SetPosColor(const ColorRGBA& pos, const ColorRGBA& color){
-			mat->lightColor.SetValues(&color, 1);
-			mat->lightPosition.SetValues(&pos, 1);
-		}
 	};
 	
 	struct AmbientLightShader : public LightShader{
@@ -116,22 +218,14 @@ private:
 	};
 	struct AmbientLightShaderInstance : public MaterialInstance<AmbientLightShader>{
 		AmbientLightShaderInstance(Ref<AmbientLightShader> m ) : MaterialInstance(m){}
-		inline void SetColor(const ColorRGBA& color){
-			mat->lightColor.SetValues(&color,1);
-		}
 	};
 	
 	struct DirectionalLightShader : public LightShader{
 		DirectionalLightShader() : LightShader("directionallightvolume"){}
-		Vector4Uniform lightDirection = Vector4Uniform("u_lightDir");
 	};
 	
 	struct DirectionalLightShaderInstance : public MaterialInstance<DirectionalLightShader>{
 		DirectionalLightShaderInstance(Ref<DirectionalLightShader> m ) : MaterialInstance(m){}
-		inline void SetColorDirection(const ColorRGBA& color, const ColorRGBA dir){
-			mat->lightColor.SetValues(&color,1);
-			mat->lightDirection.SetValues(&dir, 1);
-		}
 	};
 	
 	static Ref<PointLightShaderInstance> pointLightShader;
