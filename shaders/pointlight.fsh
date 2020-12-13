@@ -1,4 +1,4 @@
-$input colorintensity, position
+$input colorintensity, positionradius
 
 #include "common.sh"
 #include <bgfx_shader.sh>
@@ -12,7 +12,7 @@ void main()
 	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect[2], gl_FragCoord.y / u_viewRect[3]);
 	
 	float intensity = colorintensity[3];
-	float radius = position[3];
+	float radius = positionradius[3];
 	
 	vec3 albedo = texture2D(s_albedo, texcoord);
 	vec3 normal = texture2D(s_normal, texcoord);
@@ -20,9 +20,9 @@ void main()
 	
 	//vec3 lightPosView = mul(u_modelView, vec4(position) );
 
-	vec3 toLight = pos - position;
+	vec3 toLight = pos - positionradius.xyz;
 	
-	float dst = distance(pos,position);
+	float dst = distance(pos,positionradius.xyz);
 	float denom = (dst/radius+1);
 	float attenuation = 1.0/(denom * denom);
 	

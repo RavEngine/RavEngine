@@ -76,18 +76,11 @@ void PointLight::AddInstanceData(float* offset) const{
 	
 	//set [0:15] with transform matrix
 	copyMat4(glm::value_ptr(worldMat), offset);
-	
-	auto center = pos->GetWorldPosition();
-	
+		
 	offset[16] = color.R;
 	offset[17] = color.G;
 	offset[18] = color.B;
 	offset[19] = Intensity;
-	
-	offset[20] = center.x;
-	offset[21] = center.y;
-	offset[22] = center.z;
-	offset[23] = CalculateRadius();
 }
 
 void DirectionalLight::Draw(int view){

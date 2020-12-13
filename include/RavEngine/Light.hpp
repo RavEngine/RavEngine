@@ -140,10 +140,7 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	 [17] = color G
 	 [18] = color B
 	 [19] = intensity
-	 [20] = pos x
-	 [21] = pos y
-	 [22] = pos z
-	 [23] = radius
+	 [20] = radius
 	 @endcode
 	 */
 	void AddInstanceData(float* offset) const;
@@ -160,10 +157,8 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 		//mvp matrix (1 float[16])
 		//light color (3 floats)
 		//light intensity (1 float)
-		//light position (3 floats)
-		//light radius (1 float)
 		
-		return closest_multiple_of(sizeof(float) * (3+3+1+1) + sizeof(float[16]), 16);
+		return closest_multiple_of(sizeof(float) * (3+1) + sizeof(float[16]), 16);
 	}
 	
 	/**
