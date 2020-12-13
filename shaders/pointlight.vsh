@@ -18,10 +18,10 @@ void main()
 	
 	float intensity = colorintensity[3];
 	float radius = intensity * intensity;
-	
+		
 	vec4 worldpos = instMul(model, vec4(a_position, 1.0));
 	
 	gl_Position = mul(u_viewProj, worldpos);
 	
-	positionradius = vec4(i_data0[3],i_data1[3],i_data2[3],radius);
+	positionradius = vec4(i_data3.xyz,radius);
 }
