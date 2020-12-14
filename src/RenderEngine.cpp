@@ -110,20 +110,20 @@ void DebugRender(const Im3d::DrawList& drawList){
 	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
 	const size_t verts = drawList.m_vertexCount;
 	
-	vector<VertexColor> converted;
-	converted.reserve(verts);
+	stackarray(converted, VertexColor, verts);
 	
 	for(int x = 0; x < verts; x++){
 		Im3d::VertexData d = vertexdata[x];
-		converted.push_back({d.m_positionSize.x,d.m_positionSize.y,d.m_positionSize.z,d.m_color});
-	}
-	vector<uint16_t> indices;
-	for(int i = 0; i < verts; i++){
-		indices.push_back(i);
+		converted[x] = {d.m_positionSize.x,d.m_positionSize.y,d.m_positionSize.z,d.m_color};
 	}
 	
-	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], converted.size() * sizeof(VertexColor)), pcvDecl);
-	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], indices.size() * sizeof(uint16_t)));
+	stackarray(indices, uint16_t, verts);
+		for(int i = 0; i < verts; i++){
+		indices[i] = i;
+	}
+	
+	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::makeRef(&converted[0], verts * sizeof(converted[0])), pcvDecl);
+	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::makeRef(&indices[0], verts * sizeof(indices[0])));
 			
 	auto& context = Im3d::GetContext();
 		

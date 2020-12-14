@@ -3,6 +3,7 @@
 #include "mathtypes.hpp"
 #include <RenderEngine.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "Common3D.hpp"
 
 
 using namespace std;
@@ -32,12 +33,7 @@ matrix4 Transform::CalculateWorldMatrix() const{
 		depth++;
 	}
 
-#if defined __APPLE__ || __STDC_VERSION__ >= 199901L		//Check for C99
-	matrix4 transforms[depth];		//prefer C VLA on supported systems
-#else
-	matrix4* transforms = (matrix4*)alloca(sizeof(matrix4) * depth);	//warning: alloca may not be supported in the future
-#endif
-
+	stackarray(transforms, matrix4, depth);
 
 	int tmp = 0;
 	for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){

@@ -69,3 +69,9 @@ static inline void copyMat4(const T* input, U* output, int size = 16){
 static inline constexpr int closest_multiple_of(int x, int B){
 	return ((x-1)|(B-1))+1;
 }
+
+#if defined __APPLE__ || __STDC_VERSION__ >= 199901L	//check for C99
+	#define stackarray(name, type, size) type name[size]	//prefer C VLA on supported systems
+#else
+	#define stackarray(name, type, size) (type* name = (type*)alloca(sizeof(type) * size)) //warning: alloca may not be supported in the future
+#endif

@@ -41,7 +41,7 @@ void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayer
 	auto format = bgfx::TextureFormat::RGBA8;
 
 	auto uncompressed_size = width * height * numChannels * numlayers;
-	const bgfx::Memory* textureData = (data == nullptr) ? nullptr : bgfx::copy(data, uncompressed_size);
+	const bgfx::Memory* textureData = (data == nullptr) ? nullptr : bgfx::makeRef(data, uncompressed_size);
 	texture = bgfx::createTexture2D(width,height,hasMipMaps,numlayers,format,flags,textureData);
 	
 	if(!bgfx::isValid(texture)){
