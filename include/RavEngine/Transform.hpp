@@ -13,6 +13,7 @@
 #include "mathtypes.hpp"
 #include "WeakRef.hpp"
 #include "Queryable.hpp"
+#include "Common3D.hpp"
 
 namespace RavEngine {
 	/**
@@ -21,8 +22,16 @@ namespace RavEngine {
 	class Transform : public Component, public Queryable<Transform> {
 	public:
 		typedef phmap::flat_hash_set<WeakRef<Transform>> childStore;
-		virtual ~Transform();
-		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false);
+		virtual ~Transform(){}
+		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false){
+			matrix = matrix4(1);
+			SetLocalPosition(inpos);
+			SetLocalRotation(inrot);
+			SetLocalScale(inscale);
+			isStatic = inStatic;
+			
+			Apply();
+		}
 		Transform() : Transform(vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
 
 		void SetLocalPosition(const vector3&);
@@ -36,26 +45,30 @@ namespace RavEngine {
 		void SetLocalScale(const vector3&);
 		void LocalScaleDelta(const vector3&);
 
-		vector3 Forward();
-		vector3 Right();
-		vector3 Up();
+		vector3 Forward() const;
+		vector3 Right() const;
+		vector3 Up() const;
 
-		bool HasParent();
+		inline bool HasParent() const{
+			return !parent.isNull();
+		}
 
-		vector3 GetLocalPosition();
-		vector3 GetWorldPosition();
+		vector3 GetLocalPosition() const;
+		vector3 GetWorldPosition() const;
 
-		quaternion GetLocalRotation();
-		quaternion GetWorldRotation();
+		quaternion GetLocalRotation() const;
+		quaternion GetWorldRotation() const;
 
-		vector3 GetLocalScale();
+		vector3 GetLocalScale() const;
 
 		matrix4 GenerateLocalMatrix() const;
 
 		/**
 		Apply cached transformations to matrix - for internal use only
 		*/
-		void Apply();
+		inline void Apply(){
+			matrix = CalculateWorldMatrix();
+		}
 
 		/**
 		Get the matrix list of all the parents. This does NOT include the current transform.
@@ -79,7 +92,7 @@ namespace RavEngine {
 		@returns the currently stored world matrix. This is not guarenteed to be up-to-date. 
 		To update it, call Apply()
 		*/
-		inline matrix4 GetCurrentWorldMatrix() {
+		inline matrix4 GetCurrentWorldMatrix() const{
 			return matrix;
 		}
 
@@ -106,21 +119,21 @@ namespace RavEngine {
 	/**
 	@return the vector pointing in the forward direction of this transform
 	*/
-	inline vector3 Transform::Forward() {
+	inline vector3 Transform::Forward() const{
 		return (quaternion)rotation * vector3_forward;
 	}
 
 	/**
 	@return the vector pointing in the up direction of this transform
 	*/
-	inline vector3 Transform::Up() {
+	inline vector3 Transform::Up() const{
 		return (quaternion)rotation * vector3_up;
 	}
 
 	/**
 	@return the vector pointing in the right direction of this transform
 	*/
-	inline vector3 Transform::Right() {
+	inline vector3 Transform::Right() const{
 		return (quaternion)rotation * vector3_right;
 	}
 
@@ -208,18 +221,66 @@ namespace RavEngine {
 		scale = (vector3)scale + delta;
 	}
 
-	inline vector3 Transform::GetLocalPosition()
+	inline vector3 Transform::GetLocalPosition() const
 	{
 		return position;
 	}
 
-	inline quaternion Transform::GetLocalRotation()
+	inline quaternion Transform::GetLocalRotation() const
 	{
 		return rotation;
 	}
 
-	inline vector3 Transform::GetLocalScale()
+	inline vector3 Transform::GetLocalScale() const
 	{
 		return scale;
+	}
+
+	inline matrix4 Transform::CalculateWorldMatrix() const{
+		//figure out the size
+		unsigned short depth = 0;
+		for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
+			depth++;
+		}
+		
+		stackarray(transforms, matrix4, depth);
+		
+		int tmp = 0;
+		for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
+			transforms[tmp] = p.get()->GenerateLocalMatrix();
+			++tmp;
+		}
+		
+		matrix4 mat(1);
+		for(int i = depth - 1; i >= 0; --i){
+			mat *= transforms[i];
+		}
+		mat *= GenerateLocalMatrix();
+		
+		return mat;
+	}
+
+	inline vector3 Transform::GetWorldPosition() const
+	{
+		if (!HasParent()) {
+			return GetLocalPosition();
+		}
+		auto finalMatrix = CalculateWorldMatrix();
+		
+		//finally apply the local matrix
+		return finalMatrix * vector4(GetLocalPosition(), 1);
+	}
+
+	inline quaternion Transform::GetWorldRotation() const
+	{
+		if (!HasParent()) {
+			return GetLocalRotation();
+		}
+		
+		//apply local rotation
+		auto finalRot = CalculateWorldMatrix();
+		
+		//return the result as a quaternion
+		return glm::toQuat(finalRot);
 	}
 }
