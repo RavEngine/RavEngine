@@ -9,7 +9,6 @@
 #include "Common3D.hpp"
 #include <bgfx/bgfx.h>
 #include "App.hpp"
-#include <ravtar/tarball.hpp>
 #include <typeindex>
 
 using namespace std;

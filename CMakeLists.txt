@@ -52,7 +52,6 @@ add_subdirectory("${DEPS_DIR}/etl")
 
 add_subdirectory("${DEPS_DIR}/SDL2")
 add_subdirectory("${DEPS_DIR}/tweeny")
-add_subdirectory("${DEPS_DIR}/RavTar")
 add_subdirectory("${DEPS_DIR}/rscpack")
 add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
@@ -160,7 +159,6 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"SceneQuery"
 	"SimulationController"
 	"assimp"
-	"ravtar"
 	"im3d"
 	"physfs-static"
 	#"PhysXGPU"
@@ -187,8 +185,6 @@ if (WIN32)
 	endif()
 
 endif()
-
-
 
 define_property(GLOBAL PROPERTY SC_INCLUDE_DIR
 	BRIEF_DOCS "Shader include path"
