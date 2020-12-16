@@ -201,7 +201,7 @@ RavEngine::RenderEngine::~RenderEngine()
 void RenderEngine::Draw(Ref<World> worldOwning){    
 	//get the active camera
 	auto components = worldOwning->Components();
-	auto allcams = components.GetAllComponentsOfType<CameraComponent>();
+	auto allcams = components.GetAllComponentsOfTypeFastPath<CameraComponent>();
 	
 	bgfx::setViewName(0, "Final Blit");
 	
@@ -218,20 +218,17 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::touch(2);
 	
 	//copy into backend matrix
-	float viewmat[16];
-	float projmat[16];
-	const decimalType* vS = (const decimalType*)glm::value_ptr(Material::Manager::GetCurrentViewMatrix());
-	const decimalType* pS = (const decimalType*)glm::value_ptr(Material::Manager::GetCurrentProjectionMatrix());
+	float viewmat[16], projmat[16];
     
-    copyMat4(vS, viewmat);
-    copyMat4(pS, projmat);
+    copyMat4(glm::value_ptr(Material::Manager::GetCurrentViewMatrix()), viewmat);
+    copyMat4(glm::value_ptr(Material::Manager::GetCurrentProjectionMatrix()), projmat);
 
 	bgfx::setViewTransform(0, viewmat, projmat);
     bgfx::setViewTransform(1, viewmat, projmat);
 	bgfx::setViewTransform(2, viewmat, projmat);
 	
 	//set the view transform - all entities drawn will use this matrix
-	for (auto& cam : allcams) {
+	for (const Ref<CameraComponent>& cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
 			int width,height;
@@ -248,14 +245,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(int i = 0; i < BX_COUNTOF(attachments); i++){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
-
-    //apply transforms for only entities that need to be rendered
-    auto toDraw = components.GetAllComponentsOfSubclass<RenderableComponent>();
 	
 	auto geometry = components.GetAllComponentsOfSubclass<StaticMesh>();
     bgfx::setState( BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
 	//Deferred geometry pass
-	for (auto& e : geometry) {
+	for (const Ref<StaticMesh>& e : geometry) {
         e->Draw(1);
 	}
 	

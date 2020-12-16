@@ -13,8 +13,8 @@ namespace RavEngine {
 		}
 
 		void Tick(float fpsScale, Ref<Entity> e) const override{
-			auto scripts = e->Components().GetAllComponentsOfSubclass<ScriptComponent>();
-			for (auto& script : scripts) {
+			auto scripts = e->Components().GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+			for (const Ref<ScriptComponent>& script : scripts) {
 				script->Tick(fpsScale);
 			}
 		}
