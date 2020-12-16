@@ -53,16 +53,10 @@ Create a material given a shader. Also registers it in the material manager
 */
 Material::Material(const std::string& name) : name(name) {	
 	//get all shader files for this programs
-	string dir = "/shaders/" + name + ".tar";
+	string dir = "/shaders/" + name;
 
-	auto data = App::Resources->FileContentsAt(dir.c_str());
-
-	std::istringstream istr(data);
-	Tar::TarReader reader(istr);
-
-	//get the shader code
-	auto vertex_src = reader.GetFile("vertex.bin");
-	auto fragment_src = reader.GetFile("fragment.bin");
+	auto vertex_src = App::Resources->FileContentsAt((dir + "/vertex.bin").c_str());
+	auto fragment_src = App::Resources->FileContentsAt((dir + "/fragment.bin").c_str());
 
 	//must have a vertex and a fragment shader
 	bgfx::ShaderHandle vsh = loadShader(vertex_src);

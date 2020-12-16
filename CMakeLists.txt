@@ -188,24 +188,7 @@ if (WIN32)
 
 endif()
 
-# ====================== Shader compiler =====================
 
-set(SHADERCOMPILER "${PROJECT_NAME}_shaderc_auto")
-
-FILE(GLOB AUTOSHADERC "${SHADERCOMPILER}" "src/shaderc_auto/*.cpp")
-add_executable("${SHADERCOMPILER}" ${AUTOSHADERC})
-target_include_directories("${SHADERCOMPILER}" PRIVATE "${DEPS_DIR}/cxxopts/include" "${DEPS_DIR}/json/" "${DEPS_DIR}/miniz-cpp/")
-add_dependencies("${SHADERCOMPILER}" "shaderc")
-target_link_libraries("${SHADERCOMPILER}" PRIVATE "bgfx" "ravtar")
-
-add_dependencies("${SHADERCOMPILER}" "shaderc")	# shaderc must build before auto executable so that auto shader comp can work
-
-# define shader compilation actions
-define_property(GLOBAL PROPERTY SC_COMP_NAME
-	BRIEF_DOCS "Shader compiler name"
-	FULL_DOCS "Shader compiler name"
-)
-set_property(GLOBAL PROPERTY SC_COMP_NAME "${SHADERCOMPILER}")
 
 define_property(GLOBAL PROPERTY SC_INCLUDE_DIR
 	BRIEF_DOCS "Shader include path"
@@ -224,21 +207,42 @@ set_property(GLOBAL PROPERTY ALL_SHADERS "")
 # Define a shader
 # all paths must be absolute
 function(declare_shader shader_name vertex_src fragment_src varying_src)
-	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
 	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
 
-	set(output_file "${shader_name}.tar" )
-	set(full_output_path "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${output_file}")
-	set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${full_output_path})
+	if(APPLE)
+		set(PLATFORM "osx")
+		set(PROFILE_VS "metal")
+		set(PROFILE_FS "metal")
+	elseif(MSVC)
+		set(PLATFORM "windows")
+		set(PROFILE_VS "ps_5_0")
+		set(PROFILE_FS "vs_5_0")
+	elseif(LINUX)
+		set(PLATFORM "linux")
+		set(PROFILE_VS "spirv")
+		set(PROFILE_FS "spirv")
+	endif()
+
+	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${shader_name}")
+	set(VS_OUTPUT_NAME "${OUTPUT_ROOT}/vertex.bin")
+	set(FS_OUTPUT_NAME "${OUTPUT_ROOT}/fragment.bin")
+
+	set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${VS_OUTPUT_NAME})
+	set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${FS_OUTPUT_NAME})
+
+	# compile shaders
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${full_output_path}"
+		OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
 		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}"
-		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${sc_comp_name}" -n "${shader_name}" -v "${vertex_src}" -f "${fragment_src}" -d "${varying_src}" -o ../${shader_target} -i "${sc_include_dir}"
+		COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
+		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
+		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
 		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
-		COMMENT "Compiling Shader Descriptor ${shader_name} => ${output_file}"
+		COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
 		VERBATIM
 	)
+
 endfunction()
 
 define_property(GLOBAL PROPERTY ENG_DIR
@@ -313,7 +317,7 @@ function(pack_resources)
 
 	#track all the shaders for compilation
 	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
-	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property} "RavEngine_shaderc_auto")
+	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
 	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine" "rscpack")
 
 	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.zip")
@@ -350,6 +354,3 @@ function(pack_resources)
 		)
 	endif()
 endfunction()
-
-# require rscpack and shadercompiler to build before engine
-add_dependencies("${PROJECT_NAME}" rscpack ${SHADERCOMPILER})

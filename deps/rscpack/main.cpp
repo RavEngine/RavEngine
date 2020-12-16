@@ -38,10 +38,10 @@ int main(int argc, char** argv){
 		{
 			auto shaderpack = [&resources](const path& rootshaderpath){
 				if(exists(rootshaderpath)){
-					for(const path& item : directory_iterator(rootshaderpath)){
+					for(const path& item : recursive_directory_iterator(rootshaderpath)){
 						//go inside the directory
 						if (!is_directory(item)){
-							auto inarch = unix_path((path("shaders") / item.filename()).string());
+							auto inarch = unix_path((path("shaders") / item.parent_path().filename() / item.filename()).string());
 							resources.write(item.string(), inarch);
 						}
 					}
