@@ -21,8 +21,7 @@ using namespace std::chrono;
 const float RavEngine::App::evalNormal = 60;
 Ref<VirtualFilesystem> App::Resources;
 
-SpinLock App::queue_lock;
-queue<function<void(void)>> App::main_tasks;
+moodycamel::ConcurrentQueue<function<void(void)>> App::main_tasks;
 tf::Executor App::executor;
 Ref<InputManager> App::inputManager;
 Ref<World> App::currentWorld;
@@ -91,10 +90,9 @@ int App::run(int argc, char** argv) {
 		currentWorld->Tick(scale);
 		
 		//process main thread tasks
-		while (!main_tasks.empty()){
-			auto& front = main_tasks.front();
+		std::function<void(void)> front;
+		while (main_tasks.try_dequeue(front)){
 			front();
-			main_tasks.pop();
 		}
 		
 		Renderer->Draw(currentWorld);

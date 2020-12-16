@@ -12,12 +12,12 @@
 #include "PhysicsLinkSystem.hpp"
 #include "RenderEngine.hpp"
 #include "Locked_Hashmap.hpp"
-#include <queue>
 #include <set>
 #include "SpinLock.hpp"
 #include <type_traits>
 #include "ScriptSystem.hpp"
 #include <taskflow/taskflow.hpp>
+#include <concurrentqueue.h>
 
 namespace RavEngine {
 	class Entity;
@@ -26,21 +26,13 @@ namespace RavEngine {
 	class World : public SharedObject {
 	protected:
 		SpinLock mtx;
-		SpinLock component_op_mtx;
 
 		//for adding and removing components on spawned entities
 		struct component_operation {
 			bool add = true;
 			ComponentStore store;
-
-			/**
-			Create an add / remove operation
-			@param add true if the contents of this store should be merged, or used to delete
-			@param s the component store to process
-			*/
-			component_operation(bool add, const ComponentStore& s) : add(add), store(s) {}
 		};
-		std::queue<component_operation> component_addremove;
+		moodycamel::ConcurrentQueue<component_operation> component_addremove;
 
 		//components data structure
 		ComponentStore allcomponents;
@@ -130,15 +122,11 @@ namespace RavEngine {
 		}
 
 		inline void AddComponentsSpawnedEntity(const ComponentStore& store) {
-			component_op_mtx.lock();
-			component_addremove.emplace(true,store);
-			component_op_mtx.unlock();
+			component_addremove.enqueue({true,store});
 		}
 
 		inline void RemoveComponentsSpawnedEntity(const ComponentStore& store) {
-			component_op_mtx.lock();
-			component_addremove.emplace(false,store);
-			component_op_mtx.unlock();
+			component_addremove.enqueue({false,store});
 		}
 	};
 }

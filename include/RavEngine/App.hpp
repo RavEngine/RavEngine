@@ -3,7 +3,7 @@
 #include "RenderEngine.hpp"
 #include "VirtualFileSystem.hpp"
 #include <functional>
-#include <queue>
+#include <concurrentqueue.h>
 #include "SpinLock.hpp"
 #include <thread>
 #include "ThreadPool.hpp"
@@ -51,16 +51,13 @@ namespace RavEngine {
 		 @endcode
 		 */
 		static inline void DispatchMainThread(const std::function<void(void)>& f){
-			queue_lock.lock();
-			main_tasks.push(f);
-			queue_lock.unlock();
+			main_tasks.enqueue(f);
 		}
 		
 		static Ref<InputManager> inputManager;
 		static Ref<World> currentWorld;
 	protected:
-		static SpinLock queue_lock;
-		static std::queue<std::function<void(void)>> main_tasks;
+		static moodycamel::ConcurrentQueue<std::function<void(void)>> main_tasks;
 
 		//#define LIMIT_TICK
 #ifdef LIMIT_TICK

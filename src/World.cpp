@@ -46,15 +46,14 @@ void RavEngine::World::Tick(float scale) {
 	TickECS(scale);
 
 	//process component add and removal on spawned entities
-	while (!component_addremove.empty()) {
-		auto& op = component_addremove.front();
+	component_operation op;
+	while(component_addremove.try_dequeue(op)){
 		if (op.add) {
 			allcomponents.AddComponentsFrom(op.store);
 		}
 		else {
 			allcomponents.RemoveComponentsInOtherFromThis(op.store);
 		}
-		component_addremove.pop();
 	}
 	
 	//destroy objects that are pending removal

@@ -55,6 +55,7 @@ add_subdirectory("${DEPS_DIR}/tweeny")
 add_subdirectory("${DEPS_DIR}/RavTar")
 add_subdirectory("${DEPS_DIR}/rscpack")
 add_subdirectory("${DEPS_DIR}/physfs")
+add_subdirectory("${DEPS_DIR}/concurrentqueue")
 
 # taskflow
 SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "")
@@ -171,6 +172,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"bx"
 	"bimg"
 	"Recast"
+	"concurrentqueue"
 )
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 

@@ -11,8 +11,10 @@ rm -r SDL2/test
 rm -r assimp/samples
 
 # recast
-rm -r recastnavigation/RecastDemo
-rm -r recastnavigation/Tests
+rm -r recastnavigation/RecastDemo recastnavigation/Tests
 
 # taskflow
 rm -r taskflow/3rd-party taskflow/benchmarks taskflow/docs taskflow/doxygen taskflow/examples taskflow/image taskflow/legacy taskflow/sandbox taskflow/unittests
+
+# concurrentqueue
+rm -r concurrentqueue/benchmarks concurrentqueue/build concurrentqueue/c_api concurrentqueue/tests
