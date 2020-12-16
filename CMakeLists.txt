@@ -211,12 +211,18 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 		set(PROFILE_FS "metal")
 	elseif(MSVC)
 		set(PLATFORM "windows")
-		set(PROFILE_VS "ps_5_0")
-		set(PROFILE_FS "vs_5_0")
+		set(PROFILE_VS "vs_5_0")
+		set(PROFILE_FS "ps_5_0")
 	elseif(LINUX)
 		set(PLATFORM "linux")
 		set(PROFILE_VS "spirv")
 		set(PROFILE_FS "spirv")
+	endif()
+	
+	if (APPLE OR LINUX)
+		SET(SHADERC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc")
+	elseif(MSVC)
+		SET(SHADERC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc.exe")
 	endif()
 
 	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${shader_name}")
@@ -230,10 +236,10 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
-		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}"
+		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "shaderc"
 		COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
-		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
+		COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
+		COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
 		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 		COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
 		VERBATIM
@@ -314,7 +320,7 @@ function(pack_resources)
 	#track all the shaders for compilation
 	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
-	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine" "rscpack")
+	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine" "rscpack" "shaderc")
 
 	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.zip")
 

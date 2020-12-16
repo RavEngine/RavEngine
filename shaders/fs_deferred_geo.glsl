@@ -9,7 +9,6 @@ uniform vec4 albedoColor;
 
 void main()
 {
-	//PBR material = PBR(,v_normal,v_worldpos);
 	PBR material = make_mat();
 	material.color = toLinear(texture2D(s_albedoTex, v_texcoord0) ) * albedoColor;
 	material.normal = v_normal;
