@@ -154,15 +154,18 @@ RenderEngine::RenderEngine() {
 	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
 	BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
 	BGFX_SAMPLER_V_CLAMP;
-	
-	//create textures
-	attachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[1] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[2] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
-	attachments[3] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::D32, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+
+	//create framebuffers
+	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
+		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	};
+	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::BGRA8, bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::D32};
+	for (int i = 0; i < BX_COUNTOF(formats); i++) {
+		attachments[i] = gen_framebuffer(formats[i]);
+	}
 
 	//lighting textures - light color, and share depth
-	lightingAttachments[0] = bgfx::createTexture2D(bgfx::BackbufferRatio::Half, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA32F);
 	lightingAttachments[1] = attachments[3];
 	
 	for(int i = 0; i < gbufferSize; i++){
@@ -170,11 +173,12 @@ RenderEngine::RenderEngine() {
 			throw runtime_error("Failed to create gbuffer attachment");
 		}
 	}
-    
-	gBufferSamplers[0] = bgfx::createUniform("s_albedo",bgfx::UniformType::Sampler);
-	gBufferSamplers[1] = bgfx::createUniform("s_normal",bgfx::UniformType::Sampler);
-	gBufferSamplers[2] = bgfx::createUniform("s_pos",bgfx::UniformType::Sampler);
-	gBufferSamplers[3] = bgfx::createUniform("s_depth",bgfx::UniformType::Sampler);
+
+	//create samplers
+	constexpr char* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth" };
+	for (int i = 0; i < BX_COUNTOF(buffersamplers); i++) {
+		gBufferSamplers[i] = bgfx::createUniform(buffersamplers[i], bgfx::UniformType::Sampler);
+	}
 	
 	lightingSamplers[0] = bgfx::createUniform("s_light", bgfx::UniformType::Sampler);
 	lightingSamplers[1] = gBufferSamplers[3];

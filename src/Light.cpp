@@ -21,8 +21,8 @@ void LightManager::Init(){
 	ambientLightShader = new AmbientLightShaderInstance(Material::Manager::AccessMaterialOfType<AmbientLightShader>());
 	directionalLightShader = new DirectionalLightShaderInstance(Material::Manager::AccessMaterialOfType<DirectionalLightShader>());
 	
-	const uint16_t indices[] = {0,2,1, 2,3,1};
-	const Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
+	constexpr uint16_t indices[] = {0,2,1, 2,3,1};
+	constexpr Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
 	bgfx::VertexLayout vl;
 	vl.begin()
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)

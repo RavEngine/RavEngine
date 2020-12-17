@@ -87,8 +87,6 @@ namespace RavEngine {
 				i += stride;
 			}
 			
-			float* dbgbufferdata = (float*)idb.data;
-
 			bgfx::setInstanceDataBuffer(&idb);
 			
 			//set the required state for this light type

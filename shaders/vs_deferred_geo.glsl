@@ -4,7 +4,7 @@ $output v_normal, v_texcoord0, v_worldpos
 #include "common.sh"
 #include <bgfx_shader.sh>
 
-//because you can't inverse a matrix in GLSL - why
+//because you can't inverse a matrix in HLSL - why
 mat4 inverse(mat4 m) {
 	float n11 = m[0][0], n12 = m[1][0], n13 = m[2][0], n14 = m[3][0];
 	float n21 = m[0][1], n22 = m[1][1], n23 = m[2][1], n24 = m[3][1];
