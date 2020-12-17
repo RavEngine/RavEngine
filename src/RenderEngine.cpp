@@ -129,7 +129,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 		
 	auto& drawmatrix = context.getMatrix();
 		
-	mat->Draw(vbuf,ibuf,matrix4(1));
+	mat->Draw(vbuf,ibuf,matrix4(1),1);
 	bgfx::destroy(vbuf);
 	bgfx::destroy(ibuf);
 #endif
@@ -144,6 +144,11 @@ RenderEngine::RenderEngine() {
 	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());
 	auto& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
+	
+	int width, height;
+	SDL_GL_GetDrawableSize(window, &width, &height);
+	dims.width = width;
+	dims.height = height;
 	
 	//vertex format
 	pcvDecl.begin()
@@ -207,29 +212,31 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto components = worldOwning->Components();
 	auto allcams = components.GetAllComponentsOfTypeFastPath<CameraComponent>();
 	
-	bgfx::setViewName(0, "Final Blit");
+	bgfx::setViewName(Views::FinalBlit, "Final Blit");
 	
-	bgfx::setViewName(1, "Deferred Geometry");
-	bgfx::setViewFrameBuffer(1, gBuffer);
-	bgfx::setViewClear(1, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
-	bgfx::setViewRect(1, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::touch(1);
+	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
+		bgfx::setViewRect(view, 0, 0, dims.width, dims.height);
+	}
 	
-	bgfx::setViewName(2, "Lighting Volumes");
-	bgfx::setViewFrameBuffer(2, lightingBuffer);
-	bgfx::setViewClear(2, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
-	bgfx::setViewRect(2, 0, 0, VideoSettings.width, VideoSettings.height);
-	bgfx::touch(2);
+	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
+	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
+	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
+	bgfx::touch(Views::DeferredGeo);
+	
+	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
+	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
+	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
+	bgfx::touch(Views::Lighting);
 	
 	//copy into backend matrix
 	float viewmat[16], projmat[16];
     
     copyMat4(glm::value_ptr(Material::Manager::GetCurrentViewMatrix()), viewmat);
     copyMat4(glm::value_ptr(Material::Manager::GetCurrentProjectionMatrix()), projmat);
-
-	bgfx::setViewTransform(0, viewmat, projmat);
-    bgfx::setViewTransform(1, viewmat, projmat);
-	bgfx::setViewTransform(2, viewmat, projmat);
+	
+	for(int i = 0; i < Views::Count; i++){
+		bgfx::setViewTransform(i, viewmat, projmat);
+	}
 	
 	//set the view transform - all entities drawn will use this matrix
 	for (const Ref<CameraComponent>& cam : allcams) {
@@ -254,7 +261,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     bgfx::setState( BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
 	//Deferred geometry pass
 	for (const Ref<StaticMesh>& e : geometry) {
-        e->Draw(1);
+        e->Draw(Views::DeferredGeo);
 	}
 	
 	DrawLightsOfType<AmbientLight>(components);
@@ -266,7 +273,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	bgfx::setTexture(3, lightingSamplers[0], lightingAttachments[0]);
-    blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,0);
+    blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
 #ifdef _DEBUG
 	Im3d::GetContext().draw();
@@ -289,6 +296,8 @@ void RenderEngine::resize(){
 	SDL_GL_GetDrawableSize(window, &width, &height);
 	bgfx::reset(width, height, GetResetFlags());
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+	dims.width = width;
+	dims.height = height;
 }
 
 /**
@@ -313,7 +322,7 @@ const string RenderEngine::currentBackend(){
 }
 
 uint32_t RenderEngine::GetResetFlags(){
-	return (VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE) | BGFX_RESET_HIDPI | BGFX_RESET_MSAA_X8;
+	return (VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
 }
 
 /**
@@ -328,7 +337,7 @@ void RenderEngine::Init()
 	}
 	SDL_Init(0);
 	SDL_Init(SDL_INIT_GAMECONTROLLER);
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	
 	bgfx::Init settings;
 	
@@ -381,8 +390,7 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 	bgfx::TextureHandle textures[2];
 	uint8_t attachments = 0;
 	
-	const uint64_t samplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT |
-	BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
+	const uint64_t samplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT | BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
 	
 	bgfx::TextureFormat::Enum format =
 	hdr ? bgfx::TextureFormat::RGBA16F : bgfx::TextureFormat::BGRA8; // BGRA is often faster (internal GPU format)
@@ -395,8 +403,7 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 		//bgfx::TextureFormat::Enum depthFormat = findDepthFormat(BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
 		bgfx::TextureFormat::Enum depthFormat = bgfx::TextureFormat::D32F;
 		assert(depthFormat != bgfx::TextureFormat::Enum::Count);
-		textures[attachments++] = bgfx::createTexture2D(
-														bgfx::BackbufferRatio::Equal, false, 1, depthFormat, BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
+		textures[attachments++] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, depthFormat, BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
 	}
 	
 	bgfx::FrameBufferHandle fb = bgfx::createFrameBuffer(attachments, textures, true);

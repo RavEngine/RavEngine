@@ -61,6 +61,20 @@ namespace RavEngine {
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
+		//to reduce magic numbers
+		struct Views{
+			enum{
+				FinalBlit = 0,
+				DeferredGeo,
+				Lighting,
+				Count
+			};
+		};
+		
+		struct dim{
+			int width, height;
+		} dims;
+		
 		template<typename T>
 		inline void DrawLightsOfType(ComponentStore& components){
 			//must set before changing shaders
@@ -93,7 +107,8 @@ namespace RavEngine {
 			T::SetState();
 			
 			//execute instance draw call
-			T::Draw(2);	//view 2 is the lighting pass
+			T::Draw(Views::Lighting);	//view 2 is the lighting pass
 		}
+	
     };
 }
