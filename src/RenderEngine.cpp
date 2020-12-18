@@ -197,13 +197,10 @@ RenderEngine::RenderEngine() {
 	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
 	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
 	
-	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
-	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
 	
 	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
-
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -220,6 +217,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
 		bgfx::setViewRect(view, 0, 0, dims.width, dims.height);
 	}
+	
+	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
+	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
 	
 	bgfx::touch(Views::DeferredGeo);
 	bgfx::touch(Views::Lighting);
