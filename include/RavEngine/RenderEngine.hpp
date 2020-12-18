@@ -65,9 +65,7 @@ namespace RavEngine {
 		bgfx::FrameBufferHandle lightingBuffer;	//for lighting, shares depth with main
 		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
 		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize];
-		
-		bgfx::FrameBufferHandle finalBuffer;	//for final blit, reuses depth 
-		
+					
         static bgfx::VertexBufferHandle screenSpaceQuadVert;
         static bgfx::IndexBufferHandle screenSpaceQuadInd;
 				

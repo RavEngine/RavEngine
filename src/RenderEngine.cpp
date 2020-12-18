@@ -189,11 +189,6 @@ RenderEngine::RenderEngine() {
 	
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
 	
-	//create final frame buffer
-	bgfx::TextureHandle finalBufferAttachments[2] = {gen_framebuffer(bgfx::TextureFormat::BGRA8), attachments[3]};	//reusing depth
-	
-	//finalBuffer = bgfx::createFrameBuffer(2, finalBufferAttachments, true);
-	
 	if(!bgfx::isValid(gBuffer)){
 		throw runtime_error("Failed to create gbuffer");
 	}
@@ -205,6 +200,7 @@ RenderEngine::RenderEngine() {
 	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
 	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
 	
+	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
 
@@ -272,11 +268,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	DrawLightsOfType<PointLight>(components);
 	
 	//blit to view 0 using the fullscreen quad
-	for(int i = 0; i < gbufferSize; i++){
-		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-	}
-	bgfx::setTexture(3, lightingSamplers[0], lightingAttachments[0]);
-	bgfx::setState(BGFX_STATE_WRITE_RGB);	//don't clear depth, debug wireframes are drawn forward-style afterwards
+	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
+	bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
+	
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
 #ifdef _DEBUG
@@ -288,8 +283,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 #ifdef _DEBUG
 	Im3d::NewFrame();
-	Im3d::AppData& data = Im3d::GetAppData();
-	data.drawCallback = &DebugRender;
 #endif
 	bgfx::dbgTextClear();
 }
@@ -382,6 +375,11 @@ void RenderEngine::Init()
 	
 	//init lights
 	LightManager::Init();
+	
+#ifdef _DEBUG
+	Im3d::AppData& data = Im3d::GetAppData();
+	data.drawCallback = &DebugRender;
+#endif
 }
 
 
