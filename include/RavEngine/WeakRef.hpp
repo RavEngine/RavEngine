@@ -7,6 +7,7 @@
 
 # pragma once
 #include <type_traits>
+#include <functional>
 
 namespace RavEngine {
     class SharedObject;
