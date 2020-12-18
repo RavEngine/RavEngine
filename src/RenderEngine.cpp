@@ -160,7 +160,7 @@ RenderEngine::RenderEngine() {
 	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
 		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	};
-	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::BGRA8, bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::D32};
+	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::BGRA8, bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::D32F};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
 		attachments[i] = gen_framebuffer(formats[i]);
 	}
@@ -176,7 +176,7 @@ RenderEngine::RenderEngine() {
 	}
 
 	//create samplers
-	constexpr char* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth" };
+	constexpr char* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth"};
 	for (int i = 0; i < BX_COUNTOF(buffersamplers); i++) {
 		gBufferSamplers[i] = bgfx::createUniform(buffersamplers[i], bgfx::UniformType::Sampler);
 	}
@@ -257,9 +257,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
 	auto geometry = components.GetAllComponentsOfSubclass<StaticMesh>();
-    bgfx::setState( BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK);
+   
 	//Deferred geometry pass
 	for (const Ref<StaticMesh>& e : geometry) {
+		bgfx::setState( (BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) );
         e->Draw(Views::DeferredGeo);
 	}
 	

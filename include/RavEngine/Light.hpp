@@ -62,7 +62,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	 Set BGFX state needed to draw this light
 	 */
 	static inline void SetState(){
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD);
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
 	}
 	
 	/**
@@ -101,7 +101,7 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 	 Set BGFX state needed to draw this light
 	 */
 	static inline void SetState(){
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD);
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
 	}
 	
 	/**

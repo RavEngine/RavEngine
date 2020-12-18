@@ -7,5 +7,5 @@ void main()
 {
 	colorintensity = i_data0;
 	lightdir = i_data1;
-	gl_Position = vec4(a_position, 1.0);
+	gl_Position = vec4(a_position.xy,1, 1.0);	//depth = 1
 }
