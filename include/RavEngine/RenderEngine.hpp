@@ -35,6 +35,16 @@ namespace RavEngine {
 			int width = 960; int height = 540;
 			bool vsync = true;
 		} VideoSettings;
+		
+		//to reduce magic numbers
+		struct Views{
+			enum{
+				FinalBlit = 0,
+				DeferredGeo,
+				Lighting,
+				Count
+			};
+		};
 						
     protected:
 		static SDL_Window* window;
@@ -55,21 +65,14 @@ namespace RavEngine {
 		bgfx::FrameBufferHandle lightingBuffer;	//for lighting, shares depth with main
 		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
 		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize];
-        
+		
+		bgfx::FrameBufferHandle finalBuffer;	//for final blit, reuses depth 
+		
         static bgfx::VertexBufferHandle screenSpaceQuadVert;
         static bgfx::IndexBufferHandle screenSpaceQuadInd;
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
-		//to reduce magic numbers
-		struct Views{
-			enum{
-				FinalBlit = 0,
-				DeferredGeo,
-				Lighting,
-				Count
-			};
-		};
 		
 		struct dim{
 			int width, height;

@@ -108,7 +108,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 	}
 	//perform drawing here
 	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
-	const size_t verts = drawList.m_vertexCount;
+	const auto verts = drawList.m_vertexCount;
 	
 	stackarray(converted, VertexColor, verts);
 	
@@ -122,14 +122,10 @@ void DebugRender(const Im3d::DrawList& drawList){
 		indices[i] = i;
 	}
 	
-	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::makeRef(&converted[0], verts * sizeof(converted[0])), pcvDecl);
-	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::makeRef(&indices[0], verts * sizeof(indices[0])));
-			
-	auto& context = Im3d::GetContext();
+	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], verts * sizeof(converted[0])), pcvDecl);
+	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], verts * sizeof(indices[0])));
 		
-	auto& drawmatrix = context.getMatrix();
-		
-	mat->Draw(vbuf,ibuf,matrix4(1),1);
+	mat->Draw(vbuf,ibuf,matrix4(1),RenderEngine::Views::FinalBlit);
 	bgfx::destroy(vbuf);
 	bgfx::destroy(ibuf);
 #endif
@@ -193,9 +189,25 @@ RenderEngine::RenderEngine() {
 	
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
 	
+	//create final frame buffer
+	bgfx::TextureHandle finalBufferAttachments[2] = {gen_framebuffer(bgfx::TextureFormat::BGRA8), attachments[3]};	//reusing depth
+	
+	//finalBuffer = bgfx::createFrameBuffer(2, finalBufferAttachments, true);
+	
 	if(!bgfx::isValid(gBuffer)){
 		throw runtime_error("Failed to create gbuffer");
 	}
+	
+	bgfx::setViewName(Views::FinalBlit, "Final Blit");
+	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
+	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
+	
+	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
+	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
+	
+	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
+	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
+
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -208,24 +220,12 @@ RavEngine::RenderEngine::~RenderEngine()
  Render one frame using the current state of every object in the world
  */
 void RenderEngine::Draw(Ref<World> worldOwning){    
-	//get the active camera
-	auto components = worldOwning->Components();
-	auto allcams = components.GetAllComponentsOfTypeFastPath<CameraComponent>();
-	
-	bgfx::setViewName(Views::FinalBlit, "Final Blit");
-	
+
 	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
 		bgfx::setViewRect(view, 0, 0, dims.width, dims.height);
 	}
 	
-	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
-	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
-	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::touch(Views::DeferredGeo);
-	
-	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
-	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
-	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
 	bgfx::touch(Views::Lighting);
 	
 	//copy into backend matrix
@@ -234,11 +234,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     copyMat4(glm::value_ptr(Material::Manager::GetCurrentViewMatrix()), viewmat);
     copyMat4(glm::value_ptr(Material::Manager::GetCurrentProjectionMatrix()), projmat);
 	
+	//set the view transform - all entities drawn will use this matrix
 	for(int i = 0; i < Views::Count; i++){
 		bgfx::setViewTransform(i, viewmat, projmat);
 	}
 	
-	//set the view transform - all entities drawn will use this matrix
+	//get the active camera
+	auto components = worldOwning->Components();
+	auto allcams = components.GetAllComponentsOfTypeFastPath<CameraComponent>();
 	for (const Ref<CameraComponent>& cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
@@ -273,6 +276,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	bgfx::setTexture(3, lightingSamplers[0], lightingAttachments[0]);
+	bgfx::setState(BGFX_STATE_WRITE_RGB);	//don't clear depth, debug wireframes are drawn forward-style afterwards
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
 #ifdef _DEBUG
@@ -357,10 +361,7 @@ void RenderEngine::Init()
 	
 	// Enable debug text.
 	bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
-	
-	// Set view 0 clear state.
-	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
-	
+		
 	bgfx::reset(width, height, GetResetFlags());
 	
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
@@ -369,11 +370,10 @@ void RenderEngine::Init()
 	
 	//create screenspace quad
 	const uint16_t indices[] = {0,2,1, 2,3,1};
-	const VertexUV vertices[] = {{-1,-1,0,0,1}, {-1,1,0,0,0}, {1,-1,0,1,1}, {1,1,0,1,0}};
+	const Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
 	bgfx::VertexLayout vl;
 	vl.begin()
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
 	.end();
 	
 	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
@@ -395,8 +395,7 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 	bgfx::TextureFormat::Enum format =
 	hdr ? bgfx::TextureFormat::RGBA16F : bgfx::TextureFormat::BGRA8; // BGRA is often faster (internal GPU format)
 	assert(bgfx::isTextureValid(0, false, 1, format, BGFX_TEXTURE_RT | samplerFlags));
-	textures[attachments++] =
-	bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | samplerFlags);
+	textures[attachments++] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | samplerFlags);
 	
 	if(depth)
 	{
