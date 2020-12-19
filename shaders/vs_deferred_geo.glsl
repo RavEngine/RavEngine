@@ -49,6 +49,6 @@ void main()
 	//convert normal to world space
 	v_normal = normalize(mul(transpose(inverse(u_model[0])),a_normal));
 	v_texcoord0 = a_texcoord0;
-    v_worldpos = a_position;
+	v_worldpos = mul(u_model[0] ,vec4(a_position,1)).xyz;
 	gl_Position = mul(u_modelViewProj, vec4(a_position, 1.0));
 }

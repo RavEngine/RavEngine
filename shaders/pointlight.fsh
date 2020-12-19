@@ -18,19 +18,16 @@ void main()
 	vec3 normal = texture2D(s_normal, texcoord);
 	vec3 pos = texture2D(s_pos, texcoord);
 	
-	//vec3 lightPosView = mul(u_modelView, vec4(position) );
-
-	vec3 toLight = pos - positionradius.xyz;
+	vec3 toLight = positionradius.xyz - pos;
 	
 	float dst = distance(pos,positionradius.xyz);
-	float denom = (dst/radius+1);
-	float attenuation = 1.0/(denom * denom);
+	float attenuation = sqrt(radius/(dst*dst));
 	
 	toLight = normalize(toLight);
 	
 	float nDotL = max(dot(normal, toLight), 0);
 	
 	vec3 diffuseLight = albedo * nDotL;
-	
-	gl_FragData[0] = intensity * attenuation * vec4(diffuseLight, 1.0) * colorintensity;
+		
+	gl_FragData[0] = vec4(intensity * attenuation * colorintensity.xyz * diffuseLight, 1.0);
 }

@@ -65,15 +65,15 @@ void AmbientLight::AddInstanceData(float* offset) const{
 
 void PointLight::DebugDraw() const{
 	auto pos = Ref<Entity>(getOwner())->transform();
-	DebugDraw::DrawSphere(pos->CalculateWorldMatrix(), debug_color, CalculateRadius());
+	DebugDraw::DrawSphere(pos->CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
 }
 
 void PointLight::AddInstanceData(float* offset) const{
 	//scale = radius
-	auto pos = Ref<Entity>(getOwner())->transform();
+	auto trns = Ref<Entity>(getOwner())->transform();
 	auto radius = CalculateRadius();
-	auto worldMat = glm::scale(pos->CalculateWorldMatrix(), vector3(radius,radius,radius));
-	
+	auto worldMat = glm::scale(trns->CalculateWorldMatrix(), vector3(radius,radius,radius));
+			
 	//set [0:15] with transform matrix
 	copyMat4(glm::value_ptr(worldMat), offset);
 		
