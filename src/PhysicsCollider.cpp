@@ -84,5 +84,5 @@ void SphereCollider::DebugDraw(const color_t color) const{
 }
 
 void CapsuleCollider::DebugDraw(const color_t color) const{
-	DebugDraw::DrawCapsule(CalculateWorldMatrix(), color, radius, halfHeight * 2);
+	DebugDraw::DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , color, radius, halfHeight * 2);
 }

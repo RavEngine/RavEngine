@@ -51,7 +51,7 @@ void DebugDraw::DrawSphere(const matrix4 &transform, const color_t c, decimalTyp
 
 void DebugDraw::DrawCapsule(const matrix4 &transform, const color_t color, decimalType radius, decimalType height){
 #ifdef _DEBUG
-    DrawHelper(transform, [&]{
+	DrawHelper(transform, [&]{
         Im3d::SetColor(color);
         Im3d::DrawCapsule(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
     });

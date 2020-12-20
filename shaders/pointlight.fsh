@@ -18,12 +18,10 @@ void main()
 	vec3 normal = texture2D(s_normal, texcoord);
 	vec3 pos = texture2D(s_pos, texcoord);
 	
-	vec3 toLight = positionradius.xyz - pos;
+	vec3 toLight = normalize(positionradius.xyz - pos);
 	
 	float dst = distance(pos,positionradius.xyz);
-	float attenuation = sqrt(radius/(dst*dst));
-	
-	toLight = normalize(toLight);
+	float attenuation = (radius/(dst*dst));
 	
 	float nDotL = max(dot(normal, toLight), 0);
 	
