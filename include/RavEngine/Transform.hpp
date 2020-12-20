@@ -283,12 +283,9 @@ namespace RavEngine {
 		//decompose the matrix to extract the rotation
 		quaternion finalrot;
 		
-		vector3 scale;
-		vector3 trans;
-		vector3 skew;
-		vector4 persp;
-		
-		glm::decompose(finalMatrix, scale, finalrot, trans, skew, persp);
+		vector3 t;
+		vector4 p;
+		glm::decompose(finalMatrix, t, finalrot, t, t, p);
 		return finalrot;
 	}
 }

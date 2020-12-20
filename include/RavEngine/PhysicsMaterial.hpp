@@ -23,7 +23,7 @@ namespace RavEngine {
 
 	class PhysicsMaterial : public SharedObject {
 	public:
-		PhysicsMaterial(double sf=1, double df=1, double r=1);
+		PhysicsMaterial(double sf=1, double df=1, double r	=1);
 		virtual ~PhysicsMaterial();
 
 		void setStaticFriction(double);

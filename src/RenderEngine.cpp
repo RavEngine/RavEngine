@@ -95,12 +95,12 @@ void DebugRender(const Im3d::DrawList& drawList){
 			bgfx::setState(BGFX_STATE_DEFAULT);
 			break;
 		case Im3d::DrawPrimitive_Lines:
-			bgfx::setState(0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_LINES);
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_LINES);
 			//set BGFX state to lines
 			break;
 		case Im3d::DrawPrimitive_Points:
 			//set BGFX state to points
-			bgfx::setState(0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_POINTS);
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_POINTS);
 			break;
 		default:
 			throw runtime_error("Invalid Im3d state");
@@ -124,7 +124,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 	
 	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], verts * sizeof(converted[0])), pcvDecl);
 	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], verts * sizeof(indices[0])));
-		
+
 	mat->Draw(vbuf,ibuf,matrix4(1),RenderEngine::Views::FinalBlit);
 	bgfx::destroy(vbuf);
 	bgfx::destroy(ibuf);

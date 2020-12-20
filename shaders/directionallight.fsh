@@ -15,11 +15,11 @@ void main()
 	vec3 albedo = texture2D(s_albedo, texcoord);
 	vec3 normal = texture2D(s_normal, texcoord);
 	
-	vec3 toLight = normalize(-lightdir.xyz);
+	vec3 toLight = normalize(lightdir.xyz);
 	
 	float nDotL = max(dot(normal, toLight), 0);
 	
 	vec3 diffuseLight = albedo * nDotL;
-			
+	
 	gl_FragData[0] = vec4(intensity * colorintensity.xyz * diffuseLight, 1.0);
 }

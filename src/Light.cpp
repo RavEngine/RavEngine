@@ -38,9 +38,7 @@ void DirectionalLight::DebugDraw() const{
 }
 
 void DirectionalLight::AddInstanceData(float* offset) const{
-	auto r = Ref<Entity>(getOwner());
-	auto tr = r->transform();
-	auto rot = tr->GetWorldRotation() * r->transform()->Forward();
+	auto rot = Ref<Entity>(getOwner())->transform()->Up();
 	
 	offset[0] = color.R;
 	offset[1] = color.G;
