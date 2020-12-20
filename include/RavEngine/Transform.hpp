@@ -14,6 +14,7 @@
 #include "WeakRef.hpp"
 #include "Queryable.hpp"
 #include "Common3D.hpp"
+#include "glm/gtx/matrix_decompose.hpp"
 
 namespace RavEngine {
 	/**
@@ -213,7 +214,6 @@ namespace RavEngine {
 	@param newScale the new size of this object in local (parent) space
 	*/
 	inline void Transform::SetLocalScale(const vector3& newScale) {
-		//must undo current scale then scale to new size
 		scale = newScale;
 	}
 
@@ -268,7 +268,7 @@ namespace RavEngine {
 		auto finalMatrix = CalculateWorldMatrix();
 		
 		//finally apply the local matrix
-		return finalMatrix * vector4(GetLocalPosition(), 1);
+		return finalMatrix * vector4(0,0,0, 1);
 	}
 
 	inline quaternion Transform::GetWorldRotation() const
@@ -278,9 +278,17 @@ namespace RavEngine {
 		}
 		
 		//apply local rotation
-		auto finalRot = CalculateWorldMatrix();
+		auto finalMatrix = CalculateWorldMatrix();
 		
-		//return the result as a quaternion
-		return glm::toQuat(finalRot);
+		//decompose the matrix to extract the rotation
+		quaternion finalrot;
+		
+		vector3 scale;
+		vector3 trans;
+		vector3 skew;
+		vector4 persp;
+		
+		glm::decompose(finalMatrix, scale, finalrot, trans, skew, persp);
+		return finalrot;
 	}
 }
