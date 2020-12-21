@@ -34,7 +34,7 @@ public:
 	/**
 	 * @return true if this uniform is valid and therefore safe to use
 	 */
-	inline bool IsValid(){
+	inline bool IsValid() const{
 		return bgfx::isValid(handle);
 	}
 	

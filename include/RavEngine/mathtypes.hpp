@@ -29,12 +29,6 @@ typedef glm::dmat3x3 matrix3;
 
 typedef double decimalType;
 
-//printing types
-//inline std::ostream& operator<<(std::ostream& os, const vector3& vec) {
-//	os << "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
-//	return os;
-//}
-
 #else
 //a float 3-component vector
 typedef glm::vec3 vector3;

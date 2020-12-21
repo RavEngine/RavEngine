@@ -32,13 +32,13 @@ namespace RavEngine {
 		void setFrictionCombineMode(PhysicsCombineMode);
 		void setRestitutionCombineMode(PhysicsCombineMode);
 
-		double getStaticFriction();
-		double getDynamicFriction();
-		double getRestitution();
-		PhysicsCombineMode getFrictionCombineMode();
-		PhysicsCombineMode getRestitutionCombineMode();
+		double getStaticFriction() const;
+		double getDynamicFriction() const ;
+		double getRestitution() const;
+		PhysicsCombineMode getFrictionCombineMode() const;
+		PhysicsCombineMode getRestitutionCombineMode() const;
 
-		physx::PxMaterial* const getPhysXmat() {
+		inline physx::PxMaterial* const getPhysXmat() const {
 			return mat;
 		}
 

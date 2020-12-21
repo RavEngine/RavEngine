@@ -42,7 +42,7 @@ RavEngine::PhysicsBodyComponent::~PhysicsBodyComponent()
 	}
 }
 
-vector3 PhysicsBodyComponent::getPos() {
+vector3 PhysicsBodyComponent::getPos() const {
 	auto pos = rigidActor->getGlobalPose();
 	return vector3(pos.p.x, pos.p.y, pos.p.z);
 }
@@ -51,7 +51,7 @@ void PhysicsBodyComponent::setPos(const vector3& pos) {
 	rigidActor->setGlobalPose(PxTransform(PxVec3(pos.x, pos.y, pos.z),rigidActor->getGlobalPose().q));
 }
 
-quaternion PhysicsBodyComponent::getRot() {
+quaternion PhysicsBodyComponent::getRot() const {
 	auto rot = rigidActor->getGlobalPose();
 	return quaternion(rot.q.w, rot.q.x,rot.q.y,rot.q.z);
 }
@@ -69,7 +69,7 @@ void RavEngine::PhysicsBodyComponent::SetGravityEnabled(bool state)
 	rigidActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY,state);
 }
 
-bool RavEngine::PhysicsBodyComponent::GetGravityEnabled()
+bool RavEngine::PhysicsBodyComponent::GetGravityEnabled() const
 {
 	return rigidActor->getActorFlags() & PxActorFlag::eDISABLE_GRAVITY;
 }
@@ -83,7 +83,7 @@ void RavEngine::PhysicsBodyComponent::SetSleepNotificationsEnabled(bool state)
 	rigidActor->setActorFlag(PxActorFlag::eSEND_SLEEP_NOTIFIES, state);
 }
 
-bool RavEngine::PhysicsBodyComponent::GetSleepNotificationsEnabled()
+bool RavEngine::PhysicsBodyComponent::GetSleepNotificationsEnabled() const
 {
 	return rigidActor->getActorFlags() & PxActorFlag::eSEND_SLEEP_NOTIFIES;
 }
@@ -98,7 +98,7 @@ void RavEngine::PhysicsBodyComponent::SetSimulationEnabled(bool state)
 	rigidActor->setActorFlag(PxActorFlag::eDISABLE_SIMULATION,state);
 }
 
-bool RavEngine::PhysicsBodyComponent::GetSimulationEnabled()
+bool RavEngine::PhysicsBodyComponent::GetSimulationEnabled() const
 {
 	return rigidActor->getActorFlags() & PxActorFlag::eDISABLE_SIMULATION;
 }
@@ -108,13 +108,13 @@ RigidBodyDynamicComponent::~RigidBodyDynamicComponent() {
 	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it.
 }
 
-vector3 RavEngine::RigidBodyDynamicComponent::GetLinearVelocity()
+vector3 RavEngine::RigidBodyDynamicComponent::GetLinearVelocity() const
 {
 	auto vel = static_cast<PxRigidBody*>(rigidActor)->getLinearVelocity();
 	return vector3(vel.x,vel.y,vel.z);
 }
 
-vector3 RavEngine::RigidBodyDynamicComponent::GetAngularVelocity()
+vector3 RavEngine::RigidBodyDynamicComponent::GetAngularVelocity() const
 {
 	auto vel = static_cast<PxRigidBody*>(rigidActor)->getAngularVelocity();
 	return vector3(vel.x,vel.y,vel.z);
@@ -138,6 +138,14 @@ Set the angular velocity of the physics body
 void RavEngine::RigidBodyDynamicComponent::SetAngularVelocity(const vector3& newvel, bool autowake)
 {
 	static_cast<PxRigidBody*>(rigidActor)->setAngularVelocity(PxVec3(newvel.x, newvel.y, newvel.z), autowake);
+}
+
+void RavEngine::RigidBodyDynamicComponent::SetAxisLock(uint16_t LockFlags){
+	static_cast<PxRigidDynamic*>(rigidActor)->setRigidDynamicLockFlags(static_cast<physx::PxRigidDynamicLockFlag::Enum>(LockFlags));
+}
+
+uint16_t RavEngine::RigidBodyDynamicComponent::GetAxisLock() const{
+	return static_cast<PxRigidDynamic*>(rigidActor)->getRigidDynamicLockFlags();
 }
 
 void RavEngine::RigidBodyDynamicComponent::Wake()

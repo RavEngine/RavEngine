@@ -34,7 +34,7 @@ namespace RavEngine {
         /**
         @returns the currently assigned material
         */
-        inline Ref<PBRMaterialInstance> GetMaterial() {
+        inline Ref<PBRMaterialInstance> GetMaterial() const{
             return material;
         }
 

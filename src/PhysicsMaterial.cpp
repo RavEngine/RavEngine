@@ -40,27 +40,27 @@ void RavEngine::PhysicsMaterial::setRestitutionCombineMode(PhysicsCombineMode mo
 }
 
 
-double RavEngine::PhysicsMaterial::getStaticFriction()
+double RavEngine::PhysicsMaterial::getStaticFriction() const
 {
 	return mat->getStaticFriction();
 }
 
-double RavEngine::PhysicsMaterial::getDynamicFriction()
+double RavEngine::PhysicsMaterial::getDynamicFriction() const
 {
 	return mat->getDynamicFriction();
 }
 
-double RavEngine::PhysicsMaterial::getRestitution()
+double RavEngine::PhysicsMaterial::getRestitution() const
 {
 	return mat->getRestitution();
 }
 
-RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::getFrictionCombineMode()
+RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::getFrictionCombineMode() const
 {
 	return PhysicsCombineMode(mat->getFrictionCombineMode());
 }
 
-RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::getRestitutionCombineMode()
+RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::getRestitutionCombineMode() const
 {
 	return PhysicsCombineMode(mat->getRestitutionCombineMode());
 }

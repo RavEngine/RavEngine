@@ -36,8 +36,8 @@ namespace RavEngine {
 		void RemoveReceiver(IPhysicsActor* obj);
 
 		virtual ~PhysicsBodyComponent();
-		virtual vector3 getPos();
-		virtual quaternion getRot();
+		virtual vector3 getPos() const;
+		virtual quaternion getRot() const;
 		virtual void setPos(const vector3&);
 		virtual void setRot(const quaternion&);
 
@@ -46,21 +46,21 @@ namespace RavEngine {
 		/**
 		@returns true if gravity is enabled
 		*/
-		bool GetGravityEnabled();
+		bool GetGravityEnabled() const;
 
 		void SetSleepNotificationsEnabled(bool);
 
 		/**
 		Returns true if sleep / wake notifications are enabled.
 		*/
-		bool GetSleepNotificationsEnabled();
+		bool GetSleepNotificationsEnabled() const;
 
 		void SetSimulationEnabled(bool);
 
 		/**
 		@returns true if simulation is enabled.
 		*/
-		bool GetSimulationEnabled();
+		bool GetSimulationEnabled() const;
 
 		/**
 		Invoked when a collider begins colliding with another body
@@ -104,12 +104,12 @@ namespace RavEngine {
 		/**
 		@returns the body's current linear velocity
 		*/
-		vector3 GetLinearVelocity();
+		vector3 GetLinearVelocity() const;
 
 		/**
 		@returns the current body's angular velocity in euler angles
 		*/
-		vector3 GetAngularVelocity();
+		vector3 GetAngularVelocity() const;
 
 		void SetLinearVelocity(const vector3&, bool);
 
@@ -129,6 +129,28 @@ namespace RavEngine {
 		@return true if the body is asleep.
 		*/
 		bool IsSleeping();
+		
+		enum AxisLock{
+			Linear_X = (1 << 0),
+			Linear_Y = (1 << 1),
+			Linear_Z = (1 << 2),
+			Angular_X = (1 << 3),
+			Angular_Y = (1 << 4),
+			Angular_Z = (1 << 5)
+		};
+		
+		/**
+		 Set the axis locking flags.
+		 @see AxisLock enum.
+		 @param LockFlags a bitmask representing the axes to lock or unlock
+		 */
+		void SetAxisLock(uint16_t LockFlags);
+		
+		/**
+		 @return the currently-active locking flags
+		 @see AxisLock enum
+		 */
+		uint16_t GetAxisLock() const;
 	};
 
 	class RigidBodyStaticComponent : public PhysicsBodyComponent {
