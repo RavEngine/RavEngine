@@ -31,7 +31,23 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	//pull from cmrc
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFileFromMemory(str.data(), str.size(), aiProcessPreset_TargetRealtime_MaxQuality, file_ext.string().c_str());
+	const aiScene* scene = aiImportFileFromMemory(str.data(), str.size(),
+												  aiProcess_CalcTangentSpace |
+												  aiProcess_GenSmoothNormals              |
+												  aiProcess_JoinIdenticalVertices         |
+												  aiProcess_ImproveCacheLocality          |
+												  aiProcess_LimitBoneWeights              |
+												  aiProcess_RemoveRedundantMaterials      |
+												  aiProcess_SplitLargeMeshes              |
+												  aiProcess_Triangulate                   |
+												  aiProcess_GenUVCoords                   |
+												  aiProcess_SortByPType                   |
+												  //aiProcess_FindDegenerates               |
+												  aiProcess_FindInstances                  |
+												  aiProcess_ValidateDataStructure          |
+												  aiProcess_OptimizeMeshes				|
+												  aiProcess_FindInvalidData     ,
+												  file_ext.string().c_str());
 	
 	
 	if (!scene){
@@ -78,8 +94,10 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 		
 		for(int ii = 0; ii < mesh->mNumFaces; ii++){
 			//alert if encounters a degenerate triangle
-			assert(mesh->mFaces[ii].mNumIndices == 3);
-			
+			if(mesh->mFaces[ii].mNumIndices != 3){
+				throw runtime_error("Cannot load model: Degenerate triangle (Num indices = " + to_string(mesh->mFaces[ii].mNumIndices) + ")");
+			}
+		
 			mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
 			mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
 			mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
