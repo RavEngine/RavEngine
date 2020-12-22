@@ -197,6 +197,34 @@ void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent *other){
 	}
 }
 
+void RigidBodyDynamicComponent::SetMass(decimalType mass){
+	static_cast<PxRigidDynamic*>(rigidActor)->setMass(mass);
+}
+
+decimalType RigidBodyDynamicComponent::GetMass() const{
+	return static_cast<PxRigidDynamic*>(rigidActor)->getMass();
+}
+
+decimalType RigidBodyDynamicComponent::GetMassInverse() const{
+	return static_cast<PxRigidDynamic*>(rigidActor)->getInvMass();
+}
+
+void RigidBodyDynamicComponent::AddForce(const vector3 &force){
+	static_cast<PxRigidDynamic*>(rigidActor)->addForce(PxVec3(force.x,force.y,force.z));
+}
+
+void RigidBodyDynamicComponent::AddTorque(const vector3 &torque){
+	static_cast<PxRigidDynamic*>(rigidActor)->addTorque(PxVec3(torque.x,torque.y,torque.z));
+}
+
+void RigidBodyDynamicComponent::ClearAllForces(){
+	static_cast<PxRigidDynamic*>(rigidActor)->clearForce();
+}
+
+void RigidBodyDynamicComponent::ClearAllTorques(){
+	static_cast<PxRigidDynamic*>(rigidActor)->clearTorque();
+}
+
 /// Static Body ========================================
 RigidBodyStaticComponent::RigidBodyStaticComponent() {
 	rigidActor = PhysicsSolver::phys->createRigidStatic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location

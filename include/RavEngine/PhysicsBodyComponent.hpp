@@ -151,6 +151,44 @@ namespace RavEngine {
 		 @see AxisLock enum
 		 */
 		uint16_t GetAxisLock() const;
+		
+		/**
+		 Set the mass of this physics body
+		 @param mass the mass of the body
+		 */
+		void SetMass(decimalType mass);
+		
+		/**
+		 @return the mass of the body
+		 */
+		decimalType GetMass() const;
+		
+		/**
+		 @return the inverse mass of the body
+		 */
+		decimalType GetMassInverse() const;
+		
+		/**
+		 Add a force to the object
+		 @param force the vector representing the force
+		 */
+		void AddForce(const vector3& force);
+		
+		/**
+		 Add a torque to the object
+		 @param torque the vector representing the torque
+		 */
+		void AddTorque(const vector3& torque);
+		
+		/**
+		 Reset all active forces on the object
+		 */
+		void ClearAllForces();
+		
+		/**
+		 Reset all active torques on the object
+		 */
+		void ClearAllTorques();
 	};
 
 	class RigidBodyStaticComponent : public PhysicsBodyComponent {
