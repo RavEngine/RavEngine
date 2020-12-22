@@ -275,12 +275,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
-	{
-		auto lights = components.GetAllComponentsOfTypeSubclassFastPath<Light>();
-		for(const Ref<Light>& l : lights){
-			l->DebugDraw();
-		}
-	}
 	
 #ifdef _DEBUG
 	Im3d::GetContext().draw();
