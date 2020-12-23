@@ -18,3 +18,6 @@ rm -r taskflow/3rd-party taskflow/benchmarks taskflow/docs taskflow/doxygen task
 
 # concurrentqueue
 rm -r concurrentqueue/benchmarks concurrentqueue/build concurrentqueue/c_api concurrentqueue/tests
+
+# rmlui
+rm -r RmlUi/Samples RmlUi/Tests

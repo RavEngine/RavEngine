@@ -65,6 +65,7 @@ int main(int argc, char** argv){
 		generalpack(apprsc / "meshes", "meshes");
 		generalpack(engrsc / "meshes", "meshes");
 		generalpack(apprsc / "textures", "textures");
+		generalpack(apprsc / "uis", "uis");
 		
 		//write final archive
 		create_directories(out.parent_path());

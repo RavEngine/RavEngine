@@ -32,11 +32,21 @@ namespace RavEngine {
 
 		static Ref<VirtualFilesystem> Resources;
 		
+		/**
+		 @return the current time, measured in seconds since the application launched
+		 */
+		static double currentTime(){
+			return time;
+		};
+		
 		//number of cores on device
 		const int numcpus = std::thread::hardware_concurrency();
 		
 		//global thread pool, threads = logical processors on CPU
 		static tf::Executor executor;
+		
+		//Render engine
+		static Ref<RenderEngine> Renderer;
 		
 		/**
 		 Dispatch a task to be executed on the main thread.
@@ -79,8 +89,8 @@ namespace RavEngine {
 		timePoint lastFrameTime;
 		timeDiff deltaTimeMicroseconds;
 		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
-		//Render engine
-		Ref<RenderEngine> Renderer;
+		
+		static double time;
 	};
 }
 #define START_APP(APP) int main(int argc, char** argv){APP a; return a.run(argc, argv);}

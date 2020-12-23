@@ -8,6 +8,7 @@
 #include "Material.hpp"
 #include <physfs.h>
 #include "Texture.hpp"
+#include <RmlUi/Core.h>
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -20,6 +21,8 @@ using namespace std::chrono;
 
 const float RavEngine::App::evalNormal = 60;
 Ref<VirtualFilesystem> App::Resources;
+double App::time;
+Ref<RenderEngine> App::Renderer;
 
 moodycamel::ConcurrentQueue<function<void(void)>> App::main_tasks;
 tf::Executor App::executor;
@@ -32,6 +35,11 @@ App::App(const std::string& resourcesName){
 	
 	Resources = new VirtualFilesystem(resourcesName + ".zip");
 	Renderer = new RenderEngine();
+	
+	//setup GUI rendering
+	Rml::SetSystemInterface(Renderer.get());
+	Rml::SetRenderInterface(Renderer.get());
+	Rml::Initialise();
 }
 
 int App::run(int argc, char** argv) {
@@ -59,6 +67,7 @@ int App::run(int argc, char** argv) {
 		//will cause engine to run in slow motion if the frame rate is <= 1fps
 		deltaTimeMicroseconds = std::min(duration_cast<timeDiff>((now - lastFrameTime)), maxTimeStep);
 		float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
+		time += deltaSeconds;
 		float scale = deltaSeconds * evalNormal;
 
 		auto windowflags = SDL_GetWindowFlags(RenderEngine::GetWindow());
@@ -114,4 +123,5 @@ App::~App(){
 	MeshAsset::Manager::RemoveAll();
 	Material::Manager::RemoveAll();
 	PHYSFS_deinit();
+	Rml::Shutdown();
 }

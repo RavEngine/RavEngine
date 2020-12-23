@@ -50,11 +50,14 @@ add_subdirectory("${DEPS_DIR}/etl")
 #set(SDL_STATIC ON CACHE INTERNAL "")
 #set(SDL_SHARED OFF CACHE INTERNAL "")
 
+# mini dependencies
 add_subdirectory("${DEPS_DIR}/SDL2")
 add_subdirectory("${DEPS_DIR}/tweeny")
 add_subdirectory("${DEPS_DIR}/rscpack")
 add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
+
+add_subdirectory("${DEPS_DIR}/RmlUi")
 
 # taskflow
 SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "")
@@ -135,6 +138,7 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/plf/"
 	"${DEPS_DIR}/parallel-hashmap/parallel_hashmap"
 	"${DEPS_DIR}/taskflow"
+	"${DEPS_DIR}/RmlUi/Include"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
@@ -162,6 +166,8 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"im3d"
 	"physfs-static"
 	#"PhysXGPU"
+	"RmlCore"
+	"RmlDebugger"
 	PUBLIC
 	"etl"
 	"tweeny"
@@ -262,7 +268,7 @@ define_property(GLOBAL PROPERTY COPY_DEPENDS
 function(pack_resources)
 	set(optional)
 	set(args TARGET)
-	set(list_args SHADERS MESHES TEXTURES)
+	set(list_args SHADERS MESHES TEXTURES UIS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -298,7 +304,15 @@ function(pack_resources)
 		# copy meshes pre-build if they are changed
 		get_filename_component(output_name "${TEXTURE}" NAME)
 		set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/textures/${output_name}")
-		add_custom_command(PRE_BUILD  OUTPUT "${outname}" COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TEXTURE} "${outname}")
+		add_custom_command(PRE_BUILD OUTPUT "${outname}" COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TEXTURE} "${outname}")
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
+	endforeach()
+
+	foreach(UI ${ARGS_UIS})
+		# copy meshes pre-build if they are changed
+		get_filename_component(output_name "${UI}" NAME)
+		set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/uis/${output_name}")
+		add_custom_command(PRE_BUILD OUTPUT "${outname}" COMMAND ${CMAKE_COMMAND} -E copy_if_different ${UI} "${outname}")
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
 	endforeach()
 

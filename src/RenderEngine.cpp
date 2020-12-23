@@ -8,9 +8,6 @@
 
 #include "RenderEngine.hpp"
 #include <string>
-#include <fstream>
-#include <sstream>
-#include <filesystem>
 #include "CameraComponent.hpp"
 #include "World.hpp"
 #include <memory>
@@ -19,6 +16,8 @@
 #include <bx/bx.h>
 #include "Light.hpp"
 #include "StaticMesh.hpp"
+#include "App.hpp"
+#include "GUI.hpp"
 
 #include "RenderableComponent.hpp"
 	#ifdef __linux__
@@ -33,9 +32,6 @@
 #include "Debug.hpp"
 #include <glm/gtc/type_ptr.hpp>
 
-#ifdef __APPLE_
-#include <Cocoa/Cocoa.h>
-#endif
 
 using namespace std;
 using namespace RavEngine;
@@ -275,6 +271,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
+	//GUI
+	//TODO: thread using ECS
+	auto guis = components.GetAllComponentsOfTypeFastPath<GUIComponent>();
+	for(const Ref<GUIComponent>& gui : guis){
+		gui->Update();
+		gui->Render();
+	}
+	
 	
 #ifdef _DEBUG
 	Im3d::GetContext().draw();
@@ -411,4 +415,10 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 		throw runtime_error("Failed to create framebuffer");
 	
 	return fb;
+}
+
+RenderEngine::dim RenderEngine::GetBufferSize(){
+	dim d;
+	SDL_GL_GetDrawableSize(window, &d.width, &d.height);
+	return d;
 }
