@@ -13,6 +13,10 @@ public:
 		bgfx::destroy(texture);
 	}
 	
+	inline bgfx::TextureHandle get() const{
+		return texture;
+	}
+	
 	void Bind(int id, const SamplerUniform& uniform);
 	
 protected:

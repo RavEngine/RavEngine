@@ -65,11 +65,19 @@ namespace RavEngine {
 	class GUIMaterial : public Material{
 	public:
 		GUIMaterial() : Material("guishader"){}
+	protected:
+		SamplerUniform sampler = SamplerUniform("s_uitex");
+		bgfx::TextureHandle texture;
 		friend class GUIMaterialInstance;
 	};
 
 	class GUIMaterialInstance : public MaterialInstance<GUIMaterial>{
 	public:
 		GUIMaterialInstance(Ref<GUIMaterial> m) : MaterialInstance(m){}
+		void SetTexture(bgfx::TextureHandle texture){
+			mat->texture = texture;
+		}
+		
+		void DrawHook() override;
 	};
 }

@@ -12,3 +12,7 @@ void PBRMaterialInstance::DrawHook(){
 		
 	mat->albedoColorUniform.SetValues(&color, 1);
 }
+
+void GUIMaterialInstance::DrawHook(){
+	bgfx::setTexture(0, mat->sampler, mat->texture);
+}

@@ -76,12 +76,16 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(indices, num_indices * sizeof(indices[0])));
 		
 	//create the texture
+	bgfx::TextureHandle tx = BGFX_INVALID_HANDLE;
 	if (texture){
-		//TODO: set the texture to the handle
+		auto btexture = reinterpret_cast<TextureHandleStruct*>(texture);
+		tx = btexture->th;
 	}
 	else{
-		//TODO: pass the default texture
+		tx = TextureManager::defaultTexture->get();
 	}
+	
+	guiMaterial->SetTexture(tx);
 	
 	auto drawmat = glm::translate(currentMatrix, vector3(translation.x,translation.y,Views::FinalBlit));
 	guiMaterial->Draw(vbuf, ibuf, drawmat, 0);
@@ -107,14 +111,17 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation){
 	CompiledGeoStruct* cgs = reinterpret_cast<CompiledGeoStruct*>(geometry);
 	
-	//TODO: determine if need to pass default texture or use texture inside struct
+	bgfx::TextureHandle tx = BGFX_INVALID_HANDLE;
 	if(cgs->th){
-		//TODO: set texture to handle
+		auto btexture = reinterpret_cast<TextureHandleStruct*>(cgs->th);
+		tx = btexture->th;
 	}
 	else{
-		//TODO: set texture to default texture
+		tx = TextureManager::defaultTexture->get();
 	}
 	
+	guiMaterial->SetTexture(tx);
+
 	auto drawmat = glm::translate(currentMatrix, vector3(translation.x,translation.y,Views::FinalBlit));
 	guiMaterial->Draw(cgs->vb, cgs->ib, drawmat, Views::FinalBlit);
 	
