@@ -18,6 +18,7 @@ struct SDL_Window;
 
 namespace RavEngine {
     class DeferredBlitShader;
+	class GUIMaterialInstance;
 
     class RenderEngine : public SharedObject, public Rml::SystemInterface, public Rml::RenderInterface {
     public:
@@ -150,6 +151,11 @@ namespace RavEngine {
 			//execute instance draw call
 			T::Draw(Views::Lighting);	//view 2 is the lighting pass
 		}
+		
+		static bgfx::VertexLayout RmlLayout;
+		static Ref<GUIMaterialInstance> guiMaterial;
+		
+		matrix4 currentMatrix;
 	
     };
 }

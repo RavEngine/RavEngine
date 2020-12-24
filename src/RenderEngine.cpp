@@ -32,21 +32,22 @@
 #include "Debug.hpp"
 #include <glm/gtc/type_ptr.hpp>
 
-
 using namespace std;
 using namespace RavEngine;
 
 SDL_Window* RenderEngine::window = nullptr;
 RenderEngine::vs RenderEngine::VideoSettings;
+//debug drawing vertex layout
+static bgfx::VertexLayout debuglayout;
+bgfx::VertexLayout RenderEngine::RmlLayout;
 
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 
 static Ref<DebugMaterialInstance> mat;
 
-static bgfx::VertexLayout pcvDecl;
-
 static Ref<RavEngine::DeferredBlitShader> blitShader;
+Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
 
 /**
  Create an SDL window for different platforms, and reference it to bgfx
@@ -118,7 +119,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 		indices[i] = i;
 	}
 	
-	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], verts * sizeof(converted[0])), pcvDecl);
+	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], verts * sizeof(converted[0])), debuglayout);
 	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], verts * sizeof(indices[0])));
 
 	mat->Draw(vbuf,ibuf,matrix4(1),RenderEngine::Views::FinalBlit);
@@ -142,11 +143,6 @@ RenderEngine::RenderEngine() {
 	dims.width = width;
 	dims.height = height;
 	
-	//vertex format
-	pcvDecl.begin()
-	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-	.end();
 	
 	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
 	BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
@@ -378,6 +374,7 @@ void RenderEngine::Init()
 	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
 	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
 	blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
+	guiMaterial = new GUIMaterialInstance(Material::Manager::AccessMaterialOfType<GUIMaterial>());
 	
 	//init lights
 	LightManager::Init();
@@ -386,6 +383,19 @@ void RenderEngine::Init()
 	Im3d::AppData& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
 #endif
+	
+	//vertex format for debug drawing
+	debuglayout.begin()
+	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+	.end();
+	
+	//vertex format for ui
+	RmlLayout.begin()
+	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, false)
+	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+	.end();
 }
 
 

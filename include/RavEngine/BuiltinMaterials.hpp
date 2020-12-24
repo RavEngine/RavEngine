@@ -58,4 +58,18 @@ namespace RavEngine {
     public:
         DeferredBlitShader() : Material("deferred_blit"){}
     };
+
+	/**
+	 Used internally for rendering GUI
+	 */
+	class GUIMaterial : public Material{
+	public:
+		GUIMaterial() : Material("guishader"){}
+		friend class GUIMaterialInstance;
+	};
+
+	class GUIMaterialInstance : public MaterialInstance<GUIMaterial>{
+	public:
+		GUIMaterialInstance(Ref<GUIMaterial> m) : MaterialInstance(m){}
+	};
 }
