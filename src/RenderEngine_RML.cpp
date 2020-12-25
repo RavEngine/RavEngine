@@ -4,6 +4,7 @@
 #include <stb_image.h>
 #include <Texture.hpp>
 #include "BuiltinMaterials.hpp"
+#include "Common3D.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -28,6 +29,41 @@ struct CompiledGeoStruct{
 		//do not destroy texture here, RML will tell us when to free that separately
 	}
 };
+
+static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, const bgfx::VertexLayout& RmlLayout, bgfx::VertexBufferHandle& out_vb, bgfx::IndexBufferHandle& out_ib){
+	
+	
+	//create vertex and index buffers
+	{
+		struct SVec2{
+			float x, y, u, v;
+			color_t color;
+		};
+		stackarray(convertedv, SVec2, num_vertices);
+		
+		for(int i = 0; i < num_vertices; i++){
+			Rml::Vertex v = vertices[i];
+			convertedv[i].x = v.position.x;
+			convertedv[i].y = v.position.y;
+			convertedv[i].u = v.tex_coord.x;
+			convertedv[i].v = v.tex_coord.y;
+			
+			color_t color = (v.colour.red << 24) + (v.colour.green << 16) + (v.colour.blue << 8) + v.colour.alpha;
+			
+			convertedv[i].color = color;
+		}
+		out_vb = bgfx::createVertexBuffer(bgfx::copy(convertedv, num_vertices * sizeof(convertedv[0])), RmlLayout);
+	}
+	{
+		stackarray(convertedi, uint16_t, num_indices);
+		
+		for(int i = 0; i < num_indices; i++){
+			convertedi[i] = indices[i];
+		}
+		out_ib = bgfx::createIndexBuffer(bgfx::copy(convertedi, num_indices * sizeof(convertedi[0])));
+	}
+	
+}
 
 /**
  Create a texture for use in RML
@@ -71,9 +107,10 @@ void RenderEngine::GetClipboardText(Rml::String &text){
 /// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
 void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) {
 	
-	//create vertex and index buffers
-	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(vertices, num_vertices * sizeof(vertices[0])), RmlLayout);
-	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(indices, num_indices * sizeof(indices[0])));
+	bgfx::VertexBufferHandle vbuf = BGFX_INVALID_HANDLE;
+	bgfx::IndexBufferHandle ibuf = BGFX_INVALID_HANDLE;
+	
+	RML2BGFX(vertices, num_vertices, indices, num_indices, RmlLayout, vbuf, ibuf);
 		
 	//create the texture
 	bgfx::TextureHandle tx = BGFX_INVALID_HANDLE;
@@ -100,8 +137,9 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture){
 	
 	//create the vertex and index buffers
-	bgfx::VertexBufferHandle vbuf = bgfx::createVertexBuffer(bgfx::copy(vertices, num_vertices * sizeof(vertices[0])), RmlLayout);
-	bgfx::IndexBufferHandle ibuf = bgfx::createIndexBuffer(bgfx::copy(indices, num_indices * sizeof(indices[0])));
+	bgfx::VertexBufferHandle vbuf = BGFX_INVALID_HANDLE;
+	bgfx::IndexBufferHandle ibuf = BGFX_INVALID_HANDLE;
+	RML2BGFX(vertices, num_vertices, indices, num_indices, RmlLayout, vbuf, ibuf);
 	
 	CompiledGeoStruct* cgs = new CompiledGeoStruct{vbuf,ibuf,texture};
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);

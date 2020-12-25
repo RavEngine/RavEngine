@@ -17,7 +17,10 @@ void GUIComponent::AddDocument(const std::string &name){
 	
 	auto docstr = App::Resources->FileContentsAt(dir.c_str());
 	ElementDocument* ed = context->LoadDocumentFromMemory(docstr, name);
-	
+	if (ed == nullptr){
+		throw runtime_error("Cannot load document");
+	}
+	ed->Show();
 	documents[name] = ed;
 }
 
@@ -31,8 +34,15 @@ void GUIComponent::RemoveDocument(const std::string &name){
 	context->UnloadDocument(ptr);
 }
 
-bool GUIComponent::IsDocumentLoaded(const std::string &name){
+bool GUIComponent::IsDocumentLoaded(const std::string &name) const{
 	return documents.contains(name);
+}
+
+bool GUIComponent::LoadFont(const std::string& name){
+//	string dir = "/uis/" + name;
+//	auto docstr = App::Resources->FileContentsAt(dir.c_str());
+//	return Rml::LoadFontFace(docstr.c_str(), docstr.size(), name, Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal);
+	return Rml::LoadFontFace("ArialUnicode.ttf");
 }
 
 bool GUIComponent::Update(){

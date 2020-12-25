@@ -252,7 +252,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
    
 	//Deferred geometry pass
 	for (const Ref<StaticMesh>& e : geometry) {
-		bgfx::setState( (BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) );
+		bgfx::setState( (BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW );
         e->Draw(Views::DeferredGeo);
 	}
 	
@@ -269,6 +269,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS
+	bgfx::setState( (BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CCW ) & ~BGFX_STATE_CULL_CW );
 	auto guis = components.GetAllComponentsOfTypeFastPath<GUIComponent>();
 	for(const Ref<GUIComponent>& gui : guis){
 		gui->Update();
@@ -392,9 +393,9 @@ void RenderEngine::Init()
 	
 	//vertex format for ui
 	RmlLayout.begin()
-	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, false)
+	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
 	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 	.end();
 }
 

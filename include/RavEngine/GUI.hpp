@@ -31,7 +31,9 @@ public:
 	
 	void AddDocument(const std::string& name);
 	void RemoveDocument(const std::string& name);
-	bool IsDocumentLoaded(const std::string& name);
+	bool IsDocumentLoaded(const std::string& name) const;
+	
+	static bool LoadFont(const std::string& name);
 	
 	virtual ~GUIComponent();
 	
