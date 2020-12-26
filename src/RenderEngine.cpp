@@ -269,7 +269,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS
-	bgfx::setState( (BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CCW ) & ~BGFX_STATE_CULL_CW );
+	bgfx::setState( (BGFX_STATE_DEFAULT | BGFX_STATE_CULL_CW ) & ~BGFX_STATE_CULL_CCW );
 	auto guis = components.GetAllComponentsOfTypeFastPath<GUIComponent>();
 	for(const Ref<GUIComponent>& gui : guis){
 		gui->Update();

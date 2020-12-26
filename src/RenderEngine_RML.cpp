@@ -65,6 +65,22 @@ static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indice
 	
 }
 
+static inline matrix4 make_matrix(Rml::Vector2f translation){
+	matrix4 mat(1);	//start with identity
+	
+	auto size = App::Renderer->GetBufferSize();
+	
+	mat = glm::scale(mat, vector3(1,-1,1));	//flip
+	
+	mat = glm::scale(mat, vector3(1.0/(size.width/2.0),1.0/(size.height/2.0),1));	//scale into view space
+	
+	mat = glm::translate(mat, vector3(-size.width/2.0,-size.height/2.0,0));	//translate to origin-center
+	
+	mat = glm::translate(mat, vector3(translation.x,translation.y,0)); //pixel-space offset
+	
+	return mat;
+}
+
 /**
  Create a texture for use in RML
  @param width the width of the texture in pixels
@@ -124,8 +140,8 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 	
 	guiMaterial->SetTexture(tx);
 	
-	auto drawmat = glm::translate(currentMatrix, vector3(translation.x,translation.y,Views::FinalBlit));
-	guiMaterial->Draw(vbuf, ibuf, drawmat, 0);
+	auto drawmat = make_matrix(translation);
+	guiMaterial->Draw(vbuf, ibuf, drawmat, Views::FinalBlit);
 	
 	//destroy buffers
 	bgfx::destroy(vbuf);
@@ -160,7 +176,7 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 	
 	guiMaterial->SetTexture(tx);
 
-	auto drawmat = glm::translate(currentMatrix, vector3(translation.x,translation.y,Views::FinalBlit));
+	auto drawmat = make_matrix(translation);
 	guiMaterial->Draw(cgs->vb, cgs->ib, drawmat, Views::FinalBlit);
 	
 	//don't delete here, RML will tell us when to delete cgs
@@ -217,4 +233,5 @@ void RenderEngine::SetTransform(const Rml::Matrix4f* transform){
 	
 	auto data = transform->data();
 	currentMatrix = glm::make_mat4(data);
+	throw runtime_error("Local transformations not supported yet");
 }
