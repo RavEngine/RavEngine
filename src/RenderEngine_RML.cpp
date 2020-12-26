@@ -141,6 +141,7 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 	guiMaterial->SetTexture(tx);
 	
 	auto drawmat = make_matrix(translation);
+	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
 	guiMaterial->Draw(vbuf, ibuf, drawmat, Views::FinalBlit);
 	
 	//destroy buffers
@@ -177,6 +178,7 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 	guiMaterial->SetTexture(tx);
 
 	auto drawmat = make_matrix(translation);
+	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
 	guiMaterial->Draw(cgs->vb, cgs->ib, drawmat, Views::FinalBlit);
 	
 	//don't delete here, RML will tell us when to delete cgs
