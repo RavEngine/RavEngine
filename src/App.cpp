@@ -9,6 +9,7 @@
 #include <physfs.h>
 #include "Texture.hpp"
 #include <RmlUi/Core.h>
+#include "GUI.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -40,6 +41,9 @@ App::App(const std::string& resourcesName){
 	Rml::SetSystemInterface(Renderer.get());
 	Rml::SetRenderInterface(Renderer.get());
 	Rml::Initialise();
+	
+	//load the built-in fonts
+	GUIComponent::LoadFont("Roboto-Regular.ttf","Roboto", Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal);
 }
 
 int App::run(int argc, char** argv) {

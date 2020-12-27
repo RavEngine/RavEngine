@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RmlUi/Core/Context.h>
+#include <RmlUi/Core.h>
 #include "Component.hpp"
 #include "SpinLock.hpp"
 #include "Locked_Hashmap.hpp"
@@ -33,7 +34,7 @@ public:
 	void RemoveDocument(const std::string& name);
 	bool IsDocumentLoaded(const std::string& name) const;
 	
-	static bool LoadFont(const std::string& filename, const std::string& fontname, const std::string& fontweight);
+	static bool LoadFont(const std::string& filename, const std::string& fontname, Rml::Style::FontStyle style, Rml::Style::FontWeight weight);
 	
 	virtual ~GUIComponent();
 	

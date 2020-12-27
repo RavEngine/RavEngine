@@ -1,6 +1,4 @@
 #include "GUI.hpp"
-#include <RmlUi/Core.h>
-#include <RmlUi/Core/Context.h>
 #include "App.hpp"
 
 using namespace RavEngine;
@@ -38,11 +36,11 @@ bool GUIComponent::IsDocumentLoaded(const std::string &name) const{
 	return documents.contains(name);
 }
 
-bool GUIComponent::LoadFont(const std::string& filename, const std::string& fontname, const std::string& fontweight){
+bool GUIComponent::LoadFont(const std::string& filename, const std::string& fontname, Rml::Style::FontStyle style, Rml::Style::FontWeight weight){
 	string dir = "/fonts/" + filename;
 	auto docstr = App::Resources->FileContentsAt(dir.c_str());
 	const Rml::byte* data = reinterpret_cast<const Rml::byte*>(docstr.c_str());
-	return Rml::LoadFontFace(data, docstr.size(), fontname, Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal);
+	return Rml::LoadFontFace(data, docstr.size(), fontname, style, weight);
 }
 
 bool GUIComponent::Update(){

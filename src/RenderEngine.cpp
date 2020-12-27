@@ -31,6 +31,8 @@
 #include "Common3D.hpp"
 #include "Debug.hpp"
 #include <glm/gtc/type_ptr.hpp>
+#include <fmt/core.h>
+#include <iostream>
 
 using namespace std;
 using namespace RavEngine;
@@ -48,6 +50,51 @@ static Ref<DebugMaterialInstance> mat;
 
 static Ref<RavEngine::DeferredBlitShader> blitShader;
 Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
+
+struct bgfx_msghandler : public bgfx::CallbackI{
+	static bool diagnostic_logging;
+	void fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) override{
+		throw runtime_error(fmt::format("BGFX error {} in {} line {}: {}",_code, _filePath, _line, _str));
+	}
+	void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) override{
+#ifdef _DEBUG
+		if(diagnostic_logging){
+			std::cout << fmt::format("BGFX diagnostic: {} line {}: {}",_filePath, _line, fmt::format(_format, (char*)_argList)) << std::endl;
+		}
+#endif
+	}
+	void profilerBegin(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) override{
+		throw runtime_error("profiler not implemented");
+	}
+	void profilerBeginLiteral(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) override{
+		throw runtime_error("profilerliteral not implemented");
+	}
+	void profilerEnd() override{
+		throw runtime_error("profiler not implemented");
+	}
+	uint32_t cacheReadSize(uint64_t _id) override{
+		throw runtime_error("cacheReadSize not implemented");
+	}
+	bool cacheRead(uint64_t _id, void *_data, uint32_t _size) override{
+		throw runtime_error("cacheRead not implemented");
+	}
+	void cacheWrite(uint64_t _id, const void *_data, uint32_t _size) override{
+		throw runtime_error("cacheWrite not implemented");
+	}
+	void screenShot(const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) override{
+		throw runtime_error("screenshot not implemented");
+	}
+	void captureBegin(uint32_t _width, uint32_t _height, uint32_t _pitch, bgfx::TextureFormat::Enum format, bool _yflip) override {
+		throw runtime_error("video capture not implemented");
+	}
+	void captureEnd() override{
+		throw runtime_error("video capture not implemented");
+	}
+	void captureFrame(const void *_data, uint32_t _size) override{
+		throw runtime_error("frame capture not implemented");
+	}
+};
+bool bgfx_msghandler::diagnostic_logging = false;
 
 /**
  Create an SDL window for different platforms, and reference it to bgfx
@@ -343,6 +390,8 @@ void RenderEngine::Init()
 	#ifdef __linux__
 	settings.type = bgfx::RendererType::Vulkan;	//use Vulkan on Linux
 	#endif
+	
+	settings.callback = new bgfx_msghandler;
 	
 	//must be in this order
 	sdlSetWindow(window);

@@ -56,7 +56,7 @@ add_subdirectory("${DEPS_DIR}/tweeny")
 add_subdirectory("${DEPS_DIR}/rscpack")
 add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
-
+add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi")
 
 # taskflow
@@ -169,6 +169,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"RmlCore"
 	"RmlDebugger"
 	PUBLIC
+	"fmt"
 	"etl"
 	"tweeny"
 	"SDL2-static"
@@ -364,10 +365,11 @@ function(pack_resources)
 	# copy to target dir on Win
 	if(MSVC OR LINUX)
 		get_filename_component(outfile ${outpack} NAME)
+		SET(outfile "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}")
 		add_custom_command(
 			TARGET "${ARGS_TARGET}"
 			DEPENDS "${outpack}"
-			COMMAND ${CMAKE_COMMAND}  -E  copy_if_different "${outpack}" "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different "${outpack}" "${outfile}"
 			COMMENT "Copying assets package to executable directory"
 		)
 	endif()

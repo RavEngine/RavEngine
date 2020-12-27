@@ -21,3 +21,6 @@ rm -r concurrentqueue/benchmarks concurrentqueue/build concurrentqueue/c_api con
 
 # rmlui
 rm -r RmlUi/Samples RmlUi/Tests
+
+# fmt
+rm -r fmt/doc fmt/test
