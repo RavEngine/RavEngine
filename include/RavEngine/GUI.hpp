@@ -33,7 +33,7 @@ public:
 	void RemoveDocument(const std::string& name);
 	bool IsDocumentLoaded(const std::string& name) const;
 	
-	static bool LoadFont(const std::string& name);
+	static bool LoadFont(const std::string& filename, const std::string& fontname, const std::string& fontweight);
 	
 	virtual ~GUIComponent();
 	

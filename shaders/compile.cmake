@@ -5,7 +5,7 @@ declare_shader("debug" "${CMAKE_CURRENT_LIST_DIR}/debug.vsh" "${CMAKE_CURRENT_LI
 # deferred geometry material
 declare_shader("pbrmaterial" "${CMAKE_CURRENT_LIST_DIR}/deferred_geo.vsh" "${CMAKE_CURRENT_LIST_DIR}/deferred_geo.fsh" "${CMAKE_CURRENT_LIST_DIR}/deferred_varying.def.hlsl")
 
-declare_shader("deferred_blit" "${CMAKE_CURRENT_LIST_DIR}/deferred_blit.vsh" "${CMAKE_CURRENT_LIST_DIR}/deferred_blit.fsh" "${CMAKE_CURRENT_LIST_DIR}/blit_varying.def.hlsl")
+declare_shader("deferred_blit" "${CMAKE_CURRENT_LIST_DIR}/deferred_blit.vsh" "${CMAKE_CURRENT_LIST_DIR}/deferred_blit.fsh" "${CMAKE_CURRENT_LIST_DIR}/deferred_blit_varying.def.hlsl")
 
 # lighting shaders
 declare_shader("pointlightvolume" "${CMAKE_CURRENT_LIST_DIR}/pointlight.vsh" "${CMAKE_CURRENT_LIST_DIR}/pointlight.fsh" "${CMAKE_CURRENT_LIST_DIR}/pointlight_varying.def.hlsl")

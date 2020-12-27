@@ -5,7 +5,7 @@ A C++ cross-platform game library, with emphasis on performance and ease of use.
    - the OOP scripting system is powered by ECS and automatically threaded
 2. CPU-multithreaded physics simulation (Nvidia PhysX 4.1)
 3. Easy memory management handled via automatic reference counting 
-4. Supports native platform rendering APIs (Metal, DirectX)
+4. Supports native platform rendering APIs (Metal, DirectX, Vulkan)
 5. Easy integration with CMake
 6. Quality-of-life features like automatic shader compilation
 
@@ -25,8 +25,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # set output dirs
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 
 PROJECT(Example_RavEngine_Game)
 
@@ -41,10 +41,12 @@ target_link_libraries("${APPNAME}" PUBLIC "RavEngine" )  # also adds header incl
 file(GLOB meshes "$meshes/*.obj")
 file(GLOB textures "textures/*")
 file(GLOB shaders "shaders/*.cmake")
+file(GLOB uis "${sample_dir}/ui/*.rml" "${sample_dir}/uis/*.rcss")
 pack_resources(TARGET "${PROJECT_NAME}" 
    MESHES ${meshes}
    SHADERS ${shaders}
    TEXTURES ${textures}
+   UIS ${uis}
 )
 
 # fixup mac bundle
@@ -75,8 +77,8 @@ Note for Linux users: You must have the following shared libaries installed on y
 - x11-dev
 
 You will also need to use the clang++ compiler, g++ is currently not supported. To do this, simply execute the following command:
-```
-export CC=/usr/bin/clang; export CXX=/usr/bin/clang++; ./build-linux.sh
+```sh
+export CC=/usr/bin/clang; export CXX=/usr/bin/clang++; < cmake commands..... >
 ```
 
 ## Example programs
