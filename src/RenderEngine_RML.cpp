@@ -48,7 +48,7 @@ static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indice
 			convertedv[i].u = v.tex_coord.x;
 			convertedv[i].v = v.tex_coord.y;
 			
-			color_t color = (v.colour.red << 24) + (v.colour.green << 16) + (v.colour.blue << 8) + v.colour.alpha;
+			color_t color = (v.colour.red << 24) + (v.colour.blue << 16) + (v.colour.green << 8) + v.colour.alpha;
 			
 			convertedv[i].color = color;
 		}
@@ -67,17 +67,11 @@ static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indice
 
 static inline matrix4 make_matrix(Rml::Vector2f translation){
 	matrix4 mat(1);	//start with identity
-	
 	auto size = App::Renderer->GetBufferSize();
-	
 	mat = glm::scale(mat, vector3(1,-1,1));	//flip
-	
 	mat = glm::scale(mat, vector3(1.0/(size.width/2.0),1.0/(size.height/2.0),1));	//scale into view space
-	
-	mat = glm::translate(mat, vector3(-size.width/2.0,-size.height/2.0,0));	//translate to origin-center
-	
-	mat = glm::translate(mat, vector3(translation.x,translation.y,0)); //pixel-space offset
-	
+	mat = glm::translate(mat, vector3(-size.width/2.0,-size.height/2.0,0));			//translate to origin-center
+	mat = glm::translate(mat, vector3(translation.x,translation.y,0)); 				//pixel-space offset
 	return mat;
 }
 
