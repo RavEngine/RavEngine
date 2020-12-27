@@ -316,6 +316,7 @@ function(pack_resources)
 	copy_helper("${ARGS_TEXTURES}" "meshes")
 	copy_helper("${ARGS_UIS}" "uis")
 	copy_helper("${ARGS_FONTS}" "fonts")
+    copy_helper("${ENG_FONTS}" "fonts")
 
 	# get dependency outputs
 	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)

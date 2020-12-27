@@ -75,6 +75,7 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
 - x11-dev
+- freetype-devel
 
 You will also need to use the clang++ compiler, g++ is currently not supported. To do this, simply execute the following command:
 ```sh
