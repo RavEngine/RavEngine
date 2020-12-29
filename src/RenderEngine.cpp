@@ -74,13 +74,12 @@ struct bgfx_msghandler : public bgfx::CallbackI{
 		Debug::Fatal("profiler not implemented");
 	}
 	uint32_t cacheReadSize(uint64_t _id) override{
-		Debug::Fatal("cacheReadSize not implemented");
+		return 0;
 	}
 	bool cacheRead(uint64_t _id, void *_data, uint32_t _size) override{
-		Debug::Fatal("cacheRead not implemented");
+		return false;
 	}
 	void cacheWrite(uint64_t _id, const void *_data, uint32_t _size) override{
-		Debug::Fatal("cacheWrite not implemented");
 	}
 	void screenShot(const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) override{
 		Debug::Fatal("screenshot not implemented");
