@@ -4,19 +4,23 @@
 #include <typeindex>
 #include "Component.hpp"
 #include <functional>
+#include "Locked_Hashmap.hpp"
 
 //macro for checking type in template
 #define C_REF_CHECK static_assert(std::is_base_of<RavEngine::Component, T>::value, "Template parameter must be a Component subclass");
 
 namespace RavEngine{
-	class ComponentStore {
+	template<typename lock>
+	class ComponentStore : public SharedObject {
 	protected:
-		typedef phmap::flat_hash_set<Ref<RavEngine::Component>> entry_type;
-		typedef phmap::flat_hash_map<std::type_index, entry_type> ComponentStructure;
+		typedef locked_hashset<Ref<RavEngine::Component>,lock> entry_type;
+		typedef locked_hashmap<std::type_index, entry_type,lock> ComponentStructure;
+		
+		WeakRef<ComponentStore> parent;	//in entities, this is the World
+		
 		ComponentStructure components;
 		ComponentStructure componentsRedundant;
 		
-		friend class World;
 		/**
 		For internal use only.
 		@param type the type_index to query for
@@ -65,6 +69,18 @@ namespace RavEngine{
 			return componentsRedundant[index];
 		}
 		
+		/**
+		 Invoked when a component is added to this component store.
+		 @param comp the component that was added
+		 */
+		virtual void OnAddComponent(Ref<Component> comp){}
+		
+		/**
+		 Invoked when a component is removed from this component store.
+		 @param comp the component that was removed
+		 */
+		virtual void OnRemoveComponent(Ref<Component> comp){}
+		
 	public:
 		/**
 		 Fast path for world ticking
@@ -102,6 +118,10 @@ namespace RavEngine{
 			//add redundant types
 			for (const auto& alt : T::GetQueryTypes()) {
 				componentsRedundant[alt].insert(componentRef);
+			}
+			OnAddComponent(componentRef);
+			if(!parent.isNull()){
+				Ref<ComponentStore>(parent)->AddComponent(componentRef);
 			}
 			return componentRef;
 		}
@@ -194,16 +214,20 @@ namespace RavEngine{
 			for (const auto& alt : T::GetQueryTypes()) {
 				componentsRedundant[alt].erase(component);
 			}
+			OnRemoveComponent(component);
 		}
 
 		/**
 		Copy components from one componentstore into this one
 		@param other the other component store to copy from
 		*/
-		inline void AddComponentsFrom(const ComponentStore& other) {
+		inline void Merge(const ComponentStore& other) {
 			for (const auto& c : other.components) {
 				//add the componets of the current type to the global list
 				components[c.first].insert(c.second.begin(), c.second.end());
+				for(Ref<Component> cm : c.second){
+					OnAddComponent(cm);
+				}
 			}
 			//add to the redundant store
 			for (const auto& c : other.componentsRedundant) {
@@ -215,10 +239,11 @@ namespace RavEngine{
 		Remove components from this store if they are also present in another
 		@param other the ComponentStore to compare
 		*/
-		inline void RemoveComponentsInOtherFromThis(const ComponentStore& other) {
+		inline void Unmerge(const ComponentStore& other) {
 			for (const auto& type_pair : other.components) {
 				for(const auto& to_remove : type_pair.second){
 					components[type_pair.first].erase(to_remove);
+					OnRemoveComponent(to_remove);
 				}
 			}
 			

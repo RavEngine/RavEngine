@@ -13,26 +13,8 @@
 using namespace glm;
 using namespace RavEngine;
 
-Ref<Transform> RavEngine::Entity::transform(){
-	return components.GetComponent<Transform>();
-}
-
 void Entity::Destroy() {
 	Ref<World>(GetWorld())->Destroy(this);
-}
-
-void RavEngine::Entity::SyncAdds()
-{
-	Ref<World> world(GetWorld());
-	world->AddComponentsSpawnedEntity(addBuffer);
-	addBuffer.clear();
-}
-
-void RavEngine::Entity::SyncRemovals()
-{
-	Ref<World> world(GetWorld());
-	world->RemoveComponentsSpawnedEntity(addBuffer);
-	removalBuffer.clear();
 }
 
 RavEngine::Entity::Entity(){
@@ -41,5 +23,4 @@ RavEngine::Entity::Entity(){
 
 RavEngine::Entity::~Entity(){
     components.clear();
-    //worldptr = nullptr;
 }

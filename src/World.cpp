@@ -28,7 +28,7 @@ void RavEngine::World::Tick(float scale) {
 
 		//start all scripts
 		e->Start();
-		auto coms = e->Components().GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
 		for (const Ref<ScriptComponent>& c : coms) {
 			c->Start();
 		}
@@ -36,8 +36,10 @@ void RavEngine::World::Tick(float scale) {
         //make the physics system aware of this entity
         Solver->Spawn(e);
 		
-		//for each type of component (pair of type : list), make it available to the World
-		allcomponents.AddComponentsFrom(e->Components());
+		//merge the entity into the world
+		Merge(*e.get());
+		
+		e->parent = this;	//set parent so that this entity synchronizes its components with this world
 	}
 	PendingSpawn.clear();
 	
@@ -45,29 +47,21 @@ void RavEngine::World::Tick(float scale) {
 	midtick(scale);
 	TickECS(scale);
 
-	//process component add and removal on spawned entities
-	component_operation op;
-	while(component_addremove.try_dequeue(op)){
-		if (op.add) {
-			allcomponents.AddComponentsFrom(op.store);
-		}
-		else {
-			allcomponents.RemoveComponentsInOtherFromThis(op.store);
-		}
-	}
-	
 	//destroy objects that are pending removal
 	for( auto& e : PendingDestruction){
 		//stop all scripts
-		auto coms = e->Components().GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
 		for (const Ref<ScriptComponent>& c : coms) {
 			c->Stop();
 		}
 		e->Stop();
 
         e->SetWorld(nullptr);
+		
 		//also remove its components
-		allcomponents.RemoveComponentsInOtherFromThis(e->Components());
+		Unmerge(*e.get());
+		
+		e->parent = nullptr;	//set parent to null so that this entity no longer synchronizes its components with this world
         
         //remove the objects from the Physics system
         Solver->Destroy(e);
@@ -129,13 +123,13 @@ void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
     //get the query info
     auto queries = system->QueryTypes();
     for (const auto& query : queries) {
-        auto& temp = allcomponents.GetAllComponentsOfTypeIndexFastPath(query);
+        auto& temp = GetAllComponentsOfTypeIndexFastPath(query);
         for (auto& e : temp) {
 			tasks.emplace([=]{
 				system->Tick(fpsScale, e.get()->getOwner());
 			});
         }
-		auto& temp2 = allcomponents.GetAllComponentsOfTypeIndexSubclassFastPath(query);
+		auto& temp2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
 		for (auto& e : temp2) {
 			tasks.emplace([=]{
 				system->Tick(fpsScale, e.get()->getOwner());

@@ -9,7 +9,7 @@ using namespace physx;
 using namespace RavEngine;
 
 void BoxCollider::AddHook(const WeakRef<Entity>& e) {
-    auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
+    auto body = e.get()->GetComponentOfSubclass<PhysicsBodyComponent>();
 	//add the physics body to the Entity's physics actor
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxBoxGeometry(extent.x, extent.y, extent.z), *material->getPhysXmat());
 
@@ -18,7 +18,7 @@ void BoxCollider::AddHook(const WeakRef<Entity>& e) {
 }
 
 void SphereCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
-	auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
+	auto body = e.get()->GetComponentOfSubclass<PhysicsBodyComponent>();
 	
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxSphereGeometry(radius), *material->getPhysXmat());
 	
@@ -26,7 +26,7 @@ void SphereCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 }
 
 void CapsuleCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
-	auto body = e.get()->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
+	auto body = e.get()->GetComponentOfSubclass<PhysicsBodyComponent>();
 
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxCapsuleGeometry(radius,halfHeight), *material->getPhysXmat());
 

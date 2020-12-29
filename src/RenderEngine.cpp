@@ -275,8 +275,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
 	//get the active camera
-	auto components = worldOwning->Components();
-	auto allcams = components.GetAllComponentsOfTypeFastPath<CameraComponent>();
+	auto allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
 	for (const Ref<CameraComponent>& cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
@@ -295,7 +294,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	
-	auto geometry = components.GetAllComponentsOfSubclass<StaticMesh>();
+	auto geometry = worldOwning->GetAllComponentsOfSubclass<StaticMesh>();
    
 	//Deferred geometry pass
 	for (const Ref<StaticMesh>& e : geometry) {
@@ -303,9 +302,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         e->Draw(Views::DeferredGeo);
 	}
 	
-	DrawLightsOfType<AmbientLight>(components);
-	DrawLightsOfType<DirectionalLight>(components);
-	DrawLightsOfType<PointLight>(components);
+	DrawLightsOfType<AmbientLight>(*worldOwning.get());
+	DrawLightsOfType<DirectionalLight>(*worldOwning.get());
+	DrawLightsOfType<PointLight>(*worldOwning.get());
 	
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
@@ -316,7 +315,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS
-	auto guis = components.GetAllComponentsOfTypeFastPath<GUIComponent>();
+	auto guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
 	for(const Ref<GUIComponent>& gui : guis){
 		gui->Update();
 		gui->Render();	//bgfx state is set in renderer before actual draw calls

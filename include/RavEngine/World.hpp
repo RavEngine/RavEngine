@@ -18,24 +18,16 @@
 #include "ScriptSystem.hpp"
 #include <taskflow/taskflow.hpp>
 #include <concurrentqueue.h>
+#include "SpinLock.hpp"
 
 namespace RavEngine {
 	class Entity;
 	typedef phmap::parallel_flat_hash_set<Ref<Entity>> EntityStore;
 
-	class World : public SharedObject {
+	class World : public ComponentStore<SpinLock> {
 	protected:
 		SpinLock mtx;
 
-		//for adding and removing components on spawned entities
-		struct component_operation {
-			bool add = true;
-			ComponentStore store;
-		};
-		moodycamel::ConcurrentQueue<component_operation> component_addremove;
-
-		//components data structure
-		ComponentStore allcomponents;
 
 		//Entity list
 		EntityStore Entities;
@@ -104,13 +96,6 @@ namespace RavEngine {
 		}
 
 		/**
-		@returns the componentstore for this world. Do not use in scripts!
-		*/
-		inline const ComponentStore& Components() {
-			return allcomponents;
-		}
-
-		/**
 		 Called by GameplayStatics when the final world is being deallocated
 		 */
 		inline void DeallocatePhysics() {
@@ -119,14 +104,6 @@ namespace RavEngine {
 
 		virtual ~World() {
 			std::cout << "world destructor @ " << this << std::endl;
-		}
-
-		inline void AddComponentsSpawnedEntity(const ComponentStore& store) {
-			component_addremove.enqueue({true,store});
-		}
-
-		inline void RemoveComponentsSpawnedEntity(const ComponentStore& store) {
-			component_addremove.enqueue({false,store});
 		}
 	};
 }

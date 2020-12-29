@@ -12,6 +12,7 @@
 #include "WeakRef.hpp"
 #include "PhysicsBodyComponent.hpp" 
 #include "ComponentStore.hpp"
+#include "SpinLock.hpp"
 
 /**
  This class defines an Entity for the Entity Component System.
@@ -20,28 +21,26 @@ namespace RavEngine {
 	class PhysicsBodyComponent;
 	class World;
 
-	class Entity : public SharedObject {
+	class Entity : public ComponentStore<SpinLock> {
+		friend class World;
 	protected:
-		//store the components on this Entity
-		ComponentStore components;
-
-		ComponentStore addBuffer;
-		ComponentStore removalBuffer;
-
 		WeakRef<World> worldptr;  //non-owning
+		
+		void OnAddComponent(Ref<Component> c) override{
+			c->SetOwner(this);
+			c->AddHook(this);
+		}
+		
+		void OnRemoveComponent(Ref<Component> c) override{
+			c->SetOwner(nullptr);
+			c->RemoveHook(this);
+		}
+
 
 	public:
 
 		//required virtual destructor for SharedObject
 		virtual ~Entity();
-
-		/**
-		Get a const reference to the components in this entity
-		@return the components in this Entity
-		*/
-		inline ComponentStore& Components() {
-			return components;
-		}
 
 		/**
 		 Get a pointer to the world that this entity is in. May be nullptr.
@@ -67,38 +66,7 @@ namespace RavEngine {
 		inline bool IsInWorld() const {
 			return !worldptr.isNull();
 		}
-
-		/**
-		Add a component to this entity. Use this call to ensure the component post-add hook gets invoked, and ownership is set correctly.
-		@param componentRef the component to add
-		*/
-		template<class T>
-		Ref<T> AddComponent(Ref<T> componentRef) {
-			componentRef->SetOwner(this);
-			Ref<Component> c(componentRef);
-			c->AddHook(this);
-
-			//synchronize with world
-			if (IsInWorld()) {
-				addBuffer.AddComponent(componentRef);
-				SyncAdds();
-			}
-
-			return components.AddComponent<T>(componentRef);
-		}
-
-		template<class T>
-		Ref<T> RemoveComponent(Ref<T> componentRef) {
-			Ref<Component> c(componentRef);
-			c->RemoveHook(this);
-			componentRef->SetOwner(nullptr);
-
-			if (IsInWorld()) {
-				removalBuffer.AddComponent(componentRef);
-				SyncRemovals();
-			}
-		}
-
+		
 		/**
 		Invoked by the world when the entity is added to the World
 		*/
@@ -117,7 +85,9 @@ namespace RavEngine {
 		/**
 		 @return a reference to the transform component, which all entities possess
 		 */
-		Ref<Transform> transform();
+		inline Ref<Transform> transform(){
+			return GetComponent<Transform>();
+		}
 
 		/**
 		Remove this entity from the world. If there are no more references, it will be destroyed.

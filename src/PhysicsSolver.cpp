@@ -191,8 +191,8 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
  @param e the entity to add
  */
 void PhysicsSolver::Spawn(Ref<Entity> e){
-    if (e->Components().HasComponentOfSubclass<PhysicsBodyComponent>()) {
-        auto actor = e->Components().GetComponentOfSubclass<PhysicsBodyComponent>();
+    if (e->HasComponentOfSubclass<PhysicsBodyComponent>()) {
+        auto actor = e->GetComponentOfSubclass<PhysicsBodyComponent>();
 		PhysicsBodyComponent* data = actor.get();
         actor->rigidActor->userData = data;
         scene->addActor(*(actor->rigidActor));
@@ -209,7 +209,7 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
  @param e the entity to remove
  */
 void PhysicsSolver::Destroy(Ref<Entity> e){
-    auto body = e->Components().GetComponent<PhysicsBodyComponent>();
+    auto body = e->GetComponent<PhysicsBodyComponent>();
     scene->removeActor(*(body->rigidActor));
 }
 
