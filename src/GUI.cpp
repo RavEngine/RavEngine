@@ -1,5 +1,6 @@
 #include "GUI.hpp"
 #include "App.hpp"
+#include "Debug.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -8,7 +9,7 @@ using namespace Rml;
 
 void GUIComponent::AddDocument(const std::string &name){
 	if (IsDocumentLoaded(name)){
-		throw runtime_error("Document is already loaded");
+		Debug::Fatal("Document is already loaded");
 	}
 	
 	string dir = "/uis/" + name;
@@ -16,7 +17,7 @@ void GUIComponent::AddDocument(const std::string &name){
 	auto docstr = App::Resources->FileContentsAt(dir.c_str());
 	ElementDocument* ed = context->LoadDocumentFromMemory(docstr, name);
 	if (ed == nullptr){
-		throw runtime_error("Cannot load document");
+		Debug::Fatal("Cannot load document");
 	}
 	ed->Show();
 	documents[name] = ed;
@@ -24,7 +25,7 @@ void GUIComponent::AddDocument(const std::string &name){
 
 void GUIComponent::RemoveDocument(const std::string &name){
 	if (!IsDocumentLoaded(name)){
-		throw runtime_error("Cannot unload document that is not loaded");
+		Debug::Fatal("Cannot unload document that is not loaded");
 	}
 	
 	auto ptr = documents.at(name);

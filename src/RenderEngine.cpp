@@ -29,10 +29,11 @@
 #include <im3d.h>
 #include <BuiltinMaterials.hpp>
 #include "Common3D.hpp"
-#include "Debug.hpp"
+#include "DebugDraw.hpp"
 #include <glm/gtc/type_ptr.hpp>
 #include <fmt/core.h>
 #include <iostream>
+#include "Debug.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -54,44 +55,44 @@ Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
 struct bgfx_msghandler : public bgfx::CallbackI{
 	static bool diagnostic_logging;
 	void fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) override{
-		throw runtime_error(fmt::format("BGFX error {} in {} line {}: {}",_code, _filePath, _line, _str));
+		Debug::Fatal("BGFX error {} in {} line {}: {}",_code, _filePath, _line, _str);
 	}
 	void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) override{
 #ifdef _DEBUG
 		if(diagnostic_logging){
-			std::cout << fmt::format("BGFX diagnostic: {} line {}: {}",_filePath, _line, fmt::format(_format, (char*)_argList)) << std::endl;
+			Debug::LogTemp("BGFX diagnostic: {} line {}: {}",_filePath, _line, fmt::format(_format, (char*)_argList));
 		}
 #endif
 	}
 	void profilerBegin(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) override{
-		throw runtime_error("profiler not implemented");
+		Debug::Fatal("profiler not implemented");
 	}
 	void profilerBeginLiteral(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) override{
-		throw runtime_error("profilerliteral not implemented");
+		Debug::Fatal("profilerliteral not implemented");
 	}
 	void profilerEnd() override{
-		throw runtime_error("profiler not implemented");
+		Debug::Fatal("profiler not implemented");
 	}
 	uint32_t cacheReadSize(uint64_t _id) override{
-		throw runtime_error("cacheReadSize not implemented");
+		Debug::Fatal("cacheReadSize not implemented");
 	}
 	bool cacheRead(uint64_t _id, void *_data, uint32_t _size) override{
-		throw runtime_error("cacheRead not implemented");
+		Debug::Fatal("cacheRead not implemented");
 	}
 	void cacheWrite(uint64_t _id, const void *_data, uint32_t _size) override{
-		throw runtime_error("cacheWrite not implemented");
+		Debug::Fatal("cacheWrite not implemented");
 	}
 	void screenShot(const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) override{
-		throw runtime_error("screenshot not implemented");
+		Debug::Fatal("screenshot not implemented");
 	}
 	void captureBegin(uint32_t _width, uint32_t _height, uint32_t _pitch, bgfx::TextureFormat::Enum format, bool _yflip) override {
-		throw runtime_error("video capture not implemented");
+		Debug::Fatal("video capture not implemented");
 	}
 	void captureEnd() override{
-		throw runtime_error("video capture not implemented");
+		Debug::Fatal("video capture not implemented");
 	}
 	void captureFrame(const void *_data, uint32_t _size) override{
-		throw runtime_error("frame capture not implemented");
+		Debug::Fatal("frame capture not implemented");
 	}
 };
 bool bgfx_msghandler::diagnostic_logging = false;
@@ -147,7 +148,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_POINTS);
 			break;
 		default:
-			throw runtime_error("Invalid Im3d state");
+			Debug::Fatal("Invalid Im3d state");
 			break;
 	}
 	//perform drawing here
@@ -210,7 +211,7 @@ RenderEngine::RenderEngine() {
 	
 	for(int i = 0; i < gbufferSize; i++){
 		if (!bgfx::isValid(attachments[i])){
-			throw runtime_error("Failed to create gbuffer attachment");
+			Debug::Fatal("Failed to create gbuffer attachment");
 		}
 	}
 
@@ -229,7 +230,7 @@ RenderEngine::RenderEngine() {
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
 	
 	if(!bgfx::isValid(gBuffer)){
-		throw runtime_error("Failed to create gbuffer");
+		Debug::Fatal("Failed to create gbuffer");
 	}
 	
 	bgfx::setViewName(Views::FinalBlit, "Final Blit");
@@ -470,7 +471,7 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 	bgfx::FrameBufferHandle fb = bgfx::createFrameBuffer(attachments, textures, true);
 	
 	if(!bgfx::isValid(fb))
-		throw runtime_error("Failed to create framebuffer");
+		Debug::Fatal("Failed to create framebuffer");
 	
 	return fb;
 }

@@ -9,6 +9,7 @@
 #include <random>
 #include "App.hpp"
 #include <filesystem>
+#include "Debug.hpp"
 
 using namespace RavEngine;
 
@@ -23,7 +24,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	string dir = "/meshes/" + name;
 	
 	if (!App::Resources->Exists(dir.c_str())) {
-		throw runtime_error("Cannot open resource: " + dir);
+		Debug::Fatal("Cannot open resource: {}", dir);
 	}
 
 	auto str = App::Resources->FileContentsAt(dir.c_str());
@@ -51,7 +52,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	
 	
 	if (!scene){
-		throw runtime_error(string("cannot load: ") + aiGetErrorString());
+		Debug::Fatal("Cannot load: {}", aiGetErrorString());
 	}
 	
 	//generate the vertex and index lists
@@ -132,7 +133,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	indexBuffer = bgfx::createIndexBuffer(ibm);
 
 	if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
-		throw runtime_error("Buffers could not be created.");
+		Debug::Fatal("Buffers could not be created.");
 	}
 	
 	Manager::RegisterMeshAsset(name, this);

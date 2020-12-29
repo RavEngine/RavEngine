@@ -5,6 +5,7 @@
 #include <Texture.hpp>
 #include "BuiltinMaterials.hpp"
 #include "Common3D.hpp"
+#include "Debug.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -103,15 +104,15 @@ double RenderEngine::GetElapsedTime(){
 }
 
 void RenderEngine::SetMouseCursor(const Rml::String &cursor_name){
-	throw runtime_error("Not implemented");
+	Debug::Fatal("Not implemented");
 }
 
 void RenderEngine::SetClipboardText(const Rml::String &text){
-	throw runtime_error("Not implemented");
+	Debug::Fatal("Not implemented");
 }
 
 void RenderEngine::GetClipboardText(Rml::String &text){
-	throw runtime_error("Not implemented");
+	Debug::Fatal("Not implemented");
 }
 
 /// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
@@ -229,5 +230,5 @@ void RenderEngine::SetTransform(const Rml::Matrix4f* transform){
 	
 	auto data = transform->data();
 	currentMatrix = glm::make_mat4(data);
-	throw runtime_error("Local transformations not supported yet");
+	Debug::Fatal("Local transformations not supported yet");
 }

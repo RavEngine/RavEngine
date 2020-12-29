@@ -1,7 +1,6 @@
 #include "VirtualFileSystem.hpp"
 #include <physfs.h>
-#include <sstream>
-#include <filesystem>
+#include "Debug.hpp"
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
@@ -37,7 +36,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	auto root = PHYSFS_enumerateFiles("/");
 	if (*root == NULL) {
 		cerr << PHYSFS_WHY() << endl;
-		throw runtime_error(PHYSFS_WHY());
+		Debug::Fatal(PHYSFS_WHY());
 	}
 	rootname = cstr;
 }
@@ -45,7 +44,7 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 {
 	
 	if(!Exists(path)){
-		throw runtime_error("cannot open " + (rootname + path));
+		Debug::Fatal("cannot open {}{}",rootname,path);
 	}
 	
 	auto ptr = PHYSFS_openRead(path);

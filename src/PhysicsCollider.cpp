@@ -3,7 +3,7 @@
 #include "PhysicsBodyComponent.hpp"
 #include <extensions/PxRigidActorExt.h>
 #include "WeakRef.hpp"
-#include "Debug.hpp"
+#include "DebugDraw.hpp"
 
 using namespace physx;
 using namespace RavEngine;

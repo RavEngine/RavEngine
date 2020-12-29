@@ -1,5 +1,5 @@
 #include "Light.hpp"
-#include "Debug.hpp"
+#include "DebugDraw.hpp"
 #include "PhysXDefines.h"
 #include <bgfx/bgfx.h>
 #include "MeshAsset.hpp"

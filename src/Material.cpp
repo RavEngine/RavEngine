@@ -10,6 +10,7 @@
 #include <bgfx/bgfx.h>
 #include "App.hpp"
 #include <typeindex>
+#include "Debug.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -62,7 +63,7 @@ Material::Material(const std::string& name) : name(name) {
 	bgfx::ShaderHandle fsh = loadShader(fragment_src);
 	program = bgfx::createProgram(vsh, fsh, true);
 	if (!bgfx::isValid(program)){
-		throw runtime_error("Material is invalid.");
+		Debug::Fatal("Material is invalid.");
 	}
 }
 

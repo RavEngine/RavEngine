@@ -5,7 +5,7 @@
 #include "App.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#include <fstream>
+#include "Debug.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -45,6 +45,6 @@ void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayer
 	texture = bgfx::createTexture2D(width,height,hasMipMaps,numlayers,format,flags,textureData);
 	
 	if(!bgfx::isValid(texture)){
-		throw runtime_error("Cannot create texture");
+		Debug::Fatal("Cannot create texture");
 	}
 }
