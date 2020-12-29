@@ -22,7 +22,8 @@ void RavEngine::World::Tick(float scale) {
     pretick(scale);
 	
 	//spawn entities that are pending spawn
-	for (auto& e : PendingSpawn){
+	Ref<Entity> e;
+	while(PendingSpawn.try_dequeue(e)){
 		Entities.insert(e);
         e->SetWorld(this);
 
@@ -41,14 +42,13 @@ void RavEngine::World::Tick(float scale) {
 		
 		e->parent = this;	//set parent so that this entity synchronizes its components with this world
 	}
-	PendingSpawn.clear();
 	
 	//Tick the game code
 	midtick(scale);
 	TickECS(scale);
 
 	//destroy objects that are pending removal
-	for( auto& e : PendingDestruction){
+	while(PendingDestruction.try_dequeue(e)){
 		//stop all scripts
 		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
 		for (const Ref<ScriptComponent>& c : coms) {
@@ -67,8 +67,6 @@ void RavEngine::World::Tick(float scale) {
         Solver->Destroy(e);
 		Entities.erase(e);
 	}
-	PendingDestruction.clear();
-	
 	//tick physics read
 	TickSystem(plsw,scale);
     Solver->Tick(scale);
@@ -93,9 +91,7 @@ RavEngine::World::World(){
 bool RavEngine::World::Spawn(Ref<Entity> e){
 	//cannot spawn an entity that is already in a world
 	if (e->GetWorld().isNull()){
-		mtx.lock();
-		PendingSpawn.push_back(e);
-		mtx.unlock();
+		PendingSpawn.enqueue(e);
 		return true;
 	}
 	return false;
@@ -112,10 +108,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	if (e->GetWorld().isNull()){
 		return false;
 	}
-	
-	mtx.lock();
-	PendingDestruction.push_back(e);
-	mtx.unlock();
+	PendingDestruction.enqueue(e);
 	return true;
 }
 

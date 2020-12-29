@@ -26,13 +26,10 @@ namespace RavEngine {
 
 	class World : public ComponentStore<SpinLock> {
 	protected:
-		SpinLock mtx;
-
-
 		//Entity list
 		EntityStore Entities;
-		plf::list<Ref<Entity>> PendingSpawn;
-		plf::list<Ref<Entity>> PendingDestruction;
+		moodycamel::ConcurrentQueue<Ref<Entity>> PendingSpawn;
+		moodycamel::ConcurrentQueue<Ref<Entity>> PendingDestruction;
 
 		//Systems list (stores the loaded systems), automatically sorted in dependency order
 		std::multiset<Ref<System>> Systems;

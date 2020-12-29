@@ -10,7 +10,7 @@
 #define C_REF_CHECK static_assert(std::is_base_of<RavEngine::Component, T>::value, "Template parameter must be a Component subclass");
 
 namespace RavEngine{
-	template<typename lock>
+	template<class lock = phmap::NullMutex>
 	class ComponentStore : public SharedObject {
 	protected:
 		typedef locked_hashset<Ref<RavEngine::Component>,lock> entry_type;
