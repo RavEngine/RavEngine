@@ -10,6 +10,7 @@
 #include "Texture.hpp"
 #include <RmlUi/Core.h>
 #include "GUI.hpp"
+#include "RMLFileInterface.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -40,10 +41,11 @@ App::App(const std::string& resourcesName){
 	//setup GUI rendering
 	Rml::SetSystemInterface(Renderer.get());
 	Rml::SetRenderInterface(Renderer.get());
+	Rml::SetFileInterface(new VFSInterface());
 	Rml::Initialise();
 	
 	//load the built-in fonts
-	GUIComponent::LoadFont("Roboto-Regular.ttf","Roboto", Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal);
+	GUIComponent::LoadFont("Roboto-Regular.ttf");
 }
 
 int App::run(int argc, char** argv) {
@@ -127,5 +129,7 @@ App::~App(){
 	MeshAsset::Manager::RemoveAll();
 	Material::Manager::RemoveAll();
 	PHYSFS_deinit();
+	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
+	delete fsi;
 }

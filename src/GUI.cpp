@@ -14,10 +14,10 @@ ElementDocument* GUIComponent::AddDocument(const std::string &name){
 	
 	string dir = "/uis/" + name;
 	
-	auto docstr = App::Resources->FileContentsAt(dir.c_str());
-	ElementDocument* ed = context->LoadDocumentFromMemory(docstr, name);
+	ElementDocument* ed = context->LoadDocument(dir);
+	
 	if (ed == nullptr){
-		Debug::Fatal("Cannot load document");
+		Debug::Fatal("Cannot load document at path {}", dir);
 	}
 	ed->Show();
 	documents[name] = ed;
@@ -38,11 +38,10 @@ bool GUIComponent::IsDocumentLoaded(const std::string &name) const{
 	return documents.contains(name);
 }
 
-bool GUIComponent::LoadFont(const std::string& filename, const std::string& fontname, Rml::Style::FontStyle style, Rml::Style::FontWeight weight){
+bool GUIComponent::LoadFont(const std::string& filename){
 	string dir = "/fonts/" + filename;
-	auto docstr = App::Resources->FileContentsAt(dir.c_str());
-	const Rml::byte* data = reinterpret_cast<const Rml::byte*>(docstr.c_str());
-	return Rml::LoadFontFace(data, docstr.size(), fontname, style, weight);
+	
+	return Rml::LoadFontFace(dir);
 }
 
 bool GUIComponent::Update(){

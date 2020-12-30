@@ -58,7 +58,7 @@ public:
 	 */
 	Rml::ElementDocument* GetDocument(const std::string& name) const;
 	
-	static bool LoadFont(const std::string& filename, const std::string& fontname, Rml::Style::FontStyle style, Rml::Style::FontWeight weight);
+	static bool LoadFont(const std::string& filename);
 	
 	virtual ~GUIComponent();
 	
