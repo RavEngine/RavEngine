@@ -30,9 +30,33 @@ public:
 	 */
 	GUIComponent(const std::string& name, int width, int height);
 	
-	void AddDocument(const std::string& name);
+	/**
+	 Load a document from disk with a name
+	 @param name the name of the RML file
+	 @throws if this document has already been loaded into this context
+	 */
+	Rml::ElementDocument* AddDocument(const std::string& name);
+	
+	/**
+	 Unload a document from disk with a name
+	 @param name the name of the RML file
+	 @throws if this document is not loaded
+	 */
 	void RemoveDocument(const std::string& name);
+	
+	/**
+	 @returns true if a document with the passed name is currently loaded.
+	 @param name the name of the RML file
+	 */
 	bool IsDocumentLoaded(const std::string& name) const;
+	
+	/**
+	 Get a pointer to a document, for performing queries or bindings.
+	 @param name the name of the document.
+	 @return a pointer to the RML ElementDocument
+	 @throws if the document is not loaded.
+	 */
+	Rml::ElementDocument* GetDocument(const std::string& name) const;
 	
 	static bool LoadFont(const std::string& filename, const std::string& fontname, Rml::Style::FontStyle style, Rml::Style::FontWeight weight);
 	

@@ -7,7 +7,7 @@ using namespace std;
 using namespace Rml;
 
 
-void GUIComponent::AddDocument(const std::string &name){
+ElementDocument* GUIComponent::AddDocument(const std::string &name){
 	if (IsDocumentLoaded(name)){
 		Debug::Fatal("Document is already loaded");
 	}
@@ -21,6 +21,7 @@ void GUIComponent::AddDocument(const std::string &name){
 	}
 	ed->Show();
 	documents[name] = ed;
+	return ed;
 }
 
 void GUIComponent::RemoveDocument(const std::string &name){
@@ -64,4 +65,11 @@ GUIComponent::GUIComponent(const string& name) : GUIComponent(name,App::Renderer
 
 GUIComponent::GUIComponent(const string& name, int width, int height){
 	context = Rml::CreateContext(name, Vector2i(width,height));
+}
+
+Rml::ElementDocument* GUIComponent::GetDocument(const std::string &name) const{
+	if (!IsDocumentLoaded(name)){
+		Debug::Fatal("Cannot get pointer to {} because it is not loaded.",name);
+	}
+	return documents.at(name);
 }
