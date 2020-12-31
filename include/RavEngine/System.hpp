@@ -10,6 +10,7 @@
 #include "SharedObject.hpp"
 #include "Entity.hpp"
 #include <plf_list.h>
+#include "CTTI.hpp"
 
 namespace RavEngine {
 	class World;
@@ -22,7 +23,7 @@ namespace RavEngine {
 		//query method
 
 		//dependency method
-		virtual plf::list<std::type_index> QueryTypes() const = 0;
+		virtual plf::list<ctti_t> QueryTypes() const = 0;
 
 		/**
 		Override in subclasses to determine execution order.

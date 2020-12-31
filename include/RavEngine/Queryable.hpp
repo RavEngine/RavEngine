@@ -1,5 +1,5 @@
 #pragma once
-#include <typeindex>
+#include "CTTI.hpp"
 #include <array>
 #include <tuple>
 
@@ -20,20 +20,20 @@ constexpr inline decltype(auto) to_array(Tuple&& tuple)
 template<typename ... types>
 struct Queryable{
 	inline static constexpr std::size_t ntypes = sizeof ... (types);
-	typedef std::array<std::type_index,ntypes> arraytype;
+	typedef std::array<ctti_t,ntypes> arraytype;
 	
 	inline static constexpr arraytype GetQueryTypes(){
-		return {std::type_index(typeid(types)) ...};
+		return {CTTI<types> ...};
 	}
 };
 
 template<typename base, typename ... types>
 struct QueryableDelta{
 	inline static constexpr std::size_t ntypes = sizeof ... (types) + base::ntypes;
-	typedef std::array<std::type_index,ntypes> arraytype;
+	typedef std::array<ctti_t,ntypes> arraytype;
 	
 	inline static constexpr arraytype GetQueryTypes(){
-		const std::array<std::type_index,sizeof ... (types)> thisvalues{ std::type_index(typeid(types)) ...};
+		const std::array<ctti_t,sizeof ... (types)> thisvalues{ CTTI<types> ...};
 		const typename base::arraytype basevalues = base::GetQueryTypes();
         //concatenate arrays
         return to_array(std::tuple_cat(thisvalues,basevalues));

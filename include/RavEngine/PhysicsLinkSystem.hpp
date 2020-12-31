@@ -11,6 +11,7 @@
 #include <PxPhysicsAPI.h>
 #include "PhysicsBodyComponent.hpp"
 #include "ScriptSystem.hpp"
+#include "CTTI.hpp"
 
 namespace RavEngine {
     /**
@@ -25,8 +26,8 @@ namespace RavEngine {
         virtual ~PhysicsLinkSystemWrite() {}
         void Tick(float fpsScale, Ref<Entity> e) const override;
 
-        plf::list<std::type_index> QueryTypes() const override {
-            return { typeid(PhysicsBodyComponent) };
+        plf::list<ctti_t> QueryTypes() const override {
+            return { CTTI<PhysicsBodyComponent> };
         }
 		//must run before write system
 		bool MustRunBefore(const std::type_index& other) const override{
@@ -47,8 +48,8 @@ namespace RavEngine {
         virtual ~PhysicsLinkSystemRead() {}
         void Tick(float fpsScale, Ref<Entity> e) const override;
 
-        plf::list<std::type_index> QueryTypes() const override {
-            return {typeid(RigidBodyDynamicComponent)};
+        plf::list<ctti_t> QueryTypes() const override {
+            return {CTTI<RigidBodyDynamicComponent>};
         }
 
 		//must run before write system
