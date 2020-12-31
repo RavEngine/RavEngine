@@ -68,7 +68,7 @@ Material::Material(const std::string& name) : name(name) {
 }
 
 
-bool Material::Manager::HasMaterialByTypeIndex(const std::type_index& t){
+bool Material::Manager::HasMaterialByTypeIndex(const ctti_t t){
 	bool result = false;
 	result = materials.find(t) != materials.end();
 	return result;

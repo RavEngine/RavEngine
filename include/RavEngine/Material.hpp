@@ -5,6 +5,7 @@
 #include <bgfx/bgfx.h>
 #include "glm/gtc/type_ptr.hpp"
 #include "Common3D.hpp"
+#include "CTTI.hpp"
 
 namespace RavEngine {
 
@@ -36,13 +37,13 @@ namespace RavEngine {
 			friend class Material;
 		protected:
 			//materials are keyed by their shader name
-			typedef locked_hashmap<std::type_index, Ref<RavEngine::Material>,SpinLock> MaterialStore;
+			typedef locked_hashmap<ctti_t, Ref<RavEngine::Material>,SpinLock> MaterialStore;
 			static MaterialStore materials;
 			
 			static matrix4 projectionMatrix;
 			static matrix4 viewMatrix;
 			
-			static bool HasMaterialByTypeIndex(const std::type_index&);
+			static bool HasMaterialByTypeIndex(const ctti_t);
 			
 			static matrix4 transformMatrix;
 		public:
@@ -60,8 +61,7 @@ namespace RavEngine {
 					throw std::runtime_error("Material with type is already allocated! Use GetMaterialByType to get it.");
 				}
 				
-				std::type_index t(typeid(T));
-				materials.insert(std::make_pair(t, mat));
+				materials.insert(std::make_pair(CTTI<T>, mat));
 			}
 			/**
 			 Gets a material with a given name, casted to a particular type.
@@ -72,7 +72,7 @@ namespace RavEngine {
 			static Ref<T> GetMaterialByType() {
 				Ref<T> mat;
 				mat.setNull();
-				std::type_index t(typeid(T));
+				auto t = CTTI<T>;
 				try{
 					mat = materials.at(t);
 				}
@@ -82,7 +82,7 @@ namespace RavEngine {
 			
 			template<typename T>
 			static inline bool HasMaterialByType(){
-				return HasMaterialByTypeIndex(typeid(T));
+				return HasMaterialByTypeIndex(CTTI<T>);
 			}
 			
 			/**
@@ -91,7 +91,7 @@ namespace RavEngine {
 			 */
 			template<typename T>
 			static inline void UnregisterMaterialByType(){
-				materials.erase(typeid(T));
+				materials.erase(CTTI<T>);
 			}
 			
 			
@@ -118,7 +118,7 @@ namespace RavEngine {
 			template<typename T, typename ... A>
 			static Ref<T> AccessMaterialOfType(A ... args){
 				Ref<T> mat;
-				std::type_index t(typeid(T));
+				auto t = CTTI<T>;
 				if (materials.find(t) != materials.end()){
 					mat = materials.at(t);
 				}
