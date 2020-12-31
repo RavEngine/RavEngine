@@ -6,14 +6,30 @@
 #include "SpinLock.hpp"
 #include "Locked_Hashmap.hpp"
 #include "Queryable.hpp"
+#include "IInputListener.hpp"
 
 namespace RavEngine{
-class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>{
+class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>, public RavEngine::IInputListener{
 protected:
 	Rml::Context* context = nullptr;
 	locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
 	
+	uint32_t modifier_state = 0;
+	
+	void AnyActionDown(const int charcode) override;
+	
+	void AnyActionUp(const int charcode) override;
+	
+	void MouseMove();
+	
+	Rml::Vector2f MousePos;
+	
 public:
+	
+	enum class RenderMode{
+		Screenspace,
+		Worldspace
+	} Mode = RenderMode::Screenspace;
 	
 	/**
 	 Construct a GUI document using the current screen size
@@ -57,6 +73,23 @@ public:
 	 @throws if the document is not loaded.
 	 */
 	Rml::ElementDocument* GetDocument(const std::string& name) const;
+	
+	/**
+	 Change the size of the context.
+	 @param width the new width of the context
+	 @param height the new height of the context
+	 */
+	void SetDimensions(uint32_t width, uint32_t height);
+	
+	/** Bind to your InputManager's mouse X axis mapping
+	 * @param normalized_pos the position of the mouse, in [0,1)
+	 */
+	void MouseX(float normalized_pos);
+	
+	/** Bind to your InputManager's mouse Y axis mapping
+	 * @param normalized_pos the position of the mouse, in [0,1)
+	 */
+	void MouseY(float normalized_pos);
 	
 	static bool LoadFont(const std::string& filename);
 	

@@ -259,6 +259,9 @@ namespace RavEngine {
 
 		phmap::flat_hash_map<int, AxisRecord> codeToAxis;                //ids to records
 		phmap::flat_hash_map<std::string, plf::list<AxisCallback>> axisMappings;     //strings to methods
+		
+		//stores objects to call on any Action input, passing the input
+		phmap::flat_hash_set<IInputListener*> AnyEvent;
 
         /**
          Helper used for registering axis inputs inside the engine
@@ -382,6 +385,20 @@ namespace RavEngine {
 			AxisCallback axis(thisptr, f, deadZone,controllers);
 			axisMappings[name].remove(axis);
 			thisptr->OnUnregister(this);
+		}
+		
+		/**
+		 Bind an object to recieve AnyEvents. This will invoke its AnyDown and AnyUp virtual methods
+		 */
+		inline void BindAnyAction(IInputListener* listener){
+			AnyEvent.insert(listener);
+		}
+		
+		/**
+		 Unbind an object to recieve AnyEvents. This is done automatically when an IInputListener is destructed. 
+		 */
+		inline void UnbindAnyAction(IInputListener* listener){
+			AnyEvent.erase(listener);
 		}
 
 		/**

@@ -1,11 +1,23 @@
 #include "GUI.hpp"
 #include "App.hpp"
 #include "Debug.hpp"
+#include "InputManager.hpp"
 
 using namespace RavEngine;
 using namespace std;
 using namespace Rml;
 
+/**
+ Converts SDL (USB) scancodes to RML keys
+ */
+static inline Rml::Input::KeyIdentifier SDLtoRML(const int scancode){
+	int value = 0;
+	if (scancode >= SDL_SCANCODE_A && scancode <= SDL_SCANCODE_Z){
+		value = scancode +(Rml::Input::KeyIdentifier::KI_A - SDL_SCANCODE_A);
+	}
+	
+	return static_cast<Rml::Input::KeyIdentifier>(value);
+}
 
 ElementDocument* GUIComponent::AddDocument(const std::string &name){
 	if (IsDocumentLoaded(name)){
@@ -45,6 +57,7 @@ bool GUIComponent::LoadFont(const std::string& filename){
 }
 
 bool GUIComponent::Update(){
+	MouseMove();
 	return context->Update();
 }
 
@@ -71,4 +84,77 @@ Rml::ElementDocument* GUIComponent::GetDocument(const std::string &name) const{
 		Debug::Fatal("Cannot get pointer to {} because it is not loaded.",name);
 	}
 	return documents.at(name);
+}
+
+
+void GUIComponent::AnyActionDown(const int charcode){
+	//If is a modifier, add to the bitmask
+	switch(charcode){
+		case SDL_SCANCODE_LCTRL:
+		case SDL_SCANCODE_RCTRL:
+			modifier_state |= Rml::Input::KeyModifier::KM_CTRL;
+			break;
+		case SDL_SCANCODE_LSHIFT:
+		case SDL_SCANCODE_RSHIFT:
+			modifier_state |= Rml::Input::KeyModifier::KM_SHIFT;
+			break;
+		case SDL_SCANCODE_MENU:
+			modifier_state |= Rml::Input::KeyModifier::KM_META;
+			break;
+		case SDL_SCANCODE_CAPSLOCK:
+			modifier_state |= Rml::Input::KeyModifier::KM_CAPSLOCK;
+			break;
+		case SDL_SCANCODE_NUMLOCKCLEAR:
+			modifier_state |= Rml::Input::KeyModifier::KM_NUMLOCK;
+			break;
+		case SDL_SCANCODE_SCROLLLOCK:
+			modifier_state |= Rml::Input::KeyModifier::KM_SCROLLLOCK;
+			break;
+	}
+	context->ProcessKeyDown(SDLtoRML(charcode), 1);
+}
+
+void GUIComponent::AnyActionUp(const int charcode){
+	//If is a modifier, remove from the bitmask
+	switch(charcode){
+		case SDL_SCANCODE_LCTRL:
+		case SDL_SCANCODE_RCTRL:
+			modifier_state &= ~Rml::Input::KeyModifier::KM_CTRL;
+			break;
+		case SDL_SCANCODE_LSHIFT:
+		case SDL_SCANCODE_RSHIFT:
+			modifier_state &= ~Rml::Input::KeyModifier::KM_SHIFT;
+			break;
+		case SDL_SCANCODE_MENU:
+			modifier_state &= ~Rml::Input::KeyModifier::KM_META;
+			break;
+		case SDL_SCANCODE_CAPSLOCK:
+			modifier_state &= ~Rml::Input::KeyModifier::KM_CAPSLOCK;
+			break;
+		case SDL_SCANCODE_NUMLOCKCLEAR:
+			modifier_state &= ~Rml::Input::KeyModifier::KM_NUMLOCK;
+			break;
+		case SDL_SCANCODE_SCROLLLOCK:
+			modifier_state &= ~Rml::Input::KeyModifier::KM_SCROLLLOCK;
+			break;
+	}
+	context->ProcessKeyUp(SDLtoRML(charcode), 0);
+}
+
+void GUIComponent::MouseX(float normalized_pos){
+	MousePos.x = normalized_pos;
+}
+
+void GUIComponent::MouseY(float normalized_pos){
+	MousePos.y = normalized_pos;
+}
+
+void GUIComponent::MouseMove(){
+	//Forward to canvas, using the bitmask
+	auto dim = context->GetDimensions();
+	context->ProcessMouseMove(MousePos.x * dim.x, MousePos.y * dim.y, modifier_state);
+}
+
+void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
+	context->SetDimensions(Rml::Vector2i(width,height));
 }

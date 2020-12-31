@@ -8,6 +8,9 @@ namespace RavEngine {
 	struct IInputListener {
 		void OnRegister(const WeakRef<InputManager>& i);
 		void OnUnregister(const WeakRef<InputManager>& i);
+		
+		virtual void AnyActionDown(const int charcode){}
+		virtual void AnyActionUp(const int charcode){}
 
 		~IInputListener();
 	private:

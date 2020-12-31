@@ -316,7 +316,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//GUI
 	//TODO: thread using ECS
 	auto guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
+	auto size = GetBufferSize();
 	for(const Ref<GUIComponent>& gui : guis){
+		if(gui->Mode == GUIComponent::RenderMode::Screenspace){
+			gui->SetDimensions(size.width, size.height);
+		}
 		gui->Update();
 		gui->Render();	//bgfx state is set in renderer before actual draw calls
 	}

@@ -138,6 +138,16 @@ void InputManager::SDL_key(bool state, int charcode, CID controller)
 			inputs.push_back({ controller,static_cast<ActionState>(state) });
 		}
     }
+	
+	//invoke AnyActions
+	for(IInputListener* l : AnyEvent){
+		if (state){
+			l->AnyActionDown(charcode);
+		}
+		else{
+			l->AnyActionUp(charcode);
+		}
+	}
 }
 
 /**
@@ -237,6 +247,9 @@ void RavEngine::InputManager::UnbindAllFor(IInputListener* act)
 			return callback.ObjectsMatch(act);
 		});
 	}
+	
+	//unbind all AnyEvents
+	UnbindAnyAction(act);
 }
 
 void RavEngine::InputManager::SetRelativeMouseMode(bool mode){
