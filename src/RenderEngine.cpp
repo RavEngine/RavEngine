@@ -302,13 +302,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         e->Draw(Views::DeferredGeo);
 	}
 	
-	DrawLightsOfType<AmbientLight>(*worldOwning.get());
-	DrawLightsOfType<DirectionalLight>(*worldOwning.get());
-	DrawLightsOfType<PointLight>(*worldOwning.get());
+	bool al = DrawLightsOfType<AmbientLight>(*worldOwning.get());
+	bool dl = DrawLightsOfType<DirectionalLight>(*worldOwning.get());
+	bool pl = DrawLightsOfType<PointLight>(*worldOwning.get());
 	
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
-	bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
+	if (al || dl || pl){
+		bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
+	}
 	
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);

@@ -66,6 +66,8 @@ namespace RavEngine {
         void TickSystem(Ref<System> system, float scale);
 		
 		tf::Taskflow tasks;
+		
+		bool physicsActive = false;
 
 	public:
 		/**
@@ -73,7 +75,7 @@ namespace RavEngine {
 		* @return true if the systems were loaded, false if they were not loaded because they are already loaded
 		*/
 		bool InitPhysics();
-
+		
 		/**
 		* Evaluate the world given a scale factor. One tick = 1/App::EvalNormal
 		* @param the tick fraction to evaluate

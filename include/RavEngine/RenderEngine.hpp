@@ -117,12 +117,17 @@ namespace RavEngine {
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
 		
+		/**
+		 Execute instanced draw calls for a given light type
+		 @param components the componetstore of the world to get the lights from
+		 @return true light draw calls were executed, false otherwise
+		 */
 		template<typename T, typename U>
-		inline void DrawLightsOfType(ComponentStore<U>& components){
+		inline bool DrawLightsOfType(ComponentStore<U>& components){
 			//must set before changing shaders
 			auto lights = components.template GetAllComponentsOfTypeFastPath<T>();
 			if (lights.size() == 0){
-				return;
+				return false;
 			}
 			for(int i = 0; i < gbufferSize; i++){
 				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
@@ -150,6 +155,8 @@ namespace RavEngine {
 			
 			//execute instance draw call
 			T::Draw(Views::Lighting);	//view 2 is the lighting pass
+			
+			return true;
 		}
 		
 		static bgfx::VertexLayout RmlLayout;

@@ -3,6 +3,7 @@
 #include <SDL_events.h>
 #include <SDL.h>
 #include <RenderEngine.hpp>
+#include "Debug.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -78,7 +79,7 @@ void InputManager::Tick() {
 	//get the list of functions to invoke
 	for (auto& p : codeToAction) {
 		for(auto& a : p.second.bindingNames){
-			if (actionMappings.find(a) != actionMappings.end()) {
+			if (actionMappings.contains(a)) {
 				auto toInvoke = actionMappings.at(a);
 				
 				//determine which to invoke
@@ -102,7 +103,7 @@ void InputManager::Tick() {
     //call all axis mappings
     for (auto& pair : codeToAxis){
 		for (auto& a : pair.second.bindingNames) {
-            if (axisMappings.find(a) != axisMappings.end()) {
+            if (axisMappings.contains(a)) {
 				auto scale = codeToAxis[pair.first].scale;
 				for(const auto& evt : codeToAxis[pair.first].values){
 					for (auto& f : axisMappings.at(a)) {
@@ -127,13 +128,13 @@ void InputManager::Tick() {
 void InputManager::SDL_key(bool state, int charcode, CID controller)
 {
     //axis mapping?
-    if (codeToAxis.find(charcode) != codeToAxis.end()){
+    if (codeToAxis.contains(charcode)){
 		codeToAxis[charcode].values[controller] = (float)state;
     }
     
     //action mapping?
-    if (codeToAction.find(charcode) != codeToAction.end()){
-		auto inputs = codeToAction[charcode].inputs;
+    if (codeToAction.contains(charcode)){
+		auto& inputs = codeToAction[charcode].inputs;
 		if (inputs.size() < inputs.max_size()) {
 			inputs.push_back({ controller,static_cast<ActionState>(state) });
 		}

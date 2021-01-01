@@ -68,10 +68,12 @@ void RavEngine::World::Tick(float scale) {
 		Entities.erase(e);
 	}
 	//tick physics read
-	TickSystem(plsw,scale);
-    Solver->Tick(scale);
-	TickSystem(plsr,scale);
-    
+	if (physicsActive){
+		TickSystem(plsw,scale);
+		Solver->Tick(scale);
+		TickSystem(plsr,scale);
+	}
+
     posttick(scale);
 }
 
@@ -147,18 +149,15 @@ void RavEngine::World::TickECS(float fpsScale) {
 }
 
 bool RavEngine::World::InitPhysics() {
-	//check if physics is already loaded (TODO: optimize)
-	for (const auto& system : Systems) {
-		if (dynamic_cast<PhysicsLinkSystemRead*>(system.get()) != nullptr || dynamic_cast<PhysicsLinkSystemWrite*>(system.get()) != nullptr) {
-			return false;
-		}
+	if (physicsActive){
+		return false;
 	}
 
 	plsr = new PhysicsLinkSystemRead(Solver->scene);
-	//RegisterSystem(plsr);
 
 	plsw = new PhysicsLinkSystemWrite(Solver->scene);
-	//RegisterSystem(plsw);
+	
+	physicsActive = true;
 
 	return true;
 }
