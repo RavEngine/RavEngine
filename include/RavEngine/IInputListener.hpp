@@ -15,5 +15,6 @@ namespace RavEngine {
 		~IInputListener();
 	private:
 		phmap::flat_hash_map<WeakRef<InputManager>, int> senders;
+		bool isTearingDown = false;
 	};
 }

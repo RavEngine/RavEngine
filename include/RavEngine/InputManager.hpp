@@ -11,6 +11,8 @@
 #include <SDL_events.h>
 #include <etl/vector.h>
 #include "IInputListener.hpp"
+#include "SpinLock.hpp"
+#include "Locked_Hashmap.hpp"
 
 namespace RavEngine {
 	enum class ActionState{
@@ -254,14 +256,14 @@ namespace RavEngine {
 			phmap::flat_hash_map<CID,float> values;
 		};
 		
-		phmap::flat_hash_map<int, ActionRecord> codeToAction;
-		phmap::flat_hash_map<std::string, plf::list<ActionCallback>> actionMappings;
+		locked_hashmap<int, ActionRecord, SpinLock> codeToAction;
+		locked_hashmap<std::string, plf::list<ActionCallback>,SpinLock> actionMappings;
 
-		phmap::flat_hash_map<int, AxisRecord> codeToAxis;                //ids to records
-		phmap::flat_hash_map<std::string, plf::list<AxisCallback>> axisMappings;     //strings to methods
+		locked_hashmap<int, AxisRecord,SpinLock> codeToAxis;                //ids to records
+		locked_hashmap<std::string, plf::list<AxisCallback>,SpinLock> axisMappings;     //strings to methods
 		
 		//stores objects to call on any Action input, passing the input
-		phmap::flat_hash_set<IInputListener*> AnyEvent;
+		locked_hashset<IInputListener*,SpinLock> AnyEvent;
 
         /**
          Helper used for registering axis inputs inside the engine
@@ -392,6 +394,7 @@ namespace RavEngine {
 		 */
 		inline void BindAnyAction(IInputListener* listener){
 			AnyEvent.insert(listener);
+			listener->OnRegister(this);
 		}
 		
 		/**
@@ -399,6 +402,7 @@ namespace RavEngine {
 		 */
 		inline void UnbindAnyAction(IInputListener* listener){
 			AnyEvent.erase(listener);
+			listener->OnUnregister(this);
 		}
 
 		/**

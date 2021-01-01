@@ -5,11 +5,12 @@ using namespace RavEngine;
 
 IInputListener::~IInputListener()
 {
+	isTearingDown = true;
 	for (auto& p : senders) {
 		auto ref = p.first;
 		//remove this from sender
 		if (!ref.isNull()) {
-			Ref<InputManager>(ref)->UnbindAllFor(this);
+			ref.get()->UnbindAllFor(this);
 		}
 	}
 }
@@ -19,7 +20,10 @@ void IInputListener::OnRegister(const WeakRef<InputManager> &i){
 }
 
 void IInputListener::OnUnregister(const WeakRef<InputManager> &i) {
-	if (senders.find(i) != senders.end()) {
+	if (isTearingDown || i.isNull()){
+		return;
+	}
+	if (senders.contains(i)) {
 		senders[i]--;
 	}
 	if (senders[i] == 0) {
