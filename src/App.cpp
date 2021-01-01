@@ -123,6 +123,12 @@ int App::run(int argc, char** argv) {
     return OnShutdown();
 }
 
+void App::Quit(){
+	SDL_Event event;
+	event.type = SDL_QUIT;
+	SDL_PushEvent(&event);
+}
+
 App::~App(){
 	inputManager = nullptr;
 	currentWorld = nullptr;

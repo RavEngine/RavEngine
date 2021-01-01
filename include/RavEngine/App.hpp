@@ -22,6 +22,11 @@ namespace RavEngine {
 	public:
 		App(const std::string& resourcesName);
 		virtual ~App();
+		
+		/**
+		 Signal to gracefully shut down the application
+		 */
+		static void Quit();
 
 		/**
 		Invoked automatically. Passes command line arguments.

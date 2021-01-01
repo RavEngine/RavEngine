@@ -111,7 +111,17 @@ void GUIComponent::AnyActionDown(const int charcode){
 			modifier_state |= Rml::Input::KeyModifier::KM_SCROLLLOCK;
 			break;
 	}
-	context->ProcessKeyDown(SDLtoRML(charcode), 1);
+	
+	switch(charcode){
+		case SDL_BUTTON_LEFT:
+		case SDL_BUTTON_RIGHT:
+		case SDL_BUTTON_MIDDLE:
+			context->ProcessMouseButtonDown(charcode - 1,modifier_state);
+			break;
+		default:
+			context->ProcessKeyDown(SDLtoRML(charcode), 1);
+			break;
+	}
 }
 
 void GUIComponent::AnyActionUp(const int charcode){
@@ -138,7 +148,16 @@ void GUIComponent::AnyActionUp(const int charcode){
 			modifier_state &= ~Rml::Input::KeyModifier::KM_SCROLLLOCK;
 			break;
 	}
-	context->ProcessKeyUp(SDLtoRML(charcode), 0);
+	switch(charcode){
+		case SDL_BUTTON_LEFT:
+		case SDL_BUTTON_RIGHT:
+		case SDL_BUTTON_MIDDLE:
+			context->ProcessMouseButtonUp(charcode - 1, modifier_state);
+			break;
+		default:
+			context->ProcessKeyUp(SDLtoRML(charcode), 0);
+			break;
+	}
 }
 
 void GUIComponent::MouseX(float normalized_pos){
