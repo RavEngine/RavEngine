@@ -49,7 +49,7 @@ static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indice
 			convertedv[i].u = v.tex_coord.x;
 			convertedv[i].v = v.tex_coord.y;
 			
-			color_t color = (v.colour.red << 24) + (v.colour.blue << 16) + (v.colour.green << 8) + v.colour.alpha;
+			color_t color = (v.colour.alpha << 24) + (v.colour.blue << 16) + (v.colour.green << 8) + v.colour.red;
 			
 			convertedv[i].color = color;
 		}
