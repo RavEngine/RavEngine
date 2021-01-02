@@ -124,6 +124,14 @@ public:
         //compare pointer values
         return get() == other.get();
     }
+	
+	/**
+	 Shortcut for truthy
+	 @return true if this weakref is NOT null, false otherwise
+	 */
+	inline operator bool() const{
+		return !isNull();
+	}
 
     /**
     update because the object this weakpointer points to was deallocated

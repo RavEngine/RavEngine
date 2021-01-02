@@ -13,6 +13,9 @@
 #include <future>
 #include "App.hpp"
 #include "PhysicsLinkSystem.hpp"
+#include <RmlUi/Debugger.h>
+#include "GUI.hpp"
+#include "InputManager.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -160,4 +163,27 @@ bool RavEngine::World::InitPhysics() {
 	physicsActive = true;
 
 	return true;
+}
+
+bool World::InitGUIDebugger(){
+	if (debuggerContext.isNull()){
+		debuggerContext = new Entity();
+		auto ctx = debuggerContext->AddComponent<GUIComponent>(new GUIComponent("debugger-context"));
+		
+		bool status = Rml::Debugger::Initialise(ctx->context);
+		Spawn(debuggerContext);
+		
+		return true;
+	}
+	return false;
+}
+
+void World::BindGUIDebuggerControls(Ref<InputManager> m){
+	auto ctx = debuggerContext->GetComponent<GUIComponent>();
+	m->BindAnyAction(ctx.get());
+	m->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
+	m->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
+	
+	m->BindAxis("MouseX", ctx.get(), &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
+	m->BindAxis("MouseY", ctx.get(), &GUIComponent::MouseY, CID::ANY, 0);
 }

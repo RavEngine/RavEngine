@@ -11,6 +11,8 @@
 namespace RavEngine{
 class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>, public RavEngine::IInputListener{
 protected:
+	friend class World;
+	
 	Rml::Context* context = nullptr;
 	locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
 	
@@ -92,6 +94,8 @@ public:
 	void MouseY(float normalized_pos);
 	
 	static bool LoadFont(const std::string& filename);
+	
+	void Debug();
 	
 	virtual ~GUIComponent();
 	

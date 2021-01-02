@@ -2,6 +2,7 @@
 #include "App.hpp"
 #include "Debug.hpp"
 #include "InputManager.hpp"
+#include <RmlUi/Debugger.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -176,4 +177,9 @@ void GUIComponent::MouseMove(){
 
 void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
 	context->SetDimensions(Rml::Vector2i(width,height));
+}
+
+void GUIComponent::Debug(){
+	Rml::Debugger::SetContext(context);
+	Rml::Debugger::SetVisible(true);
 }

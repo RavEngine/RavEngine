@@ -22,6 +22,7 @@
 
 namespace RavEngine {
 	class Entity;
+	class InputManager;
 	typedef phmap::parallel_flat_hash_set<Ref<Entity>> EntityStore;
 
 	class World : public ComponentStore<SpinLock> {
@@ -68,8 +69,16 @@ namespace RavEngine {
 		tf::Taskflow tasks;
 		
 		bool physicsActive = false;
+		
+		//used for the GUI debugger
+		Ref<Entity> debuggerContext;
 
 	public:
+		
+		bool InitGUIDebugger();
+		
+		void BindGUIDebuggerControls(Ref<InputManager> m);
+		
 		/**
 		* Initializes the physics-related Systems.
 		* @return true if the systems were loaded, false if they were not loaded because they are already loaded
