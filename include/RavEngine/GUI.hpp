@@ -35,18 +35,16 @@ public:
 	
 	/**
 	 Construct a GUI document using the current screen size
-	 @param docname the name of the rml file to load
 	 */
-	GUIComponent(const std::string& name);
+	GUIComponent();
 	
 	
 	/**
 	 Construct a GUI renderer with user-supplied size
-	 @param docname the name of the rml file to load
 	 @param width the width in pixels of the context
 	 @param height the height in pixels of the context
 	 */
-	GUIComponent(const std::string& name, int width, int height);
+	GUIComponent(int width, int height);
 	
 	/**
 	 Load a document from disk with a name

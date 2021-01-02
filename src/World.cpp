@@ -168,7 +168,7 @@ bool RavEngine::World::InitPhysics() {
 bool World::InitGUIDebugger(){
 	if (debuggerContext.isNull()){
 		debuggerContext = new Entity();
-		auto ctx = debuggerContext->AddComponent<GUIComponent>(new GUIComponent("debugger-context"));
+		auto ctx = debuggerContext->AddComponent<GUIComponent>(new GUIComponent());
 		
 		bool status = Rml::Debugger::Initialise(ctx->context);
 		Spawn(debuggerContext);

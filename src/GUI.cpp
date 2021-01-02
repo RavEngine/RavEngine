@@ -3,10 +3,12 @@
 #include "Debug.hpp"
 #include "InputManager.hpp"
 #include <RmlUi/Debugger.h>
+#include <uuid.h>
 
 using namespace RavEngine;
 using namespace std;
 using namespace Rml;
+using namespace uuids;
 
 /**
  Converts SDL (USB) scancodes to RML keys
@@ -73,11 +75,12 @@ GUIComponent::~GUIComponent(){
 	RemoveContext(context->GetName());
 }
 
-GUIComponent::GUIComponent(const string& name) : GUIComponent(name,App::Renderer->GetBufferSize().width,App::Renderer->GetBufferSize().height){
+GUIComponent::GUIComponent() : GUIComponent(App::Renderer->GetBufferSize().width,App::Renderer->GetBufferSize().height){
 }
 
-GUIComponent::GUIComponent(const string& name, int width, int height){
-	context = Rml::CreateContext(name, Vector2i(width,height));
+GUIComponent::GUIComponent(int width, int height){
+	uuid name = uuid_system_generator{}();
+	context = Rml::CreateContext(to_string(name), Vector2i(width,height));
 }
 
 Rml::ElementDocument* GUIComponent::GetDocument(const std::string &name) const{
