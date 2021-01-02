@@ -3,13 +3,14 @@ A C++ cross-platform game library, with emphasis on performance and ease of use.
 1. Automatic multithreaded object evaluation 
    - ECS data-oriented and Scripting-style object-oriented supported simultaneously
    - the OOP scripting system is powered by ECS and automatically threaded
-2. CPU-multithreaded physics simulation (Nvidia PhysX 4.1)
-3. Easy memory management handled via automatic reference counting 
-4. Supports native platform rendering APIs (Metal, DirectX, Vulkan)
-5. Easy integration with CMake
-6. Quality-of-life features like automatic shader compilation
+2. Multithreaded physics simulation (Nvidia PhysX 4.1)
+3. Automatic memory management handled via reference counting 
+4. Supports modern platform rendering APIs (Metal, DirectX, Vulkan)
+5. Flexible and fast HTML+CSS based style user interface system
+6. Automated build process powered by CMake
+7. Quality-of-life features like automatic shader compilation
 
-Note: RavEngine does not have a GUI editor.
+Note: RavEngine does not have a graphical editor.
 
 ## This is early alpha
 Expect bugs and frequent breaking changes. Do not use in serious projects. 

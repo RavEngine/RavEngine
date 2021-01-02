@@ -20,7 +20,19 @@ namespace RavEngine {
 	class SharedObject {
 		std::atomic<int> refcount = 0;
 		
-		locked_hashset<WeakRefBase*,SpinLock> weakptrs;
+		//don't want to use the virtual hash in this case, treat the address as the unique identifier
+		struct PtrHash{
+			size_t operator()(const WeakRefBase* key) const{
+				return reinterpret_cast<uintptr_t>(key);
+			}
+		};
+		struct PtrEq{
+			bool operator()(const WeakRefBase* t1, const WeakRefBase* t2) const{
+				return reinterpret_cast<uintptr_t>(t1) == reinterpret_cast<uintptr_t>(t2);
+			}
+		};
+		
+		locked_hashset<WeakRefBase*,SpinLock, PtrHash, PtrEq> weakptrs;
 	public:
 		virtual ~SharedObject() {
 			//notify all tracked WeakRefs
