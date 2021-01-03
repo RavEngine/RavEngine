@@ -279,9 +279,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for (const Ref<CameraComponent>& cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
-			int width,height;
-			SDL_GL_GetDrawableSize(window, &width, &height);
-			owning->SetTargetSize(width, height);
+			auto size = GetBufferSize();
+			owning->SetTargetSize(size.width, size.height);
 			Material::Manager::SetProjectionMatrix(cam->GenerateProjectionMatrix());
 			Material::Manager::SetViewMatrix(cam->GenerateViewMatrix());
 			
@@ -479,10 +478,4 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 		Debug::Fatal("Failed to create framebuffer");
 	
 	return fb;
-}
-
-RenderEngine::dim RenderEngine::GetBufferSize(){
-	dim d;
-	SDL_GL_GetDrawableSize(window, &d.width, &d.height);
-	return d;
 }

@@ -145,11 +145,11 @@ namespace RavEngine {
 		//helper classes
 		class Callback{
 		protected:
-			IInputListener* obj;
+			WeakRef<SharedObject> obj;
 			void* func;
 			CID controllers;
 		public:
-			Callback(IInputListener* o, void* f, CID con) : obj(o), func(f), controllers(con){}
+			Callback(WeakRef<SharedObject> o, void* f, CID con) : obj(o), func(f), controllers(con){}
 			bool operator==(const Callback& other)const{
 				return func == other.func && obj == other.obj && controllers == other.controllers;
 			}
@@ -157,10 +157,13 @@ namespace RavEngine {
 			 Check if the stored pointer matches another
 			 @param in the pointer to check
 			 */
-			bool ObjectsMatch(void* in) const{
+			bool ObjectsMatch(WeakRef<SharedObject> in) const{
 				return in == obj;
 			}
-			IInputListener* const GetObj() {
+			WeakRef<SharedObject> const GetObj() {
+				return obj;
+			}
+			bool CanExecute() const{
 				return obj;
 			}
 		};
@@ -179,8 +182,8 @@ namespace RavEngine {
 			 @param f the function pointer to invoke.
 			 */
 			template<class U>
-			AxisCallback(IInputListener* thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
-				exec = std::bind(f, static_cast<U*>(thisptr), std::placeholders::_1);
+			AxisCallback(WeakRef<SharedObject> thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
+				exec = std::bind(f, static_cast<U*>(thisptr.get()), std::placeholders::_1);
 			}
 			/**
 			 Execute the function on the stored pointer
@@ -188,9 +191,11 @@ namespace RavEngine {
 			 @param scale the amount to scale f
 			 */
 			void operator()(float f, float scale, CID incontrol){
-				//check controllers, and do not execute if below deadzone
-				if ((controllers & incontrol) != CID::NONE && abs(f) >= deadZone) {
-					exec(f * scale);
+				if(CanExecute()){
+					//check controllers, and do not execute if below deadzone
+					if ((controllers & incontrol) != CID::NONE && abs(f) >= deadZone) {
+						exec(f * scale);
+					}
 				}
 			}
 
@@ -212,17 +217,19 @@ namespace RavEngine {
 			 @param t the state to bind
 			 */
 			template<class U>
-			ActionCallback(IInputListener* thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
-				exec = std::bind(f, static_cast<U*>(thisptr));
+			ActionCallback(WeakRef<SharedObject> thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
+				exec = std::bind(f, static_cast<U*>(thisptr.get()));
 				type = t;
 			}
 			/**
 			 Execute the function on the stored pointer
 			 */
 			void operator()(CID incontrol){
-				//check controllers
-				if ((controllers & incontrol) != CID::NONE){
-					exec();
+				if (CanExecute()){
+					//check controllers
+					if ((controllers & incontrol) != CID::NONE){
+						exec();
+					}
 				}
 			}
 			bool operator==(const ActionCallback& other)const{
@@ -263,7 +270,7 @@ namespace RavEngine {
 		locked_hashmap<std::string, plf::list<AxisCallback>,SpinLock> axisMappings;     //strings to methods
 		
 		//stores objects to call on any Action input, passing the input
-		locked_hashset<IInputListener*,SpinLock> AnyEvent;
+		locked_hashset<WeakRef<SharedObject>,SpinLock> AnyEvent;
 
         /**
          Helper used for registering axis inputs inside the engine
@@ -341,10 +348,9 @@ namespace RavEngine {
 		 * @param type the required state of the action to invoke the method.
 		 */
         template<class U>
-		inline void BindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
+		inline void BindAction(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(), ActionState type, CID controllers){
 			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].push_back(action);
-			thisptr->OnRegister(this);
 		}
 
         /**
@@ -355,10 +361,9 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
          */
         template<typename U>
-		inline void BindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
+		inline void BindAxis(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
 			AxisCallback axis(thisptr, f, deadZone,controllers);
             axisMappings[name].push_back(axis);
-			thisptr->OnRegister(this);
         }
 
 		/**
@@ -369,10 +374,9 @@ namespace RavEngine {
 		 @param state the state to use to match the callback
 		 */
 		template<typename U>
-		inline void UnbindAction(const std::string& name, IInputListener* thisptr, void(U::* f)(), ActionState type, CID controllers){
+		inline void UnbindAction(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(), ActionState type, CID controllers){
 			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].remove(action);
-			thisptr->OnUnregister(this);
 		}
 		
 		
@@ -383,33 +387,53 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
 		 */
 		template<typename U>
-		inline void UnbindAxis(const std::string& name, IInputListener* thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
+		inline void UnbindAxis(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
 			AxisCallback axis(thisptr, f, deadZone,controllers);
 			axisMappings[name].remove(axis);
-			thisptr->OnUnregister(this);
 		}
 		
 		/**
 		 Bind an object to recieve AnyEvents. This will invoke its AnyDown and AnyUp virtual methods
 		 */
-		inline void BindAnyAction(IInputListener* listener){
-			AnyEvent.insert(listener);
-			listener->OnRegister(this);
+		template<typename T>
+		inline void BindAnyAction(WeakRef<T> listener){
+			static_assert(std::is_convertible<T,IInputListener>::value,"Passed type must descend from IInputListener");
+			AnyEvent.insert(listener.get());
 		}
 		
 		/**
 		 Unbind an object to recieve AnyEvents. This is done automatically when an IInputListener is destructed. 
 		 */
-		inline void UnbindAnyAction(IInputListener* listener){
-			AnyEvent.erase(listener);
-			listener->OnUnregister(this);
+		template<typename T>
+		inline void UnbindAnyAction(WeakRef<T> listener){
+			static_assert(std::is_convertible<T,IInputListener>::value,"Passed type must descend from IInputListener");
+			AnyEvent.erase(listener.get());
 		}
 
 		/**
 		 * Unbind all Action and Axis mappings for a given listener. Listeners automatically invoke this on destruction.
 		 * @param act the listener to unbind
 		 */
-        void UnbindAllFor(IInputListener* act);
+		template<typename T>
+		void UnbindAllFor(WeakRef<T> act){
+			//unbind axis maps
+			for(const auto& p : axisMappings){
+				auto key = p.second;
+				key.remove_if([&act](AxisCallback& callback) -> bool {
+					return callback.ObjectsMatch(act);
+				});
+			}
+			//unbind action maps
+			for(const auto& p : actionMappings){
+				auto key = p.second;
+				key.remove_if([&act](ActionCallback callback){
+					return callback.ObjectsMatch(act);
+				});
+			}
+			
+			//unbind all AnyEvents
+			UnbindAnyAction(act);
+		}
 
         virtual ~InputManager();
 

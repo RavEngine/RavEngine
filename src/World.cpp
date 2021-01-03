@@ -180,7 +180,7 @@ bool World::InitGUIDebugger(){
 
 void World::BindGUIDebuggerControls(Ref<InputManager> m){
 	auto ctx = debuggerContext->GetComponent<GUIComponent>();
-	m->BindAnyAction(ctx.get());
+	m->BindAnyAction<GUIComponent>(ctx);
 	m->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
 	m->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
 	

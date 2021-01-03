@@ -113,6 +113,27 @@ void InputManager::Tick() {
             }
         }
     }
+	
+	//cleanup dead bindings
+	for(auto& mapping : axisMappings){
+		mapping.second.remove_if([](const AxisCallback& cb){
+			return !cb.CanExecute();
+		});
+	}
+	for(auto& mapping : actionMappings){
+		mapping.second.remove_if([](const ActionCallback& cb){
+			return !cb.CanExecute();
+		});
+	}
+	phmap::flat_hash_set<WeakRef<SharedObject>> to_remove;
+	for(const auto& r : AnyEvent){
+		if (!r){
+			to_remove.insert(r);
+		}
+	}
+	for(const auto& r : to_remove){
+		AnyEvent.erase(r);
+	}
 
 	
     //mouse velocity needs to be cleared
@@ -141,12 +162,17 @@ void InputManager::SDL_key(bool state, int charcode, CID controller)
     }
 	
 	//invoke AnyActions
-	for(IInputListener* l : AnyEvent){
-		if (state){
-			l->AnyActionDown(charcode);
-		}
-		else{
-			l->AnyActionUp(charcode);
+	for(WeakRef<SharedObject> l : AnyEvent){
+		if (l){
+			IInputListener* listener = dynamic_cast<IInputListener*>(l.get());
+			if (listener){
+				if (state){
+					listener->AnyActionDown(charcode);
+				}
+				else{
+					listener->AnyActionUp(charcode);
+				}
+			}
 		}
 	}
 }
@@ -181,19 +207,7 @@ void InputManager::SDL_ControllerAxis(int axisID, float value, CID controller)
 }
 
 InputManager::~InputManager() {
-    //need to remove dynamic mapping
-    for (auto& p : axisMappings) {
-        auto l = p.second;
-        for (auto& entry : l) {
-            entry.GetObj()->OnUnregister(this);
-        }
-    }
-    for (auto& p : actionMappings) {
-        auto l = p.second;
-        for (auto& entry : l) {
-            entry.GetObj()->OnUnregister(this);
-        }
-    }
+    
 }
 
 /**
@@ -230,27 +244,6 @@ void InputManager::RemoveAxisMap(const std::string& name, int Id)
 {
     //remove from ID tracking lists
     codeToAction.erase(Id);
-}
-
-void RavEngine::InputManager::UnbindAllFor(IInputListener* act)
-{
-	//unbind axis maps
-	for(const auto& p : axisMappings){
-		auto key = p.second;
-		key.remove_if([&act](AxisCallback& callback) -> bool {
-			return callback.ObjectsMatch(act);
-		});
-	}
-	//unbind action maps
-	for(const auto& p : actionMappings){
-		auto key = p.second;
-		key.remove_if([&act](ActionCallback callback){
-			return callback.ObjectsMatch(act);
-		});
-	}
-	
-	//unbind all AnyEvents
-	UnbindAnyAction(act);
 }
 
 void RavEngine::InputManager::SetRelativeMouseMode(bool mode){

@@ -39,7 +39,9 @@ namespace RavEngine {
 		/**
 		 @return the current window buffer size, in pixels
 		 */
-		dim GetBufferSize();
+		const dim& GetBufferSize(){
+			return dims;
+		}
 
         void resize();
 		
