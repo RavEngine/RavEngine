@@ -183,6 +183,8 @@ void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
 }
 
 void GUIComponent::Debug(){
+#ifdef _DEBUG
 	Rml::Debugger::SetContext(context);
 	Rml::Debugger::SetVisible(true);
+#endif
 }

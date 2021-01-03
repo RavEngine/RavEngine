@@ -166,19 +166,22 @@ bool RavEngine::World::InitPhysics() {
 }
 
 bool World::InitGUIDebugger(){
+#ifdef _DEBUG
 	if (debuggerContext.isNull()){
 		debuggerContext = new Entity();
 		auto ctx = debuggerContext->AddComponent<GUIComponent>(new GUIComponent());
 		
-		//bool status = Rml::Debugger::Initialise(ctx->context);
+		bool status = Rml::Debugger::Initialise(ctx->context);
 		Spawn(debuggerContext);
 		
-		return true;
+		return status;
 	}
+#endif
 	return false;
 }
 
 void World::BindGUIDebuggerControls(Ref<InputManager> m){
+#ifdef _DEBUG
 	auto ctx = debuggerContext->GetComponent<GUIComponent>();
 	m->BindAnyAction<GUIComponent>(ctx);
 	m->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
@@ -186,4 +189,5 @@ void World::BindGUIDebuggerControls(Ref<InputManager> m){
 	
 	m->BindAxis("MouseX", ctx.get(), &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
 	m->BindAxis("MouseY", ctx.get(), &GUIComponent::MouseY, CID::ANY, 0);
+#endif
 }
