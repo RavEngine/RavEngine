@@ -12,14 +12,6 @@ target_compile_definitions(RmlCore
     PRIVATE -DRMLUI_VERSION="${RMLUI_VERSION_SHORT}" -D$<$<NOT:$<CONFIG:Debug>>:N>DEBUG=1 PUBLIC -DRMLUI_NO_THIRDPARTY_CONTAINERS=1
 )
 
-if (APPLE)
-    # Disables naked builtins from AssertMacros.h which
-    # This prevents naming collisions such as those from the check()
-    # function macro with LuaType::check
-    target_compile_definitions(RmlCore PRIVATE -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0)
-	target_compile_definitions(RmlDebugger PRIVATE -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0)
-endif ()
-
 # RML debugger library
 file(GLOB_RECURSE RML_DBG "RmlUi/Include/Debugger/*.h" "RmlUi/Include/Debugger/*.hpp" "RmlUi/Source/Debugger/*.cpp")
 add_library(RmlDebugger STATIC ${RML_DBG})
@@ -38,4 +30,12 @@ if (BUILD_SHARED_LIBS)
 else ()
     target_compile_definitions(RmlCore PUBLIC -DRMLUI_STATIC_LIB=1)
 	target_compile_definitions(RmlDebugger PUBLIC -DRMLUI_STATIC_LIB=1)
+endif ()
+
+if (APPLE)
+    # Disables naked builtins from AssertMacros.h which
+    # This prevents naming collisions such as those from the check()
+    # function macro with LuaType::check
+    target_compile_definitions(RmlCore PRIVATE -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0)
+	target_compile_definitions(RmlDebugger PRIVATE -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0)
 endif ()
