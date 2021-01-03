@@ -57,7 +57,7 @@ add_subdirectory("${DEPS_DIR}/rscpack")
 add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
 add_subdirectory("${DEPS_DIR}/fmt")
-add_subdirectory("${DEPS_DIR}/RmlUi")
+add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
 
 # taskflow
 SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "")
@@ -138,7 +138,7 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/plf/"
 	"${DEPS_DIR}/parallel-hashmap/parallel_hashmap"
 	"${DEPS_DIR}/taskflow"
-	"${DEPS_DIR}/RmlUi/Include"
+	"${DEPS_DIR}/RmlUi-freetype/RmlUi/Include"
 	"${DEPS_DIR}/Uuids/include"
 	PRIVATE
 	"include/${PROJECT_NAME}/"

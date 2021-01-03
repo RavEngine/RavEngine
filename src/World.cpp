@@ -170,7 +170,7 @@ bool World::InitGUIDebugger(){
 		debuggerContext = new Entity();
 		auto ctx = debuggerContext->AddComponent<GUIComponent>(new GUIComponent());
 		
-		bool status = Rml::Debugger::Initialise(ctx->context);
+		//bool status = Rml::Debugger::Initialise(ctx->context);
 		Spawn(debuggerContext);
 		
 		return true;

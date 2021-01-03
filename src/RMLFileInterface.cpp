@@ -38,15 +38,16 @@ bool VFSInterface::Seek(Rml::FileHandle file, long offset, int origin){
 	switch(origin){
 		case SEEK_CUR:		//from current position
 			handle->offset += offset;
-			break;
+			return true;
 		case SEEK_END:		//from end of file
 			handle->offset = handle->filedata.size() - offset;
-			break;
+			return true;
 		case SEEK_SET:	//beginning of file
 			handle->offset = offset;
-			break;
+			return true;
 		default:
-			Debug::Fatal("Invalid origin flag");
+			return false;
+			//Debug::Fatal("Invalid origin flag");
 	}
 }
 
