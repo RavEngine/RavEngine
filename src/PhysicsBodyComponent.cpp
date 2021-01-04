@@ -11,6 +11,8 @@
 using namespace physx;
 using namespace RavEngine;
 
+SpinLock PhysicsBodyComponent::ForceMutex;
+
 /// Dynamic Body ========================================
 
 RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
@@ -210,19 +212,27 @@ decimalType RigidBodyDynamicComponent::GetMassInverse() const{
 }
 
 void RigidBodyDynamicComponent::AddForce(const vector3 &force){
+	ForceMutex.lock();
 	static_cast<PxRigidDynamic*>(rigidActor)->addForce(PxVec3(force.x,force.y,force.z));
+	ForceMutex.unlock();
 }
 
 void RigidBodyDynamicComponent::AddTorque(const vector3 &torque){
+	ForceMutex.lock();
 	static_cast<PxRigidDynamic*>(rigidActor)->addTorque(PxVec3(torque.x,torque.y,torque.z));
+	ForceMutex.unlock();
 }
 
 void RigidBodyDynamicComponent::ClearAllForces(){
+	ForceMutex.lock();
 	static_cast<PxRigidDynamic*>(rigidActor)->clearForce();
+	ForceMutex.unlock();
 }
 
 void RigidBodyDynamicComponent::ClearAllTorques(){
+	ForceMutex.lock();
 	static_cast<PxRigidDynamic*>(rigidActor)->clearTorque();
+	ForceMutex.unlock();;
 }
 
 /// Static Body ========================================

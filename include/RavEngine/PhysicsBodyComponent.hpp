@@ -17,6 +17,7 @@ namespace RavEngine {
 	{
 	protected:
 		phmap::flat_hash_set<IPhysicsActor*> receivers;
+		static SpinLock ForceMutex;
 	public:
 		physx::PxRigidActor* rigidActor = nullptr;
 		physx::PxU32 filterGroup = -1;
