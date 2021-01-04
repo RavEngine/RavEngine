@@ -168,7 +168,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"physfs-static"
 	#"PhysXGPU"
 	"RmlCore"
-	"RmlDebugger"
+	#"RmlDebugger"
 	PUBLIC
 	"fmt"
 	"etl"
