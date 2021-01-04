@@ -21,6 +21,11 @@ namespace RavEngine {
 	class GUIMaterialInstance;
 
     class RenderEngine : public SharedObject, public Rml::SystemInterface, public Rml::RenderInterface {
+	private:
+		struct dim{
+			int width, height;
+		} bufferdims, windowdims;
+		
     public:
         virtual ~RenderEngine();
         RenderEngine();
@@ -32,15 +37,19 @@ namespace RavEngine {
 			return window;
 		}
 		
-		struct dim{
-			int width, height;
-		} dims;
-		
 		/**
 		 @return the current window buffer size, in pixels
 		 */
 		const dim& GetBufferSize(){
-			return dims;
+			return bufferdims;
+		}
+		
+		const dim& GetWindowSize(){
+			return windowdims;
+		}
+		
+		float GetDPIScale() const{
+			return (float)bufferdims.width / windowdims.width;
 		}
 
         void resize();

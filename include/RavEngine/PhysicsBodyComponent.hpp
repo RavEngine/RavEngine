@@ -10,6 +10,7 @@
 #include "IPhysicsActor.hpp"
 #include <phmap.h>
 #include "Queryable.hpp"
+#include "SpinLock.hpp"
 
 namespace RavEngine {
 	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>

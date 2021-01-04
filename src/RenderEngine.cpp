@@ -181,14 +181,16 @@ Construct a render engine instance
 */
 RenderEngine::RenderEngine() {
 	Init();
+	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
+	
 	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());
 	auto& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
 	
 	int width, height;
 	SDL_GL_GetDrawableSize(window, &width, &height);
-	dims.width = width;
-	dims.height = height;
+	bufferdims.width = width;
+	bufferdims.height = height;
 	
 	
 	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
@@ -254,7 +256,7 @@ RavEngine::RenderEngine::~RenderEngine()
 void RenderEngine::Draw(Ref<World> worldOwning){    
 
 	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
-		bgfx::setViewRect(view, 0, 0, dims.width, dims.height);
+		bgfx::setViewRect(view, 0, 0, bufferdims.width, bufferdims.height);
 	}
 	
 	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
@@ -321,11 +323,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(const Ref<GUIComponent>& gui : guis){
 		if(gui->Mode == GUIComponent::RenderMode::Screenspace){
 			gui->SetDimensions(size.width, size.height);
+			gui->SetDPIScale(GetDPIScale());
 		}
 		gui->Update();
 		gui->Render();	//bgfx state is set in renderer before actual draw calls
 	}
-	
 	
 #ifdef _DEBUG
 	Im3d::GetContext().draw();
@@ -342,12 +344,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 void RenderEngine::resize(){
 	
-	int width, height;
-	SDL_GL_GetDrawableSize(window, &width, &height);
-	bgfx::reset(width, height, GetResetFlags());
-	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
-	dims.width = width;
-	dims.height = height;
+	SDL_GL_GetDrawableSize(window, &bufferdims.width, &bufferdims.height);
+	bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
+	bgfx::setViewRect(0, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
+	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
 }
 
 /**

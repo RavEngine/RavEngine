@@ -44,7 +44,11 @@ public:
 	 @param width the width in pixels of the context
 	 @param height the height in pixels of the context
 	 */
-	GUIComponent(int width, int height);
+	GUIComponent(int width, int height, float DPI = 1);
+	
+	void SetDPIScale(float scale){
+		context->SetDensityIndependentPixelRatio(scale);
+	}
 	
 	/**
 	 Load a document from disk with a name

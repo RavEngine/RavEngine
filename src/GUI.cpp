@@ -74,13 +74,14 @@ GUIComponent::~GUIComponent(){
 	RemoveContext(context->GetName());
 }
 
-GUIComponent::GUIComponent() : GUIComponent(App::Renderer->GetBufferSize().width,App::Renderer->GetBufferSize().height){
+GUIComponent::GUIComponent() : GUIComponent(App::Renderer->GetBufferSize().width,App::Renderer->GetBufferSize().height, App::Renderer->GetDPIScale()){
 }
 
-GUIComponent::GUIComponent(int width, int height){
+GUIComponent::GUIComponent(int width, int height, float DPIScale){
 	auto uuid = uuids::uuid::create();
 	
 	context = Rml::CreateContext(uuid.to_string(), Vector2i(width,height));
+	context->SetDensityIndependentPixelRatio(DPIScale);
 }
 
 Rml::ElementDocument* GUIComponent::GetDocument(const std::string &name) const{
@@ -185,6 +186,8 @@ void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
 void GUIComponent::Debug(){
 #ifdef _DEBUG
 	Rml::Debugger::SetContext(context);
-	Rml::Debugger::SetVisible(true);
+	if (!Rml::Debugger::IsVisible()){
+		Rml::Debugger::SetVisible(true);
+	}
 #endif
 }
