@@ -69,15 +69,7 @@ namespace RavEngine {
 		tf::Taskflow tasks;
 		
 		bool physicsActive = false;
-		
-		//used for the GUI debugger
-		Ref<Entity> debuggerContext;
-
 	public:
-		
-		bool InitGUIDebugger();
-		
-		void BindGUIDebuggerControls(Ref<InputManager> m);
 		
 		/**
 		* Initializes the physics-related Systems.

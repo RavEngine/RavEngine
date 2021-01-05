@@ -18,6 +18,8 @@
 #include "StaticMesh.hpp"
 #include "App.hpp"
 #include "GUI.hpp"
+#include <RmlUi/Debugger.h>
+#include "InputManager.hpp"
 
 #include "RenderableComponent.hpp"
 	#ifdef __linux__
@@ -46,6 +48,11 @@ bgfx::VertexLayout RenderEngine::RmlLayout;
 
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
+
+#ifdef _DEBUG
+Ref<Entity> RenderEngine::debuggerContext;
+Ref<InputManager> RenderEngine::debuggerInput;
+#endif
 
 static Ref<DebugMaterialInstance> mat;
 
@@ -329,7 +336,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		gui->Render();	//bgfx state is set in renderer before actual draw calls
 	}
 	
+	
 #ifdef _DEBUG
+	//render debug GUI
+	auto comp = debuggerContext->GetComponent<GUIComponent>();
+	comp->SetDimensions(size.width, size.height);
+	comp->SetDPIScale(GetDPIScale());
+	comp->Update();
+	comp->Render();
+
 	Im3d::GetContext().draw();
 #endif
 	//discard all previous state sets
@@ -432,11 +447,6 @@ void RenderEngine::Init()
 	//init lights
 	LightManager::Init();
 	
-#ifdef _DEBUG
-	Im3d::AppData& data = Im3d::GetAppData();
-	data.drawCallback = &DebugRender;
-#endif
-	
 	//vertex format for debug drawing
 	debuglayout.begin()
 	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -479,3 +489,24 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 	
 	return fb;
 }
+
+#ifdef _DEBUG
+void RenderEngine::InitDebugger() const{
+	Im3d::AppData& data = Im3d::GetAppData();
+	data.drawCallback = &DebugRender;
+	
+	debuggerContext = new Entity();
+	auto ctx = debuggerContext->AddComponent<GUIComponent>(new GUIComponent(10,10));
+	
+	bool status = Rml::Debugger::Initialise(ctx->context);
+	
+	debuggerInput = new InputManager();
+	
+	debuggerInput->BindAnyAction<GUIComponent>(ctx);
+	debuggerInput->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
+	debuggerInput->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
+
+	debuggerInput->BindAxis("MouseX", ctx.get(), &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
+	debuggerInput->BindAxis("MouseY", ctx.get(), &GUIComponent::MouseY, CID::ANY, 0);
+}
+#endif

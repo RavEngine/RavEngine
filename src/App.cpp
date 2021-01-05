@@ -37,12 +37,17 @@ App::App(const std::string& resourcesName){
 	
 	Resources = new VirtualFilesystem(resourcesName + ".zip");
 	Renderer = new RenderEngine();
-	
+
 	//setup GUI rendering
 	Rml::SetSystemInterface(Renderer.get());
 	Rml::SetRenderInterface(Renderer.get());
 	Rml::SetFileInterface(new VFSInterface());
 	Rml::Initialise();
+	
+#ifdef _DEBUG
+	Renderer->InitDebugger();
+#endif
+	
 	
 	//load the built-in fonts
 	GUIComponent::LoadFont("Roboto-Regular.ttf");
@@ -102,6 +107,9 @@ int App::run(int argc, char** argv) {
 			
 		}
 		inputManager->Tick();
+#ifdef _DEBUG
+		RenderEngine::debuggerInput->Tick();
+#endif
 		currentWorld->Tick(scale);
 		
 		//process main thread tasks

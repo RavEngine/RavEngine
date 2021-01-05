@@ -19,6 +19,7 @@ struct SDL_Window;
 namespace RavEngine {
     class DeferredBlitShader;
 	class GUIMaterialInstance;
+	class InputManager;
 
     class RenderEngine : public SharedObject, public Rml::SystemInterface, public Rml::RenderInterface {
 	private:
@@ -101,6 +102,10 @@ namespace RavEngine {
 		/// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
 		void SetTransform(const Rml::Matrix4f* transform) override;
 
+#ifdef _DEBUG
+		void InitDebugger() const;
+		static Ref<InputManager> debuggerInput;
+#endif
 						
     protected:
 		static SDL_Window* window;
@@ -174,6 +179,11 @@ namespace RavEngine {
 		static Ref<GUIMaterialInstance> guiMaterial;
 		
 		matrix4 currentMatrix;
+		
+#ifdef _DEBUG
+		//used for the GUI debugger
+		static Ref<Entity> debuggerContext;
+#endif
 	
     };
 }

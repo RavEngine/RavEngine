@@ -11,7 +11,7 @@
 namespace RavEngine{
 class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>, public RavEngine::IInputListener{
 protected:
-	friend class World;
+	friend class RenderEngine;
 	
 	Rml::Context* context = nullptr;
 	locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
