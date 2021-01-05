@@ -16,6 +16,7 @@
 #include <RmlUi/Debugger.h>
 #include "GUI.hpp"
 #include "InputManager.hpp"
+#include "ChildEntityComponent.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -97,6 +98,11 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 	//cannot spawn an entity that is already in a world
 	if (e->GetWorld().isNull()){
 		PendingSpawn.enqueue(e);
+		//get all child entities
+		auto& children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
+		for(const Ref<ChildEntityComponent>& c : children){
+			PendingSpawn.enqueue(c->get());
+		}
 		return true;
 	}
 	return false;
@@ -114,6 +120,12 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 		return false;
 	}
 	PendingDestruction.enqueue(e);
+	
+	//get all child entities
+	auto& children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
+	for(const Ref<ChildEntityComponent>& c : children){
+		PendingDestruction.enqueue(c->get());
+	}
 	return true;
 }
 
