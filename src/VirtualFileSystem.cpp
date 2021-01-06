@@ -40,7 +40,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 		cerr << PHYSFS_WHY() << endl;
 		Debug::Fatal(PHYSFS_WHY());
 	}
-	rootname = std::filesystem::path(path).replace_extension("");
+	rootname = std::filesystem::path(path).replace_extension("").string();
 }
 const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 {
