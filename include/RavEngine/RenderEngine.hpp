@@ -60,6 +60,8 @@ namespace RavEngine {
 			bool vsync = true;
 		} VideoSettings;
 		
+		void SyncVideoSettings();
+		
 		//to reduce magic numbers
 		struct Views{
 			enum{

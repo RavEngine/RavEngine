@@ -365,6 +365,10 @@ void RenderEngine::resize(){
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
 }
 
+void RenderEngine::SyncVideoSettings(){
+	SDL_SetWindowSize(window, VideoSettings.width, VideoSettings.height);
+}
+
 /**
 @return the name of the current rendering API
 */
