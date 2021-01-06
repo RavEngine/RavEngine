@@ -188,7 +188,11 @@ namespace RavEngine {
 	*/
 	inline void Transform::LocalRotateDelta(const quaternion& delta) {
 		//sum two quaternions by multiplying them
-		rotation = glm::toQuat(glm::toMat4((quaternion)rotation) * glm::toMat4(delta));
+		quaternion finalrot;
+		vector3 t;
+		vector4 p;
+		glm::decompose(glm::toMat4((quaternion)rotation) * glm::toMat4(delta), t, finalrot, t, t, p);
+		rotation = finalrot;
 	}
 
 	/**
