@@ -12,8 +12,6 @@ namespace RavEngine {
 	class PBRMaterial : public Material {
 	public:
 		PBRMaterial() : Material("pbrmaterial") {}
-        friend class PBRMaterialInstance;
-    protected:
         SamplerUniform albedoTxUniform = SamplerUniform("s_albedoTex");
         Vector4Uniform albedoColorUniform = Vector4Uniform("albedoColor");
 	};
@@ -33,7 +31,7 @@ namespace RavEngine {
             color = c;
         }
 
-        void DrawHook() override;
+        virtual void DrawHook() override;
 	protected:
 		Ref<Texture> albedo = TextureManager::defaultTexture;
 		ColorRGBA color{1,1,1,1};
