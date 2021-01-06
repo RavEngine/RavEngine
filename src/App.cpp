@@ -103,10 +103,14 @@ int App::run(int argc, char** argv) {
 				} break;
 			}
 			//process others
-			inputManager->AggregateInput(event,windowflags,scale);
+			if (inputManager){
+				inputManager->AggregateInput(event,windowflags,scale);
+			}
 			
 		}
-		inputManager->Tick();
+		if (inputManager){
+			inputManager->Tick();
+		}
 #ifdef _DEBUG
 		RenderEngine::debuggerInput->Tick();
 #endif

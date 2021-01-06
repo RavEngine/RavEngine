@@ -11,7 +11,7 @@ public:
 	/**
 	@returns if this ref is a null ref
 	*/
-	inline bool isNull() {
+	inline bool isNull() const{
 		return ptr == nullptr;
 	}
 
@@ -81,6 +81,11 @@ public:
 	//get bare pointer (caution!)
 	inline T* get() const {
 		return ptr;
+	}
+	
+	//truthy
+	inline operator bool() const{
+		return ! isNull();
 	}
 
 	template<typename U>
