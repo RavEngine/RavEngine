@@ -53,7 +53,6 @@ add_subdirectory("${DEPS_DIR}/etl")
 # mini dependencies
 add_subdirectory("${DEPS_DIR}/SDL2")
 add_subdirectory("${DEPS_DIR}/tweeny")
-add_subdirectory("${DEPS_DIR}/rscpack")
 add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
 add_subdirectory("${DEPS_DIR}/fmt")
@@ -338,7 +337,7 @@ function(pack_resources)
 	#track all the shaders for compilation
 	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
-	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine" "rscpack" "shaderc")
+	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine" "shaderc")
 
 	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.zip")
 
@@ -349,13 +348,13 @@ function(pack_resources)
 
 	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_MESHES} ${ARGS_TEXTURES} ${copy_depends})
 
-	# the command to rscpack
+	# the command to pack into a zip
 	add_custom_command(
 		POST_BUILD 
 		OUTPUT "${outpack}"
 		DEPENDS ${assets}
 		COMMENT "Packing resources for ${ARGS_TARGET}"
-		COMMAND "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rscpack" -a ${ARGS_TARGET} -e "${CMAKE_BINARY_DIR}/RavEngine" -o "${outpack}"
+		COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${outpack}" --format=zip ${ARGS_TARGET} 
 		VERBATIM
 	)
 

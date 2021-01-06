@@ -1,6 +1,8 @@
 #include "VirtualFileSystem.hpp"
 #include <physfs.h>
+#include <filesystem>
 #include "Debug.hpp"
+#include <fmt/format.h>
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
@@ -38,21 +40,23 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 		cerr << PHYSFS_WHY() << endl;
 		Debug::Fatal(PHYSFS_WHY());
 	}
-	rootname = cstr;
+	rootname = std::filesystem::path(path).replace_extension("");
 }
 const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 {
+	
+	auto fullpath = fmt::format("{}/{}",rootname,path);
 	
 	if(!Exists(path)){
 		Debug::Fatal("cannot open {}{}",rootname,path);
 	}
 	
-	auto ptr = PHYSFS_openRead(path);
+	auto ptr = PHYSFS_openRead(fullpath.c_str());
 	auto size = PHYSFS_fileLength(ptr)+1;
 	
 	char* buffer = new char[size];
 	
-	int length_read = PHYSFS_read(ptr,buffer,1,size);
+	size_t length_read = PHYSFS_read(ptr,buffer,1,size);
 	buffer[size-1] = '\0';	//add null terminator
 	PHYSFS_close(ptr);
 	
@@ -65,7 +69,7 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 
 bool RavEngine::VirtualFilesystem::Exists(const char* path)
 {
-	return PHYSFS_exists(path);
+	return PHYSFS_exists(fmt::format("{}/{}",rootname,path).c_str());
 }
 
 
