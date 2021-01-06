@@ -23,7 +23,7 @@ Texture::Texture(const std::string& name){
 	
 	unsigned char* bytes = stbi_load_from_memory(datastr, compressed_size, &width, &height, &channels, 4);
 	if (bytes == nullptr){
-		throw(runtime_error(stbi_failure_reason()));
+		Debug::Fatal("Cannot load texture: {}",stbi_failure_reason());
 	}
 	
 	bool hasMipMaps = false;

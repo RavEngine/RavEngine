@@ -54,15 +54,14 @@ namespace RavEngine {
 			
 			return glm::inverse(entity->transform()->CalculateWorldMatrix());
 		}
-
-	protected:
-		bool active = false;
-
+		
 		//camera details
 		float FOV;
 		float nearClip;
 		float farClip;
-		float zoom = 1.5;
+
+	protected:
+		bool active = false;
 
 		unsigned int width = 800;
 		unsigned int height = 480;
