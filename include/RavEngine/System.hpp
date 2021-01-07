@@ -53,6 +53,6 @@ namespace RavEngine {
 		 @param fpsScale the frame rate scale factor computed by the World.
 		 @param e the Entity to operate on
 		 */
-		virtual void Tick(float fpsScale, Ref<Entity> e) const = 0;
+		virtual void Tick(float fpsScale, Ref<Entity> e) = 0;
 	};
 }

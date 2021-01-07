@@ -24,7 +24,7 @@ namespace RavEngine {
 		
         physx::PxScene* dynamicsWorld = nullptr;
         virtual ~PhysicsLinkSystemWrite() {}
-        void Tick(float fpsScale, Ref<Entity> e) const override;
+        void Tick(float fpsScale, Ref<Entity> e) override;
 
         plf::list<ctti_t> QueryTypes() const override {
             return { CTTI<PhysicsBodyComponent> };
@@ -46,7 +46,7 @@ namespace RavEngine {
 		
         physx::PxScene* dynamicsWorld = nullptr;
         virtual ~PhysicsLinkSystemRead() {}
-        void Tick(float fpsScale, Ref<Entity> e) const override;
+        void Tick(float fpsScale, Ref<Entity> e) override;
 
         plf::list<ctti_t> QueryTypes() const override {
             return {CTTI<RigidBodyDynamicComponent>};
