@@ -21,7 +21,10 @@ void main()
 	vec3 toLight = normalize(positionradius.xyz - pos);
 	
 	float dst = distance(pos,positionradius.xyz);
-	float attenuation = (radius/(dst*dst));
+	
+	int falloffpower = 1;	//1 for linear, 2 for quadratic, 3 for cubic, ...
+	
+	float attenuation = pow(max(radius-dst,0),falloffpower) * (1.0/pow(radius,falloffpower));
 	
 	float nDotL = max(dot(normal, toLight), 0);
 	
