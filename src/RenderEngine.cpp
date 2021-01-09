@@ -249,6 +249,11 @@ RenderEngine::RenderEngine() {
 	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
+	
+	//render view 0 last
+	bgfx::ViewId vieworder[]{Views::DeferredGeo, Views::Lighting, Views::FinalBlit};
+	assert(Views::Count == BX_COUNTOF(vieworder));	//if this assertion fails, a view was added but its order was not defined in the list above
+	bgfx::setViewOrder(0, Views::Count, vieworder);
 }
 
 RavEngine::RenderEngine::~RenderEngine()
