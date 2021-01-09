@@ -108,9 +108,7 @@ int App::run(int argc, char** argv) {
 			}
 			
 		}
-		if (inputManager){
-			inputManager->Tick();
-		}
+	
 #ifdef _DEBUG
 		RenderEngine::debuggerInput->Tick();
 #endif
@@ -121,7 +119,9 @@ int App::run(int argc, char** argv) {
 		while (main_tasks.try_dequeue(front)){
 			front();
 		}
-		
+		if (inputManager){
+			inputManager->Tick();
+		}
 		Renderer->Draw(currentWorld);
 
 #ifdef LIMIT_TICK
