@@ -17,21 +17,23 @@ namespace RavEngine {
 
 	class System : public SharedObject {
 	public:
+		typedef plf::list<ctti_t> list_type;
+		
 		//for sharedobject
 		virtual ~System() {}
 
 		//query method
 
 		//dependency method
-		virtual plf::list<ctti_t> QueryTypes() const = 0;
+		virtual const list_type& QueryTypes() const = 0;
 
 		/**
 		Override in subclasses to determine execution order.
 		@param other the other system to compare against.
 		@return true if this system must run before the other system, false if the other system does not depend on this system.
 		*/
-		virtual bool MustRunBefore(const std::type_index& other) const{
-			return false;
+		virtual const list_type& MustRunBefore() const{
+			return empty;
 		}
 		
 		/**
@@ -39,14 +41,15 @@ namespace RavEngine {
 		 @param other the other system to compare against.
 		 @return true if this system must run after the other system, false otherwise
 		 */
-		virtual bool MustRunAfter(const std::type_index& other) const{
-			return false;
+		virtual const list_type& MustRunAfter() const{
+			return empty;
 		}
-
 		
-		inline bool operator<(const System& other) const {
-			return MustRunBefore(std::type_index(typeid(other))) || other.MustRunAfter(std::type_index(typeid(this)));
-		}
+		/**
+		 Override in subclasses. Used for dependency sorting.
+		 @return this System's static ID (call CTTI<T>)
+		 */
+		virtual ctti_t ID() const = 0;
 
 		/**
 		 Tick the System on an Entity.
@@ -54,5 +57,8 @@ namespace RavEngine {
 		 @param e the Entity to operate on
 		 */
 		virtual void Tick(float fpsScale, Ref<Entity> e) = 0;
+		
+	protected:
+		static const list_type empty;
 	};
 }

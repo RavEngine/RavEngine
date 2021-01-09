@@ -49,7 +49,7 @@ void RavEngine::World::Tick(float scale) {
 	//Tick the game code
 	midtick(scale);
 	TickECS(scale);
-
+	
 	//destroy objects that are pending removal
 	while(PendingDestruction.try_dequeue(e)){
 		//stop all scripts
@@ -70,12 +70,6 @@ void RavEngine::World::Tick(float scale) {
         Solver->Destroy(e);
 		Entities.erase(e);
 	}
-	//tick physics read
-	if (physicsActive){
-		TickSystem(plsw,scale);
-		Solver->Tick(scale);
-		TickSystem(plsr,scale);
-	}
 
     posttick(scale);
 }
@@ -84,7 +78,7 @@ void RavEngine::World::Tick(float scale) {
 RavEngine::World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(40000);
-	RegisterSystem(Ref<ScriptSystem>(new ScriptSystem));
+	systemManager.RegisterSystem<ScriptSystem>(new ScriptSystem);
 }
 
 /**
@@ -128,48 +122,91 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	return true;
 }
 
-void RavEngine::World::TickSystem(Ref<System> system, float fpsScale){
-    //get the query info
-    auto queries = system->QueryTypes();
-    for (const auto& query : queries) {
-        auto& temp = GetAllComponentsOfTypeIndexFastPath(query);
-        for (auto& e : temp) {
-			tasks.emplace([=]{
-				system->Tick(fpsScale, e.get()->getOwner());
-			});
-        }
-		auto& temp2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
-		for (auto& e : temp2) {
-			tasks.emplace([=]{
-				system->Tick(fpsScale, e.get()->getOwner());
-			});
-		}
-    }
-	//wait for all to complete
-	//TODO: don't do this, instead use Taskflow's precedence-setting
-	App::executor.run(tasks).wait();
-	tasks.clear();
-}
-
 /**
  Tick all of the objects in the world, multithreaded
  @param fpsScale the scale factor to apply to all operations based on the frame rate
  */
 void RavEngine::World::TickECS(float fpsScale) {
+	struct systaskpair{
+		tf::Task task;
+		Ref<System> system;
+	};
+	
+	locked_hashmap<ctti_t, systaskpair, SpinLock> graphs;
+	tf::Taskflow masterTasks;
+	
     //tick the systems
-	for (auto& system : Systems) {
-        TickSystem(system, fpsScale);
+	for (auto& s : systemManager.GetInternalStorage()) {
+		auto system = s.second;
+		
+		auto queries = system->QueryTypes();
+		for (const auto& query : queries) {
+			//add the Task to the hashmap
+			graphs[system->ID()] = {(masterTasks.emplace([=](tf::Subflow& subflow){
+				{
+					auto& temp = GetAllComponentsOfTypeIndexFastPath(query);
+					for (auto& e : temp) {
+						subflow.emplace([=]{
+							system->Tick(fpsScale, e.get()->getOwner());
+						});
+					}
+				}
+				{
+					auto& temp2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
+					for (auto& e : temp2) {
+						subflow.emplace([=]{
+							system->Tick(fpsScale, e.get()->getOwner());
+						});
+					}
+				}
+			})),system};
+		}
 	}
+	
+	
+	if (physicsActive){
+		//add the PhysX tick, must run after write but before read
+		auto RunPhysics = masterTasks.emplace([=]{
+			Solver->Tick(fpsScale);
+		});
+		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task);
+		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task);
+	}
+	
+	//figure out dependencies
+	for(auto& graph : graphs){
+		tf::Task& task = graph.second.task;
+		//call precede
+		{
+			auto& runbefore = graph.second.system->MustRunBefore();
+			for(const auto id : runbefore){
+				if (graphs.contains(id)){
+					task.precede(graphs[id].task);
+				}
+			}
+		}
+		//call succeed
+		{
+			auto& runafter = graph.second.system->MustRunAfter();
+			for(const auto id : runafter){
+				if (graphs.contains(id)){
+					task.precede(graphs[id].task);
+				}
+			}
+		}
+	}
+	
+	//execute and wait
+	App::executor.run(masterTasks).wait();
 }
 
 bool RavEngine::World::InitPhysics() {
 	if (physicsActive){
 		return false;
 	}
-
-	plsr = new PhysicsLinkSystemRead(Solver->scene);
-
-	plsw = new PhysicsLinkSystemWrite(Solver->scene);
+	
+	systemManager.RegisterSystem<PhysicsLinkSystemRead>(new PhysicsLinkSystemRead(Solver->scene));
+	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(new PhysicsLinkSystemWrite(Solver->scene));
 	
 	physicsActive = true;
 

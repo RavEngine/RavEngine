@@ -9,8 +9,8 @@ namespace RavEngine {
 	public:
 		ScriptSystem() : System() {}
 
-		plf::list<ctti_t> QueryTypes() const override {
-			return {CTTI<ScriptComponent>};
+		const list_type& QueryTypes() const override {
+			return queries;
 		}
 
 		void Tick(float fpsScale, Ref<Entity> e) override{
@@ -19,5 +19,12 @@ namespace RavEngine {
 				script->Tick(fpsScale);
 			}
 		}
+		
+		ctti_t ID() const override{
+			return CTTI<ScriptSystem>;
+		}
+		
+	protected:
+		static const list_type queries;
 	};
 }

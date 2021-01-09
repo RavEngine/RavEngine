@@ -12,7 +12,7 @@
 #include "PhysicsLinkSystem.hpp"
 #include "RenderEngine.hpp"
 #include "Locked_Hashmap.hpp"
-#include <set>
+#include "SystemManager.hpp"
 #include "SpinLock.hpp"
 #include <type_traits>
 #include "ScriptSystem.hpp"
@@ -32,19 +32,8 @@ namespace RavEngine {
 		moodycamel::ConcurrentQueue<Ref<Entity>> PendingSpawn;
 		moodycamel::ConcurrentQueue<Ref<Entity>> PendingDestruction;
 
-		//Systems list (stores the loaded systems), automatically sorted in dependency order
-		std::multiset<Ref<System>> Systems;
-
 		//physics system
 		Ref<PhysicsSolver> Solver = new PhysicsSolver();
-		Ref<PhysicsLinkSystemRead> plsr;
-		Ref<PhysicsLinkSystemWrite> plsw;
-        
-		template<class T>
-		inline void RegisterSystem(Ref<T> r_instance) {
-			//static_assert(std::is_base_of<System, T>::value, "Can only register systems");
-			Systems.insert(r_instance);
-		}
 
 		/**
 		Called before ticking components and entities synchronously
@@ -65,11 +54,10 @@ namespace RavEngine {
          * @param scale the frame rate scale to pass on to the System's tick method
          */
         void TickSystem(Ref<System> system, float scale);
-		
-		tf::Taskflow tasks;
-		
+				
 		bool physicsActive = false;
 	public:
+		SystemManager systemManager;
 		
 		/**
 		* Initializes the physics-related Systems.

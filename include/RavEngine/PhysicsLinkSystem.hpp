@@ -26,14 +26,16 @@ namespace RavEngine {
         virtual ~PhysicsLinkSystemWrite() {}
         void Tick(float fpsScale, Ref<Entity> e) override;
 
-        plf::list<ctti_t> QueryTypes() const override {
-            return { CTTI<PhysicsBodyComponent> };
+		const list_type& QueryTypes() const override {
+			return queries;
         }
-		//must run before write system
-		bool MustRunBefore(const std::type_index& other) const override{
-			return other == std::type_index(typeid(PhysicsLinkSystemWrite));
+		
+		ctti_t ID() const override{
+			return CTTI<PhysicsLinkSystemWrite>;
 		}
-       
+		
+	protected:
+		static const list_type queries;
     };
 
     /**
@@ -48,14 +50,20 @@ namespace RavEngine {
         virtual ~PhysicsLinkSystemRead() {}
         void Tick(float fpsScale, Ref<Entity> e) override;
 
-        plf::list<ctti_t> QueryTypes() const override {
-            return {CTTI<RigidBodyDynamicComponent>};
+		const list_type& QueryTypes() const override {
+            return queries;
         }
 
 		//must run before write system
-		bool MustRunBefore(const std::type_index& other) const override {
-			return other == std::type_index(typeid(ScriptSystem));
+		const list_type& MustRunBefore() const override {
+			return runbefore;
 		}
-        
+		
+		ctti_t ID() const override{
+			return CTTI<PhysicsLinkSystemRead>;
+		}
+		
+	protected:
+		static const list_type queries, runbefore;
     };
 }
