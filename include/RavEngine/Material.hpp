@@ -6,6 +6,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "Common3D.hpp"
 #include "CTTI.hpp"
+#include "Debug.hpp"
 
 namespace RavEngine {
 
@@ -39,13 +40,9 @@ namespace RavEngine {
 			//materials are keyed by their shader name
 			typedef locked_hashmap<ctti_t, Ref<RavEngine::Material>,SpinLock> MaterialStore;
 			static MaterialStore materials;
-			
-			static matrix4 projectionMatrix;
-			static matrix4 viewMatrix;
-			
+		
 			static bool HasMaterialByTypeIndex(const ctti_t);
 			
-			static matrix4 transformMatrix;
 		public:
 			
 			/**
@@ -58,7 +55,7 @@ namespace RavEngine {
 			{
 				//check if material is already registered
 				if (HasMaterialByType<T>()) {
-					throw std::runtime_error("Material with type is already allocated! Use GetMaterialByType to get it.");
+					Debug::Fatal("Material with type is already allocated! Use GetMaterialByType to get it.");
 				}
 				
 				materials.insert(std::make_pair(CTTI<T>, mat));
@@ -119,7 +116,7 @@ namespace RavEngine {
 			static Ref<T> AccessMaterialOfType(A ... args){
 				Ref<T> mat;
 				auto t = CTTI<T>;
-				if (materials.find(t) != materials.end()){
+				if (materials.contains(t)){
 					mat = materials.at(t);
 				}
 				else{
@@ -128,39 +125,6 @@ namespace RavEngine {
 				}
 				return mat;
 			}
-			
-			/**
-			 Set the current projection matrix. For internal use only.
-			 */
-			static inline void SetProjectionMatrix(const matrix4& mat) {
-				projectionMatrix = mat;
-			}
-			
-			/**
-			 @retuurn a const-reference to the current global projection matrix
-			 For internal use only.
-			 */
-			static inline const matrix4& GetCurrentProjectionMatrix() {
-				return projectionMatrix;
-			}
-			
-			/**
-			 Set the current view matrix. For interal use only.
-			 */
-			static inline void SetViewMatrix(const matrix4& mat) {
-				viewMatrix = mat;
-			}
-			
-			/**
-			 @return a const-reference to the current global view matrix. For internal use only
-			 */
-			static inline const matrix4& GetCurrentViewMatrix() {
-				return viewMatrix;
-			}
-			
-			static inline const matrix4& GetCurrentTransformMatrix(){
-				return transformMatrix;
-			}
 		};
 
 	protected:
@@ -168,11 +132,6 @@ namespace RavEngine {
 
 		//trying to create a material that already exists will throw an exception
 		Material(const std::string& name);
-
-		struct Settings {
-			float wvpMatrix[16];
-		} settings;
-
 		
 		bgfx::ProgramHandle program;
 	};

@@ -5,14 +5,18 @@
 #include "Component.hpp"
 #include "BuiltinMaterials.hpp"
 #include "Uniform.hpp"
+#include <atomic>
 
 namespace RavEngine{
 class MeshAsset;
 
 struct Light : public Queryable<Light>, public Component {
-	float Intensity = 1.0;
+	std::atomic<float> Intensity = 1.0;
 	ColorRGBA color{1,1,1,1};
 	virtual void DebugDraw() const = 0;
+	
+	static_assert(std::atomic<float>::is_always_lock_free, "Intensity atomic is not always lock-free");
+	static_assert(std::atomic<ColorRGBA>::is_always_lock_free, "Color atomic is not always lock-free");
 };
 
 /**

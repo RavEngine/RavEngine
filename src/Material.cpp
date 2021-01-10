@@ -17,9 +17,6 @@ using namespace RavEngine;
 using namespace std::filesystem;
 
 Material::Manager::MaterialStore Material::Manager::materials;
-matrix4 Material::Manager::projectionMatrix;
-matrix4 Material::Manager::viewMatrix;
-matrix4 Material::Manager::transformMatrix = matrix4(1);
 
 // mapping names to types
 const phmap::flat_hash_map<string, ShaderStage> stagemap{

@@ -277,16 +277,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::touch(Views::DeferredGeo);
 	bgfx::touch(Views::Lighting);
 	
-	//copy into backend matrix
 	float viewmat[16], projmat[16];
-    
-    copyMat4(glm::value_ptr(Material::Manager::GetCurrentViewMatrix()), viewmat);
-    copyMat4(glm::value_ptr(Material::Manager::GetCurrentProjectionMatrix()), projmat);
-	
-	//set the view transform - all entities drawn will use this matrix
-	for(int i = 0; i < Views::Count; i++){
-		bgfx::setViewTransform(i, viewmat, projmat);
-	}
 	
 	//get the active camera
 	auto allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
@@ -295,11 +286,18 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		if (owning->isActive()) {
 			auto size = GetBufferSize();
 			owning->SetTargetSize(size.width, size.height);
-			Material::Manager::SetProjectionMatrix(cam->GenerateProjectionMatrix());
-			Material::Manager::SetViewMatrix(cam->GenerateViewMatrix());
+			
+			//copy into backend matrix
+			copyMat4(glm::value_ptr(cam->GenerateViewMatrix()), viewmat);
+			copyMat4(glm::value_ptr(cam->GenerateProjectionMatrix()), projmat);
 			
 			break;
 		}
+	}
+
+	//set the view transform - all entities drawn will use this matrix
+	for(int i = 0; i < Views::Count; i++){
+		bgfx::setViewTransform(i, viewmat, projmat);
 	}
 		
 	//bind gbuffer textures
