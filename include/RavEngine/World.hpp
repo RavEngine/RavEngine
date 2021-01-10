@@ -54,7 +54,9 @@ namespace RavEngine {
          * @param scale the frame rate scale to pass on to the System's tick method
          */
         void TickSystem(Ref<System> system, float scale);
-				
+		
+		tf::Taskflow masterTasks;
+		
 		bool physicsActive = false;
 	public:
 		SystemManager systemManager;

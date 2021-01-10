@@ -128,12 +128,11 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
  */
 void RavEngine::World::TickECS(float fpsScale) {
 	struct systaskpair{
-		tf::Task task;
+		tf::Task task1, task2;
 		Ref<System> system;
 	};
 	
 	locked_hashmap<ctti_t, systaskpair, SpinLock> graphs;
-	tf::Taskflow masterTasks;
 	
     //tick the systems
 	for (auto& s : systemManager.GetInternalStorage()) {
@@ -142,24 +141,14 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto queries = system->QueryTypes();
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
-			graphs[system->ID()] = {(masterTasks.emplace([=](tf::Subflow& subflow){
-				{
-					auto& temp = GetAllComponentsOfTypeIndexFastPath(query);
-					for (auto& e : temp) {
-						subflow.emplace([=]{
-							system->Tick(fpsScale, e.get()->getOwner());
-						});
-					}
-				}
-				{
-					auto& temp2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
-					for (auto& e : temp2) {
-						subflow.emplace([=]{
-							system->Tick(fpsScale, e.get()->getOwner());
-						});
-					}
-				}
-			})),system};
+			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);
+			auto& l2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
+			
+			graphs[system->ID()] = {masterTasks.for_each(l1.begin(),l1.end(),[=](Ref<Component> e){
+				system->Tick(fpsScale, e.get()->getOwner());
+			}), masterTasks.for_each(l2.begin(),l2.end(),[=](Ref<Component> e){
+					system->Tick(fpsScale, e.get()->getOwner());
+				}),system};
 		}
 	}
 	
@@ -169,19 +158,22 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto RunPhysics = masterTasks.emplace([=]{
 			Solver->Tick(fpsScale);
 		});
-		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task);
-		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task);
+		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task1,graphs[CTTI<PhysicsLinkSystemRead>].task2);
+		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task1,graphs[CTTI<PhysicsLinkSystemWrite>].task2);
 	}
 	
 	//figure out dependencies
 	for(auto& graph : graphs){
-		tf::Task& task = graph.second.task;
+		tf::Task& task1 = graph.second.task1;
+		tf::Task& task2 = graph.second.task2;
+		
 		//call precede
 		{
 			auto& runbefore = graph.second.system->MustRunBefore();
 			for(const auto id : runbefore){
 				if (graphs.contains(id)){
-					task.precede(graphs[id].task);
+					task1.precede(graphs[id].task1,graphs[id].task2);
+					task2.precede(graphs[id].task1,graphs[id].task2);
 				}
 			}
 		}
@@ -190,7 +182,8 @@ void RavEngine::World::TickECS(float fpsScale) {
 			auto& runafter = graph.second.system->MustRunAfter();
 			for(const auto id : runafter){
 				if (graphs.contains(id)){
-					task.precede(graphs[id].task);
+					task1.succeed(graphs[id].task1,graphs[id].task2);
+					task2.succeed(graphs[id].task1,graphs[id].task2);
 				}
 			}
 		}
@@ -198,6 +191,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	
 	//execute and wait
 	App::executor.run(masterTasks).wait();
+	masterTasks.clear();
 }
 
 bool RavEngine::World::InitPhysics() {
