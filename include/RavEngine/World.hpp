@@ -23,14 +23,11 @@
 namespace RavEngine {
 	class Entity;
 	class InputManager;
-	typedef phmap::parallel_flat_hash_set<Ref<Entity>> EntityStore;
 
 	class World : public ComponentStore<SpinLock> {
 	protected:
 		//Entity list
-		EntityStore Entities;
-		moodycamel::ConcurrentQueue<Ref<Entity>> PendingSpawn;
-		moodycamel::ConcurrentQueue<Ref<Entity>> PendingDestruction;
+		locked_hashset<Ref<Entity>,SpinLock> Entities;
 
 		//physics system
 		Ref<PhysicsSolver> Solver = new PhysicsSolver();
@@ -40,7 +37,6 @@ namespace RavEngine {
 		 @param fpsScale the scale factor calculated
 		 */
 		virtual void pretick(float fpsScale) {}
-		virtual void midtick(float fpsScale) {}
 		void TickECS(float);
 		/**
 		 Called after physics and rendering synchronously

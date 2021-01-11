@@ -24,52 +24,8 @@ void RavEngine::World::Tick(float scale) {
 	
     pretick(scale);
 	
-	//spawn entities that are pending spawn
-	Ref<Entity> e;
-	while(PendingSpawn.try_dequeue(e)){
-		Entities.insert(e);
-        e->SetWorld(this);
-
-		//start all scripts
-		e->Start();
-		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
-		for (const Ref<ScriptComponent>& c : coms) {
-			c->Start();
-		}
-        
-        //make the physics system aware of this entity
-        Solver->Spawn(e);
-		
-		//merge the entity into the world
-		Merge(*e.get());
-		
-		e->parent = this;	//set parent so that this entity synchronizes its components with this world
-	}
-	
 	//Tick the game code
-	midtick(scale);
 	TickECS(scale);
-	
-	//destroy objects that are pending removal
-	while(PendingDestruction.try_dequeue(e)){
-		//stop all scripts
-		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
-		for (const Ref<ScriptComponent>& c : coms) {
-			c->Stop();
-		}
-		e->Stop();
-
-        e->SetWorld(nullptr);
-		
-		//also remove its components
-		Unmerge(*e.get());
-		
-		e->parent = nullptr;	//set parent to null so that this entity no longer synchronizes its components with this world
-        
-        //remove the objects from the Physics system
-        Solver->Destroy(e);
-		Entities.erase(e);
-	}
 
     posttick(scale);
 }
@@ -77,24 +33,40 @@ void RavEngine::World::Tick(float scale) {
 
 RavEngine::World::World(){
 	//reserve space to reduce rehashing
-	Entities.reserve(40000);
+	Entities.reserve(4000);
 	systemManager.RegisterSystem<ScriptSystem>(new ScriptSystem);
 }
 
 /**
- Spawn an entity in the world. This schedules the Entity to be added to the Entity list and its
- components to the component store at the beginning of the next tick.
+ Spawn an entity immediately
  @param e the entity to spawn
  @return true if the spawn succeeded, false if it failed
  */
 bool RavEngine::World::Spawn(Ref<Entity> e){
 	//cannot spawn an entity that is already in a world
 	if (e->GetWorld().isNull()){
-		PendingSpawn.enqueue(e);
+		Entities.insert(e);
+		e->SetWorld(this);
+
+		//start all scripts
+		e->Start();
+		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+		for (const Ref<ScriptComponent>& c : coms) {
+			c->Start();
+		}
+
+		//make the physics system aware of this entity
+		Solver->Spawn(e);
+
+		//merge the entity into the world
+		Merge(*e.get());
+
+		e->parent = this;	//set parent so that this entity synchronizes its components with this world
+
 		//get all child entities
 		auto& children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
 		for(const Ref<ChildEntityComponent>& c : children){
-			PendingSpawn.enqueue(c->get());
+			Spawn(c->get());	//spawn the child entities
 		}
 		return true;
 	}
@@ -102,8 +74,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 }
 
 /**
- Marks an entity for destruction. This does NOT destroy it or its components immediately. At the end of the tick, entities marked with
- Destroy will be removed from the spawn list and will no longer be processed. This may or may not deallocate the Entity and its Components.
+ Destroy an entity immediately
  @param e the entity to destroy
  @return true if destruction succeeded, false otherwise
  */
@@ -112,12 +83,29 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	if (e->GetWorld().isNull()){
 		return false;
 	}
-	PendingDestruction.enqueue(e);
+	
+	//stop all scripts
+	auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+	for (const Ref<ScriptComponent>& c : coms) {
+		c->Stop();
+	}
+	e->Stop();
+
+	e->SetWorld(nullptr);
+
+	//also remove its components
+	Unmerge(*e.get());
+
+	e->parent = nullptr;	//set parent to null so that this entity no longer synchronizes its components with this world
+
+	//remove the objects from the Physics system
+	Solver->Destroy(e);
+	Entities.erase(e);
 	
 	//get all child entities
 	auto& children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
 	for(const Ref<ChildEntityComponent>& c : children){
-		PendingDestruction.enqueue(c->get());
+		Destroy(c->get());
 	}
 	return true;
 }
