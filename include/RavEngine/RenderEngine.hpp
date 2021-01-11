@@ -30,7 +30,14 @@ namespace RavEngine {
     public:
         virtual ~RenderEngine();
         RenderEngine();
-        void Draw(Ref<World>);
+
+		//render a world, for internal use only
+		void Draw(Ref<World>);
+
+		//get reset bitmask, for internal use only
+		static uint32_t GetResetFlags();
+
+		static void BlockUntilFinishDraw();
 
         static const std::string currentBackend();
 
@@ -71,6 +78,9 @@ namespace RavEngine {
 				Count
 			};
 		};
+
+		// Signal to the current renderer what it should draw next 
+		void DrawNext(Ref<World> toDraw);
 		
 		// Rml::SystemInterface overrides, used internally
 		double GetElapsedTime() override;
@@ -112,7 +122,6 @@ namespace RavEngine {
     protected:
 		static SDL_Window* window;
         static void Init();
-		static uint32_t GetResetFlags();
 		
 		static constexpr uint8_t gbufferSize = 4;
 		static constexpr uint8_t lightingAttachmentsSize = 2;
@@ -152,7 +161,7 @@ namespace RavEngine {
 			}
 			
 			const auto stride = T::InstancingStride();
-			const auto numLights = lights.size();	//TODO: factor in light frustum culling
+			const auto numLights = lights.size();
 			
 			//create buffer for GPU instancing
 			bgfx::InstanceDataBuffer idb;
@@ -164,6 +173,11 @@ namespace RavEngine {
 				float* ptr = (float*)(idb.data + i);
 				light->AddInstanceData(ptr);
 				i += stride;
+			}
+
+			//fill the remaining slots in the buffer with 0s (if a light was removed during the buffer filling)
+			for (; i < numLights; i++) {
+				*(idb.data + i) = 0;
 			}
 			
 			bgfx::setInstanceDataBuffer(&idb);

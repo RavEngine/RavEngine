@@ -122,7 +122,8 @@ int App::run(int argc, char** argv) {
 		if (inputManager){
 			inputManager->Tick();
 		}
-		Renderer->Draw(currentWorld);
+
+		Renderer->DrawNext(currentWorld);
 
 #ifdef LIMIT_TICK
 		this_thread::sleep_for(tickrate);
@@ -130,8 +131,8 @@ int App::run(int argc, char** argv) {
 		lastFrameTime = now;
 	}
 	
-	//
-		
+	RenderEngine::BlockUntilFinishDraw();
+
     return OnShutdown();
 }
 

@@ -35,6 +35,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <fmt/core.h>
 #include <iostream>
+#include <bx/thread.h>
 #include "Debug.hpp"
 
 using namespace std;
@@ -58,6 +59,14 @@ static Ref<DebugMaterialInstance> mat;
 
 static Ref<RavEngine::DeferredBlitShader> blitShader;
 Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
+
+
+//render thread
+static std::atomic<bool> bgfx_thread_finished_init = false;
+static std::atomic<bool> render_thread_exit = false;
+std::optional<std::thread> renderThread;
+moodycamel::ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
+static Ref<World> worldToDraw;
 
 struct bgfx_msghandler : public bgfx::CallbackI{
 	static bool diagnostic_logging;
@@ -182,12 +191,121 @@ void DebugRender(const Im3d::DrawList& drawList){
 #endif
 }
 
+static void runAPIThread() {
+	bgfx::Init settings;
+
+#ifdef __linux__
+	settings.type = bgfx::RendererType::Vulkan;	//use Vulkan on Linux
+#endif
+
+	settings.callback = new bgfx_msghandler;
+
+	//must be in this order
+	sdlSetWindow(RenderEngine::GetWindow());
+	bgfx::renderFrame();
+	bgfx::init(settings);
+
+	//TODO: refactor
+	int width, height;
+	SDL_GL_GetDrawableSize(RenderEngine::GetWindow(), &width, &height);
+	bgfx::reset(width, height, RenderEngine::GetResetFlags());
+
+	// Enable debug text.
+	bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
+
+	bgfx::reset(width, height, RenderEngine::GetResetFlags());
+
+	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+
+	bgfx::setState(BGFX_STATE_DEFAULT);
+
+	//this unblocks the static Init thread
+	bgfx_thread_finished_init = true;
+
+	//begin main render loop
+
+	while (!render_thread_exit) {
+		//do queued tasks
+		std::function<void(void)> func;
+		while (RenderThreadQueue.try_dequeue(func)) {
+			func();
+		}
+
+		if (App::Renderer) {			//skip if the App has not set its renderer yet
+			//invoke World rendering call
+			if (worldToDraw) {
+				App::Renderer->Draw(worldToDraw);
+			}
+		}
+	}
+
+	//bgfx::shutdown must be called on this thread
+}
+
+void RenderEngine::BlockUntilFinishDraw() {
+	while (bgfx::RenderFrame::NoContext != bgfx::renderFrame());
+}
+
+/**
+Initialize static singletons. Invoked automatically if needed.
+*/
+void RenderEngine::Init()
+{
+	//setup bgfx if it is not already setup
+	if (window != nullptr)
+	{
+		return;
+	}
+	SDL_Init(0);
+	SDL_Init(SDL_INIT_GAMECONTROLLER);
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+
+	//start the render thread here
+
+	renderThread.emplace(runAPIThread);
+	renderThread.value().detach();
+
+	//wait for the render thread to be finished initializing
+	while (!bgfx_thread_finished_init);
+
+	//create screenspace quad
+	const uint16_t indices[] = { 0,2,1, 2,3,1 };
+	const Vertex vertices[] = { {-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0} };
+	bgfx::VertexLayout vl;
+	vl.begin()
+		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+		.end();
+
+	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
+	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
+	blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
+	guiMaterial = new GUIMaterialInstance(Material::Manager::AccessMaterialOfType<GUIMaterial>());
+
+	//init lights
+	LightManager::Init();
+
+	//vertex format for debug drawing
+	debuglayout.begin()
+		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+		.end();
+
+	//vertex format for ui
+	RmlLayout.begin()
+		.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+		.end();
+}
+
+
 /**
 Construct a render engine instance
 @param w the owning world for this engine instance
 */
 RenderEngine::RenderEngine() {
 	Init();
+
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
 	
 	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());
@@ -198,7 +316,6 @@ RenderEngine::RenderEngine() {
 	SDL_GL_GetDrawableSize(window, &width, &height);
 	bufferdims.width = width;
 	bufferdims.height = height;
-	
 	
 	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
 	BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
@@ -260,6 +377,13 @@ RavEngine::RenderEngine::~RenderEngine()
 {
 	bgfx::destroy(gBuffer);	//automatically destroys attached textures
 	bgfx::destroy(lightingBuffer);
+}
+
+void RenderEngine::DrawNext(Ref<World> world) {
+	//mark what world to render
+	worldToDraw = world;
+
+	bgfx::renderFrame();	//wait for API thread to call bgfx::frame, then return
 }
 
 /**
@@ -361,11 +485,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 }
 
 void RenderEngine::resize(){
-	
 	SDL_GL_GetDrawableSize(window, &bufferdims.width, &bufferdims.height);
-	bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
-	bgfx::setViewRect(0, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
+	RenderThreadQueue.enqueue([=]() {
+		bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
+		bgfx::setViewRect(Views::FinalBlit, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
+	});
+	
 }
 
 void RenderEngine::SyncVideoSettings(){
@@ -396,78 +522,6 @@ const string RenderEngine::currentBackend(){
 uint32_t RenderEngine::GetResetFlags(){
 	return (VideoSettings.vsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE);
 }
-
-/**
-Initialize static singletons. Invoked automatically if needed.
-*/
-void RenderEngine::Init()
-{
-	//setup bgfx if it is not already setup
-	if (window != nullptr)
-	{
-		return;
-	}
-	SDL_Init(0);
-	SDL_Init(SDL_INIT_GAMECONTROLLER);
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-	
-	bgfx::Init settings;
-	
-	#ifdef __linux__
-	settings.type = bgfx::RendererType::Vulkan;	//use Vulkan on Linux
-	#endif
-	
-	settings.callback = new bgfx_msghandler;
-	
-	//must be in this order
-	sdlSetWindow(window);
-	bgfx::renderFrame();
-	bgfx::init(settings);
-	
-	//TODO: refactor
-	int width, height;
-	SDL_GL_GetDrawableSize(window, &width, &height);
-	bgfx::reset(width, height, GetResetFlags());
-	
-	// Enable debug text.
-	bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
-		
-	bgfx::reset(width, height, GetResetFlags());
-	
-	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
-
-	bgfx::setState(BGFX_STATE_DEFAULT);
-	
-	//create screenspace quad
-	const uint16_t indices[] = {0,2,1, 2,3,1};
-	const Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
-	bgfx::VertexLayout vl;
-	vl.begin()
-	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.end();
-	
-	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
-	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
-	blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
-	guiMaterial = new GUIMaterialInstance(Material::Manager::AccessMaterialOfType<GUIMaterial>());
-	
-	//init lights
-	LightManager::Init();
-	
-	//vertex format for debug drawing
-	debuglayout.begin()
-	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-	.end();
-	
-	//vertex format for ui
-	RmlLayout.begin()
-	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-	.end();
-}
-
 
 bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 {
