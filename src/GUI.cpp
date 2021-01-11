@@ -28,7 +28,11 @@ ElementDocument* GUIComponent::AddDocument(const std::string &name){
 	
 	string dir = "/uis/" + name;
 	
-	ElementDocument* ed = context->LoadDocument(dir);
+	ElementDocument* ed;
+	ExclusiveAccess([&] {
+		ed = context->LoadDocument(dir);
+	});
+	
 	
 	if (ed == nullptr){
 		Debug::Fatal("Cannot load document at path {}", dir);
@@ -45,7 +49,9 @@ void GUIComponent::RemoveDocument(const std::string &name){
 	
 	auto ptr = documents.at(name);
 	documents.erase(name);
-	context->UnloadDocument(ptr);
+	ExclusiveAccess([&] {
+		context->UnloadDocument(ptr);
+	});
 }
 
 bool GUIComponent::IsDocumentLoaded(const std::string &name) const{
@@ -60,22 +66,32 @@ bool GUIComponent::LoadFont(const std::string& filename){
 
 bool GUIComponent::Update(){
 	MouseMove();
-	return context->Update();
+	bool result;
+	ExclusiveAccess([&] {
+		result = context->Update();
+	});
+	return result;
 }
 
 bool GUIComponent::Render(){
-	return context->Render();
+	bool result;
+	ExclusiveAccess([&] {
+		result = context->Render();
+	});
+	return result;
 }
 
 GUIComponent::~GUIComponent(){
-	for(const auto& pair : documents){
+	for (const auto& pair : documents) {
 		RemoveDocument(pair.first);		//destroy all the documents 
 	}
-	RemoveContext(context->GetName());
+	ExclusiveAccess([&] {
+		RemoveContext(context->GetName());
+	});
+	
 }
 
-GUIComponent::GUIComponent() : GUIComponent(App::Renderer->GetBufferSize().width,App::Renderer->GetBufferSize().height, App::Renderer->GetDPIScale()){
-}
+GUIComponent::GUIComponent() : GUIComponent(App::Renderer->GetBufferSize().width,App::Renderer->GetBufferSize().height, App::Renderer->GetDPIScale()){}
 
 GUIComponent::GUIComponent(int width, int height, float DPIScale){
 	auto uuid = uuids::uuid::create();
@@ -121,10 +137,14 @@ void GUIComponent::AnyActionDown(const int charcode){
 		case SDL_BUTTON_LEFT:
 		case SDL_BUTTON_RIGHT:
 		case SDL_BUTTON_MIDDLE:
-			context->ProcessMouseButtonDown(charcode - 1,modifier_state);
+			ExclusiveAccess([&] {
+				context->ProcessMouseButtonDown(charcode - 1, modifier_state);
+			});
 			break;
 		default:
-			context->ProcessKeyDown(SDLtoRML(charcode), 1);
+			ExclusiveAccess([&] {
+				context->ProcessKeyDown(SDLtoRML(charcode), 1);
+			});
 			break;
 	}
 }
@@ -157,10 +177,14 @@ void GUIComponent::AnyActionUp(const int charcode){
 		case SDL_BUTTON_LEFT:
 		case SDL_BUTTON_RIGHT:
 		case SDL_BUTTON_MIDDLE:
-			context->ProcessMouseButtonUp(charcode - 1, modifier_state);
+			ExclusiveAccess([&] {
+				context->ProcessMouseButtonUp(charcode - 1, modifier_state);
+			});
 			break;
 		default:
-			context->ProcessKeyUp(SDLtoRML(charcode), 0);
+			ExclusiveAccess([&] {
+				context->ProcessKeyUp(SDLtoRML(charcode), 0);
+			});
 			break;
 	}
 }
@@ -175,12 +199,16 @@ void GUIComponent::MouseY(float normalized_pos){
 
 void GUIComponent::MouseMove(){
 	//Forward to canvas, using the bitmask
-	auto dim = context->GetDimensions();
-	context->ProcessMouseMove(MousePos.x * dim.x, MousePos.y * dim.y, modifier_state);
+	ExclusiveAccess([&] {
+		auto dim = context->GetDimensions();
+		context->ProcessMouseMove(MousePos.x * dim.x, MousePos.y * dim.y, modifier_state);
+	});
 }
 
 void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
-	context->SetDimensions(Rml::Vector2i(width,height));
+	ExclusiveAccess([&] {
+		context->SetDimensions(Rml::Vector2i(width, height));
+	});
 }
 
 void GUIComponent::Debug(){

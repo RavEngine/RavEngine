@@ -456,7 +456,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			gui->SetDimensions(size.width, size.height);
 			gui->SetDPIScale(GetDPIScale());
 		}
-		//gui->Update();
+		gui->Update();
 		gui->Render();	//bgfx state is set in renderer before actual draw calls
 	}
 	

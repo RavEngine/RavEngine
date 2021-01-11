@@ -15,6 +15,8 @@ protected:
 	
 	Rml::Context* context = nullptr;
 	locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
+
+	SpinLock mtx;
 	
 	uint32_t modifier_state = 0;
 	
@@ -73,7 +75,7 @@ public:
 	/**
 	 Get a pointer to a document, for performing queries or bindings.
 	 @param name the name of the document.
-	 @return a pointer to the RML ElementDocument
+	 @return a pointer to the RML ElementDocument. Use of this pointer is not safe outside of ExclusiveAccess.
 	 @throws if the document is not loaded.
 	 */
 	Rml::ElementDocument* GetDocument(const std::string& name) const;
@@ -94,15 +96,38 @@ public:
 	 * @param normalized_pos the position of the mouse, in [0,1)
 	 */
 	void MouseY(float normalized_pos);
+
+	/**
+	* Execute code on this element with exclusive thread-safe access.
+	* You must use this call anytime you need to write changes or read data off a document
+	* @param func a capturing lambda to execute 
+	*/
+	inline void ExclusiveAccess(std::function<void(void)> func) {
+		mtx.lock();
+		func();
+		mtx.unlock();
+	}
 	
+	/**
+	* Load a font globally
+	*/
 	static bool LoadFont(const std::string& filename);
 	
+	/**
+	* Set the RML debugger to focus on this context
+	*/
 	void Debug();
 	
 	virtual ~GUIComponent();
 	
+	/**
+	* Recalculate based on changes made (internal use only)
+	*/
 	bool Update();
 	
+	/**
+	* Issue draw calls to render this element (internal use only)
+	*/
 	bool Render();
 };
 }
