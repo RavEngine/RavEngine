@@ -382,8 +382,6 @@ RavEngine::RenderEngine::~RenderEngine()
 void RenderEngine::DrawNext(Ref<World> world) {
 	//mark what world to render
 	worldToDraw = world;
-
-	//bgfx::renderFrame();	//wait for API thread to call bgfx::frame, then return
 }
 
 /**
@@ -450,17 +448,17 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
 	//GUI
-	//TODO: thread using ECS
+	//TODO: thread using ECS?
 	auto guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
 	auto size = GetBufferSize();
-	//for(const Ref<GUIComponent>& gui : guis){
-	//	if(gui->Mode == GUIComponent::RenderMode::Screenspace){
-	//		gui->SetDimensions(size.width, size.height);
-	//		gui->SetDPIScale(GetDPIScale());
-	//	}
-	//	gui->Update();
-	//	gui->Render();	//bgfx state is set in renderer before actual draw calls
-	//}
+	for(const Ref<GUIComponent>& gui : guis){
+		if(gui->Mode == GUIComponent::RenderMode::Screenspace){
+			gui->SetDimensions(size.width, size.height);
+			gui->SetDPIScale(GetDPIScale());
+		}
+		//gui->Update();
+		gui->Render();	//bgfx state is set in renderer before actual draw calls
+	}
 	
 	
 #ifdef _DEBUG
