@@ -132,16 +132,32 @@ void RavEngine::World::TickECS(float fpsScale) {
 			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);
 			auto& l2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
 
-			auto func = [=](Ref<Component> e) {
-				Ref<Entity> en(e->getOwner());
-				if (en) {
-					system->Tick(fpsScale, en);
+			struct func {
+				Ref<System> system;
+				float fpsScale;
+				const ComponentStore::entry_type& list;
+				void operator()(size_t i) const {
+					auto iter = list.begin();
+					size_t count = 0;
+					for( ; iter != list.end() && count < i; iter++)	//advance (potential bottleneck)
+					{
+						count++;
+					}
+					if (count != i || iter == list.end()) {
+						return;
+					}
+
+					Ref<Component> e = *iter;
+					Ref<Entity> en(e->getOwner());
+					if (en) {
+						system->Tick(fpsScale, en);
+					}
 				}
 			};
 			
 			graphs[system->ID()] = {
-				masterTasks.for_each(l1.begin(),l1.end(),func), 
-				masterTasks.for_each(l2.begin(),l2.end(),func),
+				masterTasks.for_each_index((size_t)0,l1.size(),(size_t)1,func{system,fpsScale, l1}),
+				masterTasks.for_each_index((size_t)0,l2.size(),(size_t)1,func{system,fpsScale, l2}),
 				system};
 		}
 	}

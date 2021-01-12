@@ -401,8 +401,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	float viewmat[16], projmat[16];
 	
 	//get the active camera
-	auto allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
-	for (const Ref<CameraComponent>& cam : allcams) {
+	auto& allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
+	for (const Ref<CameraComponent> cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
 			auto size = GetBufferSize();
@@ -426,12 +426,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	
-	auto geometry = worldOwning->GetAllComponentsOfSubclass<StaticMesh>();
+	auto& geometry = worldOwning->GetAllComponentsOfSubclass<StaticMesh>();
    
 	//Deferred geometry pass
-	for (const Ref<StaticMesh>& e : geometry) {
-		bgfx::setState( (BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW );
-        e->Draw(Views::DeferredGeo);
+	for (const Ref<StaticMesh> e : geometry) {
+		if (e) {
+			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
+			e->Draw(Views::DeferredGeo);
+		}
 	}
 	
 	bool al = DrawLightsOfType<AmbientLight>(*worldOwning.get());
@@ -449,7 +451,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS?
-	auto guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
+	auto& guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
 	auto size = GetBufferSize();
 	for(const Ref<GUIComponent>& gui : guis){
 		if(gui->Mode == GUIComponent::RenderMode::Screenspace){

@@ -14,6 +14,7 @@ using namespace glm;
 using namespace RavEngine;
 
 void Entity::Destroy() {
+	assert(IsInWorld());	//if assertion fails, you are trying to remove an entity from a world that is not in that world
 	Ref<World>(GetWorld())->Destroy(this);
 }
 
