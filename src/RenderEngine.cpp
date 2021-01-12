@@ -469,14 +469,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	comp->Update();
 	comp->Render();
 
-	Im3d::GetContext().draw();
+	//Im3d::GetContext().draw();
 #endif
 	//discard all previous state sets
 	bgfx::frame();
     bgfx::discard();
 
 #ifdef _DEBUG
-	Im3d::NewFrame();
+	//Im3d::NewFrame();
 #endif
 	bgfx::dbgTextClear();
 }

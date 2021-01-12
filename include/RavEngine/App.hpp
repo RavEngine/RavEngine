@@ -67,16 +67,21 @@ namespace RavEngine {
 		static inline void DispatchMainThread(const std::function<void(void)>& f){
 			main_tasks.enqueue(f);
 		}
+
+		/**
+		* Get the current application tick rate
+		*/
+		static float CurrentTPS();
 		
 		static Ref<InputManager> inputManager;
 		static Ref<World> currentWorld;
 	protected:
 		static moodycamel::ConcurrentQueue<std::function<void(void)>> main_tasks;
 
-		//#define LIMIT_TICK
+		#define LIMIT_TICK
 #ifdef LIMIT_TICK
 	//change to adjust the ticking speed of the engine (default ~60 fps)
-		std::chrono::microseconds tickrate = std::chrono::microseconds((long)166.66);
+		std::chrono::microseconds tickrate = std::chrono::microseconds((long)1660);
 #endif
 
 		/**

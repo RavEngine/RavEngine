@@ -25,6 +25,7 @@ const float RavEngine::App::evalNormal = 60;
 Ref<VirtualFilesystem> App::Resources;
 double App::time;
 Ref<RenderEngine> App::Renderer;
+static float currentScale = 0;
 
 moodycamel::ConcurrentQueue<function<void(void)>> App::main_tasks;
 tf::Executor App::executor;
@@ -80,6 +81,7 @@ int App::run(int argc, char** argv) {
 		float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
 		time += deltaSeconds;
 		float scale = deltaSeconds * evalNormal;
+		currentScale = scale;
 
 		auto windowflags = SDL_GetWindowFlags(RenderEngine::GetWindow());
 		while (SDL_PollEvent(&event)) {
@@ -134,6 +136,10 @@ int App::run(int argc, char** argv) {
 	RenderEngine::BlockUntilFinishDraw();
 
     return OnShutdown();
+}
+
+float App::CurrentTPS() {
+	return App::evalNormal / currentScale;
 }
 
 void App::Quit(){

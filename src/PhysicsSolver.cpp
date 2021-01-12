@@ -217,9 +217,9 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
  Run the appropriate number of physics time steps given a frame rate scale
  @param deltaTime the scale factor to apply
  */
-void PhysicsSolver::Tick(float deltaTime){
+void PhysicsSolver::Tick(float scaleFactor){
 
-    auto step = deltaTime / 30;
+    auto step = scaleFactor / App::evalNormal;
 
     //physics substepping
     int nsteps = ceil(step / max_step_time);

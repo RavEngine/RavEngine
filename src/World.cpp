@@ -64,7 +64,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		e->parent = this;	//set parent so that this entity synchronizes its components with this world
 
 		//get all child entities
-		auto& children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
+		auto children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
 		for(const Ref<ChildEntityComponent>& c : children){
 			Spawn(c->get());	//spawn the child entities
 		}
@@ -103,7 +103,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	Entities.erase(e);
 	
 	//get all child entities
-	auto& children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
+	auto children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
 	for(const Ref<ChildEntityComponent>& c : children){
 		Destroy(c->get());
 	}
@@ -126,17 +126,23 @@ void RavEngine::World::TickECS(float fpsScale) {
 	for (auto& s : systemManager.GetInternalStorage()) {
 		auto system = s.second;
 		
-		auto queries = system->QueryTypes();
+		auto& queries = system->QueryTypes();
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
 			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);
 			auto& l2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
+
+			auto func = [=](Ref<Component> e) {
+				Ref<Entity> en(e->getOwner());
+				if (en) {
+					system->Tick(fpsScale, en);
+				}
+			};
 			
-			graphs[system->ID()] = {masterTasks.for_each(l1.begin(),l1.end(),[=](Ref<Component> e){
-				system->Tick(fpsScale, e.get()->getOwner());
-			}), masterTasks.for_each(l2.begin(),l2.end(),[=](Ref<Component> e){
-					system->Tick(fpsScale, e.get()->getOwner());
-				}),system};
+			graphs[system->ID()] = {
+				masterTasks.for_each(l1.begin(),l1.end(),func), 
+				masterTasks.for_each(l2.begin(),l2.end(),func),
+				system};
 		}
 	}
 	

@@ -27,7 +27,8 @@ namespace RavEngine {
 	class World : public ComponentStore<SpinLock> {
 	protected:
 		//Entity list
-		locked_hashset<Ref<Entity>,SpinLock> Entities;
+		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
+		EntityStore Entities;
 
 		//physics system
 		Ref<PhysicsSolver> Solver = new PhysicsSolver();
