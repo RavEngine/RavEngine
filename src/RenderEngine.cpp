@@ -401,7 +401,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	float viewmat[16], projmat[16];
 	
 	//get the active camera
-	auto& allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
+	auto allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
 	for (const Ref<CameraComponent> cam : allcams) {
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
@@ -426,7 +426,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	
-	auto& geometry = worldOwning->GetAllComponentsOfSubclass<StaticMesh>();
+	auto geometry = worldOwning->GetAllComponentsOfSubclass<StaticMesh>();
    
 	//Deferred geometry pass
 	for (const Ref<StaticMesh> e : geometry) {
@@ -451,7 +451,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS?
-	auto& guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
+	auto guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
 	auto size = GetBufferSize();
 	for(const Ref<GUIComponent>& gui : guis){
 		if(gui->Mode == GUIComponent::RenderMode::Screenspace){

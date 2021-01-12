@@ -28,7 +28,7 @@ struct FilterLayers {
 };
 
 namespace RavEngine {
-    class PhysicsSolver : public SharedObject, public physx::PxSimulationEventCallback {
+    class PhysicsSolver : public physx::PxSimulationEventCallback {
     protected:
         //static members must exist only once in the application
         static physx::PxDefaultErrorCallback gDefaultErrorCallback;

@@ -56,7 +56,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		}
 
 		//make the physics system aware of this entity
-		Solver->Spawn(e);
+		Solver.Spawn(e);
 
 		//merge the entity into the world
 		Merge(*e.get());
@@ -99,7 +99,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	e->parent = nullptr;	//set parent to null so that this entity no longer synchronizes its components with this world
 
 	//remove the objects from the Physics system
-	Solver->Destroy(e);
+	Solver.Destroy(e);
 	Entities.erase(e);
 	
 	//get all child entities
@@ -170,7 +170,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
 		auto RunPhysics = masterTasks.emplace([=]{
-			Solver->Tick(fpsScale);
+			Solver.Tick(fpsScale);
 		});
 		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task1,graphs[CTTI<PhysicsLinkSystemRead>].task2);
 		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task1,graphs[CTTI<PhysicsLinkSystemWrite>].task2);
@@ -213,8 +213,8 @@ bool RavEngine::World::InitPhysics() {
 		return false;
 	}
 	
-	systemManager.RegisterSystem<PhysicsLinkSystemRead>(new PhysicsLinkSystemRead(Solver->scene));
-	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(new PhysicsLinkSystemWrite(Solver->scene));
+	systemManager.RegisterSystem<PhysicsLinkSystemRead>(new PhysicsLinkSystemRead(Solver.scene));
+	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(new PhysicsLinkSystemWrite(Solver.scene));
 	
 	physicsActive = true;
 

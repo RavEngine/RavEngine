@@ -31,7 +31,7 @@ namespace RavEngine {
 		EntityStore Entities;
 
 		//physics system
-		Ref<PhysicsSolver> Solver = new PhysicsSolver();
+		PhysicsSolver Solver;
 
 		/**
 		Called before ticking components and entities synchronously
@@ -86,7 +86,7 @@ namespace RavEngine {
 		 Called by GameplayStatics when the final world is being deallocated
 		 */
 		inline void DeallocatePhysics() {
-			Solver->DeallocatePhysx();
+			Solver.DeallocatePhysx();
 		}
 
 		virtual ~World() {
