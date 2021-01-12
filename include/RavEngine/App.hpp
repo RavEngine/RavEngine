@@ -78,7 +78,7 @@ namespace RavEngine {
 	protected:
 		static moodycamel::ConcurrentQueue<std::function<void(void)>> main_tasks;
 
-		#define LIMIT_TICK
+		//#define LIMIT_TICK
 #ifdef LIMIT_TICK
 	//change to adjust the ticking speed of the engine (default ~60 fps)
 		std::chrono::microseconds tickrate = std::chrono::microseconds((long)1660);

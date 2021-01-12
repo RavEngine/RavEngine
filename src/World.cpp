@@ -121,6 +121,19 @@ void RavEngine::World::TickECS(float fpsScale) {
 	};
 	
 	locked_hashmap<ctti_t, systaskpair, SpinLock> graphs;
+
+	size_t count = 0;
+	for (auto& s : systemManager.GetInternalStorage()) {
+		auto system = s.second;
+
+		auto& queries = system->QueryTypes();
+		count += queries.size();
+	}
+	std::vector<ComponentStore::entry_type> copies;
+	count *= 2;
+	//stackarray(copies,ComponentStore::entry_type,count);
+	copies.resize(count);
+	count = 0;
 	
     //tick the systems
 	for (auto& s : systemManager.GetInternalStorage()) {
@@ -129,36 +142,27 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto& queries = system->QueryTypes();
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
-			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);
-			auto& l2 = GetAllComponentsOfTypeIndexSubclassFastPath(query);
-
-			struct func {
-				Ref<System> system;
-				float fpsScale;
-				const ComponentStore::entry_type& list;
-				void operator()(size_t i) const {
-					auto iter = list.begin();
-					size_t count = 0;
-					for( ; iter != list.end() && count < i; iter++)	//advance (potential bottleneck)
-					{
-						count++;
-					}
-					if (count != i || iter == list.end()) {
-						return;
-					}
-
-					Ref<Component> e = *iter;
-					Ref<Entity> en(e->getOwner());
-					if (en) {
-						system->Tick(fpsScale, en);
-					}
+			
+			//TODO: optimize this further by not repeating copying the same query mulitple times -- use a hashmap?
+			copies[count] = GetAllComponentsOfTypeIndexFastPath(query);
+			copies[count+1] = GetAllComponentsOfTypeIndexSubclassFastPath(query);
+			
+			auto func = [=](Ref<Component> e) {
+				Ref<Entity> en(e->getOwner());
+				if (en) {
+					system->Tick(fpsScale, en);
 				}
 			};
-			
+
+			auto& l1 = copies[count];
+			auto& l2 = copies[count + 1];
+
 			graphs[system->ID()] = {
-				masterTasks.for_each_index((size_t)0,l1.size(),(size_t)1,func{system,fpsScale, l1}),
-				masterTasks.for_each_index((size_t)0,l2.size(),(size_t)1,func{system,fpsScale, l2}),
-				system};
+				masterTasks.for_each(l1.begin(), l1.end(), func),
+				masterTasks.for_each(l2.begin(), l2.end(),func),
+				system };
+
+			count += 2;
 		}
 	}
 	
