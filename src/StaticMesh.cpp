@@ -11,9 +11,7 @@
 using namespace RavEngine;
 using namespace std;
 
-StaticMesh::StaticMesh(Ref<MeshAsset> m) : RenderableComponent(), mesh(m) {
-	
-}
+StaticMesh::StaticMesh(Ref<MeshAsset> m) : RenderableComponent(), mesh(m) {}
 
 
 void RavEngine::StaticMesh::SetMaterial(Ref<PBRMaterialInstance> mat)
@@ -28,9 +26,11 @@ void RavEngine::StaticMesh::Draw(int view)
         return;
     }
     //apply transform and set it for the material, if no owner, do not attempt to draw
-    auto owner = Ref<Entity>(getOwner());
-    if (owner) {
-        owner->transform()->Apply();
-        material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix(), view);
+    if (getOwner()) {
+        auto owner = Ref<Entity>(getOwner());
+        if (owner) {
+            owner->transform()->Apply();
+            material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix(), view);
+        }
     }
 }

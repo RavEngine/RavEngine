@@ -37,6 +37,7 @@
 #include <iostream>
 #include <bx/thread.h>
 #include "Debug.hpp"
+#include <chrono>
 
 using namespace std;
 using namespace RavEngine;
@@ -67,6 +68,7 @@ static std::atomic<bool> render_thread_exit = false;
 std::optional<std::thread> renderThread;
 moodycamel::ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
 static Ref<World> worldToDraw;
+static float currentFrameTime = 0;
 
 struct bgfx_msghandler : public bgfx::CallbackI{
 	static bool diagnostic_logging;
@@ -234,7 +236,10 @@ static void runAPIThread() {
 		if (App::Renderer) {			//skip if the App has not set its renderer yet
 			//invoke World rendering call
 			if (worldToDraw) {
+				auto before = std::chrono::high_resolution_clock::now();
 				App::Renderer->Draw(worldToDraw);
+				auto after = std::chrono::high_resolution_clock::now();
+				currentFrameTime = std::chrono::duration<float, std::chrono::milliseconds::period>(after - before).count();
 			}
 		}
 	}
@@ -516,6 +521,16 @@ const string RenderEngine::currentBackend(){
 		case bgfx::RendererType::WebGPU:		return "WebGPU";
 		case bgfx::RendererType::Count: 		return "Error - Count";
 	}
+}
+
+float RavEngine::RenderEngine::GetCurrentFPS()
+{
+	return 1000.0f / currentFrameTime;
+}
+
+float RavEngine::RenderEngine::GetLastFrameTime()
+{
+	return currentFrameTime;
 }
 
 uint32_t RenderEngine::GetResetFlags(){

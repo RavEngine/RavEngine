@@ -44,6 +44,9 @@ namespace RavEngine {
 		static SDL_Window* const GetWindow(){
 			return window;
 		}
+
+		static float GetCurrentFPS();
+		static float GetLastFrameTime();
 		
 		/**
 		 @return the current window buffer size, in pixels
