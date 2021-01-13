@@ -129,11 +129,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto& queries = system->QueryTypes();
 		count += queries.size();
 	}
-	std::vector<ComponentStore::entry_type> copies;
-	count *= 2;
-	//stackarray(copies,ComponentStore::entry_type,count);
-	copies.resize(count);
-	count = 0;
+	phmap::flat_hash_map<ctti_t, std::array<ComponentStore::entry_type, 2>> copies(count);
 	
     //tick the systems
 	for (auto& s : systemManager.GetInternalStorage()) {
@@ -143,10 +139,12 @@ void RavEngine::World::TickECS(float fpsScale) {
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
 			
-			//TODO: optimize this further by not repeating copying the same query mulitple times -- use a hashmap?
-			copies[count] = GetAllComponentsOfTypeIndexFastPath(query);
-			copies[count+1] = GetAllComponentsOfTypeIndexSubclassFastPath(query);
-			
+			//Avoid repeating the same query copies multiple times via hashmap
+			if (!copies.contains(query)) {
+				copies[query][0] = GetAllComponentsOfTypeIndexFastPath(query);
+				copies[query][1] = GetAllComponentsOfTypeIndexSubclassFastPath(query);
+			}
+
 			auto func = [=](Ref<Component> e) {
 				Ref<Entity> en(e->getOwner());
 				if (en) {
@@ -154,15 +152,13 @@ void RavEngine::World::TickECS(float fpsScale) {
 				}
 			};
 
-			auto& l1 = copies[count];
-			auto& l2 = copies[count + 1];
+			auto& l1 = copies[query][0];
+			auto& l2 = copies[query][1];
 
 			graphs[system->ID()] = {
 				masterTasks.for_each(l1.begin(), l1.end(), func),
 				masterTasks.for_each(l2.begin(), l2.end(),func),
 				system };
-
-			count += 2;
 		}
 	}
 	
