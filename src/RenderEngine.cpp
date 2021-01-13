@@ -119,12 +119,12 @@ bool bgfx_msghandler::diagnostic_logging = false;
  @param _window the SDL window pointer (modified)
  @note supported platforms: Linux, BSD, OSX, Windows, SteamLink
  */
-inline bool sdlSetWindow(SDL_Window* _window)
+inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 {
 	SDL_SysWMinfo wmi;
 	SDL_VERSION(&wmi.version);
 	if (!SDL_GetWindowWMInfo(_window, &wmi)) {
-		return false;
+		Debug::Fatal("Cannot get native window information");
 	}
 	
 	bgfx::PlatformData pd;
@@ -140,13 +140,14 @@ inline bool sdlSetWindow(SDL_Window* _window)
 #elif BX_PLATFORM_STEAMLINK
 	pd.ndt = wmi.info.vivante.display;
 	pd.nwh = wmi.info.vivante.window;
+#else
+	#error This system / display manager is not supported
 #endif // BX_PLATFORM_
 	pd.context = NULL;
 	pd.backBuffer = NULL;
 	pd.backBufferDS = NULL;
-	bgfx::setPlatformData(pd);
 	
-	return true;
+	return pd;
 }
 
 void DebugRender(const Im3d::DrawList& drawList){
@@ -193,6 +194,9 @@ void DebugRender(const Im3d::DrawList& drawList){
 #endif
 }
 
+/**
+ The render thread function, invoked on a separate thread
+ */
 static void runAPIThread() {
 	bgfx::Init settings;
 
@@ -203,19 +207,21 @@ static void runAPIThread() {
 	settings.callback = new bgfx_msghandler;
 
 	//must be in this order
-	sdlSetWindow(RenderEngine::GetWindow());
-	bgfx::renderFrame();
-	bgfx::init(settings);
-
+	settings.platformData = sdlSetWindow(RenderEngine::GetWindow());
+	
 	//TODO: refactor
 	int width, height;
 	SDL_GL_GetDrawableSize(RenderEngine::GetWindow(), &width, &height);
-	bgfx::reset(width, height, RenderEngine::GetResetFlags());
+	
+	settings.resolution.width = width;
+	settings.resolution.height = height;
+	settings.resolution.reset = RenderEngine::GetResetFlags();
+	if (!bgfx::init(settings)){
+		Debug::Fatal("bgfx::init Failed");
+	}
 
 	// Enable debug text.
 	bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
-
-	bgfx::reset(width, height, RenderEngine::GetResetFlags());
 
 	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 
@@ -271,7 +277,9 @@ void RenderEngine::Init()
 	renderThread.value().detach();
 
 	//wait for the render thread to be finished initializing
-	while (!bgfx_thread_finished_init);
+	while (!bgfx_thread_finished_init){
+		bgfx::renderFrame();
+	}
 
 	//create screenspace quad
 	const uint16_t indices[] = { 0,2,1, 2,3,1 };
@@ -387,6 +395,7 @@ RavEngine::RenderEngine::~RenderEngine()
 void RenderEngine::DrawNext(Ref<World> world) {
 	//mark what world to render
 	worldToDraw = world;
+	bgfx::renderFrame();
 }
 
 /**
