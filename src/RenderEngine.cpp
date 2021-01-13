@@ -39,6 +39,10 @@
 #include "Debug.hpp"
 #include <chrono>
 
+#ifdef __APPLE__
+	#include "MetalViewHelper.h"
+#endif
+
 using namespace std;
 using namespace RavEngine;
 
@@ -133,7 +137,7 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 	pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
 #elif BX_PLATFORM_OSX
 	pd.ndt = NULL;
-	pd.nwh = wmi.info.cocoa.window;
+	pd.nwh = cbSetupMetalLayer(wmi.info.cocoa.window);
 #elif BX_PLATFORM_WINDOWS
 	pd.ndt = NULL;
 	pd.nwh = wmi.info.win.window;
@@ -197,7 +201,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 /**
  The render thread function, invoked on a separate thread
  */
-static void runAPIThread() {
+static void runAPIThread(bgfx::PlatformData pd) {
 	bgfx::Init settings;
 
 #ifdef __linux__
@@ -207,7 +211,7 @@ static void runAPIThread() {
 	settings.callback = new bgfx_msghandler;
 
 	//must be in this order
-	settings.platformData = sdlSetWindow(RenderEngine::GetWindow());
+	settings.platformData = pd;
 	
 	//TODO: refactor
 	int width, height;
@@ -272,14 +276,14 @@ void RenderEngine::Init()
 	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
 	//start the render thread here
+	{
+		auto pd = sdlSetWindow(RenderEngine::GetWindow());
 
-	renderThread.emplace(runAPIThread);
-	renderThread.value().detach();
-
-	//wait for the render thread to be finished initializing
-	while (!bgfx_thread_finished_init){
-		bgfx::renderFrame();
+		renderThread.emplace(runAPIThread,pd);
+		renderThread.value().detach();
 	}
+	//wait for the render thread to be finished initializing
+	while (!bgfx_thread_finished_init);
 
 	//create screenspace quad
 	const uint16_t indices[] = { 0,2,1, 2,3,1 };
@@ -395,7 +399,6 @@ RavEngine::RenderEngine::~RenderEngine()
 void RenderEngine::DrawNext(Ref<World> world) {
 	//mark what world to render
 	worldToDraw = world;
-	bgfx::renderFrame();
 }
 
 /**
