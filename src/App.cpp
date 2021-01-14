@@ -133,7 +133,7 @@ int App::run(int argc, char** argv) {
 		lastFrameTime = now;
 	}
 	
-	RenderEngine::BlockUntilFinishDraw();
+	//RenderEngine::BlockUntilFinishDraw();
 
     return OnShutdown();
 }

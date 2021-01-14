@@ -28,7 +28,7 @@ ElementDocument* GUIComponent::AddDocument(const std::string &name){
 	
 	string dir = "/uis/" + name;
 	
-	ElementDocument* ed;
+	ElementDocument* ed = nullptr;
 	ExclusiveAccess([&] {
 		ed = context->LoadDocument(dir);
 	});
