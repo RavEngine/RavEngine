@@ -1,13 +1,12 @@
 #pragma once
 #include "Common3D.hpp"
-#include "SpinLock.hpp"
 #include <vector>
 #include <functional>
+#include <DataStructures.hpp>
 
 namespace  RavEngine {
 
 class DebugDraw{
-	static SpinLock mtx;
 public:
 	/**
 	 Render a wirefram rectangular prism
@@ -60,8 +59,25 @@ public:
      @param color the color of the arrow
      */
     static void DrawArrow(const vector3& start, const vector3& end, const color_t color);
+	
+	/**
+	 Draw all queued debug primitives. For internal use only.
+	 */
+	static inline void DrawAllQueued(){
+		std::function<void()> func;
+		while(toDraw.try_dequeue(func)){
+			func();
+		}
+	}
+	
+	static inline void ClearQueued(){
+		std::function<void()> func;
+		while(toDraw.try_dequeue(func)){}
+	}
     
 private:
+	
+	static ConcurrentQueue<std::function<void(void)>> toDraw;
 	
 	/**
 	 Helper method, handles boilerplate like thread-safety and setting the matrices

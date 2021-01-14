@@ -6,9 +6,9 @@
 using namespace RavEngine;
 using namespace std;
 
-SpinLock DebugDraw::mtx;
+#undef _DEBUG
 
-
+ConcurrentQueue<std::function<void(void)>> DebugDraw::toDraw;
 /**
  Matrix class converison
  @param m matrix input
@@ -24,7 +24,7 @@ static inline Im3d::Mat4 matrix4ToMat4(const matrix4& m){
 
 void DebugDraw::DrawRectangularPrism(const matrix4 &transform, const color_t c, const vector3& d){
 #ifdef _DEBUG
-	DrawHelper(transform, [&]{
+	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
 		Im3d::DrawAlignedBox(Im3d::Vec3(-d.x/2,-d.y/2,-d.z/2), Im3d::Vec3(d.x/2,d.y/2,d.z/2));
 	});
@@ -33,7 +33,7 @@ void DebugDraw::DrawRectangularPrism(const matrix4 &transform, const color_t c, 
 
 void DebugDraw::DrawCylinder(const matrix4 &transform, const color_t c,decimalType radius, decimalType height){
 #ifdef _DEBUG
-	DrawHelper(transform, [&]{
+	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
 		Im3d::DrawCylinder(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
 	});
@@ -42,7 +42,7 @@ void DebugDraw::DrawCylinder(const matrix4 &transform, const color_t c,decimalTy
 
 void DebugDraw::DrawSphere(const matrix4 &transform, const color_t c, decimalType radius){
 #ifdef _DEBUG
-	DrawHelper(transform, [&]{
+	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
 		Im3d::DrawSphere(Im3d::Vec3(0,0,0), radius);
 	});
@@ -51,7 +51,7 @@ void DebugDraw::DrawSphere(const matrix4 &transform, const color_t c, decimalTyp
 
 void DebugDraw::DrawCapsule(const matrix4 &transform, const color_t color, decimalType radius, decimalType height){
 #ifdef _DEBUG
-	DrawHelper(transform, [&]{
+	DrawHelper(transform, [=]{
         Im3d::SetColor(color);
         Im3d::DrawCapsule(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
     });
@@ -60,7 +60,7 @@ void DebugDraw::DrawCapsule(const matrix4 &transform, const color_t color, decim
 
 void DebugDraw::DrawPrism(const matrix4 &transform, const color_t color, decimalType radius, decimalType height, decimalType sides){
 #ifdef _DEBUG
-	DrawHelper(transform, [&] {
+	DrawHelper(transform, [=] {
 		Im3d::SetColor(color);
 		Im3d::DrawPrism(Im3d::Vec3(0, 0, 0), Im3d::Vec3(0, height, 0), radius, sides);
 	});
@@ -70,20 +70,20 @@ void DebugDraw::DrawPrism(const matrix4 &transform, const color_t color, decimal
 
 void DebugDraw::DrawArrow(const vector3 &start, const vector3 &end, const color_t color){
 #ifdef _DEBUG
-    mtx.lock();  
+	toDraw.enqueue([=]{
     Im3d::SetColor(color);
     Im3d::DrawArrow(Im3d::Vec3(start.x,start.y,start.z), Im3d::Vec3(end.x,end.y,end.z));
-	mtx.unlock();
+	});
 #endif
 }
 
 
 void DebugDraw::DrawHelper(const matrix4 &transform, std::function<void()> impl){
 #ifdef _DEBUG
-	mtx.lock();
-	Im3d::PushMatrix(matrix4ToMat4(transform));
-	impl();
-	Im3d::PopMatrix();
-	mtx.unlock();
+	toDraw.enqueue([=]{
+		Im3d::PushMatrix(matrix4ToMat4(transform));
+		impl();
+		Im3d::PopMatrix();
+	});
 #endif
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SharedObject.hpp"
-#include "Locked_Hashmap.hpp"
+#include "DataStructures.hpp"
 #include "mathtypes.hpp"
 #include <bgfx/bgfx.h>
 

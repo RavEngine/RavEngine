@@ -4,7 +4,7 @@
 #include <typeindex>
 #include "Component.hpp"
 #include <functional>
-#include "Locked_Hashmap.hpp"
+#include "DataStructures.hpp"
 #include "CTTI.hpp"
 
 //macro for checking type in template

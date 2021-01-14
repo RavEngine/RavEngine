@@ -27,7 +27,7 @@ double App::time;
 Ref<RenderEngine> App::Renderer;
 static float currentScale = 0;
 
-moodycamel::ConcurrentQueue<function<void(void)>> App::main_tasks;
+ConcurrentQueue<function<void(void)>> App::main_tasks;
 tf::Executor App::executor;
 Ref<InputManager> App::inputManager;
 Ref<World> App::currentWorld;

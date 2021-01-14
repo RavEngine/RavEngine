@@ -1,7 +1,7 @@
 #pragma once
 #include "SharedObject.hpp"
 #include "RenderEngine.hpp"
-#include "Locked_Hashmap.hpp"
+#include "DataStructures.hpp"
 #include <bgfx/bgfx.h>
 #include "glm/gtc/type_ptr.hpp"
 #include "Common3D.hpp"

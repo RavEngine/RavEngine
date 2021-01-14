@@ -1,5 +1,5 @@
 #pragma once
-#include "Locked_Hashmap.hpp"
+#include "DataStructures.hpp"
 #include "CTTI.hpp"
 #include "SpinLock.hpp"
 #include "System.hpp"

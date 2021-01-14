@@ -8,6 +8,7 @@
 #include <thread>
 #include <taskflow/taskflow.hpp>
 #include "World.hpp"
+#include "DataStructures.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -76,7 +77,7 @@ namespace RavEngine {
 		static Ref<InputManager> inputManager;
 		static Ref<World> currentWorld;
 	protected:
-		static moodycamel::ConcurrentQueue<std::function<void(void)>> main_tasks;
+		static ConcurrentQueue<std::function<void(void)>> main_tasks;
 
 		//#define LIMIT_TICK
 #ifdef LIMIT_TICK

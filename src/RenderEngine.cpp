@@ -70,7 +70,7 @@ Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
 static std::atomic<bool> bgfx_thread_finished_init = false;
 static std::atomic<bool> render_thread_exit = false;
 std::optional<std::thread> renderThread;
-moodycamel::ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
+ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
 static Ref<World> worldToDraw;
 static float currentFrameTime = 0;
 
@@ -488,14 +488,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	comp->Update();
 	comp->Render();
 
-	//Im3d::GetContext().draw();
+	DebugDraw::DrawAllQueued();
+	Im3d::GetContext().draw();
 #endif
 	//discard all previous state sets
 	bgfx::frame();
     bgfx::discard();
 
 #ifdef _DEBUG
-	//Im3d::NewFrame();
+	Im3d::NewFrame();
 #endif
 	bgfx::dbgTextClear();
 }

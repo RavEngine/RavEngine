@@ -14,7 +14,7 @@
 #include <cassert>
 #include "Ref.hpp"
 #include "SpinLock.hpp"
-#include "Locked_Hashmap.hpp"
+#include "DataStructures.hpp"
 
 namespace RavEngine {
 	class SharedObject {

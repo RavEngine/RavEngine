@@ -11,7 +11,7 @@
 #include "PhysicsSolver.hpp"
 #include "PhysicsLinkSystem.hpp"
 #include "RenderEngine.hpp"
-#include "Locked_Hashmap.hpp"
+#include "DataStructures.hpp"
 #include "SystemManager.hpp"
 #include "SpinLock.hpp"
 #include <type_traits>
