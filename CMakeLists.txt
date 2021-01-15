@@ -43,20 +43,20 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
 
 # ==================== Dependencies =====================
+
+# no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake")
 add_subdirectory("${DEPS_DIR}/etl")
-
-# use static SDL
-#set(SDL_STATIC ON CACHE INTERNAL "")
-#set(SDL_SHARED OFF CACHE INTERNAL "")
-
-# mini dependencies
 add_subdirectory("${DEPS_DIR}/SDL2")
 add_subdirectory("${DEPS_DIR}/tweeny")
 add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
 add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
+
+# resonance-audio
+set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/resonance-audio")
 
 # taskflow
 SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "")
@@ -178,6 +178,9 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"bimg"
 	"Recast"
 	"concurrentqueue"
+	"ResonanceAudioObj"
+	"PffftObj"
+	"SadieHrtfsObj"
 )
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 

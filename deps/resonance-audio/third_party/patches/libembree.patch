@@ -1,0 +1,57 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e8adf23d9..598680e19 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -26,6 +26,14 @@ PROJECT(embree${EMBREE_VERSION_MAJOR})
+
+ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
+
++if(WIN32)
++    # Enforce static linking of multithread MSVC runtime environment.
++    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT" CACHE INTERNAL "" FORCE)
++    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd" CACHE INTERNAL "" FORCE)
++    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MT" CACHE INTERNAL "" FORCE)
++    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MTd" CACHE INTERNAL "" FORCE)
++endif()
++
+ # find git version
+ IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+   FIND_PACKAGE(Git)
+diff --git a/kernels/common/rtcore.cpp b/kernels/common/rtcore.cpp
+index a63139d90..b5e6b08eb 100644
+--- a/kernels/common/rtcore.cpp
++++ b/kernels/common/rtcore.cpp
+@@ -14,8 +14,12 @@
+ // limitations under the License.                                           //
+ // ======================================================================== //
+
+-#ifdef _WIN32
+-#  define RTCORE_API extern "C" __declspec(dllexport)
++#if defined(_WIN32)
++#  if defined(EMBREE_STATIC_LIB)
++#    define RTCORE_API extern "C"
++#  else
++#    define RTCORE_API extern "C" __declspec(dllexport)
++#  endif
+ #else
+ #  define RTCORE_API extern "C" __attribute__ ((visibility ("default")))
+ #endif
+diff --git a/kernels/common/rtcore_builder.cpp b/kernels/common/rtcore_builder.cpp
+index c10ea1363..fdadf8df2 100644
+--- a/kernels/common/rtcore_builder.cpp
++++ b/kernels/common/rtcore_builder.cpp
+@@ -14,8 +14,12 @@
+ // limitations under the License.                                           //
+ // ======================================================================== //
+
+-#ifdef _WIN32
+-#  define RTCORE_API extern "C" __declspec(dllexport)
++#if defined(_WIN32)
++#  if defined(EMBREE_STATIC_LIB)
++#    define RTCORE_API extern "C"
++#  else
++#    define RTCORE_API extern "C" __declspec(dllexport)
++#  endif
+ #else
+ #  define RTCORE_API extern "C" __attribute__ ((visibility ("default")))
+ #endif

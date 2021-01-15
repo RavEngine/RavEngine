@@ -1,0 +1,19 @@
+# Ignore third party directories by default
+third_party/android-cmake/
+third_party/eigen/
+third_party/embree/
+third_party/fmod/
+third_party/googletest/
+third_party/ios-cmake/
+third_party/nativeaudioplugins/
+third_party/ogg/
+third_party/pffft/
+third_party/vorbis/
+third_party/VST_SDK/
+third_party/WwiseIncludes/
+
+# Ignore build artifacts and install directories by default
+build/
+install/
+
+.DS_Store

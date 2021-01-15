@@ -24,3 +24,6 @@ rm -r RmlUi/Samples RmlUi/Tests
 
 # fmt
 rm -r fmt/doc fmt/test
+
+# resonance-audio
+rm -r resonance-audio/docs resonance-audio/matlab resonance-audio/platforms/unity resonance-audio/third_party/eigen/doc resonance-audio/third_party/googletest resonance-audio/third_party/eigen/bench resonance-audio/third_party/eigen/test resonance-audio/third_party/eigen/unsupported

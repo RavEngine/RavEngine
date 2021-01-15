@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<IAD name="HrtfAssets">
+  <assets>
+    <file>WAV/Subject_002/SH/sh_hrir_order_1.wav</file>
+    <file>WAV/Subject_002/SH/sh_hrir_order_2.wav</file>
+    <file>WAV/Subject_002/SH/sh_hrir_order_3.wav</file>
+  </assets>
+</IAD>

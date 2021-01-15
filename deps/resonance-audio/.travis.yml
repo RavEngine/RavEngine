@@ -1,0 +1,17 @@
+language: cpp
+
+compiler:
+  - clang
+  - gcc
+
+dist: xenial
+
+os:
+  - linux
+  - osx
+
+install:
+  - ./third_party/clone_core_deps.sh
+
+script:
+  - ./build.sh -t=RESONANCE_AUDIO_TESTS

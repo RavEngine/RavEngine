@@ -1,0 +1,15 @@
+Spherical Harmonic-encoded Head Related Impulse Responses.
+
+Original impulse responses: SADIE HRTF Database available at:
+http://www.york.ac.uk/sadie-project/binaural.html
+
+SH encoding script: matlab/sadie/sadieshhrirs.m
+
+Parameters:
+subject: 002 (KU100)
+sampling rate: 48kHz
+bit depth: 16
+length: 256 samples
+fade-out: half-hann (16 samples)
+symmetric: yes (left hemisphere only)
+applied gain: 0dB (none)

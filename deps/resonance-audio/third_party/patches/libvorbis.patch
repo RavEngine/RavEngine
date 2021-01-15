@@ -1,0 +1,19 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index bbc045b..4eda831 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,14 @@
+ cmake_minimum_required(VERSION 2.8.7)
+ project(vorbis)
+
++if(WIN32)
++    # Enforce static linking of multithread MSVC runtime environment.
++    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT" CACHE INTERNAL "" FORCE)
++    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd" CACHE INTERNAL "" FORCE)
++    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MT" CACHE INTERNAL "" FORCE)
++    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MTd" CACHE INTERNAL "" FORCE)
++endif()
++
+ # Required modules
+ include(GNUInstallDirs)
+ include(CheckIncludeFiles)
