@@ -1,5 +1,6 @@
 # This file is part of the ios-cmake project. It was retrieved from
-# https://github.com/cristeab/ios-cmake.git, which is a fork of
+# https://github.com/gerstrong/ios-cmake.git which is a fork of
+# https://github.com/cristeab/ios-cmake.git, which again is a fork of
 # https://code.google.com/p/ios-cmake/. Which in turn is based off of
 # the Platform/Darwin.cmake and Platform/UnixPaths.cmake files which
 # are included with CMake 2.8.4
@@ -144,6 +145,14 @@ execute_process(COMMAND xcodebuild -version
 string(REGEX MATCH "Xcode [0-9\\.]+" XCODE_VERSION "${XCODE_VERSION}")
 string(REGEX REPLACE "Xcode ([0-9\\.]+)" "\\1" XCODE_VERSION "${XCODE_VERSION}")
 
+# Assuming that xcode 12.0 is installed you most probably have ios sdk 14.2 or later installed (tested on Big Sur)
+# if you don't set a deployment target it will be set the way you only get 64-bit builds
+if(NOT DEFINED DEPLOYMENT_TARGET AND XCODE_VERSION VERSION_GREATER 12.0)
+  option(DROP_32_BIT "Will make drop 32-bit support universally. On later sdks you won't be able to build 32-bit apps" yes)
+  # Temporarily fix the arm64 issues in CMake install-combined by excluding arm64 for simulator builds (needed for Apple Silicon...)
+  set(CMAKE_XCODE_ATTRIBUTE_EXCLUDED_ARCHS[sdk=iphonesimulator*] "arm64")
+endif()
+
 ######## ALIASES (DEPRECATION WARNINGS)
 
 if(DEFINED IOS_PLATFORM)
@@ -182,7 +191,9 @@ endif()
 # CMAKE_OSX_ARCHITECTURES is propagated to them by CMake.
 if(NOT DEFINED PLATFORM)
   if (CMAKE_OSX_ARCHITECTURES)
-    if(CMAKE_OSX_ARCHITECTURES MATCHES ".*arm.*" AND CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*")
+    if(CMAKE_OSX_ARCHITECTURES MATCHES "arm64" AND CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*")
+      set(PLATFORM "OS64")
+    elseif(CMAKE_OSX_ARCHITECTURES MATCHES ".*arm.*" AND CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*")
       set(PLATFORM "OS")
     elseif(CMAKE_OSX_ARCHITECTURES MATCHES "i386" AND CMAKE_OSX_SYSROOT MATCHES ".*iphonesimulator.*")
       set(PLATFORM "SIMULATOR")
@@ -199,7 +210,11 @@ if(NOT DEFINED PLATFORM)
     endif()
   endif()
   if (NOT PLATFORM)
-    set(PLATFORM "OS")
+    if(DROP_32_BIT)
+      set(PLATFORM "OS64")
+    else()
+      set(PLATFORM "OS")
+    endif()
   endif()
 endif()
 
@@ -341,7 +356,7 @@ endif()
 if(USED_CMAKE_GENERATOR MATCHES "Xcode")
   set(CMAKE_OSX_SYSROOT "${SDK_NAME}" CACHE INTERNAL "")
   if(NOT DEFINED CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM)
-    set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "123456789A" CACHE INTERNAL "")
+    set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "123456789A")
   endif()
 endif()
 
@@ -461,7 +476,7 @@ if(MODERN_CMAKE)
   endif()
   # Provide flags for a combined FAT library build on newer CMake versions
   if(PLATFORM_INT MATCHES ".*COMBINED")
-    set(CMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH "NO" CACHE INTERNAL "" ${FORCE_CACHE})
+    set(CMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH "NO")
     set(CMAKE_IOS_INSTALL_COMBINED YES CACHE INTERNAL "" ${FORCE_CACHE})
     message(STATUS "Will combine built (static) artifacts into FAT lib...")
   endif()
@@ -563,27 +578,27 @@ endif()
 
 if(ENABLE_BITCODE_INT)
   set(BITCODE "-fembed-bitcode")
-  set(CMAKE_XCODE_ATTRIBUTE_BITCODE_GENERATION_MODE "bitcode" CACHE INTERNAL "")
-  set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE "YES" CACHE INTERNAL "")
+  set(CMAKE_XCODE_ATTRIBUTE_BITCODE_GENERATION_MODE "bitcode")
+  set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE "YES")
 else()
   set(BITCODE "")
-  set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE "NO" CACHE INTERNAL "")
+  set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE "NO")
 endif()
 
 if(ENABLE_ARC_INT)
   set(FOBJC_ARC "-fobjc-arc")
-  set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC "YES" CACHE INTERNAL "")
+  set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC "YES")
 else()
   set(FOBJC_ARC "-fno-objc-arc")
-  set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC "NO" CACHE INTERNAL "")
+  set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC "NO")
 endif()
 
 if(NOT ENABLE_VISIBILITY_INT)
   set(VISIBILITY "-fvisibility=hidden")
-  set(CMAKE_XCODE_ATTRIBUTE_GCC_SYMBOLS_PRIVATE_EXTERN "YES" CACHE INTERNAL "")
+  set(CMAKE_XCODE_ATTRIBUTE_GCC_SYMBOLS_PRIVATE_EXTERN "YES")
 else()
   set(VISIBILITY "")
-  set(CMAKE_XCODE_ATTRIBUTE_GCC_SYMBOLS_PRIVATE_EXTERN "NO" CACHE INTERNAL "")
+  set(CMAKE_XCODE_ATTRIBUTE_GCC_SYMBOLS_PRIVATE_EXTERN "NO")
 endif()
 
 if(NOT IOS_TOOLCHAIN_HAS_RUN)
@@ -602,7 +617,7 @@ if(NOT IOS_TOOLCHAIN_HAS_RUN)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -DNDEBUG -O3 -ffast-math ${CMAKE_CXX_FLAGS_RELEASE}")
     set(CMAKE_C_LINK_FLAGS "${SDK_NAME_VERSION_FLAGS} -Wl,-search_paths_first ${CMAKE_C_LINK_FLAGS}")
     set(CMAKE_CXX_LINK_FLAGS "${SDK_NAME_VERSION_FLAGS}  -Wl,-search_paths_first ${CMAKE_CXX_LINK_FLAGS}")
-    set(CMAKE_ASM_FLAGS "${CFLAGS} -x assembler-with-cpp")
+    set(CMAKE_ASM_FLAGS "${CFLAGS} -x assembler-with-cpp -arch ${CMAKE_OSX_ARCHITECTURES}")
 
     # In order to ensure that the updated compiler flags are used in try_compile()
     # tests, we have to forcibly set them in the CMake cache, not merely set them

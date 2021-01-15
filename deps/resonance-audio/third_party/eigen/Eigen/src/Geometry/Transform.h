@@ -1097,16 +1097,17 @@ template<typename Scalar, int Dim, int Mode, int Options>
 template<typename RotationMatrixType, typename ScalingMatrixType>
 EIGEN_DEVICE_FUNC void Transform<Scalar,Dim,Mode,Options>::computeRotationScaling(RotationMatrixType *rotation, ScalingMatrixType *scaling) const
 {
+  // Note that JacobiSVD is faster than BDCSVD for small matrices.
   JacobiSVD<LinearMatrixType> svd(linear(), ComputeFullU | ComputeFullV);
 
-  Scalar x = (svd.matrixU() * svd.matrixV().adjoint()).determinant(); // so x has absolute value 1
+  Scalar x = (svd.matrixU() * svd.matrixV().adjoint()).determinant() < Scalar(0) ? Scalar(-1) : Scalar(1); // so x has absolute value 1
   VectorType sv(svd.singularValues());
-  sv.coeffRef(0) *= x;
+  sv.coeffRef(Dim-1) *= x;
   if(scaling) *scaling = svd.matrixV() * sv.asDiagonal() * svd.matrixV().adjoint();
   if(rotation)
   {
     LinearMatrixType m(svd.matrixU());
-    m.col(0) /= x;
+    m.col(Dim-1) *= x;
     *rotation = m * svd.matrixV().adjoint();
   }
 }
@@ -1126,16 +1127,17 @@ template<typename Scalar, int Dim, int Mode, int Options>
 template<typename ScalingMatrixType, typename RotationMatrixType>
 EIGEN_DEVICE_FUNC void Transform<Scalar,Dim,Mode,Options>::computeScalingRotation(ScalingMatrixType *scaling, RotationMatrixType *rotation) const
 {
+  // Note that JacobiSVD is faster than BDCSVD for small matrices.
   JacobiSVD<LinearMatrixType> svd(linear(), ComputeFullU | ComputeFullV);
 
-  Scalar x = (svd.matrixU() * svd.matrixV().adjoint()).determinant(); // so x has absolute value 1
+  Scalar x = (svd.matrixU() * svd.matrixV().adjoint()).determinant() < Scalar(0) ? Scalar(-1) : Scalar(1); // so x has absolute value 1
   VectorType sv(svd.singularValues());
-  sv.coeffRef(0) *= x;
+  sv.coeffRef(Dim-1) *= x;
   if(scaling) *scaling = svd.matrixU() * sv.asDiagonal() * svd.matrixU().adjoint();
   if(rotation)
   {
     LinearMatrixType m(svd.matrixU());
-    m.col(0) /= x;
+    m.col(Dim-1) *= x;
     *rotation = m * svd.matrixV().adjoint();
   }
 }
@@ -1331,7 +1333,7 @@ struct transform_right_product_impl< TransformType, MatrixType, 0, RhsCols>
 {
   typedef typename MatrixType::PlainObject ResultType;
 
-  static EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
+  static EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
   {
     return T.matrix() * other;
   }
@@ -1349,7 +1351,7 @@ struct transform_right_product_impl< TransformType, MatrixType, 1, RhsCols>
 
   typedef typename MatrixType::PlainObject ResultType;
 
-  static EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
+  static EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
   {
     EIGEN_STATIC_ASSERT(OtherRows==HDim, YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES);
 
@@ -1375,7 +1377,7 @@ struct transform_right_product_impl< TransformType, MatrixType, 2, RhsCols>
 
   typedef typename MatrixType::PlainObject ResultType;
 
-  static EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
+  static EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
   {
     EIGEN_STATIC_ASSERT(OtherRows==Dim, YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES);
 
@@ -1400,7 +1402,7 @@ struct transform_right_product_impl< TransformType, MatrixType, 2, 1> // rhs is 
 
   typedef typename MatrixType::PlainObject ResultType;
 
-  static EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
+  static EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE ResultType run(const TransformType& T, const MatrixType& other)
   {
     EIGEN_STATIC_ASSERT(OtherRows==Dim, YOU_MIXED_MATRICES_OF_DIFFERENT_SIZES);
 
