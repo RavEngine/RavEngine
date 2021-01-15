@@ -1,0 +1,53 @@
+language: objective-c
+
+matrix:
+  include:
+  - os: osx
+    osx_image: xcode11.3
+    env:
+      - PLATFORM=SIMULATOR
+  - os: osx
+    osx_image: xcode10.2
+    env:
+      - PLATFORM=SIMULATOR64
+  - os: osx
+    osx_image: xcode11.1
+    env:
+      - PLATFORM=OS
+  - os: osx
+    osx_image: xcode10.2
+    env:
+      - PLATFORM=OS64
+  - os: osx
+    osx_image: xcode9.4
+    env:
+      - PLATFORM=OS64
+  - os: osx
+    osx_image: xcode8.3
+    env:
+      - PLATFORM=OS64
+  - os: osx
+    osx_image: xcode10.2
+    env:
+      - PLATFORM=OS BUILD_SHARED=1
+  - os: osx
+    osx_image: xcode10.2
+    env:
+      - PLATFORM=TVOS
+  - os: osx
+    osx_image: xcode10.2
+    env:
+      - PLATFORM=WATCHOS
+  - os: osx
+    osx_image: xcode10.2
+    env:
+      - PLATFORM=OS64COMBINED USE_XCODE=1
+  - os: osx
+    osx_image: xcode11.3
+    env:
+      - PLATFORM=OS64COMBINED BUILD_CURL=1 USE_XCODE=1
+
+install: true
+
+script:
+  - ./.travis/build.sh
