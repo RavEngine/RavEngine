@@ -40,7 +40,6 @@ add_library(SadieHrtfsObj OBJECT ${SADIE_HRTFS_SOURCE})
 
 # Build Resonance Audio.
 set(RA_SOURCES
-        ${PROJECT_SOURCE_DIR}/platforms/common/utils-common.cc
         ${PROJECT_SOURCE_DIR}/platforms/common/utils.h
         ${RA_SOURCE_DIR}/ambisonics/ambisonic_binaural_decoder.h
         ${RA_SOURCE_DIR}/ambisonics/ambisonic_binaural_decoder.cc
@@ -209,6 +208,18 @@ set(RA_SOURCES
         ${RA_SOURCE_DIR}/utils/wav_reader.cc
         ${RA_SOURCE_DIR}/utils/wav_reader.h
         )
+
+if(MSVC)
+	SET(RA_SOURCES
+		${PROJECT_SOURCE_DIR}/platforms/common/utils.cc 
+		${RA_SOURCES}
+	)
+else()
+	SET(RA_SOURCES  
+		${PROJECT_SOURCE_DIR}/platforms/common/utils-common.cc
+		${RA_SOURCES}
+	)
+endif()
 
 add_library(ResonanceAudioObj OBJECT ${RA_SOURCES})
 target_include_directories(ResonanceAudioObj PRIVATE ${PROJECT_SOURCE_DIR}/resonance_audio/)
