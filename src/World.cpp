@@ -16,6 +16,7 @@
 #include "GUI.hpp"
 #include "InputManager.hpp"
 #include "ChildEntityComponent.hpp"
+#include "AudioSyncSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -35,6 +36,7 @@ RavEngine::World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(4000);
 	systemManager.RegisterSystem<ScriptSystem>(new ScriptSystem);
+	systemManager.RegisterSystem<AudioSyncSystem>(new AudioSyncSystem);
 }
 
 /**

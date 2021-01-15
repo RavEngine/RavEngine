@@ -195,7 +195,9 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
         auto actor = e->GetComponentOfSubclass<PhysicsBodyComponent>();
 		PhysicsBodyComponent* data = actor.get();
         actor->rigidActor->userData = data;
+		mtx.lock();
         scene->addActor(*(actor->rigidActor));
+		mtx.unlock();
 
         //set filtering on the actor if its filtering is not disabled
         if (actor->filterGroup != -1 && actor->filterMask != -1) {
@@ -210,7 +212,11 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
  */
 void PhysicsSolver::Destroy(Ref<Entity> e){
     auto body = e->GetComponent<PhysicsBodyComponent>();
-    scene->removeActor(*(body->rigidActor));
+	if (body){
+		mtx.lock();
+		scene->removeActor(*(body->rigidActor));
+		mtx.unlock();
+	}
 }
 
 /**
@@ -224,10 +230,12 @@ void PhysicsSolver::Tick(float scaleFactor){
     //physics substepping
     int nsteps = ceil(step / max_step_time);
     float step_time = step / nsteps;
+	mtx.lock();
     for (int i = 0; i < nsteps; i++) {
         scene->simulate(step_time);
         scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
     }
+	mtx.unlock();
 }
 
 //constructor which configures PhysX

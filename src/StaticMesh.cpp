@@ -26,8 +26,8 @@ void RavEngine::StaticMesh::Draw(int view)
         return;
     }
     //apply transform and set it for the material, if no owner, do not attempt to draw
-    if (getOwner()) {
-        auto owner = Ref<Entity>(getOwner());
+	auto owner = Ref<Entity>(getOwner());
+    if (owner) {
         if (owner && owner->HasComponentOfType<Transform>()) {
             owner->transform()->Apply();
             material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix(), view);

@@ -27,13 +27,8 @@ public:
 
 	//constructor
 	Ref(T* const other) {
-		if (other == nullptr){
-			setNull();
-		}
-		else{
-			other->retain();
-			ptr = other;
-		}
+		other->retain();
+		ptr = other;
 	}
 
 	//construct from weak pointer

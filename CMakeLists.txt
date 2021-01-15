@@ -143,6 +143,7 @@ target_include_directories("${PROJECT_NAME}"
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
 	"${DEPS_DIR}/stbi"
+	"${DEPS_DIR}/resonance-audio/resonance_audio/"
 )
 
 # ====================== Linking ====================
@@ -165,9 +166,11 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"assimp"
 	"im3d"
 	"physfs-static"
+	"ResonanceAudioObj"
+	"PffftObj"
+	"SadieHrtfsObj"
 	#"PhysXGPU"
 	"RmlCore"
-	#"RmlDebugger"
 	PUBLIC
 	"fmt"
 	"etl"
@@ -178,9 +181,6 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"bimg"
 	"Recast"
 	"concurrentqueue"
-	"ResonanceAudioObj"
-	"PffftObj"
-	"SadieHrtfsObj"
 )
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
