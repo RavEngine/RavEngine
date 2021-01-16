@@ -151,7 +151,6 @@ void App::Quit(){
 App::~App(){
 	inputManager = nullptr;
 	currentWorld = nullptr;
-	MeshAsset::Manager::RemoveAll();
 	Material::Manager::RemoveAll();
 	PHYSFS_deinit();
 	auto fsi = Rml::GetFileInterface();

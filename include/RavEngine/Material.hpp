@@ -13,7 +13,7 @@ namespace RavEngine {
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
 	*/
-	class Material : public SharedObject {
+	class Material {
 	public:
 		/**
 		Create the default material. Override this constructor in subclasses, and from that, invoke the protected constructor.
@@ -136,7 +136,7 @@ namespace RavEngine {
 	};
 
 	//for type conversions, do not use directly
-	class MaterialInstanceBase : public SharedObject {
+	class MaterialInstanceBase {
 	public:
 		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) = 0;
 	};

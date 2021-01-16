@@ -16,8 +16,6 @@ using namespace RavEngine;
 // Vertex data structure
 using namespace std;
 
-locked_hashmap<std::string, Ref<MeshAsset>> MeshAsset::Manager::meshes;
-
 typedef VertexNormalUV vertex_t;
 
 MeshAsset::MeshAsset(const string& name, const decimalType scale){
@@ -135,29 +133,4 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
 		Debug::Fatal("Buffers could not be created.");
 	}
-	
-	Manager::RegisterMeshAsset(name, shared_from_this());
-}
-
-bool MeshAsset::Manager::IsMeshAssetLoaded(const std::string& path){
-	bool result;
-	result = meshes.find(path) != meshes.end();
-	return result;
-}
-
-Ref<MeshAsset> MeshAsset::Manager::GetLoadedMeshAsset(const std::string& path){
-	Ref<MeshAsset> result;
-	try{
-		result = meshes.at(path);
-	}
-	catch(exception& e){}
-	return result;
-}
-
-void MeshAsset::Manager::RemoveMeshAsset(const std::string& path){
-	meshes.erase(path);
-}
-
-void MeshAsset::Manager::RegisterMeshAsset(const std::string& path, Ref<MeshAsset> m){
-	meshes[path] = m;
 }

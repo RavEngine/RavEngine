@@ -148,7 +148,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 
 			auto func = [=](Ref<Component> e) {
-				Ref<Entity> en(e->getOwner());
+				Ref<Entity> en = e->getOwner().lock();
 				if (en) {
 					system->Tick(fpsScale, en);
 				}

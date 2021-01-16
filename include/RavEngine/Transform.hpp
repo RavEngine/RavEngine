@@ -33,8 +33,6 @@ namespace RavEngine {
 			SetLocalRotation(inrot);
 			SetLocalScale(inscale);
 			isStatic = inStatic;
-			
-			Apply();
 		}
 		Transform() : Transform(vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
 
@@ -246,14 +244,14 @@ namespace RavEngine {
 	inline matrix4 Transform::CalculateWorldMatrix() const{
 		//figure out the size
 		unsigned short depth = 0;
-		for(Ref<Transform> p(parent); p; p = p->parent.lock()){
+		for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
 			depth++;
 		}
 		
 		stackarray(transforms, matrix4, depth);
 		
 		int tmp = 0;
-		for(Ref<Transform> p(parent); p; p = p->parent.lock()){
+		for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
 			transforms[tmp] = p->GenerateLocalMatrix();
 			++tmp;
 		}
