@@ -296,7 +296,7 @@ void RenderEngine::Init()
 	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
 	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
 	blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
-	guiMaterial = new GUIMaterialInstance(Material::Manager::AccessMaterialOfType<GUIMaterial>());
+	guiMaterial = make_shared<GUIMaterialInstance>(Material::Manager::AccessMaterialOfType<GUIMaterial>());
 
 	//init lights
 	LightManager::Init();
@@ -325,7 +325,7 @@ RenderEngine::RenderEngine() {
 
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
 	
-	mat = new DebugMaterialInstance(Material::Manager::AccessMaterialOfType<DebugMaterial>());
+	mat = make_shared<DebugMaterialInstance>(Material::Manager::AccessMaterialOfType<DebugMaterial>());
 	auto& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
 	
@@ -419,7 +419,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//get the active camera
 	auto allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
-	for (const Ref<CameraComponent> cam : allcams) {
+	for (const auto c : allcams) {
+		auto cam = std::static_pointer_cast<CameraComponent>(c);
 		auto owning = Ref<CameraComponent>(cam);
 		if (owning->isActive()) {
 			auto size = GetBufferSize();
@@ -470,7 +471,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//TODO: thread using ECS?
 	auto guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
 	auto size = GetBufferSize();
-	for(const Ref<GUIComponent>& gui : guis){
+	for(const auto g : guis){
+		auto gui = std::static_pointer_cast<GUIComponent>(g);
 		if(gui->Mode == GUIComponent::RenderMode::Screenspace){
 			gui->SetDimensions(size.width, size.height);
 			gui->SetDPIScale(GetDPIScale());
@@ -583,18 +585,18 @@ void RenderEngine::InitDebugger() const{
 	Im3d::AppData& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
 	
-	debuggerContext = new Entity();
-	auto ctx = debuggerContext->AddComponent<GUIComponent>(new GUIComponent(10,10));
+	debuggerContext = make_shared<Entity>();
+	auto ctx = debuggerContext->AddComponent<GUIComponent>(make_shared<GUIComponent>(10,10));
 	
 	bool status = Rml::Debugger::Initialise(ctx->context);
 	
-	debuggerInput = new InputManager();
+	debuggerInput = make_shared<InputManager>();
 	
 	debuggerInput->BindAnyAction<GUIComponent>(ctx);
 	debuggerInput->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
 	debuggerInput->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
 
-	debuggerInput->BindAxis("MouseX", ctx.get(), &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
-	debuggerInput->BindAxis("MouseY", ctx.get(), &GUIComponent::MouseY, CID::ANY, 0);
+	debuggerInput->BindAxis("MouseX", ctx, &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
+	debuggerInput->BindAxis("MouseY", ctx, &GUIComponent::MouseY, CID::ANY, 0);
 }
 #endif

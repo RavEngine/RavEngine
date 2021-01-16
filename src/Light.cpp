@@ -5,6 +5,7 @@
 #include "MeshAsset.hpp"
 
 using namespace RavEngine;
+using namespace std;
 
 static constexpr color_t debug_color = 0x00FF00FF;
 
@@ -16,10 +17,10 @@ bgfx::VertexBufferHandle LightManager::screenSpaceQuadVert = BGFX_INVALID_HANDLE
 bgfx::IndexBufferHandle LightManager::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 
 void LightManager::Init(){
-	pointLightMesh = new MeshAsset("sphere.obj");
-	pointLightShader = new PointLightShaderInstance(Material::Manager::AccessMaterialOfType<PointLightShader>());
-	ambientLightShader = new AmbientLightShaderInstance(Material::Manager::AccessMaterialOfType<AmbientLightShader>());
-	directionalLightShader = new DirectionalLightShaderInstance(Material::Manager::AccessMaterialOfType<DirectionalLightShader>());
+	pointLightMesh = make_shared<MeshAsset>("sphere.obj");
+	pointLightShader = make_shared<PointLightShaderInstance>(Material::Manager::AccessMaterialOfType<PointLightShader>());
+	ambientLightShader = make_shared<AmbientLightShaderInstance>(Material::Manager::AccessMaterialOfType<AmbientLightShader>());
+	directionalLightShader = make_shared< DirectionalLightShaderInstance>(Material::Manager::AccessMaterialOfType<DirectionalLightShader>());
 	
 	constexpr uint16_t indices[] = {0,2,1, 2,3,1};
 	constexpr Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};

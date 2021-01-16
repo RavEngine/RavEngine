@@ -10,17 +10,3 @@
 
 using namespace std;
 using namespace RavEngine;
-
-void WeakRefBase::Associate(RavEngine::SharedObject* obj){
-	if (obj == nullptr){
-		return;
-	}
-	obj->TrackWeak(this);
-}
-
-void WeakRefBase::Dissassociate(RavEngine::SharedObject* obj){
-	if (obj == nullptr){
-		return;
-	}
-	obj->UntrackWeak(this);
-}

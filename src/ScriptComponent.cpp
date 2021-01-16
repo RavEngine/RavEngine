@@ -8,7 +8,7 @@ using namespace RavEngine;
 bool RavEngine::ScriptComponent::Destroy()
 {
 	auto owner = getOwner();
-	if (!owner.isNull()) {
+	if (!owner.expired()) {
 		Ref<Entity>(owner)->Destroy();
 		return true;
 	}
@@ -18,13 +18,13 @@ bool RavEngine::ScriptComponent::Destroy()
 bool RavEngine::ScriptComponent::IsInWorld()
 {
 	auto owner = getOwner();
-	return !owner.isNull() || Ref<Entity>(owner)->IsInWorld();
+	return !owner.expired() || Ref<Entity>(owner)->IsInWorld();
 }
 
 Ref<Transform> RavEngine::ScriptComponent::transform()
 {
 	auto owner = getOwner();
-	if (owner.isNull()) {
+	if (owner.expired()) {
 		throw std::runtime_error("Cannot get transform from Script with no attached Entity");
 	}
 	return Ref<Entity>(owner)->transform();
@@ -33,7 +33,7 @@ Ref<Transform> RavEngine::ScriptComponent::transform()
 Ref<RavEngine::World> RavEngine::ScriptComponent::GetWorld()
 {
 	auto owner = Ref<Entity>(getOwner());
-	if (owner.isNull()) {
+	if (owner.expired()) {
 		return nullptr;
 	}
 	return owner->GetWorld();

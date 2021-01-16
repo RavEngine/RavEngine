@@ -10,16 +10,16 @@
 #include "StaticMesh.hpp"
 #include "World.hpp"
 
-using namespace glm;
 using namespace RavEngine;
+using namespace std;
 
 void Entity::Destroy() {
 	assert(IsInWorld());	//if assertion fails, you are trying to remove an entity from a world that is not in that world
-	Ref<World>(GetWorld())->Destroy(this);
+	Ref<World>(GetWorld())->Destroy(shared_from_this());
 }
 
 RavEngine::Entity::Entity(){
-	AddComponent<Transform>(new Transform());
+	AddComponent<Transform>(make_shared<Transform>());
 }
 
 RavEngine::Entity::~Entity(){

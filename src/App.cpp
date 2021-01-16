@@ -36,8 +36,8 @@ App::App(const std::string& resourcesName){
 	//initialize virtual file system library -- on unix systems this must pass argv[0]
 	PHYSFS_init("");
 	
-	Resources = new VirtualFilesystem(resourcesName + ".zip");
-	Renderer = new RenderEngine();
+	Resources = make_shared<VirtualFilesystem>(resourcesName + ".zip");
+	Renderer = make_shared<RenderEngine>();
 
 	//setup GUI rendering
 	Rml::SetSystemInterface(Renderer.get());
@@ -63,7 +63,7 @@ int App::run(int argc, char** argv) {
 	{
 		//make the default texture white
 		uint8_t data[] = {0xCC,0xCC,0xCC,0xCC};
-		TextureManager::defaultTexture = new RuntimeTexture(1,1,false,1,4,data);
+		TextureManager::defaultTexture = make_shared<RuntimeTexture>(1,1,false,1,4,data);
 	}
 
 	//invoke startup hook

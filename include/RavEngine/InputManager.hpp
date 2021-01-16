@@ -151,20 +151,20 @@ namespace RavEngine {
 		public:
 			Callback(WeakRef<SharedObject> o, void* f, CID con) : obj(o), func(f), controllers(con){}
 			bool operator==(const Callback& other)const{
-				return func == other.func && obj == other.obj && controllers == other.controllers;
+				return func == other.func && ObjectsMatch(other.obj) && controllers == other.controllers;
 			}
 			/**
 			 Check if the stored pointer matches another
 			 @param in the pointer to check
 			 */
-			bool ObjectsMatch(WeakRef<SharedObject> in) const{
-				return in == obj;
+			bool ObjectsMatch(const WeakRef<SharedObject>& in) const{
+				return Ref<SharedObject>(in) == Ref<SharedObject>(obj);
 			}
 			WeakRef<SharedObject> const GetObj() {
 				return obj;
 			}
 			bool CanExecute() const{
-				return obj;
+				return obj.expired();
 			}
 		};
 		
@@ -182,8 +182,8 @@ namespace RavEngine {
 			 @param f the function pointer to invoke.
 			 */
 			template<class U>
-			AxisCallback(WeakRef<SharedObject> thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
-				exec = std::bind(f, static_cast<U*>(thisptr.get()), std::placeholders::_1);
+			AxisCallback(Ref<SharedObject> thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
+				exec = std::bind(f, thisptr, std::placeholders::_1);
 			}
 			/**
 			 Execute the function on the stored pointer
@@ -217,8 +217,8 @@ namespace RavEngine {
 			 @param t the state to bind
 			 */
 			template<class U>
-			ActionCallback(WeakRef<SharedObject> thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
-				exec = std::bind(f, static_cast<U*>(thisptr.get()));
+			ActionCallback(Ref<SharedObject> thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
+				exec = std::bind(f, thisptr);
 				type = t;
 			}
 			/**
@@ -396,18 +396,18 @@ namespace RavEngine {
 		 Bind an object to recieve AnyEvents. This will invoke its AnyDown and AnyUp virtual methods
 		 */
 		template<typename T>
-		inline void BindAnyAction(WeakRef<T> listener){
+		inline void BindAnyAction(Ref<T> listener){
 			static_assert(std::is_convertible<T,IInputListener>::value,"Passed type must descend from IInputListener");
-			AnyEvent.insert(listener.get());
+			AnyEvent.insert(listener);
 		}
 		
 		/**
 		 Unbind an object to recieve AnyEvents. This is done automatically when an IInputListener is destructed. 
 		 */
 		template<typename T>
-		inline void UnbindAnyAction(WeakRef<T> listener){
+		inline void UnbindAnyAction(Ref<T> listener){
 			static_assert(std::is_convertible<T,IInputListener>::value,"Passed type must descend from IInputListener");
-			AnyEvent.erase(listener.get());
+			AnyEvent.erase(listener);
 		}
 
 		/**

@@ -15,14 +15,16 @@
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "glm/gtx/matrix_decompose.hpp"
+#include <btree.h>
+#include <set>
 
 namespace RavEngine {
 	/**
 	 A thread-safe transform component
 	 */
-	class Transform : public Component, public Queryable<Transform> {
+	class Transform : public Component, public Queryable<Transform>, public std::enable_shared_from_this<Transform> {
 	public:
-		typedef phmap::flat_hash_set<WeakRef<Transform>> childStore;
+		typedef std::set<WeakRef<Transform>> childStore;
 		virtual ~Transform(){}
 		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false){
 			matrix = matrix4(1);
@@ -51,7 +53,7 @@ namespace RavEngine {
 		vector3 Up() const;
 
 		inline bool HasParent() const{
-			return !parent.isNull();
+			return parent.expired();
 		}
 
 		vector3 GetLocalPosition() const;
@@ -243,15 +245,15 @@ namespace RavEngine {
 	inline matrix4 Transform::CalculateWorldMatrix() const{
 		//figure out the size
 		unsigned short depth = 0;
-		for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
+		for(Ref<Transform> p(parent); p; p = p->parent.lock()){
 			depth++;
 		}
 		
 		stackarray(transforms, matrix4, depth);
 		
 		int tmp = 0;
-		for(WeakRef<Transform> p = parent; !p.isNull(); p = p.get()->parent){
-			transforms[tmp] = p.get()->GenerateLocalMatrix();
+		for(Ref<Transform> p(parent); p; p = p->parent.lock()){
+			transforms[tmp] = p->GenerateLocalMatrix();
 			++tmp;
 		}
 		

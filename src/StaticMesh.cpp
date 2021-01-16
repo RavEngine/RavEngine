@@ -22,11 +22,11 @@ void RavEngine::StaticMesh::SetMaterial(Ref<PBRMaterialInstance> mat)
 void RavEngine::StaticMesh::Draw(int view)
 {
     //skip draw if no material or MeshAsset assigned
-    if (material.isNull() || mesh.isNull()) {
+    if (!material || !mesh) {
         return;
     }
     //apply transform and set it for the material, if no owner, do not attempt to draw
-	auto owner = Ref<Entity>(getOwner());
+	auto owner = getOwner().lock();
     if (owner) {
         if (owner && owner->HasComponentOfType<Transform>()) {
             owner->transform()->Apply();

@@ -121,7 +121,7 @@ namespace RavEngine{
 				componentsRedundant[alt].insert(componentRef);
 			}
 			OnAddComponent(componentRef);
-			if(!parent.isNull()){
+			if(!parent.expired()){
 				Ref<ComponentStore>(parent)->AddComponent(componentRef);
 			}
 			return componentRef;
@@ -141,7 +141,7 @@ namespace RavEngine{
 				return GetComponentOfSubclass<T>();
 			}
 			else {
-				return *vec.begin();
+				return std::static_pointer_cast<T>(*vec.begin());
 			}
 		}
 
@@ -180,7 +180,7 @@ namespace RavEngine{
 				throw std::runtime_error("No component of type");
 			}
 			else {
-				return *vec.begin();
+				return std::static_pointer_cast<T>(*vec.begin());
 			}
 		}
 

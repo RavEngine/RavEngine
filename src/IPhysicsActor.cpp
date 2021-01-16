@@ -18,7 +18,7 @@ void RavEngine::IPhysicsActor::OnUnregisterBody(const WeakRef<PhysicsBodyCompone
 RavEngine::IPhysicsActor::~IPhysicsActor()
 {
 	for (auto& a : senders) {
-		if (!a.isNull()) {
+		if (!a.expired()){
 			//this will fail if not a SharedObject
 			a.get()->RemoveReceiver(this);
 		}

@@ -127,7 +127,7 @@ void InputManager::Tick() {
 	}
 	phmap::flat_hash_set<WeakRef<SharedObject>> to_remove;
 	for(const auto& r : AnyEvent){
-		if (!r){
+		if (r.expired()){
 			to_remove.insert(r);
 		}
 	}
@@ -163,8 +163,8 @@ void InputManager::SDL_key(bool state, int charcode, CID controller)
 	
 	//invoke AnyActions
 	for(WeakRef<SharedObject> l : AnyEvent){
-		if (l){
-			IInputListener* listener = dynamic_cast<IInputListener*>(l.get());
+		if (!l.expired()){
+			auto listener = dynamic_pointer_cast<IInputListener>(Ref<SharedObject>(l));
 			if (listener){
 				if (state){
 					listener->AnyActionDown(charcode);

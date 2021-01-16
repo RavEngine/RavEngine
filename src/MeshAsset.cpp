@@ -136,7 +136,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 		Debug::Fatal("Buffers could not be created.");
 	}
 	
-	Manager::RegisterMeshAsset(name, this);
+	Manager::RegisterMeshAsset(name, shared_from_this());
 }
 
 bool MeshAsset::Manager::IsMeshAssetLoaded(const std::string& path){
@@ -147,7 +147,6 @@ bool MeshAsset::Manager::IsMeshAssetLoaded(const std::string& path){
 
 Ref<MeshAsset> MeshAsset::Manager::GetLoadedMeshAsset(const std::string& path){
 	Ref<MeshAsset> result;
-	result.setNull();
 	try{
 		result = meshes.at(path);
 	}

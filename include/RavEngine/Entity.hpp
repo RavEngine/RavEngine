@@ -21,19 +21,19 @@ namespace RavEngine {
 	class PhysicsBodyComponent;
 	class World;
 
-	class Entity : public ComponentStore<SpinLock> {
+	class Entity : public ComponentStore<SpinLock>, public std::enable_shared_from_this<Entity> {
 		friend class World;
 	protected:
 		WeakRef<World> worldptr;  //non-owning
 		
 		void OnAddComponent(Ref<Component> c) override{
-			c->SetOwner(this);
-			c->AddHook(this);
+			c->SetOwner(weak_from_this());
+			c->AddHook(weak_from_this());
 		}
 		
 		void OnRemoveComponent(Ref<Component> c) override{
-			c->SetOwner(nullptr);
-			c->RemoveHook(this);
+			c->SetOwner(weak_from_this());
+			c->RemoveHook(weak_from_this());
 		}
 
 
@@ -64,7 +64,7 @@ namespace RavEngine {
 		 @note Does not investigate dangling pointer
 		 */
 		inline bool IsInWorld() const {
-			return !worldptr.isNull();
+			return !worldptr.expired();
 		}
 		
 		/**

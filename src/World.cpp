@@ -35,8 +35,8 @@ void RavEngine::World::Tick(float scale) {
 RavEngine::World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(4000);
-	systemManager.RegisterSystem<ScriptSystem>(new ScriptSystem);
-	systemManager.RegisterSystem<AudioSyncSystem>(new AudioSyncSystem);
+	systemManager.RegisterSystem<ScriptSystem>(make_shared<ScriptSystem>());
+	systemManager.RegisterSystem<AudioSyncSystem>(make_shared<AudioSyncSystem>());
 }
 
 /**
@@ -46,15 +46,15 @@ RavEngine::World::World(){
  */
 bool RavEngine::World::Spawn(Ref<Entity> e){
 	//cannot spawn an entity that is already in a world
-	if (e->GetWorld().isNull()){
+	if (e->GetWorld().expired()){
 		Entities.insert(e);
-		e->SetWorld(this);
+		e->SetWorld(weak_from_this());
 
 		//start all scripts
 		e->Start();
 		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
-		for (const Ref<ScriptComponent>& c : coms) {
-			c->Start();
+		for (const auto c : coms) {
+			std::static_pointer_cast<ScriptComponent>(c)->Start();
 		}
 
 		//make the physics system aware of this entity
@@ -63,12 +63,12 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		//merge the entity into the world
 		Merge(*e.get());
 
-		e->parent = this;	//set parent so that this entity synchronizes its components with this world
+		e->parent = weak_from_this();	//set parent so that this entity synchronizes its components with this world
 
 		//get all child entities
 		auto children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
-		for(const Ref<ChildEntityComponent>& c : children){
-			Spawn(c->get());	//spawn the child entities
+		for(const auto c : children){
+			Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->get());	//spawn the child entities
 		}
 		return true;
 	}
@@ -82,14 +82,14 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
  */
 bool RavEngine::World::Destroy(Ref<Entity> e){
 	//if entity is somehow not spawned, do nothing
-	if (e->GetWorld().isNull()){
+	if (e->GetWorld().expired()){
 		return false;
 	}
 	
 	//stop all scripts
 	auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
-	for (const Ref<ScriptComponent>& c : coms) {
-		c->Stop();
+	for (const auto c : coms) {
+		std::static_pointer_cast<ScriptComponent>(c)->Stop();
 	}
 	e->Stop();
 
@@ -98,7 +98,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	//also remove its components
 	Unmerge(*e.get());
 
-	e->parent = nullptr;	//set parent to null so that this entity no longer synchronizes its components with this world
+	e->parent.reset();	//set parent to null so that this entity no longer synchronizes its components with this world
 
 	//remove the objects from the Physics system
 	Solver.Destroy(e);
@@ -106,8 +106,8 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	
 	//get all child entities
 	auto children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
-	for(const Ref<ChildEntityComponent>& c : children){
-		Destroy(c->get());
+	for(const auto c : children){
+		Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->get());
 	}
 	return true;
 }
@@ -211,8 +211,8 @@ bool RavEngine::World::InitPhysics() {
 		return false;
 	}
 	
-	systemManager.RegisterSystem<PhysicsLinkSystemRead>(new PhysicsLinkSystemRead(Solver.scene));
-	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(new PhysicsLinkSystemWrite(Solver.scene));
+	systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
+	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
 	
 	physicsActive = true;
 
