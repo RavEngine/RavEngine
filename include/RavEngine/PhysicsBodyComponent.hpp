@@ -68,31 +68,31 @@ namespace RavEngine {
 		Invoked when a collider begins colliding with another body
 		@param other the second body
 		*/
-		void OnColliderEnter(PhysicsBodyComponent* other);
+		void OnColliderEnter(Ref<PhysicsBodyComponent> other);
 
 		/**
 		Invoked when a collider has collided with another body for multiple frames
 		@param other the second body
 		*/
-		void OnColliderPersist(PhysicsBodyComponent* other);
+		void OnColliderPersist(Ref<PhysicsBodyComponent> other);
 
 		/**
 		Invoked when a collider has exited another collider
 		@param other the second body
 		*/
-		void OnColliderExit(PhysicsBodyComponent* other);
+		void OnColliderExit(Ref<PhysicsBodyComponent> other);
 		
 		/**
 		 Called by a PhysicsBodyComponent when it has entered another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
 		 @param other the other component
 		 */
-		void OnTriggerEnter(PhysicsBodyComponent* other);
+		void OnTriggerEnter(Ref<PhysicsBodyComponent> other);
 		
 		/**
 		 Called by a PhysicsBodyComponent when it has exited another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
 		 @param other the other component
 		 */
-		void OnTriggerExit(PhysicsBodyComponent* other);
+		void OnTriggerExit(Ref<PhysicsBodyComponent> other);
 	};
 
 	class RigidBodyDynamicComponent : public PhysicsBodyComponent {

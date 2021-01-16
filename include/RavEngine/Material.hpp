@@ -114,16 +114,15 @@ namespace RavEngine {
 			 */
 			template<typename T, typename ... A>
 			static Ref<T> AccessMaterialOfType(A ... args){
-				Ref<T> mat;
 				auto t = CTTI<T>;
 				if (materials.contains(t)){
-					mat = materials.at(t);
+					return std::static_pointer_cast<T>(materials.at(t));
 				}
 				else{
-					mat = new T(args...);
+					Ref<T> mat(std::make_shared<T>(args...));
 					materials.insert(std::make_pair(t,mat));
+                    return mat;
 				}
-				return mat;
 			}
 		};
 

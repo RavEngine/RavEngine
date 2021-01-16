@@ -172,7 +172,8 @@ namespace RavEngine {
 			
 			//fill the buffer
 			int i = 0;
-			for(const Ref<T>& light : lights){	//TODO: factor in light frustum culling
+			for(const auto l : lights){	//TODO: factor in light frustum culling
+                Ref<T> light = std::static_pointer_cast<T>(l);
 				float* ptr = (float*)(idb.data + i);
 				light->AddInstanceData(ptr);
 				i += stride;

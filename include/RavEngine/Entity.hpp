@@ -54,7 +54,7 @@ namespace RavEngine {
 		 Called by the world on Spawn and Destroy.
 		 @param world the pointer to the current world
 		 */
-		inline void SetWorld(const WeakRef<World>& world) {
+		inline void SetWorld(const Ref<World> world) {
 			worldptr = world;
 		}
 

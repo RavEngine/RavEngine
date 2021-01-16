@@ -592,7 +592,7 @@ void RenderEngine::InitDebugger() const{
 	
 	debuggerInput = make_shared<InputManager>();
 	
-	debuggerInput->BindAnyAction<GUIComponent>(ctx);
+	debuggerInput->BindAnyAction(ctx);
 	debuggerInput->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
 	debuggerInput->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
 

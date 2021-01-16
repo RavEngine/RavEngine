@@ -28,6 +28,10 @@ PxFoundation* PhysicsSolver::foundation = nullptr;
 PxPhysics* PhysicsSolver::phys = nullptr;
 PxPvd* PhysicsSolver::pvd = nullptr;
 
+struct PhysXActorUserData{
+    Ref<PhysicsBodyComponent> ptr;
+};
+
 
 //see https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/RigidBodyCollision.html#broad-phase-callback
 PxFilterFlags FilterShader(physx::PxFilterObjectAttributes attributes0, physx::PxFilterData filterData0, physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1, physx::PxPairFlags & pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
@@ -80,8 +84,8 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
         const PxContactPair& cp = pairs[i];
 
         //get the physics body component stored in the user data (non-owning pointer!)
-        auto actor1 = (PhysicsBodyComponent*)pairHeader.actors[0]->userData;
-        auto actor2 = (PhysicsBodyComponent*)pairHeader.actors[1]->userData;
+        auto actor1 = (PhysXActorUserData*)pairHeader.actors[0]->userData;
+        auto actor2 = (PhysXActorUserData*)pairHeader.actors[1]->userData;
 
 		//if these actors do not exist in the scene anymore due to deallocation, do not process
 		if(actor1 == nullptr || actor2 == nullptr){
@@ -90,18 +94,18 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
 		
         //invoke events
         if (cp.events & PxPairFlag::eNOTIFY_TOUCH_FOUND) {
-            actor1->OnColliderEnter(actor2);
-            actor2->OnColliderEnter(actor1);
+            actor1->ptr->OnColliderEnter(actor2->ptr);
+            actor2->ptr->OnColliderEnter(actor1->ptr);
         }
 
         if (cp.events & PxPairFlag::eNOTIFY_TOUCH_LOST) {
-            actor1->OnColliderExit(actor2);
-            actor2->OnColliderExit(actor1);
+            actor1->ptr->OnColliderExit(actor2->ptr);
+            actor2->ptr->OnColliderExit(actor1->ptr);
         }
 
         if (cp.events & PxPairFlag::eNOTIFY_TOUCH_PERSISTS) {
-            actor1->OnColliderPersist(actor2);
-            actor2->OnColliderPersist(actor1);
+            actor1->ptr->OnColliderPersist(actor2->ptr);
+            actor2->ptr->OnColliderPersist(actor1->ptr);
         }
 
     }
@@ -116,8 +120,8 @@ void PhysicsSolver::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
             continue;
         }
 		
-		auto other = (PhysicsBodyComponent*)cp.otherActor->userData;
-		auto trigger = (PhysicsBodyComponent*)cp.triggerActor->userData;
+		auto other = (PhysXActorUserData*)cp.otherActor->userData;
+		auto trigger = (PhysXActorUserData*)cp.triggerActor->userData;
 		
 		//if these actors do not exist in the scene anymore due to deallocation, do not process
 		if(other == nullptr || trigger == nullptr){
@@ -126,13 +130,13 @@ void PhysicsSolver::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
 		
 		//process events
 		if(cp.status & (PxPairFlag::eNOTIFY_TOUCH_FOUND)){
-			other->OnTriggerEnter(trigger);
-			trigger->OnTriggerEnter(other);
+			other->ptr->OnTriggerEnter(trigger->ptr);
+			trigger->ptr->OnTriggerEnter(other->ptr);
 		}
 		
 		if(cp.status & (PxPairFlag::eNOTIFY_TOUCH_LOST)){
-			other->OnTriggerExit(trigger);
-			trigger->OnTriggerExit(other);
+			other->ptr->OnTriggerExit(trigger->ptr);
+			trigger->ptr->OnTriggerExit(other->ptr);
 		}
     }
 }
@@ -193,8 +197,7 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
 void PhysicsSolver::Spawn(Ref<Entity> e){
     if (e->HasComponentOfSubclass<PhysicsBodyComponent>()) {
         auto actor = e->GetComponentOfSubclass<PhysicsBodyComponent>();
-		PhysicsBodyComponent* data = actor.get();
-        actor->rigidActor->userData = data;
+        actor->rigidActor->userData = new PhysXActorUserData{actor};
 		mtx.lock();
         scene->addActor(*(actor->rigidActor));
 		mtx.unlock();

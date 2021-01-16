@@ -33,8 +33,8 @@ Ref<Transform> RavEngine::ScriptComponent::transform()
 Ref<RavEngine::World> RavEngine::ScriptComponent::GetWorld()
 {
 	auto owner = Ref<Entity>(getOwner());
-	if (owner.expired()) {
+	if (!owner) {
 		return nullptr;
 	}
-	return owner->GetWorld();
+	return owner->GetWorld().lock();
 }

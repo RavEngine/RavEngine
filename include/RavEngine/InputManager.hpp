@@ -13,6 +13,7 @@
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
+#include <set>
 
 namespace RavEngine {
 	enum class ActionState{
@@ -182,7 +183,7 @@ namespace RavEngine {
 			 @param f the function pointer to invoke.
 			 */
 			template<class U>
-			AxisCallback(Ref<SharedObject> thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
+			AxisCallback(Ref<U> thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
 				exec = std::bind(f, thisptr, std::placeholders::_1);
 			}
 			/**
@@ -217,7 +218,7 @@ namespace RavEngine {
 			 @param t the state to bind
 			 */
 			template<class U>
-			ActionCallback(Ref<SharedObject> thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
+			ActionCallback(Ref<U> thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
 				exec = std::bind(f, thisptr);
 				type = t;
 			}
@@ -270,7 +271,7 @@ namespace RavEngine {
 		locked_hashmap<std::string, plf::list<AxisCallback>,SpinLock> axisMappings;     //strings to methods
 		
 		//stores objects to call on any Action input, passing the input
-		locked_hashset<WeakRef<SharedObject>,SpinLock> AnyEvent;
+		std::set<WeakPtrKey<IInputListener>> AnyEvent;
 
         /**
          Helper used for registering axis inputs inside the engine
@@ -348,7 +349,7 @@ namespace RavEngine {
 		 * @param type the required state of the action to invoke the method.
 		 */
         template<class U>
-		inline void BindAction(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(), ActionState type, CID controllers){
+		inline void BindAction(const std::string& name, Ref<U> thisptr, void(U::* f)(), ActionState type, CID controllers){
 			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].push_back(action);
 		}
@@ -361,7 +362,7 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
          */
         template<typename U>
-		inline void BindAxis(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
+		inline void BindAxis(const std::string& name, Ref<U> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
 			AxisCallback axis(thisptr, f, deadZone,controllers);
             axisMappings[name].push_back(axis);
         }
@@ -374,7 +375,7 @@ namespace RavEngine {
 		 @param state the state to use to match the callback
 		 */
 		template<typename U>
-		inline void UnbindAction(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(), ActionState type, CID controllers){
+		inline void UnbindAction(const std::string& name, Ref<U> thisptr, void(U::* f)(), ActionState type, CID controllers){
 			ActionCallback action(thisptr,f,type,controllers);
 			actionMappings[name].remove(action);
 		}
@@ -387,7 +388,7 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
 		 */
 		template<typename U>
-		inline void UnbindAxis(const std::string& name, WeakRef<SharedObject> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
+		inline void UnbindAxis(const std::string& name, Ref<U> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
 			AxisCallback axis(thisptr, f, deadZone,controllers);
 			axisMappings[name].remove(axis);
 		}
@@ -395,18 +396,14 @@ namespace RavEngine {
 		/**
 		 Bind an object to recieve AnyEvents. This will invoke its AnyDown and AnyUp virtual methods
 		 */
-		template<typename T>
-		inline void BindAnyAction(Ref<T> listener){
-			static_assert(std::is_convertible<T,IInputListener>::value,"Passed type must descend from IInputListener");
+		inline void BindAnyAction(Ref<IInputListener> listener){
 			AnyEvent.insert(listener);
 		}
 		
 		/**
 		 Unbind an object to recieve AnyEvents. This is done automatically when an IInputListener is destructed. 
 		 */
-		template<typename T>
-		inline void UnbindAnyAction(Ref<T> listener){
-			static_assert(std::is_convertible<T,IInputListener>::value,"Passed type must descend from IInputListener");
+		inline void UnbindAnyAction(Ref<IInputListener> listener){
 			AnyEvent.erase(listener);
 		}
 

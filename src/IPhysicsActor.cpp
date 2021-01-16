@@ -18,9 +18,10 @@ void RavEngine::IPhysicsActor::OnUnregisterBody(const WeakRef<PhysicsBodyCompone
 RavEngine::IPhysicsActor::~IPhysicsActor()
 {
 	for (auto& a : senders) {
-		if (!a.expired()){
+        shared_ptr<PhysicsBodyComponent> ptr = a.lock();
+		if (ptr){
 			//this will fail if not a SharedObject
-			a.get()->RemoveReceiver(this);
+			ptr->RemoveReceiver(this);
 		}
 	}
 }

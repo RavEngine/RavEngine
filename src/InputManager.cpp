@@ -125,9 +125,9 @@ void InputManager::Tick() {
 			return !cb.CanExecute();
 		});
 	}
-	phmap::flat_hash_set<WeakRef<SharedObject>> to_remove;
+	std::set<WeakPtrKey<IInputListener>> to_remove;
 	for(const auto& r : AnyEvent){
-		if (r.expired()){
+		if (r.getWeak().expired()){
 			to_remove.insert(r);
 		}
 	}
@@ -162,18 +162,16 @@ void InputManager::SDL_key(bool state, int charcode, CID controller)
     }
 	
 	//invoke AnyActions
-	for(WeakRef<SharedObject> l : AnyEvent){
-		if (!l.expired()){
-			auto listener = dynamic_pointer_cast<IInputListener>(Ref<SharedObject>(l));
-			if (listener){
-				if (state){
-					listener->AnyActionDown(charcode);
-				}
-				else{
-					listener->AnyActionUp(charcode);
-				}
-			}
-		}
+	for(auto l : AnyEvent){
+        Ref<IInputListener> listener(l.getWeak());
+        if (listener){
+            if (state){
+                listener->AnyActionDown(charcode);
+            }
+            else{
+                listener->AnyActionUp(charcode);
+            }
+        }
 	}
 }
 

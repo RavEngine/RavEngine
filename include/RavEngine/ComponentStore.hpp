@@ -36,8 +36,12 @@ namespace RavEngine{
 			
 			//insert into
 			phmap::flat_hash_set<Ref<T>> cpy;
-			cpy.insert(toplevel.begin(), toplevel.end());
-			cpy.insert(comp.begin(), comp.end());
+            for(const auto c : toplevel){
+                cpy.insert(std::static_pointer_cast<T>(c));
+            }
+            for(const auto c : comp){
+                cpy.insert(std::static_pointer_cast<T>(c));
+            }
 			return cpy;
 			
 		}
@@ -52,7 +56,9 @@ namespace RavEngine{
 			C_REF_CHECK
 			auto& comp = components[index];
 			phmap::flat_hash_set<Ref<T>> cpy;
-			cpy.insert(comp.begin(),comp.end());
+            for(const auto c : comp){
+                cpy.insert(std::static_pointer_cast<T>(c));
+            }
 			return cpy;
 		}
 
@@ -107,6 +113,17 @@ namespace RavEngine{
 			componentsRedundant.clear();
 		}
 
+        /**
+         Construct a component in-place and add it to the store
+         @param T template type to create
+         @param args ... templated arguments to pass to constructor
+         @return strong pointer to created component
+         */
+        template<typename T, typename ... A>
+        inline Ref<T> EmplaceComponent(A ... args){
+            return AddComponent<T>(std::make_shared<T>(args...));
+        }
+        
 		/**
 		 Add a component to this Entity
 		 @param componentRef the component to add to this Entity. Must pass a Ref class to a Component

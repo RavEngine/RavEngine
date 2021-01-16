@@ -165,21 +165,21 @@ bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
 	return static_cast<PxRigidDynamic*>(rigidActor)->isSleeping();
 }
 
-void PhysicsBodyComponent::OnColliderEnter(PhysicsBodyComponent* other)
+void PhysicsBodyComponent::OnColliderEnter(Ref<PhysicsBodyComponent> other)
 {
 	for (auto& reciever : receivers) {
 		reciever->OnColliderEnter(other);
 	}
 }
 
-void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent* other)
+void PhysicsBodyComponent::OnColliderPersist(Ref<PhysicsBodyComponent> other)
 {
 	for (auto& reciever : receivers) {
 		reciever->OnColliderPersist(other);
 	}
 }
 
-void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
+void PhysicsBodyComponent::OnColliderExit(Ref<PhysicsBodyComponent> other)
 {
 	for (auto& reciever : receivers) {
 		reciever->OnColliderExit(other);
@@ -187,13 +187,13 @@ void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent* other)
 }
 
 
-void PhysicsBodyComponent::OnTriggerEnter(PhysicsBodyComponent *other){
+void PhysicsBodyComponent::OnTriggerEnter(Ref<PhysicsBodyComponent> other){
 	for (auto& reciever : receivers) {
 		reciever->OnTriggerEnter(other);
 	}
 }
 
-void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent *other){
+void PhysicsBodyComponent::OnTriggerExit(Ref<PhysicsBodyComponent> other){
 	for (auto& reciever : receivers) {
 		reciever->OnTriggerExit(other);
 	}
