@@ -104,14 +104,20 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
 				int width, height;
 				SDL_GetWindowSize(RenderEngine::GetWindow(), &width, &height);
-#warning Mouse movement axis
-				//SDL_mousemove((float)event.motion.x / width, (float)event.motion.y / height, event.motion.xrel, event.motion.yrel, scale);
+				
+				float velscale = 1 / scale;
+				
+				ProcessAxisID(Special::MOUSEMOVE_X, (float)event.motion.x / width, CID::C0);
+				ProcessAxisID(Special::MOUSEMOVE_Y, (float)event.motion.y / height, CID::C0);
+				
+				ProcessAxisID(Special::MOUSEMOVE_XVEL, event.motion.xrel * velscale, CID::C0);
+				ProcessAxisID(Special::MOUSEMOVE_YVEL, event.motion.yrel * velscale, CID::C0);
 			}
 			break;
 		case SDL_MOUSEBUTTONDOWN:
 		case SDL_MOUSEBUTTONUP:
 			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
-				ProcessActionID(event.button.button, static_cast<ActionState>(event.button.state), Make_CID(0));
+				ProcessActionID(event.button.button, static_cast<ActionState>(event.button.state), CID::C0);
 			}
 			break;
 		case SDL_CONTROLLERAXISMOTION:
