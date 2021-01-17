@@ -51,7 +51,7 @@ namespace RavEngine {
 		vector3 Up() const;
 
 		inline bool HasParent() const{
-			return parent.expired();
+			return !parent.expired();
 		}
 
 		vector3 GetLocalPosition() const;

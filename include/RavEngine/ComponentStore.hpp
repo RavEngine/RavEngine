@@ -21,7 +21,6 @@ namespace RavEngine{
 		
 		ComponentStructure components;
 		ComponentStructure componentsRedundant;
-		entry_type AllComponents;
 		
 		/**
 		For internal use only.
@@ -142,7 +141,6 @@ namespace RavEngine{
 			if(!parent.expired()){
 				Ref<ComponentStore>(parent)->AddComponent(componentRef);
 			}
-			AllComponents.insert(componentRef);
 			return componentRef;
 		}
 
@@ -234,7 +232,6 @@ namespace RavEngine{
 			for (const auto& alt : T::GetQueryTypes()) {
 				componentsRedundant[alt].erase(component);
 			}
-			AllComponents.erase(component);
 			OnRemoveComponent(component);
 		}
 
@@ -248,7 +245,6 @@ namespace RavEngine{
 				components[c.first].insert(c.second.begin(), c.second.end());
 				for(Ref<Component> cm : c.second){
 					OnAddComponent(cm);
-					AllComponents.insert(cm);
 				}
 			}
 			//add to the redundant store
@@ -266,7 +262,6 @@ namespace RavEngine{
 				for(const auto& to_remove : type_pair.second){
 					components[type_pair.first].erase(to_remove);
 					OnRemoveComponent(to_remove);
-					AllComponents.erase(to_remove);
 				}
 			}
 			

@@ -13,6 +13,7 @@
 #include "PhysicsBodyComponent.hpp" 
 #include "ComponentStore.hpp"
 #include "SpinLock.hpp"
+#include <plf_list.h>
 
 /**
  This class defines an Entity for the Entity Component System.
@@ -23,7 +24,7 @@ namespace RavEngine {
 
 	class Entity : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<Entity> {
 		friend class World;
-		bool hasSynchronized = false;
+		plf::list<Ref<Component>> PendingSync;
 	protected:
 		WeakRef<World> worldptr;  //non-owning
 		
@@ -38,6 +39,10 @@ namespace RavEngine {
 			if (!weak_from_this().expired()){
 				AddHook(c);
 			}
+			else{
+				//mark that synchronization is needed
+				PendingSync.push_back(c);
+			}
 		}
 		
 		void OnRemoveComponent(Ref<Component> c) override{
@@ -51,11 +56,11 @@ namespace RavEngine {
 	public:
 		
 		void Sync(){
-			if (!hasSynchronized){
-				for(auto component : AllComponents){
+			if (PendingSync.size() != 0){
+				for(auto component : PendingSync){
 					AddHook(component);
 				}
-				hasSynchronized = true;
+				PendingSync.clear();
 			}
 		}
 
