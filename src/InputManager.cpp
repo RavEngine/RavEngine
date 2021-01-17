@@ -44,7 +44,7 @@ void InputManager::ProcessAxisID(int ID, float value, CID controller){
 		//buffer the input
 		for(const auto& axisName : CodeToAxis[ID]){
 			auto scale = axisName.scale;
-			AxisBindings[axisName.identifier].bufferedInputs.push_back({value * scale,controller});
+			AxisBindings[axisName.identifier].bufferedInputs[ID]={value * scale,controller};
 		}
 	}
 }
@@ -52,21 +52,29 @@ void InputManager::ProcessAxisID(int ID, float value, CID controller){
 void InputManager::TickAxes(){
 	
 	for(auto& binding : AxisBindings){
-		//if there were no recorded inputs, add a 0, because axes must be called at least once per update
-		if (binding.second.bufferedInputs.size() == 0){
-			binding.second.bufferedInputs.push_back({0,CID::ANY});
-		}
-		
 		//get each binding
 		for(const auto& axis : binding.second.bindings){
 			//pass each buffered value to each Action
 			for(const auto& buffered_value : binding.second.bufferedInputs){
-				axis(buffered_value.value, buffered_value.source_controller);
+				axis(buffered_value.second.value, buffered_value.second.source_controller);
 			}
 		}
-		//clear buffered axis inputs
-		binding.second.bufferedInputs.clear();
 	}
+	
+	//clear mouse velocity inputs
+	auto clearvel = [&](int ID){
+		if (CodeToAxis.contains(Special::MOUSEMOVE_XVEL)){
+			//buffer the input
+			for(const auto& axisName : CodeToAxis[ID]){
+				auto scale = axisName.scale;
+				AxisBindings[axisName.identifier].bufferedInputs[ID]={0,CID::C0};
+			}
+		}
+	};
+	
+	//now clear mouse velocity inputs
+	clearvel(Special::MOUSEMOVE_XVEL);
+	clearvel(Special::MOUSEMOVE_YVEL);
 	
 	CleanupBindings();
 }
@@ -112,6 +120,7 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 				
 				ProcessAxisID(Special::MOUSEMOVE_XVEL, event.motion.xrel * velscale, CID::C0);
 				ProcessAxisID(Special::MOUSEMOVE_YVEL, event.motion.yrel * velscale, CID::C0);
+				
 			}
 			break;
 		case SDL_MOUSEBUTTONDOWN:

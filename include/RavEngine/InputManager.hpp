@@ -255,7 +255,7 @@ namespace RavEngine {
 			CID source_controller;
 		};
 		struct AxisData{
-			plf::list<AxisInput> bufferedInputs;
+			phmap::flat_hash_map<int,AxisInput> bufferedInputs;
 			plf::list<AxisBinding> bindings;
 		};
 		phmap::flat_hash_map<std::string, AxisData> AxisBindings;

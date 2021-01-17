@@ -253,12 +253,15 @@ static void runAPIThread(bgfx::PlatformData pd) {
 			}
 		}
 	}
+	
+	bgfx_thread_finished_init = false;
 
 	//bgfx::shutdown must be called on this thread
 }
 
 void RenderEngine::BlockUntilFinishDraw() {
-	while (bgfx::RenderFrame::NoContext != bgfx::renderFrame());
+	render_thread_exit = true;			//signal to exit render thread loop
+	while (bgfx_thread_finished_init);	//block until render engine has finished drawing
 }
 
 /**
