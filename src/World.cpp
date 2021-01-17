@@ -48,6 +48,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 	//cannot spawn an entity that is already in a world
 	if (e->GetWorld().expired()){
 		Entities.insert(e);
+		e->Sync();	//ensure all components have their owner backpointers up-to-date
 		e->SetWorld(shared_from_this());
 
 		//start all scripts

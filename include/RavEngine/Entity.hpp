@@ -23,21 +23,41 @@ namespace RavEngine {
 
 	class Entity : public ComponentStore<SpinLock>, public std::enable_shared_from_this<Entity> {
 		friend class World;
+		bool hasSynchronized;
 	protected:
 		WeakRef<World> worldptr;  //non-owning
 		
-		void OnAddComponent(Ref<Component> c) override{
+		void AddHook(Ref<Component> c){
 			c->SetOwner(weak_from_this());
 			c->AddHook(weak_from_this());
 		}
 		
+		void OnAddComponent(Ref<Component> c) override{
+			//if called from a constructor, this is not valid
+			//call Sync() (world invokes it automatically)
+			if (!weak_from_this().expired()){
+				AddHook(c);
+			}
+		}
+		
 		void OnRemoveComponent(Ref<Component> c) override{
-			c->SetOwner(weak_from_this());
+			auto owner = c->getOwner();
+			owner.reset();
+			c->SetOwner(owner);
 			c->RemoveHook(weak_from_this());
 		}
 
 
 	public:
+		
+		void Sync(){
+			if (!hasSynchronized){
+				for(auto component : AllComponents){
+					AddHook(component);
+				}
+				hasSynchronized = true;
+			}
+		}
 
 		//required virtual destructor for SharedObject
 		virtual ~Entity();
