@@ -14,10 +14,12 @@
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
 #include <set>
+#include <unordered_set>
 
 namespace RavEngine {
-	enum class ActionState{
-		Released, Pressed
+	enum ActionState{
+		Released = 0,
+		Pressed = 1
 	};
 
 	struct Special {
@@ -132,181 +134,174 @@ namespace RavEngine {
 		return static_cast<CID>(1 << x);
 	}
 
-
 	typedef std::function<void(float)> axisCallback;
 	typedef std::function<void()> actionCallback;
 
-
-    class InputManager : public SharedObject
+    class InputManager
     {
-    protected:
-		//up to this many actions will be buffered within a frame, any beyond this will be discarded
-		static constexpr short max_inputs_per_frame = 10;
-
-		//helper classes
-		class Callback{
-		protected:
-			WeakRef<SharedObject> obj;
-			void* func;
-			CID controllers;
-		public:
-			Callback(WeakRef<SharedObject> o, void* f, CID con) : obj(o), func(f), controllers(con){}
-			bool operator==(const Callback& other)const{
-				return func == other.func && ObjectsMatch(other.obj) && controllers == other.controllers;
-			}
-			/**
-			 Check if the stored pointer matches another
-			 @param in the pointer to check
-			 */
-			bool ObjectsMatch(const WeakRef<SharedObject>& in) const{
-				return Ref<SharedObject>(in) == Ref<SharedObject>(obj);
-			}
-			WeakRef<SharedObject> const GetObj() {
-				return obj;
-			}
-			bool CanExecute() const{
-				return obj.expired();
-			}
-		};
-		
-		/**
-		 Describes an AxisCallback as stored internally. Defines function and equality operators
-		 */
-		class AxisCallback : public Callback{
-			axisCallback exec;
-			float deadZone;
-		public:
-			static const float defaultDeadzone;
-			/**
-			 Construct an AxisCallback object.
-			 @param thisptr the object to invoke the function on
-			 @param f the function pointer to invoke.
-			 */
-			template<class U>
-			AxisCallback(Ref<U> thisptr, void(U::* f)(float), float dz, CID con) : Callback(thisptr,&f, con), deadZone(dz){
-				exec = std::bind(f, thisptr, std::placeholders::_1);
-			}
-			/**
-			 Execute the function on the stored pointer
-			 @param f the float to pass
-			 @param scale the amount to scale f
-			 */
-			void operator()(float f, float scale, CID incontrol){
-				if(CanExecute()){
-					//check controllers, and do not execute if below deadzone
-					if ((controllers & incontrol) != CID::NONE && abs(f) >= deadZone) {
-						exec(f * scale);
-					}
-				}
-			}
-
-			bool operator==(const AxisCallback& other) const {
-				return Callback::operator==(other) && deadZone == other.deadZone;
-			}
-		};
-		/**
-		 Describes an ActionCallback as stored internally. Defines function and equality operators
-		 */
-		class ActionCallback : public Callback{
-			actionCallback exec;
-			ActionState type;
-		public:
-			/**
-			 Construct an ActionCallback object
-			 @param thisptr the object to invoke the function on
-			 @param f the function pointer to invoke
-			 @param t the state to bind
-			 */
-			template<class U>
-			ActionCallback(Ref<U> thisptr, void(U::* f)(), ActionState t, CID con) : Callback(thisptr, &f, con){
-				exec = std::bind(f, thisptr);
-				type = t;
-			}
-			/**
-			 Execute the function on the stored pointer
-			 */
-			void operator()(CID incontrol){
-				if (CanExecute()){
-					//check controllers
-					if ((controllers & incontrol) != CID::NONE){
-						exec();
-					}
-				}
-			}
-			bool operator==(const ActionCallback& other)const{
-				return Callback::operator==(other) && type == other.type;
-			}
-			/**
-			 Determine if the states match
-			 @param state the state to check
-			 */
-			bool IsCorrectState(ActionState state) const{
-				return type == state;
-			}
-		};
-		
-		
-		struct ActionOccurance{
+	protected:
+		class ActionBinding{
+			actionCallback func;	//the lambda to invoke
+			void* func_addr = nullptr;		//used for equality comparison
+			WeakRef<SharedObject> bound_object;	//used for determining validity
 			CID controller;
 			ActionState state;
+			
+		public:
+			/**
+			 Create an ActionBinding object
+			 @param thisptr the owning object to be bound to
+			 @param fn the lambda to execute
+			 @param addr the address of the original function on thisptr
+			 @param c the controller bitmask for this binding
+			 @param s the required state of the source controller
+			 */
+			template<typename U>
+			ActionBinding(Ref<U> thisptr, actionCallback fn, void* addr, CID c, ActionState s) : bound_object(std::static_pointer_cast<SharedObject>(thisptr)), func(fn), controller(c), state(s), func_addr(addr){}
+			/**
+			 Execute this ActionBinding. If the action binding is invalid, or the input state / controller are not applicable, this function will do nothing.
+			 @param state_in the state of the action being invoked
+			 @param controller the source controller sending the action
+			 */
+			inline void operator()(ActionState state_in, CID c_in) const{
+				if (state_in == state && (controller & c_in) != CID::NONE && IsValid()){
+					func();
+				}
+			}
+			/**
+			 @return true if this object can be executed (the bound object has not been destroyed), false otherwise
+			 */
+			inline bool IsValid() const{
+				return ! bound_object.expired();
+			}
+			
+			/**
+			 Check equality
+			 */
+			inline bool operator==(const ActionBinding& other) const{
+				return controller == other.controller && state == other.state && bound_object.lock() == other.bound_object.lock() && func_addr == other.func_addr;
+			}
 		};
 		
-		struct Record{
-			plf::list<std::string> bindingNames;
+		class AxisBinding{
+		protected:
+			axisCallback func;		//the lambda to invoke
+			void* func_addr = nullptr;		//used for equality comparison
+			WeakRef<SharedObject> bound_object; //used for determining validity
+			CID controller;
+			float deadzone = 0;
+		public:
+			/**
+			 Create an ActionBinding object
+			 @param thisptr the owning object to be bound to
+			 @param fn the lambda to execute
+			 @param addr the address of the original function on thisptr
+			 @param c the controller bitmask for this binding
+			 @param dz the binding deadzone filter range
+			 @param scale the scale factor to apply to the passed value
+			 */
+			template<typename U>
+			AxisBinding(Ref<U> thisptr, axisCallback fn, void* addr, CID c, float dz): bound_object(thisptr), func(fn), func_addr(addr), controller(c),deadzone(dz){}
+			
+			/**
+			 Execute this ActionBinding
+			 @param value the axis' value
+			 @param c_in the source controller
+			 */
+			inline void operator()(float value, CID c_in) const{
+				//check if can run
+#warning implement deadzone
+				if ((controller & c_in) != CID::NONE && IsValid()){
+					func(value);
+				}
+			}
+			inline bool IsValid() const{
+				return ! bound_object.expired();
+			}
+			
+			inline bool operator==(const AxisBinding& other) const{
+				return deadzone == other.deadzone && controller == other.controller && bound_object.lock() == other.bound_object.lock() && func_addr == other.func_addr;
+			}
 		};
 		
-		struct ActionRecord : public Record{
-			etl::vector<ActionOccurance,max_inputs_per_frame> inputs;
-		};
 		
-		struct AxisRecord : public Record {
+		//stores which mappings each event ID is bound to
+		locked_hashmap<int, locked_hashset<std::string,SpinLock>,SpinLock> CodeToAction;
+		//the binding objects, keyed by binding ID
+		locked_hashmap<std::string, plf::list<ActionBinding>,SpinLock> ActionBindings;
+		//stores which mappings each event ID is bound to
+		struct AxisID{
+			std::string identifier;
 			float scale = 1;
-			phmap::flat_hash_map<CID,float> values;
 		};
 		
-		locked_hashmap<int, ActionRecord, SpinLock> codeToAction;
-		locked_hashmap<std::string, plf::list<ActionCallback>,SpinLock> actionMappings;
-
-		locked_hashmap<int, AxisRecord,SpinLock> codeToAxis;                //ids to records
-		locked_hashmap<std::string, plf::list<AxisCallback>,SpinLock> axisMappings;     //strings to methods
+		struct aid_hasher{
+			inline std::size_t operator()(const AxisID& other) const{
+				std::hash<std::string> hasher;
+				return hasher(other.identifier);
+			}
+		};
 		
-		//stores objects to call on any Action input, passing the input
-		std::set<WeakPtrKey<IInputListener>> AnyEvent;
-
-        /**
-         Helper used for registering axis inputs inside the engine
-         */
-        void reg_axis(int code, float value, CID controller) {
-            if (codeToAxis.find(code) != codeToAxis.end()) {
-				codeToAxis[code].values[controller] = value;
-            }
-        }
-
-		phmap::flat_hash_set<SDL_GameController*> connectedControllers;
+		struct aid_eq{
+			inline bool operator()(const AxisID& A, const AxisID& B) const{
+				return A.identifier == B.identifier && A.scale == B.scale;
+			}
+		};
 		
-		//methods to get input values
-		void SDL_key(bool state, int charcode, CID controllerID);
-		void SDL_mousemove(float x, float y, int xvel, int yvel, float scale);
-		void SDL_mousekey(bool state, int charcode, CID controllerId);
-		void SDL_ControllerAxis(int axisID, float value, CID controllerID);
-
-    public:
-
+		locked_hashmap<int, locked_hashset<AxisID,SpinLock,aid_hasher,aid_eq>,SpinLock> CodeToAxis;
+		//the buffered axis inputs for each identifier
+		struct AxisInput{
+			float value;
+			CID source_controller;
+		};
+		struct AxisData{
+			plf::list<AxisInput> bufferedInputs;
+			plf::list<AxisBinding> bindings;
+		};
+		phmap::flat_hash_map<std::string, AxisData> AxisBindings;
+		
+		//AnyActions
+		plf::list<WeakPtrKey<IInputListener>> AnyEventBindings;
+		
+		/**
+		 Process a single action event
+		 @param ID the event ID. It may need to be transformed if there is overlap in SDL
+		 @param state_in the state of the event
+		 @param controller the source controller
+		 */
+		void ProcessActionID(int ID, ActionState state_in, CID controller);
+		
+		/**
+		 Buffer an Axis value
+		 @param ID the event ID. It may need to be transformed if there is overlap in SDL
+		 @param value the axis' value
+		 @param controller the source controller
+		 */
+		void ProcessAxisID(int ID, float value, CID controller);
+		
+		/**
+		 Purge invalid bindings from the lists
+		 */
+		void CleanupBindings();
+	public:
         InputManager();
-
-        void InitGameControllers();
-
-        //based on the state of inputs, invoke bound actions
-        void Tick();
 		
-		void AggregateInput(const SDL_Event&, uint32_t windowflags, float scale);
+		//process axis maps
+		void TickAxes();
+		
+		/**
+		 Prcocess an input from SDL
+		 */
+		void ProcessInput(const SDL_Event&, uint32_t windowflags, float scale);
 
 		/**
 		 Create an action mapping entry. Action mappings correspond to items that have two states: pressed and released.
 		 @param name the identifer to use when binding or unbinding actions
 		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
 		 */
-        void AddActionMap(const std::string& name, int Id);
+		void AddActionMap(const std::string& name, int Id){
+			CodeToAction[Id].insert(name);
+		}
 		
 		/**
 		 Create an axis mapping entry. Axis mappings correspond to items that have a range of values, such as the mouse or analog sticks.
@@ -314,21 +309,27 @@ namespace RavEngine {
 		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
 		 @param scale the scale factor to apply to all bindings mapped to this axis
 		 */
-        void AddAxisMap(const std::string& name, int Id, float scale = 1);
+		void AddAxisMap(const std::string& name, int Id, float scale = 1){
+			CodeToAxis[Id].insert({name,scale});
+		}
 		
 		/**
 		 Remove an action mapping entry. Both the name and ID must match to complete removal.
 		 @param name the identifer to look for
 		 @param Id the button identifier to use. See the SDL key bindings for more information.
 		 */
-        void RemoveActionMap(const std::string& name, int Id);
+		void RemoveActionMap(const std::string& name, int Id){
+			CodeToAction[Id].erase(name);
+		}
 		
 		/**
 		 Remove an axis mapping entry. Both the name and ID must match to complete removal.
 		 @param name the identifer to look for
 		 @param Id the button identifier to use. See the SDL key bindings for more information.
 		 */
-        void RemoveAxisMap(const std::string& name, int Id);
+		void RemoveAxisMap(const std::string& name, int Id, float scale = 1){
+			CodeToAxis[Id].erase({name, scale});
+		}
 		
 		/**
 		 * Set the state of relative mouse mode. If true, the mouse will send events even if outside the application window. If false, the mouse will only send events if inside the application window.
@@ -350,8 +351,13 @@ namespace RavEngine {
 		 */
         template<class U>
 		inline void BindAction(const std::string& name, Ref<U> thisptr, void(U::* f)(), ActionState type, CID controllers){
-			ActionCallback action(thisptr,f,type,controllers);
-			actionMappings[name].push_back(action);
+			WeakRef<U> weak(thisptr);
+			auto binding = [=](){
+				(weak.lock().get()->*f)();
+			};
+			ActionBinding ab(thisptr,binding,&f,controllers,type);
+			
+			ActionBindings[name].push_back(ab);
 		}
 
         /**
@@ -362,9 +368,14 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
          */
         template<typename U>
-		inline void BindAxis(const std::string& name, Ref<U> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone) {
-			AxisCallback axis(thisptr, f, deadZone,controllers);
-            axisMappings[name].push_back(axis);
+		inline void BindAxis(const std::string& name, Ref<U> thisptr, void(U::* f)(float), CID controllers, float deadZone = 0) {
+			WeakRef<U> weak(thisptr);
+			auto func = [=](float amt){
+				(weak.lock().get()->*f)(amt);
+			};
+			AxisBinding ab(thisptr, func, &f, controllers, deadZone);
+			
+			AxisBindings[name].bindings.push_back(ab);
         }
 
 		/**
@@ -376,10 +387,14 @@ namespace RavEngine {
 		 */
 		template<typename U>
 		inline void UnbindAction(const std::string& name, Ref<U> thisptr, void(U::* f)(), ActionState type, CID controllers){
-			ActionCallback action(thisptr,f,type,controllers);
-			actionMappings[name].remove(action);
+			WeakRef<U> weak(thisptr);
+			auto binding = [=](){
+				(weak.lock().get()->*f)();
+			};
+			ActionBinding ab(thisptr,binding,&f,controllers,type);
+			
+			ActionBindings[name].remove(ab);	//remove the first binding that compares equal
 		}
-		
 		
 		/**
 		 Unbind an Axis mapping
@@ -388,51 +403,29 @@ namespace RavEngine {
 		 @param deadZone the minimum value (+/-) required to activate this binding
 		 */
 		template<typename U>
-		inline void UnbindAxis(const std::string& name, Ref<U> thisptr, void(U::* f)(float), CID controllers, float deadZone = AxisCallback::defaultDeadzone){
-			AxisCallback axis(thisptr, f, deadZone,controllers);
-			axisMappings[name].remove(axis);
+		inline void UnbindAxis(const std::string& name, Ref<U> thisptr, void(U::* f)(float), CID controllers, float deadZone){
+			WeakRef<U> weak(thisptr);
+			auto func = [=](float amt){
+				(weak.lock().get()->*f)(amt);
+			};
+			AxisBinding ab(thisptr, func, &f, controllers, deadZone);
+			
+			AxisBindings[name].bindings.remove(ab);
 		}
 		
 		/**
 		 Bind an object to recieve AnyEvents. This will invoke its AnyDown and AnyUp virtual methods
 		 */
 		inline void BindAnyAction(Ref<IInputListener> listener){
-			AnyEvent.insert(listener);
+			AnyEventBindings.push_back(listener);
 		}
 		
 		/**
 		 Unbind an object to recieve AnyEvents. This is done automatically when an IInputListener is destructed. 
 		 */
 		inline void UnbindAnyAction(Ref<IInputListener> listener){
-			AnyEvent.erase(listener);
+			AnyEventBindings.remove(listener);
 		}
-
-		/**
-		 * Unbind all Action and Axis mappings for a given listener. Listeners automatically invoke this on destruction.
-		 * @param act the listener to unbind
-		 */
-		template<typename T>
-		void UnbindAllFor(WeakRef<T> act){
-			//unbind axis maps
-			for(const auto& p : axisMappings){
-				auto key = p.second;
-				key.remove_if([&act](AxisCallback& callback) -> bool {
-					return callback.ObjectsMatch(act);
-				});
-			}
-			//unbind action maps
-			for(const auto& p : actionMappings){
-				auto key = p.second;
-				key.remove_if([&act](ActionCallback callback){
-					return callback.ObjectsMatch(act);
-				});
-			}
-			
-			//unbind all AnyEvents
-			UnbindAnyAction(act);
-		}
-
-        virtual ~InputManager();
-
     };
 }
+

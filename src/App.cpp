@@ -106,13 +106,16 @@ int App::run(int argc, char** argv) {
 			}
 			//process others
 			if (inputManager){
-				inputManager->AggregateInput(event,windowflags,scale);
+				inputManager->ProcessInput(event,windowflags,scale);
+#ifdef _DEBUG
+				RenderEngine::debuggerInput->ProcessInput(event,windowflags,scale);
+#endif
 			}
 			
 		}
 	
 #ifdef _DEBUG
-		RenderEngine::debuggerInput->Tick();
+		RenderEngine::debuggerInput->TickAxes();
 #endif
 		currentWorld->Tick(scale);
 		
@@ -122,7 +125,7 @@ int App::run(int argc, char** argv) {
 			front();
 		}
 		if (inputManager){
-			inputManager->Tick();
+			inputManager->TickAxes();
 		}
 
 		Renderer->DrawNext(currentWorld);
