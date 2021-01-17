@@ -20,8 +20,7 @@ RavEngine::IPhysicsActor::~IPhysicsActor()
 	for (auto& a : senders) {
         shared_ptr<PhysicsBodyComponent> ptr = a.lock();
 		if (ptr){
-			//this will fail if not a SharedObject
-			ptr->RemoveReceiver(this);
+			ptr->RemoveReceiver(shared_from_this());
 		}
 	}
 }

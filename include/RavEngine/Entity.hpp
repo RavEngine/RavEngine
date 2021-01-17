@@ -21,15 +21,15 @@ namespace RavEngine {
 	class PhysicsBodyComponent;
 	class World;
 
-	class Entity : public ComponentStore<SpinLock>, public std::enable_shared_from_this<Entity> {
+	class Entity : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<Entity> {
 		friend class World;
-		bool hasSynchronized;
+		bool hasSynchronized = false;
 	protected:
 		WeakRef<World> worldptr;  //non-owning
 		
 		void AddHook(Ref<Component> c){
-			c->SetOwner(weak_from_this());
-			c->AddHook(weak_from_this());
+			c->SetOwner(shared_from_this());
+			c->AddHook(shared_from_this());
 		}
 		
 		void OnAddComponent(Ref<Component> c) override{
@@ -44,7 +44,7 @@ namespace RavEngine {
 			auto owner = c->getOwner();
 			owner.reset();
 			c->SetOwner(owner);
-			c->RemoveHook(weak_from_this());
+			c->RemoveHook(shared_from_this());
 		}
 
 

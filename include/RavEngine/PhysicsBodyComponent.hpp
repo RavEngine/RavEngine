@@ -9,6 +9,7 @@
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
 #include <phmap.h>
+#include <btree.h>
 #include "Queryable.hpp"
 #include "SpinLock.hpp"
 
@@ -16,7 +17,7 @@ namespace RavEngine {
 	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
-		phmap::flat_hash_set<IPhysicsActor*> receivers;
+		phmap::btree_set<WeakPtrKey<IPhysicsActor>> receivers;
 		static SpinLock ForceMutex;
 	public:
 		physx::PxRigidActor* rigidActor = nullptr;
@@ -29,13 +30,13 @@ namespace RavEngine {
 		Add a recipient for collision events. Must implement IPhysicsActor.
 		@param obj the interface implementer to recieve the events
 		*/
-		void AddReceiver(IPhysicsActor* obj);
+		void AddReceiver(Ref<IPhysicsActor> obj);
 
 		/**
 		Remove a recipient for collision events. Must implement IPhysicsActor On deallocation, objects automatically remove themselves.
 		@param obj the object to remove
 		*/
-		void RemoveReceiver(IPhysicsActor* obj);
+		void RemoveReceiver(Ref<IPhysicsActor> obj);
 
 		virtual ~PhysicsBodyComponent();
 		virtual vector3 getPos() const;

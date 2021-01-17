@@ -13,7 +13,7 @@ void Transform::AddChild(const WeakRef<Transform>& child)
 	auto worldPos = ctrans->GetWorldPosition();
 	auto worldRot = ctrans->GetWorldRotation();
 	
-	ctrans->parent = weak_from_this();
+	ctrans->parent = shared_from_this();
 	children.insert(child);
 	
 	ctrans->SetWorldPosition(worldPos);

@@ -1,14 +1,14 @@
 #pragma once
 #include "WeakRef.hpp"
-#include <phmap.h>
-#include <set>
+#include <btree.h>
+#include "SharedObject.hpp"
 /**
 Multi-inherit from this interface to provide delegates for collision events
 */
 namespace RavEngine {
 	class PhysicsBodyComponent;
 
-	struct IPhysicsActor {
+	struct IPhysicsActor : public virtual_enable_shared_from_this<IPhysicsActor>{
 		/**
 		Called by a PhysicsBodyComponent when it has collided with another. Override in subclasses.
 		@param other the other component
@@ -48,6 +48,6 @@ namespace RavEngine {
 
 		~IPhysicsActor();
 	private:
-		std::set<WeakPtrKey<RavEngine::PhysicsBodyComponent>> senders;
+		phmap::btree_set<WeakPtrKey<RavEngine::PhysicsBodyComponent>> senders;
 	};
 }

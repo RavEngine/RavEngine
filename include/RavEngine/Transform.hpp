@@ -17,15 +17,14 @@
 #include "glm/gtx/matrix_decompose.hpp"
 #include <btree.h>
 #include "WeakRef.hpp"
-#include <set>
 
 namespace RavEngine {
 	/**
 	 A thread-safe transform component
 	 */
-	class Transform : public Component, public Queryable<Transform>, public std::enable_shared_from_this<Transform> {
+	class Transform : public Component, public Queryable<Transform>, public virtual_enable_shared_from_this<Transform> {
 	public:
-		typedef std::set<WeakPtrKey<Transform>> childStore;
+		typedef phmap::btree_set<WeakPtrKey<Transform>> childStore;
 		virtual ~Transform(){}
 		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false){
 			matrix = matrix4(1);

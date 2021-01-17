@@ -64,7 +64,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		//merge the entity into the world
 		Merge(*e.get());
 
-		e->parent = weak_from_this();	//set parent so that this entity synchronizes its components with this world
+		e->parent = shared_from_this();	//set parent so that this entity synchronizes its components with this world
 
 		//get all child entities
 		auto children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();

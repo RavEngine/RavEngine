@@ -7,7 +7,7 @@
 
 namespace RavEngine{
 
-class MeshAsset : public SharedObject, public std::enable_shared_from_this<MeshAsset>{
+class MeshAsset : public SharedObject {
 public:
 	
 	/**

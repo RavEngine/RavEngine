@@ -25,12 +25,12 @@ void RavEngine::PhysicsBodyComponent::AddHook(const WeakRef<RavEngine::Entity>& 
 	setRot(e.lock()->transform()->GetWorldRotation());
 }
 
-void RavEngine::PhysicsBodyComponent::AddReceiver(IPhysicsActor* obj)
+void RavEngine::PhysicsBodyComponent::AddReceiver(Ref<IPhysicsActor> obj)
 {
 	receivers.insert(obj);
 }
 
-void RavEngine::PhysicsBodyComponent::RemoveReceiver(IPhysicsActor* obj)
+void RavEngine::PhysicsBodyComponent::RemoveReceiver(Ref<IPhysicsActor> obj)
 {
 	receivers.erase(obj);
 }
@@ -168,34 +168,49 @@ bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
 void PhysicsBodyComponent::OnColliderEnter(Ref<PhysicsBodyComponent> other)
 {
 	for (auto& reciever : receivers) {
-		reciever->OnColliderEnter(other);
+		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		if (strong){
+			strong->OnColliderEnter(other);
+		}
 	}
 }
 
 void PhysicsBodyComponent::OnColliderPersist(Ref<PhysicsBodyComponent> other)
 {
 	for (auto& reciever : receivers) {
-		reciever->OnColliderPersist(other);
+		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		if (strong){
+			strong->OnColliderPersist(other);
+		}
 	}
 }
 
 void PhysicsBodyComponent::OnColliderExit(Ref<PhysicsBodyComponent> other)
 {
 	for (auto& reciever : receivers) {
-		reciever->OnColliderExit(other);
+		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		if (strong){
+			strong->OnColliderExit(other);
+		}
 	}
 }
 
 
 void PhysicsBodyComponent::OnTriggerEnter(Ref<PhysicsBodyComponent> other){
 	for (auto& reciever : receivers) {
-		reciever->OnTriggerEnter(other);
+		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		if (strong){
+			strong->OnTriggerEnter(other);
+		}
 	}
 }
 
 void PhysicsBodyComponent::OnTriggerExit(Ref<PhysicsBodyComponent> other){
 	for (auto& reciever : receivers) {
-		reciever->OnTriggerExit(other);
+		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		if (strong){
+			strong->OnTriggerExit(other);
+		}
 	}
 }
 

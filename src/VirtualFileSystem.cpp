@@ -37,8 +37,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	PHYSFS_mount(cstr, "", 1);
 	auto root = PHYSFS_enumerateFiles("/");
 	if (*root == NULL) {
-		cerr << PHYSFS_WHY() << endl;
-		Debug::Fatal(PHYSFS_WHY());
+		Debug::Fatal("PHYSFS Error: {}", PHYSFS_WHY());
 	}
 	rootname = std::filesystem::path(path).replace_extension("").string();
 }

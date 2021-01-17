@@ -23,7 +23,7 @@ namespace RavEngine {
 	class Entity;
 	class InputManager;
 
-	class World : public ComponentStore<SpinLock>, public std::enable_shared_from_this<World> {
+	class World : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<World>{
 	protected:
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
