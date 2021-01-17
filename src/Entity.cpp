@@ -19,7 +19,7 @@ void Entity::Destroy() {
 }
 
 RavEngine::Entity::Entity(){
-	AddComponent<Transform>(make_shared<Transform>());
+    EmplaceComponent<Transform>();
 }
 
 RavEngine::Entity::~Entity(){

@@ -586,7 +586,7 @@ void RenderEngine::InitDebugger() const{
 	data.drawCallback = &DebugRender;
 	
 	debuggerContext = make_shared<Entity>();
-	auto ctx = debuggerContext->AddComponent<GUIComponent>(make_shared<GUIComponent>(10,10));
+	auto ctx = debuggerContext->EmplaceComponent<GUIComponent>(10,10);
 	
 	bool status = Rml::Debugger::Initialise(ctx->context);
 	
