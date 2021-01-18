@@ -6,8 +6,7 @@
 //
 
 # pragma once
-#include <type_traits>
-#include <functional>
+#include <memory>
 
 template<typename T>
 using WeakRef = std::weak_ptr<T>;
