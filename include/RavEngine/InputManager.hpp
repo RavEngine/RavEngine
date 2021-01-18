@@ -210,9 +210,8 @@ namespace RavEngine {
 			 */
 			inline void operator()(float value, CID c_in) const{
 				//check if can run
-#warning implement deadzone
 				if ((controller & c_in) != CID::NONE && IsValid()){
-					func(value);
+					func(std::abs(value) >= deadzone ? value : 0);	//pass 0 if in deadzone range
 				}
 			}
 			inline bool IsValid() const{
