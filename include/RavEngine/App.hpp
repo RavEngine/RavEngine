@@ -75,8 +75,23 @@ namespace RavEngine {
 		static float CurrentTPS();
 		
 		static Ref<InputManager> inputManager;
+
+		/**
+		* Set the current world to tick automatically
+		* @param newWorld the new world
+		*/
+		static void SetWorld(Ref<World> newWorld) {
+			if (currentWorld) {
+				currentWorld->OnDeactivate();
+			}
+			currentWorld = newWorld;
+			currentWorld->OnActivate();
+		}
+
+	private:
 		static Ref<World> currentWorld;
-	protected:
+
+	
 		static ConcurrentQueue<std::function<void(void)>> main_tasks;
 
 		//#define LIMIT_TICK
@@ -84,7 +99,7 @@ namespace RavEngine {
 	//change to adjust the ticking speed of the engine (default ~60 fps)
 		std::chrono::microseconds tickrate = std::chrono::microseconds((long)1660);
 #endif
-
+	protected:
 		/**
 		The startup hook.
 		@param argc the number of command line arguments
