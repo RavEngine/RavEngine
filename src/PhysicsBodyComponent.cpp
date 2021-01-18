@@ -39,6 +39,7 @@ RavEngine::PhysicsBodyComponent::~PhysicsBodyComponent()
 {
 	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
 	if (rigidActor != nullptr) {
+		delete ((Ref<PhysicsBodyComponent>*)rigidActor->userData);	//free the dynamically-allocated shared_ptr
 		rigidActor->userData = nullptr;
 		rigidActor->release();
 	}
