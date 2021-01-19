@@ -91,5 +91,15 @@ namespace RavEngine {
 		virtual ~World() {
 			std::cout << "world destructor @ " << this << std::endl;
 		}
+
+		/**
+		* Called when this world is made the active world for the App
+		*/
+		virtual void OnActivate() {}
+
+		/**
+		* Called when this world was the active world for the App but has been replaced by a different world
+		*/
+		virtual void OnDeactivate() {}
 	};
 }
