@@ -382,7 +382,6 @@ RenderEngine::RenderEngine() {
 	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
 	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
 	
-	
 	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
@@ -460,10 +459,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bool al = DrawLightsOfType<AmbientLight>(*worldOwning.get());
 	bool dl = DrawLightsOfType<DirectionalLight>(*worldOwning.get());
 	bool pl = DrawLightsOfType<PointLight>(*worldOwning.get());
+	bool sl = DrawLightsOfType<SpotLight>(*worldOwning.get());
 	
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
-	if (al || dl || pl){
+	if (al || dl || pl || sl ){
 		bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
 	}
 	

@@ -179,6 +179,52 @@ private:
 	}
 };
 
+struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>{
+	using QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>::GetQueryTypes;
+	
+	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
+		//TODO: perform AABB intersection on camera bounds
+		return true;
+	}
+	void DebugDraw() const override;
+	
+	/**
+	Structure
+	@code
+	[0:15] = transform matrix
+	[16] = color R
+	[17] = color G
+	[18] = color B
+	[19] = penumbra
+	@endcode
+	*/
+	void AddInstanceData(float* offset) const;
+	
+	/**
+	 Calculate the Stride, or the number of bytes needed for each instance
+	 */
+	static inline constexpr size_t InstancingStride(){
+		//point light needs:
+		//mvp matrix (1 float[16])
+		//light color (3 floats)
+		//light penumbra (1 float)
+		
+		return closest_multiple_of(sizeof(float) * (3+1) + sizeof(float[16]), 16);
+	}
+	
+	/**
+	 Execute instanced draw call for this light type
+	 */
+	static void Draw(int view);
+	
+	static inline void SetState(){
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
+	}
+	
+	//light properties
+	std::atomic<float> radius = 1;
+	std::atomic<float> penumbra = 0;
+};
 
 class LightManager{
 public:
@@ -188,14 +234,15 @@ public:
 	friend class PointLight;
 	friend class DirectionalLight;
 	friend class AmbientLight;
+	friend class SpotLight;
 	
 private:
 	static Ref<MeshAsset> pointLightMesh;
+	static Ref<MeshAsset> spotLightMesh;
 	
 	class LightShader : public Material{
 	protected:
 		LightShader(const std::string& name) : Material(name){}
-	public:
 	};
 	
 	/**
@@ -227,9 +274,18 @@ private:
 		DirectionalLightShaderInstance(Ref<DirectionalLightShader> m ) : MaterialInstance(m){}
 	};
 	
+	struct SpotLightShader : public LightShader{
+		SpotLightShader() : LightShader("spotlightvolume"){}
+	};
+	
+	struct SpotLightShaderInstance : public MaterialInstance<SpotLightShader>{
+		SpotLightShaderInstance(Ref<SpotLightShader> m ) : MaterialInstance(m){}
+	};
+	
 	static Ref<PointLightShaderInstance> pointLightShader;
 	static Ref<AmbientLightShaderInstance> ambientLightShader;
 	static Ref<DirectionalLightShaderInstance> directionalLightShader;
+	static Ref<SpotLightShaderInstance> spotLightShader;
 	
 	static bgfx::VertexBufferHandle screenSpaceQuadVert;
 	static bgfx::IndexBufferHandle screenSpaceQuadInd;
