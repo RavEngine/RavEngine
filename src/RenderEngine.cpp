@@ -58,6 +58,8 @@ bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
 Ref<InputManager> RenderEngine::debuggerInput;
+phmap::flat_hash_map<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
+SpinLock RenderEngine::dbgmtx;
 #endif
 
 static Ref<DebugMaterialInstance> mat;
@@ -201,7 +203,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 /**
  The render thread function, invoked on a separate thread
  */
-static void runAPIThread(bgfx::PlatformData pd) {
+void RenderEngine::runAPIThread(bgfx::PlatformData pd) {
 	bgfx::Init settings;
 
 #ifdef __linux__
@@ -251,6 +253,15 @@ static void runAPIThread(bgfx::PlatformData pd) {
 				auto after = std::chrono::high_resolution_clock::now();
 				currentFrameTime = std::chrono::duration<float, std::chrono::milliseconds::period>(after - before).count();
 			}
+    #ifdef _DEBUG
+          //display debug print messages
+            bgfx::dbgTextClear();
+            RenderEngine::dbgmtx.lock();
+            for(const auto msg : RenderEngine::debugprints){
+                bgfx::dbgTextPrintf(0, msg.first, msg.second.color, msg.second.message.c_str());
+            }
+            RenderEngine::dbgmtx.unlock();
+    #endif
 		}
 	}
 	

@@ -9,7 +9,6 @@
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
 #include <phmap.h>
-#include <btree.h>
 #include "Queryable.hpp"
 #include "SpinLock.hpp"
 
@@ -17,7 +16,7 @@ namespace RavEngine {
 	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
-		phmap::btree_set<WeakPtrKey<IPhysicsActor>> receivers;
+		phmap::flat_hash_set<WeakPtrKey<IPhysicsActor>> receivers;
 		static SpinLock ForceMutex;
 	public:
 		physx::PxRigidActor* rigidActor = nullptr;

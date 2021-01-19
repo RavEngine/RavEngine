@@ -24,16 +24,33 @@ public:
     
     WeakPtrKey(std::shared_ptr<T> sptr):m_ptr(sptr.get()),m_wptr(sptr) {}
     
-    bool operator<(const WeakPtrKey<T> &other) const {
+    inline bool operator<(const WeakPtrKey<T> &other) const {
         return m_ptr < other.m_ptr;
         
     }
     
-    bool operator==(const WeakPtrKey<T> &other) const {
+    inline bool operator==(const WeakPtrKey<T> &other) const {
         return m_ptr == other.m_ptr;
         
     }
     
-    std::weak_ptr<T> getWeak() const { return m_wptr;}
-    std::shared_ptr<T> lock() const { return m_wptr.lock();}
+    /**
+     Hash the pointer value of the original address
+     @return hash code for this object
+     */
+    inline std::size_t hash() const{
+        return reinterpret_cast<std::size_t>(m_ptr);
+    }
+    
+    inline std::weak_ptr<T> getWeak() const { return m_wptr;}
+    inline std::shared_ptr<T> lock() const { return m_wptr.lock();}
 };
+
+namespace std{
+template<typename T>
+struct hash<WeakPtrKey<T>>{
+    std::size_t operator()(const WeakPtrKey<T>& ptr) const{
+        return ptr.hash();
+    }
+};
+}

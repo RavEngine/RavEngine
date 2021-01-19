@@ -1,6 +1,6 @@
 #pragma once
 #include "WeakRef.hpp"
-#include <btree.h>
+#include <phmap.h>
 #include "SharedObject.hpp"
 /**
 Multi-inherit from this interface to provide delegates for collision events
@@ -48,6 +48,6 @@ namespace RavEngine {
 
 		~IPhysicsActor();
 	private:
-		phmap::btree_set<WeakPtrKey<RavEngine::PhysicsBodyComponent>> senders;
+		phmap::flat_hash_set<WeakPtrKey<RavEngine::PhysicsBodyComponent>> senders;
 	};
 }

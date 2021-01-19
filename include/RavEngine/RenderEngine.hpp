@@ -13,6 +13,7 @@
 #include <bgfx/bgfx.h>
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
+#include <fmt/format.h>
 
 struct SDL_Window;
 
@@ -37,15 +38,66 @@ namespace RavEngine {
 		//get reset bitmask, for internal use only
 		static uint32_t GetResetFlags();
 
+        /**
+         Signal the render thread to stop, and wait until it has stopped. For internal use only.
+         */
 		static void BlockUntilFinishDraw();
+        
+        /**
+         Print a string to the debug text overlay. Stubbed in release.
+         Debug messages persist until they are overwritten or cleared.
+         @param row the row to display the text
+         */
+        template<typename ... T>
+        static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T... args){
+#ifdef _DEBUG
+            dbgmtx.lock();
+            debugprints[row] = {fmt::format(formatstr, args...),color};
+            dbgmtx.unlock();
+#endif
+        }
+        
+        /**
+         Clear a debug print message. Stubbed in release.
+         @param row the row to clear
+         */
+        static void ClearDebugPrint(uint16_t row){
+#ifdef _DEBUG
+            dbgmtx.lock();
+            debugprints.erase(row);
+            dbgmtx.unlock();
+#endif
+        }
+        
+        /**
+         Clear all debug print messages. Stubbed in release.
+         @param row the row to clear
+         */
+        static void ClearAllDebugPrint(){
+#ifdef _DEBUG
+            dbgmtx.lock();
+            debugprints.clear();
+            dbgmtx.unlock();
+#endif
+        }
 
+        /**
+         @return The name of the current rendering API in use
+         */
         static const std::string currentBackend();
 
 		static SDL_Window* const GetWindow(){
 			return window;
 		}
 
+        /**
+         @return the current frame rate using the frame time
+         */
 		static float GetCurrentFPS();
+        
+        /**
+         @return the time in miliseconds to render the last frame
+         */
 		static float GetLastFrameTime();
 		
 		/**
@@ -59,10 +111,16 @@ namespace RavEngine {
 			return windowdims;
 		}
 		
+        /**
+         @return the High DPI scale factor. Only applicable on macOS.
+         */
 		float GetDPIScale() const{
 			return (float)bufferdims.width / windowdims.width;
 		}
 
+        /**
+         Trigger a resize. For internal use only.
+         */
         void resize();
 		
 		static struct vs {
@@ -70,6 +128,9 @@ namespace RavEngine {
 			bool vsync = true;
 		} VideoSettings;
 		
+        /**
+         Apply changes to the video settings structure
+         */
 		void SyncVideoSettings();
 		
 		//to reduce magic numbers
@@ -123,6 +184,16 @@ namespace RavEngine {
 #endif
 						
     protected:
+#ifdef _DEBUG
+        struct DebugMsg{
+            std::string message;
+            uint8_t color;
+        };
+        static SpinLock dbgmtx;
+        static phmap::flat_hash_map<uint16_t,DebugMsg> debugprints;
+#endif
+        static void runAPIThread(bgfx::PlatformData pd);
+
 		static SDL_Window* window;
         static void Init();
 		
