@@ -197,6 +197,17 @@ void GUIComponent::MouseY(float normalized_pos){
 	MousePos.y = normalized_pos;
 }
 
+void GUIComponent::ScrollX(float amt){
+}
+
+void GUIComponent::ScrollY(float amt){
+	if (std::abs(amt) > 0.1){
+		ExclusiveAccess([&]{
+			context->ProcessMouseWheel(amt, modifier_state);
+		});
+	}
+}
+
 void GUIComponent::MouseMove(){
 	//Forward to canvas, using the bitmask
 	ExclusiveAccess([&] {

@@ -63,7 +63,7 @@ void InputManager::TickAxes(){
 	
 	//clear mouse velocity inputs
 	auto clearvel = [&](int ID){
-		if (CodeToAxis.contains(Special::MOUSEMOVE_XVEL)){
+		if (CodeToAxis.contains(ID)){
 			//buffer the input
 			for(const auto& axisName : CodeToAxis[ID]){
 				auto scale = axisName.scale;
@@ -75,6 +75,8 @@ void InputManager::TickAxes(){
 	//now clear mouse velocity inputs
 	clearvel(Special::MOUSEMOVE_XVEL);
 	clearvel(Special::MOUSEMOVE_YVEL);
+	clearvel(Special::MOUSEWHEEL_X);
+	clearvel(Special::MOUSEWHEEL_Y);
 	
 	CleanupBindings();
 }
@@ -122,6 +124,10 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 				ProcessAxisID(Special::MOUSEMOVE_YVEL, event.motion.yrel * velscale, CID::C0);
 				
 			}
+			break;
+		case SDL_MOUSEWHEEL:
+			ProcessAxisID(Special::MOUSEWHEEL_X, event.wheel.x, CID::C0);
+			ProcessAxisID(Special::MOUSEWHEEL_Y, event.wheel.y, CID::C0);
 			break;
 		case SDL_MOUSEBUTTONDOWN:
 		case SDL_MOUSEBUTTONUP:

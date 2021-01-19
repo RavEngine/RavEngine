@@ -598,8 +598,11 @@ void RenderEngine::InitDebugger() const{
 	debuggerInput->BindAnyAction(ctx);
 	debuggerInput->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
 	debuggerInput->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
+	
+	debuggerInput->AddAxisMap("ScrollY", Special::MOUSEWHEEL_Y);
 
 	debuggerInput->BindAxis("MouseX", ctx, &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
 	debuggerInput->BindAxis("MouseY", ctx, &GUIComponent::MouseY, CID::ANY, 0);
+	debuggerInput->BindAxis("ScrollY", ctx, &GUIComponent::ScrollY, CID::ANY, 0);
 }
 #endif

@@ -96,6 +96,16 @@ public:
 	 * @param normalized_pos the position of the mouse, in [0,1)
 	 */
 	void MouseY(float normalized_pos);
+	
+	/** Bind to your InputManager's scroll X axis mapping
+	 * @param normalized_pos the position of the mouse, in [0,1)
+	 */
+	void ScrollX(float amt);
+	
+	/** Bind to your InputManager's scroll Y axis mapping
+	 * @param normalized_pos the position of the mouse, in [0,1)
+	 */
+	void ScrollY(float amt);
 
 	/**
 	* Execute code on this element with exclusive thread-safe access.
