@@ -17,6 +17,10 @@
 	#undef min
 #endif
 
+#ifdef __APPLE__
+    #include "AppleUtilities.h"
+#endif
+
 using namespace std;
 using namespace RavEngine;
 using namespace std::chrono;
@@ -49,6 +53,9 @@ App::App(const std::string& resourcesName){
 	Renderer->InitDebugger();
 #endif
 	
+#ifdef __APPLE__
+    enableSmoothScrolling();
+#endif
 	
 	//load the built-in fonts
 	GUIComponent::LoadFont("Roboto-Regular.ttf");

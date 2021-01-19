@@ -199,6 +199,11 @@ namespace RavEngine {
 		static Ref<GUIMaterialInstance> guiMaterial;
 		
 		matrix4 currentMatrix;
+        
+        struct scissor{
+            uint16_t x, y, width, height;
+            bool enabled = false;
+        } RMLScissor;
 		
 #ifdef _DEBUG
 		//used for the GUI debugger

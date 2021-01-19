@@ -1,4 +1,4 @@
-#include "MetalViewHelper.h"
+#include "AppleUtilities.h"
 #import <QuartzCore/CAMetalLayer.h>
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
@@ -14,4 +14,8 @@ void *cbSetupMetalLayer(void *wnd) {
 	CAMetalLayer *res = [CAMetalLayer layer];
 	[contentView setLayer:res];
 	return res;
+}
+
+void enableSmoothScrolling(){
+    [[NSUserDefaults standardUserDefaults] setBool: YES forKey: @"AppleMomentumScrollSupported"];
 }

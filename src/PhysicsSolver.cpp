@@ -193,7 +193,9 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
 void PhysicsSolver::Spawn(Ref<Entity> e){
     if (e->HasComponentOfSubclass<PhysicsBodyComponent>()) {
         auto actor = e->GetComponentOfSubclass<PhysicsBodyComponent>();
-        actor->rigidActor->userData = new Ref<PhysicsBodyComponent>(actor);	//must be dynamically allocated here
+        if (actor->rigidActor->userData == nullptr){
+            actor->rigidActor->userData = new Ref<PhysicsBodyComponent>(actor);    //must be dynamically allocated here
+        }
 		mtx.lock();
         scene->addActor(*(actor->rigidActor));
 		mtx.unlock();

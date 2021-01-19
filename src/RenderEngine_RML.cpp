@@ -136,6 +136,9 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 	guiMaterial->SetTexture(tx);
 	
 	auto drawmat = make_matrix(translation);
+    if (RMLScissor.enabled){
+        bgfx::setScissor(RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height);
+    }
 	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
 	guiMaterial->Draw(vbuf, ibuf, drawmat, Views::FinalBlit);
 	
@@ -173,6 +176,9 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 	guiMaterial->SetTexture(tx);
 
 	auto drawmat = make_matrix(translation);
+    if (RMLScissor.enabled){
+        bgfx::setScissor(RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height);
+    }
 	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
 	guiMaterial->Draw(cgs->vb, cgs->ib, drawmat, Views::FinalBlit);
 	
@@ -186,11 +192,14 @@ void RenderEngine::ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry)
 
 /// Called by RmlUi when it wants to enable or disable scissoring to clip content.
 void RenderEngine::EnableScissorRegion(bool enable) {
-	//TODO: control scissor (set it back after GUI is done rendering!)
+    RMLScissor.enabled = enable;
 }
 /// Called by RmlUi when it wants to change the scissor region.
 void RenderEngine::SetScissorRegion(int x, int y, int width, int height) {
-	//TODO: control scissor (set it back after GUI is done rendering!)
+    RMLScissor.x = x;
+    RMLScissor.y = y;
+    RMLScissor.width = width;
+    RMLScissor.height = height;
 }
 
 /// Called by RmlUi when a texture is required by the library.

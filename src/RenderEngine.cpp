@@ -40,7 +40,7 @@
 #include <chrono>
 
 #ifdef __APPLE__
-	#include "MetalViewHelper.h"
+	#include "AppleUtilities.h"
 #endif
 
 using namespace std;
