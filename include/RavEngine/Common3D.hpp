@@ -80,18 +80,20 @@ static inline constexpr int closest_multiple_of(int x, int B) {
 
 template<typename T>
 struct maybestackarray_freer {
-	T* ptr_to_stack = nullptr;
+	T* ptr = nullptr;
 	~maybestackarray_freer() {
-		assert(ptr_to_stack != nullptr);
-		_freea(ptr_to_stack);
+		if (ptr != nullptr){
+			delete[] ptr;
+		}
 	}
 };
-//The Maybestackarray creates an array using a runtime-known size. 
-// It will use stack if it can fit inside _ALLOCA_S_THRESHOLD, and use heap memory if it does not. 
-// Do not call _freea on this, the structure will free itself when its scope ends
-#ifdef _WIN32
-#define maybestackarray(name, type, size) type* name = (type*)_malloca(sizeof(type) * size); maybestackarray_freer<type> name ## _freer{name}
-#else
-#define maybestackarray(name, type, size) type* name = (type*)malloca(sizeof(type) * size); maybestackarray_freer<type> name ## _freer{name}
-#endif
+
+//The Maybestackarray creates an array using a runtime-known size.
+// It will use stack if it can fit inside a threshold, and use heap memory if it does not.
+// Do not call `delete` on this, the structure will free itself when its scope ends
+#define maybestackarray(name, type, size) \
+type* name;\
+maybestackarray_freer<type> name ## _freer; \
+if (size < 2000) name = (type*)alloca(sizeof(type) * size);\
+else { name = new type[size];  name ## _freer.ptr = name; }
 }

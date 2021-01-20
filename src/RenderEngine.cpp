@@ -179,10 +179,10 @@ void DebugRender(const Im3d::DrawList& drawList){
 	//perform drawing here
 	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
 	const auto verts = drawList.m_vertexCount;
-
+	
 	bgfx::VertexBufferHandle vbuf;
 	{
-		maybestackarray(converted, VertexColor, verts);
+		maybestackarray(converted, VertexColor, verts)
 		for (int x = 0; x < verts; x++) {
 			Im3d::VertexData d = vertexdata[x];
 			converted[x] = { d.m_positionSize.x,d.m_positionSize.y,d.m_positionSize.z,d.m_color };
@@ -192,7 +192,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 	
 	bgfx::IndexBufferHandle ibuf;
 	{
-		maybestackarray(indices, uint16_t, verts);
+		maybestackarray(indices, uint16_t, verts)
 		for (int i = 0; i < verts; i++) {
 			indices[i] = i;
 		}
