@@ -180,6 +180,7 @@ namespace RavEngine {
 
 #ifdef _DEBUG
 		void InitDebugger() const;
+		void DeactivateDebugger() const;
 		static Ref<InputManager> debuggerInput;
 #endif
 						

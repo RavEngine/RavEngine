@@ -126,8 +126,8 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			}
 			break;
 		case SDL_MOUSEWHEEL:
-			ProcessAxisID(Special::MOUSEWHEEL_X, event.wheel.x, CID::C0);
-			ProcessAxisID(Special::MOUSEWHEEL_Y, event.wheel.y, CID::C0);
+			ProcessAxisID(Special::MOUSEWHEEL_X, event.wheel.x * -0.2, CID::C0);
+			ProcessAxisID(Special::MOUSEWHEEL_Y, event.wheel.y * -0.2, CID::C0);
 			break;
 		case SDL_MOUSEBUTTONDOWN:
 		case SDL_MOUSEBUTTONUP:

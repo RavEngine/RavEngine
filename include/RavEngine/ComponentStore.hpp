@@ -134,7 +134,7 @@ namespace RavEngine{
 			components[CTTI<T>].insert(componentRef);
 
 			//add redundant types
-			for (const auto& alt : T::GetQueryTypes()) {
+			for (const auto alt : T::GetQueryTypes()) {
 				componentsRedundant[alt].insert(componentRef);
 			}
 			OnAddComponent(componentRef);

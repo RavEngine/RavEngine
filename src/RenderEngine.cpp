@@ -60,6 +60,7 @@ Ref<Entity> RenderEngine::debuggerContext;
 Ref<InputManager> RenderEngine::debuggerInput;
 phmap::flat_hash_map<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
 SpinLock RenderEngine::dbgmtx;
+static DebugDraw dbgdraw;	//for rendering debug primitives
 #endif
 
 static Ref<DebugMaterialInstance> mat;
@@ -287,7 +288,7 @@ void RenderEngine::Init()
 	}
 	SDL_Init(0);
 	SDL_Init(SDL_INIT_GAMECONTROLLER);
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
 
 	//start the render thread here
 	{
@@ -503,8 +504,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	comp->SetDPIScale(GetDPIScale());
 	comp->Update();
 	comp->Render();
+	
+	auto shapesToDraw = worldOwning->GetAllComponentsOfTypeSubclassFastPath<IDebugRenderer>();
+	for(const auto s : shapesToDraw){
+		auto shape = std::static_pointer_cast<IDebugRenderer>(s);
+		shape->DrawDebug(dbgdraw);
+	}
 
-	DebugDraw::DrawAllQueued();
 	Im3d::GetContext().draw();
 #endif
 	//discard all previous state sets
@@ -615,5 +621,10 @@ void RenderEngine::InitDebugger() const{
 	debuggerInput->BindAxis("MouseX", ctx, &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
 	debuggerInput->BindAxis("MouseY", ctx, &GUIComponent::MouseY, CID::ANY, 0);
 	debuggerInput->BindAxis("ScrollY", ctx, &GUIComponent::ScrollY, CID::ANY, 0);
+}
+
+void RenderEngine::DeactivateDebugger() const{
+	debuggerContext = nullptr;
+	debuggerInput = nullptr;
 }
 #endif

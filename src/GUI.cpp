@@ -197,9 +197,6 @@ void GUIComponent::MouseY(float normalized_pos){
 	MousePos.y = normalized_pos;
 }
 
-void GUIComponent::ScrollX(float amt){
-}
-
 void GUIComponent::ScrollY(float amt){
 	if (std::abs(amt) > 0.1){
 		ExclusiveAccess([&]{

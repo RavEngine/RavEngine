@@ -1,14 +1,12 @@
 #include "DebugDraw.hpp"
 #include <im3d.h>
+#include <functional>
 #include <glm/gtc/type_ptr.hpp>
 #include "PhysXDefines.h"
 
 using namespace RavEngine;
 using namespace std;
 
-#undef _DEBUG
-
-ConcurrentQueue<std::function<void(void)>> DebugDraw::toDraw;
 /**
  Matrix class converison
  @param m matrix input
@@ -70,20 +68,20 @@ void DebugDraw::DrawPrism(const matrix4 &transform, const color_t color, decimal
 
 void DebugDraw::DrawArrow(const vector3 &start, const vector3 &end, const color_t color){
 #ifdef _DEBUG
-	toDraw.enqueue([=]{
+	mtx.lock();
     Im3d::SetColor(color);
     Im3d::DrawArrow(Im3d::Vec3(start.x,start.y,start.z), Im3d::Vec3(end.x,end.y,end.z));
-	});
+	mtx.unlock();
 #endif
 }
 
 
 void DebugDraw::DrawHelper(const matrix4 &transform, std::function<void()> impl){
 #ifdef _DEBUG
-	toDraw.enqueue([=]{
-		Im3d::PushMatrix(matrix4ToMat4(transform));
-		impl();
-		Im3d::PopMatrix();
-	});
+	mtx.lock();
+	Im3d::PushMatrix(matrix4ToMat4(transform));
+	impl();
+	Im3d::PopMatrix();
+	mtx.unlock();
 #endif
 }

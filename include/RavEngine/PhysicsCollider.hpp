@@ -4,7 +4,7 @@
 #include <PxMaterial.h>
 #include <PxPhysics.h>
 #include <PxSimulationEventCallback.h>
-#include <iostream>
+#include "DebugDraw.hpp"
 #include "mathtypes.hpp"
 #include "PhysicsMaterial.hpp"
 #include "Queryable.hpp"
@@ -70,7 +70,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		virtual void DebugDraw(const color_t color = 0xFFFFFFFF) const = 0;
+		virtual void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const = 0;
 
 		virtual ~PhysicsCollider();
 	};
@@ -101,7 +101,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override;
 
 	};
 
@@ -137,7 +137,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override;
 	};
 
 	class CapsuleCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,CapsuleCollider>{
@@ -176,6 +176,6 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override;
 	};
 }

@@ -161,6 +161,9 @@ void App::Quit(){
 App::~App(){
 	inputManager = nullptr;
 	currentWorld = nullptr;
+#ifdef _DEBUG
+	Renderer->DeactivateDebugger();
+#endif
 	Material::Manager::RemoveAll();
 	PHYSFS_deinit();
 	auto fsi = Rml::GetFileInterface();
