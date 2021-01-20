@@ -46,7 +46,6 @@ struct ColorRGBA{
 	float B;
 	float A;
 };
-}
 
 /**
  Copy an array of type T to an array of type U
@@ -55,10 +54,10 @@ struct ColorRGBA{
  @param size optional size
  */
 template<typename T, typename U>
-static inline void copyMat4(const T* input, U* output, int size = 16){
-    for(int i = 0; i < size; i++){
-        output[i] = input[i];
-    }
+static inline void copyMat4(const T* input, U* output, int size = 16) {
+	for (int i = 0; i < size; i++) {
+		output[i] = input[i];
+	}
 }
 
 /**
@@ -66,12 +65,33 @@ static inline void copyMat4(const T* input, U* output, int size = 16){
  @param B the multiple base
  @return the closest multiple of B to x in the upwards direction. If x is already a multiple of B, returns x.
  */
-static inline constexpr int closest_multiple_of(int x, int B){
-	return ((x-1)|(B-1))+1;
+static inline constexpr int closest_multiple_of(int x, int B) {
+	return ((x - 1) | (B - 1)) + 1;
 }
 
+// The stackarray creates a stack-resident array using a runtime-known size.
+// There are no safety checks for overflowing the stack, and overflowing results in undefined behavior. 
+// Only use for small sizes. For larger sizes, use the maybestackarray instead
 #if defined __APPLE__ || __STDC_VERSION__ >= 199901L	//check for C99
-	#define stackarray(name, type, size) type name[size]	//prefer C VLA on supported systems
+#define stackarray(name, type, size) type name[size]	//prefer C VLA on supported systems
 #else
-	#define stackarray(name, type, size) type* name = (type*)alloca(sizeof(type) * size) //warning: alloca may not be supported in the future
+#define stackarray(name, type, size) type* name = (type*)alloca(sizeof(type) * size) //warning: alloca may not be supported in the future
 #endif
+
+template<typename T>
+struct maybestackarray_freer {
+	T* ptr_to_stack = nullptr;
+	~maybestackarray_freer() {
+		assert(ptr_to_stack != nullptr);
+		_freea(ptr_to_stack);
+	}
+};
+//The Maybestackarray creates an array using a runtime-known size. 
+// It will use stack if it can fit inside _ALLOCA_S_THRESHOLD, and use heap memory if it does not. 
+// Do not call _freea on this, the structure will free itself when its scope ends
+#ifdef _WIN32
+#define maybestackarray(name, type, size) type* name = (type*)_malloca(sizeof(type) * size); maybestackarray_freer<type> name ## _freer{name}
+#else
+#define maybestackarray(name, type, size) type* name = (type*)malloca(sizeof(type) * size); maybestackarray_freer<type> name ## _freer{name}
+#endif
+}

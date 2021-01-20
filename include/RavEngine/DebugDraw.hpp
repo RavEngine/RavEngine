@@ -3,6 +3,7 @@
 #include "SpinLock.hpp"
 #include "Component.hpp"
 #include "Queryable.hpp"
+#include <functional>
 
 namespace  RavEngine {
 
