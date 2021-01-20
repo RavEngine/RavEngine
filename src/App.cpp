@@ -36,6 +36,8 @@ tf::Executor App::executor;
 Ref<InputManager> App::inputManager;
 Ref<World> App::currentWorld;
 
+std::chrono::duration<double,std::milli> App::min_tick_time(1.0/90 * 1000);
+
 App::App(const std::string& resourcesName){
 	//initialize virtual file system library -- on unix systems this must pass argv[0]
 	PHYSFS_init("");
@@ -136,10 +138,14 @@ int App::run(int argc, char** argv) {
 		}
 
 		Renderer->DrawNext(currentWorld);
-
-#ifdef LIMIT_TICK
-		this_thread::sleep_for(tickrate);
-#endif
+        
+        //make up the difference
+        auto workEnd = clocktype::now();
+        timeDiff work_time = duration_cast<timeDiff>(workEnd - now);
+        if (work_time < min_tick_time){
+            std::this_thread::sleep_for(min_tick_time - work_time);
+        }
+        
 		lastFrameTime = now;
 	}
 	

@@ -8,13 +8,12 @@
 #pragma once
 #include "Component.hpp"
 #include "Atomic.hpp"
-#include <array>
-#include <phmap.h>
 #include "mathtypes.hpp"
 #include "WeakRef.hpp"
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "glm/gtx/matrix_decompose.hpp"
+#include "DataStructures.hpp"
 #include "WeakRef.hpp"
 
 namespace RavEngine {

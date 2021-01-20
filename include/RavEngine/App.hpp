@@ -28,6 +28,17 @@ namespace RavEngine {
 		 Signal to gracefully shut down the application
 		 */
 		static void Quit();
+        
+        /**
+         Set the minimum tick time. If the work for the tick completes faster than this time interval,
+         the main thread will sleep for the remaining time. To unlock the tick rate (not advised), set
+         this to 0.
+         @param min_ms the minimum amount of time a tick should take.
+         */
+        template<typename T>
+        static void SetMinTickTime(std::chrono::duration<double,T> min_ms){
+            min_tick_time = min_ms;
+        }
 
 		/**
 		Invoked automatically. Passes command line arguments.
@@ -94,11 +105,8 @@ namespace RavEngine {
 	
 		static ConcurrentQueue<std::function<void(void)>> main_tasks;
 
-		//#define LIMIT_TICK
-#ifdef LIMIT_TICK
-	//change to adjust the ticking speed of the engine (default ~60 fps)
-		std::chrono::microseconds tickrate = std::chrono::microseconds((long)1660);
-#endif
+        //change to adjust the ticking speed of the engine (default 90hz)
+        static std::chrono::duration<double,std::milli> min_tick_time;
 	protected:
 		/**
 		The startup hook.
