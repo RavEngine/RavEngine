@@ -13,7 +13,7 @@ void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Entity> e) {
     //physx requires reads and writes to be sequential
 	
     //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
-    auto rigid = e->GetComponentOfSubclass<PhysicsBodyComponent>();
+    auto rigid = e->GetComponent<PhysicsBodyComponent>();
     dynamicsWorld->lockRead();
     auto pos = rigid->getPos();
     auto rot = rigid->getRot();
@@ -29,7 +29,7 @@ void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<Entity> e) {
     auto transform = e->transform();
     auto pos = transform->GetWorldPosition();
     auto rot = transform->GetWorldRotation();
-    auto rigid = e->GetComponentOfSubclass<PhysicsBodyComponent>();
+    auto rigid = e->GetComponent<PhysicsBodyComponent>();
     dynamicsWorld->lockWrite();
     rigid->setPos(pos);
     rigid->setRot(rot);

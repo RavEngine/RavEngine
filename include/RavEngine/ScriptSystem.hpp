@@ -14,7 +14,7 @@ namespace RavEngine {
 		}
 
 		void Tick(float fpsScale, Ref<Entity> e) override{
-			auto scripts = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+			auto scripts = e->GetAllComponentsOfTypeFastPath<ScriptComponent>();
 			for (auto script : scripts) {
 				std::static_pointer_cast<ScriptComponent>(script)->Tick(fpsScale);
 			}

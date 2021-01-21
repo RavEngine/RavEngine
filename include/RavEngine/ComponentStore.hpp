@@ -6,6 +6,7 @@
 #include <functional>
 #include "DataStructures.hpp"
 #include "CTTI.hpp"
+#include "Debug.hpp"
 
 //macro for checking type in template
 #define C_REF_CHECK static_assert(std::is_base_of<RavEngine::Component, T>::value, "Template parameter must be a Component subclass");
@@ -20,31 +21,6 @@ namespace RavEngine{
 		WeakRef<ComponentStore> parent;	//in entities, this is the World
 		
 		ComponentStructure components;
-		ComponentStructure componentsRedundant;
-		
-		/**
-		For internal use only.
-		@param type the compile-time type identifier to query for. Use RavEngine::CTTI<T> to get it.
-		@return all the components of a class or its base classes to a type index
-		*/
-		template<typename T>
-		inline phmap::flat_hash_set<Ref<T>> GetAllComponentsOfSubclassTypeIndex(const ctti_t type) {
-			C_REF_CHECK
-			//query both types
-			auto& toplevel = components[type];
-			auto& comp = componentsRedundant[type];
-			
-			//insert into
-			phmap::flat_hash_set<Ref<T>> cpy;
-            for(const auto c : toplevel){
-                cpy.insert(std::static_pointer_cast<T>(c));
-            }
-            for(const auto c : comp){
-                cpy.insert(std::static_pointer_cast<T>(c));
-            }
-			return cpy;
-			
-		}
 		
 		/**
 		 For internal use only.
@@ -70,13 +46,6 @@ namespace RavEngine{
 		}
 		
 		/**
-		Fast path for world ticking
-		 */
-		inline const entry_type& GetAllComponentsOfTypeIndexSubclassFastPath(const ctti_t index){
-			return componentsRedundant[index];
-		}
-		
-		/**
 		 Invoked when a component is added to this component store.
 		 @param comp the component that was added
 		 */
@@ -98,19 +67,10 @@ namespace RavEngine{
 		}
 		
 		/**
-		 Fast path for world ticking
-		 */
-		template<typename T>
-		inline const entry_type& GetAllComponentsOfTypeSubclassFastPath(){
-			return componentsRedundant[CTTI<T>];
-		}
-		
-		/**
 		Remove all components from this store
 		*/
 		inline void clear() {
 			components.clear();
-			componentsRedundant.clear();
 		}
 
         /**
@@ -135,7 +95,7 @@ namespace RavEngine{
 
 			//add redundant types
 			for (const auto alt : T::GetQueryTypes()) {
-				componentsRedundant[alt].insert(componentRef);
+				components[alt].insert(componentRef);
 			}
 			OnAddComponent(componentRef);
 			if(!parent.expired()){
@@ -154,8 +114,7 @@ namespace RavEngine{
 			C_REF_CHECK
 			auto& vec = components[CTTI<T>];
 			if (vec.empty()) {
-				//try base classes
-				return GetComponentOfSubclass<T>();
+				Debug::Fatal("No component of type exists");
 			}
 			else {
 				return std::static_pointer_cast<T>(*vec.begin());
@@ -169,46 +128,9 @@ namespace RavEngine{
 		template<typename T>
 		inline bool HasComponentOfType() {
 			C_REF_CHECK
-			return components.contains(CTTI<T>) || HasComponentOfSubclass<T>();
+			return components.contains(CTTI<T>);
 		}
 
-		/**
-		 Determines if this Entity has a component of a base type. Only considers base classes of ref. Pass in the ref type.
-		 @return true if this entity has a component of type ref
-		 */
-		template<typename T>
-		inline bool HasComponentOfSubclass() {
-			C_REF_CHECK
-			return componentsRedundant.contains(CTTI<T>);
-		}
-
-		/**
-		 * Gets the first stored reference of a subclass type. Only use if you know the component you're querying is unique
-		 @return the component of the base class if found
-		 @throws runtime_error if no component of type is found on this Entity. If you are not sure, call HasComponentOfType() first
-		 @throws bad_cast if a cast fails
-		 @note If you have multiple entries that can satisfy this type, which one you recieve is not guarenteed!
-		 */
-		template<typename T>
-		inline Ref<T> GetComponentOfSubclass() {
-			C_REF_CHECK
-				auto& vec = componentsRedundant[CTTI<T>];
-			if (vec.size() == 0) {
-				throw std::runtime_error("No component of type");
-			}
-			else {
-				return std::static_pointer_cast<T>(*vec.begin());
-			}
-		}
-
-		/**
-		 Gets all of the references of a base class type.
-		 @return the list of all the refs of a base class type. The list may be empty.
-		 */
-		template<typename T>
-		inline phmap::flat_hash_set<Ref<T>> GetAllComponentsOfSubclass() {
-			return GetAllComponentsOfSubclassTypeIndex<T>(CTTI<T>);
-		}
 
 		/**
 		 Get all of the components of a specific type. Does NOT search subclasses.
@@ -230,7 +152,7 @@ namespace RavEngine{
 
 			//add redundant types
 			for (const auto& alt : T::GetQueryTypes()) {
-				componentsRedundant[alt].erase(component);
+				components[alt].erase(component);
 			}
 			OnRemoveComponent(component);
 		}
@@ -247,10 +169,6 @@ namespace RavEngine{
 					OnAddComponent(cm);
 				}
 			}
-			//add to the redundant store
-			for (const auto& c : other.componentsRedundant) {
-				componentsRedundant[c.first].insert(c.second.begin(), c.second.end());
-			}
 		}
 
 		/**
@@ -262,12 +180,6 @@ namespace RavEngine{
 				for(const auto& to_remove : type_pair.second){
 					components[type_pair.first].erase(to_remove);
 					OnRemoveComponent(to_remove);
-				}
-			}
-			
-			for (const auto& type_pair : other.componentsRedundant) {
-				for(const auto& to_remove : type_pair.second){
-					componentsRedundant[type_pair.first].erase(to_remove);
 				}
 			}
 		}

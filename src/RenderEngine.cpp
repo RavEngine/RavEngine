@@ -462,13 +462,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	
-	auto geometry = worldOwning->GetAllComponentsOfSubclass<StaticMesh>();
+	auto geometry = worldOwning->GetAllComponentsOfTypeFastPath<StaticMesh>();
    
 	//Deferred geometry pass
-	for (const Ref<StaticMesh> e : geometry) {
+	for (const auto e : geometry) {
 		if (e) {
 			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
-			e->Draw(Views::DeferredGeo);
+			static_pointer_cast<StaticMesh>(e)->Draw(Views::DeferredGeo);
 		}
 	}
 	
@@ -509,7 +509,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	comp->Update();
 	comp->Render();
 	
-	auto shapesToDraw = worldOwning->GetAllComponentsOfTypeSubclassFastPath<IDebugRenderer>();
+	auto shapesToDraw = worldOwning->GetAllComponentsOfTypeFastPath<IDebugRenderer>();
 	for(const auto s : shapesToDraw){
 		auto shape = std::static_pointer_cast<IDebugRenderer>(s);
 		shape->DrawDebug(dbgdraw);

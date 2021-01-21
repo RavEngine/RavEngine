@@ -53,7 +53,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 
 		//start all scripts
 		e->Start();
-		auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+		auto coms = e->GetAllComponentsOfTypeFastPath<ScriptComponent>();
 		for (const auto c : coms) {
 			std::static_pointer_cast<ScriptComponent>(c)->Start();
 		}
@@ -88,7 +88,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	}
 	
 	//stop all scripts
-	auto coms = e->GetAllComponentsOfTypeSubclassFastPath<ScriptComponent>();
+	auto coms = e->GetAllComponentsOfTypeFastPath<ScriptComponent>();
 	for (const auto c : coms) {
 		std::static_pointer_cast<ScriptComponent>(c)->Stop();
 	}
@@ -119,7 +119,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
  */
 void RavEngine::World::TickECS(float fpsScale) {
 	struct systaskpair{
-		tf::Task task1, task2;
+		tf::Task task1;
 		Ref<System> system;
 	};
 	
@@ -132,35 +132,33 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto& queries = system->QueryTypes();
 		count += queries.size();
 	}
-	phmap::flat_hash_map<ctti_t, std::array<ComponentStore::entry_type, 2>> copies(count);
+	phmap::flat_hash_map<ctti_t, ComponentStore::entry_type> copies(count);
 	
     //tick the systems
 	for (auto& s : systemManager.GetInternalStorage()) {
 		auto system = s.second;
 		
 		auto& queries = system->QueryTypes();
+		
+		auto func = [=](Ref<Component> e) {
+			Ref<Entity> en = e->getOwner().lock();
+			if (en) {
+				system->Tick(fpsScale, en);
+			}
+		};
+		
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
 			
 			//Avoid repeating the same query copies multiple times via hashmap
 			if (!copies.contains(query)) {
-				copies[query][0] = GetAllComponentsOfTypeIndexFastPath(query);
-				copies[query][1] = GetAllComponentsOfTypeIndexSubclassFastPath(query);
+				copies[query] = GetAllComponentsOfTypeIndexFastPath(query);
 			}
 
-			auto func = [=](Ref<Component> e) {
-				Ref<Entity> en = e->getOwner().lock();
-				if (en) {
-					system->Tick(fpsScale, en);
-				}
-			};
-
-			auto& l1 = copies[query][0];
-			auto& l2 = copies[query][1];
+			auto& l1 = copies[query];
 
 			graphs[system->ID()] = {
 				masterTasks.for_each(l1.begin(), l1.end(), func),
-				masterTasks.for_each(l2.begin(), l2.end(),func),
 				system };
 		}
 	}
@@ -171,22 +169,20 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto RunPhysics = masterTasks.emplace([=]{
 			Solver.Tick(fpsScale);
 		});
-		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task1,graphs[CTTI<PhysicsLinkSystemRead>].task2);
-		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task1,graphs[CTTI<PhysicsLinkSystemWrite>].task2);
+		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task1);
+		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task1);
 	}
 	
 	//figure out dependencies
 	for(auto& graph : graphs){
 		tf::Task& task1 = graph.second.task1;
-		tf::Task& task2 = graph.second.task2;
 		
 		//call precede
 		{
 			auto& runbefore = graph.second.system->MustRunBefore();
 			for(const auto id : runbefore){
 				if (graphs.contains(id)){
-					task1.precede(graphs[id].task1,graphs[id].task2);
-					task2.precede(graphs[id].task1,graphs[id].task2);
+					task1.precede(graphs[id].task1);
 				}
 			}
 		}
@@ -195,8 +191,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			auto& runafter = graph.second.system->MustRunAfter();
 			for(const auto id : runafter){
 				if (graphs.contains(id)){
-					task1.succeed(graphs[id].task1,graphs[id].task2);
-					task2.succeed(graphs[id].task1,graphs[id].task2);
+					task1.succeed(graphs[id].task1);
 				}
 			}
 		}
