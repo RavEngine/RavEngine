@@ -54,6 +54,10 @@ add_subdirectory("${DEPS_DIR}/concurrentqueue")
 add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
 
+# libnyquist
+SET(BUILD_EXAMPLE OFF)
+add_subdirectory("${DEPS_DIR}/libnyquist")
+
 # resonance-audio
 set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/resonance-audio")
@@ -171,6 +175,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ResonanceAudioObj"
 	#"PhysXGPU"
 	"RmlCore"
+	"libnyquist"
 	PUBLIC
 	"fmt"
 	"etl"
