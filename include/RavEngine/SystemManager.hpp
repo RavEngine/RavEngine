@@ -35,5 +35,9 @@ public:
 	const system_store& GetInternalStorage() const{
 		return Systems;
 	}
+	
+	void Clear(){
+		Systems.clear();
+	}
 };
 }

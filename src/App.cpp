@@ -71,7 +71,7 @@ int App::run(int argc, char** argv) {
 
 	{
 		//make the default texture white
-		uint8_t data[] = {0xCC,0xCC,0xCC,0xCC};
+		uint8_t data[] = {0xFF,0xFF,0xFF,0xFF};
 		TextureManager::defaultTexture = make_shared<RuntimeTexture>(1,1,false,1,4,data);
 	}
 
@@ -138,6 +138,9 @@ int App::run(int argc, char** argv) {
 		}
 
 		Renderer->DrawNext(currentWorld);
+		
+		//TODO: add the buffer here to the audio thread to play
+		auto& synthesizer = currentWorld->GetAudioEngine();
         
         //make up the difference
         auto workEnd = clocktype::now();

@@ -212,11 +212,13 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
  @param e the entity to remove
  */
 void PhysicsSolver::Destroy(Ref<Entity> e){
-    auto body = e->GetComponent<PhysicsBodyComponent>();
-	if (body){
-		mtx.lock();
-		scene->removeActor(*(body->rigidActor));
-		mtx.unlock();
+	if (e->HasComponentOfType<PhysicsBodyComponent>()){
+		auto body = e->GetComponent<PhysicsBodyComponent>();
+		if (body){
+			mtx.lock();
+			scene->removeActor(*(body->rigidActor));
+			mtx.unlock();
+		}
 	}
 }
 

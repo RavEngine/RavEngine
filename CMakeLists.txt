@@ -139,11 +139,11 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/taskflow"
 	"${DEPS_DIR}/RmlUi-freetype/RmlUi/Include"
 	"${DEPS_DIR}/Uuids/include"
+	"${DEPS_DIR}/resonance-audio/resonance_audio/"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
 	"${DEPS_DIR}/stbi"
-	"${DEPS_DIR}/resonance-audio/resonance_audio/"
 )
 
 # ====================== Linking ====================
@@ -166,9 +166,9 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"assimp"
 	"im3d"
 	"physfs-static"
-	"ResonanceAudioObj"
 	"PffftObj"
 	"SadieHrtfsObj"
+	"ResonanceAudioObj"
 	#"PhysXGPU"
 	"RmlCore"
 	PUBLIC

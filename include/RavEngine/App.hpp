@@ -9,6 +9,7 @@
 #include <taskflow/taskflow.hpp>
 #include "World.hpp"
 #include "DataStructures.hpp"
+#include "AudioEngine.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -101,13 +102,16 @@ namespace RavEngine {
 
 	private:
 		static Ref<World> currentWorld;
-
 	
 		static ConcurrentQueue<std::function<void(void)>> main_tasks;
 
         //change to adjust the ticking speed of the engine (default 90hz)
         static std::chrono::duration<double,std::milli> min_tick_time;
 	protected:
+		
+		//plays the audio generated in worlds
+		AudioPlayer player;
+		
 		/**
 		The startup hook.
 		@param argc the number of command line arguments
