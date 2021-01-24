@@ -15,13 +15,13 @@ Ref<RuntimeTexture> TextureManager::defaultTexture;
 Texture::Texture(const std::string& name){
 	//read from resource
 	
-	auto data = App::Resources->FileContentsAt(("/textures/" + name).c_str());
+	std::vector<uint8_t> data;
+	App::Resources->FileContentsAt(("/textures/" + name).c_str(),data);
 	
 	int width, height,channels;
-	stbi_uc const* datastr = reinterpret_cast<const unsigned char* const>(data.c_str());
 	auto compressed_size = sizeof(stbi_uc) * data.size();
 	
-	unsigned char* bytes = stbi_load_from_memory(datastr, compressed_size, &width, &height, &channels, 4);
+	unsigned char* bytes = stbi_load_from_memory(&data[0], compressed_size, &width, &height, &channels, 4);
 	if (bytes == nullptr){
 		Debug::Fatal("Cannot load texture: {}",stbi_failure_reason());
 	}

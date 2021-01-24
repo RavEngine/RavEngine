@@ -206,13 +206,13 @@ void RenderEngine::SetScissorRegion(int x, int y, int width, int height) {
 bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions, const Rml::String& source) {
 	
 	//pull texture out of vfs into byte array, then call createTexture
-	auto data = App::Resources->FileContentsAt(("/textures/" + source).c_str());
+	std::vector<uint8_t> data;
+	App::Resources->FileContentsAt(("/textures/" + source).c_str(),data);
 	
 	int width, height,channels;
-	stbi_uc const* datastr = reinterpret_cast<const unsigned char* const>(data.c_str());
 	auto compressed_size = sizeof(stbi_uc) * data.size();
 	
-	unsigned char* bytes = stbi_load_from_memory(datastr, compressed_size, &width, &height, &channels, 4);
+	unsigned char* bytes = stbi_load_from_memory(&data[0], compressed_size, &width, &height, &channels, 4);
 	if (bytes == nullptr){
 		throw(runtime_error(stbi_failure_reason()));
 	}

@@ -66,12 +66,26 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 	return cpy;
 }
 
+void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<uint8_t>& datavec)
+{
+	
+	auto fullpath = fmt::format("{}/{}",rootname,path);
+	
+	if(!Exists(path)){
+		Debug::Fatal("cannot open {}{}",rootname,path);
+	}
+	
+	auto ptr = PHYSFS_openRead(fullpath.c_str());
+	auto size = PHYSFS_fileLength(ptr);
+	
+	datavec.resize(size);
+	
+	//this version of the call does not need to add a null terminator
+	size_t length_read = PHYSFS_read(ptr,&datavec[0],1,size);
+	PHYSFS_close(ptr);
+}
+
 bool RavEngine::VirtualFilesystem::Exists(const char* path)
 {
 	return PHYSFS_exists(fmt::format("{}/{}",rootname,path).c_str());
-}
-
-
-RavEngine::VirtualFilesystem::~VirtualFilesystem()
-{
 }

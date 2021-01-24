@@ -15,8 +15,10 @@ friend class AudioSyncSystem;
 protected:
 	vraudio::ResonanceAudioApi* audioEngine = nullptr;
 public:
+	static constexpr uint16_t NFRAMES = 32;
+	
 	AudioEngine(){
-		audioEngine = vraudio::CreateResonanceAudioApi(2, 5, 44100);
+		audioEngine = vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100);
 	}
 	~AudioEngine(){
 		delete audioEngine;

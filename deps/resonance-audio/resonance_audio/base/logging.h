@@ -103,6 +103,7 @@ T CheckNotNull(T&& t) {
 }
 #define CHECK_NOTNULL(val) CheckNotNull(val)
 
-#define LOG(severity) NullLogger().GetStream()
+//#define LOG(severity) NullLogger().GetStream()
+#define LOG(severity) FatalLogger(__FILE__, __LINE__).GetStream()
 
 #endif  // RESONANCE_AUDIO_PLATFORM_LOGGING_H_

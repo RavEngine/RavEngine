@@ -30,8 +30,8 @@ const phmap::flat_hash_map<string, ShaderStage> stagemap{
 };
 
 
-bgfx::ShaderHandle loadShader(const string& data){
-	const bgfx::Memory* mem = bgfx::copy(data.c_str(), data.size());
+bgfx::ShaderHandle loadShader(const std::vector<uint8_t>& data){
+	const bgfx::Memory* mem = bgfx::copy(&data[0], data.size());
 	return bgfx::createShader(mem);
 }
 
@@ -52,8 +52,9 @@ Material::Material(const std::string& name) : name(name) {
 	//get all shader files for this programs
 	string dir = "/shaders/" + name;
 
-	auto vertex_src = App::Resources->FileContentsAt((dir + "/vertex.bin").c_str());
-	auto fragment_src = App::Resources->FileContentsAt((dir + "/fragment.bin").c_str());
+	std::vector<uint8_t> vertex_src, fragment_src;
+	App::Resources->FileContentsAt((dir + "/vertex.bin").c_str(),vertex_src);
+	App::Resources->FileContentsAt((dir + "/fragment.bin").c_str(),fragment_src);
 
 	//must have a vertex and a fragment shader
 	bgfx::ShaderHandle vsh = loadShader(vertex_src);

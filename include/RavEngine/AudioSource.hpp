@@ -8,9 +8,10 @@ namespace RavEngine{
 class AudioAsset{
 friend class AudioEngine;
 private:
-	const float* const* audiodata = nullptr;
+	const float* audiodata[1];
 public:
 	AudioAsset(const std::string& name);
+	~AudioAsset();
 };
 
 /**
@@ -27,15 +28,28 @@ protected:
 	friend class AudioSyncSystem;
 	Ref<AudioAsset> asset;
 	float volume = 1;
+	double playhead_pos = 0;
+	bool loops = false;
+	bool isPlaying = false;
+	bool playbackSpeed = 1;
+	
 	vraudio::ResonanceAudioApi::SourceId resonance_handle = vraudio::ResonanceAudioApi::kInvalidSourceId;
 public:
 	AudioSourceComponent(Ref<AudioAsset> a ) : asset(a){}
 	
-	void Play();
+	inline void Play(){
+		isPlaying = true;
+	}
 	
-	void Pause();
+	inline void Pause(){
+		isPlaying = false;
+	}
 	
-	void Restart();
+	inline void Restart(){
+		playhead_pos = 0;
+	}
+	
+	void Tick(float scale);
 };
 
 }

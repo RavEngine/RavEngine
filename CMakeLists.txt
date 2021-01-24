@@ -277,7 +277,7 @@ define_property(GLOBAL PROPERTY COPY_DEPENDS
 function(pack_resources)
 	set(optional)
 	set(args TARGET)
-	set(list_args SHADERS MESHES TEXTURES UIS FONTS)
+	set(list_args SHADERS MESHES TEXTURES UIS FONTS SOUNDS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -324,7 +324,9 @@ function(pack_resources)
 	copy_helper("${ARGS_TEXTURES}" "textures")
 	copy_helper("${ARGS_UIS}" "uis")
 	copy_helper("${ARGS_FONTS}" "fonts")
-    copy_helper("${ENG_FONTS}" "fonts")
+	copy_helper("${ENG_FONTS}" "fonts")
+	copy_helper("${ARGS_SOUNDS}" "sounds")
+
 
 	# get dependency outputs
 	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)
