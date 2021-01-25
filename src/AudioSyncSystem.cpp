@@ -19,5 +19,8 @@ void AudioSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 		engptr.audioEngine->SetSourcePosition(source->resonance_handle, pos.x, pos.y, pos.z);
 		engptr.audioEngine->SetSourceRotation(source->resonance_handle, rot.x, rot.y, rot.z, rot.w);
 		engptr.audioEngine->SetSourceVolume(source->resonance_handle, source->volume);
+		
+		//set the begin pointer
+		engptr.audioEngine->SetPlanarBuffer(source->resonance_handle + source->GetPointerOffset(), source->asset->audiodata, 1, AudioEngine::NFRAMES);
 	}
 }

@@ -12,10 +12,12 @@ class Entity;
  */
 class AudioEngine{
 friend class AudioSyncSystem;
-protected:
-	vraudio::ResonanceAudioApi* audioEngine = nullptr;
 public:
 	static constexpr uint16_t NFRAMES = 32;
+protected:
+	vraudio::ResonanceAudioApi* audioEngine = nullptr;
+	float outputbuffer[NFRAMES * 2];
+public:
 	
 	AudioEngine(){
 		audioEngine = vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100);
@@ -45,6 +47,11 @@ public:
 	 Generate an audio buffer
 	 */
 	void Tick(float fpsScale);
+	
+	float* RenderAudio(){
+		audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, outputbuffer);
+		return outputbuffer;
+	}
 };
 
 /**

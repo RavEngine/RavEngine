@@ -26,6 +26,9 @@ AudioAsset::AudioAsset(const std::string& name){
 		Debug::Warning("Sample rate mismatch in {} - requested {} hz but got {} hz", path, desiredSampleRate, data.sampleRate);
 	}
 	
+	lengthSeconds = data.lengthSeconds;
+	frameSize = data.frameSize;
+	
 	audiodata[0] = new float[data.samples.size()];
 	std::memcpy((void*)audiodata[0], &data.samples[0], data.samples.size() * sizeof(data.samples[0]));
 }
@@ -44,10 +47,13 @@ void AudioSourceComponent::Tick(float scale){
 		playhead_pos += timeDelta;
 		
 		//if looping, wrap around the playhead, otherwise clamp to end
-		//will also need to swap pointer to the version with overlapping end->begin to achieve gapless loop
+		if (loops){
+			playhead_pos = playhead_pos - asset->getLength();
+			//TODO: will also need to swap pointer to the version with overlapping end->begin to achieve gapless loop
+		}
+		else{
+			playhead_pos = asset->getLength();
+		}
 		
 	}
-	
-	
-	
 }

@@ -20,8 +20,6 @@ void AudioEngine::Spawn(Ref<Entity> e){
 		for(auto a : components){
 			auto source = static_pointer_cast<AudioSourceComponent>(a);
 			source->resonance_handle = audioEngine->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
-			audioEngine->SetPlanarBuffer(source->resonance_handle, source->asset->audiodata, 1, NFRAMES);
-			//audioEngine->SetInterleavedBuffer(source->resonance_handle, source->asset->audiodata, 1, 16384);
 		}
 			
 	}

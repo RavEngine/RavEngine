@@ -141,6 +141,7 @@ int App::run(int argc, char** argv) {
 		
 		//TODO: add the buffer here to the audio thread to play
 		auto& synthesizer = currentWorld->GetAudioEngine();
+		auto audiodata = synthesizer.RenderAudio();
         
         //make up the difference
         auto workEnd = clocktype::now();

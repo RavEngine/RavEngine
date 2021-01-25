@@ -60,7 +60,7 @@ namespace RavEngine {
 		bool physicsActive = false;
 	public:
 		
-		const AudioEngine& GetAudioEngine() const { return synthesizer; }
+		AudioEngine& GetAudioEngine() { return synthesizer; }
 		
 		
 		SystemManager systemManager;

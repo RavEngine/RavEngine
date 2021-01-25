@@ -7,11 +7,17 @@ namespace RavEngine{
 
 class AudioAsset{
 friend class AudioEngine;
+friend class AudioSyncSystem;
 private:
 	const float* audiodata[1];
+	double lengthSeconds = 0;
+	size_t frameSize = 0;
 public:
 	AudioAsset(const std::string& name);
 	~AudioAsset();
+	
+	inline size_t GetFrameSize() const {return frameSize;}
+	inline double getLength() const {return lengthSeconds;}
 };
 
 /**
@@ -50,6 +56,10 @@ public:
 	}
 	
 	void Tick(float scale);
+	
+	inline uint64_t GetPointerOffset() const{
+		return playhead_pos * 44100;	//TODO: get audio asset's sample  rate
+	}
 };
 
 }
