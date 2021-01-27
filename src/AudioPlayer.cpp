@@ -1,10 +1,12 @@
 #include "AudioPlayer.hpp"
 #include <SDL.h>
 #include "Debug.hpp"
+#include "World.hpp"
+#include "AudioSource.hpp"
 
 using namespace RavEngine;
 
-static Ref<World> worldToRender;
+static WeakRef<World> worldToRender;
 
 /**
  The audio player tick function. Called every time there is an audio update
@@ -13,10 +15,17 @@ static Ref<World> worldToRender;
  @param len the length of the buffer
  */
 static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
-	//TODO: check world pointer
-	
 	std::memset(stream,0,len);		//fill with silence
-	Debug::LogTemp("Buffer {}",len);
+	Ref<World> world = worldToRender.lock();
+	if (world){
+		auto sources = world->GetAllComponentsOfTypeFastPath<AudioSourceComponent>();
+		//TODO: get appropriate area in source's buffer if it is playing
+		//TODO: update buffer in all Rooms (silence if not currently playing)
+		//TODO: advance all active sources by len
+		//TODO: render all Rooms
+		//TODO: mix output buffers of all rooms
+		//TODO: update stream pointer with rendered output
+	}
 }
 
 void AudioPlayer::Init(){
@@ -24,12 +33,12 @@ void AudioPlayer::Init(){
 	
 	SDL_AudioSpec want, have;
 	
-	std::memset(&want, 0, sizeof(want)); /* or SDL_zero(want) */
-	want.freq = 48000;
+	std::memset(&want, 0, sizeof(want));
+	want.freq = 44100;
 	want.format = AUDIO_F32;
 	want.channels = 2;
 	want.samples = 4096;
-	want.callback = AudioPlayer_Tick; /* you wrote this function elsewhere -- see SDL_AudioSpec for details */
+	want.callback = AudioPlayer_Tick;
 	
 	device = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 	

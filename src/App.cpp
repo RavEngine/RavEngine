@@ -36,7 +36,7 @@ tf::Executor App::executor;
 Ref<InputManager> App::inputManager;
 Ref<World> App::currentWorld;
 
-std::chrono::duration<double,std::milli> App::min_tick_time(1.0/90 * 1000);
+std::chrono::duration<double,std::micro> App::min_tick_time(std::chrono::duration<double,std::milli>(1.0/90 * 1000));
 
 App::App(const std::string& resourcesName){
 	//initialize virtual file system library -- on unix systems this must pass argv[0]

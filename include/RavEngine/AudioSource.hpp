@@ -10,8 +10,9 @@ class AudioAsset{
 	friend class AudioSyncSystem;
 	friend class AudioSourceComponent;
 private:
-	const float* audiodata[1];
+	const float* audiodata;
 	double lengthSeconds = 0;
+	size_t numsamples = 0;
 	size_t frameSize = 0;
 public:
 	AudioAsset(const std::string& name);
@@ -35,7 +36,7 @@ protected:
 	friend class AudioSyncSystem;
 	Ref<AudioAsset> asset;
 	float volume = 1;
-	double playhead_pos = 0;
+	size_t playhead_pos = 0;
 	bool loops = false;
 	bool isPlaying = false;
 	float playbackSpeed = 1;
@@ -54,13 +55,6 @@ public:
 	
 	inline void Restart(){
 		playhead_pos = 0;
-	}
-	
-	void Tick(float scale);
-	
-	inline const float* GetPointerOffset() const{
-		//return playhead_pos * 44100;	//TODO: get audio asset's sample  rate
-		return asset->audiodata[0] + (uint32_t)(playhead_pos * 22050);
 	}
 };
 

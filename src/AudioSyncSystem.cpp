@@ -14,7 +14,6 @@ void AudioSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 		auto source = static_pointer_cast<AudioSourceComponent>(a);
 		auto pos = e->transform()->GetWorldPosition();
 		auto rot = e->transform()->GetWorldRotation();
-		source->Tick(fpsScale);
 		
 		//call setposition / setrotation and pass the audio source component to the AudioEngine
 		engptr.audioEngine->SetSourcePosition(source->resonance_handle, pos.x, pos.y, pos.z);
@@ -22,6 +21,6 @@ void AudioSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 		engptr.audioEngine->SetSourceVolume(source->resonance_handle, source->volume);
 			
 		//set the begin pointer
-		engptr.audioEngine->SetPlanarBuffer(source->resonance_handle, source->asset->audiodata, 1, AudioEngine::NFRAMES);
+		engptr.audioEngine->SetInterleavedBuffer(source->resonance_handle, source->asset->audiodata, 1, AudioEngine::NFRAMES);
 	}
 }

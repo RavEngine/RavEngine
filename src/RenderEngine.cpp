@@ -74,7 +74,7 @@ static std::atomic<bool> bgfx_thread_finished_init = false;
 static std::atomic<bool> render_thread_exit = false;
 std::optional<std::thread> renderThread;
 ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
-static Ref<World> worldToDraw;
+static WeakRef<World> worldToDraw;
 static float currentFrameTime = 0;
 
 struct bgfx_msghandler : public bgfx::CallbackI{
@@ -252,9 +252,10 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd) {
 
 		if (App::Renderer) {			//skip if the App has not set its renderer yet
 			//invoke World rendering call
-			if (worldToDraw) {
+			Ref<World> wtd = worldToDraw.lock();
+			if (wtd) {
 				auto before = std::chrono::high_resolution_clock::now();
-				App::Renderer->Draw(worldToDraw);
+				App::Renderer->Draw(wtd);
 				auto after = std::chrono::high_resolution_clock::now();
 				currentFrameTime = std::chrono::duration<float, std::chrono::milliseconds::period>(after - before).count();
 			}

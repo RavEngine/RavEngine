@@ -106,7 +106,7 @@ namespace RavEngine {
 		static ConcurrentQueue<std::function<void(void)>> main_tasks;
 
         //change to adjust the ticking speed of the engine (default 90hz)
-        static std::chrono::duration<double,std::milli> min_tick_time;
+        static std::chrono::duration<double,std::micro> min_tick_time;
 	protected:
 		
 		//plays the audio generated in worlds
