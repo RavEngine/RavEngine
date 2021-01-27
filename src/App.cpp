@@ -89,8 +89,8 @@ int App::run(int argc, char** argv) {
 		//setup framerate scaling for next frame
 		auto now = clocktype::now();
 		//will cause engine to run in slow motion if the frame rate is <= 1fps
-		deltaTimeMicroseconds = std::min(duration_cast<timeDiff>((now - lastFrameTime)), maxTimeStep);
-		float deltaSeconds = deltaTimeMicroseconds.count() / 1000.0 / 1000;
+		deltaTimeMicroseconds = std::min(duration_cast<timeDiff>(now - lastFrameTime), maxTimeStep);
+        float deltaSeconds = std::chrono::duration<decltype(deltaSeconds)>(deltaTimeMicroseconds).count();
 		time += deltaSeconds;
 		float scale = deltaSeconds * evalNormal;
 		currentScale = scale;
@@ -123,7 +123,6 @@ int App::run(int argc, char** argv) {
 				RenderEngine::debuggerInput->ProcessInput(event,windowflags,scale);
 #endif
 			}
-			
 		}
 	
 #ifdef _DEBUG
@@ -149,7 +148,7 @@ int App::run(int argc, char** argv) {
         
         //make up the difference
         auto workEnd = clocktype::now();
-        timeDiff work_time = duration_cast<timeDiff>(workEnd - now);
+        auto work_time = workEnd - now;
         if (work_time < min_tick_time){
             std::this_thread::sleep_for(min_tick_time - work_time);
         }

@@ -13,7 +13,7 @@
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
-	typedef std::chrono::microseconds timeDiff;
+	typedef std::chrono::duration<double, std::micro> timeDiff;
 	typedef std::chrono::seconds deltaSeconds;
 	typedef std::chrono::time_point<clocktype> timePoint;
 	
