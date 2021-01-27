@@ -61,6 +61,9 @@ App::App(const std::string& resourcesName){
 	
 	//load the built-in fonts
 	GUIComponent::LoadFont("Roboto-Regular.ttf");
+	
+	//setup Audio
+	player.Init();
 }
 
 int App::run(int argc, char** argv) {
@@ -138,6 +141,7 @@ int App::run(int argc, char** argv) {
 		}
 
 		Renderer->DrawNext(currentWorld);
+		player.SetWorld(currentWorld);
 		
 		//TODO: add the buffer here to the audio thread to play
 		auto& synthesizer = currentWorld->GetAudioEngine();
@@ -174,6 +178,7 @@ App::~App(){
 #ifdef _DEBUG
 	Renderer->DeactivateDebugger();
 #endif
+	player.Shutdown();
 	Material::Manager::RemoveAll();
 	PHYSFS_deinit();
 	auto fsi = Rml::GetFileInterface();

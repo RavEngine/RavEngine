@@ -2,6 +2,7 @@
 #include "App.hpp"
 #include "Debug.hpp"
 #include <libnyquist/Decoders.h>
+#include <SDL.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -41,19 +42,21 @@ AudioAsset::~AudioAsset(){
 void AudioSourceComponent::Tick(float scale){
 	//convert to a time delta
 	if (isPlaying){
-		double timeDelta = 1.0/App::evalNormal * scale * playbackSpeed;
+		double timeDelta = (1.0/App::evalNormal) * scale * playbackSpeed;
 		
 		//advance the playhead
 		playhead_pos += timeDelta;
-		
+				
 		//if looping, wrap around the playhead, otherwise clamp to end
-		if (loops){
-			playhead_pos = playhead_pos - asset->getLength();
-			//TODO: will also need to swap pointer to the version with overlapping end->begin to achieve gapless loop
+		if (playhead_pos >= asset->getLength()){
+			if (loops){
+				playhead_pos = playhead_pos - asset->getLength();
+				//TODO: will also need to swap pointer to the version with overlapping end->begin to achieve gapless loop
+			}
+			else{
+				playhead_pos = asset->getLength();
+			}
 		}
-		else{
-			playhead_pos = asset->getLength();
-		}
-		
 	}
 }
+

@@ -4,7 +4,7 @@
 using namespace RavEngine;
 using namespace std;
 
-System::list_type AudioSyncSystem::queries;
+System::list_type AudioSyncSystem::queries {CTTI<AudioSourceComponent>};
 
 void AudioSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 	auto sources = e->GetAllComponentsOfType<AudioSourceComponent>();
@@ -14,13 +14,14 @@ void AudioSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 		auto source = static_pointer_cast<AudioSourceComponent>(a);
 		auto pos = e->transform()->GetWorldPosition();
 		auto rot = e->transform()->GetWorldRotation();
+		source->Tick(fpsScale);
 		
 		//call setposition / setrotation and pass the audio source component to the AudioEngine
 		engptr.audioEngine->SetSourcePosition(source->resonance_handle, pos.x, pos.y, pos.z);
 		engptr.audioEngine->SetSourceRotation(source->resonance_handle, rot.x, rot.y, rot.z, rot.w);
 		engptr.audioEngine->SetSourceVolume(source->resonance_handle, source->volume);
-		
+			
 		//set the begin pointer
-		engptr.audioEngine->SetPlanarBuffer(source->resonance_handle + source->GetPointerOffset(), source->asset->audiodata, 1, AudioEngine::NFRAMES);
+		engptr.audioEngine->SetPlanarBuffer(source->resonance_handle, source->asset->audiodata, 1, AudioEngine::NFRAMES);
 	}
 }

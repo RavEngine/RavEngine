@@ -125,7 +125,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		Ref<System> system;
 	};
 	
-	locked_hashmap<ctti_t, systaskpair, SpinLock> graphs;
+	phmap::flat_hash_map<ctti_t, systaskpair> graphs;
 
 	size_t count = 0;
 	for (auto& s : systemManager.GetInternalStorage()) {

@@ -6,8 +6,9 @@
 namespace RavEngine{
 
 class AudioAsset{
-friend class AudioEngine;
-friend class AudioSyncSystem;
+	friend class AudioEngine;
+	friend class AudioSyncSystem;
+	friend class AudioSourceComponent;
 private:
 	const float* audiodata[1];
 	double lengthSeconds = 0;
@@ -37,7 +38,7 @@ protected:
 	double playhead_pos = 0;
 	bool loops = false;
 	bool isPlaying = false;
-	bool playbackSpeed = 1;
+	float playbackSpeed = 1;
 	
 	vraudio::ResonanceAudioApi::SourceId resonance_handle = vraudio::ResonanceAudioApi::kInvalidSourceId;
 public:
@@ -57,8 +58,9 @@ public:
 	
 	void Tick(float scale);
 	
-	inline uint64_t GetPointerOffset() const{
-		return playhead_pos * 44100;	//TODO: get audio asset's sample  rate
+	inline const float* GetPointerOffset() const{
+		//return playhead_pos * 44100;	//TODO: get audio asset's sample  rate
+		return asset->audiodata[0] + (uint32_t)(playhead_pos * 22050);
 	}
 };
 

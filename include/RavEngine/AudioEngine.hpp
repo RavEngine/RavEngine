@@ -53,12 +53,4 @@ public:
 		return outputbuffer;
 	}
 };
-
-/**
- Is responsible for making the buffers generated in the above class come out your speakers
- */
-class AudioPlayer{
-	
-};
-
 }
