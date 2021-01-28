@@ -56,6 +56,42 @@ public:
 	inline void Restart(){
 		playhead_pos = 0;
 	}
+
+	/**
+	 Generate an audio data buffer based on the current source
+	 @param buffer destination for the data
+	 @param count the size of the buffer, in bytes
+	 */
+	inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
+		// figure out how much overrun
+		auto audiosizebytes = asset->numsamples * sizeof(asset->audiodata[0]);
+		auto samplesize = sizeof(asset->audiodata[0]);
+		
+		int overrun = (playhead_pos + count) - audiosizebytes;
+		if (overrun > 0){
+			//if looping, wrap around
+			if (loops){
+				assert(false);	//TODO: loop does not correctly wrap playhead!
+				auto amt = audiosizebytes - playhead_pos * samplesize;
+				std::memcpy(buffer, asset->audiodata + playhead_pos, amt);
+				playhead_pos += amt / samplesize;
+				//recursively repeat
+				GetSampleRegionAndAdvance(buffer + amt, count - overrun);
+			}
+			else{
+				//otherwise fill remaining space in the buffer with silence
+				std::memcpy(buffer, asset->audiodata + playhead_pos, asset->numsamples - playhead_pos);
+				std::memset(buffer + overrun, 0, count - overrun);
+				
+				playhead_pos = asset->numsamples;
+			}
+		}
+		else{
+			//simply memcpy to fill buffer
+			std::memcpy(buffer,asset->audiodata + playhead_pos, count);
+			playhead_pos += count;
+		}
+	}
 };
 
 }

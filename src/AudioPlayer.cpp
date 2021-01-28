@@ -5,6 +5,7 @@
 #include "AudioSource.hpp"
 
 using namespace RavEngine;
+using namespace std;
 
 static WeakRef<World> worldToRender;
 
@@ -19,9 +20,21 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 	Ref<World> world = worldToRender.lock();
 	if (world){
 		auto sources = world->GetAllComponentsOfTypeFastPath<AudioSourceComponent>();
+		
+		float shared_buffer[len];
+		
+		for(const auto& s : sources){
+			Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);
+			std::memset(shared_buffer, 0, len);
+			source->GetSampleRegionAndAdvance(shared_buffer, len);
+			memcpy(stream, shared_buffer, len);
+//			for(int i = 0; i < len; i++){
+//				stream[i] += shared_buffer[i];
+//			}
+		}
+		
 		//TODO: get appropriate area in source's buffer if it is playing
 		//TODO: update buffer in all Rooms (silence if not currently playing)
-		//TODO: advance all active sources by len
 		//TODO: render all Rooms
 		//TODO: mix output buffers of all rooms
 		//TODO: update stream pointer with rendered output
@@ -34,9 +47,9 @@ void AudioPlayer::Init(){
 	SDL_AudioSpec want, have;
 	
 	std::memset(&want, 0, sizeof(want));
-	want.freq = 44100;
+	want.freq = 22050;
 	want.format = AUDIO_F32;
-	want.channels = 2;
+	want.channels = 1;
 	want.samples = 4096;
 	want.callback = AudioPlayer_Tick;
 	
