@@ -2,6 +2,7 @@
 #include "SpinLock.hpp"
 #include <fmt/format.h>
 #include <chrono>
+#include "PhysXDefines.h"
 
 namespace RavEngine {
 

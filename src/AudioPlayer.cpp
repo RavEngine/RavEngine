@@ -21,17 +21,21 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 	if (world){
 		auto sources = world->GetAllComponentsOfTypeFastPath<AudioSourceComponent>();
 		
-		float shared_buffer[len];
+		float shared_buffer[len/sizeof(float)];
+		float accum_buffer[len/sizeof(float)];
+		std::memset(accum_buffer, 0, len);
 		
 		for(const auto& s : sources){
 			Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);
-			std::memset(shared_buffer, 0, len);
-			source->GetSampleRegionAndAdvance(shared_buffer, len);
-			memcpy(stream, shared_buffer, len);
-//			for(int i = 0; i < len; i++){
-//				stream[i] += shared_buffer[i];
-//			}
+			if (source->IsPlaying()){
+				std::memset(shared_buffer, 0, len);
+				source->GetSampleRegionAndAdvance(shared_buffer, len);
+				for(int i = 0; i < len/sizeof(float); i++){
+					accum_buffer[i] += shared_buffer[i];
+				}
+			}
 		}
+		std::memcpy(stream, accum_buffer, len);
 		
 		//TODO: get appropriate area in source's buffer if it is playing
 		//TODO: update buffer in all Rooms (silence if not currently playing)

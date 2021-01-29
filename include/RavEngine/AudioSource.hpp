@@ -56,6 +56,8 @@ public:
 	inline void Restart(){
 		playhead_pos = 0;
 	}
+	
+	inline bool IsPlaying(){ return isPlaying; }
 
 	/**
 	 Generate an audio data buffer based on the current source
@@ -67,7 +69,7 @@ public:
 		auto audiosizebytes = asset->numsamples * sizeof(asset->audiodata[0]);
 		auto samplesize = sizeof(asset->audiodata[0]);
 		
-		int overrun = (playhead_pos + count) - audiosizebytes;
+		int overrun = (playhead_pos * samplesize + count) - audiosizebytes;
 		if (overrun > 0){
 			//if looping, wrap around
 			if (loops){
@@ -84,12 +86,13 @@ public:
 				std::memset(buffer + overrun, 0, count - overrun);
 				
 				playhead_pos = asset->numsamples;
+				isPlaying = false;
 			}
 		}
 		else{
 			//simply memcpy to fill buffer
 			std::memcpy(buffer,asset->audiodata + playhead_pos, count);
-			playhead_pos += count;
+			playhead_pos += count / samplesize;
 		}
 	}
 };
