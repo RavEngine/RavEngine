@@ -57,6 +57,8 @@ public:
 		playhead_pos = 0;
 	}
 	
+	inline void SetLoop(bool loop) {loops = loop;}
+	
 	inline bool IsPlaying(){ return isPlaying; }
 
 	/**
@@ -65,34 +67,20 @@ public:
 	 @param count the size of the buffer, in bytes
 	 */
 	inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
-		// figure out how much overrun
-		auto audiosizebytes = asset->numsamples * sizeof(asset->audiodata[0]);
-		auto samplesize = sizeof(asset->audiodata[0]);
-		
-		int overrun = (playhead_pos * samplesize + count) - audiosizebytes;
-		if (overrun > 0){
-			//if looping, wrap around
-			if (loops){
-				assert(false);	//TODO: loop does not correctly wrap playhead!
-				auto amt = audiosizebytes - playhead_pos * samplesize;
-				std::memcpy(buffer, asset->audiodata + playhead_pos, amt);
-				playhead_pos += amt / samplesize;
-				//recursively repeat
-				GetSampleRegionAndAdvance(buffer + amt, count - overrun);
+		for(size_t i = 0; i < count/sizeof(buffer[0]); i++){
+			//is playhead past end of source?
+			if (playhead_pos >= asset->numsamples){
+				if (loops){
+					playhead_pos = 0;
+				}
+				else{
+					buffer[i] = 0;
+					isPlaying = false;
+					continue;
+				}
 			}
-			else{
-				//otherwise fill remaining space in the buffer with silence
-				std::memcpy(buffer, asset->audiodata + playhead_pos, asset->numsamples - playhead_pos);
-				std::memset(buffer + overrun, 0, count - overrun);
-				
-				playhead_pos = asset->numsamples;
-				isPlaying = false;
-			}
-		}
-		else{
-			//simply memcpy to fill buffer
-			std::memcpy(buffer,asset->audiodata + playhead_pos, count);
-			playhead_pos += count / samplesize;
+			buffer[i] = asset->audiodata[playhead_pos];
+			playhead_pos++;
 		}
 	}
 };
