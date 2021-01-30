@@ -55,7 +55,7 @@ add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
 
 # libnyquist
-SET(BUILD_EXAMPLE OFF)
+SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist")
 
 # resonance-audio
