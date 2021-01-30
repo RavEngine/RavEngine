@@ -63,6 +63,8 @@ public:
 		playhead_pos = 0;
 	}
 	
+	inline float GetVolume() const { return volume; }
+	
 	/**
 	 Change the volume for this source
 	 @param vol new volume for this source.
@@ -79,7 +81,7 @@ public:
 	/**
 	 @return true if the source is currently playing, false otherwise
 	 */
-	inline bool IsPlaying(){ return isPlaying; }
+	inline bool IsPlaying() const { return isPlaying; }
 
 	/**
 	 Generate an audio data buffer based on the current source

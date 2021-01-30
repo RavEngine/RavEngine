@@ -21,20 +21,15 @@ void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<SpinLoc
 			//get appropriate area in source's buffer if it is playing
 			source->GetSampleRegionAndAdvance(temp, nbytes/2);
 			
-			//temporary: convert to stereo from mono
-			for(int i = 0; i < nbytes/sizeof(float)/2; i++){
-				outtemp[2*i] = temp[i];
-				outtemp[2*i+1] = temp[i];
-			}
-			
-//			auto worldpos = owner->transform()->GetWorldPosition();
-//			auto worldrot = owner->transform()->GetWorldRotation();
-//
-//			audioEngine->SetInterleavedBuffer(src, temp, 1, NFRAMES);
-//			audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
-//			audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
-//
-//			audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, outtemp);
+			auto worldpos = owner->transform()->GetWorldPosition();
+			auto worldrot = owner->transform()->GetWorldRotation();
+
+			audioEngine->SetInterleavedBuffer(src, temp, 1, NFRAMES);
+			audioEngine->SetSourceVolume(src, source->GetVolume());
+			audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
+			audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
+
+			audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, outtemp);
 			
 			//mix results
 			for(int i = 0; i < nbytes/sizeof(float); i++){

@@ -14,7 +14,7 @@ namespace RavEngine{
 class AudioRoom : public Component, public Queryable<AudioRoom>{
 friend class AudioSyncSystem;
 public:
-	static constexpr uint16_t NFRAMES = 32;
+	static constexpr uint16_t NFRAMES = 4096;
 protected:
 	vraudio::ResonanceAudioApi* audioEngine = nullptr;
 	vraudio::ResonanceAudioApi::SourceId src = vraudio::ResonanceAudioApi::kInvalidSourceId;

@@ -63,7 +63,7 @@ void AudioPlayer::Init(){
 	want.freq = 44100;
 	want.format = AUDIO_F32;
 	want.channels = 2;
-	want.samples = 4096;
+	want.samples = AudioRoom::NFRAMES;
 	want.callback = AudioPlayer_Tick;
 	
 	device = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
