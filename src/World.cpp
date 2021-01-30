@@ -16,7 +16,6 @@
 #include "GUI.hpp"
 #include "InputManager.hpp"
 #include "ChildEntityComponent.hpp"
-#include "AudioSyncSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -36,7 +35,6 @@ RavEngine::World::World(){
 	//reserve space to reduce rehashing
 	Entities.reserve(4000);
 	systemManager.RegisterSystem<ScriptSystem>(make_shared<ScriptSystem>());
-	systemManager.RegisterSystem<AudioSyncSystem>(make_shared<AudioSyncSystem>(synthesizer));
 }
 
 /**
@@ -60,7 +58,6 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 
 		//make the physics system aware of this entity
 		Solver.Spawn(e);
-		synthesizer.Spawn(e);
 
 		//merge the entity into the world
 		Merge(*e.get());
@@ -104,7 +101,6 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 
 	//remove the objects from the Physics system
 	Solver.Destroy(e);
-	synthesizer.Destroy(e);
 	Entities.erase(e);
 	
 	//get all child entities
@@ -174,11 +170,6 @@ void RavEngine::World::TickECS(float fpsScale) {
 		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task1);
 		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task1);
 	}
-	
-	//add the AudioSystem tick
-	masterTasks.emplace([fpsScale, this]{
-		synthesizer.Tick(fpsScale);
-	});
 	
 	//figure out dependencies
 	for(auto& graph : graphs){

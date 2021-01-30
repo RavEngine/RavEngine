@@ -1,0 +1,45 @@
+#include "AudioRoom.hpp"
+#include "Entity.hpp"
+#include "AudioSource.hpp"
+
+using namespace RavEngine;
+using namespace std;
+
+void AudioRoom::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
+	audioEngine->SetHeadPosition(worldpos.x, worldpos.y, worldpos.z);
+	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
+}
+
+void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<SpinLock>::entry_type &sources){
+	float temp[nbytes/sizeof(float)/2];
+	float outtemp[nbytes/sizeof(float)];
+
+	for(const auto& s : sources){
+		Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);
+		Ref<Entity> owner = source->getOwner().lock();
+		if (owner && owner->IsInWorld() && source->IsPlaying()){
+			//get appropriate area in source's buffer if it is playing
+			source->GetSampleRegionAndAdvance(temp, nbytes/2);
+			
+			//temporary: convert to stereo from mono
+			for(int i = 0; i < nbytes/sizeof(float)/2; i++){
+				outtemp[2*i] = temp[i];
+				outtemp[2*i+1] = temp[i];
+			}
+			
+//			auto worldpos = owner->transform()->GetWorldPosition();
+//			auto worldrot = owner->transform()->GetWorldRotation();
+//
+//			audioEngine->SetInterleavedBuffer(src, temp, 1, NFRAMES);
+//			audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
+//			audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
+//
+//			audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, outtemp);
+			
+			//mix results
+			for(int i = 0; i < nbytes/sizeof(float); i++){
+				ptr[i] += outtemp[i];
+			}
+		}
+	}
+}

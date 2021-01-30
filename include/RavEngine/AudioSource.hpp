@@ -1,4 +1,3 @@
-#include <api/resonance_audio_api.h>
 #include "Component.hpp"
 #include "Queryable.hpp"
 #include <vector>
@@ -40,7 +39,6 @@ protected:
 	bool loops = false;
 	bool isPlaying = false;
 	
-	vraudio::ResonanceAudioApi::SourceId resonance_handle = vraudio::ResonanceAudioApi::kInvalidSourceId;
 public:
 	AudioSourceComponent(Ref<AudioAsset> a ) : asset(a){}
 	

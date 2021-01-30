@@ -2,28 +2,31 @@
 #include <api/resonance_audio_api.h>
 #include "mathtypes.hpp"
 #include "Ref.hpp"
+#include "ComponentStore.hpp"
+#include "SpinLock.hpp"
+#include "Queryable.hpp"
 
 namespace RavEngine{
-
-class Entity;
 
 /**
  Renders audio buffers based on its owning world's state
  */
-class AudioEngine{
+class AudioRoom : public Component, public Queryable<AudioRoom>{
 friend class AudioSyncSystem;
 public:
 	static constexpr uint16_t NFRAMES = 32;
 protected:
 	vraudio::ResonanceAudioApi* audioEngine = nullptr;
-	float outputbuffer[NFRAMES * 2];
+	vraudio::ResonanceAudioApi::SourceId src = vraudio::ResonanceAudioApi::kInvalidSourceId;
 public:
 	
-	AudioEngine(){
+	AudioRoom(){
 		audioEngine = vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100);
+		src = audioEngine->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralLowQuality);
 	}
-	~AudioEngine(){
+	~AudioRoom(){
 		delete audioEngine;
+		src = vraudio::ResonanceAudioApi::kInvalidSourceId;
 	}
 	
 	/**
@@ -34,23 +37,12 @@ public:
 	void SetListenerTransform(const vector3& worldpos, const quaternion& worldrotation);
 	
 	/**
-	 Make the audio engine aware of the entity and its sound components
+	 Simulate spacial audio for a set of audio sources
+	 @param ptr destination for the calculated audio
+	 @param nbytes length of the buffer in bytes
+	 @param sources the AudioSource components to calculate for
 	 */
-	void Spawn(Ref<Entity>);
-	
-	/**
-	 Make the audio engine no longer aware of the entity and its sound components
-	 */
-	void Destroy(Ref<Entity>);
-	
-	/**
-	 Generate an audio buffer
-	 */
-	void Tick(float fpsScale);
-	
-	float* RenderAudio(){
-		audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, outputbuffer);
-		return outputbuffer;
-	}
+	void Simulate(float* ptr, size_t nbytes, const ComponentStore<SpinLock>::entry_type& sources);
+
 };
 }

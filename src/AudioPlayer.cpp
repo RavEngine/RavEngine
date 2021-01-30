@@ -3,6 +3,7 @@
 #include "Debug.hpp"
 #include "World.hpp"
 #include "AudioSource.hpp"
+#include "AudioRoom.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -20,21 +21,27 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 	Ref<World> world = worldToRender.lock();
 	if (world){
 		auto sources = world->GetAllComponentsOfTypeFastPath<AudioSourceComponent>();
+		auto rooms = world->GetAllComponentsOfTypeFastPath<AudioRoom>();
+		
+		//use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
+		auto listener = world->GetComponent<AudioListener>();
+		auto listenerTransform = listener->getOwner().lock()->transform();
+		auto lpos = listenerTransform->GetWorldPosition();
+		auto lrot = listenerTransform->GetWorldRotation();
 		
 		float shared_buffer[len/sizeof(float)];
 		float accum_buffer[len/sizeof(float)];
 		std::memset(accum_buffer, 0, len);
 		
-		for(const auto& s : sources){
-			Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);
-			if (source->IsPlaying()){
-				std::memset(shared_buffer, 0, len);
-				//get appropriate area in source's buffer if it is playing
-				source->GetSampleRegionAndAdvance(shared_buffer, len);
-				for(int i = 0; i < len/sizeof(float); i++){
-					//mix with existing
-					accum_buffer[i] += shared_buffer[i];
-				}
+		for(const auto& r : rooms){
+			Ref<AudioRoom> room = static_pointer_cast<AudioRoom>(r);
+			room->SetListenerTransform(lpos, lrot);
+			std::memset(shared_buffer, 0, len);
+			//simulate in the room
+			room->Simulate(shared_buffer, len, sources);
+			for(int i = 0; i < len/sizeof(float); i++){
+				//mix with existing
+				accum_buffer[i] += shared_buffer[i];
 			}
 		}
 		
@@ -55,7 +62,7 @@ void AudioPlayer::Init(){
 	std::memset(&want, 0, sizeof(want));
 	want.freq = 44100;
 	want.format = AUDIO_F32;
-	want.channels = 1;
+	want.channels = 2;
 	want.samples = 4096;
 	want.callback = AudioPlayer_Tick;
 	

@@ -14,8 +14,9 @@
 namespace RavEngine{
 	template<class lock = phmap::NullMutex>
 	class ComponentStore : public SharedObject {
-	protected:
+	public:
 		typedef locked_hashset<Ref<RavEngine::Component>,lock> entry_type;
+	protected:
 		typedef locked_hashmap<ctti_t, entry_type,lock> ComponentStructure;
 		
 		WeakRef<ComponentStore> parent;	//in entities, this is the World

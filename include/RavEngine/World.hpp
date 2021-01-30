@@ -18,7 +18,6 @@
 #include "ScriptSystem.hpp"
 #include <taskflow/taskflow.hpp>
 #include "SpinLock.hpp"
-#include "AudioEngine.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -32,9 +31,6 @@ namespace RavEngine {
 
 		//physics system
 		PhysicsSolver Solver;
-		
-		//audio generation
-		AudioEngine synthesizer;
 
 		/**
 		Called before ticking components and entities synchronously
@@ -59,9 +55,6 @@ namespace RavEngine {
 		
 		bool physicsActive = false;
 	public:
-		
-		AudioEngine& GetAudioEngine() { return synthesizer; }
-		
 		
 		SystemManager systemManager;
 		

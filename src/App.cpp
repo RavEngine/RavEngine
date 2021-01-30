@@ -141,11 +141,7 @@ int App::run(int argc, char** argv) {
 
 		Renderer->DrawNext(currentWorld);
 		player.SetWorld(currentWorld);
-		
-		//TODO: add the buffer here to the audio thread to play
-		auto& synthesizer = currentWorld->GetAudioEngine();
-		auto audiodata = synthesizer.RenderAudio();
-        
+		        
         //make up the difference
         auto workEnd = clocktype::now();
         auto work_time = workEnd - now;
