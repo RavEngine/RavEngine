@@ -25,32 +25,34 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 		auto rooms = world->GetAllComponentsOfTypeFastPath<AudioRoom>();
 		
 		//use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
-		auto listener = world->GetComponent<AudioListener>();
-		auto listenerTransform = listener->getOwner().lock()->transform();
-		auto lpos = listenerTransform->GetWorldPosition();
-		auto lrot = listenerTransform->GetWorldRotation();
-		
-		stackarray(shared_buffer, float, len/sizeof(float));
-		stackarray(accum_buffer, float, len/sizeof(float));
-										 
-		std::memset(accum_buffer, 0, len);
-		
-		for(const auto& r : rooms){
-			Ref<AudioRoom> room = static_pointer_cast<AudioRoom>(r);
-			room->SetListenerTransform(lpos, lrot);
-			std::memset(shared_buffer, 0, len);
-			//simulate in the room
-			room->Simulate(shared_buffer, len, sources);
-			for(int i = 0; i < len/sizeof(float); i++){
-				//mix with existing
-				accum_buffer[i] += shared_buffer[i];
+		if (world->HasComponentOfType<AudioListener>()) {
+			auto listener = world->GetComponent<AudioListener>();
+			auto listenerTransform = listener->getOwner().lock()->transform();
+			auto lpos = listenerTransform->GetWorldPosition();
+			auto lrot = listenerTransform->GetWorldRotation();
+
+			stackarray(shared_buffer, float, len / sizeof(float));
+			stackarray(accum_buffer, float, len / sizeof(float));
+
+			std::memset(accum_buffer, 0, len);
+
+			for (const auto& r : rooms) {
+				Ref<AudioRoom> room = static_pointer_cast<AudioRoom>(r);
+				room->SetListenerTransform(lpos, lrot);
+				std::memset(shared_buffer, 0, len);
+				//simulate in the room
+				room->Simulate(shared_buffer, len, sources);
+				for (int i = 0; i < len / sizeof(float); i++) {
+					//mix with existing
+					accum_buffer[i] += shared_buffer[i];
+				}
 			}
+
+			//update stream pointer with rendered output
+			std::memcpy(stream, accum_buffer, len);
+
+			//TODO: mix music (non-spatialized) audio
 		}
-		
-		//update stream pointer with rendered output
-		std::memcpy(stream, accum_buffer, len);
-		
-		//TODO: mix music (non-spatialized) audio
 	}
 }
 

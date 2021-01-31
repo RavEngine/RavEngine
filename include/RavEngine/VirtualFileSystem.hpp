@@ -1,6 +1,7 @@
 #pragma once
 #include "SharedObject.hpp"
 #include <string>
+#include <vector>
 
 namespace RavEngine{
 class VirtualFilesystem : public SharedObject{

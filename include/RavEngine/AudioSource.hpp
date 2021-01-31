@@ -1,6 +1,7 @@
 #include "Component.hpp"
 #include "Queryable.hpp"
 #include <vector>
+#include <string>
 
 namespace RavEngine{
 

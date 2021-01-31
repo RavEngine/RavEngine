@@ -69,7 +69,7 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<uint8_t>& datavec)
 {
 	
-	auto fullpath = fmt::format("{}/{}",rootname,path);
+	string fullpath = fmt::format("{}/{}",rootname,path);
 	
 	if(!Exists(path)){
 		Debug::Fatal("cannot open {}{}",rootname,path);

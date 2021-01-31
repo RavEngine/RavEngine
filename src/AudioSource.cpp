@@ -3,6 +3,7 @@
 #include "Debug.hpp"
 #include <libnyquist/Decoders.h>
 #include <SDL.h>
+#include <filesystem>
 
 using namespace RavEngine;
 using namespace std;
