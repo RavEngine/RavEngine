@@ -6,8 +6,10 @@
 #include "SpinLock.hpp"
 #include "Queryable.hpp"
 #include "AudioRoomSyncSystem.hpp"
+#include "AudioRoomMaterial.hpp"
 
 namespace RavEngine{
+
 /**
  Renders audio buffers based on its owning world's state
  */
@@ -56,5 +58,10 @@ public:
 	 @return the dimensions of this room
 	 */
 	decltype(roomDimensions) GetRoomDimensions() const {return roomDimensions; }
+	
+	void SetRoomMaterial(const RoomMaterial& properties){
+		audioEngine->SetReverbProperties(static_cast<RoomMaterial>(properties));
+	}
 };
+
 }

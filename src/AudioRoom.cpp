@@ -1,6 +1,7 @@
 #include "AudioRoom.hpp"
 #include "Entity.hpp"
 #include "AudioSource.hpp"
+#include "DataStructures.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -11,8 +12,8 @@ void AudioRoom::SetListenerTransform(const vector3 &worldpos, const quaternion &
 }
 
 void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<SpinLock>::entry_type &sources){
-	float temp[nbytes/sizeof(float)/2];
-	float outtemp[nbytes/sizeof(float)];
+	stackarray(temp, float, nbytes/sizeof(float)/2);
+	stackarray(outtemp, float, nbytes/sizeof(float));
 
 	for(const auto& s : sources){
 		Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);

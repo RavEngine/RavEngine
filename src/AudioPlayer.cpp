@@ -4,6 +4,7 @@
 #include "World.hpp"
 #include "AudioSource.hpp"
 #include "AudioRoom.hpp"
+#include "DataStructures.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -29,8 +30,9 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 		auto lpos = listenerTransform->GetWorldPosition();
 		auto lrot = listenerTransform->GetWorldRotation();
 		
-		float shared_buffer[len/sizeof(float)];
-		float accum_buffer[len/sizeof(float)];
+		stackarray(shared_buffer, float, len/sizeof(float));
+		stackarray(accum_buffer, float, len/sizeof(float));
+										 
 		std::memset(accum_buffer, 0, len);
 		
 		for(const auto& r : rooms){
@@ -48,9 +50,7 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 		//update stream pointer with rendered output
 		std::memcpy(stream, accum_buffer, len);
 		
-		//TODO: update buffer in all Rooms (silence if not currently playing)
-		//TODO: render all Rooms
-		//TODO: mix output buffers of all rooms
+		//TODO: mix music (non-spatialized) audio
 	}
 }
 
