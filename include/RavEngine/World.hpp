@@ -14,16 +14,18 @@
 #include "DataStructures.hpp"
 #include "SystemManager.hpp"
 #include "SpinLock.hpp"
-#include <type_traits>
 #include "ScriptSystem.hpp"
 #include <taskflow/taskflow.hpp>
 #include "SpinLock.hpp"
+#include <plf_list.h>
+#include "AudioSource.hpp"
 
 namespace RavEngine {
 	class Entity;
 	class InputManager;
 
 	class World : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<World>{
+		friend class AudioPlayer;
 	protected:
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
@@ -31,6 +33,9 @@ namespace RavEngine {
 
 		//physics system
 		PhysicsSolver Solver;
+		
+		//fire-and-forget audio
+		plf::list<InstantaneousAudioSource> instantaneousToPlay;
 
 		/**
 		Called before ticking components and entities synchronously
@@ -85,6 +90,11 @@ namespace RavEngine {
 			return Entities;
 		}
 
+		
+		void PlaySound(const InstantaneousAudioSource& ias){
+			instantaneousToPlay.push_back(ias);
+		}
+		
 		/**
 		 Called by GameplayStatics when the final world is being deallocated
 		 */

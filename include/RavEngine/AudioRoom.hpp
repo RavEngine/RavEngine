@@ -7,14 +7,18 @@
 #include "Queryable.hpp"
 #include "AudioRoomSyncSystem.hpp"
 #include "AudioRoomMaterial.hpp"
+#include "AudioSource.hpp"
 
 namespace RavEngine{
+
+class AudioPlayer;
 
 /**
  Renders audio buffers based on its owning world's state
  */
 class AudioRoom : public Component, public Queryable<AudioRoom>{
 	friend class RavEngine::AudioRoomSyncSystem;
+	friend class RavEngine::AudioPlayer;
 public:
 	static constexpr uint16_t NFRAMES = 4096;
 protected:
@@ -22,6 +26,9 @@ protected:
 	vraudio::ResonanceAudioApi::SourceId src = vraudio::ResonanceAudioApi::kInvalidSourceId;
 
 	vector3 roomDimensions;
+	
+	void SimulateSingle(float* ptr, size_t nbytes, AudioPlayerData*, const vector3& pos, const quaternion& rot);
+	
 public:
 	
 	AudioRoom(){

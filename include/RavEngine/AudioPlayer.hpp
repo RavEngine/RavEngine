@@ -3,10 +3,12 @@
 #include "Ref.hpp"
 
 namespace RavEngine{
+
+class World;
+
 /**
  Is responsible for making the buffers generated in the Audio Engine class come out your speakers
  */
-class World;
 class AudioPlayer{
 	SDL_AudioDeviceID device;
 public:
@@ -24,6 +26,11 @@ public:
 	 Shut down the audio player
 	 */
 	void Shutdown();
-	};
+	
+	/**
+	 Tick function, used internally
+	 */
+	static void Tick(void *udata, Uint8 *stream, int len);
+};
 
 }

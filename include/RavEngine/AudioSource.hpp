@@ -1,14 +1,15 @@
+#pragma once
 #include "Component.hpp"
 #include "Queryable.hpp"
-#include <vector>
 #include <string>
+#include "mathtypes.hpp"
 
 namespace RavEngine{
 
 class AudioAsset{
 	friend class AudioEngine;
 	friend class AudioSyncSystem;
-	friend class AudioSourceComponent;
+	friend class AudioPlayerData;
 private:
 	const float* audiodata;
 	double lengthSeconds = 0;
@@ -22,15 +23,16 @@ public:
 	inline double getLength() const {return lengthSeconds;}
 };
 
+
 /**
  This is a marker component to indicate where the "microphone" is in the world. Do not have more than one in a world.
  */
 class AudioListener : public Component, public Queryable<AudioListener>{};
 
 /**
- Represents a single audio source. To represent multiple sources, simply attach multiple of this component type to your Entity.
+ Represents a single audio source.
  */
-class AudioSourceComponent : public Component, public Queryable<AudioSourceComponent>{
+class AudioPlayerData {
 protected:
 	friend class AudioEngine;
 	friend class AudioSyncSystem;
@@ -41,7 +43,7 @@ protected:
 	bool isPlaying = false;
 	
 public:
-	AudioSourceComponent(Ref<AudioAsset> a ) : asset(a){}
+	AudioPlayerData(Ref<AudioAsset> a ) : asset(a){}
 	
 	/**
 	 Starts playing the audio source if it is not playing. Call Pause() to suspend it.
@@ -105,6 +107,25 @@ public:
 			buffer[i] = asset->audiodata[playhead_pos] * volume;
 			playhead_pos++;
 		}
+	}
+};
+
+/**
+ For attaching a movable source to an Entity. To represent multiple sources, simply attach multiple of this component type to your Entity.
+ */
+struct AudioSourceComponent : public Component, public AudioPlayerData, public Queryable<AudioSourceComponent>{
+	AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a){}
+};
+
+/**
+ Used for Fire-and-forget audio playing. See method on the world for more info
+ */
+struct InstantaneousAudioSource : public AudioPlayerData{
+	vector3 source_position;
+	
+	InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol) : AudioPlayerData(a), source_position(position){
+		volume = vol;
+		isPlaying = true;
 	}
 };
 

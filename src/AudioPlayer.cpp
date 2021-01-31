@@ -17,7 +17,7 @@ static WeakRef<World> worldToRender;
  @param stream buffer to write the data into
  @param len the length of the buffer
  */
-static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
+void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 	std::memset(stream,0,len);		//fill with silence
 	Ref<World> world = worldToRender.lock();
 	if (world){
@@ -46,7 +46,23 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 					//mix with existing
 					accum_buffer[i] += shared_buffer[i];
 				}
+				
+				//now simulate the fire-and-forget audio
+				std::memset(shared_buffer, 0, len);
+				for(auto& f : world->instantaneousToPlay){
+					room->SimulateSingle(shared_buffer, len, &f, f.source_position, quaternion(1.0, 0.0, 0.0, 0.0));
+				}
+				
+				//mix again
+				for (int i = 0; i < len / sizeof(float); i++) {
+					accum_buffer[i] += shared_buffer[i];
+				}
 			}
+			
+			//remove sounds from that list that have finished playing
+			world->instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
+				return ! ias.IsPlaying();
+			});
 
 			//update stream pointer with rendered output
 			std::memcpy(stream, accum_buffer, len);
@@ -55,6 +71,7 @@ static void AudioPlayer_Tick(void *udata, Uint8 *stream, int len){
 		}
 	}
 }
+
 
 void AudioPlayer::Init(){
 	SDL_InitSubSystem(SDL_INIT_AUDIO);
@@ -66,7 +83,7 @@ void AudioPlayer::Init(){
 	want.format = AUDIO_F32;
 	want.channels = 2;
 	want.samples = AudioRoom::NFRAMES;
-	want.callback = AudioPlayer_Tick;
+	want.callback = AudioPlayer::Tick;
 	
 	device = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 	
