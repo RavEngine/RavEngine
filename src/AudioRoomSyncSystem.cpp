@@ -1,5 +1,6 @@
 #include "AudioRoom.hpp"
 #include "AudioRoomSyncSystem.hpp"
+#include "mathtypes.hpp"
 #include <common/room_properties.h>
 #include <common/room_effects_utils.h>
 

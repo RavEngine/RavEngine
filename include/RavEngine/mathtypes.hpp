@@ -8,6 +8,10 @@
 namespace RavEngine {
 	constexpr double PI = 3.1415926535897932385;
 }
+//needed on windows
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 //defines the vector and quaternion types
 //can change these to 32 bit float instead of 64 bit

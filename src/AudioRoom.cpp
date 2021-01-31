@@ -2,6 +2,8 @@
 #include "Entity.hpp"
 #include "AudioSource.hpp"
 #include "DataStructures.hpp"
+
+#include "mathtypes.hpp"
 #include <common/room_effects_utils.h>
 
 using namespace RavEngine;
