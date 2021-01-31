@@ -15,6 +15,7 @@
 #include "glm/gtx/matrix_decompose.hpp"
 #include "DataStructures.hpp"
 #include "WeakRef.hpp"
+#include "SpinLock.hpp"
 
 namespace RavEngine {
 	/**
@@ -53,10 +54,10 @@ namespace RavEngine {
 		}
 
 		vector3 GetLocalPosition() const;
-		vector3 GetWorldPosition() const;
+		vector3 GetWorldPosition();
 
 		quaternion GetLocalRotation() const;
-		quaternion GetWorldRotation() const;
+		quaternion GetWorldRotation();
 
 		vector3 GetLocalScale() const;
 
@@ -70,10 +71,10 @@ namespace RavEngine {
 		}
 
 		/**
-		Get the matrix list of all the parents. This does NOT include the current transform.
+		Get the matrix list of all the parents. 
 		@param list the list to add the matrices to
 		*/
-		matrix4 CalculateWorldMatrix() const;
+		matrix4 CalculateWorldMatrix();
 
 		/**
 		Add a transform as a child object of this transform
@@ -100,6 +101,21 @@ namespace RavEngine {
 		Atomic<quaternion> rotation;
 		Atomic<vector3> scale;
 		Atomic<matrix4> matrix;
+		
+		SpinLock childModifyLock;
+		Atomic<bool> isDirty = false;
+		
+		inline void MarkAsDirty(Transform* root) const{
+			root->childModifyLock.lock();
+			root->isDirty = true;
+			
+			for(auto& t : root->children){
+				Ref<Transform> tr = t.getWeak().lock();
+				MarkAsDirty(tr.get());
+			}
+			
+			root->childModifyLock.unlock();
+		}
 
 		bool isStatic = false;
 
@@ -142,6 +158,7 @@ namespace RavEngine {
 	*/
 	inline void Transform::LocalTranslateDelta(const vector3& delta) {
 		//set position value
+		MarkAsDirty(this);
 		position = (vector3)position + delta;
 	}
 
@@ -151,6 +168,7 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalPosition(const vector3& newPos) {
 		//set position value
+		MarkAsDirty(this);
 		position = newPos;
 	}
 
@@ -177,6 +195,7 @@ namespace RavEngine {
 	@param newRot the new rotation to set
 	*/
 	inline void Transform::SetLocalRotation(const quaternion& newRot) {
+		MarkAsDirty(this);
 		rotation = newRot;
 	}
 
@@ -185,6 +204,7 @@ namespace RavEngine {
 	@param delta the change in rotation to apply
 	*/
 	inline void Transform::LocalRotateDelta(const quaternion& delta) {
+		MarkAsDirty(this);
 		//sum two quaternions by multiplying them
 		quaternion finalrot;
 		vector3 t;
@@ -216,10 +236,12 @@ namespace RavEngine {
 	@param newScale the new size of this object in local (parent) space
 	*/
 	inline void Transform::SetLocalScale(const vector3& newScale) {
+		MarkAsDirty(this);
 		scale = newScale;
 	}
 
 	inline void Transform::LocalScaleDelta(const vector3& delta) {
+		MarkAsDirty(this);
 		scale = (vector3)scale + delta;
 	}
 
@@ -238,31 +260,37 @@ namespace RavEngine {
 		return scale;
 	}
 
-	inline matrix4 Transform::CalculateWorldMatrix() const{
-		//figure out the size
-		unsigned short depth = 0;
-		for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
-			depth++;
+	inline matrix4 Transform::CalculateWorldMatrix() {
+		if (isDirty){
+			//figure out the size
+			unsigned short depth = 0;
+			for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
+				depth++;
+			}
+			
+			stackarray(transforms, matrix4, depth);
+			
+			int tmp = 0;
+			for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
+				transforms[tmp] = p->GenerateLocalMatrix();
+				++tmp;
+			}
+			
+			matrix4 mat(1);
+			for(int i = depth - 1; i >= 0; --i){
+				mat *= transforms[i];
+			}
+			mat *= GenerateLocalMatrix();
+			matrix = mat;
+			isDirty = false;
+			return mat;
 		}
-		
-		stackarray(transforms, matrix4, depth);
-		
-		int tmp = 0;
-		for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
-			transforms[tmp] = p->GenerateLocalMatrix();
-			++tmp;
+		else{
+			return matrix;
 		}
-		
-		matrix4 mat(1);
-		for(int i = depth - 1; i >= 0; --i){
-			mat *= transforms[i];
-		}
-		mat *= GenerateLocalMatrix();
-		
-		return mat;
 	}
 
-	inline vector3 Transform::GetWorldPosition() const
+	inline vector3 Transform::GetWorldPosition()
 	{
 		if (!HasParent()) {
 			return GetLocalPosition();
@@ -273,7 +301,7 @@ namespace RavEngine {
 		return finalMatrix * vector4(0,0,0, 1);
 	}
 
-	inline quaternion Transform::GetWorldRotation() const
+	inline quaternion Transform::GetWorldRotation()
 	{
 		if (!HasParent()) {
 			return GetLocalRotation();

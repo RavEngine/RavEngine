@@ -9,6 +9,7 @@ using namespace RavEngine;
 
 void Transform::AddChild(const WeakRef<Transform>& child)
 {
+	childModifyLock.lock();
 	Ref<Transform> ctrans(child);
 	auto worldPos = ctrans->GetWorldPosition();
 	auto worldRot = ctrans->GetWorldRotation();
@@ -18,10 +19,12 @@ void Transform::AddChild(const WeakRef<Transform>& child)
 	
 	ctrans->SetWorldPosition(worldPos);
 	ctrans->SetWorldRotation(worldRot);
+	childModifyLock.unlock();
 }
 
 void Transform::RemoveChild(const WeakRef<Transform>& child)
 {
+	childModifyLock.lock();
 	Ref<Transform> ctrans(child);
 	auto worldPos = ctrans->GetWorldPosition();
 	auto worldRot = ctrans->GetWorldRotation();
@@ -29,4 +32,5 @@ void Transform::RemoveChild(const WeakRef<Transform>& child)
 	children.erase(child);
 	ctrans->SetWorldPosition(worldPos);
 	ctrans->SetWorldRotation(worldRot);
+	childModifyLock.unlock();
 }
