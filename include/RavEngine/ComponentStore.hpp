@@ -155,6 +155,9 @@ namespace RavEngine{
 			for (const auto& alt : T::GetQueryTypes()) {
 				components[alt].erase(component);
 			}
+			if(!parent.expired()){
+				Ref<ComponentStore>(parent)->RemoveComponent(component);
+			}
 			OnRemoveComponent(component);
 		}
 
@@ -166,8 +169,16 @@ namespace RavEngine{
 			for (const auto& c : other.components) {
 				//add the componets of the current type to the global list
 				components[c.first].insert(c.second.begin(), c.second.end());
+				Ref<ComponentStore> p = parent.lock();
 				for(Ref<Component> cm : c.second){
 					OnAddComponent(cm);
+					if (p){
+						p->OnAddComponent(cm);
+					}
+				}
+				// reflect changes in parent
+				if(p){
+					p->components[c.first].insert(c.second.begin(), c.second.end());
 				}
 			}
 		}
@@ -181,6 +192,13 @@ namespace RavEngine{
 				for(const auto& to_remove : type_pair.second){
 					components[type_pair.first].erase(to_remove);
 					OnRemoveComponent(to_remove);
+					
+					// reflect changes in parent
+					Ref<ComponentStore> p = parent.lock();
+					if(p){
+						p->OnRemoveComponent(to_remove);
+						p->components[type_pair.first].erase(to_remove);
+					}
 				}
 			}
 		}

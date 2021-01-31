@@ -43,6 +43,9 @@ namespace RavEngine {
 		 @param fpsScale the scale factor calculated
 		 */
 		virtual void posttick(float fpsScale) {}
+		
+		void OnAddComponent(Ref<Component>) override;
+		void OnRemoveComponent(Ref<Component>) override;
         
         /**
          * Tick a System on all available threads. Blocks until all have finished.

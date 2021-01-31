@@ -51,15 +51,8 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		e->Sync();	//ensure all components have their owner backpointers up-to-date
 		e->SetWorld(shared_from_this());
 
-		//start all scripts
+		//start entity
 		e->Start();
-		auto coms = e->GetAllComponentsOfTypeFastPath<ScriptComponent>();
-		for (const auto c : coms) {
-			std::static_pointer_cast<ScriptComponent>(c)->Start();
-		}
-
-		//make the physics system aware of this entity
-		Solver.Spawn(e);
 
 		//merge the entity into the world
 		Merge(*e.get());
@@ -87,22 +80,14 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 		return false;
 	}
 	
-	//stop all scripts
-	auto coms = e->GetAllComponentsOfTypeFastPath<ScriptComponent>();
-	for (const auto c : coms) {
-		std::static_pointer_cast<ScriptComponent>(c)->Stop();
-	}
-	e->Stop();
-
 	e->SetWorld(nullptr);
+	e->Stop();
 
 	//also remove its components
 	Unmerge(*e.get());
 
 	e->parent.reset();	//set parent to null so that this entity no longer synchronizes its components with this world
 
-	//remove the objects from the Physics system
-	Solver.Destroy(e);
 	Entities.erase(e);
 	
 	//get all child entities
@@ -111,6 +96,46 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 		Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->get());
 	}
 	return true;
+}
+
+void World::OnAddComponent(Ref<Component> comp){
+	//is this a script? if so, call its start
+	{
+		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
+		if (scr){
+			scr->Start();
+			return;
+		}
+	}
+	//is this a physics body? if so, call physics simulator to create it
+	{
+		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
+		auto parent = comp->getOwner().lock();
+		if (phys && parent){
+			Solver.Spawn(parent);
+			return;
+		}
+	}
+}
+
+void World::OnRemoveComponent(Ref<Component> comp){
+	//is this a script? if so, call its stop
+	{
+		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
+		if (scr){
+			scr->Stop();
+			return;
+		}
+	}
+	//is this a physics body? if so, call physics simulator to stop it
+	{
+		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
+		auto parent = comp->getOwner().lock();
+		if (phys && parent){
+			Solver.Destroy(parent);
+			return;
+		}
+	}
 }
 
 /**
