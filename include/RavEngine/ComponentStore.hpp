@@ -166,15 +166,22 @@ namespace RavEngine{
 		@param other the other component store to copy from
 		*/
 		inline void Merge(const ComponentStore& other) {
+			
+			phmap::flat_hash_set<Ref<Component>> invoked;
+			
 			for (const auto& c : other.components) {
 				//add the componets of the current type to the global list
 				components[c.first].insert(c.second.begin(), c.second.end());
 				Ref<ComponentStore> p = parent.lock();
 				for(Ref<Component> cm : c.second){
-					OnAddComponent(cm);
-					if (p){
-						p->OnAddComponent(cm);
+					if (!invoked.contains(cm)){
+						OnAddComponent(cm);
+						if (p){
+							p->OnAddComponent(cm);
+						}
+						invoked.insert(cm);
 					}
+					
 				}
 				// reflect changes in parent
 				if(p){
@@ -188,17 +195,25 @@ namespace RavEngine{
 		@param other the ComponentStore to compare
 		*/
 		inline void Unmerge(const ComponentStore& other) {
+			phmap::flat_hash_set<Ref<Component>> invoked;
+			
 			for (const auto& type_pair : other.components) {
 				for(const auto& to_remove : type_pair.second){
 					components[type_pair.first].erase(to_remove);
-					OnRemoveComponent(to_remove);
+					
+					if (!invoked.contains(to_remove)){
+						OnRemoveComponent(to_remove);
+					}
 					
 					// reflect changes in parent
 					Ref<ComponentStore> p = parent.lock();
 					if(p){
-						p->OnRemoveComponent(to_remove);
+						if (!invoked.contains(to_remove)){
+							p->OnRemoveComponent(to_remove);
+						}
 						p->components[type_pair.first].erase(to_remove);
 					}
+					invoked.insert(to_remove);
 				}
 			}
 		}
