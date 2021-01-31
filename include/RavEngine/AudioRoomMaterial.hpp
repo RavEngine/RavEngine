@@ -1,6 +1,8 @@
 #pragma once
+#include <common/room_properties.h>
 
 namespace RavEngine{
+
 /**
  Reverbation data for a room. Subclass to create new material presets
  */

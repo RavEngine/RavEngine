@@ -1,5 +1,7 @@
 #include "AudioRoom.hpp"
 #include "AudioRoomSyncSystem.hpp"
+#include <common/room_properties.h>
+#include <common/room_effects_utils.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -22,24 +24,38 @@ void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 	for(const auto& r : rooms){
 		auto room = static_pointer_cast<AudioRoom>(r);
 		
-		vraudio::ReflectionProperties data;
+		vraudio::RoomProperties data;
+				
+		data.position[0] = pos.x;
+		data.position[1] = pos.y;
+		data.position[2] = pos.z;
 		
-		data.room_position[0] = pos.x;
-		data.room_position[1] = pos.y;
-		data.room_position[2] = pos.z;
+		data.rotation[0] = rot.x;
+		data.rotation[1] = rot.y;
+		data.rotation[2] = rot.z;
+		data.rotation[3] = rot.w;
 		
-		data.room_rotation[0] = rot.x;
-		data.room_rotation[1] = rot.y;
-		data.room_rotation[2] = rot.z;
-		data.room_rotation[3] = rot.w;
+		//attempt to scale (does not factor in shear)
+		auto dim = room->roomDimensions; /** scale*/;
 		
-		auto dim = room->roomDimensions * scale;
+		data.dimensions[0] = dim.x;
+		data.dimensions[1] = dim.y;
+		data.dimensions[2] = dim.z;
 		
-		data.room_dimensions[0] = dim.x;
-		data.room_dimensions[1] = dim.y;
-		data.room_dimensions[2] = dim.z;
+		data.reflection_scalar = room->reflection_scalar;
+		data.reverb_gain = room->reverb_gain;
+		data.reverb_time = room->reverb_time;
+		data.reverb_brightness = room->reverb_brightness;
+		
+		//add material data
+		std::memcpy(data.material_names, room->wallMaterials.data(), sizeof(data.material_names));
+		
+		//compute the reflection data
+		auto ref_data = vraudio::ComputeReflectionProperties(data);
+		auto rev_data = vraudio::ComputeReverbProperties(data);
 				
 		//write changes
-		room->audioEngine->SetReflectionProperties(data);
+		room->audioEngine->SetReflectionProperties(ref_data);
+		room->audioEngine->SetReverbProperties(rev_data);
 	}
 }

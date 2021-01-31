@@ -13,6 +13,8 @@ namespace RavEngine{
 
 class AudioPlayer;
 
+using RoomMat = vraudio::MaterialName;
+
 /**
  Renders audio buffers based on its owning world's state
  */
@@ -25,7 +27,25 @@ protected:
 	vraudio::ResonanceAudioApi* audioEngine = nullptr;
 	vraudio::ResonanceAudioApi::SourceId src = vraudio::ResonanceAudioApi::kInvalidSourceId;
 
-	vector3 roomDimensions;
+	vector3 roomDimensions = vector3(0,0,0);	//size of 0 = infinite
+	
+	// Material name of each surface of the shoebox room in this order:
+	// [0] (-)ive x-axis wall (left)
+	// [1] (+)ive x-axis wall (right)
+	// [2] (-)ive y-axis wall (bottom)
+	// [3] (+)ive y-axis wall (top)
+	// [4] (-)ive z-axis wall (front)
+	// [5] (+)ive z-axis wall (back)
+	std::array<RoomMat, 6> wallMaterials{
+		RoomMat::kTransparent,
+		RoomMat::kTransparent,
+		RoomMat::kTransparent,
+		RoomMat::kTransparent,
+		RoomMat::kTransparent,
+		RoomMat::kTransparent
+	};
+	
+	float reflection_scalar = 1, reverb_gain = 1, reverb_time = 1.0, reverb_brightness = 0;
 	
 	void SimulateSingle(float* ptr, size_t nbytes, AudioPlayerData*, const vector3& pos, const quaternion& rot);
 	
@@ -66,9 +86,14 @@ public:
 	 */
 	decltype(roomDimensions) GetRoomDimensions() const {return roomDimensions; }
 	
-	void SetRoomMaterial(const RoomMaterial& properties){
-		audioEngine->SetReverbProperties(static_cast<RoomMaterial>(properties));
-	}
+	/**
+	 @return a writable reference to the wall materials
+	 */
+	decltype(wallMaterials)& WallMaterials() { return wallMaterials; }
+	
+//	void SetRoomMaterial(const RoomMaterial& properties){
+//		audioEngine->SetReverbProperties(static_cast<RoomMaterial>(properties));
+//	}
 };
 
 }
