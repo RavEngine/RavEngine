@@ -37,7 +37,7 @@ void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 		data.rotation[3] = rot.w;
 		
 		//attempt to scale (does not factor in shear)
-		auto dim = room->roomDimensions; /** scale*/;
+		auto dim = room->roomDimensions * scale;
 		
 		data.dimensions[0] = dim.x;
 		data.dimensions[1] = dim.y;

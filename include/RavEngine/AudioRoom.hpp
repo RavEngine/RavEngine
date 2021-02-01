@@ -8,6 +8,7 @@
 #include "AudioRoomSyncSystem.hpp"
 #include "AudioRoomMaterial.hpp"
 #include "AudioSource.hpp"
+#include "DebugDraw.hpp"
 
 namespace RavEngine{
 
@@ -90,6 +91,11 @@ public:
 	 @return a writable reference to the wall materials
 	 */
 	decltype(wallMaterials)& WallMaterials() { return wallMaterials; }
+	
+	/**
+	 Render the debug shape for this room. Invoke in a debug rendering component
+	 */
+	void DrawDebug(DebugDraw&);
 	
 //	void SetRoomMaterial(const RoomMaterial& properties){
 //		audioEngine->SetReverbProperties(static_cast<RoomMaterial>(properties));

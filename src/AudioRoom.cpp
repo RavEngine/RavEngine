@@ -60,3 +60,12 @@ void AudioRoom::SimulateSingle(float *ptr, size_t nbytes, AudioPlayerData* sourc
 		}
 	}
 }
+
+void AudioRoom::DrawDebug(DebugDraw& dbg){
+	auto owner = getOwner().lock();
+	if (owner){
+		auto mtx = owner->transform()->CalculateWorldMatrix();
+		
+		dbg.DrawRectangularPrism(mtx, 0x00FFFFFF, roomDimensions);
+	}
+}
