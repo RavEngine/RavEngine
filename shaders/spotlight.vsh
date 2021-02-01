@@ -8,24 +8,40 @@ void main()
 {
 	//get transform data for model matrix
 	mat4 model;
-	model[0] = i_data0;
-	model[1] = i_data1;
-	model[2] = i_data2;
-	model[3] = i_data3;
 	
-	vec3 color = i_data4.xyz;
+	model[0][0] = i_data0[0];
+	model[0][1] = i_data0[1];
+	model[0][2] = i_data0[2];
+	model[0][3] = 0;
+	
+	model[1][0] = i_data0[3];
+	model[1][1] = i_data1[0];
+	model[1][2] = i_data1[1];
+	model[1][3] = 0;
+	
+	model[2][0] = i_data1[2];
+	model[2][1] = i_data1[3];
+	model[2][2] = i_data2[0];
+	model[2][3] = 0;
+	
+	model[3][0] = i_data2[1];
+	model[3][1] = i_data2[2];
+	model[3][2] = i_data2[3];
+	model[3][3] = 1;
+	
+	vec3 color = i_data3.xyz;
 	
 	//the intenisty is defined as the scale along the Y axis
-	float intensity = sqrt(length(vec3(i_data0.y,i_data1.y,i_data2.y)));
+	float intensity = i_data4[0];
 	
 	//the radius is defined as the scale along the X or Z axes
-	float radius = length(vec3(i_data0.x,i_data1.x,i_data2.x));
+	float radius = i_data3.w;
 	
 	vec4 worldpos = instMul(model, vec4(a_position, 1.0));
 	
 	gl_Position = mul(u_viewProj, worldpos);
 	
-	positionradius = vec4(i_data3.xyz,radius);
+	positionradius = vec4(model[3][0], model[3][1], model[3][2], radius);
 	colorintensity = vec4(color,intensity);
-	penumbra = vec4(i_data4.w,0,0,0);
+	penumbra = i_data4[1];
 }

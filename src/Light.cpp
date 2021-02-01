@@ -98,14 +98,32 @@ void SpotLight::AddInstanceData(float* offset) const{
 	auto r = radius.load();
 	auto worldMat = glm::scale(trns->CalculateWorldMatrix(), vector3(r,intensity,r));
 	
-	//set [0:15] with transform matrix
-	copyMat4(glm::value_ptr(worldMat), offset);
+	auto ptr1 = glm::value_ptr(worldMat);
 	
+	//don't need to send the last value of each row, because it is always [0,0,0,1] and can be reconstructed in shader
+	offset[0] = ptr1[0];
+	offset[1] = ptr1[1];
+	offset[2] = ptr1[2];
+	
+	offset[3] = ptr1[4];
+	offset[4] = ptr1[5];
+	offset[5] = ptr1[6];
+	
+	offset[6] = ptr1[8];
+	offset[7] = ptr1[9];
+	offset[8] = ptr1[10];
+	
+	offset[9] = ptr1[12];
+	offset[10] = ptr1[13];
+	offset[11] = ptr1[14];
+		
 	//set remaining data
-	offset[16] = color.R;
-	offset[17] = color.G;
-	offset[18] = color.B;
-	offset[19] = penumbra.load();
+	offset[12] = color.R;
+	offset[13] = color.G;
+	offset[14] = color.B;
+	offset[15] = r;
+	offset[16] = intensity;
+	offset[17] = penumbra.load();
 	
 	//the radius and intensity are derived in the shader by extracting the scale information
 }
