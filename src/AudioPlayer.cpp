@@ -5,11 +5,13 @@
 #include "AudioSource.hpp"
 #include "AudioRoom.hpp"
 #include "DataStructures.hpp"
+#include <algorithm>
 
 using namespace RavEngine;
 using namespace std;
 
 static WeakRef<World> worldToRender;
+Ref<AudioPlayerData> AudioPlayer::silence;
 
 /**
  The audio player tick function. Called every time there is an audio update
@@ -53,6 +55,12 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 					room->SimulateSingle(shared_buffer, len, &f, f.source_position, quaternion(1.0, 0.0, 0.0, 0.0));
 				}
 				
+				//no sources to play? still need to expend state so render the room with a blank source
+				if (sources.size() == 0 && world->instantaneousToPlay.size() == 0){
+					room->SimulateSingle(shared_buffer, len, silence.get(), vector3(0,0,0), quaternion(1.0, 0.0, 0.0, 0.0));
+				}
+				silence->Restart();
+				
 				//mix again
 				for (int i = 0; i < len / sizeof(float); i++) {
 					accum_buffer[i] += shared_buffer[i];
@@ -63,6 +71,11 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 			world->instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
 				return ! ias.IsPlaying();
 			});
+			
+			//clipping: clamp all values to [-1,1]
+			for(int i = 0; i < len/sizeof(float); i++){
+				shared_buffer[i] = std::max(-1.0f,std::min(shared_buffer[i],1.0f));
+			}
 
 			//update stream pointer with rendered output
 			std::memcpy(stream, accum_buffer, len);
@@ -95,6 +108,14 @@ void AudioPlayer::Init(){
 			Debug::Fatal("Could not get Float32 audio format");
 		}
 	}
+	
+	if (!silence){
+		float* data = new float[4096];
+		std::memset(data, 0, sizeof(float) * 4096);
+		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(data, 4096));
+		silence->SetLoop(true);
+	}
+	
 	Debug::LogTemp("Audio Subsystem initialized");
 	SDL_PauseAudioDevice(device,0);	//begin audio playback
 }

@@ -16,7 +16,20 @@ private:
 	size_t numsamples = 0;
 	size_t frameSize = 0;
 public:
+	/**
+	 Construct an AudioAsset given a file path. The AudioAsset will decode the audio into samples.
+	 */
 	AudioAsset(const std::string& name);
+	
+	/**
+	 Use for generated audio. The AudioAsset assumes ownership of the data and will free it on destruction.
+	 @param data the audio sample data, in [-1,1] normalized float
+	 @param n_samples the number of samples in the buffer
+	 */
+	AudioAsset(const float* data, size_t n_samples) : numsamples(n_samples){
+		audiodata = data;
+	}
+	
 	~AudioAsset();
 	
 	inline size_t GetFrameSize() const {return frameSize;}

@@ -38,6 +38,6 @@ AudioAsset::AudioAsset(const std::string& name){
 }
 
 AudioAsset::~AudioAsset(){
-	delete audiodata;
+	delete[] audiodata;
 	audiodata = nullptr;
 }

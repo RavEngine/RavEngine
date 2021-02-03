@@ -5,12 +5,13 @@
 namespace RavEngine{
 
 class World;
-
+class AudioPlayerData;
 /**
  Is responsible for making the buffers generated in the Audio Engine class come out your speakers
  */
 class AudioPlayer{
 	SDL_AudioDeviceID device;
+	static Ref<AudioPlayerData> silence;
 public:
 	/**
 	 Set the current world to output audio for
