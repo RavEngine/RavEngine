@@ -10,6 +10,8 @@ namespace RavEngine {
     public:
         StaticMesh(Ref<MeshAsset>);
 		virtual ~StaticMesh(){}
+		
+		Ref<MeshAsset> getMesh() {return mesh;}
 
         /**
         Assign a material to this staticmesh
@@ -27,8 +29,7 @@ namespace RavEngine {
 		inline void Draw(Ref<MaterialInstance<T>> inst, int view = 0){
             static_assert(std::is_base_of<PBRMaterial, T>::value, "StaticMeshes must use a PBR material");
 			auto owner = Ref<Entity>(getOwner());
-			owner->transform()->Apply();
-			inst->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix(),view);
+			inst->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->CalculateWorldMatrix(),view);
 		}
 
         /**

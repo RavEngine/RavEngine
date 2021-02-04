@@ -29,8 +29,7 @@ void RavEngine::StaticMesh::Draw(int view)
 	auto owner = getOwner().lock();
     if (owner) {
         if (owner && owner->HasComponentOfType<Transform>()) {
-            owner->transform()->Apply();
-            material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->GetCurrentWorldMatrix(), view);
+            material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->CalculateWorldMatrix(), view);
         }
     }
 }

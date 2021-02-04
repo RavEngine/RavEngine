@@ -464,15 +464,51 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
 	auto geometry = worldOwning->GetAllComponentsOfTypeFastPath<StaticMesh>();
-   
+	
 	//Deferred geometry pass
-	for (const auto e : geometry) {
-		if (e) {
-			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
-			static_pointer_cast<StaticMesh>(e)->Draw(Views::DeferredGeo);
+	
+	//hashmap of pair<MeshAsset,Material> to arrays of staticmeshes that use them
+	phmap::flat_hash_map<std::pair<Ref<MeshAsset>,Ref<MaterialInstanceBase>>, plf::list<Ref<StaticMesh>>> sortedDraws;
+	
+	//sort into the hashmap
+	for(const auto& e : geometry){
+		if (e){
+			auto ptr = static_pointer_cast<StaticMesh>(e);
+			sortedDraws[make_pair(ptr->getMesh(), ptr->GetMaterial())].push_back(ptr);
 		}
 	}
 	
+	//iterate over each row of the table
+	for(const auto& row : sortedDraws){
+		//fill the buffer using the material to write the material data for each instance
+			//get the stride for the material (only needs the matrix, all others are uniforms?
+		constexpr auto stride = closest_multiple_of(16*sizeof(float), 16);
+		bgfx::InstanceDataBuffer idb;
+		bgfx::allocInstanceDataBuffer(&idb, row.second.size(), stride);
+		size_t offset = 0;
+		for(const auto& mesh : row.second){
+			//write the data into the idb
+			Ref<Entity> owner = mesh->getOwner().lock();
+			if (owner){
+				auto wmat = owner->transform()->CalculateWorldMatrix();
+				auto matrix = glm::value_ptr(wmat);
+				float* ptr = (float*)(idb.data + offset);
+				
+				copyMat4(matrix, ptr);
+				//TODO: zero-fill remaining slots
+			}
+			
+			offset += stride;
+		}
+		bgfx::setInstanceDataBuffer(&idb);
+			//set BGFX state
+		bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
+
+		//call Draw with the staticmesh
+		row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(),Views::DeferredGeo);
+	}
+	
+	// Lighting pass
 	bool al = DrawLightsOfType<AmbientLight>(*worldOwning.get());
 	bool dl = DrawLightsOfType<DirectionalLight>(*worldOwning.get());
 	bool pl = DrawLightsOfType<PointLight>(*worldOwning.get());

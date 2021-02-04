@@ -64,13 +64,6 @@ namespace RavEngine {
 		matrix4 GenerateLocalMatrix() const;
 
 		/**
-		Apply cached transformations to matrix - for internal use only
-		*/
-		inline void Apply(){
-			matrix = CalculateWorldMatrix();
-		}
-
-		/**
 		Get the matrix list of all the parents. 
 		@param list the list to add the matrices to
 		*/
@@ -87,14 +80,6 @@ namespace RavEngine {
 		@param child weak reference to the child object
 		*/
 		void RemoveChild(const WeakRef<Transform>& child);
-
-		/**
-		@returns the currently stored world matrix. This is not guarenteed to be up-to-date. 
-		To update it, call Apply()
-		*/
-		inline matrix4 GetCurrentWorldMatrix() const{
-			return matrix;
-		}
 
 	protected:
 		Atomic<vector3> position;
