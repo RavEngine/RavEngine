@@ -69,14 +69,6 @@ static Ref<RavEngine::DeferredBlitShader> blitShader;
 Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
 
 
-//render thread
-static std::atomic<bool> bgfx_thread_finished_init = false;
-static std::atomic<bool> render_thread_exit = false;
-std::optional<std::thread> renderThread;
-ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
-static WeakRef<World> worldToDraw;
-static float currentFrameTime = 0;
-
 struct bgfx_msghandler : public bgfx::CallbackI{
 	static bool diagnostic_logging;
 	void fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) override{
@@ -298,8 +290,7 @@ void RenderEngine::Init()
 	//start the render thread here
 	{
 		auto pd = sdlSetWindow(RenderEngine::GetWindow());
-
-		renderThread.emplace(runAPIThread,pd);
+		renderThread.emplace(&RenderEngine::runAPIThread,this,pd);
 		renderThread.value().detach();
 	}
 	//wait for the render thread to be finished initializing

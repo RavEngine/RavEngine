@@ -11,12 +11,15 @@ class AudioPlayerData;
  */
 class AudioPlayer{
 	SDL_AudioDeviceID device;
+	WeakRef<World> worldToRender;
 	static Ref<AudioPlayerData> silence;
 public:
 	/**
 	 Set the current world to output audio for
 	 */
-	void SetWorld(Ref<World> w);
+	void SetWorld(Ref<World> w){
+		worldToRender = w;
+	}
 	
 	/**
 	 Initialize the audio player

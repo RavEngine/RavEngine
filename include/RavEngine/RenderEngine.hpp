@@ -41,7 +41,7 @@ namespace RavEngine {
         /**
          Signal the render thread to stop, and wait until it has stopped. For internal use only.
          */
-		static void BlockUntilFinishDraw();
+		void BlockUntilFinishDraw();
         
         /**
          Print a string to the debug text overlay. Stubbed in release.
@@ -93,12 +93,12 @@ namespace RavEngine {
         /**
          @return the current frame rate using the frame time
          */
-		static float GetCurrentFPS();
+		float GetCurrentFPS();
         
         /**
          @return the time in miliseconds to render the last frame
          */
-		static float GetLastFrameTime();
+		float GetLastFrameTime();
 		
 		/**
 		 @return the current window buffer size, in pixels
@@ -193,10 +193,17 @@ namespace RavEngine {
         static SpinLock dbgmtx;
         static phmap::flat_hash_map<uint16_t,DebugMsg> debugprints;
 #endif
-        static void runAPIThread(bgfx::PlatformData pd);
+        void runAPIThread(bgfx::PlatformData pd);
+		
+		WeakRef<World> worldToDraw;
+		std::optional<std::thread> renderThread;
+		std::atomic<bool> render_thread_exit;
+		std::atomic<bool> bgfx_thread_finished_init;
+		ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
+		float currentFrameTime;
 
 		static SDL_Window* window;
-        static void Init();
+        void Init();
 		
 		static constexpr uint8_t gbufferSize = 4;
 		static constexpr uint8_t lightingAttachmentsSize = 2;

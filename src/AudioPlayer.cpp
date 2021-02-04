@@ -10,7 +10,6 @@
 using namespace RavEngine;
 using namespace std;
 
-static WeakRef<World> worldToRender;
 Ref<AudioPlayerData> AudioPlayer::silence;
 
 /**
@@ -20,8 +19,10 @@ Ref<AudioPlayerData> AudioPlayer::silence;
  @param len the length of the buffer
  */
 void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
+	AudioPlayer* player = static_cast<AudioPlayer*>(udata);
+	
 	std::memset(stream,0,len);		//fill with silence
-	Ref<World> world = worldToRender.lock();
+	Ref<World> world = player->worldToRender.lock();
 	if (world){
 		auto sources = world->GetAllComponentsOfTypeFastPath<AudioSourceComponent>();
 		auto rooms = world->GetAllComponentsOfTypeFastPath<AudioRoom>();
@@ -97,6 +98,7 @@ void AudioPlayer::Init(){
 	want.channels = 2;
 	want.samples = AudioRoom::NFRAMES;
 	want.callback = AudioPlayer::Tick;
+	want.userdata = this;
 	
 	device = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 	
@@ -122,8 +124,4 @@ void AudioPlayer::Init(){
 
 void AudioPlayer::Shutdown(){
 	SDL_CloseAudioDevice(device);
-}
-
-void AudioPlayer::SetWorld(Ref<World> w){
-	worldToRender = w;
 }
