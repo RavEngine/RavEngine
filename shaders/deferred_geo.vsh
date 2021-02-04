@@ -12,7 +12,7 @@ void main()
 	worldmat[2] = i_data2;
 	worldmat[3] = i_data3;
 	
-	mat3 normalmat = worldmat;	//convert 4x4 to 3x3 for rotating normal
+	mat3 normalmat = transpose(worldmat);	//convert 4x4 to 3x3 for rotating normal
 	
 	//convert normal to world space
 	v_normal = mul(normalmat,a_normal);
