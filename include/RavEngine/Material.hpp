@@ -1,5 +1,5 @@
 #pragma once
-#include "SharedObject.hpp"
+#include "Ref.hpp"
 #include "RenderEngine.hpp"
 #include "DataStructures.hpp"
 #include <bgfx/bgfx.h>

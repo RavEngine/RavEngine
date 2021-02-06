@@ -64,9 +64,6 @@ namespace RavEngine {
 			}
 		}
 
-		//required virtual destructor for SharedObject
-		virtual ~Entity();
-
 		/**
 		 Get a pointer to the world that this entity is in. May be nullptr.
 		 @return the pointer to the world, or nullptr if there is no world

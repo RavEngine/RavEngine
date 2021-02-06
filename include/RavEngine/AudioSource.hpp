@@ -3,6 +3,7 @@
 #include "Queryable.hpp"
 #include <string>
 #include "mathtypes.hpp"
+#include "Ref.hpp"
 
 namespace RavEngine{
 

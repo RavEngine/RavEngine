@@ -6,13 +6,11 @@
 //
 
 #pragma once
-#include "SharedObject.hpp"
-#include <typeindex>
 #include "WeakRef.hpp"
 
 namespace RavEngine {
 	class Entity;
-	class Component : public SharedObject {
+	class Component {
 	protected:
 		WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component
 		friend class Entity;
@@ -32,10 +30,6 @@ namespace RavEngine {
 		bool Enabled = true;
 
 		Component() {}
-
-		//for SharedObject
-		virtual ~Component() {
-		}
 
 		/**
 		 Get the object of this component.

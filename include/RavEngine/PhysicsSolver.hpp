@@ -9,13 +9,12 @@
 
 #include "PhysXDefines.h"
 #include <PxQueryReport.h>
-#include "SharedObject.hpp"
+#include "Ref.hpp"
 #include "PhysicsCollider.hpp"
 #include "PhysicsBodyComponent.hpp"
 #include "Entity.hpp"
 #include <PxPhysicsAPI.h>
 #include <PxFiltering.h>
-#include <iostream>
 #include <cstdint>
 #include "SpinLock.hpp"
 
@@ -59,9 +58,10 @@ namespace RavEngine {
 		SpinLock mtx;
 
     public:
-        //for sharedobject
-        virtual ~PhysicsSolver();
         PhysicsSolver();
+		~PhysicsSolver(){
+			DeallocatePhysx();
+		}
 
         void Spawn(Ref<Entity>);
         void Destroy(Ref<Entity>);

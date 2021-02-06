@@ -1,20 +1,16 @@
 #pragma once
-#include "SharedObject.hpp"
+#include "Ref.hpp"
 #include "SDL_scancode.h"
 #include <SDL_mouse.h>
 #include <SDL_gamecontroller.h>
 #include <plf_list.h>
 #include <phmap.h>
-#include <iostream>
 #include <functional>
-#include <typeindex>
 #include <SDL_events.h>
 #include <etl/vector.h>
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
-#include <set>
-#include <unordered_set>
 
 namespace RavEngine {
 	enum ActionState{
@@ -76,10 +72,6 @@ namespace RavEngine {
 	struct Event{
 		int ID;
 		ActionState value;
-		friend std::ostream& operator<<(std::ostream& os, const Event& dt){
-			os << "EVT id = " << dt.ID << " value = " << (dt.value == ActionState::Released ? "Released" : "Pressed");
-			return os;
-		}
 	};
 
 	//controller IDs
@@ -145,7 +137,7 @@ namespace RavEngine {
 		class ActionBinding{
 			actionCallback func;	//the lambda to invoke
 			void* func_addr = nullptr;		//used for equality comparison
-			WeakRef<SharedObject> bound_object;	//used for determining validity
+			WeakRef<void> bound_object;	//used for determining validity
 			CID controller;
 			ActionState state;
 			
@@ -159,7 +151,7 @@ namespace RavEngine {
 			 @param s the required state of the source controller
 			 */
 			template<typename U>
-			ActionBinding(Ref<U> thisptr, actionCallback fn, void* addr, CID c, ActionState s) : bound_object(std::static_pointer_cast<SharedObject>(thisptr)), func(fn), controller(c), state(s), func_addr(addr){}
+			ActionBinding(Ref<U> thisptr, actionCallback fn, void* addr, CID c, ActionState s) : bound_object(thisptr), func(fn), controller(c), state(s), func_addr(addr){}
 			/**
 			 Execute this ActionBinding. If the action binding is invalid, or the input state / controller are not applicable, this function will do nothing.
 			 @param state_in the state of the action being invoked
@@ -189,7 +181,7 @@ namespace RavEngine {
 		protected:
 			axisCallback func;		//the lambda to invoke
 			void* func_addr = nullptr;		//used for equality comparison
-			WeakRef<SharedObject> bound_object; //used for determining validity
+			WeakRef<void> bound_object; //used for determining validity
 			CID controller;
 			float deadzone = 0;
 		public:

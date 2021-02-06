@@ -1,7 +1,5 @@
 #pragma once
 #include <phmap.h>
-#include "SharedObject.hpp"
-#include <typeindex>
 #include "Component.hpp"
 #include <functional>
 #include "DataStructures.hpp"
@@ -13,7 +11,7 @@
 
 namespace RavEngine{
 	template<class lock = phmap::NullMutex>
-	class ComponentStore : public SharedObject {
+	class ComponentStore {
 	public:
 		typedef locked_hashset<Ref<RavEngine::Component>,lock> entry_type;
 	protected:

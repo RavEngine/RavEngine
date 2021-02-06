@@ -1,13 +1,12 @@
 #pragma once
 
-#include "SharedObject.hpp"
 #include "DataStructures.hpp"
 #include "mathtypes.hpp"
 #include <bgfx/bgfx.h>
 
 namespace RavEngine{
 
-class MeshAsset : public SharedObject {
+class MeshAsset {
 public:
 	
 	/**

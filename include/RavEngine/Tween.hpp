@@ -54,7 +54,7 @@ namespace TweenCurves{
 
 
 	template<typename ...Floats>
-	class Tween : public SharedObject{
+	class Tween {
 	protected:
 		tweeny::tween<Floats...> anim;
 		typedef std::function<void(Floats...)> stepfunc;

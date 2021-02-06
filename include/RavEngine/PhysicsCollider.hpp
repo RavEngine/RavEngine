@@ -9,6 +9,7 @@
 #include "PhysicsMaterial.hpp"
 #include "Queryable.hpp"
 #include "Common3D.hpp"
+#include "Ref.hpp"
 
 namespace physx {
 	class PxShape;

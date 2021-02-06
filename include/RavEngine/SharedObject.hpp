@@ -12,9 +12,6 @@
 #include "Ref.hpp"
 
 namespace RavEngine {
-	class SharedObject {
-	};
-
 	/**
 	 A workaround class to multi-inheritance with enable_shared_from_this.
 	 Don't inherit from this class.

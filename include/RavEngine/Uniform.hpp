@@ -55,7 +55,7 @@ protected:
 	/**
 	 Construct a uniform given a name
 	 @param name the name of the uniform
-	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances. Changing one will change all of them. Because of this behavior, these objects do not descend from SharedObject.
+	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	Uniform(const std::string& name, Type type, int size){
 		handle = bgfx::createUniform(name.c_str(), static_cast<bgfx::UniformType::Enum>(type), size);
@@ -70,7 +70,7 @@ public:
 	/**
 	 Construct a sampler uniform given a name
 	 @param name the name of the uniform
-	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances. Changing one will change all of them. Because of this behavior, these objects do not descend from SharedObject.
+	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	SamplerUniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Sampler,size){}
 };
@@ -83,7 +83,7 @@ public:
 	/**
 	 Construct a sampler uniform given a name
 	 @param name the name of the uniform
-	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances. Changing one will change all of them. Because of this behavior, these objects do not descend from SharedObject.
+	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	Vector4Uniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Vec4,size){}
 };
@@ -96,7 +96,7 @@ public:
 	/**
 	 Construct a sampler uniform given a name
 	 @param name the name of the uniform
-	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances. Changing one will change all of them. Because of this behavior, these objects do not descend from SharedObject.
+	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	Mat3Uniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Mat3,size){}
 };
@@ -109,7 +109,7 @@ public:
 	/**
 	 Construct a sampler uniform given a name
 	 @param name the name of the uniform
-	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances. Changing one will change all of them. Because of this behavior, these objects do not descend from SharedObject.
+	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	Mat4Uniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Mat4,size){}
 };

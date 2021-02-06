@@ -1,11 +1,11 @@
 #pragma once
-#include "SharedObject.hpp"
 #include <bgfx/bgfx.h>
 #include "Uniform.hpp"
+#include "Ref.hpp"
 
 namespace RavEngine{
 
-class Texture : public SharedObject{
+class Texture {
 public:
 	Texture(const std::string& filename);
 	

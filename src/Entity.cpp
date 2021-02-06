@@ -21,7 +21,3 @@ void Entity::Destroy() {
 RavEngine::Entity::Entity(){
     EmplaceComponent<Transform>();
 }
-
-RavEngine::Entity::~Entity(){
-    components.clear();
-}

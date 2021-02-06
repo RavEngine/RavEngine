@@ -6,7 +6,7 @@
 //
 
 #pragma once
-#include "SharedObject.hpp"
+#include "Ref.hpp"
 #include "Entity.hpp"
 #include "WeakRef.hpp"
 #include "Uniform.hpp"
@@ -22,7 +22,7 @@ namespace RavEngine {
 	class GUIMaterialInstance;
 	class InputManager;
 
-    class RenderEngine : public SharedObject, public Rml::SystemInterface, public Rml::RenderInterface {
+    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface {
 	private:
 		struct dim{
 			int width, height;

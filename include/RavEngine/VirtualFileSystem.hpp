@@ -1,10 +1,9 @@
 #pragma once
-#include "SharedObject.hpp"
 #include <string>
 #include <vector>
 
 namespace RavEngine{
-class VirtualFilesystem : public SharedObject{
+class VirtualFilesystem {
 public:
 	VirtualFilesystem(const std::string&);
 
@@ -22,6 +21,9 @@ public:
 	 */
 	void FileContentsAt(const char* path, std::vector<uint8_t>& datavec);
 
+	/**
+	 @return true if the VFS has the file at the path
+	 */
 	bool Exists(const char* path);
 	
 protected:

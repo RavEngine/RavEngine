@@ -16,6 +16,7 @@
 #include "DataStructures.hpp"
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
+#include "SharedObject.hpp"
 
 namespace RavEngine {
 	/**

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "SharedObject.hpp"
-
 namespace physx {
 	class PxMaterial;
 }
@@ -21,7 +19,7 @@ namespace RavEngine {
 		Pad32 = 0x7fffffff
 	};
 
-	class PhysicsMaterial : public SharedObject {
+	class PhysicsMaterial {
 	public:
 		PhysicsMaterial(double sf=1, double df=1, double r	=1);
 		virtual ~PhysicsMaterial();

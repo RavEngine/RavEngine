@@ -1,6 +1,7 @@
 #pragma once
 #include "Component.hpp"
 #include "Queryable.hpp"
+#include "Ref.hpp"
 
 namespace RavEngine{
 class Material;

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "SharedObject.hpp"
+#include "Ref.hpp"
 #include "Entity.hpp"
 #include <plf_list.h>
 #include "CTTI.hpp"
@@ -15,14 +15,9 @@
 namespace RavEngine {
 	class World;
 
-	class System : public SharedObject {
+	class System {
 	public:
 		typedef plf::list<ctti_t> list_type;
-		
-		//for sharedobject
-		virtual ~System() {}
-
-		//query method
 
 		//dependency method
 		virtual const list_type& QueryTypes() const = 0;

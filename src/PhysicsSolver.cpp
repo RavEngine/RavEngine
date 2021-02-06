@@ -143,10 +143,6 @@ void PhysicsSolver::DeallocatePhysx() {
     }
 }
 
-PhysicsSolver::~PhysicsSolver() {
-    DeallocatePhysx();
-}
-
 void PhysicsSolver::ReleaseStatics() {
     PX_RELEASE(phys);
     PX_RELEASE(foundation);
