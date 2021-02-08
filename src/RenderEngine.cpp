@@ -426,7 +426,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::touch(Views::Lighting);
 	
 	//copy world framedata into local copy
-	fd = *worldOwning->GetFrameData();
+	fd = worldOwning->GetFrameData();
 	
 	//setup matrices
 	float viewmat[16], projmat[16];

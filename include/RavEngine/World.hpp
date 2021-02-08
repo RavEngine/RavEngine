@@ -78,9 +78,9 @@ namespace RavEngine {
 				
 	public:
 		
-		const FrameData* GetFrameData(){
+		const FrameData GetFrameData(){
 			swapmtx.lock();
-			auto tmp = inactive;
+			auto tmp = *inactive;
 			swapmtx.unlock();
 			return tmp;
 		}
