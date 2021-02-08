@@ -10,13 +10,15 @@
 #include <algorithm>
 #include "System.hpp"
 #include "ScriptComponent.hpp"
-#include <future>
 #include "App.hpp"
 #include "PhysicsLinkSystem.hpp"
 #include "GUI.hpp"
 #include "InputManager.hpp"
 #include "ChildEntityComponent.hpp"
 #include "AudioRoomSyncSystem.hpp"
+#include "CameraComponent.hpp"
+#include "StaticMesh.hpp"
+#include "BuiltinMaterials.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -188,6 +190,13 @@ void RavEngine::World::TickECS(float fpsScale) {
 		}
 	}
 	
+	//render engine data collector
+	auto RenderPreflight = masterTasks.emplace([this]{
+		CreateFrameData();
+		SwapFrameData();
+	});
+	
+	RenderPreflight.precede(graphs[CTTI<ScriptSystem>].task1);
 	
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
@@ -238,4 +247,38 @@ bool RavEngine::World::InitPhysics() {
 	physicsActive = true;
 
 	return true;
+}
+
+
+void World::CreateFrameData(){
+	//camera matrices
+	auto allcams = GetAllComponentsOfTypeFastPath<CameraComponent>();
+	for (const auto& c : allcams) {
+		auto cam = std::static_pointer_cast<CameraComponent>(c);
+		if (cam->isActive()) {
+			
+			auto size = App::Renderer->GetBufferSize();
+			cam->SetTargetSize(size.width, size.height);
+			current->viewmatrix = cam->GenerateViewMatrix();
+			current->projmatrix = cam->GenerateProjectionMatrix();
+			
+			break;
+		}
+	}
+	
+	auto geometry = GetAllComponentsOfTypeFastPath<StaticMesh>();
+	
+
+	current->opaques.clear();
+	
+	//sort into the hashmap
+	for(const auto& e : geometry){
+		if (e){
+			auto m = static_pointer_cast<StaticMesh>(e);
+			auto ptr = e->getOwner().lock();
+			if (ptr){
+				current->opaques[make_pair(m->getMesh(), m->GetMaterial())].push_back(ptr->transform()->CalculateWorldMatrix());
+			}
+		}
+	}
 }

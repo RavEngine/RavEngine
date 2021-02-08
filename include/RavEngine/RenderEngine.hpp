@@ -14,6 +14,7 @@
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <fmt/format.h>
+#include "FrameData.hpp"
 
 struct SDL_Window;
 
@@ -225,6 +226,7 @@ namespace RavEngine {
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
+		FrameData fd;
 		
 		/**
 		 Execute instanced draw calls for a given light type

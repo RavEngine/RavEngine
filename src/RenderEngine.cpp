@@ -425,24 +425,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::touch(Views::DeferredGeo);
 	bgfx::touch(Views::Lighting);
 	
+	//copy world framedata into local copy
+	fd = *worldOwning->GetFrameData();
+	
+	//setup matrices
 	float viewmat[16], projmat[16];
 	
-	//get the active camera
-	auto allcams = worldOwning->GetAllComponentsOfTypeFastPath<CameraComponent>();
-	for (const auto c : allcams) {
-		auto cam = std::static_pointer_cast<CameraComponent>(c);
-		auto owning = Ref<CameraComponent>(cam);
-		if (owning->isActive()) {
-			auto size = GetBufferSize();
-			owning->SetTargetSize(size.width, size.height);
-			
-			//copy into backend matrix
-			copyMat4(glm::value_ptr(cam->GenerateViewMatrix()), viewmat);
-			copyMat4(glm::value_ptr(cam->GenerateProjectionMatrix()), projmat);
-			
-			break;
-		}
-	}
+	copyMat4(glm::value_ptr(fd.viewmatrix),viewmat);
+	copyMat4(glm::value_ptr(fd.projmatrix),projmat);
+	
 
 	//set the view transform - all entities drawn will use this matrix
 	for(int i = 0; i < Views::Count; i++){
@@ -453,24 +444,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(int i = 0; i < BX_COUNTOF(attachments); i++){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
-	
-	auto geometry = worldOwning->GetAllComponentsOfTypeFastPath<StaticMesh>();
-	
+		
 	//Deferred geometry pass
 	
-	//hashmap of pair<MeshAsset,Material> to arrays of staticmeshes that use them
-	phmap::flat_hash_map<std::pair<Ref<MeshAsset>,Ref<MaterialInstanceBase>>, plf::list<Ref<StaticMesh>>> sortedDraws;
-	
-	//sort into the hashmap
-	for(const auto& e : geometry){
-		if (e){
-			auto ptr = static_pointer_cast<StaticMesh>(e);
-			sortedDraws[make_pair(ptr->getMesh(), ptr->GetMaterial())].push_back(ptr);
-		}
-	}
-	
 	//iterate over each row of the table
-	for(const auto& row : sortedDraws){
+	for(const auto& row : fd.opaques){
 		//fill the buffer using the material to write the material data for each instance
 			//get the stride for the material (only needs the matrix, all others are uniforms?
 		constexpr auto stride = closest_multiple_of(16*sizeof(float), 16);
@@ -479,15 +457,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		size_t offset = 0;
 		for(const auto& mesh : row.second){
 			//write the data into the idb
-			Ref<Entity> owner = mesh->getOwner().lock();
-			if (owner){
-				auto wmat = owner->transform()->CalculateWorldMatrix();
-				auto matrix = glm::value_ptr(wmat);
-				float* ptr = (float*)(idb.data + offset);
-				
-				copyMat4(matrix, ptr);
-				//TODO: zero-fill remaining slots
-			}
+			auto matrix = glm::value_ptr(mesh);
+			float* ptr = (float*)(idb.data + offset);
+			
+			copyMat4(matrix, ptr);
 			
 			offset += stride;
 		}

@@ -19,6 +19,7 @@
 #include "SpinLock.hpp"
 #include <plf_list.h>
 #include "AudioSource.hpp"
+#include "FrameData.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -62,7 +63,27 @@ namespace RavEngine {
 		tf::Taskflow masterTasks;
 		
 		bool physicsActive = false;
+		
+		FrameData f1, f2;
+		FrameData *current = &f1, *inactive = &f2;
+		SpinLock swapmtx;
+		
+		void SwapFrameData(){
+			swapmtx.lock();
+			std::swap(current,inactive);
+			swapmtx.unlock();
+		}
+		
+		void CreateFrameData();
+				
 	public:
+		
+		const FrameData* GetFrameData(){
+			swapmtx.lock();
+			auto tmp = inactive;
+			swapmtx.unlock();
+			return tmp;
+		}
 		
 		SystemManager systemManager;
 		
