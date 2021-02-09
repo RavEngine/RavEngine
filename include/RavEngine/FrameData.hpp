@@ -4,6 +4,7 @@
 #include "Material.hpp"
 #include "MeshAsset.hpp"
 #include "DataStructures.hpp"
+#include <plf_colony.h>
 
 namespace RavEngine {
 
@@ -15,7 +16,7 @@ struct FrameData{
     
     struct entry{
         SpinLock mtx;
-        plf::list<matrix4> items;
+        plf::colony<matrix4> items;
         entry(const entry& other){
             items = other.items;
         }

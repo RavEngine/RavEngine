@@ -217,15 +217,15 @@ void RavEngine::World::TickECS(float fpsScale) {
             auto m = static_pointer_cast<StaticMesh>(e);
             auto ptr = e->getOwner().lock();
             if (ptr){
-                auto& items = current->opaques[make_pair(m->getMesh(), m->GetMaterial())];
+				auto pair = make_pair(m->getMesh(), m->GetMaterial());
                 auto mat = ptr->transform()->CalculateWorldMatrix();
-                items.mtx.lock();
-                items.items.push_back(mat);
-                items.mtx.unlock();
+				current->opaques[pair].mtx.lock();
+				current->opaques[pair].items.insert(mat);
+				current->opaques[pair].mtx.unlock();
             }
         }
     });
-    
+
     auto swap = masterTasks.emplace([this]{
         SwapFrameData();
     });
