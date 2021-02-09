@@ -24,7 +24,7 @@ struct FrameData{
     };
 	
 	//opaque pass data
-	locked_hashmap<std::pair<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry,SpinLock> opaques;
+	locked_node_hashmap<std::pair<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry,SpinLock> opaques;
 	
 	//TODO: write lighting data here
 };
