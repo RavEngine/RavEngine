@@ -214,17 +214,17 @@ if(PHYSFS_BUILD_TEST)
     set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";test_physfs")
 endif()
 
-install(TARGETS ${PHYSFS_INSTALL_TARGETS} EXPORT PhysFSExport
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX}
-        INCLUDES DESTINATION include)
-install(FILES src/physfs.h DESTINATION include)
+# install(TARGETS ${PHYSFS_INSTALL_TARGETS} EXPORT PhysFSExport
+#         RUNTIME DESTINATION bin
+#         LIBRARY DESTINATION lib${LIB_SUFFIX}
+#         ARCHIVE DESTINATION lib${LIB_SUFFIX}
+#         INCLUDES DESTINATION include)
+# install(FILES src/physfs.h DESTINATION include)
 
-install(EXPORT PhysFSExport
-        DESTINATION "lib${LIB_SUFFIX}/cmake/PhysFS"
-        FILE PhysFSConfig.cmake
-)
+# install(EXPORT PhysFSExport
+#         DESTINATION "lib${LIB_SUFFIX}/cmake/PhysFS"
+#         FILE PhysFSConfig.cmake
+# )
 
 
 find_package(Doxygen)

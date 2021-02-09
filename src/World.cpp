@@ -191,13 +191,53 @@ void RavEngine::World::TickECS(float fpsScale) {
 	}
 	
 	//render engine data collector
-	auto RenderPreflight = masterTasks.emplace([this]{
-		CreateFrameData();
-		SwapFrameData();
-	});
-	
-	RenderPreflight.precede(graphs[CTTI<ScriptSystem>].task1);
-	
+    //camera matrices
+    auto camproc = masterTasks.emplace([this](){
+        auto allcams = GetAllComponentsOfTypeFastPath<CameraComponent>();
+        for (const auto& c : allcams) {
+            auto cam = std::static_pointer_cast<CameraComponent>(c);
+            if (cam->isActive()) {
+                
+                auto size = App::Renderer->GetBufferSize();
+                cam->SetTargetSize(size.width, size.height);
+                current->viewmatrix = cam->GenerateViewMatrix();
+                current->projmatrix = cam->GenerateProjectionMatrix();
+                
+                break;
+            }
+        }
+    });
+    
+    
+    auto geometry = GetAllComponentsOfTypeFastPath<StaticMesh>();
+        
+    //sort into the hashmap
+    auto sort = masterTasks.for_each(geometry.begin(), geometry.end(), [this](Ref<Component> e){
+        if (e){
+            auto m = static_pointer_cast<StaticMesh>(e);
+            auto ptr = e->getOwner().lock();
+            if (ptr){
+                auto& items = current->opaques[make_pair(m->getMesh(), m->GetMaterial())];
+                auto mat = ptr->transform()->CalculateWorldMatrix();
+                items.mtx.lock();
+                items.items.push_back(mat);
+                items.mtx.unlock();
+            }
+        }
+    });
+    
+    auto swap = masterTasks.emplace([this]{
+        SwapFrameData();
+    });
+    auto setup = masterTasks.emplace([this]{
+        current->opaques.clear();
+    });
+    setup.precede(camproc);
+    sort.precede(swap);
+    camproc.precede(sort);
+    graphs[CTTI<ScriptSystem>].task1.precede(camproc);
+
+		
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
 		auto RunPhysics = masterTasks.emplace([fpsScale, this]{
@@ -247,38 +287,4 @@ bool RavEngine::World::InitPhysics() {
 	physicsActive = true;
 
 	return true;
-}
-
-
-void World::CreateFrameData(){
-	//camera matrices
-	auto allcams = GetAllComponentsOfTypeFastPath<CameraComponent>();
-	for (const auto& c : allcams) {
-		auto cam = std::static_pointer_cast<CameraComponent>(c);
-		if (cam->isActive()) {
-			
-			auto size = App::Renderer->GetBufferSize();
-			cam->SetTargetSize(size.width, size.height);
-			current->viewmatrix = cam->GenerateViewMatrix();
-			current->projmatrix = cam->GenerateProjectionMatrix();
-			
-			break;
-		}
-	}
-	
-	auto geometry = GetAllComponentsOfTypeFastPath<StaticMesh>();
-	
-
-	current->opaques.clear();
-	
-	//sort into the hashmap
-	for(const auto& e : geometry){
-		if (e){
-			auto m = static_pointer_cast<StaticMesh>(e);
-			auto ptr = e->getOwner().lock();
-			if (ptr){
-				current->opaques[make_pair(m->getMesh(), m->GetMaterial())].push_back(ptr->transform()->CalculateWorldMatrix());
-			}
-		}
-	}
 }

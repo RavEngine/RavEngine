@@ -3,6 +3,7 @@
 #include "mathtypes.hpp"
 #include "Material.hpp"
 #include "MeshAsset.hpp"
+#include "DataStructures.hpp"
 
 namespace RavEngine {
 
@@ -11,9 +12,18 @@ class MaterialInstanceBase;
 struct FrameData{
 	//global matrices
 	matrix4 viewmatrix, projmatrix;
+    
+    struct entry{
+        SpinLock mtx;
+        plf::list<matrix4> items;
+        entry(const entry& other){
+            items = other.items;
+        }
+        entry(){}
+    };
 	
 	//opaque pass data
-	phmap::flat_hash_map<std::pair<Ref<MeshAsset>, Ref<MaterialInstanceBase>>, plf::list<matrix4>> opaques;
+	locked_hashmap<std::pair<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry,SpinLock> opaques;
 	
 	//TODO: write lighting data here
 };

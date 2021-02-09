@@ -453,9 +453,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			//get the stride for the material (only needs the matrix, all others are uniforms?
 		constexpr auto stride = closest_multiple_of(16*sizeof(float), 16);
 		bgfx::InstanceDataBuffer idb;
-		bgfx::allocInstanceDataBuffer(&idb, row.second.size(), stride);
+		bgfx::allocInstanceDataBuffer(&idb, row.second.items.size(), stride);
 		size_t offset = 0;
-		for(const auto& mesh : row.second){
+		for(const auto& mesh : row.second.items){
 			//write the data into the idb
 			auto matrix = glm::value_ptr(mesh);
 			float* ptr = (float*)(idb.data + offset);
@@ -471,7 +471,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		//call Draw with the staticmesh
 		row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(),Views::DeferredGeo);
 	}
-	
 	// Lighting pass
 	bool al = DrawLightsOfType<AmbientLight>(*worldOwning.get());
 	bool dl = DrawLightsOfType<DirectionalLight>(*worldOwning.get());
