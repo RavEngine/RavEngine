@@ -5,28 +5,114 @@
 #include "MeshAsset.hpp"
 #include "DataStructures.hpp"
 #include <plf_colony.h>
+#include "Light.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 namespace RavEngine {
 
 class MaterialInstanceBase;
+class DirectionalLight;
 
 struct FrameData{
 	//global matrices
 	matrix4 viewmatrix, projmatrix;
     
+	template<typename T>
     struct entry{
         SpinLock mtx;
-        plf::colony<matrix4> items;
-        entry(const entry& other){
+        plf::colony<T> items;
+        entry(const entry<T>& other){
             items = other.items;
         }
+		inline entry<T>& operator=(const entry<T>& other){
+			if (this != &other){
+				items = other.items;
+			}
+			return *this;
+		}
         entry(){}
     };
 	
 	//opaque pass data
-	locked_node_hashmap<std::pair<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry,SpinLock> opaques;
+	locked_node_hashmap<std::pair<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>,SpinLock> opaques;
 	
-	//TODO: write lighting data here
+	template<typename T>
+	struct StoredLight{
+		T light;
+		matrix4 transform;
+		StoredLight(const T& l, const matrix4& mtx) : light(l), transform(mtx){}
+		StoredLight(const StoredLight& other) : light(other.light), transform(other.transform){}
+		
+		inline void AddInstanceData(float* offset) const{
+			auto ptr1 = glm::value_ptr(transform);
+			
+			//don't need to send the last value of each row, because it is always [0,0,0,1] and can be reconstructed in shader
+			offset[0] = ptr1[0];
+			offset[1] = ptr1[1];
+			offset[2] = ptr1[2];
+			
+			offset[3] = ptr1[4];
+			offset[4] = ptr1[5];
+			offset[5] = ptr1[6];
+			
+			offset[6] = ptr1[8];
+			offset[7] = ptr1[9];
+			offset[8] = ptr1[10];
+			
+			offset[9] = ptr1[12];
+			offset[10] = ptr1[13];
+			offset[11] = ptr1[14];
+			light.AddInstanceData(offset); //don't increment, the light will add offset
+		}
+	};
+	
+	struct PackedDL{
+		DirectionalLight light;
+		struct tinyvec3{
+			float x, y, z;
+		} rotation;
+		
+		inline void AddInstanceData(float* offset) const{
+			offset[4] = rotation.x;
+			offset[5] = rotation.y;
+			offset[6] = rotation.z;
+			light.AddInstanceData(offset);
+		}
+		
+		PackedDL(const DirectionalLight& l, const tinyvec3& tv) : light(l), rotation(tv){}
+	};
+	
+	//lighting data
+	plf::colony<PackedDL> directionals;
+	plf::colony<AmbientLight> ambients;
+	plf::colony<StoredLight<PointLight>> points;
+	plf::colony<StoredLight<SpotLight>> spots;
+	
+	//copy assignment
+	inline FrameData& operator=(const FrameData& other){
+		if (this != &other){
+			viewmatrix = other.viewmatrix;
+			projmatrix = other.projmatrix;
+			
+			opaques = other.opaques;
+			directionals = other.directionals;
+			ambients = other.ambients;
+			points = other.points;
+			spots = other.spots;
+		}
+		return *this;
+	}
+	
+	inline void Clear(){
+		opaques.clear();
+		directionals.clear();
+		ambients.clear();
+		points.clear();
+		spots.clear();
+	}
+	
+	//default constructor
+	FrameData(){}
+	
 };
-
 }

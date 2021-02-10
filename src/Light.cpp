@@ -43,15 +43,10 @@ void DirectionalLight::DebugDraw(RavEngine::DebugDraw& dbg) const{
 }
 
 void DirectionalLight::AddInstanceData(float* offset) const{
-	auto rot = Ref<Entity>(getOwner())->transform()->Up();
-	
 	offset[0] = color.R;
 	offset[1] = color.G;
 	offset[2] = color.B;
 	offset[3] = Intensity;
-	offset[4] = rot.x;
-	offset[5] = rot.y;
-	offset[6] = rot.z;
 }
 
 void AmbientLight::DebugDraw(RavEngine::DebugDraw& dbg) const{
@@ -73,18 +68,12 @@ void PointLight::DebugDraw(RavEngine::DebugDraw& dbg) const{
 }
 
 void PointLight::AddInstanceData(float* offset) const{
-	//scale = radius
-	auto trns = getOwner().lock()->transform();
-	auto radius = CalculateRadius();
-	auto worldMat = glm::scale(trns->CalculateWorldMatrix(), vector3(radius,radius,radius));
-			
-	//set [0:15] with transform matrix
-	copyMat4(glm::value_ptr(worldMat), offset);
-		
-	offset[16] = color.R;
-	offset[17] = color.G;
-	offset[18] = color.B;
-	offset[19] = Intensity;
+
+	//[0:11] filled with affine transform
+	offset[12] = color.R;
+	offset[13] = color.G;
+	offset[14] = color.B;
+	offset[15] = Intensity;
 }
 
 void SpotLight::DebugDraw(RavEngine::DebugDraw&) const{
@@ -92,38 +81,18 @@ void SpotLight::DebugDraw(RavEngine::DebugDraw&) const{
 }
 
 void SpotLight::AddInstanceData(float* offset) const{
-	auto trns = getOwner().lock()->transform();
-	auto intensity = Intensity.load();
+	auto intensity = Intensity;
 	intensity = intensity * intensity;
-	auto r = radius.load();
-	auto worldMat = glm::scale(trns->CalculateWorldMatrix(), vector3(r,intensity,r));
+	auto r = radius;
 	
-	auto ptr1 = glm::value_ptr(worldMat);
-	
-	//don't need to send the last value of each row, because it is always [0,0,0,1] and can be reconstructed in shader
-	offset[0] = ptr1[0];
-	offset[1] = ptr1[1];
-	offset[2] = ptr1[2];
-	
-	offset[3] = ptr1[4];
-	offset[4] = ptr1[5];
-	offset[5] = ptr1[6];
-	
-	offset[6] = ptr1[8];
-	offset[7] = ptr1[9];
-	offset[8] = ptr1[10];
-	
-	offset[9] = ptr1[12];
-	offset[10] = ptr1[13];
-	offset[11] = ptr1[14];
 		
-	//set remaining data
+	//[0:11] filled with affine transform
 	offset[12] = color.R;
 	offset[13] = color.G;
 	offset[14] = color.B;
 	offset[15] = r;
 	offset[16] = intensity;
-	offset[17] = penumbra.load();
+	offset[17] = penumbra;
 	
 	//the radius and intensity are derived in the shader by extracting the scale information
 }

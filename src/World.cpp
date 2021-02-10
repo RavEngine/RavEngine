@@ -208,7 +208,7 @@ void RavEngine::World::TickECS(float fpsScale) {
         }
     });
     
-    
+    //opaque geometry
     auto geometry = GetAllComponentsOfTypeFastPath<StaticMesh>();
         
     //sort into the hashmap
@@ -219,25 +219,81 @@ void RavEngine::World::TickECS(float fpsScale) {
             if (ptr){
 				auto pair = make_pair(m->getMesh(), m->GetMaterial());
                 auto mat = ptr->transform()->CalculateWorldMatrix();
-				current->opaques[pair].mtx.lock();
-				current->opaques[pair].items.insert(mat);
-				current->opaques[pair].mtx.unlock();
+				auto& item = current->opaques[pair];
+				item.mtx.lock();
+				item.items.insert(mat);
+				item.mtx.unlock();
             }
         }
     });
+	
+	auto copydirs = masterTasks.emplace([this](){
+		auto dirs = GetAllComponentsOfTypeFastPath<DirectionalLight>();
+		for(const auto& e : dirs){
+			if (e){
+				auto owner = e->getOwner().lock();
+				if (owner){
+					auto d = static_pointer_cast<DirectionalLight>(e);
+					auto rot = owner->transform()->Up();
+					FrameData::PackedDL::tinyvec3 r{
+						static_cast<float>(rot.x),
+						static_cast<float>(rot.y),
+						static_cast<float>(rot.z)
+					};
+					current->directionals.emplace(*d.get(),r);
+				}
+			}
+		}
+	});
+	auto copyambs = masterTasks.emplace([this](){
+		auto ambs = GetAllComponentsOfTypeFastPath<AmbientLight>();
+		for(const auto& e : ambs){
+			if (e){
+				auto d = static_pointer_cast<AmbientLight>(e);
+				current->ambients.emplace(*d.get());
+			}
+		}
+	});
+	auto copyspots = masterTasks.emplace([this](){
+		auto spots = GetAllComponentsOfTypeFastPath<SpotLight>();
+		for(const auto& e : spots){
+			if (e){
+				auto d = static_pointer_cast<SpotLight>(e);
+				auto ptr = e->getOwner().lock();
+				if (ptr){
+					auto transform = ptr->transform()->CalculateWorldMatrix();
+					current->spots.emplace(*d.get(),d->CalculateMatrix(transform));
+				}
+			}
+		}
+	});
+	auto copypoints = masterTasks.emplace([this](){
+		auto points = GetAllComponentsOfTypeFastPath<PointLight>();
+		for(const auto& e : points){
+			if (e){
+				auto d = static_pointer_cast<PointLight>(e);
+				auto ptr = e->getOwner().lock();
+				if (ptr){
+					auto transform = ptr->transform()->CalculateWorldMatrix();
+					current->points.emplace(*d.get(),d->CalculateMatrix(transform));
+				}
+			}
+		}
+	});
+	
 
     auto swap = masterTasks.emplace([this]{
         SwapFrameData();
     });
     auto setup = masterTasks.emplace([this]{
-        current->opaques.clear();
+		current->Clear();
     });
-    setup.precede(camproc);
+    setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
     sort.precede(swap);
     camproc.precede(sort);
-    graphs[CTTI<ScriptSystem>].task1.precede(camproc);
+    graphs[CTTI<ScriptSystem>].task1.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 
-		
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
 		auto RunPhysics = masterTasks.emplace([fpsScale, this]{

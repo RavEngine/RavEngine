@@ -472,10 +472,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(),Views::DeferredGeo);
 	}
 	// Lighting pass
-	bool al = DrawLightsOfType<AmbientLight>(*worldOwning.get());
-	bool dl = DrawLightsOfType<DirectionalLight>(*worldOwning.get());
-	bool pl = DrawLightsOfType<PointLight>(*worldOwning.get());
-	bool sl = DrawLightsOfType<SpotLight>(*worldOwning.get());
+	bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
+	bool dl = DrawLightsOfType<DirectionalLight>(fd.directionals);
+	bool pl = DrawLightsOfType<PointLight>(fd.spots);
+	bool sl = DrawLightsOfType<SpotLight>(fd.points);
 	
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);

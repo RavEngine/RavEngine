@@ -1,6 +1,5 @@
 #pragma once
 #include "RenderableComponent.hpp"
-#include <vector>
 #include "Material.hpp"
 #include "MeshAsset.hpp"
 #include "BuiltinMaterials.hpp"
@@ -25,13 +24,6 @@ namespace RavEngine {
 		 */
         void Draw(int view = 0) override;
 		
-		template<typename T>
-		inline void Draw(Ref<MaterialInstance<T>> inst, int view = 0){
-            static_assert(std::is_base_of<PBRMaterial, T>::value, "StaticMeshes must use a PBR material");
-			auto owner = Ref<Entity>(getOwner());
-			inst->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), owner->transform()->CalculateWorldMatrix(),view);
-		}
-
         /**
         @returns the currently assigned material
         */

@@ -1,6 +1,5 @@
 #pragma once
 #include "Ref.hpp"
-#include "RenderEngine.hpp"
 #include "DataStructures.hpp"
 #include <bgfx/bgfx.h>
 #include "glm/gtc/type_ptr.hpp"

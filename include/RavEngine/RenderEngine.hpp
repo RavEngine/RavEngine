@@ -233,10 +233,9 @@ namespace RavEngine {
 		 @param components the componetstore of the world to get the lights from
 		 @return true light draw calls were executed, false otherwise
 		 */
-		template<typename T, typename U>
-		inline bool DrawLightsOfType(ComponentStore<U>& components){
+		template<typename LightType, class Container>
+		inline bool DrawLightsOfType(const Container& lights){
 			//must set before changing shaders
-			auto lights = components.template GetAllComponentsOfTypeFastPath<T>();
 			if (lights.size() == 0){
 				return false;
 			}
@@ -244,7 +243,7 @@ namespace RavEngine {
 				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 			}
 			
-			const auto stride = T::InstancingStride();
+			const auto stride = LightType::InstancingStride();
 			const auto numLights = lights.size();
 			
 			//create buffer for GPU instancing
@@ -253,10 +252,9 @@ namespace RavEngine {
 			
 			//fill the buffer
 			int i = 0;
-			for(const auto l : lights){	//TODO: factor in light frustum culling
-                Ref<T> light = std::static_pointer_cast<T>(l);
+			for(const auto& l : lights){	//TODO: factor in light frustum culling
 				float* ptr = (float*)(idb.data + i);
-				light->AddInstanceData(ptr);
+				l.AddInstanceData(ptr);
 				i += stride;
 			}
 
@@ -268,10 +266,10 @@ namespace RavEngine {
 			bgfx::setInstanceDataBuffer(&idb);
 			
 			//set the required state for this light type
-			T::SetState();
+			LightType::SetState();
 			
 			//execute instance draw call
-			T::Draw(Views::Lighting);	//view 2 is the lighting pass
+			LightType::Draw(Views::Lighting);	//view 2 is the lighting pass
 			
 			return true;
 		}
