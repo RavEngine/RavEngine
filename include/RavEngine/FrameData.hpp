@@ -24,12 +24,6 @@ struct FrameData{
         entry(const entry<T>& other){
             items = other.items;
         }
-		inline entry<T>& operator=(const entry<T>& other){
-			if (this != &other){
-				items = other.items;
-			}
-			return *this;
-		}
         entry(){}
     };
 	
@@ -88,20 +82,6 @@ struct FrameData{
 	plf::colony<StoredLight<PointLight>> points;
 	plf::colony<StoredLight<SpotLight>> spots;
 	
-	//copy assignment
-	inline FrameData& operator=(const FrameData& other){
-		if (this != &other){
-			viewmatrix = other.viewmatrix;
-			projmatrix = other.projmatrix;
-			
-			opaques = other.opaques;
-			directionals = other.directionals;
-			ambients = other.ambients;
-			points = other.points;
-			spots = other.spots;
-		}
-		return *this;
-	}
 	
 	inline void Clear(){
 		opaques.clear();

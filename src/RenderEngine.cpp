@@ -474,8 +474,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	// Lighting pass
 	bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
 	bool dl = DrawLightsOfType<DirectionalLight>(fd.directionals);
-	bool pl = DrawLightsOfType<PointLight>(fd.spots);
-	bool sl = DrawLightsOfType<SpotLight>(fd.points);
+	bool pl = DrawLightsOfType<SpotLight>(fd.spots);
+	bool sl = DrawLightsOfType<PointLight>(fd.points);
 	
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);

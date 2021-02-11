@@ -15,13 +15,6 @@ struct Light : public Queryable<Light>, public Component {
 	float Intensity = 1.0;
 	ColorRGBA color{1,1,1,1};
 	virtual void DebugDraw(RavEngine::DebugDraw&) const = 0;
-	
-	Light(const Light& other) : color(other.color), Intensity(other.Intensity){}
-	
-	Light(){}
-	
-	static_assert(std::atomic<float>::is_always_lock_free, "Intensity atomic is not always lock-free");
-	//static_assert(std::atomic<ColorRGBA>::is_always_lock_free, "Color atomic is not always lock-free");
 };
 
 /**
@@ -31,9 +24,6 @@ struct ShadowLight : public Light, public QueryableDelta<Light,ShadowLight>{
 	using QueryableDelta<Light,ShadowLight>::GetQueryTypes;
 	public:
 		bool CastsShadows = true;
-	
-	ShadowLight(const ShadowLight& other) : CastsShadows(other.CastsShadows), Light(other){}
-	ShadowLight(){}
 };
 
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
@@ -81,9 +71,6 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	 Execute instanced draw call for this light type
 	 */
 	static void Draw(int view);
-	
-	AmbientLight(const AmbientLight& other) : Light(other){}
-	AmbientLight(){}
 };
 
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
@@ -135,9 +122,6 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 	 Execute instanced draw call for this light type
 	 */
 	static void Draw(int view);
-	
-	DirectionalLight(const DirectionalLight& other) : ShadowLight(other){}
-	DirectionalLight(){}
 };
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
@@ -178,9 +162,6 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 		
 		return closest_multiple_of(sizeof(float) * (3+1) + sizeof(float[16]), 16);
 	}
-	
-	PointLight(const PointLight& other) : ShadowLight(other){}
-	PointLight(){}
 	
 	/**
 	 Calculate the shader's matrix
@@ -252,10 +233,6 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	//light properties
 	float radius = 1;
 	float penumbra = 0;
-	
-	
-	SpotLight(const SpotLight& other) : ShadowLight(other), radius(other.radius), penumbra(other.penumbra){}
-	SpotLight(){}
 	
 	/**
 	 Calculate the shader's matrix
