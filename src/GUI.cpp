@@ -144,6 +144,7 @@ void GUIComponent::AnyActionDown(const int charcode){
 		default:
 			ExclusiveAccess([&] {
 				context->ProcessKeyDown(SDLtoRML(charcode), 1);
+				context->ProcessTextInput(static_cast<char>(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(charcode))));
 			});
 			break;
 	}

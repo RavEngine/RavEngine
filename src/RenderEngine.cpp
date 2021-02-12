@@ -469,7 +469,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
 
 		//call Draw with the staticmesh
-		row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(),Views::DeferredGeo);
+		if (row.first.second){
+			row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(),Views::DeferredGeo);
+		}
 	}
 	// Lighting pass
 	bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
