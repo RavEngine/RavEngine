@@ -153,7 +153,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	phmap::flat_hash_map<ctti_t, systaskpair> graphs;
 
 	size_t count = 0;
-	for (auto& s : systemManager.GetInternalStorage()) {
+	for (auto& s : systemManager.GetAlwaysTickSystems()) {
 		auto system = s.second;
 
 		auto& queries = system->QueryTypes();
@@ -161,10 +161,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	}
 	phmap::flat_hash_map<ctti_t, ComponentStore::entry_type> copies(count);
 	
-    //tick the systems
-	for (auto& s : systemManager.GetInternalStorage()) {
-		auto system = s.second;
-		
+	auto add_system_to_tick = [&](Ref<System> system){
 		auto& queries = system->QueryTypes();
 		
 		auto func = [=](Ref<Component> e) {
@@ -181,14 +178,31 @@ void RavEngine::World::TickECS(float fpsScale) {
 			if (!copies.contains(query)) {
 				copies[query] = GetAllComponentsOfTypeIndexFastPath(query);
 			}
-
+			
 			auto& l1 = copies[query];
-
+			
 			graphs[system->ID()] = {
 				masterTasks.for_each(l1.begin(), l1.end(), func),
 				system };
 		}
+	};
+	
+    //tick the always-systems
+	for (auto& s : systemManager.GetAlwaysTickSystems()) {
+		auto system = s.second;
+		
+		add_system_to_tick(system);
 	}
+	
+	//tick timed systems
+	auto now = SystemManager::clock_t::now();
+	for (auto& s : systemManager.GetTimedTickSystems()){
+		if (now - s.second.last_timestamp > s.second.interval){
+			add_system_to_tick(s.second.system);
+			s.second.last_timestamp = now;
+		}
+	}
+	
 	
 	//render engine data collector
     //camera matrices

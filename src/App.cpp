@@ -180,3 +180,7 @@ App::~App(){
 	Rml::Shutdown();
 	delete fsi;
 }
+
+void App::SetWindowTitle(const char *title){
+	SDL_SetWindowTitle(Renderer->GetWindow(), title);
+}

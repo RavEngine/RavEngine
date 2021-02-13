@@ -99,6 +99,13 @@ namespace RavEngine {
 			currentWorld = newWorld;
 			currentWorld->OnActivate();
 		}
+		
+		/**
+		 Set the window titlebar text
+		 @param title the text for the titlebar
+		 @note Do not call this every frame. To update periodically with data such as frame rates, use a scheduled system.
+		 */
+		static void SetWindowTitle(const char* title);
 
 	private:
 		static Ref<World> currentWorld;
