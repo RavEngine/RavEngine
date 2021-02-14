@@ -25,7 +25,7 @@ jobs:
         with:
           submodules: true
       - name: Build
-        run: run: mkdir -p build && cd build; cmake -G "Xcode" .. && cmake --build . --config release --target RavEngine
+        run: mkdir -p build && cd build; cmake -G "Xcode" .. && cmake --build . --config release --target RavEngine
                 
   build-windows:
     name: Windows Compile Check
