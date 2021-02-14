@@ -70,7 +70,7 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 ## Supported platforms
 | Platform | Architecture | Compiler | CMake Generator | Rendering API |
 | --- | --- | --- | --- | --- |
-| macOS 10.15+ | Intel | Apple Clang | Xcode | Metal |
+| macOS 10.15+ | Intel, Apple Silicon | Apple Clang | Xcode | Metal |
 | Windows 10 | x64 | MSVC++ | Visual Studio | DX11, DX12 |
 | Linux | x64 | Clang++, g++ | Ninja | Vulkan |
 
