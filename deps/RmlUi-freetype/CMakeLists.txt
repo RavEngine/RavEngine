@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(RmlUi VERSION 4.0)
 
 set(RMLUI_VERSION_RELEASE false)
+set(ENABLE_LOTTIE_PLUGIN ON CACHE INTERNAL "")
 
 if(RMLUI_VERSION_RELEASE)
 	set(RMLUI_VERSION_SUFFIX "")
@@ -23,7 +24,9 @@ target_compile_definitions(RmlCore
 
 # link freetype
 add_subdirectory("freetype")
-target_link_libraries(RmlCore PUBLIC freetype)
+SET(LOTTIE_TEST OFF CACHE INTERNAL "")
+add_subdirectory("rlottie")
+target_link_libraries(RmlCore PUBLIC freetype rlottie)
 
 if (BUILD_SHARED_LIBS)
     target_compile_definitions(RmlCore PRIVATE -DRmlCore_EXPORTS=1 -DEASTL_EXPORTS -DEASTDC_EXPORTS -DEATHREAD_EXPORTS)
