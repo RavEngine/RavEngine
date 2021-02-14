@@ -13,7 +13,7 @@ jobs:
       - name: Install Dependencies
         run: sudo apt-get update && sudo apt-get install cmake clang ninja-build libgl1-mesa-dev -y --no-install-recommends 
       - name: Build
-        run: mkdir -p build && cd build; cmake -G "ninja" .. && cmake --build . --config Release --target RavEngine
+        run: mkdir -p build && cd build; cmake -G "Ninja" .. && cmake --build . --config Release --target RavEngine
 
 
   build-mac:
@@ -36,4 +36,4 @@ jobs:
         with:
           submodules: true
       - name: Build
-        run: mkdir build && cd build; cmake -Wno-dev .. && cmake --build . --config release --target RavEngine
+        run: mkdir build && cd build; cmake -Wno-dev .. ; cmake -Wno-dev .. && cmake --build . --config release --target RavEngine
