@@ -1,0 +1,39 @@
+name: Compile-Check
+on: push
+
+jobs:
+  build-linux:
+    name: Linux x64 Compile Check
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install cmake clang ninja-build libgl1-mesa-dev -y --no-install-recommends 
+      - name: Build
+        run: mkdir -p build && cd build; cmake -G "ninja" .. && cmake --build . --config Release --target RavEngine
+
+
+  build-mac:
+    name: macOS Compile Check
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build
+        run: run: mkdir -p build && cd build; cmake -G "Xcode" .. && cmake --build . --config release --target RavEngine
+                
+  build-windows:
+    name: Windows Compile Check
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build
+        run: mkdir build && cd build; cmake -Wno-dev .. && cmake --build . --config release --target RavEngine
