@@ -27,6 +27,7 @@ using namespace std::chrono;
 
 const float RavEngine::App::evalNormal = 60;
 Ref<VirtualFilesystem> App::Resources;
+NetworkManager App::networkManager;
 double App::time;
 Ref<RenderEngine> App::Renderer;
 static float currentScale = 0;

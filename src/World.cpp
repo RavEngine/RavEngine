@@ -19,6 +19,7 @@
 #include "CameraComponent.hpp"
 #include "StaticMesh.hpp"
 #include "BuiltinMaterials.hpp"
+#include "NetworkIdentity.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -118,6 +119,13 @@ void World::OnAddComponent(Ref<Component> comp){
 			return;
 		}
 	}
+	//is this a NetworkIdentity? if so, call Add on the NetworkManager
+	{
+		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
+		if (nid) {
+			App::networkManager.Spawn(shared_from_this(), nid);
+		}
+	}
 }
 
 void World::OnRemoveComponent(Ref<Component> comp){
@@ -136,6 +144,13 @@ void World::OnRemoveComponent(Ref<Component> comp){
 		if (phys && parent){
 			Solver.Destroy(parent);
 			return;
+		}
+	}
+	//is this a NetworkIdentity? if so, call Add on the NetworkManager
+	{
+		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
+		if (nid) {
+			App::networkManager.Destroy(shared_from_this(), nid);
 		}
 	}
 }
