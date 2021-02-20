@@ -53,6 +53,7 @@ add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
 add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
+add_subdirectory("${DEPS_DIR}/glm")
 
 # libnyquist
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
@@ -183,6 +184,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"RmlCore"
 	"libnyquist"
 	PUBLIC
+	"glm"
 	"rpc"
 	"fmt"
 	"etl"
