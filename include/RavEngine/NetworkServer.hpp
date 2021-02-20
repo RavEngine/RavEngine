@@ -1,5 +1,4 @@
 #pragma once
-#include <rpc/rpc.h>
 #include <rpc/server.h>
 
 namespace RavEngine {
