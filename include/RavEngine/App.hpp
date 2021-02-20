@@ -10,6 +10,7 @@
 #include "World.hpp"
 #include "DataStructures.hpp"
 #include "AudioPlayer.hpp"
+#include "NetworkManager.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -65,6 +66,9 @@ namespace RavEngine {
 		
 		//Render engine
 		static Ref<RenderEngine> Renderer;
+		
+		//networking interface
+		static NetworkManager networkManager;
 		
 		/**
 		 Dispatch a task to be executed on the main thread.

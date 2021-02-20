@@ -58,6 +58,9 @@ add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist")
 
+# rpclib
+add_subdirectory("${DEPS_DIR}/rpclib")
+
 # resonance-audio
 set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/resonance-audio")
@@ -180,6 +183,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"RmlCore"
 	"libnyquist"
 	PUBLIC
+	"rpc"
 	"fmt"
 	"etl"
 	"tweeny"
@@ -188,6 +192,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"bx"
 	"bimg"
 	"Recast"
+	"Detour"
 	"concurrentqueue"
 )
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
