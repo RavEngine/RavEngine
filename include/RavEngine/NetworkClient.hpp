@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
-#include <rpc/client.h>
+#include <steam/isteamnetworkingsockets.h>
 
 namespace RavEngine {
 
@@ -11,7 +11,6 @@ public:
 	void Disconnect();
 	~NetworkClient();	//gracefully disconnect
 protected:
-	rpc::client client;
 };
 
 }

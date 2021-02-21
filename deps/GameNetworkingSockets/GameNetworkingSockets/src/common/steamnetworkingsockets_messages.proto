@@ -1,0 +1,340 @@
+//====== Copyright Valve Corporation, All rights reserved. ====================
+//
+// Wire format messages for Steam networking sockets.
+// These messages are used for all connection types (relayed and direct)
+//
+//=============================================================================
+syntax = "proto2";
+option optimize_for = SPEED;
+
+import "steamnetworkingsockets_messages_certs.proto";
+
+// We don't use the service generation functionality
+option cc_generic_services = false;
+
+// Different crypto ciphers we support
+enum ESteamNetworkingSocketsCipher
+{
+	k_ESteamNetworkingSocketsCipher_INVALID = 0; // Dummy value
+	k_ESteamNetworkingSocketsCipher_NULL = 1; // No encryption or authentication
+	k_ESteamNetworkingSocketsCipher_AES_256_GCM = 2; // AES256 in GCM mode with 12-byte security tag.  Basically equivalent to TLS_AES_256_GCM_xxx
+	//k_ESteamNetworkingSocketsCipher_CHACHA20_POLY1305 = 3;
+};
+
+// Used in crypto handshake.  Clients describe what they are willing to use,
+// servers decide what will be used, and reply with the negotiated values.
+message CMsgSteamDatagramSessionCryptInfo
+{
+
+	// Key used for Diffie–Hellman key exchange.  Typically this should be an
+	// ephemeral key used only for this connection.
+	enum EKeyType
+	{
+		INVALID = 0;
+		CURVE25519 = 1;
+	};
+	optional EKeyType key_type = 1;
+	optional bytes key_data = 2;
+
+	optional fixed64 nonce = 3; // Additional nonce used for key generation
+	optional uint32 protocol_version = 4; // Protocol version used.  Must match the version in the header
+
+	/// Clients specify the list of ciphers, in preference order.
+	/// Servers will specify only the single cipher they selected (assuming they allowed the connection).
+	/// If this list is empty (legacy client), then it should be interpreted the same
+	/// as if there were a single entry with k_ESteamNetworkingSocketsCipher_AES_256_GCM
+	repeated ESteamNetworkingSocketsCipher ciphers = 5;
+};
+
+// Session keys used in key exchange
+message CMsgSteamDatagramSessionCryptInfoSigned
+{
+	/// Serialized CMsgSteamDatagramSessionCryptInfo
+	optional bytes info = 1;
+
+	/// Signature of encryption_key_data generated using the public key
+	/// from the CMsgSteamDatagramCertificate.
+	optional bytes signature = 2;
+}
+
+// k_ESteamDatagramMsg_Diagnostic
+message	CMsgSteamDatagramDiagnostic
+{
+	optional uint32	severity = 1;							// Standard Steam emit levels: 1 = error, 2 = warning, 3 = info, 4 = verbose
+	optional string text = 2;								// Message text
+};
+
+/// Wire version of SteamDatagramLinkInstantaneousStats.
+/// We use integers instead of floats to send this stuff,
+/// so that most fields take 1 or 2 bytes, instead of
+/// always taking 4.
+message CMsgSteamDatagramLinkInstantaneousStats
+{
+	optional uint32 out_packets_per_sec_x10 = 1;
+	optional uint32 out_bytes_per_sec = 2;
+	optional uint32 in_packets_per_sec_x10 = 3;
+	optional uint32 in_bytes_per_sec = 4;
+	optional uint32 ping_ms = 5;
+	optional uint32 packets_dropped_pct = 6; // 0 ... 100
+	optional uint32 packets_weird_sequence_pct = 7; // 0 ... 100
+	optional uint32 peak_jitter_usec = 8;
+};
+
+/// Wire version of SteamDatagramLinkLifetimeStats
+message CMsgSteamDatagramLinkLifetimeStats
+{
+	//optional uint32 rms_ping_ms = 1;
+
+	// Duration of the connection (so far, if we are still connected).
+	// This is primarily used when reporting end-to-end stats to relays,
+	// who may not have been involved with the connection for its entire
+	// duration
+	optional uint32 connected_seconds = 2;
+
+	// Packet counters
+	optional uint64 packets_sent = 3;
+	optional uint64 kb_sent = 4;
+	optional uint64 packets_recv = 5;
+	optional uint64 kb_recv = 6;
+	optional uint64 packets_recv_sequenced = 7;
+	optional uint64 packets_recv_dropped = 8;
+	optional uint64 packets_recv_out_of_order = 9;
+	optional uint64 packets_recv_duplicate = 10;
+	optional uint64 packets_recv_lurch = 11;
+
+	/// Histogram of connection quality.  Here we count up the number
+	/// of connection quality measurement intervals (about 5 seconds)
+	/// that fell into each quality measurement.  Quality measurment
+	/// is the percentage of packets that were delivered, in order,
+	/// without being duplicated
+	optional uint32 quality_histogram_100 = 21; // This means everything was perfect.  Even if we delivered over 100 packets in the interval and we should round up to 100, we will use 99% instead.
+	optional uint32 quality_histogram_99 = 22; // 99%+
+	optional uint32 quality_histogram_97 = 23;
+	optional uint32 quality_histogram_95 = 24;
+	optional uint32 quality_histogram_90 = 25;
+	optional uint32 quality_histogram_75 = 26;
+	optional uint32 quality_histogram_50 = 27;
+	optional uint32 quality_histogram_1 = 28;
+	optional uint32 quality_histogram_dead = 29; // we received nothing during the interval; it looks like the connection dropped
+	optional uint32 quality_ntile_2nd = 30; // 2% of measurement intervals had quality <= N%
+	optional uint32 quality_ntile_5th = 31; // 5% of measurement intervals had quality <= N%
+	optional uint32 quality_ntile_25th = 32; // 25% of measurement intervals had quality <= N%
+	optional uint32 quality_ntile_50th = 33; // 50% of measurement intervals had quality <= N%
+
+	/// Distribution of ping times.  Basically we make sure we take a ping measurement
+	/// at a minimum interval, and then we build a distribution of all the samples.
+	/// Note that we don't take great care to ensure that the samples are taken
+	/// perfectly evenly, but they should be reasonably even.
+	optional uint32 ping_histogram_25 = 41; // 0..25
+	optional uint32 ping_histogram_50 = 42; // 26..50
+	optional uint32 ping_histogram_75 = 43; // 51..75
+	optional uint32 ping_histogram_100 = 44; // etc
+	optional uint32 ping_histogram_125 = 45;
+	optional uint32 ping_histogram_150 = 46;
+	optional uint32 ping_histogram_200 = 47;
+	optional uint32 ping_histogram_300 = 48;
+	optional uint32 ping_histogram_max = 49; // >300
+	optional uint32 ping_ntile_5th = 50; // 5% of ping samples were <= Nms
+	optional uint32 ping_ntile_50th = 51; // 50% of ping samples were <= Nms
+	optional uint32 ping_ntile_75th = 52; // 70% of ping samples were <= Nms
+	optional uint32 ping_ntile_95th = 53; // 95% of ping samples were <= Nms
+	optional uint32 ping_ntile_98th = 54; // 98% of ping samples were <= Nms
+
+	/// Jitter distribution.
+	optional uint32 jitter_histogram_negligible = 61; // <1ms
+	optional uint32 jitter_histogram_1 = 62; // 1..2
+	optional uint32 jitter_histogram_2 = 63; // 2..5
+	optional uint32 jitter_histogram_5 = 64; // 5..10
+	optional uint32 jitter_histogram_10 = 65; // 10..20
+	optional uint32 jitter_histogram_20 = 66; // 20+
+
+	/// Transmit speed
+	optional uint32 txspeed_max            = 67;
+
+	optional uint32 txspeed_histogram_16   = 68; // speed at kb/s
+	optional uint32 txspeed_histogram_32   = 69; 
+	optional uint32 txspeed_histogram_64   = 70;
+	optional uint32 txspeed_histogram_128  = 71;
+	optional uint32 txspeed_histogram_256  = 72;
+	optional uint32 txspeed_histogram_512  = 73;
+	optional uint32 txspeed_histogram_1024 = 74;
+	optional uint32 txspeed_histogram_max  = 75;
+
+	// distribution.  some might be -1, see above for why.
+	optional uint32 txspeed_ntile_5th  = 76; // 5% of transmit samples were <= n kb/s
+	optional uint32 txspeed_ntile_50th = 77; // 50% of transmit samples were <= n kb/s 
+	optional uint32 txspeed_ntile_75th = 78; // 70% of transmit samples were <= n kb/s 
+	optional uint32 txspeed_ntile_95th = 79; // 95% of transmit samples were <= n kb/s 
+	optional uint32 txspeed_ntile_98th = 80; // 98% of transmit samples were <= n kb/s 
+
+	//
+	// Receive speed
+	//
+	optional uint32 rxspeed_max = 81; // max speed we hit that formed the histogram
+
+	optional uint32 rxspeed_histogram_16 = 82; // speed at kb/s
+	optional uint32 rxspeed_histogram_32 = 83; 
+	optional uint32 rxspeed_histogram_64 = 84;
+	optional uint32 rxspeed_histogram_128 = 85;
+	optional uint32 rxspeed_histogram_256 = 86;
+	optional uint32 rxspeed_histogram_512 = 87;
+	optional uint32 rxspeed_histogram_1024 = 88;
+	optional uint32 rxspeed_histogram_max = 89;
+
+	// distribution.  some might be -1, see above for why.
+	optional uint32 rxspeed_ntile_5th = 90; // 5% of transmit samples were <= n kb/s
+	optional uint32 rxspeed_ntile_50th = 91; // 50% of transmit samples were <= n kb/s 
+	optional uint32 rxspeed_ntile_75th = 92; // 70% of transmit samples were <= n kb/s 
+	optional uint32 rxspeed_ntile_95th = 93; // 95% of transmit samples were <= n kb/s 
+	optional uint32 rxspeed_ntile_98th = 94; // 98% of transmit samples were <= n kb/s 
+};
+
+/// Message containing connection quality related messages
+/// (possibly inline with a data packet)
+message CMsgSteamDatagramConnectionQuality
+{
+	optional CMsgSteamDatagramLinkInstantaneousStats instantaneous = 1;
+	optional CMsgSteamDatagramLinkLifetimeStats lifetime = 2;
+	//optional uint32 seqnum_ack_lifetime = 3;
+};
+
+// ICE rendezvous message, sent reliably
+// FIXME - should use oneof when it is available in all branches we care about
+message CMsgICERendezvous
+{
+	// Auth info used for STUN to avoid crossing the streams.
+	// This is sent very early in the handshake (in the ConnectRequest / ConnectOKC)
+	message Auth
+	{
+		optional string pwd_frag = 1;
+	}
+	optional Auth auth = 2;
+
+	// ICE candidate
+	message Candidate
+	{
+		//optional string sdpm_id = 1;
+		//optional uint32 sdpm_line_index = 2;
+		optional string candidate = 3;
+	}
+	optional Candidate add_candidate = 1;
+	//optional Candidate remove_candidate = 2;
+};
+
+/// Introducer message sent through trusted 3rd party (Steam, or some other custom signaling)
+message CMsgSteamNetworkingP2PRendezvous
+{
+	// Identity of who this is from
+	optional string from_identity = 8;
+
+	// Connection this is from
+	optional fixed32 from_connection_id = 9;
+
+	// Destination identity, if I know it
+	optional string to_identity = 10;
+
+	// Destination connection ID, if I know it.
+	optional fixed32 to_connection_id = 1;
+
+	// SDR routing information.  (Serialized CMsgSteamDatagramP2PRoutes)
+	optional bytes sdr_routes = 2;
+
+	// This is the latest SDR route revision I have for you.
+	// On older clients this might not always be present, until they have
+	// received some SDR routes.  Newer clients always populate this, if
+	// they are willing to do SDR peer-to-peer routing.
+	optional uint32 ack_peer_routes_revision = 3;
+
+	// Is ICE enabled?
+	optional bool ice_enabled = 7;
+
+	// I'm a hosted dedicated server.  Please use
+	// the more optimal path to talk to me.
+	optional bytes hosted_server_ticket = 14; // CMsgSteamDatagramSignedRelayAuthTicket
+
+	// Connect request
+	message ConnectRequest
+	{
+		optional CMsgSteamDatagramSessionCryptInfoSigned crypt = 6;
+		optional CMsgSteamDatagramCertificateSigned cert = 7;
+		optional uint32 to_virtual_port = 9;
+		optional uint32 from_virtual_port = 10;
+	};
+	optional ConnectRequest connect_request = 4;
+
+	message ConnectOK
+	{
+		optional CMsgSteamDatagramSessionCryptInfoSigned crypt = 5;
+		optional CMsgSteamDatagramCertificateSigned cert = 6;
+	};
+	optional ConnectOK connect_ok = 5;
+
+	// Graceful close
+	message ConnectionClosed
+	{
+		optional string debug = 5;
+		optional uint32 reason_code = 6;
+
+		// End-to-End connection data
+		//optional CMsgSteamDatagramConnectionQuality quality_e2e = 18;
+	};
+	optional ConnectionClosed connection_closed = 6;
+
+	//
+	// Generic reliable message stream
+	//
+
+	// Last message that we have received
+	optional uint32 ack_reliable_msg = 11;
+
+	// ID of first message we are sending (if any)
+	optional uint32 first_reliable_msg = 12;
+
+	// A reliable message.
+	// FIXME - should use oneof when it is available in all branches we care about
+	message ReliableMessage
+	{
+		optional CMsgICERendezvous ice = 1; // Currently only ICE uses the reliable message stream, but this may change
+	}
+	repeated ReliableMessage reliable_messages = 13;
+};
+
+// A summary of what happened in an ICE session, for analytics
+message CMsgSteamNetworkingICESessionSummary
+{
+	// What was the overall outcome of ICE?
+	// Should always be set.  Will be zero if
+	// ICE succeeded
+	optional uint32 failure_reason_code = 7; // ESteamNetConnectionEnd (or special internal value), if we failed in some way
+
+	// What types of candidates were we able to gather?
+	// Should always be present if this message is sent
+	optional uint32 local_candidate_types = 1; // k_EICECandidate_xxx
+
+	// What types of candidates did we receive from peer?
+	optional uint32 remote_candidate_types = 2; // k_EICECandidate_xxx
+
+	// Initial route type, and ping, when when we first pierced NAT.
+	// Will not be present if we never pierced NAT
+	optional uint32 initial_route_kind = 3; // ESteamNetTransportKind
+	optional uint32 initial_ping = 4;
+	optional uint32 initial_score = 6;
+	optional uint32 negotiation_ms = 5; // How long did it take to get a NAT traversal result (either success or failure)
+
+	// How long were we the selcted transport?
+	optional uint32 selected_seconds = 12;
+
+	// User options that were in effect, applied to this connection.
+	// (Meaning depends on platform.)
+	optional uint32 user_settings = 13;
+
+	// Value of the P2P_Transport_ICE_Enable connection configuration value that was set, or determined
+	// from user settings
+	optional uint32 ice_enable_var = 14;
+
+	// What sorts of candidates were we allowed to gather, based on user settings AND local configuration
+	optional uint32 local_candidate_types_allowed = 15; // // k_EICECandidate_xxx
+};
+
+// Do not remove this comment due to a bug on the Mac OS X protobuf compiler
+

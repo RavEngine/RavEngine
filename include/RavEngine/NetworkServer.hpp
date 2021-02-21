@@ -1,5 +1,6 @@
 #pragma once
-#include <rpc/server.h>
+#include <cstdint>
+#include <steam/isteamnetworkingsockets.h>
 
 namespace RavEngine {
 
@@ -10,7 +11,6 @@ public:
 	void Stop();
 	~NetworkServer();	//calls stop
 protected:
-	rpc::server server;
 };
 
 }

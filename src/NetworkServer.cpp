@@ -2,14 +2,14 @@
 
 using namespace RavEngine;
 
-NetworkServer::NetworkServer(uint16_t port) : server(port){}
+NetworkServer::NetworkServer(uint16_t port){}
 
 void NetworkServer::Start(){
-	server.async_run(4);	//TODO: customize thread count
+	//server.async_run(4);	//TODO: customize thread count
 }
 
 void NetworkServer::Stop(){
-	server.stop();
+	//server.stop();
 }
 
 NetworkServer::~NetworkServer(){

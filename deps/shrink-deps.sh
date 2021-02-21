@@ -32,3 +32,7 @@ rm -r resonance-audio/docs resonance-audio/matlab resonance-audio/platforms/unit
 # libnyquist
 rm -r libnyquist/examples libnyquist/test_data
 
+# GameNetworkingSockets & deps
+rm -r GameNetworkingSockets/openssl-cmake/test GameNetworkingSockets/openssl-cmake/doc
+rm -r GameNetworkingSockets/protobuf/third_party GameNetworkingSockets/protobuf/benchmarks
+rm -r GameNetworkingSockets/GameNetworkingSockets/tests GameNetworkingSockets/protobuf/benchmarks

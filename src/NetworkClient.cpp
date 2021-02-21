@@ -2,7 +2,7 @@
 
 using namespace RavEngine;
 
-NetworkClient::NetworkClient(const std::string& addr, const uint16_t port) : client(addr, port){
+NetworkClient::NetworkClient(const std::string& addr, const uint16_t port){
 	
 }
 

@@ -59,8 +59,8 @@ add_subdirectory("${DEPS_DIR}/glm")
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist")
 
-# rpclib
-add_subdirectory("${DEPS_DIR}/rpclib")
+# GNS
+add_subdirectory("${DEPS_DIR}/GameNetworkingSockets")
 
 # resonance-audio
 set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
@@ -151,6 +151,7 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/resonance-audio/platforms/"
 	"${DEPS_DIR}/resonance-audio/third_party/eigen"
 	"${DEPS_DIR}/resonance-audio/"
+	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
@@ -183,9 +184,9 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	#"PhysXGPU"
 	"RmlCore"
 	"libnyquist"
+	"GameNetworkingSockets_s"
 	PUBLIC
 	"glm"
-	"rpc"
 	"fmt"
 	"etl"
 	"tweeny"

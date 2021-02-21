@@ -1,0 +1,110 @@
+//====== Copyright Valve Corporation, All rights reserved. ====================
+//
+// Wire format messages for Steam networking authentication structures
+//
+//=============================================================================
+syntax = "proto2";
+
+option optimize_for = SPEED;
+
+// We don't use the service generation functionality
+option cc_generic_services = false;
+
+// Legacy binary format.  Now the string format is always used, even over
+// the wire.  This is a bit wasteful.  But the benefit of the string format
+// is that it's must easier to make forward comaptible.  So we can add new
+// identity types without updating all old clients that may possibly interact
+// with the new identity type.  In many cases, the old client doesn't really
+// need to "understand" the type, and the string format actually works great.
+message CMsgSteamNetworkingIdentityLegacyBinary
+{
+
+	// We don't use a seperate "type" field, we just use the
+	// presence of the appropriate fields.  (On the wire, we
+	// really do have a type field.)
+
+	optional fixed64 steam_id = 16;
+
+	optional bytes generic_bytes = 2;
+	optional string generic_string = 3;
+	optional bytes ipv6_and_port = 4;
+};
+
+// A public key used for crypto key exchange and identity.
+// This is basically the portion of a certificate over which
+// the signature is generated.  (It is broken into a separate
+// message to make it easy to keep the exact bytes that were
+// signed intact during transport.)
+message CMsgSteamDatagramCertificate
+{
+	enum EKeyType
+	{
+		INVALID = 0;
+		ED25519 = 1;
+	};
+	optional EKeyType key_type = 1;
+	optional bytes key_data = 2;
+
+	//
+	// Who is allowed to use this key?  This is the set of people who we assume
+	// will have access to the corresponding private key.
+	//
+
+	// Single user key?  This might not be set if the key is shared!
+	optional fixed64 legacy_steam_id = 4;
+	optional CMsgSteamNetworkingIdentityLegacyBinary legacy_identity_binary = 11;
+	optional string identity_string = 12;
+
+	// Allow any server in particular data centers to use it?
+	repeated fixed32 gameserver_datacenter_ids = 5;
+
+	//
+	// Key restrictions
+	//
+
+	// Restricted time range?
+	optional fixed32 time_created = 8;
+	optional fixed32 time_expiry = 9;
+
+	// Restrict key to be used for a particular AppID(s)?
+	repeated uint32 app_ids = 10;
+};
+
+// Certificate signed by a certificate authority.
+message CMsgSteamDatagramCertificateSigned
+{
+	// The public key associated with my identity.  This is a longer standing key
+	// that can be used for multiple connections.  It's a serialized
+	// version of CMsgSteamDatagramCertificate, but because the signature
+	// is based on a particular serialization of that message, we keep the
+	// original serialization here.
+	optional bytes cert = 4;
+
+	/// The key that was used by the certificate authority to sign
+	/// my public key.  This might be empty if the key is unsigned.
+	// (It's up to the endpoint to decide if they want to accept that
+	// or not.)
+	optional fixed64 ca_key_id = 5;
+
+	/// Signature over the certificate, using the key identified
+	/// by ca_key_id.
+	optional bytes ca_signature = 6;
+
+	/// In a few instances, we want to use the same message to include the private
+	/// key and the corresponding cert.  Most of the time this field should not be
+	/// present!
+	optional bytes private_key_data = 1;
+}
+
+// A request by a client to a CA to issue a cert.
+message CMsgSteamDatagramCertificateRequest
+{
+	// An unsigned cert.  The requestor will populate the fields
+	// appropriate to the request.  (Who do you thin you are,
+	// what app(s) would you like access for, etc)  Most importantly,
+	// the caller must fill in the public key they want to use
+	optional CMsgSteamDatagramCertificate cert = 1;
+}
+
+// Do not remove this comment due to a bug on the Mac OS X protobuf compiler
+
