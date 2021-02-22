@@ -11,6 +11,8 @@
 #include <RmlUi/Core.h>
 #include "GUI.hpp"
 #include "RMLFileInterface.hpp"
+#include <steam/steamnetworkingsockets.h>
+#include <steam/isteamnetworkingutils.h>
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -39,6 +41,20 @@ Ref<World> App::currentWorld;
 
 std::chrono::duration<double,std::micro> App::min_tick_time(std::chrono::duration<double,std::milli>(1.0/90 * 1000));
 
+/**
+ GameNetworkingSockets debug log function
+ */
+static void DebugOutput( ESteamNetworkingSocketsDebugOutputType eType, const char *pszMsg )
+{
+	if ( eType == k_ESteamNetworkingSocketsDebugOutputType_Bug )
+	{
+		Debug::Fatal("{}",pszMsg);
+	}
+	else{
+		Debug::Log("{}",pszMsg);
+	}
+}
+
 App::App(const std::string& resourcesName){
 	//initialize virtual file system library -- on unix systems this must pass argv[0]
 	PHYSFS_init("");
@@ -65,6 +81,13 @@ App::App(const std::string& resourcesName){
 	
 	//setup Audio
 	player.Init();
+	
+	//setup networking
+	SteamDatagramErrMsg errMsg;
+	if ( ! GameNetworkingSockets_Init(nullptr, errMsg) ){
+		Debug::Fatal("Networking initialization failed: {}",errMsg);
+	}
+	SteamNetworkingUtils()->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Msg,DebugOutput);
 }
 
 int App::run(int argc, char** argv) {

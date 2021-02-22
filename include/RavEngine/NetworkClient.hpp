@@ -7,10 +7,13 @@ namespace RavEngine {
 
 class NetworkClient{
 public:
-	NetworkClient(const std::string& address, const uint16_t port);
+	NetworkClient();
+	void Connect(const std::string& addr, uint16_t port);
 	void Disconnect();
 	~NetworkClient();	//gracefully disconnect
 protected:
+	ISteamNetworkingSockets *interface;
+	HSteamNetConnection connection;
 };
 
 }

@@ -1,15 +1,30 @@
 #include "NetworkServer.hpp"
+#include "Debug.hpp"
 
 using namespace RavEngine;
 
-NetworkServer::NetworkServer(uint16_t port){}
+NetworkServer::NetworkServer(){
+	interface = SteamNetworkingSockets();
+}
 
-void NetworkServer::Start(){
-	//server.async_run(4);	//TODO: customize thread count
+void NetworkServer::Start(uint16_t port){
+	//configure and start server
+	SteamNetworkingConfigValue_t opt;
+	listenSocket = interface->CreateListenSocketP2P(port, 1, &opt);
+	
+	if (listenSocket == k_HSteamListenSocket_Invalid )
+		Debug::Fatal( "Failed to listen on port {}", port );
+	
+	pollGroup = interface->CreatePollGroup();
+	if (pollGroup == k_HSteamNetPollGroup_Invalid)
+		Debug::Fatal("Failed to create poll group");
+	
+	Debug::Log("Listening on port {}",port);
 }
 
 void NetworkServer::Stop(){
-	//server.stop();
+	interface->CloseListenSocket(listenSocket);
+	interface->DestroyPollGroup(pollGroup);
 }
 
 NetworkServer::~NetworkServer(){

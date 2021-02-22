@@ -6,11 +6,14 @@ namespace RavEngine {
 
 class NetworkServer{
 public:
-	NetworkServer(uint16_t port);
-	void Start();
+	NetworkServer();
+	void Start(uint16_t port);
 	void Stop();
 	~NetworkServer();	//calls stop
 protected:
+	ISteamNetworkingSockets *interface;
+	HSteamListenSocket listenSocket;
+	HSteamNetPollGroup pollGroup;
 };
 
 }
