@@ -199,6 +199,8 @@ App::~App(){
 #endif
 	player.Shutdown();
 	Material::Manager::RemoveAll();
+	networkManager.server.reset();
+	networkManager.client.reset();
 	PHYSFS_deinit();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();

@@ -10,7 +10,13 @@ NetworkServer::NetworkServer(){
 void NetworkServer::Start(uint16_t port){
 	//configure and start server
 	SteamNetworkingConfigValue_t opt;
-	listenSocket = interface->CreateListenSocketP2P(port, 1, &opt);
+	opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, [](){
+		//TODO: replace with member function later
+	});
+	SteamNetworkingIPAddr serverLocalAddr;
+	serverLocalAddr.Clear();
+	serverLocalAddr.m_port = port;
+	listenSocket = interface->CreateListenSocketIP(serverLocalAddr, 1, &opt);
 	
 	if (listenSocket == k_HSteamListenSocket_Invalid )
 		Debug::Fatal( "Failed to listen on port {}", port );
