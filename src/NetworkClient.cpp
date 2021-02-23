@@ -1,6 +1,4 @@
 #include "NetworkClient.hpp"
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include "Debug.hpp"
 
 using namespace RavEngine;
