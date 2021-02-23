@@ -1,4 +1,7 @@
 #include "NetworkClient.hpp"
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include "Debug.hpp"
 
 using namespace RavEngine;
 
@@ -7,9 +10,21 @@ NetworkClient::NetworkClient(){
 }
 
 void NetworkClient::Connect(const std::string& address, uint16_t port){
-	SteamNetworkingIdentity addr;		//TODO: convert address to networking identity
+	SteamNetworkingIPAddr ip;
+	ip.Clear();
+	if(!ip.ParseString(address.c_str())){
+		Debug::Fatal("Invalid IP: {}",address);
+	}
+	ip.m_port = port;
+	
 	SteamNetworkingConfigValue_t options;
-	connection = interface->ConnectP2P(addr, port, 1, &options);
+	options.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, [&](SteamNetConnectionStatusChangedCallback_t *pInfo ){
+		
+	});
+	connection = interface->ConnectByIPAddress(ip, 1, &options);
+	if (connection == k_HSteamNetConnection_Invalid){
+		Debug::Fatal("Cannot connect to {}:{}",address,port);
+	}
 }
 
 void NetworkClient::Disconnect(){

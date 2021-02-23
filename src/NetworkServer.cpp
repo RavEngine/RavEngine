@@ -10,8 +10,10 @@ NetworkServer::NetworkServer(){
 void NetworkServer::Start(uint16_t port){
 	//configure and start server
 	SteamNetworkingConfigValue_t opt;
-	opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, [](){
+	opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, [&](SteamNetConnectionStatusChangedCallback_t *pInfo){
 		//TODO: replace with member function later
+		OnSteamNetConnectionStatusChanged(pInfo);
+		
 	});
 	SteamNetworkingIPAddr serverLocalAddr;
 	serverLocalAddr.Clear();
@@ -35,4 +37,8 @@ void NetworkServer::Stop(){
 
 NetworkServer::~NetworkServer(){
 	Stop();
+}
+
+void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo){
+	
 }

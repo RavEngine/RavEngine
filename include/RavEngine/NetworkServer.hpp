@@ -14,6 +14,7 @@ protected:
 	ISteamNetworkingSockets *interface;
 	HSteamListenSocket listenSocket;
 	HSteamNetPollGroup pollGroup;
+	void OnSteamNetConnectionStatusChanged( SteamNetConnectionStatusChangedCallback_t *pInfo );
 };
 
 }
