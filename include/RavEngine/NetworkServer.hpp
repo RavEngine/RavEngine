@@ -10,11 +10,12 @@ public:
 	void Start(uint16_t port);
 	void Stop();
 	~NetworkServer();	//calls stop
+	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 protected:
 	ISteamNetworkingSockets *interface;
 	HSteamListenSocket listenSocket;
 	HSteamNetPollGroup pollGroup;
-	void OnSteamNetConnectionStatusChanged( SteamNetConnectionStatusChangedCallback_t *pInfo );
+	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*) ;
 };
 
 }

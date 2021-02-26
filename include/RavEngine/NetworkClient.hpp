@@ -11,9 +11,11 @@ public:
 	void Connect(const std::string& addr, uint16_t port);
 	void Disconnect();
 	~NetworkClient();	//gracefully disconnect
+	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*) ;
 protected:
 	ISteamNetworkingSockets *interface;
 	HSteamNetConnection connection;
+	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*) ;
 };
 
 }

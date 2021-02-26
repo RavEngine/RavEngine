@@ -201,6 +201,7 @@ App::~App(){
 	Material::Manager::RemoveAll();
 	networkManager.server.reset();
 	networkManager.client.reset();
+	GameNetworkingSockets_Kill();
 	PHYSFS_deinit();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
