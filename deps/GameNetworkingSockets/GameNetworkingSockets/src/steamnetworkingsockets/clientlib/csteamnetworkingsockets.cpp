@@ -46,6 +46,7 @@ DEFINE_GLOBAL_CONFIGVAL( int32, FakePacketReorder_Time, 15, 0, 5000 );
 DEFINE_GLOBAL_CONFIGVAL( float, FakePacketDup_Send, 0.0f, 0.0f, 100.0f );
 DEFINE_GLOBAL_CONFIGVAL( float, FakePacketDup_Recv, 0.0f, 0.0f, 100.0f );
 DEFINE_GLOBAL_CONFIGVAL( int32, FakePacketDup_TimeMax, 10, 0, 5000 );
+DEFINE_GLOBAL_CONFIGVAL( int32, PacketTraceMaxBytes, -1, -1, 99999 );
 DEFINE_GLOBAL_CONFIGVAL( int32, EnumerateDevVars, 0, 0, 1 );
 
 DEFINE_GLOBAL_CONFIGVAL( void *, Callback_AuthStatusChanged, nullptr );
@@ -2014,6 +2015,7 @@ static bool BEnumerateConfigValue( const GlobalConfigValueEntry *pVal )
 		// Never enumerate these
 		case k_ESteamNetworkingConfig_SymmetricConnect:
 		case k_ESteamNetworkingConfig_LocalVirtualPort:
+		case k_ESteamNetworkingConfig_ConnectionUserData:
 			return false;
 
 		// Dev var?

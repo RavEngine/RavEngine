@@ -184,8 +184,8 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	#"PhysXGPU"
 	"RmlCore"
 	"libnyquist"
-	"GameNetworkingSockets_s"
 	PUBLIC
+	"GameNetworkingSockets_s"
 	"glm"
 	"fmt"
 	"etl"
