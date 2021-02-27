@@ -9,16 +9,61 @@ using namespace RavEngine;
 using namespace std;
 using namespace Rml;
 
+#define SDL2RML(a,b) case a: value = Rml::Input::KeyIdentifier::KI_ ## b; break;
+
 /**
  Converts SDL (USB) scancodes to RML keys
  */
 static inline Rml::Input::KeyIdentifier SDLtoRML(const int scancode){
 	int value = 0;
+	//a-z
 	if (scancode >= SDL_SCANCODE_A && scancode <= SDL_SCANCODE_Z){
 		value = scancode +(Rml::Input::KeyIdentifier::KI_A - SDL_SCANCODE_A);
 	}
+	//arrows and controls
+	else{
+		switch(scancode){
+			SDL2RML(SDL_SCANCODE_LEFT, LEFT);
+			SDL2RML(SDL_SCANCODE_RIGHT, RIGHT);
+			SDL2RML(SDL_SCANCODE_UP, UP);
+			SDL2RML(SDL_SCANCODE_DOWN, DOWN);
+			SDL2RML(SDL_SCANCODE_DELETE, DELETE)
+			SDL2RML(SDL_SCANCODE_BACKSPACE, BACK)
+			SDL2RML(SDL_SCANCODE_HOME, HOME)
+			SDL2RML(SDL_SCANCODE_END, END)
+			SDL2RML(SDL_SCANCODE_PAGEUP, PRIOR)
+			SDL2RML(SDL_SCANCODE_PAGEDOWN, NEXT)
+			SDL2RML(SDL_SCANCODE_INSERT, INSERT)
+			SDL2RML(SDL_SCANCODE_RETURN, RETURN)
+			SDL2RML(SDL_SCANCODE_KP_ENTER, NUMPADENTER)
+			default:
+				value = 0;
+				break;
+		}
+	}
 
 	return static_cast<Rml::Input::KeyIdentifier>(value);
+}
+
+static inline char TypeCharacter(SDL_Keycode key, uint32_t modifiers){
+	char code = 0;
+	switch(key){
+		//no type
+		case SDL_SCANCODE_RIGHT:
+		case SDL_SCANCODE_UP:
+		case SDL_SCANCODE_DOWN:
+		case SDL_SCANCODE_LEFT:
+		case SDL_SCANCODE_BACKSPACE:
+		case SDL_SCANCODE_DELETE:
+			break;
+		default:
+			code = static_cast<char>(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(key)));
+			if (modifiers & Rml::Input::KeyModifier::KM_SHIFT || modifiers & Rml::Input::KeyModifier::KM_CAPSLOCK){
+				code = std::toupper(code);
+			}
+			break;
+	}
+	return code;
 }
 
 ElementDocument* GUIComponent::AddDocument(const std::string &name){
@@ -113,6 +158,8 @@ void GUIComponent::AnyActionDown(const int charcode){
 	switch(charcode){
 		case SDL_SCANCODE_LCTRL:
 		case SDL_SCANCODE_RCTRL:
+		case SDL_SCANCODE_LGUI:
+		case SDL_SCANCODE_RGUI:
 			modifier_state |= Rml::Input::KeyModifier::KM_CTRL;
 			break;
 		case SDL_SCANCODE_LSHIFT:
@@ -143,8 +190,12 @@ void GUIComponent::AnyActionDown(const int charcode){
 			break;
 		default:
 			ExclusiveAccess([&] {
-				context->ProcessKeyDown(SDLtoRML(charcode), 1);
-				context->ProcessTextInput(static_cast<char>(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(charcode))));
+				context->ProcessKeyDown(SDLtoRML(charcode), modifier_state);
+				//don't process on modifier keys
+				auto code = TypeCharacter(charcode, modifier_state);
+				if (! (modifier_state & Rml::Input::KeyModifier::KM_CTRL) && code != 0){
+					context->ProcessTextInput(TypeCharacter(charcode, modifier_state));
+				}
 			});
 			break;
 	}
@@ -155,6 +206,8 @@ void GUIComponent::AnyActionUp(const int charcode){
 	switch(charcode){
 		case SDL_SCANCODE_LCTRL:
 		case SDL_SCANCODE_RCTRL:
+		case SDL_SCANCODE_LGUI:
+		case SDL_SCANCODE_RGUI:
 			modifier_state &= ~Rml::Input::KeyModifier::KM_CTRL;
 			break;
 		case SDL_SCANCODE_LSHIFT:
@@ -184,7 +237,7 @@ void GUIComponent::AnyActionUp(const int charcode){
 			break;
 		default:
 			ExclusiveAccess([&] {
-				context->ProcessKeyUp(SDLtoRML(charcode), 0);
+				context->ProcessKeyUp(SDLtoRML(charcode), modifier_state);
 			});
 			break;
 	}
