@@ -6,6 +6,7 @@
 #include "BuiltinMaterials.hpp"
 #include "Common3D.hpp"
 #include "Debug.hpp"
+#include "clip.h"
 
 using namespace RavEngine;
 using namespace std;
@@ -108,11 +109,11 @@ void RenderEngine::SetMouseCursor(const Rml::String &cursor_name){
 }
 
 void RenderEngine::SetClipboardText(const Rml::String &text){
-	Debug::Fatal("Not implemented");
+	clip::set_text(text);
 }
 
 void RenderEngine::GetClipboardText(Rml::String &text){
-	Debug::Fatal("Not implemented");
+	clip::get_text(text);
 }
 
 /// Called by RmlUi when it wants to render geometry that it does not wish to optimise.

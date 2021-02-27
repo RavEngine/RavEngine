@@ -55,6 +55,11 @@ add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
 add_subdirectory("${DEPS_DIR}/glm")
 
+# clip (clipboard)
+set(CLIP_EXAMPLES OFF CACHE INTERNAL "")
+set(CLIP_TESTS OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/clip")
+
 # libnyquist
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist")
@@ -156,6 +161,7 @@ target_include_directories("${PROJECT_NAME}"
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
 	"${DEPS_DIR}/stbi"
+	"${DEPS_DIR}/clip"
 )
 
 # ====================== Linking ====================
@@ -184,8 +190,9 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	#"PhysXGPU"
 	"RmlCore"
 	"libnyquist"
-	PUBLIC
+	"clip"
 	"GameNetworkingSockets_s"
+	PUBLIC
 	"glm"
 	"fmt"
 	"etl"
