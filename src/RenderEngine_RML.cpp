@@ -208,15 +208,17 @@ bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i
 	
 	//pull texture out of vfs into byte array, then call createTexture
 	std::vector<uint8_t> data;
-	App::Resources->FileContentsAt(("/textures/" + source).c_str(),data);
+	App::Resources->FileContentsAt((source).c_str(),data);
 	
 	int width, height,channels;
 	auto compressed_size = sizeof(stbi_uc) * data.size();
 	
 	unsigned char* bytes = stbi_load_from_memory(&data[0], compressed_size, &width, &height, &channels, 4);
 	if (bytes == nullptr){
-		throw(runtime_error(stbi_failure_reason()));
+		Debug::Fatal("Cannot open image: {}",stbi_failure_reason());
 	}
+	texture_dimensions.x = width;
+	texture_dimensions.y = height;
 	
 	texture_handle = createTexture(texture_dimensions.x, texture_dimensions.y, bytes);
 	
