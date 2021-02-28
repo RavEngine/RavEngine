@@ -36,13 +36,16 @@ install:
     cmake --build . --target rlottie --config Release -- "/clp:ErrorsOnly"
     cd ../../../
     
-    mkdir Build-Dynamic, Build-Static
+    mkdir Build-Dynamic, Build-Static, Build-Samples
     
     cd Build-Dynamic
-    cmake -G "%VS_GENERATOR%" -DBUILD_SHARED_LIBS=ON -DBUILD_SAMPLES=ON -DWARNINGS_AS_ERRORS=ON ..
+    cmake -G "%VS_GENERATOR%" -DBUILD_SHARED_LIBS=ON -DBUILD_SAMPLES=OFF -DWARNINGS_AS_ERRORS=ON ..
 
     cd ../Build-Static
     cmake -G "%VS_GENERATOR%" -DBUILD_SHARED_LIBS=OFF -DBUILD_SAMPLES=OFF -DWARNINGS_AS_ERRORS=ON ..
+    
+    cd ../Build-Samples
+    cmake -G "%VS_GENERATOR%" -DBUILD_SHARED_LIBS=ON -DENABLE_LOTTIE_PLUGIN=ON -DBUILD_SAMPLES=ON -DWARNINGS_AS_ERRORS=ON ..
     
     cd ..
     
@@ -56,6 +59,8 @@ build_script:
     
     msbuild Build-Static/RmlUi.sln  /p:configuration=release /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
     
+    msbuild Build-Samples/RmlUi.sln  /p:configuration=release /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+    
 after_build:
 - cmd: |-
     mkdir Bin
@@ -67,8 +72,8 @@ after_build:
     cp ../Build-Static/Release/Rml*.lib Static-Release
     cd ..
     
-    cp Build-Dynamic/Release/*.exe Samples
-    cp Bin/Dynamic-Release/*.dll Samples
+    cp Build-Samples/Release/*.exe Samples
+    cp Build-Samples/Release/Rml*.dll Samples
     cp Dependencies/lib/*.dll Samples
 
     mv Dependencies/lib/ Dependencies/freetype-%FREETYPE_VER%
@@ -76,18 +81,21 @@ after_build:
     
     IF NOT "%APPVEYOR_REPO_TAG_NAME%"=="" SET RMLUI_VERSION= %APPVEYOR_REPO_TAG_NAME%
     
-    echo RmlUi%RMLUI_VERSION% library and sample binaries for %PLATFORM_NAME%.> Readme.txt& echo.>>Readme.txt
-    echo https://github.com/mikke89/RmlUi>> Readme.txt& echo.>>Readme.txt
-    echo Built using %VS_GENERATOR% on %APPVEYOR_REPO_COMMIT_TIMESTAMP:~0,10% (build %APPVEYOR_BUILD_NUMBER%).>> Readme.txt
-    echo Commit id: %APPVEYOR_REPO_COMMIT%.>> Readme.txt
+    echo RmlUi%RMLUI_VERSION% library and sample binaries for %PLATFORM_NAME%.> Build.txt& echo.>>Build.txt
+    echo https://github.com/mikke89/RmlUi>> Build.txt& echo.>>Build.txt
+    echo Built using %VS_GENERATOR% on %APPVEYOR_REPO_COMMIT_TIMESTAMP:~0,10% (build %APPVEYOR_BUILD_NUMBER%).>> Build.txt
+    echo Commit id: %APPVEYOR_REPO_COMMIT%.>> Build.txt
     
-    7z a RmlUi-%VS_SHORTNAME%-%PLATFORM_NAME%.zip Bin/ Include/ Samples/ Readme.txt changelog.md LICENSE Dependencies/freetype-%FREETYPE_VER%/ Dependencies/rlottie/COPYING Dependencies/rlottie/licenses/
+    7z a RmlUi-%VS_SHORTNAME%-%PLATFORM_NAME%.zip Bin/ Include/ Samples/ Build.txt readme.md changelog.md LICENSE.txt Dependencies/freetype-%FREETYPE_VER%/ Dependencies/rlottie/COPYING Dependencies/rlottie/licenses/
     
     mkdir Samples\Dependencies\freetype-%FREETYPE_VER%, Samples\Dependencies\rlottie, Samples\Dependencies\rlottie\licenses
+    cp LICENSE.txt Samples/LICENSE.txt
+    cp Include/RmlUi/Core/Containers/LICENSE.txt Samples/LICENSE.Core.ThirdParty.txt
+    cp Source/Debugger/LICENSE.txt Samples/LICENSE.Debugger.ThirdParty.txt
     cp Dependencies/freetype-%FREETYPE_VER%/*.TXT Samples/Dependencies/freetype-%FREETYPE_VER%
     cp Dependencies/rlottie/COPYING Samples/Dependencies/rlottie
     cp Dependencies/rlottie/licenses/* Samples/Dependencies/rlottie/licenses
-    IF "%PLATFORM_NAME%"=="win64" 7z a RmlUi-%PLATFORM_NAME%-samples-only.zip LICENSE .\Samples\* -r -xr!src\ -x!shell\ -x!luainvaders\
+    IF "%PLATFORM_NAME%"=="win64" 7z a RmlUi-%PLATFORM_NAME%-samples-only.zip .\Samples\* -r -xr!src\ -x!shell\ -x!luainvaders\
     
 for:
 -

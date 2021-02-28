@@ -1,0 +1,37 @@
+@spritesheet theme 
+{
+	src: /assets/invader.tga;
+
+	window-tl: 0px 0px 133px 140px;
+	window-t:  134px 0px 1px 140px;
+	window-tr: 136px 0px 10px 140px;
+	window-l:  0px 139px 10px 1px;
+	window-c:  11px 139px 1px 1px;
+	window-r:  10px 139px -10px 1px; /* mirrored left */
+	window-bl: 0px 140px 11px 11px;
+	window-b:  11px 140px 1px 11px;
+	window-br: 136px 140px 10px 11px;
+}
+
+body
+{
+	font-family: LatoLatin;
+	font-weight: normal;
+	font-style: normal;
+	font-size: 15dp;
+	color: white;
+}
+
+body.window
+{
+	decorator: tiled-box(
+		window-tl, window-t, window-tr, 
+		window-l, window-c, window-r,
+		window-bl, window-b, window-br
+	);
+}
+
+div
+{
+    display: block;
+}

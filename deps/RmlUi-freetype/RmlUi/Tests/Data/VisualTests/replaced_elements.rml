@@ -1,0 +1,78 @@
+<rml>
+<head>
+    <title>Replaced elements</title>
+    <link type="text/rcss" href="../style.rcss"/>
+	<link rel="help" href="https://www.w3.org/TR/2011/REC-CSS2-20110607/visudet.html#inline-replaced-width" />
+	<meta name="Description" content="Sizing of replaced elements." />
+	<style>
+		@spritesheet theme 
+		{
+			src: /assets/invader.tga;
+			invader: 179px 152px 50px 40px;
+			bar: 108px 308px 70px 20px;
+		}
+		img {
+			vertical-align: bottom;
+			margin: 10dp 5dp;
+		}
+		.border-box {
+			box-sizing: border-box;
+		}
+		input.text {
+			font-size: 1.1em;
+			border: 5dp #999;
+			padding: 15dp;
+			box-sizing: border-box;
+		}
+	</style>
+</head>
+
+<body>
+<p>The following images should be the same size (width and height) in each section.</p>
+<div>
+	<!-- Test replaced element scaling with intrinsic ratio. -->
+	<img style="padding: 10dp;" sprite="invader"/>
+	<img style="padding: 10dp;" class="border-box" sprite="invader"/>
+	<img style="padding: 10dp; height: 40dp;" sprite="invader"/>
+	<img style="padding: 10dp; width: 50dp;" sprite="invader"/>
+	<img style="padding: 10dp; height: 60dp;" class="border-box" sprite="invader"/>
+	<img style="padding: 10dp; width: 70dp;" class="border-box" sprite="invader"/>
+<hr/>
+	<!-- Test width and height auto sizing with constraints. -->
+	<img style="padding: 10dp; max-height: 20dp;" sprite="invader"/>
+	<img style="padding: 10dp; max-width: 25dp;" sprite="invader"/>
+	<img style="padding: 10dp; max-width: 25dp; max-height: 40dp;" sprite="invader"/>
+	<img style="padding: 10dp; max-height: 20dp; max-width: 50dp;" sprite="invader"/>
+	<img style="padding: 10dp; max-width: 40dp; max-height: 20dp;" sprite="invader"/>
+	<img style="padding: 10dp; max-width: 25dp; max-height: 35dp;" sprite="invader"/>
+<hr/>
+	<img style="padding: 10dp; min-height: 24dp;" sprite="bar"/>
+	<img style="padding: 10dp; min-width: 84dp;" sprite="bar"/>
+	<img style="padding: 10dp; min-width: 84dp; min-height: 20dp;" sprite="bar"/>
+	<img style="padding: 10dp; min-height: 24dp; min-width: 20dp;" sprite="bar"/>
+</div>
+<hr/>
+<p>There should be three evenly spaced, same-sized images on a single line.</p>
+<div style="text-align: center">
+	<img style="float: left" sprite="invader"/>
+	<img style="float: right" sprite="invader"/>
+	<img sprite="invader"/>
+</div>
+<hr/>
+<p>The outer border of the images should take up the same height.</p>
+<div>
+	<img style="border: 10dp black; height: 30dp;" sprite="invader"/>
+	<img style="border: 2dp black; height: 50dp;" class="border-box" sprite="invader"/>
+	<img style="border: 2dp black; padding: 5dp; height: 50dp;" class="border-box" sprite="invader"/>
+</div>
+<hr/>
+<p>The two images should be same-sized, and perfectly aligned below each other.</p>
+<div style="text-align: center;">
+	<img style="display: block; margin: 10dp auto;" sprite="invader"/>
+	<img style="display: inline;" sprite="invader"/>
+</div>
+<hr/>
+<p>The two text boxes should have the same height and fit on a single line.</p>
+<input style="width: 30%;" type="text" value="hello"/><input style="width: 70%;" type="text" value="world"/>
+</body>
+</rml>

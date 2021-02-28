@@ -1,0 +1,273 @@
+<rml>
+<head>
+	<link type="text/template" href="../../../assets/window.rml"/>
+	<title>Animation Sample</title>
+	<style>
+		body.window
+		{
+			max-width: 2000dp;
+			max-height: 2000dp;
+			left: 80dp;
+			right: 80dp;
+			top: 50dp;
+			bottom: 50dp;
+			perspective: 3000dp;
+			/*opacity: 0;*/
+		}
+		section
+		{
+			display: block;
+			position: absolute;
+			width: 20%;
+			height: 80%;
+		}
+		#fps
+		{
+			font-size: 0.85em;
+			text-align: left;
+		}
+		button {
+			margin-top: 50dp;
+		}
+		div#title_bar div#icon
+		{
+			display: none;
+		}
+
+		spacer
+		{
+			display: inline-block;
+			width: 25dp;
+		}
+		
+		#start_game 
+		{
+			opacity: 0.8;
+			transform: rotate(370deg) translateX(100dp) scale(1.2);
+			transform-origin: 30% 80% 0;
+		}
+		#options {
+			transform: scale(1.0);
+		}
+		#options:hover {
+			animation: 1s spinner infinite;
+		}
+		@keyframes spinner {
+			from { transform: scale(1.0) rotate(0deg); }
+			25% { transform: scale(1.2) rotate(90deg); }
+			50% { transform: scale(1.3) rotate(180deg); }
+			75% { transform: scale(1.2) rotate(270deg); }
+			to { transform: scale(1.0) rotate(360deg); }
+		}
+		#high_scores {
+			margin-left: -100dp;
+		}
+		
+		@keyframes fadeout {
+			from {
+				opacity: 1;
+				visibility: visible;
+			}
+			to {
+				opacity: 0;
+				visibility: hidden;
+			}
+		}
+		@keyframes fadein {
+			from {
+				opacity: 0;
+				visibility: hidden;
+			}
+			to {
+				opacity: 1;
+				visibility: visible;
+			}
+		}
+		@keyframes textalign {
+			0%, 20%   { text-align: left; }
+			50%       { text-align: center; }
+			80%, 100% { text-align: right; }
+		}
+		.fadeout {
+			animation: 1.2s cubic-in fadeout;
+			visibility: hidden;
+		}
+		.fadein {
+			animation: 1.2s cubic-out fadein;
+		}
+		.textalign {
+			animation: 1.4s textalign;
+		}
+		
+		#exit {
+			transform: rotate(45deg);
+			transform-origin: 50% 50% 0;
+		}
+		
+		div.container
+		{
+			margin-top: 15dp;
+			width: 100%;
+			height: 200dp;
+			background-color: #ae8484aa;
+		}
+		div.plain
+		{
+			font-size: 1.2em;
+			padding: 10dp;
+			margin: auto;
+			width: 130dp;
+			height: 70dp;
+			background-color: #c66;
+		}
+		div.plain:hover { background-color: #ddb700; }
+		
+		
+		/* -- TRANSFORM TESTS */
+		#generic {
+			/* Note the translateX vs translateY in animation target, and rotateZ vs rotate3d, scaleX vs scaleY.
+			   In order to match, they are converted to their generic forms, translate3d, rotate3d, and scale3d.
+			   For rotate3d to match another rotation, their rotation axes must align. */
+			transform: translateX(100dp) rotateZ(70deg) scaleX(1.3);
+		}
+		#combine {
+			transform: rotate(45deg);
+		}
+		#decomposition {
+			/* To interpolate the rotate3d transforms, we need to decompose the matrix, 
+			   see the element info in the debugger for the resulting matrix. */
+			transform: translateX(100dp) rotate3d(1.0, 0, 1.0, 0deg);
+		}
+		
+		/* -- MIXED UNITS TESTS */
+		#abs_rel {
+			margin: 0;
+			margin-left: 50dp;
+		}
+		#abs_rel_transform {
+			margin: 0;
+			transform: translateX(100%);
+		}
+		#animation_event {
+			position: relative;
+			margin: 0;
+			top: 50dp; left: 50dp;
+		}
+		/* -- TRANSITION TESTS */
+		#transition_test {
+			transition: all 1.6s elastic-out 0.0;
+		}
+		#transition_test:hover {
+			/*transition: padding-left background-color transform 0.8s quadratic-out 1.0;*/
+			padding-left: 60dp;
+			transform: scale(1.5);
+		} 
+		#transition_class {
+			margin-left: 50dp;
+			transition: all 0.5s cubic-out;
+			cursor: pointer;
+		}
+		#transition_class.move_me {
+			margin-left: -50dp;
+			background-color: #dd3;
+		}
+		
+		/* -- KEYFRAMES TESTS */
+		@keyframes hello-world 
+		{
+			25% {
+				transform: rotate(180deg);
+			}
+			40% {
+				transform: rotate(180deg) translateX(200dp);
+			}
+			60% {
+				transform: rotate(180deg) translateX(-200dp);
+			}
+			75% {
+				transform: rotate(180deg);
+			}
+			to {
+				transform: rotate(360deg);
+			}
+		}
+		#keyframes_test
+		{
+			transform: rotate(0);
+			animation: 5s bounce-out infinite hello-world;
+			transition: background-color 0.5s exponential-in-out;
+		}
+		@keyframes some-missing-keys
+		{
+			0%, 30% {
+				background-color: #d99;
+			}
+			50% {
+				background-color: #9d9;
+			}
+			to { 
+				background-color: #f9f;
+				width: 100%;
+			}
+		}
+		#keyframes_missing_keys
+		{
+			position: relative;
+			margin: 0; padding: 0;
+			top: 0; left: 0;
+			width: 25dp; height: 25dp;
+			animation: 2s cubic-in-out infinite alternate some-missing-keys;
+		}
+		#keyevent_response
+		{
+			position: relative;
+			margin: 0; padding: 0;
+			top: 110dp; left: 0;
+			height: 55dp;
+		}
+		#performance 
+		{
+			position: absolute;
+			bottom: 0; 
+			height: 30%; 
+			width: 20%;
+			left: -100dp;
+			transform: scale(0.5) rotate(-90deg);
+		}
+	</style>
+</head>
+
+<body template="window">
+<section>
+	<div id="fps"/>
+	<button id="start_game">Start Game</button><br />
+	<button id="high_scores" onkeydown="hello">High Scores</button><br />
+	<button id="options">Options</button><br />
+	<button id="help">Help</button><br />
+	<button id="exit" onclick="exit">Exit</button>
+</section>
+
+<section id="performance"/>
+
+<section style="left: 28%;" id="transform_tests">
+	<h1>Test transform animations</h1>
+	<div class="container"><div class="plain" id="generic">Generic form conversion.</div></div>
+	<div class="container"><div class="plain" id="combine">Match different transform primitive sizes</div></div>
+	<div class="container"><div class="plain" id="decomposition">Force full matrix decomposition</div></div>
+</section>
+
+<section style="left: 52%;" id="mixed_units_tests">
+	<h1>Mixed units tests</h1>
+	<div class="container"><div class="plain" id="abs_rel">Pixel vs percentage.</div></div>
+	<div class="container"><div class="plain" id="abs_rel_transform">Pixel vs percentage transform.</div></div>
+	<div class="container"><div class="plain" id="animation_event">Animation event</div><div class="plain" id="keyevent_response">Events<br/><span style="font-size: 0.8em">(press arrow keys)</span></div></div>
+</section>
+
+<section style="left: 75%;" id="transition_tests">
+	<h1>Transition tests</h1>
+	<div class="container"><div class="plain" id="transition_test">Transition test (hover)</div></div>
+	<div class="container"><div class="plain" id="transition_class" onclick="add_class">Transition class (click)</div></div>
+	<div class="container"><div class="plain" id="keyframes_test">Keyframes test</div><div class="plain" id="keyframes_missing_keys"/></div>
+</section>
+</body>
+</rml>

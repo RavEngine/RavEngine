@@ -1,0 +1,58 @@
+<rml>
+	<head>
+		<title>Start Game</title>
+		<link type="text/template" href="../../assets/window.rml" />
+		<style>
+			body
+			{
+				width: 300dp;
+				height: 225dp;
+				
+				margin: auto;
+			}
+			
+			div#title_bar div#icon
+			{
+				decorator: image( icon-game );
+			}
+			
+			form div
+			{
+				width: 200dp;
+				margin: auto;
+			}
+			color
+			{
+				display: inline-block;
+				width: 9dp;
+				height: 9dp;
+				border: 1dp #666;
+				margin-right: 0.5em;
+			}
+		</style>
+	</head>
+	<body template="window">
+		<form onsubmit="start">
+			<div>
+				<p>
+					Difficulty<br/>
+					<label><input type="radio" name="difficulty" value="easy" checked="true" /> Easy</label><br />
+					<label><input type="radio" name="difficulty" value="hard" /> Hard</label>
+				</p>
+				<p>
+					Colour<br/>
+					<select name="colour">
+						<option value="233,116,81"><color style="background: rgb(233,116,81)"/>Burnt Sienna</option>
+						<option value="127,255,0"><color style="background: rgb(127,255,0)"/>Chartreuse</option>
+						<option value="21,96,189"><color style="background: rgb(21,96,189)"/>Denim</option>
+						<option value="246,74,138"><color style="background: rgb(246,74,138)"/>French Rose</option>
+						<option value="255,0,255"><color style="background: rgb(255,0,255)"/>Fuchsia</option>
+						<option value="218,165,32"><color style="background: rgb(218,165,32)"/>Goldenrod</option>
+						<option selected value="255,255,240"><color style="background: rgb(255,255,240)"/>Ivory</option>
+					</select>
+				</p>
+			</div>
+			<input type="submit">Start Game!</input>
+		</form>
+	</body>
+</rml>

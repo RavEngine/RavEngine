@@ -29,6 +29,7 @@ set(Core_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/ElementDefinition.h
     ${PROJECT_SOURCE_DIR}/Source/Core/ElementHandle.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementImage.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementLabel.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementTextSelection.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/InputType.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/InputTypeButton.h
@@ -73,8 +74,11 @@ set(Core_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertiesIterator.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserAnimation.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserColour.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserDecorator.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserFontEffect.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserKeyword.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserNumber.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserRatio.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserString.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserTransform.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyShorthandDefinition.h
@@ -181,7 +185,6 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Input.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Log.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Math.h
-    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/MathTypes.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Matrix4.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Matrix4.inl
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ObserverPtr.h
@@ -202,7 +205,9 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StreamMemory.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StringUtilities.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleSheet.h
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleSheetContainer.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleSheetSpecification.h
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleSheetTypes.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/SystemInterface.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Texture.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Traits.h
@@ -283,6 +288,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementFormControlSelect.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementFormControlTextArea.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementImage.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementLabel.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementProgressBar.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementTabSet.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementTextSelection.cpp
@@ -348,8 +354,11 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyDictionary.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserAnimation.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserColour.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserDecorator.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserFontEffect.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserKeyword.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserNumber.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserRatio.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserString.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserTransform.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertySpecification.cpp
@@ -360,6 +369,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/StreamMemory.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StringUtilities.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheet.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetContainer.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetFactory.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNode.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelector.cpp
@@ -394,8 +404,6 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/TypeConverter.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/URL.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Variant.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/Vector3.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/Vector4.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/WidgetScroll.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/XMLNodeHandler.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/XMLNodeHandlerBody.cpp
@@ -564,5 +572,18 @@ set(Lua_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Lua/Utilities.cpp
     ${PROJECT_SOURCE_DIR}/Source/Lua/Vector2f.cpp
     ${PROJECT_SOURCE_DIR}/Source/Lua/Vector2i.cpp
+)
+
+set(Lottie_HDR_FILES
+    ${PROJECT_SOURCE_DIR}/Source/Lottie/LottiePlugin.h
+)
+
+set(Lottie_PUB_HDR_FILES
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Lottie/ElementLottie.h
+)
+
+set(Lottie_SRC_FILES
+    ${PROJECT_SOURCE_DIR}/Source/Lottie/ElementLottie.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Lottie/LottiePlugin.cpp
 )
 

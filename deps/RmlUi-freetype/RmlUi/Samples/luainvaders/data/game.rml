@@ -1,0 +1,119 @@
+<rml>
+	<head>
+		<title>game</title>
+		<link type="text/template" href="window.rml" />
+		<style>
+			body
+			{
+				padding: 0dp;
+				margin: 0dp;
+				width: 100%;
+				height: 100%;
+
+				z-index: -1;
+			}
+			
+			game
+			{
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
+			div
+			{
+				height: 47dp;
+				padding: 8dp 0dp 0dp 65dp;
+				margin: 0dp 20dp;
+
+				font-size: 20dp;
+
+				decorator: tiled-horizontal( huditem-l, huditem-c, huditem-r );
+			}
+
+			div#score_div
+			{
+				float: left;
+				width: 155dp;
+			}
+
+			div#hiscore_div
+			{
+				float: left;
+				width: 205dp;
+			}
+
+			div#waves_div
+			{
+				float: right;
+				width: 95dp;
+			}
+
+			div#lives_div
+			{
+				float: right;
+				width: 80dp;
+			}
+
+			icon
+			{
+				display: block;
+				position: absolute;
+				left: 14dp;
+				top: 3dp;
+
+				width: 51dp;
+				height: 39dp;
+			}
+
+			div#score_div icon
+			{
+				decorator: image( icon-score );
+			}
+
+			div#hiscore_div icon
+			{
+				decorator: image( icon-hiscore );
+			}
+
+			div#waves_div icon
+			{
+				decorator: image( icon-waves );
+			}
+
+			div#lives_div icon
+			{
+				decorator: image( icon-lives );
+			}
+		</style>
+		<script>
+Game = Game or {} --namespace for functions
+
+function Game.OnKeyDown(event, document)
+	if event.parameters['key_identifier'] == rmlui.key_identifier.ESCAPE then
+		document.context:LoadDocument('luainvaders/data/pause.rml'):Show()
+    end
+end
+		</script>
+	</head>
+	<body id="game_window" onkeydown="Game.OnKeyDown(event, document)" ongameover="Window.LoadMenu('high_score',document)">
+		<game id="game">
+			<div id="score_div">
+				<icon />
+				score: <span id="score" />
+			</div>
+			<div id="hiscore_div">
+				<icon />
+				high score: <span id="hiscore" />
+			</div>
+			<div id="lives_div">
+				<icon />
+				lives: <span id="lives" />
+			</div>
+			<div id="waves_div">
+				<icon />
+				wave: <span id="waves" />
+			</div>
+		</game>
+	</body>
+</rml>
