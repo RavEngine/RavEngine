@@ -43,6 +43,7 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
 
 # ==================== Dependencies =====================
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE INTERNAL "")
 
 # no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake")
