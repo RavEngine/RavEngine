@@ -248,20 +248,23 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd) {
 			//invoke World rendering call
 			Ref<World> wtd = worldToDraw.lock();
 			if (wtd) {
-				auto before = std::chrono::high_resolution_clock::now();
-				App::Renderer->Draw(wtd);
-				auto after = std::chrono::high_resolution_clock::now();
-				currentFrameTime = std::chrono::duration<float, std::chrono::milliseconds::period>(after - before).count();
+				if (wtd->newFrame){
+#ifdef _DEBUG
+					//display debug print messages
+					bgfx::dbgTextClear();
+					RenderEngine::dbgmtx.lock();
+					for(const auto msg : RenderEngine::debugprints){
+						bgfx::dbgTextPrintf(0, msg.first, msg.second.color, msg.second.message.c_str());
+					}
+					RenderEngine::dbgmtx.unlock();
+#endif
+					auto before = std::chrono::high_resolution_clock::now();
+					App::Renderer->Draw(wtd);
+					auto after = std::chrono::high_resolution_clock::now();
+					currentFrameTime = std::chrono::duration<float, std::chrono::milliseconds::period>(after - before).count();;
+				}
+				//otherwise this world does not have a new frame ready yet, don't waste time re-rendering the same frame again
 			}
-    #ifdef _DEBUG
-          //display debug print messages
-            bgfx::dbgTextClear();
-            RenderEngine::dbgmtx.lock();
-            for(const auto msg : RenderEngine::debugprints){
-                bgfx::dbgTextPrintf(0, msg.first, msg.second.color, msg.second.message.c_str());
-            }
-            RenderEngine::dbgmtx.unlock();
-    #endif
 		}
 	}
 	
@@ -416,7 +419,7 @@ void RenderEngine::DrawNext(Ref<World> world) {
 /**
  Render one frame using the current state of every object in the world
  */
-void RenderEngine::Draw(Ref<World> worldOwning){    
+void RenderEngine::Draw(Ref<World> worldOwning){
 	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
 		bgfx::setViewRect(view, 0, 0, bufferdims.width, bufferdims.height);
 	}
@@ -429,6 +432,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//copy world framedata into local copy
 	fd = worldOwning->GetFrameData();
+	worldOwning->newFrame = false;	//we are processing this frame now
 	
 	//setup matrices
 	float viewmat[16], projmat[16];

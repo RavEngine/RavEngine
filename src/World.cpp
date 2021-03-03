@@ -358,6 +358,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	
 	//execute and wait
 	App::executor.run(masterTasks).wait();
+	newFrame = true;	//TODO: only if rendering is enabled on this world
 	masterTasks.clear();
 }
 

@@ -372,6 +372,8 @@ function(pack_resources)
 	# allow inserting into the mac / ios resource bundle
 	set_target_properties(${ARGS_TARGET} PROPERTIES 
 		MACOSX_BUNDLE TRUE
+		OSX_ARCHITECTURES "arm64;x86_64"
+		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 	)
 
 	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_MESHES} ${ARGS_TEXTURES} ${copy_depends})

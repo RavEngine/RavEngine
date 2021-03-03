@@ -78,6 +78,8 @@ namespace RavEngine {
 				
 	public:
 		
+		std::atomic<bool> newFrame = false;
+		
 		const FrameData GetFrameData(){
 			swapmtx.lock();
 			auto tmp = *inactive;
