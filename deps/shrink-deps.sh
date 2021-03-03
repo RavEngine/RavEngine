@@ -20,7 +20,7 @@ rm -r taskflow/3rd-party taskflow/benchmarks taskflow/docs taskflow/doxygen task
 rm -r concurrentqueue/benchmarks concurrentqueue/build concurrentqueue/c_api concurrentqueue/tests
 
 # rmlui
-rm -r RmlUi/Samples RmlUi/Tests
+rm -r RmlUI-freetype/RmlUi/Samples RmlUI-freetype/RmlUi/Tests
 
 # fmt
 rm -r fmt/doc fmt/test
