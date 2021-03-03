@@ -6,7 +6,7 @@
 #include "BuiltinMaterials.hpp"
 #include "Common3D.hpp"
 #include "Debug.hpp"
-#include "clip.h"
+#include <SDL_clipboard.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -109,11 +109,13 @@ void RenderEngine::SetMouseCursor(const Rml::String &cursor_name){
 }
 
 void RenderEngine::SetClipboardText(const Rml::String &text){
-	clip::set_text(text);
+	SDL_SetClipboardText(text.c_str());
 }
 
 void RenderEngine::GetClipboardText(Rml::String &text){
-	clip::get_text(text);
+	auto data = SDL_GetClipboardText();
+	text = data;		//avoid this copy?
+	SDL_free(data);
 }
 
 /// Called by RmlUi when it wants to render geometry that it does not wish to optimise.

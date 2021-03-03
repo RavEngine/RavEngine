@@ -36,6 +36,3 @@ rm -r libnyquist/examples libnyquist/test_data
 rm -r GameNetworkingSockets/openssl-cmake/test GameNetworkingSockets/openssl-cmake/doc
 rm -r GameNetworkingSockets/protobuf/third_party GameNetworkingSockets/protobuf/benchmarks
 rm -r GameNetworkingSockets/GameNetworkingSockets/tests GameNetworkingSockets/protobuf/benchmarks
-
-# clip
-rm -r clip/examples clip/tests
