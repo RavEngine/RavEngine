@@ -15,7 +15,6 @@ jobs:
       - name: Build
         run: mkdir -p build && cd build; cmake -G "Ninja" .. && cmake --build . --config Release --target RavEngine
 
-
   build-mac:
     name: macOS Compile Check
     runs-on: macos-latest
