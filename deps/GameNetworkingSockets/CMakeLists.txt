@@ -7,6 +7,7 @@ project(GameNetworkingSocketsFull C CXX)
 add_subdirectory(openssl-cmake)
 set(protobuf_BUILD_TESTS OFF CACHE INTERNAL "")
 set(protobuf_MODULE_COMPATIBLE ON CACHE INTERNAL "")
+set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE INTERNAL "")
 add_subdirectory(protobuf/cmake)
 
 option(LTO "Enable Link-Time Optimization" ON)

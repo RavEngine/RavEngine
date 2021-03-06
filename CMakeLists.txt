@@ -120,6 +120,24 @@ endif()
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
 
+# ============ build machine tools ==============
+
+set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
+set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/shaderc" CACHE INTERNAL "")
+
+# configure build machine tools
+file(MAKE_DIRECTORY ${TOOLS_DIR})
+execute_process(
+    COMMAND cmake -G "Ninja" ${DEPS_DIR}/host-tools/
+    WORKING_DIRECTORY ${TOOLS_DIR}
+)
+
+# compile build machine tools
+add_custom_target(HostTools 
+	COMMAND cmake --build . --config release --target shaderc protoc --parallel
+	WORKING_DIRECTORY "${TOOLS_DIR}"
+)
+
 # ========== Building engine ==============
 
 # get all sources for the library with glob
@@ -247,9 +265,9 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 	endif()
 	
 	if (APPLE OR LINUX)
-		SET(SHADERC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc")
+		SET(SHADERC_CMD "${SHADERC_PATH}")
 	elseif(MSVC)
-		SET(SHADERC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc.exe")
+		SET(SHADERC_CMD "${SHADERC_PATH}.exe")
 	endif()
 
 	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${shader_name}")
@@ -263,7 +281,7 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
-		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "shaderc"
+		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "HostTools"
 		COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
 		COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
 		COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
@@ -358,7 +376,7 @@ function(pack_resources)
 	#track all the shaders for compilation
 	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
-	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine" "shaderc")
+	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine")
 
 	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.zip")
 
