@@ -154,9 +154,11 @@ function(protobuf_generate)
     endforeach()
     list(APPEND _generated_srcs_all ${_generated_srcs})
 
+	# modification: PROTOC_CMD is defined by upper-level cmake file
+
     add_custom_command(
       OUTPUT ${_generated_srcs}
-      COMMAND  protobuf::protoc
+      COMMAND ${PROTOC_CMD}
       ARGS --${protobuf_generate_LANGUAGE}_out ${_dll_export_decl}${protobuf_generate_PROTOC_OUT_DIR} ${_plugin} ${_protobuf_include_path} ${_abs_file}
       DEPENDS ${_abs_file} protobuf::protoc
       COMMENT "Running ${protobuf_generate_LANGUAGE} protocol buffer compiler on ${_proto}"
