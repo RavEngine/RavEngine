@@ -24,7 +24,7 @@ size_t VFSInterface::Read(void* buffer, size_t size, Rml::FileHandle file){
 	size_t max_end = begin + size;
 	char* strptr = &handle->filedata[0];
 	
-	auto nbytes = std::min(max_end,handle->filedata.size());
+	auto nbytes = std::min(size,handle->size_bytes() - begin);
 	
 	memcpy(buffer, strptr + begin, nbytes);
 	handle->offset += nbytes;
@@ -40,7 +40,7 @@ bool VFSInterface::Seek(Rml::FileHandle file, long offset, int origin){
 			handle->offset += offset;
 			return true;
 		case SEEK_END:		//from end of file
-			handle->offset = handle->filedata.size() - offset;
+			handle->offset = handle->size_bytes() - offset;
 			return true;
 		case SEEK_SET:	//beginning of file
 			handle->offset = offset;
