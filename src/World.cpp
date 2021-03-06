@@ -176,7 +176,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	}
 	phmap::flat_hash_map<ctti_t, ComponentStore::entry_type> copies(count);
 	
-	auto add_system_to_tick = [&](Ref<System> system){
+	auto add_system_to_tick = [&](Ref<System> system, ctti_t ID){
 		auto& queries = system->QueryTypes();
 		
 		auto func = [=](Ref<Component> e) {
@@ -196,7 +196,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			
 			auto& l1 = copies[query];
 			
-			graphs[system->ID()] = {
+			graphs[ID] = {
 				masterTasks.for_each(l1.begin(), l1.end(), func),
 				system };
 		}
@@ -206,14 +206,14 @@ void RavEngine::World::TickECS(float fpsScale) {
 	for (auto& s : systemManager.GetAlwaysTickSystems()) {
 		auto system = s.second;
 		
-		add_system_to_tick(system);
+		add_system_to_tick(system, s.first);
 	}
 	
 	//tick timed systems
 	auto now = SystemManager::clock_t::now();
 	for (auto& s : systemManager.GetTimedTickSystems()){
 		if (now - s.second.last_timestamp > s.second.interval){
-			add_system_to_tick(s.second.system);
+			add_system_to_tick(s.second.system,s.first);
 			s.second.last_timestamp = now;
 		}
 	}

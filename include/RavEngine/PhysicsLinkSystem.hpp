@@ -30,10 +30,6 @@ namespace RavEngine {
 			return queries;
         }
 		
-		ctti_t ID() const override{
-			return CTTI<PhysicsLinkSystemWrite>;
-		}
-		
 	protected:
 		static const list_type queries;
     };
@@ -57,10 +53,6 @@ namespace RavEngine {
 		//must run before write system
 		const list_type& MustRunBefore() const override {
 			return runbefore;
-		}
-		
-		ctti_t ID() const override{
-			return CTTI<PhysicsLinkSystemRead>;
 		}
 		
 	protected:

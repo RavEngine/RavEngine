@@ -17,7 +17,7 @@ namespace RavEngine {
 
 	class System {
 	public:
-		typedef plf::list<ctti_t> list_type;
+		typedef std::vector<ctti_t> list_type;
 
 		//dependency method
 		virtual const list_type& QueryTypes() const = 0;
@@ -39,12 +39,6 @@ namespace RavEngine {
 		virtual const list_type& MustRunAfter() const{
 			return empty;
 		}
-		
-		/**
-		 Override in subclasses. Used for dependency sorting.
-		 @return this System's static ID (call CTTI<T>)
-		 */
-		virtual ctti_t ID() const = 0;
 
 		/**
 		 Tick the System on an Entity.

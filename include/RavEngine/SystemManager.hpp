@@ -6,6 +6,7 @@
 #include <chrono>
 
 namespace RavEngine{
+
 class SystemManager{
 public:
 	typedef std::chrono::high_resolution_clock clock_t;

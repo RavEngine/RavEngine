@@ -20,10 +20,6 @@ namespace RavEngine {
 			}
 		}
 		
-		ctti_t ID() const override{
-			return CTTI<ScriptSystem>;
-		}
-		
 	protected:
 		static const list_type queries;
 	};

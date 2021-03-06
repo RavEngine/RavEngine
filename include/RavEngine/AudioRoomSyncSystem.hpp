@@ -10,10 +10,6 @@ class AudioRoomSyncSystem : public System{
 		return queries;
 	}
 	
-	ctti_t ID() const override{
-		return CTTI<AudioRoomSyncSystem>;
-	}
-	
 protected:
 	static const list_type queries;
 	
