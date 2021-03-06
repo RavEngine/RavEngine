@@ -128,7 +128,7 @@ add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
 # configure build machine tools
 file(MAKE_DIRECTORY ${TOOLS_DIR})
 execute_process(
-    COMMAND cmake -G "Ninja" ${DEPS_DIR}/host-tools/
+    COMMAND cmake -G "${CMAKE_GENERATOR}" ${DEPS_DIR}/host-tools/
     WORKING_DIRECTORY ${TOOLS_DIR}
 )
 
