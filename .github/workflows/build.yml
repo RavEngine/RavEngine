@@ -26,6 +26,17 @@ jobs:
           submodules: true
       - name: Build
         run: mkdir -p build && cd build; cmake -G "Xcode" .. && cmake --build . --config release --target RavEngine
+        
+  build-ios:
+	name: iOS Compile Check
+	runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build
+        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=OS64COMBINED .. && cmake --build . --config release --target RavEngine
                 
   build-windows:
     name: Windows Compile Check
