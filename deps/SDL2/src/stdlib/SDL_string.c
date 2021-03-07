@@ -23,6 +23,16 @@
 #endif
 
 #include "../SDL_internal.h"
+#include <ctype.h>
+char* _strrev(char*);
+char* _strupr(char*);
+char* _strlwr(char*);
+char* itoa(int value, char *string, int radix);
+char* _uitoa(unsigned int value, char *string, int radix);
+char* _ltoa(long value, char *string, int radix);
+char* _ultoa(unsigned long value, char *string, int radix);
+char* _i64toa(__int64_t value, char *string, int radix);
+char* _ui64toa(__uint64_t value, char *string, int radix);
 
 /* This file contains portable string manipulation functions for SDL */
 

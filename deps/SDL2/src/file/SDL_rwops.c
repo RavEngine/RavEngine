@@ -311,9 +311,9 @@ windows_file_close(SDL_RWops * context)
 #define fopen   fopen64
 #endif
 #ifdef HAVE_FSEEKO64
-#define fseek_off_t off64_t
-#define fseek   fseeko64
-#define ftell   ftello64
+#define fseek_off_t off_t
+#define fseek   fseeko
+#define ftell   ftello
 #elif defined(HAVE_FSEEKO)
 #if defined(OFF_MIN) && defined(OFF_MAX)
 #define FSEEK_OFF_MIN OFF_MIN

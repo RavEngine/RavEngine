@@ -45,8 +45,8 @@ endif()
 # ==================== Dependencies =====================
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE INTERNAL "")
 set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
-set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/$<CONFIGURATION>/shaderc" CACHE INTERNAL "")
-set(PROTOC_CMD "${TOOLS_DIR}/protobuf/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
+set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/Release/shaderc" CACHE INTERNAL "")
+set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 
 # no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake")
@@ -65,6 +65,7 @@ add_subdirectory("${DEPS_DIR}/libnyquist")
 
 # GNS
 add_subdirectory("${DEPS_DIR}/GameNetworkingSockets")
+add_dependencies("GameNetworkingSockets_s" "HostTools")
 
 # resonance-audio
 set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
@@ -134,7 +135,7 @@ execute_process(
 
 # compile build machine tools
 add_custom_target(HostTools 
-	COMMAND cmake --build . --config $<CONFIGURATION> --target shaderc protoc
+	COMMAND cmake --build . --config Release --target shaderc protoc
 	WORKING_DIRECTORY ${TOOLS_DIR}
 )
 
