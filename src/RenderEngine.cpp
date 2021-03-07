@@ -35,7 +35,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <fmt/core.h>
 #include <iostream>
-#include <bx/thread.h>
 #include "Debug.hpp"
 #include <chrono>
 
@@ -133,6 +132,9 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 #elif BX_PLATFORM_OSX
 	pd.ndt = NULL;
 	pd.nwh = cbSetupMetalLayer(wmi.info.cocoa.window);
+#elif BX_PLATFORM_IOS
+	pd.ndt = NULL;
+	pd.nwh = cbSetupMetalLayer(wmi.info.uikit.window);
 #elif BX_PLATFORM_WINDOWS
 	pd.ndt = NULL;
 	pd.nwh = wmi.info.win.window;
@@ -288,9 +290,15 @@ void RenderEngine::Init()
 	{
 		return;
 	}
-	SDL_Init(0);
-	SDL_Init(SDL_INIT_GAMECONTROLLER);
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
+	if (!SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC)){
+		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
+	}
+	
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
+	
+	if (window == NULL){
+		Debug::Fatal("Unable to create main window: {}",SDL_GetError());
+	}
 
 	//start the render thread here
 	{

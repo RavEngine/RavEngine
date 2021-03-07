@@ -23,16 +23,6 @@
 #endif
 
 #include "../SDL_internal.h"
-#include <ctype.h>
-char* _strrev(char*);
-char* _strupr(char*);
-char* _strlwr(char*);
-char* itoa(int value, char *string, int radix);
-char* _uitoa(unsigned int value, char *string, int radix);
-char* _ltoa(long value, char *string, int radix);
-char* _ultoa(unsigned long value, char *string, int radix);
-char* _i64toa(__int64_t value, char *string, int radix);
-char* _ui64toa(__uint64_t value, char *string, int radix);
 
 /* This file contains portable string manipulation functions for SDL */
 
@@ -631,7 +621,7 @@ SDL_strdup(const char *string)
 char *
 SDL_strrev(char *string)
 {
-#if defined(HAVE__STRREV)
+#if 0
     return _strrev(string);
 #else
     size_t len = SDL_strlen(string);
@@ -650,7 +640,7 @@ SDL_strrev(char *string)
 char *
 SDL_strupr(char *string)
 {
-#if defined(HAVE__STRUPR)
+#if 0
     return _strupr(string);
 #else
     char *bufp = string;
@@ -665,7 +655,7 @@ SDL_strupr(char *string)
 char *
 SDL_strlwr(char *string)
 {
-#if defined(HAVE__STRLWR)
+#if 0
     return _strlwr(string);
 #else
     char *bufp = string;
@@ -731,8 +721,7 @@ SDL_strstr(const char *haystack, const char *needle)
 #endif /* HAVE_STRSTR */
 }
 
-#if !defined(HAVE__LTOA) || !defined(HAVE__I64TOA) || \
-    !defined(HAVE__ULTOA) || !defined(HAVE__UI64TOA)
+#if 1 || !defined(HAVE__LTOA) || !defined(HAVE__I64TOA) || !defined(HAVE__ULTOA) || !defined(HAVE__UI64TOA)
 static const char ntoa_table[] = {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
@@ -744,7 +733,7 @@ static const char ntoa_table[] = {
 char *
 SDL_itoa(int value, char *string, int radix)
 {
-#ifdef HAVE_ITOA
+#if 0
     return itoa(value, string, radix);
 #else
     return SDL_ltoa((long)value, string, radix);
@@ -754,7 +743,7 @@ SDL_itoa(int value, char *string, int radix)
 char *
 SDL_uitoa(unsigned int value, char *string, int radix)
 {
-#ifdef HAVE__UITOA
+#if 0
     return _uitoa(value, string, radix);
 #else
     return SDL_ultoa((unsigned long)value, string, radix);
@@ -764,7 +753,7 @@ SDL_uitoa(unsigned int value, char *string, int radix)
 char *
 SDL_ltoa(long value, char *string, int radix)
 {
-#if defined(HAVE__LTOA)
+#if 0
     return _ltoa(value, string, radix);
 #else
     char *bufp = string;
@@ -783,7 +772,7 @@ SDL_ltoa(long value, char *string, int radix)
 char *
 SDL_ultoa(unsigned long value, char *string, int radix)
 {
-#if defined(HAVE__ULTOA)
+#if 0
     return _ultoa(value, string, radix);
 #else
     char *bufp = string;
@@ -808,7 +797,7 @@ SDL_ultoa(unsigned long value, char *string, int radix)
 char *
 SDL_lltoa(Sint64 value, char *string, int radix)
 {
-#if defined(HAVE__I64TOA)
+#if 0
     return _i64toa(value, string, radix);
 #else
     char *bufp = string;
@@ -827,7 +816,7 @@ SDL_lltoa(Sint64 value, char *string, int radix)
 char *
 SDL_ulltoa(Uint64 value, char *string, int radix)
 {
-#if defined(HAVE__UI64TOA)
+#if 0
     return _ui64toa(value, string, radix);
 #else
     char *bufp = string;
