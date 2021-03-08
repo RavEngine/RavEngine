@@ -4,10 +4,11 @@
 #include "SpinLock.hpp"
 #include "System.hpp"
 #include <chrono>
+#include <fmt/format.h>
 
 namespace RavEngine{
 
-	static System::list_type SystemEntry_empty;
+	static const System::list_type SystemEntry_empty;
 
 	//template existence detection
 	template <typename T, typename = int>
@@ -49,15 +50,10 @@ namespace RavEngine{
 	}
 
 struct SystemEntry{
-//	smallfun::SmallFun<void(float,Ref<Entity>),128> Tick;
-//	smallfun::SmallFun<const System::list_type&(),128> QueryTypes;
-//	smallfun::SmallFun<const System::list_type&(),128> MustRunBefore;
-//	smallfun::SmallFun<const System::list_type&(),128> MustRunAfter;
-	
-	std::function<void(float,Ref<Entity>)> Tick;
-	std::function<const System::list_type&()> QueryTypes;
-	std::function<const System::list_type&()> MustRunBefore;
-	std::function<const System::list_type&()> MustRunAfter;
+	const std::function<void(float,Ref<Entity>)> Tick;
+	const std::function<const System::list_type&()> QueryTypes;
+	const std::function<const System::list_type&()> MustRunBefore;
+	const std::function<const System::list_type&()> MustRunAfter;
 
 	template<typename T>
 	SystemEntry(Ref<T> system) :

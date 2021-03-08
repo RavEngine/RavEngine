@@ -162,7 +162,7 @@ void World::OnRemoveComponent(Ref<Component> comp){
 void RavEngine::World::TickECS(float fpsScale) {
 	struct systaskpair{
 		tf::Task task;
-		SystemEntry* system;
+		const SystemEntry* system;
 	};
 	
 	phmap::flat_hash_map<ctti_t, systaskpair> graphs;
@@ -173,7 +173,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	}
 	phmap::flat_hash_map<ctti_t, ComponentStore::entry_type> copies(count);
 	
-	auto add_system_to_tick = [&](SystemEntry& system, ctti_t ID){
+	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID){
 		auto& queries = system.QueryTypes();
 		
 		auto func = [=](Ref<Component> e) {
@@ -195,15 +195,14 @@ void RavEngine::World::TickECS(float fpsScale) {
 			
 			graphs[ID] = {
 				masterTasks.for_each(l1.begin(), l1.end(), func),
-				&system };
+				&system
+			};
 		}
 	};
 	
     //tick the always-systems
 	for (auto& s : systemManager.GetAlwaysTickSystems()) {
-		auto system = s.second;
-		
-		add_system_to_tick(system, s.first);
+		add_system_to_tick(s.second, s.first);
 	}
 	
 	//tick timed systems
