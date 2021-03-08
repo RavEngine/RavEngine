@@ -161,28 +161,25 @@ void World::OnRemoveComponent(Ref<Component> comp){
  */
 void RavEngine::World::TickECS(float fpsScale) {
 	struct systaskpair{
-		tf::Task task1;
-		Ref<System> system;
+		tf::Task task;
+		SystemEntry* system;
 	};
 	
 	phmap::flat_hash_map<ctti_t, systaskpair> graphs;
 
 	size_t count = 0;
 	for (auto& s : systemManager.GetAlwaysTickSystems()) {
-		auto system = s.second;
-
-		auto& queries = system->QueryTypes();
-		count += queries.size();
+		count += s.second.QueryTypes().size();
 	}
 	phmap::flat_hash_map<ctti_t, ComponentStore::entry_type> copies(count);
 	
-	auto add_system_to_tick = [&](Ref<System> system, ctti_t ID){
-		auto& queries = system->QueryTypes();
+	auto add_system_to_tick = [&](SystemEntry& system, ctti_t ID){
+		auto& queries = system.QueryTypes();
 		
 		auto func = [=](Ref<Component> e) {
 			Ref<Entity> en = e->getOwner().lock();
 			if (en) {
-				system->Tick(fpsScale, en);
+				system.Tick(fpsScale, en);
 			}
 		};
 		
@@ -198,7 +195,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			
 			graphs[ID] = {
 				masterTasks.for_each(l1.begin(), l1.end(), func),
-				system };
+				&system };
 		}
 	};
 	
@@ -320,7 +317,7 @@ void RavEngine::World::TickECS(float fpsScale) {
     setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
     sort.precede(swap);
     camproc.precede(sort);
-    graphs[CTTI<ScriptSystem>].task1.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+    graphs[CTTI<ScriptSystem>].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 
 	if (physicsActive){
@@ -328,20 +325,20 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto RunPhysics = masterTasks.emplace([fpsScale, this]{
 			Solver.Tick(fpsScale);
 		});
-		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task1);
-		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task1);
+		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task);
+		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task);
 	}
 	
 	//figure out dependencies
 	for(auto& graph : graphs){
-		tf::Task& task1 = graph.second.task1;
+		tf::Task& task = graph.second.task;
 		
 		//call precede
 		{
 			auto& runbefore = graph.second.system->MustRunBefore();
 			for(const auto id : runbefore){
-				if (graphs.contains(id)){
-					task1.precede(graphs[id].task1);
+				if (graphs.find(id) != graphs.end()){
+					task.precede(graphs[id].task);
 				}
 			}
 		}
@@ -349,8 +346,8 @@ void RavEngine::World::TickECS(float fpsScale) {
 		{
 			auto& runafter = graph.second.system->MustRunAfter();
 			for(const auto id : runafter){
-				if (graphs.contains(id)){
-					task1.succeed(graphs[id].task1);
+				if (graphs.find(id) != graphs.end()){
+					task.succeed(graphs[id].task);
 				}
 			}
 		}

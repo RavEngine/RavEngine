@@ -290,7 +290,7 @@ void RenderEngine::Init()
 	{
 		return;
 	}
-	if (!SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC)){
+	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC) != 0){
 		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
 	}
 	

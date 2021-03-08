@@ -5,15 +5,13 @@
 #include "CTTI.hpp"
 
 namespace RavEngine {
-	class ScriptSystem : public System {
+	class ScriptSystem {
 	public:
-		ScriptSystem() : System() {}
-
-		const list_type& QueryTypes() const override {
+		const System::list_type& QueryTypes() const {
 			return queries;
 		}
 
-		void Tick(float fpsScale, Ref<Entity> e) override{
+		void Tick(float fpsScale, Ref<Entity> e) {
 			auto scripts = e->GetAllComponentsOfTypeFastPath<ScriptComponent>();
 			for (auto script : scripts) {
 				std::static_pointer_cast<ScriptComponent>(script)->Tick(fpsScale);
@@ -21,6 +19,6 @@ namespace RavEngine {
 		}
 		
 	protected:
-		static const list_type queries;
+		static const System::list_type queries;
 	};
 }

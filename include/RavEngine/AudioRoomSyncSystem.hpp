@@ -3,15 +3,16 @@
 
 namespace RavEngine{
 
-class AudioRoomSyncSystem : public System{
-	void Tick(float fpsScale, Ref<Entity> e) override;
+class AudioRoomSyncSystem{
+public:
+	void Tick(float fpsScale, Ref<Entity> e);
 	
-	const list_type& QueryTypes() const override {
+	const System::list_type& QueryTypes() const {
 		return queries;
 	}
 	
 protected:
-	static const list_type queries;
+	static const System::list_type queries;
 	
 };
 

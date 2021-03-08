@@ -7,18 +7,87 @@
 
 namespace RavEngine{
 
+	static System::list_type SystemEntry_empty;
+
+	//template existence detection
+	template <typename T, typename = int>
+	struct HasMustRunBefore : std::false_type { };
+
+	template <typename T>
+	struct HasMustRunBefore <T, decltype(&T::MustRunBefore, 0)> : std::true_type { };
+
+	template<typename T, std::enable_if_t<HasMustRunBefore<T>::value, bool> = true>
+	//if exists, call and return
+	inline const System::list_type& MustRunBefore_impl(const Ref<T>& system)
+	{
+		return system->MustRunBefore();
+	}
+
+	template<typename T, std::enable_if_t<!HasMustRunBefore<T>::value, bool> = false>
+	//if does not exist, return reference to empty container
+	inline const System::list_type& MustRunBefore_impl(const Ref<T>&){
+		return SystemEntry_empty;
+	}
+
+	template <typename T, typename = int>
+	struct HasMustRunAfter : std::false_type { };
+
+	template <typename T>
+	struct HasMustRunAfter <T, decltype(&T::MustRunAfter, 0)> : std::true_type { };
+
+	template<typename T, std::enable_if_t<HasMustRunAfter<T>::value, bool> = true>
+	//if exists, call and return
+	inline const System::list_type& MustRunAfter_impl(const Ref<T>& system)
+	{
+		return system->MustRunAfter();
+	}
+
+	template<typename T, std::enable_if_t<!HasMustRunAfter<T>::value, bool> = false>
+	//if does not exist, return reference to empty container
+	inline const System::list_type& MustRunAfter_impl(const Ref<T>&){
+		return SystemEntry_empty;
+	}
+
+struct SystemEntry{
+//	smallfun::SmallFun<void(float,Ref<Entity>),128> Tick;
+//	smallfun::SmallFun<const System::list_type&(),128> QueryTypes;
+//	smallfun::SmallFun<const System::list_type&(),128> MustRunBefore;
+//	smallfun::SmallFun<const System::list_type&(),128> MustRunAfter;
+	
+	std::function<void(float,Ref<Entity>)> Tick;
+	std::function<const System::list_type&()> QueryTypes;
+	std::function<const System::list_type&()> MustRunBefore;
+	std::function<const System::list_type&()> MustRunAfter;
+
+	template<typename T>
+	SystemEntry(Ref<T> system) :
+		Tick([=](float f, Ref<Entity> e){
+			system->Tick(f,e);
+		}),
+		QueryTypes([=]() -> const System::list_type& {
+			return system->QueryTypes();
+		}),
+		MustRunBefore([=]() -> const System::list_type&{
+			return MustRunBefore_impl<T>(system);
+		}),
+		MustRunAfter([=]() -> const System::list_type&{
+			return MustRunAfter_impl(system);
+		})
+		{}
+};
+
 class SystemManager{
 public:
 	typedef std::chrono::high_resolution_clock clock_t;
 	struct TimedSystem{
-		Ref<System> system;
+		SystemEntry system;
 		std::chrono::duration<double, std::micro> interval;
 		std::chrono::time_point<clock_t> last_timestamp = clock_t::now();
 	};
 	
 protected:
-	typedef locked_hashmap<ctti_t,Ref<System>,SpinLock> system_store;
-	typedef locked_hashmap<ctti_t,TimedSystem,SpinLock> timed_system_store;
+	typedef locked_node_hashmap<ctti_t,SystemEntry,SpinLock> system_store;
+	typedef locked_node_hashmap<ctti_t,TimedSystem,SpinLock> timed_system_store;
 	
 	system_store Systems;
 	timed_system_store TimedSystems;
@@ -30,7 +99,7 @@ public:
 	 */
 	template<typename T>
 	inline void RegisterSystem(Ref<T> r_instance) {
-		Systems[CTTI<T>] = r_instance;
+		Systems.insert(std::make_pair(CTTI<T>,SystemEntry(r_instance)));
 	}
 	
 	/**
@@ -40,7 +109,7 @@ public:
 	 */
 	template<typename T, typename interval_t>
 	inline void RegisterTimedSystem(Ref<T> r_instance, const interval_t& interval){
-		TimedSystems[CTTI<T>] = {r_instance, std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval)};
+		TimedSystems.insert(std::make_pair(CTTI<T>,TimedSystem{r_instance, std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval)}));
 	}
 	
 	/**

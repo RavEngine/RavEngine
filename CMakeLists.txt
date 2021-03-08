@@ -211,6 +211,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"etl"
 	"tweeny"
 	"SDL2-static"
+	"SDL2main"
 	"bgfx"
 	"bx"
 	"bimg"

@@ -9,6 +9,7 @@
 #include "ScriptSystem.hpp"
 #include "CTTI.hpp"
 #include "PhysicsLinkSystem.hpp"
+#include "SystemManager.hpp"
 
 using namespace RavEngine;
 
@@ -20,4 +21,4 @@ const System::list_type PhysicsLinkSystemWrite::queries = {CTTI<PhysicsBodyCompo
 const System::list_type PhysicsLinkSystemRead::queries = {CTTI<RigidBodyDynamicComponent>};
 const System::list_type PhysicsLinkSystemRead::runbefore = {CTTI<ScriptSystem>};
 
-
+System::list_type empty;

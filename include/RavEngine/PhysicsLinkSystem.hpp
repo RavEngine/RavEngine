@@ -14,48 +14,48 @@
 #include "CTTI.hpp"
 
 namespace RavEngine {
-    /**
-    This System copies the Entity's transform to the physics simulation transform.
-    It must run after any transform modifications in other systems, ideally at the end of the pipeline.
-    */
-    class PhysicsLinkSystemWrite : public System {
-    public:
+	/**
+	 This System copies the Entity's transform to the physics simulation transform.
+	 It must run after any transform modifications in other systems, ideally at the end of the pipeline.
+	 */
+	class PhysicsLinkSystemWrite{
+	public:
 		PhysicsLinkSystemWrite(physx::PxScene* scene ) : dynamicsWorld(scene){}
 		
-        physx::PxScene* dynamicsWorld = nullptr;
-        virtual ~PhysicsLinkSystemWrite() {}
-        void Tick(float fpsScale, Ref<Entity> e) override;
-
-		const list_type& QueryTypes() const override {
+		physx::PxScene* dynamicsWorld = nullptr;
+		virtual ~PhysicsLinkSystemWrite() {}
+		void Tick(float fpsScale, Ref<Entity> e);
+		
+		const System::list_type& QueryTypes() const {
 			return queries;
-        }
+		}
 		
 	protected:
-		static const list_type queries;
-    };
+		static const System::list_type queries;
+	};
 
-    /**
-     This System copies the state of the physics simulation transform to the Entity's transform.
-     It must run before any transform modifications in other systems, ideally at the beginning of the pipeline.
-     */
-    class PhysicsLinkSystemRead : public System {
-    public:
+	/**
+	 This System copies the state of the physics simulation transform to the Entity's transform.
+	 It must run before any transform modifications in other systems, ideally at the beginning of the pipeline.
+	 */
+	class PhysicsLinkSystemRead {
+	public:
 		PhysicsLinkSystemRead(physx::PxScene* scene ) : dynamicsWorld(scene){}
 		
-        physx::PxScene* dynamicsWorld = nullptr;
-        virtual ~PhysicsLinkSystemRead() {}
-        void Tick(float fpsScale, Ref<Entity> e) override;
-
-		const list_type& QueryTypes() const override {
-            return queries;
-        }
-
+		physx::PxScene* dynamicsWorld = nullptr;
+		virtual ~PhysicsLinkSystemRead() {}
+		void Tick(float fpsScale, Ref<Entity> e);
+		
+		const System::list_type& QueryTypes() const {
+			return queries;
+		}
+		
 		//must run before write system
-		const list_type& MustRunBefore() const override {
+		const System::list_type& MustRunBefore() const {
 			return runbefore;
 		}
 		
 	protected:
-		static const list_type queries, runbefore;
-    };
+		static const System::list_type queries, runbefore;
+	};
 }
