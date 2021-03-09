@@ -7,11 +7,11 @@ namespace RavEngine{
   A spinlock implemented using std::atomic_flag, which uses test-and-set instead of kernel calls.
  */
 class SpinLock{
-	std::atomic_flag flag;
-public:
+	std::atomic_flag flag
 #ifndef _WIN32
-	SpinLock() : flag(ATOMIC_FLAG_INIT) {}	//required on macOS but incompatible with windows
+    ATOMIC_FLAG_INIT;
 #endif
+public:
 	inline void lock(){
 		while(flag.test_and_set());
 	}

@@ -123,7 +123,9 @@ void World::OnAddComponent(Ref<Component> comp){
 	{
 		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
 		if (nid) {
-			App::networkManager.Spawn(shared_from_this(), nid);
+            //only the server may spawn objects
+            App::networkManager.Spawn(shared_from_this(), nid);
+            return;
 		}
 	}
 }
@@ -146,11 +148,13 @@ void World::OnRemoveComponent(Ref<Component> comp){
 			return;
 		}
 	}
-	//is this a NetworkIdentity? if so, call Add on the NetworkManager
+	//is this a NetworkIdentity? if so, call destroy on the NetworkManager
 	{
 		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
 		if (nid) {
+            //ownership is checked serverside to decide if this should be honored
 			App::networkManager.Destroy(shared_from_this(), nid);
+            return;
 		}
 	}
 }

@@ -1,3 +1,5 @@
+#pragma once
+
 //
 //  Component.h
 //  MacFramework
@@ -5,7 +7,6 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#pragma once
 #include "WeakRef.hpp"
 
 namespace RavEngine {

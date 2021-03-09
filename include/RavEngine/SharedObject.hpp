@@ -1,3 +1,4 @@
+#pragma once
 //
 //  SharedObject.hpp
 //  RavEngine_Static
@@ -6,7 +7,6 @@
 //
 //
 
-#pragma once
 
 #include "WeakRef.hpp"
 #include "Ref.hpp"

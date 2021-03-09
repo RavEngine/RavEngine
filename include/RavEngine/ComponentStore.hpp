@@ -28,7 +28,6 @@ namespace RavEngine{
 		 */
 		template<typename T>
 		inline phmap::flat_hash_set<Ref<T>> GetAllComponentsOfTypeIndex(const ctti_t index) {
-			C_REF_CHECK
 			auto& comp = components[index];
 			phmap::flat_hash_set<Ref<T>> cpy;
             for(const auto c : comp){

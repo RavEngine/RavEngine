@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <steam/isteamnetworkingsockets.h>
+#include "DataStructures.hpp"
+#include <uuids.h>
 
 namespace RavEngine {
 
@@ -15,7 +17,10 @@ protected:
 	ISteamNetworkingSockets *interface;
 	HSteamListenSocket listenSocket;
 	HSteamNetPollGroup pollGroup;
-	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*) ;
+	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
+    
+    //stores the ownership, see who owns a particular object
+    locked_node_hashmap<uuids::uuid, HSteamNetConnection> ownership;
 };
 
 }

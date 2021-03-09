@@ -1,3 +1,4 @@
+#pragma once
 //
 //  PhysicsSolver.hpp
 //  RavEngine_Static
@@ -5,7 +6,6 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#pragma once
 
 #include "PhysXDefines.h"
 #include <PxQueryReport.h>

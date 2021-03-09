@@ -49,7 +49,7 @@ public:
 namespace std{
 template<typename T>
 struct hash<WeakPtrKey<T>>{
-    std::size_t operator()(const WeakPtrKey<T>& ptr) const{
+    inline std::size_t operator()(const WeakPtrKey<T>& ptr) const{
         return ptr.hash();
     }
 };

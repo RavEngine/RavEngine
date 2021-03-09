@@ -1,3 +1,4 @@
+#pragma once
 //
 //  Transform.h
 //  RavEngine_Static
@@ -5,7 +6,6 @@
 //  Copyright © 2020 Ravbug. 
 //
 
-#pragma once
 #include "Component.hpp"
 #include "Atomic.hpp"
 #include "mathtypes.hpp"

@@ -1,3 +1,4 @@
+#pragma once
 //
 //  World.hpp
 //  RavEngine_Static
@@ -5,7 +6,6 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#pragma once
 #include "SharedObject.hpp"
 #include "System.hpp"
 #include "PhysicsSolver.hpp"
@@ -76,8 +76,7 @@ namespace RavEngine {
 		
 		void CreateFrameData();
 				
-	public:
-		
+    public:
 		std::atomic<bool> newFrame = false;
 		
 		const FrameData GetFrameData(){

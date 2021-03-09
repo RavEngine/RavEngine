@@ -1,3 +1,4 @@
+#pragma once
 //
 //  PhysicsLinkSystem.hpp
 //  RavEngine_Static
@@ -5,7 +6,6 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#pragma once
 #include "System.hpp"
 #include "PhysXDefines.h"
 #include <PxPhysicsAPI.h>

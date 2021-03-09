@@ -1,3 +1,4 @@
+#pragma once
 //
 //  System.hpp
 //  RavEngine_Static
@@ -5,7 +6,6 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#pragma once
 
 #include "Ref.hpp"
 #include "Entity.hpp"

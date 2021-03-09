@@ -1,3 +1,4 @@
+#pragma once
 //
 //  PhysXDefines.h
 //  RavEngine_Test
@@ -5,7 +6,6 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#pragma once
 
 //figure out defines for PhysX
 #define PX_PHYSX_STATIC_LIB 1   // required for PhysX static link
