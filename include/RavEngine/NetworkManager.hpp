@@ -2,14 +2,51 @@
 #include "NetworkServer.hpp"
 #include "NetworkClient.hpp"
 #include "World.hpp"
+#include "DataStructures.hpp"
+#include "CTTI.hpp"
+#include "Ref.hpp"
 
 namespace RavEngine {
 
 	class World;
 	class NetworkIdentity;
+	class Entity;
 
 	class NetworkManager{
+	private:
+		locked_hashmap<ctti_t, std::function<Ref<Entity>(void)>> NetworkedObjects;
 	public:
+		
+		/**
+		 Register an entity class as network spawnable.
+		 @param id the type identifier for the entity
+		 */
+		template<typename T>
+		inline void RegisterNetworkedEntity(){
+			NetworkedObjects.insert(std::make_pair(CTTI<T>,[]() -> Ref<Entity>{
+				//TODO: UUID
+				return std::static_pointer_cast<Entity>(std::make_shared<T>());
+			}));
+		}
+		
+		/**
+		 Unregister an entity class as network spawnable.
+		 @param id the type identifier for the entity
+		 */
+		template<typename T>
+		inline void UnregisterNetworkedEntity(){
+			NetworkedObjects.erase(CTTI<T>);
+		}
+		
+		/**
+		 @param id the identifier for the entity class
+		 @return true if a registration for that ID exists
+		 */
+		template<typename T>
+		inline bool IsNetworkedIdentityRegistered(){
+			return NetworkedObjects.contains(CTTI<T>);
+		}
+		
         /**
          @return true If there is an active Server running on this instance
          */
@@ -18,6 +55,13 @@ namespace RavEngine {
          @return true if there is an active Client running on this instance
          */
 		static bool IsClient();
+		
+		/**
+		 @return true if this game is networked
+		 */
+		static inline bool IsNetworked(){
+			return IsServer || IsClient();
+		}
 	
 		std::unique_ptr<NetworkServer> server;
 		std::unique_ptr<NetworkClient> client;

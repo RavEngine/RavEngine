@@ -167,11 +167,12 @@ int App::run(int argc, char** argv) {
 		player.SetWorld(currentWorld);
 		        
         //make up the difference
-        auto workEnd = clocktype::now();
-        auto work_time = workEnd - now;
-        if (work_time < min_tick_time){
-            std::this_thread::sleep_for(min_tick_time - work_time);
-        }
+		//can't use sleep because sleep is not very accurate
+		clocktype::duration work_time;
+		do{
+			auto workEnd = clocktype::now();
+			work_time = workEnd - now;
+		}while (work_time < min_tick_time);
         
 		lastFrameTime = now;
 	}

@@ -23,7 +23,7 @@ namespace RavEngine {
 		physx::PxU32 filterGroup = -1;
 		physx::PxU32 filterMask = -1;
 
-		void AddHook(const WeakRef<RavEngine::Entity>& e);
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 
 		/**
 		Add a recipient for collision events. Must implement IPhysicsActor.

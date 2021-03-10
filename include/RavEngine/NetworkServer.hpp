@@ -21,6 +21,8 @@ protected:
     
     //stores the ownership, see who owns a particular object
     locked_node_hashmap<uuids::uuid, HSteamNetConnection> ownership;
+	
+	
 };
 
 }

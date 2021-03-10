@@ -4,24 +4,20 @@
 #include "NetworkReplicable.hpp"
 
 using namespace RavEngine;
+using namespace std;
 
 void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
 	// Running on the server?
     if (IsServer()){
         auto entity = comp->getOwner().lock();
         if (entity){
-            //serialize all of the replicable components
-            auto serialize = entity->GetAllComponentsOfTypeFastPath<NetworkReplicable>();
-            
-            phmap::flat_hash_map<std::string, std::string> masterDict;
-            
-            for(const auto& component : serialize){
-                //TODO: convert the map into a string
-                //TODO: add to master dictionary
-            }
-            //TODO: convert master dictionary into a string
-            
-            //TODO: send over the network to all the clients (except self if we are also a client!)
+			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
+			if (casted){
+				auto id = casted->NetTypeID();
+				auto netID = entity->GetComponent<NetworkIdentity>()->GetNetworkID();
+				//TODO: send highest-priority safe message with this info to clients
+				
+			}
         }
     }
 

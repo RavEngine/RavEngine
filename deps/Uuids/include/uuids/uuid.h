@@ -1,9 +1,6 @@
+#pragma once
 #ifndef UUIDS_UUID_HPP
 #define UUIDS_UUID_HPP
-
-#if defined(_MSC_VER) && (_MSC_VER >= 1200)
-#pragma once
-#endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #if defined(RND_UUIDS)
 #include "generators/rnd_generator.h"
@@ -192,20 +189,20 @@ namespace std
     template <>
     struct hash<id>
     {
-        std::size_t operator()(id const &d) const noexcept
+        inline std::size_t operator()(id const &d) const noexcept
         {
             return hash<string>{}(d.to_string());
         }
     };
 
-    bool operator==(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) == 0; }
-    bool operator!=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) != 0; }
-    bool operator<(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) < 0; }
-    bool operator>(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) > 0; }
-    bool operator<=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) <= 0; }
-    bool operator>=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) >= 0; }
+    static inline bool operator==(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) == 0; }
+	static inline bool operator!=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) != 0; }
+	static inline bool operator<(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) < 0; }
+	static inline bool operator>(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) > 0; }
+	static inline bool operator<=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) <= 0; }
+	static inline bool operator>=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) >= 0; }
 
-    ostream &operator<<(ostream &os, const id &d)
+    static inline ostream &operator<<(ostream &os, const id &d)
     {
         os << d.to_string();
         return os;

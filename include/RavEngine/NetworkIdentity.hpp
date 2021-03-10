@@ -4,8 +4,23 @@
 #include <uuids.h>
 
 namespace RavEngine {
-	class NetworkIdentity : public Component, public Queryable< NetworkIdentity>{
-        const uuids::uuid NetworkID = uuids::uuid::create();
-        
+	struct NetworkIdentity : public Component, public Queryable< NetworkIdentity>{
+	private:
+        const uuids::uuid NetworkID;
+	public:
+		
+		//default constructor - used on Server
+		NetworkIdentity() : NetworkIdentity(uuids::uuid::create()){}
+		
+		//Used on clients
+		NetworkIdentity(const uuids::uuid& id) : NetworkID(id){}
+		
+		inline decltype(NetworkID) GetNetworkID() const{
+			return NetworkID;
+		}
+		
+		enum class Ownership{
+			Owner, NotOwner
+		} ownership;
 	};
 }
