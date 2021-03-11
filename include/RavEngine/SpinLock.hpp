@@ -9,8 +9,9 @@ namespace RavEngine{
 class SpinLock{
 	std::atomic_flag flag
 #ifndef _WIN32
-    ATOMIC_FLAG_INIT;
+		ATOMIC_FLAG_INIT
 #endif
+		;
 public:
 	inline void lock(){
 		while(flag.test_and_set());

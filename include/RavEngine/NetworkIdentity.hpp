@@ -21,6 +21,6 @@ namespace RavEngine {
 		
 		enum class Ownership{
 			Owner, NotOwner
-		} ownership;
+		} ownership = Ownership::NotOwner;
 	};
 }

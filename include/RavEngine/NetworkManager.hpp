@@ -60,7 +60,7 @@ namespace RavEngine {
 		 @return true if this game is networked
 		 */
 		static inline bool IsNetworked(){
-			return IsServer || IsClient();
+			return IsServer() || IsClient();
 		}
 	
 		std::unique_ptr<NetworkServer> server;
