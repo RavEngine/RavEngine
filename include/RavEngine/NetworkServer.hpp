@@ -3,6 +3,7 @@
 #include <steam/isteamnetworkingsockets.h>
 #include "DataStructures.hpp"
 #include <uuids.h>
+#include <phmap.h>
 
 namespace RavEngine {
 
@@ -18,10 +19,15 @@ protected:
 	HSteamListenSocket listenSocket;
 	HSteamNetPollGroup pollGroup;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
+	
+	std::optional<std::thread> worker;
+	std::atomic<bool> serverIsRunning = false;
+	phmap::flat_hash_set<HSteamNetConnection> clients;
+	
+	void ServerTick();
     
     //stores the ownership, see who owns a particular object
     locked_node_hashmap<uuids::uuid, HSteamNetConnection> ownership;
-	
 	
 };
 

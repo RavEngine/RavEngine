@@ -25,9 +25,13 @@ void NetworkServer::Start(uint16_t port){
 		Debug::Fatal("Failed to create poll group");
 	
 	Debug::Log("Listening on port {}",port);
+	
+	serverIsRunning = true;
+	worker.emplace(&NetworkServer::ServerTick,this);
 }
 
 void NetworkServer::Stop(){
+	serverIsRunning = false;	//this unblocks the worker thread, allowing it to exit
 	interface->CloseListenSocket(listenSocket);
 	interface->DestroyPollGroup(pollGroup);
 }
@@ -42,4 +46,31 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 
 void NetworkServer::SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t * pInfo){
 	static_cast<NetworkServer*>((void*)pInfo->m_info.m_nUserData)->OnSteamNetConnectionStatusChanged(pInfo);
+}
+
+void NetworkServer::ServerTick(){
+	while(serverIsRunning){
+		
+		//get incoming messages
+		while (serverIsRunning){	//do we need this double loop?
+			ISteamNetworkingMessage *pIncomingMsg = nullptr;
+			int numMsgs = interface->ReceiveMessagesOnPollGroup( pollGroup, &pIncomingMsg, 1 );
+			if ( numMsgs == 0 ){
+				break;
+			}
+			if ( numMsgs < 0 ){
+				Debug::Fatal( "Error checking for messages" );
+			}
+			
+			//is this from a connected client
+			assert(clients.contains(pIncomingMsg->m_conn));
+			
+			//figure out what to do with the message
+			auto data = pIncomingMsg->m_pData;
+			auto nbytes = pIncomingMsg->m_cbSize;
+		}
+				
+		//invoke callbacks
+		interface->RunCallbacks();
+	}
 }

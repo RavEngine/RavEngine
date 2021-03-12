@@ -1,5 +1,6 @@
 #include "NetworkClient.hpp"
 #include "Debug.hpp"
+#include <steam/isteamnetworkingutils.h>	//this is required in for ParseString
 
 using namespace RavEngine;
 
