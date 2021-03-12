@@ -2,6 +2,7 @@
 #include "Debug.hpp"
 
 using namespace RavEngine;
+NetworkServer* NetworkServer::currentServer = nullptr;
 
 NetworkServer::NetworkServer(){
 	interface = SteamNetworkingSockets();
@@ -26,6 +27,8 @@ void NetworkServer::Start(uint16_t port){
 	
 	Debug::Log("Listening on port {}",port);
 	
+	currentServer = this;
+	
 	serverIsRunning = true;
 	worker.emplace(&NetworkServer::ServerTick,this);
 }
@@ -41,11 +44,103 @@ NetworkServer::~NetworkServer(){
 }
 
 void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t *pInfo){
-	
+	// What's the state of the connection?
+	switch ( pInfo->m_info.m_eState ){
+		
+		case k_ESteamNetworkingConnectionState_None:
+			// NOTE: We will get callbacks here when we destroy connections.  You can ignore these.
+			break;
+		case k_ESteamNetworkingConnectionState_Connecting:
+			// This must be a new connection
+			assert( !clients.contains(pInfo->m_hConn) );
+			
+			// A client is attempting to connect
+			// Try to accept the connection.
+			if ( interface->AcceptConnection( pInfo->m_hConn ) != k_EResultOK )
+			{
+				// This could fail.  If the remote host tried to connect, but then
+				// disconnected, the connection may already be half closed.  Just
+				// destroy whatever we have on our side.
+				interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+				Debug::Error("Can't accept connection, was it already closed?");
+				break;
+			}
+			
+			// Assign the poll group
+			if ( !interface->SetConnectionPollGroup( pInfo->m_hConn, pollGroup ) )
+			{
+				interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+				Debug::Error( "Failed to set poll group" );
+				break;
+			}
+			
+			//track the connection
+			clients.insert(pInfo->m_hConn);
+			
+			break;
+		case k_ESteamNetworkingConnectionState_FindingRoute:
+			
+			break;
+		case k_ESteamNetworkingConnectionState_Connected:
+			// We will get a callback immediately after accepting the connection.
+			// Since we are the server, we can ignore this, it's not news to us.
+			break;
+		case k_ESteamNetworkingConnectionState_ClosedByPeer:
+		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+			// Ignore if they were not previously connected.  (If they disconnected
+			// before we accepted the connection.)
+			if ( pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connected )
+			{
+				// Locate the client.  Note that it should have been found, because this
+				// is the only codepath where we remove clients (except on shutdown),
+				// and connection change callbacks are dispatched in queue order.
+				assert(clients.contains(pInfo->m_hConn));
+				
+				// Select appropriate log messages
+				const char *pszDebugLogAction;
+				if ( pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally )
+				{
+					Debug::Warning("Networking problem detected locally");
+				}
+				else
+				{
+					// Note that here we could check the reason code to see if
+					// it was a "usual" connection or an "unusual" one.
+					Debug::Warning("Networking closed by peer");
+				}
+				
+				clients.erase(pInfo->m_hConn);
+			}
+			else{
+				assert( pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting );
+			}
+			
+			// Clean up the connection.  This is important!
+			// The connection is "closed" in the network sense, but
+			// it has not been destroyed.  We must close it on our end, too
+			// to finish up.  The reason information do not matter in this case,
+			// and we cannot linger because it's already closed on the other end,
+			// so we just pass 0's.
+			interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+			
+			break;
+		case k_ESteamNetworkingConnectionState_FinWait:
+			
+			break;
+		case k_ESteamNetworkingConnectionState_Linger:
+			
+			break;
+		case k_ESteamNetworkingConnectionState_Dead:
+			
+			break;
+		case k_ESteamNetworkingConnectionState__Force32Bit:
+			
+			break;
+	}
 }
 
 void NetworkServer::SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t * pInfo){
-	static_cast<NetworkServer*>((void*)pInfo->m_info.m_nUserData)->OnSteamNetConnectionStatusChanged(pInfo);
+	currentServer->OnSteamNetConnectionStatusChanged(pInfo);
 }
 
 void NetworkServer::ServerTick(){

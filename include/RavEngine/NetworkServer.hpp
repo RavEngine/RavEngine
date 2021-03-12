@@ -24,6 +24,8 @@ protected:
 	std::atomic<bool> serverIsRunning = false;
 	phmap::flat_hash_set<HSteamNetConnection> clients;
 	
+	static NetworkServer* currentServer;
+	
 	void ServerTick();
     
     //stores the ownership, see who owns a particular object
