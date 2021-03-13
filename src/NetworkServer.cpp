@@ -30,11 +30,13 @@ void NetworkServer::Start(uint16_t port){
 	currentServer = this;
 	
 	serverIsRunning = true;
-	worker.emplace(&NetworkServer::ServerTick,this);
+	worker = std::thread(&NetworkServer::ServerTick,this);
+	worker.detach();
 }
 
 void NetworkServer::Stop(){
 	serverIsRunning = false;	//this unblocks the worker thread, allowing it to exit
+	while(!serverHasStopped);	//wait for thread to exit
 	interface->CloseListenSocket(listenSocket);
 	interface->DestroyPollGroup(pollGroup);
 }
@@ -163,9 +165,13 @@ void NetworkServer::ServerTick(){
 			//figure out what to do with the message
 			auto data = pIncomingMsg->m_pData;
 			auto nbytes = pIncomingMsg->m_cbSize;
+			
+			//deallocate when done
+			pIncomingMsg->Release();
 		}
 				
 		//invoke callbacks
 		interface->RunCallbacks();
 	}
+	serverHasStopped = true;
 }
