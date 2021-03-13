@@ -37,7 +37,8 @@ static float currentScale = 0;
 ConcurrentQueue<function<void(void)>> App::main_tasks;
 tf::Executor App::executor;
 Ref<InputManager> App::inputManager;
-Ref<World> App::currentWorld;
+Ref<World> App::renderWorld;
+locked_hashset<Ref<World>,SpinLock> App::loadedWorlds;
 
 std::chrono::duration<double,std::micro> App::min_tick_time(std::chrono::duration<double,std::milli>(1.0/90 * 1000));
 
@@ -152,8 +153,11 @@ int App::run(int argc, char** argv) {
 #ifdef _DEBUG
 		RenderEngine::debuggerInput->TickAxes();
 #endif
-		currentWorld->Tick(scale);
-		
+		//tick all worlds
+		for(const auto world : loadedWorlds){
+			world->Tick(scale);
+		}
+				
 		//process main thread tasks
 		std::function<void(void)> front;
 		while (main_tasks.try_dequeue(front)){
@@ -163,8 +167,8 @@ int App::run(int argc, char** argv) {
 			inputManager->TickAxes();
 		}
 
-		Renderer->DrawNext(currentWorld);
-		player.SetWorld(currentWorld);
+		Renderer->DrawNext(renderWorld);
+		player.SetWorld(renderWorld);
 		        
         //make up the difference
 		//can't use sleep because sleep is not very accurate
@@ -194,7 +198,7 @@ void App::Quit(){
 
 App::~App(){
 	inputManager = nullptr;
-	currentWorld = nullptr;
+	renderWorld = nullptr;
 #ifdef _DEBUG
 	Renderer->DeactivateDebugger();
 #endif

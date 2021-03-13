@@ -29,14 +29,14 @@ void NetworkServer::Start(uint16_t port){
 	
 	currentServer = this;
 	
-	serverIsRunning = true;
+	workerIsRunning = true;
 	worker = std::thread(&NetworkServer::ServerTick,this);
 	worker.detach();
 }
 
 void NetworkServer::Stop(){
-	serverIsRunning = false;	//this unblocks the worker thread, allowing it to exit
-	while(!serverHasStopped);	//wait for thread to exit
+	workerIsRunning = false;	//this unblocks the worker thread, allowing it to exit
+	while(!workerHasStopped);	//wait for thread to exit
 	interface->CloseListenSocket(listenSocket);
 	interface->DestroyPollGroup(pollGroup);
 }
@@ -146,10 +146,10 @@ void NetworkServer::SteamNetConnectionStatusChanged(SteamNetConnectionStatusChan
 }
 
 void NetworkServer::ServerTick(){
-	while(serverIsRunning){
+	while(workerIsRunning){
 		
 		//get incoming messages
-		while (serverIsRunning){	//do we need this double loop?
+		while (workerIsRunning){	//do we need this double loop?
 			ISteamNetworkingMessage *pIncomingMsg = nullptr;
 			int numMsgs = interface->ReceiveMessagesOnPollGroup( pollGroup, &pIncomingMsg, 1 );
 			if ( numMsgs == 0 ){
@@ -173,5 +173,5 @@ void NetworkServer::ServerTick(){
 		//invoke callbacks
 		interface->RunCallbacks();
 	}
-	serverHasStopped = true;
+	workerHasStopped = true;
 }

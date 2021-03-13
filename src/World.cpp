@@ -218,110 +218,114 @@ void RavEngine::World::TickECS(float fpsScale) {
 		}
 	}
 	
+	ComponentStore::entry_type geometry;
 	
-	//render engine data collector
-    //camera matrices
-    auto camproc = masterTasks.emplace([this](){
-        auto allcams = GetAllComponentsOfTypeFastPath<CameraComponent>();
-        for (const auto& c : allcams) {
-            auto cam = std::static_pointer_cast<CameraComponent>(c);
-            if (cam->isActive()) {
-                
-                auto size = App::Renderer->GetBufferSize();
-                cam->SetTargetSize(size.width, size.height);
-                current->viewmatrix = cam->GenerateViewMatrix();
-                current->projmatrix = cam->GenerateProjectionMatrix();
-                
-                break;
-            }
-        }
-    });
-    
-    //opaque geometry
-    auto geometry = GetAllComponentsOfTypeFastPath<StaticMesh>();
-        
-    //sort into the hashmap
-    auto sort = masterTasks.for_each(geometry.begin(), geometry.end(), [this](Ref<Component> e){
-        if (e){
-            auto m = static_pointer_cast<StaticMesh>(e);
-            auto ptr = e->getOwner().lock();
-            if (ptr){
-				auto pair = make_pair(m->getMesh(), m->GetMaterial());
-                auto mat = ptr->transform()->CalculateWorldMatrix();
-				auto& item = current->opaques[pair];
-				item.mtx.lock();
-				item.items.insert(mat);
-				item.mtx.unlock();
-            }
-        }
-    });
-	
-	auto copydirs = masterTasks.emplace([this](){
-		auto dirs = GetAllComponentsOfTypeFastPath<DirectionalLight>();
-		for(const auto& e : dirs){
-			if (e){
-				auto owner = e->getOwner().lock();
-				if (owner){
-					auto d = static_pointer_cast<DirectionalLight>(e);
-					auto rot = owner->transform()->Up();
-					FrameData::PackedDL::tinyvec3 r{
-						static_cast<float>(rot.x),
-						static_cast<float>(rot.y),
-						static_cast<float>(rot.z)
-					};
-					current->directionals.emplace(*d.get(),r);
+	if (isRendering)
+	{
+		//render engine data collector
+		//camera matrices
+		auto camproc = masterTasks.emplace([this](){
+			auto allcams = GetAllComponentsOfTypeFastPath<CameraComponent>();
+			for (const auto& c : allcams) {
+				auto cam = std::static_pointer_cast<CameraComponent>(c);
+				if (cam->isActive()) {
+					
+					auto size = App::Renderer->GetBufferSize();
+					cam->SetTargetSize(size.width, size.height);
+					current->viewmatrix = cam->GenerateViewMatrix();
+					current->projmatrix = cam->GenerateProjectionMatrix();
+					
+					break;
 				}
 			}
-		}
-	});
-	auto copyambs = masterTasks.emplace([this](){
-		auto ambs = GetAllComponentsOfTypeFastPath<AmbientLight>();
-		for(const auto& e : ambs){
+		});
+		
+		//opaque geometry
+		geometry = GetAllComponentsOfTypeFastPath<StaticMesh>();
+			
+		//sort into the hashmap
+		auto sort = masterTasks.for_each(geometry.begin(), geometry.end(), [this](Ref<Component> e){
 			if (e){
-				auto d = static_pointer_cast<AmbientLight>(e);
-				current->ambients.emplace(*d.get());
-			}
-		}
-	});
-	auto copyspots = masterTasks.emplace([this](){
-		auto spots = GetAllComponentsOfTypeFastPath<SpotLight>();
-		for(const auto& e : spots){
-			if (e){
-				auto d = static_pointer_cast<SpotLight>(e);
+				auto m = static_pointer_cast<StaticMesh>(e);
 				auto ptr = e->getOwner().lock();
 				if (ptr){
-					auto transform = ptr->transform()->CalculateWorldMatrix();
-					current->spots.emplace(*d.get(),d->CalculateMatrix(transform));
+					auto pair = make_pair(m->getMesh(), m->GetMaterial());
+					auto mat = ptr->transform()->CalculateWorldMatrix();
+					auto& item = current->opaques[pair];
+					item.mtx.lock();
+					item.items.insert(mat);
+					item.mtx.unlock();
 				}
 			}
-		}
-	});
-	auto copypoints = masterTasks.emplace([this](){
-		auto points = GetAllComponentsOfTypeFastPath<PointLight>();
-		for(const auto& e : points){
-			if (e){
-				auto d = static_pointer_cast<PointLight>(e);
-				auto ptr = e->getOwner().lock();
-				if (ptr){
-					auto transform = ptr->transform()->CalculateWorldMatrix();
-					current->points.emplace(*d.get(),d->CalculateMatrix(transform));
+		});
+		
+		auto copydirs = masterTasks.emplace([this](){
+			auto dirs = GetAllComponentsOfTypeFastPath<DirectionalLight>();
+			for(const auto& e : dirs){
+				if (e){
+					auto owner = e->getOwner().lock();
+					if (owner){
+						auto d = static_pointer_cast<DirectionalLight>(e);
+						auto rot = owner->transform()->Up();
+						FrameData::PackedDL::tinyvec3 r{
+							static_cast<float>(rot.x),
+							static_cast<float>(rot.y),
+							static_cast<float>(rot.z)
+						};
+						current->directionals.emplace(*d.get(),r);
+					}
 				}
 			}
-		}
-	});
-	
+		});
+		auto copyambs = masterTasks.emplace([this](){
+			auto ambs = GetAllComponentsOfTypeFastPath<AmbientLight>();
+			for(const auto& e : ambs){
+				if (e){
+					auto d = static_pointer_cast<AmbientLight>(e);
+					current->ambients.emplace(*d.get());
+				}
+			}
+		});
+		auto copyspots = masterTasks.emplace([this](){
+			auto spots = GetAllComponentsOfTypeFastPath<SpotLight>();
+			for(const auto& e : spots){
+				if (e){
+					auto d = static_pointer_cast<SpotLight>(e);
+					auto ptr = e->getOwner().lock();
+					if (ptr){
+						auto transform = ptr->transform()->CalculateWorldMatrix();
+						current->spots.emplace(*d.get(),d->CalculateMatrix(transform));
+					}
+				}
+			}
+		});
+		auto copypoints = masterTasks.emplace([this](){
+			auto points = GetAllComponentsOfTypeFastPath<PointLight>();
+			for(const auto& e : points){
+				if (e){
+					auto d = static_pointer_cast<PointLight>(e);
+					auto ptr = e->getOwner().lock();
+					if (ptr){
+						auto transform = ptr->transform()->CalculateWorldMatrix();
+						current->points.emplace(*d.get(),d->CalculateMatrix(transform));
+					}
+				}
+			}
+		});
+		
 
-    auto swap = masterTasks.emplace([this]{
-        SwapFrameData();
-    });
-    auto setup = masterTasks.emplace([this]{
-		current->Clear();
-    });
-    setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
-    sort.precede(swap);
-    camproc.precede(sort);
-    graphs[CTTI<ScriptSystem>].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
-	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+		auto swap = masterTasks.emplace([this]{
+			SwapFrameData();
+		});
+		auto setup = masterTasks.emplace([this]{
+			current->Clear();
+		});
+		setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+		sort.precede(swap);
+		camproc.precede(sort);
+		graphs[CTTI<ScriptSystem>].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+		swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+	}
 
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read

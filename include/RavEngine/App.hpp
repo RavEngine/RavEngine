@@ -86,22 +86,49 @@ namespace RavEngine {
 		}
 
 		/**
-		* Get the current application tick rate
+		@return the current application tick rate
 		*/
 		static float CurrentTPS();
 		
 		static Ref<InputManager> inputManager;
 
 		/**
-		* Set the current world to tick automatically
-		* @param newWorld the new world
+		Set the current world to tick automatically
+		@param newWorld the new world
 		*/
-		static void SetWorld(Ref<World> newWorld) {
-			if (currentWorld) {
-				currentWorld->OnDeactivate();
+		static void SetRenderedWorld(Ref<World> newWorld) {
+			if (!loadedWorlds.contains(newWorld)){
+				Debug::Fatal("Cannot render an inactive world");
 			}
-			currentWorld = newWorld;
-			currentWorld->OnActivate();
+			if (renderWorld) {
+				renderWorld->OnDeactivate();
+				renderWorld->isRendering = false;
+			}
+			renderWorld = newWorld;
+			renderWorld->isRendering = true;
+			renderWorld->OnActivate();
+		}
+		
+		/**
+		 Add a world to be ticked
+		 @param world the world to tick
+		 */
+		static void AddWorld(Ref<World> world){
+			loadedWorlds.insert(world);
+			if (!renderWorld){
+				SetRenderedWorld(world);
+			}
+		}
+		/**
+		Remove a world from the tick list
+		@param world the world to tick
+		*/
+		static void RemoveWorld(Ref<World> world){
+			loadedWorlds.erase(world);
+			if (renderWorld == world){
+				renderWorld->OnDeactivate();
+				renderWorld.reset();	//this will cause nothing to render, so set a different world as rendered
+			}
 		}
 		
 		/**
@@ -112,12 +139,14 @@ namespace RavEngine {
 		static void SetWindowTitle(const char* title);
 
 	private:
-		static Ref<World> currentWorld;
+		static Ref<World> renderWorld;
 	
 		static ConcurrentQueue<std::function<void(void)>> main_tasks;
 
         //change to adjust the ticking speed of the engine (default 90hz)
         static std::chrono::duration<double,std::micro> min_tick_time;
+		
+		static locked_hashset<Ref<World>,SpinLock> loadedWorlds;
 	protected:
 		
 		//plays the audio generated in worlds

@@ -1,12 +1,13 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include "NetworkBase.hpp"
 #include <steam/isteamnetworkingsockets.h>
 #include <thread>
 
 namespace RavEngine {
 
-class NetworkClient{
+class NetworkClient : public NetworkBase{
 public:
 	NetworkClient();
 	void Connect(const std::string& addr, uint16_t port);
@@ -16,9 +17,6 @@ public:
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamNetConnection connection = k_HSteamNetConnection_Invalid;
-	std::thread workerThread;
-	std::atomic<bool> clientIsRunning = false;
-	std::atomic<bool> clientHasStopped = false;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 	
 	void ClientTick();

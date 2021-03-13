@@ -27,7 +27,13 @@ namespace RavEngine {
 
 	class World : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<World>{
 		friend class AudioPlayer;
+		friend class App;
+	private:
+		std::atomic<bool> isRendering = false;
+		char worldIDbuf [16];
 	protected:
+		std::string_view worldID{worldIDbuf,16};
+		
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
 		EntityStore Entities;

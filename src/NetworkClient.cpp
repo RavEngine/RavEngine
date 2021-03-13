@@ -25,9 +25,9 @@ void NetworkClient::Connect(const std::string& address, uint16_t port){
 		Debug::Fatal("Cannot connect to {}:{}",address,port);
 	}
 	currentClient = this;
-	clientIsRunning = true;
-	workerThread = std::thread(&NetworkClient::ClientTick, this);
-	workerThread.detach();
+	workerIsRunning = true;
+	worker = std::thread(&NetworkClient::ClientTick, this);
+	worker.detach();
 }
 
 void NetworkClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t * pInfo){
@@ -40,7 +40,7 @@ void NetworkClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 		case k_ESteamNetworkingConnectionState_ClosedByPeer:
 		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
 		{
-			clientIsRunning = false;
+			workerIsRunning = false;
 			
 			// Print an appropriate message
 			if ( pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting )
@@ -86,8 +86,8 @@ void NetworkClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 }
 
 void NetworkClient::Disconnect(){
-	clientIsRunning = false;
-	while (!clientHasStopped);
+	workerIsRunning = false;
+	while (!workerHasStopped);
 	interface->CloseConnection(connection, 0, nullptr, false);
 
 }
@@ -102,8 +102,8 @@ void NetworkClient::SteamNetConnectionStatusChanged(SteamNetConnectionStatusChan
 }
 
 void NetworkClient::ClientTick(){
-	while(clientIsRunning){
-		while(clientIsRunning){
+	while(workerIsRunning){
+		while(workerIsRunning){
 			ISteamNetworkingMessage *pIncomingMsg = nullptr;
 			int numMsgs = interface->ReceiveMessagesOnConnection( connection, &pIncomingMsg, 1 );
 			if ( numMsgs == 0 ){
@@ -125,5 +125,5 @@ void NetworkClient::ClientTick(){
 		//state changes
 		interface->RunCallbacks();
 	}
-	clientHasStopped = true;
+	workerHasStopped = true;
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "NetworkBase.hpp"
 #include <steam/isteamnetworkingsockets.h>
 #include "DataStructures.hpp"
 #include <uuids.h>
@@ -7,7 +8,7 @@
 
 namespace RavEngine {
 
-class NetworkServer{
+class NetworkServer : public NetworkBase{
 public:
 	NetworkServer();
 	void Start(uint16_t port);
@@ -20,9 +21,6 @@ protected:
 	HSteamNetPollGroup pollGroup;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 	
-	std::thread worker;
-	std::atomic<bool> serverIsRunning = false;
-	std::atomic<bool> serverHasStopped = false;
 	phmap::flat_hash_set<HSteamNetConnection> clients;
 	
 	static NetworkServer* currentServer;
