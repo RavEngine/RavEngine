@@ -199,6 +199,7 @@ void App::Quit(){
 App::~App(){
 	inputManager = nullptr;
 	renderWorld = nullptr;
+	loadedWorlds.clear();
 #ifdef _DEBUG
 	Renderer->DeactivateDebugger();
 #endif
