@@ -132,6 +132,20 @@ namespace RavEngine {
 		}
 		
 		/**
+		 Replace a loaded world with a different world, transferring render state if necessary
+		 @param oldWorld the world to replace
+		 @param newWorld the world to replace with. Cannot be already loaded.
+		 */
+		static void AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld){
+			AddWorld(newWorld);
+			bool updateRender = renderWorld == oldWorld;
+			RemoveWorld(oldWorld);
+			if (updateRender){
+				SetRenderedWorld(newWorld);
+			}
+		}
+		
+		/**
 		 Set the window titlebar text
 		 @param title the text for the titlebar
 		 @note Do not call this every frame. To update periodically with data such as frame rates, use a scheduled system.
