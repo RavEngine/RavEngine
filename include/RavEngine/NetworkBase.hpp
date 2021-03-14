@@ -13,15 +13,18 @@ protected:
 	std::atomic<bool> workerIsRunning = false;
 	std::atomic<bool> workerHasStopped = false;
 
-	enum class CommandCode {
-		Spawn = 0,
-		Destroy,
-		RPC
-	};
-
 	std::string CreateSpawnCommand(uuids::uuid& id, ctti_t type, std::string_view& worldID);
 
 	std::string CreateDestroyCommand(uuids::uuid& id, std::string_view& worldID);
+
+public:
+	struct CommandCode {
+		enum {
+			Spawn = 1,
+			Destroy,
+			RPC
+		};
+	};
 };
 
 }

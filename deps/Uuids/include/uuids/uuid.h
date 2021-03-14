@@ -179,6 +179,31 @@ namespace uuids
 
             return std::string(buffer);
         }
+    public:
+        std::string raw() const {
+            char buffer[16];
+            uint8_t offset = 0;
+           
+            memcpy(buffer, &_time_low, sizeof(_time_low));
+            offset += sizeof(_time_low);
+
+            memcpy(buffer + offset, &_time_mid, sizeof(_time_mid));
+            offset += sizeof(_time_mid);
+
+            memcpy(buffer + offset, &_time_hi_and_version, sizeof(_time_hi_and_version));
+            offset += sizeof(_time_hi_and_version);
+
+            memcpy(buffer + offset, &_clock_seq_hi_and_reserved, sizeof(_clock_seq_hi_and_reserved));
+            offset += sizeof(_clock_seq_hi_and_reserved);
+
+            memcpy(buffer + offset, &_clock_seq_low, sizeof(_clock_seq_low));
+            offset += sizeof(_clock_seq_low);
+
+            memcpy(buffer + offset, _node, sizeof(_node));
+    
+            return std::string(buffer,16);
+        }
+        
     };
 
 } // namespace uuids

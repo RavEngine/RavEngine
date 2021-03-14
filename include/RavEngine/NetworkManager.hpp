@@ -15,6 +15,8 @@ namespace RavEngine {
 	class NetworkManager{
 	private:
 		locked_hashmap<ctti_t, std::function<Ref<Entity>(void)>> NetworkedObjects;
+
+		void Spawn(const std::string_view& command);
 	public:
 		
 		/**
@@ -46,6 +48,12 @@ namespace RavEngine {
 		inline bool IsNetworkedIdentityRegistered(){
 			return NetworkedObjects.contains(CTTI<T>);
 		}
+
+		/**
+		Invoked by client / server when a message is received
+		@param message the raw data received
+		*/
+		void OnMessageReceived(const std::string_view& message);
 		
         /**
          @return true If there is an active Server running on this instance

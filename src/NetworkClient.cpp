@@ -1,6 +1,7 @@
 #include "NetworkClient.hpp"
 #include "Debug.hpp"
 #include <steam/isteamnetworkingutils.h>	//this is required in for ParseString
+#include "App.hpp"
 
 using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
@@ -113,10 +114,8 @@ void NetworkClient::ClientTick(){
 				Debug::Fatal( "Error checking for messages" );
 			}
 				
-			
-			// Just echo anything we get from the server
-			fwrite( pIncomingMsg->m_pData, 1, pIncomingMsg->m_cbSize, stdout );
-			fputc( '\n', stdout );
+			std::string_view message((char*)pIncomingMsg->m_pData, pIncomingMsg->m_cbSize);
+			App::networkManager.OnMessageReceived(message);
 			
 			// We don't need this anymore.
 			pIncomingMsg->Release();

@@ -5,6 +5,7 @@
 #include "NetworkIdentity.hpp"
 #include "World.hpp"
 #include <steam/isteamnetworkingutils.h>
+#include "App.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -184,8 +185,7 @@ void NetworkServer::ServerTick(){
 			assert(clients.contains(pIncomingMsg->m_conn));
 			
 			//figure out what to do with the message
-			auto data = pIncomingMsg->m_pData;
-			auto nbytes = pIncomingMsg->m_cbSize;
+			App::networkManager.OnMessageRecieved(string_view((char*)pIncomingMsg->m_pData, pIncomingMsg->m_cbSize));
 			
 			//deallocate when done
 			pIncomingMsg->Release();

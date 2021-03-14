@@ -28,9 +28,11 @@ namespace RavEngine {
 	class World : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<World>{
 		friend class AudioPlayer;
 		friend class App;
+	public:
+		constexpr static uint8_t id_size = 8;
 	private:
 		std::atomic<bool> isRendering = false;
-		char worldIDbuf [16];
+		char worldIDbuf [id_size];
 	protected:
 		
 		
@@ -83,7 +85,7 @@ namespace RavEngine {
 		void CreateFrameData();
 				
     public:
-		std::string_view worldID{ worldIDbuf,16 };
+		std::string_view worldID{ worldIDbuf,id_size };
 		std::atomic<bool> newFrame = false;
 		
 		const FrameData GetFrameData(){
