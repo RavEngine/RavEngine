@@ -11,13 +11,7 @@ void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
     if (IsServer()){
         auto entity = comp->getOwner().lock();
         if (entity){
-			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
-			if (casted){
-				auto id = casted->NetTypeID();
-				auto netID = entity->GetComponent<NetworkIdentity>()->GetNetworkID();
-				//TODO: send highest-priority safe message with this info to clients
-				
-			}
+			server->SpawnEntity(entity);
         }
     }
 

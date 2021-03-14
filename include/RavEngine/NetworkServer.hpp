@@ -3,10 +3,12 @@
 #include "NetworkBase.hpp"
 #include <steam/isteamnetworkingsockets.h>
 #include "DataStructures.hpp"
+#include "Ref.hpp"
 #include <uuids.h>
 #include <phmap.h>
 
 namespace RavEngine {
+	class Entity;
 
 class NetworkServer : public NetworkBase{
 public:
@@ -15,10 +17,12 @@ public:
 	void Stop();
 	~NetworkServer();	//calls stop
 	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
+
+	void SpawnEntity(Ref<Entity> e);
 protected:
-	ISteamNetworkingSockets *interface;
-	HSteamListenSocket listenSocket;
-	HSteamNetPollGroup pollGroup;
+	ISteamNetworkingSockets *interface = nullptr;
+	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;
+	HSteamNetPollGroup pollGroup = k_HSteamNetPollGroup_Invalid;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 	
 	phmap::flat_hash_set<HSteamNetConnection> clients;

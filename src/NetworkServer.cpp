@@ -1,11 +1,32 @@
 #include "NetworkServer.hpp"
 #include "Debug.hpp"
+#include "Entity.hpp"
+#include "NetworkReplicable.hpp"
+#include "NetworkIdentity.hpp"
+#include "World.hpp"
+#include <steam/isteamnetworkingutils.h>
 
 using namespace RavEngine;
+using namespace std;
 NetworkServer* NetworkServer::currentServer = nullptr;
 
-NetworkServer::NetworkServer(){
-	interface = SteamNetworkingSockets();
+NetworkServer::NetworkServer() : interface(SteamNetworkingSockets()){}
+
+void NetworkServer::SpawnEntity(Ref<Entity> entity) {
+	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
+	auto world = entity->GetWorld().lock();
+	if (casted && world) {
+		auto id = casted->NetTypeID();
+		auto netID = entity->GetComponent<NetworkIdentity>()->GetNetworkID();
+		//send highest-priority safe message with this info to clients
+		auto message = CreateSpawnCommand(netID, id, world->worldID);
+		for (auto connection : clients) {
+			interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+		}
+	}
+	else {
+		Debug::Warning("Attempted to spawn entity that is not in a world or is not NetworkReplicable");
+	}
 }
 
 void NetworkServer::Start(uint16_t port){

@@ -32,7 +32,7 @@ namespace RavEngine {
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [16];
 	protected:
-		std::string_view worldID{worldIDbuf,16};
+		
 		
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
@@ -83,6 +83,7 @@ namespace RavEngine {
 		void CreateFrameData();
 				
     public:
+		std::string_view worldID{ worldIDbuf,16 };
 		std::atomic<bool> newFrame = false;
 		
 		const FrameData GetFrameData(){
