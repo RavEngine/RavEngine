@@ -4,10 +4,15 @@
 #include <string>
 #include <uuids/uuid.h>
 #include "CTTI.hpp"
+#include "NetworkIdentity.hpp"
+#include "Ref.hpp"
+#include "SpinLock.hpp"
+#include "DataStructures.hpp"
 
 namespace RavEngine{
 
 class NetworkBase{
+    friend class NetworkManager;
 protected:
 	std::thread worker;
 	std::atomic<bool> workerIsRunning = false;
@@ -17,6 +22,8 @@ protected:
 
 	std::string CreateDestroyCommand(uuids::uuid& id);
 
+    //Track all the networkidentities by their IDs
+    locked_node_hashmap<uuids::uuid, Ref<NetworkIdentity>,SpinLock> NetworkIdentities;
 public:
 	struct CommandCode {
 		enum {

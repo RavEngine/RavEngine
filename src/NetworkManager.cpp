@@ -13,7 +13,6 @@ void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
         auto entity = comp->getOwner().lock();
         if (entity){
 			server->SpawnEntity(entity);
-			NetworkIdentities[comp->GetNetworkID()] = comp;
         }
     }
 	else{
@@ -30,10 +29,10 @@ void NetworkManager::Destroy(Ref<World> source, Ref<NetworkIdentity> comp) {
 		auto entity = comp->getOwner().lock();
 		if (entity){
 			server->DestroyEntity(entity);
-			NetworkIdentities.erase(comp->GetNetworkID());
 		}
 	}
-	//ownership is client and running on correct client? need to RPC server, which will then RPC the other clients
+	//ownership is client and running on correct client? need to RPC a deletion request to the server, which will then RPC the other clients
+    //if the deletion is honored
 	else if (IsClient()){
 		
 	}
@@ -59,7 +58,7 @@ void NetworkManager::NetSpawn(const string_view& command){
 	
 	// world name
 	char worldname[World::id_size];
-	std::memcpy(worldname, command.data()+offset, World::id_size);
+    std::memcpy(worldname, command.data()+offset, World::id_size);
 	
 	//find the world and spawn
 	if (auto e = CreateEntity(id, uuid)){
@@ -67,7 +66,10 @@ void NetworkManager::NetSpawn(const string_view& command){
 			world.value()->Spawn(e.value());
 			auto netid = e.value()->GetComponent<NetworkIdentity>();
 			if (netid){
-				NetworkIdentities[netid->GetNetworkID()] = netid;
+                Debug::Assert(netid->GetNetworkID() == uuid, "Created object does not have correct NetID! {} != {}",uuid.to_string(), netid->GetNetworkID().to_string());
+                
+                //NetSpawn always runs on the client
+                client->NetworkIdentities[netid->GetNetworkID()] = netid;
 			}
 			else{
 				Debug::Fatal("Cannot spawn networked entity without NetworkIdentity! Check uuid constructor.");
@@ -90,15 +92,17 @@ void NetworkManager::NetDestroy(const string_view& command){
 	char uuid_bytes[16];
 	std::memcpy(uuid_bytes,command.data() + offset,16);
 	uuids::uuid uuid(uuid_bytes);
-	
+    
+    //this always runs on the client -- destructions are requests if coming from the client
+    
 	//lookup the entity and destroy it
-	if (NetworkIdentities.contains(uuid)){
-		auto id = NetworkIdentities.at(uuid);
+	if (client->NetworkIdentities.contains(uuid)){
+		auto id = client->NetworkIdentities.at(uuid);
 		auto owner = id->getOwner().lock();
 		if (owner){
 			owner->Destroy();
 		}
-		NetworkIdentities.erase(uuid);
+		client->NetworkIdentities.erase(uuid);
 	}
 	else{
 		Debug::Warning("Cannot destroy entity with UUID {} because it does not exist",uuid.to_string());

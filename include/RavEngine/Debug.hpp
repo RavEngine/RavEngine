@@ -123,6 +123,30 @@ public:
 	static inline void Fatal(const char* formatstr, T... values){
 		throw std::runtime_error(fmt::format(formatstr,values...));
 	}
+    
+    /**
+     Require a condition to be true
+     @param condition the boolean to check
+     @param formatstr the formatting string for the failure message
+     @param values the optional values for the failure message
+     */
+    template <typename ... T>
+    static inline void Assert(bool condition, const char* formatstr, T... values){
+        if (!condition){
+            Fatal(formatstr,values...);
+        }
+    }
+    
+    /**
+     Require a condition to be true
+     @param condition the boolean to check
+     @param msg the string for the failure message
+     */
+    static inline void Assert(bool condition, const char* msg){
+        if (!condition){
+            Fatal(msg);
+        }
+    }
 };
 	
 }

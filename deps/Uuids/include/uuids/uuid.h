@@ -51,22 +51,22 @@ namespace uuids
 		
 		uuid(const char bytes[16]){
 			uint8_t offset = 0;
-			std::memcpy(&_time_low,bytes,sizeof(_time_low));
-			offset += _time_low;
+			std::memcpy(&_time_low,bytes+offset,sizeof(_time_low));
+			offset += sizeof(_time_low);
 			
-			std::memcpy(&_time_mid,bytes,sizeof(_time_mid));
-			offset += _time_mid;
+			std::memcpy(&_time_mid,bytes+offset,sizeof(_time_mid));
+			offset += sizeof(_time_mid);
 			
-			std::memcpy(&_time_hi_and_version,bytes,sizeof(_time_hi_and_version));
-			offset += _time_hi_and_version;
+			std::memcpy(&_time_hi_and_version,bytes+offset,sizeof(_time_hi_and_version));
+			offset += sizeof(_time_hi_and_version);
 			
-			std::memcpy(&_clock_seq_hi_and_reserved,bytes,sizeof(_clock_seq_hi_and_reserved));
-			offset += _clock_seq_hi_and_reserved;
+			std::memcpy(&_clock_seq_hi_and_reserved,bytes+offset,sizeof(_clock_seq_hi_and_reserved));
+			offset += sizeof(_clock_seq_hi_and_reserved);
 			
-			std::memcpy(&_clock_seq_low,bytes,sizeof(_clock_seq_low));
-			offset += _clock_seq_low;
+			std::memcpy(&_clock_seq_low,bytes+offset,sizeof(_clock_seq_low));
+			offset += sizeof(_clock_seq_low);
 			
-			std::memcpy(&_node,bytes,sizeof(_node));
+			std::memcpy(&_node,bytes+offset,sizeof(_node));
 		}
 		
 		uuid(){}
@@ -211,6 +211,7 @@ namespace uuids
     public:
         std::string raw() const {
             char buffer[16];
+            memset(buffer,0,16);
             uint8_t offset = 0;
            
             memcpy(buffer, &_time_low, sizeof(_time_low));

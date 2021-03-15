@@ -29,8 +29,6 @@ namespace RavEngine {
 			return value;
 		}
 		
-		//Track all the networkidentities by their IDs
-		locked_hashmap<uuids::uuid, Ref<NetworkIdentity>,SpinLock> NetworkIdentities;
 	public:
 		
 		/**

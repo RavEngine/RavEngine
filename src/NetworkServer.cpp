@@ -18,9 +18,11 @@ void NetworkServer::SpawnEntity(Ref<Entity> entity) {
 	auto world = entity->GetWorld().lock();
 	if (casted && world) {
 		auto id = casted->NetTypeID();
-		auto netID = entity->GetComponent<NetworkIdentity>()->GetNetworkID();
+        auto comp = entity->GetComponent<NetworkIdentity>();
+		auto netID = comp->GetNetworkID();
 		//send highest-priority safe message with this info to clients
 		auto message = CreateSpawnCommand(netID, id, world->worldID);
+        NetworkIdentities[netID] = comp;
 		for (auto connection : clients) {
 			interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
 		}
@@ -35,7 +37,7 @@ void NetworkServer::DestroyEntity(Ref<Entity> entity){
 	if (casted){
 		auto netID = entity->GetComponent<NetworkIdentity>()->GetNetworkID();
 		auto message = CreateDestroyCommand(netID);
-		
+        NetworkIdentities.erase(netID);
 		for (auto connection : clients) {
 			interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
 		}
