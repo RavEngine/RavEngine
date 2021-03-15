@@ -48,10 +48,39 @@ namespace uuids
             d._generate(generator);
             return d;
         }
+		
+		uuid(const char bytes[16]){
+			uint8_t offset = 0;
+			std::memcpy(&_time_low,bytes,sizeof(_time_low));
+			offset += _time_low;
+			
+			std::memcpy(&_time_mid,bytes,sizeof(_time_mid));
+			offset += _time_mid;
+			
+			std::memcpy(&_time_hi_and_version,bytes,sizeof(_time_hi_and_version));
+			offset += _time_hi_and_version;
+			
+			std::memcpy(&_clock_seq_hi_and_reserved,bytes,sizeof(_clock_seq_hi_and_reserved));
+			offset += _clock_seq_hi_and_reserved;
+			
+			std::memcpy(&_clock_seq_low,bytes,sizeof(_clock_seq_low));
+			offset += _clock_seq_low;
+			
+			std::memcpy(&_node,bytes,sizeof(_node));
+		}
+		
+		uuid(){}
 
     public:
         uuid clone() { return uuid(*this); }
         std::string to_string() const { return _to_string(); }
+		
+		inline bool operator==( const uuid &rhs) const { return compare(*this, rhs) == 0; }
+		inline bool operator!=( const uuid &rhs) const { return compare(*this, rhs) != 0; }
+		inline bool operator<(const uuid &rhs) const { return compare(*this, rhs) < 0; }
+		inline bool operator>(const uuid &rhs) const { return compare(*this, rhs) > 0; }
+		inline bool operator<=(const uuid &rhs) const { return compare(*this, rhs) <= 0; }
+		inline bool operator>=(const uuid &rhs) const { return compare(*this, rhs) >= 0; }
 
 #define CHECK(f1, f2) \
     if (f1 != f2)     \
@@ -61,7 +90,7 @@ namespace uuids
         //  0   u1 is equal to u2
         //  1   u1 is lexically after u2
         // Note that lexical ordering is not temporal ordering!
-        static int compare(const uuid &u1, const uuid &u2)
+        static inline int compare(const uuid &u1, const uuid &u2)
         {
             CHECK(u1._time_low, u2._time_low);
             CHECK(u1._time_mid, u2._time_mid);
@@ -220,13 +249,6 @@ namespace std
             return hash<string>{}(d.to_string());
         }
     };
-
-    static inline bool operator==(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) == 0; }
-	static inline bool operator!=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) != 0; }
-	static inline bool operator<(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) < 0; }
-	static inline bool operator>(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) > 0; }
-	static inline bool operator<=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) <= 0; }
-	static inline bool operator>=(const id &lhs, const id &rhs) { return id::compare(lhs, rhs) >= 0; }
 
     static inline ostream &operator<<(ostream &os, const id &d)
     {

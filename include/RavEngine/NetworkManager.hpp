@@ -5,6 +5,8 @@
 #include "DataStructures.hpp"
 #include "CTTI.hpp"
 #include "Ref.hpp"
+#include <uuids.h>
+#include <optional>
 
 namespace RavEngine {
 
@@ -14,9 +16,21 @@ namespace RavEngine {
 
 	class NetworkManager{
 	private:
-		locked_hashmap<ctti_t, std::function<Ref<Entity>(void)>> NetworkedObjects;
-
-		void Spawn(const std::string_view& command);
+		locked_hashmap<ctti_t, std::function<Ref<Entity>(const uuids::uuid&)>> NetworkedObjects;
+		
+		void NetSpawn(const std::string_view& cmd);
+		void NetDestroy(const std::string_view& cmd);
+		
+		std::optional<Ref<Entity>> CreateEntity(ctti_t id, uuids::uuid& uuid){
+			std::optional<Ref<Entity>> value;
+			if (NetworkedObjects.contains(id)){
+				value.emplace(NetworkedObjects[id](uuid));
+			}
+			return value;
+		}
+		
+		//Track all the networkidentities by their IDs
+		locked_hashmap<uuids::uuid, Ref<NetworkIdentity>,SpinLock> NetworkIdentities;
 	public:
 		
 		/**
@@ -25,9 +39,8 @@ namespace RavEngine {
 		 */
 		template<typename T>
 		inline void RegisterNetworkedEntity(){
-			NetworkedObjects.insert(std::make_pair(CTTI<T>,[]() -> Ref<Entity>{
-				//TODO: UUID
-				return std::static_pointer_cast<Entity>(std::make_shared<T>());
+			NetworkedObjects.insert(std::make_pair(CTTI<T>,[](const uuids::uuid& id) -> Ref<Entity>{
+				return std::static_pointer_cast<Entity>(std::make_shared<T>(id));
 			}));
 		}
 		

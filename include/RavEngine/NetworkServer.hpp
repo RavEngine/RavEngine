@@ -19,6 +19,7 @@ public:
 	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 
 	void SpawnEntity(Ref<Entity> e);
+	void DestroyEntity(Ref<Entity> e);
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;

@@ -31,7 +31,17 @@ std::string RavEngine::NetworkBase::CreateSpawnCommand(uuids::uuid& id, ctti_t t
 	return string(message,size);
 }
 
-std::string RavEngine::NetworkBase::CreateDestroyCommand(uuids::uuid& id, std::string_view& worldID)
+std::string RavEngine::NetworkBase::CreateDestroyCommand(uuids::uuid& id)
 {
-	return std::string();
+	constexpr uint16_t size = 16 + 1;
+	char message[size];
+	
+	//set command code
+	message[0] = CommandCode::Destroy;
+	
+	//set uuid
+	auto raw = id.raw();
+	memcpy(message + 1, raw.data(), 16);
+	
+	return string(message,size);
 }

@@ -22,6 +22,7 @@ namespace RavEngine {
 	class World;
 
 	class App {
+		friend class NetworkManager;
 	public:
 		App(const std::string& resourcesName);
 		virtual ~App();
@@ -151,6 +152,17 @@ namespace RavEngine {
 		 @note Do not call this every frame. To update periodically with data such as frame rates, use a scheduled system.
 		 */
 		static void SetWindowTitle(const char* title);
+		
+		static std::optional<Ref<World>> GetWorldByName(const std::string& name){
+			std::optional<Ref<World>> value;
+			for(const auto& world : loadedWorlds){
+				if (world->worldID == name){
+					value.emplace(world);
+					break;
+				}
+			}
+			return value;
+		}
 
 	private:
 		static Ref<World> renderWorld;
@@ -161,6 +173,7 @@ namespace RavEngine {
         static std::chrono::duration<double,std::micro> min_tick_time;
 		
 		static locked_hashset<Ref<World>,SpinLock> loadedWorlds;
+			
 	protected:
 		
 		//plays the audio generated in worlds

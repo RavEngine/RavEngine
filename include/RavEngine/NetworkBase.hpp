@@ -15,7 +15,7 @@ protected:
 
 	std::string CreateSpawnCommand(uuids::uuid& id, ctti_t type, std::string_view& worldID);
 
-	std::string CreateDestroyCommand(uuids::uuid& id, std::string_view& worldID);
+	std::string CreateDestroyCommand(uuids::uuid& id);
 
 public:
 	struct CommandCode {

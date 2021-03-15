@@ -122,7 +122,7 @@ void World::OnAddComponent(Ref<Component> comp){
 	//is this a NetworkIdentity? if so, call Add on the NetworkManager
 	{
 		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
-		if (nid) {
+		if (nid && nid->triggerMessage) {
             //only the server may spawn objects
             App::networkManager.Spawn(shared_from_this(), nid);
             return;

@@ -30,6 +30,21 @@ void NetworkServer::SpawnEntity(Ref<Entity> entity) {
 	}
 }
 
+void NetworkServer::DestroyEntity(Ref<Entity> entity){
+	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
+	if (casted){
+		auto netID = entity->GetComponent<NetworkIdentity>()->GetNetworkID();
+		auto message = CreateDestroyCommand(netID);
+		
+		for (auto connection : clients) {
+			interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+		}
+	}
+	else {
+		Debug::Warning("Attempted to destroy entity that is not NetworkReplicable");
+	}
+}
+
 void NetworkServer::Start(uint16_t port){
 	//configure and start server
 	SteamNetworkingConfigValue_t opt;
@@ -185,7 +200,7 @@ void NetworkServer::ServerTick(){
 			assert(clients.contains(pIncomingMsg->m_conn));
 			
 			//figure out what to do with the message
-			App::networkManager.OnMessageRecieved(string_view((char*)pIncomingMsg->m_pData, pIncomingMsg->m_cbSize));
+			App::networkManager.OnMessageReceived(string_view((char*)pIncomingMsg->m_pData, pIncomingMsg->m_cbSize));
 			
 			//deallocate when done
 			pIncomingMsg->Release();

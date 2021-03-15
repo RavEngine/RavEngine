@@ -2,6 +2,7 @@
 #include "Component.hpp"
 #include "Queryable.hpp"
 #include <uuids.h>
+#include <steam/isteamnetworkingutils.h>
 
 namespace RavEngine {
 	struct NetworkIdentity : public Component, public Queryable< NetworkIdentity>{
@@ -9,18 +10,18 @@ namespace RavEngine {
         const uuids::uuid NetworkID;
 	public:
 		
+		const bool triggerMessage;
+		
 		//default constructor - used on Server
-		NetworkIdentity() : NetworkIdentity(uuids::uuid::create()){}
+		NetworkIdentity() : NetworkID(uuids::uuid::create()), triggerMessage(true){}
 		
 		//Used on clients
-		NetworkIdentity(const uuids::uuid& id) : NetworkID(id){}
+		NetworkIdentity(const uuids::uuid& id) : NetworkID(id), triggerMessage(false){}
 		
 		inline decltype(NetworkID) GetNetworkID() const{
 			return NetworkID;
 		}
 		
-		enum class Ownership{
-			Owner, NotOwner
-		} ownership = Ownership::NotOwner;
+		HSteamNetConnection Owner = k_HSteamNetConnection_Invalid;	//invalid = server
 	};
 }
