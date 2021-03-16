@@ -13,10 +13,8 @@ set(CMAKE_COLOR_MAKEFILE   ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 
-OPTION( BUILD_SHARED_LIBS
-  "Build package with shared libraries."
-  OFF
-)
+OPTION( BUILD_SHARED_LIBS "Build package with shared libraries." OFF)
+OPTION( RAVENGINE_BUILD_TESTS "Build tests" OFF)
 
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
@@ -154,7 +152,7 @@ if(APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
 	add_definitions("-x objective-c++")
-	set(CMAKE_EXE_LINKER_FLAGS "-framework ServiceManagement -framework Foundation -framework Cocoa -framework Metal -framework QuartzCore -framework UIKit")
+	set(CMAKE_EXE_LINKER_FLAGS "-framework ServiceManagement -framework Foundation -framework Cocoa -framework Metal -framework QuartzCore")
 endif()
 file(GLOB SOURCES "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" "src/*.cpp")
 
@@ -425,3 +423,21 @@ function(pack_resources)
 		)
 	endif()
 endfunction()
+
+# tests
+if (RAVENGINE_BUILD_TESTS)
+	include(CTest)
+	add_executable("${PROJECT_NAME}_TestBasics" "test/basics.cpp")
+	target_link_libraries("${PROJECT_NAME}_TestBasics" PUBLIC "RavEngine" )
+
+	macro(test name executable)
+	add_test(
+		NAME ${name} 
+		COMMAND ${executable} "${name}" -C $<CONFIGURATION> 
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>
+	)
+	endmacro()
+
+	test("CTTI" "${PROJECT_NAME}_TestBasics")
+	test("Test_UUID" "${PROJECT_NAME}_TestBasics")
+endif()
