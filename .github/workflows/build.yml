@@ -50,7 +50,7 @@ jobs:
         
   test-linux:
     name: Linux Unit Tests
-    runs-on: windows-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -61,7 +61,7 @@ jobs:
 
   test-mac:
     name: macOS Unit Tests
-    runs-on: windows-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
