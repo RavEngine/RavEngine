@@ -79,4 +79,4 @@ jobs:
         with:
           submodules: true
       - name: Test
-        run: cd test && test-win.bat
+        run: cd test && .\test-win.bat
