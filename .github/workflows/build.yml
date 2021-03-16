@@ -1,4 +1,4 @@
-name: Compile-Check
+name: CI
 on: push
 
 jobs:
