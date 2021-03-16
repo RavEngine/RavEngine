@@ -49,7 +49,7 @@ jobs:
         run: mkdir build && cd build; cmake -Wno-dev .. ; cmake -Wno-dev .. && cmake --build . --config release --target RavEngine
         
   test-linux:
-    name: Windows Compile Check
+    name: Linux Unit Tests
     runs-on: windows-latest
     steps:
       - name: Checkout code
@@ -60,7 +60,7 @@ jobs:
         run: cd test && ./test-linux.sh
 
   test-mac:
-    name: Windows Compile Check
+    name: macOS Unit Tests
     runs-on: windows-latest
     steps:
       - name: Checkout code
@@ -71,7 +71,7 @@ jobs:
         run: cd test && ./test-mac.sh
         
   test-windows:
-    name: Windows Compile Check
+    name: Windows Unit Tests
     runs-on: windows-latest
     steps:
       - name: Checkout code
