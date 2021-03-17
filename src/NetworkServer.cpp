@@ -202,7 +202,16 @@ void NetworkServer::ServerTick(){
 			assert(clients.contains(pIncomingMsg->m_conn));
 			
 			//figure out what to do with the message
-			App::networkManager.OnMessageReceived(string_view((char*)pIncomingMsg->m_pData, pIncomingMsg->m_cbSize));
+            //get the command code (first byte in the message)
+            std::string_view message((char*)pIncomingMsg->m_pData, pIncomingMsg->m_cbSize);
+            uint8_t cmdcode = message[0];
+            switch (cmdcode) {
+            case NetworkBase::CommandCode::RPC:
+                //TODO: server needs to check ownership, client does not
+                break;
+            default:
+                Debug::Warning("Invalid command code: {}",cmdcode);
+            }
 			
 			//deallocate when done
 			pIncomingMsg->Release();

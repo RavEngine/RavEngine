@@ -18,18 +18,16 @@ namespace RavEngine {
 	private:
 		locked_hashmap<ctti_t, std::function<Ref<Entity>(const uuids::uuid&)>> NetworkedObjects;
 		
-		void NetSpawn(const std::string_view& cmd);
-		void NetDestroy(const std::string_view& cmd);
-		
-		std::optional<Ref<Entity>> CreateEntity(ctti_t id, uuids::uuid& uuid){
-			std::optional<Ref<Entity>> value;
-			if (NetworkedObjects.contains(id)){
-				value.emplace(NetworkedObjects[id](uuid));
-			}
-			return value;
-		}
-		
 	public:
+        
+        std::optional<Ref<Entity>> CreateEntity(ctti_t id, uuids::uuid& uuid){
+            std::optional<Ref<Entity>> value;
+            if (NetworkedObjects.contains(id)){
+                value.emplace(NetworkedObjects[id](uuid));
+            }
+            return value;
+        }
+        
 		
 		/**
 		 Register an entity class as network spawnable.
@@ -59,12 +57,6 @@ namespace RavEngine {
 		inline bool IsNetworkedIdentityRegistered(){
 			return NetworkedObjects.contains(CTTI<T>);
 		}
-
-		/**
-		Invoked by client / server when a message is received
-		@param message the raw data received
-		*/
-		void OnMessageReceived(const std::string_view& message);
 		
         /**
          @return true If there is an active Server running on this instance

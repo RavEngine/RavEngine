@@ -29,7 +29,9 @@ public:
 		enum {
 			Spawn = 1,
 			Destroy,
-			RPC
+			RPC,
+            OwnershipToThis,
+            OwnershipRevoked
 		};
 	};
 };

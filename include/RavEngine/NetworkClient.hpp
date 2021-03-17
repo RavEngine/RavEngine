@@ -20,6 +20,18 @@ protected:
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 	
 	void ClientTick();
+    
+    /**
+     Invoked when spawn command is received
+     @param cmd the raw command from server
+     */
+    void NetSpawn(const std::string_view& cmd);
+    
+    /**
+     Invoked when destroy command is received
+     @param cmd the raw command from server
+     */
+    void NetDestroy(const std::string_view& cmd);
 	
 	static NetworkClient* currentClient;
 };

@@ -151,7 +151,7 @@ void World::OnRemoveComponent(Ref<Component> comp){
 	//is this a NetworkIdentity? if so, call destroy on the NetworkManager
 	{
 		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
-		if (nid) {
+		if (nid && nid->triggerMessage) {
             //ownership is checked serverside to decide if this should be honored
 			App::networkManager.Destroy(shared_from_this(), nid);
             return;
