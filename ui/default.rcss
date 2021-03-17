@@ -1,0 +1,248 @@
+*{
+    font-family: Roboto;
+    font-size:20dp;
+}
+
+/* across many styles*/
+
+br, div, p, h1, em, datagrid, tabset tabs{
+    display:block
+}
+
+strong, b{
+	font-weight:bold
+}
+
+button, input{
+    border: 2dp #DDDDDDFF;
+}
+
+/* button */
+button{
+    background-color: #AAAAAAFF;
+    border-radius: 5dp;
+    display: inline-block;
+    max-width: 300dp;
+    text-align: center;
+    margin:auto;
+    margin-top: 20dp;
+    padding: 10dp;
+    transition: font-size color 1.6s elastic-out;
+}
+button:hover{
+    color:red;
+    font-size: 35dp;
+    transition: font-size color 1.6s elastic-out;
+}
+button:active{
+    background-color: #888888FF;
+    transition: background-color 0.7s elastic-out;
+}
+
+input{
+    background-color:#FFFFFFFF;
+    color: black;
+    max-width:400dp;
+    display:inline-block;
+}
+/* Checkbox */
+input.checkbox{
+    color:white;
+    width: 20dp;
+	height: 20dp;
+	background-color: #FFFFFFFF;
+	border-radius: 4dp;
+}
+
+input.checkbox:checked{
+	background-color: #AAAAAAFF
+}
+
+input.checkbox:active{
+	background-color: #EEEEEEFF
+}
+
+input.checkbox:hover{
+    background-color: #BBBBBBFF
+}
+
+input.checkbox:checked:hover{
+	background-color: #CCCCCCFF
+}
+
+input.checkbox:checked:active
+{
+	background-color: #BBBBBBFF
+}
+
+
+/* Radio group */
+
+input.radio,
+input.checkbox
+{
+	width: 30dp;
+	height: 30dp;
+
+	vertical-align: -11dp;
+}
+
+input.radio
+{
+	border-radius: 100dp;
+}
+
+input.radio:hover
+{
+	background-color: #BBBBBBFF
+}
+
+input.radio:active
+{
+	background-color: #EEEEEEFF
+}
+
+input.radio:checked
+{
+	background-color: #AAAAAAFF
+}
+
+input.radio:checked:hover
+{
+	background-color: #CCCCCCFF
+}
+
+input.radio:checked:active
+{
+	background-color: #BBBBBBFF
+}
+
+
+/* Select box */
+select,
+dataselect
+{
+	width: 175dp;
+	vertical-align: 11dp;
+}
+
+select selectvalue,
+dataselect selectvalue
+{
+	width: auto;
+	margin-right: 30dp;
+	
+	background-color:gray;
+}
+
+select selectarrow,
+dataselect selectarrow
+{
+	width: 30dp;
+	height: 100dp;
+	background-color: #AAAAAAFF;
+}
+
+select:hover selectarrow,
+dataselect:hover selectarrow
+{
+	background-color: red;
+}
+
+select:active selectarrow,
+select selectarrow:checked,
+dataselect:active selectarrow,
+dataselect selectarrow:checked
+{
+	background-color: blue;
+}
+
+select selectbox,
+dataselect selectbox
+{
+	width: 100%;
+}
+
+select selectbox,
+dataselect selectbox,
+datagrid datagridbody,
+tbody
+{
+	padding: 5dp;
+	border: 2dp black;
+}
+
+select selectbox option,
+dataselect selectbox option
+{
+	width: auto;
+	background: #DDDD;
+	color:black;
+}
+
+select selectbox option:checked,
+dataselect selectbox option:checked
+{
+	background-color: #74d2fda0;
+	font-weight: bold;
+}
+select selectbox option:hover,
+dataselect selectbox option:hover
+{
+	background: #35bfffa0;
+	color:white;
+}
+
+/* Slider */
+input.range {
+	width: 200dp;
+	height: 32dp;
+	vertical-align: -13dp;
+	background-color: transparent;
+	border: transparent;
+}
+input.range slidertrack {
+	margin-top: 10dp;
+	height: 2dp;
+	background-color:gray;
+	vertical-align: baseline;
+}
+input.range sliderbar {
+	margin-left: -8dp;
+	margin-right: -8dp;
+	width: 30dp;
+	height: 30dp;
+	background-color: white;
+}
+input.range:hover sliderbar {
+	background-color: #cc0;
+}
+input.range sliderbar:active {
+	background-color: #c80;
+}
+input.range sliderarrowdec, input.range sliderarrowinc {
+	width: 17dp;
+	height: 17dp;
+	background-color:gray;
+}
+input.range sliderarrowdec:hover, input.range sliderarrowinc:hover   {
+	background-color: orange;
+}
+input.range sliderarrowdec:active, input.range sliderarrowinc:active { 
+	background-color:purple;
+}
+
+/* Progress bar */
+
+progressbar {
+	margin: 10dp 20dp;
+	display: inline-block;
+	vertical-align: middle;
+	background-color:white;
+	border: 2dp #555555FF;
+	width: 150dp;
+	height: 34dp;
+}
+progressbar fill{
+	background-color: #00AAAAFF;
+}

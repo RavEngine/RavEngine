@@ -339,6 +339,8 @@ function(pack_resources)
 	# add engine-provided fonts
 	file(GLOB ENG_FONTS "${eng_dir}/fonts/*.ttf")
 
+	file(GLOB ENG_UIS "${eng_dir}/ui/*.rcss" "${eng_dir}/ui/*.rml")
+
 	# clear copy-depends
 	set_property(GLOBAL PROPERTY COPY_DEPENDS "")
 
@@ -361,6 +363,7 @@ function(pack_resources)
 	copy_helper("${ENG_MESHES}" "meshes")
 	copy_helper("${ARGS_TEXTURES}" "textures")
 	copy_helper("${ARGS_UIS}" "uis")
+	copy_helper("${ENG_UIS}" "uis")
 	copy_helper("${ARGS_FONTS}" "fonts")
 	copy_helper("${ENG_FONTS}" "fonts")
 	copy_helper("${ARGS_SOUNDS}" "sounds")
