@@ -218,8 +218,6 @@ void RavEngine::World::TickECS(float fpsScale) {
 		}
 	}
 	
-	ComponentStore::entry_type geometry;
-	
 	if (isRendering)
 	{
 		//render engine data collector
@@ -241,7 +239,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		});
 		
 		//opaque geometry
-		geometry = GetAllComponentsOfType<StaticMesh>();
+		auto& geometry = GetAllComponentsOfType<StaticMesh>();
 			
 		//sort into the hashmap
 		auto sort = masterTasks.for_each(geometry.begin(), geometry.end(), [this](Ref<Component> e){
@@ -260,7 +258,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		});
 		
 		auto copydirs = masterTasks.emplace([this](){
-			auto dirs = GetAllComponentsOfType<DirectionalLight>();
+			auto& dirs = GetAllComponentsOfType<DirectionalLight>();
 			for(const auto& e : dirs){
 				if (e){
 					auto owner = e->getOwner().lock();
@@ -278,7 +276,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		});
 		auto copyambs = masterTasks.emplace([this](){
-			auto ambs = GetAllComponentsOfType<AmbientLight>();
+			auto& ambs = GetAllComponentsOfType<AmbientLight>();
 			for(const auto& e : ambs){
 				if (e){
 					auto d = static_pointer_cast<AmbientLight>(e);
@@ -287,7 +285,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		});
 		auto copyspots = masterTasks.emplace([this](){
-			auto spots = GetAllComponentsOfType<SpotLight>();
+			auto& spots = GetAllComponentsOfType<SpotLight>();
 			for(const auto& e : spots){
 				if (e){
 					auto d = static_pointer_cast<SpotLight>(e);
@@ -300,7 +298,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		});
 		auto copypoints = masterTasks.emplace([this](){
-			auto points = GetAllComponentsOfType<PointLight>();
+			auto& points = GetAllComponentsOfType<PointLight>();
 			for(const auto& e : points){
 				if (e){
 					auto d = static_pointer_cast<PointLight>(e);
@@ -362,7 +360,9 @@ void RavEngine::World::TickECS(float fpsScale) {
 	
 	//execute and wait
 	App::executor.run(masterTasks).wait();
-	newFrame = true;	//TODO: only if rendering is enabled on this world
+	if (isRendering){
+		newFrame = true;
+	}
 	masterTasks.clear();
 }
 
