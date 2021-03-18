@@ -20,21 +20,6 @@ namespace RavEngine{
 		WeakRef<ComponentStore> parent;	//in entities, this is the World
 		
 		ComponentStructure components;
-		
-		/**
-		 For internal use only.
-		 @param type the compile-time type identifier to query for. Use RavEngine::CTTI<T> to get it.
-		 @return all the components of a type index. Does NOT search base classes
-		 */
-		template<typename T>
-		inline phmap::flat_hash_set<Ref<T>> GetAllComponentsOfTypeIndex(const ctti_t index) {
-			auto& comp = components[index];
-			phmap::flat_hash_set<Ref<T>> cpy;
-            for(const auto c : comp){
-                cpy.insert(std::static_pointer_cast<T>(c));
-            }
-			return cpy;
-		}
 
 		/**
 		 Fast path for world ticking
@@ -60,7 +45,7 @@ namespace RavEngine{
 		 Fast path for world ticking
 		 */
 		template<typename T>
-		inline const entry_type& GetAllComponentsOfTypeFastPath(){
+		inline const entry_type& GetAllComponentsOfType(){
 			return components[CTTI<T>];
 		}
 		
@@ -129,16 +114,6 @@ namespace RavEngine{
 			return components.contains(CTTI<T>);
 		}
 
-
-		/**
-		 Get all of the components of a specific type. Does NOT search subclasses.
-		 Pass the ref type and the type.
-		 @returns the list of only the components of the high-level type. The list may be empty
-		 */
-		template<typename T>
-		inline phmap::flat_hash_set<Ref<T>> GetAllComponentsOfType() {
-			return GetAllComponentsOfTypeIndex<T>(CTTI<T>);
-		}
 
 		/**
 		Remove a component by value

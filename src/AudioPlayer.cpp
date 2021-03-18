@@ -24,8 +24,8 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 	std::memset(stream,0,len);		//fill with silence
 	Ref<World> world = player->worldToRender.lock();
 	if (world){
-		auto sources = world->GetAllComponentsOfTypeFastPath<AudioSourceComponent>();
-		auto rooms = world->GetAllComponentsOfTypeFastPath<AudioRoom>();
+		auto sources = world->GetAllComponentsOfType<AudioSourceComponent>();
+		auto rooms = world->GetAllComponentsOfType<AudioRoom>();
 		
 		//use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
 		if (world->HasComponentOfType<AudioListener>()) {

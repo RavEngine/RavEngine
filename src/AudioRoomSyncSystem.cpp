@@ -10,7 +10,7 @@ using namespace std;
 const System::list_type AudioRoomSyncSystem::queries{CTTI<AudioRoom>};
 
 void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Entity> e){
-	auto rooms = e->GetAllComponentsOfTypeFastPath<AudioRoom>();
+	auto rooms = e->GetAllComponentsOfType<AudioRoom>();
 	
 	auto pos = e->transform()->GetWorldPosition();
 	auto rot = e->transform()->GetWorldRotation();

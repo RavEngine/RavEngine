@@ -63,7 +63,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		e->parent = shared_from_this();	//set parent so that this entity synchronizes its components with this world
 
 		//get all child entities
-		auto children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
+		auto children = e->GetAllComponentsOfType<ChildEntityComponent>();
 		for(const auto c : children){
 			Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->get());	//spawn the child entities
 		}
@@ -94,7 +94,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	Entities.erase(e);
 	
 	//get all child entities
-	auto children = e->GetAllComponentsOfTypeFastPath<ChildEntityComponent>();
+	auto children = e->GetAllComponentsOfType<ChildEntityComponent>();
 	for(const auto c : children){
 		Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->get());
 	}
@@ -225,7 +225,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		//render engine data collector
 		//camera matrices
 		auto camproc = masterTasks.emplace([this](){
-			auto allcams = GetAllComponentsOfTypeFastPath<CameraComponent>();
+			auto allcams = GetAllComponentsOfType<CameraComponent>();
 			for (const auto& c : allcams) {
 				auto cam = std::static_pointer_cast<CameraComponent>(c);
 				if (cam->isActive()) {
@@ -241,7 +241,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		});
 		
 		//opaque geometry
-		geometry = GetAllComponentsOfTypeFastPath<StaticMesh>();
+		geometry = GetAllComponentsOfType<StaticMesh>();
 			
 		//sort into the hashmap
 		auto sort = masterTasks.for_each(geometry.begin(), geometry.end(), [this](Ref<Component> e){
@@ -260,7 +260,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		});
 		
 		auto copydirs = masterTasks.emplace([this](){
-			auto dirs = GetAllComponentsOfTypeFastPath<DirectionalLight>();
+			auto dirs = GetAllComponentsOfType<DirectionalLight>();
 			for(const auto& e : dirs){
 				if (e){
 					auto owner = e->getOwner().lock();
@@ -278,7 +278,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		});
 		auto copyambs = masterTasks.emplace([this](){
-			auto ambs = GetAllComponentsOfTypeFastPath<AmbientLight>();
+			auto ambs = GetAllComponentsOfType<AmbientLight>();
 			for(const auto& e : ambs){
 				if (e){
 					auto d = static_pointer_cast<AmbientLight>(e);
@@ -287,7 +287,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		});
 		auto copyspots = masterTasks.emplace([this](){
-			auto spots = GetAllComponentsOfTypeFastPath<SpotLight>();
+			auto spots = GetAllComponentsOfType<SpotLight>();
 			for(const auto& e : spots){
 				if (e){
 					auto d = static_pointer_cast<SpotLight>(e);
@@ -300,7 +300,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		});
 		auto copypoints = masterTasks.emplace([this](){
-			auto points = GetAllComponentsOfTypeFastPath<PointLight>();
+			auto points = GetAllComponentsOfType<PointLight>();
 			for(const auto& e : points){
 				if (e){
 					auto d = static_pointer_cast<PointLight>(e);

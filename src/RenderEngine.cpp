@@ -504,7 +504,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS?
-	auto guis = worldOwning->GetAllComponentsOfTypeFastPath<GUIComponent>();
+	auto guis = worldOwning->GetAllComponentsOfType<GUIComponent>();
 	auto size = GetBufferSize();
 	for(const auto g : guis){
 		auto gui = std::static_pointer_cast<GUIComponent>(g);
@@ -525,7 +525,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	comp->Update();
 	comp->Render();
 	
-	auto shapesToDraw = worldOwning->GetAllComponentsOfTypeFastPath<IDebugRenderer>();
+	auto shapesToDraw = worldOwning->GetAllComponentsOfType<IDebugRenderer>();
 	for(const auto s : shapesToDraw){
 		auto shape = std::static_pointer_cast<IDebugRenderer>(s);
 		shape->DrawDebug(dbgdraw);
