@@ -30,6 +30,17 @@ void RavEngine::World::Tick(float scale) {
 	
 	//Tick the game code
 	TickECS(scale);
+	
+	//apply component changes
+	SyncOp op;
+	while (toSync.try_dequeue(op)){
+		if (op.add){
+			ComponentStore::CTTI_Add(op.c, op.id);
+		}
+		else{
+			ComponentStore::CTTI_Remove(op.c, op.id);
+		}
+	}
 
     posttick(scale);
 }
@@ -170,12 +181,6 @@ void RavEngine::World::TickECS(float fpsScale) {
 	};
 	
 	phmap::flat_hash_map<ctti_t, systaskpair> graphs;
-
-	size_t count = 0;
-	for (auto& s : systemManager.GetAlwaysTickSystems()) {
-		count += s.second.QueryTypes().size();
-	}
-	phmap::flat_hash_map<ctti_t, ComponentStore::entry_type> copies(count);
 	
 	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID){
 		auto& queries = system.QueryTypes();
@@ -189,13 +194,8 @@ void RavEngine::World::TickECS(float fpsScale) {
 		
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
-			
-			//Avoid repeating the same query copies multiple times via hashmap
-			if (!copies.contains(query)) {
-				copies[query] = GetAllComponentsOfTypeIndexFastPath(query);
-			}
-			
-			auto& l1 = copies[query];
+					
+			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);	//safe to do because modifications are not applied until after tick
 			
 			graphs[ID] = {
 				masterTasks.for_each(l1.begin(), l1.end(), func),

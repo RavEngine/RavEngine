@@ -40,6 +40,20 @@ namespace RavEngine{
 		 */
 		virtual void OnRemoveComponent(Ref<Component> comp){}
 		
+		virtual void CTTI_Add(Ref<Component> comp, ctti_t id){
+			components[id].insert(comp);
+			if (!parent.expired()){
+				parent.lock()->CTTI_Add(comp,id);
+			}
+		}
+		
+		virtual void CTTI_Remove(Ref<Component> comp, ctti_t id){
+			components[id].erase(comp);
+			if (!parent.expired()){
+				parent.lock()->CTTI_Remove(comp,id);
+			}
+		}
+		
 	public:
 		/**
 		 Fast path for world ticking
@@ -47,13 +61,6 @@ namespace RavEngine{
 		template<typename T>
 		inline const entry_type& GetAllComponentsOfType(){
 			return components[CTTI<T>];
-		}
-		
-		/**
-		Remove all components from this store
-		*/
-		inline void clear() {
-			components.clear();
 		}
 
         /**
@@ -74,16 +81,13 @@ namespace RavEngine{
 		template<typename T>
 		inline Ref<T> AddComponent(Ref<T> componentRef) {
 			C_REF_CHECK
-			components[CTTI<T>].insert(componentRef);
-
+			CTTI_Add(componentRef,CTTI<T>);
+			
 			//add redundant types
 			for (const auto alt : T::GetQueryTypes()) {
-				components[alt].insert(componentRef);
+				CTTI_Add(componentRef,alt);
 			}
 			OnAddComponent(componentRef);
-			if(!parent.expired()){
-				Ref<ComponentStore>(parent)->AddComponent(componentRef);
-			}
 			return componentRef;
 		}
 
@@ -121,14 +125,11 @@ namespace RavEngine{
 		*/
 		template<typename T>
 		inline void RemoveComponent(Ref<T> component) {
-			components[CTTI<T>()].erase(component);
+			CTTI_Remove(component, CTTI<T>);
 
 			//add redundant types
 			for (const auto& alt : T::GetQueryTypes()) {
-				components[alt].erase(component);
-			}
-			if(!parent.expired()){
-				Ref<ComponentStore>(parent)->RemoveComponent(component);
+				CTTI_Remove(component, alt);
 			}
 			OnRemoveComponent(component);
 		}
@@ -138,26 +139,24 @@ namespace RavEngine{
 		@param other the other component store to copy from
 		*/
 		inline void Merge(const ComponentStore& other) {
-			
 			phmap::flat_hash_set<Ref<Component>> invoked;
+			Ref<ComponentStore> p = parent.lock();
 			
-			for (const auto& c : other.components) {
-				//add the componets of the current type to the global list
-				components[c.first].insert(c.second.begin(), c.second.end());
-				Ref<ComponentStore> p = parent.lock();
-				for(Ref<Component> cm : c.second){
-					if (!invoked.contains(cm)){
-						OnAddComponent(cm);
-						if (p){
-							p->OnAddComponent(cm);
-						}
-						invoked.insert(cm);
+			for (const auto& type_pair : other.components) {
+				for(const auto& to_add : type_pair.second){
+					CTTI_Add(to_add, type_pair.first);
+					
+					if (!invoked.contains(to_add)){
+						OnAddComponent(to_add);
 					}
 					
-				}
-				// reflect changes in parent
-				if(p){
-					p->components[c.first].insert(c.second.begin(), c.second.end());
+					// reflect changes in parent
+					if(p){
+						if (!invoked.contains(to_add)){
+							p->OnAddComponent(to_add);
+						}
+					}
+					invoked.insert(to_add);
 				}
 			}
 		}
@@ -168,22 +167,21 @@ namespace RavEngine{
 		*/
 		inline void Unmerge(const ComponentStore& other) {
 			phmap::flat_hash_set<Ref<Component>> invoked;
+			Ref<ComponentStore> p = parent.lock();
 			
 			for (const auto& type_pair : other.components) {
 				for(const auto& to_remove : type_pair.second){
-					components[type_pair.first].erase(to_remove);
+					CTTI_Remove(to_remove, type_pair.first);
 					
 					if (!invoked.contains(to_remove)){
 						OnRemoveComponent(to_remove);
 					}
 					
 					// reflect changes in parent
-					Ref<ComponentStore> p = parent.lock();
 					if(p){
 						if (!invoked.contains(to_remove)){
 							p->OnRemoveComponent(to_remove);
 						}
-						p->components[type_pair.first].erase(to_remove);
 					}
 					invoked.insert(to_remove);
 				}

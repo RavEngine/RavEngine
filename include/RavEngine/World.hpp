@@ -34,7 +34,20 @@ namespace RavEngine {
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
 	protected:
+		struct SyncOp{
+			Ref<Component> c;
+			ctti_t id;
+			bool add;
+		};
+		ConcurrentQueue<SyncOp> toSync;
 		
+		void CTTI_Add(Ref<Component> c, ctti_t id) override{
+			toSync.enqueue({c,id,true});
+		}
+		
+		void CTTI_Remove(Ref<Component> c, ctti_t id) override{
+			toSync.enqueue({c,id,false});
+		}
 		
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
