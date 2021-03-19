@@ -223,7 +223,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 		//render engine data collector
 		//camera matrices
 		auto camproc = masterTasks.emplace([this](){
-			auto allcams = GetAllComponentsOfType<CameraComponent>();
+			auto& allcams = GetAllComponentsOfType<CameraComponent>();
 			for (const auto& c : allcams) {
 				auto cam = std::static_pointer_cast<CameraComponent>(c);
 				if (cam->isActive()) {

@@ -14,7 +14,7 @@ rm -r assimp/samples
 rm -r recastnavigation/RecastDemo recastnavigation/Tests
 
 # taskflow
-rm -r taskflow/3rd-party taskflow/benchmarks taskflow/docs taskflow/doxygen taskflow/examples taskflow/image taskflow/legacy taskflow/sandbox taskflow/unittests
+rm -r taskflow/3rd-party taskflow/benchmarks taskflow/docs taskflow/doxygen taskflow/examples taskflow/image taskflow/legacy taskflow/sandbox taskflow/unittests taskflow/tfprof
 
 # concurrentqueue
 rm -r concurrentqueue/benchmarks concurrentqueue/build concurrentqueue/c_api concurrentqueue/tests
