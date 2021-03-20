@@ -33,7 +33,6 @@ namespace RavEngine {
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
-	protected:
 		struct SyncOp{
 			Ref<Component> c;
 			ctti_t id;
@@ -41,6 +40,36 @@ namespace RavEngine {
 		};
 		ConcurrentQueue<SyncOp> toSync;
 		
+		tf::Taskflow masterTasks;
+		struct range{
+			ComponentStore<SpinLock>::entry_type::const_iterator begin, end;
+		};
+		ComponentStore<SpinLock>::entry_type::const_iterator geobegin,geoend;
+		locked_node_hashmap<ctti_t,range,SpinLock> iterator_map;
+		struct systaskpair{
+			tf::Task task;
+			const SystemEntry* system;
+		};
+		phmap::flat_hash_map<ctti_t, systaskpair> graphs;
+		
+		FrameData f1, f2;
+		FrameData *current = &f1, *inactive = &f2;
+		SpinLock swapmtx;
+		void SwapFrameData(){
+			swapmtx.lock();
+			std::swap(current,inactive);
+			swapmtx.unlock();
+		}
+		
+		void CreateFrameData();
+		
+		void RebuildTaskGraph();
+		
+		float currentFPSScale = 0.01;
+		inline float getCurrentFPSScale() const{
+			return currentFPSScale;
+		}
+	protected:
 		void CTTI_Add(Ref<Component> c, ctti_t id) override{
 			toSync.enqueue({c,id,true});
 		}
@@ -81,21 +110,9 @@ namespace RavEngine {
          */
         void TickSystem(Ref<System> system, float scale);
 		
-		tf::Taskflow masterTasks;
 		
 		bool physicsActive = false;
 		
-		FrameData f1, f2;
-		FrameData *current = &f1, *inactive = &f2;
-		SpinLock swapmtx;
-		
-		void SwapFrameData(){
-			swapmtx.lock();
-			std::swap(current,inactive);
-			swapmtx.unlock();
-		}
-		
-		void CreateFrameData();
 				
     public:
 		std::string_view worldID{ worldIDbuf,id_size };

@@ -175,12 +175,34 @@ void World::OnRemoveComponent(Ref<Component> comp){
  @param fpsScale the scale factor to apply to all operations based on the frame rate
  */
 void RavEngine::World::TickECS(float fpsScale) {
-	struct systaskpair{
-		tf::Task task;
-		const SystemEntry* system;
-	};
+	currentFPSScale = fpsScale;
+	if (systemManager.graphNeedsRebuild){
+		RebuildTaskGraph();
+	}
 	
-	phmap::flat_hash_map<ctti_t, systaskpair> graphs;
+	//execute and wait
+	App::executor.run(masterTasks).wait();
+	//masterTasks.dump(std::cout);
+	if (isRendering){
+		newFrame = true;
+	}
+}
+
+bool RavEngine::World::InitPhysics() {
+	if (physicsActive){
+		return false;
+	}
+	
+	systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
+	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
+	
+	physicsActive = true;
+
+	return true;
+}
+
+void World::RebuildTaskGraph(){
+	masterTasks.clear();
 	
 	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID){
 		auto& queries = system.QueryTypes();
@@ -188,23 +210,29 @@ void RavEngine::World::TickECS(float fpsScale) {
 		auto func = [=](Ref<Component> e) {
 			Ref<Entity> en = e->getOwner().lock();
 			if (en) {
-				system.Tick(fpsScale, en);
+				system.Tick(getCurrentFPSScale(), en);
 			}
 		};
 		
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
-					
+			
 			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);	//safe to do because modifications are not applied until after tick
+			iterator_map[ID] = {l1.begin(),l1.end()};
+			auto update = masterTasks.emplace([this,query,ID]{
+				auto& ud = GetAllComponentsOfTypeIndexFastPath(query);
+				iterator_map[ID] = {ud.begin(),ud.end()};
+			});
 			
 			graphs[ID] = {
-				masterTasks.for_each(l1.begin(), l1.end(), func),
+				masterTasks.for_each(std::ref(iterator_map[ID].begin), std::ref(iterator_map[ID].end), func),
 				&system
 			};
+			update.precede(graphs[ID].task);
 		}
 	};
 	
-    //tick the always-systems
+	//tick the always-systems
 	for (auto& s : systemManager.GetAlwaysTickSystems()) {
 		add_system_to_tick(s.second, s.first);
 	}
@@ -239,10 +267,16 @@ void RavEngine::World::TickECS(float fpsScale) {
 		});
 		
 		//opaque geometry
-		auto& geometry = GetAllComponentsOfType<StaticMesh>();
-			
+		geobegin = GetAllComponentsOfType<StaticMesh>().begin();
+		geoend = GetAllComponentsOfType<StaticMesh>().end();
+		auto init = masterTasks.emplace([&](){
+			auto& geometry = GetAllComponentsOfType<StaticMesh>();
+			geobegin = geometry.begin();
+			geoend = geometry.end();
+		});
+		
 		//sort into the hashmap
-		auto sort = masterTasks.for_each(geometry.begin(), geometry.end(), [this](Ref<Component> e){
+		auto sort = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [this](Ref<Component> e){
 			if (e){
 				auto m = static_pointer_cast<StaticMesh>(e);
 				auto ptr = e->getOwner().lock();
@@ -256,6 +290,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 				}
 			}
 		});
+		init.precede(sort);
 		
 		auto copydirs = masterTasks.emplace([this](){
 			auto& dirs = GetAllComponentsOfType<DirectionalLight>();
@@ -311,7 +346,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		});
 		
-
+		
 		auto swap = masterTasks.emplace([this]{
 			SwapFrameData();
 		});
@@ -324,11 +359,11 @@ void RavEngine::World::TickECS(float fpsScale) {
 		graphs[CTTI<ScriptSystem>].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
 		swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 	}
-
+	
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
-		auto RunPhysics = masterTasks.emplace([fpsScale, this]{
-			Solver.Tick(fpsScale);
+		auto RunPhysics = masterTasks.emplace([this]{
+			Solver.Tick(getCurrentFPSScale());
 		});
 		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task);
 		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task);
@@ -357,24 +392,5 @@ void RavEngine::World::TickECS(float fpsScale) {
 			}
 		}
 	}
-	
-	//execute and wait
-	App::executor.run(masterTasks).wait();
-	if (isRendering){
-		newFrame = true;
-	}
-	masterTasks.clear();
-}
-
-bool RavEngine::World::InitPhysics() {
-	if (physicsActive){
-		return false;
-	}
-	
-	systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
-	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
-	
-	physicsActive = true;
-
-	return true;
+	systemManager.graphNeedsRebuild = false;
 }

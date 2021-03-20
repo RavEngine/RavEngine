@@ -89,6 +89,8 @@ protected:
 	timed_system_store TimedSystems;
 	
 public:
+	std::atomic<bool> graphNeedsRebuild = false;
+	
 	/**
 	 Register a System to tick every frame
 	 @param r_instance the system to tick every frame
@@ -96,6 +98,7 @@ public:
 	template<typename T>
 	inline void RegisterSystem(Ref<T> r_instance) {
 		Systems.insert(std::make_pair(CTTI<T>,SystemEntry(r_instance)));
+		graphNeedsRebuild = true;
 	}
 	
 	/**
@@ -106,6 +109,7 @@ public:
 	template<typename T, typename interval_t>
 	inline void RegisterTimedSystem(Ref<T> r_instance, const interval_t& interval){
 		TimedSystems.insert(std::make_pair(CTTI<T>,TimedSystem{r_instance, std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval)}));
+		graphNeedsRebuild = true;
 	}
 	
 	/**
@@ -123,6 +127,7 @@ public:
 	template<typename T>
 	inline void UnregisterTimedSystem(){
 		TimedSystems.erase(CTTI<T>);
+		graphNeedsRebuild = true;
 	}
 	
 	/**
@@ -131,6 +136,7 @@ public:
 	template<typename T>
 	inline void UnregisterSystem() {
 		Systems.erase(CTTI<T>);
+		graphNeedsRebuild = true;
 	}
 	
 	/**
@@ -169,6 +175,7 @@ public:
 	inline void Clear(){
 		Systems.clear();
 		TimedSystems.clear();
+		graphNeedsRebuild = true;
 	}
 };
 }
