@@ -207,7 +207,7 @@ bool RavEngine::World::InitPhysics() {
 void World::RebuildTaskGraph(){
 	masterTasks.clear();
 	
-	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID, bool isTimed = false, SystemManager::TimedSystem* ts = nullptr){
+	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID, SystemManager::TimedSystem* ts = nullptr){
 		auto& queries = system.QueryTypes();
 		
 		auto func = [=](Ref<Component> e) {
@@ -232,7 +232,7 @@ void World::RebuildTaskGraph(){
 				&system
 			};
 			update.precede(graphs[ID].task);
-			if (isTimed){
+			if (ts != nullptr){
 				//conditional task - returns out-of-range if condition fails so that the task does not run
 				auto condition = masterTasks.emplace([this,ts](){
 					if (time_now - ts->last_timestamp > ts->interval){
@@ -255,7 +255,7 @@ void World::RebuildTaskGraph(){
 	//tick timed systems
 	for (auto& s : systemManager.GetTimedTickSystems()){
 		
-		add_system_to_tick(s.second.system, s.first, true, &(s.second));
+		add_system_to_tick(s.second.system, s.first, &(s.second));
 	}
 	
 	if (isRendering)
