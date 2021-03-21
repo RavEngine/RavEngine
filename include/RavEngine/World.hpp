@@ -65,6 +65,7 @@ namespace RavEngine {
 		
 		void RebuildTaskGraph();
 		
+		std::chrono::time_point<SystemManager::clock_t> time_now = SystemManager::clock_t::now();
 		float currentFPSScale = 0.01;
 		inline float getCurrentFPSScale() const{
 			return currentFPSScale;

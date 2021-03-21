@@ -180,6 +180,9 @@ void RavEngine::World::TickECS(float fpsScale) {
 		RebuildTaskGraph();
 	}
 	
+	//update time
+	time_now = SystemManager::clock_t::now();
+	
 	//execute and wait
 	App::executor.run(masterTasks).wait();
 	//masterTasks.dump(std::cout);
@@ -204,7 +207,7 @@ bool RavEngine::World::InitPhysics() {
 void World::RebuildTaskGraph(){
 	masterTasks.clear();
 	
-	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID){
+	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID, bool isTimed = false, SystemManager::TimedSystem* ts = nullptr){
 		auto& queries = system.QueryTypes();
 		
 		auto func = [=](Ref<Component> e) {
@@ -229,6 +232,18 @@ void World::RebuildTaskGraph(){
 				&system
 			};
 			update.precede(graphs[ID].task);
+			if (isTimed){
+				//conditional task - returns out-of-range if condition fails so that the task does not run
+				auto condition = masterTasks.emplace([this,ts](){
+					if (time_now - ts->last_timestamp > ts->interval){
+						
+						ts->last_timestamp = time_now;
+						return 0;
+					}
+					return 1;
+				});
+				condition.precede(update);
+			}
 		}
 	};
 	
@@ -238,12 +253,9 @@ void World::RebuildTaskGraph(){
 	}
 	
 	//tick timed systems
-	auto now = SystemManager::clock_t::now();
 	for (auto& s : systemManager.GetTimedTickSystems()){
-		if (now - s.second.last_timestamp > s.second.interval){
-			add_system_to_tick(s.second.system,s.first);
-			s.second.last_timestamp = now;
-		}
+		
+		add_system_to_tick(s.second.system, s.first, true, &(s.second));
 	}
 	
 	if (isRendering)
