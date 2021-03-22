@@ -6,6 +6,8 @@
 #include <functional>
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
+#include "NetworkBase.hpp"
+#include "Debug.hpp"
 
 namespace RavEngine {
 	class RPCComponent : public Component, public Queryable<RPCComponent> {
@@ -22,9 +24,26 @@ namespace RavEngine {
  			store[name] = func;
 		}
 
+		template<typename T>
+		inline void serializeType(size_t& offset, char* buffer, T value) {
+			std::memcpy(buffer + offset, &value, sizeof(value));
+			offset += sizeof(value);
+		}
+
 		template<typename ... A>
 		inline std::string SerializeRPC(const std::string& id, A ... args) {
-			return "";
+			constexpr size_t totalsize = sizeof...(args) + 16 + 1;
+
+			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>()->GetNetworkID().raw();
+
+			char msg[totalsize];
+			std::memset(msg, totalsize, 0);
+			std::memcpy(msg + 1, uuid_bytes, sizeof(uuid_bytes));
+
+			size_t offset = 17;
+			msg[0] = NetworkBase::CommandCode::RPC;
+			(serializeType(offset,msg,args),...);		//fold expression on all variadics
+			return std::string(msg,totalsize);
 		}
 
 	public:
@@ -50,14 +69,24 @@ namespace RavEngine {
 			RegisterRPC_Impl(name, thisptr, f, ClientRPCs);
 		}
 
+		/**
+		Invoke an RPC on the server
+		@param id the name of the RPC
+		@param args templated parameter list
+		*/
 		template<typename ... A>
 		inline void InvokeServerRPC(const std::string& id, A ... args) {
-			//auto msg = SerializeRPC(id,...args);
+			auto msg = SerializeRPC(id,args...);
 		}
 
+		/**
+		Invoke an RPC on the client
+		@param id the name of the RPC
+		@param args templated parameter list
+		*/
 		template<typename ... A>
 		inline void InvokeClientRPC(const std::string& id, A ... args) {
-
+			auto msg = SerializeRPC(id, args...);
 		}
 	};
 }
