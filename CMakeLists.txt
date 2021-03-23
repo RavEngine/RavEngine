@@ -53,6 +53,31 @@ else()
     set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 endif()
 
+if (APPLE OR LINUX)
+	SET(SHADERC_CMD "${SHADERC_PATH}" CACHE INTERNAL "")
+elseif(MSVC)
+	SET(SHADERC_CMD "${SHADERC_PATH}.exe" CACHE INTERNAL "")
+endif()
+
+# ============ build machine tools ==============
+
+# configure build machine tools
+file(MAKE_DIRECTORY ${TOOLS_DIR})
+execute_process(
+    COMMAND cmake -G "${CMAKE_GENERATOR}" ${DEPS_DIR}/host-tools/
+    WORKING_DIRECTORY ${TOOLS_DIR}
+)
+
+# compile build machine tools
+add_custom_command(
+    PRE_BUILD
+    OUTPUT "${SHADERC_CMD}" 
+	COMMAND cmake --build . --config Release --target shaderc protoc
+	WORKING_DIRECTORY ${TOOLS_DIR}
+    VERBATIM
+)
+
+
 # no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake")
 add_subdirectory("${DEPS_DIR}/etl")
@@ -70,7 +95,8 @@ add_subdirectory("${DEPS_DIR}/libnyquist")
 
 # GNS
 add_subdirectory("${DEPS_DIR}/GameNetworkingSockets")
-add_dependencies("GameNetworkingSockets_s" "HostTools")
+add_custom_target("GNS_Deps" DEPENDS "${SHADERC_CMD}")
+add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 
 # resonance-audio
 set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
@@ -130,20 +156,6 @@ endif()
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
 
-# ============ build machine tools ==============
-
-# configure build machine tools
-file(MAKE_DIRECTORY ${TOOLS_DIR})
-execute_process(
-    COMMAND cmake -G "${CMAKE_GENERATOR}" ${DEPS_DIR}/host-tools/
-    WORKING_DIRECTORY ${TOOLS_DIR}
-)
-
-# compile build machine tools
-add_custom_target(HostTools 
-	COMMAND cmake --build . --config Release --target shaderc protoc
-	WORKING_DIRECTORY ${TOOLS_DIR}
-)
 
 # ========== Building engine ==============
 
@@ -272,12 +284,6 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 		set(PROFILE_FS "spirv")
 	endif()
 	
-	if (APPLE OR LINUX)
-		SET(SHADERC_CMD "${SHADERC_PATH}")
-	elseif(MSVC)
-		SET(SHADERC_CMD "${SHADERC_PATH}.exe")
-	endif()
-
 	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${shader_name}")
 	set(VS_OUTPUT_NAME "${OUTPUT_ROOT}/vertex.bin")
 	set(FS_OUTPUT_NAME "${OUTPUT_ROOT}/fragment.bin")
@@ -289,7 +295,7 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
-		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "HostTools"
+		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "${SHADERC_CMD}"
 		COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
 		COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
 		COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"

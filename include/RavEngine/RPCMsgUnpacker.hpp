@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <optional>
+#include <cstring>
 
 namespace RavEngine {
 	class RPCMsgUnpacker {
