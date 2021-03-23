@@ -10,7 +10,7 @@ namespace RavEngine {
         template<typename T>
         inline T Deserialize() const{
             T val;
-            std::memcpy(&val, message.data() + offset+sizeof(ctti_t), type_serialized_size(val));
+            std::memcpy(&val, message.data() + offset+sizeof(ctti_t), type_serialized_size<T>());
             return val;
         }
         
@@ -40,13 +40,13 @@ namespace RavEngine {
 		}
         
         template<typename T>
-        static inline size_t type_serialized_size(const T& value){
-            return sizeof(value);
+        static inline constexpr size_t type_serialized_size(){
+            return sizeof(T);
         }
         
         template<typename T>
-        static inline size_t total_serialized_size(const T& value){
-            return sizeof(CTTI<T>) + type_serialized_size(value); //encode what type it is + its size
+        static inline constexpr size_t total_serialized_size(const T& value){
+            return sizeof(CTTI<T>) + type_serialized_size<T>(); //encode what type it is + its size
         }
 	};
 }

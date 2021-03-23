@@ -27,14 +27,14 @@ namespace RavEngine {
 
 		template<typename T>
 		inline void serializeType(size_t& offset, char* buffer, const T& value) {
-			std::memcpy(buffer + offset + sizeof(ctti_t), &value, sizeof(value));
-            std::memcpy(buffer + offset, &CTTI<T>,sizeof(ctti_t));
-			offset += RPCMsgUnpacker::total_serialized_size(value) + sizeof(ctti_t);
+			std::memcpy(buffer + offset, &CTTI<T>, sizeof(ctti_t));
+			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::type_serialized_size<T>());
+			offset += RPCMsgUnpacker::total_serialized_size(value);
 		}
         
 		template<typename ... A>
 		inline std::string SerializeRPC(const std::string& id, A ... args) {
-			const size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
+			constexpr size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
 
 			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>()->GetNetworkID().raw();
 
