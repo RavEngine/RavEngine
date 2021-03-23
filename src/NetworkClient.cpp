@@ -205,3 +205,7 @@ void NetworkClient::NetDestroy(const std::string_view& command){
         Debug::Warning("Cannot destroy entity with UUID {} because it does not exist",uuid.to_string());
     }
 }
+
+void NetworkClient::SendMessageToServer(const std::string& msg) const {
+	interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
+}

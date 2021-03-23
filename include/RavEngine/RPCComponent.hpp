@@ -9,6 +9,7 @@
 #include "NetworkBase.hpp"
 #include "Debug.hpp"
 #include "Entity.hpp"
+#include "App.hpp"
 
 namespace RavEngine {
 	class RPCComponent : public Component, public Queryable<RPCComponent> {
@@ -79,6 +80,7 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeServerRPC(const std::string& id, A ... args) {
 			auto msg = SerializeRPC(id,args...);
+			App::networkManager.client->SendMessageToServer(msg);
 		}
 
 		/**
@@ -89,6 +91,7 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeClientRPC(const std::string& id, A ... args) {
 			auto msg = SerializeRPC(id, args...);
+			App::networkManager.server->SendMessageToAllClients(msg);
 		}
 	};
 }

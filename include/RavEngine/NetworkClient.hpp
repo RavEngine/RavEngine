@@ -14,6 +14,9 @@ public:
 	void Disconnect();
 	~NetworkClient();	//gracefully disconnect
 	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
+
+	void SendMessageToServer(const std::string& msg) const;
+
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamNetConnection connection = k_HSteamNetConnection_Invalid;

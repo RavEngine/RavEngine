@@ -20,6 +20,8 @@ public:
 
 	void SpawnEntity(Ref<Entity> e);
 	void DestroyEntity(Ref<Entity> e);
+
+	void SendMessageToAllClients(const std::string& msg) const;
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;

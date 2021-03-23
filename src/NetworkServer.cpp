@@ -47,6 +47,13 @@ void NetworkServer::DestroyEntity(Ref<Entity> entity){
 	}
 }
 
+void RavEngine::NetworkServer::SendMessageToAllClients(const std::string& msg) const
+{
+	for (const auto connection : clients) {
+		interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
+	}
+}
+
 void NetworkServer::Start(uint16_t port){
 	//configure and start server
 	SteamNetworkingConfigValue_t opt;
