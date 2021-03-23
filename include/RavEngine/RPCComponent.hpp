@@ -8,6 +8,7 @@
 #include "SpinLock.hpp"
 #include "NetworkBase.hpp"
 #include "Debug.hpp"
+#include "Entity.hpp"
 
 namespace RavEngine {
 	class RPCComponent : public Component, public Queryable<RPCComponent> {
@@ -25,23 +26,24 @@ namespace RavEngine {
 		}
 
 		template<typename T>
-		inline void serializeType(size_t& offset, char* buffer, T value) {
-			std::memcpy(buffer + offset, &value, sizeof(value));
-			offset += sizeof(value);
+		inline void serializeType(size_t& offset, char* buffer, const T& value) {
+			std::memcpy(buffer + offset + sizeof(ctti_t), &value, sizeof(value));
+            std::memcpy(buffer + offset, &CTTI<T>,sizeof(ctti_t));
+			offset += RPCMsgUnpacker::total_serialized_size(value) + sizeof(ctti_t);
 		}
-
+        
 		template<typename ... A>
 		inline std::string SerializeRPC(const std::string& id, A ... args) {
-			constexpr size_t totalsize = sizeof...(args) + 16 + 1;
+			const size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
 
 			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>()->GetNetworkID().raw();
 
 			char msg[totalsize];
-			std::memset(msg, totalsize, 0);
-			std::memcpy(msg + 1, uuid_bytes, sizeof(uuid_bytes));
+			std::memset(msg, 0, totalsize);
+            msg[0] = NetworkBase::CommandCode::RPC;
+			std::memcpy(msg + 1, uuid_bytes.c_str(), uuid_bytes.length());
 
-			size_t offset = 17;
-			msg[0] = NetworkBase::CommandCode::RPC;
+			size_t offset = RPCMsgUnpacker::header_size;
 			(serializeType(offset,msg,args),...);		//fold expression on all variadics
 			return std::string(msg,totalsize);
 		}
