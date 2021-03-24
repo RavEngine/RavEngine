@@ -71,7 +71,8 @@ namespace RavEngine {
 
 				//invoke that RPC
 				if (table.contains(RPC)) {
-					table.at(RPC)(RPCMsgUnpacker(cmd));
+					auto packer = RPCMsgUnpacker(cmd);
+					table.at(RPC)(packer);
 				}
 				else {
 					Debug::Warning("No cmd code with ID {}", RPC);
