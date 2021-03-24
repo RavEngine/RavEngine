@@ -20,6 +20,7 @@
 #include "StaticMesh.hpp"
 #include "BuiltinMaterials.hpp"
 #include "NetworkIdentity.hpp"
+#include "RPCSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -51,6 +52,7 @@ RavEngine::World::World(){
 	Entities.reserve(4000);
 	systemManager.RegisterSystem<ScriptSystem>(make_shared<ScriptSystem>());
 	systemManager.RegisterSystem<AudioRoomSyncSystem>(make_shared<AudioRoomSyncSystem>());
+	systemManager.RegisterSystem<RPCSystem>(make_shared<RPCSystem>());
 }
 
 /**

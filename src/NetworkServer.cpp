@@ -6,6 +6,7 @@
 #include "World.hpp"
 #include <steam/isteamnetworkingutils.h>
 #include "App.hpp"
+#include "RPCComponent.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -215,6 +216,7 @@ void NetworkServer::ServerTick(){
             switch (cmdcode) {
             case NetworkBase::CommandCode::RPC:
                 //TODO: server needs to check ownership, client does not
+				OnRPC(message);
                 break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
@@ -228,4 +230,15 @@ void NetworkServer::ServerTick(){
 		interface->RunCallbacks();
 	}
 	workerHasStopped = true;
+}
+
+void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd)
+{
+	//decode the RPC header to to know where it is going
+
+	uuids::uuid id(cmd.data() + 1);
+	if (NetworkIdentities.contains(id)) {
+		NetworkIdentities.at(id)->getOwner().lock()->GetComponent<RPCComponent>()->CacheServerRPC(cmd);
+	}
+
 }

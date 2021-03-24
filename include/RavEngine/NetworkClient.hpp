@@ -17,6 +17,7 @@ public:
 
 	void SendMessageToServer(const std::string& msg) const;
 
+	void OnRPC(const std::string_view& cmd);
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamNetConnection connection = k_HSteamNetConnection_Invalid;
@@ -35,6 +36,7 @@ protected:
      @param cmd the raw command from server
      */
     void NetDestroy(const std::string_view& cmd);
+
 	
 	static NetworkClient* currentClient;
 };

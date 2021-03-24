@@ -24,7 +24,9 @@ protected:
 
     //Track all the networkidentities by their IDs
     locked_node_hashmap<uuids::uuid, Ref<NetworkIdentity>,SpinLock> NetworkIdentities;
+
 public:
+
 	struct CommandCode {
 		enum {
 			Spawn = 1,

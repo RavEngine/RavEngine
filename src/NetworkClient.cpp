@@ -2,6 +2,7 @@
 #include "Debug.hpp"
 #include <steam/isteamnetworkingutils.h>	//this is required in for ParseString
 #include "App.hpp"
+#include "RPCComponent.hpp"
 
 using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
@@ -125,7 +126,7 @@ void NetworkClient::ClientTick(){
                 NetDestroy(message);
                 break;
             case NetworkBase::CommandCode::RPC:
-                //TODO: server needs to check ownership, client does not
+				OnRPC(message);
                 break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
@@ -208,4 +209,15 @@ void NetworkClient::NetDestroy(const std::string_view& command){
 
 void NetworkClient::SendMessageToServer(const std::string& msg) const {
 	interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
+}
+
+void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
+{
+	//decode the RPC header to to know where it is going
+
+	uuids::uuid id(cmd.data() + 1);
+	if (NetworkIdentities.contains(id)) {
+		NetworkIdentities.at(id)->getOwner().lock()->GetComponent<RPCComponent>()->CacheClientRPC(cmd);
+	}
+
 }

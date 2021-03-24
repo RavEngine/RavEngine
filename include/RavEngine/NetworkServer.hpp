@@ -22,6 +22,8 @@ public:
 	void DestroyEntity(Ref<Entity> e);
 
 	void SendMessageToAllClients(const std::string& msg) const;
+
+	void OnRPC(const std::string_view& cmd);
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;

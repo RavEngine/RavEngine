@@ -15,12 +15,20 @@ namespace RavEngine {
 	class RPCComponent : public Component, public Queryable<RPCComponent> {
 		typedef locked_hashmap<uint16_t, std::function<void(RPCMsgUnpacker&)>, SpinLock> rpc_store;
 		rpc_store ClientRPCs, ServerRPCs;
+
+		typedef ConcurrentQueue<std::string_view> queue_t;
+		queue_t C_buffer_A, C_buffer_B, S_buffer_A, S_buffer_B;
+		std::atomic<queue_t*> readingptr_c = &C_buffer_A, writingptr_c = &C_buffer_B,
+							  readingptr_s = &S_buffer_A, writingptr_s = &S_buffer_B;
 		
 		template<typename U>
 		inline void RegisterRPC_Impl(uint16_t id, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), rpc_store& store) {
 			WeakRef<U> weak(thisptr);
 			auto func = [=](RPCMsgUnpacker& u) {
-				(weak.lock().get()->*f)(u);
+				auto ptr = weak.lock();
+				if (ptr) {
+					(ptr.get()->*f)(u);
+				}
 			};
  			store[id] = func;
 		}
@@ -49,7 +57,26 @@ namespace RavEngine {
 			//write mesage body
 			size_t offset = RPCMsgUnpacker::header_size;
 			(serializeType(offset,msg,args),...);		//fold expression on all variadics
+			Debug::Assert(offset == totalsize, "Incorrect number of bytes written!");
 			return std::string(msg,totalsize);
+		}
+
+		inline void ProcessRPCs_impl(const std::atomic<queue_t*>& ptr, const rpc_store& table) {
+			auto reading = ptr.load();
+			std::string cmd;
+			while (reading->try_dequeue(cmd)) {
+				//read out of the header which RPC to invoke
+				uint16_t RPC;
+				std::memcpy(&RPC, cmd.data() + RPCMsgUnpacker::code_offset, sizeof(RPC));
+
+				//invoke that RPC
+				if (table.contains(RPC)) {
+					table.at(RPC)(RPCMsgUnpacker(cmd));
+				}
+				else {
+					Debug::Warning("No cmd code with ID {}", RPC);
+				}
+			}
 		}
 
 	public:
@@ -82,8 +109,13 @@ namespace RavEngine {
 		*/
 		template<typename ... A>
 		inline void InvokeServerRPC(uint16_t id, A ... args) {
-			auto msg = SerializeRPC(id,args...);
-			App::networkManager.client->SendMessageToServer(msg);
+			if (ServerRPCs.contains(id)) {
+				auto msg = SerializeRPC(id, args...);
+				App::networkManager.client->SendMessageToServer(msg);
+			}
+			else {
+				Debug::Warning("Cannot send Server RPC with ID {}",id);
+			}
 		}
 
 		/**
@@ -93,8 +125,49 @@ namespace RavEngine {
 		*/
 		template<typename ... A>
 		inline void InvokeClientRPC(uint16_t id, A ... args) {
-			auto msg = SerializeRPC(id, args...);
-			App::networkManager.server->SendMessageToAllClients(msg);
+			if (ClientRPCs.contains(id)) {
+				auto msg = SerializeRPC(id, args...);
+				App::networkManager.server->SendMessageToAllClients(msg);
+			}
+			else {
+				Debug::Warning("Cannot send Client RPC with ID {}", id);
+			}
+		}
+
+		/**
+		This call is not for you.
+		*/
+		inline void CacheClientRPC(const std::string_view& cmd) {
+			writingptr_c.load()->enqueue(std::string(cmd.data(),cmd.size()));
+		}
+
+		inline void CacheServerRPC(const std::string_view& cmd) {
+			writingptr_s.load()->enqueue(std::string(cmd.data(),cmd.size()));
+		}
+
+		inline void ProcessClientRPCs() {
+			ProcessRPCs_impl(readingptr_c,ClientRPCs);
+		}
+
+
+		inline void ProcessServerRPCs() {
+			ProcessRPCs_impl(readingptr_s, ServerRPCs);
+		}
+
+
+		/**
+		For internal use only. Switches which queue is being filled and which is being emptied
+		*/
+		inline void Swap() {
+			queue_t *reading = readingptr_c.load(), *writing = writingptr_c.load();
+			std::swap(reading, writing);
+			readingptr_c.store(reading);
+			writingptr_c.store(writing);
+
+			reading = readingptr_s.load(), writing = writingptr_s.load();
+			std::swap(reading, writing);
+			readingptr_s.store(reading);
+			writingptr_s.store(writing);
 		}
 	};
 }

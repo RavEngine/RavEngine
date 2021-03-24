@@ -4,6 +4,7 @@
 #include "World.hpp"
 
 using namespace std;
+using namespace RavEngine;
 
 std::string RavEngine::NetworkBase::CreateSpawnCommand(uuids::uuid& id, ctti_t type, std::string_view& worldID)
 {
@@ -45,3 +46,4 @@ std::string RavEngine::NetworkBase::CreateDestroyCommand(uuids::uuid& id)
 	
 	return string(message,size);
 }
+
