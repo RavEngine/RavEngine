@@ -16,7 +16,7 @@ namespace RavEngine {
 		typedef locked_hashmap<uint16_t, std::function<void(RPCMsgUnpacker&)>, SpinLock> rpc_store;
 		rpc_store ClientRPCs, ServerRPCs;
 
-		typedef ConcurrentQueue<std::string_view> queue_t;
+		typedef ConcurrentQueue<std::string> queue_t;
 		queue_t C_buffer_A, C_buffer_B, S_buffer_A, S_buffer_B;
 		std::atomic<queue_t*> readingptr_c = &C_buffer_A, writingptr_c = &C_buffer_B,
 							  readingptr_s = &S_buffer_A, writingptr_s = &S_buffer_B;
