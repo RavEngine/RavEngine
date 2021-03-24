@@ -26,7 +26,7 @@ namespace RavEngine {
 			//is the current parameter the same type as T?
             ctti_t enc_type;
             std::memcpy(&enc_type,message.data()+offset,sizeof(enc_type));
-            if (enc_type == CTTI<T>){
+            if (enc_type == CTTI<T>()){
                 //deserialize the type using template specialization
                 auto val = Deserialize<T>();
 
@@ -47,7 +47,7 @@ namespace RavEngine {
         
         template<typename T>
         static inline constexpr size_t total_serialized_size(const T& value){
-            return sizeof(CTTI<T>) + type_serialized_size<T>(); //encode what type it is + its size
+            return sizeof(CTTI<T>()) + type_serialized_size<T>(); //encode what type it is + its size
         }
 	};
 }

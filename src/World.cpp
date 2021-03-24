@@ -368,7 +368,7 @@ void World::RebuildTaskGraph(){
 		setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
 		sort.precede(swap);
 		camproc.precede(sort);
-		graphs[CTTI<ScriptSystem>].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+		graphs[CTTI<ScriptSystem>()].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
 		swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 	}
 	
@@ -377,8 +377,8 @@ void World::RebuildTaskGraph(){
 		auto RunPhysics = masterTasks.emplace([this]{
 			Solver.Tick(getCurrentFPSScale());
 		});
-		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>].task);
-		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>].task);
+		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>()].task);
+		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>()].task);
 	}
 	
 	//figure out dependencies

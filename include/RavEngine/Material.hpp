@@ -113,7 +113,7 @@ namespace RavEngine {
 			 */
 			template<typename T, typename ... A>
 			static Ref<T> AccessMaterialOfType(A ... args){
-				auto t = CTTI<T>;
+				auto t = CTTI<T>();
 				if (materials.contains(t)){
 					return std::static_pointer_cast<T>(materials.at(t));
 				}

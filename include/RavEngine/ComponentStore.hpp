@@ -60,7 +60,7 @@ namespace RavEngine{
 		 */
 		template<typename T>
 		inline const entry_type& GetAllComponentsOfType(){
-			return components[CTTI<T>];
+			return components[CTTI<T>()];
 		}
 
         /**
@@ -81,7 +81,7 @@ namespace RavEngine{
 		template<typename T>
 		inline Ref<T> AddComponent(Ref<T> componentRef) {
 			C_REF_CHECK
-			CTTI_Add(componentRef,CTTI<T>);
+			CTTI_Add(componentRef,CTTI<T>());
 			
 			//add redundant types
 			for (const auto alt : T::GetQueryTypes()) {
@@ -99,7 +99,7 @@ namespace RavEngine{
 		template<typename T>
 		inline Ref<T> GetComponent() {
 			C_REF_CHECK
-			auto& vec = components[CTTI<T>];
+			auto& vec = components[CTTI<T>()];
 			if (vec.empty()) {
 				Debug::Fatal("No component of type exists");
 			}
@@ -115,7 +115,7 @@ namespace RavEngine{
 		template<typename T>
 		inline bool HasComponentOfType() {
 			C_REF_CHECK
-			return components.contains(CTTI<T>);
+			return components.contains(CTTI<T>());
 		}
 
 

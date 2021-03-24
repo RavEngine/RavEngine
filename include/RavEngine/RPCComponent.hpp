@@ -28,7 +28,8 @@ namespace RavEngine {
 
 		template<typename T>
 		inline void serializeType(size_t& offset, char* buffer, const T& value) {
-			std::memcpy(buffer + offset, &CTTI<T>, sizeof(ctti_t));
+            auto id = CTTI<T>();
+			std::memcpy(buffer + offset, &id, sizeof(ctti_t));
 			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::type_serialized_size<T>());
 			offset += RPCMsgUnpacker::total_serialized_size(value);
 		}

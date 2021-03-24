@@ -23,7 +23,7 @@ struct Queryable{
 	typedef std::array<ctti_t,ntypes> arraytype;
 	
 	inline static constexpr arraytype GetQueryTypes(){
-		return {CTTI<types> ...};
+		return {CTTI<types>() ...};
 	}
 };
 
@@ -33,7 +33,7 @@ struct QueryableDelta{
 	typedef std::array<ctti_t,ntypes> arraytype;
 	
 	inline static constexpr arraytype GetQueryTypes(){
-		const std::array<ctti_t,sizeof ... (types)> thisvalues{ CTTI<types> ...};
+		const std::array<ctti_t,sizeof ... (types)> thisvalues{ CTTI<types>() ...};
 		const typename base::arraytype basevalues = base::GetQueryTypes();
         //concatenate arrays
         return to_array(std::tuple_cat(thisvalues,basevalues));

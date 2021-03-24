@@ -35,7 +35,7 @@ namespace RavEngine {
 		 */
 		template<typename T>
 		inline void RegisterNetworkedEntity(){
-			NetworkedObjects.insert(std::make_pair(CTTI<T>,[](const uuids::uuid& id) -> Ref<Entity>{
+			NetworkedObjects.insert(std::make_pair(CTTI<T>(),[](const uuids::uuid& id) -> Ref<Entity>{
 				return std::static_pointer_cast<Entity>(std::make_shared<T>(id));
 			}));
 		}

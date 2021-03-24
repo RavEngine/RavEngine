@@ -97,7 +97,7 @@ public:
 	 */
 	template<typename T>
 	inline void RegisterSystem(Ref<T> r_instance) {
-		Systems.insert(std::make_pair(CTTI<T>,SystemEntry(r_instance)));
+		Systems.insert(std::make_pair(CTTI<T>(),SystemEntry(r_instance)));
 		graphNeedsRebuild = true;
 	}
 	
@@ -108,7 +108,7 @@ public:
 	 */
 	template<typename T, typename interval_t>
 	inline void RegisterTimedSystem(Ref<T> r_instance, const interval_t& interval){
-		TimedSystems.insert(std::make_pair(CTTI<T>,TimedSystem{r_instance, std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval)}));
+		TimedSystems.insert(std::make_pair(CTTI<T>(),TimedSystem{r_instance, std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval)}));
 		graphNeedsRebuild = true;
 	}
 	
@@ -118,7 +118,7 @@ public:
 	 */
 	template<typename T, typename interval_t>
 	inline void SetTimedSystemInterval(const interval_t& interval){
-		TimedSystems[CTTI<T>].interval = std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval);
+		TimedSystems[CTTI<T>()].interval = std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval);
 	}
 	
 	/**
@@ -126,7 +126,7 @@ public:
 	 */
 	template<typename T>
 	inline void UnregisterTimedSystem(){
-		TimedSystems.erase(CTTI<T>);
+		TimedSystems.erase(CTTI<T>());
 		graphNeedsRebuild = true;
 	}
 	
@@ -135,7 +135,7 @@ public:
 	 */
 	template<typename T>
 	inline void UnregisterSystem() {
-		Systems.erase(CTTI<T>);
+		Systems.erase(CTTI<T>());
 		graphNeedsRebuild = true;
 	}
 	
@@ -144,7 +144,7 @@ public:
 	 */
 	template<typename T>
 	inline bool HasSystem() const{
-		return Systems.contains(CTTI<T>);
+		return Systems.contains(CTTI<T>());
 	}
 	
 	/**
@@ -152,7 +152,7 @@ public:
 	 */
 	template<typename T>
 	inline Ref<T> GetSystemOfType() const{
-		return Systems.at(CTTI<T>);
+		return Systems.at(CTTI<T>());
 	}
 	
 	/**

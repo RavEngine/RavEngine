@@ -7,7 +7,7 @@
 using namespace RavEngine;
 using namespace std;
 
-const System::list_type AudioRoomSyncSystem::queries{CTTI<AudioRoom>};
+const System::list_type AudioRoomSyncSystem::queries{CTTI<AudioRoom>()};
 
 void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Entity> e){
 	auto rooms = e->GetAllComponentsOfType<AudioRoom>();
