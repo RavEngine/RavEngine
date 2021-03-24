@@ -50,15 +50,15 @@ namespace RavEngine{
 	}
 
 struct SystemEntry{
-	const std::function<void(float,Ref<Entity>)> Tick;
+	const std::function<void(float,Ref<Component>,ctti_t)> Tick;
 	const std::function<const System::list_type&()> QueryTypes;
 	const std::function<const System::list_type&()> MustRunBefore;
 	const std::function<const System::list_type&()> MustRunAfter;
 
 	template<typename T>
 	SystemEntry(Ref<T> system) :
-		Tick([=](float f, Ref<Entity> e){
-			system->Tick(f,e);
+		Tick([=](float f, Ref<Component> c, ctti_t id){
+			system->Tick(f,c,id);
 		}),
 		QueryTypes([=]() -> const System::list_type& {
 			return system->QueryTypes();

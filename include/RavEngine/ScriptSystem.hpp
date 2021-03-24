@@ -11,11 +11,11 @@ namespace RavEngine {
 			return queries;
 		}
 
-		void Tick(float fpsScale, Ref<Entity> e) {
-			auto scripts = e->GetAllComponentsOfType<ScriptComponent>();
-			for (auto script : scripts) {
-				std::static_pointer_cast<ScriptComponent>(script)->Tick(fpsScale);
-			}
+		void Tick(float fpsScale, Ref<Component> c, ctti_t id) {
+            //don't need to look at id here, it's always CTTI<ScriptComponent>()
+            if (!c->getOwner().expired()){
+                std::static_pointer_cast<ScriptComponent>(c)->Tick(fpsScale);
+            }
 		}
 		
 	protected:

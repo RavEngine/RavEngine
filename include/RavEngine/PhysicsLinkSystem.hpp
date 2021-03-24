@@ -24,7 +24,7 @@ namespace RavEngine {
 		
 		physx::PxScene* dynamicsWorld = nullptr;
 		virtual ~PhysicsLinkSystemWrite() {}
-		void Tick(float fpsScale, Ref<Entity> e);
+		void Tick(float fpsScale, Ref<Component> c, ctti_t id);
 		
 		const System::list_type& QueryTypes() const {
 			return queries;
@@ -44,7 +44,7 @@ namespace RavEngine {
 		
 		physx::PxScene* dynamicsWorld = nullptr;
 		virtual ~PhysicsLinkSystemRead() {}
-		void Tick(float fpsScale, Ref<Entity> e);
+		void Tick(float fpsScale, Ref<Component> c, ctti_t id);
 		
 		const System::list_type& QueryTypes() const {
 			return queries;

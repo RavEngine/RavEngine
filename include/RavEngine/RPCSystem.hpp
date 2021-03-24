@@ -1,18 +1,18 @@
 #pragma once
 #include "System.hpp"
 #include "RPCComponent.hpp"
+#include "Debug.hpp"
 
 namespace RavEngine {
 	class RPCSystem {
 	public:
-		void Tick(float fpsScale, Ref<Entity> e) {
-			auto rpcs = e->GetAllComponentsOfType<RPCComponent>();
-			for (const auto& r : rpcs) {
-				auto rpc = std::static_pointer_cast<RPCComponent>(r);
-				rpc->Swap();
-				rpc->ProcessClientRPCs();
-				rpc->ProcessServerRPCs();
-			}
+		void Tick(float fpsScale, Ref<Component> c, ctti_t id) {
+            //id is always CTTI<RPCComponent>()
+            Debug::Assert(id == CTTI<RPCComponent>(), "RPC system passed component of incorrect type!");
+            auto rpc = std::static_pointer_cast<RPCComponent>(c);
+            rpc->Swap();
+            rpc->ProcessClientRPCs();
+            rpc->ProcessServerRPCs();
 		}
 
 		const System::list_type& QueryTypes() const {

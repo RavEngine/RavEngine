@@ -17,11 +17,6 @@ using namespace RavEngine;
 const System::list_type System::empty = {};
 const System::list_type ScriptSystem::queries = {CTTI<ScriptComponent>()};
 
-const System::list_type PhysicsLinkSystemWrite::queries = {CTTI<PhysicsBodyComponent>()};
-
-const System::list_type PhysicsLinkSystemRead::queries = {CTTI<RigidBodyDynamicComponent>()};
-const System::list_type PhysicsLinkSystemRead::runbefore = {CTTI<ScriptSystem>()};
-
 const System::list_type RPCSystem::queries = {CTTI<RPCComponent>()};
 
 System::list_type empty;

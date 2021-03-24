@@ -10,7 +10,7 @@ set(protobuf_MODULE_COMPATIBLE ON CACHE INTERNAL "")
 set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE INTERNAL "")
 add_subdirectory(protobuf/cmake)
 
-option(LTO "Enable Link-Time Optimization" ON)
+option(LTO "Enable Link-Time Optimization" OFF)
 option(USE_STEAMWEBRTC "Build Google's WebRTC library to get ICE support for P2P" OFF)
 option(Protobuf_USE_STATIC_LIBS "Link with protobuf statically" ON)
 option(LIGHT_TESTS "Use smaller/shorter tests for simple integration testing (e.g. Travis)" OFF)
