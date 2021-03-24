@@ -1,6 +1,9 @@
 #pragma once
 #include <stddef.h>
 #include <cstdint>
+#ifdef _WIN32
+    #define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
 
 namespace RavEngine{
 

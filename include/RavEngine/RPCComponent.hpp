@@ -13,38 +13,40 @@
 
 namespace RavEngine {
 	class RPCComponent : public Component, public Queryable<RPCComponent> {
-		typedef locked_hashmap<std::string, std::function<void(RPCMsgUnpacker&)>, SpinLock> rpc_store;
+		typedef locked_hashmap<uint16_t, std::function<void(RPCMsgUnpacker&)>, SpinLock> rpc_store;
 		rpc_store ClientRPCs, ServerRPCs;
-
 		
 		template<typename U>
-		inline void RegisterRPC_Impl(const std::string& name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), rpc_store& store) {
+		inline void RegisterRPC_Impl(uint16_t id, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), rpc_store& store) {
 			WeakRef<U> weak(thisptr);
 			auto func = [=](RPCMsgUnpacker& u) {
 				(weak.lock().get()->*f)(u);
 			};
- 			store[name] = func;
+ 			store[id] = func;
 		}
 
 		template<typename T>
 		inline void serializeType(size_t& offset, char* buffer, const T& value) {
-            auto id = CTTI<T>();
+			constexpr auto id = CTTI<T>();
 			std::memcpy(buffer + offset, &id, sizeof(ctti_t));
 			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::type_serialized_size<T>());
 			offset += RPCMsgUnpacker::total_serialized_size(value);
 		}
         
 		template<typename ... A>
-		inline std::string SerializeRPC(const std::string& id, A ... args) {
+		inline std::string SerializeRPC(uint16_t id, A ... args) {
 			constexpr size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
 
 			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>()->GetNetworkID().raw();
-
 			char msg[totalsize];
-			std::memset(msg, 0, totalsize);
-            msg[0] = NetworkBase::CommandCode::RPC;
-			std::memcpy(msg + 1, uuid_bytes.c_str(), uuid_bytes.length());
 
+			//write message header
+			std::memset(msg, 0, totalsize);
+            msg[0] = NetworkBase::CommandCode::RPC;							//command code
+			std::memcpy(msg + 1, uuid_bytes.c_str(), uuid_bytes.length());	//entity uuid
+			std::memcpy(msg + 1 + uuid_bytes.length(), &id, sizeof(id));	//RPC ID
+
+			//write mesage body
 			size_t offset = RPCMsgUnpacker::header_size;
 			(serializeType(offset,msg,args),...);		//fold expression on all variadics
 			return std::string(msg,totalsize);
@@ -58,7 +60,7 @@ namespace RavEngine {
 		@param f the function to call
 		*/
 		template<typename U>
-		inline void RegisterServerRPC(const std::string& name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&)) {
+		inline void RegisterServerRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&)) {
 			RegisterRPC_Impl(name, thisptr, f, ServerRPCs);
 		}
 
@@ -69,7 +71,7 @@ namespace RavEngine {
 		@param f the function to call
 		*/
 		template<typename U>
-		inline void RegisterClientRPC(const std::string& name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&)) {
+		inline void RegisterClientRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&)) {
 			RegisterRPC_Impl(name, thisptr, f, ClientRPCs);
 		}
 
@@ -79,7 +81,7 @@ namespace RavEngine {
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-		inline void InvokeServerRPC(const std::string& id, A ... args) {
+		inline void InvokeServerRPC(uint16_t id, A ... args) {
 			auto msg = SerializeRPC(id,args...);
 			App::networkManager.client->SendMessageToServer(msg);
 		}
@@ -90,7 +92,7 @@ namespace RavEngine {
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-		inline void InvokeClientRPC(const std::string& id, A ... args) {
+		inline void InvokeClientRPC(uint16_t id, A ... args) {
 			auto msg = SerializeRPC(id, args...);
 			App::networkManager.server->SendMessageToAllClients(msg);
 		}

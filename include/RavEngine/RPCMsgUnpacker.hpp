@@ -16,7 +16,7 @@ namespace RavEngine {
         }
         
 	public:
-        static constexpr size_t header_size = 16+1;
+        static constexpr size_t header_size = 16 + 1 + sizeof(uint16_t);    //uuid, command code, method ID
         
 		RPCMsgUnpacker(const std::string& msg) : message(msg) {}
 
