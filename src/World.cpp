@@ -212,15 +212,11 @@ void World::RebuildTaskGraph(){
 	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID, SystemManager::TimedSystem* ts = nullptr){
 		auto& queries = system.QueryTypes();
 		
-		auto func = [=](Ref<Component> e) {
-			Ref<Entity> en = e->getOwner().lock();
-			if (en) {
-				system.Tick(getCurrentFPSScale(), en);
-			}
-		};
-		
 		for (const auto& query : queries) {
 			//add the Task to the hashmap
+            auto func = [=](Ref<Component> c) {
+                system.Tick(getCurrentFPSScale(), c, query);
+            };
 			
 			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);	//safe to do because modifications are not applied until after tick
 			iterator_map[ID] = {l1.begin(),l1.end()};
