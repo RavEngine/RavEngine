@@ -33,7 +33,8 @@ public:
 			Destroy,
 			RPC,
             OwnershipToThis,
-            OwnershipRevoked
+            OwnershipRevoked,
+			SyncVar
 		};
 	};
 };

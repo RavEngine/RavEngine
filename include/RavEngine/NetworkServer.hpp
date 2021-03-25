@@ -21,7 +21,7 @@ public:
 	void SpawnEntity(Ref<Entity> e);
 	void DestroyEntity(Ref<Entity> e);
 
-	void SendMessageToAllClients(const std::string& msg) const;
+	void SendMessageToAllClients(const std::string_view& msg) const;
 
 	void OnRPC(const std::string_view& cmd);
 protected:

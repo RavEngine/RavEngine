@@ -128,6 +128,9 @@ void NetworkClient::ClientTick(){
             case NetworkBase::CommandCode::RPC:
 				OnRPC(message);
                 break;
+			case NetworkBase::CommandCode::SyncVar:
+				Debug::Log("Client SyncVar Update!");
+				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
             }
@@ -207,7 +210,7 @@ void NetworkClient::NetDestroy(const std::string_view& command){
     }
 }
 
-void NetworkClient::SendMessageToServer(const std::string& msg) const {
+void NetworkClient::SendMessageToServer(const std::string_view& msg) const {
 	interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
 }
 

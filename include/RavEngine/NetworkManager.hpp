@@ -19,6 +19,8 @@ namespace RavEngine {
 		locked_hashmap<ctti_t, std::function<Ref<Entity>(const uuids::uuid&)>> NetworkedObjects;
 		
 	public:
+		
+		void SyncVarUpdate(const std::string_view& data);
         
         std::optional<Ref<Entity>> CreateEntity(ctti_t id, uuids::uuid& uuid){
             std::optional<Ref<Entity>> value;

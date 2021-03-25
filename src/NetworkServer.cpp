@@ -48,7 +48,7 @@ void NetworkServer::DestroyEntity(Ref<Entity> entity){
 	}
 }
 
-void RavEngine::NetworkServer::SendMessageToAllClients(const std::string& msg) const
+void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& msg) const
 {
 	for (const auto connection : clients) {
 		interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
@@ -218,6 +218,9 @@ void NetworkServer::ServerTick(){
                 //TODO: server needs to check ownership, client does not
 				OnRPC(message);
                 break;
+			case NetworkBase::CommandCode::SyncVar:
+				Debug::Log("Server SyncVar Update!");
+				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
             }

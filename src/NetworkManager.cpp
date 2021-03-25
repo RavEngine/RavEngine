@@ -43,3 +43,18 @@ bool NetworkManager::IsClient() {
 bool NetworkManager::IsServer() {
 	return static_cast<bool>(App::networkManager.server);
 }
+
+void NetworkManager::SyncVarUpdate(const std::string_view &data){
+	if (IsServer()){
+		//local client (if there is one) already has the value, so just push to the other clients
+		server->SendMessageToAllClients(data);
+	}
+	else if (IsClient()){
+		//update server, which will then update clients
+		client->SendMessageToServer(data);
+	}
+	else{
+		// WAT
+		Debug::Fatal("Cannot propagate syncvar, network is not active");
+	}
+}
