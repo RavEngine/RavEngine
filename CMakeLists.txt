@@ -81,13 +81,15 @@ add_custom_command(
 # no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake")
 add_subdirectory("${DEPS_DIR}/etl")
-add_subdirectory("${DEPS_DIR}/SDL2")
 add_subdirectory("${DEPS_DIR}/tweeny")
 add_subdirectory("${DEPS_DIR}/physfs")
 add_subdirectory("${DEPS_DIR}/concurrentqueue")
 add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
 add_subdirectory("${DEPS_DIR}/glm")
+
+set(VIDEO_OPENGLES OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/SDL2")
 
 # libnyquist
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")

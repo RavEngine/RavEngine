@@ -204,6 +204,7 @@ namespace RavEngine {
 		float currentFrameTime;
 
 		static SDL_Window* window;
+		void* metalLayer;
         void Init();
 		
 		static constexpr uint8_t gbufferSize = 4;

@@ -290,7 +290,12 @@ void RenderEngine::Init()
 		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
 	}
 	
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, VideoSettings.width, VideoSettings.height,
+							  SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
+#if BX_PLATFORM_IOS
+							  | SDL_WINDOW_FULLSCREEN_DESKTOP
+#endif
+							  );
 	
 	if (window == NULL){
 		Debug::Fatal("Unable to create main window: {}",SDL_GetError());
@@ -299,6 +304,9 @@ void RenderEngine::Init()
 	//start the render thread here
 	{
 		auto pd = sdlSetWindow(RenderEngine::GetWindow());
+#if BX_PLATFORM_IOS
+		metalLayer = pd.nwh;
+#endif
 		int width, height;
 		SDL_GL_GetDrawableSize(RenderEngine::GetWindow(), &width, &height);
 		renderThread.emplace(&RenderEngine::runAPIThread,this,pd, width, height);
@@ -544,6 +552,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 void RenderEngine::resize(){
 	SDL_GL_GetDrawableSize(window, &bufferdims.width, &bufferdims.height);
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
+#if BX_PLATFORM_IOS
+	resizeMetalLayer(metalLayer,bufferdims.width, bufferdims.height);	//view must be manually sized on iOS
+#endif
 	RenderThreadQueue.enqueue([=]() {
 		bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
 		bgfx::setViewRect(Views::FinalBlit, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
