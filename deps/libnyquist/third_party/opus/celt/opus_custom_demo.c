@@ -38,7 +38,7 @@
 #include <string.h>
 
 #define MAX_PACKET 1275
-
+#if 0
 int main(int argc, char *argv[])
 {
    int err;
@@ -207,4 +207,4 @@ int main(int argc, char *argv[])
 #endif
    return 0;
 }
-
+#endif
