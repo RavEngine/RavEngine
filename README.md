@@ -72,13 +72,13 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 | Platform | Architecture | Compiler | CMake Generator | Rendering API |
 | --- | --- | --- | --- | --- |
 | macOS 10.15+ | Intel, Apple Silicon | Apple Clang | Xcode | Metal |
+| iOS 14+ | Apple Silicon | Apple Clang | Xcode | Metal |
 | Windows 10 | x64 | MSVC++ | Visual Studio | DX11, DX12 |
 | Linux | x64 | Clang++, g++ | Ninja | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
 - x11-dev
-
 
 ## Example programs
 View a respository with code samples here: [https://github.com/ravbug/ravengine-samples](https://github.com/ravbug/ravengine-samples)

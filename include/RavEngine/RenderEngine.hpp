@@ -194,7 +194,7 @@ namespace RavEngine {
         static SpinLock dbgmtx;
         static phmap::flat_hash_map<uint16_t,DebugMsg> debugprints;
 #endif
-        void runAPIThread(bgfx::PlatformData pd);
+        void runAPIThread(bgfx::PlatformData pd, int width, int height);
 		
 		WeakRef<World> worldToDraw;
 		std::optional<std::thread> renderThread;

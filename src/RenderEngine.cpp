@@ -202,7 +202,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 /**
  The render thread function, invoked on a separate thread
  */
-void RenderEngine::runAPIThread(bgfx::PlatformData pd) {
+void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 	bgfx::Init settings;
 
 #ifdef __linux__
@@ -215,10 +215,6 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd) {
 
 	//must be in this order
 	settings.platformData = pd;
-	
-	//TODO: refactor
-	int width, height;
-	SDL_GL_GetDrawableSize(RenderEngine::GetWindow(), &width, &height);
 	
 	settings.resolution.width = width;
 	settings.resolution.height = height;
@@ -303,7 +299,9 @@ void RenderEngine::Init()
 	//start the render thread here
 	{
 		auto pd = sdlSetWindow(RenderEngine::GetWindow());
-		renderThread.emplace(&RenderEngine::runAPIThread,this,pd);
+		int width, height;
+		SDL_GL_GetDrawableSize(RenderEngine::GetWindow(), &width, &height);
+		renderThread.emplace(&RenderEngine::runAPIThread,this,pd, width, height);
 		renderThread.value().detach();
 	}
 	//wait for the render thread to be finished initializing

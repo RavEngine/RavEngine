@@ -24,7 +24,10 @@ void *cbSetupMetalLayer(void *wnd) {
 #elif BX_PLATFORM_IOS
 	UIWindow* window = (UIWindow*)wnd;
 	UIView* contentView = [[window subviews] lastObject];
+	[contentView.layer setBackgroundColor:UIColor.yellowColor.CGColor];
+	
 	CAMetalLayer *res = [CAMetalLayer layer];
+	res.frame = window.bounds;
 	[contentView.layer addSublayer:res];
 	return res;
 #endif
