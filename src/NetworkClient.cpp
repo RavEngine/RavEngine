@@ -225,7 +225,7 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 		auto netid = NetworkIdentities.at(id);
 		auto entity = netid->getOwner().lock();
 
-		entity->GetComponent<RPCComponent>()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid);
+		entity->GetComponent<RPCComponent>()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
 	}
 
 }

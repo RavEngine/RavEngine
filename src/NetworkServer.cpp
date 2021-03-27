@@ -245,7 +245,7 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 		auto netid = NetworkIdentities.at(id);
 		auto entity = netid->getOwner().lock();
 		bool isOwner = origin == netid->Owner;
-		entity->GetComponent<RPCComponent>()->CacheServerRPC(cmd, isOwner);
+		entity->GetComponent<RPCComponent>()->CacheServerRPC(cmd, isOwner, origin);
 	}
 
 }

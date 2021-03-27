@@ -10,6 +10,7 @@
 #include "Debug.hpp"
 #include "Entity.hpp"
 #include "App.hpp"
+#include <steam/isteamnetworkingsockets.h>
 
 namespace RavEngine {
 	class RPCComponent : public Component, public Queryable<RPCComponent> {
@@ -20,7 +21,7 @@ namespace RavEngine {
 		};
 	private:
 		struct rpc_entry {
-			std::function<void(RPCMsgUnpacker&)> func;
+			std::function<void(RPCMsgUnpacker&, HSteamNetConnection)> func;
 			Directionality mode;
 		};
 
@@ -30,6 +31,7 @@ namespace RavEngine {
 		struct enqueued_rpc {
 			std::string msg;
 			bool isOwner;
+			HSteamNetConnection origin;
 		};
 
 		typedef ConcurrentQueue<enqueued_rpc> queue_t;
@@ -37,18 +39,32 @@ namespace RavEngine {
 		std::atomic<queue_t*> readingptr_c = &C_buffer_A, writingptr_c = &C_buffer_B,
 							  readingptr_s = &S_buffer_A, writingptr_s = &S_buffer_B;
 		
+		/**
+		Shared RPC registration code
+		@param id the numeric ID for the RPC. Use an enum
+		@param thisptr the pointer to the owner of the method
+		@param f the method to register
+		@param store which table to store it in
+		@param type ownership control of the RPC
+		*/
 		template<typename U>
-		inline void RegisterRPC_Impl(uint16_t id, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), rpc_store& store, Directionality type) {
+		inline void RegisterRPC_Impl(uint16_t id, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&, HSteamNetConnection), rpc_store& store, Directionality type) {
 			WeakRef<U> weak(thisptr);
-			auto func = [=](RPCMsgUnpacker& u) {
+			auto func = [=](RPCMsgUnpacker& u, HSteamNetConnection origin) {
 				auto ptr = weak.lock();
 				if (ptr) {
-					(ptr.get()->*f)(u);
+					(ptr.get()->*f)(u, origin);
 				}
 			};
 			store[id] = rpc_entry{ func, type };
 		}
 
+		/**
+		Convert a type into bytes
+		@param offset the position in the buffer
+		@param buffer the buffer to write the data
+		@param value the data to encode
+		*/
 		template<typename T>
 		inline void serializeType(size_t& offset, char* buffer, const T& value) {
 			constexpr auto id = CTTI<T>();
@@ -57,6 +73,11 @@ namespace RavEngine {
 			offset += RPCMsgUnpacker::total_serialized_size(value);
 		}
         
+		/**
+		Create a serialized RPC invocation
+		@param id the RPC id number
+		@param args the varargs to encode
+		*/
 		template<typename ... A>
 		inline std::string SerializeRPC(uint16_t id, A ... args) {
 			constexpr size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
@@ -77,6 +98,11 @@ namespace RavEngine {
 			return std::string(msg,totalsize);
 		}
 
+		/**
+		Consume enqueued RPCs
+		@param ptr the queue to consume from
+		@param table the datastructure to look up the results in
+		*/
 		inline void ProcessRPCs_impl(const std::atomic<queue_t*>& ptr, const rpc_store& table) {
 			auto reading = ptr.load();
 			enqueued_rpc cmd;
@@ -90,7 +116,7 @@ namespace RavEngine {
 					auto& func = table.at(RPC);
 					if (cmd.isOwner || func.mode == Directionality::Bidirectional) {
 						auto packer = RPCMsgUnpacker(cmd.msg);
-						func.func(packer);
+						func.func(packer, cmd.origin);
 					}
 					
 				}
@@ -109,7 +135,7 @@ namespace RavEngine {
 		@param f the function to call
 		*/
 		template<typename U>
-		inline void RegisterServerRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), Directionality type = Directionality::OnlyOwnerInvokes) {
+		inline void RegisterServerRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&, HSteamNetConnection), Directionality type = Directionality::OnlyOwnerInvokes) {
 			RegisterRPC_Impl(name, thisptr, f, ServerRPCs, type);
 		}
 
@@ -120,7 +146,7 @@ namespace RavEngine {
 		@param f the function to call
 		*/
 		template<typename U>
-		inline void RegisterClientRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), Directionality type = Directionality::OnlyOwnerInvokes) {
+		inline void RegisterClientRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&, HSteamNetConnection), Directionality type = Directionality::OnlyOwnerInvokes) {
 			RegisterRPC_Impl(name, thisptr, f, ClientRPCs,type);
 		}
 
@@ -157,21 +183,29 @@ namespace RavEngine {
 		}
 
 		/**
-		This call is not for you.
+		Invoked automatically. For internal use only.
 		*/
-		inline void CacheClientRPC(const std::string_view& cmd, bool isOwner) {
-			writingptr_c.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner });
+		inline void CacheClientRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
+			writingptr_c.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner, origin });
 		}
 
-		inline void CacheServerRPC(const std::string_view& cmd, bool isOwner) {
-			writingptr_s.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner });
+		/**
+		Invoked automatically. For internal use only.
+		*/
+		inline void CacheServerRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
+			writingptr_s.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner, origin });
 		}
 
+		/**
+		Invoked automatically. For internal use only.
+		*/
 		inline void ProcessClientRPCs() {
 			ProcessRPCs_impl(readingptr_c,ClientRPCs);
 		}
 
-
+		/**
+		Invoked automatically. For internal use only.
+		*/
 		inline void ProcessServerRPCs() {
 			ProcessRPCs_impl(readingptr_s, ServerRPCs);
 		}

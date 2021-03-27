@@ -81,7 +81,7 @@ namespace RavEngine {
 		
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
-		EntityStore Entities;
+		EntityStore Entities, to_destroy;
 
 		//physics system
 		PhysicsSolver Solver;
@@ -114,7 +114,8 @@ namespace RavEngine {
 		
 		bool physicsActive = false;
 		
-				
+		void Destroy_pending();
+
     public:
 		std::string_view worldID{ worldIDbuf,id_size };
 		std::atomic<bool> newFrame = false;

@@ -44,6 +44,7 @@ void RavEngine::World::Tick(float scale) {
 	}
 
     posttick(scale);
+	Destroy_pending();
 }
 
 
@@ -95,22 +96,15 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	if (e->GetWorld().expired()){
 		return false;
 	}
-	
-	e->SetWorld(nullptr);
 	e->Stop();
+	to_destroy.insert(e);
 
-	//also remove its components
-	Unmerge(*e.get());
-
-	e->parent.reset();	//set parent to null so that this entity no longer synchronizes its components with this world
-
-	Entities.erase(e);
-	
 	//get all child entities
 	auto children = e->GetAllComponentsOfType<ChildEntityComponent>();
-	for(const auto c : children){
+	for (const auto c : children) {
 		Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->get());
 	}
+	
 	return true;
 }
 
@@ -170,6 +164,21 @@ void World::OnRemoveComponent(Ref<Component> comp){
             return;
 		}
 	}
+}
+
+void RavEngine::World::Destroy_pending()
+{
+	for (const auto& e : to_destroy) {
+		e->SetWorld(nullptr);
+
+		//also remove its components
+		Unmerge(*e.get());
+
+		e->parent.reset();	//set parent to null so that this entity no longer synchronizes its components with this world
+
+		Entities.erase(e);
+	}
+	to_destroy.clear();
 }
 
 /**
