@@ -5,6 +5,7 @@
 #include "DataStructures.hpp"
 #include "CTTI.hpp"
 #include "Debug.hpp"
+#include <optional>
 
 //macro for checking type in template
 #define C_REF_CHECK static_assert(std::is_base_of<RavEngine::Component, T>::value, "Template parameter must be a Component subclass");
@@ -92,25 +93,26 @@ namespace RavEngine{
 		}
 
 		/**
-		 Get the first component of a type  in this Entity. Use as GetComponent<ComponentRef, Component>(). Investigates base classes.
-		 @throws runtime_error if no component of type is found on this Entity. If you are not sure, call HasComponentOfType() first
+		 Get the first component of a type (including all querytypes) in this Entity. 
+		 @returns an optional reference. If the component type was not found, the optional will be invalid.
 		 @throws bad_cast if a cast fails
 		 */
 		template<typename T>
-		inline Ref<T> GetComponent() {
-			C_REF_CHECK
-			auto& vec = components[CTTI<T>()];
-			if (vec.empty()) {
-				Debug::Fatal("No component of type exists");
-			}
-			else {
-				return std::static_pointer_cast<T>(*vec.begin());
-			}
+		inline std::optional<Ref<T>> GetComponent() {
+			C_REF_CHECK;
+			std::optional<Ref<T>> returned;
+			components.if_contains(CTTI<T>(), [&](const entry_type& vec) {
+				if (!vec.empty()) {
+					returned = std::static_pointer_cast<T>(*vec.begin());
+				}
+			});
+			return returned;
 		}
 
 		/**
-		 Determines if this Entity has a component of a type. Pass in the ref type. Investigates only base classes the passed ref type.
+		 Determines if this Entity has a component of a type.
 		 @return true if this entity has a component of type ref
+		 @note Do not use to determine if a GetComponent call will succeed, that is not threadsafe. Instead, use GetComponent directly and check if the resulting std::optional is valid.
 		 */
 		template<typename T>
 		inline bool HasComponentOfType() {

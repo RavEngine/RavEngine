@@ -108,7 +108,7 @@ namespace RavEngine {
 		 @return a reference to the transform component, which all entities possess
 		 */
 		inline Ref<Transform> transform(){
-			return GetComponent<Transform>();
+			return GetComponent<Transform>().value();
 		}
 
 		/**

@@ -525,7 +525,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 #ifdef _DEBUG
 	//render debug GUI
-	auto comp = debuggerContext->GetComponent<GUIComponent>();
+	auto comp = debuggerContext->GetComponent<GUIComponent>().value();
 	comp->SetDimensions(size.width, size.height);
 	comp->SetDPIScale(GetDPIScale());
 	comp->Update();

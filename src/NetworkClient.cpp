@@ -176,7 +176,7 @@ void NetworkClient::NetSpawn(const std::string_view& command){
     if (auto e = App::networkManager.CreateEntity(id, uuid)){
         if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
             world.value()->Spawn(e.value());
-            auto netid = e.value()->GetComponent<NetworkIdentity>();
+            auto netid = e.value()->GetComponent<NetworkIdentity>().value();
             if (netid){
                 Debug::Assert(netid->GetNetworkID() == uuid, "Created object does not have correct NetID! {} != {}",uuid.to_string(), netid->GetNetworkID().to_string());
                 
@@ -205,14 +205,13 @@ void NetworkClient::NetDestroy(const std::string_view& command){
     uuids::uuid uuid(uuid_bytes);
         
     //lookup the entity and destroy it
-    if (NetworkIdentities.contains(uuid)){
-        auto id = NetworkIdentities.at(uuid);
-        auto owner = id->getOwner().lock();
-        if (owner){
-            owner->Destroy();
-        }
-        NetworkIdentities.erase(uuid);
-    }
+	if (NetworkIdentities.if_contains(uuid, [&](const Ref<NetworkIdentity>& id) {
+		auto owner = id->getOwner().lock();
+		if (owner) {
+			owner->Destroy();
+		}
+		NetworkIdentities.erase(uuid);
+	})) {}
     else{
         Debug::Warning("Cannot destroy entity with UUID {} because it does not exist",uuid.to_string());
     }
@@ -241,13 +240,9 @@ void NetworkClient::SendMessageToServer(const std::string_view& msg) const {
 void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 {
 	//decode the RPC header to to know where it is going
-
 	uuids::uuid id(cmd.data() + 1);
-	if (NetworkIdentities.contains(id)) {
-		auto netid = NetworkIdentities.at(id);
+	NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
 		auto entity = netid->getOwner().lock();
-
-		entity->GetComponent<RPCComponent>()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
-	}
-
+		entity->GetComponent<RPCComponent>().value()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
+	});
 }

@@ -16,7 +16,8 @@ namespace RavEngine {
 
 	class NetworkManager{
 	private:
-		locked_hashmap<ctti_t, std::function<Ref<Entity>(const uuids::uuid&)>> NetworkedObjects;
+		typedef std::function<Ref<Entity>(const uuids::uuid&)> func_t;
+		locked_hashmap<ctti_t, func_t> NetworkedObjects;
 		
 	public:
 		
@@ -24,9 +25,9 @@ namespace RavEngine {
         
         std::optional<Ref<Entity>> CreateEntity(ctti_t id, uuids::uuid& uuid){
             std::optional<Ref<Entity>> value;
-            if (NetworkedObjects.contains(id)){
-                value.emplace(NetworkedObjects[id](uuid));
-            }
+			NetworkedObjects.if_contains(id, [&](const func_t& fn) {
+				value.emplace(fn(uuid));
+			});
             return value;
         }
         

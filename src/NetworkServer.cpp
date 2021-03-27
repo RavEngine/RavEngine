@@ -21,10 +21,10 @@ void NetworkServer::SpawnEntity(Ref<Entity> entity) {
 	if (casted && world) {
 		auto id = casted->NetTypeID();
         auto comp = entity->GetComponent<NetworkIdentity>();
-		auto netID = comp->GetNetworkID();
+		auto netID = comp.value()->GetNetworkID();
 		//send highest-priority safe message with this info to clients
 		auto message = CreateSpawnCommand(netID, id, world->worldID);
-        NetworkIdentities[netID] = comp;
+        NetworkIdentities[netID] = comp.value();
 		for (auto connection : clients) {
 			interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
 		}
@@ -37,7 +37,7 @@ void NetworkServer::SpawnEntity(Ref<Entity> entity) {
 void NetworkServer::DestroyEntity(Ref<Entity> entity){
 	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
 	if (casted){
-		auto netID = entity->GetComponent<NetworkIdentity>()->GetNetworkID();
+		auto netID = entity->GetComponent<NetworkIdentity>().value()->GetNetworkID();
 		auto message = CreateDestroyCommand(netID);
         NetworkIdentities.erase(netID);
 		for (auto connection : clients) {
@@ -245,13 +245,11 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 	//decode the RPC header to to know where it is going
 
 	uuids::uuid id(cmd.data() + 1);
-	if (NetworkIdentities.contains(id)) {
-		auto netid = NetworkIdentities.at(id);
+	NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
 		auto entity = netid->getOwner().lock();
 		bool isOwner = origin == netid->Owner;
-		entity->GetComponent<RPCComponent>()->CacheServerRPC(cmd, isOwner, origin);
-	}
-
+		entity->GetComponent<RPCComponent>().value()->CacheServerRPC(cmd, isOwner, origin);
+	});
 }
 
 void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object)

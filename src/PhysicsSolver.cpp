@@ -188,7 +188,7 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
  */
 void PhysicsSolver::Spawn(Ref<Entity> e){
     if (e->HasComponentOfType<PhysicsBodyComponent>()) {
-        auto actor = e->GetComponent<PhysicsBodyComponent>();
+        auto actor = e->GetComponent<PhysicsBodyComponent>().value();
         if (actor->rigidActor->userData == nullptr){
             actor->rigidActor->userData = new Ref<PhysicsBodyComponent>(actor);    //must be dynamically allocated here
         }
@@ -212,7 +212,7 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
 		auto body = e->GetComponent<PhysicsBodyComponent>();
 		if (body){
 			mtx.lock();
-			scene->removeActor(*(body->rigidActor));
+			scene->removeActor(*(body.value()->rigidActor));
 			mtx.unlock();
 		}
 	}

@@ -29,7 +29,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 		
 		//use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
 		if (world->HasComponentOfType<AudioListener>()) {
-			auto listener = world->GetComponent<AudioListener>();
+			auto listener = world->GetComponent<AudioListener>().value();
 			auto listenerTransform = listener->getOwner().lock()->transform();
 			auto lpos = listenerTransform->GetWorldPosition();
 			auto lrot = listenerTransform->GetWorldRotation();

@@ -9,7 +9,7 @@ namespace RavEngine {
 
 class SyncVar_base{
 protected:
-	static locked_hashmap<uuids::uuid, SyncVar_base*> all_syncvars;
+	static locked_hashmap<uuids::uuid, SyncVar_base*,SpinLock> all_syncvars;
 	
 	typedef ConcurrentQueue<std::string> queue_t;
 	static queue_t queue_A, queue_B;
@@ -51,11 +51,9 @@ public:
 			std::memcpy(idbytes,cmd.data()+1,sizeof(idbytes));
 			
 			uuids::uuid id(idbytes);
-			
-			if (all_syncvars.contains(id)){
-				auto idptr = all_syncvars.at(id);
+			all_syncvars.if_contains(id, [&](SyncVar_base* idptr) {
 				idptr->NetSync(cmd);
-			}
+			});
 		}
 	}
 };

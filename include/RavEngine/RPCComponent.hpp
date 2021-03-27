@@ -82,7 +82,7 @@ namespace RavEngine {
 		inline std::string SerializeRPC(uint16_t id, A ... args) {
 			constexpr size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
 
-			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>()->GetNetworkID().raw();
+			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>().value()->GetNetworkID().raw();
 			char msg[totalsize];
 
 			//write message header
@@ -112,14 +112,12 @@ namespace RavEngine {
 				std::memcpy(&RPC, cmd.msg.data() + RPCMsgUnpacker::code_offset, sizeof(RPC));
 
 				//invoke that RPC
-				if (table.contains(RPC)) {
-					auto& func = table.at(RPC);
+				if(table.if_contains(RPC, [&](const rpc_entry& func) {
 					if (cmd.isOwner || func.mode == Directionality::Bidirectional) {
 						auto packer = RPCMsgUnpacker(cmd.msg);
 						func.func(packer, cmd.origin);
 					}
-					
-				}
+				})){}
 				else {
 					Debug::Warning("No cmd code with ID {}", RPC);
 				}
