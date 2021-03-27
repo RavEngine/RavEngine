@@ -52,8 +52,12 @@ void NetworkServer::DestroyEntity(Ref<Entity> entity){
 void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& msg) const
 {
 	for (const auto connection : clients) {
-		interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
+		SendMessageToClient(msg, connection);
 	}
+}
+
+void NetworkServer::SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection) const{
+	interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
 }
 
 void NetworkServer::Start(uint16_t port){
@@ -248,4 +252,26 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 		entity->GetComponent<RPCComponent>()->CacheServerRPC(cmd, isOwner, origin);
 	}
 
+}
+
+void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object)
+{
+	//send message revoke ownership for the existing owner, if it is not currently owned by server
+	if (object->Owner != k_HSteamNetConnection_Invalid) {
+		auto uuid = object->GetNetworkID().raw();
+		char msg[16 + 1];
+		msg[0] = NetworkBase::CommandCode::OwnershipRevoked;
+		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner);
+	}
+
+	//update the object's ownership value
+	object->Owner = newOwner;
+
+	//send message to the new owner that it is now the owner, if the new owner is not the server
+	if (newOwner != k_HSteamNetConnection_Invalid) {
+		auto uuid = object->GetNetworkID().raw();
+		char msg[16 + 1];
+		msg[0] = NetworkBase::CommandCode::OwnershipToThis;
+		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner);
+	}
 }

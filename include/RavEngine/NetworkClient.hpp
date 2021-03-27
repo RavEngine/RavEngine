@@ -38,6 +38,10 @@ protected:
     void NetDestroy(const std::string_view& cmd);
 
 	
+	void OwnershipRevoked(const std::string_view& cmd);
+
+	void OwnershipToThis(const std::string_view& cmd);
+
 	static NetworkClient* currentClient;
 };
 

@@ -129,6 +129,12 @@ void NetworkClient::ClientTick(){
             case NetworkBase::CommandCode::RPC:
 				OnRPC(message);
                 break;
+			case NetworkBase::CommandCode::OwnershipRevoked:
+				OwnershipRevoked(message);
+				break;
+			case NetworkBase::CommandCode::OwnershipToThis:
+				OwnershipToThis(message);
+				break;
 			case NetworkBase::CommandCode::SyncVar:
 				//TODO: check ownership
 				SyncVar_base::EnqueueCmd(message);
@@ -210,6 +216,22 @@ void NetworkClient::NetDestroy(const std::string_view& command){
     else{
         Debug::Warning("Cannot destroy entity with UUID {} because it does not exist",uuid.to_string());
     }
+}
+
+void RavEngine::NetworkClient::OwnershipRevoked(const std::string_view& cmd)
+{
+	uuids::uuid id(cmd.data() + 1);
+	NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
+		id->Owner = k_HSteamListenSocket_Invalid;
+	});
+}
+
+void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
+{
+	uuids::uuid id(cmd.data() + 1);
+	NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
+		id->Owner = 30;	//any number = this machine has ownership
+	});
 }
 
 void NetworkClient::SendMessageToServer(const std::string_view& msg) const {

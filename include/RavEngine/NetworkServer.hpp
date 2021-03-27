@@ -23,7 +23,16 @@ public:
 
 	void SendMessageToAllClients(const std::string_view& msg) const;
 
+	void SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection) const;
+
 	void OnRPC(const std::string_view& cmd, HSteamNetConnection);
+
+	/**
+	Change the ownership of a networked object
+	@param newOwner the connection handle for the new owner. Use Invalid to make the server owner
+	@param object the networkidentity to udpate the ownership of
+	*/
+	void ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object);
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;
@@ -35,10 +44,6 @@ protected:
 	static NetworkServer* currentServer;
 	
 	void ServerTick();
-    
-    //stores the ownership, see who owns a particular object
-    locked_node_hashmap<uuids::uuid, HSteamNetConnection> ownership;
-	
 };
 
 }
