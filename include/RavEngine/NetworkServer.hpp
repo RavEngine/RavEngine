@@ -23,7 +23,7 @@ public:
 
 	void SendMessageToAllClients(const std::string_view& msg) const;
 
-	void OnRPC(const std::string_view& cmd);
+	void OnRPC(const std::string_view& cmd, HSteamNetConnection);
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;

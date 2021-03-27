@@ -13,16 +13,32 @@
 
 namespace RavEngine {
 	class RPCComponent : public Component, public Queryable<RPCComponent> {
-		typedef locked_hashmap<uint16_t, std::function<void(RPCMsgUnpacker&)>, SpinLock> rpc_store;
+	public:
+		enum class Directionality {
+			OnlyOwnerInvokes,			// the owner 
+			Bidirectional
+		};
+	private:
+		struct rpc_entry {
+			std::function<void(RPCMsgUnpacker&)> func;
+			Directionality mode;
+		};
+
+		typedef locked_hashmap<uint16_t, rpc_entry, SpinLock> rpc_store;
 		rpc_store ClientRPCs, ServerRPCs;
 
-		typedef ConcurrentQueue<std::string> queue_t;
+		struct enqueued_rpc {
+			std::string msg;
+			bool isOwner;
+		};
+
+		typedef ConcurrentQueue<enqueued_rpc> queue_t;
 		queue_t C_buffer_A, C_buffer_B, S_buffer_A, S_buffer_B;
 		std::atomic<queue_t*> readingptr_c = &C_buffer_A, writingptr_c = &C_buffer_B,
 							  readingptr_s = &S_buffer_A, writingptr_s = &S_buffer_B;
 		
 		template<typename U>
-		inline void RegisterRPC_Impl(uint16_t id, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), rpc_store& store) {
+		inline void RegisterRPC_Impl(uint16_t id, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), rpc_store& store, Directionality type) {
 			WeakRef<U> weak(thisptr);
 			auto func = [=](RPCMsgUnpacker& u) {
 				auto ptr = weak.lock();
@@ -30,7 +46,7 @@ namespace RavEngine {
 					(ptr.get()->*f)(u);
 				}
 			};
- 			store[id] = func;
+			store[id] = rpc_entry{ func, type };
 		}
 
 		template<typename T>
@@ -63,16 +79,20 @@ namespace RavEngine {
 
 		inline void ProcessRPCs_impl(const std::atomic<queue_t*>& ptr, const rpc_store& table) {
 			auto reading = ptr.load();
-			std::string cmd;
+			enqueued_rpc cmd;
 			while (reading->try_dequeue(cmd)) {
 				//read out of the header which RPC to invoke
 				uint16_t RPC;
-				std::memcpy(&RPC, cmd.data() + RPCMsgUnpacker::code_offset, sizeof(RPC));
+				std::memcpy(&RPC, cmd.msg.data() + RPCMsgUnpacker::code_offset, sizeof(RPC));
 
 				//invoke that RPC
 				if (table.contains(RPC)) {
-					auto packer = RPCMsgUnpacker(cmd);
-					table.at(RPC)(packer);
+					auto& func = table.at(RPC);
+					if (cmd.isOwner || func.mode == Directionality::Bidirectional) {
+						auto packer = RPCMsgUnpacker(cmd.msg);
+						func.func(packer);
+					}
+					
 				}
 				else {
 					Debug::Warning("No cmd code with ID {}", RPC);
@@ -81,6 +101,7 @@ namespace RavEngine {
 		}
 
 	public:
+
 		/**
 		Register a server RPC - this is run on the server when invoked from a client
 		@param name the name for the RPC (must be unique)
@@ -88,8 +109,8 @@ namespace RavEngine {
 		@param f the function to call
 		*/
 		template<typename U>
-		inline void RegisterServerRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&)) {
-			RegisterRPC_Impl(name, thisptr, f, ServerRPCs);
+		inline void RegisterServerRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), Directionality type = Directionality::OnlyOwnerInvokes) {
+			RegisterRPC_Impl(name, thisptr, f, ServerRPCs, type);
 		}
 
 		/**
@@ -99,8 +120,8 @@ namespace RavEngine {
 		@param f the function to call
 		*/
 		template<typename U>
-		inline void RegisterClientRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&)) {
-			RegisterRPC_Impl(name, thisptr, f, ClientRPCs);
+		inline void RegisterClientRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&), Directionality type = Directionality::OnlyOwnerInvokes) {
+			RegisterRPC_Impl(name, thisptr, f, ClientRPCs,type);
 		}
 
 		/**
@@ -138,12 +159,12 @@ namespace RavEngine {
 		/**
 		This call is not for you.
 		*/
-		inline void CacheClientRPC(const std::string_view& cmd) {
-			writingptr_c.load()->enqueue(std::string(cmd.data(),cmd.size()));
+		inline void CacheClientRPC(const std::string_view& cmd, bool isOwner) {
+			writingptr_c.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner });
 		}
 
-		inline void CacheServerRPC(const std::string_view& cmd) {
-			writingptr_s.load()->enqueue(std::string(cmd.data(),cmd.size()));
+		inline void CacheServerRPC(const std::string_view& cmd, bool isOwner) {
+			writingptr_s.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner });
 		}
 
 		inline void ProcessClientRPCs() {

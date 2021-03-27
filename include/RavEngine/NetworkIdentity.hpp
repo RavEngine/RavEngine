@@ -22,6 +22,14 @@ namespace RavEngine {
 			return NetworkID;
 		}
 		
-		HSteamNetConnection Owner = k_HSteamNetConnection_Invalid;	//invalid = server
+		/* On the server:
+		*	invalid = the server has ownership
+		*	<any number> = the machine on the specified connection has ownership
+		* 
+		* On the client:
+		*	invalid = this machine does __not__ have ownership
+		*	<any number> = this machine has ownership
+		*/
+		HSteamNetConnection Owner = k_HSteamNetConnection_Invalid;	
 	};
 }

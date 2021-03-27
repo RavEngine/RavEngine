@@ -7,6 +7,7 @@
 #include <steam/isteamnetworkingutils.h>
 #include "App.hpp"
 #include "RPCComponent.hpp"
+#include "SyncVar.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -216,10 +217,10 @@ void NetworkServer::ServerTick(){
             switch (cmdcode) {
             case NetworkBase::CommandCode::RPC:
                 //TODO: server needs to check ownership, client does not
-				OnRPC(message);
+				OnRPC(message, pIncomingMsg->GetConnection());
                 break;
 			case NetworkBase::CommandCode::SyncVar:
-				Debug::Log("Server SyncVar Update!");
+				SyncVar_base::EnqueueCmd(message);
 				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
@@ -235,13 +236,16 @@ void NetworkServer::ServerTick(){
 	workerHasStopped = true;
 }
 
-void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd)
+void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConnection origin)
 {
 	//decode the RPC header to to know where it is going
 
 	uuids::uuid id(cmd.data() + 1);
 	if (NetworkIdentities.contains(id)) {
-		NetworkIdentities.at(id)->getOwner().lock()->GetComponent<RPCComponent>()->CacheServerRPC(cmd);
+		auto netid = NetworkIdentities.at(id);
+		auto entity = netid->getOwner().lock();
+		bool isOwner = origin == netid->Owner;
+		entity->GetComponent<RPCComponent>()->CacheServerRPC(cmd, isOwner);
 	}
 
 }

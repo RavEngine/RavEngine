@@ -3,6 +3,7 @@
 #include <steam/isteamnetworkingutils.h>	//this is required in for ParseString
 #include "App.hpp"
 #include "RPCComponent.hpp"
+#include "SyncVar.hpp"
 
 using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
@@ -129,7 +130,8 @@ void NetworkClient::ClientTick(){
 				OnRPC(message);
                 break;
 			case NetworkBase::CommandCode::SyncVar:
-				Debug::Log("Client SyncVar Update!");
+				//TODO: check ownership
+				SyncVar_base::EnqueueCmd(message);
 				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
@@ -220,7 +222,10 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 
 	uuids::uuid id(cmd.data() + 1);
 	if (NetworkIdentities.contains(id)) {
-		NetworkIdentities.at(id)->getOwner().lock()->GetComponent<RPCComponent>()->CacheClientRPC(cmd);
+		auto netid = NetworkIdentities.at(id);
+		auto entity = netid->getOwner().lock();
+
+		entity->GetComponent<RPCComponent>()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid);
 	}
 
 }
