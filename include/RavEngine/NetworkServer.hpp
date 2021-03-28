@@ -21,9 +21,9 @@ public:
 	void SpawnEntity(Ref<Entity> e);
 	void DestroyEntity(Ref<Entity> e);
 
-	void SendMessageToAllClients(const std::string_view& msg) const;
+	void SendMessageToAllClients(const std::string_view& msg, Reliability mode) const;
 
-	void SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection) const;
+	void SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const;
 
 	void OnRPC(const std::string_view& cmd, HSteamNetConnection);
 

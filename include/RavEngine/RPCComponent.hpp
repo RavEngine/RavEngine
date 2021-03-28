@@ -151,13 +151,14 @@ namespace RavEngine {
 		/**
 		Invoke an RPC on the server
 		@param id the name of the RPC
+		@param mode importance that the message arrive at the destination
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-		inline void InvokeServerRPC(uint16_t id, A ... args) {
+		inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) {
 			if (ServerRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				App::networkManager.client->SendMessageToServer(msg);
+				App::networkManager.client->SendMessageToServer(msg,mode);
 			}
 			else {
 				Debug::Warning("Cannot send Server RPC with ID {}",id);
@@ -167,13 +168,14 @@ namespace RavEngine {
 		/**
 		Invoke an RPC on the client
 		@param id the name of the RPC
+		@param mode importance that the message arrive at the destination
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-		inline void InvokeClientRPC(uint16_t id, A ... args) {
+		inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) {
 			if (ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				App::networkManager.server->SendMessageToAllClients(msg);
+				App::networkManager.server->SendMessageToAllClients(msg,mode);
 			}
 			else {
 				Debug::Warning("Cannot send Client RPC with ID {}", id);

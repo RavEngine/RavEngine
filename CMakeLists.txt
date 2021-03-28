@@ -88,7 +88,7 @@ add_subdirectory("${DEPS_DIR}/fmt")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
 add_subdirectory("${DEPS_DIR}/glm")
 
-set(VIDEO_OPENGLES OFF CACHE INTERNAL "")
+#SDL2
 add_subdirectory("${DEPS_DIR}/SDL2")
 
 # libnyquist

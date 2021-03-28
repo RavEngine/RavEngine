@@ -15,7 +15,7 @@ public:
 	~NetworkClient();	//gracefully disconnect
 	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 
-	void SendMessageToServer(const std::string_view& msg) const;
+	void SendMessageToServer(const std::string_view& msg, Reliability mode) const;
 
 	void OnRPC(const std::string_view& cmd);
 protected:

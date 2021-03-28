@@ -233,8 +233,8 @@ void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
 	});
 }
 
-void NetworkClient::SendMessageToServer(const std::string_view& msg) const {
-	interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
+void NetworkClient::SendMessageToServer(const std::string_view& msg, Reliability mode) const {
+	interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
 }
 
 void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)

@@ -47,11 +47,11 @@ bool NetworkManager::IsServer() {
 void NetworkManager::SyncVarUpdate(const std::string_view &data){
 	if (IsServer()){
 		//local client (if there is one) already has the value, so just push to the other clients
-		server->SendMessageToAllClients(data);
+		server->SendMessageToAllClients(data, NetworkBase::Reliability::Reliable);
 	}
 	else if (IsClient()){
 		//update server, which will then update clients
-		client->SendMessageToServer(data);
+		client->SendMessageToServer(data, NetworkBase::Reliability::Reliable);
 	}
 	else{
 		// WAT

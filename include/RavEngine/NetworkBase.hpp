@@ -26,6 +26,11 @@ protected:
     locked_node_hashmap<uuids::uuid, Ref<NetworkIdentity>,SpinLock> NetworkIdentities;
 
 public:
+	
+	enum Reliability{
+		Unreliable = k_nSteamNetworkingSend_Unreliable,
+		Reliable = k_nSteamNetworkingSend_Reliable
+	};
 
 	struct CommandCode {
 		enum {

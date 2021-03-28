@@ -49,15 +49,15 @@ void NetworkServer::DestroyEntity(Ref<Entity> entity){
 	}
 }
 
-void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& msg) const
+void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& msg, Reliability mode) const
 {
 	for (const auto connection : clients) {
-		SendMessageToClient(msg, connection);
+		SendMessageToClient(msg, connection, mode);
 	}
 }
 
-void NetworkServer::SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection) const{
-	interface->SendMessageToConnection(connection, msg.data(), msg.length(), k_nSteamNetworkingSend_Reliable, nullptr);
+void NetworkServer::SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const{
+	interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
 }
 
 void NetworkServer::Start(uint16_t port){
@@ -259,7 +259,7 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref
 		auto uuid = object->GetNetworkID().raw();
 		char msg[16 + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipRevoked;
-		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner);
+		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
 	}
 
 	//update the object's ownership value
@@ -270,6 +270,6 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref
 		auto uuid = object->GetNetworkID().raw();
 		char msg[16 + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipToThis;
-		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner);
+		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
 	}
 }
