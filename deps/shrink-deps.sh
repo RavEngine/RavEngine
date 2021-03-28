@@ -36,3 +36,6 @@ rm -r libnyquist/examples libnyquist/test_data
 rm -r GameNetworkingSockets/openssl-cmake/test GameNetworkingSockets/openssl-cmake/doc
 rm -r GameNetworkingSockets/protobuf/third_party GameNetworkingSockets/protobuf/benchmarks
 rm -r GameNetworkingSockets/GameNetworkingSockets/tests GameNetworkingSockets/protobuf/benchmarks
+
+# ozz-animation
+rm -r ozz-animation/media ozz-animation/test ozz-animation/samples ozz-animation/howtos

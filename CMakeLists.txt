@@ -91,6 +91,12 @@ add_subdirectory("${DEPS_DIR}/glm")
 #SDL2
 add_subdirectory("${DEPS_DIR}/SDL2")
 
+# ozz animation
+set(ozz_build_samples OFF CACHE INTERNAL "")
+set(ozz_build_howtos OFF CACHE INTERNAL "")
+set(ozz_build_tests OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/ozz-animation")
+
 # libnyquist
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist")
@@ -238,6 +244,12 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"Recast"
 	"Detour"
 	"concurrentqueue"
+	"ozz_animation"
+	"ozz_animation_offline"
+	"ozz_animation_tools"
+	"ozz_base"
+	"ozz_geometry"
+	"ozz_options"
 )
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
