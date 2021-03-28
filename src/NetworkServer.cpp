@@ -130,7 +130,9 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			
 			//track the connection
 			clients.insert(pInfo->m_hConn);
-			
+			if(OnClientConnecting){
+				OnClientConnecting(pInfo->m_hConn);
+			}
 			break;
 		case k_ESteamNetworkingConnectionState_FindingRoute:
 			
@@ -138,6 +140,9 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 		case k_ESteamNetworkingConnectionState_Connected:
 			// We will get a callback immediately after accepting the connection.
 			// Since we are the server, we can ignore this, it's not news to us.
+			if(OnClientConnected){
+				OnClientConnected(pInfo->m_hConn);
+			}
 			break;
 		case k_ESteamNetworkingConnectionState_ClosedByPeer:
 		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
@@ -176,7 +181,9 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			// and we cannot linger because it's already closed on the other end,
 			// so we just pass 0's.
 			interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
-			
+			if(OnClientDisconnected){
+				OnClientDisconnected(pInfo->m_hConn);
+			}
 			break;
 		case k_ESteamNetworkingConnectionState_FinWait:
 			

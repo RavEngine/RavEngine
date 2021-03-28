@@ -70,16 +70,25 @@ void NetworkClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			// so we just pass 0's.
 			interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
 			connection = k_HSteamNetConnection_Invalid;
+			if(OnLostConnection){
+				OnLostConnection(pInfo->m_hConn);
+			}
 			break;
 		}
 			
 		case k_ESteamNetworkingConnectionState_Connecting:
 			// We will get this callback when we start connecting.
 			// We can ignore this.
+			if (OnConnecting){
+				OnConnecting(pInfo->m_hConn);
+			}
 			break;
 			
 		case k_ESteamNetworkingConnectionState_Connected:
 			Debug::Log("Connected to remote host");
+			if(OnConnected){
+				OnConnected(pInfo->m_hConn);
+			}
 			break;
 			
 		default:
@@ -101,7 +110,9 @@ NetworkClient::~NetworkClient(){
 
 //routing call
 void NetworkClient::SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t * pInfo){
-	currentClient->OnSteamNetConnectionStatusChanged(pInfo);
+	if (currentClient){
+		currentClient->OnSteamNetConnectionStatusChanged(pInfo);
+	}
 }
 
 void NetworkClient::ClientTick(){

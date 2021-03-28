@@ -6,6 +6,7 @@
 #include "Ref.hpp"
 #include <uuids.h>
 #include <phmap.h>
+#include <functional>
 
 namespace RavEngine {
 	class Entity;
@@ -36,6 +37,10 @@ public:
 	void ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object);
 	
 	void ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base& var);
+	
+	//attach event listeners here
+	std::function<void(HSteamNetConnection)> OnClientConnecting, OnClientConnected, OnClientDisconnected;
+	
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;

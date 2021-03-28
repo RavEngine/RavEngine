@@ -4,6 +4,7 @@
 #include "NetworkBase.hpp"
 #include <steam/isteamnetworkingsockets.h>
 #include <thread>
+#include <functional>
 
 namespace RavEngine {
 
@@ -18,6 +19,10 @@ public:
 	void SendMessageToServer(const std::string_view& msg, Reliability mode) const;
 
 	void OnRPC(const std::string_view& cmd);
+	
+	//attach event listeners here
+	std::function<void(HSteamNetConnection)> OnConnecting, OnConnected, OnLostConnection;
+	
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamNetConnection connection = k_HSteamNetConnection_Invalid;
