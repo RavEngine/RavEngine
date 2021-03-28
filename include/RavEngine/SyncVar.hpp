@@ -15,16 +15,39 @@ protected:
 	static queue_t queue_A, queue_B;
 	static std::atomic<queue_t*> readingptr, writingptr;
 	
-	bool isOwner = App::networkManager.IsServer();
-
 public:
+	static decltype(all_syncvars)& GetAllSyncvars() {
+		return all_syncvars;
+	}
+	
+	const uuids::uuid id = uuids::uuid::create();
+	
+	/* On the server:
+	 *	invalid = the server has ownership
+	 *	<any number> = the machine on the specified connection has ownership
+	 *
+	 * On the client:
+	 *	invalid = this machine does __not__ have ownership
+	 *	<any number> = this machine has ownership
+	 */
+	HSteamNetConnection owner = k_HSteamNetConnection_Invalid;
+	
+	inline bool IsOwner(){
+		if (App::networkManager.IsServer()){
+			return owner == k_HSteamNetConnection_Invalid;
+		}
+		else if (App::networkManager.IsClient()){
+			return owner != k_HSteamNetConnection_Invalid;
+		}
+	}
+	
 	virtual void NetSync(const std::string_view& data) = 0;
 	
 	/**
 	Enqueue a message from the networking. For internal use only
 	@param cmd the raw command from the networking
 	*/
-	static inline void EnqueueCmd(const std::string_view& cmd){
+	static inline void EnqueueCmd(const std::string_view& cmd, HSteamNetConnection origin){
 		writingptr.load()->enqueue(std::string(cmd));
 	}
 	
@@ -62,7 +85,6 @@ template<typename T>
 class SyncVar : public SyncVar_base{
 	T value, prev;
 	int threshold = 0.1;
-	uuids::uuid id = uuids::uuid::create();
 	
 public:
 	SyncVar(const T& input ) : value(input){
@@ -77,7 +99,7 @@ public:
 	}
 	
 	void NetSync(const std::string_view& data) override{
-		if (!isOwner) {
+		if (!IsOwner()) {
 			prev = value;
 			std::memcpy(&value, data.data() + 16 + 1, sizeof(T));
 		}
@@ -85,7 +107,7 @@ public:
 	
 	// T assignment
 	inline void operator=(const T& other) {
-		if (isOwner) {
+		if (IsOwner()) {
 			value = other;
 			if (std::abs(value - prev) >= threshold) {
 				//sync over network
@@ -99,27 +121,11 @@ public:
 
 				//update prev
 				prev = value;
-
 			}
 		}
 		else {
 			Debug::Warning("Cannot set syncvar that is not locally owned");
 		}
-	}
-
-	/**
-	Change the ownership status. Note that the other side must change its status as well for this to work.
-	@param owner the new ownership status
-	*/
-	inline void SetOwner(bool owner) {
-		isOwner = owner;
-	}
-
-	/**
-	@return the current ownership status of this syncvar
-	*/
-	inline bool IsOwner() const{
-		return isOwner;
 	}
 	
 	//convert to T

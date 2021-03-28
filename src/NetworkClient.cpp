@@ -137,7 +137,13 @@ void NetworkClient::ClientTick(){
 				break;
 			case NetworkBase::CommandCode::SyncVar:
 				//TODO: check ownership
-				SyncVar_base::EnqueueCmd(message);
+				SyncVar_base::EnqueueCmd(message,connection);
+				break;
+			case NetworkBase::CommandCode::SyncVarOwnershipRevoked:
+					
+				break;
+			case NetworkBase::CommandCode::SyncVarOwnershipToThis:
+				
 				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
@@ -230,6 +236,20 @@ void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
 	uuids::uuid id(cmd.data() + 1);
 	NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
 		id->Owner = 30;	//any number = this machine has ownership
+	});
+}
+
+void NetworkClient::SyncVarOwnershipRevoked(const std::string_view &cmd){
+	uuids::uuid id(cmd.data() + 1);
+	SyncVar_base::GetAllSyncvars().if_contains(id, [&](SyncVar_base* var){
+		var->owner = k_HSteamNetConnection_Invalid;
+	});
+}
+
+void NetworkClient::SyncVarOwnershipToThis(const std::string_view &cmd){
+	uuids::uuid id(cmd.data() + 1);
+	SyncVar_base::GetAllSyncvars().if_contains(id, [&](SyncVar_base* var){
+		var->owner = 30;	//any other number = this machine owns it
 	});
 }
 

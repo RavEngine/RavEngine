@@ -36,11 +36,12 @@ protected:
      @param cmd the raw command from server
      */
     void NetDestroy(const std::string_view& cmd);
-
 	
 	void OwnershipRevoked(const std::string_view& cmd);
-
 	void OwnershipToThis(const std::string_view& cmd);
+	
+	void SyncVarOwnershipRevoked(const std::string_view& cmd);
+	void SyncVarOwnershipToThis(const std::string_view& cmd);
 
 	static NetworkClient* currentClient;
 };

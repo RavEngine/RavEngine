@@ -39,7 +39,9 @@ public:
 			RPC,
             OwnershipToThis,
             OwnershipRevoked,
-			SyncVar
+			SyncVar,
+			SyncVarOwnershipRevoked,
+			SyncVarOwnershipToThis
 		};
 	};
 };

@@ -224,7 +224,7 @@ void NetworkServer::ServerTick(){
 				OnRPC(message, pIncomingMsg->GetConnection());
                 break;
 			case NetworkBase::CommandCode::SyncVar:
-				SyncVar_base::EnqueueCmd(message);
+				SyncVar_base::EnqueueCmd(message, pIncomingMsg->GetConnection());
 				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
@@ -271,5 +271,26 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref
 		char msg[16 + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipToThis;
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
+	}
+}
+
+void NetworkServer::ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base &var){
+	//send message revoke ownership for the existing owner, if it is not currently owned by server
+	if (var.owner != k_HSteamNetConnection_Invalid){
+		auto uuid = var.id.raw();
+		char message[16+1];
+		message[0] = NetworkBase::CommandCode::SyncVarOwnershipRevoked;
+		std::memcpy(message+1, uuid.data(), uuid.length());
+	}
+	
+	//update the object's ownership value
+	var.owner = newOwner;
+
+	//send message to the new owner that it is now the owner, if the new owner is not the server
+	if (newOwner != k_HSteamNetConnection_Invalid){
+		auto uuid = var.id.raw();
+		char message[16+1];
+		message[0] = NetworkBase::CommandCode::SyncVarOwnershipToThis;
+		std::memcpy(message+1, uuid.data(), uuid.length());
 	}
 }

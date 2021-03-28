@@ -9,6 +9,7 @@
 
 namespace RavEngine {
 	class Entity;
+	class SyncVar_base;
 
 class NetworkServer : public NetworkBase{
 public:
@@ -33,6 +34,8 @@ public:
 	@param object the networkidentity to udpate the ownership of
 	*/
 	void ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object);
+	
+	void ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base& var);
 protected:
 	ISteamNetworkingSockets *interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;
