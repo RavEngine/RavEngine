@@ -365,6 +365,11 @@ group_in("Libraries/bgfx" "bgfx;bimg;bx")
 group_in("Libraries/bgfx/tools" "shaderc;geometryc;geometryv;texturec;texturev;tools")
 group_in("Libraries/bgfx/3rdparty" "astc;astc-codec;edtaa3;etc1;etc2;fcpp;glcpp;glslang;glsl-optimizer;iqa;mesa;meshoptimizer;nvtt;pvrtc;spirv-cross;spirv-tools;squish")
 
+# exclude some targets from install
+SET_PROPERTY(TARGET "texturev" PROPERTY EXCLUDE_FROM_ALL ON)
+SET_PROPERTY(TARGET "geometryv" PROPERTY EXCLUDE_FROM_ALL ON)
+SET_PROPERTY(TARGET "geometryc" PROPERTY EXCLUDE_FROM_ALL ON)
+SET_PROPERTY(TARGET "texturec" PROPERTY EXCLUDE_FROM_ALL ON)
 
 # pack resources
 function(pack_resources)

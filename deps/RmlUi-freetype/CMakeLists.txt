@@ -26,6 +26,7 @@ target_compile_definitions(RmlCore
 set(CMAKE_DISABLE_FIND_PACKAGE_PNG ON CACHE INTERNAL "")
 add_subdirectory("freetype")
 SET(LOTTIE_TEST OFF CACHE INTERNAL "")
+set(LIB_INSTALL_DIR "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}" CACHE INTERNAL "")
 add_subdirectory("rlottie")
 target_link_libraries(RmlCore PUBLIC freetype rlottie)
 

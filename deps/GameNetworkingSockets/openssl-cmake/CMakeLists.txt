@@ -187,14 +187,14 @@ string( REPLACE "@CMAKE_INSTALL_PREFIX@" "${CMAKE_INSTALL_PREFIX}" C_REHASH "${C
 file( WRITE ${PROJECT_BINARY_DIR}/c_rehash "${C_REHASH}" )
 
 file( GLOB PUBLIC_HEADERS "${PROJECT_BINARY_DIR}/include/openssl/*.h" )
-install( FILES ${PUBLIC_HEADERS} DESTINATION include/openssl )
+# install( FILES ${PUBLIC_HEADERS} DESTINATION include/openssl )
 
-install( FILES
-  ${PROJECT_BINARY_DIR}/c_rehash
-  FAQ LICENSE README README.ENGINE
-  DESTINATION share/openssl )
+# install( FILES
+#   ${PROJECT_BINARY_DIR}/c_rehash
+#   FAQ LICENSE README README.ENGINE
+#   DESTINATION share/openssl )
 
-install( DIRECTORY doc DESTINATION share )
+# install( DIRECTORY doc DESTINATION share )
 
 # Generate the package target
 set( CPACK_GENERATOR ZIP TGZ )

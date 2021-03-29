@@ -238,19 +238,19 @@ if (BUILD_RESONANCE_AUDIO_API)
             $<TARGET_OBJECTS:SadieHrtfsObj>
             $<TARGET_OBJECTS:PffftObj>)
 
-    set(RA_INSTALL_DIR "${INSTALL_DIR}/resonance_audio/")
-    install(TARGETS ResonanceAudioStatic ResonanceAudioShared
-            LIBRARY DESTINATION ${RA_INSTALL_DIR}/lib
-            ARCHIVE DESTINATION ${RA_INSTALL_DIR}/lib
-            RUNTIME DESTINATION ${RA_INSTALL_DIR}/lib
-            PUBLIC_HEADER DESTINATION ${RA_INSTALL_DIR}/include)
+#     set(RA_INSTALL_DIR "${INSTALL_DIR}/resonance_audio/")
+#     install(TARGETS ResonanceAudioStatic ResonanceAudioShared
+#             LIBRARY DESTINATION ${RA_INSTALL_DIR}/lib
+#             ARCHIVE DESTINATION ${RA_INSTALL_DIR}/lib
+#             RUNTIME DESTINATION ${RA_INSTALL_DIR}/lib
+#             PUBLIC_HEADER DESTINATION ${RA_INSTALL_DIR}/include)
 
-    set(RA_PUBLIC_HEADERS
-            ${RA_SOURCE_DIR}/api/binaural_surround_renderer.h
-            ${RA_SOURCE_DIR}/api/resonance_audio_api.h
-            )
-    install(FILES ${RA_PUBLIC_HEADERS}
-            DESTINATION ${RA_INSTALL_DIR}/include)
+#     set(RA_PUBLIC_HEADERS
+#             ${RA_SOURCE_DIR}/api/binaural_surround_renderer.h
+#             ${RA_SOURCE_DIR}/api/resonance_audio_api.h
+#             )
+#     install(FILES ${RA_PUBLIC_HEADERS}
+#             DESTINATION ${RA_INSTALL_DIR}/include)
 endif (BUILD_RESONANCE_AUDIO_API)
 
 
