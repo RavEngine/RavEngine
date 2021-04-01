@@ -111,7 +111,7 @@ namespace RavEngine{
 
 		/**
 		 Determines if this Entity has a component of a type.
-		 @return true if this entity has a component of type ref
+		 @return true if this entity has a component of type T
 		 @note Do not use to determine if a GetComponent call will succeed, that is not threadsafe. Instead, use GetComponent directly and check if the resulting std::optional is valid.
 		 */
 		template<typename T>

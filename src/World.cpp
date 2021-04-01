@@ -21,6 +21,7 @@
 #include "BuiltinMaterials.hpp"
 #include "NetworkIdentity.hpp"
 #include "RPCSystem.hpp"
+#include "AnimatorSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -54,6 +55,7 @@ RavEngine::World::World(){
 	systemManager.RegisterSystem<ScriptSystem>(make_shared<ScriptSystem>());
 	systemManager.RegisterSystem<AudioRoomSyncSystem>(make_shared<AudioRoomSyncSystem>());
 	systemManager.RegisterSystem<RPCSystem>(make_shared<RPCSystem>());
+	systemManager.RegisterSystem<AnimatorSystem>(make_shared<AnimatorSystem>());
 }
 
 /**

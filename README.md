@@ -79,6 +79,7 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
 - x11-dev
+- alsa-lib-devel (or another SDL2-supported audio library)
 
 ## Example programs
 View a respository with code samples here: [https://github.com/ravbug/ravengine-samples](https://github.com/ravbug/ravengine-samples)

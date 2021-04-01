@@ -466,7 +466,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 		
 	//Deferred geometry pass
-	
+	bool hasGeo = false;
 	//iterate over each row of the table
 	for(const auto& row : fd.opaques){
 		//fill the buffer using the material to write the material data for each instance
@@ -490,19 +490,22 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 		//call Draw with the staticmesh
 		if (row.first.second){
+			hasGeo = true;
 			row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(),Views::DeferredGeo);
 		}
 	}
-	// Lighting pass
-	bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
-	bool dl = DrawLightsOfType<DirectionalLight>(fd.directionals);
-	bool pl = DrawLightsOfType<SpotLight>(fd.spots);
-	bool sl = DrawLightsOfType<PointLight>(fd.points);
-	
-	//blit to view 0 using the fullscreen quad
-	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
-	if (al || dl || pl || sl ){
-		bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
+	if (hasGeo){
+		// Lighting pass
+		bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
+		bool dl = DrawLightsOfType<DirectionalLight>(fd.directionals);
+		bool pl = DrawLightsOfType<SpotLight>(fd.spots);
+		bool sl = DrawLightsOfType<PointLight>(fd.points);
+		
+		//blit to view 0 using the fullscreen quad
+		bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
+		if (al || dl || pl || sl ){
+			bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
+		}
 	}
 	
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
