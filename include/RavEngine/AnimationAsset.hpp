@@ -18,7 +18,7 @@ class AnimationAsset : public IAnimGraphable{
 	ozz::animation::Animation anim;
 	//method to calculate curves given a time point
 public:
-	AnimationAsset(const std::string& name){}
+	AnimationAsset(const std::string& name);
 };
 
 class AnimationState : public IAnimGraphable{
