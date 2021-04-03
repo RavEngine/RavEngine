@@ -19,7 +19,7 @@ using namespace std;
 typedef VertexNormalUV vertex_t;
 
 MeshAsset::MeshAsset(const string& name, const decimalType scale){
-	string dir = "meshes/" + name;
+	string dir = "objects/" + name;
 	
 	if (!App::Resources->Exists(dir.c_str())) {
 		Debug::Fatal("Cannot open resource: {}", dir);

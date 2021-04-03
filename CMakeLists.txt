@@ -375,7 +375,7 @@ SET_PROPERTY(TARGET "texturec" PROPERTY EXCLUDE_FROM_ALL ON)
 function(pack_resources)
 	set(optional)
 	set(args TARGET)
-	set(list_args SHADERS MESHES TEXTURES UIS FONTS SOUNDS)
+	set(list_args SHADERS OBJECTS TEXTURES UIS FONTS SOUNDS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -391,7 +391,7 @@ function(pack_resources)
 	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
 
 	# add polygon primitives provided by engine
-	file(GLOB ENG_MESHES "${eng_dir}/meshes/*")
+	file(GLOB ENG_OBJECTS "${eng_dir}/objects/*")
 
 	# add engine-provided shaders
 	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.cmake")
@@ -407,7 +407,7 @@ function(pack_resources)
 	# helper for copying to staging directory
 	function(copy_helper FILE_LIST output_dir)
 		foreach(FILE ${FILE_LIST})
-			# copy meshes pre-build if they are changed
+			# copy objects pre-build if they are changed
 			get_filename_component(output_name "${FILE}" NAME)
 			set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/${output_dir}/${output_name}")
 			add_custom_command(PRE_BUILD 
@@ -419,8 +419,8 @@ function(pack_resources)
 		endforeach()
 	endfunction()
 
-	copy_helper("${ARGS_MESHES}" "meshes")
-	copy_helper("${ENG_MESHES}" "meshes")
+	copy_helper("${ARGS_OBJECTS}" "objects")
+	copy_helper("${ENG_OBJECTS}" "objects")
 	copy_helper("${ARGS_TEXTURES}" "textures")
 	copy_helper("${ARGS_UIS}" "uis")
 	copy_helper("${ENG_UIS}" "uis")
@@ -458,7 +458,7 @@ function(pack_resources)
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 	)
 
-	set(assets ${ARGS_MESHES} ${all_shaders_property} ${ENG_MESHES} ${ARGS_TEXTURES} ${copy_depends})
+	set(assets ${ARGS_OBJECTS} ${all_shaders_property} ${ENG_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
 
 	# the command to pack into a zip
 	add_custom_command(
