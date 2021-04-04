@@ -10,20 +10,25 @@ using namespace RavEngine;
 using namespace std;
 
 AnimationAsset::AnimationAsset(const std::string& name){
-	if(App::Resources->Exists(name.c_str())){
+	auto path = fmt::format("objects/{}", name);
+	if(App::Resources->Exists(path.c_str())){
 		std::vector<uint8_t> data;
-		App::Resources->FileContentsAt(name.c_str(),data);
+		App::Resources->FileContentsAt(path.c_str(),data);
 		
 		ozz::io::MemoryStream mstr;
-		mstr.Read(data.data(), data.size());
+		mstr.Write(data.data(), data.size());
+		mstr.Seek(0, ozz::io::Stream::kSet);
 		
 		ozz::io::IArchive archive(&mstr);
 		if (archive.TestTag<ozz::animation::Animation>()){
 			archive >> anim;
 		}
 		else{
-			Debug::Fatal("{} is not an animation",name);
+			Debug::Fatal("{} is not an animation",path);
 		}
+	}
+	else{
+		Debug::Fatal("No file at {}",path);
 	}
 }
 

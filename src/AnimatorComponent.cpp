@@ -39,6 +39,12 @@ void AnimBlendTree::Sample(float t, ozz::vector<ozz::math::SoaTransform> &output
 	int index = 0;
 	for(auto& row : states){
 		Sampler& sampler = const_cast<Sampler&>(row.second);	//TODO: avoid const_cast
+		
+		//make sure the buffers are the correct size
+		if (sampler.locals.size() != skeleton.num_soa_joints()){
+			sampler.locals.resize(skeleton.num_soa_joints());
+		}
+
 		row.second.node.Sample(t,sampler.locals,cache,skeleton);
 		
 		//populate layers
@@ -49,11 +55,11 @@ void AnimBlendTree::Sample(float t, ozz::vector<ozz::math::SoaTransform> &output
 	}
 	
 	ozz::animation::BlendingJob blend_job;
-	blend_job.threshold = 0;			//TODO: make threshold configurable
+	blend_job.threshold = 0.1;			//TODO: make threshold configurable
 	blend_job.layers = ozz::span(layers,states.size());
 	blend_job.bind_pose = skeleton.joint_bind_poses();
-	
 	blend_job.output = make_span(output);
+	
 	if (!blend_job.Run()){
 		Debug::Fatal("Blend job failed");
 	}

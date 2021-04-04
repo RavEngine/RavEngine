@@ -83,6 +83,10 @@ struct AnimBlendTree : public IAnimGraphable{
 	 */
 	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const override;
 	
+	inline void SetBlendPos(const normalized_vec2& newPos){
+		blend_pos = newPos;
+	}
+	
 private:
 	struct Sampler{
 		ozz::vector<ozz::math::SoaTransform> locals;
@@ -99,7 +103,13 @@ protected:
 	
 public:
 	
-	AnimatorComponent(Ref<SkeletonAsset> sk) : skeleton(sk){}
+	AnimatorComponent(Ref<SkeletonAsset> sk) : skeleton(sk){
+		UpdateSkeletonData();
+	}
+	
+	inline void SetBlendPos(const normalized_vec2& newPos){
+		tree->SetBlendPos(newPos);
+	}
 		
 	inline void Play(){
 		isPlaying = true;
@@ -128,6 +138,15 @@ protected:
 	ozz::vector<ozz::math::SoaTransform> transforms;
 	ozz::animation::SamplingCache cache;
 	ozz::vector<ozz::math::Float4x4> models;
+	
+	/**
+	 Update buffer sizes for current skeleton
+	 */
+	void UpdateSkeletonData(){
+		transforms.resize(skeleton->GetSkeleton().num_soa_joints());
+		models.resize(skeleton->GetSkeleton().num_joints());
+		cache.Resize(skeleton->GetSkeleton().num_joints());
+	}
 	
 	bool isPlaying = false;
 	float time = 0, speed = 1;
