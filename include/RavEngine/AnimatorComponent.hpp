@@ -8,7 +8,7 @@
 #include "Ref.hpp"
 #include <algorithm>
 #include <vector>
-#include "Queryable.hpp"
+#include "Tween.hpp"
 
 namespace RavEngine{
 
@@ -103,14 +103,53 @@ protected:
 	
 public:
 	
-	AnimatorComponent(Ref<SkeletonAsset> sk) : skeleton(sk){
-		UpdateSkeletonData();
-	}
+	//a node in the state machine
+	struct State{
+		unsigned short ID;
+		Ref<IAnimGraphable> clip;
+		float time = 0, speed = 0.1;
+		
+		struct Transition{
+			enum class TimeMode{
+				Blended = 0,	//the time from this state carries over to the target state
+				BeginNew = 1	//the target state's time is set to 0 when the transition begins
+			} type;
+			Tween<float> transition;
+		};
+		
+		//transitions out of this state, keyed by ID
+		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
+	};
 	
-	inline void SetBlendPos(const normalized_vec2& newPos){
-		tree->SetBlendPos(newPos);
+	typedef decltype(State::ID) id_t;
+	
+	/**
+	 Create an AnimatorComponent with a SkeletonAsset
+	 @param sk the skeleton asset
+	 */
+	AnimatorComponent(Ref<SkeletonAsset> sk){
+		UpdateSkeletonData(sk);
 	}
 		
+	/**
+	 Transitions to the new state. If the current state has a transition to the target state, that transition is played.
+	 Otherwise, the state machine simply jumps to the target state without a transition.
+	 @param newState the state to switch to
+	 */
+	inline void Goto(id_t newState){
+		prevState = currentState;
+		currentState = newState;
+		//TODO: Signal that a state transition must occur
+	}
+	
+	inline void InsertState(const State& state){
+		states.insert(std::make_pair(state.ID,state));
+	}
+	
+	inline bool SetLoop(bool state){
+		isLooping = state;
+	}
+	
 	inline void Play(){
 		isPlaying = true;
 	}
@@ -118,23 +157,14 @@ public:
 	inline void Pause(){
 		isPlaying = false;
 	}
-	
-	inline void SetSpeed(float s){
-		speed = s;
-	}
-	
-	inline void Seek(float pos){
-		time = std::clamp(pos, 0.0f, 1.0f);
-	}
-	
-	void Tick(float timeScale);
-	
-	inline void SetBlendTree(Ref<AnimBlendTree> t){
-		tree = t;
-	}
+
+	void Tick(float timeScale);	
 	
 protected:
-	Ref<AnimBlendTree> tree;
+	locked_node_hashmap<id_t,State> states;
+	
+	id_t currentState, prevState;
+	
 	ozz::vector<ozz::math::SoaTransform> transforms;
 	ozz::animation::SamplingCache cache;
 	ozz::vector<ozz::math::Float4x4> models;
@@ -142,14 +172,14 @@ protected:
 	/**
 	 Update buffer sizes for current skeleton
 	 */
-	void UpdateSkeletonData(){
+	void UpdateSkeletonData(Ref<SkeletonAsset> sk){
+		skeleton = sk;
 		transforms.resize(skeleton->GetSkeleton().num_soa_joints());
 		models.resize(skeleton->GetSkeleton().num_joints());
 		cache.Resize(skeleton->GetSkeleton().num_joints());
 	}
 	
-	bool isPlaying = false;
-	float time = 0, speed = 1;
+	bool isPlaying = false, isLooping = false;
 };
 
 }

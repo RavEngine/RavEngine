@@ -13,9 +13,14 @@ inline float distance(const normalized_vec2& p1, const normalized_vec2& p2){
 
 void AnimatorComponent::Tick(float timeScale){
 	//calculate the tree
-	tree->Sample(time, transforms, cache,skeleton->GetSkeleton());
+	//TODO: if not playing, and this frame was already calculated, don't recalculate it
+	auto& state = states[currentState];
+	state.clip->Sample(state.time, transforms, cache,skeleton->GetSkeleton());
 	
-	//TODO: advance the time
+	if (isPlaying){
+		state.time += state.speed * timeScale;
+		state.time = isLooping ? fmod(state.time,1.0f) : std::min(state.time,1.0f);
+	}
 	
 	//convert from local space to model space
 	ozz::animation::LocalToModelJob job;
