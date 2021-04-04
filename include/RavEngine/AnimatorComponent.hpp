@@ -75,6 +75,14 @@ struct AnimBlendTree : public IAnimGraphable{
 		return states.at(id).node;
 	}
 	
+	inline bool IsEmpty() const{
+		return states.empty();
+	}
+	
+	inline void Clear(){
+		states.clear();
+	}
+	
 	/**
 	 Sample the animation curves in this tree
 	 @param t the time to sample
@@ -137,9 +145,21 @@ public:
 	 @param newState the state to switch to
 	 */
 	inline void Goto(id_t newState){
-		prevState = currentState;
-		currentState = newState;
-		//TODO: Signal that a state transition must occur
+		if (!(states.contains(newState) && states.at(currentState).exitTransitions.contains(newState))){	//just jump to the new state
+			currentState = newState;
+		}
+		else{
+			//want to blend to the new state, so set up the blendingclip
+			stateBlend.from = currentState;
+			stateBlend.to = newState;
+			
+			//seek tween back to beginning
+			stateBlend.currentTween = states.at(currentState).exitTransitions.at(newState).transition;
+			stateBlend.currentTween.seek(0);
+			
+			isBlending = true;
+			currentState = newState;
+		}
 	}
 	
 	inline void InsertState(const State& state){
@@ -163,9 +183,15 @@ public:
 protected:
 	locked_node_hashmap<id_t,State> states;
 	
-	id_t currentState, prevState;
+	struct StateBlend{
+		id_t from, to;
+		decltype(State::Transition::transition) currentTween;
+	} stateBlend;
 	
-	ozz::vector<ozz::math::SoaTransform> transforms;
+	
+	id_t currentState;
+	
+	ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
 	ozz::animation::SamplingCache cache;
 	ozz::vector<ozz::math::Float4x4> models;
 	
@@ -175,11 +201,13 @@ protected:
 	void UpdateSkeletonData(Ref<SkeletonAsset> sk){
 		skeleton = sk;
 		transforms.resize(skeleton->GetSkeleton().num_soa_joints());
+		transformsSecondaryBlending.resize(skeleton->GetSkeleton().num_soa_joints());
 		models.resize(skeleton->GetSkeleton().num_joints());
 		cache.Resize(skeleton->GetSkeleton().num_joints());
 	}
 	
 	bool isPlaying = false, isLooping = false;
+	bool isBlending = false;
 };
 
 }

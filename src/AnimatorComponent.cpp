@@ -14,13 +14,49 @@ inline float distance(const normalized_vec2& p1, const normalized_vec2& p2){
 void AnimatorComponent::Tick(float timeScale){
 	//calculate the tree
 	//TODO: if not playing, and this frame was already calculated, don't recalculate it
-	auto& state = states[currentState];
-	state.clip->Sample(state.time, transforms, cache,skeleton->GetSkeleton());
 	
-	if (isPlaying){
-		state.time += state.speed * timeScale;
-		state.time = isLooping ? fmod(state.time,1.0f) : std::min(state.time,1.0f);
+	//if isBlending, need to calculate both states, and blend between them
+	if (isBlending){
+		//update the tween
+		stateBlend.currentTween.step(timeScale);
+		
+		auto& fromState = states[stateBlend.from];
+		auto& toState = states[stateBlend.to];
+		fromState.clip->Sample(fromState.time, transforms, cache, skeleton->GetSkeleton());
+		toState.clip->Sample(toState.time, transformsSecondaryBlending, cache, skeleton->GetSkeleton());
+		
+		//blend into output
+		ozz::animation::BlendingJob::Layer layers[2];
+		
+		//populate layers
+		layers[0].transform = ozz::make_span(transforms);
+		layers[0].weight = 0.5;	//TODO: tween influence
+		layers[0].transform = ozz::make_span(transformsSecondaryBlending);
+		layers[0].weight = 0.5;	//TODO: tween influence
+		
+		//TODO: when the tween is finished, isBlending = false
+		isBlending = false;
+		
+		ozz::animation::BlendingJob blend_job;
+		blend_job.threshold = 0;			//TODO: make threshold configurable
+		blend_job.layers = layers;
+		blend_job.bind_pose = skeleton->GetSkeleton().joint_bind_poses();
+		
+		blend_job.output = make_span(transforms);
+		if (!blend_job.Run()){
+			Debug::Fatal("Blend job failed");
+		}
 	}
+	else{
+		auto& state = states[currentState];
+		state.clip->Sample(state.time, transforms, cache,skeleton->GetSkeleton());
+		
+		if (isPlaying){
+			state.time += state.speed * timeScale;
+			state.time = isLooping ? fmod(state.time,1.0f) : std::min(state.time,1.0f);
+		}
+	}
+	
 	
 	//convert from local space to model space
 	ozz::animation::LocalToModelJob job;

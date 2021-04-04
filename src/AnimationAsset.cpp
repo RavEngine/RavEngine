@@ -53,6 +53,11 @@ void AnimationClip::Sample(float t, ozz::vector<ozz::math::SoaTransform>& transf
 		Sampler& sampler = const_cast<Sampler&>(row.second);	//TODO: avoid const_cast
 		row.first->Sample(t,sampler.locals,cache,skeleton);
 		
+		//make sure the buffers are the correct size
+		if (sampler.locals.size() != skeleton.num_soa_joints()){
+			sampler.locals.resize(skeleton.num_soa_joints());
+		}
+		
 		//populate layers
 		layers[index].transform = ozz::make_span(sampler.locals);
 		layers[index].weight = sampler.influence;

@@ -47,13 +47,13 @@ class AnimationClip : public IAnimGraphable{
 		float influence;
 		ozz::vector<ozz::math::SoaTransform> locals;
 	};
-	locked_hashmap<Ref<AnimationAsset>,Sampler, SpinLock> influence;
+	locked_hashmap<Ref<IAnimGraphable>,Sampler, SpinLock> influence;
 public:
 	/**
 	 Add an AnimationAsset to the collection, or change the influence for the existing asset
 	 @param inf the influence for this clip
 	 */
-	void SetAnimationInfluence(Ref<AnimationAsset> asset, float inf = 1){
+	inline void SetAnimationInfluence(Ref<IAnimGraphable> asset, float inf = 1){
 		influence[asset].influence = inf;
 	}
 	
@@ -61,8 +61,16 @@ public:
 	 Remove an animation from the collection
 	 @param asset the asset to remove
 	 */
-	void RemoveAnimation(Ref<AnimationAsset> asset){
+	inline void RemoveAnimation(Ref<IAnimGraphable> asset){
 		influence.erase(asset);
+	}
+	
+	inline void Clear(){
+		influence.clear();
+	}
+	
+	inline bool IsEmpty() const{
+		return influence.empty();
 	}
 	
 	/**
