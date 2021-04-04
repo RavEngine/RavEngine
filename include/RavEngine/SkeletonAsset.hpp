@@ -12,5 +12,12 @@ public:
 	class Manager{
 		
 	};
+	
+	/**
+	 Get the internal skeleton. For internal use only.
+	 */
+	const decltype(skeleton)& GetSkeleton() const{
+		return skeleton;
+	}
 };
 }

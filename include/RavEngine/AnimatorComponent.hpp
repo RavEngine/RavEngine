@@ -17,6 +17,13 @@ class normalized_vec2{
 public:
 	normalized_vec2(float ix, float iy) : x(std::clamp(ix,-1.0f,1.0f)), y(std::clamp(iy,-1.0f,1.0f)){}
 	normalized_vec2() : normalized_vec2(0,0){}
+	
+	inline decltype(x) get_x() const{
+		return x;
+	}
+	inline decltype(y) get_y() const{
+		return y;
+	}
 };
 
 struct AnimBlendTree : public IAnimGraphable{
@@ -31,6 +38,14 @@ struct AnimBlendTree : public IAnimGraphable{
 		
 		template<typename T>
 		Node(Ref<T> s, const normalized_vec2& pos, float i = 1) : state(std::static_pointer_cast<IAnimGraphable>(s)), graph_pos(pos), max_influence(i){}
+		
+		/**
+		 Sample the animation curves in this tree
+		 @param t the time to sample
+		 @param output the vector to write the output transforms to
+		 @param cache a sampling cache, modified when used
+		 */
+		void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const override;
 	};
 	
 	/**
@@ -39,7 +54,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param node the node to insert into the tree.
 	 */
 	inline void InsertNode(uint8_t id, const Node& node){
-		states[id] = node;
+		states[id].node = node;
 	}
 	
 	/**
@@ -57,11 +72,23 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @throws if no node exists at id
 	 */
 	Node& getNode(const uint8_t id){
-		return states.at(id);
+		return states.at(id).node;
 	}
 	
+	/**
+	 Sample the animation curves in this tree
+	 @param t the time to sample
+	 @param output the vector to write the output transforms to
+	 @param cache a sampling cache, modified when used
+	 */
+	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const override;
+	
 private:
-	locked_node_hashmap<uint8_t,Node,SpinLock> states;
+	struct Sampler{
+		ozz::vector<ozz::math::SoaTransform> locals;
+		Node node;
+	};
+	locked_node_hashmap<uint8_t,Sampler,SpinLock> states;
 	normalized_vec2 blend_pos;
 };
 
@@ -98,6 +125,9 @@ public:
 	
 protected:
 	Ref<AnimBlendTree> tree;
+	ozz::vector<ozz::math::SoaTransform> transforms;
+	ozz::animation::SamplingCache cache;
+	ozz::vector<ozz::math::Float4x4> models;
 	
 	bool isPlaying = false;
 	float time = 0, speed = 1;
