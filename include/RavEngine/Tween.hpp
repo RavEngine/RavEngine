@@ -109,7 +109,7 @@ namespace TweenCurves{
 			anim.step((float)scale / anim.duration());
 		}
 		
-		inline void seek(decimalType pos){
+		inline void seek(float pos){
 			anim.seek(pos);
 		}
 	};
