@@ -112,5 +112,9 @@ namespace TweenCurves{
 		inline void seek(float pos){
 			anim.seek(pos);
 		}
+		
+		inline float progress() const{
+			return anim.progress();
+		}
 	};
 }

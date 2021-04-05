@@ -17,11 +17,19 @@ void AnimatorComponent::Tick(float timeScale){
 	
 	//if isBlending, need to calculate both states, and blend between them
 	if (isBlending){
-		//update the tween
-		stateBlend.currentTween.step(timeScale);
 		
 		auto& fromState = states[stateBlend.from];
 		auto& toState = states[stateBlend.to];
+		
+		//advance playheads
+		if (isPlaying){
+			//update the tween
+			stateBlend.currentTween.step(timeScale);
+			
+			fromState.Tick(timeScale);
+			toState.Tick(timeScale);
+		}
+		
 		fromState.clip->Sample(fromState.time, transforms, cache, skeleton->GetSkeleton());
 		toState.clip->Sample(toState.time, transformsSecondaryBlending, cache, skeleton->GetSkeleton());
 		
@@ -30,12 +38,14 @@ void AnimatorComponent::Tick(float timeScale){
 		
 		//populate layers
 		layers[0].transform = ozz::make_span(transforms);
-		layers[0].weight = 0.5;	//TODO: tween influence
-		layers[0].transform = ozz::make_span(transformsSecondaryBlending);
-		layers[0].weight = 0.5;	//TODO: tween influence
+		layers[0].weight = 1 - fromState.currentBlendingValue;
+		layers[1].transform = ozz::make_span(transformsSecondaryBlending);
+		layers[1].weight = fromState.currentBlendingValue;
 		
-		//TODO: when the tween is finished, isBlending = false
-		isBlending = false;
+		//when the tween is finished, isBlending = false
+		if (stateBlend.currentTween.progress() >= 1.0){
+			isBlending = false;
+		}
 		
 		ozz::animation::BlendingJob blend_job;
 		blend_job.threshold = 0;			//TODO: make threshold configurable
@@ -52,11 +62,9 @@ void AnimatorComponent::Tick(float timeScale){
 		state.clip->Sample(state.time, transforms, cache,skeleton->GetSkeleton());
 		
 		if (isPlaying){
-			state.time += state.speed * timeScale;
-			state.time = isLooping ? fmod(state.time,1.0f) : std::min(state.time,1.0f);
+			state.Tick(timeScale);
 		}
 	}
-	
 	
 	//convert from local space to model space
 	ozz::animation::LocalToModelJob job;

@@ -108,7 +108,6 @@ class AnimatorComponent : public Component, public Queryable<AnimatorComponent>{
 protected:
 	
 	Ref<SkeletonAsset> skeleton;
-	
 public:
 	
 	//a node in the state machine
@@ -116,6 +115,7 @@ public:
 		unsigned short ID;
 		Ref<IAnimGraphable> clip;
 		float time = 0, speed = 0.1;
+		bool isLooping = true;
 		
 		struct Transition{
 			enum class TimeMode{
@@ -127,6 +127,21 @@ public:
 		
 		//transitions out of this state, keyed by ID
 		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
+		float currentBlendingValue = 0;
+		
+		inline void Tick(float timeScale){
+			time += speed * timeScale;
+			time = isLooping ? fmod(time,1.0f) : std::min(time,1.0f);
+		}
+		
+		template<typename T>
+		inline void SetTransition(decltype(ID) id, T interpolation, float duration){
+			auto tween = Tween<float>([this](float val){
+				currentBlendingValue = val;
+			},0.0);
+			tween.AddKeyframe(duration,interpolation,1.0);
+			exitTransitions[id].transition = tween;
+		}
 	};
 	
 	typedef decltype(State::ID) id_t;
@@ -144,14 +159,25 @@ public:
 	 Otherwise, the state machine simply jumps to the target state without a transition.
 	 @param newState the state to switch to
 	 */
-	inline void Goto(id_t newState){
-		if (!(states.contains(newState) && states.at(currentState).exitTransitions.contains(newState))){	//just jump to the new state
+	inline void Goto(id_t newState, bool skipTransition = false){
+		if (skipTransition || !(states.contains(newState) && states.at(currentState).exitTransitions.contains(newState))){	//just jump to the new state
 			currentState = newState;
 		}
 		else{
 			//want to blend to the new state, so set up the blendingclip
 			stateBlend.from = currentState;
 			stateBlend.to = newState;
+			
+			//copy time or reset time on target?
+			auto& ns = states.at(newState);
+			switch(ns.exitTransitions[newState].type){
+				case State::Transition::TimeMode::Blended:
+					ns.time = states.at(currentState).time;
+					break;
+				case State::Transition::TimeMode::BeginNew:
+					ns.time = 0;
+					break;
+			}
 			
 			//seek tween back to beginning
 			stateBlend.currentTween = states.at(currentState).exitTransitions.at(newState).transition;
@@ -162,12 +188,12 @@ public:
 		}
 	}
 	
+	/**
+	 Add a state to the state machine
+	 @param state the state to insert
+	 */
 	inline void InsertState(const State& state){
 		states.insert(std::make_pair(state.ID,state));
-	}
-	
-	inline bool SetLoop(bool state){
-		isLooping = state;
 	}
 	
 	inline void Play(){
@@ -206,7 +232,7 @@ protected:
 		cache.Resize(skeleton->GetSkeleton().num_joints());
 	}
 	
-	bool isPlaying = false, isLooping = false;
+	bool isPlaying = false;
 	bool isBlending = false;
 };
 
