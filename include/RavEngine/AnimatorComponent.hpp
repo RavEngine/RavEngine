@@ -204,7 +204,11 @@ public:
 		isPlaying = false;
 	}
 
-	void Tick(float timeScale);	
+	void Tick(float timeScale);
+	
+	inline decltype(skeleton) GetSkeleton() const{
+		return skeleton;
+	}
 	
 protected:
 	locked_node_hashmap<id_t,State> states;
@@ -234,6 +238,11 @@ protected:
 	
 	bool isPlaying = false;
 	bool isBlending = false;
+	
+public:
+	inline const decltype(models)& GetPose() const{
+		return models;
+	}
 };
 
 }
