@@ -37,7 +37,7 @@ void AnimationAsset::Sample(float time, ozz::vector<ozz::math::SoaTransform>& lo
 	ozz::animation::SamplingJob sampling_job;
 	sampling_job.animation = &anim;
 	sampling_job.cache = &cache;
-	sampling_job.ratio = 1;		//TODO: pass correct ratio (delta time)
+	sampling_job.ratio = time;
 	sampling_job.output = ozz::make_span(locals);
 	
 	if (!sampling_job.Run()){

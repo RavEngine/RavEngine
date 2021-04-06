@@ -114,7 +114,7 @@ public:
 	struct State{
 		unsigned short ID;
 		Ref<IAnimGraphable> clip;
-		float time = 0, speed = 0.1;
+		float time = 0, speed = 0.001;
 		bool isLooping = true;
 		
 		struct Transition{
@@ -224,24 +224,49 @@ protected:
 	ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
 	ozz::animation::SamplingCache cache;
 	ozz::vector<ozz::math::Float4x4> models;
+	ozz::vector<matrix4> glm_pose;
 	
 	/**
 	 Update buffer sizes for current skeleton
 	 */
 	void UpdateSkeletonData(Ref<SkeletonAsset> sk){
 		skeleton = sk;
-		transforms.resize(skeleton->GetSkeleton().num_soa_joints());
-		transformsSecondaryBlending.resize(skeleton->GetSkeleton().num_soa_joints());
-		models.resize(skeleton->GetSkeleton().num_joints());
-		cache.Resize(skeleton->GetSkeleton().num_joints());
+		const auto n_joints_soa = skeleton->GetSkeleton().num_soa_joints();
+		transforms.resize(n_joints_soa);
+		transformsSecondaryBlending.resize(n_joints_soa);
+		
+		const auto n_joints = skeleton->GetSkeleton().num_joints();
+		models.resize(n_joints);
+		cache.Resize(n_joints);
+		glm_pose.resize(n_joints);
 	}
 	
 	bool isPlaying = false;
 	bool isBlending = false;
 	
 public:
-	inline const decltype(models)& GetPose() const{
-		return models;
+	/**
+	 Get the current pose of the animation
+	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
+	 */
+	inline const decltype(glm_pose)& GetPose(){
+		decimalType matrix[16];
+		auto worldMat = getOwner().lock()->transform()->CalculateWorldMatrix();
+		for(int i = 0; i < models.size(); i++){
+			auto& t = models[i];
+			for(int r = 0; r < 4; r++){
+				float result[4];
+				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
+				decimalType dresult[4];
+				for(int j = 0; j < 4; j++){
+					dresult[j] = result[j];
+				}
+				//_mm_store_ps(result,p.cols[r]);
+				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
+			}
+			glm_pose[i] = worldMat * glm::make_mat4(matrix);
+		}
+		return glm_pose;
 	}
 };
 
