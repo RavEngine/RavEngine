@@ -5,6 +5,7 @@
 #include <ozz/animation/runtime/blending_job.h>
 #include "DataStructures.hpp"
 #include <ozz/base/span.h>
+#include <filesystem>
 
 using namespace RavEngine;
 using namespace std;
@@ -12,19 +13,25 @@ using namespace std;
 AnimationAsset::AnimationAsset(const std::string& name){
 	auto path = fmt::format("objects/{}", name);
 	if(App::Resources->Exists(path.c_str())){
-		std::vector<uint8_t> data;
-		App::Resources->FileContentsAt(path.c_str(),data);
-		
-		ozz::io::MemoryStream mstr;
-		mstr.Write(data.data(), data.size());
-		mstr.Seek(0, ozz::io::Stream::kSet);
-		
-		ozz::io::IArchive archive(&mstr);
-		if (archive.TestTag<ozz::animation::Animation>()){
-			archive >> anim;
+		//is this in ozz format
+		if (filesystem::path(name).extension() == ".ozz"){
+			std::vector<uint8_t> data;
+			App::Resources->FileContentsAt(path.c_str(),data);
+			
+			ozz::io::MemoryStream mstr;
+			mstr.Write(data.data(), data.size());
+			mstr.Seek(0, ozz::io::Stream::kSet);
+			
+			ozz::io::IArchive archive(&mstr);
+			if (archive.TestTag<ozz::animation::Animation>()){
+				archive >> anim;
+			}
+			else{
+				Debug::Fatal("{} is not an animation",path);
+			}
 		}
 		else{
-			Debug::Fatal("{} is not an animation",path);
+			//TODO: manually construct animation by extracting data from file using assimp
 		}
 	}
 	else{
