@@ -109,10 +109,31 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	//free afterward
 	aiReleaseImport(scene);
 	
+	//combine all meshes
+	size_t totalVerts = 0, totalIndices = 0;
+	for(int i = 0; i < meshes.size(); i++){
+		totalVerts += meshes[i].vertices.size();
+		totalIndices += meshes[i].indices.size();
+	}
+		
+	MeshPart allMeshes;
+	allMeshes.vertices.reserve(totalVerts);
+	allMeshes.indices.reserve(totalIndices);
+	
+	size_t baseline_index = 0;
+	for(const auto& mesh : meshes){
+		for(const auto& vert : mesh.vertices){
+			allMeshes.vertices.push_back(vert);
+		}
+		for(const auto& index : mesh.indices){
+			allMeshes.indices.push_back(index + baseline_index);	//must recompute index here
+		}
+		baseline_index += mesh.vertices.size();
+	}
 	
 	//copy out of intermediate
-	auto v = meshes[0].vertices;
-	auto i = meshes[0].indices;
+	auto& v = allMeshes.vertices;
+	auto& i = allMeshes.indices;
 	
 	bgfx::VertexLayout pcvDecl;
 	
