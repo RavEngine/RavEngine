@@ -6,7 +6,6 @@
 #include <assimp/material.h>
 #include <assimp/mesh.h>
 #include <vector>
-#include <random>
 #include "App.hpp"
 #include <filesystem>
 #include "Debug.hpp"
@@ -25,6 +24,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 		Debug::Fatal("Cannot open resource: {}", dir);
 	}
 
+	vector<uint8_t> data;
 	auto str = App::Resources->FileContentsAt(dir.c_str());
 	
 	//pull from cmrc

@@ -6,6 +6,9 @@
 #include "DataStructures.hpp"
 #include <ozz/base/span.h>
 #include <filesystem>
+#include <assimp/cimport.h>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -14,7 +17,8 @@ AnimationAsset::AnimationAsset(const std::string& name){
 	auto path = fmt::format("objects/{}", name);
 	if(App::Resources->Exists(path.c_str())){
 		//is this in ozz format
-		if (filesystem::path(name).extension() == ".ozz"){
+		auto extension = filesystem::path(name).extension();
+		if (extension == ".ozz"){
 			std::vector<uint8_t> data;
 			App::Resources->FileContentsAt(path.c_str(),data);
 			
@@ -31,7 +35,21 @@ AnimationAsset::AnimationAsset(const std::string& name){
 			}
 		}
 		else{
-			//TODO: manually construct animation by extracting data from file using assimp
+			//TODO: manually construct animation by extracting data from file using assimp;
+			auto data = App::Resources->FileContentsAt(path.c_str());
+			const aiScene* scene = aiImportFileFromMemory(data.data(), data.size(),
+														  aiProcess_ImproveCacheLocality          |
+														  aiProcess_ValidateDataStructure          |
+														  aiProcess_FindInvalidData     ,
+														  extension.string().c_str());
+
+			if (!scene){
+				Debug::Fatal("Cannot load: {}", aiGetErrorString());
+			}
+			
+			
+			//free afterward
+			aiReleaseImport(scene);
 		}
 	}
 	else{
@@ -39,7 +57,7 @@ AnimationAsset::AnimationAsset(const std::string& name){
 	}
 }
 
-void AnimationAsset::Sample(float time, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const{
+void AnimationAsset::Sample(float time, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
 	//sample the animation
 	ozz::animation::SamplingJob sampling_job;
 	sampling_job.animation = &anim;
@@ -52,7 +70,7 @@ void AnimationAsset::Sample(float time, ozz::vector<ozz::math::SoaTransform>& lo
 	}
 }
 
-void AnimationClip::Sample(float t, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const{
+void AnimationClip::Sample(float t, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
 	//calculate the subtracks
 	stackarray(layers, ozz::animation::BlendingJob::Layer, influence.size());
 	int index = 0;
@@ -61,8 +79,8 @@ void AnimationClip::Sample(float t, ozz::vector<ozz::math::SoaTransform>& transf
 		row.first->Sample(t,sampler.locals,cache,skeleton);
 		
 		//make sure the buffers are the correct size
-		if (sampler.locals.size() != skeleton.num_soa_joints()){
-			sampler.locals.resize(skeleton.num_soa_joints());
+		if (sampler.locals.size() != skeleton->num_soa_joints()){
+			sampler.locals.resize(skeleton->num_soa_joints());
 		}
 		
 		//populate layers
@@ -74,7 +92,7 @@ void AnimationClip::Sample(float t, ozz::vector<ozz::math::SoaTransform>& transf
 	ozz::animation::BlendingJob blend_job;
 	blend_job.threshold = 0;			//TODO: make threshold configurable
 	blend_job.layers = ozz::span(layers,influence.size());
-	blend_job.bind_pose = skeleton.joint_bind_poses();
+	blend_job.bind_pose = skeleton->joint_bind_poses();
 	
 	blend_job.output = make_span(transforms);
 	if (!blend_job.Run()){

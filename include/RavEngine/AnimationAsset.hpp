@@ -21,7 +21,7 @@ struct IAnimGraphable{
 	virtual void Sample(float t,
 						ozz::vector<ozz::math::SoaTransform>& output,
 						ozz::animation::SamplingCache& cache,
-						const ozz::animation::Skeleton& skeleton) const = 0;	//TODO: make abstract
+						const ozz::animation::Skeleton* skeleton) const = 0;	//TODO: make abstract
 };
 
 
@@ -39,7 +39,7 @@ public:
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const override;
+	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 };
 
 class AnimationClip : public IAnimGraphable{
@@ -79,7 +79,7 @@ public:
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const override;
+	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 };
 }

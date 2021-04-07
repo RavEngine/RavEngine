@@ -45,7 +45,7 @@ struct AnimBlendTree : public IAnimGraphable{
 		 @param output the vector to write the output transforms to
 		 @param cache a sampling cache, modified when used
 		 */
-		void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const override;
+		void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	};
 	
 	/**
@@ -89,7 +89,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton& skeleton) const override;
+	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 	inline void SetBlendPos(const normalized_vec2& newPos){
 		blend_pos = newPos;
@@ -231,11 +231,11 @@ protected:
 	 */
 	void UpdateSkeletonData(Ref<SkeletonAsset> sk){
 		skeleton = sk;
-		const auto n_joints_soa = skeleton->GetSkeleton().num_soa_joints();
+		const auto n_joints_soa = skeleton->GetSkeleton()->num_soa_joints();
 		transforms.resize(n_joints_soa);
 		transformsSecondaryBlending.resize(n_joints_soa);
 		
-		const auto n_joints = skeleton->GetSkeleton().num_joints();
+		const auto n_joints = skeleton->GetSkeleton()->num_joints();
 		models.resize(n_joints);
 		cache.Resize(n_joints);
 		glm_pose.resize(n_joints);

@@ -1,10 +1,11 @@
 #pragma once
 #include <ozz/animation/runtime/skeleton.h>
+#include <ozz/animation/offline/skeleton_builder.h>
 #include <string>
 
 namespace RavEngine {
 class SkeletonAsset{
-	ozz::animation::Skeleton skeleton;
+	ozz::unique_ptr<ozz::animation::Skeleton> skeleton;
 	
 public:
 	SkeletonAsset(const std::string& path);
