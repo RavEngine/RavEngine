@@ -217,9 +217,8 @@ protected:
 		id_t from, to;
 		decltype(State::Transition::transition) currentTween;
 	} stateBlend;
-	
-	
-	id_t currentState;
+		
+	id_t currentState = 0;
 	
 	ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
 	ozz::animation::SamplingCache cache;

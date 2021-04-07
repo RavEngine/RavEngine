@@ -58,12 +58,20 @@ void AnimatorComponent::Tick(float timeScale){
 		}
 	}
 	else{
-		auto& state = states[currentState];
-		state.clip->Sample(state.time, transforms, cache,skeleton->GetSkeleton().get());
-		
-		if (isPlaying){
-			state.Tick(timeScale);
-		}
+        if (states.contains(currentState)){
+            auto& state = states[currentState];
+            state.clip->Sample(state.time, transforms, cache,skeleton->GetSkeleton().get());
+            
+            if (isPlaying){
+                state.Tick(timeScale);
+            }
+        }
+        else{
+            //set all to identity matrices
+            for(auto& t : transforms){
+                t = ozz::math::SoaTransform::identity();
+            }
+        }
 	}
 	
 	//convert from local space to model space

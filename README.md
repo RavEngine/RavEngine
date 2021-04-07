@@ -9,8 +9,9 @@ A C++17 cross-platform game library, with emphasis on performance and ease of us
 5. Supports modern rendering APIs (Metal, DirectX, Vulkan)
 6. Flexible and fast declarative user interface system based on HTML and CSS
 7. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
-8. CI/CD-friendly build process powered by CMake
-9. Quality-of-life features like automatic incremental shader compilation
+8. Full FSM animation blending tree system
+9. CI/CD-friendly build process powered by CMake
+10. Quality-of-life features like automatic incremental shader compilation
 
 Note: RavEngine does not have a graphical editor.
 
@@ -41,15 +42,19 @@ add_executable("${PROJECT_NAME}" ${SOURCES})
 target_link_libraries("${APPNAME}" PUBLIC "RavEngine" )  # also adds header includes
 
 # inform engine about your different assets
-file(GLOB meshes "meshes/*.obj")
+file(GLOB objects "objects/*.obj" "objects/*.fbx")
 file(GLOB textures "textures/*")
 file(GLOB shaders "shaders/*.cmake")
+file(GLOB fonts "fonts/*.ttf")
+file(GLOB sounds "sounds/*.ogg")
 file(GLOB uis "${sample_dir}/ui/*.rml" "${sample_dir}/uis/*.rcss")
 pack_resources(TARGET "${PROJECT_NAME}" 
-   MESHES ${meshes}
+   OBJECTS ${objects}
    SHADERS ${shaders}
    TEXTURES ${textures}
    UIS ${uis}
+   FONTS ${fonts}
+   SOUNDS ${sounds}
 )
 
 # fixup mac bundle
