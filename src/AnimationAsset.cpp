@@ -83,7 +83,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			};
 			
 			// populate the tracks
-			raw_animation.tracks.resize(anim->mNumChannels);
+			raw_animation.tracks.resize(skeleton->GetSkeleton()->num_joints());
 			raw_animation.name = string(anim->mName.C_Str());
 			for(int i = 0; i < anim->mNumChannels; i++){
 				auto channel = anim->mChannels[i];

@@ -53,9 +53,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			
 			// create hashset of the bones list to determine quickly if a scene node is a relevant bone
 			phmap::flat_hash_map<std::string,aiBone*> bones;
-			
-			plf::list<aiString> allBoneNames;
-			
+						
 			for(int i = 0; i < scene->mNumMeshes; i++){
 				auto mesh = scene->mMeshes[i];	//assume the first mesh is the mesh to use
 				if (!mesh->HasBones()){
@@ -64,7 +62,6 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			
 				for(int i = 0; i < mesh->mNumBones; i++){
 					bones.insert(make_pair(string(mesh->mBones[i]->mName.C_Str()),mesh->mBones[i]));
-					allBoneNames.push_back(mesh->mBones[i]->mName);
 				}
 			}
 			
@@ -76,21 +73,46 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			auto& root = raw_skeleton.roots[0];
 			
 			//find root bone
+            //pick a bone, and recurse up its parent hierarchy
+            //TODO: this is very inefficient, optimize
 			aiNode* rootBone = nullptr;;
-			for(const auto& name : allBoneNames){
-				auto node = scene->mRootNode->FindNode(name);
-				//no parent, or parent is not in the bones list?
-				if (node->mParent == NULL || !bones.contains(string(node->mParent->mName.C_Str())) ){
-					rootBone = node;
-					break;
-				}
+			for(const auto& name : bones){
+				auto node = scene->mRootNode->FindNode(aiString(name.first.c_str()));
+                
+                //if the node has all of the bones in its sub-hierarchy (findnode) then it is the root node for the skeleton
+                while (node->mParent != NULL){
+                    int found_bones = 0;
+                    for(const auto& bone : bones){
+                        if (node->FindNode(aiString(bone.first.c_str()))){
+                            found_bones++;
+                        }
+                    }
+                    if (found_bones == bones.size()){
+                        rootBone = node;
+                        goto found_bone;
+                    }
+                    else{
+                        node = node->mParent;
+                    }
+                }
+                
 			}
-			
+			found_bone:
 			Debug::Assert(rootBone != nullptr, "Could not find root bone");
 			
 			//construct skeleton hierarchy
 			auto recurse_bone = [&bones](decltype(root)& ozzbone, aiNode* node) -> void{
 				auto recurse_impl = [&bones](decltype(root)& ozzbone, aiNode* node, auto& recursive_call) -> void{
+                    // create its transformation
+                    aiVector3t<float> scale, position;
+                    aiQuaterniont<float> rotation;
+                    node->mTransformation.Decompose(scale, rotation, position);
+                    ozzbone.transform.translation = ozz::math::Float3(position.x,position.y,position.z);
+                    ozzbone.transform.scale = ozz::math::Float3(scale.x,scale.y,scale.z);
+                    ozzbone.transform.rotation = ozz::math::Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
+                    
+                    ozzbone.name = string(node->mName.C_Str());
+                    
 					for(int i = 0; i < node->mNumChildren; i++){
 						//is this a relevant bone?
 						if (bones.contains(string(node->mChildren[i]->mName.C_Str()))){
@@ -98,21 +120,9 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 							//create a new bone
 							auto& newbone = ozzbone.children.emplace_back();
 							
-							// create its transformation
-							aiVector3t<float> scale, position;
-							aiQuaterniont<float> rotation;
-							node->mTransformation.Decompose(scale, rotation, position);
-							newbone.transform.translation = ozz::math::Float3(position.x,position.y,position.z);
-							newbone.transform.scale = ozz::math::Float3(scale.x,scale.y,scale.z);
-							newbone.transform.rotation = ozz::math::Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
-							
-							newbone.name = string(node->mChildren[i]->mName.C_Str());
-							
 							//construct all the child bones for this bone
 							recursive_call(newbone,node->mChildren[i],recursive_call);
 						}
-						//construct all the child bones for this bone
-						recursive_call(ozzbone,node->mChildren[i],recursive_call);
 					}
 				};
 				recurse_impl(ozzbone, node, recurse_impl);
