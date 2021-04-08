@@ -28,10 +28,10 @@ struct IAnimGraphable{
 class AnimationAsset : public IAnimGraphable{
 	//duration
 	//clip data
-	ozz::animation::Animation anim;
+	ozz::unique_ptr<ozz::animation::Animation> anim;
 	//method to calculate curves given a time point
 public:
-	AnimationAsset(const std::string& name);
+	AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton);
 	
 	/**
 	 Sample the animation curves

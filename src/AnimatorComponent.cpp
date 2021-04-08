@@ -67,10 +67,10 @@ void AnimatorComponent::Tick(float timeScale){
             }
         }
         else{
-            //set all to identity matrices
-            for(auto& t : transforms){
-                t = ozz::math::SoaTransform::identity();
-            }
+            //set all to skeleton bind pose
+			for(int i = 0; i < transforms.size(); i++){
+				transforms[i] = skeleton->GetSkeleton()->joint_bind_poses()[i];
+			}
         }
 	}
 	

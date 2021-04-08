@@ -40,7 +40,6 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			}
 		}
 		else{
-			//TODO: construct skeleton manually by reading file using assimp
 			auto data = App::Resources->FileContentsAt(path.c_str());
 			const aiScene* scene = aiImportFileFromMemory(data.data(), data.size(),
 														  aiProcess_ImproveCacheLocality          |
@@ -52,27 +51,49 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 				Debug::Fatal("Cannot load: {}", aiGetErrorString());
 			}
 			
-			//find the root bone
-			auto mesh = scene->mMeshes[0];	//assume the first mesh is the mesh to use
-			Debug::Assert(mesh->HasBones(), "Mesh must have bones");
-			// we will now bone this mesh
-			
 			// create hashset of the bones list to determine quickly if a scene node is a relevant bone
 			phmap::flat_hash_map<std::string,aiBone*> bones;
-			for(int i = 0; i < mesh->mNumBones; i++){
-				bones.insert(make_pair(mesh->mBones[i]->mName.C_Str(),mesh->mBones[i]));
+			
+			plf::list<aiString> allBoneNames;
+			
+			for(int i = 0; i < scene->mNumMeshes; i++){
+				auto mesh = scene->mMeshes[i];	//assume the first mesh is the mesh to use
+				if (!mesh->HasBones()){
+					continue;
+				}
+			
+				for(int i = 0; i < mesh->mNumBones; i++){
+					bones.insert(make_pair(string(mesh->mBones[i]->mName.C_Str()),mesh->mBones[i]));
+					allBoneNames.push_back(mesh->mBones[i]->mName);
+				}
 			}
+			
+			// we will now bone this mesh
 			
 			//recurse the root node and get all of the bones
 			ozz::animation::offline::RawSkeleton raw_skeleton;
 			raw_skeleton.roots.resize(1);
 			auto& root = raw_skeleton.roots[0];
 			
+			//find root bone
+			aiNode* rootBone = nullptr;;
+			for(const auto& name : allBoneNames){
+				auto node = scene->mRootNode->FindNode(name);
+				//no parent, or parent is not in the bones list?
+				if (node->mParent == NULL || !bones.contains(string(node->mParent->mName.C_Str())) ){
+					rootBone = node;
+					break;
+				}
+			}
+			
+			Debug::Assert(rootBone != nullptr, "Could not find root bone");
+			
+			//construct skeleton hierarchy
 			auto recurse_bone = [&bones](decltype(root)& ozzbone, aiNode* node) -> void{
 				auto recurse_impl = [&bones](decltype(root)& ozzbone, aiNode* node, auto& recursive_call) -> void{
 					for(int i = 0; i < node->mNumChildren; i++){
 						//is this a relevant bone?
-						if (bones.contains(node->mChildren[i]->mName.C_Str())){
+						if (bones.contains(string(node->mChildren[i]->mName.C_Str()))){
 							
 							//create a new bone
 							auto& newbone = ozzbone.children.emplace_back();
@@ -85,7 +106,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 							newbone.transform.scale = ozz::math::Float3(scale.x,scale.y,scale.z);
 							newbone.transform.rotation = ozz::math::Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
 							
-							newbone.name = node->mChildren[i]->mName.C_Str();
+							newbone.name = string(node->mChildren[i]->mName.C_Str());
 							
 							//construct all the child bones for this bone
 							recursive_call(newbone,node->mChildren[i],recursive_call);
@@ -97,15 +118,13 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 				recurse_impl(ozzbone, node, recurse_impl);
 			};
 			
-			recurse_bone(root, scene->mRootNode);
+			recurse_bone(root, rootBone);
 			
 			//free afterward
 			aiReleaseImport(scene);
 			
 			//convert into a runtime-optimized skeleton
-			if (!raw_skeleton.Validate()){
-				Debug::Fatal("Skeleton validation failed");
-			}
+			Debug::Assert(raw_skeleton.Validate(), "Skeleton validation failed");
 			
 			ozz::animation::offline::SkeletonBuilder skbuilder;
 			ozz::unique_ptr<ozz::animation::Skeleton> sk = skbuilder(raw_skeleton);
