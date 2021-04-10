@@ -80,11 +80,13 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 | iOS 14+ | Apple Silicon | Apple Clang | Xcode | Metal |
 | Windows 10 | x64 | MSVC++ | Visual Studio | DX11, DX12 |
 | Linux | x64 | Clang++, g++ | Ninja | Vulkan |
+| Raspi | aarch64 | Clang++, g++ | Ninja | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
 - x11-dev
 - alsa-lib-devel (or another SDL2-supported audio library)
+- libgl-dev
 
 ## Example programs
 View a respository with code samples here: [https://github.com/ravbug/ravengine-samples](https://github.com/ravbug/ravengine-samples)

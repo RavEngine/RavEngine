@@ -249,6 +249,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
+	"stdc++fs"
 )
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
