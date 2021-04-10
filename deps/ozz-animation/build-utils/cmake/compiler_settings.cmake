@@ -79,7 +79,7 @@ else()
   #set_property(DIRECTORY APPEND PROPERTY COMPILE_OPTIONS "-Wextra")
 
   # Set warning as error
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_OPTIONS "-Werror")
+  #set_property(DIRECTORY APPEND PROPERTY COMPILE_OPTIONS "-Werror")
 
   # Disables warning: ignored-attributes reports issue when using _m128 as template argument
   check_cxx_compiler_flag("-Wignored-attributes" W_IGNORED_ATTRIBUTES)

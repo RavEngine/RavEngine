@@ -94,7 +94,8 @@ elseif (ANDROID)
     set(NEON ON)
 elseif (UNIX)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    set(CMAKE_CXX_FLAGS "-fPIC -O3 -Wno-vla -msse -msse2 -msse3 -mfpmath=sse")
+    set(CMAKE_CXX_FLAGS "-fPIC -O3 -Wno-vla")
+    set(CMAKE_C_FLAGS "-mfpu=neon -march=armv7-a -mfloat-abi=hard")
 endif ()
 
 # Add Eigen3.
