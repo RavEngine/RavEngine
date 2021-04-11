@@ -37,7 +37,7 @@ jobs:
       - name: Build
         run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=OS64COMBINED -DENABLE_ARC=OFF -DDEPLOYMENT_TARGET=14.0 .. && cmake --build . --config Release --target RavEngine
         
- build-tvos:
+  build-tvos:
     name: tvOS Compile Check
     runs-on: macos-latest
     steps:
@@ -46,7 +46,7 @@ jobs:
         with:
           submodules: true
       - name: Build
-        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=TVOS -DENABLE_ARC=OFF -DDEPLOYMENT_TARGET=14.0 .. && cmake --build . --config Release --target RavEngine
+        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=TVOSCOMBINED -DENABLE_ARC=OFF -DDEPLOYMENT_TARGET=14.0 .. && cmake --build . --config Release --target RavEngine
                 
   build-windows:
     name: Windows Compile Check
