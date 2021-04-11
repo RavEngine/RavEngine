@@ -250,6 +250,12 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ozz_geometry"
 	"ozz_options"
 )
+
+# raspberry pi needs this set explicitly, incompatible with other targets 
+if(LINUX)
+	target_link_libraries("${PROJECT_NAME}" PRIVATE "stdc++fs")
+endif()
+
 #target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
 # copy DLLs
