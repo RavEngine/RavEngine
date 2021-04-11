@@ -367,13 +367,13 @@ RenderEngine::RenderEngine() {
 	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
 		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	};
-	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::D32F};
+	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D16F};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
 		attachments[i] = gen_framebuffer(formats[i]);
 	}
 
 	//lighting textures - light color, and share depth
-	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA32F);
+	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F);
 	lightingAttachments[1] = attachments[3];
 	
 	for(int i = 0; i < gbufferSize; i++){
