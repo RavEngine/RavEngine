@@ -290,12 +290,7 @@ void RenderEngine::Init()
 		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
 	}
 	
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, VideoSettings.width, VideoSettings.height,
-							  SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
-#if BX_PLATFORM_IOS
-							  | SDL_WINDOW_FULLSCREEN_DESKTOP
-#endif
-							  );
+	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	
 	if (window == NULL){
 		Debug::Fatal("Unable to create main window: {}",SDL_GetError());

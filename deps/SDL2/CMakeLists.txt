@@ -120,6 +120,7 @@ elseif(APPLE)
     set(MACOSX TRUE)
   elseif(CMAKE_SYSTEM_NAME MATCHES ".*tvOS.*")
     set(TVOS TRUE)
+    set(IOS FALSE)
   endif()
   # TODO: iOS?
 elseif(CMAKE_SYSTEM_NAME MATCHES "BeOS.*")
