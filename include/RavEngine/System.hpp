@@ -1,5 +1,6 @@
 #pragma once
 #include "CTTI.hpp"
+#include <vector>
 
 namespace RavEngine {
 	class World;

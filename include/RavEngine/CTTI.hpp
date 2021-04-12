@@ -94,12 +94,15 @@ template <typename T, std::enable_if_t<std::is_base_of<RavEngine::AutoCTTI,T>::v
 inline constexpr std::string_view type_name() {
 #ifdef _MSC_VER
 	constexpr auto str = type_name_impl<T>();
+    short offset = 0;
+    static_assert(str[0] == 'c' || str[0] == 's', "Type must be a class or struct");
 	if constexpr (str[0] == 'c'){
-		return std::string_view(str.data()+5,str.size()); //advance past 'class'
+		offset = std::strlen("class "); //advance past 'class'
 	}
-	else{
-		return std::string_view(str.data()+6,str.size()); //advance past 'struct'
+	else if (str[0] == 's'){
+		offset = std::strlen("struct "); //advance past 'struct'
 	}
+    return std::string_view(str.data() + offset, str.size() - offset);
 #else
 	return type_name_impl<T>();
 #endif
