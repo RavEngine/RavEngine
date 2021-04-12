@@ -7,6 +7,7 @@
 
 #include "PhysicsLinkSystem.hpp"
 #include "PhysicsBodyComponent.hpp"
+#include "Entity.hpp"
 using namespace RavEngine;
 
 void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Component> c, ctti_t id) {

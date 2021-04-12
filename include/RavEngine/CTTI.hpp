@@ -9,6 +9,9 @@
 
 namespace RavEngine{
 
+// Derive from this struct to get a free CTTI specialization
+struct AutoCTTI{};
+
 typedef size_t ctti_t;
 
 //compile-time hashing adapted from https://mikejsavage.co.uk/blog/cpp-tricks-compile-time-string-hashing.html
@@ -38,10 +41,11 @@ inline constexpr uint64_t Hash64_CT(const std::string_view& v) {
 
 // Type name extraction 
 
-template <typename T> constexpr std::string_view type_name();
+template <typename T>
+constexpr std::string_view type_name_impl();
 
 template <>
-constexpr std::string_view type_name<void>() {
+constexpr std::string_view type_name_impl<void>() {
     return "void";
 }
 
@@ -50,29 +54,27 @@ namespace detail {
     using type_name_prober = void;
 
     template <typename T>
-    inline static constexpr std::string_view wrapped_type_name()
+    inline constexpr std::string_view wrapped_type_name()
     {
         return __PRETTY_FUNCTION__;
     }
 
-    inline static constexpr std::size_t wrapped_type_name_prefix_length() {
-        return wrapped_type_name<type_name_prober>().find(type_name<type_name_prober>());
+    inline constexpr std::size_t wrapped_type_name_prefix_length() {
+        return wrapped_type_name<type_name_prober>().find(type_name_impl<type_name_prober>());
     }
 
-    inline static constexpr std::size_t wrapped_type_name_suffix_length() {
+    inline constexpr std::size_t wrapped_type_name_suffix_length() {
         return wrapped_type_name<type_name_prober>().length()
             - wrapped_type_name_prefix_length()
-            - type_name<type_name_prober>().length();
+            - type_name_impl<type_name_prober>().length();
     }
-
 }
 
 /**
 * Derive the type name string
 */
 template <typename T>
-inline static constexpr std::string_view type_name_impl() {
-    //static_assert(std::enable_if_t<std::is_fundamental<T>::value, bool> = true),"Only available for primitive types -- provide a manual specialization")
+inline constexpr std::string_view type_name_impl() {
     constexpr auto wrapped_name = detail::wrapped_type_name<T>();
     constexpr auto prefix_length = detail::wrapped_type_name_prefix_length();
     constexpr auto suffix_length = detail::wrapped_type_name_suffix_length();
@@ -82,9 +84,25 @@ inline static constexpr std::string_view type_name_impl() {
 
 //already defiend for void, don't want to define it again
 //defines automatically only for primitive types
-template<typename T, std::enable_if_t<std::is_fundamental<T>::value && !std::is_same<T,void>::value, bool>>
-inline static constexpr std::string_view type_name() {
+template<typename T, std::enable_if_t<std::is_fundamental<T>::value && !std::is_same<T,void>::value, bool> = false>
+inline constexpr std::string_view type_name() {
     return type_name_impl<T>();
+}
+
+// for structs, provide an automatic CTTI implementation using the derivation
+template <typename T, std::enable_if_t<std::is_base_of<RavEngine::AutoCTTI,T>::value,bool> = false>
+inline constexpr std::string_view type_name() {
+#ifdef _MSC_VER
+	constexpr auto str = type_name_impl<T>();
+	if constexpr (str[0] == 'c'){
+		return std::string_view(str.data()+5,str.size()); //advance past 'class'
+	}
+	else{
+		return std::string_view(str.data()+6,str.size()); //advance past 'struct'
+	}
+#else
+	return type_name_impl<T>();
+#endif
 }
 
 /**

@@ -5,7 +5,7 @@
 #include "CTTI.hpp"
 
 namespace RavEngine {
-	class ScriptSystem {
+	class ScriptSystem : public AutoCTTI {
 	public:
 		const System::list_type& QueryTypes() const {
 			return queries;

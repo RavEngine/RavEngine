@@ -12,7 +12,7 @@ namespace RavEngine {
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
 	*/
-	class Material {
+	class Material : public AutoCTTI {
 	public:
 		/**
 		Create the default material. Override this constructor in subclasses, and from that, invoke the protected constructor.

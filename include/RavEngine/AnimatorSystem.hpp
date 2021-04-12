@@ -3,7 +3,7 @@
 #include "AnimatorComponent.hpp"
 
 namespace RavEngine{
-class AnimatorSystem : public System{
+class AnimatorSystem : public AutoCTTI{
 public:
 	const System::list_type& QueryTypes() const {
 		return queries;

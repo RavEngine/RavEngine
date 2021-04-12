@@ -5,7 +5,7 @@
 
 namespace RavEngine {
 	class Entity;
-	class Component {
+	class Component : public AutoCTTI {
 	protected:
 		WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component
 		friend class Entity;
@@ -44,15 +44,5 @@ namespace RavEngine {
 
 		//define values in subclass...
 	};
-
-
-	template <typename T, std::enable_if_t<std::is_base_of<RavEngine::Component,T>::value,bool>>
-	constexpr std::string_view type_name() {
-	#ifdef _MSC_VER
-			return type_name_impl<T>() + 5;		//advance past 'class' or 'struct'
-	#else
-			return type_name_impl<T>();
-	#endif
-	}
 }
 

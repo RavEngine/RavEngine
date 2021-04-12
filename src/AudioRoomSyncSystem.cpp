@@ -3,6 +3,7 @@
 #include "mathtypes.hpp"
 #include <common/room_properties.h>
 #include <common/room_effects_utils.h>
+#include "Entity.hpp"
 
 using namespace RavEngine;
 using namespace std;

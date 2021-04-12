@@ -14,7 +14,7 @@
 #include "ComponentStore.hpp"
 #include "SpinLock.hpp"
 #include <plf_list.h>
-
+#include "CTTI.hpp"
 /**
  This class defines an Entity for the Entity Component System.
  */
@@ -22,7 +22,7 @@ namespace RavEngine {
 	class PhysicsBodyComponent;
 	class World;
 
-	class Entity : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<Entity> {
+	class Entity : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<Entity>, public AutoCTTI {
 		friend class World;
 		plf::list<Ref<Component>> PendingSync;
 	protected:

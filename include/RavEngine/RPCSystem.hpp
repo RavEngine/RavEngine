@@ -1,10 +1,9 @@
 #pragma once
 #include "System.hpp"
 #include "RPCComponent.hpp"
-#include "Debug.hpp"
 
 namespace RavEngine {
-	class RPCSystem {
+	class RPCSystem : public AutoCTTI{
 	public:
 		void Tick(float fpsScale, Ref<Component> c, ctti_t id) {
             //id is always CTTI<RPCComponent>()

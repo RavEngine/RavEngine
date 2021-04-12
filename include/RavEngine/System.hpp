@@ -1,15 +1,4 @@
 #pragma once
-//
-//  System.hpp
-//  RavEngine_Static
-//
-//  Copyright © 2020 Ravbug.
-//
-
-
-#include "Ref.hpp"
-#include "Entity.hpp"
-#include <plf_list.h>
 #include "CTTI.hpp"
 
 namespace RavEngine {

@@ -1,9 +1,10 @@
 #pragma once
 #include "System.hpp"
+#include "CTTI.hpp"
 
 namespace RavEngine{
 
-class AudioRoomSyncSystem{
+class AudioRoomSyncSystem : public AutoCTTI {
 public:
 	void Tick(float fpsScale, Ref<Component> c, ctti_t id);
 	
