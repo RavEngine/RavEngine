@@ -92,7 +92,9 @@ void AnimBlendTree::Node::Sample(float t, ozz::vector<ozz::math::SoaTransform> &
 void AnimBlendTree::Sample(float t, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
 	//iterate though the nodes, sample all, and blend
 	//calculate the subtracks
-	stackarray(layers, ozz::animation::BlendingJob::Layer, states.size());
+	ozz::animation::BlendingJob::Layer layers[kmax_nodes];
+	Debug::Assert(states.size() <= kmax_nodes, "An AnimBlendTree can have a maximum of {} nodes",kmax_nodes);
+	//stackarray(layers, ozz::animation::BlendingJob::Layer, states.size());
 	int index = 0;
 	for(auto& row : states){
 		Sampler& sampler = const_cast<Sampler&>(row.second);	//TODO: avoid const_cast

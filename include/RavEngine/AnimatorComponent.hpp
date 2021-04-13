@@ -47,6 +47,8 @@ struct AnimBlendTree : public IAnimGraphable{
 		 */
 		void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	};
+
+	static constexpr uint16_t kmax_nodes = 64;
 	
 	/**
 	 Insert a node into the tree at the id. If a node already exists at that ID, it is replaced.
