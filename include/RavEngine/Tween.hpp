@@ -58,9 +58,7 @@ namespace TweenCurves{
 	protected:
 		tweeny::tween<Floats...> anim;
 		typedef std::function<void(Floats...)> stepfunc;
-		
-		
-		
+			
 	public:
 		Tween(){};
 		

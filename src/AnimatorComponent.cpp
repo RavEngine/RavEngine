@@ -20,11 +20,11 @@ void AnimatorComponent::Tick(float timeScale){
 		
 		auto& fromState = states[stateBlend.from];
 		auto& toState = states[stateBlend.to];
-		
+			
 		//advance playheads
 		if (isPlaying){
 			//update the tween
-			stateBlend.currentTween.step(timeScale);
+			currentBlendingValue = stateBlend.currentTween.step((float)timeScale / stateBlend.currentTween.duration());
 			
 			fromState.Tick(timeScale);
 			toState.Tick(timeScale);
@@ -38,9 +38,9 @@ void AnimatorComponent::Tick(float timeScale){
 		
 		//populate layers
 		layers[0].transform = ozz::make_span(transforms);
-		layers[0].weight = 1 - fromState.currentBlendingValue;
+		layers[0].weight = 1 - currentBlendingValue;
 		layers[1].transform = ozz::make_span(transformsSecondaryBlending);
-		layers[1].weight = fromState.currentBlendingValue;
+		layers[1].weight = currentBlendingValue;
 		
 		//when the tween is finished, isBlending = false
 		if (stateBlend.currentTween.progress() >= 1.0){
@@ -48,7 +48,7 @@ void AnimatorComponent::Tick(float timeScale){
 		}
 		
 		ozz::animation::BlendingJob blend_job;
-		blend_job.threshold = 0;			//TODO: make threshold configurable
+		blend_job.threshold = 0.1f;			//TODO: make threshold configurable
 		blend_job.layers = layers;
 		blend_job.bind_pose = skeleton->GetSkeleton()->joint_bind_poses();
 		

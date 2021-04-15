@@ -115,13 +115,14 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
                     
 					for(int i = 0; i < node->mNumChildren; i++){
 						//is this a relevant bone?
-						if (bones.contains(string(node->mChildren[i]->mName.C_Str()))){
+						auto childnode = node->mChildren[i];
+						if (bones.contains(string(childnode->mName.C_Str()))){
 							
 							//create a new bone
 							auto& newbone = ozzbone.children.emplace_back();
 							
 							//construct all the child bones for this bone
-							recursive_call(newbone,node->mChildren[i],recursive_call);
+							recursive_call(newbone,childnode,recursive_call);
 						}
 					}
 				};

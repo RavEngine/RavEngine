@@ -85,6 +85,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			// populate the tracks
 			raw_animation.tracks.resize(skeleton->GetSkeleton()->num_joints());
 			raw_animation.name = string(anim->mName.C_Str());
+			uint32_t num_loaded = 0;
 			for(int i = 0; i < anim->mNumChannels; i++){
 				auto channel = anim->mChannels[i];
 				
@@ -101,6 +102,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 				if (it == names.end()){
 					continue;
 				}
+				num_loaded++;
 				
 				//calculate index
 				auto bone_index = it - names.begin();
@@ -109,6 +111,8 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 				create_keyframe(channel, raw_animation.tracks[bone_index]);
 				
 			}
+			
+			Debug::Assert(num_loaded > 0, "No animations were loaded for this skeleton. This can be caused by naming differences if the animation is a different file type than the skeleton.");
 			
 			//free afterward
 			aiReleaseImport(scene);

@@ -111,6 +111,7 @@ public:
 	 @param message The message to log.
 	 */
 	static inline void Fatal(const char* message){
+		Debug::Error(message);
 		throw std::runtime_error(message);
 	}
 	
@@ -121,6 +122,7 @@ public:
 	 */
 	template <typename ... T>
 	static inline void Fatal(const char* formatstr, T... values){
+		Debug::Error(formatstr,values...);
 		throw std::runtime_error(fmt::format(formatstr,values...));
 	}
     

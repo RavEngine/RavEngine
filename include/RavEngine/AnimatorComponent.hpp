@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <vector>
 #include "Tween.hpp"
+#include "App.hpp"
 
 namespace RavEngine{
 
@@ -124,12 +125,11 @@ public:
 				Blended = 0,	//the time from this state carries over to the target state
 				BeginNew = 1	//the target state's time is set to 0 when the transition begins
 			} type;
-			Tween<float> transition;
+			tweeny::tween<float> transition;
 		};
 		
 		//transitions out of this state, keyed by ID
 		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
-		float currentBlendingValue = 0;
 		
 		inline void Tick(float timeScale){
 			time += speed * timeScale;
@@ -138,10 +138,7 @@ public:
 		
 		template<typename T>
 		inline void SetTransition(decltype(ID) id, T interpolation, float duration){
-			auto tween = Tween<float>([this](float val){
-				currentBlendingValue = val;
-			},0.0);
-			tween.AddKeyframe(duration,interpolation,1.0);
+			auto tween = tweeny::from(0.0f).to(1.0f).during(duration * App::evalNormal).via(interpolation);
 			exitTransitions[id].transition = tween;
 		}
 	};
@@ -244,6 +241,7 @@ protected:
 	
 	bool isPlaying = false;
 	bool isBlending = false;
+	float currentBlendingValue = 0;
 	
 public:
 	/**
