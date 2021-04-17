@@ -6,6 +6,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 #include <assimp/mesh.h>
+#include <filesystem>
 
 using namespace RavEngine;
 using namespace std;
