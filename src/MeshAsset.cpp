@@ -24,7 +24,6 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 		Debug::Fatal("Cannot open resource: {}", dir);
 	}
 
-	vector<uint8_t> data;
 	auto str = App::Resources->FileContentsAt(dir.c_str());
 	
 	//pull from cmrc

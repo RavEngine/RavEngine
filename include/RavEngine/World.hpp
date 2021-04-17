@@ -44,7 +44,7 @@ namespace RavEngine {
 		struct range{
 			ComponentStore<SpinLock>::entry_type::const_iterator begin, end;
 		};
-		ComponentStore<SpinLock>::entry_type::const_iterator geobegin,geoend;
+		ComponentStore<SpinLock>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend;
 		locked_node_hashmap<ctti_t,range,SpinLock> iterator_map;
 		struct systaskpair{
 			tf::Task task;
@@ -95,6 +95,9 @@ namespace RavEngine {
 		 */
 		virtual void pretick(float fpsScale) {}
 		void TickECS(float);
+		
+		void FillFramedata();
+		
 		/**
 		 Called after physics and rendering synchronously
 		 @param fpsScale the scale factor calculated

@@ -22,6 +22,7 @@
 #include "NetworkIdentity.hpp"
 #include "RPCSystem.hpp"
 #include "AnimatorSystem.hpp"
+#include "SkinnedMeshComponent.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -269,116 +270,7 @@ void World::RebuildTaskGraph(){
 	
 	if (isRendering)
 	{
-		//render engine data collector
-		//camera matrices
-		auto camproc = masterTasks.emplace([this](){
-			auto& allcams = GetAllComponentsOfType<CameraComponent>();
-			for (const auto& c : allcams) {
-				auto cam = std::static_pointer_cast<CameraComponent>(c);
-				if (cam->isActive()) {
-					
-					auto size = App::Renderer->GetBufferSize();
-					cam->SetTargetSize(size.width, size.height);
-					current->viewmatrix = cam->GenerateViewMatrix();
-					current->projmatrix = cam->GenerateProjectionMatrix();
-					
-					break;
-				}
-			}
-		});
-		
-		//opaque geometry
-		geobegin = GetAllComponentsOfType<StaticMesh>().begin();
-		geoend = GetAllComponentsOfType<StaticMesh>().end();
-		auto init = masterTasks.emplace([&](){
-			auto& geometry = GetAllComponentsOfType<StaticMesh>();
-			geobegin = geometry.begin();
-			geoend = geometry.end();
-		});
-		
-		//sort into the hashmap
-		auto sort = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [this](Ref<Component> e){
-			if (e){
-				auto m = static_pointer_cast<StaticMesh>(e);
-				auto ptr = e->getOwner().lock();
-				if (ptr){
-					auto pair = make_pair(m->getMesh(), m->GetMaterial());
-					auto mat = ptr->transform()->CalculateWorldMatrix();
-					auto& item = current->opaques[pair];
-					item.mtx.lock();
-					item.items.insert(mat);
-					item.mtx.unlock();
-				}
-			}
-		});
-		init.precede(sort);
-		
-		auto copydirs = masterTasks.emplace([this](){
-			auto& dirs = GetAllComponentsOfType<DirectionalLight>();
-			for(const auto& e : dirs){
-				if (e){
-					auto owner = e->getOwner().lock();
-					if (owner){
-						auto d = static_pointer_cast<DirectionalLight>(e);
-						auto rot = owner->transform()->Up();
-						FrameData::PackedDL::tinyvec3 r{
-							static_cast<float>(rot.x),
-							static_cast<float>(rot.y),
-							static_cast<float>(rot.z)
-						};
-						current->directionals.emplace(*d.get(),r);
-					}
-				}
-			}
-		});
-		auto copyambs = masterTasks.emplace([this](){
-			auto& ambs = GetAllComponentsOfType<AmbientLight>();
-			for(const auto& e : ambs){
-				if (e){
-					auto d = static_pointer_cast<AmbientLight>(e);
-					current->ambients.emplace(*d.get());
-				}
-			}
-		});
-		auto copyspots = masterTasks.emplace([this](){
-			auto& spots = GetAllComponentsOfType<SpotLight>();
-			for(const auto& e : spots){
-				if (e){
-					auto d = static_pointer_cast<SpotLight>(e);
-					auto ptr = e->getOwner().lock();
-					if (ptr){
-						auto transform = ptr->transform()->CalculateWorldMatrix();
-						current->spots.emplace(*d.get(),d->CalculateMatrix(transform));
-					}
-				}
-			}
-		});
-		auto copypoints = masterTasks.emplace([this](){
-			auto& points = GetAllComponentsOfType<PointLight>();
-			for(const auto& e : points){
-				if (e){
-					auto d = static_pointer_cast<PointLight>(e);
-					auto ptr = e->getOwner().lock();
-					if (ptr){
-						auto transform = ptr->transform()->CalculateWorldMatrix();
-						current->points.emplace(*d.get(),d->CalculateMatrix(transform));
-					}
-				}
-			}
-		});
-		
-		
-		auto swap = masterTasks.emplace([this]{
-			SwapFrameData();
-		});
-		auto setup = masterTasks.emplace([this]{
-			current->Clear();
-		});
-		setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
-		sort.precede(swap);
-		camproc.precede(sort);
-		graphs[CTTI<ScriptSystem>()].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
-		swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+		FillFramedata();
 	}
 	
 	if (physicsActive){
@@ -414,4 +306,137 @@ void World::RebuildTaskGraph(){
 		}
 	}
 	systemManager.graphNeedsRebuild = false;
+}
+
+void World::FillFramedata(){
+	//render engine data collector
+	//camera matrices
+	auto camproc = masterTasks.emplace([this](){
+		auto& allcams = GetAllComponentsOfType<CameraComponent>();
+		for (const auto& c : allcams) {
+			auto cam = std::static_pointer_cast<CameraComponent>(c);
+			if (cam->isActive()) {
+				
+				auto size = App::Renderer->GetBufferSize();
+				cam->SetTargetSize(size.width, size.height);
+				current->viewmatrix = cam->GenerateViewMatrix();
+				current->projmatrix = cam->GenerateProjectionMatrix();
+				
+				break;
+			}
+		}
+	});
+	
+	//opaque geometry
+	geobegin = GetAllComponentsOfType<StaticMesh>().begin();
+	geoend = GetAllComponentsOfType<StaticMesh>().end();
+	skinnedgeobegin = GetAllComponentsOfType<SkinnedMeshComponent>().begin();
+	skinnedgeoend = GetAllComponentsOfType<SkinnedMeshComponent>().end();
+	auto init = masterTasks.emplace([&](){
+		auto& geometry = GetAllComponentsOfType<StaticMesh>();
+		geobegin = geometry.begin();
+		geoend = geometry.end();
+		auto& skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>();
+		skinnedgeobegin = skinnedGeo.begin();
+		skinnedgeoend = skinnedGeo.end();
+	});
+	
+	//sort into the hashmap
+	auto sort = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [this](Ref<Component> e){
+		if (e){
+			auto m = static_pointer_cast<StaticMesh>(e);
+			auto ptr = e->getOwner().lock();
+			if (ptr){
+				auto pair = make_pair(m->getMesh(), m->GetMaterial());
+				auto mat = ptr->transform()->CalculateWorldMatrix();
+				auto& item = current->opaques[pair];
+				item.mtx.lock();
+				item.items.insert(mat);
+				item.mtx.unlock();
+			}
+		}
+	});
+	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [this](Ref<Component> e){
+		if(e){
+			auto m = static_pointer_cast<SkinnedMeshComponent>(e);
+			auto ptr = e->getOwner().lock();
+			if (ptr){
+				auto pair = make_pair(m->GetMesh(), m->GetMaterial());
+				auto mat = ptr->transform()->CalculateWorldMatrix();
+				auto& item = current->skinnedOpaques[pair];
+				item.mtx.lock();
+				item.items.insert(mat);
+				item.mtx.unlock();
+			}
+		}
+	});
+	init.precede(sort,sortskinned);
+	
+	auto copydirs = masterTasks.emplace([this](){
+		auto& dirs = GetAllComponentsOfType<DirectionalLight>();
+		for(const auto& e : dirs){
+			if (e){
+				auto owner = e->getOwner().lock();
+				if (owner){
+					auto d = static_pointer_cast<DirectionalLight>(e);
+					auto rot = owner->transform()->Up();
+					FrameData::PackedDL::tinyvec3 r{
+						static_cast<float>(rot.x),
+						static_cast<float>(rot.y),
+						static_cast<float>(rot.z)
+					};
+					current->directionals.emplace(*d.get(),r);
+				}
+			}
+		}
+	});
+	auto copyambs = masterTasks.emplace([this](){
+		auto& ambs = GetAllComponentsOfType<AmbientLight>();
+		for(const auto& e : ambs){
+			if (e){
+				auto d = static_pointer_cast<AmbientLight>(e);
+				current->ambients.emplace(*d.get());
+			}
+		}
+	});
+	auto copyspots = masterTasks.emplace([this](){
+		auto& spots = GetAllComponentsOfType<SpotLight>();
+		for(const auto& e : spots){
+			if (e){
+				auto d = static_pointer_cast<SpotLight>(e);
+				auto ptr = e->getOwner().lock();
+				if (ptr){
+					auto transform = ptr->transform()->CalculateWorldMatrix();
+					current->spots.emplace(*d.get(),d->CalculateMatrix(transform));
+				}
+			}
+		}
+	});
+	auto copypoints = masterTasks.emplace([this](){
+		auto& points = GetAllComponentsOfType<PointLight>();
+		for(const auto& e : points){
+			if (e){
+				auto d = static_pointer_cast<PointLight>(e);
+				auto ptr = e->getOwner().lock();
+				if (ptr){
+					auto transform = ptr->transform()->CalculateWorldMatrix();
+					current->points.emplace(*d.get(),d->CalculateMatrix(transform));
+				}
+			}
+		}
+	});
+	
+	
+	auto swap = masterTasks.emplace([this]{
+		SwapFrameData();
+	});
+	auto setup = masterTasks.emplace([this]{
+		current->Clear();
+	});
+	setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+	sort.precede(swap);
+	sortskinned.precede(swap);
+	camproc.precede(sort,sortskinned);
+	graphs[CTTI<ScriptSystem>()].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 }

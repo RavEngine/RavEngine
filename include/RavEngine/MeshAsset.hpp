@@ -15,10 +15,10 @@ public:
 	 */
 	MeshAsset(const std::string& path, const decimalType scale = 1.0);
 	
-	const bgfx::VertexBufferHandle getVertexBuffer(){
+	inline const bgfx::VertexBufferHandle getVertexBuffer(){
 		return vertexBuffer;
 	}
-	const bgfx::IndexBufferHandle getIndexBuffer(){
+	inline const bgfx::IndexBufferHandle getIndexBuffer(){
 		return indexBuffer;
 	}
 	

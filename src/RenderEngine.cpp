@@ -482,6 +482,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setInstanceDataBuffer(&idb);
 			//set BGFX state
 		bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
+		
+		// seed compute shader for skinning
+		
 
 		//call Draw with the staticmesh
 		if (row.first.second){

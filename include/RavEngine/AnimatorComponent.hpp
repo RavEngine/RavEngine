@@ -137,9 +137,10 @@ public:
 		}
 		
 		template<typename T>
-		inline void SetTransition(decltype(ID) id, T interpolation, float duration){
+		inline void SetTransition(decltype(ID) id, T interpolation, float duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
 			auto tween = tweeny::from(0.0f).to(1.0f).during(duration * App::evalNormal).via(interpolation);
 			exitTransitions[id].transition = tween;
+			exitTransitions[id].type = mode;
 		}
 	};
 	

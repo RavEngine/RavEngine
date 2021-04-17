@@ -3,6 +3,7 @@
 #include "mathtypes.hpp"
 #include "Material.hpp"
 #include "MeshAsset.hpp"
+#include "MeshAssetSkinned.hpp"
 #include "DataStructures.hpp"
 #include <plf_colony.h>
 #include "Light.hpp"
@@ -29,6 +30,7 @@ struct FrameData{
 	
 	//opaque pass data
 	locked_node_hashmap<std::pair<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>,SpinLock> opaques;
+	locked_node_hashmap<std::pair<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>>, entry<matrix4>, SpinLock> skinnedOpaques;
 	
 	template<typename T>
 	struct StoredLight{
@@ -85,6 +87,7 @@ struct FrameData{
 	
 	inline void Clear(){
 		opaques.clear();
+		skinnedOpaques.clear();
 		directionals.clear();
 		ambients.clear();
 		points.clear();

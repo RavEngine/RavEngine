@@ -7,7 +7,7 @@
 namespace RavEngine {
     class StaticMesh : public RenderableComponent {
     public:
-        StaticMesh(Ref<MeshAsset>);
+		StaticMesh(Ref<MeshAsset> m): RenderableComponent(), mesh(m){}
 		virtual ~StaticMesh(){}
 		
 		Ref<MeshAsset> getMesh() {return mesh;}
@@ -16,14 +16,10 @@ namespace RavEngine {
         Assign a material to this staticmesh
         @param mat the material instance to assign
         */
-        void SetMaterial(Ref<PBRMaterialInstance> mat);
+		inline void SetMaterial(Ref<PBRMaterialInstance> mat){
+			material = mat;
+		}
 
-		/**
-		 Render this Static Mesh
-		 @note if there is no material or mesh assigned, no draw will occur.
-		 */
-        void Draw(int view = 0) override;
-		
         /**
         @returns the currently assigned material
         */
