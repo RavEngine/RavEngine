@@ -224,6 +224,8 @@ namespace RavEngine {
 					
         static bgfx::VertexBufferHandle screenSpaceQuadVert;
         static bgfx::IndexBufferHandle screenSpaceQuadInd;
+
+		static bgfx::ShaderHandle skinningShaderHandle;
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
@@ -244,7 +246,7 @@ namespace RavEngine {
 				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 			}
 			
-			const auto stride = LightType::InstancingStride();
+			constexpr auto stride = LightType::InstancingStride();
 			const auto numLights = lights.size();
 			
 			//create buffer for GPU instancing

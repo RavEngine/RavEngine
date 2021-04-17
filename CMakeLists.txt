@@ -308,22 +308,44 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${shader_name}")
 	set(VS_OUTPUT_NAME "${OUTPUT_ROOT}/vertex.bin")
 	set(FS_OUTPUT_NAME "${OUTPUT_ROOT}/fragment.bin")
-
-	set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${VS_OUTPUT_NAME})
-	set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${FS_OUTPUT_NAME})
+	set(CS_OUTPUT_NAME "${OUTPUT_ROOT}/compute.bin")
+	
+	# if fragment is blank, assume compute shader
+	set(IS_COMPUTE OFF)
+	if(fragment_src STREQUAL "")
+		set(IS_COMPUTE ON)
+	endif()
 
 	# compile shaders
-	add_custom_command(
-		PRE_BUILD
-		OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
-		DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "${SHADERC_CMD}"
-		COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-		COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
-		COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
-		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
-		COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
-		VERBATIM
-	)
+	if(NOT IS_COMPUTE)
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${VS_OUTPUT_NAME})
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${FS_OUTPUT_NAME})
+		add_custom_command(
+			PRE_BUILD
+			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
+			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "${SHADERC_CMD}"
+			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
+			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
+			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+			COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
+			VERBATIM
+		)
+	else()
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${CS_OUTPUT_NAME})
+
+		add_custom_command(
+			PRE_BUILD
+			OUTPUT "${CS_OUTPUT_NAME}"
+			DEPENDS "${vertex_src}" "${SHADERC_CMD}"
+			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_VS}"
+			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+			COMMENT "Compiling Compute Shader Descriptor ${shader_name} => ${CS_OUTPUT_NAME}"
+			VERBATIM
+		)
+	endif()
+	
 
 endfunction()
 

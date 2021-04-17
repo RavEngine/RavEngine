@@ -53,6 +53,7 @@ bgfx::VertexLayout RenderEngine::RmlLayout;
 
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
+bgfx::ShaderHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
@@ -310,6 +311,10 @@ void RenderEngine::Init()
 	//wait for the render thread to be finished initializing
 	while (!bgfx_thread_finished_init);
 
+	//check capabilities
+	const auto caps = bgfx::getCaps();
+	Debug::Assert(caps->supported & BGFX_CAPS_COMPUTE, "Cannot proceed: this platform does not support compute shaders.");
+
 	//create screenspace quad
 	const uint16_t indices[] = { 0,2,1, 2,3,1 };
 	const Vertex vertices[] = { {-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0} };
@@ -322,6 +327,14 @@ void RenderEngine::Init()
 	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
 	blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
 	guiMaterial = make_shared<GUIMaterialInstance>(Material::Manager::AccessMaterialOfType<GUIMaterial>());
+
+	//load compute shader for skinning
+	{
+		vector<uint8_t> shaderdata;
+		App::Resources->FileContentsAt("shaders/skincompute/compute.bin", shaderdata);
+		const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
+		skinningShaderHandle = bgfx::createShader(mem);
+	}
 
 	//init lights
 	LightManager::Init();
