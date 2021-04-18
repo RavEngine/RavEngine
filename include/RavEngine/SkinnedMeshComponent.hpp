@@ -34,6 +34,10 @@ public:
 	inline decltype(meshAsset) GetMesh() const{
 		return meshAsset;
 	}
+
+	inline decltype(skeleton) GetSkeleton() const {
+		return skeleton;
+	}
 };
 
 }

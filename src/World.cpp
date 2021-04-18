@@ -347,7 +347,7 @@ void World::FillFramedata(){
 			auto m = static_pointer_cast<StaticMesh>(e);
 			auto ptr = e->getOwner().lock();
 			if (ptr){
-				auto pair = make_pair(m->getMesh(), m->GetMaterial());
+				auto pair = make_tuple(m->getMesh(), m->GetMaterial());
 				auto mat = ptr->transform()->CalculateWorldMatrix();
 				auto& item = current->opaques[pair];
 				item.mtx.lock();
@@ -361,7 +361,7 @@ void World::FillFramedata(){
 			auto m = static_pointer_cast<SkinnedMeshComponent>(e);
 			auto ptr = e->getOwner().lock();
 			if (ptr){
-				auto pair = make_pair(m->GetMesh(), m->GetMaterial());
+				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
 				auto mat = ptr->transform()->CalculateWorldMatrix();
 				auto& item = current->skinnedOpaques[pair];
 				item.mtx.lock();

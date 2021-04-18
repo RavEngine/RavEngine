@@ -470,16 +470,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 	auto execdraw = [&](const auto& row, const auto& skinningfunc) {
 		//call Draw with the staticmesh
-		if (row.first.second) {
+		if (std::get<1>(row.first)) {
 
-			// seed compute shader for skinning
-			// input buffer A: skeleton bind pose
-			// input buffer B: vertex weights by bone ID
-			// input buffer C: unposed vertices in mesh
-			// output buffer A: posed output transformations for vertices
-
-			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,row.first.first->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
 			skinningfunc(row);
+			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,row.first.first->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
 
 			//bind gbuffer textures
 			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
@@ -505,7 +499,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			//set BGFX state
 			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
 
-			row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(), Views::DeferredGeo);
+			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 		}
 	};
 		
@@ -513,13 +507,24 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//iterate over each row of the table
 	for(const auto& row : fd.opaques){
 		execdraw(row, [&](const auto& row) {
-
+			// seed compute shader for skinning
+			// input buffer A: skeleton bind pose - assume single joint equal to model matrix
+			// input buffer B: vertex weights by bone ID - 100% influence on single bone
+			// input buffer C: unposed vertices in mesh
+			// output buffer A: posed output transformations for vertices
 		});
 	}
 
 	for (const auto& row : fd.skinnedOpaques) {
 		execdraw(row, [&](const auto& row) {
-
+			// seed compute shader for skinning
+			// input buffer A: skeleton bind pose
+			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);
+			// input buffer B: vertex weights by bone ID
+			auto& weights = std::get<0>(row.first)->getWeights();
+			// input buffer C: unposed vertices in mesh
+			
+			// output buffer A: posed output transformations for vertices
 		});
 	}
 
