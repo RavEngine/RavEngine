@@ -473,7 +473,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		if (std::get<1>(row.first)) {
 
 			skinningfunc(row);
-			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,row.first.first->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
 
 			//bind gbuffer textures
 			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
@@ -507,10 +506,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//iterate over each row of the table
 	for(const auto& row : fd.opaques){
 		execdraw(row, [&](const auto& row) {
-			// seed compute shader for skinning
-			// input buffer A: skeleton bind pose - assume single joint equal to model matrix
-			// input buffer B: vertex weights by bone ID - 100% influence on single bone
-			// input buffer C: unposed vertices in mesh
+			// exec compute shader that writes identity matrix into outputs
+			// 1 invocation per vertex per object
+
+			// no inputs
+			
 			// output buffer A: posed output transformations for vertices
 		});
 	}
@@ -525,6 +525,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			// input buffer C: unposed vertices in mesh
 			
 			// output buffer A: posed output transformations for vertices
+
+			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,row.first.first->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
 		});
 	}
 

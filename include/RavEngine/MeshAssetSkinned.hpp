@@ -8,16 +8,15 @@
 
 namespace RavEngine{
 class MeshAssetSkinned : public MeshAsset{
-private:
-	
-	struct vweights{
-		struct vw{
+public:
+	struct vweights {
+		struct vw {
 			uint16_t joint_idx = 0;
 			float influence = 0;
 		};
-		etl::vector<vw,4> weights;
+		etl::vector<vw, 4> weights;
 	};
-	
+private:
 	std::vector<vweights> allweights;
 public:
 	

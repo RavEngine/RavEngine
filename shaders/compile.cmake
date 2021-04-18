@@ -18,3 +18,4 @@ declare_shader("guishader" "${CMAKE_CURRENT_LIST_DIR}/gui.vsh" "${CMAKE_CURRENT_
 
 # mesh skinning compute shader
 declare_shader("skincompute" "${CMAKE_CURRENT_LIST_DIR}/skinning_cs.glsl" "" "")
+declare_shader("skinstaticcompute" "${CMAKE_CURRENT_LIST_DIR}/skinning_static_cs.glsl" "" "")
