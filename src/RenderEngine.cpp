@@ -484,16 +484,16 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setViewTransform(i, viewmat, projmat);
 	}
 
+	//bind gbuffer textures
+	for (int i = 0; i < BX_COUNTOF(attachments); i++) {
+		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+	}
+	
 	auto execdraw = [&](const auto& row, const auto& skinningfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
 
 			skinningfunc(row);
-
-			//bind gbuffer textures
-			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
-				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-			}
 
 			//fill the buffer using the material to write the material data for each instance
 				//get the stride for the material (only needs the matrix, all others are uniforms?
@@ -527,8 +527,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				// no inputs
 				// output buffer A: posed output transformations for vertices
 
-			//bgfx::setBuffer(0, outputSkinningMatrixBuffer,bgfx::Access::Write);
-			//bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::get<0>(row.first)->GetNumVerts(), row.second.items.size(), 1);	//vertices x number of objects to pose
+			
+			auto numverts = std::get<0>(row.first)->GetNumVerts();
+			auto numobjects = row.second.items.size();
+			bgfx::setBuffer(0, outputSkinningMatrixBuffer,bgfx::Access::Write);
+			bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(numverts/64.0), std::ceil(numobjects/64.0), 1);	//vertices x number of objects to pose
 		});
 	}
 
@@ -545,8 +548,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			
 			// output buffer A: posed output transformations for vertices
 
-			//bgfx::setBuffer(0, outputSkinningMatrixBuffer, bgfx::Access::Write);
-			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::get<0>(row.first)->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
+			auto numverts = std::get<0>(row.first)->GetNumVerts();
+			auto numobjects = row.second.items.size();
+			bgfx::setBuffer(0, outputSkinningMatrixBuffer, bgfx::Access::Write);
+			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/64.0),std::ceil(numobjects/64.0),1);	//vertices x number of objects to pose
 		});
 	}
 
