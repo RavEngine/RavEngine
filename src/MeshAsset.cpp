@@ -109,7 +109,6 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	aiReleaseImport(scene);
 	
 	//combine all meshes
-	size_t totalVerts = 0, totalIndices = 0;
 	for(int i = 0; i < meshes.size(); i++){
 		totalVerts += meshes[i].vertices.size();
 		totalIndices += meshes[i].indices.size();

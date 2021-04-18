@@ -225,7 +225,7 @@ namespace RavEngine {
         static bgfx::VertexBufferHandle screenSpaceQuadVert;
         static bgfx::IndexBufferHandle screenSpaceQuadInd;
 
-		static bgfx::ShaderHandle skinningShaderHandle;
+		static bgfx::ProgramHandle skinningShaderHandle;
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		

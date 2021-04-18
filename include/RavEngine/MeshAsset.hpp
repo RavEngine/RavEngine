@@ -7,6 +7,11 @@
 namespace RavEngine{
 
 class MeshAsset {
+protected:
+	bgfx::VertexBufferHandle vertexBuffer;
+	bgfx::IndexBufferHandle indexBuffer;
+
+	size_t totalVerts = 0, totalIndices = 0;
 public:
 	
 	/**
@@ -26,10 +31,14 @@ public:
 		bgfx::destroy(vertexBuffer);
 		bgfx::destroy(indexBuffer);
 	}
-	
-protected:
-	bgfx::VertexBufferHandle vertexBuffer;
-	bgfx::IndexBufferHandle indexBuffer;
+
+	inline const decltype(totalVerts) GetNumVerts() const {
+		return totalVerts;
+	}
+
+	inline const decltype(totalIndices) GetNumIndices() const {
+		return totalIndices;
+	}
 };
 
 }

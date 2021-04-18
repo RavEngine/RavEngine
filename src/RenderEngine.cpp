@@ -53,7 +53,7 @@ bgfx::VertexLayout RenderEngine::RmlLayout;
 
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
-bgfx::ShaderHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
@@ -333,7 +333,7 @@ void RenderEngine::Init()
 		vector<uint8_t> shaderdata;
 		App::Resources->FileContentsAt("shaders/skincompute/compute.bin", shaderdata);
 		const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
-		skinningShaderHandle = bgfx::createShader(mem);
+		skinningShaderHandle = bgfx::createProgram(bgfx::createShader(mem),true);	//auto destroys shader when program is destroyed
 	}
 
 	//init lights
@@ -467,56 +467,72 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(int i = 0; i < Views::Count; i++){
 		bgfx::setViewTransform(i, viewmat, projmat);
 	}
-		
-	//bind gbuffer textures
-	for(int i = 0; i < BX_COUNTOF(attachments); i++){
-		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-	}
+
+	auto execdraw = [&](const auto& row, const auto& skinningfunc) {
+		//call Draw with the staticmesh
+		if (row.first.second) {
+
+			// seed compute shader for skinning
+			// input buffer A: skeleton bind pose
+			// input buffer B: vertex weights by bone ID
+			// input buffer C: unposed vertices in mesh
+			// output buffer A: posed output transformations for vertices
+
+			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,row.first.first->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
+			skinningfunc(row);
+
+			//bind gbuffer textures
+			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
+				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+			}
+
+			//fill the buffer using the material to write the material data for each instance
+				//get the stride for the material (only needs the matrix, all others are uniforms?
+			constexpr auto stride = closest_multiple_of(16 * sizeof(float), 16);
+			bgfx::InstanceDataBuffer idb;
+			bgfx::allocInstanceDataBuffer(&idb, row.second.items.size(), stride);
+			size_t offset = 0;
+			for (const auto& mesh : row.second.items) {
+				//write the data into the idb
+				auto matrix = glm::value_ptr(mesh);
+				float* ptr = (float*)(idb.data + offset);
+
+				copyMat4(matrix, ptr);
+
+				offset += stride;
+			}
+			bgfx::setInstanceDataBuffer(&idb);
+			//set BGFX state
+			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
+
+			row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(), Views::DeferredGeo);
+		}
+	};
 		
 	//Deferred geometry pass
-	bool hasGeo = false;
 	//iterate over each row of the table
 	for(const auto& row : fd.opaques){
-		//fill the buffer using the material to write the material data for each instance
-			//get the stride for the material (only needs the matrix, all others are uniforms?
-		constexpr auto stride = closest_multiple_of(16*sizeof(float), 16);
-		bgfx::InstanceDataBuffer idb;
-		bgfx::allocInstanceDataBuffer(&idb, row.second.items.size(), stride);
-		size_t offset = 0;
-		for(const auto& mesh : row.second.items){
-			//write the data into the idb
-			auto matrix = glm::value_ptr(mesh);
-			float* ptr = (float*)(idb.data + offset);
-			
-			copyMat4(matrix, ptr);
-			
-			offset += stride;
-		}
-		bgfx::setInstanceDataBuffer(&idb);
-			//set BGFX state
-		bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
-		
-		// seed compute shader for skinning
-		
+		execdraw(row, [&](const auto& row) {
 
-		//call Draw with the staticmesh
-		if (row.first.second){
-			hasGeo = true;
-			row.first.second->Draw(row.first.first->getVertexBuffer(), row.first.first->getIndexBuffer(), matrix4(),Views::DeferredGeo);
-		}
+		});
 	}
-	if (hasGeo){
-		// Lighting pass
-		bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
-		bool dl = DrawLightsOfType<DirectionalLight>(fd.directionals);
-		bool pl = DrawLightsOfType<SpotLight>(fd.spots);
-		bool sl = DrawLightsOfType<PointLight>(fd.points);
+
+	for (const auto& row : fd.skinnedOpaques) {
+		execdraw(row, [&](const auto& row) {
+
+		});
+	}
+
+	// Lighting pass
+	bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
+	bool dl = DrawLightsOfType<DirectionalLight>(fd.directionals);
+	bool pl = DrawLightsOfType<SpotLight>(fd.spots);
+	bool sl = DrawLightsOfType<PointLight>(fd.points);
 		
-		//blit to view 0 using the fullscreen quad
-		bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
-		if (al || dl || pl || sl ){
-			bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
-		}
+	//blit to view 0 using the fullscreen quad
+	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
+	if (al || dl || pl || sl ){
+		bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
 	}
 	
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
