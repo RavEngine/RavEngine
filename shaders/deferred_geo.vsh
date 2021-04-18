@@ -2,7 +2,9 @@ $input a_position, a_normal, a_tangent, a_texcoord0, i_data0, i_data1, i_data2, 
 $output v_normal, v_texcoord0, v_worldpos
 
 #include "common.sh"
-#include <bgfx_shader.sh>
+#include <bgfx_compute.sh>
+
+BUFFER_RO(skinmatrix, vec4, 0);
 
 void main()
 {

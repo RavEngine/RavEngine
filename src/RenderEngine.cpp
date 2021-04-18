@@ -53,7 +53,8 @@ bgfx::VertexLayout RenderEngine::RmlLayout;
 
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
-bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE, RenderEngine::skinningIdentityShaderHandle = BGFX_INVALID_HANDLE;
+decltype(RenderEngine::outputSkinningMatrixBuffer) RenderEngine::outputSkinningMatrixBuffer = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
@@ -334,7 +335,22 @@ void RenderEngine::Init()
 		App::Resources->FileContentsAt("shaders/skincompute/compute.bin", shaderdata);
 		const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
 		skinningShaderHandle = bgfx::createProgram(bgfx::createShader(mem),true);	//auto destroys shader when program is destroyed
+
+		App::Resources->FileContentsAt("shaders/skinstaticcompute/compute.bin", shaderdata);
+		const bgfx::Memory* mem2 = bgfx::copy(&shaderdata[0], shaderdata.size());
+		skinningIdentityShaderHandle = bgfx::createProgram(bgfx::createShader(mem2), true);
 	}
+
+	//create compute shader buffers
+	bgfx::VertexLayout skinningOutputLayout;
+	skinningOutputLayout.begin()
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.end();
+
+	outputSkinningMatrixBuffer = bgfx::createDynamicVertexBuffer(1 << 15, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
 
 	//init lights
 	LightManager::Init();
@@ -508,10 +524,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		execdraw(row, [&](const auto& row) {
 			// exec compute shader that writes identity matrix into outputs
 			// 1 invocation per vertex per object
+				// no inputs
+				// output buffer A: posed output transformations for vertices
 
-			// no inputs
-			
-			// output buffer A: posed output transformations for vertices
+			//bgfx::setBuffer(0, outputSkinningMatrixBuffer,bgfx::Access::Write);
+			//bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::get<0>(row.first)->GetNumVerts(), row.second.items.size(), 1);	//vertices x number of objects to pose
 		});
 	}
 
@@ -521,12 +538,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			// input buffer A: skeleton bind pose
 			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);
 			// input buffer B: vertex weights by bone ID
-			auto& weights = std::get<0>(row.first)->getWeights();
+			auto mesh = std::get<0>(row.first);
+			auto& weights = mesh->getWeights();
 			// input buffer C: unposed vertices in mesh
+			// input buffer D: index buffer 
 			
 			// output buffer A: posed output transformations for vertices
 
-			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,row.first.first->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
+			//bgfx::setBuffer(0, outputSkinningMatrixBuffer, bgfx::Access::Write);
+			//bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::get<0>(row.first)->GetNumVerts(), row.second.items.size(),1);	//vertices x number of objects to pose
 		});
 	}
 
