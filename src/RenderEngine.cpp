@@ -546,12 +546,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		execdraw(row, [&](const auto& row) {
 			
 		}, [&opaquemtxhandle]() {
-			bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Read);
+			bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
 		});
 	}
 
 	auto numskinned = fd.skinnedOpaques.size();
 	stackarray(buffers,bgfx::DynamicVertexBufferHandle, numskinned);
+	
 	uint16_t idx = 0;
 	for (const auto& row : fd.skinnedOpaques) {
 		buffers[idx] = BGFX_INVALID_HANDLE;
@@ -574,7 +575,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/32.0),std::ceil(numobjects/32.0),1);	//vertices x number of objects to pose
 		}, [idx,&buffers]() {
-			bgfx::setBuffer(0, buffers[idx], bgfx::Access::Read);
+			bgfx::setBuffer(11, buffers[idx], bgfx::Access::Read);
 		});
 		idx++;
 	}

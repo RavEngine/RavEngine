@@ -4,7 +4,7 @@ $output v_normal, v_texcoord0, v_worldpos
 #include "common.sh"
 #include <bgfx_compute.sh>
 
-BUFFER_RO(skinmatrix, vec4, 0);
+BUFFER_RO(skinmatrix, vec4, 11);
 
 void main()
 {
