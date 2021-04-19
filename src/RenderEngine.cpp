@@ -486,7 +486,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
 	
-	auto execdraw = [&](const auto& row, const auto& skinningfunc) {
+	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
 
@@ -511,24 +511,42 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			//set BGFX state
 			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
 
+
+			bindfunc();
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 		}
 	};
 		
 	//Deferred geometry pass
 	//iterate over each row of the table
-	for(const auto& row : fd.opaques){
-		execdraw(row, [&](const auto& row) {
-			// exec compute shader that writes identity matrix into outputs
+	uint32_t max_verts = 0;
+	uint32_t max_objects = 0;
+	for (const auto& row : fd.opaques) {
+		auto nverts = std::get<0>(row.first)->GetNumVerts();
+		if (nverts > max_verts) {
+			max_verts = nverts;
+		}
+		auto numobjects = row.second.items.size();
+		if (numobjects > max_objects) {
+			max_objects = numobjects;
+		}
+	}
+	bgfx::DynamicVertexBufferHandle opaquemtxhandle = BGFX_INVALID_HANDLE;
+	if (fd.opaques.size() > 0) {
+		auto row = fd.opaques.begin();
+		opaquemtxhandle = bgfx::createDynamicVertexBuffer(std::get<0>(fd.opaques.begin()->first)->GetNumVerts(), skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
+		// exec compute shader that writes identity matrix into outputs
 			// 1 invocation per vertex per object
 				// no inputs
 				// output buffer A: posed output transformations for vertices
-
+		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
+		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 32.0), std::ceil(max_objects / 32.0), 1);	//vertices x number of objects to pose
+	}
+	for(const auto& row : fd.opaques){
+		execdraw(row, [&](const auto& row) {
 			
-			auto numverts = std::get<0>(row.first)->GetNumVerts();
-			auto numobjects = row.second.items.size();
-			//bgfx::setBuffer(0, outputSkinningMatrixBuffer,bgfx::Access::Write);
-			//bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(numverts/64.0), std::ceil(numobjects/64.0), 1);	//vertices x number of objects to pose
+		}, [&opaquemtxhandle]() {
+			bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Read);
 		});
 	}
 
@@ -537,7 +555,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	uint16_t idx = 0;
 	for (const auto& row : fd.skinnedOpaques) {
 		buffers[idx] = BGFX_INVALID_HANDLE;
-		execdraw(row, [&](const auto& row) {
+		execdraw(row, [idx,&buffers](const auto& row) {
 			// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
 			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);
@@ -548,13 +566,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			// input buffer D: index buffer 
 			
 			// output buffer A: posed output transformations for vertices
-			auto buf = bgfx::createDynamicVertexBuffer(mesh->GetNumVerts() , skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
+			auto buf = bgfx::createDynamicVertexBuffer(mesh->GetNumVerts() * 4, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
 			buffers[idx] = buf;
 
 			auto numverts = std::get<0>(row.first)->GetNumVerts();
 			auto numobjects = row.second.items.size();
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
-			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/64.0),std::ceil(numobjects/64.0),1);	//vertices x number of objects to pose
+			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/32.0),std::ceil(numobjects/32.0),1);	//vertices x number of objects to pose
+		}, [idx,&buffers]() {
+			bgfx::setBuffer(0, buffers[idx], bgfx::Access::Read);
 		});
 		idx++;
 	}
@@ -611,6 +631,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		if (bgfx::isValid(buffers[i])) {
 			bgfx::destroy(buffers[i]);
 		}
+	}
+	if (bgfx::isValid(opaquemtxhandle)) {
+		bgfx::destroy(opaquemtxhandle);
 	}
 
 #ifdef _DEBUG

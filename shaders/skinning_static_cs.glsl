@@ -6,7 +6,6 @@ BUFFER_WR(skinmatrix, vec4, 0);
 NUM_THREADS(32, 32, 1)
 void main()
 {
-
 	mat4 identity = mtxFromRows(
 		vec4(1,0,0,0),
 		vec4(0,1,0,0),

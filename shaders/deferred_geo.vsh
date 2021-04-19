@@ -20,6 +20,15 @@ void main()
 	v_normal = mul(normalmat,a_normal);
 	v_texcoord0 = a_texcoord0;
 	
+	int offset = gl_VertexID.x * 4;
+	mat4 posemtx;
+	posemtx[0] = skinmatrix[offset];
+	posemtx[1] = skinmatrix[offset+1];
+	posemtx[2] = skinmatrix[offset+2];
+	posemtx[3] = skinmatrix[offset+3];
+	
+	worldmat = mul(worldmat,posemtx);
+	
 	vec4 worldpos = instMul(worldmat, vec4(a_position,1));
 	
 	v_worldpos = worldpos;
