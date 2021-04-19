@@ -293,14 +293,17 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 		set(PLATFORM "osx")
 		set(PROFILE_VS "metal")
 		set(PROFILE_FS "metal")
+		set(PROFILE_CS "metal")
 	elseif(CMAKE_SYSTEM_NAME MATCHES Windows)
 		set(PLATFORM "windows")
 		set(PROFILE_VS "vs_5_0")
 		set(PROFILE_FS "ps_5_0")
+		set(PROFILE_CS "cs_5_0")
 	elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
 		set(PLATFORM "linux")
 		set(PROFILE_VS "spirv")
 		set(PROFILE_FS "spirv")
+		set(PROFILE_CS "spirv")
 	else()
 		message(FATAL_ERROR "Shader compiler is not supported on this platform")
 	endif()
@@ -339,7 +342,7 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 			OUTPUT "${CS_OUTPUT_NAME}"
 			DEPENDS "${vertex_src}" "${SHADERC_CMD}"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_VS}"
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Compute Shader Descriptor ${shader_name} => ${CS_OUTPUT_NAME}"
 			VERBATIM

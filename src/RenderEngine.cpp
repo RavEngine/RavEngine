@@ -54,7 +54,7 @@ bgfx::VertexLayout RenderEngine::RmlLayout;
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE, RenderEngine::skinningIdentityShaderHandle = BGFX_INVALID_HANDLE;
-decltype(RenderEngine::outputSkinningMatrixBuffer) RenderEngine::outputSkinningMatrixBuffer = BGFX_INVALID_HANDLE;
+decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout;
 
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
@@ -342,15 +342,12 @@ void RenderEngine::Init()
 	}
 
 	//create compute shader buffers
-	bgfx::VertexLayout skinningOutputLayout;
 	skinningOutputLayout.begin()
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.end();
-
-	outputSkinningMatrixBuffer = bgfx::createDynamicVertexBuffer(1 << 15, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
 
 	//init lights
 	LightManager::Init();
@@ -530,12 +527,16 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			
 			auto numverts = std::get<0>(row.first)->GetNumVerts();
 			auto numobjects = row.second.items.size();
-			bgfx::setBuffer(0, outputSkinningMatrixBuffer,bgfx::Access::Write);
-			bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(numverts/64.0), std::ceil(numobjects/64.0), 1);	//vertices x number of objects to pose
+			//bgfx::setBuffer(0, outputSkinningMatrixBuffer,bgfx::Access::Write);
+			//bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(numverts/64.0), std::ceil(numobjects/64.0), 1);	//vertices x number of objects to pose
 		});
 	}
 
+	auto numskinned = fd.skinnedOpaques.size();
+	stackarray(buffers,bgfx::DynamicVertexBufferHandle, numskinned);
+	uint16_t idx = 0;
 	for (const auto& row : fd.skinnedOpaques) {
+		buffers[idx] = BGFX_INVALID_HANDLE;
 		execdraw(row, [&](const auto& row) {
 			// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
@@ -547,12 +548,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			// input buffer D: index buffer 
 			
 			// output buffer A: posed output transformations for vertices
+			auto buf = bgfx::createDynamicVertexBuffer(mesh->GetNumVerts() , skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
+			buffers[idx] = buf;
 
 			auto numverts = std::get<0>(row.first)->GetNumVerts();
 			auto numobjects = row.second.items.size();
-			bgfx::setBuffer(0, outputSkinningMatrixBuffer, bgfx::Access::Write);
+			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/64.0),std::ceil(numobjects/64.0),1);	//vertices x number of objects to pose
 		});
+		idx++;
 	}
 
 	// Lighting pass
@@ -601,9 +605,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 	Im3d::GetContext().draw();
 #endif
-	//discard all previous state sets
 	bgfx::frame();
-    bgfx::discard();
+	// deallocate buffers
+	for (int i = 0; i < numskinned; i++) {
+		if (bgfx::isValid(buffers[i])) {
+			bgfx::destroy(buffers[i]);
+		}
+	}
 
 #ifdef _DEBUG
 	Im3d::NewFrame();

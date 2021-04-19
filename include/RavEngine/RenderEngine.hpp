@@ -227,7 +227,7 @@ namespace RavEngine {
 
 		static bgfx::ProgramHandle skinningShaderHandle, skinningIdentityShaderHandle;
 
-		static bgfx::DynamicVertexBufferHandle outputSkinningMatrixBuffer;
+		static bgfx::VertexLayout skinningOutputLayout;
 				
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
