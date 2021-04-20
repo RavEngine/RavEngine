@@ -5,6 +5,7 @@ $output v_normal, v_texcoord0, v_worldpos
 #include <bgfx_compute.sh>
 
 BUFFER_RO(skinmatrix, vec4, 11);
+uniform vec4 NumObjects;
 
 void main()
 {
@@ -20,7 +21,7 @@ void main()
 	v_normal = mul(normalmat,a_normal);
 	v_texcoord0 = a_texcoord0;
 	
-	int offset = gl_VertexID.x * 4;
+	int offset = gl_InstanceID * NumObjects.y * 4 + gl_VertexID.x * 4;
 	mat4 posemtx;
 	posemtx[0] = skinmatrix[offset];
 	posemtx[1] = skinmatrix[offset+1];

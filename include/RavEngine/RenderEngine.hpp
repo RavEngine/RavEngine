@@ -15,6 +15,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <fmt/format.h>
 #include "FrameData.hpp"
+#include "Uniform.hpp"
 
 struct SDL_Window;
 
@@ -228,7 +229,7 @@ namespace RavEngine {
 		static bgfx::ProgramHandle skinningShaderHandle, skinningIdentityShaderHandle;
 
 		static bgfx::VertexLayout skinningOutputLayout;
-
+		
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
 		FrameData fd;

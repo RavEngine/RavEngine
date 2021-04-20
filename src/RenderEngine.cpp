@@ -485,7 +485,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for (int i = 0; i < BX_COUNTOF(attachments); i++) {
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
-	
+	Vector4Uniform numRowsUniform("NumObjects");
 	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
@@ -511,8 +511,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			//set BGFX state
 			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
 
-
 			bindfunc();
+			
+			float values[4] = {static_cast<float>(row.second.items.size()),static_cast<float>(std::get<0>(row.first)->GetNumVerts()),0,0};
+			numRowsUniform.SetValues(&values, 1);
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 		}
 	};
@@ -534,17 +536,19 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::DynamicVertexBufferHandle opaquemtxhandle = BGFX_INVALID_HANDLE;
 	if (fd.opaques.size() > 0) {
 		auto row = fd.opaques.begin();
-		opaquemtxhandle = bgfx::createDynamicVertexBuffer(std::get<0>(fd.opaques.begin()->first)->GetNumVerts(), skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
+		opaquemtxhandle = bgfx::createDynamicVertexBuffer(max_verts * max_objects, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
 		// exec compute shader that writes identity matrix into outputs
 			// 1 invocation per vertex per object
 				// no inputs
 				// output buffer A: posed output transformations for vertices
 		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
+		float values[4] = {static_cast<float>(max_objects),static_cast<float>(max_verts),0,0};
+		numRowsUniform.SetValues(&values, 1);
 		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 32.0), std::ceil(max_objects / 32.0), 1);	//vertices x number of objects to pose
 	}
 	for(const auto& row : fd.opaques){
-		execdraw(row, [&](const auto& row) {
-			
+		execdraw(row, [](const auto& row) {
+			//do nothing here
 		}, [&opaquemtxhandle]() {
 			bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
 		});
@@ -564,14 +568,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			auto mesh = std::get<0>(row.first);
 			auto& weights = mesh->getWeights();
 			// input buffer C: unposed vertices in mesh
-			// input buffer D: index buffer 
 			
 			// output buffer A: posed output transformations for vertices
-			auto buf = bgfx::createDynamicVertexBuffer(mesh->GetNumVerts() * 4, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
+			auto numverts = mesh->GetNumVerts();
+			auto numobjects = row.second.items.size();
+			auto buf = bgfx::createDynamicVertexBuffer(numverts * 4 * numobjects, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
 			buffers[idx] = buf;
 
-			auto numverts = std::get<0>(row.first)->GetNumVerts();
-			auto numobjects = row.second.items.size();
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/32.0),std::ceil(numobjects/32.0),1);	//vertices x number of objects to pose
 		}, [idx,&buffers]() {

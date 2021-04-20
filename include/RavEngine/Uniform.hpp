@@ -51,7 +51,7 @@ public:
 	}
 	
 protected:
-	bgfx::UniformHandle handle;
+	bgfx::UniformHandle handle = BGFX_INVALID_HANDLE;
 	/**
 	 Construct a uniform given a name
 	 @param name the name of the uniform
