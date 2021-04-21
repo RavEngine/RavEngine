@@ -46,7 +46,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	if (!scene){
 		Debug::Fatal("Cannot load: {}", aiGetErrorString());
 	}
-	
+	std::vector<vweights> allweights;
 	{
 		uint32_t numverts = 0;
 		for(int i = 0; i < scene->mNumMeshes; i++){
@@ -74,7 +74,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 			for(int j = 0; j < bone->mNumWeights; j++){
 				auto weightval = bone->mWeights[j];
 				
-				allweights[weightval.mVertexId + current_offset].weights.push_back({vweights::vw{static_cast<uint16_t>(idx),weightval.mWeight}});
+				allweights[weightval.mVertexId + current_offset].weights.push_back({vweights::vw{static_cast<float>(idx),weightval.mWeight}});
 			}
 			
 		}
@@ -87,5 +87,37 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 		calcMesh(mesh);
 		current_offset += mesh->mNumVertices;
 	}
+	struct wrapper{
+		vweights::vw w[4];
+	};
+	//make gpu version
+	std::vector<wrapper> weightsgpu;
+	weightsgpu.reserve(allweights.size());
+	std::memset(weightsgpu.data(), 0, weightsgpu.size() * sizeof(weightsgpu[0]));
+	
+	for(const auto& weights : allweights){
+		wrapper w;
+		uint8_t i = 0;
+		for(const auto& weight : weights.weights){
+			w.w[i].influence = weight.influence;
+			w.w[i].joint_idx = weight.joint_idx;
+			
+			i++;
+		}
+		weightsgpu.push_back(w);
+	}
+	
+	//map to GPU
+	bgfx::VertexLayout layout;
+	layout.begin()
+	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+	
+	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+	
+	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+	
+	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+	.end();
+	weightsHandle = bgfx::createVertexBuffer(bgfx::copy(weightsgpu.data(), weightsgpu.size() * sizeof(weightsgpu[0])), layout);
 }
 

@@ -11,6 +11,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <ozz/base/memory/unique_ptr.h>
+#include <ozz/base/span.h>
+#include <ozz/base/maths/soa_transform.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -145,4 +147,16 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	else{
 		Debug::Fatal("No skeleton at {}",path);
 	}
+	
+	bgfx::VertexLayout layout;
+	layout.begin()
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+	.end();
+	
+	auto bindposedata = bgfx::copy(skeleton->joint_bind_poses().data(), skeleton->joint_bind_poses().size_bytes());
+	
+	bindpose = bgfx::createVertexBuffer(bindposedata, layout);
 }

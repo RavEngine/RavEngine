@@ -560,13 +560,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	uint16_t idx = 0;
 	for (const auto& row : fd.skinnedOpaques) {
 		buffers[idx] = BGFX_INVALID_HANDLE;
-		execdraw(row, [idx,&buffers](const auto& row) {
+		execdraw(row, [idx,&buffers,&numRowsUniform](const auto& row) {
 			// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
 			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);
 			// input buffer B: vertex weights by bone ID
 			auto mesh = std::get<0>(row.first);
-			auto& weights = mesh->getWeights();
 			// input buffer C: unposed vertices in mesh
 			
 			// output buffer A: posed output transformations for vertices
@@ -576,6 +575,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			buffers[idx] = buf;
 
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
+			bgfx::setBuffer(1, skeleton->getBindpose(), bgfx::Access::Read);
+			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
+			
+			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};
+			numRowsUniform.SetValues(&values, 1);
+			
 			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/32.0),std::ceil(numobjects/32.0),1);	//vertices x number of objects to pose
 		}, [idx,&buffers]() {
 			bgfx::setBuffer(11, buffers[idx], bgfx::Access::Read);
