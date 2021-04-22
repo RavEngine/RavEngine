@@ -361,11 +361,16 @@ void World::FillFramedata(){
 			auto m = static_pointer_cast<SkinnedMeshComponent>(e);
 			auto ptr = e->getOwner().lock();
 			if (ptr){
+				std::optional<ozz::vector<matrix4>> pose;
+				if (auto animator = ptr->GetComponent<AnimatorComponent>()){
+					pose.emplace(animator.value()->GetPose());
+				}
 				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
 				auto mat = ptr->transform()->CalculateWorldMatrix();
 				auto& item = current->skinnedOpaques[pair];
 				item.mtx.lock();
 				item.items.insert(mat);
+				item.skinningdata = pose;
 				item.mtx.unlock();
 			}
 		}

@@ -11,7 +11,7 @@ uniform vec4 NumObjects;
 
 const int NUM_INFLUENCES = 4;
 
-NUM_THREADS(32, 32, 1)
+NUM_THREADS(16, 16, 1)
 void main()
 {
 	//prevent out-of-bounds

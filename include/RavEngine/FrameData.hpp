@@ -8,11 +8,14 @@
 #include <plf_colony.h>
 #include "Light.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include "mathtypes.hpp"
+#include <ozz/base/containers/vector.h>
 
 namespace RavEngine {
 
 class MaterialInstanceBase;
 class DirectionalLight;
+class AnimatorComponent;
 
 struct FrameData{
 	//global matrices
@@ -24,8 +27,12 @@ struct FrameData{
         plf::colony<T> items;
         entry(const entry<T>& other){
             items = other.items;
+			skinningdata = other.skinningdata;
         }
         entry(){}
+		
+		//used by skinned mesh
+		std::optional<ozz::vector<T>> skinningdata;
     };
 	
 	//opaque pass data

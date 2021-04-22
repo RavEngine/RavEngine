@@ -553,13 +553,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
 		});
 	}
-
+	typedef std::pair<bgfx::DynamicVertexBufferHandle,bgfx::VertexBufferHandle> bufferspair ;
 	auto numskinned = fd.skinnedOpaques.size();
-	stackarray(buffers,bgfx::DynamicVertexBufferHandle, numskinned);
+	stackarray(buffers,bufferspair, numskinned);
 	
 	uint16_t idx = 0;
 	for (const auto& row : fd.skinnedOpaques) {
-		buffers[idx] = BGFX_INVALID_HANDLE;
+		buffers[idx].first = BGFX_INVALID_HANDLE;
+		buffers[idx].second = BGFX_INVALID_HANDLE;
 		execdraw(row, [idx,&buffers,&numRowsUniform](const auto& row) {
 			// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
@@ -572,18 +573,29 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			auto numverts = mesh->GetNumVerts();
 			auto numobjects = row.second.items.size();
 			auto buf = bgfx::createDynamicVertexBuffer(numverts * 4 * numobjects, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
-			buffers[idx] = buf;
+			buffers[idx].first = buf;
 
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::setBuffer(1, skeleton->getBindpose(), bgfx::Access::Read);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
+			bgfx::setBuffer(3, mesh->getVertexBuffer(), bgfx::Access::Read);
+			
+			
+			if(auto& pose = row.second.skinningdata){
+				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose.value().data(), pose.value().size() * sizeof(pose.value()[0])), skinningOutputLayout);
+				buffers[idx].second = posebuf;
+				bgfx::setBuffer(4, posebuf, bgfx::Access::Read);
+			}
+			else{
+				bgfx::setBuffer(4, skeleton->getBindpose(), bgfx::Access::Read);
+			}
 			
 			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};
 			numRowsUniform.SetValues(&values, 1);
 			
-			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/32.0),std::ceil(numobjects/32.0),1);	//vertices x number of objects to pose
+			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numverts/16.0),std::ceil(numobjects/16.0),1);	//vertices x number of objects to pose
 		}, [idx,&buffers]() {
-			bgfx::setBuffer(11, buffers[idx], bgfx::Access::Read);
+			bgfx::setBuffer(11, buffers[idx].first, bgfx::Access::Read);
 		});
 		idx++;
 	}
@@ -637,8 +649,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::frame();
 	// deallocate buffers
 	for (int i = 0; i < numskinned; i++) {
-		if (bgfx::isValid(buffers[i])) {
-			bgfx::destroy(buffers[i]);
+		if (bgfx::isValid(buffers[i].first)) {
+			bgfx::destroy(buffers[i].first);
+		}
+		if (bgfx::isValid(buffers[i].second)){
+			bgfx::destroy(buffers[i].second);
 		}
 	}
 	if (bgfx::isValid(opaquemtxhandle)) {
