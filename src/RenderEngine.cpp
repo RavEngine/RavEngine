@@ -578,16 +578,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::setBuffer(1, skeleton->getBindpose(), bgfx::Access::Read);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
-			bgfx::setBuffer(3, mesh->getVertexBuffer(), bgfx::Access::Read);
 			
 			
 			if(auto& pose = row.second.skinningdata){
 				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose.value().data(), pose.value().size() * sizeof(pose.value()[0])), skinningOutputLayout);
 				buffers[idx].second = posebuf;
-				bgfx::setBuffer(4, posebuf, bgfx::Access::Read);
+				bgfx::setBuffer(3, posebuf, bgfx::Access::Read);
 			}
 			else{
-				bgfx::setBuffer(4, skeleton->getBindpose(), bgfx::Access::Read);
+				bgfx::setBuffer(3, skeleton->getBindpose(), bgfx::Access::Read);
 			}
 			
 			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};
