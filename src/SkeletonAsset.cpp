@@ -169,7 +169,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			  tx, ty, tz;
 		
 		vf2f(sx, bp.scale.x);
-		vf2f(sx, bp.scale.y);
+		vf2f(sy, bp.scale.y);
 		vf2f(sz, bp.scale.z);
 		
 		vf2f(rx, bp.rotation.x);
