@@ -363,7 +363,7 @@ void World::FillFramedata(){
 			if (ptr){
 				std::optional<ozz::vector<matrix4>> pose;
 				if (auto animator = ptr->GetComponent<AnimatorComponent>()){
-					pose.emplace(animator.value()->GetPose());
+					pose.emplace(animator.value()->GetLocalPose());
 				}
 				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
 				auto mat = ptr->transform()->CalculateWorldMatrix();

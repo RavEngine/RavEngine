@@ -155,8 +155,36 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 	.end();
+		
+	stackarray(bindposes, glm::mat4, skeleton->joint_bind_poses().size());
+	std::memset(bindposes, 0, sizeof(bindposes));
 	
-	auto bindposedata = bgfx::copy(skeleton->joint_bind_poses().data(), skeleton->joint_bind_poses().size_bytes());
+#define vf2f(a,b) std::memcpy(&a, &b, sizeof(a))
+	
+	for(int i = 0; i < skeleton->joint_bind_poses().size(); i++){
+		auto& bp = skeleton->joint_bind_poses()[i];
+		
+		float sx, sy, sz,
+			  rx, ry, rz, rw,
+			  tx, ty, tz;
+		
+		vf2f(sx, bp.scale.x);
+		vf2f(sx, bp.scale.y);
+		vf2f(sz, bp.scale.z);
+		
+		vf2f(rx, bp.rotation.x);
+		vf2f(ry, bp.rotation.y);
+		vf2f(rz, bp.rotation.z);
+		vf2f(rw, bp.rotation.w);
+		
+		vf2f(tx, bp.translation.x);
+		vf2f(ty, bp.translation.y);
+		vf2f(tz, bp.translation.z);
+		
+		glm::translate(glm::mat4(1), glm::vec3(tx,ty,tz)) * glm::toMat4(glm::quat(rx,ry,rz,rw)) * glm::scale(glm::mat4(1), glm::vec3(sx,sy,sz));
+	}
+	
+	auto bindposedata = bgfx::copy(bindposes, sizeof(bindposes));
 	
 	bindpose = bgfx::createVertexBuffer(bindposedata, layout);
 }

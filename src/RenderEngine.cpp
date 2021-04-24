@@ -579,9 +579,16 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(1, skeleton->getBindpose(), bgfx::Access::Read);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
 			
-			
+			typedef std::array<float,16> float_mtx;
 			if(auto& pose = row.second.skinningdata){
-				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose.value().data(), pose.value().size() * sizeof(pose.value()[0])), skinningOutputLayout);
+				//convert to float from double
+				stackarray(pose_float, float_mtx, pose.value().size());
+				for(int i = 0; i < pose.value().size(); i++){
+					auto ptr = glm::value_ptr(pose.value()[i]);
+					copyMat4(ptr, pose_float[i].data());
+				}
+				
+				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose_float, pose.value().size() * sizeof(pose_float[0])), skinningOutputLayout);
 				buffers[idx].second = posebuf;
 				bgfx::setBuffer(3, posebuf, bgfx::Access::Read);
 			}

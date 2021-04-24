@@ -224,6 +224,7 @@ protected:
 	ozz::animation::SamplingCache cache;
 	ozz::vector<ozz::math::Float4x4> models;
 	ozz::vector<matrix4> glm_pose;
+	ozz::vector<matrix4> local_pose;
 	
 	/**
 	 Update buffer sizes for current skeleton
@@ -238,6 +239,7 @@ protected:
 		models.resize(n_joints);
 		cache.Resize(n_joints);
 		glm_pose.resize(n_joints);
+		local_pose.resize(n_joints);
 	}
 	
 	bool isPlaying = false;
@@ -246,7 +248,7 @@ protected:
 	
 public:
 	/**
-	 Get the current pose of the animation
+	 Get the current pose of the animation in world space
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
 	 */
 	inline const decltype(glm_pose)& GetPose(){
@@ -267,6 +269,25 @@ public:
 			glm_pose[i] = worldMat * glm::make_mat4(matrix);
 		}
 		return glm_pose;
+	}
+	
+	inline const decltype(local_pose)& GetLocalPose(){
+		decimalType matrix[16];
+		for(int i = 0; i < models.size(); i++){
+			auto& t = models[i];
+			for(int r = 0; r < 4; r++){
+				float result[4];
+				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
+				decimalType dresult[4];
+				for(int j = 0; j < 4; j++){
+					dresult[j] = result[j];
+				}
+				//_mm_store_ps(result,p.cols[r]);
+				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
+			}
+			local_pose[i] = glm::make_mat4(matrix);
+		}
+		return local_pose;
 	}
 };
 
