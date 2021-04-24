@@ -187,4 +187,22 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	auto bindposedata = bgfx::copy(bindposes, sizeof(bindposes));
 	
 	bindpose = bgfx::createVertexBuffer(bindposedata, layout);
+	
+	//upload the hierarchy data
+	bgfx::VertexLayout hierarchyLayout;
+	hierarchyLayout.begin()
+		.add(bgfx::Attrib::Position, 1, bgfx::AttribType::Float)
+	.end();
+	
+	// populate hierarchy
+	auto parents = skeleton->joint_parents();
+	
+	stackarray(hierarchy, float, parents.size());
+	
+	for(int i = 0; i < parents.size(); i++){
+		hierarchy[i] = parents[i];
+	}
+	
+	boneHierarchy = bgfx::createVertexBuffer(bgfx::copy(hierarchy, sizeof(hierarchy)), hierarchyLayout);
+	
 }

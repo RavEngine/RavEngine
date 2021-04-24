@@ -595,6 +595,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			else{
 				bgfx::setBuffer(3, skeleton->getBindpose(), bgfx::Access::Read);
 			}
+			bgfx::setBuffer(4, mesh->getVertexBuffer(), bgfx::Access::Read);
+			bgfx::setBuffer(5, skeleton->getBoneHierarchy(), bgfx::Access::Read);
 			
 			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};
 			numRowsUniform.SetValues(&values, 1);
