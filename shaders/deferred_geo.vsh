@@ -28,7 +28,7 @@ void main()
 	posemtx[2] = skinmatrix[offset+2];
 	posemtx[3] = skinmatrix[offset+3];
 	
-	worldmat = mul(worldmat,posemtx);
+	worldmat *= posemtx;
 	
 	vec4 worldpos = instMul(worldmat, vec4(a_position,1));
 	
