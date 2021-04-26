@@ -5,8 +5,6 @@ BUFFER_WR(skinmatrix, vec4, 0);	// 4x4 matrices
 BUFFER_RO(bindpose, vec4, 1);	// 4x4 matrices
 BUFFER_RO(weights, vec2, 2);	// index, influence
 BUFFER_RO(pose, vec4, 3);	 	// 4x4 matrices
-BUFFER_RO(vertexbuffer, vec4, 4);		// x,y,z, nx,ny,nz, u,v
-BUFFER_RO(boneparents, float, 5);	//single float indices
 
 uniform vec4 NumObjects;		// x = num objects, y = num vertices
 
@@ -55,7 +53,7 @@ mat4 inverse(mat4 m) {
 }
 
 
-NUM_THREADS(16, 16, 1)
+NUM_THREADS(8, 64, 1)
 void main()
 {
 	//prevent out-of-bounds
@@ -64,10 +62,6 @@ void main()
 	}
 	
 	const int weightsid = gl_GlobalInvocationID.y * 4;		//4x vec2 elements elements per vertex
-	
-//	// get the unposed position of the vertex in model space
-//	const int vertex_id = gl_GlobalInvocationID.y * 2;	//2x vec4 elements per vertex
-//	const vec4 vpos = vec4(vertexbuffer[vertex_id].xyz,1);
 	
 	//for reuse
 	const mat4 identity = mtxFromRows(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),vec4(0,0,0,1));
@@ -89,6 +83,7 @@ void main()
 		}
 		bindpose_mtx = inverse(bindpose_mtx);
 		
+		//calculate and sum
 		totalmtx += (posed_mtx * bindpose_mtx) * weight;
 	}
 	
