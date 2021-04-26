@@ -13,6 +13,7 @@
 #include <ozz/base/memory/unique_ptr.h>
 #include <ozz/base/span.h>
 #include <ozz/base/maths/soa_transform.h>
+#include <ozz/animation/runtime/local_to_model_job.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -156,32 +157,29 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 	.end();
 		
-	stackarray(bindposes, glm::mat4, skeleton->joint_bind_poses().size());
+	stackarray(bindposes, glm::mat4, skeleton->joint_names().size());
 	std::memset(bindposes, 0, sizeof(bindposes));
+	stackarray(bindpose_ozz, ozz::math::Float4x4, skeleton->joint_names().size());
 	
-#define vf2f(a,b) std::memcpy(&a, &b, sizeof(a))
+	//convert from local space to model space
+	ozz::animation::LocalToModelJob job;
+	job.skeleton = skeleton.get();
+	job.input = ozz::span(skeleton->joint_bind_poses());
+	job.output = ozz::span(bindpose_ozz, skeleton->joint_names().size_bytes());
 	
-	for(int i = 0; i < skeleton->joint_bind_poses().size(); i++){
-		auto& bp = skeleton->joint_bind_poses()[i];
-		
-		float sx, sy, sz,
-			  rx, ry, rz, rw,
-			  tx, ty, tz;
-		
-		vf2f(sx, bp.scale.x);
-		vf2f(sy, bp.scale.y);
-		vf2f(sz, bp.scale.z);
-		
-		vf2f(rx, bp.rotation.x);
-		vf2f(ry, bp.rotation.y);
-		vf2f(rz, bp.rotation.z);
-		vf2f(rw, bp.rotation.w);
-		
-		vf2f(tx, bp.translation.x);
-		vf2f(ty, bp.translation.y);
-		vf2f(tz, bp.translation.z);
-		
-		glm::translate(glm::mat4(1), glm::vec3(tx,ty,tz)) * glm::toMat4(glm::quat(rx,ry,rz,rw)) * glm::scale(glm::mat4(1), glm::vec3(sx,sy,sz));
+	Debug::Assert(job.Run(), "Bindpose extraction failed");
+	
+	//convert to format understandble by GPU
+	float matrix[16];
+	for(int i = 0; i < skeleton->joint_names().size(); i++){
+		auto& t = bindpose_ozz[i];
+		for(int r = 0; r < 4; r++){
+			float result[4];
+			std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
+			//_mm_store_ps(result,p.cols[r]);
+			std::memcpy(matrix + r*4,result,sizeof(result));
+		}
+		bindposes[i] = glm::make_mat4(matrix);
 	}
 	
 	auto bindposedata = bgfx::copy(bindposes, sizeof(bindposes));

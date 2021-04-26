@@ -59,63 +59,43 @@ NUM_THREADS(16, 16, 1)
 void main()
 {
 	//prevent out-of-bounds
-	if (gl_GlobalInvocationID.y > NumObjects.x || gl_GlobalInvocationID.x > NumObjects.y){
+	if (gl_GlobalInvocationID.y >= NumObjects.y || gl_GlobalInvocationID.x >= NumObjects.x){
 		return;
 	}
 	
-	const int weightsid = gl_GlobalInvocationID.y * NumObjects.y * 2;
+	const int weightsid = gl_GlobalInvocationID.y * 4;		//4x vec2 elements elements per vertex
 	
-	// get the unposed position of the vertex in model space
-	const int vertex_id = gl_GlobalInvocationID.y * NumObjects.y * 4 * 2;
-	const vec4 vpos = (vertexbuffer[vertex_id].xyz,1);
-	const mat4 vpos_m4 = mtxFromRows(vec4(1,0,0,vpos.x),vec4(0,1,0,vpos.y),vec4(0,0,1,vpos.z),vec4(0,0,0,1));
+//	// get the unposed position of the vertex in model space
+//	const int vertex_id = gl_GlobalInvocationID.y * 2;	//2x vec4 elements per vertex
+//	const vec4 vpos = vec4(vertexbuffer[vertex_id].xyz,1);
 	
 	//for reuse
 	const mat4 identity = mtxFromRows(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),vec4(0,0,0,1));
 	
 	//will become the pose matrix
-	mat4 totalmtx = identity;
+	mat4 totalmtx = mtxFromRows(vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0));
 	
 	for(int i = 0; i < NUM_INFLUENCES; i++){
 		const vec2 weightdata = weights[weightsid + i];
-		const float weight = weightdata.y;
 		const int joint_idx = weightdata.x;
-		
-		//get the pose and bindpose of the parent joint
-		mat4 parent_mtx = identity;
-		mat4 parent_bindpose = identity;
-		const int parent_idx = boneparents[joint_idx];
-		if (parent_idx != -1){
-			for(int j = 0; j < 4; j++){
-				parent_mtx[j] = pose[parent_idx * 4 + j];
-				//parent_bindpose[j] = bindpose[parent_idx * 4 + j];
-			}
-		}
-		parent_bindpose = inverse(parent_mtx);
+		const float weight = weightdata.y;
 		
 		//get the pose and bindpose of the target joint
 		mat4 posed_mtx;
 		mat4 bindpose_mtx;
 		for(int j = 0; j < 4; j++){
 			posed_mtx[j] = pose[joint_idx * 4 + j];
-			//bindpose_mtx[j] = bindpose[joint_idx * 4 + j];
+			bindpose_mtx[j] = bindpose[joint_idx * 4 + j];
 		}
-		bindpose_mtx = inverse(posed_mtx);
-
-		//calculate the matrix
-		mat4 localbindpose = bindpose_mtx - parent_bindpose;
-		mat4 localvert = bindpose_mtx - vpos_m4;
-		mat4 vertInParent = localbindpose + localvert;
+		bindpose_mtx = inverse(bindpose_mtx);
 		
-		mat4 delta = parent_mtx * vertInParent;
-		delta += localbindpose;
-		
-		totalmtx += (weight * delta);
+		totalmtx += (posed_mtx * bindpose_mtx) * weight;
 	}
 	
 	//destination to write the matrix
-	const int offset = gl_GlobalInvocationID.y * NumObjects.y * 4 + gl_GlobalInvocationID.x * 4;
+	const int offset = gl_GlobalInvocationID.x * NumObjects.x * 4 + gl_GlobalInvocationID.y * 4;	//4x vec4s elements per object
 	
+	//write matrix
 	for(int i = 0; i < 4; i++){
 		skinmatrix[offset+i] = totalmtx[i];
 	}
