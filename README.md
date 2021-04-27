@@ -10,8 +10,9 @@ A C++17 cross-platform game library, with emphasis on performance and ease of us
 6. Flexible and fast declarative user interface system based on HTML and CSS
 7. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
 8. Full FSM animation blending tree system
-9. CI/CD-friendly build process powered by CMake
-10. Quality-of-life features like automatic incremental shader compilation
+9. Compute shader mesh skinning with automatic batching
+10. CI/CD-friendly build process powered by CMake
+11. Quality-of-life features like automatic incremental shader compilation
 
 Note: RavEngine does not have a graphical editor.
 

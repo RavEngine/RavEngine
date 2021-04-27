@@ -53,7 +53,7 @@ mat4 inverse(mat4 m) {
 }
 
 
-NUM_THREADS(8, 64, 1)
+NUM_THREADS(8, 32, 1)
 void main()
 {
 	//prevent out-of-bounds

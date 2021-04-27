@@ -544,7 +544,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
 		float values[4] = {static_cast<float>(max_objects),static_cast<float>(max_verts),0,0};
 		numRowsUniform.SetValues(&values, 1);
-		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 64.0), std::ceil(max_objects / 16.0), 1);	//vertices x number of objects to pose
+		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 32.0), std::ceil(max_objects / 16.0), 1);	//vertices x number of objects to pose
 	}
 	for(const auto& row : fd.opaques){
 		execdraw(row, [](const auto& row) {
@@ -599,7 +599,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};
 			numRowsUniform.SetValues(&values, 1);
 			
-			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numobjects/8.0),std::ceil(numverts/64.0),1);	//vertices x number of objects to pose
+			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numobjects/8.0),std::ceil(numverts/32.0),1);	//vertices x number of objects to pose
 		}, [idx,&buffers]() {
 			bgfx::setBuffer(11, buffers[idx].first, bgfx::Access::Read);
 		});
