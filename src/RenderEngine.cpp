@@ -521,8 +521,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		
 	//Deferred geometry pass
 	//iterate over each row of the table
-	uint32_t max_verts = 0;
-	uint32_t max_objects = 0;
+	unsigned long max_verts = 0;
+	unsigned long max_objects = 0;
 	for (const auto& row : fd.opaques) {
 		auto nverts = std::get<0>(row.first)->GetNumVerts();
 		if (nverts > max_verts) {
@@ -544,7 +544,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
 		float values[4] = {static_cast<float>(max_objects),static_cast<float>(max_verts),0,0};
 		numRowsUniform.SetValues(&values, 1);
-		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 32.0), std::ceil(max_objects / 32.0), 1);	//vertices x number of objects to pose
+		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 64.0), std::ceil(max_objects / 16.0), 1);	//vertices x number of objects to pose
 	}
 	for(const auto& row : fd.opaques){
 		execdraw(row, [](const auto& row) {

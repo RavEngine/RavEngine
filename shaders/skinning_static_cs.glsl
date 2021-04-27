@@ -5,7 +5,7 @@ BUFFER_WR(skinmatrix, vec4, 0);
 
 uniform vec4 NumObjects;
 
-NUM_THREADS(32, 32, 1)
+NUM_THREADS(64, 16, 1)
 void main()
 {
 	mat4 identity = mtxFromRows(
@@ -14,7 +14,7 @@ void main()
 		vec4(0,0,1,0),
 		vec4(0,0,0,1)
 	);
-	if (gl_GlobalInvocationID.y > NumObjects.x || gl_GlobalInvocationID.x > NumObjects.y){
+	if (gl_GlobalInvocationID.y >= NumObjects.x || gl_GlobalInvocationID.x >= NumObjects.y){
 		return;
 	}
 	int offset = gl_GlobalInvocationID.y * NumObjects.y * 4 + gl_GlobalInvocationID.x * 4;
