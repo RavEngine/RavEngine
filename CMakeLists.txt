@@ -78,61 +78,61 @@ add_custom_command(
 )
 
 # no extra flags required
-add_subdirectory("${DEPS_DIR}/im3d-cmake")
-add_subdirectory("${DEPS_DIR}/etl")
-add_subdirectory("${DEPS_DIR}/tweeny")
-add_subdirectory("${DEPS_DIR}/physfs")
-add_subdirectory("${DEPS_DIR}/concurrentqueue")
-add_subdirectory("${DEPS_DIR}/fmt")
-add_subdirectory("${DEPS_DIR}/RmlUi-freetype")
-add_subdirectory("${DEPS_DIR}/glm")
+add_subdirectory("${DEPS_DIR}/im3d-cmake" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/etl" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/tweeny" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/physfs" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 
 #SDL2
-add_subdirectory("${DEPS_DIR}/SDL2")
+add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
 # ozz animation
 set(ozz_build_samples OFF CACHE INTERNAL "")
 set(ozz_build_howtos OFF CACHE INTERNAL "")
 set(ozz_build_tests OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/ozz-animation")
+add_subdirectory("${DEPS_DIR}/ozz-animation" EXCLUDE_FROM_ALL)
 
 # libnyquist
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/libnyquist")
+add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
 
 # GNS
-add_subdirectory("${DEPS_DIR}/GameNetworkingSockets")
+add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
 add_custom_target("GNS_Deps" DEPENDS "${SHADERC_CMD}")
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 
 # resonance-audio
 set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/resonance-audio")
+add_subdirectory("${DEPS_DIR}/resonance-audio" EXCLUDE_FROM_ALL)
 
 # taskflow
-SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "")
+SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "" )
 SET(TF_BUILD_CUDA OFF CACHE INTERNAL "")
 SET(TF_BUILD_TESTS OFF CACHE INTERNAL "")
 SET(TF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/taskflow")
+add_subdirectory("${DEPS_DIR}/taskflow" EXCLUDE_FROM_ALL)
 
 # bgfx
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL OFF CACHE INTERNAL "")
 #set(BGFX_CONFIG_RENDERER_WEBGPU ON)
-add_subdirectory("${DEPS_DIR}/bgfx.cmake")
+add_subdirectory("${DEPS_DIR}/bgfx.cmake" EXCLUDE_FROM_ALL)
 
 # assimp
 SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
 SET(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/assimp")
+add_subdirectory("${DEPS_DIR}/assimp" EXCLUDE_FROM_ALL)
 
 # recast
 SET(RECASTNAVIGATION_DEMO OFF CACHE INTERNAL "")
 SET(RECASTNAVIGATION_TESTS OFF CACHE INTERNAL "")
 SET(RECASTNAVIGATION_EXAMPLES OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/recastnavigation")
+add_subdirectory("${DEPS_DIR}/recastnavigation" EXCLUDE_FROM_ALL)
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -161,7 +161,7 @@ elseif(LINUX)
 endif()
 
 # Call into PhysX's CMake scripts
-add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public")
+add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public" EXCLUDE_FROM_ALL)
 
 
 # ========== Building engine ==============
@@ -376,7 +376,7 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;crypto;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2main;SDL2-static;json;physfs_uninstall;dist\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2main;SDL2-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
@@ -390,12 +390,6 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options")
 group_in("Libraries/bgfx" "bgfx;bimg;bx")
 group_in("Libraries/bgfx/tools" "shaderc;geometryc;geometryv;texturec;texturev;tools")
 group_in("Libraries/bgfx/3rdparty" "astc;astc-codec;edtaa3;etc1;etc2;fcpp;glcpp;glslang;glsl-optimizer;iqa;mesa;meshoptimizer;nvtt;pvrtc;spirv-cross;spirv-tools;squish")
-
-# exclude some targets from install
-SET_PROPERTY(TARGET "texturev" PROPERTY EXCLUDE_FROM_ALL ON)
-SET_PROPERTY(TARGET "geometryv" PROPERTY EXCLUDE_FROM_ALL ON)
-SET_PROPERTY(TARGET "geometryc" PROPERTY EXCLUDE_FROM_ALL ON)
-SET_PROPERTY(TARGET "texturec" PROPERTY EXCLUDE_FROM_ALL ON)
 
 # pack resources
 function(pack_resources)
@@ -530,3 +524,27 @@ if (RAVENGINE_BUILD_TESTS)
 	test("CTTI" "${PROJECT_NAME}_TestBasics")
 	test("Test_UUID" "${PROJECT_NAME}_TestBasics")
 endif()
+
+# Disable unecessary build / install of targets
+function(get_all_targets var)
+    set(targets)
+    get_all_targets_recursive(targets ${CMAKE_CURRENT_SOURCE_DIR})
+    set(${var} ${targets} PARENT_SCOPE)
+endfunction()
+
+macro(get_all_targets_recursive targets dir)
+    get_property(subdirectories DIRECTORY ${dir} PROPERTY SUBDIRECTORIES)
+    foreach(subdir ${subdirectories})
+        get_all_targets_recursive(${targets} ${subdir})
+    endforeach()
+
+    get_property(current_targets DIRECTORY ${dir} PROPERTY BUILDSYSTEM_TARGETS)
+    list(APPEND ${targets} ${current_targets})
+endmacro()
+
+get_all_targets(all_targets)
+
+# disable install for all targets
+# foreach(TGT ${all_targets})
+	# SET_PROPERTY(TARGET "${TGT}" PROPERTY EXCLUDE_FROM_ALL ON)
+# endforeach()

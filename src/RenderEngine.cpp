@@ -221,6 +221,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 	settings.resolution.width = width;
 	settings.resolution.height = height;
 	settings.resolution.reset = RenderEngine::GetResetFlags();
+	settings.resolution.maxFrameLatency = 1;	// 0 = default = 3
 	if (!bgfx::init(settings)){
 		Debug::Fatal("bgfx::init Failed");
 	}
