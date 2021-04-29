@@ -1,5 +1,5 @@
 # PhysX
-rm -r physx/physx/documentation/ physx/physx/samples/ physx/externals/cg-linux/lib physx/externals/cg-linux/bin physx/externals/glew-linux/lib physx/externals/glew/lib physx/externals/opengl/lib64
+rm -r physx/physx/documentation/ physx/physx/samples/ physx/externals/cg-linux/lib physx/externals/cg-linux/bin physx/externals/glew-linux/lib physx/externals/glew/lib physx/externals/opengl/lib64 physx/kaplademo physx/physx/bin physx/externals/clang-physxmetadata physx/externals/opengl-linux physx/externals/glew-linux physx/externals/vswhere
 
 # BGFX, BX
 rm -r bgfx.cmake/bgfx/examples bgfx.cmake/bx/tools
