@@ -18,8 +18,9 @@ void main()
 		return;
 	}
 	int offset = gl_GlobalInvocationID.y * NumObjects.y * 4 + gl_GlobalInvocationID.x * 4;
-	skinmatrix[offset] = identity[0];
-	skinmatrix[offset+1] = identity[1];
-	skinmatrix[offset+2] = identity[2];
-	skinmatrix[offset+3] = identity[3];
+		
+	//write into buffer
+	for(int i = 0; i < 4; i++){
+		skinmatrix[offset + i] = identity[i];
+	}
 }

@@ -22,13 +22,14 @@ void main()
 	v_texcoord0 = a_texcoord0;
 	
 	int offset = gl_InstanceID * NumObjects.y * 4 + gl_VertexID.x * 4;
-	mat4 posemtx;
-	posemtx[0] = skinmatrix[offset];
-	posemtx[1] = skinmatrix[offset+1];
-	posemtx[2] = skinmatrix[offset+2];
-	posemtx[3] = skinmatrix[offset+3];
+	mat4 posemtx = mtxFromRows(
+		skinmatrix[offset],
+		skinmatrix[offset+1],
+		skinmatrix[offset+2],
+		skinmatrix[offset+3]
+	);
 	
-	worldmat *= posemtx;
+	worldmat = mul(posemtx,worldmat);
 	
 	vec4 worldpos = instMul(worldmat, vec4(a_position,1));
 	
