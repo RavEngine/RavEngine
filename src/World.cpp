@@ -442,6 +442,11 @@ void World::FillFramedata(){
 	sort.precede(swap);
 	sortskinned.precede(swap);
 	camproc.precede(sort,sortskinned);
-	graphs[CTTI<ScriptSystem>()].task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+	
+	//ensure user code completes before framedata population
+	for(auto& g : graphs){
+		g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+	}
+	
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 }
