@@ -179,7 +179,8 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			//_mm_store_ps(result,p.cols[r]);
 			std::memcpy(matrix + r*4,result,sizeof(result));
 		}
-		bindposes[i] = glm::make_mat4(matrix);
+		//inverse here because shader needs the inverse bindpose
+		bindposes[i] = glm::inverse(glm::make_mat4(matrix));
 	}
 	
 	auto bindposedata = bgfx::copy(bindposes, sizeof(bindposes));
