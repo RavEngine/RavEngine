@@ -54,6 +54,20 @@ namespace RavEngine {
 			
 			return glm::inverse(entity->transform()->CalculateWorldMatrix());
 		}
+        
+        /**
+         Project a screen point to a worldspace coordinate
+         @param x x pos of point in [0,1]] space
+         @param y y pos of point in [0,1] space
+         @param z depth of the point from the camera
+         @return vector3 representing world-space projected point
+         */
+        inline vector3 ScreenPointToWorldPoint(float x, float y, float z){
+            auto projmat = GenerateProjectionMatrix();
+            auto viewmat = GenerateViewMatrix();
+            auto G = glm::inverse(projmat * viewmat);
+            return glm::unProject(vector3(x * width,y * height,z), G, projmat, vector4(0,0,width,height));
+        }
 		
 		//camera details
 		float FOV;
