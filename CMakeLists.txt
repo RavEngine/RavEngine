@@ -544,7 +544,19 @@ endmacro()
 
 get_all_targets(all_targets)
 
-# disable install for all targets
-# foreach(TGT ${all_targets})
-	# SET_PROPERTY(TARGET "${TGT}" PROPERTY EXCLUDE_FROM_ALL ON)
-# endforeach()
+# disable warnings in subdirectory targets
+foreach(TGT ${all_targets})
+	if(NOT "${TGT}" STREQUAL "${PROJECT_NAME}")
+		get_target_property(target_type ${TGT} TYPE)
+
+		# only run this command on compatible targets
+		if (NOT ("${target_type}" STREQUAL "INTERFACE_LIBRARY" OR "${target_type}" STREQUAL "UTILITY"))
+			#message("Setting ${TGT} -- ${target_type}")
+			if(MSVC)
+				target_compile_options(${TGT} PRIVATE "/w")
+			else()
+				target_compile_options(${TGT} PRIVATE "-w")
+			endif()
+		endif()
+	endif()
+endforeach()
