@@ -22,8 +22,12 @@ target_compile_definitions(RmlCore
     PRIVATE -DRMLUI_VERSION="${RMLUI_VERSION_SHORT}"
 )
 
-# link freetype
+# link freetype (disable freetype dependencies since we do not need them)
 set(CMAKE_DISABLE_FIND_PACKAGE_PNG ON CACHE INTERNAL "")
+set(CMAKE_DISABLE_FIND_PACKAGE_BrotliDec ON CACHE INTERNAL "")
+set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB ON CACHE INTERNAL "")
+set(CMAKE_DISABLE_FIND_PACKAGE_BZip2 ON CACHE INTERNAL "")
+set(CMAKE_DISABLE_FIND_PACKAGE_HarfBuzz ON CACHE INTERNAL "")
 add_subdirectory("freetype")
 SET(LOTTIE_TEST OFF CACHE INTERNAL "")
 set(LIB_INSTALL_DIR "${CMAKE_BINARY_DIR}/rlottie" CACHE INTERNAL "")
