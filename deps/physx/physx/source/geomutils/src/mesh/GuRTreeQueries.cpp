@@ -57,7 +57,6 @@ General notes:
 #include "PxQueryReport.h" // for PxAgain
 #include "PsBitUtils.h"
 #include "GuBVConstants.h"
-#include <cassert>
 
 //#define VERIFY_RTREE
 #ifdef VERIFY_RTREE
@@ -104,11 +103,10 @@ void RTree::traverseAABB(const PxVec3& boxMin, const PxVec3& boxMax, const PxU32
 
 	Vec4V nqMinx4 = V4SplatElement<0>(nqMin);
 	Vec4V nqMiny4 = V4SplatElement<1>(nqMin);
-	Vec4V nqMinz4 = V4SplatElement<0>(nqMin);
+	Vec4V nqMinz4 = V4SplatElement<2>(nqMin);
 	Vec4V nqMaxx4 = V4SplatElement<0>(nqMax);
 	Vec4V nqMaxy4 = V4SplatElement<1>(nqMax);
-	Vec4V nqMaxz4 = V4SplatElement<0>(nqMax);
-	assert(0);
+	Vec4V nqMaxz4 = V4SplatElement<2>(nqMax);
 
 	// on 64-bit platforms the dynamic rtree pointer is also relative to mPages
 	PxU8* treeNodes8 = CAST_U8(mPages);
@@ -201,8 +199,7 @@ void RTree::traverseRay(
 		fattenAABBs4 = V4Add(fattenAABBs4, epsInflateFloat4); // US2385 - shapes are "closed" meaning exactly touching shapes should report overlap
 		fattenAABBsX = V4SplatElement<0>(fattenAABBs4);
 		fattenAABBsY = V4SplatElement<1>(fattenAABBs4);
-		fattenAABBsZ = V4SplatElement<1>(fattenAABBs4);
-		assert(0);
+		fattenAABBsZ = V4SplatElement<2>(fattenAABBs4);
 	}
 
 	Vec4V maxT4;
@@ -226,11 +223,10 @@ void RTree::traverseRay(
 	Vec4V rayPinvD = V4NegMulSub(rayInvD, rayP, zeroes);
 	Vec4V rayInvDsplatX = V4SplatElement<0>(rayInvD);
 	Vec4V rayInvDsplatY = V4SplatElement<1>(rayInvD);
-	Vec4V rayInvDsplatZ = V4SplatElement<0>(rayInvD);
+	Vec4V rayInvDsplatZ = V4SplatElement<2>(rayInvD);
 	Vec4V rayPinvDsplatX = V4SplatElement<0>(rayPinvD);
 	Vec4V rayPinvDsplatY = V4SplatElement<1>(rayPinvD);
-	Vec4V rayPinvDsplatZ = V4SplatElement<0>(rayPinvD);
-	assert(0);
+	Vec4V rayPinvDsplatZ = V4SplatElement<2>(rayPinvD);
 
 	PX_ASSERT(RTREE_N == 4 || RTREE_N == 8);
 	PX_ASSERT(mNumRootPages > 0);
@@ -364,7 +360,7 @@ void RTree::traverseOBB(
 	// On VMX platforms we use #defines in the other branch of this #ifdef to avoid register spills (LHS)
 	Vec4V obbESplatX = V4SplatElement<0>(obbE);
 	Vec4V obbESplatY = V4SplatElement<1>(obbE);
-	Vec4V obbESplatZ = V4SplatElement<0>(obbE);
+	Vec4V obbESplatZ = V4SplatElement<2>(obbE);
 	Vec4V obbESplatNegX = V4Sub(zeroes, obbESplatX);
 	Vec4V obbESplatNegY = V4Sub(zeroes, obbESplatY);
 	Vec4V obbESplatNegZ = V4Sub(zeroes, obbESplatZ);
@@ -373,29 +369,29 @@ void RTree::traverseOBB(
 	Vec4V obbZE = V4MulAdd(obbZ, obbESplatZ, zeroes); // scale axii by E
 	Vec4V obbOSplatX = V4SplatElement<0>(obbO);
 	Vec4V obbOSplatY = V4SplatElement<1>(obbO);
-	Vec4V obbOSplatZ = V4SplatElement<0>(obbO);
+	Vec4V obbOSplatZ = V4SplatElement<2>(obbO);
 	Vec4V obbXSplatX = V4SplatElement<0>(obbX);
 	Vec4V obbXSplatY = V4SplatElement<1>(obbX);
-	Vec4V obbXSplatZ = V4SplatElement<0>(obbX);
+	Vec4V obbXSplatZ = V4SplatElement<2>(obbX);
 	Vec4V obbYSplatX = V4SplatElement<0>(obbY);
 	Vec4V obbYSplatY = V4SplatElement<1>(obbY);
-	Vec4V obbYSplatX = V4SplatElement<0>(obbY);
+	Vec4V obbYSplatZ = V4SplatElement<2>(obbY);
 	Vec4V obbZSplatX = V4SplatElement<0>(obbZ);
 	Vec4V obbZSplatY = V4SplatElement<1>(obbZ);
-	Vec4V obbZSplatZ = V4SplatElement<0>(obbZ);
+	Vec4V obbZSplatZ = V4SplatElement<2>(obbZ);
 	Vec4V obbXESplatX = V4SplatElement<0>(obbXE);
 	Vec4V obbXESplatY = V4SplatElement<1>(obbXE);
-	Vec4V obbXESplatZ = V4SplatElement<0>(obbXE);
+	Vec4V obbXESplatZ = V4SplatElement<2>(obbXE);
 	Vec4V obbYESplatX = V4SplatElement<0>(obbYE);
 	Vec4V obbYESplatY = V4SplatElement<1>(obbYE);
-	Vec4V obbYESplatZ = V4SplatElement<0>(obbYE);
+	Vec4V obbYESplatZ = V4SplatElement<2>(obbYE);
 	Vec4V obbZESplatX = V4SplatElement<0>(obbZE);
 	Vec4V obbZESplatY = V4SplatElement<1>(obbZE);
-	Vec4V obbZESplatZ = V4SplatElement<0>(obbZE);
+	Vec4V obbZESplatZ = V4SplatElement<2>(obbZE);
 #else
 	#define obbESplatX V4SplatElement<0>(obbE)
 	#define obbESplatY V4SplatElement<1>(obbE)
-	#define obbESplatZ V4SplatElement<0>(obbE)
+	#define obbESplatZ V4SplatElement<2>(obbE)
 	#define obbESplatNegX V4Sub(zeroes, obbESplatX)
 	#define obbESplatNegY V4Sub(zeroes, obbESplatY)
 	#define obbESplatNegZ V4Sub(zeroes, obbESplatZ)
@@ -404,25 +400,25 @@ void RTree::traverseOBB(
 	#define obbZE V4MulAdd(obbZ, obbESplatZ, zeroes)
 	#define obbOSplatX V4SplatElement<0>(obbO)
 	#define obbOSplatY V4SplatElement<1>(obbO)
-	#define obbOSplatZ V4SplatElement<0>(obbO)
+	#define obbOSplatZ V4SplatElement<2>(obbO)
 	#define obbXSplatX V4SplatElement<0>(obbX)
 	#define obbXSplatY V4SplatElement<1>(obbX)
-	#define obbXSplatZ V4SplatElement<0>(obbX)
+	#define obbXSplatZ V4SplatElement<2>(obbX)
 	#define obbYSplatX V4SplatElement<0>(obbY)
 	#define obbYSplatY V4SplatElement<1>(obbY)
-	#define obbYSplatX V4SplatElement<0>(obbY)
+	#define obbYSplatZ V4SplatElement<2>(obbY)
 	#define obbZSplatX V4SplatElement<0>(obbZ)
 	#define obbZSplatY V4SplatElement<1>(obbZ)
-	#define obbZSplatZ V4SplatElement<0>(obbZ)
+	#define obbZSplatZ V4SplatElement<2>(obbZ)
 	#define obbXESplatX V4SplatElement<0>(obbXE)
 	#define obbXESplatY V4SplatElement<1>(obbXE)
-	#define obbXESplatZ V4SplatElement<0>(obbXE)
+	#define obbXESplatZ V4SplatElement<2>(obbXE)
 	#define obbYESplatX V4SplatElement<0>(obbYE)
 	#define obbYESplatY V4SplatElement<1>(obbYE)
-	#define obbYESplatZ V4SplatElement<0>(obbYE)
+	#define obbYESplatZ V4SplatElement<2>(obbYE)
 	#define obbZESplatX V4SplatElement<0>(obbZE)
 	#define obbZESplatY V4SplatElement<1>(obbZE)
-	#define obbZESplatZ V4SplatElement<0>(obbZE)
+	#define obbZESplatZ V4SplatElement<2>(obbZE)
 #endif
 
 	PX_ASSERT(mPageSize == 4 || mPageSize == 8);
@@ -465,14 +461,14 @@ void RTree::traverseOBB(
 			// ABB iteration 1, start with OBB origin as other point -- 6
 			Vec4V p1ABBxa = V4Max(minx4a, V4Min(maxx4a, obbOSplatX));
 			Vec4V p1ABBya = V4Max(miny4a, V4Min(maxy4a, obbOSplatY));
-			Vec4V p1ABBza = V4Max(minz4a, V4Min(maxz4a, obbOSplatX));
+			Vec4V p1ABBza = V4Max(minz4a, V4Min(maxz4a, obbOSplatZ));
 
 			// OBB iteration 1, move to OBB space first -- 12
 			Vec4V p1ABBOxa = V4Sub(p1ABBxa, obbOSplatX);
 			Vec4V p1ABBOya = V4Sub(p1ABBya, obbOSplatY);
-			Vec4V p1ABBOza = V4Sub(p1ABBza, obbOSplatX);
-			Vec4V obbPrjXa = V4MulAdd(p1ABBOxa, obbXSplatX, V4MulAdd(p1ABBOya, obbXSplatY, V4MulAdd(p1ABBOza, obbXSplatX, zeroes)));
-			Vec4V obbPrjYa = V4MulAdd(p1ABBOxa, obbYSplatX, V4MulAdd(p1ABBOya, obbYSplatY, V4MulAdd(p1ABBOza, obbYSplatX, zeroes)));
+			Vec4V p1ABBOza = V4Sub(p1ABBza, obbOSplatZ);
+			Vec4V obbPrjXa = V4MulAdd(p1ABBOxa, obbXSplatX, V4MulAdd(p1ABBOya, obbXSplatY, V4MulAdd(p1ABBOza, obbXSplatZ, zeroes)));
+			Vec4V obbPrjYa = V4MulAdd(p1ABBOxa, obbYSplatX, V4MulAdd(p1ABBOya, obbYSplatY, V4MulAdd(p1ABBOza, obbYSplatZ, zeroes)));
 			Vec4V obbPrjZa = V4MulAdd(p1ABBOxa, obbZSplatX, V4MulAdd(p1ABBOya, obbZSplatY, V4MulAdd(p1ABBOza, obbZSplatZ, zeroes)));
 			// clamp AABB point in OBB space to OBB extents. Since we scaled the axii, the extents are [-1,1] -- 6
 			Vec4V pOBBxa = V4Max(obbESplatNegX, V4Min(obbPrjXa, obbESplatX));
@@ -481,8 +477,8 @@ void RTree::traverseOBB(
 			// go back to AABB space. we have x,y,z in obb space, need to multiply by axii -- 9
 			Vec4V p1OBBxa = V4MulAdd(pOBBxa, obbXSplatX, V4MulAdd(pOBBya, obbYSplatX, V4MulAdd(pOBBza, obbZSplatX, obbOSplatX)));
 			Vec4V p1OBBya = V4MulAdd(pOBBxa, obbXSplatY, V4MulAdd(pOBBya, obbYSplatY, V4MulAdd(pOBBza, obbZSplatY, obbOSplatY)));
-			Vec4V p1OBBza = V4MulAdd(pOBBxa, obbXSplatZ, V4MulAdd(pOBBya, obbYSplatX, V4MulAdd(pOBBza, obbZSplatZ, obbOSplatX)));
-			assert(0);
+			Vec4V p1OBBza = V4MulAdd(pOBBxa, obbXSplatZ, V4MulAdd(pOBBya, obbYSplatZ, V4MulAdd(pOBBza, obbZSplatZ, obbOSplatZ)));
+
 			// ABB iteration 2 -- 6 instructions
 			Vec4V p2ABBxa = V4Max(minx4a, V4Min(maxx4a, p1OBBxa));
 			Vec4V p2ABBya = V4Max(miny4a, V4Min(maxy4a, p1OBBya));
@@ -512,7 +508,7 @@ void RTree::traverseOBB(
 			Vec4V obbXEd1Prja = V4MulAdd(d1xa, obbXESplatX, V4MulAdd(d1ya, obbXESplatY, V4MulAdd(d1za, obbXESplatZ, zeroes)));
 			Vec4V obbYEd1Prja = V4MulAdd(d1xa, obbYESplatX, V4MulAdd(d1ya, obbYESplatY, V4MulAdd(d1za, obbYESplatZ, zeroes)));
 			Vec4V obbZEd1Prja = V4MulAdd(d1xa, obbZESplatX, V4MulAdd(d1ya, obbZESplatY, V4MulAdd(d1za, obbZESplatZ, zeroes)));
-			Vec4V obbOd1Prja = V4MulAdd(d1xa, obbOSplatX, V4MulAdd(d1ya, obbOSplatY, V4MulAdd(d1za, obbOSplatX, zeroes)));
+			Vec4V obbOd1Prja = V4MulAdd(d1xa, obbOSplatX, V4MulAdd(d1ya, obbOSplatY, V4MulAdd(d1za, obbOSplatZ, zeroes)));
 
 			// compare lengths between projected centers with sum of projected radii -- 16i
 			Vec4V originDiffd1a = v_absm(V4Sub(abbCd1Prja, obbOd1Prja));
@@ -533,7 +529,7 @@ void RTree::traverseOBB(
 			Vec4V obbXEd2Prja = V4MulAdd(d2xa, obbXESplatX, V4MulAdd(d2ya, obbXESplatY, V4MulAdd(d2za, obbXESplatZ, zeroes)));
 			Vec4V obbYEd2Prja = V4MulAdd(d2xa, obbYESplatX, V4MulAdd(d2ya, obbYESplatY, V4MulAdd(d2za, obbYESplatZ, zeroes)));
 			Vec4V obbZEd2Prja = V4MulAdd(d2xa, obbZESplatX, V4MulAdd(d2ya, obbZESplatY, V4MulAdd(d2za, obbZESplatZ, zeroes)));
-			Vec4V obbOd2Prja = V4MulAdd(d2xa, obbOSplatX, V4MulAdd(d2ya, obbOSplatY, V4MulAdd(d2za, obbOSplatX, zeroes)));
+			Vec4V obbOd2Prja = V4MulAdd(d2xa, obbOSplatX, V4MulAdd(d2ya, obbOSplatY, V4MulAdd(d2za, obbOSplatZ, zeroes)));
 			// compare lengths between projected centers with sum of projected radii -- 16i
 			Vec4V originDiffd2a = v_absm(V4Sub(abbCd2Prja, obbOd2Prja));
 			Vec4V absABBRd2a = V4Add(V4Add(v_absm(abbExd2Prja), v_absm(abbEyd2Prja)), v_absm(abbEzd2Prja));
