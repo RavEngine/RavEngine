@@ -41,6 +41,10 @@ set( BGFX_LIBRARY_TYPE     "STATIC" CACHE STRING "Linking type for library" )
 
 set_property( CACHE BGFX_LIBRARY_TYPE PROPERTY STRINGS STATIC SHARED )
 
+if( BGFX_LIBRARY_TYPE MATCHES "SHARED" )
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 if( NOT BX_DIR )
 	set( BX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bx" CACHE STRING "Location of bx." )
 elseif( NOT IS_ABSOLUTE "${BX_DIR}")
@@ -70,9 +74,7 @@ if( BGFX_BUILD_TOOLS )
 	include( cmake/tools.cmake )
 endif()
 
-if(BGFX_BUILD_EXAMPLES)
-	include( cmake/examples.cmake )
-endif()
+include( cmake/examples.cmake )
 
 if( BGFX_INSTALL )
 	include(GNUInstallDirs)
@@ -117,16 +119,24 @@ if( BGFX_INSTALL )
 		INSTALL_DESTINATION "${config_install_dir}"
 	)
 
-	install(FILES ${BGFX_DIR}/LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
-	install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+	install(FILES ${BGFX_DIR}/LICENSE DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licences/${PROJECT_NAME})
 
-	install( TARGETS bgfx bimg bx astc-codec astc edtaa3 etc1 etc2 iqa squish nvtt pvrtc
+	install( TARGETS bgfx
 			 EXPORT "${TARGETS_EXPORT_NAME}"
 			 LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 			 ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 			 RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
 			 INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 	)
+	if( NOT BGFX_LIBRARY_TYPE MATCHES "SHARED" )
+		install( TARGETS bimg bx astc-codec astc edtaa3 etc1 etc2 iqa squish nvtt pvrtc
+				 EXPORT "${TARGETS_EXPORT_NAME}"
+				 LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+				 ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+				 RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+				 INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+		)
+	endif()
     if (BGFX_CONFIG_RENDERER_WEBGPU)
 		install( TARGETS webgpu
 				 EXPORT "${TARGETS_EXPORT_NAME}"

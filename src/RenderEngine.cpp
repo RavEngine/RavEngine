@@ -409,6 +409,7 @@ RenderEngine::RenderEngine() {
 		}
 	}
 
+	numRowsUniform = Vector4Uniform("NumObjects");
 	//create samplers
 	constexpr char* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth"};
 	for (int i = 0; i < BX_COUNTOF(buffersamplers); i++) {
@@ -486,7 +487,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for (int i = 0; i < BX_COUNTOF(attachments); i++) {
 		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 	}
-	Vector4Uniform numRowsUniform("NumObjects");
 	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
@@ -562,7 +562,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for (const auto& row : fd.skinnedOpaques) {
 		buffers[idx].first = BGFX_INVALID_HANDLE;
 		buffers[idx].second = BGFX_INVALID_HANDLE;
-		execdraw(row, [idx,&buffers,&numRowsUniform](const auto& row) {
+		execdraw(row, [idx,&buffers,this](const auto& row) {
 			// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
 			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);

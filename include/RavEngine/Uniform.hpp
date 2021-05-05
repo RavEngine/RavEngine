@@ -18,7 +18,7 @@ public:
 		Count
 	};
 	
-	Uniform() = delete;
+	Uniform(){};
 	
 	/**
 	 Set the values in a uniform
@@ -40,7 +40,9 @@ public:
 	}
 	
 	virtual ~Uniform(){
-		//bgfx::destroy(handle);
+		if (bgfx::isValid(handle)){
+			bgfx::destroy(handle);
+		}
 	}
 	
 	/**
@@ -73,6 +75,7 @@ public:
 	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	SamplerUniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Sampler,size){}
+	SamplerUniform(){}
 };
 
 /**
@@ -86,6 +89,7 @@ public:
 	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	Vector4Uniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Vec4,size){}
+	Vector4Uniform(){}
 };
 
 /**
@@ -99,6 +103,7 @@ public:
 	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	Mat3Uniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Mat3,size){}
+	Mat3Uniform(){}
 };
 
 /**
@@ -112,6 +117,7 @@ public:
 	 @note Uniforms are always unique, creating multiple uniforms with the same name will not create separate instances.
 	 */
 	Mat4Uniform(const std::string& name, int size = 1) : Uniform(name,Uniform::Type::Mat4,size){}
+	Mat4Uniform(){}
 };
 
 }

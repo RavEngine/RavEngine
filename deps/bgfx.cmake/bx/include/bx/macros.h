@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2020 Branimir Karadzic. All rights reserved.
+ * Copyright 2010-2021 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
  */
 
@@ -77,11 +77,9 @@
 #	define BX_NO_VTABLE
 #	define BX_PRINTF_ARGS(_format, _args) __attribute__( (format(__printf__, _format, _args) ) )
 
-#	if BX_CLANG_HAS_FEATURE(cxx_thread_local)
-#		define BX_THREAD_LOCAL __thread
-#	endif // BX_COMPILER_CLANG
-
-#	if (!BX_PLATFORM_OSX && (BX_COMPILER_GCC >= 40200)) || (BX_COMPILER_GCC >= 40500)
+#	if BX_CLANG_HAS_FEATURE(cxx_thread_local) \
+	|| (!BX_PLATFORM_OSX && (BX_COMPILER_GCC >= 40200) ) \
+	|| (BX_COMPILER_GCC >= 40500)
 #		define BX_THREAD_LOCAL __thread
 #	endif // BX_COMPILER_GCC
 

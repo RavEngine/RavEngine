@@ -383,8 +383,7 @@ std::unique_ptr<BasicBlock> InlinePass::InlineReturn(
   uint32_t returnLabelId = 0;
   for (auto callee_block_itr = calleeFn->begin();
        callee_block_itr != calleeFn->end(); ++callee_block_itr) {
-    if (callee_block_itr->tail()->opcode() == SpvOpUnreachable ||
-        callee_block_itr->tail()->opcode() == SpvOpKill) {
+    if (spvOpcodeIsAbort(callee_block_itr->tail()->opcode())) {
       returnLabelId = context()->TakeNextId();
       break;
     }
@@ -636,6 +635,11 @@ bool InlinePass::GenInlineCode(
   for (auto& blk : *new_blocks) {
     id2block_[blk->id()] = &*blk;
   }
+
+  // We need to kill the name and decorations for the call, which will be
+  // deleted.
+  context()->KillNamesAndDecorates(&*call_inst_itr);
+
   return true;
 }
 
@@ -718,6 +722,12 @@ void InlinePass::AnalyzeReturns(Function* func) {
 bool InlinePass::IsInlinableFunction(Function* func) {
   // We can only inline a function if it has blocks.
   if (func->cbegin() == func->cend()) return false;
+
+  // Do not inline functions with DontInline flag.
+  if (func->control_mask() & SpvFunctionControlDontInlineMask) {
+    return false;
+  }
+
   // Do not inline functions with returns in loops. Currently early return
   // functions are inlined by wrapping them in a one trip loop and implementing
   // the returns as a branch to the loop's merge block. However, this can only
@@ -738,16 +748,17 @@ bool InlinePass::IsInlinableFunction(Function* func) {
   bool func_is_called_from_continue =
       funcs_called_from_continue_.count(func->result_id()) != 0;
 
-  if (func_is_called_from_continue && ContainsKill(func)) {
+  if (func_is_called_from_continue && ContainsKillOrTerminateInvocation(func)) {
     return false;
   }
 
   return true;
 }
 
-bool InlinePass::ContainsKill(Function* func) const {
-  return !func->WhileEachInst(
-      [](Instruction* inst) { return inst->opcode() != SpvOpKill; });
+bool InlinePass::ContainsKillOrTerminateInvocation(Function* func) const {
+  return !func->WhileEachInst([](Instruction* inst) {
+    return !spvOpcodeTerminatesExecution(inst->opcode());
+  });
 }
 
 void InlinePass::InitializeInline() {

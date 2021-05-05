@@ -1,5 +1,5 @@
 --
--- Copyright 2010-2020 Branimir Karadzic. All rights reserved.
+-- Copyright 2010-2021 Branimir Karadzic. All rights reserved.
 -- License: https://github.com/bkaradzic/bx#license-bsd-2-clause
 --
 
@@ -71,11 +71,11 @@ function toolchain(_buildDir, _libDir)
 			{ "mingw-gcc",       "MinGW"                      },
 			{ "mingw-clang",     "MinGW (clang compiler)"     },
 			{ "netbsd",          "NetBSD"                     },
-			{ "osx",             "OSX"                        },
+			{ "osx-x64",         "OSX - x64"                  },
+			{ "osx-arm64",       "OSX - ARM64"                },
 			{ "orbis",           "Orbis"                      },
 			{ "riscv",           "RISC-V"                     },
 			{ "rpi",             "RaspberryPi"                },
-			{ "haiku",           "Haiku"                      },
 		},
 	}
 
@@ -362,7 +362,9 @@ function toolchain(_buildDir, _libDir)
 		elseif "netbsd" == _OPTIONS["gcc"] then
 			location (path.join(_buildDir, "projects", _ACTION .. "-netbsd"))
 
-		elseif "osx" == _OPTIONS["gcc"] then
+		elseif "osx-x64"   == _OPTIONS["gcc"]
+			or "osx-arm64" == _OPTIONS["gcc"] then
+
 
 			if os.is("linux") then
 				if not os.getenv("OSXCROSS") then
@@ -374,7 +376,8 @@ function toolchain(_buildDir, _libDir)
 				premake.gcc.cxx = "$(OSXCROSS)/target/bin/" .. osxToolchain .. "clang++"
 				premake.gcc.ar  = "$(OSXCROSS)/target/bin/" .. osxToolchain .. "ar"
 			end
-			location (path.join(_buildDir, "projects", _ACTION .. "-osx"))
+
+			location (path.join(_buildDir, "projects", _ACTION .. "-" .. _OPTIONS["gcc"]))
 
 		elseif "orbis" == _OPTIONS["gcc"] then
 
@@ -463,9 +466,7 @@ function toolchain(_buildDir, _libDir)
 
 		end
 
-	elseif _ACTION == "xcode4"
-		or _ACTION == "xcode8"
-		or _ACTION == "xcode9" then
+	elseif _ACTION and _ACTION:match("^xcode.+$") then
 		local action = premake.action.current()
 		local str_or = function(str, def)
 			return #str > 0 and str or def
@@ -989,33 +990,35 @@ function toolchain(_buildDir, _libDir)
 			path.join(bxDir, "include/compat/freebsd"),
 		}
 
-	configuration { "osx", "x32" }
-		targetdir (path.join(_buildDir, "osx32_clang/bin"))
-		objdir (path.join(_buildDir, "osx32_clang/obj"))
-		--libdirs { path.join(_libDir, "lib/osx32_clang") }
+	configuration { "osx-x64" }
+		targetdir (path.join(_buildDir, "osx-x64/bin"))
+		objdir (path.join(_buildDir, "osx-x64/obj"))
+		linkoptions {
+			"-arch x86_64",
+		}
 		buildoptions {
-			"-m32",
+			"-arch x86_64",
+			"-msse2",
+			"-target x86_64-apple-macos" .. (#macosPlatform > 0 and macosPlatform or "10.11"),
 		}
 
-	configuration { "osx", "x64" }
-		targetdir (path.join(_buildDir, "osx64_clang/bin"))
-		objdir (path.join(_buildDir, "osx64_clang/obj"))
-		--libdirs { path.join(_libDir, "lib/osx64_clang") }
+	configuration { "osx-arm64" }
+		targetdir (path.join(_buildDir, "osx-arm64/bin"))
+		objdir (path.join(_buildDir, "osx-arm64/obj"))
+		linkoptions {
+			"-arch arm64",
+		}
 		buildoptions {
-			"-m64",
+			"-arch arm64",
+			"-Wno-error=unused-command-line-argument",
+			"-Wno-unused-command-line-argument",
 		}
 
-	configuration { "osx", "Universal" }
-		targetdir (path.join(_buildDir, "osx_universal/bin"))
-		objdir (path.join(_buildDir, "osx_universal/bin"))
-
-	configuration { "osx" }
+	configuration { "osx*" }
 		buildoptions {
 			"-Wfatal-errors",
-			"-msse2",
 			"-Wunused-value",
 			"-Wundef",
-			"-target x86_64-apple-macos" .. (#macosPlatform > 0 and macosPlatform or "10.11"),
 		}
 		includedirs { path.join(bxDir, "include/compat/osx") }
 
@@ -1058,14 +1061,14 @@ function toolchain(_buildDir, _libDir)
 
 	configuration { "ios-arm*" }
 		linkoptions {
-			"-miphoneos-version-min=7.0",
+			"-miphoneos-version-min=9.0",
 			"--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS" ..iosPlatform .. ".sdk",
 			"-L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS" ..iosPlatform .. ".sdk/usr/lib/system",
 			"-F/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS" ..iosPlatform .. ".sdk/System/Library/Frameworks",
 			"-F/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS" ..iosPlatform .. ".sdk/System/Library/PrivateFrameworks",
 		}
 		buildoptions {
-			"-miphoneos-version-min=7.0",
+			"-miphoneos-version-min=9.0",
 			"--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS" ..iosPlatform .. ".sdk",
 			"-fembed-bitcode",
 		}
@@ -1075,7 +1078,7 @@ function toolchain(_buildDir, _libDir)
 		objdir (path.join(_buildDir, "ios-simulator/obj"))
 		libdirs { path.join(_libDir, "lib/ios-simulator") }
 		linkoptions {
-			"-mios-simulator-version-min=7.0",
+			"-mios-simulator-version-min=9.0",
 			"-arch i386",
 			"--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk",
 			"-L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk/usr/lib/system",
@@ -1083,7 +1086,7 @@ function toolchain(_buildDir, _libDir)
 			"-F/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk/System/Library/PrivateFrameworks",
 		}
 		buildoptions {
-			"-mios-simulator-version-min=7.0",
+			"-mios-simulator-version-min=9.0",
 			"-arch i386",
 			"--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk",
 		}
@@ -1093,7 +1096,7 @@ function toolchain(_buildDir, _libDir)
 		objdir (path.join(_buildDir, "ios-simulator64/obj"))
 		libdirs { path.join(_libDir, "lib/ios-simulator64") }
 		linkoptions {
-			"-mios-simulator-version-min=7.0",
+			"-mios-simulator-version-min=9.0",
 			"-arch x86_64",
 			"--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk",
 			"-L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk/usr/lib/system",
@@ -1101,7 +1104,7 @@ function toolchain(_buildDir, _libDir)
 			"-F/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk/System/Library/PrivateFrameworks",
 		}
 		buildoptions {
-			"-mios-simulator-version-min=7.0",
+			"-mios-simulator-version-min=9.0",
 			"-arch x86_64",
 			"--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator" ..iosPlatform .. ".sdk",
 		}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2020 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2021 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -11,12 +11,12 @@ namespace bgfx
 	extern bool g_verbose;
 }
 
-#define _BX_TRACE(_format, ...)                                                               \
-				BX_MACRO_BLOCK_BEGIN                                                          \
-					if (bgfx::g_verbose)                                                      \
-					{                                                                         \
-						fprintf(stdout, BX_FILE_LINE_LITERAL "" _format "\n", ##__VA_ARGS__); \
-					}                                                                         \
+#define _BX_TRACE(_format, ...)                                                          \
+				BX_MACRO_BLOCK_BEGIN                                                     \
+					if (bgfx::g_verbose)                                                 \
+					{                                                                    \
+						bx::printf(BX_FILE_LINE_LITERAL "" _format "\n", ##__VA_ARGS__); \
+					}                                                                    \
 				BX_MACRO_BLOCK_END
 
 #define _BX_WARN(_condition, _format, ...)                        \
@@ -101,6 +101,7 @@ namespace bgfx
 		uint16_t regCount;
 		uint8_t texComponent;
 		uint8_t texDimension;
+		uint16_t texFormat;
 	};
 
 	struct Options
