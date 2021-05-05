@@ -109,6 +109,7 @@
 #endif
 
 
+
 // -----------------------------------------------------------------------------
 // Compiler Feature Checks
 // -----------------------------------------------------------------------------
@@ -118,6 +119,14 @@
 #else
     #define PHMAP_HAVE_BUILTIN(x) 0
 #endif
+
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 201703) || __cplusplus >= 201703
+    #define PHMAP_HAVE_CC17 1
+#else
+    #define PHMAP_HAVE_CC17 0
+#endif
+
+#define PHMAP_BRANCHLESS 1
 
 // ----------------------------------------------------------------
 // Checks whether `std::is_trivially_destructible<T>` is supported.
@@ -304,8 +313,7 @@
 
 // #pragma message(PHMAP_VAR_NAME_VALUE(_MSVC_LANG))
 
-#if defined(_MSC_VER) && _MSC_VER >= 1910 && \
-    ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703) || __cplusplus >= 201703)
+#if defined(_MSC_VER) && _MSC_VER >= 1910 && PHMAP_HAVE_CC17
     // #define PHMAP_HAVE_STD_ANY 1
     #define PHMAP_HAVE_STD_OPTIONAL 1
     #define PHMAP_HAVE_STD_VARIANT 1
@@ -314,7 +322,7 @@
     #endif
 #endif
 
-#if (defined(_MSVC_LANG) && _MSVC_LANG >= 201703) || __cplusplus >= 201703
+#if PHMAP_HAVE_CC17
     #define PHMAP_HAVE_SHARED_MUTEX 1
 #endif
 
@@ -610,7 +618,7 @@
 #endif
 
 #ifndef PHMAP_HAVE_SSSE3
-    #ifdef __SSSE3__
+    #if defined(__SSSE3__) || defined(__AVX2__)
         #define PHMAP_HAVE_SSSE3 1
     #else
         #define PHMAP_HAVE_SSSE3 0
@@ -633,7 +641,7 @@
 // ----------------------------------------------------------------------
 // constexpr if
 // ----------------------------------------------------------------------
-#if __cplusplus >= 201703 || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703)
+#if PHMAP_HAVE_CC17
     #define PHMAP_IF_CONSTEXPR(expr) if constexpr ((expr))
 #else 
     #define PHMAP_IF_CONSTEXPR(expr) if ((expr))

@@ -54,25 +54,12 @@
     #pragma warning(disable : 5045) // Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
 #endif
 
-#include <initializer_list>
-#include <iterator>
-#include <utility>
 
-#include <algorithm>
-#include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <functional>
-#include <iterator>
 #include <limits>
 #include <new>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <initializer_list>
-#include <iterator>
 
 #include "phmap_fwd_decl.h"
 #include "phmap_base.h"
@@ -261,7 +248,7 @@ namespace phmap {
 
         enum class ncmp : value_type { unordered = -127 };
 
-#ifdef __cpp_inline_variables
+#if defined(__cpp_inline_variables) && !defined(_MSC_VER)
 
 #define PHMAP_COMPARE_INLINE_BASECLASS_DECL(name)
 
@@ -737,7 +724,7 @@ namespace phmap {
 
 namespace phmap {
 
-namespace container_internal {
+namespace priv {
 
     // A helper class that indicates if the Compare parameter is a key-compare-to
     // comparator.
@@ -921,7 +908,7 @@ namespace container_internal {
     template <typename Key, typename Data, typename Compare, typename Alloc,
               int TargetNodeSize, bool Multi>
     struct map_params : common_params<Key, Compare, Alloc, TargetNodeSize, Multi,
-                                      phmap::container_internal::map_slot_policy<Key, Data>> {
+                                      phmap::priv::map_slot_policy<Key, Data>> {
         using super_type = typename map_params::common_params;
         using mapped_type = Data;
         // This type allows us to move keys when it is safe to do so. It is safe
@@ -952,7 +939,7 @@ namespace container_internal {
     };
 
     // This type implements the necessary functions from the
-    // btree::container_internal::slot_type interface.
+    // btree::priv::slot_type interface.
     template <typename Key>
     struct set_slot_policy {
         using slot_type = Key;
@@ -1102,7 +1089,7 @@ namespace container_internal {
         btree_node() = default;
 
     private:
-        using layout_type = phmap::container_internal::Layout<btree_node *, field_type,
+        using layout_type = phmap::priv::Layout<btree_node *, field_type,
                                                                slot_type, btree_node *>;
         constexpr static size_type SizeWithNValues(size_type n) {
             return (size_type)layout_type(/*parent*/ 1,
@@ -1201,10 +1188,10 @@ namespace container_internal {
         field_type max_count() const {
             // Internal nodes have max_count==kInternalNodeMaxCount.
             // Leaf nodes have max_count in [1, kNodeValues].
-            const field_type max_count = GetField<1>()[3];
-            return max_count == field_type{kInternalNodeMaxCount}
+            const field_type max_cnt = GetField<1>()[3];
+            return max_cnt == field_type{kInternalNodeMaxCount}
             ? field_type{kNodeValues}
-            : max_count;
+            : max_cnt;
         }
 
         // Getter for the parent of this node.
@@ -1227,10 +1214,10 @@ namespace container_internal {
         btree_node *child(size_type i) const { return GetField<3>()[i]; }
         btree_node *&mutable_child(size_type i) { return GetField<3>()[i]; }
         void clear_child(size_type i) {
-            phmap::container_internal::SanitizerPoisonObject(&mutable_child(i));
+            phmap::priv::SanitizerPoisonObject(&mutable_child(i));
         }
         void set_child(size_type i, btree_node *c) {
-            phmap::container_internal::SanitizerUnpoisonObject(&mutable_child(i));
+            phmap::priv::SanitizerUnpoisonObject(&mutable_child(i));
             mutable_child(i) = c;
             c->set_position((field_type)i);
         }
@@ -1390,14 +1377,14 @@ namespace container_internal {
 
         // Node allocation/deletion routines.
         static btree_node *init_leaf(btree_node *n, btree_node *parent,
-                                     int max_count) {
+                                     int max_cnt) {
             n->set_parent(parent);
             n->set_position(0);
             n->set_start(0);
             n->set_count(0);
-            n->set_max_count((field_type)max_count);
-            phmap::container_internal::SanitizerPoisonMemoryRegion(
-                n->slot(0), max_count * sizeof(slot_type));
+            n->set_max_count((field_type)max_cnt);
+            phmap::priv::SanitizerPoisonMemoryRegion(
+                n->slot(0), max_cnt * sizeof(slot_type));
             return n;
         }
         static btree_node *init_internal(btree_node *n, btree_node *parent) {
@@ -1405,7 +1392,7 @@ namespace container_internal {
             // Set `max_count` to a sentinel value to indicate that this node is
             // internal.
             n->set_max_count(kInternalNodeMaxCount);
-            phmap::container_internal::SanitizerPoisonMemoryRegion(
+            phmap::priv::SanitizerPoisonMemoryRegion(
                 &n->mutable_child(0), (kNodeValues + 1) * sizeof(btree_node *));
             return n;
         }
@@ -1424,12 +1411,12 @@ namespace container_internal {
     private:
         template <typename... Args>
         void value_init(const size_type i, allocator_type *alloc, Args &&... args) {
-            phmap::container_internal::SanitizerUnpoisonObject(slot(i));
+            phmap::priv::SanitizerUnpoisonObject(slot(i));
             params_type::construct(alloc, slot(i), std::forward<Args>(args)...);
         }
         void value_destroy(const size_type i, allocator_type *alloc) {
             params_type::destroy(alloc, slot(i));
-            phmap::container_internal::SanitizerPoisonObject(slot(i));
+            phmap::priv::SanitizerPoisonObject(slot(i));
         }
 
         // Move n values starting at value i in this node into the values starting at
@@ -1437,7 +1424,7 @@ namespace container_internal {
         void uninitialized_move_n(const size_type n, const size_type i,
                                   const size_type j, btree_node *x,
                                   allocator_type *alloc) {
-            phmap::container_internal::SanitizerUnpoisonMemoryRegion(
+            phmap::priv::SanitizerUnpoisonMemoryRegion(
                 x->slot(j), n * sizeof(slot_type));
             for (slot_type *src = slot(i), *end = src + n, *dest = x->slot(j);
                  src != end; ++src, ++dest) {
@@ -1847,8 +1834,8 @@ namespace container_internal {
         // Returns a count of the number of times the key appears in the btree.
         template <typename K>
         size_type count_unique(const K &key) const {
-            const iterator begin = internal_find(key);
-            if (begin.node == nullptr) {
+            const iterator beg = internal_find(key);
+            if (beg.node == nullptr) {
                 // The key doesn't exist in the tree.
                 return 0;
             }
@@ -1980,10 +1967,10 @@ namespace container_internal {
 
         // Allocates a correctly aligned node of at least size bytes using the
         // allocator.
-        node_type *allocate(const size_type size) {
+        node_type *allocate(const size_type sz) {
             return reinterpret_cast<node_type *>(
-                phmap::container_internal::Allocate<node_type::Alignment()>(
-                    mutable_allocator(), (size_t)size));
+                phmap::priv::Allocate<node_type::Alignment()>(
+                    mutable_allocator(), (size_t)sz));
         }
 
         // Node creation/deletion routines.
@@ -2006,9 +1993,9 @@ namespace container_internal {
         iterator rebalance_after_delete(iterator iter);
 
         // Deallocates a node of a certain size in bytes using the allocator.
-        void deallocate(const size_type size, node_type *node) {
-            phmap::container_internal::Deallocate<node_type::Alignment()>(
-                mutable_allocator(), node, (size_t)size);
+        void deallocate(const size_type sz, node_type *node) {
+            phmap::priv::Deallocate<node_type::Alignment()>(
+                mutable_allocator(), node, (size_t)sz);
         }
 
         void delete_internal_node(node_type *node) {
@@ -2119,7 +2106,7 @@ namespace container_internal {
     private:
         // We use compressed tuple in order to save space because key_compare and
         // allocator_type are usually empty.
-        phmap::container_internal::CompressedTuple<key_compare, allocator_type,
+        phmap::priv::CompressedTuple<key_compare, allocator_type,
                                                     node_type *>
         root_;
 
@@ -2759,13 +2746,13 @@ namespace container_internal {
     }
 
     template <typename P>
-    auto btree<P>::erase(iterator begin, iterator end)
+    auto btree<P>::erase(iterator _begin, iterator _end)
         -> std::pair<size_type, iterator> {
-        difference_type count = std::distance(begin, end);
+        difference_type count = std::distance(_begin, _end);
         assert(count >= 0);
 
         if (count == 0) {
-            return {0, begin};
+            return {0, _begin};
         }
 
         if (count == size_) {
@@ -2773,68 +2760,68 @@ namespace container_internal {
             return {count, this->end()};
         }
 
-        if (begin.node == end.node) {
-            erase_same_node(begin, end);
+        if (_begin.node == _end.node) {
+            erase_same_node(_begin, _end);
             size_ -= count;
-            return {count, rebalance_after_delete(begin)};
+            return {count, rebalance_after_delete(_begin)};
         }
 
         const size_type target_size = size_ - count;
         while (size_ > target_size) {
-            if (begin.node->leaf()) {
+            if (_begin.node->leaf()) {
                 const size_type remaining_to_erase = size_ - target_size;
-                const size_type remaining_in_node = begin.node->count() - begin.position;
-                begin = erase_from_leaf_node(
-                    begin, (std::min)(remaining_to_erase, remaining_in_node));
+                const size_type remaining_in_node = _begin.node->count() - _begin.position;
+                _begin = erase_from_leaf_node(
+                    _begin, (std::min)(remaining_to_erase, remaining_in_node));
             } else {
-                begin = erase(begin);
+                _begin = erase(_begin);
             }
         }
-        return {count, begin};
+        return {count, _begin};
     }
 
     template <typename P>
-    void btree<P>::erase_same_node(iterator begin, iterator end) {
-        assert(begin.node == end.node);
-        assert(end.position > begin.position);
+    void btree<P>::erase_same_node(iterator _begin, iterator _end) {
+        assert(_begin.node == _end.node);
+        assert(_end.position > _begin.position);
 
-        node_type *node = begin.node;
-        size_type to_erase = end.position - begin.position;
+        node_type *node = _begin.node;
+        size_type to_erase = _end.position - _begin.position;
         if (!node->leaf()) {
-            // Delete all children between begin and end.
+            // Delete all children between _begin and _end.
             for (size_type i = 0; i < to_erase; ++i) {
-                internal_clear(node->child(begin.position + i + 1));
+                internal_clear(node->child(_begin.position + i + 1));
             }
-            // Rotate children after end into new positions.
-            for (size_type i = begin.position + to_erase + 1; i <= node->count(); ++i) {
+            // Rotate children after _end into new positions.
+            for (size_type i = _begin.position + to_erase + 1; i <= node->count(); ++i) {
                 node->set_child(i - to_erase, node->child(i));
                 node->clear_child(i);
             }
         }
-        node->remove_values_ignore_children(begin.position, to_erase,
+        node->remove_values_ignore_children(_begin.position, to_erase,
                                             mutable_allocator());
 
         // Do not need to update rightmost_, because
-        // * either end == this->end(), and therefore node == rightmost_, and still
+        // * either _end == this->end(), and therefore node == rightmost_, and still
         //   exists
-        // * or end != this->end(), and therefore rightmost_ hasn't been erased, since
-        //   it wasn't covered in [begin, end)
+        // * or _end != this->end(), and therefore rightmost_ hasn't been erased, since
+        //   it wasn't covered in [_begin, _end)
     }
 
     template <typename P>
-    auto btree<P>::erase_from_leaf_node(iterator begin, size_type to_erase)
+    auto btree<P>::erase_from_leaf_node(iterator _begin, size_type to_erase)
         -> iterator {
-        node_type *node = begin.node;
+        node_type *node = _begin.node;
         assert(node->leaf());
-        assert(node->count() > begin.position);
-        assert(begin.position + to_erase <= node->count());
+        assert(node->count() > _begin.position);
+        assert(_begin.position + to_erase <= node->count());
 
-        node->remove_values_ignore_children(begin.position, to_erase,
+        node->remove_values_ignore_children(_begin.position, to_erase,
                                             mutable_allocator());
 
         size_ -= to_erase;
 
-        return rebalance_after_delete(begin);
+        return rebalance_after_delete(_begin);
     }
 
     template <typename P>
@@ -2852,14 +2839,14 @@ namespace container_internal {
     template <typename P>
     template <typename K>
     auto btree<P>::erase_multi(const K &key) -> size_type {
-        const iterator begin = internal_lower_bound(key);
-        if (begin.node == nullptr) {
+        const iterator _begin = internal_lower_bound(key);
+        if (_begin.node == nullptr) {
             // The key doesn't exist in the tree, return nothing done.
             return 0;
         }
-        // Delete all of the keys between begin and upper_bound(key).
-        const iterator end = internal_end(internal_upper_bound(key));
-        return erase(begin, end).first;
+        // Delete all of the keys between _begin and upper_bound(key).
+        const iterator _end = internal_end(internal_upper_bound(key));
+        return erase(_begin, _end).first;
     }
 
     template <typename P>
@@ -2946,7 +2933,7 @@ namespace container_internal {
                 assert(right->max_count() == kNodeValues);
                 if (right->count() < kNodeValues) {
                     // We bias rebalancing based on the position being inserted. If we're
-                    // inserting at the beginning of the left node then we bias rebalancing
+                    // inserting at the _beginning of the left node then we bias rebalancing
                     // to fill up the right node.
                     int to_move =
                         (kNodeValues - right->count()) / (1 + (insert_position > 0));
@@ -3817,7 +3804,7 @@ namespace container_internal {
         btree_multimap_container() {}
     };
 
-}  // namespace container_internal
+}  // namespace priv
 
 
 
@@ -3825,8 +3812,8 @@ namespace container_internal {
     //  btree_set - default values in phmap_fwd_decl.h
     // ----------------------------------------------------------------------
     template <typename Key, typename Compare, typename Alloc>
-    class btree_set : public container_internal::btree_set_container<
-        container_internal::btree<container_internal::set_params<
+    class btree_set : public priv::btree_set_container<
+        priv::btree<priv::set_params<
             Key, Compare, Alloc, /*TargetNodeSize=*/ 256, /*Multi=*/ false>>> 
     {
         using Base = typename btree_set::btree_set_container;
@@ -3882,8 +3869,8 @@ namespace container_internal {
     //  btree_multiset - default values in phmap_fwd_decl.h
     // ----------------------------------------------------------------------
     template <typename Key, typename Compare,  typename Alloc>
-        class btree_multiset : public container_internal::btree_multiset_container<
-        container_internal::btree<container_internal::set_params<
+        class btree_multiset : public priv::btree_multiset_container<
+        priv::btree<priv::set_params<
              Key, Compare, Alloc, /*TargetNodeSize=*/ 256, /*Multi=*/ true>>> 
     {
         using Base = typename btree_multiset::btree_multiset_container;
@@ -3940,8 +3927,8 @@ namespace container_internal {
     //  btree_map - default values in phmap_fwd_decl.h
     // ----------------------------------------------------------------------
     template <typename Key, typename Value, typename Compare,  typename Alloc>
-        class btree_map : public container_internal::btree_map_container<
-        container_internal::btree<container_internal::map_params<
+        class btree_map : public priv::btree_map_container<
+        priv::btree<priv::map_params<
              Key, Value, Compare, Alloc, /*TargetNodeSize=*/ 256, /*Multi=*/ false>>> 
     {
         using Base = typename btree_map::btree_map_container;
@@ -3999,8 +3986,8 @@ namespace container_internal {
     //  btree_multimap - default values in phmap_fwd_decl.h
     // ----------------------------------------------------------------------
     template <typename Key, typename Value, typename Compare, typename Alloc>
-        class btree_multimap : public container_internal::btree_multimap_container<
-        container_internal::btree<container_internal::map_params<
+        class btree_multimap : public priv::btree_multimap_container<
+        priv::btree<priv::map_params<
               Key, Value, Compare, Alloc, /*TargetNodeSize=*/ 256, /*Multi=*/ true>>> 
     {
         using Base = typename btree_multimap::btree_multimap_container;

@@ -39,3 +39,6 @@ rm -r GameNetworkingSockets/GameNetworkingSockets/tests GameNetworkingSockets/pr
 
 # ozz-animation
 rm -r ozz-animation/media ozz-animation/test ozz-animation/samples ozz-animation/howtos
+
+# parallel-hashmap
+rm -r parallel-hashmap/benchmark parallel-hashmap/cmake parallel-hashmap/css parallel-hashmap/examples parallel-hashmap/html parallel-hashmap/tests parallel-hashmap/index.html

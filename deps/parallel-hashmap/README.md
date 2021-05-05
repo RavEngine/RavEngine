@@ -21,13 +21,15 @@ This repository aims to provide a set of excellent **hash map** implementations,
 
 - Easy to **forward declare**: just include `phmap_fwd_decl.h` in your header files to forward declare Parallel Hashmap containers [note: this does not work currently for hash maps with pointer keys]
 
-- **Dump/load** feature: when a hash map stores data that is `std::trivially_copyable`, the table can be dumped to disk and restored as a single array, very efficiently, and without requiring any hash computation. This is typically about 10 times faster than doing element-wise serialization to disk, but it will use 10% to 60% extra disk space. See `examples/serialize.cc`. _(hash map/set only)_
+- **Dump/load** feature: when a `flat` hash map stores data that is `std::trivially_copyable`, the table can be dumped to disk and restored as a single array, very efficiently, and without requiring any hash computation. This is typically about 10 times faster than doing element-wise serialization to disk, but it will use 10% to 60% extra disk space. See `examples/serialize.cc`. _(flat hash map/set only)_
 
 - **Tested** on Windows (vs2015 & vs2017, vs2019, Intel compiler 18 and 19), linux (g++ 4.8.4, 5, 6, 7, 8, clang++ 3.9, 4.0, 5.0) and MacOS (g++ and clang++) - click on travis and appveyor icons above for detailed test status.
 
 - Automatic support for **boost's hash_value()** method for providing the hash function (see `examples/hash_value.h`). Also default hash support for `std::pair` and `std::tuple`.
 
 - **natvis** visualization support in Visual Studio _(hash map/set only)_
+
+@byronhe kindly provided this [Chinese translation](https://byronhe.com/post/2020/11/10/parallel-hashmap-btree-fast-multi-thread-intro/) of the README.md.
 
 
 ## Fast *and*  memory friendly
@@ -48,7 +50,7 @@ If you are using Visual Studio, you probably want to add `phmap.natvis` to your 
 
 ## Example
 
-```
+```c++
 #include <iostream>
 #include <string>
 #include <parallel_hashmap/phmap.h>
@@ -142,10 +144,10 @@ When an ordering is not needed, a hash container is typically a better choice th
 
 |  type                 |    memory usage   | additional *peak* memory usage when resizing  |
 |-----------------------|-------------------|-----------------------------------------------|
-| flat tables           | ![flat_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/flat_mem_usage.gif?raw=true) | ![flat_peak_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/flat_peak.gif?raw=true) | 
-| node tables           | ![node_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/node_mem_usage.gif?raw=true) | ![node_peak_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/node_peak.gif?raw=true) | 
-| parallel flat tables  | ![flat_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/flat_mem_usage.gif?raw=true) | ![parallel_flat_peak](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/parallel_flat_peak.gif?raw=true) | 
-| parallel node tables  | ![node_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/node_mem_usage.gif?raw=true) | ![parallel_node_peak](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/parallel_node_peak.gif?raw=true) | 
+| flat tables           | ![flat_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/flat_mem_usage.png?raw=true) | ![flat_peak_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/flat_peak.png?raw=true) |
+| node tables           | ![node_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/node_mem_usage.png?raw=true) | ![node_peak_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/node_peak.png?raw=true) |
+| parallel flat tables  | ![flat_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/flat_mem_usage.png?raw=true) | ![parallel_flat_peak](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/parallel_flat_peak.png?raw=true) |
+| parallel node tables  | ![node_mem_usage](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/node_mem_usage.png?raw=true) | ![parallel_node_peak](https://github.com/greg7mdp/parallel-hashmap/blob/master/html/img/parallel_node_peak.png?raw=true) |
 
 
 - *size()* is the number of values in the container, as returned by the size() method
@@ -287,7 +289,7 @@ Parallel Hashmap containers follow the thread safety rules of the Standard C++ l
 
 - It is safe to read and write to one instance of a type even if another thread is reading or writing to a different instance of the same type. For example, given hash tables A and B of the same type, it is safe if A is being written in thread 1 and B is being read in thread 2.
 
-- The *parallel* tables can be made internally thread-safe for concurrent read and write access, by providing a synchronization type (for example [std::mutex](https://en.cppreference.com/w/cpp/thread/mutex)) as the last template argument. Because locking is performed at the *submap* level, a high level of concurrency can still be achieved. Read access can be done safely using `if_contains()`, which passes a reference value to the callback while holding the *submap* lock. However, please be aware that returned iterators are not protected by the mutex, so they cannot be used reliably on a hash map which can be changed by another thread.
+- The *parallel* tables can be made internally thread-safe for concurrent read and write access, by providing a synchronization type (for example [std::mutex](https://en.cppreference.com/w/cpp/thread/mutex)) as the last template argument. Because locking is performed at the *submap* level, a high level of concurrency can still be achieved. Read access can be done safely using `if_contains()`, which passes a reference value to the callback while holding the *submap* lock. Similarly, write access can be done safely using `modify_if`, `try_emplace_l` or `lazy_emplace_l`. However, please be aware that iterators or references returned by standard APIs are not protected by the mutex, so they cannot be used reliably on a hash map which can be changed by another thread.
 
 - Examples on how to use various mutex types, including boost::mutex, boost::shared_mutex and absl::Mutex can be found in `examples/bench.cc`
 

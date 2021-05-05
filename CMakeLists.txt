@@ -176,7 +176,7 @@ endif()
 file(GLOB SOURCES "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" "src/*.cpp")
 
 # register the library
-add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES})
+add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} "deps/parallel-hashmap/phmap.natvis")
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
