@@ -20,8 +20,7 @@ rm -r taskflow/3rd-party taskflow/benchmarks taskflow/docs taskflow/doxygen task
 rm -r concurrentqueue/benchmarks concurrentqueue/build concurrentqueue/c_api concurrentqueue/tests
 
 # rmlui
-rm -r RmlUI-freetype/RmlUi/Samples RmlUI-freetype/RmlUi/Tests
-
+rm -r RmlUI-freetype/RmlUi/Samples RmlUI-freetype/RmlUi/Tests RmlUI-freetype/freetype/docs RmlUI-freetype/freetype/objs RmlUI-freetype/freetype/Makefile RmlUI-freetype/freetype/meson_options.txt RmlUI-freetype/freetype/meson.build RmlUI-freetype/freetype/ChangeLog* RmlUI-freetype/freetype/configure RmlUI-freetype/freetype/autogen.sh
 # fmt
 rm -r fmt/doc fmt/test
 
@@ -42,3 +41,12 @@ rm -r ozz-animation/media ozz-animation/test ozz-animation/samples ozz-animation
 
 # parallel-hashmap
 rm -r parallel-hashmap/benchmark parallel-hashmap/cmake parallel-hashmap/css parallel-hashmap/examples parallel-hashmap/html parallel-hashmap/tests parallel-hashmap/index.html
+
+# physfs
+rm -r physfs/docs physfs/test
+
+# tweeny
+rm -r tweeny/doc tweeny/CHANGELOG.md
+
+# glm
+rm -r glm/util

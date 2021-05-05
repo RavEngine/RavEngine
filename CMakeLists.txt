@@ -81,7 +81,6 @@ add_custom_command(
 add_subdirectory("${DEPS_DIR}/im3d-cmake" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/etl" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/tweeny" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/physfs" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
@@ -89,6 +88,9 @@ add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 
 #SDL2
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
+
+set(PHYSFS_BUILD_TEST OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/physfs" EXCLUDE_FROM_ALL)
 
 # ozz animation
 set(ozz_build_samples OFF CACHE INTERNAL "")
