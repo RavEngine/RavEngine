@@ -411,7 +411,7 @@ RenderEngine::RenderEngine() {
 
 	numRowsUniform = Vector4Uniform("NumObjects");
 	//create samplers
-	constexpr char* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth"};
+	constexpr char const* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth"};
 	for (int i = 0; i < BX_COUNTOF(buffersamplers); i++) {
 		gBufferSamplers[i] = bgfx::createUniform(buffersamplers[i], bgfx::UniformType::Sampler);
 	}

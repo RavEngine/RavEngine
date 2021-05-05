@@ -55,7 +55,7 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 	
 	char* buffer = new char[size];
 	
-	size_t length_read = PHYSFS_read(ptr,buffer,1,size);
+	size_t length_read = PHYSFS_readBytes(ptr,buffer,size);
 	buffer[size-1] = '\0';	//add null terminator
 	PHYSFS_close(ptr);
 	
@@ -81,7 +81,7 @@ void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<
 	datavec.resize(size);
 	
 	//this version of the call does not need to add a null terminator
-	size_t length_read = PHYSFS_read(ptr,&datavec[0],1,size);
+	size_t length_read = PHYSFS_readBytes(ptr,&datavec[0],size);
 	PHYSFS_close(ptr);
 }
 
