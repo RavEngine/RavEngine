@@ -227,8 +227,10 @@ void NetworkClient::NetDestroy(const std::string_view& command){
 		if (owner) {
 			owner->Destroy();
 		}
+	})) {
+		//this must be here, otherwise we will encounter deadlock
 		NetworkIdentities.erase(uuid);
-	})) {}
+	}
     else{
         Debug::Warning("Cannot destroy entity with UUID {} because it does not exist",uuid.to_string());
     }
