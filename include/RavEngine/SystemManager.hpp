@@ -4,8 +4,8 @@
 #include "SpinLock.hpp"
 #include "System.hpp"
 #include <chrono>
-#include <fmt/format.h>
 #include "Ref.hpp"
+#include "function.hpp"
 
 namespace RavEngine{
 
@@ -51,10 +51,10 @@ namespace RavEngine{
 	}
 
 struct SystemEntry{
-	const std::function<void(float,Ref<Component>,ctti_t)> Tick;
-	const std::function<const System::list_type&()> QueryTypes;
-	const std::function<const System::list_type&()> MustRunBefore;
-	const std::function<const System::list_type&()> MustRunAfter;
+	const func::function<void(float,Ref<Component>,ctti_t)> Tick;
+	const func::function<const System::list_type&()> QueryTypes;
+	const func::function<const System::list_type&()> MustRunBefore;
+	const func::function<const System::list_type&()> MustRunAfter;
 
 	template<typename T>
 	SystemEntry(Ref<T> system) :
