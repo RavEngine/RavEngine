@@ -23,6 +23,7 @@
 #include "RPCSystem.hpp"
 #include "AnimatorSystem.hpp"
 #include "SkinnedMeshComponent.hpp"
+#include "QueryIterator.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -238,7 +239,8 @@ void World::RebuildTaskGraph(){
 			
 			graphs[ID] = {
 				masterTasks.for_each(std::ref(iterator_map[ID].begin), std::ref(iterator_map[ID].end), func),
-				&system
+				&system,
+				ts != nullptr
 			};
 			update.precede(graphs[ID].task);
 			if (ts != nullptr){
@@ -444,7 +446,9 @@ void World::FillFramedata(){
 	
 	//ensure user code completes before framedata population
 	for(auto& g : graphs){
-		g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+		if (!g.second.isTimed){
+			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+		}
 	}
 	
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);

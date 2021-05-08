@@ -49,6 +49,7 @@ namespace RavEngine {
 		struct systaskpair{
 			tf::Task task;
 			const SystemEntry* system;
+			bool isTimed = false;
 		};
 		phmap::flat_hash_map<ctti_t, systaskpair> graphs;
 		
@@ -70,6 +71,9 @@ namespace RavEngine {
 		inline float getCurrentFPSScale() const{
 			return currentFPSScale;
 		}
+		
+		//Entity list
+		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
 	protected:
 		void CTTI_Add(Ref<Component> c, ctti_t id) override{
 			toSync.enqueue({c,id,true});
@@ -79,8 +83,6 @@ namespace RavEngine {
 			toSync.enqueue({c,id,false});
 		}
 		
-		//Entity list
-		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
 		EntityStore Entities, to_destroy;
 
 		//physics system
