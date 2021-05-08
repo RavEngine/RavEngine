@@ -52,7 +52,6 @@ void RavEngine::World::Tick(float scale) {
 
 RavEngine::World::World(){
 	//reserve space to reduce rehashing
-	Entities.reserve(4000);
 	systemManager.RegisterSystem<ScriptSystem>(make_shared<ScriptSystem>());
 	systemManager.RegisterSystem<AudioRoomSyncSystem>(make_shared<AudioRoomSyncSystem>());
 	systemManager.RegisterSystem<RPCSystem>(make_shared<RPCSystem>());

@@ -152,10 +152,6 @@ namespace RavEngine {
 
 		bool Destroy(Ref<Entity>);
 
-		inline const EntityStore& getEntities() const {
-			return Entities;
-		}
-
 		
 		void PlaySound(const InstantaneousAudioSource& ias){
 			instantaneousToPlay.push_back(ias);

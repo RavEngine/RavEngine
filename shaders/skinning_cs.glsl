@@ -65,9 +65,8 @@ mat4 quat2mat(vec4 Q){
 					   vec4(r00,r01,r02,0),
 					   vec4(r10,r11,r12,0),
 					   vec4(r20,r21,r22,0),
-					   vec4(0,0,0,0)
+					   vec4(0,0,0,1)
 					   );
-	
 }
 
 NUM_THREADS(8, 32, 1)
@@ -115,26 +114,37 @@ void main()
 			continue;
 		}
 		
+		//average translations
 		avg_translate += (allmats[i] * vec4(0,0,0,1)) * allweights[i];
 		
+		//decompose scale
 		vec3 scale = vec3(length(allmats[i][0]), length(allmats[i][1]), length(allmats[i][2]));
+		// average scales
 		avg_scale += scale * allweights[i];
 
+		//decompose rotation
 		mat4 rotation = mtxFromCols(vec4(allmats[i][0].xyz/scale.x,0),
 									vec4(allmats[i][1].xyz/scale.y,0),
 									vec4(allmats[i][2].xyz/scale.z,0),
 									vec4(0,0,0,1));
+		
+		// convert to quaternion and average
 		vec4 quat = mat2quat(rotation);
 		avg_rot += quat * allweights[i];
 	}
 	avg_translate.w = 1;
+	
 	
 	// create a single combined matrix
 	mat4 trmat = mtxFromRows(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),avg_translate);
 	mat4 scmat = mtxFromRows(vec4(avg_scale.x,0,0,0),vec4(0,avg_scale.y,0,0),vec4(0,0,avg_scale.z,0),vec4(0,0,0,1));
 	mat4 rmat = quat2mat(avg_rot);
 	
+	//create single final matrix
 	totalmtx = trmat * rmat * scmat;
+	//totalmtx = scmat * rmat * trmat;
+	//totalmtx = mul(allmats[0],0.001);
+	//totalmtx = allmats[0];
 	
 	//destination to write the matrix
 	const int offset = gl_GlobalInvocationID.x * NumObjects.x * 4 + gl_GlobalInvocationID.y * 4;	//4x vec4s elements per object
