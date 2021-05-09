@@ -1,71 +1,33 @@
 #include "common.sh"
 #include <bgfx_compute.sh>
 
-BUFFER_WR(skinmatrix, vec4, 0);	// 4x4 matrices
-BUFFER_RO(bindpose, vec4, 1);	// 4x4 matrices
+BUFFER_WR(output, vec4, 0);	// 4x4 matrices
+BUFFER_RO(skinsoa, float, 1);	// vec3, vec3, vec4 (10 total)
 BUFFER_RO(weights, vec2, 2);	// index, influence
-BUFFER_RO(pose, vec4, 3);	 	// 4x4 matrices
 
 uniform vec4 NumObjects;		// x = num objects, y = num vertices
 
 const int NUM_INFLUENCES = 4;
 
-//adapted from https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2015/01/matrix-to-quat.pdf
-vec4 mat2quat(mat4 m){
-	vec4 q;
-	float t;
-	if (m[2][2] < 0){
-		if (m[0][0] > m[1][1]){
-			t = 1 + m[0][0] - m[1][1] - m[2][2];
-			q = vec4(t, m[0][1]+m[1][0], m[2][0]+m[0][2],m[1][2]-m[2][1]);
-		}
-		else{
-			t = 1 - m[0][0] + m[1][1] - m[2][2];
-			q = vec4(m[0][1]+m[1][0], t, m[1][2]+m[2][1], m[2][0]-m[0][2]);
-		}
-	}
-	else{
-		if(m[0][0] < -m[1][1]){
-			t = 1 - m[0][0] - m[1][1] + m[2][2];
-			q = vec4(m[2][0]+m[0][2], m[1][2]+m[2][1], t, m[0][1]-m[1][0]);
-		}
-		else{
-			t = 1 + m[0][0] + m[1][1] + m[2][2];
-			q = vec4(m[1][2]-m[2][1], m[2][0]-m[0][2], m[0][1]-m[1][0], t);
-		}
-	}
-	
-	q *= 0.5/sqrt(t);
-	return q;
-}
-
 mat4 quat2mat(vec4 Q){
-	float q0 = Q[0];
-	float q1 = Q[1];
-	float q2 = Q[2];
-	float q3 = Q[3];
+	float qw = Q[3];
+	float qx = Q[0];
+	float qy = Q[1];
+	float qz = Q[2];
 	
-	// First row of the rotation matrix
-	float r00 = 2 * (q0 * q0 + q1 * q1) - 1;
-	float r01 = 2 * (q1 * q2 - q0 * q3);
-	float r02 = 2 * (q1 * q3 + q0 * q2);
+	const float n = 1.0f/sqrt(qx*qx+qy*qy+qz*qz+qw*qw);
+	qx *= n;
+	qy *= n;
+	qz *= n;
+	qw *= n;
 	
-	// Second row of the rotation matrix
-	float r10 = 2 * (q1 * q2 + q0 * q3);
-	float r11 = 2 * (q0 * q0 + q2 * q2) - 1;
-	float r12 = 2 * (q2 * q3 - q0 * q1);
-	
-	// Third row of the rotation matrix
-	float r20 = 2 * (q1 * q3 - q0 * q2);
-	float r21 = 2 * (q2 * q3 + q0 * q1);
-	float r22 = 2 * (q0 * q0 + q3 * q3) - 1;
 	
 	//matrix
-	return mtxFromRows(
-					   vec4(r00,r01,r02,0),
-					   vec4(r10,r11,r12,0),
-					   vec4(r20,r21,r22,0),
-					   vec4(0,0,0,1)
+	return mtxFromCols(
+					   vec4(1.0f - 2.0f*qy*qy - 2.0f*qz*qz, 2.0f*qx*qy - 2.0f*qz*qw, 2.0f*qx*qz + 2.0f*qy*qw, 0.0f),
+					   vec4(2.0f*qx*qy + 2.0f*qz*qw, 1.0f - 2.0f*qx*qx - 2.0f*qz*qz, 2.0f*qy*qz - 2.0f*qx*qw, 0.0f),
+					   vec4(2.0f*qx*qz - 2.0f*qy*qw, 2.0f*qy*qz + 2.0f*qx*qw, 1.0f - 2.0f*qx*qx - 2.0f*qy*qy, 0.0f),
+					   vec4(0.0f, 0.0f, 0.0f, 1.0f)
 					   );
 }
 
@@ -85,72 +47,42 @@ void main()
 	//will become the pose matrix
 	mat4 totalmtx = identity;
 	
-	mat4 allmats[NUM_INFLUENCES];
-	float allweights[NUM_INFLUENCES];
+	//calculate weighted transform
+	vec3 avg_translate = vec3(0,0,0);
+	vec3 avg_scale = vec3(1,1,1);
+	vec4 avg_rot = vec4(0,0,0,0);
 	
 	for(int i = 0; i < NUM_INFLUENCES; i++){
 		const vec2 weightdata = weights[weightsid + i];
 		const int joint_idx = weightdata.x;
 		const float weight = weightdata.y;
-		allweights[i] = weight;
 		
-		//get the pose and bindpose of the target joint
-		mat4 posed_mtx;
-		mat4 bindpose_mtx;
-		for(int j = 0; j < 4; j++){
-			posed_mtx[j] = pose[joint_idx * 4 + j];
-			bindpose_mtx[j] = bindpose[joint_idx * 4 + j];
-		}
+		//get the pose transformation info for the current joint
+		//it's arranged as translate[3], scale[3], rotate[4]
+		const int beginidx = joint_idx * 10;
 		
-		allmats[i] = posed_mtx * bindpose_mtx;
+		const vec3 translate = vec3(skinsoa[beginidx+0],skinsoa[beginidx+1],skinsoa[beginidx+2]) * weight;
+		const vec3 scale = vec3(skinsoa[beginidx+3],skinsoa[beginidx+4],skinsoa[beginidx+5]);
+		const vec4 rotate = vec4(skinsoa[beginidx+6],skinsoa[beginidx+7],skinsoa[beginidx+8],skinsoa[beginidx+9]) * weight;
+		
+		avg_translate += translate;
+		avg_rot += rotate;
+		//avg_scale += scale;
 	}
-	
-	//calculate weighted transform
-	vec4 avg_translate = vec4(0,0,0,0);
-	vec3 avg_scale = avg_translate;
-	vec4 avg_rot = vec4(0,0,0,0);
-	for(int i = 0; i < NUM_INFLUENCES; i++){
-		if (allweights[i] == 0){	//prevent NaN
-			continue;
-		}
-		
-		//average translations
-		avg_translate += (allmats[i] * vec4(0,0,0,1)) * allweights[i];
-		
-		//decompose scale
-		vec3 scale = vec3(length(allmats[i][0]), length(allmats[i][1]), length(allmats[i][2]));
-		// average scales
-		avg_scale += scale * allweights[i];
 
-		//decompose rotation
-		mat4 rotation = mtxFromCols(vec4(allmats[i][0].xyz/scale.x,0),
-									vec4(allmats[i][1].xyz/scale.y,0),
-									vec4(allmats[i][2].xyz/scale.z,0),
-									vec4(0,0,0,1));
-		
-		// convert to quaternion and average
-		vec4 quat = mat2quat(rotation);
-		avg_rot += quat * allweights[i];
-	}
-	avg_translate.w = 1;
-	
-	
 	// create a single combined matrix
-	mat4 trmat = mtxFromRows(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),avg_translate);
-	mat4 scmat = mtxFromRows(vec4(avg_scale.x,0,0,0),vec4(0,avg_scale.y,0,0),vec4(0,0,avg_scale.z,0),vec4(0,0,0,1));
-	mat4 rmat = quat2mat(avg_rot);
-	
+	const mat4 trmat = mtxFromRows(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),vec4(avg_translate,1));
+	const mat4 scmat = mtxFromRows(vec4(avg_scale.x,0,0,0),vec4(0,avg_scale.y,0,0),vec4(0,0,avg_scale.z,0),vec4(0,0,0,1));
+	const mat4 rmat = quat2mat(avg_rot);
+
 	//create single final matrix
 	totalmtx = trmat * rmat * scmat;
-	//totalmtx = scmat * rmat * trmat;
-	//totalmtx = mul(allmats[0],0.001);
-	//totalmtx = allmats[0];
 	
 	//destination to write the matrix
 	const int offset = gl_GlobalInvocationID.x * NumObjects.x * 4 + gl_GlobalInvocationID.y * 4;	//4x vec4s elements per object
 	
 	//write matrix
 	for(int i = 0; i < 4; i++){
-		skinmatrix[offset+i] = totalmtx[i];
+		output[offset+i] = totalmtx[i];
 	}
 }

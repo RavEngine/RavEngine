@@ -54,7 +54,7 @@ bgfx::VertexLayout RenderEngine::RmlLayout;
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE, RenderEngine::skinningIdentityShaderHandle = BGFX_INVALID_HANDLE;
-decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout;
+decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout, RenderEngine::skinningInputLayout;
 
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
@@ -349,6 +349,12 @@ void RenderEngine::Init()
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.end();
+	
+	skinningInputLayout.begin()
+		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.end();
 
 	//init lights
 	LightManager::Init();
@@ -577,24 +583,36 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			buffers[idx].first = buf;
 
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
-			bgfx::setBuffer(1, skeleton->getBindpose(), bgfx::Access::Read);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
 			
-			typedef std::array<float,16> float_mtx;
+			struct soafloat{
+				float translate[3], scale[3];
+				float rotate[4];
+			};
+			
+			//pose SOA values
 			if(auto& pose = row.second.skinningdata){
 				//convert to float from double
-				stackarray(pose_float, float_mtx, pose.value().size());
+				auto& p = pose.value();
+				stackarray(pose_float, soafloat, p.size());
 				for(int i = 0; i < pose.value().size(); i++){
-					auto ptr = glm::value_ptr(pose.value()[i]);
-					copyMat4(ptr, pose_float[i].data());
+					//in case of double mode, need to convert to float
+					glm::vec3 translate = p[i].translate, scale = p[i].scale;
+					glm::quat rotate = p[i].rotate;
+					
+					//populate stack array values
+					std::memcpy(pose_float[i].translate, glm::value_ptr(translate), sizeof(soafloat::translate));
+					std::memcpy(pose_float[i].scale, glm::value_ptr(scale), sizeof(soafloat::scale));
+					std::memcpy(pose_float[i].rotate, glm::value_ptr(rotate), sizeof(soafloat::rotate));
 				}
 				
-				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose_float, pose.value().size() * sizeof(pose_float[0])), skinningOutputLayout);
+				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose_float, pose.value().size() * sizeof(pose_float[0])), skinningInputLayout);
 				buffers[idx].second = posebuf;
-				bgfx::setBuffer(3, posebuf, bgfx::Access::Read);
+				bgfx::setBuffer(1, posebuf, bgfx::Access::Read);
 			}
 			else{
-				bgfx::setBuffer(3, skeleton->getBindpose(), bgfx::Access::Read);
+				//TODO: make bindpose available as SOA
+				//bgfx::setBuffer(3, skeleton->getBindposeHandle(), bgfx::Access::Read);
 			}
 			
 			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};

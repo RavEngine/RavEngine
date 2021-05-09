@@ -83,6 +83,16 @@ void AnimatorComponent::Tick(float timeScale){
 	if (!job.Run()){
 		Debug::Fatal("local to model job failed");
 	}
+	
+	// create pose-bindpose skinning matrices
+	auto& pose = GetPose();
+	auto& bindpose = skeleton->getBindposes();
+	for(int i = 0; i < skinningmats.size(); i++){
+		auto mat = pose[i] * matrix4(bindpose[i]);
+		vector3 discard1;
+		vector4 discard2;
+		glm::decompose(mat, skinningmats[i].scale, skinningmats[i].rotate, skinningmats[i].translate, discard1, discard2);
+	}
 }
 
 void AnimBlendTree::Node::Sample(float t, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{

@@ -3,12 +3,16 @@
 #include <ozz/animation/offline/skeleton_builder.h>
 #include <string>
 #include <bgfx/bgfx.h>
+#include "mathtypes.hpp"
+#include <vector>
 
 namespace RavEngine {
 class SkeletonAsset{
 	ozz::unique_ptr<ozz::animation::Skeleton> skeleton;
 	bgfx::VertexBufferHandle bindpose = BGFX_INVALID_HANDLE;
 	bgfx::VertexBufferHandle boneHierarchy = BGFX_INVALID_HANDLE;
+	
+	std::vector<glm::mat4> bindposes;
 public:
 	SkeletonAsset(const std::string& path);
 	
@@ -24,8 +28,18 @@ public:
 		return skeleton;
 	}
 	
-	inline const decltype(bindpose) getBindpose() const{
+	/**
+	 @return bindposes for use in a shader
+	 */
+	inline const decltype(bindpose) getBindposeHandle() const{
 		return bindpose;
+	}
+	
+	/**
+	 @return bindposes for use in software
+	 */
+	inline const decltype(bindposes) getBindposes() const{
+		return bindposes;
 	}
 	
 	/**

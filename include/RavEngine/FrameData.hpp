@@ -15,7 +15,6 @@ namespace RavEngine {
 
 class MaterialInstanceBase;
 class DirectionalLight;
-class AnimatorComponent;
 
 struct FrameData{
 	//global matrices
@@ -32,7 +31,7 @@ struct FrameData{
         entry(){}
 		
 		//used by skinned mesh
-		std::optional<ozz::vector<T>> skinningdata;
+		std::optional<ozz::vector<soatransform>> skinningdata;
     };
 	
 	//opaque pass data

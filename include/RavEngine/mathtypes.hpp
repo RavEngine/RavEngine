@@ -54,3 +54,8 @@ constexpr vector3 vector3_up = vector3(0, 1, 0);
 constexpr vector3 vector3_forward = vector3(0, 0, -1);
 
 #define print_vec3(vec) "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")"
+
+struct soatransform{
+	vector3 translate, scale;
+	quaternion rotate;
+};

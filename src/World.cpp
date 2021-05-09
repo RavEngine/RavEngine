@@ -362,9 +362,9 @@ void World::FillFramedata(){
 			auto m = static_pointer_cast<SkinnedMeshComponent>(e);
 			auto ptr = e->getOwner().lock();
 			if (ptr){
-				std::optional<ozz::vector<matrix4>> pose;
+				std::optional<ozz::vector<soatransform>> pose;
 				if (auto animator = ptr->GetComponent<AnimatorComponent>()){
-					pose.emplace(animator.value()->GetLocalPose());
+					pose.emplace(animator.value()->GetSkinningMats());
 				}
 				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
 				auto mat = ptr->transform()->CalculateWorldMatrix();

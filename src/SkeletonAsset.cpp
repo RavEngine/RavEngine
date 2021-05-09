@@ -157,8 +157,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 	.end();
 		
-	stackarray(bindposes, glm::mat4, skeleton->joint_names().size());
-	std::memset(bindposes, 0, sizeof(bindposes));
+	bindposes.resize(skeleton->joint_names().size());
 	stackarray(bindpose_ozz, ozz::math::Float4x4, skeleton->joint_names().size());
 	
 	//convert from local space to model space
@@ -183,7 +182,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		bindposes[i] = glm::inverse(glm::make_mat4(matrix));
 	}
 	
-	auto bindposedata = bgfx::copy(bindposes, sizeof(bindposes));
+	auto bindposedata = bgfx::copy(bindposes.data(), bindposes.size() * sizeof(bindposes[0]));
 	
 	bindpose = bgfx::createVertexBuffer(bindposedata, layout);
 	

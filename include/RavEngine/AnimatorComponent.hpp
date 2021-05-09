@@ -209,7 +209,6 @@ public:
 	inline decltype(skeleton) GetSkeleton() const{
 		return skeleton;
 	}
-	
 protected:
 	locked_node_hashmap<id_t,State> states;
 	
@@ -225,6 +224,7 @@ protected:
 	ozz::vector<ozz::math::Float4x4> models;
 	ozz::vector<matrix4> glm_pose;
 	ozz::vector<matrix4> local_pose;
+	ozz::vector<soatransform> skinningmats;
 	
 	/**
 	 Update buffer sizes for current skeleton
@@ -240,6 +240,7 @@ protected:
 		cache.Resize(n_joints);
 		glm_pose.resize(n_joints);
 		local_pose.resize(n_joints);
+		skinningmats.resize(n_joints);
 	}
 	
 	bool isPlaying = false;
@@ -288,6 +289,10 @@ public:
 			local_pose[i] = glm::make_mat4(matrix);
 		}
 		return local_pose;
+	}
+	
+	inline const decltype(skinningmats)& GetSkinningMats(){
+		return skinningmats;
 	}
 };
 
