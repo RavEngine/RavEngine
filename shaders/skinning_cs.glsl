@@ -2,7 +2,7 @@
 #include <bgfx_compute.sh>
 
 BUFFER_WR(output, vec4, 0);	// 4x4 matrices
-BUFFER_RO(pose, vec4, 1);	// vec3, vec3, vec4 (10 total)
+BUFFER_RO(pose, vec4, 1);	// 4x4 matrices
 BUFFER_RO(weights, vec2, 2);	// index, influence
 
 uniform vec4 NumObjects;		// x = num objects, y = num vertices
@@ -18,10 +18,7 @@ void main()
 	}
 	
 	const int weightsid = gl_GlobalInvocationID.y * 4;		//4x vec2 elements elements per vertex
-		
-	//for reuse
-	const mat4 identity = mtxFromRows(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),vec4(0,0,0,1));
-	
+			
 	//will become the pose matrix
 	mat4 totalmtx = mtxFromRows(vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0));
 	
@@ -35,7 +32,7 @@ void main()
 		for(int j = 0; j < 4; j++){
 			posed_mtx[j] = pose[joint_idx * 4 + j];
 		}
-		
+		posed_mtx = mtxFromRows(posed_mtx[0],posed_mtx[1],posed_mtx[2],posed_mtx[3]);
 		totalmtx += posed_mtx * weight;
 	}
 	
