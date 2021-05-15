@@ -85,7 +85,7 @@ void AnimatorComponent::Tick(float timeScale){
 	}
 	
 	// create pose-bindpose skinning matrices
-	auto& pose = GetPose();
+	auto& pose = GetLocalPose();
 	auto& bindpose = skeleton->getBindposes();
 	for(int i = 0; i < skinningmats.size(); i++){
 		skinningmats[i] = pose[i] * matrix4(bindpose[i]);
