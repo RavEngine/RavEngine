@@ -88,10 +88,7 @@ void AnimatorComponent::Tick(float timeScale){
 	auto& pose = GetPose();
 	auto& bindpose = skeleton->getBindposes();
 	for(int i = 0; i < skinningmats.size(); i++){
-		auto mat = pose[i] * matrix4(bindpose[i]);
-		vector3 discard1;
-		vector4 discard2;
-		glm::decompose(mat, skinningmats[i].scale, skinningmats[i].rotate, skinningmats[i].translate, discard1, discard2);
+		skinningmats[i] = pose[i] * matrix4(bindpose[i]);
 	}
 }
 

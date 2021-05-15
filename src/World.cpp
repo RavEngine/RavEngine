@@ -352,7 +352,7 @@ void World::FillFramedata(){
 				auto mat = ptr->transform()->CalculateWorldMatrix();
 				auto& item = current->opaques[pair];
 				item.mtx.lock();
-				item.items.insert(mat);
+				item.items.push_back(mat);
 				item.mtx.unlock();
 			}
 		}
@@ -362,16 +362,18 @@ void World::FillFramedata(){
 			auto m = static_pointer_cast<SkinnedMeshComponent>(e);
 			auto ptr = e->getOwner().lock();
 			if (ptr){
-				std::optional<ozz::vector<soatransform>> pose;
-				if (auto animator = ptr->GetComponent<AnimatorComponent>()){
-					pose.emplace(animator.value()->GetSkinningMats());
-				}
 				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
 				auto mat = ptr->transform()->CalculateWorldMatrix();
 				auto& item = current->skinnedOpaques[pair];
 				item.mtx.lock();
-				item.items.insert(mat);
-				item.skinningdata = pose;
+				item.items.push_back(mat);
+				// write the pose if there is one
+				if (auto animator = ptr->GetComponent<AnimatorComponent>()){
+					item.skinningdata.push_back(animator.value()->GetSkinningMats());
+				}
+				else{
+					//if there is no pose, write identity matrices
+				}
 				item.mtx.unlock();
 			}
 		}

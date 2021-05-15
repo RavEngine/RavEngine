@@ -224,7 +224,7 @@ protected:
 	ozz::vector<ozz::math::Float4x4> models;
 	ozz::vector<matrix4> glm_pose;
 	ozz::vector<matrix4> local_pose;
-	ozz::vector<soatransform> skinningmats;
+	ozz::vector<matrix4> skinningmats;
 	
 	/**
 	 Update buffer sizes for current skeleton

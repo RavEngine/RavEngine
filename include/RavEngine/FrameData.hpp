@@ -20,10 +20,12 @@ struct FrameData{
 	//global matrices
 	matrix4 viewmatrix, projmatrix;
     
+	// these need to be ordered to
+	// ensure skinning data gets correct matrices
 	template<typename T>
     struct entry{
         SpinLock mtx;
-        plf::colony<T> items;
+        ozz::vector<T> items;
         entry(const entry<T>& other){
             items = other.items;
 			skinningdata = other.skinningdata;
@@ -31,7 +33,7 @@ struct FrameData{
         entry(){}
 		
 		//used by skinned mesh
-		std::optional<ozz::vector<soatransform>> skinningdata;
+		ozz::vector<ozz::vector<T>> skinningdata;
     };
 	
 	//opaque pass data

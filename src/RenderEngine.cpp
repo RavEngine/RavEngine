@@ -351,8 +351,9 @@ void RenderEngine::Init()
 		.end();
 	
 	skinningInputLayout.begin()
-		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.end();
 
@@ -520,8 +521,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 			bindfunc();
 			
-			float values[4] = {static_cast<float>(row.second.items.size()),static_cast<float>(std::get<0>(row.first)->GetNumVerts()),0,0};
-			numRowsUniform.SetValues(&values, 1);
+			//float values[4] = {static_cast<float>(row.second.items.size()),static_cast<float>(std::get<0>(row.first)->GetNumVerts()),0,0};
+			//numRowsUniform.SetValues(&values, 1);
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 		}
 	};
@@ -541,23 +542,23 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		}
 	}
 	bgfx::DynamicVertexBufferHandle opaquemtxhandle = BGFX_INVALID_HANDLE;
-	if (fd.opaques.size() > 0) {
-		auto row = fd.opaques.begin();
-		opaquemtxhandle = bgfx::createDynamicVertexBuffer(max_verts * max_objects, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
-		// exec compute shader that writes identity matrix into outputs
-			// 1 invocation per vertex per object
-				// no inputs
-				// output buffer A: posed output transformations for vertices
-		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
-		float values[4] = {static_cast<float>(max_objects),static_cast<float>(max_verts),0,0};
-		numRowsUniform.SetValues(&values, 1);
-		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 32.0), std::ceil(max_objects / 16.0), 1);	//vertices x number of objects to pose
-	}
+//	if (fd.opaques.size() > 0) {
+//		auto row = fd.opaques.begin();
+//		opaquemtxhandle = bgfx::createDynamicVertexBuffer(max_verts * max_objects, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
+//		// exec compute shader that writes identity matrix into outputs
+//			// 1 invocation per vertex per object
+//				// no inputs
+//				// output buffer A: posed output transformations for vertices
+//		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
+//		float values[4] = {static_cast<float>(max_objects),static_cast<float>(max_verts),0,0};
+//		numRowsUniform.SetValues(&values, 1);
+//		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 32.0), std::ceil(max_objects / 16.0), 1);	//vertices x number of objects to pose
+//	}
 	for(const auto& row : fd.opaques){
 		execdraw(row, [](const auto& row) {
 			//do nothing here
 		}, [&opaquemtxhandle]() {
-			bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
+			//bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
 		});
 	}
 	typedef std::pair<bgfx::DynamicVertexBufferHandle,bgfx::VertexBufferHandle> bufferspair ;
@@ -582,33 +583,34 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			auto buf = bgfx::createDynamicVertexBuffer(numverts * 4 * numobjects, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
 			buffers[idx].first = buf;
 
-			bgfx::setBuffer(0, buf, bgfx::Access::Write);
-			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
-			
-			struct soafloat{
-				float translate[3], scale[3];
-				float rotate[4];
-			};
+			//bgfx::setBuffer(0, buf, bgfx::Access::Write);
+			bgfx::setBuffer(12, mesh->getWeightsHandle(), bgfx::Access::Read);
 			
 			//pose SOA values
-			if(auto& pose = row.second.skinningdata){
+			if(row.second.skinningdata.size() > 0){
 				//convert to float from double
-				auto& p = pose.value();
-				stackarray(pose_float, soafloat, p.size());
-				for(int i = 0; i < pose.value().size(); i++){
+				size_t totalsize = 0;
+				for(const auto& array : row.second.skinningdata){
+					totalsize += array.size();
+				}
+				typedef std::array<float,16> arrtype;
+				stackarray(pose_float, arrtype, totalsize);
+				size_t index = 0;
+				for(const auto& array : row.second.skinningdata){
 					//in case of double mode, need to convert to float
-					glm::vec3 translate = p[i].translate, scale = p[i].scale;
-					glm::quat rotate = p[i].rotate;
-					
-					//populate stack array values
-					std::memcpy(pose_float[i].translate, glm::value_ptr(translate), sizeof(soafloat::translate));
-					std::memcpy(pose_float[i].scale, glm::value_ptr(scale), sizeof(soafloat::scale));
-					std::memcpy(pose_float[i].rotate, glm::value_ptr(rotate), sizeof(soafloat::rotate));
+					for(int i = 0; i < array.size(); i++){
+						//populate stack array values
+						auto ptr = glm::value_ptr(array[i]);
+						for(int offset = 0; offset < 16; offset++){
+							pose_float[index][offset] = ptr[offset];
+						}
+						index++;
+					}
 				}
 				
-				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose_float, pose.value().size() * sizeof(pose_float[0])), skinningInputLayout);
+				auto posebuf = bgfx::createVertexBuffer(bgfx::copy(pose_float, totalsize * sizeof(pose_float[0])), skinningInputLayout);
 				buffers[idx].second = posebuf;
-				bgfx::setBuffer(1, posebuf, bgfx::Access::Read);
+				bgfx::setBuffer(11, posebuf, bgfx::Access::Read);
 			}
 			else{
 				//TODO: make bindpose available as SOA
@@ -618,9 +620,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};
 			numRowsUniform.SetValues(&values, 1);
 			
-			bgfx::dispatch(Views::DeferredGeo,skinningShaderHandle,std::ceil(numobjects/8.0),std::ceil(numverts/32.0),1);	//vertices x number of objects to pose
 		}, [idx,&buffers]() {
-			bgfx::setBuffer(11, buffers[idx].first, bgfx::Access::Read);
+			//bgfx::setBuffer(11, buffers[idx].first, bgfx::Access::Read);
 		});
 		idx++;
 	}
