@@ -586,6 +586,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
 			
+			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),static_cast<float>(skeleton->getBindposes().size()),0};
+			numRowsUniform.SetValues(&values, 1);
+			
 			//pose SOA values
 			if(row.second.skinningdata.size() > 0){
 				//convert to float from double
@@ -617,10 +620,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				//TODO: make bindpose available as SOA
 				//bgfx::setBuffer(3, skeleton->getBindposeHandle(), bgfx::Access::Read);
 			}
-			
-			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),0,0};
-			numRowsUniform.SetValues(&values, 1);
-			
 		}, [idx,&buffers]() {
 			bgfx::setBuffer(11, buffers[idx].first, bgfx::Access::Read);
 		});

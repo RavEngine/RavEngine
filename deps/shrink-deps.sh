@@ -50,3 +50,6 @@ rm -r tweeny/doc tweeny/CHANGELOG.md
 
 # glm
 rm -r glm/util
+
+# random
+rm -r random/test

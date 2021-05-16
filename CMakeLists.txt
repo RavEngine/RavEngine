@@ -86,6 +86,9 @@ add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 
+set(Random_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
+
 #SDL2
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
@@ -233,6 +236,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	PUBLIC
+	"effolkronium_random"
 	"glm"
 	"fmt"
 	"etl"

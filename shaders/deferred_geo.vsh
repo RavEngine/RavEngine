@@ -5,15 +5,12 @@ $output v_normal, v_texcoord0, v_worldpos
 #include <bgfx_compute.sh>
 
 BUFFER_RO(pose, vec4, 11);
-uniform vec4 NumObjects;			// x = num objects, y = num vertices
+uniform vec4 NumObjects;			// x = num objects, y = num vertices, z = num bones
 
 const int NUM_INFLUENCES = 4;
 
 void main()
 {
-	const int weightsid = gl_VertexID.x * 4;		//4x vec2 elements elements per vertex
-	
-
 	mat4 worldmat = mtxFromRows(i_data0,i_data1,i_data2,i_data3);
 	
 	int offset = gl_InstanceID * NumObjects.y * 4 + gl_VertexID.x * 4;

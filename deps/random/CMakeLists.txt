@@ -1,0 +1,52 @@
+﻿cmake_minimum_required(VERSION 3.0)
+
+# define the project
+project(effolkronium_random VERSION 1.4.0 LANGUAGES CXX)
+
+option(Random_BuildTests "Build the unit tests" ON)
+
+# define project variables
+set(EFFOLKRONIUM_RANDOM_TARGET_NAME ${PROJECT_NAME})
+set(EFFOLKRONIUM_RANDOM_PACKAGE_NAME ${EFFOLKRONIUM_RANDOM_TARGET_NAME})
+set(EFFOLKRONIUM_RANDOM_TARGETS_FILENAME "${EFFOLKRONIUM_RANDOM_PACKAGE_NAME}Targets.cmake")
+set(EFFOLKRONIUM_RANDOM_CONFIG_FILENAME "${EFFOLKRONIUM_RANDOM_PACKAGE_NAME}Config.cmake")
+set(EFFOLKRONIUM_RANDOM_CONFIGVERSION_FILENAME "${EFFOLKRONIUM_RANDOM_PACKAGE_NAME}ConfigVersion.cmake")
+set(EFFOLKRONIUM_RANDOM_CONFIG_DESTINATION "cmake")
+set(EFFOLKRONIUM_RANDOM_INCLUDE_DESTINATION "include")
+
+# create and configure the library target
+add_library(${EFFOLKRONIUM_RANDOM_TARGET_NAME} INTERFACE)
+target_include_directories(${EFFOLKRONIUM_RANDOM_TARGET_NAME} INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${EFFOLKRONIUM_RANDOM_INCLUDE_DESTINATION}>)
+
+if(Random_BuildTests)
+    enable_testing()
+    add_subdirectory(test)
+endif()
+
+# generate a config and config version file for the package
+include(CMakePackageConfigHelpers)
+configure_package_config_file("cmake/config.cmake.in"
+                              "${CMAKE_CURRENT_BINARY_DIR}/${EFFOLKRONIUM_RANDOM_CONFIG_FILENAME}"
+                              INSTALL_DESTINATION ${EFFOLKRONIUM_RANDOM_CONFIG_DESTINATION}
+                              PATH_VARS EFFOLKRONIUM_RANDOM_INCLUDE_DESTINATION)
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/${EFFOLKRONIUM_RANDOM_CONFIGVERSION_FILENAME}"
+                                 COMPATIBILITY SameMajorVersion)
+    
+# export the library target and store build directory in package registry
+export(TARGETS ${EFFOLKRONIUM_RANDOM_TARGET_NAME}
+       FILE "${CMAKE_CURRENT_BINARY_DIR}/${EFFOLKRONIUM_RANDOM_TARGETS_FILENAME}")
+export(PACKAGE ${EFFOLKRONIUM_RANDOM_PACKAGE_NAME})
+
+# install library target and config files
+install(TARGETS ${EFFOLKRONIUM_RANDOM_TARGET_NAME}
+        EXPORT ${EFFOLKRONIUM_RANDOM_PACKAGE_NAME})
+install(DIRECTORY "include/effolkronium"
+        DESTINATION ${EFFOLKRONIUM_RANDOM_INCLUDE_DESTINATION})
+install(EXPORT ${EFFOLKRONIUM_RANDOM_PACKAGE_NAME}
+        FILE ${EFFOLKRONIUM_RANDOM_TARGETS_FILENAME}
+        DESTINATION ${EFFOLKRONIUM_RANDOM_CONFIG_DESTINATION})
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${EFFOLKRONIUM_RANDOM_CONFIG_FILENAME}"
+              "${CMAKE_CURRENT_BINARY_DIR}/${EFFOLKRONIUM_RANDOM_CONFIGVERSION_FILENAME}"
+        DESTINATION ${EFFOLKRONIUM_RANDOM_CONFIG_DESTINATION})
