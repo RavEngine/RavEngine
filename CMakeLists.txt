@@ -41,7 +41,7 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
 
 # ==================== Dependencies =====================
-set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE INTERNAL "")
+set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)" CACHE INTERNAL "")
 set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
 
 # ninja does not use separate config directories for some reason
