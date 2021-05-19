@@ -12,8 +12,10 @@ inline float distance(const normalized_vec2& p1, const normalized_vec2& p2){
 }
 
 void AnimatorComponent::Tick(float timeScale){
-	//calculate the tree
-	//TODO: if not playing, and this frame was already calculated, don't recalculate it
+	//skip calculation 
+	if(!isPlaying){
+		return;
+	}
 	
 	//if isBlending, need to calculate both states, and blend between them
 	if (isBlending){

@@ -86,10 +86,13 @@ add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 
+# randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
 
 #SDL2
+set(VIDEO_OPENGLES ON CACHE INTERNAL "")
+set(VIDEO_OPENGL OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
 set(PHYSFS_BUILD_TEST OFF CACHE INTERNAL "")

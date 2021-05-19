@@ -30,6 +30,8 @@ namespace RavEngine {
 			int width, height;
 		} bufferdims, windowdims;
 		
+		void UpdateBufferDims();
+		
     public:
         virtual ~RenderEngine();
         RenderEngine();

@@ -16,6 +16,13 @@ void *cbSetupMetalLayer(void *wnd);
 void resizeMetalLayer(void* ptr, int width, int height);
 
 /**
+ Get the scale factor on macOS or iOS
+ @param wmi the SDL_SysWM object for your window
+ @return the scale factor returned by the Apple API
+ */
+float GetWindowScaleFactor(void* wmi);
+
+/**
  SDL opts-out of inertial scrolling on macOS. This function re-enables it.
  */
 void enableSmoothScrolling();

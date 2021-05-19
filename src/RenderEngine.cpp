@@ -305,9 +305,8 @@ void RenderEngine::Init()
 #if BX_PLATFORM_IOS
 		metalLayer = pd.nwh;
 #endif
-		int width, height;
-		SDL_GL_GetDrawableSize(RenderEngine::GetWindow(), &width, &height);
-		renderThread.emplace(&RenderEngine::runAPIThread,this,pd, width, height);
+		UpdateBufferDims();
+		renderThread.emplace(&RenderEngine::runAPIThread,this,pd, bufferdims.width, bufferdims.height);
 		renderThread.value().detach();
 	}
 	//wait for the render thread to be finished initializing
@@ -387,11 +386,6 @@ RenderEngine::RenderEngine() {
 	mat = make_shared<DebugMaterialInstance>(Material::Manager::AccessMaterialOfType<DebugMaterial>());
 	auto& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
-	
-	int width, height;
-	SDL_GL_GetDrawableSize(window, &width, &height);
-	bufferdims.width = width;
-	bufferdims.height = height;
 	
 	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
 	BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
@@ -693,8 +687,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 }
 
 void RenderEngine::resize(){
-	SDL_GL_GetDrawableSize(window, &bufferdims.width, &bufferdims.height);
-	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
+	UpdateBufferDims();
 #if BX_PLATFORM_IOS
 	resizeMetalLayer(metalLayer,bufferdims.width, bufferdims.height);	//view must be manually sized on iOS
 #endif
@@ -770,6 +763,29 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 		Debug::Fatal("Failed to create framebuffer");
 	
 	return fb;
+}
+
+void RenderEngine::UpdateBufferDims(){
+	// on non-apple platforms this is in pixels, on apple platforms it is in made-up "screen points"
+	// which will be dealt with later
+	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
+	
+	// get the canvas size in pixels
+	// since iOS and macOS do not use OpenGL we cannot use the GL call here
+	// instead we derive it by querying display data
+#if BX_PLATFORM_IOS || BX_PLATFORM_OSX
+	SDL_SysWMinfo wmi;
+	SDL_VERSION(&wmi.version);
+	if (!SDL_GetWindowWMInfo(window, &wmi)) {
+		Debug::Fatal("Cannot get native window information");
+	}
+	float scale = GetWindowScaleFactor(&wmi);
+	bufferdims.width = windowdims.width * scale;
+	bufferdims.height = windowdims.height * scale;
+#else
+	bufferdims = windowdims;
+#endif
+	
 }
 
 #ifdef _DEBUG
