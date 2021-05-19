@@ -4,6 +4,7 @@
 #import <MetalKit/MetalKit.h>
 #include <bx/bx.h>
 #include <SDL_syswm.h>
+#include "Debug.hpp"
 
 #if BX_PLATFORM_OSX
 	#import <Cocoa/Cocoa.h>
@@ -38,13 +39,17 @@ void resizeMetalLayer(void* ptr, int width, int height){
 	layer.frame = CGRectMake(0, 0, width, height);
 }
 
-float GetWindowScaleFactor(void* wmi_vp){
-	SDL_SysWMinfo* wmi = (SDL_SysWMinfo*)wmi_vp;
+float GetWindowScaleFactor(void* window){
+	SDL_SysWMinfo wmi;
+	SDL_VERSION(&wmi.version);
+	if (!SDL_GetWindowWMInfo((SDL_Window*)window, &wmi)) {
+		RavEngine::Debug::Fatal("Cannot get native window information");
+	}
 #if BX_PLATFORM_OSX
-	NSWindow *nswin = (NSWindow*)wmi->info.cocoa.window;
+	NSWindow *nswin = (NSWindow*)wmi.info.cocoa.window;
 	return [nswin backingScaleFactor];
 #elif BX_PLATFORM_IOS
-	return wmi->info.uikit.window.screen.scale;
+	return wmi.info.uikit.window.screen.scale;
 #endif
 }
 

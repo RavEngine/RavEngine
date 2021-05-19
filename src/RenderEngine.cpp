@@ -689,7 +689,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 void RenderEngine::resize(){
 	UpdateBufferDims();
 #if BX_PLATFORM_IOS
-	resizeMetalLayer(metalLayer,bufferdims.width, bufferdims.height);	//view must be manually sized on iOS
+	//view must be manually sized on iOS
+	//also this API takes screen points not pixels
+	resizeMetalLayer(metalLayer,windowdims.width, windowdims.height);
 #endif
 	RenderThreadQueue.enqueue([=]() {
 		bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
@@ -774,12 +776,8 @@ void RenderEngine::UpdateBufferDims(){
 	// since iOS and macOS do not use OpenGL we cannot use the GL call here
 	// instead we derive it by querying display data
 #if BX_PLATFORM_IOS || BX_PLATFORM_OSX
-	SDL_SysWMinfo wmi;
-	SDL_VERSION(&wmi.version);
-	if (!SDL_GetWindowWMInfo(window, &wmi)) {
-		Debug::Fatal("Cannot get native window information");
-	}
-	float scale = GetWindowScaleFactor(&wmi);
+	
+	float scale = GetWindowScaleFactor(window);
 	bufferdims.width = windowdims.width * scale;
 	bufferdims.height = windowdims.height * scale;
 #else
