@@ -41,7 +41,7 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
 
 # ==================== Dependencies =====================
-set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)" CACHE INTERNAL "")
+set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
 set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
 
 # ninja does not use separate config directories for some reason
@@ -91,7 +91,7 @@ set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
 
 #SDL2
-set(VIDEO_OPENGLES ON CACHE INTERNAL "")
+set(VIDEO_OPENGLES OFF CACHE INTERNAL "")
 set(VIDEO_OPENGL OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
