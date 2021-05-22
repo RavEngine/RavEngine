@@ -9,7 +9,7 @@ using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
 
 NetworkClient::NetworkClient(){
-	interface = SteamNetworkingSockets();
+	net_interface = SteamNetworkingSockets();
 }
 
 void NetworkClient::Connect(const std::string& address, uint16_t port){
@@ -23,7 +23,7 @@ void NetworkClient::Connect(const std::string& address, uint16_t port){
 	SteamNetworkingConfigValue_t options;
 	options.SetPtr(k_ESteamNetworkingConfig_ConnectionUserData, (void*)this);	//the thisptr
 	options.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged,  (void*)NetworkClient::SteamNetConnectionStatusChanged);
-	connection = interface->ConnectByIPAddress(ip, 1, &options);
+	connection = net_interface->ConnectByIPAddress(ip, 1, &options);
 	if (connection == k_HSteamNetConnection_Invalid){
 		Debug::Fatal("Cannot connect to {}:{}",address,port);
 	}
@@ -68,7 +68,7 @@ void NetworkClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			// to finish up.  The reason information do not matter in this case,
 			// and we cannot linger because it's already closed on the other end,
 			// so we just pass 0's.
-			interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+			net_interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
 			connection = k_HSteamNetConnection_Invalid;
 			if(OnLostConnection){
 				OnLostConnection(pInfo->m_hConn);
@@ -100,7 +100,7 @@ void NetworkClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 void NetworkClient::Disconnect(){
 	workerIsRunning = false;
 	while (!workerHasStopped);
-	interface->CloseConnection(connection, 0, nullptr, false);
+	net_interface->CloseConnection(connection, 0, nullptr, false);
 
 }
 
@@ -119,7 +119,7 @@ void NetworkClient::ClientTick(){
 	while(workerIsRunning){
 		while(workerIsRunning){
 			ISteamNetworkingMessage *pIncomingMsg = nullptr;
-			int numMsgs = interface->ReceiveMessagesOnConnection( connection, &pIncomingMsg, 1 );
+			int numMsgs = net_interface->ReceiveMessagesOnConnection( connection, &pIncomingMsg, 1 );
 			if ( numMsgs == 0 ){
 				break;
 			}
@@ -165,7 +165,7 @@ void NetworkClient::ClientTick(){
 		}
 		
 		//state changes
-		interface->RunCallbacks();
+		net_interface->RunCallbacks();
 	}
 	workerHasStopped = true;
 }
@@ -267,7 +267,7 @@ void NetworkClient::SyncVarOwnershipToThis(const std::string_view &cmd){
 }
 
 void NetworkClient::SendMessageToServer(const std::string_view& msg, Reliability mode) const {
-	interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
+	net_interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
 }
 
 void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)

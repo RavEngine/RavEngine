@@ -13,7 +13,7 @@ using namespace RavEngine;
 using namespace std;
 NetworkServer* NetworkServer::currentServer = nullptr;
 
-NetworkServer::NetworkServer() : interface(SteamNetworkingSockets()){}
+NetworkServer::NetworkServer() : net_interface(SteamNetworkingSockets()){}
 
 void NetworkServer::SpawnEntity(Ref<Entity> entity) {
 	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
@@ -26,7 +26,7 @@ void NetworkServer::SpawnEntity(Ref<Entity> entity) {
 		auto message = CreateSpawnCommand(netID, id, world->worldID);
         NetworkIdentities[netID] = comp.value();
 		for (auto connection : clients) {
-			interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
 		}
 	}
 	else {
@@ -41,7 +41,7 @@ void NetworkServer::DestroyEntity(Ref<Entity> entity){
 		auto message = CreateDestroyCommand(netID);
         NetworkIdentities.erase(netID);
 		for (auto connection : clients) {
-			interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
 		}
 	}
 	else {
@@ -57,7 +57,7 @@ void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& m
 }
 
 void NetworkServer::SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const{
-	interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
+	net_interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
 }
 
 void NetworkServer::Start(uint16_t port){
@@ -68,12 +68,12 @@ void NetworkServer::Start(uint16_t port){
 	SteamNetworkingIPAddr serverLocalAddr;
 	serverLocalAddr.Clear();
 	serverLocalAddr.m_port = port;
-	listenSocket = interface->CreateListenSocketIP(serverLocalAddr, 1, &opt);
+	listenSocket = net_interface->CreateListenSocketIP(serverLocalAddr, 1, &opt);
 	
 	if (listenSocket == k_HSteamListenSocket_Invalid )
 		Debug::Fatal( "Failed to listen on port {}", port );
 	
-	pollGroup = interface->CreatePollGroup();
+	pollGroup = net_interface->CreatePollGroup();
 	if (pollGroup == k_HSteamNetPollGroup_Invalid)
 		Debug::Fatal("Failed to create poll group");
 	
@@ -89,8 +89,8 @@ void NetworkServer::Start(uint16_t port){
 void NetworkServer::Stop(){
 	workerIsRunning = false;	//this unblocks the worker thread, allowing it to exit
 	while(!workerHasStopped);	//wait for thread to exit
-	interface->CloseListenSocket(listenSocket);
-	interface->DestroyPollGroup(pollGroup);
+	net_interface->CloseListenSocket(listenSocket);
+	net_interface->DestroyPollGroup(pollGroup);
 }
 
 NetworkServer::~NetworkServer(){
@@ -110,20 +110,20 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			
 			// A client is attempting to connect
 			// Try to accept the connection.
-			if ( interface->AcceptConnection( pInfo->m_hConn ) != k_EResultOK )
+			if ( net_interface->AcceptConnection( pInfo->m_hConn ) != k_EResultOK )
 			{
 				// This could fail.  If the remote host tried to connect, but then
 				// disconnected, the connection may already be half closed.  Just
 				// destroy whatever we have on our side.
-				interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+				net_interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
 				Debug::Error("Can't accept connection, was it already closed?");
 				break;
 			}
 			
 			// Assign the poll group
-			if ( !interface->SetConnectionPollGroup( pInfo->m_hConn, pollGroup ) )
+			if ( !net_interface->SetConnectionPollGroup( pInfo->m_hConn, pollGroup ) )
 			{
-				interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+				net_interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
 				Debug::Error( "Failed to set poll group" );
 				break;
 			}
@@ -180,7 +180,7 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			// to finish up.  The reason information do not matter in this case,
 			// and we cannot linger because it's already closed on the other end,
 			// so we just pass 0's.
-			interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+			net_interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
 			if(OnClientDisconnected){
 				OnClientDisconnected(pInfo->m_hConn);
 			}
@@ -210,7 +210,7 @@ void NetworkServer::ServerTick(){
 		//get incoming messages
 		while (workerIsRunning){	//do we need this double loop?
 			ISteamNetworkingMessage *pIncomingMsg = nullptr;
-			int numMsgs = interface->ReceiveMessagesOnPollGroup( pollGroup, &pIncomingMsg, 1 );
+			int numMsgs = net_interface->ReceiveMessagesOnPollGroup( pollGroup, &pIncomingMsg, 1 );
 			if ( numMsgs == 0 ){
 				break;
 			}
@@ -242,7 +242,7 @@ void NetworkServer::ServerTick(){
 		}
 				
 		//invoke callbacks
-		interface->RunCallbacks();
+		net_interface->RunCallbacks();
 	}
 	workerHasStopped = true;
 }
