@@ -53,3 +53,6 @@ rm -r glm/util
 
 # random
 rm -r random/test
+
+# backward
+rm -r backward-cpp/doc backward-cpp/test backward-cpp/test_package

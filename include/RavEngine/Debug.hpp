@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <chrono>
 #include "PhysXDefines.h"
+#include <backward.hpp>
 
 namespace RavEngine {
 
@@ -88,12 +89,22 @@ public:
 		LogHelper(stderr, fmt::format(formatstr,values...).c_str(), "WARN");
 	}
 	
+	static inline void PrintStacktraceHere(){
+		backward::StackTrace st;
+		st.load_here(32);
+		backward::Printer p;
+		p.object = true;
+		p.address = true;
+		p.print(st,stderr);
+	}
+	
 	/**
 	 Log a message to standard error, as an error.
 	 @param message The message to log.
 	 */
 	static inline void Error(const char* message){
 		LogHelper(stderr, message, "ERROR");
+		PrintStacktraceHere();
 	}
 	
 	/**
@@ -104,6 +115,7 @@ public:
 	template <typename ... T>
 	static inline void Error(const char* formatstr, T... values){
 		LogHelper(stderr, fmt::format(formatstr,values...).c_str(), "ERROR");
+		PrintStacktraceHere();
 	}
 	
 	/**
