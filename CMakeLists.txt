@@ -86,10 +86,6 @@ add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 
-# backward (stack trace)
-set(BACKWARD_TESTS OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/backward-cpp" EXCLUDE_FROM_ALL)
-
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
@@ -189,7 +185,6 @@ file(GLOB SOURCES "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" 
 
 # register the library
 add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} "deps/parallel-hashmap/phmap.natvis")
-add_backward(${PROJECT_NAME})
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
@@ -210,7 +205,6 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/resonance-audio/third_party/eigen"
 	"${DEPS_DIR}/resonance-audio/"
 	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
-	"${DEPS_DIR}/backward-cpp"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
@@ -391,7 +385,7 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;crypto;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2main;SDL2-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;backward;backward_object;\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2main;SDL2-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\

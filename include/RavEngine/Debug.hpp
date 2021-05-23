@@ -3,7 +3,6 @@
 #include <fmt/format.h>
 #include <chrono>
 #include "PhysXDefines.h"
-#include <backward.hpp>
 
 namespace RavEngine {
 
@@ -90,12 +89,7 @@ public:
 	}
 	
 	static inline void PrintStacktraceHere(){
-		backward::StackTrace st;
-		st.load_here(32);
-		backward::Printer p;
-		p.object = true;
-		p.address = true;
-		p.print(st,stderr);
+		//std::cout << boost::stacktrace::stacktrace();
 	}
 	
 	/**
