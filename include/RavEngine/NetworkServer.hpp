@@ -42,7 +42,7 @@ public:
 	std::function<void(HSteamNetConnection)> OnClientConnecting, OnClientConnected, OnClientDisconnected;
 	
 protected:
-	ISteamNetworkingSockets *interface = nullptr;
+	ISteamNetworkingSockets *net_interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;
 	HSteamNetPollGroup pollGroup = k_HSteamNetPollGroup_Invalid;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);

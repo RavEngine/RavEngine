@@ -43,6 +43,13 @@ locked_hashset<Ref<World>,SpinLock> App::loadedWorlds;
 
 std::chrono::duration<double,std::micro> App::min_tick_time(std::chrono::duration<double,std::milli>(1.0/90 * 1000));
 
+// on crash, call this
+void crash_signal_handler(int signum) {
+	::signal(signum, SIG_DFL);
+	Debug::PrintStacktraceHere();
+	::raise(SIGABRT);
+}
+
 /**
  GameNetworkingSockets debug log function
  */
@@ -58,6 +65,10 @@ static void DebugOutput( ESteamNetworkingSocketsDebugOutputType eType, const cha
 }
 
 App::App(const std::string& resourcesName){
+	// crash signal handlers
+	::signal(SIGSEGV, &crash_signal_handler);
+	::signal(SIGABRT, &crash_signal_handler);
+
 	//initialize virtual file system library -- on unix systems this must pass argv[0]
 	PHYSFS_init("");
 	

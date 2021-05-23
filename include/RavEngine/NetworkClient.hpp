@@ -24,7 +24,7 @@ public:
 	std::function<void(HSteamNetConnection)> OnConnecting, OnConnected, OnLostConnection;
 	
 protected:
-	ISteamNetworkingSockets *interface = nullptr;
+	ISteamNetworkingSockets *net_interface = nullptr;
 	HSteamNetConnection connection = k_HSteamNetConnection_Invalid;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 	
