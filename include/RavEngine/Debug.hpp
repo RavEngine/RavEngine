@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <chrono>
 #include "PhysXDefines.h"
+#include <csignal>
 
 namespace RavEngine {
 
@@ -89,7 +90,7 @@ public:
 	}
 	
 	static inline void PrintStacktraceHere(){
-		//std::cout << boost::stacktrace::stacktrace();
+		//TODO: get stack trace and print
 	}
 	
 	/**
