@@ -18,7 +18,8 @@ struct IAnimGraphable{
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	virtual void Sample(float t,
+	virtual void Sample(float t, float start,
+						bool looping,
 						ozz::vector<ozz::math::SoaTransform>& output,
 						ozz::animation::SamplingCache& cache,
 						const ozz::animation::Skeleton* skeleton) const = 0;	//TODO: make abstract
@@ -30,6 +31,8 @@ class AnimationAsset : public IAnimGraphable{
 	//clip data
 	ozz::unique_ptr<ozz::animation::Animation> anim;
 	//method to calculate curves given a time point
+	float duration;
+	float tps;
 public:
 	AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton);
 	
@@ -39,7 +42,16 @@ public:
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	void Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+};
+
+class AnimationAssetSegment : public IAnimGraphable{
+public:
+	float start_time, end_time;
+	Ref<AnimationAsset> anim_asset;
+	AnimationAssetSegment(decltype(anim_asset) asset, float start, float end) : anim_asset(asset), start_time(start), end_time(end){}
+	
+	void Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 };
 
 class AnimationClip : public IAnimGraphable{
@@ -79,7 +91,7 @@ public:
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	void Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 };
 }

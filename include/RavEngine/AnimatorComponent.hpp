@@ -46,7 +46,7 @@ struct AnimBlendTree : public IAnimGraphable{
 		 @param output the vector to write the output transforms to
 		 @param cache a sampling cache, modified when used
 		 */
-		void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+		void Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	};
 
 	static constexpr uint16_t kmax_nodes = 64;
@@ -92,7 +92,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	void Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 	inline void SetBlendPos(const normalized_vec2& newPos){
 		blend_pos = newPos;
@@ -109,7 +109,7 @@ private:
 
 class AnimatorComponent : public Component, public Queryable<AnimatorComponent>{
 protected:
-	
+	double lastPlayTime = 0;
 	Ref<SkeletonAsset> skeleton;
 public:
 	
@@ -117,7 +117,6 @@ public:
 	struct State{
 		unsigned short ID;
 		Ref<IAnimGraphable> clip;
-		float time = 0, speed = 0.001;
 		bool isLooping = true;
 		
 		struct Transition{
@@ -130,11 +129,6 @@ public:
 		
 		//transitions out of this state, keyed by ID
 		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
-		
-		inline void Tick(float timeScale){
-			time += speed * timeScale;
-			time = isLooping ? fmod(time,1.0f) : std::min(time,1.0f);
-		}
 		
 		template<typename T>
 		inline void SetTransition(decltype(ID) id, T interpolation, float duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
@@ -169,7 +163,7 @@ public:
 			stateBlend.to = newState;
 			
 			//copy time or reset time on target?
-			auto& ns = states.at(newState);
+			/*auto& ns = states.at(newState);
 			switch(ns.exitTransitions[newState].type){
 				case State::Transition::TimeMode::Blended:
 					ns.time = states.at(currentState).time;
@@ -177,7 +171,7 @@ public:
 				case State::Transition::TimeMode::BeginNew:
 					ns.time = 0;
 					break;
-			}
+			}*/
 			
 			//seek tween back to beginning
 			stateBlend.currentTween = states.at(currentState).exitTransitions.at(newState).transition;
@@ -197,6 +191,8 @@ public:
 	}
 	
 	inline void Play(){
+		// need to maintain offset from previous play time
+		lastPlayTime = App::currentTime() - lastPlayTime;
 		isPlaying = true;
 	}
 	

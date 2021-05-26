@@ -15,6 +15,12 @@
 using namespace RavEngine;
 using namespace std;
 
+void AnimationAssetSegment::Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
+	
+	//remap time and start
+	anim_asset->Sample(t, start, looping, transforms, cache, skeleton);
+}
+
 AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton){
 	auto path = fmt::format("objects/{}", name);
 	if(App::Resources->Exists(path.c_str())){
@@ -60,6 +66,9 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			//assume the first animation is the animation to use
 			auto anim = scene->mAnimations[0];
 			raw_animation.duration = anim->mDuration * anim->mTicksPerSecond;
+			
+			duration = anim->mDuration;
+			tps = anim->mTicksPerSecond;
 			
 			auto create_keyframe = [&](const aiNodeAnim* channel, ozz::animation::offline::RawAnimation::JointTrack& track){
 				
@@ -128,24 +137,30 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 	}
 }
 
-void AnimationAsset::Sample(float time, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+void AnimationAsset::Sample(float time, float start, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+	// TODO: calculate the normalized time based on looping, start, and tps
+	float t = (time - start) / (duration * tps);
+	if (looping){
+		t = std::fmod(t,1.f);
+	}
+	
 	//sample the animation
 	ozz::animation::SamplingJob sampling_job;
 	sampling_job.animation = anim.get();
 	sampling_job.cache = &cache;
-	sampling_job.ratio = time;
+	sampling_job.ratio = t;
 	sampling_job.output = ozz::make_span(locals);
 	
 	Debug::Assert(sampling_job.Run(), "Sampling job failed");
 }
 
-void AnimationClip::Sample(float t, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+void AnimationClip::Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
 	//calculate the subtracks
 	stackarray(layers, ozz::animation::BlendingJob::Layer, influence.size());
 	int index = 0;
 	for(auto& row : influence){
 		Sampler& sampler = const_cast<Sampler&>(row.second);	//TODO: avoid const_cast
-		row.first->Sample(t,sampler.locals,cache,skeleton);
+		row.first->Sample(t,start,looping, sampler.locals,cache,skeleton);
 		
 		//make sure the buffers are the correct size
 		if (sampler.locals.size() != skeleton->num_soa_joints()){
