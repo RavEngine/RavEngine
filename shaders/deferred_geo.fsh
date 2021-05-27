@@ -2,7 +2,7 @@ $input v_normal, v_texcoord0, v_worldpos
 
 #include "common.sh"
 #include <bgfx_shader.sh>
-#include "pbr_fs.glsl"
+#include "ravengine_shader.glsl"
 
 SAMPLER2D(s_albedoTex,0);
 uniform vec4 albedoColor;

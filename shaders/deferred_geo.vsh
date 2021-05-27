@@ -3,27 +3,24 @@ $output v_normal, v_texcoord0, v_worldpos
 
 #include "common.sh"
 #include <bgfx_compute.sh>
+#include "ravengine_shader.glsl"
 
 BUFFER_RO(pose, vec4, 11);
 uniform vec4 NumObjects;			// x = num objects, y = num vertices, z = num bones
 
-const int NUM_INFLUENCES = 4;
-
 void main()
 {
-	mat4 worldmat = mtxFromRows(i_data0,i_data1,i_data2,i_data3);
+	// This macro creates the following variables: mat4 worldmat, mat3 normalmat
+	// it also applies skinning from the pose matrix
+	// It also sets the value of v_normal. You can update it afterward if needed.
+	vs_genmats(pose,NumObjects);
 	
-	int offset = gl_InstanceID * NumObjects.y * 4 + gl_VertexID.x * 4;
-	mat4 blend = mtxFromRows(pose[offset],pose[offset+1],pose[offset+2],pose[offset+3]);
-
-	worldmat = mul(blend, worldmat);
-	mat3 normalmat = transpose(worldmat);	//convert 4x4 to 3x3 for rotating normal
-	
-	//convert normal to world space
-	v_normal = normalize(mul(normalmat,a_normal));
+	// custom texcoord if applicable
 	v_texcoord0 = a_texcoord0;
 	
+	// set vertex pos in world space, this is important for the fragment shader
 	v_worldpos = instMul(worldmat,vec4(a_position,1));
 	
+	//project world vertex to screen space
 	gl_Position = mul(u_viewProj, vec4(v_worldpos,1));
 }
