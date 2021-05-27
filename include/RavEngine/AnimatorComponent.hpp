@@ -46,7 +46,7 @@ struct AnimBlendTree : public IAnimGraphable{
 		 @param output the vector to write the output transforms to
 		 @param cache a sampling cache, modified when used
 		 */
-		void Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+		void Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	};
 
 	static constexpr uint16_t kmax_nodes = 64;
@@ -92,7 +92,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	void Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 	inline void SetBlendPos(const normalized_vec2& newPos){
 		blend_pos = newPos;
@@ -118,6 +118,7 @@ public:
 		unsigned short ID;
 		Ref<IAnimGraphable> clip;
 		bool isLooping = true;
+		float speed = 1;
 		
 		struct Transition{
 			enum class TimeMode{

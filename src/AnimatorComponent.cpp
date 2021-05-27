@@ -31,8 +31,8 @@ void AnimatorComponent::Tick(float timeScale){
 		}
 		
 		
-		fromState.clip->Sample(currentTime, lastPlayTime, fromState.isLooping, transforms, cache, skeleton->GetSkeleton().get());
-		toState.clip->Sample(currentTime, lastPlayTime, toState.isLooping, transformsSecondaryBlending, cache, skeleton->GetSkeleton().get());
+		fromState.clip->Sample(currentTime, lastPlayTime, fromState.speed, fromState.isLooping, transforms, cache, skeleton->GetSkeleton().get());
+		toState.clip->Sample(currentTime, lastPlayTime, toState.speed, toState.isLooping, transformsSecondaryBlending, cache, skeleton->GetSkeleton().get());
 		
 		//blend into output
 		ozz::animation::BlendingJob::Layer layers[2];
@@ -61,7 +61,7 @@ void AnimatorComponent::Tick(float timeScale){
 	else{
         if (states.contains(currentState)){
             auto& state = states[currentState];
-            state.clip->Sample(currentTime, lastPlayTime, state.isLooping, transforms, cache,skeleton->GetSkeleton().get());
+            state.clip->Sample(currentTime, lastPlayTime, state.speed, state.isLooping, transforms, cache,skeleton->GetSkeleton().get());
         }
         else{
             //set all to skeleton bind pose
@@ -89,11 +89,11 @@ void AnimatorComponent::Tick(float timeScale){
 	}
 }
 
-void AnimBlendTree::Node::Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
-	state->Sample(t, start, looping, output, cache, skeleton);
+void AnimBlendTree::Node::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
+	state->Sample(t, start, speed, looping, output, cache, skeleton);
 }
 
-void AnimBlendTree::Sample(float t, float start, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
+void AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
 	//iterate though the nodes, sample all, and blend
 	//calculate the subtracks
 	ozz::animation::BlendingJob::Layer layers[kmax_nodes];
@@ -108,7 +108,7 @@ void AnimBlendTree::Sample(float t, float start, bool looping, ozz::vector<ozz::
 			sampler.locals.resize(skeleton->num_soa_joints());
 		}
 
-		row.second.node.Sample(t, start, looping, sampler.locals,cache,skeleton);
+		row.second.node.Sample(t, start, speed, looping, sampler.locals,cache,skeleton);
 		
 		//populate layers
 		layers[index].transform = ozz::make_span(sampler.locals);
