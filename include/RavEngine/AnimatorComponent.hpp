@@ -192,11 +192,17 @@ public:
 	
 	inline void Play(){
 		// need to maintain offset from previous play time
-		lastPlayTime = App::currentTime() - lastPlayTime;
-		isPlaying = true;
+		if (!isPlaying){
+			lastPlayTime = App::currentTime() - lastPlayTime;
+			isPlaying = true;
+		}
 	}
 	
 	inline void Pause(){
+		// record pause time so that resume begins in the correct place
+		if(isPlaying){
+			lastPlayTime = App::currentTime();
+		}
 		isPlaying = false;
 	}
 
