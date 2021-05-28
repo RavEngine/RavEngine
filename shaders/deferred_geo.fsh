@@ -1,7 +1,5 @@
 $input v_normal, v_texcoord0, v_worldpos
 
-#include "common.sh"
-#include <bgfx_shader.sh>
 #include "ravengine_shader.glsl"
 
 SAMPLER2D(s_albedoTex,0);
@@ -14,6 +12,6 @@ void main()
 	material.normal = v_normal;
 	material.position = v_worldpos;
 	
-	store(material);
+	fs_store(material);
 }
 
