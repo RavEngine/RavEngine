@@ -515,8 +515,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 			bindfunc();
 			
-			//float values[4] = {static_cast<float>(row.second.items.size()),static_cast<float>(std::get<0>(row.first)->GetNumVerts()),0,0};
-			//numRowsUniform.SetValues(&values, 1);
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 		}
 	};

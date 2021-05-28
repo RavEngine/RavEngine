@@ -3,7 +3,7 @@
 #include <bgfx_shader.sh>
 
 BUFFER_RO(rvs_pose, vec4, 11);
-uniform vec4 rvs_NumObjects;			// x = num objects, y = num vertices, z = num bones
+uniform vec4 NumObjects;			// x = num objects, y = num vertices, z = num bones
 
 struct PBR{
 	vec3 color;
@@ -34,7 +34,7 @@ PBR make_mat(){
  */
 #define vs_genmats() mat4 worldmat = mtxFromRows(i_data0,i_data1,i_data2,i_data3);\
 {\
-	int offset = gl_InstanceID * rvs_NumObjects.y * 4 + gl_VertexID.x * 4;\
+	int offset = gl_InstanceID * NumObjects.y * 4 + gl_VertexID.x * 4;\
 	mat4 blend = mtxFromRows(rvs_pose[offset],rvs_pose[offset+1],rvs_pose[offset+2],rvs_pose[offset+3]);\
 	worldmat = mul(blend, worldmat);\
 }\
