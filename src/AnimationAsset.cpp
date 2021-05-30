@@ -24,7 +24,16 @@ void AnimationAssetSegment::Sample(float globaltime, float last_global_starttime
 	float start_unitized = start_ticks / asset_duration_ticks;
 	float end_unitized = end_ticks / asset_duration_ticks;
 	
-	float t = std::fmod((globaltime - last_global_starttime)/(seg_len_sec/speed),1.f) * (end_unitized - start_unitized) + start_unitized;
+	float region = (globaltime - last_global_starttime)/(seg_len_sec/speed);
+	
+	if (looping){
+		region = std::fmod(region,1.f);
+	}
+	
+	float t = region * (end_unitized - start_unitized) + start_unitized;
+	if (!looping && t > end_unitized){
+		t = end_unitized;
+	}
 			
 	SampleDirect(t, anim_asset->GetAnim().get(), cache, transforms);
 	

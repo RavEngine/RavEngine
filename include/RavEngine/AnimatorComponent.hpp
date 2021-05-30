@@ -191,10 +191,19 @@ public:
 		states.insert(std::make_pair(state.ID,state));
 	}
 	
-	inline void Play(){
+	/**
+	 Begin playing this AnimatorController
+	 @param resetPlayhead true if the time of this animator should be reset (for nonlooping animations), false to resume where paused (for looping animations)
+	 */
+	inline void Play(float resetPlayhead = false){
 		// need to maintain offset from previous play time
 		if (!isPlaying){
-			lastPlayTime = App::currentTime() - lastPlayTime;
+			if (resetPlayhead){
+				lastPlayTime = App::currentTime();
+			}
+			else{
+				lastPlayTime = App::currentTime() - lastPlayTime;
+			}
 			isPlaying = true;
 		}
 	}
