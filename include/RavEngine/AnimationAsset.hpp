@@ -24,6 +24,9 @@ struct IAnimGraphable{
 						ozz::vector<ozz::math::SoaTransform>& output,
 						ozz::animation::SamplingCache& cache,
 						const ozz::animation::Skeleton* skeleton) const = 0;	//TODO: make abstract
+	
+	
+	void SampleDirect(float t, const ozz::animation::Animation* anim, ozz::animation::SamplingCache& cache, ozz::vector<ozz::math::SoaTransform>& locals) const;
 };
 
 
@@ -31,9 +34,6 @@ class AnimationAsset : public IAnimGraphable{
 	//duration
 	//clip data
 	ozz::unique_ptr<ozz::animation::Animation> anim;
-	//method to calculate curves given a time point
-	float duration;
-	float tps;
 public:
 	AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton);
 	
@@ -44,15 +44,28 @@ public:
 	 @param cache a sampling cache, modified when used
 	 */
 	void Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	
+	inline const decltype(anim)& GetAnim() const{
+		return anim;
+	}
+	
+	float duration_seconds;
+	float tps;
 };
 
 class AnimationAssetSegment : public IAnimGraphable{
 public:
-	float start_time, end_time;
+	float start_ticks, end_ticks;
 	Ref<AnimationAsset> anim_asset;
-	AnimationAssetSegment(decltype(anim_asset) asset, float start, float end) : anim_asset(asset), start_time(start), end_time(end){}
 	
-	void Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	/**
+	 Create an animation segment from an existing AnimationAsset
+	 @param start the start time of the animation, in frames (see your DCC app)
+	 @param end the number of frames to remove from the end of the animation (like an end trim)
+	 */
+	AnimationAssetSegment(decltype(anim_asset) asset, float start, float end = 0) : anim_asset(asset), start_ticks(start), end_ticks(end){}
+	
+	void Sample(float global_time, float last_globalplaytime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 };
 
 class AnimationClip : public IAnimGraphable{

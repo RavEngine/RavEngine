@@ -15,10 +15,19 @@
 using namespace RavEngine;
 using namespace std;
 
-void AnimationAssetSegment::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
+void AnimationAssetSegment::Sample(float globaltime, float last_global_starttime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
 	
-	//remap time and start
-	anim_asset->Sample(t, start, speed, looping, transforms, cache, skeleton);
+	float asset_duration_ticks = (anim_asset->duration_seconds * 30);
+		
+	float seg_len_sec = (end_ticks - start_ticks)/30;
+	
+	float start_unitized = start_ticks / asset_duration_ticks;
+	float end_unitized = end_ticks / asset_duration_ticks;
+	
+	float t = std::fmod((globaltime - last_global_starttime)/(seg_len_sec/speed),1.f) * (end_unitized - start_unitized) + start_unitized;
+			
+	SampleDirect(t, anim_asset->GetAnim().get(), cache, transforms);
+	
 }
 
 AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton){
@@ -67,7 +76,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			auto anim = scene->mAnimations[0];
 			raw_animation.duration = anim->mDuration * anim->mTicksPerSecond;
 			
-			duration = anim->mDuration;
+			duration_seconds = anim->mDuration;
 			tps = anim->mTicksPerSecond;
 			
 			auto create_keyframe = [&](const aiNodeAnim* channel, ozz::animation::offline::RawAnimation::JointTrack& track){
@@ -137,21 +146,24 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 	}
 }
 
-void AnimationAsset::Sample(float time, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
-	// TODO: calculate the normalized time based on looping, start, and tps
-	float t = (time - start) / (duration * tps) * speed;
-	if (looping){
-		t = std::fmod(t,1.f);
-	}
-	
+void IAnimGraphable::SampleDirect(float t, const ozz::animation::Animation *anim, ozz::animation::SamplingCache &cache, ozz::vector<ozz::math::SoaTransform> &locals) const{
 	//sample the animation
 	ozz::animation::SamplingJob sampling_job;
-	sampling_job.animation = anim.get();
+	sampling_job.animation = anim;
 	sampling_job.cache = &cache;
 	sampling_job.ratio = t;
 	sampling_job.output = ozz::make_span(locals);
 	
 	Debug::Assert(sampling_job.Run(), "Sampling job failed");
+}
+
+void AnimationAsset::Sample(float time, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+	float t = (time - start) / (duration_seconds * tps) * speed;
+	if (looping){
+		t = std::fmod(t,1.f);
+	}
+	
+	SampleDirect(t, anim.get(), cache, locals);
 }
 
 void AnimationClip::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
