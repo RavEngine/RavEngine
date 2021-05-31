@@ -23,7 +23,7 @@ namespace RavEngine {
 			return std::make_pair(QueryResult->begin(), QueryResult->end());
 		}
 
-		inline void DoQuery(const Ref<World>& world) {
+		inline void DoQuery(World* world) {
 			//always query by first type name
 			auto& results = world->GetAllComponentsOfType<T>();
 			this->QueryResult = &results;
