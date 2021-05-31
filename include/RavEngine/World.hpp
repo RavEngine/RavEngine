@@ -25,10 +25,6 @@ namespace RavEngine {
 		friend class App;
 	public:
 		constexpr static uint8_t id_size = 8;
-		struct range {
-			ComponentStore<SpinLock>::entry_type::const_iterator begin, end;
-		};
-		typedef locked_node_hashmap<ctti_t, range, SpinLock> iter_map;
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];

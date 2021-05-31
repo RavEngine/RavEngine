@@ -190,4 +190,9 @@ namespace RavEngine{
 			}
 		}
 	};
+
+	struct range {
+		ComponentStore<SpinLock>::entry_type::const_iterator begin, end;
+	};
+	typedef locked_node_hashmap<ctti_t, range, SpinLock> iter_map;
 }

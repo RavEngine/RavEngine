@@ -2,10 +2,9 @@
 #include "System.hpp"
 #include "CTTI.hpp"
 #include "QueryIterator.hpp"
+#include "AudioRoom.hpp"
 
 namespace RavEngine{
-
-class AudioRoom;
 
 class AudioRoomSyncSystem : public AutoCTTI {
 public:

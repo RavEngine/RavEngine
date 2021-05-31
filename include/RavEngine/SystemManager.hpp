@@ -7,6 +7,7 @@
 #include "Ref.hpp"
 #include "function.hpp"
 #include <taskflow/taskflow.hpp>
+#include "ComponentStore.hpp"
 
 namespace RavEngine{
 
@@ -53,7 +54,7 @@ namespace RavEngine{
 
 struct SystemEntry{
 	const func::function<void(float,Ref<Component>,ctti_t)> Tick;
-	const func::function<const System::list_type&()> QueryTypes;
+	const func::function<void(ctti_t, iter_map&, tf::Taskflow&, Ref<World>)> QueryTypes;
 	const func::function<const System::list_type&()> MustRunBefore;
 	const func::function<const System::list_type&()> MustRunAfter;
 
@@ -62,7 +63,7 @@ struct SystemEntry{
 		Tick([=](float f, Ref<Component> c, ctti_t id){
 			system->Tick(f,c,id);
 		}),
-		QueryTypes([=](ctti_t sys_ID, World::iter_map& iterator_map, tf::Taskflow& masterTasks, Ref<World> world) -> void {
+		QueryTypes([=](ctti_t sys_ID, iter_map& iterator_map, tf::Taskflow& masterTasks, Ref<World> world) -> void {
 			auto query_iter = system->QueryTypes();
 			query_iter.DoQuery(world);
 			auto begin_end = query_iter.GetIterators();

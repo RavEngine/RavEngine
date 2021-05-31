@@ -222,40 +222,40 @@ void World::RebuildTaskGraph(){
 	masterTasks.clear();
 	
 	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID, SystemManager::TimedSystem* ts = nullptr){
-		auto& queries = system.QueryTypes();
-		
-		for (const auto& query : queries) {
-			//add the Task to the hashmap
-            auto func = [=](Ref<Component> c) {
-                system.Tick(getCurrentFPSScale(), c, query);
-            };
-			
-			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);	//safe to do because modifications are not applied until after tick
-			iterator_map[ID] = {l1.begin(),l1.end()};
-			auto update = masterTasks.emplace([this,query,ID]{
-				auto& ud = GetAllComponentsOfTypeIndexFastPath(query);
-				iterator_map[ID] = {ud.begin(),ud.end()};
-			});
-			
-			graphs[ID] = {
-				masterTasks.for_each(std::ref(iterator_map[ID].begin), std::ref(iterator_map[ID].end), func),
-				&system,
-				ts != nullptr
-			};
-			update.precede(graphs[ID].task);
-			if (ts != nullptr){
-				//conditional task - returns out-of-range if condition fails so that the task does not run
-				auto condition = masterTasks.emplace([this,ts](){
-					if (time_now - ts->last_timestamp > ts->interval){
-						
-						ts->last_timestamp = time_now;
-						return 0;
-					}
-					return 1;
-				});
-				condition.precede(update);
-			}
-		}
+//		auto& queries = system.QueryTypes();
+//		
+//		for (const auto& query : queries) {
+//			//add the Task to the hashmap
+//            auto func = [=](Ref<Component> c) {
+//                system.Tick(getCurrentFPSScale(), c, query);
+//            };
+//			
+//			auto& l1 = GetAllComponentsOfTypeIndexFastPath(query);	//safe to do because modifications are not applied until after tick
+//			iterator_map[ID] = {l1.begin(),l1.end()};
+//			auto update = masterTasks.emplace([this,query,ID]{
+//				auto& ud = GetAllComponentsOfTypeIndexFastPath(query);
+//				iterator_map[ID] = {ud.begin(),ud.end()};
+//			});
+//			
+//			graphs[ID] = {
+//				masterTasks.for_each(std::ref(iterator_map[ID].begin), std::ref(iterator_map[ID].end), func),
+//				&system,
+//				ts != nullptr
+//			};
+//			update.precede(graphs[ID].task);
+//			if (ts != nullptr){
+//				//conditional task - returns out-of-range if condition fails so that the task does not run
+//				auto condition = masterTasks.emplace([this,ts](){
+//					if (time_now - ts->last_timestamp > ts->interval){
+//						
+//						ts->last_timestamp = time_now;
+//						return 0;
+//					}
+//					return 1;
+//				});
+//				condition.precede(update);
+//			}
+//		}
 	};
 	
 	//tick the always-systems

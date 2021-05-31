@@ -5,13 +5,13 @@
 #include "ComponentStore.hpp"
 #include "SpinLock.hpp"
 #include "Queryable.hpp"
-#include "AudioRoomSyncSystem.hpp"
 #include "AudioRoomMaterial.hpp"
 #include "AudioSource.hpp"
 #include "DebugDraw.hpp"
 
 namespace RavEngine{
 
+class AudioRoomSyncSystem;
 class AudioPlayer;
 
 using RoomMat = vraudio::MaterialName;
