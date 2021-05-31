@@ -12,6 +12,7 @@
 #include "PhysicsBodyComponent.hpp"
 #include "ScriptSystem.hpp"
 #include "CTTI.hpp"
+#include "QueryIterator.hpp"
 
 namespace RavEngine {
 	/**
@@ -26,12 +27,9 @@ namespace RavEngine {
 		virtual ~PhysicsLinkSystemWrite() {}
 		void Tick(float fpsScale, Ref<Component> c, ctti_t id);
 		
-		const System::list_type& QueryTypes() const {
-			return queries;
+		constexpr QueryIteratorAND<PhysicsBodyComponent> QueryTypes() const {
+			return QueryIteratorAND<PhysicsBodyComponent>();
 		}
-		
-	protected:
-		static const System::list_type queries;
 	};
 
 	/**
@@ -46,8 +44,8 @@ namespace RavEngine {
 		virtual ~PhysicsLinkSystemRead() {}
 		void Tick(float fpsScale, Ref<Component> c, ctti_t id);
 		
-		const System::list_type& QueryTypes() const {
-			return queries;
+		const QueryIteratorAND<RigidBodyDynamicComponent> QueryTypes() const {
+			return QueryIteratorAND<RigidBodyDynamicComponent>();
 		}
 		
 		//must run before write system

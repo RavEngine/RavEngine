@@ -7,15 +7,10 @@
 //
 
 #include "SharedObject.hpp"
-#include "System.hpp"
 #include "PhysicsSolver.hpp"
-#include "PhysicsLinkSystem.hpp"
 #include "RenderEngine.hpp"
 #include "DataStructures.hpp"
 #include "SystemManager.hpp"
-#include "SpinLock.hpp"
-#include "ScriptSystem.hpp"
-#include <taskflow/taskflow.hpp>
 #include "SpinLock.hpp"
 #include <plf_list.h>
 #include "AudioSource.hpp"
@@ -30,6 +25,10 @@ namespace RavEngine {
 		friend class App;
 	public:
 		constexpr static uint8_t id_size = 8;
+		struct range {
+			ComponentStore<SpinLock>::entry_type::const_iterator begin, end;
+		};
+		typedef locked_node_hashmap<ctti_t, range, SpinLock> iter_map;
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
@@ -41,11 +40,9 @@ namespace RavEngine {
 		ConcurrentQueue<SyncOp> toSync;
 		
 		tf::Taskflow masterTasks;
-		struct range{
-			ComponentStore<SpinLock>::entry_type::const_iterator begin, end;
-		};
+		
 		ComponentStore<SpinLock>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend;
-		locked_node_hashmap<ctti_t,range,SpinLock> iterator_map;
+		iter_map iterator_map;
 		struct systaskpair{
 			tf::Task task;
 			const SystemEntry* system;

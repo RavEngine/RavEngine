@@ -9,8 +9,6 @@ namespace RavEngine {
 	public:
 		typedef std::vector<ctti_t> list_type;
 
-		//dependency method
-//		virtual const list_type& QueryTypes() const = 0;
 
 		/**
 		Override in subclasses to determine execution order.

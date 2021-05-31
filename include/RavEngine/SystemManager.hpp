@@ -6,6 +6,7 @@
 #include <chrono>
 #include "Ref.hpp"
 #include "function.hpp"
+#include <taskflow/taskflow.hpp>
 
 namespace RavEngine{
 
@@ -61,8 +62,24 @@ struct SystemEntry{
 		Tick([=](float f, Ref<Component> c, ctti_t id){
 			system->Tick(f,c,id);
 		}),
-		QueryTypes([=]() -> const System::list_type& {
-			return system->QueryTypes();
+		QueryTypes([=](ctti_t sys_ID, World::iter_map& iterator_map, tf::Taskflow& masterTasks, Ref<World> world) -> void {
+			auto query_iter = system->QueryTypes();
+			query_iter.DoQuery(world);
+			auto begin_end = query_iter.GetIterators();
+
+			// iterator baseline set
+			iterator_map[sys_ID] = { begin_end.first, begin_end.second };
+
+			// iterator updates
+			auto update = masterTasks.emplace([&iterator_map, query_iter, sys_ID] {
+				auto begin_end = query_iter.GetIterators();
+				iterator_map[sys_ID] = { begin_end.first,begin_end.second };
+			});
+
+			// the actual tick
+			masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](Ref<Component> c) {
+				query_iter.TickEntity(c, 1.0, system);
+			});
 		}),
 		MustRunBefore([=]() -> const System::list_type&{
 			return MustRunBefore_impl<T>(system);

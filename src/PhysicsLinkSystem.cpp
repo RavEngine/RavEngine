@@ -46,7 +46,4 @@ void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<Component> c, ctti_t id) {
     
 }
 
-const System::list_type PhysicsLinkSystemWrite::queries = {CTTI<PhysicsBodyComponent>()};
-
-const System::list_type PhysicsLinkSystemRead::queries = {CTTI<RigidBodyDynamicComponent>()};
 const System::list_type PhysicsLinkSystemRead::runbefore = {CTTI<ScriptSystem>()};

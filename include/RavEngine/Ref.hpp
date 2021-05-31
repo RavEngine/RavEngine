@@ -1,6 +1,5 @@
 #pragma once
-#include "WeakRef.hpp"
+#include <memory>
 
 template<typename T>
 using Ref = std::shared_ptr<T>;
-

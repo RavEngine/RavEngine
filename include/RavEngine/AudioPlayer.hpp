@@ -1,6 +1,7 @@
 #pragma once
 #include <SDL_audio.h>
 #include "Ref.hpp"
+#include "WeakRef.hpp"
 
 namespace RavEngine{
 
@@ -17,7 +18,7 @@ public:
 	/**
 	 Set the current world to output audio for
 	 */
-	void SetWorld(Ref<World> w){
+	inline void SetWorld(Ref<World> w){
 		worldToRender = w;
 	}
 	

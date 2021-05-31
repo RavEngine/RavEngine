@@ -2,35 +2,51 @@
 #include "Ref.hpp"
 #include "World.hpp"
 
-namespace RavEngine{
+namespace RavEngine {
 
-class Entity;
+	/**
+	 This class is responsible for performing the entity queries
+	 */
 
-/**
- This class is responsible for performing the entity queries
- */
+	template<typename T>
+	class QueryIterator {
+		World::entry_type* QueryResult = nullptr;
 
-template<typename T>
-class QueryIterator{
-	World::entry_type* QueryResult = nullptr;
-public:
-	inline void DoQuery(const Ref<World>& world){
-		//always query by first type name
-		auto& results = world->GetAllComponentsOfType<T>();
-		this->QueryResult = &results;
-	}
-};
+	protected:
+		//templates to extract function parameter tyes
+		template<class ...> struct types { using type = types; };
+		template<class Sig> struct args;
+		template<class R, class...Args> struct args<R(Args...)> :types<Args...> {};
+		template<class Sig> using args_t = typename args<Sig>::type;
+	public:
+		inline std::pair<World::entry_type::iterator, World::entry_type::iterator> GetIterators() const{
+			return std::make_pair(QueryResult->begin(), QueryResult->end());
+		}
 
-template<typename T, typename ... A>
-class QueryIteratorAND : public QueryIterator<T>{
-public:
-//	inline tf::Task Batch(const tf::TaskFlow& masterTasks){
-//		auto func = [=](Ref<Component> c) {
-//			system.Tick(getCurrentFPSScale(), c, query);
-//		};
-//
-//		return masterTasks.for_each(std::ref(iterator_map[ID].begin), std::ref(iterator_map[ID].end), func);
-//	}
-//};
-};
+		inline void DoQuery(const Ref<World>& world) {
+			//always query by first type name
+			auto& results = world->GetAllComponentsOfType<T>();
+			this->QueryResult = &results;
+		}
+
+		const decltype(QueryResult) GetQueryResult() const {
+			return QueryResult;
+		}
+	};
+
+	template<typename T, typename ... A>
+	class QueryIteratorAND : public QueryIterator<T> {
+	public:
+		template<typename System>
+		inline void TickEntity(Ref<Component> c, float fpsScale, Ref<System> system) const{
+			// does the entity pass this iterator?
+
+			//constexpr auto types = args_t<System::Tick>{};
+		}
+	};
+
+	template<typename T, typename ... A>
+	class QueryIteratorOR : public QueryIterator<T> {
+
+	};
 }

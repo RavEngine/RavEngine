@@ -60,7 +60,7 @@ namespace RavEngine{
 		 Fast path for world ticking
 		 */
 		template<typename T>
-		inline const entry_type& GetAllComponentsOfType(){
+		inline entry_type& GetAllComponentsOfType(){
 			return components[CTTI<T>()];
 		}
 

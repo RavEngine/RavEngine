@@ -3,12 +3,13 @@
 #include "System.hpp"
 #include "ScriptComponent.hpp"
 #include "CTTI.hpp"
+#include "QueryIterator.hpp"
 
 namespace RavEngine {
 	class ScriptSystem : public AutoCTTI {
 	public:
-		const System::list_type& QueryTypes() const {
-			return queries;
+		constexpr QueryIteratorAND<ScriptComponent> QueryTypes() const {
+			return QueryIteratorAND<ScriptComponent>();
 		}
 
 		void Tick(float fpsScale, Ref<Component> c, ctti_t id) {
@@ -17,8 +18,5 @@ namespace RavEngine {
                 std::static_pointer_cast<ScriptComponent>(c)->Tick(fpsScale);
             }
 		}
-		
-	protected:
-		static const System::list_type queries;
 	};
 }
