@@ -38,10 +38,37 @@ namespace RavEngine {
 	class QueryIteratorAND : public QueryIterator<T> {
 	public:
 		template<typename System>
-		inline void TickEntity(Ref<Component> c, float fpsScale, Ref<System> system) const{
-			// does the entity pass this iterator?
+		inline void TickEntity(Ref<RavEngine::Component> c, float fpsScale, Ref<System> system) const{
+			Ref<Entity> e = c->getOwner().lock();
+			if (e) {
+				constexpr size_t n_args = sizeof ... (A);	// number of types in variadic (query T separately)
+				std::array<Entity::entry_type*, n_args + 1> query_results;
+				query_results[0] = &e->GetAllComponentsOfType<T>();
 
-			//constexpr auto types = args_t<System::Tick>{};
+				/*if constexpr (n_args > 0)
+				{
+					int i = 0;
+					const auto doOneType = [&]() {
+						query_results[i++] = 
+					};
+					(query_results[i++] = &e->GetAllComponentsOfType<A>(), ...);
+				}*/
+
+				// does the check pass?
+				bool passesCheck = true;
+				for (const auto& queryres : query_results) {
+					if (queryres->size() == 0) {
+						passesCheck = false;
+						break;
+					}
+				}
+
+				if (passesCheck) {
+					//constexpr auto types = args_t<System::Tick>{};
+					system->Tick(fpsScale, *query_results[0]->begin(), CTTI<T>());
+				}
+
+			}
 		}
 	};
 

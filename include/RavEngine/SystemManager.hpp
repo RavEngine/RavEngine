@@ -53,17 +53,13 @@ namespace RavEngine{
 	}
 
 struct SystemEntry{
-	const func::function<void(float,Ref<Component>,ctti_t)> Tick;
 	const func::function<std::pair<tf::Task, tf::Task>(ctti_t, iter_map&, tf::Taskflow&, World*)> QueryTypes;
 	const func::function<const System::list_type&()> MustRunBefore;
 	const func::function<const System::list_type&()> MustRunAfter;
 
 	template<typename T>
 	SystemEntry(Ref<T> system) :
-		Tick([=](float f, Ref<Component> c, ctti_t id){
-			system->Tick(f,c,id);
-		}),
-		QueryTypes([=](ctti_t sys_ID, iter_map& iterator_map, tf::Taskflow& masterTasks, World* world) -> std::pair<tf::Task, tf::Task> {
+		QueryTypes([system](ctti_t sys_ID, iter_map& iterator_map, tf::Taskflow& masterTasks, World* world) -> std::pair<tf::Task, tf::Task> {
 			auto query_iter = system->QueryTypes();
 			query_iter.DoQuery(world);
 			auto begin_end = query_iter.GetIterators();
@@ -85,10 +81,10 @@ struct SystemEntry{
 			update.precede(mainTick);
 			return std::make_pair(mainTick,update);
 		}),
-		MustRunBefore([=]() -> const System::list_type&{
+		MustRunBefore([system]() -> const System::list_type&{
 			return MustRunBefore_impl<T>(system);
 		}),
-		MustRunAfter([=]() -> const System::list_type&{
+		MustRunAfter([system]() -> const System::list_type&{
 			return MustRunAfter_impl(system);
 		})
 		{}
