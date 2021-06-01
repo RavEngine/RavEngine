@@ -12,7 +12,7 @@ namespace RavEngine {
 			return QueryIteratorAND<ScriptComponent>();
 		}
 
-		void Tick(float fpsScale, Ref<Component> c, ctti_t id) {
+		void Tick(float fpsScale, Ref<Component> c) {
             //don't need to look at id here, it's always CTTI<ScriptComponent>()
             if (!c->getOwner().expired()){
                 std::static_pointer_cast<ScriptComponent>(c)->Tick(fpsScale);

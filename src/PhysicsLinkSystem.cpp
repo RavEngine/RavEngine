@@ -10,7 +10,7 @@
 #include "Entity.hpp"
 using namespace RavEngine;
 
-void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Component> c, ctti_t id) {
+void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Component> c) {
     auto e = c->getOwner().lock();
     if (e){
         //physx requires reads and writes to be sequential
@@ -28,7 +28,7 @@ void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Component> c, ctti_t id) {
    
 }
 
-void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<Component> c, ctti_t id) {
+void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<Component> c) {
     auto e = c->getOwner().lock();
     if (e){
         //physx requires reads and writes to be sequential

@@ -8,8 +8,7 @@
 using namespace RavEngine;
 using namespace std;
 
-void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Component> c, ctti_t id){
-    Debug::Assert(id == CTTI<AudioRoom>(), "RPC system passed component of incorrect type!");
+void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Component> c){
     auto e = c->getOwner().lock();
     if (e){
         auto pos = e->transform()->GetWorldPosition();

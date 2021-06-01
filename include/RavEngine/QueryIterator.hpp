@@ -1,6 +1,9 @@
 #pragma once
 #include "Ref.hpp"
 #include "World.hpp"
+#include "AccessType.hpp"
+#include <cstddef>
+#include <utility>
 
 namespace RavEngine {
 
@@ -18,6 +21,15 @@ namespace RavEngine {
 		template<class Sig> struct args;
 		template<class R, class...Args> struct args<R(Args...)> :types<Args...> {};
 		template<class Sig> using args_t = typename args<Sig>::type;
+
+		/**
+		* Helper method used in fold expression for querying everything within a QueryIterator
+		*/
+		template<typename T_inst, size_t n>
+		inline constexpr void WriteOne(std::array<Entity::entry_type*, n>& arr, int& i) const {
+			arr[i++] = &e->GetAllComponentsOfType<T_inst>();
+		}
+
 	public:
 		inline std::pair<World::entry_type::iterator, World::entry_type::iterator> GetIterators() const{
 			return std::make_pair(QueryResult->begin(), QueryResult->end());
@@ -45,14 +57,11 @@ namespace RavEngine {
 				std::array<Entity::entry_type*, n_args + 1> query_results;
 				query_results[0] = &e->GetAllComponentsOfType<T>();
 
-				/*if constexpr (n_args > 0)
+				if constexpr (n_args > 0)
 				{
 					int i = 0;
-					const auto doOneType = [&]() {
-						query_results[i++] = 
-					};
-					(query_results[i++] = &e->GetAllComponentsOfType<A>(), ...);
-				}*/
+					(WriteOne<A...>(query_results,i));	//fold expression which does all queries for this type if there are multiple
+				}
 
 				// does the check pass?
 				bool passesCheck = true;
@@ -64,8 +73,8 @@ namespace RavEngine {
 				}
 
 				if (passesCheck) {
-					//constexpr auto types = args_t<System::Tick>{};
-					system->Tick(fpsScale, *query_results[0]->begin(), CTTI<T>());
+					//constexpr auto types = args_t<&System::Tick>{};
+					system->Tick(fpsScale, *query_results[0]->begin());
 				}
 
 			}

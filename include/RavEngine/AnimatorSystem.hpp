@@ -10,7 +10,7 @@ public:
 		return QueryIteratorAND<AnimatorComponent>();
 	}
 	
-	void Tick(float fpsScale, Ref<Component> c, ctti_t id) {
+	void Tick(float fpsScale, Ref<Component> c) {
 		std::static_pointer_cast<AnimatorComponent>(c)->Tick(fpsScale);
 	}
 };

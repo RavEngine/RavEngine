@@ -6,9 +6,8 @@
 namespace RavEngine {
 	class RPCSystem : public AutoCTTI{
 	public:
-		void Tick(float fpsScale, Ref<Component> c, ctti_t id) {
+		void Tick(float fpsScale, Ref<Component> c) {
             //id is always CTTI<RPCComponent>()
-            Debug::Assert(id == CTTI<RPCComponent>(), "RPC system passed component of incorrect type!");
             auto rpc = std::static_pointer_cast<RPCComponent>(c);
             rpc->Swap();
             rpc->ProcessClientRPCs();
