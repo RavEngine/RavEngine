@@ -73,8 +73,17 @@ namespace RavEngine {
 				}
 
 				if (passesCheck) {
-					//constexpr auto types = args_t<&System::Tick>{};
-					system->Tick(fpsScale, *query_results[0]->begin());
+
+					// simple case for single template argument
+					if constexpr (n_args == 0) {
+						auto ptr = *(query_results[0]->begin());
+						system->Tick(fpsScale, std::static_pointer_cast<T>(ptr));
+					}
+					else {
+						//TODO: implement variadic
+						//constexpr auto types = args_t<&System::Tick>{};
+					}
+					static_assert(n_args == 0, "variadic query iterator not fully implemented");
 				}
 
 			}

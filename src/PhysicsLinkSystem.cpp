@@ -10,13 +10,13 @@
 #include "Entity.hpp"
 using namespace RavEngine;
 
-void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Component> c) {
-    auto e = c->getOwner().lock();
+void PhysicsLinkSystemRead::Tick(float fpsScale, AccessRead<RigidBodyDynamicComponent> c) {
+    auto e = c.get()->getOwner().lock();
     if (e){
         //physx requires reads and writes to be sequential
         
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
-        auto rigid = std::static_pointer_cast<RigidBodyDynamicComponent>(c);
+        auto rigid = c.get();
         auto transform = e->transform();
         dynamicsWorld->lockRead();
         auto pos = rigid->getPos();
@@ -28,8 +28,8 @@ void PhysicsLinkSystemRead::Tick(float fpsScale, Ref<Component> c) {
    
 }
 
-void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<Component> c) {
-    auto e = c->getOwner().lock();
+void PhysicsLinkSystemWrite::Tick(float fpsScale, AccessReadWrite<PhysicsBodyComponent> c) {
+    auto e = c.get()->getOwner().lock();
     if (e){
         //physx requires reads and writes to be sequential
 
@@ -37,7 +37,7 @@ void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<Component> c) {
         auto transform = e->transform();
         auto pos = transform->GetWorldPosition();
         auto rot = transform->GetWorldRotation();
-        auto rigid = std::static_pointer_cast<PhysicsBodyComponent>(c);
+        auto rigid = c.get();
         dynamicsWorld->lockWrite();
         rigid->setPos(pos);
         rigid->setRot(rot);

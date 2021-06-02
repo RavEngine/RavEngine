@@ -13,7 +13,3 @@
 #include "AnimatorSystem.hpp"
 
 using namespace RavEngine;
-
-const System::list_type System::empty = {};
-
-System::list_type empty;

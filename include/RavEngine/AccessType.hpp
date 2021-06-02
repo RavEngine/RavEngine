@@ -5,7 +5,7 @@ namespace RavEngine {
 
 	template<typename T>
 	class AccessRead {
-		Ref<const T> ptr;
+		Ref<T> ptr;
 	public:
 		AccessRead(decltype(ptr) p) : ptr(p) {}
 
@@ -20,7 +20,7 @@ namespace RavEngine {
 	public:
 		AccessReadWrite(decltype(ptr) p) : ptr(p) {}
 
-		inline decltype(ptr)& get() const {
+		inline decltype(ptr)& get() {
 			return ptr;
 		}
 	};

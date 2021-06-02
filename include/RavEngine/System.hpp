@@ -28,14 +28,6 @@ namespace RavEngine {
 //			return empty;
 //		}
 
-		/**
-		 Tick the System on an Entity.
-		 @param fpsScale the frame rate scale factor computed by the World.
-		 @param e the Entity to operate on
-		 */
-//		virtual void Tick(float fpsScale, Ref<Entity> e) = 0;
-		
 	protected:
-		static const list_type empty;
 	};
 }

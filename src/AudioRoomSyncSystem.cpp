@@ -8,8 +8,9 @@
 using namespace RavEngine;
 using namespace std;
 
-void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Component> c){
-    auto e = c->getOwner().lock();
+void AudioRoomSyncSystem::Tick(float fpsScale, AccessReadWrite<AudioRoom> c){
+    auto room = c.get();
+    auto e = room->getOwner().lock();
     if (e){
         auto pos = e->transform()->GetWorldPosition();
         auto rot = e->transform()->GetWorldRotation();
@@ -20,8 +21,6 @@ void AudioRoomSyncSystem::Tick(float fpsScale, Ref<Component> c){
         vector3 scale;
         vector4 p;
         glm::decompose(mtx, scale, r, t, t, p);
-        
-        auto room = static_pointer_cast<AudioRoom>(c);
         
         vraudio::RoomProperties data;
                 

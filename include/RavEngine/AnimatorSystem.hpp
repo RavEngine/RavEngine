@@ -10,8 +10,8 @@ public:
 		return QueryIteratorAND<AnimatorComponent>();
 	}
 	
-	void Tick(float fpsScale, Ref<Component> c) {
-		std::static_pointer_cast<AnimatorComponent>(c)->Tick(fpsScale);
+	void Tick(float fpsScale, AccessReadWrite<AnimatorComponent> c) {
+		c.get()->Tick(fpsScale);
 	}
 };
 }

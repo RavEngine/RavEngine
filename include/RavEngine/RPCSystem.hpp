@@ -6,9 +6,8 @@
 namespace RavEngine {
 	class RPCSystem : public AutoCTTI{
 	public:
-		void Tick(float fpsScale, Ref<Component> c) {
-            //id is always CTTI<RPCComponent>()
-            auto rpc = std::static_pointer_cast<RPCComponent>(c);
+		void Tick(float fpsScale, AccessReadWrite<RPCComponent> c) {
+            auto &rpc = c.get();
             rpc->Swap();
             rpc->ProcessClientRPCs();
             rpc->ProcessServerRPCs();

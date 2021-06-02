@@ -8,7 +8,7 @@ namespace RavEngine{
 
 class AudioRoomSyncSystem : public AutoCTTI {
 public:
-	void Tick(float fpsScale, Ref<Component> c);
+	void Tick(float fpsScale, AccessReadWrite<AudioRoom> c);
 	
 	constexpr QueryIteratorAND<AudioRoom> QueryTypes() const {
 		return QueryIteratorAND<AudioRoom>();
