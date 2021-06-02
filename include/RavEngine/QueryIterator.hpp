@@ -21,7 +21,7 @@ namespace RavEngine {
 		* Helper method used in fold expression for querying everything within a QueryIterator
 		*/
 		template<typename T_inst, size_t n>
-		inline constexpr void WriteOne(std::array<Entity::entry_type*, n>& arr, Ref<Entity> e, int& i) const {
+		inline const void WriteOne(std::array<Entity::entry_type*, n>& arr, const Ref<Entity> e, int& i) const {
 			arr[i++] = &(e->GetAllComponentsOfType<T_inst>());
 		}
 
@@ -55,7 +55,7 @@ namespace RavEngine {
 				if constexpr (n_args > 0)
 				{
 					int i = 1;
-					WriteOne<A...>(query_results, e, i);	//fold expression which does all queries for this type if there are multiple
+					this->template WriteOne<A...>(query_results, e, i);	//fold expression which does all queries for this type if there are multiple
 				}
 
 				// does the check pass?

@@ -6,8 +6,6 @@
 //
 
 #include "Entity.hpp"
-#include "System.hpp"
-#include "StaticMesh.hpp"
 #include "World.hpp"
 
 using namespace RavEngine;
