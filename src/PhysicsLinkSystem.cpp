@@ -10,31 +10,26 @@
 #include "Entity.hpp"
 using namespace RavEngine;
 
-void PhysicsLinkSystemRead::Tick(float fpsScale, AccessRead<RigidBodyDynamicComponent> c) {
-    auto e = c.get()->getOwner().lock();
-    if (e){
+void PhysicsLinkSystemRead::Tick(float fpsScale, AccessRead<RigidBodyDynamicComponent> c, AccessReadWrite<Transform> tr) {
         //physx requires reads and writes to be sequential
         
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
         auto rigid = c.get();
-        auto transform = e->transform();
+        auto transform = tr.get();
         dynamicsWorld->lockRead();
         auto pos = rigid->getPos();
         auto rot = rigid->getRot();
         dynamicsWorld->unlockRead();
         transform->SetWorldPosition(pos);
         transform->SetWorldRotation(rot);
-    }
-   
 }
 
-void PhysicsLinkSystemWrite::Tick(float fpsScale, AccessReadWrite<PhysicsBodyComponent> c) {
-    auto e = c.get()->getOwner().lock();
-    if (e){
+void PhysicsLinkSystemWrite::Tick(float fpsScale, AccessReadWrite<PhysicsBodyComponent> c, AccessRead<Transform> tr) {
+
         //physx requires reads and writes to be sequential
 
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
-        auto transform = e->transform();
+        auto transform = tr.get();
         auto pos = transform->GetWorldPosition();
         auto rot = transform->GetWorldRotation();
         auto rigid = c.get();
@@ -42,8 +37,6 @@ void PhysicsLinkSystemWrite::Tick(float fpsScale, AccessReadWrite<PhysicsBodyCom
         rigid->setPos(pos);
         rigid->setRot(rot);
         dynamicsWorld->unlockWrite();
-    }
-    
 }
 
 const System::list_type PhysicsLinkSystemRead::runbefore = {CTTI<ScriptSystem>()};

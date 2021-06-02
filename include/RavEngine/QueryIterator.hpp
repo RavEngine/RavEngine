@@ -16,18 +16,13 @@ namespace RavEngine {
 		World::entry_type* QueryResult = nullptr;
 
 	protected:
-		//templates to extract function parameter tyes
-		template<class ...> struct types { using type = types; };
-		template<class Sig> struct args;
-		template<class R, class...Args> struct args<R(Args...)> :types<Args...> {};
-		template<class Sig> using args_t = typename args<Sig>::type;
 
 		/**
 		* Helper method used in fold expression for querying everything within a QueryIterator
 		*/
 		template<typename T_inst, size_t n>
-		inline constexpr void WriteOne(std::array<Entity::entry_type*, n>& arr, int& i) const {
-			arr[i++] = &e->GetAllComponentsOfType<T_inst>();
+		inline constexpr void WriteOne(std::array<Entity::entry_type*, n>& arr, Ref<Entity> e, int& i) const {
+			arr[i++] = &(e->GetAllComponentsOfType<T_inst>());
 		}
 
 	public:
@@ -59,8 +54,8 @@ namespace RavEngine {
 
 				if constexpr (n_args > 0)
 				{
-					int i = 0;
-					(WriteOne<A...>(query_results,i));	//fold expression which does all queries for this type if there are multiple
+					int i = 1;
+					WriteOne<A...>(query_results, e, i);	//fold expression which does all queries for this type if there are multiple
 				}
 
 				// does the check pass?
@@ -80,10 +75,10 @@ namespace RavEngine {
 						system->Tick(fpsScale, std::static_pointer_cast<T>(ptr));
 					}
 					else {
-						//TODO: implement variadic
-						//constexpr auto types = args_t<&System::Tick>{};
+						// variadic expansion of array into parameters
+						int i = 1;
+						system->Tick(fpsScale, std::static_pointer_cast<T>(*(query_results[0]->begin())), std::static_pointer_cast<A...>(*query_results[i++]->begin()));
 					}
-					static_assert(n_args == 0, "variadic query iterator not fully implemented");
 				}
 
 			}

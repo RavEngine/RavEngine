@@ -25,10 +25,10 @@ namespace RavEngine {
 		
 		physx::PxScene* dynamicsWorld = nullptr;
 		virtual ~PhysicsLinkSystemWrite() {}
-		void Tick(float fpsScale, AccessReadWrite<PhysicsBodyComponent> c);
+		void Tick(float fpsScale, AccessReadWrite<PhysicsBodyComponent>, AccessRead<Transform>);
 		
-		constexpr QueryIteratorAND<PhysicsBodyComponent> QueryTypes() const {
-			return QueryIteratorAND<PhysicsBodyComponent>();
+		constexpr QueryIteratorAND<PhysicsBodyComponent,Transform> QueryTypes() const {
+			return QueryIteratorAND<PhysicsBodyComponent, Transform>();
 		}
 	};
 
@@ -42,10 +42,10 @@ namespace RavEngine {
 		
 		physx::PxScene* dynamicsWorld = nullptr;
 		virtual ~PhysicsLinkSystemRead() {}
-		void Tick(float fpsScale, AccessRead<RigidBodyDynamicComponent> c);
+		void Tick(float fpsScale, AccessRead<RigidBodyDynamicComponent>, AccessReadWrite<Transform>);
 		
-		constexpr QueryIteratorAND<RigidBodyDynamicComponent> QueryTypes() const {
-			return QueryIteratorAND<RigidBodyDynamicComponent>();
+		constexpr QueryIteratorAND<RigidBodyDynamicComponent, Transform> QueryTypes() const {
+			return QueryIteratorAND<RigidBodyDynamicComponent, Transform>();
 		}
 		
 		//must run before write system
