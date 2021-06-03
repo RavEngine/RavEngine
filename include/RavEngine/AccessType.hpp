@@ -3,7 +3,7 @@
 
 namespace RavEngine {
 
-	template<typename T>
+	template<typename T, bool required = true>
 	class AccessRead {
 		Ref<T> ptr;
 	public:
@@ -14,7 +14,7 @@ namespace RavEngine {
 		}
 	};
 
-	template<typename T>
+	template<typename T, bool required = true>
 	class AccessReadWrite {
 		Ref<T> ptr;
 	public:
