@@ -210,7 +210,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 #ifdef __linux__
 	settings.type = bgfx::RendererType::Vulkan;	//use Vulkan on Linux
 #elif defined _WIN32
-	settings.type = bgfx::RendererType::Vulkan;
+	settings.type = bgfx::RendererType::Direct3D12;
 #endif
 
 	settings.callback = new bgfx_msghandler;

@@ -4236,6 +4236,8 @@ spv::Id TGlslangToSpvTraverser::makeArraySizeId(const glslang::TArraySizes& arra
     glslang::TIntermTyped* specNode = arraySizes.getDimNode(dim);
     if (specNode != nullptr) {
         builder.clearAccessChain();
+        SpecConstantOpModeGuard spec_constant_op_mode_setter(&builder);
+        spec_constant_op_mode_setter.turnOnSpecConstantOpMode();
         specNode->traverse(this);
         return accessChainLoad(specNode->getAsTyped()->getType());
     }
@@ -5560,7 +5562,7 @@ spv::Id TGlslangToSpvTraverser::handleUserFunctionCall(const glslang::TIntermAgg
             ++lValueCount;
         } else {
             // process r-value, which involves a copy for a type mismatch
-            if (function->getParamType(a) != convertGlslangToSpvType(*argTypes[a]) ||
+            if (function->getParamType(a) != builder.getTypeId(rValues[rValueCount]) ||
                 TranslatePrecisionDecoration(*argTypes[a]) != function->getParamPrecision(a))
             {
                 spv::Id argCopy = builder.createVariable(function->getParamPrecision(a), spv::StorageClassFunction, function->getParamType(a), "arg");

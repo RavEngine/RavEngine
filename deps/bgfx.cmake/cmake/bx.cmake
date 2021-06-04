@@ -45,16 +45,16 @@ target_include_directories( bx
 		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}> )
 
 # Build system specific configurations
-if( MSVC )
-	target_include_directories( bx
-		PUBLIC
-			$<BUILD_INTERFACE:${BX_DIR}/include/compat/msvc>
-			$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/compat/msvc> )
-elseif( MINGW )
+if( MINGW )
 	target_include_directories( bx
 		PUBLIC
 		    $<BUILD_INTERFACE:${BX_DIR}/include/compat/mingw>
 		    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/compat/mingw> )
+elseif( WIN32 )
+	target_include_directories( bx
+		PUBLIC
+			$<BUILD_INTERFACE:${BX_DIR}/include/compat/msvc>
+			$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/compat/msvc> )
 elseif( APPLE )
 	target_include_directories( bx
 		PUBLIC

@@ -10,7 +10,7 @@ public import core.stdc.stdarg : va_list;
 
 extern(C) @nogc nothrow:
 
-enum uint BGFX_API_VERSION = 114;
+enum uint BGFX_API_VERSION = 115;
 
 alias bgfx_view_id_t = ushort;
 
@@ -736,7 +736,7 @@ struct bgfx_caps_t
 
 	/**
 	 * Supported functionality.
-	 *   @attention See BGFX_CAPS_* flags at https://bkaradzic.github.io/bgfx/bgfx.html#available-caps
+	 *   @attention See `BGFX_CAPS_*` flags at https://bkaradzic.github.io/bgfx/bgfx.html#available-caps
 	 */
 	ulong supported;
 	ushort vendorId; /// Selected GPU vendor PCI id.
@@ -854,7 +854,7 @@ struct bgfx_init_t
 	 * matching id.
 	 */
 	ushort deviceId;
-	ulong capabilities; /// Capabilities initialization mask.
+	ulong capabilities; /// Capabilities initialization mask (default: UINT64_MAX).
 	bool debug_; /// Enable device for debuging.
 	bool profile; /// Enable device for profiling.
 	bgfx_platform_data_t platformData; /// Platform data.
