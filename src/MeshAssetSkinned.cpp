@@ -14,7 +14,7 @@ using namespace std;
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
 MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,scale){
 	
-	auto fullpath = fmt::format("objects/{}",path);
+	auto fullpath = StrFormat("objects/{}",path);
 	
 	if (!App::Resources->Exists(fullpath.c_str())){
 		Debug::Fatal("No asset at {}",fullpath);

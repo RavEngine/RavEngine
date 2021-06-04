@@ -1,9 +1,14 @@
 #pragma once
 #include <effolkronium/random.hpp>
 #include <fmt/format.h>
+#include <sstream>
 
 namespace RavEngine{
 
+template<typename T, typename ... A>
+static inline std::string StrFormat(const T& formatstr, A ... args) {
+	return fmt::format(formatstr, args...);
+}
 /**
 * Format a number with system locale separator
 * @param value the number to format

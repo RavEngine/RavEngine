@@ -44,7 +44,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 {
 	
-	auto fullpath = fmt::format("{}/{}",rootname,path);
+	auto fullpath = StrFormat("{}/{}",rootname,path);
 	
 	if(!Exists(path)){
 		Debug::Fatal("cannot open {}{}",rootname,path);
@@ -69,7 +69,7 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<uint8_t>& datavec)
 {
 	
-	string fullpath = fmt::format("{}/{}",rootname,path);
+	string fullpath = StrFormat("{}/{}",rootname,path);
 	
 	if(!Exists(path)){
 		Debug::Fatal("cannot open {}{}",rootname,path);
@@ -87,5 +87,5 @@ void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<
 
 bool RavEngine::VirtualFilesystem::Exists(const char* path)
 {
-	return PHYSFS_exists(fmt::format("{}/{}",rootname,path).c_str());
+	return PHYSFS_exists(StrFormat("{}/{}",rootname,path).c_str());
 }

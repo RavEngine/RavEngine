@@ -10,7 +10,7 @@ using namespace std;
 
 AudioAsset::AudioAsset(const std::string& name){
 	//expand audio into buffer
-	string path = fmt::format("/sounds/{}", name);
+	string path = StrFormat("/sounds/{}", name);
 	vector<uint8_t> datavec;
 	App::Resources->FileContentsAt(path.c_str(), datavec);
 	

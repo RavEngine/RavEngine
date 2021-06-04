@@ -56,7 +56,7 @@ namespace RavEngine {
         static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T... args){
 #ifdef _DEBUG
             dbgmtx.lock();
-            debugprints[row] = {fmt::format(formatstr, args...),color};
+            debugprints[row] = {StrFormat(formatstr, args...),color};
             dbgmtx.unlock();
 #endif
         }

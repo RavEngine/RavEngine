@@ -1,9 +1,9 @@
 #pragma once
 #include "SpinLock.hpp"
-#include <fmt/format.h>
 #include <chrono>
 #include "PhysXDefines.h"
 #include <csignal>
+#include "Utilities.hpp"
 
 namespace RavEngine {
 
@@ -49,7 +49,7 @@ public:
 	template <typename ... T>
 	static inline void LogTemp(const char* formatstr, T... values){
 #ifdef _DEBUG
-		LogHelper(stdout,fmt::format(formatstr,values...).c_str(),"LOGTEMP");
+		LogHelper(stdout, StrFormat(formatstr,values...).c_str(),"LOGTEMP");
 #endif
 	}
 	
@@ -68,7 +68,7 @@ public:
 	 */
 	template <typename ... T>
 	static inline void Log(const char* formatstr, T... values){
-		LogHelper(stdout,fmt::format(formatstr,values...).c_str(),"LOG");
+		LogHelper(stdout, StrFormat(formatstr,values...).c_str(),"LOG");
 	}
 	
 	/**
@@ -86,7 +86,7 @@ public:
 	 */
 	template <typename ... T>
 	static inline void Warning(const char* formatstr, T... values){
-		LogHelper(stderr, fmt::format(formatstr,values...).c_str(), "WARN");
+		LogHelper(stderr, StrFormat(formatstr,values...).c_str(), "WARN");
 	}
 	
 	static inline void PrintStacktraceHere(){
@@ -109,7 +109,7 @@ public:
 	*/
 	template <typename ... T>
 	static inline void Error(const char* formatstr, T... values){
-		LogHelper(stderr, fmt::format(formatstr,values...).c_str(), "ERROR");
+		LogHelper(stderr, StrFormat(formatstr,values...).c_str(), "ERROR");
 		PrintStacktraceHere();
 	}
 	
@@ -130,7 +130,7 @@ public:
 	template <typename ... T>
 	static inline void Fatal(const char* formatstr, T... values){
 		Debug::Error(formatstr,values...);
-		throw std::runtime_error(fmt::format(formatstr,values...));
+		throw std::runtime_error(StrFormat(formatstr,values...));
 	}
     
     /**

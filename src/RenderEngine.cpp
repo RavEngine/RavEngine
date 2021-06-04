@@ -78,7 +78,7 @@ struct bgfx_msghandler : public bgfx::CallbackI{
 	void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) override{
 #ifdef _DEBUG
 		if(diagnostic_logging){
-			Debug::LogTemp("BGFX diagnostic: {} line {}: {}",_filePath, _line, fmt::format(_format, (char*)_argList));
+			Debug::LogTemp("BGFX diagnostic: {} line {}: {}",_filePath, _line, StrFormat(_format, (char*)_argList));
 		}
 #endif
 	}
