@@ -76,7 +76,7 @@ struct SystemEntry{
 
 			// the actual tick
 			auto mainTick = masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](Ref<Component> c) {
-				query_iter.TickEntity(c, 1.0, system);	//TODO: currentFPSScale?
+				query_iter.TickEntity(c, world->getCurrentFPSScale(), system);	//TODO: currentFPSScale?
 			});
 			update.precede(mainTick);
 			return std::make_pair(mainTick,update);

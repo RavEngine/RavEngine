@@ -61,9 +61,6 @@ namespace RavEngine {
 		
 		std::chrono::time_point<SystemManager::clock_t> time_now = SystemManager::clock_t::now();
 		float currentFPSScale = 0.01;
-		inline float getCurrentFPSScale() const{
-			return currentFPSScale;
-		}
 		
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
@@ -117,6 +114,10 @@ namespace RavEngine {
     public:
 		std::string_view worldID{ worldIDbuf,id_size };
 		std::atomic<bool> newFrame = false;
+
+		inline float getCurrentFPSScale() const {
+			return currentFPSScale;
+		}
 		
 		const FrameData GetFrameData(){
 			swapmtx.lock();
