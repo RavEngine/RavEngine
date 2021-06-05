@@ -124,7 +124,7 @@ public:
 	*/
 	template<typename T, typename ... A>
 	inline void EmplaceSystem(A ... args) {
-		Systems.insert(std::make_pair(CTTI<T>(), SystemEntry<T>(make_shared<T>(args...))));
+		Systems.insert(std::make_pair(CTTI<T>(), SystemEntry(make_shared<T>(args...))));
 		graphNeedsRebuild = true;
 	}
 	
