@@ -43,7 +43,7 @@ namespace RavEngine {
 	class QueryIteratorAND : public QueryIterator<T> {
 	public:
 		template<typename System>
-		inline void TickEntity(Ref<RavEngine::Component> c, float fpsScale, Ref<System> system) const{
+		inline void TickEntity(Ref<RavEngine::Component> c, World* world, Ref<System> system) const{
 			Ref<Entity> e = c->getOwner().lock();
 			if (e) {
 				constexpr size_t n_args = sizeof ... (A);	// number of types in variadic (query T separately)
@@ -66,6 +66,7 @@ namespace RavEngine {
 				}
 
 				if (passesCheck) {
+					auto fpsScale = world->getCurrentFPSScale();
 
 					// simple case for single template argument
 					if constexpr (n_args == 0) {

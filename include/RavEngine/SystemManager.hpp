@@ -76,7 +76,7 @@ struct SystemEntry{
 
 			// the actual tick
 			auto mainTick = masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](Ref<Component> c) {
-				query_iter.TickEntity(c, world->getCurrentFPSScale(), system);	//TODO: currentFPSScale?
+				query_iter.TickEntity(c, world, system);	//TODO: currentFPSScale?
 			});
 			update.precede(mainTick);
 			return std::make_pair(mainTick,update);
@@ -124,7 +124,7 @@ public:
 	*/
 	template<typename T, typename ... A>
 	inline void EmplaceSystem(A ... args) {
-		Systems.insert(std::make_pair(CTTI<T>(), SystemEntry(make_shared<T>(args...))));
+		Systems.insert(std::make_pair(CTTI<T>(), SystemEntry(std::make_shared<T>(args...))));
 		graphNeedsRebuild = true;
 	}
 	
@@ -144,7 +144,7 @@ public:
 	*/
 	template<typename T, typename interval_t, typename ... A>
 	inline void EmplaceTimedSystem(const interval_t& interval, A ... args) {
-		TimedSystems.insert(std::make_pair(CTTI<T>(), TimedSystem{ make_shared<T>(args...), std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval) }));
+		TimedSystems.insert(std::make_pair(CTTI<T>(), TimedSystem{ std::make_shared<T>(args...), std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval) }));
 		graphNeedsRebuild = true;
 	}
 	
