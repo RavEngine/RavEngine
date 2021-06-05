@@ -118,6 +118,15 @@ public:
 		Systems.insert(std::make_pair(CTTI<T>(),SystemEntry(r_instance)));
 		graphNeedsRebuild = true;
 	}
+
+	/**
+	* Construct a system to tick every frame
+	*/
+	template<typename T, typename ... A>
+	inline void EmplaceSystem(A ... args) {
+		Systems.insert(std::make_pair(CTTI<T>(), SystemEntry<T>(make_shared<T>(args...))));
+		graphNeedsRebuild = true;
+	}
 	
 	/**
 	 Register a system that ticks on an interval
@@ -127,6 +136,15 @@ public:
 	template<typename T, typename interval_t>
 	inline void RegisterTimedSystem(Ref<T> r_instance, const interval_t& interval){
 		TimedSystems.insert(std::make_pair(CTTI<T>(),TimedSystem{r_instance, std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval)}));
+		graphNeedsRebuild = true;
+	}
+
+	/**
+	* Construct a system to tick every frame
+	*/
+	template<typename T, typename interval_t, typename ... A>
+	inline void EmplaceTimedSystem(const interval_t& interval, A ... args) {
+		TimedSystems.insert(std::make_pair(CTTI<T>(), TimedSystem{ make_shared<T>(args...), std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval) }));
 		graphNeedsRebuild = true;
 	}
 	

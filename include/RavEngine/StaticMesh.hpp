@@ -6,8 +6,14 @@
 
 namespace RavEngine {
     class StaticMesh : public RenderableComponent {
+    protected:
+        //the default material
+        Ref<PBRMaterialInstance> material;
+
+        Ref<MeshAsset> mesh;
     public:
-		StaticMesh(Ref<MeshAsset> m): RenderableComponent(), mesh(m){}
+		StaticMesh(decltype(mesh) m): RenderableComponent(), mesh(m){}
+        StaticMesh(decltype(mesh) m, decltype(material) mat) : mesh(m), material(mat) {}
 		virtual ~StaticMesh(){}
 		
 		Ref<MeshAsset> getMesh() {return mesh;}
@@ -26,12 +32,5 @@ namespace RavEngine {
         inline Ref<PBRMaterialInstance> GetMaterial() const{
             return material;
         }
-
-    protected:
-
-        //the default material
-        Ref<PBRMaterialInstance> material;
-		
-		Ref<MeshAsset> mesh;
     };
 }
