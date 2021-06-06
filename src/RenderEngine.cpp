@@ -336,9 +336,6 @@ void RenderEngine::Init()
 		App::Resources->FileContentsAt("shaders/skincompute/compute.bin", shaderdata);
 		const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
 		skinningShaderHandle = bgfx::createProgram(bgfx::createShader(mem),true);	//auto destroys shader when program is destroyed
-
-		App::Resources->FileContentsAt("shaders/skinstaticcompute/compute.bin", shaderdata);
-		const bgfx::Memory* mem2 = bgfx::copy(&shaderdata[0], shaderdata.size());
 	}
 
 	//create compute shader buffers
