@@ -3,7 +3,6 @@ $output v_normal, v_texcoord0, v_worldpos
 
 #include "ravengine_shader.glsl"
 
-
 void main()
 {
 	// This macro creates the following variables: mat4 worldmat, mat3 normalmat

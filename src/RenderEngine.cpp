@@ -55,6 +55,7 @@ bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE, RenderEngine::skinningIdentityShaderHandle = BGFX_INVALID_HANDLE;
 decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout, RenderEngine::skinningInputLayout;
+decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
@@ -355,6 +356,15 @@ void RenderEngine::Init()
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
 		.end();
+	
+	float identity[16] = {
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,0,1
+	};
+	
+	opaquemtxhandle = bgfx::createVertexBuffer(bgfx::copy(identity,sizeof(identity)), skinningOutputLayout);
 
 	//init lights
 	LightManager::Init();
@@ -520,36 +530,20 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	};
 		
 	//Deferred geometry pass
-	//iterate over each row of the table
-	unsigned long max_verts = 0;
-	unsigned long max_objects = 0;
-	for (const auto& row : fd.opaques) {
-		auto nverts = std::get<0>(row.first)->GetNumVerts();
-		if (nverts > max_verts) {
-			max_verts = nverts;
-		}
-		auto numobjects = row.second.items.size();
-		if (numobjects > max_objects) {
-			max_objects = numobjects;
-		}
-	}
-	bgfx::DynamicVertexBufferHandle opaquemtxhandle = BGFX_INVALID_HANDLE;
 	if (fd.opaques.size() > 0) {
 		auto row = fd.opaques.begin();
-		opaquemtxhandle = bgfx::createDynamicVertexBuffer(max_verts * max_objects, skinningOutputLayout, BGFX_BUFFER_COMPUTE_WRITE);
 		// exec compute shader that writes identity matrix into outputs
 			// 1 invocation per vertex per object
 				// no inputs
 				// output buffer A: posed output transformations for vertices
 		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
-		float values[4] = {static_cast<float>(max_objects),static_cast<float>(max_verts),0,0};
+		float values[4] = {0,0,0,0};	// pretend there is only one object being 'skinned', the shader will wrap around to only read this matrix
 		numRowsUniform.SetValues(&values, 1);
-		bgfx::dispatch(Views::DeferredGeo, skinningIdentityShaderHandle, std::ceil(max_verts / 32.0), std::ceil(max_objects / 16.0), 1);	//vertices x number of objects to pose
 	}
 	for(const auto& row : fd.opaques){
 		execdraw(row, [](const auto& row) {
 			//do nothing here
-		}, [&opaquemtxhandle]() {
+		}, []() {
 			bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
 		});
 	}
@@ -578,7 +572,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
 			
-			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),static_cast<float>(skeleton->getBindposes().size()),0};
+			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),1,0};
 			numRowsUniform.SetValues(&values, 1);
 			
 			//pose SOA values
@@ -673,9 +667,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		if (bgfx::isValid(buffers[i].second)){
 			bgfx::destroy(buffers[i].second);
 		}
-	}
-	if (bgfx::isValid(opaquemtxhandle)) {
-		bgfx::destroy(opaquemtxhandle);
 	}
 
 #ifdef _DEBUG
