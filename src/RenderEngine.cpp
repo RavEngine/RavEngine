@@ -572,7 +572,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(0, buf, bgfx::Access::Write);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
 			
-			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),1,0};
+			float values[4] = {static_cast<float>(numobjects),static_cast<float>(numverts),static_cast<float>(skeleton->getBindposes().size()),0};
 			numRowsUniform.SetValues(&values, 1);
 			
 			//pose SOA values
