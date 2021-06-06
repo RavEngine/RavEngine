@@ -230,7 +230,7 @@ namespace RavEngine {
 		static bgfx::VertexBufferHandle opaquemtxhandle;
 
 
-		static bgfx::ProgramHandle skinningShaderHandle, skinningIdentityShaderHandle;
+		static bgfx::ProgramHandle skinningShaderHandle;
 
 		static bgfx::VertexLayout skinningOutputLayout, skinningInputLayout;
 		

@@ -53,7 +53,7 @@ bgfx::VertexLayout RenderEngine::RmlLayout;
 
 bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
 bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
-bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE, RenderEngine::skinningIdentityShaderHandle = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
 decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout, RenderEngine::skinningInputLayout;
 decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INVALID_HANDLE;
 
@@ -339,7 +339,6 @@ void RenderEngine::Init()
 
 		App::Resources->FileContentsAt("shaders/skinstaticcompute/compute.bin", shaderdata);
 		const bgfx::Memory* mem2 = bgfx::copy(&shaderdata[0], shaderdata.size());
-		skinningIdentityShaderHandle = bgfx::createProgram(bgfx::createShader(mem2), true);
 	}
 
 	//create compute shader buffers
