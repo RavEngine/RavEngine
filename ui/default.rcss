@@ -21,17 +21,11 @@ button, input{
 button{
     background-color: #AAAAAAFF;
     border-radius: 5dp;
-    display: inline-block;
-    max-width: 300dp;
     text-align: center;
-    margin:auto;
-    margin-top: 20dp;
-    padding: 10dp;
     transition: font-size color 1.6s elastic-out;
 }
 button:hover{
     color:red;
-    font-size: 35dp;
     transition: font-size color 1.6s elastic-out;
 }
 button:active{
@@ -42,7 +36,6 @@ button:active{
 input{
     background-color:#FFFFFFFF;
     color: black;
-    max-width:400dp;
     display:inline-block;
 }
 /* Checkbox */
@@ -139,14 +132,14 @@ select selectarrow,
 dataselect selectarrow
 {
 	width: 30dp;
-	height: 100dp;
+	height: 100%;
 	background-color: #AAAAAAFF;
 }
 
 select:hover selectarrow,
 dataselect:hover selectarrow
 {
-	background-color: red;
+	background-color: #AAAAAAFF;
 }
 
 select:active selectarrow,
@@ -154,7 +147,7 @@ select selectarrow:checked,
 dataselect:active selectarrow,
 dataselect selectarrow:checked
 {
-	background-color: blue;
+	background-color: gray;
 }
 
 select selectbox,
@@ -168,8 +161,7 @@ dataselect selectbox,
 datagrid datagridbody,
 tbody
 {
-	padding: 5dp;
-	border: 2dp black;
+	border: 2dp gray;
 }
 
 select selectbox option,
@@ -202,7 +194,7 @@ input.range {
 	border: transparent;
 }
 input.range slidertrack {
-	margin-top: 10dp;
+	margin-top: 13dp;
 	height: 2dp;
 	background-color:gray;
 	vertical-align: baseline;
@@ -212,24 +204,27 @@ input.range sliderbar {
 	margin-right: -8dp;
 	width: 30dp;
 	height: 30dp;
+	border-radius: 50dp;
 	background-color: white;
+	border: 2px gray;
 }
 input.range:hover sliderbar {
-	background-color: #cc0;
+	background-color: #CCC;
 }
 input.range sliderbar:active {
-	background-color: #c80;
+	background-color: #35bfffff;
 }
 input.range sliderarrowdec, input.range sliderarrowinc {
+	margin-top: 8dp;
 	width: 17dp;
 	height: 17dp;
 	background-color:gray;
 }
 input.range sliderarrowdec:hover, input.range sliderarrowinc:hover   {
-	background-color: orange;
+	background-color: #AAAAAAFF;
 }
 input.range sliderarrowdec:active, input.range sliderarrowinc:active { 
-	background-color:purple;
+	background-color:gray;
 }
 
 /* Progress bar */
