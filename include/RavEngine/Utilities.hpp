@@ -2,8 +2,19 @@
 #include <effolkronium/random.hpp>
 #include <fmt/format.h>
 #include <sstream>
+#include <type_traits>
 
 namespace RavEngine{
+
+/**
+ Get the underlying type. Useful for enum class.
+ */
+template <typename E>
+constexpr auto to_underlying(E e) noexcept
+{
+	return static_cast<std::underlying_type_t<E>>(e);
+}
+
 
 template<typename T, typename ... A>
 static inline std::string StrFormat(const T& formatstr, A ... args) {
