@@ -291,10 +291,17 @@ define_property(GLOBAL PROPERTY ALL_SHADERS
 	)
 set_property(GLOBAL PROPERTY ALL_SHADERS "")
 
+define_property(GLOBAL PROPERTY ENG_DIR
+	BRIEF_DOCS "Engine Directory"
+	FULL_DOCS "Engine Directory"
+)
+set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
 # Define a shader
 # all paths must be absolute
 function(declare_shader shader_name vertex_src fragment_src varying_src)
 	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
+	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
 
 	if(CMAKE_SYSTEM_NAME MATCHES Darwin OR CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS)
 		set(PLATFORM "osx")
@@ -335,8 +342,8 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
 			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "${SHADERC_CMD}"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
-			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
+			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
 			VERBATIM
@@ -349,7 +356,7 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 			OUTPUT "${CS_OUTPUT_NAME}"
 			DEPENDS "${vertex_src}" "${SHADERC_CMD}"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}"
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Compute Shader Descriptor ${shader_name} => ${CS_OUTPUT_NAME}"
 			VERBATIM
@@ -358,12 +365,6 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 	
 
 endfunction()
-
-define_property(GLOBAL PROPERTY ENG_DIR
-	BRIEF_DOCS "Engine Directory"
-	FULL_DOCS "Engine Directory"
-)
-set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 define_property(GLOBAL PROPERTY COPY_DEPENDS
 	BRIEF_DOCS "Engine Directory"

@@ -12,6 +12,7 @@ namespace RavEngine {
 	class PBRMaterial : public Material {
 	public:
 		PBRMaterial() : Material("pbrmaterial") {}
+		PBRMaterial(const std::string& name) : Material(name){}
         SamplerUniform albedoTxUniform = SamplerUniform("s_albedoTex");
         Vector4Uniform albedoColorUniform = Vector4Uniform("albedoColor");
 	};
