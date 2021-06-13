@@ -5,7 +5,7 @@ BUFFER_WR(output, vec4, 0);	// 4x4 matrices
 BUFFER_RO(pose, vec4, 1);	// 4x4 matrices
 BUFFER_RO(weights, vec2, 2);	// index, influence
 
-uniform vec4 NumObjects;		// x = num objects, y = num vertices, z = num bones
+uniform vec4 NumObjects;		// x = num objects, y = num vertices, z = num bones, w = offset into transient buffer
 
 const int NUM_INFLUENCES = 4;
 
@@ -26,7 +26,7 @@ void main()
 	
 	const int weightsid = vertID * 4;		//4x vec2 elements elements per vertex, is always the same per vertex
 	
-	const int bone_begin = numBones * objID * 4; //offset to the bone for the correct object
+	const int bone_begin = numBones * objID * 4 + NumObjects.w * 4; //offset to the bone for the correct object
 			
 	//will become the pose matrix
 	mat4 totalmtx = mtxFromRows(vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0));
