@@ -4,10 +4,18 @@
 #include "mathtypes.hpp"
 #include <bgfx/bgfx.h>
 #include "Ref.hpp"
+#include <vector>
+#include "Common3D.hpp"
 
 namespace RavEngine{
 
 class MeshAsset {
+public:
+	typedef VertexNormalUV vertex_t;
+	struct MeshPart{
+		std::vector<uint16_t> indices;
+		std::vector<vertex_t> vertices;
+	};
 protected:
 	bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;
@@ -25,6 +33,21 @@ protected:
 		indexBuffer = BGFX_INVALID_HANDLE;
 	}
 	
+	/**
+	 Initialize from multiple meshs consisting of a single vertex and index list
+	 @param mp the meshes to initialize from
+	 */
+	void InitializeFromMeshPartFragments(const std::vector<MeshPart>& mp, bool keepCopyInSystemMemory);
+	
+	/**
+	 Initialize from a complete mesh consisting of a single vertex and index list
+	 @param mp the mesh to initialize from
+	 */
+	void InitializeFromRawMesh(const MeshPart& mp, bool keepCopyInSystemMemory);
+	
+	// optionally stores a copy of the mesh in system memory
+	MeshPart systemRAMcopy;
+	
 public:
 	
 	/**
@@ -36,7 +59,23 @@ public:
 	 Create a MeshAsset
 	 @param path the path to the asset in the embedded filesystem
 	 */
-	MeshAsset(const std::string& path, const decimalType scale = 1.0);
+	MeshAsset(const std::string& path, const decimalType scale = 1.0, bool keepCopyInSystemMemory = false);
+	
+	/**
+	 Create a MeshAsset from multiple vertex and index lists
+	 @param rawMeshData the index and triangle data
+	 */
+	MeshAsset(const std::vector<MeshPart>& rawMeshData, bool keepCopyInSystemMemory = false){
+		InitializeFromMeshPartFragments(rawMeshData, keepCopyInSystemMemory);
+	}
+	
+	/**
+	 Create a MeshAsset from a single vertex and index list
+	 @param mesh the index and triangle data
+	 */
+	MeshAsset(const MeshPart& mesh, bool keepCopyInSystemMemory = false){
+		InitializeFromRawMesh(mesh, keepCopyInSystemMemory);
+	}
 	
 	/**
 	 Move a MeshAsset's data into this MeshAsset.
@@ -72,6 +111,18 @@ public:
 
 	inline const decltype(totalIndices) GetNumIndices() const {
 		return totalIndices;
+	}
+	
+	inline decltype(systemRAMcopy)& GetSystemCopy(){
+		return systemRAMcopy;
+	}
+	
+	/**
+	 In case the system memory copy is no longer needed, destroy it.
+	 This is not undoable.
+	 */
+	inline void DeallocSystemCopy(){
+		systemRAMcopy = MeshPart{};
 	}
 };
 

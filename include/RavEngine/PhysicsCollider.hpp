@@ -10,12 +10,14 @@
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "Ref.hpp"
+#include "MeshAsset.hpp"
 
 namespace physx {
 	class PxShape;
 }
 
 namespace RavEngine {
+
 	class PhysicsCollider : public Component, public Queryable<PhysicsCollider>
 	{
 	protected:
@@ -119,9 +121,7 @@ namespace RavEngine {
 		 @param position the relative position of the shape
 		 @param rotation the relative rotation of the shape
 		 */
-		SphereCollider(decimalType r, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation){
-			radius = r;
-		};
+		SphereCollider(decimalType r, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation), radius(r){}
 		
 		/**
 		 Create a sphere collider with a material
@@ -156,10 +156,7 @@ namespace RavEngine {
 		 @param position the relative position of the shape
 		 @param rotation the relative rotation of the shape
 		 */
-		CapsuleCollider(decimalType r, decimalType hh, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation){
-			radius = r;
-			halfHeight = hh;
-		}
+		CapsuleCollider(decimalType r, decimalType hh, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation), radius(r), halfHeight(hh){}
 		
 		/**
 		 Create a capsule collider with a material
@@ -178,5 +175,26 @@ namespace RavEngine {
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
 		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override;
+	};
+
+	class MeshCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider, MeshCollider>{
+	protected:
+		physx::PxTriangleMesh* triMesh;
+		Ref<MeshAsset> meshAsset;
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
+	public:
+		using QueryableDelta<PhysicsCollider,MeshCollider>::GetQueryTypes;
+		
+		MeshCollider(Ref<MeshAsset> mesh) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){}
+		
+		MeshCollider(Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){
+			material = mat;
+		}
+		
+		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override{
+			//TODO: debug draw mesh collider
+		}
+		
+		virtual ~MeshCollider();
 	};
 }

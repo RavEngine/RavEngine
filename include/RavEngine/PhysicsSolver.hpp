@@ -37,6 +37,7 @@ namespace RavEngine {
     public:
         static physx::PxPhysics* phys;
         static physx::PxPvd* pvd;
+		static physx::PxCooking* cooking;
         physx::PxScene* scene;
 
         void DeallocatePhysx();

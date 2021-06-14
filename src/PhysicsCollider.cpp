@@ -4,6 +4,7 @@
 #include <extensions/PxRigidActorExt.h>
 #include "WeakRef.hpp"
 #include "DebugDraw.hpp"
+#include "PhysicsSolver.hpp"
 
 using namespace physx;
 using namespace RavEngine;
@@ -64,7 +65,13 @@ bool RavEngine::PhysicsCollider::GetQueryable() const
 }
 
 PhysicsCollider::~PhysicsCollider() {
-	//collider->release();
+	auto actor = collider->getActor();
+	if (actor != nullptr){
+		actor->detachShape(*collider);
+	}
+	else{
+		collider->release();
+	}
 }
 
 void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quaternion &rotation){
@@ -85,4 +92,49 @@ void SphereCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) c
 
 void CapsuleCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) const{
 	dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , color, radius, halfHeight * 2);
+}
+
+// mesh collider constructor
+void MeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
+	auto& meshdata = meshAsset->GetSystemCopy();
+	
+	std::vector<PxVec3> vertices(meshdata.vertices.size());
+	std::vector<PxU32> indices(meshdata.indices.size());
+	// only want positional data here, UVs and other data are not relevant
+	for(int i = 0; i < vertices.size(); i++){
+		vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
+	}
+	
+	for(int i = 0; i < indices.size(); i++){
+		indices[i] = meshdata.indices[i];
+	}
+	
+	// cooking data info
+	PxTriangleMeshDesc meshDesc;
+	meshDesc.points.data = &vertices[0];
+	meshDesc.points.stride = sizeof(vertices[0]);
+	meshDesc.points.count = vertices.size();
+	
+	meshDesc.triangles.count = indices.size() / 3;
+	meshDesc.triangles.stride = 3 * sizeof(indices[0]);
+	meshDesc.triangles.data = &indices[0];
+	
+	// specify width
+	if (sizeof(indices[0]) == sizeof(uint16_t)){
+		meshDesc.flags = PxMeshFlag::e16_BIT_INDICES;
+	}	//otherwise assume 32 bit
+	
+#ifdef _DEBUG
+	//Debug::Assert(PhysicsSolver::cooking->validateTriangleMesh(meshDesc), "Triangle mesh validation failed");
+#endif
+	
+	triMesh = PhysicsSolver::cooking->createTriangleMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
+	
+	auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
+	
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxTriangleMeshGeometry(triMesh), *material->getPhysXmat());
+}
+
+MeshCollider::~MeshCollider(){
+	triMesh->release();
 }

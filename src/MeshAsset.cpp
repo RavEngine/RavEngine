@@ -5,7 +5,6 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 #include <assimp/mesh.h>
-#include <vector>
 #include "App.hpp"
 #include <filesystem>
 #include "Debug.hpp"
@@ -15,9 +14,8 @@ using namespace RavEngine;
 // Vertex data structure
 using namespace std;
 
-typedef VertexNormalUV vertex_t;
 
-MeshAsset::MeshAsset(const string& name, const decimalType scale){
+MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyInSystemMemory){
 	string dir = "objects/" + name;
 	
 	if (!App::Resources->Exists(dir.c_str())) {
@@ -53,11 +51,6 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	}
 	
 	//generate the vertex and index lists
-	
-	struct MeshPart{
-		vector<uint16_t> indices;
-		vector<vertex_t> vertices;
-	};
     
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
 	
@@ -108,12 +101,16 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	//free afterward
 	aiReleaseImport(scene);
 	
+	InitializeFromMeshPartFragments(meshes, keepCopyInSystemMemory);
+}
+
+void MeshAsset::InitializeFromMeshPartFragments(const std::vector<MeshPart>& meshes, bool keepCopyInSystemMemory){
 	//combine all meshes
 	for(int i = 0; i < meshes.size(); i++){
 		totalVerts += meshes[i].vertices.size();
 		totalIndices += meshes[i].indices.size();
 	}
-		
+	
 	MeshPart allMeshes;
 	allMeshes.vertices.reserve(totalVerts);
 	allMeshes.indices.reserve(totalIndices);
@@ -127,6 +124,13 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 			allMeshes.indices.push_back(index + baseline_index);	//must recompute index here
 		}
 		baseline_index += mesh.vertices.size();
+	}
+	InitializeFromRawMesh(allMeshes, keepCopyInSystemMemory);
+}
+
+void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, bool keepCopyInSystemMemory){
+	if (keepCopyInSystemMemory){
+		systemRAMcopy = allMeshes;
 	}
 	
 	//copy out of intermediate
@@ -148,7 +152,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale){
 	
 	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(uint16_t));
 	indexBuffer = bgfx::createIndexBuffer(ibm);
-
+	
 	if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
 		Debug::Fatal("Buffers could not be created.");
 	}
