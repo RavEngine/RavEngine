@@ -161,6 +161,8 @@ namespace RavEngine {
 		}
 
 		virtual ~World() {
+			f1.Clear();
+			f2.Clear();
 			std::cout << "world destructor @ " << this << std::endl;
 		}
 

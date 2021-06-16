@@ -453,6 +453,8 @@ RavEngine::RenderEngine::~RenderEngine()
 {
 	bgfx::destroy(gBuffer);	//automatically destroys attached textures
 	bgfx::destroy(lightingBuffer);
+	fd.Clear();
+	
 }
 
 void RenderEngine::DrawNext(Ref<World> world) {
