@@ -183,6 +183,9 @@ file(GLOB SOURCES "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" 
 
 # register the library
 add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} "deps/parallel-hashmap/phmap.natvis")
+set_target_properties(${PROJECT_NAME} PROPERTIES
+	XCODE_GENERATE_SCHEME ON
+)
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
@@ -484,6 +487,7 @@ function(pack_resources)
 		MACOSX_BUNDLE TRUE
 		OSX_ARCHITECTURES "arm64;x86_64"
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)
 
 	set(assets ${ARGS_OBJECTS} ${all_shaders_property} ${ENG_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
