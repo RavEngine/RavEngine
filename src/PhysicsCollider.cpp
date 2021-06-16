@@ -111,6 +111,7 @@ void MeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	
 	// cooking data info
 	PxTriangleMeshDesc meshDesc;
+	meshDesc.setToDefault();
 	meshDesc.points.data = &vertices[0];
 	meshDesc.points.stride = sizeof(vertices[0]);
 	meshDesc.points.count = vertices.size();

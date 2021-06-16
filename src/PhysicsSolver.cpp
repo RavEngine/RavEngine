@@ -194,9 +194,9 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
         if (actor->rigidActor->userData == nullptr){
             actor->rigidActor->userData = new Ref<PhysicsBodyComponent>(actor);    //must be dynamically allocated here
         }
-		mtx.lock();
+		scene->lockWrite();
         scene->addActor(*(actor->rigidActor));
-		mtx.unlock();
+		scene->unlockWrite();
 
         //set filtering on the actor if its filtering is not disabled
         if (actor->filterGroup != -1 && actor->filterMask != -1) {
@@ -213,9 +213,9 @@ void PhysicsSolver::Destroy(Ref<Entity> e){
 	if (e->HasComponentOfType<PhysicsBodyComponent>()){
 		auto body = e->GetComponent<PhysicsBodyComponent>();
 		if (body){
-			mtx.lock();
+			scene->lockWrite();
 			scene->removeActor(*(body.value()->rigidActor));
-			mtx.unlock();
+			scene->unlockWrite();
 		}
 	}
 }
@@ -231,12 +231,12 @@ void PhysicsSolver::Tick(float scaleFactor){
     //physics substepping
     int nsteps = ceil(step / max_step_time);
     float step_time = step / nsteps;
-	mtx.lock();
+	scene->lockWrite();
     for (int i = 0; i < nsteps; i++) {
         scene->simulate(step_time);
         scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
     }
-	mtx.unlock();
+	scene->unlockWrite();
 }
 
 //constructor which configures PhysX
@@ -281,9 +281,9 @@ PhysicsSolver::PhysicsSolver(){
 	PxTolerancesScale scale;
 	PxCookingParams params(scale);
 	// disable mesh cleaning - perform mesh validation on development configurations
-	params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
+	//params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
 	// disable edge precompute, edges are set for each triangle, slows contact generation
-	params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
+	//params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
 	
 	PhysicsSolver::cooking->setParams(params);
 	

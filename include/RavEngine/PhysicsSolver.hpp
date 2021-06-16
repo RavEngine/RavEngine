@@ -16,7 +16,6 @@
 #include <PxPhysicsAPI.h>
 #include <PxFiltering.h>
 #include <cstdint>
-#include "SpinLock.hpp"
 
 struct FilterLayers {
     enum Enum {
@@ -55,8 +54,6 @@ namespace RavEngine {
 
         // If deltatime > this value, the system will substep
         const float max_step_time = 0.03333;
-		
-		SpinLock mtx;
 
     public:
         PhysicsSolver();

@@ -11,8 +11,6 @@
 using namespace physx;
 using namespace RavEngine;
 
-SpinLock PhysicsBodyComponent::ForceMutex;
-
 /// Dynamic Body ========================================
 
 RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
@@ -113,14 +111,20 @@ RigidBodyDynamicComponent::~RigidBodyDynamicComponent() {
 
 vector3 RavEngine::RigidBodyDynamicComponent::GetLinearVelocity() const
 {
+	rigidActor->getScene()->lockRead();
 	auto vel = static_cast<PxRigidBody*>(rigidActor)->getLinearVelocity();
-	return vector3(vel.x,vel.y,vel.z);
+	auto ret = vector3(vel.x,vel.y,vel.z);
+	rigidActor->getScene()->unlockRead();
+	return ret;
 }
 
 vector3 RavEngine::RigidBodyDynamicComponent::GetAngularVelocity() const
 {
+	rigidActor->getScene()->lockRead();
 	auto vel = static_cast<PxRigidBody*>(rigidActor)->getAngularVelocity();
-	return vector3(vel.x,vel.y,vel.z);
+	auto ret = vector3(vel.x,vel.y,vel.z);
+	rigidActor->getScene()->unlockRead();
+	return ret;
 }
 
 /**
@@ -130,7 +134,9 @@ Set the linear velocity of the physics body
 */
 void RavEngine::RigidBodyDynamicComponent::SetLinearVelocity(const vector3& newvel, bool autowake)
 {
-	static_cast<PxRigidBody*>(rigidActor)->setLinearVelocity(PxVec3(newvel.x, newvel.y, newvel.z),autowake);
+	Write([&]{
+		static_cast<PxRigidBody*>(rigidActor)->setLinearVelocity(PxVec3(newvel.x, newvel.y, newvel.z),autowake);
+	});
 }
 
 /**
@@ -140,7 +146,9 @@ Set the angular velocity of the physics body
 */
 void RavEngine::RigidBodyDynamicComponent::SetAngularVelocity(const vector3& newvel, bool autowake)
 {
-	static_cast<PxRigidBody*>(rigidActor)->setAngularVelocity(PxVec3(newvel.x, newvel.y, newvel.z), autowake);
+	Write([&]{
+		static_cast<PxRigidBody*>(rigidActor)->setAngularVelocity(PxVec3(newvel.x, newvel.y, newvel.z), autowake);
+	});
 }
 
 void RavEngine::RigidBodyDynamicComponent::SetAxisLock(uint16_t LockFlags){
@@ -228,27 +236,27 @@ decimalType RigidBodyDynamicComponent::GetMassInverse() const{
 }
 
 void RigidBodyDynamicComponent::AddForce(const vector3 &force){
-	ForceMutex.lock();
-	static_cast<PxRigidDynamic*>(rigidActor)->addForce(PxVec3(force.x,force.y,force.z));
-	ForceMutex.unlock();
+	Write([&]{
+		static_cast<PxRigidDynamic*>(rigidActor)->addForce(PxVec3(force.x,force.y,force.z));
+	});
 }
 
 void RigidBodyDynamicComponent::AddTorque(const vector3 &torque){
-	ForceMutex.lock();
-	static_cast<PxRigidDynamic*>(rigidActor)->addTorque(PxVec3(torque.x,torque.y,torque.z));
-	ForceMutex.unlock();
+	Write([&]{
+		static_cast<PxRigidDynamic*>(rigidActor)->addTorque(PxVec3(torque.x,torque.y,torque.z));
+	});
 }
 
 void RigidBodyDynamicComponent::ClearAllForces(){
-	ForceMutex.lock();
-	static_cast<PxRigidDynamic*>(rigidActor)->clearForce();
-	ForceMutex.unlock();
+	Write([&]{
+		static_cast<PxRigidDynamic*>(rigidActor)->clearForce();
+	});
 }
 
 void RigidBodyDynamicComponent::ClearAllTorques(){
-	ForceMutex.lock();
-	static_cast<PxRigidDynamic*>(rigidActor)->clearTorque();
-	ForceMutex.unlock();;
+	Write([&]{
+		static_cast<PxRigidDynamic*>(rigidActor)->clearTorque();
+	});
 }
 
 /// Static Body ========================================

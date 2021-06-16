@@ -4,20 +4,19 @@
 #include <PxRigidBody.h>
 #include <PxRigidDynamic.h>
 #include <PxRigidStatic.h>
+#include <PxScene.h>
 #include <iostream>
 #include <functional>
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
 #include <phmap.h>
 #include "Queryable.hpp"
-#include "SpinLock.hpp"
 
 namespace RavEngine {
 	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
 		phmap::flat_hash_set<WeakPtrKey<IPhysicsActor>> receivers;
-		static SpinLock ForceMutex;
 	public:
 		physx::PxRigidActor* rigidActor = nullptr;
 		physx::PxU32 filterGroup = -1;
@@ -93,6 +92,13 @@ namespace RavEngine {
 		 @param other the other component
 		 */
 		void OnTriggerExit(Ref<PhysicsBodyComponent> other);
+	protected:
+		template<typename T>
+		inline void Write(const T& func){
+			rigidActor->getScene()->lockWrite();
+			func();
+			rigidActor->getScene()->unlockWrite();
+		}
 	};
 
 	class RigidBodyDynamicComponent : public PhysicsBodyComponent {
