@@ -11,6 +11,7 @@
 #include "DataStructures.hpp"
 #include "AudioPlayer.hpp"
 #include "NetworkManager.hpp"
+#include <SDL_main.h>
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
