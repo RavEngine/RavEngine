@@ -34,14 +34,15 @@ public:
 
 	struct CommandCode {
 		enum {
-			Spawn = 1,
-			Destroy,
+			Spawn = 1,			// receive on client
+			Destroy,			// receive on client
 			RPC,
-            OwnershipToThis,
-            OwnershipRevoked,
+            OwnershipToThis,	// receive on client
+            OwnershipRevoked,	// receive on client
 			SyncVar,
 			SyncVarOwnershipRevoked,
-			SyncVarOwnershipToThis
+			SyncVarOwnershipToThis,
+			ClientRequestingWorldSynchronization	// receive on server
 		};
 	};
 };

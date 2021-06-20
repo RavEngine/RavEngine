@@ -90,8 +90,9 @@ inline constexpr std::string_view type_name() {
 }
 
 // for structs, provide an automatic CTTI implementation using the derivation
-template <typename T, std::enable_if_t<std::is_base_of<RavEngine::AutoCTTI,T>::value,bool> = false>
+template <typename T>
 inline constexpr std::string_view type_name() {
+    static_assert(std::is_base_of<RavEngine::AutoCTTI, T>::value, "Non-fundamental type specialization may only be generat");
 #ifdef _MSC_VER
 	constexpr auto str = type_name_impl<T>();
     short offset = 0;

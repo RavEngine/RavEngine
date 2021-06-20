@@ -52,6 +52,9 @@ protected:
 	static NetworkServer* currentServer;
 	
 	void ServerTick();
+
+	//invoked when clients request to have their worlds synchronized
+	void SynchronizeWorldToClient(HSteamNetConnection connection, const std::string_view& in_message);
 };
 
 }

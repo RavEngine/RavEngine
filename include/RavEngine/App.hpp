@@ -120,6 +120,11 @@ namespace RavEngine {
 			if (!renderWorld){
 				SetRenderedWorld(world);
 			}
+
+			// synchronize network if necessary
+			if (networkManager.IsClient() && !networkManager.IsServer()) {
+				networkManager.client->SendSyncWorldRequest(world);
+			}
 		}
 		/**
 		Remove a world from the tick list

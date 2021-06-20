@@ -53,7 +53,7 @@ namespace RavEngine {
 				if constexpr (n_args > 0)
 				{
 					int i = 1;
-					this->template WriteOne<A...>(query_results, e, i);	//fold expression which does all queries for this type if there are multiple
+					(WriteOne<A>(query_results, e, i), ... );	//fold expression which does all queries for this type if there are multiple
 				}
 
 				// does the check pass?
@@ -68,15 +68,36 @@ namespace RavEngine {
 				if (passesCheck) {
 					auto fpsScale = world->getCurrentFPSScale();
 
-					// simple case for single template argument
+					// this is really dumb and cannot remain like this
+					// TODO: some variadic template magic?
 					if constexpr (n_args == 0) {
-						auto ptr = *(query_results[0]->begin());
-						system->Tick(fpsScale, std::static_pointer_cast<T>(ptr));
+						system->Tick(fpsScale, 
+							*(query_results[0]->begin())
+						);
+					}
+					else if constexpr (n_args == 1) {
+						system->Tick(fpsScale,
+							*query_results[0]->begin(),
+							*query_results[1]->begin()
+						);
+					}
+					else if constexpr (n_args == 2) {
+						system->Tick(fpsScale,
+							*query_results[0]->begin(),
+							*query_results[1]->begin(),
+							*query_results[2]->begin()
+						);
+					}
+					else if constexpr (n_args == 3) {
+						system->Tick(fpsScale,
+							*query_results[0]->begin(),
+							*query_results[1]->begin(),
+							*query_results[2]->begin(),
+							*query_results[3]->begin()
+						);
 					}
 					else {
-						// variadic expansion of array into parameters
-						int i = 1;
-						system->Tick(fpsScale, std::static_pointer_cast<T>(*(query_results[0]->begin())), std::static_pointer_cast<A...>(*query_results[i++]->begin()));
+						static_assert(false, "Too many arguments to system!");
 					}
 				}
 

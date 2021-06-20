@@ -279,3 +279,13 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 		entity->GetComponent<RPCComponent>().value()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
 	});
 }
+
+void RavEngine::NetworkClient::SendSyncWorldRequest(Ref<World> world)
+{
+	// sending this command code + the world ID to spawn
+	char buffer[1 + World::id_size];
+	std::memset(buffer, 0, World::id_size);
+	buffer[0] = CommandCode::ClientRequestingWorldSynchronization;
+	std::memcpy(buffer + 1, world->worldID.data(), world->worldID.size());
+	SendMessageToServer(buffer, Reliability::Reliable);
+}

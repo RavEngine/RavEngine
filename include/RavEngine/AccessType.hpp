@@ -9,6 +9,8 @@ namespace RavEngine {
 	public:
 		AccessRead(decltype(ptr) p) : ptr(p) {}
 
+		AccessRead(Ref<Component> c) : ptr(std::static_pointer_cast<T>(c)) {}
+
 		inline const decltype(ptr)& get() const {
 			return ptr;
 		}
@@ -19,6 +21,8 @@ namespace RavEngine {
 		Ref<T> ptr;
 	public:
 		AccessReadWrite(decltype(ptr) p) : ptr(p) {}
+
+		AccessReadWrite(Ref<Component> c) : ptr(std::static_pointer_cast<T>(c)) {}
 
 		inline decltype(ptr)& get() {
 			return ptr;

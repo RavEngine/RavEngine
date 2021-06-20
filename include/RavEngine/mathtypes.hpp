@@ -3,14 +3,15 @@
 #include "glm/mat4x4.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/quaternion.hpp"
-#include <ostream>
+#include <array>
+#include "CTTI.hpp"
 
 namespace RavEngine {
 	constexpr double PI = 3.1415926535897932385;
 }
 //needed on windows
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+#define M_PI RavEngine::PI
 #endif
 
 //defines the vector and quaternion types
@@ -54,6 +55,39 @@ constexpr vector3 vector3_up = vector3(0, 1, 0);
 constexpr vector3 vector3_forward = vector3(0, 0, -1);
 
 #define print_vec3(vec) "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")"
+
+typedef std::array<decimalType, 3> RawVec3;
+typedef std::array<decimalType, 4> RawQuat;
+
+
+namespace RavEngine {
+	// manual specializations for the networking and CTTI systems
+	template<>
+	inline constexpr std::string_view type_name<RawVec3>() {
+		return "RawVec3";
+	}
+
+	template<>
+	inline constexpr std::string_view type_name<RawQuat>() {
+		return "RawQuat";
+	}
+}
+
+static inline RawVec3 vec3toRaw(const vector3& vec) {
+	return { vec.x, vec.y, vec.z };
+}
+
+static inline vector3 RawToVec3(const RawVec3& raw) {
+	return vector3(raw[0], raw[1], raw[2]);
+}
+
+static inline RawQuat quatToRaw(const quaternion& quat) {
+	return { quat.w,quat.x,quat.y,quat.z };
+}
+
+static inline quaternion RawToQuat(const RawQuat& raw) {
+	return quaternion(raw[0], raw[1], raw[2], raw[3]);
+}
 
 struct soatransform{
 	vector3 translate, scale;

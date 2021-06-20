@@ -7,6 +7,7 @@
 #include <functional>
 
 namespace RavEngine {
+	class World;
 
 class NetworkClient : public NetworkBase{
 public:
@@ -19,6 +20,8 @@ public:
 	void SendMessageToServer(const std::string_view& msg, Reliability mode) const;
 
 	void OnRPC(const std::string_view& cmd);
+
+	void SendSyncWorldRequest(Ref<World> world);
 	
 	//attach event listeners here
 	std::function<void(HSteamNetConnection)> OnConnecting, OnConnected, OnLostConnection;

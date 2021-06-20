@@ -87,6 +87,11 @@ void NetworkServer::Start(uint16_t port){
 }
 
 void NetworkServer::Stop(){
+	// kick all the clients
+	for (const auto& con : clients) {
+		net_interface->CloseConnection(con,0,nullptr,false);
+	}
+
 	workerIsRunning = false;	//this unblocks the worker thread, allowing it to exit
 	while(!workerHasStopped);	//wait for thread to exit
 	net_interface->CloseListenSocket(listenSocket);
@@ -233,6 +238,9 @@ void NetworkServer::ServerTick(){
 			case NetworkBase::CommandCode::SyncVar:
 				SyncVar_base::EnqueueCmd(message, pIncomingMsg->GetConnection());
 				break;
+			case NetworkBase::CommandCode::ClientRequestingWorldSynchronization:
+				SynchronizeWorldToClient(pIncomingMsg->GetConnection(), message);
+				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
             }
@@ -245,6 +253,33 @@ void NetworkServer::ServerTick(){
 		net_interface->RunCallbacks();
 	}
 	workerHasStopped = true;
+}
+
+void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection connection, const std::string_view& in_message)
+{
+	char buffer[World::id_size];
+	std::memset(buffer, 0, World::id_size);
+	std::memcpy(buffer, in_message.data() + 1, in_message.size() - 1);
+	string name(buffer,World::id_size);
+	if (auto world = App::GetWorldByName(name)) {
+		// get all the networkidentities in the world
+		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
+		// call SpawnEntity on each owner
+		for (const auto& identity : identities) {
+			Debug::Log("spawning = {}", identities.size());
+			auto entity = identity->getOwner().lock();
+			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
+			Debug::Assert((bool)casted, "Networked entities must descend from NetworkReplicable!");
+			auto id = casted->NetTypeID();
+			auto comp = entity->GetComponent<NetworkIdentity>();
+			auto netID = comp.value()->GetNetworkID();
+			//send highest-priority safe message with this info to clients
+			auto message = CreateSpawnCommand(netID, id, world.value()->worldID);
+			NetworkIdentities[netID] = comp.value();
+
+			SendMessageToClient(message, connection,Reliability::Reliable);
+		}
+	}
 }
 
 void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConnection origin)
