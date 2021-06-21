@@ -53,7 +53,7 @@ namespace RavEngine {
 				if constexpr (n_args > 0)
 				{
 					int i = 1;
-					(WriteOne<A>(query_results, e, i), ... );	//fold expression which does all queries for this type if there are multiple
+					(this->template WriteOne<A>(query_results, e, i), ... );	//fold expression which does all queries for this type if there are multiple
 				}
 
 				// does the check pass?
@@ -98,7 +98,7 @@ namespace RavEngine {
 						);
 					}
 					else {
-						static_assert(false, "Too many arguments to system!");
+						static_assert(n_args > 3, "Too many arguments to system!");
 					}
 				}
 

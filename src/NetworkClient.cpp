@@ -193,7 +193,7 @@ void NetworkClient::NetSpawn(const std::string_view& command){
     if (auto e = App::networkManager.CreateEntity(id, uuid)){
         if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
 			world.value()->Spawn(e.value());
-#if _DEBUG
+#ifdef _DEBUG
 			Debug::Assert(e.value()->GetAllComponentsOfType<NetworkIdentity>().size() == 1, "Entity has more than one NetworkIdentity! Check your entity constructor.");
 #endif
             auto netid = e.value()->GetComponent<NetworkIdentity>().value();

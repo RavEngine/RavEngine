@@ -63,12 +63,12 @@ typedef std::array<decimalType, 4> RawQuat;
 namespace RavEngine {
 	// manual specializations for the networking and CTTI systems
 	template<>
-	inline constexpr std::string_view type_name<RawVec3,false>() {
+	inline constexpr std::string_view type_name<RawVec3>() {
 		return "RawVec3";
 	}
 
 	template<>
-	inline constexpr std::string_view type_name<RawQuat,false>() {
+	inline constexpr std::string_view type_name<RawQuat>() {
 		return "RawQuat";
 	}
 }
