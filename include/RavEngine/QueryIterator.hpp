@@ -69,6 +69,7 @@ namespace RavEngine {
 					auto fpsScale = world->getCurrentFPSScale();
 
 					// this is really dumb and cannot remain like this
+					// 
 					// TODO: some variadic template magic?
 					if constexpr (n_args == 0) {
 						system->Tick(fpsScale, 

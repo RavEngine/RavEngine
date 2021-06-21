@@ -266,7 +266,6 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
 		// call SpawnEntity on each owner
 		for (const auto& identity : identities) {
-			Debug::Log("spawning = {}", identities.size());
 			auto entity = identity->getOwner().lock();
 			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
 			Debug::Assert((bool)casted, "Networked entities must descend from NetworkReplicable!");

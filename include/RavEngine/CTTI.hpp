@@ -82,7 +82,7 @@ inline constexpr std::string_view type_name_impl() {
     return wrapped_name.substr(prefix_length, type_name_length);
 }
 
-//already defiend for void, don't want to define it again
+//already defined for void, don't want to define it again
 //defines automatically only for primitive types
 template<typename T, std::enable_if_t<std::is_fundamental<T>::value && !std::is_same<T,void>::value, bool> = false>
 inline constexpr std::string_view type_name() {
@@ -90,9 +90,8 @@ inline constexpr std::string_view type_name() {
 }
 
 // for structs, provide an automatic CTTI implementation using the derivation
-template <typename T>
+template <typename T, std::enable_if_t<std::is_base_of<RavEngine::AutoCTTI, T>::value,bool> = false>
 inline constexpr std::string_view type_name() {
-    static_assert(std::is_base_of<RavEngine::AutoCTTI, T>::value, "Non-fundamental type specialization may only be generat");
 #ifdef _MSC_VER
 	constexpr auto str = type_name_impl<T>();
     short offset = 0;

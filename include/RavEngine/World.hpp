@@ -106,7 +106,6 @@ namespace RavEngine {
          */
         void TickSystem(Ref<System> system, float scale);
 		
-		
 		bool physicsActive = false;
 		
 		void Destroy_pending();
@@ -148,7 +147,6 @@ namespace RavEngine {
 
 		bool Destroy(Ref<Entity>);
 
-		
 		void PlaySound(const InstantaneousAudioSource& ias){
 			instantaneousToPlay.push_back(ias);
 		}

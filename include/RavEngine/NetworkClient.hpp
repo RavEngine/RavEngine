@@ -8,8 +8,11 @@
 
 namespace RavEngine {
 	class World;
+	class Entity;
+	class World;
 
 class NetworkClient : public NetworkBase{
+	phmap::flat_hash_map<ctti_t, std::function<void(Ref<Entity>, Ref<World>)>> OnNetSpawnHooks;
 public:
 	NetworkClient();
 	void Connect(const std::string& addr, uint16_t port);
@@ -22,6 +25,11 @@ public:
 	void OnRPC(const std::string_view& cmd);
 
 	void SendSyncWorldRequest(Ref<World> world);
+
+	template<typename T>
+	inline void SetNetSpawnHook(const decltype(OnNetSpawnHooks)::value_type::second_type& func) {
+		OnNetSpawnHooks.insert(std::make_pair(CTTI<T>(),func));
+	}
 	
 	//attach event listeners here
 	std::function<void(HSteamNetConnection)> OnConnecting, OnConnected, OnLostConnection;

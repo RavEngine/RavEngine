@@ -192,7 +192,10 @@ void NetworkClient::NetSpawn(const std::string_view& command){
     //find the world and spawn
     if (auto e = App::networkManager.CreateEntity(id, uuid)){
         if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
-            world.value()->Spawn(e.value());
+			world.value()->Spawn(e.value());
+#if _DEBUG
+			Debug::Assert(e.value()->GetAllComponentsOfType<NetworkIdentity>().size() == 1, "Entity has more than one NetworkIdentity! Check your entity constructor.");
+#endif
             auto netid = e.value()->GetComponent<NetworkIdentity>().value();
             if (netid){
                 Debug::Assert(netid->GetNetworkID() == uuid, "Created object does not have correct NetID! {} != {}",uuid.to_string(), netid->GetNetworkID().to_string());
@@ -202,6 +205,9 @@ void NetworkClient::NetSpawn(const std::string_view& command){
             else{
                 Debug::Fatal("Cannot spawn networked entity without NetworkIdentity! Check uuid constructor.");
             }
+			if (OnNetSpawnHooks.contains(id)) {
+				OnNetSpawnHooks.at(id)(e.value(),world.value());
+			}
         }
         else{
             Debug::Fatal("Cannot spawn networked entity in unloaded world: {}", worldname);

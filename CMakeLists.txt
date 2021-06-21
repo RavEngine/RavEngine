@@ -34,10 +34,10 @@ endif()
 # enable multiprocessor compilation with vs
 # Remove 'lib' prefix for shared libraries on Windows
 if(MSVC)
-set(CMAKE_SHARED_LIBRARY_PREFIX "")
-  add_definitions(/MP)
-  add_definitions(/Qpar)
-  list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
+	set(CMAKE_SHARED_LIBRARY_PREFIX "")
+	add_definitions(/MP)
+	add_definitions(/Qpar)
+	list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
 endif()
 
 # ==================== Dependencies =====================
