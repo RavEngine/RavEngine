@@ -88,8 +88,8 @@ namespace RavEngine {
 			//write message header
 			std::memset(msg, 0, totalsize);
             msg[0] = NetworkBase::CommandCode::RPC;							//command code
-			std::memcpy(msg + 1, uuid_bytes.c_str(), uuid_bytes.length());	//entity uuid
-			std::memcpy(msg + 1 + uuid_bytes.length(), &id, sizeof(id));	//RPC ID
+			std::memcpy(msg + 1, uuid_bytes.data(), uuid_bytes.size());	//entity uuid
+			std::memcpy(msg + 1 + uuid_bytes.size(), &id, sizeof(id));	//RPC ID
 
 			//write mesage body
 			size_t offset = RPCMsgUnpacker::header_size;

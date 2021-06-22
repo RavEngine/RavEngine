@@ -298,8 +298,9 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref
 	//send message revoke ownership for the existing owner, if it is not currently owned by server
 	if (object->Owner != k_HSteamNetConnection_Invalid) {
 		auto uuid = object->GetNetworkID().raw();
-		char msg[16 + 1];
+		char msg[uuid.size() + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipRevoked;
+		std::memcpy(msg + 1, uuid.data(), uuid.size());
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
 	}
 
@@ -309,8 +310,9 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref
 	//send message to the new owner that it is now the owner, if the new owner is not the server
 	if (newOwner != k_HSteamNetConnection_Invalid) {
 		auto uuid = object->GetNetworkID().raw();
-		char msg[16 + 1];
+		char msg[uuid.size() + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipToThis;
+		std::memcpy(msg + 1, uuid.data(), uuid.size());
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
 	}
 }
@@ -319,9 +321,9 @@ void NetworkServer::ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar
 	//send message revoke ownership for the existing owner, if it is not currently owned by server
 	if (var.owner != k_HSteamNetConnection_Invalid){
 		auto uuid = var.id.raw();
-		char message[16+1];
+		char message[uuid.size()+1];
 		message[0] = NetworkBase::CommandCode::SyncVarOwnershipRevoked;
-		std::memcpy(message+1, uuid.data(), uuid.length());
+		std::memcpy(message+1, uuid.data(), uuid.size());
 	}
 	
 	//update the object's ownership value
@@ -332,6 +334,6 @@ void NetworkServer::ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar
 		auto uuid = var.id.raw();
 		char message[16+1];
 		message[0] = NetworkBase::CommandCode::SyncVarOwnershipToThis;
-		std::memcpy(message+1, uuid.data(), uuid.length());
+		std::memcpy(message+1, uuid.data(), uuid.size());
 	}
 }

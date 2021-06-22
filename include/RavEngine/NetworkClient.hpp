@@ -13,6 +13,12 @@ namespace RavEngine {
 
 class NetworkClient : public NetworkBase{
 	phmap::flat_hash_map<ctti_t, std::function<void(Ref<Entity>, Ref<World>)>> OnNetSpawnHooks;
+	inline void RevokeOwnership(Ref<NetworkIdentity> id) {
+		id->Owner = k_HSteamListenSocket_Invalid;
+	}
+	inline void GainOwnership(Ref<NetworkIdentity> id) {
+		id->Owner = 30;	//any number = this machine has ownership
+	}
 public:
 	NetworkClient();
 	void Connect(const std::string& addr, uint16_t port);

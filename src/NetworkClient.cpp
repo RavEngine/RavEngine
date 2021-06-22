@@ -205,6 +205,7 @@ void NetworkClient::NetSpawn(const std::string_view& command){
             else{
                 Debug::Fatal("Cannot spawn networked entity without NetworkIdentity! Check uuid constructor.");
             }
+
 			if (OnNetSpawnHooks.contains(id)) {
 				OnNetSpawnHooks.at(id)(e.value(),world.value());
 			}
@@ -245,17 +246,24 @@ void NetworkClient::NetDestroy(const std::string_view& command){
 void RavEngine::NetworkClient::OwnershipRevoked(const std::string_view& cmd)
 {
 	uuids::uuid id(cmd.data() + 1);
-	NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
-		id->Owner = k_HSteamListenSocket_Invalid;
+	bool success = NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
+		RevokeOwnership(id);
 	});
+	if (!success) {
+		// the entity did not exist 
+		Debug::Warning("Cannot revoke ownership from an entity that does not exist, id = {}", id.to_string());
+	}
 }
 
 void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
 {
 	uuids::uuid id(cmd.data() + 1);
-	NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
-		id->Owner = 30;	//any number = this machine has ownership
+	bool success = NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
+		GainOwnership(id);
 	});
+	if (!success) {
+		Debug::Warning("Cannot add ownership to an entity that does not exist, id = {}", id.to_string());
+	}
 }
 
 void NetworkClient::SyncVarOwnershipRevoked(const std::string_view &cmd){
@@ -280,10 +288,13 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 {
 	//decode the RPC header to to know where it is going
 	uuids::uuid id(cmd.data() + 1);
-	NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
+	bool success = NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
 		auto entity = netid->getOwner().lock();
 		entity->GetComponent<RPCComponent>().value()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
 	});
+	if (!success) {
+		Debug::Warning("Cannot relay RPC, entity with ID {} does not exist", id.to_string());
+	}
 }
 
 void RavEngine::NetworkClient::SendSyncWorldRequest(Ref<World> world)

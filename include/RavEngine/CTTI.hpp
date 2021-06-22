@@ -112,9 +112,10 @@ inline constexpr std::string_view type_name() {
 // this specialization always fails.
 template<typename T, std::enable_if_t<!std::is_base_of<RavEngine::AutoCTTI, T>::value && !std::is_fundamental<T>::value && !std::is_same<T,void>::value, bool> = false>
 inline constexpr std::string_view type_name(){
-	static_assert(!std::is_base_of<RavEngine::AutoCTTI, T>::value && !std::is_fundamental<T>::value && !std::is_same<T,void>::value,"A platform-independent type-name string cannot be auto-generated for this type. Create a manual specialization. See mathtypes.hpp for an example.");
+	static_assert(!(!std::is_base_of<RavEngine::AutoCTTI, T>::value && !std::is_fundamental<T>::value && !std::is_same<T,void>::value),"A platform-independent type-name string cannot be auto-generated for this type. Create a manual specialization. See mathtypes.hpp for an example.");
 	return "";
 }
+
 
 /**
 @return a hashcode for a type

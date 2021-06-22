@@ -13,6 +13,7 @@
 #include <string>
 #include <sstream>
 #include <cstring>
+#include <array>
 
 /* --------------------------------------------------------------------------
 Uuid layout:
@@ -210,8 +211,9 @@ namespace uuids
             return std::string(buffer);
         }
     public:
-        std::string raw() const {
-            char buffer[16];
+        std::array<char,16> raw() const {
+            std::array<char, 16> data;
+            char* buffer = data.data();
             memset(buffer,0,16);
             uint8_t offset = 0;
            
@@ -232,7 +234,7 @@ namespace uuids
 
             memcpy(buffer + offset, _node, sizeof(_node));
     
-            return std::string(buffer,16);
+            return data;
         }
         
     };
