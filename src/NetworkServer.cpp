@@ -15,6 +15,17 @@ NetworkServer* NetworkServer::currentServer = nullptr;
 
 NetworkServer::NetworkServer() : net_interface(SteamNetworkingSockets()){}
 
+void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
+{
+	for (const auto& ptr : OwnershipTracker[connection]) {
+		if (auto owning = ptr.lock()) {
+			auto entity = owning->getOwner().lock();
+			entity->GetWorld().lock()->Destroy(entity);
+		}
+	}
+	OwnershipTracker.erase(connection);
+}
+
 void NetworkServer::SpawnEntity(Ref<Entity> entity) {
 	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
 	auto world = entity->GetWorld().lock();
@@ -186,6 +197,10 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			// and we cannot linger because it's already closed on the other end,
 			// so we just pass 0's.
 			net_interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+
+			// need to destroy any entities owned by this client
+			HandleDisconnect(pInfo->m_hConn);
+
 			if(OnClientDisconnected){
 				OnClientDisconnected(pInfo->m_hConn);
 			}
@@ -302,6 +317,8 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref
 		msg[0] = NetworkBase::CommandCode::OwnershipRevoked;
 		std::memcpy(msg + 1, uuid.data(), uuid.size());
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
+
+		OwnershipTracker[object->Owner].erase(object);
 	}
 
 	//update the object's ownership value
@@ -314,6 +331,8 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref
 		msg[0] = NetworkBase::CommandCode::OwnershipToThis;
 		std::memcpy(msg + 1, uuid.data(), uuid.size());
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
+
+		OwnershipTracker[object->Owner].insert(object);
 	}
 }
 
