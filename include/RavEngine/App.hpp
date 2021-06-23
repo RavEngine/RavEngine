@@ -137,6 +137,15 @@ namespace RavEngine {
 				renderWorld.reset();	//this will cause nothing to render, so set a different world as rendered
 			}
 		}
+
+		/**
+		* Unload all worlds
+		*/
+		static void RemoveAllWorlds() {
+			for (const auto& world : loadedWorlds) {
+				RemoveWorld(world);
+			}
+		}
 		
 		/**
 		 Replace a loaded world with a different world, transferring render state if necessary
