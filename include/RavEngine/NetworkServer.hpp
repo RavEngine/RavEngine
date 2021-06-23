@@ -27,6 +27,8 @@ public:
 
 	void SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const;
 
+	void SendMessageToAllClientsExcept(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const;
+
 	void OnRPC(const std::string_view& cmd, HSteamNetConnection);
 
 	/**

@@ -71,6 +71,15 @@ void NetworkServer::SendMessageToClient(const std::string_view& msg, HSteamNetCo
 	net_interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
 }
 
+void RavEngine::NetworkServer::SendMessageToAllClientsExcept(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const
+{
+	for (const auto c : clients) {
+		if (c != connection) {
+			SendMessageToClient(msg,c,mode);
+		}
+	}
+}
+
 void NetworkServer::Start(uint16_t port){
 	//configure and start server
 	SteamNetworkingConfigValue_t opt;

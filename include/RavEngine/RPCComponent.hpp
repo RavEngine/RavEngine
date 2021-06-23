@@ -165,6 +165,28 @@ namespace RavEngine {
 			}
 		}
 
+		template<typename ... A>
+		inline void InvokeClientRPCDirected(uint16_t id, HSteamNetConnection target, NetworkBase::Reliability mode, A ... args) {
+			if (ClientRPCs.contains(id)) {
+				auto msg = SerializeRPC(id, args...);
+				App::networkManager.server->SendMessageToClient(msg, target, mode);
+			}
+			else {
+				Debug::Warning("Cannot send Client RPC with ID {} to recipient {}", id, target);
+			}
+		}
+
+		template<typename ... A>
+		inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A ... args) {
+			if (ClientRPCs.contains(id)) {
+				auto msg = SerializeRPC(id, args...);
+				App::networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
+			}
+			else {
+				Debug::Warning("Cannot send Client RPC with ID {} to all except {}", id, doNotSend);
+			}
+		}
+
 		/**
 		Invoke an RPC on the client
 		@param id the name of the RPC

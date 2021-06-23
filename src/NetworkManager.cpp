@@ -25,7 +25,7 @@ void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
 
 void NetworkManager::Destroy(Ref<World> source, Ref<NetworkIdentity> comp) {
 	// ownership is server and running in the server? need to RPC clients
-	if (IsServer() && comp->Owner == k_HSteamNetConnection_Invalid){
+	if (IsServer()){	//even if the server does not own this object, if it is destroyed here, it must be replicated
 		auto entity = comp->getOwner().lock();
 		if (entity){
 			server->DestroyEntity(entity);
