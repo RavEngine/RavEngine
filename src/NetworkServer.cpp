@@ -102,6 +102,7 @@ void NetworkServer::Start(uint16_t port){
 	currentServer = this;
 	
 	workerIsRunning = true;
+	workerHasStopped = false;
 	worker = std::thread(&NetworkServer::ServerTick,this);
 	worker.detach();
 }
@@ -193,7 +194,6 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 					Debug::Warning("Networking closed by peer");
 				}
 				
-				clients.erase(pInfo->m_hConn);
 			}
 			else{
 				assert( pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting );
@@ -204,15 +204,8 @@ void NetworkServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 			// it has not been destroyed.  We must close it on our end, too
 			// to finish up.  The reason information do not matter in this case,
 			// and we cannot linger because it's already closed on the other end,
-			// so we just pass 0's.
-			net_interface->CloseConnection( pInfo->m_hConn, 0, nullptr, false );
+			DisconnectClient(pInfo->m_hConn,0,"Automatic disconnection");
 
-			// need to destroy any entities owned by this client
-			HandleDisconnect(pInfo->m_hConn);
-
-			if(OnClientDisconnected){
-				OnClientDisconnected(pInfo->m_hConn);
-			}
 			break;
 		case k_ESteamNetworkingConnectionState_FinWait:
 			
@@ -315,6 +308,20 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 		bool isOwner = origin == netid->Owner;
 		entity->GetComponent<RPCComponent>().value()->CacheServerRPC(cmd, isOwner, origin);
 	});
+}
+
+void RavEngine::NetworkServer::DisconnectClient(HSteamNetConnection con, int reason, const char* msg_optional)
+{
+	// so we just pass 0's.
+	net_interface->CloseConnection(con, reason, msg_optional, false);
+
+	// need to destroy any entities owned by this client
+	HandleDisconnect(con);
+	clients.erase(con);
+
+	if (OnClientDisconnected) {
+		OnClientDisconnected(con);
+	}
 }
 
 void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object)

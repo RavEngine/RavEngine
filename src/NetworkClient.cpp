@@ -29,6 +29,7 @@ void NetworkClient::Connect(const std::string& address, uint16_t port){
 	}
 	currentClient = this;
 	workerIsRunning = true;
+	workerHasStopped = false;
 	worker = std::thread(&NetworkClient::ClientTick, this);
 	worker.detach();
 }

@@ -16,7 +16,7 @@ class NetworkBase{
 protected:
 	std::thread worker;
 	std::atomic<bool> workerIsRunning = false;
-	std::atomic<bool> workerHasStopped = false;
+	std::atomic<bool> workerHasStopped = true;
 
 	std::string CreateSpawnCommand(uuids::uuid& id, ctti_t type, std::string_view& worldID);
 

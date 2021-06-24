@@ -29,7 +29,13 @@ public:
 
 	void SendMessageToAllClientsExcept(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const;
 
-	void OnRPC(const std::string_view& cmd, HSteamNetConnection);
+	/**
+	* Disconnect a client from the server
+	* @param the connection handle to disconnect
+	* @param reason an integer specifying the reason. This is user-defined.
+	* @param msg_optional an optional string message to provide which will be received on the client.
+	*/
+	void DisconnectClient(HSteamNetConnection con, int reason, const char* msg_optional = nullptr);
 
 	/**
 	Change the ownership of a networked object
@@ -44,6 +50,8 @@ public:
 	std::function<void(HSteamNetConnection)> OnClientConnecting, OnClientConnected, OnClientDisconnected;
 	
 protected:
+	void OnRPC(const std::string_view& cmd, HSteamNetConnection);
+
 	ISteamNetworkingSockets *net_interface = nullptr;
 	HSteamListenSocket listenSocket = k_HSteamListenSocket_Invalid;
 	HSteamNetPollGroup pollGroup = k_HSteamNetPollGroup_Invalid;
@@ -65,6 +73,14 @@ protected:
 
 	//invoked when clients request to have their worlds synchronized
 	void SynchronizeWorldToClient(HSteamNetConnection connection, const std::string_view& in_message);
+
+public:
+	/**
+	* Get the internal client structure. Note that to track application-specific client data, create your own datastructure and add event listeners to the OnConnecting, Ondisconnected, etc functions and track it yourself.
+	*/
+	inline const decltype(clients)& GetClients() {
+		return clients;
+	}
 };
 
 }
