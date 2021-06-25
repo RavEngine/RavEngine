@@ -150,8 +150,8 @@ void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, bool keepCopyIn
 	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(vertex_t));
 	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
 	
-	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(uint16_t));
-	indexBuffer = bgfx::createIndexBuffer(ibm);
+	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(decltype(allMeshes.indices)::value_type));
+	indexBuffer = bgfx::createIndexBuffer(ibm,BGFX_BUFFER_INDEX32);
 	
 	if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
 		Debug::Fatal("Buffers could not be created.");

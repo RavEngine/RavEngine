@@ -12,8 +12,9 @@ namespace RavEngine{
 class MeshAsset {
 public:
 	typedef VertexNormalUV vertex_t;
+
 	struct MeshPart{
-		std::vector<uint16_t> indices;
+		std::vector<uint32_t> indices;
 		std::vector<vertex_t> vertices;
 	};
 protected:
