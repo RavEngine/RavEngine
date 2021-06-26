@@ -689,7 +689,7 @@ void RenderEngine::SyncVideoSettings(){
 /**
 @return the name of the current rendering API
 */
-const string RenderEngine::currentBackend(){
+const string_view RenderEngine::currentBackend(){
 	
 	switch (bgfx::getRendererType()) {
 		case bgfx::RendererType::Noop:			return "Disabled";

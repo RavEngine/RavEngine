@@ -56,3 +56,8 @@ rm -r random/test
 
 # backward
 rm -r backward-cpp/doc backward-cpp/test backward-cpp/test_package
+
+# boost
+cd boost
+rm -r doc/ libs/ more/ status/ tools/ boost.png bootstrap.sh bootstrap.bat index.htm index.html INSTALL Jamroot README.md rst.css boost.css boost-build.jam boostcpp.jam
+cd ..

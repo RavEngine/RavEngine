@@ -9,9 +9,21 @@
 #include <taskflow/taskflow.hpp>
 #include "ComponentStore.hpp"
 
+#include <boost/function_types/function_type.hpp>
+#include <boost/function_types/parameter_types.hpp>
+#include <boost/function_types/result_type.hpp>
+#include <boost/function_types/function_arity.hpp>
+#include <algorithm>
+#include <type_traits>
+#include <typeinfo>
+#include <tuple>
+#include <utility>
+#include <iostream>
+
 namespace RavEngine{
 
 	static const System::list_type SystemEntry_empty;
+	typedef std::chrono::high_resolution_clock clock_t;
 
 	//template existence detection
 	template <typename T, typename = int>
@@ -29,7 +41,7 @@ namespace RavEngine{
 
 	template<typename T, std::enable_if_t<!HasMustRunBefore<T>::value, bool> = false>
 	//if does not exist, return reference to empty container
-	inline const System::list_type& MustRunBefore_impl(const Ref<T>&){
+	inline const System::list_type& MustRunBefore_impl(const Ref<T>&) {
 		return SystemEntry_empty;
 	}
 
@@ -48,11 +60,42 @@ namespace RavEngine{
 
 	template<typename T, std::enable_if_t<!HasMustRunAfter<T>::value, bool> = false>
 	//if does not exist, return reference to empty container
-	inline const System::list_type& MustRunAfter_impl(const Ref<T>&){
+	inline const System::list_type& MustRunAfter_impl(const Ref<T>&) {
 		return SystemEntry_empty;
 	}
 
+template<typename World>
 struct SystemEntry{
+	
+	// function type information extraction
+	template <typename FuncType>
+	using Arity = boost::function_types::function_arity<FuncType>;
+	template <typename FuncType>
+	using ResultType = typename boost::function_types::result_type<FuncType>::type;
+	template <typename FuncType, size_t ArgIndex>
+	using ArgType = typename boost::mpl::at_c<boost::function_types::parameter_types<FuncType>, ArgIndex>::type;
+	template <typename Func, typename IndexSeq>
+	struct ArgExtractor;
+	template <typename Func, size_t... Inds>
+	struct ArgExtractor<Func, std::integer_sequence<size_t, Inds...> >
+	{
+		inline auto UpdateQuery(World* world)
+		{
+			// do query
+			auto& query = world->GetAllComponentsOfType<ArgType<Func, Inds+1>>();
+			// return updated iterators
+			return std::make_pair(query.begin(), query.end());
+		}
+
+		template<typename System>
+		inline void TickEntity(Ref<Component> c, World* world, Ref<System> system) {
+			string typeNames[] = { typeid(ArgType<Func, Inds>).name()... };
+			for (auto const& name : typeNames)
+				std::cout << name << " ";
+			std::cout << endl;
+		}
+	};
+
 	const func::function<std::pair<tf::Task, tf::Task>(ctti_t, iter_map&, tf::Taskflow&, World*)> QueryTypes;
 	const func::function<const System::list_type&()> MustRunBefore;
 	const func::function<const System::list_type&()> MustRunAfter;
@@ -60,23 +103,26 @@ struct SystemEntry{
 	template<typename T>
 	SystemEntry(Ref<T> system) :
 		QueryTypes([system](ctti_t sys_ID, iter_map& iterator_map, tf::Taskflow& masterTasks, World* world) -> std::pair<tf::Task, tf::Task> {
-			auto query_iter = system->QueryTypes();
-			query_iter.DoQuery(world);
-			auto begin_end = query_iter.GetIterators();
+			// get the function parameter types
+
+			auto MakeArgExtractor = [&](auto f) {
+				return ArgExtractor<decltype(f), make_index_sequence<Arity<decltype(f)>::value> >();
+			};
+			auto argex = MakeArgExtractor(&T::Tick);
+			auto begin_end = argex.UpdateQuery(world);
 
 			// iterator baseline set
 			iterator_map[sys_ID] = { begin_end.first, begin_end.second };
 
 			// iterator updates
-			auto update = masterTasks.emplace([&iterator_map, query_iter, sys_ID,world]() mutable -> void {
-				query_iter.DoQuery(world);
-				auto begin_end = query_iter.GetIterators();
+			auto update = masterTasks.emplace([&iterator_map, argex, sys_ID,world]() mutable -> void {
+				auto begin_end = argex.UpdateQuery(world);
 				iterator_map[sys_ID] = { begin_end.first,begin_end.second };
 			});
 
 			// the actual tick
 			auto mainTick = masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](Ref<Component> c) {
-				query_iter.TickEntity(c, world, system);	//TODO: currentFPSScale?
+				argex.TickEntity(c, world, system);	//TODO: currentFPSScale?
 			});
 			update.precede(mainTick);
 			return std::make_pair(mainTick,update);
@@ -90,17 +136,17 @@ struct SystemEntry{
 		{}
 };
 
+template<typename World>
 class SystemManager{
 public:
-	typedef std::chrono::high_resolution_clock clock_t;
 	struct TimedSystem{
-		SystemEntry system;
+		SystemEntry<World> system;
 		std::chrono::duration<double, std::micro> interval;
 		std::chrono::time_point<clock_t> last_timestamp = clock_t::now();
 	};
 	
 protected:
-	typedef locked_node_hashmap<ctti_t,SystemEntry,SpinLock> system_store;
+	typedef locked_node_hashmap<ctti_t,SystemEntry<World>,SpinLock> system_store;
 	typedef locked_node_hashmap<ctti_t,TimedSystem,SpinLock> timed_system_store;
 	
 	system_store Systems;
@@ -115,7 +161,7 @@ public:
 	 */
 	template<typename T>
 	inline void RegisterSystem(Ref<T> r_instance) {
-		Systems.insert(std::make_pair(CTTI<T>(),SystemEntry(r_instance)));
+		Systems.insert(std::make_pair(CTTI<T>(),SystemEntry<World>(r_instance)));
 		graphNeedsRebuild = true;
 	}
 
@@ -124,7 +170,7 @@ public:
 	*/
 	template<typename T, typename ... A>
 	inline void EmplaceSystem(A ... args) {
-		Systems.insert(std::make_pair(CTTI<T>(), SystemEntry(std::make_shared<T>(args...))));
+		Systems.insert(std::make_pair(CTTI<T>(), SystemEntry<World>(std::make_shared<T>(args...))));
 		graphNeedsRebuild = true;
 	}
 	

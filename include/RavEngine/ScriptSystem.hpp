@@ -12,8 +12,8 @@ namespace RavEngine {
 			return QueryIteratorAND<ScriptComponent>();
 		}
 
-		void Tick(float fpsScale, AccessReadWrite<ScriptComponent> c) {
-			c.get()->Tick(fpsScale);
+		void Tick(float fpsScale, const Ref<ScriptComponent> c) {
+			c->Tick(fpsScale);
 		}
 	};
 }

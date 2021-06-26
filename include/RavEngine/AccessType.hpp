@@ -3,15 +3,15 @@
 
 namespace RavEngine {
 
-	template<typename T, bool required = true>
+	/*template<typename T, bool required = true>
 	class AccessRead {
-		Ref<T> ptr;
+		Ref<const T> ptr;
 	public:
 		AccessRead(decltype(ptr) p) : ptr(p) {}
 
-		AccessRead(Ref<Component> c) : ptr(std::static_pointer_cast<T>(c)) {}
+		AccessRead(Ref<const Component> c) : ptr(std::static_pointer_cast<T>(c)) {}
 
-		inline const decltype(ptr)& get() const {
+		inline decltype(ptr)& get() {
 			return ptr;
 		}
 	};
@@ -33,5 +33,5 @@ namespace RavEngine {
 	class AccessDelete {};
 	
 	template<typename T>
-	class AccessCreate {};
+	class AccessCreate {};*/
 }

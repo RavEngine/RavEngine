@@ -10,11 +10,12 @@
 #include "PhysicsSolver.hpp"
 #include "RenderEngine.hpp"
 #include "DataStructures.hpp"
-#include "SystemManager.hpp"
 #include "SpinLock.hpp"
 #include <plf_list.h>
 #include "AudioSource.hpp"
 #include "FrameData.hpp"
+#include <taskflow/taskflow.hpp>
+#include "SystemManager.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -41,7 +42,7 @@ namespace RavEngine {
 		iter_map iterator_map;
 		struct systaskpair{
 			tf::Task task;
-			const SystemEntry* system;
+			const SystemEntry<World>* system;
 			bool isTimed = false;
 		};
 		phmap::flat_hash_map<ctti_t, systaskpair> graphs;
@@ -59,7 +60,7 @@ namespace RavEngine {
 		
 		void RebuildTaskGraph();
 		
-		std::chrono::time_point<SystemManager::clock_t> time_now = SystemManager::clock_t::now();
+		std::chrono::time_point<clock_t> time_now = clock_t::now();
 		float currentFPSScale = 0.01;
 		
 		//Entity list
@@ -125,7 +126,7 @@ namespace RavEngine {
 			return tmp;
 		}
 		
-		SystemManager systemManager;
+		SystemManager<World> systemManager;
 		
 		/**
 		* Initializes the physics-related Systems.

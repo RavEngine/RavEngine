@@ -23,6 +23,11 @@ namespace RavEngine {
 			arr[i++] = &(e->GetAllComponentsOfType<T_inst>());
 		}
 
+		template<typename T>
+		inline const Ref<T> ConvertOne(Entity::entry_type* input) {
+			return std::static_pointer_cast<T>(*input->begin());
+		}
+
 	public:
 		inline std::pair<World::entry_type::iterator, World::entry_type::iterator> GetIterators() const{
 			return std::make_pair(QueryResult->begin(), QueryResult->end());
@@ -42,6 +47,17 @@ namespace RavEngine {
 	template<typename T, typename ... A>
 	class QueryIteratorAND : public QueryIterator<T> {
 	public:
+
+		template<typename System>
+		inline void TickWrapper(Ref<System> system, A ... args) {
+			system->Tick(1.0, args...);
+		}
+
+		template<typename System>
+		inline void unpack(Ref<System> system, Entity::entry_type** arr) {
+			TickWrapper(system, (std::static_pointer_cast<A>(*++arr))...);
+		}
+
 		template<typename System>
 		inline void TickEntity(Ref<RavEngine::Component> c, World* world, Ref<System> system) const{
 			Ref<Entity> e = c->getOwner().lock();
@@ -67,11 +83,13 @@ namespace RavEngine {
 
 				if (passesCheck) {
 					auto fpsScale = world->getCurrentFPSScale();
+					unpack(system, query_results.data());
 
 					// this is really dumb and cannot remain like this
 					// 
 					// TODO: some variadic template magic?
-					if constexpr (n_args == 0) {
+					//system->Tick(fpsScale,(ConvertOne<A>(query_results),...))
+					/*if constexpr (n_args == 0) {
 						system->Tick(fpsScale, 
 							*(query_results[0]->begin())
 						);
@@ -99,7 +117,7 @@ namespace RavEngine {
 					}
 					else {
 						static_assert(n_args > 3, "Too many arguments to system!");
-					}
+					}*/
 				}
 
 			}

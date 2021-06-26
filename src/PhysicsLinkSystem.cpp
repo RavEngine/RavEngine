@@ -10,7 +10,7 @@
 #include "Entity.hpp"
 using namespace RavEngine;
 
-void PhysicsLinkSystemRead::Tick(float fpsScale, AccessRead<RigidBodyDynamicComponent> c, AccessReadWrite<Transform> tr) {
+void PhysicsLinkSystemRead::Tick(float fpsScale, const Ref<RigidBodyDynamicComponent> c, Ref<Transform> tr) {
         //physx requires reads and writes to be sequential
         
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
@@ -24,7 +24,7 @@ void PhysicsLinkSystemRead::Tick(float fpsScale, AccessRead<RigidBodyDynamicComp
         transform->SetWorldRotation(rot);
 }
 
-void PhysicsLinkSystemWrite::Tick(float fpsScale, AccessReadWrite<PhysicsBodyComponent> c, AccessRead<Transform> tr) {
+void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<PhysicsBodyComponent> c, const Ref<Transform> tr) {
 
         //physx requires reads and writes to be sequential
 

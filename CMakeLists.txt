@@ -37,7 +37,6 @@ if(MSVC)
 	set(CMAKE_SHARED_LIBRARY_PREFIX "")
 	add_definitions(/MP)
 	add_definitions(/Qpar)
-	list(APPEND EXTRA_LIBS vcruntime user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 shell32)
 endif()
 
 # ==================== Dependencies =====================
@@ -206,6 +205,7 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/resonance-audio/third_party/eigen"
 	"${DEPS_DIR}/resonance-audio/"
 	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
+	"${DEPS_DIR}/boost"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	

@@ -195,7 +195,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	}
 	
 	//update time
-	time_now = SystemManager::clock_t::now();
+	time_now = clock_t::now();
 	
 	//execute and wait
 	App::executor.run(masterTasks).wait();
@@ -221,7 +221,7 @@ bool RavEngine::World::InitPhysics() {
 void World::RebuildTaskGraph(){
 	masterTasks.clear();
 	
-	auto add_system_to_tick = [&](const SystemEntry& system, ctti_t ID, SystemManager::TimedSystem* ts = nullptr){
+	auto add_system_to_tick = [&](const SystemEntry<World>& system, ctti_t ID, SystemManager<World>::TimedSystem* ts = nullptr){
 
 		auto taskpair = system.QueryTypes(ID, iterator_map, masterTasks, this);
 		graphs[ID] = {
