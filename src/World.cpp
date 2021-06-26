@@ -332,7 +332,7 @@ void World::FillFramedata(){
 		if (e){
 			auto m = static_pointer_cast<StaticMesh>(e);
 			auto ptr = e->getOwner().lock();
-			if (ptr){
+			if (ptr && m->Enabled){
 				auto pair = make_tuple(m->getMesh(), m->GetMaterial());
 				auto mat = ptr->transform()->CalculateWorldMatrix();
 				auto& item = current->opaques[pair];
@@ -346,7 +346,7 @@ void World::FillFramedata(){
 		if(e){
 			auto m = static_pointer_cast<SkinnedMeshComponent>(e);
 			auto ptr = e->getOwner().lock();
-			if (ptr){
+			if (ptr && m->Enabled){
 				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
 				auto mat = ptr->transform()->CalculateWorldMatrix();
 				auto& item = current->skinnedOpaques[pair];
@@ -355,9 +355,6 @@ void World::FillFramedata(){
 				// write the pose if there is one
 				if (auto animator = ptr->GetComponent<AnimatorComponent>()){
 					item.skinningdata.push_back(animator.value()->GetSkinningMats());
-				}
-				else{
-					//if there is no pose, write identity matrices
 				}
 				item.mtx.unlock();
 			}
