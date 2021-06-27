@@ -8,6 +8,7 @@
 #include "function.hpp"
 #include <taskflow/taskflow.hpp>
 #include "ComponentStore.hpp"
+#include "Entity.hpp"
 
 #include <boost/function_types/function_type.hpp>
 #include <boost/function_types/parameter_types.hpp>
@@ -79,15 +80,92 @@ struct SystemEntry{
 	template <typename Func, size_t... Inds>
 	struct ArgExtractor<Func, std::integer_sequence<size_t, Inds...> >
 	{
+		/**
+		* Helper method used in fold expression for querying everything within a QueryIterator
+		*/
+		template<size_t n>
+		inline const void WriteOne(std::array<Entity::entry_type*, n>& arr, const Ref<Entity> e, int& i) const {
+			arr[i++] = &(e->GetAllComponentsOfType<typename ArgType<Func, i>::element_type>());
+		}
+
 		template<typename System>
 		inline void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
-			std::string typeNames[] = { typeid(ArgType<Func, Inds>).name()... };
-			for (auto const& name : typeNames)
-				std::cout << name << " ";
-			std::cout << std::endl;
+			Ref<Entity> e = c->getOwner().lock();
+			if (e) {
+				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
+				static_assert(n_args > 0, "System must take at least one component parameter");
+				std::array<Entity::entry_type*, n_args> query_results;
+
+				// this is extremely stupid...
+				if constexpr (n_args > 0) {
+					query_results[0] = &e->GetAllComponentsOfType<typename ArgType<Func, 2>::element_type>();
+				}
+				if constexpr (n_args > 1) {
+					query_results[1] = &e->GetAllComponentsOfType<typename ArgType<Func, 3>::element_type>();
+				}
+				if constexpr (n_args > 2) {
+					query_results[2] = &e->GetAllComponentsOfType<typename ArgType<Func, 4>::element_type>();
+				}
+				if constexpr (n_args > 3) {
+					query_results[3] = &e->GetAllComponentsOfType<typename ArgType<Func, 5>::element_type>();
+				}
+				if constexpr (n_args > 4) {
+					query_results[4] = &e->GetAllComponentsOfType<typename ArgType<Func, 6>::element_type>();
+				}
+				static_assert (n_args <= 4, "Cannot have more than 5 component queries");
+				
+				// does the check pass?
+				bool passesCheck = true;
+				for (const auto& queryres : query_results) {
+					if (queryres->size() == 0) {
+						passesCheck = false;
+						break;
+					}
+				}
+
+				if (passesCheck) {
+					auto fpsScale = world->getCurrentFPSScale();
+					// call tick
+					if constexpr (n_args == 1) {
+						system->Tick(fpsScale, 
+							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin())
+						);
+					}
+					else if constexpr (n_args == 2) {
+						system->Tick(fpsScale,
+							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin())
+						);
+					}
+					else if constexpr (n_args == 3) {
+						system->Tick(fpsScale,
+							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 4>::element_type>(*query_results[2]->begin())
+						);
+					}
+					else if constexpr (n_args == 4) {
+						system->Tick(fpsScale,
+							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 4>::element_type>(*query_results[2]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 5>::element_type>(*query_results[3]->begin())
+						);
+					}
+					else if constexpr (n_args == 5) {
+						system->Tick(fpsScale,
+							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 4>::element_type>(*query_results[2]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 5>::element_type>(*query_results[3]->begin()),
+							std::static_pointer_cast<typename ArgType<Func, 6>::element_type>(*query_results[4]->begin())
+						);
+					}
+				}
+			}
 		}
 		
-		inline auto UpdateQuery(World* world)
+		inline auto UpdateQuery(World* world) const
 		{
 			// do query
 			auto& query = world->template GetAllComponentsOfType<typename ArgType<Func,2>::element_type>();
