@@ -1,7 +1,6 @@
 #pragma once
 #include "System.hpp"
 #include "RPCComponent.hpp"
-#include "QueryIterator.hpp"
 
 namespace RavEngine {
 	class RPCSystem : public AutoCTTI{
@@ -10,10 +9,6 @@ namespace RavEngine {
             rpc->Swap();
             rpc->ProcessClientRPCs();
             rpc->ProcessServerRPCs();
-		}
-
-		constexpr QueryIteratorAND<RPCComponent> QueryTypes() const {
-			return QueryIteratorAND<RPCComponent>();
 		}
 	};
 }

@@ -12,7 +12,6 @@
 #include "PhysicsBodyComponent.hpp"
 #include "ScriptSystem.hpp"
 #include "CTTI.hpp"
-#include "QueryIterator.hpp"
 
 namespace RavEngine {
 	/**
@@ -26,10 +25,6 @@ namespace RavEngine {
 		physx::PxScene* dynamicsWorld = nullptr;
 		virtual ~PhysicsLinkSystemWrite() {}
 		void Tick(float fpsScale, Ref<PhysicsBodyComponent>, const Ref<Transform>);
-		
-		constexpr QueryIteratorAND<PhysicsBodyComponent,Transform> QueryTypes() const {
-			return QueryIteratorAND<PhysicsBodyComponent, Transform>();
-		}
 	};
 
 	/**
@@ -43,11 +38,7 @@ namespace RavEngine {
 		physx::PxScene* dynamicsWorld = nullptr;
 		virtual ~PhysicsLinkSystemRead() {}
 		void Tick(float fpsScale, const Ref<RigidBodyDynamicComponent>, const Ref<Transform>);
-		
-		constexpr QueryIteratorAND<RigidBodyDynamicComponent, Transform> QueryTypes() const {
-			return QueryIteratorAND<RigidBodyDynamicComponent, Transform>();
-		}
-		
+
 		//must run before write system
 		const System::list_type& MustRunBefore() const {
 			return runbefore;

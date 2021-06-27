@@ -165,7 +165,7 @@ struct SystemEntry{
 			}
 		}
 		
-		inline auto UpdateQuery(World* world) const
+		inline constexpr auto UpdateQuery(World* world) const
 		{
 			// do query
 			auto& query = world->template GetAllComponentsOfType<typename ArgType<Func,2>::element_type>();

@@ -23,7 +23,6 @@
 #include "RPCSystem.hpp"
 #include "AnimatorSystem.hpp"
 #include "SkinnedMeshComponent.hpp"
-#include "QueryIterator.hpp"
 
 using namespace std;
 using namespace RavEngine;
