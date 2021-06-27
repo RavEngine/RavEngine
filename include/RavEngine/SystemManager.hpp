@@ -80,14 +80,6 @@ struct SystemEntry{
 	template <typename Func, size_t... Inds>
 	struct ArgExtractor<Func, std::integer_sequence<size_t, Inds...> >
 	{
-		/**
-		* Helper method used in fold expression for querying everything within a QueryIterator
-		*/
-		template<size_t n>
-		inline const void WriteOne(std::array<Entity::entry_type*, n>& arr, const Ref<Entity> e, int& i) const {
-			arr[i++] = &(e->GetAllComponentsOfType<typename ArgType<Func, i>::element_type>());
-		}
-
 		template<typename System>
 		inline void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
 			Ref<Entity> e = c->getOwner().lock();
