@@ -23,11 +23,6 @@ namespace RavEngine {
 			arr[i++] = &(e->GetAllComponentsOfType<T_inst>());
 		}
 
-		template<typename T>
-		inline const Ref<T> ConvertOne(Entity::entry_type* input) {
-			return std::static_pointer_cast<T>(*input->begin());
-		}
-
 	public:
 		inline std::pair<World::entry_type::iterator, World::entry_type::iterator> GetIterators() const{
 			return std::make_pair(QueryResult->begin(), QueryResult->end());

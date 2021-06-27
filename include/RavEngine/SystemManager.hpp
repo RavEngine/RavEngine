@@ -79,20 +79,20 @@ struct SystemEntry{
 	template <typename Func, size_t... Inds>
 	struct ArgExtractor<Func, std::integer_sequence<size_t, Inds...> >
 	{
+		template<typename System>
+		inline void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
+			std::string typeNames[] = { typeid(ArgType<Func, Inds>).name()... };
+			for (auto const& name : typeNames)
+				std::cout << name << " ";
+			std::cout << std::endl;
+		}
+		
 		inline auto UpdateQuery(World* world)
 		{
 			// do query
-			auto& query = world->GetAllComponentsOfType<ArgType<Func, Inds+1>>();
+			auto& query = world->template GetAllComponentsOfType<typename ArgType<Func,2>::element_type>();
 			// return updated iterators
 			return std::make_pair(query.begin(), query.end());
-		}
-
-		template<typename System>
-		inline void TickEntity(Ref<Component> c, World* world, Ref<System> system) {
-			string typeNames[] = { typeid(ArgType<Func, Inds>).name()... };
-			for (auto const& name : typeNames)
-				std::cout << name << " ";
-			std::cout << endl;
 		}
 	};
 
@@ -106,7 +106,7 @@ struct SystemEntry{
 			// get the function parameter types
 
 			auto MakeArgExtractor = [&](auto f) {
-				return ArgExtractor<decltype(f), make_index_sequence<Arity<decltype(f)>::value> >();
+				return ArgExtractor<decltype(f), std::make_index_sequence<Arity<decltype(f)>::value>>();
 			};
 			auto argex = MakeArgExtractor(&T::Tick);
 			auto begin_end = argex.UpdateQuery(world);
