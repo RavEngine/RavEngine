@@ -14,10 +14,8 @@
 #include <boost/function_types/parameter_types.hpp>
 #include <boost/function_types/result_type.hpp>
 #include <boost/function_types/function_arity.hpp>
-#include <algorithm>
-#include <type_traits>
-#include <typeinfo>
-#include <tuple>
+#include <boost/hana/ext/std/integer_sequence.hpp>
+#include <boost/hana/for_each.hpp>
 #include <utility>
 #include <iostream>
 
@@ -87,24 +85,11 @@ struct SystemEntry{
 				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
 				static_assert(n_args > 0, "System must take at least one component parameter");
 				std::array<Entity::entry_type*, n_args> query_results;
-
-				// this is extremely stupid...
-				if constexpr (n_args > 0) {
-					query_results[0] = &e->GetAllComponentsOfType<typename ArgType<Func, 2>::element_type>();
-				}
-				if constexpr (n_args > 1) {
-					query_results[1] = &e->GetAllComponentsOfType<typename ArgType<Func, 3>::element_type>();
-				}
-				if constexpr (n_args > 2) {
-					query_results[2] = &e->GetAllComponentsOfType<typename ArgType<Func, 4>::element_type>();
-				}
-				if constexpr (n_args > 3) {
-					query_results[3] = &e->GetAllComponentsOfType<typename ArgType<Func, 5>::element_type>();
-				}
-				if constexpr (n_args > 4) {
-					query_results[4] = &e->GetAllComponentsOfType<typename ArgType<Func, 6>::element_type>();
-				}
-				static_assert (n_args <= 4, "Cannot have more than 5 component queries");
+				
+				constexpr auto indseq = std::make_integer_sequence<int, n_args>();
+				boost::hana::for_each(indseq, [&](const auto i){
+					query_results[i] = &e->GetAllComponentsOfType<typename ArgType<Func, i+2>::element_type>();
+				});
 				
 				// does the check pass?
 				bool passesCheck = true;
