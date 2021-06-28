@@ -85,7 +85,7 @@ struct SystemEntry{
 
 		// evaluates an entity to determine if it passes the query test, and calls tick if it does
 		template<typename System>
-		inline constexpr void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
+		inline const void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
 			Ref<Entity> e = c->getOwner().lock();
 			if (e) {
 				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
