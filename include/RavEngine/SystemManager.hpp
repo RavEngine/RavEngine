@@ -17,7 +17,6 @@
 #include <boost/hana/ext/std/integer_sequence.hpp>
 #include <boost/hana/for_each.hpp>
 #include <utility>
-#include <iostream>
 
 namespace RavEngine{
 
@@ -65,7 +64,7 @@ namespace RavEngine{
 
 template<typename World>
 struct SystemEntry{
-	
+
 	// function type information extraction
 	template <typename FuncType>
 	using Arity = boost::function_types::function_arity<FuncType>;
@@ -78,8 +77,15 @@ struct SystemEntry{
 	template <typename Func, size_t... Inds>
 	struct ArgExtractor<Func, std::integer_sequence<size_t, Inds...> >
 	{
+		// this wrapper enables expanding into the function
+		template<typename System, size_t n, auto ... Is>
+		inline constexpr void TickWrapper(float fpsScale, Ref<System> system, const std::array<Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
+			system->Tick(fpsScale, std::static_pointer_cast<typename ArgType<Func, Is + 2>::element_type>(*query_results[Is]->begin())...);
+		}
+
+		// evaluates an entity to determine if it passes the query test, and calls tick if it does
 		template<typename System>
-		inline void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
+		inline constexpr void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
 			Ref<Entity> e = c->getOwner().lock();
 			if (e) {
 				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
@@ -102,46 +108,12 @@ struct SystemEntry{
 
 				if (passesCheck) {
 					auto fpsScale = world->getCurrentFPSScale();
-					// call tick
-					if constexpr (n_args == 1) {
-						system->Tick(fpsScale, 
-							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin())
-						);
-					}
-					else if constexpr (n_args == 2) {
-						system->Tick(fpsScale,
-							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin())
-						);
-					}
-					else if constexpr (n_args == 3) {
-						system->Tick(fpsScale,
-							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 4>::element_type>(*query_results[2]->begin())
-						);
-					}
-					else if constexpr (n_args == 4) {
-						system->Tick(fpsScale,
-							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 4>::element_type>(*query_results[2]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 5>::element_type>(*query_results[3]->begin())
-						);
-					}
-					else if constexpr (n_args == 5) {
-						system->Tick(fpsScale,
-							std::static_pointer_cast<typename ArgType<Func, 2>::element_type>(*query_results[0]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 3>::element_type>(*query_results[1]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 4>::element_type>(*query_results[2]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 5>::element_type>(*query_results[3]->begin()),
-							std::static_pointer_cast<typename ArgType<Func, 6>::element_type>(*query_results[4]->begin())
-						);
-					}
+					TickWrapper(fpsScale, system, query_results, indseq);
 				}
 			}
 		}
 		
+		// update iterators
 		inline constexpr auto UpdateQuery(World* world) const
 		{
 			// do query
