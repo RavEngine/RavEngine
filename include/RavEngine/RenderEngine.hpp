@@ -244,17 +244,11 @@ namespace RavEngine {
 		 @param components the componetstore of the world to get the lights from
 		 @return true light draw calls were executed, false otherwise
 		 */
-		bool needsRebind = false;	// if there is no geometry drawn, do not rebind
 		template<typename LightType, class Container>
 		inline bool DrawLightsOfType(const Container& lights){
 			//must set before changing shaders
 			if (lights.size() == 0){
 				return false;
-			}
-			if (needsRebind) {
-				for (int i = 0; i < gbufferSize; i++) {
-					bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-				}
 			}
 			
 			constexpr auto stride = LightType::InstancingStride();
@@ -283,6 +277,9 @@ namespace RavEngine {
 			LightType::SetState();
 			
 			//execute instance draw call
+			for (int i = 0; i < gbufferSize; i++) {
+				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+			}
 			LightType::Draw(Views::Lighting);	//view 2 is the lighting pass
 			
 			return true;

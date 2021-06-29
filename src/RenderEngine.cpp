@@ -491,11 +491,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(int i = 0; i < Views::Count; i++){
 		bgfx::setViewTransform(i, viewmat, projmat);
 	}
-	needsRebind = false;
-	//bind gbuffer textures
-	for (int i = 0; i < BX_COUNTOF(attachments); i++) {
-		bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-	}
+	
 	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
@@ -523,9 +519,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 			bindfunc();
 			
+			//bind gbuffer textures
+			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
+				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+			}
+			
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 
-			needsRebind = true;
 		}
 	};
 		
@@ -615,17 +615,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 
 	// Lighting pass
-	bool al = DrawLightsOfType<AmbientLight>(fd.ambients);
-	bool dl = DrawLightsOfType<DirectionalLight>(fd.directionals);
-	bool pl = DrawLightsOfType<SpotLight>(fd.spots);
-	bool sl = DrawLightsOfType<PointLight>(fd.points);
+	DrawLightsOfType<AmbientLight>(fd.ambients);
+	DrawLightsOfType<DirectionalLight>(fd.directionals);
+	DrawLightsOfType<SpotLight>(fd.spots);
+	DrawLightsOfType<PointLight>(fd.points);
 		
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
-	if (al || dl || pl || sl ){
-		bgfx::setTexture(1, gBufferSamplers[3], attachments[3]);
-	}
-	
+	bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
+
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
