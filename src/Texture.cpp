@@ -38,8 +38,24 @@ void Texture::Bind(int id, const SamplerUniform &uniform){
 }
 
 void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, int flags){
-	auto format = bgfx::TextureFormat::RGBA8;
-
+	bgfx::TextureFormat::Enum format;
+	switch (numChannels) {
+	case 1:
+		format = bgfx::TextureFormat::R8;
+		break;
+	case 2:
+		format = bgfx::TextureFormat::RG8;
+		break;
+	case 3:
+		format = bgfx::TextureFormat::RGB8;
+		break;
+	case 4: 
+		format = bgfx::TextureFormat::RGBA8;
+		break;
+	default:
+		Debug::Fatal("Number of channels must be [1,4], got {}",numChannels);
+	}
+	
 	auto uncompressed_size = width * height * numChannels * numlayers;
 	const bgfx::Memory* textureData = (data == nullptr) ? nullptr : bgfx::copy(data, uncompressed_size);
 	texture = bgfx::createTexture2D(width,height,hasMipMaps,numlayers,format,flags,textureData);
