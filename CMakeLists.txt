@@ -178,13 +178,15 @@ if(APPLE)
 	add_definitions("-x objective-c++")
 	set(CMAKE_EXE_LINKER_FLAGS "-framework ServiceManagement -framework Foundation -framework Cocoa -framework Metal -framework QuartzCore")
 endif()
-file(GLOB SOURCES "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" "src/*.cpp")
+file(GLOB SOURCES "src/*.cpp")
+file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )
 
 # register the library
-add_library("${PROJECT_NAME}" ${SOURCES} ${MM_SOURCES} "deps/parallel-hashmap/phmap.natvis")
+add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} "deps/parallel-hashmap/phmap.natvis")
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
+target_precompile_headers("${PROJECT_NAME}" PRIVATE ${HEADERS} PUBLIC ${HEADERS})
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
@@ -383,6 +385,16 @@ macro(group_in destination targets)
 	endforeach()
 endmacro()
 
+# unity builds
+macro(enable_unity targets)
+	foreach(target ${targets})
+		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
+	endforeach()
+endmacro()
+enable_unity("LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;PhysXVehicle;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;SDL2main;bgfx;bx;Detour;ozz_animation;ozz_animation_offline;\
+ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;IrrXML;json;libopus;")
+
+# project organization
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;crypto;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\

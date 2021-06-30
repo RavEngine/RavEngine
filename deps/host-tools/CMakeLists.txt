@@ -19,3 +19,11 @@ add_subdirectory(../bgfx.cmake ${CMAKE_BINARY_DIR}/bgfx.cmake)
 set(protobuf_BUILD_TESTS OFF CACHE INTERNAL "")
 set(protobuf_MODULE_COMPATIBLE ON CACHE INTERNAL "")
 add_subdirectory(../GameNetworkingSockets/protobuf/cmake ${CMAKE_BINARY_DIR}/protobuf)
+
+# unity builds
+macro(enable_unity targets)
+	foreach(target ${targets})
+		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
+	endforeach()
+endmacro()
+enable_unity("edtaa3;etc1;etc2;iqa;pvrtc;mesa;protoc")
