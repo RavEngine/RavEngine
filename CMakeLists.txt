@@ -186,7 +186,7 @@ add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} "deps/parallel
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
-target_precompile_headers("${PROJECT_NAME}" PRIVATE ${HEADERS} PUBLIC ${HEADERS})
+#target_precompile_headers("${PROJECT_NAME}" PRIVATE ${HEADERS} PUBLIC ${HEADERS})
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
