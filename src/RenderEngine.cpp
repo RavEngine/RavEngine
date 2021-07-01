@@ -211,7 +211,19 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 #ifdef __linux__
 	settings.type = bgfx::RendererType::Vulkan;	//use Vulkan on Linux
 #elif defined _WIN32
-	settings.type = bgfx::RendererType::Direct3D12;
+	{
+		constexpr auto maxRenderers = 6;
+		bgfx::RendererType::Enum supportedRenderers[maxRenderers];
+		auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
+
+		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Direct3D12)) {
+			settings.type = bgfx::RendererType::Direct3D12;
+		}
+		else {
+			settings.type = bgfx::RendererType::Direct3D11;
+		}
+	}
+	
 #endif
 
 	settings.callback = new bgfx_msghandler;
