@@ -186,7 +186,25 @@ add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} "deps/parallel
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
-#target_precompile_headers("${PROJECT_NAME}" PRIVATE ${HEADERS} PUBLIC ${HEADERS})
+target_precompile_headers("${PROJECT_NAME}" PRIVATE 
+	"<phmap.h>"
+	"<vector>"
+	"<algorithm>"
+	"<functional>"
+	"<thread>"
+	"<atomic>"
+	"<memory>"
+	"<RavEngine/CTTI.hpp>"
+	"<optional>"
+	"<concurrentqueue.h>"
+	"<mutex>"
+	"<chrono>"
+	"<plf_list.h>"
+	"<array>"
+	"<string>"
+	"<tuple>"
+	"<fmt/format.h>"
+)
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
@@ -267,8 +285,6 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 if(LINUX)
 	target_link_libraries("${PROJECT_NAME}" PRIVATE "stdc++fs")
 endif()
-
-#target_link_libraries("${PROJECT_NAME}" PUBLIC "SnippetUtils")
 
 # copy DLLs
 if (WIN32)

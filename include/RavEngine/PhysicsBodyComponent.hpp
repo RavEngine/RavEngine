@@ -5,7 +5,6 @@
 #include <PxRigidDynamic.h>
 #include <PxRigidStatic.h>
 #include <PxScene.h>
-#include <iostream>
 #include <functional>
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
