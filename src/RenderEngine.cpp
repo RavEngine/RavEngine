@@ -216,8 +216,8 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 		bgfx::RendererType::Enum supportedRenderers[maxRenderers];
 		auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
 
-		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Direct3D12)) {
-			settings.type = bgfx::RendererType::Direct3D12;
+		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Vulkan)) {
+			settings.type = bgfx::RendererType::Vulkan;
 		}
 		else {
 			settings.type = bgfx::RendererType::Direct3D11;
@@ -514,6 +514,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				//get the stride for the material (only needs the matrix, all others are uniforms?
 			constexpr auto stride = closest_multiple_of(16 * sizeof(float), 16);
 			bgfx::InstanceDataBuffer idb;
+			Debug::Assert(bgfx::getAvailInstanceDataBuffer(row.second.items.size(), stride) == row.second.items.size(), "Instance data buffer does not have enough space!");
 			bgfx::allocInstanceDataBuffer(&idb, row.second.items.size(), stride);
 			size_t offset = 0;
 			for (const auto& mesh : row.second.items) {
@@ -541,25 +542,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		}
 	};
 		
-	//Deferred geometry pass
-	if (fd.opaques.size() > 0) {
-		auto row = fd.opaques.begin();
-		// exec compute shader that writes identity matrix into outputs
-			// 1 invocation per vertex per object
-				// no inputs
-				// output buffer A: posed output transformations for vertices
-		bgfx::setBuffer(0, opaquemtxhandle, bgfx::Access::Write);
-		float values[4] = {0,0,0,0};	// pretend there is only one object being 'skinned', the shader will wrap around to only read this matrix
-		numRowsUniform.SetValues(&values, 1);
-	}
 	for(const auto& row : fd.opaques){
-		execdraw(row, [](const auto& row) {
-			//do nothing here
-		}, []() {
+		execdraw(row, [this](const auto& row) {
+			// do nothing
+		}, [this]() {
+			float values[4] = { 0,0,0,0 };	// pretend there is only one object being 'skinned', the shader will wrap around to only read this matrix
+			numRowsUniform.SetValues(&values, 1);
 			bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
 		});
 	}
-	
 	
 	uint16_t idx = 0;
 	for (const auto& row : fd.skinnedOpaques) {
@@ -580,9 +571,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 			bgfx::setBuffer(0, computeOutput.handle, bgfx::Access::Write);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
-			
-			
-			
+		
 			//pose SOA values
 			if(row.second.skinningdata.size() > 0){
 				//convert to float from double

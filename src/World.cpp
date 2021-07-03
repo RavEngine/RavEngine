@@ -328,35 +328,31 @@ void World::FillFramedata(){
 	
 	//sort into the hashmap
 	auto sort = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [this](Ref<Component> e){
-		if (e){
-			auto m = static_pointer_cast<StaticMesh>(e);
-			auto ptr = e->getOwner().lock();
-			if (ptr && m->Enabled){
-				auto pair = make_tuple(m->getMesh(), m->GetMaterial());
-				auto mat = ptr->transform()->CalculateWorldMatrix();
-				auto& item = current->opaques[pair];
-				item.mtx.lock();
-				item.items.push_back(mat);
-				item.mtx.unlock();
-			}
+		auto m = static_pointer_cast<StaticMesh>(e);
+		auto ptr = e->getOwner().lock();
+		if (ptr && m->Enabled){
+			auto pair = make_tuple(m->getMesh(), m->GetMaterial());
+			auto mat = ptr->transform()->CalculateWorldMatrix();
+			auto& item = current->opaques[pair];
+			item.mtx.lock();
+			item.items.push_back(mat);
+			item.mtx.unlock();
 		}
 	});
 	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [this](Ref<Component> e){
-		if(e){
-			auto m = static_pointer_cast<SkinnedMeshComponent>(e);
-			auto ptr = e->getOwner().lock();
-			if (ptr && m->Enabled){
-				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
-				auto mat = ptr->transform()->CalculateWorldMatrix();
-				auto& item = current->skinnedOpaques[pair];
-				item.mtx.lock();
-				item.items.push_back(mat);
-				// write the pose if there is one
-				if (auto animator = ptr->GetComponent<AnimatorComponent>()){
-					item.skinningdata.push_back(animator.value()->GetSkinningMats());
-				}
-				item.mtx.unlock();
+		auto m = static_pointer_cast<SkinnedMeshComponent>(e);
+		auto ptr = e->getOwner().lock();
+		if (ptr && m->Enabled){
+			auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
+			auto mat = ptr->transform()->CalculateWorldMatrix();
+			auto& item = current->skinnedOpaques[pair];
+			item.mtx.lock();
+			item.items.push_back(mat);
+			// write the pose if there is one
+			if (auto animator = ptr->GetComponent<AnimatorComponent>()){
+				item.skinningdata.push_back(animator.value()->GetSkinningMats());
 			}
+			item.mtx.unlock();
 		}
 	});
 	init.precede(sort,sortskinned);

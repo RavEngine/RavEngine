@@ -65,12 +65,14 @@ bool RavEngine::PhysicsCollider::GetQueryable() const
 }
 
 PhysicsCollider::~PhysicsCollider() {
-	auto actor = collider->getActor();
-	if (actor != nullptr){
-		actor->detachShape(*collider);
-	}
-	else{
-		collider->release();
+	if (collider != nullptr) {
+		auto actor = collider->getActor();
+		if (actor != nullptr) {
+			actor->detachShape(*collider);
+		}
+		else {
+			collider->release();
+		}
 	}
 }
 
