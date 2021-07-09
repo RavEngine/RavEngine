@@ -429,6 +429,7 @@ RenderEngine::RenderEngine() {
 	}
 
 	numRowsUniform = Vector4Uniform("NumObjects");
+	computeOffsetsUniform = Vector4Uniform("ComputeOffsets");
 	//create samplers
 	constexpr char const* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth"};
 	for (int i = 0; i < BX_COUNTOF(buffersamplers); i++) {
@@ -603,6 +604,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				values[2] = static_cast<float>(skeleton->getBindposes().size());
 				values[3] = static_cast<float>(poseInput.startVertex);
 				numRowsUniform.SetValues(&values, 1);
+				
+				float offsets[4] = {static_cast<float>(computeOutput.startVertex),0,0,0};
+				computeOffsetsUniform.SetValues(&offsets, 1);
 				
 				bgfx::setBuffer(1, poseInput.handle, bgfx::Access::Read);
 				bgfx::dispatch(Views::DeferredGeo, skinningShaderHandle, std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);	//objects x number of vertices to pose

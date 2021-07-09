@@ -361,7 +361,7 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 		add_custom_command(
 			PRE_BUILD
 			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
-			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "${SHADERC_CMD}"
+			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "${SHADERC_CMD}" "${eng_dir}/shaders/ravengine_shader.glsl"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
 			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
 			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"

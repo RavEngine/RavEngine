@@ -237,7 +237,7 @@ namespace RavEngine {
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
 		FrameData fd;
-		Vector4Uniform numRowsUniform;
+		Vector4Uniform numRowsUniform, computeOffsetsUniform;
 		
 		/**
 		 Execute instanced draw calls for a given light type

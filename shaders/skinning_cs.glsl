@@ -6,6 +6,7 @@ BUFFER_RO(pose, vec4, 1);	// 4x4 matrices
 BUFFER_RO(weights, vec2, 2);	// index, influence
 
 uniform vec4 NumObjects;		// x = num objects, y = num vertices, z = num bones, w = offset into transient buffer
+uniform vec4 ComputeOffsets;	// x = output offset, y = unused, z = unused, w = unused
 
 const int NUM_INFLUENCES = 4;
 
@@ -43,7 +44,7 @@ void main()
 		}
 		
 		//destination to write the matrix
-		const int offset = numVerts * objID * 4 + vertID * 4;	//4x vec4s elements per object
+		const int offset = (vertID * 4 + objID * numVerts * 4) + ComputeOffsets.x * 4;	//4x vec4s elements per object
 		
 		//write matrix
 		for(int i = 0; i < 4; i++){

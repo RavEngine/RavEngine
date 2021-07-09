@@ -11,9 +11,6 @@
 cmake_minimum_required( VERSION 3.0 )
 project(bgfx)
 
-# sets project version from api ver / git rev
-include( cmake/version.cmake )
-
 set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,6 +57,9 @@ elseif( NOT IS_ABSOLUTE "${BGFX_DIR}")
 	get_filename_component(BGFX_DIR "${BGFX_DIR}" REALPATH BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
+# sets project version from api ver / git rev
+include( cmake/version.cmake )
+
 include( cmake/shared.cmake )
 include( cmake/bx.cmake )
 include( cmake/bimg.cmake )
@@ -69,7 +69,7 @@ if( BGFX_BUILD_TOOLS )
 	include( cmake/tools.cmake )
 endif()
 
-if(BGFX_BUILD_EXAMPLES)
+if(BGFX_BUILD_EXAMPLES )
 	include( cmake/examples.cmake )
 endif()
 
