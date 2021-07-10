@@ -38,6 +38,7 @@ namespace RavEngine {
 		void SetLocalPosition(const vector3&);
 		void SetWorldPosition(const vector3&);
 		void LocalTranslateDelta(const vector3&);
+		void WorldTranslateDelta(const vector3&);
 
 		void SetLocalRotation(const quaternion&);
 		void SetWorldRotation(const quaternion&);
@@ -49,6 +50,10 @@ namespace RavEngine {
 		vector3 Forward() const;
 		vector3 Right() const;
 		vector3 Up() const;
+		
+		vector3 WorldForward();
+		vector3 WorldRight();
+		vector3 WorldUp();
 
 		inline bool HasParent() const{
 			return !parent.expired();
@@ -138,6 +143,18 @@ namespace RavEngine {
 		return (quaternion)rotation * vector3_right;
 	}
 
+	inline vector3 Transform::WorldForward(){
+		return GetWorldRotation() * vector3_forward;
+	}
+
+	inline vector3 Transform::WorldRight(){
+		return GetWorldRotation() * vector3_right;
+	}
+
+	inline vector3 Transform::WorldUp(){
+		return GetWorldRotation() * vector3_up;
+	}
+
 	/**
 	Translate the transform in a direction in local (parent) space. This will add to its current position
 	@param delta the change to apply
@@ -146,6 +163,10 @@ namespace RavEngine {
 		//set position value
 		MarkAsDirty(this);
 		position = (vector3)position + delta;
+	}
+
+	inline void Transform::WorldTranslateDelta(const vector3& delta){
+		SetWorldPosition(GetWorldPosition() + delta);
 	}
 
 	/**
