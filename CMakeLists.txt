@@ -102,7 +102,11 @@ endif()
 	set(RENDER_METAL OFF CACHE INTERNAL "")
 	set(VIDEO_VULKAN OFF CACHE INTERNAL "")
 	set(VIDEO_VIVANTE OFF CACHE INTERNAL "")
+	if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+		set(VIDEO_COCOA ON CACHE INTERNAL "")
+	else()
 	set(VIDEO_COCOA OFF CACHE INTERNAL "")
+	endif()
 	set(VIDEO_DUMMY OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
@@ -200,6 +204,7 @@ add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} "deps/parallel
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
+if (NOT APPLE)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
@@ -219,6 +224,7 @@ target_precompile_headers("${PROJECT_NAME}" PRIVATE
 	"<tuple>"
 	"<fmt/format.h>"
 )
+endif()
 
 # include paths
 target_include_directories("${PROJECT_NAME}" 
@@ -421,8 +427,14 @@ macro(enable_unity targets)
 		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
 	endforeach()
 endmacro()
-enable_unity("LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;PhysXVehicle;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;SDL2main;bgfx;bx;Detour;ozz_animation;ozz_animation_offline;\
-ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;IrrXML;json;libopus;")
+set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;PhysXVehicle;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;SDL2main;bx;Detour;ozz_animation;ozz_animation_offline;\
+ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;IrrXML;json;libopus;DebugUtils;DetourCrowd;DetourTileCache")
+
+if (MSVC OR LINUX)
+	set(platform_unity "bgfx")
+endif()
+
+enable_unity("${all_unity};${platform_unity}")
 
 # project organization
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
