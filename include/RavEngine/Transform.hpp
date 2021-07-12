@@ -47,9 +47,9 @@ namespace RavEngine {
 		void SetLocalScale(const vector3&);
 		void LocalScaleDelta(const vector3&);
 
-		vector3 Forward() const;
-		vector3 Right() const;
-		vector3 Up() const;
+		vector3 Forward();
+		vector3 Right();
+		vector3 Up();
 		
 		vector3 WorldForward();
 		vector3 WorldRight();
@@ -59,15 +59,15 @@ namespace RavEngine {
 			return !parent.expired();
 		}
 
-		vector3 GetLocalPosition() const;
+		vector3 GetLocalPosition();
 		vector3 GetWorldPosition();
 
-		quaternion GetLocalRotation() const;
+		quaternion GetLocalRotation();
 		quaternion GetWorldRotation();
 
-		vector3 GetLocalScale() const;
+		vector3 GetLocalScale();
 
-		matrix4 GenerateLocalMatrix() const;
+		matrix4 GenerateLocalMatrix();
 
 		/**
 		Get the matrix list of all the parents. 
@@ -88,13 +88,13 @@ namespace RavEngine {
 		void RemoveChild(const WeakRef<Transform>& child);
 
 	protected:
-		Atomic<vector3> position;
-		Atomic<quaternion> rotation;
-		Atomic<vector3> scale;
-		Atomic<matrix4> matrix;
+		LockFreeAtomic<vector3> position;
+		LockFreeAtomic<quaternion> rotation;
+		LockFreeAtomic<vector3> scale;
+		LockFreeAtomic<matrix4> matrix;
 		
 		SpinLock childModifyLock;
-		Atomic<bool> isDirty = false;
+		std::atomic<bool> isDirty = false;
 		
 		inline void MarkAsDirty(Transform* root) const{
 			root->childModifyLock.lock();
@@ -118,28 +118,28 @@ namespace RavEngine {
 	Construct a transformation matrix out of this transform
 	@return glm matrix representing this transform
 	*/
-	inline matrix4 Transform::GenerateLocalMatrix() const{
+	inline matrix4 Transform::GenerateLocalMatrix(){
 		return glm::translate(matrix4(1), (vector3)position) * glm::toMat4((quaternion)rotation) * glm::scale(matrix4(1), (vector3)scale);
 	}
 
 	/**
 	@return the vector pointing in the forward direction of this transform
 	*/
-	inline vector3 Transform::Forward() const{
+	inline vector3 Transform::Forward(){
 		return (quaternion)rotation * vector3_forward;
 	}
 
 	/**
 	@return the vector pointing in the up direction of this transform
 	*/
-	inline vector3 Transform::Up() const{
+	inline vector3 Transform::Up(){
 		return (quaternion)rotation * vector3_up;
 	}
 
 	/**
 	@return the vector pointing in the right direction of this transform
 	*/
-	inline vector3 Transform::Right() const{
+	inline vector3 Transform::Right(){
 		return (quaternion)rotation * vector3_right;
 	}
 
@@ -252,17 +252,17 @@ namespace RavEngine {
 		scale = (vector3)scale + delta;
 	}
 
-	inline vector3 Transform::GetLocalPosition() const
+	inline vector3 Transform::GetLocalPosition()
 	{
 		return position;
 	}
 
-	inline quaternion Transform::GetLocalRotation() const
+	inline quaternion Transform::GetLocalRotation()
 	{
 		return rotation;
 	}
 
-	inline vector3 Transform::GetLocalScale() const
+	inline vector3 Transform::GetLocalScale()
 	{
 		return scale;
 	}

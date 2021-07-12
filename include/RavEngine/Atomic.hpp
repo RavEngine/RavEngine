@@ -1,33 +1,45 @@
 #pragma once
-#include <atomic>
+#include "SpinLock.hpp"
 
-template<typename T, typename atomic = std::atomic<T>>
-class Atomic{
+template<typename T>
+class LockFreeAtomic {
+	T value;
+	RavEngine::SpinLock mtx;
 public:
-	//default
-	Atomic(){}
-	
-	//from value
-	Atomic(T v){
-		val.store(v);
-	}
-	
-	//copy
-	Atomic(const Atomic<T,atomic>& other) : Atomic(other){}
-	
+
+	// default
+	LockFreeAtomic() {}
+
+	// from value
+	LockFreeAtomic(const T& value) : value(value) {}
+
 	//copy assignment
-	inline Atomic& operator=(const Atomic<T,atomic> other){
-		if (&other == this){
+	inline LockFreeAtomic& operator=(const LockFreeAtomic<T>& other) {
+		if (&other == this) {
 			return *this;
 		}
-		val.store(other,std::memory_order_relaxed);
+		
+		store(other.value);
+
 		return *this;
 	}
-	
+
 	//conversion operator
-	inline operator T () const{
-		return val.load(std::memory_order_relaxed);
+	inline operator T () {
+		return load();
 	}
-private:
-	atomic val;
+
+	inline T load() {
+		T temp;
+		mtx.lock();
+		temp = value;
+		mtx.unlock();
+		return temp;
+	}
+
+	inline void store(const T& newvalue) {
+		mtx.lock();
+		value = newvalue;
+		mtx.unlock();
+	}	
 };
