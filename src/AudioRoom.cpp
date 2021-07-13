@@ -14,7 +14,7 @@ void AudioRoom::SetListenerTransform(const vector3 &worldpos, const quaternion &
 	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
 }
 
-void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<SpinLock>::entry_type &sources){
+void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<phmap::NullMutex>::entry_type &sources){
 
 	for(const auto& s : sources){
 		Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);

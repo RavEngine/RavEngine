@@ -22,7 +22,7 @@ namespace RavEngine {
 	class PhysicsBodyComponent;
 	class World;
 
-	class Entity : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<Entity>, public AutoCTTI {
+	class Entity : public ComponentStore<phmap::NullMutex>, public virtual_enable_shared_from_this<Entity>, public AutoCTTI {
 		friend class World;
 		plf::list<Ref<Component>> PendingSync;
 	protected:

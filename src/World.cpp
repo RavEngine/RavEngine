@@ -327,8 +327,8 @@ void World::FillFramedata(){
 	});
 	
 	//sort into the hashmap
-	auto sort = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [this](Ref<Component> e){
-		auto m = static_pointer_cast<StaticMesh>(e);
+	auto sort = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [this](const Ref<Component>& e){
+		auto m = static_cast<StaticMesh*>(e.get());
 		auto ptr = e->getOwner().lock();
 		if (ptr && m->Enabled){
 			auto pair = make_tuple(m->getMesh(), m->GetMaterial());
@@ -339,8 +339,8 @@ void World::FillFramedata(){
 			item.mtx.unlock();
 		}
 	});
-	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [this](Ref<Component> e){
-		auto m = static_pointer_cast<SkinnedMeshComponent>(e);
+	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [this](const Ref<Component>& e){
+		auto m = static_cast<SkinnedMeshComponent*>(e.get());
 		auto ptr = e->getOwner().lock();
 		if (ptr && m->Enabled){
 			auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
@@ -360,53 +360,45 @@ void World::FillFramedata(){
 	auto copydirs = masterTasks.emplace([this](){
 		auto& dirs = GetAllComponentsOfType<DirectionalLight>();
 		for(const auto& e : dirs){
-			if (e){
-				auto owner = e->getOwner().lock();
-				if (owner){
-					auto d = static_pointer_cast<DirectionalLight>(e);
-					auto rot = owner->transform()->Up();
-					FrameData::PackedDL::tinyvec3 r{
-						static_cast<float>(rot.x),
-						static_cast<float>(rot.y),
-						static_cast<float>(rot.z)
-					};
-					current->directionals.emplace(*d.get(),r);
-				}
+			auto owner = e->getOwner().lock();
+			if (owner){
+				auto d = static_cast<DirectionalLight*>(e.get());
+				auto rot = owner->transform()->Up();
+				FrameData::PackedDL::tinyvec3 r{
+					static_cast<float>(rot.x),
+					static_cast<float>(rot.y),
+					static_cast<float>(rot.z)
+				};
+				current->directionals.emplace(*d,r);
 			}
 		}
 	});
 	auto copyambs = masterTasks.emplace([this](){
 		auto& ambs = GetAllComponentsOfType<AmbientLight>();
 		for(const auto& e : ambs){
-			if (e){
-				auto d = static_pointer_cast<AmbientLight>(e);
-				current->ambients.emplace(*d.get());
-			}
+			auto d = static_cast<AmbientLight*>(e.get());
+			current->ambients.emplace(*d);
 		}
 	});
 	auto copyspots = masterTasks.emplace([this](){
 		auto& spots = GetAllComponentsOfType<SpotLight>();
 		for(const auto& e : spots){
-			if (e){
-				auto d = static_pointer_cast<SpotLight>(e);
-				auto ptr = e->getOwner().lock();
-				if (ptr){
-					auto transform = ptr->transform()->CalculateWorldMatrix();
-					current->spots.emplace(*d.get(),d->CalculateMatrix(transform));
-				}
+			auto d = static_cast<SpotLight*>(e.get());
+			auto ptr = e->getOwner().lock();
+			if (ptr){
+				auto transform = ptr->transform()->CalculateWorldMatrix();
+				current->spots.emplace(*d,d->CalculateMatrix(transform));
 			}
 		}
 	});
 	auto copypoints = masterTasks.emplace([this](){
 		auto& points = GetAllComponentsOfType<PointLight>();
 		for(const auto& e : points){
-			if (e){
-				auto d = static_pointer_cast<PointLight>(e);
-				auto ptr = e->getOwner().lock();
-				if (ptr){
-					auto transform = ptr->transform()->CalculateWorldMatrix();
-					current->points.emplace(*d.get(),d->CalculateMatrix(transform));
-				}
+			auto d = static_cast<PointLight*>(e.get());
+			auto ptr = e->getOwner().lock();
+			if (ptr){
+				auto transform = ptr->transform()->CalculateWorldMatrix();
+				current->points.emplace(*d,d->CalculateMatrix(transform));
 			}
 		}
 	});

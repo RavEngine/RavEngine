@@ -80,7 +80,7 @@ public:
 	 @param nbytes length of the buffer in bytes
 	 @param sources the AudioSource components to calculate for
 	 */
-	void Simulate(float* ptr, size_t nbytes, const ComponentStore<SpinLock>::entry_type& sources);
+	void Simulate(float* ptr, size_t nbytes, const ComponentStore<phmap::NullMutex>::entry_type& sources);
 	
 	/**
 	 @return the dimensions of this room

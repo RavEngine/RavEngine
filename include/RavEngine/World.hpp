@@ -21,7 +21,7 @@ namespace RavEngine {
 	class Entity;
 	class InputManager;
 
-	class World : public ComponentStore<SpinLock>, public virtual_enable_shared_from_this<World>{
+	class World : public ComponentStore<phmap::NullMutex>, public virtual_enable_shared_from_this<World>{
 		friend class AudioPlayer;
 		friend class App;
 	public:
@@ -38,7 +38,7 @@ namespace RavEngine {
 		
 		tf::Taskflow masterTasks;
 		
-		ComponentStore<SpinLock>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend;
+		ComponentStore<phmap::NullMutex>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend;
 		iter_map iterator_map;
 		struct systaskpair{
 			tf::Task task;
