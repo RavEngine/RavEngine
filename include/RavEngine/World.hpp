@@ -47,15 +47,6 @@ namespace RavEngine {
 		};
 		phmap::flat_hash_map<ctti_t, systaskpair> graphs;
 		
-		FrameData f1, f2;
-		FrameData *current = &f1, *inactive = &f2;
-		SpinLock swapmtx;
-		void SwapFrameData(){
-			swapmtx.lock();
-			std::swap(current,inactive);
-			swapmtx.unlock();
-		}
-		
 		void CreateFrameData();
 		
 		void RebuildTaskGraph();
@@ -119,13 +110,6 @@ namespace RavEngine {
 			return currentFPSScale;
 		}
 		
-		const FrameData GetFrameData(){
-			swapmtx.lock();
-			auto tmp = *inactive;
-			swapmtx.unlock();
-			return tmp;
-		}
-		
 		SystemManager<World> systemManager;
 		
 		/**
@@ -160,8 +144,6 @@ namespace RavEngine {
 		}
 
 		virtual ~World() {
-			f1.Clear();
-			f2.Clear();
 			std::cout << "world destructor @ " << this << std::endl;
 		}
 

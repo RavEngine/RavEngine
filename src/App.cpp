@@ -41,6 +41,15 @@ Ref<InputManager> App::inputManager;
 Ref<World> App::renderWorld;
 locked_hashset<Ref<World>,SpinLock> App::loadedWorlds;
 
+STATIC(App::swapmtx1);
+STATIC(App::swapmtx2);
+STATIC(App::f1);
+STATIC(App::f2);
+STATIC(App::f3);
+STATIC(App::current) = &App::f1;
+STATIC(App::inactive) = &App::f2;
+STATIC(App::render) = &App::f3;
+
 std::chrono::duration<double,std::micro> App::min_tick_time(std::chrono::duration<double,std::milli>(1.0/90 * 1000));
 
 // on crash, call this
@@ -224,6 +233,9 @@ App::~App(){
 	GameNetworkingSockets_Kill();
 	Renderer.reset();
 	PHYSFS_deinit();
+	f1.Clear();
+	f2.Clear();
+	f3.Clear();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
 	delete fsi;

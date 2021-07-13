@@ -465,9 +465,7 @@ RenderEngine::RenderEngine() {
 RavEngine::RenderEngine::~RenderEngine()
 {
 	bgfx::destroy(gBuffer);	//automatically destroys attached textures
-	bgfx::destroy(lightingBuffer);
-	fd.Clear();
-	
+	bgfx::destroy(lightingBuffer);	
 }
 
 void RenderEngine::DrawNext(Ref<World> world) {
@@ -490,14 +488,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::touch(Views::Lighting);
 	
 	//copy world framedata into local copy
-	fd = worldOwning->GetFrameData();
+	App::SwapRenderFramedata();
+	auto fd = App::GetRenderFramedata();
 	worldOwning->newFrame = false;	//we are processing this frame now
 	
 	//setup matrices
 	float viewmat[16], projmat[16];
 	
-	copyMat4(glm::value_ptr(fd.viewmatrix),viewmat);
-	copyMat4(glm::value_ptr(fd.projmatrix),projmat);
+	copyMat4(glm::value_ptr(fd->viewmatrix),viewmat);
+	copyMat4(glm::value_ptr(fd->projmatrix),projmat);
 	
 
 	//set the view transform - all entities drawn will use this matrix
@@ -543,7 +542,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		}
 	};
 		
-	for(const auto& row : fd.opaques){
+	for(const auto& row : fd->opaques){
 		execdraw(row, [this](const auto& row) {
 			// do nothing
 		}, [this]() {
@@ -554,7 +553,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
 	uint16_t idx = 0;
-	for (const auto& row : fd.skinnedOpaques) {
+	for (const auto& row : fd->skinnedOpaques) {
 		bgfx::TransientVertexBuffer computeOutput;
 		float values[4];
 		execdraw(row, [&computeOutput, &values, this](const auto& row) {
@@ -620,10 +619,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 
 	// Lighting pass
-	DrawLightsOfType<AmbientLight>(fd.ambients);
-	DrawLightsOfType<DirectionalLight>(fd.directionals);
-	DrawLightsOfType<SpotLight>(fd.spots);
-	DrawLightsOfType<PointLight>(fd.points);
+	DrawLightsOfType<AmbientLight>(fd->ambients);
+	DrawLightsOfType<DirectionalLight>(fd->directionals);
+	DrawLightsOfType<SpotLight>(fd->spots);
+	DrawLightsOfType<PointLight>(fd->points);
 		
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);

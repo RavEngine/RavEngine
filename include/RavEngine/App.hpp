@@ -12,6 +12,7 @@
 #include "AudioPlayer.hpp"
 #include "NetworkManager.hpp"
 #include <SDL_main.h>
+#include "FrameData.hpp"
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -178,6 +179,25 @@ namespace RavEngine {
 			}
 			return value;
 		}
+		
+		static inline FrameData* GetCurrentFramedata(){
+			return current;
+		}
+		
+		static inline FrameData* GetRenderFramedata(){
+			return render;
+		}
+		
+		static inline void SwapCurrentFramedata(){
+			swapmtx1.lock();
+			std::swap(current,inactive);
+			swapmtx1.unlock();
+		}
+		static inline void SwapRenderFramedata(){
+			swapmtx2.lock();
+			std::swap(inactive,render);
+			swapmtx2.unlock();
+		}
 
 	private:
 		static Ref<World> renderWorld;
@@ -188,7 +208,11 @@ namespace RavEngine {
         static std::chrono::duration<double,std::micro> min_tick_time;
 		
 		static locked_hashset<Ref<World>,SpinLock> loadedWorlds;
-			
+		
+		//triple-buffer framedata
+		static FrameData f1, f2, f3;
+		static FrameData *current, *inactive, *render;
+		static SpinLock swapmtx1, swapmtx2;
 	protected:
 		
 		//plays the audio generated in worlds

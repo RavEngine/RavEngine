@@ -579,6 +579,15 @@ if (RAVENGINE_BUILD_TESTS)
 	add_executable("${PROJECT_NAME}_TestBasics" "test/basics.cpp")
 	target_link_libraries("${PROJECT_NAME}_TestBasics" PUBLIC "RavEngine" )
 
+	add_executable("${PROJECT_NAME}_DSPerf" "test/dsperf.cpp")
+	target_link_libraries("${PROJECT_NAME}_DSPerf" PUBLIC "RavEngine")
+
+	set_target_properties("${PROJECT_NAME}_TestBasics" "${PROJECT_NAME}_DSPerf" PROPERTIES 
+		OSX_ARCHITECTURES "arm64;x86_64"
+		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
+	)
+
 	macro(test name executable)
 	add_test(
 		NAME ${name} 

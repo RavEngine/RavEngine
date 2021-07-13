@@ -14,7 +14,6 @@
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <fmt/format.h>
-#include "FrameData.hpp"
 #include "Uniform.hpp"
 
 struct SDL_Window;
@@ -236,7 +235,6 @@ namespace RavEngine {
 		
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
-		FrameData fd;
 		Vector4Uniform numRowsUniform, computeOffsetsUniform;
 		
 		/**

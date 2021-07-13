@@ -304,6 +304,7 @@ void World::FillFramedata(){
 				
 				auto size = App::Renderer->GetBufferSize();
 				cam->SetTargetSize(size.width, size.height);
+				auto current = App::GetCurrentFramedata();
 				current->viewmatrix = cam->GenerateViewMatrix();
 				current->projmatrix = cam->GenerateProjectionMatrix();
 				
@@ -333,6 +334,7 @@ void World::FillFramedata(){
 		if (ptr && m->Enabled){
 			auto pair = make_tuple(m->getMesh(), m->GetMaterial());
 			auto mat = ptr->transform()->CalculateWorldMatrix();
+			auto current = App::GetCurrentFramedata();
 			auto& item = current->opaques[pair];
 			item.mtx.lock();
 			item.items.push_back(mat);
@@ -345,6 +347,7 @@ void World::FillFramedata(){
 		if (ptr && m->Enabled){
 			auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
 			auto mat = ptr->transform()->CalculateWorldMatrix();
+			auto current = App::GetCurrentFramedata();
 			auto& item = current->skinnedOpaques[pair];
 			item.mtx.lock();
 			item.items.push_back(mat);
@@ -369,6 +372,7 @@ void World::FillFramedata(){
 					static_cast<float>(rot.y),
 					static_cast<float>(rot.z)
 				};
+				auto current = App::GetCurrentFramedata();
 				current->directionals.emplace(*d,r);
 			}
 		}
@@ -377,6 +381,7 @@ void World::FillFramedata(){
 		auto& ambs = GetAllComponentsOfType<AmbientLight>();
 		for(const auto& e : ambs){
 			auto d = static_cast<AmbientLight*>(e.get());
+			auto current = App::GetCurrentFramedata();
 			current->ambients.emplace(*d);
 		}
 	});
@@ -387,6 +392,7 @@ void World::FillFramedata(){
 			auto ptr = e->getOwner().lock();
 			if (ptr){
 				auto transform = ptr->transform()->CalculateWorldMatrix();
+				auto current = App::GetCurrentFramedata();
 				current->spots.emplace(*d,d->CalculateMatrix(transform));
 			}
 		}
@@ -398,6 +404,7 @@ void World::FillFramedata(){
 			auto ptr = e->getOwner().lock();
 			if (ptr){
 				auto transform = ptr->transform()->CalculateWorldMatrix();
+				auto current = App::GetCurrentFramedata();
 				current->points.emplace(*d,d->CalculateMatrix(transform));
 			}
 		}
@@ -405,9 +412,10 @@ void World::FillFramedata(){
 	
 	
 	auto swap = masterTasks.emplace([this]{
-		SwapFrameData();
+		App::SwapCurrentFramedata();
 	});
 	auto setup = masterTasks.emplace([this]{
+		auto current = App::GetCurrentFramedata();
 		current->Clear();
 	});
 	setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
