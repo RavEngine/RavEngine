@@ -25,7 +25,7 @@ struct unordered_vector : public std::vector<T>{
 
 template<typename T>
 class unordered_cached_vector : public std::vector<T>{
-	
+protected:
 	phmap::flat_hash_map<size_t, typename std::vector<T>::size_type> offsets;
 	
 public:
@@ -61,6 +61,19 @@ public:
 	inline void contains(const T& value){
 		auto valuehash = std::hash<T>()(value);
 		return offsets.contains(valuehash);
+	}
+};
+
+template<typename T>
+class unordered_deduplicating_vector : public unordered_cached_vector<T>{
+public:
+	
+	inline void insert(const T& value){
+		auto hashcode = std::hash<T>()(value);
+		if (!this->offsets.contains(hashcode)){
+			this->offsets.emplace(hashcode,this->size());
+			this->push_back(value);
+		}
 	}
 };
 

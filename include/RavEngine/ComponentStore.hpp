@@ -6,6 +6,7 @@
 #include "CTTI.hpp"
 #include "Debug.hpp"
 #include <optional>
+#include "unordered_vector.hpp"
 
 //macro for checking type in template
 #define C_REF_CHECK static_assert(std::is_base_of<RavEngine::Component, T>::value, "Template parameter must be a Component subclass");
@@ -14,7 +15,7 @@ namespace RavEngine{
 	template<class lock = phmap::NullMutex>
 	class ComponentStore {
 	public:
-		typedef locked_hashset<Ref<RavEngine::Component>,lock> entry_type;
+		typedef unordered_deduplicating_vector<Ref<RavEngine::Component>> entry_type;
 	protected:
 		typedef locked_hashmap<ctti_t, entry_type,lock> ComponentStructure;
 		
