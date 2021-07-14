@@ -4,6 +4,7 @@
 #include <chrono>
 #include <typeinfo>
 #include <RavEngine/AnimatorComponent.hpp>
+#include <RavEngine/unordered_vector.hpp>
 
 using namespace RavEngine;
 using namespace std;
@@ -22,8 +23,6 @@ static inline clocktype::duration time(const T& func){
 
 template<typename T, typename is_fn, typename es_fn>
 static inline void do_test(const T& ds, const is_fn& insert_func, const es_fn& erase_func){
-	
-	Debug::Log("Begin {} test", typeid(T).name());
 	
 	auto dur = time([&]{
 		// time to add 100K elements
@@ -59,6 +58,7 @@ int main(){
 	
 	// STL vector
 	{
+		Debug::Log("STL vector");
 		std::vector<int> vec;
 		
 		do_test(vec,[&](int i){
@@ -70,6 +70,7 @@ int main(){
 	
 	// ozz vector
 	{
+		Debug::Log("ozz vector");
 		ozz::vector<int> vec;
 		
 		do_test(vec,[&](int i){
@@ -79,8 +80,38 @@ int main(){
 		});
 	}
 	
-	// phmap::flat_hash_set with mutex
 	{
+		Debug::Log("unordered_vector");
+		unordered_vector<int> vec;
+		do_test(vec,[&](int i){
+			vec.insert(i);
+		},[&](int i){
+			vec.erase(i);
+		});
+	}
+	
+	{
+		Debug::Log("unordered_vector with known iterators");
+		unordered_vector<int> vec;
+		do_test(vec,[&](int i){
+			vec.insert(i);
+		},[&](int i){
+			vec.erase(vec.begin() + i);
+		});
+	}
+	
+	{
+		Debug::Log("unordered_cached_vector");
+		unordered_cached_vector<int> vec;
+		do_test(vec,[&](int i){
+			vec.insert(i);
+		},[&](int i){
+			vec.erase(i);
+		});
+	}
+	
+	{
+		Debug::Log("locked_hashset std::mutex");
 		locked_hashset<int> set;
 		do_test(set, [&](int i){
 			set.insert(i);
@@ -90,6 +121,7 @@ int main(){
 	}
 	// flat hashset with lock
 	{
+		Debug::Log("locked_hashset Spinlock");
 		locked_hashset<int,SpinLock> set;
 		do_test(set, [&](int i){
 			set.insert(i);
@@ -97,8 +129,9 @@ int main(){
 			set.erase(i);
 		});
 	}
-	// flat hashset with no
+	// flat hashset with no mutex
 	{
+		Debug::Log("phmap::flat_hashset");
 		phmap::flat_hash_set<int> set;
 		do_test(set, [&](int i){
 			set.insert(i);
@@ -108,6 +141,7 @@ int main(){
 	}
 	// node hashset
 	{
+		Debug::Log("locked_node_hashset spinlock");
 		locked_node_hashset<int,SpinLock> set;
 		do_test(set, [&](int i){
 			set.insert(i);
@@ -117,6 +151,7 @@ int main(){
 	}
 	// node hashset no lock
 	{
+		Debug::Log("locked_node_hashset no lock");
 		phmap::node_hash_set<int> set;
 		do_test(set, [&](int i){
 			set.insert(i);
