@@ -24,7 +24,6 @@ struct FrameData{
 	// ensure skinning data gets correct matrices
 	template<typename T>
     struct entry{
-        SpinLock mtx;
         ozz::vector<T> items;
         entry(const entry<T>& other){
             items = other.items;

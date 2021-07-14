@@ -328,35 +328,39 @@ void World::FillFramedata(){
 	});
 	
 	//sort into the hashmap
-	auto sort = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [this](const Ref<Component>& e){
-		auto m = static_cast<StaticMesh*>(e.get());
-		auto ptr = e->getOwner().lock();
-		if (ptr && m->Enabled){
-			auto pair = make_tuple(m->getMesh(), m->GetMaterial());
-			auto mat = ptr->transform()->CalculateWorldMatrix();
-			auto current = App::GetCurrentFramedata();
-			auto& item = current->opaques[pair];
-			item.mtx.lock();
-			item.items.push_back(mat);
-			item.mtx.unlock();
+	auto sort = masterTasks.emplace([&]{
+		for (auto it = geobegin; it != geoend; ++it) {
+			const auto& e = *it;
+			auto m = static_cast<StaticMesh*>(e.get());
+			auto ptr = e->getOwner().lock();
+			if (ptr && m->Enabled) {
+				auto pair = make_tuple(m->getMesh(), m->GetMaterial());
+				auto mat = ptr->transform()->CalculateWorldMatrix();
+				auto current = App::GetCurrentFramedata();
+				auto& item = current->opaques[pair];
+				item.items.push_back(mat);
+			}
 		}
 	});
-	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [this](const Ref<Component>& e){
-		auto m = static_cast<SkinnedMeshComponent*>(e.get());
-		auto ptr = e->getOwner().lock();
-		if (ptr && m->Enabled){
-			auto pair = make_tuple(m->GetMesh(), m->GetMaterial(),m->GetSkeleton());
-			auto mat = ptr->transform()->CalculateWorldMatrix();
-			auto current = App::GetCurrentFramedata();
-			auto& item = current->skinnedOpaques[pair];
-			item.mtx.lock();
-			item.items.push_back(mat);
-			// write the pose if there is one
-			if (auto animator = ptr->GetComponent<AnimatorComponent>()){
-				item.skinningdata.push_back(animator.value()->GetSkinningMats());
+	auto sortskinned = masterTasks.emplace([&]{
+
+		for (auto it = skinnedgeobegin; it != skinnedgeoend; ++it) {
+			const auto& e = *it;
+			auto m = static_cast<SkinnedMeshComponent*>(e.get());
+			auto ptr = e->getOwner().lock();
+			if (ptr && m->Enabled) {
+				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(), m->GetSkeleton());
+				auto mat = ptr->transform()->CalculateWorldMatrix();
+				auto current = App::GetCurrentFramedata();
+				auto& item = current->skinnedOpaques[pair];
+				item.items.push_back(mat);
+				// write the pose if there is one
+				if (auto animator = ptr->GetComponent<AnimatorComponent>()) {
+					item.skinningdata.push_back(animator.value()->GetSkinningMats());
+				}
 			}
-			item.mtx.unlock();
 		}
+		
 	});
 	init.precede(sort,sortskinned);
 	
