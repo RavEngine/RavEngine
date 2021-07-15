@@ -451,5 +451,7 @@ void World::FillFramedata(){
 		}
 	}
 	
+	graphs[CTTI<ScriptSystem>()].task.precede(matcalc,skinnedmatcalc);
+	
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 }
