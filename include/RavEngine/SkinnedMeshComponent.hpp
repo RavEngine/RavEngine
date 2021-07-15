@@ -11,32 +11,37 @@ namespace RavEngine {
 
 class SkinnedMeshComponent : public RenderableComponent, public QueryableDelta<RenderableComponent, SkinnedMeshComponent>{
 private:
-	Ref<SkeletonAsset> skeleton;
-	Ref<MeshAssetSkinned> meshAsset;
-	Ref<PBRMaterialInstance> material;
+	std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>> tuple;
 	
 public:
 	using QueryableDelta<RenderableComponent, SkinnedMeshComponent>::GetQueryTypes;
 	
-	SkinnedMeshComponent(decltype(skeleton) sk, decltype(meshAsset) mesh) : skeleton(sk), meshAsset(mesh){}
+	SkinnedMeshComponent(Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh){
+		std::get<2>(tuple) = sk;
+		std::get<0>(tuple) = mesh;
+	}
 	
-	inline void SetMaterial(decltype(material) newMat){
-		material = newMat;
+	inline void SetMaterial(Ref<PBRMaterialInstance> newMat){
+		std::get<1>(tuple) = newMat;
 	}
 		
 	/**
 	 @returns the currently assigned material
 	 */
-	inline decltype(material) GetMaterial() const{
-		return material;
+	inline Ref<MaterialInstanceBase> GetMaterial() const{
+		return std::get<1>(tuple);
 	}
 	
-	inline decltype(meshAsset) GetMesh() const{
-		return meshAsset;
+	inline Ref<MeshAssetSkinned> GetMesh() const{
+		return std::get<0>(tuple);
 	}
 
-	inline decltype(skeleton) GetSkeleton() const {
-		return skeleton;
+	inline Ref<SkeletonAsset> GetSkeleton() const {
+		return std::get<2>(tuple);
+	}
+	
+	inline const decltype(tuple)& getTuple() const{
+		return tuple;
 	}
 };
 

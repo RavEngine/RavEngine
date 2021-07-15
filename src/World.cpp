@@ -335,6 +335,13 @@ void World::FillFramedata(){
 		}
 	});
 	
+	auto skinnedmatcalc = masterTasks.for_each(std::ref(skinnedgeobegin),std::ref(skinnedgeoend), [&](const Ref<Component>& c){
+		auto owner = c->getOwner().lock();
+		if (owner){
+			owner->transform()->CalculateWorldMatrix();
+		}
+	});
+	
 	//sort into the hashmap
 	auto sort = masterTasks.emplace([&]{
 		auto current = App::GetCurrentFramedata();
@@ -343,7 +350,7 @@ void World::FillFramedata(){
 			auto m = static_cast<StaticMesh*>(e.get());
 			auto ptr = e->getOwner().lock();
 			if (ptr && m->Enabled) {
-				auto pair = make_tuple(m->getMesh(), m->GetMaterial());
+				auto& pair = m->getTuple();
 				auto mat = ptr->transform()->GetMatrix();
 				auto& item = current->opaques[pair];
 				item.items.push_back(mat);
@@ -357,8 +364,8 @@ void World::FillFramedata(){
 			auto m = static_cast<SkinnedMeshComponent*>(e.get());
 			auto ptr = e->getOwner().lock();
 			if (ptr && m->Enabled) {
-				auto pair = make_tuple(m->GetMesh(), m->GetMaterial(), m->GetSkeleton());
-				auto mat = ptr->transform()->CalculateWorldMatrix();
+				auto& pair = m->getTuple();
+				auto mat = ptr->transform()->GetMatrix();
 				auto current = App::GetCurrentFramedata();
 				auto& item = current->skinnedOpaques[pair];
 				item.items.push_back(mat);
@@ -372,6 +379,7 @@ void World::FillFramedata(){
 	});
 	init.precede(sort,sortskinned);
 	matcalc.precede(sort);
+	skinnedmatcalc.precede(sortskinned);
 	
 	auto copydirs = masterTasks.emplace([this](){
 		auto& dirs = GetAllComponentsOfType<DirectionalLight>();
