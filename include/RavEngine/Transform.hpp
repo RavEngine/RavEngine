@@ -68,6 +68,8 @@ namespace RavEngine {
 		vector3 GetLocalScale();
 
 		matrix4 GenerateLocalMatrix();
+		
+		matrix4 GetMatrix();
 
 		/**
 		Get the matrix list of all the parents. 
@@ -295,6 +297,14 @@ namespace RavEngine {
 		else{
 			return matrix;
 		}
+	}
+
+	/**
+	 @return the current cached matrix, representing the world-space transformation. This may be out-of-date.
+	 See CalculateWorldMatrix to calculate if out-of-date.
+	 */
+	inline matrix4 Transform::GetMatrix() {
+		return matrix;
 	}
 
 	inline vector3 Transform::GetWorldPosition()

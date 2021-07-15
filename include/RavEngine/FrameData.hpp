@@ -36,8 +36,8 @@ struct FrameData{
     };
 	
 	//opaque pass data
-	locked_node_hashmap<std::tuple<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>,SpinLock> opaques;
-	locked_node_hashmap<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, entry<matrix4>, SpinLock> skinnedOpaques;
+	phmap::flat_hash_map<std::tuple<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>> opaques;
+	phmap::flat_hash_map<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, entry<matrix4>> skinnedOpaques;
 	
 	template<typename T>
 	struct StoredLight{

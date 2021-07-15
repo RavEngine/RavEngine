@@ -327,16 +327,24 @@ void World::FillFramedata(){
 		skinnedgeoend = skinnedGeo.end();
 	});
 	
+	// update matrix caches
+	auto matcalc = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [&](const Ref<Component>& c){
+		auto owner = c->getOwner().lock();
+		if (owner){
+			owner->transform()->CalculateWorldMatrix();
+		}
+	});
+	
 	//sort into the hashmap
 	auto sort = masterTasks.emplace([&]{
+		auto current = App::GetCurrentFramedata();
 		for (auto it = geobegin; it != geoend; ++it) {
 			const auto& e = *it;
 			auto m = static_cast<StaticMesh*>(e.get());
 			auto ptr = e->getOwner().lock();
 			if (ptr && m->Enabled) {
 				auto pair = make_tuple(m->getMesh(), m->GetMaterial());
-				auto mat = ptr->transform()->CalculateWorldMatrix();
-				auto current = App::GetCurrentFramedata();
+				auto mat = ptr->transform()->GetMatrix();
 				auto& item = current->opaques[pair];
 				item.items.push_back(mat);
 			}
@@ -363,6 +371,7 @@ void World::FillFramedata(){
 		
 	});
 	init.precede(sort,sortskinned);
+	matcalc.precede(sort);
 	
 	auto copydirs = masterTasks.emplace([this](){
 		auto& dirs = GetAllComponentsOfType<DirectionalLight>();
