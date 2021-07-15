@@ -447,13 +447,7 @@ void World::FillFramedata(){
 	//ensure user code completes before framedata population
 	for(auto& g : graphs){
 		if (!g.second.isTimed){
-			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints);
-		}
-	}
-	
-	for(auto& g : graphs){
-		if (!g.second.isTimed){
-			g.second.task.precede(matcalc,skinnedmatcalc);
+			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc);
 		}
 	}
 	
