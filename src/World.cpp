@@ -328,19 +328,16 @@ void World::FillFramedata(){
 	});
 	
 	// update matrix caches
-	auto matcalc = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), [&](const Ref<Component>& c){
+	auto updateMatrix = [&](const Ref<Component>& c) {
 		auto owner = c->getOwner().lock();
-		if (owner){
+		if (owner) {
 			owner->transform()->CalculateWorldMatrix();
 		}
-	});
+	};
+
+	auto matcalc = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), updateMatrix);
 	
-	auto skinnedmatcalc = masterTasks.for_each(std::ref(skinnedgeobegin),std::ref(skinnedgeoend), [&](const Ref<Component>& c){
-		auto owner = c->getOwner().lock();
-		if (owner){
-			owner->transform()->CalculateWorldMatrix();
-		}
-	});
+	auto skinnedmatcalc = masterTasks.for_each(std::ref(skinnedgeobegin),std::ref(skinnedgeoend), updateMatrix);
 	
 	//sort into the hashmap
 	auto sort = masterTasks.emplace([&]{
