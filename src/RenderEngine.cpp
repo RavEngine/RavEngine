@@ -144,6 +144,9 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 #elif BX_PLATFORM_STEAMLINK
 	pd.ndt = wmi.info.vivante.display;
 	pd.nwh = wmi.info.vivante.window;
+#elif BX_PLATFORM_WINRT || BX_PLATFORM_XBOXONE
+	pd.ndt = NULL;
+	pd.nwh = wmi.info.winrt.window;
 #else
 	#error This system / display manager is not supported
 #endif // BX_PLATFORM_

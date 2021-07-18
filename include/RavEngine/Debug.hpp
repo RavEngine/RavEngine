@@ -17,8 +17,12 @@ private:
 	 */
 	inline static const char* DateString(){
 		time_t _tm = time(NULL);
-		struct tm * curtime = localtime ( &_tm );
-		char* str = asctime(curtime);
+		struct tm currtime;
+		localtime_s(&currtime, &_tm);
+		constexpr uint16_t bufsize = 512;
+		char str[bufsize];
+		memset(str, 0, bufsize);
+		asctime_s(str, bufsize, &currtime);
 		str[strlen(str)-1] = '\0';	//remove newline
 		return str;
 	}
