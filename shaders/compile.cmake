@@ -16,5 +16,9 @@ declare_shader("spotlightvolume" "${CMAKE_CURRENT_LIST_DIR}/spotlight.vsh" "${CM
 # GUI rendering shaders
 declare_shader("guishader" "${CMAKE_CURRENT_LIST_DIR}/gui.vsh" "${CMAKE_CURRENT_LIST_DIR}/gui.fsh" "${CMAKE_CURRENT_LIST_DIR}/gui.def.hlsl")
 
+# skybox
+declare_shader("defaultsky" "${CMAKE_CURRENT_LIST_DIR}/defaultsky.vsh" "${CMAKE_CURRENT_LIST_DIR}/defaultsky.fsh" "${CMAKE_CURRENT_LIST_DIR}/defaultsky.def.hlsl")
+
+
 # mesh skinning compute shader
 declare_shader("skincompute" "${CMAKE_CURRENT_LIST_DIR}/skinning_cs.glsl" "" "")

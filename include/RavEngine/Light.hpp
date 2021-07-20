@@ -252,6 +252,7 @@ class LightManager{
 public:
 	LightManager() = delete;
 	static void Init();
+	static void Teardown();
 	
 	friend class PointLight;
 	friend class DirectionalLight;

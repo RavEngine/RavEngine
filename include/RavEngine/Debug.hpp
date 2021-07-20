@@ -11,25 +11,25 @@ class Debug{
 private:
 	Debug() = delete;
 	static SpinLock mtx;
-	
+	constexpr static uint16_t bufsize = 512;
+
 	/**
-	 @return  the current time as a string
+	 @param str the buffer to write the date string into
 	 */
-	inline static const char* DateString(){
+	inline static const void DateString(char* str){
 		time_t _tm = time(NULL);
 		struct tm currtime;
 		localtime_s(&currtime, &_tm);
-		constexpr uint16_t bufsize = 512;
-		char str[bufsize];
 		memset(str, 0, bufsize);
 		asctime_s(str, bufsize, &currtime);
 		str[strlen(str)-1] = '\0';	//remove newline
-		return str;
 	}
 	
 	static inline void LogHelper(FILE* output, const char* message, const char* type){
+		char str[bufsize];
+		DateString(str);
 		mtx.lock();
-		fprintf(output,"[%s] %s - %s\n",DateString(),type,message);
+		fprintf(output,"[%s] %s - %s\n",str,type,message);
 		mtx.unlock();
 	}
 	

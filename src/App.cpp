@@ -14,6 +14,7 @@
 #include <steam/steamnetworkingsockets.h>
 #include <steam/isteamnetworkingutils.h>
 #include "SyncVar.hpp"
+#include "Skybox.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -83,6 +84,7 @@ App::App(const std::string& resourcesName){
 	
 	Resources = make_shared<VirtualFilesystem>(resourcesName + ".zip");
 	Renderer = make_shared<RenderEngine>();
+	SkyBox::Init();
 
 	//setup GUI rendering
 	Rml::SetSystemInterface(Renderer.get());
@@ -231,11 +233,13 @@ App::~App(){
 	networkManager.server.reset();
 	networkManager.client.reset();
 	GameNetworkingSockets_Kill();
+	LightManager::Teardown();
 	Renderer.reset();
 	PHYSFS_deinit();
 	f1.Clear();
 	f2.Clear();
 	f3.Clear();
+	SkyBox::Teardown();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
 	delete fsi;

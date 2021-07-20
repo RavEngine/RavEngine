@@ -37,6 +37,17 @@ void LightManager::Init(){
 	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
 }
 
+void LightManager::Teardown() {
+	pointLightMesh.reset();
+	spotLightMesh.reset();
+	pointLightShader.reset();
+	ambientLightShader.reset();
+	directionalLightShader.reset();
+	spotLightShader.reset();
+	bgfx::destroy(screenSpaceQuadVert);
+	bgfx::destroy(screenSpaceQuadInd);
+}
+
 void DirectionalLight::DebugDraw(RavEngine::DebugDraw& dbg) const{
 	auto pos = Ref<Entity>(getOwner())->transform();
 	dbg.DrawCapsule(pos->CalculateWorldMatrix(), debug_color, 1, 2);

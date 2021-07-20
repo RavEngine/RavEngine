@@ -16,6 +16,7 @@
 #include "FrameData.hpp"
 #include <taskflow/taskflow.hpp>
 #include "SystemManager.hpp"
+#include "Skybox.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -26,6 +27,9 @@ namespace RavEngine {
 		friend class App;
 	public:
 		constexpr static uint8_t id_size = 8;
+
+		SkyBox skybox;
+
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
@@ -126,6 +130,14 @@ namespace RavEngine {
 		void Tick(float);
 
 		World();
+
+		/**
+		* Constructor that takes a custom skybox. This constructor will bypass loading the default skybox.
+		* @param sk the skybox to use
+		*/
+		World(const SkyBox& sk) : World() {
+			skybox = sk;
+		}
 
 		//spawn function (takes an Entity)
 		bool Spawn(Ref<Entity>);

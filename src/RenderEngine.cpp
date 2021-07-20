@@ -626,6 +626,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	DrawLightsOfType<DirectionalLight>(fd->directionals);
 	DrawLightsOfType<SpotLight>(fd->spots);
 	DrawLightsOfType<PointLight>(fd->points);
+
+	// lighting is complete, so next we draw the skybox
+	auto& sb = worldOwning->skybox;
+	sb.Draw(glm::inverse(fd->viewmatrix),0);
 		
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
