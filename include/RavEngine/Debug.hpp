@@ -4,6 +4,7 @@
 #include "PhysXDefines.h"
 #include <csignal>
 #include "Utilities.hpp"
+#include <date/date.h>
 
 namespace RavEngine {
 
@@ -13,23 +14,10 @@ private:
 	static SpinLock mtx;
 	constexpr static uint16_t bufsize = 512;
 
-	/**
-	 @param str the buffer to write the date string into
-	 */
-	inline static const void DateString(char* str){
-		time_t _tm = time(NULL);
-		struct tm currtime;
-		localtime_s(&currtime, &_tm);
-		memset(str, 0, bufsize);
-		asctime_s(str, bufsize, &currtime);
-		str[strlen(str)-1] = '\0';	//remove newline
-	}
-	
 	static inline void LogHelper(FILE* output, const char* message, const char* type){
-		char str[bufsize];
-		DateString(str);
+		auto date = date::format("%F %T", std::chrono::system_clock::now());
 		mtx.lock();
-		fprintf(output,"[%s] %s - %s\n",str,type,message);
+		fprintf(output,"[%s] %s - %s\n",date.c_str(),type,message);
 		mtx.unlock();
 	}
 	

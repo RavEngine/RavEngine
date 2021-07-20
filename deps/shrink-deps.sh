@@ -61,3 +61,6 @@ rm -r backward-cpp/doc backward-cpp/test backward-cpp/test_package
 cd boost
 rm -r doc/ libs/ more/ status/ tools/ boost.png bootstrap.sh bootstrap.bat index.htm index.html INSTALL Jamroot README.md rst.css boost.css boost-build.jam boostcpp.jam
 cd ..
+
+# date
+rm -r date/ci date/compile_fail.sh date/README.md date/test date/test_fail.sh

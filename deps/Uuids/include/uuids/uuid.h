@@ -194,8 +194,9 @@ namespace uuids
 
         std::string _to_string() const
         {
-            char buffer[36 + 1];
-            sprintf_s(buffer, "%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x",
+			constexpr uint16_t size = 36 + 1;
+            char buffer[size];
+            snprintf(buffer, size, "%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x",
                     _time_low,
                     _time_mid,
                     _time_hi_and_version,

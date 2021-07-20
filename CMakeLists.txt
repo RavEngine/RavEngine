@@ -156,6 +156,9 @@ SET(RECASTNAVIGATION_TESTS OFF CACHE INTERNAL "")
 SET(RECASTNAVIGATION_EXAMPLES OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/recastnavigation" EXCLUDE_FROM_ALL)
 
+# date
+add_subdirectory("${DEPS_DIR}/date")
+
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
 set(PHYSX_ROOT_DIR ${DEPS_DIR}/physx/physx CACHE INTERNAL "")
@@ -304,6 +307,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
+	"date"
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
