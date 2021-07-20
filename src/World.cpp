@@ -307,6 +307,7 @@ void World::FillFramedata(){
 				auto current = App::GetCurrentFramedata();
 				current->viewmatrix = cam->GenerateViewMatrix();
 				current->projmatrix = cam->GenerateProjectionMatrix();
+				current->cameraWorldpos = cam->getOwner().lock()->transform()->GetWorldPosition();
 				
 				break;
 			}

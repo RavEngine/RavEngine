@@ -28,7 +28,7 @@ namespace RavEngine {
 	public:
 		constexpr static uint8_t id_size = 8;
 
-		SkyBox skybox;
+		Skybox skybox;
 
 	private:
 		std::atomic<bool> isRendering = false;
@@ -135,7 +135,7 @@ namespace RavEngine {
 		* Constructor that takes a custom skybox. This constructor will bypass loading the default skybox.
 		* @param sk the skybox to use
 		*/
-		World(const SkyBox& sk) : World() {
+		World(const Skybox& sk) : World() {
 			skybox = sk;
 		}
 

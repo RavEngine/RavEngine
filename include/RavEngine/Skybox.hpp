@@ -12,11 +12,8 @@ namespace RavEngine {
 	// subclass
 	struct ISkyMaterialInstance : public MaterialInstance<ISkyMaterial> {
 		inline void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
-			// only care about transform, so skybox follows player but is not bound to rotation
-			auto wpos = vector3(worldmatrix * vector4(0, 0, 0, 1));
-			auto wmtrx = glm::translate(matrix4(), wpos);
 			float transmat[16];
-			copyMat4((const decimalType*)glm::value_ptr(wmtrx), transmat);
+			copyMat4((const decimalType*)glm::value_ptr(worldmatrix), transmat);
 			bgfx::setTransform(transmat);
 			mat->Draw(vertexBuffer, indexBuffer, view);
 		}
@@ -36,7 +33,7 @@ namespace RavEngine {
 		DefaultSkyMaterialInstance(const Ref<ISkyMaterial> smi) : ISkyMaterialInstance(smi) {}
 	};
 
-	struct SkyBox {
+	struct Skybox {
 		bool enabled = true;
 		Ref<ISkyMaterialInstance> skyMat;
 		Ref<MeshAsset> skyMesh;
@@ -45,10 +42,10 @@ namespace RavEngine {
 		}
 
 		// default constructor, loads default sky implementation
-		SkyBox();
+		Skybox();
 
 		// supply a custom mesh and material
-		SkyBox(const decltype(skyMat)& sm, const decltype(skyMesh)& sme) : skyMat(sm), skyMesh(sme) {}
+		Skybox(const decltype(skyMat)& sm, const decltype(skyMesh)& sme) : skyMat(sm), skyMesh(sme) {}
 
 		friend class App;
 	private:

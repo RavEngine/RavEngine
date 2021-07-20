@@ -84,7 +84,7 @@ App::App(const std::string& resourcesName){
 	
 	Resources = make_shared<VirtualFilesystem>(resourcesName + ".zip");
 	Renderer = make_shared<RenderEngine>();
-	SkyBox::Init();
+	Skybox::Init();
 
 	//setup GUI rendering
 	Rml::SetSystemInterface(Renderer.get());
@@ -239,7 +239,7 @@ App::~App(){
 	f1.Clear();
 	f2.Clear();
 	f3.Clear();
-	SkyBox::Teardown();
+	Skybox::Teardown();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
 	delete fsi;

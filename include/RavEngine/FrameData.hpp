@@ -19,6 +19,7 @@ class DirectionalLight;
 struct FrameData{
 	//global matrices
 	matrix4 viewmatrix, projmatrix;
+	vector3 cameraWorldpos;
     
 	// these need to be ordered to
 	// ensure skinning data gets correct matrices

@@ -4,14 +4,14 @@
 using namespace RavEngine;
 using namespace std;
 
-STATIC(SkyBox::defaultSkyMesh);
+STATIC(Skybox::defaultSkyMesh);
 
-void SkyBox::Init() {
+void Skybox::Init() {
 	defaultSkyMesh = make_shared<MeshAsset>("skydome.obj");
 }
 
-void SkyBox::Teardown() {
+void Skybox::Teardown() {
 	defaultSkyMesh.reset();
 }
 
-SkyBox::SkyBox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::AccessMaterialOfType<DefaultSkyMaterial>())), skyMesh(defaultSkyMesh) {}
+Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::AccessMaterialOfType<DefaultSkyMaterial>())), skyMesh(defaultSkyMesh) {}
