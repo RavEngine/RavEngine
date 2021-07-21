@@ -1,0 +1,49 @@
+name: Windows CI
+
+on: [push, pull_request]
+
+jobs:
+  ci:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CTEST_OUTPUT_ON_FAILURE: ON
+      CTEST_PARALLEL_LEVEL: 2
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-2019-cl-x86
+            os: windows-2019
+            generator: Visual Studio 16 2019
+            configuration: Debug
+            cmake-args: -A Win32
+
+          - name: windows-2019-cl-x64
+            os: windows-2019
+            generator: Visual Studio 16 2019
+            configuration: Debug
+            cmake-args: -A x64
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install
+        run: pip install cmake==3.18.2.post1 ninja==1.10.0.post2 --upgrade
+
+      - name: CMake
+        run: cmake -S . -B build -G "${{ matrix.generator }}" ${{ matrix.cmake-args }}
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.configuration }}
+
+      - name: Test
+        run: (cd build && ctest -C ${{ matrix.configuration }} )

@@ -13,6 +13,7 @@ message("Making host tools")
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL OFF CACHE INTERNAL "")
+set(BGFX_BUILD_TOOLS ON CACHE INTERNAL "")
 add_subdirectory(../bgfx.cmake ${CMAKE_BINARY_DIR}/bgfx.cmake)
 
 # protobuf for build machine

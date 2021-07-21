@@ -19,6 +19,7 @@ target_include_directories(RmlCore PUBLIC "RmlUi/Include/")
 target_compile_definitions(RmlCore
     PRIVATE -DRMLUI_VERSION="${RMLUI_VERSION_SHORT}"
 )
+target_compile_features(RmlCore PRIVATE cxx_std_14)
 
 # link freetype (disable freetype dependencies since we do not need them)
 set(CMAKE_DISABLE_FIND_PACKAGE_PNG ON CACHE INTERNAL "")

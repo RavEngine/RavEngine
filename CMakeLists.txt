@@ -51,8 +51,10 @@ else()
 endif()
 
 if (APPLE OR LINUX)
+	set(SHADERC_NAME "shaderc")
 	SET(SHADERC_CMD "${SHADERC_PATH}" CACHE INTERNAL "")
 elseif(MSVC)
+	set(SHADERC_NAME "shaderc.exe")
 	SET(SHADERC_CMD "${SHADERC_PATH}.exe" CACHE INTERNAL "")
 endif()
 
@@ -70,7 +72,7 @@ add_custom_command(
     PRE_BUILD
     OUTPUT "${SHADERC_CMD}" 
 	COMMAND cmake --build . --config Release --target shaderc protoc
-	WORKING_DIRECTORY ${TOOLS_DIR}
+	WORKING_DIRECTORY "${TOOLS_DIR}"
     VERBATIM
 )
 
@@ -396,7 +398,7 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 		add_custom_command(
 			PRE_BUILD
 			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
-			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "${SHADERC_CMD}" "${eng_dir}/shaders/ravengine_shader.glsl"
+			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "GNS_Deps" "${eng_dir}/shaders/ravengine_shader.glsl"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
 			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
 			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
@@ -410,7 +412,7 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 		add_custom_command(
 			PRE_BUILD
 			OUTPUT "${CS_OUTPUT_NAME}"
-			DEPENDS "${vertex_src}" "${SHADERC_CMD}"
+			DEPENDS "${vertex_src}" "GNS_Deps"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
 			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}"
 			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
