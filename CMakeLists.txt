@@ -455,7 +455,7 @@ enable_unity("${all_unity};${platform_unity}")
 
 # project organization
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
-group_in("Libraries" "assimp;assimp_cmd;crypto;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
+group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;\
@@ -636,10 +636,6 @@ endmacro()
 
 get_all_targets(all_targets)
 
-if( CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-	target_compile_definitions("crypto" PUBLIC "_WINSOCK_DEPRECATED_NO_WARNINGS" _WIN32_WINNT=0x0501)
-endif()
-
 # disable warnings in subdirectory targets
 foreach(TGT ${all_targets})
 	if(NOT "${TGT}" STREQUAL "${PROJECT_NAME}")
@@ -654,7 +650,7 @@ foreach(TGT ${all_targets})
 				target_compile_options(${TGT} PRIVATE "-w")
 			endif()
 
-			if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore" AND NOT "${TGT}" STREQUAL "crypto")
+			if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 				target_compile_definitions(${TGT} PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE")
 			endif()
 		endif()
