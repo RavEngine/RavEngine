@@ -4,12 +4,8 @@ project(RavEngine)
 # ========== CMake Boilerplate ==============
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${DEPS_DIR}")
-set(CMAKE_VERBOSE_MAKEFILE ON)
-set(CMAKE_COLOR_MAKEFILE   ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 
@@ -212,6 +208,9 @@ add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} "deps/parallel
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+
 if (NOT APPLE)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
@@ -287,6 +286,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"RmlCore"
 	"libnyquist"
 	"GameNetworkingSockets_s"
+	"SDL2main"
 	PUBLIC
 	"effolkronium_random"
 	"glm"
@@ -294,7 +294,6 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"etl"
 	"tweeny"
 	"SDL2-static"
-	"SDL2main"
 	"bgfx"
 	"bx"
 	"bimg"
@@ -436,7 +435,7 @@ macro(enable_unity targets)
 		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
 	endforeach()
 endmacro()
-set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;PhysXVehicle;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;SDL2main;bx;Detour;ozz_animation;ozz_animation_offline;\
+set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;PhysXVehicle;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;bx;Detour;ozz_animation;ozz_animation_offline;\
 ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;IrrXML;json;libopus;DebugUtils;DetourCrowd;DetourTileCache")
 
 if (MSVC OR LINUX)
@@ -450,7 +449,7 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;crypto;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2main;SDL2-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
@@ -637,7 +636,7 @@ foreach(TGT ${all_targets})
 		if (NOT ("${target_type}" STREQUAL "INTERFACE_LIBRARY" OR "${target_type}" STREQUAL "UTILITY"))
 			#message("Setting ${TGT} -- ${target_type}")
 			if(MSVC)
-				target_compile_options(${TGT} PRIVATE "/w")
+				#target_compile_options(${TGT} PRIVATE "/w")
 			else()
 				target_compile_options(${TGT} PRIVATE "-w")
 			endif()
