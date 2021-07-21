@@ -32,6 +32,9 @@ endif()
 if(MSVC)
 	set(CMAKE_SHARED_LIBRARY_PREFIX "")
 	add_definitions(/MP)
+	if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+		add_definitions(/sdl-)
+	endif()
 endif()
 
 # ==================== Dependencies =====================
@@ -103,6 +106,10 @@ endif()
 		set(VIDEO_COCOA OFF CACHE INTERNAL "")
 	endif()
 	set(VIDEO_DUMMY OFF CACHE INTERNAL "")
+if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+	set(SDL_SENSOR OFF CACHE INTERNAL "")
+	set(WINDOWS_STORE ON CACHE INTERNAL "")
+endif()
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
 set(PHYSFS_BUILD_TEST OFF CACHE INTERNAL "")
@@ -627,6 +634,10 @@ endmacro()
 
 get_all_targets(all_targets)
 
+if( CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+	target_compile_definitions("crypto" PUBLIC "_WINSOCK_DEPRECATED_NO_WARNINGS" _WIN32_WINNT=0x0501)
+endif()
+
 # disable warnings in subdirectory targets
 foreach(TGT ${all_targets})
 	if(NOT "${TGT}" STREQUAL "${PROJECT_NAME}")
@@ -641,7 +652,7 @@ foreach(TGT ${all_targets})
 				target_compile_options(${TGT} PRIVATE "-w")
 			endif()
 
-			if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+			if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore" AND NOT "${TGT}" STREQUAL "crypto")
 				target_compile_definitions(${TGT} PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE")
 			endif()
 		endif()

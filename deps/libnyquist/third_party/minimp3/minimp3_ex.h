@@ -115,7 +115,7 @@ int mp3dec_detect(const char *file_name);
 int mp3dec_load(mp3dec_t *dec, const char *file_name, mp3dec_file_info_t *info, MP3D_PROGRESS_CB progress_cb, void *user_data);
 int mp3dec_iterate(const char *file_name, MP3D_ITERATE_CB callback, void *user_data);
 int mp3dec_ex_open(mp3dec_ex_t *dec, const char *file_name, int flags);
-#ifdef _WIN32
+#if 0
 int mp3dec_detect_w(const wchar_t *file_name);
 int mp3dec_load_w(mp3dec_t *dec, const wchar_t *file_name, mp3dec_file_info_t *info, MP3D_PROGRESS_CB progress_cb, void *user_data);
 int mp3dec_iterate_w(const wchar_t *file_name, MP3D_ITERATE_CB callback, void *user_data);
@@ -1153,7 +1153,7 @@ error:
 #endif
 }
 #endif /*MINIMP3_ENABLE_RING*/
-#elif defined(_WIN32)
+#elif 0 
 #include <windows.h>
 
 static void mp3dec_close_file(mp3dec_map_info_t *map_info)
@@ -1339,7 +1339,7 @@ void mp3dec_ex_close(mp3dec_ex_t *dec)
     memset(dec, 0, sizeof(*dec));
 }
 
-#ifdef _WIN32
+#if 0
 int mp3dec_detect_w(const wchar_t *file_name)
 {
     int ret;

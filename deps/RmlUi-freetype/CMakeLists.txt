@@ -29,6 +29,7 @@ set(CMAKE_DISABLE_FIND_PACKAGE_HarfBuzz ON CACHE INTERNAL "")
 add_subdirectory("freetype")
 SET(LOTTIE_TEST OFF CACHE INTERNAL "")
 set(LIB_INSTALL_DIR "${CMAKE_BINARY_DIR}/rlottie" CACHE INTERNAL "")
+set(LOTTIE_MODULE OFF CACHE INTERNAL "")
 add_subdirectory("rlottie")
 target_link_libraries(RmlCore PUBLIC freetype rlottie)
 

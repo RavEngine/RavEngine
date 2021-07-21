@@ -516,14 +516,98 @@ SDL_wcsncmp(const wchar_t *str1, const wchar_t *str2, size_t maxlen)
 #if defined(HAVE_WCSNCMP)
     return wcsncmp(str1, str2, maxlen);
 #else
-    while (*str1 && *str2) {
+    while (*str1 && *str2 && maxlen) {
         if (*str1 != *str2)
             break;
         ++str1;
         ++str2;
+        --maxlen;
     }
-    return (int)(*str1 - *str2);
+    if (!maxlen) {
+        return 0;
+    }
+    return (int) (*str1 - *str2);
+
 #endif /* HAVE_WCSNCMP */
+}
+
+int
+SDL_wcscasecmp(const wchar_t *str1, const wchar_t *str2)
+{
+#if defined(HAVE_WCSCASECMP)
+    return wcscasecmp(str1, str2);
+#elif defined(HAVE__WCSICMP)
+    return _wcsicmp(str1, str2);
+#else
+    wchar_t a = 0;
+    wchar_t b = 0;
+    while (*str1 && *str2) {
+        /* FIXME: This doesn't actually support wide characters */
+        if (*str1 >= 0x80 || *str2 >= 0x80) {
+            a = *str1;
+            b = *str2;
+        } else {
+            a = SDL_toupper((unsigned char) *str1);
+            b = SDL_toupper((unsigned char) *str2);
+        }
+        if (a != b)
+            break;
+        ++str1;
+        ++str2;
+    }
+
+    /* FIXME: This doesn't actually support wide characters */
+    if (*str1 >= 0x80 || *str2 >= 0x80) {
+        a = *str1;
+        b = *str2;
+    } else {
+        a = SDL_toupper((unsigned char) *str1);
+        b = SDL_toupper((unsigned char) *str2);
+    }
+    return (int) ((unsigned int) a - (unsigned int) b);
+#endif /* HAVE__WCSICMP */
+}
+
+int
+SDL_wcsncasecmp(const wchar_t *str1, const wchar_t *str2, size_t maxlen)
+{
+#if defined(HAVE_WCSNCASECMP)
+    return wcsncasecmp(str1, str2, maxlen);
+#elif defined(HAVE__WCSNICMP)
+    return _wcsnicmp(str1, str2, maxlen);
+#else
+    wchar_t a = 0;
+    wchar_t b = 0;
+    while (*str1 && *str2 && maxlen) {
+        /* FIXME: This doesn't actually support wide characters */
+        if (*str1 >= 0x80 || *str2 >= 0x80) {
+            a = *str1;
+            b = *str2;
+        } else {
+            a = SDL_toupper((unsigned char) *str1);
+            b = SDL_toupper((unsigned char) *str2);
+        }
+        if (a != b)
+            break;
+        ++str1;
+        ++str2;
+        --maxlen;
+    }
+
+    if (maxlen == 0) {
+        return 0;
+    } else {
+        /* FIXME: This doesn't actually support wide characters */
+        if (*str1 >= 0x80 || *str2 >= 0x80) {
+            a = *str1;
+            b = *str2;
+        } else {
+            a = SDL_toupper((unsigned char) *str1);
+            b = SDL_toupper((unsigned char) *str2);
+        }
+        return (int) ((unsigned int) a - (unsigned int) b);
+    }
+#endif /* HAVE__WCSNICMP */
 }
 
 size_t
@@ -621,7 +705,7 @@ SDL_strdup(const char *string)
 char *
 SDL_strrev(char *string)
 {
-#if 0
+#if defined(HAVE__STRREV)
     return _strrev(string);
 #else
     size_t len = SDL_strlen(string);
@@ -640,7 +724,7 @@ SDL_strrev(char *string)
 char *
 SDL_strupr(char *string)
 {
-#if 0
+#if defined(HAVE__STRUPR)
     return _strupr(string);
 #else
     char *bufp = string;
@@ -655,7 +739,7 @@ SDL_strupr(char *string)
 char *
 SDL_strlwr(char *string)
 {
-#if 0
+#if defined(HAVE__STRLWR)
     return _strlwr(string);
 #else
     char *bufp = string;
@@ -721,7 +805,8 @@ SDL_strstr(const char *haystack, const char *needle)
 #endif /* HAVE_STRSTR */
 }
 
-#if 1 || !defined(HAVE__LTOA) || !defined(HAVE__I64TOA) || !defined(HAVE__ULTOA) || !defined(HAVE__UI64TOA)
+#if !defined(HAVE__LTOA) || !defined(HAVE__I64TOA) || \
+    !defined(HAVE__ULTOA) || !defined(HAVE__UI64TOA)
 static const char ntoa_table[] = {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
@@ -733,7 +818,7 @@ static const char ntoa_table[] = {
 char *
 SDL_itoa(int value, char *string, int radix)
 {
-#if 0
+#ifdef HAVE_ITOA
     return itoa(value, string, radix);
 #else
     return SDL_ltoa((long)value, string, radix);
@@ -743,7 +828,7 @@ SDL_itoa(int value, char *string, int radix)
 char *
 SDL_uitoa(unsigned int value, char *string, int radix)
 {
-#if 0
+#ifdef HAVE__UITOA
     return _uitoa(value, string, radix);
 #else
     return SDL_ultoa((unsigned long)value, string, radix);
@@ -753,7 +838,7 @@ SDL_uitoa(unsigned int value, char *string, int radix)
 char *
 SDL_ltoa(long value, char *string, int radix)
 {
-#if 0
+#if defined(HAVE__LTOA)
     return _ltoa(value, string, radix);
 #else
     char *bufp = string;
@@ -772,7 +857,7 @@ SDL_ltoa(long value, char *string, int radix)
 char *
 SDL_ultoa(unsigned long value, char *string, int radix)
 {
-#if 0
+#if defined(HAVE__ULTOA)
     return _ultoa(value, string, radix);
 #else
     char *bufp = string;
@@ -797,7 +882,7 @@ SDL_ultoa(unsigned long value, char *string, int radix)
 char *
 SDL_lltoa(Sint64 value, char *string, int radix)
 {
-#if 0
+#if defined(HAVE__I64TOA)
     return _i64toa(value, string, radix);
 #else
     char *bufp = string;
@@ -816,7 +901,7 @@ SDL_lltoa(Sint64 value, char *string, int radix)
 char *
 SDL_ulltoa(Uint64 value, char *string, int radix)
 {
-#if 0
+#if defined(HAVE__UI64TOA)
     return _ui64toa(value, string, radix);
 #else
     char *bufp = string;
@@ -1814,10 +1899,15 @@ SDL_vsnprintf(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, const char *fmt, 
                     {
                         /* In practice this is used on Windows for WCHAR strings */
                         wchar_t *wide_arg = va_arg(ap, wchar_t *);
-                        char *arg = SDL_iconv_string("UTF-8", "UTF-16LE", (char *)(wide_arg), (SDL_wcslen(wide_arg)+1)*sizeof(*wide_arg));
-                        info.pad_zeroes = SDL_FALSE;
-                        len = SDL_PrintString(text, left, &info, arg);
-                        SDL_free(arg);
+                        if (wide_arg) {
+                            char *arg = SDL_iconv_string("UTF-8", "UTF-16LE", (char *)(wide_arg), (SDL_wcslen(wide_arg)+1)*sizeof(*wide_arg));
+                            info.pad_zeroes = SDL_FALSE;
+                            len = SDL_PrintString(text, left, &info, arg);
+                            SDL_free(arg);
+                        } else {
+                            info.pad_zeroes = SDL_FALSE;
+                            len = SDL_PrintString(text, left, &info, NULL);
+                        }
                         done = SDL_TRUE;
                     }
                     break;

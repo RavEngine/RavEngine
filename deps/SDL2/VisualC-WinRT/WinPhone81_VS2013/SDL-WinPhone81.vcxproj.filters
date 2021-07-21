@@ -84,6 +84,9 @@
     <ClInclude Include="..\..\include\SDL_loadso.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\SDL_locale.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\SDL_log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -306,6 +309,9 @@
     <ClInclude Include="..\..\src\SDL_internal.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\locale\SDL_syslocale.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\thread\SDL_systhread.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -367,6 +373,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\video\winrt\SDL_winrtvideo_cpp.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\joystick\virtual\SDL_virtualjoystick_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\joystick\windows\SDL_xinputjoystick_c.h">
@@ -575,6 +584,15 @@
     <ClCompile Include="..\..\src\SDL_log.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\locale\SDL_locale.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\locale\winrt\SDL_syslocale.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\stdlib\SDL_crc32.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\stdlib\SDL_getenv.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -690,6 +708,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\video\winrt\SDL_winrtvideo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\joystick\virtual\SDL_virtualjoystick.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\joystick\windows\SDL_xinputjoystick.c">
