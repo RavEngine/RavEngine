@@ -632,13 +632,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto& sb = worldOwning->skybox;
 	
 	auto transform = glm::translate(matrix4(1),fd->cameraWorldpos);
-	sb.Draw(transform,0);
+	sb.Draw(transform,Views::FinalBlit);
 		
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
 	bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
 
-	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);	//don't clear depth, debug wireframes are drawn forward-style afterwards
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_ALWAYS);	//don't clear depth, debug wireframes are drawn forward-style afterwards
     blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
 	
 	//GUI
