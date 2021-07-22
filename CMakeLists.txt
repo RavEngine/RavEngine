@@ -288,6 +288,7 @@ find_library(FOUNDATION_LIB Foundation REQUIRED)
 find_library(METAL_LIB Metal REQUIRED)
 find_library(QZC_LIB QuartzCore REQUIRED)
 find_library(CH_LIB CoreHaptics REQUIRED)
+SET(ICONV_LIB "iconv")
 
 endif()
 
@@ -338,7 +339,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	"ozz_geometry"
 	"ozz_options"
 	"date"
-	"iconv"
+	${ICONV_LIB}
 	${COCOA_LIB}
 	${SM_LIB}
 	${FOUNDATION_LIB} 

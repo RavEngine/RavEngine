@@ -116,7 +116,8 @@ App::App(const std::string& resourcesName){
 
 int App::run(int argc, char** argv) {
 	
-#ifdef _WIN32
+	// if built in non-UWP for Windows, need to manually set DPI awareness
+#if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP)
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
 
