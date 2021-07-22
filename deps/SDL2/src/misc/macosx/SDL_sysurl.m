@@ -21,15 +21,16 @@
 
 #include "../SDL_sysurl.h"
 
-#import <Cocoa/Cocoa.h>
+//#import <Cocoa/Cocoa.h>
 
 int
 SDL_SYS_OpenURL(const char *url)
 { @autoreleasepool
 {
-    NSString *nsstr = [NSString stringWithUTF8String:url];
-    NSURL *nsurl = [NSURL URLWithString:nsstr];
-    return [[NSWorkspace sharedWorkspace] openURL:nsurl] ? 0 : -1;
+//    NSString *nsstr = [NSString stringWithUTF8String:url];
+//    NSURL *nsurl = [NSURL URLWithString:nsstr];
+//    return [[NSWorkspace sharedWorkspace] openURL:nsurl] ? 0 : -1;
+	return -1;
 }}
 
 /* vi: set ts=4 sw=4 expandtab: */
