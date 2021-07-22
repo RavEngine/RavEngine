@@ -288,6 +288,7 @@ find_library(FOUNDATION_LIB Foundation REQUIRED)
 find_library(METAL_LIB Metal REQUIRED)
 find_library(QZC_LIB QuartzCore REQUIRED)
 find_library(CH_LIB CoreHaptics REQUIRED)
+
 endif()
 
 target_link_libraries("${PROJECT_NAME}" PRIVATE 
@@ -472,11 +473,11 @@ macro(enable_unity targets)
 		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
 	endforeach()
 endmacro()
-set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;PhysXVehicle;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;bx;Detour;ozz_animation;ozz_animation_offline;\
+set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;bx;Detour;ozz_animation;ozz_animation_offline;\
 ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;IrrXML;json;libopus;DebugUtils;DetourCrowd;DetourTileCache")
 
-if (MSVC OR LINUX)
-	set(platform_unity "bgfx")
+if ((CMAKE_SYSTEM_NAME STREQUAL "Windows") OR LINUX)
+	set(platform_unity "bgfx")	 # bgfx supports Unity build in Win32 or Linux, but not Mac or UWP
 endif()
 
 enable_unity("${all_unity};${platform_unity}")
