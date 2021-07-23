@@ -629,6 +629,9 @@ if (RAVENGINE_BUILD_TESTS)
 	add_executable("${PROJECT_NAME}_DSPerf" "test/dsperf.cpp")
 	target_link_libraries("${PROJECT_NAME}_DSPerf" PUBLIC "RavEngine")
 
+	target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_17)
+	target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_17)
+
 	set_target_properties("${PROJECT_NAME}_TestBasics" "${PROJECT_NAME}_DSPerf" PROPERTIES 
 		OSX_ARCHITECTURES "arm64;x86_64"
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
