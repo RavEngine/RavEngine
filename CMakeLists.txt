@@ -103,6 +103,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
 	set(IOS OFF CACHE INTERNAL "")
 	set(MACOSX OFF CACHE INTERNAL "")
 	set(DARWIN OFF CACHE INTERNAL "")
+elseif(LINUX)
+    set(VIDEO_OPENGL ON CACHE INTERNAL "")  # TODO: Linux without OpenGL requirement?
+    set(VIDEO_OPENGLES ON CACHE INTERNAL "")
 endif()
 
 	#RavEngine manages its own rendering, so disable SDL render drivers
