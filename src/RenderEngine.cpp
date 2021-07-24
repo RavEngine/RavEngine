@@ -220,7 +220,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 		auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
 
 		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Vulkan)) {
-			settings.type = bgfx::RendererType::Vulkan;
+			settings.type = bgfx::RendererType::OpenGL;
 		}
 		else {
 			settings.type = bgfx::RendererType::Direct3D11;
@@ -346,12 +346,7 @@ void RenderEngine::Init()
 	guiMaterial = make_shared<GUIMaterialInstance>(Material::Manager::AccessMaterialOfType<GUIMaterial>());
 
 	//load compute shader for skinning
-	{
-		vector<uint8_t> shaderdata;
-		App::Resources->FileContentsAt("shaders/skincompute/compute.bin", shaderdata);
-		const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
-		skinningShaderHandle = bgfx::createProgram(bgfx::createShader(mem),true);	//auto destroys shader when program is destroyed
-	}
+	skinningShaderHandle = Material::getShaderHandle("skincompute/compute.bin");
 
 	//create compute shader buffers
 	skinningOutputLayout.begin()

@@ -132,6 +132,10 @@ namespace RavEngine {
 		Material(const std::string& name);
 		
 		bgfx::ProgramHandle program;
+
+		friend class RenderEngine;
+	private:
+		static bgfx::ProgramHandle getShaderHandle(const std::string_view& full_path);
 	};
 
 	//for type conversions, do not use directly

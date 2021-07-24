@@ -385,32 +385,35 @@ define_property(GLOBAL PROPERTY ENG_DIR
 )
 set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
-# Define a shader
-# all paths must be absolute
-function(declare_shader shader_name vertex_src fragment_src varying_src)
+function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
 	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
 
-	if(CMAKE_SYSTEM_NAME MATCHES Darwin OR CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS)
+	if(api STREQUAL "mtl")
 		set(PLATFORM "osx")
 		set(PROFILE_VS "metal")
 		set(PROFILE_FS "metal")
 		set(PROFILE_CS "metal")
-	elseif(CMAKE_SYSTEM_NAME MATCHES Windows)
+	elseif(api STREQUAL "dx")
+		set(PLATFORM "windows")
+		set(PROFILE_VS "vs_5_0")
+		set(PROFILE_FS "ps_5_0")
+		set(PROFILE_CS "cs_5_0")
+	elseif(api STREQUAL "vk")
 		set(PLATFORM "linux")
 		set(PROFILE_VS "spirv")
 		set(PROFILE_FS "spirv")
 		set(PROFILE_CS "spirv")
-	elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
+	elseif (api STREQUAL "gl")
 		set(PLATFORM "linux")
-		set(PROFILE_VS "spirv")
-		set(PROFILE_FS "spirv")
-		set(PROFILE_CS "spirv")
+		set(PROFILE_VS "430")
+		set(PROFILE_FS "430")
+		set(PROFILE_CS "430")
 	else()
 		message(FATAL_ERROR "Shader compiler is not supported on this platform")
 	endif()
 	
-	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${shader_name}")
+	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${api}/${shader_name}")
 	set(VS_OUTPUT_NAME "${OUTPUT_ROOT}/vertex.bin")
 	set(FS_OUTPUT_NAME "${OUTPUT_ROOT}/fragment.bin")
 	set(CS_OUTPUT_NAME "${OUTPUT_ROOT}/compute.bin")
@@ -450,7 +453,20 @@ function(declare_shader shader_name vertex_src fragment_src varying_src)
 			VERBATIM
 		)
 	endif()
+endfunction()
+
+# Define a shader
+# all paths must be absolute
+function(declare_shader shader_name vertex_src fragment_src varying_src)
 	
+	if(APPLE)
+		add_shader_helper("mtl" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
+	elseif(MSVC)
+		add_shader_helper("dx" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
+		add_shader_helper("vk" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
+	elseif(LINUX)
+		add_shader_helper("vk" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
+	endif()
 
 endfunction()
 
