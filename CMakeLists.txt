@@ -423,7 +423,7 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 	if(fragment_src STREQUAL "")
 		set(IS_COMPUTE ON)
 	endif()
-
+	
 	# compile shaders
 	if(NOT IS_COMPUTE)
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${VS_OUTPUT_NAME})
@@ -435,7 +435,6 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
 			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
 			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
-			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
 			VERBATIM
 		)
@@ -448,7 +447,6 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 			DEPENDS "${vertex_src}" "GNS_Deps"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
 			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}"
-			WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 			COMMENT "Compiling Compute Shader Descriptor ${shader_name} => ${CS_OUTPUT_NAME}"
 			VERBATIM
 		)
@@ -504,7 +502,7 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
@@ -639,10 +637,10 @@ endfunction()
 # tests
 if (RAVENGINE_BUILD_TESTS)
 	include(CTest)
-	add_executable("${PROJECT_NAME}_TestBasics" "test/basics.cpp")
+	add_executable("${PROJECT_NAME}_TestBasics" EXCLUDE_FROM_ALL "test/basics.cpp")
 	target_link_libraries("${PROJECT_NAME}_TestBasics" PUBLIC "RavEngine" )
 
-	add_executable("${PROJECT_NAME}_DSPerf" "test/dsperf.cpp")
+	add_executable("${PROJECT_NAME}_DSPerf" EXCLUDE_FROM_ALL "test/dsperf.cpp")
 	target_link_libraries("${PROJECT_NAME}_DSPerf" PUBLIC "RavEngine")
 
 	target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_17)

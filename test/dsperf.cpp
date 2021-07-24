@@ -55,7 +55,7 @@ static inline void do_test(const T& ds, const is_fn& insert_func, const es_fn& e
 }
 
 
-int main(){
+int main(int argc, const char** argv){
 	
 	// STL vector
 	{
