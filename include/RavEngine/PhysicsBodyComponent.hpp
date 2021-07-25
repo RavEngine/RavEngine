@@ -10,8 +10,21 @@
 #include "IPhysicsActor.hpp"
 #include <phmap.h>
 #include "Queryable.hpp"
+#include <PxSimulationEventCallback.h>
 
 namespace RavEngine {
+	// stores contact points
+	struct ContactPairPoint {
+		vector3 position, normal, impulse;
+		decimalType separation;
+
+		ContactPairPoint(const physx::PxContactPairPoint& pxcpp) :
+			position(pxcpp.position.x, pxcpp.position.y, pxcpp.position.z),
+			normal(pxcpp.normal.x, pxcpp.normal.y, pxcpp.normal.z),
+			impulse(pxcpp.impulse.x, pxcpp.impulse.y, pxcpp.impulse.z),
+			separation(pxcpp.separation) {}
+	};
+
 	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
@@ -65,20 +78,26 @@ namespace RavEngine {
 		/**
 		Invoked when a collider begins colliding with another body
 		@param other the second body
+		@param contactPoints the contact point data. Do not hold onto this pointer, because after this call, the pointer is invalid.
+		@param numContactPoints the number of contact points. Set to 0 if wantsContactData is false.
 		*/
-		void OnColliderEnter(Ref<PhysicsBodyComponent> other);
+		void OnColliderEnter(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints);
 
 		/**
 		Invoked when a collider has collided with another body for multiple frames
 		@param other the second body
+		@param contactPoints the contact point data. Do not hold onto this pointer, because after this call, the pointer is invalid.
+		@param numContactPoints the number of contact points. Set to 0 if wantsContactData is false.
 		*/
-		void OnColliderPersist(Ref<PhysicsBodyComponent> other);
+		void OnColliderPersist(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints);
 
 		/**
 		Invoked when a collider has exited another collider
 		@param other the second body
+		@param contactPoints the contact point data. Do not hold onto this pointer, because after this call, the pointer is invalid.
+		@param numContactPoints the number of contact points. Set to 0 if wantsContactData is false.
 		*/
-		void OnColliderExit(Ref<PhysicsBodyComponent> other);
+		void OnColliderExit(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints);
 		
 		/**
 		 Called by a PhysicsBodyComponent when it has entered another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
@@ -91,7 +110,23 @@ namespace RavEngine {
 		 @param other the other component
 		 */
 		void OnTriggerExit(Ref<PhysicsBodyComponent> other);
+
+		/**
+		* Get if this body wants contact data
+		*/
+		inline bool getWantsContactData() const {
+			return wantsContactData;
+		}
+		/**
+		wantsContactData controls if the simulation calculates and extracts contact point information on collisions.
+		Set to true to get contact point data. If set to false, OnCollider functions will have a dangling contactPoints pointer and numContactPoints will be 0.
+		*/
+		inline void setWantsContactData(bool state) {
+			wantsContactData = state;
+		}
 	protected:
+		bool wantsContactData = false;
+
 		template<typename T>
 		inline void Write(const T& func){
 			rigidActor->getScene()->lockWrite();

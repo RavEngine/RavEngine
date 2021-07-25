@@ -174,32 +174,32 @@ bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
 	return static_cast<PxRigidDynamic*>(rigidActor)->isSleeping();
 }
 
-void PhysicsBodyComponent::OnColliderEnter(Ref<PhysicsBodyComponent> other)
+void PhysicsBodyComponent::OnColliderEnter(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
 		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
 		if (strong){
-			strong->OnColliderEnter(other);
+			strong->OnColliderEnter(other, contactPoints,numContactPoints);
 		}
 	}
 }
 
-void PhysicsBodyComponent::OnColliderPersist(Ref<PhysicsBodyComponent> other)
+void PhysicsBodyComponent::OnColliderPersist(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
 		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
 		if (strong){
-			strong->OnColliderPersist(other);
+			strong->OnColliderPersist(other, contactPoints, numContactPoints);
 		}
 	}
 }
 
-void PhysicsBodyComponent::OnColliderExit(Ref<PhysicsBodyComponent> other)
+void PhysicsBodyComponent::OnColliderExit(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
 		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
 		if (strong){
-			strong->OnColliderExit(other);
+			strong->OnColliderExit(other, contactPoints, numContactPoints);
 		}
 	}
 }

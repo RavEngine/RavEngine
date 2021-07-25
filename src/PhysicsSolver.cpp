@@ -78,7 +78,7 @@ void PhysicsSolver::setupFiltering(PxRigidActor* actor, PxU32 filterGroup, PxU32
 void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs)
 {
     for (PxU32 i = 0; i < nbPairs; ++i) {
-        const PxContactPair& cp = pairs[i];
+        const PxContactPair& contactpair = pairs[i];
 
         //get the physics body component stored in the user data (non-owning pointer!)
         auto actor1 = (Ref<PhysicsBodyComponent>*)pairHeader.actors[0]->userData;
@@ -88,21 +88,36 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
 		if(actor1 == nullptr || actor2 == nullptr){
 			continue;
 		}
+
+        size_t numContacts = 0;
+        stackarray(contactPoints, ContactPairPoint, contactpair.contactCount);
+        {
+            // do we need contact data?
+            if ((*actor1)->getWantsContactData() || (*actor2)->getWantsContactData()) {
+                stackarray(points, PxContactPairPoint, contactpair.contactCount);
+                auto count = contactpair.extractContacts(points, contactpair.contactCount);
+                for (int i = 0; i < contactpair.contactCount; i++) {
+                    contactPoints[i] = points[i];
+                }
+                numContacts = count;
+            }
+        }
 		
         //invoke events
-        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_FOUND) {
-            (*actor1)->OnColliderEnter(*actor2);
-            (*actor2)->OnColliderEnter(*actor1);
+        if (contactpair.events & PxPairFlag::eNOTIFY_TOUCH_FOUND) {
+
+            (*actor1)->OnColliderEnter(*actor2,contactPoints, numContacts);
+            (*actor2)->OnColliderEnter(*actor1, contactPoints, numContacts);
         }
 
-        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_LOST) {
-            (*actor1)->OnColliderExit(*actor2);
-            (*actor2)->OnColliderExit(*actor1);
+        if (contactpair.events & PxPairFlag::eNOTIFY_TOUCH_LOST) {
+            (*actor1)->OnColliderExit(*actor2, contactPoints, numContacts);
+            (*actor2)->OnColliderExit(*actor1, contactPoints, numContacts);
         }
 
-        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_PERSISTS) {
-            (*actor1)->OnColliderPersist(*actor2);
-            (*actor2)->OnColliderPersist(*actor1);
+        if (contactpair.events & PxPairFlag::eNOTIFY_TOUCH_PERSISTS) {
+            (*actor1)->OnColliderPersist(*actor2, contactPoints, numContacts);
+            (*actor2)->OnColliderPersist(*actor1, contactPoints, numContacts);
         }
 
     }
