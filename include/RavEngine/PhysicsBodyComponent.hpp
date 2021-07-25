@@ -23,6 +23,9 @@ namespace RavEngine {
 			normal(pxcpp.normal.x, pxcpp.normal.y, pxcpp.normal.z),
 			impulse(pxcpp.impulse.x, pxcpp.impulse.y, pxcpp.impulse.z),
 			separation(pxcpp.separation) {}
+		
+		// default constructor
+		ContactPairPoint(){}
 	};
 
 	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>

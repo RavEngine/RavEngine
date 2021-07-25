@@ -111,7 +111,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			
 			// populate the tracks
 			raw_animation.tracks.resize(skeleton->GetSkeleton()->num_joints());
-			raw_animation.name = string(anim->mName.C_Str());
+			raw_animation.name = string_view(anim->mName.C_Str());
 			uint32_t num_loaded = 0;
 			for(int i = 0; i < anim->mNumChannels; i++){
 				auto channel = anim->mChannels[i];
@@ -121,7 +121,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 				
 				auto names = skeleton->GetSkeleton()->joint_names();
 				
-				std::string bonename(channel->mNodeName.C_Str());
+				std::string_view bonename(channel->mNodeName.C_Str());
 				
 				auto it = std::find(names.begin(), names.end(), bonename);
 				
