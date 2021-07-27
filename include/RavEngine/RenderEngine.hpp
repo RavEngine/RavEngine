@@ -118,7 +118,11 @@ namespace RavEngine {
          @return the High DPI scale factor. Only applicable on macOS.
          */
 		float GetDPIScale() const{
+#ifndef _WIN32
 			return (float)bufferdims.width / windowdims.width;
+#else
+			return win_scalefactor;
+#endif
 		}
 
         /**
@@ -197,6 +201,10 @@ namespace RavEngine {
         static phmap::flat_hash_map<uint16_t,DebugMsg> debugprints;
 #endif
         void runAPIThread(bgfx::PlatformData pd, int width, int height);
+
+#ifdef _WIN32
+		float win_scalefactor = 1;
+#endif
 		
 		WeakRef<World> worldToDraw;
 		std::optional<std::thread> renderThread;

@@ -42,6 +42,12 @@
 	#include "AppleUtilities.h"
 #endif
 
+#if BX_PLATFORM_WINDOWS
+#define _WIN32_WINNT _WIN32_WINNT_WIN10
+#include <ShellScalingApi.h>
+#pragma comment(lib, "Shcore.lib")
+#endif
+
 using namespace std;
 using namespace RavEngine;
 
@@ -757,22 +763,38 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 }
 
 void RenderEngine::UpdateBufferDims(){
-	// on non-apple platforms this is in pixels, on apple platforms it is in made-up "screen points"
+	// on non-apple platforms this is in pixels, on apple platforms it is in "screen points"
 	// which will be dealt with later
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
-	
+
+	// update bufferdims
+	bufferdims.width = windowdims.width;
+	bufferdims.height = windowdims.height;
+
 	// get the canvas size in pixels
+# if BX_PLATFORM_WINDOWS
+	
+	SDL_SysWMinfo wmi;
+	SDL_VERSION(&wmi.version);
+	if (!SDL_GetWindowWMInfo(window, &wmi)) {
+		Debug::Fatal("Cannot get native window information");
+	}
+	auto monitor = MonitorFromWindow(wmi.info.win.window, MONITOR_DEFAULTTONEAREST);
+	DEVICE_SCALE_FACTOR fac;
+	if (GetScaleFactorForMonitor(monitor,&fac) == S_OK) {
+		win_scalefactor = (fac / 100.0);
+	}
+	else {
+		Debug::Fatal("GetScaleFactorForMonitor failed");
+	}
+	
+#elif BX_PLATFORM_IOS || BX_PLATFORM_OSX
 	// since iOS and macOS do not use OpenGL we cannot use the GL call here
 	// instead we derive it by querying display data
-#if BX_PLATFORM_IOS || BX_PLATFORM_OSX
-	
 	float scale = GetWindowScaleFactor(window);
 	bufferdims.width = windowdims.width * scale;
 	bufferdims.height = windowdims.height * scale;
-#else
-	bufferdims = windowdims;
 #endif
-	
 }
 
 #ifdef _DEBUG
