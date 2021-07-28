@@ -73,20 +73,23 @@ namespace RavEngine {
 			offset += RPCMsgUnpacker::total_serialized_size(value);
 		}
         
+		template<typename ... A>
+		static inline constexpr size_t size_needed(A ... args){
+			return (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
+		}
+		
 		/**
 		Create a serialized RPC invocation
 		@param id the RPC id number
 		@param args the varargs to encode
 		*/
 		template<typename ... A>
-		inline std::string SerializeRPC(uint16_t id, A ... args) {
-			constexpr size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
+		inline void SerializeRPC(uint16_t id, char* msg, size_t nbytes, A ... args) {
 
 			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>().value()->GetNetworkID().raw();
-			char msg[totalsize];
 
 			//write message header
-			std::memset(msg, 0, totalsize);
+			std::memset(msg, 0, nbytes);
             msg[0] = NetworkBase::CommandCode::RPC;							//command code
 			std::memcpy(msg + 1, uuid_bytes.data(), uuid_bytes.size());	//entity uuid
 			std::memcpy(msg + 1 + uuid_bytes.size(), &id, sizeof(id));	//RPC ID
@@ -94,8 +97,7 @@ namespace RavEngine {
 			//write mesage body
 			size_t offset = RPCMsgUnpacker::header_size;
 			(serializeType(offset,msg,args),...);		//fold expression on all variadics
-			Debug::Assert(offset == totalsize, "Incorrect number of bytes written!");
-			return std::string(msg,totalsize);
+			Debug::Assert(offset == nbytes, "Incorrect number of bytes written!");
 		}
 
 		/**
@@ -157,7 +159,9 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) {
 			if (ServerRPCs.contains(id)) {
-				auto msg = SerializeRPC(id, args...);
+				auto size = size_needed(args...);
+				stackarray(msg,char,size);
+				SerializeRPC(id, msg, size, args...);
 				App::networkManager.client->SendMessageToServer(msg,mode);
 			}
 			else {
@@ -179,7 +183,9 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A ... args) {
 			if (ClientRPCs.contains(id)) {
-				auto msg = SerializeRPC(id, args...);
+				auto size = size_needed(args...);
+				stackarray(msg,char,size);
+				SerializeRPC(id, msg, size, args...);
 				App::networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
 			}
 			else {
@@ -196,7 +202,9 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) {
 			if (ClientRPCs.contains(id)) {
-				auto msg = SerializeRPC(id, args...);
+				auto size = size_needed(args...);
+				stackarray(msg,char,size);
+				SerializeRPC(id, msg, size, args...);
 				App::networkManager.server->SendMessageToAllClients(msg,mode);
 			}
 			else {

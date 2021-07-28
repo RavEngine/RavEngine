@@ -106,7 +106,7 @@ namespace uuids
 #undef CHECK
 
     private:
-        void _generate(generator_base &gntr)
+        inline void _generate(generator_base &gntr)
         {
             // set node before clock, because node might reset the node
             _set_node(gntr);
@@ -114,7 +114,7 @@ namespace uuids
             _set_clock_and_variant(gntr);
         }
 
-        void _set_time_and_version(generator_base &gntr)
+		inline void _set_time_and_version(generator_base &gntr)
         {
             // generate timestamp (64 bits, first 4 msbs to be discarded) and version
             uint64_t stamp = gntr.generate_timestamp();
@@ -133,7 +133,7 @@ namespace uuids
             _time_hi_and_version += (version & version_mask);
         }
 
-        void _set_clock_and_variant(generator_base &gntr)
+		inline void _set_clock_and_variant(generator_base &gntr)
         {
             // generate clock sequence (16 bits, first 2 msbs to be discarded)
             uint16_t clock = gntr.generate_clock_sequence();
@@ -149,7 +149,7 @@ namespace uuids
             _clock_seq_hi_and_reserved += (variant & variant_mask);
         }
 
-        void _set_node(generator_base &gntr)
+		inline void _set_node(generator_base &gntr)
         {
             // get node (48-bit MAC address if available; otherwise random)
             uint8_t *node = gntr.get_node();
@@ -179,7 +179,7 @@ namespace uuids
 #endif
 
     private:
-        uuid &_copy_bytes(const uuid &other)
+		inline uuid &_copy_bytes(const uuid &other)
         {
             // no move constructor or assignment since fields are of very simple types
             _time_low = other._time_low;
@@ -192,7 +192,7 @@ namespace uuids
             return *this;
         }
 
-        std::string _to_string() const
+		inline std::string _to_string() const
         {
 			constexpr uint16_t size = 36 + 1;
             char buffer[size];
@@ -212,7 +212,7 @@ namespace uuids
             return std::string(buffer);
         }
     public:
-        std::array<char,16> raw() const {
+		inline std::array<char,16> raw() const {
             std::array<char, 16> data;
             char* buffer = data.data();
             memset(buffer,0,16);
@@ -249,9 +249,14 @@ namespace std
     template <>
     struct hash<id>
     {
+		// hashing by performing higher XOR lower
         inline std::size_t operator()(id const &d) const noexcept
         {
-            return hash<string>{}(d.to_string());
+			auto raw = d.raw();
+//			uint64_t lower, higher;
+//			std::memcpy(&higher,raw.data(), sizeof(higher));
+//			std::memcpy(&lower, raw.data() + sizeof(higher), sizeof(lower));
+			return (*reinterpret_cast<uint64_t*>(raw.data())) ^ (*reinterpret_cast<uint64_t*>(raw.data() + sizeof(uint64_t)));
         }
     };
 
