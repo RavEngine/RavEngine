@@ -1,7 +1,10 @@
-
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "core_h2c.h"
 #include "crypto_core_ed25519.h"
+#include "crypto_hash_sha512.h"
 #include "private/common.h"
 #include "private/ed25519_ref10.h"
 #include "randombytes.h"
@@ -35,7 +38,7 @@ crypto_core_ed25519_add(unsigned char *r,
         return -1;
     }
     ge25519_p3_to_cached(&q_cached, &q_p3);
-    ge25519_add(&r_p1p1, &p_p3, &q_cached);
+    ge25519_add_cached(&r_p1p1, &p_p3, &q_cached);
     ge25519_p1p1_to_p3(&r_p3, &r_p1p1);
     ge25519_p3_tobytes(r, &r_p3);
 
@@ -55,7 +58,7 @@ crypto_core_ed25519_sub(unsigned char *r,
         return -1;
     }
     ge25519_p3_to_cached(&q_cached, &q_p3);
-    ge25519_sub(&r_p1p1, &p_p3, &q_cached);
+    ge25519_sub_cached(&r_p1p1, &p_p3, &q_cached);
     ge25519_p1p1_to_p3(&r_p3, &r_p1p1);
     ge25519_p3_tobytes(r, &r_p3);
 
@@ -70,21 +73,63 @@ crypto_core_ed25519_from_uniform(unsigned char *p, const unsigned char *r)
     return 0;
 }
 
-int
-crypto_core_ed25519_from_hash(unsigned char *p, const unsigned char *h)
-{
-    ge25519_from_hash(p, h);
+#define HASH_GE_L 48U
 
+static int
+_string_to_points(unsigned char * const px, const size_t n,
+                  const char *ctx, const unsigned char *msg, size_t msg_len,
+                  int hash_alg)
+{
+    unsigned char h[crypto_core_ed25519_HASHBYTES];
+    unsigned char h_be[2U * HASH_GE_L];
+    size_t        i, j;
+
+    if (n > 2U) {
+        abort(); /* LCOV_EXCL_LINE */
+    }
+    if (core_h2c_string_to_hash(h_be, n * HASH_GE_L, ctx, msg, msg_len,
+                                hash_alg) != 0) {
+        return -1;
+    }
+    COMPILER_ASSERT(sizeof h >= HASH_GE_L);
+    for (i = 0U; i < n; i++) {
+        for (j = 0U; j < HASH_GE_L; j++) {
+            h[j] = h_be[i * HASH_GE_L + HASH_GE_L - 1U - j];
+        }
+        memset(&h[j], 0, (sizeof h) - j);
+        ge25519_from_hash(&px[i * crypto_core_ed25519_BYTES], h);
+    }
     return 0;
+}
+
+int
+crypto_core_ed25519_from_string(unsigned char p[crypto_core_ed25519_BYTES],
+                                const char *ctx, const unsigned char *msg,
+                                size_t msg_len, int hash_alg)
+{
+    return _string_to_points(p, 1, ctx, msg, msg_len, hash_alg);
+}
+
+int
+crypto_core_ed25519_from_string_ro(unsigned char p[crypto_core_ed25519_BYTES],
+                                   const char *ctx, const unsigned char *msg,
+                                   size_t msg_len, int hash_alg)
+{
+    unsigned char px[2 * crypto_core_ed25519_BYTES];
+
+    if (_string_to_points(px, 2, ctx, msg, msg_len, hash_alg) != 0) {
+        return -1;
+    }
+    return crypto_core_ed25519_add(p, &px[0], &px[crypto_core_ed25519_BYTES]);
 }
 
 void
 crypto_core_ed25519_random(unsigned char *p)
 {
-    unsigned char h[crypto_core_ed25519_HASHBYTES];
+    unsigned char h[crypto_core_ed25519_UNIFORMBYTES];
 
     randombytes_buf(h, sizeof h);
-    (void) crypto_core_ed25519_from_hash(p, h);
+    (void) crypto_core_ed25519_from_uniform(p, h);
 }
 
 void
@@ -192,6 +237,12 @@ crypto_core_ed25519_scalar_reduce(unsigned char *r,
     sc25519_reduce(t);
     memcpy(r, t, crypto_core_ed25519_SCALARBYTES);
     sodium_memzero(t, sizeof t);
+}
+
+int
+crypto_core_ed25519_scalar_is_canonical(const unsigned char *s)
+{
+    return sc25519_is_canonical(s);
 }
 
 size_t

@@ -57,7 +57,7 @@ sodium_init(void)
 static CRITICAL_SECTION _sodium_lock;
 static volatile LONG    _sodium_lock_initialized;
 
-int
+static int
 _sodium_crit_init(void)
 {
     LONG status = 0L;
@@ -151,7 +151,9 @@ sodium_crit_enter(void)
 # ifdef HAVE_NANOSLEEP
         (void) nanosleep(&q, NULL);
 # elif defined(__x86_64__) || defined(__i386__)
-        __asm__ __volatile__ ("pause");
+        __asm__ __volatile__ ("pause":::"memory");
+# elif defined(__aarch64__)
+        __asm__ __volatile__ ("yield":::"memory");
 # endif
     }
     return 0;
@@ -212,3 +214,15 @@ sodium_set_misuse_handler(void (*handler)(void))
     }
     return 0;
 }
+
+#if defined(_WIN32) && !defined(SODIUM_STATIC)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
+    (void) hinstDLL;
+    (void) lpReserved;
+
+    if (fdwReason == DLL_PROCESS_DETACH && _sodium_lock_initialized == 2) {
+        DeleteCriticalSection(&_sodium_lock);
+    }
+    return TRUE;
+}
+#endif

@@ -1,7 +1,7 @@
 #ifndef common_H
 #define common_H 1
 
-#if !defined(_MSC_VER) && !defined(DEV_MODE) && 0
+#if !defined(_MSC_VER) && !defined(DEV_MODE) && 1
 # warning *** This is unstable, untested, development code.
 # warning It might not compile. It might not work as expected.
 # warning It might be totally insecure.
@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "private/quirks.h"
 
 #define COMPILER_ASSERT(X) (void) sizeof(char[(X) ? 1 : -1])
 

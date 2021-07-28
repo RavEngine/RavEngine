@@ -1,8 +1,12 @@
 
+#include <assert.h>
 #include <stdint.h>
+#include <string.h>
 
+#include "core_h2c.h"
 #include "crypto_core_ed25519.h"
 #include "crypto_core_ristretto255.h"
+#include "crypto_hash_sha256.h"
 #include "private/common.h"
 #include "private/ed25519_ref10.h"
 #include "randombytes.h"
@@ -32,7 +36,7 @@ crypto_core_ristretto255_add(unsigned char *r,
         return -1;
     }
     ge25519_p3_to_cached(&q_cached, &q_p3);
-    ge25519_add(&r_p1p1, &p_p3, &q_cached);
+    ge25519_add_cached(&r_p1p1, &p_p3, &q_cached);
     ge25519_p1p1_to_p3(&r_p3, &r_p1p1);
     ristretto255_p3_tobytes(r, &r_p3);
 
@@ -52,7 +56,7 @@ crypto_core_ristretto255_sub(unsigned char *r,
         return -1;
     }
     ge25519_p3_to_cached(&q_cached, &q_p3);
-    ge25519_sub(&r_p1p1, &p_p3, &q_cached);
+    ge25519_sub_cached(&r_p1p1, &p_p3, &q_cached);
     ge25519_p1p1_to_p3(&r_p3, &r_p1p1);
     ristretto255_p3_tobytes(r, &r_p3);
 
@@ -65,6 +69,38 @@ crypto_core_ristretto255_from_hash(unsigned char *p, const unsigned char *r)
     ristretto255_from_hash(p, r);
 
     return 0;
+}
+
+static int
+_string_to_element(unsigned char *p,
+                   const char *ctx, const unsigned char *msg, size_t msg_len,
+                   int hash_alg)
+{
+    unsigned char h[crypto_core_ristretto255_HASHBYTES];
+
+    if (core_h2c_string_to_hash(h, sizeof h, ctx, msg, msg_len,
+                                hash_alg) != 0) {
+        return -1;
+    }
+    ristretto255_from_hash(p, h);
+
+    return 0;
+}
+
+int
+crypto_core_ristretto255_from_string(unsigned char p[crypto_core_ristretto255_BYTES],
+                                     const char *ctx, const unsigned char *msg,
+                                     size_t msg_len, int hash_alg)
+{
+    return _string_to_element(p, ctx, msg, msg_len, hash_alg);
+}
+
+int
+crypto_core_ristretto255_from_string_ro(unsigned char p[crypto_core_ristretto255_BYTES],
+                                        const char *ctx, const unsigned char *msg,
+                                        size_t msg_len, int hash_alg)
+{
+    return crypto_core_ristretto255_from_string(p, ctx, msg, msg_len, hash_alg);
 }
 
 void
@@ -129,6 +165,37 @@ crypto_core_ristretto255_scalar_reduce(unsigned char *r,
                                        const unsigned char *s)
 {
     crypto_core_ed25519_scalar_reduce(r, s);
+}
+
+int
+crypto_core_ristretto255_scalar_is_canonical(const unsigned char *s)
+{
+    return sc25519_is_canonical(s);
+}
+
+#define HASH_SC_L 48U
+
+int
+crypto_core_ristretto255_scalar_from_string(unsigned char *s,
+                                            const char *ctx, const unsigned char *msg,
+                                            size_t msg_len, int hash_alg)
+{
+    unsigned char h[crypto_core_ristretto255_NONREDUCEDSCALARBYTES];
+    unsigned char h_be[HASH_SC_L];
+    size_t        i;
+
+    if (core_h2c_string_to_hash(h_be, sizeof h_be, ctx, msg, msg_len,
+                                hash_alg) != 0) {
+        return -1;
+    }
+    COMPILER_ASSERT(sizeof h >= sizeof h_be);
+    for (i = 0U; i < HASH_SC_L; i++) {
+        h[i] = h_be[HASH_SC_L - 1U - i];
+    }
+    memset(&h[i], 0, (sizeof h) - i);
+    crypto_core_ristretto255_scalar_reduce(s, h);
+
+    return 0;
 }
 
 size_t

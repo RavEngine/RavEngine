@@ -9,8 +9,8 @@ EXTRA_DIST = \
 	android-x86.sh \
 	android-x86_64.sh \
 	emscripten.sh \
-	ios.sh \
+	apple-xcframework.sh \
+	macos.sh \
 	msys2-win32.sh \
 	msys2-win64.sh \
-	watchos.sh \
 	wasm32-wasi.sh

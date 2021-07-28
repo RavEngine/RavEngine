@@ -50,13 +50,24 @@ load_4(const unsigned char *in)
 # include "fe_25_5/fe.h"
 #endif
 
+static inline void
+fe25519_sqmul(fe25519 s, const int n, const fe25519 a)
+{
+    int i;
+
+    for (i = 0; i < n; i++) {
+        fe25519_sq(s, s);
+    }
+    fe25519_mul(s, s, a);
+}
+
+/*
+ * Inversion - returns 0 if z=0
+ */
 void
 fe25519_invert(fe25519 out, const fe25519 z)
 {
-    fe25519 t0;
-    fe25519 t1;
-    fe25519 t2;
-    fe25519 t3;
+    fe25519 t0, t1, t2, t3;
     int     i;
 
     fe25519_sq(t0, z);
@@ -81,8 +92,7 @@ fe25519_invert(fe25519 out, const fe25519 z)
         fe25519_sq(t3, t3);
     }
     fe25519_mul(t2, t3, t2);
-    fe25519_sq(t2, t2);
-    for (i = 1; i < 10; ++i) {
+    for (i = 1; i < 11; ++i) {
         fe25519_sq(t2, t2);
     }
     fe25519_mul(t1, t2, t1);
@@ -96,24 +106,24 @@ fe25519_invert(fe25519 out, const fe25519 z)
         fe25519_sq(t3, t3);
     }
     fe25519_mul(t2, t3, t2);
-    fe25519_sq(t2, t2);
-    for (i = 1; i < 50; ++i) {
+    for (i = 1; i < 51; ++i) {
         fe25519_sq(t2, t2);
     }
     fe25519_mul(t1, t2, t1);
-    fe25519_sq(t1, t1);
-    for (i = 1; i < 5; ++i) {
+    for (i = 1; i < 6; ++i) {
         fe25519_sq(t1, t1);
     }
     fe25519_mul(out, t1, t0);
 }
 
+/*
+ * returns z^((p-5)/8) = z^(2^252-3)
+ * used to compute square roots since we have p=5 (mod 8); see Cohen and Frey.
+ */
 static void
 fe25519_pow22523(fe25519 out, const fe25519 z)
 {
-    fe25519 t0;
-    fe25519 t1;
-    fe25519 t2;
+    fe25519 t0, t1, t2;
     int     i;
 
     fe25519_sq(t0, z);
@@ -138,8 +148,7 @@ fe25519_pow22523(fe25519 out, const fe25519 z)
         fe25519_sq(t2, t2);
     }
     fe25519_mul(t1, t2, t1);
-    fe25519_sq(t1, t1);
-    for (i = 1; i < 10; ++i) {
+    for (i = 1; i < 11; ++i) {
         fe25519_sq(t1, t1);
     }
     fe25519_mul(t0, t1, t0);
@@ -153,8 +162,7 @@ fe25519_pow22523(fe25519 out, const fe25519 z)
         fe25519_sq(t2, t2);
     }
     fe25519_mul(t1, t2, t1);
-    fe25519_sq(t1, t1);
-    for (i = 1; i < 50; ++i) {
+    for (i = 1; i < 51; ++i) {
         fe25519_sq(t1, t1);
     }
     fe25519_mul(t0, t1, t0);
@@ -179,12 +187,81 @@ fe25519_abs(fe25519 h, const fe25519 f)
     fe25519_cneg(h, f, fe25519_isnegative(f));
 }
 
+static void
+fe25519_unchecked_sqrt(fe25519 x, const fe25519 x2)
+{
+    fe25519 p_root;
+    fe25519 m_root;
+    fe25519 m_root2;
+    fe25519 e;
+
+    fe25519_pow22523(e, x2);
+    fe25519_mul(p_root, e, x2);
+    fe25519_mul(m_root, p_root, fe25519_sqrtm1);
+    fe25519_sq(m_root2, m_root);
+    fe25519_sub(e, x2, m_root2);
+    fe25519_copy(x, p_root);
+    fe25519_cmov(x, m_root, fe25519_iszero(e));
+}
+
+static int
+fe25519_sqrt(fe25519 x, const fe25519 x2)
+{
+    fe25519 check;
+    fe25519 x2_copy;
+
+    fe25519_copy(x2_copy, x2);
+    fe25519_unchecked_sqrt(x, x2);
+    fe25519_sq(check, x);
+    fe25519_sub(check, check, x2_copy);
+
+    return fe25519_iszero(check) - 1;
+}
+
+static int
+fe25519_notsquare(const fe25519 x)
+{
+    fe25519       _10, _11, _1100, _1111, _11110000, _11111111;
+    fe25519       t, u, v;
+    unsigned char s[32];
+
+    /* Jacobi symbol - x^((p-1)/2) */
+    fe25519_mul(_10, x, x);
+    fe25519_mul(_11, x, _10);
+    fe25519_sq(_1100, _11);
+    fe25519_sq(_1100, _1100);
+    fe25519_mul(_1111, _11, _1100);
+    fe25519_sq(_11110000, _1111);
+    fe25519_sq(_11110000, _11110000);
+    fe25519_sq(_11110000, _11110000);
+    fe25519_sq(_11110000, _11110000);
+    fe25519_mul(_11111111, _1111, _11110000);
+    fe25519_copy(t, _11111111);
+    fe25519_sqmul(t, 2, _11);
+    fe25519_copy(u, t);
+    fe25519_sqmul(t, 10, u);
+    fe25519_sqmul(t, 10, u);
+    fe25519_copy(v, t);
+    fe25519_sqmul(t, 30, v);
+    fe25519_copy(v, t);
+    fe25519_sqmul(t, 60, v);
+    fe25519_copy(v, t);
+    fe25519_sqmul(t, 120, v);
+    fe25519_sqmul(t, 10, u);
+    fe25519_sqmul(t, 3, _11);
+    fe25519_sq(t, t);
+
+    fe25519_tobytes(s, t);
+
+    return s[1] & 1;
+}
+
 /*
  r = p + q
  */
 
 void
-ge25519_add(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_cached *q)
+ge25519_add_cached(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_cached *q)
 {
     fe25519 t0;
 
@@ -259,7 +336,7 @@ ge25519_frombytes(ge25519_p3 *h, const unsigned char *s)
     fe25519_frombytes(h->Y, s);
     fe25519_1(h->Z);
     fe25519_sq(u, h->Y);
-    fe25519_mul(v, u, d);
+    fe25519_mul(v, u, ed25519_d);
     fe25519_sub(u, u, h->Z); /* u = y^2-1 */
     fe25519_add(v, v, h->Z); /* v = dy^2+1 */
 
@@ -279,7 +356,7 @@ ge25519_frombytes(ge25519_p3 *h, const unsigned char *s)
     fe25519_add(p_root_check, vxx, u); /* vx^2+u */
     has_m_root = fe25519_iszero(m_root_check);
     has_p_root = fe25519_iszero(p_root_check);
-    fe25519_mul(x_sqrtm1, h->X, sqrtm1); /* x*sqrt(-1) */
+    fe25519_mul(x_sqrtm1, h->X, fe25519_sqrtm1); /* x*sqrt(-1) */
     fe25519_cmov(h->X, x_sqrtm1, 1 - has_m_root);
 
     fe25519_neg(negx, h->X);
@@ -301,7 +378,7 @@ ge25519_frombytes_negate_vartime(ge25519_p3 *h, const unsigned char *s)
     fe25519_frombytes(h->Y, s);
     fe25519_1(h->Z);
     fe25519_sq(u, h->Y);
-    fe25519_mul(v, u, d);
+    fe25519_mul(v, u, ed25519_d);
     fe25519_sub(u, u, h->Z); /* u = y^2-1 */
     fe25519_add(v, v, h->Z); /* v = dy^2+1 */
 
@@ -323,7 +400,7 @@ ge25519_frombytes_negate_vartime(ge25519_p3 *h, const unsigned char *s)
         if (fe25519_iszero(p_root_check) == 0) {
             return -1;
         }
-        fe25519_mul(h->X, h->X, sqrtm1);
+        fe25519_mul(h->X, h->X, fe25519_sqrtm1);
     }
 
     if (fe25519_isnegative(h->X) == (s[31] >> 7)) {
@@ -339,7 +416,7 @@ ge25519_frombytes_negate_vartime(ge25519_p3 *h, const unsigned char *s)
  */
 
 static void
-ge25519_madd(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_precomp *q)
+ge25519_add_precomp(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_precomp *q)
 {
     fe25519 t0;
 
@@ -360,7 +437,7 @@ ge25519_madd(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_precomp *q)
  */
 
 static void
-ge25519_msub(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_precomp *q)
+ge25519_sub_precomp(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_precomp *q)
 {
     fe25519 t0;
 
@@ -457,7 +534,7 @@ ge25519_p3_to_cached(ge25519_cached *r, const ge25519_p3 *p)
     fe25519_add(r->YplusX, p->Y, p->X);
     fe25519_sub(r->YminusX, p->Y, p->X);
     fe25519_copy(r->Z, p->Z);
-    fe25519_mul(r->T2d, p->T, d2);
+    fe25519_mul(r->T2d, p->T, ed25519_d2);
 }
 
 static void
@@ -474,7 +551,7 @@ ge25519_p3_to_precomp(ge25519_precomp *pi, const ge25519_p3 *p)
     fe25519_add(pi->yplusx, y, x);
     fe25519_sub(pi->yminusx, y, x);
     fe25519_mul(xy, x, y);
-    fe25519_mul(pi->xy2d, xy, d2);
+    fe25519_mul(pi->xy2d, xy, ed25519_d2);
 }
 
 /*
@@ -628,7 +705,7 @@ ge25519_cmov8_cached(ge25519_cached *t, const ge25519_cached cached[8], const si
  */
 
 void
-ge25519_sub(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_cached *q)
+ge25519_sub_cached(ge25519_p1p1 *r, const ge25519_p3 *p, const ge25519_cached *q)
 {
     fe25519 t0;
 
@@ -695,31 +772,31 @@ ge25519_double_scalarmult_vartime(ge25519_p2 *r, const unsigned char *a,
     ge25519_p3_dbl(&t, A);
     ge25519_p1p1_to_p3(&A2, &t);
 
-    ge25519_add(&t, &A2, &Ai[0]);
+    ge25519_add_cached(&t, &A2, &Ai[0]);
     ge25519_p1p1_to_p3(&u, &t);
     ge25519_p3_to_cached(&Ai[1], &u);
 
-    ge25519_add(&t, &A2, &Ai[1]);
+    ge25519_add_cached(&t, &A2, &Ai[1]);
     ge25519_p1p1_to_p3(&u, &t);
     ge25519_p3_to_cached(&Ai[2], &u);
 
-    ge25519_add(&t, &A2, &Ai[2]);
+    ge25519_add_cached(&t, &A2, &Ai[2]);
     ge25519_p1p1_to_p3(&u, &t);
     ge25519_p3_to_cached(&Ai[3], &u);
 
-    ge25519_add(&t, &A2, &Ai[3]);
+    ge25519_add_cached(&t, &A2, &Ai[3]);
     ge25519_p1p1_to_p3(&u, &t);
     ge25519_p3_to_cached(&Ai[4], &u);
 
-    ge25519_add(&t, &A2, &Ai[4]);
+    ge25519_add_cached(&t, &A2, &Ai[4]);
     ge25519_p1p1_to_p3(&u, &t);
     ge25519_p3_to_cached(&Ai[5], &u);
 
-    ge25519_add(&t, &A2, &Ai[5]);
+    ge25519_add_cached(&t, &A2, &Ai[5]);
     ge25519_p1p1_to_p3(&u, &t);
     ge25519_p3_to_cached(&Ai[6], &u);
 
-    ge25519_add(&t, &A2, &Ai[6]);
+    ge25519_add_cached(&t, &A2, &Ai[6]);
     ge25519_p1p1_to_p3(&u, &t);
     ge25519_p3_to_cached(&Ai[7], &u);
 
@@ -736,18 +813,18 @@ ge25519_double_scalarmult_vartime(ge25519_p2 *r, const unsigned char *a,
 
         if (aslide[i] > 0) {
             ge25519_p1p1_to_p3(&u, &t);
-            ge25519_add(&t, &u, &Ai[aslide[i] / 2]);
+            ge25519_add_cached(&t, &u, &Ai[aslide[i] / 2]);
         } else if (aslide[i] < 0) {
             ge25519_p1p1_to_p3(&u, &t);
-            ge25519_sub(&t, &u, &Ai[(-aslide[i]) / 2]);
+            ge25519_sub_cached(&t, &u, &Ai[(-aslide[i]) / 2]);
         }
 
         if (bslide[i] > 0) {
             ge25519_p1p1_to_p3(&u, &t);
-            ge25519_madd(&t, &u, &Bi[bslide[i] / 2]);
+            ge25519_add_precomp(&t, &u, &Bi[bslide[i] / 2]);
         } else if (bslide[i] < 0) {
             ge25519_p1p1_to_p3(&u, &t);
-            ge25519_msub(&t, &u, &Bi[(-bslide[i]) / 2]);
+            ge25519_sub_precomp(&t, &u, &Bi[(-bslide[i]) / 2]);
         }
 
         ge25519_p1p1_to_p2(r, &t);
@@ -783,7 +860,7 @@ ge25519_scalarmult(ge25519_p3 *h, const unsigned char *a, const ge25519_p3 *p)
     ge25519_p1p1_to_p3(&p2, &t2);
     ge25519_p3_to_cached(&pi[2 - 1], &p2); /* 2p = 2*p */
 
-    ge25519_add(&t3, p, &pi[2 - 1]);
+    ge25519_add_cached(&t3, p, &pi[2 - 1]);
     ge25519_p1p1_to_p3(&p3, &t3);
     ge25519_p3_to_cached(&pi[3 - 1], &p3); /* 3p = 2p+p */
 
@@ -791,7 +868,7 @@ ge25519_scalarmult(ge25519_p3 *h, const unsigned char *a, const ge25519_p3 *p)
     ge25519_p1p1_to_p3(&p4, &t4);
     ge25519_p3_to_cached(&pi[4 - 1], &p4); /* 4p = 2*2p */
 
-    ge25519_add(&t5, p, &pi[4 - 1]);
+    ge25519_add_cached(&t5, p, &pi[4 - 1]);
     ge25519_p1p1_to_p3(&p5, &t5);
     ge25519_p3_to_cached(&pi[5 - 1], &p5); /* 5p = 4p+p */
 
@@ -799,7 +876,7 @@ ge25519_scalarmult(ge25519_p3 *h, const unsigned char *a, const ge25519_p3 *p)
     ge25519_p1p1_to_p3(&p6, &t6);
     ge25519_p3_to_cached(&pi[6 - 1], &p6); /* 6p = 2*3p */
 
-    ge25519_add(&t7, p, &pi[6 - 1]);
+    ge25519_add_cached(&t7, p, &pi[6 - 1]);
     ge25519_p1p1_to_p3(&p7, &t7);
     ge25519_p3_to_cached(&pi[7 - 1], &p7); /* 7p = 6p+p */
 
@@ -828,7 +905,7 @@ ge25519_scalarmult(ge25519_p3 *h, const unsigned char *a, const ge25519_p3 *p)
 
     for (i = 63; i != 0; i--) {
         ge25519_cmov8_cached(&t, pi, e[i]);
-        ge25519_add(&r, h, &t);
+        ge25519_add_cached(&r, h, &t);
 
         ge25519_p1p1_to_p2(&s, &r);
         ge25519_p2_dbl(&r, &s);
@@ -842,7 +919,7 @@ ge25519_scalarmult(ge25519_p3 *h, const unsigned char *a, const ge25519_p3 *p)
         ge25519_p1p1_to_p3(h, &r);  /* *16 */
     }
     ge25519_cmov8_cached(&t, pi, e[i]);
-    ge25519_add(&r, h, &t);
+    ge25519_add_cached(&r, h, &t);
 
     ge25519_p1p1_to_p3(h, &r);
 }
@@ -888,7 +965,7 @@ ge25519_scalarmult_base(ge25519_p3 *h, const unsigned char *a)
 
     for (i = 1; i < 64; i += 2) {
         ge25519_cmov8_base(&t, i / 2, e[i]);
-        ge25519_madd(&r, h, &t);
+        ge25519_add_precomp(&r, h, &t);
         ge25519_p1p1_to_p3(h, &r);
     }
 
@@ -903,64 +980,97 @@ ge25519_scalarmult_base(ge25519_p3 *h, const unsigned char *a)
 
     for (i = 0; i < 64; i += 2) {
         ge25519_cmov8_base(&t, i / 2, e[i]);
-        ge25519_madd(&r, h, &t);
+        ge25519_add_precomp(&r, h, &t);
         ge25519_p1p1_to_p3(h, &r);
     }
 }
 
+/* r = 2p */
+static void
+ge25519_p3p3_dbl(ge25519_p3 *r, const ge25519_p3 *p)
+{
+    ge25519_p1p1 p1p1;
+
+    ge25519_p3_dbl(&p1p1, p);
+    ge25519_p1p1_to_p3(r, &p1p1);
+}
+
+/* r = p+q */
+static void
+ge25519_p3_add(ge25519_p3 *r, const ge25519_p3 *p, const ge25519_p3 *q)
+{
+    ge25519_cached q_cached;
+    ge25519_p1p1   p1p1;
+
+    ge25519_p3_to_cached(&q_cached, q);
+    ge25519_add_cached(&p1p1, p, &q_cached);
+    ge25519_p1p1_to_p3(r, &p1p1);
+}
+
+/* r = r*(2^n)+q */
+static void
+ge25519_p3_dbladd(ge25519_p3 *r, const int n, const ge25519_p3 *q)
+{
+    ge25519_p2   p2;
+    ge25519_p1p1 p1p1;
+    int          i;
+
+    ge25519_p3_to_p2(&p2, r);
+    for (i = 0; i < n; i++) {
+        ge25519_p2_dbl(&p1p1, &p2);
+        ge25519_p1p1_to_p2(&p2, &p1p1);
+    }
+    ge25519_p1p1_to_p3(r, &p1p1);
+    ge25519_p3_add(r, r, q);
+}
+
 /* multiply by the order of the main subgroup l = 2^252+27742317777372353535851937790883648493 */
 static void
-ge25519_mul_l(ge25519_p3 *r, const ge25519_p3 *A)
+ge25519_mul_l(ge25519_p3 *r, const ge25519_p3 *p)
 {
-    static const signed char aslide[253] = {
-        13, 0, 0, 0, 0, -1, 0, 0, 0, 0, -11, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0, 0, -13, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, -13, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, -13, 0, 0, 0, 0, 0, 0, -3, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 3, 0, 0, 0, 0, -11, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 7, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
-    };
-    ge25519_cached Ai[8];
-    ge25519_p1p1   t;
-    ge25519_p3     u;
-    ge25519_p3     A2;
-    int            i;
+    ge25519_p3 _10, _11, _100, _110, _1000, _1011, _10000, _100000, _100110,
+        _1000000, _1010000, _1010011, _1100011, _1100111, _1101011, _10010011,
+        _10010111, _10111101, _11010011, _11100111, _11101101, _11110101;
 
-    ge25519_p3_to_cached(&Ai[0], A);
-    ge25519_p3_dbl(&t, A);
-    ge25519_p1p1_to_p3(&A2, &t);
-    ge25519_add(&t, &A2, &Ai[0]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[1], &u);
-    ge25519_add(&t, &A2, &Ai[1]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[2], &u);
-    ge25519_add(&t, &A2, &Ai[2]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[3], &u);
-    ge25519_add(&t, &A2, &Ai[3]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[4], &u);
-    ge25519_add(&t, &A2, &Ai[4]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[5], &u);
-    ge25519_add(&t, &A2, &Ai[5]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[6], &u);
-    ge25519_add(&t, &A2, &Ai[6]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[7], &u);
+    ge25519_p3p3_dbl(&_10, p);
+    ge25519_p3_add(&_11, p, &_10);
+    ge25519_p3_add(&_100, p, &_11);
+    ge25519_p3_add(&_110, &_10, &_100);
+    ge25519_p3_add(&_1000, &_10, &_110);
+    ge25519_p3_add(&_1011, &_11, &_1000);
+    ge25519_p3p3_dbl(&_10000, &_1000);
+    ge25519_p3p3_dbl(&_100000, &_10000);
+    ge25519_p3_add(&_100110, &_110, &_100000);
+    ge25519_p3p3_dbl(&_1000000, &_100000);
+    ge25519_p3_add(&_1010000, &_10000, &_1000000);
+    ge25519_p3_add(&_1010011, &_11, &_1010000);
+    ge25519_p3_add(&_1100011, &_10000, &_1010011);
+    ge25519_p3_add(&_1100111, &_100, &_1100011);
+    ge25519_p3_add(&_1101011, &_100, &_1100111);
+    ge25519_p3_add(&_10010011, &_1000000, &_1010011);
+    ge25519_p3_add(&_10010111, &_100, &_10010011);
+    ge25519_p3_add(&_10111101, &_100110, &_10010111);
+    ge25519_p3_add(&_11010011, &_1000000, &_10010011);
+    ge25519_p3_add(&_11100111, &_1010000, &_10010111);
+    ge25519_p3_add(&_11101101, &_110, &_11100111);
+    ge25519_p3_add(&_11110101, &_1000, &_11101101);
 
-    ge25519_p3_0(r);
-
-    for (i = 252; i >= 0; --i) {
-        ge25519_p3_dbl(&t, r);
-
-        if (aslide[i] > 0) {
-            ge25519_p1p1_to_p3(&u, &t);
-            ge25519_add(&t, &u, &Ai[aslide[i] / 2]);
-        } else if (aslide[i] < 0) {
-            ge25519_p1p1_to_p3(&u, &t);
-            ge25519_sub(&t, &u, &Ai[(-aslide[i]) / 2]);
-        }
-
-        ge25519_p1p1_to_p3(r, &t);
-    }
+    ge25519_p3_add(r, &_1011, &_11110101);
+    ge25519_p3_dbladd(r, 126, &_1010011);
+    ge25519_p3_dbladd(r, 9, &_10);
+    ge25519_p3_add(r, r, &_11110101);
+    ge25519_p3_dbladd(r, 7, &_1100111);
+    ge25519_p3_dbladd(r, 9, &_11110101);
+    ge25519_p3_dbladd(r, 11, &_10111101);
+    ge25519_p3_dbladd(r, 8, &_11100111);
+    ge25519_p3_dbladd(r, 9, &_1101011);
+    ge25519_p3_dbladd(r, 6, &_1011);
+    ge25519_p3_dbladd(r, 14, &_10010011);
+    ge25519_p3_dbladd(r, 10, &_1100011);
+    ge25519_p3_dbladd(r, 9, &_10010111);
+    ge25519_p3_dbladd(r, 10, &_11110101);
+    ge25519_p3_dbladd(r, 8, &_11010011);
+    ge25519_p3_dbladd(r, 8, &_11101101);
 }
 
 int
@@ -980,7 +1090,7 @@ ge25519_is_on_curve(const ge25519_p3 *p)
     fe25519_mul(t0, t0, z2);
 
     fe25519_mul(t1, x2, y2);
-    fe25519_mul(t1, t1, d);
+    fe25519_mul(t1, t1, ed25519_d);
     fe25519_sq(z4, z2);
     fe25519_add(t1, t1, z4);
     fe25519_sub(t0, t0, t1);
@@ -1019,7 +1129,7 @@ int
 ge25519_has_small_order(const unsigned char s[32])
 {
     CRYPTO_ALIGN(16)
-    static const unsigned char blacklist[][32] = {
+    static const unsigned char blocklist[][32] = {
         /* 0 (order 4) */
         { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1055,17 +1165,17 @@ ge25519_has_small_order(const unsigned char s[32])
     unsigned int  k;
     size_t        i, j;
 
-    COMPILER_ASSERT(7 == sizeof blacklist / sizeof blacklist[0]);
+    COMPILER_ASSERT(7 == sizeof blocklist / sizeof blocklist[0]);
     for (j = 0; j < 31; j++) {
-        for (i = 0; i < sizeof blacklist / sizeof blacklist[0]; i++) {
-            c[i] |= s[j] ^ blacklist[i][j];
+        for (i = 0; i < sizeof blocklist / sizeof blocklist[0]; i++) {
+            c[i] |= s[j] ^ blocklist[i][j];
         }
     }
-    for (i = 0; i < sizeof blacklist / sizeof blacklist[0]; i++) {
-        c[i] |= (s[j] & 0x7f) ^ blacklist[i][j];
+    for (i = 0; i < sizeof blocklist / sizeof blocklist[0]; i++) {
+        c[i] |= (s[j] & 0x7f) ^ blocklist[i][j];
     }
     k = 0;
-    for (i = 0; i < sizeof blacklist / sizeof blacklist[0]; i++) {
+    for (i = 0; i < sizeof blocklist / sizeof blocklist[0]; i++) {
         k |= (c[i] - 1);
     }
     return (int) ((k >> 8) & 1);
@@ -2071,46 +2181,52 @@ sc25519_sqmul(unsigned char s[32], const int n, const unsigned char a[32])
 void
 sc25519_invert(unsigned char recip[32], const unsigned char s[32])
 {
-    unsigned char _10[32], _100[32], _11[32], _101[32], _111[32],
-        _1001[32], _1011[32], _1111[32];
+    unsigned char _10[32], _100[32], _1000[32], _10000[32], _100000[32],
+        _1000000[32], _10010011[32], _10010111[32], _100110[32], _1010[32],
+        _1010000[32], _1010011[32], _1011[32], _10110[32], _10111101[32],
+        _11[32], _1100011[32], _1100111[32], _11010011[32], _1101011[32],
+        _11100111[32], _11101011[32], _11110101[32];
 
     sc25519_sq(_10, s);
-    sc25519_sq(_100, _10);
-    sc25519_mul(_11, _10, s);
-    sc25519_mul(_101, _10, _11);
-    sc25519_mul(_111, _10, _101);
-    sc25519_mul(_1001, _10, _111);
-    sc25519_mul(_1011, _10, _1001);
-    sc25519_mul(_1111, _100, _1011);
-    sc25519_mul(recip, _1111, s);
+    sc25519_mul(_11, s, _10);
+    sc25519_mul(_100, s, _11);
+    sc25519_sq(_1000, _100);
+    sc25519_mul(_1010, _10, _1000);
+    sc25519_mul(_1011, s, _1010);
+    sc25519_sq(_10000, _1000);
+    sc25519_sq(_10110, _1011);
+    sc25519_mul(_100000, _1010, _10110);
+    sc25519_mul(_100110, _10000, _10110);
+    sc25519_sq(_1000000, _100000);
+    sc25519_mul(_1010000, _10000, _1000000);
+    sc25519_mul(_1010011, _11, _1010000);
+    sc25519_mul(_1100011, _10000, _1010011);
+    sc25519_mul(_1100111, _100, _1100011);
+    sc25519_mul(_1101011, _100, _1100111);
+    sc25519_mul(_10010011, _1000000, _1010011);
+    sc25519_mul(_10010111, _100, _10010011);
+    sc25519_mul(_10111101, _100110, _10010111);
+    sc25519_mul(_11010011, _10110, _10111101);
+    sc25519_mul(_11100111, _1010000, _10010111);
+    sc25519_mul(_11101011, _100, _11100111);
+    sc25519_mul(_11110101, _1010, _11101011);
 
-    sc25519_sqmul(recip, 123 + 3, _101);
-    sc25519_sqmul(recip, 2 + 2, _11);
-    sc25519_sqmul(recip, 1 + 4, _1111);
-    sc25519_sqmul(recip, 1 + 4, _1111);
-    sc25519_sqmul(recip, 4, _1001);
-    sc25519_sqmul(recip, 2, _11);
-    sc25519_sqmul(recip, 1 + 4, _1111);
-    sc25519_sqmul(recip, 1 + 3, _101);
-    sc25519_sqmul(recip, 3 + 3, _101);
-    sc25519_sqmul(recip, 3, _111);
-    sc25519_sqmul(recip, 1 + 4, _1111);
-    sc25519_sqmul(recip, 2 + 3, _111);
-    sc25519_sqmul(recip, 2 + 2, _11);
-    sc25519_sqmul(recip, 1 + 4, _1011);
-    sc25519_sqmul(recip, 2 + 4, _1011);
-    sc25519_sqmul(recip, 6 + 4, _1001);
-    sc25519_sqmul(recip, 2 + 2, _11);
-    sc25519_sqmul(recip, 3 + 2, _11);
-    sc25519_sqmul(recip, 3 + 2, _11);
-    sc25519_sqmul(recip, 1 + 4, _1001);
-    sc25519_sqmul(recip, 1 + 3, _111);
-    sc25519_sqmul(recip, 2 + 4, _1111);
-    sc25519_sqmul(recip, 1 + 4, _1011);
-    sc25519_sqmul(recip, 3, _101);
-    sc25519_sqmul(recip, 2 + 4, _1111);
-    sc25519_sqmul(recip, 3, _101);
-    sc25519_sqmul(recip, 1 + 2, _11);
+    sc25519_mul(recip, _1011, _11110101);
+    sc25519_sqmul(recip, 126, _1010011);
+    sc25519_sqmul(recip, 9, _10);
+    sc25519_mul(recip, recip, _11110101);
+    sc25519_sqmul(recip, 7, _1100111);
+    sc25519_sqmul(recip, 9, _11110101);
+    sc25519_sqmul(recip, 11, _10111101);
+    sc25519_sqmul(recip, 8, _11100111);
+    sc25519_sqmul(recip, 9, _1101011);
+    sc25519_sqmul(recip, 6, _1011);
+    sc25519_sqmul(recip, 14, _10010011);
+    sc25519_sqmul(recip, 10, _1100011);
+    sc25519_sqmul(recip, 9, _10010111);
+    sc25519_sqmul(recip, 10, _11110101);
+    sc25519_sqmul(recip, 8, _11010011);
+    sc25519_sqmul(recip, 8, _11101011);
 }
 
 /*
@@ -2469,167 +2585,170 @@ sc25519_is_canonical(const unsigned char s[32])
     return (c != 0);
 }
 
+/* montgomery to edwards */
 static void
-chi25519(fe25519 out, const fe25519 z)
+ge25519_mont_to_ed(fe25519 xed, fe25519 yed, const fe25519 x, const fe25519 y)
 {
-    fe25519 t0, t1, t2, t3;
-    int     i;
+    fe25519 one;
+    fe25519 x_plus_one;
+    fe25519 x_minus_one;
+    fe25519 x_plus_one_y_inv;
 
-    fe25519_sq(t0, z);
-    fe25519_mul(t1, t0, z);
-    fe25519_sq(t0, t1);
-    fe25519_sq(t2, t0);
-    fe25519_sq(t2, t2);
-    fe25519_mul(t2, t2, t0);
-    fe25519_mul(t1, t2, z);
-    fe25519_sq(t2, t1);
+    fe25519_1(one);
+    fe25519_add(x_plus_one, x, one);
+    fe25519_sub(x_minus_one, x, one);
 
-    for (i = 1; i < 5; i++) {
-        fe25519_sq(t2, t2);
-    }
-    fe25519_mul(t1, t2, t1);
-    fe25519_sq(t2, t1);
-    for (i = 1; i < 10; i++) {
-        fe25519_sq(t2, t2);
-    }
-    fe25519_mul(t2, t2, t1);
-    fe25519_sq(t3, t2);
-    for (i = 1; i < 20; i++) {
-        fe25519_sq(t3, t3);
-    }
-    fe25519_mul(t2, t3, t2);
-    fe25519_sq(t2, t2);
-    for (i = 1; i < 10; i++) {
-        fe25519_sq(t2, t2);
-    }
-    fe25519_mul(t1, t2, t1);
-    fe25519_sq(t2, t1);
-    for (i = 1; i < 50; i++) {
-        fe25519_sq(t2, t2);
-    }
-    fe25519_mul(t2, t2, t1);
-    fe25519_sq(t3, t2);
-    for (i = 1; i < 100; i++) {
-        fe25519_sq(t3, t3);
-    }
-    fe25519_mul(t2, t3, t2);
-    fe25519_sq(t2, t2);
-    for (i = 1; i < 50; i++) {
-        fe25519_sq(t2, t2);
-    }
-    fe25519_mul(t1, t2, t1);
-    fe25519_sq(t1, t1);
-    for (i = 1; i < 4; i++) {
-        fe25519_sq(t1, t1);
-    }
-    fe25519_mul(out, t1, t0);
+    /* xed = sqrt(-A-2)*x/y */
+    fe25519_mul(x_plus_one_y_inv, x_plus_one, y);
+    fe25519_invert(x_plus_one_y_inv, x_plus_one_y_inv); /* 1/((x+1)*y) */
+    fe25519_mul(xed, x, ed25519_sqrtam2);
+    fe25519_mul(xed, xed, x_plus_one_y_inv);            /* sqrt(-A-2)*x/((x+1)*y) */
+    fe25519_mul(xed, xed, x_plus_one);
+
+    /* yed = (x-1)/(x+1) */
+    fe25519_mul(yed, x_plus_one_y_inv, y);              /* 1/(x+1) */
+    fe25519_mul(yed, yed, x_minus_one);
+    fe25519_cmov(yed, one, fe25519_iszero(x_plus_one_y_inv));
+}
+
+/* montgomery -- recover y = sqrt(x^3 + A*x^2 + x) */
+static int
+ge25519_xmont_to_ymont(fe25519 y, const fe25519 x)
+{
+    fe25519 x2;
+    fe25519 x3;
+
+    fe25519_sq(x2, x);
+    fe25519_mul(x3, x, x2);
+    fe25519_mul32(x2, x2, ed25519_A_32);
+    fe25519_add(y, x3, x);
+    fe25519_add(y, y, x2);
+
+    return fe25519_sqrt(y, y);
+}
+
+/* multiply by the cofactor */
+static void
+ge25519_clear_cofactor(ge25519_p3 *p3)
+{
+    ge25519_p1p1 p1;
+    ge25519_p2   p2;
+
+    ge25519_p3_dbl(&p1, p3);
+    ge25519_p1p1_to_p2(&p2, &p1);
+    ge25519_p2_dbl(&p1, &p2);
+    ge25519_p1p1_to_p2(&p2, &p1);
+    ge25519_p2_dbl(&p1, &p2);
+    ge25519_p1p1_to_p3(p3, &p1);
 }
 
 static void
-ge25519_elligator2(unsigned char s[32], const fe25519 r, const unsigned char x_sign)
+ge25519_elligator2(fe25519 x, fe25519 y, const fe25519 r, int *notsquare_p)
 {
-    fe25519      e;
-    fe25519      negx;
-    fe25519      rr2;
-    fe25519      x, x2, x3;
-    ge25519_p3   p3;
-    ge25519_p1p1 p1;
-    ge25519_p2   p2;
-    unsigned int e_is_minus_1;
+    fe25519       e;
+    fe25519       gx1;
+    fe25519       rr2;
+    fe25519       x2, x3, negx;
+    int           notsquare;
 
     fe25519_sq2(rr2, r);
     rr2[0]++;
     fe25519_invert(rr2, rr2);
-    fe25519_mul(x, curve25519_A, rr2);
-    fe25519_neg(x, x);
+    fe25519_mul32(x, rr2, ed25519_A_32);
+    fe25519_neg(x, x); /* x=x1 */
 
     fe25519_sq(x2, x);
     fe25519_mul(x3, x, x2);
-    fe25519_add(e, x3, x);
-    fe25519_mul(x2, x2, curve25519_A);
-    fe25519_add(e, x2, e);
+    fe25519_mul32(x2, x2, ed25519_A_32); /* x2 = A*x1^2 */
+    fe25519_add(gx1, x3, x);
+    fe25519_add(gx1, gx1, x2); /* gx1 = x1^3 + A*x1^2 + x1 */
 
-    chi25519(e, e);
+    notsquare = fe25519_notsquare(gx1);
 
-    fe25519_tobytes(s, e);
-    e_is_minus_1 = s[1] & 1;
+    /* gx1 not a square  => x = -x1-A */
     fe25519_neg(negx, x);
-    fe25519_cmov(x, negx, e_is_minus_1);
+    fe25519_cmov(x, negx, notsquare);
     fe25519_0(x2);
-    fe25519_cmov(x2, curve25519_A, e_is_minus_1);
+    fe25519_cmov(x2, ed25519_A, notsquare);
     fe25519_sub(x, x, x2);
 
-    /* yed = (x-1)/(x+1) */
-    {
-        fe25519 one;
-        fe25519 x_plus_one;
-        fe25519 x_plus_one_inv;
-        fe25519 x_minus_one;
-        fe25519 yed;
-
-        fe25519_1(one);
-        fe25519_add(x_plus_one, x, one);
-        fe25519_sub(x_minus_one, x, one);
-        fe25519_invert(x_plus_one_inv, x_plus_one);
-        fe25519_mul(yed, x_minus_one, x_plus_one_inv);
-        fe25519_tobytes(s, yed);
+    /* y = sqrt(gx1) or sqrt(gx2) with gx2 = gx1 * (A+x1) / -x1 */
+    /* but it is about as fast to just recompute from the curve equation. */
+    if (ge25519_xmont_to_ymont(y, x) != 0) {
+        abort();
     }
-
-    /* recover x */
-    s[31] |= x_sign;
-    if (ge25519_frombytes(&p3, s) != 0) {
-        abort(); /* LCOV_EXCL_LINE */
-    }
-
-    /* multiply by the cofactor */
-    ge25519_p3_dbl(&p1, &p3);
-    ge25519_p1p1_to_p2(&p2, &p1);
-    ge25519_p2_dbl(&p1, &p2);
-    ge25519_p1p1_to_p2(&p2, &p1);
-    ge25519_p2_dbl(&p1, &p2);
-    ge25519_p1p1_to_p3(&p3, &p1);
-
-    ge25519_p3_tobytes(s, &p3);
+    *notsquare_p = notsquare;
 }
 
 void
 ge25519_from_uniform(unsigned char s[32], const unsigned char r[32])
 {
+    ge25519_p3    p3;
+    fe25519       x, y, negxed;
     fe25519       r_fe;
+    int           notsquare;
     unsigned char x_sign;
 
     memcpy(s, r, 32);
-    x_sign = s[31] & 0x80;
+    x_sign = s[31] >> 7;
     s[31] &= 0x7f;
     fe25519_frombytes(r_fe, s);
-    ge25519_elligator2(s, r_fe, x_sign);
+
+    ge25519_elligator2(x, y, r_fe, &notsquare);
+
+    ge25519_mont_to_ed(p3.X, p3.Y, x, y);
+    fe25519_neg(negxed, p3.X);
+    fe25519_cmov(p3.X, negxed, fe25519_isnegative(p3.X) ^ x_sign);
+
+    fe25519_1(p3.Z);
+    fe25519_mul(p3.T, p3.X, p3.Y);
+    ge25519_clear_cofactor(&p3);
+    ge25519_p3_tobytes(s, &p3);
+}
+
+static void
+fe25519_reduce64(fe25519 fe_f, const unsigned char h[64])
+{
+    unsigned char fl[32];
+    unsigned char gl[32];
+    fe25519       fe_g;
+    size_t        i;
+
+    memcpy(fl, h, 32);
+    memcpy(gl, h + 32, 32);
+    fl[31] &= 0x7f;
+    gl[31] &= 0x7f;
+    fe25519_frombytes(fe_f, fl);
+    fe25519_frombytes(fe_g, gl);
+    fe_f[0] += (h[31] >> 7) * 19 + (h[63] >> 7) * 722;
+    for (i = 0; i < sizeof (fe25519) / sizeof fe_f[0]; i++) {
+        fe_f[i] += 38 * fe_g[i];
+    }
+    fe25519_reduce(fe_f, fe_f);
 }
 
 void
 ge25519_from_hash(unsigned char s[32], const unsigned char h[64])
 {
-    unsigned char fl[32];
-    unsigned char gl[32];
+    ge25519_p3    p3;
     fe25519       fe_f;
-    fe25519       fe_g;
-    size_t        i;
-    unsigned char x_sign;
+    fe25519       x, y, negy;
+    int           notsquare;
+    unsigned char y_sign;
 
-    x_sign = h[0] & 0x80;
-    for (i = 0; i < 32; i++) {
-        fl[i] = h[63 - i];
-        gl[i] = h[31 - i];
-    }
-    fl[31] &= 0x7f;
-    gl[31] &= 0x7f;
-    fe25519_frombytes(fe_f, fl);
-    fe25519_frombytes(fe_g, gl);
-    fe_f[0] += (h[32] >> 7) * 19;
-    for (i = 0; i < sizeof (fe25519) / sizeof fe_f[0]; i++) {
-        fe_f[i] += 38 * fe_g[i];
-    }
-    fe25519_reduce(fe_f, fe_f);
-    ge25519_elligator2(s, fe_f, x_sign);
+    fe25519_reduce64(fe_f, h);
+    ge25519_elligator2(x, y, fe_f, &notsquare);
+
+    y_sign = notsquare;
+    fe25519_neg(negy, y);
+    fe25519_cmov(y, negy, fe25519_isnegative(y) ^ y_sign);
+
+    ge25519_mont_to_ed(p3.X, p3.Y, x, y);
+
+    fe25519_1(p3.Z);
+    fe25519_mul(p3.T, p3.X, p3.Y);
+    ge25519_clear_cofactor(&p3);
+    ge25519_p3_tobytes(s, &p3);
 }
 
 /* Ristretto group */
@@ -2646,8 +2765,8 @@ ristretto255_sqrt_ratio_m1(fe25519 x, const fe25519 u, const fe25519 v)
     fe25519_sq(v3, v);
     fe25519_mul(v3, v3, v); /* v3 = v^3 */
     fe25519_sq(x, v3);
-    fe25519_mul(x, x, v);
-    fe25519_mul(x, x, u); /* x = uv^7 */
+    fe25519_mul(x, x, u);
+    fe25519_mul(x, x, v); /* x = uv^7 */
 
     fe25519_pow22523(x, x); /* x = (uv^7)^((q-5)/8) */
     fe25519_mul(x, x, v3);
@@ -2657,12 +2776,12 @@ ristretto255_sqrt_ratio_m1(fe25519 x, const fe25519 u, const fe25519 v)
     fe25519_mul(vxx, vxx, v); /* vx^2 */
     fe25519_sub(m_root_check, vxx, u); /* vx^2-u */
     fe25519_add(p_root_check, vxx, u); /* vx^2+u */
-    fe25519_mul(f_root_check, u, sqrtm1); /* u*sqrt(-1) */
+    fe25519_mul(f_root_check, u, fe25519_sqrtm1); /* u*sqrt(-1) */
     fe25519_add(f_root_check, vxx, f_root_check); /* vx^2+u*sqrt(-1) */
     has_m_root = fe25519_iszero(m_root_check);
     has_p_root = fe25519_iszero(p_root_check);
     has_f_root = fe25519_iszero(f_root_check);
-    fe25519_mul(x_sqrtm1, x, sqrtm1); /* x*sqrt(-1) */
+    fe25519_mul(x_sqrtm1, x, fe25519_sqrtm1); /* x*sqrt(-1) */
 
     fe25519_cmov(x, x_sqrtm1, has_p_root | has_f_root);
     fe25519_abs(x, x);
@@ -2675,6 +2794,7 @@ ristretto255_is_canonical(const unsigned char *s)
 {
     unsigned char c;
     unsigned char d;
+    unsigned char e;
     unsigned int  i;
 
     c = (s[31] & 0x7f) ^ 0x7f;
@@ -2683,8 +2803,9 @@ ristretto255_is_canonical(const unsigned char *s)
     }
     c = (((unsigned int) c) - 1U) >> 8;
     d = (0xed - 1U - (unsigned int) s[0]) >> 8;
+    e = s[31] >> 7;
 
-    return 1 - (((c & d) | s[0]) & 1);
+    return 1 - (((c & d) | e | s[0]) & 1);
 }
 
 int
@@ -2698,7 +2819,7 @@ ristretto255_frombytes(ge25519_p3 *h, const unsigned char *s)
     fe25519 u1u1, u2u2;
     fe25519 v;
     fe25519 v_u2u2;
-    int     was_square;
+    int     notsquare;
 
     if (ristretto255_is_canonical(s) == 0) {
         return -1;
@@ -2714,14 +2835,14 @@ ristretto255_frombytes(ge25519_p3 *h, const unsigned char *s)
     fe25519_add(u2, u2, ss);           /* u2 = 1+ss */
     fe25519_sq(u2u2, u2);              /* u2u2 = u2^2 */
 
-    fe25519_mul(v, d, u1u1);           /* v = d*u1^2 */
+    fe25519_mul(v, ed25519_d, u1u1);   /* v = d*u1^2 */
     fe25519_neg(v, v);                 /* v = -d*u1^2 */
     fe25519_sub(v, v, u2u2);           /* v = -(d*u1^2)-u2^2 */
 
     fe25519_mul(v_u2u2, v, u2u2);      /* v_u2u2 = v*u2^2 */
 
     fe25519_1(one);
-    was_square = ristretto255_sqrt_ratio_m1(inv_sqrt, one, v_u2u2);
+    notsquare = ristretto255_sqrt_ratio_m1(inv_sqrt, one, v_u2u2);
     fe25519_mul(h->X, inv_sqrt, u2);
     fe25519_mul(h->Y, inv_sqrt, h->X);
     fe25519_mul(h->Y, h->Y, v);
@@ -2733,7 +2854,7 @@ ristretto255_frombytes(ge25519_p3 *h, const unsigned char *s)
     fe25519_1(h->Z);
     fe25519_mul(h->T, h->X, h->Y);
 
-    return - ((1 - was_square) |
+    return - ((1 - notsquare) |
               fe25519_isnegative(h->T) | fe25519_iszero(h->Y));
 }
 
@@ -2771,9 +2892,9 @@ ristretto255_p3_tobytes(unsigned char *s, const ge25519_p3 *h)
     fe25519_mul(z_inv, den1, den2);    /* z_inv = den1*den2 */
     fe25519_mul(z_inv, z_inv, h->T);   /* z_inv = den1*den2*T */
 
-    fe25519_mul(ix, h->X, sqrtm1);     /* ix = X*sqrt(-1) */
-    fe25519_mul(iy, h->Y, sqrtm1);     /* iy = Y*sqrt(-1) */
-    fe25519_mul(eden, den1, invsqrtamd); /* eden = den1*sqrt(a-d) */
+    fe25519_mul(ix, h->X, fe25519_sqrtm1);       /* ix = X*sqrt(-1) */
+    fe25519_mul(iy, h->Y, fe25519_sqrtm1);       /* iy = Y*sqrt(-1) */
+    fe25519_mul(eden, den1, ed25519_invsqrtamd); /* eden = den1/sqrt(a-d) */
 
     fe25519_mul(t_z_inv, h->T, z_inv); /* t_z_inv = T*z_inv */
     rotate = fe25519_isnegative(t_z_inv);
@@ -2811,13 +2932,13 @@ ristretto255_elligator(ge25519_p3 *p, const fe25519 t)
 
     fe25519_1(one);
     fe25519_sq(r, t);                  /* r = t^2 */
-    fe25519_mul(r, sqrtm1, r);         /* r = sqrt(-1)*t^2 */
+    fe25519_mul(r, fe25519_sqrtm1, r); /* r = sqrt(-1)*t^2 */
     fe25519_add(u, r, one);            /* u = r+1 */
-    fe25519_mul(u, u, onemsqd);        /* u = (r+1)*(1-d^2) */
+    fe25519_mul(u, u, ed25519_onemsqd);/* u = (r+1)*(1-d^2) */
     fe25519_1(c);
     fe25519_neg(c, c);                 /* c = -1 */
-    fe25519_add(rpd, r, d);            /* rpd = r*d */
-    fe25519_mul(v, r, d);              /* v = r*d */
+    fe25519_add(rpd, r, ed25519_d);    /* rpd = r+d */
+    fe25519_mul(v, r, ed25519_d);      /* v = r*d */
     fe25519_sub(v, c, v);              /* v = c-r*d */
     fe25519_mul(v, v, rpd);            /* v = (c-r*d)*(r+d) */
 
@@ -2830,12 +2951,12 @@ ristretto255_elligator(ge25519_p3 *p, const fe25519 t)
 
     fe25519_sub(n, r, one);            /* n = r-1 */
     fe25519_mul(n, n, c);              /* n = c*(r-1) */
-    fe25519_mul(n, n, sqdmone);        /* n = c*(r-1)*(d-1)^2 */
+    fe25519_mul(n, n, ed25519_sqdmone); /* n = c*(r-1)*(d-1)^2 */
     fe25519_sub(n, n, v);              /* n =  c*(r-1)*(d-1)^2-v */
 
     fe25519_add(w0, s, s);             /* w0 = 2s */
     fe25519_mul(w0, w0, v);            /* w0 = 2s*v */
-    fe25519_mul(w1, n, sqrtadm1);      /* w1 = n*sqrt(ad-1) */
+    fe25519_mul(w1, n, ed25519_sqrtadm1); /* w1 = n*sqrt(ad-1) */
     fe25519_sq(ss, s);                 /* ss = s^2 */
     fe25519_sub(w2, one, ss);          /* w2 = 1-s^2 */
     fe25519_add(w3, one, ss);          /* w3 = 1+s^2 */
@@ -2860,7 +2981,7 @@ ristretto255_from_hash(unsigned char s[32], const unsigned char h[64])
     ristretto255_elligator(&p0, r0);
     ristretto255_elligator(&p1, r1);
     ge25519_p3_to_cached(&p1_cached, &p1);
-    ge25519_add(&p_p1p1, &p0, &p1_cached);
+    ge25519_add_cached(&p_p1p1, &p0, &p1_cached);
     ge25519_p1p1_to_p3(&p, &p_p1p1);
     ristretto255_p3_tobytes(s, &p);
 }

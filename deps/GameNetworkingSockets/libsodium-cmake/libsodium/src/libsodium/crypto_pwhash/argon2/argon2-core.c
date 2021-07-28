@@ -35,13 +35,17 @@
 # define MAP_ANON MAP_ANONYMOUS
 #endif
 #ifndef MAP_NOCORE
-# define MAP_NOCORE 0
+# ifdef MAP_CONCEAL
+#  define MAP_NOCORE MAP_CONCEAL
+# else
+#  define MAP_NOCORE 0
+# endif
 #endif
 #ifndef MAP_POPULATE
 # define MAP_POPULATE 0
 #endif
 
-static fill_segment_fn fill_segment = fill_segment_ref;
+static fill_segment_fn fill_segment = argon2_fill_segment_ref;
 
 static void
 load_block(block *dst, const void *input)
@@ -72,7 +76,7 @@ static int allocate_memory(block_region **region, uint32_t m_cost);
 static int
 allocate_memory(block_region **region, uint32_t m_cost)
 {
-    void * base;
+    void  *base;
     block *memory;
     size_t memory_size;
 
@@ -95,12 +99,12 @@ allocate_memory(block_region **region, uint32_t m_cost)
                      -1, 0)) == MAP_FAILED) {
         base = NULL; /* LCOV_EXCL_LINE */
     }                /* LCOV_EXCL_LINE */
-    memcpy(&memory, &base, sizeof memory);
+    memory = (block *) base;
 #elif defined(HAVE_POSIX_MEMALIGN)
     if ((errno = posix_memalign((void **) &base, 64, memory_size)) != 0) {
         base = NULL;
     }
-    memcpy(&memory, &base, sizeof memory);
+    memory = (block *) base;
 #else
     memory = NULL;
     if (memory_size + 63 < memory_size) {
@@ -109,7 +113,7 @@ allocate_memory(block_region **region, uint32_t m_cost)
     } else if ((base = malloc(memory_size + 63)) != NULL) {
         uint8_t *aligned = ((uint8_t *) base) + 63;
         aligned -= (uintptr_t) aligned & 63;
-        memcpy(&memory, &aligned, sizeof memory);
+        memory = (block *) aligned;
     }
 #endif
     if (base == NULL) {
@@ -128,29 +132,6 @@ allocate_memory(block_region **region, uint32_t m_cost)
 
 /*********Memory functions*/
 
-/* Clears memory
- * @param instance pointer to the current instance
- * @param clear_memory indicates if we clear the memory with zeros.
- */
-static void clear_memory(argon2_instance_t *instance, int clear);
-
-static void
-clear_memory(argon2_instance_t *instance, int clear)
-{
-    /* LCOV_EXCL_START */
-    if (clear) {
-        if (instance->region != NULL) {
-            sodium_memzero(instance->region->memory,
-                           sizeof(block) * instance->memory_blocks);
-        }
-        if (instance->pseudo_rands != NULL) {
-            sodium_memzero(instance->pseudo_rands,
-                           sizeof(uint64_t) * instance->segment_length);
-        }
-    }
-    /* LCOV_EXCL_STOP */
-}
-
 /* Deallocates memory
  * @param memory pointer to the blocks
  */
@@ -159,7 +140,7 @@ static void free_memory(block_region *region);
 static void
 free_memory(block_region *region)
 {
-    if (region && region->base) {
+    if (region != NULL && region->base != NULL) {
 #if defined(MAP_ANON) && defined(HAVE_MMAP)
         if (munmap(region->base, region->size)) {
             return; /* LCOV_EXCL_LINE */
@@ -171,12 +152,9 @@ free_memory(block_region *region)
     free(region);
 }
 
-void
-free_instance(argon2_instance_t *instance, int flags)
+static void
+argon2_free_instance(argon2_instance_t *instance, int flags)
 {
-    /* Clear memory */
-    clear_memory(instance, flags & ARGON2_FLAG_CLEAR_MEMORY);
-
     /* Deallocate the memory */
     free(instance->pseudo_rands);
     instance->pseudo_rands = NULL;
@@ -185,7 +163,7 @@ free_instance(argon2_instance_t *instance, int flags)
 }
 
 void
-finalize(const argon2_context *context, argon2_instance_t *instance)
+argon2_finalize(const argon2_context *context, argon2_instance_t *instance)
 {
     if (context != NULL && instance != NULL) {
         block    blockhash;
@@ -214,12 +192,12 @@ finalize(const argon2_context *context, argon2_instance_t *instance)
                            ARGON2_BLOCK_SIZE); /* clear blockhash_bytes */
         }
 
-        free_instance(instance, context->flags);
+        argon2_free_instance(instance, context->flags);
     }
 }
 
 void
-fill_memory_blocks(argon2_instance_t *instance, uint32_t pass)
+argon2_fill_memory_blocks(argon2_instance_t *instance, uint32_t pass)
 {
     argon2_position_t position;
     uint32_t l;
@@ -241,7 +219,7 @@ fill_memory_blocks(argon2_instance_t *instance, uint32_t pass)
 }
 
 int
-validate_inputs(const argon2_context *context)
+argon2_validate_inputs(const argon2_context *context)
 {
     /* LCOV_EXCL_START */
     if (NULL == context) {
@@ -321,6 +299,15 @@ validate_inputs(const argon2_context *context)
         }
     }
 
+    /* Validate lanes */
+    if (ARGON2_MIN_LANES > context->lanes) {
+        return ARGON2_LANES_TOO_FEW;
+    }
+
+    if (ARGON2_MAX_LANES < context->lanes) {
+        return ARGON2_LANES_TOO_MANY;
+    }
+
     /* Validate memory cost */
     if (ARGON2_MIN_MEMORY > context->m_cost) {
         return ARGON2_MEMORY_TOO_LITTLE;
@@ -343,15 +330,6 @@ validate_inputs(const argon2_context *context)
         return ARGON2_TIME_TOO_LARGE;
     }
 
-    /* Validate lanes */
-    if (ARGON2_MIN_LANES > context->lanes) {
-        return ARGON2_LANES_TOO_FEW;
-    }
-
-    if (ARGON2_MAX_LANES < context->lanes) {
-        return ARGON2_LANES_TOO_MANY;
-    }
-
     /* Validate threads */
     if (ARGON2_MIN_THREADS > context->threads) {
         return ARGON2_THREADS_TOO_FEW;
@@ -365,8 +343,8 @@ validate_inputs(const argon2_context *context)
     return ARGON2_OK;
 }
 
-void
-fill_first_blocks(uint8_t *blockhash, const argon2_instance_t *instance)
+static void
+argon2_fill_first_blocks(uint8_t *blockhash, const argon2_instance_t *instance)
 {
     uint32_t l;
     /* Make the first and second block in each lane as G(H0||i||0) or
@@ -389,8 +367,9 @@ fill_first_blocks(uint8_t *blockhash, const argon2_instance_t *instance)
     sodium_memzero(blockhash_bytes, ARGON2_BLOCK_SIZE);
 }
 
-void
-initial_hash(uint8_t *blockhash, argon2_context *context, argon2_type type)
+static void
+argon2_initial_hash(uint8_t *blockhash, argon2_context *context,
+                    argon2_type type)
 {
     crypto_generichash_blake2b_state BlakeHash;
     uint8_t                          value[4U /* sizeof(uint32_t) */];
@@ -473,7 +452,7 @@ initial_hash(uint8_t *blockhash, argon2_context *context, argon2_type type)
 }
 
 int
-initialize(argon2_instance_t *instance, argon2_context *context)
+argon2_initialize(argon2_instance_t *instance, argon2_context *context)
 {
     uint8_t blockhash[ARGON2_PREHASH_SEED_LENGTH];
     int     result = ARGON2_OK;
@@ -491,7 +470,7 @@ initialize(argon2_instance_t *instance, argon2_context *context)
 
     result = allocate_memory(&(instance->region), instance->memory_blocks);
     if (ARGON2_OK != result) {
-        free_instance(instance, context->flags);
+        argon2_free_instance(instance, context->flags);
         return result;
     }
 
@@ -499,45 +478,45 @@ initialize(argon2_instance_t *instance, argon2_context *context)
     /* H_0 + 8 extra bytes to produce the first blocks */
     /* uint8_t blockhash[ARGON2_PREHASH_SEED_LENGTH]; */
     /* Hashing all inputs */
-    initial_hash(blockhash, context, instance->type);
+    argon2_initial_hash(blockhash, context, instance->type);
     /* Zeroing 8 extra bytes */
     sodium_memzero(blockhash + ARGON2_PREHASH_DIGEST_LENGTH,
                    ARGON2_PREHASH_SEED_LENGTH - ARGON2_PREHASH_DIGEST_LENGTH);
 
     /* 3. Creating first blocks, we always have at least two blocks in a slice
      */
-    fill_first_blocks(blockhash, instance);
+    argon2_fill_first_blocks(blockhash, instance);
     /* Clearing the hash */
     sodium_memzero(blockhash, ARGON2_PREHASH_SEED_LENGTH);
 
     return ARGON2_OK;
 }
 
-int
+static int
 argon2_pick_best_implementation(void)
 {
 /* LCOV_EXCL_START */
 #if defined(HAVE_AVX512FINTRIN_H) && defined(HAVE_AVX2INTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_avx512f()) {
-        fill_segment = fill_segment_avx512f;
+        fill_segment = argon2_fill_segment_avx512f;
         return 0;
     }
 #endif
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_TMMINTRIN_H) && \
     defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_avx2()) {
-        fill_segment = fill_segment_avx2;
+        fill_segment = argon2_fill_segment_avx2;
         return 0;
     }
 #endif
 #if defined(HAVE_EMMINTRIN_H) && defined(HAVE_TMMINTRIN_H)
     if (sodium_runtime_has_ssse3()) {
-        fill_segment = fill_segment_ssse3;
+        fill_segment = argon2_fill_segment_ssse3;
         return 0;
     }
 #endif
-    fill_segment = fill_segment_ref;
+    fill_segment = argon2_fill_segment_ref;
 
     return 0;
     /* LCOV_EXCL_STOP */

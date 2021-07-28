@@ -7,24 +7,21 @@ pr: none
 jobs:
   - job: "wasi"
     pool:
-      vmImage: "ubuntu-16.04"
+      vmImage: "ubuntu-20.04"
     steps:
       - script: |
-          sudo apt-get install build-essential curl cmake
+          sudo apt-get install build-essential curl cmake lld
         displayName: Install system packages
       - script: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          source ${HOME}/.cargo/env
-          git clone --recursive https://github.com/wasmerio/wasmer.git
-          (cd wasmer && cargo install --path .)
+          curl https://get.wasmer.io -sSfL | sh
         displayName: Install wasmer
       - script: |
-          curl -sL -o wasi-sdk.deb https://github.com/CraneStation/wasi-sdk/releases/download/wasi-sdk-5/wasi-sdk_5.0_amd64.deb
-          sudo dpkg -i wasi-sdk.deb && rm -f wasi-sdk.deb
-          sudo ln -s /opt/wasi-sdk/share/*sysroot* /opt/wasi-sysroot
-        displayName: Install the WASI SDK
+          curl -sL -o - https://ziglang.org/download/0.8.0/zig-linux-x86_64-0.8.0.tar.xz | tar xJ -f - -C /opt/
+          sudo mv /opt/zig-* /opt/zig
+          env PATH=/opt/zig/bin:/opt/zig:$PATH
+        displayName: Install the Zig SDK
       - script: |
-          env PATH=/opt/wasi-sdk/bin:${HOME}/.cargo/bin:$PATH dist-build/wasm32-wasi.sh
+          env WASMER_DIR=${HOME}/.wasmer PATH=${HOME}/.wasmer/bin:/opt/wasi-sdk/bin:${HOME}/.cargo/bin:$PATH dist-build/wasm32-wasi.sh
         displayName: Compile libsodium
       - task: PublishBuildArtifacts@1
         condition: not(canceled())
@@ -65,35 +62,21 @@ jobs:
           pathToPublish: bin
           artifactName: libsodium
 
-  - job: "windows_reallyold"
-    pool:
-      vmImage: "vs2015-win2012r2"
-    steps:
-      - powershell: |
-          cd builds\msvc\build
-          & .\buildbase.bat ..\vs2015\libsodium.sln 14
-          & .\buildbase.bat ..\vs2013\libsodium.sln 12
-          & .\buildbase.bat ..\vs2012\libsodium.sln 11
-          & .\buildbase.bat ..\vs2010\libsodium.sln 10
-        displayName: Compile it all
-      - task: PublishBuildArtifacts@1
-        condition: not(canceled())
-        inputs:
-          pathToPublish: bin
-          artifactName: libsodium
-
   - job: mingw64
     pool:
       vmImage: "windows-2019"
     steps:
-      - script: |
-          git clone https://github.com/msys2/msys2-ci-base.git %CD:~0,2%\msys64
-          %CD:~0,2%\msys64\usr\bin\rm -rf %CD:~0,2%\msys64\.git
+      - powershell: |
+          (New-Object Net.WebClient).DownloadFile("https://github.com/msys2/msys2-installer/releases/download/2021-07-25/msys2-base-x86_64-20210725.sfx.exe", "sfx.exe")
+          .\sfx.exe -y -o\
+          del sfx.exe
         displayName: Install MSYS2
       - script: |
           set PATH=%CD:~0,2%\msys64\usr\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem
-          %CD:~0,2%\msys64\usr\bin\pacman --noconfirm -Syyuu
-          %CD:~0,2%\msys64\usr\bin\pacman --noconfirm -Syuu
+          %CD:~0,2%\msys64\usr\bin\bash -lc
+          %CD:~0,2%\msys64\usr\bin\bash -lc "pacman --noconfirm -Sydd filesystem"
+          %CD:~0,2%\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syuu'
+          %CD:~0,2%\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syuu'
         displayName: Update MSYS2
       - script: |
           set PATH=%CD:~0,2%\msys64\usr\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem
@@ -105,6 +88,7 @@ jobs:
           set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%CD:~0,2%\msys64\usr\bin;%CD:~0,2%\msys64\bin
           set MSYS2_ROOT=%CD:~0,2%\msys64
           set MSYSTEM=MINGW64
+          set CHERE_INVOKING=yes
           %MSYS2_ROOT%\cmd\msystem MINGW64
           %CD:~0,2%\msys64\usr\bin\bash -lc dist-build/msys2-win64.sh
         env:
@@ -121,14 +105,17 @@ jobs:
     pool:
       vmImage: "windows-2019"
     steps:
-      - script: |
-          git clone https://github.com/msys2/msys2-ci-base.git %CD:~0,2%\msys64
-          %CD:~0,2%\msys64\usr\bin\rm -rf %CD:~0,2%\msys64\.git
+      - powershell: |
+          (New-Object Net.WebClient).DownloadFile("https://github.com/msys2/msys2-installer/releases/download/2021-07-25/msys2-base-x86_64-20210725.sfx.exe", "sfx.exe")
+          .\sfx.exe -y -o\
+          del sfx.exe
         displayName: Install MSYS2
       - script: |
           set PATH=%CD:~0,2%\msys64\usr\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem
-          %CD:~0,2%\msys64\usr\bin\pacman --noconfirm -Syyuu
-          %CD:~0,2%\msys64\usr\bin\pacman --noconfirm -Syuu
+          %CD:~0,2%\msys64\usr\bin\bash -lc
+          %CD:~0,2%\msys64\usr\bin\bash -lc "pacman --noconfirm -Sydd filesystem"
+          %CD:~0,2%\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syuu'
+          %CD:~0,2%\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syuu'
         displayName: Update MSYS2
       - script: |
           set PATH=%CD:~0,2%\msys64\usr\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem
@@ -140,6 +127,7 @@ jobs:
           set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%CD:~0,2%\msys64\usr\bin;%CD:~0,2%\msys64\bin
           set MSYS2_ROOT=%CD:~0,2%\msys64
           set MSYSTEM=MINGW32
+          set CHERE_INVOKING=yes
           %MSYS2_ROOT%\cmd\msystem MINGW32
           %CD:~0,2%\msys64\usr\bin\bash -lc dist-build/msys2-win32.sh
         env:

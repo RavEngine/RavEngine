@@ -27,6 +27,14 @@ crypto_secretbox_detached(unsigned char *c, unsigned char *mac,
 
     crypto_core_hsalsa20(subkey, n, k, NULL);
 
+    /*
+     * Allow the m and c buffers to partially overlap, by calling
+     * memmove() if necessary.
+     *
+     * Note that there is no fully portable way to compare pointers.
+     * Some tools even report undefined behavior, despite the conversion.
+     * Nevertheless, this works on all supported platforms.
+     */
     if (((uintptr_t) c > (uintptr_t) m &&
          (uintptr_t) c - (uintptr_t) m < mlen) ||
         ((uintptr_t) m > (uintptr_t) c &&
@@ -43,9 +51,7 @@ crypto_secretbox_detached(unsigned char *c, unsigned char *mac,
     for (i = 0U; i < mlen0; i++) {
         block0[i + crypto_secretbox_ZEROBYTES] = m[i];
     }
-    crypto_stream_salsa20_xor(block0, block0,
-                              mlen0 + crypto_secretbox_ZEROBYTES,
-                              n + 16, subkey);
+    crypto_stream_salsa20_xor(block0, block0, 64U, n + 16, subkey);
     COMPILER_ASSERT(crypto_secretbox_ZEROBYTES >=
                     crypto_onetimeauth_poly1305_KEYBYTES);
     crypto_onetimeauth_poly1305_init(&state, block0);
@@ -92,22 +98,8 @@ crypto_secretbox_open_detached(unsigned char *m, const unsigned char *c,
     unsigned long long mlen0;
 
     crypto_core_hsalsa20(subkey, n, k, NULL);
-    crypto_stream_salsa20(block0, crypto_stream_salsa20_KEYBYTES,
-                          n + 16, subkey);
-    if (crypto_onetimeauth_poly1305_verify(mac, c, clen, block0) != 0) {
-        sodium_memzero(subkey, sizeof subkey);
-        return -1;
-    }
-    if (m == NULL) {
-        return 0;
-    }
-    if (((uintptr_t) c >= (uintptr_t) m &&
-         (uintptr_t) c - (uintptr_t) m < clen) ||
-        ((uintptr_t) m >= (uintptr_t) c &&
-         (uintptr_t) m - (uintptr_t) c < clen)) { /* LCOV_EXCL_LINE */
-        memmove(m, c, clen);
-        c = m;
-    }
+
+    memset(block0, 0U, crypto_secretbox_ZEROBYTES);
     mlen0 = clen;
     if (mlen0 > 64U - crypto_secretbox_ZEROBYTES) {
         mlen0 = 64U - crypto_secretbox_ZEROBYTES;
@@ -115,11 +107,32 @@ crypto_secretbox_open_detached(unsigned char *m, const unsigned char *c,
     for (i = 0U; i < mlen0; i++) {
         block0[crypto_secretbox_ZEROBYTES + i] = c[i];
     }
-    crypto_stream_salsa20_xor(block0, block0,
-                              crypto_secretbox_ZEROBYTES + mlen0,
-                              n + 16, subkey);
+    crypto_stream_salsa20_xor(block0, block0, 64, n + 16, subkey);
+    if (crypto_onetimeauth_poly1305_verify(mac, c, clen, block0) != 0) {
+        sodium_memzero(subkey, sizeof subkey);
+        return -1;
+    }
+    if (m == NULL) {
+        return 0;
+    }
+
+    /*
+     * Allow the m and c buffers to partially overlap, by calling
+     * memmove() if necessary.
+     *
+     * Note that there is no fully portable way to compare pointers.
+     * Some tools even report undefined behavior, despite the conversion.
+     * Nevertheless, this works on all supported platforms.
+     */
+    if (((uintptr_t) c > (uintptr_t) m &&
+         (uintptr_t) c - (uintptr_t) m < clen) ||
+        ((uintptr_t) m > (uintptr_t) c &&
+         (uintptr_t) m - (uintptr_t) c < clen)) { /* LCOV_EXCL_LINE */
+        memmove(m, c, clen);
+        c = m;
+    }
     for (i = 0U; i < mlen0; i++) {
-        m[i] = block0[i + crypto_secretbox_ZEROBYTES];
+        m[i] = block0[crypto_secretbox_ZEROBYTES + i];
     }
     if (clen > mlen0) {
         crypto_stream_salsa20_xor_ic(m + mlen0, c + mlen0, clen - mlen0,
