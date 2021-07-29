@@ -41,9 +41,7 @@ target_compile_definitions(${PROJECT_NAME}
 set(VERSION 1.0.18)
 set(SODIUM_LIBRARY_VERSION_MAJOR 10)
 set(SODIUM_LIBRARY_VERSION_MINOR 3)
-if(SODIUM_MINIMAL)
-    set(SODIUM_LIBRARY_MINIMAL_DEF "#define SODIUM_LIBRARY_MINIMAL 1")
-endif()
+
 
 configure_file(
     libsodium/src/libsodium/include/sodium/version.h.in

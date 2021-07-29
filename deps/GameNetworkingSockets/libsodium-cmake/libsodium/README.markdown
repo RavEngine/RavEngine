@@ -23,10 +23,12 @@ as well as Javascript and Webassembly.
 
 ## Documentation
 
-The documentation is available on Gitbook and built from the
-[libsodium-doc](https://github.com/jedisct1/libsodium-doc) repository:
+The documentation is available on Gitbook and built from the [libsodium-doc](https://github.com/jedisct1/libsodium-doc) repository:
 
-* [libsodium documentation](https://doc.libsodium.org) - online, requires Javascript.
+* [libsodium documentation](https://download.libsodium.org/doc/) -
+online, requires Javascript.
+* [offline documentation](https://www.gitbook.com/book/jedisct1/libsodium/details)
+in PDF format.
 
 ## Integrity Checking
 
@@ -40,26 +42,6 @@ A mailing-list is available to discuss libsodium.
 
 In order to join, just send a random mail to `sodium-subscribe` {at}
 `pureftpd` {dot} `org`.
-
-## Contributors
-
-### Code Contributors
-
-This project exists thanks to all the people who contribute. [[Contribute](https://github.com/jedisct1/libsodium/graphs/contributors)].
-
-<a href="https://github.com/jedisct1/libsodium/graphs/contributors"><img src="https://opencollective.com/libsodium/contributors.svg?width=890&button=false" /></a>
-
-### Financial Contributors
-
-Become a financial contributor and help us sustain our community. [[Contribute](https://opencollective.com/libsodium/contribute)]
-
-#### Individuals <a href="https://opencollective.com/libsodium"><img src="https://opencollective.com/libsodium/individuals.svg?width=890"></a>
-
-#### Organizations
-
-Support this project with your organization. Your logo will show up here with a link to your website. [[Contribute](https://opencollective.com/libsodium/contribute)]
-
-<a href="https://opencollective.com/libsodium/organization/0/website"><img src="https://opencollective.com/libsodium/organization/0/avatar.svg"></a>
 
 ## License
 

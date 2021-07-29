@@ -31,30 +31,12 @@ SODIUM_EXPORT
 size_t crypto_secretbox_xsalsa20poly1305_messagebytes_max(void);
 
 SODIUM_EXPORT
-void crypto_secretbox_xsalsa20poly1305_keygen(unsigned char k[crypto_secretbox_xsalsa20poly1305_KEYBYTES])
-            __attribute__ ((nonnull));
-
-/* -- NaCl compatibility interface ; Requires padding -- */
-
-#define crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES 16U
-SODIUM_EXPORT
-size_t crypto_secretbox_xsalsa20poly1305_boxzerobytes(void)
-            __attribute__ ((deprecated));
-
-#define crypto_secretbox_xsalsa20poly1305_ZEROBYTES \
-    (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES + \
-     crypto_secretbox_xsalsa20poly1305_MACBYTES)
-SODIUM_EXPORT
-size_t crypto_secretbox_xsalsa20poly1305_zerobytes(void)
-            __attribute__ ((deprecated));
-
-SODIUM_EXPORT
 int crypto_secretbox_xsalsa20poly1305(unsigned char *c,
                                       const unsigned char *m,
                                       unsigned long long mlen,
                                       const unsigned char *n,
                                       const unsigned char *k)
-            __attribute__ ((deprecated)) __attribute__ ((nonnull(1, 4, 5)));
+            __attribute__ ((nonnull(1, 4, 5)));
 
 SODIUM_EXPORT
 int crypto_secretbox_xsalsa20poly1305_open(unsigned char *m,
@@ -62,7 +44,23 @@ int crypto_secretbox_xsalsa20poly1305_open(unsigned char *m,
                                            unsigned long long clen,
                                            const unsigned char *n,
                                            const unsigned char *k)
-            __attribute__ ((deprecated)) __attribute__ ((warn_unused_result)) __attribute__ ((nonnull(2, 4, 5)));
+            __attribute__ ((warn_unused_result)) __attribute__ ((nonnull(2, 4, 5)));
+
+SODIUM_EXPORT
+void crypto_secretbox_xsalsa20poly1305_keygen(unsigned char k[crypto_secretbox_xsalsa20poly1305_KEYBYTES])
+            __attribute__ ((nonnull));
+
+/* -- NaCl compatibility interface ; Requires padding -- */
+
+#define crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES 16U
+SODIUM_EXPORT
+size_t crypto_secretbox_xsalsa20poly1305_boxzerobytes(void);
+
+#define crypto_secretbox_xsalsa20poly1305_ZEROBYTES \
+    (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES + \
+     crypto_secretbox_xsalsa20poly1305_MACBYTES)
+SODIUM_EXPORT
+size_t crypto_secretbox_xsalsa20poly1305_zerobytes(void);
 
 #ifdef __cplusplus
 }

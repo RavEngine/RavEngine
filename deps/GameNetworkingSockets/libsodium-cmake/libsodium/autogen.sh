@@ -46,10 +46,7 @@ if [ -s configure ]; then
     exit 0
   fi
 elif [ "$dev_setup" != true ]; then
-  echo "If you are looking to install a stable version of libsodium,"
-  echo "please do not run arbitrary, undocumented commands."
-  echo
-  echo "Installation instructions are available at https://libsodium.org"
+  echo "A development environment was not created."
   exit 0
 fi
 
@@ -100,7 +97,7 @@ if [ "$overwrite_config" = false ]; then
   fi
 fi
 
-[ "$update_config" = true ] &&
+[ "$update_config" = true ] && [ -z "$DO_NOT_UPDATE_CONFIG_SCRIPTS" ] &&
   command -v curl >/dev/null 2>&1 && {
   echo "Downloading config.guess and config.sub..."
 

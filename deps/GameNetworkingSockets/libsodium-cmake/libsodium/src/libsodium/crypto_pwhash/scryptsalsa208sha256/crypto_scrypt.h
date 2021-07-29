@@ -34,8 +34,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "private/quirks.h"
-
 #if SIZE_MAX > 0xffffffffULL
 #define ARCH_BITS 64
 #else
@@ -55,6 +53,11 @@ typedef struct {
     void * base, *aligned;
     size_t size;
 } escrypt_region_t;
+
+typedef union {
+    uint64_t d[8];
+    uint32_t w[16];
+} escrypt_block_t;
 
 typedef escrypt_region_t escrypt_local_t;
 

@@ -2,7 +2,6 @@
 #define argon2_encoding_H
 
 #include "argon2.h"
-#include "private/quirks.h"
 
 /*
  * encode an Argon2 hash string into the provided buffer. 'dst_len'

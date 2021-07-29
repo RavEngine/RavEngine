@@ -1,7 +1,5 @@
-#include "private/quirks.h"
-
 /*
- Ignores top bit of s.
+ Ignores top bit of h.
  */
 
 void

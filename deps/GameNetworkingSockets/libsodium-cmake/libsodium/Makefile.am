@@ -11,6 +11,7 @@ EXTRA_DIST = \
 
 SUBDIRS = \
 	builds \
+	contrib \
 	dist-build \
 	msvc-scripts \
 	src \
