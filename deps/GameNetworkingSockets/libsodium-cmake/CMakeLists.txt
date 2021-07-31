@@ -62,7 +62,7 @@ if (MSVC)
     enable_language(RC)
 
     list(APPEND sodium_sources
-        builds/msvc/resource.rc
+        libsodium/builds/msvc/resource.rc
     )
 endif ()
 
