@@ -25,7 +25,6 @@ include(CTest)
 include(GNUInstallDirs)
 include(TestBigEndian)
 
-option(BUILD_SHARED_LIBS "Build shared library" ${BUILD_SHARED_LIBS})
 option(ENABLE_SSP "Compile with -fstack-protector" ON)
 option(ENABLE_PIE "Compile with -fPIE" ON)
 option(ENABLE_BLOCKING_RANDOM "Enable blocking random" OFF)
@@ -81,15 +80,15 @@ set_target_properties(${PROJECT_NAME}
 test_big_endian(IS_BIG_ENDIAN)
 
 if (IS_BIG_ENDIAN)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NATIVE_BIG_ENDIAN)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC NATIVE_BIG_ENDIAN)
 else ()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NATIVE_LITTLE_ENDIAN)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC NATIVE_LITTLE_ENDIAN)
 endif ()
 
 macro (sodium_check_func func var)
     check_function_exists(${func} ${var})
     if (${var})
-        target_compile_definitions(${PROJECT_NAME} PRIVATE ${var}=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC ${var}=1)
     endif ()
 endmacro ()
 
@@ -112,7 +111,7 @@ if (MSVC)
     )
 else ()
     if (ENABLE_BLOCKING_RANDOM)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE USE_BLOCKING_RANDOM)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC USE_BLOCKING_RANDOM)
     endif ()
 
     if (ENABLE_PTHREADS)
@@ -131,63 +130,23 @@ else ()
 
     if (ENABLE_RETPOLINE)
         target_compile_options(${PROJECT_NAME}
-            PRIVATE
+        PRIVATE
                 -mindirect-branch=thunk-inline
                 -mindirect-branch-register
         )
     endif ()
 
     target_compile_options(${PROJECT_NAME}
-        PRIVATE
+    PRIVATE
             -flax-vector-conversions
             -fvisibility=hidden
             -fPIC
             -fwrapv
-            -Wall
-            -Wextra
-            -Wbad-function-cast
-            -Wcast-qual
-            #-Wdiv-by-zero
-            -Wduplicated-branches
-            -Wduplicated-cond
-            -Wfloat-equal
-            -Wformat=2
-            -Wlogical-op
-            -Wmaybe-uninitialized
-            -Wmisleading-indentation
-            -Wmissing-declarations
-            -Wmissing-prototypes
-            -Wnested-externs
-            #-Wno-type-limits
-            #-Wno-unknown-pragmas
-            -Wnormalized=id
-            -Wnull-dereference
-            -Wold-style-declaration
-            -Wpointer-arith
-            -Wredundant-decls
-            -Wrestrict
-            #-Wsometimes-uninitialized
-            -Wstrict-prototypes
-            -Wswitch-enum
-            #-Wvariable-decl
-            -Wwrite-strings
-            -Wl,-z,relro
-            -Wl,-z,now
-            -Wl,-z,noexecstack
     )
-
-    if (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR
-        CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
-        target_compile_options(${PROJECT_NAME}
-            PRIVATE
-                -Wno-unknown-warning-option
-                -Wshorten-64-to-32
-        )
-    endif ()
 
     check_include_file(sys/mman.h HAVE_SYS_MMAN_H)
     if (HAVE_SYS_MMAN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_SYS_MMAN_H)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_SYS_MMAN_H)
     endif ()
 
     sodium_check_func(arc4random HAVE_SAFE_ARC4RANDOM)
@@ -215,7 +174,7 @@ else ()
     )
 
     if (HAVE_MMINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_MMINTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_MMINTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -mmmx)
     endif ()
 
@@ -236,7 +195,7 @@ else ()
     )
 
     if (HAVE_EMMINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_EMMINTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_EMMINTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -msse2)
     endif ()
 
@@ -252,7 +211,7 @@ else ()
     )
 
     if (HAVE_PMMINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_PMMINTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_PMMINTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -msse3)
     endif ()
 
@@ -268,7 +227,7 @@ else ()
     )
 
     if (HAVE_TMMINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_TMMINTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_TMMINTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -mssse3)
     endif ()
 
@@ -284,7 +243,7 @@ else ()
     )
 
     if (HAVE_SMMINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_SMMINTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_SMMINTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -msse4.1)
     endif ()
 
@@ -303,7 +262,7 @@ else ()
     )
 
     if (HAVE_AVXINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_AVXINTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_AVXINTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -mavx)
     endif ()
 
@@ -324,7 +283,7 @@ else ()
     )
 
     if (HAVE_AVX2INTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_AVX2INTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_AVX2INTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -mavx2)
 
         check_c_source_compiles(
@@ -343,7 +302,7 @@ else ()
 
         if (NOT _mm256_broadcastsi128_si256_DEFINED)
             target_compile_definitions(${PROJECT_NAME}
-                PRIVATE
+            PUBLIC
                     _mm256_broadcastsi128_si256=_mm_broadcastsi128_si256
             )
         endif ()
@@ -378,7 +337,7 @@ else ()
     )
 
     if (HAVE_AVX512FINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_AVX512FINTRIN_H=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_AVX512FINTRIN_H=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -mavx512f)
     else ()
         target_compile_options(${PROJECT_NAME} PRIVATE -mno-avx512f)
@@ -401,8 +360,8 @@ else ()
     )
 
     if (HAVE_WMMINTRIN_H)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_WMMINTRIN_H=1)
-        target_compile_options(${PROJECT_NAME} PRIVATE -maes -mpclmul)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_WMMINTRIN_H=1)
+        target_compile_options(${PROJECT_NAME} PUBLIC -maes -mpclmul)
     endif ()
 
     check_c_source_compiles(
@@ -421,7 +380,7 @@ else ()
     )
 
     if (HAVE_RDRAND)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_RDRAND=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_RDRAND=1)
         target_compile_options(${PROJECT_NAME} PRIVATE -mrdrnd)
     endif ()
 
@@ -436,7 +395,7 @@ else ()
     )
 
     if (HAVE__XGETBV)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE__XGETBV=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE__XGETBV=1)
     endif ()
 
     check_c_source_compiles(
@@ -451,7 +410,7 @@ else ()
     )
 
     if (HAVE_INLINE_ASM)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_INLINE_ASM=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_INLINE_ASM=1)
     endif ()
 
     check_c_source_compiles(
@@ -478,7 +437,7 @@ else ()
     )
 
     if (HAVE_AMD64_ASM)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_AMD64_ASM=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_AMD64_ASM=1)
     endif ()
 
     check_c_source_compiles(
@@ -499,7 +458,7 @@ else ()
     )
 
     if (HAVE_AVX_ASM)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_AVX_ASM=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_AVX_ASM=1)
     endif ()
 
     check_c_source_compiles(
@@ -536,7 +495,7 @@ else ()
     )
 
     if (HAVE_TI_MODE)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_TI_MODE=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_TI_MODE=1)
     endif ()
 
     check_c_source_compiles(
@@ -553,7 +512,7 @@ else ()
     )
 
     if (HAVE_CPUID)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_CPUID=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_CPUID=1)
     endif ()
 
     check_c_source_compiles(
@@ -569,7 +528,7 @@ else ()
     )
 
     if (HAVE_WEAK_SYMBOLS)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_WEAK_SYMBOLS=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_WEAK_SYMBOLS=1)
     endif ()
 
     check_c_source_compiles(
@@ -584,7 +543,7 @@ else ()
     )
 
     if (HAVE_ATOMIC_OPS)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_ATOMIC_OPS=1)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_ATOMIC_OPS=1)
     endif ()
 
     check_c_source_compiles(
@@ -601,20 +560,20 @@ else ()
 
     if (STDC_LIMIT_MACROS_REQUIRED)
         target_compile_definitions(${PROJECT_NAME}
-            PRIVATE
+            PUBLIC
                 __STDC_LIMIT_MACROS
                 __STDC_CONSTANT_MACROS
         )
     endif ()
 
     # include/sodium/private/common.h
-    target_compile_definitions(${PROJECT_NAME} PRIVATE CONFIGURED=1)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC CONFIGURED=1)
 endif ()
 
 if (BUILD_SHARED_LIBS)
     if (MSVC)
         target_compile_definitions(${PROJECT_NAME}
-            PRIVATE
+        PUBLIC
                 SODIUM_DLL_EXPORT
         )
     endif ()
@@ -628,7 +587,6 @@ endif ()
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         libsodium/src/libsodium/include
-    PRIVATE
         libsodium/src/libsodium/include/sodium
 )
 set_target_properties(${PROJECT_NAME}
