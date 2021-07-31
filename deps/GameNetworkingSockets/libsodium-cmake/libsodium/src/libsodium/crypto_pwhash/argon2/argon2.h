@@ -16,8 +16,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "private/quirks.h"
-
 /*
  * Argon2 input parameter restrictions
  */
@@ -70,6 +68,7 @@
 
 #define ARGON2_FLAG_CLEAR_PASSWORD (UINT32_C(1) << 0)
 #define ARGON2_FLAG_CLEAR_SECRET (UINT32_C(1) << 1)
+#define ARGON2_FLAG_CLEAR_MEMORY (UINT32_C(1) << 2)
 #define ARGON2_DEFAULT_FLAGS (UINT32_C(0))
 
 /* Error codes */

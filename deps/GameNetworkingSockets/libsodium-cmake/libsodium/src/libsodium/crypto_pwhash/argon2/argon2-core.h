@@ -17,7 +17,6 @@
 #include <string.h>
 
 #include "argon2.h"
-#include "private/quirks.h"
 
 /*************************Argon2 internal
  * constants**************************************************/

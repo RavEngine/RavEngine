@@ -46,10 +46,7 @@ void *alloca (size_t);
 #endif
 
 #include "core.h"
-#include "crypto_generichash.h"
-#include "crypto_stream.h"
 #include "randombytes.h"
-#include "private/common.h"
 #include "utils.h"
 
 #ifndef ENOSYS
@@ -418,7 +415,7 @@ _sodium_alloc_init(void)
         sodium_misuse(); /* LCOV_EXCL_LINE */
     }
 #endif
-    randombytes_buf(canary, CANARY_SIZE);
+    randombytes_buf(canary, sizeof canary);
 
     return 0;
 }

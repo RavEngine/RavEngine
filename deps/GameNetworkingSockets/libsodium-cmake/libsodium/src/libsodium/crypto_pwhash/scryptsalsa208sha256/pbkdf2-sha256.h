@@ -33,7 +33,6 @@
 #include <sys/types.h>
 
 #include "crypto_auth_hmacsha256.h"
-#include "private/quirks.h"
 
 /**
  * escrypt_PBKDF2_SHA256(passwd, passwdlen, salt, saltlen, c, buf, dkLen):
