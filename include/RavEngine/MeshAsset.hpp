@@ -7,6 +7,8 @@
 #include <vector>
 #include "Common3D.hpp"
 
+struct aiMesh;
+
 namespace RavEngine{
 
 class MeshAsset {
@@ -17,6 +19,14 @@ public:
 		std::vector<uint32_t> indices;
 		std::vector<vertex_t> vertices;
 	};
+
+	/**
+	* Convert an assimp mesh to a MeshPart
+	* @param mesh the assimp mesh to convert
+	* @param scaleMat the matrix to apply to each vertex of the mesh
+	* @return converted MeshPart
+	*/
+	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
 protected:
 	bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;

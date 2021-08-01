@@ -24,7 +24,6 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyI
 
 	auto str = App::Resources->FileContentsAt(dir.c_str());
 	
-	//pull from cmrc
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
 	const aiScene* scene = aiImportFileFromMemory(str.data(), str.size(),
@@ -58,43 +57,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyI
 	meshes.reserve(scene->mNumMeshes);
 	for(int i = 0; i < scene->mNumMeshes; i++){
 		aiMesh* mesh = scene->mMeshes[i];
-		MeshPart mp;
-		mp.indices.reserve(mesh->mNumFaces * 3);
-		mp.vertices.reserve(mesh->mNumVertices);
-		for(int vi = 0; vi < mesh->mNumVertices; vi++){
-			auto vert = mesh->mVertices[vi];
-			vector4 scaled(vert.x,vert.y,vert.z,1);
-			
-			scaled = scalemat * scaled;
-			
-			auto normal = mesh->mNormals[vi];
-			
-			//does mesh have uvs?
-			float uvs[2] = {0};
-			if(mesh->mTextureCoords[0]){
-				uvs[0] = mesh->mTextureCoords[0][vi].x;
-				uvs[1] = mesh->mTextureCoords[0][vi].y;
-			}
-			
-			mp.vertices.push_back({
-				static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z),	//coordinates
-				normal.x,normal.y,normal.z,																//normals
-				uvs[0],uvs[1]																			//UVs
-			});
-		}
-		
-		for(int ii = 0; ii < mesh->mNumFaces; ii++){
-			//alert if encounters a degenerate triangle
-			if(mesh->mFaces[ii].mNumIndices != 3){
-				throw runtime_error("Cannot load model: Degenerate triangle (Num indices = " + to_string(mesh->mFaces[ii].mNumIndices) + ")");
-			}
-		
-			mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
-			mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
-			mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
-
-		}
-		
+		auto mp = AIMesh2MeshPart(mesh, scalemat);
 		meshes.push_back(mp);
 	}
 	
@@ -104,16 +67,59 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyI
 	InitializeFromMeshPartFragments(meshes, keepCopyInSystemMemory);
 }
 
+MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
+{
+	MeshPart mp;
+	mp.indices.reserve(mesh->mNumFaces * 3);
+	mp.vertices.reserve(mesh->mNumVertices);
+	for (int vi = 0; vi < mesh->mNumVertices; vi++) {
+		auto vert = mesh->mVertices[vi];
+		vector4 scaled(vert.x, vert.y, vert.z, 1);
+
+		scaled = scalemat * scaled;
+
+		auto normal = mesh->mNormals[vi];
+
+		//does mesh have uvs?
+		float uvs[2] = { 0 };
+		if (mesh->mTextureCoords[0]) {
+			uvs[0] = mesh->mTextureCoords[0][vi].x;
+			uvs[1] = mesh->mTextureCoords[0][vi].y;
+		}
+
+		mp.vertices.push_back({
+			static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z),	//coordinates
+			normal.x,normal.y,normal.z,																//normals
+			uvs[0],uvs[1]																			//UVs
+			});
+	}
+
+	for (int ii = 0; ii < mesh->mNumFaces; ii++) {
+		//alert if encounters a degenerate triangle
+		if (mesh->mFaces[ii].mNumIndices != 3) {
+			throw runtime_error("Cannot load model: Degenerate triangle (Num indices = " + to_string(mesh->mFaces[ii].mNumIndices) + ")");
+		}
+
+		mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
+		mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
+		mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
+
+	}
+	return mp;
+}
+
 void MeshAsset::InitializeFromMeshPartFragments(const std::vector<MeshPart>& meshes, bool keepCopyInSystemMemory){
 	//combine all meshes
+	decltype(totalVerts) tv = 0;
+	decltype(totalIndices) ti = 0;
 	for(int i = 0; i < meshes.size(); i++){
-		totalVerts += meshes[i].vertices.size();
-		totalIndices += meshes[i].indices.size();
+		tv += meshes[i].vertices.size();
+		ti += meshes[i].indices.size();
 	}
 	
 	MeshPart allMeshes;
-	allMeshes.vertices.reserve(totalVerts);
-	allMeshes.indices.reserve(totalIndices);
+	allMeshes.vertices.reserve(tv);
+	allMeshes.indices.reserve(ti);
 	
 	size_t baseline_index = 0;
 	for(const auto& mesh : meshes){
@@ -136,6 +142,8 @@ void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, bool keepCopyIn
 	//copy out of intermediate
 	auto& v = allMeshes.vertices;
 	auto& i = allMeshes.indices;
+	totalVerts = v.size();
+	totalIndices = i.size();
 	
 	bgfx::VertexLayout pcvDecl;
 	
