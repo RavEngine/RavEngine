@@ -544,6 +544,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 
 		}
+		else {
+			Debug::Fatal("Cannot draw a mesh with no material assigned.");
+		}
 	};
 		
 	for(const auto& row : fd->opaques){

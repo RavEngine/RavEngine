@@ -10,7 +10,7 @@ namespace RavEngine {
 	class MeshAsset;
 
 	struct PreloadedAsset {
-		const std::string_view name;
+		std::string_view name;
 	};
 
 	struct PreloadedLight : public PreloadedAsset {

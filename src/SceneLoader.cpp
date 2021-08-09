@@ -70,5 +70,49 @@ void RavEngine::SceneLoader::LoadMeshes(const std::function<bool(const Preloaded
 
 void RavEngine::SceneLoader::LoadLocators(const std::function<void(const Locator&)>& func)
 {
+	auto getWorldMatrix = [](const aiNode * node) -> aiMatrix4x4 {
+		// figure out size
+		uint16_t depth = 0;
+		for (aiNode* p = node->mParent; p != nullptr; p = p->mParent) {
+			++depth;
+		}
+		stackarray(transforms, aiMatrix4x4, depth);
 
+		uint16_t tmp = 0;
+		for (aiNode* p = node->mParent; p != nullptr; p = p->mParent) {
+			transforms[tmp] = p->mTransformation;
+			++tmp;
+		}
+
+		aiMatrix4x4 mat;	//identity
+		if (depth > 0) {
+			for (int i = depth - 1; i >= 0; --i) {
+				mat *= transforms[i];
+			}
+		}
+		mat *= node->mTransformation;
+		return mat;
+	};
+
+	auto recurse_node = [&](aiNode* node) -> void {
+		auto recurse_node_impl = [&](aiNode* node, auto& recursive_func) -> void {
+			// process the node
+			aiVector3t<float> scale, position;
+			aiQuaterniont<float> rotation;
+			getWorldMatrix(node).Decompose(scale, rotation, position);
+			Locator l;
+			l.name = std::string_view(node->mName.C_Str(), node->mName.length);
+			l.translate = vector3(position.x, position.y, position.z);
+			l.scale = vector3(scale.x, scale.y, scale.z);
+			l.rotation = quaternion(rotation.w, rotation.x, rotation.y, rotation.z);
+
+			func(l);
+
+			for ( decltype(node->mNumChildren) i = 0; i < node->mNumChildren; i++) {
+				recursive_func(node->mChildren[i], recursive_func);
+			}
+		};
+		recurse_node_impl(node, recurse_node_impl);
+	};
+	recurse_node(scene->mRootNode);
 }
