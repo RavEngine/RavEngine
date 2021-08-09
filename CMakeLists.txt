@@ -104,8 +104,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
 	set(MACOSX OFF CACHE INTERNAL "")
 	set(DARWIN OFF CACHE INTERNAL "")
 elseif(LINUX)
-    set(VIDEO_OPENGL ON CACHE INTERNAL "")  # TODO: Linux without OpenGL requirement?
+    set(VIDEO_OPENGL ON CACHE INTERNAL "")  # Linux-wayland requires OpenGL / OpenGL ES
     set(VIDEO_OPENGLES ON CACHE INTERNAL "")
+    set(VIDEO_X11 ON CACHE INTERNAL "")
+    set(VIDEO_WAYLAND ON CACHE INTERNAL "")
 endif()
 
 	#RavEngine manages its own rendering, so disable SDL render drivers

@@ -588,6 +588,8 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC
         libsodium/src/libsodium/include
         libsodium/src/libsodium/include/sodium
+        ${CMAKE_BINARY_DIR}/
+        ${CMAKE_BINARY_DIR}/sodium
 )
 set_target_properties(${PROJECT_NAME}
     PROPERTIES

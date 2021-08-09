@@ -22,13 +22,13 @@ public:
 protected:
 	bgfx::TextureHandle texture = BGFX_INVALID_HANDLE;
 	Texture(){}
-	void CreateTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, int flags = BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT);
+	void CreateTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, long unsigned int flags = BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT);
 };
 
 class RuntimeTexture : public Texture{
 public:
 	RuntimeTexture(const std::string& filename) = delete;
-	RuntimeTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, int flags = BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT) : Texture(){
+	RuntimeTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, long unsigned int flags = BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT) : Texture(){
 		CreateTexture(width, height, hasMipMaps, numlayers, numChannels, data,flags);
 	}
 };

@@ -23,7 +23,8 @@
 
 #include "RenderableComponent.hpp"
 	#ifdef __linux__
-	#define SDL_VIDEO_DRIVER_X11 1	//Without this X11 support doesn't work
+	#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work
+	#define SDL_VIDEO_DRIVER_WAYLAND 1
 #endif
 #include <SDL_syswm.h>
 #include <SDL.h>
