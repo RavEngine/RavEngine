@@ -23,10 +23,6 @@ if(UNIX AND NOT APPLE)
 	set(LINUX TRUE CACHE INTERNAL "")
 endif()
 
-if(LINUX)
-	set(CMAKE_CXX_STANDARD_LIBRARIES -latomic) # need libatomic on linux
-endif()
-
 # enable multiprocessor compilation with vs
 # Remove 'lib' prefix for shared libraries on Windows
 if(MSVC)
@@ -283,21 +279,28 @@ target_include_directories("${PROJECT_NAME}"
 
 # ====================== Linking ====================
 if (APPLE)
-# some apple-specific libraries
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	find_library(COCOA_LIB Cocoa REQUIRED)
-	find_library(SM_LIB ServiceManagement REQUIRED)
+    # some apple-specific libraries
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	    find_library(COCOA_LIB Cocoa REQUIRED)
+	    find_library(SM_LIB ServiceManagement REQUIRED)
+    endif()
+
+    find_library(FOUNDATION_LIB Foundation REQUIRED)
+    find_library(METAL_LIB Metal REQUIRED)
+    find_library(QZC_LIB QuartzCore REQUIRED)
+    find_library(CH_LIB CoreHaptics REQUIRED)
+    SET(ICONV_LIB "iconv")
+
 endif()
 
-find_library(FOUNDATION_LIB Foundation REQUIRED)
-find_library(METAL_LIB Metal REQUIRED)
-find_library(QZC_LIB QuartzCore REQUIRED)
-find_library(CH_LIB CoreHaptics REQUIRED)
-SET(ICONV_LIB "iconv")
 
+if(LINUX)
+	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
 endif()
 
-target_link_libraries("${PROJECT_NAME}" PRIVATE 
+
+target_link_libraries("${PROJECT_NAME}" 
+    PRIVATE 
 	"PhysXExtensions"
 	"PhysX"
 	"PhysXPvdSDK"
@@ -322,6 +325,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	#"PhysXGPU"
 	"RmlCore"
 	"libnyquist"
+    "sodium"
 	"GameNetworkingSockets_s"
 	"SDL2main"
 	PUBLIC
@@ -351,6 +355,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
 	${METAL_LIB} 
 	${QZC_LIB} 
 	${CH_LIB}
+    ${ATOMIC_LIB}
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
