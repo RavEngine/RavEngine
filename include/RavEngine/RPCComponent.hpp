@@ -37,8 +37,8 @@ namespace RavEngine {
 		typedef ConcurrentQueue<enqueued_rpc> queue_t;
 		queue_t C_buffer_A, C_buffer_B, S_buffer_A, S_buffer_B;
 		std::atomic<queue_t*> readingptr_c = &C_buffer_A, writingptr_c = &C_buffer_B,
-							  readingptr_s = &S_buffer_A, writingptr_s = &S_buffer_B;
-		
+			readingptr_s = &S_buffer_A, writingptr_s = &S_buffer_B;
+
 		/**
 		Shared RPC registration code
 		@param id the numeric ID for the RPC. Use an enum
@@ -72,32 +72,30 @@ namespace RavEngine {
 			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::type_serialized_size<T>());
 			offset += RPCMsgUnpacker::total_serialized_size(value);
 		}
-        
-		template<typename ... A>
-		static inline constexpr size_t size_needed(A ... args){
-			return (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
-		}
-		
+
 		/**
 		Create a serialized RPC invocation
 		@param id the RPC id number
 		@param args the varargs to encode
 		*/
 		template<typename ... A>
-		inline void SerializeRPC(uint16_t id, char* msg, size_t nbytes, A ... args) {
+		inline std::string SerializeRPC(uint16_t id, A ... args) {
+			constexpr size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
 
 			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>().value()->GetNetworkID().raw();
+			char msg[totalsize];
 
 			//write message header
-			std::memset(msg, 0, nbytes);
-            msg[0] = NetworkBase::CommandCode::RPC;							//command code
+			std::memset(msg, 0, totalsize);
+			msg[0] = NetworkBase::CommandCode::RPC;							//command code
 			std::memcpy(msg + 1, uuid_bytes.data(), uuid_bytes.size());	//entity uuid
 			std::memcpy(msg + 1 + uuid_bytes.size(), &id, sizeof(id));	//RPC ID
 
 			//write mesage body
 			size_t offset = RPCMsgUnpacker::header_size;
-			(serializeType(offset,msg,args),...);		//fold expression on all variadics
-			Debug::Assert(offset == nbytes, "Incorrect number of bytes written!");
+			(serializeType(offset, msg, args), ...);		//fold expression on all variadics
+			Debug::Assert(offset == totalsize, "Incorrect number of bytes written!");
+			return std::string(msg, totalsize);
 		}
 
 		/**
@@ -110,15 +108,17 @@ namespace RavEngine {
 			enqueued_rpc cmd;
 			while (reading->try_dequeue(cmd)) {
 				//read out of the header which RPC to invoke
-				uint16_t RPC = *(reinterpret_cast<uint16_t*>(cmd.msg.data() + RPCMsgUnpacker::code_offset));
+				uint16_t RPC;
+				std::memcpy(&RPC, cmd.msg.data() + RPCMsgUnpacker::code_offset, sizeof(RPC));
 
 				//invoke that RPC
-				if(table.if_contains(RPC, [&](const rpc_entry& func) {
+				if (table.if_contains(RPC, [&](const rpc_entry& func) {
 					if (cmd.isOwner || func.mode == Directionality::Bidirectional) {
 						auto packer = RPCMsgUnpacker(cmd.msg);
 						func.func(packer, cmd.origin);
 					}
-				})){}
+					})) {
+				}
 				else {
 					Debug::Warning("No cmd code with ID {}", RPC);
 				}
@@ -146,7 +146,7 @@ namespace RavEngine {
 		*/
 		template<typename U>
 		inline void RegisterClientRPC(uint16_t name, Ref<U> thisptr, void(U::* f)(RPCMsgUnpacker&, HSteamNetConnection), Directionality type = Directionality::OnlyOwnerInvokes) {
-			RegisterRPC_Impl(name, thisptr, f, ClientRPCs,type);
+			RegisterRPC_Impl(name, thisptr, f, ClientRPCs, type);
 		}
 
 		/**
@@ -158,13 +158,11 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) {
 			if (ServerRPCs.contains(id)) {
-				auto size = size_needed(args...);
-				stackarray(msg,char,size);
-				SerializeRPC(id, msg, size, args...);
-				App::networkManager.client->SendMessageToServer(msg,mode);
+				auto msg = SerializeRPC(id, args...);
+				App::networkManager.client->SendMessageToServer(msg, mode);
 			}
 			else {
-				Debug::Warning("Cannot send Server RPC with ID {}",id);
+				Debug::Warning("Cannot send Server RPC with ID {}", id);
 			}
 		}
 
@@ -182,9 +180,7 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A ... args) {
 			if (ClientRPCs.contains(id)) {
-				auto size = size_needed(args...);
-				stackarray(msg,char,size);
-				SerializeRPC(id, msg, size, args...);
+				auto msg = SerializeRPC(id, args...);
 				App::networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
 			}
 			else {
@@ -201,10 +197,8 @@ namespace RavEngine {
 		template<typename ... A>
 		inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) {
 			if (ClientRPCs.contains(id)) {
-				auto size = size_needed(args...);
-				stackarray(msg,char,size);
-				SerializeRPC(id, msg, size, args...);
-				App::networkManager.server->SendMessageToAllClients(msg,mode);
+				auto msg = SerializeRPC(id, args...);
+				App::networkManager.server->SendMessageToAllClients(msg, mode);
 			}
 			else {
 				Debug::Warning("Cannot send Client RPC with ID {}", id);
@@ -229,7 +223,7 @@ namespace RavEngine {
 		Invoked automatically. For internal use only.
 		*/
 		inline void ProcessClientRPCs() {
-			ProcessRPCs_impl(readingptr_c,ClientRPCs);
+			ProcessRPCs_impl(readingptr_c, ClientRPCs);
 		}
 
 		/**
@@ -244,7 +238,7 @@ namespace RavEngine {
 		For internal use only. Switches which queue is being filled and which is being emptied
 		*/
 		inline void Swap() {
-			queue_t *reading = readingptr_c.load(), *writing = writingptr_c.load();
+			queue_t* reading = readingptr_c.load(), * writing = writingptr_c.load();
 			std::swap(reading, writing);
 			readingptr_c.store(reading);
 			writingptr_c.store(writing);
