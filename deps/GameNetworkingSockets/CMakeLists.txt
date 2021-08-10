@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.13)
 project(GameNetworkingSocketsFull C CXX)
 
 # dependencies
-set(SODIUM_DISABLE_TESTS ON CACHE INTERNAL "")
-add_subdirectory(libsodium-cmake)
 set(protobuf_BUILD_TESTS OFF CACHE INTERNAL "")
 set(protobuf_MODULE_COMPATIBLE ON CACHE INTERNAL "")
 set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE INTERNAL "")
@@ -16,9 +14,20 @@ option(Protobuf_USE_STATIC_LIBS "Link with protobuf statically" ON)
 option(LIGHT_TESTS "Use smaller/shorter tests for simple integration testing (e.g. Travis)" OFF)
 option(GAMENETWORKINGSOCKETS_BUILD_EXAMPLES "Build the included example chat program" OFF)
 option(GAMENETWORKINGSOCKETS_BUILD_TESTS "Build crypto, pki and network connection tests" OFF)
+option(USE_OPENSSL "Use libsodium instead of OpenSSL" ON)
 
-set(USE_CRYPTO "libsodium" CACHE INTERNAL "")
-set(USE_CRYPTO25519 "libsodium" CACHE INTERNAL "")
+if(USE_OPENSSL)
+	set(USE_CRYPTO "OpenSSL" CACHE INTERNAL "")
+	set(USE_CRYPTO25519 "OpenSSL" CACHE INTERNAL "")
+	add_subdirectory(openssl-cmake)
+else()
+	set(SODIUM_DISABLE_TESTS ON CACHE INTERNAL "")
+	add_subdirectory(libsodium-cmake)
+	set(USE_CRYPTO "libsodium" CACHE INTERNAL "")
+	set(USE_CRYPTO25519 "libsodium" CACHE INTERNAL "")
+endif()
+
+
 
 find_package(Threads)
 
