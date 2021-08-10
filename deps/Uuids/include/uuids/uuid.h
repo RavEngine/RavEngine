@@ -252,11 +252,14 @@ namespace std
 		// hashing by performing higher XOR lower
         inline std::size_t operator()(id const &d) const noexcept
         {
-			auto raw = d.raw();
+			auto hash = std::hash<std::string>()(d.to_string());
+			return hash;
+			
+			//auto raw = d.raw();
 //			uint64_t lower, higher;
 //			std::memcpy(&higher,raw.data(), sizeof(higher));
 //			std::memcpy(&lower, raw.data() + sizeof(higher), sizeof(lower));
-			return (*reinterpret_cast<uint64_t*>(raw.data())) ^ (*reinterpret_cast<uint64_t*>(raw.data() + sizeof(uint64_t)));
+			//return (*reinterpret_cast<uint64_t*>(raw.data())) ^ (*reinterpret_cast<uint64_t*>(raw.data() + sizeof(uint64_t)));
         }
     };
 

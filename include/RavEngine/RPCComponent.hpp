@@ -110,8 +110,7 @@ namespace RavEngine {
 			enqueued_rpc cmd;
 			while (reading->try_dequeue(cmd)) {
 				//read out of the header which RPC to invoke
-				uint16_t RPC;
-				std::memcpy(&RPC, cmd.msg.data() + RPCMsgUnpacker::code_offset, sizeof(RPC));
+				uint16_t RPC = *(reinterpret_cast<uint16_t*>(cmd.msg.data() + RPCMsgUnpacker::code_offset));
 
 				//invoke that RPC
 				if(table.if_contains(RPC, [&](const rpc_entry& func) {

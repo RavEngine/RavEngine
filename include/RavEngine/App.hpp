@@ -172,7 +172,8 @@ namespace RavEngine {
 		static std::optional<Ref<World>> GetWorldByName(const std::string& name){
 			std::optional<Ref<World>> value;
 			for(const auto& world : loadedWorlds){
-				if (world->worldID == name){
+				// because std::string "world\0\0" != "world", we need to use strncmp
+				if (std::strncmp(world->worldID.data(),name.data(), World::id_size) == 0){
 					value.emplace(world);
 					break;
 				}

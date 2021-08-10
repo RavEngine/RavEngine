@@ -130,6 +130,15 @@ namespace RavEngine {
 		void Tick(float);
 
 		World();
+		
+		/**
+		 Constructor useful for setting the world name
+		 @param name the string name for this world. Note that if the name has more characters than id_size, only the first id_size characters will be included.
+		 */
+		World(const std::string& name) : World(){
+			auto len = name.size();
+			std::memcpy((char*)worldID.data(), name.data(), std::min(len,static_cast<decltype(len)>(id_size)));
+		}
 
 		/**
 		* Constructor that takes a custom skybox. This constructor will bypass loading the default skybox.
