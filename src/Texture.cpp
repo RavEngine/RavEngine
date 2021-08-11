@@ -37,7 +37,7 @@ void Texture::Bind(int id, const SamplerUniform &uniform){
 	bgfx::setTexture(id, uniform, texture);
 }
 
-void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, long unsigned int flags){
+void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, int flags){
 	bgfx::TextureFormat::Enum format;
 	switch (numChannels) {
 	case 1:

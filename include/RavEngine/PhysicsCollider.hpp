@@ -179,14 +179,22 @@ namespace RavEngine {
 
 	class MeshCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider, MeshCollider>{
 	protected:
-		physx::PxTriangleMesh* triMesh;
 		Ref<MeshAsset> meshAsset;
 		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	public:
 		using QueryableDelta<PhysicsCollider,MeshCollider>::GetQueryTypes;
 		
+		/**
+		 Create a MeshCollider given a MeshAsset
+		 @param mesh the MeshAsset to use
+		 */
 		MeshCollider(Ref<MeshAsset> mesh) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){}
 		
+		/**
+		 Create a MeshCollider given a MeshAsset physics material
+		 @param mesh the MeshAsset to use
+		 @param mat the PhysicsMaterial to use
+		 */
 		MeshCollider(Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){
 			material = mat;
 		}
@@ -194,7 +202,32 @@ namespace RavEngine {
 		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override{
 			//TODO: debug draw mesh collider
 		}
+	};
+
+	class ConvexMeshCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider, ConvexMeshCollider>{
+	protected:
+		Ref<MeshAsset> meshAsset;
+		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
+	public:
+		using QueryableDelta<PhysicsCollider,ConvexMeshCollider>::GetQueryTypes;
 		
-		virtual ~MeshCollider();
+		/**
+		 Create a Convex Mesh Collider given a MeshAsset
+		 @param mesh the MeshAsset to use
+		 */
+		ConvexMeshCollider(Ref<MeshAsset> mesh) : PhysicsCollider(vector3(0,0,0),quaternion(1.0,0,0,0)), meshAsset(mesh){}
+		
+		/**
+		 Create a Convex Mesh Collider given a MeshAsset physics material
+		 @param mesh the MeshAsset to use
+		 @param mat the PhysicsMaterial to use
+		 */
+		ConvexMeshCollider(Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){
+			material = mat;
+		}
+		
+		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override{
+			//TODO: debug draw mesh collider
+		}
 	};
 }

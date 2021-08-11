@@ -127,17 +127,47 @@ void MeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 		meshDesc.flags = PxMeshFlag::e16_BIT_INDICES;
 	}	//otherwise assume 32 bit
 	
+	// no longer need to hold onto this, so release it
+	meshAsset.reset();
+	
 #ifdef _DEBUG
 	//Debug::Assert(PhysicsSolver::cooking->validateTriangleMesh(meshDesc), "Triangle mesh validation failed");
 #endif
 	
-	triMesh = PhysicsSolver::cooking->createTriangleMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
+	physx::PxTriangleMesh* triMesh = PhysicsSolver::cooking->createTriangleMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
 	
 	auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
 	
 	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxTriangleMeshGeometry(triMesh), *material->getPhysXmat());
+	triMesh->release();
 }
 
-MeshCollider::~MeshCollider(){
-	triMesh->release();
+void ConvexMeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
+	auto& meshdata = meshAsset->GetSystemCopy();
+	
+	// only want positional data here, UVs and other data are not relevant
+	std::vector<PxVec3> vertices(meshdata.vertices.size());
+	for(int i = 0; i < vertices.size(); i++){
+		vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
+	}
+	
+	PxBoundedData pointdata;
+	pointdata.count = vertices.size();
+	pointdata.stride = sizeof(PxVec3);
+	pointdata.data = &vertices[0];
+	
+	PxConvexMeshDesc meshDesc;
+	meshDesc.setToDefault();
+	meshDesc.points.count = vertices.size();
+	meshDesc.points = pointdata;
+	meshDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+	
+	// no longer need to hold onto this, so release it
+	meshAsset.reset();
+	
+	physx::PxConvexMesh* convMesh = PhysicsSolver::cooking->createConvexMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
+	
+	auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxConvexMeshGeometry(convMesh), *material->getPhysXmat());
+	convMesh->release();
 }
