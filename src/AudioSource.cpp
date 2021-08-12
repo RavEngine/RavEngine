@@ -8,7 +8,7 @@
 using namespace RavEngine;
 using namespace std;
 
-AudioAsset::AudioAsset(const std::string& name){
+AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_channels){
 	//expand audio into buffer
 	string path = StrFormat("/sounds/{}", name);
 	vector<uint8_t> datavec;
@@ -20,14 +20,21 @@ AudioAsset::AudioAsset(const std::string& name){
 	auto file_ext = filesystem::path(path).extension().string().substr(1);
 	nqr::AudioData data;
 	loader.Load(&data, file_ext, datavec);
-	if (data.channelCount != 1){
-		Debug::Fatal("Only mono is supported, got {} channels", data.channelCount);
-	}
 	
 	if (data.sampleRate != desiredSampleRate){
 		Debug::Warning("Sample rate mismatch in {} - requested {} hz but got {} hz", path, desiredSampleRate, data.sampleRate);
-		//TODO: update the sample rate
 	}
+
+	// fix n channels
+	if (nchannels != desired_channels) {
+
+
+		nchannels = desired_channels;
+	}
+	else {
+		nchannels = data.channelCount;
+	}
+
 	
 	lengthSeconds = data.lengthSeconds;
 	frameSize = data.frameSize;

@@ -4,6 +4,7 @@
 #include <string>
 #include "mathtypes.hpp"
 #include "Ref.hpp"
+#include "Debug.hpp"
 
 namespace RavEngine{
 
@@ -16,25 +17,30 @@ private:
 	double lengthSeconds = 0;
 	size_t numsamples = 0;
 	size_t frameSize = 0;
+	uint8_t nchannels = 0;
 public:
 	/**
 	 Construct an AudioAsset given a file path. The AudioAsset will decode the audio into samples.
+	 @param name the file name to load
+	 @param desired_channels the number of channels the file should have after loading
 	 */
-	AudioAsset(const std::string& name);
+	AudioAsset(const std::string& name, decltype(nchannels) desired_channels = 1);
 	
 	/**
 	 Use for generated audio. The AudioAsset assumes ownership of the data and will free it on destruction.
 	 @param data the audio sample data, in [-1,1] normalized float
-	 @param n_samples the number of samples in the buffer
+	 @param n_samples the number of samples in the buffer. This number is not sanity-checked.
+	 @param nchannels the number of channels in the buffer. This number is not sanity-checked.
 	 */
-	AudioAsset(const float* data, size_t n_samples) : numsamples(n_samples){
-		audiodata = data;
-	}
+	AudioAsset(const float* data, size_t n_samples, size_t nchannels) : numsamples(n_samples), nchannels(nchannels), audiodata(data){}
 	
 	~AudioAsset();
 	
 	inline size_t GetFrameSize() const {return frameSize;}
 	inline double getLength() const {return lengthSeconds;}
+	inline decltype(nchannels) GetNChanels() const {
+		return nchannels;
+	}
 };
 
 
@@ -128,7 +134,15 @@ public:
  For attaching a movable source to an Entity. To represent multiple sources, simply attach multiple of this component type to your Entity.
  */
 struct AudioSourceComponent : public Component, public AudioPlayerData, public Queryable<AudioSourceComponent>{
-	AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a){}
+	AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a){
+		if (a->GetNChanels() != 1) {
+			Debug::Fatal("Only mono is supported for point-audio sources, got {} channels", a->GetNChanels());
+		}
+	}
+};
+
+struct AmbientAudioSourceComponent : public Component, public AudioPlayerData, public Queryable< AmbientAudioSourceComponent> {
+	AmbientAudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a) {}
 };
 
 /**

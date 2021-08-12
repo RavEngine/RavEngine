@@ -26,10 +26,11 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 	if (world){
 		auto sources = world->GetAllComponentsOfType<AudioSourceComponent>();
 		auto rooms = world->GetAllComponentsOfType<AudioRoom>();
+		auto ambientSources = world->GetAllComponentsOfType<AmbientAudioSourceComponent>();
 		
 		//use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
-		if (world->HasComponentOfType<AudioListener>()) {
-			auto listener = world->GetComponent<AudioListener>().value();
+		if (auto l = world->GetComponent<AudioListener>()) {
+			auto listener = l.value();
 			auto listenerTransform = listener->getOwner().lock()->transform();
 			auto lpos = listenerTransform->GetWorldPosition();
 			auto lrot = listenerTransform->GetWorldRotation();
@@ -67,6 +68,18 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 					accum_buffer[i] += shared_buffer[i];
 				}
 			}
+
+			// play all the ambient audios
+			for (const auto& source : ambientSources) {
+				auto casted = static_pointer_cast<AmbientAudioSourceComponent>(source);
+
+				casted->GetSampleRegionAndAdvance(shared_buffer, len);
+
+				// mix it in
+				for (int i = 0; i < len / sizeof(float); i++) {
+					accum_buffer[i] += shared_buffer[i];
+				}
+			}
 			
 			//remove sounds from that list that have finished playing
 			world->instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
@@ -81,7 +94,6 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 			//update stream pointer with rendered output
 			std::memcpy(stream, accum_buffer, len);
 
-			//TODO: mix music (non-spatialized) audio
 		}
 	}
 }
@@ -114,7 +126,7 @@ void AudioPlayer::Init(){
 	if (!silence){
 		float* data = new float[4096];
 		std::memset(data, 0, sizeof(float) * 4096);
-		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(data, 4096));
+		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(data, 4096,1));
 		silence->SetLoop(true);
 	}
 	
