@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -38,7 +38,6 @@
 #include "SDL_cocoavideo.h"
 #include "SDL_cocoashape.h"
 #include "SDL_cocoamouse.h"
-#include "SDL_cocoamousetap.h"
 #include "SDL_cocoaopengl.h"
 #include "SDL_cocoaopengles.h"
 
@@ -160,6 +159,16 @@
 
     SDL_assert([desiredType isEqualToString:NSFilenamesPboardType]);
     NSArray *array = [pasteboard propertyListForType:@"NSFilenamesPboardType"];
+
+    /* Code addon to update the mouse location */
+    NSPoint point = [sender draggingLocation];
+    SDL_Mouse *mouse = SDL_GetMouse();
+    int x = (int)point.x;
+    int y = (int)(sdlwindow->h - point.y);
+    if (x >= 0 && x < sdlwindow->w && y >= 0 && y < sdlwindow->h) {
+        SDL_SendMouseMotion(sdlwindow, mouse->mouseID, 0, x, y);
+    }
+    /* Code addon to update the mouse location */
 
     for (NSString *path in array) {
         NSURL *fileURL = [NSURL fileURLWithPath:path];
@@ -499,6 +508,26 @@ SetWindowStyle(SDL_Window * window, NSUInteger style)
     return isMoving;
 }
 
+- (BOOL)isMovingOrFocusClickPending
+{
+    return isMoving || (focusClickPending != 0);
+}
+
+-(void) setFocusClickPending:(int) button
+{
+    focusClickPending |= (1 << button);
+}
+
+-(void) clearFocusClickPending:(int) button
+{
+    if ((focusClickPending & (1 << button)) != 0) {
+        focusClickPending &= ~(1 << button);
+        if (focusClickPending == 0) {
+            [self onMovingOrFocusClickPendingStateCleared];
+        }
+    }
+}
+
 -(void) setPendingMoveX:(int)x Y:(int)y
 {
     pendingWindowWarpX = x;
@@ -507,15 +536,36 @@ SetWindowStyle(SDL_Window * window, NSUInteger style)
 
 - (void)windowDidFinishMoving
 {
-    if ([self isMoving]) {
+    if (isMoving) {
         isMoving = NO;
+        [self onMovingOrFocusClickPendingStateCleared];
+    }
+}
 
+- (void)onMovingOrFocusClickPendingStateCleared
+{
+    if (![self isMovingOrFocusClickPending]) {
         SDL_Mouse *mouse = SDL_GetMouse();
         if (pendingWindowWarpX != INT_MAX && pendingWindowWarpY != INT_MAX) {
             mouse->WarpMouseGlobal(pendingWindowWarpX, pendingWindowWarpY);
             pendingWindowWarpX = pendingWindowWarpY = INT_MAX;
         }
         if (mouse->relative_mode && !mouse->relative_mode_warp && mouse->focus == _data->window) {
+            /* Move the cursor to the nearest point in the window */
+            {
+                int x, y;
+                CGPoint cgpoint;
+
+                SDL_GetMouseState(&x, &y);
+                cgpoint.x = _data->window->x + x;
+                cgpoint.y = _data->window->y + y;
+
+                Cocoa_HandleMouseWarp(cgpoint.x, cgpoint.y);
+
+                DLog("Returning cursor to (%g, %g)", cgpoint.x, cgpoint.y);
+                CGDisplayMoveCursorToPoint(kCGDirectMainDisplay, cgpoint);
+            }
+
             mouse->SetRelativeMouseMode(SDL_TRUE);
         }
     }
@@ -632,7 +682,7 @@ SetWindowStyle(SDL_Window * window, NSUInteger style)
     /* This needs to be done before restoring the relative mouse mode. */
     SDL_SetKeyboardFocus(window);
 
-    if (mouse->relative_mode && !mouse->relative_mode_warp && ![self isMoving]) {
+    if (mouse->relative_mode && !mouse->relative_mode_warp && ![self isMovingOrFocusClickPending]) {
         mouse->SetRelativeMouseMode(SDL_TRUE);
     }
 
@@ -1099,7 +1149,7 @@ SetWindowStyle(SDL_Window * window, NSUInteger style)
     x = (int)point.x;
     y = (int)(window->h - point.y);
 
-    if (window->flags & SDL_WINDOW_INPUT_GRABBED) {
+    if (window->flags & SDL_WINDOW_MOUSE_GRABBED) {
         if (x < 0 || x >= window->w || y < 0 || y >= window->h) {
             if (x < 0) {
                 x = 0;
@@ -1112,13 +1162,7 @@ SetWindowStyle(SDL_Window * window, NSUInteger style)
                 y = window->h - 1;
             }
 
-#if !SDL_MAC_NO_SANDBOX
             CGPoint cgpoint;
-
-            /* When SDL_MAC_NO_SANDBOX is set, this is handled by
-             * SDL_cocoamousetap.m.
-             */
-
             cgpoint.x = window->x + x;
             cgpoint.y = window->y + y;
 
@@ -1126,7 +1170,6 @@ SetWindowStyle(SDL_Window * window, NSUInteger style)
             CGAssociateMouseAndMouseCursorPosition(YES);
 
             Cocoa_HandleMouseWarp(cgpoint.x, cgpoint.y);
-#endif
         }
     }
 
@@ -1403,7 +1446,10 @@ SetupWindowData(_THIS, SDL_Window * window, NSWindow *nswindow, NSView *nsview, 
     {
         unsigned long style = [nswindow styleMask];
 
-        if (style == NSWindowStyleMaskBorderless) {
+        /* NSWindowStyleMaskBorderless is zero, and it's possible to be
+            Resizeable _and_ borderless, so we can't do a simple bitwise AND
+            of NSWindowStyleMaskBorderless here. */
+        if ((style & ~NSWindowStyleMaskResizable) == NSWindowStyleMaskBorderless) {
             window->flags |= SDL_WINDOW_BORDERLESS;
         } else {
             window->flags &= ~SDL_WINDOW_BORDERLESS;
@@ -1810,6 +1856,18 @@ Cocoa_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable)
 }}
 
 void
+Cocoa_SetWindowAlwaysOnTop(_THIS, SDL_Window * window, SDL_bool on_top)
+{ @autoreleasepool
+    {
+        NSWindow *nswindow = ((SDL_WindowData *) window->driverdata)->nswindow;
+        if (on_top) {
+            [nswindow setLevel:NSFloatingWindowLevel];
+        } else {
+            [nswindow setLevel:kCGNormalWindowLevel];
+        }
+    }}
+
+void
 Cocoa_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen)
 { @autoreleasepool
 {
@@ -1948,16 +2006,12 @@ Cocoa_GetWindowGammaRamp(_THIS, SDL_Window * window, Uint16 * ramp)
 }
 
 void
-Cocoa_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
+Cocoa_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
 {
-    SDL_Mouse *mouse = SDL_GetMouse();
     SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
 
-    /* Enable or disable the event tap as necessary */
-    Cocoa_EnableMouseEventTap(mouse->driverdata, grabbed);
-
     /* Move the cursor to the nearest point in the window */
-    if (grabbed && data && ![data->listener isMoving]) {
+    if (grabbed && data && ![data->listener isMovingOrFocusClickPending]) {
         int x, y;
         CGPoint cgpoint;
 
@@ -2102,6 +2156,34 @@ Cocoa_AcceptDragAndDrop(SDL_Window * window, SDL_bool accept)
         [data->nswindow unregisterDraggedTypes];
     }
 }
+
+int
+Cocoa_FlashWindow(_THIS, SDL_Window *window, SDL_FlashOperation operation)
+{ @autoreleasepool
+{
+    /* Note that this is app-wide and not window-specific! */
+    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+
+    if (data->flash_request) {
+        [NSApp cancelUserAttentionRequest:data->flash_request];
+        data->flash_request = 0;
+    }
+
+    switch (operation) {
+    case SDL_FLASH_CANCEL:
+        /* Canceled above */
+        break;
+    case SDL_FLASH_BRIEFLY:
+        data->flash_request = [NSApp requestUserAttention:NSInformationalRequest];
+        break;
+    case SDL_FLASH_UNTIL_FOCUSED:
+        data->flash_request = [NSApp requestUserAttention:NSCriticalRequest];
+        break;
+    default:
+        return SDL_Unsupported();
+    }
+    return 0;
+}}
 
 int
 Cocoa_SetWindowOpacity(_THIS, SDL_Window * window, float opacity)

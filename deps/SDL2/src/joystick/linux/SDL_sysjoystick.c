@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -56,18 +56,6 @@
 #ifndef SYN_DROPPED
 #define SYN_DROPPED 3
 #endif
-#ifndef BTN_SOUTH
-#define BTN_SOUTH       0x130
-#endif
-#ifndef BTN_EAST
-#define BTN_EAST        0x131
-#endif
-#ifndef BTN_NORTH
-#define BTN_NORTH       0x133
-#endif
-#ifndef BTN_WEST
-#define BTN_WEST        0x134
-#endif
 #ifndef BTN_DPAD_UP
 #define BTN_DPAD_UP     0x220
 #endif
@@ -113,6 +101,8 @@ typedef struct SDL_joylist_item
 
     /* Steam Controller support */
     SDL_bool m_bSteamController;
+
+    SDL_GamepadMapping *mapping;
 } SDL_joylist_item;
 
 static SDL_joylist_item *SDL_joylist = NULL;
@@ -136,6 +126,14 @@ FixupDeviceInfoForMapping(int fd, struct input_id *inpid)
             /* Change the version to 0x0902, so we can map it differently */
             inpid->version = 0x0902;
         }
+    }
+
+    /* For Atari vcs modern and classic controllers have the version reflecting
+     * firmware version, but the mapping stays stable so ignore
+     * version information */
+    if (inpid->vendor == 0x3250
+            && (inpid->product == 0x1001 || inpid->product == 0x1002)) {
+        inpid->version = 0;
     }
 }
 
@@ -376,6 +374,9 @@ MaybeRemoveDevice(const char *path)
 
             SDL_PrivateJoystickRemoved(item->device_instance);
 
+            if (item->mapping) {
+                SDL_free(item->mapping);
+            }
             SDL_free(item->path);
             SDL_free(item->name);
             SDL_free(item);
@@ -588,6 +589,18 @@ LINUX_InotifyJoystickDetect(void)
  * have to do this the first time, to detect devices that already existed
  * before we started; in the non-inotify code path we do this repeatedly
  * (polling). */
+static int
+filter_entries(const struct dirent *entry)
+{
+    return (SDL_strlen(entry->d_name) > 5 && SDL_strncmp(entry->d_name, "event", 5) == 0);
+}
+static int
+sort_entries(const struct dirent **a, const struct dirent **b)
+{
+    int numA = SDL_atoi((*a)->d_name+5);
+    int numB = SDL_atoi((*b)->d_name+5);
+    return (numA - numB);
+}
 static void
 LINUX_FallbackJoystickDetect(void)
 {
@@ -599,22 +612,18 @@ LINUX_FallbackJoystickDetect(void)
 
         /* Opening input devices can generate synchronous device I/O, so avoid it if we can */
         if (stat("/dev/input", &sb) == 0 && sb.st_mtime != last_input_dir_mtime) {
-            DIR *folder;
-            struct dirent *dent;
+            int i, count;
+            struct dirent **entries;
+            char path[PATH_MAX];
 
-            folder = opendir("/dev/input");
-            if (folder) {
-                while ((dent = readdir(folder))) {
-                    int len = SDL_strlen(dent->d_name);
-                    if (len > 5 && SDL_strncmp(dent->d_name, "event", 5) == 0) {
-                        char path[PATH_MAX];
-                        SDL_snprintf(path, SDL_arraysize(path), "/dev/input/%s", dent->d_name);
-                        MaybeAddDevice(path);
-                    }
-                }
+            count = scandir("/dev/input", &entries, filter_entries, sort_entries);
+            for (i = 0; i < count; ++i) {
+                SDL_snprintf(path, SDL_arraysize(path), "/dev/input/%s", entries[i]->d_name);
+                MaybeAddDevice(path);
 
-                closedir(folder);
+                free(entries[i]); /* This should NOT be SDL_free() */
             }
+            free(entries); /* This should NOT be SDL_free() */
 
             last_input_dir_mtime = sb.st_mtime;
         }
@@ -658,7 +667,10 @@ LINUX_JoystickInit(void)
             enumeration_method = ENUMERATION_FALLBACK;
         }
         else if (access("/.flatpak-info", F_OK) == 0
-                 || access("/run/pressure-vessel", F_OK) == 0) {
+                 || access("/run/host/container-manager", F_OK) == 0) {
+            /* Explicitly check `/.flatpak-info` because, for old versions of
+             * Flatpak, this was the only available way to tell if we were in
+             * a Flatpak container. */
             SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
                          "Container detected, disabling udev integration");
             enumeration_method = ENUMERATION_FALLBACK;
@@ -961,6 +973,48 @@ ConfigJoystick(SDL_Joystick *joystick, int fd)
 }
 
 
+/* This is used to do the heavy lifting for LINUX_JoystickOpen and
+   also LINUX_JoystickGetGamepadMapping, so we can query the hardware
+   without adding an opened SDL_Joystick object to the system.
+   This expects `joystick->hwdata` to be allocated and will not free it
+   on error. Returns -1 on error, 0 on success. */
+static int
+PrepareJoystickHwdata(SDL_Joystick *joystick, SDL_joylist_item *item)
+{
+    joystick->hwdata->item = item;
+    joystick->hwdata->guid = item->guid;
+    joystick->hwdata->effect.id = -1;
+    joystick->hwdata->m_bSteamController = item->m_bSteamController;
+    SDL_memset(joystick->hwdata->abs_map, 0xFF, sizeof(joystick->hwdata->abs_map));
+
+    if (item->m_bSteamController) {
+        joystick->hwdata->fd = -1;
+        SDL_GetSteamControllerInputs(&joystick->nbuttons,
+                                     &joystick->naxes,
+                                     &joystick->nhats);
+    } else {
+        const int fd = open(item->path, O_RDWR, 0);
+        if (fd < 0) {
+            return SDL_SetError("Unable to open %s", item->path);
+        }
+
+        joystick->hwdata->fd = fd;
+        joystick->hwdata->fname = SDL_strdup(item->path);
+        if (joystick->hwdata->fname == NULL) {
+            close(fd);
+            return SDL_OutOfMemory();
+        }
+
+        /* Set the joystick to non-blocking read mode */
+        fcntl(fd, F_SETFL, O_NONBLOCK);
+
+        /* Get the number of buttons and axes on the joystick */
+        ConfigJoystick(joystick, fd);
+    }
+    return 0;
+}
+
+
 /* Function to open a joystick for use.
    The joystick to open is specified by the device index.
    This should fill the nbuttons and naxes fields of the joystick structure.
@@ -981,39 +1035,11 @@ LINUX_JoystickOpen(SDL_Joystick *joystick, int device_index)
     if (joystick->hwdata == NULL) {
         return SDL_OutOfMemory();
     }
-    joystick->hwdata->item = item;
-    joystick->hwdata->guid = item->guid;
-    joystick->hwdata->effect.id = -1;
-    joystick->hwdata->m_bSteamController = item->m_bSteamController;
-    SDL_memset(joystick->hwdata->abs_map, 0xFF, sizeof(joystick->hwdata->abs_map));
 
-    if (item->m_bSteamController) {
-        joystick->hwdata->fd = -1;
-        SDL_GetSteamControllerInputs(&joystick->nbuttons,
-                                     &joystick->naxes,
-                                     &joystick->nhats);
-    } else {
-        int fd = open(item->path, O_RDWR, 0);
-        if (fd < 0) {
-            SDL_free(joystick->hwdata);
-            joystick->hwdata = NULL;
-            return SDL_SetError("Unable to open %s", item->path);
-        }
-
-        joystick->hwdata->fd = fd;
-        joystick->hwdata->fname = SDL_strdup(item->path);
-        if (joystick->hwdata->fname == NULL) {
-            SDL_free(joystick->hwdata);
-            joystick->hwdata = NULL;
-            close(fd);
-            return SDL_OutOfMemory();
-        }
-
-        /* Set the joystick to non-blocking read mode */
-        fcntl(fd, F_SETFL, O_NONBLOCK);
-
-        /* Get the number of buttons and axes on the joystick */
-        ConfigJoystick(joystick, fd);
+    if (PrepareJoystickHwdata(joystick, item) == -1) {
+        SDL_free(joystick->hwdata);
+        joystick->hwdata = NULL;
+        return -1;  /* SDL_SetError will already have been called */
     }
 
     SDL_assert(item->hwdata == NULL);
@@ -1022,7 +1048,7 @@ LINUX_JoystickOpen(SDL_Joystick *joystick, int device_index)
     /* mark joystick as fresh and ready */
     joystick->hwdata->fresh = SDL_TRUE;
 
-    return (0);
+    return 0;
 }
 
 static int
@@ -1081,6 +1107,12 @@ LINUX_JoystickHasLED(SDL_Joystick *joystick)
 
 static int
 LINUX_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
+{
+    return SDL_Unsupported();
+}
+
+static int
+LINUX_JoystickSendEffect(SDL_Joystick *joystick, const void *data, int size)
 {
     return SDL_Unsupported();
 }
@@ -1400,18 +1432,38 @@ static SDL_bool
 LINUX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping *out)
 {
     SDL_Joystick *joystick;
+    SDL_joylist_item *item = JoystickByDevIndex(device_index);
 
+    if (item->mapping) {
+        SDL_memcpy(out, item->mapping, sizeof(*out));
+        return SDL_TRUE;
+    }
+
+    /* We temporarily open the device to check how it's configured. Make
+       a fake SDL_Joystick object to do so. */
     joystick = (SDL_Joystick *) SDL_calloc(sizeof(*joystick), 1);
     if (joystick == NULL) {
         SDL_OutOfMemory();
         return SDL_FALSE;
     }
 
-    /* We temporarily open the device to check how it's configured. */
-    if (LINUX_JoystickOpen(joystick, device_index) < 0) {
+    joystick->hwdata = (struct joystick_hwdata *)
+        SDL_calloc(1, sizeof(*joystick->hwdata));
+    if (joystick->hwdata == NULL) {
         SDL_free(joystick);
+        SDL_OutOfMemory();
         return SDL_FALSE;
     }
+
+    if (PrepareJoystickHwdata(joystick, item) == -1) {
+        SDL_free(joystick->hwdata);
+        SDL_free(joystick);
+        return SDL_FALSE;  /* SDL_SetError will already have been called */
+    }
+
+    /* don't assign `item->hwdata` so it's not in any global state. */
+
+    /* it is now safe to call LINUX_JoystickClose on this fake joystick. */
 
     if (!joystick->hwdata->has_key[BTN_GAMEPAD]) {
         /* Not a gamepad according to the specs. */
@@ -1422,24 +1474,24 @@ LINUX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping *out)
 
     /* We have a gamepad, start filling out the mappings */
 
-    if (joystick->hwdata->has_key[BTN_SOUTH]) {
+    if (joystick->hwdata->has_key[BTN_A]) {
         out->a.kind = EMappingKind_Button;
-        out->a.target = joystick->hwdata->key_map[BTN_SOUTH];
+        out->a.target = joystick->hwdata->key_map[BTN_A];
     }
 
-    if (joystick->hwdata->has_key[BTN_EAST]) {
+    if (joystick->hwdata->has_key[BTN_B]) {
         out->b.kind = EMappingKind_Button;
-        out->b.target = joystick->hwdata->key_map[BTN_EAST];
+        out->b.target = joystick->hwdata->key_map[BTN_B];
     }
 
-    if (joystick->hwdata->has_key[BTN_NORTH]) {
-        out->y.kind = EMappingKind_Button;
-        out->y.target = joystick->hwdata->key_map[BTN_NORTH];
-    }
-
-    if (joystick->hwdata->has_key[BTN_WEST]) {
+    if (joystick->hwdata->has_key[BTN_X]) {
         out->x.kind = EMappingKind_Button;
-        out->x.target = joystick->hwdata->key_map[BTN_WEST];
+        out->x.target = joystick->hwdata->key_map[BTN_X];
+    }
+
+    if (joystick->hwdata->has_key[BTN_Y]) {
+        out->y.kind = EMappingKind_Button;
+        out->y.target = joystick->hwdata->key_map[BTN_Y];
     }
 
     if (joystick->hwdata->has_key[BTN_SELECT]) {
@@ -1503,11 +1555,17 @@ LINUX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping *out)
         if (joystick->hwdata->has_key[BTN_TL2]) {
             out->lefttrigger.kind = EMappingKind_Button;
             out->lefttrigger.target = joystick->hwdata->key_map[BTN_TL2];
+        } else if (joystick->hwdata->has_abs[ABS_Z]) {
+            out->lefttrigger.kind = EMappingKind_Axis;
+            out->lefttrigger.target = joystick->hwdata->abs_map[ABS_Z];
         }
 
         if (joystick->hwdata->has_key[BTN_TR2]) {
             out->righttrigger.kind = EMappingKind_Button;
             out->righttrigger.target = joystick->hwdata->key_map[BTN_TR2];
+        } else if (joystick->hwdata->has_abs[ABS_RZ]) {
+            out->righttrigger.kind = EMappingKind_Axis;
+            out->righttrigger.target = joystick->hwdata->abs_map[ABS_RZ];
         }
     }
 
@@ -1563,6 +1621,12 @@ LINUX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping *out)
     LINUX_JoystickClose(joystick);
     SDL_free(joystick);
 
+    /* Cache the mapping for later */
+    item->mapping = (SDL_GamepadMapping *)SDL_malloc(sizeof(*item->mapping));
+    if (item->mapping) {
+        SDL_memcpy(item->mapping, out, sizeof(*out));
+    }
+
     return SDL_TRUE;
 }
 
@@ -1581,6 +1645,7 @@ SDL_JoystickDriver SDL_LINUX_JoystickDriver =
     LINUX_JoystickRumbleTriggers,
     LINUX_JoystickHasLED,
     LINUX_JoystickSetLED,
+    LINUX_JoystickSendEffect,
     LINUX_JoystickSetSensorsEnabled,
     LINUX_JoystickUpdate,
     LINUX_JoystickClose,

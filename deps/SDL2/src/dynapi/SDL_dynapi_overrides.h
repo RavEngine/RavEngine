@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -788,3 +788,30 @@
 #define SDL_GameControllerGetSensorData SDL_GameControllerGetSensorData_REAL
 #define SDL_wcscasecmp SDL_wcscasecmp_REAL
 #define SDL_wcsncasecmp SDL_wcsncasecmp_REAL
+#define SDL_round SDL_round_REAL
+#define SDL_roundf SDL_roundf_REAL
+#define SDL_lround SDL_lround_REAL
+#define SDL_lroundf SDL_lroundf_REAL
+#define SDL_SoftStretchLinear SDL_SoftStretchLinear_REAL
+#define SDL_RenderGetD3D11Device SDL_RenderGetD3D11Device_REAL
+#define SDL_UpdateNVTexture SDL_UpdateNVTexture_REAL
+#define SDL_SetWindowKeyboardGrab SDL_SetWindowKeyboardGrab_REAL
+#define SDL_SetWindowMouseGrab SDL_SetWindowMouseGrab_REAL
+#define SDL_GetWindowKeyboardGrab SDL_GetWindowKeyboardGrab_REAL
+#define SDL_GetWindowMouseGrab SDL_GetWindowMouseGrab_REAL
+#define SDL_isalpha SDL_isalpha_REAL
+#define SDL_isalnum SDL_isalnum_REAL
+#define SDL_isblank SDL_isblank_REAL
+#define SDL_iscntrl SDL_iscntrl_REAL
+#define SDL_isxdigit SDL_isxdigit_REAL
+#define SDL_ispunct SDL_ispunct_REAL
+#define SDL_isprint SDL_isprint_REAL
+#define SDL_isgraph SDL_isgraph_REAL
+#define SDL_AndroidShowToast SDL_AndroidShowToast_REAL
+#define SDL_GetAudioDeviceSpec SDL_GetAudioDeviceSpec_REAL
+#define SDL_TLSCleanup SDL_TLSCleanup_REAL
+#define SDL_SetWindowAlwaysOnTop SDL_SetWindowAlwaysOnTop_REAL
+#define SDL_FlashWindow SDL_FlashWindow_REAL
+#define SDL_GameControllerSendEffect SDL_GameControllerSendEffect_REAL
+#define SDL_JoystickSendEffect SDL_JoystickSendEffect_REAL
+#define SDL_GameControllerGetSensorDataRate SDL_GameControllerGetSensorDataRate_REAL

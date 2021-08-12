@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -63,7 +63,13 @@
 #include <sys/syspage.h>
 #endif
 
-#if (defined(__LINUX__) || defined(__ANDROID__)) && defined(__ARM_ARCH)
+#if (defined(__LINUX__) || defined(__ANDROID__)) && defined(__arm__)
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <elf.h>
+
 /*#include <asm/hwcap.h>*/
 #ifndef AT_HWCAP
 #define AT_HWCAP 16
@@ -71,27 +77,16 @@
 #ifndef AT_PLATFORM
 #define AT_PLATFORM 15
 #endif
-/* Prevent compilation error when including elf.h would also try to define AT_* as an enum */
-#ifndef AT_NULL
-#define AT_NULL 0
-#endif
 #ifndef HWCAP_NEON
 #define HWCAP_NEON (1 << 12)
 #endif
-#if defined HAVE_GETAUXVAL
-#include <sys/auxv.h>
-#else
-#include <fcntl.h>
-#endif
 #endif
 
-#if defined(__ANDROID__) && defined(__ARM_ARCH) && !defined(HAVE_GETAUXVAL)
-#if __ARM_ARCH < 8
+#if defined(__ANDROID__) && defined(__arm__) && !defined(HAVE_GETAUXVAL)
 #include <cpu-features.h>
 #endif
-#endif
 
-#if defined(HAVE_ELF_AUX_INFO)
+#if defined(HAVE_GETAUXVAL) || defined(HAVE_ELF_AUX_INFO)
 #include <sys/auxv.h>
 #endif
 
@@ -134,7 +129,7 @@ CPU_haveCPUID(void)
 
 /* *INDENT-OFF* */
 #ifndef SDL_CPUINFO_DISABLED
-#if defined(__GNUC__) && defined(i386)
+#if (defined(__GNUC__) || defined(__llvm__)) && defined(__i386__)
     __asm__ (
 "        pushfl                      # Get original EFLAGS             \n"
 "        popl    %%eax                                                 \n"
@@ -152,7 +147,7 @@ CPU_haveCPUID(void)
     :
     : "%eax", "%ecx"
     );
-#elif defined(__GNUC__) && defined(__x86_64__)
+#elif (defined(__GNUC__) || defined(__llvm__)) && defined(__x86_64__)
 /* Technically, if this is being compiled under __x86_64__ then it has 
    CPUid by definition.  But it's nice to be able to prove it.  :)      */
     __asm__ (
@@ -225,7 +220,7 @@ done:
     return has_CPUID;
 }
 
-#if defined(__GNUC__) && defined(i386)
+#if (defined(__GNUC__) || defined(__llvm__)) && defined(__i386__)
 #define cpuid(func, a, b, c, d) \
     __asm__ __volatile__ ( \
 "        pushl %%ebx        \n" \
@@ -234,7 +229,7 @@ done:
 "        movl %%ebx, %%esi  \n" \
 "        popl %%ebx         \n" : \
             "=a" (a), "=S" (b), "=c" (c), "=d" (d) : "a" (func))
-#elif defined(__GNUC__) && defined(__x86_64__)
+#elif (defined(__GNUC__) || defined(__llvm__)) && defined(__x86_64__)
 #define cpuid(func, a, b, c, d) \
     __asm__ __volatile__ ( \
 "        pushq %%rbx        \n" \
@@ -294,7 +289,7 @@ CPU_calcCPUIDFeatures(void)
                 /* Check to make sure we can call xgetbv */
                 if (c & 0x08000000) {
                     /* Call xgetbv to see if YMM (etc) register state is saved */
-#if defined(__GNUC__) && (defined(i386) || defined(__x86_64__))
+#if (defined(__GNUC__) || defined(__llvm__)) && (defined(__i386__) || defined(__x86_64__))
                     __asm__(".byte 0x0f, 0x01, 0xd0" : "=a" (a) : "c" (0) : "%edx");
 #elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64)) && (_MSC_FULL_VER >= 160040219) /* VS2010 SP1 */
                     a = (int)_xgetbv(0);
@@ -345,7 +340,7 @@ CPU_haveAltiVec(void)
     return altivec;
 }
 
-#if defined(__ARM_ARCH) && (__ARM_ARCH >= 6)
+#if (defined(__ARM_ARCH) && (__ARM_ARCH >= 6)) || defined(__aarch64__)
 static int
 CPU_haveARMSIMD(void)
 {
@@ -360,12 +355,6 @@ CPU_haveARMSIMD(void)
 }
 
 #elif defined(__LINUX__)
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <elf.h>
-
 static int
 CPU_haveARMSIMD(void)
 {
@@ -393,7 +382,6 @@ CPU_haveARMSIMD(void)
 }
 
 #elif defined(__RISCOS__)
-
 static int
 CPU_haveARMSIMD(void)
 {
@@ -422,17 +410,20 @@ CPU_haveARMSIMD(void)
 }
 #endif
 
-#if defined(__LINUX__) && defined(__ARM_ARCH) && !defined(HAVE_GETAUXVAL)
+#if defined(__LINUX__) && defined(__arm__) && !defined(HAVE_GETAUXVAL)
 static int
 readProcAuxvForNeon(void)
 {
     int neon = 0;
-    int kv[2];
-    const int fd = open("/proc/self/auxv", O_RDONLY);
-    if (fd != -1) {
-        while (read(fd, kv, sizeof (kv)) == sizeof (kv)) {
-            if (kv[0] == AT_HWCAP) {
-                neon = ((kv[1] & HWCAP_NEON) == HWCAP_NEON);
+    int fd;
+
+    fd = open("/proc/self/auxv", O_RDONLY);
+    if (fd >= 0)
+    {
+        Elf32_auxv_t aux;
+        while (read(fd, &aux, sizeof (aux)) == sizeof (aux)) {
+            if (aux.a_type == AT_HWCAP) {
+                neon = (aux.a_un.a_val & HWCAP_NEON) == HWCAP_NEON;
                 break;
             }
         }
@@ -457,22 +448,24 @@ CPU_haveNEON(void)
 #  endif
 /* All WinRT ARM devices are required to support NEON, but just in case. */
     return IsProcessorFeaturePresent(PF_ARM_NEON_INSTRUCTIONS_AVAILABLE) != 0;
-#elif defined(__ARM_ARCH) && (__ARM_ARCH >= 8)
+#elif (defined(__ARM_ARCH) && (__ARM_ARCH >= 8)) || defined(__aarch64__)
     return 1;  /* ARMv8 always has non-optional NEON support. */
+#elif __VITA__
+    return 1;
 #elif defined(__APPLE__) && defined(__ARM_ARCH) && (__ARM_ARCH >= 7)
     /* (note that sysctlbyname("hw.optional.neon") doesn't work!) */
     return 1;  /* all Apple ARMv7 chips and later have NEON. */
 #elif defined(__APPLE__)
     return 0;  /* assume anything else from Apple doesn't have NEON. */
+#elif !defined(__arm__)
+    return 0;  /* not an ARM CPU at all. */
 #elif defined(__OpenBSD__)
     return 1;  /* OpenBSD only supports ARMv7 CPUs that have NEON. */
-#elif defined(HAVE_ELF_AUX_INFO) && defined(HWCAP_NEON)
+#elif defined(HAVE_ELF_AUX_INFO)
     unsigned long hasneon = 0;
     if (elf_aux_info(AT_HWCAP, (void *)&hasneon, (int)sizeof(hasneon)) != 0)
         return 0;
     return ((hasneon & HWCAP_NEON) == HWCAP_NEON);
-#elif !defined(__arm__)
-    return 0;  /* not an ARM CPU at all. */
 #elif defined(__QNXNTO__)
     return SYSPAGE_ENTRY(cpuinfo)->flags & ARM_CPU_FLAG_NEON;
 #elif (defined(__LINUX__) || defined(__ANDROID__)) && defined(HAVE_GETAUXVAL)
@@ -509,6 +502,17 @@ CPU_haveNEON(void)
 #endif
 }
 
+#if defined(__e2k__)
+inline int
+CPU_have3DNow(void)
+{
+#if defined(__3dNOW__)
+    return 1;
+#else
+    return 0;
+#endif
+}
+#else
 static int
 CPU_have3DNow(void)
 {
@@ -522,7 +526,46 @@ CPU_have3DNow(void)
     }
     return 0;
 }
+#endif
 
+#if defined(__e2k__)
+#define CPU_haveRDTSC() (0)
+#if defined(__MMX__)
+#define CPU_haveMMX() (1)
+#else
+#define CPU_haveMMX() (0)
+#endif
+#if defined(__SSE__)
+#define CPU_haveSSE() (1)
+#else
+#define CPU_haveSSE() (0)
+#endif
+#if defined(__SSE2__)
+#define CPU_haveSSE2() (1)
+#else
+#define CPU_haveSSE2() (0)
+#endif
+#if defined(__SSE3__)
+#define CPU_haveSSE3() (1)
+#else
+#define CPU_haveSSE3() (0)
+#endif
+#if defined(__SSE4_1__)
+#define CPU_haveSSE41() (1)
+#else
+#define CPU_haveSSE41() (0)
+#endif
+#if defined(__SSE4_2__)
+#define CPU_haveSSE42() (1)
+#else
+#define CPU_haveSSE42() (0)
+#endif
+#if defined(__AVX__)
+#define CPU_haveAVX() (1)
+#else
+#define CPU_haveAVX() (0)
+#endif
+#else
 #define CPU_haveRDTSC() (CPU_CPUIDFeatures[3] & 0x00000010)
 #define CPU_haveMMX() (CPU_CPUIDFeatures[3] & 0x00800000)
 #define CPU_haveSSE() (CPU_CPUIDFeatures[3] & 0x02000000)
@@ -531,7 +574,19 @@ CPU_have3DNow(void)
 #define CPU_haveSSE41() (CPU_CPUIDFeatures[2] & 0x00080000)
 #define CPU_haveSSE42() (CPU_CPUIDFeatures[2] & 0x00100000)
 #define CPU_haveAVX() (CPU_OSSavesYMM && (CPU_CPUIDFeatures[2] & 0x10000000))
+#endif
 
+#if defined(__e2k__)
+inline int
+CPU_haveAVX2(void)
+{
+#if defined(__AVX2__)
+    return 1;
+#else
+    return 0;
+#endif
+}
+#else
 static int
 CPU_haveAVX2(void)
 {
@@ -543,7 +598,15 @@ CPU_haveAVX2(void)
     }
     return 0;
 }
+#endif
 
+#if defined(__e2k__)
+inline int
+CPU_haveAVX512F(void)
+{
+    return 0;
+}
+#else
 static int
 CPU_haveAVX512F(void)
 {
@@ -555,6 +618,7 @@ CPU_haveAVX512F(void)
     }
     return 0;
 }
+#endif
 
 static int SDL_CPUCount = 0;
 
@@ -596,6 +660,17 @@ SDL_GetCPUCount(void)
     return SDL_CPUCount;
 }
 
+#if defined(__e2k__)
+inline const char *
+SDL_GetCPUType(void)
+{
+    static char SDL_CPUType[13];
+
+    SDL_strlcpy(SDL_CPUType, "E2K MACHINE", sizeof(SDL_CPUType));
+
+    return SDL_CPUType;
+}
+#else
 /* Oh, such a sweet sweet trick, just not very useful. :) */
 static const char *
 SDL_GetCPUType(void)
@@ -631,9 +706,21 @@ SDL_GetCPUType(void)
     }
     return SDL_CPUType;
 }
+#endif
 
 
 #ifdef TEST_MAIN  /* !!! FIXME: only used for test at the moment. */
+#if defined(__e2k__)
+inline const char *
+SDL_GetCPUName(void)
+{
+    static char SDL_CPUName[48];
+
+    SDL_strlcpy(SDL_CPUName, __builtin_cpu_name(), sizeof(SDL_CPUName));
+
+    return SDL_CPUName;
+}
+#else
 static const char *
 SDL_GetCPUName(void)
 {
@@ -706,6 +793,7 @@ SDL_GetCPUName(void)
     }
     return SDL_CPUName;
 }
+#endif
 #endif
 
 int
@@ -937,6 +1025,13 @@ SDL_GetSystemRAM(void)
             }
         }
 #endif
+#ifdef __VITA__
+        if (SDL_SystemRAM <= 0) {
+            /* Vita has 512MiB on SoC, that's split into 256MiB(+109MiB in extended memory mode) for app
+               +26MiB of physically continuous memory, +112MiB of CDRAM(VRAM) + system reserved memory. */
+            SDL_SystemRAM = 536870912;
+        }
+#endif
 #endif
     }
     return SDL_SystemRAM;
@@ -992,9 +1087,6 @@ SDL_SIMDRealloc(void *mem, const size_t len)
 
     ptr = (Uint8 *) SDL_realloc(mem, padded + alignment + sizeof (void *));
 
-    if (ptr == mem) {
-        return retval; /* Pointer didn't change, nothing to do */
-    }
     if (ptr == NULL) {
         return NULL; /* Out of memory, bail! */
     }
@@ -1007,7 +1099,7 @@ SDL_SIMDRealloc(void *mem, const size_t len)
     if (mem) {
         ptrdiff = ((size_t) retval) - ((size_t) ptr);
         if (memdiff != ptrdiff) { /* Delta has changed, copy to new offset! */
-            oldmem = (void*) (((size_t) ptr) + memdiff);
+            oldmem = (void*) (((uintptr_t) ptr) + memdiff);
 
             /* Even though the data past the old `len` is undefined, this is the
              * only length value we have, and it guarantees that we copy all the

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 2019 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -44,7 +44,9 @@
 #include "../../core/windows/SDL_hid.h"
 #include "../hidapi/SDL_hidapijoystick_c.h"
 
+#ifdef HAVE_XINPUT_H
 #define SDL_JOYSTICK_RAWINPUT_XINPUT
+#endif
 #ifdef SDL_WINDOWS10_SDK
 #define SDL_JOYSTICK_RAWINPUT_WGI
 #endif
@@ -546,7 +548,7 @@ RAWINPUT_InitWindowsGamingInput(RAWINPUT_DeviceContext *ctx)
             WindowsCreateStringReference_t WindowsCreateStringReferenceFunc = (WindowsCreateStringReference_t)GetProcAddress(hModule, "WindowsCreateStringReference");
             RoGetActivationFactory_t RoGetActivationFactoryFunc = (RoGetActivationFactory_t)GetProcAddress(hModule, "RoGetActivationFactory");
             if (WindowsCreateStringReferenceFunc && RoGetActivationFactoryFunc) {
-                LPTSTR pNamespace = L"Windows.Gaming.Input.Gamepad";
+                PCWSTR pNamespace = L"Windows.Gaming.Input.Gamepad";
                 HSTRING_HEADER hNamespaceStringHeader;
                 HSTRING hNamespaceString;
 
@@ -733,10 +735,10 @@ RAWINPUT_AddDevice(HANDLE hDevice)
         WCHAR string[128];
 
         if (SDL_HidD_GetManufacturerString(hFile, string, sizeof(string))) {
-            manufacturer_string = WIN_StringToUTF8(string);
+            manufacturer_string = WIN_StringToUTF8W(string);
         }
         if (SDL_HidD_GetProductString(hFile, string, sizeof(string))) {
-            product_string = WIN_StringToUTF8(string);
+            product_string = WIN_StringToUTF8W(string);
         }
 
         device->name = SDL_CreateJoystickName(device->vendor_id, device->product_id, manufacturer_string, product_string);
@@ -889,7 +891,7 @@ RAWINPUT_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, co
         /* The Xbox One controller shows up as a hardcoded raw input VID/PID */
         if (name && SDL_strcmp(name, "Xbox One Game Controller") == 0 &&
             device->vendor_id == USB_VENDOR_MICROSOFT &&
-            device->product_id == USB_PRODUCT_XBOX_ONE_RAW_INPUT_CONTROLLER) {
+            device->product_id == USB_PRODUCT_XBOX_ONE_XBOXGIP_CONTROLLER) {
             return SDL_TRUE;
         }
 
@@ -1040,7 +1042,7 @@ RAWINPUT_JoystickOpen(SDL_Joystick *joystick, int device_index)
         /* We'll try to get guide button and trigger axes from XInput */
 #ifdef SDL_JOYSTICK_RAWINPUT_XINPUT
         xinput_device_change = SDL_TRUE;
-        ctx->xinput_enabled = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_HIDAPI_CORRELATE_XINPUT, SDL_TRUE);
+        ctx->xinput_enabled = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_RAWINPUT_CORRELATE_XINPUT, SDL_TRUE);
         if (ctx->xinput_enabled && (WIN_LoadXInputDLL() < 0 || !XINPUTGETSTATE)) {
             ctx->xinput_enabled = SDL_FALSE;
         }
@@ -1216,9 +1218,8 @@ RAWINPUT_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uin
 {
 #if defined(SDL_JOYSTICK_RAWINPUT_WGI) || defined(SDL_JOYSTICK_RAWINPUT_XINPUT)
     RAWINPUT_DeviceContext *ctx = joystick->hwdata;
-#endif
-
     SDL_bool rumbled = SDL_FALSE;
+#endif
 
 #ifdef SDL_JOYSTICK_RAWINPUT_WGI
     if (!rumbled && ctx->wgi_correlated) {
@@ -1284,6 +1285,12 @@ RAWINPUT_JoystickHasLED(SDL_Joystick *joystick)
 
 static int
 RAWINPUT_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
+{
+    return SDL_Unsupported();
+}
+
+static int
+RAWINPUT_JoystickSendEffect(SDL_Joystick *joystick, const void *data, int size)
 {
     return SDL_Unsupported();
 }
@@ -1481,7 +1488,9 @@ RAWINPUT_UpdateOtherAPIs(SDL_Joystick *joystick)
 #ifdef SDL_JOYSTICK_RAWINPUT_WGI
     /* Parallel logic to WINDOWS_XINPUT below */
     RAWINPUT_UpdateWindowsGamingInput();
-    if (ctx->wgi_correlated) {
+    if (ctx->wgi_correlated &&
+        !joystick->low_frequency_rumble && !joystick->high_frequency_rumble &&
+        !joystick->left_trigger_rumble && !joystick->right_trigger_rumble) {
         /* We have been previously correlated, ensure we are still matching, see comments in XINPUT section */
         if (RAWINPUT_WindowsGamingInputSlotMatches(&match_state_xinput, ctx->wgi_slot)) {
             ctx->wgi_uncorrelate_count = 0;
@@ -1489,9 +1498,9 @@ RAWINPUT_UpdateOtherAPIs(SDL_Joystick *joystick)
             ++ctx->wgi_uncorrelate_count;
             /* Only un-correlate if this is consistent over multiple Update() calls - the timing of polling/event
               pumping can easily cause this to uncorrelate for a frame.  2 seemed reliable in my testing, but
-              let's set it to 3 to be safe.  An incorrect un-correlation will simply result in lower precision
+              let's set it to 5 to be safe.  An incorrect un-correlation will simply result in lower precision
               triggers for a frame. */
-            if (ctx->wgi_uncorrelate_count >= 3) {
+            if (ctx->wgi_uncorrelate_count >= 5) {
 #ifdef DEBUG_RAWINPUT
                 SDL_Log("UN-Correlated joystick %d to WindowsGamingInput device #%d\n", joystick->instance_id, ctx->wgi_slot);
 #endif
@@ -1559,7 +1568,8 @@ RAWINPUT_UpdateOtherAPIs(SDL_Joystick *joystick)
     /* Parallel logic to WINDOWS_GAMING_INPUT above */
     if (ctx->xinput_enabled) {
         RAWINPUT_UpdateXInput();
-        if (ctx->xinput_correlated) {
+        if (ctx->xinput_correlated &&
+            !joystick->low_frequency_rumble && !joystick->high_frequency_rumble) {
             /* We have been previously correlated, ensure we are still matching */
             /* This is required to deal with two (mostly) un-preventable mis-correlation situations:
               A) Since the HID data stream does not provide an initial state (but polling XInput does), if we open
@@ -1582,9 +1592,9 @@ RAWINPUT_UpdateOtherAPIs(SDL_Joystick *joystick)
                 ++ctx->xinput_uncorrelate_count;
                 /* Only un-correlate if this is consistent over multiple Update() calls - the timing of polling/event
                   pumping can easily cause this to uncorrelate for a frame.  2 seemed reliable in my testing, but
-                  let's set it to 3 to be safe.  An incorrect un-correlation will simply result in lower precision
+                  let's set it to 5 to be safe.  An incorrect un-correlation will simply result in lower precision
                   triggers for a frame. */
-                if (ctx->xinput_uncorrelate_count >= 3) {
+                if (ctx->xinput_uncorrelate_count >= 5) {
 #ifdef DEBUG_RAWINPUT
                     SDL_Log("UN-Correlated joystick %d to XInput device #%d\n", joystick->instance_id, ctx->xinput_slot);
 #endif
@@ -1920,6 +1930,7 @@ SDL_JoystickDriver SDL_RAWINPUT_JoystickDriver =
     RAWINPUT_JoystickRumbleTriggers,
     RAWINPUT_JoystickHasLED,
     RAWINPUT_JoystickSetLED,
+    RAWINPUT_JoystickSendEffect,
     RAWINPUT_JoystickSetSensorsEnabled,
     RAWINPUT_JoystickUpdate,
     RAWINPUT_JoystickClose,

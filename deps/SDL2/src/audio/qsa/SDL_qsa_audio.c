@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -528,7 +528,11 @@ QSA_DetectDevices(void)
                             devices;
                         status = snd_pcm_close(handle);
                         if (status == EOK) {
-                            SDL_AddAudioDevice(SDL_FALSE, qsa_playback_device[qsa_playback_devices].name, &qsa_playback_device[qsa_playback_devices]);
+                            /* Note that spec is NULL, because we are required to open the device before
+                             * acquiring the mix format, making this information inaccessible at
+                             * enumeration time
+                             */
+                            SDL_AddAudioDevice(SDL_FALSE, qsa_playback_device[qsa_playback_devices].name, NULL, &qsa_playback_device[qsa_playback_devices]);
                             qsa_playback_devices++;
                         }
                     } else {
@@ -586,7 +590,11 @@ QSA_DetectDevices(void)
                             devices;
                         status = snd_pcm_close(handle);
                         if (status == EOK) {
-                            SDL_AddAudioDevice(SDL_TRUE, qsa_capture_device[qsa_capture_devices].name, &qsa_capture_device[qsa_capture_devices]);
+                            /* Note that spec is NULL, because we are required to open the device before
+                             * acquiring the mix format, making this information inaccessible at
+                             * enumeration time
+                             */
+                            SDL_AddAudioDevice(SDL_TRUE, qsa_capture_device[qsa_capture_devices].name, NULL, &qsa_capture_device[qsa_capture_devices]);
                             qsa_capture_devices++;
                         }
                     } else {

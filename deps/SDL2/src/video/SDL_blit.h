@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,6 +26,12 @@
 #include "SDL_cpuinfo.h"
 #include "SDL_endian.h"
 #include "SDL_surface.h"
+
+/* pixman ARM blitters are 32 bit only : */
+#if defined(__aarch64__)||defined(_M_ARM64)
+#undef SDL_ARM_SIMD_BLITTERS
+#undef SDL_ARM_NEON_BLITTERS
+#endif
 
 /* Table to do pixel byte expansion */
 extern Uint8* SDL_expand_byte[9];

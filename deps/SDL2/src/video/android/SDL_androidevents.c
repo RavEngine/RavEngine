@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -47,6 +47,16 @@ extern void openslES_PauseDevices(void);
 static void openslES_ResumeDevices(void) {}
 static void openslES_PauseDevices(void) {}
 #endif
+
+#if !SDL_AUDIO_DISABLED && SDL_AUDIO_DRIVER_AAUDIO
+extern void aaudio_ResumeDevices(void);
+extern void aaudio_PauseDevices(void);
+#else
+static void aaudio_ResumeDevices(void) {}
+static void aaudio_PauseDevices(void) {}
+#endif
+
+
 
 /* Number of 'type' events in the event queue */
 static int
@@ -110,6 +120,7 @@ Android_PumpEvents_Blocking(_THIS)
 
         ANDROIDAUDIO_PauseDevices();
         openslES_PauseDevices();
+        aaudio_PauseDevices();
 
         if (SDL_SemWait(Android_ResumeSem) == 0) {
 
@@ -122,6 +133,7 @@ Android_PumpEvents_Blocking(_THIS)
 
             ANDROIDAUDIO_ResumeDevices();
             openslES_ResumeDevices();
+            aaudio_ResumeDevices();
 
             /* Restore the GL Context from here, as this operation is thread dependent */
             if (!isContextExternal && !SDL_HasEvent(SDL_QUIT)) {
@@ -178,6 +190,7 @@ Android_PumpEvents_NonBlocking(_THIS)
             if (videodata->pauseAudio) {
                 ANDROIDAUDIO_PauseDevices();
                 openslES_PauseDevices();
+                aaudio_PauseDevices();
             }
 
             backup_context = 0;
@@ -196,6 +209,7 @@ Android_PumpEvents_NonBlocking(_THIS)
             if (videodata->pauseAudio) {
                 ANDROIDAUDIO_ResumeDevices();
                 openslES_ResumeDevices();
+                aaudio_ResumeDevices();
             }
 
             /* Restore the GL Context from here, as this operation is thread dependent */

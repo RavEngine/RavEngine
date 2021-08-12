@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,16 +21,15 @@
 
 #include "../SDL_sysurl.h"
 
-//#import <Cocoa/Cocoa.h>
+#import <Cocoa/Cocoa.h>
 
 int
 SDL_SYS_OpenURL(const char *url)
 { @autoreleasepool
 {
-//    NSString *nsstr = [NSString stringWithUTF8String:url];
-//    NSURL *nsurl = [NSURL URLWithString:nsstr];
-//    return [[NSWorkspace sharedWorkspace] openURL:nsurl] ? 0 : -1;
-	return -1;
+    NSString *nsstr = [NSString stringWithUTF8String:url];
+    NSURL *nsurl = [NSURL URLWithString:nsstr];
+    return [[NSWorkspace sharedWorkspace] openURL:nsurl] ? 0 : -1;
 }}
 
 /* vi: set ts=4 sw=4 expandtab: */

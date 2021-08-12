@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -576,7 +576,9 @@ Emscripten_HandleKey(int eventType, const EmscriptenKeyboardEvent *keyEvent, voi
                  keyEvent->keyCode == 37 /* left */ ||
                  keyEvent->keyCode == 38 /* up */ ||
                  keyEvent->keyCode == 39 /* right */ ||
-                 keyEvent->keyCode == 40 /* down */;
+                 keyEvent->keyCode == 40 /* down */ ||
+                 (keyEvent->keyCode >= 112 && keyEvent->keyCode <= 135) /* F keys*/ ||
+                 keyEvent->ctrlKey;
 
     if (eventType == EMSCRIPTEN_EVENT_KEYDOWN && SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE && !is_nav_key)
         prevent_default = SDL_FALSE;

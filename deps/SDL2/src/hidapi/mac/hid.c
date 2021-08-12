@@ -251,7 +251,10 @@ static int get_string_property(IOHIDDeviceRef device, CFStringRef prop, wchar_t 
 	
 	if (!len)
 		return 0;
-	
+
+	if (CFGetTypeID(prop) != CFStringGetTypeID())
+		return 0;
+
 	str = (CFStringRef)IOHIDDeviceGetProperty(device, prop);
 	
 	buf[0] = 0;
@@ -288,6 +291,9 @@ static int get_string_property_utf8(IOHIDDeviceRef device, CFStringRef prop, cha
 	if (!len)
 		return 0;
 	
+	if (CFGetTypeID(prop) != CFStringGetTypeID())
+		return 0;
+
 	str = (CFStringRef)IOHIDDeviceGetProperty(device, prop);
 	
 	buf[0] = 0;
@@ -320,7 +326,10 @@ static int get_string_property_utf8(IOHIDDeviceRef device, CFStringRef prop, cha
 
 static int get_serial_number(IOHIDDeviceRef device, wchar_t *buf, size_t len)
 {
-	return get_string_property(device, CFSTR(kIOHIDSerialNumberKey), buf, len);
+	// This crashes on M1 Macs, tracked by radar bug 79667729
+	//return get_string_property(device, CFSTR(kIOHIDSerialNumberKey), buf, len);
+	buf[0] = 0;
+	return 0;
 }
 
 static int get_manufacturer_string(IOHIDDeviceRef device, wchar_t *buf, size_t len)
@@ -481,6 +490,15 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 		if (!dev) {
 			continue;
 		}
+
+#if defined(SDL_JOYSTICK_MFI)
+		// We want to prefer Game Controller support where available,
+		// as Apple will likely be requiring that for supported devices.
+		extern SDL_bool IOS_SupportedHIDDevice(IOHIDDeviceRef device);
+		if (IOS_SupportedHIDDevice(dev)) {
+			continue;
+		}
+#endif
 
 		dev_vid = get_vendor_id(dev);
 		dev_pid = get_product_id(dev);

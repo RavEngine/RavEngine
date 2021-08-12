@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -112,7 +112,6 @@ PSP_Create()
     device->MaximizeWindow = PSP_MaximizeWindow;
     device->MinimizeWindow = PSP_MinimizeWindow;
     device->RestoreWindow = PSP_RestoreWindow;
-    device->SetWindowGrab = PSP_SetWindowGrab;
     device->DestroyWindow = PSP_DestroyWindow;
 #if 0
     device->GetWindowWMInfo = PSP_GetWindowWMInfo;
@@ -265,11 +264,6 @@ PSP_MinimizeWindow(_THIS, SDL_Window * window)
 void
 PSP_RestoreWindow(_THIS, SDL_Window * window)
 {
-}
-void
-PSP_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
-{
-
 }
 void
 PSP_DestroyWindow(_THIS, SDL_Window * window)

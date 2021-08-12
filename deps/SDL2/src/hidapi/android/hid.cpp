@@ -1,10 +1,26 @@
-//=================== Copyright Valve Corporation, All rights reserved. =======
-//
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2021 Valve Corporation
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
 // Purpose: A wrapper implementing "HID" API for Android
 //
 //          This layer glues the hidapi API to Android's USB and BLE stack.
-//
-//=============================================================================
 
 #include <jni.h>
 #include <android/log.h>
@@ -1072,7 +1088,32 @@ int  HID_API_EXPORT HID_API_CALL hid_write(hid_device *device, const unsigned ch
 	return -1; // Controller was disconnected
 }
 
-// TODO: Implement timeout?
+static uint32_t getms()
+{
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	return (uint32_t)(now.tv_sec * 1000 + now.tv_usec / 1000);
+}
+
+static void delayms(uint32_t ms)
+{
+    int was_error;
+
+    struct timespec elapsed, tv;
+
+    /* Set the timeout interval */
+    elapsed.tv_sec = ms / 1000;
+    elapsed.tv_nsec = (ms % 1000) * 1000000;
+    do {
+        errno = 0;
+
+        tv.tv_sec = elapsed.tv_sec;
+        tv.tv_nsec = elapsed.tv_nsec;
+        was_error = nanosleep(&tv, &elapsed);
+    } while (was_error && (errno == EINTR));
+}
+
 int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *device, unsigned char *data, size_t length, int milliseconds)
 {
 	if ( device )
@@ -1081,7 +1122,17 @@ int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *device, unsigned ch
 		hid_device_ref<CHIDDevice> pDevice = FindDevice( device->m_nId );
 		if ( pDevice )
 		{
-			return pDevice->GetInput( data, length );
+			int nResult = pDevice->GetInput( data, length );
+			if ( nResult == 0 && milliseconds > 0 )
+			{
+				uint32_t start = getms();
+				do
+				{
+					delayms( 1 );
+					nResult = pDevice->GetInput( data, length );
+				} while ( nResult == 0 && ( getms() - start ) < milliseconds );
+			}
+			return nResult;
 		}
 		LOGV( "controller was disconnected" );
 	}

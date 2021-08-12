@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,6 @@
 #define SDL_sysjoystick_h_
 
 /* This is the system specific header for the SDL joystick API */
-
 #include "SDL_joystick.h"
 #include "SDL_joystick_c.h"
 
@@ -57,6 +56,7 @@ typedef struct _SDL_JoystickSensorInfo
 {
     SDL_SensorType type;
     SDL_bool enabled;
+    float rate;
     float data[3];      /* If this needs to expand, update SDL_ControllerSensorEvent */
 } SDL_JoystickSensorInfo;
 
@@ -100,6 +100,7 @@ struct _SDL_Joystick
     Uint8 led_red;
     Uint8 led_green;
     Uint8 led_blue;
+    Uint32 led_expiration;
 
     SDL_bool attached;
     SDL_bool is_game_controller;
@@ -166,6 +167,9 @@ typedef struct _SDL_JoystickDriver
     SDL_bool (*HasLED)(SDL_Joystick *joystick);
     int (*SetLED)(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue);
 
+    /* General effects */
+    int (*SendEffect)(SDL_Joystick *joystick, const void *data, int size);
+
     /* Sensor functionality */
     int (*SetSensorsEnabled)(SDL_Joystick *joystick, SDL_bool enabled);
 
@@ -190,6 +194,8 @@ typedef struct _SDL_JoystickDriver
 /* Windows and Mac OSX has a limit of MAX_DWORD / 1000, Linux kernel has a limit of 0xFFFF */
 #define SDL_MAX_RUMBLE_DURATION_MS  0xFFFF
 
+#define SDL_LED_MIN_REPEAT_MS  5000
+
 /* The available joystick drivers */
 extern SDL_JoystickDriver SDL_ANDROID_JoystickDriver;
 extern SDL_JoystickDriver SDL_BSD_JoystickDriver;
@@ -204,6 +210,10 @@ extern SDL_JoystickDriver SDL_LINUX_JoystickDriver;
 extern SDL_JoystickDriver SDL_VIRTUAL_JoystickDriver;
 extern SDL_JoystickDriver SDL_WGI_JoystickDriver;
 extern SDL_JoystickDriver SDL_WINDOWS_JoystickDriver;
+extern SDL_JoystickDriver SDL_WINMM_JoystickDriver;
+extern SDL_JoystickDriver SDL_OS2_JoystickDriver;
+extern SDL_JoystickDriver SDL_PSP_JoystickDriver;
+extern SDL_JoystickDriver SDL_VITA_JoystickDriver;
 
 #endif /* SDL_sysjoystick_h_ */
 

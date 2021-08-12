@@ -131,6 +131,37 @@ endmacro()
 # Requires:
 # - PkgCheckModules
 # Optional:
+# - PIPEWIRE_SHARED opt
+# - HAVE_DLOPEN opt
+macro(CheckPipewire)
+    if(PIPEWIRE)
+        pkg_check_modules(PKG_PIPEWIRE libpipewire-0.3>=0.3.20)
+        if(PKG_PIPEWIRE_FOUND)
+            set(HAVE_PIPEWIRE TRUE)
+            file(GLOB PIPEWIRE_SOURCES ${SDL2_SOURCE_DIR}/src/audio/pipewire/*.c)
+            set(SOURCE_FILES ${SOURCE_FILES} ${PIPEWIRE_SOURCES})
+            set(SDL_AUDIO_DRIVER_PIPEWIRE 1)
+            list(APPEND EXTRA_CFLAGS ${PKG_PIPEWIRE_CFLAGS})
+            if(PIPEWIRE_SHARED)
+                if(NOT HAVE_DLOPEN)
+                    message_warn("You must have SDL_LoadObject() support for dynamic Pipewire loading")
+                else()
+                    FindLibraryAndSONAME("pipewire-0.3")
+                    set(SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC "\"${PIPEWIRE_0.3_LIB_SONAME}\"")
+                    set(HAVE_PIPEWIRE_SHARED TRUE)
+                endif()
+            else()
+                list(APPEND EXTRA_LDFLAGS ${PKG_PIPEWIRE_LDFLAGS})
+            endif()
+            set(HAVE_SDL_AUDIO TRUE)
+        endif()
+    endif()
+endmacro()
+
+
+# Requires:
+# - PkgCheckModules
+# Optional:
 # - PULSEAUDIO_SHARED opt
 # - HAVE_DLOPEN opt
 macro(CheckPulseAudio)
@@ -400,7 +431,7 @@ macro(CheckX11)
 
     check_include_file(X11/Xcursor/Xcursor.h HAVE_XCURSOR_H)
     check_include_file(X11/extensions/Xinerama.h HAVE_XINERAMA_H)
-    check_include_file(X11/extensions/XInput2.h HAVE_XINPUT_H)
+    check_include_file(X11/extensions/XInput2.h HAVE_XINPUT2_H)
     check_include_file(X11/extensions/Xrandr.h HAVE_XRANDR_H)
     check_include_file(X11/extensions/Xrender.h HAVE_XRENDER_H)
     check_include_file(X11/extensions/scrnsaver.h HAVE_XSS_H)
@@ -498,7 +529,7 @@ macro(CheckX11)
         set(SDL_VIDEO_DRIVER_X11_XINERAMA 1)
       endif()
 
-      if(VIDEO_X11_XINPUT AND HAVE_XINPUT_H)
+      if(VIDEO_X11_XINPUT AND HAVE_XINPUT2_H)
         set(HAVE_VIDEO_X11_XINPUT TRUE)
         if(HAVE_X11_SHARED AND XI_LIB)
           set(SDL_VIDEO_DRIVER_X11_DYNAMIC_XINPUT2 "\"${XI_LIB_SONAME}\"")
@@ -562,9 +593,13 @@ macro(CheckX11)
       set(CMAKE_REQUIRED_LIBRARIES)
     endif()
   endif()
+  if(NOT HAVE_VIDEO_X11)
+    # Prevent Mesa from including X11 headers
+    list(APPEND EXTRA_CFLAGS "-DMESA_EGL_NO_X11_HEADERS -DEGL_NO_X11")
+  endif()
 endmacro()
 
-macro(WaylandProtocolGen _SCANNER _XML _PROTL)
+macro(WaylandProtocolGen _SCANNER _CODE_MODE _XML _PROTL)
     set(_WAYLAND_PROT_C_CODE "${CMAKE_CURRENT_BINARY_DIR}/wayland-generated-protocols/${_PROTL}-protocol.c")
     set(_WAYLAND_PROT_H_CODE "${CMAKE_CURRENT_BINARY_DIR}/wayland-generated-protocols/${_PROTL}-client-protocol.h")
 
@@ -579,7 +614,7 @@ macro(WaylandProtocolGen _SCANNER _XML _PROTL)
         OUTPUT "${_WAYLAND_PROT_C_CODE}"
         DEPENDS "${_WAYLAND_PROT_H_CODE}"
         COMMAND "${_SCANNER}"
-        ARGS code "${_XML}" "${_WAYLAND_PROT_C_CODE}"
+        ARGS "${_CODE_MODE}" "${_XML}" "${_WAYLAND_PROT_C_CODE}"
     )
 
     set(SOURCE_FILES ${SOURCE_FILES} "${_WAYLAND_PROT_C_CODE}")
@@ -594,8 +629,9 @@ endmacro()
 macro(CheckWayland)
   if(VIDEO_WAYLAND)
     pkg_check_modules(WAYLAND wayland-client wayland-scanner wayland-egl wayland-cursor egl xkbcommon)
+    pkg_check_modules(WAYLAND_SCANNER_1_15 "wayland-scanner>=1.15")
 
-    if(WAYLAND_FOUND)
+    if(WAYLAND_FOUND AND HAVE_VIDEO_OPENGL_EGL)
       execute_process(
         COMMAND ${PKG_CONFIG_EXECUTABLE} --variable=wayland_scanner wayland-scanner
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
@@ -610,6 +646,12 @@ macro(CheckWayland)
     endif()
 
     if(WAYLAND_FOUND)
+      if(WAYLAND_SCANNER_1_15_FOUND)
+        set(WAYLAND_SCANNER_CODE_MODE "private-code")
+      else()
+        set(WAYLAND_SCANNER_CODE_MODE "code")
+      endif()
+
       link_directories(
           ${WAYLAND_LIBRARY_DIRS}
       )
@@ -629,7 +671,7 @@ macro(CheckWayland)
       file(GLOB WAYLAND_PROTOCOLS_XML RELATIVE "${SDL2_SOURCE_DIR}/wayland-protocols/" "${SDL2_SOURCE_DIR}/wayland-protocols/*.xml")
       foreach(_XML ${WAYLAND_PROTOCOLS_XML})
         string(REGEX REPLACE "\\.xml$" "" _PROTL "${_XML}")
-        WaylandProtocolGen("${WAYLAND_SCANNER}" "${SDL2_SOURCE_DIR}/wayland-protocols/${_XML}" "${_PROTL}")
+        WaylandProtocolGen("${WAYLAND_SCANNER}" "${WAYLAND_SCANNER_CODE_MODE}" "${SDL2_SOURCE_DIR}/wayland-protocols/${_XML}" "${_PROTL}")
       endforeach()
 
       if(VIDEO_WAYLAND_QT_TOUCH)
@@ -653,6 +695,27 @@ macro(CheckWayland)
         endif()
       else()
         set(EXTRA_LIBS ${WAYLAND_LIBRARIES} ${EXTRA_LIBS})
+      endif()
+
+      if(WAYLAND_LIBDECOR)
+        pkg_check_modules(LIBDECOR libdecor-0)
+        if(LIBDECOR_FOUND)
+            set(HAVE_WAYLAND_LIBDECOR TRUE)
+            set(HAVE_LIBDECOR_H 1)
+            link_directories(${LIBDECOR_LIBRARY_DIRS})
+            include_directories(${LIBDECOR_INCLUDE_DIRS})
+            if(LIBDECOR_SHARED)
+              if(NOT HAVE_DLOPEN)
+                message_warn("You must have SDL_LoadObject() support for dynamic libdecor loading")
+              else()
+                set(HAVE_LIBDECOR_SHARED TRUE)
+                FindLibraryAndSONAME(decor-0)
+                set(SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC_LIBDECOR "\"${DECOR_0_LIB_SONAME}\"")
+              endif()
+            else()
+              set(EXTRA_LIBS ${LIBDECOR_LIBRARIES} ${EXTRA_LIBS})
+            endif()
+        endif()
       endif()
 
       set(SDL_VIDEO_DRIVER_WAYLAND 1)
@@ -741,54 +804,74 @@ endmacro(CheckVivante)
 
 # Requires:
 # - nada
-macro(CheckOpenGLX11)
+macro(CheckGLX)
   if(VIDEO_OPENGL)
     check_c_source_compiles("
-        #include <GL/gl.h>
         #include <GL/glx.h>
-        int main(int argc, char** argv) {}" HAVE_VIDEO_OPENGL)
-
-    if(HAVE_VIDEO_OPENGL)
-      set(HAVE_VIDEO_OPENGL TRUE)
-      set(SDL_VIDEO_OPENGL 1)
+        int main(int argc, char** argv) {}" HAVE_VIDEO_OPENGL_GLX)
+    if(HAVE_VIDEO_OPENGL_GLX)
       set(SDL_VIDEO_OPENGL_GLX 1)
-      set(SDL_VIDEO_RENDER_OGL 1)
     endif()
   endif()
 endmacro()
 
 # Requires:
 # - PkgCheckModules
-macro(CheckOpenGLESX11)
-  pkg_check_modules(EGL egl)
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${EGL_CFLAGS}")
-  if(VIDEO_OPENGLES)
+macro(CheckEGL)
+  if (VIDEO_OPENGL OR VIDEO_OPENGLES)
+    pkg_check_modules(EGL egl)
+    string(REPLACE "-D_THREAD_SAFE;" "-D_THREAD_SAFE=1;" EGL_CFLAGS "${EGL_CFLAGS}")
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${EGL_CFLAGS}")
     check_c_source_compiles("
         #define EGL_API_FB
+        #define MESA_EGL_NO_X11_HEADERS
+        #define EGL_NO_X11
         #include <EGL/egl.h>
+        #include <EGL/eglext.h>
         int main (int argc, char** argv) {}" HAVE_VIDEO_OPENGL_EGL)
     if(HAVE_VIDEO_OPENGL_EGL)
-        set(SDL_VIDEO_OPENGL_EGL 1)
+      set(SDL_VIDEO_OPENGL_EGL 1)
     endif()
+  endif()
+endmacro()
+
+# Requires:
+# - nada
+macro(CheckOpenGL)
+  if(VIDEO_OPENGL)
     check_c_source_compiles("
-      #include <GLES/gl.h>
-      #include <GLES/glext.h>
-      int main (int argc, char** argv) {}" HAVE_VIDEO_OPENGLES_V1)
+        #include <GL/gl.h>
+        #include <GL/glext.h>
+        int main(int argc, char** argv) {}" HAVE_VIDEO_OPENGL)
+    if(HAVE_VIDEO_OPENGL)
+      set(SDL_VIDEO_OPENGL 1)
+      set(SDL_VIDEO_RENDER_OGL 1)
+    endif()
+  endif()
+endmacro()
+
+# Requires:
+# - nada
+macro(CheckOpenGLES)
+  if(VIDEO_OPENGLES)
+    check_c_source_compiles("
+        #include <GLES/gl.h>
+        #include <GLES/glext.h>
+        int main (int argc, char** argv) {}" HAVE_VIDEO_OPENGLES_V1)
     if(HAVE_VIDEO_OPENGLES_V1)
         set(HAVE_VIDEO_OPENGLES TRUE)
         set(SDL_VIDEO_OPENGL_ES 1)
         set(SDL_VIDEO_RENDER_OGL_ES 1)
     endif()
     check_c_source_compiles("
-      #include <GLES2/gl2.h>
-      #include <GLES2/gl2ext.h>
-      int main (int argc, char** argv) {}" HAVE_VIDEO_OPENGLES_V2)
+        #include <GLES2/gl2.h>
+        #include <GLES2/gl2ext.h>
+        int main (int argc, char** argv) {}" HAVE_VIDEO_OPENGLES_V2)
     if(HAVE_VIDEO_OPENGLES_V2)
         set(HAVE_VIDEO_OPENGLES TRUE)
         set(SDL_VIDEO_OPENGL_ES2 1)
         set(SDL_VIDEO_RENDER_OGL_ES2 1)
     endif()
-
   endif()
 endmacro()
 
@@ -839,6 +922,9 @@ macro(CheckPTHREAD)
     elseif(HAIKU)
       set(PTHREAD_CFLAGS "-D_REENTRANT")
       set(PTHREAD_LDFLAGS "")
+    elseif(EMSCRIPTEN)
+      set(PTHREAD_CFLAGS "-D_REENTRANT -pthread")
+      set(PTHREAD_LDFLAGS "-pthread")
     else()
       set(PTHREAD_CFLAGS "-D_REENTRANT")
       set(PTHREAD_LDFLAGS "-lpthread")
@@ -847,17 +933,13 @@ macro(CheckPTHREAD)
     # Run some tests
     set(ORIG_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
     set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${PTHREAD_CFLAGS} ${PTHREAD_LDFLAGS}")
-    if(CMAKE_CROSSCOMPILING)
-      set(HAVE_PTHREADS 1)
-    else()
-      check_c_source_runs("
-        #include <pthread.h>
-        int main(int argc, char** argv) {
-          pthread_attr_t type;
-          pthread_attr_init(&type);
-          return 0;
-        }" HAVE_PTHREADS)
-    endif()
+    check_c_source_compiles("
+      #include <pthread.h>
+      int main(int argc, char** argv) {
+        pthread_attr_t type;
+        pthread_attr_init(&type);
+        return 0;
+      }" HAVE_PTHREADS)
     if(HAVE_PTHREADS)
       set(SDL_THREAD_PTHREAD 1)
       list(APPEND EXTRA_CFLAGS ${PTHREAD_CFLAGS})
@@ -866,6 +948,7 @@ macro(CheckPTHREAD)
       list(APPEND SDL_LIBS ${PTHREAD_LDFLAGS})
 
       check_c_source_compiles("
+        #define _GNU_SOURCE 1
         #include <pthread.h>
         int main(int argc, char **argv) {
           pthread_mutexattr_t attr;
@@ -876,6 +959,7 @@ macro(CheckPTHREAD)
         set(SDL_THREAD_PTHREAD_RECURSIVE_MUTEX 1)
       else()
         check_c_source_compiles("
+            #define _GNU_SOURCE 1
             #include <pthread.h>
             int main(int argc, char **argv) {
               pthread_mutexattr_t attr;
@@ -1056,7 +1140,7 @@ macro(CheckUSBHID)
             return 0;
         }" HAVE_MACHINE_JOYSTICK)
     if(HAVE_MACHINE_JOYSTICK)
-      set(SDL_JOYSTICK_USBHID_MACHINE_JOYSTICK_H 1)
+      set(SDL_HAVE_MACHINE_JOYSTICK_H 1)
     endif()
     set(SDL_JOYSTICK_USBHID 1)
     file(GLOB BSD_JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/bsd/*.c)
@@ -1152,7 +1236,7 @@ endmacro(CheckRPI)
 macro(CheckKMSDRM)
   if(VIDEO_KMSDRM)
     pkg_check_modules(KMSDRM libdrm gbm egl)
-    if(KMSDRM_FOUND)
+    if(KMSDRM_FOUND AND HAVE_VIDEO_OPENGL_EGL)
       link_directories(
         ${KMSDRM_LIBRARY_DIRS}
       )
@@ -1163,8 +1247,7 @@ macro(CheckKMSDRM)
       set(HAVE_SDL_VIDEO TRUE)
 
       file(GLOB KMSDRM_SOURCES ${SDL2_SOURCE_DIR}/src/video/kmsdrm/*.c)
-      file(GLOB KMSDRM_LEGACY_SOURCES ${SDL2_SOURCE_DIR}/src/video/kmsdrm_legacy/*.c)
-      set(SOURCE_FILES ${SOURCE_FILES} ${KMSDRM_SOURCES} ${KMSDRM_LEGACY_SOURCES})
+      set(SOURCE_FILES ${SOURCE_FILES} ${KMSDRM_SOURCES})
 
       list(APPEND EXTRA_CFLAGS ${KMSDRM_CFLAGS})
 

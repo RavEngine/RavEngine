@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -819,11 +819,10 @@ SDL_SetRelativeMouseMode(SDL_bool enabled)
     mouse->scale_accum_y = 0.0f;
 
     if (enabled && focusWindow) {
-        /* Center it in the focused window to prevent clicks from going through
-         * to background windows.
-         */
         SDL_SetMouseFocus(focusWindow);
-        SDL_WarpMouseInWindow(focusWindow, focusWindow->w/2, focusWindow->h/2);
+
+        if (mouse->relative_mode_warp)
+            SDL_WarpMouseInWindow(focusWindow, focusWindow->w/2, focusWindow->h/2);
     }
 
     if (mouse->focus) {

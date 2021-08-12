@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1016,14 +1016,18 @@ HIDAPI_DriverSteam_OpenJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joystic
     return SDL_TRUE;
 
 error:
-    if (device->dev) {
-        hid_close(device->dev);
-        device->dev = NULL;
+    SDL_LockMutex(device->dev_lock);
+    {
+        if (device->dev) {
+            hid_close(device->dev);
+            device->dev = NULL;
+        }
+        if (device->context) {
+            SDL_free(device->context);
+            device->context = NULL;
+        }
     }
-    if (device->context) {
-        SDL_free(device->context);
-        device->context = NULL;
-    }
+    SDL_UnlockMutex(device->dev_lock);
     return SDL_FALSE;
 }
 
@@ -1051,6 +1055,12 @@ static int
 HIDAPI_DriverSteam_SetJoystickLED(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
 {
     /* You should use the full Steam Input API for LED support */
+    return SDL_Unsupported();
+}
+
+static int
+HIDAPI_DriverSteam_SendJoystickEffect(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, const void *data, int size)
+{
     return SDL_Unsupported();
 }
 
@@ -1170,12 +1180,17 @@ HIDAPI_DriverSteam_UpdateDevice(SDL_HIDAPI_Device *device)
 static void
 HIDAPI_DriverSteam_CloseJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joystick)
 {
-    CloseSteamController(device->dev);
-    hid_close(device->dev);
-    device->dev = NULL;
+    SDL_LockMutex(device->dev_lock);
+    {
+        CloseSteamController(device->dev);
 
-    SDL_free(device->context);
-    device->context = NULL;
+        hid_close(device->dev);
+        device->dev = NULL;
+
+        SDL_free(device->context);
+        device->context = NULL;
+    }
+    SDL_UnlockMutex(device->dev_lock);
 }
 
 static void
@@ -1198,6 +1213,7 @@ SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverSteam =
     HIDAPI_DriverSteam_RumbleJoystickTriggers,
     HIDAPI_DriverSteam_HasJoystickLED,
     HIDAPI_DriverSteam_SetJoystickLED,
+    HIDAPI_DriverSteam_SendJoystickEffect,
     HIDAPI_DriverSteam_SetSensorsEnabled,
     HIDAPI_DriverSteam_CloseJoystick,
     HIDAPI_DriverSteam_FreeDevice,

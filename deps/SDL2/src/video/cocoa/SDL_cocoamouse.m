@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,6 @@
 
 #include "SDL_events.h"
 #include "SDL_cocoamouse.h"
-#include "SDL_cocoamousetap.h"
 #include "SDL_cocoavideo.h"
 
 #include "../../events/SDL_mouse_c.h"
@@ -216,8 +215,8 @@ Cocoa_WarpMouseGlobal(int x, int y)
     SDL_Mouse *mouse = SDL_GetMouse();
     if (mouse->focus) {
         SDL_WindowData *data = (SDL_WindowData *) mouse->focus->driverdata;
-        if ([data->listener isMoving]) {
-            DLog("Postponing warp, window being moved.");
+        if ([data->listener isMovingOrFocusClickPending]) {
+            DLog("Postponing warp, window being moved or focused.");
             [data->listener setPendingMoveX:x Y:y];
             return 0;
         }
@@ -272,7 +271,7 @@ Cocoa_SetRelativeMouseMode(SDL_bool enabled)
      * if it is being moved right now.
      */
     SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
-    if ([data->listener isMoving]) {
+    if ([data->listener isMovingOrFocusClickPending]) {
         return 0;
     }
 
@@ -348,12 +347,38 @@ Cocoa_InitMouse(_THIS)
 
     SDL_SetDefaultCursor(Cocoa_CreateDefaultCursor());
 
-    Cocoa_InitMouseEventTap(driverdata);
-
     const NSPoint location =  [NSEvent mouseLocation];
     driverdata->lastMoveX = location.x;
     driverdata->lastMoveY = location.y;
     return 0;
+}
+
+static void
+Cocoa_HandleTitleButtonEvent(_THIS, NSEvent *event)
+{
+    SDL_Window *window;
+    NSWindow *nswindow = [event window];
+
+    for (window = _this->windows; window; window = window->next) {
+        SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+        if (data && data->nswindow == nswindow) {
+            switch ([event type]) {
+            case NSEventTypeLeftMouseDown:
+            case NSEventTypeRightMouseDown:
+            case NSEventTypeOtherMouseDown:
+                [data->listener setFocusClickPending:[event buttonNumber]];
+                break;
+            case NSEventTypeLeftMouseUp:
+            case NSEventTypeRightMouseUp:
+            case NSEventTypeOtherMouseUp:
+                [data->listener clearFocusClickPending:[event buttonNumber]];
+                break;
+            default:
+                break;
+            }
+            break;
+        }
+    }
 }
 
 void
@@ -365,6 +390,21 @@ Cocoa_HandleMouseEvent(_THIS, NSEvent *event)
         case NSEventTypeRightMouseDragged:
         case NSEventTypeOtherMouseDragged:
             break;
+
+        case NSEventTypeLeftMouseDown:
+        case NSEventTypeLeftMouseUp:
+        case NSEventTypeRightMouseDown:
+        case NSEventTypeRightMouseUp:
+        case NSEventTypeOtherMouseDown:
+        case NSEventTypeOtherMouseUp:
+            if ([event window]) {
+                NSRect windowRect = [[[event window] contentView] frame];
+                if (!NSMouseInRect([event locationInWindow], windowRect, NO)) {
+                    Cocoa_HandleTitleButtonEvent(_this, event);
+                    return;
+                }
+            }
+            return;
 
         default:
             /* Ignore any other events. */
@@ -467,8 +507,6 @@ Cocoa_QuitMouse(_THIS)
     SDL_Mouse *mouse = SDL_GetMouse();
     if (mouse) {
         if (mouse->driverdata) {
-            Cocoa_QuitMouseEventTap(((SDL_MouseData*)mouse->driverdata));
-
             SDL_free(mouse->driverdata);
             mouse->driverdata = NULL;
         }

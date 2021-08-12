@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -610,6 +610,7 @@ D3D_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     return 0;
 }
 
+#if SDL_HAVE_YUV
 static int
 D3D_UpdateTextureYUV(SDL_Renderer * renderer, SDL_Texture * texture,
                      const SDL_Rect * rect,
@@ -636,6 +637,7 @@ D3D_UpdateTextureYUV(SDL_Renderer * renderer, SDL_Texture * texture,
     }
     return 0;
 }
+#endif
 
 static int
 D3D_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
@@ -1316,20 +1318,21 @@ D3D_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *verti
                 const SDL_Rect *viewport = &data->drawstate.viewport;
                 const int backw = istarget ? renderer->target->w : data->pparams.BackBufferWidth;
                 const int backh = istarget ? renderer->target->h : data->pparams.BackBufferHeight;
+                const SDL_bool viewport_equal = ((viewport->x == 0) && (viewport->y == 0) && (viewport->w == backw) && (viewport->h == backh)) ? SDL_TRUE : SDL_FALSE;
 
-                if (data->drawstate.cliprect_enabled) {
+                if (data->drawstate.cliprect_enabled || data->drawstate.cliprect_enabled_dirty) {
                     IDirect3DDevice9_SetRenderState(data->device, D3DRS_SCISSORTESTENABLE, FALSE);
-                    data->drawstate.cliprect_enabled_dirty = SDL_TRUE;
+                    data->drawstate.cliprect_enabled_dirty = data->drawstate.cliprect_enabled;
                 }
 
                 /* Don't reset the viewport if we don't have to! */
-                if (!viewport->x && !viewport->y && (viewport->w == backw) && (viewport->h == backh)) {
+                if (!data->drawstate.viewport_dirty && viewport_equal) {
                     IDirect3DDevice9_Clear(data->device, 0, NULL, D3DCLEAR_TARGET, color, 0.0f, 0);
                 } else {
                     /* Clear is defined to clear the entire render target */
                     const D3DVIEWPORT9 wholeviewport = { 0, 0, backw, backh, 0.0f, 1.0f };
                     IDirect3DDevice9_SetViewport(data->device, &wholeviewport);
-                    data->drawstate.viewport_dirty = SDL_TRUE;
+                    data->drawstate.viewport_dirty = SDL_TRUE;  /* we still need to (re)set orthographic projection, so always mark it dirty. */
                     IDirect3DDevice9_Clear(data->device, 0, NULL, D3DCLEAR_TARGET, color, 0.0f, 0);
                 }
 
@@ -1710,7 +1713,9 @@ D3D_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->SupportsBlendMode = D3D_SupportsBlendMode;
     renderer->CreateTexture = D3D_CreateTexture;
     renderer->UpdateTexture = D3D_UpdateTexture;
+#if SDL_HAVE_YUV
     renderer->UpdateTextureYUV = D3D_UpdateTextureYUV;
+#endif
     renderer->LockTexture = D3D_LockTexture;
     renderer->UnlockTexture = D3D_UnlockTexture;
     renderer->SetTextureScaleMode = D3D_SetTextureScaleMode;

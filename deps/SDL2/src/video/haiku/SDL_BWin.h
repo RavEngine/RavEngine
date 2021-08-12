@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,6 +37,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <AppKit.h>
+#include <Cursor.h>
 #include <InterfaceKit.h>
 #include <game/DirectWindow.h>
 #if SDL_VIDEO_OPENGL
@@ -140,8 +141,7 @@ class SDL_BWin:public BDirectWindow
             _gl_type = gl_flags;
         }
         AddChild(_SDL_GLView);
-        _SDL_GLView->SetEventMask(B_POINTER_EVENTS | B_KEYBOARD_EVENTS, B_NO_POINTER_HISTORY);
-        _SDL_GLView->EnableDirectMode(true);
+        _SDL_GLView->EnableDirectMode(false); /* Disable direct mode */
         _SDL_GLView->LockGL();  /* "New" GLViews are created */
         Unlock();
         return (_SDL_GLView);

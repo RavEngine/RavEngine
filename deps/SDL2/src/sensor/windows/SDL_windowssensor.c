@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -279,7 +279,7 @@ static int ConnectSensor(ISensor *sensor)
 
     hr = ISensor_GetFriendlyName(sensor, &bstr_name);
     if (SUCCEEDED(hr) && bstr_name) {
-        name = WIN_StringToUTF8(bstr_name);
+        name = WIN_StringToUTF8W(bstr_name);
     } else {
         name = SDL_strdup("Unknown Sensor");
     }
@@ -294,6 +294,7 @@ static int ConnectSensor(ISensor *sensor)
     new_sensors = (SDL_Windows_Sensor *)SDL_realloc(SDL_sensors, (SDL_num_sensors + 1) * sizeof(SDL_Windows_Sensor));
     if (new_sensors == NULL) {
         SDL_UnlockSensors();
+        SDL_free(name);
         return SDL_OutOfMemory();
     }
 

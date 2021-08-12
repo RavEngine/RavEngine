@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -849,3 +849,34 @@ SDL_DYNAPI_PROC(SDL_bool,SDL_GameControllerIsSensorEnabled,(SDL_GameController *
 SDL_DYNAPI_PROC(int,SDL_GameControllerGetSensorData,(SDL_GameController *a, SDL_SensorType b, float *c, int d),(a,b,c,d),return)
 SDL_DYNAPI_PROC(int,SDL_wcscasecmp,(const wchar_t *a, const wchar_t *b),(a,b),return)
 SDL_DYNAPI_PROC(int,SDL_wcsncasecmp,(const wchar_t *a, const wchar_t *b, size_t c),(a,b,c),return)
+SDL_DYNAPI_PROC(double,SDL_round,(double a),(a),return)
+SDL_DYNAPI_PROC(float,SDL_roundf,(float a),(a),return)
+SDL_DYNAPI_PROC(long,SDL_lround,(double a),(a),return)
+SDL_DYNAPI_PROC(long,SDL_lroundf,(float a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_SoftStretchLinear,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, const SDL_Rect *d),(a,b,c,d),return)
+#ifdef __WIN32__
+SDL_DYNAPI_PROC(ID3D11Device*,SDL_RenderGetD3D11Device,(SDL_Renderer *a),(a),return)
+#endif
+SDL_DYNAPI_PROC(int,SDL_UpdateNVTexture,(SDL_Texture *a, const SDL_Rect *b, const Uint8 *c, int d, const Uint8 *e, int f),(a,b,c,d,e,f),return)
+SDL_DYNAPI_PROC(void,SDL_SetWindowKeyboardGrab,(SDL_Window *a, SDL_bool b),(a,b),)
+SDL_DYNAPI_PROC(void,SDL_SetWindowMouseGrab,(SDL_Window *a, SDL_bool b),(a,b),)
+SDL_DYNAPI_PROC(SDL_bool,SDL_GetWindowKeyboardGrab,(SDL_Window *a),(a),return)
+SDL_DYNAPI_PROC(SDL_bool,SDL_GetWindowMouseGrab,(SDL_Window *a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_isalpha,(int a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_isalnum,(int a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_isblank,(int a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_iscntrl,(int a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_isxdigit,(int a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_ispunct,(int a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_isprint,(int a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_isgraph,(int a),(a),return)
+#ifdef __ANDROID__
+SDL_DYNAPI_PROC(int,SDL_AndroidShowToast,(const char *a, int b, int c, int d, int e),(a,b,c,d,e),return)
+#endif
+SDL_DYNAPI_PROC(int,SDL_GetAudioDeviceSpec,(int a, int b, SDL_AudioSpec *c),(a,b,c),return)
+SDL_DYNAPI_PROC(void,SDL_TLSCleanup,(void),(),)
+SDL_DYNAPI_PROC(void,SDL_SetWindowAlwaysOnTop,(SDL_Window *a, SDL_bool b),(a,b),)
+SDL_DYNAPI_PROC(int,SDL_FlashWindow,(SDL_Window *a, SDL_FlashOperation b),(a,b),return)
+SDL_DYNAPI_PROC(int,SDL_GameControllerSendEffect,(SDL_GameController *a, const void *b, int c),(a,b,c),return)
+SDL_DYNAPI_PROC(int,SDL_JoystickSendEffect,(SDL_Joystick *a, const void *b, int c),(a,b,c),return)
+SDL_DYNAPI_PROC(float,SDL_GameControllerGetSensorDataRate,(SDL_GameController *a, SDL_SensorType b),(a,b),return)
