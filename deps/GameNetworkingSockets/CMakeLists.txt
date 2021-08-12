@@ -19,6 +19,7 @@ option(GNS_USE_OPENSSL "Use libsodium instead of OpenSSL" ON)
 if(GNS_USE_OPENSSL)
 	set(USE_CRYPTO "OpenSSL" CACHE INTERNAL "")
 	set(USE_CRYPTO25519 "OpenSSL" CACHE INTERNAL "")
+	set(WITH_APPS OFF CACHE INTERNAL "")
 	add_subdirectory(openssl-cmake)
 else()
 	set(SODIUM_DISABLE_TESTS ON CACHE INTERNAL "")
@@ -26,8 +27,6 @@ else()
 	set(USE_CRYPTO "libsodium" CACHE INTERNAL "")
 	set(USE_CRYPTO25519 "libsodium" CACHE INTERNAL "")
 endif()
-
-
 
 find_package(Threads)
 
