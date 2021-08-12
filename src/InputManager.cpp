@@ -142,10 +142,17 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			break;
 		case SDL_CONTROLLERBUTTONDOWN:
 		case SDL_CONTROLLERBUTTONUP:
+			// a controller button can be an axis or an action
 			ProcessActionID(event.cbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.cbutton.state), Make_CID(event.cdevice.which + 1));
+			ProcessAxisID(event.cbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.cbutton.state), Make_CID(event.cdevice.which + 1));
 			break;
 		case SDL_CONTROLLERDEVICEADDED:
+			{
+				Debug::Log("Controller added : {}",SDL_GameControllerName(SDL_GameControllerOpen(event.cdevice.which)));
+			}
+			break;
 		case SDL_CONTROLLERDEVICEREMOVED:
+			Debug::Log("Controller removed");
 			break;
 	}
 }

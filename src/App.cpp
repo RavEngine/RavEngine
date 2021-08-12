@@ -15,6 +15,7 @@
 #include <steam/isteamnetworkingutils.h>
 #include "SyncVar.hpp"
 #include "Skybox.hpp"
+#include <SDL.h>
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -79,8 +80,13 @@ App::App(const std::string& resourcesName){
 	::signal(SIGSEGV, &crash_signal_handler);
 	::signal(SIGABRT, &crash_signal_handler);
 
-	//initialize virtual file system library -- on unix systems this must pass argv[0]
+	//initialize virtual file system library 
 	PHYSFS_init("");
+	
+	// initialize SDL2
+	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC) != 0){
+		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
+	}
 	
 	Resources = make_shared<VirtualFilesystem>(resourcesName + ".zip");
 	Renderer = make_shared<RenderEngine>();

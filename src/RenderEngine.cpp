@@ -312,9 +312,6 @@ void RenderEngine::Init()
 	{
 		return;
 	}
-	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC) != 0){
-		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
-	}
 	
 	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 	
