@@ -258,8 +258,35 @@ protected:
 	bool isPlaying = false;
 	bool isBlending = false;
 	float currentBlendingValue = 0;
-	
+
+	// stores sockets
+	phmap::flat_hash_map<std::string, Ref<Transform>> Sockets;
+
 public:
+	/**
+	* Add a transform for a socket
+	* @param boneName the name of the bone to add the socket for
+	* @throws if no such socket exists
+	*/
+	Ref<Transform> AddSocket(const std::string& boneName);
+
+	/**
+	* Remove a socket given a bone name. If an entity is parented to this socket, it will become detatched.
+	* @param boneName the name of the bone to remove the socket for
+	*/
+	void RemoveSocket(const std::string& boneName) {
+		Sockets.erase(boneName);
+	}
+
+	/**
+	* Get a transform for a socket
+	* @param boneName the name of the bone to retrieve the socket for
+	* @throws if no such socket exists
+	*/
+	inline Ref<Transform> TransformForSocket(const std::string& boneName) {
+		return Sockets.at(boneName);
+	}
+
 	/**
 	 Get the current pose of the animation in world space
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame

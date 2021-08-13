@@ -12,7 +12,7 @@ namespace RavEngine {
 class SkinnedMeshComponent : public RenderableComponent, public QueryableDelta<RenderableComponent, SkinnedMeshComponent>{
 private:
 	std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>> tuple;
-	
+
 public:
 	using QueryableDelta<RenderableComponent, SkinnedMeshComponent>::GetQueryTypes;
 	

@@ -79,7 +79,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		e->parent = shared_from_this();	//set parent so that this entity synchronizes its components with this world
 
 		//get all child entities
-		auto children = e->GetAllComponentsOfType<ChildEntityComponent>();
+		auto& children = e->GetAllComponentsOfType<ChildEntityComponent>();
 		for(const auto c : children){
 			Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->get());	//spawn the child entities
 		}

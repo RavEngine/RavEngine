@@ -6,6 +6,7 @@
 #include "Debug.hpp"
 
 using namespace RavEngine;
+using namespace std;
 
 inline float distance(const normalized_vec2& p1, const normalized_vec2& p2){
 	return std::sqrt(std::pow(p2.get_x() - p1.get_x(), 2) + std::pow(p2.get_y() - p1.get_y(), 2));
@@ -87,6 +88,18 @@ void AnimatorComponent::Tick(float timeScale){
 	for(int i = 0; i < skinningmats.size(); i++){
 		skinningmats[i] = pose[i] * matrix4(bindpose[i]);
 	}
+
+	// update sockets
+	if (Sockets.size() > 0) {
+		// update world poses
+		GetPose();
+		for (int i = 0; i < skeleton->GetSkeleton()->num_joints(); i++) {
+			auto name = skeleton->GetSkeleton()->joint_names()[i];
+			if (Sockets.contains(name)) {
+				Sockets.at(name)->OverrideMatrix(glm_pose[i]);	// doing this is safe, because these transforms are never dirty, so they don't try to recalculate their matrices
+			}
+		}
+	}
 }
 
 void AnimBlendTree::Node::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
@@ -126,4 +139,18 @@ void AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz:
 	if (!blend_job.Run()){
 		Debug::Fatal("Blend job failed");
 	}
+}
+
+Ref<Transform> AnimatorComponent::AddSocket(const string& boneName) {
+	// is there a bone in the asset with that name?
+	auto& skeleton = GetSkeleton()->GetSkeleton();
+	for (int i = 0; i < skeleton->num_joints(); i++) {
+		if (strcmp(skeleton->joint_names()[i], boneName.data()) == 0) {
+			auto transform = make_shared<Transform>();
+			Sockets[boneName] = transform;
+			transform->SetOwner(getOwner());
+			return transform;
+		}
+	}
+	Debug::Fatal("Cannot add socket to non-existant joint {}", boneName);
 }
