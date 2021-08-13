@@ -96,7 +96,17 @@ void AnimatorComponent::Tick(float timeScale){
 		for (int i = 0; i < skeleton->GetSkeleton()->num_joints(); i++) {
 			auto name = skeleton->GetSkeleton()->joint_names()[i];
 			if (Sockets.contains(name)) {
-				Sockets.at(name)->OverrideMatrix(glm_pose[i]);	// doing this is safe, because these transforms are never dirty, so they don't try to recalculate their matrices
+				//TODO: set matrix directly instead of with decompose?
+				quaternion rotation;
+				vector3 translate,unused;
+				vector4 p;
+				auto mat = glm_pose[i];
+				glm::decompose(mat, unused, rotation, translate, unused, p);
+				
+				auto tr = Sockets.at(name);
+				tr->SetWorldPosition(translate);
+				tr->SetWorldRotation(rotation);
+				tr->SetLocalScale(vector3(1,1,1));
 			}
 		}
 	}

@@ -89,14 +89,6 @@ namespace RavEngine {
 		*/
 		void RemoveChild(const WeakRef<Transform>& child);
 
-		/**
-		* Override the transformation matrix. Note that if a member function is used, the matrix will be overwritten ignoring any value set using this method.
-		* @param mxt the matrix to use
-		*/
-		inline void OverrideMatrix(const matrix4& mtx) {
-			matrix = mtx;
-		}
-
 	protected:
 		LockFreeAtomic<vector3> position;
 		LockFreeAtomic<quaternion> rotation;
