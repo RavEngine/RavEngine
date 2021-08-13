@@ -2,6 +2,7 @@
 #include "App.hpp"
 #include "Debug.hpp"
 #include <libnyquist/Decoders.h>
+#include <libnyquist/Encoders.h>
 #include <SDL.h>
 #include <filesystem>
 
@@ -27,7 +28,20 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 
 	// fix n channels
 	if (nchannels != desired_channels) {
-
+		// mono -> Stereo
+		if (desired_channels == 2 && data.channelCount == 1) {
+			decltype(data.samples) newSamples(data.samples.size() * 2);
+			nqr::MonoToStereo(data.samples.data(),newSamples.data(), data.samples.size());
+			data.samples = newSamples;
+		}
+		else if (desired_channels == 1 && data.channelCount == 2) {
+			decltype(data.samples) newSamples(data.samples.size() / 2);
+			nqr::StereoToMono(data.samples.data(), newSamples.data(), data.samples.size());
+			data.samples = newSamples;
+		}
+		else {
+			Debug::Fatal("Unable to convert input audio with {} channels to desired {} channels",nchannels,desired_channels);
+		}
 
 		nchannels = desired_channels;
 	}
