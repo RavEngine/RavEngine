@@ -40,7 +40,7 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 			data.samples = newSamples;
 		}
 		else {
-			Debug::Fatal("Unable to convert input audio with {} channels to desired {} channels",nchannels,desired_channels);
+			Debug::Fatal("Unable to convert input audio with {} channels to desired {} channels",data.channelCount,desired_channels);
 		}
 
 		nchannels = desired_channels;

@@ -88,7 +88,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 			
 			//clipping: clamp all values to [-1,1]
 			for(int i = 0; i < len/sizeof(float); i++){
-				shared_buffer[i] = std::max(-1.0f,std::min(shared_buffer[i],1.0f));
+				accum_buffer[i] = std::clamp(accum_buffer[i] ,-1.0f,1.0f);
 			}
 
 			//update stream pointer with rendered output
