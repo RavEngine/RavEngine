@@ -65,3 +65,6 @@ cd ..
 
 # date
 rm -r date/ci date/compile_fail.sh date/README.md date/test date/test_fail.sh
+
+# r8brain
+rm -r r8brain-cmake/r8brain-free-src/DLL r8brain-cmake/r8brain-free-src/bench
