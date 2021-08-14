@@ -151,7 +151,17 @@ struct AmbientAudioSourceComponent : public Component, public AudioPlayerData, p
 struct InstantaneousAudioSource : public AudioPlayerData{
 	vector3 source_position;
 	
-	InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol) : AudioPlayerData(a), source_position(position){
+	InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol = 1) : AudioPlayerData(a), source_position(position){
+		volume = vol;
+		isPlaying = true;
+	}
+};
+
+/**
+ Used for Fire-and-forget audio playing. See method on the world for more info
+ */
+struct InstantaneousAmbientAudioSource : public AudioPlayerData {
+	InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol = 1) : AudioPlayerData(a) {
 		volume = vol;
 		isPlaying = true;
 	}

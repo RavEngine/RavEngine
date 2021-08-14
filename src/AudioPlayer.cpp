@@ -80,10 +80,22 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 					accum_buffer[i] += shared_buffer[i];
 				}
 			}
+
+			// play the fire-and-forget ambient audios
+			for (auto& audio : world->ambientToPlay) {
+				audio.GetSampleRegionAndAdvance(shared_buffer, len);
+				// mix it in
+				for (int i = 0; i < len / sizeof(float); i++) {
+					accum_buffer[i] += shared_buffer[i];
+				}
+			}
 			
 			//remove sounds from that list that have finished playing
 			world->instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
 				return ! ias.IsPlaying();
+			});
+			world->ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {
+				return !ias.IsPlaying();
 			});
 			
 			//clipping: clamp all values to [-1,1]

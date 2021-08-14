@@ -76,6 +76,7 @@ namespace RavEngine {
 		
 		//fire-and-forget audio
 		plf::list<InstantaneousAudioSource> instantaneousToPlay;
+		plf::list<InstantaneousAmbientAudioSource> ambientToPlay;
 
 		/**
 		Called before ticking components and entities synchronously
@@ -155,6 +156,10 @@ namespace RavEngine {
 
 		void PlaySound(const InstantaneousAudioSource& ias){
 			instantaneousToPlay.push_back(ias);
+		}
+
+		void PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {
+			ambientToPlay.push_back(iaas);
 		}
 		
 		/**
