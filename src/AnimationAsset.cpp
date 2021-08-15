@@ -15,7 +15,7 @@
 using namespace RavEngine;
 using namespace std;
 
-void AnimationAssetSegment::Sample(float globaltime, float last_global_starttime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
+bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
 	
 	float asset_duration_ticks = (anim_asset->duration_seconds * 30);
 		
@@ -31,12 +31,14 @@ void AnimationAssetSegment::Sample(float globaltime, float last_global_starttime
 	}
 	
 	float t = region * (end_unitized - start_unitized) + start_unitized;
+	bool retval = false;
 	if (!looping && t > end_unitized){
 		t = end_unitized;
+		retval = true;
 	}
 			
 	SampleDirect(t, anim_asset->GetAnim().get(), cache, transforms);
-	
+	return retval;
 }
 
 AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton){
@@ -166,22 +168,31 @@ void IAnimGraphable::SampleDirect(float t, const ozz::animation::Animation *anim
 	Debug::Assert(sampling_job.Run(), "Sampling job failed");
 }
 
-void AnimationAsset::Sample(float time, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+bool AnimationAsset::Sample(float time, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
 	float t = (time - start) / (duration_seconds * tps) * speed;
+	bool ret = false;
 	if (looping){
 		t = std::fmod(t,1.f);
 	}
+	else {
+		ret = t >= 1;
+	}
 	
 	SampleDirect(t, anim.get(), cache, locals);
+	return ret;
 }
 
-void AnimationClip::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+bool AnimationClip::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
 	//calculate the subtracks
 	stackarray(layers, ozz::animation::BlendingJob::Layer, influence.size());
 	int index = 0;
+	bool allDone = true;
 	for(auto& row : influence){
 		Sampler& sampler = const_cast<Sampler&>(row.second);	//TODO: avoid const_cast
-		row.first->Sample(t,start,speed, looping, sampler.locals,cache,skeleton);
+		bool done = row.first->Sample(t,start,speed, looping, sampler.locals,cache,skeleton);
+		if (!done) {
+			allDone = false;
+		}
 		
 		//make sure the buffers are the correct size
 		if (sampler.locals.size() != skeleton->num_soa_joints()){
@@ -203,4 +214,5 @@ void AnimationClip::Sample(float t, float start, float speed, bool looping, ozz:
 	if (!blend_job.Run()){
 		Debug::Fatal("Blend job failed");
 	}
+	return allDone;
 }

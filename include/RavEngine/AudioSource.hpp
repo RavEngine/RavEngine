@@ -158,7 +158,7 @@ struct InstantaneousAudioSource : public AudioPlayerData{
 };
 
 /**
- Used for Fire-and-forget audio playing. See method on the world for more info
+ Used for Fire-and-forget audio playing, where spatialization is not necessary. See method on the world for more info
  */
 struct InstantaneousAmbientAudioSource : public AudioPlayerData {
 	InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol = 1) : AudioPlayerData(a) {

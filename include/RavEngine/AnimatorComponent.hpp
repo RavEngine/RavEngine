@@ -46,7 +46,7 @@ struct AnimBlendTree : public IAnimGraphable{
 		 @param output the vector to write the output transforms to
 		 @param cache a sampling cache, modified when used
 		 */
-		void Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+		bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	};
 
 	static constexpr uint16_t kmax_nodes = 64;
@@ -92,7 +92,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	void Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 	inline void SetBlendPos(const normalized_vec2& newPos){
 		blend_pos = newPos;
@@ -132,10 +132,69 @@ public:
 		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
 		
 		template<typename T>
-		inline void SetTransition(decltype(ID) id, T interpolation, float duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
+		inline State& SetTransition(decltype(ID) id, T interpolation, float duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
 			auto tween = tweeny::from(0.0f).to(1.0f).during(duration * App::evalNormal).via(interpolation);
 			exitTransitions[id].transition = tween;
 			exitTransitions[id].type = mode;
+			return *this;
+		}
+
+		/**
+		* Construct a State
+		*/
+		State(decltype(ID) ID, decltype(clip) clip, decltype(isLooping) il = true, decltype(speed) speed = 1) : ID(ID), clip(clip), isLooping(il), speed(speed) {}
+
+		State() {}
+
+	private:
+		bool hasAutoTransition = false;
+		decltype(ID) autoTransitionID = 0;
+		std::function<void()> beginCallback, endCallback;
+	public:
+
+		/**
+		* When this animation completes, it will automatically transition to the state provided to this call.
+		* @note if this state is looping, it will never automatically leave.
+		* @param id the numeric ID to transition to. The blending curve and rules use SetTransition as normal.
+		*/
+		inline void SetAutoTransition(decltype(ID) id) {
+			hasAutoTransition = true;
+			autoTransitionID = id;
+		}
+
+		/**
+		* Clear any active auto transition.
+		*/
+		inline void ClearAutoTransition() {
+			hasAutoTransition = false;
+		}
+
+		inline void SetBeginCallback(const decltype(beginCallback)& bc) {
+			beginCallback = bc;
+		}
+
+		inline void SetEndCallback(const decltype(endCallback)& ec) {
+			endCallback = ec;
+		}
+
+		inline bool HasAutoTransition() const{
+			return hasAutoTransition;
+		}
+
+		inline decltype(autoTransitionID) GetAutoTransitionID() const {
+			return autoTransitionID;
+		}
+
+		inline void DoBegin() {
+			if (beginCallback) {
+				beginCallback();
+			}
+		}
+
+		inline void DoEnd() {
+			if (endCallback) {
+				endCallback();
+			}
 		}
 	};
 	
@@ -155,6 +214,9 @@ public:
 	 @param newState the state to switch to
 	 */
 	inline void Goto(id_t newState, bool skipTransition = false){
+		if (newState != currentState) {
+			states[currentState].DoEnd();
+		}
 		if (skipTransition || !(states.contains(newState) && states.at(currentState).exitTransitions.contains(newState))){	//just jump to the new state
 			currentState = newState;
 		}
@@ -181,6 +243,7 @@ public:
 			isBlending = true;
 			currentState = newState;
 		}
+		states[currentState].DoBegin();
 	}
 	
 	/**
@@ -221,6 +284,7 @@ public:
 	inline decltype(skeleton) GetSkeleton() const{
 		return skeleton;
 	}
+
 protected:
 	locked_node_hashmap<id_t,State> states;
 	
@@ -262,7 +326,21 @@ protected:
 	// stores sockets
 	phmap::flat_hash_map<std::string, Ref<Transform>> Sockets;
 
+	inline void EndState(State& state) {
+		state.DoEnd();
+		if (state.HasAutoTransition()) {
+			Goto(state.GetAutoTransitionID());
+		}
+	}
+
 public:
+	/**
+	* @return the ID of the state the animator is currently playing
+	*/
+	inline decltype(currentState) GetCurrentState() const{
+		return currentState;
+	}
+
 	/**
 	* Add a transform for a socket
 	* @param boneName the name of the bone to add the socket for

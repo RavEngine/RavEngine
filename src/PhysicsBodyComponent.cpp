@@ -67,7 +67,9 @@ Enable or disable gravity on this body
 */
 void RavEngine::PhysicsBodyComponent::SetGravityEnabled(bool state)
 {
-	rigidActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY,state);
+	Write([&] {
+		rigidActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !state);
+	});
 }
 
 bool RavEngine::PhysicsBodyComponent::GetGravityEnabled() const
