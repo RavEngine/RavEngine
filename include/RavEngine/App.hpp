@@ -57,7 +57,7 @@ namespace RavEngine {
 		/**
 		 @return the current time, measured in seconds since the application launched
 		 */
-		static double currentTime(){
+		static double GetCurrentTime(){
 			return time;
 		};
 		

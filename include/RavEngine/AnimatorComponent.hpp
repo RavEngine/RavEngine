@@ -120,6 +120,8 @@ public:
 		bool isLooping = true;
 		float speed = 1;
 		
+		double lastPlayTime = 0;
+
 		struct Transition{
 			enum class TimeMode{
 				Blended = 0,	//the time from this state carries over to the target state
@@ -226,18 +228,16 @@ public:
 			stateBlend.to = newState;
 			
 			//copy time or reset time on target?
-			/*auto& ns = states.at(newState);
-			switch(ns.exitTransitions[newState].type){
-				case State::Transition::TimeMode::Blended:
-					ns.time = states.at(currentState).time;
-					break;
-				case State::Transition::TimeMode::BeginNew:
-					ns.time = 0;
-					break;
-			}*/
+			auto& ns = states.at(currentState).exitTransitions.at(newState);
+			
+			switch (ns.type) {
+			case State::Transition::TimeMode::BeginNew:
+				states.at(newState).lastPlayTime = App::GetCurrentTime();
+				break;
+			}
 			
 			//seek tween back to beginning
-			stateBlend.currentTween = states.at(currentState).exitTransitions.at(newState).transition;
+			stateBlend.currentTween = ns.transition;
 			stateBlend.currentTween.seek(0);
 			
 			isBlending = true;
@@ -262,10 +262,10 @@ public:
 		// need to maintain offset from previous play time
 		if (!isPlaying){
 			if (resetPlayhead){
-				lastPlayTime = App::currentTime();
+				lastPlayTime = App::GetCurrentTime();
 			}
 			else{
-				lastPlayTime = App::currentTime() - lastPlayTime;
+				lastPlayTime = App::GetCurrentTime() - lastPlayTime;
 			}
 			isPlaying = true;
 		}
@@ -274,7 +274,7 @@ public:
 	inline void Pause(){
 		// record pause time so that resume begins in the correct place
 		if(isPlaying){
-			lastPlayTime = App::currentTime();
+			lastPlayTime = App::GetCurrentTime();
 		}
 		isPlaying = false;
 	}

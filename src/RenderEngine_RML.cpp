@@ -101,7 +101,7 @@ static inline Rml::TextureHandle createTexture(int width, int height, const Rml:
 }
 
 double RenderEngine::GetElapsedTime(){
-	return App::currentTime();
+	return App::GetCurrentTime();
 }
 
 void RenderEngine::SetMouseCursor(const Rml::String &cursor_name){
