@@ -8,7 +8,7 @@ BUFFER_RO(weights, vec2, 2);	// index, influence
 uniform vec4 NumObjects;		// x = num objects, y = num vertices, z = num bones, w = offset into transient buffer
 uniform vec4 ComputeOffsets;	// x = output offset, y = unused, z = unused, w = unused
 
-const int NUM_INFLUENCES = 4;
+#define NUM_INFLUENCES 4
 
 NUM_THREADS(8, 32, 1)	//x = object #, y = vertex #
 void main()
@@ -39,13 +39,17 @@ void main()
 			for(int j = 0; j < 4; j++){
 				posed_mtx[j] = pose[bone_begin + joint_idx * 4 + j];
 			}
-			posed_mtx = mtxFromRows(posed_mtx[0],posed_mtx[1],posed_mtx[2],posed_mtx[3]);
 			totalmtx += posed_mtx * weight;
 		}
 		
 		//destination to write the matrix
 		const int offset = (vertID * 4 + objID * numVerts * 4) + ComputeOffsets.x * 4;	//4x vec4s elements per object
-		
+	
+		// on DirectX, need to convert from column-major to row-major
+		#if BGFX_SHADER_LANGUAGE_HLSL
+		totalmtx = transpose(totalmtx);
+		#endif
+
 		//write matrix
 		for(int i = 0; i < 4; i++){
 			output[offset+i] = totalmtx[i];

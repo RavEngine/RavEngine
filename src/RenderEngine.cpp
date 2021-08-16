@@ -616,7 +616,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				bgfx::dispatch(Views::DeferredGeo, skinningShaderHandle, std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);	//objects x number of vertices to pose
 			}
 		}, [idx,&computeOutput, &values, this]() {
-			values[3] = 0;// static_cast<float>(computeOutput.startVertex);
+			values[3] = static_cast<float>(computeOutput.startVertex);
 			numRowsUniform.SetValues(&values, 1);
 			bgfx::setBuffer(11, computeOutput.handle, bgfx::Access::Read);
 		});

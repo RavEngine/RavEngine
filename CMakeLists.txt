@@ -448,6 +448,10 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 	if(fragment_src STREQUAL "")
 		set(IS_COMPUTE ON)
 	endif()
+
+	if (CMAKE_BUILD_TYPE MATCHES "Release")
+		set(dbg_flag "--debug" CACHE INTERNAL "")
+	endif()
 	
 	# compile shaders
 	if(NOT IS_COMPUTE)
@@ -458,8 +462,8 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
 			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "GNS_Deps" "${eng_dir}/shaders/ravengine_shader.glsl"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}"
-			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}"
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}" ${dbg_flag}
+			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}" ${dbg_flag}
 			COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
 			VERBATIM
 		)
@@ -471,7 +475,7 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 			OUTPUT "${CS_OUTPUT_NAME}"
 			DEPENDS "${vertex_src}" "GNS_Deps"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}"
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}" ${dbg_flag}
 			COMMENT "Compiling Compute Shader Descriptor ${shader_name} => ${CS_OUTPUT_NAME}"
 			VERBATIM
 		)
@@ -540,7 +544,7 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options")
 
 group_in("Libraries/bgfx" "bgfx;bimg;bx")
 group_in("Libraries/bgfx/tools" "shaderc;geometryc;geometryv;texturec;texturev;tools")
-group_in("Libraries/bgfx/3rdparty" "astc;astc-codec;edtaa3;etc1;etc2;fcpp;glcpp;glslang;glsl-optimizer;iqa;mesa;meshoptimizer;nvtt;pvrtc;spirv-cross;spirv-tools;squish")
+group_in("Libraries/bgfx/3rdparty" "astc;astc-codec;edtaa3;etc1;etc2;fcpp;glcpp;glslang;glsl-optimizer;iqa;mesa;meshoptimizer;nvtt;pvrtc;spirv-cross;spirv-tools;squish;tinyexr")
 
 # pack resources
 function(pack_resources)

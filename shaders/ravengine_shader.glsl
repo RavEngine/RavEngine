@@ -21,6 +21,14 @@ PBR make_mat(){
 #endif
 }
 
+mat4 rvs_dxify(mat4 m){
+	#if BGFX_SHADER_LANGUAGE_HLSL
+	return transpose(m);
+	#else
+	return m;
+	#endif
+}
+
 /**
  Write PBR values to the MRT textures
  @param mat the PBR mat structure to use for writing data
