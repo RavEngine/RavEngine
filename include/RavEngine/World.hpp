@@ -169,10 +169,6 @@ namespace RavEngine {
 			Solver.DeallocatePhysx();
 		}
 
-		virtual ~World() {
-			std::cout << "world destructor @ " << this << std::endl;
-		}
-
 		/**
 		* Called when this world is made the active world for the App
 		*/

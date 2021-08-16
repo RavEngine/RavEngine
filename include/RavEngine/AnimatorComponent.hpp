@@ -115,6 +115,7 @@ public:
 	
 	//a node in the state machine
 	struct State{
+		friend class AnimatorComponent;
 		unsigned short ID;
 		Ref<IAnimGraphable> clip;
 		bool isLooping = true;
@@ -151,7 +152,19 @@ public:
 	private:
 		bool hasAutoTransition = false;
 		decltype(ID) autoTransitionID = 0;
-		std::function<void()> beginCallback, endCallback;
+		std::function<void(decltype(State::ID))> beginCallback, endCallback;
+
+		inline void DoBegin(decltype(ID) prevState) {
+			if (beginCallback) {
+				beginCallback(prevState);
+			}
+		}
+
+		inline void DoEnd(decltype(ID) nextState) {
+			if (endCallback) {
+				endCallback(nextState);
+			}
+		}
 	public:
 
 		/**
@@ -171,10 +184,18 @@ public:
 			hasAutoTransition = false;
 		}
 
+		/**
+		* Set the function to call when this state begins.
+		* @param bc function taking one parameter representing the ID of the previous state. This may be invalid the first time it is called.
+		*/
 		inline void SetBeginCallback(const decltype(beginCallback)& bc) {
 			beginCallback = bc;
 		}
 
+		/**
+		* Set the function to call when this state ends (has finished playing, or is interrupted and moving to a new state).
+		* @param bc function taking one parameter representing the ID of the next state. If the state machine is not transitioning, the ID will be that of the current state. 
+		*/
 		inline void SetEndCallback(const decltype(endCallback)& ec) {
 			endCallback = ec;
 		}
@@ -185,18 +206,6 @@ public:
 
 		inline decltype(autoTransitionID) GetAutoTransitionID() const {
 			return autoTransitionID;
-		}
-
-		inline void DoBegin() {
-			if (beginCallback) {
-				beginCallback();
-			}
-		}
-
-		inline void DoEnd() {
-			if (endCallback) {
-				endCallback();
-			}
 		}
 	};
 	
@@ -216,8 +225,9 @@ public:
 	 @param newState the state to switch to
 	 */
 	inline void Goto(id_t newState, bool skipTransition = false){
+		auto prevState = currentState;
 		if (newState != currentState) {
-			states[currentState].DoEnd();
+			states[currentState].DoEnd(newState);
 		}
 		if (skipTransition || !(states.contains(newState) && states.at(currentState).exitTransitions.contains(newState))){	//just jump to the new state
 			currentState = newState;
@@ -243,7 +253,7 @@ public:
 			isBlending = true;
 			currentState = newState;
 		}
-		states[currentState].DoBegin();
+		states[currentState].DoBegin(prevState);
 	}
 	
 	/**
@@ -326,8 +336,8 @@ protected:
 	// stores sockets
 	phmap::flat_hash_map<std::string, Ref<Transform>> Sockets;
 
-	inline void EndState(State& state) {
-		state.DoEnd();
+	inline void EndState(State& state, decltype(State::ID) nextState) {
+		state.DoEnd(nextState);
 		if (state.HasAutoTransition()) {
 			Goto(state.GetAutoTransitionID());
 		}

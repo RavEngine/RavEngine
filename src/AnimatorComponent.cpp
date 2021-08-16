@@ -48,7 +48,7 @@ void AnimatorComponent::Tick(float timeScale){
 		if (stateBlend.currentTween.progress() >= 1.0){
 			isBlending = false;
 			if (toDone) {
-				EndState(toState);
+				EndState(toState,stateBlend.from);
 			}
 		}
 		
@@ -66,7 +66,7 @@ void AnimatorComponent::Tick(float timeScale){
         if (states.contains(currentState)){
             auto& state = states[currentState];
 			if (state.clip->Sample(currentTime, std::max(lastPlayTime, state.lastPlayTime), state.speed, state.isLooping, transforms, cache, skeleton->GetSkeleton().get())) {
-				EndState(state);
+				EndState(state,currentState);
 			}
         }
         else{
