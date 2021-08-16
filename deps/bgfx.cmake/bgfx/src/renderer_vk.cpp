@@ -2327,6 +2327,11 @@ VK_IMPORT_DEVICE
 		{
 			FrameBufferVK& frameBuffer = m_frameBuffers[_handle.idx];
 
+			if (_handle.idx == m_fbh.idx)
+			{
+				setFrameBuffer(BGFX_INVALID_HANDLE, false);
+			}
+
 			uint16_t denseIdx = frameBuffer.destroy();
 			if (UINT16_MAX != denseIdx)
 			{
@@ -2748,7 +2753,7 @@ VK_IMPORT_DEVICE
 			setShaderUniform(_flags, _regIndex, _val, _numRegs);
 		}
 
-		void setFrameBuffer(FrameBufferHandle _fbh)
+		void setFrameBuffer(FrameBufferHandle _fbh, bool _acquire = true)
 		{
 			BX_ASSERT(false
 				  ||  isValid(_fbh)
@@ -2815,15 +2820,19 @@ VK_IMPORT_DEVICE
 
 				newFrameBuffer.acquire(m_commandBuffer);
 			}
-			else
+
+			if (_acquire)
 			{
 				int64_t start = bx::getHPCounter();
 
 				newFrameBuffer.acquire(m_commandBuffer);
 
 				int64_t now = bx::getHPCounter();
-
-				m_presentElapsed += now - start;
+				
+				if (NULL == newFrameBuffer.m_nwh)
+				{
+					m_presentElapsed += now - start;
+				}
 			}
 
 			m_fbh = _fbh;
@@ -3965,6 +3974,7 @@ VK_IMPORT_DEVICE
 				if (_swapChain.m_colorFormat == TextureFormat::RGBA8)
 				{
 					bimg::imageSwizzleBgra8(src, pitch, width, height, src, pitch);
+					_func(src, width, height, pitch, _userData);
 				}
 				else if (_swapChain.m_colorFormat == TextureFormat::BGRA8)
 				{
@@ -4047,14 +4057,6 @@ VK_IMPORT_DEVICE
 					data = (const char*)m_uniforms[handle.idx];
 				}
 
-#define CASE_IMPLEMENT_UNIFORM(_uniform, _dxsuffix, _type)                   \
-				case UniformType::_uniform:                                  \
-				case UniformType::_uniform|kUniformFragmentBit:              \
-						{                                                    \
-							setShaderUniform(uint8_t(type), loc, data, num); \
-						}                                                    \
-						break;
-
 				switch ( (uint32_t)type)
 				{
 				case UniformType::Mat3:
@@ -4085,9 +4087,15 @@ VK_IMPORT_DEVICE
 				case UniformType::Sampler|kUniformFragmentBit:
 					// do nothing, but VkDescriptorSetImageInfo would be set before drawing
 					break;
-//				CASE_IMPLEMENT_UNIFORM(Sampler, I, int);
-				CASE_IMPLEMENT_UNIFORM(Vec4,    F, float);
-				CASE_IMPLEMENT_UNIFORM(Mat4,    F, float);
+
+				case UniformType::Vec4:
+				case UniformType::Vec4 | kUniformFragmentBit:
+				case UniformType::Mat4:
+				case UniformType::Mat4 | kUniformFragmentBit:
+					{
+						setShaderUniform(uint8_t(type), loc, data, num);
+					}
+					break;
 
 				case UniformType::End:
 					break;
@@ -4096,7 +4104,6 @@ VK_IMPORT_DEVICE
 					BX_TRACE("%4d: INVALID 0x%08x, t %d, l %d, n %d, c %d", _uniformBuffer.getPos(), opcode, type, loc, num, copy);
 					break;
 				}
-#undef CASE_IMPLEMENT_UNIFORM
 			}
 		}
 

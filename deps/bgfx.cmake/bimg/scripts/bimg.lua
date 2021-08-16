@@ -11,6 +11,7 @@ project "bimg"
 		path.join(BIMG_DIR, "include"),
 		path.join(BIMG_DIR, "3rdparty/astc-codec"),
 		path.join(BIMG_DIR, "3rdparty/astc-codec/include"),
+		path.join(BIMG_DIR, "3rdparty/tinyexr/deps/miniz"),
 	}
 
 	local ASTC_CODEC_DIR = path.join(BIMG_DIR, "3rdparty/astc-codec")
@@ -31,6 +32,8 @@ project "bimg"
 		path.join(ASTC_CODEC_DIR, "src/decoder/physical_astc_block.*"),
 		path.join(ASTC_CODEC_DIR, "src/decoder/quantization.*"),
 		path.join(ASTC_CODEC_DIR, "src/decoder/weight_infill.*"),
+
+		path.join(BIMG_DIR, "3rdparty/tinyexr/deps/miniz/miniz.*"),
 	}
 
 	configuration { "linux-*" }

@@ -226,8 +226,8 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 		bgfx::RendererType::Enum supportedRenderers[maxRenderers];
 		auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
 
-		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Vulkan)) {
-			settings.type = bgfx::RendererType::Vulkan;
+		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Direct3D12)) {
+			settings.type = bgfx::RendererType::Direct3D12;
 		}
 		else {
 			Debug::Fatal("Vulkan API not found");
@@ -616,7 +616,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				bgfx::dispatch(Views::DeferredGeo, skinningShaderHandle, std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);	//objects x number of vertices to pose
 			}
 		}, [idx,&computeOutput, &values, this]() {
-			values[3] = static_cast<float>(computeOutput.startVertex);
+			values[3] = 0;// static_cast<float>(computeOutput.startVertex);
 			numRowsUniform.SetValues(&values, 1);
 			bgfx::setBuffer(11, computeOutput.handle, bgfx::Access::Read);
 		});
