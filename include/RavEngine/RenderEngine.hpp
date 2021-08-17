@@ -15,6 +15,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <fmt/format.h>
 #include "Uniform.hpp"
+#include "TransientComputeBuffer.hpp"
 
 struct SDL_Window;
 
@@ -231,6 +232,9 @@ namespace RavEngine {
 		bgfx::FrameBufferHandle lightingBuffer;	//for lighting, shares depth with main
 		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
 		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize];
+
+		TransientComputeBufferReadOnly skinningComputeBuffer;
+		TransientComputeBuffer poseStorageBuffer;
 					
         static bgfx::VertexBufferHandle screenSpaceQuadVert;
         static bgfx::IndexBufferHandle screenSpaceQuadInd;

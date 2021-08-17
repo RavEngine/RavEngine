@@ -227,7 +227,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 		auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
 
 		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Direct3D12)) {
-			settings.type = bgfx::RendererType::Direct3D12;
+			settings.type = bgfx::RendererType::Vulkan;
 		}
 		else {
 			Debug::Fatal("Vulkan API not found");
@@ -462,12 +462,18 @@ RenderEngine::RenderEngine() {
 	bgfx::ViewId vieworder[]{Views::DeferredGeo, Views::Lighting, Views::FinalBlit};
 	assert(Views::Count == BX_COUNTOF(vieworder));	//if this assertion fails, a view was added but its order was not defined in the list above
 	bgfx::setViewOrder(0, Views::Count, vieworder);
+
+	skinningComputeBuffer = decltype(skinningComputeBuffer)(1024 * 1024);
+
+	poseStorageBuffer = decltype(poseStorageBuffer)(1024 * 1024);
 }
 
 RavEngine::RenderEngine::~RenderEngine()
 {
 	bgfx::destroy(gBuffer);	//automatically destroys attached textures
 	bgfx::destroy(lightingBuffer);	
+	skinningComputeBuffer.DestroyBuffer();
+	poseStorageBuffer.DestroyBuffer();
 }
 
 void RenderEngine::DrawNext(Ref<World> world) {
@@ -557,11 +563,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		});
 	}
 	
-	uint16_t idx = 0;
 	for (const auto& row : fd->skinnedOpaques) {
-		bgfx::TransientVertexBuffer computeOutput;
+		size_t index;
 		float values[4];
-		execdraw(row, [&computeOutput, &values, this](const auto& row) {
+		execdraw(row, [&index, &values, this](const auto& row) {
 			// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
 			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);
@@ -572,9 +577,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			// output buffer A: posed output transformations for vertices
 			auto numverts = mesh->GetNumVerts();
 			auto numobjects = row.second.items.size();
-			bgfx::allocTransientVertexBuffer(&computeOutput, numverts * numobjects, skinningOutputLayout);
 
-			bgfx::setBuffer(0, computeOutput.handle, bgfx::Access::Write);
+			index = skinningComputeBuffer.AddEmptySpace(numverts * numobjects, skinningOutputLayout);
+			bgfx::setBuffer(0, skinningComputeBuffer.GetHandle(), bgfx::Access::Write);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
 		
 			//pose SOA values
@@ -598,29 +603,27 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 						index++;
 					}
 				}
-				bgfx::TransientVertexBuffer poseInput;
-				bgfx::allocTransientVertexBuffer(&poseInput, totalsize, skinningInputLayout);
-				std::memcpy(poseInput.data,pose_float, totalsize * sizeof(pose_float[0]));
+
+				auto poseStart = poseStorageBuffer.AddData((uint8_t*)pose_float,totalsize, skinningInputLayout);
 				
 				// set skinning uniform
 				values[0] = static_cast<float>(numobjects);
 				values[1] = static_cast<float>(numverts);
 				values[2] = static_cast<float>(skeleton->getBindposes().size());
-				values[3] = static_cast<float>(poseInput.startVertex);
+				values[3] = static_cast<float>(poseStart);
 				numRowsUniform.SetValues(&values, 1);
 				
-				float offsets[4] = {static_cast<float>(computeOutput.startVertex),0,0,0};
+				float offsets[4] = {static_cast<float>(index),0,0,0};
 				computeOffsetsUniform.SetValues(&offsets, 1);
 				
-				bgfx::setBuffer(1, poseInput.handle, bgfx::Access::Read);
+				bgfx::setBuffer(1, poseStorageBuffer.GetHandle(), bgfx::Access::Read);
 				bgfx::dispatch(Views::DeferredGeo, skinningShaderHandle, std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);	//objects x number of vertices to pose
 			}
-		}, [idx,&computeOutput, &values, this]() {
-			values[3] = static_cast<float>(computeOutput.startVertex);
+		}, [&index, &values, this]() {
+			values[3] = static_cast<float>(index);
 			numRowsUniform.SetValues(&values, 1);
-			bgfx::setBuffer(11, computeOutput.handle, bgfx::Access::Read);
+			bgfx::setBuffer(11, skinningComputeBuffer.GetHandle(), bgfx::Access::Read);
 		});
-		idx++;
 	}
 
 	// Lighting pass
@@ -675,6 +678,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	Im3d::GetContext().draw();
 #endif
 	bgfx::frame();
+	skinningComputeBuffer.Reset();
+	poseStorageBuffer.Reset();
 
 #ifdef _DEBUG
 	Im3d::NewFrame();
