@@ -564,9 +564,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
 	for (const auto& row : fd->skinnedOpaques) {
-		size_t index;
+		size_t computeOffsetIndex;
 		float values[4];
-		execdraw(row, [&index, &values, this](const auto& row) {
+		execdraw(row, [&computeOffsetIndex, &values, this](const auto& row) {
 			// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
 			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);
@@ -578,7 +578,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			auto numverts = mesh->GetNumVerts();
 			auto numobjects = row.second.items.size();
 
-			index = skinningComputeBuffer.AddEmptySpace(numverts * numobjects, skinningOutputLayout);
+			computeOffsetIndex = skinningComputeBuffer.AddEmptySpace(numverts * numobjects, skinningOutputLayout);
 			bgfx::setBuffer(0, skinningComputeBuffer.GetHandle(), bgfx::Access::Write);
 			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
 		
@@ -613,14 +613,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				values[3] = static_cast<float>(poseStart);
 				numRowsUniform.SetValues(&values, 1);
 				
-				float offsets[4] = {static_cast<float>(index),0,0,0};
+				float offsets[4] = {static_cast<float>(computeOffsetIndex),0,0,0};
 				computeOffsetsUniform.SetValues(&offsets, 1);
 				
 				bgfx::setBuffer(1, poseStorageBuffer.GetHandle(), bgfx::Access::Read);
 				bgfx::dispatch(Views::DeferredGeo, skinningShaderHandle, std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);	//objects x number of vertices to pose
 			}
-		}, [&index, &values, this]() {
-			values[3] = static_cast<float>(index);
+		}, [&computeOffsetIndex, &values, this]() {
+			values[3] = static_cast<float>(computeOffsetIndex);
 			numRowsUniform.SetValues(&values, 1);
 			bgfx::setBuffer(11, skinningComputeBuffer.GetHandle(), bgfx::Access::Read);
 		});
