@@ -22,7 +22,7 @@ void main()
 		const int vertID = gl_GlobalInvocationID.y;
 		const int objID = gl_GlobalInvocationID.x;
 		
-		const int weightsid = vertID * 4;		//4x vec2 elements elements per vertex, is always the same per vertex
+		const int weightsid = vertID * 2;		//2x vec4 elements elements per vertex, is always the same per vertex
 		
 		const int bone_begin = numBones * objID * 4 + NumObjects.w * 4; //offset to the bone for the correct object
 				
