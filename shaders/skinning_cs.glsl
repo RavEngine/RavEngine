@@ -3,7 +3,7 @@
 
 BUFFER_WR(output, vec4, 0);	// 4x4 matrices
 BUFFER_RO(pose, vec4, 1);	// 4x4 matrices
-BUFFER_RO(weights, vec2, 2);	// index, influence
+BUFFER_RO(weights, vec4, 2);	// index, influence, index2, influence2 (this is done becaue DirectX backend can only index on float4s)
 
 uniform vec4 NumObjects;		// x = num objects, y = num vertices, z = num bones, w = offset into transient buffer
 uniform vec4 ComputeOffsets;	// x = output offset, y = unused, z = unused, w = unused
@@ -29,17 +29,25 @@ void main()
 		//will become the pose matrix
 		mat4 totalmtx = mtxFromRows(vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0));
 		
-		for(int i = 0; i < NUM_INFLUENCES; i++){
-			const vec2 weightdata = weights[weightsid + i];
-			const int joint_idx = weightdata.x;
-			const float weight = weightdata.y;
-			
-			//get the pose and bindpose of the target joint
-			mat4 posed_mtx;
-			for(int j = 0; j < 4; j++){
-				posed_mtx[j] = pose[bone_begin + joint_idx * 4 + j];
-			}
-			totalmtx += posed_mtx * weight;
+		for(int i = 0; i < NUM_INFLUENCES / 2; i++){
+			const int idx = weightsid + i;
+			const vec4 weightdataBuffer = weights[idx];
+
+			vec2 weightdata[2];
+			weightdata[0] = weightdataBuffer.xy;
+			weightdata[1] = weightdataBuffer.zw;
+
+			for (int x = 0; x < 2; x++) {
+				int joint_idx = weightdata[x].x;
+				float weight = weightdata[x].y;
+
+				//get the pose and bindpose of the target joint
+				mat4 posed_mtx;
+				for (int j = 0; j < 4; j++) {
+					posed_mtx[j] = pose[bone_begin + joint_idx * 4 + j];
+				}
+				totalmtx += weight * posed_mtx;
+			}	
 		}
 		
 		//destination to write the matrix
@@ -47,7 +55,7 @@ void main()
 	
 		// on DirectX, need to convert from column-major to row-major
 		#if BGFX_SHADER_LANGUAGE_HLSL
-		totalmtx = transpose(totalmtx);
+		//totalmtx = transpose(totalmtx);
 		#endif
 
 		//write matrix

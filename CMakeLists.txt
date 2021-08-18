@@ -449,7 +449,7 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 		set(IS_COMPUTE ON)
 	endif()
 
-	if (CMAKE_BUILD_TYPE MATCHES "Release")
+	if (NOT CMAKE_BUILD_TYPE MATCHES "Release")
 		set(dbg_flag "--debug" CACHE INTERNAL "")
 	endif()
 	

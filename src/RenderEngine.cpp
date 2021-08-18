@@ -227,7 +227,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 		auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
 
 		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Direct3D12)) {
-			settings.type = bgfx::RendererType::Vulkan;
+			settings.type = bgfx::RendererType::Direct3D12;
 		}
 		else {
 			Debug::Fatal("Vulkan API not found");

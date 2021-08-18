@@ -12,7 +12,7 @@ namespace RavEngine {
 			bgfx::VertexLayout vl;
 			vl.begin().add(bgfx::Attrib::Position, 1, bgfx::AttribType::Float).end();
 
-			handle = bgfx::createDynamicVertexBuffer(size, vl, flags);
+			handle = bgfx::createDynamicVertexBuffer(size, vl, flags | BGFX_BUFFER_ALLOW_RESIZE);
 		}
 
 
