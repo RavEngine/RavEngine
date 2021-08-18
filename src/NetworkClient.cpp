@@ -231,7 +231,7 @@ void NetworkClient::NetDestroy(const std::string_view& command){
         
     //lookup the entity and destroy it
 	if (NetworkIdentities.if_contains(uuid, [&](const Ref<NetworkIdentity>& id) {
-		auto owner = id->getOwner().lock();
+		auto owner = id->GetOwner().lock();
 		if (owner) {
 			owner->Destroy();
 		}
@@ -290,7 +290,7 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 	//decode the RPC header to to know where it is going
 	uuids::uuid id(cmd.data() + 1);
 	bool success = NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
-		auto entity = netid->getOwner().lock();
+		auto entity = netid->GetOwner().lock();
 		entity->GetComponent<RPCComponent>().value()->CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
 	});
 	if (!success) {

@@ -10,7 +10,7 @@ using namespace std;
 void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
 	// Running on the server?
     if (IsServer()){
-        auto entity = comp->getOwner().lock();
+        auto entity = comp->GetOwner().lock();
         if (entity){
 			server->SpawnEntity(entity);
         }
@@ -26,7 +26,7 @@ void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
 void NetworkManager::Destroy(Ref<World> source, Ref<NetworkIdentity> comp) {
 	// ownership is server and running in the server? need to RPC clients
 	if (IsServer()){	//even if the server does not own this object, if it is destroyed here, it must be replicated
-		auto entity = comp->getOwner().lock();
+		auto entity = comp->GetOwner().lock();
 		if (entity){
 			server->DestroyEntity(entity);
 		}

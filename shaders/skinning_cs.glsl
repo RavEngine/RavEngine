@@ -53,11 +53,6 @@ void main()
 		//destination to write the matrix
 		const int offset = (vertID * 4 + objID * numVerts * 4) + ComputeOffsets.x * 4;	//4x vec4s elements per object
 	
-		// on DirectX, need to convert from column-major to row-major
-		#if BGFX_SHADER_LANGUAGE_HLSL
-		//totalmtx = transpose(totalmtx);
-		#endif
-
 		//write matrix
 		for(int i = 0; i < 4; i++){
 			output[offset+i] = totalmtx[i];

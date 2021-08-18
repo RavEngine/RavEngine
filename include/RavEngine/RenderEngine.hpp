@@ -88,7 +88,7 @@ namespace RavEngine {
         /**
          @return The name of the current rendering API in use
          */
-        static const std::string_view currentBackend();
+        static const std::string_view GetCurrentBackendName();
 
 		static SDL_Window* const GetWindow(){
 			return window;

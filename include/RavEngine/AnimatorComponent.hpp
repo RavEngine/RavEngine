@@ -74,7 +74,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @returns node reference
 	 @throws if no node exists at id
 	 */
-	Node& getNode(const uint8_t id){
+	Node& GetNode(const uint8_t id){
 		return states.at(id).node;
 	}
 	
@@ -381,7 +381,7 @@ public:
 	 */
 	inline const decltype(glm_pose)& GetPose(){
 		decimalType matrix[16];
-		auto worldMat = getOwner().lock()->transform()->CalculateWorldMatrix();
+		auto worldMat = GetOwner().lock()->transform()->CalculateWorldMatrix();
 		for(int i = 0; i < models.size(); i++){
 			auto& t = models[i];
 			for(int r = 0; r < 4; r++){

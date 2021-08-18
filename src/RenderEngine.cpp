@@ -580,7 +580,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 			computeOffsetIndex = skinningComputeBuffer.AddEmptySpace(numverts * numobjects, skinningOutputLayout);
 			bgfx::setBuffer(0, skinningComputeBuffer.GetHandle(), bgfx::Access::Write);
-			bgfx::setBuffer(2, mesh->getWeightsHandle(), bgfx::Access::Read);
+			bgfx::setBuffer(2, mesh->GetWeightsHandle(), bgfx::Access::Read);
 		
 			//pose SOA values
 			if(row.second.skinningdata.size() > 0){
@@ -609,7 +609,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				// set skinning uniform
 				values[0] = static_cast<float>(numobjects);
 				values[1] = static_cast<float>(numverts);
-				values[2] = static_cast<float>(skeleton->getBindposes().size());
+				values[2] = static_cast<float>(skeleton->GetBindposes().size());
 				values[3] = static_cast<float>(poseStart);
 				numRowsUniform.SetValues(&values, 1);
 				
@@ -708,7 +708,7 @@ void RenderEngine::SyncVideoSettings(){
 /**
 @return the name of the current rendering API
 */
-const string_view RenderEngine::currentBackend(){
+const string_view RenderEngine::GetCurrentBackendName(){
 	
 	switch (bgfx::getRendererType()) {
 		case bgfx::RendererType::Noop:			return "Disabled";

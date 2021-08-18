@@ -117,21 +117,21 @@ namespace RavEngine {
 		/**
 		* Get if this body wants contact data
 		*/
-		inline bool getWantsContactData() const {
+		inline bool GetWantsContactData() const {
 			return wantsContactData;
 		}
 		/**
 		wantsContactData controls if the simulation calculates and extracts contact point information on collisions.
 		Set to true to get contact point data. If set to false, OnCollider functions will have a dangling contactPoints pointer and numContactPoints will be 0.
 		*/
-		inline void setWantsContactData(bool state) {
+		inline void SetWantsContactData(bool state) {
 			wantsContactData = state;
 		}
 	protected:
 		bool wantsContactData = false;
 
 		template<typename T>
-		inline void Write(const T& func){
+		inline void LockWrite(const T& func){
 			rigidActor->getScene()->lockWrite();
 			func();
 			rigidActor->getScene()->unlockWrite();

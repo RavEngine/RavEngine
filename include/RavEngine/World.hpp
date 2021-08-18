@@ -111,7 +111,7 @@ namespace RavEngine {
 		std::string_view worldID{ worldIDbuf,id_size };
 		std::atomic<bool> newFrame = false;
 
-		inline float getCurrentFPSScale() const {
+		inline float GetCurrentFPSScale() const {
 			return currentFPSScale;
 		}
 		

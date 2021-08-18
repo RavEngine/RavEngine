@@ -31,14 +31,14 @@ public:
 	/**
 	 @return bindposes for use in a shader
 	 */
-	inline const decltype(bindpose) getBindposeHandle() const{
+	inline const decltype(bindpose) GetBindposeHandle() const{
 		return bindpose;
 	}
 	
 	/**
 	 @return bindposes for use in software
 	 */
-	inline const decltype(bindposes) getBindposes() const{
+	inline const decltype(bindposes) GetBindposes() const{
 		return bindposes;
 	}
 	
@@ -46,7 +46,7 @@ public:
 	 @return the bone hierarchy information. This is a linear buffer where each bone is represented by one entry in the buffer.
 	 The value at each index is the index of the bone's parent. If the value is -1, then the bone has no parent
 	 */
-	inline const decltype(boneHierarchy) getBoneHierarchy() const{
+	inline const decltype(boneHierarchy) GetBoneHierarchy() const{
 		return boneHierarchy;
 	}
 };

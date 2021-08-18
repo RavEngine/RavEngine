@@ -103,15 +103,15 @@ namespace TweenCurves{
 		 Perform one step of this animation. Note that adding more keys while an animation is playing will affect its playback
 		 @param scale the timestep. Generally you want to simply pass the value from tick.
 		 */
-		inline void step(decimalType scale){
+		inline void Step(decimalType scale){
 			anim.step((float)scale / anim.duration());
 		}
 		
-		inline void seek(float pos){
+		inline void Seek(float pos){
 			anim.seek(pos);
 		}
 		
-		inline float progress() const{
+		inline float GetProgress() const{
 			return anim.progress();
 		}
 	};

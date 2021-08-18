@@ -93,7 +93,7 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
         stackarray(contactPoints, ContactPairPoint, contactpair.contactCount);
         {
             // do we need contact data?
-            if ((*actor1)->getWantsContactData() || (*actor2)->getWantsContactData()) {
+            if ((*actor1)->GetWantsContactData() || (*actor2)->GetWantsContactData()) {
                 stackarray(points, PxContactPairPoint, contactpair.contactCount);
                 auto count = contactpair.extractContacts(points, contactpair.contactCount);
                 for (int i = 0; i < contactpair.contactCount; i++) {

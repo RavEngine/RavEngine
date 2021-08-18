@@ -37,7 +37,7 @@ public:
 	~AudioAsset();
 	
 	inline size_t GetFrameSize() const {return frameSize;}
-	inline double getLength() const {return lengthSeconds;}
+	inline double GetLength() const {return lengthSeconds;}
 	inline decltype(nchannels) GetNChanels() const {
 		return nchannels;
 	}

@@ -42,7 +42,7 @@ public:
         return reinterpret_cast<std::size_t>(m_ptr);
     }
     
-    inline std::weak_ptr<T> getWeak() const { return m_wptr;}
+    inline std::weak_ptr<T> get_weak() const { return m_wptr;}
     inline std::shared_ptr<T> lock() const { return m_wptr.lock();}
 };
 

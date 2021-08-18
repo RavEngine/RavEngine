@@ -7,7 +7,7 @@ using namespace RavEngine;
 
 bool RavEngine::ScriptComponent::Destroy()
 {
-	auto owner = getOwner().lock();
+	auto owner = GetOwner().lock();
 	if (owner) {
 		owner->Destroy();
 		return true;
@@ -17,13 +17,13 @@ bool RavEngine::ScriptComponent::Destroy()
 
 bool RavEngine::ScriptComponent::IsInWorld()
 {
-	auto owner = getOwner().lock();
+	auto owner = GetOwner().lock();
 	return owner  && owner->IsInWorld();
 }
 
-Ref<Transform> RavEngine::ScriptComponent::transform()
+Ref<Transform> RavEngine::ScriptComponent::Transform()
 {
-	auto owner = getOwner().lock();
+	auto owner = GetOwner().lock();
 	if (!owner) {
 		throw std::runtime_error("Cannot get transform from Script with no attached Entity");
 	}
@@ -32,7 +32,7 @@ Ref<Transform> RavEngine::ScriptComponent::transform()
 
 Ref<RavEngine::World> RavEngine::ScriptComponent::GetWorld()
 {
-	auto owner = Ref<Entity>(getOwner());
+	auto owner = Ref<Entity>(GetOwner());
 	if (!owner) {
 		return nullptr;
 	}

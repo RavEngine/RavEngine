@@ -12,7 +12,7 @@ using namespace RavEngine;
 void BoxCollider::AddHook(const WeakRef<Entity>& e) {
     auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
 	//add the physics body to the Entity's physics actor
-	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxBoxGeometry(extent.x, extent.y, extent.z), *material->getPhysXmat());
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxBoxGeometry(extent.x, extent.y, extent.z), *material->GetPhysXmat());
 
 	//set relative transformation
 	SetRelativeTransform(position, rotation);
@@ -21,7 +21,7 @@ void BoxCollider::AddHook(const WeakRef<Entity>& e) {
 void SphereCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
 	
-	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxSphereGeometry(radius), *material->getPhysXmat());
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxSphereGeometry(radius), *material->GetPhysXmat());
 	
 	SetRelativeTransform(position, rotation);
 }
@@ -29,7 +29,7 @@ void SphereCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 void CapsuleCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
 
-	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxCapsuleGeometry(radius,halfHeight), *material->getPhysXmat());
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxCapsuleGeometry(radius,halfHeight), *material->GetPhysXmat());
 
 	SetRelativeTransform(position, rotation);
 }
@@ -81,7 +81,7 @@ void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quater
 }
 
 matrix4 PhysicsCollider::CalculateWorldMatrix() const{
-	return Ref<Entity>(getOwner())->transform()->CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
+	return Ref<Entity>(GetOwner())->transform()->CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
 }
 
 void BoxCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) const{
@@ -138,7 +138,7 @@ void MeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	
 	auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
 	
-	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxTriangleMeshGeometry(triMesh), *material->getPhysXmat());
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxTriangleMeshGeometry(triMesh), *material->GetPhysXmat());
 	triMesh->release();
 }
 
@@ -168,6 +168,6 @@ void ConvexMeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	physx::PxConvexMesh* convMesh = PhysicsSolver::cooking->createConvexMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
 	
 	auto body = e.lock()->GetComponent<PhysicsBodyComponent>().value();
-	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxConvexMeshGeometry(convMesh), *material->getPhysXmat());
+	collider = PxRigidActorExt::createExclusiveShape(*(body->rigidActor), PxConvexMeshGeometry(convMesh), *material->GetPhysXmat());
 	convMesh->release();
 }

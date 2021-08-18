@@ -19,7 +19,7 @@ void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
 {
 	for (const auto& ptr : OwnershipTracker[connection]) {
 		if (auto owning = ptr.lock()) {
-			auto entity = owning->getOwner().lock();
+			auto entity = owning->GetOwner().lock();
 			entity->GetWorld().lock()->Destroy(entity);
 		}
 	}
@@ -283,7 +283,7 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
 		// call SpawnEntity on each owner
 		for (const auto& identity : identities) {
-			auto entity = identity->getOwner().lock();
+			auto entity = identity->GetOwner().lock();
 			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
 			Debug::Assert((bool)casted, "Networked entities must descend from NetworkReplicable!");
 			auto id = casted->NetTypeID();
@@ -304,7 +304,7 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 
 	uuids::uuid id(cmd.data() + 1);
 	NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
-		auto entity = netid->getOwner().lock();
+		auto entity = netid->GetOwner().lock();
 		bool isOwner = origin == netid->Owner;
 		entity->GetComponent<RPCComponent>().value()->CacheServerRPC(cmd, isOwner, origin);
 	});

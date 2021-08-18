@@ -99,7 +99,7 @@ void InputManager::CleanupBindings(){
 	
 	//clean up invalid Any Actions
 	AnyEventBindings.remove_if([](const WeakPtrKey<IInputListener>& w) -> bool{
-		return w.getWeak().expired();
+		return w.get_weak().expired();
 	});
 }
 

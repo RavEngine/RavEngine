@@ -13,54 +13,54 @@ RavEngine::PhysicsMaterial::~PhysicsMaterial()
 	mat->release();
 }
 
-void RavEngine::PhysicsMaterial::setStaticFriction(double sf)
+void RavEngine::PhysicsMaterial::SetStaticFriction(double sf)
 {
 	mat->setStaticFriction(sf);
 }
 
-void RavEngine::PhysicsMaterial::setDynamicFriction(double df)
+void RavEngine::PhysicsMaterial::SetDynamicFriction(double df)
 {
 	mat->setDynamicFriction(df);
 }
 
-void RavEngine::PhysicsMaterial::setRestitution(double r)
+void RavEngine::PhysicsMaterial::SetRestitution(double r)
 {
 	mat->setRestitution(r);
 }
 
-void RavEngine::PhysicsMaterial::setFrictionCombineMode(PhysicsCombineMode mode)
+void RavEngine::PhysicsMaterial::SetFrictionCombineMode(PhysicsCombineMode mode)
 {
 	
 	mat->setFrictionCombineMode(static_cast<physx::PxCombineMode::Enum>(static_cast<std::underlying_type<PhysicsCombineMode>::type>(mode)));
 }
 
-void RavEngine::PhysicsMaterial::setRestitutionCombineMode(PhysicsCombineMode mode)
+void RavEngine::PhysicsMaterial::SetRestitutionCombineMode(PhysicsCombineMode mode)
 {
 	mat->setRestitutionCombineMode(static_cast<physx::PxCombineMode::Enum>(static_cast<std::underlying_type<PhysicsCombineMode>::type>(mode)));
 }
 
 
-double RavEngine::PhysicsMaterial::getStaticFriction() const
+double RavEngine::PhysicsMaterial::GetStaticFriction() const
 {
 	return mat->getStaticFriction();
 }
 
-double RavEngine::PhysicsMaterial::getDynamicFriction() const
+double RavEngine::PhysicsMaterial::GetDynamicFriction() const
 {
 	return mat->getDynamicFriction();
 }
 
-double RavEngine::PhysicsMaterial::getRestitution() const
+double RavEngine::PhysicsMaterial::GetRestitution() const
 {
 	return mat->getRestitution();
 }
 
-RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::getFrictionCombineMode() const
+RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::GetFrictionCombineMode() const
 {
 	return PhysicsCombineMode(mat->getFrictionCombineMode());
 }
 
-RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::getRestitutionCombineMode() const
+RavEngine::PhysicsCombineMode RavEngine::PhysicsMaterial::GetRestitutionCombineMode() const
 {
 	return PhysicsCombineMode(mat->getRestitutionCombineMode());
 }

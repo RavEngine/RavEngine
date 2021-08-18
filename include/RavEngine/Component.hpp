@@ -30,7 +30,7 @@ namespace RavEngine {
 		 Get the object of this component.
 		 @return a non-owning pointer to this component's owner. Do not store!
 		 */
-		inline WeakRef<Entity> getOwner() const {
+		inline WeakRef<Entity> GetOwner() const {
 			return owner;	//creates a non-owning pointer
 		}
 

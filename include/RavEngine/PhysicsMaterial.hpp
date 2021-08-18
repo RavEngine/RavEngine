@@ -24,19 +24,19 @@ namespace RavEngine {
 		PhysicsMaterial(double sf=1, double df=1, double r	=1);
 		virtual ~PhysicsMaterial();
 
-		void setStaticFriction(double);
-		void setDynamicFriction(double);
-		void setRestitution(double);
-		void setFrictionCombineMode(PhysicsCombineMode);
-		void setRestitutionCombineMode(PhysicsCombineMode);
+		void SetStaticFriction(double);
+		void SetDynamicFriction(double);
+		void SetRestitution(double);
+		void SetFrictionCombineMode(PhysicsCombineMode);
+		void SetRestitutionCombineMode(PhysicsCombineMode);
 
-		double getStaticFriction() const;
-		double getDynamicFriction() const ;
-		double getRestitution() const;
-		PhysicsCombineMode getFrictionCombineMode() const;
-		PhysicsCombineMode getRestitutionCombineMode() const;
+		double GetStaticFriction() const;
+		double GetDynamicFriction() const;
+		double GetRestitution() const;
+		PhysicsCombineMode GetFrictionCombineMode() const;
+		PhysicsCombineMode GetRestitutionCombineMode() const;
 
-		inline physx::PxMaterial* const getPhysXmat() const {
+		inline physx::PxMaterial* const GetPhysXmat() const {
 			return mat;
 		}
 

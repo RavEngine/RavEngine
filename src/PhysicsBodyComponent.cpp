@@ -67,7 +67,7 @@ Enable or disable gravity on this body
 */
 void RavEngine::PhysicsBodyComponent::SetGravityEnabled(bool state)
 {
-	Write([&] {
+	LockWrite([&] {
 		rigidActor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !state);
 	});
 }
@@ -136,7 +136,7 @@ Set the linear velocity of the physics body
 */
 void RavEngine::RigidBodyDynamicComponent::SetLinearVelocity(const vector3& newvel, bool autowake)
 {
-	Write([&]{
+	LockWrite([&]{
 		static_cast<PxRigidBody*>(rigidActor)->setLinearVelocity(PxVec3(newvel.x, newvel.y, newvel.z),autowake);
 	});
 }
@@ -148,7 +148,7 @@ Set the angular velocity of the physics body
 */
 void RavEngine::RigidBodyDynamicComponent::SetAngularVelocity(const vector3& newvel, bool autowake)
 {
-	Write([&]{
+	LockWrite([&]{
 		static_cast<PxRigidBody*>(rigidActor)->setAngularVelocity(PxVec3(newvel.x, newvel.y, newvel.z), autowake);
 	});
 }
@@ -179,7 +179,7 @@ bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
 void PhysicsBodyComponent::OnColliderEnter(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
 		if (strong){
 			strong->OnColliderEnter(other, contactPoints,numContactPoints);
 		}
@@ -189,7 +189,7 @@ void PhysicsBodyComponent::OnColliderEnter(Ref<PhysicsBodyComponent> other, cons
 void PhysicsBodyComponent::OnColliderPersist(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
 		if (strong){
 			strong->OnColliderPersist(other, contactPoints, numContactPoints);
 		}
@@ -199,7 +199,7 @@ void PhysicsBodyComponent::OnColliderPersist(Ref<PhysicsBodyComponent> other, co
 void PhysicsBodyComponent::OnColliderExit(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
 		if (strong){
 			strong->OnColliderExit(other, contactPoints, numContactPoints);
 		}
@@ -209,7 +209,7 @@ void PhysicsBodyComponent::OnColliderExit(Ref<PhysicsBodyComponent> other, const
 
 void PhysicsBodyComponent::OnTriggerEnter(Ref<PhysicsBodyComponent> other){
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
 		if (strong){
 			strong->OnTriggerEnter(other);
 		}
@@ -218,7 +218,7 @@ void PhysicsBodyComponent::OnTriggerEnter(Ref<PhysicsBodyComponent> other){
 
 void PhysicsBodyComponent::OnTriggerExit(Ref<PhysicsBodyComponent> other){
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.getWeak().lock();
+		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
 		if (strong){
 			strong->OnTriggerExit(other);
 		}
@@ -238,25 +238,25 @@ decimalType RigidBodyDynamicComponent::GetMassInverse() const{
 }
 
 void RigidBodyDynamicComponent::AddForce(const vector3 &force){
-	Write([&]{
+	LockWrite([&]{
 		static_cast<PxRigidDynamic*>(rigidActor)->addForce(PxVec3(force.x,force.y,force.z));
 	});
 }
 
 void RigidBodyDynamicComponent::AddTorque(const vector3 &torque){
-	Write([&]{
+	LockWrite([&]{
 		static_cast<PxRigidDynamic*>(rigidActor)->addTorque(PxVec3(torque.x,torque.y,torque.z));
 	});
 }
 
 void RigidBodyDynamicComponent::ClearAllForces(){
-	Write([&]{
+	LockWrite([&]{
 		static_cast<PxRigidDynamic*>(rigidActor)->clearForce();
 	});
 }
 
 void RigidBodyDynamicComponent::ClearAllTorques(){
-	Write([&]{
+	LockWrite([&]{
 		static_cast<PxRigidDynamic*>(rigidActor)->clearTorque();
 	});
 }

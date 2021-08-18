@@ -69,8 +69,8 @@ namespace RavEngine {
 		inline void serializeType(size_t& offset, char* buffer, const T& value) {
 			constexpr auto id = CTTI<T>();
 			std::memcpy(buffer + offset, &id, sizeof(ctti_t));
-			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::type_serialized_size<T>());
-			offset += RPCMsgUnpacker::total_serialized_size(value);
+			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::SerializedSize<T>());
+			offset += RPCMsgUnpacker::TotalSerializedSize(value);
 		}
 
 		/**
@@ -80,9 +80,9 @@ namespace RavEngine {
 		*/
 		template<typename ... A>
 		inline std::string SerializeRPC(uint16_t id, A ... args) {
-			constexpr size_t totalsize = (RPCMsgUnpacker::total_serialized_size(args) + ...) + RPCMsgUnpacker::header_size;
+			constexpr size_t totalsize = (RPCMsgUnpacker::TotalSerializedSize(args) + ...) + RPCMsgUnpacker::header_size;
 
-			auto uuid_bytes = getOwner().lock()->GetComponent<NetworkIdentity>().value()->GetNetworkID().raw();
+			auto uuid_bytes = GetOwner().lock()->GetComponent<NetworkIdentity>().value()->GetNetworkID().raw();
 			char msg[totalsize];
 
 			//write message header

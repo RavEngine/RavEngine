@@ -7,7 +7,7 @@
 namespace RavEngine {
 	class ScriptSystem : public AutoCTTI {
 	public:
-		void Tick(float fpsScale, const Ref<ScriptComponent> c) {
+		inline void Tick(float fpsScale, const Ref<ScriptComponent> c) const{
 			c->Tick(fpsScale);
 		}
 	};

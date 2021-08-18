@@ -133,7 +133,7 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 		tx = btexture->th;
 	}
 	else{
-		tx = TextureManager::defaultTexture->get();
+		tx = TextureManager::defaultTexture->GetTextureHandle();
 	}
 	
 	guiMaterial->SetTexture(tx);
@@ -173,7 +173,7 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 		tx = btexture->th;
 	}
 	else{
-		tx = TextureManager::defaultTexture->get();
+		tx = TextureManager::defaultTexture->GetTextureHandle();
 	}
 	
 	guiMaterial->SetTexture(tx);

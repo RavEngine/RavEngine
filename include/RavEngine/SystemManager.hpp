@@ -86,7 +86,7 @@ struct SystemEntry{
 		// evaluates an entity to determine if it passes the query test, and calls tick if it does
 		template<typename System>
 		inline const void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
-			Ref<Entity> e = c->getOwner().lock();
+			Ref<Entity> e = c->GetOwner().lock();
 			if (e) {
 				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
 				static_assert(n_args > 0, "System must take at least one component parameter");
@@ -107,7 +107,7 @@ struct SystemEntry{
 				}
 
 				if (passesCheck) {
-					auto fpsScale = world->getCurrentFPSScale();
+					auto fpsScale = world->GetCurrentFPSScale();
 					TickWrapper(fpsScale, system, query_results, indseq);
 				}
 			}

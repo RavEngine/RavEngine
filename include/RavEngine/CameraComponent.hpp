@@ -17,12 +17,12 @@ namespace RavEngine {
 		Enable / disable this camera
 		@param newState the new enabled state for this camera. The renderer will choose the first active camera as the camera to use when drawing.
 		*/
-		void setActive(bool newState);
+		void SetActive(bool newState);
 
 		/**
 		@returns if this camera is active
 		*/
-		inline bool isActive() {
+		inline bool IsActive() const{
 			return active;
 		}
 

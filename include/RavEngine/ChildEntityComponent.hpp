@@ -13,7 +13,7 @@ class ChildEntityComponent : public Component, public Queryable<ChildEntityCompo
 public:
 	ChildEntityComponent(Ref<Entity> e) : child(e){}
 	
-	Ref<Entity> get()const{
+	Ref<Entity> GetEntity()const{
 		return child;
 	}
 	

@@ -11,7 +11,7 @@ namespace RavEngine {
         template<typename T>
         inline T Deserialize() const{
             T val;
-            std::memcpy(&val, message.data() + offset+sizeof(ctti_t), type_serialized_size<T>());
+            std::memcpy(&val, message.data() + offset+sizeof(ctti_t), SerializedSize<T>());
             return val;
         }
         
@@ -22,7 +22,7 @@ namespace RavEngine {
 		RPCMsgUnpacker(const std::string& msg) : message(msg) {}
 
 		template<typename T>
-		inline std::optional<T> get() {
+		inline std::optional<T> Get() {
 			std::optional<T> result;
 			//is the current parameter the same type as T?
             ctti_t enc_type;
@@ -32,7 +32,7 @@ namespace RavEngine {
                 auto val = Deserialize<T>();
 
                 //advance the offset pointer
-                offset += total_serialized_size(val);
+                offset += TotalSerializedSize(val);
 
                 //emplace into the optional
                 result.emplace(val);
@@ -42,13 +42,13 @@ namespace RavEngine {
 		}
         
         template<typename T>
-        static inline constexpr size_t type_serialized_size(){
+        static inline constexpr size_t SerializedSize(){
             return sizeof(T);
         }
         
         template<typename T>
-        static inline constexpr size_t total_serialized_size(const T& value){
-            return sizeof(CTTI<T>()) + type_serialized_size<T>(); //encode what type it is + its size
+        static inline constexpr size_t TotalSerializedSize(const T& value){
+            return sizeof(CTTI<T>()) + SerializedSize<T>(); //encode what type it is + its size
         }
 	};
 }

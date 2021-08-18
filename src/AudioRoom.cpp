@@ -18,7 +18,7 @@ void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<phmap::
 
 	for(const auto& s : sources){
 		Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);
-		Ref<Entity> owner = source->getOwner().lock();
+		Ref<Entity> owner = source->GetOwner().lock();
 		if (owner && owner->IsInWorld() && source->IsPlaying()){
 			auto worldpos = owner->transform()->GetWorldPosition();
 			auto worldrot = owner->transform()->GetWorldRotation();
@@ -29,7 +29,7 @@ void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<phmap::
 }
 
 void AudioRoom::SimulateSingle(float *ptr, size_t nbytes, AudioPlayerData* source, const vector3 &worldpos, const quaternion &worldrot){
-	auto owner = getOwner().lock();
+	auto owner = GetOwner().lock();
 	if (owner){
 		stackarray(temp, float, nbytes/sizeof(float)/2);
 		stackarray(outtemp, float, nbytes/sizeof(float));
@@ -62,7 +62,7 @@ void AudioRoom::SimulateSingle(float *ptr, size_t nbytes, AudioPlayerData* sourc
 }
 
 void AudioRoom::DrawDebug(DebugDraw& dbg){
-	auto owner = getOwner().lock();
+	auto owner = GetOwner().lock();
 	if (owner){
 		auto mtx = owner->transform()->CalculateWorldMatrix();
 		

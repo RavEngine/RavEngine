@@ -81,7 +81,7 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		//get all child entities
 		auto& children = e->GetAllComponentsOfType<ChildEntityComponent>();
 		for(const auto c : children){
-			Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->get());	//spawn the child entities
+			Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());	//spawn the child entities
 		}
 		return true;
 	}
@@ -104,7 +104,7 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 	//get all child entities
 	auto children = e->GetAllComponentsOfType<ChildEntityComponent>();
 	for (const auto c : children) {
-		Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->get());
+		Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());
 	}
 	
 	return true;
@@ -122,7 +122,7 @@ void World::OnAddComponent(Ref<Component> comp){
 	//is this a physics body? if so, call physics simulator to create it
 	{
 		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
-		auto parent = comp->getOwner().lock();
+		auto parent = comp->GetOwner().lock();
 		if (phys && parent){
 			Solver.Spawn(parent);
 			return;
@@ -151,7 +151,7 @@ void World::OnRemoveComponent(Ref<Component> comp){
 	//is this a physics body? if so, call physics simulator to stop it
 	{
 		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
-		auto parent = comp->getOwner().lock();
+		auto parent = comp->GetOwner().lock();
 		if (phys && parent){
 			Solver.Destroy(parent);
 			return;
@@ -261,7 +261,7 @@ void World::RebuildTaskGraph(){
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
 		auto RunPhysics = masterTasks.emplace([this]{
-			Solver.Tick(getCurrentFPSScale());
+			Solver.Tick(GetCurrentFPSScale());
 		});
 		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>()].task);
 		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>()].task);
@@ -300,14 +300,14 @@ void World::FillFramedata(){
 		auto& allcams = GetAllComponentsOfType<CameraComponent>();
 		for (const auto& c : allcams) {
 			auto cam = std::static_pointer_cast<CameraComponent>(c);
-			if (cam->isActive()) {
+			if (cam->IsActive()) {
 				
 				auto size = App::Renderer->GetBufferSize();
 				cam->SetTargetSize(size.width, size.height);
 				auto current = App::GetCurrentFramedata();
 				current->viewmatrix = cam->GenerateViewMatrix();
 				current->projmatrix = cam->GenerateProjectionMatrix();
-				current->cameraWorldpos = cam->getOwner().lock()->transform()->GetWorldPosition();
+				current->cameraWorldpos = cam->GetOwner().lock()->transform()->GetWorldPosition();
 				
 				break;
 			}
@@ -330,7 +330,7 @@ void World::FillFramedata(){
 	
 	// update matrix caches
 	auto updateMatrix = [&](const Ref<Component>& c) {
-		auto owner = c->getOwner().lock();
+		auto owner = c->GetOwner().lock();
 		if (owner) {
 			owner->transform()->CalculateWorldMatrix();
 		}
@@ -346,7 +346,7 @@ void World::FillFramedata(){
 		for (auto it = geobegin; it != geoend; ++it) {
 			const auto& e = *it;
 			auto m = static_cast<StaticMesh*>(e.get());
-			auto ptr = e->getOwner().lock();
+			auto ptr = e->GetOwner().lock();
 			if (ptr && m->Enabled) {
 				auto& pair = m->getTuple();
 				auto mat = ptr->transform()->GetMatrix();
@@ -360,7 +360,7 @@ void World::FillFramedata(){
 		for (auto it = skinnedgeobegin; it != skinnedgeoend; ++it) {
 			const auto& e = *it;
 			auto m = static_cast<SkinnedMeshComponent*>(e.get());
-			auto ptr = e->getOwner().lock();
+			auto ptr = e->GetOwner().lock();
 			if (ptr && m->Enabled) {
 				auto& pair = m->getTuple();
 				auto mat = ptr->transform()->GetMatrix();
@@ -382,7 +382,7 @@ void World::FillFramedata(){
 	auto copydirs = masterTasks.emplace([this](){
 		auto& dirs = GetAllComponentsOfType<DirectionalLight>();
 		for(const auto& e : dirs){
-			auto owner = e->getOwner().lock();
+			auto owner = e->GetOwner().lock();
 			if (owner){
 				auto d = static_cast<DirectionalLight*>(e.get());
 				auto rot = owner->transform()->Up();
@@ -408,7 +408,7 @@ void World::FillFramedata(){
 		auto& spots = GetAllComponentsOfType<SpotLight>();
 		for(const auto& e : spots){
 			auto d = static_cast<SpotLight*>(e.get());
-			auto ptr = e->getOwner().lock();
+			auto ptr = e->GetOwner().lock();
 			if (ptr){
 				auto transform = ptr->transform()->CalculateWorldMatrix();
 				auto current = App::GetCurrentFramedata();
@@ -420,7 +420,7 @@ void World::FillFramedata(){
 		auto& points = GetAllComponentsOfType<PointLight>();
 		for(const auto& e : points){
 			auto d = static_cast<PointLight*>(e.get());
-			auto ptr = e->getOwner().lock();
+			auto ptr = e->GetOwner().lock();
 			if (ptr){
 				auto transform = ptr->transform()->CalculateWorldMatrix();
 				auto current = App::GetCurrentFramedata();

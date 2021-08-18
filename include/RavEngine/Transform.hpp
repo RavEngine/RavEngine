@@ -103,7 +103,7 @@ namespace RavEngine {
 			root->isDirty = true;
 			
 			for(auto& t : root->children){
-				Ref<Transform> tr = t.getWeak().lock();
+				Ref<Transform> tr = t.get_weak().lock();
 				MarkAsDirty(tr.get());
 			}
 			

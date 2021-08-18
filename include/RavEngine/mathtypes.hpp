@@ -73,7 +73,7 @@ namespace RavEngine {
 	}
 }
 
-static inline RawVec3 vec3toRaw(const vector3& vec) {
+static inline RawVec3 Vec3toRaw(const vector3& vec) {
 	return { vec.x, vec.y, vec.z };
 }
 
@@ -81,7 +81,7 @@ static inline vector3 RawToVec3(const RawVec3& raw) {
 	return vector3(raw[0], raw[1], raw[2]);
 }
 
-static inline RawQuat quatToRaw(const quaternion& quat) {
+static inline RawQuat QuatToRaw(const quaternion& quat) {
 	return { quat.w,quat.x,quat.y,quat.z };
 }
 

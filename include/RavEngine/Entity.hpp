@@ -46,7 +46,7 @@ namespace RavEngine {
 		}
 		
 		void OnRemoveComponent(Ref<Component> c) override{
-			auto owner = c->getOwner();
+			auto owner = c->GetOwner();
 			owner.reset();
 			c->SetOwner(owner);
 			c->RemoveHook(shared_from_this());

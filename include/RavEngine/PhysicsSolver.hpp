@@ -71,7 +71,7 @@ namespace RavEngine {
         //scene query methods
         struct RaycastHit {
             RaycastHit() {}
-            RaycastHit(const physx::PxRaycastBuffer& hit) : hitObject(((PhysicsBodyComponent*)hit.block.actor->userData)->getOwner()),
+            RaycastHit(const physx::PxRaycastBuffer& hit) : hitObject(((PhysicsBodyComponent*)hit.block.actor->userData)->GetOwner()),
                 hasBlocking(hit.hasBlock),
                 hitPosition(vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z)),
                 hitNormal(vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z)),
@@ -97,7 +97,7 @@ namespace RavEngine {
 
         struct OverlapHit {
             OverlapHit() {}
-            OverlapHit(const physx::PxOverlapBuffer& hit) : overlapObject( ((PhysicsBodyComponent*)hit.block.actor->userData)->getOwner()){}
+            OverlapHit(const physx::PxOverlapBuffer& hit) : overlapObject( ((PhysicsBodyComponent*)hit.block.actor->userData)->GetOwner()){}
             Ref<Entity> overlapObject;
         };
 

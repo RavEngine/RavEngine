@@ -9,7 +9,7 @@ using namespace RavEngine;
 using namespace std;
 
 void AudioRoomSyncSystem::Tick(float fpsScale, Ref<AudioRoom> room){
-    auto e = room->getOwner().lock();
+    auto e = room->GetOwner().lock();
     if (e){
         auto pos = e->transform()->GetWorldPosition();
         auto rot = e->transform()->GetWorldRotation();

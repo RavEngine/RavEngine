@@ -89,7 +89,7 @@ void AnimatorComponent::Tick(float timeScale){
 	
 	// create pose-bindpose skinning matrices
 	auto& pose = GetLocalPose();
-	auto& bindpose = skeleton->getBindposes();
+	auto& bindpose = skeleton->GetBindposes();
 	for(int i = 0; i < skinningmats.size(); i++){
 		skinningmats[i] = pose[i] * matrix4(bindpose[i]);
 	}
@@ -166,7 +166,7 @@ Ref<Transform> AnimatorComponent::AddSocket(const string& boneName) {
 		if (strcmp(skeleton->joint_names()[i], boneName.data()) == 0) {
 			auto transform = make_shared<Transform>();
 			Sockets[boneName] = transform;
-			transform->SetOwner(getOwner());
+			transform->SetOwner(GetOwner());
 			return transform;
 		}
 	}

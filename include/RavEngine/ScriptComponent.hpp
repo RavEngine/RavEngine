@@ -47,14 +47,14 @@ namespace RavEngine {
 		@return true if the current ScriptComponent is attached to an Entity, false otherwise.
 		*/
 		inline bool IsAttached() {
-			return !getOwner().expired();
+			return !GetOwner().expired();
 		}
 
 		/**
 		Shortcut to get the transform component of the attached entity
 		@throws if the script is not attached to any entity.
 		*/
-		Ref<Transform> transform();
+		Ref<Transform> Transform();
 
 		/**
 		Get the current world for the attached entity
@@ -62,7 +62,7 @@ namespace RavEngine {
 		Ref<World> GetWorld();
 		
 		inline Ref<Entity> GetEntity(){
-			return getOwner().lock();
+			return GetOwner().lock();
 		}
 	};
 }
