@@ -82,7 +82,7 @@ namespace RavEngine {
 		Called before ticking components and entities synchronously
 		 @param fpsScale the scale factor calculated
 		 */
-		virtual void pretick(float fpsScale) {}
+		virtual void PreTick(float fpsScale) {}
 		void TickECS(float);
 		
 		void FillFramedata();
@@ -91,7 +91,7 @@ namespace RavEngine {
 		 Called after physics and rendering synchronously
 		 @param fpsScale the scale factor calculated
 		 */
-		virtual void posttick(float fpsScale) {}
+		virtual void PostTick(float fpsScale) {}
 		
 		void OnAddComponent(Ref<Component>) override;
 		void OnRemoveComponent(Ref<Component>) override;

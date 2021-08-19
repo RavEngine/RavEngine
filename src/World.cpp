@@ -29,7 +29,7 @@ using namespace RavEngine;
 
 void RavEngine::World::Tick(float scale) {
 	
-    pretick(scale);
+    PreTick(scale);
 	
 	//Tick the game code
 	TickECS(scale);
@@ -45,7 +45,7 @@ void RavEngine::World::Tick(float scale) {
 		}
 	}
 
-    posttick(scale);
+    PostTick(scale);
 	Destroy_pending();
 }
 
