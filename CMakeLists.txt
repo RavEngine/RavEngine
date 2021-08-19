@@ -187,7 +187,7 @@ SET(RECASTNAVIGATION_EXAMPLES OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/recastnavigation" EXCLUDE_FROM_ALL)
 
 # date
-add_subdirectory("${DEPS_DIR}/date")
+# add_subdirectory("${DEPS_DIR}/date")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -286,6 +286,7 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/resonance-audio/"
 	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
 	"${DEPS_DIR}/boost"
+	"${DEPS_DIR}/date/include"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
@@ -362,7 +363,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
-	"date"
 	${ICONV_LIB}
 	${COCOA_LIB}
 	${SM_LIB}
@@ -719,9 +719,8 @@ foreach(TGT ${all_targets})
 
 		# only run this command on compatible targets
 		if (NOT ("${target_type}" STREQUAL "INTERFACE_LIBRARY" OR "${target_type}" STREQUAL "UTILITY"))
-			#message("Setting ${TGT} -- ${target_type}")
 			if(MSVC)
-				#target_compile_options(${TGT} PRIVATE "/w")
+				target_compile_options(${TGT} PRIVATE "/W0")
 			else()
 				target_compile_options(${TGT} PRIVATE "-w")
 			endif()

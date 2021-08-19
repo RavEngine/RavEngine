@@ -107,7 +107,7 @@ namespace RavEngine {
 		/**
 		 @return a reference to the transform component, which all entities possess
 		 */
-		inline Ref<Transform> Transform(){
+		inline Ref<Transform> GetTransform(){
 			return GetComponent<RavEngine::Transform>().value();
 		}
 
@@ -115,9 +115,5 @@ namespace RavEngine {
 		Remove this entity from the world. If there are no more references, it will be destroyed.
 		*/
 		void Destroy();
-
-	protected:
-		void SyncAdds();
-		void SyncRemovals();
 	};
 }

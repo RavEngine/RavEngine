@@ -381,7 +381,7 @@ public:
 	 */
 	inline const decltype(glm_pose)& GetPose(){
 		decimalType matrix[16];
-		auto worldMat = GetOwner().lock()->Transform()->CalculateWorldMatrix();
+		auto worldMat = GetOwner().lock()->GetTransform()->CalculateWorldMatrix();
 		for(int i = 0; i < models.size(); i++){
 			auto& t = models[i];
 			for(int r = 0; r < 4; r++){

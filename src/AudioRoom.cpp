@@ -20,8 +20,8 @@ void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<phmap::
 		Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);
 		Ref<Entity> owner = source->GetOwner().lock();
 		if (owner && owner->IsInWorld() && source->IsPlaying()){
-			auto worldpos = owner->Transform()->GetWorldPosition();
-			auto worldrot = owner->Transform()->GetWorldRotation();
+			auto worldpos = owner->GetTransform()->GetWorldPosition();
+			auto worldrot = owner->GetTransform()->GetWorldRotation();
 			
 			SimulateSingle(ptr, nbytes, source.get(), worldpos, worldrot);
 		}
@@ -44,8 +44,8 @@ void AudioRoom::SimulateSingle(float *ptr, size_t nbytes, AudioPlayerData* sourc
 		
 		audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, outtemp);
 		
-		auto roompos = owner->Transform()->GetWorldPosition();
-		auto roomrot = owner->Transform()->GetWorldRotation();
+		auto roompos = owner->GetTransform()->GetWorldPosition();
+		auto roomrot = owner->GetTransform()->GetWorldRotation();
 		
 		//create Eigen structures to calculate attenuation
 		vraudio::WorldPosition eworldpos(worldpos.x,worldpos.y,worldpos.z);
@@ -64,7 +64,7 @@ void AudioRoom::SimulateSingle(float *ptr, size_t nbytes, AudioPlayerData* sourc
 void AudioRoom::DrawDebug(DebugDraw& dbg){
 	auto owner = GetOwner().lock();
 	if (owner){
-		auto mtx = owner->Transform()->CalculateWorldMatrix();
+		auto mtx = owner->GetTransform()->CalculateWorldMatrix();
 		
 		dbg.DrawRectangularPrism(mtx, 0x00FFFFFF, roomDimensions);
 	}

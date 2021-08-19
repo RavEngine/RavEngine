@@ -19,8 +19,8 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
 
 void RavEngine::PhysicsBodyComponent::AddHook(const WeakRef<RavEngine::Entity>& e)
 {
-	setPos(e.lock()->Transform()->GetWorldPosition());
-	setRot(e.lock()->Transform()->GetWorldRotation());
+	setPos(e.lock()->GetTransform()->GetWorldPosition());
+	setRot(e.lock()->GetTransform()->GetWorldRotation());
 }
 
 void RavEngine::PhysicsBodyComponent::AddReceiver(Ref<IPhysicsActor> obj)
