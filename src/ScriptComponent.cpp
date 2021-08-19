@@ -21,7 +21,7 @@ bool RavEngine::ScriptComponent::IsInWorld()
 	return owner  && owner->IsInWorld();
 }
 
-Ref<Transform> RavEngine::ScriptComponent::Transform()
+Ref<Transform> RavEngine::ScriptComponent::GetTransform()
 {
 	auto owner = GetOwner().lock();
 	if (!owner) {

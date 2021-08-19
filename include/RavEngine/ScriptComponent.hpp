@@ -54,7 +54,7 @@ namespace RavEngine {
 		Shortcut to get the transform component of the attached entity
 		@throws if the script is not attached to any entity.
 		*/
-		Ref<Transform> Transform();
+		Ref<Transform> GetTransform();
 
 		/**
 		Get the current world for the attached entity
@@ -63,6 +63,14 @@ namespace RavEngine {
 		
 		inline Ref<Entity> GetEntity(){
 			return GetOwner().lock();
+		}
+
+		/**
+		Shortcut to get a component on the Entity
+		*/
+		template<typename T>
+		inline std::optional<Ref<T>> GetComponent() {
+			return GetEntity()->GetComponent<T>();
 		}
 	};
 }
