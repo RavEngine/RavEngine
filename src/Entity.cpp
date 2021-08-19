@@ -17,5 +17,5 @@ void Entity::Destroy() {
 }
 
 RavEngine::Entity::Entity(){
-    EmplaceComponent<Transform>();
+    EmplaceComponent<RavEngine::Transform>();
 }

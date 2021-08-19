@@ -27,7 +27,7 @@ Ref<Transform> RavEngine::ScriptComponent::Transform()
 	if (!owner) {
 		throw std::runtime_error("Cannot get transform from Script with no attached Entity");
 	}
-	return owner->transform();
+	return owner->Transform();
 }
 
 Ref<RavEngine::World> RavEngine::ScriptComponent::GetWorld()

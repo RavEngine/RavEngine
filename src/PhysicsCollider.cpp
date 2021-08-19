@@ -81,7 +81,7 @@ void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quater
 }
 
 matrix4 PhysicsCollider::CalculateWorldMatrix() const{
-	return Ref<Entity>(GetOwner())->transform()->CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
+	return Ref<Entity>(GetOwner())->Transform()->CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
 }
 
 void BoxCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) const{

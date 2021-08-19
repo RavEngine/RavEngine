@@ -11,9 +11,9 @@ using namespace std;
 void AudioRoomSyncSystem::Tick(float fpsScale, Ref<AudioRoom> room){
     auto e = room->GetOwner().lock();
     if (e){
-        auto pos = e->transform()->GetWorldPosition();
-        auto rot = e->transform()->GetWorldRotation();
-        auto mtx = e->transform()->CalculateWorldMatrix();
+        auto pos = e->Transform()->GetWorldPosition();
+        auto rot = e->Transform()->GetWorldRotation();
+        auto mtx = e->Transform()->CalculateWorldMatrix();
         
         quaternion r;
         vector3 t;

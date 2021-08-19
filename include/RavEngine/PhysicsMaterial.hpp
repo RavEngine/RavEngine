@@ -21,7 +21,7 @@ namespace RavEngine {
 
 	class PhysicsMaterial {
 	public:
-		PhysicsMaterial(double sf=1, double df=1, double r	=1);
+		PhysicsMaterial(double staticFriction=1, double dynamicFriction=1, double restitution = 1);
 		virtual ~PhysicsMaterial();
 
 		void SetStaticFriction(double);

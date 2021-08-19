@@ -307,7 +307,7 @@ void World::FillFramedata(){
 				auto current = App::GetCurrentFramedata();
 				current->viewmatrix = cam->GenerateViewMatrix();
 				current->projmatrix = cam->GenerateProjectionMatrix();
-				current->cameraWorldpos = cam->GetOwner().lock()->transform()->GetWorldPosition();
+				current->cameraWorldpos = cam->GetOwner().lock()->Transform()->GetWorldPosition();
 				
 				break;
 			}
@@ -332,7 +332,7 @@ void World::FillFramedata(){
 	auto updateMatrix = [&](const Ref<Component>& c) {
 		auto owner = c->GetOwner().lock();
 		if (owner) {
-			owner->transform()->CalculateWorldMatrix();
+			owner->Transform()->CalculateWorldMatrix();
 		}
 	};
 
@@ -349,7 +349,7 @@ void World::FillFramedata(){
 			auto ptr = e->GetOwner().lock();
 			if (ptr && m->Enabled) {
 				auto& pair = m->getTuple();
-				auto mat = ptr->transform()->GetMatrix();
+				auto mat = ptr->Transform()->GetMatrix();
 				auto& item = current->opaques[pair];
 				item.items.push_back(mat);
 			}
@@ -363,7 +363,7 @@ void World::FillFramedata(){
 			auto ptr = e->GetOwner().lock();
 			if (ptr && m->Enabled) {
 				auto& pair = m->getTuple();
-				auto mat = ptr->transform()->GetMatrix();
+				auto mat = ptr->Transform()->GetMatrix();
 				auto current = App::GetCurrentFramedata();
 				auto& item = current->skinnedOpaques[pair];
 				item.items.push_back(mat);
@@ -385,7 +385,7 @@ void World::FillFramedata(){
 			auto owner = e->GetOwner().lock();
 			if (owner){
 				auto d = static_cast<DirectionalLight*>(e.get());
-				auto rot = owner->transform()->Up();
+				auto rot = owner->Transform()->Up();
 				FrameData::PackedDL::tinyvec3 r{
 					static_cast<float>(rot.x),
 					static_cast<float>(rot.y),
@@ -410,7 +410,7 @@ void World::FillFramedata(){
 			auto d = static_cast<SpotLight*>(e.get());
 			auto ptr = e->GetOwner().lock();
 			if (ptr){
-				auto transform = ptr->transform()->CalculateWorldMatrix();
+				auto transform = ptr->Transform()->CalculateWorldMatrix();
 				auto current = App::GetCurrentFramedata();
 				current->spots.emplace(*d,d->CalculateMatrix(transform));
 			}
@@ -422,7 +422,7 @@ void World::FillFramedata(){
 			auto d = static_cast<PointLight*>(e.get());
 			auto ptr = e->GetOwner().lock();
 			if (ptr){
-				auto transform = ptr->transform()->CalculateWorldMatrix();
+				auto transform = ptr->Transform()->CalculateWorldMatrix();
 				auto current = App::GetCurrentFramedata();
 				current->points.emplace(*d,d->CalculateMatrix(transform));
 			}
