@@ -2,6 +2,7 @@
 #include "Component.hpp"
 #include "Transform.hpp"
 #include "Queryable.hpp"
+#include "Entity.hpp"
 
 namespace RavEngine {
 	class World;
