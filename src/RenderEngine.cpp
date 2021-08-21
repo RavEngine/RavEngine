@@ -230,7 +230,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 			settings.type = bgfx::RendererType::Direct3D12;
 		}
 		else {
-			Debug::Fatal("Vulkan API not found");
+			Debug::Fatal("DirectX 12 API not found");
 		}
 	}
 	

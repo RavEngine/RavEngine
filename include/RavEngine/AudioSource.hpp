@@ -63,7 +63,15 @@ protected:
 	bool isPlaying = false;
 	
 public:
-	AudioPlayerData(Ref<AudioAsset> a ) : asset(a){}
+	AudioPlayerData(decltype(asset) a ) : asset(a){}
+
+	/**
+	* Change the audio asset in this player
+	* @param a the audio asset
+	*/
+	inline void SetAudio(decltype(asset) a) {
+		asset = a;
+	}
 	
 	/**
 	 Starts playing the audio source if it is not playing. Call Pause() to suspend it.
