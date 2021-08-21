@@ -29,6 +29,7 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyI
 	const aiScene* scene = aiImportFileFromMemory(str.data(), str.size(),
 												  aiProcess_CalcTangentSpace |
 												  aiProcess_GenSmoothNormals              |
+													aiProcess_ConvertToLeftHanded |
 												  aiProcess_JoinIdenticalVertices         |
 												  aiProcess_ImproveCacheLocality          |
 												  aiProcess_LimitBoneWeights              |
