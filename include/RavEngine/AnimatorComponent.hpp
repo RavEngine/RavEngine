@@ -244,6 +244,7 @@ public:
 			case State::Transition::TimeMode::BeginNew:
 				states.at(newState).lastPlayTime = App::GetCurrentTime();
 				break;
+				default: break;
 			}
 			
 			//seek tween back to beginning
