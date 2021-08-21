@@ -21,10 +21,10 @@ public:
 	};
 
 	/**
-	* Convert an assimp mesh to a MeshPart
-	* @param mesh the assimp mesh to convert
-	* @param scaleMat the matrix to apply to each vertex of the mesh
-	* @return converted MeshPart
+	Convert an assimp mesh to a MeshPart
+	@param mesh the assimp mesh to convert
+	@param scaleMat the matrix to apply to each vertex of the mesh
+	@return converted MeshPart
 	*/
 	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
 protected:
@@ -69,12 +69,25 @@ public:
 	/**
 	 Create a MeshAsset
 	 @param path the path to the asset in the embedded filesystem
+	 @param scale the scale factor when loading
+	 @param keepCopyInSystemMemory maintain a copy of the mesh data in system RAM, for use in features that need it like mesh colliders
 	 */
 	MeshAsset(const std::string& path, const decimalType scale = 1.0, bool keepCopyInSystemMemory = false);
 	
 	/**
+	 Create a MeshAsset from a specific mesh inside the scene file. To load all meshes into one mesh, use the other constructor.
+	 @param path the path to the asset in the embedded filesystem
+	 @param modelName the name of the mesh inside the scene file to load
+	 @param scale the scale factor when loading
+	 @param keepCopyInSystemMemory maintain a copy of the mesh data in system RAM, for use in features that need it like mesh colliders
+	 */
+	MeshAsset(const std::string& path, const std::string& modelName, const decimalType scale = 1.0, bool keepCopyInSystemMemory = false);
+
+	
+	/**
 	 Create a MeshAsset from multiple vertex and index lists
 	 @param rawMeshData the index and triangle data
+	 @param keepCopyInSystemMemory maintain a copy of the mesh data in system RAM, for use in features that need it like mesh colliders
 	 */
 	MeshAsset(const std::vector<MeshPart>& rawMeshData, bool keepCopyInSystemMemory = false){
 		InitializeFromMeshPartFragments(rawMeshData, keepCopyInSystemMemory);

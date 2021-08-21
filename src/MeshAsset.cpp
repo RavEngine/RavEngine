@@ -14,46 +14,51 @@ using namespace RavEngine;
 // Vertex data structure
 using namespace std;
 
+static constexpr auto assimp_flags =  aiProcess_CalcTangentSpace |
+aiProcess_GenSmoothNormals              |
+aiProcess_FlipUVs |
+aiProcess_JoinIdenticalVertices         |
+aiProcess_ImproveCacheLocality          |
+aiProcess_LimitBoneWeights              |
+aiProcess_RemoveRedundantMaterials      |
+aiProcess_SplitLargeMeshes              |
+aiProcess_Triangulate                   |
+aiProcess_GenUVCoords                   |
+aiProcess_SortByPType                   |
+//aiProcess_FindDegenerates               |
+aiProcess_FindInstances                  |
+aiProcess_ValidateDataStructure          |
+aiProcess_OptimizeMeshes				|
+aiProcess_FindInvalidData     ;
 
-MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyInSystemMemory){
-	string dir = "objects/" + name;
+static const aiScene* LoadScene(const std::string& name){
+	string dir = StrFormat("objects/{}", name);
 	
 	if (!App::Resources->Exists(dir.c_str())) {
 		Debug::Fatal("Cannot open resource: {}", dir);
 	}
-
+	
 	auto str = App::Resources->FileContentsAt(dir.c_str());
 	
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
 	const aiScene* scene = aiImportFileFromMemory(str.data(), str.size(),
-												  aiProcess_CalcTangentSpace |
-												  aiProcess_GenSmoothNormals              |
-													aiProcess_ConvertToLeftHanded |
-												  aiProcess_JoinIdenticalVertices         |
-												  aiProcess_ImproveCacheLocality          |
-												  aiProcess_LimitBoneWeights              |
-												  aiProcess_RemoveRedundantMaterials      |
-												  aiProcess_SplitLargeMeshes              |
-												  aiProcess_Triangulate                   |
-												  aiProcess_GenUVCoords                   |
-												  aiProcess_SortByPType                   |
-												  //aiProcess_FindDegenerates               |
-												  aiProcess_FindInstances                  |
-												  aiProcess_ValidateDataStructure          |
-												  aiProcess_OptimizeMeshes				|
-												  aiProcess_FindInvalidData     ,
+												  assimp_flags,
 												  file_ext.string().c_str());
 	
 	
 	if (!scene){
 		Debug::Fatal("Cannot load: {}", aiGetErrorString());
 	}
-	
-	//generate the vertex and index lists
-    
+	return scene;
+}
+
+MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyInSystemMemory){
+	auto scene = LoadScene(name);
+
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
 	
+	//generate the vertex and index lists
 	vector<MeshPart> meshes;
 	meshes.reserve(scene->mNumMeshes);
 	for(int i = 0; i < scene->mNumMeshes; i++){
@@ -66,6 +71,27 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyI
 	aiReleaseImport(scene);
 	
 	InitializeFromMeshPartFragments(meshes, keepCopyInSystemMemory);
+}
+
+MeshAsset::MeshAsset(const string& name, const string& meshName, const decimalType scale, bool keepCopyInSystemMemory){
+	auto scene = LoadScene(name);
+	
+	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
+	
+	auto node = scene->mRootNode->FindNode(meshName.c_str());
+	if (node == nullptr){
+		Debug::Fatal("No mesh with name {} in scene {}",meshName, name);
+	}
+	else{
+		vector<MeshPart> meshes;
+		meshes.reserve(node->mNumMeshes);
+		for(int i = 0; i < node->mNumMeshes; i++){
+			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+			auto mp = AIMesh2MeshPart(mesh, scalemat);
+			meshes.push_back(mp);
+		}
+		InitializeFromMeshPartFragments(meshes, keepCopyInSystemMemory);
+	}
 }
 
 MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
