@@ -40,10 +40,10 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 		Debug::Fatal("PHYSFS Error: {}", PHYSFS_WHY());
 	}
 	rootname = std::filesystem::path(path).replace_extension("").string();
+	PHYSFS_freeList(root);
 }
-const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
+const std::vector<char> RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 {
-	
 	auto fullpath = StrFormat("{}/{}",rootname,path);
 	
 	if(!Exists(path)){
@@ -53,17 +53,13 @@ const std::string RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 	auto ptr = PHYSFS_openRead(fullpath.c_str());
 	auto size = PHYSFS_fileLength(ptr)+1;
 	
-	char* buffer = new char[size];
+	vector<char> fileData(size);
 	
-	size_t length_read = PHYSFS_readBytes(ptr,buffer,size);
-	buffer[size-1] = '\0';	//add null terminator
+	size_t length_read = PHYSFS_readBytes(ptr,fileData.data(),size);
+	fileData.data()[size-1] = '\0';	//add null terminator
 	PHYSFS_close(ptr);
 	
-	//TODO: remove extra copy, perhaps use string_view?
-	string cpy(buffer,size);
-	delete[] buffer;
-	
-	return cpy;
+	return fileData;
 }
 
 void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<uint8_t>& datavec)
@@ -88,4 +84,15 @@ void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<
 bool RavEngine::VirtualFilesystem::Exists(const char* path)
 {
 	return PHYSFS_exists(StrFormat("{}/{}",rootname,path).c_str());
+}
+
+void RavEngine::VirtualFilesystem::IterateDirectory(const char* path, std::function<void(const std::string&)> callback)
+{
+	string fullpath = StrFormat("{}/{}", rootname, path);
+	auto all = PHYSFS_enumerateFiles(fullpath.c_str());
+	Debug::Assert(all != nullptr, "{} not found", path);
+	for (int i = 0; *(all+i) != nullptr; i++) {
+		callback(StrFormat("{}/{}",path,*(all+i)));
+	}
+	PHYSFS_freeList(all);
 }

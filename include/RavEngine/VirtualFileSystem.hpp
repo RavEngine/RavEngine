@@ -12,7 +12,7 @@ public:
 	 @param path the resources path to the asset
 	 @return the file data
 	 */
-	const std::string FileContentsAt(const char* path);
+	const std::vector<char> FileContentsAt(const char* path);
 	
 	/**
 	 Get the file data in a vector
@@ -25,6 +25,13 @@ public:
 	 @return true if the VFS has the file at the path
 	 */
 	bool Exists(const char* path);
+
+	/**
+	Get all the files in a directory
+	@param path the path to the folder 
+	@param callback function to call on each filename
+	*/
+	void IterateDirectory(const char* path, std::function<void(const std::string&)> callback);
 	
 protected:
 	std::string rootname;
