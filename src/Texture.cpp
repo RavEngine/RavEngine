@@ -29,7 +29,8 @@ Texture::Texture(const std::string& name){
 	bool hasMipMaps = false;
 	uint16_t numlayers = 1;
 	
-	CreateTexture(width, height, hasMipMaps, numlayers, channels, bytes);
+	CreateTexture(width, height, hasMipMaps, numlayers, bytes);
+	STBI_FREE(bytes);
 	
 }
 
@@ -37,7 +38,8 @@ void Texture::Bind(int id, const SamplerUniform &uniform){
 	bgfx::setTexture(id, uniform, texture);
 }
 
-void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, uint16_t numChannels, const uint8_t *data, int flags){
+void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags){
+	uint16_t numChannels = 4;	//TODO: allow n-channel textures
 	bgfx::TextureFormat::Enum format;
 	switch (numChannels) {
 	case 1:
