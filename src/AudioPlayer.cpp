@@ -44,27 +44,27 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 				Ref<AudioRoom> room = static_pointer_cast<AudioRoom>(r);
 				room->SetListenerTransform(lpos, lrot);
 				std::memset(shared_buffer, 0, len);
-				//simulate in the room
-				room->Simulate(shared_buffer, len, sources);
-				for (int i = 0; i < len / sizeof(float); i++) {
-					//mix with existing
-					accum_buffer[i] += shared_buffer[i];
+				
+				for(const auto& source : sources){
+					// add this source into the room
+					if (auto owner = source->GetOwner().lock()){
+						auto tr = owner->GetTransform();
+						auto ptr = static_pointer_cast<AudioSourceComponent>(source);
+						room->AddEmitter(ptr.get(), tr->GetWorldPosition(), tr->GetWorldRotation(), len);
+					}
 				}
 				
 				//now simulate the fire-and-forget audio
 				std::memset(shared_buffer, 0, len);
 				for(auto& f : world->instantaneousToPlay){
-					room->SimulateSingle(shared_buffer, len, &f, f.source_position, quaternion(1.0, 0.0, 0.0, 0.0));
+					room->AddEmitter(&f, f.source_position, quaternion(1.0, 0.0, 0.0, 0.0), len);
 				}
+								
 				
-				//no sources to play? still need to expend state so render the room with a blank source
-				if (sources.size() == 0 && world->instantaneousToPlay.size() == 0){
-					room->SimulateSingle(shared_buffer, len, silence.get(), vector3(0,0,0), quaternion(1.0, 0.0, 0.0, 0.0));
-				}
-				silence->Restart();
-				
-				//mix again
+				//simulate in the room
+				room->Simulate(shared_buffer, len);
 				for (int i = 0; i < len / sizeof(float); i++) {
+					//mix with existing
 					accum_buffer[i] += shared_buffer[i];
 				}
 			}

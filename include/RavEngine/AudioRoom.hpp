@@ -24,9 +24,9 @@ class AudioRoom : public Component, public Queryable<AudioRoom>{
 	friend class RavEngine::AudioPlayer;
 public:
 	static constexpr uint16_t NFRAMES = 4096;
-protected:
+private:
 	vraudio::ResonanceAudioApi* audioEngine = nullptr;
-	vraudio::ResonanceAudioApi::SourceId src = vraudio::ResonanceAudioApi::kInvalidSourceId;
+	phmap::flat_hash_map<size_t,vraudio::ResonanceAudioApi::SourceId> allSources;
 
 	vector3 roomDimensions = vector3(0,0,0);	//size of 0 = infinite
 	
@@ -48,17 +48,25 @@ protected:
 	
 	float reflection_scalar = 1, reverb_gain = 1, reverb_time = 1.0, reverb_brightness = 0;
 	
-	void SimulateSingle(float* ptr, size_t nbytes, AudioPlayerData*, const vector3& pos, const quaternion& rot);
+	/**
+	 Add an emitter for this simulation
+	 @param source the sound to play
+	 @param pos location to play at
+	 @param rot rotation of emitter
+	 @param nbytes number of bytes to get from the source
+	 */
+	void AddEmitter(AudioPlayerData* source, const vector3& pos, const quaternion& rot, size_t nbytes);
+	
+
+	void DestroyEmitterFor(AudioPlayerData* source);
 	
 public:
 	
 	AudioRoom(){
 		audioEngine = vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100);
-		src = audioEngine->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralLowQuality);
 	}
 	~AudioRoom(){
 		delete audioEngine;
-		src = vraudio::ResonanceAudioApi::kInvalidSourceId;
 	}
 	
 	/**
@@ -80,7 +88,7 @@ public:
 	 @param nbytes length of the buffer in bytes
 	 @param sources the AudioSource components to calculate for
 	 */
-	void Simulate(float* ptr, size_t nbytes, const ComponentStore<phmap::NullMutex>::entry_type& sources);
+	void Simulate(float* ptr, size_t nbytes);
 	
 	/**
 	 @return the dimensions of this room

@@ -14,36 +14,16 @@ void AudioRoom::SetListenerTransform(const vector3 &worldpos, const quaternion &
 	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
 }
 
-void AudioRoom::Simulate(float *ptr, size_t nbytes, const ComponentStore<phmap::NullMutex>::entry_type &sources){
-
-	for(const auto& s : sources){
-		Ref<AudioSourceComponent> source = static_pointer_cast<AudioSourceComponent>(s);
-		Ref<Entity> owner = source->GetOwner().lock();
-		if (owner && owner->IsInWorld() && source->IsPlaying()){
-			auto worldpos = owner->GetTransform()->GetWorldPosition();
-			auto worldrot = owner->GetTransform()->GetWorldRotation();
-			
-			SimulateSingle(ptr, nbytes, source.get(), worldpos, worldrot);
-		}
-	}
-}
-
-void AudioRoom::SimulateSingle(float *ptr, size_t nbytes, AudioPlayerData* source, const vector3 &worldpos, const quaternion &worldrot){
-	auto owner = GetOwner().lock();
-	if (owner){
-		stackarray(temp, float, nbytes/sizeof(float)/2);
-		stackarray(outtemp, float, nbytes/sizeof(float));
+void AudioRoom::AddEmitter(AudioPlayerData* source, const vector3& pos, const quaternion& rot, size_t nbytes){
+	if (source->IsPlaying()){
+		auto& worldpos = pos;
+		auto& worldrot = rot;
 		
 		//get appropriate area in source's buffer if it is playing
+		stackarray(temp, float, nbytes/sizeof(float)/2);
 		source->GetSampleRegionAndAdvance(temp, nbytes/2);
 		
-		audioEngine->SetInterleavedBuffer(src, temp, 1, NFRAMES);
-		audioEngine->SetSourceVolume(src, source->GetVolume());
-		audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
-		audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
-		
-		audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, outtemp);
-		
+		auto owner = GetOwner().lock();
 		auto roompos = owner->GetTransform()->GetWorldPosition();
 		auto roomrot = owner->GetTransform()->GetWorldRotation();
 		
@@ -56,9 +36,37 @@ void AudioRoom::SimulateSingle(float *ptr, size_t nbytes, AudioPlayerData* sourc
 		
 		//mix results
 		for(int i = 0; i < nbytes/sizeof(float); i++){
-			ptr[i] += outtemp[i] * gain;		//apply attenuation
+			temp[i] *= gain;		//apply attenuation to source
 		}
+		
+		// TODO: reuse audio sources across computations
+		// get the audio source for the room for this source
+		// if one does not exist, create it
+		auto code = std::hash<decltype(source)>()(source);
+		vraudio::ResonanceAudioApi::SourceId src;
+		if (!allSources.contains(code)){
+			src = audioEngine->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralLowQuality);
+			allSources[code] = src;
+		}
+		else{
+			src = allSources[code];
+		}
+		
+		audioEngine->SetInterleavedBuffer(src, temp, 1, NFRAMES);
+		audioEngine->SetSourceVolume(src, source->GetVolume());
+		audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
+		audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
 	}
+}
+
+void AudioRoom::Simulate(float *ptr, size_t nbytes){
+	audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, ptr);
+	
+	// destroy sources
+	for(const auto& source : allSources){
+		audioEngine->DestroySource(source.second);
+	}
+	allSources.clear();
 }
 
 void AudioRoom::DrawDebug(DebugDraw& dbg){
