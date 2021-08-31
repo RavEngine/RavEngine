@@ -236,7 +236,6 @@ App::~App(){
 	Renderer->DeactivateDebugger();
 #endif
 	player.Shutdown();
-	Material::Manager::RemoveAll();
 	networkManager.server.reset();
 	networkManager.client.reset();
 	GameNetworkingSockets_Kill();

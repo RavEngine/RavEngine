@@ -346,8 +346,8 @@ void RenderEngine::Init()
 
 	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
 	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
-	blitShader = Material::Manager::AccessMaterialOfType<DeferredBlitShader>();
-	guiMaterial = make_shared<GUIMaterialInstance>(Material::Manager::AccessMaterialOfType<GUIMaterial>());
+	blitShader = Material::Manager::GetMaterial<DeferredBlitShader>();
+	guiMaterial = make_shared<GUIMaterialInstance>(Material::Manager::GetMaterial<GUIMaterial>());
 
 	//load compute shader for skinning
 	skinningShaderHandle = Material::getShaderHandle("skincompute/compute.bin");
@@ -403,7 +403,7 @@ RenderEngine::RenderEngine() {
 
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
 	
-	mat = make_shared<DebugMaterialInstance>(Material::Manager::AccessMaterialOfType<DebugMaterial>());
+	mat = make_shared<DebugMaterialInstance>(Material::Manager::GetMaterial<DebugMaterial>());
 	auto& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
 	

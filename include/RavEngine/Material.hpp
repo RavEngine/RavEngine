@@ -1,5 +1,6 @@
 #pragma once
 #include "Ref.hpp"
+#include "WeakRef.hpp"
 #include "DataStructures.hpp"
 #include <bgfx/bgfx.h>
 #include "glm/gtc/type_ptr.hpp"
@@ -37,92 +38,49 @@ namespace RavEngine {
 			friend class Material;
 		protected:
 			//materials are keyed by their shader name
-			typedef locked_hashmap<ctti_t, Ref<RavEngine::Material>,SpinLock> MaterialStore;
+			typedef phmap::flat_hash_map<ctti_t, WeakRef<RavEngine::Material>> MaterialStore;
 			static MaterialStore materials;
-		
-			static bool HasMaterialByTypeIndex(const ctti_t);
-			
+            static SpinLock mtx;
 		public:
-			
-			/**
-			 Add a material to the structure
-			 @param mat the material to register
-			 @throws if a material with the same type is already registered
-			 */
-			template<typename T>
-			static void RegisterMaterial(Ref<T> mat)
-			{
-				//check if material is already registered
-				if (HasMaterialByType<T>()) {
-					Debug::Fatal("Material with type is already allocated! Use GetMaterialByType to get it.");
-				}
-				
-				materials.insert(std::make_pair(CTTI<T>, mat));
-			}
-			/**
-			 Gets a material with a given name, casted to a particular type.
-			 @param name the name of the material to query
-			 @return the material if it exists, or a null reference if there is none
-			 */
-			template<typename T>
-			static Ref<T> GetMaterialByType() {
-				Ref<T> mat;
-				mat.setNull();
-				auto t = CTTI<T>;
-				try{
-					mat = materials.at(t);
-				}
-				catch(std::exception&){}
-				return mat;
-			}
-			
-			template<typename T>
-			static inline bool HasMaterialByType(){
-				return HasMaterialByTypeIndex(CTTI<T>);
-			}
-			
-			/**
-			 Mark a material for deletion by name. The material will remain allocated until its last reference is released.
-			 @param T the type to remove.
-			 */
-			template<typename T>
-			static inline void UnregisterMaterialByType(){
-				materials.erase(CTTI<T>);
-			}
-			
-			
-			/**
-			 Mark a material for deletion by reference. The material will remain allocated until its last reference is released.
-			 @param material the material to remove
-			 */
-			template<typename T>
-			static inline void UnregisterMaterial(Ref<T> material){
-				UnregisterMaterialByType<T>();
-			}
-			
-			/**
-			 Unregister ALL loaded materials
-			 */
-			static inline void RemoveAll(){
-				materials.clear();
-			}
 			
 			/**
 			 Helper to get a material by type. If one is not allocated, it will be created. Supports constructors via parameter pack
 			 @param args arguments to pass to material constructor if needed
 			 */
 			template<typename T, typename ... A>
-			static Ref<T> AccessMaterialOfType(A ... args){
+			static Ref<T> GetMaterial(A ... args){
+                // TODO: remove single mutex
 				auto t = CTTI<T>();
-				if (materials.contains(t)){
-					return std::static_pointer_cast<T>(materials.at(t));
-				}
-				else{
-					Ref<T> mat(std::make_shared<T>(args...));
-					materials.insert(std::make_pair(t,mat));
-                    return mat;
-				}
+                mtx.lock();
+                if (materials.contains(t)){
+                    auto ptr = materials.at(t).lock();
+                    if (ptr){
+                        mtx.unlock();
+                        return std::static_pointer_cast<T>(ptr);
+                    }
+                }
+                Ref<T> mat(std::make_shared<T>(args...));
+                materials.insert(std::make_pair(t,mat));
+                mtx.unlock();
+                return mat;
 			}
+            
+            /**
+             Remove elements in the cache whose pointers have expired
+             */
+            static void Compact(){
+                mtx.lock();
+                std::vector<ctti_t> to_remove;
+                for(const auto& row : materials){
+                    if (row.second.expired()){
+                        to_remove.push_back(row.first);
+                    }
+                }
+                for(const auto& id : to_remove){
+                    materials.erase(id);
+                }
+                mtx.unlock();
+            }
 		};
 
 	protected:

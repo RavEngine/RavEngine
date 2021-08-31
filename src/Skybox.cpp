@@ -14,4 +14,4 @@ void Skybox::Teardown() {
 	defaultSkyMesh.reset();
 }
 
-Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::AccessMaterialOfType<DefaultSkyMaterial>())), skyMesh(defaultSkyMesh) {}
+Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::GetMaterial<DefaultSkyMaterial>())), skyMesh(defaultSkyMesh) {}

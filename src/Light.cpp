@@ -21,10 +21,10 @@ bgfx::IndexBufferHandle LightManager::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 void LightManager::Init(){
 	pointLightMesh = make_shared<MeshAsset>("sphere.obj");
 	spotLightMesh = make_shared<MeshAsset>("lightcone.obj");
-	pointLightShader = make_shared<PointLightShaderInstance>(Material::Manager::AccessMaterialOfType<PointLightShader>());
-	ambientLightShader = make_shared<AmbientLightShaderInstance>(Material::Manager::AccessMaterialOfType<AmbientLightShader>());
-	directionalLightShader = make_shared<DirectionalLightShaderInstance>(Material::Manager::AccessMaterialOfType<DirectionalLightShader>());
-	spotLightShader = make_shared<SpotLightShaderInstance>(Material::Manager::AccessMaterialOfType<SpotLightShader>());
+	pointLightShader = make_shared<PointLightShaderInstance>(Material::Manager::GetMaterial<PointLightShader>());
+	ambientLightShader = make_shared<AmbientLightShaderInstance>(Material::Manager::GetMaterial<AmbientLightShader>());
+	directionalLightShader = make_shared<DirectionalLightShaderInstance>(Material::Manager::GetMaterial<DirectionalLightShader>());
+	spotLightShader = make_shared<SpotLightShaderInstance>(Material::Manager::GetMaterial<SpotLightShader>());
 	
 	constexpr uint16_t indices[] = {0,2,1, 2,3,1};
 	constexpr Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};

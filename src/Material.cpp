@@ -16,7 +16,8 @@ using namespace std;
 using namespace RavEngine;
 using namespace std::filesystem;
 
-Material::Manager::MaterialStore Material::Manager::materials;
+STATIC(Material::Manager::materials);
+STATIC(Material::Manager::mtx);
 
 bgfx::ShaderHandle loadShader(const std::vector<uint8_t>& data){
 	const bgfx::Memory* mem = bgfx::copy(&data[0], data.size());
@@ -77,10 +78,4 @@ bgfx::ProgramHandle RavEngine::Material::getShaderHandle(const std::string_view&
 	App::Resources->FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
 	const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
 	return bgfx::createProgram(bgfx::createShader(mem), true);	//auto destroys shader when program is destroyed
-}
-
-bool Material::Manager::HasMaterialByTypeIndex(const ctti_t t){
-	bool result = false;
-	result = materials.find(t) != materials.end();
-	return result;
 }

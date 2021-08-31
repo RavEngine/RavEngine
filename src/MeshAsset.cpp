@@ -31,6 +31,9 @@ aiProcess_ValidateDataStructure          |
 aiProcess_OptimizeMeshes				|
 aiProcess_FindInvalidData     ;
 
+STATIC(MeshAsset::Manager::mtx);
+STATIC(MeshAsset::Manager::meshes);
+
 static const aiScene* LoadScene(const std::string& name){
 	string dir = StrFormat("objects/{}", name);
 	
