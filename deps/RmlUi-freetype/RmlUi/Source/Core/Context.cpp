@@ -270,8 +270,6 @@ ElementDocument* Context::LoadDocument(Stream* stream)
 	
 	root->AppendChild(std::move(element));
 
-	ElementUtilities::BindEventAttributes(document);
-
 	// The 'load' event is fired before updating the document, because the user might
 	// need to initalize things before running an update. The drawback is that computed
 	// values and layouting are not performed yet, resulting in default values when
@@ -1214,16 +1212,18 @@ void Context::CreateDragClone(Element* element)
 		return;
 	}
 
+	// Set the style sheet on the cursor proxy.
+	if (ElementDocument* document = element->GetOwnerDocument())
+	{
+		// Borrow the target document's style sheet. Sharing style sheet containers should be used with care, and
+		// only within the same context.
+		static_cast<ElementDocument&>(*cursor_proxy).SetStyleSheetContainer(document->style_sheet_container);
+	}
+
 	drag_clone = element_drag_clone.get();
 
 	// Append the clone to the cursor proxy element.
 	cursor_proxy->AppendChild(std::move(element_drag_clone));
-
-	// Set the style sheet on the cursor proxy.
-	if (ElementDocument* document = element->GetOwnerDocument())
-	{
-		static_cast<ElementDocument&>(*cursor_proxy).SetStyleSheetContainer(document->GetStyleSheetContainer());
-	}
 
 	// Set all the required properties and pseudo-classes on the clone.
 	drag_clone->SetPseudoClass("drag", true);

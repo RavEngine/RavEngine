@@ -3,7 +3,7 @@
 #include <bx/bx.h>
 #include <bx/readerwriter.h>
 #include "App.hpp"
-#define STB_IMAGE_IMPLEMENTATION
+//#define STB_IMAGE_IMPLEMENTATION // don't define here, because rlottie & bimg define them
 #include <stb_image.h>
 #include "Debug.hpp"
 
@@ -30,7 +30,7 @@ Texture::Texture(const std::string& name){
 	uint16_t numlayers = 1;
 	
 	CreateTexture(width, height, hasMipMaps, numlayers, bytes);
-	STBI_FREE(bytes);
+	free(bytes);
 	
 }
 

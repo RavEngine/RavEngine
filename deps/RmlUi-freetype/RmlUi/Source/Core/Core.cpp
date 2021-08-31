@@ -55,6 +55,10 @@
 #include "../Lottie/LottiePlugin.h"
 #endif
 
+#ifdef RMLUI_ENABLE_SVG_PLUGIN
+#include "../SVG/SVGPlugin.h"
+#endif
+
 
 namespace Rml {
 
@@ -131,6 +135,9 @@ bool Initialise()
 	// Initialise plugins integrated with Core.
 #ifdef RMLUI_ENABLE_LOTTIE_PLUGIN
 	Lottie::Initialise();
+#endif
+#ifdef RMLUI_ENABLE_SVG_PLUGIN
+	SVG::Initialise();
 #endif
 
 	// Notify all plugins we're starting up.
@@ -335,6 +342,15 @@ void RegisterPlugin(Plugin* plugin)
 	PluginRegistry::RegisterPlugin(plugin);
 }
 
+// Unregisters a generic rmlui plugin
+void UnregisterPlugin(Plugin* plugin)
+{
+	PluginRegistry::UnregisterPlugin(plugin);
+
+	if(initialised)
+		plugin->OnShutdown();
+}
+
 EventId RegisterEventType(const String& type, bool interruptible, bool bubbles, DefaultActionPhase default_action_phase)
 {
 	return EventSpecificationInterface::InsertOrReplaceCustom(type, interruptible, bubbles, default_action_phase);
@@ -345,9 +361,9 @@ StringList GetTextureSourceList()
 	return TextureDatabase::GetSourceList();
 }
 
-void ReleaseTextures()
+void ReleaseTextures(RenderInterface* in_render_interface)
 {
-	TextureDatabase::ReleaseTextures();
+	TextureDatabase::ReleaseTextures(in_render_interface);
 }
 
 void ReleaseCompiledGeometry()

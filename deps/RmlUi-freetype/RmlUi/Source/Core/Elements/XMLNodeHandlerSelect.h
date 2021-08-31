@@ -26,29 +26,26 @@
  *
  */
 
-#include "../../../Include/RmlUi/Core/Elements/SelectOption.h"
+#ifndef RMLUI_CORE_ELEMENTS_XMLNODEHANDLERSELECT_H
+#define RMLUI_CORE_ELEMENTS_XMLNODEHANDLERSELECT_H
+
+#include "../XMLNodeHandlerDefault.h"
 
 namespace Rml {
 
-SelectOption::SelectOption(Element* _element, const String& value, bool selectable) : value(value) , selectable(selectable)
-{
-	element = _element;
-}
+/**
+	XML node handler for processing the select and option tags.
+ */
 
-SelectOption::~SelectOption()
+class XMLNodeHandlerSelect : public XMLNodeHandlerDefault
 {
-}
+public:
+	XMLNodeHandlerSelect();
+	virtual ~XMLNodeHandlerSelect();
 
-// Returns the element that represents the option visually.
-Element* SelectOption::GetElement()
-{
-	return element;
-}
-
-// Returns the value of the option.
-const String& SelectOption::GetValue() const
-{
-	return value;
-}
+	/// Called when a new element start is opened
+	Element* ElementStart(XMLParser* parser, const String& name, const XMLAttributes& attributes) override;
+};
 
 } // namespace Rml
+#endif

@@ -33,7 +33,6 @@
 #include "../Core/Element.h"
 #include "../Core/Geometry.h"
 #include "../Core/Texture.h"
-#include <memory>
 
 namespace rlottie { class Animation; }
 

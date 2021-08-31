@@ -1,4 +1,4 @@
-# RmlUi - The HTML/CSS User Interface Library Evolved
+﻿# RmlUi - The HTML/CSS User Interface Library Evolved
 
 ![RmlUi](https://github.com/mikke89/RmlUiDoc/raw/cc01edd834b003df6c649967bfd552bb0acc3d1e/assets/rmlui.png)
 
@@ -6,15 +6,18 @@ RmlUi - now with added boosters taking control of the rocket, targeting *your* g
 
 ---
 
-[![Chat on Gitter](https://badges.gitter.im/RmlUi/community.svg)](https://gitter.im/RmlUi/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) ![Build](https://github.com/mikke89/RmlUi/workflows/Build/badge.svg) [![Build status](https://ci.appveyor.com/api/projects/status/x95oi8mrb001pqhh/branch/master?svg=true)](https://ci.appveyor.com/project/mikke89/rmlui/branch/master) [![Build Status](https://travis-ci.com/mikke89/RmlUi.svg?branch=master)](https://travis-ci.com/mikke89/RmlUi)
+[![Chat on Gitter](https://badges.gitter.im/RmlUi/community.svg)](https://gitter.im/RmlUi/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Build](https://github.com/mikke89/RmlUi/actions/workflows/build.yml/badge.svg)](https://github.com/mikke89/RmlUi/actions/workflows/build.yml)
+[![Build status](https://ci.appveyor.com/api/projects/status/x95oi8mrb001pqhh/branch/master?svg=true)](https://ci.appveyor.com/project/mikke89/rmlui/branch/master)
+[![Build Status](https://travis-ci.com/mikke89/RmlUi.svg?branch=master)](https://travis-ci.com/mikke89/RmlUi)
 
 RmlUi is the C++ user interface package based on the HTML and CSS standards, designed as a complete solution for any project's interface needs. It is a fork of the [libRocket](https://github.com/libRocket/libRocket) project, introducing new features, bug fixes, and performance improvements. 
 
-RmlUi uses the time-tested open standards XHTML1 and CSS2 while borrowing features from HTML5 and CSS3, and extends them with features suited towards real-time applications. Because of this, you don't have to learn a whole new proprietary technology like other libraries in this space. Please have a look at the supported [RCSS properties](https://mikke89.github.io/RmlUiDoc/pages/rcss/property_index.html) and [RML elements](https://mikke89.github.io/RmlUiDoc/pages/rml/element_index.html).
+RmlUi aims at being a light-weight and performant library with its own layouting engine and few dependencies. In essence, RmlUi takes your HTML/CSS-like source files and turns them into vertices, indices and draw commands, and then you bring your own renderer to draw them. And of course there is full access to the element hierarchy/DOM, event handling, and all the interactivity and customizability you would expect. All of this directly from C++, or optionally from scripting languages using plugins. The core library compiles down to fractions of the size it takes to integrate a fully fledged web browser as other libraries do in this space. 
+
+RmlUi is based around the XHTML1 and CSS2 standards while borrowing features from HTML5 and CSS3, and extends them with features suited towards real-time applications. Take a look at the [conformance](#conformance) and [enhancements](#enhancements) sections below for details.
 
 Documentation is located at https://mikke89.github.io/RmlUiDoc/
-
-***Note:*** RmlUi 4.0 currently in development is a restructuring of RmlUi 3.x. This includes changes to the namespaces, plugins, and include headers. Take a look at the [changelog](changelog.md#restructuring-rmlui) for a summary of changes and an upgrade guide.
 
 ## Features
 
@@ -30,7 +33,7 @@ Documentation is located at https://mikke89.github.io/RmlUiDoc/
 - Abstracted interfaces for plugging in to any game engine.
 - Decorator engine allowing custom application-specific effects that can be applied to any element.
 - Generic event system that binds seamlessly into existing projects.
-- Easily integrated and extensible with Lua scripting.
+- Easily integrated and extensible with the Lua scripting plugin.
 
 ## Controllable
 
@@ -41,19 +44,6 @@ Documentation is located at https://mikke89.github.io/RmlUiDoc/
 - File handling and the font engine can optionally be fully replaced by the user.
 
 
-## Integrating RmlUi
-
-Here are the general steps to integrate the library into a C++ application, have a look at the [documentation](https://mikke89.github.io/RmlUiDoc/) for details.
-
-1. Build RmlUi using CMake and your favorite compiler, or fetch the Windows library binaries.
-2. Link it up to your application.
-3. Implement the abstract [system interface](Include/RmlUi/Core/SystemInterface.h) and [render interface](Include/RmlUi/Core/RenderInterface.h).
-4. Initialize RmlUi with the interfaces, create a context, provide font files, and load a document.
-5. Call into the context's update and render methods in a loop, and submit input events.
-6. Compile and run!
-
-Several [samples](Samples/) demonstrate everything from basic integration to more complex use of the library, feel free to have a look for inspiration.
-
 ## Dependencies
 
 - [FreeType](https://www.freetype.org/). However, it can be fully replaced by a custom [font engine](Include/RmlUi/Core/FontEngineInterface.h).
@@ -62,9 +52,78 @@ Several [samples](Samples/) demonstrate everything from basic integration to mor
 In addition, a C++14 compatible compiler is required.
 
 
-## Example: Basic document
+## Building RmlUi
 
-In this example a document is created using a templated window. The template is optional but can aid in achieving a consistent look by sharing it between multiple documents.
+RmlUi is built using CMake and your favorite compiler, see the [building documentation](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/building_with_cmake.html) for all the details and options. Windows binaries are also available for the [latest release](https://github.com/mikke89/RmlUi/releases/latest). Most conveniently, it is possible to fetch the library using a dependency manager such as [vcpkg](https://vcpkg.io/en/getting-started.html) or [Conan](https://conan.io/).
+
+#### vcpkg
+
+```
+vcpkg install rmlui
+```
+
+That's it! See below for details on integrating RmlUi.
+
+To build RmlUi with the included samples we can use git and CMake together with vcpkg to handle the dependency.
+
+```
+vcpkg install freetype
+git clone https://github.com/mikke89/RmlUi.git
+cd RmlUi
+cmake -B Build -S . -DBUILD_SAMPLES=ON -DCMAKE_TOOLCHAIN_FILE="<path-to-vcpkg>/scripts/buildsystems/vcpkg.cmake"
+cmake --build Build
+```
+Make sure to replace the path to vcpkg.
+
+#### Conan
+
+RmlUi is readily available from [ConanCenter](https://conan.io/center/rmlui).
+
+
+## Integrating RmlUi
+
+Here are the general steps to integrate the library into a C++ application, have a look at the [documentation](https://mikke89.github.io/RmlUiDoc/) for details.
+
+1. Build RmlUi as above or fetch the binaries, and [link it up](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/integrating.html) to your application.
+2. Implement the abstract [system interface](Include/RmlUi/Core/SystemInterface.h) and [render interface](Include/RmlUi/Core/RenderInterface.h).
+3. Initialize RmlUi with the interfaces, create a context, provide font files, and load a document.
+4. Call into the context's update and render methods in a loop, and submit input events.
+5. Compile and run!
+
+Several [samples](Samples/) demonstrate everything from basic integration to more complex use of the library, feel free to have a look for inspiration.
+
+
+## Conformance
+
+RmlUi aims to support the most common and familiar features from HTML and CSS, while keeping the library light and performant. We do not aim to be fully compliant with CSS or HTML, in particular when it conflicts with lightness and performance. Users are generally expected to author documents specifically for RmlUi, but any experience and skills from web design should be transferable.
+
+RmlUi supports most of CSS2 with some CSS3 features such as
+
+- Animations and transitions
+- Transforms (with full interpolation support)
+- Media queries
+- Border radius
+
+and many of the common HTML elements including `<input>`,  `<textarea>`, and `<select>`.
+
+For details, see
+- [RCSS Property index](https://mikke89.github.io/RmlUiDoc/pages/rcss/property_index.html) for all supported properties and differences from CSS.
+- [RML Element index](https://mikke89.github.io/RmlUiDoc/pages/rml/element_index.html) for all supported elements.
+
+## Enhancements
+
+RmlUi adds features and enhancements over CSS and HTML where it makes sense, most notably the following.
+
+- [Data binding (model-view-controller)](https://mikke89.github.io/RmlUiDoc/pages/data_bindings.html). Synchronization between application data and user interface.
+- [Decorators](https://mikke89.github.io/RmlUiDoc/pages/rcss/decorators.html). Full control over the styling of [all elements](https://mikke89.github.io/RmlUiDoc/pages/style_guide.html).
+- [Sprite sheets](https://mikke89.github.io/RmlUiDoc/pages/rcss/sprite_sheets.html). Define and use sprites with easy high DPI support.
+- [Templates](https://mikke89.github.io/RmlUiDoc/pages/rml/templates.html). Making windows look consistent.
+- [Localization](https://mikke89.github.io/RmlUiDoc/pages/localisation.html). Translate any text in the document.
+
+
+## Example document
+
+This example demonstrates a basic document with [data bindings](https://mikke89.github.io/RmlUiDoc/pages/data_bindings.html), which is loaded and displayed using the C++ code below.
 
 #### Document
 
@@ -74,64 +133,153 @@ In this example a document is created using a templated window. The template is 
 <rml>
 <head>
 	<title>Hello world</title>
-	<link type="text/template" href="window.rml" />
-	<style>
-		body
-		{
-			width: 200px;
-			height: 100px;
-			margin: auto;
-		}
-	</style>
-</head>
-<body template="window">
-	Hello world!
-</body>
-</rml>
-```
-
-#### Window template
-
-`window.rml`
-
-```html
-<template name="window" content="content">
-<head>
 	<link type="text/rcss" href="rml.rcss"/>
 	<link type="text/rcss" href="window.rcss"/>
 </head>
-<body>
-	<div id="title_header">RmlUi</div>
-	<div id="content"/>
+<body data-model="animals">
+	<h1>RmlUi</h1>
+	<p>Hello <span id="world">world</span>!</p>
+	<p data-if="show_text">The quick brown fox jumps over the lazy {{animal}}.</p>
+	<input type="text" data-value="animal"/>
 </body>
-</template>
+</rml>
 ```
-No styles are defined internally, thus `rml.rcss` can be included for [styling the standard elements](Samples/assets/rml.rcss).
+The `{{animal}}` text and the `data-if`, `data-value` attributes represent data bindings and will synchronize with the application data.
 
 #### Style sheet
 
 `window.rcss`
 
 ```css
-body
-{
-	font-family: Delicious;
-	font-weight: normal;
-	font-style: normal;
-	font-size: 15px;
-	color: #6f42c1;
-	background: #f6f8fa;
+body {
+	font-family: LatoLatin;
+	font-size: 18px;
+	color: #02475e;
+	background: #fefecc;
 	text-align: center;
-	padding: 2em 3em;
+	padding: 2em 1em;
+	position: absolute;
 	border: 2px #ccc;
+	width: 500px;
+	height: 200px;
+	margin: auto;
 }
-
-#title_header
-{
-	color: #9a42c5;
+		
+h1 {
+	color: #f6470a;
 	font-size: 1.5em;
 	font-weight: bold;
-	padding-bottom: 1em;
+	margin-bottom: 0.7em;
+}
+		
+p { 
+	margin: 0.7em 0;
+}
+		
+input.text {
+	background-color: #fff;
+	color: #555;
+	border: 2px #999;
+	padding: 5px;
+	tab-index: auto;
+	cursor: text;
+	box-sizing: border-box;
+	width: 200px;
+	font-size: 0.9em;
+}
+```
+
+RmlUi defines no styles internally, thus the `input` element is styled here, and [`rml.rcss` is included](Samples/assets/rml.rcss) for proper layout of common tags.
+
+
+#### C++ Initialization and loop
+
+`main.cpp`
+
+```cpp
+#include <RmlUi/Core.h>
+
+class MyRenderInterface : public Rml::RenderInterface
+{
+	// RmlUi sends vertices, indices and draw commands through this interface for your
+	// application to render how you'd like.
+	/* ... */
+}
+
+class MySystemInterface : public Rml::SystemInterface
+{	
+	// RmlUi requests the current time and provides various utilities through this interface.
+	/* ... */
+}
+
+struct ApplicationData {
+	bool show_text = true;
+	Rml::String animal = "dog";
+} my_data;
+
+int main(int argc, char** argv)
+{
+	// Initialize the window and graphics API being used, along with your game or application.
+
+	/* ... */
+
+	MyRenderInterface render_interface;
+	MySystemInterface system_interface;
+
+	// Install the custom interfaces.
+	Rml::SetRenderInterface(&render_interface);
+	Rml::SetSystemInterface(&system_interface);
+
+	// Now we can initialize RmlUi.
+	Rml::Initialise();
+
+	// Create a context to display documents within.
+	Rml::Context* context = Rml::CreateContext("main", Rml::Vector2i(window_width, window_height));
+
+	// Tell RmlUi to load the given fonts.
+	Rml::LoadFontFace("LatoLatin-Regular.ttf");
+	// Fonts can be registered as fallback fonts, as in this case to display emojis.
+	Rml::LoadFontFace("NotoEmoji-Regular.ttf", true);
+
+	// Set up data bindings to synchronize application data.
+	if (Rml::DataModelConstructor constructor = context->CreateDataModel("animals"))
+	{
+		constructor.Bind("show_text", &my_data.show_text);
+		constructor.Bind("animal", &my_data.animal);
+	}
+
+	// Now we are ready to load our document.
+	Rml::ElementDocument* document = context->LoadDocument("hello_world.rml");
+	document->Show();
+
+	// Replace and style some text in the loaded document.
+	Rml::Element* element = document->GetElementById("world");
+	element->SetInnerRML(reinterpret_cast<const char*>(u8"🌍"));
+	element->SetProperty("font-size", "1.5em");
+
+	bool exit_application = false;
+	while (!exit_application)
+	{
+		// We assume here that we have some way of updating and retrieving inputs internally.
+		if (my_input->KeyPressed(KEY_ESC))
+			exit_application = true;
+
+		// Submit input events such as MouseMove and key events (not shown) to the context.
+		if (my_input->MouseMoved())
+			context->ProcessMouseMove(mouse_pos.x, mouse_pos.y, 0);
+
+		// Update the context to reflect any changes resulting from input events, animations,
+		// modified and added elements, or changed data in data bindings.
+		context->Update();
+
+		// Render the user interface. All geometry and other rendering commands are now
+		// submitted through the render interface.
+		context->Render();
+	}
+
+	Rml::Shutdown();
+
+	return 0;
 }
 ```
 
@@ -139,6 +287,7 @@ body
 
 ![Hello world document](Samples/assets/hello_world.png)
 
+Users can now edit the text field to change the animal. The data bindings ensure that both the document text as well as the application string `my_data.animal` are automatically modified accordingly.
 
 
 ## Gallery
@@ -164,8 +313,10 @@ body
 ![Lottie animation](https://github.com/mikke89/RmlUiDoc/blob/086385e119f0fc6e196229b785e91ee0252fe4b4/assets/gallery/lottie.gif)  
 **Vector animations with the [Lottie plugin](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/lottie.html)**
 
-See the **[full gallery](https://mikke89.github.io/RmlUiDoc/pages/gallery.html)** for more screenshots and videos of the library in action.
+![SVG image](https://github.com/mikke89/RmlUiDoc/blob/2908fe50acf7861e729ce113eafa8cf7610bf08a/assets/gallery/svg_plugin.png)  
+**Vector images with the [SVG plugin](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/svg.html)**
 
+See the **[full gallery](https://mikke89.github.io/RmlUiDoc/pages/gallery.html)** for more screenshots and videos of the library in action.
 
 
 ## License
@@ -209,8 +360,9 @@ See [Source/Debugger/LICENSE.txt](Source/Debugger/LICENSE.txt) - SIL Open Font L
 
 See
 - [Samples/assets/LICENSE.txt](Samples/assets/LICENSE.txt)
-- [Samples/basic/lottie/data/LICENSE.txt](Samples/basic/lottie/data/LICENSE.txt)
 - [Samples/basic/bitmapfont/data/LICENSE.txt](Samples/basic/bitmapfont/data/LICENSE.txt)
+- [Samples/basic/lottie/data/LICENSE.txt](Samples/basic/lottie/data/LICENSE.txt)
+- [Samples/basic/svg/data/LICENSE.txt](Samples/basic/svg/data/LICENSE.txt)
 
 #### Libraries included with the test suite *(in Tests/Dependencies/)*
 

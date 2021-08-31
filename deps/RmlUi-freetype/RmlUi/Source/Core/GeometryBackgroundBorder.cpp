@@ -258,12 +258,11 @@ void GeometryBackgroundBorder::DrawArc(Vector2f pos_center, Vector2f r, float a0
 		const float t = float(i) / float(num_points - 1);
 
 		const float a = Math::Lerp(t, a0, a1);
-		const Colourb color = Math::Lerp(t, color0, color1);
 
 		const Vector2f unit_vector(Math::Cos(a), Math::Sin(a));
 
 		vertices[offset_vertices + i].position = unit_vector * r + pos_center;
-		vertices[offset_vertices + i].colour = color;
+		vertices[offset_vertices + i].colour = Math::RoundedLerp(t, color0, color1);
 	}
 }
 
@@ -336,8 +335,7 @@ void GeometryBackgroundBorder::DrawArcArc(Vector2f pos_center, float R, Vector2f
 		const float t = float(i) / float(num_points - 1);
 
 		const float a = Math::Lerp(t, a0, a1);
-		const Colourb color = Math::Lerp(t, color0, color1);
-
+		const Colourb color = Math::RoundedLerp(t, color0, color1);
 		const Vector2f unit_vector(Math::Cos(a), Math::Sin(a));
 
 		vertices[offset_vertices + 2 * i].position = unit_vector * r + pos_center;

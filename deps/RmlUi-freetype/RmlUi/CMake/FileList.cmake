@@ -45,6 +45,7 @@ set(Core_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/WidgetTextInputSingleLine.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/WidgetTextInputSingleLinePassword.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerDataGrid.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerSelect.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerTabSet.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerTextArea.h
     ${PROJECT_SOURCE_DIR}/Source/Core/ElementStyle.h
@@ -67,6 +68,7 @@ set(Core_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutInlineBoxText.h
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutLineBox.h
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutTable.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/LayoutTableDetails.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Memory.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PluginRegistry.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Pool.h
@@ -137,6 +139,7 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ConvolutionFilter.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Core.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/DataModelHandle.h
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/DataStructHandle.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/DataTypeRegister.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/DataTypes.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/DataVariable.h
@@ -162,9 +165,8 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Elements/ElementFormControlInput.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Elements/ElementFormControlSelect.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Elements/ElementFormControlTextArea.h
-    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Elements/ElementProgressBar.h
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Elements/ElementProgress.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Elements/ElementTabSet.h
-    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Elements/SelectOption.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ElementScroll.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ElementText.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ElementUtilities.h
@@ -289,7 +291,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementFormControlTextArea.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementImage.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementLabel.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementProgressBar.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementProgress.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementTabSet.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/ElementTextSelection.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/InputType.cpp
@@ -299,7 +301,6 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/InputTypeRange.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/InputTypeSubmit.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/InputTypeText.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/Elements/SelectOption.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/WidgetDropDown.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/WidgetSlider.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/WidgetTextInput.cpp
@@ -307,6 +308,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/WidgetTextInputSingleLine.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/WidgetTextInputSingleLinePassword.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerDataGrid.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerSelect.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerTabSet.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Elements/XMLNodeHandlerTextArea.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/ElementScroll.cpp
@@ -341,6 +343,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutInlineBoxText.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutLineBox.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutTable.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/LayoutTableDetails.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Log.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Math.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Memory.cpp
@@ -585,5 +588,18 @@ set(Lottie_PUB_HDR_FILES
 set(Lottie_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Lottie/ElementLottie.cpp
     ${PROJECT_SOURCE_DIR}/Source/Lottie/LottiePlugin.cpp
+)
+
+set(SVG_HDR_FILES
+    ${PROJECT_SOURCE_DIR}/Source/SVG/SVGPlugin.h
+)
+
+set(SVG_PUB_HDR_FILES
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/SVG/ElementSVG.h
+)
+
+set(SVG_SRC_FILES
+    ${PROJECT_SOURCE_DIR}/Source/SVG/ElementSVG.cpp
+    ${PROJECT_SOURCE_DIR}/Source/SVG/SVGPlugin.cpp
 )
 

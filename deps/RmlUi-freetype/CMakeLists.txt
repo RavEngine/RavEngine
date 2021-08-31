@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(RmlUi VERSION 4.0) 
+project(RmlUi VERSION 4.2) 
 
-set(RMLUI_VERSION_RELEASE false)
+set(RMLUI_VERSION_RELEASE TRUE)
 set(ENABLE_LOTTIE_PLUGIN ON CACHE INTERNAL "") # rlottie plugin
 
 if(RMLUI_VERSION_RELEASE)
@@ -13,11 +13,22 @@ endif()
 set(RMLUI_VERSION_SHORT ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}${RMLUI_VERSION_SUFFIX})
 
 # main RML Library (includes debugger)
-file(GLOB_RECURSE RML_SOURCES "RmlUi/Include/*.h" "RmlUi/Include/*.hpp" "RmlUi/Source/Core/*.cpp" "RmlUi/Source/Debugger/*.cpp")
+file(GLOB_RECURSE RML_SOURCES 
+    "RmlUi/Include/*.h" 
+    "RmlUi/Include/*.hpp" 
+    "RmlUi/Source/Core/*.cpp" 
+    "RmlUi/Source/Core/*.h" 
+    "RmlUi/Source/Lottie/*.cpp" 
+    "RmlUi/Source/Lottie/*.h" 
+    #"RmlUi/Source/SVG/*.h" 
+    #"RmlUi/Source/SVG/*.cpp" 
+    "RmlUi/Source/Debugger/*.cpp"
+)
 add_library(RmlCore STATIC ${RML_SOURCES})
-target_include_directories(RmlCore PUBLIC "RmlUi/Include/")
+target_include_directories(RmlCore PUBLIC "RmlUi/Include/" "rlottie/inc")
+list(APPEND CORE_PRIVATE_DEFS RMLUI_ENABLE_LOTTIE_PLUGIN)
 target_compile_definitions(RmlCore
-    PRIVATE -DRMLUI_VERSION="${RMLUI_VERSION_SHORT}"
+    PRIVATE -DRMLUI_VERSION="${RMLUI_VERSION_SHORT}" ${CORE_PRIVATE_DEFS}
 )
 target_compile_features(RmlCore PRIVATE cxx_std_14)
 

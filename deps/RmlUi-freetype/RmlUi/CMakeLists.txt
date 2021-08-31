@@ -53,9 +53,9 @@ if(POLICY CMP0074)
 	cmake_policy(SET CMP0074 NEW)
 endif(POLICY CMP0074)
 
-project(RmlUi LANGUAGES C CXX VERSION 4.0)
+project(RmlUi LANGUAGES C CXX VERSION 4.2)
 
-set(RMLUI_VERSION_RELEASE false)
+set(RMLUI_VERSION_RELEASE true)
 
 if(RMLUI_VERSION_RELEASE)
 	set(RMLUI_VERSION_SUFFIX "")
@@ -126,6 +126,10 @@ if(NOT DEFINED ENV{RLOTTIE_DIR})
 	set(ENV{RLOTTIE_DIR} "${PROJECT_SOURCE_DIR}/Dependencies/rlottie")
 endif()
 
+if(NOT DEFINED ENV{LUNASVG_DIR})
+	set(ENV{LUNASVG_DIR} "${PROJECT_SOURCE_DIR}/Dependencies/lunasvg")
+endif()
+
 #===================================
 # Plaform specific global hacks ====
 #===================================
@@ -192,13 +196,13 @@ if(WIN32 AND BUILD_SHARED_LIBS AND BUILD_TESTING)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
-	add_definitions(-DRMLUI_STATIC_LIB)
+	list(APPEND CORE_PUBLIC_DEFS -DRMLUI_STATIC_LIB)
 	message("-- Building static libraries. Make sure to #define RMLUI_STATIC_LIB before including RmlUi in your project.")
 endif()
 
 option(NO_THIRDPARTY_CONTAINERS "Only use standard library containers." OFF)
 if( NO_THIRDPARTY_CONTAINERS )
-	add_definitions(-DRMLUI_NO_THIRDPARTY_CONTAINERS)
+	list(APPEND CORE_PUBLIC_DEFS -DRMLUI_NO_THIRDPARTY_CONTAINERS)
 	message("-- No third-party containers will be used: Make sure to #define RMLUI_NO_THIRDPARTY_CONTAINERS before including RmlUi in your project.")
 endif()
 
@@ -206,7 +210,7 @@ option(CUSTOM_CONFIGURATION "Customize RmlUi configuration files for overriding 
 
 set(CUSTOM_CONFIGURATION_FILE "" CACHE STRING "Custom configuration file to be included in place of <RmlUi/Config/Config.h>.")
 if( CUSTOM_CONFIGURATION AND CUSTOM_CONFIGURATION_FILE )
-	add_definitions(-DRMLUI_CUSTOM_CONFIGURATION_FILE="${CUSTOM_CONFIGURATION_FILE}")
+	list(APPEND CORE_PUBLIC_DEFS -DRMLUI_CUSTOM_CONFIGURATION_FILE="${CUSTOM_CONFIGURATION_FILE}")
 	message("-- Including ${CUSTOM_CONFIGURATION_FILE} instead of <RmlUi/Config/Config.h>")
 endif ()
 
@@ -246,17 +250,18 @@ if( ENABLE_TRACY_PROFILING )
 		message("-- Tracy profiling enabled in configuration 'Tracy'.")
 	else()
 		message("-- Tracy profiling enabled.")
-		add_definitions(-DRMLUI_ENABLE_PROFILING)
+		list(APPEND CORE_PUBLIC_DEFS -DRMLUI_ENABLE_PROFILING)
 	endif()
 elseif( CMAKE_CONFIGURATION_TYPES )
 	list(REMOVE_ITEM CMAKE_CONFIGURATION_TYPES Tracy)
 endif()
 
 option(ENABLE_LOTTIE_PLUGIN "Enable plugin for Lottie animations. Requires the rlottie library." OFF)
+option(ENABLE_SVG_PLUGIN "Enable plugin for SVG images. Requires the lunasvg library." OFF)
 
 option(DISABLE_RTTI_AND_EXCEPTIONS "Build with rtti and exceptions disabled." OFF)
 if(DISABLE_RTTI_AND_EXCEPTIONS)
-	add_definitions(-DRMLUI_USE_CUSTOM_RTTI)
+	list(APPEND CORE_PUBLIC_DEFS -DRMLUI_USE_CUSTOM_RTTI)
 	message("-- C++ RTTI and exceptions will be disabled: Make sure to #define RMLUI_USE_CUSTOM_RTTI before including RmlUi in your project.")
 endif()
 
@@ -292,6 +297,7 @@ macro(add_common_target_options NAME)
 		endif()
 	elseif(MSVC)
 		target_compile_options(${NAME} PRIVATE /MP /W4 /w44062 /permissive-)
+		target_compile_definitions(${NAME} PRIVATE _CRT_SECURE_NO_WARNINGS)
 		
 		if(WARNINGS_AS_ERRORS)
 			target_compile_options(${NAME} PRIVATE /WX)
@@ -316,22 +322,16 @@ include(FileList)
 
 # FreeType
 if(NOT NO_FONT_INTERFACE_DEFAULT)
-	find_package(Freetype REQUIRED)	
-
-	if(FREETYPE_FOUND)
-		include_directories(${FREETYPE_INCLUDE_DIRS})
-		link_directories(${FREETYPE_LINK_DIRS})
-		list(APPEND CORE_LINK_LIBS ${FREETYPE_LIBRARY})
-	endif()
+	find_package(Freetype REQUIRED)
+	list(APPEND CORE_LINK_LIBS ${FREETYPE_LIBRARIES})
+	list(APPEND CORE_INCLUDE_DIRS ${FREETYPE_INCLUDE_DIRS})
 endif()
 
 # Lua
 if(BUILD_LUA_BINDINGS)
 	find_package(Lua REQUIRED)
-	if(LUA_FOUND)
-		include_directories(${LUA_INCLUDE_DIR})
-		list(APPEND LUA_BINDINGS_LINK_LIBS ${LUA_LIBRARIES})
-	endif()
+	list(APPEND LUA_BINDINGS_INCLUDE_DIRS ${LUA_INCLUDE_DIR})
+	list(APPEND LUA_BINDINGS_LINK_LIBS ${LUA_LIBRARIES})
 endif()
 
 # rlottie
@@ -365,6 +365,28 @@ if( ENABLE_LOTTIE_PLUGIN )
 		endif()
 	endif()
 endif()
+
+# lunasvg
+if( ENABLE_SVG_PLUGIN )
+	if(NOT DEFINED LUNASVG_DIR)
+		set(LUNASVG_DIR $ENV{LUNASVG_DIR})
+	endif()
+	
+	message("-- Can SVG plugin be enabled - looking for lunasvg library")
+
+	find_package(lunasvg REQUIRED)
+	
+	list(APPEND CORE_LINK_LIBS ${LUNASVG_LIBRARIES})
+	list(APPEND CORE_INCLUDE_DIRS ${LUNASVG_INCLUDE_DIR})
+	list(APPEND CORE_PRIVATE_DEFS RMLUI_ENABLE_SVG_PLUGIN)
+	
+	list(APPEND Core_HDR_FILES ${SVG_HDR_FILES})
+	list(APPEND Core_PUB_HDR_FILES ${SVG_PUB_HDR_FILES})
+	list(APPEND Core_SRC_FILES ${SVG_SRC_FILES})
+
+	message("-- Can SVG plugin be enabled - yes - lunasvg library found")
+endif()
+
 
 if(NOT BUILD_FRAMEWORK)
 #===================================
@@ -412,11 +434,8 @@ if( CUSTOM_CONFIGURATION )
 	endforeach(library ${CUSTOM_LINK_LIBRARIES})
 endif()
 
-
-target_compile_definitions(RmlCore PRIVATE ${CORE_PRIVATE_DEFS})
-
 if( MATRIX_ROW_MAJOR )
-	target_compile_definitions(RmlCore PUBLIC -DRMLUI_MATRIX_ROW_MAJOR)
+	list(APPEND CORE_PUBLIC_DEFS -DRMLUI_MATRIX_ROW_MAJOR)
 endif ()
 if( CUSTOM_CONFIGURATION AND CUSTOM_LINK_LIBRARIES )
 	target_link_libraries(RmlCore PUBLIC ${CUSTOM_LINK_LIBRARIES})
@@ -485,8 +504,6 @@ else(NOT BUILD_FRAMEWORK)
 	set(RMLUI_EXPORTED_TARGETS ${RMLUI_EXPORTED_TARGETS} ${NAME})
 endif(NOT BUILD_FRAMEWORK)
 
-# Add additional Core include directories
-target_include_directories(RmlCore PRIVATE ${CORE_INCLUDE_DIRS})
 
 # Build Lua bindings
 if(BUILD_LUA_BINDINGS)
@@ -539,17 +556,26 @@ endif()
 #===================================
 
 if(NOT BUILD_FRAMEWORK)
+	target_include_directories(RmlCore PRIVATE ${CORE_INCLUDE_DIRS})
+	target_include_directories(RmlCore INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include> $<INSTALL_INTERFACE:include>)
 	target_link_libraries(RmlCore ${CORE_LINK_LIBS})
 	target_link_libraries(RmlDebugger RmlCore)
+	target_compile_definitions(RmlCore PRIVATE ${CORE_PRIVATE_DEFS})
+	target_compile_definitions(RmlCore PUBLIC ${CORE_PUBLIC_DEFS})
 else()
+	target_include_directories(RmlUi PRIVATE ${CORE_INCLUDE_DIRS})
 	target_link_libraries(RmlUi ${CORE_LINK_LIBS})
+	target_compile_definitions(RmlUi PRIVATE ${CORE_PRIVATE_DEFS})
+	target_compile_definitions(RmlUi PUBLIC ${CORE_PUBLIC_DEFS})
 endif()
 
 if(BUILD_LUA_BINDINGS)
 	if(NOT BUILD_FRAMEWORK)
 		target_link_libraries(RmlLua RmlCore ${LUA_BINDINGS_LINK_LIBS})
+		target_include_directories(RmlLua PUBLIC ${LUA_BINDINGS_INCLUDE_DIRS})
 	else()
-		target_link_libraries(RmlLua RmlUi ${LUA_BINDINGS_LINK_LIBS})
+		target_link_libraries(RmlUi ${LUA_BINDINGS_LINK_LIBS})
+		target_include_directories(RmlUi PUBLIC ${LUA_BINDINGS_INCLUDE_DIRS})
 	endif()
 endif()
 
@@ -736,6 +762,17 @@ if(BUILD_SAMPLES)
 			BUNDLE DESTINATION ${SAMPLES_DIR}
 		)
 	endif()
+	
+	if( ENABLE_SVG_PLUGIN )
+		bl_sample(svg ${sample_LIBRARIES})
+		
+		# The samples always set this as their current working directory
+		install(DIRECTORY DESTINATION ${SAMPLES_DIR}/basic/svg)
+		install(TARGETS svg
+			RUNTIME DESTINATION ${SAMPLES_DIR}/svg
+			BUNDLE DESTINATION ${SAMPLES_DIR}
+		)
+	endif()
 
 	# Build and install the tutorials
 	foreach(tutorial ${tutorials})
@@ -836,6 +873,11 @@ if(BUILD_SAMPLES)
 	if(TARGET lottie)
 		install(DIRECTORY ${PROJECT_SOURCE_DIR}/Samples/basic/lottie/data
 				DESTINATION ${SAMPLES_DIR}/basic/lottie
+		)
+	endif()
+	if(TARGET svg)
+		install(DIRECTORY ${PROJECT_SOURCE_DIR}/Samples/basic/svg/data
+				DESTINATION ${SAMPLES_DIR}/basic/svg
 		)
 	endif()
 

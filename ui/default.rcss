@@ -229,7 +229,7 @@ input.range sliderarrowdec:active, input.range sliderarrowinc:active {
 
 /* Progress bar */
 
-progressbar {
+progress {
 	margin: 10dp 20dp;
 	display: inline-block;
 	vertical-align: middle;
@@ -238,6 +238,6 @@ progressbar {
 	width: 150dp;
 	height: 34dp;
 }
-progressbar fill{
+progress fill{
 	background-color: #00AAAAFF;
 }

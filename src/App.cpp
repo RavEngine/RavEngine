@@ -240,7 +240,6 @@ App::~App(){
 	networkManager.client.reset();
 	GameNetworkingSockets_Kill();
 	LightManager::Teardown();
-	Renderer.reset();
 	PHYSFS_deinit();
 	f1.Clear();
 	f2.Clear();
@@ -248,6 +247,7 @@ App::~App(){
 	Skybox::Teardown();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
+    Renderer.reset();
 	delete fsi;
 }
 

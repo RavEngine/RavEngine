@@ -15,7 +15,7 @@
  *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -26,45 +26,16 @@
  *
  */
 
-#ifndef RMLUI_CORE_ELEMENTS_SELECTOPTION_H
-#define RMLUI_CORE_ELEMENTS_SELECTOPTION_H
+#ifndef RMLUI_SVG_SVG_PLUGIN_H
+#define RMLUI_SVG_SVG_PLUGIN_H
 
-#include "../Header.h"
-#include "../Types.h"
 
 namespace Rml {
+namespace SVG {
 
-class Element;
+void Initialise();
 
+}
+}
 
-/**
-	Represents individual options within a select control.
-
-	@author Peter Curry
- */
-
-class RMLUICORE_API SelectOption
-{
-public:
-	SelectOption(Element* element, const String& value, bool selectable);
-	~SelectOption();
-
-	/// Returns the element that represents the option visually.
-	/// @return The option's element.
-	Element* GetElement();
-	/// Returns the value of the option.
-	/// @return The option's value.
-	const String& GetValue() const;
-
-	/// Returns true if the item is selectable.
-	/// @return True if the item is selectable.
-	bool IsSelectable() { return selectable; }
-
-private:
-	Element* element;
-	String value;
-	bool selectable;
-};
-
-} // namespace Rml
 #endif
