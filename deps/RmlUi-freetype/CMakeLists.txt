@@ -20,13 +20,14 @@ file(GLOB_RECURSE RML_SOURCES
     "RmlUi/Source/Core/*.h" 
     "RmlUi/Source/Lottie/*.cpp" 
     "RmlUi/Source/Lottie/*.h" 
-    #"RmlUi/Source/SVG/*.h" 
-    #"RmlUi/Source/SVG/*.cpp" 
+    "RmlUi/Source/SVG/*.h" 
+    "RmlUi/Source/SVG/*.cpp" 
     "RmlUi/Source/Debugger/*.cpp"
 )
 add_library(RmlCore STATIC ${RML_SOURCES})
-target_include_directories(RmlCore PUBLIC "RmlUi/Include/" "rlottie/inc")
+target_include_directories(RmlCore PUBLIC "RmlUi/Include/" "rlottie/inc" "lunasvg/include")
 list(APPEND CORE_PRIVATE_DEFS RMLUI_ENABLE_LOTTIE_PLUGIN)
+list(APPEND CORE_PRIVATE_DEFS RMLUI_ENABLE_SVG_PLUGIN)
 target_compile_definitions(RmlCore
     PRIVATE -DRMLUI_VERSION="${RMLUI_VERSION_SHORT}" ${CORE_PRIVATE_DEFS}
 )
@@ -43,7 +44,8 @@ SET(LOTTIE_TEST OFF CACHE INTERNAL "")
 set(LIB_INSTALL_DIR "${CMAKE_BINARY_DIR}/rlottie" CACHE INTERNAL "")
 set(LOTTIE_MODULE OFF CACHE INTERNAL "")
 add_subdirectory("rlottie")
-target_link_libraries(RmlCore PUBLIC freetype rlottie)
+add_subdirectory("lunasvg")
+target_link_libraries(RmlCore PUBLIC freetype rlottie lunasvg)
 
 if (BUILD_SHARED_LIBS)
     target_compile_definitions(RmlCore PRIVATE -DRmlCore_EXPORTS=1 -DEASTL_EXPORTS -DEASTDC_EXPORTS -DEATHREAD_EXPORTS)
