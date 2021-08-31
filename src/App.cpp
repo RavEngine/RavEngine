@@ -107,7 +107,12 @@ App::App(const std::string& resourcesName){
 #endif
 	
 	//load the built-in fonts
-	GUIComponent::LoadFont("Roboto-Regular.ttf");
+    App::Resources->IterateDirectory("fonts", [](const std::string& filename){
+        auto p = std::filesystem::path(filename);
+        if(p.extension() == ".ttf"){
+            GUIComponent::LoadFont(p.filename());
+        }
+    });
 	
 	//setup Audio
 	player.Init();

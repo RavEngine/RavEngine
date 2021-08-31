@@ -1,6 +1,7 @@
 *{
-    font-family: Roboto;
+    font-family: Inter;
     font-size:20dp;
+	font-weight: normal;
 }
 
 /* across many styles*/
@@ -240,4 +241,39 @@ progress {
 }
 progress fill{
 	background-color: #00AAAAFF;
+}
+
+/* Tables */
+table {
+	box-sizing: border-box;
+	display: table;
+}
+tr {
+	box-sizing: border-box;
+	display: table-row;
+}
+td {
+	box-sizing: border-box;
+	display: table-cell;
+}
+col {
+	box-sizing: border-box;
+	display: table-column;
+}
+colgroup {
+	display: table-column-group;
+}
+thead, tbody, tfoot {
+	display: table-row-group;
+}
+
+/* bold, underline, italics*/
+b{
+	font-weight: bold;
+}
+i{
+	font-style: italic;
+}
+u{
+	text-decoration: underline;
 }
