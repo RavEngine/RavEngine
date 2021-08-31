@@ -16,6 +16,7 @@
 #include "SyncVar.hpp"
 #include "Skybox.hpp"
 #include <SDL.h>
+#include <filesystem>
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -110,7 +111,7 @@ App::App(const std::string& resourcesName){
     App::Resources->IterateDirectory("fonts", [](const std::string& filename){
         auto p = std::filesystem::path(filename);
         if(p.extension() == ".ttf"){
-            GUIComponent::LoadFont(p.filename());
+            GUIComponent::LoadFont(p.filename().string());
         }
     });
 	
