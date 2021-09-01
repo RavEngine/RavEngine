@@ -50,6 +50,16 @@
 	#define STEAMNETWORKINGSOCKETS_ENABLE_STEAMNETWORKINGMESSAGES
 #endif
 
+// FakeIP system can only be used on Steam
+#ifndef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+	#ifdef STEAMNETWORKINGSOCKETS_STEAM
+		#define STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+	#endif
+#endif
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+	#include "steamdatagram_fakeip.h"
+#endif
+
 #if !defined( STEAMNETWORKINGSOCKETS_OPENSOURCE ) && !defined( STEAMNETWORKINGSOCKETS_STREAMINGCLIENT )
 	// STEAMNETWORKINGSOCKETS_CAN_REQUEST_CERT means we know how to make a cert request from some sort of certificate authority
 	#define STEAMNETWORKINGSOCKETS_CAN_REQUEST_CERT
@@ -62,6 +72,28 @@
 		#define STEAMNETWORKINGSOCKETS_ENABLE_ICE
 	#endif
 #endif
+
+// Enable diagnostics UI if there is a Steam client to display them
+#ifndef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+	#ifdef STEAMNETWORKINGSOCKETS_STEAM
+		#define STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+	#endif
+#endif
+
+/// Enumerate different kinds of transport that can be used
+enum ESteamNetTransportKind
+{
+	k_ESteamNetTransport_Unknown = 0,
+	k_ESteamNetTransport_LoopbackBuffers = 1, // Internal buffers, not using OS network stack
+	k_ESteamNetTransport_LocalHost = 2, // Using OS network stack to talk to localhost address
+	k_ESteamNetTransport_UDP = 3, // Ordinary UDP connection.
+	k_ESteamNetTransport_UDPProbablyLocal = 4, // Ordinary UDP connection over a route that appears to be "local", meaning we think it is probably fast.  This is just a guess: VPNs and IPv6 make this pretty fuzzy.
+	k_ESteamNetTransport_TURN = 5, // Relayed over TURN server
+	k_ESteamNetTransport_SDRP2P = 6, // P2P connection relayed over Steam Datagram Relay
+	k_ESteamNetTransport_SDRHostedServer = 7, // Connection to a server hosted in a known data center via Steam Datagram Relay
+
+	k_ESteamNetTransport_Force32Bit = 0x7fffffff
+};
 
 // Redefine the macros for byte-swapping, to sure the correct
 // argument size.  We probably should move this into platform.h,
@@ -283,6 +315,14 @@ const uint32 k_nMinRequiredProtocolVersion = 8;
 /// virtual port for this interface
 const int k_nVirtualPort_Messages = 0x7fffffff;
 
+/// A portion of the virtual port range is carved out for "fake IP ports".
+/// These are the *index* of the fake port, not the actual fake port value itself.
+/// This is a much bigger reservation of the space than we ever actually expect to
+/// use in practice.  Furthermore, these numbers should only be used locally.
+/// Outside of the local process, we would always use the actual fake port value.
+const int k_nVirtualPort_FakePort0 = 0x7fffff00;
+const int k_nVirtualPort_FakePortMax = 0x7ffffffe;
+
 // Serialize an UNSIGNED quantity.  Returns pointer to the next byte.
 // https://developers.google.com/protocol-buffers/docs/encoding
 template <typename T>
@@ -435,6 +475,7 @@ extern uint32 Murmorhash32( const void *data, size_t len );
 /// although not really cryptographically secure.  (We are in charge of the
 /// set of public keys and we expect it to be reasonably small.)
 extern uint64 CalculatePublicKeyID( const CECSigningPublicKey &pubKey );
+extern uint64 CalculatePublicKeyID_Ed25519( const void *pPubKey, size_t cbPubKey );
 
 /// Check an arbitrary signature using the specified public key.  (It's assumed that you have
 /// already verified that this public key is from somebody you trust.)
@@ -688,8 +729,8 @@ struct GlobalConfigValueBase : GlobalConfigValueEntry
 
 	inline const T &Get() const
 	{
-		Assert( !m_value.m_pInherit );
-		Assert( m_value.IsSet() );
+		DbgAssert( !m_value.m_pInherit );
+		DbgAssert( m_value.IsSet() );
 		return m_value.m_data;
 	}
 
@@ -767,6 +808,11 @@ extern GlobalConfigValue<float> g_Config_FakePacketDup_Send;
 extern GlobalConfigValue<float> g_Config_FakePacketDup_Recv;
 extern GlobalConfigValue<int32> g_Config_FakePacketDup_TimeMax;
 extern GlobalConfigValue<int32> g_Config_PacketTraceMaxBytes;
+extern GlobalConfigValue<int32> g_Config_FakeRateLimit_Send_Rate;
+extern GlobalConfigValue<int32> g_Config_FakeRateLimit_Send_Burst;
+extern GlobalConfigValue<int32> g_Config_FakeRateLimit_Recv_Rate;
+extern GlobalConfigValue<int32> g_Config_FakeRateLimit_Recv_Burst;
+
 extern GlobalConfigValue<int32> g_Config_EnumerateDevVars;
 extern GlobalConfigValue<void*> g_Config_Callback_CreateConnectionSignaling;
 extern ConnectionConfigDefaultValue<int32> g_ConfigDefault_LogLevel_PacketGaps;
@@ -792,6 +838,10 @@ extern GlobalConfigValue<std::string> g_Config_SDRClient_FakeClusterPing;
 extern ConnectionConfigDefaultValue< std::string > g_ConfigDefault_P2P_STUN_ServerList;
 #endif
 
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+extern GlobalConfigValue<void*> g_Config_Callback_FakeIPResult;
+#endif
+
 // This awkwardness (adding and subtracting sizeof(intptr_t)) silences an UBSan
 // runtime error about "member access within null pointer"
 #define V_offsetof(class, field) (int)((intptr_t)&((class *)(0+sizeof(intptr_t)))->field - sizeof(intptr_t))
@@ -808,6 +858,22 @@ inline bool RandomBoolWithOdds( float odds )
 		return false;
 	return WeakRandomFloat( 0, 100.0 ) < odds;
 }
+
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+inline ESteamNetworkingFakeIPType GetIPv4FakeIPType( uint32 nIPv4 )
+{
+	if ( nIPv4 < k_nSteamNetworkingSockets_FakeIP_MinIP || nIPv4 > k_nSteamNetworkingSockets_FakeIP_MaxIP )
+		return k_ESteamNetworkingFakeIPType_NotFake;
+
+	COMPILE_TIME_ASSERT( k_nSteamNetworkingSockets_FakeIP_MaxGlobalIP + 1 == k_nSteamNetworkingSockets_FakeIP_MinLocalIP );
+	if ( nIPv4 < k_nSteamNetworkingSockets_FakeIP_MinLocalIP )
+		return k_ESteamNetworkingFakeIPType_GlobalIPv4;
+
+	return k_ESteamNetworkingFakeIPType_LocalIPv4;
+}
+#else
+inline ESteamNetworkingFakeIPType GetIPv4FakeIPType( uint32 nIPv4 ) { return k_ESteamNetworkingFakeIPType_NotFake; }
+#endif
 
 } // namespace SteamNetworkingSocketsLib
 

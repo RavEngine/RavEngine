@@ -108,48 +108,6 @@ wchar_t *wchar_from_utf8(const char *str)
 	return widestr;
 }
 
-/* retrieve WCHAR commandline, expand wildcards and convert everything to UTF-8 */
-int get_utf8_argv(int *argc, char ***argv)
-{
-	typedef int (__cdecl *wgetmainargs_t)(int*, wchar_t***, wchar_t***, int, int*);
-	wgetmainargs_t wgetmainargs;
-	HMODULE handle;
-	int wargc;
-	wchar_t **wargv;
-	wchar_t **wenv;
-	char **utf8argv;
-	int ret, i;
-
-	if ((handle = LoadLibrary("msvcrt.dll")) == NULL) return 1;
-	if ((wgetmainargs = (wgetmainargs_t)GetProcAddress(handle, "__wgetmainargs")) == NULL) return 1;
-	i = 0;
-	/* if __wgetmainargs expands wildcards then it also erroneously converts \\?\c:\path\to\file.flac to \\file.flac */
-	if (wgetmainargs(&wargc, &wargv, &wenv, 1, &i) != 0) return 1;
-	if ((utf8argv = (char **)calloc(wargc, sizeof(char*))) == NULL) return 1;
-	ret = 0;
-
-	for (i=0; i<wargc; i++) {
-		if ((utf8argv[i] = utf8_from_wchar(wargv[i])) == NULL) {
-			ret = 1;
-			break;
-		}
-	}
-
-	FreeLibrary(handle);
-
-	if (ret == 0) {
-		win_utf8_io_codepage = CP_UTF8;
-		*argc = wargc;
-		*argv = utf8argv;
-	} else {
-		for (i=0; i<wargc; i++)
-			free(utf8argv[i]);
-		free(utf8argv);
-	}
-
-	return ret;
-}
-
 /* return number of characters in the UTF-8 string */
 size_t strlen_utf8(const char *str)
 {

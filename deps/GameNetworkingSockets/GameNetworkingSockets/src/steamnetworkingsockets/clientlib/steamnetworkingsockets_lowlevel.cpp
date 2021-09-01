@@ -50,9 +50,23 @@
 
 #include <tier0/memdbgon.h>
 
+// UWP does not provide these functions, so stub-in dummies
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
+int timeBeginPeriod(int) {
+	return 0;
+}
+int timeEndPeriod(int) {
+	return 0;
+}
+#endif
+
 namespace SteamNetworkingSocketsLib {
 
-static void FlushSpew();
+constexpr int k_msMaxPollWait = 1000;
+constexpr SteamNetworkingMicroseconds k_usecMaxTimestampDelta = k_msMaxPollWait * 1100;
+
+static void FlushSystemSpew();
+static void FlushSystemSpewLocked();
 
 int g_nSteamDatagramSocketBufferSize = 256*1024;
 
@@ -322,7 +336,11 @@ void LockDebugInfo::AboutToUnlock()
 	// Yelp if we held the lock for longer than the threshold.
 	if ( usecElapsedTooLong != 0 )
 	{
-		SpewWarning( "SteamNetworkingSockets lock held for %.1fms.  (Performance warning).  %s", usecElapsedTooLong*1e-3, tags );
+		SpewWarning(
+			"SteamNetworkingSockets lock held for %.1fms.  (Performance warning.)  %s\n"
+			"This is usually a symptom of a general performance problem such as thread starvation.",
+			usecElapsedTooLong*1e-3, tags
+		);
 		ETW_LongOp( "lock held", usecElapsedTooLong, tags );
 	}
 
@@ -423,90 +441,289 @@ static volatile bool s_bManualPollMode;
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// Raw sockets
+// Task lists
 //
 /////////////////////////////////////////////////////////////////////////////
 
-// We don't need recursion or timeout.  Just the fastest thing that works.
-// Note that we could use a lock-free queue for this.  But I suspect that this
-// won't get enough work or have enough contention for that to be an important
-// optimization
-static ShortDurationLock s_mutexRunWithLockQueue( "run_with_lock_queue" );
-static std::vector< ISteamNetworkingSocketsRunWithLock * > s_vecRunWithLockQueue;
+ShortDurationLock s_lockTaskQueue( "TaskQueue" );
 
-ISteamNetworkingSocketsRunWithLock::~ISteamNetworkingSocketsRunWithLock() {}
-
-bool ISteamNetworkingSocketsRunWithLock::RunOrQueue( const char *pszTag )
+CTaskTarget::~CTaskTarget()
 {
+	CancelQueuedTasks();
+
+	// Set to invalid value so we will crash if we have use after free
+	m_pFirstTask = (CQueuedTask *)~(uintptr_t)0;
+}
+
+void CTaskTarget::CancelQueuedTasks()
+{
+
+	// If we have any queued tasks, we need to cancel them
+	if ( m_pFirstTask )
+	{
+		ShortDurationScopeLock scopeLock( s_lockTaskQueue );
+		CQueuedTask *pTask = m_pFirstTask;
+		while ( pTask )
+		{
+			CQueuedTask *pNext = pTask->m_pNextTaskForTarget;
+			Assert( !pNext || pNext->m_pPrevTaskForTarget == pTask );
+			Assert( pTask->m_pTarget == this );
+			Assert( pTask->m_eTaskState == CQueuedTask::k_ETaskState_Queued );
+			pTask->m_eTaskState = CQueuedTask::k_ETaskState_ReadyToDelete;
+			pTask->m_pTarget = nullptr;
+			pTask->m_pPrevTaskForTarget = nullptr;
+			pTask->m_pNextTaskForTarget = nullptr;
+			pTask = pNext;
+		}
+		m_pFirstTask = nullptr;
+	}
+}
+
+void CTaskList::QueueTask( CQueuedTask *pTask )
+{
+	Assert( pTask->m_eTaskState == CQueuedTask::k_ETaskState_Init );
+	Assert( !pTask->m_pPrevTaskForTarget );
+	Assert( !pTask->m_pNextTaskForTarget );
+	Assert( !pTask->m_pNextTaskInQueue );
+
+	ShortDurationScopeLock scopeLock( s_lockTaskQueue );
+
+	// If we have a target, add to list of target's tasks that need to be deleted
+	CTaskTarget *pTarget = pTask->m_pTarget;
+	if ( pTarget )
+	{
+		if ( pTarget->m_pFirstTask )
+		{
+			Assert( pTarget->m_pFirstTask->m_pPrevTaskForTarget == nullptr );
+			pTarget->m_pFirstTask->m_pPrevTaskForTarget = pTask;
+		}
+		pTask->m_pPrevTaskForTarget = nullptr;
+		pTask->m_pNextTaskForTarget = pTarget->m_pFirstTask;
+		pTarget->m_pFirstTask = pTask;
+	}
+
+	if ( m_pLastTask )
+	{
+		Assert( m_pFirstTask );
+		Assert( !m_pLastTask->m_pNextTaskInQueue );
+		m_pLastTask->m_pNextTaskInQueue = pTask;
+	}
+	else
+	{
+		Assert( !m_pFirstTask );
+		m_pFirstTask = pTask;
+	}
+
+	m_pLastTask = pTask;
+
+	// Mark task as queued
+	pTask->m_eTaskState = CQueuedTask::k_ETaskState_Queued;
+}
+
+void CTaskList::RunTasks()
+{
+	// Quick check for no tasks
+	if ( !m_pFirstTask )
+		return;
+
+	// Detach the linked list
+	s_lockTaskQueue.lock();
+	CQueuedTask *pFirstTask = m_pFirstTask;
+	m_pFirstTask = nullptr;
+	m_pLastTask = nullptr;
+	s_lockTaskQueue.unlock();
+
+	// Process items
+	CQueuedTask *pTask = pFirstTask;
+	while ( pTask )
+	{
+
+		// We might have to loop due to lock contention
+		for (;;)
+		{
+
+			// Already deleted?
+			if ( pTask->m_eTaskState != CQueuedTask::k_ETaskState_Queued )
+			{
+				Assert( pTask->m_eTaskState == CQueuedTask::k_ETaskState_ReadyToDelete );
+				Assert( pTask->m_pTarget == nullptr );
+				break;
+			}
+
+			ShortDurationScopeLock scopeLock;
+
+			// We'll need to lock the queue if they have a target.
+			// If their target does not have a locking mechanism, then we
+			// assume that it cannot be deleted here.  However, we always need
+			// to protect against other tasks getting queued against the target,
+			// and we allow that to be done without locking the target.
+			if ( pTask->m_pTarget )
+				scopeLock.Lock( s_lockTaskQueue );
+
+			// Do we have a lock we need to take?
+			if ( pTask->m_lockFunc )
+			{
+
+				int msTimeOut = 10;
+				if ( pTask->m_pTarget )
+				{
+					scopeLock.Lock( s_lockTaskQueue );
+
+					// Deleted while we locked?
+					if ( pTask->m_eTaskState != CQueuedTask::k_ETaskState_Queued )
+					{
+						Assert( pTask->m_eTaskState == CQueuedTask::k_ETaskState_ReadyToDelete );
+						Assert( pTask->m_pTarget == nullptr );
+						break;
+					}
+
+					// Use a short timeout and loop, in case we might deadlock
+					msTimeOut = 1;
+				}
+
+				if ( !(*pTask->m_lockFunc)( pTask->m_lockFuncArg, msTimeOut, pTask->m_pszTag ) )
+				{
+					// Other object is busy, or perhaps we are deadlocked?
+					continue;
+				}
+
+				// Deleted while we locked?
+				if ( pTask->m_eTaskState != CQueuedTask::k_ETaskState_Queued )
+				{
+					Assert( pTask->m_eTaskState == CQueuedTask::k_ETaskState_ReadyToDelete );
+					Assert( pTask->m_pTarget == nullptr );
+					break;
+				}
+			}
+
+			// OK, we've got the locks we need and are ready to run.
+			// Unlink from the target, if we have one
+			CTaskTarget *pTarget = pTask->m_pTarget;
+			if ( pTarget )
+			{
+				CQueuedTask *p = pTask->m_pPrevTaskForTarget;
+				CQueuedTask *n = pTask->m_pNextTaskForTarget;
+				if ( p )
+				{
+					Assert( p->m_pTarget == pTarget );
+					Assert( p->m_pNextTaskForTarget == pTask );
+					p->m_pNextTaskForTarget = n;
+					pTask->m_pPrevTaskForTarget = nullptr;
+				}
+				else
+				{
+					Assert( pTarget->m_pFirstTask == pTask );
+					pTarget->m_pFirstTask = n;
+				}
+				if ( n )
+				{
+					Assert( n->m_pPrevTaskForTarget == pTask );
+					n->m_pPrevTaskForTarget = p;
+					pTask->m_pNextTaskForTarget = nullptr;
+				}
+
+				// Note: we must leave the target pointer set
+			}
+
+			// We can release this lock now if we took it
+			scopeLock.Unlock();
+
+			// !KLUDGE! Deluxe
+			if ( this == &g_taskListRunWithGlobalLock )
+			{
+				// Make sure we hold the lock, and also set the tag for debugging purposes
+				SteamNetworkingGlobalLock::AssertHeldByCurrentThread( pTask->m_pszTag );
+			}
+
+			// Run the task
+			pTask->m_eTaskState = CQueuedTask::k_ETaskState_Running;
+			pTask->Run();
+
+			// Mark us as finished
+			pTask->m_eTaskState = CQueuedTask::k_ETaskState_ReadyToDelete;
+			pTask->m_pTarget = nullptr;
+			break;
+		}
+
+		// Done, we can delete the task
+		CQueuedTask *pNext = pTask->m_pNextTaskInQueue;
+		pTask->m_pNextTaskInQueue = nullptr;
+		delete pTask;
+		pTask = pNext;
+	}
+}
+
+CTaskList g_taskListRunWithGlobalLock;
+CTaskList g_taskListRunInBackground;
+
+CQueuedTask::~CQueuedTask()
+{
+	Assert( m_eTaskState == k_ETaskState_Init || m_eTaskState == k_ETaskState_ReadyToDelete );
+	Assert( !m_pNextTaskInQueue );
+	Assert( !m_pPrevTaskForTarget );
+	Assert( !m_pNextTaskForTarget );
+}
+
+void CQueuedTask::SetTarget( CTaskTarget *pTarget )
+{
+	// Can only call this once
+	Assert( m_eTaskState == k_ETaskState_Init );
+	Assert( m_pTarget == nullptr );
+	m_pTarget = pTarget;
+
+	// NOTE: We wait to link task to the target until we actually queue it
+}
+
+bool CQueuedTask::RunWithGlobalLockOrQueue( const char *pszTag )
+{
+	Assert( m_eTaskState == k_ETaskState_Init );
+	Assert( m_lockFunc == nullptr );
+
 	// Check if lock is available immediately
 	if ( !SteamNetworkingGlobalLock::TryLock( pszTag, 0 ) )
 	{
-		Queue( pszTag );
+		QueueToRunWithGlobalLock( pszTag );
 		return false;
 	}
 
 	// Service the queue so we always do items in order
-	ServiceQueue();
+	g_taskListRunWithGlobalLock.RunTasks();
 
 	// Let derived class do work
+	m_eTaskState = k_ETaskState_Running;
 	Run();
 
 	// Go ahead and unlock now
 	SteamNetworkingGlobalLock::Unlock();
 
 	// Self destruct
+	m_eTaskState = k_ETaskState_ReadyToDelete;
+	m_pTarget = nullptr;
 	delete this;
 
 	// We have run
 	return true;
 }
 
-void ISteamNetworkingSocketsRunWithLock::Queue( const char *pszTag )
+void CQueuedTask::QueueToRunWithGlobalLock( const char *pszTag )
 {
-	// Remember our tag, for accounting purposes
-	m_pszTag = pszTag;
-
-	// Put us into the queue
-	s_mutexRunWithLockQueue.lock();
-	s_vecRunWithLockQueue.push_back( this );
-	s_mutexRunWithLockQueue.unlock();
-
-	// NOTE: At this point we are subject to being run or deleted at any time!
+	Assert( m_lockFunc == nullptr );
+	if ( pszTag )
+		m_pszTag = pszTag;
+	g_taskListRunWithGlobalLock.QueueTask( this );
 
 	// Make sure service thread will wake up to do something with this
 	WakeSteamDatagramThread();
 
+	// NOTE: At this point we are subject to being run or deleted at any time!
 }
 
-void ISteamNetworkingSocketsRunWithLock::ServiceQueue()
+void CQueuedTask::QueueToRunInBackground()
 {
-	// Quick check if we're empty, which will be common and can be done safely
-	// even if we don't hold the lock and the vector is being modified.  It's
-	// OK if we have an occasional false positive or negative here.  Work
-	// put into this queue does not have any guarantees about when it will get done
-	// beyond "run them in order they are queued" and "best effort".
-	if ( s_vecRunWithLockQueue.empty() )
-		return;
+	g_taskListRunInBackground.QueueTask( this );
 
-	std::vector<ISteamNetworkingSocketsRunWithLock *> vecTempQueue;
-
-	// Quickly move the queue into the temp while holding the lock.
-	// Once it is in our temp, we can release the lock.
-	s_mutexRunWithLockQueue.lock();
-	vecTempQueue = std::move( s_vecRunWithLockQueue );
-	s_vecRunWithLockQueue.clear(); // Just in case assigning from std::move didn't clear it.
-	s_mutexRunWithLockQueue.unlock();
-
-	// Run them
-	for ( ISteamNetworkingSocketsRunWithLock *pItem: vecTempQueue )
-	{
-		// Make sure we hold the lock, and also set the tag for debugging purposes
-		SteamNetworkingGlobalLock::AssertHeldByCurrentThread( pItem->m_pszTag );
-
-		// Do the work and nuke
-		pItem->Run();
-		delete pItem;
-	}
+	//if ( s_bManualPollMode || ( s_pThreadSteamDatagram && s_pThreadSteamDatagram->get_id() != std::this_thread::get_id() ) )
+	WakeSteamDatagramThread();
 }
 
 // Try to guess if the route the specified address is probably "local".
@@ -528,7 +745,7 @@ bool IsRouteToAddressProbablyLocal( netadr_t addr )
 	sockaddr_storage sockaddrDest;
 	addr.ToSockadr( &sockaddrDest );
 
-	#ifdef _WINDOWS
+	#if _WINDOWS && !(defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP))
 
 		//
 		// These functions were added with Vista, so load dynamically
@@ -638,6 +855,43 @@ bool IsRouteToAddressProbablyLocal( netadr_t addr )
 //
 /////////////////////////////////////////////////////////////////////////////
 
+static double s_flFakeRateLimit_Send_tokens;
+static double s_flFakeRateLimit_Recv_tokens;
+static SteamNetworkingMicroseconds s_usecFakeRateLimitBucketUpdateTime;
+
+static void InitFakeRateLimit()
+{
+	s_usecFakeRateLimitBucketUpdateTime = SteamNetworkingSockets_GetLocalTimestamp();
+	s_flFakeRateLimit_Send_tokens = (double)INT_MAX;
+	s_flFakeRateLimit_Recv_tokens = (double)INT_MAX;
+}
+
+static void UpdateFakeRateLimitTokenBuckets( SteamNetworkingMicroseconds usecNow )
+{
+	float flElapsed = ( usecNow - s_usecFakeRateLimitBucketUpdateTime ) * 1e-6;
+	s_usecFakeRateLimitBucketUpdateTime = usecNow;
+
+	if ( g_Config_FakeRateLimit_Send_Rate.Get() <= 0 )
+	{
+		s_flFakeRateLimit_Send_tokens = (double)INT_MAX;
+	}
+	else
+	{
+		s_flFakeRateLimit_Send_tokens += flElapsed*g_Config_FakeRateLimit_Send_Rate.Get();
+		s_flFakeRateLimit_Send_tokens = std::min( s_flFakeRateLimit_Send_tokens, (double)g_Config_FakeRateLimit_Send_Burst.Get() );
+	}
+
+	if ( g_Config_FakeRateLimit_Recv_Rate.Get() <= 0 )
+	{
+		s_flFakeRateLimit_Recv_tokens = (double)INT_MAX;
+	}
+	else
+	{
+		s_flFakeRateLimit_Recv_tokens += flElapsed*g_Config_FakeRateLimit_Recv_Rate.Get();
+		s_flFakeRateLimit_Recv_tokens = std::min( s_flFakeRateLimit_Recv_tokens, (double)g_Config_FakeRateLimit_Recv_Burst.Get() );
+	}
+}
+
 inline IRawUDPSocket::IRawUDPSocket() {}
 inline IRawUDPSocket::~IRawUDPSocket() {}
 
@@ -649,9 +903,6 @@ public:
 	~CRawUDPSocketImpl()
 	{
 		closesocket( m_socket );
-		#ifdef WIN32
-			WSACloseEvent( m_event );
-		#endif
 	}
 
 	/// Descriptor from the OS
@@ -664,10 +915,6 @@ public:
 	/// This is set to null when we are asked to close the socket.
 	CRecvPacketCallback m_callback;
 
-	/// An event that will be set when the socket has data that we can read.
-	#ifdef WIN32
-		WSAEVENT m_event = INVALID_HANDLE_VALUE;
-	#endif
 
 	// Implements IRawUDPSocket
 	virtual bool BSendRawPacketGather( int nChunks, const iovec *pChunks, const netadr_t &adrTo ) const override;
@@ -699,7 +946,7 @@ public:
 		{
 			int cbTotal = 0;
 			for ( int i = 0 ; i < nChunks ; ++i )
-				cbTotal += (int)pChunks->iov_len;
+				cbTotal += (int)pChunks[i].iov_len;
 			ETW_UDPSendPacket( adrTo, cbTotal );
 		}
 		#endif
@@ -823,8 +1070,14 @@ private:
 /// enough, such that an occasional linear search will kill us.
 static CUtlVector<CRawUDPSocketImpl *> s_vecRawSockets;
 
-/// List of raw sockets pending actual destruction.
-static CUtlVector<CRawUDPSocketImpl *> s_vecRawSocketsPendingDeletion;
+/// Are any sockets pending destruction?
+static bool s_bRawSocketPendingDestruction;
+
+/// POSIX polling.  This list will be recreated any time a socket is created or destroyed
+#ifndef _WIN32
+static CUtlVector<pollfd> s_vecPollFDs;
+static bool s_bRecreatePollList = true;
+#endif
 
 /// Track packets that have fake lag applied and are pending to be sent/received
 class CPacketLagger : private IThinker
@@ -832,7 +1085,7 @@ class CPacketLagger : private IThinker
 public:
 	~CPacketLagger() { Clear(); }
 
-	void LagPacket( bool bSend, CRawUDPSocketImpl *pSock, const netadr_t &adr, int msDelay, int nChunks, const iovec *pChunks )
+	void LagPacket( CRawUDPSocketImpl *pSock, const netadr_t &adr, int msDelay, int nChunks, const iovec *pChunks )
 	{
 		SteamNetworkingGlobalLock::AssertHeldByCurrentThread( "LagPacket" );
 
@@ -862,22 +1115,23 @@ public:
 		msDelay = std::min( msDelay, 5000 );
 		const SteamNetworkingMicroseconds usecTime = SteamNetworkingSockets_GetLocalTimestamp() + msDelay * 1000;
 
-		// Find the right place to insert the packet.
+		// Find the right place to insert the packet.  This is a dumb linear search, but in
+		// the steady state where the delay is constant, this search loop won't actually iterate,
+		// and we'll always be adding to the end of the queue
 		LaggedPacket *pkt = nullptr;
-		for ( CUtlLinkedList< LaggedPacket >::IndexType_t i = m_list.Head(); i != m_list.InvalidIndex(); i = m_list.Next( i ) )
+		for ( CUtlLinkedList< LaggedPacket >::IndexType_t i = m_list.Tail(); i != m_list.InvalidIndex(); i = m_list.Previous( i ) )
 		{
-			if ( usecTime < m_list[ i ].m_usecTime )
+			if ( usecTime >= m_list[ i ].m_usecTime )
 			{
-				pkt = &m_list[ m_list.InsertBefore( i ) ];
+				pkt = &m_list[ m_list.InsertAfter( i ) ];
 				break;
 			}
 		}
 		if ( pkt == nullptr )
 		{
-			pkt = &m_list[ m_list.AddToTail() ];
+			pkt = &m_list[ m_list.AddToHead() ];
 		}
 	
-		pkt->m_bSend = bSend;
 		pkt->m_pSockOwner = pSock;
 		pkt->m_adrRemote = adr;
 		pkt->m_usecTime = usecTime;
@@ -909,30 +1163,15 @@ public:
 
 			// Make sure socket is still in good shape.
 			CRawUDPSocketImpl *pSock = pkt.m_pSockOwner;
-			if ( pSock->m_socket == INVALID_SOCKET || !pSock->m_callback.m_fnCallback )
+			if ( pSock )
 			{
-				AssertMsg( false, "Lagged packet remains in queue after socket destroyed or queued for destruction!" );
-			}
-			else
-			{
-
-				// Sending, or receiving?
-				if ( pkt.m_bSend )
+				if ( pSock->m_socket == INVALID_SOCKET || !pSock->m_callback.m_fnCallback )
 				{
-					iovec temp;
-					temp.iov_len = pkt.m_cbPkt;
-					temp.iov_base = pkt.m_pkt;
-					pSock->BReallySendRawPacket( 1, &temp, pkt.m_adrRemote );
+					AssertMsg( false, "Lagged packet remains in queue after socket destroyed or queued for destruction!" );
 				}
 				else
 				{
-					// Copy data out of queue into local variables, just in case a
-					// packet is queued while we're in this function.  We don't want
-					// our list to shift in memory, and the pointer we pass to the
-					// caller to dangle.
-					char temp[ k_cbSteamNetworkingSocketsMaxUDPMsgLen ];
-					memcpy( temp, pkt.m_pkt, pkt.m_cbPkt );
-					pSock->m_callback( RecvPktInfo_t{ temp, pkt.m_cbPkt, pkt.m_adrRemote, pSock } );
+					ProcessPacket( pkt, usecNow );
 				}
 			}
 			m_list.RemoveFromHead();
@@ -959,14 +1198,12 @@ public:
 		{
 			int idxNext = m_list.Next( idx );
 			if ( m_list[idx].m_pSockOwner == pSock )
-				m_list.Remove( idx );
+				m_list[idx].m_pSockOwner = nullptr;
 			idx = idxNext;
 		}
-
-		Schedule();
 	}
 
-private:
+protected:
 
 	/// Set the next think time as appropriate
 	void Schedule()
@@ -979,7 +1216,6 @@ private:
 
 	struct LaggedPacket
 	{
-		bool m_bSend; // true for outbound, false for inbound
 		CRawUDPSocketImpl *m_pSockOwner;
 		netadr_t m_adrRemote;
 		SteamNetworkingMicroseconds m_usecTime; /// Time when it should be sent or received
@@ -988,9 +1224,40 @@ private:
 	};
 	CUtlLinkedList<LaggedPacket> m_list;
 
+	/// Do whatever we're supposed to do with the next packet
+	virtual void ProcessPacket( const LaggedPacket &pkt, SteamNetworkingMicroseconds usecNow ) = 0;
 };
 
-static CPacketLagger s_packetLagQueue;
+class CPacketLaggerSend final : public CPacketLagger
+{
+public:
+	virtual void ProcessPacket( const LaggedPacket &pkt, SteamNetworkingMicroseconds usecNow ) override
+	{
+		iovec temp;
+		temp.iov_len = pkt.m_cbPkt;
+		temp.iov_base = (void *)pkt.m_pkt;
+		pkt.m_pSockOwner->BReallySendRawPacket( 1, &temp, pkt.m_adrRemote );
+	}
+};
+
+class CPacketLaggerRecv final : public CPacketLagger
+{
+public:
+	virtual void ProcessPacket( const LaggedPacket &pkt, SteamNetworkingMicroseconds usecNow ) override
+	{
+		// Copy data out of queue into local variables, just in case a
+		// packet is queued while we're in this function.  We don't want
+		// our list to shift in memory, and the pointer we pass to the
+		// caller to dangle.
+		char temp[ k_cbSteamNetworkingSocketsMaxUDPMsgLen ];
+		memcpy( temp, pkt.m_pkt, pkt.m_cbPkt );
+		//pkt.m_pSockOwner->m_callback( RecvPktInfo_t{ temp, pkt.m_cbPkt, usecNow, pkt.m_usecTime, 0, pkt.m_adrRemote, pkt.m_pSockOwner } );
+		pkt.m_pSockOwner->m_callback( RecvPktInfo_t{ temp, pkt.m_cbPkt, usecNow, pkt.m_adrRemote, pkt.m_pSockOwner } );
+	}
+};
+
+static CPacketLaggerSend s_packetLagQueueSend;
+static CPacketLaggerRecv s_packetLagQueueRecv;
 
 /// Object used to wake our background thread efficiently
 #if defined( _WIN32 )
@@ -1029,6 +1296,32 @@ bool CRawUDPSocketImpl::BSendRawPacketGather( int nChunks, const iovec *pChunks,
 	if ( s_nLowLevelSupportRefCount.load(std::memory_order_acquire) <= 0 )
 		return true;
 
+	// Check simulated global rate limit.  Make sure this is fast
+	// when the limit is not in use
+	if ( unlikely( g_Config_FakeRateLimit_Send_Rate.Get() > 0 ) )
+	{
+
+		// Check if bucket already has tokens in it, which
+		// will be common.  If so, we can avoid reading the
+		// timer
+		if ( s_flFakeRateLimit_Send_tokens <= 0.0f )
+		{
+
+			// Update bucket with tokens
+			UpdateFakeRateLimitTokenBuckets( SteamNetworkingSockets_GetLocalTimestamp() );
+
+			// Still empty?
+			if ( s_flFakeRateLimit_Send_tokens <= 0.0f )
+				return true;
+		}
+
+		// Spend tokens
+		int cbTotal = 0;
+		for ( int i = 0 ; i < nChunks ; ++i )
+			cbTotal += (int)pChunks[i].iov_len;
+		s_flFakeRateLimit_Send_tokens -= cbTotal;
+	}
+
 	// Fake loss?
 	if ( RandomBoolWithOdds( g_Config_FakePacketLoss_Send.Get() ) )
 		return true;
@@ -1047,13 +1340,13 @@ bool CRawUDPSocketImpl::BSendRawPacketGather( int nChunks, const iovec *pChunks,
 	{
 		int32 nDupLag = nPacketFakeLagTotal + WeakRandomInt( 0, g_Config_FakePacketDup_TimeMax.Get() );
 		nDupLag = std::max( 1, nDupLag );
-		s_packetLagQueue.LagPacket( true, const_cast<CRawUDPSocketImpl *>( this ), adrTo, nDupLag, nChunks, pChunks );
+		s_packetLagQueueSend.LagPacket( const_cast<CRawUDPSocketImpl *>( this ), adrTo, nDupLag, nChunks, pChunks );
 	}
 
 	// Lag the original packet?
 	if ( nPacketFakeLagTotal > 0 )
 	{
-		s_packetLagQueue.LagPacket( true, const_cast<CRawUDPSocketImpl *>( this ), adrTo, nPacketFakeLagTotal, nChunks, pChunks );
+		s_packetLagQueueSend.LagPacket( const_cast<CRawUDPSocketImpl *>( this ), adrTo, nPacketFakeLagTotal, nChunks, pChunks );
 		return true;
 	}
 
@@ -1061,9 +1354,8 @@ bool CRawUDPSocketImpl::BSendRawPacketGather( int nChunks, const iovec *pChunks,
 	return BReallySendRawPacket( nChunks, pChunks, adrTo );
 }
 
-void CRawUDPSocketImpl::Close()
+void CRawUDPSocketImpl::InternalAddToCleanupQueue()
 {
-	SteamNetworkingGlobalLock::AssertHeldByCurrentThread( "IRawUDPSocket::Close" );
 
 	/// Clear the callback, to ensure that no further callbacks will be executed.
 	/// This marks the socket as pending destruction.
@@ -1071,12 +1363,20 @@ void CRawUDPSocketImpl::Close()
 	m_callback.m_fnCallback = nullptr;
 	Assert( m_socket != INVALID_SOCKET );
 
-	DbgVerify( s_vecRawSockets.FindAndFastRemove( this ) );
-	DbgVerify( !s_vecRawSocketsPendingDeletion.FindAndFastRemove( this ) );
-	s_vecRawSocketsPendingDeletion.AddToTail( this );
+	// Set global flag to remember that at least once socket needs to be cleaned up
+	s_bRawSocketPendingDestruction = true;
 
 	// Clean up lagged packets, if any
-	s_packetLagQueue.AboutToDestroySocket( this );
+	s_packetLagQueueSend.AboutToDestroySocket( this );
+	s_packetLagQueueRecv.AboutToDestroySocket( this );
+}
+
+void CRawUDPSocketImpl::Close()
+{
+	SteamNetworkingGlobalLock::AssertHeldByCurrentThread( "IRawUDPSocket::Close" );
+
+	// Mark the callback as detached, and put us in the queue for cleanup when it's safe.
+	InternalAddToCleanupQueue();
 
 	// Make sure we don't delay doing this too long
 	if ( s_bManualPollMode || ( s_pThreadSteamDatagram && s_pThreadSteamDatagram->get_id() != std::this_thread::get_id() ) )
@@ -1333,19 +1633,24 @@ static CRawUDPSocketImpl *OpenRawUDPSocketInternal( CRecvPacketCallback callback
 	pSock->m_callback = callback;
 	pSock->m_nAddressFamilies = nAddressFamilies;
 
-	// On windows, create an event used to poll efficiently
+	// On windows, tell the socket to set our global "wake" event whenever there is data to read
 	#ifdef _WIN32
-		pSock->m_event = WSACreateEvent();
-		if ( WSAEventSelect( pSock->m_socket, pSock->m_event, FD_READ ) != 0 )
+		Assert( s_hEventWakeThread != INVALID_HANDLE_VALUE );
+		if ( WSAEventSelect( pSock->m_socket, s_hEventWakeThread, FD_READ ) != 0 )
 		{
 			delete pSock;
-			V_sprintf_safe( errMsg, "WSACreateEvent() or WSAEventSelect() failed.  Error code 0x%08X.", GetLastSocketError() );
+			V_sprintf_safe( errMsg, "WSAEventSelect() failed.  Error code 0x%08X.", GetLastSocketError() );
 			return nullptr;
 		}
 	#endif
 
 	// Add to master list.  (Hopefully we usually won't have that many.)
 	s_vecRawSockets.AddToTail( pSock );
+
+	// Rebuild our pollfd list next time
+	#ifndef _WIN32
+		s_bRecreatePollList = true;
+	#endif
 
 	// Wake up background thread so we can start receiving packets on this socket immediately
 	WakeSteamDatagramThread();
@@ -1371,6 +1676,29 @@ static inline void AssertGlobalLockHeldExactlyOnce()
 	#endif
 }
 
+/// Wait on our events / sockets.
+/// Returns true if wake event is set or some socket is ready to be read.
+/// Otherwise, we are idle, and returns false.
+static bool WaitForSocketsOrWakeEvent( int nMaxTimeoutMS )
+{
+
+	// Wait for data on one of the sockets, or for us to be asked to wake up
+	#if defined( WIN32 )
+		DWORD r = WaitForSingleObject( s_hEventWakeThread, nMaxTimeoutMS );
+		if ( r == WAIT_TIMEOUT )
+			return false; // Idle
+		Assert( r == WAIT_OBJECT_0 );
+		return true;
+	#else
+		int r = poll( s_vecPollFDs.Base(), s_vecPollFDs.Count(), nMaxTimeoutMS );
+		if ( r == 0 )
+			return false; // Idle
+		Assert( r >= 0 );
+		return true;
+	#endif
+}
+
+
 /// Poll all of our sockets, and dispatch the packets received.
 /// This will return true if we own the lock, or false if we detected
 /// a shutdown request and bailed without re-squiring the lock.
@@ -1380,70 +1708,62 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 	// and we assume that it will have locked the lock exactly once.
 	AssertGlobalLockHeldExactlyOnce();
 
-	const int nSocketsToPoll = s_vecRawSockets.Count();
-
-	#ifdef _WIN32
-		HANDLE *pEvents = (HANDLE*)alloca( sizeof(HANDLE) * (nSocketsToPoll+1) );
-		int nEvents = 0;
-	#else
-		pollfd *pPollFDs = (pollfd*)alloca( sizeof(pollfd) * (nSocketsToPoll+1) ); 
-		int nPollFDs = 0;
-	#endif
-
-	CRawUDPSocketImpl **pSocketsToPoll = (CRawUDPSocketImpl **)alloca( sizeof(CRawUDPSocketImpl *) * nSocketsToPoll ); 
-
-	for ( int i = 0 ; i < nSocketsToPoll ; ++i )
+	// Sanity check all of our sockets are alive
+	for ( CRawUDPSocketImpl *pSock: s_vecRawSockets )
 	{
-		CRawUDPSocketImpl *pSock = s_vecRawSockets[ i ];
-
-		// Should be totally valid at this point
 		Assert( pSock->m_callback.m_fnCallback );
-		Assert( pSock->m_socket != INVALID_SOCKET );
-
-		pSocketsToPoll[ i ] = pSock;
-
-		#ifdef _WIN32
-			pEvents[ nEvents++ ] = pSock->m_event;
-		#else
-			pollfd *p = &pPollFDs[ nPollFDs++ ];
-			p->fd = pSock->m_socket;
-			p->events = POLLRDNORM;
-			p->revents = 0;
-		#endif
 	}
 
-	#if defined( _WIN32 )
-		Assert( s_hEventWakeThread != NULL && s_hEventWakeThread != INVALID_HANDLE_VALUE );
-		pEvents[ nEvents++ ] = s_hEventWakeThread;
-	#elif defined( NN_NINTENDO_SDK )
-		Assert( s_hEventWakeThread != INVALID_SOCKET );
-		pollfd *p = &pPollFDs[ nPollFDs++ ];
-		p->fd = s_hEventWakeThread;
-		p->events = POLLRDNORM;
-		p->revents = 0;
-	#else
-		Assert( s_hSockWakeThreadRead != INVALID_SOCKET );
-		pollfd *p = &pPollFDs[ nPollFDs++ ];
-		p->fd = s_hSockWakeThreadRead;
-		p->events = POLLRDNORM;
-		p->revents = 0;
+	const int nSocketsToPoll = s_vecRawSockets.Count();
+
+	// Recreate pollfd list if needed
+	#ifndef _WIN32
+		if ( s_bRecreatePollList )
+		{
+			s_bRecreatePollList = false;
+			s_vecPollFDs.EnsureCapacity( nSocketsToPoll+1 );
+			s_vecPollFDs.SetCount(0);
+			#define ADD_POLL_FD(f) { \
+				pollfd &p = *s_vecPollFDs.AddToTailGetPtr(); \
+				Assert( f != INVALID_SOCKET ); \
+				p.fd = f; \
+				p.events = POLLRDNORM; \
+				p.revents = 0x7fff; /* Make sure kernel is clearing events properly */ \
+			}
+
+			for ( CRawUDPSocketImpl *pSock: s_vecRawSockets )
+				ADD_POLL_FD( pSock->m_socket );
+
+			#ifdef NN_NINTENDO_SDK
+				ADD_POLL_FD( s_hEventWakeThread );
+			#else
+				ADD_POLL_FD( s_hSockWakeThreadRead );
+			#endif
+		}
+		Assert( s_vecPollFDs.Count() == nSocketsToPoll+1 );
 	#endif
 
 	// Release lock while we're asleep
 	SteamNetworkingGlobalLock::Unlock();
+
+	// Run idle tasks since we don't have the lock.
+	// !FIXME! Should we move this to another thread?
+	g_taskListRunInBackground.RunTasks();
+
+	// If we have spewed, flush to disk.
+	// We probably could use the background task system for this.
+	FlushSystemSpew();
 
 	// Shutdown request?
 	if ( s_nLowLevelSupportRefCount.load(std::memory_order_acquire) <= 0 || s_bManualPollMode != bManualPoll )
 		return false; // ABORT THREAD
 
 	// Wait for data on one of the sockets, or for us to be asked to wake up
-	#if defined( WIN32 )
-		DWORD nWaitResult = WaitForMultipleObjects( nEvents, pEvents, FALSE, nMaxTimeoutMS );
-	#else
-		poll( pPollFDs, nPollFDs, nMaxTimeoutMS );
-	#endif
+	WaitForSocketsOrWakeEvent( nMaxTimeoutMS );
 
+	// We're back awake.  Grab the lock again
 	SteamNetworkingMicroseconds usecStartedLocking = SteamNetworkingSockets_GetLocalTimestamp();
+	UpdateFakeRateLimitTokenBuckets( usecStartedLocking );
 	for (;;)
 	{
 
@@ -1453,68 +1773,44 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 		if ( s_nLowLevelSupportRefCount.load(std::memory_order_acquire) <= 0 || s_bManualPollMode != bManualPoll )
 			return false;
 
-		// Try to acquire the lock.  But don't wait forever, in case the other thread has the lock
-		// and then makes a shutdown request while we're waiting on the lock here.
-		if ( SteamNetworkingGlobalLock::TryLock( "ServiceThread", 250 ) )
+		// Try to acquire the lock.  But don't wait forever, in case the other thread has
+		// the lock and then makes a shutdown request while we're waiting on the lock here.
+		if ( SteamNetworkingGlobalLock::TryLock( "ServiceThread", 20 ) )
 			break;
-
-		// The only time this really should happen is a relatively rare race condition
-		// where the main thread is trying to shut us down.  (Or while debugging.)
-		// However, note that try_lock_for is permitted to "fail" spuriously, returning
-		// false even if no other thread holds the lock.  (For performance reasons.)
-		// So we check how long we have actually been waiting.
-		SteamNetworkingMicroseconds usecElapsed = SteamNetworkingSockets_GetLocalTimestamp() - usecStartedLocking;
-		AssertMsg1( usecElapsed < 50*1000 || s_nLowLevelSupportRefCount.load(std::memory_order_acquire) <= 0 || s_bManualPollMode != bManualPoll || Plat_IsInDebugSession(), "SDR service thread gave up on lock after waiting %dms.  This directly adds to delay of processing of network packets!", int( usecElapsed/1000 ) );
 	}
 
-	// If we have spewed, flush to disk
-	FlushSpew();
+	// If we waited a long time, then that's probably bad.  Spew about it
+	{
+		SteamNetworkingMicroseconds usecElapsedWaitingForLock = SteamNetworkingSockets_GetLocalTimestamp() - usecStartedLocking;
+		// Hm, if another thread indicated that they expected to hold the lock for a while,
+		// perhaps we should ignore this assert?
+		AssertMsg1( usecElapsedWaitingForLock < 50*1000 || Plat_IsInDebugSession(),
+			"SteamnetworkingSockets service thread waited %dms for lock!  This directly adds to network latency!  It could be a bug, but it's usually caused by general performance problem such as thread starvation or a debug output handler taking too long.", int( usecElapsedWaitingForLock/1000 ) );
+	}
 
 	// Recv socket data from any sockets that might have data, and execute the callbacks.
 	char buf[ k_cbSteamNetworkingSocketsMaxUDPMsgLen + 1024 ];
-#ifdef _WIN32
-	// Note that we assume we aren't polling a ton of sockets here.  We do at least skip ahead
-	// to the first socket with data, based on the return value of WaitForMultipleObjects.  But
-	// then we will check all sockets later in the array.
-	//
-	// Note that if we get a wake request, the event has already been reset, because we used an auto-reset event
-	for ( int idx = nWaitResult - WAIT_OBJECT_0 ; (unsigned)idx < (unsigned)nSocketsToPoll ; ++idx )
-	{
 
-		CRawUDPSocketImpl *pSock = pSocketsToPoll[ idx ];
-
-		// Check if this socket has anything, and clear the event
-		WSANETWORKEVENTS wsaEvents;
-		if ( WSAEnumNetworkEvents( pSock->m_socket, pSock->m_event, &wsaEvents ) != 0 )
-		{
-			AssertMsg1( false, "WSAEnumNetworkEvents failed.  Error code %08x", WSAGetLastError() );
-			continue;
-		}
-		if ( !(wsaEvents.lNetworkEvents & FD_READ) )
-			continue;
-#else
-	for ( int idx = 0 ; idx < nPollFDs ; ++idx )
+	// Iterate all sockets
+	for ( int idx = 0 ; idx < nSocketsToPoll ; ++idx )
 	{
-		if ( !( pPollFDs[ idx ].revents & POLLRDNORM ) )
-			continue;
-		if ( idx >= nSocketsToPoll )
-		{
-			// It's a wake request.  Pull a single packet out of the queue.
-			// We want one wake request to always result in exactly one wake up.
-			// Wake request are relatively rare, and we don't want to skip any
-			// or combine them.  That would result in complicated race conditions
-			// where we stay asleep a lot longer than we should.
-			#ifdef NN_NINTENDO_SDK
-				// Sorry, but this code is covered under NDA with Nintendo, and
-				// we don't have permission to distribute it.
-			#else
-				Assert( pPollFDs[idx].fd == s_hSockWakeThreadRead );
-				::recv( s_hSockWakeThreadRead, buf, sizeof(buf), 0 );
-			#endif
-			continue;
-		}
-		CRawUDPSocketImpl *pSock = pSocketsToPoll[ idx ];
-#endif
+		CRawUDPSocketImpl *pSock = s_vecRawSockets[ idx ];
+
+		// Check if this socket has anything
+		#ifdef _WIN32
+			WSANETWORKEVENTS wsaEvents;
+			if ( WSAEnumNetworkEvents( pSock->m_socket, NULL, &wsaEvents ) != 0 )
+			{
+				AssertMsg1( false, "WSAEnumNetworkEvents failed.  Error code %08x", WSAGetLastError() );
+				continue;
+			}
+			if ( !(wsaEvents.lNetworkEvents & FD_READ) )
+				continue;
+		#else
+			if ( !( s_vecPollFDs[ idx ].revents & POLLRDNORM ) )
+				continue;
+			Assert( s_vecPollFDs[ idx ].revents != 0x7fff ); // Make sure kernel actually populated this
+		#endif
 
 		// Drain the socket.  But if the callback gets cleared, that
 		// indicates that the socket is pending destruction and is
@@ -1531,9 +1827,9 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 			sockaddr_storage from;
 			socklen_t fromlen = sizeof(from);
 			int ret = ::recvfrom( pSock->m_socket, buf, sizeof( buf ), 0, (sockaddr *)&from, &fromlen );
+			SteamNetworkingMicroseconds usecRecvFromEnd = SteamNetworkingSockets_GetLocalTimestamp();
 
 			#ifdef STEAMNETWORKINGSOCKETS_LOWLEVEL_TIME_SOCKET_CALLS
-				SteamNetworkingMicroseconds usecRecvFromEnd = SteamNetworkingSockets_GetLocalTimestamp(); // FIXME - If we add a timestamp to RecvPktInfo_t this will be free
 				if ( usecRecvFromEnd > s_usecIgnoreLongLockWaitTimeUntil )
 				{
 					SteamNetworkingMicroseconds usecRecvFromElapsed = usecRecvFromEnd - usecRecvFromStart;
@@ -1564,6 +1860,29 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 			// Add a tag.  If we end up holding the lock for a long time, this tag
 			// will tell us how many packets were processed
 			SteamNetworkingGlobalLock::AssertHeldByCurrentThread( "RecvUDPPacket" );
+
+			// Check simulated global rate limit.  Make sure this is fast
+			// when the limit is not in use
+			if ( unlikely( g_Config_FakeRateLimit_Recv_Rate.Get() > 0 ) )
+			{
+
+				// Check if bucket already has tokens in it, which
+				// will be common.  If so, we can avoid reading the
+				// timer
+				if ( s_flFakeRateLimit_Recv_tokens <= 0.0f )
+				{
+
+					// Update bucket with tokens
+					UpdateFakeRateLimitTokenBuckets( usecRecvFromEnd );
+
+					// Still empty?
+					if ( s_flFakeRateLimit_Recv_tokens <= 0.0f )
+						continue;
+				}
+
+				// Spend tokens
+				s_flFakeRateLimit_Recv_tokens -= ret;
+			}
 
 			// Check for simulating random packet loss
 			if ( RandomBoolWithOdds( g_Config_FakePacketLoss_Recv.Get() ) )
@@ -1601,7 +1920,7 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 				iovec temp;
 				temp.iov_len = ret;
 				temp.iov_base = buf;
-				s_packetLagQueue.LagPacket( false, pSock, info.m_adrFrom, nDupLag, 1, &temp );
+				s_packetLagQueueRecv.LagPacket( pSock, info.m_adrFrom, nDupLag, 1, &temp );
 			}
 
 			// Check for simulating lag
@@ -1610,7 +1929,7 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 				iovec temp;
 				temp.iov_len = ret;
 				temp.iov_base = buf;
-				s_packetLagQueue.LagPacket( false, pSock, info.m_adrFrom, nPacketFakeLagTotal, 1, &temp );
+				s_packetLagQueueRecv.LagPacket( pSock, info.m_adrFrom, nPacketFakeLagTotal, 1, &temp );
 			}
 			else
 			{
@@ -1618,6 +1937,7 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 
 				info.m_pPkt = buf;
 				info.m_cbPkt = ret;
+				info.m_usecNow = usecRecvFromEnd;
 				info.m_pSock = pSock;
 				pSock->m_callback( info );
 			}
@@ -1637,6 +1957,28 @@ static bool PollRawUDPSockets( int nMaxTimeoutMS, bool bManualPoll )
 		}
 	}
 
+	// On POSIX, check for draining the thread wake "socket"
+	#ifndef _WIN32
+		pollfd &wake = s_vecPollFDs[ nSocketsToPoll ];
+		if ( wake.revents & POLLRDNORM )
+		{
+			Assert( wake.revents != 0x7fff );
+
+			// It's a wake request.  Pull a single packet out of the queue.
+			// We want one wake request to always result in exactly one wake up.
+			// Wake request are relatively rare, and we don't want to skip any
+			// or combine them.  That would result in complicated race conditions
+			// where we stay asleep a lot longer than we should.
+			#ifdef NN_NINTENDO_SDK
+				// Sorry, but this code is covered under NDA with Nintendo, and
+				// we don't have permission to distribute it.
+			#else
+				Assert( wake.fd == s_hSockWakeThreadRead );
+				::recv( s_hSockWakeThreadRead, buf, sizeof(buf), 0 );
+			#endif
+		}
+	#endif
+
 	// We retained the lock
 	return true;
 }
@@ -1645,13 +1987,24 @@ void ProcessPendingDestroyClosedRawUDPSockets()
 {
 	SteamNetworkingGlobalLock::AssertHeldByCurrentThread();
 
-	for ( CRawUDPSocketImpl *pSock: s_vecRawSocketsPendingDeletion )
-	{
-		Assert( pSock->m_callback.m_fnCallback == nullptr );
-		delete pSock;
-	}
+	if ( !s_bRawSocketPendingDestruction )
+		return;
+	s_bRawSocketPendingDestruction = false;
 
-	s_vecRawSocketsPendingDeletion.RemoveAll();
+	for ( int i = s_vecRawSockets.Count()-1 ; i >= 0 ; --i )
+	{
+		if ( !s_vecRawSockets[i]->m_callback.m_fnCallback )
+		{
+			delete s_vecRawSockets[i];
+			s_vecRawSockets.Remove( i );
+		}
+	}
+	Assert( !s_bRawSocketPendingDestruction );
+
+	#ifndef _WIN32
+		s_bRecreatePollList = true;
+	#endif
+
 }
 
 static void ProcessDeferredOperations()
@@ -1659,7 +2012,7 @@ static void ProcessDeferredOperations()
 	SteamNetworkingGlobalLock::AssertHeldByCurrentThread();
 
 	// Tasks that were queued to be run while we hold the lock
-	ISteamNetworkingSocketsRunWithLock::ServiceQueue();
+	g_taskListRunWithGlobalLock.RunTasks();
 
 	// Process any connections queued for delete
 	CSteamNetworkConnectionBase::ProcessDeletionList();
@@ -1728,7 +2081,7 @@ static bool SteamNetworkingSockets_InternalPoll( int msWait, bool bManualPoll )
 	// be explicitly waking the thread for good perf, we will notice
 	// the delay.  But not so long that a bug in some rare 
 	// shutdown race condition (or the like) will be catastrophic
-	msWait = std::min( msWait, 5000 );
+	msWait = std::min( msWait, k_msMaxPollWait );
 
 	// Poll sockets
 	if ( !PollRawUDPSockets( msWait, bManualPoll ) )
@@ -1922,7 +2275,7 @@ IBoundUDPSocket *OpenUDPSocketBoundToHost( const netadr_t &adrRemote, CRecvPacke
 	// Select local address to use.
 	// Since we know the remote host, let's just always use a single-stack socket
 	// with the specified family
-	int nAddressFamilies = ( adrRemote.GetType() == NA_IPV6 ) ? k_nAddressFamily_IPv6 : k_nAddressFamily_IPv4;
+	int nAddressFamilies = ( adrRemote.GetType() == k_EIPTypeV6 ) ? k_nAddressFamily_IPv6 : k_nAddressFamily_IPv4;
 
 	// Create a socket, bind it to the desired local address
 	CDedicatedBoundSocket *pTempContext = nullptr; // don't yet know the context
@@ -2073,12 +2426,13 @@ void CSharedSocket::RemoteHost::Close()
 //
 /////////////////////////////////////////////////////////////////////////////
 
+static ShortDurationLock s_systemSpewLock( "SystemSpew" );
 SteamNetworkingMicroseconds g_usecLastRateLimitSpew;
 int g_nRateLimitSpewCount;
 ESteamNetworkingSocketsDebugOutputType g_eSystemSpewLevel = k_ESteamNetworkingSocketsDebugOutputType_None; // Option selected by the "system" (environment variable, etc)
 ESteamNetworkingSocketsDebugOutputType g_eAppSpewLevel = k_ESteamNetworkingSocketsDebugOutputType_Msg; // Option selected by app
 ESteamNetworkingSocketsDebugOutputType g_eDefaultGroupSpewLevel = k_ESteamNetworkingSocketsDebugOutputType_Msg; // Effective value
-static FSteamNetworkingSocketsDebugOutput s_pfnDebugOutput = nullptr;
+FSteamNetworkingSocketsDebugOutput g_pfnDebugOutput = nullptr;
 void (*g_pfnPreFormatSpewHandler)( ESteamNetworkingSocketsDebugOutputType eType, bool bFmt, const char* pstrFile, int nLine, const char *pMsg, va_list ap ) = SteamNetworkingSockets_DefaultPreFormatDebugOutputHandler;
 static bool s_bSpewInitted = false;
 
@@ -2086,10 +2440,9 @@ static FILE *g_pFileSystemSpew;
 static SteamNetworkingMicroseconds g_usecSystemLogFileOpened;
 static bool s_bNeedToFlushSystemSpew = false;;
 
-// FIXME - probably need our own leaf lock for the spew
-
 static void InitSpew()
 {
+	ShortDurationScopeLock scopeLock( s_systemSpewLock );
 
 	// First time, check environment variables and set system spew level
 	if ( !s_bSpewInitted )
@@ -2151,8 +2504,9 @@ static void InitSpew()
 
 static void KillSpew()
 {
+	ShortDurationScopeLock scopeLock( s_systemSpewLock );
 	g_eDefaultGroupSpewLevel = g_eSystemSpewLevel = g_eAppSpewLevel = k_ESteamNetworkingSocketsDebugOutputType_None;
-	s_pfnDebugOutput = nullptr;
+	g_pfnDebugOutput = nullptr;
 	s_bSpewInitted = false;
 	s_bNeedToFlushSystemSpew = false;
 	if ( g_pFileSystemSpew )
@@ -2162,13 +2516,23 @@ static void KillSpew()
 	}
 }
 
-static void FlushSpew()
+static void FlushSystemSpewLocked()
 {
+	s_systemSpewLock.AssertHeldByCurrentThread();
 	if ( s_bNeedToFlushSystemSpew )
 	{
 		if ( g_pFileSystemSpew )
 			fflush( g_pFileSystemSpew );
 		s_bNeedToFlushSystemSpew = false;
+	}
+}
+
+static void FlushSystemSpew()
+{
+	if ( s_bNeedToFlushSystemSpew ) // Read the flag without taking the lock first as an optimization, as most of the time it will not be set
+	{
+		ShortDurationScopeLock scopeLock( s_systemSpewLock );
+		FlushSystemSpewLocked();
 	}
 }
 
@@ -2230,8 +2594,22 @@ bool BSteamNetworkingSocketsLowLevelAddRef( SteamDatagramErrMsg &errMsg )
 				V_strcpy_safe( errMsg, "WSAStartup failed" );
 				return false;
 			}
+
+			#pragma comment( lib, "winmm.lib" )
+			if ( ::timeBeginPeriod( 1 ) != 0 )
+			{
+				::WSACleanup();
+				#ifdef _XBOX_ONE
+					::CoUninitialize();
+				#endif
+				V_strcpy_safe( errMsg, "timeBeginPeriod failed" );
+				return false;
+			}
 		}
 		#endif
+
+		// Initialize fake rate limit token buckets
+		InitFakeRateLimit();
 
 		// Make sure random number generator is seeded
 		SeedWeakRandomGenerator();
@@ -2332,15 +2710,6 @@ void SteamNetworkingSocketsLowLevelDecRef()
 	// might need to do stuff when we close a bunch of sockets (and WSACleanup)
 	SteamNetworkingGlobalLock::SetLongLockWarningThresholdMS( "SteamNetworkingSocketsLowLevelDecRef", 500 );
 
-	if ( s_vecRawSockets.IsEmpty() )
-	{
-		s_vecRawSockets.Purge();
-	}
-	else
-	{
-		AssertMsg( false, "Trying to close low level socket support, but we still have sockets open!" );
-	}
-
 	// Stop the service thread, if we have one
 	if ( s_pThreadSteamDatagram )
 		StopSteamDatagramThread();
@@ -2371,14 +2740,26 @@ void SteamNetworkingSocketsLowLevelDecRef()
 	// Check for any leftover tasks that were queued to be run while we hold the lock
 	ProcessDeferredOperations();
 
-	Assert( s_vecRawSocketsPendingDeletion.IsEmpty() );
-	s_vecRawSocketsPendingDeletion.Purge();
+	// At this point, we shouldn't have any remaining sockets
+	if ( s_vecRawSockets.IsEmpty() )
+	{
+		s_vecRawSockets.Purge();
+	}
+	else
+	{
+		AssertMsg( false, "Trying to close low level socket support, but we still have sockets open!" );
+	}
+
+	// Nuke packet lagger queues and make sure we are not registered to think
+	s_packetLagQueueRecv.Clear();
+	s_packetLagQueueSend.Clear();
 
 	// Shutdown event tracing
 	ETW_Kill();
 
 	// Nuke sockets and COM
 	#ifdef _WIN32
+		::timeEndPeriod( 1 );
 		::WSACleanup();
 	#endif
 	#ifdef _XBOX_ONE
@@ -2399,12 +2780,12 @@ void SteamNetworkingSockets_SetDebugOutputFunction( ESteamNetworkingSocketsDebug
 {
 	if ( pfnFunc && eDetailLevel > k_ESteamNetworkingSocketsDebugOutputType_None )
 	{
-		SteamNetworkingSocketsLib::s_pfnDebugOutput = pfnFunc;
+		SteamNetworkingSocketsLib::g_pfnDebugOutput = pfnFunc;
 		SteamNetworkingSocketsLib::g_eAppSpewLevel = ESteamNetworkingSocketsDebugOutputType( eDetailLevel );
 	}
 	else
 	{
-		SteamNetworkingSocketsLib::s_pfnDebugOutput = nullptr;
+		SteamNetworkingSocketsLib::g_pfnDebugOutput = nullptr;
 		SteamNetworkingSocketsLib::g_eAppSpewLevel = k_ESteamNetworkingSocketsDebugOutputType_None;
 	}
 
@@ -2431,7 +2812,6 @@ SteamNetworkingMicroseconds SteamNetworkingSockets_GetLocalTimestamp()
 		// we read the timer?
 		SteamNetworkingMicroseconds usecElapsed = usecResult - usecLastReturned;
 		Assert( usecElapsed >= 0 ); // Our raw timer function is not monotonic!  We assume this never happens!
-		const SteamNetworkingMicroseconds k_usecMaxTimestampDelta = k_nMillion; // one second
 		if ( usecElapsed <= k_usecMaxTimestampDelta )
 		{
 			// Should be the common case - only a relatively small of time has elapsed
@@ -2578,21 +2958,25 @@ STEAMNETWORKINGSOCKETS_INTERFACE void SteamNetworkingSockets_DefaultPreFormatDeb
 	// Spew to log file?
 	if ( eType <= g_eSystemSpewLevel && g_pFileSystemSpew )
 	{
+		ShortDurationScopeLock scopeLock( s_systemSpewLock ); // WARNING - these locks are not re-entrant, so if we assert while holding it, we could deadlock!
+		if ( eType <= g_eSystemSpewLevel && g_pFileSystemSpew )
+		{
 
-		// Write
-		SteamNetworkingMicroseconds usecLogTime = SteamNetworkingSockets_GetLocalTimestamp() - g_usecSystemLogFileOpened;
-		fprintf( g_pFileSystemSpew, "%8.3f %s\n", usecLogTime*1e-6, buf );
+			// Write
+			SteamNetworkingMicroseconds usecLogTime = SteamNetworkingSockets_GetLocalTimestamp() - g_usecSystemLogFileOpened;
+			fprintf( g_pFileSystemSpew, "%8.3f %s\n", usecLogTime*1e-6, buf );
 
-		// Queue to flush when we we think we can afford to hit the disk synchronously
-		s_bNeedToFlushSystemSpew = true;
+			// Queue to flush when we we think we can afford to hit the disk synchronously
+			s_bNeedToFlushSystemSpew = true;
 
-		// Flush certain critical messages things immediately
-		if ( eType <= k_ESteamNetworkingSocketsDebugOutputType_Error )
-			FlushSpew();
+			// Flush certain critical messages things immediately
+			if ( eType <= k_ESteamNetworkingSocketsDebugOutputType_Error )
+				FlushSystemSpewLocked();
+		}
 	}
 
 	// Invoke callback
-	FSteamNetworkingSocketsDebugOutput pfnDebugOutput = s_pfnDebugOutput;
+	FSteamNetworkingSocketsDebugOutput pfnDebugOutput = g_pfnDebugOutput;
 	if ( pfnDebugOutput )
 		pfnDebugOutput( eType, buf );
 }

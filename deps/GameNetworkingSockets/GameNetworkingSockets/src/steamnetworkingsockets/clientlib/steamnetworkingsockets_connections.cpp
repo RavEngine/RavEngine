@@ -9,6 +9,12 @@
 #include "csteamnetworkingsockets.h"
 #include "crypto.h"
 
+#include "tier0/memdbgoff.h"
+
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+	#include "../../common/steammessages_gamenetworkingui.pb.h"
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -340,7 +346,6 @@ CSteamNetworkPollGroup::~CSteamNetworkPollGroup()
 	// Object deletion is rare; to keep things simple we require the global lock
 	SteamNetworkingGlobalLock::AssertHeldByCurrentThread();
 	m_lock.AssertHeldByCurrentThread();
-	g_tables_lock.AssertHeldByCurrentThread();
 
 	FOR_EACH_VEC_BACK( m_vecConnections, i )
 	{
@@ -379,6 +384,7 @@ CSteamNetworkPollGroup::~CSteamNetworkPollGroup()
 	// Remove us from global table, if we're in it
 	if ( m_hPollGroupSelf != k_HSteamNetPollGroup_Invalid )
 	{
+		g_tables_lock.AssertHeldByCurrentThread();
 		int idx = m_hPollGroupSelf & 0xffff;
 		if ( g_mapPollGroups.IsValidIndex( idx ) && g_mapPollGroups[ idx ] == this )
 		{
@@ -437,9 +443,6 @@ void CSteamNetworkPollGroup::AssignHandleAndAddToGlobalTable()
 CSteamNetworkListenSocketBase::CSteamNetworkListenSocketBase( CSteamNetworkingSockets *pSteamNetworkingSocketsInterface )
 : m_pSteamNetworkingSocketsInterface( pSteamNetworkingSocketsInterface )
 , m_hListenSocketSelf( k_HSteamListenSocket_Invalid )
-#ifdef STEAMNETWORKINGSOCKETS_STEAMCLIENT
-, m_legacyPollGroup( pSteamNetworkingSocketsInterface )
-#endif
 {
 	m_connectionConfig.Init( &pSteamNetworkingSocketsInterface->m_connectionConfig );
 }
@@ -467,6 +470,10 @@ CSteamNetworkListenSocketBase::~CSteamNetworkListenSocketBase()
 
 		m_hListenSocketSelf = k_HSteamListenSocket_Invalid;
 	}
+
+	#ifdef STEAMNETWORKINGSOCKETS_STEAMCLIENT
+		Assert( !m_pLegacyPollGroup ); // Should have been cleaned up by Destroy()
+	#endif
 }
 
 bool CSteamNetworkListenSocketBase::BInitListenSocketCommon( int nOptions, const SteamNetworkingConfigValue_t *pOptions, SteamDatagramErrMsg &errMsg )
@@ -550,6 +557,14 @@ void CSteamNetworkListenSocketBase::Destroy()
 		Assert( m_mapChildConnections.Count() == n-1 );
 	}
 
+	#ifdef STEAMNETWORKINGSOCKETS_STEAMCLIENT
+	if ( m_pLegacyPollGroup )
+	{
+		m_pLegacyPollGroup->m_lock.lock(); // Don't use scope object.  It will unlock when we destruct
+		m_pLegacyPollGroup.reset();
+	}
+	#endif
+
 	// Self destruct
 	delete this;
 }
@@ -609,7 +624,11 @@ bool CSteamNetworkListenSocketBase::BAddChildConnection( CSteamNetworkConnection
 	// Don't override it, if so.)
 	#ifdef STEAMNETWORKINGSOCKETS_STEAMCLIENT
 	if ( !pConn->m_pPollGroup )
-		pConn->SetPollGroup( &m_legacyPollGroup );
+	{
+		if ( !m_pLegacyPollGroup )
+			m_pLegacyPollGroup.reset( new CSteamNetworkPollGroup( m_pSteamNetworkingSocketsInterface ) );
+		pConn->SetPollGroup( m_pLegacyPollGroup.get() );
+	}
 	#endif
 
 	return true;
@@ -653,7 +672,11 @@ CSteamNetworkConnectionBase::CSteamNetworkConnectionBase( CSteamNetworkingSocket
 	m_eConnectionState = k_ESteamNetworkingConnectionState_None;
 	m_eConnectionWireState = k_ESteamNetworkingConnectionState_None;
 	m_usecWhenEnteredConnectionState = 0;
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+		m_usecWhenNextDiagnosticsUpdate = k_nThinkTime_Never;
+	#endif
 	m_usecWhenSentConnectRequest = 0;
+	m_usecWhenCreated = 0;
 	m_ulHandshakeRemoteTimestamp = 0;
 	m_usecWhenReceivedHandshakeRemoteTimestamp = 0;
 	m_eEndReason = k_ESteamNetConnectionEnd_Invalid;
@@ -959,6 +982,7 @@ bool CSteamNetworkConnectionBase::BInitConnection( SteamNetworkingMicroseconds u
 	m_eEndReason = k_ESteamNetConnectionEnd_Invalid;
 	m_szEndDebug[0] = '\0';
 	m_statsEndToEnd.Init( usecNow, true ); // Until we go connected don't try to send acks, etc
+	m_usecWhenCreated = usecNow;
 
 	// Select random connection ID, and make sure it passes certain sanity checks
 	{
@@ -1101,6 +1125,7 @@ void CSteamNetworkConnectionBase::ClearCrypto()
 	m_msgCertRemote.Clear();
 	m_msgCryptRemote.Clear();
 	m_bCertHasIdentity = false;
+	m_bRemoteCertHasTrustedCASignature = false;
 	m_keyPrivate.Wipe();
 	ClearLocalCrypto();
 }
@@ -1340,6 +1365,9 @@ void CSteamNetworkConnectionBase::FinalizeLocalCrypto()
 
 	// Note: In certain circumstances, we may need to do this again, so don't wipte the key just yet
 	//m_keyPrivate.Wipe();
+
+	// Probably a state change relevant to diagnostics
+	CheckScheduleDiagnosticsUpdateASAP();
 }
 
 void CSteamNetworkConnectionBase::SetLocalCertUnsigned()
@@ -1515,6 +1543,9 @@ bool CSteamNetworkConnectionBase::BRecvCryptoHandshake( const CMsgSteamDatagramC
 		ConnectionState_ProblemDetectedLocally( k_ESteamNetConnectionEnd_Remote_BadCrypt, "%s", errMsg );
 		return false;
 	}
+
+	// Remember if we they were authenticated
+	m_bRemoteCertHasTrustedCASignature = ( pCACertAuthScope != nullptr );
 
 	// Deserialize crypt info
 	if ( !m_msgCryptRemote.ParseFromString( m_sCryptRemote ) )
@@ -1858,6 +1889,12 @@ void CConnectionTransport::GetDetailedConnectionStatus( SteamNetworkingDetailedC
 {
 }
 
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+void CConnectionTransport::TransportPopulateDiagnostics( CGameNetworkingUI_ConnectionState &msgConnectionState, SteamNetworkingMicroseconds usecNow )
+{
+}
+#endif
+
 void CSteamNetworkConnectionBase::ConnectionPopulateInfo( SteamNetConnectionInfo_t &info ) const
 {
 	m_pLock->AssertHeldByCurrentThread();
@@ -1870,6 +1907,12 @@ void CSteamNetworkConnectionBase::ConnectionPopulateInfo( SteamNetConnectionInfo
 	info.m_eEndReason = m_eEndReason;
 	V_strcpy_safe( info.m_szEndDebug, m_szEndDebug );
 	V_strcpy_safe( info.m_szConnectionDescription, m_szDescription );
+
+	// Set security flags
+	if ( !m_bRemoteCertHasTrustedCASignature || m_identityRemote.IsInvalid() || m_identityRemote.m_eType == k_ESteamNetworkingIdentityType_IPAddress )
+		info.m_nFlags |= k_nSteamNetworkConnectionInfoFlags_Unauthenticated;
+	if ( m_eNegotiatedCipher <= k_ESteamNetworkingSocketsCipher_NULL )
+		info.m_nFlags |= k_nSteamNetworkConnectionInfoFlags_Unencrypted;
 
 	if ( m_pTransport )
 		m_pTransport->TransportPopulateConnectionInfo( info );
@@ -2080,6 +2123,12 @@ int CSteamNetworkConnectionBase::APIReceiveMessages( SteamNetworkingMessage_t **
 	return result;
 }
 
+EResult CSteamNetworkConnectionBase::APIGetRemoteFakeIPForConnection( SteamNetworkingIPAddr *pOutAddr )
+{
+	// Derived class must override if FakeIP support is desired
+	return k_EResultIPNotFound;
+}
+
 bool CSteamNetworkConnectionBase::DecryptDataChunk( uint16 nWireSeqNum, int cbPacketSize, const void *pChunk, int cbChunk, RecvPacketContext_t &ctx )
 {
 	AssertLocksHeldByCurrentThread();
@@ -2101,7 +2150,7 @@ bool CSteamNetworkConnectionBase::DecryptDataChunk( uint16 nWireSeqNum, int cbPa
 	if ( ctx.m_nPktNum <= 0 )
 	{
 
-		// Update raw packet counters numbers, but do not update any logical state suc as reply timeouts, etc
+		// Update raw packet counters numbers, but do not update any logical state such as reply timeouts, etc
 		m_statsEndToEnd.m_recv.ProcessPacket( cbPacketSize );
 		return false;
 	}
@@ -2153,9 +2202,10 @@ bool CSteamNetworkConnectionBase::DecryptDataChunk( uint16 nWireSeqNum, int cbPa
 				// The assumption is that we either have a bug or some weird thing,
 				// or that somebody is spoofing / tampering.  If it's the latter
 				// we don't want to magnify the impact of their efforts
-				SpewWarningRateLimited( ctx.m_usecNow, "[%s] Packet data chunk failed to decrypt!  Could be tampering/spoofing or a bug.", GetDescription() );
+				SpewWarningRateLimited( ctx.m_usecNow, "[%s] Packet %lld (0x%x) decrypt failed (tampering/spoofing/bug)!",
+					GetDescription(), (long long)ctx.m_nPktNum, (unsigned)nWireSeqNum );
 
-				// Update raw packet counters numbers, but do not update any logical state suc as reply timeouts, etc
+				// Update raw packet counters numbers, but do not update any logical state such as reply timeouts, etc
 				m_statsEndToEnd.m_recv.ProcessPacket( cbPacketSize );
 				return false;
 			}
@@ -2445,17 +2495,13 @@ void CSteamNetworkConnectionBase::SetState( ESteamNetworkingConnectionState eNew
 	Assert( m_nSupressStateChangeCallbacks >= 0 );
 	if ( m_nSupressStateChangeCallbacks == 0 )
 	{
-		// Check for posting callback, if connection state has changed from an API perspective
-		if ( eOldAPIState != eNewAPIState )
+		if ( eOldState == k_ESteamNetworkingConnectionState_None && GetState() == k_ESteamNetworkingConnectionState_ProblemDetectedLocally )
 		{
-			if ( eOldState == k_ESteamNetworkingConnectionState_None && GetState() == k_ESteamNetworkingConnectionState_ProblemDetectedLocally )
-			{
-				// Do not post callbacks for internal failures during connection creation
-			}
-			else
-			{
-				PostConnectionStateChangedCallback( eOldAPIState, eNewAPIState );
-			}
+			// Do not post callbacks for internal failures during connection creation
+		}
+		else
+		{
+			PostConnectionStateChangedCallback( eOldAPIState, eNewAPIState );
 		}
 	}
 
@@ -2596,33 +2642,275 @@ void CSteamNetworkConnectionBase::ReceivedMessage( CSteamNetworkingMessage *pMsg
 
 void CSteamNetworkConnectionBase::PostConnectionStateChangedCallback( ESteamNetworkingConnectionState eOldAPIState, ESteamNetworkingConnectionState eNewAPIState )
 {
-	SteamNetConnectionStatusChangedCallback_t c;
-	ConnectionPopulateInfo( c.m_info );
-	c.m_eOldState = eOldAPIState;
-	c.m_hConn = m_hConnectionSelf;
-
-	// !KLUDGE! For ISteamnetworkingMessages connections, we want to process the callback immediately.
-	void *fnCallback = m_connectionConfig.m_Callback_ConnectionStatusChanged.Get();
-	if ( IsConnectionForMessagesSession() )
+	// Send API callback for this state change?
+	// Do not post if connection state has not changed from an API perspective
+	if ( eOldAPIState != eNewAPIState )
 	{
-		if ( fnCallback )
+
+		SteamNetConnectionStatusChangedCallback_t c;
+		ConnectionPopulateInfo( c.m_info );
+		c.m_eOldState = eOldAPIState;
+		c.m_hConn = m_hConnectionSelf;
+
+		// !KLUDGE! For ISteamnetworkingMessages connections, we want to process the callback immediately.
+		void *fnCallback = m_connectionConfig.m_Callback_ConnectionStatusChanged.Get();
+		if ( IsConnectionForMessagesSession() )
 		{
-			FnSteamNetConnectionStatusChanged fnConnectionStatusChanged = (FnSteamNetConnectionStatusChanged)( fnCallback );
-			(*fnConnectionStatusChanged)( &c );
+			if ( fnCallback )
+			{
+				FnSteamNetConnectionStatusChanged fnConnectionStatusChanged = (FnSteamNetConnectionStatusChanged)( fnCallback );
+				(*fnConnectionStatusChanged)( &c );
+			}
+			else
+			{
+				// Currently there is no use case that does this.  It's probably a bug.
+				Assert( false );
+			}
 		}
 		else
 		{
-			// Currently there is no use case that does this.  It's probably a bug.
-			Assert( false );
+
+			// Typical codepath - post to a queue
+			m_pSteamNetworkingSocketsInterface->QueueCallback( c, fnCallback );
 		}
+	}
+
+	// Send diagnostics for this state change?
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+		if (
+			m_pSteamNetworkingSocketsInterface->m_pSteamNetworkingUtils->m_usecConnectionUpdateFrequency == 0 // Not enabled globally right now
+			|| ( m_usecWhenNextDiagnosticsUpdate == k_nThinkTime_Never && !BStateIsActive() ) // We've sent a terminal state change.  This transition isn't interesting from a diagnostic standpoint.
+		) {
+			// Disabled, don't send any more
+			m_usecWhenNextDiagnosticsUpdate = k_nThinkTime_Never;
+		}
+		else
+		{
+			// Post an update.  If more should be sent, we'll schedule it.
+			// NOTE: Here we are going to ask the connection to populate SteamNetConnectionInfo_t info
+			// *again*, even though we just called ConnectionPopulateInfo above.  But this keeps the code
+			// simpler and connectoin state changes are infrequent, relatively speaking
+			SteamNetworkingMicroseconds usecNow = SteamNetworkingSockets_GetLocalTimestamp();
+			m_pSteamNetworkingSocketsInterface->m_pSteamNetworkingUtils->PostConnectionStateUpdateForDiagnosticsUI( eOldAPIState, this, usecNow );
+			Assert( m_usecWhenNextDiagnosticsUpdate > usecNow );
+
+			// If we might need to send another, schedule a wakeup call
+			EnsureMinThinkTime( m_usecWhenNextDiagnosticsUpdate );
+		}
+	#endif
+}
+
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+void CSteamNetworkConnectionBase::CheckScheduleDiagnosticsUpdateASAP()
+{
+	if ( m_pSteamNetworkingSocketsInterface->m_pSteamNetworkingUtils->m_usecConnectionUpdateFrequency <= 0 )
+	{
+		m_usecWhenNextDiagnosticsUpdate = k_nThinkTime_Never;
+	}
+	else if ( m_usecWhenNextDiagnosticsUpdate == k_nThinkTime_Never )
+	{
+		// We've sent out last update.  Don't send any more
 	}
 	else
 	{
-
-		// Typical codepath - post to a queue
-		m_pSteamNetworkingSocketsInterface->QueueCallback( c, fnCallback );
+		m_usecWhenNextDiagnosticsUpdate = k_nThinkTime_ASAP;
+		SetNextThinkTimeASAP();
 	}
 }
+
+// FIXME - Should we just move this into SteamNetConnectionInfo_t?
+// Seems like maybe we should just provide a localized result directly
+// there.
+static const char *GetConnectionStateLocToken( ESteamNetworkingConnectionState eOldConnState,  ESteamNetworkingConnectionState eState, int nEndReason )
+{
+	if ( eState == k_ESteamNetworkingConnectionState_Connecting )
+		return "#SteamNetSockets_Connecting";
+	if ( eState == k_ESteamNetworkingConnectionState_FindingRoute )
+		return "#SteamNetSockets_FindingRoute";
+	if ( eState == k_ESteamNetworkingConnectionState_Connected )
+		return "#SteamNetSockets_Connected";
+
+	if ( nEndReason == k_ESteamNetConnectionEnd_Misc_Timeout )
+	{
+		if ( eOldConnState == k_ESteamNetworkingConnectionState_Connecting )
+			return "#SteamNetSockets_Disconnect_ConnectionTimedout";
+		return "#SteamNetSockets_Disconnect_TimedOut";
+	}
+	if ( eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally )
+	{
+		if ( nEndReason >= k_ESteamNetConnectionEnd_Local_Min && nEndReason <= k_ESteamNetConnectionEnd_Local_Max )
+		{
+			if ( nEndReason == k_ESteamNetConnectionEnd_Local_ManyRelayConnectivity )
+				return "#SteamNetSockets_Disconnect_LocalProblem_ManyRelays";
+			if ( nEndReason == k_ESteamNetConnectionEnd_Local_HostedServerPrimaryRelay )
+				return "#SteamNetSockets_Disconnect_LocalProblem_HostedServerPrimaryRelay";
+			if ( nEndReason == k_ESteamNetConnectionEnd_Local_NetworkConfig )
+				return "#SteamNetSockets_Disconnect_LocalProblem_NetworkConfig";
+			return "#SteamNetSockets_Disconnect_LocalProblem_Other";
+		}
+
+		if ( nEndReason >= k_ESteamNetConnectionEnd_Remote_Min && nEndReason <= k_ESteamNetConnectionEnd_Remote_Max )
+		{
+			if ( nEndReason == k_ESteamNetConnectionEnd_Remote_Timeout )
+			{
+				if ( eOldConnState == k_ESteamNetworkingConnectionState_Connecting )
+					return "#SteamNetSockets_Disconnect_RemoteProblem_TimeoutConnecting";
+				return "#SteamNetSockets_Disconnect_RemoteProblem_Timeout";
+			}
+
+			if ( nEndReason == k_ESteamNetConnectionEnd_Remote_BadCrypt )
+				return "#SteamNetSockets_Disconnect_RemoteProblem_BadCrypt";
+			if ( nEndReason == k_ESteamNetConnectionEnd_Remote_BadCert )
+				return "#SteamNetSockets_Disconnect_RemoteProblem_BadCert";
+		}
+
+		if ( nEndReason == k_ESteamNetConnectionEnd_Misc_P2P_Rendezvous )
+			return "#SteamNetSockets_Disconnect_P2P_Rendezvous";
+
+		if ( nEndReason == k_ESteamNetConnectionEnd_Misc_SteamConnectivity )
+			return "#SteamNetSockets_Disconnect_SteamConnectivity";
+
+		if ( nEndReason == k_ESteamNetConnectionEnd_Misc_InternalError )
+			return "#SteamNetSockets_Disconnect_InternalError";
+
+		return "#SteamNetSockets_Disconnect_Unusual";
+	}
+	if ( eState == k_ESteamNetworkingConnectionState_ClosedByPeer )
+	{
+		if ( nEndReason >= k_ESteamNetConnectionEnd_Local_Min && nEndReason <= k_ESteamNetConnectionEnd_Local_Max )
+			return "#SteamNetSockets_PeerClose_LocalProblem";
+
+		if ( nEndReason >= k_ESteamNetConnectionEnd_Remote_Min && nEndReason <= k_ESteamNetConnectionEnd_Remote_Max )
+		{
+			if ( nEndReason == k_ESteamNetConnectionEnd_Remote_BadCrypt )
+				return "#SteamNetSockets_PeerClose_RemoteProblem_BadCrypt";
+			if ( nEndReason == k_ESteamNetConnectionEnd_Remote_BadCert )
+				return "#SteamNetSockets_PeerClose_RemoteProblem_BadCert";
+			// Peer closed the connection, and they think it's our fault somehow?
+		}
+
+		if ( nEndReason >= k_ESteamNetConnectionEnd_App_Min && nEndReason <= k_ESteamNetConnectionEnd_App_Max )
+		{
+			return "#SteamNetSockets_PeerClose_App_Normal";
+		}
+		if ( nEndReason >= k_ESteamNetConnectionEnd_AppException_Min && nEndReason <= k_ESteamNetConnectionEnd_AppException_Max )
+		{
+			return "#SteamNetSockets_PeerClose_App_Unusual";
+		}
+		return "#SteamNetSockets_PeerClose_Ununusual";
+	}
+
+	if ( nEndReason >= k_ESteamNetConnectionEnd_App_Min && nEndReason <= k_ESteamNetConnectionEnd_App_Max )
+	{
+		return "#SteamNetSockets_AppClose_Normal";
+	}
+	if ( nEndReason >= k_ESteamNetConnectionEnd_AppException_Min && nEndReason <= k_ESteamNetConnectionEnd_AppException_Max )
+	{
+		return "#SteamNetSockets_AppClose_Unusual";
+	}
+
+	return "";
+}
+
+void CSteamNetworkConnectionBase::ConnectionPopulateDiagnostics( ESteamNetworkingConnectionState eOldState, CGameNetworkingUI_ConnectionState &msgConnectionState, SteamNetworkingMicroseconds usecNow )
+{
+	msgConnectionState.set_start_time( (usecNow - m_usecWhenCreated)/k_nMillion );
+
+	// Use the API function to populate the struct
+	SteamNetworkingDetailedConnectionStatus stats;
+	APIGetDetailedConnectionStatus( stats, usecNow );
+
+	// Fill in diagnostic fields that correspond to SteamNetConnectionInfo_t
+	if ( stats.m_eTransportKind != k_ESteamNetTransport_Unknown )
+		msgConnectionState.set_transport_kind( stats.m_eTransportKind );
+	if ( stats.m_info.m_idPOPRelay )
+		msgConnectionState.set_sdrpopid_local( SteamNetworkingPOPIDRender( stats.m_info.m_idPOPRelay ).c_str() );
+	if ( stats.m_info.m_idPOPRemote )
+		msgConnectionState.set_sdrpopid_remote( SteamNetworkingPOPIDRender( stats.m_info.m_idPOPRemote ).c_str() );
+	if ( !stats.m_info.m_addrRemote.IsIPv6AllZeros() )
+		msgConnectionState.set_address_remote( SteamNetworkingIPAddrRender( stats.m_info.m_addrRemote ).c_str() );
+
+	msgConnectionState.set_connection_id_local( m_unConnectionIDLocal );
+	msgConnectionState.set_identity_local( SteamNetworkingIdentityRender( m_identityLocal ).c_str() );
+	if ( !m_identityRemote.IsInvalid() && m_identityRemote.m_eType != k_ESteamNetworkingIdentityType_IPAddress )
+		msgConnectionState.set_identity_remote( SteamNetworkingIdentityRender( m_identityRemote ).c_str() );
+	switch ( GetState() )
+	{
+		default:
+			Assert( false );
+		case k_ESteamNetworkingConnectionState_Connecting:
+		case k_ESteamNetworkingConnectionState_FindingRoute:
+		case k_ESteamNetworkingConnectionState_Connected:
+		case k_ESteamNetworkingConnectionState_ClosedByPeer:
+		case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+		case k_ESteamNetworkingConnectionState_Linger:
+			msgConnectionState.set_connection_state( GetState() );
+			break;
+
+		case k_ESteamNetworkingConnectionState_None:
+		case k_ESteamNetworkingConnectionState_FinWait:
+		case k_ESteamNetworkingConnectionState_Dead:
+			// Use last public state
+			msgConnectionState.set_connection_state( GetWireState() );
+			break;
+	}
+
+	msgConnectionState.set_status_loc_token( GetConnectionStateLocToken( eOldState, stats.m_info.m_eState, stats.m_info.m_eEndReason ) );
+
+	// Check if we've been closed, and schedule the next diagnostics update
+	if ( m_eEndReason != k_ESteamNetConnectionEnd_Invalid )
+	{
+		msgConnectionState.set_close_reason( GetConnectionEndReason() );
+		msgConnectionState.set_close_message( GetConnectionEndDebugString() );
+	}
+	if ( BStateIsActive() )
+	{
+		m_usecWhenNextDiagnosticsUpdate = usecNow + m_pSteamNetworkingSocketsInterface->m_pSteamNetworkingUtils->m_usecConnectionUpdateFrequency;
+	}
+	else
+	{
+		m_usecWhenNextDiagnosticsUpdate = k_nThinkTime_Never;
+	}
+
+	// end-to-end stats measured locally
+	LinkStatsInstantaneousStructToMsg( stats.m_statsEndToEnd.m_latest, *msgConnectionState.mutable_e2e_quality_local()->mutable_instantaneous() );
+	LinkStatsLifetimeStructToMsg( stats.m_statsEndToEnd.m_lifetime, *msgConnectionState.mutable_e2e_quality_local()->mutable_lifetime() );
+
+	// end-to-end stats from remote host, if any
+	if ( stats.m_statsEndToEnd.m_flAgeLatestRemote >= 0.0f )
+	{
+		msgConnectionState.set_e2e_quality_remote_instantaneous_time( uint64( stats.m_statsEndToEnd.m_flAgeLatestRemote * 1e6 ) );
+		LinkStatsInstantaneousStructToMsg( stats.m_statsEndToEnd.m_latestRemote, *msgConnectionState.mutable_e2e_quality_remote()->mutable_instantaneous() );
+	}
+	if ( stats.m_statsEndToEnd.m_flAgeLifetimeRemote >= 0.0f )
+	{
+		msgConnectionState.set_e2e_quality_remote_lifetime_time( uint64( stats.m_statsEndToEnd.m_flAgeLifetimeRemote * 1e6 ) );
+		LinkStatsLifetimeStructToMsg( stats.m_statsEndToEnd.m_lifetimeRemote, *msgConnectionState.mutable_e2e_quality_remote()->mutable_lifetime() );
+	}
+
+	if ( !stats.m_addrPrimaryRouter.IsIPv6AllZeros() && stats.m_statsPrimaryRouter.m_lifetime.m_nPktsRecvSequenced > 0 )
+	{
+		LinkStatsInstantaneousStructToMsg( stats.m_statsPrimaryRouter.m_latest, *msgConnectionState.mutable_front_quality_local()->mutable_instantaneous() );
+		LinkStatsLifetimeStructToMsg( stats.m_statsPrimaryRouter.m_lifetime, *msgConnectionState.mutable_front_quality_local()->mutable_lifetime() );
+
+		if ( stats.m_statsPrimaryRouter.m_flAgeLatestRemote >= 0.0f )
+		{
+			msgConnectionState.set_front_quality_remote_instantaneous_time( uint64( stats.m_statsPrimaryRouter.m_flAgeLatestRemote * 1e6 ) );
+			LinkStatsInstantaneousStructToMsg( stats.m_statsPrimaryRouter.m_latestRemote, *msgConnectionState.mutable_front_quality_remote()->mutable_instantaneous() );
+		}
+		if ( stats.m_statsPrimaryRouter.m_flAgeLifetimeRemote >= 0.0f )
+		{
+			msgConnectionState.set_front_quality_remote_lifetime_time( uint64( stats.m_statsPrimaryRouter.m_flAgeLifetimeRemote * 1e6 ) );
+			LinkStatsLifetimeStructToMsg( stats.m_statsPrimaryRouter.m_lifetimeRemote, *msgConnectionState.mutable_front_quality_remote()->mutable_lifetime() );
+		}
+	}
+
+	// If any selected transport, give them a chance to fill in info
+	if ( m_pTransport )
+		m_pTransport->TransportPopulateDiagnostics( msgConnectionState, usecNow );
+}
+
+#endif
 
 void CSteamNetworkConnectionBase::ConnectionState_ProblemDetectedLocally( ESteamNetConnectionEnd eReason, const char *pszFmt, ... )
 {
@@ -2982,7 +3270,7 @@ void CSteamNetworkConnectionBase::CheckConnectionStateAndSetNextThinkTime( Steam
 					}
 					else
 					{
-						AssertMsg( false, "Application didn't accept or close incoming connection in a reasonable amount of time.  This is probably a bug." );
+						SpewBug( "[%s] Application didn't accept or close incoming connection in a reasonable amount of time.  This is probably a bug in application code!\n", GetDescription() );
 						ConnectionState_ProblemDetectedLocally( k_ESteamNetConnectionEnd_Misc_Timeout, "%s", "App didn't accept or close incoming connection in time." );
 					}
 				}
@@ -3151,6 +3439,16 @@ void CSteamNetworkConnectionBase::CheckConnectionStateAndSetNextThinkTime( Steam
 
 	// Hook for derived class to do its connection-type-specific stuff
 	ThinkConnection( usecNow );
+
+	// Check for sending diagnostics periodically
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+		if ( m_usecWhenNextDiagnosticsUpdate <= usecNow )
+		{
+			m_pSteamNetworkingSocketsInterface->m_pSteamNetworkingUtils->PostConnectionStateUpdateForDiagnosticsUI( CollapseConnectionStateToAPIState( GetState() ), this, usecNow );
+			Assert( m_usecWhenNextDiagnosticsUpdate > usecNow );
+		}
+		UpdateMinThinkTime( m_usecWhenNextDiagnosticsUpdate );
+	#endif
 
 	// Schedule next time to think, if derived class didn't request an earlier
 	// wakeup call.
@@ -3660,7 +3958,12 @@ int CSteamNetworkConnectionPipe::SendEncryptedDataChunk( const void *pChunk, int
 void CSteamNetworkConnectionPipe::TransportPopulateConnectionInfo( SteamNetConnectionInfo_t &info ) const
 {
 	CConnectionTransport::TransportPopulateConnectionInfo( info );
-	info.m_eTransportKind = k_ESteamNetTransport_LoopbackBuffers;
+	info.m_nFlags |= k_nSteamNetworkConnectionInfoFlags_LoopbackBuffers | k_nSteamNetworkConnectionInfoFlags_Fast;
+
+	// Since we're using loopback buffers, the security flags can't really apply.
+	// Make sure they are turned off
+	info.m_nFlags &= ~k_nSteamNetworkConnectionInfoFlags_Unauthenticated;
+	info.m_nFlags &= ~k_nSteamNetworkConnectionInfoFlags_Unencrypted;
 }
 
 void CSteamNetworkConnectionPipe::ConnectionStateChanged( ESteamNetworkingConnectionState eOldState )

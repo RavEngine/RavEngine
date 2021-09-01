@@ -69,6 +69,9 @@ public:
 		return m_identity;
 	}
 
+	/// Return true if this identity refers to us.  (We might have more than one identity that could be used to refer to us, e.g. FakeIP)
+	bool BMatchesIdentity( const SteamNetworkingIdentity &identity );
+
 	template <typename T>
 	void QueueCallback( const T& x, void *fnRegisteredFunctionPtr )
 	{
@@ -108,9 +111,23 @@ public:
 
 	virtual bool GetCertificateRequest( int *pcbBlob, void *pBlob, SteamNetworkingErrMsg &errMsg ) override;
 	virtual bool SetCertificate( const void *pCertificate, int cbCertificate, SteamNetworkingErrMsg &errMsg ) override;
+	virtual void ResetIdentity( const SteamNetworkingIdentity *pIdentity ) override;
+
+	virtual bool BeginAsyncRequestFakeIP( int nNumPorts ) override;
+	virtual void GetFakeIP( int idxFirstPort, SteamNetworkingFakeIPResult_t *pInfo ) override;
+	virtual HSteamListenSocket CreateListenSocketP2PFakeIP( int idxFakePort, int nOptions, const SteamNetworkingConfigValue_t *pOptions ) override;
+	virtual EResult GetRemoteFakeIPForConnection( HSteamNetConnection hConn, SteamNetworkingIPAddr *pOutAddr ) override;
+
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+	virtual int GetFakePortIndex( const SteamNetworkingIPAddr &fakeIP ) = 0;
+	#endif
 
 #ifdef STEAMNETWORKINGSOCKETS_STEAMCLIENT
 	virtual int ReceiveMessagesOnListenSocketLegacyPollGroup( HSteamListenSocket hSocket, SteamNetworkingMessage_t **ppOutMessages, int nMaxMessages ) override;
+	virtual void TEST_EnableP2PLooopbackOptimization( bool flag ) override { m_TEST_bEnableP2PLoopbackOptimization = flag; }
+	bool m_TEST_bEnableP2PLoopbackOptimization = true;
+#else
+	static constexpr bool m_TEST_bEnableP2PLoopbackOptimization = true;
 #endif
 
 	virtual void RunCallbacks() override;
@@ -179,6 +196,8 @@ public:
 	virtual EResult GetGameCoordinatorServerLogin( SteamDatagramGameCoordinatorServerLogin *pLogin, int *pcbSignedBlob, void *pBlob ) override { return k_EResultFail; }
 #endif
 
+	bool InternalReceivedP2PSignal( const CMsgSteamNetworkingP2PRendezvous &msg, ISteamNetworkingSignalingRecvContext *pContext, bool bDefaultPlatformSignaling );
+
 protected:
 
 	/// Overall authentication status.  Depends on the status of our cert, and the ability
@@ -204,6 +223,7 @@ protected:
 	/// Figure out the current authentication status.  And if it has changed, send out callbacks
 	virtual void DeduceAuthenticationStatus();
 
+	void InternalInitIdentity();
 	void KillConnections();
 
 	SteamNetworkingIdentity m_identity;
@@ -228,7 +248,6 @@ protected:
 		int nOptions, const SteamNetworkingConfigValue_t *pOptions,
 		ConnectionScopeLock &scopeLock
 	);
-	bool InternalReceivedP2PSignal( const void *pMsg, int cbMsg, ISteamNetworkingSignalingRecvContext *pContext, bool bDefaultPlatformSignaling );
 
 	// Protected - use Destroy()
 	virtual ~CSteamNetworkingSockets();
@@ -245,6 +264,9 @@ public:
 	virtual SteamNetworkingMicroseconds GetLocalTimestamp() override;
 	virtual void SetDebugOutputFunction( ESteamNetworkingSocketsDebugOutputType eDetailLevel, FSteamNetworkingSocketsDebugOutput pfnFunc ) override;
 
+	virtual ESteamNetworkingFakeIPType GetIPv4FakeIPType( uint32 nIPv4 ) override;
+	virtual EResult GetRealIdentityForFakeIP( const SteamNetworkingIPAddr &fakeIP, SteamNetworkingIdentity *pOutRealIdentity ) override;
+
 	virtual bool SetConfigValue( ESteamNetworkingConfigValue eValue,
 		ESteamNetworkingConfigScope eScopeType, intptr_t scopeObj,
 		ESteamNetworkingConfigDataType eDataType, const void *pValue ) override;
@@ -254,14 +276,12 @@ public:
 		intptr_t scopeObj, ESteamNetworkingConfigDataType *pOutDataType,
 		void *pResult, size_t *cbResult ) override;
 
-	virtual bool GetConfigValueInfo( ESteamNetworkingConfigValue eValue,
-		const char **pOutName, ESteamNetworkingConfigDataType *pOutDataType,
-		ESteamNetworkingConfigScope *pOutScope, ESteamNetworkingConfigValue *pOutNextValue ) override;
-
-	virtual ESteamNetworkingConfigValue GetFirstConfigValue() override;
+	virtual const char *GetConfigValueInfo( ESteamNetworkingConfigValue eValue, ESteamNetworkingConfigDataType *pOutDataType, ESteamNetworkingConfigScope *pOutScope ) override;
+	virtual ESteamNetworkingConfigValue IterateGenericEditableConfigValues( ESteamNetworkingConfigValue eCurrent, bool bEnumerateDevVars ) override;
 
 	virtual void SteamNetworkingIPAddr_ToString( const SteamNetworkingIPAddr &addr, char *buf, size_t cbBuf, bool bWithPort ) override;
 	virtual bool SteamNetworkingIPAddr_ParseString( SteamNetworkingIPAddr *pAddr, const char *pszStr ) override;
+	virtual ESteamNetworkingFakeIPType SteamNetworkingIPAddr_GetFakeIPType( const SteamNetworkingIPAddr &addr ) override;
 	virtual void SteamNetworkingIdentity_ToString( const SteamNetworkingIdentity &identity, char *buf, size_t cbBuf ) override;
 	virtual bool SteamNetworkingIdentity_ParseString( SteamNetworkingIdentity *pIdentity, const char *pszStr ) override;
 
@@ -284,6 +304,18 @@ public:
 
 	// Reset this utils instance for testing
 	virtual void TEST_ResetSelf();
+
+	// Post a connection update message to the OS diagnostics
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+		virtual void PostConnectionStateUpdateForDiagnosticsUI( ESteamNetworkingConnectionState eOldState, CSteamNetworkConnectionBase *pConnection, SteamNetworkingMicroseconds usecNow ) = 0;
+
+		// Desired update interval for connections, outside of state changes.
+		// The default is zero, which means no updates, not even for state changes.
+		// Derived classes that override PostConnectionStateUpdateForDiagnosticsUI must set this.
+		SteamNetworkingMicroseconds m_usecConnectionUpdateFrequency = 0;
+	#else
+		static constexpr SteamNetworkingMicroseconds m_usecConnectionUpdateFrequency = 0;
+	#endif
 
 	// Stubs if SDR not enabled
 #ifndef STEAMNETWORKINGSOCKETS_ENABLE_SDR

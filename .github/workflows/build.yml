@@ -58,6 +58,17 @@ jobs:
           submodules: true
       - name: Build
         run: mkdir build && cd build; cmake -Wno-dev .. ; cmake -Wno-dev .. && cmake --build . --config release --target RavEngine
+
+  build-UWP:
+    name: UWP Compile Check
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build
+        run: mkdir build && cd build; cmake -G "Visual Studio 16 2019" -Ax64 -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION="10.0" .. ; cmake --G "Visual Studio 16 2019" -Ax64 -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION="10.0" .. ; cmake --build . --config release --target RavEngine
         
   test-linux:
     name: Linux Unit Tests

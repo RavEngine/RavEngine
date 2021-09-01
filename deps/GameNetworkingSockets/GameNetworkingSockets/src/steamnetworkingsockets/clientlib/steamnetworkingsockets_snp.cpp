@@ -152,6 +152,15 @@ void SSNPSenderState::DebugCheckInFlightPacketMap() const
 			Assert( !bFoundNextToTimeout );
 			bFoundNextToTimeout = true;
 		}
+		else
+		{
+			// All packets earlier than the next one to timeout
+			// should be marked with a nack
+			if ( !bFoundNextToTimeout )
+			{
+				Assert( it->second.m_bNack );
+			}
+		}
 		prevPktNum = it->first;
 		prevWhenSent = it->second.m_usecWhenSent;
 	}
@@ -189,7 +198,8 @@ void SSNPReceiverState::Shutdown()
 //-----------------------------------------------------------------------------
 void CSteamNetworkConnectionBase::SNP_InitializeConnection( SteamNetworkingMicroseconds usecNow )
 {
-	m_senderState.TokenBucket_Init( usecNow );
+	m_sendRateData.m_usecTokenBucketTime = usecNow;
+	m_sendRateData.m_flTokenBucket = k_flSendRateBurstOverageAllowance;
 
 	SteamNetworkingMicroseconds usecPing = GetUsecPingWithFallback( this );
 
@@ -203,7 +213,7 @@ void CSteamNetworkConnectionBase::SNP_InitializeConnection( SteamNetworkingMicro
 	*/
 	Assert( usecPing > 0 );
 	int64 w_init = Clamp( 4380, 2 * k_cbSteamNetworkingSocketsMaxEncryptedPayloadSend, 4 * k_cbSteamNetworkingSocketsMaxEncryptedPayloadSend );
-	m_senderState.m_n_x = int( k_nMillion * w_init / usecPing );
+	m_sendRateData.m_nCurrentSendRateEstimate = int( k_nMillion * w_init / usecPing );
 
 	// Go ahead and clamp it now
 	SNP_ClampSendRate();
@@ -338,7 +348,7 @@ int64 CSteamNetworkConnectionBase::SNP_SendMessage( CSteamNetworkingMessage *pSe
 	// or at the Nagle time, if Nagle is active.)
 	//
 	// NOTE: Right now we might not actually be capable of sending end to end data.
-	// But that case is relatievly rare, and nothing will break if we try to right now.
+	// But that case is relatively rare, and nothing will break if we try to right now.
 	// On the other hand, just asking the question involved a virtual function call,
 	// and it will return success most of the time, so let's not make the check here.
 	if ( GetState() == k_ESteamNetworkingConnectionState_Connected )
@@ -349,14 +359,29 @@ int64 CSteamNetworkConnectionBase::SNP_SendMessage( CSteamNetworkingMessage *pSe
 		if ( usecNextThink > usecNow )
 		{
 
-			// We are rate limiting.  Spew about it?
-			if ( m_senderState.m_messagesQueued.m_pFirst->SNPSend_UsecNagle() == 0 )
+			// Not ready to send yet.  Is it because Nagle, or because we have previous
+			// data queued and are rate limited?
+			if ( usecNextThink > m_senderState.m_messagesQueued.m_pFirst->SNPSend_UsecNagle() )
 			{
-				SpewVerbose( "[%s] RATELIM QueueTime is %.1fms, SendRate=%.1fk, BytesQueued=%d\n", 
+				// It's because of the rate limit
+				SpewDebug( "[%s] Send RATELIM.  QueueTime is %.1fms, SendRate=%.1fk, BytesQueued=%d, ping=%dms\n", 
 					GetDescription(),
-					m_senderState.CalcTimeUntilNextSend() * 1e-3,
-					m_senderState.m_n_x * ( 1.0/1024.0),
-					m_senderState.PendingBytesTotal()
+					m_sendRateData.CalcTimeUntilNextSend() * 1e-3,
+					m_sendRateData.m_nCurrentSendRateEstimate * ( 1.0/1024.0),
+					m_senderState.PendingBytesTotal(),
+					m_statsEndToEnd.m_ping.m_nSmoothedPing
+				);
+			}
+			else
+			{
+				// Waiting on nagle
+				SpewDebug( "[%s] Send Nagle %.1fms.  QueueTime is %.1fms, SendRate=%.1fk, BytesQueued=%d, ping=%dms\n", 
+					GetDescription(),
+					( m_senderState.m_messagesQueued.m_pFirst->SNPSend_UsecNagle() - usecNow ) * 1e-3,
+					m_sendRateData.CalcTimeUntilNextSend() * 1e-3,
+					m_sendRateData.m_nCurrentSendRateEstimate * ( 1.0/1024.0),
+					m_senderState.PendingBytesTotal(),
+					m_statsEndToEnd.m_ping.m_nSmoothedPing
 				);
 			}
 
@@ -762,6 +787,8 @@ bool CSteamNetworkConnectionBase::ProcessPlainTextDataChunk( int usecTimeSinceLa
 				// Packet loss is in the past.  Forget about it and move on
 				h = m_receiverState.m_mapPacketGaps.erase(h);
 			}
+
+			m_receiverState.DebugCheckPackGapMap();
 		}
 		else if ( ( nFrameType & 0xf0 ) == 0x90 )
 		{
@@ -771,7 +798,6 @@ bool CSteamNetworkConnectionBase::ProcessPlainTextDataChunk( int usecTimeSinceLa
 			//
 
 			#if STEAMNETWORKINGSOCKETS_SNP_PARANOIA > 0
-				m_senderState.DebugCheckInFlightPacketMap();
 				#if STEAMNETWORKINGSOCKETS_SNP_PARANOIA == 1
 				if ( ( nPktNum & 255 ) == 0 ) // only do it periodically
 				#endif
@@ -1456,7 +1482,7 @@ bool CSteamNetworkConnectionBase::SNP_SendPacket( CConnectionTransport *pTranspo
 		pLog->m_nAckBlocksNeeded = ackHelper.m_nBlocksNeedToAck;
 		pLog->m_nPktNumNextPendingAck = m_receiverState.m_itPendingAck->first;
 		pLog->m_usecNextPendingAckTime = m_receiverState.m_itPendingAck->second.m_usecWhenAckPrior;
-		pLog->m_fltokens = m_senderState.m_flTokenBucket;
+		pLog->m_fltokens = m_sendRateData.m_flTokenBucket;
 		pLog->m_nMaxPktRecv = m_statsEndToEnd.m_nMaxRecvPktNum;
 		pLog->m_nMinPktNumToSendAcks = m_receiverState.m_nMinPktNumToSendAcks;
 		pLog->m_nReliableSegmentsRetry = 0;
@@ -1488,7 +1514,7 @@ bool CSteamNetworkConnectionBase::SNP_SendPacket( CConnectionTransport *pTranspo
 
 	// Check if we are actually going to send data in this packet
 	if (
-		m_senderState.m_flTokenBucket < 0.0 // No bandwidth available.  (Presumably this is a relatively rare out-of-band connectivity check, etc)  FIXME should we use a different token bucket per transport?
+		m_sendRateData.m_flTokenBucket < 0.0 // No bandwidth available.  (Presumably this is a relatively rare out-of-band connectivity check, etc)  FIXME should we use a different token bucket per transport?
 		|| !BStateIsConnectedForWirePurposes() // not actually in a connection stats where we should be sending real data yet
 		|| pTransport != m_pTransport // transport is not the selected transport
 	) {
@@ -1945,20 +1971,33 @@ bool CSteamNetworkConnectionBase::SNP_SendPacket( CConnectionTransport *pTranspo
 	if ( m_senderState.m_itNextInFlightPacketToTimeout == m_senderState.m_mapInFlightPacketsByPktNum.end() )
 		m_senderState.m_itNextInFlightPacketToTimeout = pairInsertResult.first;
 
+	// Make sure we didn't hose data structures
+	m_senderState.MaybeCheckInFlightPacketMap();
+
 	#ifdef SNP_ENABLE_PACKETSENDLOG
 		pLog->m_cbSent = nBytesSent;
 	#endif
 
 	// We spent some tokens
-	m_senderState.m_flTokenBucket -= (float)nBytesSent;
+	m_sendRateData.m_flTokenBucket -= (float)nBytesSent;
 	return true;
 }
 
-void CSteamNetworkConnectionBase::SNP_SentNonDataPacket( CConnectionTransport *pTransport, SteamNetworkingMicroseconds usecNow )
+void CSteamNetworkConnectionBase::SNP_SentNonDataPacket( CConnectionTransport *pTransport, int cbPkt, SteamNetworkingMicroseconds usecNow )
 {
 	std::pair<int64,SNPInFlightPacket_t> pairInsert( m_statsEndToEnd.m_nNextSendSequenceNumber-1, SNPInFlightPacket_t{ usecNow, false, pTransport, {} } );
 	auto pairInsertResult = m_senderState.m_mapInFlightPacketsByPktNum.insert( pairInsert );
-	Assert( pairInsertResult.second ); // We should have inserted a new element, not updated an existing element.  Probably an order ofoperations bug with m_nNextSendSequenceNumber
+	Assert( pairInsertResult.second ); // We should have inserted a new element, not updated an existing element.  Probably an order of operations bug with m_nNextSendSequenceNumber
+
+	// If we aren't already tracking anything to timeout, then this is the next one.
+	if ( m_senderState.m_itNextInFlightPacketToTimeout == m_senderState.m_mapInFlightPacketsByPktNum.end() )
+		m_senderState.m_itNextInFlightPacketToTimeout = pairInsertResult.first;
+
+	// Make sure we didn't hose data structures
+	m_senderState.MaybeCheckInFlightPacketMap();
+
+	// Spend tokens from the bucket
+	m_sendRateData.m_flTokenBucket -= (float)cbPkt;
 }
 
 void CSteamNetworkConnectionBase::SNP_GatherAckBlocks( SNPAckSerializerHelper &helper, SteamNetworkingMicroseconds usecNow )
@@ -1971,15 +2010,18 @@ void CSteamNetworkConnectionBase::SNP_GatherAckBlocks( SNPAckSerializerHelper &h
 	if ( n <= 0 )
 		return;
 
+	m_receiverState.DebugCheckPackGapMap();
+
 	// Let's not just flush the acks that are due right now.  Let's flush all of them
 	// that will be due any time before we have the bandwidth to send the next packet.
 	// (Assuming that we send the max packet size here.)
 	SteamNetworkingMicroseconds usecSendAcksDueBefore = usecNow;
-	SteamNetworkingMicroseconds usecTimeUntilNextPacket = SteamNetworkingMicroseconds( ( m_senderState.m_flTokenBucket - (float)m_cbMTUPacketSize ) / (float)m_senderState.m_n_x * -1e6 );
+	SteamNetworkingMicroseconds usecTimeUntilNextPacket = SteamNetworkingMicroseconds( ( m_sendRateData.m_flTokenBucket - (float)m_cbMTUPacketSize ) / m_sendRateData.m_flCurrentSendRateUsed * -1e6 );
 	if ( usecTimeUntilNextPacket > 0 )
 		usecSendAcksDueBefore += usecTimeUntilNextPacket;
-
-	m_receiverState.DebugCheckPackGapMap();
+	int64 nForceAckUpToPkt = INT64_MIN;
+	if ( m_receiverState.m_itPendingAck->second.m_usecWhenAckPrior <= usecNow )
+		nForceAckUpToPkt = m_receiverState.m_itPendingAck->first;
 
 	n = std::min( (int)helper.k_nMaxBlocks, n );
 	auto itNext = m_receiverState.m_mapPacketGaps.begin();
@@ -1994,7 +2036,7 @@ void CSteamNetworkConnectionBase::SNP_GatherAckBlocks( SNPAckSerializerHelper &h
 		Assert( itCur->first < itCur->second.m_nEnd );
 
 		// Do we need to report on this block now?
-		bool bNeedToReport = ( itNext->second.m_usecWhenAckPrior <= usecSendAcksDueBefore );
+		bool bNeedToReport = ( itNext->first <= nForceAckUpToPkt ) || ( itNext->second.m_usecWhenAckPrior <= usecSendAcksDueBefore );
 
 		// Should we wait to NACK this?
 		if ( itCur == m_receiverState.m_itPendingNack )
@@ -2018,10 +2060,10 @@ void CSteamNetworkConnectionBase::SNP_GatherAckBlocks( SNPAckSerializerHelper &h
 
 		int64 nAckEnd;
 		SteamNetworkingMicroseconds usecWhenSentLast;
-		if ( n == 0 )
+		if ( itNext->first == INT64_MAX )
 		{
-			// itNext should be the sentinel
-			Assert( itNext->first == INT64_MAX );
+			// We hit the sentinel, so this should be the last block
+			Assert( n == 0 );
 			nAckEnd = m_statsEndToEnd.m_nMaxRecvPktNum+1;
 			usecWhenSentLast = m_statsEndToEnd.m_usecTimeLastRecvSeq;
 		}
@@ -2144,6 +2186,7 @@ uint8 *CSteamNetworkConnectionBase::SNP_SerializeAckBlocks( const SNPAckSerializ
 				// Mark it as sent
 				m_receiverState.m_itPendingAck->second.m_usecWhenAckPrior = INT64_MAX;
 				++m_receiverState.m_itPendingAck;
+				m_receiverState.DebugCheckPackGapMap();
 			}
 
 			// NOTE: We did NOT nack anything just now
@@ -2205,6 +2248,7 @@ uint8 *CSteamNetworkConnectionBase::SNP_SerializeAckBlocks( const SNPAckSerializ
 			++m_receiverState.m_itPendingAck;
 		}
 		m_receiverState.m_itPendingNack = m_receiverState.m_itPendingAck;
+		m_receiverState.DebugCheckPackGapMap();
 	}
 	else
 	{
@@ -2224,6 +2268,7 @@ uint8 *CSteamNetworkConnectionBase::SNP_SerializeAckBlocks( const SNPAckSerializ
 		// we are about to nack.
 		while ( m_receiverState.m_itPendingNack->first < nAckEnd )
 			++m_receiverState.m_itPendingNack;
+		m_receiverState.DebugCheckPackGapMap();
 	}
 
 	// Serialize the blocks into the packet, from newest to oldest
@@ -3192,11 +3237,33 @@ int CSteamNetworkConnectionBase::SNP_ClampSendRate()
 	int nMin = Clamp( m_connectionConfig.m_SendRateMin.Get(), 1024, 100*1024*1024 );
 	int nMax = Clamp( m_connectionConfig.m_SendRateMax.Get(), nMin, 100*1024*1024 );
 
-	// Clamp it, adjusting the value if it's out of range
-	m_senderState.m_n_x = Clamp( m_senderState.m_n_x, nMin, nMax );
+	// Check if application has disabled bandwidth estimation
+	if ( nMin == nMax )
+	{
+		m_sendRateData.m_nCurrentSendRateEstimate = nMin;
+		m_sendRateData.m_flCurrentSendRateUsed = m_sendRateData.m_nCurrentSendRateEstimate;
+		// FIXME - Note that in this case we are effectively application limited.  We'll want to note this in the future
+	}
+	else
+	{
+
+		// Clamp it, adjusting the value if it's out of range
+		if ( m_sendRateData.m_nCurrentSendRateEstimate >= nMax )
+		{
+			m_sendRateData.m_nCurrentSendRateEstimate = nMax;
+			// FIXME - Note that in this case we are effectively application limited.  We'll want to note this in the future
+		}
+		else if ( m_sendRateData.m_nCurrentSendRateEstimate < nMin )
+		{
+			m_sendRateData.m_nCurrentSendRateEstimate = nMin;
+		}
+
+		// FIXME - In the future we might implement BBR probe cycle
+		m_sendRateData.m_flCurrentSendRateUsed = m_sendRateData.m_nCurrentSendRateEstimate;
+	}
 
 	// Return value
-	return m_senderState.m_n_x;
+	return m_sendRateData.m_nCurrentSendRateEstimate;
 }
 
 // Returns next think time
@@ -3223,7 +3290,7 @@ SteamNetworkingMicroseconds CSteamNetworkConnectionBase::SNP_ThinkSendState( Ste
 			// we'll be ready to send again very soon, but not immediately.
 			// We don't want the outer code to complain that we are requesting
 			// a wakeup call in the past
-			m_senderState.m_flTokenBucket = m_senderState.m_n_x * -0.0005f;
+			m_sendRateData.m_flTokenBucket = m_sendRateData.m_flCurrentSendRateUsed * -0.0005f;
 			return usecNow + 1000;
 		}
 
@@ -3234,7 +3301,8 @@ SteamNetworkingMicroseconds CSteamNetworkConnectionBase::SNP_ThinkSendState( Ste
 			// We've sent everything we want to send.  Limit our reserve to a
 			// small burst overage, in case we had built up an excess reserve
 			// before due to the scheduler waking us up late.
-			m_senderState.TokenBucket_Limit();
+			if ( m_sendRateData.m_flTokenBucket > k_flSendRateBurstOverageAllowance )
+				m_sendRateData.m_flTokenBucket = k_flSendRateBurstOverageAllowance;
 			break;
 		}
 
@@ -3243,12 +3311,12 @@ SteamNetworkingMicroseconds CSteamNetworkConnectionBase::SNP_ThinkSendState( Ste
 		{
 			// Problem sending packet.  Nuke token bucket, but request
 			// a wakeup relatively quick to check on our state again
-			m_senderState.m_flTokenBucket = m_senderState.m_n_x * -0.001f;
+			m_sendRateData.m_flTokenBucket = m_sendRateData.m_flCurrentSendRateUsed * -0.001f;
 			return usecNow + 2000;
 		}
 
 		// We spent some tokens, do we have any left?
-		if ( m_senderState.m_flTokenBucket < 0.0f )
+		if ( m_sendRateData.m_flTokenBucket < 0.0f )
 			break;
 
 		// Limit number of packets sent at a time, even if the scheduler is really bad
@@ -3267,23 +3335,24 @@ void CSteamNetworkConnectionBase::SNP_TokenBucket_Accumulate( SteamNetworkingMic
 	// If we're not connected, just keep our bucket full
 	if ( !BStateIsConnectedForWirePurposes() )
 	{
-		m_senderState.m_flTokenBucket = k_flSendRateBurstOverageAllowance;
-		m_senderState.m_usecTokenBucketTime = usecNow;
+		m_sendRateData.m_flTokenBucket = k_flSendRateBurstOverageAllowance;
+		m_sendRateData.m_usecTokenBucketTime = usecNow;
 		return;
 	}
 
-	float flElapsed = ( usecNow - m_senderState.m_usecTokenBucketTime ) * 1e-6;
-	m_senderState.m_flTokenBucket += (float)m_senderState.m_n_x * flElapsed;
-	m_senderState.m_usecTokenBucketTime = usecNow;
-
+	float flElapsed = ( usecNow - m_sendRateData.m_usecTokenBucketTime ) * 1e-6;
+	m_sendRateData.m_flTokenBucket += m_sendRateData.m_flCurrentSendRateUsed * flElapsed;
+	m_sendRateData.m_usecTokenBucketTime = usecNow;
 	// If we don't currently have any packets ready to send right now,
 	// then go ahead and limit the tokens.  If we do have packets ready
 	// to send right now, then we must assume that we would be trying to
 	// wakeup as soon as we are ready to send the next packet, and thus
 	// any excess tokens we accumulate are because the scheduler woke
 	// us up late, and we are not actually bursting
-	if ( SNP_TimeWhenWantToSendNextPacket() > usecNow )
-		m_senderState.TokenBucket_Limit();
+	if ( m_sendRateData.m_flTokenBucket > k_flSendRateBurstOverageAllowance && SNP_TimeWhenWantToSendNextPacket() > usecNow )
+	{
+		m_sendRateData.m_flTokenBucket = k_flSendRateBurstOverageAllowance;
+	}
 }
 
 void SSNPReceiverState::QueueFlushAllAcks( SteamNetworkingMicroseconds usecWhen )
@@ -3383,7 +3452,7 @@ SteamNetworkingMicroseconds CSteamNetworkConnectionBase::SNP_TimeWhenWantToSendN
 
 		// Queue is empty, nothing to send except perhaps nacks (below)
 		Assert( m_senderState.PendingBytesTotal() == 0 );
-		usecNextSend = INT64_MAX;
+		usecNextSend = k_nThinkTime_Never;
 	}
 	else
 	{
@@ -3441,7 +3510,7 @@ SteamNetworkingMicroseconds CSteamNetworkConnectionBase::SNP_GetNextThinkTime( S
 
 		// Time when we *could* send the next packet, ignoring Nagle
 		SteamNetworkingMicroseconds usecNextSend = usecNow;
-		SteamNetworkingMicroseconds usecQueueTime = m_senderState.CalcTimeUntilNextSend();
+		SteamNetworkingMicroseconds usecQueueTime = m_sendRateData.CalcTimeUntilNextSend();
 		if ( usecQueueTime > 0 )
 		{
 			usecNextSend += usecQueueTime;
@@ -3498,7 +3567,7 @@ void CSteamNetworkConnectionBase::SNP_PopulateQuickStats( SteamNetworkingQuickCo
 
 		// Adjust based on how many tokens we have to spend now (or if we are already
 		// over-budget and have to wait until we could spend another)
-		cbPendingTotal -= (int)m_senderState.m_flTokenBucket;
+		cbPendingTotal -= (int)m_sendRateData.m_flTokenBucket;
 		if ( cbPendingTotal <= 0 )
 		{
 			// We could send it right now.
@@ -3506,8 +3575,7 @@ void CSteamNetworkConnectionBase::SNP_PopulateQuickStats( SteamNetworkingQuickCo
 		}
 		else
 		{
-
-			info.m_usecQueueTime = (int64)cbPendingTotal * k_nMillion / SNP_ClampSendRate();
+			info.m_usecQueueTime = (int64)cbPendingTotal * k_nMillion / SNP_ClampSendRate(); // NOTE: Always use the current estimated bandwidth, NOT
 		}
 	}
 	else

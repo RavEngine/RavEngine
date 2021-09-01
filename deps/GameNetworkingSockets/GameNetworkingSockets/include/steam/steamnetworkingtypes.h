@@ -63,12 +63,14 @@ struct SteamNetAuthenticationStatus_t;
 struct SteamRelayNetworkStatus_t;
 struct SteamNetworkingMessagesSessionRequest_t;
 struct SteamNetworkingMessagesSessionFailed_t;
+struct SteamNetworkingFakeIPResult_t;
 
 typedef void (*FnSteamNetConnectionStatusChanged)( SteamNetConnectionStatusChangedCallback_t * );
 typedef void (*FnSteamNetAuthenticationStatusChanged)( SteamNetAuthenticationStatus_t * );
 typedef void (*FnSteamRelayNetworkStatusChanged)(SteamRelayNetworkStatus_t *);
 typedef void (*FnSteamNetworkingMessagesSessionRequest)(SteamNetworkingMessagesSessionRequest_t *);
 typedef void (*FnSteamNetworkingMessagesSessionFailed)(SteamNetworkingMessagesSessionFailed_t *);
+typedef void (*FnSteamNetworkingFakeIPResult)(SteamNetworkingFakeIPResult_t *);
 
 /// Handle used to identify a connection to a remote host.
 typedef uint32 HSteamNetConnection;
@@ -138,7 +140,7 @@ enum ESteamNetworkingAvailability
 enum ESteamNetworkingIdentityType
 {
 	// Dummy/empty/invalid.
-	// Plese note that if we parse a string that we don't recognize
+	// Please note that if we parse a string that we don't recognize
 	// but that appears reasonable, we will NOT use this type.  Instead
 	// we'll use k_ESteamNetworkingIdentityType_UnknownType.
 	k_ESteamNetworkingIdentityType_Invalid = 0,
@@ -180,6 +182,18 @@ enum ESteamNetworkingIdentityType
 
 	// Make sure this enum is stored in an int.
 	k_ESteamNetworkingIdentityType__Force32bit = 0x7fffffff,
+};
+
+/// "Fake IPs" are assigned to hosts, to make it easier to interface with
+/// older code that assumed all hosts will have an IPv4 address
+enum ESteamNetworkingFakeIPType
+{
+	k_ESteamNetworkingFakeIPType_Invalid, // Error, argument was not even an IP address, etc.
+	k_ESteamNetworkingFakeIPType_NotFake, // Argument was a valid IP, but was not from the reserved "fake" range
+	k_ESteamNetworkingFakeIPType_GlobalIPv4, // Globally unique (for a given app) IPv4 address.  Address space managed by Steam
+	k_ESteamNetworkingFakeIPType_LocalIPv4, // Locally unique IPv4 address.  Address space managed by the local process.  For internal use only; should not be shared!
+
+	k_ESteamNetworkingFakeIPType__Force32Bit = 0x7fffffff
 };
 
 #pragma pack(push,1)
@@ -232,6 +246,13 @@ struct SteamNetworkingIPAddr
 
 	/// See if two addresses are identical
 	bool operator==(const SteamNetworkingIPAddr &x ) const;
+
+	/// Classify address as FakeIP.  This function never returns
+	/// k_ESteamNetworkingFakeIPType_Invalid.
+	ESteamNetworkingFakeIPType GetFakeIPType() const;
+
+	/// Return true if we are a FakeIP
+	bool IsFakeIP() const { return GetFakeIPType() > k_ESteamNetworkingFakeIPType_NotFake; }
 };
 
 /// An abstract way to represent the identity of a network host.  All identities can
@@ -258,6 +279,11 @@ struct SteamNetworkingIdentity
 
 	void SetIPAddr( const SteamNetworkingIPAddr &addr ); // Set to specified IP:port
 	const SteamNetworkingIPAddr *GetIPAddr() const; // returns null if we are not an IP address.
+	void SetIPv4Addr( uint32 nIPv4, uint16 nPort ); // Set to specified IPv4:port
+	uint32 GetIPv4() const; // returns 0 if we are not an IPv4 address.
+
+	ESteamNetworkingFakeIPType GetFakeIPType() const;
+	bool IsFakeIP() const { return GetFakeIPType() > k_ESteamNetworkingFakeIPType_NotFake; }
 
 	// "localhost" is equivalent for many purposes to "anonymous."  Our remote
 	// will identify us by the network address we use.
@@ -541,13 +567,9 @@ enum ESteamNetConnectionEnd
 		// - etc
 		k_ESteamNetConnectionEnd_Remote_BadCert = 4003,
 
-		// We couldn't rendezvous with the remote host because
-		// they aren't logged into Steam
-		k_ESteamNetConnectionEnd_Remote_NotLoggedIn = 4004,
-
-		// We couldn't rendezvous with the remote host because
-		// they aren't running the right application.
-		k_ESteamNetConnectionEnd_Remote_NotRunningApp = 4005,
+		// These will never be returned
+		//k_ESteamNetConnectionEnd_Remote_NotLoggedIn_DEPRECATED = 4004,
+		//k_ESteamNetConnectionEnd_Remote_NotRunningApp_DEPRECATED = 4005,
 
 		// Something wrong with the protocol version you are using.
 		// (Probably the code you are running is too old.)
@@ -581,10 +603,7 @@ enum ESteamNetConnectionEnd
 		// or on their end.
 		k_ESteamNetConnectionEnd_Misc_Timeout = 5003,
 
-		// We're having trouble talking to the relevant relay.
-		// We don't have enough information to say whether the
-		// problem is on our end or not.
-		k_ESteamNetConnectionEnd_Misc_RelayConnectivity = 5004,
+		//k_ESteamNetConnectionEnd_Misc_RelayConnectivity_DEPRECATED = 5004,
 
 		// There's some trouble talking to Steam.
 		k_ESteamNetConnectionEnd_Misc_SteamConnectivity = 5005,
@@ -629,21 +648,6 @@ enum ESteamNetConnectionEnd
 	k_ESteamNetConnectionEnd__Force32Bit = 0x7fffffff
 };
 
-/// Enumerate different kinds of transport that can be used
-enum ESteamNetTransportKind
-{
-	k_ESteamNetTransport_Unknown = 0,
-	k_ESteamNetTransport_LoopbackBuffers = 1, // Internal buffers, not using OS network stack
-	k_ESteamNetTransport_LocalHost = 2, // Using OS network stack to talk to localhost address
-	k_ESteamNetTransport_UDP = 3, // Ordinary UDP connection.
-	k_ESteamNetTransport_UDPProbablyLocal = 4, // Ordinary UDP connection over a route that appears to be "local", meaning we think it is probably fast.  This is just a guess: VPNs and IPv6 make this pretty fuzzy.
-	k_ESteamNetTransport_TURN = 5, // Relayed over TURN server
-	k_ESteamNetTransport_SDRP2P = 6, // P2P connection relayed over Steam Datagram Relay
-	k_ESteamNetTransport_SDRHostedServer = 7, // Connection to a server hosted in a known data center via Steam Datagram Relay
-
-	k_ESteamNetTransport_Force32Bit = 0x7fffffff
-};
-
 /// Max length, in bytes (including null terminator) of the reason string
 /// when a connection is closed.
 const int k_cchSteamNetworkingMaxConnectionCloseReason = 128;
@@ -651,6 +655,13 @@ const int k_cchSteamNetworkingMaxConnectionCloseReason = 128;
 /// Max length, in bytes (include null terminator) of debug description
 /// of a connection.
 const int k_cchSteamNetworkingMaxConnectionDescription = 128;
+
+const int k_nSteamNetworkConnectionInfoFlags_Unauthenticated = 1; // We don't have a certificate for the remote host.
+const int k_nSteamNetworkConnectionInfoFlags_Unencrypted = 2; // Information is being sent out over a wire unencrypted (by this library)
+const int k_nSteamNetworkConnectionInfoFlags_LoopbackBuffers = 4; // Internal loopback buffers.  Won't be true for localhost.  (You can check the address to determine that.)  This implies k_nSteamNetworkConnectionInfoFlags_FastLAN
+const int k_nSteamNetworkConnectionInfoFlags_Fast = 8; // The connection is "fast" and "reliable".  Either internal/localhost (check the address to find out), or the peer is on the same LAN.  (Probably.  It's based on the address and the ping time, this is actually hard to determine unambiguously).
+const int k_nSteamNetworkConnectionInfoFlags_Relayed = 16; // The connection is relayed somehow (SDR or TURN).
+const int k_nSteamNetworkConnectionInfoFlags_DualWifi = 32; // We're taking advantage of dual-wifi multi-path
 
 /// Describe the state of a connection.
 struct SteamNetConnectionInfo_t
@@ -696,11 +707,8 @@ struct SteamNetConnectionInfo_t
 	/// internal logging messages.
 	char m_szConnectionDescription[ k_cchSteamNetworkingMaxConnectionDescription ];
 
-	/// What kind of transport is currently being used?
-	/// Note that this is potentially a dynamic property!  Also, it may not
-	/// always be available, especially right as the connection starts, or
-	/// after the connection ends.
-	ESteamNetTransportKind m_eTransportKind;
+	/// Misc flags.  Bitmask of k_nSteamNetworkConnectionInfoFlags_Xxxx
+	int m_nFlags;
 
 	/// Internal stuff, room to change API easily
 	uint32 reserved[63];
@@ -1082,45 +1090,7 @@ enum ESteamNetworkingConfigValue
 	k_ESteamNetworkingConfig_Invalid = 0,
 
 //
-// Simulating packet lag/loss
-//
-// These are global (not per-connection) because they apply at
-// a relatively low UDP layer.
-//
-
-	/// [global float, 0--100] Randomly discard N pct of packets instead of sending/recv
-	/// This is a global option only, since it is applied at a low level
-	/// where we don't have much context
-	k_ESteamNetworkingConfig_FakePacketLoss_Send = 2,
-	k_ESteamNetworkingConfig_FakePacketLoss_Recv = 3,
-
-	/// [global int32].  Delay all outbound/inbound packets by N ms
-	k_ESteamNetworkingConfig_FakePacketLag_Send = 4,
-	k_ESteamNetworkingConfig_FakePacketLag_Recv = 5,
-
-	/// [global float] 0-100 Percentage of packets we will add additional delay
-	/// to (causing them to be reordered)
-	k_ESteamNetworkingConfig_FakePacketReorder_Send = 6,
-	k_ESteamNetworkingConfig_FakePacketReorder_Recv = 7,
-
-	/// [global int32] Extra delay, in ms, to apply to reordered packets.
-	k_ESteamNetworkingConfig_FakePacketReorder_Time = 8,
-
-	/// [global float 0--100] Globally duplicate some percentage of packets we send
-	k_ESteamNetworkingConfig_FakePacketDup_Send = 26,
-	k_ESteamNetworkingConfig_FakePacketDup_Recv = 27,
-
-	/// [global int32] Amount of delay, in ms, to delay duplicated packets.
-	/// (We chose a random delay between 0 and this value)
-	k_ESteamNetworkingConfig_FakePacketDup_TimeMax = 28,
-
-	/// [global int32] Trace every UDP packet, similar to Wireshark or tcpdump.
-	/// Value is max number of bytes to dump.  -1 disables tracing.
-	// 0 only traces the info but no actual data bytes
-	k_ESteamNetworkingConfig_PacketTraceMaxBytes = 41,
-
-//
-// Connection configuration
+// Connection options
 //
 
 	/// [connection int32] Timeout value (in ms) to use when first connecting
@@ -1316,6 +1286,58 @@ enum ESteamNetworkingConfigValue
 	k_ESteamNetworkingConfig_LocalVirtualPort = 38,
 
 //
+// Simulating network conditions
+//
+// These are global (not per-connection) because they apply at
+// a relatively low UDP layer.
+//
+
+	/// [global float, 0--100] Randomly discard N pct of packets instead of sending/recv
+	/// This is a global option only, since it is applied at a low level
+	/// where we don't have much context
+	k_ESteamNetworkingConfig_FakePacketLoss_Send = 2,
+	k_ESteamNetworkingConfig_FakePacketLoss_Recv = 3,
+
+	/// [global int32].  Delay all outbound/inbound packets by N ms
+	k_ESteamNetworkingConfig_FakePacketLag_Send = 4,
+	k_ESteamNetworkingConfig_FakePacketLag_Recv = 5,
+
+	/// [global float] 0-100 Percentage of packets we will add additional delay
+	/// to (causing them to be reordered)
+	k_ESteamNetworkingConfig_FakePacketReorder_Send = 6,
+	k_ESteamNetworkingConfig_FakePacketReorder_Recv = 7,
+
+	/// [global int32] Extra delay, in ms, to apply to reordered packets.
+	k_ESteamNetworkingConfig_FakePacketReorder_Time = 8,
+
+	/// [global float 0--100] Globally duplicate some percentage of packets we send
+	k_ESteamNetworkingConfig_FakePacketDup_Send = 26,
+	k_ESteamNetworkingConfig_FakePacketDup_Recv = 27,
+
+	/// [global int32] Amount of delay, in ms, to delay duplicated packets.
+	/// (We chose a random delay between 0 and this value)
+	k_ESteamNetworkingConfig_FakePacketDup_TimeMax = 28,
+
+	/// [global int32] Trace every UDP packet, similar to Wireshark or tcpdump.
+	/// Value is max number of bytes to dump.  -1 disables tracing.
+	// 0 only traces the info but no actual data bytes
+	k_ESteamNetworkingConfig_PacketTraceMaxBytes = 41,
+
+
+	// [global int32] Global UDP token bucket rate limits.
+	// "Rate" refers to the steady state rate. (Bytes/sec, the
+	// rate that tokens are put into the bucket.)  "Burst"
+	// refers to the max amount that could be sent in a single
+	// burst.  (In bytes, the max capacity of the bucket.)
+	// Rate=0 disables the limiter entirely, which is the default.
+	// Burst=0 disables burst.  (This is not realistic.  A
+	// burst of at least 4K is recommended; the default is higher.)
+	k_ESteamNetworkingConfig_FakeRateLimit_Send_Rate = 42,
+	k_ESteamNetworkingConfig_FakeRateLimit_Send_Burst = 43,
+	k_ESteamNetworkingConfig_FakeRateLimit_Recv_Rate = 44,
+	k_ESteamNetworkingConfig_FakeRateLimit_Recv_Burst = 45,
+
+//
 // Callbacks
 //
 
@@ -1381,6 +1403,11 @@ enum ESteamNetworkingConfigValue
 	/// initiated locally.  See: ISteamNetworkingSockets::ConnectP2P,
 	/// ISteamNetworkingMessages.
 	k_ESteamNetworkingConfig_Callback_CreateConnectionSignaling = 206,
+
+	/// [global FnSteamNetworkingFakeIPResult] Callback that's invoked when
+	/// a FakeIP allocation finishes.  See: ISteamNetworkingSockets::BeginAsyncRequestFakeIP,
+	/// ISteamNetworkingUtils::SetGlobalCallback_FakeIPResult
+	k_ESteamNetworkingConfig_Callback_FakeIPResult = 207,
 
 //
 // P2P connection settings
@@ -1465,23 +1492,6 @@ enum ESteamNetworkingConfigValue
 	k_ESteamNetworkingConfig_SDRClient_FakeClusterPing = 36,
 
 //
-// Misc
-//
-
-	/// [global int32] 0 or 1.  Some variables are "dev" variables.  They are useful
-	/// for debugging, but should not be adjusted in production.  When this flag is false (the default),
-	/// such variables will not be enumerated by the ISteamnetworkingUtils::GetFirstConfigValue
-	/// ISteamNetworkingUtils::GetConfigValueInfo functions.  The idea here is that you
-	/// can use those functions to provide a generic mechanism to set any configuration
-	/// value from a console or configuration file, looking up the variable by name.  Depending
-	/// on your game, modifying other configuration values may also have negative effects, and
-	/// you may wish to further lock down which variables are allowed to be modified by the user.
-	/// (Maybe no variables!)  Or maybe you use a whitelist or blacklist approach.
-	///
-	/// (This flag is itself a dev variable.)
-	k_ESteamNetworkingConfig_EnumerateDevVars = 35,
-
-//
 // Log levels for debugging information of various subsystems.
 // Higher numeric values will cause more stuff to be printed.
 // See ISteamNetworkingUtils::SetDebugOutputFunction for more
@@ -1495,6 +1505,10 @@ enum ESteamNetworkingConfigValue
 	k_ESteamNetworkingConfig_LogLevel_PacketGaps = 16, // [connection int32] dropped packets
 	k_ESteamNetworkingConfig_LogLevel_P2PRendezvous = 17, // [connection int32] P2P rendezvous messages
 	k_ESteamNetworkingConfig_LogLevel_SDRRelayPings = 18, // [global int32] Ping relays
+
+
+	// Deleted, do not use
+	k_ESteamNetworkingConfig_DELETED_EnumerateDevVars = 35,
 
 	k_ESteamNetworkingConfigValue__Force32Bit = 0x7fffffff
 };
@@ -1690,6 +1704,9 @@ inline void SteamNetworkingIdentity::SetSteamID64( uint64 steamID ) { m_eType = 
 inline uint64 SteamNetworkingIdentity::GetSteamID64() const { return m_eType == k_ESteamNetworkingIdentityType_SteamID ? m_steamID64 : 0; }
 inline void SteamNetworkingIdentity::SetIPAddr( const SteamNetworkingIPAddr &addr ) { m_eType = k_ESteamNetworkingIdentityType_IPAddress; m_cbSize = (int)sizeof(m_ip); m_ip = addr; }
 inline const SteamNetworkingIPAddr *SteamNetworkingIdentity::GetIPAddr() const { return m_eType == k_ESteamNetworkingIdentityType_IPAddress ? &m_ip : NULL; }
+inline void SteamNetworkingIdentity::SetIPv4Addr( uint32 nIPv4, uint16 nPort ) { m_eType = k_ESteamNetworkingIdentityType_IPAddress; m_cbSize = (int)sizeof(m_ip); m_ip.SetIPv4( nIPv4, nPort ); }
+inline uint32 SteamNetworkingIdentity::GetIPv4() const { return m_eType == k_ESteamNetworkingIdentityType_IPAddress ? m_ip.GetIPv4() : 0; }
+inline ESteamNetworkingFakeIPType SteamNetworkingIdentity::GetFakeIPType() const { return m_eType == k_ESteamNetworkingIdentityType_IPAddress ? m_ip.GetFakeIPType() : k_ESteamNetworkingFakeIPType_Invalid; }
 inline void SteamNetworkingIdentity::SetLocalHost() { m_eType = k_ESteamNetworkingIdentityType_IPAddress; m_cbSize = (int)sizeof(m_ip); m_ip.SetIPv6LocalHost(); }
 inline bool SteamNetworkingIdentity::IsLocalHost() const { return m_eType == k_ESteamNetworkingIdentityType_IPAddress && m_ip.IsLocalHost(); }
 inline bool SteamNetworkingIdentity::SetGenericString( const char *pszString ) { size_t l = strlen( pszString ); if ( l >= sizeof(m_szGenericString) ) return false;

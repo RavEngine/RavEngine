@@ -86,6 +86,7 @@ public:
 	/// Nagle timer to expire and send now (but this should behave the same as if the
 	/// timer < usecNow).  If the timer is cleared, then all messages with lower message numbers
 	/// are also cleared.
+	// NOTE: Intentionally reusing the m_usecTimeReceived field, which is not used on outbound messages
 	inline SteamNetworkingMicroseconds SNPSend_UsecNagle() const { return m_usecTimeReceived; }
 	inline void SNPSend_SetUsecNagle( SteamNetworkingMicroseconds x ) { m_usecTimeReceived = x; }
 
@@ -293,19 +294,18 @@ struct SSNPSendMessageList : public SteamNetworkingMessageQueue
 
 };
 
-struct SSNPSenderState
+/// Info used by a sender to estimate the available bandwidth
+struct SSendRateData
 {
-	SSNPSenderState();
-	~SSNPSenderState() {
-		Shutdown();
-	}
-	void Shutdown();
-
 	/// Current sending rate in bytes per second, RFC 3448 4.2 states default
 	/// is one packet per second, but that is insane and we're not doing that.
 	/// In most cases we will set a default based on initial ping, so this is
 	/// only rarely used.
-	int m_n_x = 32*1024;
+	int m_nCurrentSendRateEstimate = 64*1024;
+
+	/// Actual send rate we are going to USE.  This depends on the send rate estimate
+	/// and the current BBR state
+	float m_flCurrentSendRateUsed = 64*1024;
 
 	/// If >=0, then we can send a full packet right now.  We allow ourselves to "store up"
 	/// about 1 packet worth of "reserve".  In other words, if we have not sent any packets
@@ -323,19 +323,6 @@ struct SSNPSenderState
 	/// Last time that we added tokens to m_flTokenBucket
 	SteamNetworkingMicroseconds m_usecTokenBucketTime = 0;
 
-	void TokenBucket_Init( SteamNetworkingMicroseconds usecNow )
-	{
-		m_usecTokenBucketTime = usecNow;
-		m_flTokenBucket = k_flSendRateBurstOverageAllowance;
-	}
-
-	/// Limit our token bucket to the max reserve amount
-	void TokenBucket_Limit()
-	{
-		if ( m_flTokenBucket > k_flSendRateBurstOverageAllowance )
-			m_flTokenBucket = k_flSendRateBurstOverageAllowance;
-	}
-
 	/// Calculate time until we could send our next packet, checking our token
 	/// bucket and the current send rate
 	SteamNetworkingMicroseconds CalcTimeUntilNextSend() const
@@ -344,8 +331,17 @@ struct SSNPSenderState
 		if ( m_flTokenBucket >= 0.0f )
 			return 0;
 
-		return SteamNetworkingMicroseconds( m_flTokenBucket * -1e6f / (float)m_n_x ) + 1; // +1 to make sure that if we don't have any tokens, we never return 0, since zero means "ready right now"
+		return SteamNetworkingMicroseconds( m_flTokenBucket * -1e6f / m_flCurrentSendRateUsed ) + 1; // +1 to make sure that if we don't have any tokens, we never return 0, since zero means "ready right now"
 	}
+};
+
+struct SSNPSenderState
+{
+	SSNPSenderState();
+	~SSNPSenderState() {
+		Shutdown();
+	}
+	void Shutdown();
 
 	/// Nagle timer on all pending messages
 	void ClearNagleTimers()

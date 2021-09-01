@@ -46,6 +46,10 @@ struct RecvPktInfo_t
 {
 	const void *m_pPkt;
 	int m_cbPkt;
+	SteamNetworkingMicroseconds m_usecNow; // Current time
+	// FIXME - coming soon!
+	//SteamNetworkingMicroseconds m_usecRecvMin; // Earliest possible time when the packet might have actually arrived
+	//SteamNetworkingMicroseconds m_usecRecvMax; // Latest possible time when the packet might have actually arrived
 	netadr_t m_adrFrom;
 	IRawUDPSocket *m_pSock;
 };
@@ -302,6 +306,7 @@ inline bool BRateLimitSpew( SteamNetworkingMicroseconds usecNow )
 extern ESteamNetworkingSocketsDebugOutputType g_eDefaultGroupSpewLevel;
 extern void ReallySpewTypeFmt( int eType, PRINTF_FORMAT_STRING const char *pFmt, ... ) FMTFUNCTION( 2, 3 );
 extern void (*g_pfnPreFormatSpewHandler)( ESteamNetworkingSocketsDebugOutputType eType, bool bFmt, const char* pstrFile, int nLine, const char *pMsg, va_list ap );
+extern FSteamNetworkingSocketsDebugOutput g_pfnDebugOutput;
 
 #define SpewTypeGroup( eType, nGroup, ... ) ( ( (eType) <= (nGroup) ) ? ReallySpewTypeFmt( (eType), __VA_ARGS__ ) : (void)0 )
 #define SpewMsgGroup( nGroup, ... ) SpewTypeGroup( k_ESteamNetworkingSocketsDebugOutputType_Msg, (nGroup), __VA_ARGS__ )
@@ -469,6 +474,8 @@ struct ScopeLock
 	ScopeLock() : m_pLock( nullptr ) {}
 	explicit ScopeLock( TLock &lock, const char *pszTag = nullptr ) : m_pLock(&lock) { lock.lock( pszTag ); }
 	~ScopeLock() { if ( m_pLock ) m_pLock->unlock(); }
+	bool IsLocked() const { return m_pLock != nullptr; } // Return true if we hold any lock
+	bool BHoldsLock( const TLock &lock ) const { return m_pLock == &lock; } // Return true if we hold the specific lock
 	void Lock( TLock &lock, const char *pszTag = nullptr )
 	{
 		if ( m_pLock )
@@ -498,6 +505,21 @@ struct ScopeLock
 
 	// If we have a lock, forget about it
 	void Abandon() { m_pLock = nullptr; }
+
+	// Take ownership of a lock (that must already be locked by the current thread),
+	// so that we will unlock it when we are destructed
+	void _TakeLockOwnership( TLock *pLock, const char *pszFile, int line, const char *pszTag = nullptr )
+	{
+		pLock->_AssertHeldByCurrentThread( pszFile, line, pszTag );
+
+		if ( m_pLock )
+		{
+			AssertMsg( false, "Scopelock already holding %s, while assuming ownership %s!  tag=%s",
+				m_pLock->m_pszName, pLock->m_pszName, pszTag ? pszTag : "???" );
+			m_pLock->unlock();
+		}
+		m_pLock = pLock;
+	}
 private:
 	TLock *m_pLock;
 };
@@ -516,9 +538,11 @@ using ShortDurationScopeLock = ScopeLock<ShortDurationLock>;
 #if STEAMNETWORKINGSOCKETS_LOCK_DEBUG_LEVEL > 0
 	#define AssertHeldByCurrentThread( ... ) _AssertHeldByCurrentThread( __FILE__, __LINE__ ,## __VA_ARGS__ )
 	#define AssertLocksHeldByCurrentThread( ... ) _AssertLocksHeldByCurrentThread( __FILE__, __LINE__,## __VA_ARGS__ )
+	#define TakeLockOwnership( pLock, ... ) _TakeLockOwnership( (pLock), __FILE__, __LINE__,## __VA_ARGS__ )
 #else
 	#define AssertHeldByCurrentThread( ... ) _AssertHeldByCurrentThread( nullptr, 0,## __VA_ARGS__ )
 	#define AssertLocksHeldByCurrentThread( ... ) _AssertLocksHeldByCurrentThread( nullptr, 0,## __VA_ARGS__ )
+	#define TakeLockOwnership( pLock, ... ) _TakeLockOwnership( (pLock), nullptr, 0,## __VA_ARGS__ )
 #endif
 
 /// Special utilities for acquiring the global lock
@@ -549,38 +573,149 @@ extern void SteamNetworkingSocketsLowLevelValidate( CValidator &validator );
 /// but is safe to call from the service thread as well.
 extern void WakeSteamDatagramThread();
 
-/// Class used to take some action while we have the global thread locked,
-/// perhaps later and in another thread if necessary.  Intended to be used
-/// from callbacks and other contexts where we don't know what thread we are
-/// in and cannot risk trying to wait on the lock, without risking creating
-/// a deadlock.
-///
-/// Note: This code could have been a lot simpler with std::function, but
-/// it was intentionally not used, to avoid adding that runtime dependency.
-class ISteamNetworkingSocketsRunWithLock
+class CQueuedTask;
+
+/// The target of a task that can be locked and can be safely deleted while
+/// tasks are still queued against the target
+class CTaskTarget
 {
 public:
-	virtual ~ISteamNetworkingSocketsRunWithLock();
 
-	/// If we can run immediately, then do so, delete self, and return true.
-	/// Otherwise, we are placed into a queue and false is returned.
-	bool RunOrQueue( const char *pszTag );
+protected:
 
-	/// Don't check the global lock, just queue the item to be run.
-	void Queue( const char *pszTag );
+	/// Destructor will cancel tasks.  You need to make sure any relevant
+	/// locks have been acquired!
+	~CTaskTarget();
 
-	/// Called from service thread while we hold the lock
-	static void ServiceQueue();
+	/// Cancel any tasks that are queued for us.
+	/// This MUST be called while relevant locks are held,
+	/// if any tasks are queued with a locking mechanism.
+	void CancelQueuedTasks();
 
-	inline const char *Tag() const { return m_pszTag; }
 private:
-	const char *m_pszTag = nullptr;
+	friend class CTaskList;
+
+	/// Doubly-linked list of tasks that need to be canceled
+	/// if we get deleted.  These are stored in "reverse"
+	/// order, or more accurately, the order of the list
+	/// should not be relevant
+	CQueuedTask *m_pFirstTask = nullptr;
+};
+
+/// Abstract class for a task that is in a queue.  Optionally, you can set
+/// a target that may need to be locked before the task is run or may be
+/// deleted while tasks are queued
+class CQueuedTask
+{
+public:
+
+	// Target accessors
+	void SetTarget( CTaskTarget *pTarget );
+	CTaskTarget *Target() const { return m_pTarget; }
+
+	/// If we can acquire the global lock immediately, then do so, delete self, and return true.
+	/// Otherwise, we are placed into a queue and false is returned.
+	bool RunWithGlobalLockOrQueue( const char *pszTag );
+
+	/// Queue the item to run while we have the global lock held.
+	void QueueToRunWithGlobalLock( const char *pszTag );
+
+	/// Queue the item to run in the background when we have some time,
+	/// on no particular thread and with no locks held
+	void QueueToRunInBackground();
+
+	/// Function call used to try to take the lock
+	typedef bool (*FTryLockFunc)( void *lock, int msTimeOut, const char *pszTag );
+
+	/// Set the locking mechanism that we should acquire before trying to
+	/// run the task.  You must use this if the target might be deleted
+	/// while the task is run.  If there is no chance of the target being
+	/// deleted while the tasks are being run, then this is not necessary.
+	inline void SetLockFunc( FTryLockFunc func, void *lock, const char *pszTag = nullptr )
+	{
+		m_lockFunc = func;
+		m_lockFuncArg = lock;
+		if ( pszTag )
+			m_pszTag = pszTag;
+	}
+
+	/// Adapter for typed locks
+	template<typename TLock>
+	inline void SetLock( TLock &lock, const char *pszTag = nullptr )
+	{
+		m_lockFunc = []( void *pLock, int msTimeOut, const char *pszTagArg ) -> bool
+		{
+			return ((TLock *)pLock)->try_lock_for( msTimeOut, pszTagArg );
+		};
+		m_lockFuncArg = &lock;
+		if ( pszTag )
+			m_pszTag = pszTag;
+	}
 
 protected:
 	virtual void Run() = 0;
+	CQueuedTask() {}
+	CQueuedTask( CTaskTarget *pTarget ) { SetTarget( pTarget ); }
+	CTaskTarget *m_pTarget = nullptr;
 
-	inline ISteamNetworkingSocketsRunWithLock() {};
+	virtual ~CQueuedTask();
+
+	enum ETaskState
+	{
+		k_ETaskState_Init,
+		k_ETaskState_Queued,
+		k_ETaskState_Running,
+		k_ETaskState_ReadyToDelete,
+	};
+
+private:
+	friend class CTaskList;
+	friend class CTaskTarget;
+	CQueuedTask *m_pNextTaskInQueue = nullptr;
+	CQueuedTask *m_pPrevTaskForTarget = nullptr;
+	CQueuedTask *m_pNextTaskForTarget = nullptr;
+	FTryLockFunc m_lockFunc = nullptr;
+	void *m_lockFuncArg = nullptr;
+	const char *m_pszTag = nullptr;
+	volatile ETaskState m_eTaskState = k_ETaskState_Init;
 };
+
+/// Helper class for a class that takes a target of a specific
+/// type that is derived from CTaskTarget
+template<typename TTarget>
+class CQueuedTaskOnTarget : public CQueuedTask
+{
+public:
+	CQueuedTaskOnTarget( TTarget *pTarget = nullptr ) : CQueuedTask( pTarget ) {}
+
+	/// Upcast
+	void SetTarget( TTarget *pTarget ) { CQueuedTask::SetTarget( pTarget ); }
+	TTarget *Target() const { return static_cast<TTarget*>( m_pTarget ); }
+};
+
+/// A list of queued tasks
+class CTaskList
+{
+public:
+
+	// Add a task to the queue
+	void QueueTask( CQueuedTask *pTask );
+
+	// Run the queued tasks
+	void RunTasks();
+
+private:
+	// List of queued tasks
+	CQueuedTask *m_pFirstTask;
+	CQueuedTask *m_pLastTask;
+};
+
+/// Tasks that we want to run while we hold the global lock
+extern CTaskList g_taskListRunWithGlobalLock;
+
+/// Tasks that we want to run when we are "idle", while
+/// we do NOT hold the global lock.
+extern CTaskList g_taskListRunInBackground;
 
 /////////////////////////////////////////////////////////////////////////////
 //

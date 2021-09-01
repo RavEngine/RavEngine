@@ -26,7 +26,7 @@ enum ESteamNetworkingSocketsCipher
 message CMsgSteamDatagramSessionCryptInfo
 {
 
-	// Key used for Diffie–Hellman key exchange.  Typically this should be an
+	// Key used for Diffie-Hellman key exchange.  Typically this should be an
 	// ephemeral key used only for this connection.
 	enum EKeyType
 	{
@@ -230,7 +230,8 @@ message CMsgSteamNetworkingP2PRendezvous
 	// Connection this is from
 	optional fixed32 from_connection_id = 9;
 
-	// Destination identity, if I know it
+	// Destination identity, if I know it.  If we are using FakeIP and don't know
+	// the destination's real identity, this will be the fake IP.
 	optional string to_identity = 10;
 
 	// Destination connection ID, if I know it.
@@ -259,6 +260,10 @@ message CMsgSteamNetworkingP2PRendezvous
 		optional CMsgSteamDatagramCertificateSigned cert = 7;
 		optional uint32 to_virtual_port = 9;
 		optional uint32 from_virtual_port = 10;
+
+		// From FakeIP.  Will only be present if we have a global-allocated FakeIP
+		// and we are attempting to connect by FakeIP
+		optional string from_fakeip = 11;
 	};
 	optional ConnectRequest connect_request = 4;
 
@@ -320,6 +325,12 @@ message CMsgSteamNetworkingICESessionSummary
 	optional uint32 initial_ping = 4;
 	optional uint32 initial_score = 6;
 	optional uint32 negotiation_ms = 5; // How long did it take to get a NAT traversal result (either success or failure)
+
+	// Best route and score we ever had over the life of the connection
+	optional uint32 best_route_kind = 16; // ESteamNetTransportKind
+	optional uint32 best_ping = 17;
+	optional uint32 best_score = 18;
+	optional uint32 best_time = 19; // seconds into the connections when this happened
 
 	// How long were we the selcted transport?
 	optional uint32 selected_seconds = 12;

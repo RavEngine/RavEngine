@@ -163,6 +163,8 @@ public:
 	bool TryLock() { return m_pSelfAsConnectionTransport->m_connection.TryLock(); }
 	void Unlock() const { return m_pSelfAsConnectionTransport->m_connection.Unlock(); }
 
+	inline SteamNetworkingMicroseconds GetP2PTransportThinkScheduleTime() const { return m_scheduleP2PTransportThink.GetScheduleTime(); }
+
 protected:
 	CConnectionTransportP2PBase( const char *pszDebugName, CConnectionTransport *pSelfBase );
 	virtual ~CConnectionTransportP2PBase();
@@ -202,16 +204,20 @@ public:
 
 	// CSteamNetworkConnectionBase overrides
 	virtual void FreeResources() override;
-	virtual EResult AcceptConnection( SteamNetworkingMicroseconds usecNow ) override;
+	virtual EResult AcceptConnection( SteamNetworkingMicroseconds usecNow ) override final;
 	virtual void GetConnectionTypeDescription( ConnectionTypeDescription_t &szDescription ) const override;
 	virtual void ThinkConnection( SteamNetworkingMicroseconds usecNow ) override;
 	virtual SteamNetworkingMicroseconds ThinkConnection_ClientConnecting( SteamNetworkingMicroseconds usecNow ) override;
+	virtual SteamNetworkingMicroseconds ThinkConnection_FindingRoute( SteamNetworkingMicroseconds usecNow ) override;
 	virtual void DestroyTransport() override;
 	virtual CSteamNetworkConnectionP2P *AsSteamNetworkConnectionP2P() override;
 	virtual void ConnectionStateChanged( ESteamNetworkingConnectionState eOldState ) override;
 	virtual void ProcessSNPPing( int msPing, RecvPacketContext_t &ctx ) override;
 	virtual bool BSupportsSymmetricMode() override;
 	ESteamNetConnectionEnd CheckRemoteCert( const CertAuthScope *pCACertAuthScope, SteamNetworkingErrMsg &errMsg ) override;
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+		virtual void ConnectionPopulateDiagnostics( ESteamNetworkingConnectionState eOldState, CGameNetworkingUI_ConnectionState &msgConnectionState, SteamNetworkingMicroseconds usecNow ) override;
+	#endif
 
 	void SendConnectOKSignal( SteamNetworkingMicroseconds usecNow );
 	void SendConnectionClosedSignal( SteamNetworkingMicroseconds usecNow );
@@ -271,6 +277,8 @@ public:
 		// Peer to peer, over SDR
 		CConnectionTransportP2PSDR *m_pTransportP2PSDR;
 		CMsgSteamNetworkingP2PSDRRoutingSummary m_msgSDRRoutingSummary;
+
+		void PopulateP2PRoutingSummary( CMsgSteamDatagramP2PRoutingSummary &msg );
 	#endif
 
 	// Client connecting to hosted dedicated server over SDR.  These are not really
@@ -403,7 +411,18 @@ public:
 
 	static CSteamNetworkConnectionP2P *FindDuplicateConnection( CSteamNetworkingSockets *pInterfaceLocal, int nLocalVirtualPort, const SteamNetworkingIdentity &identityRemote, int nRemoteVirtualPort, bool bOnlySymmetricConnections, CSteamNetworkConnectionP2P *pIgnore );
 
+	void RemoveP2PConnectionMapByRemoteInfo();
 	bool BEnsureInP2PConnectionMapByRemoteInfo( SteamDatagramErrMsg &errMsg );
+
+	//
+	// FakeIP
+	//
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+
+	FakeIPReference m_fakeIPRef;
+	virtual EResult APIGetRemoteFakeIPForConnection( SteamNetworkingIPAddr *pOutAddr ) override;
+
+#endif
 
 protected:
 	virtual ~CSteamNetworkConnectionP2P();
@@ -412,6 +431,8 @@ protected:
 	bool BInitP2PConnectionCommon( SteamNetworkingMicroseconds usecNow, int nOptions, const SteamNetworkingConfigValue_t *pOptions, SteamDatagramErrMsg &errMsg );
 
 	virtual void PopulateRendezvousMsgWithTransportInfo( CMsgSteamNetworkingP2PRendezvous &msg, SteamNetworkingMicroseconds usecNow );
+
+	virtual EResult P2PInternalAcceptConnection( SteamNetworkingMicroseconds usecNow );
 
 private:
 

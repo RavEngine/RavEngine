@@ -24,6 +24,7 @@
 
 struct SteamNetConnectionStatusChangedCallback_t;
 class ISteamNetworkingSocketsSerialized;
+class CGameNetworkingUI_ConnectionState;
 
 namespace SteamNetworkingSocketsLib {
 
@@ -188,6 +189,40 @@ inline ESteamNetworkingConnectionState CollapseConnectionStateToAPIState( ESteam
 /// received messages.  (On connections and poll groups!)
 extern ShortDurationLock g_lockAllRecvMessageQueues;
 
+#ifdef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+
+struct FakeIPKey;
+
+// Struct that holds a reference, so that we don't forget about FakeIPs that are actually in use
+struct FakeIPReference
+{
+	~FakeIPReference() { Clear(); }
+
+	/// Return true if we are in use
+	inline bool IsValid() const { return m_nHandle >= 0; }
+
+	/// If we hold a reference, clear it
+	void Clear();
+
+	/// Setup to hold a reference to the given FakeIP and the known remote identity
+	void Setup( const SteamNetworkingIPAddr &addr, const SteamNetworkingIdentity &identity );
+
+	/// Allocate a new local FakeIP for the given identity.  Returns false if we fail (which should
+	/// really never happen)
+	bool SetupNewLocalIP( const SteamNetworkingIdentity &identity, SteamNetworkingIPAddr *pOutLocalFakeIP );
+
+	/// Get the real identity and/or fake IP.  Returns false if we do not hold a reference
+	bool GetInfo( SteamNetworkingIdentity *pOutIdentity, SteamNetworkingIPAddr *pOutFakeIP ) const;
+
+private:
+	void InsertInternal( const FakeIPKey &key, const SteamNetworkingIdentity &identity );
+	void AddRefInternal( int handle, const SteamNetworkingIdentity &identity );
+
+	int m_nHandle = -1;
+};
+
+#endif // #ifdef STEAMNETWORKINGSOCKETS_ENABLE_FAKEIP
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // CSteamNetworkPollGroup
@@ -263,7 +298,7 @@ public:
 
 	/// For legacy interface.
 	#ifdef STEAMNETWORKINGSOCKETS_STEAMCLIENT
-	CSteamNetworkPollGroup m_legacyPollGroup;
+	std::unique_ptr<CSteamNetworkPollGroup> m_pLegacyPollGroup;
 	#endif
 
 protected:
@@ -333,6 +368,9 @@ public:
 	/// Hook to allow connections to customize message sending.
 	/// (E.g. loopback.)
 	virtual int64 _APISendMessageToConnection( CSteamNetworkingMessage *pMsg, SteamNetworkingMicroseconds usecNow, bool *pbThinkImmediately );
+
+	/// FakeIP lookuip
+	virtual EResult APIGetRemoteFakeIPForConnection( SteamNetworkingIPAddr *pOutAddr );
 
 //
 // Accessor
@@ -533,7 +571,7 @@ public:
 
 	/// Record that we sent a non-data packet.  This is so that if the peer acks,
 	/// we can record it as a ping
-	void SNP_SentNonDataPacket( CConnectionTransport *pTransport, SteamNetworkingMicroseconds usecNow );
+	void SNP_SentNonDataPacket( CConnectionTransport *pTransport, int cbPkt, SteamNetworkingMicroseconds usecNow );
 
 	/// Called after the connection state changes.  Default behavior is to notify
 	/// the active transport, if any
@@ -606,6 +644,25 @@ public:
 	/// API could not do easily
 	inline bool IsConnectionForMessagesSession() const { return m_connectionConfig.m_LocalVirtualPort.Get() == k_nVirtualPort_Messages; }
 
+	/// Time when we would like to send our next connection diagnostics
+	/// update.  This is initialized the first time we enter the "connecting"
+	/// state and we are on a platform that wants those updates.
+	/// Once we wish to stop sending them, we set it to "never"
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+		SteamNetworkingMicroseconds m_usecWhenNextDiagnosticsUpdate;
+		void CheckScheduleDiagnosticsUpdateASAP();
+
+		/// Fill out diagnostics message to send to steam client with current state of the
+		/// connection, and also schedule the next check, if the connection is active.
+		virtual void ConnectionPopulateDiagnostics( ESteamNetworkingConnectionState eOldState, CGameNetworkingUI_ConnectionState &msgConnectionState, SteamNetworkingMicroseconds usecNow );
+	#else
+		inline void CheckScheduleDiagnosticsUpdateASAP() {}
+		static constexpr SteamNetworkingMicroseconds m_usecWhenNextDiagnosticsUpdate = k_nThinkTime_Never;
+	#endif
+
+	/// Timestamp when we were created
+	SteamNetworkingMicroseconds m_usecWhenCreated;
+
 protected:
 	CSteamNetworkConnectionBase( CSteamNetworkingSockets *pSteamNetworkingSocketsInterface, ConnectionScopeLock &scopeLock );
 	virtual ~CSteamNetworkConnectionBase(); // hidden destructor, don't call directly.  Use ConnectionQueueDestroy()
@@ -677,6 +734,7 @@ protected:
 	std::string m_sCryptRemote;
 	CMsgSteamDatagramCertificate m_msgCertRemote;
 	CMsgSteamDatagramSessionCryptInfo m_msgCryptRemote;
+	bool m_bRemoteCertHasTrustedCASignature; // Could expand this to an enum of different states
 
 	// Local crypto info for this connection
 	CECSigningPrivateKey m_keyPrivate; // Private key corresponding to our cert.  We'll wipe this in FinalizeLocalCrypto, as soon as we've locked in the crypto properties we're going to use
@@ -745,6 +803,9 @@ protected:
 
 	SSNPSenderState m_senderState;
 	SSNPReceiverState m_receiverState;
+
+	/// Bandwidth estimation data
+	SSendRateData m_sendRateData; // FIXME Move this to transport!
 
 	/// Called from SNP layer when it decodes a packet that serves as a ping measurement
 	virtual void ProcessSNPPing( int msPing, RecvPacketContext_t &ctx );
@@ -854,6 +915,9 @@ public:
 	virtual void SendEndToEndStatsMsg( EStatsReplyRequest eRequest, SteamNetworkingMicroseconds usecNow, const char *pszReason ) = 0;
 	virtual void TransportPopulateConnectionInfo( SteamNetConnectionInfo_t &info ) const;
 	virtual void GetDetailedConnectionStatus( SteamNetworkingDetailedConnectionStatus &stats, SteamNetworkingMicroseconds usecNow );
+	#ifdef STEAMNETWORKINGSOCKETS_ENABLE_DIAGNOSTICSUI
+		virtual void TransportPopulateDiagnostics( CGameNetworkingUI_ConnectionState &msgConnectionState, SteamNetworkingMicroseconds usecNow );
+	#endif
 
 	/// Called when the connection state changes.  Some transports need to do stuff
 	virtual void TransportConnectionStateChanged( ESteamNetworkingConnectionState eOldState );
@@ -926,7 +990,7 @@ public:
 	virtual void DestroyTransport() override;
 	virtual void ConnectionStateChanged( ESteamNetworkingConnectionState eOldState ) override;
 
-	// CSteamNetworkConnectionTransport
+	// CConnectionTransport
 	virtual bool SendDataPacket( SteamNetworkingMicroseconds usecNow ) override;
 	virtual bool BCanSendEndToEndConnectRequest() const override;
 	virtual bool BCanSendEndToEndData() const override;

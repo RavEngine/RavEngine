@@ -42,23 +42,44 @@ void CConnectionTransportP2PICE::TransportPopulateConnectionInfo( SteamNetConnec
 	CConnectionTransport::TransportPopulateConnectionInfo( info );
 
 	info.m_addrRemote = m_currentRouteRemoteAddress;
-	info.m_eTransportKind = m_eCurrentRouteKind;
-
-	// If we thought the route was local, but ping time is too high, then clear local flag.
-	// (E.g. VPN)
-	if ( info.m_eTransportKind == k_ESteamNetTransport_UDPProbablyLocal )
+	switch ( m_eCurrentRouteKind )
 	{
-		int nPingMin, nPingMax;
-		m_pingEndToEnd.GetPingRangeFromRecentBuckets( nPingMin, nPingMax, SteamNetworkingSockets_GetLocalTimestamp() );
-		if ( nPingMin >= k_nMinPingTimeLocalTolerance )
-			info.m_eTransportKind = k_ESteamNetTransport_UDP;
+		default:
+		case k_ESteamNetTransport_SDRP2P:
+		case k_ESteamNetTransport_Unknown:
+			// Hm...
+			Assert( false );
+			break;
+
+		case k_ESteamNetTransport_LocalHost:
+			info.m_nFlags |= k_nSteamNetworkConnectionInfoFlags_Fast;
+			break;
+
+		case k_ESteamNetTransport_UDP:
+			break;
+
+		case k_ESteamNetTransport_UDPProbablyLocal:
+		{
+			int nPingMin, nPingMax;
+			m_pingEndToEnd.GetPingRangeFromRecentBuckets( nPingMin, nPingMax, SteamNetworkingSockets_GetLocalTimestamp() );
+			if ( nPingMin < k_nMinPingTimeLocalTolerance )
+				info.m_nFlags |= k_nSteamNetworkConnectionInfoFlags_Fast;
+			break;
+		}
+
+		case k_ESteamNetTransport_TURN:
+			info.m_nFlags |= k_nSteamNetworkConnectionInfoFlags_Relayed;
+			info.m_addrRemote.Clear();
+			break;
 	}
 }
 
 void CConnectionTransportP2PICE::GetDetailedConnectionStatus( SteamNetworkingDetailedConnectionStatus &stats, SteamNetworkingMicroseconds usecNow )
 {
-	// FIXME Need to indicate whether we are relayed or were able to pierce NAT
-	CConnectionTransport::GetDetailedConnectionStatus( stats, usecNow );
+	CConnectionTransportUDPBase::GetDetailedConnectionStatus( stats, usecNow );
+	stats.m_eTransportKind = m_eCurrentRouteKind;
+	if ( stats.m_eTransportKind == k_ESteamNetTransport_UDPProbablyLocal && !( stats.m_info.m_nFlags & k_nSteamNetworkConnectionInfoFlags_Fast ) )
+		stats.m_eTransportKind = k_ESteamNetTransport_UDP;
 }
 
 // Base-64 encode the least significant 30 bits.
@@ -245,8 +266,12 @@ void CConnectionTransportP2PICE::P2PTransportThink( SteamNetworkingMicroseconds 
 	// Are we dead?
 	if ( !m_pICESession || Connection().m_pTransportICEPendingDelete )
 	{
-		Connection().CheckCleanupICE();
-		// We could be deleted here!
+		// If we're a zombie, we should be queued for destruction
+		Assert( Connection().m_pTransportICE != this );
+		Assert( Connection().m_pTransportICEPendingDelete == this );
+
+		// Make sure connection wakes up to do this
+		Connection().SetNextThinkTimeASAP();
 		return;
 	}
 
@@ -295,13 +320,23 @@ void CConnectionTransportP2PICE::P2PTransportUpdateRouteMetrics( SteamNetworking
 
 	// Check for recording the initial scoring data used to make the initial decision
 	CMsgSteamNetworkingICESessionSummary &ice_summary = Connection().m_msgICESessionSummary;
+	uint32 nScore = m_routeMetrics.m_nScoreCurrent + m_routeMetrics.m_nTotalPenalty;
 	if (
 		ConnectionState() == k_ESteamNetworkingConnectionState_FindingRoute
 		|| !ice_summary.has_initial_ping()
+		|| ( nScore < ice_summary.initial_score() && usecNow < Connection().m_usecWhenCreated + 15*k_nMillion )
 	) {
-		ice_summary.set_initial_score( m_routeMetrics.m_nScoreCurrent + m_routeMetrics.m_nTotalPenalty );
+		ice_summary.set_initial_score( nScore );
 		ice_summary.set_initial_ping( m_pingEndToEnd.m_nSmoothedPing );
 		ice_summary.set_initial_route_kind( m_eCurrentRouteKind );
+	}
+
+	if ( !ice_summary.has_best_score() || nScore < ice_summary.best_score() )
+	{
+		ice_summary.set_best_score( nScore );
+		ice_summary.set_best_ping( m_pingEndToEnd.m_nSmoothedPing );
+		ice_summary.set_best_route_kind( m_eCurrentRouteKind );
+		ice_summary.set_best_time( ( usecNow - Connection().m_usecWhenCreated + 500*1000 ) / k_nMillion );
 	}
 }
 
@@ -523,7 +558,7 @@ void CConnectionTransportP2PICE::RouteOrWritableStateChanged()
 
 /// A glue object used to take a callback from ICE, which might happen in
 /// any thread, and execute it with the proper locks.
-class IConnectionTransportP2PICERunWithLock : private ISteamNetworkingSocketsRunWithLock
+class IConnectionTransportP2PICERunWithLock : private CQueuedTaskOnTarget<CConnectionTransportP2PICE>
 {
 public:
 
@@ -533,18 +568,16 @@ public:
 	inline void Queue( CConnectionTransportP2PICE *pTransport, const char *pszTag )
 	{
 		DbgVerify( Setup( pTransport ) ); // Caller should have already checked
-		ISteamNetworkingSocketsRunWithLock::Queue( pszTag );
+		QueueToRunWithGlobalLock( pszTag );
 	}
 
 	inline void RunOrQueue( CConnectionTransportP2PICE *pTransport, const char *pszTag )
 	{
 		if ( Setup( pTransport ) )
-			ISteamNetworkingSocketsRunWithLock::RunOrQueue( pszTag );
+			RunWithGlobalLockOrQueue( pszTag );
 	}
 
 private:
-	uint32 m_nConnectionIDLocal;
-
 	inline bool Setup( CConnectionTransportP2PICE *pTransport )
 	{
 		CSteamNetworkConnectionP2P &conn = pTransport->Connection();
@@ -554,25 +587,20 @@ private:
 			return false;
 		}
 
-		m_nConnectionIDLocal = conn.m_unConnectionIDLocal;
+		SetTarget( pTransport );
 		return true;
 	}
 
 	virtual void Run()
 	{
-		ConnectionScopeLock connectionLock;
-		CSteamNetworkConnectionBase *pConnBase = FindConnectionByLocalID( m_nConnectionIDLocal, connectionLock );
-		if ( !pConnBase )
+		CConnectionTransportP2PICE *pTransport = Target();
+		CSteamNetworkConnectionP2P &conn = pTransport->Connection();
+
+		ConnectionScopeLock connectionLock( conn );
+		if ( conn.m_pTransportICE != pTransport )
 			return;
 
-		CSteamNetworkConnectionP2P *pConn = pConnBase->AsSteamNetworkConnectionP2P();
-		if ( !pConn )
-			return;
-
-		if ( !pConn->m_pTransportICE )
-			return;
-
-		RunTransportP2PICE( pConn->m_pTransportICE );
+		RunTransportP2PICE( pTransport );
 	}
 };
 

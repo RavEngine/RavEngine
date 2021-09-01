@@ -31,7 +31,7 @@ class CSteamNetworkingMessages;
 //
 /////////////////////////////////////////////////////////////////////////////
 
-struct SteamNetworkingMessagesSession : public IThinker
+struct SteamNetworkingMessagesSession : public ILockableThinker<ConnectionLock>
 {
 	SteamNetworkingMessagesSession( const SteamNetworkingIdentity &identityRemote, CSteamNetworkingMessages &steamNetworkingP2P );
 	virtual ~SteamNetworkingMessagesSession();
@@ -77,7 +77,7 @@ struct SteamNetworkingMessagesSession : public IThinker
 
 	void UpdateConnectionInfo();
 
-	void LinkConnection( CSteamNetworkConnectionBase *pConn );
+	void LinkConnection( CSteamNetworkConnectionBase *pConn, ConnectionScopeLock &connectionLock );
 	void UnlinkConnection();
 
 	void ReceivedMessage( CSteamNetworkingMessage *pMsg );
@@ -110,7 +110,7 @@ public:
 	virtual void Validate( CValidator &validator, const char *pchName ) override;
 	#endif
 
-	void NewConnection( CSteamNetworkConnectionBase *pConn );
+	bool BHandleNewIncomingConnection( CSteamNetworkConnectionBase *pConn, ConnectionScopeLock &connectionLock );
 
 	CSteamNetworkingSockets &m_steamNetworkingSockets;
 
@@ -125,15 +125,27 @@ public:
 	CSteamNetworkListenSocketBase *m_pListenSocket = nullptr;
 	CSteamNetworkPollGroup *m_pPollGroup = nullptr;
 
+	// !KLUDGE! *All* of the sessions and connections share the same lock!
+	// This could be improved, if we encounter a use case that needs it!
+	// We could use one lock per session, and then all connection(s) would use
+	// the same lock.  The only slightly awkward thing then would be when
+	// we close the connection for a session, we must make sure that the session
+	// lifetime is as long as the connection.  That's not totally straightforward
+	// right now.
+	ConnectionLock m_sharedConnectionLock;
+
 	Channel *FindOrCreateChannel( int nChannel );
 	void DestroySession( const SteamNetworkingIdentity &identityRemote );
 
 	void PollMessages( SteamNetworkingMicroseconds usecNow );
 
+	#ifdef DBGFLAG_VALIDATE
+	static void ValidateStatics( CValidator &validator );
+	#endif
 private:
 
-	SteamNetworkingMessagesSession *FindSession( const SteamNetworkingIdentity &identityRemote );
-	SteamNetworkingMessagesSession *FindOrCreateSession( const SteamNetworkingIdentity &identityRemote );
+	SteamNetworkingMessagesSession *FindSession( const SteamNetworkingIdentity &identityRemote, ConnectionScopeLock &scopeLock );
+	SteamNetworkingMessagesSession *FindOrCreateSession( const SteamNetworkingIdentity &identityRemote, ConnectionScopeLock &scopeLock );
 
 	CUtlHashMap< SteamNetworkingIdentity, SteamNetworkingMessagesSession *, std::equal_to<SteamNetworkingIdentity>, SteamNetworkingIdentityHash > m_mapSessions;
 	CUtlHashMap<int,Channel*,std::equal_to<int>,std::hash<int>> m_mapChannels;

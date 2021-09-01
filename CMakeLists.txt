@@ -115,10 +115,16 @@ elseif(LINUX)
     set(VIDEO_OPENGLES ON CACHE INTERNAL "")
     set(VIDEO_X11 ON CACHE INTERNAL "")
     set(VIDEO_WAYLAND ON CACHE INTERNAL "")
+elseif(UWP)
+	set(WINDOWS_STORE ON CACHE INTERNAL "")
 endif()
 
 	#RavEngine manages its own rendering, so disable SDL render drivers
-	set(RENDER_D3D OFF CACHE INTERNAL "")
+	if (NOT UWP)
+		set(RENDER_D3D OFF CACHE INTERNAL "")	
+	else()
+		set(RENDER_D3D ON CACHE INTERNAL "") # UWP needs this on
+	endif()
 	set(RENDER_METAL OFF CACHE INTERNAL "")
 	set(VIDEO_VULKAN OFF CACHE INTERNAL "")
 	set(VIDEO_VIVANTE OFF CACHE INTERNAL "")
@@ -314,6 +320,10 @@ if(LINUX)
 	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
 endif()
 
+if (NOT UWP)
+	set(SDL2MAIN_LIB "SDL2main")
+endif()
+
 
 target_link_libraries("${PROJECT_NAME}" 
     PRIVATE 
@@ -342,7 +352,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"RmlCore"
 	"libnyquist"
 	"GameNetworkingSockets_s"
-	"SDL2main"
+	${SDL2MAIN_LIB}
 	"r8brain"
 	PUBLIC
 	"effolkronium_random"
@@ -711,6 +721,11 @@ macro(get_all_targets_recursive targets dir)
 endmacro()
 
 get_all_targets(all_targets)
+
+if(UWP)
+	# WINNT version is messed up when compiling for UWP, fixes here
+	target_compile_definitions("GameNetworkingSockets_s" PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE" "_WIN32_WINNT=9501")
+endif()
 
 # disable warnings in subdirectory targets
 foreach(TGT ${all_targets})
