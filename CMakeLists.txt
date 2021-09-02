@@ -668,6 +668,10 @@ function(pack_resources)
 	set_source_files_properties("${outpack}" PROPERTIES
 		MACOSX_PACKAGE_LOCATION Resources
 	)
+
+	# Set the assets zip location on UWP
+	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_CONTENT 1)
+	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_LOCATION "")	# tells the deployment to put the assets zip in the AppX root directory
 	
 	# copy to target dir on Win
 	if((MSVC AND NOT UWP) OR LINUX)
