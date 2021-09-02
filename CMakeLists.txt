@@ -28,7 +28,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 # UWP detection
-if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+if (CMAKE_SYSTEM_NAME MATCHES "WindowsStore")
 	set(UWP TRUE CACHE INTERNAL "")
 endif()
 
@@ -155,12 +155,12 @@ SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
 
 # GNS
-add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
-add_custom_target("GNS_Deps" DEPENDS "${SHADERC_CMD}")
 if(UWP)
 	# must use libsodium on UWP instead of openssl due to compiler issues
 	set(GNS_USE_OPENSSL OFF CACHE INTERNAL "")
 endif()
+add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
+add_custom_target("GNS_Deps" DEPENDS "${SHADERC_CMD}")
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 
 # resonance-audio
