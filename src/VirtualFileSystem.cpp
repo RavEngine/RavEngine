@@ -34,7 +34,10 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 #endif
 
 	//1 means add to end, can put 0 to make it first searched
-	PHYSFS_mount(cstr, "", 1);
+	auto pwd = std::filesystem::current_path();
+	if (PHYSFS_mount(cstr, "", 1) == 0) {
+		Debug::Fatal("PHYSFS Error: {}",PHYSFS_WHY());
+	}
 	auto root = PHYSFS_enumerateFiles("/");
 	if (*root == NULL) {
 		Debug::Fatal("PHYSFS Error: {}", PHYSFS_WHY());

@@ -243,6 +243,7 @@ file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )
 
 # register the library
+set(UWP_SDL2MAIN "${DEPS_DIR}/SDL2/src/main/winrt/SDL_winrt_main_NonXAML.cpp" CACHE INTERNAL "")
 add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} "deps/parallel-hashmap/phmap.natvis")
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
@@ -250,7 +251,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
-if (NOT APPLE)
+
+if (NOT APPLE AND NOT UWP)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
@@ -314,7 +316,6 @@ if (APPLE)
     SET(ICONV_LIB "iconv")
 
 endif()
-
 
 if(LINUX)
 	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
@@ -634,6 +635,12 @@ function(pack_resources)
 	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
 	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine")
 
+	# on UWP, need an additional file w/ compile options for SDLmain to work
+	if(UWP)
+		#target_sources(${ARGS_TARGET} PRIVATE ${UWP_SDL2MAIN})
+		#set_source_files_properties(${UWP_SDL2MAIN} PROPERTIES COMPILE_FLAGS "/ZW /EHsc")
+	endif()
+
 	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.zip")
 
 	# allow inserting into the mac / ios resource bundle
@@ -658,10 +665,12 @@ function(pack_resources)
 
 	# make part of the target, and add to the resources folder if applicable
 	target_sources("${ARGS_TARGET}" PRIVATE "${outpack}")
-	set_source_files_properties("${outpack}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+	set_source_files_properties("${outpack}" PROPERTIES
+		MACOSX_PACKAGE_LOCATION Resources
+	)
 	
 	# copy to target dir on Win
-	if(MSVC OR LINUX)
+	if((MSVC AND NOT UWP) OR LINUX)
 		get_filename_component(outfile ${outpack} NAME)
 		SET(outfile "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}")
 		add_custom_command(

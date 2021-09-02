@@ -11,8 +11,14 @@
 #include "DataStructures.hpp"
 #include "AudioPlayer.hpp"
 #include "NetworkManager.hpp"
-#include <SDL_main.h>
 #include "FrameData.hpp"
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
+	#undef SDL_MAIN_NEEDED
+	#undef SDL_MAIN_AVAILABLE
+	#define _WINRT 1
+#endif
+#include <SDL_main.h>
+
 
 namespace RavEngine {
 	typedef std::chrono::high_resolution_clock clocktype;
@@ -238,4 +244,16 @@ namespace RavEngine {
 		static double time;
 	};
 }
-#define START_APP(APP) int main(int argc, char** argv){APP a; return a.run(argc, argv);}
+#ifdef _WINRT
+// UWP startup requires extra effort
+#undef main
+#define START_APP(APP) \
+int DoProgram(int argc, char** argv){\
+auto a = std::make_unique<APP>(); return a->run(argc, argv);\
+}\
+int main(int argc, char** argv) { \
+	return SDL_WinRTRunApp(DoProgram, NULL);\
+}
+#else
+#define START_APP(APP) int main(int argc, char** argv){auto a = std::make_unique<APP>(); return a->run(argc, argv);}
+#endif
