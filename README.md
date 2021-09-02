@@ -81,7 +81,7 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 | iOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
 | tvOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
 | Windows 10 (Win32) | x64 | MSVC++ | Visual Studio | DX12, Vulkan |
-| Windows 10 (UWP) | x64 | MSVC++ | Visual Studio 2019 | DX12, Vulkan |
+| Windows 10 (UWP) | x64 | MSVC++ | Visual Studio 2019 | DX12 |
 | Linux | x64 | Clang++, g++ | Ninja | Vulkan |
 | Raspi | aarch64 | Clang++, g++ | Ninja | Vulkan |
 
