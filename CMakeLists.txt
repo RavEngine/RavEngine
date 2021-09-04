@@ -141,6 +141,13 @@ if (UWP)
 endif()
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
+# if on a platform other than windows or mac, ensure that an audio backend was found
+if (NOT APPLE AND NOT MSVC)
+	if (NOT ALSA AND NOT PULSEAUDIO)
+		message(FATAL_ERROR "Either ALSA or PulseAudio dev packages required, but neither were found.")
+	endif()
+endif()
+
 set(PHYSFS_BUILD_TEST OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/physfs" EXCLUDE_FROM_ALL)
 

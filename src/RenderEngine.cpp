@@ -219,7 +219,18 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 	bgfx::Init settings;
 
 #ifdef __linux__
-	settings.type = bgfx::RendererType::Vulkan;	//use Vulkan on Linux
+    {
+        constexpr auto maxRenderers = 6;
+        bgfx::RendererType::Enum supportedRenderers[maxRenderers];
+        auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
+
+        if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Vulkan)) {
+            settings.type = bgfx::RendererType::Vulkan;
+        }
+        else {
+            Debug::Fatal("Vulkan API not found");
+        }
+    }
 #elif defined _WIN32
 	{
 		constexpr auto maxRenderers = 6;
@@ -233,7 +244,19 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 			Debug::Fatal("DirectX 12 API not found");
 		}
 	}
-	
+#elif defined __APPLE__
+    {
+        constexpr auto maxRenderers = 6;
+        bgfx::RendererType::Enum supportedRenderers[maxRenderers];
+        auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
+
+        if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Metal)) {
+            settings.type = bgfx::RendererType::Metal;
+        }
+        else {
+            Debug::Fatal("Metal 12 API not found");
+        }
+    }
 #endif
 
 	settings.callback = new bgfx_msghandler;
