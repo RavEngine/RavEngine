@@ -107,7 +107,8 @@ public:
 	* You must use this call anytime you need to write changes or read data off a document
 	* @param func a capturing lambda to execute 
 	*/
-	inline void ExclusiveAccess(std::function<void(void)> func) {
+    template<typename T>
+	inline void ExclusiveAccess(const T& func) {
 		mtx.lock();
 		func();
 		mtx.unlock();

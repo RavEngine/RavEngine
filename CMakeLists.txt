@@ -541,7 +541,7 @@ enable_unity("${all_unity};${platform_unity}")
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
-Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
+Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain\
 ")
 

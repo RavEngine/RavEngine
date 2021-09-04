@@ -1,7 +1,7 @@
 cmake_minimum_required( VERSION 3.3 )
 
 #declare project
-project( rlottie VERSION 0.2 LANGUAGES C CXX )
+project( rlottie VERSION 0.2)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE MinSizeRel)
@@ -41,28 +41,32 @@ set(LOTTIE_MODULE_PATH "${CMAKE_SHARED_LIBRARY_PREFIX}rlottie-image-loader${CMAK
 configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/config.h.in config.h)
 
 target_include_directories(rlottie
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
     PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}"
     )
 
 #declare common target compilation options
-target_compile_options(rlottie
-                    PUBLIC
-                    PRIVATE
-                        -std=c++14
-                        -fno-exceptions
-                        -fno-unwind-tables
-                        -fno-asynchronous-unwind-tables
-                        -fno-rtti
-                        -Wall
-                        -fvisibility=hidden
-                    )
-
-#MSVC does not recognize these parameters
-if (NOT WIN32)
+if(MSVC)
     target_compile_options(rlottie
                         PUBLIC
                         PRIVATE
+                            /std:c++14
+                            /EHs-c- # disable exceptions
+                            /GR- # disable RTTI
+                            /W3
+                        )
+else()
+    target_compile_options(rlottie
+                        PUBLIC
+                        PRIVATE
+                            -std=c++14
+                            -fno-exceptions
+                            -fno-unwind-tables
+                            -fno-asynchronous-unwind-tables
+                            -fno-rtti
+                            -Wall
+                            -fvisibility=hidden
                             -Wnon-virtual-dtor
                             -Woverloaded-virtual
                             -Wno-unused-parameter
@@ -133,7 +137,6 @@ endif (NOT LIB_INSTALL_DIR)
 #declare source and include files
 add_subdirectory(inc)
 add_subdirectory(src)
-#add_subdirectory(example)
 
 if (LOTTIE_TEST)
     enable_testing()
@@ -197,4 +200,3 @@ export(EXPORT rlottie-targets FILE ${CMAKE_CURRENT_BINARY_DIR}/rlottieTargets.cm
 
 #Register package in user's package registry
 export(PACKAGE rlottie)
-
