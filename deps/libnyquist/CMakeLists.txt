@@ -109,7 +109,7 @@ endif()
 add_definitions(${_NQR_CXX_DEFINITIONS})
 set(CMAKE_CXX_FLAGS "${_NQR_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
 
-file(GLOB third_wavpack_src "${LIBNYQUIST_ROOT}/third_party/wavpack/src/*")
+file(GLOB third_wavpack_src "${LIBNYQUIST_ROOT}/third_party/wavpack/src/*.c" "${LIBNYQUIST_ROOT}/third_party/wavpack/src/*.h")
 
 add_library(libwavpack STATIC ${third_wavpack_src})
 
@@ -167,7 +167,7 @@ project(libnyquist)
 
 file(GLOB nyquist_include "${LIBNYQUIST_ROOT}/include/libnyquist/*")
 file(GLOB nyquist_src     "${LIBNYQUIST_ROOT}/src/*")
-file(GLOB wavpack_src     "${LIBNYQUIST_ROOT}/third_party/wavpack/src/*")
+file(GLOB wavpack_src     "${LIBNYQUIST_ROOT}/third_party/wavpack/src/*.c" "${LIBNYQUIST_ROOT}/third_party/wavpack/src/*.h")
 
 add_library(libnyquist STATIC
     ${nyquist_include}

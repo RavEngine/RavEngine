@@ -1,4 +1,4 @@
-#if defined(__ARM_NEON__)
+#if 0
 
 #include "vdrawhelper.h"
 
