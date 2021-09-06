@@ -22,6 +22,10 @@ public:
 		std::vector<vertex_t> vertices;
 	};
 
+    // if we do not want this meshasset having ownership of the mesh (for example in use with Exchange)
+    // set this to false
+    bool destroyOnDestruction = true;
+    
 	/**
 	Convert an assimp mesh to a MeshPart
 	@param mesh the assimp mesh to convert
@@ -36,12 +40,14 @@ protected:
 	size_t totalVerts = 0, totalIndices = 0;
 	
 	inline void Destroy(){
-		if (bgfx::isValid(vertexBuffer)){
-			bgfx::destroy(vertexBuffer);
-		}
-		if (bgfx::isValid(indexBuffer)){
-			bgfx::destroy(indexBuffer);
-		}
+        if (destroyOnDestruction){
+            if (bgfx::isValid(vertexBuffer)){
+                bgfx::destroy(vertexBuffer);
+            }
+            if (bgfx::isValid(indexBuffer)){
+                bgfx::destroy(indexBuffer);
+            }
+        }
 		vertexBuffer = BGFX_INVALID_HANDLE;
 		indexBuffer = BGFX_INVALID_HANDLE;
 	}
