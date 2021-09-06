@@ -107,7 +107,7 @@ public:
 
 	/**
 	Execute code on this element with exclusive thread-safe access. For internal use only.
-	@param func a capturing lambda to execute. Be sure to capture by value! The passed function is executed on a different thread at a different time than the caller.
+	@param func a lambda to execute. 
 	*/
     template<typename T>
 	inline void ExclusiveAccess(const T& func) {
