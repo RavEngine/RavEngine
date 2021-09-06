@@ -15,6 +15,9 @@ protected:
 	
 	Rml::Context* context = nullptr;
 	locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
+    
+    ConcurrentQueue<std::function<void(void)>> q_a, q_b;
+    std::atomic<decltype(q_a)*> current = &q_a, inactive = &q_b;
 
 	SpinLock mtx;
 	
@@ -103,9 +106,8 @@ public:
 	void ScrollY(float amt);
 
 	/**
-	* Execute code on this element with exclusive thread-safe access.
-	* You must use this call anytime you need to write changes or read data off a document
-	* @param func a capturing lambda to execute 
+	Execute code on this element with exclusive thread-safe access. For internal use only.
+	@param func a capturing lambda to execute. Be sure to capture by value! The passed function is executed on a different thread at a different time than the caller.
 	*/
     template<typename T>
 	inline void ExclusiveAccess(const T& func) {
@@ -113,6 +115,15 @@ public:
 		func();
 		mtx.unlock();
 	}
+
+    /**
+    Schedule a UI update. Use this call whenever you are making changes to the UI, to avoid threading issues
+    @param func a capturing lambda to execute. Be sure to capture by value! The passed function is executed on a different thread at a different time than the caller.
+    */
+    template<typename T>
+    inline void EnqueueUIUpdate(const T& func){
+        current.load()->enqueue(func);
+    }
 	
 	/**
 	* Load a font globally

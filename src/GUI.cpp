@@ -111,18 +111,32 @@ bool GUIComponent::LoadFont(const std::string& filename){
 
 bool GUIComponent::Update(){
 	MouseMove();
-	bool result;
-	ExclusiveAccess([&] {
-		result = context->Update();
-	});
-	return result;
+    // swap queues
+    auto a = current.load();
+    auto b = inactive.load();
+    std::swap(a,b);
+    current.store(a);
+    inactive.store(b);
+    
+    bool result;
+    ExclusiveAccess([&]{
+        // process the 'inactive' queue (which was filled previously)
+        std::function<void(void)> task;
+        auto ptr = current.load();
+        while(ptr->try_dequeue(task)){
+            task();
+        }
+        result = context->Update();
+    });
+    
+    return result;
 }
 
 bool GUIComponent::Render(){
 	bool result;
-	ExclusiveAccess([&] {
-		result = context->Render();
-	});
+    ExclusiveAccess([&]{
+        result = context->Render();
+    });
 	return result;
 }
 
@@ -184,12 +198,12 @@ void GUIComponent::AnyActionDown(const int charcode){
 		case SDL_BUTTON_LEFT:
 		case SDL_BUTTON_RIGHT:
 		case SDL_BUTTON_MIDDLE:
-			ExclusiveAccess([&] {
+			EnqueueUIUpdate([this,charcode] {
 				context->ProcessMouseButtonDown(charcode - 1, modifier_state);
 			});
 			break;
 		default:
-			ExclusiveAccess([&] {
+            EnqueueUIUpdate([this,charcode] {
 				context->ProcessKeyDown(SDLtoRML(charcode), modifier_state);
 				//don't process on modifier keys
 				auto code = TypeCharacter(charcode, modifier_state);
@@ -231,12 +245,12 @@ void GUIComponent::AnyActionUp(const int charcode){
 		case SDL_BUTTON_LEFT:
 		case SDL_BUTTON_RIGHT:
 		case SDL_BUTTON_MIDDLE:
-			ExclusiveAccess([&] {
+            EnqueueUIUpdate([this,charcode] {
 				context->ProcessMouseButtonUp(charcode - 1, modifier_state);
 			});
 			break;
 		default:
-			ExclusiveAccess([&] {
+            EnqueueUIUpdate([this,charcode] {
 				context->ProcessKeyUp(SDLtoRML(charcode), modifier_state);
 			});
 			break;
@@ -253,7 +267,7 @@ void GUIComponent::MouseY(float normalized_pos){
 
 void GUIComponent::ScrollY(float amt){
 	if (std::abs(amt) > 0.1){
-		ExclusiveAccess([&]{
+        EnqueueUIUpdate([this,amt]{
 			context->ProcessMouseWheel(amt, modifier_state);
 		});
 	}
@@ -261,14 +275,14 @@ void GUIComponent::ScrollY(float amt){
 
 void GUIComponent::MouseMove(){
 	//Forward to canvas, using the bitmask
-	ExclusiveAccess([&] {
-		auto dim = context->GetDimensions();
+    auto dim = context->GetDimensions();
+    EnqueueUIUpdate([this,dim] {
 		context->ProcessMouseMove(MousePos.x * dim.x, MousePos.y * dim.y, modifier_state);
 	});
 }
 
 void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
-	ExclusiveAccess([&] {
+    EnqueueUIUpdate([this,width,height] {
 		context->SetDimensions(Rml::Vector2i(width, height));
 	});
 }

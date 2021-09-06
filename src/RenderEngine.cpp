@@ -671,7 +671,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS?
-	auto guis = worldOwning->GetAllComponentsOfType<GUIComponent>();
+	auto& guis = worldOwning->GetAllComponentsOfType<GUIComponent>();
 	auto size = GetBufferSize();
 	for(const auto g : guis){
 		auto gui = std::static_pointer_cast<GUIComponent>(g);
