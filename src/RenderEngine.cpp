@@ -305,10 +305,11 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 					}
 					RenderEngine::dbgmtx.unlock();
 #endif
-					auto before = std::chrono::high_resolution_clock::now();
 					App::Renderer->Draw(wtd);
-					auto after = std::chrono::high_resolution_clock::now();
-					currentFrameTime = std::chrono::duration<float, std::chrono::milliseconds::period>(after - before).count();;
+                    auto stats = bgfx::getStats();
+                    
+                    auto delta = std::chrono::duration<float,std::milli>(std::chrono::high_resolution_clock::time_point::duration(stats->cpuTimeFrame));
+                    currentFrameTime = delta.count();
 				}
 				//otherwise this world does not have a new frame ready yet, don't waste time re-rendering the same frame again
 			}
@@ -751,12 +752,12 @@ const string_view RenderEngine::GetCurrentBackendName(){
 
 float RavEngine::RenderEngine::GetCurrentFPS()
 {
-	return 1000.0f / currentFrameTime;
+	return 1.0f / currentFrameTime;
 }
 
 float RavEngine::RenderEngine::GetLastFrameTime()
 {
-	return currentFrameTime;
+	return currentFrameTime * 1000;
 }
 
 uint32_t RenderEngine::GetResetFlags(){
