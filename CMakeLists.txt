@@ -260,8 +260,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 if(APPLE OR LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
-elseif(MSVC)
-	target_compile_options("${PROJECT_NAME}" PUBLIC /arch:AVX512)
 endif()
 
 if (NOT APPLE AND NOT UWP)
