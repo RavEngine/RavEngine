@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <filesystem>
 
 namespace RavEngine{
 class VirtualFilesystem {
