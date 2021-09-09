@@ -80,48 +80,77 @@ Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
 
 
 struct bgfx_msghandler : public bgfx::CallbackI{
-	static bool diagnostic_logging;
-	void fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) override{
+    struct cacheItem{
+        char* data = nullptr;
+        uint32_t size = 0;
+    };
+    phmap::flat_hash_map<uint64_t,cacheItem> cache;
+    
+	static bool diagnostic_logging; // see below
+    
+	void fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) final{
 		Debug::Fatal("BGFX error {} in {} line {}: {}",_code, _filePath, _line, _str);
 	}
-	void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) override{
+	void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) final{
 #ifdef _DEBUG
 		if(diagnostic_logging){
             char buffer[256]{0};
             std::vsnprintf(buffer,sizeof(buffer)/sizeof(buffer[0]),_format,_argList);
-			Debug::LogTemp("BGFX diagnostic: {} line {}: {}",_filePath, _line, buffer);
+			Debug::LogTemp("BGFX diagnostic: {}", buffer);
 		}
 #endif
 	}
-	void profilerBegin(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) override{
+	void profilerBegin(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) final{
 		Debug::Fatal("profiler not implemented");
 	}
-	void profilerBeginLiteral(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) override{
+	void profilerBeginLiteral(const char *_name, uint32_t _abgr, const char *_filePath, uint16_t _line) final{
 		Debug::Fatal("profilerliteral not implemented");
 	}
 	void profilerEnd() override{
 		Debug::Fatal("profiler not implemented");
 	}
-	uint32_t cacheReadSize(uint64_t _id) override{
+	uint32_t cacheReadSize(uint64_t _id) final{
+        if (cache.contains(_id)){
+            return cache.at(_id).size;
+        }
 		return 0;
 	}
-	bool cacheRead(uint64_t _id, void *_data, uint32_t _size) override{
+	bool cacheRead(uint64_t _id, void *_data, uint32_t _size) final{
+        if (cache.contains(_id)){
+            auto ptr = cache.at(_id).data;
+            std::memcpy(_data, ptr, _size);
+            return true;
+        }
 		return false;
 	}
-	void cacheWrite(uint64_t _id, const void *_data, uint32_t _size) override{
+	void cacheWrite(uint64_t _id, const void *_data, uint32_t _size) final{
+        auto& item = cache[_id];
+        if (item.data != nullptr){
+            delete[] item.data;
+        }
+        item.data = new char[_size];
+        item.size = _size;
+        std::memcpy(item.data,_data,_size);
 	}
-	void screenShot(const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) override{
+	void screenShot(const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) final{
 		Debug::Fatal("screenshot not implemented");
 	}
-	void captureBegin(uint32_t _width, uint32_t _height, uint32_t _pitch, bgfx::TextureFormat::Enum format, bool _yflip) override {
+	void captureBegin(uint32_t _width, uint32_t _height, uint32_t _pitch, bgfx::TextureFormat::Enum format, bool _yflip) final {
 		Debug::Fatal("video capture not implemented");
 	}
-	void captureEnd() override{
+	void captureEnd() final{
 		Debug::Fatal("video capture not implemented");
 	}
-	void captureFrame(const void *_data, uint32_t _size) override{
+	void captureFrame(const void *_data, uint32_t _size) final{
 		Debug::Fatal("frame capture not implemented");
 	}
+    
+    ~bgfx_msghandler(){
+        // deallocate memory in the cache
+        for(const auto& item : cache){
+            delete[] item.second.data;
+        }
+    }
 };
 bool bgfx_msghandler::diagnostic_logging = false;    // set to true to enable bgfx TRACE logging
 
