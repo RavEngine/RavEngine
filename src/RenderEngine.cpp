@@ -38,6 +38,7 @@
 #include <iostream>
 #include "Debug.hpp"
 #include <chrono>
+#include <cstdio>
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"
@@ -86,7 +87,9 @@ struct bgfx_msghandler : public bgfx::CallbackI{
 	void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) override{
 #ifdef _DEBUG
 		if(diagnostic_logging){
-			Debug::LogTemp("BGFX diagnostic: {} line {}: {}",_filePath, _line, StrFormat(_format, (char*)_argList));
+            char buffer[256]{0};
+            std::vsnprintf(buffer,sizeof(buffer)/sizeof(buffer[0]),_format,_argList);
+			Debug::LogTemp("BGFX diagnostic: {} line {}: {}",_filePath, _line, buffer);
 		}
 #endif
 	}
@@ -120,7 +123,7 @@ struct bgfx_msghandler : public bgfx::CallbackI{
 		Debug::Fatal("frame capture not implemented");
 	}
 };
-bool bgfx_msghandler::diagnostic_logging = false;
+bool bgfx_msghandler::diagnostic_logging = false;    // set to true to enable bgfx TRACE logging
 
 /**
  Create an SDL window for different platforms, and reference it to bgfx
