@@ -153,6 +153,7 @@ struct bgfx_msghandler : public bgfx::CallbackI{
     }
 };
 bool bgfx_msghandler::diagnostic_logging = false;    // set to true to enable bgfx TRACE logging
+static bgfx_msghandler global_msghandler;
 
 /**
  Create an SDL window for different platforms, and reference it to bgfx
@@ -291,7 +292,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
     }
 #endif
 
-	settings.callback = new bgfx_msghandler;
+	settings.callback =  &global_msghandler;
 
 	//must be in this order
 	settings.platformData = pd;
