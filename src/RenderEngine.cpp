@@ -311,7 +311,14 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 					App::Renderer->Draw(wtd);
                     auto stats = bgfx::getStats();
                     
-                    auto delta = std::chrono::duration<float,std::milli>(std::chrono::high_resolution_clock::time_point::duration(stats->cpuTimeFrame));
+                    auto delta = std::chrono::duration<float,std::milli>(			
+#if defined _WIN32
+						std::chrono::duration<int64_t,std::ratio<1, 10000000000>>(stats->cpuTimeFrame)
+#else
+						std::chrono::high_resolution_clock::time_point::duration(stats->cpuTimeFrame)
+#endif
+					);
+
                     currentFrameTime = delta.count();
 				}
 				//otherwise this world does not have a new frame ready yet, don't waste time re-rendering the same frame again
@@ -675,7 +682,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS?
-	auto& guis = worldOwning->GetAllComponentsOfType<GUIComponent>();
+	auto guis = worldOwning->GetAllComponentsOfType<GUIComponent>();
 	auto size = GetBufferSize();
 	for(const auto g : guis){
 		auto gui = std::static_pointer_cast<GUIComponent>(g);

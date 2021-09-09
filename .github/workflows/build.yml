@@ -16,17 +16,17 @@ jobs:
         run: mkdir -p build && cd build; cmake -G "Ninja" .. && cmake --build . --config Release --target RavEngine
 
   build-linux-gcc:
-  name: Linux x64-gcc Compile Check
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-      with:
-        submodules: true
-    - name: Install Dependencies
-      run: sudo apt-get update && sudo apt-get install cmake g++ ninja-build libgl1-mesa-dev -y --no-install-recommends 
-    - name: Build
-      run: mkdir -p build && cd build; cmake -G "Ninja" .. && cmake --build . --config Release --target RavEngine
+    name: Linux x64-gcc Compile Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install cmake g++ ninja-build libgl1-mesa-dev -y --no-install-recommends 
+      - name: Build
+        run: mkdir -p build && cd build; cmake -G "Ninja" .. && cmake --build . --config Release --target RavEngine
 
   build-mac:
     name: macOS Compile Check
