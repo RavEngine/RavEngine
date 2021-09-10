@@ -60,6 +60,14 @@ namespace RavEngine {
 		
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
+        struct dispatched_func{
+            double runAtTime;
+            std::function<void(void)> func;
+            dispatched_func(const decltype(runAtTime) rt,const decltype(func)& func) : func(func), runAtTime(rt){}
+        };
+        unordered_deduplicating_vector<std::unique_ptr<dispatched_func>> async_tasks;
+        decltype(async_tasks)::iterator async_begin, async_end;
+        std::vector<size_t> ranFunctions;
 	protected:
 		void CTTI_Add(Ref<Component> c, ctti_t id) override{
 			toSync.enqueue({c,id,true});
@@ -178,5 +186,13 @@ namespace RavEngine {
 		* Called when this world was the active world for the App but has been replaced by a different world
 		*/
 		virtual void OnDeactivate() {}
+        
+        /**
+         Dispatch a function to run in a given number of seconds in the future
+         @param func the function to run
+         @param delaySeconds the delay in the future to run
+         @note You must ensure data your function references is kept loaded when this function runs. For example, to keep an entity loaded, capture by value an owning pointer to it. In addition, do not make assumptions about what thread your dispatched function runs on.
+         */
+        void DispatchAsync(const std::function<void(void)>& func, double delaySeconds);
 	};
 }

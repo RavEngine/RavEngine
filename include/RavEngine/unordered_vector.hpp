@@ -6,7 +6,7 @@ namespace RavEngine {
 
 template<typename T>
 struct unordered_vector : public std::vector<T>{
-	
+
 	inline void erase(const typename std::vector<T>::iterator& it){
 		*it = std::move(this->back());
 		this->pop_back();
@@ -29,7 +29,19 @@ protected:
 	phmap::flat_hash_map<size_t, typename std::vector<T>::size_type> offsets;
 	
 public:
+    
+    /**
+     @return the hash for an element. This container does not need to include the element
+     */
+    inline size_t hash_for(const T& value) const{
+        auto hasher = std::hash<T>();
+        return hasher(value);
+    }
 	
+    /**
+     Erase by iterator
+     @param it the iterator to remove
+     */
 	inline void erase(const typename std::vector<T>::iterator& it){
 		// remove from the offset cache
 		auto hasher = std::hash<T>();
@@ -44,7 +56,20 @@ public:
 		hash = hasher(*it);
 		offsets[hash] = std::distance(this->begin(),it);
 	}
+    
+    /**
+     Erase by element hash
+     @param size_t hash the hash of the element to remove
+     */
+    inline void erase_by_hash(size_t hash){
+        auto it = this->begin() + offsets[hash];
+        erase(it);
+    }
 	
+    /**
+     Erase by value
+     @param value item to remove
+     */
 	inline void erase(const T& value){
 		auto valuehash = std::hash<T>()(value);
 		

@@ -257,6 +257,28 @@ void World::RebuildTaskGraph(){
 	{
 		FillFramedata();
 	}
+    
+    // process any dispatched coroutines
+    auto updateAsyncIterators = masterTasks.emplace([&]{
+        async_begin = async_tasks.begin();
+        async_end = async_tasks.end();
+    });
+    auto doAsync = masterTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const unique_ptr<dispatched_func>& item){
+        if (App::GetCurrentTime() >= item->runAtTime){
+            item->func();
+            ranFunctions.push_back(async_tasks.hash_for(item));
+        }
+    });
+    updateAsyncIterators.precede(doAsync);
+    auto cleanupRanAsync = masterTasks.emplace([&]{
+        // remove functions that have been run
+        for(const auto hash : ranFunctions){
+            async_tasks.erase_by_hash(hash);
+        }
+        ranFunctions.clear();
+    });
+    doAsync.precede(cleanupRanAsync);
+    
 	
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
@@ -450,4 +472,11 @@ void World::FillFramedata(){
 	}
 	
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+}
+
+void World::DispatchAsync(const std::function<void ()>& func, double delaySeconds){
+    auto time = App::GetCurrentTime();
+    App::DispatchMainThread([=]{
+        async_tasks.push_back(make_unique<dispatched_func>(time + delaySeconds,func));
+    });
 }

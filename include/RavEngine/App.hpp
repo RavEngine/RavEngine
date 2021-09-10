@@ -90,7 +90,8 @@ namespace RavEngine {
  });
 		 @endcode
 		 */
-		static inline void DispatchMainThread(const std::function<void(void)>& f){
+        template<typename T>
+		static inline void DispatchMainThread(const T& f){
 			main_tasks.enqueue(f);
 		}
 
