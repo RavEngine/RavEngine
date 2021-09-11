@@ -12,7 +12,7 @@ using namespace RavEngine;
 using namespace std;
 
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
-MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,scale){
+MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,MeshAssetOptions{false,true,scale}){
 	
 	auto fullpath = StrFormat("objects/{}",path);
 	

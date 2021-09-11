@@ -56,10 +56,10 @@ static const aiScene* LoadScene(const std::string& name){
 	return scene;
 }
 
-MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyInSystemMemory){
+MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 
-	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
+	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
 	
 	//generate the vertex and index lists
 	vector<MeshPart> meshes;
@@ -73,13 +73,13 @@ MeshAsset::MeshAsset(const string& name, const decimalType scale, bool keepCopyI
 	//free afterward
 	aiReleaseImport(scene);
 	
-	InitializeFromMeshPartFragments(meshes, keepCopyInSystemMemory);
+	InitializeFromMeshPartFragments(meshes, options);
 }
 
-MeshAsset::MeshAsset(const string& name, const string& meshName, const decimalType scale, bool keepCopyInSystemMemory){
+MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 	
-	matrix4 scalemat = glm::scale(matrix4(1), vector3(scale,scale,scale));
+	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
 	
 	auto node = scene->mRootNode->FindNode(meshName.c_str());
 	if (node == nullptr){
@@ -93,7 +93,7 @@ MeshAsset::MeshAsset(const string& name, const string& meshName, const decimalTy
 			auto mp = AIMesh2MeshPart(mesh, scalemat);
 			meshes.push_back(mp);
 		}
-		InitializeFromMeshPartFragments(meshes, keepCopyInSystemMemory);
+		InitializeFromMeshPartFragments(meshes, options);
 	}
 }
 
@@ -138,7 +138,7 @@ MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, co
 	return mp;
 }
 
-void MeshAsset::InitializeFromMeshPartFragments(const std::vector<MeshPart>& meshes, bool keepCopyInSystemMemory){
+void MeshAsset::InitializeFromMeshPartFragments(const std::vector<MeshPart>& meshes, const MeshAssetOptions& options){
 	//combine all meshes
 	decltype(totalVerts) tv = 0;
 	decltype(totalIndices) ti = 0;
@@ -161,37 +161,51 @@ void MeshAsset::InitializeFromMeshPartFragments(const std::vector<MeshPart>& mes
 		}
 		baseline_index += mesh.vertices.size();
 	}
-	InitializeFromRawMesh(allMeshes, keepCopyInSystemMemory);
+	InitializeFromRawMesh(allMeshes, options);
 }
 
-void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, bool keepCopyInSystemMemory){
-	if (keepCopyInSystemMemory){
+void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, const MeshAssetOptions& options){
+	if (options.keepInSystemRAM){
 		systemRAMcopy = allMeshes;
 	}
+    
+    // calculate bounding box
+    for(const auto& vert : allMeshes.vertices){
+        bounds.max[0] = std::max<decimalType>(bounds.max[0],vert.position[0]);
+        bounds.max[1] = std::max<decimalType>(bounds.max[1],vert.position[1]);
+        bounds.max[2] = std::max<decimalType>(bounds.max[2],vert.position[2]);
+        
+        bounds.min[0] = std::min<decimalType>(bounds.min[0],vert.position[0]);
+        bounds.min[1] = std::min<decimalType>(bounds.min[1],vert.position[1]);
+        bounds.min[2] = std::min<decimalType>(bounds.min[2],vert.position[2]);
+    }
+    
+    if (options.uploadToGPU){
 	
-	//copy out of intermediate
-	auto& v = allMeshes.vertices;
-	auto& i = allMeshes.indices;
-	totalVerts = v.size();
-	totalIndices = i.size();
-	
-	bgfx::VertexLayout pcvDecl;
-	
-	//vertex format
-	pcvDecl.begin()
-	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-	.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
-	.end();
-	
-	//create buffers
-	auto vbm = bgfx::copy(&v[0], v.size() * sizeof(vertex_t));
-	vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
-	
-	auto ibm = bgfx::copy(&i[0], i.size() * sizeof(decltype(allMeshes.indices)::value_type));
-	indexBuffer = bgfx::createIndexBuffer(ibm,BGFX_BUFFER_INDEX32);
-	
-	if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
-		Debug::Fatal("Buffers could not be created.");
-	}
+        //copy out of intermediate
+        auto& v = allMeshes.vertices;
+        auto& i = allMeshes.indices;
+        totalVerts = v.size();
+        totalIndices = i.size();
+        
+        bgfx::VertexLayout pcvDecl;
+        
+        //vertex format
+        pcvDecl.begin()
+        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
+        .end();
+        
+        //create buffers
+        auto vbm = bgfx::copy(&v[0], v.size() * sizeof(vertex_t));
+        vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
+        
+        auto ibm = bgfx::copy(&i[0], i.size() * sizeof(decltype(allMeshes.indices)::value_type));
+        indexBuffer = bgfx::createIndexBuffer(ibm,BGFX_BUFFER_INDEX32);
+        
+        if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
+            Debug::Fatal("Buffers could not be created.");
+        }
+    }
 }
