@@ -4,6 +4,7 @@
 #include <DetourNavMesh.h>
 #include <DetourNavMeshBuilder.h>
 #include <DetourNavMeshQuery.h>
+#include <cmath>
 
 using namespace std;
 using namespace RavEngine;
