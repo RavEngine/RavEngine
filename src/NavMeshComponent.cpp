@@ -3,8 +3,6 @@
 #include <Recast.h>
 #include <DetourNavMesh.h>
 #include <DetourNavMeshBuilder.h>
-#include <DetourNavMeshQuery.h>
-#include <cmath>
 
 using namespace std;
 using namespace RavEngine;
@@ -30,9 +28,9 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
     cfg.cs = opt.cellSize;
     cfg.ch = opt.cellHeight;
     cfg.walkableSlopeAngle = opt.agent.maxSlope;
-    cfg.walkableHeight = std::ceilf(opt.agent.height / cfg.ch);
-    cfg.walkableClimb = std::ceilf(opt.agent.maxClimb / cfg.ch);
-    cfg.walkableRadius = std::ceilf(opt.agent.radius / cfg.cs);
+    cfg.walkableHeight = ceilf(opt.agent.height / cfg.ch);
+    cfg.walkableClimb = ceilf(opt.agent.maxClimb / cfg.ch);
+    cfg.walkableRadius = ceilf(opt.agent.radius / cfg.cs);
     cfg.maxEdgeLen = opt.maxEdgeLen / opt.cellSize;
     cfg.maxSimplificationError = opt.maxSimplificationError;
     cfg.minRegionArea = rcSqr(opt.regionMinDimension);
@@ -145,12 +143,8 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
     chf = nullptr;
     cset = nullptr;
     
-    dtNavMesh* navMesh = nullptr;
-    dtNavMeshQuery* navMeshQuery = nullptr;
-    
     // step 8: create detour data
     if (cfg.maxVertsPerPoly <= DT_VERTS_PER_POLYGON){
-        unsigned char* navData = nullptr;
         int navDataSize = 0;
         
         dtNavMeshCreateParams params;
@@ -215,3 +209,8 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
     }
 }
 
+NavMeshComponent::~NavMeshComponent(){
+    dtFree(navMesh);
+    dtFree(navMeshQuery);
+    dtFree(navData);
+}
