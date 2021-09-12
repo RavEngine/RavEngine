@@ -32,7 +32,7 @@ public:
 	 */
 	HSteamNetConnection owner = k_HSteamNetConnection_Invalid;
 	
-	inline bool IsOwner(){
+	inline bool IsOwner() const{
 		if (App::networkManager.IsServer()){
 			return owner == k_HSteamNetConnection_Invalid;
 		}

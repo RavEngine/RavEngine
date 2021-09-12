@@ -22,15 +22,6 @@ struct VertexColor : public Vertex{
 	color_t color;
 };
 
-enum class ShaderStage{
-	Vertex,
-	Fragment,
-	TessControl,
-	TessEval,
-	Geometry,
-	Compute
-};
-
 struct Transformation{
 	vector3 position = vector3(0,0,0);
 	quaternion rotation = quaternion(1.0,0.0,0.0,0.0);

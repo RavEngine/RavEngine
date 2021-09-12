@@ -17,7 +17,7 @@ namespace RavEngine {
 		}
 		virtual ~StaticMesh(){}
 		
-		Ref<MeshAsset> getMesh() {
+		inline Ref<MeshAsset> getMesh() const{
 			return std::get<0>(tuple);
 		}
 
@@ -36,7 +36,7 @@ namespace RavEngine {
 			return std::get<1>(tuple);
         }
 		
-		const auto& getTuple() const{
+		inline const auto& getTuple() const{
 			return tuple;
 		}
     };

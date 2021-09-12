@@ -162,11 +162,11 @@ namespace RavEngine {
 
 		bool Destroy(Ref<Entity>);
 
-		void PlaySound(const InstantaneousAudioSource& ias){
+		inline void PlaySound(const InstantaneousAudioSource& ias){
 			instantaneousToPlay.push_back(ias);
 		}
 
-		void PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {
+		inline void PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {
 			ambientToPlay.push_back(iaas);
 		}
 		

@@ -24,7 +24,7 @@ namespace RavEngine {
 
 	class Entity : public ComponentStore<phmap::NullMutex>, public virtual_enable_shared_from_this<Entity>, public AutoCTTI {
 		friend class World;
-		plf::list<Ref<Component>> PendingSync;
+		std::unique_ptr<plf::list<Ref<Component>>> PendingSync = std::make_unique<plf::list<Ref<Component>>>();
 	protected:
 		WeakRef<World> worldptr;  //non-owning
 		
@@ -41,7 +41,7 @@ namespace RavEngine {
 			}
 			else{
 				//mark that synchronization is needed
-				PendingSync.push_back(c);
+				PendingSync->push_back(c);
 			}
 		}
 		
@@ -53,14 +53,14 @@ namespace RavEngine {
 		}
 
 
-	public:
+        public:
 		
-		void Sync(){
-			if (PendingSync.size() != 0){
-				for(auto component : PendingSync){
+		inline void Sync(){
+			if (PendingSync->size() != 0){
+				for(auto& component : *PendingSync){
 					AddHook(component);
 				}
-				PendingSync.clear();
+				PendingSync.reset();
 			}
 		}
 
@@ -107,7 +107,7 @@ namespace RavEngine {
 		/**
 		 @return a reference to the transform component, which all entities possess
 		 */
-		inline Ref<Transform> GetTransform(){
+		inline Ref<Transform> GetTransform() const{
 			return GetComponent<RavEngine::Transform>().value();
 		}
 

@@ -44,15 +44,17 @@ namespace RavEngine{
 		
 		virtual void CTTI_Add(Ref<Component> comp, ctti_t id){
 			components[id].insert(comp);
-			if (!parent.expired()){
-				parent.lock()->CTTI_Add(comp,id);
+            auto p = parent.lock();
+			if (p){
+				p->CTTI_Add(comp,id);
 			}
 		}
 		
 		virtual void CTTI_Remove(Ref<Component> comp, ctti_t id){
 			components[id].erase(comp);
-			if (!parent.expired()){
-				parent.lock()->CTTI_Remove(comp,id);
+            auto p = parent.lock();
+			if (p){
+				p->CTTI_Remove(comp,id);
 			}
 		}
 		
@@ -99,7 +101,7 @@ namespace RavEngine{
 		 @throws bad_cast if a cast fails
 		 */
 		template<typename T>
-		inline std::optional<Ref<T>> GetComponent() {
+		inline std::optional<Ref<T>> GetComponent() const{
 			C_REF_CHECK;
 			std::optional<Ref<T>> returned;
 			components.if_contains(CTTI<T>(), [&](const entry_type& vec) {
@@ -116,7 +118,7 @@ namespace RavEngine{
 		 @note Do not use to determine if a GetComponent call will succeed, that is not threadsafe. Instead, use GetComponent directly and check if the resulting std::optional is valid.
 		 */
 		template<typename T>
-		inline bool HasComponentOfType() {
+		inline bool HasComponentOfType() const{
 			C_REF_CHECK
 			return components.contains(CTTI<T>());
 		}

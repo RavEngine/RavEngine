@@ -33,7 +33,7 @@ public:
     /**
      @return the hash for an element. This container does not need to include the element
      */
-    inline size_t hash_for(const T& value) const{
+    inline constexpr size_t hash_for(const T& value) const{
         auto hasher = std::hash<T>();
         return hasher(value);
     }

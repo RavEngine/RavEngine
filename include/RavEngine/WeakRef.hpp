@@ -38,7 +38,7 @@ public:
      Hash the pointer value of the original address
      @return hash code for this object
      */
-    inline std::size_t hash() const{
+    inline constexpr std::size_t hash() const{
         return reinterpret_cast<std::size_t>(m_ptr);
     }
     
@@ -49,7 +49,7 @@ public:
 namespace std{
 template<typename T>
 struct hash<WeakPtrKey<T>>{
-    inline std::size_t operator()(const WeakPtrKey<T>& ptr) const{
+    inline constexpr std::size_t operator()(const WeakPtrKey<T>& ptr) const{
         return ptr.hash();
     }
 };

@@ -99,7 +99,7 @@ namespace detail
 	template<typename T, typename Allocator>
 	struct is_inplace_allocated
 	{
-		static const bool value
+		static constexpr inline bool value
 			// so that it fits
 			= sizeof(T) <= sizeof(functor_padding)
 			// so that it will be aligned
@@ -116,12 +116,12 @@ namespace detail
 		return FUNC_FORWARD(T, func);
 	}
 	template<typename Result, typename Class, typename... Arguments>
-	auto to_functor(Result (Class::*func)(Arguments...)) -> decltype(std::mem_fn(func))
+	constexpr inline auto to_functor(Result (Class::*func)(Arguments...)) -> decltype(std::mem_fn(func))
 	{
 		return std::mem_fn(func);
 	}
 	template<typename Result, typename Class, typename... Arguments>
-	auto to_functor(Result (Class::*func)(Arguments...) const) -> decltype(std::mem_fn(func))
+	constexpr inline auto to_functor(Result (Class::*func)(Arguments...) const) -> decltype(std::mem_fn(func))
 	{
 		return std::mem_fn(func);
 	}
@@ -133,22 +133,22 @@ namespace detail
 	};
 
 	template<typename T>
-	bool is_null(const T &)
+	constexpr inline bool is_null(const T &)
 	{
 		return false;
 	}
 	template<typename Result, typename... Arguments>
-	bool is_null(Result (* const & function_pointer)(Arguments...))
+	constexpr inline bool is_null(Result (* const & function_pointer)(Arguments...))
 	{
 		return function_pointer == nullptr;
 	}
 	template<typename Result, typename Class, typename... Arguments>
-	bool is_null(Result (Class::* const & function_pointer)(Arguments...))
+	constexpr inline bool is_null(Result (Class::* const & function_pointer)(Arguments...))
 	{
 		return function_pointer == nullptr;
 	}
 	template<typename Result, typename Class, typename... Arguments>
-	bool is_null(Result (Class::* const & function_pointer)(Arguments...) const)
+    constexpr inline bool is_null(Result (Class::* const & function_pointer)(Arguments...) const)
 	{
 		return function_pointer == nullptr;
 	}
@@ -156,13 +156,13 @@ namespace detail
 	template<typename, typename>
 	struct is_valid_function_argument
 	{
-		static const bool value = false;
+		static constexpr bool value = false;
 	};
 
 	template<typename Result, typename... Arguments>
 	struct is_valid_function_argument<function<Result (Arguments...)>, Result (Arguments...)>
 	{
-		static const bool value = false;
+		static constexpr bool value = false;
 	};
 
 	template<typename T, typename Result, typename... Arguments>
@@ -170,14 +170,14 @@ namespace detail
 	{
 #		ifdef _MSC_VER
 			// as of january 2013 visual studio doesn't support the SFINAE below
-			static const bool value = true;
+			static constexpr bool value = true;
 #		else
 			template<typename U>
 			static decltype(to_functor(std::declval<U>())(std::declval<Arguments>()...)) check(U *);
 			template<typename>
 			static empty_struct check(...);
 
-			static const bool value = std::is_convertible<decltype(check<T>(nullptr)), Result>::value;
+			static constexpr bool value = std::is_convertible<decltype(check<T>(nullptr)), Result>::value;
 #		endif
 	};
 
@@ -186,12 +186,12 @@ namespace detail
 	struct manager_storage_type
 	{
 		template<typename Allocator>
-		Allocator & get_allocator() FUNC_NOEXCEPT
+		inline Allocator & get_allocator() FUNC_NOEXCEPT
 		{
 			return reinterpret_cast<Allocator &>(manager);
 		}
 		template<typename Allocator>
-		const Allocator & get_allocator() const FUNC_NOEXCEPT
+		const inline Allocator & get_allocator() const FUNC_NOEXCEPT
 		{
 			return reinterpret_cast<const Allocator &>(manager);
 		}
@@ -204,26 +204,26 @@ namespace detail
 	struct function_manager_inplace_specialization
 	{
 		template<typename Result, typename... Arguments>
-		static Result call(const functor_padding & storage, Arguments... arguments)
+		static constexpr inline Result call(const functor_padding & storage, Arguments... arguments)
 		{
 			// do not call get_functor_ref because I want this function to be fast
 			// in debug when nothing gets inlined
 			return const_cast<T &>(reinterpret_cast<const T &>(storage))(FUNC_FORWARD(Arguments, arguments)...);
 		}
 
-		static void store_functor(manager_storage_type & storage, T to_store)
+		inline static constexpr void store_functor(manager_storage_type & storage, T to_store)
 		{
 			new (&get_functor_ref(storage)) T(FUNC_FORWARD(T, to_store));
 		}
-		static void move_functor(manager_storage_type & lhs, manager_storage_type && rhs) FUNC_NOEXCEPT
+		inline static constexpr void move_functor(manager_storage_type & lhs, manager_storage_type && rhs) FUNC_NOEXCEPT
 		{
 			new (&get_functor_ref(lhs)) T(FUNC_MOVE(get_functor_ref(rhs)));
 		}
-		static void destroy_functor(Allocator &, manager_storage_type & storage) FUNC_NOEXCEPT
+		inline static constexpr void destroy_functor(Allocator &, manager_storage_type & storage) FUNC_NOEXCEPT
 		{
 			get_functor_ref(storage).~T();
 		}
-		static T & get_functor_ref(const manager_storage_type & storage) FUNC_NOEXCEPT
+		inline static constexpr T & get_functor_ref(const manager_storage_type & storage) FUNC_NOEXCEPT
 		{
 			return const_cast<T &>(reinterpret_cast<const T &>(storage.functor));
 		}
@@ -232,43 +232,43 @@ namespace detail
 	struct function_manager_inplace_specialization<T, Allocator, typename std::enable_if<!is_inplace_allocated<T, Allocator>::value>::type>
 	{
 		template<typename Result, typename... Arguments>
-		static Result call(const functor_padding & storage, Arguments... arguments)
+		inline constexpr static Result call(const functor_padding & storage, Arguments... arguments)
 		{
 			// do not call get_functor_ptr_ref because I want this function to be fast
 			// in debug when nothing gets inlined
 			return (*reinterpret_cast<const typename std::allocator_traits<Allocator>::pointer &>(storage))(FUNC_FORWARD(Arguments, arguments)...);
 		}
 
-		static void store_functor(manager_storage_type & self, T to_store)
+		inline constexpr static void store_functor(manager_storage_type & self, T to_store)
 		{
 			Allocator & allocator = self.get_allocator<Allocator>();;
 			static_assert(sizeof(typename std::allocator_traits<Allocator>::pointer) <= sizeof(self.functor), "The allocator's pointer type is too big");
 			typename std::allocator_traits<Allocator>::pointer * ptr = new (&get_functor_ptr_ref(self)) typename std::allocator_traits<Allocator>::pointer(std::allocator_traits<Allocator>::allocate(allocator, 1));
 			std::allocator_traits<Allocator>::construct(allocator, *ptr, FUNC_FORWARD(T, to_store));
 		}
-		static void move_functor(manager_storage_type & lhs, manager_storage_type && rhs) FUNC_NOEXCEPT
+		inline constexpr static void move_functor(manager_storage_type & lhs, manager_storage_type && rhs) FUNC_NOEXCEPT
 		{
 			static_assert(std::is_nothrow_move_constructible<typename std::allocator_traits<Allocator>::pointer>::value, "we can't offer a noexcept swap if the pointer type is not nothrow move constructible");
 			new (&get_functor_ptr_ref(lhs)) typename std::allocator_traits<Allocator>::pointer(FUNC_MOVE(get_functor_ptr_ref(rhs)));
 			// this next assignment makes the destroy function easier
 			get_functor_ptr_ref(rhs) = nullptr;
 		}
-		static void destroy_functor(Allocator & allocator, manager_storage_type & storage) FUNC_NOEXCEPT
+		inline constexpr static void destroy_functor(Allocator & allocator, manager_storage_type & storage) FUNC_NOEXCEPT
 		{
 			typename std::allocator_traits<Allocator>::pointer & pointer = get_functor_ptr_ref(storage);
 			if (!pointer) return;
 			std::allocator_traits<Allocator>::destroy(allocator, pointer);
 			std::allocator_traits<Allocator>::deallocate(allocator, pointer, 1);
 		}
-		static T & get_functor_ref(const manager_storage_type & storage) FUNC_NOEXCEPT
+		inline constexpr static T & get_functor_ref(const manager_storage_type & storage) FUNC_NOEXCEPT
 		{
 			return *get_functor_ptr_ref(storage);
 		}
-		static typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(manager_storage_type & storage) FUNC_NOEXCEPT
+        inline constexpr static typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(manager_storage_type & storage) FUNC_NOEXCEPT
 		{
 			return reinterpret_cast<typename std::allocator_traits<Allocator>::pointer &>(storage.functor);
 		}
-		static const typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(const manager_storage_type & storage) FUNC_NOEXCEPT
+        inline constexpr static typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(const manager_storage_type & storage) FUNC_NOEXCEPT
 		{
 			return reinterpret_cast<const typename std::allocator_traits<Allocator>::pointer &>(storage.functor);
 		}
@@ -278,7 +278,7 @@ namespace detail
 	static const function_manager & get_default_manager();
 
 	template<typename T, typename Allocator>
-	static void create_manager(manager_storage_type & storage, Allocator && allocator)
+	inline constexpr static void create_manager(manager_storage_type & storage, Allocator && allocator)
 	{
 		new (&storage.get_allocator<Allocator>()) Allocator(FUNC_MOVE(allocator));
 		storage.manager = &get_default_manager<T, Allocator>();
@@ -289,7 +289,7 @@ namespace detail
 	struct function_manager
 	{
 		template<typename T, typename Allocator>
-		inline static FUNC_CONSTEXPR function_manager create_default_manager()
+		inline static constexpr function_manager create_default_manager()
 		{
 #			ifdef _MSC_VER
 			function_manager result =
@@ -321,7 +321,7 @@ namespace detail
 #		endif
 
 		template<typename T, typename Allocator>
-		static void templated_call_move_and_destroy(manager_storage_type & lhs, manager_storage_type && rhs)
+		inline constexpr static void templated_call_move_and_destroy(manager_storage_type & lhs, manager_storage_type && rhs)
 		{
 			typedef function_manager_inplace_specialization<T, Allocator> specialization;
 			specialization::move_functor(lhs, FUNC_MOVE(rhs));
@@ -330,33 +330,33 @@ namespace detail
 			rhs.get_allocator<Allocator>().~Allocator();
 		}
 		template<typename T, typename Allocator>
-		static void templated_call_copy(manager_storage_type & lhs, const manager_storage_type & rhs)
+        inline constexpr static void templated_call_copy(manager_storage_type & lhs, const manager_storage_type & rhs)
 		{
 			typedef function_manager_inplace_specialization<T, Allocator> specialization;
 			create_manager<T, Allocator>(lhs, Allocator(rhs.get_allocator<Allocator>()));
 			specialization::store_functor(lhs, specialization::get_functor_ref(rhs));
 		}
 		template<typename T, typename Allocator>
-		static void templated_call_destroy(manager_storage_type & self)
+        inline constexpr static void templated_call_destroy(manager_storage_type & self)
 		{
 			typedef function_manager_inplace_specialization<T, Allocator> specialization;
 			specialization::destroy_functor(self.get_allocator<Allocator>(), self);
 			self.get_allocator<Allocator>().~Allocator();
 		}
 		template<typename T, typename Allocator>
-		static void templated_call_copy_functor_only(manager_storage_type & lhs, const manager_storage_type & rhs)
+        inline constexpr static void templated_call_copy_functor_only(manager_storage_type & lhs, const manager_storage_type & rhs)
 		{
 			typedef function_manager_inplace_specialization<T, Allocator> specialization;
 			specialization::store_functor(lhs, specialization::get_functor_ref(rhs));
 		}
 #		ifndef FUNC_NO_RTTI
 			template<typename T, typename>
-			static const std::type_info & templated_call_type_id()
+			constexpr inline static const std::type_info & templated_call_type_id()
 			{
 				return typeid(T);
 			}
 			template<typename T, typename Allocator>
-			static void * templated_call_target(const manager_storage_type & self, const std::type_info & type)
+            inline constexpr static void * templated_call_target(const manager_storage_type & self, const std::type_info & type)
 			{
 				typedef function_manager_inplace_specialization<T, Allocator> specialization;
 				if (type == typeid(T))
@@ -367,7 +367,7 @@ namespace detail
 #		endif
 	};
 	template<typename T, typename Allocator>
-	inline static const function_manager & get_default_manager()
+    inline static const function_manager & get_default_manager()
 	{
 		static FUNC_CONSTEXPR function_manager default_manager = function_manager::create_default_manager<T, Allocator>();
 		return default_manager;
@@ -495,28 +495,28 @@ public:
 		swap(other);
 	}
 
-	function & operator=(function other) FUNC_NOEXCEPT
+	inline constexpr function & operator=(function other) FUNC_NOEXCEPT
 	{
 		swap(other);
 		return *this;
 	}
-	~function() FUNC_NOEXCEPT
+    inline ~function() FUNC_NOEXCEPT
 	{
 		manager_storage.manager->call_destroy(manager_storage);
 	}
 
-	Result operator()(Arguments... arguments) const
+	constexpr inline Result operator()(Arguments... arguments) const
 	{
 		return call(manager_storage.functor, FUNC_FORWARD(Arguments, arguments)...);
 	}
 
 	template<typename T, typename Allocator>
-	void assign(T && functor, const Allocator & allocator) FUNC_TEMPLATE_NOEXCEPT(T, Allocator)
+	constexpr inline void assign(T && functor, const Allocator & allocator) FUNC_TEMPLATE_NOEXCEPT(T, Allocator)
 	{
 		function(std::allocator_arg, allocator, functor).swap(*this);
 	}
 	
-	void swap(function & other) FUNC_NOEXCEPT
+	constexpr inline void swap(function & other) FUNC_NOEXCEPT
 	{
 		detail::manager_storage_type temp_storage;
 		other.manager_storage.manager->call_move_and_destroy(temp_storage, FUNC_MOVE(other.manager_storage));
@@ -528,23 +528,23 @@ public:
 
 
 #	ifndef FUNC_NO_RTTI
-		const std::type_info & target_type() const FUNC_NOEXCEPT
+		constexpr inline const std::type_info & target_type() const FUNC_NOEXCEPT
 		{
 			return manager_storage.manager->call_type_id();
 		}
 		template<typename T>
-		T * target() FUNC_NOEXCEPT
+		constexpr inline T * target() FUNC_NOEXCEPT
 		{
 			return static_cast<T *>(manager_storage.manager->call_target(manager_storage, typeid(T)));
 		}
 		template<typename T>
-		const T * target() const FUNC_NOEXCEPT
+		constexpr inline const T * target() const FUNC_NOEXCEPT
 		{
 			return static_cast<const T *>(manager_storage.manager->call_target(manager_storage, typeid(T)));
 		}
 #	endif
 
-	operator bool() const FUNC_NOEXCEPT
+	constexpr inline operator bool() const FUNC_NOEXCEPT
 	{
 
 #		ifdef FUNC_NO_EXCEPTIONS
@@ -559,7 +559,7 @@ private:
 	Result (*call)(const detail::functor_padding &, Arguments...);
 
 	template<typename T, typename Allocator>
-	void initialize(T functor, Allocator && allocator)
+	constexpr inline void initialize(T functor, Allocator && allocator)
 	{
 		call = &detail::function_manager_inplace_specialization<T, Allocator>::template call<Result, Arguments...>;
 		detail::create_manager<T, Allocator>(manager_storage, FUNC_FORWARD(Allocator, allocator));
@@ -567,7 +567,7 @@ private:
 	}
 
 	typedef Result(*Empty_Function_Type)(Arguments...);
-	void initialize_empty() FUNC_NOEXCEPT
+	constexpr inline void initialize_empty() FUNC_NOEXCEPT
 	{
 		typedef std::allocator<Empty_Function_Type> Allocator;
 		static_assert(detail::is_inplace_allocated<Empty_Function_Type, Allocator>::value, "The empty function should benefit from small functor optimization");
@@ -583,28 +583,28 @@ private:
 };
 
 template<typename T>
-bool operator==(std::nullptr_t, const function<T> & rhs) FUNC_NOEXCEPT
+constexpr inline bool operator==(std::nullptr_t, const function<T> & rhs) FUNC_NOEXCEPT
 {
 	return !rhs;
 }
 template<typename T>
-bool operator==(const function<T> & lhs, std::nullptr_t) FUNC_NOEXCEPT
+constexpr inline bool operator==(const function<T> & lhs, std::nullptr_t) FUNC_NOEXCEPT
 {
 	return !lhs;
 }
 template<typename T>
-bool operator!=(std::nullptr_t, const function<T> & rhs) FUNC_NOEXCEPT
+constexpr inline bool operator!=(std::nullptr_t, const function<T> & rhs) FUNC_NOEXCEPT
 {
 	return rhs;
 }
 template<typename T>
-bool operator!=(const function<T> & lhs, std::nullptr_t) FUNC_NOEXCEPT
+constexpr inline bool operator!=(const function<T> & lhs, std::nullptr_t) FUNC_NOEXCEPT
 {
 	return lhs;
 }
 
 template<typename T>
-void swap(function<T> & lhs, function<T> & rhs)
+constexpr inline void swap(function<T> & lhs, function<T> & rhs)
 {
 	lhs.swap(rhs);
 }

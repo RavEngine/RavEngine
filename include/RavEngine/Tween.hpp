@@ -79,7 +79,7 @@ namespace TweenCurves{
 		}
 		
 		//copy assignment
-		Tween& operator=(const Tween& other) {
+		inline Tween& operator=(const Tween& other) {
 			if (&other == this) {
 				return *this;
 			}

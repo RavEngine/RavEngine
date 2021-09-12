@@ -92,7 +92,7 @@ public:
          @note Using this with the specific model loading constructor is not supported and will produce unexpected results.
          */
         template<typename ... A>
-        static Ref<MeshAsset> GetMesh(const std::string& str, A ... extras){
+        static inline Ref<MeshAsset> GetMesh(const std::string& str, A ... extras){
             //TODO: optimize
             mtx.lock();
             if (meshes.contains(str)){

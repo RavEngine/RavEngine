@@ -48,7 +48,7 @@ namespace RavEngine {
 			 @param args arguments to pass to material constructor if needed
 			 */
 			template<typename T, typename ... A>
-			static Ref<T> GetMaterial(A ... args){
+			static inline Ref<T> GetMaterial(A ... args){
                 // TODO: remove single mutex
 				auto t = CTTI<T>();
                 mtx.lock();

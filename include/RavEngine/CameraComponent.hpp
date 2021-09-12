@@ -41,7 +41,7 @@ namespace RavEngine {
 		/**
 		@return the projection matrix to use when rendering objects. For internal use only.
 		*/
-		inline matrix4 GenerateProjectionMatrix() {
+		inline matrix4 GenerateProjectionMatrix() const{
 			switch(projection){
 				case Mode::Perspective:
 					return matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip));
@@ -55,7 +55,7 @@ namespace RavEngine {
 		/**
 		@return the View matrix for this camera to use when rendering objects. For internal use only.
 		*/
-		inline matrix4 GenerateViewMatrix() {
+		inline matrix4 GenerateViewMatrix() const{
 			Ref<Entity> entity(owner);
 			
 			return glm::inverse(entity->GetTransform()->CalculateWorldMatrix());
@@ -68,7 +68,7 @@ namespace RavEngine {
          @param z depth of the point from the camera
          @return vector3 representing world-space projected point
          */
-        inline vector3 ScreenPointToWorldPoint(float x, float y, float z){
+        inline vector3 ScreenPointToWorldPoint(float x, float y, float z) const{
             auto projmat = GenerateProjectionMatrix();
             auto viewmat = GenerateViewMatrix();
             auto G = glm::inverse(projmat * viewmat);
