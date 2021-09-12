@@ -193,7 +193,6 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
         {
             dtFree(navData);
             Debug::Fatal("Detour mesh allocaton failed");
-            return false;
         }
         
         dtStatus status;
@@ -203,14 +202,12 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
         {
             dtFree(navData);
             Debug::Fatal("Could not init Detour navmesh");
-            return false;
         }
         
         status = navMeshQuery->init(navMesh, 2048);
         if (dtStatusFailed(status))
         {
             Debug::Fatal("Could not init Detour navmesh query");
-            return false;
         }
     }
     else{
