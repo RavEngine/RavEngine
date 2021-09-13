@@ -208,28 +208,28 @@ namespace RavEngine {
 		/**
 		Invoked automatically. For internal use only.
 		*/
-        constexpr inline void CacheClientRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
+        inline void CacheClientRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
 			writingptr_c.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner, origin });
 		}
 
 		/**
 		Invoked automatically. For internal use only.
 		*/
-        constexpr inline void CacheServerRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
+        inline void CacheServerRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
 			writingptr_s.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner, origin });
 		}
 
 		/**
 		Invoked automatically. For internal use only.
 		*/
-        constexpr inline void ProcessClientRPCs() {
+        inline void ProcessClientRPCs() {
 			ProcessRPCs_impl(readingptr_c, ClientRPCs);
 		}
 
 		/**
 		Invoked automatically. For internal use only.
 		*/
-        constexpr inline void ProcessServerRPCs() {
+        inline void ProcessServerRPCs() {
 			ProcessRPCs_impl(readingptr_s, ServerRPCs);
 		}
 

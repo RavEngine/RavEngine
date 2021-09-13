@@ -200,7 +200,7 @@ public:
 		return systemRAMcopy;
 	}
 	
-    constexpr inline bool hasSystemRAMCopy() const{
+    inline bool hasSystemRAMCopy() const{
         return systemRAMcopy.vertices.size() > 0;
     }
     
@@ -208,7 +208,7 @@ public:
 	 In case the system memory copy is no longer needed, destroy it.
 	 This is not undoable.
 	 */
-    constexpr inline void DeallocSystemCopy(){
+    inline void DeallocSystemCopy(){
 		systemRAMcopy = MeshPart{};
 	}
 };

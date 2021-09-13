@@ -51,7 +51,7 @@ public:
 	 */
 	GUIComponent(int width, int height, float DPI = 1);
 	
-	constexpr inline void SetDPIScale(float scale){
+	inline void SetDPIScale(float scale){
 		context->SetDensityIndependentPixelRatio(scale);
 	}
 	

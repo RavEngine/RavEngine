@@ -35,7 +35,7 @@ namespace RavEngine {
 		* @param layout object describing each entry in the buffer
 		* @return the index representing the beginning of the data added to the buffer
 		*/
-        constexpr inline decltype(index) AddEmptySpace(size_t count, const bgfx::VertexLayout& layout) {
+        inline decltype(index) AddEmptySpace(size_t count, const bgfx::VertexLayout& layout) {
 			auto startpos = index;
 			index += count * layout.getStride();
 			return startpos;

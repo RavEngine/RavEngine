@@ -92,11 +92,11 @@ public:
 		influence.erase(asset);
 	}
 	
-    constexpr inline void Clear(){
+    inline void Clear(){
 		influence.clear();
 	}
 	
-    constexpr inline bool IsEmpty() const{
+    inline bool IsEmpty() const{
 		return influence.empty();
 	}
 	

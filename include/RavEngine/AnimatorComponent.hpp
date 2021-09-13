@@ -56,7 +56,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param id the identifier for the node. Recommended to create an enum to use here.
 	 @param node the node to insert into the tree.
 	 */
-    constexpr inline void InsertNode(uint8_t id, const Node& node){
+    inline void InsertNode(uint8_t id, const Node& node){
 		states[id].node = node;
 	}
 	
@@ -64,7 +64,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 Remove a node given an ID
 	 @param id the id to remove
 	 */
-    constexpr inline void DeleteNode(uint8_t id){
+    inline void DeleteNode(uint8_t id){
 		states.erase(id);
 	}
 	
@@ -74,15 +74,15 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @returns node reference
 	 @throws if no node exists at id
 	 */
-    constexpr Node& GetNode(const uint8_t id){
+    Node& GetNode(const uint8_t id){
 		return states.at(id).node;
 	}
 	
-    constexpr inline bool IsEmpty() const{
+    inline bool IsEmpty() const{
 		return states.empty();
 	}
 	
-    constexpr inline void Clear(){
+    inline void Clear(){
 		states.clear();
 	}
 	
@@ -154,13 +154,13 @@ public:
 		decltype(ID) autoTransitionID = 0;
 		std::function<void(decltype(State::ID))> beginCallback, endCallback;
 
-        constexpr inline void DoBegin(decltype(ID) prevState) {
+        inline void DoBegin(decltype(ID) prevState) {
 			if (beginCallback) {
 				beginCallback(prevState);
 			}
 		}
 
-        constexpr inline void DoEnd(decltype(ID) nextState) {
+        inline void DoEnd(decltype(ID) nextState) {
 			if (endCallback) {
 				endCallback(nextState);
 			}
@@ -188,7 +188,7 @@ public:
 		* Set the function to call when this state begins.
 		* @param bc function taking one parameter representing the ID of the previous state. This may be invalid the first time it is called.
 		*/
-        constexpr inline void SetBeginCallback(const decltype(beginCallback)& bc) {
+        inline void SetBeginCallback(const decltype(beginCallback)& bc) {
 			beginCallback = bc;
 		}
 
@@ -196,7 +196,7 @@ public:
 		* Set the function to call when this state ends (has finished playing, or is interrupted and moving to a new state).
 		* @param bc function taking one parameter representing the ID of the next state. If the state machine is not transitioning, the ID will be that of the current state. 
 		*/
-        constexpr inline void SetEndCallback(const decltype(endCallback)& ec) {
+        inline void SetEndCallback(const decltype(endCallback)& ec) {
 			endCallback = ec;
 		}
 
@@ -224,7 +224,7 @@ public:
 	 Otherwise, the state machine simply jumps to the target state without a transition.
 	 @param newState the state to switch to
 	 */
-    constexpr inline void Goto(id_t newState, bool skipTransition = false){
+    inline void Goto(id_t newState, bool skipTransition = false){
 		auto prevState = currentState;
 		if (newState != currentState) {
 			states[currentState].DoEnd(newState);
@@ -261,7 +261,7 @@ public:
 	 Add a state to the state machine
 	 @param state the state to insert
 	 */
-    constexpr inline void InsertState(const State& state){
+    inline void InsertState(const State& state){
 		states.insert(std::make_pair(state.ID,state));
 	}
 	
