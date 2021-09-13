@@ -31,7 +31,7 @@ public:
 	MeshAssetSkinned(const std::string& name, const decimalType scale = 1.0) = delete;
 
 	
-	inline const decltype(weightsHandle) GetWeightsHandle() const{
+    constexpr inline const decltype(weightsHandle) GetWeightsHandle() const{
 		return weightsHandle;
 	}
 };

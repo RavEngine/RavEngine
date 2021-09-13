@@ -47,7 +47,7 @@ namespace RavEngine {
 		/**
 		@return true if the current ScriptComponent is attached to an Entity, false otherwise.
 		*/
-		inline bool IsAttached() {
+        inline bool IsAttached() {
 			return !GetOwner().expired();
 		}
 

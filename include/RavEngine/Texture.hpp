@@ -17,7 +17,7 @@ public:
 		bgfx::destroy(texture);
 	}
 	
-	inline bgfx::TextureHandle GetTextureHandle() const{
+    constexpr inline bgfx::TextureHandle GetTextureHandle() const{
 		return texture;
 	}
 	

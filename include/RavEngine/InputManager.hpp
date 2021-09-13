@@ -97,24 +97,24 @@ namespace RavEngine {
 		ANY = ~0
 	};
 	//bitwise
-	inline CID operator | (CID lhs, CID rhs)
+	constexpr inline CID operator | (CID lhs, CID rhs)
 	{
 		using T = std::underlying_type_t<CID>;
 		return static_cast<CID>(static_cast<T>(lhs) | static_cast<T>(rhs));
 	}
 
-	inline CID& operator |= (CID& lhs, CID rhs)
+    constexpr inline CID& operator |= (CID& lhs, CID rhs)
 	{
 		lhs = lhs | rhs;
 		return lhs;
 	}
-	inline CID operator & (CID lhs, CID rhs)
+    constexpr inline CID operator & (CID lhs, CID rhs)
 	{
 		using T = std::underlying_type_t<CID>;
 		return static_cast<CID>(static_cast<T>(lhs) & static_cast<T>(rhs));
 	}
 
-	inline CID& operator &= (CID& lhs, CID rhs)
+    constexpr inline CID& operator &= (CID& lhs, CID rhs)
 	{
 		lhs = lhs & rhs;
 		return lhs;
@@ -124,7 +124,7 @@ namespace RavEngine {
 	 Construct a Controller ID object
 	 @param x the id of the controller
 	 */
-	inline static CID Make_CID(int x){
+    constexpr inline static CID Make_CID(int x){
 		return static_cast<CID>(1 << x);
 	}
 
@@ -157,7 +157,7 @@ namespace RavEngine {
 			 @param state_in the state of the action being invoked
 			 @param controller the source controller sending the action
 			 */
-			inline void operator()(ActionState state_in, CID c_in) const{
+            constexpr inline void operator()(ActionState state_in, CID c_in) const{
 				if (state_in == state && (controller & c_in) != CID::NONE && IsValid()){
 					func();
 				}
@@ -165,14 +165,14 @@ namespace RavEngine {
 			/**
 			 @return true if this object can be executed (the bound object has not been destroyed), false otherwise
 			 */
-			inline bool IsValid() const{
+            constexpr inline bool IsValid() const{
 				return ! bound_object.expired();
 			}
 			
 			/**
 			 Check equality
 			 */
-			inline bool operator==(const ActionBinding& other) const{
+            constexpr inline bool operator==(const ActionBinding& other) const{
 				return controller == other.controller && state == other.state && bound_object.lock() == other.bound_object.lock() && func_addr == other.func_addr;
 			}
 		};
@@ -202,17 +202,17 @@ namespace RavEngine {
 			 @param value the axis' value
 			 @param c_in the source controller
 			 */
-			inline void operator()(float value, CID c_in) const{
+            constexpr inline void operator()(float value, CID c_in) const{
 				//check if can run
 				if ((controller & c_in) != CID::NONE && IsValid()){
 					func(std::abs(value) >= deadzone ? value : 0);	//pass 0 if in deadzone range
 				}
 			}
-			inline bool IsValid() const{
+            constexpr inline bool IsValid() const{
 				return ! bound_object.expired();
 			}
 			
-			inline bool operator==(const AxisBinding& other) const{
+            constexpr inline bool operator==(const AxisBinding& other) const{
 				return deadzone == other.deadzone && controller == other.controller && bound_object.lock() == other.bound_object.lock() && func_addr == other.func_addr;
 			}
 		};
@@ -229,14 +229,14 @@ namespace RavEngine {
 		};
 		
 		struct aid_hasher{
-			inline std::size_t operator()(const AxisID& other) const{
+            inline std::size_t operator()(const AxisID& other) const{
 				std::hash<std::string> hasher;
 				return hasher(other.identifier);
 			}
 		};
 		
 		struct aid_eq{
-			inline bool operator()(const AxisID& A, const AxisID& B) const{
+            inline bool operator()(const AxisID& A, const AxisID& B) const{
 				return A.identifier == B.identifier && A.scale == B.scale;
 			}
 		};
@@ -292,7 +292,7 @@ namespace RavEngine {
 		 @param name the identifer to use when binding or unbinding actions
 		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
 		 */
-		inline void AddActionMap(const std::string& name, int Id){
+        constexpr inline void AddActionMap(const std::string& name, int Id){
 			CodeToAction[Id].insert(name);
 		}
 		
@@ -302,7 +302,7 @@ namespace RavEngine {
 		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
 		 @param scale the scale factor to apply to all bindings mapped to this axis
 		 */
-		inline void AddAxisMap(const std::string& name, int Id, float scale = 1){
+        constexpr inline void AddAxisMap(const std::string& name, int Id, float scale = 1){
 			CodeToAxis[Id].insert({name,scale});
 		}
 		
@@ -311,7 +311,7 @@ namespace RavEngine {
 		 @param name the identifer to look for
 		 @param Id the button identifier to use. See the SDL key bindings for more information.
 		 */
-		inline void RemoveActionMap(const std::string& name, int Id){
+        constexpr inline void RemoveActionMap(const std::string& name, int Id){
 			CodeToAction[Id].erase(name);
 		}
 		
@@ -320,7 +320,7 @@ namespace RavEngine {
 		 @param name the identifer to look for
 		 @param Id the button identifier to use. See the SDL key bindings for more information.
 		 */
-		inline void RemoveAxisMap(const std::string& name, int Id, float scale = 1){
+        constexpr inline void RemoveAxisMap(const std::string& name, int Id, float scale = 1){
 			CodeToAxis[Id].erase({name, scale});
 		}
 		
@@ -343,7 +343,7 @@ namespace RavEngine {
 		 * @param type the required state of the action to invoke the method.
 		 */
         template<class U>
-		inline void BindAction(const std::string& name, Ref<U> thisptr, void(U::* f)(), ActionState type, CID controllers){
+        inline void BindAction(const std::string& name, Ref<U> thisptr, void(U::* f)(), ActionState type, CID controllers){
 			WeakRef<U> weak(thisptr);
 			auto binding = [=](){
 				(weak.lock().get()->*f)();

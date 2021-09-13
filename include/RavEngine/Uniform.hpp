@@ -26,7 +26,7 @@ public:
 	 @param numValues the number of values in the array
 	 */
 	template<typename T>
-	inline void SetValues(T* value, int numValues){
+    constexpr inline void SetValues(T* value, int numValues){
 		bgfx::setUniform(handle, value, numValues);
 	}
 	
@@ -35,7 +35,7 @@ public:
 	/**
 	 * @return true if this uniform is valid and therefore safe to use
 	 */
-	inline bool IsValid() const{
+    inline bool IsValid() const{
 		return bgfx::isValid(handle);
 	}
 	
@@ -48,7 +48,7 @@ public:
 	/**
 	 Conversion operator for interal use
 	 */
-	inline operator bgfx::UniformHandle() const{
+    constexpr inline operator bgfx::UniformHandle() const{
 		return handle;
 	}
 	

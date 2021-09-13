@@ -69,57 +69,57 @@ public:
 	* Change the audio asset in this player
 	* @param a the audio asset
 	*/
-	inline void SetAudio(decltype(asset) a) {
+    inline void SetAudio(decltype(asset) a) {
 		asset = a;
 	}
 	
 	/**
 	 Starts playing the audio source if it is not playing. Call Pause() to suspend it.
 	 */
-	inline void Play(){
+    constexpr inline void Play(){
 		isPlaying = true;
 	}
 	
 	/**
 	 Stop the source if it is playing. Call Play() to resume.
 	 */
-	inline void Pause(){
+    constexpr inline void Pause(){
 		isPlaying = false;
 	}
 	
 	/**
 	 Reset the audio playhead to the beginning of this source. This does not trigger it to begin playing.
 	 */
-	inline void Restart(){
+    constexpr inline void Restart(){
 		playhead_pos = 0;
 	}
 	
-	inline float GetVolume() const { return volume; }
+    constexpr inline float GetVolume() const { return volume; }
 	
 	/**
 	 Change the volume for this source
 	 @param vol new volume for this source.
 	 */
-	inline void SetVolume(float vol){volume = vol;}
+    constexpr inline void SetVolume(float vol){volume = vol;}
 	
 	/**
 	 Enable or disable looping for this audio source. A looping source will continuously play until manually stopped, whereas
 	 non-looping sources will automatically deactivate when finished
 	 @param loop new loop setting
 	 */
-	inline void SetLoop(bool loop) {loops = loop;}
+    constexpr inline void SetLoop(bool loop) {loops = loop;}
 	
 	/**
 	 @return true if the source is currently playing, false otherwise
 	 */
-	inline bool IsPlaying() const { return isPlaying; }
+    constexpr inline bool IsPlaying() const { return isPlaying; }
 
 	/**
 	 Generate an audio data buffer based on the current source
 	 @param buffer destination for the data
 	 @param count the size of the buffer, in bytes
 	 */
-	inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
+	constexpr inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
 		for(size_t i = 0; i < count/sizeof(buffer[0]); i++){
 			//is playhead past end of source?
 			if (playhead_pos >= asset->numsamples){

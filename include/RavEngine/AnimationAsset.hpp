@@ -27,7 +27,7 @@ struct IAnimGraphable{
 						const ozz::animation::Skeleton* skeleton) const = 0;	//TODO: make abstract
 	
 	
-	void SampleDirect(float t, const ozz::animation::Animation* anim, ozz::animation::SamplingCache& cache, ozz::vector<ozz::math::SoaTransform>& locals) const;
+    void SampleDirect(float t, const ozz::animation::Animation* anim, ozz::animation::SamplingCache& cache, ozz::vector<ozz::math::SoaTransform>& locals) const;
 };
 
 
@@ -46,7 +46,7 @@ public:
 	 */
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
-	inline const decltype(anim)& GetAnim() const{
+	constexpr inline const decltype(anim)& GetAnim() const{
 		return anim;
 	}
 	
@@ -80,7 +80,7 @@ public:
 	 Add an AnimationAsset to the collection, or change the influence for the existing asset
 	 @param inf the influence for this clip
 	 */
-	inline void SetAnimationInfluence(Ref<IAnimGraphable> asset, float inf = 1){
+    inline void SetAnimationInfluence(Ref<IAnimGraphable> asset, float inf = 1){
 		influence[asset].influence = inf;
 	}
 	
@@ -88,15 +88,15 @@ public:
 	 Remove an animation from the collection
 	 @param asset the asset to remove
 	 */
-	inline void RemoveAnimation(Ref<IAnimGraphable> asset){
+    inline void RemoveAnimation(Ref<IAnimGraphable> asset){
 		influence.erase(asset);
 	}
 	
-	inline void Clear(){
+    constexpr inline void Clear(){
 		influence.clear();
 	}
 	
-	inline bool IsEmpty() const{
+    constexpr inline bool IsEmpty() const{
 		return influence.empty();
 	}
 	

@@ -114,7 +114,7 @@ namespace RavEngine {
 		virtual void DrawHook() {};
 	public:
 		virtual ~MaterialInstance() {}
-		inline void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
+        inline void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
 			DrawHook();
 			float transmat[16];
             copyMat4((const decimalType*)glm::value_ptr(worldmatrix), transmat);

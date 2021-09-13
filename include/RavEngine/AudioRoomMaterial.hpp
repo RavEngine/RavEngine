@@ -21,7 +21,7 @@ public:
 	/**
 	 Change the gain
 	 */
-	void SetGain(float g){ gain = g; }
+	constexpr inline void SetGain(float g){ gain = g; }
 };
 
 // put presets here

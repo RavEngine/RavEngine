@@ -40,7 +40,7 @@ namespace RavEngine {
 		void Tick(float fpsScale, const Ref<RigidBodyDynamicComponent>, const Ref<Transform>);
 
 		//must run before write system
-		const System::list_type& MustRunBefore() const {
+        constexpr const System::list_type& MustRunBefore() const {
 			return runbefore;
 		}
 		

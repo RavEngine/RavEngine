@@ -7,7 +7,7 @@ namespace RavEngine {
 template<typename T>
 struct unordered_vector : public std::vector<T>{
 
-	inline void erase(const typename std::vector<T>::iterator& it){
+    constexpr inline void erase(const typename std::vector<T>::iterator& it){
 		*it = std::move(this->back());
 		this->pop_back();
 	}
@@ -42,7 +42,7 @@ public:
      Erase by iterator
      @param it the iterator to remove
      */
-	inline void erase(const typename std::vector<T>::iterator& it){
+    constexpr inline void erase(const typename std::vector<T>::iterator& it){
 		// remove from the offset cache
 		auto hasher = std::hash<T>();
 		auto hash = hasher(*it);
@@ -61,7 +61,7 @@ public:
      Erase by element hash
      @param size_t hash the hash of the element to remove
      */
-    inline void erase_by_hash(size_t hash){
+    constexpr inline void erase_by_hash(size_t hash){
         auto it = this->begin() + offsets[hash];
         erase(it);
     }

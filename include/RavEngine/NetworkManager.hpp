@@ -37,7 +37,7 @@ namespace RavEngine {
 		 @param id the type identifier for the entity
 		 */
 		template<typename T>
-		inline void RegisterNetworkedEntity(){
+        constexpr inline void RegisterNetworkedEntity(){
 			NetworkedObjects.insert(std::make_pair(CTTI<T>(),[](const uuids::uuid& id) -> Ref<Entity>{
 				return std::static_pointer_cast<Entity>(std::make_shared<T>(id));
 			}));
@@ -48,7 +48,7 @@ namespace RavEngine {
 		 @param id the type identifier for the entity
 		 */
 		template<typename T>
-		inline void UnregisterNetworkedEntity(){
+        constexpr inline void UnregisterNetworkedEntity(){
 			NetworkedObjects.erase(CTTI<T>);
 		}
 		
@@ -57,7 +57,7 @@ namespace RavEngine {
 		 @return true if a registration for that ID exists
 		 */
 		template<typename T>
-		inline bool IsNetworkedIdentityRegistered(){
+        constexpr inline bool IsNetworkedIdentityRegistered(){
 			return NetworkedObjects.contains(CTTI<T>);
 		}
 		
@@ -73,7 +73,7 @@ namespace RavEngine {
 		/**
 		 @return true if this game is networked
 		 */
-		static inline bool IsNetworked(){
+        static inline bool IsNetworked(){
 			return IsServer() || IsClient();
 		}
 	

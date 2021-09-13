@@ -28,7 +28,7 @@ namespace RavEngine {
 		inline void SetAlbedoTexture(Ref<Texture> texture) {
 			albedo = texture;
 		}
-       inline void SetAlbedoColor(const ColorRGBA& c){
+        constexpr inline void SetAlbedoColor(const ColorRGBA& c){
             color = c;
         }
 
@@ -73,7 +73,7 @@ namespace RavEngine {
 	class GUIMaterialInstance : public MaterialInstance<GUIMaterial>{
 	public:
 		GUIMaterialInstance(Ref<GUIMaterial> m) : MaterialInstance(m){}
-		void SetTexture(bgfx::TextureHandle texture){
+		constexpr inline void SetTexture(bgfx::TextureHandle texture){
 			mat->texture = texture;
 		}
 		

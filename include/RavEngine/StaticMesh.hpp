@@ -36,7 +36,7 @@ namespace RavEngine {
 			return std::get<1>(tuple);
         }
 		
-		inline const auto& getTuple() const{
+        constexpr inline const auto& getTuple() const{
 			return tuple;
 		}
     };

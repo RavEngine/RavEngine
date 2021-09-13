@@ -28,7 +28,7 @@ namespace RavEngine {
 	protected:
 		WeakRef<World> worldptr;  //non-owning
 		
-		void AddHook(Ref<Component> c){
+		inline void AddHook(Ref<Component> c){
 			c->SetOwner(shared_from_this());
 			c->AddHook(shared_from_this());
 		}
@@ -55,7 +55,7 @@ namespace RavEngine {
 
         public:
 		
-		inline void Sync(){
+        inline void Sync(){
 			if (PendingSync->size() != 0){
 				for(auto& component : *PendingSync){
 					AddHook(component);
@@ -85,7 +85,7 @@ namespace RavEngine {
 		 @return true if the entity is in the world, false otherwise
 		 @note Does not investigate dangling pointer
 		 */
-		inline bool IsInWorld() const {
+        inline bool IsInWorld() const {
 			return !worldptr.expired();
 		}
 		

@@ -12,7 +12,7 @@ namespace TweenCurves{
 	struct TweenCurve : public base{
 		//enable this class to be called / converted to std::function
 		template<typename T>
-		inline T operator()(float pos, T a, T b) const{
+        constexpr inline T operator()(float pos, T a, T b) const{
 			return base::template run<float>(pos, a,b);
 		}
 	};
@@ -50,9 +50,6 @@ namespace TweenCurves{
 	static constexpr struct BackOutCurve : public TweenCurve<tweeny::easing::backOutEasing>{} BackOutCurve;
 	static constexpr struct BackInOutCurve : public TweenCurve<tweeny::easing::backOutEasing>{} BackInOutCurve;
 }
-
-
-
 	template<typename ...Floats>
 	class Tween {
 	protected:
@@ -79,7 +76,7 @@ namespace TweenCurves{
 		}
 		
 		//copy assignment
-		inline Tween& operator=(const Tween& other) {
+        constexpr inline Tween& operator=(const Tween& other) {
 			if (&other == this) {
 				return *this;
 			}
@@ -94,7 +91,7 @@ namespace TweenCurves{
 		 @param interpolation the interpolation function to use
 		 */
 		template<typename T>
-		inline Tween& AddKeyframe(decimalType time, T interpolation, Floats ... values){
+        constexpr inline Tween& AddKeyframe(decimalType time, T interpolation, Floats ... values){
 			anim.to(values...).during(time * App::evalNormal).via(interpolation);
 			return *this;
 		}
@@ -103,15 +100,15 @@ namespace TweenCurves{
 		 Perform one step of this animation. Note that adding more keys while an animation is playing will affect its playback
 		 @param scale the timestep. Generally you want to simply pass the value from tick.
 		 */
-		inline void Step(decimalType scale){
+        constexpr inline void Step(decimalType scale){
 			anim.step((float)scale / anim.duration());
 		}
 		
-		inline void Seek(float pos){
+        constexpr inline void Seek(float pos){
 			anim.seek(pos);
 		}
 		
-		inline float GetProgress() const{
+        constexpr inline float GetProgress() const{
 			return anim.progress();
 		}
 	};

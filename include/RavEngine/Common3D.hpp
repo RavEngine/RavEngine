@@ -45,7 +45,7 @@ struct ColorRGBA{
  @param size optional size
  */
 template<typename T, typename U>
-static inline void copyMat4(const T* input, U* output, int size = 16) {
+constexpr static inline void copyMat4(const T* input, U* output, int size = 16) {
 	for (int i = 0; i < size; i++) {
 		output[i] = input[i];
 	}

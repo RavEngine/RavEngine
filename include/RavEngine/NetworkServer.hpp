@@ -78,7 +78,7 @@ public:
 	/**
 	* Get the internal client structure. Note that to track application-specific client data, create your own datastructure and add event listeners to the OnConnecting, Ondisconnected, etc functions and track it yourself.
 	*/
-	inline const decltype(clients)& GetClients() {
+    constexpr inline const decltype(clients)& GetClients() {
 		return clients;
 	}
 };

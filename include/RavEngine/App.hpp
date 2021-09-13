@@ -47,7 +47,7 @@ namespace RavEngine {
          @param min_ms the minimum amount of time a tick should take.
          */
         template<typename T>
-        static void SetMinTickTime(std::chrono::duration<double,T> min_ms){
+        constexpr static void SetMinTickTime(std::chrono::duration<double,T> min_ms){
             min_tick_time = min_ms;
         }
 
@@ -63,7 +63,7 @@ namespace RavEngine {
 		/**
 		 @return the current time, measured in seconds since the application launched
 		 */
-		static double GetCurrentTime(){
+        inline static double GetCurrentTime(){
 			return time;
 		};
 		
@@ -91,14 +91,14 @@ namespace RavEngine {
 		 @endcode
 		 */
         template<typename T>
-		static inline void DispatchMainThread(const T& f){
+		constexpr static inline void DispatchMainThread(const T& f){
 			main_tasks.enqueue(f);
 		}
 
 		/**
 		@return the current application tick rate
 		*/
-		static float CurrentTPS();
+        static float CurrentTPS();
 		
 		static Ref<InputManager> inputManager;
 
@@ -106,7 +106,7 @@ namespace RavEngine {
 		Set the current world to tick automatically
 		@param newWorld the new world
 		*/
-		static void SetRenderedWorld(Ref<World> newWorld) {
+        static void SetRenderedWorld(Ref<World> newWorld) {
 			if (!loadedWorlds.contains(newWorld)){
 				Debug::Fatal("Cannot render an inactive world");
 			}
@@ -149,7 +149,7 @@ namespace RavEngine {
 		/**
 		* Unload all worlds
 		*/
-		static void RemoveAllWorlds() {
+        static void RemoveAllWorlds() {
 			for (const auto& world : loadedWorlds) {
 				RemoveWorld(world);
 			}
@@ -174,7 +174,7 @@ namespace RavEngine {
 		 @param title the text for the titlebar
 		 @note Do not call this every frame. To update periodically with data such as frame rates, use a scheduled system.
 		 */
-		static void SetWindowTitle(const char* title);
+        static void SetWindowTitle(const char* title);
 		
 		static std::optional<Ref<World>> GetWorldByName(const std::string& name){
 			std::optional<Ref<World>> value;
@@ -188,7 +188,7 @@ namespace RavEngine {
 			return value;
 		}
 		
-		static inline FrameData* GetCurrentFramedata(){
+        static inline FrameData* GetCurrentFramedata(){
 			return current;
 		}
 		
@@ -196,12 +196,12 @@ namespace RavEngine {
 			return render;
 		}
 		
-		static inline void SwapCurrentFramedata(){
+        static inline void SwapCurrentFramedata(){
 			swapmtx1.lock();
 			std::swap(current,inactive);
 			swapmtx1.unlock();
 		}
-		static inline void SwapRenderFramedata(){
+        static inline void SwapRenderFramedata(){
 			swapmtx2.lock();
 			std::swap(inactive,render);
 			swapmtx2.unlock();

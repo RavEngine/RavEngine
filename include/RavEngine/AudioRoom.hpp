@@ -73,14 +73,14 @@ public:
 	 Set the dimensions of the room. A dimension of 0 is interpreted as unbounded.
 	 @param dim the x, y, and z dimensions of the room. Unlike Physics, this is diameter not radius.
 	 */
-	void SetRoomDimensions(const vector3& dim){ roomDimensions = dim; }
+	constexpr void SetRoomDimensions(const vector3& dim){ roomDimensions = dim; }
 	
 	/**
 	 Update the position of the listener in the Audio Engine
 	 @param worldpos the position of the listener in world space
 	 @param worldrotation the rotation of the listener in world space
 	 */
-	void SetListenerTransform(const vector3& worldpos, const quaternion& worldrotation);
+    void SetListenerTransform(const vector3& worldpos, const quaternion& worldrotation);
 	
 	/**
 	 Simulate spacial audio for a set of audio sources
@@ -88,17 +88,17 @@ public:
 	 @param nbytes length of the buffer in bytes
 	 @param sources the AudioSource components to calculate for
 	 */
-	void Simulate(float* ptr, size_t nbytes);
+    void Simulate(float* ptr, size_t nbytes);
 	
 	/**
 	 @return the dimensions of this room
 	 */
-	decltype(roomDimensions) GetRoomDimensions() const {return roomDimensions; }
+	constexpr inline decltype(roomDimensions) GetRoomDimensions() const {return roomDimensions; }
 	
 	/**
 	 @return a writable reference to the wall materials
 	 */
-	decltype(wallMaterials)& WallMaterials() { return wallMaterials; }
+    constexpr inline decltype(wallMaterials)& WallMaterials() { return wallMaterials; }
 	
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component

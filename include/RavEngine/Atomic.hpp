@@ -14,7 +14,7 @@ public:
 	LockFreeAtomic(const T& value) : value(value) {}
 
 	//copy assignment
-	inline LockFreeAtomic& operator=(const LockFreeAtomic<T>& other) {
+	constexpr inline LockFreeAtomic& operator=(const LockFreeAtomic<T>& other) {
 		if (&other == this) {
 			return *this;
 		}
@@ -25,11 +25,11 @@ public:
 	}
 
 	//conversion operator
-	inline operator T () {
+	constexpr inline operator T () {
 		return load();
 	}
 
-	inline T load() {
+	constexpr inline T load() {
 		T temp;
 		mtx.lock();
 		temp = value;
@@ -37,7 +37,7 @@ public:
 		return temp;
 	}
 
-	inline void store(const T& newvalue) {
+	constexpr inline void store(const T& newvalue) {
 		mtx.lock();
 		value = newvalue;
 		mtx.unlock();

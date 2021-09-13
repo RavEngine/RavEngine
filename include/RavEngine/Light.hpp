@@ -183,7 +183,7 @@ private:
 	 Caclulate the radius of the light using its current intensity
 	 @return the radius
 	 */
-	inline float CalculateRadius() const{
+    constexpr inline float CalculateRadius() const{
 		return Intensity*Intensity;
 	}
 };
@@ -239,7 +239,7 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	 @param mat input transformation matrix
 	 @return matrix for shader
 	 */
-	inline matrix4 CalculateMatrix(const matrix4& mat) const{
+    inline matrix4 CalculateMatrix(const matrix4& mat) const{
 		auto intensity = Intensity;
 		auto r = radius;
 		intensity = intensity * intensity;

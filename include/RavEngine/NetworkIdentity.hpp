@@ -18,7 +18,7 @@ namespace RavEngine {
 		//Used on clients
 		NetworkIdentity(const uuids::uuid& id) : NetworkID(id), triggerMessage(false){}
 		
-		inline decltype(NetworkID) GetNetworkID() const{
+        inline decltype(NetworkID) GetNetworkID() const{
 			return NetworkID;
 		}
 		

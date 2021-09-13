@@ -33,7 +33,7 @@ public:
 	void SendSyncWorldRequest(Ref<World> world);
 
 	template<typename T>
-	inline void SetNetSpawnHook(const decltype(OnNetSpawnHooks)::value_type::second_type& func) {
+    constexpr inline void SetNetSpawnHook(const decltype(OnNetSpawnHooks)::value_type::second_type& func) {
 		OnNetSpawnHooks.insert(std::make_pair(CTTI<T>(),func));
 	}
 	

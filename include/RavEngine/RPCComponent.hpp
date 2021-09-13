@@ -28,7 +28,7 @@ namespace RavEngine {
 		typedef locked_hashmap<uint16_t, rpc_entry, SpinLock> rpc_store;
 		rpc_store ClientRPCs, ServerRPCs;
 
-		struct enqueued_rpc {
+        struct enqueued_rpc {
 			std::string msg;
 			bool isOwner;
 			HSteamNetConnection origin;
@@ -66,7 +66,7 @@ namespace RavEngine {
 		@param value the data to encode
 		*/
 		template<typename T>
-		inline void serializeType(size_t& offset, char* buffer, const T& value) const{
+        constexpr inline void serializeType(size_t& offset, char* buffer, const T& value) const{
 			constexpr auto id = CTTI<T>();
 			std::memcpy(buffer + offset, &id, sizeof(ctti_t));
 			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::SerializedSize<T>());
@@ -103,7 +103,7 @@ namespace RavEngine {
 		@param ptr the queue to consume from
 		@param table the datastructure to look up the results in
 		*/
-		inline void ProcessRPCs_impl(const std::atomic<queue_t*>& ptr, const rpc_store& table) {
+        inline void ProcessRPCs_impl(const std::atomic<queue_t*>& ptr, const rpc_store& table) {
 			auto reading = ptr.load();
 			enqueued_rpc cmd;
 			while (reading->try_dequeue(cmd)) {
@@ -156,7 +156,7 @@ namespace RavEngine {
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-		inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
 			if (ServerRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				App::networkManager.client->SendMessageToServer(msg, mode);
@@ -167,7 +167,7 @@ namespace RavEngine {
 		}
 
 		template<typename ... A>
-		inline void InvokeClientRPCDirected(uint16_t id, HSteamNetConnection target, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeClientRPCDirected(uint16_t id, HSteamNetConnection target, NetworkBase::Reliability mode, A ... args) const{
 			if (ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				App::networkManager.server->SendMessageToClient(msg, target, mode);
@@ -178,7 +178,7 @@ namespace RavEngine {
 		}
 
 		template<typename ... A>
-		inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A ... args) const{
 			if (ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				App::networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
@@ -195,7 +195,7 @@ namespace RavEngine {
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-		inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
 			if (ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				App::networkManager.server->SendMessageToAllClients(msg, mode);
@@ -208,28 +208,28 @@ namespace RavEngine {
 		/**
 		Invoked automatically. For internal use only.
 		*/
-		inline void CacheClientRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
+        constexpr inline void CacheClientRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
 			writingptr_c.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner, origin });
 		}
 
 		/**
 		Invoked automatically. For internal use only.
 		*/
-		inline void CacheServerRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
+        constexpr inline void CacheServerRPC(const std::string_view& cmd, bool isOwner, HSteamNetConnection origin) {
 			writingptr_s.load()->enqueue({ std::string(cmd.data(),cmd.size()), isOwner, origin });
 		}
 
 		/**
 		Invoked automatically. For internal use only.
 		*/
-		inline void ProcessClientRPCs() {
+        constexpr inline void ProcessClientRPCs() {
 			ProcessRPCs_impl(readingptr_c, ClientRPCs);
 		}
 
 		/**
 		Invoked automatically. For internal use only.
 		*/
-		inline void ProcessServerRPCs() {
+        constexpr inline void ProcessServerRPCs() {
 			ProcessRPCs_impl(readingptr_s, ServerRPCs);
 		}
 
@@ -237,7 +237,7 @@ namespace RavEngine {
 		/**
 		For internal use only. Switches which queue is being filled and which is being emptied
 		*/
-		inline void Swap() {
+        inline void Swap() {
 			queue_t* reading = readingptr_c.load(), * writing = writingptr_c.load();
 			std::swap(reading, writing);
 			readingptr_c.store(reading);

@@ -51,7 +51,7 @@ public:
 	 */
 	GUIComponent(int width, int height, float DPI = 1);
 	
-	inline void SetDPIScale(float scale){
+	constexpr inline void SetDPIScale(float scale){
 		context->SetDensityIndependentPixelRatio(scale);
 	}
 	
@@ -110,7 +110,7 @@ public:
 	@param func a lambda to execute. 
 	*/
     template<typename T>
-	inline void ExclusiveAccess(const T& func) {
+    constexpr inline void ExclusiveAccess(const T& func) {
 		mtx.lock();
 		func();
 		mtx.unlock();
@@ -121,7 +121,7 @@ public:
     @param func a capturing lambda to execute. Be sure to capture by value! The passed function is executed on a different thread at a different time than the caller.
     */
     template<typename T>
-    inline void EnqueueUIUpdate(const T& func){
+    constexpr inline void EnqueueUIUpdate(const T& func){
         current.load()->enqueue(func);
     }
 	

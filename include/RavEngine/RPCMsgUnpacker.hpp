@@ -22,10 +22,10 @@ namespace RavEngine {
 		RPCMsgUnpacker(const std::string& msg) : message(msg) {}
 
 		template<typename T>
-		inline std::optional<T> Get() {
+        constexpr inline std::optional<T> Get() {
 			std::optional<T> result;
 			//is the current parameter the same type as T?
-            ctti_t enc_type;
+            ctti_t enc_type = 0;
             std::memcpy(&enc_type,message.data()+offset,sizeof(enc_type));
             if (enc_type == CTTI<T>()){
                 //deserialize the type using template specialization

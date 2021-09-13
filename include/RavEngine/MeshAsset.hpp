@@ -173,14 +173,14 @@ public:
 		other->vertexBuffer = BGFX_INVALID_HANDLE;
 	}
 	
-	inline const bgfx::VertexBufferHandle getVertexBuffer() const{
+	constexpr inline const bgfx::VertexBufferHandle getVertexBuffer() const{
 		return vertexBuffer;
 	}
-	inline const bgfx::IndexBufferHandle getIndexBuffer() const{
+    constexpr inline const bgfx::IndexBufferHandle getIndexBuffer() const{
 		return indexBuffer;
 	}
     
-    inline const decltype(bounds)& GetBounds() const{
+    constexpr inline const decltype(bounds)& GetBounds() const{
         return bounds;
     }
 	
@@ -188,19 +188,19 @@ public:
 		Destroy();
 	}
 
-	inline const decltype(totalVerts) GetNumVerts() const {
+    constexpr inline const decltype(totalVerts) GetNumVerts() const {
 		return totalVerts;
 	}
 
-	inline const decltype(totalIndices) GetNumIndices() const {
+    constexpr inline const decltype(totalIndices) GetNumIndices() const {
 		return totalIndices;
 	}
 	
-	inline decltype(systemRAMcopy)& GetSystemCopy(){
+    constexpr inline decltype(systemRAMcopy)& GetSystemCopy(){
 		return systemRAMcopy;
 	}
 	
-    inline bool hasSystemRAMCopy() const{
+    constexpr inline bool hasSystemRAMCopy() const{
         return systemRAMcopy.vertices.size() > 0;
     }
     
@@ -208,7 +208,7 @@ public:
 	 In case the system memory copy is no longer needed, destroy it.
 	 This is not undoable.
 	 */
-	inline void DeallocSystemCopy(){
+    constexpr inline void DeallocSystemCopy(){
 		systemRAMcopy = MeshPart{};
 	}
 };

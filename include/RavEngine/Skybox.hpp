@@ -37,7 +37,7 @@ namespace RavEngine {
 		bool enabled = true;
 		Ref<ISkyMaterialInstance> skyMat;
 		Ref<MeshAsset> skyMesh;
-		inline void Draw(const matrix4& worldmatrix, int view) const{
+        constexpr inline void Draw(const matrix4& worldmatrix, int view) const{
 			skyMat->Draw(skyMesh->getVertexBuffer(), skyMesh->getIndexBuffer(), worldmatrix, view);
 		}
 

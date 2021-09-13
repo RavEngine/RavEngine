@@ -47,7 +47,7 @@ struct FrameData{
 		StoredLight(const T& l, const matrix4& mtx) : light(l), transform(mtx){}
 		StoredLight(const StoredLight& other) : light(other.light), transform(other.transform){}
 		
-		inline void AddInstanceData(float* offset) const{
+		constexpr inline void AddInstanceData(float* offset) const{
 			auto ptr1 = glm::value_ptr(transform);
 			
 			//don't need to send the last value of each row, because it is always [0,0,0,1] and can be reconstructed in shader
@@ -76,7 +76,7 @@ struct FrameData{
 			float x, y, z;
 		} rotation;
 		
-		inline void AddInstanceData(float* offset) const{
+		constexpr inline void AddInstanceData(float* offset) const{
 			offset[4] = rotation.x;
 			offset[5] = rotation.y;
 			offset[6] = rotation.z;

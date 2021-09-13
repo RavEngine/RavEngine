@@ -24,12 +24,12 @@ public:
     
     WeakPtrKey(std::shared_ptr<T> sptr):m_ptr(sptr.get()),m_wptr(sptr) {}
     
-    inline bool operator<(const WeakPtrKey<T> &other) const {
+    constexpr inline bool operator<(const WeakPtrKey<T> &other) const {
         return m_ptr < other.m_ptr;
         
     }
     
-    inline bool operator==(const WeakPtrKey<T> &other) const {
+    constexpr inline bool operator==(const WeakPtrKey<T> &other) const {
         return m_ptr == other.m_ptr;
         
     }

@@ -107,18 +107,18 @@ namespace RavEngine {
 		/**
 		 @return the current window buffer size, in pixels
 		 */
-		const dim& GetBufferSize(){
+        constexpr const dim& GetBufferSize(){
 			return bufferdims;
 		}
 		
-		const dim& GetWindowSize(){
+        constexpr const dim& GetWindowSize(){
 			return windowdims;
 		}
 		
         /**
          @return the High DPI scale factor. Only applicable on macOS.
          */
-		float GetDPIScale() const{
+        constexpr float GetDPIScale() const{
 #ifndef _WIN32
 			return (float)bufferdims.width / windowdims.width;
 #else
@@ -255,7 +255,7 @@ namespace RavEngine {
 		 @return true light draw calls were executed, false otherwise
 		 */
 		template<typename LightType, class Container>
-		inline bool DrawLightsOfType(const Container& lights){
+        constexpr inline bool DrawLightsOfType(const Container& lights){
 			//must set before changing shaders
 			if (lights.size() == 0){
 				return false;

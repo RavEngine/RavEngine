@@ -25,7 +25,7 @@ namespace RavEngine {
 		/**
 		* Reset the buffer. This does not clear data.
 		*/
-		inline void Reset() {
+        constexpr inline void Reset() {
 			index = 0;
 		}
 
@@ -35,17 +35,17 @@ namespace RavEngine {
 		* @param layout object describing each entry in the buffer
 		* @return the index representing the beginning of the data added to the buffer
 		*/
-		inline decltype(index) AddEmptySpace(size_t count, const bgfx::VertexLayout& layout) {
+        constexpr inline decltype(index) AddEmptySpace(size_t count, const bgfx::VertexLayout& layout) {
 			auto startpos = index;
 			index += count * layout.getStride();
 			return startpos;
 		}
 
-		inline const decltype(handle)& GetHandle() const {
+        constexpr inline const decltype(handle)& GetHandle() const {
 			return handle;
 		}
 
-		inline void DestroyBuffer() {
+        inline void DestroyBuffer() {
 			if (bgfx::isValid(handle)) {
 				bgfx::destroy(handle);
 				handle = BGFX_INVALID_HANDLE;
@@ -68,7 +68,7 @@ namespace RavEngine {
 		* @param layout object describing each entry in the buffer
 		* @return the index representing the beginning of the data added to the buffer
 		*/
-		inline decltype(index) AddData(const uint8_t* data, size_t count, const bgfx::VertexLayout& layout) {
+        inline decltype(index) AddData(const uint8_t* data, size_t count, const bgfx::VertexLayout& layout) {
 			auto startpos = index;
 			bgfx::update(handle, index, bgfx::copy(data, count * layout.getStride()));
 			index += (count * layout.getStride());

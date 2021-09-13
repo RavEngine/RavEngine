@@ -226,7 +226,7 @@ public:
 	 @param interval the interval to tick the system. This is not obeyed exactly. The closest tick that satisfies >= interval will schedule this system.
 	 */
 	template<typename T, typename interval_t>
-	inline void SetTimedSystemInterval(const interval_t& interval){
+    constexpr inline void SetTimedSystemInterval(const interval_t& interval){
 		TimedSystems[CTTI<T>()].interval = std::chrono::duration_cast<decltype(TimedSystem::interval)>(interval);
 	}
 	
@@ -234,7 +234,7 @@ public:
 	 Unregister a timed system
 	 */
 	template<typename T>
-	inline void UnregisterTimedSystem(){
+    constexpr inline void UnregisterTimedSystem(){
 		TimedSystems.erase(CTTI<T>());
 		graphNeedsRebuild = true;
 	}
@@ -243,7 +243,7 @@ public:
 	 Unregister a System that ticks every frame.
 	 */
 	template<typename T>
-	inline void UnregisterSystem() {
+    constexpr inline void UnregisterSystem() {
 		Systems.erase(CTTI<T>());
 		graphNeedsRebuild = true;
 	}
@@ -252,7 +252,7 @@ public:
 	 @return True if a system of the passed static type is contained
 	 */
 	template<typename T>
-	inline bool HasSystem() const{
+    constexpr inline bool HasSystem() const{
 		return Systems.contains(CTTI<T>());
 	}
 	
@@ -267,21 +267,21 @@ public:
 	/**
 	 @return systems that tick every frame. For internal use only
 	 */
-	inline const system_store& GetAlwaysTickSystems() const{
+    constexpr inline const system_store& GetAlwaysTickSystems() const{
 		return Systems;
 	}
 	
 	/**
 	 @return systems that tick on intervals. For internal use only
 	 */
-	inline timed_system_store& GetTimedTickSystems(){
+    constexpr inline timed_system_store& GetTimedTickSystems(){
 		return TimedSystems;
 	}
 	
 	/**
 	 Unregister all systems of all types
 	 */
-	inline void Clear(){
+     constexpr inline void Clear(){
 		Systems.clear();
 		TimedSystems.clear();
 		graphNeedsRebuild = true;

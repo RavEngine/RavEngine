@@ -19,10 +19,10 @@ public:
 	normalized_vec2(float ix, float iy) : x(std::clamp(ix,-1.0f,1.0f)), y(std::clamp(iy,-1.0f,1.0f)){}
 	normalized_vec2() : normalized_vec2(0,0){}
 	
-	inline decltype(x) get_x() const{
+	constexpr inline decltype(x) get_x() const{
 		return x;
 	}
-	inline decltype(y) get_y() const{
+    constexpr inline decltype(y) get_y() const{
 		return y;
 	}
 };
@@ -56,7 +56,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param id the identifier for the node. Recommended to create an enum to use here.
 	 @param node the node to insert into the tree.
 	 */
-	inline void InsertNode(uint8_t id, const Node& node){
+    constexpr inline void InsertNode(uint8_t id, const Node& node){
 		states[id].node = node;
 	}
 	
@@ -64,7 +64,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 Remove a node given an ID
 	 @param id the id to remove
 	 */
-	inline void DeleteNode(uint8_t id){
+    constexpr inline void DeleteNode(uint8_t id){
 		states.erase(id);
 	}
 	
@@ -74,15 +74,15 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @returns node reference
 	 @throws if no node exists at id
 	 */
-	Node& GetNode(const uint8_t id){
+    constexpr Node& GetNode(const uint8_t id){
 		return states.at(id).node;
 	}
 	
-	inline bool IsEmpty() const{
+    constexpr inline bool IsEmpty() const{
 		return states.empty();
 	}
 	
-	inline void Clear(){
+    constexpr inline void Clear(){
 		states.clear();
 	}
 	
@@ -94,7 +94,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 */
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
-	inline void SetBlendPos(const normalized_vec2& newPos){
+    constexpr inline void SetBlendPos(const normalized_vec2& newPos){
 		blend_pos = newPos;
 	}
 	
@@ -135,7 +135,7 @@ public:
 		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
 		
 		template<typename T>
-		inline State& SetTransition(decltype(ID) id, T interpolation, float duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
+        constexpr inline State& SetTransition(decltype(ID) id, T interpolation, float duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
 			auto tween = tweeny::from(0.0f).to(1.0f).during(duration * App::evalNormal).via(interpolation);
 			exitTransitions[id].transition = tween;
 			exitTransitions[id].type = mode;
@@ -145,7 +145,7 @@ public:
 		/**
 		* Construct a State
 		*/
-		State(decltype(ID) ID, decltype(clip) clip, decltype(isLooping) il = true, decltype(speed) speed = 1) : ID(ID), clip(clip), isLooping(il), speed(speed) {}
+        State(decltype(ID) ID, decltype(clip) clip, decltype(isLooping) il = true, decltype(speed) speed = 1) : ID(ID), clip(clip), isLooping(il), speed(speed) {}
 
 		State() {}
 
@@ -154,13 +154,13 @@ public:
 		decltype(ID) autoTransitionID = 0;
 		std::function<void(decltype(State::ID))> beginCallback, endCallback;
 
-		inline void DoBegin(decltype(ID) prevState) {
+        constexpr inline void DoBegin(decltype(ID) prevState) {
 			if (beginCallback) {
 				beginCallback(prevState);
 			}
 		}
 
-		inline void DoEnd(decltype(ID) nextState) {
+        constexpr inline void DoEnd(decltype(ID) nextState) {
 			if (endCallback) {
 				endCallback(nextState);
 			}
@@ -172,7 +172,7 @@ public:
 		* @note if this state is looping, it will never automatically leave.
 		* @param id the numeric ID to transition to. The blending curve and rules use SetTransition as normal.
 		*/
-		inline void SetAutoTransition(decltype(ID) id) {
+        constexpr inline void SetAutoTransition(decltype(ID) id) {
 			hasAutoTransition = true;
 			autoTransitionID = id;
 		}
@@ -180,7 +180,7 @@ public:
 		/**
 		* Clear any active auto transition.
 		*/
-		inline void ClearAutoTransition() {
+        constexpr inline void ClearAutoTransition() {
 			hasAutoTransition = false;
 		}
 
@@ -188,7 +188,7 @@ public:
 		* Set the function to call when this state begins.
 		* @param bc function taking one parameter representing the ID of the previous state. This may be invalid the first time it is called.
 		*/
-		inline void SetBeginCallback(const decltype(beginCallback)& bc) {
+        constexpr inline void SetBeginCallback(const decltype(beginCallback)& bc) {
 			beginCallback = bc;
 		}
 
@@ -196,15 +196,15 @@ public:
 		* Set the function to call when this state ends (has finished playing, or is interrupted and moving to a new state).
 		* @param bc function taking one parameter representing the ID of the next state. If the state machine is not transitioning, the ID will be that of the current state. 
 		*/
-		inline void SetEndCallback(const decltype(endCallback)& ec) {
+        constexpr inline void SetEndCallback(const decltype(endCallback)& ec) {
 			endCallback = ec;
 		}
 
-		inline bool HasAutoTransition() const{
+        constexpr inline bool HasAutoTransition() const{
 			return hasAutoTransition;
 		}
 
-		inline decltype(autoTransitionID) GetAutoTransitionID() const {
+        constexpr inline decltype(autoTransitionID) GetAutoTransitionID() const {
 			return autoTransitionID;
 		}
 	};
@@ -224,7 +224,7 @@ public:
 	 Otherwise, the state machine simply jumps to the target state without a transition.
 	 @param newState the state to switch to
 	 */
-	inline void Goto(id_t newState, bool skipTransition = false){
+    constexpr inline void Goto(id_t newState, bool skipTransition = false){
 		auto prevState = currentState;
 		if (newState != currentState) {
 			states[currentState].DoEnd(newState);
@@ -261,7 +261,7 @@ public:
 	 Add a state to the state machine
 	 @param state the state to insert
 	 */
-	inline void InsertState(const State& state){
+    constexpr inline void InsertState(const State& state){
 		states.insert(std::make_pair(state.ID,state));
 	}
 	
@@ -269,7 +269,7 @@ public:
 	 Begin playing this AnimatorController
 	 @param resetPlayhead true if the time of this animator should be reset (for nonlooping animations), false to resume where paused (for looping animations)
 	 */
-	inline void Play(float resetPlayhead = false){
+    constexpr inline void Play(float resetPlayhead = false){
 		// need to maintain offset from previous play time
 		if (!isPlaying){
 			if (resetPlayhead){
@@ -282,7 +282,7 @@ public:
 		}
 	}
 	
-	inline void Pause(){
+    constexpr inline void Pause(){
 		// record pause time so that resume begins in the correct place
 		if(isPlaying){
 			lastPlayTime = App::GetCurrentTime();
@@ -290,9 +290,9 @@ public:
 		isPlaying = false;
 	}
 
-	void Tick(float timeScale);
+    void Tick(float timeScale);
 	
-	inline decltype(skeleton) GetSkeleton() const{
+    inline decltype(skeleton) GetSkeleton() const{
 		return skeleton;
 	}
 

@@ -40,7 +40,7 @@ public:
 		return std::get<2>(tuple);
 	}
 	
-	inline const decltype(tuple)& getTuple() const{
+    constexpr inline const decltype(tuple)& getTuple() const{
 		return tuple;
 	}
 };

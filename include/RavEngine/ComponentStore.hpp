@@ -63,7 +63,7 @@ namespace RavEngine{
 		 Fast path for world ticking
 		 */
 		template<typename T>
-		inline entry_type& GetAllComponentsOfType(){
+		constexpr inline entry_type& GetAllComponentsOfType(){
 			return components[CTTI<T>()];
 		}
 
@@ -118,7 +118,7 @@ namespace RavEngine{
 		 @note Do not use to determine if a GetComponent call will succeed, that is not threadsafe. Instead, use GetComponent directly and check if the resulting std::optional is valid.
 		 */
 		template<typename T>
-		inline bool HasComponentOfType() const{
+        constexpr inline bool HasComponentOfType() const{
 			C_REF_CHECK
 			return components.contains(CTTI<T>());
 		}

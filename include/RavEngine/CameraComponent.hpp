@@ -9,7 +9,7 @@ namespace RavEngine {
 	protected:
 		friend class RenderEngine;
 	public:
-		CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100);
+        CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component(){}
 
 		virtual ~CameraComponent() {}
 
@@ -17,12 +17,14 @@ namespace RavEngine {
 		Enable / disable this camera
 		@param newState the new enabled state for this camera. The renderer will choose the first active camera as the camera to use when drawing.
 		*/
-		void SetActive(bool newState);
+        constexpr inline void SetActive(bool newState){
+            active = newState;
+        }
 
 		/**
 		@returns if this camera is active
 		*/
-		inline bool IsActive() const{
+		constexpr inline bool IsActive() const{
 			return active;
 		}
 
@@ -31,7 +33,7 @@ namespace RavEngine {
 		@param width the width of the target, in pixels
 		@param height the height of the target, in pixels
 		*/
-		void SetTargetSize(unsigned int inwidth, unsigned int inheight);
+		constexpr void SetTargetSize(unsigned int inwidth, unsigned int inheight);
 
 		enum class Mode {
 			Perspective,
@@ -41,7 +43,7 @@ namespace RavEngine {
 		/**
 		@return the projection matrix to use when rendering objects. For internal use only.
 		*/
-		inline matrix4 GenerateProjectionMatrix() const{
+		constexpr inline matrix4 GenerateProjectionMatrix() const{
 			switch(projection){
 				case Mode::Perspective:
 					return matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip));
@@ -88,4 +90,18 @@ namespace RavEngine {
 
 		Mode projection = Mode::Perspective;
 	};
+}
+
+constexpr void RavEngine::CameraComponent::SetTargetSize(unsigned int inwidth, unsigned int inheight)
+{
+    width = inwidth;
+    height = inheight;
+    const float aspect = (float)width / height;
+
+    switch (projection) {
+    case Mode::Perspective:
+        break;
+    case Mode::Orthographic:
+        break;
+    }
 }

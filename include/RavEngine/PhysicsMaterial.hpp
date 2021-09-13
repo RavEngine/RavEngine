@@ -36,7 +36,7 @@ namespace RavEngine {
 		PhysicsCombineMode GetFrictionCombineMode() const;
 		PhysicsCombineMode GetRestitutionCombineMode() const;
 
-		inline physx::PxMaterial* const GetPhysXmat() const {
+        constexpr inline physx::PxMaterial* const GetPhysXmat() const {
 			return mat;
 		}
 
