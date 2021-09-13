@@ -119,7 +119,7 @@ public:
 	 @param buffer destination for the data
 	 @param count the size of the buffer, in bytes
 	 */
-	constexpr inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
+    inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
 		for(size_t i = 0; i < count/sizeof(buffer[0]); i++){
 			//is playhead past end of source?
 			if (playhead_pos >= asset->numsamples){
