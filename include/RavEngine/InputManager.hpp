@@ -165,7 +165,7 @@ namespace RavEngine {
 			/**
 			 @return true if this object can be executed (the bound object has not been destroyed), false otherwise
 			 */
-            constexpr inline bool IsValid() const{
+            inline bool IsValid() const{
 				return ! bound_object.expired();
 			}
 			
@@ -208,7 +208,7 @@ namespace RavEngine {
 					func(std::abs(value) >= deadzone ? value : 0);	//pass 0 if in deadzone range
 				}
 			}
-            constexpr inline bool IsValid() const{
+            inline bool IsValid() const{
 				return ! bound_object.expired();
 			}
 			
@@ -292,7 +292,7 @@ namespace RavEngine {
 		 @param name the identifer to use when binding or unbinding actions
 		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
 		 */
-        constexpr inline void AddActionMap(const std::string& name, int Id){
+        inline void AddActionMap(const std::string& name, int Id){
 			CodeToAction[Id].insert(name);
 		}
 		
@@ -302,7 +302,7 @@ namespace RavEngine {
 		 @param Id the button identifier to use. See the SDL key bindings for more information. To bind controllers, see the special bindings at the top of this file.
 		 @param scale the scale factor to apply to all bindings mapped to this axis
 		 */
-        constexpr inline void AddAxisMap(const std::string& name, int Id, float scale = 1){
+        inline void AddAxisMap(const std::string& name, int Id, float scale = 1){
 			CodeToAxis[Id].insert({name,scale});
 		}
 		
@@ -311,7 +311,7 @@ namespace RavEngine {
 		 @param name the identifer to look for
 		 @param Id the button identifier to use. See the SDL key bindings for more information.
 		 */
-        constexpr inline void RemoveActionMap(const std::string& name, int Id){
+        inline void RemoveActionMap(const std::string& name, int Id){
 			CodeToAction[Id].erase(name);
 		}
 		
@@ -320,7 +320,7 @@ namespace RavEngine {
 		 @param name the identifer to look for
 		 @param Id the button identifier to use. See the SDL key bindings for more information.
 		 */
-        constexpr inline void RemoveAxisMap(const std::string& name, int Id, float scale = 1){
+        inline void RemoveAxisMap(const std::string& name, int Id, float scale = 1){
 			CodeToAxis[Id].erase({name, scale});
 		}
 		

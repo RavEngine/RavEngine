@@ -73,7 +73,7 @@ namespace RavEngine {
 	class GUIMaterialInstance : public MaterialInstance<GUIMaterial>{
 	public:
 		GUIMaterialInstance(Ref<GUIMaterial> m) : MaterialInstance(m){}
-		constexpr inline void SetTexture(bgfx::TextureHandle texture){
+		inline void SetTexture(bgfx::TextureHandle texture){
 			mat->texture = texture;
 		}
 		

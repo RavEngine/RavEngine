@@ -13,11 +13,11 @@ class SpinLock{
 #endif
 		;
 public:
-    constexpr inline void lock(){
+    inline void lock(){
 		while(flag.test_and_set());
 	}
 	
-    constexpr inline void unlock(){
+    inline void unlock(){
 		flag.clear();
 	}
 };

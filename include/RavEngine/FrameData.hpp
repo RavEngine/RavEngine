@@ -76,7 +76,7 @@ struct FrameData{
 			float x, y, z;
 		} rotation;
 		
-		constexpr inline void AddInstanceData(float* offset) const{
+		inline void AddInstanceData(float* offset) const{
 			offset[4] = rotation.x;
 			offset[5] = rotation.y;
 			offset[6] = rotation.z;
