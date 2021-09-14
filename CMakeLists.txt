@@ -22,6 +22,16 @@ if (APPLE)
 	add_definitions(-fvisibility=default)	# silence warning when building ARM fat library on Apple platforms
 endif()
 
+# link time optimization check
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT error)
+
+if(IPO_SUPPORTED)
+	message("LTO / IPO is supported")
+else()
+	message("LTO / IPO is not supported")
+endif()
+
 # linux detection
 if(UNIX AND NOT APPLE)
 	set(LINUX TRUE CACHE INTERNAL "")
@@ -469,10 +479,6 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 	if(fragment_src STREQUAL "")
 		set(IS_COMPUTE ON)
 	endif()
-
-	if (NOT CMAKE_BUILD_TYPE MATCHES "Release")
-		set(dbg_flag "--debug" CACHE INTERNAL "")
-	endif()
 	
 	# compile shaders
 	if(NOT IS_COMPUTE)
@@ -483,8 +489,8 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
 			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "GNS_Deps" "${eng_dir}/shaders/ravengine_shader.glsl"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}" ${dbg_flag}
-			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}" ${dbg_flag}
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}" $<$<CONFIG:DEBUG>:--debug>
+			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}" $<$<CONFIG:DEBUG>:--debug>
 			COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
 			VERBATIM
 		)
@@ -496,7 +502,7 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 			OUTPUT "${CS_OUTPUT_NAME}"
 			DEPENDS "${vertex_src}" "GNS_Deps"
 			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}" ${dbg_flag}
+			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}" $<$<CONFIG:DEBUG>:--debug>
 			COMMENT "Compiling Compute Shader Descriptor ${shader_name} => ${CS_OUTPUT_NAME}"
 			VERBATIM
 		)
@@ -766,6 +772,12 @@ foreach(TGT ${all_targets})
 			if (UWP)
 				target_compile_definitions(${TGT} PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE")
 			endif()
+
+			# enable IPO if applicable
+			if(IPO_SUPPORTED AND CMAKE_BUILD_TYPE STREQUAL Release)
+				set_property(TARGET ${TGT} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+			endif()
+
 		endif()
 	endif()
 endforeach()

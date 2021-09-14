@@ -97,11 +97,4 @@ constexpr void RavEngine::CameraComponent::SetTargetSize(unsigned int inwidth, u
     width = inwidth;
     height = inheight;
     const float aspect = (float)width / height;
-
-    switch (projection) {
-    case Mode::Perspective:
-        break;
-    case Mode::Orthographic:
-        break;
-    }
 }
