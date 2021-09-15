@@ -31,14 +31,27 @@ struct FrameData{
 			skinningdata = other.skinningdata;
         }
         entry(){}
-		
-		//used by skinned mesh
-		ozz::vector<ozz::vector<T>> skinningdata;
+        SpinLock mtx, skinningMtx;
+        
+        inline void AddItem(const typename decltype(items)::value_type& item){
+            mtx.lock();
+            items.push_back(item);
+            mtx.unlock();
+        }
+        
+        //used by skinned mesh
+        ozz::vector<ozz::vector<T>> skinningdata;
+        
+        inline void AddSkinningData(const typename decltype(skinningdata)::value_type& item){
+            skinningMtx.lock();
+            skinningdata.push_back(item);
+            skinningMtx.unlock();
+        }
     };
 	
 	//opaque pass data
-	phmap::flat_hash_map<std::tuple<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>> opaques;
-	phmap::flat_hash_map<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, entry<matrix4>> skinnedOpaques;
+	locked_hashmap<std::tuple<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>,SpinLock> opaques;
+    locked_hashmap<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, entry<matrix4>,SpinLock> skinnedOpaques;
 	
 	template<typename T>
 	struct StoredLight{

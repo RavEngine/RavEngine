@@ -363,39 +363,31 @@ void World::FillFramedata(){
 	auto skinnedmatcalc = masterTasks.for_each(std::ref(skinnedgeobegin),std::ref(skinnedgeoend), updateMatrix);
 	
 	//sort into the hashmap
-	auto sort = masterTasks.emplace([&]{
+	auto sort = masterTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const Ref<Component>& e){
 		auto current = App::GetCurrentFramedata();
-		for (auto it = geobegin; it != geoend; ++it) {
-			const auto& e = *it;
-			auto m = static_cast<StaticMesh*>(e.get());
-			auto ptr = e->GetOwner().lock();
-			if (ptr && m->Enabled) {
-				auto& pair = m->getTuple();
-				auto mat = ptr->GetTransform()->GetMatrix();
-				auto& item = current->opaques[pair];
-				item.items.push_back(mat);
-			}
-		}
+        auto m = static_cast<StaticMesh*>(e.get());
+        auto ptr = e->GetOwner().lock();
+        if (ptr && m->Enabled) {
+            auto& pair = m->getTuple();
+            auto mat = ptr->GetTransform()->GetMatrix();
+            auto& item = current->opaques[pair];
+            item.AddItem(mat);
+        }
 	});
-	auto sortskinned = masterTasks.emplace([&]{
-
-		for (auto it = skinnedgeobegin; it != skinnedgeoend; ++it) {
-			const auto& e = *it;
-			auto m = static_cast<SkinnedMeshComponent*>(e.get());
-			auto ptr = e->GetOwner().lock();
-			if (ptr && m->Enabled) {
-				auto& pair = m->getTuple();
-				auto mat = ptr->GetTransform()->GetMatrix();
-				auto current = App::GetCurrentFramedata();
-				auto& item = current->skinnedOpaques[pair];
-				item.items.push_back(mat);
-				// write the pose if there is one
-				if (auto animator = ptr->GetComponent<AnimatorComponent>()) {
-					item.skinningdata.push_back(animator.value()->GetSkinningMats());
-				}
-			}
-		}
-		
+	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const Ref<Component>& e){
+        auto m = static_cast<SkinnedMeshComponent*>(e.get());
+        auto ptr = e->GetOwner().lock();
+        if (ptr && m->Enabled) {
+            auto& pair = m->getTuple();
+            auto mat = ptr->GetTransform()->GetMatrix();
+            auto current = App::GetCurrentFramedata();
+            auto& item = current->skinnedOpaques[pair];
+            item.AddItem(mat);
+            // write the pose if there is one
+            if (auto animator = ptr->GetComponent<AnimatorComponent>()) {
+                item.AddSkinningData(animator.value()->GetSkinningMats());
+            }
+        }
 	});
 	init.precede(sort,sortskinned);
 	matcalc.precede(sort);
@@ -467,7 +459,7 @@ void World::FillFramedata(){
 	//ensure user code completes before framedata population
 	for(auto& g : graphs){
 		if (!g.second.isTimed){
-			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc);
+			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned);
 		}
 	}
 	

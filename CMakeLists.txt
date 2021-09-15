@@ -23,16 +23,8 @@ if (APPLE)
 endif()
 
 # link time optimization check
-include(CheckIPOSupported)
-check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT error)
-
-if(IPO_SUPPORTED)
-	message("LTO / IPO is supported")
-	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE CACHE INTERNAL "")	# only enable on release
-	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE CACHE INTERNAL "")	# only enable on profile
-else()
-	message("LTO / IPO is not supported")
-endif()
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE CACHE INTERNAL "")	# only enable on release
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE CACHE INTERNAL "")	# only enable on profile
 
 # linux detection
 if(UNIX AND NOT APPLE)
