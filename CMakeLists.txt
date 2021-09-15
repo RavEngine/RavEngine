@@ -28,6 +28,8 @@ check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT error)
 
 if(IPO_SUPPORTED)
 	message("LTO / IPO is supported")
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE CACHE INTERNAL "")	# only enable on release
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE CACHE INTERNAL "")	# only enable on profile
 else()
 	message("LTO / IPO is not supported")
 endif()
@@ -772,12 +774,7 @@ foreach(TGT ${all_targets})
 			if (UWP)
 				target_compile_definitions(${TGT} PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE")
 			endif()
-
-			# enable IPO if applicable
-			if(IPO_SUPPORTED AND CMAKE_BUILD_TYPE STREQUAL Release)
-				set_property(TARGET ${TGT} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-			endif()
-
+		
 		endif()
 	endif()
 endforeach()
