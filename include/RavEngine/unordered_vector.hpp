@@ -74,9 +74,10 @@ public:
      */
 	inline void erase(const T& value){
 		auto valuehash = std::hash<T>()(value);
-		
-		auto it = this->begin() + offsets[valuehash];
-		erase(it);
+		if (offsets.contains(valuehash)) {
+			auto it = this->begin() + offsets[valuehash];
+			erase(it);
+		}
 	}
 	
 	inline void insert(const T& value){

@@ -105,6 +105,10 @@ struct FrameData{
 	plf::colony<StoredLight<PointLight>> points;
 	plf::colony<StoredLight<SpotLight>> spots;
 	
+#ifdef _DEBUG
+	unordered_deduplicating_vector<Ref<Component>> debugShapesToDraw;
+#endif
+	unordered_deduplicating_vector<Ref<Component>> guisToCalculate;
 	
 	inline void Clear(){
 		opaques.clear();

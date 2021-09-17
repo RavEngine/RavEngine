@@ -442,7 +442,16 @@ void World::FillFramedata(){
 			}
 		}
 	});
-	
+
+#ifdef _DEBUG
+	// copy debug shapes
+	auto copyDebug = masterTasks.emplace([this]() {
+		App::GetCurrentFramedata()->debugShapesToDraw = GetAllComponentsOfType<IDebugRenderer>();
+	});
+#endif
+	auto copyGUI = masterTasks.emplace([this]() {
+		App::GetCurrentFramedata()->guisToCalculate = GetAllComponentsOfType<GUIComponent>();
+	});
 	
 	auto swap = masterTasks.emplace([this]{
 		App::SwapCurrentFramedata();
@@ -459,7 +468,11 @@ void World::FillFramedata(){
 	//ensure user code completes before framedata population
 	for(auto& g : graphs){
 		if (!g.second.isTimed){
-			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned);
+			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned, copyGUI
+#ifdef _DEBUG
+				, copyDebug
+#endif
+			);
 		}
 	}
 	

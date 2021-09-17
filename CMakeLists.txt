@@ -143,6 +143,10 @@ if (UWP)
 	set(SDL_SENSOR OFF CACHE INTERNAL "")
 	set(WINDOWS_STORE ON CACHE INTERNAL "")
 endif()
+# ensure library is built correctly for static
+set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
+set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
+set(LIBC ON CACHE BOOL "" FORCE)
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
