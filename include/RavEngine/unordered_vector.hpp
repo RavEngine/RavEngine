@@ -46,15 +46,17 @@ public:
 		// remove from the offset cache
 		auto hasher = std::hash<T>();
 		auto hash = hasher(*it);
-		offsets.erase(hash);
-		
-		// pop from back
-		*it = std::move(this->back());
-		this->pop_back();
+		if (offsets.contains(hash)) {	// only erase if the container has the value
+			offsets.erase(hash);
 
-		// update offset cache
-		hash = hasher(*it);
-		offsets[hash] = std::distance(this->begin(),it);
+			// pop from back
+			*it = std::move(this->back());
+
+			// update offset cache
+			hash = hasher(*it);
+			offsets[hash] = std::distance(this->begin(), it);
+			this->pop_back();
+		}	
 	}
     
     /**
