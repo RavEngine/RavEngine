@@ -46,15 +46,17 @@ public:
 		// remove from the offset cache
 		auto hasher = std::hash<T>();
 		auto hash = hasher(*it);
-		offsets.erase(hash);
-		
-		// pop from back
-		*it = std::move(this->back());
-		this->pop_back();
+		if (offsets.contains(hash)) {	// only erase if the container has the value
+			offsets.erase(hash);
 
-		// update offset cache
-		hash = hasher(*it);
-		offsets[hash] = std::distance(this->begin(),it);
+			// pop from back
+			*it = std::move(this->back());
+
+			// update offset cache
+			hash = hasher(*it);
+			offsets[hash] = std::distance(this->begin(), it);
+			this->pop_back();
+		}	
 	}
     
     /**
@@ -72,9 +74,10 @@ public:
      */
 	inline void erase(const T& value){
 		auto valuehash = std::hash<T>()(value);
-		
-		auto it = this->begin() + offsets[valuehash];
-		erase(it);
+		if (offsets.contains(valuehash)) {
+			auto it = this->begin() + offsets[valuehash];
+			erase(it);
+		}
 	}
 	
 	inline void insert(const T& value){

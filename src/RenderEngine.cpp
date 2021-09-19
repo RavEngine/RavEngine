@@ -712,16 +712,18 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	//GUI
 	//TODO: thread using ECS?
-	auto guis = worldOwning->GetAllComponentsOfType<GUIComponent>();
+	auto& guis = fd->guisToCalculate;
 	auto size = GetBufferSize();
-	for(const auto g : guis){
+	for(const auto& g : guis){
 		auto gui = std::static_pointer_cast<GUIComponent>(g);
-		if(gui->Mode == GUIComponent::RenderMode::Screenspace){
-			gui->SetDimensions(size.width, size.height);
-			gui->SetDPIScale(GetDPIScale());
+		if (gui) {
+			if (gui->Mode == GUIComponent::RenderMode::Screenspace) {
+				gui->SetDimensions(size.width, size.height);
+				gui->SetDPIScale(GetDPIScale());
+			}
+			gui->Update();
+			gui->Render();	//bgfx state is set in renderer before actual draw calls
 		}
-		gui->Update();
-		gui->Render();	//bgfx state is set in renderer before actual draw calls
 	}
 	
 	
@@ -733,10 +735,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	comp->Update();
 	comp->Render();
 	
-	auto shapesToDraw = worldOwning->GetAllComponentsOfType<IDebugRenderer>();
+	auto& shapesToDraw = fd->debugShapesToDraw;
 	for(const auto s : shapesToDraw){
 		auto shape = std::static_pointer_cast<IDebugRenderer>(s);
-		shape->DrawDebug(dbgdraw);
+		if (shape) {
+			auto owner = shape->GetOwner().lock();
+			if (owner && owner->GetComponent<Transform>()) {
+				shape->DrawDebug(dbgdraw);
+			}
+		}
 	}
 
 	Im3d::GetContext().draw();
