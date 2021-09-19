@@ -115,5 +115,13 @@ namespace RavEngine {
 		Remove this entity from the world. If there are no more references, it will be destroyed.
 		*/
 		void Destroy();
+        
+        /**
+         Convenience function to create a new anonymous Entity.
+         To make something akin to a Unity Prefab or an Unreal Actor, subclass Entity
+         */
+        static inline Ref<Entity> New(){
+            return std::make_shared<Entity>();
+        }
 	};
 }
