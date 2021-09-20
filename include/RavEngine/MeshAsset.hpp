@@ -8,6 +8,7 @@
 #include "Common3D.hpp"
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
+#include "Manager.hpp"
 
 struct aiMesh;
 
@@ -80,39 +81,15 @@ protected:
 	
 public:
 	
-    struct Manager{
-    private:
-        static phmap::flat_hash_map<std::string,WeakRef<MeshAsset>> meshes;
-        static SpinLock mtx;
+    struct Manager : public GenericWeakManager<std::string,MeshAsset>{
     public:
-        /**
-         Load a mesh from cache. If the mesh is not cached in memory, it will be loaded from disk.
-         @param str the name of the mesh
-         @param extras additional arguments to pass to meshasset constructor
-         @note Using this with the specific model loading constructor is not supported and will produce unexpected results.
-         */
-        template<typename ... A>
-        static inline Ref<MeshAsset> GetMesh(const std::string& str, A ... extras){
-            //TODO: optimize
-            mtx.lock();
-            if (meshes.contains(str)){
-                if (auto ptr = meshes.at(str).lock()){
-                    mtx.unlock();
-                    return ptr;
-                }
-            }
-            Ref<MeshAsset> m = std::make_shared<MeshAsset>(str,extras...);
-            meshes.insert(std::make_pair(str,m));
-            mtx.unlock();
-            return m;
-        }
         
         /**
          Load a mesh from cache. If the mesh is not cached in memory, it will be loaded from disk.
          @param str the name of the mesh
          */
         static Ref<MeshAsset> GetMesh(const std::string& str){
-            return GetMesh(str,MeshAssetOptions());
+            return GenericWeakManager<std::string,MeshAsset>::Get(str,MeshAssetOptions());
         }
     };
     

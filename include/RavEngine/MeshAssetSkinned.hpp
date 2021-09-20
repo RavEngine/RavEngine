@@ -1,11 +1,10 @@
 #pragma once
-
 #include "MeshAsset.hpp"
 #include "SkeletonAsset.hpp"
 #include "Ref.hpp"
-#include <vector>
 #include <etl/vector.h>
 #include <bgfx/bgfx.h>
+#include "Manager.hpp"
 
 namespace RavEngine{
 class MeshAssetSkinned : public MeshAsset{
@@ -29,7 +28,9 @@ public:
 	
 	//disable
 	MeshAssetSkinned(const std::string& name, const decimalType scale = 1.0) = delete;
-
+    
+    // use this to load assets
+    struct Manager : public GenericWeakManager<std::string,MeshAssetSkinned>{};
 	
     constexpr inline const decltype(weightsHandle) GetWeightsHandle() const{
 		return weightsHandle;

@@ -67,7 +67,8 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 					bones.insert(make_pair(string_view(mesh->mBones[i]->mName.C_Str()),mesh->mBones[i]));
 				}
 			}
-			
+            Debug::Assert(bones.size() > 0, "'{}' does not contain bones!", str);
+
 			// we will now bone this mesh
 			
 			//recurse the root node and get all of the bones
