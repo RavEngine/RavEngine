@@ -6,13 +6,39 @@
 //#define STB_IMAGE_IMPLEMENTATION // don't define here, because rlottie & bimg define them
 #include <stb_image.h>
 #include "Debug.hpp"
+#include <lunasvg.h>
+#include <filesystem>
 
 using namespace std;
 using namespace RavEngine;
 
 Ref<RuntimeTexture> TextureManager::defaultTexture;
 
+inline static bool IsRasterImage(const std::string& filepath){
+    // assume that anything not in the whitelist is a raster image
+    if (filesystem::path(filepath).extension() == ".svg"){
+        return false;
+    }
+    return true;
+}
+
+Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
+    Debug::Assert(!IsRasterImage(name), "This texture constructor only allows vector image formats");
+    
+    std::vector<uint8_t> data;
+    App::Resources->FileContentsAt(StrFormat("/textures/{}", name).c_str(),data);
+    
+    // load the SVG
+    auto document = lunasvg::Document::loadFromData(reinterpret_cast<char*>(data.data()), data.size());
+    auto bitmap = document->renderToBitmap(width,height);
+    
+    // give to BGFX
+    CreateTexture(width, height, false, 1, bitmap.data());
+}
+
 Texture::Texture(const std::string& name){
+    Debug::Assert(IsRasterImage(name), "This texture constructor only allows raster image formats");
+    
 	//read from resource
 	
 	std::vector<uint8_t> data;

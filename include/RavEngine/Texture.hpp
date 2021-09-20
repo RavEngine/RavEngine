@@ -12,6 +12,8 @@ public:
 	 @param filename name of the texture
 	 */
 	Texture(const std::string& filename);
+    
+    Texture(const std::string& filename, uint16_t width, uint16_t height);
 	
 	virtual ~Texture(){
 		bgfx::destroy(texture);
