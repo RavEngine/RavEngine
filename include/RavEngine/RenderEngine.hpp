@@ -247,7 +247,9 @@ namespace RavEngine {
 		
 		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
 		
-		Vector4Uniform numRowsUniform, computeOffsetsUniform;
+        Vector4Uniform numRowsUniform, computeOffsetsUniform;
+        std::optional<Vector4Uniform> timeUniform;
+
 		
 		/**
 		 Execute instanced draw calls for a given light type
@@ -299,7 +301,7 @@ namespace RavEngine {
 		static Ref<GUIMaterialInstance> guiMaterial;
 		
 		matrix4 currentMatrix;
-        
+                
         struct scissor{
             uint16_t x, y, width, height;
             bool enabled = false;

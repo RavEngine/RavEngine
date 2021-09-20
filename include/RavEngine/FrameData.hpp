@@ -121,6 +121,8 @@ struct FrameData{
 	
 	//default constructor
 	FrameData(){}
+    
+    double Time;
 	
 };
 }

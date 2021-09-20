@@ -432,6 +432,11 @@ define_property(GLOBAL PROPERTY ALL_SHADERS
 		FULL_DOCS "GLOBAL shader list"
 	)
 set_property(GLOBAL PROPERTY ALL_SHADERS "")
+define_property(GLOBAL PROPERTY ALL_SHADER_SOURCES
+	BRIEF_DOCS "Aggregate shader source list"
+	FULL_DOCS "GLOBAL shader source list"
+)
+set_property(GLOBAL PROPERTY ALL_SHADER_SOURCES "")
 
 define_property(GLOBAL PROPERTY ENG_DIR
 	BRIEF_DOCS "Engine Directory"
@@ -482,6 +487,7 @@ function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
 	if(NOT IS_COMPUTE)
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${VS_OUTPUT_NAME})
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${FS_OUTPUT_NAME})
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADER_SOURCES ${vertex_src} ${fragment_src} ${varying_src})
 		add_custom_command(
 			PRE_BUILD
 			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
@@ -628,7 +634,6 @@ function(pack_resources)
 	copy_helper("${ENG_FONTS}" "fonts")
 	copy_helper("${ARGS_SOUNDS}" "sounds")
 
-
 	# get dependency outputs
 	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)
 
@@ -636,7 +641,12 @@ function(pack_resources)
 	set_property(GLOBAL PROPERTY ALL_SHADERS "")
 
 	# setup shader compiler
-	foreach(SHADER ${ARGS_SHADERS} ${ENG_SHADERS})
+	foreach(SHADER ${ENG_SHADERS})
+		set(shader_target "${ARGS_TARGET}")
+		include("${SHADER}")
+	endforeach()
+	set_property(GLOBAL PROPERTY ALL_SHADER_SOURCES "")
+	foreach(SHADER ${ARGS_SHADERS})
 		set(shader_target "${ARGS_TARGET}")
 		include("${SHADER}")
 	endforeach()
@@ -648,6 +658,11 @@ function(pack_resources)
 	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
 	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
 	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine")
+
+	# add files to IDE sidebar for convenience
+	get_property(all_shaders_sources GLOBAL PROPERTY ALL_SHADER_SOURCES)
+	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shaders_sources})
+	set_source_files_properties(${ARGS_UIS} ${all_shaders_sources} PROPERTIES FOLDER "Resources")
 
 	# on UWP, need an additional file w/ compile options for SDLmain to work
 	if(UWP)

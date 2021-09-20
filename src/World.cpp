@@ -451,6 +451,8 @@ void World::FillFramedata(){
 #endif
 	auto copyGUI = masterTasks.emplace([this]() {
 		App::GetCurrentFramedata()->guisToCalculate = GetAllComponentsOfType<GUIComponent>();
+        // also do the time here
+        App::GetCurrentFramedata()->Time = App::GetCurrentTime();
 	});
 	
 	auto swap = masterTasks.emplace([this]{

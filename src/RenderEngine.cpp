@@ -496,6 +496,7 @@ RenderEngine::RenderEngine() {
 
 	numRowsUniform = Vector4Uniform("NumObjects");
 	computeOffsetsUniform = Vector4Uniform("ComputeOffsets");
+    timeUniform.emplace("u_time");
 	//create samplers
 	constexpr char const* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth"};
 	for (int i = 0; i < BX_COUNTOF(buffersamplers); i++) {
@@ -608,7 +609,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
 				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 			}
-			
+            
+            // update time
+            float timeVals[] = {static_cast<float>(fd->Time),0,0,0};
+            timeUniform.value().SetValues(&timeVals, 1);
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 
 		}

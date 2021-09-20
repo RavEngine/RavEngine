@@ -4,6 +4,7 @@
 
 BUFFER_RO(rvs_pose, vec4, 11);
 uniform vec4 NumObjects;			// x = num objects, y = num vertices, z = num bones active, w = offset into transient buffer
+uniform vec4 u_time;
 
 struct PBR{
 	vec3 color;
