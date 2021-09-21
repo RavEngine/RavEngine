@@ -312,5 +312,6 @@ namespace RavEngine {
 		static Ref<Entity> debuggerContext;
 #endif
 	
+		static const std::string_view BackendStringName(bgfx::RendererType::Enum backend);
     };
 }

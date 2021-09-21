@@ -251,45 +251,25 @@ void DebugRender(const Im3d::DrawList& drawList){
 void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 	bgfx::Init settings;
 
-#ifdef __linux__
-    {
-        constexpr auto maxRenderers = 6;
-        bgfx::RendererType::Enum supportedRenderers[maxRenderers];
-        auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
-
-        if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Vulkan)) {
-            settings.type = bgfx::RendererType::Vulkan;
-        }
-        else {
-            Debug::Fatal("Vulkan API not found");
-        }
-    }
-#elif defined _WIN32
-	{
+	auto SelectRenderer = [&](bgfx::RendererType::Enum desired) {
 		constexpr auto maxRenderers = 6;
 		bgfx::RendererType::Enum supportedRenderers[maxRenderers];
-		auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
+		auto count = bgfx::getSupportedRenderers(maxRenderers, supportedRenderers);
 
-		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Direct3D12)) {
-			settings.type = bgfx::RendererType::Direct3D12;
+		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, desired) != std::end(supportedRenderers)) {
+			settings.type = desired;
 		}
 		else {
-			Debug::Fatal("DirectX 12 API not found");
+			Debug::Fatal("{} API not found",BackendStringName(desired));
 		}
-	}
-#elif defined __APPLE__
-    {
-        constexpr auto maxRenderers = 6;
-        bgfx::RendererType::Enum supportedRenderers[maxRenderers];
-        auto count = bgfx::getSupportedRenderers(maxRenderers,supportedRenderers);
+	};
 
-        if (std::find(std::begin(supportedRenderers), supportedRenderers + count, bgfx::RendererType::Metal)) {
-            settings.type = bgfx::RendererType::Metal;
-        }
-        else {
-            Debug::Fatal("Metal 12 API not found");
-        }
-    }
+#ifdef __linux__
+	SelectRenderer(bgfx::RendererType::Vulkan);
+#elif defined _WIN32
+	SelectRenderer(bgfx::RendererType::Direct3D12);
+#elif defined __APPLE__
+	SelectRenderer(bgfx::RendererType::Metal);
 #endif
 
 	settings.callback =  &global_msghandler;
@@ -785,9 +765,13 @@ void RenderEngine::SyncVideoSettings(){
 */
 const string_view RenderEngine::GetCurrentBackendName(){
 	
-	switch (bgfx::getRendererType()) {
+	return BackendStringName(bgfx::getRendererType());
+}
+
+const string_view RenderEngine::BackendStringName(bgfx::RendererType::Enum backend) {
+	switch (backend) {
 		case bgfx::RendererType::Noop:			return "Disabled";
-		case bgfx::RendererType::Direct3D9:		return "DirectX9"; 
+		case bgfx::RendererType::Direct3D9:		return "DirectX9";
 		case bgfx::RendererType::Direct3D11:	return "DirectX11";
 		case bgfx::RendererType::Direct3D12:	return "DirectX12";
 		case bgfx::RendererType::Gnm:			return "GNM";
