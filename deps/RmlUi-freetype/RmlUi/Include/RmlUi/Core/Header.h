@@ -47,7 +47,7 @@
 			// in the DLL if it can not be inlined.
 			#define RMLUICORE_API_INLINE __declspec(dllexport) inline
 		#else
-			#define RMLUICORE_API __declspec(dllimport)
+			#define RMLUICORE_API
 			// Note: Changing a RMLUICORE_API_INLINE method
 			// breaks ABI compatibility!!
 

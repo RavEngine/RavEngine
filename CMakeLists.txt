@@ -661,8 +661,8 @@ function(pack_resources)
 
 	# add files to IDE sidebar for convenience
 	get_property(all_shaders_sources GLOBAL PROPERTY ALL_SHADER_SOURCES)
-	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shaders_sources})
-	set_source_files_properties(${ARGS_UIS} ${all_shaders_sources} PROPERTIES FOLDER "Resources")
+	#target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shaders_sources})
+	#set_source_files_properties(${ARGS_UIS} ${all_shaders_sources} PROPERTIES FOLDER "Resources")
 
 	# on UWP, need an additional file w/ compile options for SDLmain to work
 	if(UWP)
