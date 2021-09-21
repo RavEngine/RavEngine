@@ -1,3 +1,6 @@
+# This script deletes items in subprojects that are not used by RavEngine, such as tests and doc files
+# Run this script after incorporating an update for a subproject
+
 # PhysX
 rm -r physx/physx/documentation/ physx/physx/samples/ physx/externals/cg-linux/lib physx/externals/cg-linux/bin physx/externals/glew-linux/lib physx/externals/glew/lib physx/externals/opengl/lib64 physx/kaplademo physx/physx/bin physx/externals/clang-physxmetadata physx/externals/opengl-linux physx/externals/glew-linux physx/externals/vswhere
 
@@ -71,3 +74,6 @@ rm -r r8brain-cmake/r8brain-free-src/DLL r8brain-cmake/r8brain-free-src/bench
 
 # rlottie
 rm -r RmlUi-freetype/rlottie/example RmlUi-freetype/rlottie/.gifs
+
+# harfbuzz
+rm -r RmlUi-freetype/harfbuzz/test RmlUi-freetype/harfbuzz/perf
