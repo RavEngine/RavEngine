@@ -8,7 +8,7 @@ rm -r physx/physx/documentation/ physx/physx/samples/ physx/externals/cg-linux/l
 rm -r bgfx.cmake/bgfx/examples bgfx.cmake/bx/tools
 
 # SDL
-rm -r SDL2/test
+rm -r SDL2/test SDL2/Xcode SDL2/Xcode-iOS
 
 # assimp
 rm -r assimp/samples assimp/test assimp/doc assimp/tools assimp/scripts
@@ -41,7 +41,7 @@ rm -r GameNetworkingSockets/GameNetworkingSockets/tests GameNetworkingSockets/pr
 rm -r GameNetworkingSockets/libsodium-cmake/libsodium/test
 
 # ozz-animation
-rm -r ozz-animation/media ozz-animation/test ozz-animation/samples ozz-animation/howtos
+rm -r ozz-animation/media ozz-animation/test ozz-animation/samples ozz-animation/howtos ozz-animation/extern/glfw ozz-animation/extern/gtest
 
 # parallel-hashmap
 rm -r parallel-hashmap/benchmark parallel-hashmap/cmake parallel-hashmap/css parallel-hashmap/examples parallel-hashmap/html parallel-hashmap/tests parallel-hashmap/index.html
@@ -77,3 +77,6 @@ rm -r RmlUi-freetype/rlottie/example RmlUi-freetype/rlottie/.gifs
 
 # harfbuzz
 rm -r RmlUi-freetype/harfbuzz/test RmlUi-freetype/harfbuzz/perf
+
+# etl
+rm -r etl/examples etl/images etl/support etl/temp etl/test etl/uml
