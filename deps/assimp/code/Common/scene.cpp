@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2019, assimp team
+Copyright (c) 2006-2021, assimp team
 
 
 
@@ -43,24 +43,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/scene.h>
 
 aiNode::aiNode()
-: mName("")
-, mParent(NULL)
+: mName()
+, mParent(nullptr)
 , mNumChildren(0)
-, mChildren(NULL)
+, mChildren(nullptr)
 , mNumMeshes(0)
-, mMeshes(NULL)
-, mMetaData(NULL) {
+, mMeshes(nullptr)
+, mMetaData(nullptr) {
     // empty
 }
 
 aiNode::aiNode(const std::string& name)
 : mName(name)
-, mParent(NULL)
+, mParent(nullptr)
 , mNumChildren(0)
-, mChildren(NULL)
+, mChildren(nullptr)
 , mNumMeshes(0)
-, mMeshes(NULL)
-, mMetaData(NULL) {
+, mMeshes(nullptr)
+, mMetaData(nullptr) {
     // empty
 }
 
@@ -68,7 +68,7 @@ aiNode::aiNode(const std::string& name)
 aiNode::~aiNode() {
     // delete all children recursively
     // to make sure we won't crash if the data is invalid ...
-    if (mChildren && mNumChildren)
+    if (mNumChildren && mChildren)
     {
         for (unsigned int a = 0; a < mNumChildren; a++)
             delete mChildren[a];

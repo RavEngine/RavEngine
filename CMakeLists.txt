@@ -199,6 +199,9 @@ add_subdirectory("${DEPS_DIR}/bgfx.cmake" EXCLUDE_FROM_ALL)
 # assimp
 SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
 SET(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "")
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE INTERNAL "")
+set(ASSIMP_INSTALL OFF CACHEN INTERNAL "")
+set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/assimp" EXCLUDE_FROM_ALL)
 
 # recast
@@ -549,7 +552,7 @@ macro(enable_unity targets)
 	endforeach()
 endmacro()
 set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;bx;Detour;ozz_animation;ozz_animation_offline;\
-ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;IrrXML;json;libopus;DebugUtils;DetourCrowd;DetourTileCache")
+ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;")
 
 if ((CMAKE_SYSTEM_NAME STREQUAL "Windows") OR LINUX)
 	set(platform_unity "bgfx")	 # bgfx supports Unity build in Win32 or Linux, but not Mac or UWP
@@ -560,9 +563,9 @@ enable_unity("${all_unity};${platform_unity}")
 # project organization
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
-im3d;IrrXML;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
+im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\

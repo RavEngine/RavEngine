@@ -11,7 +11,7 @@ rm -r bgfx.cmake/bgfx/examples bgfx.cmake/bx/tools
 rm -r SDL2/test
 
 # assimp
-rm -r assimp/samples
+rm -r assimp/samples assimp/test assimp/doc assimp/tools assimp/scripts
 
 # recast
 rm -r recastnavigation/RecastDemo recastnavigation/Tests

@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2019, assimp team
+Copyright (c) 2006-2021, assimp team
 
 
 All rights reserved.
@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ----------------------------------------------------------------------
 */
 
-/** 
+/**
  *  @file Implementation of the SplitLargeMeshes postprocessing step
  */
 
@@ -353,7 +353,7 @@ void SplitLargeMeshesProcess_Vertex::Execute( aiScene* pScene) {
 
     std::vector<std::pair<aiMesh*, unsigned int> > avList;
 
-    //Check for point cloud first, 
+    //Check for point cloud first,
     //Do not process point cloud, splitMesh works only with faces data
     for (unsigned int a = 0; a < pScene->mNumMeshes; a++) {
         if ( pScene->mMeshes[a]->mPrimitiveTypes == aiPrimitiveType_POINT ) {
@@ -575,8 +575,9 @@ void SplitLargeMeshesProcess_Vertex::SplitMesh(
                 for (unsigned int k = 0; k < pMesh->mNumBones;++k) {
                     // check whether the bone is existing
                     BoneWeightList* pcWeightList;
-                    if ((pcWeightList = (BoneWeightList*)pcMesh->mBones[k])) {
-                        aiBone* pcOldBone = pMesh->mBones[k];
+                    pcWeightList = (BoneWeightList *)pcMesh->mBones[k];
+                    if (nullptr != pcWeightList) {
+                        aiBone *pcOldBone = pMesh->mBones[k];
                         aiBone* pcOut( nullptr );
                         *ppCurrent++ = pcOut = new aiBone();
                         pcOut->mName = aiString(pcOldBone->mName);

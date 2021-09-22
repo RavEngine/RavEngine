@@ -118,6 +118,15 @@ struct FrameData{
 		points.clear();
 		spots.clear();
 	}
+    
+    // call on app quit
+    void Reset(){
+        Clear();
+#ifdef _DEBUG
+        debugShapesToDraw.clear();
+#endif
+        guisToCalculate.clear();
+    }
 	
 	//default constructor
 	FrameData(){}
