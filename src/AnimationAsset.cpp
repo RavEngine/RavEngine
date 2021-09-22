@@ -17,9 +17,9 @@ using namespace std;
 
 bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
 	
-	float asset_duration_ticks = (anim_asset->duration_seconds * 30);
+	float asset_duration_ticks = (anim_asset->duration_seconds * anim_asset->tps);
 		
-	float seg_len_sec = (end_ticks - start_ticks)/30;
+	float seg_len_sec = (end_ticks - start_ticks)/anim_asset->tps;
 	
 	float start_unitized = start_ticks / asset_duration_ticks;
 	float end_unitized = end_ticks / asset_duration_ticks;
@@ -85,10 +85,11 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			
 			//assume the first animation is the animation to use
 			auto anim = scene->mAnimations[0];
-			raw_animation.duration = anim->mDuration * anim->mTicksPerSecond;
+            tps = 1000; //anim->mTicksPerSecond; TODO: fix
+			raw_animation.duration = anim->mDuration;   // ticks! keys from assimp are also in ticks
 			
-			duration_seconds = anim->mDuration;
-			tps = anim->mTicksPerSecond;
+			duration_seconds = anim->mDuration / tps;
+            tps = 30;   // TODO: this should not be here
 			
 			auto create_keyframe = [&](const aiNodeAnim* channel, ozz::animation::offline::RawAnimation::JointTrack& track){
 				
@@ -140,7 +141,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 				create_keyframe(channel, raw_animation.tracks[bone_index]);
 				
 			}
-			
+            			
 			Debug::Assert(num_loaded > 0, "No animations were loaded for this skeleton. This can be caused by naming differences if the animation is a different file type than the skeleton.");
 			
 			//free afterward
@@ -169,7 +170,7 @@ void IAnimGraphable::SampleDirect(float t, const ozz::animation::Animation *anim
 }
 
 bool AnimationAsset::Sample(float time, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
-	float t = (time - start) / (duration_seconds * tps) * speed;
+	float t = (time - start) / (duration_seconds) * speed;
 	bool ret = false;
 	if (looping){
 		t = std::fmod(t,1.f);
