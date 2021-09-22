@@ -210,7 +210,7 @@ void GetImporterInstanceList(std::vector<BaseImporter *> &out) {
     // Some importers may be unimplemented or otherwise unsuitable for general use
     // in their current state. Devs can set ASSIMP_ENABLE_DEV_IMPORTERS in their
     // local environment to enable them, otherwise they're left out of the registry.
-    const char *envStr = std::getenv("ASSIMP_ENABLE_DEV_IMPORTERS");
+    const char *envStr = getenv("ASSIMP_ENABLE_DEV_IMPORTERS");
     bool devImportersEnabled = envStr && strcmp(envStr, "0");
 
     // Ensure no unused var warnings if all uses are #ifndef'd away below:

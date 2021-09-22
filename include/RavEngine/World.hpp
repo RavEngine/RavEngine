@@ -56,7 +56,7 @@ namespace RavEngine {
 		void RebuildTaskGraph();
 		
 		std::chrono::time_point<clock_t> time_now = clock_t::now();
-		float currentFPSScale = 0.01;
+		float currentFPSScale = 0.01f;
 		
 		//Entity list
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;

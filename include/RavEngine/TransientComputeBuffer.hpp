@@ -6,9 +6,9 @@ namespace RavEngine {
 	class TransientComputeBufferReadOnly {
 	protected:
 		bgfx::DynamicVertexBufferHandle handle = BGFX_INVALID_HANDLE;
-		size_t index = 0;
+		uint32_t index = 0;
 
-		TransientComputeBufferReadOnly(size_t size, int flags) {
+		TransientComputeBufferReadOnly(uint32_t size, int flags) {
 			bgfx::VertexLayout vl;
 			vl.begin().add(bgfx::Attrib::Position, 1, bgfx::AttribType::Float).end();
 
@@ -20,7 +20,7 @@ namespace RavEngine {
 
 		TransientComputeBufferReadOnly() {}
 
-		TransientComputeBufferReadOnly(size_t size) : TransientComputeBufferReadOnly(size, BGFX_BUFFER_COMPUTE_READ_WRITE) {}
+		TransientComputeBufferReadOnly(uint32_t size) : TransientComputeBufferReadOnly(size, BGFX_BUFFER_COMPUTE_READ_WRITE) {}
 		
 		/**
 		* Reset the buffer. This does not clear data.
@@ -35,7 +35,7 @@ namespace RavEngine {
 		* @param layout object describing each entry in the buffer
 		* @return the index representing the beginning of the data added to the buffer
 		*/
-        inline decltype(index) AddEmptySpace(size_t count, const bgfx::VertexLayout& layout) {
+        inline decltype(index) AddEmptySpace(uint32_t count, const bgfx::VertexLayout& layout) {
 			auto startpos = index;
 			index += count * layout.getStride();
 			return startpos;
@@ -59,7 +59,7 @@ namespace RavEngine {
 		* Construct a compute buffer
 		* @param size the size of the buffer, in multiples of sizeof(float)
 		*/
-		TransientComputeBuffer(size_t size) : TransientComputeBufferReadOnly(size, BGFX_BUFFER_COMPUTE_READ) {}
+		TransientComputeBuffer(uint32_t size) : TransientComputeBufferReadOnly(size, BGFX_BUFFER_COMPUTE_READ) {}
 
 		/**
 		* Add data to the buffer.
@@ -68,9 +68,10 @@ namespace RavEngine {
 		* @param layout object describing each entry in the buffer
 		* @return the index representing the beginning of the data added to the buffer
 		*/
-        inline decltype(index) AddData(const uint8_t* data, size_t count, const bgfx::VertexLayout& layout) {
+        inline decltype(index) AddData(const uint8_t* data, uint32_t count, const bgfx::VertexLayout& layout) {
 			auto startpos = index;
-			bgfx::update(handle, index, bgfx::copy(data, count * layout.getStride()));
+			assert(count * layout.getStride() < std::numeric_limits<uint32_t>::max());
+			bgfx::update(handle, index, bgfx::copy(data, static_cast<float>(count * layout.getStride())));
 			index += (count * layout.getStride());
 			return startpos;
 		}

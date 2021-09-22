@@ -47,7 +47,7 @@ struct ColorRGBA{
 template<typename T, typename U>
 constexpr static inline void copyMat4(const T* input, U* output, int size = 16) {
 	for (int i = 0; i < size; i++) {
-		output[i] = input[i];
+		output[i] = static_cast<U>(input[i]);
 	}
 }
 

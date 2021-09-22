@@ -32,7 +32,7 @@ public:
 	 @param n_samples the number of samples in the buffer. This number is not sanity-checked.
 	 @param nchannels the number of channels in the buffer. This number is not sanity-checked.
 	 */
-	AudioAsset(const float* data, size_t n_samples, size_t nchannels) : numsamples(n_samples), nchannels(nchannels), audiodata(data){}
+	AudioAsset(const float* data, size_t n_samples, decltype(nchannels) nchannels) : numsamples(n_samples), nchannels(nchannels), audiodata(data){}
 	
 	~AudioAsset();
 	

@@ -11,6 +11,14 @@
 using namespace physx;
 using namespace RavEngine;
 
+static inline PxVec3 convert(const vector3& v) {
+	return PxVec3(v.x, v.y, v.z);
+}
+
+static inline PxQuat convertQuat(const quaternion& q) {
+	return PxQuat(q.x, q.y, q.z, q.w);
+}
+
 /// Dynamic Body ========================================
 
 RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
@@ -49,7 +57,7 @@ vector3 PhysicsBodyComponent::getPos() const {
 }
 
 void PhysicsBodyComponent::setPos(const vector3& pos) {
-	rigidActor->setGlobalPose(PxTransform(PxVec3(pos.x, pos.y, pos.z),rigidActor->getGlobalPose().q));
+	rigidActor->setGlobalPose(PxTransform(convert(pos),rigidActor->getGlobalPose().q));
 }
 
 quaternion PhysicsBodyComponent::getRot() const {
@@ -58,7 +66,7 @@ quaternion PhysicsBodyComponent::getRot() const {
 }
 
 void PhysicsBodyComponent::setRot(const quaternion& quat) {
-	rigidActor->setGlobalPose(PxTransform(rigidActor->getGlobalPose().p,PxQuat(quat.x,quat.y,quat.z,quat.w)));
+	rigidActor->setGlobalPose(PxTransform(rigidActor->getGlobalPose().p,convertQuat(quat)));
 }
 
 /**

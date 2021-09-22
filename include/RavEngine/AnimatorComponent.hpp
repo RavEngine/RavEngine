@@ -134,9 +134,9 @@ public:
 		//transitions out of this state, keyed by ID
 		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
 		
-		template<typename T>
-        constexpr inline State& SetTransition(decltype(ID) id, T interpolation, float duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
-			auto tween = tweeny::from(0.0f).to(1.0f).during(duration * App::evalNormal).via(interpolation);
+		template<typename T, typename decimal>
+        constexpr inline State& SetTransition(decltype(ID) id, T interpolation, decimal duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
+			auto tween = tweeny::from(0.0f).to(1.0f).during(static_cast<float>(duration * App::evalNormal)).via(interpolation);
 			exitTransitions[id].transition = tween;
 			exitTransitions[id].type = mode;
 			return *this;

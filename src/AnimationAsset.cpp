@@ -17,7 +17,7 @@ using namespace std;
 
 bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
 	
-	float asset_duration_ticks = (anim_asset->duration_seconds * anim_asset->tps);
+	float asset_duration_ticks = (anim_asset->duration_seconds * 30);
 		
 	float seg_len_sec = (end_ticks - start_ticks)/30;
 	

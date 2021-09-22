@@ -11,7 +11,7 @@
 namespace RavEngine {
 
 	class World;
-	class NetworkIdentity;
+	struct NetworkIdentity;
 	class Entity;
 
 	class NetworkManager{

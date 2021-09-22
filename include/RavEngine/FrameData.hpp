@@ -14,7 +14,7 @@
 namespace RavEngine {
 
 class MaterialInstanceBase;
-class DirectionalLight;
+struct DirectionalLight;
 
 struct FrameData{
 	//global matrices
@@ -131,7 +131,7 @@ struct FrameData{
 	//default constructor
 	FrameData(){}
     
-    double Time;
+    double Time = 0;
 	
 };
 }

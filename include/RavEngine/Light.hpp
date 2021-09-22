@@ -254,10 +254,10 @@ public:
 	static void Init();
 	static void Teardown();
 	
-	friend class PointLight;
-	friend class DirectionalLight;
-	friend class AmbientLight;
-	friend class SpotLight;
+	friend struct PointLight;
+	friend struct DirectionalLight;
+	friend struct AmbientLight;
+	friend struct SpotLight;
 	
 private:
 	static Ref<MeshAsset> pointLightMesh;

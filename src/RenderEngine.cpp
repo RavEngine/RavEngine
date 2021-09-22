@@ -223,7 +223,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 	bgfx::VertexBufferHandle vbuf;
 	{
 		maybestackarray(converted, VertexColor, verts)
-		for (int x = 0; x < verts; x++) {
+		for (uint32_t x = 0; x < verts; x++) {
 			Im3d::VertexData d = vertexdata[x];
 			converted[x] = { d.m_positionSize.x,d.m_positionSize.y,d.m_positionSize.z,d.m_color };
 		}
@@ -233,7 +233,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 	bgfx::IndexBufferHandle ibuf;
 	{
 		maybestackarray(indices, uint16_t, verts)
-		for (int i = 0; i < verts; i++) {
+		for (uint32_t i = 0; i < verts; i++) {
 			indices[i] = i;
 		}
 		ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], verts * sizeof(indices[0])));
@@ -646,7 +646,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 						//populate stack array values
 						auto ptr = glm::value_ptr(array[i]);
 						for(int offset = 0; offset < 16; offset++){
-							pose_float[index][offset] = ptr[offset];
+							pose_float[index][offset] = static_cast<float>(ptr[offset]);
 						}
 						index++;
 					}

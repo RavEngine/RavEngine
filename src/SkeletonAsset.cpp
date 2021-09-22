@@ -183,7 +183,8 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		bindposes[i] = glm::inverse(glm::make_mat4(matrix));
 	}
 	
-	auto bindposedata = bgfx::copy(bindposes.data(), bindposes.size() * sizeof(bindposes[0]));
+	assert(bindposes.size() * sizeof(bindposes[0]) < numeric_limits<uint32_t>::max());
+	auto bindposedata = bgfx::copy(bindposes.data(), static_cast<uint32_t>(bindposes.size() * sizeof(bindposes[0])));
 	
 	bindpose = bgfx::createVertexBuffer(bindposedata, layout);
 	
