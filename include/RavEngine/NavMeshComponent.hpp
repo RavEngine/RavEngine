@@ -2,15 +2,16 @@
 #include "Component.hpp"
 #include "MeshAsset.hpp"
 #include <DetourNavMeshQuery.h>
+#include "Queryable.hpp"
 
 namespace RavEngine{
-    class NavMeshComponent : public Component{
+    class NavMeshComponent : public Component, public Queryable<NavMeshComponent>{
     private:
         class dtNavMesh* navMesh = nullptr;
         dtNavMeshQuery* navMeshQuery = nullptr;
         unsigned char* navData = nullptr;
     public:
-        struct NavMeshOptions{
+        struct Options{
             float cellSize = 0.3;
             float cellHeight = 0.2;
             float maxEdgeLen = 12;
@@ -40,7 +41,7 @@ namespace RavEngine{
         /**
          Construct a mesh asset 
          */
-        NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& opt);
+        NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt);
                 
         virtual ~NavMeshComponent();
     };

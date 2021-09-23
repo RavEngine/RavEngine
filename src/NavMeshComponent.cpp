@@ -7,7 +7,7 @@
 using namespace std;
 using namespace RavEngine;
 
-NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& opt){
+NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt){
     Debug::Assert(mesh->hasSystemRAMCopy(),"MeshAsset must be created with keepInSystemRAM = true");
     
     auto& rawData = mesh->GetSystemCopy();
@@ -48,7 +48,7 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
     
     // step 2: rasterize input polygon
     auto solid = rcAllocHeightfield();
-    if (solid){
+    if (!solid){
         Debug::Fatal("Build nagivation failed: out of memory");
     }
     if (!rcCreateHeightfield(&ctx, *solid, cfg.width, cfg.height, cfg.bmin, cfg.bmax, cfg.cs, cfg.ch)){
@@ -58,7 +58,7 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
     // allocate array to hold triangle area types ( = number of triangles)
     unsigned char* triareas = new unsigned char[rawData.indices.size()/3];
     std::memset(triareas, 0, (rawData.indices.size()/3) * sizeof(triareas[0]));
-    rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, vertsOnly.data()->position, nverts, reinterpret_cast<const int*>(rawData.indices.data()), rawData.indices.size(), triareas);
+    rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, vertsOnly.data()->position, nverts, reinterpret_cast<const int*>(rawData.indices.data()), rawData.indices.size() / 3, triareas);
     if(!rcRasterizeTriangles(&ctx, vertsOnly.data()->position, triareas, vertsOnly.size(), *solid)){
         Debug::Fatal("Could not rasterize triangles for navigation");
     }
@@ -87,7 +87,7 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
     }
     
     switch(opt.partitionMethod){
-        case NavMeshOptions::Watershed:{
+        case Options::Watershed:{
             if (!rcBuildDistanceField(&ctx, *chf)){
                 Debug::Fatal("Distance field generation failed");
             }
@@ -96,13 +96,13 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
             }
         }
         break;
-        case NavMeshOptions::Monotone:{
+        case Options::Monotone:{
             if (!rcBuildRegionsMonotone(&ctx,*chf,0,cfg.minRegionArea,cfg.mergeRegionArea)){
                 Debug::Fatal("Monotone region generation failed");
             }
         }
         break;
-        case NavMeshOptions::Layer:{
+        case Options::Layer:{
             if (!rcBuildLayerRegions(&ctx,*chf,0,cfg.minRegionArea)){
                 Debug::Fatal("Layer region generation failed");
             }
@@ -196,6 +196,10 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const NavMeshOptions& op
         {
             dtFree(navData);
             Debug::Fatal("Could not init Detour navmesh");
+        }
+        navMeshQuery = dtAllocNavMeshQuery();
+        if (!navMeshQuery){
+            Debug::Fatal("Could not allocate navmesh query");
         }
         
         status = navMeshQuery->init(navMesh, 2048);

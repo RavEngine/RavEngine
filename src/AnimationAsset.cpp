@@ -85,11 +85,11 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			
 			//assume the first animation is the animation to use
 			auto anim = scene->mAnimations[0];
-            tps = 1000; //anim->mTicksPerSecond; TODO: fix
+            tps = 1000; //anim->mTicksPerSecond; TODO: assimp does not report this correctly
 			raw_animation.duration = anim->mDuration;   // ticks! keys from assimp are also in ticks
 			
 			duration_seconds = anim->mDuration / tps;
-            tps = 30;   // TODO: this should not be here
+            tps = 30;   // TODO: when assimp's bug is fixed, remove this
 			
 			auto create_keyframe = [&](const aiNodeAnim* channel, ozz::animation::offline::RawAnimation::JointTrack& track){
 				
