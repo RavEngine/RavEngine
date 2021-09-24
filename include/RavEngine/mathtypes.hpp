@@ -3,12 +3,9 @@
 #include "glm/mat4x4.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/quaternion.hpp"
-#include <array>
+#include "DataStructures.hpp"
 #include "CTTI.hpp"
 
-namespace RavEngine {
-	constexpr double PI = 3.1415926535897932385;
-}
 //needed on windows
 #ifndef M_PI
 #define M_PI RavEngine::PI
@@ -56,9 +53,12 @@ constexpr vector3 vector3_forward = vector3(0, 0, -1);
 
 #define print_vec3(vec) "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")"
 
-typedef std::array<decimalType, 3> RawVec3;
-typedef std::array<decimalType, 4> RawQuat;
+namespace RavEngine {
+    constexpr decimalType PI = 3.1415926535897932385;
 
+    typedef Array<decimalType, 3> RawVec3;
+    typedef Array<decimalType, 4> RawQuat;
+}
 
 namespace RavEngine {
 	// manual specializations for the networking and CTTI systems
@@ -73,19 +73,19 @@ namespace RavEngine {
 	}
 }
 
-static inline constexpr RawVec3 Vec3toRaw(const vector3& vec) {
+static inline constexpr RavEngine::RawVec3 Vec3toRaw(const vector3& vec) {
 	return { vec.x, vec.y, vec.z };
 }
 
-static inline constexpr vector3 RawToVec3(const RawVec3& raw) {
+static inline constexpr vector3 RawToVec3(const RavEngine::RawVec3& raw) {
 	return vector3(raw[0], raw[1], raw[2]);
 }
 
-static inline constexpr RawQuat QuatToRaw(const quaternion& quat) {
+static inline constexpr RavEngine::RawQuat QuatToRaw(const quaternion& quat) {
 	return { quat.w,quat.x,quat.y,quat.z };
 }
 
-static inline constexpr quaternion RawToQuat(const RawQuat& raw) {
+static inline constexpr quaternion RawToQuat(const RavEngine::RawQuat& raw) {
 	return quaternion(raw[0], raw[1], raw[2], raw[3]);
 }
 

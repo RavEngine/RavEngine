@@ -79,7 +79,7 @@ struct SystemEntry{
 	{
 		// this wrapper enables expanding into the function
 		template<typename System, size_t n, auto ... Is>
-		inline constexpr void TickWrapper(float fpsScale, Ref<System> system, const std::array<Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
+		inline constexpr void TickWrapper(float fpsScale, Ref<System> system, const Array<Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
 			system->Tick(fpsScale, std::static_pointer_cast<typename ArgType<Func, Is + 2>::element_type>(*query_results[Is]->begin())...);
 		}
 
@@ -90,7 +90,7 @@ struct SystemEntry{
 			if (e) {
 				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
 				static_assert(n_args > 0, "System must take at least one component parameter");
-				std::array<Entity::entry_type*, n_args> query_results;
+                Array<Entity::entry_type*, n_args> query_results;
 				
 				constexpr auto indseq = std::make_integer_sequence<int, n_args>();
 				boost::hana::for_each(indseq, [&](const auto i){

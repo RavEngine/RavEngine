@@ -637,7 +637,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				for(const auto& array : row.second.skinningdata){
 					totalsize += array.size();
 				}
-				typedef std::array<float,16> arrtype;
+				typedef Array<float,16> arrtype;
 				stackarray(pose_float, arrtype, totalsize);
 				size_t index = 0;
 				for(const auto& array : row.second.skinningdata){

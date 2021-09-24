@@ -46,6 +46,9 @@ namespace RavEngine{
     template<typename T>
     using Colony = plf::colony<T>;
 
+    template<typename T, size_t N>
+    using Array = std::array<T,N>;
+
 // The stackarray creates a stack-resident array using a runtime-known size.
 // There are no safety checks for overflowing the stack, and overflowing results in undefined behavior.
 // Only use for small sizes. For larger sizes, use the maybestackarray instead

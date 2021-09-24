@@ -37,7 +37,7 @@ private:
 	// [3] (+)ive y-axis wall (top)
 	// [4] (-)ive z-axis wall (front)
 	// [5] (+)ive z-axis wall (back)
-	std::array<RoomMat, 6> wallMaterials{
+    Array<RoomMat, 6> wallMaterials{
 		RoomMat::kTransparent,
 		RoomMat::kTransparent,
 		RoomMat::kTransparent,
