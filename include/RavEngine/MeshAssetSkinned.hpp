@@ -14,7 +14,7 @@ public:
 			float joint_idx = 0;
 			float influence = 0;
 		};
-		etl::vector<vw, 4> weights;
+		FixedVector<vw, 4> weights;
 	};
 private:
 	bgfx::VertexBufferHandle weightsHandle = BGFX_INVALID_HANDLE;

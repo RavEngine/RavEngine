@@ -38,7 +38,7 @@ namespace RavEngine {
 			friend class Material;
 		protected:
 			//materials are keyed by their shader name
-			typedef phmap::flat_hash_map<ctti_t, WeakRef<RavEngine::Material>> MaterialStore;
+			typedef UnorderedMap<ctti_t, WeakRef<RavEngine::Material>> MaterialStore;
 			static MaterialStore materials;
             static SpinLock mtx;
 		public:
@@ -70,7 +70,7 @@ namespace RavEngine {
              */
             static void Compact(){
                 mtx.lock();
-                std::vector<ctti_t> to_remove;
+                RavEngine::Vector<ctti_t> to_remove;
                 for(const auto& row : materials){
                     if (row.second.expired()){
                         to_remove.push_back(row.first);

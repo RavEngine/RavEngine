@@ -57,12 +57,12 @@ protected:
 	HSteamNetPollGroup pollGroup = k_HSteamNetPollGroup_Invalid;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 	
-	phmap::flat_hash_set<HSteamNetConnection> clients;
+    UnorderedSet<HSteamNetConnection> clients;
 
 	// since the server owns all objects by default, we only need to update this
 	// when the ownership changes to a non-server client. If an object is not in this
 	// structure, we assume the server owns it.
-	phmap::flat_hash_map<HSteamNetConnection, phmap::flat_hash_set<WeakPtrKey<NetworkIdentity>>> OwnershipTracker;
+    UnorderedMap<HSteamNetConnection, UnorderedSet<WeakPtrKey<NetworkIdentity>>> OwnershipTracker;
 
 	// invoked automatically when a client disconnects. We destroy the entities it owns.
 	void HandleDisconnect(HSteamNetConnection);

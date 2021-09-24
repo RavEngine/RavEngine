@@ -45,7 +45,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	rootname = std::filesystem::path(path).replace_extension("").string();
 	PHYSFS_freeList(root);
 }
-const std::vector<char> RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
+const RavEngine::Vector<char> RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
 {
 	auto fullpath = StrFormat("{}/{}",rootname,path);
 	
@@ -56,7 +56,7 @@ const std::vector<char> RavEngine::VirtualFilesystem::FileContentsAt(const char*
 	auto ptr = PHYSFS_openRead(fullpath.c_str());
 	auto size = PHYSFS_fileLength(ptr)+1;
 	
-	vector<char> fileData(size);
+    RavEngine::Vector<char> fileData(size);
 	
 	size_t length_read = PHYSFS_readBytes(ptr,fileData.data(),size);
 	fileData.data()[size-1] = '\0';	//add null terminator
@@ -65,7 +65,7 @@ const std::vector<char> RavEngine::VirtualFilesystem::FileContentsAt(const char*
 	return fileData;
 }
 
-void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, std::vector<uint8_t>& datavec)
+void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, RavEngine::Vector<uint8_t>& datavec)
 {
 	
 	string fullpath = StrFormat("{}/{}",rootname,path);

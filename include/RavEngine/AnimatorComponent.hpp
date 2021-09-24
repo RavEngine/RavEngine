@@ -7,7 +7,6 @@
 #include "SkeletonAsset.hpp"
 #include "Ref.hpp"
 #include <algorithm>
-#include <vector>
 #include "Tween.hpp"
 #include "App.hpp"
 
@@ -132,7 +131,7 @@ public:
 		};
 		
 		//transitions out of this state, keyed by ID
-		phmap::flat_hash_map<decltype(ID),Transition> exitTransitions;
+		UnorderedMap<decltype(ID),Transition> exitTransitions;
 		
 		template<typename T, typename decimal>
         constexpr inline State& SetTransition(decltype(ID) id, T interpolation, decimal duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
@@ -335,7 +334,7 @@ protected:
 	float currentBlendingValue = 0;
 
 	// stores sockets
-	phmap::flat_hash_map<std::string, Ref<Transform>> Sockets;
+    UnorderedMap<std::string, Ref<Transform>> Sockets;
 
 	inline void EndState(State& state, decltype(State::ID) nextState) {
 		state.DoEnd(nextState);

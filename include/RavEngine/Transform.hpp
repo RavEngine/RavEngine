@@ -24,7 +24,7 @@ namespace RavEngine {
 	 */
 	class Transform : public Component, public Queryable<Transform>, public virtual_enable_shared_from_this<Transform> {
 	public:
-		typedef phmap::flat_hash_set<WeakPtrKey<Transform>> childStore;
+		typedef UnorderedSet<WeakPtrKey<Transform>> childStore;
 		virtual ~Transform(){}
 		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false){
 			matrix = matrix4(1);

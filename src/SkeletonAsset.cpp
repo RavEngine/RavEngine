@@ -25,7 +25,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		//is this in ozz format?
 		auto extension = filesystem::path(str).extension();
 		if (extension == ".ozz"){
-			std::vector<uint8_t> data;
+            RavEngine::Vector<uint8_t> data;
 			App::Resources->FileContentsAt(path.c_str(),data);
 			
 			ozz::io::MemoryStream mstr;
@@ -55,7 +55,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			}
 			
 			// create hashset of the bones list to determine quickly if a scene node is a relevant bone
-			phmap::flat_hash_map<std::string_view,aiBone*> bones;
+            UnorderedMap<std::string_view,aiBone*> bones;
 						
 			for(int i = 0; i < scene->mNumMeshes; i++){
 				auto mesh = scene->mMeshes[i];	//assume the first mesh is the mesh to use

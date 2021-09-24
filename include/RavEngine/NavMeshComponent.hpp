@@ -50,7 +50,7 @@ namespace RavEngine{
          @param end the end location of the path, in local coordinates to the owning entity
          @return list of coordinates composing the path
          */
-        std::vector<vector3> CalculatePath(const vector3& start, const vector3& end, uint16_t maxPoints = std::numeric_limits<uint16_t>::max());
+        RavEngine::Vector<vector3> CalculatePath(const vector3& start, const vector3& end, uint16_t maxPoints = std::numeric_limits<uint16_t>::max());
                 
         virtual ~NavMeshComponent();
     };

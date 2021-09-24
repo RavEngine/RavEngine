@@ -1,8 +1,13 @@
 #pragma once
-
 #include <mutex>
 #include <phmap.h>
 #include <concurrentqueue.h>
+#include <boost/container/vector.hpp>
+#include <boost/container/small_vector.hpp>
+#include <etl/vector.h>
+#include <vector>
+#include <plf_list.h>
+#include <plf_colony.h>
 
 namespace RavEngine{
 	template<typename T, typename U, typename lock=std::mutex, typename hash = phmap::priv::hash_default_hash<T>, typename eq = phmap::priv::hash_default_eq<T>>
@@ -19,6 +24,27 @@ namespace RavEngine{
 	
 	template<typename T>
 	using ConcurrentQueue = moodycamel::ConcurrentQueue<T>;
+
+    template<typename T>
+    using Vector = std::vector<T>;
+
+    template<typename T, typename U>
+    using UnorderedMap = phmap::flat_hash_map<T,U>;
+
+    template<typename T>
+    using UnorderedSet = phmap::flat_hash_set<T>;
+
+    template<typename T,size_t N>
+    using SmallVector = boost::container::small_vector<T,N>;
+
+    template<typename T,size_t N>
+    using FixedVector = etl::vector<T,N>;
+
+    template<typename T>
+    using LinkedList = plf::list<T>;
+
+    template<typename T>
+    using Colony = plf::colony<T>;
 
 // The stackarray creates a stack-resident array using a runtime-known size.
 // There are no safety checks for overflowing the stack, and overflowing results in undefined behavior.

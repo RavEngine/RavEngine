@@ -199,7 +199,7 @@ namespace RavEngine {
             uint8_t color;
         };
         static SpinLock dbgmtx;
-        static phmap::flat_hash_map<uint16_t,DebugMsg> debugprints;
+        static UnorderedMap<uint16_t,DebugMsg> debugprints;
 #endif
         void runAPIThread(bgfx::PlatformData pd, int width, int height);
 

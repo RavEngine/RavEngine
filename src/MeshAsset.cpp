@@ -59,7 +59,7 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
 	
 	//generate the vertex and index lists
-	vector<MeshPart> meshes;
+    RavEngine::Vector<MeshPart> meshes;
 	meshes.reserve(scene->mNumMeshes);
 	for(int i = 0; i < scene->mNumMeshes; i++){
 		aiMesh* mesh = scene->mMeshes[i];
@@ -83,7 +83,7 @@ MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAsset
 		Debug::Fatal("No mesh with name {} in scene {}",meshName, name);
 	}
 	else{
-		vector<MeshPart> meshes;
+        RavEngine::Vector<MeshPart> meshes;
 		meshes.reserve(node->mNumMeshes);
 		for(int i = 0; i < node->mNumMeshes; i++){
 			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
@@ -135,7 +135,7 @@ MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, co
 	return mp;
 }
 
-void MeshAsset::InitializeFromMeshPartFragments(const std::vector<MeshPart>& meshes, const MeshAssetOptions& options){
+void MeshAsset::InitializeFromMeshPartFragments(const  RavEngine::Vector<MeshPart>& meshes, const MeshAssetOptions& options){
 	//combine all meshes
 	decltype(totalVerts) tv = 0;
 	decltype(totalIndices) ti = 0;

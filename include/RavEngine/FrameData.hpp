@@ -100,10 +100,10 @@ struct FrameData{
 	};
 	
 	//lighting data
-	plf::colony<PackedDL> directionals;
-	plf::colony<AmbientLight> ambients;
-	plf::colony<StoredLight<PointLight>> points;
-	plf::colony<StoredLight<SpotLight>> spots;
+    Colony<PackedDL> directionals;
+    Colony<AmbientLight> ambients;
+    Colony<StoredLight<PointLight>> points;
+    Colony<StoredLight<SpotLight>> spots;
 	
 #ifdef _DEBUG
 	unordered_deduplicating_vector<Ref<Component>> debugShapesToDraw;

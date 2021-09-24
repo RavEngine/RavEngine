@@ -221,7 +221,7 @@ namespace RavEngine {
 		//stores which mappings each event ID is bound to
 		locked_hashmap<int, locked_hashset<std::string,SpinLock>,SpinLock> CodeToAction;
 		//the binding objects, keyed by binding ID
-		locked_hashmap<std::string, plf::list<ActionBinding>,SpinLock> ActionBindings;
+		locked_hashmap<std::string, LinkedList<ActionBinding>,SpinLock> ActionBindings;
 		//stores which mappings each event ID is bound to
 		struct AxisID{
 			std::string identifier;
@@ -248,13 +248,13 @@ namespace RavEngine {
 			CID source_controller;
 		};
 		struct AxisData{
-			phmap::flat_hash_map<int,AxisInput> bufferedInputs;
-			plf::list<AxisBinding> bindings;
+            UnorderedMap<int,AxisInput> bufferedInputs;
+			LinkedList<AxisBinding> bindings;
 		};
-		phmap::flat_hash_map<std::string, AxisData> AxisBindings;
+        UnorderedMap<std::string, AxisData> AxisBindings;
 		
 		//AnyActions
-		plf::list<WeakPtrKey<IInputListener>> AnyEventBindings;
+		LinkedList<WeakPtrKey<IInputListener>> AnyEventBindings;
 		
 		/**
 		 Process a single action event

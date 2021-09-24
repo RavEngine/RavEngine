@@ -100,8 +100,8 @@ void CapsuleCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) 
 void MeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	auto& meshdata = meshAsset->GetSystemCopy();
 	
-	std::vector<PxVec3> vertices(meshdata.vertices.size());
-	std::vector<PxU32> indices(meshdata.indices.size());
+    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
+    RavEngine::Vector<PxU32> indices(meshdata.indices.size());
 	// only want positional data here, UVs and other data are not relevant
 	for(int i = 0; i < vertices.size(); i++){
 		vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
@@ -146,7 +146,7 @@ void ConvexMeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
 	auto& meshdata = meshAsset->GetSystemCopy();
 	
 	// only want positional data here, UVs and other data are not relevant
-	std::vector<PxVec3> vertices(meshdata.vertices.size());
+    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
 	for(int i = 0; i < vertices.size(); i++){
 		vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
 	}

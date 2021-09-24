@@ -46,7 +46,7 @@ private:
     }
     
 protected:
-    static phmap::flat_hash_map<CacheKey,WeakRef<T>> items;
+    static UnorderedMap<CacheKey,WeakRef<T>> items;
     static SpinLock mtx;
 public:
     /**
@@ -98,7 +98,7 @@ template<typename key, typename T>
 RavEngine::SpinLock RavEngine::GenericWeakManager<key,T>::mtx;
 
 template<typename key,typename T>
-phmap::flat_hash_map<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakManager<key,T>::items;
+RavEngine::UnorderedMap<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakManager<key,T>::items;
 
 namespace std{
     template<>

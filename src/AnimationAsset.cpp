@@ -47,8 +47,8 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 		//is this in ozz format
 		auto extension = filesystem::path(name).extension();
 		if (extension == ".ozz"){
-			std::vector<uint8_t> data;
-			App::Resources->FileContentsAt(path.c_str(),data);
+            RavEngine::Vector<uint8_t> data;
+			App::Resources->FileContentsAt(path.c_str());
 			
 			ozz::io::MemoryStream mstr;
 			mstr.Write(data.data(), data.size());

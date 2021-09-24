@@ -49,7 +49,7 @@ namespace RavEngine {
 			const SystemEntry<World>* system;
 			bool isTimed = false;
 		};
-		phmap::flat_hash_map<ctti_t, systaskpair> graphs;
+        UnorderedMap<ctti_t, systaskpair> graphs;
 		
 		void CreateFrameData();
 		
@@ -67,7 +67,7 @@ namespace RavEngine {
         };
         unordered_deduplicating_vector<std::unique_ptr<dispatched_func>> async_tasks;
         decltype(async_tasks)::iterator async_begin, async_end;
-        std::vector<size_t> ranFunctions;
+        RavEngine::Vector<size_t> ranFunctions;
 	protected:
 		void CTTI_Add(Ref<Component> c, ctti_t id) override{
 			toSync.enqueue({c,id,true});
@@ -83,8 +83,8 @@ namespace RavEngine {
 		PhysicsSolver Solver;
 		
 		//fire-and-forget audio
-		plf::list<InstantaneousAudioSource> instantaneousToPlay;
-		plf::list<InstantaneousAmbientAudioSource> ambientToPlay;
+		LinkedList<InstantaneousAudioSource> instantaneousToPlay;
+		LinkedList<InstantaneousAmbientAudioSource> ambientToPlay;
 
 		/**
 		Called before ticking components and entities synchronously

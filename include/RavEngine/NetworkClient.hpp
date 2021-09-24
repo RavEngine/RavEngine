@@ -12,7 +12,7 @@ namespace RavEngine {
 	class World;
 
 class NetworkClient : public NetworkBase{
-	phmap::flat_hash_map<ctti_t, std::function<void(Ref<Entity>, Ref<World>)>> OnNetSpawnHooks;
+    UnorderedMap<ctti_t, std::function<void(Ref<Entity>, Ref<World>)>> OnNetSpawnHooks;
 	inline void RevokeOwnership(Ref<NetworkIdentity> id) {
 		id->Owner = k_HSteamListenSocket_Invalid;
 	}

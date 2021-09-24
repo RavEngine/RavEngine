@@ -144,7 +144,7 @@ namespace RavEngine{
 		@param other the other component store to copy from
 		*/
 		inline void Merge(const ComponentStore& other) {
-			phmap::flat_hash_set<Ref<Component>> invoked;
+			UnorderedSet<Ref<Component>> invoked;
 			Ref<ComponentStore> p = parent.lock();
 			
 			for (const auto& type_pair : other.components) {
@@ -171,7 +171,7 @@ namespace RavEngine{
 		@param other the ComponentStore to compare
 		*/
 		inline void Unmerge(const ComponentStore& other) {
-			phmap::flat_hash_set<Ref<Component>> invoked;
+            UnorderedSet<Ref<Component>> invoked;
 			Ref<ComponentStore> p = parent.lock();
 			
 			for (const auto& type_pair : other.components) {

@@ -4,7 +4,6 @@
 #include "mathtypes.hpp"
 #include <bgfx/bgfx.h>
 #include "Ref.hpp"
-#include <vector>
 #include "Common3D.hpp"
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
@@ -30,8 +29,8 @@ public:
 	typedef VertexNormalUV vertex_t;
 
 	struct MeshPart{
-		std::vector<uint32_t> indices;
-		std::vector<vertex_t> vertices;
+		RavEngine::Vector<uint32_t> indices;
+        RavEngine::Vector<vertex_t> vertices;
 	};
 
     // if we do not want this meshasset having ownership of the mesh (for example in use with Exchange)
@@ -75,7 +74,7 @@ protected:
 	 Initialize from multiple meshs consisting of a single vertex and index list
 	 @param mp the meshes to initialize from
 	 */
-	void InitializeFromMeshPartFragments(const std::vector<MeshPart>& mp, const MeshAssetOptions& options = MeshAssetOptions());
+	void InitializeFromMeshPartFragments(const  RavEngine::Vector<MeshPart>& mp, const MeshAssetOptions& options = MeshAssetOptions());
 	
 	/**
 	 Initialize from a complete mesh consisting of a single vertex and index list
@@ -128,7 +127,7 @@ public:
 	 @param rawMeshData the index and triangle data
 	 @param keepCopyInSystemMemory maintain a copy of the mesh data in system RAM, for use in features that need it like mesh colliders
 	 */
-	MeshAsset(const std::vector<MeshPart>& rawMeshData, const MeshAssetOptions& options = MeshAssetOptions()){
+	MeshAsset(const  RavEngine::Vector<MeshPart>& rawMeshData, const MeshAssetOptions& options = MeshAssetOptions()){
 		InitializeFromMeshPartFragments(rawMeshData, options);
 	}
 	

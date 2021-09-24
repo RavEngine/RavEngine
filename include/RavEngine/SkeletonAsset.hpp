@@ -3,8 +3,8 @@
 #include <ozz/animation/offline/skeleton_builder.h>
 #include <string>
 #include <bgfx/bgfx.h>
+#include "DataStructures.hpp"
 #include "mathtypes.hpp"
-#include <vector>
 
 namespace RavEngine {
 class SkeletonAsset{
@@ -12,7 +12,7 @@ class SkeletonAsset{
 	bgfx::VertexBufferHandle bindpose = BGFX_INVALID_HANDLE;
 	bgfx::VertexBufferHandle boneHierarchy = BGFX_INVALID_HANDLE;
 	
-	std::vector<glm::mat4> bindposes;
+    RavEngine::Vector<glm::mat4> bindposes;
 public:
 	SkeletonAsset(const std::string& path);
 	

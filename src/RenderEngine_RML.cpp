@@ -209,7 +209,7 @@ void RenderEngine::SetScissorRegion(int x, int y, int width, int height) {
 bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions, const Rml::String& source) {
 	
 	//pull texture out of vfs into byte array, then call createTexture
-	std::vector<uint8_t> data;
+    RavEngine::Vector<uint8_t> data;
 	App::Resources->FileContentsAt((source).c_str(),data);
 	
 	int width, height,channels;

@@ -1,13 +1,13 @@
 #pragma once
 #include "CTTI.hpp"
-#include <vector>
+#include "DataStructures.hpp"
 
 namespace RavEngine {
 	class World;
 
 	class System {
 	public:
-		typedef std::vector<ctti_t> list_type;
+		typedef  RavEngine::Vector<ctti_t> list_type;
 
 
 		/**

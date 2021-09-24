@@ -221,7 +221,7 @@ NavMeshComponent::~NavMeshComponent(){
     dtFree(navData);
 }
 
-std::vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start, const vector3 &end, uint16_t maxPoints){
+RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start, const vector3 &end, uint16_t maxPoints){
     float startf[3]{static_cast<float>(start.x),static_cast<float>(start.y),static_cast<float>(start.z)};
     float endf[3]{static_cast<float>(end.x),static_cast<float>(end.y),static_cast<float>(end.z)};
     
@@ -255,14 +255,14 @@ std::vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start, const
         Debug::Fatal("Could not locate end poly");
     }
     
-    std::vector<dtPolyRef> polyPath(maxPoints);
+    RavEngine::Vector<dtPolyRef> polyPath(maxPoints);
     int nPathCount = 0;
     
     status = navMeshQuery->findPath(startPoly, endPoly, nearestpt, endpt, &filter, polyPath.data(), &nPathCount, maxPoints);
     if (dtStatusFailed(status)){
         Debug::Fatal("Unable to create poly path");
     }
-    std::vector<float> straightPath(nPathCount);
+    RavEngine::Vector<float> straightPath(nPathCount);
     int nVertCount = 0;
     status = navMeshQuery->findStraightPath(nearestpt, endpt, polyPath.data(), nPathCount, straightPath.data(), NULL, NULL, &nVertCount, maxPoints*3);
     if (dtStatusFailed(status)){
@@ -270,7 +270,7 @@ std::vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start, const
     }
     
     // convert path to engine format
-    std::vector<vector3> path(nVertCount/3);
+    RavEngine::Vector<vector3> path(nVertCount/3);
     for (size_t i = 0; i < nVertCount/3; i++){
         path[i] = vector3(straightPath[i],straightPath[i+1],straightPath[i+2]);
     }

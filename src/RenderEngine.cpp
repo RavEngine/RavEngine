@@ -68,7 +68,7 @@ decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INV
 #ifdef _DEBUG
 Ref<Entity> RenderEngine::debuggerContext;
 Ref<InputManager> RenderEngine::debuggerInput;
-phmap::flat_hash_map<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
+UnorderedMap<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
 SpinLock RenderEngine::dbgmtx;
 static DebugDraw dbgdraw;	//for rendering debug primitives
 #endif
@@ -84,7 +84,7 @@ struct bgfx_msghandler : public bgfx::CallbackI{
         char* data = nullptr;
         uint32_t size = 0;
     };
-    phmap::flat_hash_map<uint64_t,cacheItem> cache;
+    UnorderedMap<uint64_t,cacheItem> cache;
     
 	static bool diagnostic_logging; // see below
     

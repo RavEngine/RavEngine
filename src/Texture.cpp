@@ -25,7 +25,7 @@ inline static bool IsRasterImage(const std::string& filepath){
 Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
     Debug::Assert(!IsRasterImage(name), "This texture constructor only allows vector image formats");
     
-    std::vector<uint8_t> data;
+    RavEngine::Vector<uint8_t> data;
     App::Resources->FileContentsAt(StrFormat("/textures/{}", name).c_str(),data);
     
     // load the SVG
@@ -41,7 +41,7 @@ Texture::Texture(const std::string& name){
     
 	//read from resource
 	
-	std::vector<uint8_t> data;
+    RavEngine::Vector<uint8_t> data;
 	App::Resources->FileContentsAt(("/textures/" + name).c_str(),data);
 	
 	int width, height,channels;

@@ -13,7 +13,7 @@
 #include "PhysicsBodyComponent.hpp" 
 #include "ComponentStore.hpp"
 #include "SpinLock.hpp"
-#include <plf_list.h>
+#include "DataStructures.hpp"
 #include "CTTI.hpp"
 /**
  This class defines an Entity for the Entity Component System.
@@ -24,7 +24,7 @@ namespace RavEngine {
 
 	class Entity : public ComponentStore<phmap::NullMutex>, public virtual_enable_shared_from_this<Entity>, public AutoCTTI {
 		friend class World;
-		std::unique_ptr<plf::list<Ref<Component>>> PendingSync = std::make_unique<plf::list<Ref<Component>>>();
+		std::unique_ptr<LinkedList<Ref<Component>>> PendingSync = std::make_unique<LinkedList<Ref<Component>>>();
 	protected:
 		WeakRef<World> worldptr;  //non-owning
 		

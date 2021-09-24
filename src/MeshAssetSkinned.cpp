@@ -46,7 +46,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	if (!scene){
 		Debug::Fatal("Cannot load: {}", aiGetErrorString());
 	}
-	std::vector<vweights> allweights;
+	RavEngine::Vector<vweights> allweights;
 	{
 		uint32_t numverts = 0;
 		for(int i = 0; i < scene->mNumMeshes; i++){
@@ -91,7 +91,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 		vweights::vw w[4];
 	};
 	//make gpu version
-	std::vector<wrapper> weightsgpu;
+    RavEngine::Vector<wrapper> weightsgpu;
 	weightsgpu.reserve(allweights.size());
 	std::memset(weightsgpu.data(), 0, weightsgpu.size() * sizeof(weightsgpu[0]));
 	

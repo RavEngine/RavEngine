@@ -26,7 +26,7 @@ public:
 	static constexpr uint16_t NFRAMES = 4096;
 private:
 	vraudio::ResonanceAudioApi* audioEngine = nullptr;
-	phmap::flat_hash_map<size_t,vraudio::ResonanceAudioApi::SourceId> allSources;
+    UnorderedMap<size_t,vraudio::ResonanceAudioApi::SourceId> allSources;
 
 	vector3 roomDimensions = vector3(0,0,0);	//size of 0 = infinite
 	

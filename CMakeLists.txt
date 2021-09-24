@@ -277,6 +277,7 @@ if (NOT APPLE AND NOT UWP)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
+    "<boost/container/vector.hpp>"
 	"<algorithm>"
 	"<functional>"
 	"<thread>"
