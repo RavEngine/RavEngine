@@ -10,6 +10,7 @@ namespace RavEngine{
         class dtNavMesh* navMesh = nullptr;
         dtNavMeshQuery* navMeshQuery = nullptr;
         unsigned char* navData = nullptr;
+        MeshAsset::Bounds bounds;
     public:
         struct Options{
             float cellSize = 0.3;
@@ -42,6 +43,14 @@ namespace RavEngine{
          Construct a mesh asset 
          */
         NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt);
+        
+        /**
+         Calculate a route between two points
+         @param start the start location of the path, in local coordinates to the owning entity
+         @param end the end location of the path, in local coordinates to the owning entity
+         @return list of coordinates composing the path
+         */
+        std::vector<vector3> CalculatePath(const vector3& start, const vector3& end, uint16_t maxPoints = std::numeric_limits<uint16_t>::max());
                 
         virtual ~NavMeshComponent();
     };

@@ -41,15 +41,17 @@ public:
 	*/
 	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
     
+    struct Bounds{
+        float min[3] = {0,0,0};
+        float max[3] = {0,0,0};
+    };
+    
 protected:
 	bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;
 
 	size_t totalVerts = 0, totalIndices = 0;
-    struct bounds{
-        float min[3] = {0,0,0};
-        float max[3] = {0,0,0};
-    } bounds;
+    Bounds bounds;
    	
 	inline void Destroy(){
         if (destroyOnDestruction){

@@ -3,6 +3,8 @@
 #include <Recast.h>
 #include <DetourNavMesh.h>
 #include <DetourNavMeshBuilder.h>
+#include <DetourCommon.h>
+#include <DetourCrowd.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -11,7 +13,7 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt){
     Debug::Assert(mesh->hasSystemRAMCopy(),"MeshAsset must be created with keepInSystemRAM = true");
     
     auto& rawData = mesh->GetSystemCopy();
-    auto& bounds = mesh->GetBounds();
+    bounds = mesh->GetBounds();
     
     const float* bmin = bounds.min;
     const float* bmax = bounds.max;
@@ -217,4 +219,57 @@ NavMeshComponent::~NavMeshComponent(){
     dtFree(navMesh);
     dtFree(navMeshQuery);
     dtFree(navData);
+}
+
+std::vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start, const vector3 &end, uint16_t maxPoints){
+    float startf[3]{static_cast<float>(start.x),static_cast<float>(start.y),static_cast<float>(start.z)};
+    float endf[3]{static_cast<float>(end.x),static_cast<float>(end.y),static_cast<float>(end.z)};
+    
+    dtPolyRef ref;
+    
+    auto midpoint = [](auto f1, auto f2){
+        return (f1+f2)/2;
+    };
+    
+    float center[3] = {midpoint(bounds.min[0],bounds.max[0]),midpoint(bounds.min[1],bounds.max[1]),midpoint(bounds.min[2],bounds.max[2])};
+    float halfexts[3] = {std::abs(center[0]-bounds.min[0]),std::abs(center[1]-bounds.min[1]),std::abs(center[2]-bounds.min[2])};
+    
+    // get polyref
+    float nearestpt[3];
+    float endpt[3];
+    
+    dtQueryFilter filter;
+    filter.setIncludeFlags(0xFFF);
+    filter.setExcludeFlags(0);
+    //filter.setAreaCost(0, 1.0f);  // TODO: replace 0 with named region enum
+    
+    dtStatus status;
+    dtPolyRef startPoly;
+    dtPolyRef endPoly;
+    status = navMeshQuery->findNearestPoly(startf, halfexts, &filter, &startPoly, nearestpt);
+    if (status & DT_FAILURE || status & DT_STATUS_DETAIL_MASK){
+        Debug::Fatal("Could not locate start poly");
+    }
+    status = navMeshQuery->findNearestPoly(endf, halfexts, &filter, &endPoly, endpt);
+    if (status & DT_FAILURE || status & DT_STATUS_DETAIL_MASK){
+        Debug::Fatal("Could not locate end poly");
+    }
+    
+    std::vector<dtPolyRef> polyPath(maxPoints);
+    int nPathCount = 0;
+    
+    status = navMeshQuery->findPath(startPoly, endPoly, startf, endf, &filter, polyPath.data(), &nPathCount, maxPoints);
+    if (status & DT_FAILURE || status & DT_STATUS_DETAIL_MASK){
+        Debug::Fatal("Unable to create path");
+    }
+    std::vector<float> straightPath(nPathCount);
+    int nVertCount = 0;
+    status = navMeshQuery->findStraightPath(nearestpt, endpt, polyPath.data(), nPathCount, straightPath.data(), NULL, NULL, &nVertCount, maxPoints*3);
+    
+    // convert path to engine format
+    std::vector<vector3> path(nVertCount/3);
+    for (size_t i = 0; i < nVertCount/3; i++){
+        path[i] = vector3(straightPath[i],straightPath[i+1],straightPath[i+2]);
+    }
+    return path;
 }
