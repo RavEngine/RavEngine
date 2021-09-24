@@ -239,32 +239,35 @@ std::vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start, const
     float endpt[3];
     
     dtQueryFilter filter;
-    filter.setIncludeFlags(0xFFF);
-    filter.setExcludeFlags(0);
+    //filter.setIncludeFlags(0xFFF);
+    //filter.setExcludeFlags(0);
     //filter.setAreaCost(0, 1.0f);  // TODO: replace 0 with named region enum
     
     dtStatus status;
     dtPolyRef startPoly;
     dtPolyRef endPoly;
     status = navMeshQuery->findNearestPoly(startf, halfexts, &filter, &startPoly, nearestpt);
-    if (status & DT_FAILURE || status & DT_STATUS_DETAIL_MASK){
+    if (dtStatusFailed(status) || startPoly == 0){
         Debug::Fatal("Could not locate start poly");
     }
     status = navMeshQuery->findNearestPoly(endf, halfexts, &filter, &endPoly, endpt);
-    if (status & DT_FAILURE || status & DT_STATUS_DETAIL_MASK){
+    if (dtStatusFailed(status) || endPoly == 0){
         Debug::Fatal("Could not locate end poly");
     }
     
     std::vector<dtPolyRef> polyPath(maxPoints);
     int nPathCount = 0;
     
-    status = navMeshQuery->findPath(startPoly, endPoly, startf, endf, &filter, polyPath.data(), &nPathCount, maxPoints);
-    if (status & DT_FAILURE || status & DT_STATUS_DETAIL_MASK){
-        Debug::Fatal("Unable to create path");
+    status = navMeshQuery->findPath(startPoly, endPoly, nearestpt, endpt, &filter, polyPath.data(), &nPathCount, maxPoints);
+    if (dtStatusFailed(status)){
+        Debug::Fatal("Unable to create poly path");
     }
     std::vector<float> straightPath(nPathCount);
     int nVertCount = 0;
     status = navMeshQuery->findStraightPath(nearestpt, endpt, polyPath.data(), nPathCount, straightPath.data(), NULL, NULL, &nVertCount, maxPoints*3);
+    if (dtStatusFailed(status)){
+        Debug::Fatal("Unable to create path");
+    }
     
     // convert path to engine format
     std::vector<vector3> path(nVertCount/3);

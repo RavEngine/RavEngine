@@ -9,6 +9,7 @@
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
 #include "Manager.hpp"
+#include <boost/container_hash/hash.hpp>
 
 struct aiMesh;
 
@@ -18,6 +19,10 @@ struct MeshAssetOptions{
     bool keepInSystemRAM = false;
     bool uploadToGPU = true;
     float scale = 1.0;
+    
+    inline bool operator==(const MeshAssetOptions& other) const{
+        return keepInSystemRAM == other.keepInSystemRAM && uploadToGPU == other.uploadToGPU && scale == other.scale;
+    }
 };
 
 class MeshAsset {
@@ -192,4 +197,17 @@ public:
 	}
 };
 
+}
+
+namespace boost{
+    template<>
+struct hash<RavEngine::MeshAssetOptions>{
+    inline size_t operator()(const RavEngine::MeshAssetOptions& opt){
+            size_t seed = 0;
+            boost::hash_combine(seed,opt.keepInSystemRAM);
+            boost::hash_combine(seed,opt.uploadToGPU);
+            boost::hash_combine(seed,opt.scale);
+            return seed;
+        }
+    };
 }
