@@ -30,7 +30,7 @@ public:
 	MeshAssetSkinned(const std::string& name, const decimalType scale = 1.0) = delete;
     
     // use this to load assets
-    struct Manager : public GenericWeakManager<std::string,MeshAssetSkinned>{};
+    struct Manager : public GenericWeakCache<std::string,MeshAssetSkinned>{};
 	
     constexpr inline const decltype(weightsHandle) GetWeightsHandle() const{
 		return weightsHandle;

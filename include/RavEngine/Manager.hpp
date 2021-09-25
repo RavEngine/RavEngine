@@ -13,6 +13,11 @@ struct CacheKey{
     RavEngine::Vector<std::function<bool(const boost::any&)>> compareFuncs;
     
     inline bool operator==(const CacheKey& other) const{
+        // ensure hashes match
+        if (hash != other.hash){
+            return false;
+        }
+        
         // type-erasure equality, for if there are hash collisions
         for(size_t i = 0; i < values.size(); i++){
             auto& func = compareFuncs[i];
@@ -38,7 +43,7 @@ struct CacheKey{
  If the key type is not a parameter in the construction of your object, set the final template parameter to false
  */
 template<typename key_t, typename T, bool keyIsConstructionParam = true>
-struct GenericWeakManager{
+struct GenericWeakCache{
     
 private:
     template<typename V>
@@ -55,7 +60,7 @@ public:
      Load object from cache. If the object is not cached in memory, it will be loaded from disk.
      @param str the name of the mesh
      @param extras additional arguments to pass to meshasset constructor
-     @note All parameters must be hashable by boost::hash. 
+     @note All parameters must be hashable by boost::hash. In addition, the cache will retain copies of the data passed to differentiate constructed objects. For this reason, do not use large data structures, Ref/WeakRef, or unique_ptr as construction arguments,
      */
     template<typename ... A>
     static inline Ref<T> Get(const key_t& str, A ... extras){
@@ -100,13 +105,22 @@ public:
             items.erase(c);
         }
     }
+    
+    /**
+     * Remove all items from the cache
+     */
+    static void Clear(){
+        mtx.lock();
+        items.clearn();
+        mtx.unlock();
+    }
 };
 }
 template<typename key, typename T, bool keyIsConstructionParam>
-RavEngine::SpinLock RavEngine::GenericWeakManager<key,T,keyIsConstructionParam>::mtx;
+RavEngine::SpinLock RavEngine::GenericWeakCache<key,T,keyIsConstructionParam>::mtx;
 
 template<typename key,typename T, bool keyIsConstructionParam>
-RavEngine::UnorderedMap<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakManager<key,T,keyIsConstructionParam>::items;
+RavEngine::UnorderedMap<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakCache<key,T,keyIsConstructionParam>::items;
 
 namespace std{
     template<>

@@ -87,15 +87,15 @@ protected:
 	
 public:
 	
-    struct Manager : public GenericWeakManager<std::string,MeshAsset>{
+    struct Manager : public GenericWeakCache<std::string,MeshAsset>{
     public:
         
         /**
          Load a mesh from cache. If the mesh is not cached in memory, it will be loaded from disk.
          @param str the name of the mesh
          */
-        static Ref<MeshAsset> GetMesh(const std::string& str){
-            return GenericWeakManager<std::string,MeshAsset>::Get(str,MeshAssetOptions());
+        static Ref<MeshAsset> GetDefault(const std::string& str){
+            return ::RavEngine::GenericWeakCache<std::string,MeshAsset>::Get(str,MeshAssetOptions());
         }
     };
     

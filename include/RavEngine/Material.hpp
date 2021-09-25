@@ -44,7 +44,7 @@ namespace RavEngine {
 			 */
 			template<typename T, typename ... A>
 			static inline Ref<T> Get(A ... args){
-                return GenericWeakManager<ctti_t,T,false>::Get(CTTI<T>(),args...);
+                return GenericWeakCache<ctti_t,T,false>::Get(CTTI<T>(),args...);
 			}
             
             /**
@@ -52,7 +52,7 @@ namespace RavEngine {
              */
             template<typename T>
             static inline void Compact(){
-                GenericWeakManager<ctti_t,T,false>::Compact();
+                GenericWeakCache<ctti_t,T,false>::Compact();
             }
 		};
 

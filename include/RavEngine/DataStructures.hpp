@@ -4,6 +4,7 @@
 #include <concurrentqueue.h>
 #include <boost/container/vector.hpp>
 #include <boost/container/small_vector.hpp>
+#include <boost/array.hpp>
 #include <etl/vector.h>
 #include <vector>
 #include <plf_list.h>
@@ -47,7 +48,7 @@ namespace RavEngine{
     using Colony = plf::colony<T>;
 
     template<typename T, size_t N>
-    using Array = std::array<T,N>;
+    using Array = boost::array<T,N>;
 
 // The stackarray creates a stack-resident array using a runtime-known size.
 // There are no safety checks for overflowing the stack, and overflowing results in undefined behavior.
