@@ -16,9 +16,6 @@ using namespace std;
 using namespace RavEngine;
 using namespace std::filesystem;
 
-STATIC(Material::Manager::materials);
-STATIC(Material::Manager::mtx);
-
 bgfx::ShaderHandle loadShader(const  RavEngine::Vector<uint8_t>& data){
 	const bgfx::Memory* mem = bgfx::copy(&data[0], data.size());
 	return bgfx::createShader(mem);

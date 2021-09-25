@@ -7,11 +7,11 @@ using namespace std;
 STATIC(Skybox::defaultSkyMesh);
 
 void Skybox::Init() {
-	defaultSkyMesh = make_shared<MeshAsset>("skydome.obj");
+	defaultSkyMesh = MeshAsset::Manager::GetMesh("skydome.obj");
 }
 
 void Skybox::Teardown() {
 	defaultSkyMesh.reset();
 }
 
-Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::GetMaterial<DefaultSkyMaterial>())), skyMesh(defaultSkyMesh) {}
+Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::Get<DefaultSkyMaterial>())), skyMesh(defaultSkyMesh) {}

@@ -1,17 +1,16 @@
 #pragma once
-#include <phmap.h>
 #include "Ref.hpp"
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
-#include <any>
+#include <boost/any.hpp>
 #include <boost/container/vector.hpp>
 #include <boost/container_hash/hash.hpp>
 
 namespace RavEngine {
 struct CacheKey{
     size_t hash = 0;
-    boost::container::vector<std::any> values;
-    boost::container::vector<std::function<bool(const std::any&)>> compareFuncs;
+    RavEngine::Vector<boost::any> values;
+    RavEngine::Vector<std::function<bool(const boost::any&)>> compareFuncs;
     
     inline bool operator==(const CacheKey& other) const{
         // type-erasure equality, for if there are hash collisions
@@ -27,15 +26,18 @@ struct CacheKey{
     template<typename T>
     inline void AddValue(const T& value){
         values.push_back(value);
-        compareFuncs.push_back([value](const std::any& v) -> bool{
-            const auto& other = std::any_cast<const T&>(v);
-            
+        compareFuncs.push_back([value](const boost::any& v) -> bool{
+            const auto& other = boost::any_cast<const T&>(v);
             return value == other;
         });
     }
 };
 
-template<typename key_t, typename T>
+/**
+ Defines a generic non-owning cache.
+ If the key type is not a parameter in the construction of your object, set the final template parameter to false
+ */
+template<typename key_t, typename T, bool keyIsConstructionParam = true>
 struct GenericWeakManager{
     
 private:
@@ -59,7 +61,7 @@ public:
     static inline Ref<T> Get(const key_t& str, A ... extras){
         // calculate the hash
         CacheKey key;
-        boost::hash_combine(key.hash,str);
+        addOne(str,key);
         
         // TODO: optimize - calculate hash only unless there's a collision?
         (addOne(extras,key),...);
@@ -72,7 +74,13 @@ public:
                 return ptr;
             }
         }
-        Ref<T> m = std::make_shared<T>(str,extras...);
+        Ref<T> m;
+        if constexpr(keyIsConstructionParam){
+            m = std::make_shared<T>(str,extras...);
+        }
+        else{
+            m = std::make_shared<T>(extras...);
+        }
         items.insert(std::make_pair(key,m));
         mtx.unlock();
         return m;
@@ -94,11 +102,11 @@ public:
     }
 };
 }
-template<typename key, typename T>
-RavEngine::SpinLock RavEngine::GenericWeakManager<key,T>::mtx;
+template<typename key, typename T, bool keyIsConstructionParam>
+RavEngine::SpinLock RavEngine::GenericWeakManager<key,T,keyIsConstructionParam>::mtx;
 
-template<typename key,typename T>
-RavEngine::UnorderedMap<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakManager<key,T>::items;
+template<typename key,typename T, bool keyIsConstructionParam>
+RavEngine::UnorderedMap<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakManager<key,T,keyIsConstructionParam>::items;
 
 namespace std{
     template<>

@@ -7,6 +7,7 @@
 #include "Common3D.hpp"
 #include "CTTI.hpp"
 #include "Debug.hpp"
+#include "Manager.hpp"
 
 namespace RavEngine {
 
@@ -35,12 +36,6 @@ namespace RavEngine {
 		 Static singleton for managing materials
 		 */
 		class Manager {
-			friend class Material;
-		protected:
-			//materials are keyed by their shader name
-			typedef UnorderedMap<ctti_t, WeakRef<RavEngine::Material>> MaterialStore;
-			static MaterialStore materials;
-            static SpinLock mtx;
 		public:
 			
 			/**
@@ -48,38 +43,16 @@ namespace RavEngine {
 			 @param args arguments to pass to material constructor if needed
 			 */
 			template<typename T, typename ... A>
-			static inline Ref<T> GetMaterial(A ... args){
-                // TODO: remove single mutex
-				auto t = CTTI<T>();
-                mtx.lock();
-                if (materials.contains(t)){
-                    auto ptr = materials.at(t).lock();
-                    if (ptr){
-                        mtx.unlock();
-                        return std::static_pointer_cast<T>(ptr);
-                    }
-                }
-                Ref<T> mat(std::make_shared<T>(args...));
-                materials.insert(std::make_pair(t,mat));
-                mtx.unlock();
-                return mat;
+			static inline Ref<T> Get(A ... args){
+                return GenericWeakManager<ctti_t,T,false>::Get(CTTI<T>(),args...);
 			}
             
             /**
-             Remove elements in the cache whose pointers have expired
+             Shrink memory usage by removing expired entries
              */
-            static void Compact(){
-                mtx.lock();
-                RavEngine::Vector<ctti_t> to_remove;
-                for(const auto& row : materials){
-                    if (row.second.expired()){
-                        to_remove.push_back(row.first);
-                    }
-                }
-                for(const auto& id : to_remove){
-                    materials.erase(id);
-                }
-                mtx.unlock();
+            template<typename T>
+            static inline void Compact(){
+                GenericWeakManager<ctti_t,T,false>::Compact();
             }
 		};
 
