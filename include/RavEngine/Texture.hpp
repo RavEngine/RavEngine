@@ -2,6 +2,7 @@
 #include <bgfx/bgfx.h>
 #include "Uniform.hpp"
 #include "Ref.hpp"
+#include "Manager.hpp"
 
 namespace RavEngine{
 
@@ -24,6 +25,12 @@ public:
 	}
 	
 	void Bind(int id, const SamplerUniform& uniform);
+    
+    /**
+     Use the manager to avoid loading duplicate textures
+     Works with Runtime textures as well, using the construction arguments to differentiate textures
+     */
+    struct Manager : public GenericWeakManager<std::string,Texture>{};
 	
 protected:
 	bgfx::TextureHandle texture = BGFX_INVALID_HANDLE;

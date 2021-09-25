@@ -3,8 +3,8 @@
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
 #include <boost/any.hpp>
-#include <boost/container/vector.hpp>
 #include <boost/container_hash/hash.hpp>
+#include "DataStructures.hpp"
 
 namespace RavEngine {
 struct CacheKey{
