@@ -66,8 +66,8 @@ namespace RavEngine {
 		@param value the data to encode
 		*/
 		template<typename T>
-        constexpr inline void serializeType(size_t& offset, char* buffer, const T& value) const{
-			constexpr auto id = CTTI<T>();
+        inline void serializeType(size_t& offset, char* buffer, const T& value) const{
+            auto id = CTTI<T>();
 			std::memcpy(buffer + offset, &id, sizeof(ctti_t));
 			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::SerializedSize<T>());
 			offset += RPCMsgUnpacker::TotalSerializedSize(value);

@@ -27,7 +27,7 @@ namespace RavEngine{
 	using ConcurrentQueue = moodycamel::ConcurrentQueue<T>;
 
     template<typename T>
-    using Vector = std::vector<T>;
+    using Vector = boost::container::vector<T>;
 
     template<typename T, typename U>
     using UnorderedMap = phmap::flat_hash_map<T,U>;

@@ -14,8 +14,7 @@ using namespace std;
 AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_channels){
 	//expand audio into buffer
 	string path = StrFormat("/sounds/{}", name);
-    RavEngine::Vector<uint8_t> datavec;
-	App::Resources->FileContentsAt(path.c_str(), datavec);
+	auto datavec = App::Resources->FileContentsAt<std::vector<uint8_t>>(path.c_str());
 	
 	const int desiredSampleRate = 44100;
 	

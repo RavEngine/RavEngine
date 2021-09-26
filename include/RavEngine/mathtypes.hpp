@@ -63,12 +63,12 @@ namespace RavEngine {
 namespace RavEngine {
 	// manual specializations for the networking and CTTI systems
 	template<>
-	inline constexpr std::string_view type_name<RawVec3>() {
+    inline std::string_view type_name<RawVec3>() {
 		return "RawVec3";
 	}
 
 	template<>
-	inline constexpr std::string_view type_name<RawQuat>() {
+    inline std::string_view type_name<RawQuat>() {
 		return "RawQuat";
 	}
 }

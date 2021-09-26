@@ -22,7 +22,7 @@ size_t VFSInterface::Read(void* buffer, size_t size, Rml::FileHandle file){
 	VFShandle* handle = reinterpret_cast<VFShandle*>(file);
 	size_t begin = handle->offset;
 	size_t max_end = begin + size;
-	char* strptr = &handle->filedata[0];
+	uint8_t* strptr = &handle->filedata[0];
 	
 	auto nbytes = std::min(size,handle->size_bytes() - begin);
 	

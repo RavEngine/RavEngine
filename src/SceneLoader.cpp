@@ -23,7 +23,7 @@ RavEngine::SceneLoader::SceneLoader(const std::string& name)
 
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	scene = aiImportFileFromMemory(str.data(), str.size(),
+	scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), str.size(),
 		aiProcess_CalcTangentSpace |
 		aiProcess_GenSmoothNormals |
 		aiProcess_JoinIdenticalVertices |

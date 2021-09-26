@@ -1,8 +1,7 @@
 #include "VirtualFileSystem.hpp"
 #include <physfs.h>
-#include <filesystem>
-#include "Debug.hpp"
 #include <fmt/format.h>
+#include <filesystem>
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
@@ -45,43 +44,19 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	rootname = std::filesystem::path(path).replace_extension("").string();
 	PHYSFS_freeList(root);
 }
-const RavEngine::Vector<char> RavEngine::VirtualFilesystem::FileContentsAt(const char* path)
-{
-	auto fullpath = StrFormat("{}/{}",rootname,path);
-	
-	if(!Exists(path)){
-		Debug::Fatal("cannot open {}{}",rootname,path);
-	}
-	
-	auto ptr = PHYSFS_openRead(fullpath.c_str());
-	auto size = PHYSFS_fileLength(ptr)+1;
-	
-    RavEngine::Vector<char> fileData(size);
-	
-	size_t length_read = PHYSFS_readBytes(ptr,fileData.data(),size);
-	fileData.data()[size-1] = '\0';	//add null terminator
-	PHYSFS_close(ptr);
-	
-	return fileData;
+
+const VirtualFilesystem::ptrsize VirtualFilesystem::GetSizeAndPtr(const char *path){
+    auto ptr = PHYSFS_openRead(path);
+    size_t size = PHYSFS_fileLength(ptr)+1;
+    return ptrsize{ptr,size};
 }
 
-void RavEngine::VirtualFilesystem::FileContentsAt(const char* path, RavEngine::Vector<uint8_t>& datavec)
-{
-	
-	string fullpath = StrFormat("{}/{}",rootname,path);
-	
-	if(!Exists(path)){
-		Debug::Fatal("cannot open {}{}",rootname,path);
-	}
-	
-	auto ptr = PHYSFS_openRead(fullpath.c_str());
-	auto size = PHYSFS_fileLength(ptr);
-	
-	datavec.resize(size);
-	
-	//this version of the call does not need to add a null terminator
-	size_t length_read = PHYSFS_readBytes(ptr,&datavec[0],size);
-	PHYSFS_close(ptr);
+void VirtualFilesystem::close(PHYSFS_File *file){
+    PHYSFS_close(file);
+}
+
+size_t VirtualFilesystem::ReadInto(PHYSFS_File* file, uint8_t* output, size_t size){
+    return PHYSFS_readBytes(file,output,size);
 }
 
 bool RavEngine::VirtualFilesystem::Exists(const char* path)

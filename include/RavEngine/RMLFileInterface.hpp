@@ -6,7 +6,7 @@ namespace RavEngine{
 class VFSInterface : public Rml::FileInterface{
 private:
 	struct VFShandle{
-        RavEngine::Vector<char> filedata;
+        RavEngine::Vector<uint8_t> filedata;
 		long offset = 0;
 
 		inline size_t size_bytes() const{
