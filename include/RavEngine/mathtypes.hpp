@@ -73,19 +73,19 @@ namespace RavEngine {
 	}
 }
 
-static inline constexpr RavEngine::RawVec3 Vec3toRaw(const vector3& vec) {
+static inline RavEngine::RawVec3 Vec3toRaw(const vector3& vec) {
 	return { vec.x, vec.y, vec.z };
 }
 
-static inline constexpr vector3 RawToVec3(const RavEngine::RawVec3& raw) {
+static inline vector3 RawToVec3(const RavEngine::RawVec3& raw) {
 	return vector3(raw[0], raw[1], raw[2]);
 }
 
-static inline constexpr RavEngine::RawQuat QuatToRaw(const quaternion& quat) {
+static inline RavEngine::RawQuat QuatToRaw(const quaternion& quat) {
 	return { quat.w,quat.x,quat.y,quat.z };
 }
 
-static inline constexpr quaternion RawToQuat(const RavEngine::RawQuat& raw) {
+static inline quaternion RawToQuat(const RavEngine::RawQuat& raw) {
 	return quaternion(raw[0], raw[1], raw[2], raw[3]);
 }
 
