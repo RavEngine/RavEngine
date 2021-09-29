@@ -14,7 +14,7 @@ using namespace std;
 AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_channels){
 	//expand audio into buffer
 	string path = StrFormat("/sounds/{}", name);
-	auto datavec = App::Resources->FileContentsAt<std::vector<uint8_t>>(path.c_str());
+	auto datavec = App::Resources->FileContentsAt<std::vector<uint8_t>>(path.c_str(),false);    // the extra arg signals not to null terminate the file data
 	
 	const int desiredSampleRate = 44100;
 	

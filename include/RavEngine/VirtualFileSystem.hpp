@@ -26,23 +26,25 @@ public:
 	/**
 	 Get the file data as a string
 	 @param path the resources path to the asset
+     @param nullTerminate whether to add a null byte to the end of the data
 	 @return the file data
 	 */
     template<typename vec = RavEngine::Vector<uint8_t>>
-	const vec FileContentsAt(const char* path)
+	const vec FileContentsAt(const char* path, bool nullTerminate = true)
     {
         vec fileData;
-        FileContentsAt(path,fileData);
+        FileContentsAt(path,fileData,nullTerminate);
         return fileData;
     }
 	
 	/**
 	 Get the file data in a vector
 	 @param path the resources path to the asset
+     @param nullTerminate whether to add a null byte to the end of the data
 	 @param datavec the vector to write the data into
 	 */
     template<typename vec = RavEngine::Vector<uint8_t>>
-    void FileContentsAt(const char* path, vec& datavec){
+    void FileContentsAt(const char* path, vec& datavec, bool nullTerminate = true){
         auto fullpath = StrFormat("{}/{}",rootname,path);
         
         if(!Exists(path)){
@@ -51,12 +53,14 @@ public:
         
         auto ptrsize = GetSizeAndPtr(fullpath.c_str());
         auto ptr = ptrsize.ptr;
-        auto size = ptrsize.size;
+        auto size = ptrsize.size + (nullTerminate ? 1 : 0);
         
         datavec.resize(size);
         
         size_t length_read = ReadInto(ptrsize.ptr, datavec.data(), size);
-        datavec.data()[size-1] = '\0';    //add null terminator
+        if (nullTerminate){
+            datavec.data()[size-1] = '\0';    //add null terminator
+        }
         close(ptrsize.ptr);
     }
 

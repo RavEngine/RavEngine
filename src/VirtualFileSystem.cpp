@@ -47,7 +47,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 
 const VirtualFilesystem::ptrsize VirtualFilesystem::GetSizeAndPtr(const char *path){
     auto ptr = PHYSFS_openRead(path);
-    size_t size = PHYSFS_fileLength(ptr)+1;
+    size_t size = PHYSFS_fileLength(ptr);
     return ptrsize{ptr,size};
 }
 
