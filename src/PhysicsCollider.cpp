@@ -3,7 +3,7 @@
 #include "PhysicsBodyComponent.hpp"
 #include <extensions/PxRigidActorExt.h>
 #include "WeakRef.hpp"
-#include "DebugDraw.hpp"
+#include "DebugDrawer.hpp"
 #include "PhysicsSolver.hpp"
 
 using namespace physx;
@@ -84,15 +84,15 @@ matrix4 PhysicsCollider::CalculateWorldMatrix() const{
 	return Ref<Entity>(GetOwner())->GetTransform()->CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
 }
 
-void BoxCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) const{
+void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color) const{
 	dbg.DrawRectangularPrism(CalculateWorldMatrix(), color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
 }
 
-void SphereCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) const{
+void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color) const{
 	dbg.DrawSphere(CalculateWorldMatrix(), color, radius);
 }
 
-void CapsuleCollider::DebugDraw(RavEngine::DebugDraw& dbg, const color_t color) const{
+void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color) const{
 	dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , color, radius, halfHeight * 2);
 }
 

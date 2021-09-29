@@ -32,7 +32,7 @@
 #include <im3d.h>
 #include <BuiltinMaterials.hpp>
 #include "Common3D.hpp"
-#include "DebugDraw.hpp"
+#include "DebugDrawer.hpp"
 #include <glm/gtc/type_ptr.hpp>
 #include <fmt/core.h>
 #include <iostream>
@@ -70,7 +70,7 @@ Ref<Entity> RenderEngine::debuggerContext;
 Ref<InputManager> RenderEngine::debuggerInput;
 UnorderedMap<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
 SpinLock RenderEngine::dbgmtx;
-static DebugDraw dbgdraw;	//for rendering debug primitives
+static DebugDrawer dbgdraw;	//for rendering debug primitives
 #endif
 
 static Ref<DebugMaterialInstance> mat;
@@ -721,13 +721,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	auto& shapesToDraw = fd->debugShapesToDraw;
 	for(const auto s : shapesToDraw){
-		auto shape = std::static_pointer_cast<IDebugRenderer>(s);
-		if (shape) {
-			auto owner = shape->GetOwner().lock();
-			if (owner && owner->GetComponent<Transform>()) {
-				shape->DrawDebug(dbgdraw);
-			}
-		}
+        auto owner = s->GetOwner().lock();
+        if (owner && owner->GetComponent<Transform>()) {
+            dynamic_cast<IDebugRenderable*>(s.get())->DebugDraw(dbgdraw);
+        }
 	}
 
 	Im3d::GetContext().draw();

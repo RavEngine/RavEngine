@@ -2,6 +2,7 @@
 #include "Entity.hpp"
 #include "AudioSource.hpp"
 #include "DataStructures.hpp"
+#include "DebugDrawer.hpp"
 
 #include "mathtypes.hpp"
 #include <common/room_effects_utils.h>
@@ -69,7 +70,7 @@ void AudioRoom::Simulate(float *ptr, size_t nbytes){
 	allSources.clear();
 }
 
-void AudioRoom::DrawDebug(DebugDraw& dbg){
+void AudioRoom::DebugDraw(DebugDrawer& dbg, const color_t color ) const{
 	auto owner = GetOwner().lock();
 	if (owner){
 		auto mtx = owner->GetTransform()->CalculateWorldMatrix();

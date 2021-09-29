@@ -446,7 +446,7 @@ void World::FillFramedata(){
 #ifdef _DEBUG
 	// copy debug shapes
 	auto copyDebug = masterTasks.emplace([this]() {
-		App::GetCurrentFramedata()->debugShapesToDraw = GetAllComponentsOfType<IDebugRenderer>();
+		App::GetCurrentFramedata()->debugShapesToDraw = GetAllComponentsOfType<IDebugRenderable>();
 	});
 #endif
 	auto copyGUI = masterTasks.emplace([this]() {

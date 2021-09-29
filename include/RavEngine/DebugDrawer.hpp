@@ -1,13 +1,11 @@
 #pragma once
 #include "Common3D.hpp"
 #include "SpinLock.hpp"
-#include "Component.hpp"
-#include "Queryable.hpp"
 #include <functional>
 
 namespace  RavEngine {
 
-class DebugDraw{
+class DebugDrawer{
 public:
 	/**
 	 Render a wirefram rectangular prism
@@ -70,19 +68,6 @@ private:
 	 @param impl the callback to invoke, pass a lambda
 	 */
 	void DrawHelper(const matrix4& transform, std::function<void()> impl);
-};
-
-/**
- Interface for rendering gizmos or other debug shapes. Subclass it and implement DrawDebug, then
- add it as a component to your object. In debug builds, the render engine will query for all IDebugRenderers
- and execute their DrawDebug method
- */
-struct IDebugRenderer : public Component, public Queryable<IDebugRenderer>{
-	
-	/**
-	 Override in subclasses. Use the passed DebugDraw object to make debug drawing calls
-	 */
-	virtual void DrawDebug(DebugDraw&) const = 0;
 };
 
 }

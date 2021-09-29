@@ -7,7 +7,6 @@
 #include "Queryable.hpp"
 #include "AudioRoomMaterial.hpp"
 #include "AudioSource.hpp"
-#include "DebugDraw.hpp"
 
 namespace RavEngine{
 
@@ -19,7 +18,7 @@ using RoomMat = vraudio::MaterialName;
 /**
  Renders audio buffers based on its owning world's state
  */
-class AudioRoom : public Component, public Queryable<AudioRoom>{
+class AudioRoom : public Component, public IDebugRenderable, public Queryable<AudioRoom,IDebugRenderable>{
 	friend class RavEngine::AudioRoomSyncSystem;
 	friend class RavEngine::AudioPlayer;
 public:
@@ -103,11 +102,8 @@ public:
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
 	 */
-	void DrawDebug(DebugDraw&);
+    virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
 	
-//	void SetRoomMaterial(const RoomMaterial& properties){
-//		audioEngine->SetReverbProperties(static_cast<RoomMaterial>(properties));
-//	}
 };
 
 }

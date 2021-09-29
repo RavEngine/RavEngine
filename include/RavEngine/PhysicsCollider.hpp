@@ -4,7 +4,7 @@
 #include <PxMaterial.h>
 #include <PxPhysics.h>
 #include <PxSimulationEventCallback.h>
-#include "DebugDraw.hpp"
+#include "DebugDrawer.hpp"
 #include "mathtypes.hpp"
 #include "PhysicsMaterial.hpp"
 #include "Queryable.hpp"
@@ -18,7 +18,7 @@ namespace physx {
 
 namespace RavEngine {
 
-	class PhysicsCollider : public Component, public Queryable<PhysicsCollider>
+    class PhysicsCollider : public Component, public IDebugRenderable, public Queryable<PhysicsCollider,IDebugRenderable>
 	{
 	protected:
 		physx::PxShape* collider = nullptr;
@@ -68,12 +68,6 @@ namespace RavEngine {
 		 @param rotation the relative rotation of the shape
 		 */
 		void SetRelativeTransform(const vector3& position, const quaternion& rotation);
-		
-		/**
-		 Draw a wireframe shape representing the boundary of this collider
-		 @param color the hex color to use to draw, in format 0xRRGGBBAA
-		 */
-		virtual void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const = 0;
 
 		virtual ~PhysicsCollider();
 	};
@@ -104,7 +98,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
 
 	};
 
@@ -138,7 +132,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
 	};
 
 	class CapsuleCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,CapsuleCollider>{
@@ -174,7 +168,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
 	};
 
 	class MeshCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider, MeshCollider>{
@@ -199,7 +193,7 @@ namespace RavEngine {
 			material = mat;
 		}
 		
-		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override{
+		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override{
 			//TODO: debug draw mesh collider
 		}
 	};
@@ -226,7 +220,7 @@ namespace RavEngine {
 			material = mat;
 		}
 		
-		void DebugDraw(RavEngine::DebugDraw& dbg, const color_t color = 0xFFFFFFFF) const override{
+		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override{
 			//TODO: debug draw mesh collider
 		}
 	};

@@ -106,7 +106,7 @@ private:
 	normalized_vec2 blend_pos;
 };
 
-class AnimatorComponent : public Component, public Queryable<AnimatorComponent>{
+class AnimatorComponent : public Component, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>{
 protected:
 	double lastPlayTime = 0;
 	Ref<SkeletonAsset> skeleton;
@@ -294,6 +294,8 @@ public:
     inline decltype(skeleton) GetSkeleton() const{
 		return skeleton;
 	}
+    
+    virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
 
 protected:
 	locked_node_hashmap<id_t,State> states;
@@ -308,7 +310,7 @@ protected:
 	ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
 	ozz::animation::SamplingCache cache;
 	ozz::vector<ozz::math::Float4x4> models;
-	ozz::vector<matrix4> glm_pose;
+    mutable ozz::vector<matrix4> glm_pose;
 	ozz::vector<matrix4> local_pose;
 	ozz::vector<matrix4> skinningmats;
 	
@@ -379,7 +381,7 @@ public:
 	 Get the current pose of the animation in world space
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
 	 */
-	inline const decltype(glm_pose)& GetPose(){
+	inline const decltype(glm_pose)& GetPose() const{
 		decimalType matrix[16];
 		auto worldMat = GetOwner().lock()->GetTransform()->CalculateWorldMatrix();
 		for(int i = 0; i < models.size(); i++){

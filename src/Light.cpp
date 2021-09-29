@@ -1,5 +1,5 @@
 #include "Light.hpp"
-#include "DebugDraw.hpp"
+#include "DebugDrawer.hpp"
 #include "PhysXDefines.h"
 #include <bgfx/bgfx.h>
 #include "MeshAsset.hpp"
@@ -48,7 +48,7 @@ void LightManager::Teardown() {
 	bgfx::destroy(screenSpaceQuadInd);
 }
 
-void DirectionalLight::DebugDraw(RavEngine::DebugDraw& dbg) const{
+void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
 	auto pos = Ref<Entity>(GetOwner())->GetTransform();
 	dbg.DrawCapsule(pos->CalculateWorldMatrix(), debug_color, 1, 2);
 }
@@ -60,7 +60,7 @@ void DirectionalLight::AddInstanceData(float* offset) const{
 	offset[3] = Intensity;
 }
 
-void AmbientLight::DebugDraw(RavEngine::DebugDraw& dbg) const{
+void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
 	auto pos = Ref<Entity>(GetOwner())->GetTransform();
 	
 	dbg.DrawSphere(pos->CalculateWorldMatrix(), debug_color, 1);
@@ -73,7 +73,7 @@ void AmbientLight::AddInstanceData(float* offset) const{
 	offset[3] = Intensity;
 }
 
-void PointLight::DebugDraw(RavEngine::DebugDraw& dbg) const{
+void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
 	auto pos = Ref<Entity>(GetOwner())->GetTransform();
 	dbg.DrawSphere(pos->CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
 }
@@ -87,7 +87,7 @@ void PointLight::AddInstanceData(float* offset) const{
 	offset[15] = Intensity;
 }
 
-void SpotLight::DebugDraw(RavEngine::DebugDraw&) const{
+void SpotLight::DebugDraw(RavEngine::DebugDrawer&) const{
 	//auto pos = getOwner().lock()->transform();
 }
 

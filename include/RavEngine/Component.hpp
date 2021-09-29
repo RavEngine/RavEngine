@@ -2,9 +2,11 @@
 
 #include "WeakRef.hpp"
 #include "CTTI.hpp"
+#include "Common3D.hpp"
 
 namespace RavEngine {
 	class Entity;
+    struct DebugDrawer;
 	class Component : public AutoCTTI {
 	protected:
 		WeakRef<Entity> owner;		//non-owning pointer to the owning Entity of this component
@@ -44,5 +46,15 @@ namespace RavEngine {
 
 		//define values in subclass...
 	};
+
+    struct IDebugRenderable : public AutoCTTI{
+        bool debugEnabled = false;
+        
+        /**
+         Draw a wireframe shape representing the boundary of this collider
+         @param color the hex color to use to draw, in format 0xRRGGBBAA
+         */
+        virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const = 0;
+    };
 }
 

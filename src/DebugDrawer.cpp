@@ -1,4 +1,4 @@
-#include "DebugDraw.hpp"
+#include "DebugDrawer.hpp"
 #include <im3d.h>
 #include <functional>
 #include <glm/gtc/type_ptr.hpp>
@@ -20,7 +20,7 @@ static inline Im3d::Mat4 matrix4ToMat4(const matrix4& m){
 	return Im3d::Mat4(p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14]);
 }
 
-void DebugDraw::DrawRectangularPrism(const matrix4 &transform, const color_t c, const vector3& d){
+void DebugDrawer::DrawRectangularPrism(const matrix4 &transform, const color_t c, const vector3& d){
 #ifdef _DEBUG
 	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
@@ -29,7 +29,7 @@ void DebugDraw::DrawRectangularPrism(const matrix4 &transform, const color_t c, 
 #endif
 }
 
-void DebugDraw::DrawCylinder(const matrix4 &transform, const color_t c,decimalType radius, decimalType height){
+void DebugDrawer::DrawCylinder(const matrix4 &transform, const color_t c,decimalType radius, decimalType height){
 #ifdef _DEBUG
 	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
@@ -38,7 +38,7 @@ void DebugDraw::DrawCylinder(const matrix4 &transform, const color_t c,decimalTy
 #endif
 }
 
-void DebugDraw::DrawSphere(const matrix4 &transform, const color_t c, decimalType radius){
+void DebugDrawer::DrawSphere(const matrix4 &transform, const color_t c, decimalType radius){
 #ifdef _DEBUG
 	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
@@ -47,7 +47,7 @@ void DebugDraw::DrawSphere(const matrix4 &transform, const color_t c, decimalTyp
 #endif
 }
 
-void DebugDraw::DrawCapsule(const matrix4 &transform, const color_t color, decimalType radius, decimalType height){
+void DebugDrawer::DrawCapsule(const matrix4 &transform, const color_t color, decimalType radius, decimalType height){
 #ifdef _DEBUG
 	DrawHelper(transform, [=]{
         Im3d::SetColor(color);
@@ -56,7 +56,7 @@ void DebugDraw::DrawCapsule(const matrix4 &transform, const color_t color, decim
 #endif
 }
 
-void DebugDraw::DrawPrism(const matrix4 &transform, const color_t color, decimalType radius, decimalType height, decimalType sides){
+void DebugDrawer::DrawPrism(const matrix4 &transform, const color_t color, decimalType radius, decimalType height, decimalType sides){
 #ifdef _DEBUG
 	DrawHelper(transform, [=] {
 		Im3d::SetColor(color);
@@ -66,7 +66,7 @@ void DebugDraw::DrawPrism(const matrix4 &transform, const color_t color, decimal
 
 }
 
-void DebugDraw::DrawArrow(const vector3 &start, const vector3 &end, const color_t color){
+void DebugDrawer::DrawArrow(const vector3 &start, const vector3 &end, const color_t color){
 #ifdef _DEBUG
 	mtx.lock();
     Im3d::SetColor(color);
@@ -76,7 +76,7 @@ void DebugDraw::DrawArrow(const vector3 &start, const vector3 &end, const color_
 }
 
 
-void DebugDraw::DrawHelper(const matrix4 &transform, std::function<void()> impl){
+void DebugDrawer::DrawHelper(const matrix4 &transform, std::function<void()> impl){
 #ifdef _DEBUG
 	mtx.lock();
 	Im3d::PushMatrix(matrix4ToMat4(transform));
