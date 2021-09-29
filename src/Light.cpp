@@ -7,8 +7,6 @@
 using namespace RavEngine;
 using namespace std;
 
-static constexpr color_t debug_color = 0x00FF00FF;
-
 Ref<MeshAsset> LightManager::pointLightMesh;
 Ref<MeshAsset> LightManager::spotLightMesh;
 Ref<LightManager::PointLightShaderInstance> LightManager::pointLightShader;

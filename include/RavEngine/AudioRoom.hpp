@@ -102,7 +102,7 @@ public:
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
 	 */
-    virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
+    virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
 	
 };
 

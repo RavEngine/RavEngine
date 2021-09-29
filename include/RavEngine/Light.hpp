@@ -11,10 +11,9 @@
 namespace RavEngine{
 class MeshAsset;
 
-struct Light : public Queryable<Light>, public Component {
+struct Light : public Queryable<Light,IDebugRenderable>, public Component, public IDebugRenderable {
 	float Intensity = 1.0;
 	ColorRGBA color{1,1,1,1};
-	virtual void DebugDraw(RavEngine::DebugDrawer&) const = 0;
 };
 
 /**

@@ -98,7 +98,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
 
 	};
 
@@ -132,7 +132,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
 	};
 
 	class CapsuleCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,CapsuleCollider>{
@@ -168,7 +168,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
 	};
 
 	class MeshCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider, MeshCollider>{
@@ -193,7 +193,7 @@ namespace RavEngine {
 			material = mat;
 		}
 		
-		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override{
+		void DebugDraw(RavEngine::DebugDrawer& dbg) const override{
 			//TODO: debug draw mesh collider
 		}
 	};
@@ -220,7 +220,7 @@ namespace RavEngine {
 			material = mat;
 		}
 		
-		void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override{
+		void DebugDraw(RavEngine::DebugDrawer& dbg) const override{
 			//TODO: debug draw mesh collider
 		}
 	};

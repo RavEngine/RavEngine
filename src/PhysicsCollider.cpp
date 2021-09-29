@@ -84,16 +84,16 @@ matrix4 PhysicsCollider::CalculateWorldMatrix() const{
 	return Ref<Entity>(GetOwner())->GetTransform()->CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
 }
 
-void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color) const{
-	dbg.DrawRectangularPrism(CalculateWorldMatrix(), color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
+void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
+	dbg.DrawRectangularPrism(CalculateWorldMatrix(), debug_color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
 }
 
-void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color) const{
-	dbg.DrawSphere(CalculateWorldMatrix(), color, radius);
+void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
+	dbg.DrawSphere(CalculateWorldMatrix(), debug_color, radius);
 }
 
-void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color) const{
-	dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , color, radius, halfHeight * 2);
+void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
+	dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
 }
 
 // mesh collider constructor

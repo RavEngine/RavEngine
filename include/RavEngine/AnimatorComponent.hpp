@@ -295,7 +295,7 @@ public:
 		return skeleton;
 	}
     
-    virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const color_t color = 0xFFFFFFFF) const override;
+    virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
 
 protected:
 	locked_node_hashmap<id_t,State> states;
