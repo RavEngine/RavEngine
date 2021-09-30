@@ -16,6 +16,7 @@
 #include <fmt/format.h>
 #include "Uniform.hpp"
 #include "TransientComputeBuffer.hpp"
+#include <DebugDraw.h>
 
 struct SDL_Window;
 
@@ -24,7 +25,7 @@ namespace RavEngine {
 	class GUIMaterialInstance;
 	class InputManager;
 
-    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface {
+    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
 	private:
 		struct dim{
 			int width, height;
@@ -191,8 +192,22 @@ namespace RavEngine {
 		void DeactivateDebugger() const;
 		static Ref<InputManager> debuggerInput;
 #endif
+        // navigation debug rendering -- internal use only
+        void depthMask(bool state) final;
+        void texture(bool state) final;
+        void begin(duDebugDrawPrimitives prim, float size = 1.0f) final;
+        void vertex(const float* pos, unsigned int color) final;
+        void vertex(const float x, const float y, const float z, unsigned int color) final;
+        void vertex(const float* pos, unsigned int color, const float* uv) final;
+        void vertex(const float x, const float y, const float z, unsigned int color, const float u, const float v) final;
+        void end() final;
 						
     protected:
+        duDebugDrawPrimitives currentPrimitive;
+        RavEngine::Vector<VertexColorUV> navMeshPolygon;
+        bgfx::VertexLayout debugNavMeshLayout;
+        bgfx::ProgramHandle debugNavProgram = BGFX_INVALID_HANDLE;
+        
 #ifdef _DEBUG
         struct DebugMsg{
             std::string message;

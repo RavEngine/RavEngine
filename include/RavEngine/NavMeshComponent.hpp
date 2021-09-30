@@ -5,7 +5,7 @@
 #include "Queryable.hpp"
 
 namespace RavEngine{
-    class NavMeshComponent : public Component, public Queryable<NavMeshComponent>{
+    class NavMeshComponent : public Component, public IDebugRenderable, public Queryable<NavMeshComponent,IDebugRenderable>{
     private:
         class dtNavMesh* navMesh = nullptr;
         dtNavMeshQuery* navMeshQuery = nullptr;
@@ -51,6 +51,8 @@ namespace RavEngine{
          @return list of coordinates composing the path
          */
         RavEngine::Vector<vector3> CalculatePath(const vector3& start, const vector3& end, uint16_t maxPoints = std::numeric_limits<uint16_t>::max());
+        
+        void DebugDraw(DebugDrawer& dbg) const override;
                 
         virtual ~NavMeshComponent();
     };

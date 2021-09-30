@@ -2,6 +2,9 @@
 # debug wireframes shader
 declare_shader("debug" "${CMAKE_CURRENT_LIST_DIR}/debug.vsh" "${CMAKE_CURRENT_LIST_DIR}/debug.fsh" "${CMAKE_CURRENT_LIST_DIR}/debug_varying.def.hlsl")
 
+# debug navMesh shader
+declare_shader("debugNav" "${CMAKE_CURRENT_LIST_DIR}/debugNav.vsh" "${CMAKE_CURRENT_LIST_DIR}/debugNav.fsh" "${CMAKE_CURRENT_LIST_DIR}/debugNav_varying.def.hlsl")
+
 # deferred geometry material
 declare_shader("pbrmaterial" "${CMAKE_CURRENT_LIST_DIR}/deferred_geo.vsh" "${CMAKE_CURRENT_LIST_DIR}/deferred_geo.fsh" "${CMAKE_CURRENT_LIST_DIR}/deferred_varying.def.hlsl")
 

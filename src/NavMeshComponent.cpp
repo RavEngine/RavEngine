@@ -5,6 +5,8 @@
 #include <DetourNavMeshBuilder.h>
 #include <DetourCommon.h>
 #include <DetourCrowd.h>
+#include <DetourDebugDraw.h>
+#include "App.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -184,7 +186,7 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt){
             Debug::Fatal("Detour mesh data creation failed");
         }
         
-        auto navMesh = dtAllocNavMesh();
+        navMesh = dtAllocNavMesh();
         if (!navMesh)
         {
             dtFree(navData);
@@ -275,4 +277,8 @@ RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start,
         path[i] = vector3(straightPath[i],straightPath[i+1],straightPath[i+2]);
     }
     return path;
+}
+
+void NavMeshComponent::DebugDraw(DebugDrawer &dbg) const{
+    duDebugDrawNavMesh(App::Renderer.get(), *navMesh, NULL);
 }

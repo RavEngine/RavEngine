@@ -394,7 +394,7 @@ void RenderEngine::Init()
 	guiMaterial = make_shared<GUIMaterialInstance>(Material::Manager::Get<GUIMaterial>());
 
 	//load compute shader for skinning
-	skinningShaderHandle = Material::getShaderHandle("skincompute/compute.bin");
+	skinningShaderHandle = Material::loadComputeProgram("skincompute/compute.bin");
 
 	//create compute shader buffers
 	skinningOutputLayout.begin()
@@ -428,6 +428,7 @@ void RenderEngine::Init()
 		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 		.end();
+    
 
 	//vertex format for ui
 	RmlLayout.begin()
@@ -511,6 +512,16 @@ RenderEngine::RenderEngine() {
 	skinningComputeBuffer = decltype(skinningComputeBuffer)(1024 * 1024);
 
 	poseStorageBuffer = decltype(poseStorageBuffer)(1024 * 1024);
+    
+    debugNavMeshLayout.begin()
+        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8)
+        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+    .end();
+    
+    auto vertfunc = Material::loadShaderHandle("debugNav/vertex.bin");
+    auto fragfunc = Material::loadShaderHandle("debugNav/fragment.bin");
+    debugNavProgram = bgfx::createProgram(vertfunc, fragfunc);
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -723,7 +734,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	for(const auto s : shapesToDraw){
         auto owner = s->GetOwner().lock();
         if (owner && owner->GetComponent<Transform>()) {
-            dynamic_cast<IDebugRenderable*>(s.get())->DebugDraw(dbgdraw);
+            auto ptr = dynamic_cast<IDebugRenderable*>(s.get());
+            if (ptr->debugEnabled){
+                ptr->DebugDraw(dbgdraw);
+            }
         }
 	}
 

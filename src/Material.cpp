@@ -69,7 +69,14 @@ Material::Material(const std::string& name) : name(name) {
 	}
 }
 
-bgfx::ProgramHandle RavEngine::Material::getShaderHandle(const std::string_view& full_path)
+bgfx::ShaderHandle Material::loadShaderHandle(const std::string_view& full_path){
+    RavEngine::Vector<uint8_t> shaderdata;
+    App::Resources->FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
+    const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
+    return bgfx::createShader(mem);
+}
+
+bgfx::ProgramHandle RavEngine::Material::loadComputeProgram(const std::string_view& full_path)
 {
     RavEngine::Vector<uint8_t> shaderdata;
 	App::Resources->FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);

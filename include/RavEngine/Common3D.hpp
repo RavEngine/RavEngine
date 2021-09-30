@@ -9,18 +9,22 @@ struct Vertex
 	float position[3];
 };
 
-struct VertexNormalUV : public Vertex{
-	float normal[3];
-	float uv[2];
-};
-
-struct VertexUV : public Vertex{
+struct UV
+{
     float uv[2];
 };
+
+struct VertexNormalUV : public Vertex, public UV{
+	float normal[3];
+};
+
+struct VertexUV : public Vertex, public UV{};
 
 struct VertexColor : public Vertex{
 	color_t color;
 };
+
+struct VertexColorUV : public VertexColor, public UV{};
 
 struct Transformation{
 	vector3 position = vector3(0,0,0);
