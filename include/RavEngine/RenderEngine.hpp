@@ -207,6 +207,7 @@ namespace RavEngine {
         RavEngine::Vector<VertexColorUV> navMeshPolygon;
         bgfx::VertexLayout debugNavMeshLayout;
         bgfx::ProgramHandle debugNavProgram = BGFX_INVALID_HANDLE;
+        bool navDebugDepthEnabled = false;
         
 #ifdef _DEBUG
         struct DebugMsg{

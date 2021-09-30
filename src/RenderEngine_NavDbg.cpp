@@ -4,11 +4,11 @@ using namespace RavEngine;
 using namespace std;
 
 void RenderEngine::depthMask(bool state){
-    
+    navDebugDepthEnabled = state;
 }
 
 void RenderEngine::texture(bool state){
-    
+    //TODO: load a checkerboard texture, and bind / unbind it to the shader based on state
 }
 
 /**
@@ -53,13 +53,13 @@ void RenderEngine::end(){
     
     switch(currentPrimitive){
         case duDebugDrawPrimitives::DU_DRAW_TRIS:
-            bgfx::setState(common | BGFX_STATE_PT_TRISTRIP);
+            bgfx::setState(common | BGFX_STATE_PT_TRISTRIP | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
             break;
         case duDebugDrawPrimitives::DU_DRAW_LINES:
-            bgfx::setState(common | BGFX_STATE_PT_LINES);
+            bgfx::setState(common | BGFX_STATE_PT_LINES | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
             break;
         case duDebugDrawPrimitives::DU_DRAW_POINTS:
-            bgfx::setState(common | BGFX_STATE_PT_POINTS);
+            bgfx::setState(common | BGFX_STATE_PT_POINTS | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
             break;
         case duDebugDrawPrimitives::DU_DRAW_QUADS:
             Debug::Fatal("Quad rendering mode is not supported");
