@@ -7,6 +7,8 @@
 #include "Queryable.hpp"
 #include "AudioRoomMaterial.hpp"
 #include "AudioSource.hpp"
+#include "Entity.hpp"
+#include "DebugDrawer.hpp"
 
 namespace RavEngine{
 
@@ -102,8 +104,14 @@ public:
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
 	 */
-    virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
-	
+	void DebugDraw(DebugDrawer& dbg) const final {
+		auto owner = GetOwner().lock();
+		if (owner) {
+			auto mtx = owner->GetTransform()->CalculateWorldMatrix();
+
+			dbg.DrawRectangularPrism(mtx, debug_color, roomDimensions);
+		}
+	}
 };
 
 }

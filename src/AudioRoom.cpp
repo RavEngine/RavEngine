@@ -2,7 +2,6 @@
 #include "Entity.hpp"
 #include "AudioSource.hpp"
 #include "DataStructures.hpp"
-#include "DebugDrawer.hpp"
 
 #include "mathtypes.hpp"
 #include <common/room_effects_utils.h>
@@ -68,13 +67,4 @@ void AudioRoom::Simulate(float *ptr, size_t nbytes){
 		audioEngine->DestroySource(source.second);
 	}
 	allSources.clear();
-}
-
-void AudioRoom::DebugDraw(DebugDrawer& dbg) const{
-	auto owner = GetOwner().lock();
-	if (owner){
-		auto mtx = owner->GetTransform()->CalculateWorldMatrix();
-		
-		dbg.DrawRectangularPrism(mtx, debug_color, roomDimensions);
-	}
 }
