@@ -33,18 +33,6 @@ static inline void do_test(const T& ds, const is_fn& insert_func, const es_fn& e
 	});
 	Debug::Log("Time to add {} elements: {} µs",ds.size(), dur.count());
 	
-	// time to iterate 90*10 times (10 seconds worth of ticking on default)
-	constexpr auto iter_count = 90*10;
-	dur = time([&]{
-		for(int i = 0; i < iter_count; i++){
-			uint64_t sum = 0;
-			for(const auto& elem : ds){
-				sum += elem;				// calculate a sum so the compiler doesn't optimize this
-			}
-		}
-	});
-	Debug::Log("Time to iterate {} times: {} µs",iter_count, dur.count());
-	
 	// time to remove elements from the middle
 	dur = time([&]{
 		for (int i = 50'000; i < 51'000; i++){
@@ -52,6 +40,20 @@ static inline void do_test(const T& ds, const is_fn& insert_func, const es_fn& e
 		}
 	});
 	Debug::Log("Time to remove {} elements: {} µs",1'000, dur.count());
+    
+    // time to iterate 90*10 times (10 seconds worth of ticking on default)
+    constexpr auto iter_count = 90*10;
+    uint64_t sum = 0;
+    dur = time([&]{
+        for(int i = 0; i < iter_count; i++){
+            sum = 0;
+            for(const auto& elem : ds){
+                sum += elem;                // calculate a sum so the compiler doesn't optimize this
+            }
+        }
+    });
+    Debug::Log("Time to iterate {} times: {} µs (sum = {})",iter_count, dur.count(),sum);
+    
 }
 
 
@@ -114,14 +116,24 @@ int main(int argc, const char** argv){
 	}
 	
 	{
-		Debug::Log("unordered_cached_vector");
-		unordered_cached_vector<int> vec;
+		Debug::Log("unordered_contiguous_set");
+		unordered_contiguous_set<int> vec;
 		do_test(vec,[&](int i){
 			vec.insert(i);
 		},[&](int i){
 			vec.erase(i);
 		});
 	}
+    
+    {
+        Debug::Log("std::unordered_set");
+        std::unordered_set<int> vec;
+        do_test(vec,[&](int i){
+            vec.insert(i);
+        },[&](int i){
+            vec.erase(i);
+        });
+    }
 	
 	{
 		Debug::Log("locked_hashset std::mutex");

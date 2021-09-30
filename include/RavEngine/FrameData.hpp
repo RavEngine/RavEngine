@@ -105,10 +105,11 @@ struct FrameData{
     Colony<StoredLight<PointLight>> points;
     Colony<StoredLight<SpotLight>> spots;
 	
+    // TODO: use normal vector, to avoid copying unused-in-iteration cache data 
 #ifdef _DEBUG
-	unordered_deduplicating_vector<Ref<Component>> debugShapesToDraw;
+    Vector<Ref<Component>> debugShapesToDraw;
 #endif
-	unordered_deduplicating_vector<Ref<Component>> guisToCalculate;
+    Vector<Ref<Component>> guisToCalculate;
 	
 	inline void Clear(){
 		opaques.clear();

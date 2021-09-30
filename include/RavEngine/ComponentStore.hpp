@@ -15,7 +15,7 @@ namespace RavEngine{
 	template<class lock = phmap::NullMutex>
 	class ComponentStore {
 	public:
-		typedef unordered_deduplicating_vector<Ref<RavEngine::Component>> entry_type;
+		typedef UnorderedContiguousSet<Ref<RavEngine::Component>> entry_type;
 	protected:
 		typedef locked_hashmap<ctti_t, entry_type,lock> ComponentStructure;
 		

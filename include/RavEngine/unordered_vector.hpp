@@ -24,18 +24,27 @@ public:
      Erase by iterator. Complexity is O(1).
      @param it the iterator to erase
      */
-    inline void erase(iterator_type it){
+    inline const_iterator_type erase(iterator_type it){
         *it = std::move(underlying.back());
         underlying.pop_back();
+        return it;
 	}
+    
+    /**
+     @return the underlying vector. Do not modify!
+     */
+    inline const decltype(underlying)& get_underlying() const{
+        return underlying;
+    }
 	
     /**
      Erase by iterator. Complexity is O(n)
      @param value the data to erase
      */
-	inline void erase(const T& value){
+	inline const_iterator_type erase(const T& value){
         auto it = std::find(underlying.begin(),underlying.end(),value);
         underlying.erase(it);
+        return it;
 	}
 	
     /**
@@ -89,28 +98,42 @@ public:
     inline void resize(){
         underlying.resize();
     }
+    
+    inline bool empty() const{
+        return underlying.empty();
+    }
+    
+    inline void clear(){
+        underlying.clear();
+    }
 	
 };
 
 /**
- The Unordered Cached Vector provides:
+ The Unordered Contiguous Set provides:
  - O(1) erase by value
  - O(1) erase by iterator
- All other complexities are identical to a regular vector. Elements must be moveable and hashable.
+ All other complexities are identical to a regular vector. Elements must be moveable and hashable. Hashes must not have collisions. An imperfect hash will result in unpredictable behavior.
  Note that the order of elements cannot be guareneed.
  */
-template<typename T>
-class unordered_cached_vector : public std::vector<T>{
+template<typename T,typename vec = std::vector<T>, typename _hash = std::hash<T>>
+class unordered_contiguous_set : public unordered_vector<T,vec>{
 protected:
-	phmap::flat_hash_map<size_t, typename std::vector<T>::size_type> offsets;
+	phmap::flat_hash_map<size_t, typename unordered_vector<T,vec>::size_type> offsets;
 	
 public:
+    typedef typename unordered_vector<T,vec>::iterator_type iterator_type;
+    typedef typename unordered_vector<T,vec>::iterator_type iterator;
+    typedef typename unordered_vector<T,vec>::const_iterator_type const_iterator_type;
+    typedef typename unordered_vector<T,vec>::const_iterator_type const_iterator;       // for redundancy
+    typedef typename unordered_vector<T,vec>::size_type index_type;
+    typedef typename unordered_vector<T,vec>::size_type size_type;
     
     /**
      @return the hash for an element. This container does not need to include the element
      */
     inline constexpr size_t hash_for(const T& value) const{
-        auto hasher = std::hash<T>();
+        auto hasher = _hash();
         return hasher(value);
     }
 	
@@ -118,21 +141,20 @@ public:
      Erase by iterator
      @param it the iterator to remove
      */
-    constexpr inline void erase(const typename std::vector<T>::iterator& it){
+    inline void erase(const typename unordered_vector<T,vec>::iterator_type& it){
 		// remove from the offset cache
-		auto hasher = std::hash<T>();
+		auto hasher = _hash();
 		auto hash = hasher(*it);
 		if (offsets.contains(hash)) {	// only erase if the container has the value
 			offsets.erase(hash);
 
 			// pop from back
-			*it = std::move(this->back());
+            auto i = unordered_vector<T,vec>::erase(it);
 
 			// update offset cache
-			hash = hasher(*it);
+			hash = hasher(*i);
 			offsets[hash] = std::distance(this->begin(), it);
-			this->pop_back();
-		}	
+		}
 	}
     
     /**
@@ -149,7 +171,7 @@ public:
      @param value item to remove
      */
 	inline void erase(const T& value){
-		auto valuehash = std::hash<T>()(value);
+		auto valuehash = _hash()(value);
 		if (offsets.contains(valuehash)) {
 			auto it = this->begin() + offsets[valuehash];
 			erase(it);
@@ -157,27 +179,16 @@ public:
 	}
 	
 	inline void insert(const T& value){
-		auto hashcode = std::hash<T>()(value);
-		offsets.emplace(hashcode,this->size());
-		this->push_back(value);
+		auto hashcode = _hash()(value);
+        if (!this->offsets.contains(hashcode)){
+            offsets.emplace(hashcode,this->size());
+            unordered_vector<T,vec>::insert(value);
+        }
 	}
 	
 	inline void contains(const T& value){
-		auto valuehash = std::hash<T>()(value);
+		auto valuehash = _hash()(value);
 		return offsets.contains(valuehash);
-	}
-};
-
-template<typename T>
-class unordered_deduplicating_vector : public unordered_cached_vector<T>{
-public:
-	
-	inline void insert(const T& value){
-		auto hashcode = std::hash<T>()(value);
-		if (!this->offsets.contains(hashcode)){
-			this->offsets.emplace(hashcode,this->size());
-			this->push_back(value);
-		}
 	}
 };
 

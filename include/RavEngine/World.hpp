@@ -64,8 +64,13 @@ namespace RavEngine {
             double runAtTime;
             std::function<void(void)> func;
             dispatched_func(const decltype(runAtTime) rt,const decltype(func)& func) : func(func), runAtTime(rt){}
+            dispatched_func(const dispatched_func& other){
+                runAtTime = other.runAtTime;
+                func = other.func;
+            }
+            dispatched_func(){}
         };
-        unordered_deduplicating_vector<std::unique_ptr<dispatched_func>> async_tasks;
+        UnorderedContiguousSet<std::shared_ptr<dispatched_func>> async_tasks;
         decltype(async_tasks)::iterator async_begin, async_end;
         RavEngine::Vector<size_t> ranFunctions;
 	protected:

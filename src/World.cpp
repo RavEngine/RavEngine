@@ -263,7 +263,7 @@ void World::RebuildTaskGraph(){
         async_begin = async_tasks.begin();
         async_end = async_tasks.end();
     });
-    auto doAsync = masterTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const unique_ptr<dispatched_func>& item){
+    auto doAsync = masterTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const shared_ptr<dispatched_func>& item){
         if (App::GetCurrentTime() >= item->runAtTime){
             item->func();
             ranFunctions.push_back(async_tasks.hash_for(item));
@@ -446,11 +446,11 @@ void World::FillFramedata(){
 #ifdef _DEBUG
 	// copy debug shapes
 	auto copyDebug = masterTasks.emplace([this]() {
-		App::GetCurrentFramedata()->debugShapesToDraw = GetAllComponentsOfType<IDebugRenderable>();
+		App::GetCurrentFramedata()->debugShapesToDraw = GetAllComponentsOfType<IDebugRenderable>().get_underlying();
 	});
 #endif
 	auto copyGUI = masterTasks.emplace([this]() {
-		App::GetCurrentFramedata()->guisToCalculate = GetAllComponentsOfType<GUIComponent>();
+		App::GetCurrentFramedata()->guisToCalculate = GetAllComponentsOfType<GUIComponent>().get_underlying();
         // also do the time here
         App::GetCurrentFramedata()->Time = App::GetCurrentTime();
 	});
@@ -484,6 +484,6 @@ void World::FillFramedata(){
 void World::DispatchAsync(const std::function<void ()>& func, double delaySeconds){
     auto time = App::GetCurrentTime();
     App::DispatchMainThread([=]{
-        async_tasks.push_back(make_unique<dispatched_func>(time + delaySeconds,func));
+        async_tasks.insert(make_shared<dispatched_func>(time + delaySeconds,func));
     });
 }
