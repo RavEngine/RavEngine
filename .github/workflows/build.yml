@@ -80,7 +80,7 @@ jobs:
         with:
           submodules: true
       - name: Configure
-        run: mkdir build && cd build; cmake -Wno-dev -DRAVENGINE_BUILD_TESTS=ON .. ; cmake -Wno-dev -DRAVENGINE_BUILD_TESTS=ON ..
+        run: mkdir build && cd build; cmake -Wno-dev -DRAVENGINE_BUILD_TESTS=ON .. ; cmake ..
       - name: Build
         run: cd build; cmake --build . --config release --target RavEngine
 
@@ -93,7 +93,7 @@ jobs:
         with:
           submodules: true
       - name: Configure
-        run: mkdir build && cd build; cmake -G "Visual Studio 16 2019" -Ax64 -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION="10.0" .. ; cmake --G "Visual Studio 16 2019" -Ax64 -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION="10.0" .. ; 
+        run: mkdir build && cd build; cmake -G "Visual Studio 16 2019" -Ax64 -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION="10.0" .. ; cmake .. ; 
       - name: Build
         run: cd build; cmake --build . --config release --target RavEngine
         
