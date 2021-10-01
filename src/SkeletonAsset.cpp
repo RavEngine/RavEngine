@@ -21,12 +21,12 @@ using namespace std;
 SkeletonAsset::SkeletonAsset(const std::string& str){
 	auto path = StrFormat("objects/{}",str);
 	
-	if(App::Resources->Exists(path.c_str())){
+	if(App::GetResources().Exists(path.c_str())){
 		//is this in ozz format?
 		auto extension = filesystem::path(str).extension();
 		if (extension == ".ozz"){
             RavEngine::Vector<uint8_t> data;
-			App::Resources->FileContentsAt(path.c_str(),data);
+			App::GetResources().FileContentsAt(path.c_str(),data);
 			
 			ozz::io::MemoryStream mstr;
 			mstr.Write(data.data(), data.size());
@@ -43,7 +43,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 			}
 		}
 		else{
-			auto data = App::Resources->FileContentsAt(path.c_str());
+			auto data = App::GetResources().FileContentsAt(path.c_str());
 			const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(data.data()), data.size(),
 														  aiProcess_ImproveCacheLocality          |
 														  aiProcess_ValidateDataStructure          |

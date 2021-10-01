@@ -43,12 +43,12 @@ bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime
 
 AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton){
 	auto path = StrFormat("objects/{}", name);
-	if(App::Resources->Exists(path.c_str())){
+	if(App::GetResources().Exists(path.c_str())){
 		//is this in ozz format
 		auto extension = filesystem::path(name).extension();
 		if (extension == ".ozz"){
             RavEngine::Vector<uint8_t> data;
-			App::Resources->FileContentsAt(path.c_str());
+			App::GetResources().FileContentsAt(path.c_str());
 			
 			ozz::io::MemoryStream mstr;
 			mstr.Write(data.data(), data.size());
@@ -65,7 +65,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 			}
 		}
 		else{
-			auto data = App::Resources->FileContentsAt(path.c_str());
+			auto data = App::GetResources().FileContentsAt(path.c_str());
 			const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(data.data()), data.size(),
 														  aiProcess_ImproveCacheLocality          |
 														  aiProcess_ValidateDataStructure          |

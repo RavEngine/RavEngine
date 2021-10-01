@@ -16,11 +16,11 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	
 	auto fullpath = StrFormat("objects/{}",path);
 	
-	if (!App::Resources->Exists(fullpath.c_str())){
+	if (!App::GetResources().Exists(fullpath.c_str())){
 		Debug::Fatal("No asset at {}",fullpath);
 	}
 	
-	auto str = App::Resources->FileContentsAt(fullpath.c_str());
+	auto str = App::GetResources().FileContentsAt(fullpath.c_str());
 	
 	//pull from cmrc
 	auto file_ext = filesystem::path(fullpath).extension();

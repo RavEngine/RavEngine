@@ -26,7 +26,7 @@ Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
     Debug::Assert(!IsRasterImage(name), "This texture constructor only allows vector image formats");
     
     RavEngine::Vector<uint8_t> data;
-    App::Resources->FileContentsAt(StrFormat("/textures/{}", name).c_str(),data);
+    App::GetResources().FileContentsAt(StrFormat("/textures/{}", name).c_str(),data);
     
     // load the SVG
     auto document = lunasvg::Document::loadFromData(reinterpret_cast<char*>(data.data()), data.size());
@@ -42,7 +42,7 @@ Texture::Texture(const std::string& name){
 	//read from resource
 	
     RavEngine::Vector<uint8_t> data;
-	App::Resources->FileContentsAt(("/textures/" + name).c_str(),data);
+	App::GetResources().FileContentsAt(("/textures/" + name).c_str(),data);
 	
 	int width, height,channels;
 	auto compressed_size = sizeof(stbi_uc) * data.size();

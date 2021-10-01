@@ -324,7 +324,7 @@ void World::FillFramedata(){
 			auto cam = std::static_pointer_cast<CameraComponent>(c);
 			if (cam->IsActive()) {
 				
-				auto size = App::Renderer->GetBufferSize();
+				auto size = App::GetRenderEngine().GetBufferSize();
 				cam->SetTargetSize(size.width, size.height);
 				auto current = App::GetCurrentFramedata();
 				current->viewmatrix = cam->GenerateViewMatrix();

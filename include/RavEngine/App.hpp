@@ -31,6 +31,9 @@ namespace RavEngine {
 
 	class App {
 		friend class NetworkManager;
+        
+        static std::optional<RenderEngine> Renderer;
+        static std::optional<VirtualFilesystem> Resources;
 	public:
 		App(const std::string& resourcesName);
 		virtual ~App();
@@ -57,8 +60,6 @@ namespace RavEngine {
 		int run(int argc, char** argv);
 
 		static const float evalNormal;	//normal speed is 60 hz
-
-		static Ref<VirtualFilesystem> Resources;
 		
 		/**
 		 @return the current time, measured in seconds since the application launched
@@ -73,11 +74,20 @@ namespace RavEngine {
 		//global thread pool, threads = logical processors on CPU
 		static tf::Executor executor;
 		
-		//Render engine
-		static Ref<RenderEngine> Renderer;
-		
 		//networking interface
 		static NetworkManager networkManager;
+        
+        inline static VirtualFilesystem& GetResources(){
+            return Resources.value();
+        }
+        
+        inline static RenderEngine& GetRenderEngine(){
+            return Renderer.value();
+        }
+        
+        inline static bool HasRenderEngine(){
+            return static_cast<bool>(Renderer);
+        }
 		
 		/**
 		 Dispatch a task to be executed on the main thread.

@@ -69,7 +69,7 @@ static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indice
 
 static inline matrix4 make_matrix(Rml::Vector2f translation){
 	matrix4 mat(1);	//start with identity
-	auto size = App::Renderer->GetBufferSize();
+	auto size = App::GetRenderEngine().GetBufferSize();
 	mat = glm::scale(mat, vector3(1,-1,1));	//flip
 	mat = glm::scale(mat, vector3(1.0/(size.width/2.0),1.0/(size.height/2.0),1));	//scale into view space
 	mat = glm::translate(mat, vector3(-size.width/2.0,-size.height/2.0,0));			//translate to origin-center
@@ -210,7 +210,7 @@ bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i
 	
 	//pull texture out of vfs into byte array, then call createTexture
     RavEngine::Vector<uint8_t> data;
-	App::Resources->FileContentsAt((source).c_str(),data);
+	App::GetResources().FileContentsAt((source).c_str(),data);
 	
 	int width, height,channels;
 	auto compressed_size = sizeof(stbi_uc) * data.size();

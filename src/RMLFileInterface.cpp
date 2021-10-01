@@ -6,7 +6,7 @@ using namespace RavEngine;
 
 // Opens a file.
 Rml::FileHandle VFSInterface::Open(const Rml::String& path){
-	auto ptr = new VFShandle{ App::Resources->FileContentsAt(path.c_str()) };
+	auto ptr = new VFShandle{ App::GetResources().FileContentsAt(path.c_str()) };
 	return reinterpret_cast<Rml::FileHandle>(ptr);
 }
 

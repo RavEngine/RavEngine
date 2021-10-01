@@ -280,5 +280,5 @@ RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start,
 }
 
 void NavMeshComponent::DebugDraw(DebugDrawer &dbg) const{
-    duDebugDrawNavMesh(App::Renderer.get(), *navMesh, NULL);
+    duDebugDrawNavMesh(&App::GetRenderEngine(), *navMesh, NULL);
 }

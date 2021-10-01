@@ -32,10 +32,10 @@ using namespace RavEngine;
 using namespace std::chrono;
 
 const float RavEngine::App::evalNormal = 60;
-Ref<VirtualFilesystem> App::Resources;
+STATIC(App::Resources);
 NetworkManager App::networkManager;
 double App::time;
-Ref<RenderEngine> App::Renderer;
+STATIC(App::Renderer);
 static float currentScale = 0;
 
 ConcurrentQueue<function<void(void)>> App::main_tasks;
@@ -89,13 +89,13 @@ App::App(const std::string& resourcesName){
 		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
 	}
 	
-	Resources = make_shared<VirtualFilesystem>(resourcesName + ".zip");
-	Renderer = make_shared<RenderEngine>();
+	Resources.emplace(resourcesName + ".zip");
+	Renderer.emplace();
 	Skybox::Init();
 
 	//setup GUI rendering
-	Rml::SetSystemInterface(Renderer.get());
-	Rml::SetRenderInterface(Renderer.get());
+	Rml::SetSystemInterface(&GetRenderEngine());
+	Rml::SetRenderInterface(&GetRenderEngine());
 	Rml::SetFileInterface(new VFSInterface());
 	Rml::Initialise();
 	

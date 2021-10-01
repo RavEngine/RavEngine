@@ -57,8 +57,8 @@ Material::Material(const std::string& name) : name(name) {
 	auto dir = StrFormat("shaders/{}/{}", shader_api(), name);
 
     RavEngine::Vector<uint8_t> vertex_src, fragment_src;
-	App::Resources->FileContentsAt(StrFormat("{}/vertex.bin",dir).c_str(),vertex_src);
-	App::Resources->FileContentsAt(StrFormat("{}/fragment.bin",dir).c_str(),fragment_src);
+	App::GetResources().FileContentsAt(StrFormat("{}/vertex.bin",dir).c_str(),vertex_src);
+	App::GetResources().FileContentsAt(StrFormat("{}/fragment.bin",dir).c_str(),fragment_src);
 
 	//must have a vertex and a fragment shader
 	bgfx::ShaderHandle vsh = loadShader(vertex_src);
@@ -71,7 +71,7 @@ Material::Material(const std::string& name) : name(name) {
 
 bgfx::ShaderHandle Material::loadShaderHandle(const std::string_view& full_path){
     RavEngine::Vector<uint8_t> shaderdata;
-    App::Resources->FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
+    App::GetResources().FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
     const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
     return bgfx::createShader(mem);
 }
@@ -79,7 +79,7 @@ bgfx::ShaderHandle Material::loadShaderHandle(const std::string_view& full_path)
 bgfx::ProgramHandle RavEngine::Material::loadComputeProgram(const std::string_view& full_path)
 {
     RavEngine::Vector<uint8_t> shaderdata;
-	App::Resources->FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
+	App::GetResources().FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
 	const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
 	return bgfx::createProgram(bgfx::createShader(mem), true);	//auto destroys shader when program is destroyed
 }

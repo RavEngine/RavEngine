@@ -25,7 +25,7 @@ struct FrameData{
 	// ensure skinning data gets correct matrices
 	template<typename T>
     struct entry{
-        ozz::vector<T> items;
+        Vector<T> items;
         entry(const entry<T>& other){
             items = other.items;
 			skinningdata = other.skinningdata;

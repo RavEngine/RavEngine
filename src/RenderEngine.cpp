@@ -304,7 +304,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 			func();
 		}
 
-		if (App::Renderer) {			//skip if the App has not set its renderer yet
+		if (App::HasRenderEngine()) {			//skip if the App has not set its renderer yet
 			//invoke World rendering call
 			Ref<World> wtd = worldToDraw.lock();
 			if (wtd) {
@@ -318,7 +318,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 					}
 					RenderEngine::dbgmtx.unlock();
 #endif
-					App::Renderer->Draw(wtd);
+					App::GetRenderEngine().Draw(wtd);
                     auto stats = bgfx::getStats();
                     
                     auto delta = std::chrono::duration<float,std::milli>(			
