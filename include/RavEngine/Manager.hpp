@@ -111,7 +111,7 @@ public:
      */
     static void Clear(){
         mtx.lock();
-        items.clearn();
+        items.clear();
         mtx.unlock();
     }
 };

@@ -241,6 +241,9 @@ App::~App(){
 #ifdef _DEBUG
 	Renderer->DeactivateDebugger();
 #endif
+    MeshAsset::Manager::Clear();
+    MeshAssetSkinned::Manager::Clear();
+    Texture::Manager::Clear();
 	player.Shutdown();
 	networkManager.server.reset();
 	networkManager.client.reset();
