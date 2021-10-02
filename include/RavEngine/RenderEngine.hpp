@@ -94,6 +94,17 @@ namespace RavEngine {
 		static SDL_Window* const GetWindow(){
 			return window;
 		}
+        
+        enum class WindowMode{
+            Windowed,
+            BorderlessFullscreen,
+            Fullscreen
+        };
+        /**
+         Set the video mode
+         @param mode the new mode to use
+         */
+        void SetWindowMode(WindowMode mode);
 
         /**
          @return the current frame rate using the frame time
@@ -203,10 +214,9 @@ namespace RavEngine {
         void end() final;
 						
     protected:
-        duDebugDrawPrimitives currentPrimitive;
-        RavEngine::Vector<VertexColorUV> navMeshPolygon;
-        bgfx::VertexLayout debugNavMeshLayout;
-        bgfx::ProgramHandle debugNavProgram = BGFX_INVALID_HANDLE;
+        static RavEngine::Vector<VertexColorUV> navMeshPolygon;
+        static bgfx::VertexLayout debugNavMeshLayout;
+        static bgfx::ProgramHandle debugNavProgram;
         bool navDebugDepthEnabled = false;
         
 #ifdef _DEBUG

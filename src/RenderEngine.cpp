@@ -901,3 +901,19 @@ void RenderEngine::DeactivateDebugger() const{
 	debuggerInput = nullptr;
 }
 #endif
+
+void RenderEngine::SetWindowMode(WindowMode mode){
+    int flag;
+    switch(mode){
+        case WindowMode::Windowed:
+            flag = 0;
+            break;
+        case WindowMode::BorderlessFullscreen:
+            flag = SDL_WINDOW_FULLSCREEN_DESKTOP;
+            break;
+        case WindowMode::Fullscreen:
+            flag = SDL_WINDOW_FULLSCREEN;
+            break;
+    }
+    SDL_SetWindowFullscreen(window, flag);
+}

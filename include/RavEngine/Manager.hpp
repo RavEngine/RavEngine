@@ -95,7 +95,7 @@ public:
      Reduce the size of the cache by removing expired pointers
      */
     static void Compact(){
-        boost::container::vector<CacheKey> toremove;
+        RavEngine::Vector<CacheKey> toremove;
         for(const auto& entry : items){
             if (entry.second.expired()){
                 toremove.push_back(entry.first);
