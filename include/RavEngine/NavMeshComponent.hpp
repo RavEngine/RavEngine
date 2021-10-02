@@ -11,6 +11,7 @@ namespace RavEngine{
         dtNavMeshQuery* navMeshQuery = nullptr;
         unsigned char* navData = nullptr;
         MeshAsset::Bounds bounds;
+        mutable SpinLock mtx;
     public:
         struct Options{
             float cellSize = 0.3;
@@ -42,7 +43,9 @@ namespace RavEngine{
         /**
          Construct a mesh asset 
          */
-        NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt);
+        NavMeshComponent(Ref<MeshAsset> mesh, Options opt);
+        
+        void UpdateNavMesh(Ref<MeshAsset> mesh, Options opt);
         
         /**
          Calculate a route between two points

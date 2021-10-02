@@ -11,8 +11,17 @@
 using namespace std;
 using namespace RavEngine;
 
-NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt){
+NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, Options opt){
+    UpdateNavMesh(mesh, opt);
+}
+
+void NavMeshComponent::UpdateNavMesh(Ref<MeshAsset> mesh, Options opt){
     Debug::Assert(mesh->hasSystemRAMCopy(),"MeshAsset must be created with keepInSystemRAM = true");
+    mtx.lock();
+    // delete old values
+    dtFree(navMesh);
+    dtFree(navMeshQuery);
+    dtFree(navData);
     
     auto& rawData = mesh->GetSystemCopy();
     bounds = mesh->GetBounds();
@@ -215,6 +224,7 @@ NavMeshComponent::NavMeshComponent(Ref<MeshAsset> mesh, const Options& opt){
     else{
         Debug::Warning("Cannot generate Detour data for NavMesh - too many vertices");
     }
+    mtx.unlock();
 }
 
 NavMeshComponent::~NavMeshComponent(){
@@ -224,6 +234,7 @@ NavMeshComponent::~NavMeshComponent(){
 }
 
 RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start, const vector3 &end, uint16_t maxPoints){
+    mtx.lock();
     float startf[3]{static_cast<float>(start.x),static_cast<float>(start.y),static_cast<float>(start.z)};
     float endf[3]{static_cast<float>(end.x),static_cast<float>(end.y),static_cast<float>(end.z)};
     
@@ -276,9 +287,12 @@ RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start,
     for (size_t i = 0; i < nVertCount/3; i++){
         path[i] = vector3(straightPath[i],straightPath[i+1],straightPath[i+2]);
     }
+    mtx.unlock();
     return path;
 }
 
 void NavMeshComponent::DebugDraw(DebugDrawer &dbg) const{
+    mtx.lock();
     duDebugDrawNavMesh(&App::GetRenderEngine(), *navMesh, NULL);
+    mtx.unlock();
 }
