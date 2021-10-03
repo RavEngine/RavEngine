@@ -69,6 +69,9 @@ void RenderEngine::vertex(const float x, const float y, const float z, unsigned 
 
 void RenderEngine::end(){
     // submit the primitive here
+    if (navMeshPolygon.size() == 0){
+        return;
+    }
     auto memory = bgfx::copy(navMeshPolygon.data(), navMeshPolygon.size() * sizeof(decltype(navMeshPolygon)::value_type));
     auto vb = bgfx::createVertexBuffer(memory, debugNavMeshLayout);
     bgfx::setVertexBuffer(0, vb);

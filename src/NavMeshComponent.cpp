@@ -30,9 +30,11 @@ void NavMeshComponent::UpdateNavMesh(Ref<MeshAsset> mesh, Options opt){
     const float* bmax = bounds.max;
     
     const auto nverts = rawData.vertices.size();
-    vector<Vertex> vertsOnly(rawData.vertices.size());
+    vector<float> vertsOnly(rawData.vertices.size() * 3);
     for(uint32_t i = 0; i < rawData.vertices.size(); i++){
-        vertsOnly[i] = rawData.vertices[i]; // uses object-slicing to copy only position data
+        vertsOnly[i*3] = rawData.vertices[i].position[0];
+        vertsOnly[i*3+1] = rawData.vertices[i].position[1];
+        vertsOnly[i*3+2] = rawData.vertices[i].position[2];
     }
     
     // step 1: setup configuration
@@ -68,11 +70,15 @@ void NavMeshComponent::UpdateNavMesh(Ref<MeshAsset> mesh, Options opt){
         Debug::Fatal("Height field generation failed");
     }
     
+    const int ntris = rawData.indices.size()/3;
     // allocate array to hold triangle area types ( = number of triangles)
-    unsigned char* triareas = new unsigned char[rawData.indices.size()/3];
-    std::memset(triareas, 0, (rawData.indices.size()/3) * sizeof(triareas[0]));
-    rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, vertsOnly.data()->position, nverts, reinterpret_cast<const int*>(rawData.indices.data()), rawData.indices.size() / 3, triareas);
-    if(!rcRasterizeTriangles(&ctx, vertsOnly.data()->position, triareas, vertsOnly.size(), *solid)){
+    unsigned char* triareas = new unsigned char[ntris];
+    std::memset(triareas, 0, ntris * sizeof(triareas[0]));
+    
+    auto idxptr = reinterpret_cast<const int*>(rawData.indices.data());
+    
+    rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, vertsOnly.data(), nverts, idxptr, ntris, triareas);
+    if(!rcRasterizeTriangles(&ctx, vertsOnly.data(), vertsOnly.size(), idxptr, triareas, ntris, *solid)){
         Debug::Fatal("Could not rasterize triangles for navigation");
     }
     
