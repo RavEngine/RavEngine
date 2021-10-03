@@ -18,9 +18,18 @@
 	#define _WINRT 1
 #endif
 #include <SDL_main.h>
-
+#include <bx/platform.h>
 
 namespace RavEngine {
+	struct AppConfig {
+		enum class RenderBackend {
+			Metal,
+			DirectX12,
+			Vulkan,
+			AutoSelect
+		} preferredBackend = RenderBackend::AutoSelect;
+	};
+
 	typedef std::chrono::high_resolution_clock clocktype;
 	typedef std::chrono::duration<double, std::micro> timeDiff;
 	typedef std::chrono::seconds deltaSeconds;
@@ -232,6 +241,7 @@ namespace RavEngine {
 		static FrameData *current, *inactive, *render;
 		static SpinLock swapmtx1, swapmtx2;
 	protected:
+		virtual AppConfig OnConfigure(int argc, char** argv) { return AppConfig{}; }
 		
 		//plays the audio generated in worlds
 		AudioPlayer player;

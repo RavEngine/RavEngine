@@ -84,13 +84,21 @@ App::App(const std::string& resourcesName){
 	//initialize virtual file system library 
 	PHYSFS_init("");
 	
+	Resources.emplace(resourcesName + ".zip");
+}
+
+int App::run(int argc, char** argv) {
+
 	// initialize SDL2
-	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC) != 0){
-		Debug::Fatal("Unable to initialize SDL2: {}",SDL_GetError());
+	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC) != 0) {
+		Debug::Fatal("Unable to initialize SDL2: {}", SDL_GetError());
+	}
+	{
+		auto config = OnConfigure(argc, argv);
+
+		Renderer.emplace(config);
 	}
 	
-	Resources.emplace(resourcesName + ".zip");
-	Renderer.emplace();
 	Skybox::Init();
 
 	//setup GUI rendering
@@ -98,35 +106,32 @@ App::App(const std::string& resourcesName){
 	Rml::SetRenderInterface(&GetRenderEngine());
 	Rml::SetFileInterface(new VFSInterface());
 	Rml::Initialise();
-	
+
 #ifdef _DEBUG
 	Renderer->InitDebugger();
 #endif
-	
+
 #ifdef __APPLE__
-    enableSmoothScrolling();
+	enableSmoothScrolling();
 #endif
-	
+
 	//load the built-in fonts
-    App::Resources->IterateDirectory("fonts", [](const std::string& filename){
-        auto p = std::filesystem::path(filename);
-        if(p.extension() == ".ttf"){
-            GUIComponent::LoadFont(p.filename().string());
-        }
-    });
-	
+	App::Resources->IterateDirectory("fonts", [](const std::string& filename) {
+		auto p = std::filesystem::path(filename);
+		if (p.extension() == ".ttf") {
+			GUIComponent::LoadFont(p.filename().string());
+		}
+		});
+
 	//setup Audio
 	player.Init();
-	
+
 	//setup networking
 	SteamDatagramErrMsg errMsg;
-	if ( ! GameNetworkingSockets_Init(nullptr, errMsg) ){
-		Debug::Fatal("Networking initialization failed: {}",errMsg);
+	if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
+		Debug::Fatal("Networking initialization failed: {}", errMsg);
 	}
-	SteamNetworkingUtils()->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Msg,DebugOutput);
-}
-
-int App::run(int argc, char** argv) {
+	SteamNetworkingUtils()->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Msg, DebugOutput);
 	
 	// if built in non-UWP for Windows, need to manually set DPI awareness
 #if defined _WIN32 && !_WINRT

@@ -21,6 +21,8 @@
 struct SDL_Window;
 
 namespace RavEngine {
+
+	struct AppConfig;
     class DeferredBlitShader;
 	class GUIMaterialInstance;
 	class InputManager;
@@ -35,7 +37,7 @@ namespace RavEngine {
 		
     public:
         virtual ~RenderEngine();
-        RenderEngine();
+        RenderEngine(const AppConfig&);
 
 		//render a world, for internal use only
 		void Draw(Ref<World>);
@@ -227,7 +229,7 @@ namespace RavEngine {
         static SpinLock dbgmtx;
         static UnorderedMap<uint16_t,DebugMsg> debugprints;
 #endif
-        void runAPIThread(bgfx::PlatformData pd, int width, int height);
+        void runAPIThread(bgfx::PlatformData pd, int width, int height, const AppConfig& conf);
 
 #ifdef _WIN32
 		float win_scalefactor = 1;
@@ -242,7 +244,7 @@ namespace RavEngine {
 
 		static SDL_Window* window;
 		void* metalLayer;
-        void Init();
+        void Init(const AppConfig&);
 		
 		static constexpr uint8_t gbufferSize = 4;
 		static constexpr uint8_t lightingAttachmentsSize = 2;

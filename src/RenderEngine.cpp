@@ -248,7 +248,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 /**
  The render thread function, invoked on a separate thread
  */
-void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
+void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, const AppConfig& config) {
 	bgfx::Init settings;
 
 	auto SelectRenderer = [&](bgfx::RendererType::Enum desired) {
@@ -260,17 +260,42 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height) {
 			settings.type = desired;
 		}
 		else {
-			Debug::Fatal("{} API not found",BackendStringName(desired));
+			Debug::Fatal("{} API not found", BackendStringName(desired));
 		}
 	};
 
+	if (config.preferredBackend == AppConfig::RenderBackend::AutoSelect) {
 #ifdef __linux__
-	SelectRenderer(bgfx::RendererType::Vulkan);
+		SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined _WIN32
-	SelectRenderer(bgfx::RendererType::Direct3D12);
+		SelectRenderer(bgfx::RendererType::Direct3D12);
 #elif defined __APPLE__
-	SelectRenderer(bgfx::RendererType::Metal);
+		SelectRenderer(bgfx::RendererType::Metal);
 #endif
+	}
+	else {
+		switch (config.preferredBackend) {
+#if BX_PLATFORM_IOS || BX_PLATFORM_OSX
+		case AppConfig::RenderBackend::Metal:
+			SelectRenderer(bgfx::RendererType::Metal);
+			break;
+#elif BX_PLATFORM_WINDOWS
+		case AppConfig::RenderBackend::DirectX12:
+			SelectRenderer(bgfx::RendererType::Direct3D12);
+			break;
+		case AppConfig::RenderBackend::Vulkan:
+			SelectRenderer(bgfx::RendererType::Vulkan);
+			break;
+#elif BX_PLATFORM_LINUX
+		case AppConfig::RenderBackend::Vulkan:
+			SelectRenderer(bgfx::RendererType::Vulkan);
+			break;
+#endif
+		default:
+			Debug::Fatal("Invalid preferred backend");
+		}
+	}
+
 
 	settings.callback =  &global_msghandler;
 
@@ -349,7 +374,7 @@ void RenderEngine::BlockUntilFinishDraw() {
 /**
 Initialize static singletons. Invoked automatically if needed.
 */
-void RenderEngine::Init()
+void RenderEngine::Init(const AppConfig& config)
 {
 	//setup bgfx if it is not already setup
 	if (window != nullptr)
@@ -370,7 +395,7 @@ void RenderEngine::Init()
 		metalLayer = pd.nwh;
 #endif
 		UpdateBufferDims();
-		renderThread.emplace(&RenderEngine::runAPIThread,this,pd, bufferdims.width, bufferdims.height);
+		renderThread.emplace(&RenderEngine::runAPIThread,this,pd, bufferdims.width, bufferdims.height,config);
 		renderThread.value().detach();
 	}
 	//wait for the render thread to be finished initializing
@@ -443,8 +468,8 @@ void RenderEngine::Init()
 Construct a render engine instance
 @param w the owning world for this engine instance
 */
-RenderEngine::RenderEngine() {
-	Init();
+RenderEngine::RenderEngine(const AppConfig& config) {
+	Init(config);
 
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
 	
