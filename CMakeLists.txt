@@ -47,7 +47,7 @@ if(MSVC)
 endif()
 
 # ==================== Dependencies =====================
-#set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
+set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
 set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
 
 # ninja does not use separate config directories for some reason
@@ -735,7 +735,6 @@ if (RAVENGINE_BUILD_TESTS)
 	target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_17)
 
 	set_target_properties("${PROJECT_NAME}_TestBasics" "${PROJECT_NAME}_DSPerf" PROPERTIES 
-		OSX_ARCHITECTURES "arm64;x86_64"
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)
@@ -793,9 +792,8 @@ foreach(TGT ${all_targets})
 				target_compile_definitions(${TGT} PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE")
 			endif()
 
-			set_target_properties(${TGT} PROPERTIES 
+			set_target_properties(${TGT} PROPERTIES
 				XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH $<$<OR:$<CONFIG:DEBUG>,$<CONFIG:CHECKED>,$<CONFIG:PROFILE>>:YES>
-				OSX_ARCHITECTURES "arm64;x86_64"
 			)
 		
 		endif()
