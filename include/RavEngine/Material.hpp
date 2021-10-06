@@ -73,6 +73,7 @@ namespace RavEngine {
 	//for type conversions, do not use directly
 	class MaterialInstanceBase {
 	public:
+        bool doubleSided = false;
 		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) = 0;
 	};
 

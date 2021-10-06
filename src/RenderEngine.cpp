@@ -617,7 +617,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			}
 			bgfx::setInstanceDataBuffer(&idb);
 			//set BGFX state
-			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | BGFX_STATE_CULL_CW);
+			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | (std::get<1>(row.first)->doubleSided ? BGFX_STATE_NONE : BGFX_STATE_CULL_CW));
 
 			bindfunc();
 			
