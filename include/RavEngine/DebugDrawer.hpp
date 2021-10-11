@@ -1,7 +1,7 @@
 #pragma once
 #include "Common3D.hpp"
 #include "SpinLock.hpp"
-#include <functional>
+#include "Function.hpp"
 
 namespace  RavEngine {
 
@@ -67,7 +67,7 @@ private:
 	 @param transform the world space transform for the shape
 	 @param impl the callback to invoke, pass a lambda
 	 */
-	void DrawHelper(const matrix4& transform, std::function<void()> impl);
+	void DrawHelper(const matrix4& transform, Function<void()> impl);
 };
 
 }

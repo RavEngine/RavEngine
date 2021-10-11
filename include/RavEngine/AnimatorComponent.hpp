@@ -9,6 +9,7 @@
 #include <algorithm>
 #include "Tween.hpp"
 #include "App.hpp"
+#include "Function.hpp"
 
 namespace RavEngine{
 
@@ -151,7 +152,7 @@ public:
 	private:
 		bool hasAutoTransition = false;
 		decltype(ID) autoTransitionID = 0;
-		std::function<void(decltype(State::ID))> beginCallback, endCallback;
+		Function<void(decltype(State::ID))> beginCallback, endCallback;
 
         inline void DoBegin(decltype(ID) prevState) {
 			if (beginCallback) {

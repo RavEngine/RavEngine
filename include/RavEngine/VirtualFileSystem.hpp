@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <functional>
+#include "Function.hpp"
 #include "DataStructures.hpp"
 #include "Utilities.hpp"
 #include "Debug.hpp"
@@ -74,7 +74,7 @@ public:
 	@param path the path to the folder 
 	@param callback function to call on each filename
 	*/
-	void IterateDirectory(const char* path, std::function<void(const std::string&)> callback);
+	void IterateDirectory(const char* path, Function<void(const std::string&)> callback);
 	
 protected:
 	std::string rootname;

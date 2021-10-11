@@ -52,7 +52,7 @@ RavEngine::SceneLoader::~SceneLoader()
 	aiReleaseImport(scene);
 }
 
-void RavEngine::SceneLoader::LoadMeshes(const std::function<bool(const PreloadedAsset&)>& filterFunc, const std::function<void(Ref<MeshAsset>, const PreloadedAsset&)>& constructionFunc)
+void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset&)>& filterFunc, const Function<void(Ref<MeshAsset>, const PreloadedAsset&)>& constructionFunc)
 {
 	matrix4 identity(1);
 	for (decltype(scene->mNumMeshes) i = 0; i < scene->mNumMeshes; i++) {
@@ -68,7 +68,7 @@ void RavEngine::SceneLoader::LoadMeshes(const std::function<bool(const Preloaded
 	}
 }
 
-void RavEngine::SceneLoader::LoadLocators(const std::function<void(const Locator&)>& func)
+void RavEngine::SceneLoader::LoadLocators(const Function<void(const Locator&)>& func)
 {
 	auto getWorldMatrix = [](const aiNode * node) -> aiMatrix4x4 {
 		// figure out size

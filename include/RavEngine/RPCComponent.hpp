@@ -3,7 +3,6 @@
 #include "Queryable.hpp"
 #include "RPCMsgUnpacker.hpp"
 #include "Ref.hpp"
-#include <functional>
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
 #include "NetworkBase.hpp"
@@ -21,7 +20,7 @@ namespace RavEngine {
 		};
 	private:
 		struct rpc_entry {
-			std::function<void(RPCMsgUnpacker&, HSteamNetConnection)> func;
+			Function<void(RPCMsgUnpacker&, HSteamNetConnection)> func;
 			Directionality mode;
 		};
 

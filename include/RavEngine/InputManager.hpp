@@ -3,11 +3,8 @@
 #include "SDL_scancode.h"
 #include <SDL_mouse.h>
 #include <SDL_gamecontroller.h>
-#include <plf_list.h>
-#include <phmap.h>
-#include <functional>
+#include "Function.hpp"
 #include <SDL_events.h>
-#include <etl/vector.h>
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
@@ -128,8 +125,8 @@ namespace RavEngine {
 		return static_cast<CID>(1 << x);
 	}
 
-	typedef std::function<void(float)> axisCallback;
-	typedef std::function<void()> actionCallback;
+	typedef Function<void(float)> axisCallback;
+	typedef Function<void()> actionCallback;
 
     class InputManager
     {

@@ -64,7 +64,7 @@ bool RavEngine::VirtualFilesystem::Exists(const char* path)
 	return PHYSFS_exists(StrFormat("{}/{}",rootname,path).c_str());
 }
 
-void RavEngine::VirtualFilesystem::IterateDirectory(const char* path, std::function<void(const std::string&)> callback)
+void RavEngine::VirtualFilesystem::IterateDirectory(const char* path, Function<void(const std::string&)> callback)
 {
 	string fullpath = StrFormat("{}/{}", rootname, path);
 	auto all = PHYSFS_enumerateFiles(fullpath.c_str());

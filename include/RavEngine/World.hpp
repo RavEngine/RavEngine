@@ -11,7 +11,6 @@
 #include "RenderEngine.hpp"
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
-#include <plf_list.h>
 #include "AudioSource.hpp"
 #include "FrameData.hpp"
 #include <taskflow/taskflow.hpp>
@@ -62,7 +61,7 @@ namespace RavEngine {
 		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
         struct dispatched_func{
             double runAtTime;
-            std::function<void(void)> func;
+            Function<void(void)> func;
             dispatched_func(const decltype(runAtTime) rt,const decltype(func)& func) : func(func), runAtTime(rt){}
             dispatched_func(const dispatched_func& other){
                 runAtTime = other.runAtTime;
@@ -198,6 +197,6 @@ namespace RavEngine {
          @param delaySeconds the delay in the future to run
          @note You must ensure data your function references is kept loaded when this function runs. For example, to keep an entity loaded, capture by value an owning pointer to it. In addition, do not make assumptions about what thread your dispatched function runs on.
          */
-        void DispatchAsync(const std::function<void(void)>& func, double delaySeconds);
+        void DispatchAsync(const Function<void(void)>& func, double delaySeconds);
 	};
 }

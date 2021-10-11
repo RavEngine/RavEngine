@@ -1,7 +1,7 @@
 #pragma once
 #include <tweeny.h>
 #include "mathtypes.hpp"
-#include <functional>
+#include "Function.hpp"
 #include "App.hpp"
 
 namespace RavEngine{
@@ -54,7 +54,7 @@ namespace TweenCurves{
 	class Tween {
 	protected:
 		tweeny::tween<Floats...> anim;
-		typedef std::function<void(Floats...)> stepfunc;
+		typedef Function<void(Floats...)> stepfunc;
 			
 	public:
 		Tween(){};

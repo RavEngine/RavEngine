@@ -6,7 +6,7 @@
 #include "Ref.hpp"
 #include <uuids.h>
 #include <phmap.h>
-#include <functional>
+#include "Function.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -47,7 +47,7 @@ public:
 	void ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base& var);
 	
 	//attach event listeners here
-	std::function<void(HSteamNetConnection)> OnClientConnecting, OnClientConnected, OnClientDisconnected;
+	Function<void(HSteamNetConnection)> OnClientConnecting, OnClientConnected, OnClientDisconnected;
 	
 protected:
 	void OnRPC(const std::string_view& cmd, HSteamNetConnection);

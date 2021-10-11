@@ -5,7 +5,7 @@
 #include "System.hpp"
 #include <chrono>
 #include "Ref.hpp"
-#include "function.hpp"
+#include "Function.hpp"
 #include <taskflow/taskflow.hpp>
 #include "ComponentStore.hpp"
 #include "Entity.hpp"
@@ -123,9 +123,9 @@ struct SystemEntry{
 		}
 	};
 
-	const func::function<std::pair<tf::Task, tf::Task>(ctti_t, iter_map&, tf::Taskflow&, World*)> QueryTypes;
-	const func::function<const System::list_type&()> MustRunBefore;
-	const func::function<const System::list_type&()> MustRunAfter;
+	const Function<std::pair<tf::Task, tf::Task>(ctti_t, iter_map&, tf::Taskflow&, World*)> QueryTypes;
+	const Function<const System::list_type&()> MustRunBefore;
+	const Function<const System::list_type&()> MustRunAfter;
 
 	template<typename T>
 	SystemEntry(Ref<T> system) :

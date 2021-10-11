@@ -17,6 +17,7 @@
 #include "Uniform.hpp"
 #include "TransientComputeBuffer.hpp"
 #include <DebugDraw.h>
+#include "Function.hpp"
 
 struct SDL_Window;
 
@@ -239,7 +240,7 @@ namespace RavEngine {
 		std::optional<std::thread> renderThread;
 		std::atomic<bool> render_thread_exit = false;
 		std::atomic<bool> bgfx_thread_finished_init = false;
-		ConcurrentQueue<std::function<void(void)>> RenderThreadQueue;
+		ConcurrentQueue<Function<void(void)>> RenderThreadQueue;
 		float currentFrameTime;
 
 		static SDL_Window* window;

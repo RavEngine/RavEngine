@@ -1,6 +1,6 @@
 #include "DebugDrawer.hpp"
 #include <im3d.h>
-#include <functional>
+#include "Function.hpp"
 #include <glm/gtc/type_ptr.hpp>
 #include "PhysXDefines.h"
 
@@ -76,7 +76,7 @@ void DebugDrawer::DrawArrow(const vector3 &start, const vector3 &end, const colo
 }
 
 
-void DebugDrawer::DrawHelper(const matrix4 &transform, std::function<void()> impl){
+void DebugDrawer::DrawHelper(const matrix4 &transform, Function<void()> impl){
 #ifdef _DEBUG
 	mtx.lock();
 	Im3d::PushMatrix(matrix4ToMat4(transform));

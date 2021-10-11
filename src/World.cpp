@@ -485,7 +485,7 @@ void World::FillFramedata(){
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 }
 
-void World::DispatchAsync(const std::function<void ()>& func, double delaySeconds){
+void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     auto time = App::GetCurrentTime();
     App::DispatchMainThread([=]{
         async_tasks.insert(make_shared<dispatched_func>(time + delaySeconds,func));

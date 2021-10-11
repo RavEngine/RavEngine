@@ -7,6 +7,7 @@
 #include "DataStructures.hpp"
 #include "Queryable.hpp"
 #include "IInputListener.hpp"
+#include "Function.hpp"
 
 namespace RavEngine{
 class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>, public RavEngine::IInputListener{
@@ -16,7 +17,7 @@ protected:
 	Rml::Context* context = nullptr;
 	locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
     
-    ConcurrentQueue<std::function<void(void)>> q_a, q_b;
+    ConcurrentQueue<Function<void(void)>> q_a, q_b;
     std::atomic<decltype(q_a)*> current = &q_a, inactive = &q_b;
 
 	SpinLock mtx;

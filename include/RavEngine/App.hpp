@@ -229,7 +229,7 @@ namespace RavEngine {
 	private:
 		static Ref<World> renderWorld;
 	
-		static ConcurrentQueue<std::function<void(void)>> main_tasks;
+		static ConcurrentQueue<Function<void(void)>> main_tasks;
 
         //change to adjust the ticking speed of the engine (default 90hz)
         static std::chrono::duration<double,std::micro> min_tick_time;

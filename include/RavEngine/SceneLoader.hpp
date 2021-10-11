@@ -1,5 +1,5 @@
 #pragma once
-#include <functional>
+#include "Function.hpp"
 #include "Ref.hpp"
 #include "mathtypes.hpp"
 
@@ -39,13 +39,13 @@ namespace RavEngine {
 		* @param filterFunc the function to invoke to filter items. Return true if the mesh should be loaded, false to skip
 		* @param constructionFunc the funciton to invoke with the created MeshAssets.
 		*/
-		void LoadMeshes(const std::function<bool(const PreloadedAsset&)>& filterFunc, const std::function<void(Ref<MeshAsset>, const PreloadedAsset&)>& constructionFunc);
+		void LoadMeshes(const Function<bool(const PreloadedAsset&)>& filterFunc, const Function<void(Ref<MeshAsset>, const PreloadedAsset&)>& constructionFunc);
 
 		/**
 		* Load the scene nodes for this scene
 		* @param func the function to invoke with each node
 		*/
-		void LoadLocators(const std::function<void(const Locator&)>& func);
+		void LoadLocators(const Function<void(const Locator&)>& func);
 
 	private:
 		const aiScene* scene;

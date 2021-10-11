@@ -5,12 +5,13 @@
 #include <boost/any.hpp>
 #include <boost/container_hash/hash.hpp>
 #include "DataStructures.hpp"
+#include "Function.hpp"
 
 namespace RavEngine {
 struct CacheKey{
     size_t hash = 0;
     RavEngine::Vector<boost::any> values;
-    RavEngine::Vector<std::function<bool(const boost::any&)>> compareFuncs;
+    RavEngine::Vector<Function<bool(const boost::any&)>> compareFuncs;
     
     inline bool operator==(const CacheKey& other) const{
         // ensure hashes match

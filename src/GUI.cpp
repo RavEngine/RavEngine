@@ -121,7 +121,7 @@ bool GUIComponent::Update(){
     bool result;
     ExclusiveAccess([&]{
         // process the 'inactive' queue (which was filled previously)
-        std::function<void(void)> task;
+        Function<void(void)> task;
         auto ptr = a;
         while(ptr->try_dequeue(task)){
             task();

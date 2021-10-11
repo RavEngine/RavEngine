@@ -16,7 +16,7 @@ namespace RavEngine {
 
 	class NetworkManager{
 	private:
-		typedef std::function<Ref<Entity>(const uuids::uuid&)> func_t;
+		typedef Function<Ref<Entity>(const uuids::uuid&)> func_t;
 		locked_hashmap<ctti_t, func_t> NetworkedObjects;
 		
 	public:

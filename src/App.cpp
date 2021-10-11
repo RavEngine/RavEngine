@@ -17,6 +17,7 @@
 #include "Skybox.hpp"
 #include <SDL.h>
 #include <filesystem>
+#include "Function.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -38,7 +39,7 @@ double App::time;
 STATIC(App::Renderer);
 static float currentScale = 0;
 
-ConcurrentQueue<function<void(void)>> App::main_tasks;
+ConcurrentQueue<Function<void(void)>> App::main_tasks;
 tf::Executor App::executor;
 Ref<InputManager> App::inputManager;
 Ref<World> App::renderWorld;
@@ -200,7 +201,7 @@ int App::run(int argc, char** argv) {
 		}
 				
 		//process main thread tasks
-		std::function<void(void)> front;
+		Function<void(void)> front;
 		while (main_tasks.try_dequeue(front)){
 			front();
 		}

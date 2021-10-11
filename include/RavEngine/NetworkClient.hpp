@@ -4,7 +4,7 @@
 #include "NetworkBase.hpp"
 #include <steam/isteamnetworkingsockets.h>
 #include <thread>
-#include <functional>
+#include "Function.hpp"
 
 namespace RavEngine {
 	class World;
@@ -12,7 +12,7 @@ namespace RavEngine {
 	class World;
 
 class NetworkClient : public NetworkBase{
-    UnorderedMap<ctti_t, std::function<void(Ref<Entity>, Ref<World>)>> OnNetSpawnHooks;
+    UnorderedMap<ctti_t, Function<void(Ref<Entity>, Ref<World>)>> OnNetSpawnHooks;
 	inline void RevokeOwnership(Ref<NetworkIdentity> id) {
 		id->Owner = k_HSteamListenSocket_Invalid;
 	}
@@ -38,7 +38,7 @@ public:
 	}
 	
 	//attach event listeners here
-	std::function<void(HSteamNetConnection)> OnConnecting, OnConnected, OnLostConnection;
+	Function<void(HSteamNetConnection)> OnConnecting, OnConnected, OnLostConnection;
 	
 protected:
 	ISteamNetworkingSockets *net_interface = nullptr;

@@ -324,7 +324,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 
 	while (!render_thread_exit) {
 		//do queued tasks
-		std::function<void(void)> func;
+		Function<void(void)> func;
 		while (RenderThreadQueue.try_dequeue(func)) {
 			func();
 		}
