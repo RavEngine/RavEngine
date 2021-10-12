@@ -79,13 +79,13 @@ struct SystemEntry{
 	{
 		// this wrapper enables expanding into the function
 		template<typename System, size_t n, auto ... Is>
-		inline constexpr void TickWrapper(float fpsScale, Ref<System> system, const Array<const Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
+		inline constexpr void TickWrapper(float fpsScale, const Ref<System>& system, const Array<const Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
 			system->Tick(fpsScale, std::static_pointer_cast<typename ArgType<Func, Is + 2>::element_type>(*query_results[Is]->begin())...);
 		}
 
 		// evaluates an entity to determine if it passes the query test, and calls tick if it does
 		template<typename System>
-		inline const void TickEntity(Ref<Component> c, World* world, Ref<System> system) const {
+		inline const void TickEntity(const Ref<Component>& c, World* world, const Ref<System>& system) const {
 			Ref<Entity> e = c->GetOwner().lock();
 			if (e) {
 				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
@@ -157,7 +157,7 @@ struct SystemEntry{
 			});
 
 			// the actual tick
-			auto mainTick = masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](Ref<Component> c) {
+			auto mainTick = masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](const Ref<Component>& c) {
 				argex.TickEntity(c, world, system);	//TODO: currentFPSScale?
 			});
 			update.precede(mainTick);
