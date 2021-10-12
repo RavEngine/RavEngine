@@ -132,10 +132,27 @@ namespace RavEngine {
 
 		template<typename T>
 		inline void LockWrite(const T& func){
-			rigidActor->getScene()->lockWrite();
-			func();
-			rigidActor->getScene()->unlockWrite();
+            if (rigidActor->getScene()){
+                rigidActor->getScene()->lockWrite();
+                func();
+                rigidActor->getScene()->unlockWrite();
+            }
+            else{
+                func();
+            }
 		}
+        
+        template<typename T>
+        inline void LockRead(const T& func) const{
+            if(rigidActor->getScene()){
+                rigidActor->getScene()->lockRead();
+                func();
+                rigidActor->getScene()->unlockRead();
+            }
+            else{
+                func();
+            }
+        }
 	};
 
 	class RigidBodyDynamicComponent : public PhysicsBodyComponent {

@@ -70,11 +70,11 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 		e->Sync();	//ensure all components have their owner backpointers up-to-date
 		e->SetWorld(shared_from_this());
 
-		//start entity
-		e->Start();
-
 		//merge the entity into the world
 		Merge(*e.get());
+        
+        //start entity
+        e->Start();
 
 		e->parent = shared_from_this();	//set parent so that this entity synchronizes its components with this world
 

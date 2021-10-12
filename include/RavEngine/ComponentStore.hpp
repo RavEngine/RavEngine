@@ -16,7 +16,9 @@ namespace RavEngine{
 	template<class lock = phmap::NullMutex>
 	class ComponentStore {
 	public:
-		typedef UnorderedContiguousSet<Ref<RavEngine::Component>> entry_type;
+        template<typename T>
+        using entry_type_outer = UnorderedContiguousSet<Ref<T>>;
+		typedef entry_type_outer<RavEngine::Component> entry_type;
         
         struct AllQuery : public std::optional<boost::reference_wrapper<entry_type const>>{
             inline const entry_type& value() const{

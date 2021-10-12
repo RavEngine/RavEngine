@@ -238,11 +238,19 @@ void RigidBodyDynamicComponent::SetMass(decimalType mass){
 }
 
 decimalType RigidBodyDynamicComponent::GetMass() const{
-	return static_cast<PxRigidDynamic*>(rigidActor)->getMass();
+    decimalType mass;
+    LockRead([&]{
+        mass = static_cast<PxRigidDynamic*>(rigidActor)->getMass();
+    });
+    return mass;
 }
 
 decimalType RigidBodyDynamicComponent::GetMassInverse() const{
-	return static_cast<PxRigidDynamic*>(rigidActor)->getInvMass();
+    decimalType rigidMass;
+    LockRead([&]{
+        rigidMass = static_cast<PxRigidDynamic*>(rigidActor)->getInvMass();
+    });
+    return rigidMass;
 }
 
 void RigidBodyDynamicComponent::AddForce(const vector3 &force){
