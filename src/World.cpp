@@ -80,9 +80,10 @@ bool RavEngine::World::Spawn(Ref<Entity> e){
 
 		//get all child entities
         if(e->HasComponentOfType<ChildEntityComponent>()){
-            auto& children = e->GetAllComponentsOfType<ChildEntityComponent>();
-            for(const auto c : children){
-                Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());    //spawn the child entities
+            if (auto& children = e->GetAllComponentsOfType<ChildEntityComponent>()){
+                for(const auto& c : children.value()){
+                    Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());    //spawn the child entities
+                }
             }
         }
 		return true;
@@ -105,10 +106,12 @@ bool RavEngine::World::Destroy(Ref<Entity> e){
 
 	//get all child entities
     if (e->HasComponentOfType<ChildEntityComponent>()){
-        auto children = e->GetAllComponentsOfType<ChildEntityComponent>();
-        for (const auto c : children) {
-            Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());
+        if(auto& children = e->GetAllComponentsOfType<ChildEntityComponent>()){
+            for (const auto& c : children.value()) {
+                Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());
+            }
         }
+        
     }
 	
 	return true;
@@ -323,35 +326,49 @@ void World::FillFramedata(){
 	//render engine data collector
 	//camera matrices
 	auto camproc = masterTasks.emplace([this](){
-		auto& allcams = GetAllComponentsOfType<CameraComponent>();
-		for (const auto& c : allcams) {
-			auto cam = std::static_pointer_cast<CameraComponent>(c);
-			if (cam->IsActive()) {
-				
-				auto size = App::GetRenderEngine().GetBufferSize();
-				cam->SetTargetSize(size.width, size.height);
-				auto current = App::GetCurrentFramedata();
-				current->viewmatrix = cam->GenerateViewMatrix();
-				current->projmatrix = cam->GenerateProjectionMatrix();
-				current->cameraWorldpos = cam->GetOwner().lock()->GetTransform()->GetWorldPosition();
-				
-				break;
-			}
-		}
+        if (auto& allcams = GetAllComponentsOfType<CameraComponent>()){
+            for (const auto& c : allcams.value()) {
+                auto cam = std::static_pointer_cast<CameraComponent>(c);
+                if (cam->IsActive()) {
+                    
+                    auto size = App::GetRenderEngine().GetBufferSize();
+                    cam->SetTargetSize(size.width, size.height);
+                    auto current = App::GetCurrentFramedata();
+                    current->viewmatrix = cam->GenerateViewMatrix();
+                    current->projmatrix = cam->GenerateProjectionMatrix();
+                    current->cameraWorldpos = cam->GetOwner().lock()->GetTransform()->GetWorldPosition();
+                    
+                    break;
+                }
+            }
+        }
+		
 	});
 	
 	//opaque geometry
-	geobegin = GetAllComponentsOfType<StaticMesh>().begin();
-	geoend = GetAllComponentsOfType<StaticMesh>().end();
-	skinnedgeobegin = GetAllComponentsOfType<SkinnedMeshComponent>().begin();
-	skinnedgeoend = GetAllComponentsOfType<SkinnedMeshComponent>().end();
+	geobegin = emptyContainer.begin();
+	geoend = emptyContainer.end();
+	skinnedgeobegin = emptyContainer.begin();
+	skinnedgeoend = emptyContainer.end();
 	auto init = masterTasks.emplace([&](){
-		auto& geometry = GetAllComponentsOfType<StaticMesh>();
-		geobegin = geometry.begin();
-		geoend = geometry.end();
-		auto& skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>();
-		skinnedgeobegin = skinnedGeo.begin();
-		skinnedgeoend = skinnedGeo.end();
+        if(auto& geometry = GetAllComponentsOfType<StaticMesh>()){
+            geobegin = geometry.value().begin();
+            geoend = geometry.value().end();
+            
+        }
+        else{
+            geobegin = emptyContainer.end();
+            geoend = emptyContainer.end();
+        }
+        if(auto& skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
+            skinnedgeobegin = skinnedGeo.value().begin();
+            skinnedgeoend = skinnedGeo.value().end();
+        }
+        else{
+            skinnedgeobegin = emptyContainer.end();
+            skinnedgeoend = emptyContainer.end();
+        }
+        
 	});
 	
 	// update matrix caches
@@ -398,65 +415,84 @@ void World::FillFramedata(){
 	skinnedmatcalc.precede(sortskinned);
 	
 	auto copydirs = masterTasks.emplace([this](){
-		auto& dirs = GetAllComponentsOfType<DirectionalLight>();
-		for(const auto& e : dirs){
-			auto owner = e->GetOwner().lock();
-			if (owner){
-				auto d = static_cast<DirectionalLight*>(e.get());
-				auto rot = owner->GetTransform()->Up();
-				FrameData::PackedDL::tinyvec3 r{
-					static_cast<float>(rot.x),
-					static_cast<float>(rot.y),
-					static_cast<float>(rot.z)
-				};
-				auto current = App::GetCurrentFramedata();
-				current->directionals.emplace(*d,r);
-			}
-		}
+        if(auto& dirs = GetAllComponentsOfType<DirectionalLight>()){
+            for(const auto& e : dirs.value()){
+                auto owner = e->GetOwner().lock();
+                if (owner){
+                    auto d = static_cast<DirectionalLight*>(e.get());
+                    auto rot = owner->GetTransform()->Up();
+                    FrameData::PackedDL::tinyvec3 r{
+                        static_cast<float>(rot.x),
+                        static_cast<float>(rot.y),
+                        static_cast<float>(rot.z)
+                    };
+                    auto current = App::GetCurrentFramedata();
+                    current->directionals.emplace(*d,r);
+                }
+            }
+        }
+		
 	});
 	auto copyambs = masterTasks.emplace([this](){
-		auto& ambs = GetAllComponentsOfType<AmbientLight>();
-		for(const auto& e : ambs){
-			auto d = static_cast<AmbientLight*>(e.get());
-			auto current = App::GetCurrentFramedata();
-			current->ambients.emplace(*d);
-		}
+        if(auto& ambs = GetAllComponentsOfType<AmbientLight>()){
+            for(const auto& e : ambs.value()){
+                auto d = static_cast<AmbientLight*>(e.get());
+                auto current = App::GetCurrentFramedata();
+                current->ambients.emplace(*d);
+            }
+        }
+		
 	});
 	auto copyspots = masterTasks.emplace([this](){
-		auto& spots = GetAllComponentsOfType<SpotLight>();
-		for(const auto& e : spots){
-			auto d = static_cast<SpotLight*>(e.get());
-			auto ptr = e->GetOwner().lock();
-			if (ptr){
-				auto transform = ptr->GetTransform()->CalculateWorldMatrix();
-				auto current = App::GetCurrentFramedata();
-				current->spots.emplace(*d,d->CalculateMatrix(transform));
-			}
-		}
+        if(auto& spots = GetAllComponentsOfType<SpotLight>()){
+            for(const auto& e : spots.value()){
+                auto d = static_cast<SpotLight*>(e.get());
+                auto ptr = e->GetOwner().lock();
+                if (ptr){
+                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
+                    auto current = App::GetCurrentFramedata();
+                    current->spots.emplace(*d,d->CalculateMatrix(transform));
+                }
+            }
+        }
+		
 	});
 	auto copypoints = masterTasks.emplace([this](){
-		auto& points = GetAllComponentsOfType<PointLight>();
-		for(const auto& e : points){
-			auto d = static_cast<PointLight*>(e.get());
-			auto ptr = e->GetOwner().lock();
-			if (ptr){
-				auto transform = ptr->GetTransform()->CalculateWorldMatrix();
-				auto current = App::GetCurrentFramedata();
-				current->points.emplace(*d,d->CalculateMatrix(transform));
-			}
-		}
+        if(auto& points = GetAllComponentsOfType<PointLight>()){
+            for(const auto& e : points.value()){
+                auto d = static_cast<PointLight*>(e.get());
+                auto ptr = e->GetOwner().lock();
+                if (ptr){
+                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
+                    auto current = App::GetCurrentFramedata();
+                    current->points.emplace(*d,d->CalculateMatrix(transform));
+                }
+            }
+        }
+		
 	});
 
 #ifdef _DEBUG
 	// copy debug shapes
 	auto copyDebug = masterTasks.emplace([this]() {
-		App::GetCurrentFramedata()->debugShapesToDraw = GetAllComponentsOfType<IDebugRenderable>().get_underlying();
+        if(auto& dbg = GetAllComponentsOfType<IDebugRenderable>()){
+            App::GetCurrentFramedata()->debugShapesToDraw = dbg.value().get_underlying();
+
+        }
+        else{
+            App::GetCurrentFramedata()->debugShapesToDraw.clear();
+        }
 	});
 #endif
 	auto copyGUI = masterTasks.emplace([this]() {
-		App::GetCurrentFramedata()->guisToCalculate = GetAllComponentsOfType<GUIComponent>().get_underlying();
         // also do the time here
         App::GetCurrentFramedata()->Time = App::GetCurrentTime();
+        if(auto& guis = GetAllComponentsOfType<GUIComponent>()){
+            App::GetCurrentFramedata()->guisToCalculate = guis.value().get_underlying();
+        }
+        else{
+            App::GetCurrentFramedata()->guisToCalculate.clear();
+        }
 	});
 	
 	auto swap = masterTasks.emplace([this]{

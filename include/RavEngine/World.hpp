@@ -26,9 +26,8 @@ namespace RavEngine {
 		friend class App;
 	public:
 		constexpr static uint8_t id_size = 8;
-
 		Skybox skybox;
-
+        const ComponentStore<phmap::NullMutex>::entry_type emptyContainer;    // used if the query returns nothing and should be skipped
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
@@ -40,7 +39,6 @@ namespace RavEngine {
 		ConcurrentQueue<SyncOp> toSync;
 		
 		tf::Taskflow masterTasks;
-		
 		ComponentStore<phmap::NullMutex>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend;
 		iter_map iterator_map;
 		struct systaskpair{

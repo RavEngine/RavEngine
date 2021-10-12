@@ -40,7 +40,7 @@ STATIC(App::Renderer);
 static float currentScale = 0;
 
 ConcurrentQueue<Function<void(void)>> App::main_tasks;
-tf::Executor App::executor;
+tf::Executor App::executor(1);
 Ref<InputManager> App::inputManager;
 Ref<World> App::renderWorld;
 locked_hashset<Ref<World>,SpinLock> App::loadedWorlds;

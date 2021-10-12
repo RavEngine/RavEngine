@@ -280,7 +280,7 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 	string name(buffer,World::id_size);
 	if (auto world = App::GetWorldByName(name)) {
 		// get all the networkidentities in the world
-		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
+		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>().value();
 		// call SpawnEntity on each owner
 		for (const auto& identity : identities) {
 			auto entity = identity->GetOwner().lock();

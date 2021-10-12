@@ -7,6 +7,7 @@
 #include "Debug.hpp"
 #include <optional>
 #include "unordered_vector.hpp"
+#include <boost/ref.hpp>
 
 //macro for checking type in template
 #define C_REF_CHECK static_assert(std::is_base_of<RavEngine::Component, T>::value, "Template parameter must be a Component subclass");
@@ -16,6 +17,13 @@ namespace RavEngine{
 	class ComponentStore {
 	public:
 		typedef UnorderedContiguousSet<Ref<RavEngine::Component>> entry_type;
+        
+        struct AllQuery : public std::optional<boost::reference_wrapper<entry_type const>>{
+            inline const entry_type& value() const{
+                return std::optional<boost::reference_wrapper<entry_type const>>::value().get();
+            }
+        };
+        
 	protected:
 		typedef locked_hashmap<ctti_t, entry_type,lock> ComponentStructure;
 		
@@ -26,8 +34,12 @@ namespace RavEngine{
 		/**
 		 Fast path for world ticking
 		 */
-		inline const entry_type& GetAllComponentsOfTypeIndexFastPath(const ctti_t index){
-			return components[index];
+		inline const AllQuery GetAllComponentsOfTypeIndexFastPath(const ctti_t index) const{
+            AllQuery ret;
+            components.if_contains(index,[&](const entry_type& e){
+                ret.emplace(boost::cref(e));
+            });
+			return ret;
 		}
 		
 		/**
@@ -63,8 +75,8 @@ namespace RavEngine{
 		 Fast path for world ticking
 		 */
 		template<typename T>
-        inline entry_type& GetAllComponentsOfType(){
-			return components[CTTI<T>()];
+        inline const AllQuery GetAllComponentsOfType() const{
+			return GetAllComponentsOfTypeIndexFastPath(CTTI<T>());
 		}
 
         /**

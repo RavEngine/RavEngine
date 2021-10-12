@@ -79,7 +79,7 @@ struct SystemEntry{
 	{
 		// this wrapper enables expanding into the function
 		template<typename System, size_t n, auto ... Is>
-		inline constexpr void TickWrapper(float fpsScale, Ref<System> system, const Array<Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
+		inline constexpr void TickWrapper(float fpsScale, Ref<System> system, const Array<const Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
 			system->Tick(fpsScale, std::static_pointer_cast<typename ArgType<Func, Is + 2>::element_type>(*query_results[Is]->begin())...);
 		}
 
@@ -90,11 +90,16 @@ struct SystemEntry{
 			if (e) {
 				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
 				static_assert(n_args > 0, "System must take at least one component parameter");
-                Array<Entity::entry_type*, n_args> query_results;
+                Array<const Entity::entry_type*, n_args> query_results;
 				
 				constexpr auto indseq = std::make_integer_sequence<int, n_args>();
 				boost::hana::for_each(indseq, [&](const auto i){
-					query_results[i] = &e->GetAllComponentsOfType<typename ArgType<Func, i+2>::element_type>();
+                    if (auto& coms = e->GetAllComponentsOfType<typename ArgType<Func, i+2>::element_type>()){
+                        query_results[i] = &coms.value();
+                    }
+                    else{
+                        query_results[i] = nullptr;
+                    }
 				});
 				
 				// does the check pass?
@@ -117,9 +122,13 @@ struct SystemEntry{
 		inline constexpr auto UpdateQuery(World* world) const
 		{
 			// do query
-			auto& query = world->template GetAllComponentsOfType<typename ArgType<Func,2>::element_type>();
-			// return updated iterators
-			return std::make_pair(query.begin(), query.end());
+            if(auto& query = world->template GetAllComponentsOfType<typename ArgType<Func,2>::element_type>()){
+                // return updated iterators
+                return std::make_pair(query.value().begin(), query.value().end());
+            }
+            else{
+                return std::make_pair(world->emptyContainer.begin(), world->emptyContainer.end());
+            }
 		}
 	};
 
