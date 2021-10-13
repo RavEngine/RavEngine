@@ -24,7 +24,7 @@ namespace RavEngine {
 	 */
 	class Transform : public Component, public Queryable<Transform>, public virtual_enable_shared_from_this<Transform> {
 	public:
-		typedef UnorderedSet<WeakPtrKey<Transform>> childStore;
+		typedef UnorderedContiguousSet<WeakPtrKey<Transform>> childStore;
 		virtual ~Transform(){}
 		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false){
 			matrix = matrix4(1);
@@ -47,35 +47,35 @@ namespace RavEngine {
 		void SetLocalScale(const vector3&);
 		void LocalScaleDelta(const vector3&);
 
-		vector3 Forward();
-		vector3 Right();
-		vector3 Up();
+		vector3 Forward() const;
+		vector3 Right() const;
+		vector3 Up() const;
 		
-		vector3 WorldForward();
-		vector3 WorldRight();
-		vector3 WorldUp();
+		vector3 WorldForward() const;
+		vector3 WorldRight() const;
+		vector3 WorldUp() const;
 
 		inline bool HasParent() const{
 			return !parent.expired();
 		}
 
-		vector3 GetLocalPosition();
-		vector3 GetWorldPosition();
+		vector3 GetLocalPosition() const;
+		vector3 GetWorldPosition() const;
 
-		quaternion GetLocalRotation();
-		quaternion GetWorldRotation();
+		quaternion GetLocalRotation() const;
+		quaternion GetWorldRotation() const;
 
-		vector3 GetLocalScale();
+		vector3 GetLocalScale() const;
 
-		matrix4 GenerateLocalMatrix();
+		matrix4 GenerateLocalMatrix() const;
 		
-		matrix4 GetMatrix();
+		matrix4 GetMatrix() const;
 
 		/**
 		Get the matrix list of all the parents. 
 		@param list the list to add the matrices to
 		*/
-		matrix4 CalculateWorldMatrix();
+		matrix4 CalculateWorldMatrix() const;
 
 		/**
 		Add a transform as a child object of this transform
@@ -93,10 +93,10 @@ namespace RavEngine {
 		LockFreeAtomic<vector3> position;
 		LockFreeAtomic<quaternion> rotation;
 		LockFreeAtomic<vector3> scale;
-		LockFreeAtomic<matrix4> matrix;
+		mutable LockFreeAtomic<matrix4> matrix;
 		
 		SpinLock childModifyLock;
-		std::atomic<bool> isDirty = false;
+        mutable std::atomic<bool> isDirty = false;
 		
 		inline void MarkAsDirty(Transform* root) const{
 			root->childModifyLock.lock();
@@ -120,40 +120,40 @@ namespace RavEngine {
 	Construct a transformation matrix out of this transform
 	@return glm matrix representing this transform
 	*/
-	inline matrix4 Transform::GenerateLocalMatrix(){
+	inline matrix4 Transform::GenerateLocalMatrix() const{
 		return glm::translate(matrix4(1), (vector3)position) * glm::toMat4((quaternion)rotation) * glm::scale(matrix4(1), (vector3)scale);
 	}
 
 	/**
 	@return the vector pointing in the forward direction of this transform
 	*/
-	inline vector3 Transform::Forward(){
+	inline vector3 Transform::Forward() const{
 		return (quaternion)rotation * vector3_forward;
 	}
 
 	/**
 	@return the vector pointing in the up direction of this transform
 	*/
-	inline vector3 Transform::Up(){
+	inline vector3 Transform::Up() const{
 		return (quaternion)rotation * vector3_up;
 	}
 
 	/**
 	@return the vector pointing in the right direction of this transform
 	*/
-	inline vector3 Transform::Right(){
+	inline vector3 Transform::Right() const{
 		return (quaternion)rotation * vector3_right;
 	}
 
-	inline vector3 Transform::WorldForward(){
+	inline vector3 Transform::WorldForward() const{
 		return GetWorldRotation() * vector3_forward;
 	}
 
-	inline vector3 Transform::WorldRight(){
+	inline vector3 Transform::WorldRight() const{
 		return GetWorldRotation() * vector3_right;
 	}
 
-	inline vector3 Transform::WorldUp(){
+	inline vector3 Transform::WorldUp() const{
 		return GetWorldRotation() * vector3_up;
 	}
 
@@ -254,22 +254,22 @@ namespace RavEngine {
 		scale = (vector3)scale + delta;
 	}
 
-	inline vector3 Transform::GetLocalPosition()
+	inline vector3 Transform::GetLocalPosition() const
 	{
 		return position;
 	}
 
-	inline quaternion Transform::GetLocalRotation()
+	inline quaternion Transform::GetLocalRotation() const
 	{
 		return rotation;
 	}
 
-	inline vector3 Transform::GetLocalScale()
+	inline vector3 Transform::GetLocalScale() const
 	{
 		return scale;
 	}
 
-	inline matrix4 Transform::CalculateWorldMatrix() {
+	inline matrix4 Transform::CalculateWorldMatrix() const{
 		if (isDirty){
 			//figure out the size
 			unsigned short depth = 0;
@@ -303,11 +303,11 @@ namespace RavEngine {
 	 @return the current cached matrix, representing the world-space transformation. This may be out-of-date.
 	 See CalculateWorldMatrix to calculate if out-of-date.
 	 */
-	inline matrix4 Transform::GetMatrix() {
+	inline matrix4 Transform::GetMatrix() const {
 		return matrix;
 	}
 
-	inline vector3 Transform::GetWorldPosition()
+	inline vector3 Transform::GetWorldPosition() const
 	{
 		if (!HasParent()) {
 			return GetLocalPosition();
@@ -318,7 +318,7 @@ namespace RavEngine {
 		return finalMatrix * vector4(0,0,0, 1);
 	}
 
-	inline quaternion Transform::GetWorldRotation()
+	inline quaternion Transform::GetWorldRotation() const
 	{
 		if (!HasParent()) {
 			return GetLocalRotation();

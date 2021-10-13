@@ -719,9 +719,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);
 	auto& sb = worldOwning->skybox;
-	
-	auto transform = glm::translate(matrix4(1),fd->cameraWorldpos);
-	sb.Draw(transform,Views::FinalBlit);
+    if (sb.enabled){
+        auto transform = glm::translate(matrix4(1),fd->cameraWorldpos);
+        sb.Draw(transform,Views::FinalBlit);
+    }
 		
 	//blit to view 0 using the fullscreen quad
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);

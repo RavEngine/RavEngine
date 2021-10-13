@@ -4,7 +4,7 @@
 template<typename T>
 class LockFreeAtomic {
 	T value;
-	RavEngine::SpinLock mtx;
+	mutable RavEngine::SpinLock mtx;
 public:
 
 	// default
@@ -25,11 +25,11 @@ public:
 	}
 
 	//conversion operator
-	constexpr inline operator T () {
+	constexpr inline operator T () const{
 		return load();
 	}
 
-	constexpr inline T load() {
+	constexpr inline T load() const{
 		T temp;
 		mtx.lock();
 		temp = value;
