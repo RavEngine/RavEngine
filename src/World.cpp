@@ -368,6 +368,14 @@ void World::FillFramedata(){
             skinnedgeobegin = emptyContainer.end();
             skinnedgeoend = emptyContainer.end();
         }
+        if (auto& instancedGeo = GetAllComponentsOfType<InstancedStaticMesh>()){
+            instancedBegin = instancedGeo.value().begin();
+            instancedEnd = instancedGeo.value().end();
+        }
+        else{
+            instancedBegin = emptyContainer.begin();
+            instancedEnd = emptyContainer.end();
+        }
         
 	});
 	
@@ -410,6 +418,22 @@ void World::FillFramedata(){
             }
         }
 	});
+    auto sortInstanced = masterTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const Ref<Component>& e){
+        auto current = App::GetCurrentFramedata();
+        auto m = static_cast<InstancedStaticMesh*>(e.get());
+        auto ptr = e->GetOwner().lock();
+        if (ptr && m->Enabled){
+            auto& pair = m->getTuple();
+            m->CalculateMatrices();
+            auto& mats = m->GetAllTransforms();
+            
+            auto& item = current->opaques[pair];
+            item.mtx.lock();
+            item.items.insert(item.items.end(), mats.begin(),mats.end());
+            item.mtx.unlock();
+        }
+    });
+    
 	init.precede(sort,sortskinned);
 	matcalc.precede(sort);
 	skinnedmatcalc.precede(sortskinned);
@@ -505,12 +529,13 @@ void World::FillFramedata(){
 	setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
 	sort.precede(swap);
 	sortskinned.precede(swap);
+    sortInstanced.precede(swap);
 	camproc.precede(sort,sortskinned);
 	
 	//ensure user code completes before framedata population
 	for(auto& g : graphs){
 		if (!g.second.isTimed){
-			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned, copyGUI
+			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned, copyGUI, sortInstanced
 #ifdef _DEBUG
 				, copyDebug
 #endif

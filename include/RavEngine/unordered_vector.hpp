@@ -50,10 +50,25 @@ public:
     /**
      Add an item to the container
      @param value the data to add
+     @return a reference to the pushed item
+     @note references may become invalid if an item is erased from the container
      */
-	inline void insert(const T& value){
+	inline T& insert(const T& value){
         underlying.push_back(value);
+        return underlying.back();
 	}
+    
+    /**
+     Add an item to the container
+     @param value the data to add
+     @return a reference to the emplaced item
+     @note references may become invalid if an item is erased from the container
+     */
+    template<typename ... A>
+    inline T& emplace(A ... args){
+        underlying.emplace_back(args...);
+        return underlying.back();
+    }
     
     inline T& operator[](index_type idx){
         return underlying[idx];
@@ -91,12 +106,12 @@ public:
         return underlying.size();
     }
     
-    inline void reserve(){
-        underlying.reserve();
+    inline void reserve(size_t num){
+        underlying.reserve(num);
     }
     
-    inline void resize(){
-        underlying.resize();
+    inline void resize(size_t num){
+        underlying.resize(num);
     }
     
     inline bool empty() const{

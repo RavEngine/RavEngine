@@ -39,7 +39,7 @@ namespace RavEngine {
 		ConcurrentQueue<SyncOp> toSync;
 		
 		tf::Taskflow masterTasks;
-		ComponentStore<phmap::NullMutex>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend;
+		ComponentStore<phmap::NullMutex>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend, instancedBegin, instancedEnd;
 		iter_map iterator_map;
 		struct systaskpair{
 			tf::Task task;

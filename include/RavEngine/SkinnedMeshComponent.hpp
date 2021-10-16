@@ -1,6 +1,5 @@
 #pragma once
 #include "Component.hpp"
-#include "RenderableComponent.hpp"
 #include "Queryable.hpp"
 #include "SkeletonAsset.hpp"
 #include "Ref.hpp"
@@ -9,12 +8,11 @@
 
 namespace RavEngine {
 
-class SkinnedMeshComponent : public RenderableComponent, public QueryableDelta<RenderableComponent, SkinnedMeshComponent>{
+class SkinnedMeshComponent : public Component, public Queryable<SkinnedMeshComponent>{
 private:
 	std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>> tuple;
 
 public:
-	using QueryableDelta<RenderableComponent, SkinnedMeshComponent>::GetQueryTypes;
 	
 	SkinnedMeshComponent(Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh){
 		std::get<2>(tuple) = sk;
