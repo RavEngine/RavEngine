@@ -297,6 +297,10 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 
 
 	settings.callback =  &global_msghandler;
+    
+    // we want to make the transient buffer larger
+    settings.limits.transientIbSize = 3.2e+7;  //32 mb
+    settings.limits.transientVbSize = 3.2e+7;  //32 mb
 
 	//must be in this order
 	settings.platformData = pd;
