@@ -166,11 +166,24 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 	if (!SDL_GetWindowWMInfo(_window, &wmi)) {
 		Debug::Fatal("Cannot get native window information");
 	}
+    bgfx::PlatformData pd;
 	
-	bgfx::PlatformData pd;
 #if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
-	pd.ndt = wmi.info.x11.display;
-	pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
+    // load the correct one of WayLand or X11
+    switch(wmi.subsystem){
+        case SDL_SYSWM_X11:
+            pd.ndt = wmi.info.x11.display;
+            pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
+            Debug::LogTemp("Initialized X11");
+            break;
+        case SDL_SYSWM_WAYLAND:
+            pd.ndt = wmi.info.wl.surface;
+            pd.nwh = wmi.info.wl.shell_surface;
+            Debug::LogTemp("Initialized Wayland");
+            break;
+        default:
+            Debug::Fatal("Running Linux or Unix, but window manager ({}) is neither X ({}) nor Wayland ({})",wmi.subsystem, SDL_SYSWM_X11, SDL_SYSWM_WAYLAND);
+    };
 #elif BX_PLATFORM_OSX
 	pd.ndt = NULL;
 	pd.nwh = cbSetupMetalLayer(wmi.info.cocoa.window);

@@ -91,7 +91,7 @@ App::App(const std::string& resourcesName){
 int App::run(int argc, char** argv) {
 
 	// initialize SDL2
-	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC) != 0) {
+	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC | SDL_INIT_VIDEO) != 0) {
 		Debug::Fatal("Unable to initialize SDL2: {}", SDL_GetError());
 	}
 	{
