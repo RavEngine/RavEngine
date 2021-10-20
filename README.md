@@ -88,7 +88,8 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
-- x11-dev
+- x11-dev (for X11 support)
+- wayland-devel, libxkbcommon-devel (for Wayland support) 
 - alsa-lib-devel (or another SDL2-supported audio library)
 - libgl-dev
 
