@@ -177,8 +177,8 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
             Debug::LogTemp("Initialized X11");
             break;
         case SDL_SYSWM_WAYLAND:
-            pd.ndt = wmi.info.wl.surface;
-            pd.nwh = wmi.info.wl.shell_surface;
+            pd.ndt = wmi.info.wl.display;
+            pd.nwh = wmi.info.wl.surface;
             Debug::LogTemp("Initialized Wayland");
             break;
         default:
