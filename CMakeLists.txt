@@ -72,7 +72,7 @@ endif()
 # configure build machine tools
 file(MAKE_DIRECTORY ${TOOLS_DIR})
 execute_process(
-    COMMAND cmake -G "${CMAKE_GENERATOR}" ${DEPS_DIR}/host-tools/
+    COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" ${DEPS_DIR}/host-tools/
     WORKING_DIRECTORY ${TOOLS_DIR}
 )
 
@@ -80,7 +80,7 @@ execute_process(
 add_custom_command(
     PRE_BUILD
     OUTPUT "${SHADERC_CMD}" 
-	COMMAND cmake --build . --config Release --target shaderc protoc
+	COMMAND ${CMAKE_COMMAND} --build . --config Release --target shaderc protoc
 	WORKING_DIRECTORY "${TOOLS_DIR}"
     VERBATIM
 )
