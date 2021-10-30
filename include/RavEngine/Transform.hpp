@@ -27,7 +27,7 @@ namespace RavEngine {
 		typedef UnorderedContiguousSet<WeakPtrKey<Transform>> childStore;
 		virtual ~Transform(){}
 		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false){
-			matrix = matrix4(1);
+            matrix.store(matrix4(1));
 			SetLocalPosition(inpos);
 			SetLocalRotation(inrot);
 			SetLocalScale(inscale);
@@ -90,10 +90,10 @@ namespace RavEngine {
 		void RemoveChild(const WeakRef<Transform>& child);
 
 	protected:
-		LockFreeAtomic<vector3> position;
-		LockFreeAtomic<quaternion> rotation;
-		LockFreeAtomic<vector3> scale;
-		mutable LockFreeAtomic<matrix4> matrix;
+		LockFreeAtomic<vector3,phmap::NullMutex> position;
+		LockFreeAtomic<quaternion,phmap::NullMutex> rotation;
+		LockFreeAtomic<vector3,phmap::NullMutex> scale;
+		mutable LockFreeAtomic<matrix4,phmap::NullMutex> matrix;
 		
 		SpinLock childModifyLock;
         mutable std::atomic<bool> isDirty = false;
@@ -164,7 +164,7 @@ namespace RavEngine {
 	inline void Transform::LocalTranslateDelta(const vector3& delta) {
 		//set position value
 		MarkAsDirty(this);
-		position = (vector3)position + delta;
+		position.store((vector3)position + delta);
 	}
 
 	inline void Transform::WorldTranslateDelta(const vector3& delta){
@@ -178,7 +178,7 @@ namespace RavEngine {
 	inline void Transform::SetLocalPosition(const vector3& newPos) {
 		//set position value
 		MarkAsDirty(this);
-		position = newPos;
+		position.store(newPos);
 	}
 
 	/**
@@ -205,7 +205,7 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalRotation(const quaternion& newRot) {
 		MarkAsDirty(this);
-		rotation = newRot;
+		rotation.store(newRot);
 	}
 
 	/**
@@ -219,7 +219,7 @@ namespace RavEngine {
 		vector3 t;
 		vector4 p;
 		glm::decompose(glm::toMat4((quaternion)rotation) * glm::toMat4(delta), t, finalrot, t, t, p);
-		rotation = finalrot;
+		rotation.store(finalrot);
 	}
 
 	/**
@@ -246,12 +246,12 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalScale(const vector3& newScale) {
 		MarkAsDirty(this);
-		scale = newScale;
+		scale.store(newScale);
 	}
 
 	inline void Transform::LocalScaleDelta(const vector3& delta) {
 		MarkAsDirty(this);
-		scale = (vector3)scale + delta;
+		scale.store((vector3)scale + delta);
 	}
 
 	inline vector3 Transform::GetLocalPosition() const
@@ -290,7 +290,7 @@ namespace RavEngine {
 				mat *= transforms[i];
 			}
 			mat *= GenerateLocalMatrix();
-			matrix = mat;
+			matrix.store(mat);
 			isDirty = false;
 			return mat;
 		}

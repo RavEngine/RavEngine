@@ -1,10 +1,10 @@
 #pragma once
 #include "SpinLock.hpp"
 
-template<typename T>
+template<typename T, typename lock_t = RavEngine::SpinLock>
 class LockFreeAtomic {
 	T value;
-	mutable RavEngine::SpinLock mtx;
+	mutable lock_t mtx;
 public:
 
 	// default

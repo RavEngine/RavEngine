@@ -265,6 +265,12 @@ RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start,
     dtStatus status;
     dtPolyRef startPoly;
     dtPolyRef endPoly;
+    
+    dtPolyRef polys[2048];
+    int count = 5;
+    status = navMeshQuery->queryPolygons(center, halfexts, &filter, polys, &count, 2048);
+    Debug::Assert(dtStatusSucceed(status), "Filed");
+    
     status = navMeshQuery->findNearestPoly(startf, halfexts, &filter, &startPoly, nearestpt);
     if (dtStatusFailed(status) || startPoly == 0){
         Debug::Fatal("Could not locate start poly");
