@@ -104,14 +104,7 @@ public:
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
 	 */
-	void DebugDraw(DebugDrawer& dbg) const final {
-		auto owner = GetOwner().lock();
-		if (owner) {
-			auto mtx = owner->GetTransform()->CalculateWorldMatrix();
-
-			dbg.DrawRectangularPrism(mtx, debug_color, roomDimensions);
-		}
-	}
+    void DebugDraw(DebugDrawer& dbg) const final;
 };
 
 }

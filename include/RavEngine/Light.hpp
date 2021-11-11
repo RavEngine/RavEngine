@@ -1,6 +1,5 @@
 #pragma once
 #include "Queryable.hpp"
-#include "CameraComponent.hpp"
 #include "Common3D.hpp"
 #include "Component.hpp"
 #include "BuiltinMaterials.hpp"
@@ -10,6 +9,7 @@
 
 namespace RavEngine{
 class MeshAsset;
+class CameraComponent;
 
 struct Light : public Queryable<Light,IDebugRenderable>, public Component, public IDebugRenderable {
 	float Intensity = 1.0;

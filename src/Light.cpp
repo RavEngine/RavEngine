@@ -3,6 +3,8 @@
 #include "PhysXDefines.h"
 #include <bgfx/bgfx.h>
 #include "MeshAsset.hpp"
+#include "Entity.hpp"
+#include "Transform.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -47,8 +49,8 @@ void LightManager::Teardown() {
 }
 
 void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	auto pos = Ref<Entity>(GetOwner())->GetTransform();
-	dbg.DrawCapsule(pos->CalculateWorldMatrix(), debug_color, 1, 2);
+	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
+	dbg.DrawCapsule(pos.CalculateWorldMatrix(), debug_color, 1, 2);
 }
 
 void DirectionalLight::AddInstanceData(float* offset) const{
@@ -59,9 +61,9 @@ void DirectionalLight::AddInstanceData(float* offset) const{
 }
 
 void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	auto pos = Ref<Entity>(GetOwner())->GetTransform();
+	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
 	
-	dbg.DrawSphere(pos->CalculateWorldMatrix(), debug_color, 1);
+	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, 1);
 }
 
 void AmbientLight::AddInstanceData(float* offset) const{
@@ -72,8 +74,8 @@ void AmbientLight::AddInstanceData(float* offset) const{
 }
 
 void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	auto pos = Ref<Entity>(GetOwner())->GetTransform();
-	dbg.DrawSphere(pos->CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
+	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
+	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
 }
 
 void PointLight::AddInstanceData(float* offset) const{

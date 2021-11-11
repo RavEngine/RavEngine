@@ -8,7 +8,6 @@
 #include "Function.hpp"
 #include <taskflow/taskflow.hpp>
 #include "ComponentStore.hpp"
-#include "Entity.hpp"
 
 #include <boost/function_types/function_type.hpp>
 #include <boost/function_types/parameter_types.hpp>
@@ -78,57 +77,58 @@ struct SystemEntry{
 	struct ArgExtractor<Func, std::integer_sequence<size_t, Inds...> >
 	{
 		// this wrapper enables expanding into the function
-		template<typename System, size_t n, auto ... Is>
-		inline constexpr void TickWrapper(float fpsScale, const Ref<System>& system, const Array<const Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
-			system->Tick(fpsScale, std::static_pointer_cast<typename ArgType<Func, Is + 2>::element_type>(*query_results[Is]->begin())...);
-		}
+//		template<typename System, size_t n, auto ... Is>
+//		inline constexpr void TickWrapper(float fpsScale, const Ref<System>& system, const Array<const Entity::entry_type*, n>& query_results, std::integer_sequence<int, Is...>) const {
+//			system->Tick(fpsScale, std::static_pointer_cast<typename ArgType<Func, Is + 2>::element_type>(*query_results[Is]->begin())...);
+//		}
 
 		// evaluates an entity to determine if it passes the query test, and calls tick if it does
 		template<typename System>
 		inline const void TickEntity(const Ref<Component>& c, World* world, const Ref<System>& system) const {
-			Ref<Entity> e = c->GetOwner().lock();
-			if (e) {
-				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
-				static_assert(n_args > 0, "System must take at least one component parameter");
-                Array<const Entity::entry_type*, n_args> query_results;
-				
-				constexpr auto indseq = std::make_integer_sequence<int, n_args>();
-				boost::hana::for_each(indseq, [&](const auto i){
-                    if (auto& coms = e->GetAllComponentsOfType<typename ArgType<Func, i+2>::element_type>()){
-                        query_results[i] = &coms.value();
-                    }
-                    else{
-                        query_results[i] = nullptr;
-                    }
-				});
-				
-				// does the check pass?
-				bool passesCheck = true;
-				for (const auto& queryres : query_results) {
-					if (queryres->size() == 0) {
-						passesCheck = false;
-						break;
-					}
-				}
-
-				if (passesCheck) {
-					auto fpsScale = world->GetCurrentFPSScale();
-					TickWrapper(fpsScale, system, query_results, indseq);
-				}
-			}
+//			Ref<Entity> e = c->GetOwner().lock();
+//			if (e) {
+//				constexpr size_t n_args = sizeof ... (Inds) - 2;	// number of types in variadic
+//				static_assert(n_args > 0, "System must take at least one component parameter");
+//                Array<const Entity::entry_type*, n_args> query_results;
+//
+//				constexpr auto indseq = std::make_integer_sequence<int, n_args>();
+//				boost::hana::for_each(indseq, [&](const auto i){
+//                    if (auto& coms = e->GetAllComponentsOfType<typename ArgType<Func, i+2>::element_type>()){
+//                        query_results[i] = &coms.value();
+//                    }
+//                    else{
+//                        query_results[i] = nullptr;
+//                    }
+//				});
+//
+//				// does the check pass?
+//				bool passesCheck = true;
+//				for (const auto& queryres : query_results) {
+//					if (queryres->size() == 0) {
+//						passesCheck = false;
+//						break;
+//					}
+//				}
+//
+//				if (passesCheck) {
+//					auto fpsScale = world->GetCurrentFPSScale();
+//					TickWrapper(fpsScale, system, query_results, indseq);
+//				}
+//			}
 		}
 		
 		// update iterators
 		inline constexpr auto UpdateQuery(World* world) const
 		{
+            //TODO: FIX
 			// do query
-            if(auto& query = world->template GetAllComponentsOfType<typename ArgType<Func,2>::element_type>()){
-                // return updated iterators
-                return std::make_pair(query.value().begin(), query.value().end());
-            }
-            else{
-                return std::make_pair(world->emptyContainer.begin(), world->emptyContainer.end());
-            }
+//            if(auto& query = world->template GetAllComponentsOfType<typename ArgType<Func,2>::element_type>()){
+//                // return updated iterators
+//                return std::make_pair(query.value().begin(), query.value().end());
+//            }
+//            else{
+//                return std::make_pair(world->emptyContainer.begin(), world->emptyContainer.end());
+//            }
 		}
 	};
 
@@ -139,29 +139,30 @@ struct SystemEntry{
 	template<typename T>
 	SystemEntry(Ref<T> system) :
 		QueryTypes([system](ctti_t sys_ID, iter_map& iterator_map, tf::Taskflow& masterTasks, World* world) -> std::pair<tf::Task, tf::Task> {
-			// get the function parameter types
-
-			auto MakeArgExtractor = [&](auto f) {
-				return ArgExtractor<decltype(f), std::make_index_sequence<Arity<decltype(f)>::value>>();
-			};
-			auto argex = MakeArgExtractor(&T::Tick);
-			auto begin_end = argex.UpdateQuery(world);
-
-			// iterator baseline set
-			iterator_map[sys_ID] = { begin_end.first, begin_end.second };
-
-			// iterator updates
-			auto update = masterTasks.emplace([&iterator_map, argex, sys_ID,world]() mutable -> void {
-				auto begin_end = argex.UpdateQuery(world);
-				iterator_map[sys_ID] = { begin_end.first,begin_end.second };
-			});
+            //TODO: FIX
+//			// get the function parameter types
+//
+//			auto MakeArgExtractor = [&](auto f) {
+//				return ArgExtractor<decltype(f), std::make_index_sequence<Arity<decltype(f)>::value>>();
+//			};
+//			auto argex = MakeArgExtractor(&T::Tick);
+//			auto begin_end = argex.UpdateQuery(world);
+//
+//			// iterator baseline set
+//			iterator_map[sys_ID] = { begin_end.first, begin_end.second };
+//
+//			// iterator updates
+//			auto update = masterTasks.emplace([&iterator_map, argex, sys_ID,world]() mutable -> void {
+//				auto begin_end = argex.UpdateQuery(world);
+//				iterator_map[sys_ID] = { begin_end.first,begin_end.second };
+//			});
 
 			// the actual tick
-			auto mainTick = masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](const Ref<Component>& c) {
-				argex.TickEntity(c, world, system);	//TODO: currentFPSScale?
-			});
-			update.precede(mainTick);
-			return std::make_pair(mainTick,update);
+//			auto mainTick = masterTasks.for_each(std::ref(iterator_map[sys_ID].begin), std::ref(iterator_map[sys_ID].end), [=](const Ref<Component>& c) {
+//				argex.TickEntity(c, world, system);	//TODO: currentFPSScale?
+//			});
+//			update.precede(mainTick);
+//			return std::make_pair(mainTick,update);
 		}),
 		MustRunBefore([system]() -> const System::list_type&{
 			return MustRunBefore_impl<T>(system);

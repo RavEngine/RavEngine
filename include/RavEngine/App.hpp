@@ -7,7 +7,6 @@
 #include "SpinLock.hpp"
 #include <thread>
 #include <taskflow/taskflow.hpp>
-#include "World.hpp"
 #include "DataStructures.hpp"
 #include "AudioPlayer.hpp"
 #include "NetworkManager.hpp"
@@ -125,18 +124,7 @@ namespace RavEngine {
 		Set the current world to tick automatically
 		@param newWorld the new world
 		*/
-        static void SetRenderedWorld(Ref<World> newWorld) {
-			if (!loadedWorlds.contains(newWorld)){
-				Debug::Fatal("Cannot render an inactive world");
-			}
-			if (renderWorld) {
-				renderWorld->OnDeactivate();
-				renderWorld->isRendering = false;
-			}
-			renderWorld = newWorld;
-			renderWorld->isRendering = true;
-			renderWorld->OnActivate();
-		}
+        static void SetRenderedWorld(Ref<World> newWorld);
 		
 		/**
 		 Add a world to be ticked
@@ -157,13 +145,7 @@ namespace RavEngine {
 		Remove a world from the tick list
 		@param world the world to tick
 		*/
-		static void RemoveWorld(Ref<World> world){
-			loadedWorlds.erase(world);
-			if (renderWorld == world){
-				renderWorld->OnDeactivate();
-				renderWorld.reset();	//this will cause nothing to render, so set a different world as rendered
-			}
-		}
+        static void RemoveWorld(Ref<World> world);
 
 		/**
 		* Unload all worlds
@@ -195,17 +177,7 @@ namespace RavEngine {
 		 */
         static void SetWindowTitle(const char* title);
 		
-		static std::optional<Ref<World>> GetWorldByName(const std::string& name){
-			std::optional<Ref<World>> value;
-			for(const auto& world : loadedWorlds){
-				// because std::string "world\0\0" != "world", we need to use strncmp
-				if (std::strncmp(world->worldID.data(),name.data(), World::id_size) == 0){
-					value.emplace(world);
-					break;
-				}
-			}
-			return value;
-		}
+        static std::optional<Ref<World>> GetWorldByName(const std::string& name);
 		
         static inline FrameData* GetCurrentFramedata(){
 			return current;

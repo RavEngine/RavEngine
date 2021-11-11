@@ -12,7 +12,6 @@
 #include "Ref.hpp"
 #include "PhysicsCollider.hpp"
 #include "PhysicsBodyComponent.hpp"
-#include "Entity.hpp"
 #include <PxPhysicsAPI.h>
 #include <PxFiltering.h>
 #include <cstdint>
@@ -27,6 +26,7 @@ struct FilterLayers {
 };
 
 namespace RavEngine {
+    struct Entity;
     class PhysicsSolver : public physx::PxSimulationEventCallback {
     protected:
         //static members must exist only once in the application

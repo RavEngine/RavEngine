@@ -2,6 +2,7 @@
 #include "Component.hpp"
 #include "Entity.hpp"
 #include "Queryable.hpp"
+#include "Transform.hpp"
 
 namespace RavEngine {
 	class RenderEngine;
@@ -60,7 +61,7 @@ namespace RavEngine {
 		inline matrix4 GenerateViewMatrix() const{
 			Ref<Entity> entity(owner);
 			
-			return glm::inverse(entity->GetTransform()->CalculateWorldMatrix());
+            return glm::inverse(entity->GetTransform().CalculateWorldMatrix());
 		}
         
         /**

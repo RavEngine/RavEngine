@@ -18,6 +18,7 @@
 #include <SDL.h>
 #include <filesystem>
 #include "Function.hpp"
+#include "World.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -268,4 +269,37 @@ App::~App(){
 
 void App::SetWindowTitle(const char *title){
 	SDL_SetWindowTitle(Renderer->GetWindow(), title);
+}
+
+void App::SetRenderedWorld(Ref<World> newWorld){
+   if (!loadedWorlds.contains(newWorld)){
+       Debug::Fatal("Cannot render an inactive world");
+   }
+   if (renderWorld) {
+       renderWorld->OnDeactivate();
+       renderWorld->isRendering = false;
+   }
+   renderWorld = newWorld;
+   renderWorld->isRendering = true;
+   renderWorld->OnActivate();
+}
+
+void App::RemoveWorld(Ref<World> world){
+    loadedWorlds.erase(world);
+    if (renderWorld == world){
+        renderWorld->OnDeactivate();
+        renderWorld.reset();    //this will cause nothing to render, so set a different world as rendered
+    }
+}
+
+std::optional<Ref<World>> App::GetWorldByName(const std::string &name){
+    std::optional<Ref<World>> value;
+    for(const auto& world : loadedWorlds){
+        // because std::string "world\0\0" != "world", we need to use strncmp
+        if (std::strncmp(world->worldID.data(),name.data(), World::id_size) == 0){
+            value.emplace(world);
+            break;
+        }
+    }
+    return value;
 }

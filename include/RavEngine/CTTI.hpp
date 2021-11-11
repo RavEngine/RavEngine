@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <cstdint>
 #include <string_view>
+#include <type_traits>
 
 #ifdef _WIN32
     #define __PRETTY_FUNCTION__ __FUNCSIG__
@@ -90,7 +91,7 @@ inline constexpr std::string_view type_name() {
 }
 
 // for structs, provide an automatic CTTI implementation using the derivation
-template <typename T, std::enable_if_t<std::is_base_of<RavEngine::AutoCTTI, T>::value,bool> = false>
+template <typename T, std::enable_if_t<std::is_base_of<RavEngine::AutoCTTI, T>::value || std::is_pod<T>::value,bool> = false>
 inline constexpr std::string_view type_name() {
 #ifdef _MSC_VER
 	constexpr auto str = type_name_impl<T>();
@@ -110,7 +111,7 @@ inline constexpr std::string_view type_name() {
 
 // this is the catch-all for types that do not satisfy the above requirements
 // this specialization always fails.
-template<typename T, std::enable_if_t<!std::is_base_of<RavEngine::AutoCTTI, T>::value && !std::is_fundamental<T>::value && !std::is_same<T,void>::value, bool> = false>
+template<typename T, std::enable_if_t<!std::is_base_of<RavEngine::AutoCTTI, T>::value && !std::is_pod<T>::value && !std::is_fundamental<T>::value && !std::is_same<T,void>::value, bool> = false>
 inline constexpr std::string_view type_name(){
 	static_assert(!(!std::is_base_of<RavEngine::AutoCTTI, T>::value && !std::is_fundamental<T>::value && !std::is_same<T,void>::value),"A platform-independent type-name string cannot be auto-generated for this type. Create a manual specialization. See mathtypes.hpp for an example.");
 	return "";

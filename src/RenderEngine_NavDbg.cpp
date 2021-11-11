@@ -1,4 +1,6 @@
 #include "RenderEngine.hpp"
+#include "Utilities.hpp"
+#include "Debug.hpp"
 
 using namespace RavEngine;
 using namespace std;

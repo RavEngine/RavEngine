@@ -7,7 +7,6 @@
 //
 
 #include "Ref.hpp"
-#include "Entity.hpp"
 #include "WeakRef.hpp"
 #include "Uniform.hpp"
 #include <bgfx/bgfx.h>
@@ -18,6 +17,8 @@
 #include "TransientComputeBuffer.hpp"
 #include <DebugDraw.h>
 #include "Function.hpp"
+#include "Common3D.hpp"
+#include "SpinLock.hpp"
 
 struct SDL_Window;
 
@@ -27,6 +28,8 @@ namespace RavEngine {
     class DeferredBlitShader;
 	class GUIMaterialInstance;
 	class InputManager;
+    struct Entity;
+    struct World;
 
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
 	private:
@@ -58,11 +61,11 @@ namespace RavEngine {
          */
         template<typename ... T>
         static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T... args){
-#ifdef _DEBUG
+//#ifdef _DEBUG
             dbgmtx.lock();
             debugprints[row] = {StrFormat(formatstr, args...),color};
             dbgmtx.unlock();
-#endif
+//#endif
         }
         
         /**
@@ -70,11 +73,11 @@ namespace RavEngine {
          @param row the row to clear
          */
         static void ClearDebugPrint(uint16_t row){
-#ifdef _DEBUG
+//#ifdef _DEBUG
             dbgmtx.lock();
             debugprints.erase(row);
             dbgmtx.unlock();
-#endif
+//#endif
         }
         
         /**
@@ -82,11 +85,11 @@ namespace RavEngine {
          @param row the row to clear
          */
         static void ClearAllDebugPrint(){
-#ifdef _DEBUG
+//#ifdef _DEBUG
             dbgmtx.lock();
             debugprints.clear();
             dbgmtx.unlock();
-#endif
+//#endif
         }
 
         /**
@@ -201,11 +204,11 @@ namespace RavEngine {
 		/// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
 		void SetTransform(const Rml::Matrix4f* transform) override;
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
 		void InitDebugger() const;
 		void DeactivateDebugger() const;
 		static Ref<InputManager> debuggerInput;
-#endif
+//#endif
         // navigation debug rendering -- internal use only
         void depthMask(bool state) final;
         void texture(bool state) final;
@@ -222,19 +225,19 @@ namespace RavEngine {
         static bgfx::ProgramHandle debugNavProgram;
         bool navDebugDepthEnabled = false;
         
-#ifdef _DEBUG
+//#ifdef _DEBUG
         struct DebugMsg{
             std::string message;
             uint8_t color;
         };
         static SpinLock dbgmtx;
         static UnorderedMap<uint16_t,DebugMsg> debugprints;
-#endif
+//#endif
         void runAPIThread(bgfx::PlatformData pd, int width, int height, const AppConfig& conf);
 
-#ifdef _WIN32
+//#ifdef _WIN32
 		float win_scalefactor = 1;
-#endif
+//#endif
 		
 		WeakRef<World> worldToDraw;
 		std::optional<std::thread> renderThread;
@@ -336,10 +339,10 @@ namespace RavEngine {
             bool enabled = false;
         } RMLScissor;
 		
-#ifdef _DEBUG
+//#ifdef _DEBUG
 		//used for the GUI debugger
 		static Ref<Entity> debuggerContext;
-#endif
+//#endif
 	
 		static const std::string_view BackendStringName(bgfx::RendererType::Enum backend);
     };

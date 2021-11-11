@@ -81,7 +81,7 @@ namespace RavEngine {
 		inline std::string SerializeRPC(uint16_t id, A ... args) const{
 			constexpr size_t totalsize = (RPCMsgUnpacker::TotalSerializedSize(args) + ...) + RPCMsgUnpacker::header_size;
 
-			auto uuid_bytes = GetOwner().lock()->GetComponent<NetworkIdentity>().value()->GetNetworkID().raw();
+			auto uuid_bytes = GetOwner().lock()->GetComponent<NetworkIdentity>().GetNetworkID().raw();
 			char msg[totalsize];
 
 			//write message header

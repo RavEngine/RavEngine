@@ -4,6 +4,7 @@
 #include <common/room_properties.h>
 #include <common/room_effects_utils.h>
 #include "Entity.hpp"
+#include "Transform.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -11,9 +12,9 @@ using namespace std;
 void AudioRoomSyncSystem::Tick(float fpsScale, Ref<AudioRoom> room){
     auto e = room->GetOwner().lock();
     if (e){
-        auto pos = e->GetTransform()->GetWorldPosition();
-        auto rot = e->GetTransform()->GetWorldRotation();
-        auto mtx = e->GetTransform()->CalculateWorldMatrix();
+        auto pos = e->GetTransform().GetWorldPosition();
+        auto rot = e->GetTransform().GetWorldRotation();
+        auto mtx = e->GetTransform().CalculateWorldMatrix();
         
         quaternion r;
         vector3 t;

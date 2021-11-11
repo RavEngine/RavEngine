@@ -34,19 +34,8 @@ void RavEngine::World::Tick(float scale) {
 	//Tick the game code
 	TickECS(scale);
 	
-	//apply component changes
-	SyncOp op;
-	while (toSync.try_dequeue(op)){
-		if (op.add){
-			ComponentStore::CTTI_Add(op.c, op.id);
-		}
-		else{
-			ComponentStore::CTTI_Remove(op.c, op.id);
-		}
-	}
 
     PostTick(scale);
-	Destroy_pending();
 }
 
 
@@ -58,137 +47,63 @@ RavEngine::World::World(){
 	systemManager.EmplaceSystem<AnimatorSystem>();
 }
 
-/**
- Spawn an entity immediately
- @param e the entity to spawn
- @return true if the spawn succeeded, false if it failed
- */
-bool RavEngine::World::Spawn(Ref<Entity> e){
-	//cannot spawn an entity that is already in a world
-	if (e->GetWorld().expired()){
-		Entities.insert(e);
-		e->Sync();	//ensure all components have their owner backpointers up-to-date
-		e->SetWorld(shared_from_this());
-
-		//merge the entity into the world
-		Merge(*e.get());
-        
-        //start entity
-        e->Start();
-
-		e->parent = shared_from_this();	//set parent so that this entity synchronizes its components with this world
-
-		//get all child entities
-        if(e->HasComponentOfType<ChildEntityComponent>()){
-            if (auto& children = e->GetAllComponentsOfType<ChildEntityComponent>()){
-                for(const auto& c : children.value()){
-                    Spawn(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());    //spawn the child entities
-                }
-            }
-        }
-		return true;
-	}
-	return false;
-}
-
-/**
- Destroy an entity immediately
- @param e the entity to destroy
- @return true if destruction succeeded, false otherwise
- */
-bool RavEngine::World::Destroy(Ref<Entity> e){
-	//if entity is somehow not spawned, do nothing
-	if (e->GetWorld().expired()){
-		return false;
-	}
-	e->Stop();
-	to_destroy.insert(e);
-
-	//get all child entities
-    if (e->HasComponentOfType<ChildEntityComponent>()){
-        if(auto& children = e->GetAllComponentsOfType<ChildEntityComponent>()){
-            for (const auto& c : children.value()) {
-                Destroy(std::static_pointer_cast<ChildEntityComponent>(c)->GetEntity());
-            }
-        }
-        
-    }
-	
-	return true;
-}
-
-void World::OnAddComponent(Ref<Component> comp){
-	//is this a script? if so, call its start
-	{
-		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
-		if (scr){
-			scr->Start();
-			return;
-		}
-	}
-	//is this a physics body? if so, call physics simulator to create it
-	{
-		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
-		auto parent = comp->GetOwner().lock();
-		if (phys && parent){
-			Solver.Spawn(parent);
-			return;
-		}
-	}
-	//is this a NetworkIdentity? if so, call Add on the NetworkManager
-	{
-		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
-		if (nid && nid->triggerMessage) {
-            //only the server may spawn objects
-            App::networkManager.Spawn(shared_from_this(), nid);
-            return;
-		}
-	}
-}
-
-void World::OnRemoveComponent(Ref<Component> comp){
-	//is this a script? if so, call its stop
-	{
-		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
-		if (scr){
-			scr->Stop();
-			return;
-		}
-	}
-	//is this a physics body? if so, call physics simulator to stop it
-	{
-		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
-		auto parent = comp->GetOwner().lock();
-		if (phys && parent){
-			Solver.Destroy(parent);
-			return;
-		}
-	}
-	//is this a NetworkIdentity? if so, call destroy on the NetworkManager
-	{
-		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
-		if (nid && nid->triggerMessage) {
-            //ownership is checked serverside to decide if this should be honored
-			App::networkManager.Destroy(shared_from_this(), nid);
-            return;
-		}
-	}
-}
-
-void RavEngine::World::Destroy_pending()
-{
-	for (const auto& e : to_destroy) {
-		e->SetWorld(nullptr);
-
-		//also remove its components
-		Unmerge(*e.get());
-
-		e->parent.reset();	//set parent to null so that this entity no longer synchronizes its components with this world
-
-		Entities.erase(e);
-	}
-	to_destroy.clear();
-}
+//void World::OnAddComponent(Ref<Component> comp){
+//	//is this a script? if so, call its start
+//	{
+//		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
+//		if (scr){
+//			scr->Start();
+//			return;
+//		}
+//	}
+//	//is this a physics body? if so, call physics simulator to create it
+//	{
+//		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
+//		auto parent = comp->GetOwner().lock();
+//		if (phys && parent){
+//			Solver.Spawn(parent);
+//			return;
+//		}
+//	}
+//	//is this a NetworkIdentity? if so, call Add on the NetworkManager
+//	{
+//		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
+//		if (nid && nid->triggerMessage) {
+//            //only the server may spawn objects
+//            App::networkManager.Spawn(shared_from_this(), nid);
+//            return;
+//		}
+//	}
+//}
+//
+//void World::OnRemoveComponent(Ref<Component> comp){
+//	//is this a script? if so, call its stop
+//	{
+//		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
+//		if (scr){
+//			scr->Stop();
+//			return;
+//		}
+//	}
+//	//is this a physics body? if so, call physics simulator to stop it
+//	{
+//		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
+//		auto parent = comp->GetOwner().lock();
+//		if (phys && parent){
+//			Solver.Destroy(parent);
+//			return;
+//		}
+//	}
+//	//is this a NetworkIdentity? if so, call destroy on the NetworkManager
+//	{
+//		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
+//		if (nid && nid->triggerMessage) {
+//            //ownership is checked serverside to decide if this should be honored
+//			App::networkManager.Destroy(shared_from_this(), nid);
+//            return;
+//		}
+//	}
+//}
 
 /**
  Tick all of the objects in the world, multithreaded
@@ -325,65 +240,68 @@ void World::RebuildTaskGraph(){
 void World::FillFramedata(){
 	//render engine data collector
 	//camera matrices
-	auto camproc = masterTasks.emplace([this](){
-        if (auto& allcams = GetAllComponentsOfType<CameraComponent>()){
-            for (const auto& c : allcams.value()) {
-                auto cam = std::static_pointer_cast<CameraComponent>(c);
-                if (cam->IsActive()) {
-                    
-                    auto size = App::GetRenderEngine().GetBufferSize();
-                    cam->SetTargetSize(size.width, size.height);
-                    auto current = App::GetCurrentFramedata();
-                    current->viewmatrix = cam->GenerateViewMatrix();
-                    current->projmatrix = cam->GenerateProjectionMatrix();
-                    current->cameraWorldpos = cam->GetOwner().lock()->GetTransform()->GetWorldPosition();
-                    
-                    break;
-                }
-            }
-        }
-		
-	});
+    
+    //TODO: FIX
+//	auto camproc = masterTasks.emplace([this](){
+//        if (auto& allcams = GetAllComponentsOfType<CameraComponent>()){
+//            for (const auto& c : *allcams.value()) {
+//                if (cam->IsActive()) {
+//
+//                    auto size = App::GetRenderEngine().GetBufferSize();
+//                    cam->SetTargetSize(size.width, size.height);
+//                    auto current = App::GetCurrentFramedata();
+//                    current->viewmatrix = cam->GenerateViewMatrix();
+//                    current->projmatrix = cam->GenerateProjectionMatrix();
+//                    current->cameraWorldpos = cam->GetOwner().lock()->GetTransform()->GetWorldPosition();
+//
+//                    break;
+//                }
+//            }
+//        }
+//
+//	});
 	
 	//opaque geometry
 	geobegin = emptyContainer.begin();
 	geoend = emptyContainer.end();
 	skinnedgeobegin = emptyContainer.begin();
 	skinnedgeoend = emptyContainer.end();
-	auto init = masterTasks.emplace([&](){
-        if(auto& geometry = GetAllComponentsOfType<StaticMesh>()){
-            geobegin = geometry.value().begin();
-            geoend = geometry.value().end();
-            
-        }
-        else{
-            geobegin = emptyContainer.end();
-            geoend = emptyContainer.end();
-        }
-        if(auto& skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
-            skinnedgeobegin = skinnedGeo.value().begin();
-            skinnedgeoend = skinnedGeo.value().end();
-        }
-        else{
-            skinnedgeobegin = emptyContainer.end();
-            skinnedgeoend = emptyContainer.end();
-        }
-        if (auto& instancedGeo = GetAllComponentsOfType<InstancedStaticMesh>()){
-            instancedBegin = instancedGeo.value().begin();
-            instancedEnd = instancedGeo.value().end();
-        }
-        else{
-            instancedBegin = emptyContainer.begin();
-            instancedEnd = emptyContainer.end();
-        }
-        
-	});
+    
+    //TODO: FIX
+//	auto init = masterTasks.emplace([&](){
+//        if(auto geometry = GetAllComponentsOfType<StaticMesh>()){
+//            geobegin = geometry.value()->begin();
+//            geoend = geometry.value()->end();
+//
+//        }
+//        else{
+//            geobegin = emptyContainer.end();
+//            geoend = emptyContainer.end();
+//        }
+//        if(auto skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
+//            skinnedgeobegin = skinnedGeo.value()->begin();
+//            skinnedgeoend = skinnedGeo.value()->end();
+//        }
+//        else{
+//            skinnedgeobegin = emptyContainer.end();
+//            skinnedgeoend = emptyContainer.end();
+//        }
+//        if (auto instancedGeo = GetAllComponentsOfType<InstancedStaticMesh>()){
+//            instancedBegin = instancedGeo.value()->begin();
+//            instancedEnd = instancedGeo.value()->end();
+//        }
+//        else{
+//            instancedBegin = emptyContainer.begin();
+//            instancedEnd = emptyContainer.end();
+//        }
+//
+//	});
 	
 	// update matrix caches
 	auto updateMatrix = [&](const Ref<Component>& c) {
 		auto owner = c->GetOwner().lock();
 		if (owner) {
-			owner->GetTransform()->CalculateWorldMatrix();
+            owner->GetTransform().CalculateWorldMatrix();
 		}
 	};
 
@@ -398,7 +316,7 @@ void World::FillFramedata(){
         auto ptr = e->GetOwner().lock();
         if (ptr && m->Enabled) {
             auto& pair = m->getTuple();
-            auto mat = ptr->GetTransform()->GetMatrix();
+            auto mat = ptr->GetTransform().GetMatrix();
             auto& item = current->opaques[pair];
             item.AddItem(mat);
         }
@@ -408,14 +326,15 @@ void World::FillFramedata(){
         auto ptr = e->GetOwner().lock();
         if (ptr && m->Enabled) {
             auto& pair = m->getTuple();
-            auto mat = ptr->GetTransform()->GetMatrix();
+            auto mat = ptr->GetTransform().GetMatrix();
             auto current = App::GetCurrentFramedata();
             auto& item = current->skinnedOpaques[pair];
             item.AddItem(mat);
             // write the pose if there is one
-            if (auto animator = ptr->GetComponent<AnimatorComponent>()) {
-                item.AddSkinningData(animator.value()->GetSkinningMats());
-            }
+            //TODO: FIX
+//            if (auto& animator = ptr->GetComponent<AnimatorComponent>()) {
+//                item.AddSkinningData(animator->GetSkinningMats());
+//            }
         }
 	});
     auto sortInstanced = masterTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const Ref<Component>& e){
@@ -434,116 +353,117 @@ void World::FillFramedata(){
         }
     });
     
-	init.precede(sort,sortskinned);
-	matcalc.precede(sort);
-	skinnedmatcalc.precede(sortskinned);
-	
-	auto copydirs = masterTasks.emplace([this](){
-        if(auto& dirs = GetAllComponentsOfType<DirectionalLight>()){
-            for(const auto& e : dirs.value()){
-                auto owner = e->GetOwner().lock();
-                if (owner){
-                    auto d = static_cast<DirectionalLight*>(e.get());
-                    auto rot = owner->GetTransform()->Up();
-                    FrameData::PackedDL::tinyvec3 r{
-                        static_cast<float>(rot.x),
-                        static_cast<float>(rot.y),
-                        static_cast<float>(rot.z)
-                    };
-                    auto current = App::GetCurrentFramedata();
-                    current->directionals.emplace(*d,r);
-                }
-            }
-        }
-		
-	});
-	auto copyambs = masterTasks.emplace([this](){
-        if(auto& ambs = GetAllComponentsOfType<AmbientLight>()){
-            for(const auto& e : ambs.value()){
-                auto d = static_cast<AmbientLight*>(e.get());
-                auto current = App::GetCurrentFramedata();
-                current->ambients.emplace(*d);
-            }
-        }
-		
-	});
-	auto copyspots = masterTasks.emplace([this](){
-        if(auto& spots = GetAllComponentsOfType<SpotLight>()){
-            for(const auto& e : spots.value()){
-                auto d = static_cast<SpotLight*>(e.get());
-                auto ptr = e->GetOwner().lock();
-                if (ptr){
-                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
-                    auto current = App::GetCurrentFramedata();
-                    current->spots.emplace(*d,d->CalculateMatrix(transform));
-                }
-            }
-        }
-		
-	});
-	auto copypoints = masterTasks.emplace([this](){
-        if(auto& points = GetAllComponentsOfType<PointLight>()){
-            for(const auto& e : points.value()){
-                auto d = static_cast<PointLight*>(e.get());
-                auto ptr = e->GetOwner().lock();
-                if (ptr){
-                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
-                    auto current = App::GetCurrentFramedata();
-                    current->points.emplace(*d,d->CalculateMatrix(transform));
-                }
-            }
-        }
-		
-	});
-
-#ifdef _DEBUG
-	// copy debug shapes
-	auto copyDebug = masterTasks.emplace([this]() {
-        if(auto& dbg = GetAllComponentsOfType<IDebugRenderable>()){
-            App::GetCurrentFramedata()->debugShapesToDraw = dbg.value().get_underlying();
-
-        }
-        else{
-            App::GetCurrentFramedata()->debugShapesToDraw.clear();
-        }
-	});
-#endif
-	auto copyGUI = masterTasks.emplace([this]() {
-        // also do the time here
-        App::GetCurrentFramedata()->Time = App::GetCurrentTime();
-        if(auto& guis = GetAllComponentsOfType<GUIComponent>()){
-            App::GetCurrentFramedata()->guisToCalculate = guis.value().get_underlying();
-        }
-        else{
-            App::GetCurrentFramedata()->guisToCalculate.clear();
-        }
-	});
-	
-	auto swap = masterTasks.emplace([this]{
-		App::SwapCurrentFramedata();
-	});
-	auto setup = masterTasks.emplace([this]{
-		auto current = App::GetCurrentFramedata();
-		current->Clear();
-	});
-	setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
-	sort.precede(swap);
-	sortskinned.precede(swap);
-    sortInstanced.precede(swap);
-	camproc.precede(sort,sortskinned);
-	
-	//ensure user code completes before framedata population
-	for(auto& g : graphs){
-		if (!g.second.isTimed){
-			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned, copyGUI, sortInstanced
-#ifdef _DEBUG
-				, copyDebug
-#endif
-			);
-		}
-	}
-	
-	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+    //TODO: FIX
+//	init.precede(sort,sortskinned);
+//	matcalc.precede(sort);
+//	skinnedmatcalc.precede(sortskinned);
+//
+//	auto copydirs = masterTasks.emplace([this](){
+//        if(auto& dirs = GetAllComponentsOfType<DirectionalLight>()){
+//            for(const auto& e : dirs.value()){
+//                auto owner = e->GetOwner().lock();
+//                if (owner){
+//                    auto d = static_cast<DirectionalLight*>(e.get());
+//                    auto rot = owner->GetTransform()->Up();
+//                    FrameData::PackedDL::tinyvec3 r{
+//                        static_cast<float>(rot.x),
+//                        static_cast<float>(rot.y),
+//                        static_cast<float>(rot.z)
+//                    };
+//                    auto current = App::GetCurrentFramedata();
+//                    current->directionals.emplace(*d,r);
+//                }
+//            }
+//        }
+//
+//	});
+//	auto copyambs = masterTasks.emplace([this](){
+//        if(auto& ambs = GetAllComponentsOfType<AmbientLight>()){
+//            for(const auto& e : ambs.value()){
+//                auto d = static_cast<AmbientLight*>(e.get());
+//                auto current = App::GetCurrentFramedata();
+//                current->ambients.emplace(*d);
+//            }
+//        }
+//
+//	});
+//	auto copyspots = masterTasks.emplace([this](){
+//        if(auto& spots = GetAllComponentsOfType<SpotLight>()){
+//            for(const auto& e : spots.value()){
+//                auto d = static_cast<SpotLight*>(e.get());
+//                auto ptr = e->GetOwner().lock();
+//                if (ptr){
+//                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
+//                    auto current = App::GetCurrentFramedata();
+//                    current->spots.emplace(*d,d->CalculateMatrix(transform));
+//                }
+//            }
+//        }
+//
+//	});
+//	auto copypoints = masterTasks.emplace([this](){
+//        if(auto& points = GetAllComponentsOfType<PointLight>()){
+//            for(const auto& e : points.value()){
+//                auto d = static_cast<PointLight*>(e.get());
+//                auto ptr = e->GetOwner().lock();
+//                if (ptr){
+//                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
+//                    auto current = App::GetCurrentFramedata();
+//                    current->points.emplace(*d,d->CalculateMatrix(transform));
+//                }
+//            }
+//        }
+//
+//	});
+//
+//#ifdef _DEBUG
+//	// copy debug shapes
+//	auto copyDebug = masterTasks.emplace([this]() {
+//        if(auto& dbg = GetAllComponentsOfType<IDebugRenderable>()){
+//            App::GetCurrentFramedata()->debugShapesToDraw = dbg.value().get_underlying();
+//
+//        }
+//        else{
+//            App::GetCurrentFramedata()->debugShapesToDraw.clear();
+//        }
+//	});
+//#endif
+//	auto copyGUI = masterTasks.emplace([this]() {
+//        // also do the time here
+//        App::GetCurrentFramedata()->Time = App::GetCurrentTime();
+//        if(auto& guis = GetAllComponentsOfType<GUIComponent>()){
+//            App::GetCurrentFramedata()->guisToCalculate = guis.value().get_underlying();
+//        }
+//        else{
+//            App::GetCurrentFramedata()->guisToCalculate.clear();
+//        }
+//	});
+//
+//	auto swap = masterTasks.emplace([this]{
+//		App::SwapCurrentFramedata();
+//	});
+//	auto setup = masterTasks.emplace([this]{
+//		auto current = App::GetCurrentFramedata();
+//		current->Clear();
+//	});
+//	setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
+//	sort.precede(swap);
+//	sortskinned.precede(swap);
+//    sortInstanced.precede(swap);
+//	camproc.precede(sort,sortskinned);
+//
+//	//ensure user code completes before framedata population
+//	for(auto& g : graphs){
+//		if (!g.second.isTimed){
+//			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned, copyGUI, sortInstanced
+//#ifdef _DEBUG
+//				, copyDebug
+//#endif
+//			);
+//		}
+//	}
+//
+//	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 }
 
 void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
@@ -551,4 +471,26 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     App::DispatchMainThread([=]{
         async_tasks.insert(make_shared<dispatched_func>(time + delaySeconds,func));
     });
+}
+
+entity_t World::CreateEntity(){
+    entity_t id;
+    if (available.size() > 0){
+        id = available.front();
+        available.pop();
+    }
+    else{
+        id = localToGlobal.size();
+        localToGlobal.push_back(INVALID_ENTITY);
+    }
+    localToGlobal[id] = Registry::CreateEntity(this, id);
+    return localToGlobal[id];
+}
+
+World::~World() {
+    for (const auto& e : localToGlobal) {
+        if (EntityIsValid(e)) {
+            Registry::ReleaseEntity(e);
+        }
+    }
 }

@@ -766,16 +766,16 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 #ifdef _DEBUG
 	//render debug GUI
-	auto comp = debuggerContext->GetComponent<GUIComponent>().value();
-	comp->SetDimensions(size.width, size.height);
-	comp->SetDPIScale(GetDPIScale());
-	comp->Update();
-	comp->Render();
+	auto& comp = debuggerContext->GetComponent<GUIComponent>();
+	comp.SetDimensions(size.width, size.height);
+	comp.SetDPIScale(GetDPIScale());
+	comp.Update();
+	comp.Render();
 	
 	auto& shapesToDraw = fd->debugShapesToDraw;
 	for(const auto s : shapesToDraw){
         auto owner = s->GetOwner().lock();
-        if (owner && owner->GetComponent<Transform>()) {
+        if (owner && owner->HasComponent<Transform>()) {
             auto ptr = dynamic_cast<IDebugRenderable*>(s.get());
             if (ptr->debugEnabled){
                 ptr->DebugDraw(dbgdraw);
@@ -921,21 +921,24 @@ void RenderEngine::InitDebugger() const{
 	data.drawCallback = &DebugRender;
 	
 	debuggerContext = make_shared<Entity>();
-	auto ctx = debuggerContext->EmplaceComponent<GUIComponent>(10,10);
-	
-	bool status = Rml::Debugger::Initialise(ctx->context);
+    //TODO: FIX
+//	auto& ctx = debuggerContext->EmplaceComponent<GUIComponent>(10,10);
+//
+//    bool status = Rml::Debugger::Initialise(ctx.context);
 	
 	debuggerInput = make_shared<InputManager>();
 	
-	debuggerInput->BindAnyAction(ctx);
+    //TODO: FIX
+	//debuggerInput->BindAnyAction(ctx);
 	debuggerInput->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
 	debuggerInput->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
 	
 	debuggerInput->AddAxisMap("ScrollY", Special::MOUSEWHEEL_Y);
 
-	debuggerInput->BindAxis("MouseX", ctx, &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
-	debuggerInput->BindAxis("MouseY", ctx, &GUIComponent::MouseY, CID::ANY, 0);
-	debuggerInput->BindAxis("ScrollY", ctx, &GUIComponent::ScrollY, CID::ANY, 0);
+    //TODO: FIX
+//	debuggerInput->BindAxis("MouseX", ctx, &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
+//	debuggerInput->BindAxis("MouseY", ctx, &GUIComponent::MouseY, CID::ANY, 0);
+//	debuggerInput->BindAxis("ScrollY", ctx, &GUIComponent::ScrollY, CID::ANY, 0);
 }
 
 void RenderEngine::DeactivateDebugger() const{

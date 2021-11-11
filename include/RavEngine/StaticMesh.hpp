@@ -3,6 +3,7 @@
 #include "MeshAsset.hpp"
 #include "BuiltinMaterials.hpp"
 #include "mathtypes.hpp"
+#include "Entity.hpp"
 
 namespace RavEngine {
     class StaticMesh : public Component, public Queryable<StaticMesh> {
@@ -101,7 +102,7 @@ namespace RavEngine {
         }
         
         inline void CalculateMatrices(){
-            auto parentTransform = GetOwner().lock()->GetTransform()->CalculateWorldMatrix();
+            auto parentTransform = GetOwner().lock()->GetTransform().CalculateWorldMatrix();
             for(size_t i = 0; i < instanceRelativeTransform.size(); i++){
                 auto& st = instanceRelativeTransform[i];
                 instanceOutputTransform[i] = parentTransform * (glm::translate(matrix4(1), st.translate) * glm::toMat4(st.rotate) * glm::scale(matrix4(1), st.scale));

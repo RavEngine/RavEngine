@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Component.hpp"
-#include "Entity.hpp"
 #include "Queryable.hpp"
 
 namespace RavEngine{
+struct Entity;
 /**
  Create an entity association. When the owner entity is spawned or destroyed, this entity will also be spawned / destroyed with it.
  Allows prefab-like design.

@@ -9,7 +9,7 @@
 #include "PhysicsBodyComponent.hpp"
 #include "App.hpp"
 #include "PhysXDefines.h"
-
+#include "Entity.hpp"
 #include <PxPhysicsVersion.h>
 #include <snippetcommon/SnippetPVD.h>
 #include <extensions/PxDefaultSimulationFilterShader.h>
@@ -204,18 +204,19 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
  @param e the entity to add
  */
 void PhysicsSolver::Spawn(Ref<Entity> e){
-    if (e->HasComponentOfType<PhysicsBodyComponent>()) {
-        auto actor = e->GetComponent<PhysicsBodyComponent>().value();
-        if (actor->rigidActor->userData == nullptr){
-            actor->rigidActor->userData = new Ref<PhysicsBodyComponent>(actor);    //must be dynamically allocated here
+    if (e->HasComponent<PhysicsBodyComponent>()) {
+        auto& actor = e->GetComponent<PhysicsBodyComponent>();
+        if (actor.rigidActor->userData == nullptr){
+            //TODO: FIX
+            //actor.rigidActor->userData = new Ref<PhysicsBodyComponent>(actor);    //must be dynamically allocated here
         }
 		scene->lockWrite();
-        scene->addActor(*(actor->rigidActor));
+        scene->addActor(*(actor.rigidActor));
 		scene->unlockWrite();
 
         //set filtering on the actor if its filtering is not disabled
-        if (actor->filterGroup != -1 && actor->filterMask != -1) {
-            setupFiltering(actor->rigidActor, actor->filterGroup, actor->filterMask);
+        if (actor.filterGroup != -1 && actor.filterMask != -1) {
+            setupFiltering(actor.rigidActor, actor.filterGroup, actor.filterMask);
         }
     }
 }
@@ -225,13 +226,11 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
  @param e the entity to remove
  */
 void PhysicsSolver::Destroy(Ref<Entity> e){
-	if (e->HasComponentOfType<PhysicsBodyComponent>()){
-		auto body = e->GetComponent<PhysicsBodyComponent>();
-		if (body){
-			scene->lockWrite();
-			scene->removeActor(*(body.value()->rigidActor));
-			scene->unlockWrite();
-		}
+	if (e->HasComponent<PhysicsBodyComponent>()){
+		auto& body = e->GetComponent<PhysicsBodyComponent>();
+        scene->lockWrite();
+        scene->removeActor(*(body.rigidActor));
+        scene->unlockWrite();
 	}
 }
 

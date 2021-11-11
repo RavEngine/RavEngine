@@ -1,7 +1,6 @@
 #pragma once
 #include "NetworkServer.hpp"
 #include "NetworkClient.hpp"
-#include "World.hpp"
 #include "DataStructures.hpp"
 #include "CTTI.hpp"
 #include "Ref.hpp"

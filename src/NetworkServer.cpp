@@ -19,45 +19,48 @@ void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
 {
 	for (const auto& ptr : OwnershipTracker[connection]) {
 		if (auto owning = ptr.lock()) {
-			auto entity = owning->GetOwner().lock();
-			entity->GetWorld().lock()->Destroy(entity);
+            //TODO: FIX
+//			auto entity = owning->GetOwner().lock();
+//            entity->GetWorld()->lock()->Destroy(entity);
 		}
 	}
 	OwnershipTracker.erase(connection);
 }
 
 void NetworkServer::SpawnEntity(Ref<Entity> entity) {
-	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
-	auto world = entity->GetWorld().lock();
-	if (casted && world) {
-		auto id = casted->NetTypeID();
-        auto comp = entity->GetComponent<NetworkIdentity>();
-		auto netID = comp.value()->GetNetworkID();
-		//send highest-priority safe message with this info to clients
-		auto message = CreateSpawnCommand(netID, id, world->worldID);
-        NetworkIdentities[netID] = comp.value();
-		for (auto connection : clients) {
-			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
-		}
-	}
-	else {
-		Debug::Warning("Attempted to spawn entity that is not in a world or is not NetworkReplicable");
-	}
+    //TODO: FIX
+	//auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
+//	auto world = entity->GetWorld().lock();
+//	if (casted && world) {
+//		auto id = casted->NetTypeID();
+//        auto comp = entity->GetComponent<NetworkIdentity>();
+//		auto netID = comp.value()->GetNetworkID();
+//		//send highest-priority safe message with this info to clients
+//		auto message = CreateSpawnCommand(netID, id, world->worldID);
+//        NetworkIdentities[netID] = comp.value();
+//		for (auto connection : clients) {
+//			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+//		}
+//	}
+//	else {
+//		Debug::Warning("Attempted to spawn entity that is not in a world or is not NetworkReplicable");
+//	}
 }
 
 void NetworkServer::DestroyEntity(Ref<Entity> entity){
-	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
-	if (casted){
-		auto netID = entity->GetComponent<NetworkIdentity>().value()->GetNetworkID();
-		auto message = CreateDestroyCommand(netID);
-        NetworkIdentities.erase(netID);
-		for (auto connection : clients) {
-			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
-		}
-	}
-	else {
-		Debug::Warning("Attempted to destroy entity that is not NetworkReplicable");
-	}
+    //TODO: FIX
+//	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
+//	if (casted){
+//		auto netID = entity->GetComponent<NetworkIdentity>().value()->GetNetworkID();
+//		auto message = CreateDestroyCommand(netID);
+//        NetworkIdentities.erase(netID);
+//		for (auto connection : clients) {
+//			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+//		}
+//	}
+//	else {
+//		Debug::Warning("Attempted to destroy entity that is not NetworkReplicable");
+//	}
 }
 
 void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& msg, Reliability mode) const
@@ -282,19 +285,21 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 		// get all the networkidentities in the world
 		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>().value();
 		// call SpawnEntity on each owner
-		for (const auto& identity : identities) {
-			auto entity = identity->GetOwner().lock();
-			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
-			Debug::Assert((bool)casted, "Networked entities must descend from NetworkReplicable!");
-			auto id = casted->NetTypeID();
-			auto comp = entity->GetComponent<NetworkIdentity>();
-			auto netID = comp.value()->GetNetworkID();
-			//send highest-priority safe message with this info to clients
-			auto message = CreateSpawnCommand(netID, id, world.value()->worldID);
-			NetworkIdentities[netID] = comp.value();
-
-			SendMessageToClient(message, connection,Reliability::Reliable);
-		}
+        
+        //TODO: FIX
+//		for (const auto& identity : identities) {
+//			auto entity = identity->GetOwner().lock();
+//			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
+//			Debug::Assert((bool)casted, "Networked entities must descend from NetworkReplicable!");
+//			auto id = casted->NetTypeID();
+//			auto comp = entity->GetComponent<NetworkIdentity>();
+//			auto netID = comp.value()->GetNetworkID();
+//			//send highest-priority safe message with this info to clients
+//			auto message = CreateSpawnCommand(netID, id, world.value()->worldID);
+//			NetworkIdentities[netID] = comp.value();
+//
+//			SendMessageToClient(message, connection,Reliability::Reliable);
+//		}
 	}
 }
 
@@ -304,9 +309,10 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 
 	uuids::uuid id(cmd.data() + 1);
 	NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
-		auto entity = netid->GetOwner().lock();
-		bool isOwner = origin == netid->Owner;
-		entity->GetComponent<RPCComponent>().value()->CacheServerRPC(cmd, isOwner, origin);
+        //TODO: FIX
+//		auto entity = netid->GetOwner().lock();
+//		bool isOwner = origin == netid->Owner;
+//		entity->GetComponent<RPCComponent>().value()->CacheServerRPC(cmd, isOwner, origin);
 	});
 }
 
