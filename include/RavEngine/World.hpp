@@ -198,12 +198,6 @@ namespace RavEngine {
         inline T& GetComponent(entity_t local_id) {
             return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(local_id);
         }
-        
-        // returns the "first" of a component type
-        template<typename T>
-        inline T& GetComponent(){
-            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(0);  //TODO: FIX 0
-        }
 
         template<typename T>
         inline bool HasComponent(entity_t local_id) {
@@ -350,6 +344,12 @@ namespace RavEngine {
         decltype(async_tasks)::iterator async_begin, async_end;
         RavEngine::Vector<size_t> ranFunctions;
 	protected:
+        // returns the "first" of a component type
+        template<typename T>
+        inline T& GetComponent(){
+            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(0);  //TODO: FIX 0
+        }
+        
 		EntityStore Entities, to_destroy;
 
 		//physics system

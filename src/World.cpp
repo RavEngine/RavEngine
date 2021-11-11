@@ -310,49 +310,50 @@ void World::FillFramedata(){
 	auto skinnedmatcalc = masterTasks.for_each(std::ref(skinnedgeobegin),std::ref(skinnedgeoend), updateMatrix);
 	
 	//sort into the hashmap
-	auto sort = masterTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const Ref<Component>& e){
-		auto current = App::GetCurrentFramedata();
-        auto m = static_cast<StaticMesh*>(e.get());
-        auto ptr = e->GetOwner().lock();
-        if (ptr && m->Enabled) {
-            auto& pair = m->getTuple();
-            auto mat = ptr->GetTransform().GetMatrix();
-            auto& item = current->opaques[pair];
-            item.AddItem(mat);
-        }
-	});
-	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const Ref<Component>& e){
-        auto m = static_cast<SkinnedMeshComponent*>(e.get());
-        auto ptr = e->GetOwner().lock();
-        if (ptr && m->Enabled) {
-            auto& pair = m->getTuple();
-            auto mat = ptr->GetTransform().GetMatrix();
-            auto current = App::GetCurrentFramedata();
-            auto& item = current->skinnedOpaques[pair];
-            item.AddItem(mat);
-            // write the pose if there is one
-            //TODO: FIX
-//            if (auto& animator = ptr->GetComponent<AnimatorComponent>()) {
-//                item.AddSkinningData(animator->GetSkinningMats());
-//            }
-        }
-	});
-    auto sortInstanced = masterTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const Ref<Component>& e){
-        auto current = App::GetCurrentFramedata();
-        auto m = static_cast<InstancedStaticMesh*>(e.get());
-        auto ptr = e->GetOwner().lock();
-        if (ptr && m->Enabled){
-            auto& pair = m->getTuple();
-            m->CalculateMatrices();
-            auto& mats = m->GetAllTransforms();
-            
-            auto& item = current->opaques[pair];
-            item.mtx.lock();
-            item.items.insert(item.items.end(), mats.begin(),mats.end());
-            item.mtx.unlock();
-        }
-    });
-    
+    //TODO: FIX
+//	auto sort = masterTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const Ref<Component>& e){
+//		auto current = App::GetCurrentFramedata();
+//        auto m = static_cast<StaticMesh*>(e.get());
+//        auto ptr = e->GetOwner().lock();
+//        if (ptr && m->Enabled) {
+//            auto& pair = m->getTuple();
+//            auto mat = ptr->GetTransform().GetMatrix();
+//            auto& item = current->opaques[pair];
+//            item.AddItem(mat);
+//        }
+//	});
+//	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const Ref<Component>& e){
+//        auto m = static_cast<SkinnedMeshComponent*>(e.get());
+//        auto ptr = e->GetOwner().lock();
+//        if (ptr && m->Enabled) {
+//            auto& pair = m->getTuple();
+//            auto mat = ptr->GetTransform().GetMatrix();
+//            auto current = App::GetCurrentFramedata();
+//            auto& item = current->skinnedOpaques[pair];
+//            item.AddItem(mat);
+//            // write the pose if there is one
+//            //TODO: FIX
+////            if (auto& animator = ptr->GetComponent<AnimatorComponent>()) {
+////                item.AddSkinningData(animator->GetSkinningMats());
+////            }
+//        }
+//	});
+//    auto sortInstanced = masterTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const Ref<Component>& e){
+//        auto current = App::GetCurrentFramedata();
+//        auto m = static_cast<InstancedStaticMesh*>(e.get());
+//        auto ptr = e->GetOwner().lock();
+//        if (ptr && m->Enabled){
+//            auto& pair = m->getTuple();
+//            m->CalculateMatrices();
+//            auto& mats = m->GetAllTransforms();
+//
+//            auto& item = current->opaques[pair];
+//            item.mtx.lock();
+//            item.items.insert(item.items.end(), mats.begin(),mats.end());
+//            item.mtx.unlock();
+//        }
+//    });
+//
     //TODO: FIX
 //	init.precede(sort,sortskinned);
 //	matcalc.precede(sort);

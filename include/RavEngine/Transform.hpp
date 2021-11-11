@@ -34,6 +34,22 @@ namespace RavEngine {
 			isStatic = inStatic;
 		}
 		Transform() : Transform(vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
+        
+        Transform(const Transform&& other){
+            position = std::move(other.position);
+            rotation = std::move(other.rotation);
+            scale = std::move(other.scale);
+            matrix.store(matrix4(1));
+        }
+        
+        Transform(const Transform& other) : position(other.position), rotation(other.rotation), scale(other.scale){
+            matrix.store(matrix4(1));
+        }
+        
+        inline void operator=(Transform other){
+            // copy-swap method
+            std::swap(*this,other);
+        }
 
 		void SetLocalPosition(const vector3&);
 		void SetWorldPosition(const vector3&);
