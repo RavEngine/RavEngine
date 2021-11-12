@@ -43,7 +43,20 @@ public:
 	 Construct a GUI document using the current screen size
 	 */
 	GUIComponent();
+    
+    GUIComponent(GUIComponent&& other){
+        context = std::move(other.context);
+        documents = std::move(other.documents);
+    }
 	
+    //TODO: FIX - copy dimensions and DPI
+    GUIComponent(const GUIComponent& other) : GUIComponent(){
+        documents = other.documents;
+    }
+    
+    inline void operator=(GUIComponent other){
+        std::swap(*this,other);
+    }
 	
 	/**
 	 Construct a GUI renderer with user-supplied size

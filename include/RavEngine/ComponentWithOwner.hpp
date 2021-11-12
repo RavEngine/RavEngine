@@ -4,10 +4,11 @@
 
 namespace RavEngine {
 class ComponentWithOwner : public AutoCTTI{
-    Entity owner;
+    entity_t owner;
 public:
-    decltype(owner) GetOwner() const {
-        return owner;
+    ComponentWithOwner(const decltype(owner) o) : owner(o){}
+    Entity GetOwner() const {
+        return Entity(owner);
     }
 };
 }

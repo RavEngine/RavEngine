@@ -39,12 +39,15 @@ void RavEngine::World::Tick(float scale) {
 }
 
 
-RavEngine::World::World(){
+RavEngine::World::World(bool skip){
 	//reserve space to reduce rehashing
-	systemManager.EmplaceSystem<ScriptSystem>();
-	systemManager.EmplaceSystem<AudioRoomSyncSystem>();
-	systemManager.EmplaceSystem<RPCSystem>();
-	systemManager.EmplaceSystem<AnimatorSystem>();
+    if (!skip){
+        systemManager.EmplaceSystem<ScriptSystem>();
+        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
+        systemManager.EmplaceSystem<RPCSystem>();
+        systemManager.EmplaceSystem<AnimatorSystem>();
+        skybox = make_shared<Skybox>();
+    }
 }
 
 //void World::OnAddComponent(Ref<Component> comp){

@@ -341,7 +341,8 @@ namespace RavEngine {
 		
 //#ifdef _DEBUG
 		//used for the GUI debugger
-		static Ref<Entity> debuggerContext;
+		//static Entity debuggerContext;
+        //static World debuggerWorld;
 //#endif
 	
 		static const std::string_view BackendStringName(bgfx::RendererType::Enum backend);

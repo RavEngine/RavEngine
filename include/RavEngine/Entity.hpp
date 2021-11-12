@@ -33,6 +33,7 @@ struct Entity{
     
     inline void Destroy(){
         Registry::DestroyEntity(id);
+        id = INVALID_ENTITY;
     }
 
     inline World* GetWorld() const {

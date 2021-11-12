@@ -10,12 +10,12 @@ namespace RavEngine {
     class StaticMesh : public ComponentWithOwner{
     private:
         std::tuple<Ref<MeshAsset>, Ref<PBRMaterialInstance>> tuple;
-        StaticMesh(Ref<MeshAsset> m){
+        StaticMesh(entity_t owner, Ref<MeshAsset> m) : ComponentWithOwner(owner){
             std::get<0>(tuple) = m;
         }
     public:
 
-        StaticMesh(Ref<MeshAsset> m, Ref<PBRMaterialInstance> mat) : StaticMesh(m) {
+        StaticMesh(entity_t owner, Ref<MeshAsset> m, Ref<PBRMaterialInstance> mat) : StaticMesh(owner, m) {
 			std::get<1>(tuple) = mat;
 		}
 		virtual ~StaticMesh(){}
@@ -49,7 +49,7 @@ namespace RavEngine {
         UnorderedVector<matrix4> instanceOutputTransform;
     public:
         using Queryable<InstancedStaticMesh>::GetQueryTypes;
-        InstancedStaticMesh(Ref<MeshAsset> m, Ref<PBRMaterialInstance> mat) : StaticMesh(m,mat){}
+        InstancedStaticMesh(entity_t owner, Ref<MeshAsset> m, Ref<PBRMaterialInstance> mat) : StaticMesh(owner,m,mat){}
         
         /**
          Add entities by resize

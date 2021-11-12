@@ -19,7 +19,7 @@ if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
 
 if (APPLE)
-	add_definitions(-fvisibility=default)	# silence warning when building ARM fat library on Apple platforms
+	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0)	# silence warning when building ARM fat library on Apple platforms
 endif()
 
 # link time optimization check

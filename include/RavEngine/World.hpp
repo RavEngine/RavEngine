@@ -17,23 +17,25 @@
 #include "SystemManager.hpp"
 #include "Skybox.hpp"
 #include "Types.hpp"
-
-template <typename T, typename... Ts>
-struct Index;
-
-template <typename T, typename... Ts>
-struct Index<T, T, Ts...> : std::integral_constant<std::size_t, 0> {};
-
-template <typename T, typename U, typename... Ts>
-struct Index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + Index<T, Ts...>::value> {};
-
-template <typename T, typename... Ts>
-constexpr std::size_t Index_v = Index<T, Ts...>::value;
+#include "Reflection.hpp"
 
 namespace RavEngine {
 	class Entity;
 	class InputManager;
     struct Entity;
+
+
+    template <typename T, typename... Ts>
+    struct Index;
+
+    template <typename T, typename... Ts>
+    struct Index<T, T, Ts...> : std::integral_constant<std::size_t, 0> {};
+
+    template <typename T, typename U, typename... Ts>
+    struct Index<T, U, Ts...> : std::integral_constant<std::size_t, 1 + Index<T, Ts...>::value> {};
+
+    template <typename T, typename... Ts>
+    constexpr std::size_t Index_v = Index<T, Ts...>::value;
 
 	class World {
 		friend class AudioPlayer;
@@ -145,7 +147,7 @@ namespace RavEngine {
                     auto sp = GetSet<T>();
                     if (sp->HasComponent(localID)){
                         auto& comp = sp->GetComponent(localID);
-                        otherWorld->EmplaceComponent<T>(otherLocalID, std::move(comp));
+                        otherWorld->EmplaceComponent<T,true>(otherLocalID, std::move(comp));
                         // then delete it from here
                         sp->Destroy(localID);
                     }
@@ -186,12 +188,28 @@ namespace RavEngine {
             return ptr;
         }
         
-        template<typename T, typename ... A>
+        template<typename T, bool isMoving = false, typename ... A>
         inline T& EmplaceComponent(entity_t local_id, A ... args){
             auto ptr = MakeIfNotExists<T>();
             
-            //TODO: detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
-            return ptr->Emplace(local_id,args...);
+            //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
+            constexpr static auto data_ctor_nparams = refl::fields_number_ctor<T>(sizeof ... (A));
+            
+            if constexpr( sizeof ... (A) > 0 && data_ctor_nparams > 0 ){
+                //constexpr bool isMoving = sizeof ... (A) == 1; && (std::is_rvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value || std::is_lvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value);
+                
+              
+                using data_ctor_type = refl::as_tuple<T,sizeof ... (A)>;
+                if constexpr(!isMoving && std::is_same<typename std::tuple_element<0, data_ctor_type>::type, entity_t>::value){
+                    return ptr->Emplace(local_id, local_id, args...);
+                }
+                else{
+                    return ptr->Emplace(local_id,args...);
+                }
+            }
+            else{
+                return ptr->Emplace(local_id,args...);
+            }
         }
 
         template<typename T>
@@ -299,7 +317,7 @@ namespace RavEngine {
         ~World();
 	public:
 		constexpr static uint8_t id_size = 8;
-		Skybox skybox;
+		Ref<Skybox> skybox;
         const ComponentStore<phmap::NullMutex>::entry_type emptyContainer;    // used if the query returns nothing and should be skipped
 	private:
 		std::atomic<bool> isRendering = false;
@@ -409,7 +427,7 @@ namespace RavEngine {
 		*/
 		void Tick(float);
 
-		World();
+		World(bool skip = false);
 		
 		/**
 		 Constructor useful for setting the world name
@@ -424,7 +442,7 @@ namespace RavEngine {
 		* Constructor that takes a custom skybox. This constructor will bypass loading the default skybox.
 		* @param sk the skybox to use
 		*/
-		World(const Skybox& sk) : World() {
+		World(const decltype(skybox)& sk) : World() {
 			skybox = sk;
 		}
 

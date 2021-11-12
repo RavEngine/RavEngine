@@ -65,7 +65,8 @@ decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout,
 decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
-Ref<Entity> RenderEngine::debuggerContext;
+//STATIC(RenderEngine::debuggerWorld)(true);
+//STATIC(RenderEngine::debuggerContext);
 Ref<InputManager> RenderEngine::debuggerInput;
 UnorderedMap<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
 SpinLock RenderEngine::dbgmtx;
@@ -735,9 +736,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);
 	auto& sb = worldOwning->skybox;
-    if (sb.enabled){
+    if (sb->enabled){
         auto transform = glm::translate(matrix4(1),fd->cameraWorldpos);
-        sb.Draw(transform,Views::FinalBlit);
+        sb->Draw(transform,Views::FinalBlit);
     }
 		
 	//blit to view 0 using the fullscreen quad
@@ -766,24 +767,25 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 #ifdef _DEBUG
 	//render debug GUI
-	auto& comp = debuggerContext->GetComponent<GUIComponent>();
-	comp.SetDimensions(size.width, size.height);
-	comp.SetDPIScale(GetDPIScale());
-	comp.Update();
-	comp.Render();
-	
-	auto& shapesToDraw = fd->debugShapesToDraw;
-	for(const auto s : shapesToDraw){
-        auto owner = s->GetOwner().lock();
-        if (owner && owner->HasComponent<Transform>()) {
-            auto ptr = dynamic_cast<IDebugRenderable*>(s.get());
-            if (ptr->debugEnabled){
-                ptr->DebugDraw(dbgdraw);
-            }
-        }
-	}
-
-	Im3d::GetContext().draw();
+    //TODO: FIX
+//	auto& comp = debuggerContext.GetComponent<GUIComponent>();
+//	comp.SetDimensions(size.width, size.height);
+//	comp.SetDPIScale(GetDPIScale());
+//	comp.Update();
+//	comp.Render();
+//
+//	auto& shapesToDraw = fd->debugShapesToDraw;
+//	for(const auto s : shapesToDraw){
+//        auto owner = s->GetOwner().lock();
+//        if (owner && owner->HasComponent<Transform>()) {
+//            auto ptr = dynamic_cast<IDebugRenderable*>(s.get());
+//            if (ptr->debugEnabled){
+//                ptr->DebugDraw(dbgdraw);
+//            }
+//        }
+//	}
+//
+//	Im3d::GetContext().draw();
 #endif
 	bgfx::frame();
 	skinningComputeBuffer.Reset();
@@ -920,11 +922,11 @@ void RenderEngine::InitDebugger() const{
 	Im3d::AppData& data = Im3d::GetAppData();
 	data.drawCallback = &DebugRender;
 	
-	debuggerContext = make_shared<Entity>();
     //TODO: FIX
-//	auto& ctx = debuggerContext->EmplaceComponent<GUIComponent>(10,10);
+	//debuggerContext = debuggerWorld.CreatePrototype<Entity>();
+    //auto& ctx = debuggerContext.EmplaceComponent<GUIComponent>(10,10);
 //
-//    bool status = Rml::Debugger::Initialise(ctx.context);
+    //bool status = Rml::Debugger::Initialise(ctx.context);
 	
 	debuggerInput = make_shared<InputManager>();
 	
@@ -942,7 +944,7 @@ void RenderEngine::InitDebugger() const{
 }
 
 void RenderEngine::DeactivateDebugger() const{
-	debuggerContext = nullptr;
+    //debuggerContext.Destroy();
 	debuggerInput = nullptr;
 }
 #endif
