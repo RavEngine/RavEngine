@@ -4,6 +4,7 @@
 
 namespace RavEngine {
 class ComponentWithOwner : public AutoCTTI{
+protected:
     entity_t owner;
 public:
     ComponentWithOwner(const decltype(owner) o) : owner(o){}

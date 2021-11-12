@@ -7,30 +7,30 @@ using namespace std;
 using namespace glm;
 using namespace RavEngine;
 
-void Transform::AddChild(const WeakRef<Transform>& child)
+void Transform::AddChild(ComponentHandle<Transform>& child)
 {
 	childModifyLock.lock();
-	Ref<Transform> ctrans(child);
-	auto worldPos = ctrans->GetWorldPosition();
-	auto worldRot = ctrans->GetWorldRotation();
+    auto cptr = child.Get();
+	auto worldPos = cptr->GetWorldPosition();
+	auto worldRot = cptr->GetWorldRotation();
 	
-	ctrans->parent = shared_from_this();
+	cptr->parent = ComponentHandle<Transform>(GetOwner());
 	children.insert(child);
 	
-	ctrans->SetWorldPosition(worldPos);
-	ctrans->SetWorldRotation(worldRot);
+    cptr->SetWorldPosition(worldPos);
+    cptr->SetWorldRotation(worldRot);
 	childModifyLock.unlock();
 }
 
-void Transform::RemoveChild(const WeakRef<Transform>& child)
+void Transform::RemoveChild(ComponentHandle<Transform>& child)
 {
 	childModifyLock.lock();
-	Ref<Transform> ctrans(child);
-	auto worldPos = ctrans->GetWorldPosition();
-	auto worldRot = ctrans->GetWorldRotation();
-	ctrans->parent.reset();
+    auto cptr = child.Get();
+	auto worldPos = cptr->GetWorldPosition();
+	auto worldRot = cptr->GetWorldRotation();
+	cptr->parent.reset();
 	children.erase(child);
-	ctrans->SetWorldPosition(worldPos);
-	ctrans->SetWorldRotation(worldRot);
+	cptr->SetWorldPosition(worldPos);
+	cptr->SetWorldRotation(worldRot);
 	childModifyLock.unlock();
 }

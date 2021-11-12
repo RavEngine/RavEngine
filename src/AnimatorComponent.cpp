@@ -164,10 +164,11 @@ Ref<Transform> AnimatorComponent::AddSocket(const string& boneName) {
 	auto& skeleton = GetSkeleton()->GetSkeleton();
 	for (int i = 0; i < skeleton->num_joints(); i++) {
 		if (strcmp(skeleton->joint_names()[i], boneName.data()) == 0) {
-			auto transform = make_shared<Transform>();
-			Sockets[boneName] = transform;
-			transform->SetOwner(GetOwner());
-			return transform;
+            //TODO: FIX
+//			auto transform = make_shared<Transform>();
+			//Sockets[boneName] = transform;
+			//transform->SetOwner(GetOwner());
+			//return transform;
 		}
 	}
 	Debug::Fatal("Cannot add socket to non-existant joint {}", boneName);

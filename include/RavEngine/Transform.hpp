@@ -9,7 +9,7 @@
 #include "Component.hpp"
 #include "Atomic.hpp"
 #include "mathtypes.hpp"
-#include "WeakRef.hpp"
+#include "ComponentHandle.hpp"
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "glm/gtx/matrix_decompose.hpp"
@@ -17,34 +17,30 @@
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
 #include "SharedObject.hpp"
+#include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
-	/**
-	 A thread-safe transform component
-	 */
-	class Transform : public Component, public Queryable<Transform>, public virtual_enable_shared_from_this<Transform> {
+	class Transform : public ComponentWithOwner {
 	public:
-		typedef UnorderedContiguousSet<WeakPtrKey<Transform>> childStore;
+		typedef UnorderedContiguousSet<ComponentHandle<Transform>> childStore;
 		virtual ~Transform(){}
-		Transform(const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false){
+		Transform(entity_t owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false) : ComponentWithOwner(owner){
             matrix.store(matrix4(1));
 			SetLocalPosition(inpos);
 			SetLocalRotation(inrot);
 			SetLocalScale(inscale);
 			isStatic = inStatic;
 		}
-		Transform() : Transform(vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
+		Transform(entity_t owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
         
-        Transform(const Transform&& other){
+        Transform(const Transform&& other) : ComponentWithOwner(other.GetOwner().id){
             position = std::move(other.position);
             rotation = std::move(other.rotation);
             scale = std::move(other.scale);
             matrix.store(matrix4(1));
         }
         
-        Transform(const Transform& other) : position(other.position), rotation(other.rotation), scale(other.scale){
-            matrix.store(matrix4(1));
-        }
+        Transform(const Transform& other) : Transform(other.GetOwner().id, other.position,other.rotation,other.scale){}
         
         inline void operator=(Transform other){
             // copy-swap method
@@ -72,7 +68,7 @@ namespace RavEngine {
 		vector3 WorldUp() const;
 
 		inline bool HasParent() const{
-			return !parent.expired();
+			return parent.IsValid();
 		}
 
 		vector3 GetLocalPosition() const;
@@ -97,13 +93,13 @@ namespace RavEngine {
 		Add a transform as a child object of this transform
 		@param child weak reference to the child object
 		*/
-		void AddChild(const WeakRef<Transform>& child);
+		void AddChild(ComponentHandle<Transform>& child);
 
 		/**
 		Remove a transform as a child object of this transform. This does not check if the passed object is actually a child.
 		@param child weak reference to the child object
 		*/
-		void RemoveChild(const WeakRef<Transform>& child);
+		void RemoveChild(ComponentHandle<Transform>& child);
 
 	protected:
 		LockFreeAtomic<vector3,phmap::NullMutex> position;
@@ -119,8 +115,7 @@ namespace RavEngine {
 			root->isDirty = true;
 			
 			for(auto& t : root->children){
-				Ref<Transform> tr = t.get_weak().lock();
-				MarkAsDirty(tr.get());
+				MarkAsDirty(t.Get());
 			}
 			
 			root->childModifyLock.unlock();
@@ -129,7 +124,7 @@ namespace RavEngine {
 		bool isStatic = false;
 
 		childStore children;		//non-owning
-		WeakRef<Transform> parent;	//non-owning
+		ComponentHandle<Transform> parent;	//non-owning
 };
 
 	/**
@@ -289,14 +284,14 @@ namespace RavEngine {
 		if (isDirty){
 			//figure out the size
 			unsigned short depth = 0;
-			for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
+            for(auto p = parent; p.IsValid(); p = p->parent){
 				depth++;
 			}
 			
 			stackarray(transforms, matrix4, depth);
 			
 			int tmp = 0;
-			for(Ref<Transform> p = parent.lock(); p; p = p->parent.lock()){
+			for(auto p = parent; p.IsValid(); p = p->parent){
 				transforms[tmp] = p->GenerateLocalMatrix();
 				++tmp;
 			}
