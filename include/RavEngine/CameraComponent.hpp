@@ -3,14 +3,15 @@
 #include "Entity.hpp"
 #include "Queryable.hpp"
 #include "Transform.hpp"
+#include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
 	class RenderEngine;
-	class CameraComponent : public Component, public Queryable<CameraComponent> {
+	class CameraComponent : public ComponentWithOwner, public Disableable {
 	protected:
 		friend class RenderEngine;
 	public:
-        CameraComponent(float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), Component(){}
+        CameraComponent(entity_t owner, float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), ComponentWithOwner(owner){}
 
 		virtual ~CameraComponent() {}
 
@@ -59,9 +60,8 @@ namespace RavEngine {
 		@return the View matrix for this camera to use when rendering objects. For internal use only.
 		*/
 		inline matrix4 GenerateViewMatrix() const{
-			Ref<Entity> entity(owner);
 			
-            return glm::inverse(entity->GetTransform().CalculateWorldMatrix());
+            return glm::inverse(GetOwner().GetTransform().CalculateWorldMatrix());
 		}
         
         /**

@@ -27,6 +27,10 @@
 using namespace std;
 using namespace RavEngine;
 
+static const ComponentStore<phmap::NullMutex>::entry_type emptyContainer;    // used if the query returns nothing and should be skipped
+static const World::SparseSet<StaticMesh> staticEmptyContainer;
+static const World::SparseSet<Transform> staticTransformEmptyContainer;
+
 void RavEngine::World::Tick(float scale) {
 	
     PreTick(scale);
@@ -244,43 +248,51 @@ void World::FillFramedata(){
 	//render engine data collector
 	//camera matrices
     
-    //TODO: FIX
-//	auto camproc = masterTasks.emplace([this](){
-//        if (auto& allcams = GetAllComponentsOfType<CameraComponent>()){
-//            for (const auto& c : *allcams.value()) {
-//                if (cam->IsActive()) {
-//
-//                    auto size = App::GetRenderEngine().GetBufferSize();
-//                    cam->SetTargetSize(size.width, size.height);
-//                    auto current = App::GetCurrentFramedata();
-//                    current->viewmatrix = cam->GenerateViewMatrix();
-//                    current->projmatrix = cam->GenerateProjectionMatrix();
-//                    current->cameraWorldpos = cam->GetOwner().lock()->GetTransform()->GetWorldPosition();
-//
-//                    break;
-//                }
-//            }
-//        }
-//
-//	});
+	auto camproc = masterTasks.emplace([this](){
+        if (auto allcams = GetAllComponentsOfType<CameraComponent>()){
+            for (auto& cam : *allcams.value()) {
+                if (cam.IsActive()) {
+
+                    auto size = App::GetRenderEngine().GetBufferSize();
+                    cam.SetTargetSize(size.width, size.height);
+                    auto current = App::GetCurrentFramedata();
+                    current->viewmatrix = cam.GenerateViewMatrix();
+                    current->projmatrix = cam.GenerateProjectionMatrix();
+                    current->cameraWorldpos = cam.GetOwner().GetTransform().GetWorldPosition();
+
+                    break;
+                }
+            }
+        }
+
+	});
 	
 	//opaque geometry
-	geobegin = emptyContainer.begin();
-	geoend = emptyContainer.end();
+	geobegin = staticEmptyContainer.begin();
+	geoend = staticEmptyContainer.end();
+    transformbegin = staticTransformEmptyContainer.begin();
+    transformend = staticTransformEmptyContainer.end();
 	skinnedgeobegin = emptyContainer.begin();
 	skinnedgeoend = emptyContainer.end();
     
-    //TODO: FIX
-//	auto init = masterTasks.emplace([&](){
-//        if(auto geometry = GetAllComponentsOfType<StaticMesh>()){
-//            geobegin = geometry.value()->begin();
-//            geoend = geometry.value()->end();
-//
-//        }
-//        else{
-//            geobegin = emptyContainer.end();
-//            geoend = emptyContainer.end();
-//        }
+	auto init = masterTasks.emplace([&](){
+        if(auto geometry = GetAllComponentsOfType<StaticMesh>()){
+            geobegin = geometry.value()->begin();
+            geoend = geometry.value()->end();
+        }
+        else{
+            geobegin = staticEmptyContainer.end();
+            geoend = staticEmptyContainer.end();
+        }
+        if (auto transforms = GetAllComponentsOfType<Transform>()){
+            transformbegin = transforms.value()->begin();
+            transformend = transforms.value()->end();
+        }
+        else{
+            transformbegin = staticTransformEmptyContainer.begin();
+            transformend = staticTransformEmptyContainer.end();
+        }
+        //TODO: FIX
 //        if(auto skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
 //            skinnedgeobegin = skinnedGeo.value()->begin();
 //            skinnedgeoend = skinnedGeo.value()->end();
@@ -297,34 +309,27 @@ void World::FillFramedata(){
 //            instancedBegin = emptyContainer.begin();
 //            instancedEnd = emptyContainer.end();
 //        }
-//
-//	});
+
+	});
 	
 	// update matrix caches
-	auto updateMatrix = [&](const Ref<Component>& c) {
-		auto owner = c->GetOwner().lock();
-		if (owner) {
-            owner->GetTransform().CalculateWorldMatrix();
-		}
+    //TODO: FIX
+	auto updateMatrix = [](const Transform& c) {
+        c.CalculateWorldMatrix();
 	};
-
-	auto matcalc = masterTasks.for_each(std::ref(geobegin), std::ref(geoend), updateMatrix);
-	
-	auto skinnedmatcalc = masterTasks.for_each(std::ref(skinnedgeobegin),std::ref(skinnedgeoend), updateMatrix);
+	auto matcalc = masterTasks.for_each(std::ref(transformbegin), std::ref(transformend), updateMatrix);
 	
 	//sort into the hashmap
     //TODO: FIX
-//	auto sort = masterTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const Ref<Component>& e){
-//		auto current = App::GetCurrentFramedata();
-//        auto m = static_cast<StaticMesh*>(e.get());
-//        auto ptr = e->GetOwner().lock();
-//        if (ptr && m->Enabled) {
-//            auto& pair = m->getTuple();
-//            auto mat = ptr->GetTransform().GetMatrix();
-//            auto& item = current->opaques[pair];
-//            item.AddItem(mat);
-//        }
-//	});
+	auto sort = masterTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
+		auto current = App::GetCurrentFramedata();
+        if (e.Enabled) {
+            auto& pair = e.getTuple();
+            auto mat = e.GetOwner().GetTransform().GetMatrix();
+            auto& item = current->opaques[pair];
+            item.AddItem(mat);
+        }
+	});
 //	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const Ref<Component>& e){
 //        auto m = static_cast<SkinnedMeshComponent*>(e.get());
 //        auto ptr = e->GetOwner().lock();
@@ -358,67 +363,62 @@ void World::FillFramedata(){
 //    });
 //
     //TODO: FIX
-//	init.precede(sort,sortskinned);
-//	matcalc.precede(sort);
+	init.precede(sort/*,sortskinned*/);
+	matcalc.precede(sort);
 //	skinnedmatcalc.precede(sortskinned);
 //
-//	auto copydirs = masterTasks.emplace([this](){
-//        if(auto& dirs = GetAllComponentsOfType<DirectionalLight>()){
-//            for(const auto& e : dirs.value()){
-//                auto owner = e->GetOwner().lock();
-//                if (owner){
-//                    auto d = static_cast<DirectionalLight*>(e.get());
-//                    auto rot = owner->GetTransform()->Up();
-//                    FrameData::PackedDL::tinyvec3 r{
-//                        static_cast<float>(rot.x),
-//                        static_cast<float>(rot.y),
-//                        static_cast<float>(rot.z)
-//                    };
-//                    auto current = App::GetCurrentFramedata();
-//                    current->directionals.emplace(*d,r);
-//                }
-//            }
-//        }
-//
-//	});
-//	auto copyambs = masterTasks.emplace([this](){
-//        if(auto& ambs = GetAllComponentsOfType<AmbientLight>()){
-//            for(const auto& e : ambs.value()){
-//                auto d = static_cast<AmbientLight*>(e.get());
-//                auto current = App::GetCurrentFramedata();
-//                current->ambients.emplace(*d);
-//            }
-//        }
-//
-//	});
-//	auto copyspots = masterTasks.emplace([this](){
-//        if(auto& spots = GetAllComponentsOfType<SpotLight>()){
-//            for(const auto& e : spots.value()){
-//                auto d = static_cast<SpotLight*>(e.get());
-//                auto ptr = e->GetOwner().lock();
-//                if (ptr){
-//                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
-//                    auto current = App::GetCurrentFramedata();
-//                    current->spots.emplace(*d,d->CalculateMatrix(transform));
-//                }
-//            }
-//        }
-//
-//	});
-//	auto copypoints = masterTasks.emplace([this](){
-//        if(auto& points = GetAllComponentsOfType<PointLight>()){
-//            for(const auto& e : points.value()){
-//                auto d = static_cast<PointLight*>(e.get());
-//                auto ptr = e->GetOwner().lock();
-//                if (ptr){
-//                    auto transform = ptr->GetTransform()->CalculateWorldMatrix();
-//                    auto current = App::GetCurrentFramedata();
-//                    current->points.emplace(*d,d->CalculateMatrix(transform));
-//                }
-//            }
-//        }
-//
-//	});
+	auto copydirs = masterTasks.emplace([this](){
+        if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
+            auto ptr = dirs.value();
+            for(int i = 0; i < ptr->DenseSize(); i++){
+                auto owner = Entity(ptr->GetOwner(i));
+                auto rot = owner.GetTransform().Up();
+                FrameData::PackedDL::tinyvec3 r{
+                    static_cast<float>(rot.x),
+                    static_cast<float>(rot.y),
+                    static_cast<float>(rot.z)
+                };
+                auto current = App::GetCurrentFramedata();
+                current->directionals.emplace(ptr->Get(i),r);
+            }
+        }
+	});
+	auto copyambs = masterTasks.emplace([this](){
+        if(auto ambs = GetAllComponentsOfType<AmbientLight>()){
+            auto ptr = ambs.value();
+            for(const auto& a : *ptr){
+                auto current = App::GetCurrentFramedata();
+                current->ambients.emplace(a);
+            }
+        }
+
+	});
+	auto copyspots = masterTasks.emplace([this](){
+        if(auto spots = GetAllComponentsOfType<SpotLight>()){
+            auto ptr = spots.value();
+            for(int i = 0; i < ptr->DenseSize(); i++){
+                Entity owner(ptr->GetOwner(i));
+                auto transform = owner.GetTransform().CalculateWorldMatrix();
+                auto current = App::GetCurrentFramedata();
+                const auto& l = ptr->Get(i);
+                current->spots.emplace(l,l.CalculateMatrix(transform));
+            }
+        }
+
+	});
+	auto copypoints = masterTasks.emplace([this](){
+        if(auto points = GetAllComponentsOfType<PointLight>()){
+            auto ptr = points.value();
+            for(int i = 0; i < ptr->DenseSize(); i++){
+                Entity owner(ptr->GetOwner(i));
+                const auto& d = ptr->Get(i);
+                auto transform = owner.GetTransform().CalculateWorldMatrix();
+                auto current = App::GetCurrentFramedata();
+                current->points.emplace(d,d.CalculateMatrix(transform));
+            }
+        }
+
+	});
 //
 //#ifdef _DEBUG
 //	// copy debug shapes
@@ -443,18 +443,18 @@ void World::FillFramedata(){
 //        }
 //	});
 //
-//	auto swap = masterTasks.emplace([this]{
-//		App::SwapCurrentFramedata();
-//	});
-//	auto setup = masterTasks.emplace([this]{
-//		auto current = App::GetCurrentFramedata();
-//		current->Clear();
-//	});
-//	setup.precede(camproc,copydirs,copyambs,copyspots,copypoints);
-//	sort.precede(swap);
+	auto swap = masterTasks.emplace([this]{
+		App::SwapCurrentFramedata();
+	});
+	auto setup = masterTasks.emplace([this]{
+		auto current = App::GetCurrentFramedata();
+		current->Clear();
+	});
+	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints);
+	sort.precede(swap);
 //	sortskinned.precede(swap);
 //    sortInstanced.precede(swap);
-//	camproc.precede(sort,sortskinned);
+	camproc.precede(sort/*,sortskinned*/);
 //
 //	//ensure user code completes before framedata population
 //	for(auto& g : graphs){
@@ -467,7 +467,7 @@ void World::FillFramedata(){
 //		}
 //	}
 //
-//	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
 }
 
 void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){

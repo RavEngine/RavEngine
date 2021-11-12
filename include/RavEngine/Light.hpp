@@ -11,7 +11,7 @@ namespace RavEngine{
 class MeshAsset;
 class CameraComponent;
 
-struct Light : public Queryable<Light,IDebugRenderable>, public Component, public IDebugRenderable {
+struct Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable {
 	float Intensity = 1.0;
 	ColorRGBA color{1,1,1,1};
 };

@@ -7,7 +7,7 @@
 #include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
-    class StaticMesh : public ComponentWithOwner{
+    class StaticMesh : public ComponentWithOwner, public Disableable{
     private:
         std::tuple<Ref<MeshAsset>, Ref<PBRMaterialInstance>> tuple;
         StaticMesh(entity_t owner, Ref<MeshAsset> m) : ComponentWithOwner(owner){

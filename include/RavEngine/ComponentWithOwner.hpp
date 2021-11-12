@@ -12,3 +12,7 @@ public:
     }
 };
 }
+
+struct Disableable{
+    bool Enabled = true;
+};

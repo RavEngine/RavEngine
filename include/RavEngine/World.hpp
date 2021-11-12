@@ -23,7 +23,8 @@ namespace RavEngine {
 	class Entity;
 	class InputManager;
     struct Entity;
-
+    struct StaticMesh;
+    struct Transform;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -46,7 +47,7 @@ namespace RavEngine {
         
         friend class Entity;
         friend class Registry;
-        
+    public:
         template<typename T>
         class SparseSet{
             unordered_vector<T> dense_set;
@@ -54,6 +55,8 @@ namespace RavEngine {
             std::vector<entity_t> sparse_set;
             
         public:
+            
+            using const_iterator = typename decltype(dense_set)::const_iterator_type;
             
             template<typename ... A>
             inline T& Emplace(entity_t local_id, A ... args){
@@ -118,7 +121,7 @@ namespace RavEngine {
                 return dense_set.size();
             }
         };
-        
+    private:
         struct SparseSetErased{
             constexpr static size_t buf_size = sizeof(SparseSet<size_t>);   // we use size_t here because all SparseSets are the same size
             std::array<char, buf_size> buffer;
@@ -195,7 +198,7 @@ namespace RavEngine {
             //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
             constexpr static auto data_ctor_nparams = refl::fields_number_ctor<T>(sizeof ... (A));
             
-            if constexpr( sizeof ... (A) > 0 && data_ctor_nparams > 0 ){
+            if constexpr(data_ctor_nparams > 0 ){
                 //constexpr bool isMoving = sizeof ... (A) == 1; && (std::is_rvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value || std::is_lvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value);
                 
               
@@ -261,7 +264,7 @@ namespace RavEngine {
             return en;
         }
         
-        template<typename ... A, typename func>
+        template<typename ... A, typename func, bool IncludeOwner = false>
         inline void Filter(const func& f){
             constexpr auto n_types = sizeof ... (A);
             static_assert(n_types > 0, "Must supply a type to query for");
@@ -272,7 +275,12 @@ namespace RavEngine {
                 auto mainFilter = GetRange<primary_t>();
                 for(size_t i = 0; i < mainFilter->DenseSize(); i++){
                     auto& item = mainFilter->Get(i);
-                    f(item);
+                    if constexpr (IncludeOwner){
+                        f(Entity(mainFilter->GetOwner(i)),item);
+                    }
+                    else{
+                        f(item);
+                    }
                 }
             }
             else{
@@ -318,7 +326,6 @@ namespace RavEngine {
 	public:
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
-        const ComponentStore<phmap::NullMutex>::entry_type emptyContainer;    // used if the query returns nothing and should be skipped
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
@@ -330,7 +337,10 @@ namespace RavEngine {
 		ConcurrentQueue<SyncOp> toSync;
 		
 		tf::Taskflow masterTasks;
-		ComponentStore<phmap::NullMutex>::entry_type::const_iterator geobegin,geoend, skinnedgeobegin, skinnedgeoend, instancedBegin, instancedEnd;
+        SparseSet<StaticMesh>::const_iterator geobegin, geoend;
+        SparseSet<Transform>::const_iterator transformbegin,transformend;
+        
+		ComponentStore<phmap::NullMutex>::entry_type::const_iterator skinnedgeobegin, skinnedgeoend, instancedBegin, instancedEnd;
 		iter_map iterator_map;
 		struct systaskpair{
 			tf::Task task;
@@ -368,8 +378,6 @@ namespace RavEngine {
             return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(0);  //TODO: FIX 0
         }
         
-		EntityStore Entities, to_destroy;
-
 		//physics system
 		PhysicsSolver Solver;
 		

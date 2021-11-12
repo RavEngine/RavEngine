@@ -49,8 +49,9 @@ void LightManager::Teardown() {
 }
 
 void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
-	dbg.DrawCapsule(pos.CalculateWorldMatrix(), debug_color, 1, 2);
+    //TODO: FIX
+//	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
+//	dbg.DrawCapsule(pos.CalculateWorldMatrix(), debug_color, 1, 2);
 }
 
 void DirectionalLight::AddInstanceData(float* offset) const{
@@ -61,9 +62,10 @@ void DirectionalLight::AddInstanceData(float* offset) const{
 }
 
 void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
-	
-	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, 1);
+    //TODO: FIX
+//	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
+//
+//	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, 1);
 }
 
 void AmbientLight::AddInstanceData(float* offset) const{
@@ -74,8 +76,9 @@ void AmbientLight::AddInstanceData(float* offset) const{
 }
 
 void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
-	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
+    //TODO: FIX
+//	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
+//	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
 }
 
 void PointLight::AddInstanceData(float* offset) const{
