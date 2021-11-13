@@ -75,7 +75,7 @@ ElementDocument* GUIComponent::AddDocument(const std::string &name){
 	
 	ElementDocument* ed = nullptr;
 	ExclusiveAccess([&] {
-		ed = context->LoadDocument(dir);
+		ed = data->context->LoadDocument(dir);
 	});
 	
 	
@@ -83,7 +83,7 @@ ElementDocument* GUIComponent::AddDocument(const std::string &name){
 		Debug::Fatal("Cannot load document at path {}", dir);
 	}
 	ed->Show();
-	documents[name] = ed;
+	data->documents[name] = ed;
 	return ed;
 }
 
@@ -92,15 +92,15 @@ void GUIComponent::RemoveDocument(const std::string &name){
 		Debug::Fatal("Cannot unload document that is not loaded");
 	}
 	
-	auto ptr = documents.at(name);
-	documents.erase(name);
+	auto ptr = data->documents.at(name);
+	data->documents.erase(name);
 	ExclusiveAccess([&] {
-		context->UnloadDocument(ptr);
+		data->context->UnloadDocument(ptr);
 	});
 }
 
 bool GUIComponent::IsDocumentLoaded(const std::string &name) const{
-	return documents.contains(name);
+	return data->documents.contains(name);
 }
 
 bool GUIComponent::LoadFont(const std::string& filename){
@@ -112,11 +112,11 @@ bool GUIComponent::LoadFont(const std::string& filename){
 bool GUIComponent::Update(){
 	MouseMove();
     // swap queues
-    auto a = current.load();
-    auto b = inactive.load();
+    auto a = data->current.load();
+    auto b = data->inactive.load();
     std::swap(a,b);
-    current.store(a);
-    inactive.store(b);
+    data->current.store(a);
+    data->inactive.store(b);
     
     bool result;
     ExclusiveAccess([&]{
@@ -126,7 +126,7 @@ bool GUIComponent::Update(){
         while(ptr->try_dequeue(task)){
             task();
         }
-        result = context->Update();
+        result = data->context->Update();
     });
     
     return result;
@@ -135,18 +135,12 @@ bool GUIComponent::Update(){
 bool GUIComponent::Render(){
 	bool result;
     ExclusiveAccess([&]{
-        result = context->Render();
+        result = data->context->Render();
     });
 	return result;
 }
 
 GUIComponent::~GUIComponent(){
-	for (const auto& pair : documents) {
-		RemoveDocument(pair.first);		//destroy all the documents 
-	}
-	ExclusiveAccess([&] {
-		RemoveContext(context->GetName());
-	});
 	
 }
 
@@ -155,19 +149,19 @@ GUIComponent::GUIComponent() : GUIComponent(App::GetRenderEngine().GetBufferSize
 GUIComponent::GUIComponent(int width, int height, float DPIScale){
 	auto uuid = uuids::uuid::create();
 	
-	context = Rml::CreateContext(uuid.to_string(), Vector2i(width,height));
-	context->SetDensityIndependentPixelRatio(DPIScale);
+	data->context = Rml::CreateContext(uuid.to_string(), Vector2i(width,height));
+	data->context->SetDensityIndependentPixelRatio(DPIScale);
 }
 
 Rml::ElementDocument* GUIComponent::GetDocument(const std::string &name) const{
 	if (!IsDocumentLoaded(name)){
 		Debug::Fatal("Cannot get pointer to {} because it is not loaded.",name);
 	}
-	return documents.at(name);
+	return data->documents.at(name);
 }
 
 
-void GUIComponent::AnyActionDown(const int charcode){
+void GUIComponent::GUIData::AnyActionDown(const int charcode){
 	//If is a modifier, add to the bitmask
 	switch(charcode){
 		case SDL_SCANCODE_LCTRL:
@@ -215,7 +209,7 @@ void GUIComponent::AnyActionDown(const int charcode){
 	}
 }
 
-void GUIComponent::AnyActionUp(const int charcode){
+void GUIComponent::GUIData::AnyActionUp(const int charcode){
 	//If is a modifier, remove from the bitmask
 	switch(charcode){
 		case SDL_SCANCODE_LCTRL:
@@ -258,38 +252,38 @@ void GUIComponent::AnyActionUp(const int charcode){
 }
 
 void GUIComponent::MouseX(float normalized_pos){
-	MousePos.x = normalized_pos;
+	data->MousePos.x = normalized_pos;
 }
 
 void GUIComponent::MouseY(float normalized_pos){
-	MousePos.y = normalized_pos;
+	data->MousePos.y = normalized_pos;
 }
 
 void GUIComponent::ScrollY(float amt){
 	if (std::abs(amt) > 0.1){
         EnqueueUIUpdate([this,amt]{
-			context->ProcessMouseWheel(amt, modifier_state);
+			data->context->ProcessMouseWheel(amt, data->modifier_state);
 		});
 	}
 }
 
 void GUIComponent::MouseMove(){
 	//Forward to canvas, using the bitmask
-    auto dim = context->GetDimensions();
+    auto dim = data->context->GetDimensions();
     EnqueueUIUpdate([this,dim] {
-		context->ProcessMouseMove(MousePos.x * dim.x, MousePos.y * dim.y, modifier_state);
+		data->context->ProcessMouseMove(data->MousePos.x * dim.x, data->MousePos.y * dim.y, data->modifier_state);
 	});
 }
 
 void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
     EnqueueUIUpdate([this,width,height] {
-		context->SetDimensions(Rml::Vector2i(width, height));
+		data->context->SetDimensions(Rml::Vector2i(width, height));
 	});
 }
 
 void GUIComponent::Debug(){
 #ifdef _DEBUG
-	Rml::Debugger::SetContext(context);
+	Rml::Debugger::SetContext(data->context);
 	Rml::Debugger::SetVisible(true);
 #endif
 }

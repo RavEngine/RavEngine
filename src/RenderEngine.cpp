@@ -752,16 +752,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	//TODO: thread using ECS?
 	auto& guis = fd->guisToCalculate;
 	auto size = GetBufferSize();
-	for(const auto& g : guis){
-		auto gui = std::static_pointer_cast<GUIComponent>(g);
-		if (gui) {
-			if (gui->Mode == GUIComponent::RenderMode::Screenspace) {
-				gui->SetDimensions(size.width, size.height);
-				gui->SetDPIScale(GetDPIScale());
-			}
-			gui->Update();
-			gui->Render();	//bgfx state is set in renderer before actual draw calls
-		}
+	for(auto& gui : guis){
+        if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
+            gui.SetDimensions(size.width, size.height);
+            gui.SetDPIScale(GetDPIScale());
+        }
+        gui.Update();
+        gui.Render();	//bgfx state is set in renderer before actual draw calls
 	}
 	
 	

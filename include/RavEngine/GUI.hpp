@@ -8,32 +8,59 @@
 #include "Queryable.hpp"
 #include "IInputListener.hpp"
 #include "Function.hpp"
+#include "Ref.hpp"
 
 namespace RavEngine{
-class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>, public RavEngine::IInputListener{
+class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>{
 protected:
 	friend class RenderEngine;
 	
-	Rml::Context* context = nullptr;
-	locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
-    
-    ConcurrentQueue<Function<void(void)>> q_a, q_b;
-    std::atomic<decltype(q_a)*> current = &q_a, inactive = &q_b;
+    struct GUIData : public RavEngine::IInputListener{
+        Rml::Context* context = nullptr;
+        locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
+        ~GUIData(){
+            for (const auto& pair : documents) {
+                context->UnloadDocument(pair.second);        //destroy all the documents
+            }
+            Rml::RemoveContext(context->GetName());
+        }
+        
+        ConcurrentQueue<Function<void(void)>> q_a, q_b;
+        std::atomic<decltype(q_a)*> current = &q_a, inactive = &q_b;
 
-	SpinLock mtx;
-	
-	uint32_t modifier_state = 0;
-	
-	void AnyActionDown(const int charcode) override;
-	
-	void AnyActionUp(const int charcode) override;
-	
-	void MouseMove();
-	
-	Rml::Vector2f MousePos;
+        SpinLock mtx;
+        
+        uint32_t modifier_state = 0;
+        
+        void AnyActionDown(const int charcode) override;
+        
+        void AnyActionUp(const int charcode) override;
+                
+        Rml::Vector2f MousePos;
+        
+        template<typename T>
+        inline void ExclusiveAccess(const T& func){
+            mtx.lock();
+            func();
+            mtx.unlock();
+        }
+        
+        template<typename T>
+        constexpr inline void EnqueueUIUpdate(const T& func){
+            current.load()->enqueue(func);
+        }
+    };
+    Ref<GUIData> data = std::make_shared<GUIData>();
+    
 	
 public:
+    
+    inline decltype(data) GetData() const{
+        return data;
+    }
 	
+    void MouseMove();
+    
 	enum class RenderMode{
 		Screenspace,
 		Worldspace
@@ -45,19 +72,20 @@ public:
 	GUIComponent();
     
     GUIComponent(GUIComponent&& other){
-        context = std::move(other.context);
-        documents = std::move(other.documents);
+        data = std::move(other.data);
     }
 	
-    //TODO: FIX - copy dimensions and DPI
     GUIComponent(const GUIComponent& other) : GUIComponent(){
-        documents = other.documents;
+        data = other.data;
     }
     
-    inline void operator=(GUIComponent other){
-        std::swap(*this,other);
+    inline GUIComponent& operator=(const GUIComponent& other){
+        if (this != &other){
+            data = other.data;
+        }
+        return *this;
     }
-	
+    
 	/**
 	 Construct a GUI renderer with user-supplied size
 	 @param width the width in pixels of the context
@@ -66,7 +94,7 @@ public:
 	GUIComponent(int width, int height, float DPI = 1);
 	
 	inline void SetDPIScale(float scale){
-		context->SetDensityIndependentPixelRatio(scale);
+		data->context->SetDensityIndependentPixelRatio(scale);
 	}
 	
 	/**
@@ -125,9 +153,7 @@ public:
 	*/
     template<typename T>
     constexpr inline void ExclusiveAccess(const T& func) {
-		mtx.lock();
-		func();
-		mtx.unlock();
+        data->ExclusiveAccess(func);
 	}
 
     /**
@@ -136,7 +162,7 @@ public:
     */
     template<typename T>
     constexpr inline void EnqueueUIUpdate(const T& func){
-        current.load()->enqueue(func);
+        data->EnqueueUIUpdate(func);
     }
 	
 	/**

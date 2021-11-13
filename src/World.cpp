@@ -408,17 +408,17 @@ void World::setupRenderTasks(){
 //        }
 //	});
 //#endif
-//	auto copyGUI = masterTasks.emplace([this]() {
-//        // also do the time here
-//        App::GetCurrentFramedata()->Time = App::GetCurrentTime();
-//        if(auto& guis = GetAllComponentsOfType<GUIComponent>()){
-//            App::GetCurrentFramedata()->guisToCalculate = guis.value().get_underlying();
-//        }
-//        else{
-//            App::GetCurrentFramedata()->guisToCalculate.clear();
-//        }
-//	});
-//
+	auto copyGUI = masterTasks.emplace([this]() {
+        // also do the time here
+        App::GetCurrentFramedata()->Time = App::GetCurrentTime();
+        if(auto guis = GetAllComponentsOfType<GUIComponent>()){
+            App::GetCurrentFramedata()->guisToCalculate = guis.value()->GetDense();
+        }
+        else{
+            App::GetCurrentFramedata()->guisToCalculate.clear();
+        }
+	});
+
 	auto swap = renderTasks.emplace([this]{
 		App::SwapCurrentFramedata();
 	}).name("Swap");

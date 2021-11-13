@@ -118,6 +118,10 @@ namespace RavEngine {
             auto DenseSize() const{
                 return dense_set.size();
             }
+            
+            inline const decltype(dense_set)& GetDense() const{
+                return dense_set;
+            }
         };
     private:
         struct SparseSetErased{

@@ -10,6 +10,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "mathtypes.hpp"
 #include <ozz/base/containers/vector.h>
+#include "GUI.hpp"
 
 namespace RavEngine {
 
@@ -109,7 +110,7 @@ struct FrameData{
 #ifdef _DEBUG
     Vector<Ref<Component>> debugShapesToDraw;
 #endif
-    Vector<Ref<Component>> guisToCalculate;
+    unordered_vector<GUIComponent> guisToCalculate;
 	
 	inline void Clear(){
 		opaques.clear();

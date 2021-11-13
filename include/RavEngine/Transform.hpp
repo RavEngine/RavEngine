@@ -42,9 +42,10 @@ namespace RavEngine {
         
         Transform(const Transform& other) : Transform(other.GetOwner().id, other.position,other.rotation,other.scale){}
         
-        inline void operator=(Transform other){
+        inline Transform& operator=(Transform other){
             // copy-swap method
             std::swap(*this,other);
+            return *this;
         }
 
 		void SetLocalPosition(const vector3&);
