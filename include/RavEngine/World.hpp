@@ -246,7 +246,7 @@ namespace RavEngine {
         
         template<typename T>
         inline T& FilterComponentGet(entity_t idx, void* ptr){
-            return static_cast<SparseSet<T>*>(ptr)->Get(idx);
+            return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
         }
        
         template<typename T>
@@ -290,7 +290,7 @@ namespace RavEngine {
                         bool satisfies = true;
                         (FilterValidityCheck<A>(owner, ptrs[Index_v<A, A...>], satisfies), ...);
                         if (satisfies){
-                            f(GetCurrentFPSScale(),FilterComponentGet<A>(i,ptrs[Index_v<A, A...>])...);
+                            f(GetCurrentFPSScale(),FilterComponentGet<A>(owner,ptrs[Index_v<A, A...>])...);
                         }
                     }
                 }
@@ -324,23 +324,23 @@ namespace RavEngine {
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
         
-        template<typename T, typename ... A>
-        inline tf::Task EmplaceSystem(){
+        template<typename T, typename ... A, typename ... Args>
+        inline tf::Task EmplaceSystem(Args... args){
             //TODO: FIX (parallelize this with for_each)
             // need 2 things:
                 // iterator update
                 // for-each w/ function
             
-            T system;
+            T system(args...);
             
             return ECSTasks.emplace([this,system](){
                 Filter<A...>(system);
             }).name(typeid(T).name());
         }
         
-        template<typename T, typename ... A, typename interval_t>
-        inline void EmplaceTimedSystem(const interval_t interval){
-            auto task = EmplaceSystem<T,A...>();
+        template<typename T, typename ... A, typename interval_t, typename ... Args>
+        inline void EmplaceTimedSystem(const interval_t interval, Args ... args){
+            auto task = EmplaceSystem<T,A...>(args...);
             
             auto c_interval = std::chrono::duration_cast<decltype(TimedSystemEntry::interval)>(interval);
             auto ts = &timedSystemRecords[CTTI<T>()];

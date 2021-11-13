@@ -154,38 +154,6 @@ bool RavEngine::World::InitPhysics() {
 
 void World::SetupTaskGraph(){
     masterTasks.name("RavEngine Master Tasks");
-//	auto add_system_to_tick = [&](const SystemEntry<World>& system, ctti_t ID, SystemManager<World>::TimedSystem* ts = nullptr){
-//
-//		auto taskpair = system.QueryTypes(ID, iterator_map, masterTasks, this);
-//		graphs[ID] = {
-//			taskpair.first,
-//			&system,
-//			ts != nullptr
-//		};
-//
-//		if (ts != nullptr) {
-//			//conditional task - returns out-of-range if condition fails so that the task does not run
-//			auto condition = masterTasks.emplace([this,ts](){
-//				if (time_now - ts->last_timestamp > ts->interval){
-//					ts->last_timestamp = time_now;
-//						return 0;
-//				}
-//				return 1;
-//			});
-//			condition.precede(taskpair.second);
-//		}
-//	};
-	
-	//tick the always-systems
-//	for (auto& s : systemManager.GetAlwaysTickSystems()) {
-//		// add_system_to_tick(s.second, s.first);
-//	}
-//
-	//tick timed systems
-//	for (auto& s : systemManager.GetTimedTickSystems()){
-//
-//		//add_system_to_tick(s.second.system, s.first, &(s.second));
-//	}
 	
     //TODO: FIX (use conditional tasking here)
     setupRenderTasks();
