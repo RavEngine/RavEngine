@@ -14,7 +14,6 @@
 #include "AudioSource.hpp"
 #include "FrameData.hpp"
 #include <taskflow/taskflow.hpp>
-#include "SystemManager.hpp"
 #include "Skybox.hpp"
 #include "Types.hpp"
 #include "Reflection.hpp"
@@ -23,8 +22,6 @@ namespace RavEngine {
 	class Entity;
 	class InputManager;
     struct Entity;
-    struct StaticMesh;
-    struct Transform;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -330,32 +327,24 @@ namespace RavEngine {
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
-		struct SyncOp{
-			Ref<Component> c;
-			ctti_t id;
-			bool add;
-		};
-		ConcurrentQueue<SyncOp> toSync;
-		
 		tf::Taskflow masterTasks;
-        SparseSet<StaticMesh>::const_iterator geobegin, geoend;
-        SparseSet<Transform>::const_iterator transformbegin,transformend;
+        tf::Taskflow renderTasks;
+        tf::Taskflow ECSTasks;
+        tf::Task renderTaskModule;
+        tf::Task ECSTaskModule;
+        SparseSet<struct StaticMesh>::const_iterator geobegin, geoend;
+        SparseSet<struct Transform>::const_iterator transformbegin,transformend;
         SparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
-        
-		ComponentStore<phmap::NullMutex>::entry_type::const_iterator skinnedgeobegin, skinnedgeoend;
-		iter_map iterator_map;
-		struct systaskpair{
-			tf::Task task;
-			const SystemEntry<World>* system;
-			bool isTimed = false;
-		};
-        UnorderedMap<ctti_t, systaskpair> graphs;
-		
+        SparseSet<struct SkinnedMeshComponent>::const_iterator skinnedgeobegin, skinnedgeoend;
+        struct EngTasks{
+           
+        } EngTasks;
+        		
 		void CreateFrameData();
 		
-		void RebuildTaskGraph();
+		void SetupTaskGraph();
 		
-		std::chrono::time_point<clock_t> time_now = clock_t::now();
+		std::chrono::time_point<e_clock_t> time_now = e_clock_t::now();
 		float currentFPSScale = 0.01f;
 		
 		//Entity list
@@ -394,7 +383,7 @@ namespace RavEngine {
 		virtual void PreTick(float fpsScale) {}
 		void TickECS(float);
 		
-		void FillFramedata();
+		void setupRenderTasks();
 		
 		/**
 		 Called after physics and rendering synchronously
@@ -404,13 +393,6 @@ namespace RavEngine {
 		
 		void OnAddComponent(Ref<Component>);
 		void OnRemoveComponent(Ref<Component>);
-        
-        /**
-         * Tick a System on all available threads. Blocks until all have finished.
-         * @param system the System to tick
-         * @param scale the frame rate scale to pass on to the System's tick method
-         */
-        void TickSystem(Ref<System> system, float scale);
 		
 		bool physicsActive = false;
 		
@@ -421,9 +403,7 @@ namespace RavEngine {
 		inline float GetCurrentFPSScale() const {
 			return currentFPSScale;
 		}
-		
-		SystemManager<World> systemManager;
-		
+				
 		/**
 		* Initializes the physics-related Systems.
 		* @return true if the systems were loaded, false if they were not loaded because they are already loaded

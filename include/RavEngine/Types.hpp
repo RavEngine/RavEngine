@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <limits>
+#include <chrono>
 
 using entity_t = uint32_t;
 using pos_t = uint32_t;
@@ -15,3 +16,4 @@ static constexpr inline bool PosIsValid(pos_t id){
     return id != INVALID_INDEX;
 }
  
+using e_clock_t = std::chrono::steady_clock;

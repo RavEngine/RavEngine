@@ -51,12 +51,13 @@ void RavEngine::World::Tick(float scale) {
 
 
 RavEngine::World::World(bool skip){
-	//reserve space to reduce rehashing
     if (!skip){
-        systemManager.EmplaceSystem<ScriptSystem>();
-        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
-        systemManager.EmplaceSystem<RPCSystem>();
-        systemManager.EmplaceSystem<AnimatorSystem>();
+        SetupTaskGraph();
+        //TODO: FIX
+//        systemManager.EmplaceSystem<ScriptSystem>();
+//        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
+//        systemManager.EmplaceSystem<RPCSystem>();
+//        systemManager.EmplaceSystem<AnimatorSystem>();
         skybox = make_shared<Skybox>();
     }
 }
@@ -125,12 +126,9 @@ RavEngine::World::World(bool skip){
  */
 void RavEngine::World::TickECS(float fpsScale) {
 	currentFPSScale = fpsScale;
-	if (systemManager.graphNeedsRebuild){
-		RebuildTaskGraph();
-	}
-	
+
 	//update time
-	time_now = clock_t::now();
+	time_now = e_clock_t::now();
 	
 	//execute and wait
 	App::executor.run(masterTasks).wait();
@@ -145,66 +143,69 @@ bool RavEngine::World::InitPhysics() {
 		return false;
 	}
 	
-	systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
-	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
+//	systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
+//	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
 	
 	physicsActive = true;
 
 	return true;
 }
 
-void World::RebuildTaskGraph(){
-	masterTasks.clear();
-	
-	auto add_system_to_tick = [&](const SystemEntry<World>& system, ctti_t ID, SystemManager<World>::TimedSystem* ts = nullptr){
-
-		auto taskpair = system.QueryTypes(ID, iterator_map, masterTasks, this);
-		graphs[ID] = {
-			taskpair.first,
-			&system,
-			ts != nullptr
-		};
-
-		if (ts != nullptr) {
-			//conditional task - returns out-of-range if condition fails so that the task does not run
-			auto condition = masterTasks.emplace([this,ts](){
-				if (time_now - ts->last_timestamp > ts->interval){
-					ts->last_timestamp = time_now;
-						return 0;
-				}
-				return 1;
-			});
-			condition.precede(taskpair.second);
-		}
-	};
+void World::SetupTaskGraph(){
+    masterTasks.name("RavEngine Master Tasks");
+//	auto add_system_to_tick = [&](const SystemEntry<World>& system, ctti_t ID, SystemManager<World>::TimedSystem* ts = nullptr){
+//
+//		auto taskpair = system.QueryTypes(ID, iterator_map, masterTasks, this);
+//		graphs[ID] = {
+//			taskpair.first,
+//			&system,
+//			ts != nullptr
+//		};
+//
+//		if (ts != nullptr) {
+//			//conditional task - returns out-of-range if condition fails so that the task does not run
+//			auto condition = masterTasks.emplace([this,ts](){
+//				if (time_now - ts->last_timestamp > ts->interval){
+//					ts->last_timestamp = time_now;
+//						return 0;
+//				}
+//				return 1;
+//			});
+//			condition.precede(taskpair.second);
+//		}
+//	};
 	
 	//tick the always-systems
-	for (auto& s : systemManager.GetAlwaysTickSystems()) {
-		// add_system_to_tick(s.second, s.first);
-	}
-	
+//	for (auto& s : systemManager.GetAlwaysTickSystems()) {
+//		// add_system_to_tick(s.second, s.first);
+//	}
+//
 	//tick timed systems
-	for (auto& s : systemManager.GetTimedTickSystems()){
-		
-		//add_system_to_tick(s.second.system, s.first, &(s.second));
-	}
+//	for (auto& s : systemManager.GetTimedTickSystems()){
+//
+//		//add_system_to_tick(s.second.system, s.first, &(s.second));
+//	}
 	
-	if (isRendering)
-	{
-		FillFramedata();
-	}
+    //TODO: FIX (use conditional tasking here)
+    setupRenderTasks();
+    
+    ECSTasks.name("ECS");
+    ECSTaskModule = masterTasks.composed_of(ECSTasks).name("ECS");
+    
+    // ensure Systems run before rendering
+    renderTaskModule.succeed(ECSTaskModule);
     
     // process any dispatched coroutines
     auto updateAsyncIterators = masterTasks.emplace([&]{
         async_begin = async_tasks.begin();
         async_end = async_tasks.end();
-    });
+    }).name("async iterator update");
     auto doAsync = masterTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const shared_ptr<dispatched_func>& item){
         if (App::GetCurrentTime() >= item->runAtTime){
             item->func();
             ranFunctions.push_back(async_tasks.hash_for(item));
         }
-    });
+    }).name("Exec Async");
     updateAsyncIterators.precede(doAsync);
     auto cleanupRanAsync = masterTasks.emplace([&]{
         // remove functions that have been run
@@ -212,50 +213,28 @@ void World::RebuildTaskGraph(){
             async_tasks.erase_by_hash(hash);
         }
         ranFunctions.clear();
-    });
+    }).name("Async cleanup");
     doAsync.precede(cleanupRanAsync);
     
-	
+	//TODO: FIX (use conditional tasking)
 	if (physicsActive){
 		//add the PhysX tick, must run after write but before read
 		auto RunPhysics = masterTasks.emplace([this]{
 			Solver.Tick(GetCurrentFPSScale());
-		});
-		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>()].task);
-		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>()].task);
+		}).name("PhysX Tick");
+        //TODO: FIX
+//		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>()].task).name("PhysicsLinkSystemRead");
+//		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>()].task).name("PhysicsLinkSystemWrite");
 	}
-	
-	//figure out dependencies
-	for(auto& graph : graphs){
-		tf::Task& task = graph.second.task;
-		
-		//call precede
-		{
-			auto& runbefore = graph.second.system->MustRunBefore();
-			for(const auto id : runbefore){
-				if (graphs.find(id) != graphs.end()){
-					task.precede(graphs[id].task);
-				}
-			}
-		}
-		//call succeed
-		{
-			auto& runafter = graph.second.system->MustRunAfter();
-			for(const auto id : runafter){
-				if (graphs.find(id) != graphs.end()){
-					task.succeed(graphs[id].task);
-				}
-			}
-		}
-	}
-	systemManager.graphNeedsRebuild = false;
+    masterTasks.dump(cout);
 }
 
-void World::FillFramedata(){
+void World::setupRenderTasks(){
 	//render engine data collector
 	//camera matrices
+    renderTasks.name("Render");
     
-	auto camproc = masterTasks.emplace([this](){
+	auto camproc = renderTasks.emplace([this](){
         if (auto allcams = GetAllComponentsOfType<CameraComponent>()){
             for (auto& cam : *allcams.value()) {
                 if (cam.IsActive()) {
@@ -272,15 +251,14 @@ void World::FillFramedata(){
             }
         }
 
-	});
+	}).name("Camera data");
 	
 	//opaque geometry
     SetEmpty<StaticMesh>(geobegin,geoend);
     SetEmpty<Transform>(transformbegin,transformend);
-	skinnedgeobegin = emptyContainer.begin();
-	skinnedgeoend = emptyContainer.end();
+    SetEmpty<SkinnedMeshComponent>(skinnedgeobegin, skinnedgeoend);
     
-	auto init = masterTasks.emplace([&](){
+	auto init = renderTasks.emplace([&](){
         if(auto geometry = GetAllComponentsOfType<StaticMesh>()){
             geobegin = geometry.value()->begin();
             geoend = geometry.value()->end();
@@ -295,15 +273,13 @@ void World::FillFramedata(){
         else{
             SetEmpty<Transform>(transformbegin,transformend);
         }
-        //TODO: FIX
-//        if(auto skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
-//            skinnedgeobegin = skinnedGeo.value()->begin();
-//            skinnedgeoend = skinnedGeo.value()->end();
-//        }
-//        else{
-//            skinnedgeobegin = emptyContainer.end();
-//            skinnedgeoend = emptyContainer.end();
-//        }
+        if(auto skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
+            skinnedgeobegin = skinnedGeo.value()->begin();
+            skinnedgeoend = skinnedGeo.value()->end();
+        }
+        else{
+            SetEmpty<SkinnedMeshComponent>(skinnedgeobegin, skinnedgeoend);
+        }
         if (auto instancedGeo = GetAllComponentsOfType<InstancedStaticMesh>()){
             instancedBegin = instancedGeo.value()->begin();
             instancedEnd = instancedGeo.value()->end();
@@ -312,16 +288,16 @@ void World::FillFramedata(){
             SetEmpty<InstancedStaticMesh>(instancedBegin, instancedEnd);
         }
 
-	});
+	}).name("Init iterators");
 	
 	// update matrix caches
 	auto updateMatrix = [](const Transform& c) {
         c.CalculateWorldMatrix();
 	};
-	auto matcalc = masterTasks.for_each(std::ref(transformbegin), std::ref(transformend), updateMatrix);
+	auto matcalc = renderTasks.for_each(std::ref(transformbegin), std::ref(transformend), updateMatrix).name("Matrix calc");
 	
 	//sort into the hashmap
-	auto sort = masterTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
+	auto sort = renderTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
 		auto current = App::GetCurrentFramedata();
         if (e.Enabled) {
             auto& pair = e.getTuple();
@@ -329,9 +305,9 @@ void World::FillFramedata(){
             auto& item = current->opaques[pair];
             item.AddItem(mat);
         }
-	});
+	}).name("sort static");
     //TODO: FIX
-//	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const Ref<Component>& e){
+	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& e){
 //        auto m = static_cast<SkinnedMeshComponent*>(e.get());
 //        auto ptr = e->GetOwner().lock();
 //        if (ptr && m->Enabled) {
@@ -346,8 +322,8 @@ void World::FillFramedata(){
 ////                item.AddSkinningData(animator->GetSkinningMats());
 ////            }
 //        }
-//	});
-    auto sortInstanced = masterTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
+	}).name("sort skinned");
+    auto sortInstanced = renderTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
         auto current = App::GetCurrentFramedata();
         if (m.Enabled){
             auto& pair = m.getTuple();
@@ -359,14 +335,14 @@ void World::FillFramedata(){
             item.items.insert(item.items.end(), mats.begin(),mats.end());
             item.mtx.unlock();
         }
-    });
+    }).name("sort instanced");
 
     //TODO: FIX
 	init.precede(sort/*,sortskinned*/,sortInstanced);
 	matcalc.precede(sort);
 //	skinnedmatcalc.precede(sortskinned);
 //
-	auto copydirs = masterTasks.emplace([this](){
+	auto copydirs = renderTasks.emplace([this](){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
             auto ptr = dirs.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
@@ -381,8 +357,8 @@ void World::FillFramedata(){
                 current->directionals.emplace(ptr->Get(i),r);
             }
         }
-	});
-	auto copyambs = masterTasks.emplace([this](){
+	}).name("copydirs");
+	auto copyambs = renderTasks.emplace([this](){
         if(auto ambs = GetAllComponentsOfType<AmbientLight>()){
             auto ptr = ambs.value();
             for(const auto& a : *ptr){
@@ -391,8 +367,8 @@ void World::FillFramedata(){
             }
         }
 
-	});
-	auto copyspots = masterTasks.emplace([this](){
+	}).name("copyambs");
+	auto copyspots = renderTasks.emplace([this](){
         if(auto spots = GetAllComponentsOfType<SpotLight>()){
             auto ptr = spots.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
@@ -404,8 +380,8 @@ void World::FillFramedata(){
             }
         }
 
-	});
-	auto copypoints = masterTasks.emplace([this](){
+	}).name("copyspots");
+	auto copypoints = renderTasks.emplace([this](){
         if(auto points = GetAllComponentsOfType<PointLight>()){
             auto ptr = points.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
@@ -417,7 +393,7 @@ void World::FillFramedata(){
             }
         }
 
-	});
+	}).name("copypoints");
 //
 //#ifdef _DEBUG
 //	// copy debug shapes
@@ -442,31 +418,23 @@ void World::FillFramedata(){
 //        }
 //	});
 //
-	auto swap = masterTasks.emplace([this]{
+	auto swap = renderTasks.emplace([this]{
 		App::SwapCurrentFramedata();
-	});
-	auto setup = masterTasks.emplace([this]{
+	}).name("Swap");
+	auto setup = renderTasks.emplace([this]{
 		auto current = App::GetCurrentFramedata();
 		current->Clear();
-	});
+	}).name("Clear-setup");
 	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints);
 	sort.precede(swap);
-//	sortskinned.precede(swap);
+	sortskinned.precede(swap);
     sortInstanced.precede(swap);
-	camproc.precede(sort/*,sortskinned*/);
-//
-//	//ensure user code completes before framedata population
-//	for(auto& g : graphs){
-//		if (!g.second.isTimed){
-//			g.second.task.precede(camproc,copydirs,copyambs,copyspots,copypoints,matcalc,skinnedmatcalc,sort,sortskinned, copyGUI, sortInstanced
-//#ifdef _DEBUG
-//				, copyDebug
-//#endif
-//			);
-//		}
-//	}
-//
+	camproc.precede(sort,sortskinned);
+
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+    
+    // attatch the renderTasks module to the masterTasks
+    renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");
 }
 
 void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
