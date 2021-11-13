@@ -325,15 +325,35 @@ namespace RavEngine {
 		Ref<Skybox> skybox;
         
         template<typename T, typename ... A>
-        inline void EmplaceSystem(const T& system){
+        inline tf::Task EmplaceSystem(){
             //TODO: FIX (parallelize this with for_each)
             // need 2 things:
                 // iterator update
                 // for-each w/ function
             
-            ECSTasks.emplace([this,system](){
+            T system;
+            
+            return ECSTasks.emplace([this,system](){
                 Filter<A...>(system);
             }).name(typeid(T).name());
+        }
+        
+        template<typename T, typename ... A, typename interval_t>
+        inline void EmplaceTimedSystem(const interval_t interval){
+            auto task = EmplaceSystem<T,A...>();
+            
+            auto c_interval = std::chrono::duration_cast<decltype(TimedSystemEntry::interval)>(interval);
+            auto ts = &timedSystemRecords[CTTI<T>()];
+            
+            //conditional task - returns out-of-range if condition fails so that the task does not run
+            auto condition = ECSTasks.emplace([this,ts,c_interval](){
+                if (time_now - ts->last_timestamp > c_interval){
+                    ts->last_timestamp = time_now;
+                        return 0;
+                }
+                return 1;
+            }).name("Check time");
+            condition.precede(task);
         }
         
 	private:
@@ -365,6 +385,11 @@ namespace RavEngine {
         SparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
         SparseSet<struct SkinnedMeshComponent>::const_iterator skinnedgeobegin, skinnedgeoend;
         
+        struct TimedSystemEntry{
+             std::chrono::duration<double, std::micro> interval;
+             std::chrono::time_point<e_clock_t> last_timestamp = e_clock_t::now();
+        };
+        UnorderedNodeMap<ctti_t, TimedSystemEntry> timedSystemRecords;
         		
 		void CreateFrameData();
 		
@@ -429,6 +454,10 @@ namespace RavEngine {
 		inline float GetCurrentFPSScale() const {
 			return currentFPSScale;
 		}
+        
+        inline void ExportTaskGraph(std::ostream& out){
+            masterTasks.dump(out);
+        }
 				
 		/**
 		* Initializes the physics-related Systems.

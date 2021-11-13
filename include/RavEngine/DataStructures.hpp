@@ -33,6 +33,9 @@ namespace RavEngine{
     template<typename T, typename U>
     using UnorderedMap = phmap::flat_hash_map<T,U>;
 
+    template<typename T, typename U>
+    using UnorderedNodeMap = phmap::node_hash_map<T,U>;
+
     template<typename T>
     using UnorderedSet = phmap::flat_hash_set<T>;
 

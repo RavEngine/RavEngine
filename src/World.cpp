@@ -227,7 +227,6 @@ void World::SetupTaskGraph(){
 //		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>()].task).name("PhysicsLinkSystemRead");
 //		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>()].task).name("PhysicsLinkSystemWrite");
 	}
-    masterTasks.dump(cout);
 }
 
 void World::setupRenderTasks(){
