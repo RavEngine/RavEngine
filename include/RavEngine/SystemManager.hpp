@@ -163,6 +163,7 @@ struct SystemEntry{
 //			});
 //			update.precede(mainTick);
 //			return std::make_pair(mainTick,update);
+			return std::pair<tf::Task, tf::Task>();
 		}),
 		MustRunBefore([system]() -> const System::list_type&{
 			return MustRunBefore_impl<T>(system);
