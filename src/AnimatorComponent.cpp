@@ -171,6 +171,7 @@ Ref<Transform> AnimatorComponent::AddSocket(const string& boneName) {
 			//return transform;
 		}
 	}
+	return Ref<Transform>();
 	Debug::Fatal("Cannot add socket to non-existant joint {}", boneName);
 }
 

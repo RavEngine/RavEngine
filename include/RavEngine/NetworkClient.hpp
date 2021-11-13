@@ -5,6 +5,7 @@
 #include <steam/isteamnetworkingsockets.h>
 #include <thread>
 #include "Function.hpp"
+#include "Ref.hpp"
 
 namespace RavEngine {
 	class World;

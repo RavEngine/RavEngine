@@ -340,8 +340,9 @@ namespace RavEngine {
 		tf::Taskflow masterTasks;
         SparseSet<StaticMesh>::const_iterator geobegin, geoend;
         SparseSet<Transform>::const_iterator transformbegin,transformend;
+        SparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
         
-		ComponentStore<phmap::NullMutex>::entry_type::const_iterator skinnedgeobegin, skinnedgeoend, instancedBegin, instancedEnd;
+		ComponentStore<phmap::NullMutex>::entry_type::const_iterator skinnedgeobegin, skinnedgeoend;
 		iter_map iterator_map;
 		struct systaskpair{
 			tf::Task task;

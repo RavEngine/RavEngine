@@ -271,7 +271,7 @@ void App::SetWindowTitle(const char *title){
 	SDL_SetWindowTitle(Renderer->GetWindow(), title);
 }
 
-void App::SetRenderedWorld(Ref<World> newWorld){
+void RavEngine::App::SetRenderedWorld(Ref<World> newWorld){
    if (!loadedWorlds.contains(newWorld)){
        Debug::Fatal("Cannot render an inactive world");
    }
@@ -284,7 +284,7 @@ void App::SetRenderedWorld(Ref<World> newWorld){
    renderWorld->OnActivate();
 }
 
-void App::RemoveWorld(Ref<World> world){
+void RavEngine::App::RemoveWorld(Ref<World> world){
     loadedWorlds.erase(world);
     if (renderWorld == world){
         renderWorld->OnDeactivate();
@@ -292,7 +292,7 @@ void App::RemoveWorld(Ref<World> world){
     }
 }
 
-std::optional<Ref<World>> App::GetWorldByName(const std::string &name){
+std::optional<Ref<World>> RavEngine::App::GetWorldByName(const std::string &name){
     std::optional<Ref<World>> value;
     for(const auto& world : loadedWorlds){
         // because std::string "world\0\0" != "world", we need to use strncmp
@@ -302,4 +302,17 @@ std::optional<Ref<World>> App::GetWorldByName(const std::string &name){
         }
     }
     return value;
+}
+
+void App::AddWorld(Ref<World> world) {
+	loadedWorlds.insert(world);
+	if (!renderWorld) {
+		SetRenderedWorld(world);
+	}
+
+	// synchronize network if necessary
+	if (networkManager.IsClient() && !networkManager.IsServer()) {
+		//TODO: FIX
+		//networkManager.client->SendSyncWorldRequest(world);
+	}
 }

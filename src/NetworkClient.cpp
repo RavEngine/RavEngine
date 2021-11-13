@@ -4,6 +4,7 @@
 #include "App.hpp"
 #include "RPCComponent.hpp"
 #include "SyncVar.hpp"
+#include "World.hpp"
 
 using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
@@ -192,7 +193,7 @@ void NetworkClient::NetSpawn(const std::string_view& command){
         
     //find the world and spawn
     if (auto e = App::networkManager.CreateEntity(id, uuid)){
-        if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
+ //       if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
             //TODO: FIX
 //			world.value()->Spawn(e.value());
 //#ifdef _DEBUG
@@ -211,10 +212,10 @@ void NetworkClient::NetSpawn(const std::string_view& command){
 //			if (OnNetSpawnHooks.contains(id)) {
 //				OnNetSpawnHooks.at(id)(e.value(),world.value());
 //			}
-        }
-        else{
-            Debug::Fatal("Cannot spawn networked entity in unloaded world: {}", worldname);
-        }
+//        }
+ //       else{
+ //           Debug::Fatal("Cannot spawn networked entity in unloaded world: {}", worldname);
+ //       }
     }
     else{
         Debug::Fatal("Cannot spawn entity with type ID {}",id);

@@ -46,7 +46,7 @@ namespace RavEngine {
 
     class InstancedStaticMesh : public StaticMesh, public Queryable<InstancedStaticMesh>{
         UnorderedVector<soatransform> instanceRelativeTransform;
-        UnorderedVector<matrix4> instanceOutputTransform;
+        mutable UnorderedVector<matrix4> instanceOutputTransform;
     public:
         using Queryable<InstancedStaticMesh>::GetQueryTypes;
         InstancedStaticMesh(entity_t owner, Ref<MeshAsset> m, Ref<PBRMaterialInstance> mat) : StaticMesh(owner,m,mat){}
@@ -102,7 +102,7 @@ namespace RavEngine {
             return instanceRelativeTransform.size();
         }
         
-        inline void CalculateMatrices(){
+        inline void CalculateMatrices() const{
             auto parentTransform = GetOwner().GetTransform().CalculateWorldMatrix();
             for(size_t i = 0; i < instanceRelativeTransform.size(); i++){
                 auto& st = instanceRelativeTransform[i];

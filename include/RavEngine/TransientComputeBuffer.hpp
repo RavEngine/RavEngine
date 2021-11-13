@@ -1,6 +1,7 @@
 #pragma once
 #include <bgfx/bgfx.h>
 #include <cstring>
+#include <cassert>
 
 namespace RavEngine {
 	class TransientComputeBufferReadOnly {

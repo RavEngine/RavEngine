@@ -18,6 +18,7 @@
 #endif
 #include <SDL_main.h>
 #include <bx/platform.h>
+#include <optional>
 
 namespace RavEngine {
 	struct AppConfig {
@@ -130,17 +131,7 @@ namespace RavEngine {
 		 Add a world to be ticked
 		 @param world the world to tick
 		 */
-		static void AddWorld(Ref<World> world){
-			loadedWorlds.insert(world);
-			if (!renderWorld){
-				SetRenderedWorld(world);
-			}
-
-			// synchronize network if necessary
-			if (networkManager.IsClient() && !networkManager.IsServer()) {
-				networkManager.client->SendSyncWorldRequest(world);
-			}
-		}
+		static void AddWorld(Ref<World> world);
 		/**
 		Remove a world from the tick list
 		@param world the world to tick

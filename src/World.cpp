@@ -180,13 +180,13 @@ void World::RebuildTaskGraph(){
 	
 	//tick the always-systems
 	for (auto& s : systemManager.GetAlwaysTickSystems()) {
-		add_system_to_tick(s.second, s.first);
+		// add_system_to_tick(s.second, s.first);
 	}
 	
 	//tick timed systems
 	for (auto& s : systemManager.GetTimedTickSystems()){
 		
-		add_system_to_tick(s.second.system, s.first, &(s.second));
+		//add_system_to_tick(s.second.system, s.first, &(s.second));
 	}
 	
 	if (isRendering)
@@ -304,14 +304,13 @@ void World::FillFramedata(){
 //            skinnedgeobegin = emptyContainer.end();
 //            skinnedgeoend = emptyContainer.end();
 //        }
-//        if (auto instancedGeo = GetAllComponentsOfType<InstancedStaticMesh>()){
-//            instancedBegin = instancedGeo.value()->begin();
-//            instancedEnd = instancedGeo.value()->end();
-//        }
-//        else{
-//            instancedBegin = emptyContainer.begin();
-//            instancedEnd = emptyContainer.end();
-//        }
+        if (auto instancedGeo = GetAllComponentsOfType<InstancedStaticMesh>()){
+            instancedBegin = instancedGeo.value()->begin();
+            instancedEnd = instancedGeo.value()->end();
+        }
+        else{
+            SetEmpty<InstancedStaticMesh>(instancedBegin, instancedEnd);
+        }
 
 	});
 	
@@ -348,24 +347,22 @@ void World::FillFramedata(){
 ////            }
 //        }
 //	});
-//    auto sortInstanced = masterTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const Ref<Component>& e){
-//        auto current = App::GetCurrentFramedata();
-//        auto m = static_cast<InstancedStaticMesh*>(e.get());
-//        auto ptr = e->GetOwner().lock();
-//        if (ptr && m->Enabled){
-//            auto& pair = m->getTuple();
-//            m->CalculateMatrices();
-//            auto& mats = m->GetAllTransforms();
-//
-//            auto& item = current->opaques[pair];
-//            item.mtx.lock();
-//            item.items.insert(item.items.end(), mats.begin(),mats.end());
-//            item.mtx.unlock();
-//        }
-//    });
-//
+    auto sortInstanced = masterTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
+        auto current = App::GetCurrentFramedata();
+        if (m.Enabled){
+            auto& pair = m.getTuple();
+            m.CalculateMatrices();
+            auto& mats = m.GetAllTransforms();
+
+            auto& item = current->opaques[pair];
+            item.mtx.lock();
+            item.items.insert(item.items.end(), mats.begin(),mats.end());
+            item.mtx.unlock();
+        }
+    });
+
     //TODO: FIX
-	init.precede(sort/*,sortskinned*/);
+	init.precede(sort/*,sortskinned*/,sortInstanced);
 	matcalc.precede(sort);
 //	skinnedmatcalc.precede(sortskinned);
 //
@@ -455,7 +452,7 @@ void World::FillFramedata(){
 	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints);
 	sort.precede(swap);
 //	sortskinned.precede(swap);
-//    sortInstanced.precede(swap);
+    sortInstanced.precede(swap);
 	camproc.precede(sort/*,sortskinned*/);
 //
 //	//ensure user code completes before framedata population
