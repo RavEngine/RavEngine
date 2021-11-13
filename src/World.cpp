@@ -54,7 +54,8 @@ RavEngine::World::World(bool skip){
     if (!skip){
         SetupTaskGraph();
         //TODO: FIX
-//        systemManager.EmplaceSystem<ScriptSystem>();
+       // ScriptSystem s;
+        //EmplaceSystem<ScriptSystem,ScriptComponent>(s);
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
 //        systemManager.EmplaceSystem<RPCSystem>();
 //        systemManager.EmplaceSystem<AnimatorSystem>();

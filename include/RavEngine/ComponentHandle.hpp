@@ -6,14 +6,16 @@ namespace RavEngine{
     class ComponentHandle{
         Entity owner;
     public:
-        ComponentHandle(decltype(owner) owner) : owner(owner){}
+        ComponentHandle(decltype(owner) owner) : owner(owner){
+            assert(owner.HasComponent<T>());
+        }
         ComponentHandle() : owner(INVALID_ENTITY){}
         
         inline T* operator->(){
-            return Get();
+            return get();
         }
         
-        inline T* Get(){
+        inline T* get(){
             assert(EntityIsValid(owner.id));
             assert(owner.HasComponent<T>());
             return &owner.GetComponent<T>();
@@ -33,6 +35,10 @@ namespace RavEngine{
         
         inline decltype(owner) GetOwner() const{
             return owner;
+        }
+        
+        inline entity_t get_id() const{
+            return GetOwner().id;
         }
     };
 }

@@ -262,7 +262,7 @@ namespace RavEngine {
             return en;
         }
         
-        template<typename ... A, typename func, bool IncludeOwner = false>
+        template<typename ... A, typename func>
         inline void Filter(const func& f){
             constexpr auto n_types = sizeof ... (A);
             static_assert(n_types > 0, "Must supply a type to query for");
@@ -273,12 +273,7 @@ namespace RavEngine {
                 auto mainFilter = GetRange<primary_t>();
                 for(size_t i = 0; i < mainFilter->DenseSize(); i++){
                     auto& item = mainFilter->Get(i);
-                    if constexpr (IncludeOwner){
-                        f(Entity(mainFilter->GetOwner(i)),item);
-                    }
-                    else{
-                        f(item);
-                    }
+                    f(GetCurrentFPSScale(),item);
                 }
             }
             else{
@@ -291,7 +286,7 @@ namespace RavEngine {
                         bool satisfies = true;
                         (FilterValidityCheck<A>(owner, ptrs[Index_v<A, A...>], satisfies), ...);
                         if (satisfies){
-                            f(FilterComponentGet<A>(i,ptrs[Index_v<A, A...>])...);
+                            f(GetCurrentFPSScale(),FilterComponentGet<A>(i,ptrs[Index_v<A, A...>])...);
                         }
                     }
                 }
@@ -321,9 +316,22 @@ namespace RavEngine {
         }
         
         ~World();
-	public:
+        
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
+        
+        template<typename T, typename ... A>
+        inline void EmplaceSystem(const T& system){
+            //TODO: FIX (parallelize this with for_each)
+            // need 2 things:
+                // iterator update
+                // for-each w/ function
+            
+            ECSTasks.emplace([this,system](){
+                Filter<A...>(system);
+            }).name(typeid(T).name());
+        }
+        
 	private:
 		std::atomic<bool> isRendering = false;
 		char worldIDbuf [id_size];
@@ -332,13 +340,27 @@ namespace RavEngine {
         tf::Taskflow ECSTasks;
         tf::Task renderTaskModule;
         tf::Task ECSTaskModule;
+        
+        struct TypeErasureIterator{
+            constexpr static auto size = sizeof(SparseSet<size_t>::const_iterator);
+            
+            char begin[size];
+            char end[size];
+            
+            template<typename T>
+            TypeErasureIterator(const T begin, const T end){
+                // copy-construct into the buffers
+                new (begin) decltype(begin)(begin);
+                new (end) decltype(end)(end);
+            }
+        };
+        
+        
         SparseSet<struct StaticMesh>::const_iterator geobegin, geoend;
         SparseSet<struct Transform>::const_iterator transformbegin,transformend;
         SparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
         SparseSet<struct SkinnedMeshComponent>::const_iterator skinnedgeobegin, skinnedgeoend;
-        struct EngTasks{
-           
-        } EngTasks;
+        
         		
 		void CreateFrameData();
 		

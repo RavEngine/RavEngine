@@ -115,7 +115,7 @@ namespace RavEngine {
 			root->isDirty = true;
 			
 			for(auto& t : root->children){
-				MarkAsDirty(t.Get());
+				MarkAsDirty(t.get());
 			}
 			
 			root->childModifyLock.unlock();

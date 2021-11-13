@@ -178,7 +178,7 @@ namespace RavEngine {
 		protected:
 			axisCallback func;		//the lambda to invoke
 			void* func_addr = nullptr;		//used for equality comparison
-			WeakRef<void> bound_object; //used for determining validity
+			uint32_t id; //used for determining validity
 			CID controller;
 			float deadzone = 0;
 		public:
@@ -191,8 +191,7 @@ namespace RavEngine {
 			 @param dz the binding deadzone filter range
 			 @param scale the scale factor to apply to the passed value
 			 */
-			template<typename U>
-			AxisBinding(Ref<U> thisptr, axisCallback fn, void* addr, CID c, float dz): bound_object(thisptr), func(fn), func_addr(addr), controller(c),deadzone(dz){}
+			AxisBinding(decltype(id) id, axisCallback fn, void* addr, CID c, float dz): id(id), func(fn), func_addr(addr), controller(c),deadzone(dz){}
 			
 			/**
 			 Execute this ActionBinding
@@ -206,11 +205,12 @@ namespace RavEngine {
 				}
 			}
             inline bool IsValid() const{
-				return ! bound_object.expired();
+                return true;
+				//return ! bound_object.expired();
 			}
 			
             constexpr inline bool operator==(const AxisBinding& other) const{
-				return deadzone == other.deadzone && controller == other.controller && bound_object.lock() == other.bound_object.lock() && func_addr == other.func_addr;
+				return deadzone == other.deadzone && controller == other.controller && id == other.id && func_addr == other.func_addr;
 			}
 		};
 		
@@ -357,13 +357,12 @@ namespace RavEngine {
 		 @param f the method to invoke when the action is triggered. Must take one float parameter. Use &Classname::Methodname.
 		 @param deadZone the minimum value (+/-) required to activate this binding
          */
-        template<typename U>
-		inline void BindAxis(const std::string& name, Ref<U> thisptr, void(U::* f)(float), CID controllers, float deadZone = 0) {
-			WeakRef<U> weak(thisptr);
-			auto func = [=](float amt){
-				(weak.lock().get()->*f)(amt);
+        template<typename U, typename T>
+		inline void BindAxis(const std::string& name, T thisptr, void(U::* f)(float), CID controllers, float deadZone = 0) {
+			auto func = [=](float amt) mutable{
+				(thisptr.get()->*f)(amt);
 			};
-			AxisBinding ab(thisptr, func, &f, controllers, deadZone);
+			AxisBinding ab(thisptr.get_id(), func, &f, controllers, deadZone);
 			
 			AxisBindings[name].bindings.push_back(ab);
         }
@@ -375,13 +374,12 @@ namespace RavEngine {
 		 @param f the method to invoke when the action is triggered. Must take no parameters. Use &Classname::Methodname.
 		 @param state the state to use to match the callback
 		 */
-		template<typename U>
-		inline void UnbindAction(const std::string& name, Ref<U> thisptr, void(U::* f)(), ActionState type, CID controllers){
-			WeakRef<U> weak(thisptr);
+		template<typename U, typename T>
+		inline void UnbindAction(const std::string& name, T thisptr, void(U::* f)(), ActionState type, CID controllers){
 			auto binding = [=](){
-				(weak.lock().get()->*f)();
+				(thisptr.get()->*f)();
 			};
-			ActionBinding ab(thisptr,binding,&f,controllers,type);
+			ActionBinding ab(thisptr.get_id(),binding,&f,controllers,type);
 			
 			ActionBindings[name].remove(ab);	//remove the first binding that compares equal
 		}

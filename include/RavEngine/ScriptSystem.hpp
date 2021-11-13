@@ -7,8 +7,8 @@
 namespace RavEngine {
 	class ScriptSystem : public AutoCTTI {
 	public:
-		inline void Tick(float fpsScale, const Ref<ScriptComponent> c) const{
-			c->Tick(fpsScale);
+		inline void operator()(float fpsScale, ScriptComponent& c) const{
+			c.Tick(fpsScale);
 		}
 	};
 }
