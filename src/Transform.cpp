@@ -7,7 +7,7 @@ using namespace std;
 using namespace glm;
 using namespace RavEngine;
 
-void Transform::AddChild(ComponentHandle<Transform>& child)
+void Transform::AddChild(ComponentHandle<Transform> child)
 {
 	childModifyLock.lock();
     auto cptr = child.Get();
@@ -22,7 +22,7 @@ void Transform::AddChild(ComponentHandle<Transform>& child)
 	childModifyLock.unlock();
 }
 
-void Transform::RemoveChild(ComponentHandle<Transform>& child)
+void Transform::RemoveChild(ComponentHandle<Transform> child)
 {
 	childModifyLock.lock();
     auto cptr = child.Get();

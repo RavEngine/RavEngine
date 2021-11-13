@@ -85,6 +85,7 @@ namespace RavEngine {
             }
 
             inline T& GetComponent(entity_t local_id){
+                assert(HasComponent(local_id));
                 return dense_set[sparse_set[local_id]];
             }
             

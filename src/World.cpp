@@ -28,8 +28,15 @@ using namespace std;
 using namespace RavEngine;
 
 static const ComponentStore<phmap::NullMutex>::entry_type emptyContainer;    // used if the query returns nothing and should be skipped
-static const World::SparseSet<StaticMesh> staticEmptyContainer;
-static const World::SparseSet<Transform> staticTransformEmptyContainer;
+
+template<typename T>
+static const World::SparseSet<T> staticEmptyContainer;
+
+template<typename T>
+static inline void SetEmpty(typename World::SparseSet<T>::const_iterator& begin, typename World::SparseSet<T>::const_iterator& end){
+    begin = staticEmptyContainer<T>.begin();
+    end = staticEmptyContainer<T>.end();
+}
 
 void RavEngine::World::Tick(float scale) {
 	
@@ -268,10 +275,8 @@ void World::FillFramedata(){
 	});
 	
 	//opaque geometry
-	geobegin = staticEmptyContainer.begin();
-	geoend = staticEmptyContainer.end();
-    transformbegin = staticTransformEmptyContainer.begin();
-    transformend = staticTransformEmptyContainer.end();
+    SetEmpty<StaticMesh>(geobegin,geoend);
+    SetEmpty<Transform>(transformbegin,transformend);
 	skinnedgeobegin = emptyContainer.begin();
 	skinnedgeoend = emptyContainer.end();
     
@@ -281,16 +286,14 @@ void World::FillFramedata(){
             geoend = geometry.value()->end();
         }
         else{
-            geobegin = staticEmptyContainer.end();
-            geoend = staticEmptyContainer.end();
+            SetEmpty<StaticMesh>(geobegin,geoend);
         }
         if (auto transforms = GetAllComponentsOfType<Transform>()){
             transformbegin = transforms.value()->begin();
             transformend = transforms.value()->end();
         }
         else{
-            transformbegin = staticTransformEmptyContainer.begin();
-            transformend = staticTransformEmptyContainer.end();
+            SetEmpty<Transform>(transformbegin,transformend);
         }
         //TODO: FIX
 //        if(auto skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
@@ -313,14 +316,12 @@ void World::FillFramedata(){
 	});
 	
 	// update matrix caches
-    //TODO: FIX
 	auto updateMatrix = [](const Transform& c) {
         c.CalculateWorldMatrix();
 	};
 	auto matcalc = masterTasks.for_each(std::ref(transformbegin), std::ref(transformend), updateMatrix);
 	
 	//sort into the hashmap
-    //TODO: FIX
 	auto sort = masterTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
 		auto current = App::GetCurrentFramedata();
         if (e.Enabled) {
@@ -330,6 +331,7 @@ void World::FillFramedata(){
             item.AddItem(mat);
         }
 	});
+    //TODO: FIX
 //	auto sortskinned = masterTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const Ref<Component>& e){
 //        auto m = static_cast<SkinnedMeshComponent*>(e.get());
 //        auto ptr = e->GetOwner().lock();

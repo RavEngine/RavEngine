@@ -93,13 +93,13 @@ namespace RavEngine {
 		Add a transform as a child object of this transform
 		@param child weak reference to the child object
 		*/
-		void AddChild(ComponentHandle<Transform>& child);
+		void AddChild(ComponentHandle<Transform> child);
 
 		/**
 		Remove a transform as a child object of this transform. This does not check if the passed object is actually a child.
 		@param child weak reference to the child object
 		*/
-		void RemoveChild(ComponentHandle<Transform>& child);
+		void RemoveChild(ComponentHandle<Transform> child);
 
 	protected:
 		LockFreeAtomic<vector3,phmap::NullMutex> position;

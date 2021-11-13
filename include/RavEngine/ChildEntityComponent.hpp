@@ -1,23 +1,22 @@
 #pragma once
 
-#include "Component.hpp"
 #include "Queryable.hpp"
+#include "Entity.hpp"
 
 namespace RavEngine{
-struct Entity;
 /**
  Create an entity association. When the owner entity is spawned or destroyed, this entity will also be spawned / destroyed with it.
  Allows prefab-like design.
  */
-class ChildEntityComponent : public Component, public Queryable<ChildEntityComponent>{
+class ChildEntityComponent : public Queryable<ChildEntityComponent>, public AutoCTTI{
+protected:
+    Entity child;
 public:
-	ChildEntityComponent(Ref<Entity> e) : child(e){}
+	ChildEntityComponent(decltype(child) e) : child(e){}
 	
-	Ref<Entity> GetEntity()const{
+	decltype(child) GetEntity()const{
 		return child;
 	}
-	
-protected:
-	Ref<Entity> child;
+
 };
 }

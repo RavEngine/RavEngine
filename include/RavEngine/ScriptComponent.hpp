@@ -3,14 +3,18 @@
 #include "Transform.hpp"
 #include "Queryable.hpp"
 #include "Entity.hpp"
+#include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
 	class World;
 	/**
 	Define an Entity-side Script which can contain code. Subclass to add behavior. Be sure to invoke the base class constructor!
 	*/
-	class ScriptComponent : public Component, public Queryable<ScriptComponent> {
+	class ScriptComponent : public ComponentWithOwner,  public Queryable<ScriptComponent> {
 	public:
+        
+        ScriptComponent(entity_t owner) : ComponentWithOwner(owner){}
+        
 		/**
 		Override to provide cleanup behavior.
 		*/
@@ -33,40 +37,18 @@ namespace RavEngine {
 		virtual void Tick(float fpsScale) = 0;
 
 		/**
-		Mark the current entity for destruction. It will be destroyed after the current frame.
-		@return true if the entity was successfully marked for destruction, false otherwise
-		*/
-		bool Destroy();
-
-		/**
-		 Check if the owning Entity has been spawned
-		 @return true if the entity is in the world, false otherwise
-		 */
-		bool IsInWorld();
-
-		/**
-		@return true if the current ScriptComponent is attached to an Entity, false otherwise.
-		*/
-        inline bool IsAttached() {
-			return !GetOwner().expired();
-		}
-
-		/**
 		Shortcut to get the transform component of the attached entity
 		@throws if the script is not attached to any entity.
 		*/
 		Transform& GetTransform();
-		
-		inline Ref<Entity> GetEntity(){
-			return GetOwner().lock();
-		}
-
+        
 		/**
 		Shortcut to get a component on the Entity
 		*/
-		template<typename T>
-		inline std::optional<Ref<T>> GetComponent() {
-			return GetEntity()->GetComponent<T>();
-		}
+        //TODO: FIX
+//		template<typename T>
+//		inline std::optional<Ref<T>> GetComponent() {
+//			return GetEntity()->GetComponent<T>();
+//		}
 	};
 }
