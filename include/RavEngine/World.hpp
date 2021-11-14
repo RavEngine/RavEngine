@@ -268,6 +268,7 @@ namespace RavEngine {
         
         template<typename ... A, typename func>
         inline void Filter(const func& f){
+            auto scale = GetCurrentFPSScale();
             constexpr auto n_types = sizeof ... (A);
             static_assert(n_types > 0, "Must supply a type to query for");
             
@@ -277,7 +278,7 @@ namespace RavEngine {
                 auto mainFilter = GetRange<primary_t>();
                 for(size_t i = 0; i < mainFilter->DenseSize(); i++){
                     auto& item = mainFilter->Get(i);
-                    f(GetCurrentFPSScale(),item);
+                    f(scale,item);
                 }
             }
             else{
@@ -290,7 +291,7 @@ namespace RavEngine {
                         bool satisfies = true;
                         (FilterValidityCheck<A>(owner, ptrs[Index_v<A, A...>], satisfies), ...);
                         if (satisfies){
-                            f(GetCurrentFPSScale(),FilterComponentGet<A>(owner,ptrs[Index_v<A, A...>])...);
+                            f(scale,FilterComponentGet<A>(owner,ptrs[Index_v<A, A...>])...);
                         }
                     }
                 }
