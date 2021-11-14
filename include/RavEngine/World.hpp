@@ -251,7 +251,12 @@ namespace RavEngine {
        
         template<typename T>
         inline void* FilterGetSparseSet(){
-            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>();
+            return MakeIfNotExists<T>();
+        }
+        
+        template<typename T>
+        inline SparseSet<T>* FilterGetSparseSetTyped(){
+            return MakeIfNotExists<T>();
         }
         
         entity_t CreateEntity();
@@ -346,16 +351,25 @@ namespace RavEngine {
         
         template<typename T, typename ... A, typename ... Args>
         inline tf::Task EmplaceSystem(Args... args){
-            //TODO: FIX (parallelize this with for_each)
-            // need 2 things:
-                // iterator update
-                // for-each w/ function
-            
             T system(args...);
             
-            return ECSTasks.emplace([this,system](){
-                Filter<A...>(system);
-            }).name(typeid(T).name());
+            auto ptr = &ecsRangeSizes[CTTI<T>()];
+            
+            auto fd = GenFilterData<A...>(system);
+            auto setptr = fd.getMainFilter();
+            
+            // value update
+            auto range_update = ECSTasks.emplace([this,ptr,setptr](){
+                *ptr = setptr->DenseSize();
+            });
+            
+            auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,system,fd](auto i){
+                auto scale = GetCurrentFPSScale();
+                FilterOne<A...>(system,fd.ptrs,i,scale);
+            });
+            range_update.precede(do_task);
+            
+            return range_update;
         }
         
         template<typename T, typename ... A, typename interval_t, typename ... Args>
@@ -410,6 +424,7 @@ namespace RavEngine {
              std::chrono::time_point<e_clock_t> last_timestamp = e_clock_t::now();
         };
         UnorderedNodeMap<ctti_t, TimedSystemEntry> timedSystemRecords;
+        UnorderedNodeMap<ctti_t, pos_t> ecsRangeSizes;
         		
 		void CreateFrameData();
 		
