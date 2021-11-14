@@ -255,6 +255,44 @@ namespace RavEngine {
         }
         
         entity_t CreateEntity();
+        
+        template<typename ... A, size_t n_types, typename func>
+        inline void FilterOne(const func& f, const std::array<void*,n_types>& ptrs, size_t i, float scale){
+            using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
+            auto mainFilter = static_cast<SparseSet<primary_t>*>(ptrs[0]);
+            if constexpr(n_types == 1){
+                auto& item = mainFilter->Get(i);
+                f(scale,item);
+            }
+            else{
+                const auto owner = mainFilter->GetOwner(i);
+                if (EntityIsValid(owner)){
+                    bool satisfies = true;
+                    (FilterValidityCheck<A>(owner, ptrs[Index_v<A, A...>], satisfies), ...);
+                    if (satisfies){
+                        f(scale,FilterComponentGet<A>(owner,ptrs[Index_v<A, A...>])...);
+                    }
+                }
+            }
+        }
+        
+        template<typename ... A, typename func>
+        inline auto GenFilterData(const func& fn){
+            constexpr auto n_types = sizeof ... (A);
+            static_assert(n_types > 0, "Must supply a type to query for");
+            
+            using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
+
+            struct FilterData{
+                std::array<void*, n_types> ptrs;
+                
+                inline auto getMainFilter() const{
+                    return static_cast<SparseSet<primary_t>*>(ptrs[0]);
+                }
+            } data {FilterGetSparseSet<A>()...};
+                        
+            return data;
+        }
 
     public:
         template<typename T, typename ... A>
@@ -269,32 +307,13 @@ namespace RavEngine {
         template<typename ... A, typename func>
         inline void Filter(const func& f){
             auto scale = GetCurrentFPSScale();
-            constexpr auto n_types = sizeof ... (A);
-            static_assert(n_types > 0, "Must supply a type to query for");
             
-            using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
+            auto fd = GenFilterData<A...>(f);
             
-            if constexpr (n_types == 1){
-                auto mainFilter = GetRange<primary_t>();
-                for(size_t i = 0; i < mainFilter->DenseSize(); i++){
-                    auto& item = mainFilter->Get(i);
-                    f(scale,item);
-                }
-            }
-            else{
-                std::array<void*, n_types> ptrs{ FilterGetSparseSet<A>()...};
-                auto mainFilter = static_cast<SparseSet<primary_t>*>(ptrs[0]);
-                // does this entity have all of the other required components?
-                for(size_t i = 0; i < mainFilter->DenseSize(); i++){
-                    const auto owner = mainFilter->GetOwner(i);
-                    if (EntityIsValid(owner)){
-                        bool satisfies = true;
-                        (FilterValidityCheck<A>(owner, ptrs[Index_v<A, A...>], satisfies), ...);
-                        if (satisfies){
-                            f(scale,FilterComponentGet<A>(owner,ptrs[Index_v<A, A...>])...);
-                        }
-                    }
-                }
+            auto mainFilter = fd.getMainFilter();
+
+            for(size_t i = 0; i < mainFilter->DenseSize(); i++){
+                FilterOne<A...>(f,fd.ptrs,i,scale);
             }
         }
         
