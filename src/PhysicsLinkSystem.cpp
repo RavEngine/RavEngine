@@ -10,32 +10,28 @@
 #include "Entity.hpp"
 using namespace RavEngine;
 
-void PhysicsLinkSystemRead::Tick(float fpsScale, const Ref<RigidBodyDynamicComponent> c, Ref<Transform> tr) {
+void PhysicsLinkSystemRead::operator()(float fpsScale, const RigidBodyDynamicComponent& rigid, Transform& transform) const{
         //physx requires reads and writes to be sequential
         
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
-        auto rigid = c.get();
-        auto transform = tr.get();
         dynamicsWorld->lockRead();
-        auto pos = rigid->getPos();
-        auto rot = rigid->getRot();
+        auto pos = rigid.getPos();
+        auto rot = rigid.getRot();
         dynamicsWorld->unlockRead();
-        transform->SetWorldPosition(pos);
-        transform->SetWorldRotation(rot);
+        transform.SetWorldPosition(pos);
+        transform.SetWorldRotation(rot);
 }
 
-void PhysicsLinkSystemWrite::Tick(float fpsScale, Ref<PhysicsBodyComponent> c, const Ref<Transform> tr) {
+void PhysicsLinkSystemWrite::operator()(float fpsScale, PhysicsBodyComponent& rigid, const Transform& transform) const{
 
         //physx requires reads and writes to be sequential
 
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
-        auto transform = tr.get();
-        auto pos = transform->GetWorldPosition();
-        auto rot = transform->GetWorldRotation();
-        auto rigid = c.get();
+        auto pos = transform.GetWorldPosition();
+        auto rot = transform.GetWorldRotation();
         dynamicsWorld->lockWrite();
-        rigid->setPos(pos);
-        rigid->setRot(rot);
+        rigid.setPos(pos);
+        rigid.setRot(rot);
         dynamicsWorld->unlockWrite();
 }
 

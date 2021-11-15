@@ -79,21 +79,28 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
 {
     for (PxU32 i = 0; i < nbPairs; ++i) {
         const PxContactPair& contactpair = pairs[i];
+        
+        //if these actors do not exist in the scene anymore due to deallocation, do not process
+        if(pairHeader.actors[0]->userData == nullptr || pairHeader.actors[1]->userData == nullptr){
+            continue;
+        }
 
+        Entity actor1_e, actor2_e;
+        
         //get the physics body component stored in the user data (non-owning pointer!)
-        auto actor1 = (Ref<PhysicsBodyComponent>*)pairHeader.actors[0]->userData;
-        auto actor2 = (Ref<PhysicsBodyComponent>*)pairHeader.actors[1]->userData;
+        std::memcpy(&actor1_e, &pairHeader.actors[0]->userData, sizeof(actor1_e));
+        std::memcpy(&actor2_e, &pairHeader.actors[1]->userData, sizeof(actor2_e));
 
-		//if these actors do not exist in the scene anymore due to deallocation, do not process
-		if(actor1 == nullptr || actor2 == nullptr){
-			continue;
-		}
+        
+        auto& actor1 = actor1_e.GetComponent<PhysicsBodyComponent>();
+        auto& actor2 = actor2_e.GetComponent<PhysicsBodyComponent>();
 
+		
         size_t numContacts = 0;
         stackarray(contactPoints, ContactPairPoint, contactpair.contactCount);
         {
             // do we need contact data?
-            if ((*actor1)->GetWantsContactData() || (*actor2)->GetWantsContactData()) {
+            if (actor1.GetWantsContactData() || actor2.GetWantsContactData()) {
                 stackarray(points, PxContactPairPoint, contactpair.contactCount);
                 auto count = contactpair.extractContacts(points, contactpair.contactCount);
                 for (int i = 0; i < contactpair.contactCount; i++) {
@@ -106,18 +113,18 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
         //invoke events
         if (contactpair.events & PxPairFlag::eNOTIFY_TOUCH_FOUND) {
 
-            (*actor1)->OnColliderEnter(*actor2,contactPoints, numContacts);
-            (*actor2)->OnColliderEnter(*actor1, contactPoints, numContacts);
+            actor1.OnColliderEnter(actor2,contactPoints, numContacts);
+            actor2.OnColliderEnter(actor1, contactPoints, numContacts);
         }
 
         if (contactpair.events & PxPairFlag::eNOTIFY_TOUCH_LOST) {
-            (*actor1)->OnColliderExit(*actor2, contactPoints, numContacts);
-            (*actor2)->OnColliderExit(*actor1, contactPoints, numContacts);
+            actor1.OnColliderExit(actor2, contactPoints, numContacts);
+            actor2.OnColliderExit(actor1, contactPoints, numContacts);
         }
 
         if (contactpair.events & PxPairFlag::eNOTIFY_TOUCH_PERSISTS) {
-            (*actor1)->OnColliderPersist(*actor2, contactPoints, numContacts);
-            (*actor2)->OnColliderPersist(*actor1, contactPoints, numContacts);
+            actor1.OnColliderPersist(actor2, contactPoints, numContacts);
+            actor2.OnColliderPersist(actor1, contactPoints, numContacts);
         }
 
     }
@@ -132,23 +139,29 @@ void PhysicsSolver::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
             continue;
         }
 		
-		auto other = (Ref<PhysicsBodyComponent>*)cp.otherActor->userData;
-		auto trigger = (Ref<PhysicsBodyComponent>*)cp.triggerActor->userData;
-		
-		//if these actors do not exist in the scene anymore due to deallocation, do not process
-		if(other == nullptr || trigger == nullptr){
-			continue;
-		}
-		
+        //if these actors do not exist in the scene anymore due to deallocation, do not process
+        if(cp.otherActor->userData == nullptr || cp.triggerActor->userData == nullptr){
+            continue;
+        }
+        
+        Entity other_e;
+        Entity trigger_e;
+        
+        memcpy(&other_e, &cp.otherActor->userData, sizeof(other_e));
+        memcpy(&trigger_e, &cp.triggerActor->userData, sizeof(trigger_e));
+    
+        auto& other = other_e.GetComponent<PhysicsBodyComponent>();
+        auto& trigger = trigger_e.GetComponent<PhysicsBodyComponent>();
+
 		//process events
 		if(cp.status & (PxPairFlag::eNOTIFY_TOUCH_FOUND)){
-			(*other)->OnTriggerEnter(*trigger);
-			(*trigger)->OnTriggerEnter(*other);
+			other.OnTriggerEnter(trigger);
+			trigger.OnTriggerEnter(other);
 		}
 		
 		if(cp.status & (PxPairFlag::eNOTIFY_TOUCH_LOST)){
-			(*other)->OnTriggerExit(*trigger);
-			(*trigger)->OnTriggerExit(*other);
+			other.OnTriggerExit(trigger);
+			trigger.OnTriggerExit(other);
 		}
     }
 }
@@ -203,21 +216,18 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
  Make the physics system aware of an object
  @param e the entity to add
  */
-void PhysicsSolver::Spawn(Ref<Entity> e){
-    if (e->HasComponent<PhysicsBodyComponent>()) {
-        auto& actor = e->GetComponent<PhysicsBodyComponent>();
-        if (actor.rigidActor->userData == nullptr){
-            //TODO: FIX
-            //actor.rigidActor->userData = new Ref<PhysicsBodyComponent>(actor);    //must be dynamically allocated here
-        }
-		scene->lockWrite();
-        scene->addActor(*(actor.rigidActor));
-		scene->unlockWrite();
+void PhysicsSolver::Spawn(PhysicsBodyComponent& actor){
+    auto e = actor.GetOwner();
+    if (actor.rigidActor->userData == nullptr){
+        memcpy(&actor.rigidActor->userData, &e, sizeof(e)); // store the ID inside the userdata variable (NOT a pointer)
+    }
+    scene->lockWrite();
+    scene->addActor(*(actor.rigidActor));
+    scene->unlockWrite();
 
-        //set filtering on the actor if its filtering is not disabled
-        if (actor.filterGroup != -1 && actor.filterMask != -1) {
-            setupFiltering(actor.rigidActor, actor.filterGroup, actor.filterMask);
-        }
+    //set filtering on the actor if its filtering is not disabled
+    if (actor.filterGroup != -1 && actor.filterMask != -1) {
+        setupFiltering(actor.rigidActor, actor.filterGroup, actor.filterMask);
     }
 }
 
@@ -225,13 +235,10 @@ void PhysicsSolver::Spawn(Ref<Entity> e){
  Remove the entity from the physics system. This does NOT destroy it in the World.
  @param e the entity to remove
  */
-void PhysicsSolver::Destroy(Ref<Entity> e){
-	if (e->HasComponent<PhysicsBodyComponent>()){
-		auto& body = e->GetComponent<PhysicsBodyComponent>();
-        scene->lockWrite();
-        scene->removeActor(*(body.rigidActor));
-        scene->unlockWrite();
-	}
+void PhysicsSolver::Destroy(PhysicsBodyComponent& body){
+    scene->lockWrite();
+    scene->removeActor(*(body.rigidActor));
+    scene->unlockWrite();
 }
 
 /**

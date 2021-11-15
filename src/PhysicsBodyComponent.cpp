@@ -7,6 +7,7 @@
 #include "Transform.hpp"
 #include "Entity.hpp"
 #include "IPhysicsActor.hpp"
+#include "Entity.hpp"
 
 using namespace physx;
 using namespace RavEngine;
@@ -19,16 +20,35 @@ static inline PxQuat convertQuat(const quaternion& q) {
 	return PxQuat(q.x, q.y, q.z, q.w);
 }
 
-/// Dynamic Body ========================================
+PhysicsBodyComponent::PhysicsBodyComponent(entity_t owner) : ComponentWithOwner(owner){}
 
-RigidBodyDynamicComponent::RigidBodyDynamicComponent() {
-	rigidActor = PhysicsSolver::phys->createRigidDynamic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
+void PhysicsBodyComponent::CompleteConstruction(){
+    GetOwner().GetWorld()->Solver.Spawn(*this);
 }
 
-void RavEngine::PhysicsBodyComponent::AddHook(const WeakRef<RavEngine::Entity>& e)
-{
-    setPos(e.lock()->GetTransform().GetWorldPosition());
-    setRot(e.lock()->GetTransform().GetWorldRotation());
+PhysicsBodyComponent::~PhysicsBodyComponent(){
+    
+}
+
+void PhysicsBodyComponent::OnDestroy(){
+    //note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
+    if (rigidActor != nullptr) {
+        auto e = GetOwner();
+        e.GetWorld()->Solver.Destroy(*this);
+        rigidActor->userData = nullptr;
+        rigidActor->release();
+    }
+}
+
+/// Dynamic Body ========================================
+
+RigidBodyDynamicComponent::RigidBodyDynamicComponent(entity_t owner) : PhysicsBodyComponent(owner) {
+	rigidActor = PhysicsSolver::phys->createRigidDynamic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
+    CompleteConstruction();
+    Entity e(owner);
+    assert(e.HasComponent<Transform>());    // must already have a transform!
+    setPos(e.GetTransform().GetWorldPosition());
+    setRot(e.GetTransform().GetWorldRotation());
 }
 
 void RavEngine::PhysicsBodyComponent::AddReceiver(Ref<IPhysicsActor> obj)
@@ -39,16 +59,6 @@ void RavEngine::PhysicsBodyComponent::AddReceiver(Ref<IPhysicsActor> obj)
 void RavEngine::PhysicsBodyComponent::RemoveReceiver(Ref<IPhysicsActor> obj)
 {
 	receivers.erase(obj);
-}
-
-RavEngine::PhysicsBodyComponent::~PhysicsBodyComponent()
-{
-	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
-	if (rigidActor != nullptr) {
-		delete ((Ref<PhysicsBodyComponent>*)rigidActor->userData);	//free the dynamically-allocated shared_ptr
-		rigidActor->userData = nullptr;
-		rigidActor->release();
-	}
 }
 
 vector3 PhysicsBodyComponent::getPos() const {
@@ -184,53 +194,58 @@ bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
 	return static_cast<PxRigidDynamic*>(rigidActor)->isSleeping();
 }
 
-void PhysicsBodyComponent::OnColliderEnter(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
+void PhysicsBodyComponent::OnColliderEnter(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-		if (strong){
-			strong->OnColliderEnter(other, contactPoints,numContactPoints);
-		}
+        //TODO: FIX
+//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
+//		if (strong){
+//			strong->OnColliderEnter(other, contactPoints,numContactPoints);
+//		}
 	}
 }
 
-void PhysicsBodyComponent::OnColliderPersist(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
+void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-		if (strong){
-			strong->OnColliderPersist(other, contactPoints, numContactPoints);
-		}
+        //TODO: FIX
+//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
+//		if (strong){
+//			strong->OnColliderPersist(other, contactPoints, numContactPoints);
+//		}
 	}
 }
 
-void PhysicsBodyComponent::OnColliderExit(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints)
+void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-		if (strong){
-			strong->OnColliderExit(other, contactPoints, numContactPoints);
-		}
+        //TODO: FIX
+//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
+//		if (strong){
+//			strong->OnColliderExit(other, contactPoints, numContactPoints);
+//		}
 	}
 }
 
 
-void PhysicsBodyComponent::OnTriggerEnter(Ref<PhysicsBodyComponent> other){
+void PhysicsBodyComponent::OnTriggerEnter(PhysicsBodyComponent& other){
 	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-		if (strong){
-			strong->OnTriggerEnter(other);
-		}
+        //TODO: FIX
+//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
+//		if (strong){
+//			strong->OnTriggerEnter(other);
+//		}
 	}
 }
 
-void PhysicsBodyComponent::OnTriggerExit(Ref<PhysicsBodyComponent> other){
-	for (auto& reciever : receivers) {
-		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-		if (strong){
-			strong->OnTriggerExit(other);
-		}
-	}
+void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent& other){
+    //TODO: FIX
+//	for (auto& reciever : receivers) {
+//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
+//		if (strong){
+//			strong->OnTriggerExit(other);
+//		}
+//	}
 }
 
 void RigidBodyDynamicComponent::SetMass(decimalType mass){
@@ -278,8 +293,9 @@ void RigidBodyDynamicComponent::ClearAllTorques(){
 }
 
 /// Static Body ========================================
-RigidBodyStaticComponent::RigidBodyStaticComponent() {
+RigidBodyStaticComponent::RigidBodyStaticComponent(entity_t owner) : PhysicsBodyComponent(owner) {
 	rigidActor = PhysicsSolver::phys->createRigidStatic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
+    CompleteConstruction();
 }
 
 RigidBodyStaticComponent::~RigidBodyStaticComponent() {

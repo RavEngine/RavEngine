@@ -59,6 +59,8 @@ RavEngine::World::World(bool skip){
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
 //        systemManager.EmplaceSystem<RPCSystem>();
 //        systemManager.EmplaceSystem<AnimatorSystem>();
+        //    systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
+        //    systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
         skybox = make_shared<Skybox>();
     }
 }
@@ -69,15 +71,6 @@ RavEngine::World::World(bool skip){
 //		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
 //		if (scr){
 //			scr->Start();
-//			return;
-//		}
-//	}
-//	//is this a physics body? if so, call physics simulator to create it
-//	{
-//		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
-//		auto parent = comp->GetOwner().lock();
-//		if (phys && parent){
-//			Solver.Spawn(parent);
 //			return;
 //		}
 //	}
@@ -98,15 +91,6 @@ RavEngine::World::World(bool skip){
 //		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
 //		if (scr){
 //			scr->Stop();
-//			return;
-//		}
-//	}
-//	//is this a physics body? if so, call physics simulator to stop it
-//	{
-//		auto phys = dynamic_pointer_cast<PhysicsBodyComponent>(comp);
-//		auto parent = comp->GetOwner().lock();
-//		if (phys && parent){
-//			Solver.Destroy(parent);
 //			return;
 //		}
 //	}
@@ -143,9 +127,6 @@ bool RavEngine::World::InitPhysics() {
 	if (physicsActive){
 		return false;
 	}
-	
-//	systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
-//	systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
 	
 	physicsActive = true;
 
@@ -186,15 +167,17 @@ void World::SetupTaskGraph(){
     doAsync.precede(cleanupRanAsync);
     
 	//TODO: FIX (use conditional tasking)
-	if (physicsActive){
+	//if (physicsActive){
 		//add the PhysX tick, must run after write but before read
 		auto RunPhysics = masterTasks.emplace([this]{
 			Solver.Tick(GetCurrentFPSScale());
 		}).name("PhysX Tick");
-        //TODO: FIX
-//		RunPhysics.precede(graphs[CTTI<PhysicsLinkSystemRead>()].task).name("PhysicsLinkSystemRead");
-//		RunPhysics.succeed(graphs[CTTI<PhysicsLinkSystemWrite>()].task).name("PhysicsLinkSystemWrite");
-	}
+    
+        auto read = EmplaceSystem<PhysicsLinkSystemRead, RigidBodyDynamicComponent,Transform>(Solver.scene).name("Physics Link System Read");
+        auto write = EmplaceSystem<PhysicsLinkSystemWrite, PhysicsBodyComponent,Transform>(Solver.scene).name("Physics Link System Write");
+        RunPhysics.precede(read);
+		RunPhysics.succeed(write);
+	//}
 }
 
 void World::setupRenderTasks(){

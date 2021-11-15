@@ -11,6 +11,7 @@
 #include <phmap.h>
 #include "Queryable.hpp"
 #include <PxSimulationEventCallback.h>
+#include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
 	// stores contact points
@@ -28,17 +29,21 @@ namespace RavEngine {
 		ContactPairPoint(){}
 	};
 
-	class PhysicsBodyComponent : public Component, public Queryable<PhysicsBodyComponent>
+	class PhysicsBodyComponent : public ComponentWithOwner, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
         UnorderedSet<WeakPtrKey<IPhysicsActor>> receivers;
+        void CompleteConstruction();
 	public:
 		physx::PxRigidActor* rigidActor = nullptr;
 		physx::PxU32 filterGroup = -1;
 		physx::PxU32 filterMask = -1;
-
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
-
+        
+        PhysicsBodyComponent(entity_t owner);
+        virtual ~PhysicsBodyComponent();
+        
+        void OnDestroy();
+        
 		/**
 		Add a recipient for collision events. Must implement IPhysicsActor.
 		@param obj the interface implementer to recieve the events
@@ -51,7 +56,6 @@ namespace RavEngine {
 		*/
 		void RemoveReceiver(Ref<IPhysicsActor> obj);
 
-		virtual ~PhysicsBodyComponent();
 		virtual vector3 getPos() const;
 		virtual quaternion getRot() const;
 		virtual void setPos(const vector3&);
@@ -84,7 +88,7 @@ namespace RavEngine {
 		@param contactPoints the contact point data. Do not hold onto this pointer, because after this call, the pointer is invalid.
 		@param numContactPoints the number of contact points. Set to 0 if wantsContactData is false.
 		*/
-		void OnColliderEnter(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints);
+		void OnColliderEnter(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints);
 
 		/**
 		Invoked when a collider has collided with another body for multiple frames
@@ -92,7 +96,7 @@ namespace RavEngine {
 		@param contactPoints the contact point data. Do not hold onto this pointer, because after this call, the pointer is invalid.
 		@param numContactPoints the number of contact points. Set to 0 if wantsContactData is false.
 		*/
-		void OnColliderPersist(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints);
+		void OnColliderPersist(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints);
 
 		/**
 		Invoked when a collider has exited another collider
@@ -100,19 +104,19 @@ namespace RavEngine {
 		@param contactPoints the contact point data. Do not hold onto this pointer, because after this call, the pointer is invalid.
 		@param numContactPoints the number of contact points. Set to 0 if wantsContactData is false.
 		*/
-		void OnColliderExit(Ref<PhysicsBodyComponent> other, const ContactPairPoint* contactPoints, size_t numContactPoints);
+		void OnColliderExit(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints);
 		
 		/**
 		 Called by a PhysicsBodyComponent when it has entered another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
 		 @param other the other component
 		 */
-		void OnTriggerEnter(Ref<PhysicsBodyComponent> other);
+		void OnTriggerEnter(PhysicsBodyComponent& other);
 		
 		/**
 		 Called by a PhysicsBodyComponent when it has exited another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
 		 @param other the other component
 		 */
-		void OnTriggerExit(Ref<PhysicsBodyComponent> other);
+		void OnTriggerExit(PhysicsBodyComponent& other);
 
 		/**
 		* Get if this body wants contact data
@@ -157,8 +161,8 @@ namespace RavEngine {
 
 	class RigidBodyDynamicComponent : public PhysicsBodyComponent {
 	public:
-		RigidBodyDynamicComponent();
-		RigidBodyDynamicComponent(physx::PxU32 fg, physx::PxU32 fm) : RigidBodyDynamicComponent() {
+		RigidBodyDynamicComponent(entity_t owner);
+		RigidBodyDynamicComponent(entity_t owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyDynamicComponent(owner) {
 			this->filterGroup = fg; this->filterMask = fm;
 		}
 		virtual ~RigidBodyDynamicComponent();
@@ -255,9 +259,9 @@ namespace RavEngine {
 
 	class RigidBodyStaticComponent : public PhysicsBodyComponent {
 	public:
-		RigidBodyStaticComponent();
+		RigidBodyStaticComponent(entity_t owner);
 		virtual ~RigidBodyStaticComponent();
-		RigidBodyStaticComponent(physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent() {
+		RigidBodyStaticComponent(entity_t owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent(owner) {
 			this->filterGroup = fg; this->filterMask = fm;
 		}
 	};

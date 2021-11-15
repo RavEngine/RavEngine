@@ -35,10 +35,25 @@ namespace RavEngine {
     template <typename T, typename... Ts>
     constexpr std::size_t Index_v = Index<T, Ts...>::value;
 
+    template <typename T>
+    class HasDestroy
+    {
+    private:
+        typedef char YesType[1];
+        typedef char NoType[2];
+
+        template <typename C> static YesType& test( decltype(&C::Destroy) ) ;
+        template <typename C> static NoType& test(...);
+
+
+    public:
+        enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
+    };
+
 	class World {
 		friend class AudioPlayer;
 		friend class App;
-        
+        friend class PhysicsBodyComponent;
         std::vector<entity_t> localToGlobal;
         std::queue<entity_t> available;
         
@@ -57,18 +72,22 @@ namespace RavEngine {
             
             template<typename ... A>
             inline T& Emplace(entity_t local_id, A ... args){
-                dense_set.emplace(args...);
+                auto& ret = dense_set.emplace(args...);
                 aux_set.emplace(local_id);
                 sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
                 
                 sparse_set[local_id] = dense_set.size()-1;
-                return dense_set[dense_set.size()-1];
+                return ret;
             }
             
             inline void Destroy(entity_t local_id){
                 assert(local_id < sparse_set.size());
                 assert(HasComponent(local_id)); // Cannot destroy a component on an entity that does not have one!
                 // call the destructor
+                if constexpr(HasDestroy<T>::value){
+                    auto& oldvalue = GetComponent(local_id);
+                    oldvalue.Destroy();
+                }
                 dense_set.erase(dense_set.begin() + sparse_set[local_id]);
                 aux_set.erase(aux_set.begin() + sparse_set[local_id]);
 

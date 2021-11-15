@@ -98,22 +98,23 @@ void AnimatorComponent::Tick(float timeScale){
 	if (Sockets.size() > 0) {
 		// update world poses
 		GetPose();
-		for (int i = 0; i < skeleton->GetSkeleton()->num_joints(); i++) {
-			auto name = skeleton->GetSkeleton()->joint_names()[i];
-			if (Sockets.contains(name)) {
-				//TODO: set matrix directly instead of with decompose?
-				quaternion rotation;
-				vector3 translate,unused;
-				vector4 p;
-				auto mat = glm_pose[i];
-				glm::decompose(mat, unused, rotation, translate, unused, p);
-				
-				auto tr = Sockets.at(name);
-				tr->SetWorldPosition(translate);
-				tr->SetWorldRotation(rotation);
-				tr->SetLocalScale(vector3(1,1,1));
-			}
-		}
+        //TODO: FIX
+//		for (int i = 0; i < skeleton->GetSkeleton()->num_joints(); i++) {
+//			auto name = skeleton->GetSkeleton()->joint_names()[i];
+//			if (Sockets.contains(name)) {
+//				//TODO: set matrix directly instead of with decompose?
+//				quaternion rotation;
+//				vector3 translate,unused;
+//				vector4 p;
+//				auto mat = glm_pose[i];
+//				glm::decompose(mat, unused, rotation, translate, unused, p);
+//
+//				auto tr = Sockets.at(name);
+//				tr->SetWorldPosition(translate);
+//				tr->SetWorldRotation(rotation);
+//				tr->SetLocalScale(vector3(1,1,1));
+//			}
+//		}
 	}
 }
 

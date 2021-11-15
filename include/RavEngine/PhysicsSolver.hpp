@@ -11,7 +11,6 @@
 #include <PxQueryReport.h>
 #include "Ref.hpp"
 #include "PhysicsCollider.hpp"
-#include "PhysicsBodyComponent.hpp"
 #include <PxPhysicsAPI.h>
 #include <PxFiltering.h>
 #include <cstdint>
@@ -27,6 +26,7 @@ struct FilterLayers {
 
 namespace RavEngine {
     struct Entity;
+    struct PhysicsBodyComponent;
     class PhysicsSolver : public physx::PxSimulationEventCallback {
     protected:
         //static members must exist only once in the application
@@ -54,6 +54,8 @@ namespace RavEngine {
 
         // If deltatime > this value, the system will substep
         const float max_step_time = 0.03333f;
+        
+        friend class PhysicsBodyComponent;
 
     public:
         PhysicsSolver();
@@ -61,8 +63,8 @@ namespace RavEngine {
 			DeallocatePhysx();
 		}
 
-        void Spawn(Ref<Entity>);
-        void Destroy(Ref<Entity>);
+        void Spawn( PhysicsBodyComponent&);
+        void Destroy( PhysicsBodyComponent&);
 
         void Tick(float deltaTime);
 
@@ -71,11 +73,12 @@ namespace RavEngine {
         //scene query methods
         struct RaycastHit {
             RaycastHit() {}
-            RaycastHit(const physx::PxRaycastBuffer& hit) : hitObject(((PhysicsBodyComponent*)hit.block.actor->userData)->GetOwner()),
+            //TODO: FIX
+            RaycastHit(const physx::PxRaycastBuffer& hit) /*: hitObject(((PhysicsBodyComponent*)hit.block.actor->userData)->GetOwner()),
                 hasBlocking(hit.hasBlock),
                 hitPosition(vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z)),
                 hitNormal(vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z)),
-                hitDistance(hit.block.distance){}
+                hitDistance(hit.block.distance)*/{}
             
             bool hasBlocking;
             vector3 hitPosition;
@@ -97,7 +100,8 @@ namespace RavEngine {
 
         struct OverlapHit {
             OverlapHit() {}
-            OverlapHit(const physx::PxOverlapBuffer& hit) : overlapObject( ((PhysicsBodyComponent*)hit.block.actor->userData)->GetOwner()){}
+            //TODO: FIX
+            OverlapHit(const physx::PxOverlapBuffer& hit)/* : overlapObject( ((PhysicsBodyComponent*)hit.block.actor->userData)->GetOwner())*/{}
             Ref<Entity> overlapObject;
         };
 

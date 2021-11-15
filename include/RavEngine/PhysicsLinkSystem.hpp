@@ -23,8 +23,7 @@ namespace RavEngine {
 		PhysicsLinkSystemWrite(physx::PxScene* scene ) : dynamicsWorld(scene){}
 		
 		physx::PxScene* dynamicsWorld = nullptr;
-		virtual ~PhysicsLinkSystemWrite() {}
-		void Tick(float fpsScale, Ref<PhysicsBodyComponent>, const Ref<Transform>);
+		void operator()(float fpsScale, PhysicsBodyComponent&, const Transform&) const;
 	};
 
 	/**
@@ -36,8 +35,7 @@ namespace RavEngine {
 		PhysicsLinkSystemRead(physx::PxScene* scene ) : dynamicsWorld(scene){}
 		
 		physx::PxScene* dynamicsWorld = nullptr;
-		virtual ~PhysicsLinkSystemRead() {}
-		void Tick(float fpsScale, const Ref<RigidBodyDynamicComponent>, const Ref<Transform>);
+		void operator()(float fpsScale, const RigidBodyDynamicComponent&, Transform&) const;
 
 		//must run before write system
         constexpr const System::list_type& MustRunBefore() const {

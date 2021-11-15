@@ -10,11 +10,9 @@
 #include "Tween.hpp"
 #include "App.hpp"
 #include "Function.hpp"
-#include "Transform.hpp"
-#include "Entity.hpp"
 
 namespace RavEngine{
-
+struct Transform;
 class normalized_vec2{
 	float x, y;
 public:
@@ -385,22 +383,23 @@ public:
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
 	 */
 	inline const decltype(glm_pose)& GetPose() const{
-		decimalType matrix[16];
-        auto worldMat = GetOwner().lock()->GetTransform().CalculateWorldMatrix();
-		for(int i = 0; i < models.size(); i++){
-			auto& t = models[i];
-			for(int r = 0; r < 4; r++){
-				float result[4];
-				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
-				decimalType dresult[4];
-				for(int j = 0; j < 4; j++){
-					dresult[j] = result[j];
-				}
-				//_mm_store_ps(result,p.cols[r]);
-				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
-			}
-			glm_pose[i] = worldMat * glm::make_mat4(matrix);
-		}
+        //TODO: FIX
+//		decimalType matrix[16];
+//        auto worldMat = GetOwner().lock()->GetTransform().CalculateWorldMatrix();
+//		for(int i = 0; i < models.size(); i++){
+//			auto& t = models[i];
+//			for(int r = 0; r < 4; r++){
+//				float result[4];
+//				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
+//				decimalType dresult[4];
+//				for(int j = 0; j < 4; j++){
+//					dresult[j] = result[j];
+//				}
+//				//_mm_store_ps(result,p.cols[r]);
+//				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
+//			}
+//			glm_pose[i] = worldMat * glm::make_mat4(matrix);
+//		}
 		return glm_pose;
 	}
 	
