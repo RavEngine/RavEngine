@@ -117,7 +117,6 @@ void RavEngine::World::TickECS(float fpsScale) {
 	
 	//execute and wait
 	App::executor.run(masterTasks).wait();
-	//masterTasks.dump(std::cout);
 	if (isRendering){
 		newFrame = true;
 	}
@@ -173,10 +172,10 @@ void World::SetupTaskGraph(){
 			Solver.Tick(GetCurrentFPSScale());
 		}).name("PhysX Tick");
     
-        auto read = EmplaceSystem<PhysicsLinkSystemRead, RigidBodyDynamicComponent,Transform>(Solver.scene).name("Physics Link System Read");
-        auto write = EmplaceSystem<PhysicsLinkSystemWrite, PhysicsBodyComponent,Transform>(Solver.scene).name("Physics Link System Write");
-        RunPhysics.precede(read);
-		RunPhysics.succeed(write);
+        auto read = EmplaceSystem<PhysicsLinkSystemRead, RigidBodyDynamicComponent,Transform>(Solver.scene);
+        auto write = EmplaceSystem<PhysicsLinkSystemWrite, PhysicsBodyComponent,Transform>(Solver.scene);
+        RunPhysics.precede(read.second);
+		RunPhysics.succeed(write.second);
 	//}
 }
 
@@ -358,7 +357,7 @@ void World::setupRenderTasks(){
 //        }
 //	});
 //#endif
-	auto copyGUI = masterTasks.emplace([this]() {
+	auto copyGUI = renderTasks.emplace([this]() {
         // also do the time here
         App::GetCurrentFramedata()->Time = App::GetCurrentTime();
         if(auto guis = GetAllComponentsOfType<GUIComponent>()){
@@ -367,7 +366,7 @@ void World::setupRenderTasks(){
         else{
             App::GetCurrentFramedata()->guisToCalculate.clear();
         }
-	});
+	}).name("CopyGUI");
 
 	auto swap = renderTasks.emplace([this]{
 		App::SwapCurrentFramedata();
@@ -376,13 +375,13 @@ void World::setupRenderTasks(){
 		auto current = App::GetCurrentFramedata();
 		current->Clear();
 	}).name("Clear-setup");
-	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints);
+	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints,copyGUI);
 	sort.precede(swap);
 	sortskinned.precede(swap);
     sortInstanced.precede(swap);
 	camproc.precede(sort,sortskinned);
 
-	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints);
+	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints,copyGUI);
     
     // attatch the renderTasks module to the masterTasks
     renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");

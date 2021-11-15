@@ -105,6 +105,11 @@ namespace RavEngine {
                 return dense_set[sparse_set[local_id]];
             }
             
+            inline T& GetFirst(){
+                assert(!dense_set.empty());
+                return dense_set[0];
+            }
+            
             inline bool HasComponent(entity_t local_id) const{
                 return sparse_set[local_id] != INVALID_ENTITY;
             }
@@ -369,7 +374,7 @@ namespace RavEngine {
 		Ref<Skybox> skybox;
         
         template<typename T, typename ... A, typename ... Args>
-        inline tf::Task EmplaceSystem(Args... args){
+        inline std::pair<tf::Task,tf::Task> EmplaceSystem(Args... args){
             T system(args...);
             
             auto ptr = &ecsRangeSizes[CTTI<T>()];
@@ -380,15 +385,28 @@ namespace RavEngine {
             // value update
             auto range_update = ECSTasks.emplace([this,ptr,setptr](){
                 *ptr = setptr->DenseSize();
-            });
+            }).name(StrFormat("{} range update",type_name<T>()));
             
             auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,system,fd](auto i){
                 auto scale = GetCurrentFPSScale();
                 FilterOne<A...>(system,fd.ptrs,i,scale);
-            });
+            }).name(StrFormat("{}",type_name<T>().data()));
             range_update.precede(do_task);
             
-            return range_update;
+            auto pair = std::make_pair(range_update,do_task);
+            
+            typeToSystem[CTTI<T>()] = pair;
+            
+            return pair;
+        }
+        
+        template<typename T, typename U>
+        inline void CreateDependency(){
+            // T depends on (runs after) U
+            auto& tPair = typeToSystem.at(CTTI<T>());
+            auto& uPair = typeToSystem.at(CTTI<U>());
+            
+            tPair.second.succeed(uPair.second);
         }
         
         template<typename T, typename ... A, typename interval_t, typename ... Args>
@@ -406,7 +424,7 @@ namespace RavEngine {
                 }
                 return 1;
             }).name("Check time");
-            condition.precede(task);
+            condition.precede(task.first);
         }
         
 	private:
@@ -444,6 +462,7 @@ namespace RavEngine {
         };
         UnorderedNodeMap<ctti_t, TimedSystemEntry> timedSystemRecords;
         UnorderedNodeMap<ctti_t, pos_t> ecsRangeSizes;
+        UnorderedMap<ctti_t, std::pair<tf::Task,tf::Task>> typeToSystem;
         		
 		void CreateFrameData();
 		
@@ -471,7 +490,7 @@ namespace RavEngine {
         // returns the "first" of a component type
         template<typename T>
         inline T& GetComponent(){
-            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(0);  //TODO: FIX 0
+            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetFirst();
         }
         
 		//physics system
@@ -569,6 +588,25 @@ namespace RavEngine {
 		* Called when this world was the active world for the App but has been replaced by a different world
 		*/
 		virtual void OnDeactivate() {}
+        
+        template<typename T>
+        class WorldInputBinder{
+            T* ptr;
+        public:
+            WorldInputBinder(decltype(ptr) ptr) : ptr(ptr){}
+
+            size_t get_id() const{
+                return reinterpret_cast<size_t>(ptr);
+            }
+            T* get() const{
+                return ptr;
+            }
+        };
+        
+        template<typename T>
+        static inline WorldInputBinder<T> GetInput(T* ptr){
+            return WorldInputBinder<T>(ptr);
+        }
         
         /**
          Dispatch a function to run in a given number of seconds in the future

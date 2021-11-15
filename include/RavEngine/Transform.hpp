@@ -38,9 +38,14 @@ namespace RavEngine {
             rotation = std::move(other.rotation);
             scale = std::move(other.scale);
             matrix.store(matrix4(1));
+            parent = std::move(other.parent);
+            children = std::move(other.children);
         }
         
-        Transform(const Transform& other) : Transform(other.GetOwner().id, other.position,other.rotation,other.scale){}
+        Transform(const Transform& other) : Transform(other.GetOwner().id, other.position,other.rotation,other.scale){
+            parent = other.parent;
+            children = other.children;
+        }
         
         inline Transform& operator=(Transform other){
             // copy-swap method

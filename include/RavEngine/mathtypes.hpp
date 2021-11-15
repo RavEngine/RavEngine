@@ -5,6 +5,7 @@
 #include "glm/gtx/quaternion.hpp"
 #include "DataStructures.hpp"
 #include "CTTI.hpp"
+#include <iostream>
 
 //needed on windows
 #ifndef M_PI
@@ -51,7 +52,30 @@ constexpr vector3 vector3_right = vector3(1, 0, 0);
 constexpr vector3 vector3_up = vector3(0, 1, 0);
 constexpr vector3 vector3_forward = vector3(0, 0, -1);
 
+static inline std::ostream& operator<<(std::ostream& os, const vector3& vec){
+    os << "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+    return os;
+}
+
+static inline std::ostream& operator<<(std::ostream& os, const quaternion& quat){
+    os << "quat(" << quat.x << ", " << quat.y << ", " << quat.z << ", " << quat.w << ")";
+    return os;
+}
+
+static inline std::ostream& operator<<(std::ostream& os, const matrix4& mat){
+    os << "mat4(";
+    for(uint8_t i = 0; i < 4; i++){
+        for(uint8_t j = 0; j < 4; j++){
+            os << mat[i][j] << " ";
+        }
+        os << "\n";
+    }
+    os << ")";
+    return os;
+}
+
 #define print_vec3(vec) "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")"
+#define print_quat(quat) "quat(" << quat.x << ", " << quat.y << ", " << quat.z << ", " << quat.w << ")"
 
 namespace RavEngine {
     constexpr decimalType PI = 3.1415926535897932385;

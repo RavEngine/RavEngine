@@ -20,6 +20,15 @@ public:
     inline void unlock(){
 		flag.clear();
 	}
+    
+    // constructors and operators
+    SpinLock(){};
+    //SpinLock(SpinLock&& other){}
+    
+    // copy-assign or copy-construct a lock does NOT
+    // copy its state. These exist as conveniences for other things. 
+    SpinLock(const SpinLock& other){}
+    inline void operator=(const SpinLock& other){}
 };
 
 }
