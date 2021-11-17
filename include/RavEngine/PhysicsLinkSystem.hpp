@@ -23,7 +23,7 @@ namespace RavEngine {
 		PhysicsLinkSystemWrite(physx::PxScene* scene ) : dynamicsWorld(scene){}
 		
 		physx::PxScene* dynamicsWorld = nullptr;
-		void operator()(float fpsScale, PhysicsBodyComponent&, const Transform&) const;
+		void operator()(float fpsScale, const std::vector<PhysicsBodyComponent*>&, const std::vector<Transform*>&) const;
 	};
 
 	/**

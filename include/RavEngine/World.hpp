@@ -681,13 +681,13 @@ namespace RavEngine {
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
         
-        template<typename T, typename ... A, typename ... Args>
-        inline std::pair<tf::Task,tf::Task> EmplaceSystem(Args... args){
+        template<bool polymorphic, typename T, typename ... A, typename ... Args>
+        inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args... args){
             T system(args...);
             
             auto ptr = &ecsRangeSizes[CTTI<T>()];
             
-            FuncModeCopy<T,false> fm{system};
+            FuncModeCopy<T,polymorphic> fm{system};
             
             auto fd = GenFilterData<A...>(fm);
             
@@ -722,9 +722,9 @@ namespace RavEngine {
             tPair.second.succeed(uPair.second);
         }
         
-        template<typename T, typename ... A, typename interval_t, typename ... Args>
-        inline void EmplaceTimedSystem(const interval_t interval, Args ... args){
-            auto task = EmplaceSystem<T,A...>(args...);
+        template< bool polymorphic,typename T, typename ... A, typename interval_t, typename ... Args>
+        inline void EmplaceTimedSystemGeneric(const interval_t interval, Args ... args){
+            auto task = EmplaceSystem<polymorphic,T,A...>(args...);
             
             auto c_interval = std::chrono::duration_cast<decltype(TimedSystemEntry::interval)>(interval);
             auto ts = &timedSystemRecords[CTTI<T>()];
@@ -738,6 +738,26 @@ namespace RavEngine {
                 return 1;
             }).name("Check time");
             condition.precede(task.first);
+        }
+        
+        template<typename T, typename ... A, typename ... Args>
+        inline auto EmplaceSystem(Args... args){
+            return EmplaceSystemGeneric<false,T,A...>(args...);
+        }
+        
+        template<typename T, typename ... A, typename interval_t, typename ... Args>
+        inline void EmplaceTimedSystem(const interval_t interval, Args ... args){
+            EmplaceTimedSystemGeneric<false,T,A...>(interval,args...);
+        }
+        
+        template<typename T, typename ... A, typename ... Args>
+        inline auto EmplacePolymorphicSystem(Args ... args){
+            return EmplaceSystemGeneric<true,T,A...>(args...);
+        }
+        
+        template<typename T, typename ... A, typename interval_t, typename ... Args>
+        inline void EmplacePolymorphicTimedSystem(const interval_t interval, Args ... args){
+            EmplaceTimedSystemGeneric<true,T,A...>(interval,args...);
         }
         
 	private:

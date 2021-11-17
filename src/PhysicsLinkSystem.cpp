@@ -22,9 +22,11 @@ void PhysicsLinkSystemRead::operator()(float fpsScale, const RigidBodyDynamicCom
         transform.SetWorldRotation(rot);
 }
 
-void PhysicsLinkSystemWrite::operator()(float fpsScale, PhysicsBodyComponent& rigid, const Transform& transform) const{
+void PhysicsLinkSystemWrite::operator()(float fpsScale, const std::vector<PhysicsBodyComponent*>& r, const std::vector<Transform*>& t) const{
 
         //physx requires reads and writes to be sequential
+        auto& rigid = *(r[0]);
+        auto& transform = *(t[0]);
 
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
         auto pos = transform.GetWorldPosition();

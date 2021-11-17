@@ -170,7 +170,7 @@ void World::SetupTaskGraph(){
 		}).name("PhysX Tick");
     
         auto read = EmplaceSystem<PhysicsLinkSystemRead, RigidBodyDynamicComponent,Transform>(Solver.scene);
-        auto write = EmplaceSystem<PhysicsLinkSystemWrite, PhysicsBodyComponent,Transform>(Solver.scene);
+        auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite, PhysicsBodyComponent,Transform>(Solver.scene);
         RunPhysics.precede(read.second);
 		RunPhysics.succeed(write.second);
 	//}
