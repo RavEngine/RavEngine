@@ -159,14 +159,14 @@ namespace RavEngine {
         }
 	};
 
-	class RigidBodyDynamicComponent : public PhysicsBodyComponent {
+	class RigidBodyDynamicComponent : public PhysicsBodyComponent, public QueryableDelta<PhysicsBodyComponent,RigidBodyDynamicComponent> {
 	public:
 		RigidBodyDynamicComponent(entity_t owner);
 		RigidBodyDynamicComponent(entity_t owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyDynamicComponent(owner) {
 			this->filterGroup = fg; this->filterMask = fm;
 		}
 		virtual ~RigidBodyDynamicComponent();
-		
+        using QueryableDelta<PhysicsBodyComponent,RigidBodyDynamicComponent>::GetQueryTypes;
 		/**
 		@returns the body's current linear velocity
 		*/
@@ -257,8 +257,9 @@ namespace RavEngine {
 		void ClearAllTorques();
 	};
 
-	class RigidBodyStaticComponent : public PhysicsBodyComponent {
+	class RigidBodyStaticComponent : public PhysicsBodyComponent, public QueryableDelta<PhysicsBodyComponent,RigidBodyStaticComponent> {
 	public:
+        using QueryableDelta<PhysicsBodyComponent,RigidBodyStaticComponent>::GetQueryTypes;
 		RigidBodyStaticComponent(entity_t owner);
 		virtual ~RigidBodyStaticComponent();
 		RigidBodyStaticComponent(entity_t owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent(owner) {

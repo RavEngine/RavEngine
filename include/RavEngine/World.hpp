@@ -50,6 +50,21 @@ namespace RavEngine {
         enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
     };
 
+    template <typename T>
+    class HasQueryTypes
+    {
+    private:
+        typedef char YesType[1];
+        typedef char NoType[2];
+
+        template <typename C> static YesType& test( decltype(&C::GetQueryTypes) ) ;
+        template <typename C> static NoType& test(...);
+
+
+    public:
+        enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
+    };
+
 	class World {
 		friend class AudioPlayer;
 		friend class App;
@@ -105,6 +120,10 @@ namespace RavEngine {
                 return dense_set[sparse_set[local_id]];
             }
             
+            inline auto SparseToDense(entity_t local_id){
+                return sparse_set[local_id];
+            }
+            
             inline T& GetFirst(){
                 assert(!dense_set.empty());
                 return dense_set[0];
@@ -141,6 +160,10 @@ namespace RavEngine {
             
             auto DenseSize() const{
                 return dense_set.size();
+            }
+            
+            auto GetDenseData() const{
+                return dense_set.data();
             }
             
             inline const decltype(dense_set)& GetDense() const{
@@ -192,6 +215,31 @@ namespace RavEngine {
         };
         
         std::unordered_map<RavEngine::ctti_t, SparseSetErased> componentMap;
+        
+        struct PolymorphicIndirection{
+            void* SparseSetPtr;
+            uint32_t stride = 0;
+            entity_t owner = INVALID_ENTITY;
+            
+            template<typename T>
+            PolymorphicIndirection(entity_t owner, World* world, T* discard) : owner(owner), stride(sizeof(T)){
+                static_assert(sizeof(T) < std::numeric_limits<decltype(stride)>::max(),"T is too big!");
+                // we don't want where the pointer is pointing, we want the pointer itself
+                SparseSetPtr = world->componentMap.at(CTTI<T>()).template GetSet<T>();
+            }
+            
+            template<typename T>
+            T* Get(){
+                auto setptr = static_cast<SparseSet<T>*>(SparseSetPtr);  // this is ok because all SparseSets are the same size, though T may not be the type that is actually in the container, that is why we have the code below
+                static_assert(sizeof(char) == 1);   // char must be 1 byte, if it's not, this will not work
+                const char* dataptr = reinterpret_cast<decltype(dataptr)>(setptr->GetDenseData()); // need this to be a char (1 byte) for the stride math below to work
+                auto offsetInDense = setptr->SparseToDense(owner);
+                auto location = dataptr + offsetInDense * stride;       // use the stride to know where the data based on its original time when this struct was created, to get the true location
+                return const_cast<T*>(reinterpret_cast<const T*>(location));   // sketchyyyyy
+            }
+        };
+        
+        std::unordered_map<ctti_t,SparseSet<PolymorphicIndirection>> polymorphicQueryMap;
 
         inline void Destroy(entity_t local_id){
             // go down the list of all component types registered in this world
@@ -223,6 +271,16 @@ namespace RavEngine {
             
             //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
             constexpr static auto data_ctor_nparams = refl::fields_number_ctor<T>(sizeof ... (A));
+                        
+            // does this component have alternate query types
+            if constexpr (HasQueryTypes<T>::value){
+                // polymorphic recordkeep
+                constexpr auto ids = T::GetQueryTypes();
+                for(const auto id : ids){
+                    T* discard;
+                    polymorphicQueryMap[id].template Emplace(local_id, local_id, this, discard);
+                }
+            }
             
             if constexpr(data_ctor_nparams > 0 ){
                 //constexpr bool isMoving = sizeof ... (A) == 1; && (std::is_rvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value || std::is_lvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value);
@@ -341,8 +399,23 @@ namespace RavEngine {
             
             auto mainFilter = fd.getMainFilter();
 
-            for(size_t i = 0; i < mainFilter->DenseSize(); i++){
+            for(entity_t i = 0; i < mainFilter->DenseSize(); i++){
                 FilterOne<A...>(f,fd.ptrs,i,scale);
+            }
+        }
+        
+        template<typename ... A, typename func>
+        inline void FilterPolymorphic(const func& f){
+            static_assert(sizeof ... (A) == 1, "Multi-query is not yet supported");
+            
+            using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
+
+            auto ptr = &polymorphicQueryMap.at(CTTI<primary_t>());
+            
+            auto scale = GetCurrentFPSScale();
+            
+            for(entity_t i = 0; i < ptr->DenseSize(); i++){
+                f(scale,*(ptr->Get(i).template Get<primary_t>()));
             }
         }
         

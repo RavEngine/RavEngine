@@ -121,7 +121,10 @@ public:
     inline void clear(){
         underlying.clear();
     }
-	
+    
+    inline auto data() const{
+        return underlying.data();
+    }
 };
 
 /**

@@ -44,7 +44,6 @@ void RavEngine::World::Tick(float scale) {
 	
 	//Tick the game code
 	TickECS(scale);
-	
 
     PostTick(scale);
 }
@@ -59,8 +58,6 @@ RavEngine::World::World(bool skip){
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
 //        systemManager.EmplaceSystem<RPCSystem>();
 //        systemManager.EmplaceSystem<AnimatorSystem>();
-        //    systemManager.RegisterSystem<PhysicsLinkSystemRead>(make_shared<PhysicsLinkSystemRead>(Solver.scene));
-        //    systemManager.RegisterSystem<PhysicsLinkSystemWrite>(make_shared<PhysicsLinkSystemWrite>(Solver.scene));
         skybox = make_shared<Skybox>();
     }
 }
@@ -168,7 +165,7 @@ void World::SetupTaskGraph(){
 	//TODO: FIX (use conditional tasking)
 	//if (physicsActive){
 		//add the PhysX tick, must run after write but before read
-		auto RunPhysics = masterTasks.emplace([this]{
+		auto RunPhysics = ECSTasks.emplace([this]{
 			Solver.Tick(GetCurrentFPSScale());
 		}).name("PhysX Tick");
     
