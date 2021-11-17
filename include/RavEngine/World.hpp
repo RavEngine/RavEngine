@@ -217,29 +217,143 @@ namespace RavEngine {
         UnorderedNodeMap<RavEngine::ctti_t, SparseSetErased> componentMap;
         
         struct PolymorphicIndirection{
-            void* SparseSetPtr;
-            uint32_t stride = 0;
+            struct elt{
+                void* SparseSetPtr = nullptr;
+                uint32_t stride = 0;
+                template<typename T>
+                elt(World* world, T* discard) : SparseSetPtr(world->componentMap.at(CTTI<T>()).template GetSet<T>()), stride(sizeof(T)){
+                    static_assert(sizeof(T) < std::numeric_limits<decltype(stride)>::max(),"T is too big!");
+                }
+                
+                template<typename T>
+                T* Get(entity_t owner){
+                    auto setptr = static_cast<SparseSet<T>*>(SparseSetPtr);  // this is ok because all SparseSets are the same size, though T may not be the type that is actually in the container, that is why we have the code below
+                    static_assert(sizeof(char) == 1);   // char must be 1 byte, if it's not, this will not work
+                    const char* dataptr = reinterpret_cast<decltype(dataptr)>(setptr->GetDenseData()); // need this to be a char (1 byte) for the stride math below to work
+                    auto offsetInDense = setptr->SparseToDense(owner);
+                    auto location = dataptr + offsetInDense * stride;       // use the stride to know where the data based on its original time when this struct was created, to get the true location
+                    return const_cast<T*>(reinterpret_cast<const T*>(location));   // sketchyyyyy
+                }
+            };
+            unordered_vector<elt> elts;
             entity_t owner = INVALID_ENTITY;
+            World* world = nullptr;
             
             template<typename T>
-            PolymorphicIndirection(entity_t owner, World* world, T* discard) : owner(owner), stride(sizeof(T)){
-                static_assert(sizeof(T) < std::numeric_limits<decltype(stride)>::max(),"T is too big!");
-                // we don't want where the pointer is pointing, we want the pointer itself
-                SparseSetPtr = world->componentMap.at(CTTI<T>()).template GetSet<T>();
+            inline void push(T* discard){
+                elts.emplace(world,discard);
             }
             
             template<typename T>
-            T* Get(){
-                auto setptr = static_cast<SparseSet<T>*>(SparseSetPtr);  // this is ok because all SparseSets are the same size, though T may not be the type that is actually in the container, that is why we have the code below
-                static_assert(sizeof(char) == 1);   // char must be 1 byte, if it's not, this will not work
-                const char* dataptr = reinterpret_cast<decltype(dataptr)>(setptr->GetDenseData()); // need this to be a char (1 byte) for the stride math below to work
-                auto offsetInDense = setptr->SparseToDense(owner);
-                auto location = dataptr + offsetInDense * stride;       // use the stride to know where the data based on its original time when this struct was created, to get the true location
-                return const_cast<T*>(reinterpret_cast<const T*>(location));   // sketchyyyyy
+            inline void erase(T* discard){
+                elt value_erase(world,discard);
+                elts.erase(value_erase);
+            }
+            
+            inline bool empty() const{
+                return elts.empty();
+            }
+            
+            template<typename T>
+            PolymorphicIndirection(entity_t owner, World* world, T* discard) : owner(owner), world(world){}
+            
+            /**
+             Because there are multiple, one cannot simply "get" here.
+             Instead, pass a function to invoke with each requested result.
+             */
+            template<typename T, typename func_t>
+            inline void for_each(const func_t& f){
+                for(auto& e : elts){
+                    f(e.Get<T>(owner));
+                }
             }
         };
         
-        UnorderedNodeMap<ctti_t,SparseSet<PolymorphicIndirection>> polymorphicQueryMap;
+        class SparseSetForPolymorphic{
+            using U = PolymorphicIndirection;
+            unordered_vector<U> dense_set;
+            std::vector<entity_t> sparse_set;
+            
+        public:
+            
+            using const_iterator = typename decltype(dense_set)::const_iterator_type;
+            
+            template<typename T>
+            inline T& Emplace(entity_t local_id, World* world){
+                //if a record for this does not exist, create it
+                T* discard;
+                if (!HasForEntity(local_id)){
+                    dense_set.emplace(local_id,world,discard);
+                    sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+                    sparse_set[local_id] = dense_set.size()-1;
+                }
+                
+                // then push the Elt into it
+                GetForEntity(local_id).push(discard);
+            }
+            
+            template<typename T>
+            inline void Destroy(entity_t local_id){
+                // get the record, then call erase on it
+                assert(HasForEntity(local_id));
+                T* discard;
+                GetForEntity(local_id).erase(discard);
+                
+                // if that makes the container empty, then delete it from the Sets
+                if (GetForEntity(local_id).empty()){
+                    dense_set.erase(dense_set.begin() + sparse_set[local_id]);
+                    sparse_set[local_id] = INVALID_INDEX;
+                }
+            }
+
+            inline U& GetForEntity(entity_t local_id){
+                assert(HasForEntity(local_id));
+                return dense_set[sparse_set[local_id]];
+            }
+            
+            inline auto SparseToDense(entity_t local_id){
+                return sparse_set[local_id];
+            }
+            
+            inline bool HasForEntity(entity_t local_id) const{
+                return local_id < sparse_set.size() && sparse_set[local_id] != INVALID_ENTITY;
+            }
+            
+            auto begin(){
+                return dense_set.begin();
+            }
+            
+            auto end(){
+                return dense_set.end();
+            }
+            
+            auto begin() const{
+                return dense_set.begin();
+            }
+            
+            auto end() const{
+                return dense_set.end();
+            }
+            
+            // get by dense index, not by entity ID
+            U& Get(entity_t idx){
+                return dense_set[idx];
+            }
+            
+            auto DenseSize() const{
+                return dense_set.size();
+            }
+            
+            auto GetDenseData() const{
+                return dense_set.data();
+            }
+            
+            inline const decltype(dense_set)& GetDense() const{
+                return dense_set;
+            }
+        };
+        
+        UnorderedNodeMap<ctti_t,SparseSetForPolymorphic> polymorphicQueryMap;
 
         inline void Destroy(entity_t local_id){
             // go down the list of all component types registered in this world
@@ -278,7 +392,7 @@ namespace RavEngine {
                 constexpr auto ids = T::GetQueryTypes();
                 for(const auto id : ids){
                     T* discard;
-                    polymorphicQueryMap[id].template Emplace(local_id, local_id, this, discard);
+                    polymorphicQueryMap[id].template Emplace<T>(local_id, this);
                 }
             }
             
@@ -335,26 +449,26 @@ namespace RavEngine {
             satisfies = satisfies && static_cast<SparseSet<T>*>(set)->HasComponent(id);
         }
         
-        template<typename T, bool isPolymorphic = false>
+        template<typename T>
         inline T& FilterComponentGet(entity_t idx, void* ptr){
-            if constexpr(!isPolymorphic){
-                return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
-            }
-            else{
-                auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
-                return *(ptr_c->GetComponent(idx).template Get<T>());
-            }
+          //  if constexpr(!isPolymorphic){
+          //      return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
+          //  }
+          //  else{
+          //      auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
+          //      return *(ptr_c->GetComponent(idx).template Get<T>());
+          //  }
         }
         
-        template<typename T, bool isPolymorphic = false>
+        template<typename T>
         inline T& FilterComponentGetDirect(entity_t denseidx, void* ptr){
-            if constexpr(!isPolymorphic){
+            //if constexpr(!isPolymorphic){
                 return static_cast<SparseSet<T>*>(ptr)->Get(denseidx);
-            }
-            else{
-                auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
-                return *(ptr_c->Get(denseidx).template Get<T>());
-            }
+            //}
+           // else{
+            //    auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
+           //     return *(ptr_c->Get(denseidx).template Get<T>());
+           // }
         }
        
         template<typename T, bool isPolymorphic = false>
@@ -422,7 +536,17 @@ namespace RavEngine {
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
             auto mainFilter = static_cast<SparseSet<primary_t>*>(fom.ptrs[0]);
             if constexpr(filterone_t::nTypes() == 1){
-                fom.fm.f(scale,FilterComponentGetDirect<primary_t,filterone_t::isPolymorphic()>(i,fom.ptrs[Index_v<primary_t, A...>]));
+                if constexpr(!filterone_t::isPolymorphic()){
+                    fom.fm.f(scale,FilterComponentGetDirect<primary_t>(i,fom.ptrs[Index_v<primary_t, A...>]));
+                }
+                else{
+                    //polymorphic query needs to be handled differently, because there can be multiple of a type on an entity
+                    auto ptr_c = static_cast<SparseSetForPolymorphic*>(fom.ptrs[Index_v<primary_t, A...>]);
+                    auto& indirection_obj = ptr_c->GetForEntity(i);
+                    indirection_obj.for_each<primary_t>([&](auto comp_ptr){
+                        fom.fm.f(scale,*comp_ptr);
+                    });
+                }
             }
             else{
                 const auto owner = mainFilter->GetOwner(i);
@@ -430,7 +554,13 @@ namespace RavEngine {
                     bool satisfies = true;
                     (FilterValidityCheck<A>(owner, fom.ptrs[Index_v<A, A...>], satisfies), ...);
                     if (satisfies){
-                        fom.fm.f(scale,FilterComponentGet<A,filterone_t::isPolymorphic()>(owner,fom.ptrs[Index_v<A, A...>])...);
+                        //TODO: polymorphic query needs to be handled differently, because there can be multiple of a type on an entity
+                        if constexpr (!filterone_t::isPolymorphic()){
+                            fom.fm.f(scale,FilterComponentGet<A>(owner,fom.ptrs[Index_v<A, A...>])...);
+                        }
+                        else{
+                            
+                        }
                     }
                 }
             }
