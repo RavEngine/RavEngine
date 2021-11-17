@@ -335,9 +335,26 @@ namespace RavEngine {
             satisfies = satisfies && static_cast<SparseSet<T>*>(set)->HasComponent(id);
         }
         
-        template<typename T>
+        template<typename T, bool isPolymorphic = false>
         inline T& FilterComponentGet(entity_t idx, void* ptr){
-            return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
+            if constexpr(!isPolymorphic){
+                return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
+            }
+            else{
+                auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
+                return *(ptr_c->GetComponent(idx).template Get<T>());
+            }
+        }
+        
+        template<typename T, bool isPolymorphic = false>
+        inline T& FilterComponentGetDirect(entity_t denseidx, void* ptr){
+            if constexpr(!isPolymorphic){
+                return static_cast<SparseSet<T>*>(ptr)->Get(denseidx);
+            }
+            else{
+                auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
+                return *(ptr_c->Get(denseidx).template Get<T>());
+            }
         }
        
         template<typename T, bool isPolymorphic = false>
@@ -365,21 +382,55 @@ namespace RavEngine {
             }
         };
         
-        template<typename ... A, size_t n_types, typename func>
-        inline void FilterOne(const func& f, const std::array<void*,n_types>& ptrs, size_t i, float scale){
+        template<typename func, bool polymorphic>
+        struct FuncModeCopy{
+            const func f;
+            static constexpr bool isPolymorphic(){
+                return polymorphic;
+            }
+        };
+        
+        template<typename funcmode_t, size_t n_types>
+        struct FilterOneMode{
+            const funcmode_t& fm;
+            const std::array<void*,n_types>& ptrs;
+            FilterOneMode(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
+            static constexpr decltype(n_types) nTypes(){
+                return n_types;
+            }
+            static constexpr bool isPolymorphic(){
+                return funcmode_t::isPolymorphic();
+            }
+        };
+        
+        // for when the object needs to own the data, for outliving scopes
+        template<typename funcmode_t, size_t n_types>
+        struct FilterOneModeCopy{
+            const funcmode_t fm;
+            const std::array<void*,n_types> ptrs;
+            FilterOneModeCopy(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
+            static constexpr decltype(n_types) nTypes(){
+                return n_types;
+            }
+            static constexpr bool isPolymorphic(){
+                return funcmode_t::isPolymorphic();
+            }
+        };
+                
+        template<typename ... A, typename filterone_t>
+        inline void FilterOne(const filterone_t& fom, size_t i, float scale){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
-            auto mainFilter = static_cast<SparseSet<primary_t>*>(ptrs[0]);
-            if constexpr(n_types == 1){
-                auto& item = mainFilter->Get(i);
-                f(scale,item);
+            auto mainFilter = static_cast<SparseSet<primary_t>*>(fom.ptrs[0]);
+            if constexpr(filterone_t::nTypes() == 1){
+                fom.fm.f(scale,FilterComponentGetDirect<primary_t,filterone_t::isPolymorphic()>(i,fom.ptrs[Index_v<primary_t, A...>]));
             }
             else{
                 const auto owner = mainFilter->GetOwner(i);
                 if (EntityIsValid(owner)){
                     bool satisfies = true;
-                    (FilterValidityCheck<A>(owner, ptrs[Index_v<A, A...>], satisfies), ...);
+                    (FilterValidityCheck<A>(owner, fom.ptrs[Index_v<A, A...>], satisfies), ...);
                     if (satisfies){
-                        f(scale,FilterComponentGet<A>(owner,ptrs[Index_v<A, A...>])...);
+                        fom.fm.f(scale,FilterComponentGet<A,filterone_t::isPolymorphic()>(owner,fom.ptrs[Index_v<A, A...>])...);
                     }
                 }
             }
@@ -422,18 +473,23 @@ namespace RavEngine {
         inline void Filter(const func& f){
             auto scale = GetCurrentFPSScale();
             
-            auto fd = GenFilterData<A...>(FuncMode<func,false>{f});
+            FuncMode<func,false> fm{f};
+            
+            auto fd = GenFilterData<A...>(fm);
             
             auto mainFilter = fd.getMainFilter();
+            
+            FilterOneMode fom(fm,fd.ptrs);
 
             for(entity_t i = 0; i < mainFilter->DenseSize(); i++){
-                FilterOne<A...>(f,fd.ptrs,i,scale);
+                FilterOne<A...>(fom,i,scale);
             }
         }
         
         template<typename ... A, typename func>
         inline void FilterPolymorphic(const func& f){
-            auto fd = GenFilterData<A...>(FuncMode<func,true>{f});
+            FuncMode<func,true> fm{f};
+            auto fd = GenFilterData<A...>(fm);
             
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
 
@@ -441,8 +497,10 @@ namespace RavEngine {
             
             auto scale = GetCurrentFPSScale();
             
+            FilterOneMode fom(fm,fd.ptrs);
+            
             for(entity_t i = 0; i < ptr->DenseSize(); i++){
-                f(scale,*(ptr->Get(i).template Get<primary_t>()));
+                FilterOne<A...>(fom,i,scale);
             }
         }
         
@@ -479,7 +537,12 @@ namespace RavEngine {
             
             auto ptr = &ecsRangeSizes[CTTI<T>()];
             
-            auto fd = GenFilterData<A...>(FuncMode<T,false>{system});
+            FuncModeCopy<T,false> fm{system};
+            
+            auto fd = GenFilterData<A...>(fm);
+            
+            FilterOneModeCopy fom(fm,fd.ptrs);
+            
             auto setptr = fd.getMainFilter();
             
             // value update
@@ -487,9 +550,9 @@ namespace RavEngine {
                 *ptr = setptr->DenseSize();
             }).name(StrFormat("{} range update",type_name<T>()));
             
-            auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,system,fd](auto i){
+            auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i){
                 auto scale = GetCurrentFPSScale();
-                FilterOne<A...>(system,fd.ptrs,i,scale);
+                FilterOne<A...>(fom,i,scale);
             }).name(StrFormat("{}",type_name<T>().data()));
             range_update.precede(do_task);
             
