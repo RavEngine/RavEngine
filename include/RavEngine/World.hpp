@@ -214,7 +214,7 @@ namespace RavEngine {
             }
         };
         
-        std::unordered_map<RavEngine::ctti_t, SparseSetErased> componentMap;
+        UnorderedNodeMap<RavEngine::ctti_t, SparseSetErased> componentMap;
         
         struct PolymorphicIndirection{
             void* SparseSetPtr;
@@ -239,7 +239,7 @@ namespace RavEngine {
             }
         };
         
-        std::unordered_map<ctti_t,SparseSet<PolymorphicIndirection>> polymorphicQueryMap;
+        UnorderedNodeMap<ctti_t,SparseSet<PolymorphicIndirection>> polymorphicQueryMap;
 
         inline void Destroy(entity_t local_id){
             // go down the list of all component types registered in this world
@@ -312,6 +312,15 @@ namespace RavEngine {
         template<typename T>
         inline void DestroyComponent(entity_t local_id){
             componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->Destroy(local_id);
+            
+            // does this component have alternate query types
+            if constexpr (HasQueryTypes<T>::value){
+                // polymorphic recordkeep
+                constexpr auto ids = T::GetQueryTypes();
+                for(const auto id : ids){
+                    polymorphicQueryMap[id].Destroy(local_id);
+                }
+            }
         }
         
         template<typename T>
