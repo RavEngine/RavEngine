@@ -267,6 +267,14 @@ namespace RavEngine {
                     f(e.Get<T>(owner));
                 }
             }
+
+            template<typename T>
+            inline void fill_vector(std::vector<T*>& vec) {
+                vec.reserve(elts.size());
+                for_each<T>([&](auto ptr) {
+                    vec.push_back(ptr);
+                });
+            }
         };
         
         class SparseSetForPolymorphic{
@@ -279,9 +287,9 @@ namespace RavEngine {
             using const_iterator = typename decltype(dense_set)::const_iterator_type;
             
             template<typename T>
-            inline T& Emplace(entity_t local_id, World* world){
+            inline void Emplace(entity_t local_id, World* world){
                 //if a record for this does not exist, create it
-                T* discard;
+                T* discard = nullptr;
                 if (!HasForEntity(local_id)){
                     dense_set.emplace(local_id,world,discard);
                     sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
@@ -310,10 +318,22 @@ namespace RavEngine {
                 assert(HasForEntity(local_id));
                 return dense_set[sparse_set[local_id]];
             }
-            
+
             inline auto SparseToDense(entity_t local_id){
                 return sparse_set[local_id];
             }
+
+            inline entity_t GetOwner(entity_t idx) {
+                auto dense_idx = SparseToDense(idx);
+                if (!EntityIsValid(dense_idx)) {
+                    return INVALID_ENTITY;
+                }
+                else {
+                    // get the indirection object which is storing the owner
+                    return dense_set[dense_idx].owner;
+                }
+            }
+
             
             inline bool HasForEntity(entity_t local_id) const{
                 return local_id < sparse_set.size() && sparse_set[local_id] != INVALID_ENTITY;
@@ -389,7 +409,7 @@ namespace RavEngine {
             // does this component have alternate query types
             if constexpr (HasQueryTypes<T>::value){
                 // polymorphic recordkeep
-                constexpr auto ids = T::GetQueryTypes();
+                const auto ids = T::GetQueryTypes();
                 for(const auto id : ids){
                     T* discard;
                     polymorphicQueryMap[id].template Emplace<T>(local_id, this);
@@ -443,32 +463,39 @@ namespace RavEngine {
             return set.template GetSet<T>();
         }
         
-        template<typename T>
+        template<typename T, bool isPolymorphic = false>
         inline void FilterValidityCheck(entity_t id, void* set, bool& satisfies){
             // in this order so that the first one the entity does not have aborts the rest of them
-            satisfies = satisfies && static_cast<SparseSet<T>*>(set)->HasComponent(id);
+            if constexpr (!isPolymorphic) {
+                satisfies = satisfies && static_cast<SparseSet<T>*>(set)->HasComponent(id);
+            }
+            else {
+                satisfies = satisfies && static_cast<SparseSetForPolymorphic*>(set)->HasForEntity(id);
+            }
         }
         
         template<typename T>
         inline T& FilterComponentGet(entity_t idx, void* ptr){
           //  if constexpr(!isPolymorphic){
-          //      return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
+                return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
           //  }
           //  else{
           //      auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
           //      return *(ptr_c->GetComponent(idx).template Get<T>());
           //  }
         }
+
+        template<typename T>
+        inline std::vector<T*> FilterComponentBaseMultiGet(entity_t idx, void* ptr) {
+            auto& c_ptr = static_cast<SparseSetForPolymorphic*>(ptr)->GetForEntity(idx);
+            std::vector<T*> ret;
+            c_ptr.fill_vector(ret);
+            return ret;
+        }
         
         template<typename T>
         inline T& FilterComponentGetDirect(entity_t denseidx, void* ptr){
-            //if constexpr(!isPolymorphic){
-                return static_cast<SparseSet<T>*>(ptr)->Get(denseidx);
-            //}
-           // else{
-            //    auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
-           //     return *(ptr_c->Get(denseidx).template Get<T>());
-           // }
+            return static_cast<SparseSet<T>*>(ptr)->Get(denseidx);
         }
        
         template<typename T, bool isPolymorphic = false>
@@ -534,7 +561,6 @@ namespace RavEngine {
         template<typename ... A, typename filterone_t>
         inline void FilterOne(const filterone_t& fom, size_t i, float scale){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
-            auto mainFilter = static_cast<SparseSet<primary_t>*>(fom.ptrs[0]);
             if constexpr(filterone_t::nTypes() == 1){
                 if constexpr(!filterone_t::isPolymorphic()){
                     fom.fm.f(scale,FilterComponentGetDirect<primary_t>(i,fom.ptrs[Index_v<primary_t, A...>]));
@@ -542,24 +568,32 @@ namespace RavEngine {
                 else{
                     //polymorphic query needs to be handled differently, because there can be multiple of a type on an entity
                     auto ptr_c = static_cast<SparseSetForPolymorphic*>(fom.ptrs[Index_v<primary_t, A...>]);
-                    auto& indirection_obj = ptr_c->GetForEntity(i);
+                    auto& indirection_obj = ptr_c->Get(i);
                     indirection_obj.for_each<primary_t>([&](auto comp_ptr){
                         fom.fm.f(scale,*comp_ptr);
                     });
                 }
             }
             else{
-                const auto owner = mainFilter->GetOwner(i);
+                entity_t owner;
+                if constexpr (!filterone_t::isPolymorphic()) {
+                    owner = static_cast<SparseSet<primary_t>*>(fom.ptrs[0])->GetOwner(i);
+                }
+                else {
+                    owner = static_cast<SparseSetForPolymorphic*>(fom.ptrs[0])->GetOwner(i);
+                }
                 if (EntityIsValid(owner)){
                     bool satisfies = true;
-                    (FilterValidityCheck<A>(owner, fom.ptrs[Index_v<A, A...>], satisfies), ...);
+                    (FilterValidityCheck<A,filterone_t::isPolymorphic()>(owner, fom.ptrs[Index_v<A, A...>], satisfies), ...);
                     if (satisfies){
-                        //TODO: polymorphic query needs to be handled differently, because there can be multiple of a type on an entity
                         if constexpr (!filterone_t::isPolymorphic()){
                             fom.fm.f(scale,FilterComponentGet<A>(owner,fom.ptrs[Index_v<A, A...>])...);
                         }
                         else{
-                            
+                            // Because there can be multiple base types per entity, per each Filter type in A,
+                            // the user's function must take vectors of A, and decide how to process 
+                            // multi-case
+                            fom.fm.f(scale, FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
                         }
                     }
                 }
@@ -589,6 +623,17 @@ namespace RavEngine {
             return data;
         }
 
+        template<typename ... A, typename funcmode_t>
+        inline void FilterGeneric(const funcmode_t& fm) {
+            auto scale = GetCurrentFPSScale();
+            auto fd = GenFilterData<A...>(fm);
+            auto mainFilter = fd.getMainFilter();
+            FilterOneMode fom(fm, fd.ptrs);
+            for (entity_t i = 0; i < mainFilter->DenseSize(); i++) {
+                FilterOne<A...>(fom, i, scale);
+            }
+        }
+
     public:
         template<typename T, typename ... A>
         inline T CreatePrototype(A ... args){
@@ -601,37 +646,12 @@ namespace RavEngine {
         
         template<typename ... A, typename func>
         inline void Filter(const func& f){
-            auto scale = GetCurrentFPSScale();
-            
-            FuncMode<func,false> fm{f};
-            
-            auto fd = GenFilterData<A...>(fm);
-            
-            auto mainFilter = fd.getMainFilter();
-            
-            FilterOneMode fom(fm,fd.ptrs);
-
-            for(entity_t i = 0; i < mainFilter->DenseSize(); i++){
-                FilterOne<A...>(fom,i,scale);
-            }
+            FilterGeneric<A...>(FuncMode<func, false>{ f });
         }
         
         template<typename ... A, typename func>
         inline void FilterPolymorphic(const func& f){
-            FuncMode<func,true> fm{f};
-            auto fd = GenFilterData<A...>(fm);
-            
-            using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
-
-            auto ptr = fd.getMainFilter();
-            
-            auto scale = GetCurrentFPSScale();
-            
-            FilterOneMode fom(fm,fd.ptrs);
-            
-            for(entity_t i = 0; i < ptr->DenseSize(); i++){
-                FilterOne<A...>(fom,i,scale);
-            }
+            FilterGeneric<A...>(FuncMode<func, true>{ f });
         }
         
         // this does not check if the entity actually has the component

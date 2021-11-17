@@ -20,7 +20,7 @@
 #include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
-	class Transform : public ComponentWithOwner {
+	class Transform : public ComponentWithOwner, public Queryable<Transform> {
 	public:
 		typedef UnorderedContiguousSet<ComponentHandle<Transform>> childStore;
 		virtual ~Transform(){}
@@ -33,7 +33,7 @@ namespace RavEngine {
 		}
 		Transform(entity_t owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
         
-        Transform(const Transform&& other) : ComponentWithOwner(other.GetOwner().id){
+        Transform(Transform&& other) : ComponentWithOwner(other.GetOwner().id){
             position = std::move(other.position);
             rotation = std::move(other.rotation);
             scale = std::move(other.scale);
