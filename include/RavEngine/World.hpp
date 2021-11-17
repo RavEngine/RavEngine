@@ -340,9 +340,14 @@ namespace RavEngine {
             return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
         }
        
-        template<typename T>
+        template<typename T, bool isPolymorphic = false>
         inline void* FilterGetSparseSet(){
-            return MakeIfNotExists<T>();
+            if constexpr (!isPolymorphic){
+                return MakeIfNotExists<T>();
+            }
+            else{
+                return &polymorphicQueryMap[CTTI<T>()];
+            }
         }
         
         template<typename T>
@@ -351,6 +356,14 @@ namespace RavEngine {
         }
         
         entity_t CreateEntity();
+        
+        template<typename func, bool polymorphic>
+        struct FuncMode{
+            const func& f;
+            static constexpr bool isPolymorphic(){
+                return polymorphic;
+            }
+        };
         
         template<typename ... A, size_t n_types, typename func>
         inline void FilterOne(const func& f, const std::array<void*,n_types>& ptrs, size_t i, float scale){
@@ -371,9 +384,9 @@ namespace RavEngine {
                 }
             }
         }
-        
-        template<typename ... A, typename func>
-        inline auto GenFilterData(const func& fn){
+                
+        template<typename ... A, typename funcmode>
+        inline auto GenFilterData(const funcmode& fn){
             constexpr auto n_types = sizeof ... (A);
             static_assert(n_types > 0, "Must supply a type to query for");
             
@@ -383,9 +396,14 @@ namespace RavEngine {
                 std::array<void*, n_types> ptrs;
                 
                 inline auto getMainFilter() const{
-                    return static_cast<SparseSet<primary_t>*>(ptrs[0]);
+                    if constexpr (!funcmode::isPolymorphic()){
+                        return static_cast<SparseSet<primary_t>*>(ptrs[0]);
+                    }
+                    else{
+                        return static_cast<SparseSet<PolymorphicIndirection>*>(ptrs[0]);
+                    }
                 }
-            } data {FilterGetSparseSet<A>()...};
+            } data {FilterGetSparseSet<A,funcmode::isPolymorphic()>()...};
                         
             return data;
         }
@@ -404,7 +422,7 @@ namespace RavEngine {
         inline void Filter(const func& f){
             auto scale = GetCurrentFPSScale();
             
-            auto fd = GenFilterData<A...>(f);
+            auto fd = GenFilterData<A...>(FuncMode<func,false>{f});
             
             auto mainFilter = fd.getMainFilter();
 
@@ -415,11 +433,11 @@ namespace RavEngine {
         
         template<typename ... A, typename func>
         inline void FilterPolymorphic(const func& f){
-            static_assert(sizeof ... (A) == 1, "Multi-query is not yet supported");
+            auto fd = GenFilterData<A...>(FuncMode<func,true>{f});
             
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
 
-            auto ptr = &polymorphicQueryMap.at(CTTI<primary_t>());
+            auto ptr = fd.getMainFilter();
             
             auto scale = GetCurrentFPSScale();
             
@@ -461,7 +479,7 @@ namespace RavEngine {
             
             auto ptr = &ecsRangeSizes[CTTI<T>()];
             
-            auto fd = GenFilterData<A...>(system);
+            auto fd = GenFilterData<A...>(FuncMode<T,false>{system});
             auto setptr = fd.getMainFilter();
             
             // value update
