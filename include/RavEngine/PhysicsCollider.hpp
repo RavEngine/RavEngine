@@ -65,7 +65,7 @@ namespace RavEngine {
 		void SetRelativeTransform(const vector3& position, const quaternion& rotation);
         
         
-        virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const;
+        virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const{}
 
 		virtual ~PhysicsCollider();
 	};

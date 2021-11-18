@@ -512,7 +512,7 @@ namespace RavEngine {
         
         template<typename func, bool polymorphic>
         struct FuncMode{
-            const func& f;
+            func& f;
             static constexpr bool isPolymorphic(){
                 return polymorphic;
             }
@@ -520,7 +520,7 @@ namespace RavEngine {
         
         template<typename func, bool polymorphic>
         struct FuncModeCopy{
-            const func f;
+            func f;
             static constexpr bool isPolymorphic(){
                 return polymorphic;
             }
@@ -528,7 +528,7 @@ namespace RavEngine {
         
         template<typename funcmode_t, size_t n_types>
         struct FilterOneMode{
-            const funcmode_t& fm;
+            funcmode_t& fm;
             const std::array<void*,n_types>& ptrs;
             FilterOneMode(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
             static constexpr decltype(n_types) nTypes(){
@@ -542,7 +542,7 @@ namespace RavEngine {
         // for when the object needs to own the data, for outliving scopes
         template<typename funcmode_t, size_t n_types>
         struct FilterOneModeCopy{
-            const funcmode_t fm;
+            funcmode_t fm;
             const std::array<void*,n_types> ptrs;
             FilterOneModeCopy(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
             static constexpr decltype(n_types) nTypes(){
@@ -554,7 +554,7 @@ namespace RavEngine {
         };
                 
         template<typename ... A, typename filterone_t>
-        inline void FilterOne(const filterone_t& fom, size_t i, float scale){
+        inline void FilterOne(filterone_t& fom, size_t i, float scale){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
             if constexpr(filterone_t::nTypes() == 1){
                 if constexpr(!filterone_t::isPolymorphic()){
@@ -695,7 +695,7 @@ namespace RavEngine {
                 *ptr = setptr->DenseSize();
             }).name(StrFormat("{} range update",type_name<T>()));
             
-            auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i){
+            auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i) mutable{
                 auto scale = GetCurrentFPSScale();
                 FilterOne<A...>(fom,i,scale);
             }).name(StrFormat("{}",type_name<T>().data()));
@@ -815,11 +815,6 @@ namespace RavEngine {
         decltype(async_tasks)::iterator async_begin, async_end;
         RavEngine::Vector<size_t> ranFunctions;
 	protected:
-        // returns the "first" of a component type
-        template<typename T>
-        inline T& GetComponent(){
-            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetFirst();
-        }
         
 		//physics system
 		PhysicsSolver Solver;
@@ -849,6 +844,12 @@ namespace RavEngine {
 		bool physicsActive = false;
 		
     public:
+        // returns the "first" of a component type
+        template<typename T>
+        inline T& GetComponent(){
+            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetFirst();
+        }
+        
 		std::string_view worldID{ worldIDbuf,id_size };
 		std::atomic<bool> newFrame = false;
 
