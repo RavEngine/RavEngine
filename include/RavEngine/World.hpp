@@ -724,7 +724,7 @@ namespace RavEngine {
         
         template< bool polymorphic,typename T, typename ... A, typename interval_t, typename ... Args>
         inline void EmplaceTimedSystemGeneric(const interval_t interval, Args ... args){
-            auto task = EmplaceSystem<polymorphic,T,A...>(args...);
+            auto task = EmplaceSystemGeneric<polymorphic,T,A...>(args...);
             
             auto c_interval = std::chrono::duration_cast<decltype(TimedSystemEntry::interval)>(interval);
             auto ts = &timedSystemRecords[CTTI<T>()];
