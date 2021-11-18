@@ -12,6 +12,7 @@
 #include "Queryable.hpp"
 #include <PxSimulationEventCallback.h>
 #include "ComponentWithOwner.hpp"
+#include <boost/poly_collection/base_collection.hpp>
 
 namespace RavEngine {
 	// stores contact points
@@ -33,6 +34,7 @@ namespace RavEngine {
 	{
 	protected:
         UnorderedSet<WeakPtrKey<IPhysicsActor>> receivers;
+        boost::base_collection<PhysicsCollider> colliders;
         void CompleteConstruction();
 	public:
 		physx::PxRigidActor* rigidActor = nullptr;
@@ -43,6 +45,29 @@ namespace RavEngine {
         virtual ~PhysicsBodyComponent();
         
         void OnDestroy();
+        
+        template<typename T>
+        struct ColliderHandle{
+            void* id;
+        };
+        
+        template<typename T, typename ... A>
+        ColliderHandle<T> EmplaceCollider(A ... args){
+            auto collider_iter = colliders.emplace<T>(this,args...);
+            
+            return ColliderHandle<T>{static_cast<void*>((*collider_iter).collider)};
+        }
+        
+        template<typename T>
+        T& GetColliderForHandle(ColliderHandle<T> handle){
+            for(const auto& collider : colliders){
+                if (collider.collider == handle.id){
+                    return static_cast<T>(collider);
+                }
+            }
+            // not found, this is an invalid use
+            Debug::Fatal("Component with ID {} not found",handle.id);
+        }
         
 		/**
 		Add a recipient for collision events. Must implement IPhysicsActor.

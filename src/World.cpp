@@ -345,13 +345,11 @@ void World::setupRenderTasks(){
 //#ifdef _DEBUG
 //	// copy debug shapes
 //	auto copyDebug = masterTasks.emplace([this]() {
-//        if(auto& dbg = GetAllComponentsOfType<IDebugRenderable>()){
-//            App::GetCurrentFramedata()->debugShapesToDraw = dbg.value().get_underlying();
-//
-//        }
-//        else{
-//            App::GetCurrentFramedata()->debugShapesToDraw.clear();
-//        }
+//        App::GetCurrentFramedata()->debugShapesToDraw.clear();
+//        
+//        FilterPolymorphic<IDebugRenderable>([&](auto scale, const auto& dbg){
+//            App::GetCurrentFramedata()->debugShapesToDraw.push_back(dbg);
+//        });
 //	});
 //#endif
 	auto copyGUI = renderTasks.emplace([this]() {

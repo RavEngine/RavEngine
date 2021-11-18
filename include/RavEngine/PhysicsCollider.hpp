@@ -1,5 +1,4 @@
 #pragma once
-#include "Component.hpp"
 #include "PhysXDefines.h"
 #include <PxMaterial.h>
 #include <PxPhysics.h>
@@ -7,7 +6,6 @@
 #include "DebugDrawer.hpp"
 #include "mathtypes.hpp"
 #include "PhysicsMaterial.hpp"
-#include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "Ref.hpp"
 #include "MeshAsset.hpp"
@@ -17,13 +15,12 @@ namespace physx {
 }
 
 namespace RavEngine {
-
-    class PhysicsCollider : public Component, public IDebugRenderable, public Queryable<PhysicsCollider,IDebugRenderable>
+    struct PhysicsBodyComponent;
+    class PhysicsCollider
 	{
+        friend class PhysicsBodyComponent;
 	protected:
 		physx::PxShape* collider = nullptr;
-		vector3 position = vector3(0,0,0);
-		quaternion rotation = quaternion(1.0,0.0,0.0,0.0);
 		Ref<PhysicsMaterial> material;
 		
 		/**
@@ -32,8 +29,6 @@ namespace RavEngine {
 		 */
 		matrix4 CalculateWorldMatrix() const;
 	public:
-		PhysicsCollider(const vector3& position, const quaternion& rotation) : position(position), rotation(rotation) {}
-
 		enum class CollisionType { Trigger, Collider };
 
 		/**
@@ -68,20 +63,20 @@ namespace RavEngine {
 		 @param rotation the relative rotation of the shape
 		 */
 		void SetRelativeTransform(const vector3& position, const quaternion& rotation);
+        
+        
+        virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const;
 
 		virtual ~PhysicsCollider();
 	};
 
 
-	class BoxCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,BoxCollider> {
+	class BoxCollider : public PhysicsCollider {
 	protected:
 		vector3 extent;
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	public:
-		using QueryableDelta<PhysicsCollider,BoxCollider>::GetQueryTypes;
 
 		virtual ~BoxCollider() {}
-		BoxCollider(const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation) { };
 
 		/**
 		 * Create a box collider with an extent and a physics material
@@ -89,10 +84,7 @@ namespace RavEngine {
 		 * @param mat the physics material to assign
 		 * @note The current scale of the transform is assumed to be the identity size for ResizeToFit.
 		 */
-		BoxCollider(const vector3& ext, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0, 0, 0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : BoxCollider(position,rotation) {
-			extent = ext;
-			material = mat;
-		}
+        BoxCollider(PhysicsBodyComponent* owner, const vector3& ext, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0, 0, 0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0));
 		
 		/**
 		 Draw a wireframe shape representing the boundary of this collider
@@ -102,20 +94,10 @@ namespace RavEngine {
 
 	};
 
-	class SphereCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,SphereCollider>{
+	class SphereCollider : public PhysicsCollider {
 	protected:
 		decimalType radius;
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	public:
-		using QueryableDelta<PhysicsCollider,SphereCollider>::GetQueryTypes;
-		
-		/**
-		 Create a sphere collider
-		 @param r radius of the collider
-		 @param position the relative position of the shape
-		 @param rotation the relative rotation of the shape
-		 */
-		SphereCollider(decimalType r, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation), radius(r){}
 		
 		/**
 		 Create a sphere collider with a material
@@ -124,9 +106,7 @@ namespace RavEngine {
 		 @param position the relative position of the shape
 		 @param rotation the relative rotation of the shape
 		 */
-		SphereCollider(decimalType radius, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : SphereCollider(radius, position, rotation){
-			material = mat;
-		};
+        SphereCollider(PhysicsBodyComponent* owner, decimalType radius, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0));
 		
 		/**
 		 Draw a wireframe shape representing the boundary of this collider
@@ -135,23 +115,11 @@ namespace RavEngine {
 		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
 	};
 
-	class CapsuleCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider,CapsuleCollider>{
+	class CapsuleCollider : public PhysicsCollider {
 	protected:
 		decimalType radius;
 		decimalType halfHeight;
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
 	public:
-		using QueryableDelta<PhysicsCollider,CapsuleCollider>::GetQueryTypes;
-		
-		/**
-		 Create a capsule collider
-		 @param r radius of the collider
-		 @param h the half-height of the collider
-		 @param position the relative position of the shape
-		 @param rotation the relative rotation of the shape
-		 */
-		CapsuleCollider(decimalType r, decimalType hh, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : PhysicsCollider(position,rotation), radius(r), halfHeight(hh){}
-		
 		/**
 		 Create a capsule collider with a material
 		 @param r radius of the collider
@@ -160,9 +128,7 @@ namespace RavEngine {
 		 @param position the relative position of the shape
 		 @param rotation the relative rotation of the shape
 		 */
-		CapsuleCollider(decimalType r, decimalType hh, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0)) : CapsuleCollider(r,hh,position,rotation){
-			material = mat;
-		}
+        CapsuleCollider(PhysicsBodyComponent* owner, decimalType r, decimalType hh, Ref<PhysicsMaterial> mat, const vector3& position = vector3(0,0,0), const quaternion& rotation = quaternion(1.0, 0.0, 0.0, 0.0));
 		
 		/**
 		 Draw a wireframe shape representing the boundary of this collider
@@ -171,54 +137,27 @@ namespace RavEngine {
 		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
 	};
 
-	class MeshCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider, MeshCollider>{
-	protected:
-		Ref<MeshAsset> meshAsset;
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
-	public:
-		using QueryableDelta<PhysicsCollider,MeshCollider>::GetQueryTypes;
-		
-		/**
-		 Create a MeshCollider given a MeshAsset
-		 @param mesh the MeshAsset to use
-		 */
-		MeshCollider(Ref<MeshAsset> mesh) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){}
-		
+	struct MeshCollider : public PhysicsCollider {
 		/**
 		 Create a MeshCollider given a MeshAsset physics material
 		 @param mesh the MeshAsset to use
 		 @param mat the PhysicsMaterial to use
 		 */
-		MeshCollider(Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){
-			material = mat;
-		}
+        MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat);
 		
 		void DebugDraw(RavEngine::DebugDrawer& dbg) const override{
 			//TODO: debug draw mesh collider
 		}
 	};
 
-	class ConvexMeshCollider : public PhysicsCollider, public QueryableDelta<PhysicsCollider, ConvexMeshCollider>{
-	protected:
-		Ref<MeshAsset> meshAsset;
-		void AddHook(const WeakRef<RavEngine::Entity>& e) override;
-	public:
-		using QueryableDelta<PhysicsCollider,ConvexMeshCollider>::GetQueryTypes;
-		
-		/**
-		 Create a Convex Mesh Collider given a MeshAsset
-		 @param mesh the MeshAsset to use
-		 */
-		ConvexMeshCollider(Ref<MeshAsset> mesh) : PhysicsCollider(vector3(0,0,0),quaternion(1.0,0,0,0)), meshAsset(mesh){}
+	struct ConvexMeshCollider : public PhysicsCollider {
 		
 		/**
 		 Create a Convex Mesh Collider given a MeshAsset physics material
 		 @param mesh the MeshAsset to use
 		 @param mat the PhysicsMaterial to use
 		 */
-		ConvexMeshCollider(Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat) : PhysicsCollider(vector3(0,0,0), quaternion(1.0,0,0,0)), meshAsset(mesh){
-			material = mat;
-		}
+        ConvexMeshCollider(PhysicsBodyComponent*, Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat);
 		
 		void DebugDraw(RavEngine::DebugDrawer& dbg) const override{
 			//TODO: debug draw mesh collider

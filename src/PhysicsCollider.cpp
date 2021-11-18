@@ -10,31 +10,103 @@
 using namespace physx;
 using namespace RavEngine;
 
-void BoxCollider::AddHook(const WeakRef<Entity>& e) {
-    auto& body = e.lock()->GetComponent<PhysicsBodyComponent>();
-	//add the physics body to the Entity's physics actor
-    collider = PxRigidActorExt::createExclusiveShape(*(body.rigidActor), PxBoxGeometry(extent.x, extent.y, extent.z), *material->GetPhysXmat());
+BoxCollider::BoxCollider(PhysicsBodyComponent* owner, const vector3& ext, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : extent(ext){
+    material = mat;
+    
+    //add the physics body to the Entity's physics actor
+    collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxBoxGeometry(extent.x, extent.y, extent.z), *material->GetPhysXmat());
 
-	//set relative transformation
-	SetRelativeTransform(position, rotation);
+    //set relative transformation
+    SetRelativeTransform(position, rotation);
+
 }
 
-void SphereCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
-	auto& body = e.lock()->GetComponent<PhysicsBodyComponent>();
-	
-    collider = PxRigidActorExt::createExclusiveShape(*(body.rigidActor), PxSphereGeometry(radius), *material->GetPhysXmat());
-	
-	SetRelativeTransform(position, rotation);
+SphereCollider::SphereCollider(PhysicsBodyComponent* owner, decimalType r, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : radius(r){
+    material = mat;
+    collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxSphereGeometry(radius), *material->GetPhysXmat());
+
+    SetRelativeTransform(position, rotation);
 }
 
-void CapsuleCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
-	auto& body = e.lock()->GetComponent<PhysicsBodyComponent>();
+CapsuleCollider::CapsuleCollider(PhysicsBodyComponent* owner, decimalType r, decimalType hh, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : radius(r), halfHeight(hh){
+    material = mat;
+    
+    collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxCapsuleGeometry(radius,halfHeight), *material->GetPhysXmat());
 
-    collider = PxRigidActorExt::createExclusiveShape(*(body.rigidActor), PxCapsuleGeometry(radius,halfHeight), *material->GetPhysXmat());
-
-	SetRelativeTransform(position, rotation);
+    SetRelativeTransform(position, rotation);
+    
 }
 
+MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset, Ref<PhysicsMaterial> mat){
+    material = mat;
+    auto& meshdata = meshAsset->GetSystemCopy();
+    
+    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
+    RavEngine::Vector<PxU32> indices(meshdata.indices.size());
+    // only want positional data here, UVs and other data are not relevant
+    for(int i = 0; i < vertices.size(); i++){
+        vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
+    }
+    
+    for(int i = 0; i < indices.size(); i++){
+        indices[i] = meshdata.indices[i];
+    }
+    
+    // cooking data info
+    PxTriangleMeshDesc meshDesc;
+    meshDesc.setToDefault();
+    meshDesc.points.data = &vertices[0];
+    meshDesc.points.stride = sizeof(vertices[0]);
+    meshDesc.points.count = vertices.size();
+    
+    meshDesc.triangles.count = indices.size() / 3;
+    meshDesc.triangles.stride = 3 * sizeof(indices[0]);
+    meshDesc.triangles.data = &indices[0];
+    
+    // specify width
+    if (sizeof(indices[0]) == sizeof(uint16_t)){
+        meshDesc.flags = PxMeshFlag::e16_BIT_INDICES;
+    }    //otherwise assume 32 bit
+    
+#ifdef _DEBUG
+    //Debug::Assert(PhysicsSolver::cooking->validateTriangleMesh(meshDesc), "Triangle mesh validation failed");
+#endif
+    
+    physx::PxTriangleMesh* triMesh = PhysicsSolver::cooking->createTriangleMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
+    
+    collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxTriangleMeshGeometry(triMesh), *material->GetPhysXmat());
+    triMesh->release();
+}
+
+ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset, Ref<PhysicsMaterial> mat){
+    material = mat;
+    
+    auto& meshdata = meshAsset->GetSystemCopy();
+    
+    // only want positional data here, UVs and other data are not relevant
+    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
+    for(int i = 0; i < vertices.size(); i++){
+        vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
+    }
+    
+    PxBoundedData pointdata;
+    pointdata.count = vertices.size();
+    pointdata.stride = sizeof(PxVec3);
+    pointdata.data = &vertices[0];
+    
+    PxConvexMeshDesc meshDesc;
+    meshDesc.setToDefault();
+    meshDesc.points.count = vertices.size();
+    meshDesc.points = pointdata;
+    meshDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+    
+    // no longer need to hold onto this, so release it
+    meshAsset.reset();
+    
+    physx::PxConvexMesh* convMesh = PhysicsSolver::cooking->createConvexMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
+    
+    collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxConvexMeshGeometry(convMesh), *material->GetPhysXmat());
+}
 
 void RavEngine::PhysicsCollider::SetType(CollisionType type)
 {
@@ -82,93 +154,21 @@ void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quater
 }
 
 matrix4 PhysicsCollider::CalculateWorldMatrix() const{
-    return Ref<Entity>(GetOwner())->GetTransform().CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
+    //TODO: FIX
+    // return Ref<Entity>(GetOwner())->GetTransform().CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
 }
 
 void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	dbg.DrawRectangularPrism(CalculateWorldMatrix(), debug_color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
+	//TODO: FIX
+    //dbg.DrawRectangularPrism(CalculateWorldMatrix(), debug_color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
 }
 
 void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	dbg.DrawSphere(CalculateWorldMatrix(), debug_color, radius);
+	//TODO: FIX
+    //dbg.DrawSphere(CalculateWorldMatrix(), debug_color, radius);
 }
 
 void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
-}
-
-// mesh collider constructor
-void MeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
-	auto& meshdata = meshAsset->GetSystemCopy();
-	
-    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
-    RavEngine::Vector<PxU32> indices(meshdata.indices.size());
-	// only want positional data here, UVs and other data are not relevant
-	for(int i = 0; i < vertices.size(); i++){
-		vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
-	}
-	
-	for(int i = 0; i < indices.size(); i++){
-		indices[i] = meshdata.indices[i];
-	}
-	
-	// cooking data info
-	PxTriangleMeshDesc meshDesc;
-	meshDesc.setToDefault();
-	meshDesc.points.data = &vertices[0];
-	meshDesc.points.stride = sizeof(vertices[0]);
-	meshDesc.points.count = vertices.size();
-	
-	meshDesc.triangles.count = indices.size() / 3;
-	meshDesc.triangles.stride = 3 * sizeof(indices[0]);
-	meshDesc.triangles.data = &indices[0];
-	
-	// specify width
-	if (sizeof(indices[0]) == sizeof(uint16_t)){
-		meshDesc.flags = PxMeshFlag::e16_BIT_INDICES;
-	}	//otherwise assume 32 bit
-	
-	// no longer need to hold onto this, so release it
-	meshAsset.reset();
-	
-#ifdef _DEBUG
-	//Debug::Assert(PhysicsSolver::cooking->validateTriangleMesh(meshDesc), "Triangle mesh validation failed");
-#endif
-	
-	physx::PxTriangleMesh* triMesh = PhysicsSolver::cooking->createTriangleMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
-	
-	auto& body = e.lock()->GetComponent<PhysicsBodyComponent>();
-	
-	collider = PxRigidActorExt::createExclusiveShape(*(body.rigidActor), PxTriangleMeshGeometry(triMesh), *material->GetPhysXmat());
-	triMesh->release();
-}
-
-void ConvexMeshCollider::AddHook(const WeakRef<RavEngine::Entity> &e){
-	auto& meshdata = meshAsset->GetSystemCopy();
-	
-	// only want positional data here, UVs and other data are not relevant
-    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
-	for(int i = 0; i < vertices.size(); i++){
-		vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
-	}
-	
-	PxBoundedData pointdata;
-	pointdata.count = vertices.size();
-	pointdata.stride = sizeof(PxVec3);
-	pointdata.data = &vertices[0];
-	
-	PxConvexMeshDesc meshDesc;
-	meshDesc.setToDefault();
-	meshDesc.points.count = vertices.size();
-	meshDesc.points = pointdata;
-	meshDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
-	
-	// no longer need to hold onto this, so release it
-	meshAsset.reset();
-	
-	physx::PxConvexMesh* convMesh = PhysicsSolver::cooking->createConvexMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
-	
-	auto& body = e.lock()->GetComponent<PhysicsBodyComponent>();
-	collider = PxRigidActorExt::createExclusiveShape(*(body.rigidActor), PxConvexMeshGeometry(convMesh), *material->GetPhysXmat());
-	convMesh->release();
+	//TODO: FIX
+    //dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
 }
