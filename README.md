@@ -1,6 +1,7 @@
 # RavEngine
 A C++17 cross-platform game library, with emphasis on performance and ease of use. Notable features:
 1. Fast Parallel ECS
+   - Unique feature: Supports querying by base classes without vtable! 
 2. Multithreaded physics simulation (Nvidia PhysX 4.1)
 3. 3D spatialized audio with accurate room reverbation modeling (Google Resonance Audio)
 4. Automatic memory management handled via reference counting 

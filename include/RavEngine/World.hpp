@@ -323,15 +323,10 @@ namespace RavEngine {
                 return sparse_set[local_id];
             }
 
-            inline entity_t GetOwner(entity_t idx) {
-                auto dense_idx = SparseToDense(idx);
-                if (!EntityIsValid(dense_idx)) {
-                    return INVALID_ENTITY;
-                }
-                else {
-                    // get the indirection object which is storing the owner
-                    return dense_set[dense_idx].owner;
-                }
+            inline entity_t GetOwnerForDenseIdx(entity_t dense_idx) {
+                assert(dense_idx < dense_set.size());
+                // get the indirection object which is storing the owner
+                return dense_set[dense_idx].owner;
             }
 
             
@@ -580,7 +575,7 @@ namespace RavEngine {
                     owner = static_cast<SparseSet<primary_t>*>(fom.ptrs[0])->GetOwner(i);
                 }
                 else {
-                    owner = static_cast<SparseSetForPolymorphic*>(fom.ptrs[0])->GetOwner(i);
+                    owner = static_cast<SparseSetForPolymorphic*>(fom.ptrs[0])->GetOwnerForDenseIdx(i);
                 }
                 if (EntityIsValid(owner)){
                     bool satisfies = true;
