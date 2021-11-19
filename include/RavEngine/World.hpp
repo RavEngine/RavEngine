@@ -410,7 +410,7 @@ namespace RavEngine {
             
             //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
             if constexpr(std::is_constructible<T,entity_t, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,entity_t>::value)){
-                return ptr->Emplace(local_id, local_id, args...);
+                return ptr->Emplace(local_id, localToGlobal[local_id], args...);
             }
             else{
                 return ptr->Emplace(local_id,args...);

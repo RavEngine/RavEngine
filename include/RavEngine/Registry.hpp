@@ -67,6 +67,7 @@ class Registry{
     static inline T& GetComponent(entity_t id) {
         assert(EntityIsValid(id));
         auto& data = entityData[id];
+        assert(data.world != nullptr);
         return data.world->GetComponent<T>(data.idInWorld);
     }
 
