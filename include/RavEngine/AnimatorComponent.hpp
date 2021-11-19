@@ -1,5 +1,5 @@
 #pragma once
-#include "Component.hpp"
+#include "ComponentWithOwner.hpp"
 #include <ozz/animation/runtime/animation.h>
 #include <ozz/base/maths/soa_transform.h>
 #include "AnimationAsset.hpp"
@@ -10,6 +10,7 @@
 #include "Tween.hpp"
 #include "App.hpp"
 #include "Function.hpp"
+#include "Transform.hpp"
 
 namespace RavEngine{
 struct Transform;
@@ -107,12 +108,11 @@ private:
 	normalized_vec2 blend_pos;
 };
 
-class AnimatorComponent : public Component, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>{
+class AnimatorComponent : public ComponentWithOwner, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>{
 protected:
 	double lastPlayTime = 0;
 	Ref<SkeletonAsset> skeleton;
 public:
-	
 	//a node in the state machine
 	struct State{
 		friend class AnimatorComponent;
@@ -215,7 +215,7 @@ public:
 	 Create an AnimatorComponent with a SkeletonAsset
 	 @param sk the skeleton asset
 	 */
-	AnimatorComponent(Ref<SkeletonAsset> sk){
+	AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : ComponentWithOwner(owner){
 		UpdateSkeletonData(sk);
 	}
 		
@@ -309,7 +309,7 @@ protected:
 	id_t currentState = 0;
 	
 	ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
-	ozz::animation::SamplingCache cache;
+    std::shared_ptr<ozz::animation::SamplingCache> cache = std::make_shared<ozz::animation::SamplingCache>();
 	ozz::vector<ozz::math::Float4x4> models;
     mutable ozz::vector<matrix4> glm_pose;
 	ozz::vector<matrix4> local_pose;
@@ -326,7 +326,7 @@ protected:
 		
 		const auto n_joints = skeleton->GetSkeleton()->num_joints();
 		models.resize(n_joints);
-		cache.Resize(n_joints);
+		cache->Resize(n_joints);
 		glm_pose.resize(n_joints);
 		local_pose.resize(n_joints);
 		skinningmats.resize(n_joints);
@@ -383,23 +383,22 @@ public:
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
 	 */
 	inline const decltype(glm_pose)& GetPose() const{
-        //TODO: FIX
-//		decimalType matrix[16];
-//        auto worldMat = GetOwner().lock()->GetTransform().CalculateWorldMatrix();
-//		for(int i = 0; i < models.size(); i++){
-//			auto& t = models[i];
-//			for(int r = 0; r < 4; r++){
-//				float result[4];
-//				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
-//				decimalType dresult[4];
-//				for(int j = 0; j < 4; j++){
-//					dresult[j] = result[j];
-//				}
-//				//_mm_store_ps(result,p.cols[r]);
-//				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
-//			}
-//			glm_pose[i] = worldMat * glm::make_mat4(matrix);
-//		}
+		decimalType matrix[16];
+        auto worldMat = GetOwner().GetTransform().CalculateWorldMatrix();
+		for(int i = 0; i < models.size(); i++){
+			auto& t = models[i];
+			for(int r = 0; r < 4; r++){
+				float result[4];
+				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
+				decimalType dresult[4];
+				for(int j = 0; j < 4; j++){
+					dresult[j] = result[j];
+				}
+				//_mm_store_ps(result,p.cols[r]);
+				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
+			}
+			glm_pose[i] = worldMat * glm::make_mat4(matrix);
+		}
 		return glm_pose;
 	}
 	

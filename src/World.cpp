@@ -54,9 +54,9 @@ RavEngine::World::World(bool skip){
         SetupTaskGraph();
         //TODO: FIX
         EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
+        EmplaceSystem<AnimatorSystem,AnimatorComponent>();
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
 //        systemManager.EmplaceSystem<RPCSystem>();
-//        systemManager.EmplaceSystem<AnimatorSystem>();
         skybox = make_shared<Skybox>();
     }
 }
@@ -253,21 +253,20 @@ void World::setupRenderTasks(){
         }
 	}).name("sort static");
     //TODO: FIX
-	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& e){
-//        auto m = static_cast<SkinnedMeshComponent*>(e.get());
-//        auto ptr = e->GetOwner().lock();
-//        if (ptr && m->Enabled) {
-//            auto& pair = m->getTuple();
-//            auto mat = ptr->GetTransform().GetMatrix();
-//            auto current = App::GetCurrentFramedata();
-//            auto& item = current->skinnedOpaques[pair];
-//            item.AddItem(mat);
-//            // write the pose if there is one
-//            //TODO: FIX
-////            if (auto& animator = ptr->GetComponent<AnimatorComponent>()) {
-////                item.AddSkinningData(animator->GetSkinningMats());
-////            }
-//        }
+	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& m){
+        if (m.Enabled) {
+            auto& pair = m.getTuple();
+            auto mat = m.GetOwner().GetTransform().GetMatrix();
+            auto current = App::GetCurrentFramedata();
+            auto& item = current->skinnedOpaques[pair];
+            item.AddItem(mat);
+            // write the pose if there is one
+            //TODO: FIX
+            if (m.GetOwner().HasComponent<AnimatorComponent>()) {
+                auto& animator = m.GetOwner().GetComponent<AnimatorComponent>();
+                item.AddSkinningData(animator.GetSkinningMats());
+            }
+        }
 	}).name("sort skinned");
     auto sortInstanced = renderTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
         auto current = App::GetCurrentFramedata();

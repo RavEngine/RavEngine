@@ -5,8 +5,8 @@
 namespace RavEngine{
 class AnimatorSystem : public AutoCTTI{
 public:
-    inline void Tick(float fpsScale, Ref<AnimatorComponent> c) const {
-		c->Tick(fpsScale);
+    inline void operator()(float fpsScale, AnimatorComponent& c) const {
+		c.Tick(fpsScale);
 	}
 };
 }

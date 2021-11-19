@@ -31,9 +31,9 @@ void AnimatorComponent::Tick(float timeScale){
 			currentBlendingValue = stateBlend.currentTween.step((float)timeScale / stateBlend.currentTween.duration());
 		}
 		
-		
-		fromState.clip->Sample(currentTime, std::max(lastPlayTime,fromState.lastPlayTime), fromState.speed, fromState.isLooping, transforms, cache, skeleton->GetSkeleton().get());
-		bool toDone = toState.clip->Sample(currentTime, std::max(lastPlayTime,toState.lastPlayTime), toState.speed, toState.isLooping, transformsSecondaryBlending, cache, skeleton->GetSkeleton().get());
+        auto& cref = *cache;
+		fromState.clip->Sample(currentTime, std::max(lastPlayTime,fromState.lastPlayTime), fromState.speed, fromState.isLooping, transforms, cref, skeleton->GetSkeleton().get());
+		bool toDone = toState.clip->Sample(currentTime, std::max(lastPlayTime,toState.lastPlayTime), toState.speed, toState.isLooping, transformsSecondaryBlending, cref, skeleton->GetSkeleton().get());
 		
 		//blend into output
 		ozz::animation::BlendingJob::Layer layers[2];
@@ -65,7 +65,8 @@ void AnimatorComponent::Tick(float timeScale){
 	else{
         if (states.contains(currentState)){
             auto& state = states[currentState];
-			if (state.clip->Sample(currentTime, std::max(lastPlayTime, state.lastPlayTime), state.speed, state.isLooping, transforms, cache, skeleton->GetSkeleton().get())) {
+            auto& cref = *cache;
+			if (state.clip->Sample(currentTime, std::max(lastPlayTime, state.lastPlayTime), state.speed, state.isLooping, transforms, cref, skeleton->GetSkeleton().get())) {
 				EndState(state,currentState);
 			}
         }
