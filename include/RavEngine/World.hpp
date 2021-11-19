@@ -16,7 +16,6 @@
 #include <taskflow/taskflow.hpp>
 #include "Skybox.hpp"
 #include "Types.hpp"
-#include "Reflection.hpp"
 
 namespace RavEngine {
 	class Entity;
@@ -199,7 +198,7 @@ namespace RavEngine {
                     auto sp = GetSet<T>();
                     if (sp->HasComponent(localID)){
                         auto& comp = sp->GetComponent(localID);
-                        otherWorld->EmplaceComponent<T,true>(otherLocalID, std::move(comp));
+                        otherWorld->EmplaceComponent<T>(otherLocalID, std::move(comp));
                         // then delete it from here
                         sp->Destroy(localID);
                     }
@@ -394,12 +393,10 @@ namespace RavEngine {
             return ptr;
         }
         
-        template<typename T, bool isMoving = false, typename ... A>
+        template<typename T, typename ... A>
         inline T& EmplaceComponent(entity_t local_id, A ... args){
             auto ptr = MakeIfNotExists<T>();
-            
-            //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
-            constexpr static auto data_ctor_nparams = refl::fields_number_ctor<T>(sizeof ... (A));
+            //constexpr bool isMoving = sizeof ... (A) == 1; && (std::is_rvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value || std::is_lvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value);
                         
             // does this component have alternate query types
             if constexpr (HasQueryTypes<T>::value){
@@ -411,17 +408,9 @@ namespace RavEngine {
                 }
             }
             
-            if constexpr(data_ctor_nparams > 0 ){
-                //constexpr bool isMoving = sizeof ... (A) == 1; && (std::is_rvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value || std::is_lvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value);
-                
-              
-                using data_ctor_type = refl::as_tuple<T,sizeof ... (A)>;
-                if constexpr(!isMoving && std::is_same<typename std::tuple_element<0, data_ctor_type>::type, entity_t>::value){
-                    return ptr->Emplace(local_id, local_id, args...);
-                }
-                else{
-                    return ptr->Emplace(local_id,args...);
-                }
+            //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
+            if constexpr(std::is_constructible<T,entity_t, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,entity_t>::value)){
+                return ptr->Emplace(local_id, local_id, args...);
             }
             else{
                 return ptr->Emplace(local_id,args...);
@@ -530,7 +519,7 @@ namespace RavEngine {
         struct FilterOneMode{
             funcmode_t& fm;
             const std::array<void*,n_types>& ptrs;
-            FilterOneMode(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
+            FilterOneMode(funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
             static constexpr decltype(n_types) nTypes(){
                 return n_types;
             }
@@ -640,12 +629,12 @@ namespace RavEngine {
         }
         
         template<typename ... A, typename func>
-        inline void Filter(const func& f){
+        inline void Filter(func& f){
             FilterGeneric<A...>(FuncMode<func, false>{ f });
         }
         
         template<typename ... A, typename func>
-        inline void FilterPolymorphic(const func& f){
+        inline void FilterPolymorphic(func& f){
             FilterGeneric<A...>(FuncMode<func, true>{ f });
         }
         
