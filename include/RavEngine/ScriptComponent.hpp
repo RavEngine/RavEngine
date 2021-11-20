@@ -41,14 +41,5 @@ namespace RavEngine {
 		@throws if the script is not attached to any entity.
 		*/
 		Transform& GetTransform();
-        
-		/**
-		Shortcut to get a component on the Entity
-		*/
-        //TODO: FIX
-//		template<typename T>
-//		inline std::optional<Ref<T>> GetComponent() {
-//			return GetEntity()->GetComponent<T>();
-//		}
 	};
 }

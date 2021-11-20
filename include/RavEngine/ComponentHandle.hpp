@@ -11,6 +11,9 @@ namespace RavEngine{
         }
         ComponentHandle() : owner(INVALID_ENTITY){}
         
+        ComponentHandle(Entity* owner) : owner(owner->id){}
+        ComponentHandle(entity_t ID) : owner(ID){}
+        
         inline T* operator->(){
             return get();
         }
