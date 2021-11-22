@@ -83,6 +83,18 @@ namespace uuids
 		inline bool operator>(const uuid &rhs) const { return compare(*this, rhs) > 0; }
 		inline bool operator<=(const uuid &rhs) const { return compare(*this, rhs) <= 0; }
 		inline bool operator>=(const uuid &rhs) const { return compare(*this, rhs) >= 0; }
+        
+        inline uuid& operator=(const uuid& other){
+            if (&other != this){
+                _time_low = other._time_low;
+                _time_mid = other._time_mid;
+                _time_hi_and_version = other._time_hi_and_version;
+                _clock_seq_hi_and_reserved = other._clock_seq_hi_and_reserved;
+                _clock_seq_low = other._clock_seq_low;
+                std::memcpy(_node, other._node, sizeof(_node[0]) * 6);
+            }
+            return *this;
+        }
 
 #define CHECK(f1, f2) \
     if (f1 != f2)     \
@@ -237,7 +249,9 @@ namespace uuids
     
             return data;
         }
-        
+        inline std::bitset<128> raw_bitset() const{
+            return std::bitset<128>(*(raw().data()));
+        }
     };
 
 } // namespace uuids
@@ -252,6 +266,7 @@ namespace std
 		// hashing by performing higher XOR lower
         inline std::size_t operator()(id const &d) const noexcept
         {
+            //TODO: fix - this hash is very slow
 			auto hash = std::hash<std::string>()(d.to_string());
 			return hash;
 			

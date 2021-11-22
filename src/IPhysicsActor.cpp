@@ -5,22 +5,13 @@
 using namespace std;
 using namespace RavEngine;
 
-void RavEngine::IPhysicsActor::OnRegisterBody(const WeakRef<PhysicsBodyComponent>& p)
+void RavEngine::IPhysicsActor::OnDestroy()
 {
-	senders.insert(p);
-}
-
-void RavEngine::IPhysicsActor::OnUnregisterBody(const WeakRef<PhysicsBodyComponent>& p)
-{
-	senders.erase(p);
-}
-
-RavEngine::IPhysicsActor::~IPhysicsActor()
-{
+    Receiver destroyMarker(this);
 	for (auto& a : senders) {
-        shared_ptr<PhysicsBodyComponent> ptr = a.lock();
-		if (ptr){
-			ptr->RemoveReceiver(shared_from_this());
-		}
+        //TODO: why is this const_cast necessary?
+        const_cast<ComponentHandle<PhysicsBodyComponent>&>(a)->RemoveReceiver(destroyMarker);
 	}
 }
+
+Receiver::Receiver(IPhysicsActor* actor) : ipa_id(actor->ipa_id), owner(actor->owner){}

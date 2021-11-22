@@ -25,6 +25,11 @@ struct Entity{
     inline bool HasComponent() {
         return Registry::HasComponent<T>(id);
     }
+    
+    template<typename T>
+    inline bool HasComponentOfBase(){
+        return Registry::HasComponentOfBase<T>(id);
+    }
 
     template<typename T>
     inline T& GetComponent() {

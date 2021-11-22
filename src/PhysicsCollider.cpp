@@ -137,17 +137,16 @@ bool RavEngine::PhysicsCollider::GetQueryable() const
 	return collider->getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE;
 }
 
-PhysicsCollider::~PhysicsCollider() {
-//TODO: make a separate Destroy call for physics colliders
-    //	if (collider != nullptr) {
-//		auto actor = collider->getActor();
-//		if (actor != nullptr) {
-//			actor->detachShape(*collider);
-//		}
-//		else {
-//			collider->release();
-//		}
-//	}
+void PhysicsCollider::Destroy(){
+    if (collider != nullptr) {
+        auto actor = collider->getActor();
+        if (actor != nullptr) {
+            actor->detachShape(*collider);
+        }
+        else {
+            collider->release();
+        }
+    }
 }
 
 void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quaternion &rotation){

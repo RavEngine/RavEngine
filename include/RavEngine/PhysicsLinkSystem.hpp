@@ -12,6 +12,7 @@
 #include "PhysicsBodyComponent.hpp"
 #include "ScriptSystem.hpp"
 #include "CTTI.hpp"
+#include "PolymorphicIndirection.hpp"
 
 namespace RavEngine {
 	/**
@@ -23,7 +24,7 @@ namespace RavEngine {
 		PhysicsLinkSystemWrite(physx::PxScene* scene ) : dynamicsWorld(scene){}
 		
 		physx::PxScene* dynamicsWorld = nullptr;
-		void operator()(float fpsScale, const std::vector<PhysicsBodyComponent*>&, const std::vector<Transform*>&) const;
+		void operator()(float fpsScale, const PolymorphicGetResult<PhysicsBodyComponent,World::PolymorphicIndirection>&, const PolymorphicGetResult<Transform,World::PolymorphicIndirection>&) const;
 	};
 
 	/**

@@ -51,14 +51,16 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent(entity_t owner) : PhysicsBo
     setRot(e.GetTransform().GetWorldRotation());
 }
 
-void RavEngine::PhysicsBodyComponent::AddReceiver(Ref<IPhysicsActor> obj)
+void RavEngine::PhysicsBodyComponent::AddReceiver(Receiver& obj)
 {
 	receivers.insert(obj);
+    obj->OnRegisterBody(ComponentHandle<PhysicsBodyComponent>(GetOwner()));
 }
 
-void RavEngine::PhysicsBodyComponent::RemoveReceiver(Ref<IPhysicsActor> obj)
+void RavEngine::PhysicsBodyComponent::RemoveReceiver(Receiver& obj)
 {
 	receivers.erase(obj);
+    obj->OnUnregisterBody(ComponentHandle<PhysicsBodyComponent>(GetOwner()));
 }
 
 vector3 PhysicsBodyComponent::getPos() const {
@@ -196,56 +198,41 @@ bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
 
 void PhysicsBodyComponent::OnColliderEnter(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
-	for (auto& reciever : receivers) {
-        //TODO: FIX
-//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-//		if (strong){
-//			strong->OnColliderEnter(other, contactPoints,numContactPoints);
-//		}
+    ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
+	for (auto& receiver : receivers) {
+        receiver->OnColliderEnter(oh, contactPoints,numContactPoints);
 	}
 }
 
 void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
-	for (auto& reciever : receivers) {
-        //TODO: FIX
-//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-//		if (strong){
-//			strong->OnColliderPersist(other, contactPoints, numContactPoints);
-//		}
-	}
+    ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
+	for (auto& receiver : receivers) {
+        receiver->OnColliderPersist(oh, contactPoints, numContactPoints);
+    }
 }
 
 void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints)
 {
+    ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
 	for (auto& reciever : receivers) {
-        //TODO: FIX
-//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-//		if (strong){
-//			strong->OnColliderExit(other, contactPoints, numContactPoints);
-//		}
+        reciever->OnColliderExit(oh, contactPoints, numContactPoints);
 	}
 }
 
 
 void PhysicsBodyComponent::OnTriggerEnter(PhysicsBodyComponent& other){
-	for (auto& reciever : receivers) {
-        //TODO: FIX
-//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-//		if (strong){
-//			strong->OnTriggerEnter(other);
-//		}
+    ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
+	for (auto& receiver : receivers) {
+        receiver->OnTriggerEnter(oh);
 	}
 }
 
 void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent& other){
-    //TODO: FIX
-//	for (auto& reciever : receivers) {
-//		Ref<IPhysicsActor> strong = reciever.get_weak().lock();
-//		if (strong){
-//			strong->OnTriggerExit(other);
-//		}
-//	}
+    ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
+	for (auto& receiver : receivers) {
+        receiver->OnTriggerExit(oh);
+	}
 }
 
 void RigidBodyDynamicComponent::SetMass(decimalType mass){

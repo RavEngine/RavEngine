@@ -5,7 +5,7 @@
 #include <PxRigidDynamic.h>
 #include <PxRigidStatic.h>
 #include <PxScene.h>
-#include <functional>
+#include "Function.hpp"
 #include "mathtypes.hpp"
 #include "IPhysicsActor.hpp"
 #include <phmap.h>
@@ -33,7 +33,7 @@ namespace RavEngine {
 	class PhysicsBodyComponent : public ComponentWithOwner, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
-        UnorderedSet<WeakPtrKey<IPhysicsActor>> receivers;
+        UnorderedSet<Receiver> receivers;
         boost::base_collection<PhysicsCollider> colliders;
         void CompleteConstruction();
 	public:
@@ -59,6 +59,19 @@ namespace RavEngine {
         }
         
         template<typename T>
+        bool DestroyCollider(ColliderHandle<T> handle){
+            for(const auto& collider : colliders){
+                if (collider.collider == handle.id){
+                    //
+                    static_cast<T*>(handle.id)->Destroy();
+                    colliders.erase(handle);
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        template<typename T>
         T& GetColliderForHandle(ColliderHandle<T> handle){
             for(const auto& collider : colliders){
                 if (collider.collider == handle.id){
@@ -73,13 +86,13 @@ namespace RavEngine {
 		Add a recipient for collision events. Must implement IPhysicsActor.
 		@param obj the interface implementer to recieve the events
 		*/
-		void AddReceiver(Ref<IPhysicsActor> obj);
+		void AddReceiver(Receiver& obj);
 
 		/**
 		Remove a recipient for collision events. Must implement IPhysicsActor On deallocation, objects automatically remove themselves.
 		@param obj the object to remove
 		*/
-		void RemoveReceiver(Ref<IPhysicsActor> obj);
+		void RemoveReceiver(Receiver& obj);
 
 		virtual vector3 getPos() const;
 		virtual quaternion getRot() const;

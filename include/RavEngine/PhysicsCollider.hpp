@@ -56,6 +56,8 @@ namespace RavEngine {
 		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
 		bool GetQueryable() const;
+        
+        void Destroy();
 				
 		/**
 		 Set PxShape relative transformation
@@ -66,8 +68,6 @@ namespace RavEngine {
         
         
         virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const{}
-
-		virtual ~PhysicsCollider();
 	};
 
 

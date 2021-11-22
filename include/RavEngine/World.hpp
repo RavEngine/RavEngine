@@ -16,11 +16,14 @@
 #include <taskflow/taskflow.hpp>
 #include "Skybox.hpp"
 #include "Types.hpp"
+#include "AddRemoveAction.hpp"
+#include "PolymorphicIndirection.hpp"
 
 namespace RavEngine {
 	class Entity;
 	class InputManager;
     struct Entity;
+    struct IPhysicsActor;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -214,7 +217,7 @@ namespace RavEngine {
         };
         
         UnorderedNodeMap<RavEngine::ctti_t, SparseSetErased> componentMap;
-        
+    public:
         struct PolymorphicIndirection{
             struct elt{
                 void* SparseSetPtr = nullptr;
@@ -268,14 +271,11 @@ namespace RavEngine {
             }
 
             template<typename T>
-            inline void fill_vector(std::vector<T*>& vec) {
-                vec.reserve(elts.size());
-                for_each<T>([&](auto ptr) {
-                    vec.push_back(ptr);
-                });
+            inline auto GetAll() {
+                return PolymorphicGetResult<T,PolymorphicIndirection>{*this};
             }
         };
-        
+    private:
         class SparseSetForPolymorphic{
             using U = PolymorphicIndirection;
             unordered_vector<U> dense_set;
@@ -428,8 +428,28 @@ namespace RavEngine {
         }
         
         template<typename T>
+        inline bool HasComponentOfBase(entity_t local_id){
+            return polymorphicQueryMap.at(CTTI<T>()).HasForEntity(local_id);
+        }
+        
+        template<typename T>
         inline void DestroyComponent(entity_t local_id){
-            componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->Destroy(local_id);
+            
+            auto setptr = componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>();
+            // perform special cases
+            if constexpr (RemoveAction<T>::HasCustomAction()){
+                auto& comp = setptr->GetComponent(local_id);
+                RemoveAction<T> obj;
+                obj.DoAction(&comp);
+            }
+            
+            // IPhysicsActor speical case destroy
+            if constexpr(std::is_base_of<T,IPhysicsActor*>::value){
+                auto& comp = setptr->GetComponent(local_id);
+                DestroyIPhysicsActor(comp);
+            }
+            
+            setptr->Destroy(local_id);
             
             // does this component have alternate query types
             if constexpr (HasQueryTypes<T>::value){
@@ -440,6 +460,8 @@ namespace RavEngine {
                 }
             }
         }
+        
+        void DestroyIPhysicsActor(IPhysicsActor& ia);
         
         template<typename T>
         inline SparseSet<T>* GetRange(){
@@ -460,21 +482,13 @@ namespace RavEngine {
         
         template<typename T>
         inline T& FilterComponentGet(entity_t idx, void* ptr){
-          //  if constexpr(!isPolymorphic){
-                return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
-          //  }
-          //  else{
-          //      auto ptr_c = static_cast<SparseSet<PolymorphicIndirection>*>(ptr);
-          //      return *(ptr_c->GetComponent(idx).template Get<T>());
-          //  }
+            return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
         }
 
         template<typename T>
-        inline std::vector<T*> FilterComponentBaseMultiGet(entity_t idx, void* ptr) {
+        inline auto FilterComponentBaseMultiGet(entity_t idx, void* ptr) {
             auto& c_ptr = static_cast<SparseSetForPolymorphic*>(ptr)->GetForEntity(idx);
-            std::vector<T*> ret;
-            c_ptr.fill_vector(ret);
-            return ret;
+            return c_ptr.template GetAll<T>();
         }
         
         template<typename T>
