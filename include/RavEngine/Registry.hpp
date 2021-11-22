@@ -84,6 +84,13 @@ class Registry{
         auto& data = entityData[id];
         return data.world->HasComponentOfBase<T>(data.idInWorld);
     }
+    
+    template<typename T>
+    static inline auto GetAllComponentsPolymorphic(entity_t id){
+        assert(EntityIsValid(id));
+        auto& data = entityData[id];
+        return data.world->GetAllComponentsPolymorphic<T>(data.idInWorld);
+    }
 
     static inline World* GetWorld(entity_t id) {
         assert(EntityIsValid(id));

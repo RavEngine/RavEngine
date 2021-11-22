@@ -51,16 +51,29 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent(entity_t owner) : PhysicsBo
     setRot(e.GetTransform().GetWorldRotation());
 }
 
-void RavEngine::PhysicsBodyComponent::AddReceiver(Receiver& obj)
+void RavEngine::PhysicsBodyComponent::AddReceiver(PolymorphicComponentHandle<IPhysicsActor>& obj)
 {
 	receivers.insert(obj);
-    obj->OnRegisterBody(ComponentHandle<PhysicsBodyComponent>(GetOwner()));
+    auto otherwayHandle = GetOwner().GetAllComponentsPolymorphic<PhysicsBodyComponent>().HandleFor<PolymorphicComponentHandle<PhysicsBodyComponent>>(0);
+    obj->OnRegisterBody(otherwayHandle);
 }
 
-void RavEngine::PhysicsBodyComponent::RemoveReceiver(Receiver& obj)
+void RavEngine::PhysicsBodyComponent::RemoveReceiver(PolymorphicComponentHandle<IPhysicsActor>& obj)
 {
 	receivers.erase(obj);
-    obj->OnUnregisterBody(ComponentHandle<PhysicsBodyComponent>(GetOwner()));
+    auto otherwayHandle = GetOwner().GetAllComponentsPolymorphic<PhysicsBodyComponent>().HandleFor<PolymorphicComponentHandle<PhysicsBodyComponent>>(0);
+    obj->OnUnregisterBody(otherwayHandle);
+}
+
+void PhysicsBodyComponent::RemoveReceiver(const uuids::uuid& id){
+    for(auto& item : receivers){
+        //TODO: why is this const_cast necessary?
+        if (const_cast<PolymorphicComponentHandle<IPhysicsActor>&>(item).get()->GetID() == id){
+            receivers.erase(item);
+            return;
+        }
+    }
+    Debug::Fatal("Bug: Cannot remove item that is not bound");
 }
 
 vector3 PhysicsBodyComponent::getPos() const {
@@ -200,7 +213,7 @@ void PhysicsBodyComponent::OnColliderEnter(PhysicsBodyComponent& other, const Co
 {
     ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
 	for (auto& receiver : receivers) {
-        receiver->OnColliderEnter(oh, contactPoints,numContactPoints);
+       const_cast<PolymorphicComponentHandle<IPhysicsActor>&>(receiver)->OnColliderEnter(oh, contactPoints,numContactPoints);
 	}
 }
 
@@ -208,7 +221,7 @@ void PhysicsBodyComponent::OnColliderPersist(PhysicsBodyComponent& other, const 
 {
     ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
 	for (auto& receiver : receivers) {
-        receiver->OnColliderPersist(oh, contactPoints, numContactPoints);
+        const_cast<PolymorphicComponentHandle<IPhysicsActor>&>(receiver)->OnColliderPersist(oh, contactPoints, numContactPoints);
     }
 }
 
@@ -216,7 +229,7 @@ void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent& other, const Con
 {
     ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
 	for (auto& reciever : receivers) {
-        reciever->OnColliderExit(oh, contactPoints, numContactPoints);
+        const_cast<PolymorphicComponentHandle<IPhysicsActor>&>(reciever)->OnColliderExit(oh, contactPoints, numContactPoints);
 	}
 }
 
@@ -224,14 +237,14 @@ void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent& other, const Con
 void PhysicsBodyComponent::OnTriggerEnter(PhysicsBodyComponent& other){
     ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
 	for (auto& receiver : receivers) {
-        receiver->OnTriggerEnter(oh);
+        const_cast<PolymorphicComponentHandle<IPhysicsActor>&>(receiver)->OnTriggerEnter(oh);
 	}
 }
 
 void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent& other){
     ComponentHandle<PhysicsBodyComponent> oh(other.GetOwner());
 	for (auto& receiver : receivers) {
-        receiver->OnTriggerExit(oh);
+        const_cast<PolymorphicComponentHandle<IPhysicsActor>&>(receiver)->OnTriggerExit(oh);
 	}
 }
 

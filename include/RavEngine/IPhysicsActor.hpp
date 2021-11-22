@@ -81,22 +81,36 @@ namespace RavEngine {
 		 */
 		virtual void OnTriggerExit(ComponentHandle<RavEngine::PhysicsBodyComponent>){}
 
-        void OnRegisterBody(ComponentHandle<RavEngine::PhysicsBodyComponent> sender){
+        void OnRegisterBody(PolymorphicComponentHandle<RavEngine::PhysicsBodyComponent> sender){
             senders.insert(sender);
         }
-        void OnUnregisterBody(ComponentHandle<RavEngine::PhysicsBodyComponent> sender){
+        void OnUnregisterBody(PolymorphicComponentHandle<RavEngine::PhysicsBodyComponent> sender){
             senders.erase(sender);
         }
         
         // invoked automatically on component destruction
         void OnDestroy();
-    
+
 	private:
         uuids::uuid ipa_id = uuids::uuid::create();
-        UnorderedSet<ComponentHandle<PhysicsBodyComponent>> senders;
+        UnorderedSet<PolymorphicComponentHandle<PhysicsBodyComponent>> senders;
         entity_t owner;
+        
+    public:
+        const decltype(ipa_id)& GetID() const{
+            return ipa_id;
+        }
 	};
 }
+
+namespace RavEngine {
+    // manual specializations for this non-autogeneratable type
+    template<>
+    inline std::string_view type_name<IPhysicsActor>() {
+        return "IPhysicsActor";
+    }
+}
+
 
 namespace std{
     template<>

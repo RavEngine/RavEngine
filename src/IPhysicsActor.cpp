@@ -7,10 +7,9 @@ using namespace RavEngine;
 
 void RavEngine::IPhysicsActor::OnDestroy()
 {
-    Receiver destroyMarker(this);
 	for (auto& a : senders) {
         //TODO: why is this const_cast necessary?
-        const_cast<ComponentHandle<PhysicsBodyComponent>&>(a)->RemoveReceiver(destroyMarker);
+        const_cast<PolymorphicComponentHandle<PhysicsBodyComponent>&>(a)->RemoveReceiver(ipa_id);
 	}
 }
 

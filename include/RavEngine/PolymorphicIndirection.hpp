@@ -17,5 +17,26 @@ template<typename T, typename PolymorphicIndirection_t>
         inline auto size() const{
             return items.elts.size();
         }
+        
+        inline auto begin(){
+            return items.elts.begin();
+        }
+        
+        inline auto end(){
+            return items.elts.end();
+        }
+        
+        inline auto begin() const{
+            return items.elts.begin();
+        }
+        
+        inline auto end() const{
+            return items.elts.end();
+        }
+        
+        template<typename BaseIncludingArgument>
+        inline auto HandleFor(int idx){
+            return items.template HandleFor<BaseIncludingArgument>(idx);
+        }
     };
 }

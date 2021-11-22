@@ -7,6 +7,26 @@ namespace RavEngine{
         Entity owner;
     public:
         ComponentHandleBase(decltype(owner) owner ) : owner(owner){}
+        
+        inline operator bool () const{
+            return IsValid();
+        }
+        
+        inline void reset(){
+            owner = Entity(INVALID_ENTITY);
+        }
+        
+        inline bool IsValid() const{
+            return EntityIsValid(owner.id);
+        }
+        
+        inline decltype(owner) GetOwner() const{
+            return owner;
+        }
+        
+        inline entity_t get_id() const{
+            return GetOwner().id;
+        }
     };
     
     template<typename T>
@@ -37,42 +57,46 @@ namespace RavEngine{
             return static_cast<U*>(get());
         }
         
-        inline operator bool () const{
-            return IsValid();
-        }
-        
-        inline void reset(){
-            owner = Entity(INVALID_ENTITY);
-        }
-        
-        inline bool IsValid() const{
-            return EntityIsValid(owner.id);
-        }
-        
-        inline decltype(owner) GetOwner() const{
-            return owner;
-        }
-        
-        inline entity_t get_id() const{
-            return GetOwner().id;
-        }
-        
-        inline bool operator==(ComponentHandle<T>& other) const{
+        inline bool operator==(const ComponentHandle<T>& other) const{
             return owner.id == other.owner.id;
         }
     };
 
-    template<typename T>
+    template<typename Base>
     struct PolymorphicComponentHandle : ComponentHandleBase{
-        PolymorphicComponentHandle(decltype(owner) owner) : ComponentHandleBase(owner){
-            assert(owner.HasComponentOfBase<T>());
+        ctti_t full_type_id;
+        uint32_t stride;
+        
+        template<typename Full>
+        PolymorphicComponentHandle(ComponentHandle<Full> fullHandle) : ComponentHandleBase(fullHandle.owner), full_type_id(CTTI<Full>()), stride(sizeof(Full)){
+            assert(owner.HasComponentOfBase<Base>());
         }
-        PolymorphicComponentHandle() : ComponentHandleBase(INVALID_ENTITY){}
         
-        PolymorphicComponentHandle(Entity* owner) : ComponentHandleBase(owner->id){}
-        PolymorphicComponentHandle(entity_t ID) : ComponentHandleBase(ID){}
+        PolymorphicComponentHandle(decltype(owner) owner, decltype(full_type_id) id, decltype(stride) st) : full_type_id(id), stride(st),ComponentHandleBase(owner){}
         
+        inline bool operator==(const PolymorphicComponentHandle<Base>& other){
+            return owner.id == other.owner.id && full_type_id == other.full_type_id;
+        }
         
+        inline Base* get(){
+            assert(EntityIsValid(owner.id));
+            auto matching = owner.GetAllComponentsPolymorphic<Base>();
+            for(auto& comp : matching){
+                if (comp.stride == stride){
+                    return comp.template Get<Base>(GetOwner().id);
+                }
+            }
+            return nullptr;
+        }
+        
+        inline Base* operator->(){
+            return get();
+        }
+        
+        template<typename T>
+        inline T* get_as(){
+            return static_cast<T*>(get());
+        }
     };
 }
 
@@ -83,4 +107,11 @@ namespace std{
             return ch.GetOwner().id;
         }
     };
+
+template<typename T>
+struct hash<RavEngine::PolymorphicComponentHandle<T>>{
+    inline size_t operator()(const RavEngine::PolymorphicComponentHandle<T>& ch) const{
+        return ch.GetOwner().id ^ ch.full_type_id;
+    }
+};
 }

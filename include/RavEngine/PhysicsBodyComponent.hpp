@@ -33,7 +33,7 @@ namespace RavEngine {
 	class PhysicsBodyComponent : public ComponentWithOwner, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
-        UnorderedSet<Receiver> receivers;
+        UnorderedSet<PolymorphicComponentHandle<IPhysicsActor>> receivers;
         boost::base_collection<PhysicsCollider> colliders;
         void CompleteConstruction();
 	public:
@@ -86,13 +86,15 @@ namespace RavEngine {
 		Add a recipient for collision events. Must implement IPhysicsActor.
 		@param obj the interface implementer to recieve the events
 		*/
-		void AddReceiver(Receiver& obj);
+		void AddReceiver(PolymorphicComponentHandle<IPhysicsActor>& obj);
 
 		/**
 		Remove a recipient for collision events. Must implement IPhysicsActor On deallocation, objects automatically remove themselves.
 		@param obj the object to remove
 		*/
-		void RemoveReceiver(Receiver& obj);
+		void RemoveReceiver(PolymorphicComponentHandle<IPhysicsActor>& obj);
+        
+        void RemoveReceiver(const uuids::uuid& uuid);
 
 		virtual vector3 getPos() const;
 		virtual quaternion getRot() const;

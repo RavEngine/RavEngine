@@ -30,6 +30,11 @@ struct Entity{
     inline bool HasComponentOfBase(){
         return Registry::HasComponentOfBase<T>(id);
     }
+    
+    template<typename T>
+    inline auto GetAllComponentsPolymorphic(){
+        return Registry::GetAllComponentsPolymorphic<T>(id);
+    }
 
     template<typename T>
     inline T& GetComponent() {

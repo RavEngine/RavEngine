@@ -222,8 +222,9 @@ namespace RavEngine {
             struct elt{
                 void* SparseSetPtr = nullptr;
                 uint32_t stride = 0;
+                ctti_t full_id = 0;
                 template<typename T>
-                elt(World* world, T* discard) : SparseSetPtr(world->componentMap.at(CTTI<T>()).template GetSet<T>()), stride(sizeof(T)){
+                elt(World* world, T* discard) : SparseSetPtr(world->componentMap.at(CTTI<T>()).template GetSet<T>()), stride(sizeof(T)), full_id(CTTI<T>()){
                     static_assert(sizeof(T) < std::numeric_limits<decltype(stride)>::max(),"T is too big!");
                 }
                 
@@ -273,6 +274,12 @@ namespace RavEngine {
             template<typename T>
             inline auto GetAll() {
                 return PolymorphicGetResult<T,PolymorphicIndirection>{*this};
+            }
+            
+            template<typename BaseIncludingArgument>
+            inline auto HandleFor(int idx){
+                auto& elt = elts.at(idx);
+                return BaseIncludingArgument(owner,elt.full_id, elt.stride);
             }
         };
     private:
@@ -420,6 +427,11 @@ namespace RavEngine {
         template<typename T>
         inline T& GetComponent(entity_t local_id) {
             return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(local_id);
+        }
+        
+        template<typename T>
+        inline auto GetAllComponentsPolymorphic(entity_t local_id){
+            return polymorphicQueryMap.at(CTTI<T>()).GetForEntity(local_id).template GetAll<T>();
         }
 
         template<typename T>
