@@ -97,6 +97,12 @@ class Registry{
         auto& data = entityData[id];
         return data.world;
     }
+    
+    static inline entity_t GetLocalId(entity_t global_id){
+        assert(EntityIsValid(global_id));
+        auto& data = entityData[global_id];
+        return data.idInWorld;
+    }
 
     // free an entity for reuse. this is called on world destruction
     static inline void ReleaseEntity(entity_t global_id) {

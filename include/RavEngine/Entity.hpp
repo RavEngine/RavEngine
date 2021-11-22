@@ -50,6 +50,10 @@ struct Entity{
         return Registry::GetWorld(id);
     }
     
+    inline decltype(id) GetIdInWorld() const{
+        return Registry::GetLocalId(id);
+    }
+    
     inline void MoveTo(World& newWorld){
         Registry::MoveEntityToWorld(id, newWorld);
     }

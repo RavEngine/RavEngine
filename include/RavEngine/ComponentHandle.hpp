@@ -68,7 +68,7 @@ namespace RavEngine{
         uint32_t stride;
         
         template<typename Full>
-        PolymorphicComponentHandle(ComponentHandle<Full> fullHandle) : ComponentHandleBase(fullHandle.owner), full_type_id(CTTI<Full>()), stride(sizeof(Full)){
+        PolymorphicComponentHandle(ComponentHandle<Full> fullHandle) : ComponentHandleBase(fullHandle.get_id()), full_type_id(CTTI<Full>()), stride(sizeof(Full)){
             assert(owner.HasComponentOfBase<Base>());
         }
         
@@ -83,7 +83,7 @@ namespace RavEngine{
             auto matching = owner.GetAllComponentsPolymorphic<Base>();
             for(auto& comp : matching){
                 if (comp.stride == stride){
-                    return comp.template Get<Base>(GetOwner().id);
+                    return comp.template Get<Base>(GetOwner().GetIdInWorld());
                 }
             }
             return nullptr;
