@@ -87,14 +87,12 @@ class ObjectPool {
     Blocklist* next;
   };
 
-  class GlobalHeap {
-    friend class ObjectPool;
+  struct GlobalHeap {
     std::mutex mutex;
     Blocklist list;
   };
 
-  class LocalHeap {
-    friend class ObjectPool;
+  struct LocalHeap {
     std::mutex mutex;
     Blocklist lists[B];
     size_t u {0};
@@ -102,7 +100,7 @@ class ObjectPool {
   };
 
   struct Block {
-    LocalHeap* heap;
+    std::atomic<LocalHeap*> heap;
     Blocklist list_node;
     size_t i;
     size_t u;
@@ -227,14 +225,16 @@ ObjectPool<T, S>::~ObjectPool() {
   for(auto& h : _lheaps) {
     for(size_t i=0; i<B; ++i) {
       _for_each_block_safe(&h.lists[i], [] (Block* b) { 
-        std::free(b); 
+        //std::free(b); 
+        delete b;
       });
     }
   }
   
   // clear global heap
   _for_each_block_safe(&_gheap.list, [] (Block* b) { 
-    std::free(b);
+    //std::free(b);
+    delete b;
   });
 }
     
@@ -579,7 +579,7 @@ template <typename... ArgsT>
 T* ObjectPool<T, S>::animate(ArgsT&&... args) {
 
   //std::cout << "construct a new item\n";
-    
+  
   // my logically mapped heap
   LocalHeap& h = _this_heap(); 
   
@@ -622,7 +622,8 @@ T* ObjectPool<T, S>::animate(ArgsT&&... args) {
       //printf("create a new superblock\n");
       _gheap.mutex.unlock();
       f = 0;
-      s = static_cast<Block*>(std::malloc(sizeof(Block)));
+      //s = static_cast<Block*>(std::malloc(sizeof(Block)));
+      s = new Block();
 
       if(s == nullptr) {
         throw std::bad_alloc();
@@ -694,7 +695,7 @@ void ObjectPool<T, S>::recycle(T* mem) {
   bool sync = false;
 
   do {
-    auto h = s->heap;    
+    LocalHeap* h = s->heap.load(std::memory_order_relaxed);
     
     // the block is in global heap
     if(h == nullptr) {

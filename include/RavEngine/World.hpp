@@ -754,6 +754,14 @@ namespace RavEngine {
         inline auto EmplaceSystem(Args... args){
             return EmplaceSystemGeneric<false,T,A...>(args...);
         }
+
+        template<typename T>
+        inline void RemoveSystem() {
+            auto& tpair = typeToSystem.at(CTTI<T>());
+            ECSTasks.erase(tpair.first);
+            ECSTasks.erase(tpair.second);
+            typeToSystem.erase(CTTI<T>());
+        }
         
         template<typename T, typename ... A, typename interval_t, typename ... Args>
         inline void EmplaceTimedSystem(const interval_t interval, Args ... args){

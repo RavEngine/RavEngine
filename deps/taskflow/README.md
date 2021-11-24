@@ -1,16 +1,14 @@
 # Taskflow <img align="right" width="10%" src="image/taskflow_logo.png">
 
 <!--[![Linux Build Status](https://travis-ci.com/taskflow/taskflow.svg?branch=master)](https://travis-ci.com/taskflow/taskflow)-->
-[![taskflow](https://circleci.com/gh/taskflow/taskflow.svg?style=svg)](https://app.circleci.com/pipelines/github/taskflow)
-[![Windows Build status](https://ci.appveyor.com/api/projects/status/rbjl16i6c9ahxr16?svg=true)](https://ci.appveyor.com/project/tsung-wei-huang/taskflow)
 [![Ubuntu](https://github.com/taskflow/taskflow/workflows/Ubuntu/badge.svg)](https://github.com/taskflow/taskflow/actions?query=workflow%3AUbuntu)
 [![macOS](https://github.com/taskflow/taskflow/workflows/macOS/badge.svg)](https://github.com/taskflow/taskflow/actions?query=workflow%3AmacOS)
 [![Windows](https://github.com/taskflow/taskflow/workflows/Windows/badge.svg)](https://github.com/taskflow/taskflow/actions?query=workflow%3AWindows)
 [![Wiki](image/api-doc.svg)][documentation]
 [![TFProf](image/tfprof.svg)](https://taskflow.github.io/tfprof/)
-[![Cite](image/cite-ipdps.svg)][IPDPS19]
+[![Cite](image/cite-tpds.svg)][TPDS21]
 
-Taskflow helps you quickly write parallel and heterogeneous tasks programs in modern C++
+Taskflow helps you quickly write parallel and heterogeneous task programs in modern C++
 
 # Why Taskflow?
 
@@ -60,7 +58,7 @@ Taskflow provides visualization and tooling needed for profiling Taskflow progra
 | ![](image/tfprof.png) |
 
 We are committed to support trustworthy developments for both academic and industrial research projects
-in parallel computing. Check out [Who is Using Taskflow](#who-is-using-taskflow) and what our users say:
+in parallel computing. Check out [Who is Using Taskflow](https://taskflow.github.io/#tag_users) and what our users say:
 
 + *"Taskflow is the cleanest Task API I've ever seen." [Damien Hocking @Corelium Inc](http://coreliuminc.com)*
 + *"Taskflow has a very simple and elegant tasking interface. The performance also scales very well." [Glen Fraser][totalgee]*
@@ -71,7 +69,7 @@ in parallel computing. Check out [Who is Using Taskflow](#who-is-using-taskflow)
 
 See a quick [presentation](https://taskflow.github.io/) and
 visit the [documentation][documentation] to learn more about Taskflow.
-Technical details can be referred to our [IPDPS paper][IPDPS19].
+Technical details can be referred to our [IEEE TPDS paper][TPDS21].
 
 # Start Your First Taskflow Program
 
@@ -90,7 +88,7 @@ int main(){
   tf::Executor executor;
   tf::Taskflow taskflow;
 
-  auto [A, B, C, D] = taskflow.emplace(  // create 4 tasks
+  auto [A, B, C, D] = taskflow.emplace(  // create four tasks
     [] () { std::cout << "TaskA\n"; },
     [] () { std::cout << "TaskB\n"; },
     [] () { std::cout << "TaskC\n"; },
@@ -149,16 +147,242 @@ taskflow.dump(std::cout);
 
 <p align="center"><img src="doxygen/images/simple.svg"></p>
 
+# Express Task Graph Parallelism
+
+Taskflow empowers users with both static and dynamic task graph constructions
+to express end-to-end parallelism in a task graph that
+embeds in-graph control flow.
+
+1. [Create a Subflow Graph](#create-a-subflow-graph)
+2. [Integrate Control Flow to a Task Graph](#integrate-control-flow-to-a-task-graph)
+3. [Offload a Task to a GPU](#offload-a-task-to-a-gpu)
+4. [Compose Task Graphs](#compose-task-graphs)
+5. [Launch Asynchronous Tasks](#launch-asynchronous-tasks)
+6. [Execute a Taskflow](#execute-a-taskflow)
+7. [Leverage Standard Parallel Algorithms](#leverage-standard-parallel-algorithms)
+
+## Create a Subflow Graph
+
+Taskflow supports *dynamic tasking* for you to create a subflow
+graph from the execution of a task to perform dynamic parallelism.
+The following program spawns a task dependency graph parented at task `B`.
+
+```cpp
+tf::Task A = taskflow.emplace([](){}).name("A");  
+tf::Task C = taskflow.emplace([](){}).name("C");  
+tf::Task D = taskflow.emplace([](){}).name("D");  
+
+tf::Task B = taskflow.emplace([] (tf::Subflow& subflow) { 
+  tf::Task B1 = subflow.emplace([](){}).name("B1");  
+  tf::Task B2 = subflow.emplace([](){}).name("B2");  
+  tf::Task B3 = subflow.emplace([](){}).name("B3");  
+  B3.succeed(B1, B2);  // B3 runs after B1 and B2
+}).name("B");
+
+A.precede(B, C);  // A runs before B and C
+D.succeed(B, C);  // D runs after  B and C
+```
+
+<p align="center"><img src="doxygen/images/subflow_join.svg"></p>
+
+## Integrate Control Flow to a Task Graph 
+
+Taskflow supports *conditional tasking* for you to make rapid 
+control-flow decisions across dependent tasks to implement cycles 
+and conditions in an *end-to-end* task graph.
+
+```cpp
+tf::Task init = taskflow.emplace([](){}).name("init");
+tf::Task stop = taskflow.emplace([](){}).name("stop");
+
+// creates a condition task that returns a random binary
+tf::Task cond = taskflow.emplace(
+  [](){ return std::rand() % 2; }
+).name("cond");
+
+init.precede(cond);
+
+// creates a feedback loop {0: cond, 1: stop}
+cond.precede(cond, stop);
+```
+
+<p align="center"><img src="doxygen/images/conditional-tasking-1.svg"></p>
+
+
+## Offload a Task to a GPU
+
+Taskflow supports GPU tasking for you to accelerate a wide range of scientific computing applications by harnessing the power of CPU-GPU collaborative computing using CUDA.
+
+```cpp
+__global__ void saxpy(size_t N, float alpha, float* dx, float* dy) {
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  if (i < n) {
+    y[i] = a*x[i] + y[i];
+  }
+}
+tf::Task cudaflow = taskflow.emplace([&](tf::cudaFlow& cf) {
+
+  // data copy tasks
+  tf::cudaTask h2d_x = cf.copy(dx, hx.data(), N).name("h2d_x");
+  tf::cudaTask h2d_y = cf.copy(dy, hy.data(), N).name("h2d_y");
+  tf::cudaTask d2h_x = cf.copy(hx.data(), dx, N).name("d2h_x");
+  tf::cudaTask d2h_y = cf.copy(hy.data(), dy, N).name("d2h_y");
+  
+  // kernel task with parameters to launch the saxpy kernel
+  tf::cudaTask saxpy = cf.kernel(
+    (N+255)/256, 256, 0, saxpy, N, 2.0f, dx, dy
+  ).name("saxpy");
+
+  saxpy.succeed(h2d_x, h2d_y)
+       .precede(d2h_x, d2h_y);
+}).name("cudaFlow");
+```
+
+<p align="center"><img src="doxygen/images/saxpy_1_cudaflow.svg"></p>
+
+Taskflow also supports SYCL, a general-purpose heterogeneous programming model,
+to program GPU tasks in a single-source C++ environment using the task graph-based 
+approach.
+
+```cpp
+tf::Task syclflow = taskflow.emplace_on([&](tf::syclFlow& sf){
+  tf::syclTask h2d_x = cf.copy(dx, hx.data(), N).name("h2d_x");
+  tf::syclTask h2d_y = cf.copy(dy, hy.data(), N).name("h2d_y");
+  tf::syclTask d2h_x = cf.copy(hx.data(), dx, N).name("d2h_x");
+  tf::syclTask d2h_y = cf.copy(hy.data(), dy, N).name("d2h_y");
+  tf::syclTask saxpy = sf.parallel_for(sycl::range<1>(N), 
+    [=] (sycl::id<1> id) {
+      dx[id] = 2.0f * dx[id] + dy[id];
+    }
+  ).name("saxpy");
+  saxpy.succeed(h2d_x, h2d_y)
+       .precede(d2h_x, d2h_y);
+}, sycl_queue).name("syclFlow");
+```
+
+## Compose Task Graphs
+
+Taskflow is composable. 
+You can create large parallel graphs through composition of modular 
+and reusable blocks that are easier to optimize at an individual scope.
+
+```cpp
+tf::Taskflow f1, f2;
+
+// create taskflow f1 of two tasks
+tf::Task f1A = f1.emplace([]() { std::cout << "Task f1A\n"; })
+                 .name("f1A");
+tf::Task f1B = f1.emplace([]() { std::cout << "Task f1B\n"; })
+                 .name("f1B");
+
+// create taskflow f2 with one module task composed of f1
+tf::Task f2A = f2.emplace([]() { std::cout << "Task f2A\n"; })
+                 .name("f2A");
+tf::Task f2B = f2.emplace([]() { std::cout << "Task f2B\n"; })
+                 .name("f2B");
+tf::Task f2C = f2.emplace([]() { std::cout << "Task f2C\n"; })
+                 .name("f2C");
+
+tf::Task f1_module_task = f2.composed_of(f1)
+                            .name("module");
+
+f1_module_task.succeed(f2A, f2B)
+              .precede(f2C);
+```
+
+<p align="center"><img src="doxygen/images/composition.svg"></p>
+
+## Launch Asynchronous Tasks
+
+Taskflow supports *asynchronous* tasking.
+You can launch tasks asynchronously to incorporate independent, dynamic 
+parallelism in your taskflows.
+
+```cpp
+tf::Executor executor;
+tf::Taskflow taskflow;
+
+// create asynchronous tasks directly from an executor
+tf::future<std::optional<int>> future = executor.async([](){ 
+  std::cout << "async task returns 1\n";
+  return 1;
+}); 
+executor.silent_async([](){ std::cout << "async task of no return\n"; });
+
+// launch an asynchronous task from a running task
+taskflow.emplace([&](){
+  executor.async([](){ std::cout << "async task within a task\n"; });
+});
+
+executor.run(taskflow).wait();
+```
+
+## Execute a Taskflow
+
+The executor provides several *thread-safe* methods to run a taskflow. 
+You can run a taskflow once, multiple times, or until a stopping criteria is met. 
+These methods are non-blocking with a `tf::future<void>` return 
+to let you query the execution status. 
+
+```cpp
+// runs the taskflow once
+tf::Future<void> run_once = executor.run(taskflow); 
+
+// wait on this run to finish
+run_once.get();
+
+// run the taskflow four times
+executor.run_n(taskflow, 4);
+
+// runs the taskflow five times
+executor.run_until(taskflow, [counter=5](){ return --counter == 0; });
+
+// block the executor until all submitted taskflows complete
+executor.wait_for_all();
+```
+
+## Leverage Standard Parallel Algorithms
+
+Taskflow defines algorithms for you to quickly express common parallel
+patterns using standard C++ syntaxes, 
+such as parallel iterations, parallel reductions, and parallel sort.
+
+```cpp
+// standard parallel CPU algorithms
+tf::Task task1 = taskflow.for_each( // assign each element to 100 in parallel
+  first, last, [] (auto& i) { i = 100; }    
+);
+tf::Task task2 = taskflow.reduce(   // reduce a range of items in parallel
+  first, last, init, [] (auto a, auto b) { return a + b; }
+);
+tf::Task task3 = taskflow.sort(     // sort a range of items in parallel
+  first, last, [] (auto a, auto b) { return a < b; }
+);
+
+// standard parallel GPU algorithms
+tf::cudaTask cuda1 = cudaflow.for_each( // assign each element to 100 on GPU
+  dfirst, dlast, [] __device__ (auto i) { i = 100; }
+);
+tf::cudaTask cuda2 = cudaflow.reduce(   // reduce a range of items on GPU
+  dfirst, dlast, init, [] __device__ (auto a, auto b) { return a + b; }
+);
+tf::cudaTask cuda3 = cudaflow.sort(     // sort a range of items on GPU
+  dfirst, dlast, [] __device__ (auto a, auto b) { return a < b; }
+);
+```
+
+
 # Supported Compilers
 
 To use Taskflow, you only need a compiler that supports C++17:
 
-+ GNU C++ Compiler at least v7.0 with -std=c++17
++ GNU C++ Compiler at least v8.4 with -std=c++17
 + Clang C++ Compiler at least v6.0 with -std=c++17
 + Microsoft Visual Studio at least v19.27 with /std:c++17
 + AppleClang Xode Version at least v12.0 with -std=c++17
 + Nvidia CUDA Toolkit and Compiler (nvcc) at least v11.1 with -std=c++17
-+ Intel C++ Compiler (nvcc) at least v19.0.1 with -std=c++17
++ Intel C++ Compiler at least v19.0.1 with -std=c++17
++ Intel DPC++ Clang Compiler at least v13.0.0 with -std=c++17 and SYCL20
 
 Taskflow works on Linux, Windows, and Mac OS X.
 
@@ -180,7 +404,16 @@ to learn more about Taskflow. To get involved:
 We are committed to support trustworthy developments for 
 both academic and industrial research projects in parallel 
 and heterogeneous computing. 
-At the same time, we appreciate all Taskflow [contributors][contributors]!
+If you are using Taskflow, please cite the following paper we publised at 2021 IEEE TPDS:
+
++ Tsung-Wei Huang, Dian-Lun Lin, Chun-Xun Lin, and Yibo Lin, &quot;[Taskflow: A Lightweight Parallel and Heterogeneous Task Graph Computing System](https://tsung-wei-huang.github.io/papers/tpds21-taskflow.pdf),&quot; <i>IEEE Transactions on Parallel and Distributed Systems (TPDS)</i>, accepted, 2021
+
+More importantly, we appreciate all Taskflow [contributors][contributors] and 
+the following organizations for sponsoring the Taskflow project!
+
+| <!-- --> | <!-- --> | <!-- --> | <!-- --> |
+|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
+|<img src="doxygen/images/utah-ece-logo.png">|<img src="doxygen/images/nsf.png"> | <img src="doxygen/images/darpa.png"> | <img src="doxygen/images/NumFocus.png">|
 
 # License
 
@@ -192,7 +425,6 @@ You are completely free to re-distribute your work derived from Taskflow.
 [Tsung-Wei Huang]:       https://tsung-wei-huang.github.io/
 [Chun-Xun Lin]:          https://github.com/clin99
 [Martin Wong]:           https://ece.illinois.edu/directory/profile/mdfwong
-[Gitter badge]:          ./image/gitter_badge.svg
 [GitHub releases]:       https://github.com/taskflow/taskflow/releases
 [GitHub issues]:         https://github.com/taskflow/taskflow/issues
 [GitHub insights]:       https://github.com/taskflow/taskflow/pulse
@@ -224,11 +456,10 @@ You are completely free to re-distribute your work derived from Taskflow.
 [email me]:              mailto:twh760812@gmail.com
 [Cpp Conference 2018]:   https://github.com/CppCon/CppCon2018
 [IPDPS19]:               https://tsung-wei-huang.github.io/papers/ipdps19.pdf
-
+[TPDS21]:                https://tsung-wei-huang.github.io/papers/tpds21-taskflow.pdf
 [cuda-zone]:             https://developer.nvidia.com/cuda-zone
 [nvcc]:                  https://developer.nvidia.com/cuda-llvm-compiler
 [cudaGraph]:             https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__GRAPH.html
-
 [Firestorm]:             https://github.com/ForgeMistress/Firestorm
 [Shiva]:                 https://shiva.gitbook.io/project/shiva
 [PID Framework]:         http://pid.lirmm.net/pid-framework/index.html

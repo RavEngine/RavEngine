@@ -58,7 +58,7 @@ T* cuda_malloc_device(size_t N, int d) {
 /**
 @brief allocates memory on the current device associated with the caller
 
-The function calls cuda_malloc_device from the current device associated
+The function calls malloc_device from the current device associated
 with the caller.
 */
 template <typename T>
@@ -366,6 +366,67 @@ struct cudaSharedMemory <double>
     return s_double;
   }
 };
+
+// ----------------------------------------------------------------------------
+// Memory Object
+// ----------------------------------------------------------------------------
+
+/**
+@private
+*/ 
+template <typename T>
+class cudaScopedDeviceMemory {
+  
+  public:
+
+    cudaScopedDeviceMemory() = default;
+
+    cudaScopedDeviceMemory(size_t N) : _N {N} {
+      if(N) {
+        TF_CHECK_CUDA(
+          cudaMalloc(&_data, N*sizeof(T)), 
+          "failed to allocate device memory (", N*sizeof(T), " bytes)"
+        );
+      }
+    }
+    
+    cudaScopedDeviceMemory(cudaScopedDeviceMemory&& rhs) : 
+      _data{rhs._data}, _N {rhs._N} {
+      rhs._data = nullptr;
+      rhs._N    = 0;
+    }
+
+    ~cudaScopedDeviceMemory() {
+      if(_data) {
+        cudaFree(_data);
+      }
+    }
+
+    cudaScopedDeviceMemory& operator = (cudaScopedDeviceMemory&& rhs) {
+      if(_data) {
+        cudaFree(_data);
+      }
+      _data = rhs._data;
+      _N    = rhs._N;
+      rhs._data = nullptr;
+      rhs._N    = 0;
+      return *this;
+    }
+
+    size_t size() const { return _N; }
+
+    T* data() { return _data; }
+    const T* data() const { return _data; }
+    
+    cudaScopedDeviceMemory(const cudaScopedDeviceMemory&) = delete;
+    cudaScopedDeviceMemory& operator = (const cudaScopedDeviceMemory&) = delete;
+
+  private:
+
+    T* _data  {nullptr};
+    size_t _N {0};
+};
+
 
 }  // end of namespace tf -----------------------------------------------------
 

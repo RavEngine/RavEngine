@@ -14,6 +14,7 @@
 #include <sstream>
 #include <cstring>
 #include <array>
+#include <bitset>
 
 /* --------------------------------------------------------------------------
 Uuid layout:

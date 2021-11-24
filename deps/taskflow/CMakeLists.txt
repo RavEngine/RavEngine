@@ -1,9 +1,20 @@
+# -------------------------------------------------------------------
+# Taskflow CMake 
+#
+# To enable thread sanitizer: 
+# -DCMAKE_CXX_FLAGS="-fsanitize=thread -g"
+#
+# To enable address and leak sanitizers
+# -DCMAKE_CXX_FLAGS="-fsanitize=address  -fsanitize=leak -g"
+# -------------------------------------------------------------------
+
+
 # CMake version
 cmake_minimum_required (VERSION 3.12)
 MESSAGE(STATUS "CMAKE_ROOT: " ${CMAKE_ROOT})
 
 # Project name
-project(Taskflow VERSION 3.0.0 LANGUAGES CXX)
+project(Taskflow VERSION 3.3.0 LANGUAGES CXX)
 
 # build options
 option(TF_BUILD_BENCHMARKS "Enables builds of benchmarks" OFF)
@@ -14,8 +25,6 @@ option(TF_BUILD_EXAMPLES "Enables builds of examples" ON)
 option(TF_BUILD_PROFILER "Enables builds of profiler" OFF)
 
 # project-specific variables
-set(TF_INC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")
-set(TF_LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 set(TF_UTEST_DIR ${PROJECT_SOURCE_DIR}/unittests)
 set(TF_EXAMPLE_DIR ${PROJECT_SOURCE_DIR}/examples)
 set(TF_BENCHMARK_DIR ${PROJECT_SOURCE_DIR}/benchmarks)
@@ -28,6 +37,9 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Include additional language check
 include(CheckLanguage)
+
+# Adhere to GNU conventions
+include(GNUInstallDirs)
 
 # Compiler vendors
 ## g++
@@ -86,14 +98,13 @@ if(TF_BUILD_CUDA)
     message(FATAL_ERROR "\nTaskflow requires CUDA at least v11")
   endif()
   
-  # configure cuBLAS
-  message(STATUS "Configuring CUDA BLAS ...")
-  list(APPEND CMAKE_MODULE_PATH ${TF_CMAKE_DIR}/cuda/modules/)
-  find_package(cuBLAS)
-  message(STATUS "CUBLAS_FOUND: ${CUBLAS_FOUND}")
-  message(STATUS "CUBLAS_INCLUDE_DIRS: ${CUBLAS_INCLUDE_DIRS}")
-  message(STATUS "CUBLAS_LIBRARIES: ${CUBLAS_LIBRARIES}")
-  include_directories(${CUBLAS_INCLUDE_DIRS})
+  ## configure cuBLAS
+  #message(STATUS "Configuring CUDA BLAS ...")
+  #list(APPEND CMAKE_MODULE_PATH ${TF_CMAKE_DIR}/cuda/modules/)
+  #find_package(cuBLAS)
+  #message(STATUS "CUBLAS_FOUND: ${CUBLAS_FOUND}")
+  #message(STATUS "CUBLAS_INCLUDE_DIRS: ${CUBLAS_INCLUDE_DIRS}")
+  #message(STATUS "CUBLAS_LIBRARIES: ${CUBLAS_LIBRARIES}")
 endif()
 
 # -----------------------------------------------------------------------------
@@ -107,19 +118,19 @@ endif()
 # cmake ../ -DTF_BUILD_SYCL=ON 
 #           -DCOMPUTECPP_BITCODE=ptx64 
 #           -DComputeCpp_DIR=$COMPUTECPP_HOME
-if(TF_BUILD_SYCL)
-  message(STATUS "Configuring ComputeCpp for SYCL ...")
-  #message(STATUS "You may specify '-DComputeCpp_DIR=/path/to/ComputeCpp/'")
-  message(STATUS "You may specify '-DCOMPUTECPP_BITCODE=ptx64' for Nvidia devices")
-  list(APPEND CMAKE_MODULE_PATH ${TF_CMAKE_DIR}/ComputeCpp/Modules/)
-  if(NOT ComputeCpp_DIR)
-    message(FATAL_ERROR "Please specify -DComputeCpp_DIR=/path/to/ComputeCpp/")
-  endif()
-  find_package(ComputeCpp REQUIRED)
-  message(STATUS "ComputeCpp_DIR: " ${ComputeCpp_DIR})
-  message(STATUS "ComputeCpp_INCLUDE_DIRS: " ${ComputeCpp_INCLUDE_DIRS})
-  include_directories(${ComputeCpp_INCLUDE_DIRS})
-endif()
+#if(TF_BUILD_SYCL)
+#  message(STATUS "Configuring ComputeCpp for SYCL ...")
+#  message(STATUS "You may specify '-DComputeCpp_DIR=/path/to/ComputeCpp/'")
+#  message(STATUS "You may specify '-DCOMPUTECPP_BITCODE=ptx64' for Nvidia devices")
+#  list(APPEND CMAKE_MODULE_PATH ${TF_CMAKE_DIR}/ComputeCpp/Modules/)
+#  if(NOT ComputeCpp_DIR)
+#    message(FATAL_ERROR "Please specify -DComputeCpp_DIR=/path/to/ComputeCpp/")
+#  endif()
+#  find_package(ComputeCpp REQUIRED)
+#  message(STATUS "ComputeCpp_DIR: " ${ComputeCpp_DIR})
+#  message(STATUS "ComputeCpp_INCLUDE_DIRS: " ${ComputeCpp_INCLUDE_DIRS})
+#  include_directories(${ComputeCpp_INCLUDE_DIRS})
+#endif()
 
 # -----------------------------------------------------------------------------
 # defult release build
@@ -157,14 +168,11 @@ target_compile_options(
   $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra -Wfatal-errors>
   $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-Wall -Wextra -Wfatal-errors>
   $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/W3 /permissive->
-  #$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra,-Wfatal-errors>
-  #$<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wfatal-errors>
-  #$<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wfatal-errors>
-  #$<$<CXX_COMPILER_ID:MSVC>:/W3 /permissive->
-  #$<$<CXX_COMPILER_ID:NVIDIA>:-Xcompiler=-Wall,-Wextra,-Wfatal-errors>
 )
 
+# cuda compiler options
 if(TF_BUILD_CUDA)
+  message(STATUS "Configuring CUDA compiler options ...")
   target_compile_options(
     error_settings
     BEFORE
@@ -173,14 +181,25 @@ if(TF_BUILD_CUDA)
   )
 endif(TF_BUILD_CUDA)
 
+# sycl compiler options (currently support only DPC++)
+if(TF_BUILD_SYCL)
+  message(STATUS "Configuring SYCL compiler options ...")
+  message(STATUS "You may specify -DTF_BUILD_SYCL_BITCODE=ptx64 for CUDA devices")
+  list(APPEND TF_SYCL_OPTIONS -fsycl -fsycl-unnamed-lambda)
+  if(TF_BUILD_SYCL_BITCODE STREQUAL "ptx64")
+    message(STATUS "Configuring SYCL compiler options to CUDA ptx64 ...")
+    list(APPEND TF_SYCL_OPTIONS -fsycl-targets=nvptx64-nvidia-cuda-sycldevice)
+  endif()
+endif()
+
 # additional features
-add_library(features_settings INTERFACE)
-add_library(tf::features_settings ALIAS features_settings)
-target_compile_definitions(
-  features_settings 
-  INTERFACE 
-  $<$<CXX_COMPILER_ID:MSVC>:_ENABLE_EXTENDED_ALIGNED_STORAGE>
-)
+#add_library(features_settings INTERFACE)
+#add_library(tf::features_settings ALIAS features_settings)
+#target_compile_definitions(
+#  features_settings 
+#  INTERFACE 
+#  $<$<CXX_COMPILER_ID:MSVC>:_ENABLE_EXTENDED_ALIGNED_STORAGE>
+#)
 
 # optimization
 #
@@ -215,13 +234,8 @@ target_link_libraries(
   INTERFACE 
   tf::error_settings 
   #tf::optimize_settings 
-  tf::features_settings
+  #tf::features_settings
 )
-
-# CXX target properties
-#set(CMAKE_CXX_STANDARD 14)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_CXX_EXTENSIONS OFF)
 
 # -----------------------------------------------------------------------------
 # start build
@@ -244,16 +258,17 @@ message(STATUS "CMAKE_CURRENT_BINARY_DIR: " ${CMAKE_CURRENT_BINARY_DIR})
 message(STATUS "CMAKE_CURRENT_LIST_DIR: " ${CMAKE_CURRENT_LIST_DIR})
 message(STATUS "CMAKE_EXE_LINKER_FLAGS: " ${CMAKE_EXE_LINKER_FLAGS})
 message(STATUS "CMAKE_INSTALL_PREFIX: " ${CMAKE_INSTALL_PREFIX})
+message(STATUS "CMAKE_INSTALL_FULL_INCLUDEDIR: " ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+message(STATUS "CMAKE_INSTALL_FULL_LIBDIR: " ${CMAKE_INSTALL_FULL_LIBDIR})
 message(STATUS "CMAKE_MODULE_PATH: " ${CMAKE_MODULE_PATH})
 message(STATUS "CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 message(STATUS "TF_BUILD_BENCHMARKS: " ${TF_BUILD_BENCHMARKS})
 message(STATUS "TF_BUILD_CUDA: " ${TF_BUILD_CUDA})
 message(STATUS "TF_BUILD_SYCL: " ${TF_BUILD_SYCL})
+message(STATUS "TF_BUILD_SYCL_BITCODE: " ${TF_BUILD_SYCL_BITCODE})
 message(STATUS "TF_BUILD_TESTS: " ${TF_BUILD_TESTS})
 message(STATUS "TF_BUILD_EXAMPLES: " ${TF_BUILD_EXAMPLES})
 message(STATUS "TF_BUILD_PROFILER: " ${TF_BUILD_PROFILER})
-message(STATUS "TF_INC_INSTALL_DIR: " ${TF_INC_INSTALL_DIR})
-message(STATUS "TF_LIB_INSTALL_DIR: " ${TF_LIB_INSTALL_DIR})
 message(STATUS "TF_UTEST_DIR: " ${TF_UTEST_DIR})
 message(STATUS "TF_EXAMPLE_DIR: " ${TF_EXAMPLE_DIR})
 message(STATUS "TF_BENCHMARK_DIR: " ${TF_BENCHMARK_DIR})
@@ -283,22 +298,6 @@ target_include_directories(${PROJECT_NAME} INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include/> 
 )
-
-#add_library(TaskflowDSL INTERFACE)
-#target_compile_features(TaskflowDSL INTERFACE cxx_std_17)
-#target_link_libraries(TaskflowDSL INTERFACE Threads::Threads)
-#target_include_directories(TaskflowDSL INTERFACE
-#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-#  $<INSTALL_INTERFACE:include/> 
-#)
-#
-#add_library(TensorFrame INTERFACE)
-#target_compile_features(TensorFrame INTERFACE cxx_std_17)
-#target_link_libraries(TensorFrame INTERFACE Threads::Threads)
-#target_include_directories(TensorFrame INTERFACE
-#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-#  $<INSTALL_INTERFACE:include/> 
-#)
 
 # -----------------------------------------------------------------------------
 # profiler program 
@@ -334,7 +333,7 @@ endif(TF_BUILD_BENCHMARKS)
 # -----------------------------------------------------------------------------
 
 # install header
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/taskflow DESTINATION ${TF_INC_INSTALL_DIR})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/taskflow DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # export target
 set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PROJECT_NAME})
@@ -350,7 +349,7 @@ install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets)
 install(
   EXPORT ${PROJECT_NAME}Targets 
   NAMESPACE ${PROJECT_NAME}:: 
-  DESTINATION ${TF_LIB_INSTALL_DIR}/cmake/${PROJECT_NAME}
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
 
 # set up config
@@ -359,8 +358,8 @@ include(CMakePackageConfigHelpers)
 configure_package_config_file(
   ${PROJECT_NAME}Config.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-  INSTALL_DESTINATION ${TF_LIB_INSTALL_DIR}/cmake/${PROJECT_NAME}
-  PATH_VARS TF_INC_INSTALL_DIR
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+  PATH_VARS CMAKE_INSTALL_FULL_INCLUDEDIR
 )
 
 write_basic_package_version_file(
@@ -371,6 +370,6 @@ write_basic_package_version_file(
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-  DESTINATION ${TF_LIB_INSTALL_DIR}/cmake/${PROJECT_NAME}
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
 

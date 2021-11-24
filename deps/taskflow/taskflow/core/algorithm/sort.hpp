@@ -17,12 +17,12 @@ constexpr size_t parallel_sort_cutoff() {
     return 128;
   }
   else {
-    if(object_size < 16) return 4096;
-    else if(object_size < 32) return 2048;
-    else if(object_size < 64) return 1024;
-    else if(object_size < 128) return 768;
-    else if(object_size < 256) return 512;
-    else if(object_size < 512) return 256;
+    if constexpr(object_size < 16) return 4096;
+    else if constexpr(object_size < 32) return 2048;
+    else if constexpr(object_size < 64) return 1024;
+    else if constexpr(object_size < 128) return 768;
+    else if constexpr(object_size < 256) return 512;
+    else if constexpr(object_size < 512) return 256;
     else return 128;
   }
 }
@@ -343,7 +343,7 @@ void parallel_pdqsort(
     // Sort the left partition first using recursion and 
     // do tail recursion elimination for the right-hand partition.
     sf.silent_async(
-      [&sf, begin, pivot_pos, &comp, bad_allowed, leftmost] () mutable {
+      [&sf, begin, pivot_pos, comp, bad_allowed, leftmost] () mutable {
         parallel_pdqsort(sf, begin, pivot_pos, comp, bad_allowed, leftmost);
       }
     );
@@ -429,15 +429,12 @@ void parallel_3wqsort(tf::Subflow& sf, RandItr first, RandItr last, C compare) {
 
 // Function: sort
 template <typename B, typename E, typename C>
-Task FlowBuilder::sort(B&& beg, E&& end, C&& cmp) {
+Task FlowBuilder::sort(B&& beg, E&& end, C cmp) {
   
   using I = stateful_iterator_t<B, E>;
 
   Task task = emplace(
-  [b=std::forward<B>(beg),
-   e=std::forward<E>(end), 
-   c=std::forward<C>(cmp)
-   ] (Subflow& sf) mutable {
+  [b=std::forward<B>(beg), e=std::forward<E>(end), cmp] (Subflow& sf) mutable {
     
     // fetch the iterator values
     I beg = b;
@@ -452,12 +449,12 @@ Task FlowBuilder::sort(B&& beg, E&& end, C&& cmp) {
 
     // only myself - no need to spawn another graph
     if(W <= 1 || N <= parallel_sort_cutoff<I>()) {
-      std::sort(beg, end, c);
+      std::sort(beg, end, cmp);
       return;
     }
 
     //parallel_3wqsort(sf, beg, end-1, c);
-    parallel_pdqsort(sf, beg, end, c, log2(end - beg));
+    parallel_pdqsort(sf, beg, end, cmp, log2(end - beg));
 
     sf.join();
   });  

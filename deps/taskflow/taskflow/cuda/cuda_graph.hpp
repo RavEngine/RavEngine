@@ -3,9 +3,7 @@
 #include "cuda_memory.hpp"
 #include "cuda_stream.hpp"
 
-#include "../utility/object_pool.hpp"
 #include "../utility/traits.hpp"
-#include "../utility/passive_vector.hpp"
 
 namespace tf {
 
@@ -334,9 +332,14 @@ class cudaGraph : public CustomGraphBase {
   friend class cudaFlow;
   friend class cudaCapturingBase;
   friend class cudaSequentialCapturing;
+  friend class cudaLinearCapturing;
   friend class cudaRoundRobinCapturing;
   friend class Taskflow;
   friend class Executor;
+  
+  constexpr static int OFFLOADED = 0x01;
+  constexpr static int CHANGED   = 0x02;
+  constexpr static int UPDATED   = 0x04;
 
   public:
     
@@ -359,20 +362,22 @@ class cudaGraph : public CustomGraphBase {
 
   private:
 
+    int _state{CHANGED};
+
     cudaGraph_t _native_handle {nullptr};
 
-    // TODO: nvcc complains deleter of unique_ptr
-    //std::vector<std::unique_ptr<cudaNode>> _nodes;
-    std::vector<cudaNode*> _nodes;
+    std::vector<std::unique_ptr<cudaNode>> _nodes;
+    //std::vector<cudaNode*> _nodes;
 };
 
 // ----------------------------------------------------------------------------
 // cudaNode class
 // ----------------------------------------------------------------------------
 
-// class: cudaNode
-// each create_native_node is wrapped in a function to call at runtime 
-// in order to work with gpu context
+/** 
+@private
+@class: cudaNode
+*/
 class cudaNode {
   
   friend class cudaGraph;
@@ -382,6 +387,7 @@ class cudaNode {
   friend class cudaFlowCapturerBase;
   friend class cudaCapturingBase;
   friend class cudaSequentialCapturing;
+  friend class cudaLinearCapturing;
   friend class cudaRoundRobinCapturing;
   friend class Taskflow;
   friend class Executor;
@@ -431,8 +437,9 @@ class cudaNode {
 
     std::function<void(cudaStream_t)> work;
 
-    cudaEvent_t event {nullptr};
+    cudaEvent_t event;
     size_t level;
+    size_t lid;
     size_t idx;
   };
 
@@ -445,8 +452,6 @@ class cudaNode {
     Subflow,
     Capture
   >;
-
-  constexpr static auto STATE_VISITED = 0x1;
 
   public:
   
@@ -474,14 +479,10 @@ class cudaNode {
 
     cudaGraphNode_t _native_handle {nullptr};
 
-    std::vector<cudaNode*> _successors;
-    std::vector<cudaNode*> _dependents;
+    SmallVector<cudaNode*> _successors;
+    SmallVector<cudaNode*> _dependents;
 
     void _precede(cudaNode*);
-    //void _set_state(int);
-    //void _unset_state(int);
-    //void _clear_state();
-    //bool _has_state(int) const;
 };
 
 // ----------------------------------------------------------------------------
@@ -520,13 +521,15 @@ cudaNode::cudaNode(cudaGraph& graph, ArgsT&&... args) :
 // Procedure: _precede
 inline void cudaNode::_precede(cudaNode* v) {
 
+  _graph._state |= cudaGraph::CHANGED;
+
   _successors.push_back(v);
   v->_dependents.push_back(this);
 
   // capture node doesn't have the native graph yet
   if(_handle.index() != cudaNode::CAPTURE) {
     TF_CHECK_CUDA(
-      ::cudaGraphAddDependencies(
+      cudaGraphAddDependencies(
         _graph._native_handle, &_native_handle, &v->_native_handle, 1
       ),
       "failed to add a preceding link ", this, "->", v
@@ -560,7 +563,7 @@ inline void cudaNode::_precede(cudaNode* v) {
 
 // Destructor
 inline cudaGraph::~cudaGraph() {
-  clear();
+  //clear();
   assert(_native_handle == nullptr);
 }
 
@@ -577,7 +580,7 @@ inline cudaGraph::cudaGraph(cudaGraph&& g) :
 // Move assignment
 inline cudaGraph& cudaGraph::operator = (cudaGraph&& rhs) {
 
-  clear();
+  //clear();
   
   // lhs
   _native_handle = rhs._native_handle;
@@ -598,23 +601,27 @@ inline bool cudaGraph::empty() const {
 
 // Procedure: clear
 inline void cudaGraph::clear() {
-  for(auto n : _nodes) {
-    delete n;
-  }
+  //for(auto n : _nodes) {
+  //  delete n;
+  //}
+  _state = cudaGraph::CHANGED;
   _nodes.clear();
 }
 
 // Function: emplace_back
 template <typename... ArgsT>
 cudaNode* cudaGraph::emplace_back(ArgsT&&... args) {
-  //auto node = std::make_unique<cudaNode>(std::forward<ArgsT>(args)...);
-  //_nodes.emplace_back(std::move(node));
-  //return _nodes.back().get();
-  // TODO: object pool
 
-  auto node = new cudaNode(std::forward<ArgsT>(args)...);
-  _nodes.push_back(node);
-  return node;
+  _state |= cudaGraph::CHANGED;
+
+  auto node = std::make_unique<cudaNode>(std::forward<ArgsT>(args)...);
+  _nodes.emplace_back(std::move(node));
+  return _nodes.back().get();
+
+  // TODO: use object pool to save memory
+  //auto node = new cudaNode(std::forward<ArgsT>(args)...);
+  //_nodes.push_back(node);
+  //return node;
 }
 
 // Procedure: dump the graph to a DOT format
@@ -655,7 +662,9 @@ inline void cudaGraph::dump(
       os << "\";\n" << "color=\"purple\"\n";
     }
 
-    for(auto& v : graph->_nodes) {
+    for(auto& node : graph->_nodes) {
+
+      auto v = node.get();
       
       os << 'p' << v << "[label=\"";
       if(v->_name.empty()) {
@@ -675,7 +684,7 @@ inline void cudaGraph::dump(
 
         case cudaNode::SUBFLOW:
           stack.push(std::make_tuple(
-            &std::get<cudaNode::Subflow>(v->_handle).graph, v, l+1)
+            &(std::get_if<cudaNode::Subflow>(&v->_handle)->graph), v, l+1)
           );
           os << " style=\"filled\""
              << " color=\"black\" fillcolor=\"purple\""

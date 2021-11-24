@@ -156,6 +156,7 @@ void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quater
 matrix4 PhysicsCollider::CalculateWorldMatrix() const{
     //TODO: FIX
     // return Ref<Entity>(GetOwner())->GetTransform().CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
+    return matrix4(1);
 }
 
 void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
