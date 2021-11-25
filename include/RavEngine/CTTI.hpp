@@ -85,16 +85,23 @@ inline constexpr std::string_view type_name_impl() {
 
 //already defined for void, don't want to define it again
 //defines automatically only for primitive types
-template<typename T, std::enable_if_t<std::is_fundamental<T>::value && !std::is_same<T,void>::value, bool> = false>
+
+template<typename T>
+static constexpr bool fundamental_specialized = std::is_fundamental<T>::value && !std::is_same<T,void>::value;
+
+template<typename T, std::enable_if_t<fundamental_specialized<T>, bool> = false>
 inline constexpr std::string_view type_name() {
     return type_name_impl<T>();
 }
 
 template<typename T>
-static constexpr bool is_ineligible = !std::is_base_of<RavEngine::AutoCTTI, T>::value && !std::is_pod<T>::value && !std::is_fundamental<T>::value && !std::is_same<T,void>::value;
+static constexpr bool is_eligible = (std::is_base_of<RavEngine::AutoCTTI, T>::value || std::is_pod<T>::value) && (!std::is_same<T,void>::value && !std::is_fundamental<T>::value);
+
+template<typename T>
+static constexpr bool is_ineligible = !is_eligible<T>;
 
 // for structs, provide an automatic CTTI implementation using the derivation
-template <typename T, std::enable_if_t<!is_ineligible<T>,bool> = false>
+template <typename T, std::enable_if_t<is_eligible<T>,bool> = false>
 inline constexpr std::string_view type_name() {
 #ifdef _MSC_VER
 	constexpr auto str = type_name_impl<T>();
@@ -114,7 +121,7 @@ inline constexpr std::string_view type_name() {
 
 // this is the catch-all for types that do not satisfy the above requirements
 // this specialization always fails.
-template<typename T, std::enable_if_t<is_ineligible<T>, bool> = false>
+template<typename T, std::enable_if_t<is_ineligible<T> && !fundamental_specialized<T>, bool> = false>
 inline constexpr std::string_view type_name(){
 	static_assert(!(is_ineligible<T>),"A platform-independent type-name string cannot be auto-generated for this type. Create a manual specialization. See mathtypes.hpp for an example.");
 	return "";
