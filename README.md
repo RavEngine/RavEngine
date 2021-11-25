@@ -1,7 +1,8 @@
 # RavEngine
 A C++17 cross-platform game library, with emphasis on performance and ease of use. Notable features:
 1. Fast Parallel ECS
-   - Unique feature: Supports querying by base classes without vtable! 
+   - Unique feature: Supports querying by base classes without vtable!
+   - Also supports Unity-style scripting with full automatic parallelization
 2. Multithreaded physics simulation (Nvidia PhysX 4.1)
 3. 3D spatialized audio with accurate room reverbation modeling (Google Resonance Audio)
 4. Automatic memory management handled via reference counting 
@@ -82,8 +83,8 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 | tvOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
 | Windows 10 (Win32) | x64 | MSVC++ | Visual Studio | DX12, Vulkan |
 | Windows 10 (UWP) | x64 | MSVC++ | Visual Studio 2019 | DX12 |
-| Linux | x64 | Clang++, g++ | Ninja | Vulkan |
-| Raspi | aarch64 | Clang++, g++ | Ninja | Vulkan |
+| Linux | x64 | Clang++, g++ | Ninja, Make | Vulkan |
+| Raspi | aarch64 | Clang++, g++ | Ninja, Make | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic

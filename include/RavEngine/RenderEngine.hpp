@@ -19,6 +19,7 @@
 #include "Function.hpp"
 #include "Common3D.hpp"
 #include "SpinLock.hpp"
+#include <RavEngine/Utilities.hpp>
 
 struct SDL_Window;
 
