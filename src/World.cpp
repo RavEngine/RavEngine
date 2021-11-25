@@ -55,6 +55,8 @@ RavEngine::World::World(bool skip){
         //TODO: FIX
         EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
         EmplaceSystem<AnimatorSystem,AnimatorComponent>();
+        //CreateDependency<ScriptSystem, PhysicsLinkSystemWrite>();
+       // CreateDependency<PhysicsLinkSystemRead, ScriptSystem>();
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
 //        systemManager.EmplaceSystem<RPCSystem>();
         skybox = make_shared<Skybox>();
@@ -62,14 +64,6 @@ RavEngine::World::World(bool skip){
 }
 
 //void World::OnAddComponent(Ref<Component> comp){
-//	//is this a script? if so, call its start
-//	{
-//		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
-//		if (scr){
-//			scr->Start();
-//			return;
-//		}
-//	}
 //	//is this a NetworkIdentity? if so, call Add on the NetworkManager
 //	{
 //		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
@@ -82,14 +76,6 @@ RavEngine::World::World(bool skip){
 //}
 //
 //void World::OnRemoveComponent(Ref<Component> comp){
-//	//is this a script? if so, call its stop
-//	{
-//		auto scr = dynamic_pointer_cast<ScriptComponent>(comp);
-//		if (scr){
-//			scr->Stop();
-//			return;
-//		}
-//	}
 //	//is this a NetworkIdentity? if so, call destroy on the NetworkManager
 //	{
 //		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);

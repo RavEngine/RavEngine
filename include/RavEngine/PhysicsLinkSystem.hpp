@@ -37,13 +37,5 @@ namespace RavEngine {
 		
 		physx::PxScene* dynamicsWorld = nullptr;
 		void operator()(float fpsScale, const RigidBodyDynamicComponent&, Transform&) const;
-
-		//must run before write system
-        constexpr const System::list_type& MustRunBefore() const {
-			return runbefore;
-		}
-		
-	protected:
-		static const System::list_type queries, runbefore;
 	};
 }

@@ -36,5 +36,3 @@ void PhysicsLinkSystemWrite::operator()(float fpsScale, const PolymorphicGetResu
         rigid.setRot(rot);
         dynamicsWorld->unlockWrite();
 }
-
-const System::list_type PhysicsLinkSystemRead::runbefore = {CTTI<ScriptSystem>()};
