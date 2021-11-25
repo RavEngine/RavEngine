@@ -408,7 +408,3 @@ World::~World() {
         }
     }
 }
-
-void World::DestroyIPhysicsActor(IPhysicsActor& ia){
-    ia.OnDestroy();
-}

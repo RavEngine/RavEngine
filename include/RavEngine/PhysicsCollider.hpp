@@ -30,7 +30,7 @@ namespace RavEngine {
 		matrix4 CalculateWorldMatrix() const;
 	public:
 		enum class CollisionType { Trigger, Collider };
-
+        void UpdateFilterData(PhysicsBodyComponent* owner);
 		/**
 		Set the state to collider or trigger.
 		@param the new state

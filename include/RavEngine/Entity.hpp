@@ -12,32 +12,32 @@ struct Entity{
     Entity(){}
     
     template<typename T, typename ... A>
-    inline T& EmplaceComponent(A ... args){
+    inline T& EmplaceComponent(A ... args) const{
         return Registry::EmplaceComponent<T>(id, args...);
     }
     
     template<typename T>
-    inline void DestroyComponent(){
+    inline void DestroyComponent() const{
         Registry::DestroyComponent<T>(id);
     }
 
     template<typename T>
-    inline bool HasComponent() {
+    inline bool HasComponent() const{
         return Registry::HasComponent<T>(id);
     }
     
     template<typename T>
-    inline bool HasComponentOfBase(){
+    inline bool HasComponentOfBase() const{
         return Registry::HasComponentOfBase<T>(id);
     }
     
     template<typename T>
-    inline auto GetAllComponentsPolymorphic(){
+    inline auto GetAllComponentsPolymorphic() const{
         return Registry::GetAllComponentsPolymorphic<T>(id);
     }
 
     template<typename T>
-    inline T& GetComponent() {
+    inline T& GetComponent() const{
        return Registry::GetComponent<T>(id);
     }
     
@@ -54,7 +54,7 @@ struct Entity{
         return Registry::GetLocalId(id);
     }
     
-    inline void MoveTo(World& newWorld){
+    inline void MoveTo(World& newWorld) const{
         Registry::MoveEntityToWorld(id, newWorld);
     }
     

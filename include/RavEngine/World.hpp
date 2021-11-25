@@ -23,7 +23,7 @@ namespace RavEngine {
 	class Entity;
 	class InputManager;
     struct Entity;
-    struct IPhysicsActor;
+    struct PhysicsCallback;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -455,12 +455,6 @@ namespace RavEngine {
                 obj.DoAction(&comp);
             }
             
-            // IPhysicsActor speical case destroy
-            if constexpr(std::is_base_of<T,IPhysicsActor*>::value){
-                auto& comp = setptr->GetComponent(local_id);
-                DestroyIPhysicsActor(comp);
-            }
-            
             setptr->Destroy(local_id);
             
             // does this component have alternate query types
@@ -473,7 +467,7 @@ namespace RavEngine {
             }
         }
         
-        void DestroyIPhysicsActor(IPhysicsActor& ia);
+        void DestroyIPhysicsActor(PhysicsCallback& ia);
         
         template<typename T>
         inline SparseSet<T>* GetRange(){

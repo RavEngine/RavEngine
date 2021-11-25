@@ -7,7 +7,7 @@
 #include <PxScene.h>
 #include "Function.hpp"
 #include "mathtypes.hpp"
-#include "IPhysicsActor.hpp"
+#include "PhysicsCallback.hpp"
 #include <phmap.h>
 #include "Queryable.hpp"
 #include <PxSimulationEventCallback.h>
@@ -33,7 +33,7 @@ namespace RavEngine {
 	class PhysicsBodyComponent : public ComponentWithOwner, public Queryable<PhysicsBodyComponent>
 	{
 	protected:
-        UnorderedSet<PolymorphicComponentHandle<IPhysicsActor>> receivers;
+        UnorderedSet<std::shared_ptr<PhysicsCallback>> receivers;
         boost::base_collection<PhysicsCollider> colliders;
         void CompleteConstruction();
 	public:
@@ -86,13 +86,13 @@ namespace RavEngine {
 		Add a recipient for collision events. Must implement IPhysicsActor.
 		@param obj the interface implementer to recieve the events
 		*/
-		void AddReceiver(PolymorphicComponentHandle<IPhysicsActor>& obj);
+		void AddReceiver(decltype(receivers)::value_type& obj);
 
 		/**
 		Remove a recipient for collision events. Must implement IPhysicsActor On deallocation, objects automatically remove themselves.
 		@param obj the object to remove
 		*/
-		void RemoveReceiver(PolymorphicComponentHandle<IPhysicsActor>& obj);
+		void RemoveReceiver(decltype(receivers)::value_type& obj);
         
         void RemoveReceiver(const uuids::uuid& uuid);
 

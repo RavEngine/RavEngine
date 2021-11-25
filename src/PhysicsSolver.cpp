@@ -50,29 +50,6 @@ PxFilterFlags FilterShader(physx::PxFilterObjectAttributes attributes0, physx::P
     return PxFilterFlag::eDEFAULT;
 }
 
-/**
- * Given an actor, set its filter layer group
- * @param actor the rigid actor to add
- * @param filterGroup which layer to assign the object (use the enum)
- * @param filterMask a bitmask of which layers the object should collide with
- */
-void PhysicsSolver::setupFiltering(PxRigidActor* actor, PxU32 filterGroup, PxU32 filterMask)
-{
-    PxFilterData filterData;
-    filterData.word0 = filterGroup; // word0 = own ID
-    filterData.word1 = filterMask;  // word1 = ID mask to filter pairs that trigger a
-                                    // contact callback;
-    const PxU32 numShapes = actor->getNbShapes();
-    //PxShape** shapes = new PxShape*[sizeof(PxShape*) * numShapes];
-	PxShape** shapes = (PxShape**)alloca(sizeof(PxShape*) * numShapes);
-    actor->getShapes(shapes, numShapes);
-    for (PxU32 i = 0; i < numShapes; i++)
-    {
-        PxShape* shape = shapes[i];
-        shape->setSimulationFilterData(filterData);
-    }
-    //delete[] shapes;
-}
 
 // Invoked by PhysX after simulation each tick
 void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs)
@@ -91,11 +68,9 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
         std::memcpy(&actor1_e, &pairHeader.actors[0]->userData, sizeof(actor1_e));
         std::memcpy(&actor2_e, &pairHeader.actors[1]->userData, sizeof(actor2_e));
 
-        
-        auto& actor1 = actor1_e.GetComponent<PhysicsBodyComponent>();
-        auto& actor2 = actor2_e.GetComponent<PhysicsBodyComponent>();
+        auto& actor1 = actor1_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
+        auto& actor2 = actor2_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
 
-		
         size_t numContacts = 0;
         stackarray(contactPoints, ContactPairPoint, contactpair.contactCount);
         {
@@ -150,8 +125,8 @@ void PhysicsSolver::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
         memcpy(&other_e, &cp.otherActor->userData, sizeof(other_e));
         memcpy(&trigger_e, &cp.triggerActor->userData, sizeof(trigger_e));
     
-        auto& other = other_e.GetComponent<PhysicsBodyComponent>();
-        auto& trigger = trigger_e.GetComponent<PhysicsBodyComponent>();
+        auto& other = other_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
+        auto& trigger = trigger_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
 
 		//process events
 		if(cp.status & (PxPairFlag::eNOTIFY_TOUCH_FOUND)){
@@ -224,11 +199,6 @@ void PhysicsSolver::Spawn(PhysicsBodyComponent& actor){
     scene->lockWrite();
     scene->addActor(*(actor.rigidActor));
     scene->unlockWrite();
-
-    //set filtering on the actor if its filtering is not disabled
-    if (actor.filterGroup != -1 && actor.filterMask != -1) {
-        setupFiltering(actor.rigidActor, actor.filterGroup, actor.filterMask);
-    }
 }
 
 /**

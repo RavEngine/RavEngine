@@ -10,6 +10,13 @@
 using namespace physx;
 using namespace RavEngine;
 
+void PhysicsCollider::UpdateFilterData(PhysicsBodyComponent* owner){
+    PxFilterData filterData;
+    filterData.word0 = owner->filterGroup; // word0 = own ID
+    filterData.word1 = owner->filterMask;
+    collider->setSimulationFilterData(filterData);
+}
+
 BoxCollider::BoxCollider(PhysicsBodyComponent* owner, const vector3& ext, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : extent(ext){
     material = mat;
     
@@ -18,7 +25,7 @@ BoxCollider::BoxCollider(PhysicsBodyComponent* owner, const vector3& ext, Ref<Ph
 
     //set relative transformation
     SetRelativeTransform(position, rotation);
-
+    UpdateFilterData(owner);
 }
 
 SphereCollider::SphereCollider(PhysicsBodyComponent* owner, decimalType r, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : radius(r){
@@ -26,6 +33,7 @@ SphereCollider::SphereCollider(PhysicsBodyComponent* owner, decimalType r, Ref<P
     collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxSphereGeometry(radius), *material->GetPhysXmat());
 
     SetRelativeTransform(position, rotation);
+    UpdateFilterData(owner);
 }
 
 CapsuleCollider::CapsuleCollider(PhysicsBodyComponent* owner, decimalType r, decimalType hh, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : radius(r), halfHeight(hh){
@@ -34,7 +42,7 @@ CapsuleCollider::CapsuleCollider(PhysicsBodyComponent* owner, decimalType r, dec
     collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxCapsuleGeometry(radius,halfHeight), *material->GetPhysXmat());
 
     SetRelativeTransform(position, rotation);
-    
+    UpdateFilterData(owner);
 }
 
 MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset, Ref<PhysicsMaterial> mat){
@@ -76,9 +84,10 @@ MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset
     
     collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxTriangleMeshGeometry(triMesh), *material->GetPhysXmat());
     triMesh->release();
+    UpdateFilterData(owner);
 }
 
-ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset, Ref<PhysicsMaterial> mat){
+ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset, Ref<PhysicsMaterial> mat) {
     material = mat;
     
     auto& meshdata = meshAsset->GetSystemCopy();
@@ -106,6 +115,7 @@ ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsse
     physx::PxConvexMesh* convMesh = PhysicsSolver::cooking->createConvexMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
     
     collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxConvexMeshGeometry(convMesh), *material->GetPhysXmat());
+    UpdateFilterData(owner);
 }
 
 void RavEngine::PhysicsCollider::SetType(CollisionType type)
