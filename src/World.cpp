@@ -56,7 +56,7 @@ RavEngine::World::World(bool skip){
         EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
         EmplaceSystem<AnimatorSystem,AnimatorComponent>();
         //CreateDependency<ScriptSystem, PhysicsLinkSystemWrite>();
-       // CreateDependency<PhysicsLinkSystemRead, ScriptSystem>();
+        //CreateDependency<PhysicsLinkSystemRead, ScriptSystem>();
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
 //        systemManager.EmplaceSystem<RPCSystem>();
         skybox = make_shared<Skybox>();
@@ -238,7 +238,6 @@ void World::setupRenderTasks(){
             item.AddItem(mat);
         }
 	}).name("sort static");
-    //TODO: FIX
 	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& m){
         if (m.Enabled) {
             auto& pair = m.getTuple();
@@ -247,7 +246,6 @@ void World::setupRenderTasks(){
             auto& item = current->skinnedOpaques[pair];
             item.AddItem(mat);
             // write the pose if there is one
-            //TODO: FIX
             if (m.GetOwner().HasComponent<AnimatorComponent>()) {
                 auto& animator = m.GetOwner().GetComponent<AnimatorComponent>();
                 item.AddSkinningData(animator.GetSkinningMats());
@@ -268,11 +266,9 @@ void World::setupRenderTasks(){
         }
     }).name("sort instanced");
 
-    //TODO: FIX
-	init.precede(sort/*,sortskinned*/,sortInstanced);
+	init.precede(sort,sortskinned,sortInstanced);
 	matcalc.precede(sort);
-//	skinnedmatcalc.precede(sortskinned);
-//
+
 	auto copydirs = renderTasks.emplace([this](){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
             auto ptr = dirs.value();
