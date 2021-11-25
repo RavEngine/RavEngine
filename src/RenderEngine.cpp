@@ -736,7 +736,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);
 	auto& sb = worldOwning->skybox;
-    if (sb->enabled){
+    if (sb && sb->enabled){
         auto transform = glm::translate(matrix4(1),fd->cameraWorldpos);
         sb->Draw(transform,Views::FinalBlit);
     }
