@@ -94,7 +94,7 @@ namespace RavEngine {
 		*/
 		void RemoveReceiver(decltype(receivers)::value_type& obj);
         
-        void RemoveReceiver(const uuids::uuid& uuid);
+        void RemoveReceiver(PhysicsCallback*);
 
 		virtual vector3 getPos() const;
 		virtual quaternion getRot() const;
@@ -147,13 +147,13 @@ namespace RavEngine {
 		void OnColliderExit(PhysicsBodyComponent& other, const ContactPairPoint* contactPoints, size_t numContactPoints);
 		
 		/**
-		 Called by a PhysicsBodyComponent when it has entered another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
+		 Called by a PhysicsBodyComponent when it has entered another trigger. Override in subclasses. Note that triggers cannot fire events on other triggers.
 		 @param other the other component
 		 */
 		void OnTriggerEnter(PhysicsBodyComponent& other);
 		
 		/**
-		 Called by a PhysicsBodyComponent when it has exited another trigger . Override in subclasses. Note that triggers cannot fire events on other triggers.
+		 Called by a PhysicsBodyComponent when it has exited another trigger. Override in subclasses. Note that triggers cannot fire events on other triggers.
 		 @param other the other component
 		 */
 		void OnTriggerExit(PhysicsBodyComponent& other);
@@ -295,15 +295,24 @@ namespace RavEngine {
 		 Reset all active torques on the object
 		 */
 		void ClearAllTorques();
+
+		// call underlying
+		void OnDestroy() {
+			PhysicsBodyComponent::OnDestroy();
+		}
 	};
 
-	class RigidBodyStaticComponent : public PhysicsBodyComponent, public QueryableDelta<PhysicsBodyComponent,RigidBodyStaticComponent> {
-	public:
+	struct RigidBodyStaticComponent : public PhysicsBodyComponent, public QueryableDelta<PhysicsBodyComponent,RigidBodyStaticComponent> {
         using QueryableDelta<PhysicsBodyComponent,RigidBodyStaticComponent>::GetQueryTypes;
 		RigidBodyStaticComponent(entity_t owner);
 		virtual ~RigidBodyStaticComponent();
 		RigidBodyStaticComponent(entity_t owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent(owner) {
 			this->filterGroup = fg; this->filterMask = fm;
+		}
+
+		// call underlying
+		void OnDestroy() {
+			PhysicsBodyComponent::OnDestroy();
 		}
 	};
 }

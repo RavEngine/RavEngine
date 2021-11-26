@@ -9,6 +9,6 @@ RavEngine::PhysicsCallback::~PhysicsCallback()
 {
 	for (auto& a : senders) {
         //TODO: why is this const_cast necessary?
-        const_cast<PolymorphicComponentHandle<PhysicsBodyComponent>&>(a)->RemoveReceiver(ipa_id);
+        const_cast<PolymorphicComponentHandle<PhysicsBodyComponent>&>(a)->RemoveReceiver(this);
 	}
 }

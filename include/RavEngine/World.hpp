@@ -108,7 +108,7 @@ namespace RavEngine {
                 dense_set.erase(dense_set.begin() + sparse_set[local_id]);
                 aux_set.erase(aux_set.begin() + sparse_set[local_id]);
 
-                if (!aux_set.empty()) {
+                if (sparse_set[local_id] < aux_set.size()) {    // did a move happen during this deletion?
                     // update the location it points
                     auto owner = aux_set[sparse_set[local_id]];
                     sparse_set[owner] = local_id;
@@ -132,7 +132,7 @@ namespace RavEngine {
             }
             
             inline bool HasComponent(entity_t local_id) const{
-                return sparse_set[local_id] != INVALID_ENTITY;
+                return local_id < sparse_set.size() && sparse_set[local_id] != INVALID_ENTITY;
             }
             
             auto begin(){
@@ -267,7 +267,8 @@ namespace RavEngine {
             template<typename T, typename func_t>
             inline void for_each(const func_t& f){
                 for(auto& e : elts){
-                    f(e.Get<T>(owner));
+                    auto ptr = e.Get<T>(owner);
+                    f(ptr);
                 }
             }
 
@@ -793,11 +794,9 @@ namespace RavEngine {
                 new (begin) decltype(begin)(begin);
                 new (end) decltype(end)(end);
             }
-        };
-        
+        };   
         
         SparseSet<struct StaticMesh>::const_iterator geobegin, geoend;
-        SparseSet<struct Transform>::const_iterator transformbegin,transformend;
         SparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
         SparseSet<struct SkinnedMeshComponent>::const_iterator skinnedgeobegin, skinnedgeoend;
         

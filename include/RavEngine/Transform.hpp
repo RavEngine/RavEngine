@@ -40,6 +40,7 @@ namespace RavEngine {
             matrix.store(matrix4(1));
             parent = std::move(other.parent);
             children = std::move(other.children);
+			isStatic = other.isStatic;
         }
         
         Transform(const Transform& other) : Transform(other.GetOwner().id, other.position,other.rotation,other.scale){
@@ -47,9 +48,16 @@ namespace RavEngine {
             children = other.children;
         }
         
-        inline Transform& operator=(Transform other){
-            // copy-swap method
-            std::swap(*this,other);
+        inline Transform& operator=(const Transform& other){
+			if (&other != this) {
+				position = other.position;
+				rotation = other.rotation;
+				scale = other.scale;
+				children = other.children;
+				isStatic = other.isStatic;
+				parent = other.parent;
+				isStatic = other.isStatic;
+			}
             return *this;
         }
 

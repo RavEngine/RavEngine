@@ -5,7 +5,6 @@
 #include "ComponentHandle.hpp"
 #include "Types.hpp"
 #include "AddRemoveAction.hpp"
-#include <uuids.h>
 #include "Function.hpp"
 
 /**
@@ -63,14 +62,8 @@ namespace RavEngine {
         ~PhysicsCallback();
 
 	private:
-        uuids::uuid ipa_id = uuids::uuid::create();
         UnorderedSet<PolymorphicComponentHandle<PhysicsBodyComponent>> senders;
         entity_t owner;
-        
-    public:
-        const decltype(ipa_id)& GetID() const{
-            return ipa_id;
-        }
 	};
 }
 

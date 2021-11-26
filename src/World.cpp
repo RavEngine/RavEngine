@@ -187,7 +187,6 @@ void World::setupRenderTasks(){
 	
 	//opaque geometry
     SetEmpty<StaticMesh>(geobegin,geoend);
-    SetEmpty<Transform>(transformbegin,transformend);
     SetEmpty<SkinnedMeshComponent>(skinnedgeobegin, skinnedgeoend);
     
 	auto init = renderTasks.emplace([&](){
@@ -197,13 +196,6 @@ void World::setupRenderTasks(){
         }
         else{
             SetEmpty<StaticMesh>(geobegin,geoend);
-        }
-        if (auto transforms = GetAllComponentsOfType<Transform>()){
-            transformbegin = transforms.value()->begin();
-            transformend = transforms.value()->end();
-        }
-        else{
-            SetEmpty<Transform>(transformbegin,transformend);
         }
         if(auto skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
             skinnedgeobegin = skinnedGeo.value()->begin();
@@ -222,18 +214,12 @@ void World::setupRenderTasks(){
 
 	}).name("Init iterators");
 	
-	// update matrix caches
-	auto updateMatrix = [](const Transform& c) {
-        c.CalculateWorldMatrix();
-	};
-	auto matcalc = renderTasks.for_each(std::ref(transformbegin), std::ref(transformend), updateMatrix).name("Matrix calc");
-	
 	//sort into the hashmap
 	auto sort = renderTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
 		auto current = App::GetCurrentFramedata();
         if (e.Enabled) {
             auto& pair = e.getTuple();
-            auto mat = e.GetOwner().GetTransform().GetMatrix();
+            auto mat = e.GetOwner().GetTransform().CalculateWorldMatrix();
             auto& item = current->opaques[pair];
             item.AddItem(mat);
         }
@@ -241,7 +227,7 @@ void World::setupRenderTasks(){
 	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& m){
         if (m.Enabled) {
             auto& pair = m.getTuple();
-            auto mat = m.GetOwner().GetTransform().GetMatrix();
+            auto mat = m.GetOwner().GetTransform().CalculateWorldMatrix();
             auto current = App::GetCurrentFramedata();
             auto& item = current->skinnedOpaques[pair];
             item.AddItem(mat);
@@ -267,7 +253,6 @@ void World::setupRenderTasks(){
     }).name("sort instanced");
 
 	init.precede(sort,sortskinned,sortInstanced);
-	matcalc.precede(sort);
 
 	auto copydirs = renderTasks.emplace([this](){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){

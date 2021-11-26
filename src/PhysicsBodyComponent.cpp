@@ -32,12 +32,17 @@ PhysicsBodyComponent::~PhysicsBodyComponent(){
 
 void PhysicsBodyComponent::OnDestroy(){
     //note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
-    if (rigidActor != nullptr) {
-        auto e = GetOwner();
-        e.GetWorld()->Solver.Destroy(*this);
-        rigidActor->userData = nullptr;
-        rigidActor->release();
-    }
+	if (rigidActor != nullptr) {
+		auto e = GetOwner();
+		e.GetWorld()->Solver.Destroy(*this);
+		rigidActor->userData = nullptr;
+		rigidActor->release();
+
+		auto otherwayHandle = GetOwner().GetAllComponentsPolymorphic<PhysicsBodyComponent>().HandleFor<PolymorphicComponentHandle<PhysicsBodyComponent>>(0);
+		for (auto& receiver : receivers) {
+			receiver->OnUnregisterBody(otherwayHandle);
+		}
+	}
 }
 
 /// Dynamic Body ========================================
@@ -65,10 +70,9 @@ void RavEngine::PhysicsBodyComponent::RemoveReceiver(decltype(receivers)::value_
     obj->OnUnregisterBody(otherwayHandle);
 }
 
-void PhysicsBodyComponent::RemoveReceiver(const uuids::uuid& id){
+void PhysicsBodyComponent::RemoveReceiver(PhysicsCallback* ptr){
     for(auto& item : receivers){
-        //TODO: why is this const_cast necessary?
-        if (item.get()->GetID() == id){
+        if (item.get() == ptr){
             receivers.erase(item);
             return;
         }
