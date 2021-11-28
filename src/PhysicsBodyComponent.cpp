@@ -30,7 +30,7 @@ PhysicsBodyComponent::~PhysicsBodyComponent(){
     
 }
 
-void PhysicsBodyComponent::OnDestroy(){
+void PhysicsBodyComponent::Destroy(){
     //note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
 	if (rigidActor != nullptr) {
 		auto e = GetOwner();

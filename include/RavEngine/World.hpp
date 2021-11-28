@@ -176,7 +176,7 @@ namespace RavEngine {
         struct SparseSetErased{
             constexpr static size_t buf_size = sizeof(SparseSet<size_t>);   // we use size_t here because all SparseSets are the same size
             std::array<char, buf_size> buffer;
-            std::function<void(entity_t id)> destroyFn;
+            std::function<void(entity_t id,World*)> destroyFn;
             std::function<void(void)> deallocFn;
             std::function<void(entity_t, entity_t, World*)> moveFn;
             
@@ -188,10 +188,10 @@ namespace RavEngine {
             // the discard parameter is here to make the template work
             template<typename T>
             SparseSetErased(T* discard) :
-                destroyFn([&](entity_t local_id){
+                destroyFn([&](entity_t local_id, World* wptr){
                     auto ptr = GetSet<T>();
                     if (ptr->HasComponent(local_id)){
-                        ptr->Destroy(local_id);
+                        wptr->DestroyComponent<T>(local_id);
                     }
                 }),
                 deallocFn([&]() {
@@ -237,20 +237,28 @@ namespace RavEngine {
                     auto location = dataptr + offsetInDense * stride;       // use the stride to know where the data based on its original time when this struct was created, to get the true location
                     return const_cast<T*>(reinterpret_cast<const T*>(location));   // sketchyyyyy
                 }
+                
+                inline bool operator==(const elt& other) const{
+                    return SparseSetPtr == other.SparseSetPtr && stride == other.stride && full_id == other.full_id;
+                }
             };
             unordered_vector<elt> elts;
             entity_t owner = INVALID_ENTITY;
             World* world = nullptr;
             
             template<typename T>
-            inline void push(T* discard){
+            inline void push(){
+                T* discard = nullptr;
                 elts.emplace(world,discard);
             }
             
             template<typename T>
-            inline void erase(T* discard){
+            inline void erase(){
+                T* discard = nullptr;
                 elt value_erase(world,discard);
-                elts.erase(value_erase);
+                auto it = std::find(elts.begin(),elts.end(),value_erase);
+                assert(it != elts.end());
+                elts.erase(it);
             }
             
             inline bool empty() const{
@@ -304,21 +312,26 @@ namespace RavEngine {
                 }
                 
                 // then push the Elt into it
-                GetForEntity(local_id).push(discard);
+                GetForEntity(local_id).push<T>();
             }
             
             template<typename T>
             inline void Destroy(entity_t local_id){
                 // get the record, then call erase on it
                 assert(HasForEntity(local_id));
-                T* discard;
-                GetForEntity(local_id).erase(discard);
-                
+                GetForEntity(local_id).erase<T>();
+                    
                 // if that makes the container empty, then delete it from the Sets
-                if (GetForEntity(local_id).empty()){
-                    dense_set.erase(dense_set.begin() + sparse_set[local_id]);
-                    sparse_set[local_id] = INVALID_INDEX;
-                }
+               if (GetForEntity(local_id).empty()){
+                   auto denseidx = sparse_set[local_id];
+                   dense_set.erase(dense_set.begin() + denseidx);
+
+                   if (denseidx < dense_set.size()) {    // did a move happen during this deletion?
+                       auto ownerOfMoved = dense_set[denseidx].owner;
+                       sparse_set[ownerOfMoved] = denseidx;
+                   }
+                   sparse_set[local_id] = INVALID_INDEX;
+               }
             }
 
             inline U& GetForEntity(entity_t local_id){
@@ -377,12 +390,12 @@ namespace RavEngine {
         
         UnorderedNodeMap<ctti_t,SparseSetForPolymorphic> polymorphicQueryMap;
 
-        inline void Destroy(entity_t local_id){
+        inline void DestroyEntity(entity_t local_id){
             // go down the list of all component types registered in this world
             // and call destroy if the entity has that component type
             // possible optimization: vector of vector<ctti_t> to make this faster?
             for(const auto& pair : componentMap){
-                pair.second.destroyFn(local_id);
+                pair.second.destroyFn(local_id,this);
             }
             // unset localToGlobal
             localToGlobal[local_id] = INVALID_ENTITY;
@@ -447,7 +460,7 @@ namespace RavEngine {
         
         template<typename T>
         inline void DestroyComponent(entity_t local_id){
-            
+
             auto setptr = componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>();
             // perform special cases
             if constexpr (RemoveAction<T>::HasCustomAction()){
@@ -457,13 +470,12 @@ namespace RavEngine {
             }
             
             setptr->Destroy(local_id);
-            
             // does this component have alternate query types
             if constexpr (HasQueryTypes<T>::value){
                 // polymorphic recordkeep
                 constexpr auto ids = T::GetQueryTypes();
                 for(const auto id : ids){
-                    polymorphicQueryMap[id].Destroy(local_id);
+                    polymorphicQueryMap[id].template Destroy<T>(local_id);
                 }
             }
         }

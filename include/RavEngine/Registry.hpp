@@ -42,7 +42,7 @@ class Registry{
     // invoked by the world
     static inline void DestroyEntity(entity_t global_id){
         auto& data = entityData[global_id];
-        data.world->Destroy(data.idInWorld);
+        data.world->DestroyEntity(data.idInWorld);
         
         // make this entity's ID available for reuse
         ReleaseEntity(global_id);

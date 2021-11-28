@@ -44,7 +44,7 @@ namespace RavEngine {
         PhysicsBodyComponent(entity_t owner);
         virtual ~PhysicsBodyComponent();
         
-        void OnDestroy();
+        void Destroy();
         
         template<typename T>
         struct ColliderHandle{
@@ -297,8 +297,8 @@ namespace RavEngine {
 		void ClearAllTorques();
 
 		// call underlying
-		void OnDestroy() {
-			PhysicsBodyComponent::OnDestroy();
+		void Destroy() {
+			PhysicsBodyComponent::Destroy();
 		}
 	};
 
@@ -311,8 +311,8 @@ namespace RavEngine {
 		}
 
 		// call underlying
-		void OnDestroy() {
-			PhysicsBodyComponent::OnDestroy();
+		void Destroy() {
+			PhysicsBodyComponent::Destroy();
 		}
 	};
 }
