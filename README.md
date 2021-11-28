@@ -7,7 +7,7 @@ A C++17 cross-platform game library, with emphasis on performance and ease of us
 3. 3D spatialized audio with accurate room reverbation modeling (Google Resonance Audio)
 4. Automatic memory management handled via reference counting 
 5. Supports modern rendering APIs (Metal, DirectX, Vulkan)
-6. Flexible and fast declarative user interface system based on HTML and CSS
+6. Flexible and fast declarative user interface system based on HTML and CSS (RmlUi)
 7. Support for SVGs in the UI and for textures
 8. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
 9. Full FSM animation blending tree system
@@ -17,7 +17,7 @@ A C++17 cross-platform game library, with emphasis on performance and ease of us
 
 Note: RavEngine does not have a graphical editor.
 
-## This is early alpha
+## This is an early alpha
 Expect bugs and frequent breaking changes. Do not use in serious projects. 
 
 ## Integrating and building
@@ -25,10 +25,7 @@ Integrating this library with CMake is easy.
 ```cmake
 cmake_minimum_required(VERSION 3.17)
 
-# require C++17
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # set output dirs
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
@@ -41,7 +38,8 @@ add_subdirectory("RavEngine") # configure the engine library
 # configure your executable like normal
 file(GLOB SOURCES "src/*.cpp" "src/*.hpp" "src/*.h")
 add_executable("${PROJECT_NAME}" ${SOURCES})
-target_link_libraries("${APPNAME}" PUBLIC "RavEngine" )  # also adds header includes
+target_link_libraries("${PROJECT_NAME}" PUBLIC "RavEngine" )  # also adds header includes
+target_compile_features("${PROJECT_NAME}" PRIVATE cxx_std_17)  # require C++17
 
 # inform engine about your different assets
 file(GLOB objects "objects/*.obj" "objects/*.fbx")
@@ -59,21 +57,23 @@ pack_resources(TARGET "${PROJECT_NAME}"
    SOUNDS ${sounds}
 )
 
-# fixup mac bundle
+# fixup macOS / iOS / tvOS bundle
+if(APPLE)
 INSTALL(CODE 
    "include(BundleUtilities)
    fixup_bundle(\"${CMAKE_INSTALL_PREFIX}/$<CONFIGURATION>/${PROJECT_NAME}.app\" \"\" \"\")
    " 
    COMPONENT Runtime
 )
+endif()
 ```
-You need to declare your shaders, so that RavEngine can automatically compile them to the correct backend. Simply create a `.cmake` file and invoke RavEngine's macro:
+You need to declare your shaders, so that RavEngine can automatically compile them to the correct backend. Create a `.cmake` file and invoke RavEngine's macro:
 ```cmake
 declare_shader("shaderName" "${CMAKE_CURRENT_LIST_DIR}/vertexshader.glsl" "${CMAKE_CURRENT_LIST_DIR}/fragmentshader.glsl" "${CMAKE_CURRENT_LIST_DIR}/varying.def.hlsl")
 ```
 When you load a shader, RavEngine will use the name you specify as the first parameter. To learn how to write BGFX shaders, see documentation at [https://github.com/bkaradzic/bgfx](https://github.com/bkaradzic/bgfx)
 
-Then simply build with CMake as normal. On Windows, you will need to run your initial configure twice before building. Example scripts are provided. 
+Then build with CMake as normal. On Windows, you will need to run your initial configure twice before building. Example scripts are provided. 
 
 ## Supported platforms
 | Platform | Architecture | Compiler | CMake Generator | Rendering API |
@@ -82,14 +82,14 @@ Then simply build with CMake as normal. On Windows, you will need to run your in
 | iOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
 | tvOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
 | Windows 10 (Win32) | x64 | MSVC++ | Visual Studio | DX12, Vulkan |
-| Windows 10 (UWP) | x64 | MSVC++ | Visual Studio 2019 | DX12 |
+| Windows 10 (UWP) | x64 | MSVC++ | Visual Studio | DX12 |
 | Linux | x64 | Clang++, g++ | Ninja, Make | Vulkan |
 | Raspi | aarch64 | Clang++, g++ | Ninja, Make | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
 - x11-dev, libgl-dev (for X11 support)
-- wayland-devel, libxkbcommon-devel, libegl-dev (for Wayland support) 
+- wayland-devel, libxkbcommon-devel, libegl-dev (for Wayland support, note that Wayland is currently not fully supported)
 - alsa-lib-devel (aka libasound2-devel) (or another SDL2-supported audio library)
 
 ## Example programs
