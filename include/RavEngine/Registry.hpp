@@ -42,10 +42,16 @@ class Registry{
     // invoked by the world
     static inline void DestroyEntity(entity_t global_id){
         auto& data = entityData[global_id];
+        assert(data.world != nullptr);
         data.world->DestroyEntity(data.idInWorld);
         
         // make this entity's ID available for reuse
         ReleaseEntity(global_id);
+    }
+    
+    static inline bool IsInWorld(entity_t global_id){
+        auto& data = entityData[global_id];
+        return data.world != nullptr;
     }
     
     template<typename T, typename ... A>

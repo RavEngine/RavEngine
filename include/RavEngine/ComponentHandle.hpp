@@ -65,14 +65,13 @@ namespace RavEngine{
     template<typename Base>
     struct PolymorphicComponentHandle : ComponentHandleBase{
         ctti_t full_type_id;
-        uint32_t stride;
         
         template<typename Full>
-        PolymorphicComponentHandle(ComponentHandle<Full> fullHandle) : ComponentHandleBase(fullHandle.get_id()), full_type_id(CTTI<Full>()), stride(sizeof(Full)){
+        PolymorphicComponentHandle(ComponentHandle<Full> fullHandle) : ComponentHandleBase(fullHandle.get_id()), full_type_id(CTTI<Full>()){
             assert(owner.HasComponentOfBase<Base>());
         }
         
-        PolymorphicComponentHandle(decltype(owner) owner, decltype(full_type_id) id, decltype(stride) st) : full_type_id(id), stride(st),ComponentHandleBase(owner){}
+        PolymorphicComponentHandle(decltype(owner) owner, decltype(full_type_id) id) : full_type_id(id),ComponentHandleBase(owner){}
         
         inline bool operator==(const PolymorphicComponentHandle<Base>& other){
             return owner.id == other.owner.id && full_type_id == other.full_type_id;
@@ -82,7 +81,7 @@ namespace RavEngine{
             assert(EntityIsValid(owner.id));
             auto matching = owner.GetAllComponentsPolymorphic<Base>();
             for(auto& comp : matching){
-                if (comp.stride == stride){
+                if (comp.full_id == full_type_id){
                     return comp.template Get<Base>(GetOwner().GetIdInWorld());
                 }
             }

@@ -45,6 +45,10 @@ struct Entity{
         Registry::DestroyEntity(id);
         id = INVALID_ENTITY;
     }
+    
+    inline bool IsInWorld(){
+        return Registry::IsInWorld(id);
+    }
 
     inline World* GetWorld() const {
         return Registry::GetWorld(id);

@@ -111,7 +111,7 @@ namespace RavEngine {
                 if (sparse_set[local_id] < aux_set.size()) {    // did a move happen during this deletion?
                     // update the location it points
                     auto owner = aux_set[sparse_set[local_id]];
-                    sparse_set[owner] = local_id;
+                    sparse_set[owner] = sparse_set[local_id];
                     
                 }
                 sparse_set[local_id] = INVALID_INDEX;
@@ -220,26 +220,24 @@ namespace RavEngine {
     public:
         struct PolymorphicIndirection{
             struct elt{
-                void* SparseSetPtr = nullptr;
-                uint32_t stride = 0;
+                Function<void*(entity_t)> getfn;
                 ctti_t full_id = 0;
                 template<typename T>
-                elt(World* world, T* discard) : SparseSetPtr(world->componentMap.at(CTTI<T>()).template GetSet<T>()), stride(sizeof(T)), full_id(CTTI<T>()){
-                    static_assert(sizeof(T) < std::numeric_limits<decltype(stride)>::max(),"T is too big!");
+                elt(World* world, T* discard) : full_id(CTTI<T>()){
+                    auto setptr = world->componentMap.at(CTTI<T>()).template GetSet<T>();
+                    getfn = [setptr](entity_t local_id) -> void*{
+                        auto& thevalue = setptr->GetComponent(local_id);
+                        return &(thevalue);
+                    };
                 }
                 
                 template<typename T>
-                T* Get(entity_t owner){
-                    auto setptr = static_cast<SparseSet<T>*>(SparseSetPtr);  // this is ok because all SparseSets are the same size, though T may not be the type that is actually in the container, that is why we have the code below
-                    static_assert(sizeof(char) == 1);   // char must be 1 byte, if it's not, this will not work
-                    const char* dataptr = reinterpret_cast<decltype(dataptr)>(setptr->GetDenseData()); // need this to be a char (1 byte) for the stride math below to work
-                    auto offsetInDense = setptr->SparseToDense(owner);
-                    auto location = dataptr + offsetInDense * stride;       // use the stride to know where the data based on its original time when this struct was created, to get the true location
-                    return const_cast<T*>(reinterpret_cast<const T*>(location));   // sketchyyyyy
+                T* Get(entity_t local_id){
+                    return static_cast<T*>(getfn(local_id));
                 }
                 
                 inline bool operator==(const elt& other) const{
-                    return SparseSetPtr == other.SparseSetPtr && stride == other.stride && full_id == other.full_id;
+                    return full_id == other.full_id;
                 }
             };
             unordered_vector<elt> elts;
@@ -249,6 +247,7 @@ namespace RavEngine {
             template<typename T>
             inline void push(){
                 T* discard = nullptr;
+                assert(std::find(elts.begin(),elts.end(),elt(world,discard)) ==elts.end());  // no duplicates
                 elts.emplace(world,discard);
             }
             
@@ -265,8 +264,7 @@ namespace RavEngine {
                 return elts.empty();
             }
             
-            template<typename T>
-            PolymorphicIndirection(entity_t owner, World* world, T* discard) : owner(owner), world(world){}
+            PolymorphicIndirection(entity_t owner, World* world) : owner(owner), world(world){}
             
             /**
              Because there are multiple, one cannot simply "get" here.
@@ -288,7 +286,7 @@ namespace RavEngine {
             template<typename BaseIncludingArgument>
             inline auto HandleFor(int idx){
                 auto& elt = elts.at(idx);
-                return BaseIncludingArgument(owner,elt.full_id, elt.stride);
+                return BaseIncludingArgument(owner,elt.full_id);
             }
         };
     private:
@@ -304,9 +302,8 @@ namespace RavEngine {
             template<typename T>
             inline void Emplace(entity_t local_id, World* world){
                 //if a record for this does not exist, create it
-                T* discard = nullptr;
                 if (!HasForEntity(local_id)){
-                    dense_set.emplace(local_id,world,discard);
+                    dense_set.emplace(local_id,world);
                     sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
                     sparse_set[local_id] = dense_set.size()-1;
                 }
