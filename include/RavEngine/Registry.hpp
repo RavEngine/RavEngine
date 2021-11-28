@@ -19,8 +19,8 @@ class Registry{
         EntityData(decltype(world) w, decltype(idInWorld) i) : world(w), idInWorld(i){}
     };
     
-    static std::queue<entity_t> available;
-    static std::vector<EntityData> entityData;
+    static Queue<entity_t> available;
+    static Vector<EntityData> entityData;
     
     // invoked by the world
     static inline entity_t CreateEntity(World* world, const entity_t idInWorld){

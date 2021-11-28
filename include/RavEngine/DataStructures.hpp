@@ -10,6 +10,7 @@
 #include <plf_list.h>
 #include <plf_colony.h>
 #include "unordered_vector.hpp"
+#include <queue>
 
 namespace RavEngine{
 	template<typename T, typename U, typename lock=std::mutex, typename hash = phmap::priv::hash_default_hash<T>, typename eq = phmap::priv::hash_default_eq<T>>
@@ -59,6 +60,9 @@ namespace RavEngine{
     
     template<typename T>
     using UnorderedContiguousSet = unordered_contiguous_set<T,Vector<T>>;
+
+    template<typename T>
+    using Queue = std::queue<T>;    //TODO: specialize to not use default std::deque
 
 // The stackarray creates a stack-resident array using a runtime-known size.
 // There are no safety checks for overflowing the stack, and overflowing results in undefined behavior.

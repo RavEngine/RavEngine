@@ -92,7 +92,7 @@ namespace RavEngine {
                 auto& ret = dense_set.emplace(args...);
                 aux_set.emplace(local_id);
                 if (local_id >= sparse_set.size()){
-                    sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+                    sparse_set.resize(closest_multiple_of(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                 }
                 
                 sparse_set[local_id] = dense_set.size()-1;
@@ -242,7 +242,7 @@ namespace RavEngine {
                     return full_id == other.full_id;
                 }
             };
-            unordered_vector<elt> elts;
+            UnorderedVector<elt> elts;
             entity_t owner = INVALID_ENTITY;
             World* world = nullptr;
             
@@ -307,7 +307,7 @@ namespace RavEngine {
                 if (!HasForEntity(local_id)){
                     dense_set.emplace(local_id,world);
                     if (local_id >= sparse_set.size()){
-                        sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+                        sparse_set.resize(closest_multiple_of(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                     }
                     sparse_set[local_id] = dense_set.size()-1;
                 }
