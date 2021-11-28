@@ -81,7 +81,7 @@ namespace RavEngine {
         class SparseSet{
             unordered_vector<T> dense_set;
             unordered_vector<entity_t> aux_set;
-            std::vector<entity_t> sparse_set;
+            std::vector<entity_t> sparse_set{INVALID_ENTITY};
             
         public:
             
@@ -91,7 +91,9 @@ namespace RavEngine {
             inline T& Emplace(entity_t local_id, A ... args){
                 auto& ret = dense_set.emplace(args...);
                 aux_set.emplace(local_id);
-                sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+                if (local_id >= sparse_set.size()){
+                    sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+                }
                 
                 sparse_set[local_id] = dense_set.size()-1;
                 return ret;
@@ -293,7 +295,7 @@ namespace RavEngine {
         class SparseSetForPolymorphic{
             using U = PolymorphicIndirection;
             unordered_vector<U> dense_set;
-            std::vector<entity_t> sparse_set;
+            std::vector<entity_t> sparse_set{INVALID_ENTITY};
             
         public:
             
@@ -304,7 +306,9 @@ namespace RavEngine {
                 //if a record for this does not exist, create it
                 if (!HasForEntity(local_id)){
                     dense_set.emplace(local_id,world);
-                    sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+                    if (local_id >= sparse_set.size()){
+                        sparse_set.resize(local_id+1,INVALID_ENTITY);  //ensure there is enough space for this id
+                    }
                     sparse_set[local_id] = dense_set.size()-1;
                 }
                 
@@ -395,6 +399,7 @@ namespace RavEngine {
                 pair.second.destroyFn(local_id,this);
             }
             // unset localToGlobal
+            available.push(local_id);
             localToGlobal[local_id] = INVALID_ENTITY;
         }
         

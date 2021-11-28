@@ -369,9 +369,9 @@ entity_t World::CreateEntity(){
 }
 
 World::~World() {
-    for (const auto& e : localToGlobal) {
-        if (EntityIsValid(e)) {
-            Registry::ReleaseEntity(e);
+    for(entity_t i = 0; i < localToGlobal.size(); i++){
+        if (EntityIsValid(localToGlobal[i])){
+            DestroyEntity(i); // destroy takes a local ID
         }
     }
 }
