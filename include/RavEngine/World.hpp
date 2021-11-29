@@ -71,8 +71,8 @@ namespace RavEngine {
 		friend class AudioPlayer;
 		friend class App;
         friend class PhysicsBodyComponent;
-        std::vector<entity_t> localToGlobal;
-        std::queue<entity_t> available;
+        Vector<entity_t> localToGlobal;
+        Queue<entity_t> available;
         
         friend class Entity;
         friend class Registry;
@@ -80,8 +80,8 @@ namespace RavEngine {
         template<typename T>
         class SparseSet{
             unordered_vector<T> dense_set;
-            unordered_vector<entity_t> aux_set;
-            std::vector<entity_t> sparse_set{INVALID_ENTITY};
+            UnorderedVector<entity_t> aux_set;
+            Vector<entity_t> sparse_set{INVALID_ENTITY};
             
         public:
             
@@ -295,7 +295,7 @@ namespace RavEngine {
         class SparseSetForPolymorphic{
             using U = PolymorphicIndirection;
             unordered_vector<U> dense_set;
-            std::vector<entity_t> sparse_set{INVALID_ENTITY};
+            Vector<entity_t> sparse_set{INVALID_ENTITY};
             
         public:
             
