@@ -1,5 +1,4 @@
 #pragma once
-#include "System.hpp"
 #include "AnimatorComponent.hpp"
 
 namespace RavEngine{

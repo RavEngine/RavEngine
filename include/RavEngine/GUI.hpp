@@ -11,7 +11,7 @@
 #include "Ref.hpp"
 
 namespace RavEngine{
-class GUIComponent : public RavEngine::Component, public RavEngine::Queryable<GUIComponent>{
+class GUIComponent : public RavEngine::Queryable<GUIComponent>, public AutoCTTI{
 protected:
 	friend class RenderEngine;
 	
