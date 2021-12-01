@@ -2,7 +2,7 @@
 #include <api/resonance_audio_api.h>
 #include "mathtypes.hpp"
 #include "Ref.hpp"
-#include "ComponentStore.hpp"
+#include "ComponentWithOwner.hpp"
 #include "SpinLock.hpp"
 #include "Queryable.hpp"
 #include "AudioRoomMaterial.hpp"
@@ -20,7 +20,7 @@ using RoomMat = vraudio::MaterialName;
 /**
  Renders audio buffers based on its owning world's state
  */
-class AudioRoom : public Component, public IDebugRenderable, public Queryable<AudioRoom,IDebugRenderable>{
+class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public Queryable<AudioRoom,IDebugRenderable>{
 	friend class RavEngine::AudioRoomSyncSystem;
 	friend class RavEngine::AudioPlayer;
 public:
@@ -63,9 +63,7 @@ private:
 	
 public:
 	
-	AudioRoom(){
-		audioEngine = vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100);
-	}
+	AudioRoom(entity_t owner) : ComponentWithOwner(owner), audioEngine(vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100)){}
 	~AudioRoom(){
 		delete audioEngine;
 	}

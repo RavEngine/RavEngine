@@ -2,12 +2,13 @@
 #include "System.hpp"
 #include "CTTI.hpp"
 #include "AudioRoom.hpp"
+#include "ComponentHandle.hpp"
 
 namespace RavEngine{
-
+struct Transform;
 class AudioRoomSyncSystem : public AutoCTTI {
 public:
-	void Tick(float fpsScale, Ref<AudioRoom> c);
+	void operator()(float fpsScale, ComponentHandle<AudioRoom> c, ComponentHandle<Transform> tr) const;
 };
 
 }

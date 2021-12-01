@@ -24,9 +24,9 @@ void AudioRoom::AddEmitter(AudioPlayerData* source, const vector3& pos, const qu
 		stackarray(temp, float, nbytes/sizeof(float)/2);
 		source->GetSampleRegionAndAdvance(temp, nbytes/2);
 		
-		auto owner = GetOwner().lock();
-        auto roompos = owner->GetTransform().GetWorldPosition();
-        auto roomrot = owner->GetTransform().GetWorldRotation();
+        auto owner = GetOwner();
+        auto roompos = owner.GetTransform().GetWorldPosition();
+        auto roomrot = owner.GetTransform().GetWorldRotation();
 		
 		//create Eigen structures to calculate attenuation
 		vraudio::WorldPosition eworldpos(worldpos.x,worldpos.y,worldpos.z);
@@ -71,10 +71,11 @@ void AudioRoom::Simulate(float *ptr, size_t nbytes){
 }
 
 void AudioRoom::DebugDraw(DebugDrawer& dbg) const{
-    auto owner = GetOwner().lock();
-    if (owner) {
-        auto mtx = owner->GetTransform().CalculateWorldMatrix();
-
-        dbg.DrawRectangularPrism(mtx, debug_color, roomDimensions);
-    }
+    //TODO: FIX
+//    auto owner = GetOwner().lock();
+//    if (owner) {
+//        auto mtx = owner->GetTransform().CalculateWorldMatrix();
+//
+//        dbg.DrawRectangularPrism(mtx, debug_color, roomDimensions);
+//    }
 }

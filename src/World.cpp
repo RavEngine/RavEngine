@@ -23,6 +23,7 @@
 #include "RPCSystem.hpp"
 #include "AnimatorSystem.hpp"
 #include "SkinnedMeshComponent.hpp"
+#include "ComponentStore.hpp"
 
 using namespace std;
 using namespace RavEngine;
