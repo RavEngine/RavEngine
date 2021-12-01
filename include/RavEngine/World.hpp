@@ -475,15 +475,13 @@ namespace RavEngine {
             // does this component have alternate query types
             if constexpr (HasQueryTypes<T>::value){
                 // polymorphic recordkeep
-                constexpr auto ids = T::GetQueryTypes();
+                const auto ids = T::GetQueryTypes();
                 for(const auto id : ids){
                     polymorphicQueryMap[id].template Destroy<T>(local_id);
                 }
             }
         }
-        
-        void DestroyIPhysicsActor(PhysicsCallback& ia);
-        
+                
         template<typename T>
         inline SparseSet<T>* GetRange(){
             auto& set = componentMap.at(RavEngine::CTTI<T>());
