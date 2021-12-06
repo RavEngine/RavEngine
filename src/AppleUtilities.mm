@@ -56,3 +56,32 @@ float GetWindowScaleFactor(void* window){
 void enableSmoothScrolling(){
     [[NSUserDefaults standardUserDefaults] setBool: YES forKey: @"AppleMomentumScrollSupported"];
 }
+
+AppleOSVersion GetAppleOSVersion(){
+    auto p = [[NSProcessInfo processInfo] operatingSystemVersion];
+    
+    AppleOSVersion vers;
+    vers.major = p.majorVersion;
+    vers.minor = p.minorVersion;
+    vers.patch = p.patchVersion;
+    return vers;
+}
+
+uint32_t GetAppleSystemRAM(){
+    auto v = [[NSProcessInfo processInfo] physicalMemory];
+    return v/1024/1024;
+}
+
+void AppleOSName(char* buffer, uint16_t size){
+    auto name =
+#if TARGET_OS_IOS
+    "iOS";
+#elif TARGET_OS_TV
+    "tvOS";
+#elif TARGET_OS_OSX
+    "macOS";
+#else
+#error This Apple platform is not supported
+#endif
+    memcpy(buffer, name, std::min((size_t)size,strlen(name)));
+}

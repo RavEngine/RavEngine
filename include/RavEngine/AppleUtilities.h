@@ -1,11 +1,12 @@
 #pragma once
+#include <cstdint>
 
 /**
  Workaround for deadlock on metal. Manually creates the metal layer.
  @param wnd the Cocoa Window pointer
  @return pointer to the created metal layer.
  */
-void *cbSetupMetalLayer(void *wnd);
+void* cbSetupMetalLayer(void *wnd);
 
 /**
  Resize a metal layer manually. Required on iOS
@@ -26,3 +27,15 @@ float GetWindowScaleFactor(void* window);
  SDL opts-out of inertial scrolling on macOS. This function re-enables it.
  */
 void enableSmoothScrolling();
+
+struct AppleOSVersion{
+    uint16_t major = 0, minor = 0, patch = 0;
+};
+AppleOSVersion GetAppleOSVersion();
+
+void AppleOSName(char* buffer, uint16_t size);
+
+/**
+ @return total system memory in MB
+ */
+uint32_t GetAppleSystemRAM();
