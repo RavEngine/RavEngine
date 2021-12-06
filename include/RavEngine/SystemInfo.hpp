@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <bx/bx.h>
+#include <bitset>
 
 namespace RavEngine {
 	namespace SystemInfo {
@@ -15,22 +17,22 @@ namespace RavEngine {
         std::string CPUBrandString();
     
         constexpr static bool IsMobile(){
-            return false;
+            return BX_PLATFORM_IOS || BX_PLATFORM_RPI || BX_PLATFORM_OS_MOBILE;
         }
     
         enum class EArchitecture{
             Unknown, x86_64, aarch64, aarch64e
         };
     
-    constexpr static EArchitecture Architecture(){
-        #if defined __aarch64__ || defined _M_ARM    // first is clang/gcc, second is msvc
-            return EArchitecture::aarch64;
-#elif defined __x86_64__ || defined _M_X64      // first is clang/gcc, second is msvc
-        return EArchitecture::x86_64;
-#else
-        return EArchitecture::Unknown;
-        #endif
-    }
+        constexpr static EArchitecture Architecture(){
+            #if defined __aarch64__ || defined _M_ARM       // first is clang/gcc, second is msvc
+                return EArchitecture::aarch64;
+            #elif defined __x86_64__ || defined _M_X64      // first is clang/gcc, second is msvc
+                return EArchitecture::x86_64;
+            #else
+                return EArchitecture::Unknown;
+            #endif
+        }
     
     /**
      @return Printable version of the architecture string
@@ -68,6 +70,45 @@ namespace RavEngine {
         OSVersion OperatingSystemVersion();
     
         uint32_t GPUVRAM();
+        
+        uint32_t GPUVRAMinUse();
+    
+        struct GPUFeatures{
+            enum Features{
+                iDrawIndirect,
+                iHDR10,
+                iHIDPI,
+                iOcclusionQuery,
+                iDMA,
+                iReadback,
+                iUint10Attribute,
+                iHalfAttribute,
+                Count
+            };
+            std::bitset<Features::Count> features{0};
+            bool DrawIndirect(){
+                return features[Features::iDrawIndirect];
+            }
+            bool HDRI10(){
+                return features[Features::iHDR10];
+            }
+            bool OcclusionQuery(){
+                return features[Features::iOcclusionQuery];
+            }
+            bool DMA(){
+                return features[Features::iDMA];
+            }
+            bool Readback(){
+                return features[Features::iReadback];
+            }
+            bool Uint10Attribute(){
+                return features[Features::iUint10Attribute];
+            }
+            bool HalfAttribute(){
+                return features[Features::iHalfAttribute];
+            }
+        };
+        GPUFeatures GetSupportedGPUFeatures();
 
 		std::string GPUBrandString();
 	}

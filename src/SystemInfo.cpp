@@ -9,9 +9,11 @@
 #elif defined __APPLE__
     #include "AppleUtilities.h"
 #endif
+#include "App.hpp"
 
 using namespace RavEngine;
 using namespace std;
+using namespace RavEngine::SystemInfo;
 
 uint16_t RavEngine::SystemInfo::NumLogicalProcessors()
 {
@@ -19,6 +21,11 @@ uint16_t RavEngine::SystemInfo::NumLogicalProcessors()
 }
 
 std::string SystemInfo::CPUBrandString(){
+#ifdef __APPLE__
+    char buf[100]{0};
+    AppleCPUName(buf, sizeof(buf));
+    return buf;
+#endif
     return "Generic CPU Device";
 }
 
@@ -50,7 +57,24 @@ uint32_t SystemInfo::SystemRAM(){
 }
 
 uint32_t SystemInfo::GPUVRAM(){
-    return 0;
+    return App::GetRenderEngine().GetTotalVRAM();
+}
+
+uint32_t SystemInfo::GPUVRAMinUse(){
+    return App::GetRenderEngine().GetCurrentVRAMUse();
+}
+
+SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
+    SystemInfo::GPUFeatures features;
+    auto caps = bgfx::getCaps()->supported;
+    features.features[SystemInfo::GPUFeatures::Features::iDrawIndirect] = caps & BGFX_CAPS_DRAW_INDIRECT;
+    features.features[SystemInfo::GPUFeatures::Features::iHDR10] = caps & BGFX_CAPS_HDR10;
+    features.features[GPUFeatures::Features::iOcclusionQuery] = caps & BGFX_CAPS_OCCLUSION_QUERY;
+    features.features[GPUFeatures::Features::iDMA] = caps & BGFX_CAPS_TEXTURE_DIRECT_ACCESS;
+    features.features[GPUFeatures::Features::iReadback] = caps & BGFX_CAPS_TEXTURE_READ_BACK;
+    features.features[GPUFeatures::Features::iHIDPI] = caps & BGFX_CAPS_HIDPI;
+    features.features[GPUFeatures::Features::iUint10Attribute] = caps & BGFX_CAPS_VERTEX_ATTRIB_UINT10;
+    features.features[GPUFeatures::Features::iHalfAttribute] = caps & BGFX_CAPS_VERTEX_ATTRIB_HALF;
 }
 
 std::string RavEngine::SystemInfo::GPUBrandString()

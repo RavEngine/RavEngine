@@ -11,6 +11,9 @@
 #elif BX_PLATFORM_IOS
 	#import <UIKit/UIKit.h>
 #endif
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <mach/machine.h>
 
 /**
  Workaround for deadlock on metal
@@ -84,4 +87,8 @@ void AppleOSName(char* buffer, uint16_t size){
 #error This Apple platform is not supported
 #endif
     memcpy(buffer, name, std::min((size_t)size,strlen(name)));
+}
+
+void AppleCPUName(char* buffer, size_t size){
+    sysctlbyname("machdep.cpu.brand_string", buffer, &size, NULL, 0);
 }

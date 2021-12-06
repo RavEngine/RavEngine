@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 
 /**
  Workaround for deadlock on metal. Manually creates the metal layer.
@@ -39,3 +40,5 @@ void AppleOSName(char* buffer, uint16_t size);
  @return total system memory in MB
  */
 uint32_t GetAppleSystemRAM();
+
+void AppleCPUName(char* buffer, size_t size);

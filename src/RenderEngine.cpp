@@ -372,6 +372,8 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 					);
 
                     currentFrameTime = delta.count();
+                    currentVRAM = stats->gpuMemoryUsed / 1024 / 1024;
+                    totalVRAM = stats->gpuMemoryMax / 1024 / 1024;
 				}
 				//otherwise this world does not have a new frame ready yet, don't waste time re-rendering the same frame again
 			}

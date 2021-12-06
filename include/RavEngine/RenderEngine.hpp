@@ -39,7 +39,9 @@ namespace RavEngine {
 		} bufferdims, windowdims;
 		
 		void UpdateBufferDims();
-		
+        
+        uint32_t currentVRAM = 0;
+        uint32_t totalVRAM = 0;
     public:
         virtual ~RenderEngine();
         RenderEngine(const AppConfig&);
@@ -219,7 +221,15 @@ namespace RavEngine {
         void vertex(const float* pos, unsigned int color, const float* uv) final;
         void vertex(const float x, const float y, const float z, unsigned int color, const float u, const float v) final;
         void end() final;
-						
+        
+        decltype(currentVRAM) GetCurrentVRAMUse(){
+            return currentVRAM;
+        }
+        
+        decltype(totalVRAM) GetTotalVRAM(){
+            return totalVRAM;
+        }
+        
     protected:
         static RavEngine::Vector<VertexColorUV> navMeshPolygon;
         static bgfx::VertexLayout debugNavMeshLayout;
