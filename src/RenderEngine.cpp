@@ -295,13 +295,15 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 		case AppConfig::RenderBackend::Metal:
 			SelectRenderer(bgfx::RendererType::Metal);
 			break;
-#elif BX_PLATFORM_WINDOWS
+#elif BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
 		case AppConfig::RenderBackend::DirectX12:
 			SelectRenderer(bgfx::RendererType::Direct3D12);
 			break;
+#if BX_PLATFORM_WINDOWS
 		case AppConfig::RenderBackend::Vulkan:
 			SelectRenderer(bgfx::RendererType::Vulkan);
 			break;
+#endif
 #elif BX_PLATFORM_LINUX
 		case AppConfig::RenderBackend::Vulkan:
 			SelectRenderer(bgfx::RendererType::Vulkan);
