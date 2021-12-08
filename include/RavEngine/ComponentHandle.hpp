@@ -32,7 +32,7 @@ namespace RavEngine{
     template<typename T>
     struct ComponentHandle : public ComponentHandleBase{
         ComponentHandle(decltype(owner) owner) : ComponentHandleBase(owner){
-            assert(owner.HasComponent<T>());
+            //assert(owner.HasComponent<T>());
         }
         ComponentHandle() : ComponentHandleBase(INVALID_ENTITY){}
         
@@ -44,8 +44,8 @@ namespace RavEngine{
         }
         
         inline T* get(){
-            assert(EntityIsValid(owner.id));
-            assert(owner.HasComponent<T>());
+            //assert(EntityIsValid(owner.id));
+            //assert(owner.HasComponent<T>());
             return &owner.GetComponent<T>();
         }
         

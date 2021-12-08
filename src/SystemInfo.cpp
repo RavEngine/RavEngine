@@ -18,6 +18,10 @@
     #include <sysinfoapi.h>
 #elif defined __APPLE__
     #include "AppleUtilities.h"
+#elif defined __linux__
+    #include <sys/utsname.h>
+    #include <sys/sysinfo.h>
+    #include <fstream>
 #endif
 
 #if _UWP
@@ -63,6 +67,13 @@ std::string SystemInfo::CPUBrandString(){
         }
     }
     return string(CPUBrandString,64);
+#elif __linux__
+	ifstream in("/proc/cpuinfo");
+	string line;
+	while (in >> line && line != "model");
+	in >> line >> line >> line >> line >> line;
+	getline(in,line);
+	return line;
 #endif
     return "Unknown CPU";
 }
@@ -76,6 +87,19 @@ std::string SystemInfo::OperatingSystemNameString(){
     return "Windows-UWP";
 #elif _WIN32
     return "Windows";
+#elif __linux__
+    ifstream in("/etc/os-release");
+    if (!in.is_open()){
+    	return "Linux-Unknown";
+    }
+    string str;
+    while(getline(in,str,'=') && str != "PRETTY_NAME"){
+    	getline(in,str);
+    }
+    char c;
+    in >> c;
+    getline(in,str,'"');
+    return str;
 #endif
     return "Unknown OS";
 }
@@ -91,6 +115,11 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
     // microsoft doesn't seem to have a working API for this
     // so everything is "10"
     vers.major = 10;
+#elif __linux__
+    utsname s;
+    uname(&s);
+    sscanf(s.release, "%u.%u.%u-%u",&vers.major,&vers.minor,&vers.patch,&vers.extra);
+
 #endif
     return vers;
 }
@@ -106,6 +135,10 @@ uint32_t SystemInfo::SystemRAM(){
     ULONGLONG memKB;
     GetPhysicallyInstalledSystemMemory(&memKB);
     return memKB / 1024;
+#elif __linux__
+	struct sysinfo info;
+	sysinfo(&info);
+	return info.totalram / 1024 / 1024;
 #endif
     return 0;
 }
