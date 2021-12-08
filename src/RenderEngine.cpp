@@ -47,6 +47,9 @@
 #define _WIN32_WINNT _WIN32_WINNT_WIN10
 #include <ShellScalingApi.h>
 #pragma comment(lib, "Shcore.lib")
+#elif BX_PLATFORM_WINRT
+#include <winrt/Windows.Graphics.Display.h>
+using namespace winrt;
 #endif
 
 using namespace std;
@@ -906,7 +909,9 @@ void RenderEngine::UpdateBufferDims(){
 	else {
 		Debug::Fatal("GetScaleFactorForMonitor failed");
 	}
-	
+#elif BX_PLATFORM_WINRT
+	auto& dinf = Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
+	win_scalefactor = static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
 #elif BX_PLATFORM_IOS || BX_PLATFORM_OSX
 	// since iOS and macOS do not use OpenGL we cannot use the GL call here
 	// instead we derive it by querying display data

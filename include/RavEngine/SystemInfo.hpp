@@ -5,6 +5,13 @@
 #include <bitset>
 
 namespace RavEngine {
+
+    /**
+    * This namespace provides functions for getting basic information about the current device.
+    * Because most of these functions directly make operating system calls, *DO NOT CALL THESE EVERY FRAME!*
+    * Doing so will cause severe performance degradation. Instead, invoke the functions once and cache, or use a 
+    * Timed System with an interval no faster than 1 second. 
+    */
 	namespace SystemInfo {
 		/**
 		@return the number of logical cores on the device

@@ -1,15 +1,29 @@
 #include "SystemInfo.hpp"
+#include "App.hpp"
 #include <thread>
 #include "Debug.hpp"
 #include <bgfx/bgfx.h>
+#include <bx/bx.h>
+
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
+    #define _UWP 1   
+#else
+    #define _UWP 0
+#endif
+
 #ifdef _WIN32
     #include <PortableDeviceApi.h>
     #include <psapi.h>
     #include <tchar.h>
+    #include <sysinfoapi.h>
 #elif defined __APPLE__
     #include "AppleUtilities.h"
 #endif
-#include "App.hpp"
+
+#if _UWP
+#include <winrt/Windows.System.Diagnostics.h>
+using namespace winrt;
+#endif
 
 using namespace RavEngine;
 using namespace std;
@@ -25,8 +39,32 @@ std::string SystemInfo::CPUBrandString(){
     char buf[100]{0};
     AppleCPUName(buf, sizeof(buf));
     return buf;
+#elif _WIN32
+    int CPUInfo[4] = { -1 };
+    unsigned   nExIds, i = 0;
+    char CPUBrandString[0x40]{0};
+    // Get the information associated with each extended ID.
+    __cpuid(CPUInfo, 0x80000000);
+    nExIds = CPUInfo[0];
+    for (i = 0x80000000; i <= nExIds; ++i)
+    {
+        __cpuid(CPUInfo, i);
+        // Interpret CPU brand string
+        switch (i) {
+        case 0x80000002:
+            memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
+            break;
+        case 0x80000003:
+            memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
+            break;
+        case 0x80000004:
+            memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
+            break;
+        }
+    }
+    return string(CPUBrandString,64);
 #endif
-    return "Generic CPU Device";
+    return "Unknown CPU";
 }
 
 std::string SystemInfo::OperatingSystemNameString(){
@@ -34,6 +72,10 @@ std::string SystemInfo::OperatingSystemNameString(){
     char buf[8]{0};
     AppleOSName(buf, sizeof(buf));
     return buf;
+#elif _UWP
+    return "Windows-UWP";
+#elif _WIN32
+    return "Windows";
 #endif
     return "Unknown OS";
 }
@@ -45,6 +87,10 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
     vers.major = v.major;
     vers.minor = v.minor;
     vers.patch = v.patch;
+#elif _WIN32
+    // microsoft doesn't seem to have a working API for this
+    // so everything is "10"
+    vers.major = 10;
 #endif
     return vers;
 }
@@ -52,6 +98,14 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
 uint32_t SystemInfo::SystemRAM(){
 #ifdef __APPLE__
     return GetAppleSystemRAM();
+#elif _UWP
+    auto pk = Windows::System::Diagnostics::SystemDiagnosticInfo::GetForCurrentSystem();
+    auto bytes = pk.MemoryUsage().GetReport().TotalPhysicalSizeInBytes();
+    return bytes / 1024 / 1024;
+#elif _WIN32
+    ULONGLONG memKB;
+    GetPhysicallyInstalledSystemMemory(&memKB);
+    return memKB / 1024;
 #endif
     return 0;
 }
@@ -75,18 +129,19 @@ SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
     features.features[GPUFeatures::Features::iHIDPI] = caps & BGFX_CAPS_HIDPI;
     features.features[GPUFeatures::Features::iUint10Attribute] = caps & BGFX_CAPS_VERTEX_ATTRIB_UINT10;
     features.features[GPUFeatures::Features::iHalfAttribute] = caps & BGFX_CAPS_VERTEX_ATTRIB_HALF;
+    return features;
 }
 
 std::string RavEngine::SystemInfo::GPUBrandString()
 {
     auto device_id = bgfx::getCaps()->deviceId;
 #ifdef _WIN32
-    return "Generic GPU Device - Windows";
+    return "Unknown GPU Device - Windows";
 #elif defined __APPLE__
-	return "Generic GPU Device - Apple";
+	return "Unknown GPU Device - Apple";
 #elif defined __linux__
-	return "Generic GPU Device - Linux";
+	return "Unknown GPU Device - Linux";
 #else
-	return "Generic GPU Device";
+	return "Unknown GPU Device";
 #endif
 }
