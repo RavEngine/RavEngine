@@ -58,8 +58,7 @@ RavEngine::World::World(bool skip){
         EmplaceSystem<AnimatorSystem,AnimatorComponent>();
         CreateDependency<AnimatorSystem,ScriptSystem>();
         CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();
-        //CreateDependency<ScriptSystem, PhysicsLinkSystemWrite>();
-        //CreateDependency<PhysicsLinkSystemRead, ScriptSystem>();
+        CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
 //        systemManager.EmplaceSystem<RPCSystem>();
         skybox = make_shared<Skybox>();
