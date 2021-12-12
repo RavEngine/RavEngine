@@ -56,6 +56,8 @@ RavEngine::World::World(bool skip){
         //TODO: FIX
         EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
         EmplaceSystem<AnimatorSystem,AnimatorComponent>();
+        CreateDependency<AnimatorSystem,ScriptSystem>();
+        CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();
         //CreateDependency<ScriptSystem, PhysicsLinkSystemWrite>();
         //CreateDependency<PhysicsLinkSystemRead, ScriptSystem>();
 //        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
