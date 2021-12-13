@@ -10,23 +10,19 @@
 using namespace RavEngine;
 using namespace std;
 
-void AudioRoom::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
+void AudioRoom::RoomData::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
 	audioEngine->SetHeadPosition(worldpos.x, worldpos.y, worldpos.z);
 	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
 }
 
-void AudioRoom::AddEmitter(AudioPlayerData* source, const vector3& pos, const quaternion& rot, size_t nbytes){
-	if (source->IsPlaying()){
+void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nbytes){
+	if (source->isPlaying){
 		auto& worldpos = pos;
 		auto& worldrot = rot;
 		
 		//get appropriate area in source's buffer if it is playing
 		stackarray(temp, float, nbytes/sizeof(float)/2);
 		source->GetSampleRegionAndAdvance(temp, nbytes/2);
-		
-        auto owner = GetOwner();
-        auto roompos = owner.GetTransform().GetWorldPosition();
-        auto roomrot = owner.GetTransform().GetWorldRotation();
 		
 		//create Eigen structures to calculate attenuation
 		vraudio::WorldPosition eworldpos(worldpos.x,worldpos.y,worldpos.z);
@@ -54,13 +50,13 @@ void AudioRoom::AddEmitter(AudioPlayerData* source, const vector3& pos, const qu
 		}
 		
 		audioEngine->SetInterleavedBuffer(src, temp, 1, NFRAMES);
-		audioEngine->SetSourceVolume(src, source->GetVolume());
+		audioEngine->SetSourceVolume(src, source->volume);
 		audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
 		audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
 	}
 }
 
-void AudioRoom::Simulate(float *ptr, size_t nbytes){
+void AudioRoom::RoomData::Simulate(float *ptr, size_t nbytes){
 	audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, ptr);
 	
 	// destroy sources

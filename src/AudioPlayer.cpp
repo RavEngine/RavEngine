@@ -26,7 +26,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     App::SwapRenderAudioSnapshot();
     auto SnapshotToRender = App::GetRenderAudioSnapshot();
     auto& sources = SnapshotToRender->sources;
-    //auto& rooms = world->GetAllComponentsOfType<AudioRoom>();
+    auto& rooms = SnapshotToRender->rooms;
     auto& ambientSources = SnapshotToRender->ambientSources;
 		
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
@@ -37,41 +37,26 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     stackarray(shared_buffer, float, len / sizeof(float));
     stackarray(accum_buffer, float, len / sizeof(float));
     std::memset(accum_buffer, 0, len);
-//
-//            if (rooms){
-//                for (const auto& r : *rooms.value()) {
-//                    Ref<AudioRoom> room = static_pointer_cast<AudioRoom>(r);
-//                    room->SetListenerTransform(lpos, lrot);
-//                    std::memset(shared_buffer, 0, len);
-//                    if (sources){
-//                        for(const auto& source :* sources.value()){
-//                            // add this source into the room
-//                            if (auto owner = source.GetOwner().lock()){
-//                                auto tr = owner->GetTransform();
-//                                auto ptr = static_pointer_cast<AudioSourceComponent>(source);
-//                                room->AddEmitter(ptr.get(), tr->GetWorldPosition(), tr->GetWorldRotation(), len);
-//                            }
-//                        }
-//                    }
-//
-//
-//                    //now simulate the fire-and-forget audio
-//                    std::memset(shared_buffer, 0, len);
-//                    for(auto& f : world->instantaneousToPlay){
-//                        room->AddEmitter(&f, f.source_position, quaternion(1.0, 0.0, 0.0, 0.0), len);
-//                    }
-//
-//
-//                    //simulate in the room
-//                    room->Simulate(shared_buffer, len);
-//                    for (int i = 0; i < len / sizeof(float); i++) {
-//                        //mix with existing
-//                        accum_buffer[i] += shared_buffer[i];
-//                    }
-//                }
-//
-//            }
-//
+
+    for (const auto& r : rooms) {
+        auto& room = r.room;
+        room->SetListenerTransform(lpos, lrot);
+        std::memset(shared_buffer, 0, len);
+        for(const auto& source : sources){
+            // add this source into the room
+            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, len);
+        }
+
+        //now simulate the fire-and-forget audio
+        std::memset(shared_buffer, 0, len);
+
+        //simulate in the room
+        room->Simulate(shared_buffer, len);
+        for (int i = 0; i < len / sizeof(float); i++) {
+            //mix with existing
+            accum_buffer[i] += shared_buffer[i];
+        }
+    }
 
     for (auto& source : ambientSources) {
 

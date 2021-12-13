@@ -9,10 +9,10 @@
 using namespace RavEngine;
 using namespace std;
 
-void AudioRoomSyncSystem::operator()(float fpsScale, ComponentHandle<AudioRoom> room, ComponentHandle<Transform> tr) const{
-    auto pos = tr->GetWorldPosition();
-    auto rot = tr->GetWorldRotation();
-    auto mtx = tr->CalculateWorldMatrix();
+void AudioRoomSyncSystem::operator()(float fpsScale, AudioRoom& room, Transform& tr) const{
+    auto pos = tr.GetWorldPosition();
+    auto rot = tr.GetWorldRotation();
+    auto mtx = tr.CalculateWorldMatrix();
     
     quaternion r;
     vector3 t;
@@ -32,25 +32,25 @@ void AudioRoomSyncSystem::operator()(float fpsScale, ComponentHandle<AudioRoom> 
     data.rotation[3] = rot.w;
     
     //attempt to scale (does not factor in shear)
-    auto dim = room->roomDimensions * scale;
+    auto dim = room.data->roomDimensions * scale;
     
     data.dimensions[0] = dim.x;
     data.dimensions[1] = dim.y;
     data.dimensions[2] = dim.z;
     
-    data.reflection_scalar = room->reflection_scalar;
-    data.reverb_gain = room->reverb_gain;
-    data.reverb_time = room->reverb_time;
-    data.reverb_brightness = room->reverb_brightness;
+    data.reflection_scalar = room.data->reflection_scalar;
+    data.reverb_gain = room.data->reverb_gain;
+    data.reverb_time = room.data->reverb_time;
+    data.reverb_brightness = room.data->reverb_brightness;
     
     //add material data
-    std::memcpy(data.material_names, room->wallMaterials.data(), sizeof(data.material_names));
+    std::memcpy(data.material_names, room.data->wallMaterials.data(), sizeof(data.material_names));
     
     //compute the reflection data
     auto ref_data = vraudio::ComputeReflectionProperties(data);
     auto rev_data = vraudio::ComputeReverbProperties(data);
             
     //write changes
-    room->audioEngine->SetReflectionProperties(ref_data);
-    room->audioEngine->SetReverbProperties(rev_data);
+    room.data->audioEngine->SetReflectionProperties(ref_data);
+    room.data->audioEngine->SetReverbProperties(rev_data);
 }

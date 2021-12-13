@@ -59,7 +59,8 @@ RavEngine::World::World(bool skip){
         CreateDependency<AnimatorSystem,ScriptSystem>();
         CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();
         CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();
-//        systemManager.EmplaceSystem<AudioRoomSyncSystem>();
+        
+        EmplaceSystem<AudioRoomSyncSystem, AudioRoom,Transform>();
 //        systemManager.EmplaceSystem<RPCSystem>();
         skybox = make_shared<Skybox>();
     }
@@ -213,9 +214,17 @@ void World::SetupTaskGraph(){
         
     }).name("Ambient Audios").succeed(audioClear);
     
+    auto copyRooms = audioTasks.emplace([this]{
+        auto fn = [this](float, auto& room, auto& transform){
+            App::GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
+        };
+        Filter<AudioRoom,Transform>(fn);
+        
+    }).name("Rooms").succeed(audioClear);
+    
     auto audioSwap = audioTasks.emplace([]{
         App::SwapCurrrentAudioSnapshot();
-    }).name("Swap Current").succeed(copyAudios,copyAmbients);
+    }).name("Swap Current").succeed(copyAudios,copyAmbients,copyRooms);
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
     audioTaskModule.succeed(ECSTaskModule);
