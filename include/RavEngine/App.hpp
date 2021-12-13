@@ -19,6 +19,7 @@
 #include <SDL_main.h>
 #include <bx/platform.h>
 #include <optional>
+#include "AudioSnapshot.hpp"
 
 namespace RavEngine {
 	struct AppConfig {
@@ -188,6 +189,23 @@ namespace RavEngine {
 			std::swap(inactive,render);
 			swapmtx2.unlock();
 		}
+        
+        static inline void SwapCurrrentAudioSnapshot(){
+            audiomtx1.lock();
+            std::swap(acurrent,ainactive);
+            audiomtx1.unlock();
+        }
+        static inline void SwapRenderAudioSnapshot(){
+            audiomtx2.lock();
+            std::swap(ainactive,arender);
+            audiomtx2.unlock();
+        }
+        static inline AudioSnapshot* GetCurrentAudioSnapshot(){
+            return acurrent;
+        }
+        static inline AudioSnapshot* GetRenderAudioSnapshot(){
+            return arender;
+        }
 
 	private:
 		static Ref<World> renderWorld;
@@ -203,6 +221,9 @@ namespace RavEngine {
 		static FrameData f1, f2, f3;
 		static FrameData *current, *inactive, *render;
 		static SpinLock swapmtx1, swapmtx2;
+        
+        static AudioSnapshot a1, a2, a3, *acurrent, *ainactive, *arender;
+        static SpinLock audiomtx1, audiomtx2;
 	protected:
 		virtual AppConfig OnConfigure(int argc, char** argv) { return AppConfig{}; }
 		

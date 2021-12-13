@@ -52,67 +52,89 @@ class AudioListener : public Component, public Queryable<AudioListener>{};
 /**
  Represents a single audio source.
  */
-class AudioPlayerData {
+struct AudioPlayerData {
+    struct Player{
+        Ref<AudioAsset> asset;
+        float volume = 1;
+        size_t playhead_pos = 0;
+        bool loops = false;
+        bool isPlaying = false;
+        Player(decltype(asset) a) : asset(a){}
+        
+        inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
+            for(size_t i = 0; i < count/sizeof(buffer[0]); i++){
+                //is playhead past end of source?
+                if (playhead_pos >= asset->numsamples){
+                    if (loops){
+                        playhead_pos = 0;
+                    }
+                    else{
+                        buffer[i] = 0;
+                        isPlaying = false;
+                        continue;
+                    }
+                }
+                buffer[i] = asset->audiodata[playhead_pos] * volume;
+                playhead_pos++;
+            }
+        }
+    };
 protected:
 	friend class AudioEngine;
 	friend class AudioSyncSystem;
-	Ref<AudioAsset> asset;
-	float volume = 1;
-	size_t playhead_pos = 0;
-	bool loops = false;
-	bool isPlaying = false;
+    Ref<Player> player;
 	
 public:
-	AudioPlayerData(decltype(asset) a ) : asset(a){}
+	AudioPlayerData(decltype(Player::asset) a ) :  player(std::make_shared<Player>(a)){}
 
 	/**
 	* Change the audio asset in this player
 	* @param a the audio asset
 	*/
-    inline void SetAudio(decltype(asset) a) {
-		asset = a;
+    inline void SetAudio(decltype(Player::asset) a) {
+		player->asset = a;
 	}
 	
 	/**
 	 Starts playing the audio source if it is not playing. Call Pause() to suspend it.
 	 */
     constexpr inline void Play(){
-		isPlaying = true;
+		player->isPlaying = true;
 	}
 	
 	/**
 	 Stop the source if it is playing. Call Play() to resume.
 	 */
     constexpr inline void Pause(){
-		isPlaying = false;
+		player->isPlaying = false;
 	}
 	
 	/**
 	 Reset the audio playhead to the beginning of this source. This does not trigger it to begin playing.
 	 */
     constexpr inline void Restart(){
-		playhead_pos = 0;
+		player->playhead_pos = 0;
 	}
 	
-    constexpr inline float GetVolume() const { return volume; }
+    constexpr inline float GetVolume() const { return player->volume; }
 	
 	/**
 	 Change the volume for this source
 	 @param vol new volume for this source.
 	 */
-    constexpr inline void SetVolume(float vol){volume = vol;}
+    constexpr inline void SetVolume(float vol){player->volume = vol;}
 	
 	/**
 	 Enable or disable looping for this audio source. A looping source will continuously play until manually stopped, whereas
 	 non-looping sources will automatically deactivate when finished
 	 @param loop new loop setting
 	 */
-    constexpr inline void SetLoop(bool loop) {loops = loop;}
+    constexpr inline void SetLoop(bool loop) {player->loops = loop;}
 	
 	/**
 	 @return true if the source is currently playing, false otherwise
 	 */
-    constexpr inline bool IsPlaying() const { return isPlaying; }
+    constexpr inline bool IsPlaying() const { return player->isPlaying; }
 
 	/**
 	 Generate an audio data buffer based on the current source
@@ -120,21 +142,7 @@ public:
 	 @param count the size of the buffer, in bytes
 	 */
     inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
-		for(size_t i = 0; i < count/sizeof(buffer[0]); i++){
-			//is playhead past end of source?
-			if (playhead_pos >= asset->numsamples){
-				if (loops){
-					playhead_pos = 0;
-				}
-				else{
-					buffer[i] = 0;
-					isPlaying = false;
-					continue;
-				}
-			}
-			buffer[i] = asset->audiodata[playhead_pos] * volume;
-			playhead_pos++;
-		}
+        player->GetSampleRegionAndAdvance(buffer,count);
 	}
 };
 
@@ -160,8 +168,8 @@ struct InstantaneousAudioSource : public AudioPlayerData{
 	vector3 source_position;
 	
 	InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol = 1) : AudioPlayerData(a), source_position(position){
-		volume = vol;
-		isPlaying = true;
+		player->volume = vol;
+		player->isPlaying = true;
 	}
 };
 
@@ -170,8 +178,8 @@ struct InstantaneousAudioSource : public AudioPlayerData{
  */
 struct InstantaneousAmbientAudioSource : public AudioPlayerData {
 	InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol = 1) : AudioPlayerData(a) {
-		volume = vol;
-		isPlaying = true;
+		player->volume = vol;
+		player->isPlaying = true;
 	}
 };
 

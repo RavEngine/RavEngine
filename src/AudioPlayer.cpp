@@ -5,6 +5,7 @@
 #include "AudioSource.hpp"
 #include "AudioRoom.hpp"
 #include "DataStructures.hpp"
+#include "App.hpp"
 #include <algorithm>
 
 using namespace RavEngine;
@@ -22,11 +23,10 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 	AudioPlayer* player = static_cast<AudioPlayer*>(udata);
 	
 	std::memset(stream,0,len);		//fill with silence
-	Ref<World> world = player->worldToRender.lock();
-	if (world){
-		auto sources = world->GetAllComponentsOfType<AudioSourceComponent>();
-		auto rooms = world->GetAllComponentsOfType<AudioRoom>();
-		auto ambientSources = world->GetAllComponentsOfType<AmbientAudioSourceComponent>();
+    auto SnapshotToRender = App::GetRenderAudioSnapshot();
+    auto& sources = SnapshotToRender->sources;
+    //auto rooms = world->GetAllComponentsOfType<AudioRoom>();
+    auto& ambientSources = SnapshotToRender->ambientSources;
 		
 		//use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
         
@@ -115,7 +115,6 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 //			//update stream pointer with rendered output
 //			std::memcpy(stream, accum_buffer, len);
 //		}
-	}
 }
 
 

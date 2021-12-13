@@ -55,6 +55,15 @@ STATIC(App::current) = &App::f1;
 STATIC(App::inactive) = &App::f2;
 STATIC(App::render) = &App::f3;
 
+STATIC(App::a1);
+STATIC(App::a2);
+STATIC(App::a3);
+STATIC(App::acurrent) = &App::a1;
+STATIC(App::ainactive) = &App::a2;
+STATIC(App::arender) = &App::a3;
+STATIC(App::audiomtx1);
+STATIC(App::audiomtx2);
+
 std::chrono::duration<double,std::micro> App::min_tick_time(std::chrono::duration<double,std::milli>(1.0/90 * 1000));
 
 // on crash, call this
