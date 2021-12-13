@@ -161,6 +161,64 @@ void World::SetupTaskGraph(){
         RunPhysics.precede(read.second);
 		RunPhysics.succeed(write.second);
 	//}
+    
+    // setup audio tasks
+    audioTasks.name("Audio");
+    
+    auto audioClear = audioTasks.emplace([this]{
+        App::GetCurrentAudioSnapshot()->Clear();
+        //TODO: currently this selects the LAST listener, but there is no need for this
+        auto fn = [](float, const auto& listener, const auto& transform){
+            auto ptr = App::GetCurrentAudioSnapshot();
+            ptr->listenerPos = transform.GetWorldPosition();
+            ptr->listenerRot = transform.GetWorldRotation();
+        };
+        Filter<AudioListener,Transform>(fn);
+    }).name("Clear + Listener");
+    
+  
+    
+    auto copyAudios = audioTasks.emplace([this]{
+        auto fn = [this](float, auto& audioSource, auto& transform){
+            App::GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
+        };
+        Filter<AudioSourceComponent,Transform>(fn);
+        
+        // now clean up the fire-and-forget audios that have completed
+        instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
+            return ! ias.IsPlaying();
+        });
+        
+        // now do fire-and-forget audios that need to play
+        for(auto& f : instantaneousToPlay){
+            App::GetCurrentAudioSnapshot()->sources.emplace_back(f.GetPlayer(),f.source_position,quaternion(0,0,0,1));
+        }
+    }).name("Point Audios").succeed(audioClear);
+    
+    auto copyAmbients = audioTasks.emplace([this]{
+        auto fn = [this](float, auto& audioSource){
+            App::GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
+        };
+        Filter<AmbientAudioSourceComponent>(fn);
+        
+        // now clean up the fire-and-forget audios that have completed
+        ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {
+            return !ias.IsPlaying();
+        });
+        
+        // now do fire-and-forget audios that need to play
+        for(auto& f : ambientToPlay){
+            App::GetCurrentAudioSnapshot()->ambientSources.emplace_back(f.GetPlayer());
+        }
+        
+    }).name("Ambient Audios").succeed(audioClear);
+    
+    auto audioSwap = audioTasks.emplace([]{
+        App::SwapCurrrentAudioSnapshot();
+    }).name("Swap Current").succeed(copyAudios,copyAmbients);
+    
+    audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
+    audioTaskModule.succeed(ECSTaskModule);
 }
 
 void World::setupRenderTasks(){

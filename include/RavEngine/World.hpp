@@ -790,9 +790,11 @@ namespace RavEngine {
 		char worldIDbuf [id_size];
 		tf::Taskflow masterTasks;
         tf::Taskflow renderTasks;
+        tf::Taskflow audioTasks;
         tf::Taskflow ECSTasks;
         tf::Task renderTaskModule;
         tf::Task ECSTaskModule;
+        tf::Task audioTaskModule;
         
         struct TypeErasureIterator{
             constexpr static auto size = sizeof(SparseSet<size_t>::const_iterator);

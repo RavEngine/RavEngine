@@ -87,6 +87,10 @@ protected:
 public:
 	AudioPlayerData(decltype(Player::asset) a ) :  player(std::make_shared<Player>(a)){}
 
+    inline decltype(player) GetPlayer() const{
+        return player;
+    }
+    
 	/**
 	* Change the audio asset in this player
 	* @param a the audio asset

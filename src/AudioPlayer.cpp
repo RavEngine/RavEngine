@@ -23,24 +23,20 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 	AudioPlayer* player = static_cast<AudioPlayer*>(udata);
 	
 	std::memset(stream,0,len);		//fill with silence
+    App::SwapRenderAudioSnapshot();
     auto SnapshotToRender = App::GetRenderAudioSnapshot();
     auto& sources = SnapshotToRender->sources;
-    //auto rooms = world->GetAllComponentsOfType<AudioRoom>();
+    //auto& rooms = world->GetAllComponentsOfType<AudioRoom>();
     auto& ambientSources = SnapshotToRender->ambientSources;
 		
-		//use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
-        
-        //TODO: FIX
-//		if (auto l = world->GetComponent<AudioListener>()) {
-//			auto listener = l.value();
-//			auto listenerTransform = listener->GetOwner().lock()->GetTransform();
-//			auto lpos = listenerTransform->GetWorldPosition();
-//			auto lrot = listenerTransform->GetWorldRotation();
-//
-//			stackarray(shared_buffer, float, len / sizeof(float));
-//			stackarray(accum_buffer, float, len / sizeof(float));
-//
-//			std::memset(accum_buffer, 0, len);
+    //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
+    
+    //TODO: FIX
+    auto& lpos = SnapshotToRender->listenerPos;
+    auto& lrot = SnapshotToRender->listenerRot;
+    stackarray(shared_buffer, float, len / sizeof(float));
+    stackarray(accum_buffer, float, len / sizeof(float));
+    std::memset(accum_buffer, 0, len);
 //
 //            if (rooms){
 //                for (const auto& r : *rooms.value()) {
@@ -76,45 +72,24 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 //
 //            }
 //
-//			// play all the ambient audios
-//            if (ambientSources){
-//                for (const auto& source : ambientSources.value()) {
-//                    auto casted = static_pointer_cast<AmbientAudioSourceComponent>(source);
-//
-//                    casted->GetSampleRegionAndAdvance(shared_buffer, len);
-//
-//                    // mix it in
-//                    for (int i = 0; i < len / sizeof(float); i++) {
-//                        accum_buffer[i] += shared_buffer[i];
-//                    }
-//                }
-//            }
-//
-//			// play the fire-and-forget ambient audios
-//			for (auto& audio : world->ambientToPlay) {
-//				audio.GetSampleRegionAndAdvance(shared_buffer, len);
-//				// mix it in
-//				for (int i = 0; i < len / sizeof(float); i++) {
-//					accum_buffer[i] += shared_buffer[i];
-//				}
-//			}
-//
-//			//remove sounds from that list that have finished playing
-//			world->instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
-//				return ! ias.IsPlaying();
-//			});
-//			world->ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {
-//				return !ias.IsPlaying();
-//			});
-//
-//			//clipping: clamp all values to [-1,1]
-//			for(int i = 0; i < len/sizeof(float); i++){
-//				accum_buffer[i] = std::clamp(accum_buffer[i] ,-1.0f,1.0f);
-//			}
-//
-//			//update stream pointer with rendered output
-//			std::memcpy(stream, accum_buffer, len);
-//		}
+
+    for (auto& source : ambientSources) {
+
+        source->GetSampleRegionAndAdvance(shared_buffer, len);
+
+        // mix it in
+        for (int i = 0; i < len / sizeof(float); i++) {
+            accum_buffer[i] += shared_buffer[i];
+        }
+    }
+
+    //clipping: clamp all values to [-1,1]
+    for(int i = 0; i < len/sizeof(float); i++){
+        accum_buffer[i] = std::clamp(accum_buffer[i] ,-1.0f,1.0f);
+    }
+
+    //update stream pointer with rendered output
+    std::memcpy(stream, accum_buffer, len);
 }
 
 
