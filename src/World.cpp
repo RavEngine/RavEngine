@@ -197,11 +197,14 @@ void World::SetupTaskGraph(){
     }).name("Point Audios").succeed(audioClear);
     
     auto copyAmbients = audioTasks.emplace([this]{
-        auto fn = [this](float, auto& audioSource){
-            App::GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
-        };
-        Filter<AmbientAudioSourceComponent>(fn);
-        
+        if(componentMap.contains(CTTI<AmbientAudioSourceComponent>())){
+            auto fn = [this](float, auto& audioSource){
+                App::GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
+            };
+            Filter<AmbientAudioSourceComponent>(fn);
+            
+        }
+
         // now clean up the fire-and-forget audios that have completed
         ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {
             return !ias.IsPlaying();

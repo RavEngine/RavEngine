@@ -66,7 +66,7 @@ public:
          Set the dimensions of the room. A dimension of 0 is interpreted as unbounded.
          @param dim the x, y, and z dimensions of the room. Unlike Physics, this is diameter not radius.
          */
-        constexpr void SetRoomDimensions(const vector3& dim){ roomDimensions = dim; }
+        void SetRoomDimensions(const vector3& dim){ roomDimensions = dim; }
         
         /**
          Update the position of the listener in the Audio Engine
@@ -90,6 +90,12 @@ public:
     };
     Ref<RoomData> data;
 	
+    /**
+     Set the dimensions of the room. A dimension of 0 is interpreted as unbounded.
+     @param dim the x, y, and z dimensions of the room. Unlike Physics, this is diameter not radius.
+     */
+    void SetRoomDimensions(const vector3& dim){ data->SetRoomDimensions(dim); }
+    
 	AudioRoom(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
 	
 	/**
