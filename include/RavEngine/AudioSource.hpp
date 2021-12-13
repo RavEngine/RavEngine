@@ -102,43 +102,43 @@ public:
 	/**
 	 Starts playing the audio source if it is not playing. Call Pause() to suspend it.
 	 */
-    constexpr inline void Play(){
+    inline void Play(){
 		player->isPlaying = true;
 	}
 	
 	/**
 	 Stop the source if it is playing. Call Play() to resume.
 	 */
-    constexpr inline void Pause(){
+    inline void Pause(){
 		player->isPlaying = false;
 	}
 	
 	/**
 	 Reset the audio playhead to the beginning of this source. This does not trigger it to begin playing.
 	 */
-    constexpr inline void Restart(){
+    inline void Restart(){
 		player->playhead_pos = 0;
 	}
 	
-    constexpr inline float GetVolume() const { return player->volume; }
+    inline float GetVolume() const { return player->volume; }
 	
 	/**
 	 Change the volume for this source
 	 @param vol new volume for this source.
 	 */
-    constexpr inline void SetVolume(float vol){player->volume = vol;}
+    inline void SetVolume(float vol){player->volume = vol;}
 	
 	/**
 	 Enable or disable looping for this audio source. A looping source will continuously play until manually stopped, whereas
 	 non-looping sources will automatically deactivate when finished
 	 @param loop new loop setting
 	 */
-    constexpr inline void SetLoop(bool loop) {player->loops = loop;}
+    inline void SetLoop(bool loop) {player->loops = loop;}
 	
 	/**
 	 @return true if the source is currently playing, false otherwise
 	 */
-    constexpr inline bool IsPlaying() const { return player->isPlaying; }
+    inline bool IsPlaying() const { return player->isPlaying; }
 
 	/**
 	 Generate an audio data buffer based on the current source
