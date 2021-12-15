@@ -321,7 +321,6 @@ void App::AddWorld(Ref<World> world) {
 
 	// synchronize network if necessary
 	if (networkManager.IsClient() && !networkManager.IsServer()) {
-		//TODO: FIX
-		//networkManager.client->SendSyncWorldRequest(world);
+		networkManager.client->SendSyncWorldRequest(world);
 	}
 }

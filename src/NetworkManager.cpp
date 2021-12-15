@@ -7,13 +7,10 @@
 using namespace RavEngine;
 using namespace std;
 
-void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
+void NetworkManager::Spawn(World* source, ctti_t id, const uuids::uuid& uuid) {
 	// Running on the server?
     if (IsServer()){
-        auto entity = comp->GetOwner().lock();
-        if (entity){
-			server->SpawnEntity(entity);
-        }
+        server->SpawnEntity(source,id,uuid);
     }
 	else{
 		Debug::Warning("Cannot replicate entity creation from client");
@@ -23,13 +20,10 @@ void NetworkManager::Spawn(Ref<World> source, Ref<NetworkIdentity> comp) {
     //instead use an RPC to have the server construct it and then spawn it
 }
 
-void NetworkManager::Destroy(Ref<World> source, Ref<NetworkIdentity> comp) {
+void NetworkManager::Destroy(World* source, const uuids::uuid& entity_id) {
 	// ownership is server and running in the server? need to RPC clients
 	if (IsServer()){	//even if the server does not own this object, if it is destroyed here, it must be replicated
-		auto entity = comp->GetOwner().lock();
-		if (entity){
-			server->DestroyEntity(entity);
-		}
+        server->DestroyEntity(source,entity_id);
 	}
 	else{
 		Debug::Warning("Cannot replicate entity destruction from client");

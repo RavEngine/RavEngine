@@ -24,6 +24,7 @@
 #include "AnimatorSystem.hpp"
 #include "SkinnedMeshComponent.hpp"
 #include "ComponentStore.hpp"
+#include "NetworkManager.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -53,7 +54,6 @@ void RavEngine::World::Tick(float scale) {
 RavEngine::World::World(bool skip){
     if (!skip){
         SetupTaskGraph();
-        //TODO: FIX
         EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
         EmplaceSystem<AnimatorSystem,AnimatorComponent>();
         CreateDependency<AnimatorSystem,ScriptSystem>();
@@ -61,23 +61,36 @@ RavEngine::World::World(bool skip){
         CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();
         
         EmplaceSystem<AudioRoomSyncSystem, AudioRoom,Transform>();
-//        systemManager.EmplaceSystem<RPCSystem>();
+        EmplaceSystem<RPCSystem,RPCComponent>();
         skybox = make_shared<Skybox>();
     }
 }
 
-//void World::OnAddComponent(Ref<Component> comp){
-//	//is this a NetworkIdentity? if so, call Add on the NetworkManager
-//	{
-//		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
-//		if (nid && nid->triggerMessage) {
-//            //only the server may spawn objects
-//            App::networkManager.Spawn(shared_from_this(), nid);
-//            return;
-//		}
-//	}
-//}
-//
+void World::NetworkingSpawn(ctti_t id, Entity& handle){
+    // are we networked, and the server?
+    if (NetworkManager::IsNetworked() && NetworkManager::IsServer()){
+        // is the constructed type a network object?
+        if(App::networkManager.isNetworkEntity(id)){
+            //add a network identity to this entity
+            auto& netidcomp = handle.EmplaceComponent<NetworkIdentity>();
+            
+            // now send the message to spawn this on the other end
+            App::networkManager.Spawn(this,id,netidcomp.GetNetworkID());
+        }
+    }
+}
+
+void World::NetworkingDestroy(Entity handle){
+    // are we networked, and is this the server?
+    if (NetworkManager::IsNetworked() && NetworkManager::IsServer()){
+        // is this a networkobject?
+        if(handle.HasComponent<NetworkIdentity>()){
+            auto& netidcomp = handle.GetComponent<NetworkIdentity>();
+            App::networkManager.Destroy(netidcomp.GetNetworkID());
+        }
+    }
+}
+
 //void World::OnRemoveComponent(Ref<Component> comp){
 //	//is this a NetworkIdentity? if so, call destroy on the NetworkManager
 //	{

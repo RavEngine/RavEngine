@@ -395,6 +395,7 @@ namespace RavEngine {
             // go down the list of all component types registered in this world
             // and call destroy if the entity has that component type
             // possible optimization: vector of vector<ctti_t> to make this faster?
+            NetworkingDestroy(local_id);
             for(const auto& pair : componentMap){
                 pair.second.destroyFn(local_id,this);
             }
@@ -650,14 +651,17 @@ namespace RavEngine {
                 FilterOne<A...>(fom, i, scale);
             }
         }
-
+        void NetworkingSpawn(ctti_t,Entity&);
+        void NetworkingDestroy(Entity);
     public:
+        
         template<typename T, typename ... A>
         inline T CreatePrototype(A ... args){
             auto id = CreateEntity();
             T en;
             en.id = id;
             en.Create(args...);
+            NetworkingSpawn(CTTI<T>(),en);
             return en;
         }
         

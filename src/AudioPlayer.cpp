@@ -31,7 +31,6 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 		
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
     
-    //TODO: FIX
     auto& lpos = SnapshotToRender->listenerPos;
     auto& lrot = SnapshotToRender->listenerRot;
     stackarray(shared_buffer, float, len / sizeof(float));

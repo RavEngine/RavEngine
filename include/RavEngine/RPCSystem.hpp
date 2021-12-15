@@ -5,10 +5,10 @@
 namespace RavEngine {
 	class RPCSystem : public AutoCTTI{
 	public:
-		inline void Tick(float fpsScale, Ref<RPCComponent> rpc)const{
-            rpc->Swap();
-            rpc->ProcessClientRPCs();
-            rpc->ProcessServerRPCs();
+		inline void operator()(float, RPCComponent& rpc)const{
+            rpc.Swap();
+            rpc.ProcessClientRPCs();
+            rpc.ProcessServerRPCs();
 		}
 	};
 }

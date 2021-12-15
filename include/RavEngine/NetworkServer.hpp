@@ -7,6 +7,8 @@
 #include <uuids.h>
 #include <phmap.h>
 #include "Function.hpp"
+#include "ComponentHandle.hpp"
+#include <string_view>
 
 namespace RavEngine {
 	class Entity;
@@ -20,8 +22,8 @@ public:
 	~NetworkServer();	//calls stop
 	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 
-	void SpawnEntity(Ref<Entity> e);
-	void DestroyEntity(Ref<Entity> e);
+	void SpawnEntity(World*, ctti_t, const uuids::uuid&);
+	void DestroyEntity(const uuids::uuid&);
 
 	void SendMessageToAllClients(const std::string_view& msg, Reliability mode) const;
 
@@ -42,7 +44,7 @@ public:
 	@param newOwner the connection handle for the new owner. Use Invalid to make the server owner
 	@param object the networkidentity to udpate the ownership of
 	*/
-	void ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object);
+	void ChangeOwnership(HSteamNetConnection newOwner, ComponentHandle<NetworkIdentity> object);
 	
 	void ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base& var);
 	
@@ -62,7 +64,7 @@ protected:
 	// since the server owns all objects by default, we only need to update this
 	// when the ownership changes to a non-server client. If an object is not in this
 	// structure, we assume the server owns it.
-    UnorderedMap<HSteamNetConnection, UnorderedSet<WeakPtrKey<NetworkIdentity>>> OwnershipTracker;
+    UnorderedMap<HSteamNetConnection, UnorderedSet<ComponentHandle<NetworkIdentity>>> OwnershipTracker;
 
 	// invoked automatically when a client disconnects. We destroy the entities it owns.
 	void HandleDisconnect(HSteamNetConnection);

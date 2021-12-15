@@ -13,11 +13,11 @@ namespace RavEngine {
 	class World;
 
 class NetworkClient : public NetworkBase{
-    UnorderedMap<ctti_t, Function<void(Ref<Entity>, Ref<World>)>> OnNetSpawnHooks;
-	inline void RevokeOwnership(Ref<NetworkIdentity> id) {
+    UnorderedMap<ctti_t, Function<void(Entity, Ref<World>)>> OnNetSpawnHooks;
+	inline void RevokeOwnership(ComponentHandle<NetworkIdentity> id) {
 		id->Owner = k_HSteamListenSocket_Invalid;
 	}
-	inline void GainOwnership(Ref<NetworkIdentity> id) {
+	inline void GainOwnership(ComponentHandle<NetworkIdentity> id) {
 		id->Owner = 30;	//any number = this machine has ownership
 	}
 public:

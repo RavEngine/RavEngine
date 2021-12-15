@@ -5,6 +5,8 @@
 #include "RPCComponent.hpp"
 #include "SyncVar.hpp"
 #include "World.hpp"
+#include <string_view>
+#include <cstring>
 
 using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
@@ -190,35 +192,28 @@ void NetworkClient::NetSpawn(const std::string_view& command){
     // world name
     char worldname[World::id_size];
     std::memcpy(worldname, command.data()+offset, World::id_size);
-        
-    //find the world and spawn
-    if (auto e = App::networkManager.CreateEntity(id, uuid)){
- //       if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
-            //TODO: FIX
-//			world.value()->Spawn(e.value());
-//#ifdef _DEBUG
-//			Debug::Assert(e.value()->GetAllComponentsOfType<NetworkIdentity>().value().size() == 1, "Entity has more than one NetworkIdentity! Check your entity constructor.");
-//#endif
-//            auto netid = e.value()->GetComponent<NetworkIdentity>().value();
-//            if (netid){
-//                Debug::Assert(netid->GetNetworkID() == uuid, "Created object does not have correct NetID! {} != {}",uuid.to_string(), netid->GetNetworkID().to_string());
-//
-//                NetworkIdentities[netid->GetNetworkID()] = netid;
+    if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
+        // try to create the entity, the result of this is the entity spawned in the world
+        if (auto e = App::networkManager.CreateEntity(id, uuid)){
+            // create a NetworkIdentity for this spawned entity
+            auto& eHandle = e.value();
+            eHandle.EmplaceComponent<NetworkIdentity>(uuid);
+            
+            // track this entity
+            NetworkIdentities[netid->GetNetworkID()] = eHandle;
+            
+            // now invoke the netspawnhook
+            //TODO: FIX -- need to change how netspawnhooks works
+//            if (OnNetSpawnHooks.contains(id)) {
+//                OnNetSpawnHooks.at(id)(e.value(),world.value());
 //            }
-//            else{
-//                Debug::Fatal("Cannot spawn networked entity without NetworkIdentity! Check uuid constructor.");
-//            }
-//
-//			if (OnNetSpawnHooks.contains(id)) {
-//				OnNetSpawnHooks.at(id)(e.value(),world.value());
-//			}
-//        }
- //       else{
- //           Debug::Fatal("Cannot spawn networked entity in unloaded world: {}", worldname);
- //       }
+        }
+        else{
+            Debug::Fatal("Cannot spawn entity with CTTI ID {}",id);
+        }
     }
     else{
-        Debug::Fatal("Cannot spawn entity with type ID {}",id);
+        Debug::Fatal("Cannot spawn networked entity in unloaded world: {}", worldname);
     }
 }
 
@@ -232,11 +227,8 @@ void NetworkClient::NetDestroy(const std::string_view& command){
     uuids::uuid uuid(uuid_bytes);
         
     //lookup the entity and destroy it
-	if (NetworkIdentities.if_contains(uuid, [&](const Ref<NetworkIdentity>& id) {
-		auto owner = id->GetOwner().lock();
-		if (owner) {
-			owner->Destroy();
-		}
+	if (NetworkIdentities.if_contains(uuid, [&](auto entity) {
+        entity->Destroy();
 	})) {
 		//this must be here, otherwise we will encounter deadlock
 		NetworkIdentities.erase(uuid);
@@ -249,7 +241,7 @@ void NetworkClient::NetDestroy(const std::string_view& command){
 void RavEngine::NetworkClient::OwnershipRevoked(const std::string_view& cmd)
 {
 	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
+	bool success = NetworkIdentities.if_contains(id, [this](const auto id) {
 		RevokeOwnership(id);
 	});
 	if (!success) {
@@ -261,7 +253,7 @@ void RavEngine::NetworkClient::OwnershipRevoked(const std::string_view& cmd)
 void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
 {
 	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [this](const Ref<NetworkIdentity>& id) {
+	bool success = NetworkIdentities.if_contains(id, [this](const auto id) {
 		GainOwnership(id);
 	});
 	if (!success) {
@@ -291,9 +283,9 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 {
 	//decode the RPC header to to know where it is going
 	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
-		auto entity = netid->GetOwner().lock();
-		entity->GetComponent<RPCComponent>().CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
+	bool success = NetworkIdentities.if_contains(id, [&](auto netid) {
+		auto entity = netid->GetOwner();
+        entity.template GetComponent<RPCComponent>().CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
 	});
 	if (!success) {
 		Debug::Warning("Cannot relay RPC, entity with ID {} does not exist", id.to_string());

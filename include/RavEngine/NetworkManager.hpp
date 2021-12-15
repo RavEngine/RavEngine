@@ -4,6 +4,7 @@
 #include "DataStructures.hpp"
 #include "CTTI.hpp"
 #include "Ref.hpp"
+#include "Entity.hpp"
 #include <uuids.h>
 #include <optional>
 
@@ -11,21 +12,24 @@ namespace RavEngine {
 
 	class World;
 	struct NetworkIdentity;
-	class Entity;
 
 	class NetworkManager{
 	private:
-		typedef Function<Ref<Entity>(const uuids::uuid&)> func_t;
-		locked_hashmap<ctti_t, func_t> NetworkedObjects;
+		typedef Function<Entity(World*)> func_t;
+		locked_hashmap<ctti_t, func_t,SpinLock> NetworkedObjects;
 		
 	public:
 		
+        bool isNetworkEntity(ctti_t id) const{
+            return NetworkObjects.contains(id);
+        }
+        
 		void SyncVarUpdate(const std::string_view& data);
         
-        std::optional<Ref<Entity>> CreateEntity(ctti_t id, uuids::uuid& uuid){
-            std::optional<Ref<Entity>> value;
+        std::optional<Entity> CreateEntity(ctti_t id, uuids::uuid& uuid, World* world){
+            std::optional<Entity> value;
 			NetworkedObjects.if_contains(id, [&](const func_t& fn) {
-				value.emplace(fn(uuid));
+				value.emplace(fn(world));
 			});
             return value;
         }
@@ -37,8 +41,9 @@ namespace RavEngine {
 		 */
 		template<typename T>
         constexpr inline void RegisterNetworkedEntity(){
-			NetworkedObjects.insert(std::make_pair(CTTI<T>(),[](const uuids::uuid& id) -> Ref<Entity>{
-				return std::static_pointer_cast<Entity>(std::make_shared<T>(id));
+			NetworkedObjects.insert(std::make_pair(CTTI<T>(),[](World* world) -> Entity{
+                auto e = world->CreatePrototype<T>();
+				return e;
 			}));
 		}
 		
@@ -82,12 +87,12 @@ namespace RavEngine {
 		/**
 		Spawn a networkidentity. For internal use only, called by the world
 		*/
-		void Spawn(Ref<World> source, Ref<NetworkIdentity> comp);
+		void Spawn(World* source, ctti_t type_id, const uuids::uuid& entity_id);
 
 		/**
 		Spawn a networkidentity. For internal use only, called by the world
 		*/
-		void Destroy(Ref<World> source, Ref<NetworkIdentity> comp);
+		void Destroy(World* source, const uuids::uuid& entity_id);
 	};
 
 }

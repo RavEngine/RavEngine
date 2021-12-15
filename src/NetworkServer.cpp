@@ -1,7 +1,6 @@
 #include "NetworkServer.hpp"
 #include "Debug.hpp"
 #include "Entity.hpp"
-#include "NetworkReplicable.hpp"
 #include "NetworkIdentity.hpp"
 #include "World.hpp"
 #include <steam/isteamnetworkingutils.h>
@@ -17,50 +16,26 @@ NetworkServer::NetworkServer() : net_interface(SteamNetworkingSockets()){}
 
 void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
 {
-	for (const auto& ptr : OwnershipTracker[connection]) {
-		if (auto owning = ptr.lock()) {
-            //TODO: FIX
-//			auto entity = owning->GetOwner().lock();
-//            entity->GetWorld()->lock()->Destroy(entity);
-		}
-	}
+	for (const auto comp : OwnershipTracker[connection]) {
+        auto owner = comp->GetOwner()->Destroy();
+    }
 	OwnershipTracker.erase(connection);
 }
 
-void NetworkServer::SpawnEntity(Ref<Entity> entity) {
-    //TODO: FIX
-	//auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
-//	auto world = entity->GetWorld().lock();
-//	if (casted && world) {
-//		auto id = casted->NetTypeID();
-//        auto comp = entity->GetComponent<NetworkIdentity>();
-//		auto netID = comp.value()->GetNetworkID();
-//		//send highest-priority safe message with this info to clients
-//		auto message = CreateSpawnCommand(netID, id, world->worldID);
-//        NetworkIdentities[netID] = comp.value();
-//		for (auto connection : clients) {
-//			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
-//		}
-//	}
-//	else {
-//		Debug::Warning("Attempted to spawn entity that is not in a world or is not NetworkReplicable");
-//	}
+void NetworkServer::SpawnEntity(World* source, ctti_t id, const uuids::uuid& netID) {
+    
+    auto message = CreateSpawnCommand(netID,id,source->worldID);
+    for (auto connection : clients) {
+        net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+    }
 }
 
-void NetworkServer::DestroyEntity(Ref<Entity> entity){
-    //TODO: FIX
-//	auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
-//	if (casted){
-//		auto netID = entity->GetComponent<NetworkIdentity>().value()->GetNetworkID();
-//		auto message = CreateDestroyCommand(netID);
-//        NetworkIdentities.erase(netID);
-//		for (auto connection : clients) {
-//			net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
-//		}
-//	}
-//	else {
-//		Debug::Warning("Attempted to destroy entity that is not NetworkReplicable");
-//	}
+void NetworkServer::DestroyEntity(const uuids::uuid& netID){
+    auto message = CreateDestroyCommand(netID);
+    NetworkIdentities.erase(netID);
+    for (auto connection : clients) {
+        net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+    }
 }
 
 void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& msg, Reliability mode) const
@@ -308,7 +283,7 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 	//decode the RPC header to to know where it is going
 
 	uuids::uuid id(cmd.data() + 1);
-	NetworkIdentities.if_contains(id, [&](const Ref<NetworkIdentity>& netid) {
+	NetworkIdentities.if_contains(id, [&](const auto netid) {
         //TODO: FIX
 //		auto entity = netid->GetOwner().lock();
 //		bool isOwner = origin == netid->Owner;
@@ -330,7 +305,7 @@ void RavEngine::NetworkServer::DisconnectClient(HSteamNetConnection con, int rea
 	}
 }
 
-void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Ref<NetworkIdentity> object)
+void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, ComponentHandle<NetworkIdentity> object)
 {
 	//send message revoke ownership for the existing owner, if it is not currently owned by server
 	if (object->Owner != k_HSteamNetConnection_Invalid) {

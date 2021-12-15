@@ -8,6 +8,7 @@
 #include "Ref.hpp"
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
+#include "ComponentHandle.hpp"
 
 namespace RavEngine{
 
@@ -23,7 +24,7 @@ protected:
 	std::string CreateDestroyCommand(uuids::uuid& id);
 
     //Track all the networkidentities by their IDs
-    locked_node_hashmap<uuids::uuid, Ref<NetworkIdentity>,SpinLock> NetworkIdentities;
+    locked_node_hashmap<uuids::uuid, Entity,SpinLock> NetworkIdentities;
 
 public:
 	
