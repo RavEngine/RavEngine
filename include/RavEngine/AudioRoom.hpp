@@ -101,12 +101,12 @@ public:
 	/**
 	 @return the dimensions of this room
 	 */
-    constexpr inline decltype(RoomData::roomDimensions) GetRoomDimensions() const {return data->roomDimensions; }
+    inline decltype(RoomData::roomDimensions) GetRoomDimensions() const {return data->roomDimensions; }
 	
 	/**
 	 @return a writable reference to the wall materials
 	 */
-    constexpr inline decltype(RoomData::wallMaterials)& WallMaterials() { return data->wallMaterials; }
+    inline decltype(RoomData::wallMaterials)& WallMaterials() { return data->wallMaterials; }
 	
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
