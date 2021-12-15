@@ -16,8 +16,8 @@ NetworkServer::NetworkServer() : net_interface(SteamNetworkingSockets()){}
 
 void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
 {
-	for (const auto comp : OwnershipTracker[connection]) {
-        auto owner = comp->GetOwner()->Destroy();
+	for (auto entity : OwnershipTracker[connection]) {
+        entity.GetOwner().Destroy();
     }
 	OwnershipTracker.erase(connection);
 }

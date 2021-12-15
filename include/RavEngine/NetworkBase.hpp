@@ -19,9 +19,9 @@ protected:
 	std::atomic<bool> workerIsRunning = false;
 	std::atomic<bool> workerHasStopped = true;
 
-	std::string CreateSpawnCommand(uuids::uuid& id, ctti_t type, std::string_view& worldID);
+	std::string CreateSpawnCommand(const uuids::uuid& id, ctti_t type, std::string_view& worldID);
 
-	std::string CreateDestroyCommand(uuids::uuid& id);
+	std::string CreateDestroyCommand(const uuids::uuid& id);
 
     //Track all the networkidentities by their IDs
     locked_node_hashmap<uuids::uuid, Entity,SpinLock> NetworkIdentities;

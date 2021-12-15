@@ -1,11 +1,12 @@
 #pragma once
 #include "Registry.hpp"
+#include "CTTI.hpp"
 
 namespace RavEngine{
 struct World;
 struct Transform;
 
-struct Entity{
+struct Entity : public AutoCTTI{
     entity_t id = INVALID_ENTITY;
     
     Entity(entity_t id) : id(id){}

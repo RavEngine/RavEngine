@@ -194,19 +194,18 @@ void NetworkClient::NetSpawn(const std::string_view& command){
     std::memcpy(worldname, command.data()+offset, World::id_size);
     if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
         // try to create the entity, the result of this is the entity spawned in the world
-        if (auto e = App::networkManager.CreateEntity(id, uuid)){
+        if (auto e = App::networkManager.CreateEntity(id, world.value().get())){
             // create a NetworkIdentity for this spawned entity
             auto& eHandle = e.value();
             eHandle.EmplaceComponent<NetworkIdentity>(uuid);
             
             // track this entity
-            NetworkIdentities[netid->GetNetworkID()] = eHandle;
+            NetworkIdentities[uuid] = eHandle;
             
             // now invoke the netspawnhook
-            //TODO: FIX -- need to change how netspawnhooks works
-//            if (OnNetSpawnHooks.contains(id)) {
-//                OnNetSpawnHooks.at(id)(e.value(),world.value());
-//            }
+            if (OnNetSpawnHooks.contains(id)) {
+                OnNetSpawnHooks.at(id)(e.value(),world.value());
+            }
         }
         else{
             Debug::Fatal("Cannot spawn entity with CTTI ID {}",id);
@@ -228,7 +227,7 @@ void NetworkClient::NetDestroy(const std::string_view& command){
         
     //lookup the entity and destroy it
 	if (NetworkIdentities.if_contains(uuid, [&](auto entity) {
-        entity->Destroy();
+        entity.Destroy();
 	})) {
 		//this must be here, otherwise we will encounter deadlock
 		NetworkIdentities.erase(uuid);
@@ -283,9 +282,11 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 {
 	//decode the RPC header to to know where it is going
 	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [&](auto netid) {
-		auto entity = netid->GetOwner();
-        entity.template GetComponent<RPCComponent>().CacheClientRPC(cmd, netid->Owner == k_HSteamNetConnection_Invalid, connection);
+	bool success = NetworkIdentities.if_contains(id, [&](auto entity) {
+        assert(entity.template HasComponent<RPCComponent>());
+        assert(entity.template HasComponent<NetworkIdentity>());
+        auto& netid = entity.template GetComponent<NetworkIdentity>();
+        entity.template GetComponent<RPCComponent>().CacheClientRPC(cmd, netid.Owner == k_HSteamNetConnection_Invalid, connection);
 	});
 	if (!success) {
 		Debug::Warning("Cannot relay RPC, entity with ID {} does not exist", id.to_string());

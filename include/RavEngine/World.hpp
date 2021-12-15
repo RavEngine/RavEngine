@@ -652,7 +652,7 @@ namespace RavEngine {
             }
         }
         void NetworkingSpawn(ctti_t,Entity&);
-        void NetworkingDestroy(Entity);
+        void NetworkingDestroy(entity_t);
     public:
         
         template<typename T, typename ... A>

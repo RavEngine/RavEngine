@@ -6,7 +6,7 @@
 using namespace std;
 using namespace RavEngine;
 
-std::string RavEngine::NetworkBase::CreateSpawnCommand(uuids::uuid& id, ctti_t type, std::string_view& worldID)
+std::string RavEngine::NetworkBase::CreateSpawnCommand(const uuids::uuid& id, ctti_t type, std::string_view& worldID)
 {
 	constexpr uint16_t size = 16 + sizeof(type) + World::id_size + 1;
 	char message[size];
@@ -32,7 +32,7 @@ std::string RavEngine::NetworkBase::CreateSpawnCommand(uuids::uuid& id, ctti_t t
 	return string(message,size);
 }
 
-std::string RavEngine::NetworkBase::CreateDestroyCommand(uuids::uuid& id)
+std::string RavEngine::NetworkBase::CreateDestroyCommand(const uuids::uuid& id)
 {
 	constexpr uint16_t size = 16 + 1;
 	char message[size];

@@ -80,7 +80,8 @@ void World::NetworkingSpawn(ctti_t id, Entity& handle){
     }
 }
 
-void World::NetworkingDestroy(Entity handle){
+void World::NetworkingDestroy(entity_t id){
+    Entity handle{id};
     // are we networked, and is this the server?
     if (NetworkManager::IsNetworked() && NetworkManager::IsServer()){
         // is this a networkobject?

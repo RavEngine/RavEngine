@@ -21,12 +21,12 @@ namespace RavEngine {
 	public:
 		
         bool isNetworkEntity(ctti_t id) const{
-            return NetworkObjects.contains(id);
+            return NetworkedObjects.contains(id);
         }
         
 		void SyncVarUpdate(const std::string_view& data);
         
-        std::optional<Entity> CreateEntity(ctti_t id, uuids::uuid& uuid, World* world){
+        std::optional<Entity> CreateEntity(ctti_t id, World* world){
             std::optional<Entity> value;
 			NetworkedObjects.if_contains(id, [&](const func_t& fn) {
 				value.emplace(fn(world));
@@ -92,7 +92,7 @@ namespace RavEngine {
 		/**
 		Spawn a networkidentity. For internal use only, called by the world
 		*/
-		void Destroy(World* source, const uuids::uuid& entity_id);
+		void Destroy(const uuids::uuid& entity_id);
 	};
 
 }
