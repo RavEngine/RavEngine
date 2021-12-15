@@ -64,11 +64,11 @@ namespace RavEngine {
          */
         template<typename ... T>
         static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T... args){
-//#ifdef _DEBUG
+#ifdef _DEBUG
             dbgmtx.lock();
             debugprints[row] = {StrFormat(formatstr, args...),color};
             dbgmtx.unlock();
-//#endif
+#endif
         }
         
         /**
@@ -76,11 +76,11 @@ namespace RavEngine {
          @param row the row to clear
          */
         static void ClearDebugPrint(uint16_t row){
-//#ifdef _DEBUG
+#ifdef _DEBUG
             dbgmtx.lock();
             debugprints.erase(row);
             dbgmtx.unlock();
-//#endif
+#endif
         }
         
         /**
@@ -88,11 +88,11 @@ namespace RavEngine {
          @param row the row to clear
          */
         static void ClearAllDebugPrint(){
-//#ifdef _DEBUG
+#ifdef _DEBUG
             dbgmtx.lock();
             debugprints.clear();
             dbgmtx.unlock();
-//#endif
+#endif
         }
 
         /**
@@ -236,19 +236,19 @@ namespace RavEngine {
         static bgfx::ProgramHandle debugNavProgram;
         bool navDebugDepthEnabled = false;
         
-//#ifdef _DEBUG
+#ifdef _DEBUG
         struct DebugMsg{
             std::string message;
             uint8_t color;
         };
         static SpinLock dbgmtx;
         static UnorderedMap<uint16_t,DebugMsg> debugprints;
-//#endif
+#endif
         void runAPIThread(bgfx::PlatformData pd, int width, int height, const AppConfig& conf);
 
-//#ifdef _WIN32
+#ifdef _WIN32
 		float win_scalefactor = 1;
-//#endif
+#endif
 		
 		WeakRef<World> worldToDraw;
 		std::optional<std::thread> renderThread;
@@ -350,11 +350,11 @@ namespace RavEngine {
             bool enabled = false;
         } RMLScissor;
 		
-//#ifdef _DEBUG
+#ifdef _DEBUG
 		//used for the GUI debugger
 		//static Entity debuggerContext;
         //static World debuggerWorld;
-//#endif
+#endif
 	
 		static const std::string_view BackendStringName(bgfx::RendererType::Enum backend);
     };
