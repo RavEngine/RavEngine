@@ -282,11 +282,11 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 {
 	//decode the RPC header to to know where it is going
 	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [&](auto entity) {
+	bool success = NetworkIdentities.if_contains(id, [&cmd,this](auto entity) {
         assert(entity.template HasComponent<RPCComponent>());
         assert(entity.template HasComponent<NetworkIdentity>());
         auto& netid = entity.template GetComponent<NetworkIdentity>();
-        entity.template GetComponent<RPCComponent>().CacheClientRPC(cmd, netid.Owner == k_HSteamNetConnection_Invalid, connection);
+        entity.template GetComponent<RPCComponent>().CacheClientRPC(cmd, netid.Owner == k_HSteamNetConnection_Invalid, this->connection);
 	});
 	if (!success) {
 		Debug::Warning("Cannot relay RPC, entity with ID {} does not exist", id.to_string());
