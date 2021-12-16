@@ -20,6 +20,7 @@
 #include "Common3D.hpp"
 #include "SpinLock.hpp"
 #include <RavEngine/Utilities.hpp>
+#include "PhysXDefines.h"
 
 struct SDL_Window;
 
