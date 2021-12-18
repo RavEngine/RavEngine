@@ -53,6 +53,9 @@ namespace RavEngine {
 				case Mode::Orthographic:
 					return matrix4(glm::ortho(0.0f,static_cast<float>(width),static_cast<float>(height),0.0f,nearClip,farClip));
 					break;
+                default:
+                    assert(false);
+                    return matrix4(1);  // this should never happen
 			}
 		}
 

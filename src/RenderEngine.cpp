@@ -840,7 +840,7 @@ const string_view RenderEngine::BackendStringName(bgfx::RendererType::Enum backe
 		case bgfx::RendererType::Vulkan:		return "Vulkan";
 		case bgfx::RendererType::Nvn:			return "NVN";
 		case bgfx::RendererType::WebGPU:		return "WebGPU";
-		case bgfx::RendererType::Count: 		return "Error - Count";
+		default: 		                        return "Error";
 	}
 }
 

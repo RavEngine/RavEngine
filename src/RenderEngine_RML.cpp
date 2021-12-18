@@ -93,7 +93,7 @@ static inline Rml::TextureHandle createTexture(int width, int height, const Rml:
 	
 	auto uncompressed_size = width * height * numChannels * numLayers;
 	
-	int flags = BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT;
+	int flags = static_cast<decltype(flags)>(BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT);
 	
 	const bgfx::Memory* textureData = bgfx::copy(data, uncompressed_size);
 	auto th = bgfx::createTexture2D(width,height,hasMipMaps,numLayers,format,flags,textureData);

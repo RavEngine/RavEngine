@@ -57,7 +57,9 @@
 #define PX_PRIu64 "I64u"
 #else
 #if !PX_PS4 && !PX_APPLE_FAMILY
-#define __STDC_FORMAT_MACROS
+    #ifndef __STDC_FORMAT_MACROS
+        #define __STDC_FORMAT_MACROS
+    #endif
 #endif
 #include <inttypes.h>
 #define PX_PRIu64 PRIu64
