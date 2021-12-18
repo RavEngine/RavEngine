@@ -73,7 +73,7 @@ void World::NetworkingSpawn(ctti_t id, Entity& handle){
             auto& netidcomp = handle.EmplaceComponent<NetworkIdentity>(id);
             
             // now send the message to spawn this on the other end
-            App::networkManager.Spawn(this,id,netidcomp.GetNetworkID());
+            App::networkManager.Spawn(this,id,handle.id,netidcomp.GetNetworkID());
         }
     }
 }

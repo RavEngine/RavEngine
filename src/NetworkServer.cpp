@@ -22,8 +22,8 @@ void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
 	OwnershipTracker.erase(connection);
 }
 
-void NetworkServer::SpawnEntity(World* source, ctti_t id, const uuids::uuid& netID) {
-    
+void NetworkServer::SpawnEntity(World* source, ctti_t id, entity_t ent_id, const uuids::uuid& netID) {
+	NetworkIdentities[netID] = ent_id;
     auto message = CreateSpawnCommand(netID,id,source->worldID);
     for (auto connection : clients) {
         net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
@@ -31,8 +31,8 @@ void NetworkServer::SpawnEntity(World* source, ctti_t id, const uuids::uuid& net
 }
 
 void NetworkServer::DestroyEntity(const uuids::uuid& netID){
+	NetworkIdentities.erase(netID);
     auto message = CreateDestroyCommand(netID);
-    NetworkIdentities.erase(netID);
     for (auto connection : clients) {
         net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
     }
@@ -279,11 +279,16 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 	//decode the RPC header to to know where it is going
 
 	uuids::uuid id(cmd.data() + 1);
-	NetworkIdentities.if_contains(id, [&cmd,&origin](auto entity) {
+	if (!NetworkIdentities.if_contains(id, [&cmd, &origin](auto entity) {
 		assert(entity.template HasComponent<NetworkIdentity>());
 		bool isOwner = origin == entity.template GetComponent<NetworkIdentity>().Owner;
 		entity.template GetComponent<RPCComponent>().CacheServerRPC(cmd, isOwner, origin);
-	});
+		})) {
+		Debug::Warning("Got RPC for {} but it has not been tracked, ids = ",id.to_string());
+		for (const auto& [id,entity] : NetworkIdentities) {
+			Debug::Warning("{}", id.to_string());
+		}
+	}
 }
 
 void RavEngine::NetworkServer::DisconnectClient(HSteamNetConnection con, int reason, const char* msg_optional)

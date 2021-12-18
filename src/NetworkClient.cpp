@@ -197,8 +197,7 @@ void NetworkClient::NetSpawn(const std::string_view& command){
         if (auto e = App::networkManager.CreateEntity(id, world.value().get())){
             // create a NetworkIdentity for this spawned entity
             auto& eHandle = e.value();
-            eHandle.EmplaceComponent<NetworkIdentity>(uuid);
-            
+            auto& netid = eHandle.EmplaceComponent<NetworkIdentity>(uuid);
             // track this entity
             NetworkIdentities[uuid] = eHandle;
             

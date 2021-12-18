@@ -17,6 +17,21 @@ namespace RavEngine {
 	private:
 		typedef Function<Entity(World*)> func_t;
 		locked_hashmap<ctti_t, func_t,SpinLock> NetworkedObjects;
+
+		template <typename T>
+		class HasClientCreate
+		{
+		private:
+			typedef char YesType[1];
+			typedef char NoType[2];
+
+			template <typename C> static YesType& test(decltype(&C::ClientCreate));
+			template <typename C> static NoType& test(...);
+
+
+		public:
+			enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
+		};
 		
 	public:
 		
@@ -43,6 +58,9 @@ namespace RavEngine {
         constexpr inline void RegisterNetworkedEntity(){
 			NetworkedObjects.insert(std::make_pair(CTTI<T>(),[](World* world) -> Entity{
                 auto e = world->CreatePrototype<T>();
+				if constexpr (HasClientCreate<T>::value) {
+					e.ClientCreate();
+				}
 				return e;
 			}));
 		}
@@ -87,7 +105,7 @@ namespace RavEngine {
 		/**
 		Spawn a networkidentity. For internal use only, called by the world
 		*/
-		void Spawn(World* source, ctti_t type_id, const uuids::uuid& entity_id);
+		void Spawn(World* source, ctti_t type_id, entity_t ent_id, const uuids::uuid& entity_id);
 
 		/**
 		Spawn a networkidentity. For internal use only, called by the world
