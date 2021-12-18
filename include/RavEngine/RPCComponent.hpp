@@ -1,5 +1,4 @@
 #pragma once
-#include "Component.hpp"
 #include "Queryable.hpp"
 #include "RPCMsgUnpacker.hpp"
 #include "Ref.hpp"
@@ -12,12 +11,13 @@
 #include <steam/isteamnetworkingsockets.h>
 
 namespace RavEngine {
-	class RPCComponent : public Component, public Queryable<RPCComponent> {
+	class RPCComponent : public ComponentWithOwner, public Queryable<RPCComponent> {
 	public:
 		enum class Directionality {
 			OnlyOwnerInvokes,			// the owner 
 			Bidirectional
 		};
+		RPCComponent(entity_t owner) : ComponentWithOwner(owner){}
 	private:
 		struct rpc_entry {
 			Function<void(RPCMsgUnpacker&, HSteamNetConnection)> func;
@@ -91,7 +91,7 @@ namespace RavEngine {
 		inline std::string SerializeRPC(uint16_t id, A ... args) const{
 			constexpr size_t totalsize = (RPCMsgUnpacker::TotalSerializedSize(args) + ...) + RPCMsgUnpacker::header_size;
 
-			auto uuid_bytes = GetOwner().lock()->GetComponent<NetworkIdentity>().GetNetworkID().raw();
+			auto uuid_bytes = GetOwner().GetComponent<NetworkIdentity>().GetNetworkID().raw();
 			char msg[totalsize];
 
 			//write message header

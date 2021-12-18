@@ -11,6 +11,3 @@ bool NetworkIdentity::IsOwner() const
 		return !(Owner == k_HSteamNetConnection_Invalid);
 	}
 }
-
-NetworkIdentity::NetworkIdentity(entity_t owner) : NetworkID(uuids::uuid::create()), ComponentWithOwner(owner){
-}

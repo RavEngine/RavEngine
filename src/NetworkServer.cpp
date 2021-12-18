@@ -258,23 +258,19 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 	string name(buffer,World::id_size);
 	if (auto world = App::GetWorldByName(name)) {
 		// get all the networkidentities in the world
-		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>().value();
+		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
 		// call SpawnEntity on each owner
         
-        //TODO: FIX
-//		for (const auto& identity : identities) {
-//			auto entity = identity->GetOwner().lock();
-//			auto casted = dynamic_pointer_cast<NetworkReplicable>(entity);
-//			Debug::Assert((bool)casted, "Networked entities must descend from NetworkReplicable!");
-//			auto id = casted->NetTypeID();
-//			auto comp = entity->GetComponent<NetworkIdentity>();
-//			auto netID = comp.value()->GetNetworkID();
-//			//send highest-priority safe message with this info to clients
-//			auto message = CreateSpawnCommand(netID, id, world.value()->worldID);
-//			NetworkIdentities[netID] = comp.value();
-//
-//			SendMessageToClient(message, connection,Reliability::Reliable);
-//		}
+		for (const auto& identity : *identities.value()) {
+			auto entity = identity.GetOwner();
+			auto id = identity.GetNetTypeID();
+			auto netID = identity.GetNetworkID();
+			//send highest-priority safe message with this info to clients
+			auto message = CreateSpawnCommand(netID, id, world.value()->worldID);
+			NetworkIdentities[netID] = entity;
+
+			SendMessageToClient(message, connection,Reliability::Reliable);
+		}
 	}
 }
 
@@ -283,11 +279,10 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 	//decode the RPC header to to know where it is going
 
 	uuids::uuid id(cmd.data() + 1);
-	NetworkIdentities.if_contains(id, [&](const auto netid) {
-        //TODO: FIX
-//		auto entity = netid->GetOwner().lock();
-//		bool isOwner = origin == netid->Owner;
-//		entity->GetComponent<RPCComponent>().value()->CacheServerRPC(cmd, isOwner, origin);
+	NetworkIdentities.if_contains(id, [&cmd,&origin](auto entity) {
+		assert(entity.template HasComponent<NetworkIdentity>());
+		bool isOwner = origin == entity.template GetComponent<NetworkIdentity>().Owner;
+		entity.template GetComponent<RPCComponent>().CacheServerRPC(cmd, isOwner, origin);
 	});
 }
 

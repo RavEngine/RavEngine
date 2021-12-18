@@ -51,19 +51,17 @@ void RavEngine::World::Tick(float scale) {
 }
 
 
-RavEngine::World::World(bool skip){
-    if (!skip){
-        SetupTaskGraph();
-        EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
-        EmplaceSystem<AnimatorSystem,AnimatorComponent>();
-        CreateDependency<AnimatorSystem,ScriptSystem>();
-        CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();
-        CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();
+RavEngine::World::World(){
+    SetupTaskGraph();
+    EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
+    EmplaceSystem<AnimatorSystem,AnimatorComponent>();
+    CreateDependency<AnimatorSystem,ScriptSystem>();
+    CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();
+    CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();
         
-        EmplaceSystem<AudioRoomSyncSystem, AudioRoom,Transform>();
-        EmplaceSystem<RPCSystem,RPCComponent>();
-        skybox = make_shared<Skybox>();
-    }
+    EmplaceSystem<AudioRoomSyncSystem, AudioRoom,Transform>();
+    EmplaceSystem<RPCSystem,RPCComponent>();
+    skybox = make_shared<Skybox>();
 }
 
 void World::NetworkingSpawn(ctti_t id, Entity& handle){
@@ -72,7 +70,7 @@ void World::NetworkingSpawn(ctti_t id, Entity& handle){
         // is the constructed type a network object?
         if(App::networkManager.isNetworkEntity(id)){
             //add a network identity to this entity
-            auto& netidcomp = handle.EmplaceComponent<NetworkIdentity>();
+            auto& netidcomp = handle.EmplaceComponent<NetworkIdentity>(id);
             
             // now send the message to spawn this on the other end
             App::networkManager.Spawn(this,id,netidcomp.GetNetworkID());
@@ -91,18 +89,6 @@ void World::NetworkingDestroy(entity_t id){
         }
     }
 }
-
-//void World::OnRemoveComponent(Ref<Component> comp){
-//	//is this a NetworkIdentity? if so, call destroy on the NetworkManager
-//	{
-//		auto nid = dynamic_pointer_cast<NetworkIdentity>(comp);
-//		if (nid && nid->triggerMessage) {
-//            //ownership is checked serverside to decide if this should be honored
-//			App::networkManager.Destroy(shared_from_this(), nid);
-//            return;
-//		}
-//	}
-//}
 
 /**
  Tick all of the objects in the world, multithreaded
