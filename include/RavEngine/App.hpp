@@ -20,11 +20,9 @@
 #include <bx/platform.h>
 #include <optional>
 #include "AudioSnapshot.hpp"
+#include "GetApp.hpp"
 
 namespace RavEngine {
-
-	// get the current app instance
-	App* GetApp();
 
 	struct AppConfig {
 		enum class RenderBackend {
@@ -217,7 +215,7 @@ namespace RavEngine {
 		ConcurrentQueue<Function<void(void)>> main_tasks;
 
         //change to adjust the ticking speed of the engine (default 90hz)
-		std::chrono::duration<double, std::micro> min_tick_time{1.0 / 90 * 1000 };
+		std::chrono::duration<double, std::micro> min_tick_time{ std::chrono::duration<double,std::milli>(1.0 / 90 * 1000)};
 		
 		locked_hashset<Ref<World>,SpinLock> loadedWorlds;
 		
@@ -249,7 +247,7 @@ namespace RavEngine {
 		timeDiff deltaTimeMicroseconds{0};
 		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
 		
-		double time;
+		double time = 0;
 	};
 }
 #ifdef _WINRT

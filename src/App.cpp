@@ -19,6 +19,7 @@
 #include <filesystem>
 #include "Function.hpp"
 #include "World.hpp"
+#include "GetApp.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
