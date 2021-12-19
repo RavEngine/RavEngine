@@ -4,7 +4,7 @@
 using namespace RavEngine;
 bool NetworkIdentity::IsOwner() const
 {
-	if (App::networkManager.IsServer()) {
+	if (GetApp()->networkManager.IsServer()) {
 		return Owner == k_HSteamNetConnection_Invalid;
 	}
 	else {

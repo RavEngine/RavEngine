@@ -351,7 +351,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 			func();
 		}
 
-		if (App::HasRenderEngine()) {			//skip if the App has not set its renderer yet
+		if (GetApp()->HasRenderEngine()) {			//skip if the App has not set its renderer yet
 			//invoke World rendering call
 			Ref<World> wtd = worldToDraw.lock();
 			if (wtd) {
@@ -365,7 +365,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 					}
 					RenderEngine::dbgmtx.unlock();
 #endif
-					App::GetRenderEngine().Draw(wtd);
+					GetApp()->GetRenderEngine().Draw(wtd);
                     auto stats = bgfx::getStats();
                     
                     auto delta = std::chrono::duration<float,std::milli>(			
@@ -601,8 +601,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::touch(Views::Lighting);
 	
 	//copy world framedata into local copy
-	App::SwapRenderFramedata();
-	auto fd = App::GetRenderFramedata();
+	GetApp()->SwapRenderFramedata();
+	auto fd = GetApp()->GetRenderFramedata();
 	worldOwning->newFrame = false;	//we are processing this frame now
 	
 	//setup matrices

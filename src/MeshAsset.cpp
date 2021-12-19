@@ -34,11 +34,11 @@ aiProcess_FindInvalidData     ;
 static const aiScene* LoadScene(const std::string& name){
 	string dir = StrFormat("objects/{}", name);
 	
-	if (!App::GetResources().Exists(dir.c_str())) {
+	if (!GetApp()->GetResources().Exists(dir.c_str())) {
 		Debug::Fatal("Cannot open resource: {}", dir);
 	}
 	
-	auto str = App::GetResources().FileContentsAt(dir.c_str());
+	auto str = GetApp()->GetResources().FileContentsAt(dir.c_str());
 	
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file

@@ -33,38 +33,10 @@ using namespace std;
 using namespace RavEngine;
 using namespace std::chrono;
 
-const float RavEngine::App::evalNormal = 60;
-STATIC(App::Resources);
-NetworkManager App::networkManager;
-double App::time;
-STATIC(App::Renderer);
+// pointer to the current app instance
+static App* currentApp = nullptr;
+
 static float currentScale = 0;
-
-STATIC(App::main_tasks);
-STATIC(App::executor);
-STATIC(App::inputManager);
-STATIC(App::renderWorld);
-STATIC(App::loadedWorlds);
-
-STATIC(App::swapmtx1);
-STATIC(App::swapmtx2);
-STATIC(App::f1);
-STATIC(App::f2);
-STATIC(App::f3);
-STATIC(App::current) = &App::f1;
-STATIC(App::inactive) = &App::f2;
-STATIC(App::render) = &App::f3;
-
-STATIC(App::a1);
-STATIC(App::a2);
-STATIC(App::a3);
-STATIC(App::acurrent) = &App::a1;
-STATIC(App::ainactive) = &App::a2;
-STATIC(App::arender) = &App::a3;
-STATIC(App::audiomtx1);
-STATIC(App::audiomtx2);
-
-std::chrono::duration<double,std::micro> App::min_tick_time(std::chrono::duration<double,std::milli>(1.0/90 * 1000));
 
 // on crash, call this
 void crash_signal_handler(int signum) {
@@ -88,6 +60,7 @@ static void DebugOutput( ESteamNetworkingSocketsDebugOutputType eType, const cha
 }
 
 App::App(const std::string& resourcesName){
+	currentApp = this;
 	// crash signal handlers
 	::signal(SIGSEGV, &crash_signal_handler);
 	::signal(SIGABRT, &crash_signal_handler);
@@ -323,4 +296,9 @@ void App::AddWorld(Ref<World> world) {
 	if (networkManager.IsClient() && !networkManager.IsServer()) {
 		networkManager.client->SendSyncWorldRequest(world);
 	}
+}
+
+App* RavEngine::GetApp()
+{
+	return currentApp;
 }

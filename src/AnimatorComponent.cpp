@@ -18,7 +18,7 @@ void AnimatorComponent::Tick(float timeScale){
 		return;
 	}
 	
-	auto currentTime = App::GetCurrentTime();
+	auto currentTime = GetApp()->GetCurrentTime();
 	//if isBlending, need to calculate both states, and blend between them
 	if (isBlending){
 		

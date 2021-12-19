@@ -166,7 +166,7 @@ namespace RavEngine {
         constexpr inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
 			if (data->ServerRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				App::networkManager.client->SendMessageToServer(msg, mode);
+				GetApp()->networkManager.client->SendMessageToServer(msg, mode);
 			}
 			else {
 				Debug::Warning("Cannot send Server RPC with ID {}", id);
@@ -177,7 +177,7 @@ namespace RavEngine {
         constexpr inline void InvokeClientRPCDirected(uint16_t id, HSteamNetConnection target, NetworkBase::Reliability mode, A ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				App::networkManager.server->SendMessageToClient(msg, target, mode);
+				GetApp()->networkManager.server->SendMessageToClient(msg, target, mode);
 			}
 			else {
 				Debug::Warning("Cannot send Client RPC with ID {} to recipient {}", id, target);
@@ -188,7 +188,7 @@ namespace RavEngine {
         constexpr inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				App::networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
+				GetApp()->networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
 			}
 			else {
 				Debug::Warning("Cannot send Client RPC with ID {} to all except {}", id, doNotSend);
@@ -205,7 +205,7 @@ namespace RavEngine {
         constexpr inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				App::networkManager.server->SendMessageToAllClients(msg, mode);
+				GetApp()->networkManager.server->SendMessageToAllClients(msg, mode);
 			}
 			else {
 				Debug::Warning("Cannot send Client RPC with ID {}", id);

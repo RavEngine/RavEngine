@@ -30,11 +30,11 @@ void NetworkManager::Destroy(const uuids::uuid& entity_id) {
 }
 
 bool NetworkManager::IsClient() {
-	return static_cast<bool>(App::networkManager.client);
+	return static_cast<bool>(GetApp()->networkManager.client);
 }
 
 bool NetworkManager::IsServer() {
-	return static_cast<bool>(App::networkManager.server);
+	return static_cast<bool>(GetApp()->networkManager.server);
 }
 
 void NetworkManager::SyncVarUpdate(const std::string_view &data){

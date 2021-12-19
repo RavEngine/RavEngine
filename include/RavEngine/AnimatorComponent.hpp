@@ -136,7 +136,7 @@ public:
 		
 		template<typename T, typename decimal>
         constexpr inline State& SetTransition(decltype(ID) id, T interpolation, decimal duration, Transition::TimeMode mode = Transition::TimeMode::Blended){
-			auto tween = tweeny::from(0.0f).to(1.0f).during(static_cast<float>(duration * App::evalNormal)).via(interpolation);
+			auto tween = tweeny::from(0.0f).to(1.0f).during(static_cast<float>(duration * GetApp()->evalNormal)).via(interpolation);
 			exitTransitions[id].transition = tween;
 			exitTransitions[id].type = mode;
 			return *this;
@@ -242,7 +242,7 @@ public:
 			
 			switch (ns.type) {
 			case State::Transition::TimeMode::BeginNew:
-				states.at(newState).lastPlayTime = App::GetCurrentTime();
+				states.at(newState).lastPlayTime = GetApp()->GetCurrentTime();
 				break;
 				default: break;
 			}
@@ -273,10 +273,10 @@ public:
 		// need to maintain offset from previous play time
 		if (!isPlaying){
 			if (resetPlayhead){
-				lastPlayTime = App::GetCurrentTime();
+				lastPlayTime = GetApp()->GetCurrentTime();
 			}
 			else{
-				lastPlayTime = App::GetCurrentTime() - lastPlayTime;
+				lastPlayTime = GetApp()->GetCurrentTime() - lastPlayTime;
 			}
 			isPlaying = true;
 		}
@@ -285,7 +285,7 @@ public:
     constexpr inline void Pause(){
 		// record pause time so that resume begins in the correct place
 		if(isPlaying){
-			lastPlayTime = App::GetCurrentTime();
+			lastPlayTime = GetApp()->GetCurrentTime();
 		}
 		isPlaying = false;
 	}

@@ -22,6 +22,10 @@
 #include "AudioSnapshot.hpp"
 
 namespace RavEngine {
+
+	// get the current app instance
+	App* GetApp();
+
 	struct AppConfig {
 		enum class RenderBackend {
 			Metal,
@@ -42,8 +46,8 @@ namespace RavEngine {
 	class App {
 		friend class NetworkManager;
         
-        static std::optional<RenderEngine> Renderer;
-        static std::optional<VirtualFilesystem> Resources;
+        std::optional<RenderEngine> Renderer;
+        std::optional<VirtualFilesystem> Resources;
 	public:
 		App(const std::string& resourcesName);
 		virtual ~App();
@@ -51,7 +55,7 @@ namespace RavEngine {
 		/**
 		 Signal to gracefully shut down the application
 		 */
-		static void Quit();
+		void Quit();
         
         /**
          Set the minimum tick time. If the work for the tick completes faster than this time interval,
@@ -60,7 +64,7 @@ namespace RavEngine {
          @param min_ms the minimum amount of time a tick should take.
          */
         template<typename T>
-        constexpr static void SetMinTickTime(std::chrono::duration<double,T> min_ms){
+        constexpr void SetMinTickTime(std::chrono::duration<double,T> min_ms){
             min_tick_time = min_ms;
         }
 
@@ -69,12 +73,12 @@ namespace RavEngine {
 		*/
 		int run(int argc, char** argv);
 
-		static const float evalNormal;	//normal speed is 60 hz
+		const float evalNormal = 60;	//normal speed is 60 hz
 		
 		/**
 		 @return the current time, measured in seconds since the application launched
 		 */
-        inline static double GetCurrentTime(){
+        inline double GetCurrentTime(){
 			return time;
 		};
 		
@@ -82,20 +86,20 @@ namespace RavEngine {
 		const int numcpus = std::thread::hardware_concurrency();
 		
 		//global thread pool, threads = logical processors on CPU
-		static tf::Executor executor;
+		tf::Executor executor;
 		
 		//networking interface
-		static NetworkManager networkManager;
+		NetworkManager networkManager;
         
-        inline static VirtualFilesystem& GetResources(){
+        inline VirtualFilesystem& GetResources(){
             return Resources.value();
         }
         
-        inline static RenderEngine& GetRenderEngine(){
+        inline RenderEngine& GetRenderEngine(){
             return Renderer.value();
         }
         
-        inline static bool HasRenderEngine(){
+        inline bool HasRenderEngine(){
             return static_cast<bool>(Renderer);
         }
 		
@@ -105,44 +109,44 @@ namespace RavEngine {
 		 @note To pass parameters, do not reference! Instead, you must explicitly copy the values you want to pass:
 		 @code
  int x = 5; int y = 6;
- RavEngine::App::DispatchMainThread([=]{
+ RavEngine::GetApp()->DispatchMainThread([=]{
 	std::cout << x << y << std::endl;
  });
 		 @endcode
 		 */
         template<typename T>
-		constexpr static inline void DispatchMainThread(const T& f){
+		constexpr inline void DispatchMainThread(const T& f){
 			main_tasks.enqueue(f);
 		}
 
 		/**
 		@return the current application tick rate
 		*/
-        static float CurrentTPS();
+        float CurrentTPS();
 		
-		static Ref<InputManager> inputManager;
+		Ref<InputManager> inputManager;
 
 		/**
 		Set the current world to tick automatically
 		@param newWorld the new world
 		*/
-        static void SetRenderedWorld(Ref<World> newWorld);
+        void SetRenderedWorld(Ref<World> newWorld);
 		
 		/**
 		 Add a world to be ticked
 		 @param world the world to tick
 		 */
-		static void AddWorld(Ref<World> world);
+		void AddWorld(Ref<World> world);
 		/**
 		Remove a world from the tick list
 		@param world the world to tick
 		*/
-        static void RemoveWorld(Ref<World> world);
+        void RemoveWorld(Ref<World> world);
 
 		/**
 		* Unload all worlds
 		*/
-        static void RemoveAllWorlds() {
+        void RemoveAllWorlds() {
 			for (const auto& world : loadedWorlds) {
 				RemoveWorld(world);
 			}
@@ -153,7 +157,7 @@ namespace RavEngine {
 		 @param oldWorld the world to replace
 		 @param newWorld the world to replace with. Cannot be already loaded.
 		 */
-		static void AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld){
+		void AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld){
 			AddWorld(newWorld);
 			bool updateRender = renderWorld == oldWorld;
 			RemoveWorld(oldWorld);
@@ -167,63 +171,62 @@ namespace RavEngine {
 		 @param title the text for the titlebar
 		 @note Do not call this every frame. To update periodically with data such as frame rates, use a scheduled system.
 		 */
-        static void SetWindowTitle(const char* title);
+        void SetWindowTitle(const char* title);
 		
-        static std::optional<Ref<World>> GetWorldByName(const std::string& name);
+        std::optional<Ref<World>> GetWorldByName(const std::string& name);
 		
-        static inline FrameData* GetCurrentFramedata(){
+        inline FrameData* GetCurrentFramedata(){
 			return current;
 		}
 		
-		static inline FrameData* GetRenderFramedata(){
+		inline FrameData* GetRenderFramedata(){
 			return render;
 		}
 		
-        static inline void SwapCurrentFramedata(){
+        inline void SwapCurrentFramedata(){
 			swapmtx1.lock();
 			std::swap(current,inactive);
 			swapmtx1.unlock();
 		}
-        static inline void SwapRenderFramedata(){
+        inline void SwapRenderFramedata(){
 			swapmtx2.lock();
 			std::swap(inactive,render);
 			swapmtx2.unlock();
 		}
         
-        static inline void SwapCurrrentAudioSnapshot(){
+        inline void SwapCurrrentAudioSnapshot(){
             audiomtx1.lock();
             std::swap(acurrent,ainactive);
             audiomtx1.unlock();
         }
-        static inline void SwapRenderAudioSnapshot(){
+        inline void SwapRenderAudioSnapshot(){
             audiomtx2.lock();
             std::swap(ainactive,arender);
             audiomtx2.unlock();
         }
-        static inline AudioSnapshot* GetCurrentAudioSnapshot(){
+        inline AudioSnapshot* GetCurrentAudioSnapshot(){
             return acurrent;
         }
-        static inline AudioSnapshot* GetRenderAudioSnapshot(){
+        inline AudioSnapshot* GetRenderAudioSnapshot(){
             return arender;
         }
 
 	private:
-		static Ref<World> renderWorld;
+		Ref<World> renderWorld;
 	
-		static ConcurrentQueue<Function<void(void)>> main_tasks;
+		ConcurrentQueue<Function<void(void)>> main_tasks;
 
         //change to adjust the ticking speed of the engine (default 90hz)
-        static std::chrono::duration<double,std::micro> min_tick_time;
+		std::chrono::duration<double, std::micro> min_tick_time{1.0 / 90 * 1000 };
 		
-		static locked_hashset<Ref<World>,SpinLock> loadedWorlds;
+		locked_hashset<Ref<World>,SpinLock> loadedWorlds;
 		
 		//triple-buffer framedata
-		static FrameData f1, f2, f3;
-		static FrameData *current, *inactive, *render;
-		static SpinLock swapmtx1, swapmtx2;
+		FrameData f1, f2, f3, *current = &f1, *inactive = &f2, *render = &f3;
+		SpinLock swapmtx1, swapmtx2;
         
-        static AudioSnapshot a1, a2, a3, *acurrent, *ainactive, *arender;
-        static SpinLock audiomtx1, audiomtx2;
+        AudioSnapshot a1, a2, a3, *acurrent = &a1, *ainactive = &a2, *arender = &a3;
+        SpinLock audiomtx1, audiomtx2;
 	protected:
 		virtual AppConfig OnConfigure(int argc, char** argv) { return AppConfig{}; }
 		
@@ -243,10 +246,10 @@ namespace RavEngine {
 
 		//last frame time, frame delta time, framerate scale, maximum frame time
 		timePoint lastFrameTime;
-		timeDiff deltaTimeMicroseconds;
+		timeDiff deltaTimeMicroseconds{0};
 		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
 		
-		static double time;
+		double time;
 	};
 }
 #ifdef _WINRT

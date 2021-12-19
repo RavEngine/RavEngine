@@ -192,9 +192,9 @@ void NetworkClient::NetSpawn(const std::string_view& command){
     // world name
     char worldname[World::id_size];
     std::memcpy(worldname, command.data()+offset, World::id_size);
-    if (auto world = App::GetWorldByName(std::string(worldname,World::id_size))){
+    if (auto world = GetApp()->GetWorldByName(std::string(worldname,World::id_size))){
         // try to create the entity, the result of this is the entity spawned in the world
-        if (auto e = App::networkManager.CreateEntity(id, world.value().get())){
+        if (auto e = GetApp()->networkManager.CreateEntity(id, world.value().get())){
             // create a NetworkIdentity for this spawned entity
             auto& eHandle = e.value();
             auto& netid = eHandle.EmplaceComponent<NetworkIdentity>(uuid);

@@ -68,12 +68,12 @@ void World::NetworkingSpawn(ctti_t id, Entity& handle){
     // are we networked, and the server?
     if (NetworkManager::IsNetworked() && NetworkManager::IsServer()){
         // is the constructed type a network object?
-        if(App::networkManager.isNetworkEntity(id)){
+        if(GetApp()->networkManager.isNetworkEntity(id)){
             //add a network identity to this entity
             auto& netidcomp = handle.EmplaceComponent<NetworkIdentity>(id);
             
             // now send the message to spawn this on the other end
-            App::networkManager.Spawn(this,id,handle.id,netidcomp.GetNetworkID());
+            GetApp()->networkManager.Spawn(this,id,handle.id,netidcomp.GetNetworkID());
         }
     }
 }
@@ -85,7 +85,7 @@ void World::NetworkingDestroy(entity_t id){
         // is this a networkobject?
         if(handle.HasComponent<NetworkIdentity>()){
             auto& netidcomp = handle.GetComponent<NetworkIdentity>();
-            App::networkManager.Destroy(netidcomp.GetNetworkID());
+            GetApp()->networkManager.Destroy(netidcomp.GetNetworkID());
         }
     }
 }
@@ -101,7 +101,7 @@ void RavEngine::World::TickECS(float fpsScale) {
 	time_now = e_clock_t::now();
 	
 	//execute and wait
-	App::executor.run(masterTasks).wait();
+    GetApp()->executor.run(masterTasks).wait();
 	if (isRendering){
 		newFrame = true;
 	}
@@ -135,7 +135,7 @@ void World::SetupTaskGraph(){
         async_end = async_tasks.end();
     }).name("async iterator update");
     auto doAsync = masterTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const shared_ptr<dispatched_func>& item){
-        if (App::GetCurrentTime() >= item->runAtTime){
+        if (GetApp()->GetCurrentTime() >= item->runAtTime){
             item->func();
             ranFunctions.push_back(async_tasks.hash_for(item));
         }
@@ -167,10 +167,10 @@ void World::SetupTaskGraph(){
     audioTasks.name("Audio");
     
     auto audioClear = audioTasks.emplace([this]{
-        App::GetCurrentAudioSnapshot()->Clear();
+        GetApp()->GetCurrentAudioSnapshot()->Clear();
         //TODO: currently this selects the LAST listener, but there is no need for this
         auto fn = [](float, const auto& listener, const auto& transform){
-            auto ptr = App::GetCurrentAudioSnapshot();
+            auto ptr = GetApp()->GetCurrentAudioSnapshot();
             ptr->listenerPos = transform.GetWorldPosition();
             ptr->listenerRot = transform.GetWorldRotation();
         };
@@ -181,7 +181,7 @@ void World::SetupTaskGraph(){
     
     auto copyAudios = audioTasks.emplace([this]{
         auto fn = [this](float, auto& audioSource, auto& transform){
-            App::GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
         };
         Filter<AudioSourceComponent,Transform>(fn);
         
@@ -192,14 +192,14 @@ void World::SetupTaskGraph(){
         
         // now do fire-and-forget audios that need to play
         for(auto& f : instantaneousToPlay){
-            App::GetCurrentAudioSnapshot()->sources.emplace_back(f.GetPlayer(),f.source_position,quaternion(0,0,0,1));
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(f.GetPlayer(),f.source_position,quaternion(0,0,0,1));
         }
     }).name("Point Audios").succeed(audioClear);
     
     auto copyAmbients = audioTasks.emplace([this]{
         if(componentMap.contains(CTTI<AmbientAudioSourceComponent>())){
             auto fn = [this](float, auto& audioSource){
-                App::GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
+                GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
             };
             Filter<AmbientAudioSourceComponent>(fn);
             
@@ -212,21 +212,21 @@ void World::SetupTaskGraph(){
         
         // now do fire-and-forget audios that need to play
         for(auto& f : ambientToPlay){
-            App::GetCurrentAudioSnapshot()->ambientSources.emplace_back(f.GetPlayer());
+            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(f.GetPlayer());
         }
         
     }).name("Ambient Audios").succeed(audioClear);
     
     auto copyRooms = audioTasks.emplace([this]{
         auto fn = [this](float, auto& room, auto& transform){
-            App::GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
+            GetApp()->GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
         };
         Filter<AudioRoom,Transform>(fn);
         
     }).name("Rooms").succeed(audioClear);
     
     auto audioSwap = audioTasks.emplace([]{
-        App::SwapCurrrentAudioSnapshot();
+        GetApp()->SwapCurrrentAudioSnapshot();
     }).name("Swap Current").succeed(copyAudios,copyAmbients,copyRooms);
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
@@ -243,9 +243,9 @@ void World::setupRenderTasks(){
             for (auto& cam : *allcams.value()) {
                 if (cam.IsActive()) {
 
-                    auto size = App::GetRenderEngine().GetBufferSize();
+                    auto size = GetApp()->GetRenderEngine().GetBufferSize();
                     cam.SetTargetSize(size.width, size.height);
-                    auto current = App::GetCurrentFramedata();
+                    auto current = GetApp()->GetCurrentFramedata();
                     current->viewmatrix = cam.GenerateViewMatrix();
                     current->projmatrix = cam.GenerateProjectionMatrix();
                     current->cameraWorldpos = cam.GetOwner().GetTransform().GetWorldPosition();
@@ -288,7 +288,7 @@ void World::setupRenderTasks(){
 	
 	//sort into the hashmap
 	auto sort = renderTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
-		auto current = App::GetCurrentFramedata();
+		auto current = GetApp()->GetCurrentFramedata();
         if (e.Enabled) {
             auto& pair = e.getTuple();
             auto mat = e.GetOwner().GetTransform().CalculateWorldMatrix();
@@ -300,7 +300,7 @@ void World::setupRenderTasks(){
         if (m.Enabled) {
             auto& pair = m.getTuple();
             auto mat = m.GetOwner().GetTransform().CalculateWorldMatrix();
-            auto current = App::GetCurrentFramedata();
+            auto current = GetApp()->GetCurrentFramedata();
             auto& item = current->skinnedOpaques[pair];
             item.AddItem(mat);
             // write the pose if there is one
@@ -311,7 +311,7 @@ void World::setupRenderTasks(){
         }
 	}).name("sort skinned");
     auto sortInstanced = renderTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
-        auto current = App::GetCurrentFramedata();
+        auto current = GetApp()->GetCurrentFramedata();
         if (m.Enabled){
             auto& pair = m.getTuple();
             m.CalculateMatrices();
@@ -337,7 +337,7 @@ void World::setupRenderTasks(){
                     static_cast<float>(rot.y),
                     static_cast<float>(rot.z)
                 };
-                auto current = App::GetCurrentFramedata();
+                auto current = GetApp()->GetCurrentFramedata();
                 current->directionals.emplace(ptr->Get(i),r);
             }
         }
@@ -346,7 +346,7 @@ void World::setupRenderTasks(){
         if(auto ambs = GetAllComponentsOfType<AmbientLight>()){
             auto ptr = ambs.value();
             for(const auto& a : *ptr){
-                auto current = App::GetCurrentFramedata();
+                auto current = GetApp()->GetCurrentFramedata();
                 current->ambients.emplace(a);
             }
         }
@@ -358,7 +358,7 @@ void World::setupRenderTasks(){
             for(int i = 0; i < ptr->DenseSize(); i++){
                 Entity owner(ptr->GetOwner(i));
                 auto transform = owner.GetTransform().CalculateWorldMatrix();
-                auto current = App::GetCurrentFramedata();
+                auto current = GetApp()->GetCurrentFramedata();
                 const auto& l = ptr->Get(i);
                 current->spots.emplace(l,l.CalculateMatrix(transform));
             }
@@ -372,7 +372,7 @@ void World::setupRenderTasks(){
                 Entity owner(ptr->GetOwner(i));
                 const auto& d = ptr->Get(i);
                 auto transform = owner.GetTransform().CalculateWorldMatrix();
-                auto current = App::GetCurrentFramedata();
+                auto current = GetApp()->GetCurrentFramedata();
                 current->points.emplace(d,d.CalculateMatrix(transform));
             }
         }
@@ -391,20 +391,20 @@ void World::setupRenderTasks(){
 //#endif
 	auto copyGUI = renderTasks.emplace([this]() {
         // also do the time here
-        App::GetCurrentFramedata()->Time = App::GetCurrentTime();
+        GetApp()->GetCurrentFramedata()->Time = GetApp()->GetCurrentTime();
         if(auto guis = GetAllComponentsOfType<GUIComponent>()){
-            App::GetCurrentFramedata()->guisToCalculate = guis.value()->GetDense();
+            GetApp()->GetCurrentFramedata()->guisToCalculate = guis.value()->GetDense();
         }
         else{
-            App::GetCurrentFramedata()->guisToCalculate.clear();
+            GetApp()->GetCurrentFramedata()->guisToCalculate.clear();
         }
 	}).name("CopyGUI");
 
 	auto swap = renderTasks.emplace([this]{
-		App::SwapCurrentFramedata();
+        GetApp()->SwapCurrentFramedata();
 	}).name("Swap");
 	auto setup = renderTasks.emplace([this]{
-		auto current = App::GetCurrentFramedata();
+		auto current = GetApp()->GetCurrentFramedata();
 		current->Clear();
 	}).name("Clear-setup");
 	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints,copyGUI);
@@ -420,8 +420,8 @@ void World::setupRenderTasks(){
 }
 
 void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
-    auto time = App::GetCurrentTime();
-    App::DispatchMainThread([=]{
+    auto time = GetApp()->GetCurrentTime();
+    GetApp()->DispatchMainThread([=]{
         async_tasks.insert(make_shared<dispatched_func>(time + delaySeconds,func));
     });
 }

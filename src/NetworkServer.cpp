@@ -256,7 +256,7 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 	std::memset(buffer, 0, World::id_size);
 	std::memcpy(buffer, in_message.data() + 1, in_message.size() - 1);
 	string name(buffer,World::id_size);
-	if (auto world = App::GetWorldByName(name)) {
+	if (auto world = GetApp()->GetWorldByName(name)) {
 		// get all the networkidentities in the world
 		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
 		// call SpawnEntity on each owner

@@ -33,10 +33,10 @@ public:
 	HSteamNetConnection owner = k_HSteamNetConnection_Invalid;
 	
 	inline bool IsOwner() const{
-		if (App::networkManager.IsServer()){
+		if (GetApp()->networkManager.IsServer()){
 			return owner == k_HSteamNetConnection_Invalid;
 		}
-		else if (App::networkManager.IsClient()){
+		else if (GetApp()->networkManager.IsClient()){
 			return owner != k_HSteamNetConnection_Invalid;
 		}
 	}
@@ -117,7 +117,7 @@ public:
 				std::memcpy(data + 1, idbytes.data(), idbytes.size());
 				data[0] = NetworkBase::CommandCode::SyncVar;
 
-				App::networkManager.SyncVarUpdate(std::string_view(data, sizeof(data)));
+				GetApp()->networkManager.SyncVarUpdate(std::string_view(data, sizeof(data)));
 
 				//update prev
 				prev = value;

@@ -144,11 +144,11 @@ uint32_t SystemInfo::SystemRAM(){
 }
 
 uint32_t SystemInfo::GPUVRAM(){
-    return App::GetRenderEngine().GetTotalVRAM();
+    return GetApp()->GetRenderEngine().GetTotalVRAM();
 }
 
 uint32_t SystemInfo::GPUVRAMinUse(){
-    return App::GetRenderEngine().GetCurrentVRAMUse();
+    return GetApp()->GetRenderEngine().GetCurrentVRAMUse();
 }
 
 SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){

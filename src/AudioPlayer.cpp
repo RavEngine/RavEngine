@@ -23,8 +23,8 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 	AudioPlayer* player = static_cast<AudioPlayer*>(udata);
 	
 	std::memset(stream,0,len);		//fill with silence
-    App::SwapRenderAudioSnapshot();
-    auto SnapshotToRender = App::GetRenderAudioSnapshot();
+    GetApp()->SwapRenderAudioSnapshot();
+    auto SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
     auto& sources = SnapshotToRender->sources;
     auto& rooms = SnapshotToRender->rooms;
     auto& ambientSources = SnapshotToRender->ambientSources;

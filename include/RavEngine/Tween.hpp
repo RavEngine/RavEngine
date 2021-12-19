@@ -92,7 +92,7 @@ namespace TweenCurves{
 		 */
 		template<typename T>
         constexpr inline Tween& AddKeyframe(decimalType time, T interpolation, Floats ... values){
-			anim.to(values...).during(time * App::evalNormal).via(interpolation);
+			anim.to(values...).during(time * GetApp()->evalNormal).via(interpolation);
 			return *this;
 		}
 		

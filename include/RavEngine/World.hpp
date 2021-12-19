@@ -902,7 +902,7 @@ namespace RavEngine {
 		bool InitPhysics();
 		
 		/**
-		* Evaluate the world given a scale factor. One tick = 1/App::EvalNormal
+		* Evaluate the world given a scale factor. One tick = 1/GetApp()->EvalNormal
 		* @param the tick fraction to evaluate
 		* @note the GameplayStatics CurrentWorld is ticked automatically in the App
 		*/

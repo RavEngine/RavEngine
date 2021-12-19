@@ -217,7 +217,7 @@ void PhysicsSolver::Destroy(PhysicsBodyComponent& body){
  */
 void PhysicsSolver::Tick(float scaleFactor){
 
-    auto step = scaleFactor / (App::evalNormal / 2);
+    auto step = scaleFactor / (GetApp()->evalNormal / 2);
 
     //physics substepping
     int nsteps = ceil(step / max_step_time);
