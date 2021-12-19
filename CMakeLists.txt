@@ -553,10 +553,11 @@ macro(enable_unity targets)
 		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
 	endforeach()
 endmacro()
+
 set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;Detour;bx;ozz_animation;ozz_animation_offline;\
 ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;")
 
-if ((CMAKE_SYSTEM_NAME STREQUAL "Windows") OR LINUX)
+if ((CMAKE_SYSTEM_NAME STREQUAL "Windows"))
 	set(platform_unity "bgfx")	 # bgfx supports Unity build in Win32 or Linux, but not Mac or UWP
 endif()
 
