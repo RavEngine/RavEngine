@@ -41,3 +41,18 @@ TEST_CASE("memMove", "")
 	bx::memSet(str, 'x', 4);
 	REQUIRE(0 == bx::memCmp(str, orignal, 9) );
 }
+
+TEST_CASE("scatter/gather", "")
+{
+	const char* str = "a\0b\0v\0g\0d";
+
+	char tmp0[64];
+	bx::gather(tmp0, str, 2, 1, 5);
+	REQUIRE(0 == bx::memCmp(tmp0, "abvgd", 5) );
+
+	char tmp1[64];
+	bx::scatter(tmp1, 2, tmp0, 1, 5);
+	bx::memSet(&tmp1[1], 2, 0, 1, 5);
+	REQUIRE(0 == bx::memCmp(tmp1, str, 5) );
+
+}

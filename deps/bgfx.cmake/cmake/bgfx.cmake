@@ -52,12 +52,6 @@ if(BGFX_CONFIG_RENDERER_WEBGPU)
     endif()
 endif()
 
-# Enable BGFX_CONFIG_DEBUG in Debug configuration
-target_compile_definitions( bgfx PRIVATE "$<$<CONFIG:Debug>:BGFX_CONFIG_DEBUG=1>" )
-if(BGFX_CONFIG_DEBUG)
-	target_compile_definitions( bgfx PRIVATE BGFX_CONFIG_DEBUG=1)
-endif()
-
 if( NOT ${BGFX_OPENGL_VERSION} STREQUAL "" )
 	target_compile_definitions( bgfx PRIVATE BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=${BGFX_OPENGL_VERSION} )
 endif()
@@ -70,6 +64,9 @@ endif()
 if( MSVC )
 	target_compile_definitions( bgfx PRIVATE "_CRT_SECURE_NO_WARNINGS" )
 endif()
+
+# Add debug config required in bx headers since bx is private
+target_compile_definitions(bgfx PUBLIC $<$<CONFIG:DEBUG>:BX_CONFIG_DEBUG=1> $<$<CONFIG:CHECKED>:BX_CONFIG_DEBUG=1> $<$<CONFIG:PROFILE>:BX_CONFIG_DEBUG=0> $<$<CONFIG:RELEASE>:BX_CONFIG_DEBUG=0>)
 
 # Includes
 target_include_directories( bgfx

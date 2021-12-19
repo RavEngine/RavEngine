@@ -1,4 +1,4 @@
-// dear imgui, v1.84 WIP
+// dear imgui, v1.86 WIP
 // (drawing and font code)
 
 /*
@@ -1479,24 +1479,22 @@ void ImDrawList::AddCircle(const ImVec2& center, float radius, ImU32 col, int nu
     if ((col & IM_COL32_A_MASK) == 0 || radius <= 0.0f)
         return;
 
-    // Obtain segment count
     if (num_segments <= 0)
     {
-        // Automatic segment count
-        num_segments = _CalcCircleAutoSegmentCount(radius);
+        // Use arc with automatic segment count
+        _PathArcToFastEx(center, radius - 0.5f, 0, IM_DRAWLIST_ARCFAST_SAMPLE_MAX, 0);
+        _Path.Size--;
     }
     else
     {
         // Explicit segment count (still clamp to avoid drawing insanely tessellated shapes)
         num_segments = ImClamp(num_segments, 3, IM_DRAWLIST_CIRCLE_AUTO_SEGMENT_MAX);
+
+        // Because we are filling a closed shape we remove 1 from the count of segments/points
+        const float a_max = (IM_PI * 2.0f) * ((float)num_segments - 1.0f) / (float)num_segments;
+        PathArcTo(center, radius - 0.5f, 0.0f, a_max, num_segments - 1);
     }
 
-    // Because we are filling a closed shape we remove 1 from the count of segments/points
-    const float a_max = (IM_PI * 2.0f) * ((float)num_segments - 1.0f) / (float)num_segments;
-    if (num_segments == 12)
-        PathArcToFast(center, radius - 0.5f, 0, 12 - 1);
-    else
-        PathArcTo(center, radius - 0.5f, 0.0f, a_max, num_segments - 1);
     PathStroke(col, ImDrawFlags_Closed, thickness);
 }
 
@@ -1505,24 +1503,22 @@ void ImDrawList::AddCircleFilled(const ImVec2& center, float radius, ImU32 col, 
     if ((col & IM_COL32_A_MASK) == 0 || radius <= 0.0f)
         return;
 
-    // Obtain segment count
     if (num_segments <= 0)
     {
-        // Automatic segment count
-        num_segments = _CalcCircleAutoSegmentCount(radius);
+        // Use arc with automatic segment count
+        _PathArcToFastEx(center, radius, 0, IM_DRAWLIST_ARCFAST_SAMPLE_MAX, 0);
+        _Path.Size--;
     }
     else
     {
         // Explicit segment count (still clamp to avoid drawing insanely tessellated shapes)
         num_segments = ImClamp(num_segments, 3, IM_DRAWLIST_CIRCLE_AUTO_SEGMENT_MAX);
+
+        // Because we are filling a closed shape we remove 1 from the count of segments/points
+        const float a_max = (IM_PI * 2.0f) * ((float)num_segments - 1.0f) / (float)num_segments;
+        PathArcTo(center, radius, 0.0f, a_max, num_segments - 1);
     }
 
-    // Because we are filling a closed shape we remove 1 from the count of segments/points
-    const float a_max = (IM_PI * 2.0f) * ((float)num_segments - 1.0f) / (float)num_segments;
-    if (num_segments == 12)
-        PathArcToFast(center, radius, 0, 12 - 1);
-    else
-        PathArcTo(center, radius, 0.0f, a_max, num_segments - 1);
     PathFillConvex(col);
 }
 
@@ -1923,37 +1919,38 @@ ImFontConfig::ImFontConfig()
 
 // A work of art lies ahead! (. = white layer, X = black layer, others are blank)
 // The 2x2 white texels on the top left are the ones we'll use everywhere in Dear ImGui to render filled shapes.
-const int FONT_ATLAS_DEFAULT_TEX_DATA_W = 108; // Actual texture will be 2 times that + 1 spacing.
+// (This is used when io.MouseDrawCursor = true)
+const int FONT_ATLAS_DEFAULT_TEX_DATA_W = 122; // Actual texture will be 2 times that + 1 spacing.
 const int FONT_ATLAS_DEFAULT_TEX_DATA_H = 27;
 static const char FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS[FONT_ATLAS_DEFAULT_TEX_DATA_W * FONT_ATLAS_DEFAULT_TEX_DATA_H + 1] =
 {
-    "..-         -XXXXXXX-    X    -           X           -XXXXXXX          -          XXXXXXX-     XX          "
-    "..-         -X.....X-   X.X   -          X.X          -X.....X          -          X.....X-    X..X         "
-    "---         -XXX.XXX-  X...X  -         X...X         -X....X           -           X....X-    X..X         "
-    "X           -  X.X  - X.....X -        X.....X        -X...X            -            X...X-    X..X         "
-    "XX          -  X.X  -X.......X-       X.......X       -X..X.X           -           X.X..X-    X..X         "
-    "X.X         -  X.X  -XXXX.XXXX-       XXXX.XXXX       -X.X X.X          -          X.X X.X-    X..XXX       "
-    "X..X        -  X.X  -   X.X   -          X.X          -XX   X.X         -         X.X   XX-    X..X..XXX    "
-    "X...X       -  X.X  -   X.X   -    XX    X.X    XX    -      X.X        -        X.X      -    X..X..X..XX  "
-    "X....X      -  X.X  -   X.X   -   X.X    X.X    X.X   -       X.X       -       X.X       -    X..X..X..X.X "
-    "X.....X     -  X.X  -   X.X   -  X..X    X.X    X..X  -        X.X      -      X.X        -XXX X..X..X..X..X"
-    "X......X    -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -         X.X   XX-XX   X.X         -X..XX........X..X"
-    "X.......X   -  X.X  -   X.X   -X.....................X-          X.X X.X-X.X X.X          -X...X...........X"
-    "X........X  -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -           X.X..X-X..X.X           - X..............X"
-    "X.........X -XXX.XXX-   X.X   -  X..X    X.X    X..X  -            X...X-X...X            -  X.............X"
-    "X..........X-X.....X-   X.X   -   X.X    X.X    X.X   -           X....X-X....X           -  X.............X"
-    "X......XXXXX-XXXXXXX-   X.X   -    XX    X.X    XX    -          X.....X-X.....X          -   X............X"
-    "X...X..X    ---------   X.X   -          X.X          -          XXXXXXX-XXXXXXX          -   X...........X "
-    "X..X X..X   -       -XXXX.XXXX-       XXXX.XXXX       -------------------------------------    X..........X "
-    "X.X  X..X   -       -X.......X-       X.......X       -    XX           XX    -           -    X..........X "
-    "XX    X..X  -       - X.....X -        X.....X        -   X.X           X.X   -           -     X........X  "
-    "      X..X          -  X...X  -         X...X         -  X..X           X..X  -           -     X........X  "
-    "       XX           -   X.X   -          X.X          - X...XXXXXXXXXXXXX...X -           -     XXXXXXXXXX  "
-    "------------        -    X    -           X           -X.....................X-           ------------------"
-    "                    ----------------------------------- X...XXXXXXXXXXXXX...X -                             "
-    "                                                      -  X..X           X..X  -                             "
-    "                                                      -   X.X           X.X   -                             "
-    "                                                      -    XX           XX    -                             "
+    "..-         -XXXXXXX-    X    -           X           -XXXXXXX          -          XXXXXXX-     XX          - XX       XX "
+    "..-         -X.....X-   X.X   -          X.X          -X.....X          -          X.....X-    X..X         -X..X     X..X"
+    "---         -XXX.XXX-  X...X  -         X...X         -X....X           -           X....X-    X..X         -X...X   X...X"
+    "X           -  X.X  - X.....X -        X.....X        -X...X            -            X...X-    X..X         - X...X X...X "
+    "XX          -  X.X  -X.......X-       X.......X       -X..X.X           -           X.X..X-    X..X         -  X...X...X  "
+    "X.X         -  X.X  -XXXX.XXXX-       XXXX.XXXX       -X.X X.X          -          X.X X.X-    X..XXX       -   X.....X   "
+    "X..X        -  X.X  -   X.X   -          X.X          -XX   X.X         -         X.X   XX-    X..X..XXX    -    X...X    "
+    "X...X       -  X.X  -   X.X   -    XX    X.X    XX    -      X.X        -        X.X      -    X..X..X..XX  -     X.X     "
+    "X....X      -  X.X  -   X.X   -   X.X    X.X    X.X   -       X.X       -       X.X       -    X..X..X..X.X -    X...X    "
+    "X.....X     -  X.X  -   X.X   -  X..X    X.X    X..X  -        X.X      -      X.X        -XXX X..X..X..X..X-   X.....X   "
+    "X......X    -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -         X.X   XX-XX   X.X         -X..XX........X..X-  X...X...X  "
+    "X.......X   -  X.X  -   X.X   -X.....................X-          X.X X.X-X.X X.X          -X...X...........X- X...X X...X "
+    "X........X  -  X.X  -   X.X   - X...XXXXXX.XXXXXX...X -           X.X..X-X..X.X           - X..............X-X...X   X...X"
+    "X.........X -XXX.XXX-   X.X   -  X..X    X.X    X..X  -            X...X-X...X            -  X.............X-X..X     X..X"
+    "X..........X-X.....X-   X.X   -   X.X    X.X    X.X   -           X....X-X....X           -  X.............X- XX       XX "
+    "X......XXXXX-XXXXXXX-   X.X   -    XX    X.X    XX    -          X.....X-X.....X          -   X............X--------------"
+    "X...X..X    ---------   X.X   -          X.X          -          XXXXXXX-XXXXXXX          -   X...........X -             "
+    "X..X X..X   -       -XXXX.XXXX-       XXXX.XXXX       -------------------------------------    X..........X -             "
+    "X.X  X..X   -       -X.......X-       X.......X       -    XX           XX    -           -    X..........X -             "
+    "XX    X..X  -       - X.....X -        X.....X        -   X.X           X.X   -           -     X........X  -             "
+    "      X..X  -       -  X...X  -         X...X         -  X..X           X..X  -           -     X........X  -             "
+    "       XX   -       -   X.X   -          X.X          - X...XXXXXXXXXXXXX...X -           -     XXXXXXXXXX  -             "
+    "-------------       -    X    -           X           -X.....................X-           -------------------             "
+    "                    ----------------------------------- X...XXXXXXXXXXXXX...X -                                           "
+    "                                                      -  X..X           X..X  -                                           "
+    "                                                      -   X.X           X.X   -                                           "
+    "                                                      -    XX           XX    -                                           "
 };
 
 static const ImVec2 FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[ImGuiMouseCursor_COUNT][3] =
@@ -1967,6 +1964,7 @@ static const ImVec2 FONT_ATLAS_DEFAULT_TEX_CURSOR_DATA[ImGuiMouseCursor_COUNT][3
     { ImVec2(73,0), ImVec2(17,17), ImVec2( 8, 8) }, // ImGuiMouseCursor_ResizeNESW
     { ImVec2(55,0), ImVec2(17,17), ImVec2( 8, 8) }, // ImGuiMouseCursor_ResizeNWSE
     { ImVec2(91,0), ImVec2(17,22), ImVec2( 5, 0) }, // ImGuiMouseCursor_Hand
+    { ImVec2(109,0),ImVec2(13,15), ImVec2( 6, 7) }, // ImGuiMouseCursor_NotAllowed
 };
 
 ImFontAtlas::ImFontAtlas()
@@ -2002,7 +2000,7 @@ void    ImFontAtlas::ClearInputData()
     ConfigData.clear();
     CustomRects.clear();
     PackIdMouseCursors = PackIdLines = -1;
-    TexReady = false;
+    // Important: we leave TexReady untouched
 }
 
 void    ImFontAtlas::ClearTexData()

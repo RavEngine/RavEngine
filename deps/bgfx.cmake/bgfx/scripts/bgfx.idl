@@ -219,7 +219,7 @@ flag.Debug { bits = 32 }
 	           --- It's useful when profiling to quickly assess bottleneck between CPU and GPU.
 	.Stats     --- Enable statistics display.
 	.Text      --- Enable debug text display.
-	.Profiler  --- Enable profiler.
+	.Profiler  --- Enable profiler. This causes per-view statistics to be collected, available through `bgfx::Stats::ViewStats`. This is unrelated to the profiler functions in `bgfx::CallbackI`.
 	()
 
 flag.BufferComputeFormat { bits = 16, shift = 0, range = 4, base = 1 }
@@ -427,6 +427,7 @@ flag.PciId { bits = 16 , const }
 	.Amd                 (0x1002) --- AMD adapter.
 	.Intel               (0x8086) --- Intel adapter.
 	.Nvidia              (0x10de) --- nVidia adapter.
+	.Microsoft           (0x1414) --- Microsoft adapter.
 	()
 
 flag.CubeMap { bits = 8, const }
@@ -450,6 +451,7 @@ enum.Fatal { underscore, comment = "" }
 --- Renderer backend type enum.
 enum.RendererType { comment = "Renderer types:" }
 	.Noop       --- No rendering.
+	.Agc        --- AGC
 	.Direct3D9  --- Direct3D 9.0
 	.Direct3D11 --- Direct3D 11.0
 	.Direct3D12 --- Direct3D 12.0
@@ -610,6 +612,7 @@ enum.UniformType          { comment = "Uniform types:" }
 	.Vec4    --- 4 floats vector.
 	.Mat3    --- 3x3 matrix.
 	.Mat4    --- 4x4 matrix.
+	()
 
 --- Backbuffer ratio enum.
 enum.BackbufferRatio      { comment = "Backbuffer ratios:" }
@@ -619,12 +622,14 @@ enum.BackbufferRatio      { comment = "Backbuffer ratios:" }
 	.Eighth    --- One eighth size of backbuffer.
 	.Sixteenth --- One sixteenth size of backbuffer.
 	.Double    --- Double size of backbuffer.
+	()
 
 --- Occlusion query result.
 enum.OcclusionQueryResult { comment = "Occlusion query results:" }
 	.Invisible --- Query failed test.
 	.Visible   --- Query passed test.
 	.NoResult  --- Query result is not available yet.
+	()
 
 --- Primitive topology.
 enum.Topology { underscore, comment = "Primitive topology:" }
@@ -633,6 +638,7 @@ enum.Topology { underscore, comment = "Primitive topology:" }
 	.LineList  --- Line list.
 	.LineStrip --- Line strip.
 	.PointList --- Point list.
+	()
 
 --- Topology conversion function.
 enum.TopologyConvert { underscore , comment = "Topology conversion functions:" }
@@ -641,6 +647,7 @@ enum.TopologyConvert { underscore , comment = "Topology conversion functions:" }
 	.TriListToLineList   --- Convert triangle list to line list.
 	.TriStripToTriList   --- Convert triangle strip to triangle list.
 	.LineStripToLineList --- Convert line strip to line list.
+	()
 
 --- Topology sort order.
 enum.TopologySort { underscore, comment = "Topology sort order:" , }
@@ -664,6 +671,7 @@ enum.ViewMode { underscore, comment = "View modes:" }
 	.Sequential      --- Sort in the same order in which submit calls were called.
 	.DepthAscending  --- Sort draw call depth in ascending order.
 	.DepthDescending --- Sort draw call depth in descending order.
+	()
 
 --- Render frame enum.
 enum.RenderFrame { underscore, comment = "" }

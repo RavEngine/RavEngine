@@ -6,18 +6,12 @@
 project "bin2c"
 	kind "ConsoleApp"
 
-	includedirs {
-		"../include",
-	}
-
 	files {
 		"../tools/bin2c/**.cpp",
 		"../tools/bin2c/**.h",
 	}
 
-	links {
-		"bx",
-	}
+	using_bx()
 
 	configuration { "mingw-*" }
 		targetextension ".exe"

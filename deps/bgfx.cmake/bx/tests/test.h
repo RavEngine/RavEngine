@@ -3,8 +3,8 @@
  * License: https://github.com/bkaradzic/bx#license-bsd-2-clause
  */
 
-#ifndef __TEST_H__
-#define __TEST_H__
+#ifndef BX_TEST_H_HEADER_GUARD
+#define BX_TEST_H_HEADER_GUARD
 
 #include <bx/bx.h>
 
@@ -18,4 +18,4 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 
 #include "dbg.h"
 
-#endif // __TEST_H__
+#endif // BX_TEST_H_HEADER_GUARD

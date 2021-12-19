@@ -333,6 +333,7 @@ TEST_CASE("toString double", "")
 	REQUIRE(testToString(-270.000000,             "-270.0") );
 	REQUIRE(testToString(2.225073858507201e-308,  "2.225073858507201e-308") );
 	REQUIRE(testToString(-79.39773355813419,      "-79.39773355813419") );
+	REQUIRE(testToString(-1.234567e-9,            "-1.234567e-9") );
 }
 
 template<typename Ty>
@@ -534,4 +535,50 @@ TEST_CASE("strFindBlock", "")
 
 	bx::StringView result = bx::strFindBlock(test1, '{', '}');
 	REQUIRE(19 == result.getLength() );
+}
+
+TEST_CASE("prefix", "")
+{
+	REQUIRE( bx::hasPrefix("abvgd-1389.0", "abv") );
+	REQUIRE(!bx::hasPrefix("abvgd-1389.0", "bvg") );
+	REQUIRE( bx::hasPrefix("abvgd-1389.0", "") );
+
+	REQUIRE(0 == bx::strCmp(bx::strTrimPrefix("abvgd-1389.0", "abv"), "gd-1389.0") );
+	REQUIRE(0 == bx::strCmp(bx::strTrimPrefix("abvgd-1389.0", "xyz"), "abvgd-1389.0") );
+}
+
+TEST_CASE("suffix", "")
+{
+	REQUIRE( bx::hasSuffix("abvgd-1389.0", "389.0") );
+	REQUIRE(!bx::hasSuffix("abvgd-1389.0", "1389") );
+	REQUIRE( bx::hasSuffix("abvgd-1389.0", "") );
+
+	REQUIRE(0 == bx::strCmp(bx::strTrimSuffix("abvgd-1389.0", "389.0"), "abvgd-1") );
+	REQUIRE(0 == bx::strCmp(bx::strTrimSuffix("abvgd-1389.0", "xyz"), "abvgd-1389.0") );
+}
+
+TEST_CASE("0terminated", "")
+{
+	const bx::StringView t0("1389");
+	REQUIRE(t0.is0Terminated() );
+	const bx::StringView t1(strTrimPrefix(t0, "13") );
+	REQUIRE(!t1.is0Terminated() );
+	const bx::StringView t2(strTrimSuffix(t0, "89") );
+	REQUIRE(!t2.is0Terminated() );
+
+	bx::DefaultAllocator crt;
+	g_allocator = &crt;
+
+	typedef bx::StringT<&g_allocator> String;
+
+	String st;
+	REQUIRE(st.is0Terminated() );
+
+	st = strTrimPrefix(t0, "13");
+	REQUIRE(2 == st.getLength() );
+	REQUIRE(st.is0Terminated() );
+
+	st = strTrimSuffix(t0, "89");
+	REQUIRE(2 == st.getLength() );
+	REQUIRE(st.is0Terminated() );
 }

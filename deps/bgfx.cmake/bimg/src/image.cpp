@@ -1284,7 +1284,7 @@ namespace bimg
 		bx::MemoryReader reader(_src, _size);
 
 		uint32_t magic;
-		bx::read(&reader, magic);
+		bx::read(&reader, magic, bx::ErrorIgnore{});
 
 		ImageContainer imageContainer;
 		if (magicT != magic)
@@ -3994,7 +3994,7 @@ namespace bimg
 		BX_ERROR_SCOPE(_err);
 
 		uint8_t identifier[8];
-		bx::read(_reader, identifier);
+		bx::read(_reader, identifier, _err);
 
 		if (identifier[1] != '1'
 		&&  identifier[2] != '1')
@@ -4004,45 +4004,50 @@ namespace bimg
 		}
 
 		uint32_t endianness;
-		bx::read(_reader, endianness);
+		bx::read(_reader, endianness, _err);
 
 		bool fromLittleEndian = 0x04030201 == endianness;
 
 		uint32_t glType;
-		bx::readHE(_reader, glType, fromLittleEndian);
+		bx::readHE(_reader, glType, fromLittleEndian, _err);
 
 		uint32_t glTypeSize;
-		bx::readHE(_reader, glTypeSize, fromLittleEndian);
+		bx::readHE(_reader, glTypeSize, fromLittleEndian, _err);
 
 		uint32_t glFormat;
-		bx::readHE(_reader, glFormat, fromLittleEndian);
+		bx::readHE(_reader, glFormat, fromLittleEndian, _err);
 
 		uint32_t glInternalFormat;
-		bx::readHE(_reader, glInternalFormat, fromLittleEndian);
+		bx::readHE(_reader, glInternalFormat, fromLittleEndian, _err);
 
 		uint32_t glBaseInternalFormat;
-		bx::readHE(_reader, glBaseInternalFormat, fromLittleEndian);
+		bx::readHE(_reader, glBaseInternalFormat, fromLittleEndian, _err);
 
 		uint32_t width;
-		bx::readHE(_reader, width, fromLittleEndian);
+		bx::readHE(_reader, width, fromLittleEndian, _err);
 
 		uint32_t height;
-		bx::readHE(_reader, height, fromLittleEndian);
+		bx::readHE(_reader, height, fromLittleEndian, _err);
 
 		uint32_t depth;
-		bx::readHE(_reader, depth, fromLittleEndian);
+		bx::readHE(_reader, depth, fromLittleEndian, _err);
 
 		uint32_t numberOfArrayElements;
-		bx::readHE(_reader, numberOfArrayElements, fromLittleEndian);
+		bx::readHE(_reader, numberOfArrayElements, fromLittleEndian, _err);
 
 		uint32_t numFaces;
-		bx::readHE(_reader, numFaces, fromLittleEndian);
+		bx::readHE(_reader, numFaces, fromLittleEndian, _err);
 
 		uint32_t numMips;
-		bx::readHE(_reader, numMips, fromLittleEndian);
+		bx::readHE(_reader, numMips, fromLittleEndian, _err);
 
 		uint32_t metaDataSize;
-		bx::readHE(_reader, metaDataSize, fromLittleEndian);
+		bx::readHE(_reader, metaDataSize, fromLittleEndian, _err);
+
+		if (!_err->isOk() )
+		{
+			return false;
+		}
 
 		// skip meta garbage...
 		int64_t offset = bx::skip(_reader, metaDataSize);
@@ -4198,37 +4203,42 @@ namespace bimg
 		BX_ERROR_SCOPE(_err);
 
 		uint32_t flags;
-		bx::read(_reader, flags);
+		bx::read(_reader, flags, _err);
 
 		uint64_t pixelFormat;
-		bx::read(_reader, pixelFormat);
+		bx::read(_reader, pixelFormat, _err);
 
 		uint32_t colorSpace;
-		bx::read(_reader, colorSpace); // 0 - linearRGB, 1 - sRGB
+		bx::read(_reader, colorSpace, _err); // 0 - linearRGB, 1 - sRGB
 
 		uint32_t channelType;
-		bx::read(_reader, channelType);
+		bx::read(_reader, channelType, _err);
 
 		uint32_t height;
-		bx::read(_reader, height);
+		bx::read(_reader, height, _err);
 
 		uint32_t width;
-		bx::read(_reader, width);
+		bx::read(_reader, width, _err);
 
 		uint32_t depth;
-		bx::read(_reader, depth);
+		bx::read(_reader, depth, _err);
 
 		uint32_t numSurfaces;
-		bx::read(_reader, numSurfaces);
+		bx::read(_reader, numSurfaces, _err);
 
 		uint32_t numFaces;
-		bx::read(_reader, numFaces);
+		bx::read(_reader, numFaces, _err);
 
 		uint32_t numMips;
-		bx::read(_reader, numMips);
+		bx::read(_reader, numMips, _err);
 
 		uint32_t metaDataSize;
-		bx::read(_reader, metaDataSize);
+		bx::read(_reader, metaDataSize, _err);
+
+		if (!_err->isOk() )
+		{
+			return false;
+		}
 
 		// skip meta garbage...
 		int64_t offset = bx::skip(_reader, metaDataSize);
@@ -4298,7 +4308,7 @@ namespace bimg
 		else if (BIMG_CHUNK_MAGIC_TEX == magic)
 		{
 			TextureCreate tc;
-			bx::read(_reader, tc);
+			bx::read(_reader, tc, _err);
 
 			_imageContainer.m_format      = tc.m_format;
 			_imageContainer.m_orientation = Orientation::R0;
@@ -5039,7 +5049,7 @@ namespace bimg
 
 				if (_imageContainer.m_ktx)
 				{
-					const uint32_t size = mipSize * ((_imageContainer.m_numLayers<=1 && _imageContainer.m_cubeMap) ? 1 : numSides);
+					const uint32_t size = mipSize * numSides;
 					uint32_t imageSize  = bx::toHostEndian(*(const uint32_t*)&data[offset], _imageContainer.m_ktxLE);
 					BX_ASSERT(size == imageSize, "KTX: Image size mismatch %d (expected %d).", size, imageSize);
 					BX_UNUSED(size, imageSize);
@@ -5586,7 +5596,8 @@ namespace bimg
 			0,
 			0,
 		};
-		total += bx::write(_writer, caps, sizeof(caps) );
+
+		total += bx::write(_writer, caps, sizeof(caps), _err);
 
 		total += bx::writeRep(_writer, 0, 4, _err); // reserved2
 
@@ -5598,7 +5609,7 @@ namespace bimg
 
 		if (UINT32_MAX != dxgiFormat)
 		{
-			total += bx::write(_writer, dxgiFormat);
+			total += bx::write(_writer, dxgiFormat, _err);
 			total += bx::write(_writer, uint32_t(1 < _depth ? DDS_DX10_DIMENSION_TEXTURE3D : DDS_DX10_DIMENSION_TEXTURE2D), _err); // dims
 			total += bx::write(_writer, uint32_t(_cubeMap   ? DDS_DX10_MISC_TEXTURECUBE    : 0), _err); // miscFlags
 			total += bx::write(_writer, uint32_t(1), _err); // arraySize

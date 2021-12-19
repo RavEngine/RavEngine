@@ -42,7 +42,7 @@ TEST_CASE("easing", "")
 					if (vv >= ys
 					&&  vv <  ye)
 					{
-						bx::write(writer, "*");
+						bx::write(writer, &err, "*");
 						break;
 					}
 				}

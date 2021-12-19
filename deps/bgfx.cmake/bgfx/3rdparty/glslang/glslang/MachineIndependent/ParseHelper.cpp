@@ -2308,6 +2308,10 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
         if (!(*argp)[10]->getAsConstantUnion())
             error(loc, "argument must be compile-time constant", "payload number", "a");
         break;
+    case EOpTraceRayMotionNV:
+        if (!(*argp)[11]->getAsConstantUnion())
+            error(loc, "argument must be compile-time constant", "payload number", "a");
+        break;
     case EOpTraceKHR:
         if (!(*argp)[10]->getAsConstantUnion())
             error(loc, "argument must be compile-time constant", "payload number", "a");
@@ -3025,11 +3029,14 @@ void TParseContext::constantValueCheck(TIntermTyped* node, const char* token)
 
 //
 // Both test, and if necessary spit out an error, to see if the node is really
-// an integer.
+// a 32-bit integer or can implicitly convert to one.
 //
 void TParseContext::integerCheck(const TIntermTyped* node, const char* token)
 {
-    if ((node->getBasicType() == EbtInt || node->getBasicType() == EbtUint) && node->isScalar())
+    auto from_type = node->getBasicType();
+    if ((from_type == EbtInt || from_type == EbtUint ||
+         intermediate.canImplicitlyPromote(from_type, EbtInt, EOpNull) ||
+         intermediate.canImplicitlyPromote(from_type, EbtUint, EOpNull)) && node->isScalar())
         return;
 
     error(node->getLoc(), "scalar integer expression required", token, "");
@@ -6489,6 +6496,8 @@ void TParseContext::layoutQualifierCheck(const TSourceLoc& loc, const TQualifier
             error(loc, "can only be used with a uniform", "push_constant", "");
         if (qualifier.hasSet())
             error(loc, "cannot be used with push_constant", "set", "");
+        if (qualifier.hasBinding())
+            error(loc, "cannot be used with push_constant", "binding", "");
     }
     if (qualifier.hasBufferReference()) {
         if (qualifier.storage != EvqBuffer)
@@ -6643,8 +6652,10 @@ const TFunction* TParseContext::findFunction(const TSourceLoc& loc, const TFunct
                       : findFunctionExact(loc, call, builtIn));
     else if (version < 120)
         function = findFunctionExact(loc, call, builtIn);
-    else if (version < 400)
-        function = extensionTurnedOn(E_GL_ARB_gpu_shader_fp64) ? findFunction400(loc, call, builtIn) : findFunction120(loc, call, builtIn);
+    else if (version < 400) {
+        bool needfindFunction400 = extensionTurnedOn(E_GL_ARB_gpu_shader_fp64) || extensionTurnedOn(E_GL_ARB_gpu_shader5);
+        function = needfindFunction400 ? findFunction400(loc, call, builtIn) : findFunction120(loc, call, builtIn);
+    }
     else if (explicitTypesEnabled)
         function = findFunctionExplicitTypes(loc, call, builtIn);
     else
@@ -7687,7 +7698,13 @@ TIntermTyped* TParseContext::addConstructor(const TSourceLoc& loc, TIntermNode* 
             return nullptr;
     }
 
-    return intermediate.setAggregateOperator(aggrNode, op, type, loc);
+    TIntermTyped *ret_node = intermediate.setAggregateOperator(aggrNode, op, type, loc);
+
+    TIntermAggregate *agg_node = ret_node->getAsAggregate();
+    if (agg_node && (agg_node->isVector() || agg_node->isArray() || agg_node->isMatrix()))
+        agg_node->updatePrecision();
+
+    return ret_node;
 }
 
 // Function for constructor implementation. Calls addUnaryMath with appropriate EOp value
@@ -9233,10 +9250,13 @@ TIntermNode* TParseContext::addSwitch(const TSourceLoc& loc, TIntermTyped* expre
         // "it is an error to have no statement between a label and the end of the switch statement."
         // The specifications were updated to remove this (being ill-defined what a "statement" was),
         // so, this became a warning.  However, 3.0 tests still check for the error.
-        if (isEsProfile() && version <= 300 && ! relaxedErrors())
+        if (isEsProfile() && (version <= 300 || version >= 320) && ! relaxedErrors())
+            error(loc, "last case/default label not followed by statements", "switch", "");
+        else if (!isEsProfile() && (version <= 430 || version >= 460))
             error(loc, "last case/default label not followed by statements", "switch", "");
         else
             warn(loc, "last case/default label not followed by statements", "switch", "");
+
 
         // emulate a break for error recovery
         lastStatements = intermediate.makeAggregate(intermediate.addBranch(EOpBreak, loc));

@@ -5,7 +5,7 @@
 rm -r physx/physx/documentation/ physx/physx/samples/ physx/externals/cg-linux/lib physx/externals/cg-linux/bin physx/externals/glew-linux/lib physx/externals/glew/lib physx/externals/opengl/lib64 physx/kaplademo physx/physx/bin physx/externals/clang-physxmetadata physx/externals/opengl-linux physx/externals/glew-linux physx/externals/vswhere
 
 # BGFX, BX
-rm -r bgfx.cmake/bgfx/examples bgfx.cmake/bx/tools
+rm -r bgfx.cmake/bgfx/examples bgfx.cmake/bgfx/bindings bgfx.cmake/bgfx/makefile bgfx.cmake/bx/tools
 
 # SDL
 rm -r SDL2/test SDL2/Xcode SDL2/Xcode-iOS

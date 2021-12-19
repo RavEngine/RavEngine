@@ -46,7 +46,6 @@ function bgfxProjectBase(_kind, _defines)
 
 		links {
 			"bimg",
-			"bx",
 		}
 
 		configuration { "vs20* or mingw*" }
@@ -95,26 +94,18 @@ function bgfxProjectBase(_kind, _defines)
 
 	includedirs {
 		path.join(BGFX_DIR, "3rdparty"),
-		path.join(BX_DIR,   "include"),
 		path.join(BIMG_DIR, "include"),
 	}
 
 	defines (_defines)
 
-	links {
-		"bx",
-	}
+	using_bx()
 
 	if _OPTIONS["with-glfw"] then
 		defines {
 			"BGFX_CONFIG_MULTITHREADED=0",
 		}
 	end
-
-	configuration { "Debug" }
-		defines {
-			"BGFX_CONFIG_DEBUG=1",
-		}
 
 	configuration { "vs* or mingw*", "not durango" }
 		includedirs {
@@ -170,6 +161,11 @@ function bgfxProjectBase(_kind, _defines)
 	removefiles {
 		path.join(BGFX_DIR, "src/**.bin.h"),
 	}
+
+	overridefiles(BGFX_DIR, path.join(BGFX_DIR, "../bgfx-agc"), {
+		path.join(BGFX_DIR, "src/renderer_agc.cpp"),
+		path.join(BGFX_DIR, "src/renderer_agc.h"),
+	})
 
 	overridefiles(BGFX_DIR, path.join(BGFX_DIR, "../bgfx-gnm"), {
 		path.join(BGFX_DIR, "src/renderer_gnm.cpp"),

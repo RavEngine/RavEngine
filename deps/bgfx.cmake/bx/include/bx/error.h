@@ -71,6 +71,36 @@ namespace bx
 		uint32_t   m_code;
 	};
 
+	/// Do nothing even if error is set.
+	class ErrorIgnore : public Error
+	{
+	public:
+		///
+		operator Error*();
+	};
+
+	/// In debug build assert if error is set.
+	class ErrorAssert : public Error
+	{
+	public:
+		///
+		~ErrorAssert();
+
+		///
+		operator Error*();
+	};
+
+	/// Exit application if error is set.
+	class ErrorFatal : public Error
+	{
+	public:
+		///
+		~ErrorFatal();
+
+		///
+		operator Error*();
+	};
+
 	///
 	class ErrorScope
 	{

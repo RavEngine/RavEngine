@@ -7,7 +7,6 @@ project "bimg"
 	kind "StaticLib"
 
 	includedirs {
-		path.join(BX_DIR, "include"),
 		path.join(BIMG_DIR, "include"),
 		path.join(BIMG_DIR, "3rdparty/astc-codec"),
 		path.join(BIMG_DIR, "3rdparty/astc-codec/include"),
@@ -35,6 +34,8 @@ project "bimg"
 
 		path.join(BIMG_DIR, "3rdparty/tinyexr/deps/miniz/miniz.*"),
 	}
+
+	using_bx()
 
 	configuration { "linux-*" }
 		buildoptions {
