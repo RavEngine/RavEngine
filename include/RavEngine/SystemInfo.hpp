@@ -117,6 +117,10 @@ namespace RavEngine {
         };
         GPUFeatures GetSupportedGPUFeatures();
 
-		std::string GPUBrandString();
+        struct PCIDevice {
+            uint16_t vendorID;
+            uint16_t deviceID;
+        };
+        PCIDevice GPUPCIData();
 	}
 }

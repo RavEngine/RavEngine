@@ -19,7 +19,7 @@ private:
     
     void close(PHYSFS_File* file);
     
-    size_t ReadInto(PHYSFS_File*, uint8_t* data, size_t size);
+    size_t ReadInto(PHYSFS_File*, void* data, size_t size);
 public:
 	VirtualFilesystem(const std::string&);
 

@@ -55,7 +55,7 @@ void VirtualFilesystem::close(PHYSFS_File *file){
     PHYSFS_close(file);
 }
 
-size_t VirtualFilesystem::ReadInto(PHYSFS_File* file, uint8_t* output, size_t size){
+size_t VirtualFilesystem::ReadInto(PHYSFS_File* file, void* output, size_t size){
     return PHYSFS_readBytes(file,output,size);
 }
 

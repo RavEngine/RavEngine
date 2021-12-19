@@ -165,16 +165,8 @@ SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
     return features;
 }
 
-std::string RavEngine::SystemInfo::GPUBrandString()
+SystemInfo::PCIDevice RavEngine::SystemInfo::GPUPCIData()
 {
-    auto device_id = bgfx::getCaps()->deviceId;
-#ifdef _WIN32
-    return "Unknown GPU Device - Windows";
-#elif defined __APPLE__
-	return "Unknown GPU Device - Apple";
-#elif defined __linux__
-	return "Unknown GPU Device - Linux";
-#else
-	return "Unknown GPU Device";
-#endif
+    SystemInfo::PCIDevice dev{ bgfx::getCaps()->vendorId,bgfx::getCaps()->deviceId };
+    return dev;
 }
