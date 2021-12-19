@@ -204,6 +204,11 @@ int App::run(int argc, char** argv) {
 		do{
 			auto workEnd = clocktype::now();
 			work_time = workEnd - now;
+			auto delta = min_tick_time - work_time;
+			if (delta > std::chrono::duration<double, std::milli>(3)) {
+				auto dc = std::chrono::duration_cast<std::chrono::milliseconds>(delta);
+				std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(std::max(dc.count()-1,0ll)));
+			}
 		}while (work_time < min_tick_time);
         
 		lastFrameTime = now;
