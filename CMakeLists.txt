@@ -334,6 +334,7 @@ if (APPLE)
     find_library(METAL_LIB Metal REQUIRED)
     find_library(QZC_LIB QuartzCore REQUIRED)
     find_library(CH_LIB CoreHaptics REQUIRED)
+    find_library(IOKIT_LIB IOKit REQUIRED)
     SET(ICONV_LIB "iconv")
 
 endif()
@@ -401,7 +402,8 @@ target_link_libraries("${PROJECT_NAME}"
 	${COCOA_LIB}
 	${SM_LIB}
 	${FOUNDATION_LIB} 
-	${METAL_LIB} 
+	${METAL_LIB}
+	${IOKIT_LIB}
 	${QZC_LIB} 
 	${CH_LIB}
     ${ATOMIC_LIB}
