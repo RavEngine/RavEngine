@@ -312,7 +312,10 @@ namespace RavEngine {
 			
 			//create buffer for GPU instancing
 			bgfx::InstanceDataBuffer idb;
-			bgfx::allocInstanceDataBuffer(&idb, numLights, stride);
+			
+			assert(numLights < std::numeric_limits<uint32_t>::max());	// too many lights!
+			
+			bgfx::allocInstanceDataBuffer(&idb, static_cast<uint32_t>(numLights), stride);
 			
 			//fill the buffer
 			int i = 0;

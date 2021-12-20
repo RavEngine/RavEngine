@@ -7,6 +7,7 @@
 #include "World.hpp"
 #include <string_view>
 #include <cstring>
+#include <limits>
 
 using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
@@ -274,7 +275,8 @@ void NetworkClient::SyncVarOwnershipToThis(const std::string_view &cmd){
 }
 
 void NetworkClient::SendMessageToServer(const std::string_view& msg, Reliability mode) const {
-	net_interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
+	assert(msg.length() < std::numeric_limits<uint32_t>::max());	// message is too long!
+	net_interface->SendMessageToConnection(connection, msg.data(), static_cast<uint32_t>(msg.length()), mode, nullptr);
 }
 
 void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)

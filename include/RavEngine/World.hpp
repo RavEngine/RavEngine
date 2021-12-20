@@ -95,7 +95,7 @@ namespace RavEngine {
                     sparse_set.resize(closest_multiple_of(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                 }
                 
-                sparse_set[local_id] = dense_set.size()-1;
+				sparse_set[local_id] = static_cast<typename decltype(sparse_set)::value_type>(dense_set.size()-1);
                 return ret;
             }
             
@@ -309,7 +309,7 @@ namespace RavEngine {
                     if (local_id >= sparse_set.size()){
                         sparse_set.resize(closest_multiple_of(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                     }
-                    sparse_set[local_id] = dense_set.size()-1;
+                    sparse_set[local_id] = static_cast<decltype(sparse_set)::value_type>(dense_set.size()-1);
                 }
                 
                 // then push the Elt into it
@@ -577,7 +577,7 @@ namespace RavEngine {
         };
                 
         template<typename ... A, typename filterone_t>
-        inline void FilterOne(filterone_t& fom, size_t i, float scale){
+        inline void FilterOne(filterone_t& fom, entity_t i, float scale){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
             if constexpr(filterone_t::nTypes() == 1){
                 if constexpr(!filterone_t::isPolymorphic()){
@@ -718,7 +718,7 @@ namespace RavEngine {
             
             // value update
             auto range_update = ECSTasks.emplace([this,ptr,setptr](){
-                *ptr = setptr->DenseSize();
+                *ptr = static_cast<pos_t>(setptr->DenseSize());
             }).name(StrFormat("{} range update",type_name<T>()));
             
             auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i) mutable{

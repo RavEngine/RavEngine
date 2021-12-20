@@ -377,8 +377,8 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 					);
 
                     currentFrameTime = delta.count();
-                    currentVRAM = stats->gpuMemoryUsed / 1024 / 1024;
-                    totalVRAM = stats->gpuMemoryMax / 1024 / 1024;
+                    currentVRAM = static_cast<decltype(currentVRAM)>(stats->gpuMemoryUsed / 1024 / 1024);
+                    totalVRAM = static_cast<decltype(totalVRAM)>(stats->gpuMemoryMax / 1024 / 1024);
 				}
 				//otherwise this world does not have a new frame ready yet, don't waste time re-rendering the same frame again
 			}
@@ -627,8 +627,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				//get the stride for the material (only needs the matrix, all others are uniforms?
 			constexpr auto stride = closest_multiple_of(16 * sizeof(float), 16);
 			bgfx::InstanceDataBuffer idb;
-			Debug::Assert(bgfx::getAvailInstanceDataBuffer(row.second.items.size(), stride) == row.second.items.size(), "Instance data buffer does not have enough space!");
-			bgfx::allocInstanceDataBuffer(&idb, row.second.items.size(), stride);
+			assert(row.second.items.size() < numeric_limits<uint32_t>::max());	// too many items!
+			Debug::Assert(bgfx::getAvailInstanceDataBuffer(static_cast<uint32_t>(row.second.items.size()), stride) == row.second.items.size(), "Instance data buffer does not have enough space!");
+			bgfx::allocInstanceDataBuffer(&idb, static_cast<uint32_t>(row.second.items.size()), stride);
 			size_t offset = 0;
 			for (const auto& mesh : row.second.items) {
 				//write the data into the idb
@@ -685,8 +686,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			// output buffer A: posed output transformations for vertices
 			auto numverts = mesh->GetNumVerts();
 			auto numobjects = row.second.items.size();
+			
+			auto emptySpace = numverts * numobjects;
+			assert(emptySpace < numeric_limits<uint32_t>::max());
 
-			computeOffsetIndex = skinningComputeBuffer.AddEmptySpace(numverts * numobjects, skinningOutputLayout);
+			computeOffsetIndex = skinningComputeBuffer.AddEmptySpace(static_cast<uint32_t>(emptySpace), skinningOutputLayout);
 			bgfx::setBuffer(0, skinningComputeBuffer.GetHandle(), bgfx::Access::Write);
 			bgfx::setBuffer(2, mesh->GetWeightsHandle(), bgfx::Access::Read);
 		
@@ -711,8 +715,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 						index++;
 					}
 				}
-
-				auto poseStart = poseStorageBuffer.AddData((uint8_t*)pose_float,totalsize, skinningInputLayout);
+				assert(totalsize < numeric_limits<uint32_t>::max());	// pose buffer is too big!
+				auto poseStart = poseStorageBuffer.AddData(reinterpret_cast<uint8_t*>(pose_float),static_cast<uint32_t>(totalsize), skinningInputLayout);
 				
 				// set skinning uniform
 				values[0] = static_cast<float>(numobjects);

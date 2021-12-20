@@ -433,7 +433,7 @@ entity_t World::CreateEntity(){
         available.pop();
     }
     else{
-        id = localToGlobal.size();
+        id = static_cast<decltype(id)>(localToGlobal.size());
         localToGlobal.push_back(INVALID_ENTITY);
     }
     localToGlobal[id] = Registry::CreateEntity(this, id);

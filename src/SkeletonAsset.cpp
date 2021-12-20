@@ -202,7 +202,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	for(int i = 0; i < parents.size(); i++){
 		hierarchy[i] = parents[i];
 	}
-	
-	boneHierarchy = bgfx::createVertexBuffer(bgfx::copy(hierarchy, sizeof(hierarchy)), hierarchyLayout);
+	assert(sizeof(hierarchy) < numeric_limits<uint32_t>::max());	//joint hierarchy is too big!
+	boneHierarchy = bgfx::createVertexBuffer(bgfx::copy(hierarchy, static_cast<uint32_t>(sizeof(hierarchy))), hierarchyLayout);
 	
 }

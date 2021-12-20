@@ -66,6 +66,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 		}
 		else{
 			auto data = GetApp()->GetResources().FileContentsAt(path.c_str());
+			assert(data.size() < std::numeric_limits<unsigned int>::max());	// data is too big!
 			const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(data.data()), data.size(),
 														  aiProcess_ImproveCacheLocality          |
 														  aiProcess_ValidateDataStructure          |

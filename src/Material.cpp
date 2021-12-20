@@ -17,7 +17,8 @@ using namespace RavEngine;
 using namespace std::filesystem;
 
 bgfx::ShaderHandle loadShader(const  RavEngine::Vector<uint8_t>& data){
-	const bgfx::Memory* mem = bgfx::copy(&data[0], data.size());
+	assert(data.size() < std::numeric_limits<uint32_t>::max());
+	const bgfx::Memory* mem = bgfx::copy(&data[0], static_cast<uint32_t>(data.size()));
 	return bgfx::createShader(mem);
 }
 
@@ -72,7 +73,8 @@ Material::Material(const std::string& name) : name(name) {
 bgfx::ShaderHandle Material::loadShaderHandle(const std::string_view& full_path){
     RavEngine::Vector<uint8_t> shaderdata;
 	GetApp()->GetResources().FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
-    const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
+	assert(shaderdata.size() < numeric_limits<uint32_t>::max());
+    const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], static_cast<uint32_t>(shaderdata.size()));
     return bgfx::createShader(mem);
 }
 
@@ -80,6 +82,7 @@ bgfx::ProgramHandle RavEngine::Material::loadComputeProgram(const std::string_vi
 {
     RavEngine::Vector<uint8_t> shaderdata;
 	GetApp()->GetResources().FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
-	const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], shaderdata.size());
+	assert(shaderdata.size() < numeric_limits<uint32_t>::max());
+	const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], static_cast<uint32_t>(shaderdata.size()));
 	return bgfx::createProgram(bgfx::createShader(mem), true);	//auto destroys shader when program is destroyed
 }

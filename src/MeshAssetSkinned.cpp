@@ -118,6 +118,11 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	
 	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
 	.end();
-	weightsHandle = bgfx::createVertexBuffer(bgfx::copy(weightsgpu.data(), weightsgpu.size() * sizeof(weightsgpu[0])), layout);
+	
+	auto size = weightsgpu.size() * sizeof(weightsgpu[0]);
+	
+	assert(size < numeric_limits<uint32_t>::max());
+	
+	weightsHandle = bgfx::createVertexBuffer(bgfx::copy(weightsgpu.data(), static_cast<uint32_t>(size)), layout);
 }
 
