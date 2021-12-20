@@ -118,8 +118,12 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
 #elif __linux__
     utsname s;
     uname(&s);
-    sscanf(s.release, "%u.%u.%u-%u",&vers.major,&vers.minor,&vers.patch,&vers.extra);
-
+    int major = 0, minor = 0, patch = 0, extra = 0;
+    sscanf(s.release, "%d.%d.%d-%d",&major,&minor,&patch,&extra);
+	vers.major = major;
+	vers.minor = minor;
+	vers.patch = patch;
+	vers.extra = extra;
 #endif
     return vers;
 }
