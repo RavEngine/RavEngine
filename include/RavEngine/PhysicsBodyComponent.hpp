@@ -1,6 +1,5 @@
 #pragma once
 #include "PhysXDefines.h"
-#include "Component.hpp"
 #include <PxRigidBody.h>
 #include <PxRigidDynamic.h>
 #include <PxRigidStatic.h>

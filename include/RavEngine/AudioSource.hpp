@@ -1,5 +1,4 @@
 #pragma once
-#include "Component.hpp"
 #include "Queryable.hpp"
 #include <string>
 #include "mathtypes.hpp"
@@ -47,7 +46,7 @@ public:
 /**
  This is a marker component to indicate where the "microphone" is in the world. Do not have more than one in a world.
  */
-class AudioListener : public Component, public Queryable<AudioListener>{};
+class AudioListener : public Queryable<AudioListener>{};
 
 /**
  Represents a single audio source.
@@ -153,7 +152,7 @@ public:
 /**
  For attaching a movable source to an Entity. To represent multiple sources, simply attach multiple of this component type to your Entity.
  */
-struct AudioSourceComponent : public Component, public AudioPlayerData, public Queryable<AudioSourceComponent>{
+struct AudioSourceComponent : public AudioPlayerData, public Queryable<AudioSourceComponent>, public AutoCTTI{
 	AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a){
 		if (a->GetNChanels() != 1) {
 			Debug::Fatal("Only mono is supported for point-audio sources, got {} channels", a->GetNChanels());
@@ -161,7 +160,7 @@ struct AudioSourceComponent : public Component, public AudioPlayerData, public Q
 	}
 };
 
-struct AmbientAudioSourceComponent : public Component, public AudioPlayerData, public Queryable< AmbientAudioSourceComponent> {
+struct AmbientAudioSourceComponent : public AudioPlayerData, public Queryable< AmbientAudioSourceComponent>, public AutoCTTI {
 	AmbientAudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a) {}
 };
 

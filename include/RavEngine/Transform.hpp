@@ -6,7 +6,6 @@
 //  Copyright © 2020 Ravbug. 
 //
 
-#include "Component.hpp"
 #include "Atomic.hpp"
 #include "mathtypes.hpp"
 #include "ComponentHandle.hpp"

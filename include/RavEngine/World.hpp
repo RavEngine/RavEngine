@@ -872,9 +872,6 @@ namespace RavEngine {
 		 */
 		virtual void PostTick(float fpsScale) {}
 		
-		void OnAddComponent(Ref<Component>);
-		void OnRemoveComponent(Ref<Component>);
-		
 		bool physicsActive = false;
 		
     public:

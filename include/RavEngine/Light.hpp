@@ -1,10 +1,9 @@
 #pragma once
 #include "Queryable.hpp"
 #include "Common3D.hpp"
-#include "Component.hpp"
 #include "BuiltinMaterials.hpp"
 #include "Uniform.hpp"
-#include "DebugDrawer.hpp"
+#include "IDebugRenderable.hpp"
 #include <atomic>
 
 namespace RavEngine{
