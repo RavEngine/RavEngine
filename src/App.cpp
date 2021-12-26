@@ -179,6 +179,10 @@ int App::run(int argc, char** argv) {
 #ifdef _DEBUG
 		RenderEngine::debuggerInput->TickAxes();
 #endif
+		if (inputManager) {
+			inputManager->TickAxes();
+		}
+
 		//tick all worlds
 		for(const auto world : loadedWorlds){
 			world->Tick(scale);
@@ -189,11 +193,9 @@ int App::run(int argc, char** argv) {
 		while (main_tasks.try_dequeue(front)){
 			front();
 		}
-		if (inputManager){
-			inputManager->TickAxes();
-		}
 
-		Renderer->DrawNext(renderWorld);
+
+		Renderer->Draw(renderWorld);
 		player.SetWorld(renderWorld);
 		SyncVar_base::Swap();
 		SyncVar_base::ProcessQueue();

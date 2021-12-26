@@ -378,6 +378,7 @@ void World::setupRenderTasks(){
         }
 
 	}).name("copypoints");
+
 //
 //#ifdef _DEBUG
 //	// copy debug shapes
@@ -401,8 +402,9 @@ void World::setupRenderTasks(){
 	}).name("CopyGUI");
 
 	auto swap = renderTasks.emplace([this]{
-        GetApp()->SwapCurrentFramedata();
+        //GetApp()->SwapCurrentFramedata();
 	}).name("Swap");
+
 	auto setup = renderTasks.emplace([this]{
 		auto current = GetApp()->GetCurrentFramedata();
 		current->Clear();

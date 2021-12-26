@@ -265,80 +265,7 @@ void DebugRender(const Im3d::DrawList& drawList){
  The render thread function, invoked on a separate thread
  */
 void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, const AppConfig& config) {
-	bgfx::Init settings;
-
-	auto SelectRenderer = [&](bgfx::RendererType::Enum desired) {
-		constexpr auto maxRenderers = 6;
-		bgfx::RendererType::Enum supportedRenderers[maxRenderers];
-		auto count = bgfx::getSupportedRenderers(maxRenderers, supportedRenderers);
-
-		if (std::find(std::begin(supportedRenderers), supportedRenderers + count, desired) != std::end(supportedRenderers)) {
-			settings.type = desired;
-		}
-		else {
-			Debug::Fatal("{} API not found", BackendStringName(desired));
-		}
-	};
-
-	if (config.preferredBackend == AppConfig::RenderBackend::AutoSelect) {
-#ifdef __linux__
-		SelectRenderer(bgfx::RendererType::Vulkan);
-#elif defined _WIN32
-		SelectRenderer(bgfx::RendererType::Direct3D12);
-#elif defined __APPLE__
-		SelectRenderer(bgfx::RendererType::Metal);
-#endif
-	}
-	else {
-		switch (config.preferredBackend) {
-#if BX_PLATFORM_IOS || BX_PLATFORM_OSX
-		case AppConfig::RenderBackend::Metal:
-			SelectRenderer(bgfx::RendererType::Metal);
-			break;
-#elif BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
-		case AppConfig::RenderBackend::DirectX12:
-			SelectRenderer(bgfx::RendererType::Direct3D12);
-			break;
-#if BX_PLATFORM_WINDOWS
-		case AppConfig::RenderBackend::Vulkan:
-			SelectRenderer(bgfx::RendererType::Vulkan);
-			break;
-#endif
-#elif BX_PLATFORM_LINUX
-		case AppConfig::RenderBackend::Vulkan:
-			SelectRenderer(bgfx::RendererType::Vulkan);
-			break;
-#endif
-		default:
-			Debug::Fatal("Invalid preferred backend");
-		}
-	}
-
-
-	settings.callback =  &global_msghandler;
-    
-    // we want to make the transient buffer larger
-    settings.limits.transientIbSize = 3.2e+7;  //32 mb
-    settings.limits.transientVbSize = 3.2e+7;  //32 mb
-
-	//must be in this order
-	settings.platformData = pd;
 	
-	settings.resolution.width = width;
-	settings.resolution.height = height;
-	settings.resolution.reset = RenderEngine::GetResetFlags();
-	settings.resolution.maxFrameLatency = 1;	// 0 = default = 3
-	if (!bgfx::init(settings)){
-		Debug::Fatal("bgfx::init Failed");
-	}
-
-	// Enable debug text.
-	bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
-
-	bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
-
-	bgfx::setState(BGFX_STATE_DEFAULT);
-
 	//this unblocks the static Init thread
 	bgfx_thread_finished_init = true;
 
@@ -356,29 +283,7 @@ void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, co
 			Ref<World> wtd = worldToDraw.lock();
 			if (wtd) {
 				if (wtd->newFrame){
-#ifdef _DEBUG
-					//display debug print messages
-					bgfx::dbgTextClear();
-					RenderEngine::dbgmtx.lock();
-					for(const auto msg : RenderEngine::debugprints){
-						bgfx::dbgTextPrintf(0, msg.first, msg.second.color, msg.second.message.c_str());
-					}
-					RenderEngine::dbgmtx.unlock();
-#endif
-					GetApp()->GetRenderEngine().Draw(wtd);
-                    auto stats = bgfx::getStats();
-                    
-                    auto delta = std::chrono::duration<float,std::milli>(			
-#if defined _WIN32
-						std::chrono::duration<int64_t,std::ratio<1, 10000000000>>(stats->cpuTimeFrame)
-#else
-						std::chrono::high_resolution_clock::time_point::duration(stats->cpuTimeFrame)
-#endif
-					);
 
-                    currentFrameTime = delta.count();
-                    currentVRAM = stats->gpuMemoryUsed / 1024 / 1024;
-                    totalVRAM = stats->gpuMemoryMax / 1024 / 1024;
 				}
 				//otherwise this world does not have a new frame ready yet, don't waste time re-rendering the same frame again
 			}
@@ -419,11 +324,81 @@ void RenderEngine::Init(const AppConfig& config)
 		metalLayer = pd.nwh;
 #endif
 		UpdateBufferDims();
-		renderThread.emplace(&RenderEngine::runAPIThread,this,pd, bufferdims.width, bufferdims.height,config);
-		renderThread.value().detach();
+
+		bgfx::Init settings;
+
+		auto SelectRenderer = [&](bgfx::RendererType::Enum desired) {
+			constexpr auto maxRenderers = 6;
+			bgfx::RendererType::Enum supportedRenderers[maxRenderers];
+			auto count = bgfx::getSupportedRenderers(maxRenderers, supportedRenderers);
+
+			if (std::find(std::begin(supportedRenderers), supportedRenderers + count, desired) != std::end(supportedRenderers)) {
+				settings.type = desired;
+			}
+			else {
+				Debug::Fatal("{} API not found", BackendStringName(desired));
+			}
+		};
+
+		if (config.preferredBackend == AppConfig::RenderBackend::AutoSelect) {
+#ifdef __linux__
+			SelectRenderer(bgfx::RendererType::Vulkan);
+#elif defined _WIN32
+			SelectRenderer(bgfx::RendererType::Direct3D12);
+#elif defined __APPLE__
+			SelectRenderer(bgfx::RendererType::Metal);
+#endif
+		}
+		else {
+			switch (config.preferredBackend) {
+#if BX_PLATFORM_IOS || BX_PLATFORM_OSX
+			case AppConfig::RenderBackend::Metal:
+				SelectRenderer(bgfx::RendererType::Metal);
+				break;
+#elif BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
+			case AppConfig::RenderBackend::DirectX12:
+				SelectRenderer(bgfx::RendererType::Direct3D12);
+				break;
+#if BX_PLATFORM_WINDOWS
+			case AppConfig::RenderBackend::Vulkan:
+				SelectRenderer(bgfx::RendererType::Vulkan);
+				break;
+#endif
+#elif BX_PLATFORM_LINUX
+			case AppConfig::RenderBackend::Vulkan:
+				SelectRenderer(bgfx::RendererType::Vulkan);
+				break;
+#endif
+			default:
+				Debug::Fatal("Invalid preferred backend");
 	}
-	//wait for the render thread to be finished initializing
-	while (!bgfx_thread_finished_init);
+}
+
+
+		settings.callback = &global_msghandler;
+
+		// we want to make the transient buffer larger
+		settings.limits.transientIbSize = 3.2e+7;  //32 mb
+		settings.limits.transientVbSize = 3.2e+7;  //32 mb
+
+		//must be in this order
+		settings.platformData = pd;
+
+		settings.resolution.width = bufferdims.width;
+		settings.resolution.height = bufferdims.height;
+		settings.resolution.reset = RenderEngine::GetResetFlags();
+		settings.resolution.maxFrameLatency = 1;	// 0 = default = 3
+		if (!bgfx::init(settings)) {
+			Debug::Fatal("bgfx::init Failed");
+		}
+
+		// Enable debug text.
+		bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
+
+		bgfx::setViewRect(0, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
+
+		bgfx::setState(BGFX_STATE_DEFAULT);
+	}
 
 	//check capabilities
 	const auto caps = bgfx::getCaps();
@@ -590,6 +565,17 @@ void RenderEngine::DrawNext(Ref<World> world) {
  Render one frame using the current state of every object in the world
  */
 void RenderEngine::Draw(Ref<World> worldOwning){
+
+#ifdef _DEBUG
+	//display debug print messages
+	bgfx::dbgTextClear();
+	RenderEngine::dbgmtx.lock();
+	for (const auto msg : RenderEngine::debugprints) {
+		bgfx::dbgTextPrintf(0, msg.first, msg.second.color, msg.second.message.c_str());
+	}
+	RenderEngine::dbgmtx.unlock();
+#endif
+
 	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
 		bgfx::setViewRect(view, 0, 0, bufferdims.width, bufferdims.height);
 	}
@@ -601,8 +587,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::touch(Views::Lighting);
 	
 	//copy world framedata into local copy
-	GetApp()->SwapRenderFramedata();
-	auto fd = GetApp()->GetRenderFramedata();
+	//GetApp()->SwapRenderFramedata();
+	auto fd = GetApp()->GetCurrentFramedata();
 	worldOwning->newFrame = false;	//we are processing this frame now
 	
 	//setup matrices
@@ -799,6 +785,20 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	Im3d::NewFrame();
 #endif
 	bgfx::dbgTextClear();
+
+	auto stats = bgfx::getStats();
+
+	auto delta = std::chrono::duration<float, std::milli>(
+#if defined _WIN32
+		std::chrono::duration<int64_t, std::ratio<1, 10000000000>>(stats->cpuTimeFrame)
+#else
+		std::chrono::high_resolution_clock::time_point::duration(stats->cpuTimeFrame)
+#endif
+		);
+
+	currentFrameTime = delta.count();
+	currentVRAM = stats->gpuMemoryUsed / 1024 / 1024;
+	totalVRAM = stats->gpuMemoryMax / 1024 / 1024;
 }
 
 void RenderEngine::resize(){
@@ -808,11 +808,8 @@ void RenderEngine::resize(){
 	//also this API takes screen points not pixels
 	resizeMetalLayer(metalLayer,windowdims.width, windowdims.height);
 #endif
-	RenderThreadQueue.enqueue([=]() {
-		bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
-		bgfx::setViewRect(Views::FinalBlit, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
-	});
-	
+	bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
+	bgfx::setViewRect(Views::FinalBlit, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
 }
 
 void RenderEngine::SyncVideoSettings(){
