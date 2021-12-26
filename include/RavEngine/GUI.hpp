@@ -2,7 +2,6 @@
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core.h>
-#include "Component.hpp"
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
 #include "Queryable.hpp"

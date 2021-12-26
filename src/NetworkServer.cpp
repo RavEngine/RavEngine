@@ -25,16 +25,20 @@ void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
 void NetworkServer::SpawnEntity(World* source, ctti_t id, entity_t ent_id, const uuids::uuid& netID) {
 	NetworkIdentities[netID] = ent_id;
     auto message = CreateSpawnCommand(netID,id,source->worldID);
+	auto len = message.size();
+	assert(len < numeric_limits<uint32_t>::max());	// message is too long!
     for (auto connection : clients) {
-        net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+        net_interface->SendMessageToConnection(connection, message.c_str(), static_cast<uint32_t>(len), k_nSteamNetworkingSend_Reliable, nullptr);
     }
 }
 
 void NetworkServer::DestroyEntity(const uuids::uuid& netID){
 	NetworkIdentities.erase(netID);
     auto message = CreateDestroyCommand(netID);
+	auto len = message.size();
+	assert(len < numeric_limits<uint32_t>::max());	// message is too long!
     for (auto connection : clients) {
-        net_interface->SendMessageToConnection(connection, message.c_str(), message.size(), k_nSteamNetworkingSend_Reliable, nullptr);
+        net_interface->SendMessageToConnection(connection, message.c_str(), static_cast<uint32_t>(len), k_nSteamNetworkingSend_Reliable, nullptr);
     }
 }
 
@@ -46,7 +50,8 @@ void RavEngine::NetworkServer::SendMessageToAllClients(const std::string_view& m
 }
 
 void NetworkServer::SendMessageToClient(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const{
-	net_interface->SendMessageToConnection(connection, msg.data(), msg.length(), mode, nullptr);
+	assert(msg.size() < numeric_limits<uint32_t>::max());	// message is too long!
+	net_interface->SendMessageToConnection(connection, msg.data(), static_cast<uint32_t>(msg.length()), mode, nullptr);
 }
 
 void RavEngine::NetworkServer::SendMessageToAllClientsExcept(const std::string_view& msg, HSteamNetConnection connection, Reliability mode) const

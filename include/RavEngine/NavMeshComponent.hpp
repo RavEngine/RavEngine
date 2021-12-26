@@ -1,11 +1,11 @@
 #pragma once
-#include "Component.hpp"
 #include "MeshAsset.hpp"
+#include "IDebugRenderable.hpp"
 #include <DetourNavMeshQuery.h>
 #include "Queryable.hpp"
 
 namespace RavEngine{
-    class NavMeshComponent : public Component, public IDebugRenderable, public Queryable<NavMeshComponent,IDebugRenderable>{
+    class NavMeshComponent : public IDebugRenderable, public Queryable<NavMeshComponent,IDebugRenderable>{
     private:
         class dtNavMesh* navMesh = nullptr;
         dtNavMeshQuery* navMeshQuery = nullptr;

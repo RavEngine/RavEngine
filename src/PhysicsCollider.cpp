@@ -65,9 +65,11 @@ MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset
     meshDesc.setToDefault();
     meshDesc.points.data = &vertices[0];
     meshDesc.points.stride = sizeof(vertices[0]);
-    meshDesc.points.count = vertices.size();
+	assert(vertices.size() < std::numeric_limits<physx::PxU32>::max());
+    meshDesc.points.count = static_cast<physx::PxU32>(vertices.size());
     
-    meshDesc.triangles.count = indices.size() / 3;
+	assert(indices.size() / 3 < std::numeric_limits<physx::PxU32>::max());
+    meshDesc.triangles.count = static_cast<physx::PxU32>(indices.size() / 3);
     meshDesc.triangles.stride = 3 * sizeof(indices[0]);
     meshDesc.triangles.data = &indices[0];
     
@@ -99,13 +101,14 @@ ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsse
     }
     
     PxBoundedData pointdata;
-    pointdata.count = vertices.size();
+	assert(vertices.size() < std::numeric_limits<physx::PxU32>::max());
+    pointdata.count = static_cast<physx::PxU32>(vertices.size());
     pointdata.stride = sizeof(PxVec3);
     pointdata.data = &vertices[0];
     
     PxConvexMeshDesc meshDesc;
     meshDesc.setToDefault();
-    meshDesc.points.count = vertices.size();
+    meshDesc.points.count = static_cast<physx::PxU32>(vertices.size());
     meshDesc.points = pointdata;
     meshDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
     

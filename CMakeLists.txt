@@ -72,7 +72,7 @@ endif()
 # configure build machine tools
 file(MAKE_DIRECTORY ${TOOLS_DIR})
 execute_process(
-    COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" ${DEPS_DIR}/host-tools/
+    COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" -DCMAKE_BUILD_TYPE=Release ${DEPS_DIR}/host-tools/
     WORKING_DIRECTORY ${TOOLS_DIR}
 )
 
@@ -193,7 +193,9 @@ add_subdirectory("${DEPS_DIR}/taskflow" EXCLUDE_FROM_ALL)
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL OFF CACHE INTERNAL "")
-#set(BGFX_CONFIG_RENDERER_WEBGPU ON)
+set(BGFX_AMALGAMATED ON CACHE INTERNAL "")
+set(BGFX_BUILD_TOOLS OFF CACHE INTERNAL "")
+set(BX_AMALGAMATED ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/bgfx.cmake" EXCLUDE_FROM_ALL)
 
 # assimp
@@ -335,6 +337,9 @@ if (APPLE)
     find_library(METAL_LIB Metal REQUIRED)
     find_library(QZC_LIB QuartzCore REQUIRED)
     find_library(CH_LIB CoreHaptics REQUIRED)
+	if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  	  find_library(IOKIT_LIB IOKit REQUIRED)
+	endif()
     SET(ICONV_LIB "iconv")
 
 endif()
@@ -402,7 +407,8 @@ target_link_libraries("${PROJECT_NAME}"
 	${COCOA_LIB}
 	${SM_LIB}
 	${FOUNDATION_LIB} 
-	${METAL_LIB} 
+	${METAL_LIB}
+	${IOKIT_LIB}
 	${QZC_LIB} 
 	${CH_LIB}
     ${ATOMIC_LIB}
@@ -554,11 +560,12 @@ macro(enable_unity targets)
 		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
 	endforeach()
 endmacro()
-set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;bx;Detour;ozz_animation;ozz_animation_offline;\
+
+set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
 ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;")
 
-if ((CMAKE_SYSTEM_NAME STREQUAL "Windows") OR LINUX)
-	set(platform_unity "bgfx")	 # bgfx supports Unity build in Win32 or Linux, but not Mac or UWP
+if ((CMAKE_SYSTEM_NAME STREQUAL "Windows"))
+	set(platform_unity "")	 
 endif()
 
 enable_unity("${all_unity};${platform_unity}")

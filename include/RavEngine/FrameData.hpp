@@ -108,7 +108,7 @@ struct FrameData{
 	
     // TODO: use normal vector, to avoid copying unused-in-iteration cache data 
 #ifdef _DEBUG
-    Vector<Ref<Component>> debugShapesToDraw;
+    //Vector<Ref<Component>> debugShapesToDraw;
 #endif
     unordered_vector<GUIComponent> guisToCalculate;
 	
@@ -125,7 +125,7 @@ struct FrameData{
     void Reset(){
         Clear();
 #ifdef _DEBUG
-        debugShapesToDraw.clear();
+        //debugShapesToDraw.clear();
 #endif
         guisToCalculate.clear();
     }

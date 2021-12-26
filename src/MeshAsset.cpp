@@ -148,7 +148,7 @@ void MeshAsset::InitializeFromMeshPartFragments(const  RavEngine::Vector<MeshPar
 	allMeshes.vertices.reserve(tv);
 	allMeshes.indices.reserve(ti);
 	
-	size_t baseline_index = 0;
+	uint32_t baseline_index = 0;
 	for(const auto& mesh : meshes){
 		for(const auto& vert : mesh.vertices){
 			allMeshes.vertices.push_back(vert);
@@ -195,10 +195,14 @@ void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, const MeshAsset
         .end();
         
         //create buffers
-        auto vbm = bgfx::copy(&v[0], v.size() * sizeof(vertex_t));
+		auto size_vbm = v.size() * sizeof(vertex_t);
+		assert(size_vbm < numeric_limits<uint32_t>::max());	// too many vertices!
+        auto vbm = bgfx::copy(&v[0],static_cast<uint32_t>(size_vbm));
         vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
         
-        auto ibm = bgfx::copy(&i[0], i.size() * sizeof(decltype(allMeshes.indices)::value_type));
+		auto size_ibm = i.size() * sizeof(decltype(allMeshes.indices)::value_type);
+		assert(size_ibm < numeric_limits<uint32_t>::max());	// too many indices!
+        auto ibm = bgfx::copy(&i[0], static_cast<uint32_t>(size_ibm));
         indexBuffer = bgfx::createIndexBuffer(ibm,BGFX_BUFFER_INDEX32);
         
         if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){

@@ -16,7 +16,7 @@ namespace uuids
     public:
         simple_rnd_generator()
         {
-            srand(std::time(NULL));
+            srand(static_cast<unsigned int>(std::time(NULL)));
         };
         ~simple_rnd_generator() {}
 

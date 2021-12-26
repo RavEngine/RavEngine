@@ -33,7 +33,7 @@ class Registry{
             data.world = world;
         }
         else{
-            id = entityData.size();
+            id = static_cast<decltype(id)>(entityData.size());
             entityData.emplace_back(world,idInWorld);
         }
         return id;

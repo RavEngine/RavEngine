@@ -23,13 +23,10 @@
 #include "RPCSystem.hpp"
 #include "AnimatorSystem.hpp"
 #include "SkinnedMeshComponent.hpp"
-#include "ComponentStore.hpp"
 #include "NetworkManager.hpp"
 
 using namespace std;
 using namespace RavEngine;
-
-static const ComponentStore<phmap::NullMutex>::entry_type emptyContainer;    // used if the query returns nothing and should be skipped
 
 template<typename T>
 static const World::SparseSet<T> staticEmptyContainer;
@@ -435,7 +432,7 @@ entity_t World::CreateEntity(){
         available.pop();
     }
     else{
-        id = localToGlobal.size();
+        id = static_cast<decltype(id)>(localToGlobal.size());
         localToGlobal.push_back(INVALID_ENTITY);
     }
     localToGlobal[id] = Registry::CreateEntity(this, id);

@@ -74,7 +74,9 @@ void RenderEngine::end(){
     if (navMeshPolygon.size() == 0){
         return;
     }
-    auto memory = bgfx::copy(navMeshPolygon.data(), navMeshPolygon.size() * sizeof(decltype(navMeshPolygon)::value_type));
+	auto size = navMeshPolygon.size() * sizeof(decltype(navMeshPolygon)::value_type);
+	assert(size < std::numeric_limits<unsigned int>::max());
+    auto memory = bgfx::copy(navMeshPolygon.data(), static_cast<unsigned int>(size));
     auto vb = bgfx::createVertexBuffer(memory, debugNavMeshLayout);
     bgfx::setVertexBuffer(0, vb);
     bgfx::submit(Views::FinalBlit, debugNavProgram);

@@ -5,6 +5,8 @@
 #include <bx/bx.h>
 #include <SDL_syswm.h>
 #include "Debug.hpp"
+#include "SystemInfo.hpp"
+#include <sys/utsname.h>
 
 #if BX_PLATFORM_OSX
 	#import <Cocoa/Cocoa.h>
@@ -72,7 +74,7 @@ AppleOSVersion GetAppleOSVersion(){
 
 uint32_t GetAppleSystemRAM(){
     auto v = [[NSProcessInfo processInfo] physicalMemory];
-    return v/1024/1024;
+    return static_cast<uint32_t>(v/1024/1024);
 }
 
 void AppleOSName(char* buffer, uint16_t size){
@@ -90,5 +92,14 @@ void AppleOSName(char* buffer, uint16_t size){
 }
 
 void AppleCPUName(char* buffer, size_t size){
-    sysctlbyname("machdep.cpu.brand_string", buffer, &size, NULL, 0);
+	if constexpr (RavEngine::SystemInfo::IsMobile()){
+		utsname sysinfo;
+		uname(&sysinfo);
+		//NSString* devName = [[UIDevice currentDevice] modelName];
+		//const char* ptr = [devName UTF8String];
+		memcpy(buffer, sysinfo.machine, size);
+	}
+	else{
+		sysctlbyname("machdep.cpu.brand_string", buffer, &size, NULL, 0);
+	}
 }
