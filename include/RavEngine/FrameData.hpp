@@ -110,7 +110,6 @@ struct FrameData{
 #ifdef _DEBUG
     //Vector<Ref<Component>> debugShapesToDraw;
 #endif
-    unordered_vector<GUIComponent> guisToCalculate;
 	
 	inline void Clear(){
 		opaques.clear();
@@ -127,7 +126,6 @@ struct FrameData{
 #ifdef _DEBUG
         //debugShapesToDraw.clear();
 #endif
-        guisToCalculate.clear();
     }
 	
 	//default constructor
