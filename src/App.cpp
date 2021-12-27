@@ -193,11 +193,11 @@ int App::run(int argc, char** argv) {
 		while (main_tasks.try_dequeue(front)){
 			front();
 		}
-
-		// update GUIs
-		renderWorld->Filter<GUIComponent>([](float, auto& gui) {
+		auto fn = [](float, auto& gui) {
 			gui.Render();	//bgfx state is set in renderer before actual draw calls
-		});
+		};
+		// update GUIs
+		renderWorld->Filter<GUIComponent>(fn);
 
 		Renderer->Draw(renderWorld);
 		player.SetWorld(renderWorld);

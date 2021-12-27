@@ -396,13 +396,14 @@ void World::setupRenderTasks(){
         auto& renderer = GetApp()->GetRenderEngine();
         auto size = renderer.GetBufferSize();
         auto scale = renderer.GetDPIScale();
-        Filter<GUIComponent>([&](float, auto& gui) {
-            if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
-                gui.SetDimensions(size.width, size.height);
-                gui.SetDPIScale(scale);
-            }
-            gui.Update();
-        });
+		auto fn = [&](float, auto& gui) {
+			if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
+				gui.SetDimensions(size.width, size.height);
+				gui.SetDPIScale(scale);
+			}
+			gui.Update();
+		};
+        Filter<GUIComponent>(fn);
 	}).name("UpdateGUI");
 
 	auto swap = renderTasks.emplace([this]{
