@@ -194,6 +194,10 @@ int App::run(int argc, char** argv) {
 			front();
 		}
 
+		// update GUIs
+		renderWorld->Filter<GUIComponent>([](float, auto& gui) {
+			gui.Render();	//bgfx state is set in renderer before actual draw calls
+		});
 
 		Renderer->Draw(renderWorld);
 		player.SetWorld(renderWorld);
@@ -202,7 +206,7 @@ int App::run(int argc, char** argv) {
 		        
         //make up the difference
 		//can't use sleep because sleep is not very accurate
-		clocktype::duration work_time;
+		/*clocktype::duration work_time;
 		do{
 			auto workEnd = clocktype::now();
 			work_time = workEnd - now;
@@ -211,13 +215,11 @@ int App::run(int argc, char** argv) {
 				auto dc = std::chrono::duration_cast<std::chrono::milliseconds>(delta);
 				std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dc.count()-1));
 			}
-		}while (work_time < min_tick_time);
+		}while (work_time < min_tick_time);*/
         
 		lastFrameTime = now;
 	}
 	
-	Renderer->BlockUntilFinishDraw();
-
     return OnShutdown();
 }
 

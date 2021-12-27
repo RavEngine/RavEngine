@@ -387,16 +387,20 @@ void World::setupRenderTasks(){
 //        });
 //	});
 //#endif
-	auto copyGUI = renderTasks.emplace([this]() {
+	auto tickGUI = renderTasks.emplace([this]() {
         // also do the time here
         GetApp()->GetCurrentFramedata()->Time = GetApp()->GetCurrentTime();
-        if(auto guis = GetAllComponentsOfType<GUIComponent>()){
-            GetApp()->GetCurrentFramedata()->guisToCalculate = guis.value()->GetDense();
-        }
-        else{
-            GetApp()->GetCurrentFramedata()->guisToCalculate.clear();
-        }
-	}).name("CopyGUI");
+        auto& renderer = GetApp()->GetRenderEngine();
+        auto size = renderer.GetBufferSize();
+        auto scale = renderer.GetDPIScale();
+        Filter<GUIComponent>([&](float, auto& gui) {
+            if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
+                gui.SetDimensions(size.width, size.height);
+                gui.SetDPIScale(scale);
+            }
+            gui.Update();
+        });
+	}).name("UpdateGUI");
 
 	auto swap = renderTasks.emplace([this]{
         //GetApp()->SwapCurrentFramedata();
@@ -406,13 +410,13 @@ void World::setupRenderTasks(){
 		auto current = GetApp()->GetCurrentFramedata();
 		current->Clear();
 	}).name("Clear-setup");
-	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints,copyGUI);
+	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints,tickGUI);
 	sort.precede(swap);
 	sortskinned.precede(swap);
     sortInstanced.precede(swap);
 	camproc.precede(sort,sortskinned);
 
-	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints,copyGUI);
+	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints,tickGUI);
     
     // attatch the renderTasks module to the masterTasks
     renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");

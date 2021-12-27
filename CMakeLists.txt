@@ -32,8 +32,13 @@ if(UNIX AND NOT APPLE)
 endif()
 
 # UWP detection
-if (CMAKE_SYSTEM_NAME MATCHES "WindowsStore")
-	set(UWP TRUE CACHE INTERNAL "")
+if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+	set(UWP ON CACHE INTERNAL "")
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(WINDOWS ON CACHE INTERNAL "")
+else()
+	set(WINDOWS OFF CACHE INTERNAL "")
 endif()
 
 # enable multiprocessor compilation with vs
@@ -196,7 +201,19 @@ set(BGFX_INSTALL OFF CACHE INTERNAL "")
 set(BGFX_AMALGAMATED ON CACHE INTERNAL "")
 set(BGFX_BUILD_TOOLS OFF CACHE INTERNAL "")
 set(BX_AMALGAMATED ON CACHE INTERNAL "")
+
 add_subdirectory("${DEPS_DIR}/bgfx.cmake" EXCLUDE_FROM_ALL)
+# enable the renderers that we actually use
+target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_OPENGL=0 BGFX_CONFIG_RENDERER_DIRECT3D9=0 BGFX_CONFIG_RENDERER_DIRECT3D11=0 BGFX_CONFIG_RENDERER_VULKAN=0 BGFX_CONFIG_RENDERER_METAL=0 BGFX_CONFIG_RENDERER_DIRECT3D12=0 BGFX_CONFIG_RENDERER_GNM=0 BGFX_CONFIG_RENDERER_NVN=0)
+if(UWP OR WINDOWS)
+	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_DIRECT3D12=1)	# UWP and Windows have DX12
+endif()
+if (LINUX OR WINDOWS)
+	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_VULKAN=1)		# linux and Windows have Vulkan
+endif()
+if(APPLE)
+	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_METAL=1)		# Apple platforms use Metal only
+endif()
 
 # assimp
 SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")

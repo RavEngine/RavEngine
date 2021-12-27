@@ -52,11 +52,6 @@ namespace RavEngine {
 
 		//get reset bitmask, for internal use only
 		static uint32_t GetResetFlags();
-
-        /**
-         Signal the render thread to stop, and wait until it has stopped. For internal use only.
-         */
-		void BlockUntilFinishDraw();
         
         /**
          Print a string to the debug text overlay. Stubbed in release.
@@ -245,7 +240,6 @@ namespace RavEngine {
         static SpinLock dbgmtx;
         static UnorderedMap<uint16_t,DebugMsg> debugprints;
 #endif
-        void runAPIThread(bgfx::PlatformData pd, int width, int height, const AppConfig& conf);
 
 #ifdef _WIN32
 		float win_scalefactor = 1;

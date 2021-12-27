@@ -262,45 +262,6 @@ void DebugRender(const Im3d::DrawList& drawList){
 }
 
 /**
- The render thread function, invoked on a separate thread
- */
-void RenderEngine::runAPIThread(bgfx::PlatformData pd, int width, int height, const AppConfig& config) {
-	
-	//this unblocks the static Init thread
-	bgfx_thread_finished_init = true;
-
-	//begin main render loop
-
-	while (!render_thread_exit) {
-		//do queued tasks
-		Function<void(void)> func;
-		while (RenderThreadQueue.try_dequeue(func)) {
-			func();
-		}
-
-		if (GetApp()->HasRenderEngine()) {			//skip if the App has not set its renderer yet
-			//invoke World rendering call
-			Ref<World> wtd = worldToDraw.lock();
-			if (wtd) {
-				if (wtd->newFrame){
-
-				}
-				//otherwise this world does not have a new frame ready yet, don't waste time re-rendering the same frame again
-			}
-		}
-	}
-	
-	bgfx_thread_finished_init = false;
-
-	//bgfx::shutdown must be called on this thread
-}
-
-void RenderEngine::BlockUntilFinishDraw() {
-	render_thread_exit = true;			//signal to exit render thread loop
-	while (bgfx_thread_finished_init);	//block until render engine has finished drawing
-}
-
-/**
 Initialize static singletons. Invoked automatically if needed.
 */
 void RenderEngine::Init(const AppConfig& config)
@@ -743,21 +704,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
 
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_ALWAYS);	//don't clear depth, debug wireframes are drawn forward-style afterwards
-    blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd,Views::FinalBlit);
-	
-	//GUI
-	//TODO: thread using ECS?
-	auto& guis = fd->guisToCalculate;
-	auto size = GetBufferSize();
-	for(auto& gui : guis){
-        if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
-            gui.SetDimensions(size.width, size.height);
-            gui.SetDPIScale(GetDPIScale());
-        }
-        gui.Update();
-        gui.Render();	//bgfx state is set in renderer before actual draw calls
-	}
-	
+	blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd, Views::FinalBlit);
 	
 #ifdef _DEBUG
 	//render debug GUI
