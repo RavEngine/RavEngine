@@ -14,6 +14,7 @@
 #include <boost/poly_collection/base_collection.hpp>
 
 namespace RavEngine {
+	struct Transform;
 	// stores contact points
 	struct ContactPairPoint {
 		vector3 position, normal, impulse;
@@ -29,13 +30,15 @@ namespace RavEngine {
 		ContactPairPoint(){}
 	};
 
-	class PhysicsBodyComponent : public ComponentWithOwner, public Queryable<PhysicsBodyComponent>
+	class PhysicsBodyComponent : public ComponentWithOwner, public IDebugRenderable, public Queryable<PhysicsBodyComponent,IDebugRenderable>
 	{
 	protected:
         UnorderedSet<std::shared_ptr<PhysicsCallback>> receivers;
         boost::base_collection<PhysicsCollider> colliders;
         void CompleteConstruction();
 	public:
+		using Queryable<PhysicsBodyComponent,IDebugRenderable>::GetQueryTypes;
+		
 		physx::PxRigidActor* rigidActor = nullptr;
 		physx::PxU32 filterGroup = -1;
 		physx::PxU32 filterMask = -1;
@@ -170,6 +173,8 @@ namespace RavEngine {
 		inline void SetWantsContactData(bool state) {
 			wantsContactData = state;
 		}
+		
+		virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform&) const;
 	protected:
 		bool wantsContactData = false;
 

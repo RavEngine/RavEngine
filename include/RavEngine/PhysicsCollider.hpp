@@ -16,6 +16,7 @@ namespace physx {
 
 namespace RavEngine {
     struct PhysicsBodyComponent;
+	struct Transform;
     class PhysicsCollider
 	{
         friend class PhysicsBodyComponent;
@@ -27,7 +28,7 @@ namespace RavEngine {
 		 @return the world matrix including rotation and position offsets
 		 @pre This collider must be attached to an object
 		 */
-		matrix4 CalculateWorldMatrix() const;
+		matrix4 CalculateWorldMatrix(const RavEngine::Transform&) const;
 	public:
 		enum class CollisionType { Trigger, Collider };
         void UpdateFilterData(PhysicsBodyComponent* owner);
@@ -66,8 +67,12 @@ namespace RavEngine {
 		 */
 		void SetRelativeTransform(const vector3& position, const quaternion& rotation);
         
+		/**
+		 @return relative transformation of this collider to the owning entity
+		 */
+		Transformation GetRelativeTransform() const;
         
-        virtual void DebugDraw(RavEngine::DebugDrawer& dbg) const{}
+        virtual void DebugDraw(RavEngine::DebugDrawer& dbg, color_t debug_color, const RavEngine::Transform&) const{}
 	};
 
 
@@ -90,7 +95,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override;
 
 	};
 
@@ -112,7 +117,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override;
 	};
 
 	class CapsuleCollider : public PhysicsCollider {
@@ -134,7 +139,7 @@ namespace RavEngine {
 		 Draw a wireframe shape representing the boundary of this collider
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
-		void DebugDraw(RavEngine::DebugDrawer& dbg) const override;
+		void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override;
 	};
 
 	struct MeshCollider : public PhysicsCollider {
@@ -145,7 +150,7 @@ namespace RavEngine {
 		 */
         MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat);
 		
-		void DebugDraw(RavEngine::DebugDrawer& dbg) const override{
+		void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override{
 			//TODO: debug draw mesh collider
 		}
 	};
@@ -159,7 +164,7 @@ namespace RavEngine {
 		 */
         ConvexMeshCollider(PhysicsBodyComponent*, Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat);
 		
-		void DebugDraw(RavEngine::DebugDrawer& dbg) const override{
+		void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override{
 			//TODO: debug draw mesh collider
 		}
 	};

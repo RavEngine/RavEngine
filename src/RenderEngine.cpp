@@ -706,26 +706,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd, Views::FinalBlit);
 	
 #ifdef _DEBUG
-	//render debug GUI
-    //TODO: FIX
-//	auto& comp = debuggerContext.GetComponent<GUIComponent>();
-//	comp.SetDimensions(size.width, size.height);
-//	comp.SetDPIScale(GetDPIScale());
-//	comp.Update();
-//	comp.Render();
-//
-//	auto& shapesToDraw = fd->debugShapesToDraw;
-//	for(const auto s : shapesToDraw){
-//        auto owner = s->GetOwner().lock();
-//        if (owner && owner->HasComponent<Transform>()) {
-//            auto ptr = dynamic_cast<IDebugRenderable*>(s.get());
-//            if (ptr->debugEnabled){
-//                ptr->DebugDraw(dbgdraw);
-//            }
-//        }
-//	}
-//
-//	Im3d::GetContext().draw();
+	Im3d::GetContext().draw();
 #endif
 	bgfx::frame();
 	skinningComputeBuffer.Reset();

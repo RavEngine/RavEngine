@@ -384,10 +384,13 @@ void World::setupRenderTasks(){
 #ifdef _DEBUG
 	// copy debug shapes
 	auto copyDebug = masterTasks.emplace([this]() {
-        
-        FilterPolymorphic<IDebugRenderable, Transform>([&](auto scale, auto& dbg, const auto& transform){
-            dbg[0].DebugDraw(dbgdraw,transform[0]);
-        });
+		auto fn = [&](auto scale, auto dbg, const auto transform){
+			if(dbg[0].debugEnabled)
+			{
+				dbg[0].DebugDraw(dbgdraw,transform[0]);
+			}
+		};
+        FilterPolymorphic<IDebugRenderable, Transform>(fn);
 	});
 #endif
 	auto tickGUI = renderTasks.emplace([this]() {

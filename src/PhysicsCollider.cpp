@@ -166,23 +166,23 @@ void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quater
 	collider->setLocalPose(PxTransform(PxVec3(position.x,position.y,position.z),PxQuat(rotation.x,rotation.y,rotation.z,rotation.w)));
 }
 
-matrix4 PhysicsCollider::CalculateWorldMatrix() const{
-    //TODO: FIX
-    // return Ref<Entity>(GetOwner())->GetTransform().CalculateWorldMatrix() * (matrix4)Transformation{position,rotation};;
-    return matrix4(1);
+Transformation PhysicsCollider::GetRelativeTransform() const{
+	auto pose = collider->getLocalPose();
+	return Transformation{vector3(pose.p.x,pose.p.y,pose.p.z),quaternion(pose.q.w, pose.q.x,pose.q.y,pose.q.z)};
 }
 
-void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	//TODO: FIX
-    //dbg.DrawRectangularPrism(CalculateWorldMatrix(), debug_color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
+matrix4 PhysicsCollider::CalculateWorldMatrix(const RavEngine::Transform& tr) const{
+	return tr.CalculateWorldMatrix() * (matrix4)GetRelativeTransform();
 }
 
-void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	//TODO: FIX
-    //dbg.DrawSphere(CalculateWorldMatrix(), debug_color, radius);
+void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg,color_t debug_color, const RavEngine::Transform& tr) const{
+    dbg.DrawRectangularPrism(CalculateWorldMatrix(tr), debug_color, vector3(extent.x * 2, extent.y * 2, extent.z*2));
 }
 
-void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-	//TODO: FIX
-    //dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
+void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg,color_t debug_color, const RavEngine::Transform& tr) const{
+    dbg.DrawSphere(CalculateWorldMatrix(tr), debug_color, radius);
+}
+
+void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg, color_t debug_color, const RavEngine::Transform& tr) const{
+    dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(tr), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
 }

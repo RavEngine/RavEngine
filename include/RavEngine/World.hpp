@@ -427,7 +427,6 @@ namespace RavEngine {
                 // polymorphic recordkeep
                 const auto ids = T::GetQueryTypes();
                 for(const auto id : ids){
-                    T* discard;
                     polymorphicQueryMap[id].template Emplace<T>(local_id, this);
                 }
             }
