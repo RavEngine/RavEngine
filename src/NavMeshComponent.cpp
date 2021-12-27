@@ -303,7 +303,7 @@ RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start,
     return path;
 }
 
-void NavMeshComponent::DebugDraw(DebugDrawer &dbg) const{
+void NavMeshComponent::DebugDraw(DebugDrawer &dbg,const Transform&) const{
     mtx.lock();
     duDebugDrawNavMesh(&GetApp()->GetRenderEngine(), *navMesh, NULL);
     mtx.unlock();

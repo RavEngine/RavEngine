@@ -73,7 +73,6 @@ decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INV
 Ref<InputManager> RenderEngine::debuggerInput;
 UnorderedMap<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
 SpinLock RenderEngine::dbgmtx;
-static DebugDrawer dbgdraw;	//for rendering debug primitives
 #endif
 
 static Ref<DebugMaterialInstance> mat;

@@ -9,7 +9,6 @@
 namespace RavEngine{
 class MeshAsset;
 class CameraComponent;
-
 struct Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable {
 	float Intensity = 1.0;
 	ColorRGBA color{1,1,1,1};
@@ -34,7 +33,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 		return true;
 	}
 	
-	void DebugDraw(RavEngine::DebugDrawer&) const override;
+	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
 	/**
 	 Structure:
@@ -81,7 +80,7 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 		return true;
 	}
 	
-	void DebugDraw(RavEngine::DebugDrawer&) const override;
+	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
 	/**
 	 Structure
@@ -130,7 +129,7 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 		return true;
 	}
 	
-	void DebugDraw(RavEngine::DebugDrawer&) const override;
+	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
 	/**
 	 Structure
@@ -193,7 +192,7 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 		//TODO: perform AABB intersection on camera bounds
 		return true;
 	}
-	void DebugDraw(RavEngine::DebugDrawer&) const override;
+	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
 	/**
 	Structure

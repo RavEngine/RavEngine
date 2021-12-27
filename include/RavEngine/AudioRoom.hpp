@@ -111,7 +111,7 @@ public:
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
 	 */
-    void DebugDraw(DebugDrawer& dbg) const final;
+    void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override;
 };
 
 }

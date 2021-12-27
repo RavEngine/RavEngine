@@ -48,10 +48,8 @@ void LightManager::Teardown() {
 	bgfx::destroy(screenSpaceQuadInd);
 }
 
-void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-    //TODO: FIX
-//	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
-//	dbg.DrawCapsule(pos.CalculateWorldMatrix(), debug_color, 1, 2);
+void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
+	dbg.DrawCapsule(tr.CalculateWorldMatrix(), debug_color, 1, 2);
 }
 
 void DirectionalLight::AddInstanceData(float* offset) const{
@@ -61,11 +59,8 @@ void DirectionalLight::AddInstanceData(float* offset) const{
 	offset[3] = Intensity;
 }
 
-void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-    //TODO: FIX
-//	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
-//
-//	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, 1);
+void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
+	dbg.DrawSphere(tr.CalculateWorldMatrix(), debug_color, 1);
 }
 
 void AmbientLight::AddInstanceData(float* offset) const{
@@ -75,10 +70,8 @@ void AmbientLight::AddInstanceData(float* offset) const{
 	offset[3] = Intensity;
 }
 
-void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg) const{
-    //TODO: FIX
-//	auto& pos = Ref<Entity>(GetOwner())->GetTransform();
-//	dbg.DrawSphere(pos.CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
+void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
+	dbg.DrawSphere(tr.CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
 }
 
 void PointLight::AddInstanceData(float* offset) const{
@@ -90,8 +83,8 @@ void PointLight::AddInstanceData(float* offset) const{
 	offset[15] = Intensity;
 }
 
-void SpotLight::DebugDraw(RavEngine::DebugDrawer&) const{
-	//auto pos = getOwner().lock()->transform();
+void SpotLight::DebugDraw(RavEngine::DebugDrawer&, const Transform& tr) const{
+	//TODO: fix
 }
 
 void SpotLight::AddInstanceData(float* offset) const{

@@ -177,7 +177,7 @@ Ref<Transform> AnimatorComponent::AddSocket(const string& boneName) {
 	Debug::Fatal("Cannot add socket to non-existant joint {}", boneName);
 }
 
-void AnimatorComponent::DebugDraw(RavEngine::DebugDrawer &dbg) const{
+void AnimatorComponent::DebugDraw(RavEngine::DebugDrawer &dbg, const Transform&) const{
     auto& pose = GetPose();
     for (const auto& p : pose) {
         dbg.DrawSphere(p, debug_color, 0.1);

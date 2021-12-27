@@ -66,12 +66,7 @@ void AudioRoom::RoomData::Simulate(float *ptr, size_t nbytes){
 	allSources.clear();
 }
 
-void AudioRoom::DebugDraw(DebugDrawer& dbg) const{
-    //TODO: FIX
-//    auto owner = GetOwner().lock();
-//    if (owner) {
-//        auto mtx = owner->GetTransform().CalculateWorldMatrix();
-//
-//        dbg.DrawRectangularPrism(mtx, debug_color, roomDimensions);
-//    }
+void RavEngine::AudioRoom::DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const
+{
+	dbg.DrawRectangularPrism(tr.CalculateWorldMatrix(), debug_color, data->roomDimensions);
 }

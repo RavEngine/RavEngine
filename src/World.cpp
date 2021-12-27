@@ -28,6 +28,10 @@
 using namespace std;
 using namespace RavEngine;
 
+#ifdef _DEBUG
+static DebugDrawer dbgdraw;	//for rendering debug primitives
+#endif
+
 template<typename T>
 static const World::SparseSet<T> staticEmptyContainer;
 
@@ -376,17 +380,16 @@ void World::setupRenderTasks(){
 
 	}).name("copypoints");
 
-//
-//#ifdef _DEBUG
-//	// copy debug shapes
-//	auto copyDebug = masterTasks.emplace([this]() {
-//        App::GetCurrentFramedata()->debugShapesToDraw.clear();
-//        
-//        FilterPolymorphic<IDebugRenderable>([&](auto scale, const auto& dbg){
-//            App::GetCurrentFramedata()->debugShapesToDraw.push_back(dbg);
-//        });
-//	});
-//#endif
+
+#ifdef _DEBUG
+	// copy debug shapes
+	auto copyDebug = masterTasks.emplace([this]() {
+        
+        FilterPolymorphic<IDebugRenderable, Transform>([&](auto scale, auto& dbg, const auto& transform){
+            dbg[0].DebugDraw(dbgdraw,transform[0]);
+        });
+	});
+#endif
 	auto tickGUI = renderTasks.emplace([this]() {
         // also do the time here
         GetApp()->GetCurrentFramedata()->Time = GetApp()->GetCurrentTime();

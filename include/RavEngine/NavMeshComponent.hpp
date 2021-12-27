@@ -55,7 +55,7 @@ namespace RavEngine{
          */
         RavEngine::Vector<vector3> CalculatePath(const vector3& start, const vector3& end, uint16_t maxPoints = std::numeric_limits<uint16_t>::max());
         
-        void DebugDraw(DebugDrawer& dbg) const override;
+        void DebugDraw(DebugDrawer& dbg, const Transform&) const override;
                 
         virtual ~NavMeshComponent();
     };
