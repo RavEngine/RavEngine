@@ -13,6 +13,7 @@ namespace RavEngine{
         MeshAsset::Bounds bounds;
         mutable SpinLock mtx;
     public:
+		using Queryable<NavMeshComponent,IDebugRenderable>::GetQueryTypes;
         struct Options{
             float cellSize = 0.3;
             float cellHeight = 0.2;
