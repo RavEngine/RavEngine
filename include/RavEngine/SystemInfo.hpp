@@ -22,6 +22,8 @@ namespace RavEngine {
          @return the string name of the GPU, as reported by the operating system (eg "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz")
          */
         std::string CPUBrandString();
+	
+		std::string GPUBrandString();
     
         constexpr static bool IsMobile(){
             return BX_PLATFORM_IOS || BX_PLATFORM_RPI || BX_PLATFORM_OS_MOBILE;

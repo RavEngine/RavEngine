@@ -42,3 +42,5 @@ void AppleOSName(char* buffer, uint16_t size);
 uint32_t GetAppleSystemRAM();
 
 void AppleCPUName(char* buffer, size_t size);
+
+void AppleGPUName(char* buffer, size_t size);

@@ -7,6 +7,7 @@
 #include "Debug.hpp"
 #include "SystemInfo.hpp"
 #include <sys/utsname.h>
+#include <bgfx/platform.h>
 
 #if BX_PLATFORM_OSX
 	#import <Cocoa/Cocoa.h>
@@ -62,9 +63,17 @@ void enableSmoothScrolling(){
     [[NSUserDefaults standardUserDefaults] setBool: YES forKey: @"AppleMomentumScrollSupported"];
 }
 
+void AppleGPUName(char* buffer, size_t size){
+	auto internalData = bgfx::getInternalData();
+	auto device = (id<MTLDevice>)internalData->context;
+	auto name = [device name];
+	
+	std::memcpy(buffer, [name UTF8String], size);
+}
+
 AppleOSVersion GetAppleOSVersion(){
     auto p = [[NSProcessInfo processInfo] operatingSystemVersion];
-    
+
     AppleOSVersion vers;
     vers.major = p.majorVersion;
     vers.minor = p.minorVersion;

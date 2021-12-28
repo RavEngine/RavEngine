@@ -147,6 +147,17 @@ uint32_t SystemInfo::SystemRAM(){
     return 0;
 }
 
+std::string SystemInfo::GPUBrandString(){
+	if constexpr (__APPLE__){
+		char buffer[128];
+		AppleGPUName(buffer, 128);
+		return buffer;
+	}
+	else{
+		return "Unknown GPU";
+	}
+}
+
 uint32_t SystemInfo::GPUVRAM(){
     return GetApp()->GetRenderEngine().GetTotalVRAM();
 }
