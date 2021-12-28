@@ -10,7 +10,7 @@
 #include "Ref.hpp"
 
 namespace RavEngine{
-class GUIComponent : public RavEngine::Queryable<GUIComponent>, public AutoCTTI{
+class GUIComponent : public AutoCTTI{
 protected:
 	friend class RenderEngine;
 	
@@ -48,6 +48,10 @@ protected:
         constexpr inline void EnqueueUIUpdate(const T& func){
             current.load()->enqueue(func);
         }
+		
+		void ScrollY(float amt);
+		void MouseMove();
+		void SetDimensions(uint32_t width, uint32_t height);
     };
     Ref<GUIData> data = std::make_shared<GUIData>();
     
@@ -58,7 +62,9 @@ public:
         return data;
     }
 	
-    void MouseMove();
+	void MouseMove(){
+		data->MouseMove();
+	}
     
 	enum class RenderMode{
 		Screenspace,
@@ -69,22 +75,7 @@ public:
 	 Construct a GUI document using the current screen size
 	 */
 	GUIComponent();
-    
-    GUIComponent(GUIComponent&& other){
-        data = std::move(other.data);
-    }
-	
-    GUIComponent(const GUIComponent& other) : GUIComponent(){
-        data = other.data;
-    }
-    
-    inline GUIComponent& operator=(const GUIComponent& other){
-        if (this != &other){
-            data = other.data;
-        }
-        return *this;
-    }
-    
+
 	/**
 	 Construct a GUI renderer with user-supplied size
 	 @param width the width in pixels of the context
@@ -129,7 +120,9 @@ public:
 	 @param width the new width of the context
 	 @param height the new height of the context
 	 */
-	void SetDimensions(uint32_t width, uint32_t height);
+	void SetDimensions(uint32_t width, uint32_t height){
+		data->SetDimensions(width, height);
+	}
 	
 	/** Bind to your InputManager's mouse X axis mapping
 	 * @param normalized_pos the position of the mouse, in [0,1)
@@ -144,7 +137,9 @@ public:
 	/** Bind to your InputManager's scroll Y axis mapping
 	 * @param normalized_pos the position of the mouse, in [0,1)
 	 */
-	void ScrollY(float amt);
+	void ScrollY(float amt){
+		data->ScrollY(amt);
+	}
 
 	/**
 	Execute code on this element with exclusive thread-safe access. For internal use only.
@@ -173,9 +168,7 @@ public:
 	* Set the RML debugger to focus on this context
 	*/
 	void Debug();
-	
-	virtual ~GUIComponent();
-	
+		
 	/**
 	* Recalculate based on changes made (internal use only)
 	*/

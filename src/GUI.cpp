@@ -140,10 +140,6 @@ bool GUIComponent::Render(){
 	return result;
 }
 
-GUIComponent::~GUIComponent(){
-	
-}
-
 GUIComponent::GUIComponent() : GUIComponent(GetApp()->GetRenderEngine().GetBufferSize().width, GetApp()->GetRenderEngine().GetBufferSize().height, GetApp()->GetRenderEngine().GetDPIScale()){}
 
 GUIComponent::GUIComponent(int width, int height, float DPIScale){
@@ -259,25 +255,25 @@ void GUIComponent::MouseY(float normalized_pos){
 	data->MousePos.y = normalized_pos;
 }
 
-void GUIComponent::ScrollY(float amt){
+void GUIComponent::GUIData::ScrollY(float amt){
 	if (std::abs(amt) > 0.1){
         EnqueueUIUpdate([this,amt]{
-			data->context->ProcessMouseWheel(amt, data->modifier_state);
+			context->ProcessMouseWheel(amt, modifier_state);
 		});
 	}
 }
 
-void GUIComponent::MouseMove(){
+void GUIComponent::GUIData::MouseMove(){
 	//Forward to canvas, using the bitmask
-    auto dim = data->context->GetDimensions();
+    auto dim = context->GetDimensions();
     EnqueueUIUpdate([this,dim] {
-		data->context->ProcessMouseMove(data->MousePos.x * dim.x, data->MousePos.y * dim.y, data->modifier_state);
+		context->ProcessMouseMove(MousePos.x * dim.x, MousePos.y * dim.y, modifier_state);
 	});
 }
 
-void GUIComponent::SetDimensions(uint32_t width, uint32_t height){
+void GUIComponent::GUIData::SetDimensions(uint32_t width, uint32_t height){
     EnqueueUIUpdate([this,width,height] {
-		data->context->SetDimensions(Rml::Vector2i(width, height));
+		context->SetDimensions(Rml::Vector2i(width, height));
 	});
 }
 
