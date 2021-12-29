@@ -154,18 +154,18 @@ uint32_t SystemInfo::SystemRAM(){
 
 #if (_WIN32 && !_UWP) || __linux__
 static std::string vkGetGPUName(void* context) {
-    char buffer[128];
+    char buffer[128]{0};
     bgfx::vk::getPhysicalDeviceName(buffer, 128);
 
-    return string(buffer,128);
+    return string(buffer,std::min(128ul,std::strlen(buffer)));
 }
 #endif
 
 std::string SystemInfo::GPUBrandString(){
 #ifdef __APPLE__
-    char buffer[128];
+    char buffer[128]{0};
 	AppleGPUName(buffer, 128);
-    return string(buffer,128);
+    return string(buffer,std::min(128ul,std::strlen(buffer)));
 #elif _WIN32
     auto data = bgfx::getInternalData();
     switch (bgfx::getRendererType()) {

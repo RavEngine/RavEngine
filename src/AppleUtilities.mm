@@ -68,7 +68,7 @@ void AppleGPUName(char* buffer, size_t size){
 	auto device = (id<MTLDevice>)internalData->context;
 	auto name = [device name];
 	
-	std::memcpy(buffer, [name UTF8String], size);
+	std::memcpy(buffer, [name UTF8String], std::min(size,[name length]));
 }
 
 AppleOSVersion GetAppleOSVersion(){

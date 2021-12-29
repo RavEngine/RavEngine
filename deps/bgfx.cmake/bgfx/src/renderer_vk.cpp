@@ -4,6 +4,7 @@
  */
 
 #include "bgfx_p.h"
+#include <algorithm>
 
 #if BGFX_CONFIG_RENDERER_VULKAN
 #	include <bx/pixelformat.h>
@@ -9047,7 +9048,7 @@ VK_DESTROY
 	void getPhysicalDeviceName(char* buffer, size_t size) {
 		VkPhysicalDeviceProperties data;
 		bgfx::vk::vkGetPhysicalDeviceProperties(s_renderVK->m_physicalDevice, &data);
-		memcpy(buffer, data.deviceName, size);
+		memcpy(buffer, data.deviceName, std::min(size,strlen(data.deviceName)));
 	}
 
 
