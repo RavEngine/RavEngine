@@ -154,7 +154,7 @@ uint32_t SystemInfo::SystemRAM(){
     return 0;
 }
 
-#if _WIN32 || __linux__
+#if (_WIN32 && !_UWP) || __linux__
 static std::string vkGetGPUName(void* context) {
     char buffer[128];
     bgfx::vk::getPhysicalDeviceName(buffer, 128);
@@ -177,7 +177,7 @@ std::string SystemInfo::GPUBrandString(){
 
             // use the local id in DXGI to get the name
             IDXGIFactory4* factory;
-            auto result = CreateDXGIFactory(__uuidof(IDXGIFactory4), (void**)&factory);
+            auto result = CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&factory);
             if (result != S_OK) {
                 return "Unknown GPU - CreateDXGIFactory Failed";
             }
@@ -200,9 +200,11 @@ std::string SystemInfo::GPUBrandString(){
             }
         }
         break;
+#if !_UWP
         case bgfx::RendererType::Vulkan: {
             return vkGetGPUName(data->context);
         }
+#endif
         break;
     }
     
