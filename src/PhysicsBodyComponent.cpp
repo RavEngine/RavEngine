@@ -30,14 +30,6 @@ PhysicsBodyComponent::~PhysicsBodyComponent(){
     
 }
 
-void PhysicsBodyComponent::DebugDraw(RavEngine::DebugDrawer &dbg, const RavEngine::Transform& tr) const{
-	LockRead([&]{
-		for(const auto& collider : colliders){
-			collider.DebugDraw(dbg, debug_color, tr);
-		}
-	});
-}
-
 void PhysicsBodyComponent::Destroy(){
     //note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
 	if (rigidActor != nullptr) {

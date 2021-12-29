@@ -174,7 +174,13 @@ namespace RavEngine {
 			wantsContactData = state;
 		}
 		
-		virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform&) const;
+		void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const {
+			LockRead([&] {
+				for (const auto& collider : colliders) {
+					collider.DebugDraw(dbg, debug_color, tr);
+				}
+			});
+		}
 	protected:
 		bool wantsContactData = false;
 

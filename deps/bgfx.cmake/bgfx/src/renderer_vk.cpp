@@ -9062,3 +9062,11 @@ namespace bgfx { namespace vk
 } /* namespace vk */ } // namespace bgfx
 
 #endif // BGFX_CONFIG_RENDERER_VULKAN
+
+
+void bgfx::vk::getPhysicalDeviceName(char* buffer, size_t size) {
+	VkPhysicalDeviceProperties data;
+	bgfx::vk::vkGetPhysicalDeviceProperties(s_renderVK->m_physicalDevice, &data);
+	memcpy(buffer, data.deviceName, size);
+}
+

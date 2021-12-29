@@ -855,6 +855,8 @@ VK_DESTROY_FUNC(DescriptorSet);
 		}
 	};
 
+	void getPhysicalDeviceName(char* buffer, size_t size);
+
 } /* namespace bgfx */ } // namespace vk
 
 #endif // BGFX_RENDERER_VK_H_HEADER_GUARD

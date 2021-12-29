@@ -3,6 +3,7 @@
 #include <thread>
 #include "Debug.hpp"
 #include <bgfx/bgfx.h>
+#include <bgfx/platform.h>
 #include <bx/bx.h>
 
 #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
@@ -16,12 +17,18 @@
     #include <psapi.h>
     #include <tchar.h>
     #include <sysinfoapi.h>
+    #include <d3d12.h>
+    #include <dxgi1_4.h>
+    #include <locale>
+    #include <codecvt>
+    #include <renderer_vk.h>
 #elif defined __APPLE__
     #include "AppleUtilities.h"
 #elif defined __linux__
     #include <sys/utsname.h>
     #include <sys/sysinfo.h>
     #include <fstream>
+    #include <vulkan_core.h>
 #endif
 
 #if _UWP
@@ -147,15 +154,63 @@ uint32_t SystemInfo::SystemRAM(){
     return 0;
 }
 
+#if _WIN32 || __linux__
+static std::string vkGetGPUName(void* context) {
+    char buffer[128];
+    bgfx::vk::getPhysicalDeviceName(buffer, 128);
+
+    return string(buffer,128);
+}
+#endif
+
 std::string SystemInfo::GPUBrandString(){
-	if constexpr (__APPLE__){
-		char buffer[128];
-		AppleGPUName(buffer, 128);
-		return buffer;
-	}
-	else{
-		return "Unknown GPU";
-	}
+#ifdef __APPLE__
+    char buffer[128];
+	AppleGPUName(buffer, 128);
+    return string(buffer,128);
+#elif _WIN32
+    auto data = bgfx::getInternalData();
+    switch (bgfx::getRendererType()) {
+        case bgfx::RendererType::Direct3D12:{
+            auto d3ddev = (ID3D12Device*)data->context;
+            auto luid = d3ddev->GetAdapterLuid();   // get local ID
+
+            // use the local id in DXGI to get the name
+            IDXGIFactory4* factory;
+            auto result = CreateDXGIFactory(__uuidof(IDXGIFactory4), (void**)&factory);
+            if (result != S_OK) {
+                return "Unknown GPU - CreateDXGIFactory Failed";
+            }
+
+            IDXGIAdapter* currentAdapter;
+            for (int i = 0; factory->EnumAdapters(i, &currentAdapter) != DXGI_ERROR_NOT_FOUND; ++i) {
+                DXGI_ADAPTER_DESC desc;
+                currentAdapter->GetDesc(&desc);
+                if (desc.AdapterLuid.HighPart == luid.HighPart && desc.AdapterLuid.LowPart == luid.LowPart) {
+                    // found it! LUIDs match
+                    // grab the description
+                    std::wstring wstr(desc.Description);
+
+                    //setup converter
+                    using convert_type = std::codecvt_utf8<wchar_t>;
+                    std::wstring_convert<convert_type, wchar_t> converter;
+                    return converter.to_bytes(wstr);
+                }
+
+            }
+        }
+        break;
+        case bgfx::RendererType::Vulkan: {
+            return vkGetGPUName(data->context);
+        }
+        break;
+    }
+    
+   
+    return "Unknown GPU";
+#else
+    return vkGetGPUName(data->context);
+#endif
 }
 
 uint32_t SystemInfo::GPUVRAM(){
