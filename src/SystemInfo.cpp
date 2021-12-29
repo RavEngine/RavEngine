@@ -21,14 +21,12 @@
     #include <dxgi1_4.h>
     #include <locale>
     #include <codecvt>
-    #include <renderer_vk.h>
 #elif defined __APPLE__
     #include "AppleUtilities.h"
 #elif defined __linux__
     #include <sys/utsname.h>
     #include <sys/sysinfo.h>
     #include <fstream>
-    #include <vulkan_core.h>
 #endif
 
 #if _UWP
@@ -210,8 +208,11 @@ std::string SystemInfo::GPUBrandString(){
     
    
     return "Unknown GPU";
-#else
+#elif __linux__
+    auto data = bgfx::getInternalData();
     return vkGetGPUName(data->context);
+#else
+	return "Unknown GPU";
 #endif
 }
 

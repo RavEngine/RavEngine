@@ -342,8 +342,6 @@ target_include_directories("${PROJECT_NAME}"
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
 	"${DEPS_DIR}/stbi"
-	"${DEPS_DIR}/bgfx.cmake/bgfx/3rdparty/khronos/"
-	"${DEPS_DIR}/bgfx.cmake/bgfx/src"
 )
 
 # ====================== Linking ====================

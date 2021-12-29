@@ -4163,6 +4163,9 @@ namespace bgfx
 		, const char* _filePath
 		);
 
+	namespace vk{
+		void getPhysicalDeviceName(char* buffer, size_t size);
+	}
 } // namespace bgfx
 
 #endif // BGFX_H_HEADER_GUARD
