@@ -76,8 +76,13 @@ endif()
 
 # configure build machine tools
 file(MAKE_DIRECTORY ${TOOLS_DIR})
+if(LINUX)
+	# need to ensure that if cross-compiling, we don't use the cross-compiler for the host tools
+	set(LINUX_HOST_CC "-DCMAKE_C_COMPILER=cc" CACHE INTERNAL "")
+	set(LINUX_HOST_CXX "-DCMAKE_CXX_COMPILER=cxx" CACHE INTERNAL "")
+endif()
 execute_process(
-    COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" -DCMAKE_BUILD_TYPE=Release ${DEPS_DIR}/host-tools/
+    COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" ${LINUX_HOST_CC} ${LINUX_HOST_CXX} -DCMAKE_BUILD_TYPE=Release ${DEPS_DIR}/host-tools/
     WORKING_DIRECTORY ${TOOLS_DIR}
 )
 
