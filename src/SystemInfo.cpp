@@ -5,6 +5,7 @@
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
 #include <bx/bx.h>
+#include <cstring>
 
 #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
     #define _UWP 1   
@@ -154,10 +155,11 @@ uint32_t SystemInfo::SystemRAM(){
 
 #if (_WIN32 && !_UWP) || __linux__
 static std::string vkGetGPUName(void* context) {
-    char buffer[128]{0};
-    bgfx::vk::getPhysicalDeviceName(buffer, 128);
+    constexpr auto size = 128;
+    char buffer[size]{0};
+    bgfx::vk::getPhysicalDeviceName(buffer, size);
 
-    return string(buffer,std::min(128ul,std::strlen(buffer)));
+    return string(buffer,strnlen(buffer, size));
 }
 #endif
 

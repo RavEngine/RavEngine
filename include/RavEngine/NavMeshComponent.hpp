@@ -2,7 +2,10 @@
 #include "MeshAsset.hpp"
 #include "IDebugRenderable.hpp"
 #include <DetourNavMeshQuery.h>
+#include <DetourDebugDraw.h>
 #include "Queryable.hpp"
+#include "GetApp.hpp"
+#include "App.hpp"
 
 namespace RavEngine{
     class NavMeshComponent : public IDebugRenderable, public Queryable<NavMeshComponent,IDebugRenderable>{
@@ -12,6 +15,7 @@ namespace RavEngine{
         unsigned char* navData = nullptr;
         MeshAsset::Bounds bounds;
         mutable SpinLock mtx;
+
     public:
 		using Queryable<NavMeshComponent,IDebugRenderable>::GetQueryTypes;
         struct Options{
@@ -56,7 +60,11 @@ namespace RavEngine{
          */
         RavEngine::Vector<vector3> CalculatePath(const vector3& start, const vector3& end, uint16_t maxPoints = std::numeric_limits<uint16_t>::max());
         
-        void DebugDraw(DebugDrawer& dbg, const Transform&) const override;
+        void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {
+            mtx.lock();
+            duDebugDrawNavMesh(&GetApp()->GetRenderEngine(), *navMesh, NULL);
+            mtx.unlock();
+        }
                 
         virtual ~NavMeshComponent();
     };
