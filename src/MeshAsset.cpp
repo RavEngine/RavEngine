@@ -53,13 +53,20 @@ static const aiScene* LoadScene(const std::string& name){
 	return scene;
 }
 
-MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
-	auto scene = LoadScene(name);
+static const aiScene* LoadSceneFilesystem(const std::filesystem::path& path){
+	const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
+	
+	if (!scene){
+		Debug::Fatal("Cannot load from filesystem: {}", aiGetErrorString());
+	}
+	return scene;
+}
 
+void MeshAsset::InitAll(const aiScene* scene, const MeshAssetOptions& options){
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
 	
 	//generate the vertex and index lists
-    RavEngine::Vector<MeshPart> meshes;
+	RavEngine::Vector<MeshPart> meshes;
 	meshes.reserve(scene->mNumMeshes);
 	for(int i = 0; i < scene->mNumMeshes; i++){
 		aiMesh* mesh = scene->mMeshes[i];
@@ -73,26 +80,51 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	InitializeFromMeshPartFragments(meshes, options);
 }
 
-MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
-	auto scene = LoadScene(name);
-	
+void MeshAsset::InitPart(const aiScene* scene, const std::string& meshName, const std::string& fileName, const MeshAssetOptions& options){
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
 	
 	auto node = scene->mRootNode->FindNode(meshName.c_str());
 	if (node == nullptr){
-		Debug::Fatal("No mesh with name {} in scene {}",meshName, name);
+		Debug::Fatal("No mesh with name {} in scene {}",meshName, fileName);
 	}
 	else{
-        RavEngine::Vector<MeshPart> meshes;
+		RavEngine::Vector<MeshPart> meshes;
 		meshes.reserve(node->mNumMeshes);
 		for(int i = 0; i < node->mNumMeshes; i++){
 			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 			auto mp = AIMesh2MeshPart(mesh, scalemat);
 			meshes.push_back(mp);
 		}
+		//free afterward
+		aiReleaseImport(scene);
 		InitializeFromMeshPartFragments(meshes, options);
 	}
 }
+
+MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
+	auto scene = LoadScene(name);
+
+	InitAll(scene, options);
+}
+
+MeshAsset::MeshAsset(const std::filesystem::path& path, const MeshAssetOptions& opt){
+	auto scene = LoadSceneFilesystem(path);
+	
+	InitAll(scene,opt);
+}
+
+MeshAsset::MeshAsset(const std::filesystem::path& path, const std::string& name, const MeshAssetOptions& opt){
+	auto scene = LoadSceneFilesystem(path);
+	
+	InitPart(scene, name, path.string(), opt);
+}
+
+MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
+	auto scene = LoadScene(name);
+	
+	InitPart(scene, meshName, name, options);
+}
+
 
 MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
 {

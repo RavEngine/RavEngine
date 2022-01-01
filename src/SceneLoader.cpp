@@ -11,6 +11,22 @@
 using namespace RavEngine;
 using namespace std;
 
+constexpr static auto aiflags = aiProcess_CalcTangentSpace |
+aiProcess_GenSmoothNormals |
+aiProcess_JoinIdenticalVertices |
+aiProcess_ImproveCacheLocality |
+aiProcess_LimitBoneWeights |
+aiProcess_RemoveRedundantMaterials |
+aiProcess_SplitLargeMeshes |
+aiProcess_Triangulate |
+aiProcess_GenUVCoords |
+aiProcess_SortByPType |
+//aiProcess_FindDegenerates               |
+aiProcess_FindInstances |
+aiProcess_ValidateDataStructure |
+aiProcess_OptimizeMeshes |
+aiProcess_FindInvalidData;
+
 RavEngine::SceneLoader::SceneLoader(const std::string& name)
 {
 	auto dir = StrFormat("objects/{}",name);
@@ -23,25 +39,16 @@ RavEngine::SceneLoader::SceneLoader(const std::string& name)
 
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), str.size(),
-		aiProcess_CalcTangentSpace |
-		aiProcess_GenSmoothNormals |
-		aiProcess_JoinIdenticalVertices |
-		aiProcess_ImproveCacheLocality |
-		aiProcess_LimitBoneWeights |
-		aiProcess_RemoveRedundantMaterials |
-		aiProcess_SplitLargeMeshes |
-		aiProcess_Triangulate |
-		aiProcess_GenUVCoords |
-		aiProcess_SortByPType |
-		//aiProcess_FindDegenerates               |
-		aiProcess_FindInstances |
-		aiProcess_ValidateDataStructure |
-		aiProcess_OptimizeMeshes |
-		aiProcess_FindInvalidData,
-		file_ext.string().c_str());
+	scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), str.size(),aiflags,file_ext.string().c_str());
 
+	if (!scene) {
+		Debug::Fatal("Cannot load: {}", aiGetErrorString());
+	}
+}
 
+SceneLoader::SceneLoader(const std::filesystem::path& path){
+	scene = aiImportFile(path.string().c_str(), aiflags);
+	
 	if (!scene) {
 		Debug::Fatal("Cannot load: {}", aiGetErrorString());
 	}

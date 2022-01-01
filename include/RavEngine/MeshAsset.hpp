@@ -9,8 +9,10 @@
 #include "SpinLock.hpp"
 #include "Manager.hpp"
 #include <boost/container_hash/hash.hpp>
+#include <filesystem>
 
 struct aiMesh;
+struct aiScene;
 
 namespace RavEngine{
 
@@ -85,6 +87,9 @@ protected:
 	// optionally stores a copy of the mesh in system memory
 	MeshPart systemRAMcopy;
 	
+	void InitAll(const aiScene* scene, const MeshAssetOptions& opt);
+	void InitPart(const aiScene* scene, const std::string& name, const std::string& fileName, const MeshAssetOptions& opt);
+	
 public:
 	
     struct Manager : public GenericWeakCache<std::string,MeshAsset>{
@@ -120,7 +125,10 @@ public:
 	 @param keepCopyInSystemMemory maintain a copy of the mesh data in system RAM, for use in features that need it like mesh colliders
 	 */
 	MeshAsset(const std::string& path, const std::string& modelName, const MeshAssetOptions& options = MeshAssetOptions());
+	
+	MeshAsset(const std::filesystem::path& pathOnDisk, const MeshAssetOptions& options = MeshAssetOptions());
 
+	MeshAsset(const std::filesystem::path& pathOnDisk, const std::string& modelName, const MeshAssetOptions& options = MeshAssetOptions());
 	
 	/**
 	 Create a MeshAsset from multiple vertex and index lists

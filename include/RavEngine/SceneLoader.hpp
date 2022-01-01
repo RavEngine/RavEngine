@@ -2,6 +2,7 @@
 #include "Function.hpp"
 #include "Ref.hpp"
 #include "mathtypes.hpp"
+#include <filesystem>
 
 struct aiScene;
 
@@ -28,6 +29,11 @@ namespace RavEngine {
 		* Construct a SceneLoader. This will load the scene file into an intermediate representation.
 		*/
 		SceneLoader(const std::string& sceneFile);
+		
+		/**
+		 Construct a SceneLoader from the user's filesystem. This will load the scene file into an intermediate representation
+		 */
+		SceneLoader(const std::filesystem::path& pathOnDisk);
 
 		/**
 		* Unloads internal representation
