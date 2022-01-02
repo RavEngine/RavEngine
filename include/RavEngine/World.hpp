@@ -290,6 +290,19 @@ namespace RavEngine {
                 auto& elt = elts.at(idx);
                 return BaseIncludingArgument(owner,elt.full_id);
             }
+			
+			auto begin(){
+				return elts.begin();
+			}
+			auto end(){
+				return elts.end();
+			}
+			auto begin() const{
+				return elts.begin();
+			}
+			auto end() const{
+				return elts.end();
+			}
         };
     private:
         class SparseSetForPolymorphic{

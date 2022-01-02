@@ -80,6 +80,10 @@ static Ref<DebugMaterialInstance> mat;
 static Ref<RavEngine::DeferredBlitShader> blitShader;
 Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
 
+#ifdef _DEBUG
+static DebugDrawer dbgdraw;	//for rendering debug primitives
+#endif
+
 
 struct bgfx_msghandler : public bgfx::CallbackI{
     struct cacheItem{
@@ -707,6 +711,16 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 #ifdef _DEBUG
 	Im3d::GetContext().draw();
+	// process debug shapes
+	auto fn = [](auto scale, auto dbg, const auto transform){
+		for(int i = 0; i < dbg.size(); i++){
+			auto& ptr = dbg[i];
+			if (ptr.debugEnabled){
+				ptr.DebugDraw(dbgdraw,transform[0]);
+			}
+		}
+	};
+	worldOwning->FilterPolymorphic<IDebugRenderable, Transform>(fn);
 #endif
 	bgfx::frame();
 	skinningComputeBuffer.Reset();
