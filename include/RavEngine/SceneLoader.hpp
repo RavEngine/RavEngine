@@ -25,6 +25,10 @@ namespace RavEngine {
 
 	struct SceneLoader{
 
+        /**
+        * Construct a SceneLoader. This will load the scene file into an intermediate representation.
+        */
+        SceneLoader(const char* sceneFile);
 		/**
 		* Construct a SceneLoader. This will load the scene file into an intermediate representation.
 		*/
@@ -33,7 +37,7 @@ namespace RavEngine {
 		/**
 		 Construct a SceneLoader from the user's filesystem. This will load the scene file into an intermediate representation
 		 */
-		SceneLoader(const std::filesystem::path& pathOnDisk);
+        SceneLoader(const std::filesystem::path& pathOnDisk);
 
 		/**
 		* Unloads internal representation

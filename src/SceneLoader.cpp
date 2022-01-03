@@ -27,7 +27,9 @@ aiProcess_ValidateDataStructure |
 aiProcess_OptimizeMeshes |
 aiProcess_FindInvalidData;
 
-RavEngine::SceneLoader::SceneLoader(const std::string& name)
+SceneLoader::SceneLoader(const std::string& name) : SceneLoader(name.c_str()){}
+
+RavEngine::SceneLoader::SceneLoader(const char* name)
 {
 	auto dir = StrFormat("objects/{}",name);
 
