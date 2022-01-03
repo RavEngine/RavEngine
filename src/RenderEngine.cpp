@@ -710,7 +710,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd, Views::FinalBlit);
 	
 #ifdef _DEBUG
-	Im3d::GetContext().draw();
 	// process debug shapes
 	auto fn = [](auto scale, auto dbg, const auto transform){
 		for(int i = 0; i < dbg.size(); i++){
@@ -721,6 +720,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		}
 	};
 	worldOwning->FilterPolymorphic<IDebugRenderable, Transform>(fn);
+	Im3d::GetContext().draw();
 #endif
 	bgfx::frame();
 	skinningComputeBuffer.Reset();

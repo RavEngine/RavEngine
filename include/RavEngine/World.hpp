@@ -218,7 +218,7 @@ namespace RavEngine {
             }
         };
         
-        UnorderedNodeMap<RavEngine::ctti_t, SparseSetErased> componentMap;
+		locked_node_hashmap<RavEngine::ctti_t, SparseSetErased,SpinLock> componentMap;
     public:
         struct PolymorphicIndirection{
             struct elt{
@@ -419,15 +419,7 @@ namespace RavEngine {
         
         template<typename T>
         inline SparseSet<T>* MakeIfNotExists(){
-            auto id = RavEngine::CTTI<T>();
-            auto it = componentMap.find(id);
-            if (it == componentMap.end()){
-                T* discard; // to make the template work
-                it = componentMap.emplace(std::make_pair(id,discard)).first;
-            }
-            auto ptr = (*it).second.template GetSet<T>();
-            assert(ptr != nullptr);
-            return ptr;
+            return (*componentMap.try_emplace(RavEngine::CTTI<T>(),static_cast<T*>(nullptr)).first).second.template GetSet<T>();
         }
         
         template<typename T, typename ... A>
