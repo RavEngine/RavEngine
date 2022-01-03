@@ -78,7 +78,9 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 
 
 void AudioPlayer::Init(){
-	SDL_InitSubSystem(SDL_INIT_AUDIO);
+	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0){
+		Debug::Fatal("Could not init Audio subsystem: {}",SDL_GetError());
+	}
 	
 	SDL_AudioSpec want, have;
 	
