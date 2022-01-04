@@ -21,10 +21,10 @@
 namespace RavEngine {
 	class Transform : public ComponentWithOwner, public Queryable<Transform> {
 	public:
-		typedef UnorderedContiguousSet<ComponentHandle<Transform>> childStore;
+		typedef UnorderedVector<ComponentHandle<Transform>> childStore;
 		virtual ~Transform(){}
 		Transform(entity_t owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false) : ComponentWithOwner(owner){
-            matrix.store(matrix4(1));
+            matrix = matrix4(1);
 			SetLocalPosition(inpos);
 			SetLocalRotation(inrot);
 			SetLocalScale(inscale);
@@ -32,34 +32,6 @@ namespace RavEngine {
 		}
 		Transform(entity_t owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
         
-        Transform(Transform&& other) : ComponentWithOwner(other.GetOwner().id){
-            position = std::move(other.position);
-            rotation = std::move(other.rotation);
-            scale = std::move(other.scale);
-            matrix.store(matrix4(1));
-            parent = std::move(other.parent);
-            children = std::move(other.children);
-			isStatic = other.isStatic;
-        }
-        
-        Transform(const Transform& other) : Transform(other.GetOwner().id, other.position,other.rotation,other.scale){
-            parent = other.parent;
-            children = other.children;
-        }
-        
-        inline Transform& operator=(const Transform& other){
-			if (&other != this) {
-				position = other.position;
-				rotation = other.rotation;
-				scale = other.scale;
-				children = other.children;
-				isStatic = other.isStatic;
-				parent = other.parent;
-				isStatic = other.isStatic;
-			}
-            return *this;
-        }
-
 		void SetLocalPosition(const vector3&);
 		void SetWorldPosition(const vector3&);
 		void LocalTranslateDelta(const vector3&);
@@ -115,23 +87,18 @@ namespace RavEngine {
 		void RemoveChild(ComponentHandle<Transform> child);
 
 	protected:
-		LockFreeAtomic<vector3,phmap::NullMutex> position;
+		vector3 position, scale;
 		LockFreeAtomic<quaternion,phmap::NullMutex> rotation;
-		LockFreeAtomic<vector3,phmap::NullMutex> scale;
-		mutable LockFreeAtomic<matrix4,phmap::NullMutex> matrix;
+		mutable matrix4 matrix;
 		
-		SpinLock childModifyLock;
-        mutable std::atomic<bool> isDirty = false;
+        mutable bool isDirty = false;
 		
 		inline void MarkAsDirty(Transform* root) const{
-			root->childModifyLock.lock();
 			root->isDirty = true;
 			
 			for(auto& t : root->children){
 				MarkAsDirty(t.get());
 			}
-			
-			root->childModifyLock.unlock();
 		}
 
 		bool isStatic = false;
@@ -188,7 +155,7 @@ namespace RavEngine {
 	inline void Transform::LocalTranslateDelta(const vector3& delta) {
 		//set position value
 		MarkAsDirty(this);
-		position.store((vector3)position + delta);
+		position += delta;
 	}
 
 	inline void Transform::WorldTranslateDelta(const vector3& delta){
@@ -202,7 +169,7 @@ namespace RavEngine {
 	inline void Transform::SetLocalPosition(const vector3& newPos) {
 		//set position value
 		MarkAsDirty(this);
-		position.store(newPos);
+		position = newPos;
 	}
 
 	/**
@@ -270,12 +237,12 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalScale(const vector3& newScale) {
 		MarkAsDirty(this);
-		scale.store(newScale);
+		scale = newScale;
 	}
 
 	inline void Transform::LocalScaleDelta(const vector3& delta) {
 		MarkAsDirty(this);
-		scale.store((vector3)scale + delta);
+		scale += delta;
 	}
 
 	inline vector3 Transform::GetLocalPosition() const
@@ -314,7 +281,7 @@ namespace RavEngine {
 				mat *= transforms[i];
 			}
 			mat *= GenerateLocalMatrix();
-			matrix.store(mat);
+			matrix = mat;
 			isDirty = false;
 			return mat;
 		}

@@ -9,7 +9,6 @@ using namespace RavEngine;
 
 void Transform::AddChild(ComponentHandle<Transform> child)
 {
-	childModifyLock.lock();
     auto cptr = child.get();
 	auto worldPos = cptr->GetWorldPosition();
 	auto worldRot = cptr->GetWorldRotation();
@@ -19,12 +18,10 @@ void Transform::AddChild(ComponentHandle<Transform> child)
 	
     cptr->SetWorldPosition(worldPos);
     cptr->SetWorldRotation(worldRot);
-	childModifyLock.unlock();
 }
 
 void Transform::RemoveChild(ComponentHandle<Transform> child)
 {
-	childModifyLock.lock();
     auto cptr = child.get();
 	auto worldPos = cptr->GetWorldPosition();
 	auto worldRot = cptr->GetWorldRotation();
@@ -32,5 +29,4 @@ void Transform::RemoveChild(ComponentHandle<Transform> child)
 	children.erase(child);
 	cptr->SetWorldPosition(worldPos);
 	cptr->SetWorldRotation(worldRot);
-	childModifyLock.unlock();
 }

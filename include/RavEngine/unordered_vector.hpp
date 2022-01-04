@@ -38,7 +38,7 @@ public:
     }
 	
     /**
-     Erase by iterator. Complexity is O(n)
+     Erase by value. Complexity is O(n)
      @param value the data to erase
      */
 	inline const_iterator_type erase(const T& value){
