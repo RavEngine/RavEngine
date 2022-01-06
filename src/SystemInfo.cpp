@@ -32,6 +32,7 @@
 
 #if _UWP
 #include <winrt/Windows.System.Diagnostics.h>
+#include <winrt/Windows.System.Profile.h>
 using namespace winrt;
 #endif
 
@@ -90,9 +91,10 @@ std::string SystemInfo::OperatingSystemNameString(){
     AppleOSName(buf, sizeof(buf));
     return buf;
 #elif _UWP
-    return "Windows-UWP";
+    auto vi = Windows::System::Profile::AnalyticsInfo::VersionInfo();
+    return StrFormat("UWP {}",to_string(vi.DeviceFamily()));
 #elif _WIN32
-    return "Windows";
+    return "Windows WIN32";
 #elif __linux__
     ifstream in("/etc/os-release");
     if (!in.is_open()){
@@ -117,10 +119,27 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
     vers.major = v.major;
     vers.minor = v.minor;
     vers.patch = v.patch;
+#elif _UWP
+    auto vi = Windows::System::Profile::AnalyticsInfo::VersionInfo();
+    auto str = to_string(vi.DeviceFamilyVersion());
+    auto asInt = std::stoull(str);
+    // convert this int into the four-part version
+    vers.major = (asInt & 0xFFFF000000000000) >> 48;
+    vers.minor = (asInt & 0xFFFF00000000) >> 32;
+    vers.patch = (asInt & 0xFFFF0000) >> 16;
+    vers.extra = (asInt & 0xFFFF);
 #elif _WIN32
-    // microsoft doesn't seem to have a working API for this
-    // so everything is "10"
-    vers.major = 10;
+    NTSTATUS(WINAPI * RtlGetVersion)(LPOSVERSIONINFOEXW);
+    OSVERSIONINFOEXW osInfo;
+    *(FARPROC*)&RtlGetVersion = GetProcAddress(GetModuleHandleA("ntdll"), "RtlGetVersion");
+    if (NULL != RtlGetVersion)
+    {
+        osInfo.dwOSVersionInfoSize = sizeof(osInfo);
+        RtlGetVersion(&osInfo);
+        vers.major = osInfo.dwMajorVersion;
+        vers.minor = osInfo.dwMinorVersion;
+        vers.patch = osInfo.dwBuildNumber;
+    }
 #elif __linux__
     utsname s;
     uname(&s);
