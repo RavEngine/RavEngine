@@ -20,6 +20,8 @@ private:
 		fprintf(output,"[%s] %s - %s\n",date.c_str(),type,message);
 		mtx.unlock();
 	}
+    
+    static void InvokeUserHandler(const char* msg);
 	
 public:
 	
@@ -111,6 +113,7 @@ public:
 	 */
 	static inline void Fatal(const char* message){
 		Debug::Error(message);
+        InvokeUserHandler(message);
 		throw std::runtime_error(message);
 	}
 	
@@ -122,7 +125,9 @@ public:
 	template <typename ... T>
 	static inline void Fatal(const char* formatstr, T... values){
 		Debug::Error(formatstr,values...);
-		throw std::runtime_error(StrFormat(formatstr,values...));
+        auto formattedMsg = StrFormat(formatstr,values...);
+        InvokeUserHandler(formattedMsg.c_str());
+		throw std::runtime_error(formattedMsg);
 	}
     
     /**

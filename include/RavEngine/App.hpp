@@ -49,6 +49,11 @@ namespace RavEngine {
 	public:
 		App(const std::string& resourcesName);
 		virtual ~App();
+        
+        /**
+         Override this method to provide a custom fatal handler
+         */
+        virtual void OnFatal(const char* msg){}
 		
 		/**
 		 Signal to gracefully shut down the application

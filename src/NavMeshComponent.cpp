@@ -145,6 +145,10 @@ void NavMeshComponent::UpdateNavMesh(Ref<MeshAsset> mesh, Options opt){
     if(!rcBuildPolyMesh(&ctx, *cset, cfg.maxVertsPerPoly, *pmesh)){
         Debug::Fatal("Contour triangulation failed");
     }
+    // TODO: fix - for now, set all poly flags to 1 so that the filter includes them
+    for(int i = 0; i < pmesh->npolys; i++){
+        pmesh->flags[i] = 1;
+    }
     
     // step 7: create detail mesh to approximate height on each polygon
     auto dmesh = rcAllocPolyMeshDetail();
@@ -264,11 +268,6 @@ RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start,
     dtStatus status;
     dtPolyRef startPoly;
     dtPolyRef endPoly;
-    
-    dtPolyRef polys[2048];
-    int count = 5;
-    status = navMeshQuery->queryPolygons(center, halfexts, &filter, polys, &count, 2048);
-    Debug::Assert(dtStatusSucceed(status), "Filed");
     
     status = navMeshQuery->findNearestPoly(startf, halfexts, &filter, &startPoly, nearestpt);
     if (dtStatusFailed(status) || startPoly == 0){
