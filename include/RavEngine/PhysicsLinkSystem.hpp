@@ -6,7 +6,6 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#include "System.hpp"
 #include "PhysXDefines.h"
 #include <PxPhysicsAPI.h>
 #include "PhysicsBodyComponent.hpp"

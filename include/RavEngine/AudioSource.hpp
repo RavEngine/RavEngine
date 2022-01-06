@@ -56,9 +56,9 @@ struct AudioPlayerData {
         Ref<AudioAsset> asset;
         float volume = 1;
         size_t playhead_pos = 0;
-        bool loops = false;
-        bool isPlaying = false;
-        Player(decltype(asset) a) : asset(a){}
+        bool loops : 1;
+        bool isPlaying : 1;
+        Player(decltype(asset) a) : asset(a), loops(false), isPlaying(false){}
         
         inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
             for(size_t i = 0; i < count/sizeof(buffer[0]); i++){

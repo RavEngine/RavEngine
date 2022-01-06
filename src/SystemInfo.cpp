@@ -186,7 +186,7 @@ std::string SystemInfo::GPUBrandString(){
 #ifdef __APPLE__
     char buffer[128]{0};
 	AppleGPUName(buffer, 128);
-    return string(buffer,std::min(128ul,std::strlen(buffer)));
+    return string(buffer,strnlen(buffer,128));
 #elif _WIN32
     auto data = bgfx::getInternalData();
     switch (bgfx::getRendererType()) {
@@ -219,15 +219,14 @@ std::string SystemInfo::GPUBrandString(){
             }
         }
         break;
-#if !_UWP
+    #if !_UWP
         case bgfx::RendererType::Vulkan: {
             return vkGetGPUName(data->context);
         }
-#endif
+    #endif
         break;
     }
     
-   
     return "Unknown GPU";
 #elif __linux__
     auto data = bgfx::getInternalData();
@@ -248,14 +247,14 @@ uint32_t SystemInfo::GPUVRAMinUse(){
 SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
     SystemInfo::GPUFeatures features;
     auto caps = bgfx::getCaps()->supported;
-    features.features[SystemInfo::GPUFeatures::Features::iDrawIndirect] = caps & BGFX_CAPS_DRAW_INDIRECT;
-    features.features[SystemInfo::GPUFeatures::Features::iHDR10] = caps & BGFX_CAPS_HDR10;
-    features.features[GPUFeatures::Features::iOcclusionQuery] = caps & BGFX_CAPS_OCCLUSION_QUERY;
-    features.features[GPUFeatures::Features::iDMA] = caps & BGFX_CAPS_TEXTURE_DIRECT_ACCESS;
-    features.features[GPUFeatures::Features::iReadback] = caps & BGFX_CAPS_TEXTURE_READ_BACK;
-    features.features[GPUFeatures::Features::iHIDPI] = caps & BGFX_CAPS_HIDPI;
-    features.features[GPUFeatures::Features::iUint10Attribute] = caps & BGFX_CAPS_VERTEX_ATTRIB_UINT10;
-    features.features[GPUFeatures::Features::iHalfAttribute] = caps & BGFX_CAPS_VERTEX_ATTRIB_HALF;
+    features.DrawIndirect = caps & BGFX_CAPS_DRAW_INDIRECT;
+    features.HDR10 = caps & BGFX_CAPS_HDR10;
+    features.OcclusionQuery = caps & BGFX_CAPS_OCCLUSION_QUERY;
+    features.DMA = caps & BGFX_CAPS_TEXTURE_DIRECT_ACCESS;
+    features.Readback = caps & BGFX_CAPS_TEXTURE_READ_BACK;
+    features.HIDPI = caps & BGFX_CAPS_HIDPI;
+    features.Uint10Attribute = caps & BGFX_CAPS_VERTEX_ATTRIB_UINT10;
+    features.HalfAttribute = caps & BGFX_CAPS_VERTEX_ATTRIB_HALF;
     return features;
 }
 

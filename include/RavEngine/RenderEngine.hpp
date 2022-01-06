@@ -247,9 +247,6 @@ namespace RavEngine {
 		
 		WeakRef<World> worldToDraw;
 		std::optional<std::thread> renderThread;
-		std::atomic<bool> render_thread_exit = false;
-		std::atomic<bool> bgfx_thread_finished_init = false;
-		ConcurrentQueue<Function<void(void)>> RenderThreadQueue;
 		float currentFrameTime;
 
 		static SDL_Window* window;

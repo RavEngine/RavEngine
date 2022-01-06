@@ -1,6 +1,5 @@
 #pragma once
 
-#include "System.hpp"
 #include "ScriptComponent.hpp"
 #include "CTTI.hpp"
 

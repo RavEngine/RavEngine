@@ -83,38 +83,17 @@ namespace RavEngine {
         uint32_t GPUVRAMinUse();
     
         struct GPUFeatures{
-            enum Features{
-                iDrawIndirect,
-                iHDR10,
-                iHIDPI,
-                iOcclusionQuery,
-                iDMA,
-                iReadback,
-                iUint10Attribute,
-                iHalfAttribute,
-                Count
-            };
-            std::bitset<Features::Count> features{0};
-            bool DrawIndirect(){
-                return features[Features::iDrawIndirect];
-            }
-            bool HDRI10(){
-                return features[Features::iHDR10];
-            }
-            bool OcclusionQuery(){
-                return features[Features::iOcclusionQuery];
-            }
-            bool DMA(){
-                return features[Features::iDMA];
-            }
-            bool Readback(){
-                return features[Features::iReadback];
-            }
-            bool Uint10Attribute(){
-                return features[Features::iUint10Attribute];
-            }
-            bool HalfAttribute(){
-                return features[Features::iHalfAttribute];
+            bool
+            DrawIndirect : 1,
+            HDR10 : 1,
+            HIDPI : 1,
+            OcclusionQuery : 1,
+            DMA : 1,
+            Readback : 1,
+            Uint10Attribute :1,
+            HalfAttribute : 1;
+            GPUFeatures(){
+                std::memset(this,0,sizeof(GPUFeatures));
             }
         };
         GPUFeatures GetSupportedGPUFeatures();

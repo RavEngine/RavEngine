@@ -29,9 +29,7 @@ public:
     constexpr inline void SetValues(T* value, int numValues){
 		bgfx::setUniform(handle, value, numValues);
 	}
-	
-	//TODO: static factory to create vector of uniforms from Material
-	
+    
 	/**
 	 * @return true if this uniform is valid and therefore safe to use
 	 */

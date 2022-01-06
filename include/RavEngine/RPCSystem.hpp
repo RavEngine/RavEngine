@@ -1,5 +1,4 @@
 #pragma once
-#include "System.hpp"
 #include "RPCComponent.hpp"
 
 namespace RavEngine {

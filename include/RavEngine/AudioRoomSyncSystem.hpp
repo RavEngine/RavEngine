@@ -1,5 +1,4 @@
 #pragma once
-#include "System.hpp"
 #include "CTTI.hpp"
 #include "AudioRoom.hpp"
 #include "ComponentHandle.hpp"

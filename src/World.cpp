@@ -8,7 +8,6 @@
 #include "World.hpp"
 #include <iostream>
 #include <algorithm>
-#include "System.hpp"
 #include "ScriptComponent.hpp"
 #include "App.hpp"
 #include "PhysicsLinkSystem.hpp"

@@ -95,9 +95,9 @@ void AppleOSName(char* buffer, uint16_t size){
 #elif TARGET_OS_OSX
     "macOS";
 #else
-#error This Apple platform is not supported
+    #error This Apple platform is not supported
 #endif
-    memcpy(buffer, name, std::min((size_t)size,strlen(name)));
+    memcpy(buffer, name, strnlen(name, size));
 }
 
 void AppleCPUName(char* buffer, size_t size){
@@ -106,7 +106,7 @@ void AppleCPUName(char* buffer, size_t size){
 		uname(&sysinfo);
 		//NSString* devName = [[UIDevice currentDevice] modelName];
 		//const char* ptr = [devName UTF8String];
-		memcpy(buffer, sysinfo.machine, size);
+		memcpy(buffer, sysinfo.machine, strnlen(sysinfo.machine, size));
 	}
 	else{
 		sysctlbyname("machdep.cpu.brand_string", buffer, &size, NULL, 0);

@@ -23,12 +23,11 @@ namespace RavEngine {
 	public:
 		typedef UnorderedVector<ComponentHandle<Transform>> childStore;
 		virtual ~Transform(){}
-		Transform(entity_t owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale, bool inStatic = false) : ComponentWithOwner(owner){
+		Transform(entity_t owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale) : ComponentWithOwner(owner){
             matrix = matrix4(1);
 			SetLocalPosition(inpos);
 			SetLocalRotation(inrot);
 			SetLocalScale(inscale);
-			isStatic = inStatic;
 		}
 		Transform(entity_t owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
         
@@ -90,7 +89,6 @@ namespace RavEngine {
 		vector3 position, scale;
 		LockFreeAtomic<quaternion,phmap::NullMutex> rotation;
 		mutable matrix4 matrix;
-		
         mutable bool isDirty = false;
 		
 		inline void MarkAsDirty(Transform* root) const{
@@ -100,8 +98,6 @@ namespace RavEngine {
 				MarkAsDirty(t.get());
 			}
 		}
-
-		bool isStatic = false;
 
 		childStore children;		//non-owning
 		ComponentHandle<Transform> parent;	//non-owning

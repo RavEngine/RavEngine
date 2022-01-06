@@ -215,7 +215,7 @@ public:
 	 Create an AnimatorComponent with a SkeletonAsset
 	 @param sk the skeleton asset
 	 */
-	AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : ComponentWithOwner(owner){
+	AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : ComponentWithOwner(owner), isPlaying(false), isBlending(false){
 		UpdateSkeletonData(sk);
 	}
 		
@@ -332,8 +332,8 @@ protected:
 		skinningmats.resize(n_joints);
 	}
 	
-	bool isPlaying = false;
-	bool isBlending = false;
+	bool isPlaying : 1;
+	bool isBlending : 1;
 	float currentBlendingValue = 0;
 
 	// stores sockets
@@ -424,6 +424,7 @@ public:
 	inline const decltype(skinningmats)& GetSkinningMats(){
 		return skinningmats;
 	}
+    
 };
 
 }
