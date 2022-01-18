@@ -283,42 +283,93 @@ void World::setupRenderTasks(){
 	}).name("Init iterators");
 	
 	//sort into the hashmap
-	auto sort = renderTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
-		auto current = GetApp()->GetCurrentFramedata();
-        if (e.Enabled) {
-            auto& pair = e.getTuple();
-            auto mat = e.GetOwner().GetTransform().CalculateWorldMatrix();
-            auto& item = current->opaques[pair];
-            item.AddItem(mat);
-        }
-	}).name("sort static");
-	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& m){
-        if (m.Enabled) {
-            auto& pair = m.getTuple();
-            auto mat = m.GetOwner().GetTransform().CalculateWorldMatrix();
-            auto current = GetApp()->GetCurrentFramedata();
-            auto& item = current->skinnedOpaques[pair];
-            item.AddItem(mat);
-            // write the pose if there is one
-            if (m.GetOwner().HasComponent<AnimatorComponent>()) {
-                auto& animator = m.GetOwner().GetComponent<AnimatorComponent>();
-                item.AddSkinningData(animator.GetSkinningMats());
+    auto sort = renderTasks.emplace([this]{
+        auto current = GetApp()->GetCurrentFramedata();
+        auto staticmeshes = GetAllComponentsOfType<StaticMesh>();
+        if (staticmeshes){
+            for(const auto& e : *staticmeshes.value()){
+                if (e.Enabled) {
+                    auto& pair = e.getTuple();
+                    auto mat = e.GetOwner().GetTransform().CalculateWorldMatrix();
+                    auto& item = current->opaques[pair];
+                    item.AddItem(mat);
+                }
             }
         }
-	}).name("sort skinned");
-    auto sortInstanced = renderTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
-        auto current = GetApp()->GetCurrentFramedata();
-        if (m.Enabled){
-            auto& pair = m.getTuple();
-            m.CalculateMatrices();
-            auto& mats = m.GetAllTransforms();
-
-            auto& item = current->opaques[pair];
-            item.mtx.lock();
-            item.items.insert(item.items.end(), mats.begin(),mats.end());
-            item.mtx.unlock();
+    }).name("sort static serial");
+//	auto sort = renderTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
+//		auto current = GetApp()->GetCurrentFramedata();
+//        if (e.Enabled) {
+//            auto& pair = e.getTuple();
+//            auto mat = e.GetOwner().GetTransform().CalculateWorldMatrix();
+//            auto& item = current->opaques[pair];
+//            item.AddItem(mat);
+//        }
+//	}).name("sort static");
+//	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& m){
+//        if (m.Enabled) {
+//            auto& pair = m.getTuple();
+//            auto mat = m.GetOwner().GetTransform().CalculateWorldMatrix();
+//            auto current = GetApp()->GetCurrentFramedata();
+//            auto& item = current->skinnedOpaques[pair];
+//            item.AddItem(mat);
+//            // write the pose if there is one
+//            if (m.GetOwner().HasComponent<AnimatorComponent>()) {
+//                auto& animator = m.GetOwner().GetComponent<AnimatorComponent>();
+//                item.AddSkinningData(animator.GetSkinningMats());
+//            }
+//        }
+//	}).name("sort skinned");
+    auto sortskinned = renderTasks.emplace([this]{
+        auto skinneds = GetAllComponentsOfType<SkinnedMeshComponent>();
+        if (skinneds){
+            for(const auto& m : *skinneds.value()){
+                if (m.Enabled) {
+                    auto& pair = m.getTuple();
+                    auto mat = m.GetOwner().GetTransform().CalculateWorldMatrix();
+                    auto current = GetApp()->GetCurrentFramedata();
+                    auto& item = current->skinnedOpaques[pair];
+                    item.AddItem(mat);
+                    // write the pose if there is one
+                    if (m.GetOwner().HasComponent<AnimatorComponent>()) {
+                        auto& animator = m.GetOwner().GetComponent<AnimatorComponent>();
+                        item.AddSkinningData(animator.GetSkinningMats());
+                    }
+                }
+            }
         }
-    }).name("sort instanced");
+    }).name("sort skinned serial");
+//    auto sortInstanced = renderTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
+//        auto current = GetApp()->GetCurrentFramedata();
+//        if (m.Enabled){
+//            auto& pair = m.getTuple();
+//            m.CalculateMatrices();
+//            auto& mats = m.GetAllTransforms();
+//
+//            auto& item = current->opaques[pair];
+//            item.mtx.lock();
+//            item.items.insert(item.items.end(), mats.begin(),mats.end());
+//            item.mtx.unlock();
+//        }
+//    }).name("sort instanced");
+    auto sortInstanced = renderTasks.emplace([this]{
+        auto current = GetApp()->GetCurrentFramedata();
+        auto instanced = GetAllComponentsOfType<InstancedStaticMesh>();
+        if (instanced){
+            for(const auto& m : *instanced.value()){
+                if (m.Enabled){
+                    auto& pair = m.getTuple();
+                    m.CalculateMatrices();
+                    auto& mats = m.GetAllTransforms();
+
+                    auto& item = current->opaques[pair];
+                    //item.mtx.lock();
+                    item.items.insert(item.items.end(), mats.begin(),mats.end());
+                    //item.mtx.unlock();
+                }
+            }
+        }
+    }).name("sort instanced - serial");
 
 	init.precede(sort,sortskinned,sortInstanced);
 

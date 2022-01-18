@@ -27,32 +27,32 @@ struct FrameData{
 	template<typename T>
     struct entry{
         Vector<T> items;
-        entry(const entry<T>& other){
-            items = other.items;
-			skinningdata = other.skinningdata;
-        }
-        entry(){}
-        SpinLock mtx, skinningMtx;
+        //SpinLock mtx;
         
         inline void AddItem(const typename decltype(items)::value_type& item){
-            mtx.lock();
+            //mtx.lock();
             items.push_back(item);
-            mtx.unlock();
+            //mtx.unlock();
         }
+    };
+    
+    template<typename T>
+    struct skinningEntry : public entry<T>{
+        //SpinLock skinningMtx;
         
         //used by skinned mesh
         ozz::vector<ozz::vector<T>> skinningdata;
         
         inline void AddSkinningData(const typename decltype(skinningdata)::value_type& item){
-            skinningMtx.lock();
+            //skinningMtx.lock();
             skinningdata.push_back(item);
-            skinningMtx.unlock();
+            //skinningMtx.unlock();
         }
     };
 	
 	//opaque pass data
-	locked_node_hashmap<std::tuple<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>,SpinLock> opaques;
-    locked_node_hashmap<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, entry<matrix4>,SpinLock> skinnedOpaques;
+	UnorderedMap<std::tuple<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>/*,SpinLock*/> opaques;
+    UnorderedMap<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, skinningEntry<matrix4>/*,SpinLock*/> skinnedOpaques;
 	
 	template<typename T>
 	struct StoredLight{
@@ -106,11 +106,6 @@ struct FrameData{
     Colony<StoredLight<PointLight>> points;
     Colony<StoredLight<SpotLight>> spots;
 	
-    // TODO: use normal vector, to avoid copying unused-in-iteration cache data 
-#ifdef _DEBUG
-    //Vector<Ref<Component>> debugShapesToDraw;
-#endif
-	
 	inline void Clear(){
 		opaques.clear();
 		skinnedOpaques.clear();
@@ -123,14 +118,7 @@ struct FrameData{
     // call on app quit
     void Reset(){
         Clear();
-#ifdef _DEBUG
-        //debugShapesToDraw.clear();
-#endif
     }
-	
-	//default constructor
-	FrameData(){}
-    
     double Time = 0;
 	
 };
