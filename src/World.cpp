@@ -385,7 +385,7 @@ void World::setupRenderTasks(){
                     static_cast<float>(rot.z)
                 };
                 auto current = GetApp()->GetCurrentFramedata();
-                current->directionals.emplace(ptr->Get(i),r);
+                current->AddLight(current->directionals,ptr->Get(i),r);
             }
         }
 	}).name("copydirs");
@@ -394,7 +394,7 @@ void World::setupRenderTasks(){
             auto ptr = ambs.value();
             for(const auto& a : *ptr){
                 auto current = GetApp()->GetCurrentFramedata();
-                current->ambients.emplace(a);
+                current->AddLight(current->ambients,a);
             }
         }
 
@@ -407,7 +407,7 @@ void World::setupRenderTasks(){
                 auto transform = owner.GetTransform().CalculateWorldMatrix();
                 auto current = GetApp()->GetCurrentFramedata();
                 const auto& l = ptr->Get(i);
-                current->spots.emplace(l,l.CalculateMatrix(transform));
+                current->AddLight(current->spots,l,l.CalculateMatrix(transform));
             }
         }
 
@@ -420,7 +420,7 @@ void World::setupRenderTasks(){
                 const auto& d = ptr->Get(i);
                 auto transform = owner.GetTransform().CalculateWorldMatrix();
                 auto current = GetApp()->GetCurrentFramedata();
-                current->points.emplace(d,d.CalculateMatrix(transform));
+                current->AddLight(current->points,d,d.CalculateMatrix(transform));
             }
         }
 

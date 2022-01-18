@@ -34,6 +34,9 @@ struct FrameData{
             items.push_back(item);
             //mtx.unlock();
         }
+        inline void clear(){
+            items.clear();
+        }
     };
     
     template<typename T>
@@ -47,6 +50,10 @@ struct FrameData{
             //skinningMtx.lock();
             skinningdata.push_back(item);
             //skinningMtx.unlock();
+        }
+        inline void clear(){
+            entry<T>::clear();
+            skinningdata.clear();
         }
     };
 	
@@ -101,14 +108,26 @@ struct FrameData{
 	};
 	
 	//lighting data
-    Colony<PackedDL> directionals;
-    Colony<AmbientLight> ambients;
-    Colony<StoredLight<PointLight>> points;
-    Colony<StoredLight<SpotLight>> spots;
+    Vector<PackedDL> directionals;
+    Vector<AmbientLight> ambients;
+    Vector<StoredLight<PointLight>> points;
+    Vector<StoredLight<SpotLight>> spots;
+    
+    template<typename T, typename ... A>
+    inline void AddLight(T& structure, A... args){
+        structure.emplace_back(args...);
+    }
+    
+    template<typename T>
+    inline void ResetMap(T& map){
+        for(auto& row : map){
+            row.second.clear();
+        }
+    }
 	
 	inline void Clear(){
-		opaques.clear();
-		skinnedOpaques.clear();
+        ResetMap(opaques);
+        ResetMap(skinnedOpaques);
 		directionals.clear();
 		ambients.clear();
 		points.clear();
