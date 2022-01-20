@@ -14,11 +14,11 @@
 
 namespace RavEngine{
 struct Transform;
-class normalized_vec2{
+class clamped_vec2{
 	float x, y;
 public:
-	normalized_vec2(float ix, float iy) : x(std::clamp(ix,-1.0f,1.0f)), y(std::clamp(iy,-1.0f,1.0f)){}
-	normalized_vec2() : normalized_vec2(0,0){}
+	clamped_vec2(float ix, float iy) : x(std::clamp(ix,-1.0f,1.0f)), y(std::clamp(iy,-1.0f,1.0f)){}
+	clamped_vec2() : clamped_vec2(0,0){}
 	
 	constexpr inline decltype(x) get_x() const{
 		return x;
@@ -31,7 +31,7 @@ public:
 struct AnimBlendTree : public IAnimGraphable{
 	struct Node : public IAnimGraphable{
 		Ref<IAnimGraphable> state;
-		normalized_vec2 graph_pos;
+		clamped_vec2 graph_pos;
 		float max_influence = 1;
 		
 		Node(){}
@@ -39,7 +39,7 @@ struct AnimBlendTree : public IAnimGraphable{
 		Node(const Node& other) : state(other.state), graph_pos(other.graph_pos), max_influence(other.max_influence){}
 		
 		template<typename T>
-		Node(Ref<T> s, const normalized_vec2& pos, float i = 1) : state(std::static_pointer_cast<IAnimGraphable>(s)), graph_pos(pos), max_influence(i){}
+		Node(Ref<T> s, const clamped_vec2& pos, float i = 1) : state(std::static_pointer_cast<IAnimGraphable>(s)), graph_pos(pos), max_influence(i){}
 		
 		/**
 		 Sample the animation curves in this tree
@@ -95,7 +95,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 */
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
-    constexpr inline void SetBlendPos(const normalized_vec2& newPos){
+    constexpr inline void SetBlendPos(const clamped_vec2& newPos){
 		blend_pos = newPos;
 	}
 	
@@ -105,7 +105,7 @@ private:
 		Node node;
 	};
 	locked_node_hashmap<uint8_t,Sampler,SpinLock> states;
-	normalized_vec2 blend_pos;
+	clamped_vec2 blend_pos;
 };
 
 class AnimatorComponent : public ComponentWithOwner, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>{

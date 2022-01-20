@@ -34,7 +34,10 @@ namespace RavEngine {
 		@param width the width of the target, in pixels
 		@param height the height of the target, in pixels
 		*/
-		constexpr void SetTargetSize(unsigned int inwidth, unsigned int inheight);
+        constexpr void SetTargetSize(unsigned int inwidth, unsigned int inheight){
+            width = inwidth;
+            height = inheight;
+        }
 
 		enum class Mode {
 			Perspective,
@@ -86,18 +89,9 @@ namespace RavEngine {
 		float farClip;
 
 	protected:
+        Mode projection = Mode::Perspective;
+        unsigned int width = 800;
+        unsigned int height = 480;
 		bool active = false;
-
-		unsigned int width = 800;
-		unsigned int height = 480;
-
-		Mode projection = Mode::Perspective;
 	};
-}
-
-constexpr void RavEngine::CameraComponent::SetTargetSize(unsigned int inwidth, unsigned int inheight)
-{
-    width = inwidth;
-    height = inheight;
-    const float aspect = (float)width / height;
 }

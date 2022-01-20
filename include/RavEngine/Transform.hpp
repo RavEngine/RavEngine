@@ -13,15 +13,27 @@
 #include "Common3D.hpp"
 #include "glm/gtx/matrix_decompose.hpp"
 #include "DataStructures.hpp"
-#include "WeakRef.hpp"
-#include "SpinLock.hpp"
-#include "SharedObject.hpp"
 #include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
-	class Transform : public ComponentWithOwner, public Queryable<Transform> {
+	struct Transform : public ComponentWithOwner, public Queryable<Transform> {
+    protected:
+        mutable matrix4 matrix;
+        quaternion rotation;
+        vector3 position, scale;
+        UnorderedVector<ComponentHandle<Transform>>  children;        //non-owning
+        ComponentHandle<Transform> parent;    //non-owning
+        mutable bool isDirty = false;
+        
+        inline void MarkAsDirty(Transform* root) const{
+            root->isDirty = true;
+            
+            for(auto& t : root->children){
+                MarkAsDirty(t.get());
+            }
+        }
+
 	public:
-		typedef UnorderedVector<ComponentHandle<Transform>> childStore;
 		virtual ~Transform(){}
 		Transform(entity_t owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale) : ComponentWithOwner(owner){
             matrix = matrix4(1);
@@ -83,24 +95,7 @@ namespace RavEngine {
 		Remove a transform as a child object of this transform. This does not check if the passed object is actually a child.
 		@param child weak reference to the child object
 		*/
-		void RemoveChild(ComponentHandle<Transform> child);
-
-	protected:
-		vector3 position, scale;
-		LockFreeAtomic<quaternion,phmap::NullMutex> rotation;
-		mutable matrix4 matrix;
-        mutable bool isDirty = false;
-		
-		inline void MarkAsDirty(Transform* root) const{
-			root->isDirty = true;
-			
-			for(auto& t : root->children){
-				MarkAsDirty(t.get());
-			}
-		}
-
-		childStore children;		//non-owning
-		ComponentHandle<Transform> parent;	//non-owning
+        void RemoveChild(ComponentHandle<Transform> child);
 };
 
 	/**
@@ -192,7 +187,7 @@ namespace RavEngine {
 	*/
 	inline void Transform::SetLocalRotation(const quaternion& newRot) {
 		MarkAsDirty(this);
-		rotation.store(newRot);
+		rotation = newRot;
 	}
 
 	/**
@@ -206,7 +201,7 @@ namespace RavEngine {
 		vector3 t;
 		vector4 p;
 		glm::decompose(glm::toMat4((quaternion)rotation) * glm::toMat4(delta), t, finalrot, t, t, p);
-		rotation.store(finalrot);
+		rotation = finalrot;
 	}
 
 	/**

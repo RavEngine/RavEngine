@@ -26,11 +26,7 @@ class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public Que
     static constexpr uint16_t NFRAMES = 4096;
 public:
     struct RoomData{
-        vraudio::ResonanceAudioApi* audioEngine = nullptr;
         UnorderedMap<size_t,vraudio::ResonanceAudioApi::SourceId> allSources;
-
-        //size of 0 = infinite
-        vector3 roomDimensions = vector3(0,0,0);
         
         // Material name of each surface of the shoebox room in this order:
         // [0] (-)ive x-axis wall (left)
@@ -47,7 +43,10 @@ public:
             RoomMat::kTransparent,
             RoomMat::kTransparent
         };
-        
+        //size of 0 = infinite
+        vector3 roomDimensions = vector3(0,0,0);
+        vraudio::ResonanceAudioApi* audioEngine = nullptr;
+
         float reflection_scalar = 1, reverb_gain = 1, reverb_time = 1.0, reverb_brightness = 0;
         
         /**
