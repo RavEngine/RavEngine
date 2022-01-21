@@ -265,6 +265,55 @@ void DebugRender(const Im3d::DrawList& drawList){
 }
 
 /**
+ Execute instanced draw calls for a given light type
+ @param components the componetstore of the world to get the lights from
+ @return true light draw calls were executed, false otherwise
+ */
+template<typename LightType, class Container, typename gb_t, typename a_t>
+constexpr inline bool DrawLightsOfType(const Container& lights, gb_t gBufferSamplers, a_t attachments){
+    //must set before changing shaders
+    if (lights.size() == 0){
+        return false;
+    }
+    
+    constexpr auto stride = LightType::InstancingStride();
+    const auto numLights = lights.size();
+    
+    //create buffer for GPU instancing
+    bgfx::InstanceDataBuffer idb;
+    
+    assert(numLights < std::numeric_limits<uint32_t>::max());    // too many lights!
+    
+    bgfx::allocInstanceDataBuffer(&idb, static_cast<uint32_t>(numLights), stride);
+    
+    //fill the buffer
+    int i = 0;
+    for(const auto& l : lights){    //TODO: factor in light frustum culling
+        float* ptr = (float*)(idb.data + i);
+        l.AddInstanceData(ptr);
+        i += stride;
+    }
+
+    //fill the remaining slots in the buffer with 0s (if a light was removed during the buffer filling)
+    for (; i < numLights; i++) {
+        *(idb.data + i) = 0;
+    }
+    
+    bgfx::setInstanceDataBuffer(&idb);
+    
+    //set the required state for this light type
+    LightType::SetState();
+    
+    //execute instance draw call
+    for (int i = 0; i < RenderEngine::gbufferSize; i++) {
+        bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+    }
+    LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
+    
+    return true;
+}
+
+/**
 Initialize static singletons. Invoked automatically if needed.
 */
 void RenderEngine::Init(const AppConfig& config)
@@ -689,10 +738,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 
 	// Lighting pass
-	DrawLightsOfType<AmbientLight>(fd->ambients);
-	DrawLightsOfType<DirectionalLight>(fd->directionals);
-	DrawLightsOfType<SpotLight>(fd->spots);
-	DrawLightsOfType<PointLight>(fd->points);
+	DrawLightsOfType<AmbientLight>(fd->ambients,gBufferSamplers,attachments);
+	DrawLightsOfType<DirectionalLight>(fd->directionals,gBufferSamplers,attachments);
+	DrawLightsOfType<SpotLight>(fd->spots,gBufferSamplers,attachments);
+	DrawLightsOfType<PointLight>(fd->points,gBufferSamplers,attachments);
 
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);
