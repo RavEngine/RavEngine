@@ -791,8 +791,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		);
 
 	currentFrameTime = delta.count();
-	currentVRAM = stats->gpuMemoryUsed / 1024 / 1024;
-	totalVRAM = stats->gpuMemoryMax / 1024 / 1024;
+#if __APPLE__
+    currentVRAM = AppleVRAMUsed();
+    totalVRAM = AppleVRAMTotal();
+#else
+    currentVRAM = stats->gpuMemoryUsed / 1024 / 1024;
+    totalVRAM = stats->gpuMemoryMax / 1024 / 1024;
+#endif
 }
 
 void RenderEngine::resize(){

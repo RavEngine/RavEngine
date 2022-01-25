@@ -71,6 +71,18 @@ void AppleGPUName(char* buffer, size_t size){
 	std::memcpy(buffer, [name UTF8String], std::min(size,[name length]));
 }
 
+uint32_t AppleVRAMUsed(){
+    auto internalData = bgfx::getInternalData();
+    auto device = (id<MTLDevice>)internalData->context;
+    return [device currentAllocatedSize] / 1024 / 1024;
+}
+
+uint32_t AppleVRAMTotal(){
+    auto internalData = bgfx::getInternalData();
+    auto device = (id<MTLDevice>)internalData->context;
+    return [device recommendedMaxWorkingSetSize] / 1024 / 1024;
+}
+
 AppleOSVersion GetAppleOSVersion(){
     auto p = [[NSProcessInfo processInfo] operatingSystemVersion];
 

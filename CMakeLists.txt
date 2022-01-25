@@ -711,7 +711,7 @@ function(pack_resources)
 		#set_source_files_properties(${UWP_SDL2MAIN} PROPERTIES COMPILE_FLAGS "/ZW /EHsc")
 	endif()
 
-	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.zip")
+	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.rvedata")
 
 	# allow inserting into the mac / ios resource bundle
 	set_target_properties(${ARGS_TARGET} PROPERTIES 

@@ -76,7 +76,7 @@ namespace RavEngine {
 		*/
 		int run(int argc, char** argv);
 
-		const float evalNormal = 60;	//normal speed is 60 hz
+		constexpr static float evalNormal = 60;	//normal speed is 60 hz
 		
 		/**
 		 @return the current time, measured in seconds since the application launched

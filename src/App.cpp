@@ -69,7 +69,7 @@ App::App(const std::string& resourcesName){
 	//initialize virtual file system library 
 	PHYSFS_init("");
 	
-	Resources.emplace(resourcesName + ".zip");
+	Resources.emplace(StrFormat("{}.rvedata",resourcesName));
 }
 
 int App::run(int argc, char** argv) {
