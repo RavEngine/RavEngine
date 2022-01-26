@@ -74,13 +74,17 @@ void AppleGPUName(char* buffer, size_t size){
 uint32_t AppleVRAMUsed(){
     auto internalData = bgfx::getInternalData();
     auto device = (id<MTLDevice>)internalData->context;
-    return [device currentAllocatedSize] / 1024 / 1024;
+    return static_cast<uint32_t>([device currentAllocatedSize] / 1024 / 1024);
 }
 
 uint32_t AppleVRAMTotal(){
+#if BX_PLATFORM_IOS
+    return GetAppleSystemRAM();
+#else
     auto internalData = bgfx::getInternalData();
     auto device = (id<MTLDevice>)internalData->context;
     return [device recommendedMaxWorkingSetSize] / 1024 / 1024;
+#endif
 }
 
 AppleOSVersion GetAppleOSVersion(){
