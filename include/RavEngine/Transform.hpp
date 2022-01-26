@@ -96,6 +96,17 @@ namespace RavEngine {
 		@param child weak reference to the child object
 		*/
         void RemoveChild(ComponentHandle<Transform> child);
+        
+        const decltype(children)& GetChildren() const{
+            return children;
+        }
+        
+        // destroy everything parented to this
+        void Destroy(){
+            for(auto& child : children){
+                child.GetOwner().Destroy();
+            }
+        }
 };
 
 	/**

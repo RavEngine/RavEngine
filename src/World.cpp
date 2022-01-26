@@ -13,7 +13,6 @@
 #include "PhysicsLinkSystem.hpp"
 #include "GUI.hpp"
 #include "InputManager.hpp"
-#include "ChildEntityComponent.hpp"
 #include "AudioRoomSyncSystem.hpp"
 #include "CameraComponent.hpp"
 #include "StaticMesh.hpp"
