@@ -19894,7 +19894,7 @@ rm -f core conftest.err conftest.$ac_objext \
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $STD_ATOMIC_NEED_LIBATOMIC" >&5
 $as_echo "$STD_ATOMIC_NEED_LIBATOMIC" >&6; }
 if test "x$STD_ATOMIC_NEED_LIBATOMIC" = xyes; then
-  LIBATOMIC_LIBS="-latomic"
+  #LIBATOMIC_LIBS="-latomic"
 fi
 
 

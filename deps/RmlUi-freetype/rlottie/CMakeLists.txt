@@ -109,7 +109,7 @@ if (NOT LOTTIE_ASAN)
     elseif(NOT MSVC)
         target_link_libraries(rlottie
                             PUBLIC
-                                 "-Wl,--no-undefined"
+                                 #"-Wl,--no-undefined"
                               )
     endif()
 endif()

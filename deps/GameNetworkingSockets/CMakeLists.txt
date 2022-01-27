@@ -227,8 +227,7 @@ function(set_target_common_gns_properties TGT)
 		# Reduce binary size by allowing for a pseudo-"function-level linking" analog
 		target_compile_options(${TGT} PRIVATE -ffunction-sections -fdata-sections ${TARGET_ARCH_FLAGS})
 	endif()
-
-	if(CMAKE_SYSTEM_NAME MATCHES Linux)
+	if(CMAKE_SYSTEM_NAME MATCHES Linux OR CMAKE_SYSTEM_NAME MATCHES Emscripten)
 		target_compile_definitions(${TGT} PUBLIC POSIX LINUX)
 	elseif(CMAKE_SYSTEM_NAME MATCHES Darwin OR CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS OR CMAKE_SYSTEM_NAME MATCHES Android)
 		target_compile_definitions(${TGT} PUBLIC POSIX OSX)
@@ -265,7 +264,7 @@ function(set_target_common_gns_properties TGT)
 	endif()
 
 	if(NOT CMAKE_SYSTEM_NAME MATCHES Windows)
-		target_compile_options(${TGT} PRIVATE -fstack-protector-strong)
+		#target_compile_options(${TGT} PRIVATE -fstack-protector-strong)
 	endif()
 
 	if(LTO)
@@ -499,6 +498,7 @@ macro(gamenetworkingsockets_common GNS_TARGET)
 	elseif(CMAKE_SYSTEM_NAME MATCHES FreeBSD)
 	elseif(CMAKE_SYSTEM_NAME MATCHES iOS)
 	elseif(CMAKE_SYSTEM_NAME MATCHES tvOS)
+	elseif(CMAKE_SYSTEM_NAME MATCHES Emscripten)
 
 	elseif(CMAKE_SYSTEM_NAME MATCHES Windows)
 		if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")

@@ -206,6 +206,8 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 #elif BX_PLATFORM_WINRT || BX_PLATFORM_XBOXONE
 	pd.ndt = NULL;
 	pd.nwh = wmi.info.winrt.window;
+#elif __EMSCRIPTEN__
+    Debug::Fatal("Not implemented");
 #else
 	#error This system / display manager is not supported
 #endif // BX_PLATFORM_

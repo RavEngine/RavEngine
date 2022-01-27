@@ -141,6 +141,9 @@ if( MINGW )
 endif()
 
 include( CheckTypeSize )
+set(HAVE_LONG_INT OFF)  # emscripten compatibility
+set(LONG_INT 0)
+set(LONG_LONG_INT 0)  
 check_type_size( "long" LONG_INT )
 check_type_size( "long long" LONG_LONG_INT )
 check_type_size( "int" INT )

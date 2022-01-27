@@ -17,9 +17,21 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
   message(SEND_ERROR "In-source builds are not allowed.")
 endif()
+set(TARGET_APPLE OFF)
+set(TARGET_LINUX OFF)
+set(TARGET_EMSCRIPTEN OFF)
+if(CMAKE_SYSTEM_NAME MATCHES Darwin OR CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS)
+	set(TARGET_APPLE ON CACHE INTERNAL "")
+elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
+	set(TARGET_LINUX ON CACHE INTERNAL "")
+elseif(CMAKE_SYSTEM_NAME MATCHES Emscripten)
+	set(TARGET_EMSCRIPTEN ON CACHE INTERNAL "")
+endif()
 
-if (APPLE)
+if (TARGET_APPLE)
 	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0)	# silence warning when building ARM fat library on Apple platforms
+elseif(TARGET_EMSCRIPTEN)
+	add_definitions(-pthread)
 endif()
 
 # link time optimization check
@@ -27,7 +39,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE CACHE INTERNAL "")	# only en
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE CACHE INTERNAL "")	# only enable on profile
 
 # linux detection
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT CMAKE_HOST_APPLE)
 	set(LINUX TRUE CACHE INTERNAL "")
 endif()
 
@@ -64,7 +76,7 @@ else()
     set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 endif()
 
-if (APPLE OR LINUX)
+if(CMAKE_HOST_APPLE OR LINUX)	# don't want target here, this is for the host
 	set(SHADERC_NAME "shaderc")
 	SET(SHADERC_CMD "${SHADERC_PATH}" CACHE INTERNAL "")
 elseif(MSVC)
@@ -76,7 +88,7 @@ endif()
 
 # configure build machine tools
 file(MAKE_DIRECTORY ${TOOLS_DIR})
-if(LINUX)
+if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN))
 	# need to ensure that if cross-compiling, we don't use the cross-compiler for the host tools
 	set(LINUX_HOST_CC "-DCMAKE_C_COMPILER=cc" CACHE INTERNAL "")
 	set(LINUX_HOST_CXX "-DCMAKE_CXX_COMPILER=c++" CACHE INTERNAL "")
@@ -124,7 +136,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
 	set(MACOSX OFF CACHE INTERNAL "")
 	set(DARWIN OFF CACHE INTERNAL "")
 	set(VIDEO_OPENGLES ON CACHE INTERNAL "")
-elseif(LINUX)
+elseif(TARGET_LINUX)
     set(VIDEO_OPENGL ON CACHE INTERNAL "")  # Linux-wayland requires OpenGL / OpenGL ES
     set(VIDEO_OPENGLES ON CACHE INTERNAL "")
     set(VIDEO_X11 ON CACHE INTERNAL "")
@@ -157,10 +169,13 @@ endif()
 set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
 set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
 set(LIBC ON CACHE BOOL "" FORCE)
+if(TARGET_EMSCRIPTEN)
+	set(EMSCRIPTEN ON CACHE INTERNAL "")
+endif()
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
-if (NOT APPLE AND NOT MSVC)
+if (NOT TARGET_APPLE AND NOT MSVC)
 	if (NOT ALSA AND NOT PULSEAUDIO)
 		message(FATAL_ERROR "Either ALSA or PulseAudio dev packages required, but neither were found.")
 	endif()
@@ -203,7 +218,7 @@ add_subdirectory("${DEPS_DIR}/taskflow" EXCLUDE_FROM_ALL)
 set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
 set(BGFX_INSTALL OFF CACHE INTERNAL "")
-if (NOT LINUX)
+if (NOT TARGET_LINUX)
 	set(BGFX_AMALGAMATED ON CACHE INTERNAL "")	# amalgamated causes issues with xlib on linux
 endif()
 set(BGFX_BUILD_TOOLS OFF CACHE INTERNAL "")
@@ -212,13 +227,15 @@ set(BX_AMALGAMATED ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/bgfx.cmake" EXCLUDE_FROM_ALL)
 # enable the renderers that we actually use
 target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_OPENGL=0 BGFX_CONFIG_RENDERER_DIRECT3D9=0 BGFX_CONFIG_RENDERER_DIRECT3D11=0 BGFX_CONFIG_RENDERER_VULKAN=0 BGFX_CONFIG_RENDERER_METAL=0 BGFX_CONFIG_RENDERER_DIRECT3D12=0 BGFX_CONFIG_RENDERER_GNM=0 BGFX_CONFIG_RENDERER_NVN=0)
-if(UWP OR WINDOWS)
+if(TARGET_EMSCRIPTEN)
+
+elseif(UWP OR WINDOWS)
 	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_DIRECT3D12=1)	# UWP and Windows have DX12
 endif()
-if (LINUX OR WINDOWS)
+if (TARGET_LINUX OR WINDOWS)
 	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_VULKAN=1)		# linux and Windows have Vulkan
 endif()
-if(APPLE)
+if(TARGET_APPLE)
 	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_METAL=1)		# Apple platforms use Metal only
 endif()
 
@@ -252,8 +269,10 @@ set(PX_OUTPUT_BIN_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} CACHE INTERNAL "")
 set(PX_GENERATE_STATIC_LIBRARIES ON CACHE INTERNAL "")
 set(GPU_DLL_COPIED 1 CACHE INTERNAL "")
 #set(PX_FLOAT_POINT_PRECISE_MATH OFF)
-if (WIN32)
-	message("CMAKE_SYSTEM_NAME = ${CMAKE_SYSTEM_NAME}")
+if(TARGET_EMSCRIPTEN)
+	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
+	set(PLATFORM "Linux" CACHE INTERNAL "")
+elseif (WIN32)
 	if (UWP)
 		set(TARGET_BUILD_PLATFORM "uwp" CACHE INTERNAL "")
 		set(PLATFORM "uwp")
@@ -261,10 +280,10 @@ if (WIN32)
 		set(TARGET_BUILD_PLATFORM "windows" CACHE INTERNAL "")
 		set(PLATFORM "Windows")
 	endif()
-elseif(APPLE)
+elseif(TARGET_APPLE)
 	set(TARGET_BUILD_PLATFORM "mac" CACHE INTERNAL "")
 	set(PLATFORM "macOS")
-elseif(LINUX)
+elseif(TARGET_LINUX)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu" CACHE INTERNAL "")
 	set(PLATFORM "Linux")
@@ -273,12 +292,25 @@ endif()
 
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public" EXCLUDE_FROM_ALL)
-
+if(TARGET_EMSCRIPTEN)
+	# disable vectorization
+	target_compile_definitions(LowLevelAABB PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(SceneQuery PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(SimulationController PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysXExtensions PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysXVehicle PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysXCommon PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysX PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysXFoundation PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(LowLevel PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysXCooking PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysXCharacterKinematic PRIVATE "PX_SIMD_DISABLED")
+endif()
 
 # ========== Building engine ==============
 
 # get all sources for the library with glob
-if(APPLE)
+if(TARGET_APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
 	add_definitions("-x objective-c++")
@@ -295,11 +327,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # vectorization
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
-if(APPLE OR LINUX)
+if(TARGET_APPLE OR TARGET_LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
 endif()
 
-if (NOT APPLE AND NOT UWP)
+if (NOT TARGET_APPLE AND NOT UWP)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
@@ -350,7 +382,7 @@ target_include_directories("${PROJECT_NAME}"
 )
 
 # ====================== Linking ====================
-if (APPLE)
+if (TARGET_APPLE)
     # some apple-specific libraries
     if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	    find_library(COCOA_LIB Cocoa REQUIRED)
@@ -368,8 +400,11 @@ if (APPLE)
 
 endif()
 
-if(LINUX)
+if(TARGET_LINUX)
 	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
+endif()
+if(TARGET_EMSCRIPTEN)
+	set(PTHREAD_LIB "-pthread")
 endif()
 
 if (NOT UWP)
@@ -440,10 +475,11 @@ target_link_libraries("${PROJECT_NAME}"
 	${CH_LIB}
     ${ATOMIC_LIB}
 	${DXGI_LIB}
+	${PTHREAD_LIB}
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
-if(LINUX)
+if(TARGET_LINUX)
 	target_link_libraries("${PROJECT_NAME}" PRIVATE "stdc++fs")
 endif()
 
@@ -557,12 +593,12 @@ endfunction()
 # all paths must be absolute
 function(declare_shader shader_name vertex_src fragment_src varying_src)
 	
-	if(APPLE)
+	if(TARGET_APPLE)
 		add_shader_helper("mtl" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
 	elseif(MSVC)
 		add_shader_helper("dx" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
 		add_shader_helper("vk" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
-	elseif(LINUX)
+	elseif(TARGET_LINUX)
 		add_shader_helper("vk" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
 	endif()
 
@@ -745,7 +781,7 @@ function(pack_resources)
 	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_LOCATION "")	# tells the deployment to put the assets zip in the AppX root directory
 	
 	# copy to target dir on Win
-	if((MSVC AND NOT UWP) OR LINUX)
+	if((MSVC AND NOT UWP) OR TARGET_LINUX)
 		get_filename_component(outfile ${outpack} NAME)
 		SET(outfile "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}")
 		add_custom_command(

@@ -31,6 +31,23 @@ jobs:
         run: mkdir -p build && cd build; cmake -G "Ninja" ..
       - name: Build
         run: cd build; cmake --build . --config Release --target RavEngine
+      
+  build-emscripten:
+    name: Emscripten-Linux Compile Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install cmake clang ninja-build python3 libgl1-mesa-dev libwayland-dev libxkbcommon-dev libegl-dev -y --no-install-recommends
+      - name: Setup Emscripten
+        run: git clone https://github.com/emscripten-core/emsdk.git --depth=1 && cd emsdk && ./emsdk install latest && ./emsdk activate latest && source ./emsdk_env.sh
+      - name: Configure
+        run: mkdir -p build && cd build; cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=../emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
+      - name: Build
+        run: cd build; cmake --build . --config Release --target RavEngine
 
   build-mac:
     name: macOS Compile Check
