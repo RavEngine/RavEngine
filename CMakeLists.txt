@@ -31,7 +31,10 @@ endif()
 if (TARGET_APPLE)
 	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0)	# silence warning when building ARM fat library on Apple platforms
 elseif(TARGET_EMSCRIPTEN)
+	# required for higher memory, atomics, and threads
 	add_definitions(-pthread)
+	add_definitions(-fexceptions)
+	set(EM_LINK "-fexceptions" "-s LLD_REPORT_UNDEFINED" "-s NO_DISABLE_EXCEPTION_CATCHING" "-s NO_DISABLE_EXCEPTION_THROWING" "-s PTHREAD_POOL_SIZE=32" "-s ASSERTIONS=1" "-s ALLOW_MEMORY_GROWTH=1" "-s MAXIMUM_MEMORY=4GB" "-gsource-map" "--source-map-base=http://localhost:9090/")
 endif()
 
 # link time optimization check
@@ -403,9 +406,6 @@ endif()
 if(TARGET_LINUX)
 	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
 endif()
-if(TARGET_EMSCRIPTEN)
-	set(PTHREAD_LIB "-pthread")
-endif()
 
 if (NOT UWP)
 	set(SDL2MAIN_LIB "SDL2main")
@@ -475,7 +475,7 @@ target_link_libraries("${PROJECT_NAME}"
 	${CH_LIB}
     ${ATOMIC_LIB}
 	${DXGI_LIB}
-	${PTHREAD_LIB}
+	${EM_LINK}
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
@@ -656,8 +656,8 @@ group_in("Libraries/bgfx/3rdparty" "astc;astc-codec;edtaa3;etc1;etc2;fcpp;glcpp;
 
 # pack resources
 function(pack_resources)
-	set(optional)
-	set(args TARGET)
+	set(optional )
+	set(args TARGET OUTPUT_FILE)
 	set(list_args SHADERS OBJECTS TEXTURES UIS FONTS SOUNDS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
@@ -791,6 +791,8 @@ function(pack_resources)
 			COMMENT "Copying assets package to executable directory"
 		)
 	endif()
+
+	set(${ARGS_OUTPUT_FILE} ${outpack} CACHE INTERNAL "")
 endfunction()
 
 # tests

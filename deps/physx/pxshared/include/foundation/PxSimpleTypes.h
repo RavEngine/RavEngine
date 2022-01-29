@@ -45,7 +45,7 @@
 #endif
 
 #if PX_LINUX
-#define __STDC_LIMIT_MACROS
+//#define __STDC_LIMIT_MACROS
 #endif
 
 #include <stdint.h>

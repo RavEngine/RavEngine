@@ -39,6 +39,9 @@ public:
 		else if (GetApp()->networkManager.IsClient()){
 			return owner != k_HSteamNetConnection_Invalid;
 		}
+        // this should never hit, this can only be the case if
+        // networking is not enabled
+        return true;
 	}
 	
 	virtual void NetSync(const std::string_view& data) = 0;
@@ -84,7 +87,7 @@ public:
 template<typename T>
 class SyncVar : public SyncVar_base{
 	T value, prev;
-	int threshold = 0.1;
+	float threshold = 0.1;
 	
 public:
 	SyncVar(const T& input ) : value(input){

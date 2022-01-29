@@ -89,7 +89,11 @@ namespace RavEngine {
 		const int numcpus = std::thread::hardware_concurrency();
 		
 		//global thread pool, threads = logical processors on CPU
-		tf::Executor executor;
+        tf::Executor executor{
+#ifdef __EMSCRIPTEN__
+        1 // use main thread only on emscripten
+#endif
+        };
 		
 		//networking interface
 		NetworkManager networkManager;

@@ -2116,7 +2116,7 @@ static void SteamNetworkingThreadProc()
 	// for packets to arrive.
 	#if defined(_WIN32)
 		DbgVerify( SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST ) );
-	#elif defined(POSIX)
+	#elif defined(POSIX) && !defined(__EMSCRIPTEN__)
 		// This probably won't work on Linux, because you cannot raise thread priority
 		// without being root.  But on some systems it works.  So we try, and if it
 		// works, great.

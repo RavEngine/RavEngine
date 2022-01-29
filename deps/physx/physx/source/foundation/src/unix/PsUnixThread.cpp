@@ -389,7 +389,7 @@ static int convertPriorityToLinux(ThreadPriority::Enum inPrio, int policy)
 void ThreadImpl::setPriority(ThreadPriority::Enum val)
 {
 	PX_UNUSED(val);
-#if !PX_APPLE_FAMILY
+#if !PX_APPLE_FAMILY && !PX_EMSCRIPTEN
 	int policy;
 	sched_param s_param;
 	pthread_getschedparam(getThread(this)->thread, &policy, &s_param);
@@ -401,7 +401,7 @@ void ThreadImpl::setPriority(ThreadPriority::Enum val)
 ThreadPriority::Enum ThreadImpl::getPriority(Id pthread)
 {
 	PX_UNUSED(pthread);
-#if !PX_APPLE_FAMILY
+#if !PX_APPLE_FAMILY && !PX_EMSCRIPTEN
 	int policy;
 	sched_param s_param;
 	int ret = pthread_getschedparam(pthread_t(pthread), &policy, &s_param);
