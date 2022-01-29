@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,6 +33,7 @@
 #include "SDL_drawline.h"
 #include "SDL_drawpoint.h"
 #include "SDL_rotate.h"
+#include "SDL_triangle.h"
 
 /* SDL surface based renderer implementation */
 
@@ -116,9 +117,8 @@ SW_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     texture->driverdata =
         SDL_CreateRGBSurface(0, texture->w, texture->h, bpp, Rmask, Gmask,
                              Bmask, Amask);
-    SDL_SetSurfaceColorMod(texture->driverdata, texture->r, texture->g,
-                           texture->b);
-    SDL_SetSurfaceAlphaMod(texture->driverdata, texture->a);
+    SDL_SetSurfaceColorMod(texture->driverdata, texture->color.r, texture->color.g, texture->color.b);
+    SDL_SetSurfaceAlphaMod(texture->driverdata, texture->color.a);
     SDL_SetSurfaceBlendMode(texture->driverdata, texture->blendMode);
 
     /* Only RLE encode textures without an alpha channel since the RLE coder
@@ -214,18 +214,9 @@ SW_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FP
 
     cmd->data.draw.count = count;
 
-    if (renderer->viewport.x || renderer->viewport.y) {
-        const int x = renderer->viewport.x;
-        const int y = renderer->viewport.y;
-        for (i = 0; i < count; i++, verts++, points++) {
-            verts->x = (int)(x + points->x);
-            verts->y = (int)(y + points->y);
-        }
-    } else {
-        for (i = 0; i < count; i++, verts++, points++) {
-            verts->x = (int)points->x;
-            verts->y = (int)points->y;
-        }
+    for (i = 0; i < count; i++, verts++, points++) {
+        verts->x = (int)points->x;
+        verts->y = (int)points->y;
     }
 
     return 0;
@@ -243,23 +234,11 @@ SW_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FRe
 
     cmd->data.draw.count = count;
 
-    if (renderer->viewport.x || renderer->viewport.y) {
-        const int x = renderer->viewport.x;
-        const int y = renderer->viewport.y;
-
-        for (i = 0; i < count; i++, verts++, rects++) {
-            verts->x = (int)(x + rects->x);
-            verts->y = (int)(y + rects->y);
-            verts->w = SDL_max((int)rects->w, 1);
-            verts->h = SDL_max((int)rects->h, 1);
-        }
-    } else {
-        for (i = 0; i < count; i++, verts++, rects++) {
-            verts->x = (int)rects->x;
-            verts->y = (int)rects->y;
-            verts->w = SDL_max((int)rects->w, 1);
-            verts->h = SDL_max((int)rects->h, 1);
-        }
+    for (i = 0; i < count; i++, verts++, rects++) {
+        verts->x = (int)rects->x;
+        verts->y = (int)rects->y;
+        verts->w = SDL_max((int)rects->w, 1);
+        verts->h = SDL_max((int)rects->h, 1);
     }
 
     return 0;
@@ -280,13 +259,8 @@ SW_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * text
     SDL_memcpy(verts, srcrect, sizeof (SDL_Rect));
     verts++;
 
-    if (renderer->viewport.x || renderer->viewport.y) {
-        verts->x = (int)(renderer->viewport.x + dstrect->x);
-        verts->y = (int)(renderer->viewport.y + dstrect->y);
-    } else {
-        verts->x = (int)dstrect->x;
-        verts->y = (int)dstrect->y;
-    }
+    verts->x = (int)dstrect->x;
+    verts->y = (int)dstrect->y;
     verts->w = (int)dstrect->w;
     verts->h = (int)dstrect->h;
 
@@ -317,13 +291,8 @@ SW_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * te
 
     SDL_memcpy(&verts->srcrect, srcrect, sizeof (SDL_Rect));
 
-    if (renderer->viewport.x || renderer->viewport.y) {
-        verts->dstrect.x = (int)(renderer->viewport.x + dstrect->x);
-        verts->dstrect.y = (int)(renderer->viewport.y + dstrect->y);
-    } else {
-        verts->dstrect.x = (int)dstrect->x;
-        verts->dstrect.y = (int)dstrect->y;
-    }
+    verts->dstrect.x = (int)dstrect->x;
+    verts->dstrect.y = (int)dstrect->y;
     verts->dstrect.w = (int)dstrect->w;
     verts->dstrect.h = (int)dstrect->h;
     verts->angle = angle;
@@ -560,6 +529,104 @@ SW_RenderCopyEx(SDL_Renderer * renderer, SDL_Surface *surface, SDL_Texture * tex
     return retval;
 }
 
+
+typedef struct GeometryFillData
+{
+    SDL_Point dst;
+    SDL_Color color;
+} GeometryFillData;
+
+typedef struct GeometryCopyData
+{
+    SDL_Point src;
+    SDL_Point dst;
+    SDL_Color color;
+} GeometryCopyData;
+
+static int
+SW_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
+        const float *xy, int xy_stride, const SDL_Color *color, int color_stride, const float *uv, int uv_stride,
+        int num_vertices, const void *indices, int num_indices, int size_indices,
+        float scale_x, float scale_y)
+{
+    int i;
+    int count = indices ? num_indices : num_vertices;
+    void *verts;
+    int sz = texture ? sizeof (GeometryCopyData) : sizeof (GeometryFillData);
+
+    verts = (void *) SDL_AllocateRenderVertices(renderer, count * sz, 0, &cmd->data.draw.first);
+    if (!verts) {
+        return -1;
+    }
+
+    cmd->data.draw.count = count;
+    size_indices = indices ? size_indices : 0;
+
+    if (texture) {
+        GeometryCopyData *ptr = (GeometryCopyData *) verts;
+        for (i = 0; i < count; i++) {
+            int j;
+            float *xy_;
+            SDL_Color col_;
+            float *uv_;
+            if (size_indices == 4) {
+                j = ((const Uint32 *)indices)[i];
+            } else if (size_indices == 2) {
+                j = ((const Uint16 *)indices)[i];
+            } else if (size_indices == 1) {
+                j = ((const Uint8 *)indices)[i];
+            } else {
+                j = i;
+            }
+
+            xy_ = (float *)((char*)xy + j * xy_stride);
+            col_ = *(SDL_Color *)((char*)color + j * color_stride);
+
+            uv_ = (float *)((char*)uv + j * uv_stride);
+
+            ptr->src.x = (int)(uv_[0] * texture->w);
+            ptr->src.y = (int)(uv_[1] * texture->h);
+
+            ptr->dst.x = (int)(xy_[0] * scale_x);
+            ptr->dst.y = (int)(xy_[1] * scale_y);
+            trianglepoint_2_fixedpoint(&ptr->dst);
+
+            ptr->color = col_;
+
+            ptr++;
+       }
+    } else {
+        GeometryFillData *ptr = (GeometryFillData *) verts;
+
+        for (i = 0; i < count; i++) {
+            int j;
+            float *xy_;
+            SDL_Color col_;
+            if (size_indices == 4) {
+                j = ((const Uint32 *)indices)[i];
+            } else if (size_indices == 2) {
+                j = ((const Uint16 *)indices)[i];
+            } else if (size_indices == 1) {
+                j = ((const Uint8 *)indices)[i];
+            } else {
+                j = i;
+            }
+
+            xy_ = (float *)((char*)xy + j * xy_stride);
+            col_ = *(SDL_Color *)((char*)color + j * color_stride);
+
+            ptr->dst.x = (int)(xy_[0] * scale_x);
+            ptr->dst.y = (int)(xy_[1] * scale_y);
+            trianglepoint_2_fixedpoint(&ptr->dst);
+
+            ptr->color = col_;
+
+            ptr++;
+       }
+    }
+    return 0;
+}
+
 static void
 PrepTextureForCopy(const SDL_RenderCommand *cmd)
 {
@@ -634,7 +701,7 @@ SW_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertic
             }
 
             case SDL_RENDERCMD_SETCLIPRECT: {
-                drawstate.cliprect = cmd->data.cliprect.enabled ? &cmd->data.cliprect.rect : NULL;                
+                drawstate.cliprect = cmd->data.cliprect.enabled ? &cmd->data.cliprect.rect : NULL;
                 drawstate.surface_cliprect_dirty = SDL_TRUE;
                 break;
             }
@@ -657,9 +724,19 @@ SW_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertic
                 const Uint8 b = cmd->data.draw.b;
                 const Uint8 a = cmd->data.draw.a;
                 const int count = (int) cmd->data.draw.count;
-                const SDL_Point *verts = (SDL_Point *) (((Uint8 *) vertices) + cmd->data.draw.first);
+                SDL_Point *verts = (SDL_Point *) (((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
                 SetDrawState(surface, &drawstate);
+
+                /* Apply viewport */
+                if (drawstate.viewport->x || drawstate.viewport->y) {
+                    int i;
+                    for (i = 0; i < count; i++) {
+                        verts[i].x += drawstate.viewport->x;
+                        verts[i].y += drawstate.viewport->y;
+                    }
+                }
+
                 if (blend == SDL_BLENDMODE_NONE) {
                     SDL_DrawPoints(surface, verts, count, SDL_MapRGBA(surface->format, r, g, b, a));
                 } else {
@@ -674,9 +751,19 @@ SW_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertic
                 const Uint8 b = cmd->data.draw.b;
                 const Uint8 a = cmd->data.draw.a;
                 const int count = (int) cmd->data.draw.count;
-                const SDL_Point *verts = (SDL_Point *) (((Uint8 *) vertices) + cmd->data.draw.first);
+                SDL_Point *verts = (SDL_Point *) (((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
                 SetDrawState(surface, &drawstate);
+
+                /* Apply viewport */
+                if (drawstate.viewport->x || drawstate.viewport->y) {
+                    int i;
+                    for (i = 0; i < count; i++) {
+                        verts[i].x += drawstate.viewport->x;
+                        verts[i].y += drawstate.viewport->y;
+                    }
+                }
+
                 if (blend == SDL_BLENDMODE_NONE) {
                     SDL_DrawLines(surface, verts, count, SDL_MapRGBA(surface->format, r, g, b, a));
                 } else {
@@ -691,9 +778,19 @@ SW_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertic
                 const Uint8 b = cmd->data.draw.b;
                 const Uint8 a = cmd->data.draw.a;
                 const int count = (int) cmd->data.draw.count;
-                const SDL_Rect *verts = (SDL_Rect *) (((Uint8 *) vertices) + cmd->data.draw.first);
+                SDL_Rect *verts = (SDL_Rect *) (((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
                 SetDrawState(surface, &drawstate);
+
+                /* Apply viewport */
+                if (drawstate.viewport->x || drawstate.viewport->y) {
+                    int i;
+                    for (i = 0; i < count; i++) {
+                        verts[i].x += drawstate.viewport->x;
+                        verts[i].y += drawstate.viewport->y;
+                    }
+                }
+
                 if (blend == SDL_BLENDMODE_NONE) {
                     SDL_FillRects(surface, verts, count, SDL_MapRGBA(surface->format, r, g, b, a));
                 } else {
@@ -713,6 +810,12 @@ SW_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertic
 
                 PrepTextureForCopy(cmd);
 
+                /* Apply viewport */
+                if (drawstate.viewport->x || drawstate.viewport->y) {
+                    dstrect->x += drawstate.viewport->x;
+                    dstrect->y += drawstate.viewport->y;
+                }
+
                 if ( srcrect->w == dstrect->w && srcrect->h == dstrect->h ) {
                     SDL_BlitSurface(src, srcrect, surface, dstrect);
                 } else {
@@ -726,11 +829,76 @@ SW_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertic
             }
 
             case SDL_RENDERCMD_COPY_EX: {
-                const CopyExData *copydata = (CopyExData *) (((Uint8 *) vertices) + cmd->data.draw.first);
+                CopyExData *copydata = (CopyExData *) (((Uint8 *) vertices) + cmd->data.draw.first);
                 SetDrawState(surface, &drawstate);
                 PrepTextureForCopy(cmd);
+
+                /* Apply viewport */
+                if (drawstate.viewport->x || drawstate.viewport->y) {
+                    copydata->dstrect.x += drawstate.viewport->x;
+                    copydata->dstrect.y += drawstate.viewport->y;
+                }
+
                 SW_RenderCopyEx(renderer, surface, cmd->data.draw.texture, &copydata->srcrect,
                                 &copydata->dstrect, copydata->angle, &copydata->center, copydata->flip);
+                break;
+            }
+
+            case SDL_RENDERCMD_GEOMETRY: {
+                int i;
+                SDL_Rect *verts = (SDL_Rect *) (((Uint8 *) vertices) + cmd->data.draw.first);
+                const int count = (int) cmd->data.draw.count;
+                SDL_Texture *texture = cmd->data.draw.texture;
+                const SDL_BlendMode blend = cmd->data.draw.blend;
+
+                SetDrawState(surface, &drawstate);
+
+                if (texture) {
+                    SDL_Surface *src = (SDL_Surface *) texture->driverdata;
+
+                    GeometryCopyData *ptr = (GeometryCopyData *) verts;
+
+                    PrepTextureForCopy(cmd);
+
+                    /* Apply viewport */
+                    if (drawstate.viewport->x || drawstate.viewport->y) {
+                        SDL_Point vp;
+                        vp.x = drawstate.viewport->x;
+                        vp.y = drawstate.viewport->y;
+                        trianglepoint_2_fixedpoint(&vp);
+                        for (i = 0; i < count; i++) {
+                            ptr[i].dst.x += vp.x;
+                            ptr[i].dst.y += vp.y;
+                        }
+                    }
+
+                    for (i = 0; i < count; i += 3, ptr += 3) {
+                        SDL_SW_BlitTriangle(
+                                src,
+                                &(ptr[0].src), &(ptr[1].src), &(ptr[2].src),
+                                surface,
+                                &(ptr[0].dst), &(ptr[1].dst), &(ptr[2].dst),
+                                ptr[0].color, ptr[1].color, ptr[2].color);
+                    }
+                } else {
+                    GeometryFillData *ptr = (GeometryFillData *) verts;
+
+                    /* Apply viewport */
+                    if (drawstate.viewport->x || drawstate.viewport->y) {
+                        SDL_Point vp;
+                        vp.x = drawstate.viewport->x;
+                        vp.y = drawstate.viewport->y;
+                        trianglepoint_2_fixedpoint(&vp);
+                        for (i = 0; i < count; i++) {
+                            ptr[i].dst.x += vp.x;
+                            ptr[i].dst.y += vp.y;
+                        }
+                    }
+
+                    for (i = 0; i < count; i += 3, ptr += 3) {
+                        SDL_SW_FillTriangle(surface, &(ptr[0].dst), &(ptr[1].dst), &(ptr[2].dst), blend, ptr[0].color, ptr[1].color, ptr[2].color);
+                    }
+                }
                 break;
             }
 
@@ -843,6 +1011,7 @@ SW_CreateRendererForSurface(SDL_Surface * surface)
     renderer->QueueFillRects = SW_QueueFillRects;
     renderer->QueueCopy = SW_QueueCopy;
     renderer->QueueCopyEx = SW_QueueCopyEx;
+    renderer->QueueGeometry = SW_QueueGeometry;
     renderer->RunCommandQueue = SW_RunCommandQueue;
     renderer->RenderReadPixels = SW_RenderReadPixels;
     renderer->RenderPresent = SW_RenderPresent;
@@ -859,9 +1028,29 @@ SW_CreateRendererForSurface(SDL_Surface * surface)
 static SDL_Renderer *
 SW_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
+    const char *hint;
     SDL_Surface *surface;
+    SDL_bool no_hint_set;
+
+    /* Set the vsync hint based on our flags, if it's not already set */
+    hint = SDL_GetHint(SDL_HINT_RENDER_VSYNC);
+    if (!hint || !*hint) {
+        no_hint_set = SDL_TRUE;
+    } else {
+        no_hint_set = SDL_FALSE;
+    }
+
+    if (no_hint_set) {
+        SDL_SetHint(SDL_HINT_RENDER_VSYNC, (flags & SDL_RENDERER_PRESENTVSYNC) ? "1" : "0");
+    }
 
     surface = SDL_GetWindowSurface(window);
+
+    /* Reset the vsync hint if we set it above */
+    if (no_hint_set) {
+        SDL_SetHint(SDL_HINT_RENDER_VSYNC, "");
+    }
+
     if (!surface) {
         return NULL;
     }
@@ -872,7 +1061,7 @@ SDL_RenderDriver SW_RenderDriver = {
     SW_CreateRenderer,
     {
      "software",
-     SDL_RENDERER_SOFTWARE | SDL_RENDERER_TARGETTEXTURE,
+     SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE,
      8,
      {
       SDL_PIXELFORMAT_ARGB8888,

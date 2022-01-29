@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,6 +46,8 @@ SDL_WAYLAND_SYM(uint32_t, wl_proxy_get_version, (struct wl_proxy *))
 SDL_WAYLAND_SYM(uint32_t, wl_proxy_get_id, (struct wl_proxy *))
 SDL_WAYLAND_SYM(const char *, wl_proxy_get_class, (struct wl_proxy *))
 SDL_WAYLAND_SYM(void, wl_proxy_set_queue, (struct wl_proxy *, struct wl_event_queue *))
+SDL_WAYLAND_SYM(void *, wl_proxy_create_wrapper, (void *))
+SDL_WAYLAND_SYM(void, wl_proxy_wrapper_destroy, (void *))
 SDL_WAYLAND_SYM(struct wl_display *, wl_display_connect, (const char *))
 SDL_WAYLAND_SYM(struct wl_display *, wl_display_connect_to_fd, (int))
 SDL_WAYLAND_SYM(void, wl_display_disconnect, (struct wl_display *))
@@ -54,10 +56,15 @@ SDL_WAYLAND_SYM(int, wl_display_dispatch, (struct wl_display *))
 SDL_WAYLAND_SYM(int, wl_display_dispatch_queue, (struct wl_display *, struct wl_event_queue *))
 SDL_WAYLAND_SYM(int, wl_display_dispatch_queue_pending, (struct wl_display *, struct wl_event_queue *))
 SDL_WAYLAND_SYM(int, wl_display_dispatch_pending, (struct wl_display *))
+SDL_WAYLAND_SYM(int, wl_display_prepare_read, (struct wl_display *))
+SDL_WAYLAND_SYM(int, wl_display_prepare_read_queue, (struct wl_display *, struct wl_event_queue *))
+SDL_WAYLAND_SYM(int, wl_display_read_events, (struct wl_display *))
+SDL_WAYLAND_SYM(void, wl_display_cancel_read, (struct wl_display *))
 SDL_WAYLAND_SYM(int, wl_display_get_error, (struct wl_display *))
 SDL_WAYLAND_SYM(int, wl_display_flush, (struct wl_display *))
 SDL_WAYLAND_SYM(int, wl_display_roundtrip, (struct wl_display *))
 SDL_WAYLAND_SYM(struct wl_event_queue *, wl_display_create_queue, (struct wl_display *))
+SDL_WAYLAND_SYM(void, wl_event_queue_destroy, (struct wl_event_queue *))
 SDL_WAYLAND_SYM(void, wl_log_set_handler_client, (wl_log_func_t))
 SDL_WAYLAND_SYM(void, wl_list_init, (struct wl_list *))
 SDL_WAYLAND_SYM(void, wl_list_insert, (struct wl_list *, struct wl_list *) )
@@ -76,6 +83,10 @@ SDL_WAYLAND_SYM(struct wl_proxy *, wl_proxy_marshal_constructor_versioned, (stru
 SDL_WAYLAND_MODULE(WAYLAND_CLIENT_1_18)
 SDL_WAYLAND_SYM(void, wl_proxy_set_tag, (struct wl_proxy *, const char * const *))
 SDL_WAYLAND_SYM(const char * const *, wl_proxy_get_tag, (struct wl_proxy *))
+
+SDL_WAYLAND_MODULE(WAYLAND_CLIENT_1_20)
+SDL_WAYLAND_SYM(struct wl_proxy*, wl_proxy_marshal_flags, (struct wl_proxy *proxy, uint32_t opcode, const struct wl_interface *interfac, uint32_t version, uint32_t flags, ...))
+SDL_WAYLAND_SYM(struct wl_proxy*, wl_proxy_marshal_array_flags, (struct wl_proxy *proxy, uint32_t opcode, const struct wl_interface *interface, uint32_t version,  uint32_t flags, union wl_argument *args))
 
 SDL_WAYLAND_INTERFACE(wl_seat_interface)
 SDL_WAYLAND_INTERFACE(wl_surface_interface)
@@ -182,6 +193,7 @@ SDL_WAYLAND_SYM(bool, libdecor_frame_is_floating, (struct libdecor_frame *))
 SDL_WAYLAND_SYM(void, libdecor_frame_set_parent, (struct libdecor_frame *,\
                                                   struct libdecor_frame *))
 SDL_WAYLAND_SYM(struct xdg_surface *, libdecor_frame_get_xdg_surface, (struct libdecor_frame *))
+SDL_WAYLAND_SYM(struct xdg_toplevel *, libdecor_frame_get_xdg_toplevel, (struct libdecor_frame *))
 SDL_WAYLAND_SYM(void, libdecor_frame_map, (struct libdecor_frame *))
 SDL_WAYLAND_SYM(struct libdecor_state *, libdecor_state_new, (int, int))
 SDL_WAYLAND_SYM(void, libdecor_state_free, (struct libdecor_state *))

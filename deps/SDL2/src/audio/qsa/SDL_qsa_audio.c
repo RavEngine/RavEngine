@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -120,7 +120,9 @@ QSA_WaitDevice(_THIS)
     /* If timeout occured than something wrong with hardware or driver    */
     /* For example, Vortex 8820 audio driver stucks on second DAC because */
     /* it doesn't exist !                                                 */
-    result = SDL_IOReady(this->hidden->audio_fd, !this->hidden->iscapture, 2 * 1000);
+    result = SDL_IOReady(this->hidden->audio_fd,
+                         this->hidden->iscapture ? SDL_IOR_READ : SDL_IOR_WRITE,
+                         2 * 1000);
     switch (result) {
     case -1:
         SDL_SetError("QSA: SDL_IOReady() failed: %s", strerror(errno));

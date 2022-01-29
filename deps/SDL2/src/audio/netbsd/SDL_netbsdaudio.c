@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -226,7 +226,7 @@ NETBSDAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
     SDL_zerop(this->hidden);
 
     /* Open the audio device */
-    this->hidden->audio_fd = open(devname, iscapture ? O_RDONLY : O_WRONLY);
+    this->hidden->audio_fd = open(devname, (iscapture ? O_RDONLY : O_WRONLY) | O_CLOEXEC);
     if (this->hidden->audio_fd < 0) {
         return SDL_SetError("Couldn't open %s: %s", devname, strerror(errno));
     }

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -53,6 +53,8 @@ typedef struct {
     SDL_VideoData *waylandData;
     struct wl_surface *surface;
     struct wl_callback *frame_callback;
+    struct wl_event_queue *frame_event_queue;
+    struct wl_surface *frame_surface_wrapper;
     union {
 #ifdef HAVE_LIBDECOR_H
         SDL_libdecor_surface libdecor;
@@ -63,6 +65,7 @@ typedef struct {
     struct SDL_WaylandInput *keyboard_device;
     EGLSurface egl_surface;
     struct zwp_locked_pointer_v1 *locked_pointer;
+    struct zwp_confined_pointer_v1 *confined_pointer;
     struct zxdg_toplevel_decoration_v1 *server_decoration;
     struct zwp_keyboard_shortcuts_inhibitor_v1 *key_inhibitor;
     struct zwp_idle_inhibitor_v1 *idle_inhibitor;
@@ -91,6 +94,7 @@ extern void Wayland_SetWindowFullscreen(_THIS, SDL_Window * window,
                                         SDL_bool fullscreen);
 extern void Wayland_MaximizeWindow(_THIS, SDL_Window * window);
 extern void Wayland_MinimizeWindow(_THIS, SDL_Window * window);
+extern void Wayland_SetWindowMouseRect(_THIS, SDL_Window * window);
 extern void Wayland_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
 extern void Wayland_SetWindowKeyboardGrab(_THIS, SDL_Window *window, SDL_bool grabbed);
 extern void Wayland_RestoreWindow(_THIS, SDL_Window * window);

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -579,7 +579,7 @@ openslES_CreatePCMPlayer(_THIS)
 
 failed:
 
-    return SDL_SetError("Open device failed!");
+    return -1;
 }
 
 static int
@@ -594,8 +594,24 @@ openslES_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
         LOGI("openslES_OpenDevice() %s for capture", devname);
         return openslES_CreatePCMRecorder(this);
     } else {
+        int ret;
         LOGI("openslES_OpenDevice() %s for playing", devname);
-        return openslES_CreatePCMPlayer(this);
+        ret = openslES_CreatePCMPlayer(this);
+        if (ret < 0) {
+            /* Another attempt to open the device with a lower frequency */
+            if (this->spec.freq > 48000) {
+                openslES_DestroyPCMPlayer(this);
+                this->spec.freq = 48000;
+                ret = openslES_CreatePCMPlayer(this);
+            }
+        }
+
+        if (ret == 0) {
+            return 0;
+        } else {
+            return SDL_SetError("Open device failed!");
+        }
+
     }
 }
 

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,7 +41,7 @@
 #include "../../core/linux/SDL_dbus.h"
 #endif /* __LINUX__ */
 
-#if defined(__LINUX__) || defined(__MACOSX__) || defined(__IPHONEOS__)
+#if (defined(__LINUX__) || defined(__MACOSX__) || defined(__IPHONEOS__)) && defined(HAVE_DLOPEN)
 #include <dlfcn.h>
 #ifndef RTLD_DEFAULT
 #define RTLD_DEFAULT NULL
@@ -78,10 +78,10 @@ RunThread(void *data)
     return NULL;
 }
 
-#if defined(__MACOSX__) || defined(__IPHONEOS__)
+#if (defined(__MACOSX__) || defined(__IPHONEOS__)) && defined(HAVE_DLOPEN)
 static SDL_bool checked_setname = SDL_FALSE;
 static int (*ppthread_setname_np)(const char*) = NULL;
-#elif defined(__LINUX__)
+#elif defined(__LINUX__) && defined(HAVE_DLOPEN)
 static SDL_bool checked_setname = SDL_FALSE;
 static int (*ppthread_setname_np)(pthread_t, const char*) = NULL;
 #endif
@@ -91,7 +91,7 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
     pthread_attr_t type;
 
     /* do this here before any threads exist, so there's no race condition. */
-    #if defined(__MACOSX__) || defined(__IPHONEOS__) || defined(__LINUX__)
+    #if (defined(__MACOSX__) || defined(__IPHONEOS__) || defined(__LINUX__)) && defined(HAVE_DLOPEN)
     if (!checked_setname) {
         void *fn = dlsym(RTLD_DEFAULT, "pthread_setname_np");
         #if defined(__MACOSX__) || defined(__IPHONEOS__)
@@ -131,7 +131,7 @@ SDL_SYS_SetupThread(const char *name)
 #endif /* !__NACL__ */
 
     if (name != NULL) {
-        #if defined(__MACOSX__) || defined(__IPHONEOS__) || defined(__LINUX__)
+        #if (defined(__MACOSX__) || defined(__IPHONEOS__) || defined(__LINUX__)) && defined(HAVE_DLOPEN)
         SDL_assert(checked_setname);
         if (ppthread_setname_np != NULL) {
             #if defined(__MACOSX__) || defined(__IPHONEOS__)
@@ -182,17 +182,6 @@ SDL_ThreadID(void)
 {
     return ((SDL_threadID) pthread_self());
 }
-
-#if __LINUX__
-/**
-   \brief Sets the SDL priority (not nice level) for a thread, using setpriority() if appropriate, and RealtimeKit if available.
-   Differs from SDL_LinuxSetThreadPriority in also taking the desired scheduler policy,
-   such as SCHED_OTHER or SCHED_RR.
-
-   \return 0 on success, or -1 on error.
- */
-extern DECLSPEC int SDLCALL SDL_LinuxSetThreadPriorityAndPolicy(Sint64 threadID, int sdlPriority, int schedPolicy);
-#endif
 
 int
 SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)

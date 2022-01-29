@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,9 +46,6 @@ static const AudioBootStrap *const bootstrap[] = {
 #endif
 #if SDL_AUDIO_DRIVER_NETBSD
     &NETBSDAUDIO_bootstrap,
-#endif
-#if SDL_AUDIO_DRIVER_OSS
-    &DSP_bootstrap,
 #endif
 #if SDL_AUDIO_DRIVER_QSA
     &QSAAUDIO_bootstrap,
@@ -112,6 +109,9 @@ static const AudioBootStrap *const bootstrap[] = {
 #endif
 #if SDL_AUDIO_DRIVER_PIPEWIRE
     &PIPEWIRE_bootstrap,
+#endif
+#if SDL_AUDIO_DRIVER_OSS
+    &DSP_bootstrap,
 #endif
 #if SDL_AUDIO_DRIVER_OS2
     &OS2AUDIO_bootstrap,
@@ -687,7 +687,7 @@ SDL_ClearQueuedAudio(SDL_AudioDeviceID devid)
     /* Blank out the device and release the mutex. Free it afterwards. */
     current_audio.impl.LockDevice(device);
 
-    /* Keep up to two packets in the pool to reduce future malloc pressure. */
+    /* Keep up to two packets in the pool to reduce future memory allocation pressure. */
     SDL_ClearDataQueue(device->buffer_queue, SDL_AUDIOBUFFERQUEUE_PACKETLEN * 2);
 
     current_audio.impl.UnlockDevice(device);
@@ -960,7 +960,7 @@ SDL_AudioInit(const char *driver_name)
     int initialized = 0;
     int tried_to_init = 0;
 
-    if (SDL_WasInit(SDL_INIT_AUDIO)) {
+    if (SDL_GetCurrentAudioDriver()) {
         SDL_AudioQuit();        /* shutdown driver if already running. */
     }
 
@@ -972,12 +972,20 @@ SDL_AudioInit(const char *driver_name)
         driver_name = SDL_getenv("SDL_AUDIODRIVER");
     }
 
-    if (driver_name != NULL) {
+    if (driver_name != NULL && *driver_name != 0) {
         const char *driver_attempt = driver_name;
         while (driver_attempt != NULL && *driver_attempt != 0 && !initialized) {
             const char *driver_attempt_end = SDL_strchr(driver_attempt, ',');
             size_t driver_attempt_len = (driver_attempt_end != NULL) ? (driver_attempt_end - driver_attempt)
                                                                      : SDL_strlen(driver_attempt);
+#if SDL_AUDIO_DRIVER_PULSEAUDIO
+            /* SDL 1.2 uses the name "pulse", so we'll support both. */
+            if (driver_attempt_len == SDL_strlen("pulse") &&
+                (SDL_strncasecmp(driver_attempt, "pulse", driver_attempt_len) == 0)) {
+                driver_attempt = "pulseaudio";
+                driver_attempt_len = SDL_strlen("pulseaudio");
+            }
+#endif
 
             for (i = 0; bootstrap[i]; ++i) {
                 if ((driver_attempt_len == SDL_strlen(bootstrap[i]->name)) &&
@@ -1083,7 +1091,7 @@ SDL_GetNumAudioDevices(int iscapture)
 {
     int retval = 0;
 
-    if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+    if (!SDL_GetCurrentAudioDriver()) {
         return -1;
     }
 
@@ -1108,7 +1116,7 @@ SDL_GetAudioDeviceName(int index, int iscapture)
 {
     const char *retval = NULL;
 
-    if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+    if (!SDL_GetCurrentAudioDriver()) {
         SDL_SetError("Audio subsystem is not initialized");
         return NULL;
     }
@@ -1152,7 +1160,7 @@ SDL_GetAudioDeviceSpec(int index, int iscapture, SDL_AudioSpec *spec)
 
     SDL_zerop(spec);
 
-    if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+    if (!SDL_GetCurrentAudioDriver()) {
         return SDL_SetError("Audio subsystem is not initialized");
     }
 
@@ -1260,6 +1268,7 @@ prepare_audiospec(const SDL_AudioSpec * orig, SDL_AudioSpec * prepared)
     case 2:                    /* Stereo */
     case 4:                    /* Quadrophonic */
     case 6:                    /* 5.1 surround */
+    case 7:                    /* 6.1 surround */
     case 8:                    /* 7.1 surround */
         break;
     default:
@@ -1300,7 +1309,7 @@ open_audio_device(const char *devname, int iscapture,
     void *handle = NULL;
     int i = 0;
 
-    if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+    if (!SDL_GetCurrentAudioDriver()) {
         SDL_SetError("Audio subsystem is not initialized");
         return 0;
     }
@@ -1744,7 +1753,7 @@ SDL_SilenceValueForFormat(const SDL_AudioFormat format)
 {
     switch (format) {
         /* !!! FIXME: 0x80 isn't perfect for U16, but we can't fit 0x8000 in a
-           !!! FIXME:  byte for memset() use. This is actually 0.1953 percent
+           !!! FIXME:  byte for SDL_memset() use. This is actually 0.1953 percent
            !!! FIXME:  off from silence. Maybe just don't use U16. */
         case AUDIO_U16LSB:
         case AUDIO_U16MSB:

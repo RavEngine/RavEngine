@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -146,7 +146,7 @@ handle_surface_frame_done(void *data, struct wl_callback *cb, uint32_t time)
     SDL_AtomicSet(&wind->swap_interval_ready, 1);  /* mark window as ready to present again. */
 
     /* reset this callback to fire again once a new frame was presented and compositor wants the next one. */
-    wind->frame_callback = wl_surface_frame(wind->surface);
+    wind->frame_callback = wl_surface_frame(wind->frame_surface_wrapper);
     wl_callback_destroy(cb);
     wl_callback_add_listener(wind->frame_callback, &surface_frame_listener, data);
 }
@@ -219,9 +219,15 @@ handle_configure_xdg_toplevel(void *data,
 
             /* Foolishly do what the compositor says here. If it's wrong, don't
              * blame us, we were explicitly instructed to do this.
+             *
+             * UPDATE: Nope, we can't actually do that, the compositor may give
+             * us a completely stateless, sizeless configure, with which we have
+             * to enforce our own state anyway.
              */
-            window->w = width;
-            window->h = height;
+            if (width != 0 && height != 0) {
+                window->w = width;
+                window->h = height;
+            }
 
             /* This part is good though. */
             if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI) {
@@ -283,9 +289,14 @@ handle_configure_xdg_toplevel(void *data,
     } else {
         /* For fullscreen, foolishly do what the compositor says. If it's wrong,
          * don't blame us, we were explicitly instructed to do this.
+         *
+         * UPDATE: Nope, sure enough a compositor sends 0,0. This is a known bug:
+         * https://bugs.kde.org/show_bug.cgi?id=444962
          */
-        window->w = width;
-        window->h = height;
+        if (width != 0 && height != 0) {
+            window->w = width;
+            window->h = height;
+        }
 
         /* This part is good though. */
         if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI) {
@@ -633,12 +644,21 @@ Wayland_GetWindowWMInfo(_THIS, SDL_Window * window, SDL_SysWMinfo * info)
 #ifdef HAVE_LIBDECOR_H
         if (viddata->shell.libdecor && data->shell_surface.libdecor.frame != NULL) {
             info->info.wl.xdg_surface = libdecor_frame_get_xdg_surface(data->shell_surface.libdecor.frame);
+            if (version >= SDL_VERSIONNUM(2, 0, 17)) {
+                info->info.wl.xdg_toplevel = libdecor_frame_get_xdg_toplevel(data->shell_surface.libdecor.frame);
+            }
         } else
 #endif
         if (viddata->shell.xdg && data->shell_surface.xdg.surface != NULL) {
             info->info.wl.xdg_surface = data->shell_surface.xdg.surface;
+            if (version >= SDL_VERSIONNUM(2, 0, 17)) {
+                info->info.wl.xdg_toplevel = data->shell_surface.xdg.roleobj.toplevel;
+            }
         } else {
             info->info.wl.xdg_surface = NULL;
+            if (version >= SDL_VERSIONNUM(2, 0, 17)) {
+                info->info.wl.xdg_toplevel = NULL;
+            }
         }
     }
 
@@ -939,6 +959,17 @@ QtExtendedSurface_OnHintChanged(void *userdata, const char *name,
         const char *oldValue, const char *newValue)
 {
     struct qt_extended_surface *qt_extended_surface = userdata;
+    int i;
+
+    static struct {
+        const char *name;
+        int32_t value;
+    } orientations[] = {
+        { "portrait", QT_EXTENDED_SURFACE_ORIENTATION_PRIMARYORIENTATION },
+        { "landscape", QT_EXTENDED_SURFACE_ORIENTATION_LANDSCAPEORIENTATION },
+        { "inverted-portrait", QT_EXTENDED_SURFACE_ORIENTATION_INVERTEDPORTRAITORIENTATION },
+        { "inverted-landscape", QT_EXTENDED_SURFACE_ORIENTATION_INVERTEDLANDSCAPEORIENTATION }
+    };
 
     if (name == NULL) {
         return;
@@ -948,14 +979,21 @@ QtExtendedSurface_OnHintChanged(void *userdata, const char *name,
         int32_t orientation = QT_EXTENDED_SURFACE_ORIENTATION_PRIMARYORIENTATION;
 
         if (newValue != NULL) {
-            if (SDL_strcmp(newValue, "portrait") == 0) {
-                orientation = QT_EXTENDED_SURFACE_ORIENTATION_PORTRAITORIENTATION;
-            } else if (SDL_strcmp(newValue, "landscape") == 0) {
-                orientation = QT_EXTENDED_SURFACE_ORIENTATION_LANDSCAPEORIENTATION;
-            } else if (SDL_strcmp(newValue, "inverted-portrait") == 0) {
-                orientation = QT_EXTENDED_SURFACE_ORIENTATION_INVERTEDPORTRAITORIENTATION;
-            } else if (SDL_strcmp(newValue, "inverted-landscape") == 0) {
-                orientation = QT_EXTENDED_SURFACE_ORIENTATION_INVERTEDLANDSCAPEORIENTATION;
+            const char *value_attempt = newValue;
+            while (value_attempt != NULL && *value_attempt != 0) {
+                const char *value_attempt_end = SDL_strchr(value_attempt, ',');
+                size_t value_attempt_len = (value_attempt_end != NULL) ? (value_attempt_end - value_attempt)
+                                                                       : SDL_strlen(value_attempt);
+
+                for (i = 0; i < SDL_arraysize(orientations); i += 1) {
+                    if ((value_attempt_len == SDL_strlen(orientations[i].name)) &&
+                        (SDL_strncasecmp(orientations[i].name, value_attempt, value_attempt_len) == 0)) {
+                        orientation |= orientations[i].value;
+                        break;
+                    }
+                }
+
+                value_attempt = (value_attempt_end != NULL) ? (value_attempt_end + 1) : NULL;
             }
         }
 
@@ -1139,14 +1177,34 @@ Wayland_MinimizeWindow(_THIS, SDL_Window * window)
 }
 
 void
+Wayland_SetWindowMouseRect(_THIS, SDL_Window *window)
+{
+    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+
+    /* This may look suspiciously like SetWindowGrab, despite SetMouseRect not
+     * implicitly doing a grab. And you're right! Wayland doesn't let us mess
+     * around with mouse focus whatsoever, so it just happens to be that the
+     * work that we can do in these two functions ends up being the same.
+     *
+     * Just know that this call lets you confine with a rect, SetWindowGrab
+     * lets you confine without a rect.
+     */
+    if (SDL_RectEmpty(&window->mouse_rect) && !(window->flags & SDL_WINDOW_MOUSE_GRABBED)) {
+        Wayland_input_unconfine_pointer(data->input, window);
+    } else {
+        Wayland_input_confine_pointer(data->input, window);
+    }
+}
+
+void
 Wayland_SetWindowMouseGrab(_THIS, SDL_Window *window, SDL_bool grabbed)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
     if (grabbed) {
-        Wayland_input_confine_pointer(window, data->input);
-    } else {
-        Wayland_input_unconfine_pointer(data->input);
+        Wayland_input_confine_pointer(data->input, window);
+    } else if (SDL_RectEmpty(&window->mouse_rect)) {
+        Wayland_input_unconfine_pointer(data->input, window);
     }
 }
 
@@ -1222,7 +1280,10 @@ int Wayland_CreateWindow(_THIS, SDL_Window *window)
      * window isn't visible.
      */
     if (window->flags & SDL_WINDOW_OPENGL) {
-        data->frame_callback = wl_surface_frame(data->surface);
+        data->frame_event_queue = WAYLAND_wl_display_create_queue(data->waylandData->display);
+        data->frame_surface_wrapper = WAYLAND_wl_proxy_create_wrapper(data->surface);
+        WAYLAND_wl_proxy_set_queue((struct wl_proxy *)data->frame_surface_wrapper, data->frame_event_queue);
+        data->frame_callback = wl_surface_frame(data->frame_surface_wrapper);
         wl_callback_add_listener(data->frame_callback, &surface_frame_listener, data);
     }
 
@@ -1462,6 +1523,8 @@ void Wayland_DestroyWindow(_THIS, SDL_Window *window)
         SDL_free(wind->outputs);
 
         if (wind->frame_callback) {
+            WAYLAND_wl_event_queue_destroy(wind->frame_event_queue);
+            WAYLAND_wl_proxy_wrapper_destroy(wind->frame_surface_wrapper);
             wl_callback_destroy(wind->frame_callback);
         }
 

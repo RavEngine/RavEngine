@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -59,6 +59,9 @@ HandleAudioProcess(_THIS)
         if (this->stream) {
             SDL_AudioStreamClear(this->stream);
         }
+
+        SDL_memset(this->work_buffer, this->spec.silence, this->spec.size);
+        FeedAudioDevice(this, this->work_buffer, this->spec.size);
         return;
     }
 

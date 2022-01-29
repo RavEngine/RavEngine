@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -135,7 +135,7 @@ FillSound(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance,
 }
 
 static int
-SetMMerror(char *function, MMRESULT code)
+SetMMerror(const char *function, MMRESULT code)
 {
     int len;
     char errbuf[MAXERRORLENGTH];
@@ -433,7 +433,6 @@ WINMM_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 
     return 0;                   /* Ready to go! */
 }
-
 
 static int
 WINMM_Init(SDL_AudioDriverImpl * impl)
