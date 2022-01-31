@@ -33,6 +33,7 @@ jobs:
         run: cd build; cmake --build . --config Release --target RavEngine
       
   build-emscripten:
+    if: ${{ false }}  # disable for now, since emscripten is not possible without WebGPU
     name: Emscripten-Linux Compile Check
     runs-on: ubuntu-latest
     steps:
