@@ -29,6 +29,7 @@ namespace RavEngine {
 			Metal,
 			DirectX12,
 			Vulkan,
+            WebGPU,
 			AutoSelect
 		} preferredBackend = RenderBackend::AutoSelect;
 	};

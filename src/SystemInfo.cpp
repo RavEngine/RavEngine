@@ -182,7 +182,7 @@ static std::string vkGetGPUName(void* context) {
 }
 #endif
 
-#if defined _UWP  || defined _WIN32
+#if _UWP || _WIN32
 /**
 * Helper to get the current adapater / description 
 */
@@ -257,7 +257,7 @@ std::string SystemInfo::GPUBrandString(){
 }
 
 uint32_t SystemInfo::GPUVRAM(){
-#ifdef _UWP
+#if _UWP
     auto data = bgfx::getInternalData();
     auto d3ddev = (ID3D12Device*)data->context;
     DXGI_ADAPTER_DESC desc;
@@ -270,13 +270,15 @@ uint32_t SystemInfo::GPUVRAM(){
     else {
         return 0;
     }
+#elif __APPLE__
+    return AppleVRAMTotal();
 #else
     return GetApp()->GetRenderEngine().GetTotalVRAM();
 #endif
 }
 
 uint32_t SystemInfo::GPUVRAMinUse(){
-#ifdef _UWP
+#if _UWP
     auto data = bgfx::getInternalData();
     auto d3ddev = (ID3D12Device*)data->context;
     DXGI_ADAPTER_DESC desc;
@@ -289,6 +291,8 @@ uint32_t SystemInfo::GPUVRAMinUse(){
     else {
         return 0;
     }
+#elif __APPLE__
+    return AppleVRAMUsed();
 #else
     return GetApp()->GetRenderEngine().GetCurrentVRAMUse();
 #endif

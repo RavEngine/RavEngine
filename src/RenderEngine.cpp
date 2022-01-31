@@ -168,12 +168,15 @@ static bgfx_msghandler global_msghandler;
  */
 inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 {
+#ifndef __EMSCRIPTEN__
 	SDL_SysWMinfo wmi;
 	SDL_VERSION(&wmi.version);
 	if (!SDL_GetWindowWMInfo(_window, &wmi)) {
 		Debug::Fatal("Cannot get native window information");
 	}
+#endif
     bgfx::PlatformData pd;
+    std::memset(&pd, 0, sizeof(pd));
 	
 #if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
     // load the correct one of WayLand or X11
@@ -207,7 +210,9 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 	pd.ndt = NULL;
 	pd.nwh = wmi.info.winrt.window;
 #elif __EMSCRIPTEN__
-    Debug::Fatal("Not implemented");
+    static const char* canvas = "#canvas";
+    pd.ndt = NULL;
+    pd.nwh = (void*)canvas;
 #else
 	#error This system / display manager is not supported
 #endif // BX_PLATFORM_
@@ -362,6 +367,8 @@ void RenderEngine::Init(const AppConfig& config)
 			SelectRenderer(bgfx::RendererType::Direct3D12);
 #elif defined __APPLE__
 			SelectRenderer(bgfx::RendererType::Metal);
+#elif defined __EMSCRIPTEN__
+            SelectRenderer(bgfx::RendererType::OpenGLES);
 #endif
 		}
 		else {
@@ -794,8 +801,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 	currentFrameTime = delta.count();
 #if __APPLE__
-    currentVRAM = AppleVRAMUsed();
-    totalVRAM = AppleVRAMTotal();
+    // don't need to update this, it is available on-demand via call
 #else
     currentVRAM = stats->gpuMemoryUsed / 1024 / 1024;
     totalVRAM = stats->gpuMemoryMax / 1024 / 1024;
