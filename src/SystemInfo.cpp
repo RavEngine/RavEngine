@@ -182,6 +182,37 @@ static std::string vkGetGPUName(void* context) {
 }
 #endif
 
+#if defined _UWP  || defined _WIN32
+/**
+* Helper to get the current adapater / description 
+*/
+bool getDX12Adapter(ID3D12Device* d3ddev, DXGI_ADAPTER_DESC& out_desc, IDXGIAdapter*& out_adapter) {
+    auto luid = d3ddev->GetAdapterLuid();   // get local ID
+
+            // use the local id in DXGI to get the name
+    IDXGIFactory4* factory;
+    auto result = CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&factory);
+    if (result != S_OK) {
+        Debug::Fatal("CreateDXGIFactory Failed");
+    }
+
+    IDXGIAdapter* currentAdapter;
+    for (int i = 0; factory->EnumAdapters(i, &currentAdapter) != DXGI_ERROR_NOT_FOUND; ++i) {
+        DXGI_ADAPTER_DESC desc;
+        currentAdapter->GetDesc(&desc);
+        if (desc.AdapterLuid.HighPart == luid.HighPart && desc.AdapterLuid.LowPart == luid.LowPart) {
+            // found it! LUIDs match
+            out_adapter = currentAdapter;
+            out_desc = desc;
+            return true;
+        }
+
+    }
+    return false;
+}
+
+#endif
+
 std::string SystemInfo::GPUBrandString(){
 #ifdef __APPLE__
     char buffer[128]{0};
@@ -192,30 +223,19 @@ std::string SystemInfo::GPUBrandString(){
     switch (bgfx::getRendererType()) {
         case bgfx::RendererType::Direct3D12:{
             auto d3ddev = (ID3D12Device*)data->context;
-            auto luid = d3ddev->GetAdapterLuid();   // get local ID
+            DXGI_ADAPTER_DESC desc;
+            IDXGIAdapter* adapter = nullptr;
+            if (getDX12Adapter(d3ddev, desc, adapter)) {
+                // grab the description
+                std::wstring wstr(desc.Description);
 
-            // use the local id in DXGI to get the name
-            IDXGIFactory4* factory;
-            auto result = CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&factory);
-            if (result != S_OK) {
-                return "Unknown GPU - CreateDXGIFactory Failed";
+                //setup converter
+                using convert_type = std::codecvt_utf8<wchar_t>;
+                std::wstring_convert<convert_type, wchar_t> converter;
+                return converter.to_bytes(wstr);
             }
-
-            IDXGIAdapter* currentAdapter;
-            for (int i = 0; factory->EnumAdapters(i, &currentAdapter) != DXGI_ERROR_NOT_FOUND; ++i) {
-                DXGI_ADAPTER_DESC desc;
-                currentAdapter->GetDesc(&desc);
-                if (desc.AdapterLuid.HighPart == luid.HighPart && desc.AdapterLuid.LowPart == luid.LowPart) {
-                    // found it! LUIDs match
-                    // grab the description
-                    std::wstring wstr(desc.Description);
-
-                    //setup converter
-                    using convert_type = std::codecvt_utf8<wchar_t>;
-                    std::wstring_convert<convert_type, wchar_t> converter;
-                    return converter.to_bytes(wstr);
-                }
-
+            else {
+                return "Unknown GPU";
             }
         }
         break;
@@ -237,12 +257,43 @@ std::string SystemInfo::GPUBrandString(){
 }
 
 uint32_t SystemInfo::GPUVRAM(){
+#ifdef _UWP
+    auto data = bgfx::getInternalData();
+    auto d3ddev = (ID3D12Device*)data->context;
+    DXGI_ADAPTER_DESC desc;
+    IDXGIAdapter* adapter = nullptr;
+    if (getDX12Adapter(d3ddev, desc, adapter)) {
+        DXGI_QUERY_VIDEO_MEMORY_INFO meminfo;
+        static_cast<IDXGIAdapter3*>(adapter)->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &meminfo);
+        return static_cast<uint32_t>(meminfo.Budget / 1024 / 1024);
+    }
+    else {
+        return 0;
+    }
+#else
     return GetApp()->GetRenderEngine().GetTotalVRAM();
+#endif
 }
 
 uint32_t SystemInfo::GPUVRAMinUse(){
+#ifdef _UWP
+    auto data = bgfx::getInternalData();
+    auto d3ddev = (ID3D12Device*)data->context;
+    DXGI_ADAPTER_DESC desc;
+    IDXGIAdapter* adapter = nullptr;
+    if (getDX12Adapter(d3ddev, desc, adapter)) {
+        DXGI_QUERY_VIDEO_MEMORY_INFO meminfo;
+        static_cast<IDXGIAdapter3*>(adapter)->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &meminfo);
+        return static_cast<uint32_t>(meminfo.CurrentUsage / 1024 / 1024);
+    }
+    else {
+        return 0;
+    }
+#else
     return GetApp()->GetRenderEngine().GetCurrentVRAMUse();
+#endif
 }
+
 
 SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
     SystemInfo::GPUFeatures features;
