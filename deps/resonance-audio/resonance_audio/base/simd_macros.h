@@ -32,7 +32,7 @@ typedef __m128 SimdVector;
 #define SIMD_RECIPROCAL_SQRT(a) _mm_rsqrt_ps(a)
 #define SIMD_LOAD_ONE_FLOAT(p) _mm_set1_ps(p)
 #elif !defined(DISABLE_SIMD) && \
-    (defined(__aarch64__) || (defined(__arm__) && defined(__ARM_NEON__)))
+    ((defined(__aarch64__) || defined(_M_ARM64)) || (defined(__arm__) && defined(__ARM_NEON__)))
 // ARM NEON is enabled.
 #include <arm_neon.h>
 typedef float32x4_t SimdVector;

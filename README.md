@@ -81,10 +81,10 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | macOS 10.15+ | Intel, Apple Silicon | Apple Clang | Xcode | Metal |
 | iOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
 | tvOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
-| Windows 10 (Win32) | x64 | MSVC++ | Visual Studio | DX12, Vulkan |
-| Windows 10 (UWP) | x64 | MSVC++ | Visual Studio | DX12 |
-| Linux | x64 | Clang++, g++ | Ninja, Make | Vulkan |
-| Raspi | aarch64 | Clang++, g++ | Ninja, Make | Vulkan |
+| Windows 10 (Win32) | x86_64, ARM64 | MSVC | Visual Studio | DX12, Vulkan |
+| Windows 10 (UWP) | x86_64 ARM64 | MSVC | Visual Studio | DX12 |
+| Linux | x64 | Clang, GCC | Ninja, Make | Vulkan |
+| Raspi | aarch64 | Clang, GCC | Ninja, Make | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic

@@ -23,6 +23,7 @@
 
 #ifdef _WIN32
 	#include <Windows.h>
+	#include <winuser.h>
 	#undef min
 #endif
 
@@ -119,7 +120,8 @@ int App::run(int argc, char** argv) {
 	SteamNetworkingUtils()->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Msg, DebugOutput);
 	
 	// if built in non-UWP for Windows, need to manually set DPI awareness
-#if defined _WIN32 && !_WINRT
+	// for some weird reason, SetProcessDpiAwarenessContext is not defined for Win32-ARM64
+#if defined _WIN32 && !_WINRT && !defined(_M_ARM64)		
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
 

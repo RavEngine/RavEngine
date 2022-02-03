@@ -60,7 +60,7 @@
 	#endif
 #endif
 
-#if ( (defined(__GNUC__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) || defined(__LITTLE_ENDIAN__) || defined(__i386__) || defined( __x86_64__ ) || defined(__arm__) || defined(__arm64__) || defined(__aarch64__) || defined(_XBOX) ) && !defined(VALVE_LITTLE_ENDIAN)
+#if ( (defined(__GNUC__) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) || defined(__LITTLE_ENDIAN__) || defined(__i386__) || defined( __x86_64__ ) || defined(__arm__) || defined(__arm64__) || defined(_M_ARM64) ||  defined(__aarch64__) || defined(_XBOX) ) && !defined(VALVE_LITTLE_ENDIAN)
 #define VALVE_LITTLE_ENDIAN 1
 #endif
 

@@ -1,3 +1,6 @@
+#if defined _M_ARM64 && _M_ARM64
+#define ARCH_CPU_LITTLE_ENDIAN 1
+#endif
 #include "AudioSource.hpp"
 #include "App.hpp"
 #include "Debug.hpp"

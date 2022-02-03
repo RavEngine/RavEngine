@@ -1555,8 +1555,9 @@ static void mp3d_synth(float *xl, mp3d_sample_t *dstl, int nch, float *lins)
 #endif /* HAVE_SSE */
 
 #else /* MINIMP3_FLOAT_OUTPUT */
-
-            static const f4 g_scale = { 1.0f/32768.0f, 1.0f/32768.0f, 1.0f/32768.0f, 1.0f/32768.0f };
+            static const float values[] = {1.0f / 32768.0f, 1.0f / 32768.0f, 1.0f / 32768.0f, 1.0f / 32768.0f};
+            static const f4 g_scale;
+            memcpy((void*)&g_scale, values, sizeof(g_scale));
             a = VMUL(a, g_scale);
             b = VMUL(b, g_scale);
 #if HAVE_SSE
@@ -1803,7 +1804,9 @@ void mp3dec_f32_to_s16(const float *in, int16_t *out, int num_samples)
     int aligned_count = num_samples & ~7;
     for(; i < aligned_count; i += 8)
     {
-        static const f4 g_scale = { 32768.0f, 32768.0f, 32768.0f, 32768.0f };
+        static const float values[] = {32768.0f, 32768.0f, 32768.0f, 32768.0f};
+        static const f4 g_scale;
+        memcpy((void*)&g_scale, values, sizeof(g_scale));
         f4 a = VMUL(VLD(&in[i  ]), g_scale);
         f4 b = VMUL(VLD(&in[i+4]), g_scale);
 #if HAVE_SSE

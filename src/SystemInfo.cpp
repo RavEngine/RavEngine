@@ -51,6 +51,7 @@ std::string SystemInfo::CPUBrandString(){
     AppleCPUName(buf, sizeof(buf));
     return buf;
 #elif _WIN32
+#ifndef _M_ARM64
     int CPUInfo[4] = { -1 };
     unsigned   nExIds, i = 0;
     char CPUBrandString[0x40]{0};
@@ -74,6 +75,9 @@ std::string SystemInfo::CPUBrandString(){
         }
     }
     return string(CPUBrandString,64);
+#else
+    return "Mystery WinARM64 CPU";
+#endif
 #elif __linux__
 	ifstream in("/proc/cpuinfo");
 	string line;
