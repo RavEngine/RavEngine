@@ -101,19 +101,19 @@ jobs:
         run: mkdir build && cd build; cmake -Wno-dev -DRAVENGINE_BUILD_TESTS=ON .. ; cmake ..
       - name: Build
         run: cd build; cmake --build . --config release --target RavEngine
-        
-    build-windows-arm:
-    name: Windows ARM64 Compile Check
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Configure
-        run: mkdir build && cd build; cmake -Wno-dev -DRAVENGINE_BUILD_TESTS=ON -AARM64 .. ; cmake ..
-      - name: Build
-        run: cd build; cmake --build . --config release --target RavEngine
+  
+  build-windows-arm:
+      name: Windows ARM64 Compile Check
+      runs-on: windows-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v2
+          with:
+            submodules: true
+        - name: Configure
+          run: mkdir build && cd build; cmake -Wno-dev -DRAVENGINE_BUILD_TESTS=ON -AARM64 .. ; cmake ..
+        - name: Build
+          run: cd build; cmake --build . --config release --target RavEngine
 
   build-UWP:
     name: UWP Compile Check
