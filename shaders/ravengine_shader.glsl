@@ -3,8 +3,9 @@
 #include <bgfx_shader.sh>
 
 BUFFER_RO(rvs_pose, vec4, 11);
+BUFFER_RW(rvs_all_geo, vec3, 10);
 uniform vec4 NumObjects;			// x = num objects, y = num vertices, z = num bones active, w = offset into transient buffer
-uniform vec4 u_time;
+uniform vec4 u_time;                // x = time, y = offset into all_geo, z = number of vertices in this primitive, w = unused
 
 struct PBR{
 	vec3 color;
@@ -35,7 +36,8 @@ mat4 rvs_dxify(mat4 m){
  @param mat the PBR mat structure to use for writing data
  */
 #define fs_store(mat) gl_FragData[0] = vec4(mat.color,1); gl_FragData[1] = vec4(mat.normal,1); gl_FragData[2] = vec4(mat.position,1); gl_FragData[3] = vec4(1,0.5,0,1);
-#define vs_store() gl_Position = mul(u_viewProj, vec4(v_worldpos,1));
+#define vs_store() gl_Position = mul(u_viewProj, vec4(v_worldpos,1)); rvs_all_geo[gl_InstanceID * u_time.z + u_time.y] = v_worldpos;
+// all_geo[gl_InstanceID * u_time.z + u_time.y] = v_worldpos;
 
 /**
  Calculate the posed (or not) matrices and the normal matrix

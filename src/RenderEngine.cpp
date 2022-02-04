@@ -66,6 +66,7 @@ bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
 decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout, RenderEngine::skinningInputLayout;
 decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -465,6 +466,13 @@ void RenderEngine::Init(const AppConfig& config)
 	};
 	
 	opaquemtxhandle = bgfx::createVertexBuffer(bgfx::copy(identity,sizeof(identity)), skinningOutputLayout);
+    
+    bgfx::VertexLayout allGeoLayout;
+    allGeoLayout.begin()
+        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)    // 3 verts to make a triangle
+        .end();
+    
+    allVerticesHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_READ_WRITE);
 
 	//init lights
 	LightManager::Init();
@@ -625,6 +633,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setViewTransform(i, viewmat, projmat);
 	}
 	
+    uint32_t allVerticesOffset = 0;
 	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
@@ -654,13 +663,18 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 			bindfunc();
 			
+            // both skinend and static need to write to this buffer
+            bgfx::setBuffer(10, allVerticesHandle, bgfx::Access::Write);
+            
 			//bind gbuffer textures
 			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
 				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 			}
             
-            // update time
-            float timeVals[] = {static_cast<float>(fd->Time),0,0,0};
+            // update time and other data
+            auto numIndiciesInThisDispatch = std::get<0>(row.first)->GetNumIndices();
+            float timeVals[] = {static_cast<float>(fd->Time),static_cast<float>(allVerticesOffset),static_cast<float>(numIndiciesInThisDispatch),0};
+            allVerticesOffset += numIndiciesInThisDispatch * row.second.items.size();   // need to account for the number of indices
             timeUniform.value().SetValues(&timeVals, 1);
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 
