@@ -67,6 +67,9 @@ bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
 decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout, RenderEngine::skinningInputLayout;
 decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::allIndicesHandle) = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::copyIndicesShaderHandle) = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::debugShaderHandle) = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -365,7 +368,7 @@ void RenderEngine::Init(const AppConfig& config)
 #ifdef __linux__
 			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined _WIN32
-			SelectRenderer(bgfx::RendererType::Direct3D12);
+			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined __APPLE__
 			SelectRenderer(bgfx::RendererType::Metal);
 #elif defined __EMSCRIPTEN__
@@ -442,6 +445,13 @@ void RenderEngine::Init(const AppConfig& config)
 
 	//load compute shader for skinning
 	skinningShaderHandle = Material::loadComputeProgram("skincompute/compute.bin");
+	copyIndicesShaderHandle = Material::loadComputeProgram("indexcopycompute/compute.bin");
+	{
+		auto vert = Material::loadShaderHandle("meshOnly/vertex.bin");
+		auto frag = Material::loadShaderHandle("meshOnly/fragment.bin");
+		debugShaderHandle = bgfx::createProgram(vert, frag);
+	}
+	
 
 	//create compute shader buffers
 	skinningOutputLayout.begin()
@@ -471,8 +481,8 @@ void RenderEngine::Init(const AppConfig& config)
     allGeoLayout.begin()
         .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)    // 3 verts to make a triangle
         .end();
-    
-    allVerticesHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_READ_WRITE);
+    allVerticesHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
+	allIndicesHandle = bgfx::createDynamicIndexBuffer(65535, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
 
 	//init lights
 	LightManager::Init();
@@ -634,6 +644,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 	
     uint32_t allVerticesOffset = 0;
+	uint32_t allIndicesOffset = 0;
+	uint32_t allIndicesIncrement = 0;
 	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
@@ -664,7 +676,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bindfunc();
 			
             // both skinend and static need to write to this buffer
-            bgfx::setBuffer(10, allVerticesHandle, bgfx::Access::Write);
+            bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Write);
             
 			//bind gbuffer textures
 			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
@@ -672,11 +684,25 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			}
             
             // update time and other data
-            auto numIndiciesInThisDispatch = std::get<0>(row.first)->GetNumIndices();
+            auto numIndiciesInThisDispatch = std::get<0>(row.first)->GetNumVerts();
             float timeVals[] = {static_cast<float>(fd->Time),static_cast<float>(allVerticesOffset),static_cast<float>(numIndiciesInThisDispatch),0};
             allVerticesOffset += numIndiciesInThisDispatch * row.second.items.size();   // need to account for the number of indices
             timeUniform.value().SetValues(&timeVals, 1);
+
 			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
+
+			// dispatch the indices copy compute shader
+			bgfx::discard();
+			bgfx::setBuffer(0, std::get<0>(row.first)->getIndexBuffer(), bgfx::Access::Read);
+			bgfx::setBuffer(1, allIndicesHandle, bgfx::Access::Write);
+			timeVals[0] = allIndicesOffset;
+			timeVals[1] = std::get<0>(row.first)->GetNumIndices();
+			timeVals[2] = allIndicesIncrement;
+			timeVals[3] = std::get<0>(row.first)->GetNumVerts();
+			numRowsUniform.SetValues(timeVals, 1);
+			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, std::get<0>(row.first)->GetNumIndices() / 64, row.second.items.size(), 1);
+			allIndicesOffset += std::get<0>(row.first)->GetNumIndices() * row.second.items.size();	// account for the number of instances
+			allIndicesIncrement += std::get<0>(row.first)->GetNumVerts();	// begin counting from here
 
 		}
 		else {
@@ -759,6 +785,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(11, skinningComputeBuffer.GetHandle(), bgfx::Access::Read);
 		});
 	}
+
+	// debug: draw the unified mesh
+	bgfx::discard();
+	bgfx::setVertexBuffer(0,allVerticesHandle);
+	bgfx::setIndexBuffer(allIndicesHandle);
+	bgfx::submit(Views::FinalBlit, debugShaderHandle);
+	bgfx::discard();
 
 	// Lighting pass
 	DrawLightsOfType<AmbientLight>(fd->ambients,gBufferSamplers,attachments);

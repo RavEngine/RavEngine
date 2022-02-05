@@ -22,6 +22,12 @@ declare_shader("guishader" "${CMAKE_CURRENT_LIST_DIR}/gui.vsh" "${CMAKE_CURRENT_
 # skybox
 declare_shader("defaultsky" "${CMAKE_CURRENT_LIST_DIR}/defaultsky.vsh" "${CMAKE_CURRENT_LIST_DIR}/defaultsky.fsh" "${CMAKE_CURRENT_LIST_DIR}/defaultsky.def.hlsl")
 
+# debug shader for rendering geometry
+declare_shader("meshOnly" "${CMAKE_CURRENT_LIST_DIR}/meshOnlyShader.vsh" "${CMAKE_CURRENT_LIST_DIR}/meshOnlyShader.fsh" "${CMAKE_CURRENT_LIST_DIR}/meshOnlyShader_varying.def.hlsl")
 
 # mesh skinning compute shader
 declare_shader("skincompute" "${CMAKE_CURRENT_LIST_DIR}/skinning_cs.glsl" "" "")
+
+# indices copy compute shader
+declare_shader("indexcopycompute" "${CMAKE_CURRENT_LIST_DIR}/index_copy_cs.glsl" "" "")
+

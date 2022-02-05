@@ -275,8 +275,9 @@ namespace RavEngine {
         static bgfx::IndexBufferHandle screenSpaceQuadInd;
 		static bgfx::VertexBufferHandle opaquemtxhandle;
         static bgfx::DynamicVertexBufferHandle allVerticesHandle;
+		static bgfx::DynamicIndexBufferHandle allIndicesHandle;
 
-		static bgfx::ProgramHandle skinningShaderHandle;
+		static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle;
 
 		static bgfx::VertexLayout skinningOutputLayout, skinningInputLayout;
 		
