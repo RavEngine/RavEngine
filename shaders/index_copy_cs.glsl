@@ -7,12 +7,13 @@ uniform vec4 NumObjects;			// x = current offset, y = total count for this invoc
 
 NUM_THREADS(64, 1, 1)	// x = per index, y = per instance
 void main(){
-    if (gl_GlobalInvocationID.x < NumObjects.y){    // out of range check
+    int indexID = gl_GlobalInvocationID.x;      // which index are we copying
+    int numIndicesToWrite = NumObjects.y;        // how many indices we are writing
+
+    if (indexID < numIndicesToWrite){    // out of range check
 
         int instanceID = gl_GlobalInvocationID.y;   // which instance is this for
-        int indexID = gl_GlobalInvocationID.x;      // which index are we copying
         int beginIndex = NumObjects.x;              // the begin index across all instances for this draw
-        int numIndicesToWrite = NumObjects.y;        // how many indices we are writing
         int firstIndexOffset = NumObjects.z;        // the "zero" index
         int numVertInvocations = NumObjects.w;      // the number of vertices (not indices!) in this draw
 

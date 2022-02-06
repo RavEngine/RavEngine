@@ -700,7 +700,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			timeVals[2] = allIndicesIncrement;
 			timeVals[3] = std::get<0>(row.first)->GetNumVerts();
 			numRowsUniform.SetValues(timeVals, 1);
-			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, std::get<0>(row.first)->GetNumIndices() / 64, row.second.items.size(), 1);
+			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, ceil(std::get<0>(row.first)->GetNumIndices() / 64.0), row.second.items.size(), 1);
 			allIndicesOffset += std::get<0>(row.first)->GetNumIndices() * row.second.items.size();	// account for the number of instances
 			allIndicesIncrement += std::get<0>(row.first)->GetNumVerts();	// begin counting from here
 
