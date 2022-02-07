@@ -40,6 +40,11 @@
 /* For GET_X_LPARAM, GET_Y_LPARAM. */
 #include <windowsx.h>
 
+/* For WM_TABLET_QUERYSYSTEMGESTURESTATUS et. al. */
+#if HAVE_TPCSHRD_H
+#include <tpcshrd.h>
+#endif /* HAVE_TPCSHRD_H */
+
 /* #define WMMSG_DEBUG */
 #ifdef WMMSG_DEBUG
 #include <stdio.h>
@@ -732,8 +737,8 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 }
             }
         }
-        /* don't break here, fall through to check the wParam like the button presses */
-        SDL_FALLTHROUGH;
+        break;
+
     case WM_LBUTTONUP:
     case WM_RBUTTONUP:
     case WM_MBUTTONUP:
@@ -1285,6 +1290,25 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         break;
 
+#if HAVE_TPCSHRD_H
+
+    case WM_TABLET_QUERYSYSTEMGESTURESTATUS:
+        /* See https://msdn.microsoft.com/en-us/library/windows/desktop/bb969148(v=vs.85).aspx .
+         * If we're handling our own touches, we don't want any gestures.
+         * Not all of these settings are documented.
+         * The use of the undocumented ones was suggested by https://github.com/bjarkeck/GCGJ/blob/master/Monogame/Windows/WinFormsGameForm.cs . */
+        return TABLET_DISABLE_PRESSANDHOLD |    /*  disables press and hold (right-click) gesture */
+            TABLET_DISABLE_PENTAPFEEDBACK |     /*  disables UI feedback on pen up (waves) */
+            TABLET_DISABLE_PENBARRELFEEDBACK |  /*  disables UI feedback on pen button down (circle) */
+            TABLET_DISABLE_TOUCHUIFORCEON |
+            TABLET_DISABLE_TOUCHUIFORCEOFF |
+            TABLET_DISABLE_TOUCHSWITCH |
+            TABLET_DISABLE_FLICKS |             /*  disables pen flicks (back, forward, drag down, drag up) */
+            TABLET_DISABLE_SMOOTHSCROLLING |
+            TABLET_DISABLE_FLICKFALLBACKKEYS;
+
+#endif /* HAVE_TPCSHRD_H */
+
     case WM_DROPFILES:
         {
             UINT i;
@@ -1555,6 +1579,14 @@ LPTSTR SDL_Appname = NULL;
 Uint32 SDL_Appstyle = 0;
 HINSTANCE SDL_Instance = NULL;
 
+static void WIN_CleanRegisterApp(WNDCLASSEX wcex)
+{
+    if (wcex.hIcon) DestroyIcon(wcex.hIcon);
+    if (wcex.hIconSm) DestroyIcon(wcex.hIconSm);
+    SDL_free(SDL_Appname);
+    SDL_Appname = NULL;
+}
+
 /* Register the class for this application */
 int
 SDL_RegisterApp(const char *name, Uint32 style, void *hInst)
@@ -1568,19 +1600,16 @@ SDL_RegisterApp(const char *name, Uint32 style, void *hInst)
         ++app_registered;
         return (0);
     }
-    if (!name && !SDL_Appname) {
+    SDL_assert(SDL_Appname == NULL);
+    if (!name) {
         name = "SDL_app";
 #if defined(CS_BYTEALIGNCLIENT) || defined(CS_OWNDC)
-        SDL_Appstyle = (CS_BYTEALIGNCLIENT | CS_OWNDC);
+        style = (CS_BYTEALIGNCLIENT | CS_OWNDC);
 #endif
-        SDL_Instance = hInst ? hInst : GetModuleHandle(NULL);
     }
-
-    if (name) {
-        SDL_Appname = WIN_UTF8ToString(name);
-        SDL_Appstyle = style;
-        SDL_Instance = hInst ? hInst : GetModuleHandle(NULL);
-    }
+    SDL_Appname = WIN_UTF8ToString(name);
+    SDL_Appstyle = style;
+    SDL_Instance = hInst ? hInst : GetModuleHandle(NULL);
 
     /* Register the application class */
     wcex.cbSize         = sizeof(WNDCLASSEX);
@@ -1611,6 +1640,7 @@ SDL_RegisterApp(const char *name, Uint32 style, void *hInst)
     }
 
     if (!RegisterClassEx(&wcex)) {
+        WIN_CleanRegisterApp(wcex);
         return SDL_SetError("Couldn't register application class");
     }
 
@@ -1630,14 +1660,14 @@ SDL_UnregisterApp()
     }
     --app_registered;
     if (app_registered == 0) {
+        /* Ensure the icons are initialized. */
+        wcex.hIcon = NULL;
+        wcex.hIconSm = NULL;
         /* Check for any registered window classes. */
         if (GetClassInfoEx(SDL_Instance, SDL_Appname, &wcex)) {
             UnregisterClass(SDL_Appname, SDL_Instance);
-            if (wcex.hIcon) DestroyIcon(wcex.hIcon);
-            if (wcex.hIconSm) DestroyIcon(wcex.hIconSm);
         }
-        SDL_free(SDL_Appname);
-        SDL_Appname = NULL;
+        WIN_CleanRegisterApp(wcex);
     }
 }
 

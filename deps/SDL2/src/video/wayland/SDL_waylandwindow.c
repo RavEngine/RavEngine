@@ -21,7 +21,7 @@
 
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_WAYLAND && SDL_VIDEO_OPENGL_EGL
+#if SDL_VIDEO_DRIVER_WAYLAND
 
 #include "../SDL_sysvideo.h"
 #include "../../events/SDL_windowevents_c.h"
@@ -42,7 +42,7 @@
 #endif
 
 static void
-CommitMinMaxDimensions(SDL_Window *window)
+SetMinMaxDimensions(SDL_Window *window, SDL_bool commit)
 {
     SDL_WindowData *wind = window->driverdata;
     SDL_VideoData *viddata = wind->waylandData;
@@ -88,12 +88,14 @@ CommitMinMaxDimensions(SDL_Window *window)
         xdg_toplevel_set_max_size(wind->shell_surface.xdg.roleobj.toplevel,
                                   max_width,
                                   max_height);
-        wl_surface_commit(wind->surface);
+        if (commit) {
+            wl_surface_commit(wind->surface);
+        }
     }
 }
 
 static void
-SetFullscreen(SDL_Window *window, struct wl_output *output)
+SetFullscreen(SDL_Window *window, struct wl_output *output, SDL_bool commit)
 {
     SDL_WindowData *wind = window->driverdata;
     SDL_VideoData *viddata = wind->waylandData;
@@ -101,7 +103,7 @@ SetFullscreen(SDL_Window *window, struct wl_output *output)
     /* The desktop may try to enforce min/max sizes here, so turn them off for
      * fullscreen and on (if applicable) for windowed
      */
-    CommitMinMaxDimensions(window);
+    SetMinMaxDimensions(window, SDL_FALSE);
 
 #ifdef HAVE_LIBDECOR_H
     if (viddata->shell.libdecor) {
@@ -133,6 +135,9 @@ SetFullscreen(SDL_Window *window, struct wl_output *output)
             xdg_toplevel_set_fullscreen(wind->shell_surface.xdg.roleobj.toplevel, output);
         } else {
             xdg_toplevel_unset_fullscreen(wind->shell_surface.xdg.roleobj.toplevel);
+        }
+        if (commit) {
+            wl_surface_commit(wind->surface);
         }
     }
 }
@@ -215,7 +220,7 @@ handle_configure_xdg_toplevel(void *data,
     if (!fullscreen) {
         if (window->flags & SDL_WINDOW_FULLSCREEN) {
             /* We might need to re-enter fullscreen after being restored from minimized */
-            SetFullscreen(window, driverdata->output);
+            SetFullscreen(window, driverdata->output, SDL_FALSE);
 
             /* Foolishly do what the compositor says here. If it's wrong, don't
              * blame us, we were explicitly instructed to do this.
@@ -224,14 +229,16 @@ handle_configure_xdg_toplevel(void *data,
              * us a completely stateless, sizeless configure, with which we have
              * to enforce our own state anyway.
              */
-            if (width != 0 && height != 0) {
+            if (width != 0 && height != 0 && (window->w != width || window->h != height)) {
                 window->w = width;
                 window->h = height;
+                wind->needs_resize_event = SDL_TRUE;
             }
 
             /* This part is good though. */
-            if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI) {
+            if ((window->flags & SDL_WINDOW_ALLOW_HIGHDPI) && wind->scale_factor != driverdata->scale_factor) {
                 wind->scale_factor = driverdata->scale_factor;
+                wind->needs_resize_event = SDL_TRUE;
             }
 
             return;
@@ -284,8 +291,11 @@ handle_configure_xdg_toplevel(void *data,
         }
 
         /* Store this now so the xdg_surface configure knows what to resize to */
-        window->w = width;
-        window->h = height;
+        if (window->w != width || window->h != height) {
+            window->w = width;
+            window->h = height;
+            wind->needs_resize_event = SDL_TRUE;
+        }
     } else {
         /* For fullscreen, foolishly do what the compositor says. If it's wrong,
          * don't blame us, we were explicitly instructed to do this.
@@ -293,14 +303,16 @@ handle_configure_xdg_toplevel(void *data,
          * UPDATE: Nope, sure enough a compositor sends 0,0. This is a known bug:
          * https://bugs.kde.org/show_bug.cgi?id=444962
          */
-        if (width != 0 && height != 0) {
+        if (width != 0 && height != 0 && (window->w != width || window->h != height)) {
             window->w = width;
             window->h = height;
+            wind->needs_resize_event = SDL_TRUE;
         }
 
         /* This part is good though. */
-        if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI) {
+        if ((window->flags & SDL_WINDOW_ALLOW_HIGHDPI) && wind->scale_factor != driverdata->scale_factor) {
             wind->scale_factor = driverdata->scale_factor;
+            wind->needs_resize_event = SDL_TRUE;
         }
     }
 }
@@ -330,6 +342,7 @@ decoration_frame_configure(struct libdecor_frame *frame,
 
     enum libdecor_window_state window_state;
     int width, height;
+    float scale_factor = wind->scale_factor;
 
     SDL_bool focused = SDL_FALSE;
     SDL_bool fullscreen = SDL_FALSE;
@@ -356,7 +369,7 @@ decoration_frame_configure(struct libdecor_frame *frame,
     if (!fullscreen) {
         if (window->flags & SDL_WINDOW_FULLSCREEN) {
             /* We might need to re-enter fullscreen after being restored from minimized */
-            SetFullscreen(window, driverdata->output);
+            SetFullscreen(window, driverdata->output, SDL_FALSE);
             fullscreen = SDL_TRUE;
             floating = SDL_FALSE;
         }
@@ -399,11 +412,12 @@ decoration_frame_configure(struct libdecor_frame *frame,
 
         /* This part is good though. */
         if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI) {
-            wind->scale_factor = driverdata->scale_factor;
+            scale_factor = driverdata->scale_factor;
         }
-    } else if (!(window->flags & SDL_WINDOW_RESIZABLE)) {
+    } else if (!(window->flags & SDL_WINDOW_RESIZABLE) || (floating && wind->floating_resize_pending)) {
         width = window->windowed.w;
         height = window->windowed.h;
+        wind->floating_resize_pending = SDL_FALSE;
     } else {
         /* This will never set 0 for width/height unless the function returns false */
         if (!libdecor_configuration_get_content_size(configuration, frame, &width, &height)) {
@@ -427,7 +441,7 @@ decoration_frame_configure(struct libdecor_frame *frame,
     }
 
     /* Do the resize on the SDL side (this will set window->w/h)... */
-    Wayland_HandleResize(window, width, height, wind->scale_factor);
+    Wayland_HandleResize(window, width, height, scale_factor);
     wind->shell_surface.libdecor.initial_configure_seen = SDL_TRUE;
 
     /* ... then commit the changes on the libdecor side. */
@@ -716,13 +730,6 @@ void Wayland_ShowWindow(_THIS, SDL_Window *window)
 {
     SDL_VideoData *c = _this->driverdata;
     SDL_WindowData *data = window->driverdata;
-    SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
-
-    /* Detach any previous buffers before resetting everything, otherwise when
-     * calling this a second time you'll get an annoying protocol error
-     */
-    wl_surface_attach(data->surface, NULL, 0, 0);
-    wl_surface_commit(data->surface);
 
     /* Create the shell surface and map the toplevel */
 #ifdef HAVE_LIBDECOR_H
@@ -758,7 +765,6 @@ void Wayland_ShowWindow(_THIS, SDL_Window *window)
     if (window->flags & SDL_WINDOW_MINIMIZED) {
         Wayland_MinimizeWindow(_this, window);
     }
-    Wayland_SetWindowFullscreen(_this, window, display, (window->flags & SDL_WINDOW_FULLSCREEN) != 0);
 
     /* We have to wait until the surface gets a "configure" event, or use of
      * this surface will fail. This is a new rule for xdg_shell.
@@ -774,6 +780,12 @@ void Wayland_ShowWindow(_THIS, SDL_Window *window)
     } else
 #endif
     if (c->shell.xdg) {
+        /* Unlike libdecor we need to call this explicitly to prevent a deadlock.
+         * libdecor will call this as part of their configure event!
+         * -flibit
+         */
+        SDL_WaylandOutputData *odata = SDL_GetDisplayForWindow(window)->driverdata;
+        SetFullscreen(window, (window->flags & SDL_WINDOW_FULLSCREEN) ? odata->output : NULL, SDL_TRUE);
         if (data->shell_surface.xdg.surface) {
             while (!data->shell_surface.xdg.initial_configure_seen) {
                 WAYLAND_wl_display_flush(c->display);
@@ -785,6 +797,9 @@ void Wayland_ShowWindow(_THIS, SDL_Window *window)
         if (data->shell_surface.xdg.roleobj.toplevel && c->decoration_manager) {
             data->server_decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(c->decoration_manager, data->shell_surface.xdg.roleobj.toplevel);
         }
+    } else {
+        /* Nothing to see here, just commit. */
+        wl_surface_commit(data->surface);
     }
 
     /* Unlike the rest of window state we have to set this _after_ flushing the
@@ -850,6 +865,10 @@ void Wayland_HideWindow(_THIS, SDL_Window *window)
             wind->shell_surface.xdg.surface = NULL;
         }
     }
+
+    /* Be sure to detach after this is done, otherwise ShowWindow crashes! */
+    wl_surface_attach(wind->surface, NULL, 0, 0);
+    wl_surface_commit(wind->surface);
 }
 
 static void
@@ -1043,7 +1062,7 @@ Wayland_SetWindowFullscreen(_THIS, SDL_Window * window,
 {
     struct wl_output *output = ((SDL_WaylandOutputData*) _display->driverdata)->output;
     SDL_VideoData *viddata = (SDL_VideoData *) _this->driverdata;
-    SetFullscreen(window, fullscreen ? output : NULL);
+    SetFullscreen(window, fullscreen ? output : NULL, SDL_TRUE);
 
     WAYLAND_wl_display_flush(viddata->display);
 }
@@ -1115,7 +1134,7 @@ Wayland_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable)
     } else
 #endif
     {
-        CommitMinMaxDimensions(window);
+        SetMinMaxDimensions(window, SDL_TRUE);
     }
 }
 
@@ -1301,12 +1320,14 @@ int Wayland_CreateWindow(_THIS, SDL_Window *window)
         data->egl_window = WAYLAND_wl_egl_window_create(data->surface,
                                             window->w * data->scale_factor, window->h * data->scale_factor);
 
+#if SDL_VIDEO_OPENGL_EGL
         /* Create the GLES window surface */
         data->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType) data->egl_window);
 
         if (data->egl_surface == EGL_NO_SURFACE) {
             return SDL_SetError("failed to create an EGL window surface");
         }
+#endif
     }
 
 #ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH
@@ -1326,7 +1347,7 @@ int Wayland_CreateWindow(_THIS, SDL_Window *window)
         Wayland_input_lock_pointer(c->input);
     }
 
-    wl_surface_commit(data->surface);
+    /* Moved this call to ShowWindow: wl_surface_commit(data->surface); */
     WAYLAND_wl_display_flush(c->display);
 
     /* We may need to create an idle inhibitor for this new window */
@@ -1341,14 +1362,18 @@ Wayland_HandleResize(SDL_Window *window, int width, int height, float scale)
 {
     SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
     SDL_VideoData *viddata = data->waylandData;
-
     struct wl_region *region;
-    window->w = 0;
-    window->h = 0;
-    SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED, width, height);
-    window->w = width;
-    window->h = height;
-    data->scale_factor = scale;
+
+    if (data->needs_resize_event || window->w != width || window->h != height || data->scale_factor != scale) {
+        /* We may have already updated window w/h (or only adjusted scale factor),
+         * so we must override the deduplication logic in the video core */
+        window->w = 0;
+        window->h = 0;
+        SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED, width, height);
+        window->w = width;
+        window->h = height;
+        data->needs_resize_event = SDL_FALSE;
+    }
 
     wl_surface_set_buffer_scale(data->surface, data->scale_factor);
 
@@ -1377,13 +1402,13 @@ Wayland_HandleResize(SDL_Window *window, int width, int height, float scale)
 void
 Wayland_SetWindowMinimumSize(_THIS, SDL_Window * window)
 {
-    CommitMinMaxDimensions(window);
+    SetMinMaxDimensions(window, SDL_TRUE);
 }
 
 void
 Wayland_SetWindowMaximumSize(_THIS, SDL_Window * window)
 {
-    CommitMinMaxDimensions(window);
+    SetMinMaxDimensions(window, SDL_TRUE);
 }
 
 void Wayland_SetWindowSize(_THIS, SDL_Window * window)
@@ -1400,6 +1425,8 @@ void Wayland_SetWindowSize(_THIS, SDL_Window * window)
     if (data->shell.libdecor &&
         wind->shell_surface.libdecor.frame &&
         !libdecor_frame_is_floating(wind->shell_surface.libdecor.frame)) {
+            /* Commit the resize when we re-enter floating state */
+            wind->floating_resize_pending = SDL_TRUE;
             return;
     }
 #endif
@@ -1505,9 +1532,11 @@ void Wayland_DestroyWindow(_THIS, SDL_Window *window)
     SDL_WindowData *wind = window->driverdata;
 
     if (data) {
+#if SDL_VIDEO_OPENGL_EGL
         if (wind->egl_surface) {
             SDL_EGL_DestroySurface(_this, wind->egl_surface);
         }
+#endif
         if (wind->egl_window) {
             WAYLAND_wl_egl_window_destroy(wind->egl_window);
         }
@@ -1543,6 +1572,6 @@ void Wayland_DestroyWindow(_THIS, SDL_Window *window)
     window->driverdata = NULL;
 }
 
-#endif /* SDL_VIDEO_DRIVER_WAYLAND && SDL_VIDEO_OPENGL_EGL */
+#endif /* SDL_VIDEO_DRIVER_WAYLAND */
 
 /* vi: set ts=4 sw=4 expandtab: */

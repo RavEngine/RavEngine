@@ -413,6 +413,19 @@ extern "C" {
 #define SDL_HINT_EVENT_LOGGING   "SDL_EVENT_LOGGING"
 
 /**
+ *  \brief  A variable controlling whether raising the window should be done more forcefully
+ *
+ *  This variable can be set to the following values:
+ *    "0"       - No forcing (the default)
+ *    "1"       - Extra level of forcing
+ *
+ *  At present, this is only an issue under MS Windows, which makes it nearly impossible to
+ *  programmatically move a window to the foreground, for "security" reasons. See
+ *  http://stackoverflow.com/a/34414846 for a discussion.
+ */
+#define SDL_HINT_FORCE_RAISEWINDOW    "SDL_HINT_FORCE_RAISEWINDOW"
+
+/**
  *  \brief  A variable controlling how 3D acceleration is used to accelerate the SDL screen surface.
  *
  *  SDL can try to accelerate the SDL screen surface by using streaming
@@ -1823,6 +1836,27 @@ extern "C" {
  *  always ignored.
  */
 #define SDL_HINT_AUDIO_INCLUDE_MONITORS "SDL_AUDIO_INCLUDE_MONITORS"
+
+/**
+ *  \brief  A variable that forces X11 windows to create as a custom type.
+ *
+ *  This is currently only used for X11 and ignored elsewhere.
+ *
+ *  During SDL_CreateWindow, SDL uses the _NET_WM_WINDOW_TYPE X11 property
+ *  to report to the window manager the type of window it wants to create.
+ *  This might be set to various things if SDL_WINDOW_TOOLTIP or
+ *  SDL_WINDOW_POPUP_MENU, etc, were specified. For "normal" windows that
+ *  haven't set a specific type, this hint can be used to specify a custom
+ *  type. For example, a dock window might set this to
+ *  "_NET_WM_WINDOW_TYPE_DOCK".
+ *
+ *  If not set or set to "", this hint is ignored. This hint must be set
+ *  before the SDL_CreateWindow() call that it is intended to affect.
+ *
+ *  This hint is available since SDL 2.0.22. Before then, virtual devices are
+ *  always ignored.
+ */
+#define SDL_HINT_X11_WINDOW_TYPE "SDL_X11_WINDOW_TYPE"
 
 
 /**

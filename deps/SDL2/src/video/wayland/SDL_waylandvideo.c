@@ -230,6 +230,7 @@ Wayland_CreateDevice(int devindex)
     device->WaitEventTimeout = Wayland_WaitEventTimeout;
     device->SendWakeupEvent = Wayland_SendWakeupEvent;
 
+#if SDL_VIDEO_OPENGL_EGL
     device->GL_SwapWindow = Wayland_GLES_SwapWindow;
     device->GL_GetSwapInterval = Wayland_GLES_GetSwapInterval;
     device->GL_SetSwapInterval = Wayland_GLES_SetSwapInterval;
@@ -240,6 +241,7 @@ Wayland_CreateDevice(int devindex)
     device->GL_UnloadLibrary = Wayland_GLES_UnloadLibrary;
     device->GL_GetProcAddress = Wayland_GLES_GetProcAddress;
     device->GL_DeleteContext = Wayland_GLES_DeleteContext;
+#endif
 
     device->CreateSDLWindow = Wayland_CreateWindow;
     device->ShowWindow = Wayland_ShowWindow;
@@ -391,7 +393,7 @@ display_handle_mode(void *data,
         mode.w = width;
         mode.h = height;
     }
-    mode.refresh_rate = refresh / 1000; /* mHz to Hz */
+    mode.refresh_rate = (int)SDL_round(refresh / 1000.0); /* mHz to Hz */
     mode.driverdata = driverdata->output;
     if (driverdata->index > -1) {
         SDL_AddDisplayMode(SDL_GetDisplay(driverdata->index), &mode);
@@ -444,7 +446,7 @@ display_handle_done(void *data,
                                                   ((float) driverdata->physical_width) / 25.4f,
                                                   ((float) driverdata->physical_height) / 25.4f);
     }
-    mode.refresh_rate = driverdata->refresh / 1000; /* mHz to Hz */
+    mode.refresh_rate = (int)SDL_round(driverdata->refresh / 1000.0); /* mHz to Hz */
     mode.driverdata = driverdata->output;
 
     if (driverdata->index > -1) {
