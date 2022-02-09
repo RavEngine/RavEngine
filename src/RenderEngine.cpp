@@ -72,6 +72,7 @@ STATIC(RenderEngine::copyIndicesShaderHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::debugShaderHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::shadowTriangleVertexBuffer) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::shadowTriangleIndexBuffer) = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::shadowVolumeHandle) = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -453,6 +454,11 @@ void RenderEngine::Init(const AppConfig& config)
 		auto frag = Material::loadShaderHandle("meshOnly/fragment.bin");
 		debugShaderHandle = bgfx::createProgram(vert, frag);
 	}
+	{
+		auto vert = Material::loadShaderHandle("shadowvolume/vertex.bin");
+		auto frag = Material::loadShaderHandle("shadowvolume/fragment.bin");
+		shadowVolumeHandle = bgfx::createProgram(vert,frag);
+	}
 	
 
 	//create compute shader buffers
@@ -517,16 +523,16 @@ void RenderEngine::Init(const AppConfig& config)
 
 		constexpr uint16_t shadowTriangleIndices[] = {
 			0,1,2,	// top face
-			3,4,5,	// bottom face
+			5,4,3,	// bottom face
 			
 			0,3,4,	// side 1-1
 			4,1,0,	// side 1-2
 
-			0,3,5,	// side 2-1
-			0,5,2,	// side 2-2
+			5,3,0,	// side 2-1
+			2,5,0,	// side 2-2
 
-			4,1,2,	// side 3-1
-			5,4,2	// side 3-2
+			2,1,4,	// side 3-1
+			2,4,5	// side 3-2
 		};
 
 		bgfx::VertexLayout layout;
@@ -834,7 +840,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::discard();
 	bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
 	bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
-	bgfx::submit(Views::FinalBlit, debugShaderHandle);
+	bgfx::setBuffer(12,allVerticesHandle,bgfx::Access::Read);
+	bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
+	bgfx::setInstanceCount(allIndicesOffset/3);			// 3 indices per triangle
+	bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 	bgfx::discard();
 
 	// Lighting pass
