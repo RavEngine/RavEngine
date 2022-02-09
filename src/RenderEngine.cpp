@@ -70,6 +70,8 @@ STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allIndicesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::copyIndicesShaderHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::debugShaderHandle) = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::shadowTriangleVertexBuffer) = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::shadowTriangleIndexBuffer) = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -431,8 +433,8 @@ void RenderEngine::Init(const AppConfig& config)
 	Debug::Assert(caps->supported & BGFX_CAPS_COMPUTE, "Cannot proceed: this platform does not support compute shaders.");
 
 	//create screenspace quad
-	const uint16_t indices[] = { 0,2,1, 2,3,1 };
-	const Vertex vertices[] = { {-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0} };
+	constexpr uint16_t indices[] = { 0,2,1, 2,3,1 };
+	constexpr Vertex vertices[] = { {-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0} };
 	bgfx::VertexLayout vl;
 	vl.begin()
 		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -500,6 +502,42 @@ void RenderEngine::Init(const AppConfig& config)
 		.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
 		.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
 		.end();
+
+	{
+		constexpr Vertex shadowTriangleVerts[] = {
+			// bottom face
+			{0,0,0},
+			{1,0,0},
+			{0,0,1},
+			// top face
+			{0,1,0},
+			{1,1,0},
+			{0,1,1},
+		};
+
+		constexpr uint16_t shadowTriangleIndices[] = {
+			0,1,2,	// top face
+			3,4,5,	// bottom face
+			
+			0,3,4,	// side 1-1
+			4,1,0,	// side 1-2
+
+			0,3,5,	// side 2-1
+			0,5,2,	// side 2-2
+
+			4,1,2,	// side 3-1
+			5,4,2	// side 3-2
+		};
+
+		bgfx::VertexLayout layout;
+		layout.begin()
+			.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+			.end();
+
+		shadowTriangleVertexBuffer = bgfx::createVertexBuffer(bgfx::copy(shadowTriangleVerts, sizeof(shadowTriangleVerts)), layout);
+		shadowTriangleIndexBuffer = bgfx::createIndexBuffer(bgfx::copy(shadowTriangleIndices, sizeof(shadowTriangleVerts)));
+	}
+	
 }
 
 
@@ -790,6 +828,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::discard();
 	bgfx::setVertexBuffer(0,allVerticesHandle);
 	bgfx::setIndexBuffer(allIndicesHandle);
+	bgfx::submit(Views::FinalBlit, debugShaderHandle);
+	bgfx::discard();
+
+	bgfx::discard();
+	bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
+	bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
 	bgfx::submit(Views::FinalBlit, debugShaderHandle);
 	bgfx::discard();
 

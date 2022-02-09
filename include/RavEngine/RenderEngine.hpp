@@ -271,8 +271,8 @@ namespace RavEngine {
 		TransientComputeBufferReadOnly skinningComputeBuffer;
 		TransientComputeBuffer poseStorageBuffer;
 					
-        static bgfx::VertexBufferHandle screenSpaceQuadVert;
-        static bgfx::IndexBufferHandle screenSpaceQuadInd;
+        static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
+        static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
 		static bgfx::VertexBufferHandle opaquemtxhandle;
         static bgfx::DynamicVertexBufferHandle allVerticesHandle;
 		static bgfx::DynamicIndexBufferHandle allIndicesHandle;
