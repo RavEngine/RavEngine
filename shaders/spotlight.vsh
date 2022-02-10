@@ -3,6 +3,10 @@ $output colorintensity, positionradius, penumbra
 
 #include "common.sh"
 #include <bgfx_shader.sh>
+#include <bgfx_compute.sh>
+
+BUFFER_RW(lightdata,float,11);
+uniform vec4 NumObjects;		// x = start index
 
 void main()
 {
@@ -38,6 +42,11 @@ void main()
 	float radius = i_data3.w;
 	
 	vec4 worldpos = instMul(model, vec4(a_position, 1.0));
+
+	int idx = gl_InstanceID * 3;
+	lightdata[NumObjects.x + idx] = worldpos.x;
+	lightdata[NumObjects.x + idx + 1] = worldpos.y;
+	lightdata[NumObjects.x + idx + 2] = worldpos.z;
 	
 	gl_Position = mul(u_viewProj, worldpos);
 	

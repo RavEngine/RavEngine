@@ -56,6 +56,12 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 		
 		return closest_multiple_of(sizeof(float) * 4, 16);
 	}
+
+	static inline constexpr size_t ShadowDataSize() {
+		// ambient light needs:
+		// nothing (does not cast shadows)
+		return 0;
+	}
 	
 	/**
 	 Set BGFX state needed to draw this light
@@ -114,6 +120,12 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 		
 		return closest_multiple_of(sizeof(float) * (3+3+1), 16);
 	}
+
+	static inline constexpr size_t ShadowDataSize() {
+		// directional light needs:
+		// the world-space direction (3 floats)
+		return sizeof(float) * 3;
+	}
 	
 	/**
 	 Execute instanced draw call for this light type
@@ -158,6 +170,12 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 		//light intensity (1 float)
 		
 		return closest_multiple_of(sizeof(float) * (3+1) + sizeof(float[16]), 16);
+	}
+
+	static inline constexpr size_t ShadowDataSize() {
+		// Point light needs:
+		// the world-space location (3 floats)
+		return sizeof(float) * 3;
 	}
 	
 	/**
@@ -216,6 +234,12 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 		//light penumbra (1 float)
 		
 		return closest_multiple_of(sizeof(float) * (3+1) + sizeof(float[16]), 16);
+	}
+
+	static inline constexpr size_t ShadowDataSize() {
+		// Spot light needs:
+		// the world-space location (3 floats)
+		return sizeof(float) * 3;
 	}
 	
 	/**

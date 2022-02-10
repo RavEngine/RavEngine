@@ -74,6 +74,8 @@ STATIC(RenderEngine::shadowTriangleVertexBuffer) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::shadowTriangleIndexBuffer) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::shadowVolumeHandle) = BGFX_INVALID_HANDLE;
 
+static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
+
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
 //STATIC(RenderEngine::debuggerContext);
@@ -278,53 +280,69 @@ void DebugRender(const Im3d::DrawList& drawList){
 #endif
 }
 
+struct DrawLightsResult {
+	uint32_t numDrawn = 0;
+	uint32_t shadowDataBegin;
+	bgfx::InstanceDataBuffer lightdata;
+};
 /**
  Execute instanced draw calls for a given light type
  @param components the componetstore of the world to get the lights from
  @return true light draw calls were executed, false otherwise
  */
-template<typename LightType, class Container, typename gb_t, typename a_t>
-constexpr inline bool DrawLightsOfType(const Container& lights, gb_t gBufferSamplers, a_t attachments){
+template<typename LightType, class Container, typename gb_t, typename a_t, typename u_t, typename n_t>
+constexpr inline DrawLightsResult DrawLightsOfType(const Container& lights, gb_t gBufferSamplers, a_t attachments, u_t& uniform, n_t& beginOffset){
+	DrawLightsResult dr;
     //must set before changing shaders
     if (lights.size() == 0){
-        return false;
+        return dr;
     }
     
     constexpr auto stride = LightType::InstancingStride();
     const auto numLights = lights.size();
     
     //create buffer for GPU instancing
-    bgfx::InstanceDataBuffer idb;
     
     assert(numLights < std::numeric_limits<uint32_t>::max());    // too many lights!
     
-    bgfx::allocInstanceDataBuffer(&idb, static_cast<uint32_t>(numLights), stride);
+    bgfx::allocInstanceDataBuffer(&dr.lightdata, static_cast<uint32_t>(numLights), stride);
     
     //fill the buffer
     int i = 0;
     for(const auto& l : lights){    //TODO: factor in light frustum culling
-        float* ptr = (float*)(idb.data + i);
+        float* ptr = (float*)(dr.lightdata.data + i);
         l.AddInstanceData(ptr);
         i += stride;
     }
 
     //fill the remaining slots in the buffer with 0s (if a light was removed during the buffer filling)
     for (; i < numLights; i++) {
-        *(idb.data + i) = 0;
+        *(dr.lightdata.data + i) = 0;
     }
     
-    bgfx::setInstanceDataBuffer(&idb);
+    bgfx::setInstanceDataBuffer(&dr.lightdata);
     
     //set the required state for this light type
     LightType::SetState();
+	
+	// bind buffer for writing shadow data
+	bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Write);
     
+	// start points for writing data
+	float uniformData[] = {beginOffset,0,0,0 };					
+	uniform.SetValues(uniformData, 1);
+	dr.shadowDataBegin = beginOffset;
+	beginOffset += LightType::ShadowDataSize() * lights.size();
+
     //execute instance draw call
     for (int i = 0; i < RenderEngine::gbufferSize; i++) {
         bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
     }
     LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
     
-    return true;
+	dr.numDrawn = lights.size();
+
+    return dr;
 }
 
 /**
@@ -491,6 +509,7 @@ void RenderEngine::Init(const AppConfig& config)
         .end();
     allVerticesHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
 	allIndicesHandle = bgfx::createDynamicIndexBuffer(65535, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
+	lightDataHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
 
 	//init lights
 	LightManager::Init();
@@ -837,21 +856,35 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::submit(Views::FinalBlit, debugShaderHandle);
 	bgfx::discard();
 
-	bgfx::discard();
-	bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
-	bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
-	bgfx::setBuffer(12,allVerticesHandle,bgfx::Access::Read);
-	bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
-	bgfx::setInstanceCount(allIndicesOffset/3);			// 3 indices per triangle
-	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LESS );
-	bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
-	bgfx::discard();
-
 	// Lighting pass
-	DrawLightsOfType<AmbientLight>(fd->ambients,gBufferSamplers,attachments);
-	DrawLightsOfType<DirectionalLight>(fd->directionals,gBufferSamplers,attachments);
-	DrawLightsOfType<SpotLight>(fd->spots,gBufferSamplers,attachments);
-	DrawLightsOfType<PointLight>(fd->points,gBufferSamplers,attachments);
+	uint32_t shadowOffset = 0;
+	DrawLightsResult lightResults[]{
+		DrawLightsOfType<AmbientLight>(fd->ambients,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
+		DrawLightsOfType<DirectionalLight>(fd->directionals,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
+		DrawLightsOfType<SpotLight>(fd->spots,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
+		DrawLightsOfType<PointLight>(fd->points,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
+	};
+	// shadow pass
+	auto doShadow = [this,&allIndicesOffset](const DrawLightsResult& idb) {
+		bgfx::discard();
+		bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
+		bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
+		bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
+		bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
+		bgfx::setBuffer(14, lightDataHandle, bgfx::Access::Read);	// data necessary for shadows
+
+		const auto numInstances = (allIndicesOffset / 3) * idb.numDrawn;
+
+		float uniformData[] = {idb.shadowDataBegin,numInstances, idb.numDrawn,0};		// start points for reading shadow data
+		numRowsUniform.SetValues(uniformData, 1);
+
+		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
+		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
+		bgfx::discard();
+	};
+	doShadow(lightResults[1]);
+
 
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);
