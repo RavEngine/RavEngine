@@ -843,6 +843,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setBuffer(12,allVerticesHandle,bgfx::Access::Read);
 	bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
 	bgfx::setInstanceCount(allIndicesOffset/3);			// 3 indices per triangle
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LESS );
 	bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 	bgfx::discard();
 

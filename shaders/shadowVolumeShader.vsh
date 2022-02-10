@@ -1,4 +1,5 @@
 $input a_position
+$output v_color
 
 #include <bgfx_shader.sh>
 #include <bgfx_compute.sh>
@@ -8,12 +9,11 @@ BUFFER_RO(indbuffer,int,13);
 
 vec3 calcNormal(vec3 u, vec3 v){
 
-	vec3 n = vec3(0,0,0);
-	n.x = u.y * v.z - u.z * v.y;
-	n.y = u.z * v.x - u.x * v.z;
-	n.z = u.x * v.y - u.y * v.x;
-
-	return n;
+	return normalize(vec3(
+		u.y * v.z - u.z * v.y,
+		u.z * v.x - u.x * v.z,
+		u.x * v.y - u.y * v.x
+	));
 }
 
 mat3 inverse(mat3 m){
@@ -38,27 +38,26 @@ mat3 inverse(mat3 m){
 
 void main()
 {
+	// get the assigned triangle
 	int index = indbuffer[gl_InstanceID * 3];
 	vec3 centerpoint = vec3(vertbuffer[index*3],vertbuffer[index*3+1],vertbuffer[index*3+2]);
-
 	index = indbuffer[gl_InstanceID * 3 + 1];
 	vec3 point1 = vec3(vertbuffer[index*3],vertbuffer[index*3+1],vertbuffer[index*3+2]);
-
 	index = indbuffer[gl_InstanceID * 3 + 2];
 	vec3 point2 = vec3(vertbuffer[index*3],vertbuffer[index*3+1],vertbuffer[index*3+2]);
 
-
-	// vectors that compose the base edge, base edge 2, and edge to top base
-	mat3 C = mtxFromCols(vec3(1,0,0),vec3(0,0,1),vec3(0,1,0));
-
 	// vectors that compose the deltas from the triangle root, and the normal vector
-	mat3 B = mtxFromCols(point1 - centerpoint, point2 - centerpoint, calcNormal(point1 - centerpoint, point2 - centerpoint));
+	vec3 delta1 = centerpoint - point1;
+	vec3 delta2 = centerpoint - point2;
+	vec3 normal = calcNormal(delta1, delta2);
 
-	mat3 A = C * inverse(B);
+	vec3 points[3];
+	points[0] = centerpoint;
+	points[1] = point1;
+	points[2] = point2;
 
-	mat4 totalMat = mtxFromCols(vec4(A[0],0), vec4(A[1],0), vec4(A[2],0), vec4(centerpoint,1));
+	gl_Position = mul(u_viewProj, vec4(/*a_position +*/ points[gl_VertexID % 3] + normal * (gl_VertexID < 3 ? 0 : 1.2),1));	// debug: move the prism's origin to the center of the assigned triangle
 
-	vec4 pos = instMul(totalMat, vec4(a_position + centerpoint,1));
-
-	gl_Position = mul(u_viewProj, pos );
+	// debugging color
+	v_color = gl_VertexID < 3 ? vec3(1,0,0) : vec3(0,1,1);		// red = base, blue = cap
 }
