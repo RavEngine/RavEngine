@@ -75,6 +75,7 @@ STATIC(RenderEngine::shadowTriangleIndexBuffer) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::shadowVolumeHandle) = BGFX_INVALID_HANDLE;
 
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
+static bgfx::ProgramHandle shadowProgramHandle = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -477,6 +478,11 @@ void RenderEngine::Init(const AppConfig& config)
 		auto frag = Material::loadShaderHandle("shadowvolume/fragment.bin");
 		shadowVolumeHandle = bgfx::createProgram(vert,frag);
 	}
+	{
+		auto vert = Material::loadShaderHandle("shadowshade/vertex.bin");
+		auto frag = Material::loadShaderHandle("shadowshade/fragment.bin");
+		shadowProgramHandle = bgfx::createProgram(vert, frag);
+	}
 	
 
 	//create compute shader buffers
@@ -507,8 +513,8 @@ void RenderEngine::Init(const AppConfig& config)
     allGeoLayout.begin()
         .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)    // 3 verts to make a triangle
         .end();
-    allVerticesHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
-	allIndicesHandle = bgfx::createDynamicIndexBuffer(65535, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
+    allVerticesHandle = bgfx::createDynamicVertexBuffer(100000, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
+	allIndicesHandle = bgfx::createDynamicIndexBuffer(100000, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
 	lightDataHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
 
 	//init lights
@@ -850,11 +856,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	}
 
 	// debug: draw the unified mesh
-	bgfx::discard();
+	/*bgfx::discard();
 	bgfx::setVertexBuffer(0,allVerticesHandle);
 	bgfx::setIndexBuffer(allIndicesHandle);
 	bgfx::submit(Views::FinalBlit, debugShaderHandle);
-	bgfx::discard();
+	bgfx::discard();*/
 
 	// Lighting pass
 	uint32_t shadowOffset = 0;
@@ -896,6 +902,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::discard();
 	};
 	doShadow(lightResults[1]);
+
+	// now color in the shadows
+	bgfx::setVertexBuffer(0,screenSpaceQuadVert);
+	bgfx::setIndexBuffer(screenSpaceQuadInd);
+	bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_WRITE_RGB);
+	bgfx::setStencil(BGFX_STENCIL_TEST_NOTEQUAL | BGFX_STENCIL_FUNC_RMASK(0));		// only execute where the stencil buffer is nonzero
+	bgfx::submit(Views::FinalBlit,shadowProgramHandle);
 
 
 	// lighting is complete, so next we draw the skybox
