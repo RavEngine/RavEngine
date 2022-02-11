@@ -330,7 +330,7 @@ constexpr inline DrawLightsResult DrawLightsOfType(const Container& lights, gb_t
 	bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Write);
     
 	// start points for writing data
-	float uniformData[] = {beginOffset,0,0,0 };					
+    float uniformData[] = {static_cast<float>(beginOffset),0,0,0 };
 	uniform.SetValues(uniformData, 1);
 	dr.shadowDataBegin = beginOffset;
 	beginOffset += LightType::ShadowDataSize() * lights.size();
@@ -881,7 +881,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 		const auto numInstances = (allIndicesOffset / 3) * idb.numDrawn;
 
-		float uniformData[] = {idb.shadowDataBegin,numInstances, idb.numDrawn,0};		// start points for reading shadow data
+        float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),0};		// start points for reading shadow data
 		numRowsUniform.SetValues(uniformData, 1);
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
