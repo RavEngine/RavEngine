@@ -879,7 +879,19 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		numRowsUniform.SetValues(uniformData, 1);
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS);
+		bgfx::setStencil(BGFX_STENCIL_TEST_ALWAYS | BGFX_STENCIL_OP_FAIL_Z_INCR);		// increment on depth-fail
+		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
+
+		bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
+		bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
+		bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
+		bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
+		bgfx::setBuffer(14, lightDataHandle, bgfx::Access::Read);	// data necessary for shadows
+		numRowsUniform.SetValues(uniformData, 1);
+		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
+		bgfx::setState(BGFX_STATE_CULL_CCW | BGFX_STATE_DEPTH_TEST_LESS);
+		bgfx::setStencil(BGFX_STENCIL_TEST_ALWAYS | BGFX_STENCIL_OP_FAIL_Z_DECR);		// decrement on depth-fail
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();
 	};

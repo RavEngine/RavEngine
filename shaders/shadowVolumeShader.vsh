@@ -27,7 +27,7 @@ void main()
 
 	//TODO: this is the directional light implementation, add ifdefs for the other light types
 	index = (gl_InstanceID / (int)NumObjects.y) * 3;
-	vec3 dirvec = vec3(light_databuffer[index],light_databuffer[index+1],light_databuffer[index+2]) * -7;
+	vec3 dirvec = vec3(light_databuffer[index],light_databuffer[index+1],light_databuffer[index+2]) * -1000;
 
 	gl_Position = mul(u_viewProj, vec4(points[gl_VertexID % 3] + dirvec * (gl_VertexID < 3 ? 0 : 1),1));
 
