@@ -633,7 +633,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
 	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
 	
-	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR);
+	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
 	
@@ -906,7 +906,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	// now color in the shadows
 	bgfx::setVertexBuffer(0,screenSpaceQuadVert);
 	bgfx::setIndexBuffer(screenSpaceQuadInd);
-	bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_WRITE_RGB);
+	bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_MULTIPLY);
 	bgfx::setStencil(BGFX_STENCIL_TEST_NOTEQUAL | BGFX_STENCIL_FUNC_RMASK(0));		// only execute where the stencil buffer is nonzero
 	bgfx::submit(Views::FinalBlit,shadowProgramHandle);
 
