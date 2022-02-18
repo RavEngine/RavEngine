@@ -907,6 +907,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
 		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+		bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();
 	};
