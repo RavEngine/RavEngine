@@ -1,5 +1,5 @@
 $input a_position
-$output v_color
+$output v_color, v_pos1, v_pos2, v_pos3, v_pos4, v_pos5, v_pos6
 
 #include <bgfx_shader.sh>
 #include <bgfx_compute.sh>
@@ -17,6 +17,7 @@ vec3 calcNormal(vec3 u, vec3 v){
 		u.x * v.y - u.y * v.x
 	));
 }
+
 
 void main()
 {
@@ -47,8 +48,25 @@ void main()
 		gl_Position = vec4(0,0,0,1);	// don't shade this by placing it at the origin
 	}
 	else{
+		float INSET = -0.02;
 		// inset the triangle by the normal a small amount, then extend it along the light ray
-		gl_Position = mul(u_viewProj, vec4((points[gl_VertexID % 3] + normal * -0.02) + dirvec * (gl_VertexID < 3 ? 0 : 1),1));
+		gl_Position = mul(u_viewProj, vec4((points[gl_VertexID % 3] + normal * INSET) + dirvec * (gl_VertexID < 3 ? 0 : 1),1));
+
+		// write positions
+		vec4 vp1 = mul(u_viewProj, vec4(points[0] + normal * INSET,1));
+		vec4 vp2 = mul(u_viewProj, vec4(points[1] + normal * INSET,1));
+		vec4 vp3 = mul(u_viewProj, vec4(points[2] + normal * INSET,1));
+
+		vec4 vp4 = mul(u_viewProj, vec4((points[0] + normal * INSET) + dirvec, 1));
+		vec4 vp5 = mul(u_viewProj, vec4((points[1] + normal * INSET) + dirvec, 1));
+		vec4 vp6 = mul(u_viewProj, vec4((points[2] + normal * INSET) + dirvec, 1));
+
+		v_pos1 = vp1.xyz / vp1.w;
+		v_pos2 = vp2.xyz / vp2.w;
+		v_pos3 = vp3.xyz / vp3.w;
+		v_pos4 = vp4.xyz / vp4.w;
+		v_pos5 = vp5.xyz / vp5.w;
+		v_pos6 = vp6.xyz / vp6.w;
 	}
 
 

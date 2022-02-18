@@ -390,7 +390,7 @@ void RenderEngine::Init(const AppConfig& config)
 #ifdef __linux__
 			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined _WIN32
-			SelectRenderer(bgfx::RendererType::Vulkan);
+			SelectRenderer(bgfx::RendererType::Direct3D12);
 #elif defined __APPLE__
 			SelectRenderer(bgfx::RendererType::Metal);
 #elif defined __EMSCRIPTEN__
@@ -550,15 +550,36 @@ void RenderEngine::Init(const AppConfig& config)
 			0,1,2,	// top face
 			5,4,3,	// bottom face
 			
-			0,3,4,	// side 1-1
-			4,1,0,	// side 1-2
+			0,3,4,	// side 1-1 shader: 1,4,5
+			4,1,0,	// side 1-2 shader: 5,2,1
 
-			5,3,0,	// side 2-1
-			2,5,0,	// side 2-2
+			5,3,0,	// side 2-1	shader: 6,4,1
+			2,5,0,	// side 2-2 shader: 3,6,1
 
-			2,1,4,	// side 3-1
-			2,4,5	// side 3-2
+			2,1,4,	// side 3-1	shader: 3,2,5
+			2,4,5	// side 3-2 shader: 3,5,6
 		};
+
+		auto calcNormal = [](auto u, auto v) {
+
+			return glm::normalize(vector3(
+				u.position[1] * v.position[2] - u.position[2] * v.position[1],
+				u.position[2] * v.position[0] - u.position[0] * v.position[2],
+				u.position[0] * v.position[1] - u.position[1] * v.position[0]
+			));
+		};
+
+		auto triNormal = [&](auto idx) {
+			auto a = shadowTriangleVerts[shadowTriangleIndices[idx*3]];
+			auto b = shadowTriangleVerts[shadowTriangleIndices[idx*3+1]];
+			auto c = shadowTriangleVerts[shadowTriangleIndices[idx*3+2]];
+			return calcNormal(a-b,a-c);
+		};
+		auto p = shadowTriangleVerts;
+		for (int i = 0; i < sizeof(shadowTriangleIndices) / sizeof(shadowTriangleIndices[0]) / 3; i++) {
+			//cout << i << ": " << triNormal(i) << endl;
+		}
+
 
 		bgfx::VertexLayout layout;
 		layout.begin()
@@ -885,31 +906,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		numRowsUniform.SetValues(uniformData, 1);
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
-		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS);
-		bgfx::setStencil(BGFX_STENCIL_TEST_ALWAYS | BGFX_STENCIL_OP_FAIL_Z_INCR);		// increment on depth-fail
-		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
-
-		bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
-		bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
-		bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
-		bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
-		bgfx::setBuffer(14, lightDataHandle, bgfx::Access::Read);	// data necessary for shadows
-		numRowsUniform.SetValues(uniformData, 1);
-		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
-		bgfx::setState(BGFX_STATE_CULL_CCW | BGFX_STATE_DEPTH_TEST_LESS);
-		bgfx::setStencil(BGFX_STENCIL_TEST_ALWAYS | BGFX_STENCIL_OP_FAIL_Z_DECR);		// decrement on depth-fail
+		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();
 	};
 	doShadow(lightResults[1]);
-
-	// now color in the shadows
-	bgfx::setVertexBuffer(0,screenSpaceQuadVert);
-	bgfx::setIndexBuffer(screenSpaceQuadInd);
-	bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_MULTIPLY);
-	bgfx::setStencil(BGFX_STENCIL_TEST_NOTEQUAL | BGFX_STENCIL_FUNC_RMASK(0));		// only execute where the stencil buffer is nonzero
-	bgfx::submit(Views::FinalBlit,shadowProgramHandle);
-
 
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);

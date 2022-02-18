@@ -7,6 +7,9 @@ typedef uint32_t color_t;
 struct Vertex
 {
 	float position[3];
+	inline Vertex operator-(const Vertex& other) {
+		return Vertex{ position[0] - other.position[0],  position[1] - other.position[1], position[2] - other.position[2] };
+	}
 };
 
 struct UV
