@@ -550,14 +550,14 @@ void RenderEngine::Init(const AppConfig& config)
 			0,1,2,	// top face
 			5,4,3,	// bottom face
 			
-			0,3,4,	// side 1-1 shader: 1,4,5
-			4,1,0,	// side 1-2 shader: 5,2,1
+			0,3,4,	// side 1-1
+			4,1,0,	// side 1-2
 
-			5,3,0,	// side 2-1	shader: 6,4,1
-			2,5,0,	// side 2-2 shader: 3,6,1
+			5,3,0,	// side 2-1
+			2,5,0,	// side 2-2
 
-			2,1,4,	// side 3-1	shader: 3,2,5
-			2,4,5	// side 3-2 shader: 3,5,6
+			2,1,4,	// side 3-1	
+			2,4,5	// side 3-2
 		};
 
 		auto calcNormal = [](auto u, auto v) {
@@ -905,8 +905,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),0};		// start points for reading shadow data
 		numRowsUniform.SetValues(uniformData, 1);
 
-		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
-		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this typey
+		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_BLEND_ALPHA);
 		bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();

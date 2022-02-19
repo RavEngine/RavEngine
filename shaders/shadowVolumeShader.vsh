@@ -63,52 +63,53 @@ void main()
 		gl_Position = mul(u_viewProj, vec4((points[gl_VertexID % 3] + normal * INSET) + dirvec * (gl_VertexID < 3 ? 0 : 1),1));
 
 		// write positions
-		vec4 vp1 = mul(u_viewProj, vec4(points[0] + normal * INSET,1));
-		vec4 vp2 = mul(u_viewProj, vec4(points[1] + normal * INSET,1));
-		vec4 vp3 = mul(u_viewProj, vec4(points[2] + normal * INSET,1));
+		vec4 vp0 = mul(u_viewProj, vec4(points[0] + normal * INSET,1));
+		vec4 vp1 = mul(u_viewProj, vec4(points[1] + normal * INSET,1));
+		vec4 vp2 = mul(u_viewProj, vec4(points[2] + normal * INSET,1));
 
-		vec4 vp4 = mul(u_viewProj, vec4((points[0] + normal * INSET) + dirvec, 1));
-		vec4 vp5 = mul(u_viewProj, vec4((points[1] + normal * INSET) + dirvec, 1));
-		vec4 vp6 = mul(u_viewProj, vec4((points[2] + normal * INSET) + dirvec, 1));
+		vec4 vp3 = mul(u_viewProj, vec4((points[0] + normal * INSET) + dirvec, 1));
+		vec4 vp4 = mul(u_viewProj, vec4((points[1] + normal * INSET) + dirvec, 1));
+		vec4 vp5 = mul(u_viewProj, vec4((points[2] + normal * INSET) + dirvec, 1));
 
+		vp0 = vec4(vp0.xyz / vp0.w,vp0.w);
 		vp1 = vec4(vp1.xyz / vp1.w,vp1.w);
 		vp2 = vec4(vp2.xyz / vp2.w,vp2.w);
 		vp3 = vec4(vp3.xyz / vp3.w,vp3.w);
 		vp4 = vec4(vp4.xyz / vp4.w,vp4.w);
 		vp5 = vec4(vp5.xyz / vp5.w,vp5.w);
-		vp6 = vec4(vp6.xyz / vp6.w,vp6.w);
 
 		// always include the top cap
-		planeCap = genPlane(vp1.xyz,vp2.xyz,vp3.xyz);
+		planeCap = genPlane(vp0.xyz,vp1.xyz,vp2.xyz);
 
-		vec3 side1Normal = calcNormal(vp4.xyz - vp1.xyz, vp4.xyz - vp5.xyz);
-		vec3 side2Normal = calcNormal(vp4.xyz - vp6.xyz, vp4.xyz - vp1.xyz);
-		vec3 side3Normal = calcNormal(vp2.xyz - vp3.xyz, vp2.xyz - vp5.xyz);
+		// TODO: fix -- top-face vert to 2 end verts, for each
+		vec3 side1Normal = calcNormal(vp0.xyz - vp3.xyz, vp0.xyz - vp4.xyz);
+		vec3 side2Normal = calcNormal(vp0.xyz - vp5.xyz, vp0.xyz - vp3.xyz);
+		vec3 side3Normal = calcNormal(vp2.xyz - vp1.xyz, vp2.xyz - vp4.xyz);
 
 		// which planes are backplanes?
 		bool oneIncluded = false;
 		planeData.x = 0;				// x component stores the number of backplanes excluding the top cap
 		if (side1Normal.z < 0){
-			plane1 = genPlane(vp1.xyz,vp4.xyz,vp5.xyz);
+			plane1 = genPlane(vp0.xyz,vp3.xyz,vp4.xyz);
 			oneIncluded = true;
 			planeData.x++;
 		}
 		if (side2Normal.z < 0){
 			if (oneIncluded){
-				plane2 = genPlane(vp6.xyz,vp4.xyz,vp1.xyz);
+				plane2 = genPlane(vp5.xyz,vp3.xyz,vp0.xyz);
 			}
 			else{
-				plane1 = genPlane(vp6.xyz,vp4.xyz,vp1.xyz);
+				plane1 = genPlane(vp5.xyz,vp3.xyz,vp0.xyz);
 			}
 			oneIncluded = true;
 			planeData.x++;
 		}
 		if (side3Normal.z < 0 && planeData.x < 2){	// only include this one if 2 more planes were not included
 			if (oneIncluded){
-				plane2 = genPlane(vp3.xyz,vp2.xyz,vp5.xyz);
+				plane2 = genPlane(vp2.xyz,vp1.xyz,vp4.xyz);
 			}
 			else{
-				plane1 = genPlane(vp3.xyz,vp2.xyz,vp5.xyz);
+				plane1 = genPlane(vp2.xyz,vp1.xyz,vp4.xyz);
 			}
 			oneIncluded = true;
 			planeData.x++;
