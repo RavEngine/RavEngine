@@ -1,10 +1,8 @@
 $input plane1, plane2, planeCap, planeData
 
 #include "common.sh"
-#include <bgfx_compute.sh>
 
 SAMPLER2D(s_depth,1);
-BUFFER_RW(rvs_scratch,float,11);
 
 float solvePlane(vec2 pt, vec4 pln){
 	return (pln.x*pt.x + pln.y*pt.y + pln.w) / (pln.z);
@@ -17,47 +15,30 @@ bool numIsBetween(float num, vec2 bounds){
 void main()
 {
 	//Convert the pixel into projection coordinates [-1,1]
-	vec2 unitizedPixel = vec2(gl_FragCoord.x / u_viewRect.z, gl_FragCoord.y / u_viewRect.w);
-	float geodepth = texture2D(s_depth,  unitizedPixel.x);
-	float fragDepth = gl_FragCoord.z;
+	vec3 Pixel = vec3((gl_FragCoord.x / u_viewRect.z - 0.5) * 2, (gl_FragCoord.y / u_viewRect.w - 0.5) * 2, texture2D(s_depth,  vec2(gl_FragCoord.x / u_viewRect.z, gl_FragCoord.y / u_viewRect.w)).x);
+
 	// don't shadow onto the skybox
-	if (geodepth >= 1){
+	if (Pixel.z >= 1){
 		discard;
 	}
 
-	int index = (gl_FragCoord.y * 2) + gl_FragCoord.x * 2 ;		// 2 floats per pixel
-	if (gl_FrontFacing){
-		// anything in the green channel?
-		if (rvs_scratch[index+1] == 0){
-			// no, so back tri has not rendered yet
-			rvs_scratch[index] = fragDepth;
-			discard;
-		}
-		else{
-			// yes, so lets compare it
-			if (numIsBetween(geodepth,vec2(fragDepth, rvs_scratch[index+1]))){
-				gl_FragData[0] = vec4(1,1,1,1);
-			}
-			else{
-				discard;
-			}
-		}
+	float depths[3];
+	depths[0] = solvePlane(Pixel.xy,planeCap);
+	depths[1] = solvePlane(Pixel.xy,plane1);
+	depths[2] = solvePlane(Pixel.xy,plane2);
+
+	// are all backplanes behind this pixel?
+	bool greater[3];
+	greater[0] = depths[0] > Pixel.z;
+	greater[1] = depths[1] > Pixel.z;
+	greater[2] = planeData.x <= 1 || depths[2] > Pixel.z;
+
+	// if they are, then this volume contains the pixel, so shadow it
+	if (/*greater[0] &&*/ greater[1] && greater[2]){
+		gl_FragColor = vec4(0,0,0,1);
 	}
 	else{
-		// anything in the red channel?
-		if (rvs_scratch[index] == 0){
-			// no, so front tri has not rendered yet
-			rvs_scratch[index] = fragDepth;		
-			discard;
-		}
-		else{
-			// yes, so lets compare it
-			if (numIsBetween(geodepth,vec2(fragDepth, rvs_scratch[index]))){
-				gl_FragData[0] = vec4(1,1,1,1);
-			}
-			else{
-				discard;
-			}
-		}
+		gl_FragColor = vec4(0,0,0,0);;
 	}
+
 }
