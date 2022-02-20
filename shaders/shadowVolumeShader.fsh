@@ -3,6 +3,7 @@ $input plane1, plane2, planeCap, planeData
 #include "common.sh"
 
 SAMPLER2D(s_depth,1);
+SAMPLER2D(s_shadowself,2);
 
 float solvePlane(vec2 pt, vec4 pln){
 	return (pln.x*pt.x + pln.y*pt.y + pln.w) / (pln.z);
@@ -15,30 +16,39 @@ bool numIsBetween(float num, vec2 bounds){
 void main()
 {
 	//Convert the pixel into projection coordinates [-1,1]
-	vec3 Pixel = vec3((gl_FragCoord.x / u_viewRect.z - 0.5) * 2, (gl_FragCoord.y / u_viewRect.w - 0.5) * 2, texture2D(s_depth,  vec2(gl_FragCoord.x / u_viewRect.z, gl_FragCoord.y / u_viewRect.w)).x);
-
+	vec2 unitizedPixel = vec2(gl_FragCoord.x / u_viewRect.z, gl_FragCoord.y / u_viewRect.w);
+	float geodepth = texture2D(s_depth,  unitizedPixel.x);
+	float fragDepth = gl_FragCoord.z;
 	// don't shadow onto the skybox
-	if (Pixel.z >= 1){
+	if (geodepth >= 1){
 		discard;
 	}
 
-	float depths[3];
-	depths[0] = solvePlane(Pixel.xy,planeCap);
-	depths[1] = solvePlane(Pixel.xy,plane1);
-	depths[2] = solvePlane(Pixel.xy,plane2);
-
-	// are all backplanes behind this pixel?
-	bool greater[3];
-	greater[0] = depths[0] > Pixel.z;
-	greater[1] = depths[1] > Pixel.z;
-	greater[2] = planeData.x <= 1 || depths[2] > Pixel.z;
-
-	// if they are, then this volume contains the pixel, so shadow it
-	if (/*greater[0] &&*/ greater[1] && greater[2]){
-		gl_FragColor = vec4(0,0,0,1);
+	vec2 sampled = texture2D(s_shadowself, unitizedPixel);
+	if (gl_FrontFacing){
+		// anything in the green channel?
+		if (sampled.g == 0){
+			// no, so back tri has not rendered yet
+			gl_FragData[1] = vec4(fragDepth,0,0,1);
+		}
+		else{
+			// yes, so lets compare it
+			if (numIsBetween(geodepth,vec2(fragDepth, sampled.g))){
+				gl_FragData[0] = vec4(1,1,1,1);
+			}
+		}
 	}
 	else{
-		gl_FragColor = vec4(0,0,0,0);;
+		// anything in the red channel?
+		if (sampled.r == 0){
+			// no, so front tri has not rendered yet
+			gl_FragData[1] = vec4(0,fragDepth,0,1);
+		}
+		else{
+			// yes, so lets compare it
+			if (numIsBetween(geodepth,vec2(fragDepth, sampled.r))){
+				gl_FragData[0] = vec4(1,1,1,1);
+			}
+		}
 	}
-
 }

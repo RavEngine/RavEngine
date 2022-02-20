@@ -164,6 +164,7 @@ namespace RavEngine {
 				FinalBlit = 0,
 				DeferredGeo,
 				Lighting,
+				Shadows,
 				Count
 			};
 		};
@@ -255,6 +256,7 @@ namespace RavEngine {
     public:
 		static constexpr uint8_t gbufferSize = 4;
 		static constexpr uint8_t lightingAttachmentsSize = 2;
+		static constexpr uint8_t shadowAttachmentsSize = 3;
     protected:
 		bgfx::TextureHandle attachments[gbufferSize];
 			//RGBA (A not used in opaque)
@@ -265,9 +267,11 @@ namespace RavEngine {
 
 		bgfx::FrameBufferHandle gBuffer;	//full gbuffer
 		bgfx::FrameBufferHandle lightingBuffer;	//for lighting, shares depth with main
+		bgfx::FrameBufferHandle shadowBuffer;	// for shadows, shares depth with main
 		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
 		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize];
-
+		bgfx::UniformHandle shadowSelfHandle;
+		bgfx::TextureHandle shadowAttachments[shadowAttachmentsSize];
 		TransientComputeBufferReadOnly skinningComputeBuffer;
 		TransientComputeBuffer poseStorageBuffer;
 					

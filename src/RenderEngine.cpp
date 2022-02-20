@@ -463,7 +463,7 @@ void RenderEngine::Init(const AppConfig& config)
 	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
 	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
 	blitShader = Material::Manager::Get<DeferredBlitShader>();
-	guiMaterial = make_shared<GUIMaterialInstance>(Material::Manager::Get<GUIMaterial>());
+	guiMaterial = RavEngine::New<GUIMaterialInstance>(Material::Manager::Get<GUIMaterial>());
 
 	//load compute shader for skinning
 	skinningShaderHandle = Material::loadComputeProgram("skincompute/compute.bin");
@@ -622,7 +622,12 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	//lighting textures - light color, and share depth
 	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F);
 	lightingAttachments[1] = attachments[3];
-	
+
+	// shadow textures - final output, work texture, and share depth
+	shadowAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F);
+	shadowAttachments[1] = gen_framebuffer(bgfx::TextureFormat::RG16F);
+	shadowAttachments[2] = attachments[3];
+		
 	for(int i = 0; i < gbufferSize; i++){
 		if (!bgfx::isValid(attachments[i])){
 			Debug::Fatal("Failed to create gbuffer attachment");
@@ -640,12 +645,15 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	
 	lightingSamplers[0] = bgfx::createUniform("s_light", bgfx::UniformType::Sampler);
 	lightingSamplers[1] = gBufferSamplers[3];
+
+	shadowSelfHandle = bgfx::createUniform("s_shadowself", bgfx::UniformType::Sampler);
 	
 	//create gbuffer and bind all the textures together
 	gBuffer = bgfx::createFrameBuffer(gbufferSize, attachments, true);
 	
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
-	
+	shadowBuffer = bgfx::createFrameBuffer(shadowAttachmentsSize, shadowAttachments, true);
+
 	if(!bgfx::isValid(gBuffer)){
 		Debug::Fatal("Failed to create gbuffer");
 	}
@@ -653,13 +661,16 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	bgfx::setViewName(Views::FinalBlit, "Final Blit");
 	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
 	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
+	bgfx::setViewName(Views::Shadows, "Shadow Volumes");
 	
 	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
 	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
+	bgfx::setViewClear(Views::Shadows, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
+
 	
 	//render view 0 last
-	bgfx::ViewId vieworder[]{Views::DeferredGeo, Views::Lighting, Views::FinalBlit};
+	bgfx::ViewId vieworder[]{Views::DeferredGeo, Views::Lighting, Views::Shadows, Views::FinalBlit};
 	assert(Views::Count == BX_COUNTOF(vieworder));	//if this assertion fails, a view was added but its order was not defined in the list above
 	bgfx::setViewOrder(0, Views::Count, vieworder);
 
@@ -706,15 +717,18 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	RenderEngine::dbgmtx.unlock();
 #endif
 
-	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
+	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Shadows, Views::Lighting}){
 		bgfx::setViewRect(view, 0, 0, bufferdims.width, bufferdims.height);
 	}
 	
 	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
 	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
+	bgfx::setViewFrameBuffer(Views::Shadows, shadowBuffer);
 	
 	bgfx::touch(Views::DeferredGeo);
 	bgfx::touch(Views::Lighting);
+	bgfx::touch(Views::Shadows);
+
 	
 	//copy world framedata into local copy
 	//GetApp()->SwapRenderFramedata();
@@ -906,9 +920,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		numRowsUniform.SetValues(uniformData, 1);
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this typey
-		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_BLEND_ALPHA);
+		bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_LESS);
 		bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
-		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
+		bgfx::setTexture(2, shadowSelfHandle, shadowAttachments[1]);
+		bgfx::submit(Views::Shadows, shadowVolumeHandle);
 		bgfx::discard();
 	};
 	doShadow(lightResults[1]);
