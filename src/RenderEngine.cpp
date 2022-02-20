@@ -76,6 +76,7 @@ STATIC(RenderEngine::shadowVolumeHandle) = BGFX_INVALID_HANDLE;
 
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
 static bgfx::ProgramHandle shadowProgramHandle = BGFX_INVALID_HANDLE;
+static bgfx::DynamicVertexBufferHandle shadowScratchBufferHandle = BGFX_INVALID_HANDLE;
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -517,6 +518,13 @@ void RenderEngine::Init(const AppConfig& config)
 	allIndicesHandle = bgfx::createDynamicIndexBuffer(100000, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
 	lightDataHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
 
+	bgfx::VertexLayout scratchTextureLayout;
+	scratchTextureLayout.begin()
+		.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)    // 3 verts to make a triangle
+		.end();
+	shadowScratchBufferHandle = bgfx::createDynamicVertexBuffer(950*540, scratchTextureLayout, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
+
+
 	//init lights
 	LightManager::Init();
 
@@ -625,8 +633,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	// shadow textures - final output, work texture, and share depth
 	shadowAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F);
-	shadowAttachments[1] = gen_framebuffer(bgfx::TextureFormat::RG16F);
-	shadowAttachments[2] = attachments[3];
+	shadowAttachments[1] = attachments[3];
 		
 	for(int i = 0; i < gbufferSize; i++){
 		if (!bgfx::isValid(attachments[i])){
@@ -922,11 +929,20 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this typey
 		bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_LESS);
 		bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
-		bgfx::setTexture(2, shadowSelfHandle, shadowAttachments[1]);
+		bgfx::setBuffer(11, shadowScratchBufferHandle,bgfx::Access::ReadWrite);
 		bgfx::submit(Views::Shadows, shadowVolumeHandle);
 		bgfx::discard();
 	};
 	doShadow(lightResults[1]);
+
+	// next blit the results
+	bgfx::discard();
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_MULTIPLY);
+	bgfx::setVertexBuffer(0,screenSpaceQuadVert);
+	bgfx::setIndexBuffer(screenSpaceQuadInd);
+	bgfx::setTexture(1, shadowSelfHandle, shadowAttachments[0]);
+	bgfx::submit(Views::FinalBlit, shadowProgramHandle);
+	bgfx::discard();
 
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);

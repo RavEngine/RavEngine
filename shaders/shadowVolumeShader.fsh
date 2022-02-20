@@ -1,9 +1,10 @@
 $input plane1, plane2, planeCap, planeData
 
 #include "common.sh"
+#include <bgfx_compute.sh>
 
 SAMPLER2D(s_depth,1);
-SAMPLER2D(s_shadowself,2);
+BUFFER_RW(rvs_scratch,float,11);
 
 float solvePlane(vec2 pt, vec4 pln){
 	return (pln.x*pt.x + pln.y*pt.y + pln.w) / (pln.z);
@@ -24,30 +25,38 @@ void main()
 		discard;
 	}
 
-	vec2 sampled = texture2D(s_shadowself, unitizedPixel);
+	int index = (gl_FragCoord.y * 2) + gl_FragCoord.x * 2 ;		// 2 floats per pixel
 	if (gl_FrontFacing){
 		// anything in the green channel?
-		if (sampled.g == 0){
+		if (rvs_scratch[index+1] == 0){
 			// no, so back tri has not rendered yet
-			gl_FragData[1] = vec4(fragDepth,0,0,1);
+			rvs_scratch[index] = fragDepth;
+			discard;
 		}
 		else{
 			// yes, so lets compare it
-			if (numIsBetween(geodepth,vec2(fragDepth, sampled.g))){
+			if (numIsBetween(geodepth,vec2(fragDepth, rvs_scratch[index+1]))){
 				gl_FragData[0] = vec4(1,1,1,1);
+			}
+			else{
+				discard;
 			}
 		}
 	}
 	else{
 		// anything in the red channel?
-		if (sampled.r == 0){
+		if (rvs_scratch[index] == 0){
 			// no, so front tri has not rendered yet
-			gl_FragData[1] = vec4(0,fragDepth,0,1);
+			rvs_scratch[index] = fragDepth;		
+			discard;
 		}
 		else{
 			// yes, so lets compare it
-			if (numIsBetween(geodepth,vec2(fragDepth, sampled.r))){
+			if (numIsBetween(geodepth,vec2(fragDepth, rvs_scratch[index]))){
 				gl_FragData[0] = vec4(1,1,1,1);
+			}
+			else{
+				discard;
 			}
 		}
 	}

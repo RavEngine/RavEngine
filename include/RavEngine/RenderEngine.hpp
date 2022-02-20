@@ -256,7 +256,7 @@ namespace RavEngine {
     public:
 		static constexpr uint8_t gbufferSize = 4;
 		static constexpr uint8_t lightingAttachmentsSize = 2;
-		static constexpr uint8_t shadowAttachmentsSize = 3;
+		static constexpr uint8_t shadowAttachmentsSize = 2;
     protected:
 		bgfx::TextureHandle attachments[gbufferSize];
 			//RGBA (A not used in opaque)
