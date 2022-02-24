@@ -19,14 +19,12 @@ vec3 calcNormal(vec3 u, vec3 v){
 }
 
 vec4 genPlane(vec3 a, vec3 b, vec3 c){
+	vec4 abcd = vec4(cross(a-b,a-c),0);	// find abc
 
-	// get the coefficients
-	float A = (b.y-a.y)*(c.z-a.z) - (c.y-a.y)*(b.z-a.z);
-	float B = (b.z-a.z)*(c.x-a.x) - (c.z-a.z)*(b.x-a.x);
-	float C = (b.x-a.x)*(c.x-a.y) - (c.x-a.x)*(b.y-a.y);
-	float D = A*a.x + B*a.y + C*a.z;
+	// find d by substituting abc
+	abcd.w = -(abcd.x * a.x + abcd.y * a.y + abcd.z * a.z);	// d = -(ax+by+cz), where x,y,z are one of the points
 
-	return vec4(A,B,C,D);
+	return abcd;
 }
 
 void main()
@@ -58,7 +56,7 @@ void main()
 		gl_Position = vec4(0,0,0,1);	// don't shade this by placing it at the origin
 	}
 	else{
-		float INSET = -0.02;
+		const float INSET = -0.02;
 		// inset the triangle by the normal a small amount, then extend it along the light ray
 		gl_Position = mul(u_viewProj, vec4((points[gl_VertexID % 3] + normal * INSET) + dirvec * (gl_VertexID < 3 ? 0 : 1),1));
 
@@ -71,6 +69,7 @@ void main()
 		vec4 vp4 = mul(u_viewProj, vec4((points[1] + normal * INSET) + dirvec, 1));
 		vec4 vp5 = mul(u_viewProj, vec4((points[2] + normal * INSET) + dirvec, 1));
 
+		// scale by w to convert to [-1,1] space
 		vp0 = vec4(vp0.xyz / vp0.w,vp0.w);
 		vp1 = vec4(vp1.xyz / vp1.w,vp1.w);
 		vp2 = vec4(vp2.xyz / vp2.w,vp2.w);
@@ -81,38 +80,25 @@ void main()
 		// always include the top cap
 		planeCap = genPlane(vp0.xyz,vp1.xyz,vp2.xyz);
 
-		// TODO: fix -- top-face vert to 2 end verts, for each
 		vec3 side1Normal = calcNormal(vp0.xyz - vp3.xyz, vp0.xyz - vp4.xyz);
 		vec3 side2Normal = calcNormal(vp0.xyz - vp5.xyz, vp0.xyz - vp3.xyz);
 		vec3 side3Normal = calcNormal(vp2.xyz - vp1.xyz, vp2.xyz - vp4.xyz);
 
 		// which planes are backplanes?
-		bool oneIncluded = false;
 		planeData.x = 0;				// x component stores the number of backplanes excluding the top cap
+		vec4 planes[3];
 		if (side1Normal.z < 0){
-			plane1 = genPlane(vp0.xyz,vp3.xyz,vp4.xyz);
-			oneIncluded = true;
-			planeData.x++;
+			planes[planeData.x++] = genPlane(vp0.xyz,vp3.xyz,vp4.xyz);
 		}
 		if (side2Normal.z < 0){
-			if (oneIncluded){
-				plane2 = genPlane(vp5.xyz,vp3.xyz,vp0.xyz);
-			}
-			else{
-				plane1 = genPlane(vp5.xyz,vp3.xyz,vp0.xyz);
-			}
-			oneIncluded = true;
-			planeData.x++;
+			planes[planeData.x++] = genPlane(vp0.xyz,vp3.xyz,vp5.xyz);
 		}
 		if (side3Normal.z < 0 && planeData.x < 2){	// only include this one if 2 more planes were not included
-			if (oneIncluded){
-				plane2 = genPlane(vp2.xyz,vp1.xyz,vp4.xyz);
-			}
-			else{
-				plane1 = genPlane(vp2.xyz,vp1.xyz,vp4.xyz);
-			}
-			oneIncluded = true;
-			planeData.x++;
+			planes[planeData.x++] = genPlane(vp2.xyz,vp1.xyz,vp4.xyz);
 		}
+
+		// output semantic
+		plane1 = planes[0];
+		plane2 = planes[1];
 	}
 }
