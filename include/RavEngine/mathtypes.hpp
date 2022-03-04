@@ -57,6 +57,12 @@ static inline std::ostream& operator<<(std::ostream& os, const vector3& vec){
     return os;
 }
 
+static inline std::ostream& operator<<(std::ostream& os, const glm::vec4& vec) {
+    os << "fvec4(" << vec.x << ", " << vec.y << ", " << vec.z << ", " << vec.w << ")";
+    return os;
+}
+
+
 static inline std::ostream& operator<<(std::ostream& os, const quaternion& quat){
     os << "quat(" << quat.x << ", " << quat.y << ", " << quat.z << ", " << quat.w << ")";
     return os;

@@ -906,7 +906,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		numRowsUniform.SetValues(uniformData, 1);
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this typey
-		bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_BLEND_ALPHA);
+		bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_BLEND_ADD);
 		bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();
