@@ -5,7 +5,7 @@ $input plane1, plane2, planeCap, planeData
 SAMPLER2D(s_depth,1);
 
 float solvePlane(vec2 pt, vec4 pln){
-	return (pln.x*pt.x + pln.y*pt.y + pln.w) / -(pln.z);
+	return (pln.x*pt.x - pln.y*pt.y + pln.w) / -(pln.z);
 }
 
 bool numIsBetween(float num, vec2 bounds){

@@ -587,7 +587,7 @@ void RenderEngine::Init(const AppConfig& config)
 			.end();
 
 		shadowTriangleVertexBuffer = bgfx::createVertexBuffer(bgfx::copy(shadowTriangleVerts, sizeof(shadowTriangleVerts)), layout);
-		shadowTriangleIndexBuffer = bgfx::createIndexBuffer(bgfx::copy(shadowTriangleIndices, sizeof(shadowTriangleVerts)));
+		shadowTriangleIndexBuffer = bgfx::createIndexBuffer(bgfx::copy(shadowTriangleIndices, sizeof(shadowTriangleIndices)));
 	}
 	
 }
