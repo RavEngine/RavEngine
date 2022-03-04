@@ -7,7 +7,7 @@ $output plane1, plane2, planeCap, planeData
 BUFFER_RO(vertbuffer,float,12);
 BUFFER_RO(indbuffer,int,13);
 BUFFER_RO(light_databuffer,float,14);	
-uniform vec4 NumObjects;		// x = start index into light_databuffer, y = number of total instances, z = number of lights shadows are being calculated for
+uniform vec4 NumObjects;		// x = start index into light_databuffer, y = number of total instances, z = number of lights shadows are being calculated for, w = type of light (0 = dir, 1 = point, 2 = spot)
 
 #define INSET -0.02
 
@@ -40,16 +40,20 @@ void main()
 	index = indbuffer[gl_InstanceID * 3 + 2];
 	points[2] = vec3(vertbuffer[index*3],vertbuffer[index*3+1],vertbuffer[index*3+2]);
 
-	// TODO: calculate the vector to translate the higher-order vertices along
-	// for directional light, this is just the light's forward vector
-	// for spot and point lights, this is the vector from the center of the light to the vertex being processed
-
 	vec3 normal = calcNormal(points[0], points[1], points[2]);
 
-	//TODO: this is the directional light implementation, add ifdefs for the other light types
 	index = (gl_InstanceID / (int)NumObjects.y) * 3;
-	vec3 toLight = vec3(light_databuffer[index],light_databuffer[index+1],light_databuffer[index+2]);
-	vec3 dirvec = toLight * -30;
+	vec3 toLight;
+	if (NumObjects.w == 0) {
+		// for directional light, this is just the light's forward vector
+		toLight = vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]);
+	}
+	else {
+		// for spot and point lights, this is the vector from the center of the light to the vertex being processed
+		vec3 lightpos = vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]);
+		toLight = lightpos - points[gl_VertexID % 3];
+	}
+	vec3 dirvec = toLight * -1000;
 
 	// if the triangle is facing the wrong way, we don't want to have it cast shadows (reduce the number of volumes generated)
 	float nDotL = max(dot(normal, toLight), 0);

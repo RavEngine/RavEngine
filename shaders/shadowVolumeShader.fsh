@@ -19,10 +19,8 @@ void main()
 
 	// don't shadow onto the skybox
 	if (Pixel.z >= 1){
-		//discard;
+		discard;
 	}
-	gl_FragColor = vec4(0,1,0,0.3);
-	//return;
 
 	float depths[3];
 	depths[0] = solvePlane(Pixel.xy,planeCap);

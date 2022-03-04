@@ -548,7 +548,7 @@ void RenderEngine::Init(const AppConfig& config)
 
 		constexpr uint16_t shadowTriangleIndices[] = {
 			0,1,2,	// top face
-			5,4,3,	// bottom face
+			//5,4,3,	// bottom face
 			
 			0,3,4,	// side 1-1
 			4,1,0,	// side 1-2
@@ -885,14 +885,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 	// Lighting pass
 	uint32_t shadowOffset = 0;
+	DrawLightsOfType<AmbientLight>(fd->ambients, gBufferSamplers, attachments, numRowsUniform, shadowOffset);
 	DrawLightsResult lightResults[]{
-		DrawLightsOfType<AmbientLight>(fd->ambients,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
 		DrawLightsOfType<DirectionalLight>(fd->directionals,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
-		DrawLightsOfType<SpotLight>(fd->spots,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
 		DrawLightsOfType<PointLight>(fd->points,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
+		DrawLightsOfType<SpotLight>(fd->spots,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
 	};
 	// shadow pass
-	auto doShadow = [this,&allIndicesOffset](const DrawLightsResult& idb) {
+	auto doShadow = [this,&allIndicesOffset](const DrawLightsResult& idb, uint8_t lighttype) {
 		bgfx::discard();
 		bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
 		bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
@@ -902,7 +902,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 		const auto numInstances = (allIndicesOffset / 3) * idb.numDrawn;
 
-        float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),0};		// start points for reading shadow data
+        float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),lighttype};		// start points for reading shadow data
 		numRowsUniform.SetValues(uniformData, 1);
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this typey
@@ -911,7 +911,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();
 	};
-	doShadow(lightResults[1]);
+	doShadow(lightResults[0],0);
+	doShadow(lightResults[1],1);
+	doShadow(lightResults[2],2);
 
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);
