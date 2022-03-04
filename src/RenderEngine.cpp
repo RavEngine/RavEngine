@@ -513,8 +513,8 @@ void RenderEngine::Init(const AppConfig& config)
     allGeoLayout.begin()
         .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)    // 3 verts to make a triangle
         .end();
-    allVerticesHandle = bgfx::createDynamicVertexBuffer(100000, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
-	allIndicesHandle = bgfx::createDynamicIndexBuffer(100000, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
+    allVerticesHandle = bgfx::createDynamicVertexBuffer(3.2e+7, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
+	allIndicesHandle = bgfx::createDynamicIndexBuffer(3.2e+7, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
 	lightDataHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
 
 	//init lights
