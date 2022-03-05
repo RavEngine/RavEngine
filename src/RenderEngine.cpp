@@ -61,21 +61,17 @@ RenderEngine::vs RenderEngine::VideoSettings;
 static bgfx::VertexLayout debuglayout;
 bgfx::VertexLayout RenderEngine::RmlLayout;
 
-bgfx::VertexBufferHandle RenderEngine::screenSpaceQuadVert = BGFX_INVALID_HANDLE;
-bgfx::IndexBufferHandle RenderEngine::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
-bgfx::ProgramHandle RenderEngine::skinningShaderHandle = BGFX_INVALID_HANDLE;
 decltype(RenderEngine::skinningOutputLayout) RenderEngine::skinningOutputLayout, RenderEngine::skinningInputLayout;
 decltype(RenderEngine::opaquemtxhandle) RenderEngine::opaquemtxhandle = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allIndicesHandle) = BGFX_INVALID_HANDLE;
-STATIC(RenderEngine::copyIndicesShaderHandle) = BGFX_INVALID_HANDLE;
-STATIC(RenderEngine::debugShaderHandle) = BGFX_INVALID_HANDLE;
-STATIC(RenderEngine::shadowTriangleVertexBuffer) = BGFX_INVALID_HANDLE;
-STATIC(RenderEngine::shadowTriangleIndexBuffer) = BGFX_INVALID_HANDLE;
-STATIC(RenderEngine::shadowVolumeHandle) = BGFX_INVALID_HANDLE;
+STATIC(RenderEngine::guiMaterial);
 
+static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle, shadowVolumeHandle;
+static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
 static bgfx::ProgramHandle shadowProgramHandle = BGFX_INVALID_HANDLE;
+static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -88,7 +84,7 @@ SpinLock RenderEngine::dbgmtx;
 static Ref<DebugMaterialInstance> mat;
 
 static Ref<RavEngine::DeferredBlitShader> blitShader;
-Ref<GUIMaterialInstance> RenderEngine::guiMaterial;
+
 
 #ifdef _DEBUG
 static DebugDrawer dbgdraw;	//for rendering debug primitives
@@ -589,7 +585,37 @@ void RenderEngine::Init(const AppConfig& config)
 		shadowTriangleVertexBuffer = bgfx::createVertexBuffer(bgfx::copy(shadowTriangleVerts, sizeof(shadowTriangleVerts)), layout);
 		shadowTriangleIndexBuffer = bgfx::createIndexBuffer(bgfx::copy(shadowTriangleIndices, sizeof(shadowTriangleIndices)));
 	}
+
+	mat = make_shared<DebugMaterialInstance>(Material::Manager::Get<DebugMaterial>());
+	auto& data = Im3d::GetAppData();
+	data.drawCallback = &DebugRender;
+
+	numRowsUniform = Vector4Uniform("NumObjects");
+	computeOffsetsUniform = Vector4Uniform("ComputeOffsets");
+	timeUniform.emplace("u_time");
 	
+	bgfx::setViewName(Views::FinalBlit, "Final Blit");
+	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
+	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
+
+	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL);
+	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
+	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
+
+	debugNavMeshLayout.begin()
+		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+		.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8)
+		.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+		.end();
+
+	auto vertfunc = Material::loadShaderHandle("debugNav/vertex.bin");
+	auto fragfunc = Material::loadShaderHandle("debugNav/fragment.bin");
+	debugNavProgram = bgfx::createProgram(vertfunc, fragfunc);
+
+	//render view 0 last
+	bgfx::ViewId vieworder[]{ Views::DeferredGeo, Views::Lighting, Views::FinalBlit };
+	assert(Views::Count == BX_COUNTOF(vieworder));	//if this assertion fails, a view was added but its order was not defined in the list above
+	bgfx::setViewOrder(0, Views::Count, vieworder);
 }
 
 
@@ -601,10 +627,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	Init(config);
 
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
-	
-	mat = make_shared<DebugMaterialInstance>(Material::Manager::Get<DebugMaterial>());
-	auto& data = Im3d::GetAppData();
-	data.drawCallback = &DebugRender;
 	
 	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
 	BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
@@ -629,9 +651,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		}
 	}
 
-	numRowsUniform = Vector4Uniform("NumObjects");
-	computeOffsetsUniform = Vector4Uniform("ComputeOffsets");
-    timeUniform.emplace("u_time");
 	//create samplers
 	constexpr char const* buffersamplers[] = { "s_albedo","s_normal","s_pos","s_depth"};
 	for (int i = 0; i < BX_COUNTOF(buffersamplers); i++) {
@@ -649,33 +668,9 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	if(!bgfx::isValid(gBuffer)){
 		Debug::Fatal("Failed to create gbuffer");
 	}
-	
-	bgfx::setViewName(Views::FinalBlit, "Final Blit");
-	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
-	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
-	
-	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL);
-	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
-	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
-	
-	//render view 0 last
-	bgfx::ViewId vieworder[]{Views::DeferredGeo, Views::Lighting, Views::FinalBlit};
-	assert(Views::Count == BX_COUNTOF(vieworder));	//if this assertion fails, a view was added but its order was not defined in the list above
-	bgfx::setViewOrder(0, Views::Count, vieworder);
 
 	skinningComputeBuffer = decltype(skinningComputeBuffer)(1024 * 1024);
-
 	poseStorageBuffer = decltype(poseStorageBuffer)(1024 * 1024);
-    
-    debugNavMeshLayout.begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8)
-        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-    .end();
-    
-    auto vertfunc = Material::loadShaderHandle("debugNav/vertex.bin");
-    auto fragfunc = Material::loadShaderHandle("debugNav/fragment.bin");
-    debugNavProgram = bgfx::createProgram(vertfunc, fragfunc);
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -684,11 +679,6 @@ RavEngine::RenderEngine::~RenderEngine()
 	bgfx::destroy(lightingBuffer);	
 	skinningComputeBuffer.DestroyBuffer();
 	poseStorageBuffer.DestroyBuffer();
-}
-
-void RenderEngine::DrawNext(Ref<World> world) {
-	//mark what world to render
-	worldToDraw = world;
 }
 
 /**
@@ -902,11 +892,11 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 		const auto numInstances = (allIndicesOffset / 3) * idb.numDrawn;
 
-        float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),lighttype};		// start points for reading shadow data
+        float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),static_cast<float>(lighttype)};		// start points for reading shadow data
 		numRowsUniform.SetValues(uniformData, 1);
 
 		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this typey
-		bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_BLEND_ADD);
+		bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_BLEND_ADD | BGFX_STATE_MSAA);
 		bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();
@@ -927,7 +917,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setTexture(0, lightingSamplers[0], lightingAttachments[0]);
 	bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
 
-	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_ALWAYS);	//don't clear depth, debug wireframes are drawn forward-style afterwards
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_LINEAA);	//don't clear depth, debug wireframes are drawn forward-style afterwards
 	blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd, Views::FinalBlit);
 	
 #ifdef _DEBUG

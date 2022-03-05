@@ -167,9 +167,6 @@ namespace RavEngine {
 				Count
 			};
 		};
-
-		// Signal to the current renderer what it should draw next 
-		void DrawNext(Ref<World> toDraw);
 		
 		// Rml::SystemInterface overrides, used internally
 		double GetElapsedTime() override;
@@ -245,8 +242,6 @@ namespace RavEngine {
 		float win_scalefactor = 1;
 #endif
 		
-		WeakRef<World> worldToDraw;
-		std::optional<std::thread> renderThread;
 		float currentFrameTime;
 
 		static SDL_Window* window;
@@ -271,13 +266,10 @@ namespace RavEngine {
 		TransientComputeBufferReadOnly skinningComputeBuffer;
 		TransientComputeBuffer poseStorageBuffer;
 					
-        static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
-        static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
 		static bgfx::VertexBufferHandle opaquemtxhandle;
         static bgfx::DynamicVertexBufferHandle allVerticesHandle;
 		static bgfx::DynamicIndexBufferHandle allIndicesHandle;
-
-		static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle, shadowVolumeHandle;
+        static Ref<GUIMaterialInstance> guiMaterial;
 
 		static bgfx::VertexLayout skinningOutputLayout, skinningInputLayout;
 		
@@ -287,9 +279,8 @@ namespace RavEngine {
         std::optional<Vector4Uniform> timeUniform;
 		
 		static bgfx::VertexLayout RmlLayout;
-		static Ref<GUIMaterialInstance> guiMaterial;
 		
-		matrix4 currentMatrix;
+		matrix4 currentGUIMatrix;
                 
         struct scissor{
             uint16_t x, y, width, height;

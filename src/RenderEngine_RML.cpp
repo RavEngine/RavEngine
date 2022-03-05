@@ -243,6 +243,6 @@ void RenderEngine::ReleaseTexture(Rml::TextureHandle texture_handle) {
 void RenderEngine::SetTransform(const Rml::Matrix4f* transform){
 	
 	auto data = transform->data();
-	currentMatrix = glm::make_mat4(data);
+	currentGUIMatrix = glm::make_mat4(data);
 	Debug::Fatal("Local transformations not supported yet");
 }
