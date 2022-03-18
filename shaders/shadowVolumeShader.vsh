@@ -82,7 +82,7 @@ void main()
 		vp5 /= vp5.w;
 
 		// always include the top cap
-		planeCap = genPlane(vp0.xyz,vp1.xyz,vp2.xyz);
+		planeCap = vec4(toLight,0);
 
 		vec3 side1Normal = calcNormalV4(vp4, vp0, vp3);
 		vec3 side2Normal = calcNormalV4(vp5, vp0, vp2);

@@ -895,9 +895,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),static_cast<float>(lighttype)};		// start points for reading shadow data
 		numRowsUniform.SetValues(uniformData, 1);
 
-		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this typey
-		bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_BLEND_ADD | BGFX_STATE_MSAA);
-		bgfx::setTexture(1, lightingSamplers[1], lightingAttachments[1]);
+		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
+		bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_BLEND_ADD | BGFX_STATE_MSAA);
+		bgfx::setTexture(0, lightingSamplers[1], lightingAttachments[1]);
+		bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);
 		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
 		bgfx::discard();
 	};

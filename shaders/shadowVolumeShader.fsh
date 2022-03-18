@@ -2,7 +2,8 @@ $input plane1, plane2, planeCap, planeData
 
 #include "common.sh"
 
-SAMPLER2D(s_depth,1);
+SAMPLER2D(s_depth,0);
+SAMPLER2D(s_normal,1);
 
 float solvePlane(vec2 pt, vec4 pln){
 	return (pln.x*pt.x - pln.y*pt.y + pln.w) / -(pln.z);
@@ -15,12 +16,14 @@ bool numIsBetween(float num, vec2 bounds){
 void main()
 {
 	//Convert the pixel into projection coordinates [-1,1]
-	vec3 Pixel = vec3((gl_FragCoord.x / u_viewRect.z - 0.5) * 2, (gl_FragCoord.y / u_viewRect.w - 0.5) * 2, texture2D(s_depth,  vec2(gl_FragCoord.x / u_viewRect.z, gl_FragCoord.y / u_viewRect.w)).x);
+	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect.z, gl_FragCoord.y / u_viewRect.w);
+	vec3 Pixel = vec3((gl_FragCoord.x / u_viewRect.z - 0.5) * 2, (gl_FragCoord.y / u_viewRect.w - 0.5) * 2, texture2D(s_depth,  texcoord).x);
 
 	// don't shadow onto the skybox
 	if (Pixel.z >= 1){
 		discard;
 	}
+	vec3 pixelnormal = texture2D(s_normal, texcoord);
 
 	float depths[3];
 	depths[0] = solvePlane(Pixel.xy,planeCap);
@@ -32,10 +35,13 @@ void main()
 	greater[0] = depths[0] > Pixel.z;
 	greater[1] = depths[1] > Pixel.z;
 	greater[2] = depths[2] > Pixel.z;
+
+	float nDotL = dot(pixelnormal, planeCap.xyz);
 	
 	// if they are, then this volume contains the pixel, so shadow it
-	if (/*greater[0] &&*/ greater[1] && greater[2]){
+	if (nDotL > -0.01 && greater[1] && greater[2]){
 		gl_FragColor = vec4(0,0,0,1);
+		//gl_FragDepth = 0;
 	}
 	else{
 		discard;
