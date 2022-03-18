@@ -19,11 +19,12 @@ void main()
 	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect.z, gl_FragCoord.y / u_viewRect.w);
 	vec3 Pixel = vec3((gl_FragCoord.x / u_viewRect.z - 0.5) * 2, (gl_FragCoord.y / u_viewRect.w - 0.5) * 2, texture2D(s_depth,  texcoord).x);
 
-	// don't shadow onto the skybox
-	if (Pixel.z >= 1){
+	// don't shadow onto the skyboxm or onto backfaces
+	vec3 pixelnormal = texture2D(s_normal, texcoord);
+	float nDotL = dot(pixelnormal, planeCap.xyz);
+	if (Pixel.z >= 1 || nDotL < -0.01){
 		discard;
 	}
-	vec3 pixelnormal = texture2D(s_normal, texcoord);
 
 	float depths[3];
 	depths[0] = solvePlane(Pixel.xy,planeCap);
@@ -36,16 +37,13 @@ void main()
 	greater[1] = depths[1] > Pixel.z;
 	greater[2] = depths[2] > Pixel.z;
 
-	float nDotL = dot(pixelnormal, planeCap.xyz);
 	
 	// if they are, then this volume contains the pixel, so shadow it
-	if (nDotL > -0.01 && greater[1] && greater[2]){
+	if (greater[1] && greater[2]){
 		gl_FragColor = vec4(0,0,0,1);
-		//gl_FragDepth = 0;
 	}
 	else{
 		discard;
-		//gl_FragColor = vec4(1,0,0,0.3);
 	}
 	
 }
