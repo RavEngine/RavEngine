@@ -544,7 +544,7 @@ void RenderEngine::Init(const AppConfig& config)
 
 		constexpr uint16_t shadowTriangleIndices[] = {
 			0,1,2,	// top face
-			//5,4,3,	// bottom face
+			5,4,3,	// bottom face
 			
 			0,3,4,	// side 1-1
 			4,1,0,	// side 1-2

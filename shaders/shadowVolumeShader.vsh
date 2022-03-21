@@ -1,5 +1,5 @@
 $input a_position
-$output plane1, plane2, planeCap, planeData
+$output plane1, plane2, toLight, planeData
 
 #include <bgfx_shader.sh>
 #include <bgfx_compute.sh>
@@ -43,7 +43,6 @@ void main()
 	vec3 normal = calcNormal(points[0], points[1], points[2]);
 
 	index = (gl_InstanceID / (int)NumObjects.y) * 3;
-	vec3 toLight;
 	if (NumObjects.w == 0) {
 		// for directional light, this is just the light's forward vector
 		toLight = vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]);
@@ -80,9 +79,6 @@ void main()
 		vp3 /= vp3.w;
 		vp4 /= vp4.w;
 		vp5 /= vp5.w;
-
-		// always include the top cap
-		planeCap = vec4(toLight,0);
 
 		vec3 side1Normal = calcNormalV4(vp4, vp0, vp3);
 		vec3 side2Normal = calcNormalV4(vp5, vp0, vp2);
