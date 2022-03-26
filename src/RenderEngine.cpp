@@ -882,7 +882,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		DrawLightsOfType<SpotLight>(fd->spots,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
 	};
 	// shadow pass
-	auto doShadow = [this,&allIndicesOffset](const DrawLightsResult& idb, uint8_t lighttype) {
+	auto doShadow = [this,&allIndicesOffset](const DrawLightsResult& idb, uint8_t lighttype) -> void {
+        if (idb.numDrawn == 0){
+            return; // don't do anything in this case
+        }
 		bgfx::discard();
 		bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
 		bgfx::setIndexBuffer(shadowTriangleIndexBuffer);

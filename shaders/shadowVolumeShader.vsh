@@ -10,6 +10,7 @@ BUFFER_RO(light_databuffer,float,14);
 uniform vec4 NumObjects;		// x = start index into light_databuffer, y = number of total instances, z = number of lights shadows are being calculated for, w = type of light (0 = dir, 1 = point, 2 = spot)
 
 #define INSET -0.02
+#define EXPAND 0.002
 
 vec3 calcNormal(vec3 a, vec3 b, vec3 c){
 	return normalize(cross(b-a,c-a));
@@ -45,14 +46,13 @@ void main()
 	index = (gl_InstanceID / (int)NumObjects.y) * 3;
 	if (NumObjects.w == 0) {
 		// for directional light, this is just the light's forward vector
-		toLight = vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]);
+		toLight = normalize(vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]));
 	}
 	else {
 		// for spot and point lights, this is the vector from the center of the light to the vertex being processed
 		vec3 lightpos = vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]);
-		toLight = lightpos - points[gl_VertexID % 3];
+		toLight = normalize(lightpos - points[gl_VertexID % 3]);
 	}
-	vec3 dirvec = toLight * -1000;
 
 	// if the triangle is facing the wrong way, we don't want to have it cast shadows (reduce the number of volumes generated)
 	float nDotL = max(dot(normal, toLight), 0);
@@ -60,6 +60,9 @@ void main()
 		gl_Position = vec4(0,0,0,1);	// don't shade this by placing it at the origin
 	}
 	else{
+        vec3 center = (points[0] + points[1] + points[2])/3.0;
+        vec3 dirvec = (toLight + (normalize(center-points[gl_VertexID % 3])* EXPAND)) * -1000;
+        
 		// inset the triangle by the normal a small amount, then extend it along the light ray
 		gl_Position = mul(u_viewProj, vec4((points[gl_VertexID % 3] + normal * INSET) + dirvec * (gl_VertexID < 3 ? 0 : 1),1));
 
@@ -68,8 +71,12 @@ void main()
 		vec4 vp1 = mul(u_viewProj, vec4(points[1] + normal * INSET,1));
 		vec4 vp2 = mul(u_viewProj, vec4(points[2] + normal * INSET,1));
 
+        // recalc dirvec for tail verts
+        dirvec = (toLight + (normalize(center-points[0])* EXPAND)) * -1000;
 		vec4 vp3 = mul(u_viewProj, vec4((points[0] + normal * INSET) + dirvec, 1));
+        dirvec = (toLight + (normalize(center-points[1])* EXPAND)) * -1000;
 		vec4 vp4 = mul(u_viewProj, vec4((points[1] + normal * INSET) + dirvec, 1));
+        dirvec = (toLight + (normalize(center-points[2])* EXPAND)) * -1000;
 		vec4 vp5 = mul(u_viewProj, vec4((points[2] + normal * INSET) + dirvec, 1));
 
 		// scale by w to convert to [-1,1] space

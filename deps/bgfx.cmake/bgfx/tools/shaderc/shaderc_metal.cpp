@@ -556,6 +556,9 @@ namespace bgfx { namespace metal
 						auto executionModel = msl.get_execution_model();
 						spirv_cross::MSLResourceBinding newBinding;
 						newBinding.stage = executionModel;
+                        spirv_cross::CompilerMSL::Options opt;
+                        opt.set_msl_version(2,1,0);
+                        msl.set_msl_options(opt);
 
 						spirv_cross::ShaderResources resources = msl.get_shader_resources();
 

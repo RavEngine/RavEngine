@@ -22,6 +22,7 @@ set(TARGET_LINUX OFF)
 set(TARGET_EMSCRIPTEN OFF)
 set(TARGET_WINDOWS OFF)
 set(TARGET_UWP OFF)
+set(TARGET_ANDROID OFF)
 if(CMAKE_SYSTEM_NAME MATCHES Darwin OR CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS)
 	set(TARGET_APPLE ON CACHE INTERNAL "")
 elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
@@ -32,6 +33,8 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	set(TARGET_WINDOWS ON)
 elseif(CMAKE_SYSTEM_NAME MATCHES "WindowsStore")
 	set(TARGET_UWP ON)
+elseif (CMAKE_SYSTEM_NAME MATCHES "Android")
+	set(TARGET_ANDROID ON)
 endif()
 
 if (TARGET_APPLE)
@@ -41,6 +44,13 @@ elseif(TARGET_EMSCRIPTEN)
 	add_definitions(-pthread)
 	add_definitions(-fexceptions)
 	set(EM_LINK "-fexceptions" "-s MAX_WEBGL_VERSION=2" "-s MIN_WEBGL_VERSION=2" "-s FULL_ES3=1" "-s USE_WEBGPU" "-s GL_ASSERTIONS=1" "-s OFFSCREEN_FRAMEBUFFER=1" "-s OFFSCREENCANVAS_SUPPORT=1" "-s GL_DEBUG=1" "-s LLD_REPORT_UNDEFINED" "-s NO_DISABLE_EXCEPTION_CATCHING" "-s NO_DISABLE_EXCEPTION_THROWING" "-s PTHREAD_POOL_SIZE=4" "-s ASSERTIONS=1" "-s ALLOW_MEMORY_GROWTH=1" "-s MAXIMUM_MEMORY=4GB")
+endif()
+
+if(TARGET_ANDROID)
+	set(APP_GLUE_DIR ${ANDROID_NDK}/sources/android/native_app_glue)
+	include_directories(${APP_GLUE_DIR})
+	set(ANDROID_GLUE_LIB "android-app-glue")
+	add_library(${ANDROID_GLUE_LIB} STATIC ${APP_GLUE_DIR}/android_native_app_glue.c)
 endif()
 
 # link time optimization check
@@ -97,7 +107,7 @@ endif()
 
 # configure build machine tools
 file(MAKE_DIRECTORY ${TOOLS_DIR})
-if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN))
+if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND TARGET_ANDROID))
 	# need to ensure that if cross-compiling, we don't use the cross-compiler for the host tools
 	set(LINUX_HOST_CC "-DCMAKE_C_COMPILER=cc" CACHE INTERNAL "")
 	set(LINUX_HOST_CXX "-DCMAKE_CXX_COMPILER=c++" CACHE INTERNAL "")
@@ -184,7 +194,7 @@ endif()
 add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
-if (NOT TARGET_APPLE AND NOT MSVC AND NOT TARGET_EMSCRIPTEN)
+if (NOT TARGET_APPLE AND NOT MSVC AND NOT TARGET_EMSCRIPTEN AND NOT TARGET_ANDROID)
 	find_package(ALSA)
 	find_package(PulseAudio)                                    
 	if (NOT ALSA_FOUND AND NOT PulseAudio_FOUND)
@@ -246,7 +256,7 @@ if(TARGET_EMSCRIPTEN)
 elseif(UWP OR WINDOWS)
 	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_DIRECT3D12=1)	# UWP and Windows have DX12
 endif()
-if (TARGET_LINUX OR WINDOWS)
+if (TARGET_LINUX OR WINDOWS OR TARGET_ANDROID)
 	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_VULKAN=1)		# linux and Windows have Vulkan
 endif()
 if(TARGET_APPLE)
@@ -302,6 +312,9 @@ elseif(TARGET_LINUX)
 	set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu" CACHE INTERNAL "")
 	set(PLATFORM "Linux")
 	#set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu" CACHE INTERNAL "")
+elseif(TARGET_ANDROID)
+	set(TARGET_BUILD_PLATFORM "android" CACHE INTERNAL "")
+	set(PLATFORM "Android")
 endif()
 
 # Call into PhysX's CMake scripts
@@ -491,6 +504,7 @@ target_link_libraries("${PROJECT_NAME}"
     ${ATOMIC_LIB}
 	${DXGI_LIB}
 	${EM_LINK}
+	${ANDROID_GLUE_LIB}
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
