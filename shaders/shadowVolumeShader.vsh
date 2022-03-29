@@ -7,7 +7,7 @@ $output plane1, plane2, toLight, planeData
 BUFFER_RO(vertbuffer,float,12);
 BUFFER_RO(indbuffer,int,13);
 BUFFER_RO(light_databuffer,float,14);	
-uniform vec4 NumObjects;		// x = start index into light_databuffer, y = number of total instances, z = number of lights shadows are being calculated for, w = type of light (0 = dir, 1 = point, 2 = spot)
+uniform vec4 NumObjects;		// x = start index into light_databuffer, y = number of total instances, z = light data stride, w = type of light (0 = dir, 1 = point, 2 = spot)
 
 #define INSET -0.02
 #define EXPAND 0.002
@@ -43,10 +43,10 @@ void main()
 
 	vec3 normal = calcNormal(points[0], points[1], points[2]);
 
-	index = (gl_InstanceID / (int)NumObjects.y) * 3;
+	index = NumObjects.x + (gl_InstanceID / (int)NumObjects.y) * NumObjects.z;
 	if (NumObjects.w == 0) {
 		// for directional light, this is just the light's forward vector
-		toLight = normalize(vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]));
+		toLight = normalize(vec3(light_databuffer[index + 4], light_databuffer[index + 1 + 4], light_databuffer[index + 2 + 4]));
 	}
 	else {
 		// for spot and point lights, this is the vector from the center of the light to the vertex being processed

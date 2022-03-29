@@ -37,7 +37,7 @@ void main()
 
 	// if they are, then this volume contains the pixel, so shadow it
 	if (greater[0] && greater[1]){
-		gl_FragColor = vec4(0,0,0,1);
+		gl_FragColor = vec4(0,1,1,0.1);
 	}
 	else{
 		discard;

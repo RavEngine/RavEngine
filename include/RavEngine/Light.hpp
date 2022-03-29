@@ -54,7 +54,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 			//light color (3 floats)
 			//light intensity (1 float)
 		
-		return closest_multiple_of(sizeof(float) * 4, 16);
+		return sizeof(float) * 4;
 	}
 
 	static inline constexpr size_t ShadowDataSize() {
@@ -118,7 +118,7 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 		//light direction (3 floats)
 		//light intensity (1 float)
 		
-		return closest_multiple_of(sizeof(float) * (3+3+1), 16);
+		return sizeof(float) * (3+3+1);
 	}
 
 	static inline constexpr size_t ShadowDataSize() {
@@ -169,7 +169,7 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 		//light color (3 floats)
 		//light intensity (1 float)
 		
-		return closest_multiple_of(sizeof(float) * (3+1) + sizeof(float[16]), 16);
+		return sizeof(float) * (3+1) + sizeof(float[16]);
 	}
 
 	static inline constexpr size_t ShadowDataSize() {
@@ -233,7 +233,7 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 		//light color (3 floats)
 		//light penumbra (1 float)
 		
-		return closest_multiple_of(sizeof(float) * (3+1) + sizeof(float[16]), 16);
+		return sizeof(float) * (3+1) + sizeof(float[16]);
 	}
 
 	static inline constexpr size_t ShadowDataSize() {

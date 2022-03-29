@@ -22,8 +22,8 @@
 #include "InputManager.hpp"
 
 	#ifdef __linux__
-	#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work
-	#define SDL_VIDEO_DRIVER_WAYLAND 1
+	//#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work
+	//#define SDL_VIDEO_DRIVER_WAYLAND 1
 #endif
 #include <SDL_syswm.h>
 #include <SDL.h>
@@ -219,6 +219,8 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
     static const char* canvas = "#canvas";
     pd.ndt = NULL;
     pd.nwh = (void*)canvas;
+#elif __ANDROID__
+    Debug::Fatal("Not implemented");
 #else
 	#error This system / display manager is not supported
 #endif // BX_PLATFORM_
@@ -275,71 +277,6 @@ void DebugRender(const Im3d::DrawList& drawList){
 	bgfx::destroy(vbuf);
 	bgfx::destroy(ibuf);
 #endif
-}
-
-struct DrawLightsResult {
-	uint32_t numDrawn = 0;
-	uint32_t shadowDataBegin;
-	bgfx::InstanceDataBuffer lightdata;
-};
-/**
- Execute instanced draw calls for a given light type
- @param components the componetstore of the world to get the lights from
- @return true light draw calls were executed, false otherwise
- */
-template<typename LightType, class Container, typename gb_t, typename a_t, typename u_t, typename n_t>
-constexpr inline DrawLightsResult DrawLightsOfType(const Container& lights, gb_t gBufferSamplers, a_t attachments, u_t& uniform, n_t& beginOffset){
-	DrawLightsResult dr;
-    //must set before changing shaders
-    if (lights.size() == 0){
-        return dr;
-    }
-    
-    constexpr auto stride = LightType::InstancingStride();
-    const auto numLights = lights.size();
-    
-    //create buffer for GPU instancing
-    
-    assert(numLights < std::numeric_limits<uint32_t>::max());    // too many lights!
-    
-    bgfx::allocInstanceDataBuffer(&dr.lightdata, static_cast<uint32_t>(numLights), stride);
-    
-    //fill the buffer
-    int i = 0;
-    for(const auto& l : lights){    //TODO: factor in light frustum culling
-        float* ptr = (float*)(dr.lightdata.data + i);
-        l.AddInstanceData(ptr);
-        i += stride;
-    }
-
-    //fill the remaining slots in the buffer with 0s (if a light was removed during the buffer filling)
-    for (; i < numLights; i++) {
-        *(dr.lightdata.data + i) = 0;
-    }
-    
-    bgfx::setInstanceDataBuffer(&dr.lightdata);
-    
-    //set the required state for this light type
-    LightType::SetState();
-	
-	// bind buffer for writing shadow data
-	bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Write);
-    
-	// start points for writing data
-    float uniformData[] = {static_cast<float>(beginOffset),0,0,0 };
-	uniform.SetValues(uniformData, 1);
-	dr.shadowDataBegin = beginOffset;
-	beginOffset += LightType::ShadowDataSize() * lights.size();
-
-    //execute instance draw call
-    for (int i = 0; i < RenderEngine::gbufferSize; i++) {
-        bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-    }
-    LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
-    
-	dr.numDrawn = lights.size();
-
-    return dr;
 }
 
 /**
@@ -511,7 +448,13 @@ void RenderEngine::Init(const AppConfig& config)
         .end();
     allVerticesHandle = bgfx::createDynamicVertexBuffer(3.2e+7, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
 	allIndicesHandle = bgfx::createDynamicIndexBuffer(3.2e+7, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
-	lightDataHandle = bgfx::createDynamicVertexBuffer(65535, allGeoLayout, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE);
+    
+    bgfx::VertexLayout lightDataLayout;
+    lightDataLayout.begin()
+    .add(bgfx::Attrib::Position, 1, bgfx::AttribType::Uint8)
+    .end();
+    
+	lightDataHandle = bgfx::createDynamicVertexBuffer(65535, lightDataLayout, BGFX_BUFFER_COMPUTE_READ | BGFX_BUFFER_ALLOW_RESIZE);
 
 	//init lights
 	LightManager::Init();
@@ -600,7 +543,7 @@ void RenderEngine::Init(const AppConfig& config)
 
 	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
-	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
+	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL, 0x000000FF, 1.0f);
 
 	debugNavMeshLayout.begin()
 		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -636,7 +579,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
 		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	};
-	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D16F};
+	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D24S8};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
 		attachments[i] = gen_framebuffer(formats[i]);
 	}
@@ -702,6 +645,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
 	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
+    bgfx::setViewMode(Views::Lighting,bgfx::ViewMode::Sequential);
+    //bgfx::setViewMode(Views::FinalBlit,bgfx::ViewMode::Sequential);
 	
 	bgfx::touch(Views::DeferredGeo);
 	bgfx::touch(Views::Lighting);
@@ -874,40 +819,101 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::discard();*/
 
 	// Lighting pass
-	uint32_t shadowOffset = 0;
-	DrawLightsOfType<AmbientLight>(fd->ambients, gBufferSamplers, attachments, numRowsUniform, shadowOffset);
-	DrawLightsResult lightResults[]{
-		DrawLightsOfType<DirectionalLight>(fd->directionals,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
-		DrawLightsOfType<PointLight>(fd->points,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
-		DrawLightsOfType<SpotLight>(fd->spots,gBufferSamplers,attachments,numRowsUniform,shadowOffset),
-	};
-	// shadow pass
-	auto doShadow = [this,&allIndicesOffset](const DrawLightsResult& idb, uint8_t lighttype) -> void {
-        if (idb.numDrawn == 0){
-            return; // don't do anything in this case
+    /**
+     Execute instanced draw calls for a given light type
+     @param components the componetstore of the world to get the lights from
+     @return true light draw calls were executed, false otherwise
+     */
+    struct DrawLightsResult {
+        uint32_t numDrawn = 0;
+        uint32_t shadowDataBegin;
+        bgfx::InstanceDataBuffer lightdata;
+    };
+    uint32_t shadowOffset = 0;
+    uint8_t stencilValue = 1;
+    const auto DrawLightsOfType = [&]<typename LightType, class Container>(const Container& lights, float lighttype){
+        DrawLightsResult dr;
+        //must set before changing shaders
+        if (lights.size() == 0){
+            return dr;
         }
-		bgfx::discard();
-		bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
-		bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
-		bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
-		bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
-		bgfx::setBuffer(14, lightDataHandle, bgfx::Access::Read);	// data necessary for shadows
+        
+        constexpr auto stride = LightType::InstancingStride();
+        const auto numLights = lights.size();
+        
+        //create buffer for GPU instancing
+        auto mem = bgfx::alloc(numLights * stride);
 
-		const auto numInstances = (allIndicesOffset / 3) * idb.numDrawn;
+        //fill the buffer
+        int i = 0;
+        for(const auto& l : lights){    //TODO: factor in light frustum culling
+            float* ptr = (float*)(mem->data + i);
+            l.AddInstanceData(ptr);
+            i += stride;
+        }
 
-        float uniformData[] = {static_cast<float>(idb.shadowDataBegin),static_cast<float>(numInstances), static_cast<float>(idb.numDrawn),static_cast<float>(lighttype)};		// start points for reading shadow data
-		numRowsUniform.SetValues(uniformData, 1);
+        bgfx::update(lightDataHandle, shadowOffset, mem);
+        dr.numDrawn = lights.size();
+        
+        // do shadow prepass here (not for ambient lights!)
+        if constexpr (!std::is_same_v<LightType, AmbientLight>){
+            bgfx::discard();
+            bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
+            bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
+            bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
+            bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
+            bgfx::setBuffer(14, lightDataHandle, bgfx::Access::Read);    // data necessary for shadows
 
-		bgfx::setInstanceCount(numInstances);			// 3 indices per triangle, per light of this type
-		bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_BLEND_ADD | BGFX_STATE_MSAA);
-		bgfx::setTexture(0, lightingSamplers[1], lightingAttachments[1]);
-		bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);
-		bgfx::submit(Views::FinalBlit, shadowVolumeHandle);
-		bgfx::discard();
-	};
-	doShadow(lightResults[0],0);
-	doShadow(lightResults[1],1);
-	doShadow(lightResults[2],2);
+            const auto numInstances = (allIndicesOffset / 3) * dr.numDrawn;
+            
+            float lightType = 0;
+
+            float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)),static_cast<float>(numInstances), static_cast<float>(stride),static_cast<float>(lighttype)};        // start points for reading shadow data
+            numRowsUniform.SetValues(uniformData, 1);
+
+            bgfx::setInstanceCount(numInstances);            // 3 indices per triangle, per light of this type
+            bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_BLEND_ADD);
+            bgfx::setStencil(BGFX_STENCIL_TEST_ALWAYS | BGFX_STENCIL_FUNC_REF(stencilValue) | BGFX_STENCIL_OP_PASS_Z_REPLACE);
+            bgfx::setTexture(0, lightingSamplers[1], lightingAttachments[1]);
+            bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);
+            bgfx::submit(Views::Lighting, shadowVolumeHandle);
+            bgfx::discard();
+        }
+
+        // setup stencil output / mask value
+        
+        //set the required state for this light type
+        LightType::SetState();
+        bgfx::setInstanceCount(numLights);
+        
+        // bind buffer for writing shadow data
+        bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
+        
+        //execute instance draw call
+        for (int i = 0; i < RenderEngine::gbufferSize; i++) {
+            bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+        }
+        float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)), 0,0,0};        // start points for reading shadow data ( beginOffset is in bytes but we want floats
+        numRowsUniform.SetValues(uniformData, 1);
+        if constexpr (!std::is_same_v<LightType, AmbientLight>){
+            bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_RMASK(stencilValue));
+        }
+        LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
+        
+        // need to update this here because the shadow pass uses that information
+        shadowOffset += numLights * stride;
+        
+        // a new stencil value
+        if constexpr (!std::is_same_v<LightType, AmbientLight>){
+            stencilValue ++;
+            stencilValue = stencilValue == 0 ? 1 : stencilValue;    // bad things happen if 0
+        }
+    };
+	DrawLightsOfType.template operator()<AmbientLight>(fd->ambients,-1);
+    DrawLightsOfType.template operator()<DirectionalLight>(fd->directionals,0),
+    //DrawLightsOfType.template operator()<PointLight>(fd->points,shadowOffset,1),
+    //DrawLightsOfType.template operator()<SpotLight>(fd->spots,shadowOffset,2),
+
 
 	// lighting is complete, so next we draw the skybox
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_EQUAL);
