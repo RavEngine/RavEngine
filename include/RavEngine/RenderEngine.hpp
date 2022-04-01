@@ -267,7 +267,7 @@ namespace RavEngine {
 		TransientComputeBuffer poseStorageBuffer;
 					
 		static bgfx::VertexBufferHandle opaquemtxhandle;
-        static bgfx::DynamicVertexBufferHandle allVerticesHandle;
+        static bgfx::DynamicVertexBufferHandle allVerticesHandle, lightBlockingBuffer;
 		static bgfx::DynamicIndexBufferHandle allIndicesHandle;
         static Ref<GUIMaterialInstance> guiMaterial;
 

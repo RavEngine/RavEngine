@@ -1,5 +1,5 @@
 $input a_position
-$output lightdir, colorintensity
+$output lightdir, colorintensity, lightID
 
 #include "common.sh"
 #include <bgfx_compute.sh>
@@ -23,6 +23,9 @@ void main()
     lightdir.x = lightdata[idx + 4];
     lightdir.y = lightdata[idx + 5];
     lightdir.z = lightdata[idx + 6];
+    
+    // lightID
+    lightID = gl_InstanceID;
 
 	gl_Position = vec4(a_position.xy,1, 1.0);	//depth = 1
 }

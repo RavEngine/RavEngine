@@ -103,6 +103,8 @@ void main()
 		if (side3Normal.z < 0 && planeData.x < 2){	// only include this one if 2 more planes were not included
 			planes[planeData.x++] = genPlane(vp2.xyz,vp1.xyz,vp4.xyz);
 		}
+        
+        planeData.y = (gl_InstanceID / NumObjects.y); // light ID 
 
 		// output semantic
 		plane1 = planes[0];
