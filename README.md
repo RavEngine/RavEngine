@@ -1,5 +1,5 @@
 # RavEngine
-A C++20 cross-platform game library, with emphasis on performance and ease of use. Notable features:
+A C++17 cross-platform game library, with emphasis on performance and ease of use. Notable features:
 1. Fast Parallel ECS
    - Unique feature: Supports querying by base classes without vtable!
    - Also supports Unity-style scripting with full automatic parallelization

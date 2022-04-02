@@ -92,6 +92,7 @@ struct FrameData{
 	};
 	
 	struct PackedDL{
+		using light_t = DirectionalLight;
 		DirectionalLight light;
 		struct tinyvec3{
 			float x, y, z;

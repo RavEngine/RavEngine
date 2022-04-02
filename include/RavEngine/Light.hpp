@@ -24,6 +24,7 @@ struct ShadowLight : public Light, public QueryableDelta<Light,ShadowLight>{
 };
 
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
+	using light_t = AmbientLight;
 	using QueryableDelta<Light,AmbientLight>::GetQueryTypes;
 	
 	/**
@@ -77,6 +78,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 };
 
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
+	using light_t = DirectionalLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>::GetQueryTypes;
 	
 	/**
@@ -134,6 +136,7 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 };
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
+	using light_t = PointLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
 		
 	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
@@ -204,6 +207,7 @@ private:
 };
 
 struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>{
+	using light_t = SpotLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>::GetQueryTypes;
 	
 	inline bool IsInFrustum(Ref<CameraComponent> cam) const{

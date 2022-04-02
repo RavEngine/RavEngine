@@ -324,7 +324,7 @@ void RenderEngine::Init(const AppConfig& config)
 #ifdef __linux__
 			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined _WIN32
-			SelectRenderer(bgfx::RendererType::Direct3D12);
+			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined __APPLE__
 			SelectRenderer(bgfx::RendererType::Metal);
 #elif defined __EMSCRIPTEN__
@@ -838,7 +838,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         bgfx::InstanceDataBuffer lightdata;
     };
     uint32_t shadowOffset = 0;
-    const auto DrawLightsOfType = [&]<typename LightType, class Container>(const Container& lights, float lighttype){
+    const auto DrawLightsOfType = [&](const auto& lights, float lighttype){
+		using LightType = std::remove_reference<decltype(lights)>::type::value_type::light_t;
         DrawLightsResult dr;
         //must set before changing shaders
         if (lights.size() == 0){
@@ -912,8 +913,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         // need to update this here because the shadow pass uses that information
         shadowOffset += numLights * stride;
     };
-	DrawLightsOfType.template operator()<AmbientLight>(fd->ambients,-1);
-    DrawLightsOfType.template operator()<DirectionalLight>(fd->directionals,0);
+	DrawLightsOfType(fd->ambients,-1);
+    DrawLightsOfType(fd->directionals,0);
     //DrawLightsOfType.template operator()<PointLight>(fd->points,shadowOffset,1),
     //DrawLightsOfType.template operator()<SpotLight>(fd->spots,shadowOffset,2),
 
