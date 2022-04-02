@@ -839,7 +839,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     };
     uint32_t shadowOffset = 0;
     const auto DrawLightsOfType = [&](const auto& lights, float lighttype){
-		using LightType = std::remove_reference<decltype(lights)>::type::value_type::light_t;
+        using LightType = typename std::remove_reference<decltype(lights)>::type::value_type::light_t;
         DrawLightsResult dr;
         //must set before changing shaders
         if (lights.size() == 0){
