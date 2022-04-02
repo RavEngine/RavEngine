@@ -46,6 +46,7 @@ void main()
     uint output = 1 << planeData.y;   // indicate this light
 	if (greater[0] && greater[1]){
         // this fragment shader doesn't write anything to the framebuffers
+        //gl_FragColor = vec4(0,1,1,1);
         InterlockedOr(outputBuf[idx],output);    // atomic bitwise-or into the output buffer
 	}
 	else{

@@ -21,9 +21,9 @@
 #include <RmlUi/Debugger.h>
 #include "InputManager.hpp"
 
-	#ifdef __linux__
-	//#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work
-	//#define SDL_VIDEO_DRIVER_WAYLAND 1
+	#if defined __linux__ && !defined(__ANDROID__)
+	#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work
+	#define SDL_VIDEO_DRIVER_WAYLAND 1
 #endif
 #include <SDL_syswm.h>
 #include <SDL.h>
@@ -67,10 +67,9 @@ STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allIndicesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::guiMaterial);
 
-static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle, shadowVolumeHandle;
+static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle, shadowVolumeHandle, blankblockingbufferHandle;
 static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
-static bgfx::ProgramHandle shadowProgramHandle = BGFX_INVALID_HANDLE;
 static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
 STATIC(RenderEngine::lightBlockingBuffer);
 
@@ -402,6 +401,7 @@ void RenderEngine::Init(const AppConfig& config)
 	//load compute shader for skinning
 	skinningShaderHandle = Material::loadComputeProgram("skincompute/compute.bin");
 	copyIndicesShaderHandle = Material::loadComputeProgram("indexcopycompute/compute.bin");
+    blankblockingbufferHandle = Material::loadComputeProgram("blankblockingbuffer/compute.bin");
 	{
 		auto vert = Material::loadShaderHandle("meshOnly/vertex.bin");
 		auto frag = Material::loadShaderHandle("meshOnly/fragment.bin");
@@ -411,11 +411,6 @@ void RenderEngine::Init(const AppConfig& config)
 		auto vert = Material::loadShaderHandle("shadowvolume/vertex.bin");
 		auto frag = Material::loadShaderHandle("shadowvolume/fragment.bin");
 		shadowVolumeHandle = bgfx::createProgram(vert,frag);
-	}
-	{
-		auto vert = Material::loadShaderHandle("shadowshade/vertex.bin");
-		auto frag = Material::loadShaderHandle("shadowshade/fragment.bin");
-		shadowProgramHandle = bgfx::createProgram(vert, frag);
 	}
 	
 
@@ -455,7 +450,7 @@ void RenderEngine::Init(const AppConfig& config)
         .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
         .end();
     
-    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(3840*2160, lightBlockingLayout);
+    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout);
     
     bgfx::VertexLayout lightDataLayout;
     lightDataLayout.begin()
@@ -549,9 +544,9 @@ void RenderEngine::Init(const AppConfig& config)
 	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
 	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
 
-	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL);
+	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
-	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL, 0x000000FF, 1.0f);
+	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f);
 
 	debugNavMeshLayout.begin()
 		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -587,7 +582,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
 		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	};
-	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D24S8};
+	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D16F};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
 		attachments[i] = gen_framebuffer(formats[i]);
 	}
@@ -897,7 +892,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
             
             // bind buffer for writing shadow data
             bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
-            bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::Read);    // data about which pixels are blocked by which lights
+            bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
             
             //execute instance draw call
             for (int i = 0; i < RenderEngine::gbufferSize; i++) {
@@ -913,6 +908,19 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         // need to update this here because the shadow pass uses that information
         shadowOffset += numLights * stride;
     };
+    
+    {
+        bgfx::discard();
+        // blank out the lightblocking buffer
+        //TODO: get real dims
+        auto& dim = GetBufferSize();
+        float uniformData[] = {static_cast<float>(dim.width), static_cast<float>(dim.height),0,0};        // start points for reading shadow data ( beginOffset is in bytes but we want floats
+        numRowsUniform.SetValues(uniformData, 1);
+        bgfx::setBuffer(1,lightBlockingBuffer,bgfx::Access::Write);
+        bgfx::dispatch(Views::Lighting, blankblockingbufferHandle,std::ceil(dim.width/32.0),std::ceil(dim.height/32.0),1);
+    }
+    
+    
 	DrawLightsOfType(fd->ambients,-1);
     DrawLightsOfType(fd->directionals,0);
     //DrawLightsOfType.template operator()<PointLight>(fd->points,shadowOffset,1),
@@ -977,6 +985,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 void RenderEngine::resize(){
 	UpdateBufferDims();
+    bgfx::destroy(lightBlockingBuffer);
+    bgfx::VertexLayout lightBlockingLayout;
+    lightBlockingLayout.begin()
+        .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
+        .end();
+    
+    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout);
 #if BX_PLATFORM_IOS
 	//view must be manually sized on iOS
 	//also this API takes screen points not pixels
@@ -1083,7 +1098,7 @@ void RenderEngine::UpdateBufferDims(){
 		Debug::Fatal("GetScaleFactorForMonitor failed");
 	}
 #elif BX_PLATFORM_WINRT
-	auto& dinf = Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
+	auto dinf = Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
 	win_scalefactor = static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
 #elif BX_PLATFORM_IOS || BX_PLATFORM_OSX
 	// since iOS and macOS do not use OpenGL we cannot use the GL call here
