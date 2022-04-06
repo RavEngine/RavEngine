@@ -28,7 +28,7 @@ void main()
 	// don't shadow onto the skyboxm or onto backfaces
 	vec3 pixelnormal = texture2D(s_normal, texcoord);
 	float nDotL = dot(pixelnormal, toLight);
-	if (Pixel.z >= 1 || nDotL < -0.01){
+	if (Pixel.z >= 1 || nDotL < -0.01 || Pixel.z < gl_FragCoord.z){	//TODO: replace this with early-out depth test?
 		discard;
 	}
 
