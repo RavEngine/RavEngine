@@ -323,7 +323,7 @@ void RenderEngine::Init(const AppConfig& config)
 #ifdef __linux__
 			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined _WIN32
-			SelectRenderer(bgfx::RendererType::Vulkan);
+			SelectRenderer(bgfx::RendererType::Direct3D12);
 #elif defined __APPLE__
 			SelectRenderer(bgfx::RendererType::Metal);
 #elif defined __EMSCRIPTEN__
@@ -450,7 +450,7 @@ void RenderEngine::Init(const AppConfig& config)
         .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
         .end();
     
-    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout);
+    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE);
     
     bgfx::VertexLayout lightDataLayout;
     lightDataLayout.begin()
@@ -908,18 +908,18 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         // need to update this here because the shadow pass uses that information
         shadowOffset += numLights * stride;
     };
-    
+  
     {
         bgfx::discard();
         // blank out the lightblocking buffer
         //TODO: get real dims
         auto& dim = GetBufferSize();
-        float uniformData[] = {static_cast<float>(dim.width), static_cast<float>(dim.height),0,0};        // start points for reading shadow data ( beginOffset is in bytes but we want floats
+        float uniformData[] = {static_cast<float>(dim.width), static_cast<float>(dim.height),0,0};   
         numRowsUniform.SetValues(uniformData, 1);
         bgfx::setBuffer(1,lightBlockingBuffer,bgfx::Access::Write);
         bgfx::dispatch(Views::Lighting, blankblockingbufferHandle,std::ceil(dim.width/32.0),std::ceil(dim.height/32.0),1);
     }
-    
+ 
     
 	DrawLightsOfType(fd->ambients,-1);
     DrawLightsOfType(fd->directionals,0);
@@ -991,7 +991,7 @@ void RenderEngine::resize(){
         .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
         .end();
     
-    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout);
+    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE);
 #if BX_PLATFORM_IOS
 	//view must be manually sized on iOS
 	//also this API takes screen points not pixels
