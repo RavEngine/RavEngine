@@ -450,7 +450,7 @@ void RenderEngine::Init(const AppConfig& config)
         .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
         .end();
     
-    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE);
+    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_COMPUTE_FORMAT_32X1);
     
     bgfx::VertexLayout lightDataLayout;
     lightDataLayout.begin()
@@ -991,7 +991,7 @@ void RenderEngine::resize(){
         .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
         .end();
     
-    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE);
+    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_COMPUTE_FORMAT_32X1);
 #if BX_PLATFORM_IOS
 	//view must be manually sized on iOS
 	//also this API takes screen points not pixels
