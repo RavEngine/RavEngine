@@ -46,7 +46,8 @@ void main()
 	index = NumObjects.x + (gl_InstanceID / (int)NumObjects.y) * NumObjects.z;
 	if (NumObjects.w == 0) {
 		// for directional light, this is just the light's forward vector
-		toLight = normalize(vec3(light_databuffer[index + 4], light_databuffer[index + 1 + 4], light_databuffer[index + 2 + 4]));
+		vec3 lightDirData = vec3(light_databuffer[index + 4], light_databuffer[index + 1 + 4], light_databuffer[index + 2 + 4]);
+		toLight = normalize(lightDirData);
 	}
 	else {
 		// for spot and point lights, this is the vector from the center of the light to the vertex being processed

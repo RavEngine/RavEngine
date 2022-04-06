@@ -1,4 +1,3 @@
-#include "common.sh"
 #include <bgfx_compute.sh>
 #include <bgfx_shader.sh>
 

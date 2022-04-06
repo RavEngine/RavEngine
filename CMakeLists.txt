@@ -357,6 +357,7 @@ add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} "de
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
+source_group("shaders" FILES ${SHADERS})
 
 # vectorization
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
