@@ -42,7 +42,7 @@ static const aiScene* LoadScene(const std::string& name){
 	
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), str.size(),
+	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),
 												  assimp_flags,
 												  file_ext.string().c_str());
 	

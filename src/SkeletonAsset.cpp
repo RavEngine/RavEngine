@@ -44,7 +44,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		}
 		else{
 			auto data = GetApp()->GetResources().FileContentsAt(path.c_str());
-			const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(data.data()), data.size(),
+			const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(data.data()), Debug::AssertSize<unsigned int>(data.size()),
 														  aiProcess_ImproveCacheLocality          |
 														  aiProcess_ValidateDataStructure          |
 														  aiProcess_FindInvalidData     ,

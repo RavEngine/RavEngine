@@ -153,6 +153,15 @@ public:
             Fatal(msg);
         }
     }
+    
+    /**
+     Asserts that the value is in range, then returns the value cast to the checked type
+     */
+    template<typename U,typename T>
+    static inline U AssertSize(T val, const char* name = ""){
+        Debug::Assert(val <=  std::numeric_limits<U>::max(), "Size ({}) is greater than maximum allowed ({})",val, std::numeric_limits<U>::max());
+        return static_cast<U>(val);
+    }
 };
 	
 }

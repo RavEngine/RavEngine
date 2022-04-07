@@ -69,15 +69,15 @@ void NavMeshComponent::UpdateNavMesh(Ref<MeshAsset> mesh, Options opt){
         Debug::Fatal("Height field generation failed");
     }
     
-    const int ntris = rawData.indices.size()/3;
+    const int ntris = Debug::AssertSize<decltype(ntris)>(rawData.indices.size()/3);
     // allocate array to hold triangle area types ( = number of triangles)
     unsigned char* triareas = new unsigned char[ntris];
     std::memset(triareas, 0, ntris * sizeof(triareas[0]));
     
     auto idxptr = reinterpret_cast<const int*>(rawData.indices.data());
     
-    rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, vertsOnly.data(), nverts, idxptr, ntris, triareas);
-    if(!rcRasterizeTriangles(&ctx, vertsOnly.data(), vertsOnly.size(), idxptr, triareas, ntris, *solid)){
+    rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, vertsOnly.data(), Debug::AssertSize<int>(nverts), idxptr, ntris, triareas);
+    if(!rcRasterizeTriangles(&ctx, vertsOnly.data(), Debug::AssertSize<int>(vertsOnly.size()), idxptr, triareas, ntris, *solid)){
         Debug::Fatal("Could not rasterize triangles for navigation");
     }
     

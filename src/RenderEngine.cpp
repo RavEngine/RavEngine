@@ -728,7 +728,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			timeVals[2] = allIndicesIncrement;
 			timeVals[3] = std::get<0>(row.first)->GetNumVerts();
 			numRowsUniform.SetValues(timeVals, 1);
-			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, ceil(std::get<0>(row.first)->GetNumIndices() / 64.0), row.second.items.size(), 1);
+			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, ceil(Debug::AssertSize<uint32_t>(std::get<0>(row.first)->GetNumIndices() / 64.0)), Debug::AssertSize<uint32_t>(row.second.items.size()), 1);
 			allIndicesOffset += std::get<0>(row.first)->GetNumIndices() * row.second.items.size();	// account for the number of instances
 			allIndicesIncrement += std::get<0>(row.first)->GetNumVerts();	// begin counting from here
 
@@ -845,7 +845,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         const auto numLights = lights.size();
         
         //create buffer for GPU instancing
-        auto mem = bgfx::alloc(numLights * stride);
+        auto mem = bgfx::alloc(Debug::AssertSize<uint32_t>(numLights * stride));
 
         //fill the buffer
         int i = 0;
@@ -856,7 +856,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         }
 
         bgfx::update(lightDataHandle, shadowOffset, mem);
-        dr.numDrawn = lights.size();
+        dr.numDrawn = Debug::AssertSize<uint32_t>(lights.size());
         
         // execute in groups of 128 lights
         constexpr int batchsize = sizeof(uint32_t);
@@ -888,7 +888,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                 
             //set the required state for this light type
             LightType::SetState();
-            bgfx::setInstanceCount(numLights);      // TODO: operate inside the batch only
+            bgfx::setInstanceCount(Debug::AssertSize<uint32_t>(numLights));      // TODO: operate inside the batch only
             
             // bind buffer for writing shadow data
             bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);

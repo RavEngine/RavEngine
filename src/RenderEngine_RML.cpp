@@ -215,7 +215,7 @@ bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i
 	int width, height,channels;
 	auto compressed_size = sizeof(stbi_uc) * data.size();
 	
-	unsigned char* bytes = stbi_load_from_memory(&data[0], compressed_size, &width, &height, &channels, 4);
+	unsigned char* bytes = stbi_load_from_memory(&data[0], Debug::AssertSize<int>(compressed_size), &width, &height, &channels, 4);
 	if (bytes == nullptr){
 		Debug::Fatal("Cannot open image: {}",stbi_failure_reason());
 	}

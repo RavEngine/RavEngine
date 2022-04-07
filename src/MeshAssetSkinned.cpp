@@ -25,7 +25,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	//pull from cmrc
 	auto file_ext = filesystem::path(fullpath).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), str.size(),
+	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),
 												  aiProcess_CalcTangentSpace |
 												  aiProcess_GenSmoothNormals              |
 												  aiProcess_JoinIdenticalVertices         |

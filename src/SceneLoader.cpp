@@ -41,7 +41,7 @@ RavEngine::SceneLoader::SceneLoader(const char* name)
 
 	auto file_ext = filesystem::path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
-	scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), str.size(),aiflags,file_ext.string().c_str());
+	scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),aiflags,file_ext.string().c_str());
 
 	if (!scene) {
 		Debug::Fatal("Cannot load: {}", aiGetErrorString());

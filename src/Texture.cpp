@@ -47,7 +47,7 @@ Texture::Texture(const std::string& name){
 	int width, height,channels;
 	auto compressed_size = sizeof(stbi_uc) * data.size();
 	
-	unsigned char* bytes = stbi_load_from_memory(&data[0], compressed_size, &width, &height, &channels, 4);
+    unsigned char* bytes = stbi_load_from_memory(&data[0], Debug::AssertSize<int>(compressed_size), &width, &height, &channels, 4);
 	if (bytes == nullptr){
 		Debug::Fatal("Cannot load texture: {}",stbi_failure_reason());
 	}

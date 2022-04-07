@@ -42,8 +42,8 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 				oneChannel[j] = data.samples[j * data.channelCount + i];
 			}
 
-			r8b::CDSPResampler resampler(data.sampleRate, desiredSampleRate, oneChannel.size());
-			resampler.oneshot(oneChannel.data(), oneChannel.size(), outChannel.data(), outChannel.size());
+			r8b::CDSPResampler resampler(data.sampleRate, desiredSampleRate, Debug::AssertSize<int>(oneChannel.size()));
+			resampler.oneshot(oneChannel.data(), static_cast<int>(oneChannel.size()), outChannel.data(), static_cast<int>(oneChannel.size()));
 
 			// merge into final buffer
 			for (int j = 0; j < outChannel.size(); j++) {
