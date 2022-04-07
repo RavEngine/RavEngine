@@ -18,7 +18,7 @@ bool numIsBetween(float num, vec2 bounds){
 	return (num >= bounds.x && num <= bounds.y) || (num >= bounds.y && num <= bounds.x);
 }
 
-EARLY_DEPTH_STENCIL
+EARLY_DEPTH_STENCIL 
 void main()
 {
     
