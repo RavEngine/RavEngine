@@ -21,6 +21,8 @@
 #ifndef EIGEN_PACKET_MATH_SYCL_H
 #define EIGEN_PACKET_MATH_SYCL_H
 #include <type_traits>
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {

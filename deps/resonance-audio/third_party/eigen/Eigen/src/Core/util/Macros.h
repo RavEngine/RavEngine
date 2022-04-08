@@ -10,13 +10,14 @@
 
 #ifndef EIGEN_MACROS_H
 #define EIGEN_MACROS_H
+#include "../InternalHeaderCheck.h"
 
 //------------------------------------------------------------------------------------------
 // Eigen version and basic defaults
 //------------------------------------------------------------------------------------------
 
 #define EIGEN_WORLD_VERSION 3
-#define EIGEN_MAJOR_VERSION 3
+#define EIGEN_MAJOR_VERSION 4
 #define EIGEN_MINOR_VERSION 90
 
 #define EIGEN_VERSION_AT_LEAST(x,y,z) (EIGEN_WORLD_VERSION>x || (EIGEN_WORLD_VERSION>=x && \
@@ -86,11 +87,18 @@
   #define EIGEN_COMP_LLVM 0
 #endif
 
-/// \internal EIGEN_COMP_ICC set to __INTEL_COMPILER if the compiler is Intel compiler, 0 otherwise
+/// \internal EIGEN_COMP_ICC set to __INTEL_COMPILER if the compiler is Intel icc compiler, 0 otherwise
 #if defined(__INTEL_COMPILER)
   #define EIGEN_COMP_ICC __INTEL_COMPILER
 #else
   #define EIGEN_COMP_ICC 0
+#endif
+
+/// \internal EIGEN_COMP_CLANGICC set to __INTEL_CLANG_COMPILER if the compiler is Intel icx compiler, 0 otherwise
+#if defined(__INTEL_CLANG_COMPILER)
+  #define EIGEN_COMP_CLANGICC __INTEL_CLANG_COMPILER
+#else
+  #define EIGEN_COMP_CLANGICC 0
 #endif
 
 /// \internal EIGEN_COMP_MINGW set to 1 if the compiler is mingw
@@ -128,10 +136,6 @@
 
 // For the record, here is a table summarizing the possible values for EIGEN_COMP_MSVC:
 //  name        ver   MSC_VER
-//  2008         9      1500
-//  2010        10      1600
-//  2012        11      1700
-//  2013        12      1800
 //  2015        14      1900
 //  "15"        15      1900
 //  2017-14.1   15.0    1910
@@ -139,6 +143,9 @@
 //  2017-14.12  15.5    1912
 //  2017-14.13  15.6    1913
 //  2017-14.14  15.7    1914
+//  2017        15.8    1915
+//  2017        15.9    1916
+//  2019 RTW    16.0    1920
 
 /// \internal EIGEN_COMP_MSVC_LANG set to _MSVC_LANG if the compiler is Microsoft Visual C++, 0 otherwise.
 #if defined(_MSVC_LANG)
@@ -162,8 +169,8 @@
 
 /// \internal EIGEN_COMP_IBM set to xlc version if the compiler is IBM XL C++
 // XLC   version
-// 3.1   0x0301	
-// 4.5   0x0405	
+// 3.1   0x0301
+// 4.5   0x0405
 // 5.0   0x0500
 // 12.1  0x0C01
 #if defined(__IBMCPP__) || defined(__xlc__) || defined(__ibmxl__)
@@ -193,9 +200,52 @@
   #define EIGEN_COMP_EMSCRIPTEN 0
 #endif
 
+/// \internal EIGEN_COMP_FCC set to FCC version if the compiler is Fujitsu Compiler (traditional mode)
+/// \note The Fujitsu C/C++ compiler uses the traditional mode based
+/// on EDG g++ 6.1 by default or if envoked with the -Nnoclang flag
+#if defined(__FUJITSU)
+  #define EIGEN_COMP_FCC (__FCC_major__*100+__FCC_minor__*10+__FCC_patchlevel__)
+#else
+  #define EIGEN_COMP_FCC 0
+#endif
+
+/// \internal EIGEN_COMP_CLANGFCC set to FCC version if the compiler is Fujitsu Compiler (Clang mode)
+/// \note The Fujitsu C/C++ compiler uses the non-traditional mode
+/// based on Clang 7.1.0 if envoked with the -Nclang flag
+#if defined(__CLANG_FUJITSU)
+  #define EIGEN_COMP_CLANGFCC (__FCC_major__*100+__FCC_minor__*10+__FCC_patchlevel__)
+#else
+  #define EIGEN_COMP_CLANGFCC 0
+#endif
+
+/// \internal EIGEN_COMP_CPE set to CPE version if the compiler is HPE Cray Compiler (GCC based)
+/// \note This is the SVE-enabled C/C++ compiler from the HPE Cray
+/// Programming Environment (CPE) based on Cray GCC 8.1
+#if defined(_CRAYC) && !defined(__clang__)
+  #define EIGEN_COMP_CPE (_RELEASE_MAJOR*100+_RELEASE_MINOR*10+_RELEASE_PATCHLEVEL)
+#else
+  #define EIGEN_COMP_CPE 0
+#endif
+
+/// \internal EIGEN_COMP_CLANGCPE set to CPE version if the compiler is HPE Cray Compiler (Clang based)
+/// \note This is the C/C++ compiler from the HPE Cray Programming
+/// Environment (CPE) based on Cray Clang 11.0 without SVE-support
+#if defined(_CRAYC) && defined(__clang__)
+  #define EIGEN_COMP_CLANGCPE (_RELEASE_MAJOR*100+_RELEASE_MINOR*10+_RELEASE_PATCHLEVEL)
+#else
+  #define EIGEN_COMP_CLANGCPE 0
+#endif
+
+/// \internal EIGEN_COMP_LCC set to 1 if the compiler is MCST-LCC (MCST eLbrus Compiler Collection)
+#if defined(__LCC__) && defined(__MCST__)
+  #define EIGEN_COMP_LCC (__LCC__*100+__LCC_MINOR__)
+#else
+  #define EIGEN_COMP_LCC 0
+#endif
+
 
 /// \internal EIGEN_GNUC_STRICT set to 1 if the compiler is really GCC and not a compatible compiler (e.g., ICC, clang, mingw, etc.)
-#if EIGEN_COMP_GNUC && !(EIGEN_COMP_CLANG || EIGEN_COMP_ICC || EIGEN_COMP_MINGW || EIGEN_COMP_PGI || EIGEN_COMP_IBM || EIGEN_COMP_ARM || EIGEN_COMP_EMSCRIPTEN)
+#if EIGEN_COMP_GNUC && !(EIGEN_COMP_CLANG || EIGEN_COMP_ICC || EIGEN_COMP_CLANGICC || EIGEN_COMP_MINGW || EIGEN_COMP_PGI || EIGEN_COMP_IBM || EIGEN_COMP_ARM || EIGEN_COMP_EMSCRIPTEN || EIGEN_COMP_FCC || EIGEN_COMP_CLANGFCC || EIGEN_COMP_CPE || EIGEN_COMP_CLANGCPE || EIGEN_COMP_LCC)
   #define EIGEN_COMP_GNUC_STRICT 1
 #else
   #define EIGEN_COMP_GNUC_STRICT 0
@@ -212,21 +262,13 @@
   #define EIGEN_GNUC_AT(x,y)       0
 #endif
 
-// FIXME: could probably be removed as we do not support gcc 3.x anymore
-#if EIGEN_COMP_GNUC && (__GNUC__ <= 3)
-#define EIGEN_GCC3_OR_OLDER 1
-#else
-#define EIGEN_GCC3_OR_OLDER 0
-#endif
-
-
 
 //------------------------------------------------------------------------------------------
 // Architecture identification, EIGEN_ARCH_*
 //------------------------------------------------------------------------------------------
 
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__amd64)
+#if defined(__x86_64__) || (defined(_M_X64) && !defined(_M_ARM64EC)) || defined(__amd64)
   #define EIGEN_ARCH_x86_64 1
 #else
   #define EIGEN_ARCH_x86_64 0
@@ -252,7 +294,7 @@
 #endif
 
 /// \internal EIGEN_ARCH_ARM64 set to 1 if the architecture is ARM64
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(_M_ARM64) || defined(_M_ARM64EC)
   #define EIGEN_ARCH_ARM64 1
 #else
   #define EIGEN_ARCH_ARM64 0
@@ -264,6 +306,14 @@
 #else
   #define EIGEN_ARCH_ARM_OR_ARM64 0
 #endif
+
+/// \internal EIGEN_ARCH_ARMV8 set to 1 if the architecture is armv8 or greater.
+#if EIGEN_ARCH_ARM_OR_ARM64 && defined(__ARM_ARCH) && __ARM_ARCH >= 8
+#define EIGEN_ARCH_ARMV8 1
+#else
+#define EIGEN_ARCH_ARMV8 0
+#endif
+
 
 /// \internal EIGEN_HAS_ARM64_FP16 set to 1 if the architecture provides an IEEE
 /// compliant Arm fp16 type
@@ -567,13 +617,6 @@
 // Detect Compiler/Architecture/OS specific features
 //------------------------------------------------------------------------------------------
 
-#if EIGEN_GNUC_AT_MOST(4,3) && !EIGEN_COMP_CLANG
-  // see bug 89
-  #define EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO 0
-#else
-  #define EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO 1
-#endif
-
 // Cross compiler wrapper around LLVM's __has_builtin
 #ifdef __has_builtin
 #  define EIGEN_HAS_BUILTIN(x) __has_builtin(x)
@@ -587,213 +630,96 @@
 # define __has_feature(x) 0
 #endif
 
-// Some old compilers do not support template specializations like:
-// template<typename T,int N> void foo(const T x[N]);
-#if !(   EIGEN_COMP_CLANG && (   (EIGEN_COMP_CLANG<309)                                                       \
-                              || (defined(__apple_build_version__) && (__apple_build_version__ < 9000000)))  \
-      || EIGEN_COMP_GNUC_STRICT && EIGEN_COMP_GNUC<49)
-#define EIGEN_HAS_STATIC_ARRAY_TEMPLATE 1
+// The macro EIGEN_CPLUSPLUS is a replacement for __cplusplus/_MSVC_LANG that
+// works for both platforms, indicating the C++ standard version number.
+//
+// With MSVC, without defining /Zc:__cplusplus, the __cplusplus macro will
+// report 199711L regardless of the language standard specified via /std.
+// We need to rely on _MSVC_LANG instead, which is only available after
+// VS2015.3.
+#if EIGEN_COMP_MSVC_LANG > 0
+#define EIGEN_CPLUSPLUS EIGEN_COMP_MSVC_LANG
+#elif EIGEN_COMP_MSVC >= 1900
+#define EIGEN_CPLUSPLUS 201103L
+#elif defined(__cplusplus)
+#define EIGEN_CPLUSPLUS __cplusplus
 #else
-#define EIGEN_HAS_STATIC_ARRAY_TEMPLATE 0
+#define EIGEN_CPLUSPLUS 0
 #endif
 
-
-// The macro EIGEN_COMP_CXXVER defines the c++ verson expected by the compiler.
+// The macro EIGEN_COMP_CXXVER defines the c++ version expected by the compiler.
 // For instance, if compiling with gcc and -std=c++17, then EIGEN_COMP_CXXVER
 // is defined to 17.
-#if   (defined(__cplusplus) && (__cplusplus >  201402L) || EIGEN_COMP_MSVC_LANG > 201402L)
-#define EIGEN_COMP_CXXVER 17
-#elif (defined(__cplusplus) && (__cplusplus >  201103L) || EIGEN_COMP_MSVC >= 1910)
-#define EIGEN_COMP_CXXVER 14
-#elif (defined(__cplusplus) && (__cplusplus >= 201103L) || EIGEN_COMP_MSVC >= 1900)
-#define EIGEN_COMP_CXXVER 11
+#if EIGEN_CPLUSPLUS > 201703L
+  #define EIGEN_COMP_CXXVER 20
+#elif EIGEN_CPLUSPLUS > 201402L
+  #define EIGEN_COMP_CXXVER 17
+#elif EIGEN_CPLUSPLUS > 201103L
+  #define EIGEN_COMP_CXXVER 14
+#elif EIGEN_CPLUSPLUS >= 201103L
+  #define EIGEN_COMP_CXXVER 11
 #else
-#define EIGEN_COMP_CXXVER 03
+  #define EIGEN_COMP_CXXVER 03
 #endif
 
 
 // The macros EIGEN_HAS_CXX?? defines a rough estimate of available c++ features
-// but in practice we should not rely on them but rather on the availabilty of
+// but in practice we should not rely on them but rather on the availability of
 // individual features as defined later.
 // This is why there is no EIGEN_HAS_CXX17.
-// FIXME: get rid of EIGEN_HAS_CXX14 and maybe even EIGEN_HAS_CXX11.
-#if EIGEN_MAX_CPP_VER>=11 && EIGEN_COMP_CXXVER>=11
-#define EIGEN_HAS_CXX11 1
-#else
-#define EIGEN_HAS_CXX11 0
-#endif
-
-#if EIGEN_MAX_CPP_VER>=14 && EIGEN_COMP_CXXVER>=14
-#define EIGEN_HAS_CXX14 1
-#else
-#define EIGEN_HAS_CXX14 0
-#endif
-
-// Do we support r-value references?
-#ifndef EIGEN_HAS_RVALUE_REFERENCES
-#if EIGEN_MAX_CPP_VER>=11 && \
-    (__has_feature(cxx_rvalue_references) || \
-    (defined(__cplusplus) && __cplusplus >= 201103L) || \
-    (EIGEN_COMP_MSVC >= 1600))
-  #define EIGEN_HAS_RVALUE_REFERENCES 1
-#else
-  #define EIGEN_HAS_RVALUE_REFERENCES 0
-#endif
+#if EIGEN_MAX_CPP_VER<14 || EIGEN_COMP_CXXVER<14 || (EIGEN_COMP_MSVC && EIGEN_COMP_MSVC < 1900) || \
+  (EIGEN_COMP_ICC && EIGEN_COMP_ICC < 1500) || (EIGEN_COMP_NVCC && EIGEN_COMP_NVCC < 80000) ||     \
+  (EIGEN_COMP_CLANG && ((EIGEN_COMP_CLANG<309) || (defined(__apple_build_version__) && (__apple_build_version__ < 9000000)))) || \
+  (EIGEN_COMP_GNUC_STRICT && EIGEN_COMP_GNUC<51)
+#error This compiler appears to be too old to be supported by Eigen
 #endif
 
 // Does the compiler support C99?
 // Need to include <cmath> to make sure _GLIBCXX_USE_C99 gets defined
 #include <cmath>
 #ifndef EIGEN_HAS_C99_MATH
-#if EIGEN_MAX_CPP_VER>=11 && \
-    ((defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901))       \
+#if ((defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901))       \
   || (defined(__GNUC__) && defined(_GLIBCXX_USE_C99)) \
   || (defined(_LIBCPP_VERSION) && !defined(_MSC_VER)) \
-  || (EIGEN_COMP_MSVC >= 1900) || defined(SYCL_DEVICE_ONLY))
+  || (EIGEN_COMP_MSVC) || defined(SYCL_DEVICE_ONLY))
   #define EIGEN_HAS_C99_MATH 1
 #else
   #define EIGEN_HAS_C99_MATH 0
 #endif
 #endif
 
-// Does the compiler support result_of?
-// result_of was deprecated in c++17 and removed in c++ 20
-#ifndef EIGEN_HAS_STD_RESULT_OF
-#if EIGEN_MAX_CPP_VER >= 11 && \
-    ((defined(__cplusplus) && __cplusplus >= 201103L && __cplusplus < 201703L) || \
-    __has_feature(cxx_lambdas))
-#define EIGEN_HAS_STD_RESULT_OF 1
+// Does the compiler support std::hash?
+#ifndef EIGEN_HAS_STD_HASH
+// The std::hash struct is defined in C++11 but is not labelled as a __device__
+// function and is not constexpr, so cannot be used on device.
+#if !defined(EIGEN_GPU_COMPILE_PHASE)
+#define EIGEN_HAS_STD_HASH 1
 #else
-#define EIGEN_HAS_STD_RESULT_OF 0
+#define EIGEN_HAS_STD_HASH 0
 #endif
-#endif
+#endif  // EIGEN_HAS_STD_HASH
 
-#ifndef EIGEN_HAS_ALIGNAS
-#if EIGEN_MAX_CPP_VER>=11 && EIGEN_HAS_CXX11 &&   \
-      (     __has_feature(cxx_alignas)            \
-        ||  EIGEN_HAS_CXX14                       \
-        || (EIGEN_COMP_MSVC >= 1800)              \
-        || (EIGEN_GNUC_AT_LEAST(4,8))             \
-        || (EIGEN_COMP_CLANG>=305)                \
-        || (EIGEN_COMP_ICC>=1500)                 \
-        || (EIGEN_COMP_PGI>=1500)                 \
-        || (EIGEN_COMP_SUNCC>=0x5130))
-#define EIGEN_HAS_ALIGNAS 1
+#ifndef EIGEN_HAS_STD_INVOKE_RESULT
+#if EIGEN_MAX_CPP_VER >= 17 && EIGEN_COMP_CXXVER >= 17
+#define EIGEN_HAS_STD_INVOKE_RESULT 1
 #else
-#define EIGEN_HAS_ALIGNAS 0
+#define EIGEN_HAS_STD_INVOKE_RESULT 0
 #endif
 #endif
 
-// Does the compiler support type_traits?
-// - full support of type traits was added only to GCC 5.1.0.
-// - 20150626 corresponds to the last release of 4.x libstdc++
-#ifndef EIGEN_HAS_TYPE_TRAITS
-#if EIGEN_MAX_CPP_VER>=11 && (EIGEN_HAS_CXX11 || EIGEN_COMP_MSVC >= 1700) \
-  && ((!EIGEN_COMP_GNUC_STRICT) || EIGEN_GNUC_AT_LEAST(5, 1)) \
-  && ((!defined(__GLIBCXX__))   || __GLIBCXX__ > 20150626)
-#define EIGEN_HAS_TYPE_TRAITS 1
-#define EIGEN_INCLUDE_TYPE_TRAITS
-#else
-#define EIGEN_HAS_TYPE_TRAITS 0
-#endif
-#endif
-
-// Does the compiler support variadic templates?
-#ifndef EIGEN_HAS_VARIADIC_TEMPLATES
-#if EIGEN_MAX_CPP_VER>=11 && (__cplusplus > 199711L || EIGEN_COMP_MSVC >= 1900) \
-  && (!defined(__NVCC__) || !EIGEN_ARCH_ARM_OR_ARM64 || (EIGEN_COMP_NVCC >= 80000) )
-    // ^^ Disable the use of variadic templates when compiling with versions of nvcc older than 8.0 on ARM devices:
-    //    this prevents nvcc from crashing when compiling Eigen on Tegra X1
-#define EIGEN_HAS_VARIADIC_TEMPLATES 1
-#elif  EIGEN_MAX_CPP_VER>=11 && (__cplusplus > 199711L || EIGEN_COMP_MSVC >= 1900) && defined(SYCL_DEVICE_ONLY)
-#define EIGEN_HAS_VARIADIC_TEMPLATES 1
-#else
-#define EIGEN_HAS_VARIADIC_TEMPLATES 0
-#endif
-#endif
-
-// Does the compiler fully support const expressions? (as in c++14)
-#ifndef EIGEN_HAS_CONSTEXPR
-  #if defined(EIGEN_CUDACC)
-  // Const expressions are supported provided that c++11 is enabled and we're using either clang or nvcc 7.5 or above
-    #if EIGEN_MAX_CPP_VER>=14 && (__cplusplus > 199711L && (EIGEN_COMP_CLANG || EIGEN_COMP_NVCC >= 70500))
-      #define EIGEN_HAS_CONSTEXPR 1
-    #endif
-  #elif EIGEN_MAX_CPP_VER>=14 && (__has_feature(cxx_relaxed_constexpr) || (defined(__cplusplus) && __cplusplus >= 201402L) || \
-    (EIGEN_GNUC_AT_LEAST(4,8) && (__cplusplus > 199711L)) || \
-    (EIGEN_COMP_CLANG >= 306 && (__cplusplus > 199711L)))
-    #define EIGEN_HAS_CONSTEXPR 1
-  #endif
-
-  #ifndef EIGEN_HAS_CONSTEXPR
-    #define EIGEN_HAS_CONSTEXPR 0
-  #endif
-
-#endif // EIGEN_HAS_CONSTEXPR
-
-#if EIGEN_HAS_CONSTEXPR
 #define EIGEN_CONSTEXPR constexpr
-#else
-#define EIGEN_CONSTEXPR
-#endif
 
 // Does the compiler support C++11 math?
 // Let's be conservative and enable the default C++11 implementation only if we are sure it exists
 #ifndef EIGEN_HAS_CXX11_MATH
-  #if EIGEN_MAX_CPP_VER>=11 && ((__cplusplus > 201103L) || (__cplusplus >= 201103L) && (EIGEN_COMP_GNUC_STRICT || EIGEN_COMP_CLANG || EIGEN_COMP_MSVC || EIGEN_COMP_ICC)  \
-      && (EIGEN_ARCH_i386_OR_x86_64) && (EIGEN_OS_GNULINUX || EIGEN_OS_WIN_STRICT || EIGEN_OS_MAC))
+  #if (EIGEN_ARCH_i386_OR_x86_64 && (EIGEN_OS_GNULINUX || EIGEN_OS_WIN_STRICT || EIGEN_OS_MAC))
     #define EIGEN_HAS_CXX11_MATH 1
   #else
     #define EIGEN_HAS_CXX11_MATH 0
   #endif
 #endif
 
-// Does the compiler support proper C++11 containers?
-#ifndef EIGEN_HAS_CXX11_CONTAINERS
-  #if    EIGEN_MAX_CPP_VER>=11 && \
-         ((__cplusplus > 201103L) \
-      || ((__cplusplus >= 201103L) && (EIGEN_COMP_GNUC_STRICT || EIGEN_COMP_CLANG || EIGEN_COMP_ICC>=1400)) \
-      || EIGEN_COMP_MSVC >= 1900)
-    #define EIGEN_HAS_CXX11_CONTAINERS 1
-  #else
-    #define EIGEN_HAS_CXX11_CONTAINERS 0
-  #endif
-#endif
-
-// Does the compiler support C++11 noexcept?
-#ifndef EIGEN_HAS_CXX11_NOEXCEPT
-  #if    EIGEN_MAX_CPP_VER>=11 && \
-         (__has_feature(cxx_noexcept) \
-      || (__cplusplus > 201103L) \
-      || ((__cplusplus >= 201103L) && (EIGEN_COMP_GNUC_STRICT || EIGEN_COMP_CLANG || EIGEN_COMP_ICC>=1400)) \
-      || EIGEN_COMP_MSVC >= 1900)
-    #define EIGEN_HAS_CXX11_NOEXCEPT 1
-  #else
-    #define EIGEN_HAS_CXX11_NOEXCEPT 0
-  #endif
-#endif
-
-#ifndef EIGEN_HAS_CXX11_ATOMIC
-  #if    EIGEN_MAX_CPP_VER>=11 && \
-         (__has_feature(cxx_atomic) \
-      || (__cplusplus > 201103L) \
-      || ((__cplusplus >= 201103L) && (EIGEN_COMP_MSVC==0 || EIGEN_COMP_MSVC >= 1700)))
-    #define EIGEN_HAS_CXX11_ATOMIC 1
-  #else
-    #define EIGEN_HAS_CXX11_ATOMIC 0
-  #endif
-#endif
-
-#ifndef EIGEN_HAS_CXX11_OVERRIDE_FINAL
-  #if    EIGEN_MAX_CPP_VER>=11 && \
-       (__cplusplus >= 201103L || EIGEN_COMP_MSVC >= 1700)
-    #define EIGEN_HAS_CXX11_OVERRIDE_FINAL 1
-  #else
-    #define EIGEN_HAS_CXX11_OVERRIDE_FINAL 0
-  #endif
-#endif
-
-// NOTE: the required Apple's clang version is very conservative 
+// NOTE: the required Apple's clang version is very conservative
 //       and it could be that XCode 9 works just fine.
 // NOTE: the MSVC version is based on https://en.cppreference.com/w/cpp/compiler_support
 //       and not tested.
@@ -810,7 +736,7 @@
 #endif
 #endif
 
-#if defined(EIGEN_CUDACC) && EIGEN_HAS_CONSTEXPR
+#if defined(EIGEN_CUDACC)
   // While available already with c++11, this is useful mostly starting with c++14 and relaxed constexpr rules
   #if defined(__NVCC__)
     // nvcc considers constexpr functions as __host__ __device__ with the option --expt-relaxed-constexpr
@@ -863,22 +789,18 @@
 // but it still doesn't use GCC's always_inline. This is useful in (common) situations where MSVC needs forceinline
 // but GCC is still doing fine with just inline.
 #ifndef EIGEN_STRONG_INLINE
-#if EIGEN_COMP_MSVC || EIGEN_COMP_ICC
+#if (EIGEN_COMP_MSVC || EIGEN_COMP_ICC) && !defined(EIGEN_GPUCC)
 #define EIGEN_STRONG_INLINE __forceinline
 #else
 #define EIGEN_STRONG_INLINE inline
 #endif
 #endif
 
-// EIGEN_ALWAYS_INLINE is the stronget, it has the effect of making the function inline and adding every possible
+// EIGEN_ALWAYS_INLINE is the strongest, it has the effect of making the function inline and adding every possible
 // attribute to maximize inlining. This should only be used when really necessary: in particular,
 // it uses __attribute__((always_inline)) on GCC, which most of the time is useless and can severely harm compile times.
 // FIXME with the always_inline attribute,
-// gcc 3.4.x and 4.1 reports the following compilation error:
-//   Eval.h:91: sorry, unimplemented: inlining failed in call to 'const Eigen::Eval<Derived> Eigen::MatrixBase<Scalar, Derived>::eval() const'
-//    : function body not available
-//   See also bug 1367
-#if EIGEN_GNUC_AT_LEAST(4,2) && !defined(SYCL_DEVICE_ONLY)
+#if EIGEN_COMP_GNUC && !defined(SYCL_DEVICE_ONLY)
 #define EIGEN_ALWAYS_INLINE __attribute__((always_inline)) inline
 #else
 #define EIGEN_ALWAYS_INLINE EIGEN_STRONG_INLINE
@@ -922,7 +844,7 @@
   #endif
   #define EIGEN_DEVICE_FUNC __attribute__((flatten)) __attribute__((always_inline))
 // All functions callable from CUDA/HIP code must be qualified with __device__
-#elif defined(EIGEN_GPUCC) 
+#elif defined(EIGEN_GPUCC)
     #define EIGEN_DEVICE_FUNC __host__ __device__
 #else
   #define EIGEN_DEVICE_FUNC
@@ -949,39 +871,8 @@
   #else
     #define eigen_plain_assert(x)
   #endif
-#else 
-  #if EIGEN_SAFE_TO_USE_STANDARD_ASSERT_MACRO
-    namespace Eigen {
-    namespace internal {
-    inline bool copy_bool(bool b) { return b; }
-    }
-    }
+#else
     #define eigen_plain_assert(x) assert(x)
-  #else
-    // work around bug 89
-    #include <cstdlib>   // for abort
-    #include <iostream>  // for std::cerr
-
-    namespace Eigen {
-    namespace internal {
-    // trivial function copying a bool. Must be EIGEN_DONT_INLINE, so we implement it after including Eigen headers.
-    // see bug 89.
-    namespace {
-    EIGEN_DONT_INLINE bool copy_bool(bool b) { return b; }
-    }
-    inline void assert_fail(const char *condition, const char *function, const char *file, int line)
-    {
-      std::cerr << "assertion failed: " << condition << " in function " << function << " at " << file << ":" << line << std::endl;
-      abort();
-    }
-    }
-    }
-    #define eigen_plain_assert(x) \
-      do { \
-        if(!Eigen::internal::copy_bool(x)) \
-          Eigen::internal::assert_fail(EIGEN_MAKESTRING(x), __PRETTY_FUNCTION__, __FILE__, __LINE__); \
-      } while(false)
-  #endif
 #endif
 
 // eigen_assert can be overridden
@@ -1022,7 +913,7 @@
 // Suppresses 'unused variable' warnings.
 namespace Eigen {
   namespace internal {
-    template<typename T> EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void ignore_unused_variable(const T&) {}
+    template<typename T> EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE constexpr void ignore_unused_variable(const T&) {}
   }
 }
 #define EIGEN_UNUSED_VARIABLE(var) Eigen::internal::ignore_unused_variable(var);
@@ -1035,6 +926,76 @@ namespace Eigen {
   #endif
 #endif
 
+
+// Acts as a barrier preventing operations involving `X` from crossing. This
+// occurs, for example, in the fast rounding trick where a magic constant is
+// added then subtracted, which is otherwise compiled away with -ffast-math.
+//
+// See bug 1674
+#if !defined(EIGEN_OPTIMIZATION_BARRIER)
+  #if EIGEN_COMP_GNUC
+    // According to https://gcc.gnu.org/onlinedocs/gcc/Constraints.html:
+    //   X: Any operand whatsoever.
+    //   r: A register operand is allowed provided that it is in a general
+    //      register.
+    //   g: Any register, memory or immediate integer operand is allowed, except
+    //      for registers that are not general registers.
+    //   w: (AArch32/AArch64) Floating point register, Advanced SIMD vector
+    //      register or SVE vector register.
+    //   x: (SSE) Any SSE register.
+    //      (AArch64) Like w, but restricted to registers 0 to 15 inclusive.
+    //   v: (PowerPC) An Altivec vector register.
+    //   wa:(PowerPC) A VSX register.
+    //
+    // "X" (uppercase) should work for all cases, though this seems to fail for
+    // some versions of GCC for arm/aarch64 with
+    //   "error: inconsistent operand constraints in an 'asm'"
+    // Clang x86_64/arm/aarch64 seems to require "g" to support both scalars and
+    // vectors, otherwise
+    //   "error: non-trivial scalar-to-vector conversion, possible invalid
+    //    constraint for vector type"
+    //
+    // GCC for ppc64le generates an internal compiler error with x/X/g.
+    // GCC for AVX generates an internal compiler error with X.
+    //
+    // Tested on icc/gcc/clang for sse, avx, avx2, avx512dq
+    //           gcc for arm, aarch64,
+    //           gcc for ppc64le,
+    // both vectors and scalars.
+    //
+    // Note that this is restricted to plain types - this will not work
+    // directly for std::complex<T>, Eigen::half, Eigen::bfloat16. For these,
+    // you will need to apply to the underlying POD type.
+    #if EIGEN_ARCH_PPC && EIGEN_COMP_GNUC_STRICT
+      // This seems to be broken on clang.  Packet4f is loaded into a single
+      //   register rather than a vector, zeroing out some entries.  Integer
+      //   types also generate a compile error.
+      // General, Altivec, VSX.
+      #define EIGEN_OPTIMIZATION_BARRIER(X)  __asm__  ("" : "+r,v,wa" (X));
+    #elif EIGEN_ARCH_ARM_OR_ARM64
+      #ifdef __ARM_FP
+        // General, VFP or NEON.
+        // Clang doesn't like "r",
+        //    error: non-trivial scalar-to-vector conversion, possible invalid
+        //           constraint for vector typ
+        #define EIGEN_OPTIMIZATION_BARRIER(X)  __asm__  ("" : "+g,w" (X));
+      #else
+        // Arm without VFP or NEON.
+        // "w" constraint will not compile.
+        #define EIGEN_OPTIMIZATION_BARRIER(X)  __asm__  ("" : "+g" (X));
+      #endif
+    #elif EIGEN_ARCH_i386_OR_x86_64
+      // General, SSE.
+      #define EIGEN_OPTIMIZATION_BARRIER(X)  __asm__  ("" : "+g,x" (X));
+    #else
+      // Not implemented for other architectures.
+      #define EIGEN_OPTIMIZATION_BARRIER(X)
+    #endif
+  #else
+    // Not implemented for other compilers.
+    #define EIGEN_OPTIMIZATION_BARRIER(X)
+  #endif
+#endif
 
 #if EIGEN_COMP_MSVC
   // NOTE MSVC often gives C4127 warnings with compiletime if statements. See bug 1362.
@@ -1076,8 +1037,12 @@ namespace Eigen {
   #define EIGEN_USING_STD(FUNC) using std::FUNC;
 #endif
 
-#if EIGEN_COMP_MSVC_STRICT && (EIGEN_COMP_MSVC < 1900 || EIGEN_COMP_NVCC)
-  // for older MSVC versions, as well as 1900 && CUDA 8, using the base operator is sufficient (cf Bugs 1000, 1324)
+#if EIGEN_COMP_MSVC_STRICT && EIGEN_COMP_NVCC
+  // Wwhen compiling with NVCC, using the base operator is necessary,
+  //   otherwise we get duplicate definition errors
+  // For later MSVC versions, we require explicit operator= definition, otherwise we get
+  //   use of implicitly deleted operator errors.
+  // (cf Bugs 920, 1000, 1324, 2291)
   #define EIGEN_INHERIT_ASSIGNMENT_EQUAL_OPERATOR(Derived) \
     using Base::operator =;
 #elif EIGEN_COMP_CLANG // workaround clang bug (see http://forum.kde.org/viewtopic.php?f=74&t=102653)
@@ -1102,11 +1067,7 @@ namespace Eigen {
  * \brief Macro to explicitly define the default copy constructor.
  * This is necessary, because the implicit definition is deprecated if the copy-assignment is overridden.
  */
-#if EIGEN_HAS_CXX11
-#define EIGEN_DEFAULT_COPY_CONSTRUCTOR(CLASS) CLASS(const CLASS&) = default;
-#else
-#define EIGEN_DEFAULT_COPY_CONSTRUCTOR(CLASS)
-#endif
+#define EIGEN_DEFAULT_COPY_CONSTRUCTOR(CLASS) EIGEN_DEVICE_FUNC CLASS(const CLASS&) = default;
 
 
 
@@ -1126,15 +1087,9 @@ namespace Eigen {
  *
  * Hiding the default destructor lead to problems in C++03 mode together with boost::multiprecision
  */
-#if EIGEN_HAS_CXX11
 #define EIGEN_DEFAULT_EMPTY_CONSTRUCTOR_AND_DESTRUCTOR(Derived)  \
-    Derived() = default; \
-    ~Derived() = default;
-#else
-#define EIGEN_DEFAULT_EMPTY_CONSTRUCTOR_AND_DESTRUCTOR(Derived)  \
-    Derived() {}; \
-    /* ~Derived() {}; */
-#endif
+    EIGEN_DEVICE_FUNC Derived() = default; \
+    EIGEN_DEVICE_FUNC ~Derived() = default;
 
 
 
@@ -1171,35 +1126,6 @@ namespace Eigen {
   EIGEN_GENERIC_PUBLIC_INTERFACE(Derived) \
   typedef typename Base::PacketScalar PacketScalar;
 
-
-#define EIGEN_PLAIN_ENUM_MIN(a,b) (((int)a <= (int)b) ? (int)a : (int)b)
-#define EIGEN_PLAIN_ENUM_MAX(a,b) (((int)a >= (int)b) ? (int)a : (int)b)
-
-// EIGEN_SIZE_MIN_PREFER_DYNAMIC gives the min between compile-time sizes. 0 has absolute priority, followed by 1,
-// followed by Dynamic, followed by other finite values. The reason for giving Dynamic the priority over
-// finite values is that min(3, Dynamic) should be Dynamic, since that could be anything between 0 and 3.
-#define EIGEN_SIZE_MIN_PREFER_DYNAMIC(a,b) (((int)a == 0 || (int)b == 0) ? 0 \
-                           : ((int)a == 1 || (int)b == 1) ? 1 \
-                           : ((int)a == Dynamic || (int)b == Dynamic) ? Dynamic \
-                           : ((int)a <= (int)b) ? (int)a : (int)b)
-
-// EIGEN_SIZE_MIN_PREFER_FIXED is a variant of EIGEN_SIZE_MIN_PREFER_DYNAMIC comparing MaxSizes. The difference is that finite values
-// now have priority over Dynamic, so that min(3, Dynamic) gives 3. Indeed, whatever the actual value is
-// (between 0 and 3), it is not more than 3.
-#define EIGEN_SIZE_MIN_PREFER_FIXED(a,b)  (((int)a == 0 || (int)b == 0) ? 0 \
-                           : ((int)a == 1 || (int)b == 1) ? 1 \
-                           : ((int)a == Dynamic && (int)b == Dynamic) ? Dynamic \
-                           : ((int)a == Dynamic) ? (int)b \
-                           : ((int)b == Dynamic) ? (int)a \
-                           : ((int)a <= (int)b) ? (int)a : (int)b)
-
-// see EIGEN_SIZE_MIN_PREFER_DYNAMIC. No need for a separate variant for MaxSizes here.
-#define EIGEN_SIZE_MAX(a,b) (((int)a == Dynamic || (int)b == Dynamic) ? Dynamic \
-                           : ((int)a >= (int)b) ? (int)a : (int)b)
-
-#define EIGEN_LOGICAL_XOR(a,b) (((a) || (b)) && !((a) && (b)))
-
-#define EIGEN_IMPLIES(a,b) (!(a) || (b))
 
 #if EIGEN_HAS_BUILTIN(__builtin_expect) || EIGEN_COMP_GNUC
 #define EIGEN_PREDICT_FALSE(x) (__builtin_expect(x, false))
@@ -1239,16 +1165,9 @@ namespace Eigen {
   CwiseBinaryOp<EIGEN_CAT(EIGEN_CAT(internal::scalar_,OPNAME),_op)<SCALAR,typename internal::traits<EXPR>::Scalar>, \
                 const typename internal::plain_constant_type<EXPR,SCALAR>::type, const EXPR>
 
-// Workaround for MSVC 2010 (see ML thread "patch with compile for for MSVC 2010")
-#if EIGEN_COMP_MSVC_STRICT && (EIGEN_COMP_MSVC_STRICT<=1600)
-#define EIGEN_MSVC10_WORKAROUND_BINARYOP_RETURN_TYPE(X) typename internal::enable_if<true,X>::type
-#else
-#define EIGEN_MSVC10_WORKAROUND_BINARYOP_RETURN_TYPE(X) X
-#endif
-
 #define EIGEN_MAKE_SCALAR_BINARY_OP_ONTHERIGHT(METHOD,OPNAME) \
   template <typename T> EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE \
-  EIGEN_MSVC10_WORKAROUND_BINARYOP_RETURN_TYPE(const EIGEN_EXPR_BINARYOP_SCALAR_RETURN_TYPE(Derived,typename internal::promote_scalar_arg<Scalar EIGEN_COMMA T EIGEN_COMMA EIGEN_SCALAR_BINARY_SUPPORTED(OPNAME,Scalar,T)>::type,OPNAME))\
+  const EIGEN_EXPR_BINARYOP_SCALAR_RETURN_TYPE(Derived,typename internal::promote_scalar_arg<Scalar EIGEN_COMMA T EIGEN_COMMA EIGEN_SCALAR_BINARY_SUPPORTED(OPNAME,Scalar,T)>::type,OPNAME)\
   (METHOD)(const T& scalar) const { \
     typedef typename internal::promote_scalar_arg<Scalar,T,EIGEN_SCALAR_BINARY_SUPPORTED(OPNAME,Scalar,T)>::type PromotedT; \
     return EIGEN_EXPR_BINARYOP_SCALAR_RETURN_TYPE(Derived,PromotedT,OPNAME)(derived(), \
@@ -1257,7 +1176,7 @@ namespace Eigen {
 
 #define EIGEN_MAKE_SCALAR_BINARY_OP_ONTHELEFT(METHOD,OPNAME) \
   template <typename T> EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE friend \
-  EIGEN_MSVC10_WORKAROUND_BINARYOP_RETURN_TYPE(const EIGEN_SCALAR_BINARYOP_EXPR_RETURN_TYPE(typename internal::promote_scalar_arg<Scalar EIGEN_COMMA T EIGEN_COMMA EIGEN_SCALAR_BINARY_SUPPORTED(OPNAME,T,Scalar)>::type,Derived,OPNAME)) \
+  const EIGEN_SCALAR_BINARYOP_EXPR_RETURN_TYPE(typename internal::promote_scalar_arg<Scalar EIGEN_COMMA T EIGEN_COMMA EIGEN_SCALAR_BINARY_SUPPORTED(OPNAME,T,Scalar)>::type,Derived,OPNAME) \
   (METHOD)(const T& scalar, const StorageBaseType& matrix) { \
     typedef typename internal::promote_scalar_arg<Scalar,T,EIGEN_SCALAR_BINARY_SUPPORTED(OPNAME,T,Scalar)>::type PromotedT; \
     return EIGEN_SCALAR_BINARYOP_EXPR_RETURN_TYPE(PromotedT,Derived,OPNAME)( \
@@ -1295,26 +1214,12 @@ namespace Eigen {
 #endif
 
 
-#if EIGEN_HAS_CXX11_NOEXCEPT
-#   define EIGEN_INCLUDE_TYPE_TRAITS
-#   define EIGEN_NOEXCEPT noexcept
-#   define EIGEN_NOEXCEPT_IF(x) noexcept(x)
-#   define EIGEN_NO_THROW noexcept(true)
-#   define EIGEN_EXCEPTION_SPEC(X) noexcept(false)
-#else
-#   define EIGEN_NOEXCEPT
-#   define EIGEN_NOEXCEPT_IF(x)
-#   define EIGEN_NO_THROW throw()
-#   if EIGEN_COMP_MSVC || EIGEN_COMP_CXXVER>=17
-      // MSVC does not support exception specifications (warning C4290),
-      // and they are deprecated in c++11 anyway. This is even an error in c++17.
-#     define EIGEN_EXCEPTION_SPEC(X) throw()
-#   else
-#     define EIGEN_EXCEPTION_SPEC(X) throw(X)
-#   endif
-#endif
+#define EIGEN_NOEXCEPT noexcept
+#define EIGEN_NOEXCEPT_IF(x) noexcept(x)
+#define EIGEN_NO_THROW noexcept(true)
+#define EIGEN_EXCEPTION_SPEC(X) noexcept(false)
 
-#if EIGEN_HAS_VARIADIC_TEMPLATES
+
 // The all function is used to enable a variadic version of eigen_assert which can take a parameter pack as its input.
 namespace Eigen {
 namespace internal {
@@ -1326,16 +1231,10 @@ bool all(T t, Ts ... ts){ return t && all(ts...); }
 
 }
 }
-#endif
 
-#if EIGEN_HAS_CXX11_OVERRIDE_FINAL
 // provide override and final specifiers if they are available:
-#   define EIGEN_OVERRIDE override
-#   define EIGEN_FINAL final
-#else
-#   define EIGEN_OVERRIDE
-#   define EIGEN_FINAL
-#endif
+#define EIGEN_OVERRIDE override
+#define EIGEN_FINAL final
 
 // Wrapping #pragma unroll in a macro since it is required for SYCL
 #if defined(SYCL_DEVICE_ONLY)

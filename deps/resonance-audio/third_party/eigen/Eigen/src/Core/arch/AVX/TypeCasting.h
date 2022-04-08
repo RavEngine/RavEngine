@@ -10,6 +10,8 @@
 #ifndef EIGEN_TYPE_CASTING_AVX_H
 #define EIGEN_TYPE_CASTING_AVX_H
 
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {

@@ -13,6 +13,8 @@
 
 // This file contains some helper function to deal with block householder reflectors
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
 namespace internal {

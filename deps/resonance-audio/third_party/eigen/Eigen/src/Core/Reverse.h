@@ -12,7 +12,9 @@
 #ifndef EIGEN_REVERSE_H
 #define EIGEN_REVERSE_H
 
-namespace Eigen { 
+#include "./InternalHeaderCheck.h"
+
+namespace Eigen {
 
 namespace internal {
 
@@ -24,13 +26,13 @@ struct traits<Reverse<MatrixType, Direction> >
   typedef typename traits<MatrixType>::StorageKind StorageKind;
   typedef typename traits<MatrixType>::XprKind XprKind;
   typedef typename ref_selector<MatrixType>::type MatrixTypeNested;
-  typedef typename remove_reference<MatrixTypeNested>::type _MatrixTypeNested;
+  typedef std::remove_reference_t<MatrixTypeNested> MatrixTypeNested_;
   enum {
     RowsAtCompileTime = MatrixType::RowsAtCompileTime,
     ColsAtCompileTime = MatrixType::ColsAtCompileTime,
     MaxRowsAtCompileTime = MatrixType::MaxRowsAtCompileTime,
     MaxColsAtCompileTime = MatrixType::MaxColsAtCompileTime,
-    Flags = _MatrixTypeNested::Flags & (RowMajorBit | LvalueBit)
+    Flags = MatrixTypeNested_::Flags & (RowMajorBit | LvalueBit)
   };
 };
 
@@ -44,7 +46,7 @@ template<typename PacketType> struct reverse_packet_cond<PacketType,false>
   static inline PacketType run(const PacketType& x) { return x; }
 };
 
-} // end namespace internal 
+} // end namespace internal
 
 /** \class Reverse
   * \ingroup Core_Module
@@ -67,7 +69,7 @@ template<typename MatrixType, int Direction> class Reverse
 
     typedef typename internal::dense_xpr_base<Reverse>::type Base;
     EIGEN_DENSE_PUBLIC_INTERFACE(Reverse)
-    typedef typename internal::remove_all<MatrixType>::type NestedExpression;
+    typedef internal::remove_all_t<MatrixType> NestedExpression;
     using Base::IsRowMajor;
 
   protected:
@@ -89,16 +91,18 @@ template<typename MatrixType, int Direction> class Reverse
 
     EIGEN_INHERIT_ASSIGNMENT_OPERATORS(Reverse)
 
-    EIGEN_DEVICE_FUNC inline Index rows() const { return m_matrix.rows(); }
-    EIGEN_DEVICE_FUNC inline Index cols() const { return m_matrix.cols(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index rows() const EIGEN_NOEXCEPT { return m_matrix.rows(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index cols() const EIGEN_NOEXCEPT { return m_matrix.cols(); }
 
     EIGEN_DEVICE_FUNC inline Index innerStride() const
     {
       return -m_matrix.innerStride();
     }
 
-    EIGEN_DEVICE_FUNC const typename internal::remove_all<typename MatrixType::Nested>::type&
-    nestedExpression() const 
+    EIGEN_DEVICE_FUNC const internal::remove_all_t<typename MatrixType::Nested>&
+    nestedExpression() const
     {
       return m_matrix;
     }
@@ -161,7 +165,7 @@ EIGEN_DEVICE_FUNC inline void DenseBase<Derived>::reverseInPlace()
 }
 
 namespace internal {
-  
+
 template<int Direction>
 struct vectorwise_reverse_inplace_impl;
 
@@ -171,10 +175,10 @@ struct vectorwise_reverse_inplace_impl<Vertical>
   template<typename ExpressionType>
   static void run(ExpressionType &xpr)
   {
-    const int HalfAtCompileTime = ExpressionType::RowsAtCompileTime==Dynamic?Dynamic:ExpressionType::RowsAtCompileTime/2;
+    constexpr Index HalfAtCompileTime = ExpressionType::RowsAtCompileTime==Dynamic?Dynamic:ExpressionType::RowsAtCompileTime/2;
     Index half = xpr.rows()/2;
-    xpr.topRows(fix<HalfAtCompileTime>(half))
-       .swap(xpr.bottomRows(fix<HalfAtCompileTime>(half)).colwise().reverse());
+    xpr.template topRows<HalfAtCompileTime>(half)
+       .swap(xpr.template bottomRows<HalfAtCompileTime>(half).colwise().reverse());
   }
 };
 
@@ -184,10 +188,10 @@ struct vectorwise_reverse_inplace_impl<Horizontal>
   template<typename ExpressionType>
   static void run(ExpressionType &xpr)
   {
-    const int HalfAtCompileTime = ExpressionType::ColsAtCompileTime==Dynamic?Dynamic:ExpressionType::ColsAtCompileTime/2;
+    constexpr Index HalfAtCompileTime = ExpressionType::ColsAtCompileTime==Dynamic?Dynamic:ExpressionType::ColsAtCompileTime/2;
     Index half = xpr.cols()/2;
-    xpr.leftCols(fix<HalfAtCompileTime>(half))
-       .swap(xpr.rightCols(fix<HalfAtCompileTime>(half)).rowwise().reverse());
+    xpr.template leftCols<HalfAtCompileTime>(half)
+       .swap(xpr.template rightCols<HalfAtCompileTime>(half).rowwise().reverse());
   }
 };
 

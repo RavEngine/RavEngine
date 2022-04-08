@@ -10,6 +10,8 @@
 #ifndef EIGEN_TYPE_CASTING_AVX512_H
 #define EIGEN_TYPE_CASTING_AVX512_H
 
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
@@ -28,6 +30,26 @@ template<> EIGEN_STRONG_INLINE Packet16i preinterpret<Packet16i, Packet16f>(cons
 
 template<> EIGEN_STRONG_INLINE Packet16f preinterpret<Packet16f, Packet16i>(const Packet16i& a) {
   return _mm512_castsi512_ps(a);
+}
+
+template<> EIGEN_STRONG_INLINE Packet8d preinterpret<Packet8d, Packet16f>(const Packet16f& a) {
+  return _mm512_castps_pd(a);
+}
+
+template<> EIGEN_STRONG_INLINE Packet16f preinterpret<Packet16f, Packet8d>(const Packet8d& a) {
+  return _mm512_castpd_ps(a);
+}
+
+template<> EIGEN_STRONG_INLINE Packet8f preinterpret<Packet8f, Packet16f>(const Packet16f& a) {
+  return _mm512_castps512_ps256(a);
+}
+
+template<> EIGEN_STRONG_INLINE Packet16f preinterpret<Packet16f, Packet16f>(const Packet16f& a) {
+  return a;
+}
+
+template<> EIGEN_STRONG_INLINE Packet8d preinterpret<Packet8d, Packet8d>(const Packet8d& a) {
+  return a;
 }
 
 template <>

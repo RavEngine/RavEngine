@@ -67,9 +67,9 @@ struct EIGEN_INDEXED_VIEW_METHOD_TYPE {
 // This is the generic version
 
 template<typename RowIndices, typename ColIndices>
-typename internal::enable_if<internal::valid_indexed_view_overload<RowIndices,ColIndices>::value
+std::enable_if_t<internal::valid_indexed_view_overload<RowIndices,ColIndices>::value
   && internal::traits<typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type>::ReturnAsIndexedView,
-  typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type >::type
+  typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type>
 operator()(const RowIndices& rowIndices, const ColIndices& colIndices) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   return typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type
@@ -79,9 +79,9 @@ operator()(const RowIndices& rowIndices, const ColIndices& colIndices) EIGEN_IND
 // The following overload returns a Block<> object
 
 template<typename RowIndices, typename ColIndices>
-typename internal::enable_if<internal::valid_indexed_view_overload<RowIndices,ColIndices>::value
+std::enable_if_t<internal::valid_indexed_view_overload<RowIndices,ColIndices>::value
   && internal::traits<typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type>::ReturnAsBlock,
-  typename internal::traits<typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type>::BlockType>::type
+  typename internal::traits<typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type>::BlockType>
 operator()(const RowIndices& rowIndices, const ColIndices& colIndices) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   typedef typename internal::traits<typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type>::BlockType BlockType;
@@ -90,22 +90,20 @@ operator()(const RowIndices& rowIndices, const ColIndices& colIndices) EIGEN_IND
   return BlockType(derived(),
                    internal::first(actualRowIndices),
                    internal::first(actualColIndices),
-                   internal::size(actualRowIndices),
-                   internal::size(actualColIndices));
+                   internal::index_list_size(actualRowIndices),
+                   internal::index_list_size(actualColIndices));
 }
 
 // The following overload returns a Scalar
 
 template<typename RowIndices, typename ColIndices>
-typename internal::enable_if<internal::valid_indexed_view_overload<RowIndices,ColIndices>::value
+std::enable_if_t<internal::valid_indexed_view_overload<RowIndices,ColIndices>::value
   && internal::traits<typename EIGEN_INDEXED_VIEW_METHOD_TYPE<RowIndices,ColIndices>::type>::ReturnAsScalar,
-  CoeffReturnType >::type
+  CoeffReturnType >
 operator()(const RowIndices& rowIndices, const ColIndices& colIndices) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   return Base::operator()(internal::eval_expr_given_size(rowIndices,rows()),internal::eval_expr_given_size(colIndices,cols()));
 }
-
-#if EIGEN_HAS_STATIC_ARRAY_TEMPLATE
 
 // The following three overloads are needed to handle raw Index[N] arrays.
 
@@ -133,14 +131,13 @@ operator()(const RowIndicesT (&rowIndices)[RowIndicesN], const ColIndicesT (&col
                     (derived(), rowIndices, colIndices);
 }
 
-#endif // EIGEN_HAS_STATIC_ARRAY_TEMPLATE
 
 // Overloads for 1D vectors/arrays
 
 template<typename Indices>
-typename internal::enable_if<
+std::enable_if_t<
   IsRowMajor && (!(internal::get_compile_time_incr<typename IvcType<Indices>::type>::value==1 || internal::is_valid_index_type<Indices>::value)),
-  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,IvcIndex,typename IvcType<Indices>::type> >::type
+  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,IvcIndex,typename IvcType<Indices>::type> >
 operator()(const Indices& indices) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -149,9 +146,9 @@ operator()(const Indices& indices) EIGEN_INDEXED_VIEW_METHOD_CONST
 }
 
 template<typename Indices>
-typename internal::enable_if<
+std::enable_if_t<
   (!IsRowMajor) && (!(internal::get_compile_time_incr<typename IvcType<Indices>::type>::value==1 || internal::is_valid_index_type<Indices>::value)),
-  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,typename IvcType<Indices>::type,IvcIndex> >::type
+  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,typename IvcType<Indices>::type,IvcIndex> >
 operator()(const Indices& indices) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -160,29 +157,27 @@ operator()(const Indices& indices) EIGEN_INDEXED_VIEW_METHOD_CONST
 }
 
 template<typename Indices>
-typename internal::enable_if<
+std::enable_if_t<
   (internal::get_compile_time_incr<typename IvcType<Indices>::type>::value==1) && (!internal::is_valid_index_type<Indices>::value) && (!symbolic::is_symbolic<Indices>::value),
-  VectorBlock<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,internal::array_size<Indices>::value> >::type
+  VectorBlock<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,internal::array_size<Indices>::value> >
 operator()(const Indices& indices) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
   typename IvcType<Indices>::type actualIndices = ivcSize(indices);
   return VectorBlock<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,internal::array_size<Indices>::value>
-            (derived(), internal::first(actualIndices), internal::size(actualIndices));
+            (derived(), internal::first(actualIndices), internal::index_list_size(actualIndices));
 }
 
 template<typename IndexType>
-typename internal::enable_if<symbolic::is_symbolic<IndexType>::value, CoeffReturnType >::type
+std::enable_if_t<symbolic::is_symbolic<IndexType>::value, CoeffReturnType >
 operator()(const IndexType& id) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   return Base::operator()(internal::eval_expr_given_size(id,size()));
 }
 
-#if EIGEN_HAS_STATIC_ARRAY_TEMPLATE
-
 template<typename IndicesT, std::size_t IndicesN>
-typename internal::enable_if<IsRowMajor,
-  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,IvcIndex,const IndicesT (&)[IndicesN]> >::type
+std::enable_if_t<IsRowMajor,
+  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,IvcIndex,const IndicesT (&)[IndicesN]> >
 operator()(const IndicesT (&indices)[IndicesN]) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
@@ -191,16 +186,14 @@ operator()(const IndicesT (&indices)[IndicesN]) EIGEN_INDEXED_VIEW_METHOD_CONST
 }
 
 template<typename IndicesT, std::size_t IndicesN>
-typename internal::enable_if<!IsRowMajor,
-  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,const IndicesT (&)[IndicesN],IvcIndex> >::type
+std::enable_if_t<!IsRowMajor,
+  IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,const IndicesT (&)[IndicesN],IvcIndex> >
 operator()(const IndicesT (&indices)[IndicesN]) EIGEN_INDEXED_VIEW_METHOD_CONST
 {
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived)
   return IndexedView<EIGEN_INDEXED_VIEW_METHOD_CONST Derived,const IndicesT (&)[IndicesN],IvcIndex>
             (derived(), indices, IvcIndex(0));
 }
-
-#endif // EIGEN_HAS_STATIC_ARRAY_TEMPLATE
 
 #undef EIGEN_INDEXED_VIEW_METHOD_CONST
 #undef EIGEN_INDEXED_VIEW_METHOD_TYPE
@@ -218,7 +211,7 @@ operator()(const IndicesT (&indices)[IndicesN]) EIGEN_INDEXED_VIEW_METHOD_CONST
   *
   * Each parameter must either be:
   *  - An integer indexing a single row or column
-  *  - Eigen::all indexing the full set of respective rows or columns in increasing order
+  *  - Eigen::placeholders::all indexing the full set of respective rows or columns in increasing order
   *  - An ArithmeticSequence as returned by the Eigen::seq and Eigen::seqN functions
   *  - Any %Eigen's vector/array of integers or expressions
   *  - Plain C arrays: \c int[N]
@@ -235,7 +228,7 @@ operator()(const IndicesT (&indices)[IndicesN]) EIGEN_INDEXED_VIEW_METHOD_CONST
   * method will returns a Block object after extraction of the relevant information from the passed arguments. This is the case
   * when all arguments are either:
   *  - An integer
-  *  - Eigen::all
+  *  - Eigen::placeholders::all
   *  - An ArithmeticSequence with compile-time increment strictly equal to 1, as returned by Eigen::seq(a,b), and Eigen::seqN(a,N).
   *
   * Otherwise a more general IndexedView<Derived,RowIndices',ColIndices'> object will be returned, after conversion of the inputs

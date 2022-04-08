@@ -10,6 +10,8 @@
 #ifndef EIGEN_TRIANGULAR_SOLVER_VECTOR_H
 #define EIGEN_TRIANGULAR_SOLVER_VECTOR_H
 
+#include "../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
@@ -41,11 +43,10 @@ struct triangular_solve_vector<LhsScalar, RhsScalar, Index, OnTheLeft, Mode, Con
     typedef const_blas_data_mapper<LhsScalar,Index,RowMajor> LhsMapper;
     typedef const_blas_data_mapper<RhsScalar,Index,ColMajor> RhsMapper;
 
-    typename internal::conditional<
-                          Conjugate,
-                          const CwiseUnaryOp<typename internal::scalar_conjugate_op<LhsScalar>,LhsMap>,
-                          const LhsMap&>
-                        ::type cjLhs(lhs);
+    std::conditional_t<
+                  Conjugate,
+                  const CwiseUnaryOp<typename internal::scalar_conjugate_op<LhsScalar>,LhsMap>,
+                  const LhsMap&> cjLhs(lhs);
     static const Index PanelWidth = EIGEN_TUNE_TRIANGULAR_PANEL_WIDTH;
     for(Index pi=IsLower ? 0 : size;
         IsLower ? pi<size : pi>0;
@@ -97,10 +98,10 @@ struct triangular_solve_vector<LhsScalar, RhsScalar, Index, OnTheLeft, Mode, Con
     const LhsMap lhs(_lhs,size,size,OuterStride<>(lhsStride));
     typedef const_blas_data_mapper<LhsScalar,Index,ColMajor> LhsMapper;
     typedef const_blas_data_mapper<RhsScalar,Index,ColMajor> RhsMapper;
-    typename internal::conditional<Conjugate,
-                                   const CwiseUnaryOp<typename internal::scalar_conjugate_op<LhsScalar>,LhsMap>,
-                                   const LhsMap&
-                                  >::type cjLhs(lhs);
+    std::conditional_t<Conjugate,
+                            const CwiseUnaryOp<typename internal::scalar_conjugate_op<LhsScalar>,LhsMap>,
+                            const LhsMap&
+                           > cjLhs(lhs);
     static const Index PanelWidth = EIGEN_TUNE_TRIANGULAR_PANEL_WIDTH;
 
     for(Index pi=IsLower ? 0 : size;

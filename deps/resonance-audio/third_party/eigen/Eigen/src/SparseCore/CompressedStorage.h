@@ -10,6 +10,8 @@
 #ifndef EIGEN_COMPRESSED_STORAGE_H
 #define EIGEN_COMPRESSED_STORAGE_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
 namespace internal {
@@ -18,13 +20,13 @@ namespace internal {
   * Stores a sparse set of values as a list of values and a list of indices.
   *
   */
-template<typename _Scalar,typename _StorageIndex>
+template<typename Scalar_,typename StorageIndex_>
 class CompressedStorage
 {
   public:
 
-    typedef _Scalar Scalar;
-    typedef _StorageIndex StorageIndex;
+    typedef Scalar_ Scalar;
+    typedef StorageIndex_ StorageIndex;
 
   protected:
 
@@ -221,22 +223,6 @@ class CompressedStorage
         internal::smart_copy(m_values+from,  m_values+from+chunkSize,  m_values+to);
         internal::smart_copy(m_indices+from, m_indices+from+chunkSize, m_indices+to);
       }
-    }
-
-    void prune(const Scalar& reference, const RealScalar& epsilon = NumTraits<RealScalar>::dummy_precision())
-    {
-      Index k = 0;
-      Index n = size();
-      for (Index i=0; i<n; ++i)
-      {
-        if (!internal::isMuchSmallerThan(value(i), reference, epsilon))
-        {
-          value(k) = value(i);
-          index(k) = index(i);
-          ++k;
-        }
-      }
-      resize(k,0);
     }
 
   protected:

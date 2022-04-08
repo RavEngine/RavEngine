@@ -11,6 +11,8 @@
 #ifndef EIGEN_GENERIC_TYPE_CASTING_H
 #define EIGEN_GENERIC_TYPE_CASTING_H
 
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {

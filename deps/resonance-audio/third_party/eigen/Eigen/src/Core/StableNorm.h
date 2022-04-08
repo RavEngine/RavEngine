@@ -10,9 +10,7 @@
 #ifndef EIGEN_STABLENORM_H
 #define EIGEN_STABLENORM_H
 
-#if EIGEN_HAS_CXX11_ATOMIC
-#include <atomic>
-#endif
+#include "./InternalHeaderCheck.h"
 
 namespace Eigen { 
 
@@ -61,7 +59,7 @@ void stable_norm_impl_inner_step(const VectorType &vec, RealScalar& ssq, RealSca
   const Index blockSize = 4096;
   
   typedef typename internal::nested_eval<VectorType,2>::type VectorTypeCopy;
-  typedef typename internal::remove_all<VectorTypeCopy>::type VectorTypeCopyClean;
+  typedef internal::remove_all_t<VectorTypeCopy> VectorTypeCopyClean;
   const VectorTypeCopy copy(vec);
   
   enum {
@@ -70,8 +68,8 @@ void stable_norm_impl_inner_step(const VectorType &vec, RealScalar& ssq, RealSca
                ) && (blockSize*sizeof(Scalar)*2<EIGEN_STACK_ALLOCATION_LIMIT)
                  && (EIGEN_MAX_STATIC_ALIGN_BYTES>0) // if we cannot allocate on the stack, then let's not bother about this optimization
   };
-  typedef typename internal::conditional<CanAlign, Ref<const Matrix<Scalar,Dynamic,1,0,blockSize,1>, internal::evaluator<VectorTypeCopyClean>::Alignment>,
-                                                   typename VectorTypeCopyClean::ConstSegmentReturnType>::type SegmentWrapper;
+  typedef std::conditional_t<CanAlign, Ref<const Matrix<Scalar,Dynamic,1,0,blockSize,1>, internal::evaluator<VectorTypeCopyClean>::Alignment>,
+                                                   typename VectorTypeCopyClean::ConstSegmentReturnType> SegmentWrapper;
   Index n = vec.size();
   
   Index bi = internal::first_default_aligned(copy);
@@ -83,7 +81,7 @@ void stable_norm_impl_inner_step(const VectorType &vec, RealScalar& ssq, RealSca
 
 template<typename VectorType>
 typename VectorType::RealScalar
-stable_norm_impl(const VectorType &vec, typename enable_if<VectorType::IsVectorAtCompileTime>::type* = 0 )
+stable_norm_impl(const VectorType &vec, std::enable_if_t<VectorType::IsVectorAtCompileTime>* = 0 )
 {
   using std::sqrt;
   using std::abs;
@@ -105,7 +103,7 @@ stable_norm_impl(const VectorType &vec, typename enable_if<VectorType::IsVectorA
 
 template<typename MatrixType>
 typename MatrixType::RealScalar
-stable_norm_impl(const MatrixType &mat, typename enable_if<!MatrixType::IsVectorAtCompileTime>::type* = 0 )
+stable_norm_impl(const MatrixType &mat, std::enable_if_t<!MatrixType::IsVectorAtCompileTime>* = 0 )
 {
   using std::sqrt;
 
@@ -138,9 +136,9 @@ blueNorm_impl(const EigenBase<Derived>& _vec)
   // statements can be replaced
   static const int ibeta = std::numeric_limits<RealScalar>::radix;  // base for floating-point numbers
   static const int it    = NumTraits<RealScalar>::digits();  // number of base-beta digits in mantissa
-  static const int iemin = std::numeric_limits<RealScalar>::min_exponent;  // minimum exponent
-  static const int iemax = std::numeric_limits<RealScalar>::max_exponent; // maximum exponent
-  static const RealScalar rbig   = (std::numeric_limits<RealScalar>::max)();  // largest floating-point number
+  static const int iemin = NumTraits<RealScalar>::min_exponent();  // minimum exponent
+  static const int iemax = NumTraits<RealScalar>::max_exponent();  // maximum exponent
+  static const RealScalar rbig   = NumTraits<RealScalar>::highest();  // largest floating-point number
   static const RealScalar b1     = RealScalar(pow(RealScalar(ibeta),RealScalar(-((1-iemin)/2))));  // lower boundary of midrange
   static const RealScalar b2     = RealScalar(pow(RealScalar(ibeta),RealScalar((iemax + 1 - it)/2)));  // upper boundary of midrange
   static const RealScalar s1m    = RealScalar(pow(RealScalar(ibeta),RealScalar((2-iemin)/2)));  // scaling factor for lower range

@@ -41,7 +41,8 @@ set(COMPUTECPP_BITCODE "spir64" CACHE STRING
   "Bitcode type to use as SYCL target in compute++")
 mark_as_advanced(COMPUTECPP_BITCODE)
 
-find_package(OpenCL REQUIRED)
+include(CMakeFindDependencyMacro)
+find_dependency(OpenCL REQUIRED)
 
 # Find ComputeCpp package
 
@@ -381,7 +382,7 @@ endfunction(__build_ir)
 #######################
 #
 #  Adds a SYCL compilation custom command associated with an existing
-#  target and sets a dependancy on that new command.
+#  target and sets a dependency on that new command.
 #
 #  TARGET : Name of the target to add SYCL to.
 #  SOURCES : Source files to be compiled for SYCL.

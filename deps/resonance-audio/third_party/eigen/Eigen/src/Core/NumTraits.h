@@ -10,6 +10,8 @@
 #ifndef EIGEN_NUMTRAITS_H
 #define EIGEN_NUMTRAITS_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
@@ -83,17 +85,17 @@ namespace numext {
 // TODO: Replace by std::bit_cast (available in C++20)
 template <typename Tgt, typename Src>
 EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC Tgt bit_cast(const Src& src) {
-#if EIGEN_HAS_TYPE_TRAITS
   // The behaviour of memcpy is not specified for non-trivially copyable types
   EIGEN_STATIC_ASSERT(std::is_trivially_copyable<Src>::value, THIS_TYPE_IS_NOT_SUPPORTED);
   EIGEN_STATIC_ASSERT(std::is_trivially_copyable<Tgt>::value && std::is_default_constructible<Tgt>::value,
                       THIS_TYPE_IS_NOT_SUPPORTED);
-#endif
-
   EIGEN_STATIC_ASSERT(sizeof(Src) == sizeof(Tgt), THIS_TYPE_IS_NOT_SUPPORTED);
+
   Tgt tgt;
+  // Load src into registers first. This allows the memcpy to be elided by CUDA.
+  const Src staged = src;
   EIGEN_USING_STD(memcpy)
-  memcpy(&tgt, &src, sizeof(Tgt));
+  memcpy(&tgt, &staged, sizeof(Tgt));
   return tgt;
 }
 }  // namespace numext
@@ -135,9 +137,18 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC Tgt bit_cast(const Src& src) {
   * \li A dummy_precision() function returning a weak epsilon value. It is mainly used as a default
   *     value by the fuzzy comparison operators.
   * \li highest() and lowest() functions returning the highest and lowest possible values respectively.
+  * \li digits() function returning the number of radix digits (non-sign digits for integers, mantissa for floating-point). This is
+  *     the analogue of <a href="http://en.cppreference.com/w/cpp/types/numeric_limits/digits">std::numeric_limits<T>::digits</a>
+  *     which is used as the default implementation if specialized.
   * \li digits10() function returning the number of decimal digits that can be represented without change. This is
   *     the analogue of <a href="http://en.cppreference.com/w/cpp/types/numeric_limits/digits10">std::numeric_limits<T>::digits10</a>
   *     which is used as the default implementation if specialized.
+  * \li min_exponent() and max_exponent() functions returning the highest and lowest possible values, respectively,
+  *     such that the radix raised to the power exponent-1 is a normalized floating-point number.  These are equivalent to
+  *     <a href="http://en.cppreference.com/w/cpp/types/numeric_limits/min_exponent">std::numeric_limits<T>::min_exponent</a>/
+  *     <a href="http://en.cppreference.com/w/cpp/types/numeric_limits/max_exponent">std::numeric_limits<T>::max_exponent</a>.
+  * \li infinity() function returning a representation of positive infinity, if available.
+  * \li quiet_NaN function returning a non-signaling "not-a-number", if available.
   */
 
 template<typename T> struct GenericNumTraits
@@ -153,11 +164,7 @@ template<typename T> struct GenericNumTraits
   };
 
   typedef T Real;
-  typedef typename internal::conditional<
-                     IsInteger,
-                     typename internal::conditional<sizeof(T)<=2, float, double>::type,
-                     T
-                   >::type NonInteger;
+  typedef std::conditional_t<IsInteger, std::conditional_t<sizeof(T)<=2, float, double>, T> NonInteger;
   typedef T Nested;
   typedef T Literal;
 
@@ -180,12 +187,23 @@ template<typename T> struct GenericNumTraits
   }
 
   EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+  static inline int min_exponent()
+  {
+    return numext::numeric_limits<T>::min_exponent;
+  }
+
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+  static inline int max_exponent()
+  {
+    return numext::numeric_limits<T>::max_exponent;
+  }
+
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
   static inline Real dummy_precision()
   {
     // make sure to override this for floating-point types
     return Real(0);
   }
-
 
   EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
   static inline T highest() {
@@ -232,15 +250,15 @@ template<> struct NumTraits<long double>
   static inline long double dummy_precision() { return 1e-15l; }
 };
 
-template<typename _Real> struct NumTraits<std::complex<_Real> >
-  : GenericNumTraits<std::complex<_Real> >
+template<typename Real_> struct NumTraits<std::complex<Real_> >
+  : GenericNumTraits<std::complex<Real_> >
 {
-  typedef _Real Real;
-  typedef typename NumTraits<_Real>::Literal Literal;
+  typedef Real_ Real;
+  typedef typename NumTraits<Real_>::Literal Literal;
   enum {
     IsComplex = 1,
-    RequireInitialization = NumTraits<_Real>::RequireInitialization,
-    ReadCost = 2 * NumTraits<_Real>::ReadCost,
+    RequireInitialization = NumTraits<Real_>::RequireInitialization,
+    ReadCost = 2 * NumTraits<Real_>::ReadCost,
     AddCost = 2 * NumTraits<Real>::AddCost,
     MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
   };
@@ -269,9 +287,9 @@ struct NumTraits<Array<Scalar, Rows, Cols, Options, MaxRows, MaxCols> >
     IsInteger = NumTraits<Scalar>::IsInteger,
     IsSigned  = NumTraits<Scalar>::IsSigned,
     RequireInitialization = 1,
-    ReadCost = ArrayType::SizeAtCompileTime==Dynamic ? HugeCost : ArrayType::SizeAtCompileTime * NumTraits<Scalar>::ReadCost,
-    AddCost  = ArrayType::SizeAtCompileTime==Dynamic ? HugeCost : ArrayType::SizeAtCompileTime * NumTraits<Scalar>::AddCost,
-    MulCost  = ArrayType::SizeAtCompileTime==Dynamic ? HugeCost : ArrayType::SizeAtCompileTime * NumTraits<Scalar>::MulCost
+    ReadCost = ArrayType::SizeAtCompileTime==Dynamic ? HugeCost : ArrayType::SizeAtCompileTime * int(NumTraits<Scalar>::ReadCost),
+    AddCost  = ArrayType::SizeAtCompileTime==Dynamic ? HugeCost : ArrayType::SizeAtCompileTime * int(NumTraits<Scalar>::AddCost),
+    MulCost  = ArrayType::SizeAtCompileTime==Dynamic ? HugeCost : ArrayType::SizeAtCompileTime * int(NumTraits<Scalar>::MulCost)
   };
 
   EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR

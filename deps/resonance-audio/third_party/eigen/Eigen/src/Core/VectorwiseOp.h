@@ -11,6 +11,8 @@
 #ifndef EIGEN_PARTIAL_REDUX_H
 #define EIGEN_PARTIAL_REDUX_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 
 /** \class PartialReduxExpr
@@ -65,10 +67,10 @@ class PartialReduxExpr : public internal::dense_xpr_base< PartialReduxExpr<Matri
     explicit PartialReduxExpr(const MatrixType& mat, const MemberOp& func = MemberOp())
       : m_matrix(mat), m_functor(func) {}
 
-    EIGEN_DEVICE_FUNC
-    Index rows() const { return (Direction==Vertical   ? 1 : m_matrix.rows()); }
-    EIGEN_DEVICE_FUNC
-    Index cols() const { return (Direction==Horizontal ? 1 : m_matrix.cols()); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    Index rows() const EIGEN_NOEXCEPT { return (Direction==Vertical   ? 1 : m_matrix.rows()); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    Index cols() const EIGEN_NOEXCEPT { return (Direction==Horizontal ? 1 : m_matrix.cols()); }
 
     EIGEN_DEVICE_FUNC
     typename MatrixType::Nested nestedExpression() const { return m_matrix; }
@@ -134,7 +136,7 @@ struct member_redux {
   typedef typename result_of<
                      BinaryOp(const Scalar&,const Scalar&)
                    >::type  result_type;
-  
+
   enum { Vectorizable = functor_traits<BinaryOp>::PacketAccess };
   template<int Size> struct Cost { enum { value = (Size-1) * functor_traits<BinaryOp>::Cost }; };
   EIGEN_DEVICE_FUNC explicit member_redux(const BinaryOp func) : m_functor(func) {}
@@ -162,17 +164,17 @@ struct member_redux {
   * where `foo` is any method of `VectorwiseOp`. This expression is equivalent to applying `foo()` to each
   * column of `A` and then re-assemble the outputs in a matrix expression:
   * \code [A.col(0).foo(), A.col(1).foo(), ..., A.col(A.cols()-1).foo()] \endcode
-  * 
+  *
   * Example: \include MatrixBase_colwise.cpp
   * Output: \verbinclude MatrixBase_colwise.out
   *
   * The begin() and end() methods are obviously exceptions to the previous rule as they
   * return STL-compatible begin/end iterators to the rows or columns of the nested expression.
   * Typical use cases include for-range-loop and calls to STL algorithms:
-  * 
+  *
   * Example: \include MatrixBase_colwise_iterator_cxx11.cpp
   * Output: \verbinclude MatrixBase_colwise_iterator_cxx11.out
-  * 
+  *
   * For a partial reduction on an empty input, some rules apply.
   * For the sake of clarity, let's consider a vertical reduction:
   *   - If the number of columns is zero, then a 1x0 row-major vector expression is returned.
@@ -180,7 +182,7 @@ struct member_redux {
   *       - a row vector of zeros is returned for sum-like reductions (sum, squaredNorm, norm, etc.)
   *       - a row vector of ones is returned for a product reduction (e.g., <code>MatrixXd(n,0).colwise().prod()</code>)
   *       - an assert is triggered for all other reductions (minCoeff,maxCoeff,redux(bin_op))
-  * 
+  *
   * \sa DenseBase::colwise(), DenseBase::rowwise(), class PartialReduxExpr
   */
 template<typename ExpressionType, int Direction> class VectorwiseOp
@@ -191,7 +193,7 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
     typedef typename ExpressionType::RealScalar RealScalar;
     typedef Eigen::Index Index; ///< \deprecated since Eigen 3.3
     typedef typename internal::ref_selector<ExpressionType>::non_const_type ExpressionTypeNested;
-    typedef typename internal::remove_all<ExpressionTypeNested>::type ExpressionTypeNestedCleaned;
+    typedef internal::remove_all_t<ExpressionTypeNested> ExpressionTypeNestedCleaned;
 
     template<template<typename OutScalar,typename InputScalar> class Functor,
                       typename ReturnScalar=Scalar> struct ReturnType
@@ -216,7 +218,7 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
     };
 
   protected:
-  
+
     template<typename OtherDerived> struct ExtendedType {
       typedef Replicate<OtherDerived,
                         isVertical   ? 1 : ExpressionType::RowsAtCompileTime,
@@ -230,9 +232,9 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
     typename ExtendedType<OtherDerived>::Type
     extendedTo(const DenseBase<OtherDerived>& other) const
     {
-      EIGEN_STATIC_ASSERT(EIGEN_IMPLIES(isVertical, OtherDerived::MaxColsAtCompileTime==1),
+      EIGEN_STATIC_ASSERT(internal::check_implication(isVertical, OtherDerived::MaxColsAtCompileTime==1),
                           YOU_PASSED_A_ROW_VECTOR_BUT_A_COLUMN_VECTOR_WAS_EXPECTED)
-      EIGEN_STATIC_ASSERT(EIGEN_IMPLIES(isHorizontal, OtherDerived::MaxRowsAtCompileTime==1),
+      EIGEN_STATIC_ASSERT(internal::check_implication(isHorizontal, OtherDerived::MaxRowsAtCompileTime==1),
                           YOU_PASSED_A_COLUMN_VECTOR_BUT_A_ROW_VECTOR_WAS_EXPECTED)
       return typename ExtendedType<OtherDerived>::Type
                       (other.derived(),
@@ -253,9 +255,9 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
     typename OppositeExtendedType<OtherDerived>::Type
     extendedToOpposite(const DenseBase<OtherDerived>& other) const
     {
-      EIGEN_STATIC_ASSERT(EIGEN_IMPLIES(isHorizontal, OtherDerived::MaxColsAtCompileTime==1),
+      EIGEN_STATIC_ASSERT(internal::check_implication(isHorizontal, OtherDerived::MaxColsAtCompileTime==1),
                           YOU_PASSED_A_ROW_VECTOR_BUT_A_COLUMN_VECTOR_WAS_EXPECTED)
-      EIGEN_STATIC_ASSERT(EIGEN_IMPLIES(isVertical, OtherDerived::MaxRowsAtCompileTime==1),
+      EIGEN_STATIC_ASSERT(internal::check_implication(isVertical, OtherDerived::MaxRowsAtCompileTime==1),
                           YOU_PASSED_A_COLUMN_VECTOR_BUT_A_ROW_VECTOR_WAS_EXPECTED)
       return typename OppositeExtendedType<OtherDerived>::Type
                       (other.derived(),
@@ -328,7 +330,7 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
       *
       * \warning the size along the reduction direction must be strictly positive,
       *          otherwise an assertion is triggered.
-      * 
+      *
       * \sa class VectorwiseOp, DenseBase::colwise(), DenseBase::rowwise()
       */
     template<typename BinaryOp>
@@ -365,7 +367,7 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
       *
       * \warning the size along the reduction direction must be strictly positive,
       *          otherwise an assertion is triggered.
-      * 
+      *
       * \warning the result is undefined if \c *this contains NaN.
       *
       * Example: \include PartialRedux_minCoeff.cpp
@@ -384,7 +386,7 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
       *
       * \warning the size along the reduction direction must be strictly positive,
       *          otherwise an assertion is triggered.
-      * 
+      *
       * \warning the result is undefined if \c *this contains NaN.
       *
       * Example: \include PartialRedux_maxCoeff.cpp
@@ -594,7 +596,7 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
       return m_matrix += extendedTo(other.derived());
     }
 
-    /** Substracts the vector \a other to each subvector of \c *this */
+    /** Subtracts the vector \a other to each subvector of \c *this */
     template<typename OtherDerived>
     EIGEN_DEVICE_FUNC
     ExpressionType& operator-=(const DenseBase<OtherDerived>& other)
@@ -604,7 +606,7 @@ template<typename ExpressionType, int Direction> class VectorwiseOp
       return m_matrix -= extendedTo(other.derived());
     }
 
-    /** Multiples each subvector of \c *this by the vector \a other */
+    /** Multiplies each subvector of \c *this by the vector \a other */
     template<typename OtherDerived>
     EIGEN_DEVICE_FUNC
     ExpressionType& operator*=(const DenseBase<OtherDerived>& other)

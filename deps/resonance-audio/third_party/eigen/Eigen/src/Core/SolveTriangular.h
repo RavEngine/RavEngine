@@ -10,6 +10,8 @@
 #ifndef EIGEN_SOLVETRIANGULAR_H
 #define EIGEN_SOLVETRIANGULAR_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
@@ -87,7 +89,7 @@ struct triangular_solver_selector<Lhs,Rhs,Side,Mode,NoUnrolling,Dynamic>
 
   static EIGEN_DEVICE_FUNC void run(const Lhs& lhs, Rhs& rhs)
   {
-    typename internal::add_const_on_value_type<ActualLhsType>::type actualLhs = LhsProductTraits::extract(lhs);
+    add_const_on_value_type_t<ActualLhsType> actualLhs = LhsProductTraits::extract(lhs);
 
     const Index size = lhs.rows();
     const Index othersize = Side==OnTheLeft? rhs.cols() : rhs.rows();
@@ -168,17 +170,17 @@ EIGEN_DEVICE_FUNC void TriangularViewImpl<MatrixType,Mode,Dense>::solveInPlace(c
 {
   OtherDerived& other = _other.const_cast_derived();
   eigen_assert( derived().cols() == derived().rows() && ((Side==OnTheLeft && derived().cols() == other.rows()) || (Side==OnTheRight && derived().cols() == other.cols())) );
-  eigen_assert((!(Mode & ZeroDiag)) && bool(Mode & (Upper|Lower)));
+  eigen_assert((!(int(Mode) & int(ZeroDiag))) && bool(int(Mode) & (int(Upper) | int(Lower))));
   // If solving for a 0x0 matrix, nothing to do, simply return.
   if (derived().cols() == 0)
     return;
 
   enum { copy = (internal::traits<OtherDerived>::Flags & RowMajorBit)  && OtherDerived::IsVectorAtCompileTime && OtherDerived::SizeAtCompileTime!=1};
-  typedef typename internal::conditional<copy,
-    typename internal::plain_matrix_type_column_major<OtherDerived>::type, OtherDerived&>::type OtherCopy;
+  typedef std::conditional_t<copy,
+    typename internal::plain_matrix_type_column_major<OtherDerived>::type, OtherDerived&> OtherCopy;
   OtherCopy otherCopy(other);
 
-  internal::triangular_solver_selector<MatrixType, typename internal::remove_reference<OtherCopy>::type,
+  internal::triangular_solver_selector<MatrixType, std::remove_reference_t<OtherCopy>,
     Side, Mode>::run(derived().nestedExpression(), otherCopy);
 
   if (copy)
@@ -206,15 +208,15 @@ struct traits<triangular_solve_retval<Side, TriangularType, Rhs> >
 template<int Side, typename TriangularType, typename Rhs> struct triangular_solve_retval
  : public ReturnByValue<triangular_solve_retval<Side, TriangularType, Rhs> >
 {
-  typedef typename remove_all<typename Rhs::Nested>::type RhsNestedCleaned;
+  typedef remove_all_t<typename Rhs::Nested> RhsNestedCleaned;
   typedef ReturnByValue<triangular_solve_retval> Base;
 
   triangular_solve_retval(const TriangularType& tri, const Rhs& rhs)
     : m_triangularMatrix(tri), m_rhs(rhs)
   {}
 
-  inline Index rows() const { return m_rhs.rows(); }
-  inline Index cols() const { return m_rhs.cols(); }
+  inline EIGEN_CONSTEXPR Index rows() const EIGEN_NOEXCEPT { return m_rhs.rows(); }
+  inline EIGEN_CONSTEXPR Index cols() const EIGEN_NOEXCEPT { return m_rhs.cols(); }
 
   template<typename Dest> inline void evalTo(Dest& dst) const
   {

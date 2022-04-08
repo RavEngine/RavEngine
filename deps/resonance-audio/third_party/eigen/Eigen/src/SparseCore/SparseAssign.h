@@ -10,6 +10,8 @@
 #ifndef EIGEN_SPARSEASSIGN_H
 #define EIGEN_SPARSEASSIGN_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
 template<typename Derived>    
@@ -172,7 +174,7 @@ struct assignment_from_dense_op_sparse
   // Specialization for dense1 = sparse + dense2; -> dense1 = dense2; dense1 += sparse;
   template<typename Lhs, typename Rhs, typename Scalar>
   static EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-  typename internal::enable_if<internal::is_same<typename internal::evaluator_traits<Rhs>::Shape,DenseShape>::value>::type
+  std::enable_if_t<internal::is_same<typename internal::evaluator_traits<Rhs>::Shape,DenseShape>::value>
   run(DstXprType &dst, const CwiseBinaryOp<internal::scalar_sum_op<Scalar,Scalar>, const Lhs, const Rhs> &src,
       const internal::assign_op<typename DstXprType::Scalar,Scalar>& /*func*/)
   {
@@ -188,7 +190,7 @@ struct assignment_from_dense_op_sparse
   // Specialization for dense1 = sparse - dense2; -> dense1 = -dense2; dense1 += sparse;
   template<typename Lhs, typename Rhs, typename Scalar>
   static EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-  typename internal::enable_if<internal::is_same<typename internal::evaluator_traits<Rhs>::Shape,DenseShape>::value>::type
+  std::enable_if_t<internal::is_same<typename internal::evaluator_traits<Rhs>::Shape,DenseShape>::value>
   run(DstXprType &dst, const CwiseBinaryOp<internal::scalar_difference_op<Scalar,Scalar>, const Lhs, const Rhs> &src,
       const internal::assign_op<typename DstXprType::Scalar,Scalar>& /*func*/)
   {
@@ -206,8 +208,8 @@ struct assignment_from_dense_op_sparse
   template< typename DstXprType, typename Lhs, typename Rhs, typename Scalar> \
   struct Assignment<DstXprType, CwiseBinaryOp<internal::BINOP<Scalar,Scalar>, const Lhs, const Rhs>, internal::ASSIGN_OP<typename DstXprType::Scalar,Scalar>, \
                     Sparse2Dense, \
-                    typename internal::enable_if<   internal::is_same<typename internal::evaluator_traits<Lhs>::Shape,DenseShape>::value \
-                                                 || internal::is_same<typename internal::evaluator_traits<Rhs>::Shape,DenseShape>::value>::type> \
+                    std::enable_if_t<   internal::is_same<typename internal::evaluator_traits<Lhs>::Shape,DenseShape>::value \
+                                     || internal::is_same<typename internal::evaluator_traits<Rhs>::Shape,DenseShape>::value>> \
     : assignment_from_dense_op_sparse<DstXprType, internal::ASSIGN_OP<typename DstXprType::Scalar,typename Lhs::Scalar>, internal::ASSIGN_OP2<typename DstXprType::Scalar,typename Rhs::Scalar> > \
   {}
 

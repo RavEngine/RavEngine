@@ -59,6 +59,8 @@
 
 #endif
 
+#include "../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
@@ -294,18 +296,17 @@ template<typename T> EIGEN_DEVICE_FUNC inline void destruct_elements_of_array(T 
   */
 template<typename T> EIGEN_DEVICE_FUNC inline T* construct_elements_of_array(T *ptr, std::size_t size)
 {
-  std::size_t i;
+  std::size_t i=0;
   EIGEN_TRY
   {
       for (i = 0; i < size; ++i) ::new (ptr + i) T;
-      return ptr;
   }
   EIGEN_CATCH(...)
   {
     destruct_elements_of_array(ptr, i);
     EIGEN_THROW;
   }
-  return NULL;
+  return ptr;
 }
 
 /*****************************************************************************
@@ -566,6 +567,10 @@ template<typename T> struct smart_memmove_helper<T,false> {
   }
 };
 
+template<typename T> EIGEN_DEVICE_FUNC T* smart_move(T* start, T* end, T* target)
+{
+  return std::move(start, end, target);
+}
 
 /*****************************************************************************
 *** Implementation of runtime stack allocation (falling back to malloc)    ***
@@ -629,7 +634,7 @@ template<typename Xpr, int NbEvaluations,
          >
 struct local_nested_eval_wrapper
 {
-  static const bool NeedExternalBuffer = false;
+  static constexpr bool NeedExternalBuffer = false;
   typedef typename Xpr::Scalar Scalar;
   typedef typename nested_eval<Xpr,NbEvaluations>::type ObjectType;
   ObjectType object;
@@ -645,7 +650,7 @@ struct local_nested_eval_wrapper
 template<typename Xpr, int NbEvaluations>
 struct local_nested_eval_wrapper<Xpr,NbEvaluations,true>
 {
-  static const bool NeedExternalBuffer = true;
+  static constexpr bool NeedExternalBuffer = true;
   typedef typename Xpr::Scalar Scalar;
   typedef typename plain_object_eval<Xpr>::type PlainObject;
   typedef Map<PlainObject,EIGEN_DEFAULT_ALIGN_BYTES> ObjectType;
@@ -780,32 +785,45 @@ template<typename T> void swap(scoped_array<T> &a,scoped_array<T> &b)
 
 #else
 
-#if EIGEN_MAX_ALIGN_BYTES!=0
+// HIP does not support new/delete on device.
+#if EIGEN_MAX_ALIGN_BYTES!=0 && !defined(EIGEN_HIP_DEVICE_COMPILE)
   #define EIGEN_MAKE_ALIGNED_OPERATOR_NEW_NOTHROW(NeedsToAlign) \
+      EIGEN_DEVICE_FUNC \
       void* operator new(std::size_t size, const std::nothrow_t&) EIGEN_NO_THROW { \
         EIGEN_TRY { return Eigen::internal::conditional_aligned_malloc<NeedsToAlign>(size); } \
         EIGEN_CATCH (...) { return 0; } \
       }
   #define EIGEN_MAKE_ALIGNED_OPERATOR_NEW_IF(NeedsToAlign) \
+      EIGEN_DEVICE_FUNC \
       void *operator new(std::size_t size) { \
         return Eigen::internal::conditional_aligned_malloc<NeedsToAlign>(size); \
       } \
+      EIGEN_DEVICE_FUNC \
       void *operator new[](std::size_t size) { \
         return Eigen::internal::conditional_aligned_malloc<NeedsToAlign>(size); \
       } \
+      EIGEN_DEVICE_FUNC \
       void operator delete(void * ptr) EIGEN_NO_THROW { Eigen::internal::conditional_aligned_free<NeedsToAlign>(ptr); } \
+      EIGEN_DEVICE_FUNC \
       void operator delete[](void * ptr) EIGEN_NO_THROW { Eigen::internal::conditional_aligned_free<NeedsToAlign>(ptr); } \
+      EIGEN_DEVICE_FUNC \
       void operator delete(void * ptr, std::size_t /* sz */) EIGEN_NO_THROW { Eigen::internal::conditional_aligned_free<NeedsToAlign>(ptr); } \
+      EIGEN_DEVICE_FUNC \
       void operator delete[](void * ptr, std::size_t /* sz */) EIGEN_NO_THROW { Eigen::internal::conditional_aligned_free<NeedsToAlign>(ptr); } \
       /* in-place new and delete. since (at least afaik) there is no actual   */ \
       /* memory allocated we can safely let the default implementation handle */ \
       /* this particular case. */ \
+      EIGEN_DEVICE_FUNC \
       static void *operator new(std::size_t size, void *ptr) { return ::operator new(size,ptr); } \
+      EIGEN_DEVICE_FUNC \
       static void *operator new[](std::size_t size, void* ptr) { return ::operator new[](size,ptr); } \
+      EIGEN_DEVICE_FUNC \
       void operator delete(void * memory, void *ptr) EIGEN_NO_THROW { return ::operator delete(memory,ptr); } \
+      EIGEN_DEVICE_FUNC \
       void operator delete[](void * memory, void *ptr) EIGEN_NO_THROW { return ::operator delete[](memory,ptr); } \
       /* nothrow-new (returns zero instead of std::bad_alloc) */ \
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW_NOTHROW(NeedsToAlign) \
+      EIGEN_DEVICE_FUNC \
       void operator delete(void *ptr, const std::nothrow_t&) EIGEN_NO_THROW { \
         Eigen::internal::conditional_aligned_free<NeedsToAlign>(ptr); \
       } \
@@ -829,7 +847,7 @@ template<typename T> void swap(scoped_array<T> &a,scoped_array<T> &b)
 /** \class aligned_allocator
 * \ingroup Core_Module
 *
-* \brief STL compatible allocator to use with types requiring a non standrad alignment.
+* \brief STL compatible allocator to use with types requiring a non-standard alignment.
 *
 * The memory is aligned as for dynamically aligned matrix/array types such as MatrixXd.
 * By default, it will thus provide at least 16 bytes alignment and more in following cases:
@@ -917,7 +935,7 @@ public:
          __asm__ __volatile__ ("cpuid": "=a" (abcd[0]), "=b" (abcd[1]), "=c" (abcd[2]), "=d" (abcd[3]) : "0" (func), "2" (id) );
 #    endif
 #  elif EIGEN_COMP_MSVC
-#    if (EIGEN_COMP_MSVC > 1500) && EIGEN_ARCH_i386_OR_x86_64
+#    if EIGEN_ARCH_i386_OR_x86_64
 #      define EIGEN_CPUID(abcd,func,id) __cpuidex((int*)abcd,func,id)
 #    endif
 #  endif
@@ -1048,20 +1066,32 @@ inline void queryCacheSizes_intel(int& l1, int& l2, int& l3, int max_std_funcs)
 {
   if(max_std_funcs>=4)
     queryCacheSizes_intel_direct(l1,l2,l3);
-  else
+  else if(max_std_funcs>=2)
     queryCacheSizes_intel_codes(l1,l2,l3);
+  else
+    l1 = l2 = l3 = 0;
 }
 
 inline void queryCacheSizes_amd(int& l1, int& l2, int& l3)
 {
   int abcd[4];
   abcd[0] = abcd[1] = abcd[2] = abcd[3] = 0;
-  EIGEN_CPUID(abcd,0x80000005,0);
-  l1 = (abcd[2] >> 24) * 1024; // C[31:24] = L1 size in KB
-  abcd[0] = abcd[1] = abcd[2] = abcd[3] = 0;
-  EIGEN_CPUID(abcd,0x80000006,0);
-  l2 = (abcd[2] >> 16) * 1024; // C[31;16] = l2 cache size in KB
-  l3 = ((abcd[3] & 0xFFFC000) >> 18) * 512 * 1024; // D[31;18] = l3 cache size in 512KB
+  
+  // First query the max supported function.
+  EIGEN_CPUID(abcd,0x80000000,0);
+  if(static_cast<numext::uint32_t>(abcd[0]) >= static_cast<numext::uint32_t>(0x80000006))
+  {
+    EIGEN_CPUID(abcd,0x80000005,0);
+    l1 = (abcd[2] >> 24) * 1024; // C[31:24] = L1 size in KB
+    abcd[0] = abcd[1] = abcd[2] = abcd[3] = 0;
+    EIGEN_CPUID(abcd,0x80000006,0);
+    l2 = (abcd[2] >> 16) * 1024; // C[31;16] = l2 cache size in KB
+    l3 = ((abcd[3] & 0xFFFC000) >> 18) * 512 * 1024; // D[31;18] = l3 cache size in 512KB
+  }
+  else
+  {
+    l1 = l2 = l3 = 0;
+  }
 }
 #endif
 
@@ -1077,7 +1107,7 @@ inline void queryCacheSizes(int& l1, int& l2, int& l3)
 
   // identify the CPU vendor
   EIGEN_CPUID(abcd,0x0,0);
-  int max_std_funcs = abcd[1];
+  int max_std_funcs = abcd[0];
   if(cpuid_is_vendor(abcd,GenuineIntel))
     queryCacheSizes_intel(l1,l2,l3,max_std_funcs);
   else if(cpuid_is_vendor(abcd,AuthenticAMD) || cpuid_is_vendor(abcd,AMDisbetter_))
@@ -1119,6 +1149,38 @@ inline int queryTopLevelCacheSize()
   queryCacheSizes(l1,l2,l3);
   return (std::max)(l2,l3);
 }
+
+
+
+/** \internal
+ * This wraps C++20's std::construct_at, using placement new instead if it is not available.
+ */
+
+#if EIGEN_COMP_CXXVER >= 20
+using std::construct_at;
+#else
+template<class T, class... Args>
+EIGEN_DEVICE_FUNC T* construct_at( T* p, Args&&... args )
+{
+  return ::new (const_cast<void*>(static_cast<const volatile void*>(p)))
+    T(std::forward<Args>(args)...);
+}
+#endif
+
+/** \internal
+ * This wraps C++17's std::destroy_at.  If it's not available it calls the destructor.
+ * The wrapper is not a full replacement for C++20's std::destroy_at as it cannot
+ * be applied to std::array.
+ */
+#if EIGEN_COMP_CXXVER >= 17
+using std::destroy_at;
+#else
+template<class T>
+EIGEN_DEVICE_FUNC void destroy_at(T* p)
+{
+  p->~T();
+}
+#endif
 
 } // end namespace internal
 

@@ -32,11 +32,13 @@
 #ifndef EIGEN_PARDISOSUPPORT_H
 #define EIGEN_PARDISOSUPPORT_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
-template<typename _MatrixType> class PardisoLU;
-template<typename _MatrixType, int Options=Upper> class PardisoLLT;
-template<typename _MatrixType, int Options=Upper> class PardisoLDLT;
+template<typename MatrixType_> class PardisoLU;
+template<typename MatrixType_, int Options=Upper> class PardisoLLT;
+template<typename MatrixType_, int Options=Upper> class PardisoLDLT;
 
 namespace internal
 {
@@ -66,31 +68,31 @@ namespace internal
 
   template<class Pardiso> struct pardiso_traits;
 
-  template<typename _MatrixType>
-  struct pardiso_traits< PardisoLU<_MatrixType> >
+  template<typename MatrixType_>
+  struct pardiso_traits< PardisoLU<MatrixType_> >
   {
-    typedef _MatrixType MatrixType;
-    typedef typename _MatrixType::Scalar Scalar;
-    typedef typename _MatrixType::RealScalar RealScalar;
-    typedef typename _MatrixType::StorageIndex StorageIndex;
+    typedef MatrixType_ MatrixType;
+    typedef typename MatrixType_::Scalar Scalar;
+    typedef typename MatrixType_::RealScalar RealScalar;
+    typedef typename MatrixType_::StorageIndex StorageIndex;
   };
 
-  template<typename _MatrixType, int Options>
-  struct pardiso_traits< PardisoLLT<_MatrixType, Options> >
+  template<typename MatrixType_, int Options>
+  struct pardiso_traits< PardisoLLT<MatrixType_, Options> >
   {
-    typedef _MatrixType MatrixType;
-    typedef typename _MatrixType::Scalar Scalar;
-    typedef typename _MatrixType::RealScalar RealScalar;
-    typedef typename _MatrixType::StorageIndex StorageIndex;
+    typedef MatrixType_ MatrixType;
+    typedef typename MatrixType_::Scalar Scalar;
+    typedef typename MatrixType_::RealScalar RealScalar;
+    typedef typename MatrixType_::StorageIndex StorageIndex;
   };
 
-  template<typename _MatrixType, int Options>
-  struct pardiso_traits< PardisoLDLT<_MatrixType, Options> >
+  template<typename MatrixType_, int Options>
+  struct pardiso_traits< PardisoLDLT<MatrixType_, Options> >
   {
-    typedef _MatrixType MatrixType;
-    typedef typename _MatrixType::Scalar Scalar;
-    typedef typename _MatrixType::RealScalar RealScalar;
-    typedef typename _MatrixType::StorageIndex StorageIndex;    
+    typedef MatrixType_ MatrixType;
+    typedef typename MatrixType_::Scalar Scalar;
+    typedef typename MatrixType_::RealScalar RealScalar;
+    typedef typename MatrixType_::StorageIndex StorageIndex;
   };
 
 } // end namespace internal
@@ -375,7 +377,7 @@ void PardisoImpl<Derived>::_solve_impl(const MatrixBase<BDerived> &b, MatrixBase
   * By default, it runs in in-core mode. To enable PARDISO's out-of-core feature, set:
   * \code solver.pardisoParameterArray()[59] = 1; \endcode
   *
-  * \tparam _MatrixType the type of the sparse matrix A, it must be a SparseMatrix<>
+  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
   *
   * \implsparsesolverconcept
   *
@@ -437,21 +439,21 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
   *
   * \sa \ref TutorialSparseSolverConcept, class SimplicialLLT
   */
-template<typename MatrixType, int _UpLo>
-class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,_UpLo> >
+template<typename MatrixType, int UpLo_>
+class PardisoLLT : public PardisoImpl< PardisoLLT<MatrixType,UpLo_> >
 {
   protected:
-    typedef PardisoImpl< PardisoLLT<MatrixType,_UpLo> > Base;
+    typedef PardisoImpl< PardisoLLT<MatrixType,UpLo_> > Base;
     using Base::pardisoInit;
     using Base::m_matrix;
-    friend class PardisoImpl< PardisoLLT<MatrixType,_UpLo> >;
+    friend class PardisoImpl< PardisoLLT<MatrixType,UpLo_> >;
 
   public:
 
     typedef typename Base::Scalar Scalar;
     typedef typename Base::RealScalar RealScalar;
     typedef typename Base::StorageIndex StorageIndex;
-    enum { UpLo = _UpLo };
+    enum { UpLo = UpLo_ };
     using Base::compute;
 
     PardisoLLT()

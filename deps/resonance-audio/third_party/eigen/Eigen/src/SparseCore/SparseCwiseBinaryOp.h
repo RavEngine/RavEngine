@@ -10,6 +10,8 @@
 #ifndef EIGEN_SPARSE_CWISE_BINARY_OP_H
 #define EIGEN_SPARSE_CWISE_BINARY_OP_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
 // Here we have to handle 3 cases:
@@ -40,14 +42,11 @@ class CwiseBinaryOpImpl<BinaryOp, Lhs, Rhs, Sparse>
     typedef CwiseBinaryOp<BinaryOp, Lhs, Rhs> Derived;
     typedef SparseMatrixBase<Derived> Base;
     EIGEN_SPARSE_PUBLIC_INTERFACE(Derived)
-    CwiseBinaryOpImpl()
-    {
-      EIGEN_STATIC_ASSERT((
-                (!internal::is_same<typename internal::traits<Lhs>::StorageKind,
-                                    typename internal::traits<Rhs>::StorageKind>::value)
-            ||  ((internal::evaluator<Lhs>::Flags&RowMajorBit) == (internal::evaluator<Rhs>::Flags&RowMajorBit))),
-            THE_STORAGE_ORDER_OF_BOTH_SIDES_MUST_MATCH);
-    }
+    EIGEN_STATIC_ASSERT((
+              (!internal::is_same<typename internal::traits<Lhs>::StorageKind,
+                                  typename internal::traits<Rhs>::StorageKind>::value)
+          ||  ((internal::evaluator<Lhs>::Flags&RowMajorBit) == (internal::evaluator<Rhs>::Flags&RowMajorBit))),
+          THE_STORAGE_ORDER_OF_BOTH_SIDES_MUST_MATCH)
 };
 
 namespace internal {
@@ -126,7 +125,7 @@ public:
   
   
   enum {
-    CoeffReadCost = evaluator<Lhs>::CoeffReadCost + evaluator<Rhs>::CoeffReadCost + functor_traits<BinaryOp>::Cost,
+    CoeffReadCost = int(evaluator<Lhs>::CoeffReadCost) + int(evaluator<Rhs>::CoeffReadCost) + int(functor_traits<BinaryOp>::Cost),
     Flags = XprType::Flags
   };
   
@@ -211,7 +210,7 @@ public:
 
 
   enum {
-    CoeffReadCost = evaluator<Lhs>::CoeffReadCost + evaluator<Rhs>::CoeffReadCost + functor_traits<BinaryOp>::Cost,
+    CoeffReadCost = int(evaluator<Lhs>::CoeffReadCost) + int(evaluator<Rhs>::CoeffReadCost) + int(functor_traits<BinaryOp>::Cost),
     Flags = XprType::Flags
   };
 
@@ -298,7 +297,7 @@ public:
 
 
   enum {
-    CoeffReadCost = evaluator<Lhs>::CoeffReadCost + evaluator<Rhs>::CoeffReadCost + functor_traits<BinaryOp>::Cost,
+    CoeffReadCost = int(evaluator<Lhs>::CoeffReadCost) + int(evaluator<Rhs>::CoeffReadCost) + int(functor_traits<BinaryOp>::Cost),
     Flags = XprType::Flags
   };
 
@@ -457,7 +456,7 @@ public:
   
   
   enum {
-    CoeffReadCost = evaluator<LhsArg>::CoeffReadCost + evaluator<RhsArg>::CoeffReadCost + functor_traits<BinaryOp>::Cost,
+    CoeffReadCost = int(evaluator<LhsArg>::CoeffReadCost) + int(evaluator<RhsArg>::CoeffReadCost) + int(functor_traits<BinaryOp>::Cost),
     Flags = XprType::Flags
   };
   
@@ -530,7 +529,7 @@ public:
   
   
   enum {
-    CoeffReadCost = evaluator<LhsArg>::CoeffReadCost + evaluator<RhsArg>::CoeffReadCost + functor_traits<BinaryOp>::Cost,
+    CoeffReadCost = int(evaluator<LhsArg>::CoeffReadCost) + int(evaluator<RhsArg>::CoeffReadCost) + int(functor_traits<BinaryOp>::Cost),
     Flags = XprType::Flags
   };
   
@@ -604,7 +603,7 @@ public:
   
   
   enum {
-    CoeffReadCost = evaluator<LhsArg>::CoeffReadCost + evaluator<RhsArg>::CoeffReadCost + functor_traits<BinaryOp>::Cost,
+    CoeffReadCost = int(evaluator<LhsArg>::CoeffReadCost) + int(evaluator<RhsArg>::CoeffReadCost) + int(functor_traits<BinaryOp>::Cost),
     Flags = XprType::Flags
   };
   

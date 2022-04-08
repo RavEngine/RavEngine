@@ -10,6 +10,8 @@
 #ifndef EIGEN_FORCEALIGNEDACCESS_H
 #define EIGEN_FORCEALIGNEDACCESS_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 
 /** \class ForceAlignedAccess
@@ -41,10 +43,14 @@ template<typename ExpressionType> class ForceAlignedAccess
 
     EIGEN_DEVICE_FUNC explicit inline ForceAlignedAccess(const ExpressionType& matrix) : m_expression(matrix) {}
 
-    EIGEN_DEVICE_FUNC inline Index rows() const { return m_expression.rows(); }
-    EIGEN_DEVICE_FUNC inline Index cols() const { return m_expression.cols(); }
-    EIGEN_DEVICE_FUNC inline Index outerStride() const { return m_expression.outerStride(); }
-    EIGEN_DEVICE_FUNC inline Index innerStride() const { return m_expression.innerStride(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index rows() const EIGEN_NOEXCEPT { return m_expression.rows(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index cols() const EIGEN_NOEXCEPT { return m_expression.cols(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index outerStride() const EIGEN_NOEXCEPT { return m_expression.outerStride(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index innerStride() const EIGEN_NOEXCEPT { return m_expression.innerStride(); }
 
     EIGEN_DEVICE_FUNC inline const CoeffReturnType coeff(Index row, Index col) const
     {
@@ -124,7 +130,7 @@ MatrixBase<Derived>::forceAlignedAccess()
   */
 template<typename Derived>
 template<bool Enable>
-inline typename internal::add_const_on_value_type<typename internal::conditional<Enable,ForceAlignedAccess<Derived>,Derived&>::type>::type
+inline add_const_on_value_type_t<std::conditional_t<Enable,ForceAlignedAccess<Derived>,Derived&>>
 MatrixBase<Derived>::forceAlignedAccessIf() const
 {
   return derived();  // FIXME This should not work but apparently is never used
@@ -135,7 +141,7 @@ MatrixBase<Derived>::forceAlignedAccessIf() const
   */
 template<typename Derived>
 template<bool Enable>
-inline typename internal::conditional<Enable,ForceAlignedAccess<Derived>,Derived&>::type
+inline std::conditional_t<Enable,ForceAlignedAccess<Derived>,Derived&>
 MatrixBase<Derived>::forceAlignedAccessIf()
 {
   return derived();  // FIXME This should not work but apparently is never used

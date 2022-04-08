@@ -15,6 +15,8 @@
 
 #include <iostream>
 
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
@@ -75,15 +77,12 @@ struct Packet2cf {
   EIGEN_STRONG_INLINE Packet2cf operator-(const Packet2cf& b) const {
     return Packet2cf(*this) -= b;
   }
-  EIGEN_STRONG_INLINE Packet2cf& operator/=(const Packet2cf& b) {
-    *this *= b.conjugate();
-    Packet4f s = pmul<Packet4f>(b.v, b.v);
-    s = padd(s, (Packet4f)__builtin_msa_shf_w((v4i32)s, EIGEN_MSA_SHF_I8(1, 0, 3, 2)));
-    v = pdiv(v, s);
-    return *this;
-  }
   EIGEN_STRONG_INLINE Packet2cf operator/(const Packet2cf& b) const {
-    return Packet2cf(*this) /= b;
+    return pdiv_complex(Packet2cf(*this), b);
+  }
+  EIGEN_STRONG_INLINE Packet2cf& operator/=(const Packet2cf& b) {
+    *this = Packet2cf(*this) / b;
+    return *this;
   }
   EIGEN_STRONG_INLINE Packet2cf operator-(void) const {
     return Packet2cf(pnegate(v));
@@ -304,42 +303,6 @@ EIGEN_STRONG_INLINE std::complex<float> predux_mul<Packet2cf>(const Packet2cf& a
   return std::complex<float>((a.v[0] * a.v[2]) - (a.v[1] * a.v[3]),
                              (a.v[0] * a.v[3]) + (a.v[1] * a.v[2]));
 }
-
-template <>
-struct conj_helper<Packet2cf, Packet2cf, false, true> {
-  EIGEN_STRONG_INLINE Packet2cf pmadd(const Packet2cf& x, const Packet2cf& y,
-                                      const Packet2cf& c) const {
-    return padd(pmul(x, y), c);
-  }
-
-  EIGEN_STRONG_INLINE Packet2cf pmul(const Packet2cf& a, const Packet2cf& b) const {
-    return internal::pmul(a, pconj(b));
-  }
-};
-
-template <>
-struct conj_helper<Packet2cf, Packet2cf, true, false> {
-  EIGEN_STRONG_INLINE Packet2cf pmadd(const Packet2cf& x, const Packet2cf& y,
-                                      const Packet2cf& c) const {
-    return padd(pmul(x, y), c);
-  }
-
-  EIGEN_STRONG_INLINE Packet2cf pmul(const Packet2cf& a, const Packet2cf& b) const {
-    return internal::pmul(pconj(a), b);
-  }
-};
-
-template <>
-struct conj_helper<Packet2cf, Packet2cf, true, true> {
-  EIGEN_STRONG_INLINE Packet2cf pmadd(const Packet2cf& x, const Packet2cf& y,
-                                      const Packet2cf& c) const {
-    return padd(pmul(x, y), c);
-  }
-
-  EIGEN_STRONG_INLINE Packet2cf pmul(const Packet2cf& a, const Packet2cf& b) const {
-    return pconj(internal::pmul(a, b));
-  }
-};
 
 EIGEN_MAKE_CONJ_HELPER_CPLX_REAL(Packet2cf, Packet4f)
 
@@ -643,42 +606,6 @@ EIGEN_STRONG_INLINE std::complex<double> predux_mul<Packet1cd>(const Packet1cd& 
 
   return pfirst(a);
 }
-
-template <>
-struct conj_helper<Packet1cd, Packet1cd, false, true> {
-  EIGEN_STRONG_INLINE Packet1cd pmadd(const Packet1cd& x, const Packet1cd& y,
-                                      const Packet1cd& c) const {
-    return padd(pmul(x, y), c);
-  }
-
-  EIGEN_STRONG_INLINE Packet1cd pmul(const Packet1cd& a, const Packet1cd& b) const {
-    return internal::pmul(a, pconj(b));
-  }
-};
-
-template <>
-struct conj_helper<Packet1cd, Packet1cd, true, false> {
-  EIGEN_STRONG_INLINE Packet1cd pmadd(const Packet1cd& x, const Packet1cd& y,
-                                      const Packet1cd& c) const {
-    return padd(pmul(x, y), c);
-  }
-
-  EIGEN_STRONG_INLINE Packet1cd pmul(const Packet1cd& a, const Packet1cd& b) const {
-    return internal::pmul(pconj(a), b);
-  }
-};
-
-template <>
-struct conj_helper<Packet1cd, Packet1cd, true, true> {
-  EIGEN_STRONG_INLINE Packet1cd pmadd(const Packet1cd& x, const Packet1cd& y,
-                                      const Packet1cd& c) const {
-    return padd(pmul(x, y), c);
-  }
-
-  EIGEN_STRONG_INLINE Packet1cd pmul(const Packet1cd& a, const Packet1cd& b) const {
-    return pconj(internal::pmul(a, b));
-  }
-};
 
 EIGEN_MAKE_CONJ_HELPER_CPLX_REAL(Packet1cd, Packet2d)
 

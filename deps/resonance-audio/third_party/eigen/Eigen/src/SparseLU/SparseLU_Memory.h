@@ -31,6 +31,8 @@
 #ifndef EIGEN_SPARSELU_MEMORY
 #define EIGEN_SPARSELU_MEMORY
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 namespace internal {
   

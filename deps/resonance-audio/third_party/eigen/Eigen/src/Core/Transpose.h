@@ -11,14 +11,16 @@
 #ifndef EIGEN_TRANSPOSE_H
 #define EIGEN_TRANSPOSE_H
 
-namespace Eigen { 
+#include "./InternalHeaderCheck.h"
+
+namespace Eigen {
 
 namespace internal {
 template<typename MatrixType>
 struct traits<Transpose<MatrixType> > : public traits<MatrixType>
 {
   typedef typename ref_selector<MatrixType>::type MatrixTypeNested;
-  typedef typename remove_reference<MatrixTypeNested>::type MatrixTypeNestedPlain;
+  typedef std::remove_reference_t<MatrixTypeNested> MatrixTypeNestedPlain;
   enum {
     RowsAtCompileTime = MatrixType::ColsAtCompileTime,
     ColsAtCompileTime = MatrixType::RowsAtCompileTime,
@@ -58,26 +60,26 @@ template<typename MatrixType> class Transpose
 
     typedef typename TransposeImpl<MatrixType,typename internal::traits<MatrixType>::StorageKind>::Base Base;
     EIGEN_GENERIC_PUBLIC_INTERFACE(Transpose)
-    typedef typename internal::remove_all<MatrixType>::type NestedExpression;
+    typedef internal::remove_all_t<MatrixType> NestedExpression;
 
     EIGEN_DEVICE_FUNC
     explicit EIGEN_STRONG_INLINE Transpose(MatrixType& matrix) : m_matrix(matrix) {}
 
     EIGEN_INHERIT_ASSIGNMENT_OPERATORS(Transpose)
 
-    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-    Index rows() const { return m_matrix.cols(); }
-    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-    Index cols() const { return m_matrix.rows(); }
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE EIGEN_CONSTEXPR
+    Index rows() const EIGEN_NOEXCEPT { return m_matrix.cols(); }
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE EIGEN_CONSTEXPR
+    Index cols() const EIGEN_NOEXCEPT { return m_matrix.rows(); }
 
     /** \returns the nested expression */
     EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-    const typename internal::remove_all<MatrixTypeNested>::type&
+    const internal::remove_all_t<MatrixTypeNested>&
     nestedExpression() const { return m_matrix; }
 
     /** \returns the nested expression */
     EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-    typename internal::remove_reference<MatrixTypeNested>::type&
+    std::remove_reference_t<MatrixTypeNested>&
     nestedExpression() { return m_matrix; }
 
     /** \internal */
@@ -130,11 +132,11 @@ template<typename MatrixType> class TransposeImpl<MatrixType,Dense>
     EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
     Index outerStride() const { return derived().nestedExpression().outerStride(); }
 
-    typedef typename internal::conditional<
-                       internal::is_lvalue<MatrixType>::value,
-                       Scalar,
-                       const Scalar
-                     >::type ScalarWithConstIfNotLvalue;
+    typedef std::conditional_t<
+              internal::is_lvalue<MatrixType>::value,
+              Scalar,
+              const Scalar
+            > ScalarWithConstIfNotLvalue;
 
     EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
     ScalarWithConstIfNotLvalue* data() { return derived().nestedExpression().data(); }
@@ -191,7 +193,7 @@ DenseBase<Derived>::transpose()
   * \sa transposeInPlace(), adjoint() */
 template<typename Derived>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-typename DenseBase<Derived>::ConstTransposeReturnType
+const typename DenseBase<Derived>::ConstTransposeReturnType
 DenseBase<Derived>::transpose() const
 {
   return ConstTransposeReturnType(derived());
@@ -336,7 +338,7 @@ struct inplace_transpose_selector<MatrixType,false,MatchPacketSize> { // non squ
   * Notice however that this method is only useful if you want to replace a matrix by its own transpose.
   * If you just need the transpose of a matrix, use transpose().
   *
-  * \note if the matrix is not square, then \c *this must be a resizable matrix. 
+  * \note if the matrix is not square, then \c *this must be a resizable matrix.
   * This excludes (non-square) fixed-size matrices, block-expressions and maps.
   *
   * \sa transpose(), adjoint(), adjointInPlace() */

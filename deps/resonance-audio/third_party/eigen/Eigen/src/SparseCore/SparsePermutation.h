@@ -12,6 +12,8 @@
 
 // This file implements sparse * permutation products
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
 namespace internal {
@@ -20,7 +22,7 @@ template<typename ExpressionType, int Side, bool Transposed>
 struct permutation_matrix_product<ExpressionType, Side, Transposed, SparseShape>
 {
     typedef typename nested_eval<ExpressionType, 1>::type MatrixType;
-    typedef typename remove_all<MatrixType>::type MatrixTypeCleaned;
+    typedef remove_all_t<MatrixType> MatrixTypeCleaned;
 
     typedef typename MatrixTypeCleaned::Scalar Scalar;
     typedef typename MatrixTypeCleaned::StorageIndex StorageIndex;
@@ -30,9 +32,9 @@ struct permutation_matrix_product<ExpressionType, Side, Transposed, SparseShape>
       MoveOuter = SrcStorageOrder==RowMajor ? Side==OnTheLeft : Side==OnTheRight
     };
     
-    typedef typename internal::conditional<MoveOuter,
+    typedef std::conditional_t<MoveOuter,
         SparseMatrix<Scalar,SrcStorageOrder,StorageIndex>,
-        SparseMatrix<Scalar,int(SrcStorageOrder)==RowMajor?ColMajor:RowMajor,StorageIndex> >::type ReturnType;
+        SparseMatrix<Scalar,int(SrcStorageOrder)==RowMajor?ColMajor:RowMajor,StorageIndex> > ReturnType;
 
     template<typename Dest,typename PermutationType>
     static inline void run(Dest& dst, const PermutationType& perm, const ExpressionType& xpr)
@@ -107,7 +109,7 @@ struct product_evaluator<Product<Lhs, Rhs, AliasFreeProduct>, ProductTag, Permut
   explicit product_evaluator(const XprType& xpr)
     : m_result(xpr.rows(), xpr.cols())
   {
-    ::new (static_cast<Base*>(this)) Base(m_result);
+    internal::construct_at<Base>(this, m_result);
     generic_product_impl<Lhs, Rhs, PermutationShape, SparseShape, ProductTag>::evalTo(m_result, xpr.lhs(), xpr.rhs());
   }
 

@@ -11,6 +11,8 @@
 #ifndef EIGEN_REDUX_H
 #define EIGEN_REDUX_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
 namespace internal {
@@ -58,7 +60,7 @@ public:
 public:
   enum {
     Cost = Evaluator::SizeAtCompileTime == Dynamic ? HugeCost
-         : Evaluator::SizeAtCompileTime * Evaluator::CoeffReadCost + (Evaluator::SizeAtCompileTime-1) * functor_traits<Func>::Cost,
+         : int(Evaluator::SizeAtCompileTime) * int(Evaluator::CoeffReadCost) + (Evaluator::SizeAtCompileTime-1) * functor_traits<Func>::Cost,
     UnrollingLimit = EIGEN_UNROLLING_LIMIT * (int(Traversal) == int(DefaultTraversal) ? 1 : int(PacketSize))
   };
 
@@ -238,7 +240,7 @@ struct redux_impl<Func, Evaluator, LinearVectorizedTraversal, NoUnrolling>
     const int packetAlignment = unpacket_traits<PacketScalar>::alignment;
     enum {
       alignment0 = (bool(Evaluator::Flags & DirectAccessBit) && bool(packet_traits<Scalar>::AlignedOnScalar)) ? int(packetAlignment) : int(Unaligned),
-      alignment = EIGEN_PLAIN_ENUM_MAX(alignment0, Evaluator::Alignment)
+      alignment = plain_enum_max(alignment0, Evaluator::Alignment)
     };
     const Index alignedStart = internal::first_default_aligned(xpr);
     const Index alignedSize2 = ((size-alignedStart)/(2*packetSize))*(2*packetSize);
@@ -331,7 +333,7 @@ struct redux_impl<Func, Evaluator, LinearVectorizedTraversal, CompleteUnrolling>
   enum {
     PacketSize = redux_traits<Func, Evaluator>::PacketSize,
     Size = Evaluator::SizeAtCompileTime,
-    VectorizedSize = (Size / PacketSize) * PacketSize
+    VectorizedSize = (int(Size) / int(PacketSize)) * int(PacketSize)
   };
 
   template<typename XprType>
@@ -353,12 +355,12 @@ struct redux_impl<Func, Evaluator, LinearVectorizedTraversal, CompleteUnrolling>
 };
 
 // evaluator adaptor
-template<typename _XprType>
-class redux_evaluator : public internal::evaluator<_XprType>
+template<typename XprType_>
+class redux_evaluator : public internal::evaluator<XprType_>
 {
-  typedef internal::evaluator<_XprType> Base;
+  typedef internal::evaluator<XprType_> Base;
 public:
-  typedef _XprType XprType;
+  typedef XprType_ XprType;
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
   explicit redux_evaluator(const XprType &xpr) : Base(xpr) {}
   
@@ -419,25 +421,33 @@ DenseBase<Derived>::redux(const Func& func) const
 }
 
 /** \returns the minimum of all coefficients of \c *this.
+  * In case \c *this contains NaN, NaNPropagation determines the behavior:
+  *   NaNPropagation == PropagateFast : undefined
+  *   NaNPropagation == PropagateNaN : result is NaN
+  *   NaNPropagation == PropagateNumbers : result is minimum of elements that are not NaN
   * \warning the matrix must be not empty, otherwise an assertion is triggered.
-  * \warning the result is undefined if \c *this contains NaN.
   */
 template<typename Derived>
+template<int NaNPropagation>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE typename internal::traits<Derived>::Scalar
 DenseBase<Derived>::minCoeff() const
 {
-  return derived().redux(Eigen::internal::scalar_min_op<Scalar,Scalar>());
+  return derived().redux(Eigen::internal::scalar_min_op<Scalar,Scalar, NaNPropagation>());
 }
 
-/** \returns the maximum of all coefficients of \c *this.
+/** \returns the maximum of all coefficients of \c *this. 
+  * In case \c *this contains NaN, NaNPropagation determines the behavior:
+  *   NaNPropagation == PropagateFast : undefined
+  *   NaNPropagation == PropagateNaN : result is NaN
+  *   NaNPropagation == PropagateNumbers : result is maximum of elements that are not NaN
   * \warning the matrix must be not empty, otherwise an assertion is triggered.
-  * \warning the result is undefined if \c *this contains NaN.
   */
 template<typename Derived>
+template<int NaNPropagation>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE typename internal::traits<Derived>::Scalar
 DenseBase<Derived>::maxCoeff() const
 {
-  return derived().redux(Eigen::internal::scalar_max_op<Scalar,Scalar>());
+  return derived().redux(Eigen::internal::scalar_max_op<Scalar,Scalar, NaNPropagation>());
 }
 
 /** \returns the sum of all coefficients of \c *this

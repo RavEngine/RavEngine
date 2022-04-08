@@ -1,15 +1,21 @@
-
 project(EigenLapack CXX)
 
-include("../cmake/language_support.cmake")
+if(EIGEN_BUILD_LAPACK AND EIGEN_BUILD_BLAS)
 
-workaround_9220(Fortran EIGEN_Fortran_COMPILER_WORKS)
-
-if(EIGEN_Fortran_COMPILER_WORKS)
-  enable_language(Fortran OPTIONAL)
-  if(NOT CMAKE_Fortran_COMPILER)
-    set(EIGEN_Fortran_COMPILER_WORKS OFF)
+include(CheckLanguage)
+check_language(Fortran)
+if(CMAKE_Fortran_COMPILER)
+  enable_language(Fortran)
+  if("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "GNU")
+    if ("${CMAKE_Fortran_COMPILER_VERSION}" VERSION_GREATER_EQUAL 10.0)
+      # We use an old version of LAPACK with argument type mismatches.
+      # Allow them to compile anyway with newer GNU versions.
+      set(CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+    endif()
   endif()
+  set(EIGEN_Fortran_COMPILER_WORKS ON)
+else()
+  set(EIGEN_Fortran_COMPILER_WORKS OFF)
 endif()
 
 add_custom_target(lapack)
@@ -90,25 +96,29 @@ endif()
 
 endif()
 
+set(EIGEN_LAPACK_TARGETS "")
+
 add_library(eigen_lapack_static ${EigenLapack_SRCS} ${ReferenceLapack_SRCS})
-add_library(eigen_lapack SHARED ${EigenLapack_SRCS})
+list(APPEND EIGEN_LAPACK_TARGETS eigen_lapack_static)
 
-target_link_libraries(eigen_lapack  eigen_blas)
-
-if(EIGEN_STANDARD_LIBRARIES_TO_LINK_TO)
-  target_link_libraries(eigen_lapack_static ${EIGEN_STANDARD_LIBRARIES_TO_LINK_TO})
-  target_link_libraries(eigen_lapack        ${EIGEN_STANDARD_LIBRARIES_TO_LINK_TO})
+if (EIGEN_BUILD_SHARED_LIBS)
+  add_library(eigen_lapack SHARED ${EigenLapack_SRCS})
+  list(APPEND EIGEN_LAPACK_TARGETS eigen_lapack)
+  target_link_libraries(eigen_lapack  eigen_blas)
 endif()
 
-add_dependencies(lapack eigen_lapack eigen_lapack_static)
+foreach(target IN LISTS EIGEN_LAPACK_TARGETS)
+  if(EIGEN_STANDARD_LIBRARIES_TO_LINK_TO)
+    target_link_libraries(${target} ${EIGEN_STANDARD_LIBRARIES_TO_LINK_TO})
+  endif()
+  add_dependencies(lapack ${target})
+  install(TARGETS ${target}
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION lib
+          ARCHIVE DESTINATION lib)
+endforeach()
 
-install(TARGETS eigen_lapack eigen_lapack_static
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
 
-        
-        
 get_filename_component(eigen_full_path_to_testing_lapack "./testing/" ABSOLUTE)
 if(EXISTS ${eigen_full_path_to_testing_lapack})
   
@@ -143,6 +153,7 @@ if(EXISTS ${eigen_full_path_to_testing_lapack})
     string(REPLACE "." "_" input_name ${input})
     set(testName "${target}_${input_name}")
     if(EXISTS "${TEST_INPUT}")
+      add_dependencies(buildtests ${target})
       add_test(NAME LAPACK-${testName}
         COMMAND "${CMAKE_COMMAND}"
         -DTEST=$<TARGET_FILE:${target}>
@@ -448,3 +459,6 @@ if(EXISTS ${eigen_full_path_to_testing_lapack})
 
 endif()
 
+elseif(EIGEN_BUILD_LAPACK AND NOT EIGEN_BUILD_BLAS)
+ message(FATAL_ERROR "EIGEN_BUILD_LAPACK requires EIGEN_BUILD_BLAS")
+endif() #EIGEN_BUILD_LAPACK

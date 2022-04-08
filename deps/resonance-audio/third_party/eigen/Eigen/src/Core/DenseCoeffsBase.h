@@ -10,12 +10,14 @@
 #ifndef EIGEN_DENSECOEFFSBASE_H
 #define EIGEN_DENSECOEFFSBASE_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
 template<typename T> struct add_const_on_value_type_if_arithmetic
 {
-  typedef typename conditional<is_arithmetic<T>::value, T, typename add_const_on_value_type<T>::type>::type type;
+  typedef std::conditional_t<is_arithmetic<T>::value, T, add_const_on_value_type_t<T>> type;
 };
 }
 
@@ -27,7 +29,7 @@ template<typename T> struct add_const_on_value_type_if_arithmetic
   *
   * This class defines the \c operator() \c const function and friends, which can be used to read specific
   * entries of a matrix or array.
-  * 
+  *
   * \sa DenseCoeffsBase<Derived, WriteAccessors>, DenseCoeffsBase<Derived, DirectAccessors>,
   *     \ref TopicClassHierarchy
   */
@@ -43,13 +45,13 @@ class DenseCoeffsBase<Derived,ReadOnlyAccessors> : public EigenBase<Derived>
     // - This is the return type of the coeff() method.
     // - The LvalueBit means exactly that we can offer a coeffRef() method, which means exactly that we can get references
     // to coeffs, which means exactly that we can have coeff() return a const reference (as opposed to returning a value).
-    // - The is_artihmetic check is required since "const int", "const double", etc. will cause warnings on some systems
+    // - The is_arithmetic check is required since "const int", "const double", etc. will cause warnings on some systems
     // while the declaration of "const T", where T is a non arithmetic type does not. Always returning "const Scalar&" is
     // not possible, since the underlying expressions might not offer a valid address the reference could be referring to.
-    typedef typename internal::conditional<bool(internal::traits<Derived>::Flags&LvalueBit),
-                         const Scalar&,
-                         typename internal::conditional<internal::is_arithmetic<Scalar>::value, Scalar, const Scalar>::type
-                     >::type CoeffReturnType;
+    typedef std::conditional_t<bool(internal::traits<Derived>::Flags&LvalueBit),
+                const Scalar&,
+                std::conditional_t<internal::is_arithmetic<Scalar>::value, Scalar, const Scalar>
+            > CoeffReturnType;
 
     typedef typename internal::add_const_on_value_type_if_arithmetic<
                          typename internal::packet_traits<Scalar>::type
@@ -295,7 +297,7 @@ class DenseCoeffsBase<Derived,ReadOnlyAccessors> : public EigenBase<Derived>
   * This class defines the non-const \c operator() function and friends, which can be used to write specific
   * entries of a matrix or array. This class inherits DenseCoeffsBase<Derived, ReadOnlyAccessors> which
   * defines the const variant for reading specific entries.
-  * 
+  *
   * \sa DenseCoeffsBase<Derived, DirectAccessors>, \ref TopicClassHierarchy
   */
 template<typename Derived>
@@ -495,7 +497,7 @@ class DenseCoeffsBase<Derived, DirectAccessors> : public DenseCoeffsBase<Derived
       *
       * \sa outerStride(), rowStride(), colStride()
       */
-    EIGEN_DEVICE_FUNC
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
     inline Index innerStride() const
     {
       return derived().innerStride();
@@ -506,14 +508,14 @@ class DenseCoeffsBase<Derived, DirectAccessors> : public DenseCoeffsBase<Derived
       *
       * \sa innerStride(), rowStride(), colStride()
       */
-    EIGEN_DEVICE_FUNC
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
     inline Index outerStride() const
     {
       return derived().outerStride();
     }
 
     // FIXME shall we remove it ?
-    inline Index stride() const
+    EIGEN_CONSTEXPR inline Index stride() const
     {
       return Derived::IsVectorAtCompileTime ? innerStride() : outerStride();
     }
@@ -522,7 +524,7 @@ class DenseCoeffsBase<Derived, DirectAccessors> : public DenseCoeffsBase<Derived
       *
       * \sa innerStride(), outerStride(), colStride()
       */
-    EIGEN_DEVICE_FUNC
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
     inline Index rowStride() const
     {
       return Derived::IsRowMajor ? outerStride() : innerStride();
@@ -532,7 +534,7 @@ class DenseCoeffsBase<Derived, DirectAccessors> : public DenseCoeffsBase<Derived
       *
       * \sa innerStride(), outerStride(), rowStride()
       */
-    EIGEN_DEVICE_FUNC
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
     inline Index colStride() const
     {
       return Derived::IsRowMajor ? innerStride() : outerStride();
@@ -570,8 +572,8 @@ class DenseCoeffsBase<Derived, DirectWriteAccessors>
       *
       * \sa outerStride(), rowStride(), colStride()
       */
-    EIGEN_DEVICE_FUNC
-    inline Index innerStride() const
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index innerStride() const EIGEN_NOEXCEPT
     {
       return derived().innerStride();
     }
@@ -581,14 +583,14 @@ class DenseCoeffsBase<Derived, DirectWriteAccessors>
       *
       * \sa innerStride(), rowStride(), colStride()
       */
-    EIGEN_DEVICE_FUNC
-    inline Index outerStride() const
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index outerStride() const EIGEN_NOEXCEPT
     {
       return derived().outerStride();
     }
 
     // FIXME shall we remove it ?
-    inline Index stride() const
+    EIGEN_CONSTEXPR inline Index stride() const EIGEN_NOEXCEPT
     {
       return Derived::IsVectorAtCompileTime ? innerStride() : outerStride();
     }
@@ -597,8 +599,8 @@ class DenseCoeffsBase<Derived, DirectWriteAccessors>
       *
       * \sa innerStride(), outerStride(), colStride()
       */
-    EIGEN_DEVICE_FUNC
-    inline Index rowStride() const
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index rowStride() const EIGEN_NOEXCEPT
     {
       return Derived::IsRowMajor ? outerStride() : innerStride();
     }
@@ -607,8 +609,8 @@ class DenseCoeffsBase<Derived, DirectWriteAccessors>
       *
       * \sa innerStride(), outerStride(), rowStride()
       */
-    EIGEN_DEVICE_FUNC
-    inline Index colStride() const
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index colStride() const EIGEN_NOEXCEPT
     {
       return Derived::IsRowMajor ? innerStride() : outerStride();
     }
@@ -619,7 +621,7 @@ namespace internal {
 template<int Alignment, typename Derived, bool JustReturnZero>
 struct first_aligned_impl
 {
-  static inline Index run(const Derived&)
+  static EIGEN_CONSTEXPR inline Index run(const Derived&) EIGEN_NOEXCEPT
   { return 0; }
 };
 

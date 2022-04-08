@@ -10,12 +10,14 @@
 #ifndef EIGEN_COMPLETEORTHOGONALDECOMPOSITION_H
 #define EIGEN_COMPLETEORTHOGONALDECOMPOSITION_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
-template <typename _MatrixType>
-struct traits<CompleteOrthogonalDecomposition<_MatrixType> >
-    : traits<_MatrixType> {
+template <typename MatrixType_>
+struct traits<CompleteOrthogonalDecomposition<MatrixType_> >
+    : traits<MatrixType_> {
   typedef MatrixXpr XprKind;
   typedef SolverStorage StorageKind;
   typedef int StorageIndex;
@@ -30,7 +32,7 @@ struct traits<CompleteOrthogonalDecomposition<_MatrixType> >
   *
   * \brief Complete orthogonal decomposition (COD) of a matrix.
   *
-  * \param MatrixType the type of the matrix of which we are computing the COD.
+  * \tparam MatrixType_ the type of the matrix of which we are computing the COD.
   *
   * This class performs a rank-revealing complete orthogonal decomposition of a
   * matrix  \b A into matrices \b P, \b Q, \b T, and \b Z such that
@@ -47,11 +49,11 @@ struct traits<CompleteOrthogonalDecomposition<_MatrixType> >
   * 
   * \sa MatrixBase::completeOrthogonalDecomposition()
   */
-template <typename _MatrixType> class CompleteOrthogonalDecomposition
-          : public SolverBase<CompleteOrthogonalDecomposition<_MatrixType> >
+template <typename MatrixType_> class CompleteOrthogonalDecomposition
+          : public SolverBase<CompleteOrthogonalDecomposition<MatrixType_> >
 {
  public:
-  typedef _MatrixType MatrixType;
+  typedef MatrixType_ MatrixType;
   typedef SolverBase<CompleteOrthogonalDecomposition> Base;
 
   template<typename Derived>
@@ -71,8 +73,8 @@ template <typename _MatrixType> class CompleteOrthogonalDecomposition
   typedef typename internal::plain_row_type<MatrixType, RealScalar>::type
       RealRowVectorType;
   typedef HouseholderSequence<
-      MatrixType, typename internal::remove_all<
-                      typename HCoeffsType::ConjugateReturnType>::type>
+      MatrixType, internal::remove_all_t<
+                      typename HCoeffsType::ConjugateReturnType>>
       HouseholderSequenceType;
   typedef typename MatrixType::PlainObject PlainObject;
 
@@ -177,7 +179,7 @@ template <typename _MatrixType> class CompleteOrthogonalDecomposition
    * \code matrixT().template triangularView<Upper>() \endcode
    * For rank-deficient matrices, use
    * \code
-   * matrixR().topLeftCorner(rank(), rank()).template triangularView<Upper>()
+   * matrixT().topLeftCorner(rank(), rank()).template triangularView<Upper>()
    * \endcode
    */
   const MatrixType& matrixT() const { return m_cpqr.matrixQR(); }
@@ -377,9 +379,7 @@ template <typename _MatrixType> class CompleteOrthogonalDecomposition
 #endif
 
  protected:
-  static void check_template_parameters() {
-    EIGEN_STATIC_ASSERT_NON_INTEGER(Scalar);
-  }
+  EIGEN_STATIC_ASSERT_NON_INTEGER(Scalar)
 
   template<bool Transpose_, typename Rhs>
   void _check_solve_assertion(const Rhs& b) const {
@@ -429,8 +429,6 @@ CompleteOrthogonalDecomposition<MatrixType>::logAbsDeterminant() const {
 template <typename MatrixType>
 void CompleteOrthogonalDecomposition<MatrixType>::computeInPlace()
 {
-  check_template_parameters();
-
   // the column permutation is stored as int indices, so just to be sure:
   eigen_assert(m_cpqr.cols() <= NumTraits<int>::highest());
 
@@ -529,9 +527,9 @@ void CompleteOrthogonalDecomposition<MatrixType>::applyZAdjointOnTheLeftInPlace(
 }
 
 #ifndef EIGEN_PARSED_BY_DOXYGEN
-template <typename _MatrixType>
+template <typename MatrixType_>
 template <typename RhsType, typename DstType>
-void CompleteOrthogonalDecomposition<_MatrixType>::_solve_impl(
+void CompleteOrthogonalDecomposition<MatrixType_>::_solve_impl(
     const RhsType& rhs, DstType& dst) const {
   const Index rank = this->rank();
   if (rank == 0) {
@@ -561,9 +559,9 @@ void CompleteOrthogonalDecomposition<_MatrixType>::_solve_impl(
   dst = colsPermutation() * dst;
 }
 
-template<typename _MatrixType>
+template<typename MatrixType_>
 template<bool Conjugate, typename RhsType, typename DstType>
-void CompleteOrthogonalDecomposition<_MatrixType>::_solve_impl_transposed(const RhsType &rhs, DstType &dst) const
+void CompleteOrthogonalDecomposition<MatrixType_>::_solve_impl_transposed(const RhsType &rhs, DstType &dst) const
 {
   const Index rank = this->rank();
 

@@ -32,7 +32,7 @@ macro(configure_msvc_runtime)
 endmacro()
 
 macro(use_cxx11)
-    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED on)
 endmacro(use_cxx11)
 

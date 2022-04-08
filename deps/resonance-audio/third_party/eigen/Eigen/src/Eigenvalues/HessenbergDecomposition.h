@@ -11,6 +11,8 @@
 #ifndef EIGEN_HESSENBERGDECOMPOSITION_H
 #define EIGEN_HESSENBERGDECOMPOSITION_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen { 
 
 namespace internal {
@@ -31,7 +33,7 @@ struct traits<HessenbergDecompositionMatrixHReturnType<MatrixType> >
   *
   * \brief Reduces a square matrix to Hessenberg form by an orthogonal similarity transformation
   *
-  * \tparam _MatrixType the type of the matrix of which we are computing the Hessenberg decomposition
+  * \tparam MatrixType_ the type of the matrix of which we are computing the Hessenberg decomposition
   *
   * This class performs an Hessenberg decomposition of a matrix \f$ A \f$. In
   * the real case, the Hessenberg decomposition consists of an orthogonal
@@ -54,12 +56,12 @@ struct traits<HessenbergDecompositionMatrixHReturnType<MatrixType> >
   *
   * \sa class ComplexSchur, class Tridiagonalization, \ref QR_Module "QR Module"
   */
-template<typename _MatrixType> class HessenbergDecomposition
+template<typename MatrixType_> class HessenbergDecomposition
 {
   public:
 
-    /** \brief Synonym for the template parameter \p _MatrixType. */
-    typedef _MatrixType MatrixType;
+    /** \brief Synonym for the template parameter \p MatrixType_. */
+    typedef MatrixType_ MatrixType;
 
     enum {
       Size = MatrixType::RowsAtCompileTime,
@@ -82,7 +84,7 @@ template<typename _MatrixType> class HessenbergDecomposition
     typedef Matrix<Scalar, SizeMinusOne, 1, Options & ~RowMajor, MaxSizeMinusOne, 1> CoeffVectorType;
 
     /** \brief Return type of matrixQ() */
-    typedef HouseholderSequence<MatrixType,typename internal::remove_all<typename CoeffVectorType::ConjugateReturnType>::type> HouseholderSequenceType;
+    typedef HouseholderSequence<MatrixType,internal::remove_all_t<typename CoeffVectorType::ConjugateReturnType>> HouseholderSequenceType;
     
     typedef internal::HessenbergDecompositionMatrixHReturnType<MatrixType> MatrixHReturnType;
 
@@ -267,7 +269,7 @@ template<typename _MatrixType> class HessenbergDecomposition
 
   private:
 
-    typedef Matrix<Scalar, 1, Size, Options | RowMajor, 1, MaxSize> VectorType;
+    typedef Matrix<Scalar, 1, Size, int(Options) | int(RowMajor), 1, MaxSize> VectorType;
     typedef typename NumTraits<Scalar>::Real RealScalar;
     static void _compute(MatrixType& matA, CoeffVectorType& hCoeffs, VectorType& temp);
 

@@ -15,7 +15,9 @@
       EIGEN_STATIC_ASSERT((int(internal::evaluator<Derived>::Flags) & LinearAccessBit) || Derived::IsVectorAtCompileTime, \
                           YOU_ARE_TRYING_TO_USE_AN_INDEX_BASED_ACCESSOR_ON_AN_EXPRESSION_THAT_DOES_NOT_SUPPORT_THAT)
 
-namespace Eigen { 
+#include "./InternalHeaderCheck.h"
+
+namespace Eigen {
 
 /** \ingroup Core_Module
   *
@@ -51,11 +53,11 @@ template<typename Derived> class MapBase<Derived, ReadOnlyAccessors>
     typedef typename internal::traits<Derived>::Scalar Scalar;
     typedef typename internal::packet_traits<Scalar>::type PacketScalar;
     typedef typename NumTraits<Scalar>::Real RealScalar;
-    typedef typename internal::conditional<
-                         bool(internal::is_lvalue<Derived>::value),
-                         Scalar *,
-                         const Scalar *>::type
-                     PointerType;
+    typedef std::conditional_t<
+                bool(internal::is_lvalue<Derived>::value),
+                Scalar *,
+                const Scalar *>
+            PointerType;
 
     using Base::derived;
 //    using Base::RowsAtCompileTime;
@@ -87,9 +89,11 @@ template<typename Derived> class MapBase<Derived, ReadOnlyAccessors>
     typedef typename Base::CoeffReturnType CoeffReturnType;
 
     /** \copydoc DenseBase::rows() */
-    EIGEN_DEVICE_FUNC inline Index rows() const { return m_rows.value(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index rows() const EIGEN_NOEXCEPT { return m_rows.value(); }
     /** \copydoc DenseBase::cols() */
-    EIGEN_DEVICE_FUNC inline Index cols() const { return m_cols.value(); }
+    EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR
+    inline Index cols() const EIGEN_NOEXCEPT { return m_cols.value(); }
 
     /** Returns a pointer to the first coefficient of the matrix or vector.
       *
@@ -187,7 +191,7 @@ template<typename Derived> class MapBase<Derived, ReadOnlyAccessors>
 
     template<typename T>
     EIGEN_DEVICE_FUNC
-    void checkSanity(typename internal::enable_if<(internal::traits<T>::Alignment>0),void*>::type = 0) const
+    void checkSanity(std::enable_if_t<(internal::traits<T>::Alignment>0),void*> = 0) const
     {
 #if EIGEN_MAX_ALIGN_BYTES>0
       // innerStride() is not set yet when this function is called, so we optimistically assume the lowest plausible value:
@@ -200,7 +204,7 @@ template<typename Derived> class MapBase<Derived, ReadOnlyAccessors>
 
     template<typename T>
     EIGEN_DEVICE_FUNC
-    void checkSanity(typename internal::enable_if<internal::traits<T>::Alignment==0,void*>::type = 0) const
+    void checkSanity(std::enable_if_t<internal::traits<T>::Alignment==0,void*> = 0) const
     {}
 
     PointerType m_data;
@@ -243,11 +247,11 @@ template<typename Derived> class MapBase<Derived, WriteAccessors>
     using Base::rowStride;
     using Base::colStride;
 
-    typedef typename internal::conditional<
+    typedef std::conditional_t<
                     internal::is_lvalue<Derived>::value,
                     Scalar,
                     const Scalar
-                  >::type ScalarWithConstIfNotLvalue;
+                  > ScalarWithConstIfNotLvalue;
 
     EIGEN_DEVICE_FUNC
     inline const Scalar* data() const { return this->m_data; }

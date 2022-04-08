@@ -13,20 +13,20 @@
 #ifndef EIGEN_PARSED_BY_DOXYGEN
 
 /** \internal the return type of conjugate() */
-typedef typename internal::conditional<NumTraits<Scalar>::IsComplex,
-                    const CwiseUnaryOp<internal::scalar_conjugate_op<Scalar>, const Derived>,
-                    const Derived&
-                  >::type ConjugateReturnType;
+typedef std::conditional_t<NumTraits<Scalar>::IsComplex,
+            const CwiseUnaryOp<internal::scalar_conjugate_op<Scalar>, const Derived>,
+            const Derived&
+          > ConjugateReturnType;
 /** \internal the return type of real() const */
-typedef typename internal::conditional<NumTraits<Scalar>::IsComplex,
-                    const CwiseUnaryOp<internal::scalar_real_op<Scalar>, const Derived>,
-                    const Derived&
-                  >::type RealReturnType;
+typedef std::conditional_t<NumTraits<Scalar>::IsComplex,
+            const CwiseUnaryOp<internal::scalar_real_op<Scalar>, const Derived>,
+            const Derived&
+          > RealReturnType;
 /** \internal the return type of real() */
-typedef typename internal::conditional<NumTraits<Scalar>::IsComplex,
-                    CwiseUnaryView<internal::scalar_real_ref_op<Scalar>, Derived>,
-                    Derived&
-                  >::type NonConstRealReturnType;
+typedef std::conditional_t<NumTraits<Scalar>::IsComplex,
+            CwiseUnaryView<internal::scalar_real_ref_op<Scalar>, Derived>,
+            Derived&
+          > NonConstRealReturnType;
 /** \internal the return type of imag() const */
 typedef CwiseUnaryOp<internal::scalar_imag_op<Scalar>, const Derived> ImagReturnType;
 /** \internal the return type of imag() */
@@ -64,49 +64,6 @@ cast() const
   return typename CastXpr<NewType>::Type(derived());
 }
 
-template<int N> struct ShiftRightXpr {
-  typedef CwiseUnaryOp<internal::scalar_shift_right_op<Scalar, N>, const Derived> Type;
-};
-
-/// \returns an expression of \c *this with the \a Scalar type arithmetically
-/// shifted right by \a N bit positions.
-///
-/// The template parameter \a N specifies the number of bit positions to shift.
-///
-EIGEN_DOC_UNARY_ADDONS(cast,conversion function)
-///
-/// \sa class CwiseUnaryOp
-///
-template<int N>
-EIGEN_DEVICE_FUNC
-typename ShiftRightXpr<N>::Type
-shift_right() const
-{
-  return typename ShiftRightXpr<N>::Type(derived());
-}
-
-
-template<int N> struct ShiftLeftXpr {
-  typedef CwiseUnaryOp<internal::scalar_shift_left_op<Scalar, N>, const Derived> Type;
-};
-
-/// \returns an expression of \c *this with the \a Scalar type logically
-/// shifted left by \a N bit positions.
-///
-/// The template parameter \a N specifies the number of bit positions to shift.
-///
-EIGEN_DOC_UNARY_ADDONS(cast,conversion function)
-///
-/// \sa class CwiseUnaryOp
-///
-template<int N>
-EIGEN_DEVICE_FUNC
-typename ShiftLeftXpr<N>::Type
-shift_left() const
-{
-  return typename ShiftLeftXpr<N>::Type(derived());
-}
-
 /// \returns an expression of the complex conjugate of \c *this.
 ///
 EIGEN_DOC_UNARY_ADDONS(conjugate,complex conjugate)
@@ -126,10 +83,10 @@ EIGEN_DOC_UNARY_ADDONS(conjugate,complex conjugate)
 /// \sa conjugate()
 template<bool Cond>
 EIGEN_DEVICE_FUNC
-inline typename internal::conditional<Cond,ConjugateReturnType,const Derived&>::type
+inline std::conditional_t<Cond,ConjugateReturnType,const Derived&>
 conjugateIf() const
 {
-  typedef typename internal::conditional<Cond,ConjugateReturnType,const Derived&>::type ReturnType;
+  typedef std::conditional_t<Cond,ConjugateReturnType,const Derived&> ReturnType;
   return ReturnType(derived());
 }
 

@@ -12,6 +12,8 @@
 #ifndef EIGEN_ASSIGN_EVALUATOR_H
 #define EIGEN_ASSIGN_EVALUATOR_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
 
 // This implementation is based on Assign.h
@@ -40,7 +42,7 @@ public:
     DstAlignment = DstEvaluator::Alignment,
     SrcAlignment = SrcEvaluator::Alignment,
     DstHasDirectAccess = (DstFlags & DirectAccessBit) == DirectAccessBit,
-    JointAlignment = EIGEN_PLAIN_ENUM_MIN(DstAlignment,SrcAlignment)
+    JointAlignment = plain_enum_min(DstAlignment, SrcAlignment)
   };
 
 private:
@@ -51,8 +53,8 @@ private:
     InnerMaxSize = int(Dst::IsVectorAtCompileTime) ? int(Dst::MaxSizeAtCompileTime)
               : int(DstFlags)&RowMajorBit ? int(Dst::MaxColsAtCompileTime)
               : int(Dst::MaxRowsAtCompileTime),
-    RestrictedInnerSize = EIGEN_SIZE_MIN_PREFER_FIXED(InnerSize,MaxPacketSize),
-    RestrictedLinearSize = EIGEN_SIZE_MIN_PREFER_FIXED(Dst::SizeAtCompileTime,MaxPacketSize),
+    RestrictedInnerSize = min_size_prefer_fixed(InnerSize, MaxPacketSize),
+    RestrictedLinearSize = min_size_prefer_fixed(Dst::SizeAtCompileTime, MaxPacketSize),
     OuterStride = int(outer_stride_at_compile_time<Dst>::ret),
     MaxSizeAtCompileTime = Dst::SizeAtCompileTime
   };
@@ -111,7 +113,7 @@ public:
               || int(Traversal) == SliceVectorizedTraversal
   };
 
-  typedef typename conditional<int(Traversal)==LinearVectorizedTraversal, LinearPacketType, InnerPacketType>::type PacketType;
+  typedef std::conditional_t<int(Traversal)==LinearVectorizedTraversal, LinearPacketType, InnerPacketType> PacketType;
 
 private:
   enum {
@@ -327,8 +329,7 @@ struct dense_assignment_loop<Kernel, AllAtOnceTraversal, Unrolling>
 {
   EIGEN_DEVICE_FUNC static void EIGEN_STRONG_INLINE run(Kernel& /*kernel*/)
   {
-    typedef typename Kernel::DstEvaluatorType::XprType DstXprType;
-    EIGEN_STATIC_ASSERT(int(DstXprType::SizeAtCompileTime) == 0,
+    EIGEN_STATIC_ASSERT(int(Kernel::DstEvaluatorType::XprType::SizeAtCompileTime) == 0,
       EIGEN_INTERNAL_ERROR_PLEASE_FILE_A_BUG_REPORT)
   }
 };
@@ -450,7 +451,7 @@ struct dense_assignment_loop<Kernel, LinearVectorizedTraversal, CompleteUnrollin
 
     enum { size = DstXprType::SizeAtCompileTime,
            packetSize =unpacket_traits<PacketType>::size,
-           alignedSize = (size/packetSize)*packetSize };
+           alignedSize = (int(size)/packetSize)*packetSize };
 
     copy_using_evaluator_innervec_CompleteUnrolling<Kernel, 0, alignedSize>::run(kernel);
     copy_using_evaluator_DefaultTraversal_CompleteUnrolling<Kernel, alignedSize, size>::run(kernel);
@@ -591,7 +592,7 @@ struct dense_assignment_loop<Kernel, SliceVectorizedTraversal, InnerUnrolling>
 
     enum { innerSize = DstXprType::InnerSizeAtCompileTime,
            packetSize =unpacket_traits<PacketType>::size,
-           vectorizableSize = (innerSize/packetSize)*packetSize,
+           vectorizableSize = (int(innerSize) / int(packetSize)) * int(packetSize),
            size = DstXprType::SizeAtCompileTime };
 
     for(Index outer = 0; outer < kernel.outerSize(); ++outer)
@@ -638,15 +639,15 @@ public:
     #endif
   }
 
-  EIGEN_DEVICE_FUNC Index size() const        { return m_dstExpr.size(); }
-  EIGEN_DEVICE_FUNC Index innerSize() const   { return m_dstExpr.innerSize(); }
-  EIGEN_DEVICE_FUNC Index outerSize() const   { return m_dstExpr.outerSize(); }
-  EIGEN_DEVICE_FUNC Index rows() const        { return m_dstExpr.rows(); }
-  EIGEN_DEVICE_FUNC Index cols() const        { return m_dstExpr.cols(); }
-  EIGEN_DEVICE_FUNC Index outerStride() const { return m_dstExpr.outerStride(); }
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR Index size() const EIGEN_NOEXCEPT { return m_dstExpr.size(); }
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR Index innerSize() const EIGEN_NOEXCEPT { return m_dstExpr.innerSize(); }
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR Index outerSize() const EIGEN_NOEXCEPT { return m_dstExpr.outerSize(); }
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR Index rows() const EIGEN_NOEXCEPT { return m_dstExpr.rows(); }
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR Index cols() const EIGEN_NOEXCEPT { return m_dstExpr.cols(); }
+  EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR Index outerStride() const EIGEN_NOEXCEPT { return m_dstExpr.outerStride(); }
 
-  EIGEN_DEVICE_FUNC DstEvaluatorType& dstEvaluator() { return m_dst; }
-  EIGEN_DEVICE_FUNC const SrcEvaluatorType& srcEvaluator() const { return m_src; }
+  EIGEN_DEVICE_FUNC DstEvaluatorType& dstEvaluator() EIGEN_NOEXCEPT { return m_dst; }
+  EIGEN_DEVICE_FUNC const SrcEvaluatorType& srcEvaluator() const EIGEN_NOEXCEPT { return m_src; }
 
   /// Assign src(row,col) to dst(row,col) through the assignment functor.
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void assignCoeff(Index row, Index col)
@@ -785,6 +786,16 @@ EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void call_dense_assignment_loop(DstXprType
   dense_assignment_loop<Kernel>::run(kernel);
 }
 
+// Specialization for filling the destination with a constant value.
+#ifndef EIGEN_GPU_COMPILE_PHASE
+template<typename DstXprType>
+EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void call_dense_assignment_loop(DstXprType& dst, const Eigen::CwiseNullaryOp<Eigen::internal::scalar_constant_op<typename DstXprType::Scalar>, DstXprType>& src, const internal::assign_op<typename DstXprType::Scalar,typename DstXprType::Scalar>& func)
+{
+  resize_if_allowed(dst, src, func);
+  std::fill_n(dst.data(), dst.size(), src.functor()());
+}
+#endif
+
 template<typename DstXprType, typename SrcXprType>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void call_dense_assignment_loop(DstXprType& dst, const SrcXprType& src)
 {
@@ -835,7 +846,7 @@ void call_assignment(const Dst& dst, const Src& src)
 // Deal with "assume-aliasing"
 template<typename Dst, typename Src, typename Func>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-void call_assignment(Dst& dst, const Src& src, const Func& func, typename enable_if< evaluator_assume_aliasing<Src>::value, void*>::type = 0)
+void call_assignment(Dst& dst, const Src& src, const Func& func, std::enable_if_t< evaluator_assume_aliasing<Src>::value, void*> = 0)
 {
   typename plain_matrix_type<Src>::type tmp(src);
   call_assignment_no_alias(dst, tmp, func);
@@ -843,7 +854,7 @@ void call_assignment(Dst& dst, const Src& src, const Func& func, typename enable
 
 template<typename Dst, typename Src, typename Func>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-void call_assignment(Dst& dst, const Src& src, const Func& func, typename enable_if<!evaluator_assume_aliasing<Src>::value, void*>::type = 0)
+void call_assignment(Dst& dst, const Src& src, const Func& func, std::enable_if_t<!evaluator_assume_aliasing<Src>::value, void*> = 0)
 {
   call_assignment_no_alias(dst, src, func);
 }
@@ -868,8 +879,8 @@ void call_assignment_no_alias(Dst& dst, const Src& src, const Func& func)
                       ) && int(Dst::SizeAtCompileTime) != 1
   };
 
-  typedef typename internal::conditional<NeedToTranspose, Transpose<Dst>, Dst>::type ActualDstTypeCleaned;
-  typedef typename internal::conditional<NeedToTranspose, Transpose<Dst>, Dst&>::type ActualDstType;
+  typedef std::conditional_t<NeedToTranspose, Transpose<Dst>, Dst> ActualDstTypeCleaned;
+  typedef std::conditional_t<NeedToTranspose, Transpose<Dst>, Dst&> ActualDstType;
   ActualDstType actualDst(dst);
 
   // TODO check whether this is the right place to perform these checks:

@@ -11,6 +11,8 @@
 #ifndef EIGEN_TYPE_CASTING_NEON_H
 #define EIGEN_TYPE_CASTING_NEON_H
 
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {

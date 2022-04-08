@@ -3,6 +3,7 @@
 //
 // Copyright (C) 2008-2015 Gael Guennebaud <gael.guennebaud@inria.fr>
 // Copyright (C) 2007-2009 Benoit Jacob <jacob.benoit.1@gmail.com>
+// Copyright (C) 2020, Arm Limited and Contributors
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -10,6 +11,8 @@
 
 #ifndef EIGEN_CONSTANTS_H
 #define EIGEN_CONSTANTS_H
+
+#include "../InternalHeaderCheck.h"
 
 namespace Eigen {
 
@@ -156,7 +159,7 @@ const unsigned int DirectAccessBit = 0x40;
 /** \deprecated \ingroup flags
   *
   * means the first coefficient packet is guaranteed to be aligned.
-  * An expression cannot has the AlignedBit without the PacketAccessBit flag.
+  * An expression cannot have the AlignedBit without the PacketAccessBit flag.
   * In other words, this means we are allow to perform an aligned packet access to the first element regardless
   * of the expression kind:
   * \code
@@ -311,7 +314,7 @@ enum SpecializedType {
 };
 
 /** \ingroup enums
-  * Enum containing possible values for the \p _Options template parameter of
+  * Enum containing possible values for the \p Options_ template parameter of
   * Matrix, Array and BandMatrix. */
 enum StorageOptions {
   /** Storage order is column major (see \ref TopicStorageOrders). */
@@ -420,14 +423,14 @@ enum DecompositionOptions {
 /** \ingroup enums
   * Possible values for the \p QRPreconditioner template parameter of JacobiSVD. */
 enum QRPreconditioners {
-  /** Do not specify what is to be done if the SVD of a non-square matrix is asked for. */
-  NoQRPreconditioner,
-  /** Use a QR decomposition without pivoting as the first step. */
-  HouseholderQRPreconditioner,
   /** Use a QR decomposition with column pivoting as the first step. */
-  ColPivHouseholderQRPreconditioner,
+  ColPivHouseholderQRPreconditioner = 0x0,
+  /** Do not specify what is to be done if the SVD of a non-square matrix is asked for. */
+  NoQRPreconditioner = 0x40,
+  /** Use a QR decomposition without pivoting as the first step. */
+  HouseholderQRPreconditioner = 0x80,
   /** Use a QR decomposition with full pivoting as the first step. */
-  FullPivHouseholderQRPreconditioner
+  FullPivHouseholderQRPreconditioner = 0xC0
 };
 
 #ifdef Success
@@ -474,6 +477,7 @@ namespace Architecture
     VSX = 0x3,
     NEON = 0x4,
     MSA = 0x5,
+    SVE = 0x6,
 #if defined EIGEN_VECTORIZE_SSE
     Target = SSE
 #elif defined EIGEN_VECTORIZE_ALTIVEC
@@ -482,6 +486,8 @@ namespace Architecture
     Target = VSX
 #elif defined EIGEN_VECTORIZE_NEON
     Target = NEON
+#elif defined EIGEN_VECTORIZE_SVE
+    Target = SVE
 #elif defined EIGEN_VECTORIZE_MSA
     Target = MSA
 #else

@@ -11,6 +11,8 @@
 #ifndef EIGEN_ORDERING_H
 #define EIGEN_ORDERING_H
 
+#include "./InternalHeaderCheck.h"
+
 namespace Eigen {
   
 #include "Eigen_Colamd.h"

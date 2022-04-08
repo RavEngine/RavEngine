@@ -36,6 +36,7 @@
 #ifndef EIGEN_HALF_H
 #define EIGEN_HALF_H
 
+#include "../../InternalHeaderCheck.h"
 #include <sstream>
 
 #if defined(EIGEN_HAS_GPU_FP16) || defined(EIGEN_HAS_ARM64_FP16_SCALAR_ARITHMETIC)
@@ -63,10 +64,38 @@ struct half;
 
 namespace half_impl {
 
-#if !defined(EIGEN_HAS_GPU_FP16)
+// We want to use the __half_raw struct from the HIP header file only during the device compile phase.
+// This is required because of a quirk in the way TensorFlow GPU builds are done.
+// When compiling TensorFlow source code with GPU support, files that
+//  * contain GPU kernels (i.e. *.cu.cc files) are compiled via hipcc
+//  * do not contain GPU kernels ( i.e. *.cc files) are compiled via gcc (typically)
+//
+// Tensorflow uses the Eigen::half type as its FP16 type, and there are functions that
+//  * are defined in a file that gets compiled via hipcc AND
+//  * have Eigen::half as a pass-by-value argument AND
+//  * are called in a file that gets compiled via gcc
+//
+// In the scenario described above the caller and callee will see different versions
+// of the Eigen::half base class __half_raw, and they will be compiled by different compilers
+//
+// There appears to be an ABI mismatch between gcc and clang (which is called by hipcc) that results in
+// the callee getting corrupted values for the Eigen::half argument.
+//
+// Making the host side compile phase of hipcc use the same Eigen::half impl, as the gcc compile, resolves
+// this error, and hence the following convoluted #if condition
+#if !defined(EIGEN_HAS_GPU_FP16) || !defined(EIGEN_GPU_COMPILE_PHASE)
 // Make our own __half_raw definition that is similar to CUDA's.
 struct __half_raw {
+#if (defined(EIGEN_HAS_GPU_FP16) && !defined(EIGEN_GPU_COMPILE_PHASE))
+  // Eigen::half can be used as the datatype for shared memory declarations (in Eigen and TF)
+  // The element type for shared memory cannot have non-trivial constructors
+  // and hence the following special casing (which skips the zero-initilization).
+  // Note that this check gets done even in the host compilation phase, and
+  // hence the need for this
+  EIGEN_DEVICE_FUNC __half_raw() {}
+#else
   EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR __half_raw() : x(0) {}
+#endif
 #if defined(EIGEN_HAS_ARM64_FP16_SCALAR_ARITHMETIC)
   explicit EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR __half_raw(numext::uint16_t raw) : x(numext::bit_cast<__fp16>(raw)) {
   }
@@ -115,7 +144,10 @@ struct half : public half_impl::half_base {
 
   // Writing this out as separate #if-else blocks to make the code easier to follow
   // The same applies to most #if-else blocks in this file
-#if !defined(EIGEN_HAS_GPU_FP16)
+#if !defined(EIGEN_HAS_GPU_FP16) || !defined(EIGEN_GPU_COMPILE_PHASE)
+  // Use the same base class for the following two scenarios
+  // * when compiling without GPU support enabled
+  // * during host compile phase when compiling with GPU support enabled
   typedef half_impl::__half_raw __half_raw;
 #elif defined(EIGEN_HAS_HIP_FP16)
   // Nothing to do here
@@ -147,7 +179,7 @@ struct half : public half_impl::half_base {
   explicit EIGEN_DEVICE_FUNC EIGEN_CONSTEXPR half(bool b)
       : half_impl::half_base(half_impl::raw_uint16_to_half(b ? 0x3c00 : 0)) {}
   template<class T>
-  explicit EIGEN_DEVICE_FUNC half(const T& val)
+  explicit EIGEN_DEVICE_FUNC half(T val)
       : half_impl::half_base(half_impl::float_to_half_rtne(static_cast<float>(val))) {}
   explicit EIGEN_DEVICE_FUNC half(float f)
       : half_impl::half_base(half_impl::float_to_half_rtne(f)) {}
@@ -161,59 +193,123 @@ struct half : public half_impl::half_base {
    EIGEN_DEVICE_FUNC operator float() const {  // NOLINT: Allow implicit conversion to float, because it is lossless.
     return half_impl::half_to_float(*this);
   }
+
+#if defined(EIGEN_HAS_GPU_FP16) && !defined(EIGEN_GPU_COMPILE_PHASE)
+  EIGEN_DEVICE_FUNC operator __half() const {
+    ::__half_raw hr;
+    hr.x = x;
+    return __half(hr);
+  }
+#endif
 };
 
-} // end namespace Eigen
+// TODO(majnemer): Get rid of this once we can rely on C++17 inline variables do
+// solve the ODR issue.
+namespace half_impl {
+template <typename = void>
+struct numeric_limits_half_impl {
+  static EIGEN_CONSTEXPR const bool is_specialized = true;
+  static EIGEN_CONSTEXPR const bool is_signed = true;
+  static EIGEN_CONSTEXPR const bool is_integer = false;
+  static EIGEN_CONSTEXPR const bool is_exact = false;
+  static EIGEN_CONSTEXPR const bool has_infinity = true;
+  static EIGEN_CONSTEXPR const bool has_quiet_NaN = true;
+  static EIGEN_CONSTEXPR const bool has_signaling_NaN = true;
+  static EIGEN_CONSTEXPR const std::float_denorm_style has_denorm = std::denorm_present;
+  static EIGEN_CONSTEXPR const bool has_denorm_loss = false;
+  static EIGEN_CONSTEXPR const std::float_round_style round_style = std::round_to_nearest;
+  static EIGEN_CONSTEXPR const bool is_iec559 = true;
+  // The C++ standard defines this as "true if the set of values representable
+  // by the type is finite." Half has finite precision.
+  static EIGEN_CONSTEXPR const bool is_bounded = true;
+  static EIGEN_CONSTEXPR const bool is_modulo = false;
+  static EIGEN_CONSTEXPR const int digits = 11;
+  static EIGEN_CONSTEXPR const int digits10 = 3;      // according to http://half.sourceforge.net/structstd_1_1numeric__limits_3_01half__float_1_1half_01_4.html
+  static EIGEN_CONSTEXPR const int max_digits10 = 5;  // according to http://half.sourceforge.net/structstd_1_1numeric__limits_3_01half__float_1_1half_01_4.html
+  static EIGEN_CONSTEXPR const int radix = std::numeric_limits<float>::radix;
+  static EIGEN_CONSTEXPR const int min_exponent = -13;
+  static EIGEN_CONSTEXPR const int min_exponent10 = -4;
+  static EIGEN_CONSTEXPR const int max_exponent = 16;
+  static EIGEN_CONSTEXPR const int max_exponent10 = 4;
+  static EIGEN_CONSTEXPR const bool traps = std::numeric_limits<float>::traps;
+  // IEEE754: "The implementer shall choose how tininess is detected, but shall
+  // detect tininess in the same way for all operations in radix two"
+  static EIGEN_CONSTEXPR const bool tinyness_before = std::numeric_limits<float>::tinyness_before;
+
+  static EIGEN_CONSTEXPR Eigen::half (min)() { return Eigen::half_impl::raw_uint16_to_half(0x0400); }
+  static EIGEN_CONSTEXPR Eigen::half lowest() { return Eigen::half_impl::raw_uint16_to_half(0xfbff); }
+  static EIGEN_CONSTEXPR Eigen::half (max)() { return Eigen::half_impl::raw_uint16_to_half(0x7bff); }
+  static EIGEN_CONSTEXPR Eigen::half epsilon() { return Eigen::half_impl::raw_uint16_to_half(0x1400); }
+  static EIGEN_CONSTEXPR Eigen::half round_error() { return Eigen::half_impl::raw_uint16_to_half(0x3800); }
+  static EIGEN_CONSTEXPR Eigen::half infinity() { return Eigen::half_impl::raw_uint16_to_half(0x7c00); }
+  static EIGEN_CONSTEXPR Eigen::half quiet_NaN() { return Eigen::half_impl::raw_uint16_to_half(0x7e00); }
+  static EIGEN_CONSTEXPR Eigen::half signaling_NaN() { return Eigen::half_impl::raw_uint16_to_half(0x7d00); }
+  static EIGEN_CONSTEXPR Eigen::half denorm_min() { return Eigen::half_impl::raw_uint16_to_half(0x0001); }
+};
+
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::is_specialized;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::is_signed;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::is_integer;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::is_exact;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::has_infinity;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::has_quiet_NaN;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::has_signaling_NaN;
+template<typename T>
+EIGEN_CONSTEXPR const std::float_denorm_style numeric_limits_half_impl<T>::has_denorm;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::has_denorm_loss;
+template<typename T>
+EIGEN_CONSTEXPR const std::float_round_style numeric_limits_half_impl<T>::round_style;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::is_iec559;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::is_bounded;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::is_modulo;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::digits;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::digits10;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::max_digits10;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::radix;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::min_exponent;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::min_exponent10;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::max_exponent;
+template<typename T>
+EIGEN_CONSTEXPR const int numeric_limits_half_impl<T>::max_exponent10;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::traps;
+template<typename T>
+EIGEN_CONSTEXPR const bool numeric_limits_half_impl<T>::tinyness_before;
+}  // end namespace half_impl
+}  // end namespace Eigen
 
 namespace std {
-template<>
-struct numeric_limits<Eigen::half> {
-  static const bool is_specialized = true;
-  static const bool is_signed = true;
-  static const bool is_integer = false;
-  static const bool is_exact = false;
-  static const bool has_infinity = true;
-  static const bool has_quiet_NaN = true;
-  static const bool has_signaling_NaN = true;
-  static const float_denorm_style has_denorm = denorm_present;
-  static const bool has_denorm_loss = false;
-  static const std::float_round_style round_style = std::round_to_nearest;
-  static const bool is_iec559 = false;
-  static const bool is_bounded = false;
-  static const bool is_modulo = false;
-  static const int digits = 11;
-  static const int digits10 = 3;      // according to http://half.sourceforge.net/structstd_1_1numeric__limits_3_01half__float_1_1half_01_4.html
-  static const int max_digits10 = 5;  // according to http://half.sourceforge.net/structstd_1_1numeric__limits_3_01half__float_1_1half_01_4.html
-  static const int radix = 2;
-  static const int min_exponent = -13;
-  static const int min_exponent10 = -4;
-  static const int max_exponent = 16;
-  static const int max_exponent10 = 4;
-  static const bool traps = true;
-  static const bool tinyness_before = false;
-
-  static Eigen::half (min)() { return Eigen::half_impl::raw_uint16_to_half(0x400); }
-  static Eigen::half lowest() { return Eigen::half_impl::raw_uint16_to_half(0xfbff); }
-  static Eigen::half (max)() { return Eigen::half_impl::raw_uint16_to_half(0x7bff); }
-  static Eigen::half epsilon() { return Eigen::half_impl::raw_uint16_to_half(0x0800); }
-  static Eigen::half round_error() { return Eigen::half(0.5); }
-  static Eigen::half infinity() { return Eigen::half_impl::raw_uint16_to_half(0x7c00); }
-  static Eigen::half quiet_NaN() { return Eigen::half_impl::raw_uint16_to_half(0x7e00); }
-  static Eigen::half signaling_NaN() { return Eigen::half_impl::raw_uint16_to_half(0x7d00); }
-  static Eigen::half denorm_min() { return Eigen::half_impl::raw_uint16_to_half(0x1); }
-};
-
 // If std::numeric_limits<T> is specialized, should also specialize
 // std::numeric_limits<const T>, std::numeric_limits<volatile T>, and
 // std::numeric_limits<const volatile T>
 // https://stackoverflow.com/a/16519653/
 template<>
-struct numeric_limits<const Eigen::half> : numeric_limits<Eigen::half> {};
+class numeric_limits<Eigen::half> : public Eigen::half_impl::numeric_limits_half_impl<> {};
 template<>
-struct numeric_limits<volatile Eigen::half> : numeric_limits<Eigen::half> {};
+class numeric_limits<const Eigen::half> : public numeric_limits<Eigen::half> {};
 template<>
-struct numeric_limits<const volatile Eigen::half> : numeric_limits<Eigen::half> {};
-} // end namespace std
+class numeric_limits<volatile Eigen::half> : public numeric_limits<Eigen::half> {};
+template<>
+class numeric_limits<const volatile Eigen::half> : public numeric_limits<Eigen::half> {};
+}  // end namespace std
 
 namespace Eigen {
 
@@ -222,7 +318,7 @@ namespace half_impl {
 #if (defined(EIGEN_HAS_CUDA_FP16) && defined(EIGEN_CUDA_ARCH) && \
      EIGEN_CUDA_ARCH >= 530) ||                                  \
     (defined(EIGEN_HAS_HIP_FP16) && defined(HIP_DEVICE_COMPILE))
-// Note: We deliberatly do *not* define this to 1 even if we have Arm's native
+// Note: We deliberately do *not* define this to 1 even if we have Arm's native
 // fp16 type since GPU halfs are rather different from native CPU halfs.
 // TODO: Rename to something like EIGEN_HAS_NATIVE_GPU_FP16
 #define EIGEN_HAS_NATIVE_FP16
@@ -426,6 +522,28 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half operator / (const half& a, Index b) {
   return half(static_cast<float>(a) / static_cast<float>(b));
 }
 
+EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half operator++(half& a) {
+  a += half(1);
+  return a;
+}
+
+EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half operator--(half& a) {
+  a -= half(1);
+  return a;
+}
+
+EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half operator++(half& a, int) {
+  half original_value = a;
+  ++a;
+  return original_value;
+}
+
+EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half operator--(half& a, int) {
+  half original_value = a;
+  --a;
+  return original_value;
+}
+
 // Conversion routines, including fallbacks for the host or older CUDA.
 // Note that newer Intel CPUs (Haswell or newer) have vectorized versions of
 // these in hardware. If we need more performance on older/other CPUs, they are
@@ -473,7 +591,12 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC __half_raw float_to_half_rtne(float ff) {
 
 #elif defined(EIGEN_HAS_FP16_C)
   __half_raw h;
-  h.x = _cvtss_sh(ff, 0);
+  #if EIGEN_COMP_MSVC
+    // MSVC does not have scalar instructions.
+    h.x =_mm_extract_epi16(_mm_cvtps_ph(_mm_set_ss(ff), 0), 0);
+  #else
+    h.x = _cvtss_sh(ff, 0);
+  #endif
   return h;
 
 #elif defined(EIGEN_HAS_ARM64_FP16_SCALAR_ARITHMETIC)
@@ -534,7 +657,12 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC float half_to_float(__half_raw h) {
   (defined(EIGEN_HAS_HIP_FP16) && defined(EIGEN_HIP_DEVICE_COMPILE))
   return __half2float(h);
 #elif defined(EIGEN_HAS_FP16_C)
-  return _cvtsh_ss(h.x);
+  #if EIGEN_COMP_MSVC
+    // MSVC does not have scalar instructions.
+    return _mm_cvtss_f32(_mm_cvtph_ps(_mm_set1_epi16(h.x)));
+  #else
+    return _cvtsh_ss(h.x);
+  #endif
 #elif defined(EIGEN_HAS_ARM64_FP16_SCALAR_ARITHMETIC)
   return static_cast<float>(h.x);
 #else
@@ -657,9 +785,6 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half floor(const half& a) {
   return half(::floorf(float(a)));
 #endif
 }
-EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half rint(const half& a) {
-  return half(::rintf(float(a)));
-}
 EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half ceil(const half& a) {
 #if (EIGEN_CUDA_SDK_VER >= 80000 && defined EIGEN_CUDA_ARCH && EIGEN_CUDA_ARCH >= 300) || \
   defined(EIGEN_HIP_DEVICE_COMPILE)
@@ -667,6 +792,15 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half ceil(const half& a) {
 #else
   return half(::ceilf(float(a)));
 #endif
+}
+EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half rint(const half& a) {
+  return half(::rintf(float(a)));
+}
+EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half round(const half& a) {
+  return half(::roundf(float(a)));
+}
+EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half fmod(const half& a, const half& b) {
+  return half(::fmodf(float(a), float(b)));
 }
 
 EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half (min)(const half& a, const half& b) {
@@ -757,19 +891,6 @@ template<> struct NumTraits<Eigen::half>
   #pragma pop_macro("EIGEN_CONSTEXPR")
 #endif
 
-namespace std {
-
-#if __cplusplus > 199711L
-template <>
-struct hash<Eigen::half> {
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE std::size_t operator()(const Eigen::half& a) const {
-    return static_cast<std::size_t>(a.x);
-  }
-};
-#endif
-
-} // end namespace std
-
 namespace Eigen {
 namespace numext {
 
@@ -822,19 +943,23 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC uint16_t bit_cast<uint16_t, Eigen::half>(c
 #if defined(EIGEN_HAS_CUDA_FP16) && EIGEN_CUDA_SDK_VER >= 90000
 
 __device__ EIGEN_STRONG_INLINE Eigen::half __shfl_sync(unsigned mask, Eigen::half var, int srcLane, int width=warpSize) {
-  return static_cast<Eigen::half>(__shfl_sync(mask, static_cast<__half>(var), srcLane, width));
+  const __half h = var;
+  return static_cast<Eigen::half>(__shfl_sync(mask, h, srcLane, width));
 }
 
 __device__ EIGEN_STRONG_INLINE Eigen::half __shfl_up_sync(unsigned mask, Eigen::half var, unsigned int delta, int width=warpSize) {
-  return static_cast<Eigen::half>(__shfl_up_sync(mask, static_cast<__half>(var), delta, width));
+  const __half h = var;
+  return static_cast<Eigen::half>(__shfl_up_sync(mask, h, delta, width));
 }
 
 __device__ EIGEN_STRONG_INLINE Eigen::half __shfl_down_sync(unsigned mask, Eigen::half var, unsigned int delta, int width=warpSize) {
-  return static_cast<Eigen::half>(__shfl_down_sync(mask, static_cast<__half>(var), delta, width));
+  const __half h = var;
+  return static_cast<Eigen::half>(__shfl_down_sync(mask, h, delta, width));
 }
 
 __device__ EIGEN_STRONG_INLINE Eigen::half __shfl_xor_sync(unsigned mask, Eigen::half var, int laneMask, int width=warpSize) {
-  return static_cast<Eigen::half>(__shfl_xor_sync(mask, static_cast<__half>(var), laneMask, width));
+  const __half h = var;
+  return static_cast<Eigen::half>(__shfl_xor_sync(mask, h, laneMask, width));
 }
 
 #else // HIP or CUDA SDK < 9.0
@@ -869,5 +994,16 @@ EIGEN_STRONG_INLINE __device__ Eigen::half __ldg(const Eigen::half* ptr) {
   return Eigen::half_impl::raw_uint16_to_half(__ldg(reinterpret_cast<const Eigen::numext::uint16_t*>(ptr)));
 }
 #endif // __ldg
+
+#if EIGEN_HAS_STD_HASH
+namespace std {
+template <>
+struct hash<Eigen::half> {
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE std::size_t operator()(const Eigen::half& a) const {
+    return static_cast<std::size_t>(Eigen::numext::bit_cast<Eigen::numext::uint16_t>(a));
+  }
+};
+} // end namespace std
+#endif
 
 #endif // EIGEN_HALF_H

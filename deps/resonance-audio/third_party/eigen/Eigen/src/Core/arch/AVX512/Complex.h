@@ -10,6 +10,8 @@
 #ifndef EIGEN_COMPLEX_AVX512_H
 #define EIGEN_COMPLEX_AVX512_H
 
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 namespace internal {
@@ -97,7 +99,9 @@ template<> EIGEN_STRONG_INLINE Packet8cf ploadu<Packet8cf>(const std::complex<fl
 
 template<> EIGEN_STRONG_INLINE Packet8cf pset1<Packet8cf>(const std::complex<float>& from)
 {
-  return Packet8cf(_mm512_castpd_ps(pload1<Packet8d>((const double*)(const void*)&from)));
+  const float re = std::real(from);
+  const float im = std::imag(from);
+  return Packet8cf(_mm512_set_ps(im, re, im, re, im, re, im, re, im, re, im, re, im, re, im, re));
 }
 
 template<> EIGEN_STRONG_INLINE Packet8cf ploaddup<Packet8cf>(const std::complex<float>* from)
@@ -153,48 +157,11 @@ EIGEN_STRONG_INLINE Packet4cf predux_half_dowto4<Packet8cf>(const Packet8cf& a) 
   return Packet4cf(res);
 }
 
-template<> struct conj_helper<Packet8cf, Packet8cf, false,true>
-{
-  EIGEN_STRONG_INLINE Packet8cf pmadd(const Packet8cf& x, const Packet8cf& y, const Packet8cf& c) const
-  { return padd(pmul(x,y),c); }
-
-  EIGEN_STRONG_INLINE Packet8cf pmul(const Packet8cf& a, const Packet8cf& b) const
-  {
-    return internal::pmul(a, pconj(b));
-  }
-};
-
-template<> struct conj_helper<Packet8cf, Packet8cf, true,false>
-{
-  EIGEN_STRONG_INLINE Packet8cf pmadd(const Packet8cf& x, const Packet8cf& y, const Packet8cf& c) const
-  { return padd(pmul(x,y),c); }
-
-  EIGEN_STRONG_INLINE Packet8cf pmul(const Packet8cf& a, const Packet8cf& b) const
-  {
-    return internal::pmul(pconj(a), b);
-  }
-};
-
-template<> struct conj_helper<Packet8cf, Packet8cf, true,true>
-{
-  EIGEN_STRONG_INLINE Packet8cf pmadd(const Packet8cf& x, const Packet8cf& y, const Packet8cf& c) const
-  { return padd(pmul(x,y),c); }
-
-  EIGEN_STRONG_INLINE Packet8cf pmul(const Packet8cf& a, const Packet8cf& b) const
-  {
-    return pconj(internal::pmul(a, b));
-  }
-};
-
 EIGEN_MAKE_CONJ_HELPER_CPLX_REAL(Packet8cf,Packet16f)
 
 template<> EIGEN_STRONG_INLINE Packet8cf pdiv<Packet8cf>(const Packet8cf& a, const Packet8cf& b)
 {
-  Packet8cf num = pmul(a, pconj(b));
-  __m512 tmp = _mm512_mul_ps(b.v, b.v);
-  __m512 tmp2    = _mm512_shuffle_ps(tmp,tmp,0xB1);
-  __m512 denom = _mm512_add_ps(tmp, tmp2);
-  return Packet8cf(_mm512_div_ps(num.v, denom));
+  return pdiv_complex(a, b);
 }
 
 template<> EIGEN_STRONG_INLINE Packet8cf pcplxflip<Packet8cf>(const Packet8cf& x)
@@ -286,11 +253,7 @@ template<> EIGEN_STRONG_INLINE Packet4cd ploadu<Packet4cd>(const std::complex<do
 
 template<> EIGEN_STRONG_INLINE Packet4cd pset1<Packet4cd>(const std::complex<double>& from)
 {
-  #ifdef EIGEN_VECTORIZE_AVX512DQ
-  return Packet4cd(_mm512_broadcast_f64x2(pset1<Packet1cd>(from).v));
-  #else
   return Packet4cd(_mm512_castps_pd(_mm512_broadcast_f32x4( _mm_castpd_ps(pset1<Packet1cd>(from).v))));
-  #endif
 }
 
 template<> EIGEN_STRONG_INLINE Packet4cd ploaddup<Packet4cd>(const std::complex<double>* from) {
@@ -342,47 +305,11 @@ template<> EIGEN_STRONG_INLINE std::complex<double> predux_mul<Packet4cd>(const 
                          Packet2cd(_mm512_extractf64x4_pd(a.v,1))));
 }
 
-template<> struct conj_helper<Packet4cd, Packet4cd, false,true>
-{
-  EIGEN_STRONG_INLINE Packet4cd pmadd(const Packet4cd& x, const Packet4cd& y, const Packet4cd& c) const
-  { return padd(pmul(x,y),c); }
-
-  EIGEN_STRONG_INLINE Packet4cd pmul(const Packet4cd& a, const Packet4cd& b) const
-  {
-    return internal::pmul(a, pconj(b));
-  }
-};
-
-template<> struct conj_helper<Packet4cd, Packet4cd, true,false>
-{
-  EIGEN_STRONG_INLINE Packet4cd pmadd(const Packet4cd& x, const Packet4cd& y, const Packet4cd& c) const
-  { return padd(pmul(x,y),c); }
-
-  EIGEN_STRONG_INLINE Packet4cd pmul(const Packet4cd& a, const Packet4cd& b) const
-  {
-    return internal::pmul(pconj(a), b);
-  }
-};
-
-template<> struct conj_helper<Packet4cd, Packet4cd, true,true>
-{
-  EIGEN_STRONG_INLINE Packet4cd pmadd(const Packet4cd& x, const Packet4cd& y, const Packet4cd& c) const
-  { return padd(pmul(x,y),c); }
-
-  EIGEN_STRONG_INLINE Packet4cd pmul(const Packet4cd& a, const Packet4cd& b) const
-  {
-    return pconj(internal::pmul(a, b));
-  }
-};
-
 EIGEN_MAKE_CONJ_HELPER_CPLX_REAL(Packet4cd,Packet8d)
 
 template<> EIGEN_STRONG_INLINE Packet4cd pdiv<Packet4cd>(const Packet4cd& a, const Packet4cd& b)
 {
-  Packet4cd num = pmul(a, pconj(b));
-  __m512d tmp = _mm512_mul_pd(b.v, b.v);
-  __m512d denom =  padd(_mm512_permute_pd(tmp,0x55), tmp);
-  return Packet4cd(_mm512_div_pd(num.v, denom));
+  return pdiv_complex(a, b);
 }
 
 template<> EIGEN_STRONG_INLINE Packet4cd pcplxflip<Packet4cd>(const Packet4cd& x)

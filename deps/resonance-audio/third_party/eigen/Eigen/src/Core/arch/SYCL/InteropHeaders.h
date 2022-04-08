@@ -21,6 +21,8 @@
 #ifndef EIGEN_INTEROP_HEADERS_SYCL_H
 #define EIGEN_INTEROP_HEADERS_SYCL_H
 
+#include "../../InternalHeaderCheck.h"
+
 namespace Eigen {
 
 #if !defined(EIGEN_DONT_VECTORIZE_SYCL)
