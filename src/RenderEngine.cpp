@@ -677,7 +677,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
 		if (std::get<1>(row.first)) {
-
+            if (row.second.items.size() == 0){
+                return;
+            }
 			skinningfunc(row);
 
 			//fill the buffer using the material to write the material data for each instance
