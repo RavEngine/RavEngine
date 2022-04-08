@@ -835,12 +835,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         bgfx::InstanceDataBuffer lightdata;
     };
     uint32_t shadowOffset = 0;
-    const auto DrawLightsOfType = [&](const auto& lights, float lighttype){
+    const auto DrawLightsOfType = [&](const auto& lights, float lighttype) -> void{
         using LightType = typename std::remove_reference<decltype(lights)>::type::value_type::light_t;
         DrawLightsResult dr;
         //must set before changing shaders
         if (lights.size() == 0){
-            return dr;
+            return;
         }
         
         constexpr auto stride = LightType::InstancingStride();
@@ -1094,7 +1094,7 @@ void RenderEngine::UpdateBufferDims(){
 	auto monitor = MonitorFromWindow(wmi.info.win.window, MONITOR_DEFAULTTONEAREST);
 	DEVICE_SCALE_FACTOR fac;
 	if (GetScaleFactorForMonitor(monitor,&fac) == S_OK) {
-		win_scalefactor = (fac / 100.0);
+		win_scalefactor = (static_cast<int>(fac) / 100.0);
 	}
 	else {
 		Debug::Fatal("GetScaleFactorForMonitor failed");
