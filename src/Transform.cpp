@@ -7,7 +7,7 @@ using namespace std;
 using namespace glm;
 using namespace RavEngine;
 
-void Transform::AddChild(ComponentHandle<Transform> child)
+Transform& Transform::AddChild(ComponentHandle<Transform> child)
 {
     auto cptr = child.get();
 	auto worldPos = cptr->GetWorldPosition();
@@ -18,9 +18,10 @@ void Transform::AddChild(ComponentHandle<Transform> child)
 	
     cptr->SetWorldPosition(worldPos);
     cptr->SetWorldRotation(worldRot);
+    return *this;
 }
 
-void Transform::RemoveChild(ComponentHandle<Transform> child)
+Transform& Transform::RemoveChild(ComponentHandle<Transform> child)
 {
     auto cptr = child.get();
 	auto worldPos = cptr->GetWorldPosition();
@@ -29,4 +30,5 @@ void Transform::RemoveChild(ComponentHandle<Transform> child)
 	children.erase(child);
 	cptr->SetWorldPosition(worldPos);
 	cptr->SetWorldRotation(worldRot);
+    return *this;
 }

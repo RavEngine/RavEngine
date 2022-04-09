@@ -43,17 +43,17 @@ namespace RavEngine {
 		}
 		Transform(entity_t owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
         
-		void SetLocalPosition(const vector3&);
-		void SetWorldPosition(const vector3&);
-		void LocalTranslateDelta(const vector3&);
-		void WorldTranslateDelta(const vector3&);
+		Transform& SetLocalPosition(const vector3&);
+        Transform& SetWorldPosition(const vector3&);
+        Transform& LocalTranslateDelta(const vector3&);
+        Transform& WorldTranslateDelta(const vector3&);
 
-		void SetLocalRotation(const quaternion&);
-		void SetWorldRotation(const quaternion&);
-		void LocalRotateDelta(const quaternion&);
+        Transform& SetLocalRotation(const quaternion&);
+        Transform& SetWorldRotation(const quaternion&);
+        Transform& LocalRotateDelta(const quaternion&);
 
-		void SetLocalScale(const vector3&);
-		void LocalScaleDelta(const vector3&);
+        Transform& SetLocalScale(const vector3&);
+        Transform& LocalScaleDelta(const vector3&);
 
 		vector3 Forward() const;
 		vector3 Right() const;
@@ -89,13 +89,13 @@ namespace RavEngine {
 		Add a transform as a child object of this transform
 		@param child weak reference to the child object
 		*/
-		void AddChild(ComponentHandle<Transform> child);
+        Transform& AddChild(ComponentHandle<Transform> child);
 
 		/**
 		Remove a transform as a child object of this transform. This does not check if the passed object is actually a child.
 		@param child weak reference to the child object
 		*/
-        void RemoveChild(ComponentHandle<Transform> child);
+        Transform& RemoveChild(ComponentHandle<Transform> child);
         
         const decltype(children)& GetChildren() const{
             return children;
@@ -154,31 +154,34 @@ namespace RavEngine {
 	Translate the transform in a direction in local (parent) space. This will add to its current position
 	@param delta the change to apply
 	*/
-	inline void Transform::LocalTranslateDelta(const vector3& delta) {
+	inline Transform& Transform::LocalTranslateDelta(const vector3& delta) {
 		//set position value
 		MarkAsDirty(this);
 		position += delta;
+        return *this;
 	}
 
-	inline void Transform::WorldTranslateDelta(const vector3& delta){
+	inline Transform& Transform::WorldTranslateDelta(const vector3& delta){
 		SetWorldPosition(GetWorldPosition() + delta);
+        return *this;
 	}
 
 	/**
 	Overwrite the position of the transform with a new position in local (parent) space
 	@param newPos the new position of this transform
 	*/
-	inline void Transform::SetLocalPosition(const vector3& newPos) {
+	inline Transform& Transform::SetLocalPosition(const vector3& newPos) {
 		//set position value
 		MarkAsDirty(this);
 		position = newPos;
+        return *this;
 	}
 
 	/**
 	Move this transform to a new location in world space
 	@param newPos the new position in world space.
 	*/
-	inline void Transform::SetWorldPosition(const vector3& newPos) {
+	inline Transform& Transform::SetWorldPosition(const vector3& newPos) {
 		if (!HasParent()) {
 			SetLocalPosition(newPos);
 		}
@@ -190,22 +193,24 @@ namespace RavEngine {
 			//update the local pos to that displacement
 			LocalTranslateDelta(displacement);
 		}
+        return *this;
 	}
 
 	/**
 	Overwrite the rotation of this transform in local (parent) space.
 	@param newRot the new rotation to set
 	*/
-	inline void Transform::SetLocalRotation(const quaternion& newRot) {
+	inline Transform& Transform::SetLocalRotation(const quaternion& newRot) {
 		MarkAsDirty(this);
 		rotation = newRot;
+        return *this;
 	}
 
 	/**
 	Additively apply a rotation to this transform in local (parent) space.
 	@param delta the change in rotation to apply
 	*/
-	inline void Transform::LocalRotateDelta(const quaternion& delta) {
+	inline Transform& Transform::LocalRotateDelta(const quaternion& delta) {
 		MarkAsDirty(this);
 		//sum two quaternions by multiplying them
 		quaternion finalrot;
@@ -213,13 +218,14 @@ namespace RavEngine {
 		vector4 p;
 		glm::decompose(glm::toMat4((quaternion)rotation) * glm::toMat4(delta), t, finalrot, t, t, p);
 		rotation = finalrot;
+        return *this;
 	}
 
 	/**
 	Overwrite the rotation of this transform in world space
 	@param newRot the new rotation in world space
 	*/
-	inline void Transform::SetWorldRotation(const quaternion& newRot) {
+	inline Transform& Transform::SetWorldRotation(const quaternion& newRot) {
 		if (!HasParent()) {
 			SetLocalRotation(newRot);
 		}
@@ -231,20 +237,23 @@ namespace RavEngine {
 			//apply the rotation
 			LocalRotateDelta(relative);
 		}
+        return *this;
 	}
 
 	/**
 	Overwrite the scale of this object with a new scale
 	@param newScale the new size of this object in local (parent) space
 	*/
-	inline void Transform::SetLocalScale(const vector3& newScale) {
+	inline Transform& Transform::SetLocalScale(const vector3& newScale) {
 		MarkAsDirty(this);
 		scale = newScale;
+        return *this;
 	}
 
-	inline void Transform::LocalScaleDelta(const vector3& delta) {
+	inline Transform& Transform::LocalScaleDelta(const vector3& delta) {
 		MarkAsDirty(this);
 		scale += delta;
+        return *this;
 	}
 
 	inline vector3 Transform::GetLocalPosition() const

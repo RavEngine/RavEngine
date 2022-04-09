@@ -11,6 +11,7 @@ uniform vec4 NumObjects;		// x = start index into light_databuffer, y = number o
 
 #define INSET -0.02
 #define EXPAND 0.002
+#define MINDOTL 0.1
 
 vec3 calcNormal(vec3 a, vec3 b, vec3 c){
 	return normalize(cross(b-a,c-a));
@@ -57,7 +58,7 @@ void main()
 
 	// if the triangle is facing the wrong way, we don't want to have it cast shadows (reduce the number of volumes generated)
 	float nDotL = max(dot(normal, toLight), 0);
-	if (nDotL < 0.2) {
+	if (nDotL < MINDOTL) {
 		gl_Position = vec4(0,0,0,1);	// don't shade this by placing it at the origin
 	}
 	else{

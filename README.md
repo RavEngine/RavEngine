@@ -39,7 +39,7 @@ add_subdirectory("RavEngine") # configure the engine library
 file(GLOB SOURCES "src/*.cpp" "src/*.hpp" "src/*.h")
 add_executable("${PROJECT_NAME}" ${SOURCES})
 target_link_libraries("${PROJECT_NAME}" PUBLIC "RavEngine" )  # also adds header includes
-target_compile_features("${PROJECT_NAME}" PRIVATE cxx_std_17)  # require C++17 (a C++20-compatible compiler is required to build the engine)
+target_compile_features("${PROJECT_NAME}" PRIVATE cxx_std_17)  # require C++17
 
 # inform engine about your different assets
 file(GLOB objects "objects/*.obj" "objects/*.fbx")

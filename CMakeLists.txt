@@ -360,7 +360,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 source_group("Shaders" FILES ${SHADERS})
 
 # vectorization
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 if(TARGET_APPLE OR TARGET_LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
 endif()
