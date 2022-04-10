@@ -925,7 +925,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     
 	DrawLightsOfType(fd->ambients,-1);
     DrawLightsOfType(fd->directionals,0);
-    //DrawLightsOfType.template operator()<PointLight>(fd->points,shadowOffset,1),
+    DrawLightsOfType(fd->points,1);
     //DrawLightsOfType.template operator()<SpotLight>(fd->spots,shadowOffset,2),
 
 

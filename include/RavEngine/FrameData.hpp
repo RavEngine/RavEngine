@@ -63,6 +63,7 @@ struct FrameData{
 	
 	template<typename T>
 	struct StoredLight{
+        using light_t = T;
 		T light;
 		matrix4 transform;
 		StoredLight(const T& l, const matrix4& mtx) : light(l), transform(mtx){}

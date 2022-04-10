@@ -2294,6 +2294,7 @@ namespace bgfx { namespace mtl
 				{
 					RenderPipelineReflection reflection = NULL;
 					pso->m_rps = m_device.newRenderPipelineStateWithDescriptor(pd, MTLPipelineOptionBufferTypeInfo, &reflection);
+                    BX_ASSERT(pso->m_rps != nil, "newRenderPipelineStateWithDescriptor failed");
 
 					if (NULL != reflection)
 					{

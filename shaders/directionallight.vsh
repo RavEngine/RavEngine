@@ -9,7 +9,7 @@ uniform vec4 NumObjects;		// x = start index
 
 void main()
 {
-    int idx = NumObjects.x + gl_InstanceID * 7;    // 4 floats per light
+    int idx = NumObjects.x + gl_InstanceID * 7;    // 7 floats per light
 
     // color
     colorintensity.r = lightdata[idx];
