@@ -187,7 +187,7 @@ endif()
 # ensure library is built correctly for static
 set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
 set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
-set(LIBC ON CACHE BOOL "" FORCE)
+set(SDL_LIBC ON CACHE BOOL "" FORCE)
 if(TARGET_EMSCRIPTEN)
 	set(EMSCRIPTEN ON CACHE INTERNAL "")
 endif()
