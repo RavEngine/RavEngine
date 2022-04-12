@@ -877,7 +877,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                 
                 float lightType = 0;
 
-                float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)),static_cast<float>(numInstances), static_cast<float>(stride),static_cast<float>(lighttype)};        // start points for reading shadow data
+                float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)),static_cast<float>(numInstances), static_cast<float>(stride/sizeof(float)),static_cast<float>(lighttype)};        // start points for reading shadow data
                 numRowsUniform.SetValues(uniformData, 1);
 
                 bgfx::setInstanceCount(numInstances);            // 3 indices per triangle, per light of this type

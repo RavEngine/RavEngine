@@ -168,11 +168,11 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	 */
 	static inline constexpr size_t InstancingStride(){
 		//point light needs:
-		//mvp matrix (1 float[16])
+		//mvp matrix (1 float[16], but we don't encode every value because the last row is always [0,0,0,1])
 		//light color (3 floats)
 		//light intensity (1 float)
 		
-		return sizeof(float) * (3+1) + sizeof(float[16]);
+		return sizeof(float) * (3+1) + sizeof(float[16-4]);
 	}
 
 	static inline constexpr size_t ShadowDataSize() {
@@ -233,11 +233,11 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	 */
 	static inline constexpr size_t InstancingStride(){
 		//point light needs:
-		//mvp matrix (1 float[16])
+		//mvp matrix (1 float[16]) (but 4 floats are not sent)
 		//light color (3 floats)
 		//light penumbra (1 float)
 		
-		return sizeof(float) * (3+1) + sizeof(float[16]);
+		return sizeof(float) * (3+1) + sizeof(float[16-4]);
 	}
 
 	static inline constexpr size_t ShadowDataSize() {
