@@ -161,8 +161,8 @@ int Test_SpawnDestroy(){
        };
        w.Filter<FloatComponent>(ffc);
        cout << "After destroying " << ibegin-iend << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
-       assert(icount == (entities.size() - (ibegin + iend)));
-       assert(fcount == (entities.size() - (ibegin + iend)));
+       assert(icount == (entities.size() - (iend - ibegin )));
+       assert(fcount == (entities.size() - (iend - ibegin)));
    }
     
     return 0;
@@ -226,7 +226,7 @@ int Test_MoveBetweenWorlds(){
     return 0;
 }
 
-int main(int argc, const char** argv) {
+int main(int argc, char** argv) {
     const unordered_map<std::string_view, std::function<int(void)>> tests{
 		{"CTTI",&Test_CTTI},
         {"Test_UUID",&Test_UUID},
