@@ -51,8 +51,8 @@ void main()
 		toLight = normalize(lightDirData);
 	}
 	else {
-		// for spot and point lights, this is the vector from the center of the light to the vertex being processed
-		vec3 lightpos = vec3(light_databuffer[index], light_databuffer[index + 1], light_databuffer[index + 2]);
+		// for spot and point lights, this is the vector to the center of the light from the vertex being processed
+		vec3 lightpos = vec3(light_databuffer[index+9], light_databuffer[index + 10], light_databuffer[index + 11]);
 		toLight = normalize(lightpos - points[gl_VertexID % 3]);
 	}
 
