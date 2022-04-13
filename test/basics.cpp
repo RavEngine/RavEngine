@@ -1,12 +1,46 @@
 #include <RavEngine/CTTI.hpp>
+#include <RavEngine/World.hpp>
+#include <RavEngine/Entity.hpp>
+#include <RavEngine/ComponentHandle.hpp>
+#include <RavEngine/App.hpp>
 #include <unordered_map>
 #include <iostream>
-#include <cassert>
 #include <functional>
 #include <uuids.h>
+#include <string_view>
 
 using namespace RavEngine;
 using namespace std;
+
+#undef assert
+
+#define assert(cond) \
+{\
+    Debug::Assert(cond, "Debug assertion failed! {}:{}",__FILE__,__LINE__);\
+}
+
+struct IntComponent {
+    int value;
+};
+
+struct FloatComponent{
+    float value;
+};
+
+struct MyPrototype : public Entity{
+    void Create(){
+        auto& comp = EmplaceComponent<IntComponent>();
+        comp.value = 5;
+    }
+};
+
+struct MyExtendedPrototype : public MyPrototype{
+    void Create(){
+        MyPrototype::Create();
+        auto& comp = EmplaceComponent<FloatComponent>();
+        comp.value = 7.5;
+    }
+};
 
 int Test_CTTI(){
 	
@@ -38,10 +72,167 @@ int Test_UUID(){
     return 0;
 }
 
+int Test_AddDel(){
+    World w;
+    auto e = w.CreatePrototype<Entity>();
+    auto& ic = e.EmplaceComponent<IntComponent>();
+    ic.value = 6;
+
+    auto e2 = w.CreatePrototype<Entity>();
+    e2.EmplaceComponent<FloatComponent>().value = 54.2;
+
+    int count = 0;
+    auto fn1 = [&](float,auto& ic, auto& fc) {
+        count++;
+    };
+    w.Filter<IntComponent, FloatComponent>(fn1);
+    assert(count == 0);
+    cout << "A 2-filter with 0 possibilities found " << count << " results\n";
+
+    auto fn2 = [&](float,auto& ic) {
+        ic.value *= 2;
+    };
+    w.Filter<IntComponent>(fn2);
+    
+    ComponentHandle<IntComponent> handle(e);
+    
+    assert(handle->value == 6 * 2);
+
+    e.DestroyComponent<IntComponent>();
+    assert(e.HasComponent<IntComponent>() == false);
+    count = 0;
+    auto fn4 = [&](float,auto& fc) {
+        count++;
+    };
+    w.Filter<FloatComponent>(fn4);
+    cout << "After deleting the only intcomponent, the floatcomponent count is " << count << "\n";
+    assert(count == 1);
+
+    count = 0;
+    auto fn5 = [&](float,auto& fc) {
+        count++;
+    };
+    w.Filter<IntComponent>(fn5);
+    cout << "After deleting the only intcomponent, the intcomponent count is " << count << "\n";
+    assert(count == 0);
+
+    assert((e.GetWorld() == e2.GetWorld()));
+    
+    return 0;
+}
+
+int Test_SpawnDestroy(){
+    
+    World w;
+   std::array<MyExtendedPrototype, 30> entities;
+   for( auto& e : entities){
+       e = w.CreatePrototype<MyExtendedPrototype>();
+   }
+   {
+       int icount = 0;
+       auto fic = [&](float,auto& fc) {
+           icount++;
+       };
+       w.Filter<IntComponent>(fic);
+       int fcount = 0;
+       auto ffc = [&](float,auto& fc) {
+           fcount++;
+       };
+       w.Filter<FloatComponent>(ffc);
+       cout << "Spawning " << entities.size() << " 2-component entities yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
+       assert(icount == entities.size());
+       assert(fcount == entities.size());
+   }
+    constexpr int ibegin = 4;
+    constexpr int iend = 20;
+   for(int i = ibegin; i < iend; i++){
+       entities[i].Destroy();
+   }
+   
+   {
+       int icount = 0;
+       auto fic = [&](float,auto& fc) {
+           icount++;
+       };
+       w.Filter<IntComponent>(fic);
+       int fcount = 0;
+       auto ffc = [&](float,auto& fc) {
+           fcount++;
+       };
+       w.Filter<FloatComponent>(ffc);
+       cout << "After destroying " << ibegin-iend << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
+       assert(icount == (entities.size() - (ibegin + iend)));
+       assert(fcount == (entities.size() - (ibegin + iend)));
+   }
+    
+    return 0;
+}
+
+int Test_MoveBetweenWorlds(){
+    // move between worlds
+    World w1, w2;
+    
+    std::array<MyPrototype, 10> w1entities;
+    std::array<MyPrototype, 20> w2entities;
+    
+    for(auto& e : w1entities){
+        e = w1.CreatePrototype<MyPrototype>();
+    }
+    
+    for(auto& e : w2entities){
+        e = w2.CreatePrototype<MyPrototype>();
+    }
+    
+    int w1count = 0;
+    auto ffc = [&](float,auto& ic){
+        ic.value = 1;
+        w1count++;
+    };
+    w1.Filter<IntComponent>(ffc);
+    
+    int w2count = 0;
+    auto fic = [&](float,auto& ic){
+        ic.value = 2;
+        w2count++;
+    };
+    w2.Filter<IntComponent>(fic);
+    
+    cout << "w1count = " << w1count << ", w2count = " << w2count << "\n";
+    assert(w1count == w1entities.size());
+    assert(w2count == w2entities.size());
+    
+    // move some entities from w2 to w1
+    constexpr auto move_c = w2entities.size()/2;
+    for(int i = 0; i < move_c; i++){
+        w2entities[i].MoveTo(w1);
+    }
+    
+    w1count = 0;
+    auto fic2 = [&](float,const auto& ic){
+        w1count++;
+        cout << ic.value << " ";
+    };
+    w1.Filter<IntComponent>(fic2);
+    cout << "\n";
+    w2count = 0;
+    auto fic3 = [&](float,const auto& ic){
+        w2count++;
+        cout << ic.value << " ";
+    };
+    w2.Filter<IntComponent>(fic3);
+    cout << "\nAfter moving " << move_c <<" entities to w1, w1count = " << w1count << ", w2count = " << w2count << "\n";
+    assert(w1count == w1entities.size() + move_c);
+    assert(w2count == w2entities.size() - move_c);
+    return 0;
+}
+
 int main(int argc, const char** argv) {
-    const unordered_map <string, std::function<int(void)>> tests{
+    const unordered_map<std::string_view, std::function<int(void)>> tests{
 		{"CTTI",&Test_CTTI},
-        {"Test_UUID",&Test_UUID}
+        {"Test_UUID",&Test_UUID},
+        {"Test_AddDel",&Test_AddDel},
+        {"Test_SpawnDestroy",&Test_SpawnDestroy},
+        {"Test_MoveBetweenWorlds",&Test_MoveBetweenWorlds}
     };
 	    
 	if (argc < 2){
@@ -49,9 +240,10 @@ int main(int argc, const char** argv) {
 		return -1;
 	}
 	
-    const std::string test = argv[1];
+    auto test = argv[1];
     if (tests.find(test) != tests.end()) {
-       return tests.at(test)();
+        RavEngine::App app;
+        return tests.at(test)();
     }
     else {
         cerr << "No test with name: " << test << endl;

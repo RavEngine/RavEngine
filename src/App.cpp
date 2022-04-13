@@ -61,8 +61,7 @@ static void DebugOutput( ESteamNetworkingSocketsDebugOutputType eType, const cha
 	}
 }
 
-App::App(const std::string& resourcesName){
-	currentApp = this;
+App::App(const std::string& resourcesName) : App(){
 	// crash signal handlers
 	::signal(SIGSEGV, &crash_signal_handler);
 	::signal(SIGABRT, &crash_signal_handler);
@@ -71,6 +70,10 @@ App::App(const std::string& resourcesName){
 	PHYSFS_init("");
 	
 	Resources.emplace(StrFormat("{}.rvedata",resourcesName));
+}
+
+App::App(){
+    currentApp = this;
 }
 
 int App::run(int argc, char** argv) {
@@ -237,6 +240,9 @@ void App::Quit(){
 }
 
 App::~App(){
+    if (!PHYSFS_isInit()){  // unit tests do not initialize the vfs, so we don't want to procede here
+        return;
+    }
 	inputManager = nullptr;
 	renderWorld = nullptr;
 	loadedWorlds.clear();

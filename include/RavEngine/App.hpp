@@ -49,6 +49,7 @@ namespace RavEngine {
         std::optional<VirtualFilesystem> Resources;
 	public:
 		App(const std::string& resourcesName);
+        App();  // for unit tests only, do not use
 		virtual ~App();
         
         /**

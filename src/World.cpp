@@ -22,6 +22,7 @@
 #include "AnimatorSystem.hpp"
 #include "SkinnedMeshComponent.hpp"
 #include "NetworkManager.hpp"
+#include <physfs.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -56,7 +57,9 @@ RavEngine::World::World(){
         
     EmplaceSystem<AudioRoomSyncSystem, AudioRoom,Transform>();
     EmplaceSystem<RPCSystem,RPCComponent>();
-    skybox = make_shared<Skybox>();
+    if (PHYSFS_isInit()){
+        skybox = make_shared<Skybox>();
+    }
 }
 
 void World::NetworkingSpawn(ctti_t id, Entity& handle){

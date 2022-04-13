@@ -854,6 +854,9 @@ if (RAVENGINE_BUILD_TESTS)
 
 	test("CTTI" "${PROJECT_NAME}_TestBasics")
 	test("Test_UUID" "${PROJECT_NAME}_TestBasics")
+    test("Test_AddDel" "${PROJECT_NAME}_TestBasics")
+    test("Test_SpawnDestroy" "${PROJECT_NAME}_TestBasics")
+    test("Test_MoveBetweenWorlds" "${PROJECT_NAME}_TestBasics")
 endif()
 
 # Disable unecessary build / install of targets
