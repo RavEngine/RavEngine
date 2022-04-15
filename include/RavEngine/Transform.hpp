@@ -54,6 +54,8 @@ namespace RavEngine {
 
         Transform& SetLocalScale(const vector3&);
         Transform& LocalScaleDelta(const vector3&);
+        
+        Transform& SetLocalScale(const decimalType& scale){ SetLocalScale(vector3(scale,scale,scale)); return *this;}
 
 		vector3 Forward() const;
 		vector3 Right() const;

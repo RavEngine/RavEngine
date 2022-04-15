@@ -61,7 +61,8 @@ void main()
 	if (nDotL < MINDOTL) {
 		gl_Position = vec4(0,0,0,1);	// don't shade this by placing it at the origin
 	}
-	else{
+	else
+    {
         vec3 center = (points[0] + points[1] + points[2])/3.0;
         vec3 dirvec = (toLight + (normalize(center-points[gl_VertexID % 3])* EXPAND)) * -1000;
         

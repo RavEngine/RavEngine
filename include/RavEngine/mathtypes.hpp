@@ -15,8 +15,8 @@
 //defines the vector and quaternion types
 //can change these to 32 bit float instead of 64 bit
 
-#define DOUBLE_PRECISION
-#ifdef DOUBLE_PRECISION
+#define DOUBLE_PRECISION 0
+#if DOUBLE_PRECISION
 
 
 //a double-precision 3-component vector

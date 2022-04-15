@@ -184,5 +184,5 @@ void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg,color_t debug_color, 
 }
 
 void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg, color_t debug_color, const RavEngine::Transform& tr) const{
-    dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(tr), glm::radians(90.0), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
+    dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(tr), deg_to_rad(90), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
 }

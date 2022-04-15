@@ -50,7 +50,7 @@ namespace RavEngine {
 		constexpr inline matrix4 GenerateProjectionMatrix() const{
 			switch(projection){
 				case Mode::Perspective:
-					return matrix4(glm::perspective(glm::radians(FOV), (float)width / height, nearClip, farClip));
+					return matrix4(glm::perspective(deg_to_rad(FOV), (float)width / height, nearClip, farClip));
 					break;
 				case Mode::Orthographic:
 					return matrix4(glm::ortho(0.0f,static_cast<float>(width),static_cast<float>(height),0.0f,nearClip,farClip));
