@@ -68,15 +68,26 @@ inline constexpr int closest_multiple_of(int x, int B) {
 }
 }
 
-inline constexpr decimalType deg_to_rad(decimalType val){
+/**
+ @param val an angle in degrees
+ @return the angle in radians
+ */
+inline decimalType deg_to_rad(decimalType val){
     return glm::radians(val);
 }
 
-inline constexpr auto Slerp(const quaternion& x, const quaternion& y, decimalType a){
+/**
+ Perform a slerp between quaternions x and y
+ @param x first target
+ @param y second target
+ @param a position
+ @return posed quaternion
+ */
+inline auto Slerp(const quaternion& x, const quaternion& y, decimalType a){
     return glm::slerp(x,y,a);
 }
 
 template<typename S>
-inline constexpr auto Slerp(const quaternion& x, const quaternion& y, decimalType a, S k){
+inline auto Slerp(const quaternion& x, const quaternion& y, decimalType a, S k){
     return glm::slerp(x,y,a,k);
 }

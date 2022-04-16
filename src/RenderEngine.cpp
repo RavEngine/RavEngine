@@ -442,8 +442,8 @@ void RenderEngine::Init(const AppConfig& config)
     allGeoLayout.begin()
         .add(bgfx::Attrib::Position, 1, bgfx::AttribType::Float)    // 3 verts to make a triangle
         .end();
-    allVerticesHandle = bgfx::createDynamicVertexBuffer((3.2*3e+7), allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_COMPUTE_FORMAT_32X1);
-	allIndicesHandle = bgfx::createDynamicIndexBuffer(3.2e+7, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
+    allVerticesHandle = bgfx::createDynamicVertexBuffer((1e+7)*3, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_COMPUTE_FORMAT_32X1);
+	allIndicesHandle = bgfx::createDynamicIndexBuffer(1e+7, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
     
     bgfx::VertexLayout lightBlockingLayout;
     lightBlockingLayout.begin()
