@@ -134,7 +134,7 @@ namespace RavEngine {
 		class ActionBinding{
 			actionCallback func;	//the lambda to invoke
 			void* func_addr = nullptr;		//used for equality comparison
-			uint32_t id;	//used for determining validity
+			size_t id;	//used for determining validity
 			CID controller;
 			ActionState state;
 			
@@ -177,7 +177,7 @@ namespace RavEngine {
 		protected:
 			axisCallback func;		//the lambda to invoke
 			void* func_addr = nullptr;		//used for equality comparison
-			uint32_t id; //used for determining validity
+			size_t id; //used for determining validity
 			CID controller;
 			float deadzone = 0;
 		public:
