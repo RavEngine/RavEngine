@@ -339,7 +339,10 @@ if(TARGET_EMSCRIPTEN OR ( (TARGET_WINDOWS OR TARGET_UWP) AND CMAKE_C_COMPILER_AR
 endif()
 
 # boost_filesystem
-add_subdirectory(deps/boost/libs/filesystem)
+if (NOT TARGET_UWP)
+	add_subdirectory(deps/boost/libs/filesystem)
+	set(BOOST_FS_LIB "boost_filesystem")
+endif()
 
 # ========== Building engine ==============
 
@@ -479,7 +482,7 @@ target_link_libraries("${PROJECT_NAME}"
 	${SDL2MAIN_LIB}
 	"r8brain"
 	PUBLIC
-	"boost_filesystem"
+	"${BOOST_FS_LIB}"
 	"effolkronium_random"
 	"glm"
 	"fmt"
