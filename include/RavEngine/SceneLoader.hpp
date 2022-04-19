@@ -2,7 +2,7 @@
 #include "Function.hpp"
 #include "Ref.hpp"
 #include "mathtypes.hpp"
-#include <filesystem>
+#include "Filesystem.hpp"
 
 struct aiScene;
 
@@ -37,7 +37,7 @@ namespace RavEngine {
 		/**
 		 Construct a SceneLoader from the user's filesystem. This will load the scene file into an intermediate representation
 		 */
-        SceneLoader(const std::filesystem::path& pathOnDisk);
+        SceneLoader(const Filesystem::Path& pathOnDisk);
 
 		/**
 		* Unloads internal representation

@@ -380,6 +380,15 @@ void RenderEngine::Init(const AppConfig& config)
 
 		bgfx::setState(BGFX_STATE_DEFAULT);
 	}
+    
+    // check min spec
+#if __APPLE__
+    if (!AppleGPUMeetsMinSpec()){
+        char buf[30]{0};
+        AppleGPUName(buf, 30);
+        Debug::Fatal("Cannot proceed: device \"{}\" is under the minimum spec!", buf);
+    }
+#endif
 
 	//check capabilities
 	const auto caps = bgfx::getCaps();

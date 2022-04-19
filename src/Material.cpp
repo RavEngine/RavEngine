@@ -5,7 +5,7 @@
 #include <RenderEngine.hpp>
 #include "mathtypes.hpp"
 #include "glm/gtc/type_ptr.hpp"
-#include <filesystem>
+#include "Filesystem.hpp"
 #include "Common3D.hpp"
 #include <bgfx/bgfx.h>
 #include "App.hpp"
@@ -14,7 +14,6 @@
 
 using namespace std;
 using namespace RavEngine;
-using namespace std::filesystem;
 
 bgfx::ShaderHandle loadShader(const  RavEngine::Vector<uint8_t>& data){
 	assert(data.size() < std::numeric_limits<uint32_t>::max());

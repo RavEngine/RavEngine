@@ -40,7 +40,7 @@ static const aiScene* LoadScene(const std::string& name){
 	
 	auto str = GetApp()->GetResources().FileContentsAt(dir.c_str());
 	
-	auto file_ext = filesystem::path(dir).extension();
+	auto file_ext = Filesystem::Path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
 	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),
 												  assimp_flags,
@@ -53,7 +53,7 @@ static const aiScene* LoadScene(const std::string& name){
 	return scene;
 }
 
-static const aiScene* LoadSceneFilesystem(const std::filesystem::path& path){
+static const aiScene* LoadSceneFilesystem(const Filesystem::Path& path){
 	const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
 	
 	if (!scene){
@@ -107,13 +107,13 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	InitAll(scene, options);
 }
 
-MeshAsset::MeshAsset(const std::filesystem::path& path, const MeshAssetOptions& opt){
+MeshAsset::MeshAsset(const Filesystem::Path& path, const MeshAssetOptions& opt){
 	auto scene = LoadSceneFilesystem(path);
 	
 	InitAll(scene,opt);
 }
 
-MeshAsset::MeshAsset(const std::filesystem::path& path, const std::string& name, const MeshAssetOptions& opt){
+MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, const MeshAssetOptions& opt){
 	auto scene = LoadSceneFilesystem(path);
 	
 	InitPart(scene, name, path.string(), opt);

@@ -128,3 +128,21 @@ void AppleCPUName(char* buffer, size_t size){
 		sysctlbyname("machdep.cpu.brand_string", buffer, &size, NULL, 0);
 	}
 }
+
+bool AppleGPUMeetsMinSpec(){
+    auto internalData = bgfx::getInternalData();
+    auto device = (id<MTLDevice>)internalData->context;
+#if TARGET_OS_IPHONE
+    if (@available(iOS 13.0, *)) {
+        return [device supportsFamily:MTLGPUFamilyApple3];
+    } else {
+        return false;   // too old!
+    };
+#elif TARGET_OS_MAC
+    if (@available(macOS 10.15, *)) {
+        return [device supportsFamily:MTLGPUFamilyMac2];
+    } else {
+        return false;   // too old
+    };
+#endif
+}

@@ -7,7 +7,7 @@
 #include <ozz/animation/offline/animation_builder.h>
 #include "DataStructures.hpp"
 #include <ozz/base/span.h>
-#include <filesystem>
+#include "Filesystem.hpp"
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -45,7 +45,7 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 	auto path = StrFormat("objects/{}", name);
 	if(GetApp()->GetResources().Exists(path.c_str())){
 		//is this in ozz format
-		auto extension = filesystem::path(name).extension();
+		auto extension = Filesystem::Path(name).extension();
 		if (extension == ".ozz"){
             RavEngine::Vector<uint8_t> data;
 			GetApp()->GetResources().FileContentsAt(path.c_str());

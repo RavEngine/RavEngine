@@ -338,6 +338,9 @@ if(TARGET_EMSCRIPTEN OR ( (TARGET_WINDOWS OR TARGET_UWP) AND CMAKE_C_COMPILER_AR
 	target_compile_definitions("physfs-static" PUBLIC "MY_CPU_LE")
 endif()
 
+# boost_filesystem
+add_subdirectory(deps/boost/libs/filesystem)
+
 # ========== Building engine ==============
 
 # get all sources for the library with glob
@@ -476,6 +479,7 @@ target_link_libraries("${PROJECT_NAME}"
 	${SDL2MAIN_LIB}
 	"r8brain"
 	PUBLIC
+	"boost_filesystem"
 	"effolkronium_random"
 	"glm"
 	"fmt"

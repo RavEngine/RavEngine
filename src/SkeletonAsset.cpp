@@ -6,7 +6,7 @@
 #include "Debug.hpp"
 #include <ozz/base/io/stream.h>
 #include <ozz/base/io/archive.h>
-#include <filesystem>
+#include "Filesystem.hpp"
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -23,7 +23,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	
 	if(GetApp()->GetResources().Exists(path.c_str())){
 		//is this in ozz format?
-		auto extension = filesystem::path(str).extension();
+		auto extension = Filesystem::Path(str).extension();
 		if (extension == ".ozz"){
             RavEngine::Vector<uint8_t> data;
 			GetApp()->GetResources().FileContentsAt(path.c_str(),data);

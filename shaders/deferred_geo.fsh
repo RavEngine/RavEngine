@@ -5,6 +5,7 @@ $input v_normal, v_texcoord0, v_worldpos
 SAMPLER2D(s_albedoTex,0);
 uniform vec4 albedoColor;
 
+EARLY_DEPTH_STENCIL
 void main()
 {
 	PBR material = make_mat();

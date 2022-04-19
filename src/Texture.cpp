@@ -7,7 +7,7 @@
 #include <stb_image.h>
 #include "Debug.hpp"
 #include <lunasvg.h>
-#include <filesystem>
+#include "Filesystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -16,7 +16,7 @@ Ref<RuntimeTexture> TextureManager::defaultTexture;
 
 inline static bool IsRasterImage(const std::string& filepath){
     // assume that anything not in the whitelist is a raster image
-    if (filesystem::path(filepath).extension() == ".svg"){
+    if (Filesystem::Path(filepath).extension() == ".svg"){
         return false;
     }
     return true;

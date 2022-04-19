@@ -5,6 +5,7 @@ $input colorintensity
 
 SAMPLER2D(s_albedo,0);
 
+EARLY_DEPTH_STENCIL
 void main()
 {
 	//calculate sampling positions using fragment pos and view dimensions

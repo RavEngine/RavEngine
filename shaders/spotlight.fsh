@@ -6,6 +6,7 @@ SAMPLER2D(s_albedo,0);
 SAMPLER2D(s_normal,1);
 SAMPLER2D(s_pos,2);
 
+EARLY_DEPTH_STENCIL
 void main()
 {
 	//calculate sampling positions using fragment pos and view dimensions

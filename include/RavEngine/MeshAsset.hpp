@@ -9,7 +9,7 @@
 #include "SpinLock.hpp"
 #include "Manager.hpp"
 #include <boost/container_hash/hash.hpp>
-#include <filesystem>
+#include "Filesystem.hpp"
 
 struct aiMesh;
 struct aiScene;
@@ -126,10 +126,9 @@ public:
 	 */
 	MeshAsset(const std::string& path, const std::string& modelName, const MeshAssetOptions& options = MeshAssetOptions());
 	
-	MeshAsset(const std::filesystem::path& pathOnDisk, const MeshAssetOptions& options = MeshAssetOptions());
+	MeshAsset(const Filesystem::Path& pathOnDisk, const MeshAssetOptions& options = MeshAssetOptions());
 
-	MeshAsset(const std::filesystem::path& pathOnDisk, const std::string& modelName, const MeshAssetOptions& options = MeshAssetOptions());
-	
+	MeshAsset(const Filesystem::Path& pathOnDisk, const std::string& modelName, const MeshAssetOptions& options = MeshAssetOptions());
 	/**
 	 Create a MeshAsset from multiple vertex and index lists
 	 @param rawMeshData the index and triangle data

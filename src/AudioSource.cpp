@@ -7,7 +7,7 @@
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
 #include <SDL.h>
-#include <filesystem>
+#include "Filesystem.hpp"
 #include <r8bbase.h>
 #include <CDSPResampler.h>
 
@@ -22,7 +22,7 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 	const int desiredSampleRate = 44100;
 	
 	nqr::NyquistIO loader;
-	auto file_ext = filesystem::path(path).extension().string().substr(1);
+	auto file_ext = Filesystem::Path(path).extension().string().substr(1);
 	nqr::AudioData data;
 	loader.Load(&data, file_ext, datavec);
 	

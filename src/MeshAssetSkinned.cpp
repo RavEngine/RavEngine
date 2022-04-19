@@ -6,7 +6,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 #include <assimp/mesh.h>
-#include <filesystem>
+#include "Filesystem.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -23,7 +23,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	auto str = GetApp()->GetResources().FileContentsAt(fullpath.c_str());
 	
 	//pull from cmrc
-	auto file_ext = filesystem::path(fullpath).extension();
+	auto file_ext = Filesystem::Path(fullpath).extension();
 	//uses a meta-flag to auto-triangulate the input file
 	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),
 												  aiProcess_CalcTangentSpace |

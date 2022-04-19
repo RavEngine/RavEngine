@@ -106,7 +106,7 @@ int App::run(int argc, char** argv) {
 
 	//load the built-in fonts
 	App::Resources->IterateDirectory("fonts", [](const std::string& filename) {
-		auto p = std::filesystem::path(filename);
+		auto p = Filesystem::Path(filename);
 		if (p.extension() == ".ttf") {
 			GUIComponent::LoadFont(p.filename().string());
 		}

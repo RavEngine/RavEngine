@@ -5,7 +5,7 @@
 #include "Debug.hpp"
 #include "App.hpp"
 #include "Utilities.hpp"
-#include <filesystem>
+#include "Filesystem.hpp"
 #include "MeshAsset.hpp"
 
 using namespace RavEngine;
@@ -39,7 +39,7 @@ RavEngine::SceneLoader::SceneLoader(const char* name)
 
 	auto str = GetApp()->GetResources().FileContentsAt(dir.c_str());
 
-	auto file_ext = filesystem::path(dir).extension();
+	auto file_ext = Filesystem::Path(dir).extension();
 	//uses a meta-flag to auto-triangulate the input file
 	scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),aiflags,file_ext.string().c_str());
 
@@ -48,7 +48,7 @@ RavEngine::SceneLoader::SceneLoader(const char* name)
 	}
 }
 
-SceneLoader::SceneLoader(const std::filesystem::path& path){
+SceneLoader::SceneLoader(const Filesystem::Path& path){
 	scene = aiImportFile(path.string().c_str(), aiflags);
 	
 	if (!scene) {

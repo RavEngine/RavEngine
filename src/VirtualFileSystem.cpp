@@ -1,7 +1,7 @@
 #include "VirtualFileSystem.hpp"
 #include <physfs.h>
 #include <fmt/format.h>
-#include <filesystem>
+#include "Filesystem.hpp"
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
@@ -33,7 +33,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 #endif
 
 	//1 means add to end, can put 0 to make it first searched
-	auto pwd = std::filesystem::current_path();
+	auto pwd = Filesystem::CurrentWorkingDirectory();
 	if (PHYSFS_mount(cstr, "", 1) == 0) {
 		Debug::Fatal("PHYSFS Error: {}",PHYSFS_WHY());
 	}
@@ -41,7 +41,7 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	if (*root == NULL) {
 		Debug::Fatal("PHYSFS Error: {}", PHYSFS_WHY());
 	}
-	rootname = std::filesystem::path(path).replace_extension("").string();
+	rootname = Filesystem::Path(path).replace_extension("").string();
 	PHYSFS_freeList(root);
 }
 

@@ -7,6 +7,7 @@ SAMPLER2D(s_normal,1);
 SAMPLER2D(s_pos,2);
 BUFFER_RO(blockingDataBuf, uint, 10);
 
+EARLY_DEPTH_STENCIL
 void main()
 {
 	//calculate sampling positions using fragment pos and view dimensions
@@ -15,9 +16,7 @@ void main()
     // is this pixel visible to the light? if not, discard
     uint visibilityMask = blockingDataBuf[gl_FragCoord.y * u_viewRect.z + gl_FragCoord.x];
     uint thisLight = 1 << lightID;
-    if (visibilityMask & thisLight){
-        discard;    // this pixel is blocked by this light, so do not light it
-    }
+    bool enabled = !(visibilityMask & thisLight);   // if the light is blocked, do not light here
 	
 	float intensity = colorintensity[3];
 	float radius = positionradius[3];
@@ -38,5 +37,5 @@ void main()
 	
 	vec3 diffuseLight = albedo * nDotL;
 		
-	gl_FragData[0] = vec4(intensity * attenuation * colorintensity.xyz * diffuseLight, 1.0);
+	gl_FragData[0] = vec4(intensity * attenuation * colorintensity.xyz * diffuseLight * enabled, enabled);
 }

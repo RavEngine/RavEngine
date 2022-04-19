@@ -353,7 +353,7 @@ namespace bgfx { namespace mtl
 			NSError* error;
 			id <MTLRenderPipelineState> state = [m_obj newRenderPipelineStateWithDescriptor:_descriptor options:_options reflection:_reflection error:&error];
 
-			BX_WARN(NULL == error
+            BX_ASSERT(NULL == error
 				, "newRenderPipelineStateWithDescriptor failed: %s"
 				, [error.localizedDescription cStringUsingEncoding:NSASCIIStringEncoding]
 				);
