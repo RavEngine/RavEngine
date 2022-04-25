@@ -31,7 +31,10 @@ declare_shader("skincompute" "${CMAKE_CURRENT_LIST_DIR}/skinning_cs.glsl" "" "")
 # indices copy compute shader
 declare_shader("indexcopycompute" "${CMAKE_CURRENT_LIST_DIR}/index_copy_cs.glsl" "" "")
 
-declare_shader("blankblockingbuffer" "${CMAKE_CURRENT_LIST_DIR}/blank_blockingbuffer_cs.glsl" "" "")
+declare_shader("dirlight_pre" "${CMAKE_CURRENT_LIST_DIR}/dirlight_pre.vsh" "${CMAKE_CURRENT_LIST_DIR}/dirlight_pre.fsh" "${CMAKE_CURRENT_LIST_DIR}/dirlight_pre_varying.def.hlsl")
 
 # shadow volume shader
 declare_shader("shadowvolume" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShader.vsh" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShader.fsh" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShader_varying.def.hlsl")
+
+# shadow volume - lightweight marking shader
+declare_shader("shadowvolumeLT" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShaderLT.vsh" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShaderLT.fsh" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShaderLT_varying.def.hlsl")

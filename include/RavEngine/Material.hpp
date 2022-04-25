@@ -68,6 +68,7 @@ namespace RavEngine {
 	private:
 		static bgfx::ProgramHandle loadComputeProgram(const std::string_view& full_path);
         static bgfx::ShaderHandle loadShaderHandle(const std::string_view& full_path);
+        static bgfx::ProgramHandle loadShaderProgram(const std::string_view& name_path);
 	};
 
 	//for type conversions, do not use directly

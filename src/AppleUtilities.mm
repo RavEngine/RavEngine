@@ -132,7 +132,9 @@ void AppleCPUName(char* buffer, size_t size){
 bool AppleGPUMeetsMinSpec(){
     auto internalData = bgfx::getInternalData();
     auto device = (id<MTLDevice>)internalData->context;
-#if TARGET_OS_IPHONE
+#if TARGET_OS_SIMULATOR
+    return true;        // simulator does not properly report features, so assume it will work
+#elif TARGET_OS_IPHONE
     if (@available(iOS 13.0, *)) {
         return [device supportsFamily:MTLGPUFamilyApple3];
     } else {

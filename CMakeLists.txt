@@ -678,7 +678,7 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
@@ -749,6 +749,10 @@ function(pack_resources)
 	copy_helper("${ARGS_FONTS}" "fonts")
 	copy_helper("${ENG_FONTS}" "fonts")
 	copy_helper("${ARGS_SOUNDS}" "sounds")
+	
+	source_group("Objects" FILES ${ARGS_OBJECTS})
+	source_group("Textures" FILES ${ARGS_TEXTURES})
+	source_group("UI" FILES ${ARGS_UIS})
 
 	# get dependency outputs
 	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)
@@ -779,6 +783,7 @@ function(pack_resources)
 	get_property(all_shaders_sources GLOBAL PROPERTY ALL_SHADER_SOURCES)
 	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shaders_sources})
 	set_source_files_properties(${ARGS_UIS} ${all_shaders_sources} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevents visual studio from trying to build these
+	source_group("Shaders" FILES ${all_shaders_sources})
 
 	# on UWP, need an additional file w/ compile options for SDLmain to work
 	if(UWP)
@@ -814,6 +819,7 @@ function(pack_resources)
 	set_source_files_properties("${outpack}" PROPERTIES
 		MACOSX_PACKAGE_LOCATION Resources
 	)
+	source_group("Resources" FILES ${outpack})
 
 	# Set the assets zip location on UWP
 	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_CONTENT 1)

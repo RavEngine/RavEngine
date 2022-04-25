@@ -16,7 +16,7 @@ using namespace std;
 using namespace RavEngine;
 
 bgfx::ShaderHandle loadShader(const  RavEngine::Vector<uint8_t>& data){
-	assert(data.size() < std::numeric_limits<uint32_t>::max());
+    Debug::AssertSize<uint32_t>(data.size());
 	const bgfx::Memory* mem = bgfx::copy(&data[0], static_cast<uint32_t>(data.size()));
 	return bgfx::createShader(mem);
 }
@@ -81,7 +81,13 @@ bgfx::ProgramHandle RavEngine::Material::loadComputeProgram(const std::string_vi
 {
     RavEngine::Vector<uint8_t> shaderdata;
 	GetApp()->GetResources().FileContentsAt(StrFormat("shaders/{}/{}", shader_api(), full_path).c_str(), shaderdata);
-	assert(shaderdata.size() < numeric_limits<uint32_t>::max());
+    Debug::AssertSize<uint32_t>(shaderdata.size());
 	const bgfx::Memory* mem = bgfx::copy(&shaderdata[0], static_cast<uint32_t>(shaderdata.size()));
 	return bgfx::createProgram(bgfx::createShader(mem), true);	//auto destroys shader when program is destroyed
+}
+
+bgfx::ProgramHandle Material::loadShaderProgram(const std::string_view& name_path){
+    auto vert = Material::loadShaderHandle(StrFormat("{}/vertex.bin",name_path));
+    auto frag = Material::loadShaderHandle(StrFormat("{}/fragment.bin",name_path));
+    return bgfx::createProgram(vert, frag);
 }
