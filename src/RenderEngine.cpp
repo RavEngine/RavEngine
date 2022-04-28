@@ -876,7 +876,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                     numRowsUniform.SetValues(uniformData, 1);
                     bgfx::setBuffer(1,lightBlockingBuffer,bgfx::Access::Write);
                     bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_GREATER);
-                    bgfx::setStencil(BGFX_STENCIL_OP_PASS_Z_REPLACE | BGFX_STENCIL_FUNC_REF(1));
+					//bgfx::setStencil(BGFX_STENCIL_OP_PASS_Z_REPLACE | BGFX_STENCIL_FUNC_REF(1));
                 
                     // set specific vertex / index buffers & instancing if applicable
                     if constexpr (std::is_same_v<DirectionalLight, LightType>){
@@ -892,8 +892,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                     }
                     
                     // submit
+					bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_GREATER);
                     bgfx::submit(Views::Lighting, dirlight_pre_handle);
-                    bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_GREATER);
                 }
                 
                 bgfx::discard();
@@ -905,7 +905,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                 float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)),static_cast<float>(numInstances), static_cast<float>(stride/sizeof(float)),static_cast<float>(lighttype)};        // start points for reading shadow data
                 numRowsUniform.SetValues(uniformData, 1);
                 
-                auto setState = [&]{
+                const auto setState = [&]{
                     bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
                     bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
                     bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
@@ -914,24 +914,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                     bgfx::setInstanceCount(numInstances);            // 3 indices per triangle, per light of this type
 
                 };
-
-                // find all the pixels where a volume's front face is visible
-                setState();
-                bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS);
-                bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_RMASK(1) | BGFX_STENCIL_FUNC_REF(2) | BGFX_STENCIL_OP_PASS_Z_REPLACE);
-                bgfx::submit(Views::Lighting, shadowVolumeHandleLT);
-                
-                // for those pixels, find all the pixels where a volume's back face is behind
-                setState();
-                bgfx::setState(BGFX_STATE_CULL_CCW | BGFX_STATE_DEPTH_TEST_GREATER);
-                bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_RMASK(2) | BGFX_STENCIL_FUNC_REF(3) | BGFX_STENCIL_OP_PASS_Z_REPLACE);
-                bgfx::submit(Views::Lighting, shadowVolumeHandleLT);
-                
-                // only run the expensive volume calculations for pixels that passed both tests
                 setState();
                 bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
                 bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS);
-                bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
+                //bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
                 bgfx::setTexture(0, lightingSamplers[1], lightingAttachments[1]);
                 bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);
                 bgfx::submit(Views::Lighting, shadowVolumeHandle);
@@ -954,7 +940,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
             float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)), 0,0,0};        // start points for reading shadow data ( beginOffset is in bytes but we want floats
             numRowsUniform.SetValues(uniformData, 1);
             
-            bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
+            //bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
             LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
         }
         
