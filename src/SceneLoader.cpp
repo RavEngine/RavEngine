@@ -29,7 +29,7 @@ aiProcess_FindInvalidData;
 
 SceneLoader::SceneLoader(const std::string& name) : SceneLoader(name.c_str()){}
 
-RavEngine::SceneLoader::SceneLoader(const char* name)
+RavEngine::SceneLoader::SceneLoader(const char* name) : scene_path(name)
 {
 	auto dir = StrFormat("objects/{}",name);
 
@@ -48,7 +48,7 @@ RavEngine::SceneLoader::SceneLoader(const char* name)
 	}
 }
 
-SceneLoader::SceneLoader(const Filesystem::Path& path){
+SceneLoader::SceneLoader(const Filesystem::Path& path) : scene_path(path.string()) {
 	scene = aiImportFile(path.string().c_str(), aiflags);
 	
 	if (!scene) {
@@ -61,9 +61,11 @@ RavEngine::SceneLoader::~SceneLoader()
 	aiReleaseImport(scene);
 }
 
-void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset&)>& filterFunc, const Function<void(Ref<MeshAsset>, const PreloadedAsset&)>& constructionFunc)
+void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset&)>& filterFunc, const Function<void(Ref<MeshAsset>, Ref<PBRMaterialInstance>, const PreloadedAsset&)>& constructionFunc)
 {
 	matrix4 identity(1);
+	UnorderedMap<uint32_t, Ref<PBRMaterialInstance>> materials;	 // not an array because they can be encountered out of order
+	Filesystem::Path base_path = decltype(base_path)(scene_path).parent_path();
 	for (decltype(scene->mNumMeshes) i = 0; i < scene->mNumMeshes; i++) {
 		const auto& name = scene->mMeshes[i]->mName;
 		PreloadedAsset pa{ string_view(name.C_Str(), name.length) };
@@ -71,11 +73,38 @@ void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset
 		// user chooses if we load this mesh
 		if (filterFunc(pa)) {
 			auto mp = MeshAsset::AIMesh2MeshPart(scene->mMeshes[i],identity);
-			auto asset = make_shared<MeshAsset>(mp);
-			constructionFunc(asset, pa);
+			auto asset = New<MeshAsset>(mp);
+
+			// load the material data
+			auto idx = scene->mMeshes[i]->mMaterialIndex;
+			Ref<PBRMaterialInstance> matinst;
+			if (materials.contains(idx)) {
+				matinst = materials.at(idx);
+			}
+			else {
+				// create the material here
+				matinst = New<PBRMaterialInstance>(Material::Manager::Get<PBRMaterial>());
+				materials[idx] = matinst;
+				auto aimat = scene->mMaterials[idx];
+				aiColor3D albedo;
+				aimat->Get(AI_MATKEY_COLOR_DIFFUSE, albedo);
+				matinst->SetAlbedoColor({ albedo.r,albedo.g,albedo.b,1 });
+
+				// load textures
+				aiString texpath;
+				if (aimat->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, 0), texpath) == AI_SUCCESS) {
+					auto imgpath = Filesystem::Path(StrFormat("{}/{}", base_path.string(), texpath.C_Str()));
+					auto tx = New<Texture>(imgpath);
+					matinst->SetAlbedoTexture(tx);
+				}
+
+			}
+			
+			constructionFunc(asset, matinst, pa);
 		}
 	}
 }
+
 
 void RavEngine::SceneLoader::LoadLocators(const Function<void(const Locator&)>& func)
 {

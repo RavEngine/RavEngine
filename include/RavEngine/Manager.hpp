@@ -91,7 +91,7 @@ public:
         mtx.unlock();
         return m;
     }
-    
+
     /**
      Reduce the size of the cache by removing expired pointers
      */

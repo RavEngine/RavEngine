@@ -183,6 +183,10 @@ namespace RavEngine {
         void SetWindowTitle(const char* title);
 		
         std::optional<Ref<World>> GetWorldByName(const std::string& name);
+
+		auto GetCurrentRenderWorld()  {
+			return renderWorld;
+		}
 		
         inline FrameData* GetCurrentFramedata(){
 			return current;

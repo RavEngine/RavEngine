@@ -36,6 +36,15 @@ Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
     CreateTexture(width, height, false, 1, bitmap.data());
 }
 
+RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
+{
+	int width, height, channels;
+	unsigned char* bytes = stbi_load(pathOnDisk.string().c_str(), &width, &height, &channels, 4);
+
+	CreateTexture(width,height,false,1,bytes);
+	stbi_image_free(bytes);
+}
+
 Texture::Texture(const std::string& name){
     Debug::Assert(IsRasterImage(name), "This texture constructor only allows raster image formats");
     
@@ -56,7 +65,7 @@ Texture::Texture(const std::string& name){
 	uint16_t numlayers = 1;
 	
 	CreateTexture(width, height, hasMipMaps, numlayers, bytes);
-	free(bytes);
+	stbi_image_free(bytes);
 	
 }
 

@@ -3,6 +3,7 @@
 #include "Uniform.hpp"
 #include "Ref.hpp"
 #include "Manager.hpp"
+#include "Filesystem.hpp"
 
 namespace RavEngine{
 
@@ -13,8 +14,11 @@ public:
 	 @param filename name of the texture
 	 */
 	Texture(const std::string& filename);
+	Texture(const char* filename) : Texture(std::string(filename)) {}
     
     Texture(const std::string& filename, uint16_t width, uint16_t height);
+
+	Texture(const Filesystem::Path& pathOnDisk);
 	
 	virtual ~Texture(){
 		bgfx::destroy(texture);

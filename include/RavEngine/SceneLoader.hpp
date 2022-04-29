@@ -9,6 +9,7 @@ struct aiScene;
 namespace RavEngine {
 	class Entity;
 	class MeshAsset;
+	class PBRMaterialInstance;
 
 	struct PreloadedAsset {
 		std::string_view name;
@@ -49,7 +50,7 @@ namespace RavEngine {
 		* @param filterFunc the function to invoke to filter items. Return true if the mesh should be loaded, false to skip
 		* @param constructionFunc the funciton to invoke with the created MeshAssets.
 		*/
-		void LoadMeshes(const Function<bool(const PreloadedAsset&)>& filterFunc, const Function<void(Ref<MeshAsset>, const PreloadedAsset&)>& constructionFunc);
+		void LoadMeshes(const Function<bool(const PreloadedAsset&)>& filterFunc, const Function<void(Ref<MeshAsset>, Ref<PBRMaterialInstance>, const PreloadedAsset&)>& constructionFunc);
 
 		/**
 		* Load the scene nodes for this scene
@@ -59,6 +60,7 @@ namespace RavEngine {
 
 	private:
 		const aiScene* scene;
+		const std::string scene_path;
 	};
 
 
