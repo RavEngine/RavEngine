@@ -19,8 +19,11 @@ struct Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable
  */
 struct ShadowLight : public Light, public QueryableDelta<Light,ShadowLight>{
 	using QueryableDelta<Light,ShadowLight>::GetQueryTypes;
-	public:
-		bool CastsShadows = true;
+private:
+	bool doesCastShadow = false;
+public:
+	bool CastsShadows() const { return doesCastShadow; }
+	void SetCastsShadows(bool casts) { doesCastShadow = casts; }
 };
 
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
@@ -33,6 +36,9 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
 		return true;
 	}
+
+	// does not cast shadows
+	constexpr bool CastsShadows() const { return false;  }
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	

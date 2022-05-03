@@ -584,6 +584,10 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
 		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	};
+
+	const auto gen_framebufferSquare = [](bgfx::TextureFormat::Enum format, uint16_t width, uint16_t height) -> bgfx::TextureHandle {
+		return bgfx::createTexture2D(width, height, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	};
 	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D24S8};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
 		attachments[i] = gen_framebuffer(formats[i]);
@@ -592,6 +596,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	//lighting textures - light color, and share depth
 	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F);
 	lightingAttachments[1] = attachments[3];
+	//lightingAttachments[2] = gen_framebufferSquare(bgfx::TextureFormat::RG16F,2048,2048);
 	
 	for(int i = 0; i < gbufferSize; i++){
 		if (!bgfx::isValid(attachments[i])){
@@ -607,6 +612,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	
 	lightingSamplers[0] = bgfx::createUniform("s_light", bgfx::UniformType::Sampler);
 	lightingSamplers[1] = gBufferSamplers[3];
+	lightingSamplers[2] = bgfx::createUniform("s_depthMap", bgfx::UniformType::Sampler);
 	
 	//create gbuffer and bind all the textures together
 	gBuffer = bgfx::createFrameBuffer(gbufferSize, attachments, true);
@@ -831,13 +837,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
      @param components the componetstore of the world to get the lights from
      @return true light draw calls were executed, false otherwise
      */
-    struct DrawLightsResult {
-        uint32_t numDrawn = 0;
-        uint32_t shadowDataBegin;
-        bgfx::InstanceDataBuffer lightdata;
-    };
+    
     uint32_t shadowOffset = 0;
     const auto DrawLightsOfType = [&](const auto& lights, float lighttype) -> void{
+		struct DrawLightsResult {
+			uint32_t numDrawn = 0;
+			uint32_t shadowDataBegin;
+			bgfx::InstanceDataBuffer lightdata;
+		};
         using LightType = typename std::remove_reference<decltype(lights)>::type::value_type::light_t;
         DrawLightsResult dr;
         //must set before changing shaders
@@ -847,7 +854,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
         
         constexpr auto stride = LightType::InstancingStride();
-        const auto numLights = lights.size();
+        auto numLights = lights.size();
         
         //create buffer for GPU instancing
         auto mem = bgfx::alloc(Debug::AssertSize<uint32_t>(numLights * stride));
@@ -855,13 +862,16 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         //fill the buffer
         int i = 0;
         for(const auto& l : lights){    //TODO: factor in light frustum culling
-            float* ptr = (float*)(mem->data + i);
-            l.AddInstanceData(ptr);
-            i += stride;
+			if (l.CastsShadows()) {
+				float* ptr = (float*)(mem->data + i);
+				l.AddInstanceData(ptr);
+				i += stride;
+			}
         }
-
+		numLights = i / stride;	// get the actual number of lights submitted
+			
         bgfx::update(lightDataHandle, shadowOffset, mem);
-        dr.numDrawn = Debug::AssertSize<uint32_t>(lights.size());
+        dr.numDrawn = Debug::AssertSize<uint32_t>(numLights);
         
         // execute in groups of 128 lights
         constexpr int batchsize = sizeof(uint32_t);
@@ -937,7 +947,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                 bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
             }
             //TODO: set correct shadowoffset for the batch
-            float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)), 0,0,0};        // start points for reading shadow data ( beginOffset is in bytes but we want floats
+            float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)), true,0,0};        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
             numRowsUniform.SetValues(uniformData, 1);
             
             //bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
@@ -949,10 +959,69 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     };
  
     
-	DrawLightsOfType(fd->ambients,-1);
     DrawLightsOfType(fd->directionals,0);
     DrawLightsOfType(fd->points,1);
     //DrawLightsOfType.template operator()<SpotLight>(fd->spots,shadowOffset,2),
+
+	const auto DrawLightsOfTypeNoShadow = [&](const auto& lights) -> void {
+		
+		struct DrawLightsResult {
+			uint32_t numDrawn = 0;
+			uint32_t shadowDataBegin;
+			bgfx::InstanceDataBuffer lightdata;
+		};
+		using LightType = typename std::remove_reference<decltype(lights)>::type::value_type::light_t;
+		DrawLightsResult dr;
+		//must set before changing shaders
+		if (lights.size() == 0) {
+			return;
+		}
+
+
+		constexpr auto stride = LightType::InstancingStride();
+		auto numLights = lights.size();
+
+		//create buffer for GPU instancing
+		auto mem = bgfx::alloc(Debug::AssertSize<uint32_t>(numLights * stride));
+
+		//fill the buffer
+		int i = 0;
+		for (const auto& l : lights) {    //TODO: factor in light frustum culling
+			if (!l.CastsShadows()) {
+				float* ptr = (float*)(mem->data + i);
+				l.AddInstanceData(ptr);
+				i += stride;
+			}
+		}
+		numLights = i;	// get the actual number of lights
+
+		bgfx::update(lightDataHandle, shadowOffset, mem);
+		dr.numDrawn = Debug::AssertSize<uint32_t>(numLights);
+
+		//set the required state for this light type
+		LightType::SetState();
+		bgfx::setInstanceCount(Debug::AssertSize<uint32_t>(numLights));
+
+		// bind buffer for writing shadow data
+		bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
+		bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
+
+		//execute instance draw call
+		for (int i = 0; i < RenderEngine::gbufferSize; i++) {
+			bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+		}
+		//TODO: set correct shadowoffset for the batch
+		float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), false,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
+		numRowsUniform.SetValues(uniformData, 1);
+
+		LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
+		shadowOffset += numLights * stride;
+	};
+
+	DrawLightsOfTypeNoShadow(fd->directionals);
+	DrawLightsOfTypeNoShadow(fd->points);
+	//DrawLightsOfTypeNoShadow(fd->spots);
+	DrawLightsOfTypeNoShadow(fd->ambients);
 
 
 	// lighting is complete, so next we draw the skybox

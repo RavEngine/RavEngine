@@ -6,6 +6,7 @@ $input lightdir, colorintensity, lightID
 SAMPLER2D(s_albedo,0);
 SAMPLER2D(s_normal,1);
 BUFFER_RO(blockingDataBuf, uint, 10);
+uniform vec4 NumObjects;		// y = shadows enabled
 
 EARLY_DEPTH_STENCIL
 void main()
@@ -14,11 +15,15 @@ void main()
 	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect[2], gl_FragCoord.y / u_viewRect[3]);
     
     // is this pixel visible to the light? if not, discard
-    uint visibilityMask = blockingDataBuf[gl_FragCoord.y * u_viewRect.z + gl_FragCoord.x];
-    uint thisLight = 1 << lightID;
+
+    bool enabled = 1;
+    if (NumObjects.y){
+        uint visibilityMask = blockingDataBuf[gl_FragCoord.y * u_viewRect.z + gl_FragCoord.x];
+        uint thisLight = 1 << lightID;
     
-    const bool enabled = !(visibilityMask & thisLight);   // bit test to see if the pixel should be lit
-    //const bool enabled = 1;
+        enabled = !(visibilityMask & thisLight);   // bit test to see if the pixel should be lit
+    }
+    
     float intensity = colorintensity[3];
     
     vec3 albedo = texture2D(s_albedo, texcoord);

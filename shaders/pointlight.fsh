@@ -6,6 +6,7 @@ SAMPLER2D(s_albedo,0);
 SAMPLER2D(s_normal,1);
 SAMPLER2D(s_pos,2);
 BUFFER_RO(blockingDataBuf, uint, 10);
+uniform vec4 NumObjects;		// y = shadows enabled
 
 EARLY_DEPTH_STENCIL
 void main()
@@ -14,9 +15,13 @@ void main()
 	vec2 texcoord = vec2(gl_FragCoord.x / u_viewRect[2], gl_FragCoord.y / u_viewRect[3]);
     
     // is this pixel visible to the light? if not, discard
-    uint visibilityMask = blockingDataBuf[gl_FragCoord.y * u_viewRect.z + gl_FragCoord.x];
-    uint thisLight = 1 << lightID;
-    bool enabled = !(visibilityMask & thisLight);   // if the light is blocked, do not light here
+	bool enabled = 1;
+	if (NumObjects.y){
+		uint visibilityMask = blockingDataBuf[gl_FragCoord.y * u_viewRect.z + gl_FragCoord.x];
+		uint thisLight = 1 << lightID;
+		enabled = !(visibilityMask & thisLight);   // if the light is blocked, do not light here
+	}
+   
 	
 	float intensity = colorintensity[3];
 	float radius = positionradius[3];

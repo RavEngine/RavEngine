@@ -90,6 +90,10 @@ struct FrameData{
 			offset[11] = ptr1[14];
 			light.AddInstanceData(offset); //don't increment, the light will add offset
 		}
+
+		bool CastsShadows() const {
+			return light.CastsShadows();
+		}
 	};
 	
 	struct PackedDL{
@@ -104,6 +108,10 @@ struct FrameData{
 			offset[5] = rotation.y;
 			offset[6] = rotation.z;
 			light.AddInstanceData(offset);
+		}
+
+		bool CastsShadows() const{
+			return light.CastsShadows();
 		}
 		
 		PackedDL(const DirectionalLight& l, const tinyvec3& tv) : light(l), rotation(tv){}
