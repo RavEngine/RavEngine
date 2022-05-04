@@ -242,8 +242,10 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 		//mvp matrix (1 float[16]) (but 4 floats are not sent)
 		//light color (3 floats)
 		//light penumbra (1 float)
+		//light radius (1 float)
+		//light intensity (1 float) 
 		
-		return sizeof(float) * (3+1) + sizeof(float[16-4]);
+		return sizeof(float) * (3+1+1+1) + sizeof(float[16-4]);
 	}
 
 	static inline constexpr size_t ShadowDataSize() {

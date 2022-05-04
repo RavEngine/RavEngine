@@ -961,7 +961,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     
     DrawLightsOfType(fd->directionals,0);
     DrawLightsOfType(fd->points,1);
-    //DrawLightsOfType.template operator()<SpotLight>(fd->spots,shadowOffset,2),
+	DrawLightsOfType(fd->spots, 2);
 
 	const auto DrawLightsOfTypeNoShadow = [&](const auto& lights) -> void {
 		
@@ -1010,7 +1010,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		for (int i = 0; i < RenderEngine::gbufferSize; i++) {
 			bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 		}
-		//TODO: set correct shadowoffset for the batch
 		float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), false,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
 		numRowsUniform.SetValues(uniformData, 1);
 
@@ -1020,7 +1019,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 	DrawLightsOfTypeNoShadow(fd->directionals);
 	DrawLightsOfTypeNoShadow(fd->points);
-	//DrawLightsOfTypeNoShadow(fd->spots);
+	DrawLightsOfTypeNoShadow(fd->spots);
 	DrawLightsOfTypeNoShadow(fd->ambients);
 
 

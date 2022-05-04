@@ -1,56 +1,51 @@
 $input a_position, i_data0, i_data1, i_data2, i_data3, i_data4
-$output colorintensity, positionradius, penumbra
+$output colorintensity, positionradius, penumbra, lightID
 
 #include "common.sh"
 #include <bgfx_shader.sh>
 #include <bgfx_compute.sh>
 
-BUFFER_RW(lightdata,float,11);
+BUFFER_RO(lightdata,float,11);
 uniform vec4 NumObjects;		// x = start index
 
 void main()
 {
+	int idx = NumObjects.x + gl_InstanceID * 16;
+
 	//get transform data for model matrix
 	mat4 model;
 	
-	model[0][0] = i_data0[0];
-	model[0][1] = i_data0[1];
-	model[0][2] = i_data0[2];
+	model[0][0] = lightdata[idx + 0];
+	model[0][1] = lightdata[idx + 1];
+	model[0][2] = lightdata[idx + 2];
 	model[0][3] = 0;
-	
-	model[1][0] = i_data0[3];
-	model[1][1] = i_data1[0];
-	model[1][2] = i_data1[1];
+
+	model[1][0] = lightdata[idx + 3];
+	model[1][1] = lightdata[idx + 4];
+	model[1][2] = lightdata[idx + 5];
 	model[1][3] = 0;
-	
-	model[2][0] = i_data1[2];
-	model[2][1] = i_data1[3];
-	model[2][2] = i_data2[0];
+
+	model[2][0] = lightdata[idx + 6];
+	model[2][1] = lightdata[idx + 7];
+	model[2][2] = lightdata[idx + 8];
 	model[2][3] = 0;
-	
-	model[3][0] = i_data2[1];
-	model[3][1] = i_data2[2];
-	model[3][2] = i_data2[3];
+
+	model[3][0] = lightdata[idx + 9];
+	model[3][1] = lightdata[idx + 10];
+	model[3][2] = lightdata[idx + 11];
 	model[3][3] = 1;
-	
-	vec3 color = i_data3.xyz;
-	
+		
 	//the intenisty is defined as the scale along the Y axis
-	float intensity = i_data4[0];
+	colorintensity = vec4(lightdata[idx + 12], lightdata[idx + 13], lightdata[idx + 14], lightdata[idx + 16]);
 	
 	//the radius is defined as the scale along the X or Z axes
-	float radius = i_data3.w;
+	float radius = lightdata[idx+15];
 	
 	vec4 worldpos = instMul(model, vec4(a_position, 1.0));
-
-	int idx = gl_InstanceID * 3;
-	lightdata[NumObjects.x + idx] = worldpos.x;
-	lightdata[NumObjects.x + idx + 1] = worldpos.y;
-	lightdata[NumObjects.x + idx + 2] = worldpos.z;
 	
 	gl_Position = mul(u_viewProj, worldpos);
 	
 	positionradius = vec4(model[3][0], model[3][1], model[3][2], radius);
-	colorintensity = vec4(color,intensity);
-	penumbra = i_data4[1];
+	penumbra = lightdata[idx+17];
+	lightID = gl_InstanceID;
 }
