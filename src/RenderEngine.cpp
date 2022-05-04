@@ -544,11 +544,11 @@ void RenderEngine::Init(const AppConfig& config)
 	
 	bgfx::setViewName(Views::FinalBlit, "Final Blit");
 	bgfx::setViewName(Views::DeferredGeo, "Deferred Geometry");
-	bgfx::setViewName(Views::Lighting, "Lighting Volumes");
+	bgfx::setViewName(Views::LightingNoShadows, "Lighting Volumes No Shadows");
 
 	bgfx::setViewClear(Views::FinalBlit, BGFX_CLEAR_COLOR);
 	bgfx::setViewClear(Views::DeferredGeo, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f);
-	bgfx::setViewClear(Views::Lighting, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL, 0x000000FF, 1.0f);
+	bgfx::setViewClear(Views::LightingNoShadows, BGFX_CLEAR_COLOR | BGFX_CLEAR_STENCIL, 0x000000FF, 1.0f);
 
 	debugNavMeshLayout.begin()
 		.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
@@ -559,11 +559,6 @@ void RenderEngine::Init(const AppConfig& config)
 	auto vertfunc = Material::loadShaderHandle("debugNav/vertex.bin");
 	auto fragfunc = Material::loadShaderHandle("debugNav/fragment.bin");
 	debugNavProgram = bgfx::createProgram(vertfunc, fragfunc);
-
-	//render view 0 last
-	bgfx::ViewId vieworder[]{ Views::DeferredGeo, Views::Lighting, Views::FinalBlit };
-	assert(Views::Count == BX_COUNTOF(vieworder));	//if this assertion fails, a view was added but its order was not defined in the list above
-	bgfx::setViewOrder(0, Views::Count, vieworder);
 }
 
 
@@ -596,7 +591,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	//lighting textures - light color, and share depth
 	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F);
 	lightingAttachments[1] = attachments[3];
-	//lightingAttachments[2] = gen_framebufferSquare(bgfx::TextureFormat::RG16F,2048,2048);
 	
 	for(int i = 0; i < gbufferSize; i++){
 		if (!bgfx::isValid(attachments[i])){
@@ -612,7 +606,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	
 	lightingSamplers[0] = bgfx::createUniform("s_light", bgfx::UniformType::Sampler);
 	lightingSamplers[1] = gBufferSamplers[3];
-	lightingSamplers[2] = bgfx::createUniform("s_depthMap", bgfx::UniformType::Sampler);
 	
 	//create gbuffer and bind all the textures together
 	gBuffer = bgfx::createFrameBuffer(gbufferSize, attachments, true);
@@ -650,17 +643,18 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	RenderEngine::dbgmtx.unlock();
 #endif
 
-	for(const auto& view : {Views::FinalBlit, Views::DeferredGeo, Views::Lighting}){
+	bgfx::ViewId allViews[] = {Views::FinalBlit, Views::DeferredGeo, Views::LightingNoShadows};
+	for(const auto view : allViews){
 		bgfx::setViewRect(view, 0, 0, bufferdims.width, bufferdims.height);
 	}
 	
 	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
-	bgfx::setViewFrameBuffer(Views::Lighting, lightingBuffer);
-    bgfx::setViewMode(Views::Lighting,bgfx::ViewMode::Sequential);
+	bgfx::setViewFrameBuffer(Views::LightingNoShadows, lightingBuffer);
+    bgfx::setViewMode(Views::LightingNoShadows,bgfx::ViewMode::Sequential);
     //bgfx::setViewMode(Views::FinalBlit,bgfx::ViewMode::Sequential);
 	
 	bgfx::touch(Views::DeferredGeo);
-	bgfx::touch(Views::Lighting);
+	bgfx::touch(Views::LightingNoShadows);
 	
 	//copy world framedata into local copy
 	//GetApp()->SwapRenderFramedata();
@@ -675,8 +669,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 
 	//set the view transform - all entities drawn will use this matrix
-	for(int i = 0; i < Views::Count; i++){
-		bgfx::setViewTransform(i, viewmat, projmat);
+	for(const auto view : allViews){
+		bgfx::setViewTransform(view, viewmat, projmat);
 	}
 	
     uint32_t allVerticesOffset = 0;
@@ -903,7 +897,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                     
                     // submit
 					bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_GREATER);
-                    bgfx::submit(Views::Lighting, dirlight_pre_handle);
+                    bgfx::submit(Views::LightingNoShadows, dirlight_pre_handle);
                 }
                 
                 bgfx::discard();
@@ -930,7 +924,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
                 //bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
                 bgfx::setTexture(0, lightingSamplers[1], lightingAttachments[1]);
                 bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);
-                bgfx::submit(Views::Lighting, shadowVolumeHandle);
+                bgfx::submit(Views::LightingNoShadows, shadowVolumeHandle);
                 bgfx::discard();
             }
                 
@@ -951,7 +945,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
             numRowsUniform.SetValues(uniformData, 1);
             
             //bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
-            LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
+            LightType::Draw(RenderEngine::Views::LightingNoShadows);    //view 2 is the lighting pass
         }
         
         // need to update this here because the shadow pass uses that information
@@ -1013,7 +1007,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), false,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
 		numRowsUniform.SetValues(uniformData, 1);
 
-		LightType::Draw(RenderEngine::Views::Lighting);    //view 2 is the lighting pass
+		LightType::Draw(RenderEngine::Views::LightingNoShadows);    //view 2 is the lighting pass
 		shadowOffset += numLights * stride;
 	};
 

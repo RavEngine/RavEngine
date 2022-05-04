@@ -10,6 +10,7 @@
 #include "WeakRef.hpp"
 #include "Uniform.hpp"
 #include <bgfx/bgfx.h>
+#include <bgfx/defines.h>
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <fmt/format.h>
@@ -21,6 +22,7 @@
 #include "SpinLock.hpp"
 #include <RavEngine/Utilities.hpp>
 #include "PhysXDefines.h"
+#include "../../deps/bgfx.cmake/bgfx/src/config.h"  // TODO: don't do this?
 
 struct SDL_Window;
 
@@ -161,10 +163,10 @@ namespace RavEngine {
 		//to reduce magic numbers
 		struct Views{
 			enum{
-				FinalBlit = 0,
 				DeferredGeo,
-				Lighting,
-				Count
+				LightingNoShadows,
+                LightingShadowsFirstView,
+                FinalBlit = BGFX_CONFIG_MAX_VIEWS - 1,       // views are sorted in ascending order, so force this to go at the very end
 			};
 		};
 		
