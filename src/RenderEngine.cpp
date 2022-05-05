@@ -442,7 +442,7 @@ void RenderEngine::Init(const AppConfig& config)
     
     bgfx::VertexLayout allGeoLayout;
     allGeoLayout.begin()
-        .add(bgfx::Attrib::Position, 1, bgfx::AttribType::Float)    // 3 verts to make a triangle
+        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)    // 3 verts to make a triangle
         .end();
     allVerticesHandle = bgfx::createDynamicVertexBuffer((1e+7)*3, allGeoLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_COMPUTE_FORMAT_32X1);
 	allIndicesHandle = bgfx::createDynamicIndexBuffer(1e+7, BGFX_BUFFER_COMPUTE_READ_WRITE | BGFX_BUFFER_ALLOW_RESIZE | BGFX_BUFFER_INDEX32);
@@ -832,27 +832,27 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	// debug: draw the unified mesh
 	/*bgfx::discard();
 	bgfx::setVertexBuffer(0,allVerticesHandle);
-	bgfx::setIndexBuffer(allIndicesHandle);
+	bgfx::setIndexBuffer(allIndicesHandle,allIndicesOffset);
 	bgfx::submit(Views::FinalBlit, debugShaderHandle);
 	bgfx::discard();*/
 
 	// Lighting pass
-    /**
-     Execute instanced draw calls for a given light type
-     @param components the componetstore of the world to get the lights from
-     @return true light draw calls were executed, false otherwise
-     */
-    
+   
     uint32_t shadowOffset = 0;
 	bgfx::ViewId currentShadowView = Views::LightingShadowsFirstView;
 	float dlshadowprojmtx[16];
 	{
 		//TODO: don't hardcode first camera
 		auto& firstcam = worldOwning->GetComponent<CameraComponent>();
-		auto m = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, firstcam.nearClip, firstcam.farClip);
+		auto m = glm::ortho<float>(-10, 10, -10, 10, -40, 20);
 		copyMat4(glm::value_ptr(m), dlshadowprojmtx);
 	}
 
+	/**
+	Execute instanced draw calls for a given light type
+	@param components the componetstore of the world to get the lights from
+	@return true light draw calls were executed, false otherwise
+	*/
     const auto DrawLightsOfType = [&](const auto& lights, float lighttype) -> void{
 		struct DrawLightsResult {
 			uint32_t numDrawn = 0;
@@ -897,14 +897,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				bgfx::setViewRect(currentShadowView, 0, 0, 2048, 2048);		//TODO: use size of shadowmap
 
 				float lightViewMtx[16];
-				//auto dirlightViewMat = glm::lookAt(-vector3(l.rotation.x, l.rotation.y, l.rotation.z) * 10.f, vector3(0, 0, 0), vector3(0, 1, 0));
-				auto dirlightViewMat = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * -10.f, vector3(0, 0, 0), vector3(0, 1, 0));
+				//auto dirlightViewMat = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 				copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
 
 				bgfx::setViewTransform(currentShadowView, lightViewMtx, dlshadowprojmtx);		//TODO: support more than directional lights only
 				// submit whole scene mesh	
 				bgfx::setVertexBuffer(0, allVerticesHandle);
-				bgfx::setIndexBuffer(allIndicesHandle);
+				bgfx::setIndexBuffer(allIndicesHandle,0,allIndicesOffset);	// specify count
+				bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);
 				bgfx::submit(currentShadowView, shadowMapShaderHandle);
 
 				currentShadowView++;
