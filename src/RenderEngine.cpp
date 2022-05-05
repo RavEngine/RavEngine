@@ -67,7 +67,7 @@ STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allIndicesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::guiMaterial);
 
-static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle, shadowVolumeHandle, shadowVolumeHandleLT, dirlight_pre_handle;
+static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle, shadowMapShaderHandle, shadowVolumeHandleLT, dirlight_pre_handle;
 static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
 static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
@@ -412,7 +412,7 @@ void RenderEngine::Init(const AppConfig& config)
 	copyIndicesShaderHandle = Material::loadComputeProgram("indexcopycompute/compute.bin");
     dirlight_pre_handle = Material::loadShaderProgram("dirlight_pre");
     debugShaderHandle = Material::loadShaderProgram("meshOnly");
-    shadowVolumeHandle = Material::loadShaderProgram("shadowvolume");
+    shadowMapShaderHandle = Material::loadShaderProgram("shadowvolume");
     shadowVolumeHandleLT = Material::loadShaderProgram("shadowvolumeLT");
 	
 
@@ -611,9 +611,20 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	gBuffer = bgfx::createFrameBuffer(gbufferSize, attachments, true);
 	
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
+
+	const bgfx::TextureFormat::Enum shadowTextureFormats[] = { bgfx::TextureFormat::R32U, bgfx::TextureFormat::D32F };
+	bgfx::TextureHandle shadowTextures[BX_COUNTOF(shadowTextureFormats)];
+	for (int i = 0; i < BX_COUNTOF(shadowTextureFormats); i++) {
+		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], 2048, 2048);
+	}
+
+	depthMapFB = bgfx::createFrameBuffer(BX_COUNTOF(shadowTextureFormats), shadowTextures, true);
 	
 	if(!bgfx::isValid(gBuffer)){
 		Debug::Fatal("Failed to create gbuffer");
+	}
+	if (!bgfx::isValid(depthMapFB)) {
+		Debug::Fatal("Failed to create depth map FB");
 	}
 
 	skinningComputeBuffer = decltype(skinningComputeBuffer)(1024 * 1024);
@@ -833,6 +844,15 @@ void RenderEngine::Draw(Ref<World> worldOwning){
      */
     
     uint32_t shadowOffset = 0;
+	bgfx::ViewId currentShadowView = Views::LightingShadowsFirstView;
+	float dlshadowprojmtx[16];
+	{
+		//TODO: don't hardcode first camera
+		auto& firstcam = worldOwning->GetComponent<CameraComponent>();
+		auto m = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, firstcam.nearClip, firstcam.farClip);
+		copyMat4(glm::value_ptr(m), dlshadowprojmtx);
+	}
+
     const auto DrawLightsOfType = [&](const auto& lights, float lighttype) -> void{
 		struct DrawLightsResult {
 			uint32_t numDrawn = 0;
@@ -845,7 +865,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         if (lights.size() == 0){
             return;
         }
-
         
         constexpr auto stride = LightType::InstancingStride();
         auto numLights = lights.size();
@@ -860,6 +879,64 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				float* ptr = (float*)(mem->data + i);
 				l.AddInstanceData(ptr);
 				i += stride;
+
+				const char* Lname = nullptr;
+				if constexpr (std::is_same_v<LightType, DirectionalLight>) {
+					Lname = "DL";
+				}
+				else if constexpr (std::is_same_v<LightType, SpotLight>) {
+					Lname = "SL";
+				}
+				else if constexpr (std::is_same_v<LightType, PointLight>) {
+					Lname = "PL";
+				}
+
+				bgfx::setViewFrameBuffer(currentShadowView, depthMapFB);
+				bgfx::setViewName(currentShadowView, fmt::format("Depth Shadow {}", Lname).c_str());
+				bgfx::setViewClear(currentShadowView, BGFX_CLEAR_DEPTH | BGFX_CLEAR_COLOR);
+				bgfx::setViewRect(currentShadowView, 0, 0, 2048, 2048);		//TODO: use size of shadowmap
+
+				float lightViewMtx[16];
+				//auto dirlightViewMat = glm::lookAt(-vector3(l.rotation.x, l.rotation.y, l.rotation.z) * 10.f, vector3(0, 0, 0), vector3(0, 1, 0));
+				auto dirlightViewMat = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
+
+				bgfx::setViewTransform(currentShadowView, lightViewMtx, dlshadowprojmtx);		//TODO: support more than directional lights only
+				// submit whole scene mesh	
+				bgfx::setVertexBuffer(0, allVerticesHandle);
+				bgfx::setIndexBuffer(allIndicesHandle);
+				bgfx::submit(currentShadowView, shadowMapShaderHandle);
+
+				currentShadowView++;
+				Debug::Assert(currentShadowView != Views::FinalBlit, "Maximum number of shadow-casting lights exceeded.");
+
+				bgfx::setViewName(currentShadowView, fmt::format("Depth Light {}", Lname).c_str());
+				bgfx::setViewFrameBuffer(currentShadowView, lightingBuffer);
+				bgfx::setViewTransform(currentShadowView,viewmat, projmat);
+				bgfx::setViewRect(currentShadowView, 0,0, bufferdims.width, bufferdims.height);
+				bgfx::setViewClear(currentShadowView, BGFX_CLEAR_NONE);	// contribute to existing data
+
+
+				//set the required state for this light type
+				LightType::SetState();
+				bgfx::setInstanceCount(Debug::AssertSize<uint32_t>(numLights));      // TODO: operate inside the batch only
+
+				// bind buffer for writing shadow data
+				bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
+				bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
+
+				//execute instance draw call
+				for (int i = 0; i < RenderEngine::gbufferSize; i++) {
+					bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
+				}
+				//TODO: set correct shadowoffset for the batch
+				float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), true,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
+				numRowsUniform.SetValues(uniformData, 1);
+
+				LightType::Draw(currentShadowView);
+
+				currentShadowView++;
+				Debug::Assert(currentShadowView != Views::FinalBlit, "Maximum number of shadow-casting lights exceeded.");
 			}
         }
 		numLights = i / stride;	// get the actual number of lights submitted
@@ -867,86 +944,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         bgfx::update(lightDataHandle, shadowOffset, mem);
         dr.numDrawn = Debug::AssertSize<uint32_t>(numLights);
         
-        // execute in groups of 128 lights
-        constexpr int batchsize = sizeof(uint32_t);
-        for(int i = 0; i < dr.numDrawn; i+=batchsize){
-            if constexpr (!std::is_same_v<LightType, AmbientLight>){
-                    // do shadow prepass here (not for ambient lights!)
-                // blank out the lightblocking buffer and set stencils
-                if constexpr (std::is_same_v<DirectionalLight, LightType> || std::is_same_v<PointLight,LightType> || std::is_same_v<SpotLight,LightType>){
-                    bgfx::discard();
-                    auto& dim = GetBufferSize();
-                    float uniformData[] = {static_cast<float>(dim.width), static_cast<float>(dim.height),0,0};
-                    numRowsUniform.SetValues(uniformData, 1);
-                    bgfx::setBuffer(1,lightBlockingBuffer,bgfx::Access::Write);
-                    bgfx::setState( BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_GREATER);
-					//bgfx::setStencil(BGFX_STENCIL_OP_PASS_Z_REPLACE | BGFX_STENCIL_FUNC_REF(1));
-                
-                    // set specific vertex / index buffers & instancing if applicable
-                    if constexpr (std::is_same_v<DirectionalLight, LightType>){
-                        // no instancing for dirlight
-                        bgfx::setVertexBuffer(0, screenSpaceQuadVert);
-                        bgfx::setIndexBuffer(screenSpaceQuadInd);
-                    }
-                    else if constexpr(std::is_same_v<PointLight,LightType>){
-                        
-                    }
-                    else if constexpr(std::is_same_v<SpotLight,LightType>){
-                        
-                    }
-                    
-                    // submit
-					bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_GREATER);
-                    bgfx::submit(Views::LightingNoShadows, dirlight_pre_handle);
-                }
-                
-                bgfx::discard();
-
-                const auto numInstances = (allIndicesOffset / 3) * (dr.numDrawn % batchsize);
-                
-                float lightType = 0;
-
-                float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)),static_cast<float>(numInstances), static_cast<float>(stride/sizeof(float)),static_cast<float>(lighttype)};        // start points for reading shadow data
-                numRowsUniform.SetValues(uniformData, 1);
-                
-                const auto setState = [&]{
-                    bgfx::setVertexBuffer(0, shadowTriangleVertexBuffer);
-                    bgfx::setIndexBuffer(shadowTriangleIndexBuffer);
-                    bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
-                    bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
-                    bgfx::setBuffer(14, lightDataHandle, bgfx::Access::Read);    // data necessary for shadows
-                    bgfx::setInstanceCount(numInstances);            // 3 indices per triangle, per light of this type
-
-                };
-                setState();
-                bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
-                bgfx::setState(BGFX_STATE_CULL_CW | BGFX_STATE_DEPTH_TEST_LESS);
-                //bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
-                bgfx::setTexture(0, lightingSamplers[1], lightingAttachments[1]);
-                bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);
-                bgfx::submit(Views::LightingNoShadows, shadowVolumeHandle);
-                bgfx::discard();
-            }
-                
-            //set the required state for this light type
-            LightType::SetState();
-            bgfx::setInstanceCount(Debug::AssertSize<uint32_t>(numLights));      // TODO: operate inside the batch only
-            
-            // bind buffer for writing shadow data
-            bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
-            bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
-            
-            //execute instance draw call
-            for (int i = 0; i < RenderEngine::gbufferSize; i++) {
-                bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-            }
-            //TODO: set correct shadowoffset for the batch
-            float uniformData[] = {static_cast<float>(shadowOffset / sizeof(float)), true,0,0};        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
-            numRowsUniform.SetValues(uniformData, 1);
-            
-            //bgfx::setStencil(BGFX_STENCIL_TEST_EQUAL | BGFX_STENCIL_FUNC_REF(3));
-            LightType::Draw(RenderEngine::Views::LightingNoShadows);    //view 2 is the lighting pass
-        }
         
         // need to update this here because the shadow pass uses that information
         shadowOffset += numLights * stride;
@@ -954,8 +951,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
  
     
     DrawLightsOfType(fd->directionals,0);
-    DrawLightsOfType(fd->points,1);
-	DrawLightsOfType(fd->spots, 2);
+    //DrawLightsOfType(fd->points,1);
+	//DrawLightsOfType(fd->spots, 2);
 
 	const auto DrawLightsOfTypeNoShadow = [&](const auto& lights) -> void {
 		

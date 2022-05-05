@@ -162,7 +162,7 @@ namespace RavEngine {
 		
 		//to reduce magic numbers
 		struct Views{
-			enum{
+			enum : bgfx::ViewId{
 				DeferredGeo,
 				LightingNoShadows,
                 LightingShadowsFirstView,
@@ -261,7 +261,7 @@ namespace RavEngine {
 		bgfx::UniformHandle gBufferSamplers[gbufferSize];
 
 		bgfx::FrameBufferHandle gBuffer;	//full gbuffer
-		bgfx::FrameBufferHandle lightingBuffer;	//for lighting, shares depth with main
+		bgfx::FrameBufferHandle lightingBuffer, depthMapFB;	//for lighting, shares depth with main
 		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
 		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize];
 

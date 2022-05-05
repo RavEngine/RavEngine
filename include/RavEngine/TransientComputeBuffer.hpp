@@ -52,6 +52,10 @@ namespace RavEngine {
 				handle = BGFX_INVALID_HANDLE;
 			}
 		}
+
+		inline auto size() const {
+			return index;	// the index is the beginning of the next free spots in the buffer
+		}
 	};
 
 	struct TransientComputeBuffer : public TransientComputeBufferReadOnly {
