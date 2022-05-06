@@ -71,7 +71,6 @@ static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugS
 static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
 static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
-STATIC(RenderEngine::lightBlockingBuffer);
 
 #ifdef _DEBUG
 //STATIC(RenderEngine::debuggerWorld)(true);
@@ -451,9 +450,7 @@ void RenderEngine::Init(const AppConfig& config)
     lightBlockingLayout.begin()
         .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
         .end();
-    
-    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_COMPUTE_FORMAT_32X1);
-    
+        
     bgfx::VertexLayout lightDataLayout;
     lightDataLayout.begin()
     .add(bgfx::Attrib::Position, 1, bgfx::AttribType::Uint8)
@@ -619,6 +616,9 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	}
 
 	depthMapFB = bgfx::createFrameBuffer(BX_COUNTOF(shadowTextureFormats), shadowTextures, true);
+
+	shadowSamplers[0] = bgfx::createUniform("s_depthdata", bgfx::UniformType::Sampler);
+	shadowSamplers[1] = gBufferSamplers[3];
 	
 	if(!bgfx::isValid(gBuffer)){
 		Debug::Fatal("Failed to create gbuffer");
@@ -840,11 +840,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
    
     uint32_t shadowOffset = 0;
 	bgfx::ViewId currentShadowView = Views::LightingShadowsFirstView;
-	float dlshadowprojmtx[16];
+	float dlshadowprojmtx[32];
 	{
 		//TODO: don't hardcode first camera
 		auto& firstcam = worldOwning->GetComponent<CameraComponent>();
-		auto m = glm::ortho<float>(-10, 10, -10, 10, -40, 20);
+		constexpr auto size = 20;
+		auto m = glm::ortho<float>(-size, size, -size, size, 0.5, firstcam.farClip);
 		copyMat4(glm::value_ptr(m), dlshadowprojmtx);
 	}
 
@@ -897,8 +898,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				bgfx::setViewRect(currentShadowView, 0, 0, 2048, 2048);		//TODO: use size of shadowmap
 
 				float lightViewMtx[16];
-				auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * -10.f, vector3(0, 0, 0), vector3(0, 1, 0));
-				//auto dirlightViewMat = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * 25.f, vector3(0, 0, 0), vector3(0, 1, 0));
 				copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
 
 				bgfx::setViewTransform(currentShadowView, lightViewMtx, dlshadowprojmtx);		//TODO: support more than directional lights only
@@ -924,13 +924,17 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 				// bind buffer for writing shadow data
 				bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
-				bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
+
+				// bind shadow data map and depth map
+				bgfx::setTexture(0, gBufferSamplers[0], attachments[0]);					// albedo
+				bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);					// normal
+				bgfx::setTexture(4, shadowSamplers[0], bgfx::getTexture(depthMapFB, 0));	// shadow data buffer
+				bgfx::setTexture(3, shadowSamplers[1], bgfx::getTexture(depthMapFB, 1));	// shadow depth buffer
+				bgfx::setTexture(2, gBufferSamplers[2], attachments[2]);					// geometry position buffer (for transforming points to lightmap)
+				copyMat4(lightViewMtx, &dlshadowprojmtx[16]);
+				bgfx::setTransform(dlshadowprojmtx, 2);				// these become u_model[0] and u_model[1]
 
 				//execute instance draw call
-				for (int i = 0; i < RenderEngine::gbufferSize; i++) {
-					bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
-				}
-				//TODO: set correct shadowoffset for the batch
 				float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), true,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
 				numRowsUniform.SetValues(uniformData, 1);
 
@@ -996,7 +1000,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 		// bind buffer for writing shadow data
 		bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
-		bgfx::setBuffer(10, lightBlockingBuffer, bgfx::Access::ReadWrite);    // data about which pixels are blocked by which lights
 
 		//execute instance draw call
 		for (int i = 0; i < RenderEngine::gbufferSize; i++) {
@@ -1073,13 +1076,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 void RenderEngine::resize(){
 	UpdateBufferDims();
-    bgfx::destroy(lightBlockingBuffer);
-    bgfx::VertexLayout lightBlockingLayout;
-    lightBlockingLayout.begin()
-        .add(bgfx::Attrib::Position, 4, bgfx::AttribType::Uint8)
-        .end();
-    
-    lightBlockingBuffer = bgfx::createDynamicVertexBuffer(bufferdims.width*bufferdims.height, lightBlockingLayout, BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_COMPUTE_FORMAT_32X1);
 #if BX_PLATFORM_IOS
 	//view must be manually sized on iOS
 	//also this API takes screen points not pixels

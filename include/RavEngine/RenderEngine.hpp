@@ -263,13 +263,13 @@ namespace RavEngine {
 		bgfx::FrameBufferHandle gBuffer;	//full gbuffer
 		bgfx::FrameBufferHandle lightingBuffer, depthMapFB;	//for lighting, shares depth with main
 		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
-		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize];
+		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize], shadowSamplers[2];
 
 		TransientComputeBufferReadOnly skinningComputeBuffer;
 		TransientComputeBuffer poseStorageBuffer;
 					
 		static bgfx::VertexBufferHandle opaquemtxhandle;
-        static bgfx::DynamicVertexBufferHandle allVerticesHandle, lightBlockingBuffer;
+        static bgfx::DynamicVertexBufferHandle allVerticesHandle;
 		static bgfx::DynamicIndexBufferHandle allIndicesHandle;
         static Ref<GUIMaterialInstance> guiMaterial;
 

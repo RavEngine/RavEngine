@@ -5,7 +5,9 @@ $input lightdir, colorintensity, lightID
 #include <bgfx_compute.sh>
 SAMPLER2D(s_albedo,0);
 SAMPLER2D(s_normal,1);
-BUFFER_RO(blockingDataBuf, uint, 10);
+SAMPLER2D(s_pos,2);
+SAMPLER2D(s_depth,3);
+SAMPLER2D(s_depthdata,4);
 uniform vec4 NumObjects;		// y = shadows enabled
 
 EARLY_DEPTH_STENCIL
@@ -18,10 +20,14 @@ void main()
 
     bool enabled = 1;
     if (NumObjects.y){
-        uint visibilityMask = blockingDataBuf[gl_FragCoord.y * u_viewRect.z + gl_FragCoord.x];
-        uint thisLight = 1 << lightID;
-    
-        enabled = !(visibilityMask & thisLight);   // bit test to see if the pixel should be lit
+        vec4 sampledPos = texture2D(s_pos,texcoord);
+        mat4 lightView = u_model[1];
+        mat4 lightProj = u_model[0];
+        sampledPos = mul( lightView * lightProj,sampledPos);
+        vec4 sampledDepth = texture2D(s_depth, sampledPos.xy);
+        if (sampledDepth.x > sampledPos.z){
+            enabled = false;
+        }
     }
     
     float intensity = colorintensity[3];
