@@ -23,9 +23,12 @@ void main()
         vec4 sampledPos = texture2D(s_pos,texcoord);
         mat4 lightView = u_model[1];
         mat4 lightProj = u_model[0];
-        sampledPos = mul( mul(lightView, lightProj),sampledPos);
+        sampledPos = mul( mul(lightProj,lightView),sampledPos);
+        sampledPos /= sampledPos.w; // perspective divide
+        sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
+        sampledPos.z *= -1;
         vec4 sampledDepth = texture2D(s_depth, sampledPos.xy);
-        if (sampledDepth.x > sampledPos.z){
+        if (sampledDepth.x < sampledPos.z){
             enabled = false;
         }
     }

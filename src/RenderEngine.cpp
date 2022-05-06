@@ -898,14 +898,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				bgfx::setViewRect(currentShadowView, 0, 0, 2048, 2048);		//TODO: use size of shadowmap
 
 				float lightViewMtx[16];
-				auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * 25.f, vector3(0, 0, 0), vector3(0, 1, 0));
+				auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * -25.f, vector3(0, 0, 0), vector3(0, 1, 0));
 				copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
 
 				bgfx::setViewTransform(currentShadowView, lightViewMtx, dlshadowprojmtx);		//TODO: support more than directional lights only
 				// submit whole scene mesh	
 				bgfx::setVertexBuffer(0, allVerticesHandle);
 				bgfx::setIndexBuffer(allIndicesHandle,0,allIndicesOffset);	// specify count
-				bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);
+				bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CCW | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);
 				bgfx::submit(currentShadowView, shadowMapShaderHandle);
 
 				currentShadowView++;
