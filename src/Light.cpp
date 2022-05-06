@@ -104,18 +104,24 @@ void SpotLight::AddInstanceData(float* offset) const{
 	//the radius and intensity are derived in the shader by extracting the scale information
 }
 
+static void GenericSubmit(const bgfx::VertexBufferHandle& vb, const bgfx::IndexBufferHandle& ib, const bgfx::ProgramHandle p, bgfx::ViewId view) {
+	bgfx::setVertexBuffer(0,vb);
+	bgfx::setIndexBuffer(ib);
+	bgfx::submit(view, p);
+}
+
 void DirectionalLight::Draw(int view){
-	LightManager::directionalLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
+	GenericSubmit(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, LightManager::directionalLightShader->GetHandle(), view);
 }
 
 void PointLight::Draw(int view){
-	LightManager::pointLightShader->Draw(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), matrix4(),view);
+	GenericSubmit(LightManager::pointLightMesh->getVertexBuffer(), LightManager::pointLightMesh->getIndexBuffer(), LightManager::pointLightShader->GetHandle(), view);
 }
 
 void AmbientLight::Draw(int view){
-	LightManager::ambientLightShader->Draw(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, matrix4(), view);
+	GenericSubmit(LightManager::screenSpaceQuadVert, LightManager::screenSpaceQuadInd, LightManager::ambientLightShader->GetHandle(), view);
 }
 
 void SpotLight::Draw(int view){
-	LightManager::spotLightShader->Draw(LightManager::spotLightMesh->getVertexBuffer(), LightManager::spotLightMesh->getIndexBuffer(), matrix4(), view);
+	GenericSubmit(LightManager::spotLightMesh->getVertexBuffer(), LightManager::spotLightMesh->getIndexBuffer(), LightManager::spotLightShader->GetHandle(), view);
 }

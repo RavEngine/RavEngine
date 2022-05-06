@@ -16,6 +16,8 @@ namespace RavEngine {
 	*/
 	class Material : public AutoCTTI {
 	public:
+		template<typename T>
+		friend class MaterialInstance;
 		/**
 		Create the default material. Override this constructor in subclasses, and from that, invoke the protected constructor.
 		*/
@@ -96,6 +98,9 @@ namespace RavEngine {
             copyMat4((const decimalType*)glm::value_ptr(worldmatrix), transmat);
 			bgfx::setTransform(transmat);
 			mat->Draw(vertexBuffer, indexBuffer, view);
+		}
+		auto GetHandle() const {
+			return mat->program;
 		}
 	protected:
 		MaterialInstance(Ref<T> m) : mat(m) {}
