@@ -18,6 +18,9 @@ void main()
     
     // is this pixel visible to the light? if not, discard
 
+    vec3 normal = texture2D(s_normal, texcoord);
+    vec3 toLight = normalize(lightdir.xyz);
+
     bool enabled = 1;
     if (NumObjects.y){
         vec4 sampledPos = texture2D(s_pos,texcoord);
@@ -28,7 +31,10 @@ void main()
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
         sampledPos.z *= -1;
         vec4 sampledDepth = texture2D(s_depth, sampledPos.xy);
-        if (sampledDepth.x < sampledPos.z){
+
+        float bias = 0.005; //TODO: calcuate as a function of the difference between the normal and the light dir
+
+        if (sampledDepth.x < sampledPos.z - bias){
             enabled = false;
         }
     }
@@ -36,9 +42,7 @@ void main()
     float intensity = colorintensity[3];
     
     vec3 albedo = texture2D(s_albedo, texcoord);
-    vec3 normal = texture2D(s_normal, texcoord);
     
-    vec3 toLight = normalize(lightdir.xyz);
     
     float nDotL = max(dot(normal, toLight), 0);
     

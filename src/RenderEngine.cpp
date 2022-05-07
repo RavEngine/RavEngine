@@ -905,7 +905,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				// submit whole scene mesh	
 				bgfx::setVertexBuffer(0, allVerticesHandle);
 				bgfx::setIndexBuffer(allIndicesHandle,0,allIndicesOffset);	// specify count
-				bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CCW | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);
+				bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z);
 				bgfx::submit(currentShadowView, shadowMapShaderHandle);
 
 				currentShadowView++;
