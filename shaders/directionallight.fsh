@@ -10,6 +10,10 @@ SAMPLER2D(s_depth,3);
 SAMPLER2D(s_depthdata,4);
 uniform vec4 NumObjects;		// y = shadows enabled
 
+bool outOfRange(float f){
+    return f < 0 || f > 1;
+}
+
 EARLY_DEPTH_STENCIL
 void main()
 {
@@ -30,7 +34,7 @@ void main()
         sampledPos /= sampledPos.w; // perspective divide
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
         sampledPos.z *= -1;
-        vec4 sampledDepth = texture2D(s_depth, sampledPos.xy);
+        vec4 sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture2D(s_depth, sampledPos.xy);
 
         float bias = 0.005; //TODO: calcuate as a function of the difference between the normal and the light dir
 

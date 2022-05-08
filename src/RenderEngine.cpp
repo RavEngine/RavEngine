@@ -322,7 +322,7 @@ void RenderEngine::Init(const AppConfig& config)
 #ifdef __linux__
 			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined _WIN32
-			SelectRenderer(bgfx::RendererType::Direct3D12);
+			SelectRenderer(bgfx::RendererType::Direct3D11);
 #elif defined __APPLE__
 			SelectRenderer(bgfx::RendererType::Metal);
 #elif defined __EMSCRIPTEN__
@@ -337,7 +337,7 @@ void RenderEngine::Init(const AppConfig& config)
 				break;
 #elif BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
 			case AppConfig::RenderBackend::DirectX12:
-				SelectRenderer(bgfx::RendererType::Direct3D12);
+				SelectRenderer(bgfx::RendererType::Direct3D11);
 				break;
 #if BX_PLATFORM_WINDOWS
 			case AppConfig::RenderBackend::Vulkan:
@@ -577,8 +577,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	};
 
-	const auto gen_framebufferSquare = [](bgfx::TextureFormat::Enum format, uint16_t width, uint16_t height) -> bgfx::TextureHandle {
-		return bgfx::createTexture2D(width, height, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	const auto gen_framebufferSquare = [](bgfx::TextureFormat::Enum format, uint16_t width, uint16_t height, auto samplerflags) -> bgfx::TextureHandle {
+		return bgfx::createTexture2D(width, height, false, 1, format, BGFX_TEXTURE_RT | samplerflags);
 	};
 	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D24S8};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
@@ -612,7 +612,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	const bgfx::TextureFormat::Enum shadowTextureFormats[] = { bgfx::TextureFormat::R32U, bgfx::TextureFormat::D32F };
 	bgfx::TextureHandle shadowTextures[BX_COUNTOF(shadowTextureFormats)];
 	for (int i = 0; i < BX_COUNTOF(shadowTextureFormats); i++) {
-		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], 2048, 2048);
+		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], 2048, 2048, BGFX_SAMPLER_BORDER_COLOR(0xFFFFFF) | BGFX_SAMPLER_UVW_BORDER);
 	}
 
 	depthMapFB = bgfx::createFrameBuffer(BX_COUNTOF(shadowTextureFormats), shadowTextures, true);
@@ -840,14 +840,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
    
     uint32_t shadowOffset = 0;
 	bgfx::ViewId currentShadowView = Views::LightingShadowsFirstView;
-	float dlshadowprojmtx[32];
-	{
-		//TODO: don't hardcode first camera
-		auto& firstcam = worldOwning->GetComponent<CameraComponent>();
-		constexpr auto size = 20;
-		auto m = glm::ortho<float>(-size, size, -size, size, 0.5, firstcam.farClip);
-		copyMat4(glm::value_ptr(m), dlshadowprojmtx);
-	}
+	constexpr auto size = 20;
+	auto dlProjMtx = glm::ortho<float>(-size, size, -size, size, 0.5, 100);	// TODO: don't hardcode far clip
+	float shadowprojviewmtx[32]{0};
 
 	/**
 	Execute instanced draw calls for a given light type
@@ -881,9 +876,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				l.AddInstanceData(ptr);
 				i += stride;
 
+				float lightViewMtx[16];
 				const char* Lname = nullptr;
 				if constexpr (std::is_same_v<LightType, DirectionalLight>) {
 					Lname = "DL";
+					auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * -25.f, vector3(0, 0, 0), vector3(0, 1, 0));
+					//dirlightViewMat = glm::translate(dirlightViewMat, vector3(fd->viewmatrix[3][2], 0, fd->viewmatrix[3][0]));		// center the projection at the camera
+					copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
+					copyMat4(glm::value_ptr(dlProjMtx), shadowprojviewmtx);
 				}
 				else if constexpr (std::is_same_v<LightType, SpotLight>) {
 					Lname = "SL";
@@ -894,14 +894,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 				bgfx::setViewFrameBuffer(currentShadowView, depthMapFB);
 				bgfx::setViewName(currentShadowView, fmt::format("Depth Shadow {}", Lname).c_str());
-				bgfx::setViewClear(currentShadowView, BGFX_CLEAR_DEPTH | BGFX_CLEAR_COLOR);
+				bgfx::setViewClear(currentShadowView, BGFX_CLEAR_DEPTH | BGFX_CLEAR_COLOR, 1);;
 				bgfx::setViewRect(currentShadowView, 0, 0, 2048, 2048);		//TODO: use size of shadowmap
 
-				float lightViewMtx[16];
-				auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * -25.f, vector3(0, 0, 0), vector3(0, 1, 0));
-				copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
-
-				bgfx::setViewTransform(currentShadowView, lightViewMtx, dlshadowprojmtx);		//TODO: support more than directional lights only
+				bgfx::setViewTransform(currentShadowView, lightViewMtx, shadowprojviewmtx);		//TODO: support more than directional lights only
 				// submit whole scene mesh	
 				bgfx::setVertexBuffer(0, allVerticesHandle);
 				bgfx::setIndexBuffer(allIndicesHandle,0,allIndicesOffset);	// specify count
@@ -931,8 +927,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				bgfx::setTexture(4, shadowSamplers[0], bgfx::getTexture(depthMapFB, 0));	// shadow data buffer
 				bgfx::setTexture(3, shadowSamplers[1], bgfx::getTexture(depthMapFB, 1));	// shadow depth buffer
 				bgfx::setTexture(2, gBufferSamplers[2], attachments[2]);					// geometry position buffer (for transforming points to lightmap)
-				copyMat4(lightViewMtx, &dlshadowprojmtx[16]);
-				bgfx::setTransform(dlshadowprojmtx, 2);				// these become u_model[0] and u_model[1]
+				copyMat4(lightViewMtx, &shadowprojviewmtx[16]);
+				bgfx::setTransform(shadowprojviewmtx, 2);				// these become u_model[0] and u_model[1]
 
 				//execute instance draw call
 				float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), true,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
