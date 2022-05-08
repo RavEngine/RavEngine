@@ -930,6 +930,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				copyMat4(lightViewMtx, &shadowprojviewmtx[16]);
 				bgfx::setTransform(shadowprojviewmtx, 2);				// these become u_model[0] and u_model[1]
 
+				bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
+				bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
+
 				//execute instance draw call
 				float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), true,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled
 				numRowsUniform.SetValues(uniformData, 1);
