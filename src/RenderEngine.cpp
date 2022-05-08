@@ -609,7 +609,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
 
-	const bgfx::TextureFormat::Enum shadowTextureFormats[] = { bgfx::TextureFormat::R32U, bgfx::TextureFormat::D32F };
+	const bgfx::TextureFormat::Enum shadowTextureFormats[] = { bgfx::TextureFormat::R32F, bgfx::TextureFormat::D32F };
 	bgfx::TextureHandle shadowTextures[BX_COUNTOF(shadowTextureFormats)];
 	for (int i = 0; i < BX_COUNTOF(shadowTextureFormats); i++) {
 		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], 2048, 2048, BGFX_SAMPLER_BORDER_COLOR(0xFFFFFF) | BGFX_SAMPLER_UVW_BORDER);
@@ -969,7 +969,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			return;
 		}
 
-
 		constexpr auto stride = LightType::InstancingStride();
 		auto numLights = lights.size();
 
@@ -986,6 +985,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			}
 		}
 		numLights = i;	// get the actual number of lights
+        if (numLights == 0){
+            return; // don't submit 0 lights
+        }
 
 		bgfx::update(lightDataHandle, shadowOffset, mem);
 		dr.numDrawn = Debug::AssertSize<uint32_t>(numLights);
