@@ -71,39 +71,40 @@ void main()
             }
         }
 
+        // known to be covered completely with 100% confidence
         if (count >= 9){
             enabled = false;
         }
+        // known to not be covered at all with 100% confidence
         else if (count == 0){
             enabled = true;
         }
         else{
+            // the pixel may or may not be covered, so do point-in-triangle comparisons
+            const uint h_width = 2;
+            for(int r = -h_width; r <= h_width && enabled; r++){
+                for(int c = -h_width; c <= h_width && enabled; c++){
+                    vec2 offset = vec2((1.0 / u_viewRect[2]) * r,(1.0 / u_viewRect[3]) * c);
+                    float sampledIdx = texture2D(s_depthdata, sampledPos.xy + offset).x * 3;    // 3 indices for each triangle
+                    uint p1i = all_ib[sampledIdx];
+                    uint p2i = all_ib[sampledIdx+1];
+                    uint p3i = all_ib[sampledIdx+2];
+                    vec3 p1 = vec3(all_vb[p1i*3],all_vb[p1i*3+1],all_vb[p1i*3+2]);
+                    vec3 p2 = vec3(all_vb[p2i*3],all_vb[p2i*3+1],all_vb[p2i*3+2]);
+                    vec3 p3 = vec3(all_vb[p3i*3],all_vb[p3i*3+1],all_vb[p3i*3+2]);
 
-            bool isInside = false;
-            float sampledIdx = texture2D(s_depthdata, sampledPos.xy).x * 3;    // 3 indices for each triangle
-            uint p1i = all_ib[sampledIdx];
-            uint p2i = all_ib[sampledIdx+1];
-            uint p3i = all_ib[sampledIdx+2];
-            vec3 p1 = vec3(all_vb[p1i*3],all_vb[p1i*3+1],all_vb[p1i*3+2]);
-            vec3 p2 = vec3(all_vb[p2i*3],all_vb[p2i*3+1],all_vb[p2i*3+2]);
-            vec3 p3 = vec3(all_vb[p3i*3],all_vb[p3i*3+1],all_vb[p3i*3+2]);
-
-            p1 = mul(vp, p1);
-            p2 = mul(vp, p2);
-            p3 = mul(vp, p3);
-            isInside = !PointInTriangle(projected.xy,p1.xy,p2.xy,p3.xy);
-            
-            float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture2D(s_depth, sampledPos.xy).x;
-            if (sampledDepth.x < sampledPos.z - bias){
-                enabled = isInside;
-            }
+                    p1 = mul(vp, p1);
+                    p2 = mul(vp, p2);
+                    p3 = mul(vp, p3);
+                    enabled = !PointInTriangle(projected.xy,p1.xy,p2.xy,p3.xy);
+                }
+            } 
         }
     }
     
     float intensity = colorintensity[3];
     
-    vec3 albedo = texture2D(s_albedo, texcoord);
-    
+    vec3 albedo = texture2D(s_albedo, texcoord);   
     
     float nDotL = max(dot(normal, toLight), 0);
     
