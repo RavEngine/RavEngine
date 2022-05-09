@@ -48,6 +48,7 @@ void main()
     vec3 toLight = normalize(lightdir.xyz);
 
     bool enabled = 1;
+    const float bias = 0.005; //TODO: calcuate as a function of the difference between the normal and the light dir
     if (NumObjects.y){
         vec4 sampledPos = texture2D(s_pos,texcoord);
         mat4 lightView = u_model[1];
@@ -57,11 +58,28 @@ void main()
         vec4 projected = sampledPos;
         sampledPos /= sampledPos.w; // perspective divide
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
-        sampledPos.z *= -1;  
-        float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture2D(s_depth, sampledPos.xy).x;
+        sampledPos.z *= -1;
 
-        bool isInside = false;
-        if (sampledDepth != 1){
+        uint count = 0;
+        for(int r = -1; r <= 1; r++){
+            for(int c = -1; c <= 1; c++){
+                vec2 offset = vec2((1.0 / u_viewRect[2]) * r,(1.0 / u_viewRect[3]) * c);
+                float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture2D(s_depth, sampledPos.xy + offset).x;
+                if (sampledDepth.x < sampledPos.z - bias){
+                    count++;
+                }
+            }
+        }
+
+        if (count >= 9){
+            enabled = false;
+        }
+        else if (count == 0){
+            enabled = true;
+        }
+        else{
+
+            bool isInside = false;
             float sampledIdx = texture2D(s_depthdata, sampledPos.xy).x * 3;    // 3 indices for each triangle
             uint p1i = all_ib[sampledIdx];
             uint p2i = all_ib[sampledIdx+1];
@@ -74,13 +92,11 @@ void main()
             p2 = mul(vp, p2);
             p3 = mul(vp, p3);
             isInside = !PointInTriangle(projected.xy,p1.xy,p2.xy,p3.xy);
-        }
-
-        
-        float bias = 0.005; //TODO: calcuate as a function of the difference between the normal and the light dir
-
-        if (sampledDepth.x < sampledPos.z - bias){
-            enabled = isInside;
+            
+            float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture2D(s_depth, sampledPos.xy).x;
+            if (sampledDepth.x < sampledPos.z - bias){
+                enabled = isInside;
+            }
         }
     }
     

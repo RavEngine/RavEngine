@@ -322,7 +322,7 @@ void RenderEngine::Init(const AppConfig& config)
 #ifdef __linux__
 			SelectRenderer(bgfx::RendererType::Vulkan);
 #elif defined _WIN32
-			SelectRenderer(bgfx::RendererType::Direct3D11);
+			SelectRenderer(bgfx::RendererType::Direct3D12);
 #elif defined __APPLE__
 			SelectRenderer(bgfx::RendererType::Metal);
 #elif defined __EMSCRIPTEN__
@@ -337,7 +337,7 @@ void RenderEngine::Init(const AppConfig& config)
 				break;
 #elif BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
 			case AppConfig::RenderBackend::DirectX12:
-				SelectRenderer(bgfx::RendererType::Direct3D11);
+				SelectRenderer(bgfx::RendererType::Direct3D12);
 				break;
 #if BX_PLATFORM_WINDOWS
 			case AppConfig::RenderBackend::Vulkan:
