@@ -84,6 +84,8 @@ static Ref<DebugMaterialInstance> mat;
 
 static Ref<RavEngine::DeferredBlitShader> blitShader;
 
+static bgfx::BackbufferRatio::Enum TexRatio = bgfx::BackbufferRatio::Equal;
+
 
 #ifdef _DEBUG
 static DebugDrawer dbgdraw;	//for rendering debug primitives
@@ -574,7 +576,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	//create framebuffers
 	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
-		return bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+		return bgfx::createTexture2D(TexRatio, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
 	};
 
 	const auto gen_framebufferSquare = [](bgfx::TextureFormat::Enum format, uint16_t width, uint16_t height, auto samplerflags) -> bgfx::TextureHandle {
@@ -1139,14 +1141,14 @@ bgfx::FrameBufferHandle RenderEngine::createFrameBuffer(bool hdr, bool depth)
 	bgfx::TextureFormat::Enum format =
 	hdr ? bgfx::TextureFormat::RGBA16F : bgfx::TextureFormat::BGRA8; // BGRA is often faster (internal GPU format)
 	assert(bgfx::isTextureValid(0, false, 1, format, BGFX_TEXTURE_RT | samplerFlags));
-	textures[attachments++] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, format, BGFX_TEXTURE_RT | samplerFlags);
+	textures[attachments++] = bgfx::createTexture2D(TexRatio, false, 1, format, BGFX_TEXTURE_RT | samplerFlags);
 	
 	if(depth)
 	{
 		//bgfx::TextureFormat::Enum depthFormat = findDepthFormat(BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
 		bgfx::TextureFormat::Enum depthFormat = bgfx::TextureFormat::D32F;
 		assert(depthFormat != bgfx::TextureFormat::Enum::Count);
-		textures[attachments++] = bgfx::createTexture2D(bgfx::BackbufferRatio::Equal, false, 1, depthFormat, BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
+		textures[attachments++] = bgfx::createTexture2D(TexRatio, false, 1, depthFormat, BGFX_TEXTURE_RT_WRITE_ONLY | samplerFlags);
 	}
 	
 	bgfx::FrameBufferHandle fb = bgfx::createFrameBuffer(attachments, textures, true);
