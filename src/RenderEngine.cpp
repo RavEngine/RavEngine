@@ -19,6 +19,7 @@
 #include "App.hpp"
 #include "GUI.hpp"
 #include <RmlUi/Debugger.h>
+#include "Utilities.hpp"
 #include "InputManager.hpp"
 
 	#if defined __linux__ && !defined(__ANDROID__)
@@ -73,9 +74,8 @@ static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
 static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
 
 #ifdef _DEBUG
-//STATIC(RenderEngine::debuggerWorld)(true);
-//STATIC(RenderEngine::debuggerContext);
-Ref<InputManager> RenderEngine::debuggerInput;
+static std::optional<GUIComponent> debuggerContext;
+STATIC(RenderEngine::debuggerInput);
 UnorderedMap<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
 SpinLock RenderEngine::dbgmtx;
 #endif
@@ -1048,6 +1048,18 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	};
 	worldOwning->FilterPolymorphic<IDebugRenderable, Transform>(fn);
 	Im3d::GetContext().draw();
+	auto fng = [](float, auto& gui) {
+		gui.Render();	//bgfx state is set in renderer before actual draw calls
+	};
+	// update GUIs
+	worldOwning->Filter<GUIComponent>(fng);
+	if (debuggerContext){
+		auto& dbg = *debuggerContext;
+		dbg.SetDimensions(bufferdims.width, bufferdims.height);
+		dbg.SetDPIScale(GetDPIScale());
+		dbg.Update();
+		dbg.Render();
+	}
 #endif
 	bgfx::frame();
 	skinningComputeBuffer.Reset();
@@ -1198,32 +1210,31 @@ void RenderEngine::UpdateBufferDims(){
 
 #ifdef _DEBUG
 void RenderEngine::InitDebugger() const{
-	Im3d::AppData& data = Im3d::GetAppData();
-	data.drawCallback = &DebugRender;
-	
-    //TODO: FIX
-	//debuggerContext = debuggerWorld.CreatePrototype<Entity>();
-    //auto& ctx = debuggerContext.EmplaceComponent<GUIComponent>(10,10);
-//
-    //bool status = Rml::Debugger::Initialise(ctx.context);
-	
-	debuggerInput = make_shared<InputManager>();
-	
-    //TODO: FIX
-	//debuggerInput->BindAnyAction(ctx);
-	debuggerInput->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
-	debuggerInput->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
-	
-	debuggerInput->AddAxisMap("ScrollY", Special::MOUSEWHEEL_Y);
+	if (!debuggerContext){
+		Im3d::AppData& data = Im3d::GetAppData();
+		data.drawCallback = &DebugRender;
+		
+		debuggerContext.emplace(10,10);
+		auto ctxd = (*debuggerContext).GetData();
+		bool status = Rml::Debugger::Initialise(ctxd->context);
+		
+		debuggerInput = make_unique<InputManager>();
+		
+		debuggerInput->BindAnyAction(ctxd);
+		debuggerInput->AddAxisMap("MouseX", Special::MOUSEMOVE_X);
+		debuggerInput->AddAxisMap("MouseY", Special::MOUSEMOVE_Y);
+		
+		debuggerInput->AddAxisMap("ScrollY", Special::MOUSEWHEEL_Y);
 
-    //TODO: FIX
-//	debuggerInput->BindAxis("MouseX", ctx, &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
-//	debuggerInput->BindAxis("MouseY", ctx, &GUIComponent::MouseY, CID::ANY, 0);
-//	debuggerInput->BindAxis("ScrollY", ctx, &GUIComponent::ScrollY, CID::ANY, 0);
+		auto dbg = PointerInputBinder<GUIComponent>(&*debuggerContext);
+		debuggerInput->BindAxis("MouseX", dbg, &GUIComponent::MouseX, CID::ANY, 0);	//no deadzone
+		debuggerInput->BindAxis("MouseY", dbg, &GUIComponent::MouseY, CID::ANY, 0);
+		debuggerInput->BindAxis("ScrollY", dbg, &GUIComponent::ScrollY, CID::ANY, 0);
+	}
 }
 
 void RenderEngine::DeactivateDebugger() const{
-    //debuggerContext.Destroy();
+	debuggerContext.reset();
 	debuggerInput = nullptr;
 }
 #endif

@@ -202,11 +202,11 @@ namespace RavEngine {
 		/// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
 		void SetTransform(const Rml::Matrix4f* transform) override;
 
-//#ifdef _DEBUG
+#ifdef _DEBUG
 		void InitDebugger() const;
 		void DeactivateDebugger() const;
-		static Ref<InputManager> debuggerInput;
-//#endif
+		static std::unique_ptr<InputManager> debuggerInput;
+#endif
         // navigation debug rendering -- internal use only
         void depthMask(bool state) final;
         void texture(bool state) final;
@@ -288,12 +288,6 @@ namespace RavEngine {
             uint16_t x, y, width, height;
             bool enabled = false;
         } RMLScissor;
-		
-#ifdef _DEBUG
-		//used for the GUI debugger
-		//static Entity debuggerContext;
-        //static World debuggerWorld;
-#endif
 	
 		static const std::string_view BackendStringName(bgfx::RendererType::Enum backend);
     };

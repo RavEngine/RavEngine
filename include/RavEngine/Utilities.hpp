@@ -15,6 +15,23 @@ inline constexpr auto to_underlying(E e) noexcept
 	return static_cast<std::underlying_type_t<E>>(e);
 }
 
+/**
+ Use for binding objects that have a stable location in memory to an InputManager
+ */
+template<typename T>
+class PointerInputBinder{
+	T* ptr;
+public:
+	PointerInputBinder(decltype(ptr) ptr) : ptr(ptr){}
+	
+	size_t get_id() const{
+		return reinterpret_cast<size_t>(ptr);
+	}
+	T* get() const{
+		return ptr;
+	}
+};
+
 
 template<typename T, typename ... A>
 static inline std::string StrFormat(const T& formatstr, A ... args) {

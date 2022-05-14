@@ -954,22 +954,8 @@ namespace RavEngine {
 		virtual void OnDeactivate() {}
         
         template<typename T>
-        class WorldInputBinder{
-            T* ptr;
-        public:
-            WorldInputBinder(decltype(ptr) ptr) : ptr(ptr){}
-
-            size_t get_id() const{
-                return reinterpret_cast<size_t>(ptr);
-            }
-            T* get() const{
-                return ptr;
-            }
-        };
-        
-        template<typename T>
-        static inline WorldInputBinder<T> GetInput(T* ptr){
-            return WorldInputBinder<T>(ptr);
+        static inline PointerInputBinder<T> GetInput(T* ptr){
+            return PointerInputBinder<T>(ptr);
         }
         
         /**
