@@ -21,22 +21,21 @@ template<typename ... types>
 struct Queryable{
 	inline static constexpr std::size_t ntypes = sizeof ... (types);
 	typedef std::array<ctti_t,ntypes> arraytype;
+	constexpr static const arraytype queryTypes{CTTI<types>() ...};
 	
-	inline static constexpr arraytype GetQueryTypes(){
-		return {CTTI<types>() ...};
+	inline static constexpr const arraytype& GetQueryTypes(){
+		return queryTypes;
 	}
 };
 
-template<typename base, typename ... types>
+template<class base, typename ... types>
 struct QueryableDelta{
 	inline static constexpr std::size_t ntypes = sizeof ... (types) + base::ntypes;
 	typedef std::array<ctti_t,ntypes> arraytype;
-	
-	inline static constexpr arraytype GetQueryTypes(){
-		const std::array<ctti_t,sizeof ... (types)> thisvalues{ CTTI<types>() ...};
-		const typename base::arraytype basevalues = base::GetQueryTypes();
-        //concatenate arrays
-        return to_array(std::tuple_cat(thisvalues,basevalues));
+	constexpr static const arraytype queryTypes = to_array(std::tuple_cat(std::array<ctti_t,sizeof ... (types)>{ CTTI<types>() ...},base::GetQueryTypes()));
+		
+	inline static constexpr const arraytype& GetQueryTypes(){
+		return queryTypes;
 	}
 };
 }
