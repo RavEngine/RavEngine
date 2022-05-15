@@ -21,9 +21,15 @@ template<typename ... types>
 struct Queryable{
 	inline static constexpr std::size_t ntypes = sizeof ... (types);
 	typedef std::array<ctti_t,ntypes> arraytype;
-	constexpr static const arraytype queryTypes{CTTI<types>() ...};
+#define q_qt_def static const arraytype queryTypes{ CTTI<types>() ... }
+#ifndef _MSC_VER
+	constexpr q_qt_def;
+#endif
 	
 	inline static constexpr const arraytype& GetQueryTypes(){
+#ifdef _MSC_VER
+		q_qt_def;
+#endif
 		return queryTypes;
 	}
 };
@@ -32,9 +38,15 @@ template<class base, typename ... types>
 struct QueryableDelta{
 	inline static constexpr std::size_t ntypes = sizeof ... (types) + base::ntypes;
 	typedef std::array<ctti_t,ntypes> arraytype;
-	constexpr static const arraytype queryTypes = to_array(std::tuple_cat(std::array<ctti_t,sizeof ... (types)>{ CTTI<types>() ...},base::GetQueryTypes()));
+#define qb_qt_def static const arraytype queryTypes = to_array(std::tuple_cat(std::array<ctti_t, sizeof ... (types)>{ CTTI<types>() ...}, base::GetQueryTypes()))
+#ifndef _MSC_VER
+	constexpr qb_qt_def;
+#endif
 		
 	inline static constexpr const arraytype& GetQueryTypes(){
+#ifdef _MSC_VER
+		qb_qt_def;
+#endif
 		return queryTypes;
 	}
 };
