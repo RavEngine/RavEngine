@@ -1038,6 +1038,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_LINEAA);	//don't clear depth, debug wireframes are drawn forward-style afterwards
 	blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd, Views::FinalBlit);
 	
+	// render gui
+	auto fng = [](float, auto& gui) {
+		gui.Render();	//bgfx state is set in renderer before actual draw calls
+	};
+	// update GUIs
+	worldOwning->Filter<GUIComponent>(fng);
+	
 #ifdef _DEBUG
 	// process debug shapes
 	auto fn = [](auto scale, auto dbg, const auto transform){
@@ -1050,11 +1057,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	};
 	worldOwning->FilterPolymorphic<IDebugRenderable, Transform>(fn);
 	Im3d::GetContext().draw();
-	auto fng = [](float, auto& gui) {
-		gui.Render();	//bgfx state is set in renderer before actual draw calls
-	};
-	// update GUIs
-	worldOwning->Filter<GUIComponent>(fng);
 	if (debuggerContext){
 		auto& dbg = *debuggerContext;
 		dbg.SetDimensions(bufferdims.width, bufferdims.height);
