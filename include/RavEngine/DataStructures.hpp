@@ -62,7 +62,7 @@ namespace RavEngine{
     using UnorderedContiguousSet = unordered_contiguous_set<T,Vector<T>>;
 
     template<typename T>
-    using Queue = std::queue<T>;    //TODO: specialize to not use default std::deque
+    using Queue = std::queue<T>; 
 
 // The stackarray creates a stack-resident array using a runtime-known size.
 // There are no safety checks for overflowing the stack, and overflowing results in undefined behavior.

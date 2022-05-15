@@ -86,6 +86,8 @@ static Ref<RavEngine::DeferredBlitShader> blitShader;
 
 static bgfx::BackbufferRatio::Enum TexRatio = bgfx::BackbufferRatio::Equal;
 
+static constexpr uint16_t shadowMapSize = 2048;
+
 
 #ifdef _DEBUG
 static DebugDrawer dbgdraw;	//for rendering debug primitives
@@ -614,7 +616,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	const bgfx::TextureFormat::Enum shadowTextureFormats[] = { bgfx::TextureFormat::R32F, bgfx::TextureFormat::D32F };
 	bgfx::TextureHandle shadowTextures[BX_COUNTOF(shadowTextureFormats)];
 	for (int i = 0; i < BX_COUNTOF(shadowTextureFormats); i++) {
-		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], 2048, 2048, BGFX_SAMPLER_BORDER_COLOR(0xFFFFFF) | BGFX_SAMPLER_UVW_BORDER);
+		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], shadowMapSize, shadowMapSize, BGFX_SAMPLER_BORDER_COLOR(0xFFFFFF) | BGFX_SAMPLER_UVW_BORDER);
 	}
 
 	depthMapFB = bgfx::createFrameBuffer(BX_COUNTOF(shadowTextureFormats), shadowTextures, true);
@@ -872,7 +874,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
         //fill the buffer
         int i = 0;
-        for(const auto& l : lights){    //TODO: factor in light frustum culling
+        for(const auto& l : lights){
 			if (l.CastsShadows()) {
 				float* ptr = (float*)(mem->data + i);
 				l.AddInstanceData(ptr);
@@ -897,9 +899,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				bgfx::setViewFrameBuffer(currentShadowView, depthMapFB);
 				bgfx::setViewName(currentShadowView, fmt::format("Depth Shadow {}", Lname).c_str());
 				bgfx::setViewClear(currentShadowView, BGFX_CLEAR_DEPTH | BGFX_CLEAR_COLOR, 1);;
-				bgfx::setViewRect(currentShadowView, 0, 0, 2048, 2048);		//TODO: use size of shadowmap
+				bgfx::setViewRect(currentShadowView, 0, 0, shadowMapSize, shadowMapSize);
 
-				bgfx::setViewTransform(currentShadowView, lightViewMtx, shadowprojviewmtx);		//TODO: support more than directional lights only
+				bgfx::setViewTransform(currentShadowView, lightViewMtx, shadowprojviewmtx);
 				// submit whole scene mesh	
 				bgfx::setVertexBuffer(0, allVerticesHandle);
 				bgfx::setIndexBuffer(allIndicesHandle,0,allIndicesOffset);	// specify count
@@ -918,7 +920,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 				//set the required state for this light type
 				LightType::SetState();
-				bgfx::setInstanceCount(Debug::AssertSize<uint32_t>(numLights));      // TODO: operate inside the batch only
+				bgfx::setInstanceCount(Debug::AssertSize<uint32_t>(numLights));
 
 				// bind buffer for writing shadow data
 				bgfx::setBuffer(11, lightDataHandle, bgfx::Access::Read);
@@ -982,7 +984,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 
 		//fill the buffer
 		int i = 0;
-		for (const auto& l : lights) {    //TODO: factor in light frustum culling
+		for (const auto& l : lights) {
 			if (!l.CastsShadows()) {
 				float* ptr = (float*)(mem->data + i);
 				l.AddInstanceData(ptr);

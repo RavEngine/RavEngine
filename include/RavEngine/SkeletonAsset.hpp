@@ -49,5 +49,11 @@ public:
     constexpr inline const decltype(boneHierarchy) GetBoneHierarchy() const{
 		return boneHierarchy;
 	}
+	
+	/**
+	 @param boneName name of the bone to find
+	 @return True if the skeleton has a bone by the name, false if not
+	 */
+	bool HasBone(const std::string& boneName) const;
 };
 }

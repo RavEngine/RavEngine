@@ -144,11 +144,6 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
 	using light_t = PointLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
-		
-	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
-		//TODO: perform sphere intersection on camera bounds
-		return true;
-	}
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
@@ -216,10 +211,6 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	using light_t = SpotLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>::GetQueryTypes;
 	
-	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
-		//TODO: perform AABB intersection on camera bounds
-		return true;
-	}
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
 	/**

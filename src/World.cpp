@@ -22,6 +22,7 @@
 #include "AnimatorSystem.hpp"
 #include "SkinnedMeshComponent.hpp"
 #include "NetworkManager.hpp"
+#include "Constraint.hpp"
 #include <physfs.h>
 
 using namespace std;
@@ -51,9 +52,11 @@ RavEngine::World::World(){
     SetupTaskGraph();
     EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
     EmplaceSystem<AnimatorSystem,AnimatorComponent>();
-    CreateDependency<AnimatorSystem,ScriptSystem>();
-    CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();
-    CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();
+	EmplaceSystem<SocketSystem,SocketConstraint,Transform>();
+    CreateDependency<AnimatorSystem,ScriptSystem>();			// run scripts before animations
+    CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();	// run physics reads before animator
+    CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();	// run physics write before scripts
+	CreateDependency<SocketSystem, AnimatorSystem>();			// run animator before socket system
         
     EmplaceSystem<AudioRoomSyncSystem, AudioRoom,Transform>();
     EmplaceSystem<RPCSystem,RPCComponent>();

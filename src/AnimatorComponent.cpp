@@ -95,27 +95,21 @@ void AnimatorComponent::Tick(float timeScale){
 		skinningmats[i] = pose[i] * matrix4(bindpose[i]);
 	}
 
-	// update sockets
-	if (Sockets.size() > 0) {
-		// update world poses
-		GetPose();
-        //TODO: FIX
-//		for (int i = 0; i < skeleton->GetSkeleton()->num_joints(); i++) {
-//			auto name = skeleton->GetSkeleton()->joint_names()[i];
-//			if (Sockets.contains(name)) {
-//				//TODO: set matrix directly instead of with decompose?
-//				quaternion rotation;
-//				vector3 translate,unused;
-//				vector4 p;
-//				auto mat = glm_pose[i];
-//				glm::decompose(mat, unused, rotation, translate, unused, p);
-//
-//				auto tr = Sockets.at(name);
-//				tr->SetWorldPosition(translate);
-//				tr->SetWorldRotation(rotation);
-//				tr->SetLocalScale(vector3(1,1,1));
-//			}
-//		}
+	// update world poses
+	GetPose();
+}
+
+void AnimatorComponent::UpdateSocket(const std::string& name, Transform& t) const{
+	for (int i = 0; i < skeleton->GetSkeleton()->num_joints(); i++) {
+		auto name = skeleton->GetSkeleton()->joint_names()[i];
+		//TODO: set matrix directly instead of with decompose?
+		quaternion rotation;
+		vector3 translate,unused;
+		vector4 p;
+		auto mat = glm_pose[i];
+		glm::decompose(mat, unused, rotation, translate, unused, p);
+		t.SetWorldPosition(translate);
+		t.SetWorldRotation(rotation);
 	}
 }
 
@@ -159,22 +153,6 @@ bool AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz:
 
 	// TODO: proper end detection for trees
 	return false;
-}
-
-Ref<Transform> AnimatorComponent::AddSocket(const string& boneName) {
-	// is there a bone in the asset with that name?
-	auto& skeleton = GetSkeleton()->GetSkeleton();
-	for (int i = 0; i < skeleton->num_joints(); i++) {
-		if (strcmp(skeleton->joint_names()[i], boneName.data()) == 0) {
-            //TODO: FIX
-//			auto transform = make_shared<Transform>();
-			//Sockets[boneName] = transform;
-			//transform->SetOwner(GetOwner());
-			//return transform;
-		}
-	}
-	return Ref<Transform>();
-	Debug::Fatal("Cannot add socket to non-existant joint {}", boneName);
 }
 
 void AnimatorComponent::DebugDraw(RavEngine::DebugDrawer &dbg, const Transform&) const{

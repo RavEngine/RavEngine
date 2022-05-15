@@ -297,6 +297,8 @@ public:
 	}
     
     virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const Transform&) const override;
+	
+	void UpdateSocket(const std::string&, Transform&) const;
 
 protected:
 	locked_node_hashmap<id_t,State> states;
@@ -336,9 +338,6 @@ protected:
 	bool isBlending : 1;
 	float currentBlendingValue = 0;
 
-	// stores sockets
-    UnorderedMap<std::string, Ref<Transform>> Sockets;
-
 	inline void EndState(State& state, decltype(State::ID) nextState) {
 		state.DoEnd(nextState);
 		if (state.HasAutoTransition()) {
@@ -352,30 +351,6 @@ public:
 	*/
 	inline decltype(currentState) GetCurrentState() const{
 		return currentState;
-	}
-
-	/**
-	* Add a transform for a socket
-	* @param boneName the name of the bone to add the socket for
-	* @throws if no such socket exists
-	*/
-	Ref<Transform> AddSocket(const std::string& boneName);
-
-	/**
-	* Remove a socket given a bone name. If an entity is parented to this socket, it will become detatched.
-	* @param boneName the name of the bone to remove the socket for
-	*/
-	void RemoveSocket(const std::string& boneName) {
-		Sockets.erase(boneName);
-	}
-
-	/**
-	* Get a transform for a socket
-	* @param boneName the name of the bone to retrieve the socket for
-	* @throws if no such socket exists
-	*/
-	inline Ref<Transform> TransformForSocket(const std::string& boneName) {
-		return Sockets.at(boneName);
 	}
 
 	/**

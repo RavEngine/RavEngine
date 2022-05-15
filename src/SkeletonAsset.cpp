@@ -206,3 +206,13 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	boneHierarchy = bgfx::createVertexBuffer(bgfx::copy(hierarchy, static_cast<uint32_t>(sizeof(hierarchy))), hierarchyLayout);
 	
 }
+
+
+bool SkeletonAsset::HasBone(const std::string& boneName) const{
+	for (int i = 0; i < skeleton->num_joints(); i++) {
+		if (strcmp(skeleton->joint_names()[i], boneName.data()) == 0) {
+			return true;
+		}
+	}
+	return false;
+}

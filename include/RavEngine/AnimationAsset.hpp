@@ -24,7 +24,7 @@ struct IAnimGraphable{
 						bool looping,
 						ozz::vector<ozz::math::SoaTransform>& output,
 						ozz::animation::SamplingCache& cache,
-						const ozz::animation::Skeleton* skeleton) const = 0;	//TODO: make abstract
+						const ozz::animation::Skeleton* skeleton) const = 0;
 	
 	
     void SampleDirect(float t, const ozz::animation::Animation* anim, ozz::animation::SamplingCache& cache, ozz::vector<ozz::math::SoaTransform>& locals) const;
