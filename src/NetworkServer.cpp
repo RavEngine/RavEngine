@@ -269,7 +269,7 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 		for (const auto& identity : *identities.value()) {
 			auto entity = identity.GetOwner();
 			auto id = identity.GetNetTypeID();
-			auto netID = identity.GetNetworkID();
+			auto& netID = identity.GetNetworkID();
 			//send highest-priority safe message with this info to clients
 			auto message = CreateSpawnCommand(netID, id, world.value()->worldID);
 			NetworkIdentities[netID] = entity;
@@ -314,10 +314,10 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Com
 {
 	//send message revoke ownership for the existing owner, if it is not currently owned by server
 	if (object->Owner != k_HSteamNetConnection_Invalid) {
-		auto uuid = object->GetNetworkID().raw();
-		char msg[uuid.size() + 1];
+		auto& uuid = object->GetNetworkID();
+		char msg[uuids::uuid::size() + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipRevoked;
-		std::memcpy(msg + 1, uuid.data(), uuid.size());
+		std::memcpy(msg + 1, uuid.raw(), uuid.size());
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
 
 		OwnershipTracker[object->Owner].erase(object);
@@ -328,10 +328,10 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Com
 
 	//send message to the new owner that it is now the owner, if the new owner is not the server
 	if (newOwner != k_HSteamNetConnection_Invalid) {
-		auto uuid = object->GetNetworkID().raw();
-		char msg[uuid.size() + 1];
+		const auto& uuid = object->GetNetworkID();
+		char msg[uuids::uuid::size() + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipToThis;
-		std::memcpy(msg + 1, uuid.data(), uuid.size());
+		std::memcpy(msg + 1, uuid.raw(), uuid.size());
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
 
 		OwnershipTracker[object->Owner].insert(object);
@@ -341,10 +341,10 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Com
 void NetworkServer::ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base &var){
 	//send message revoke ownership for the existing owner, if it is not currently owned by server
 	if (var.owner != k_HSteamNetConnection_Invalid){
-		auto uuid = var.id.raw();
-		char message[uuid.size()+1];
+		auto& uuid = var.id;
+		char message[uuids::uuid::size()+1];
 		message[0] = NetworkBase::CommandCode::SyncVarOwnershipRevoked;
-		std::memcpy(message+1, uuid.data(), uuid.size());
+		std::memcpy(message+1, uuid.raw(), uuid.size());
 	}
 	
 	//update the object's ownership value
@@ -352,9 +352,9 @@ void NetworkServer::ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar
 
 	//send message to the new owner that it is now the owner, if the new owner is not the server
 	if (newOwner != k_HSteamNetConnection_Invalid){
-		auto uuid = var.id.raw();
+		auto uuid = var.id;
 		char message[16+1];
 		message[0] = NetworkBase::CommandCode::SyncVarOwnershipToThis;
-		std::memcpy(message+1, uuid.data(), uuid.size());
+		std::memcpy(message+1, uuid.raw(), uuid.size());
 	}
 }

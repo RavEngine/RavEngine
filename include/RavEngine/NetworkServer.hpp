@@ -4,7 +4,6 @@
 #include <steam/isteamnetworkingsockets.h>
 #include "DataStructures.hpp"
 #include "Ref.hpp"
-#include <uuids.h>
 #include <phmap.h>
 #include "Function.hpp"
 #include "ComponentHandle.hpp"

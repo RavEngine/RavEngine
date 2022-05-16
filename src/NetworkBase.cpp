@@ -23,7 +23,7 @@ std::string RavEngine::NetworkBase::CreateSpawnCommand(const uuids::uuid& id, ct
 
 	//set uuid
 	auto raw = id.raw();
-	memcpy(message + offset, raw.data(), 16);
+	memcpy(message + offset, raw, 16);
 	offset += 16;
 
 	//set worldid
@@ -42,7 +42,7 @@ std::string RavEngine::NetworkBase::CreateDestroyCommand(const uuids::uuid& id)
 	
 	//set uuid
 	auto raw = id.raw();
-	memcpy(message + 1, raw.data(), 16);
+	memcpy(message + 1, raw, 16);
 	
 	return string(message,size);
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include "ComponentWithOwner.hpp"
 #include "Queryable.hpp"
-#include <uuids.h>
+#include "Uuid.hpp"
 #include <steam/isteamnetworkingutils.h>
 
 namespace RavEngine {
@@ -19,7 +19,7 @@ namespace RavEngine {
             // don't trigger spawn message
         }
 		
-        inline decltype(NetworkID) GetNetworkID() const{
+        inline const decltype(NetworkID)& GetNetworkID() const{
 			return NetworkID;
 		}
 

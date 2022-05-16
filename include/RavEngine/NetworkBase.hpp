@@ -2,7 +2,7 @@
 #include <atomic>
 #include <thread>
 #include <string>
-#include <uuids/uuid.h>
+#include "Uuid.hpp"
 #include "CTTI.hpp"
 #include "NetworkIdentity.hpp"
 #include "Ref.hpp"

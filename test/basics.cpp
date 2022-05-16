@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <functional>
-#include <uuids.h>
+#include <RavEngine/Uuid.hpp>
 #include <string_view>
 
 using namespace RavEngine;
@@ -61,7 +61,7 @@ int Test_UUID(){
     for(int i = 0; i < 10; i++){
         auto id1 = uuids::uuid::create();
         auto data = id1.raw();
-        uuids::uuid id2(data.data());
+        uuids::uuid id2(data);
         assert(id1 == id2);
     }
     
@@ -160,7 +160,7 @@ int Test_SpawnDestroy(){
            fcount++;
        };
        w.Filter<FloatComponent>(ffc);
-       cout << "After destroying " << ibegin-iend << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
+       cout << "After destroying " << iend-ibegin << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
        assert(icount == (entities.size() - (iend - ibegin )));
        assert(fcount == (entities.size() - (iend - ibegin)));
    }

@@ -91,13 +91,13 @@ namespace RavEngine {
 		inline std::string SerializeRPC(uint16_t id, A ... args) const{
 			constexpr size_t totalsize = (RPCMsgUnpacker::TotalSerializedSize(args) + ...) + RPCMsgUnpacker::header_size;
 
-			auto uuid_bytes = GetOwner().GetComponent<NetworkIdentity>().GetNetworkID().raw();
+			auto& uuid_bytes = GetOwner().GetComponent<NetworkIdentity>().GetNetworkID();
 			char msg[totalsize];
 
 			//write message header
 			std::memset(msg, 0, totalsize);
 			msg[0] = NetworkBase::CommandCode::RPC;							//command code
-			std::memcpy(msg + 1, uuid_bytes.data(), uuid_bytes.size());	//entity uuid
+			std::memcpy(msg + 1, uuid_bytes.raw(), uuid_bytes.size());	//entity uuid
 			std::memcpy(msg + 1 + uuid_bytes.size(), &id, sizeof(id));	//RPC ID
 
 			//write mesage body
