@@ -62,9 +62,6 @@ protected:
 	
 	void OwnershipRevoked(const std::string_view& cmd);
 	void OwnershipToThis(const std::string_view& cmd);
-	
-	void SyncVarOwnershipRevoked(const std::string_view& cmd);
-	void SyncVarOwnershipToThis(const std::string_view& cmd);
 
 	static NetworkClient* currentClient;
 };

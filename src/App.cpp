@@ -13,7 +13,6 @@
 #include "RMLFileInterface.hpp"
 #include <steam/steamnetworkingsockets.h>
 #include <steam/isteamnetworkingutils.h>
-#include "SyncVar.hpp"
 #include "Skybox.hpp"
 #include <SDL.h>
 #include <filesystem>
@@ -202,8 +201,6 @@ int App::run(int argc, char** argv) {
 
 		Renderer->Draw(renderWorld);
 		player.SetWorld(renderWorld);
-		SyncVar_base::Swap();
-		SyncVar_base::ProcessQueue();
 		        
         //make up the difference
 		//can't use sleep because sleep is not very accurate

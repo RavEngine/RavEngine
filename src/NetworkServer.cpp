@@ -6,7 +6,6 @@
 #include <steam/isteamnetworkingutils.h>
 #include "App.hpp"
 #include "RPCComponent.hpp"
-#include "SyncVar.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -235,9 +234,6 @@ void NetworkServer::ServerTick(){
                 //TODO: server needs to check ownership, client does not
 				OnRPC(message, pIncomingMsg->GetConnection());
                 break;
-			case NetworkBase::CommandCode::SyncVar:
-				SyncVar_base::EnqueueCmd(message, pIncomingMsg->GetConnection());
-				break;
 			case NetworkBase::CommandCode::ClientRequestingWorldSynchronization:
 				SynchronizeWorldToClient(pIncomingMsg->GetConnection(), message);
 				break;
@@ -335,26 +331,5 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Com
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
 
 		OwnershipTracker[object->Owner].insert(object);
-	}
-}
-
-void NetworkServer::ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base &var){
-	//send message revoke ownership for the existing owner, if it is not currently owned by server
-	if (var.owner != k_HSteamNetConnection_Invalid){
-		auto& uuid = var.id;
-		char message[uuids::uuid::size()+1];
-		message[0] = NetworkBase::CommandCode::SyncVarOwnershipRevoked;
-		std::memcpy(message+1, uuid.raw(), uuid.size());
-	}
-	
-	//update the object's ownership value
-	var.owner = newOwner;
-
-	//send message to the new owner that it is now the owner, if the new owner is not the server
-	if (newOwner != k_HSteamNetConnection_Invalid){
-		auto uuid = var.id;
-		char message[16+1];
-		message[0] = NetworkBase::CommandCode::SyncVarOwnershipToThis;
-		std::memcpy(message+1, uuid.raw(), uuid.size());
 	}
 }

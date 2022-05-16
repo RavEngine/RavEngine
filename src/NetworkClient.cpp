@@ -3,7 +3,6 @@
 #include <steam/isteamnetworkingutils.h>	//this is required in for ParseString
 #include "App.hpp"
 #include "RPCComponent.hpp"
-#include "SyncVar.hpp"
 #include "World.hpp"
 #include <string_view>
 #include <cstring>
@@ -151,16 +150,6 @@ void NetworkClient::ClientTick(){
 			case NetworkBase::CommandCode::OwnershipToThis:
 				OwnershipToThis(message);
 				break;
-			case NetworkBase::CommandCode::SyncVar:
-				//TODO: check ownership
-				SyncVar_base::EnqueueCmd(message,connection);
-				break;
-			case NetworkBase::CommandCode::SyncVarOwnershipRevoked:
-					
-				break;
-			case NetworkBase::CommandCode::SyncVarOwnershipToThis:
-				
-				break;
             default:
                 Debug::Warning("Invalid command code: {}",cmdcode);
             }
@@ -258,20 +247,6 @@ void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
 	if (!success) {
 		Debug::Warning("Cannot add ownership to an entity that does not exist, id = {}", id.to_string());
 	}
-}
-
-void NetworkClient::SyncVarOwnershipRevoked(const std::string_view &cmd){
-	uuids::uuid id(cmd.data() + 1);
-	SyncVar_base::GetAllSyncvars().if_contains(id, [&](SyncVar_base* var){
-		var->owner = k_HSteamNetConnection_Invalid;
-	});
-}
-
-void NetworkClient::SyncVarOwnershipToThis(const std::string_view &cmd){
-	uuids::uuid id(cmd.data() + 1);
-	SyncVar_base::GetAllSyncvars().if_contains(id, [&](SyncVar_base* var){
-		var->owner = 30;	//any other number = this machine owns it
-	});
 }
 
 void NetworkClient::SendMessageToServer(const std::string_view& msg, Reliability mode) const {

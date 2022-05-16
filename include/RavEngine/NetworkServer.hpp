@@ -11,7 +11,6 @@
 
 namespace RavEngine {
 	class Entity;
-	class SyncVar_base;
 
 class NetworkServer : public NetworkBase{
 public:
@@ -44,9 +43,7 @@ public:
 	@param object the networkidentity to udpate the ownership of
 	*/
 	void ChangeOwnership(HSteamNetConnection newOwner, ComponentHandle<NetworkIdentity> object);
-	
-	void ChangeSyncVarOwnership(HSteamNetConnection newOwner, SyncVar_base& var);
-	
+		
 	//attach event listeners here
 	Function<void(HSteamNetConnection)> OnClientConnecting, OnClientConnected, OnClientDisconnected;
 	

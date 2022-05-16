@@ -40,9 +40,6 @@ public:
 			RPC,
             OwnershipToThis,	// receive on client
             OwnershipRevoked,	// receive on client
-			SyncVar,
-			SyncVarOwnershipRevoked,
-			SyncVarOwnershipToThis,
 			ClientRequestingWorldSynchronization	// receive on server
 		};
 	};
