@@ -63,7 +63,7 @@ rm -r backward-cpp/doc backward-cpp/test backward-cpp/test_package
 
 # boost
 cd boost
-rm -r doc/ libs/ more/ status/ tools/ boost.png bootstrap.sh bootstrap.bat index.htm index.html INSTALL Jamroot README.md rst.css boost.css boost-build.jam boostcpp.jam
+rm -r doc/ more/ status/ tools/ boost.png bootstrap.sh bootstrap.bat index.htm index.html INSTALL Jamroot README.md rst.css boost.css boost-build.jam boostcpp.jam
 cd ..
 
 # date
@@ -80,3 +80,6 @@ rm -r RmlUi-freetype/harfbuzz/test RmlUi-freetype/harfbuzz/perf
 
 # etl
 rm -r etl/examples etl/images etl/support etl/temp etl/test etl/uml
+
+# OpenXR
+rm -r OpenXR-SDK/.azure-pipelines OpenXR-SDK/.github OpenXR-SDK/.reuse OpenXR-SDK/specification OpenXR-SDK/.appveyor.yml OpenXR-SDK/.editorconfig OpenXR-SDK/CHANGELOG.SDK.md

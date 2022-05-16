@@ -376,6 +376,13 @@ void RenderEngine::Init(const AppConfig& config)
 			Debug::Fatal("bgfx::init Failed");
 		}
 
+		// must happen after bgfx init because it uses the device
+#if XR_AVAILABLE
+		if (GetApp()->wantsXR) {
+			InitXR();
+		}
+#endif
+
 		// Enable debug text.
 		bgfx::setDebug(BGFX_DEBUG_TEXT /*| BGFX_DEBUG_STATS*/);
 

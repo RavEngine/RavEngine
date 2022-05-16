@@ -344,6 +344,16 @@ if (NOT TARGET_UWP)
 	set(BOOST_FS_LIB "boost_filesystem")
 endif()
 
+# OpenXR - available on Windows & Linux only
+if(TARGET_WINDOWS OR TARGET_LINUX)
+	set(DYNAMIC_LOADER OFF)
+	set(BUILD_TESTS OFF)
+	set(BUILD_CONFORMANCE_TESTS OFF)
+	set(BUILD_WITH_SYSTEM_JSONCPP OFF)
+	add_subdirectory(deps/OpenXR-SDK)
+	set(OPENXR_LOADER openxr_loader)
+endif()
+
 # ========== Building engine ==============
 
 # get all sources for the library with glob
@@ -515,6 +525,7 @@ target_link_libraries("${PROJECT_NAME}"
 	${DXGI_LIB}
 	${EM_LINK}
 	${ANDROID_GLUE_LIB}
+	${OPENXR_LOADER}
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
@@ -692,6 +703,8 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options")
 group_in("Libraries/bgfx" "bgfx;bimg;bx")
 group_in("Libraries/bgfx/tools" "shaderc;geometryc;geometryv;texturec;texturev;tools")
 group_in("Libraries/bgfx/3rdparty" "astc;astc-codec;edtaa3;etc1;etc2;fcpp;glcpp;glslang;glsl-optimizer;iqa;mesa;meshoptimizer;nvtt;pvrtc;spirv-cross;spirv-tools;squish;tinyexr")
+
+group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
 
 # pack resources
 function(pack_resources)

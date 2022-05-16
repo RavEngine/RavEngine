@@ -51,6 +51,9 @@ namespace RavEngine {
 		App(const std::string& resourcesName);
         App();  // for unit tests only, do not use
 		virtual ~App();
+
+		// set this to true in app constructor if XR is desired
+		bool wantsXR = false;
         
         /**
          Override this method to provide a custom fatal handler

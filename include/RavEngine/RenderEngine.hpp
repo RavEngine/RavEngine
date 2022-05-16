@@ -24,6 +24,14 @@
 #include "PhysXDefines.h"
 #include "../../deps/bgfx.cmake/bgfx/src/config.h"  // TODO: don't do this?
 
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
+#define _UWP 1   
+#else
+#define _UWP 0
+#endif
+
+#define XR_AVAILABLE ((_WIN32 && !_UWP) || __linux__)
+
 struct SDL_Window;
 
 namespace RavEngine {
@@ -249,6 +257,7 @@ namespace RavEngine {
 		static SDL_Window* window;
 		void* metalLayer;
         void Init(const AppConfig&);
+        void InitXR();
     public:
 		static constexpr uint8_t gbufferSize = 4;
 		static constexpr uint8_t lightingAttachmentsSize = 2;

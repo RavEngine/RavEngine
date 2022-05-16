@@ -19,5 +19,5 @@ static inline auto MessageBoxToSDLFlag(Dialog::MessageBoxType type){
 }
 
 void Dialog::ShowBasic(const std::string& title, const std::string& msg, MessageBoxType type){
-    SDL_ShowSimpleMessageBox(MessageBoxToSDLFlag(type), title.c_str(), msg.c_str(), GetApp()->GetRenderEngine().GetWindow());
+    SDL_ShowSimpleMessageBox(MessageBoxToSDLFlag(type), title.c_str(), msg.c_str(), nullptr);
 }
