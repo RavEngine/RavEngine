@@ -6,6 +6,7 @@
 #if _WIN32
 #define XR_USE_GRAPHICS_API_D3D12
 #include <d3d12.h>
+static const GUID IID_ID3D12CommandQueue = { 0x0ec870a6, 0x5d7e, 0x4c22, { 0x8c, 0xfc, 0x5b, 0xaa, 0xe0, 0x76, 0x16, 0xed } }; // TODO: this is defined in bgfx/src/dxgi.cpp - use that one? 
 #endif
 //#define XR_USE_GRAPHICS_API_VULKAN
 #include <openxr/openxr.h>
@@ -111,14 +112,23 @@ void RenderEngine::InitXR() {
 
 	// create the session
 	void* bindingptr = nullptr;
+#ifdef _WIN32
 	XrGraphicsBindingD3D12KHR d3dbinding{ XR_TYPE_GRAPHICS_BINDING_D3D12_KHR };
+#endif
 	//XrGraphicsBindingVulkanKHR vkbinding{ XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR };
 	switch (bgfx::getRendererType()) {
 #ifdef _WIN32
 	case bgfx::RendererType::Direct3D12:
 	{
-		d3dbinding.device = (ID3D12Device*)bgfx::getInternalData()->context;
-		d3dbinding.queue = nullptr;	// TODO: setup command queue
+		const bgfx::InternalData* idata = bgfx::getInternalData();
+		auto device = (ID3D12Device*)idata->context;
+		d3dbinding.device = device;
+		ID3D12CommandQueue* commandQueue = nullptr;
+		UINT size = sizeof(commandQueue);
+		device->GetPrivateData(IID_ID3D12CommandQueue, &size, &commandQueue);
+		
+		d3dbinding.queue = commandQueue;	// TODO: setup command queue
+		d3dbinding.next = nullptr;
 		bindingptr = &d3dbinding;
 	}
 		break;
