@@ -27,7 +27,9 @@ using namespace std;
 static XrInstance xr_instance{};
 static PFN_xrCreateDebugUtilsMessengerEXT ext_xrCreateDebugUtilsMessengerEXT = nullptr;
 static PFN_xrDestroyDebugUtilsMessengerEXT ext_xrDestroyDebugUtilsMessengerEXT = nullptr;
+#ifdef _WIN32
 static PFN_xrGetD3D12GraphicsRequirementsKHR ext_xrGetD3D12GraphicsRequirementsKHR = nullptr;
+#endif
 static PFN_xrGetVulkanGraphicsRequirementsKHR ext_xrGetVulkanGraphicsRequirementsKHR = nullptr;
 static XrDebugUtilsMessengerEXT xr_debug{};	
 static XrFormFactor app_config_form = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;		//TODO: make this configurable?
@@ -37,6 +39,30 @@ static XrEnvironmentBlendMode xr_blend{};
 static XrSession xr_session{};
 static constexpr XrPosef xr_pose_identity = { {0,0,0,1}, {0,0,0} };
 static XrSpace xr_app_space{};
+
+template<typename DSV, typename RTV>
+struct SwapchainSurfaceData {
+	DSV depth_view;
+	RTV target_view;
+};
+
+template<typename XrSwapchainImageXXXKHR, typename DSV, typename RTV>
+struct Swapchain {
+	XrSwapchain handle{};
+	int32_t     width = 0;
+	int32_t     height = 0;
+	vector<XrSwapchainImageXXXKHR> surface_images;
+	vector<SwapchainSurfaceData<DSV,RTV>> surface_data;
+};
+static union USwapchain {
+#ifdef _WIN32
+	// 
+	vector<Swapchain<XrSwapchainImageD3D12KHR, ID3D12Resource*, ID3D12Resource*>> dx;
+#endif
+	vector<Swapchain<XrSwapchainImageVulkanKHR,VkImage,VkImage>> vk;
+	~USwapchain() {}
+	USwapchain() {}
+} swapchains;
 #endif
 
 void RenderEngine::InitXR() {
@@ -176,6 +202,17 @@ void RenderEngine::InitXR() {
 			Debug::Fatal("Could not create XR Session - Device may not be attached or ready");
 		}
 	}
+
+	// allocate the correct one in the union
+#if _WIN32
+	if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
+		new (&swapchains.dx) decltype(swapchains.dx)({});
+	}
+	else
+#endif
+	{
+		new (&swapchains.vk) decltype(swapchains.dx)({});
+	}
 	
 
 	// select the reference frame 
@@ -187,15 +224,25 @@ void RenderEngine::InitXR() {
 
 	// make swap chains
 	uint32_t view_count = 0;
-	xrEnumerateViewConfigurationViews(xr_instance, xr_system_id, app_config_view, 0, &view_count, nullptr);
+	xrEnumerateViewConfigurationViews(xr_instance, xr_system_id, app_config_view, 0, &view_count, nullptr);	// get count
+	vector<XrViewConfigurationView> config_views(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
+	xrEnumerateViewConfigurationViews(xr_instance, xr_system_id, app_config_view, view_count, &view_count, config_views.data());	// populate data
 	for (uint8_t i = 0; i < view_count; i++) {
-		XrViewConfigurationView view{ XR_TYPE_VIEW_CONFIGURATION_VIEW };
+		XrViewConfigurationView& view = config_views[i];
 		XrSwapchainCreateInfo swapchain_info = { XR_TYPE_SWAPCHAIN_CREATE_INFO };
 		XrSwapchain handle{};
 		swapchain_info.arraySize = 1;
 		swapchain_info.mipCount = 1;
 		swapchain_info.faceCount = 1;
-		swapchain_info.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+#if _WIN32
+		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
+			swapchain_info.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		}
+		else 
+#endif
+		{
+			swapchain_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+		}
 		swapchain_info.width = view.recommendedImageRectWidth;
 		swapchain_info.height = view.recommendedImageRectHeight;
 		swapchain_info.sampleCount = view.recommendedSwapchainSampleCount;
@@ -211,10 +258,37 @@ void RenderEngine::InitXR() {
 		// get num textures generated from the swapchain
 		uint32_t surface_count = 0;
 		xrEnumerateSwapchainImages(handle, 0, &surface_count, nullptr);
-		/*swapchain_t swapchain = {};
-		swapchain.width = swapchain_info.width;
-		swapchain.height = swapchain_info.height;
-		swapchain.handle = handle;*/
+
+		const auto genSwapchainData = [&](auto& chain, auto type, const auto& surface_datafn) {
+			chain.width = swapchain_info.width;
+			chain.height = swapchain_info.height;
+			chain.handle = handle;
+			chain.surface_images.resize(surface_count, { type });
+			chain.surface_data.resize(surface_count);
+			xrEnumerateSwapchainImages(chain.handle, surface_count, &surface_count, (XrSwapchainImageBaseHeader*)chain.surface_images.data());
+			for (uint32_t i = 0; i < surface_count; i++) {
+				surface_datafn((XrBaseInStructure&)chain.surface_images[i]);
+			}
+		};
+
+#if _WIN32
+		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
+			decltype(swapchains.dx)::value_type chain;	
+			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR, [&](XrBaseInStructure& base) {
+				//TODO: generate DX12 swapchain surface data
+			});
+			swapchains.dx.push_back(chain);
+		}
+		else
+#endif
+		{
+			decltype(swapchains.vk)::value_type chain;
+			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, [&](XrBaseInStructure& base) {
+				//TODO: generate VK swapchain surface data
+			});
+			swapchains.vk.push_back(chain);
+		}
+		
 	}
 #else
 	Debug::Fatal("Cannot initialize XR: Not available on platform {}", SystemInfo::OperatingSystemNameString());
