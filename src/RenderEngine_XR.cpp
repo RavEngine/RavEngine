@@ -211,7 +211,7 @@ void RenderEngine::InitXR() {
 	else
 #endif
 	{
-		new (&swapchains.vk) decltype(swapchains.dx)({});
+		new (&swapchains.vk) decltype(swapchains.vk)({});
 	}
 	
 
