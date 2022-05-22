@@ -403,6 +403,8 @@ void RenderEngine::Init(const AppConfig& config)
 	//check capabilities
 	const auto caps = bgfx::getCaps();
 	Debug::Assert(caps->supported & BGFX_CAPS_COMPUTE, "Cannot proceed: this platform does not support compute shaders.");
+	Debug::Assert(caps->supported & BGFX_CAPS_INDEX32, "Cannot proceed: this platform does not support 32 bit index buffers");
+	Debug::Assert(caps->supported & BGFX_CAPS_INSTANCING, "Cannot proceed: this platform does not support instancing");
 
 	//create screenspace quad
 	constexpr uint16_t indices[] = { 0,2,1, 2,3,1 };
