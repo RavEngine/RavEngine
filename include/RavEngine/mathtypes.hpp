@@ -47,6 +47,10 @@ typedef glm::mat3x3 matrix3;
 typedef float decimalType;
 #endif
 
+inline quaternion quat_identity() {
+    return glm::quat_identity<decimalType, glm::packed_highp>();
+}
+
 //constant vector directions
 constexpr vector3 vector3_right = vector3(1, 0, 0);
 constexpr vector3 vector3_up = vector3(0, 1, 0);

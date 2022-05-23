@@ -377,6 +377,7 @@ void World::setupRenderTasks(){
     }).name("sort instanced - serial");
 
 	init.precede(sort,sortskinned,sortInstanced);
+    sort.precede(sortInstanced);    // because these write to the same container
 
 	auto copydirs = renderTasks.emplace([this](){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
