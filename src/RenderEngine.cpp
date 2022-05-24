@@ -758,7 +758,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			numRowsUniform.SetValues(timeVals, 1);
 			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, Debug::AssertSize<uint32_t>(ceil(std::get<0>(row.first)->GetNumIndices() / 64.0)), Debug::AssertSize<uint32_t>(row.second.items.size()), 1);
 			allIndicesOffset += std::get<0>(row.first)->GetNumIndices() * row.second.items.size();	// account for the number of instances
-			allIndicesIncrement += std::get<0>(row.first)->GetNumVerts();	// begin counting from here
+			allIndicesIncrement += std::get<0>(row.first)->GetNumVerts() * row.second.items.size();	// begin counting from here
 
 		}
 		else {
