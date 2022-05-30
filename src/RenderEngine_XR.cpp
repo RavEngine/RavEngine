@@ -8,6 +8,9 @@
 #if _WIN32
 #define XR_USE_GRAPHICS_API_D3D12
 #include <d3d12.h>
+#include <Windows.Foundation.h>
+#include <wrl\wrappers\corewrappers.h>
+#include <wrl\client.h>
 static const GUID IID_ID3D12CommandQueue = { 0x0ec870a6, 0x5d7e, 0x4c22, { 0x8c, 0xfc, 0x5b, 0xaa, 0xe0, 0x76, 0x16, 0xed } }; // TODO: this is defined in bgfx/src/dxgi.cpp - use that one? 
 #endif
 #include <openxr/openxr.h>
@@ -29,6 +32,7 @@ static PFN_xrCreateDebugUtilsMessengerEXT ext_xrCreateDebugUtilsMessengerEXT = n
 static PFN_xrDestroyDebugUtilsMessengerEXT ext_xrDestroyDebugUtilsMessengerEXT = nullptr;
 #ifdef _WIN32
 static PFN_xrGetD3D12GraphicsRequirementsKHR ext_xrGetD3D12GraphicsRequirementsKHR = nullptr;
+static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
 #endif
 static PFN_xrGetVulkanGraphicsRequirementsKHR ext_xrGetVulkanGraphicsRequirementsKHR = nullptr;
 static XrDebugUtilsMessengerEXT xr_debug{};	
@@ -236,7 +240,7 @@ void RenderEngine::InitXR() {
 		swapchain_info.faceCount = 1;
 #if _WIN32
 		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
-			swapchain_info.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			swapchain_info.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		}
 		else 
 #endif
@@ -267,15 +271,33 @@ void RenderEngine::InitXR() {
 			chain.surface_data.resize(surface_count);
 			xrEnumerateSwapchainImages(chain.handle, surface_count, &surface_count, (XrSwapchainImageBaseHeader*)chain.surface_images.data());
 			for (uint32_t i = 0; i < surface_count; i++) {
-				surface_datafn((XrBaseInStructure&)chain.surface_images[i]);
+				chain.surface_data[i] = surface_datafn((XrBaseInStructure&)chain.surface_images[i]);
 			}
 		};
 
 #if _WIN32
 		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
 			decltype(swapchains.dx)::value_type chain;	
-			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR, [&](XrBaseInStructure& base) {
+			using dxresult_t = decltype(decltype(swapchains.dx)::value_type::surface_data)::value_type;
+			auto device = (ID3D12Device*)d3dbinding.device;
+			D3D12_DESCRIPTOR_HEAP_DESC heapDesc{};
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			device->CreateDescriptorHeap(&heapDesc, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void**>(rtvHeap.ReleaseAndGetAddressOf()));
+			auto renderTargetView = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR, [&](XrBaseInStructure& base) -> dxresult_t {
 				//TODO: generate DX12 swapchain surface data
+				dxresult_t result{};
+				auto& img = (XrSwapchainImageD3D12KHR&)base;
+				D3D12_RENDER_TARGET_VIEW_DESC renderTargetViewDesc{};
+				renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+				renderTargetViewDesc.Texture2DArray.ArraySize = img.texture->GetDesc().DepthOrArraySize;
+				device->CreateRenderTargetView(img.texture, &renderTargetViewDesc, renderTargetView);
+
+				result.target_view = img.texture;
+
+				return result;
 			});
 			swapchains.dx.push_back(chain);
 		}
@@ -283,8 +305,11 @@ void RenderEngine::InitXR() {
 #endif
 		{
 			decltype(swapchains.vk)::value_type chain;
-			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, [&](XrBaseInStructure& base) {
+			using vkresult_t = decltype(decltype(swapchains.vk)::value_type::surface_data)::value_type;
+			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, [&](XrBaseInStructure& base) -> vkresult_t{
 				//TODO: generate VK swapchain surface data
+				vkresult_t result{};
+				return result;
 			});
 			swapchains.vk.push_back(chain);
 		}
