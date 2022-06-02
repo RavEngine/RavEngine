@@ -6,6 +6,8 @@
 #define XR_USE_GRAPHICS_API_VULKAN
 #include <bgfx/../../3rdparty/khronos/vulkan-local/vulkan_core.h>
 #if _WIN32
+// WinARM requires this for some reason
+#define NTDDI_VERSION _NTDDI_WIN7
 #define XR_USE_GRAPHICS_API_D3D12
 #include <d3d12.h>
 #include <Windows.Foundation.h>
@@ -56,7 +58,7 @@ struct Swapchain {
 	int32_t     width = 0;
 	int32_t     height = 0;
 	vector<XrSwapchainImageXXXKHR> surface_images;
-	vector<SwapchainSurfaceData<DSV,RTV>> surface_data;
+	vector<bgfx::TextureHandle> bgfx_textures;
 };
 static union USwapchain {
 #ifdef _WIN32
@@ -258,46 +260,27 @@ void RenderEngine::InitXR() {
 				Debug::Fatal("OpenXR Swapchain creation failed: {}", result);
 			}
 		}
-
 		// get num textures generated from the swapchain
 		uint32_t surface_count = 0;
 		xrEnumerateSwapchainImages(handle, 0, &surface_count, nullptr);
-
 		const auto genSwapchainData = [&](auto& chain, auto type, const auto& surface_datafn) {
 			chain.width = swapchain_info.width;
 			chain.height = swapchain_info.height;
 			chain.handle = handle;
 			chain.surface_images.resize(surface_count, { type });
-			chain.surface_data.resize(surface_count);
+			chain.bgfx_textures.resize(surface_count);
 			xrEnumerateSwapchainImages(chain.handle, surface_count, &surface_count, (XrSwapchainImageBaseHeader*)chain.surface_images.data());
 			for (uint32_t i = 0; i < surface_count; i++) {
-				chain.surface_data[i] = surface_datafn((XrBaseInStructure&)chain.surface_images[i]);
+				chain.bgfx_textures[i] = bgfx::createTexture2D(chain.width,chain.height,false,1,bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT,nullptr);		// bgfx limitation: no way around not allocating a texture
+				surface_datafn(chain.bgfx_textures[i], (XrBaseInStructure&)chain.surface_images[i]);
 			}
 		};
-
 #if _WIN32
 		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
-			decltype(swapchains.dx)::value_type chain;	
-			using dxresult_t = decltype(decltype(swapchains.dx)::value_type::surface_data)::value_type;
-			auto device = (ID3D12Device*)d3dbinding.device;
-			D3D12_DESCRIPTOR_HEAP_DESC heapDesc{};
-			heapDesc.NumDescriptors = 1;
-			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-			device->CreateDescriptorHeap(&heapDesc, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void**>(rtvHeap.ReleaseAndGetAddressOf()));
-			auto renderTargetView = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR, [&](XrBaseInStructure& base) -> dxresult_t {
-				//TODO: generate DX12 swapchain surface data
-				dxresult_t result{};
+			decltype(swapchains.dx)::value_type chain;
+			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR, [&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
 				auto& img = (XrSwapchainImageD3D12KHR&)base;
-				D3D12_RENDER_TARGET_VIEW_DESC renderTargetViewDesc{};
-				renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-				renderTargetViewDesc.Texture2DArray.ArraySize = img.texture->GetDesc().DepthOrArraySize;
-				device->CreateRenderTargetView(img.texture, &renderTargetViewDesc, renderTargetView);
-
-				result.target_view = img.texture;
-
-				return result;
+				bgfx::overrideInternal(tx,reinterpret_cast<uintptr_t>(img.texture));
 			});
 			swapchains.dx.push_back(chain);
 		}
@@ -305,15 +288,12 @@ void RenderEngine::InitXR() {
 #endif
 		{
 			decltype(swapchains.vk)::value_type chain;
-			using vkresult_t = decltype(decltype(swapchains.vk)::value_type::surface_data)::value_type;
-			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, [&](XrBaseInStructure& base) -> vkresult_t{
-				//TODO: generate VK swapchain surface data
-				vkresult_t result{};
-				return result;
+			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, [&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
+				auto& img = (XrSwapchainImageVulkanKHR&)base;
+				bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.image));
 			});
 			swapchains.vk.push_back(chain);
 		}
-		
 	}
 #else
 	Debug::Fatal("Cannot initialize XR: Not available on platform {}", SystemInfo::OperatingSystemNameString());

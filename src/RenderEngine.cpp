@@ -361,6 +361,12 @@ void RenderEngine::Init(const AppConfig& config)
 
 		settings.callback = &global_msghandler;
 
+#if XR_AVAILABLE
+		if (GetApp()->wantsXR) {
+			bgfx::renderFrame();	// switch to single-threaded rendering and make this the render thread
+		}
+#endif
+
 		// we want to make the transient buffer larger
 		settings.limits.transientIbSize = 3.2e+7;  //32 mb
 		settings.limits.transientVbSize = 3.2e+7;  //32 mb
