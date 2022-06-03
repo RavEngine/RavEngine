@@ -2,13 +2,14 @@
 #include "Debug.hpp"
 #include "SystemInfo.hpp"
 
+// WinARM requires this for some reason
+#define NTDDI_VERSION NTDDI_WIN7
+#define XR_USE_GRAPHICS_API_D3D12
+
 #if XR_AVAILABLE
 #define XR_USE_GRAPHICS_API_VULKAN
 #include <bgfx/../../3rdparty/khronos/vulkan-local/vulkan_core.h>
 #if _WIN32
-// WinARM requires this for some reason
-#define NTDDI_VERSION _NTDDI_WIN7
-#define XR_USE_GRAPHICS_API_D3D12
 #include <d3d12.h>
 #include <Windows.Foundation.h>
 #include <wrl\wrappers\corewrappers.h>
@@ -70,6 +71,8 @@ static union USwapchain {
 	USwapchain() {}
 } swapchains;
 #endif
+
+static std::vector<bgfx::FrameBufferHandle> VRFramebuffers;
 
 void RenderEngine::InitXR() {
 #if XR_AVAILABLE
@@ -274,6 +277,9 @@ void RenderEngine::InitXR() {
 				chain.bgfx_textures[i] = bgfx::createTexture2D(chain.width,chain.height,false,1,bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT,nullptr);		// bgfx limitation: no way around not allocating a texture
 				surface_datafn(chain.bgfx_textures[i], (XrBaseInStructure&)chain.surface_images[i]);
 			}
+
+			// create framebuffers out of textures
+			VRFramebuffers.push_back(bgfx::createFrameBuffer(surface_count,chain.bgfx_textures.data(), true));
 		};
 #if _WIN32
 		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
@@ -298,4 +304,8 @@ void RenderEngine::InitXR() {
 #else
 	Debug::Fatal("Cannot initialize XR: Not available on platform {}", SystemInfo::OperatingSystemNameString());
 #endif
+}
+
+const decltype(VRFramebuffers)& RenderEngine::GetVRFrameBuffers() const{
+	return VRFramebuffers;
 }

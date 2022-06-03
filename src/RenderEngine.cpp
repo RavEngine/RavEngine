@@ -681,7 +681,14 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
 	bgfx::setViewFrameBuffer(Views::LightingNoShadows, lightingBuffer);
     bgfx::setViewMode(Views::LightingNoShadows,bgfx::ViewMode::Sequential);
-    //bgfx::setViewMode(Views::FinalBlit,bgfx::ViewMode::Sequential);
+
+#if XR_AVAILABLE
+	// testing: set the final destination as one of the VR eyes
+	if (GetApp()->wantsXR) {
+		//bgfx::setViewMode(Views::FinalBlit, bgfx::ViewMode::Sequential);
+		bgfx::setViewFrameBuffer(Views::FinalBlit, GetVRFrameBuffers()[0]);
+	}
+#endif
 	
 	bgfx::touch(Views::DeferredGeo);
 	bgfx::touch(Views::LightingNoShadows);

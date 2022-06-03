@@ -288,6 +288,8 @@ namespace RavEngine {
 		
         Vector4Uniform numRowsUniform, computeOffsetsUniform;
         std::optional<Vector4Uniform> timeUniform;
+
+        const std::vector<bgfx::FrameBufferHandle>& GetVRFrameBuffers() const;
 		
 		static bgfx::VertexLayout RmlLayout;
 		
