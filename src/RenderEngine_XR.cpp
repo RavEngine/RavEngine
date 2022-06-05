@@ -237,7 +237,7 @@ void RenderEngine::InitXR() {
 			xrEnumerateSwapchainImages(handle, surface_count, &surface_count, (XrSwapchainImageBaseHeader*)surface_vec.data());
 			for (uint32_t i = 0; i < surface_count; i++) {
 				// bgfx limitation: no way around not allocating a texture
-				auto txhandle = bgfx::createTexture2D(swapchain_info.width, swapchain_info.height,false,1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT,nullptr);		
+				auto txhandle = bgfx::createTexture2D(swapchain_info.width, swapchain_info.height,false,1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT_WRITE_ONLY, nullptr);
 
 				// call the appropriate function to override the bgfx texture's data with the openXR swapchain
 				surface_datafn(txhandle, (XrBaseInStructure&)surface_vec[i]);

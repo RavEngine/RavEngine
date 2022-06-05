@@ -1054,6 +1054,18 @@ namespace bgfx { namespace d3d12
 						filter.DenyList.NumCategories = BX_COUNTOF(catlist);
 						filter.DenyList.pCategoryList = catlist;
 						m_infoQueue->PushStorageFilter(&filter);
+
+
+						D3D12_MESSAGE_ID messages[] = {
+							D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+							D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
+							D3D12_MESSAGE_ID_CREATERESOURCE_CLEARVALUEDENORMFLUSH,
+							D3D12_MESSAGE_ID_REFLECTSHAREDPROPERTIES_INVALIDOBJECT, // Caused by D3D11on12.
+						};
+						ZeroMemory(&filter, sizeof(filter));
+						filter.DenyList.NumIDs = ARRAYSIZE(messages);
+						filter.DenyList.pIDList = messages;
+						m_infoQueue->AddStorageFilterEntries(&filter);
 					}
 				}
 #endif // BX_PLATFORM_WINDOWS
