@@ -332,38 +332,40 @@ int App::run(int argc, char** argv) {
 						}
 					}
 				}
-				{
-					XrEventDataBuffer event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
-					while (xrPollEvent(rve_xr_instance, &event_buffer) == XR_SUCCESS) {
-						switch (event_buffer.type) {
-						case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
-							XrEventDataSessionStateChanged* changed = (XrEventDataSessionStateChanged*)&event_buffer;
-							xr_session_state = changed->state;
+			}
+			// process these regardless of focused state
+			{
+				XrEventDataBuffer event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
+				while (xrPollEvent(rve_xr_instance, &event_buffer) == XR_SUCCESS) {
+					switch (event_buffer.type) {
+					case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+						XrEventDataSessionStateChanged* changed = (XrEventDataSessionStateChanged*)&event_buffer;
+						xr_session_state = changed->state;
 
-							// Session state change is where we can begin and end sessions, as well as find quit messages!
-							switch (xr_session_state) {
-								case XR_SESSION_STATE_READY: {
-									XrSessionBeginInfo begin_info = { XR_TYPE_SESSION_BEGIN_INFO };
-									begin_info.primaryViewConfigurationType = rve_app_config_view;
-									xrBeginSession(rve_xr_session, &begin_info);
-								} break;
-								case XR_SESSION_STATE_STOPPING: {
-									exit = true;
-									xrEndSession(rve_xr_session);
-								} 
-								break;
-								case XR_SESSION_STATE_EXITING:
-								case XR_SESSION_STATE_LOSS_PENDING:
-									exit = true; 
-									break;
-							}
-						} 
-						break;
-						case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: 
+						// Session state change is where we can begin and end sessions, as well as find quit messages!
+						switch (xr_session_state) {
+						case XR_SESSION_STATE_READY: {
+							XrSessionBeginInfo begin_info = { XR_TYPE_SESSION_BEGIN_INFO };
+							begin_info.primaryViewConfigurationType = rve_app_config_view;
+							xrBeginSession(rve_xr_session, &begin_info);
+						} break;
+						case XR_SESSION_STATE_STOPPING: {
 							exit = true;
+							xrEndSession(rve_xr_session);
 						}
-						event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
+						break;
+						case XR_SESSION_STATE_EXITING:
+						case XR_SESSION_STATE_LOSS_PENDING:
+							exit = true;
+							break;
+						}
 					}
+					break;
+					case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
+						exit = true;
+						break;
+					}
+					event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
 				}
 			}
 		}
@@ -387,9 +389,38 @@ int App::run(int argc, char** argv) {
 			front();
 		}
 
-		Renderer->Draw(renderWorld);
+#if XR_AVAILABLE
+		XrFrameState state{ XR_TYPE_FRAME_STATE };
+		if (wantsXR) {
+			XrFrameWaitInfo fwinfo{ XR_TYPE_FRAME_WAIT_INFO };
+			fwinfo.next = nullptr;
+			state.next = nullptr;
+			xrWaitFrame(rve_xr_session,&fwinfo,&state);
+
+			XrFrameBeginInfo fbinfo{ XR_TYPE_FRAME_BEGIN_INFO };
+			fbinfo.next = nullptr;
+			xrBeginFrame(rve_xr_session, &fbinfo);
+			if (state.shouldRender == XR_FALSE) {
+				goto skip_xr_frame;
+			}
+		}
+#endif
+		Renderer->Draw(renderWorld);		// in XR, this must be synchronous, to ensure xrEndFrame is called properly
+#if XR_AVAILABLE
+		if (wantsXR) {
+			skip_xr_frame:
+			XrFrameEndInfo endinfo{ XR_TYPE_FRAME_END_INFO };
+			endinfo.next = nullptr;
+			endinfo.environmentBlendMode = XrEnvironmentBlendMode::XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+			endinfo.layerCount = 0;	// don't do any layering
+			endinfo.layers = nullptr;
+			endinfo.displayTime = state.predictedDisplayTime;
+			xrEndFrame(rve_xr_session, &endinfo);
+		}
+		
+#endif
 		player.SetWorld(renderWorld);
-		        
+		
         //make up the difference
 		//can't use sleep because sleep is not very accurate
 		/*clocktype::duration work_time;
