@@ -30,7 +30,7 @@ using namespace RavEngine;
 using namespace std;
 
 #if XR_AVAILABLE
-static XrInstance xr_instance{};
+XrInstance rve_xr_instance{};
 static PFN_xrCreateDebugUtilsMessengerEXT ext_xrCreateDebugUtilsMessengerEXT = nullptr;
 static PFN_xrDestroyDebugUtilsMessengerEXT ext_xrDestroyDebugUtilsMessengerEXT = nullptr;
 #ifdef _WIN32
@@ -38,14 +38,14 @@ static PFN_xrGetD3D12GraphicsRequirementsKHR ext_xrGetD3D12GraphicsRequirementsK
 static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
 #endif
 static PFN_xrGetVulkanGraphicsRequirementsKHR ext_xrGetVulkanGraphicsRequirementsKHR = nullptr;
-static XrDebugUtilsMessengerEXT xr_debug{};	
+XrDebugUtilsMessengerEXT rve_xr_debug{};	
 static XrFormFactor app_config_form = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;		//TODO: make this configurable?
 static XrSystemId xr_system_id = XR_NULL_SYSTEM_ID;
-static XrViewConfigurationType app_config_view = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+XrViewConfigurationType rve_app_config_view = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 static XrEnvironmentBlendMode xr_blend{};
-static XrSession xr_session{};
+XrSession rve_xr_session{};
 static constexpr XrPosef xr_pose_identity = { {0,0,0,1}, {0,0,0} };
-static XrSpace xr_app_space{};
+XrSpace rve_xr_app_space{};
 
 static std::vector<XrSwapchain> swapchains;
 #endif
@@ -84,21 +84,21 @@ void RenderEngine::InitXR() {
 	createInfo.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
 	strcpy(createInfo.applicationInfo.applicationName, "RavEngine XR Application");	// TODO: make this user-configurable
 	{
-		auto res = xrCreateInstance(&createInfo, &xr_instance);
+		auto res = xrCreateInstance(&createInfo, &rve_xr_instance);
 
-		if (xr_instance == nullptr || res != XR_SUCCESS) {
+		if (rve_xr_instance == nullptr || res != XR_SUCCESS) {
 			Debug::Fatal("XR Initialization failed because an OpenXR Runtime was not found.");
 		}
 	}
 	
 
 	// load extension methods to use
-	xrGetInstanceProcAddr(xr_instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction*)(&ext_xrCreateDebugUtilsMessengerEXT));
-	xrGetInstanceProcAddr(xr_instance, "xrDestroyDebugUtilsMessengerEXT", (PFN_xrVoidFunction*)(&ext_xrDestroyDebugUtilsMessengerEXT));
+	xrGetInstanceProcAddr(rve_xr_instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction*)(&ext_xrCreateDebugUtilsMessengerEXT));
+	xrGetInstanceProcAddr(rve_xr_instance, "xrDestroyDebugUtilsMessengerEXT", (PFN_xrVoidFunction*)(&ext_xrDestroyDebugUtilsMessengerEXT));
 #ifdef _WIN32
-	xrGetInstanceProcAddr(xr_instance, "xrGetD3D12GraphicsRequirementsKHR", (PFN_xrVoidFunction*)(&ext_xrGetD3D12GraphicsRequirementsKHR));
+	xrGetInstanceProcAddr(rve_xr_instance, "xrGetD3D12GraphicsRequirementsKHR", (PFN_xrVoidFunction*)(&ext_xrGetD3D12GraphicsRequirementsKHR));
 #endif
-	xrGetInstanceProcAddr(xr_instance, "xrGetVulkanGraphicsRequirementsKHR", (PFN_xrVoidFunction*)(&ext_xrGetVulkanGraphicsRequirementsKHR));
+	xrGetInstanceProcAddr(rve_xr_instance, "xrGetVulkanGraphicsRequirementsKHR", (PFN_xrVoidFunction*)(&ext_xrGetVulkanGraphicsRequirementsKHR));
 
 	// create debug log
 	XrDebugUtilsMessengerCreateInfoEXT debug_info = { XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
@@ -122,25 +122,25 @@ void RenderEngine::InitXR() {
 	};
 	// start debug utils
 	if (ext_xrCreateDebugUtilsMessengerEXT)
-		ext_xrCreateDebugUtilsMessengerEXT(xr_instance, &debug_info, &xr_debug);
+		ext_xrCreateDebugUtilsMessengerEXT(rve_xr_instance, &debug_info, &rve_xr_debug);
 
 	// get device form factor
 	XrSystemGetInfo systemInfo = { XR_TYPE_SYSTEM_GET_INFO };
 	systemInfo.formFactor = app_config_form;
-	if (xrGetSystem(xr_instance, &systemInfo, &xr_system_id) != XR_SUCCESS) {
+	if (xrGetSystem(rve_xr_instance, &systemInfo, &xr_system_id) != XR_SUCCESS) {
 		Debug::Fatal("xrGetSystem Failed");
 	}
 
 	// check blend modes for this device, and take the first available one
 	uint32_t blend_count = 0;
-	xrEnumerateEnvironmentBlendModes(xr_instance, xr_system_id, app_config_view, 1, &blend_count, &xr_blend);
+	xrEnumerateEnvironmentBlendModes(rve_xr_instance, xr_system_id, rve_app_config_view, 1, &blend_count, &xr_blend);
 
 #ifdef _WIN32
 	XrGraphicsRequirementsD3D12KHR reqdx = { XR_TYPE_GRAPHICS_REQUIREMENTS_D3D12_KHR };
-	ext_xrGetD3D12GraphicsRequirementsKHR(xr_instance, xr_system_id, &reqdx);
+	ext_xrGetD3D12GraphicsRequirementsKHR(rve_xr_instance, xr_system_id, &reqdx);
 #endif
 	XrGraphicsRequirementsVulkanKHR reqvk{ XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR };
-	ext_xrGetVulkanGraphicsRequirementsKHR(xr_instance, xr_system_id, &reqvk);
+	ext_xrGetVulkanGraphicsRequirementsKHR(rve_xr_instance, xr_system_id, &reqvk);
 	//TODO: do something with these req structs (currently ignored, but openXR requires calling these extension methods before proceeding)
 
 	// create the session
@@ -183,8 +183,8 @@ void RenderEngine::InitXR() {
 
 	sessionInfo.systemId = xr_system_id;
 	{
-		auto result = xrCreateSession(xr_instance, &sessionInfo, &xr_session);
-		if (xr_session == nullptr || result != XR_SUCCESS) {
+		auto result = xrCreateSession(rve_xr_instance, &sessionInfo, &rve_xr_session);
+		if (rve_xr_session == nullptr || result != XR_SUCCESS) {
 			Debug::Fatal("Could not create XR Session - Device may not be attached or ready");
 		}
 	}
@@ -195,13 +195,13 @@ void RenderEngine::InitXR() {
 	XrReferenceSpaceCreateInfo ref_space = { XR_TYPE_REFERENCE_SPACE_CREATE_INFO };
 	ref_space.poseInReferenceSpace = xr_pose_identity;
 	ref_space.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-	xrCreateReferenceSpace(xr_session, &ref_space, &xr_app_space);
+	xrCreateReferenceSpace(rve_xr_session, &ref_space, &rve_xr_app_space);
 
 	// make swap chains
 	uint32_t view_count = 0;
-	xrEnumerateViewConfigurationViews(xr_instance, xr_system_id, app_config_view, 0, &view_count, nullptr);	// get count
+	xrEnumerateViewConfigurationViews(rve_xr_instance, xr_system_id, rve_app_config_view, 0, &view_count, nullptr);	// get count
 	vector<XrViewConfigurationView> config_views(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
-	xrEnumerateViewConfigurationViews(xr_instance, xr_system_id, app_config_view, view_count, &view_count, config_views.data());	// populate data
+	xrEnumerateViewConfigurationViews(rve_xr_instance, xr_system_id, rve_app_config_view, view_count, &view_count, config_views.data());	// populate data
 	for (uint8_t i = 0; i < view_count; i++) {
 		XrViewConfigurationView& view = config_views[i];
 		XrSwapchainCreateInfo swapchain_info = { XR_TYPE_SWAPCHAIN_CREATE_INFO };
@@ -224,7 +224,7 @@ void RenderEngine::InitXR() {
 		swapchain_info.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 
 		{
-			auto result = xrCreateSwapchain(xr_session, &swapchain_info, &handle);
+			auto result = xrCreateSwapchain(rve_xr_session, &swapchain_info, &handle);
 			if (result != XR_SUCCESS) {
 				Debug::Fatal("OpenXR Swapchain creation failed: {}", result);
 			}
@@ -284,4 +284,12 @@ const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
 	xrAcquireSwapchainImage(swapchains[1], nullptr, &offset_index);
 	ret.r_eye = VRFramebuffers[start_index + offset_index];
 	return ret;
+}
+
+void RenderEngine::ShutdownXR() {
+	for (const auto& swapchain : swapchains) {
+		xrDestroySwapchain(swapchain);
+	}
+	swapchains.clear();
+	if (rve_xr_debug != XR_NULL_HANDLE) ext_xrDestroyDebugUtilsMessengerEXT(rve_xr_debug);
 }

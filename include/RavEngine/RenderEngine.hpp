@@ -20,17 +20,12 @@
 #include "Function.hpp"
 #include "Common3D.hpp"
 #include "SpinLock.hpp"
-#include <RavEngine/Utilities.hpp>
+#include "Utilities.hpp"
+#include "Defines.hpp"
 #include "PhysXDefines.h"
 #include "../../deps/bgfx.cmake/bgfx/src/config.h"  // TODO: don't do this?
 
-#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
-#define _UWP 1   
-#else
-#define _UWP 0
-#endif
 
-#define XR_AVAILABLE ((_WIN32 && !_UWP) || __linux__)
 
 struct SDL_Window;
 
@@ -44,6 +39,7 @@ namespace RavEngine {
     struct World;
 
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
+        friend class App;
 	private:
 		struct dim{
 			int width, height;
@@ -297,6 +293,8 @@ namespace RavEngine {
             VRFramebuffer l_eye, r_eye;
         };
         const BufferedFramebuffer GetVRFrameBuffers() const;
+
+        void ShutdownXR();
 		
 		static bgfx::VertexLayout RmlLayout;
 		
