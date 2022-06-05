@@ -44,8 +44,8 @@ constexpr static XrPosef xr_pose_identity = { {0,0,0,1}, {0,0,0} };
 
 static void openxr_make_actions() {
 	XrActionSetCreateInfo actionset_info = { XR_TYPE_ACTION_SET_CREATE_INFO };
-	strcpy_s(actionset_info.actionSetName, "gameplay");
-	strcpy_s(actionset_info.localizedActionSetName, "Gameplay");
+	strcpy(actionset_info.actionSetName, "gameplay");
+	strcpy(actionset_info.localizedActionSetName, "Gameplay");
 	xrCreateActionSet(rve_xr_instance, &actionset_info, &xr_input_state.actionSet);
 	xrStringToPath(rve_xr_instance, "/user/hand/left", &xr_input_state.handSubactionPath[0]);
 	xrStringToPath(rve_xr_instance, "/user/hand/right", &xr_input_state.handSubactionPath[1]);
@@ -53,18 +53,18 @@ static void openxr_make_actions() {
 	// Create an action to track the position and orientation of the hands! This is
 	// the controller location, or the center of the palms for actual hands.
 	XrActionCreateInfo action_info = { XR_TYPE_ACTION_CREATE_INFO };
-	action_info.countSubactionPaths = _countof(xr_input_state.handSubactionPath);
+	action_info.countSubactionPaths = BX_COUNTOF(xr_input_state.handSubactionPath);
 	action_info.subactionPaths = xr_input_state.handSubactionPath;
 	action_info.actionType = XR_ACTION_TYPE_POSE_INPUT;
-	strcpy_s(action_info.actionName, "hand_pose");
-	strcpy_s(action_info.localizedActionName, "Hand Pose");
+	strcpy(action_info.actionName, "hand_pose");
+	strcpy(action_info.localizedActionName, "Hand Pose");
 	xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.poseAction);
 
 	// Create an action for listening to the select action! This is primary trigger
 	// on controllers, and an airtap on HoloLens
 	action_info.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-	strcpy_s(action_info.actionName, "select");
-	strcpy_s(action_info.localizedActionName, "Select");
+	strcpy(action_info.actionName, "select");
+	strcpy(action_info.localizedActionName, "Select");
 	xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.selectAction);
 
 	// Bind the actions we just created to specific locations on the Khronos simple_controller
@@ -87,7 +87,7 @@ static void openxr_make_actions() {
 	XrInteractionProfileSuggestedBinding suggested_binds = { XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
 	suggested_binds.interactionProfile = profile_path;
 	suggested_binds.suggestedBindings = &bindings[0];
-	suggested_binds.countSuggestedBindings = _countof(bindings);
+	suggested_binds.countSuggestedBindings = BX_COUNTOF(bindings);
 	xrSuggestInteractionProfileBindings(rve_xr_instance, &suggested_binds);
 
 	// Create frames of reference for the pose actions

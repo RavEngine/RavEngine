@@ -6,4 +6,4 @@
 #define _UWP 0
 #endif
 
-#define XR_AVAILABLE ((_WIN32 && !_UWP) || __linux__)
+#define XR_AVAILABLE ((_WIN32 && !_UWP && !defined(_M_ARM64)) || __linux__)
