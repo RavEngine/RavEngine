@@ -47,32 +47,9 @@ static XrSession xr_session{};
 static constexpr XrPosef xr_pose_identity = { {0,0,0,1}, {0,0,0} };
 static XrSpace xr_app_space{};
 
-template<typename DSV, typename RTV>
-struct SwapchainSurfaceData {
-	DSV depth_view;
-	RTV target_view;
-};
-
-template<typename XrSwapchainImageXXXKHR, typename DSV, typename RTV>
-struct Swapchain {
-	XrSwapchain handle{};
-	int32_t     width = 0;
-	int32_t     height = 0;
-	vector<XrSwapchainImageXXXKHR> surface_images;
-	vector<bgfx::TextureHandle> bgfx_textures;
-};
-static union USwapchain {
-#ifdef _WIN32
-	// 
-	vector<Swapchain<XrSwapchainImageD3D12KHR, ID3D12Resource*, ID3D12Resource*>> dx;
+static std::vector<XrSwapchain> swapchains;
 #endif
-	vector<Swapchain<XrSwapchainImageVulkanKHR,VkImage,VkImage>> vk;
-	~USwapchain() {}
-	USwapchain() {}
-} swapchains;
-#endif
-
-static std::vector<bgfx::FrameBufferHandle> VRFramebuffers;
+static std::vector<RenderEngine::VRFramebuffer> VRFramebuffers;
 
 void RenderEngine::InitXR() {
 #if XR_AVAILABLE
@@ -91,7 +68,7 @@ void RenderEngine::InitXR() {
 
 	vector<const char*>  use_extensions;
 	for (auto ask_ext : ask_extensions) {
-		for (auto ext : xr_extensions) {
+		for (const auto& ext : xr_extensions) {
 			if (strcmp(ask_ext, ext.extensionName) == 0) {
 				use_extensions.push_back(ask_ext);
 			}
@@ -212,17 +189,6 @@ void RenderEngine::InitXR() {
 		}
 	}
 
-	// allocate the correct one in the union
-#if _WIN32
-	if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
-		new (&swapchains.dx) decltype(swapchains.dx)({});
-	}
-	else
-#endif
-	{
-		new (&swapchains.vk) decltype(swapchains.vk)({});
-	}
-	
 
 	// select the reference frame 
 	// STAGE is relative to guardian bounds, LOCAL is relative to device starting position
@@ -255,7 +221,7 @@ void RenderEngine::InitXR() {
 		swapchain_info.width = view.recommendedImageRectWidth;
 		swapchain_info.height = view.recommendedImageRectHeight;
 		swapchain_info.sampleCount = view.recommendedSwapchainSampleCount;
-		swapchain_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+		swapchain_info.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 
 		{
 			auto result = xrCreateSwapchain(xr_session, &swapchain_info, &handle);
@@ -266,46 +232,56 @@ void RenderEngine::InitXR() {
 		// get num textures generated from the swapchain
 		uint32_t surface_count = 0;
 		xrEnumerateSwapchainImages(handle, 0, &surface_count, nullptr);
-		const auto genSwapchainData = [&](auto& chain, auto type, const auto& surface_datafn) {
-			chain.width = swapchain_info.width;
-			chain.height = swapchain_info.height;
-			chain.handle = handle;
-			chain.surface_images.resize(surface_count, { type });
-			chain.bgfx_textures.resize(surface_count);
-			xrEnumerateSwapchainImages(chain.handle, surface_count, &surface_count, (XrSwapchainImageBaseHeader*)chain.surface_images.data());
+		const auto genSwapchainData = [&](auto& surface_vec, const auto& surface_datafn) {
+			// it creates a triple buffer (why all 3 textures have the same type) - use xrAcquireSwapchainImage each frame to know which one to use
+			xrEnumerateSwapchainImages(handle, surface_count, &surface_count, (XrSwapchainImageBaseHeader*)surface_vec.data());
 			for (uint32_t i = 0; i < surface_count; i++) {
-				chain.bgfx_textures[i] = bgfx::createTexture2D(chain.width,chain.height,false,1,bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT,nullptr);		// bgfx limitation: no way around not allocating a texture
-				surface_datafn(chain.bgfx_textures[i], (XrBaseInStructure&)chain.surface_images[i]);
-			}
+				// bgfx limitation: no way around not allocating a texture
+				auto txhandle = bgfx::createTexture2D(swapchain_info.width, swapchain_info.height,false,1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT,nullptr);		
 
-			// create framebuffers out of textures
-			VRFramebuffers.push_back(bgfx::createFrameBuffer(surface_count,chain.bgfx_textures.data(), true));
+				// call the appropriate function to override the bgfx texture's data with the openXR swapchain
+				surface_datafn(txhandle, (XrBaseInStructure&)surface_vec[i]);
+
+				// make a framebuffer and add it to the list
+				VRFramebuffers.push_back({ bgfx::createFrameBuffer(1, &txhandle, true), {int(swapchain_info.width), int(swapchain_info.height)} });
+			}
 		};
 #if _WIN32
 		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
-			decltype(swapchains.dx)::value_type chain;
-			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR, [&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
-				auto& img = (XrSwapchainImageD3D12KHR&)base;
-				bgfx::overrideInternal(tx,reinterpret_cast<uintptr_t>(img.texture));
-			});
-			swapchains.dx.push_back(chain);
+			vector<XrSwapchainImageD3D12KHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
+			genSwapchainData(images,
+				[&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
+					auto& img = (XrSwapchainImageD3D12KHR&)base;
+					bgfx::overrideInternal(tx,reinterpret_cast<uintptr_t>(img.texture));
+				}
+			);
 		}
 		else
 #endif
 		{
-			decltype(swapchains.vk)::value_type chain;
-			genSwapchainData(chain, XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, [&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
-				auto& img = (XrSwapchainImageVulkanKHR&)base;
-				bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.image));
-			});
-			swapchains.vk.push_back(chain);
+			vector<XrSwapchainImageVulkanKHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
+			genSwapchainData(images,
+				[&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
+					auto& img = (XrSwapchainImageVulkanKHR&)base;
+					bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.image));
+				}
+			);
 		}
+		swapchains.push_back(handle);
 	}
 #else
 	Debug::Fatal("Cannot initialize XR: Not available on platform {}", SystemInfo::OperatingSystemNameString());
 #endif
 }
 
-const decltype(VRFramebuffers)& RenderEngine::GetVRFrameBuffers() const{
-	return VRFramebuffers;
+const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
+	BufferedFramebuffer ret;
+	uint32_t start_index = 0;
+	uint32_t offset_index = 0;
+	xrAcquireSwapchainImage(swapchains[0], nullptr, &offset_index);
+	ret.l_eye = VRFramebuffers[start_index + offset_index];
+	start_index += 3;
+	xrAcquireSwapchainImage(swapchains[1], nullptr, &offset_index);
+	ret.r_eye = VRFramebuffers[start_index + offset_index];
+	return ret;
 }

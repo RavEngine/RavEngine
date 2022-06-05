@@ -261,6 +261,10 @@ namespace RavEngine {
     public:
 		static constexpr uint8_t gbufferSize = 4;
 		static constexpr uint8_t lightingAttachmentsSize = 2;
+        struct VRFramebuffer {
+            bgfx::FrameBufferHandle handle = BGFX_INVALID_HANDLE;
+            dim dims;
+        };
     protected:
 		bgfx::TextureHandle attachments[gbufferSize];
 			//RGBA (A not used in opaque)
@@ -288,8 +292,11 @@ namespace RavEngine {
 		
         Vector4Uniform numRowsUniform, computeOffsetsUniform;
         std::optional<Vector4Uniform> timeUniform;
-
-        const std::vector<bgfx::FrameBufferHandle>& GetVRFrameBuffers() const;
+        
+        struct BufferedFramebuffer {
+            VRFramebuffer l_eye, r_eye;
+        };
+        const BufferedFramebuffer GetVRFrameBuffers() const;
 		
 		static bgfx::VertexLayout RmlLayout;
 		

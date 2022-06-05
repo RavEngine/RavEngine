@@ -674,21 +674,25 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 #endif
 
 	bgfx::ViewId allViews[] = {Views::FinalBlit, Views::DeferredGeo, Views::LightingNoShadows};
-	for(const auto view : allViews){
-		bgfx::setViewRect(view, 0, 0, bufferdims.width, bufferdims.height);
-	}
+	
 	
 	bgfx::setViewFrameBuffer(Views::DeferredGeo, gBuffer);
 	bgfx::setViewFrameBuffer(Views::LightingNoShadows, lightingBuffer);
     bgfx::setViewMode(Views::LightingNoShadows,bgfx::ViewMode::Sequential);
 
+	auto dims = bufferdims;
 #if XR_AVAILABLE
 	// testing: set the final destination as one of the VR eyes
 	if (GetApp()->wantsXR) {
+		auto& vrfb = GetVRFrameBuffers();
 		//bgfx::setViewMode(Views::FinalBlit, bgfx::ViewMode::Sequential);
-		bgfx::setViewFrameBuffer(Views::FinalBlit, GetVRFrameBuffers()[0]);
+		bgfx::setViewFrameBuffer(Views::FinalBlit,vrfb.l_eye.handle);
+		dims = vrfb.l_eye.dims;
 	}
 #endif
+	for (const auto view : allViews) {
+		bgfx::setViewRect(view, 0, 0, dims.width, dims.height);
+	}
 	
 	bgfx::touch(Views::DeferredGeo);
 	bgfx::touch(Views::LightingNoShadows);
@@ -1122,8 +1126,14 @@ void RenderEngine::resize(){
 	//also this API takes screen points not pixels
 	resizeMetalLayer(metalLayer,windowdims.width, windowdims.height);
 #endif
-	bgfx::reset(bufferdims.width, bufferdims.height, GetResetFlags());
-	bgfx::setViewRect(Views::FinalBlit, 0, 0, uint16_t(bufferdims.width), uint16_t(bufferdims.height));
+#if XR_AVAILABLE
+	auto& dims = bufferdims;
+	if (GetApp()->wantsXR) {
+		dims = GetVRFrameBuffers().l_eye.dims;
+	}
+#endif
+	bgfx::reset(dims.width, dims.height, GetResetFlags());
+	bgfx::setViewRect(Views::FinalBlit, 0, 0, uint16_t(dims.width), uint16_t(dims.height));
 }
 
 void RenderEngine::SyncVideoSettings(){
