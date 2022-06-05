@@ -1126,8 +1126,8 @@ void RenderEngine::resize(){
 	//also this API takes screen points not pixels
 	resizeMetalLayer(metalLayer,windowdims.width, windowdims.height);
 #endif
-#if XR_AVAILABLE
 	auto& dims = bufferdims;
+#if XR_AVAILABLE
 	if (GetApp()->wantsXR) {
 		dims = GetVRFrameBuffers().l_eye.dims;
 	}

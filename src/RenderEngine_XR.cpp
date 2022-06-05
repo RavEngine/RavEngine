@@ -276,6 +276,7 @@ void RenderEngine::InitXR() {
 
 const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
 	BufferedFramebuffer ret;
+#if XR_AVAILABLE
 	uint32_t start_index = 0;
 	uint32_t offset_index = 0;
 	xrAcquireSwapchainImage(swapchains[0], nullptr, &offset_index);
@@ -283,5 +284,6 @@ const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
 	start_index += 3;
 	xrAcquireSwapchainImage(swapchains[1], nullptr, &offset_index);
 	ret.r_eye = VRFramebuffers[start_index + offset_index];
+#endif
 	return ret;
 }
