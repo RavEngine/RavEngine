@@ -586,26 +586,31 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	Init(config);
 
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
-	
+
 	static constexpr uint64_t gBufferSamplerFlags = BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
-	BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
-	BGFX_SAMPLER_V_CLAMP;
+		BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
+		BGFX_SAMPLER_V_CLAMP;
 
 	//create framebuffers
-	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format) -> bgfx::TextureHandle {
-		return bgfx::createTexture2D(TexRatio, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+	const auto gen_framebuffer = [](bgfx::TextureFormat::Enum format, const char* name) -> bgfx::TextureHandle {
+		auto th = bgfx::createTexture2D(TexRatio, false, 1, format, BGFX_TEXTURE_RT | gBufferSamplerFlags);
+		bgfx::setName(th,name);
+		return th;
 	};
 
-	const auto gen_framebufferSquare = [](bgfx::TextureFormat::Enum format, uint16_t width, uint16_t height, auto samplerflags) -> bgfx::TextureHandle {
-		return bgfx::createTexture2D(width, height, false, 1, format, BGFX_TEXTURE_RT | samplerflags);
+	const auto gen_framebufferSquare = [](bgfx::TextureFormat::Enum format, uint16_t width, uint16_t height, auto samplerflags, const char* name) -> bgfx::TextureHandle {
+		auto th = bgfx::createTexture2D(width, height, false, 1, format, BGFX_TEXTURE_RT | samplerflags);
+		bgfx::setName(th, name);
+		return th;
 	};
-	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D24S8};
+	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D24S8 };
+	constexpr char* names[] = { "TX_GB_Albedo", "TX_GB_Normal", "TX_GB_Position", "TX_GB_DepthStencil"};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
-		attachments[i] = gen_framebuffer(formats[i]);
+		attachments[i] = gen_framebuffer(formats[i], names[i]);
 	}
 
 	//lighting textures - light color, and share depth
-	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F);
+	lightingAttachments[0] = gen_framebuffer(bgfx::TextureFormat::RGBA16F, "TX_Light");
 	lightingAttachments[1] = attachments[3];
 	
 	for(int i = 0; i < gbufferSize; i++){
@@ -625,16 +630,19 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	
 	//create gbuffer and bind all the textures together
 	gBuffer = bgfx::createFrameBuffer(gbufferSize, attachments, true);
+	bgfx::setName(gBuffer, "FB_GBuffers");
 	
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
+	bgfx::setName(lightingBuffer, "FB_LightingBuffer");
 
 	const bgfx::TextureFormat::Enum shadowTextureFormats[] = { bgfx::TextureFormat::R32F, bgfx::TextureFormat::D32F };
 	bgfx::TextureHandle shadowTextures[BX_COUNTOF(shadowTextureFormats)];
 	for (int i = 0; i < BX_COUNTOF(shadowTextureFormats); i++) {
-		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], shadowMapSize, shadowMapSize, BGFX_SAMPLER_BORDER_COLOR(0xFFFFFF) | BGFX_SAMPLER_UVW_BORDER);
+		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], shadowMapSize, shadowMapSize, BGFX_SAMPLER_BORDER_COLOR(0xFFFFFF) | BGFX_SAMPLER_UVW_BORDER, "TX_ShadowMap");
 	}
 
 	depthMapFB = bgfx::createFrameBuffer(BX_COUNTOF(shadowTextureFormats), shadowTextures, true);
+	bgfx::setName(depthMapFB, "FB_DepthmapBuffer");
 
 	shadowSamplers[0] = bgfx::createUniform("s_depthdata", bgfx::UniformType::Sampler);
 	shadowSamplers[1] = gBufferSamplers[3];

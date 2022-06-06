@@ -25,7 +25,9 @@
 #include "PhysXDefines.h"
 #include "../../deps/bgfx.cmake/bgfx/src/config.h"  // TODO: don't do this?
 
-
+#if XR_AVAILABLE
+#include <openxr/openxr.h>
+#endif
 
 struct SDL_Window;
 
@@ -293,6 +295,9 @@ namespace RavEngine {
             VRFramebuffer l_eye, r_eye;
         };
         const BufferedFramebuffer GetVRFrameBuffers() const;
+#if XR_AVAILABLE
+        void SignalXRFrameEnd(const XrTime& time) const;
+#endif
 
         void ShutdownXR();
 		
