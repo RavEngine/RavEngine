@@ -43,13 +43,11 @@ void main()
 	vec3 diffuseLight = albedo * nDotL;
 
 	// is it inside the light?
-	float coneAngle = radians(positionradius.w);
-	penumbra = radians(penumbra);
+	float coneDotFactor = sin(radians(positionradius.w));
 	float pixelAngle = dot(-forward,toLight);
-	enabled = enabled && (pixelAngle > coneAngle);
+	enabled = enabled && (pixelAngle > coneDotFactor);
 
-	float coneAngleStart = coneAngle - penumbra;
-	float penumbraFactor = remap(pixelAngle,coneAngle,1,0,1);
+	float penumbraFactor = pixelAngle - (pixelAngle > penumbra ? coneDotFactor : 0);
 	
 	gl_FragData[0] = vec4(attenuation * colorintensity.xyz * diffuseLight * penumbraFactor * enabled, enabled);
 }
