@@ -68,10 +68,13 @@ STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allIndicesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::guiMaterial);
 
-static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, debugShaderHandle, shadowMapShaderHandle, shadowVolumeHandleLT, dirlight_pre_handle;
+static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, shadowMapShaderHandle, shadowVolumeHandleLT;
 static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
 static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
+
+// this one's externable
+bgfx::ProgramHandle rve_debugShaderHandle;
 
 #ifdef _DEBUG
 static std::optional<GUIComponent> debuggerContext;
@@ -428,8 +431,7 @@ void RenderEngine::Init(const AppConfig& config)
 	//load compute shader for skinning
 	skinningShaderHandle = Material::loadComputeProgram("skincompute/compute.bin");
 	copyIndicesShaderHandle = Material::loadComputeProgram("indexcopycompute/compute.bin");
-    dirlight_pre_handle = Material::loadShaderProgram("dirlight_pre");
-    debugShaderHandle = Material::loadShaderProgram("meshOnly");
+    rve_debugShaderHandle = Material::loadShaderProgram("meshOnly");
     shadowMapShaderHandle = Material::loadShaderProgram("shadowvolume");
     shadowVolumeHandleLT = Material::loadShaderProgram("shadowvolumeLT");
 	
@@ -871,7 +873,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	/*bgfx::discard();
 	bgfx::setVertexBuffer(0,allVerticesHandle);
 	bgfx::setIndexBuffer(allIndicesHandle,allIndicesOffset);
-	bgfx::submit(Views::FinalBlit, debugShaderHandle);
+	bgfx::submit(Views::FinalBlit, rve_debugShaderHandle);
 	bgfx::discard();*/
 
 	// Lighting pass

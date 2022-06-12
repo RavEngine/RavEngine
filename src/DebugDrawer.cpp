@@ -3,9 +3,16 @@
 #include "Function.hpp"
 #include <glm/gtc/type_ptr.hpp>
 #include "PhysXDefines.h"
+#include "Debug.hpp"
+#include <bgfx/bgfx.h>
+#include <MeshAsset.hpp>
+#include <RenderEngine.hpp>
 
 using namespace RavEngine;
 using namespace std;
+
+// defined in RenderEngine.cpp
+extern bgfx::ProgramHandle rve_debugShaderHandle;
 
 /**
  Matrix class converison
@@ -83,5 +90,18 @@ void DebugDrawer::DrawHelper(const matrix4 &transform, Function<void()> impl){
 	impl();
 	Im3d::PopMatrix();
 	mtx.unlock();
+#endif
+}
+
+void DebugDrawer::DrawWireframeMesh(const matrix4& transform, const Ref<MeshAsset>& mesh) {
+#ifdef _DEBUG
+	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_LINES);
+	float mtx[16];
+	copyMat4(glm::value_ptr(transform), mtx);
+	bgfx::setTransform(mtx);
+	bgfx::setVertexBuffer(0,mesh->getVertexBuffer());
+	bgfx::setIndexBuffer(mesh->getIndexBuffer());
+	bgfx::submit(RenderEngine::Views::FinalBlit, rve_debugShaderHandle);
+	bgfx::discard();
 #endif
 }

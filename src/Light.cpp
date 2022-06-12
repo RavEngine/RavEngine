@@ -83,21 +83,22 @@ void PointLight::AddInstanceData(float* offset) const{
 	offset[15] = Intensity;
 }
 
-void SpotLight::DebugDraw(RavEngine::DebugDrawer&, const Transform& tr) const{
-	//TODO: fix
+void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
+#ifdef _DEBUG
+	dbg.DrawWireframeMesh(tr.CalculateWorldMatrix(), LightManager::spotLightMesh);
+#endif
 }
 
 void SpotLight::AddInstanceData(float* offset) const{
 	auto intensity = Intensity;
 	intensity = intensity * intensity;
-	auto r = radius;
-	
+	auto angle = std::clamp(coneAngle, 0.f, 90.f);
 		
 	//[0:11] filled with affine transform
 	offset[12] = color.R;
 	offset[13] = color.G;
 	offset[14] = color.B;
-	offset[15] = r;
+	offset[15] = angle;
 	offset[16] = intensity;
 	offset[17] = penumbra;
 	
