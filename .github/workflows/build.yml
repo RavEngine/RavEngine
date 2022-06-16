@@ -141,6 +141,7 @@ jobs:
       - name: Build and Test
         run: cd test && ./test-linux.sh
       - name: Output test logs
+        if: ${{ failure() }}
         run: cat build/Testing/Temporary/LastTest.log
         
   test-mac:
@@ -154,6 +155,7 @@ jobs:
       - name: Build and Test
         run: cd test && ./test-mac.sh
       - name: Output test logs
+        if: ${{ failure() }}
         run: cat build/Testing/Temporary/LastTest.log
         
   test-windows:
@@ -167,4 +169,5 @@ jobs:
       - name: Build and Test
         run: cd test && .\test-win.bat
       - name: Output test logs
-        run: cat build/Testing/Temporary/LastTest.log
+        if: ${{ failure() }}
+        run: cat build\Testing\Temporary\LastTest.log

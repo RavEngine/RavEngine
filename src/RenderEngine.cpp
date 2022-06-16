@@ -14,7 +14,6 @@
 #include "Material.hpp"
 #include <bgfx/platform.h>
 #include <bx/bx.h>
-#include "Light.hpp"
 #include "StaticMesh.hpp"
 #include "App.hpp"
 #include "GUI.hpp"

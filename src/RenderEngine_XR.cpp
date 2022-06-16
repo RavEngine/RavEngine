@@ -199,10 +199,10 @@ void RenderEngine::InitXR() {
 	config_views.resize(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
 	xr_views.resize(view_count, { XR_TYPE_VIEW });
 	XR_CHECK(xrEnumerateViewConfigurationViews(rve_xr_instance, xr_system_id, rve_app_config_view, view_count, &view_count, config_views.data()));	// populate data
+	stackarray(swapchainHandles, XrSwapchain, view_count);
 	for (uint8_t view_idx = 0; view_idx < view_count; view_idx++) {
 		XrViewConfigurationView& view = config_views[view_idx];
 		XrSwapchainCreateInfo swapchain_info = { XR_TYPE_SWAPCHAIN_CREATE_INFO };
-		XrSwapchain handle{};
 		swapchain_info.arraySize = 1;
 		swapchain_info.mipCount = 1;
 		swapchain_info.faceCount = 1;
@@ -210,7 +210,7 @@ void RenderEngine::InitXR() {
 		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
 			swapchain_info.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		}
-		else 
+		else
 #endif
 		{
 			swapchain_info.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -221,56 +221,78 @@ void RenderEngine::InitXR() {
 		swapchain_info.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 
 		{
-			auto result = xrCreateSwapchain(rve_xr_session, &swapchain_info, &handle);
+			auto result = xrCreateSwapchain(rve_xr_session, &swapchain_info, &swapchainHandles[view_idx]);
 			if (result != XR_SUCCESS) {
 				Debug::Fatal("OpenXR Swapchain creation failed: {}", result);
 			}
 		}
 		// get num textures generated from the swapchain
 		uint32_t surface_count = 0;
-		XR_CHECK(xrEnumerateSwapchainImages(handle, 0, &surface_count, nullptr));
+		XR_CHECK(xrEnumerateSwapchainImages(swapchainHandles[view_idx], 0, &surface_count, nullptr));
+
+		for (uint32_t i = 0; i < surface_count; i++) {
+			// bgfx limitation: no way around not allocating a texture
+			bgfx::TextureHandle txhandle = bgfx::createTexture2D(swapchain_info.width, swapchain_info.height, false, 1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT, nullptr);
+			bgfx::setName(txhandle, fmt::format("TX_XR_{}-{}", view_idx, i).c_str());
+
+			// make a framebuffer and add it to the list
+			auto fbhandle = bgfx::createFrameBuffer(1, &txhandle, true);
+			bgfx::setName(fbhandle, fmt::format("FB_XR_{}-{}", view_idx, i).c_str());
+			VRFramebuffers.push_back({ fbhandle, {int(swapchain_info.width), int(swapchain_info.height)} });
+		}
+		swapchains.push_back(swapchainHandles[view_idx]);
+	}
+
+	bgfx::frame(); // necessary for creating textures, so that overrideInternal will work properly
+
+	uint8_t fbidx = 0;
+	for (uint8_t view_idx = 0; view_idx < view_count; view_idx++) {
+		uint32_t surface_count = 0;
+
 		const auto genSwapchainData = [&](auto& surface_vec, const auto& surface_datafn) {
 			// it creates a triple buffer (why all 3 textures have the same type) - use xrAcquireSwapchainImage each frame to know which one to use
-			XR_CHECK(xrEnumerateSwapchainImages(handle, surface_count, &surface_count, (XrSwapchainImageBaseHeader*)surface_vec.data()));
+			XR_CHECK(xrEnumerateSwapchainImages(swapchainHandles[view_idx], surface_count, &surface_count, (XrSwapchainImageBaseHeader*)surface_vec.data()));
 			for (uint32_t i = 0; i < surface_count; i++) {
-				// bgfx limitation: no way around not allocating a texture
-				auto txhandle = bgfx::createTexture2D(swapchain_info.width, swapchain_info.height,false,1, bgfx::TextureFormat::RGBA32F, BGFX_TEXTURE_RT, nullptr);
-				bgfx::setName(txhandle, fmt::format("TX_XR_{}-{}",view_idx,i).c_str());
-				// call the appropriate function to override the bgfx texture's data with the openXR swapchain
+				auto txhandle = bgfx::getTexture(VRFramebuffers[fbidx].handle, 0);
+				// this calls the proper API-specific code for overriding texture data
 				surface_datafn(txhandle, (XrBaseInStructure&)surface_vec[i]);
-
-				// make a framebuffer and add it to the list
-				auto fbhandle = bgfx::createFrameBuffer(1, &txhandle, true);
-				bgfx::setName(fbhandle, fmt::format("FB_XR_{}-{}",view_idx,i).c_str());
-				VRFramebuffers.push_back({fbhandle, {int(swapchain_info.width), int(swapchain_info.height)} });
 			}
 		};
+
+		XR_CHECK(xrEnumerateSwapchainImages(swapchainHandles[view_idx], 0, &surface_count, nullptr));
+
+		for (uint32_t i = 0; i < surface_count; i++) {
 #if _WIN32
-		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
-			vector<XrSwapchainImageD3D12KHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
-			genSwapchainData(images,
-				[&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
-					auto& img = (XrSwapchainImageD3D12KHR&)base;
-					bgfx::overrideInternal(tx,reinterpret_cast<uintptr_t>(img.texture));
-				}
-			);
-		}
-		else
+			if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
+				vector<XrSwapchainImageD3D12KHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
+				genSwapchainData(images,
+					[&](bgfx::TextureHandle tx, const XrBaseInStructure& base) {
+						auto& img = (XrSwapchainImageD3D12KHR&)base;
+						Debug::Assert(bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.texture)) != 0, "Failed to load swapchain resource into DX12 texture");
+					}
+				);
+			}
+			else
 #endif
-		{
-			vector<XrSwapchainImageVulkanKHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
-			genSwapchainData(images,
-				[&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
-					auto& img = (XrSwapchainImageVulkanKHR&)base;
-					bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.image));
-				}
-			);
+			{
+				vector<XrSwapchainImageVulkanKHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
+				genSwapchainData(images,
+					[&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
+						auto& img = (XrSwapchainImageVulkanKHR&)base;
+						Debug::Assert(bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.image)) != 0, "Failed to load swapchain resource into VK texture");
+					}
+				);
+			}
+			fbidx++;
 		}
-		swapchains.push_back(handle);
 	}
 #else
 	Debug::Fatal("Cannot initialize XR: Not available on platform {}", SystemInfo::OperatingSystemNameString());
 #endif
+}
+
+void ConnectXRtoBGFX() {
+
 }
 
 const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
