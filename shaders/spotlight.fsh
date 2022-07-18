@@ -34,7 +34,7 @@ void main()
 	
 	float dist = distance(pos,positionradius.xyz);
 	
-	int falloffpower = 2;	//1 for linear, 2 for quadratic, 3 for cubic, ...
+	int falloffpower = 3;	//1 for linear, 2 for quadratic, 3 for cubic, ...
 	
 	float attenuation = 1;
 	

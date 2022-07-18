@@ -47,13 +47,13 @@ void main()
 	// extend the cone by intensity
 	// the top of the cone is at (0,0,0) and so does not get scaled
 	float len = length(a_position);
-	a_position *= colorintensity.w / (len == 0 ? 1 : len);
+	a_position *= (colorintensity.w / (len == 0 ? 1 : len)) * 2;
 	
 	vec4 worldpos = instMul(model, vec4(a_position, 1.0));
 	
 	gl_Position = mul(u_viewProj, worldpos);
 
-	mat3 rotScaleOnly = model;
+	mat3 rotScaleOnly = transpose(model);
 
 	forward = normalize(mul(rotScaleOnly, vec4(0, -1, 0, 1)));	// spot lights point down by default
 	

@@ -245,7 +245,7 @@ void RenderEngine::InitXR() {
 
 	bgfx::frame(); // necessary for creating textures, so that overrideInternal will work properly
 
-	uint8_t fbidx = 0;
+	uint16_t fbidx = 0;
 	for (uint8_t view_idx = 0; view_idx < view_count; view_idx++) {
 		uint32_t surface_count = 0;
 
@@ -256,34 +256,34 @@ void RenderEngine::InitXR() {
 				auto txhandle = bgfx::getTexture(VRFramebuffers[fbidx].handle, 0);
 				// this calls the proper API-specific code for overriding texture data
 				surface_datafn(txhandle, (XrBaseInStructure&)surface_vec[i]);
+
+				// the framebuffers are stored back-to-back in a linear list, so advance here
+				fbidx++;
 			}
 		};
 
 		XR_CHECK(xrEnumerateSwapchainImages(swapchainHandles[view_idx], 0, &surface_count, nullptr));
 
-		for (uint32_t i = 0; i < surface_count; i++) {
 #if _WIN32
-			if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
-				vector<XrSwapchainImageD3D12KHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
-				genSwapchainData(images,
-					[&](bgfx::TextureHandle tx, const XrBaseInStructure& base) {
-						auto& img = (XrSwapchainImageD3D12KHR&)base;
-						Debug::Assert(bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.texture)) != 0, "Failed to load swapchain resource into DX12 texture");
-					}
-				);
-			}
-			else
+		if (bgfx::getRendererType() == bgfx::RendererType::Direct3D12) {
+			vector<XrSwapchainImageD3D12KHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
+			genSwapchainData(images,
+				[&](bgfx::TextureHandle tx, const XrBaseInStructure& base) {
+					auto& img = (XrSwapchainImageD3D12KHR&)base;
+					Debug::Assert(bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.texture)) != 0, "Failed to load swapchain resource into DX12 texture");
+				}
+			);
+		}
+		else
 #endif
-			{
-				vector<XrSwapchainImageVulkanKHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
-				genSwapchainData(images,
-					[&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
-						auto& img = (XrSwapchainImageVulkanKHR&)base;
-						Debug::Assert(bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.image)) != 0, "Failed to load swapchain resource into VK texture");
-					}
-				);
-			}
-			fbidx++;
+		{
+			vector<XrSwapchainImageVulkanKHR> images(surface_count, { XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR });
+			genSwapchainData(images,
+				[&](bgfx::TextureHandle& tx, XrBaseInStructure& base) {
+					auto& img = (XrSwapchainImageVulkanKHR&)base;
+					Debug::Assert(bgfx::overrideInternal(tx, reinterpret_cast<uintptr_t>(img.image)) != 0, "Failed to load swapchain resource into VK texture");
+				}
+			);
 		}
 	}
 #else
