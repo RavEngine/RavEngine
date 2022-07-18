@@ -35,6 +35,20 @@ using namespace RavEngine;
 using namespace std;
 using namespace RavEngine::SystemInfo;
 
+static SystemInfo::Features SystemFeatures;
+
+SystemInfo::Features::Features()
+#if TARGET_OS_OSX
+: HasTouchScreen(false)		// maybe one day there will be touch support on macOS, but currently there is not
+#endif
+{
+
+}
+
+static const SystemInfo::Features& getSupportedFeatures(){
+	return SystemFeatures;
+}
+
 uint16_t RavEngine::SystemInfo::NumLogicalProcessors()
 {
 	return thread::hardware_concurrency();
@@ -48,7 +62,7 @@ std::string SystemInfo::CPUBrandString(){
 #elif _WIN32
 #ifndef _M_ARM64
     int CPUInfo[4] = { -1 };
-    unsigned   nExIds, i = 0;
+    unsigned nExIds, i = 0;
     char CPUBrandString[0x40]{0};
     // Get the information associated with each extended ID.
     __cpuid(CPUInfo, 0x80000000);

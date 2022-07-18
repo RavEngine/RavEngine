@@ -9,9 +9,15 @@
 #include <sys/utsname.h>
 #include <bgfx/platform.h>
 
-#if BX_PLATFORM_OSX
+#if TARGET_OS_IOS || TARGET_OS_TV
+#define TARGET_OS_NONOSX 1
+#else
+#define TARGET_OS_NONOSX 0
+#endif
+
+#if TARGET_OS_OSX
 	#import <Cocoa/Cocoa.h>
-#elif BX_PLATFORM_IOS
+#elif TARGET_OS_NONOSX
 	#import <UIKit/UIKit.h>
 #endif
 #include <sys/types.h>
@@ -22,27 +28,32 @@
  Workaround for deadlock on metal
  */
 void *cbSetupMetalLayer(void *wnd) {
-#if BX_PLATFORM_OSX
+#if TARGET_OS_OSX
 	NSWindow *window = (NSWindow*)wnd;
 	NSView *contentView = [window contentView];
 	[contentView setWantsLayer:YES];
 	CAMetalLayer *res = [CAMetalLayer layer];
 	[contentView setLayer:res];
+	[res setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 	return res;
-#elif BX_PLATFORM_IOS
+#elif TARGET_OS_NONOSX
 	UIWindow* window = (UIWindow*)wnd;
 	UIView* contentView = [[window subviews] lastObject];
 	
 	CAMetalLayer *res = [CAMetalLayer layer];
 	res.frame = window.bounds;
 	[contentView.layer addSublayer:res];
+	res.needsDisplayOnBoundsChange = true;
 	return res;
 #endif
 }
 
 void resizeMetalLayer(void* ptr, int width, int height){
+	// on mac, auto resizing mask takes care of this
+#if TARGET_OS_NONOSX
 	CAMetalLayer* layer = (CAMetalLayer*)ptr;
 	layer.frame = CGRectMake(0, 0, width, height);
+#endif
 }
 
 float GetWindowScaleFactor(void* window){
@@ -51,10 +62,10 @@ float GetWindowScaleFactor(void* window){
 	if (!SDL_GetWindowWMInfo((SDL_Window*)window, &wmi)) {
 		RavEngine::Debug::Fatal("Cannot get native window information");
 	}
-#if BX_PLATFORM_OSX
+#if TARGET_OS_OSX
 	NSWindow *nswin = (NSWindow*)wmi.info.cocoa.window;
 	return [nswin backingScaleFactor];
-#elif BX_PLATFORM_IOS
+#elif TARGET_OS_NONOSX
 	return wmi.info.uikit.window.screen.scale;
 #endif
 }
@@ -78,7 +89,7 @@ uint32_t AppleVRAMUsed(){
 }
 
 uint32_t AppleVRAMTotal(){
-#if BX_PLATFORM_IOS
+#if TARGET_OS_NONOSX
     return GetAppleSystemRAM();
 #else
     auto internalData = bgfx::getInternalData();
@@ -117,7 +128,7 @@ void AppleOSName(char* buffer, uint16_t size){
 }
 
 void AppleCPUName(char* buffer, size_t size){
-	if constexpr (RavEngine::SystemInfo::IsMobile()){
+	if constexpr (TARGET_OS_IOS){
 		utsname sysinfo;
 		uname(&sysinfo);
 		//NSString* devName = [[UIDevice currentDevice] modelName];

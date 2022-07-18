@@ -25,10 +25,6 @@ namespace RavEngine {
 	
 		std::string GPUBrandString();
     
-        constexpr static bool IsMobile(){
-            return BX_PLATFORM_IOS || BX_PLATFORM_RPI || BX_PLATFORM_OS_MOBILE;
-        }
-    
         enum class EArchitecture{
             Unknown, x86_64, aarch64, aarch64e
         };
@@ -103,5 +99,12 @@ namespace RavEngine {
             uint16_t deviceID;
         };
         PCIDevice GPUPCIData();
+	
+		struct Features{
+			bool HasTouchScreen : 1;
+			Features();
+		};
+	
+		static const Features& getSupportedFeatures();
 	}
 }
