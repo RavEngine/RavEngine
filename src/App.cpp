@@ -44,28 +44,28 @@ constexpr static XrPosef xr_pose_identity = { {0,0,0,1}, {0,0,0} };
 
 static void openxr_make_actions() {
 	XrActionSetCreateInfo actionset_info = { XR_TYPE_ACTION_SET_CREATE_INFO };
-	strcpy_s(actionset_info.actionSetName, "gameplay");
-	strcpy_s(actionset_info.localizedActionSetName, "Gameplay");
-	xrCreateActionSet(rve_xr_instance, &actionset_info, &xr_input_state.actionSet);
-	xrStringToPath(rve_xr_instance, "/user/hand/left", &xr_input_state.handSubactionPath[0]);
-	xrStringToPath(rve_xr_instance, "/user/hand/right", &xr_input_state.handSubactionPath[1]);
+	strcpy(actionset_info.actionSetName, "gameplay");
+	strcpy(actionset_info.localizedActionSetName, "Gameplay");
+	XR_CHECK(xrCreateActionSet(rve_xr_instance, &actionset_info, &xr_input_state.actionSet));
+	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/left", &xr_input_state.handSubactionPath[0]));
+	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/right", &xr_input_state.handSubactionPath[1]));
 
 	// Create an action to track the position and orientation of the hands! This is
 	// the controller location, or the center of the palms for actual hands.
 	XrActionCreateInfo action_info = { XR_TYPE_ACTION_CREATE_INFO };
-	action_info.countSubactionPaths = _countof(xr_input_state.handSubactionPath);
+	action_info.countSubactionPaths = BX_COUNTOF(xr_input_state.handSubactionPath);
 	action_info.subactionPaths = xr_input_state.handSubactionPath;
 	action_info.actionType = XR_ACTION_TYPE_POSE_INPUT;
-	strcpy_s(action_info.actionName, "hand_pose");
-	strcpy_s(action_info.localizedActionName, "Hand Pose");
-	xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.poseAction);
+	strcpy(action_info.actionName, "hand_pose");
+	strcpy(action_info.localizedActionName, "Hand Pose");
+	XR_CHECK(xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.poseAction));
 
 	// Create an action for listening to the select action! This is primary trigger
 	// on controllers, and an airtap on HoloLens
 	action_info.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-	strcpy_s(action_info.actionName, "select");
-	strcpy_s(action_info.localizedActionName, "Select");
-	xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.selectAction);
+	strcpy(action_info.actionName, "select");
+	strcpy(action_info.localizedActionName, "Select");
+	XR_CHECK(xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.selectAction));
 
 	// Bind the actions we just created to specific locations on the Khronos simple_controller
 	// definition! These are labeled as 'suggested' because they may be overridden by the runtime
@@ -74,11 +74,11 @@ static void openxr_make_actions() {
 	XrPath profile_path;
 	XrPath pose_path[2];
 	XrPath select_path[2];
-	xrStringToPath(rve_xr_instance, "/user/hand/left/input/grip/pose", &pose_path[0]);
-	xrStringToPath(rve_xr_instance, "/user/hand/right/input/grip/pose", &pose_path[1]);
-	xrStringToPath(rve_xr_instance, "/user/hand/left/input/select/click", &select_path[0]);
-	xrStringToPath(rve_xr_instance, "/user/hand/right/input/select/click", &select_path[1]);
-	xrStringToPath(rve_xr_instance, "/interaction_profiles/khr/simple_controller", &profile_path);
+	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/left/input/grip/pose", &pose_path[0]));
+	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/right/input/grip/pose", &pose_path[1]));
+	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/left/input/select/click", &select_path[0]));
+	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/right/input/select/click", &select_path[1]));
+	XR_CHECK(xrStringToPath(rve_xr_instance, "/interaction_profiles/khr/simple_controller", &profile_path));
 	XrActionSuggestedBinding bindings[] = {
 		{ xr_input_state.poseAction,   pose_path[0]   },
 		{ xr_input_state.poseAction,   pose_path[1]   },
@@ -87,8 +87,8 @@ static void openxr_make_actions() {
 	XrInteractionProfileSuggestedBinding suggested_binds = { XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
 	suggested_binds.interactionProfile = profile_path;
 	suggested_binds.suggestedBindings = &bindings[0];
-	suggested_binds.countSuggestedBindings = _countof(bindings);
-	xrSuggestInteractionProfileBindings(rve_xr_instance, &suggested_binds);
+	suggested_binds.countSuggestedBindings = BX_COUNTOF(bindings);
+	XR_CHECK(xrSuggestInteractionProfileBindings(rve_xr_instance, &suggested_binds));
 
 	// Create frames of reference for the pose actions
 	for (int32_t i = 0; i < 2; i++) {
@@ -96,26 +96,26 @@ static void openxr_make_actions() {
 		action_space_info.action = xr_input_state.poseAction;
 		action_space_info.poseInActionSpace = xr_pose_identity;
 		action_space_info.subactionPath = xr_input_state.handSubactionPath[i];
-		xrCreateActionSpace(rve_xr_session, &action_space_info, &xr_input_state.handSpace[i]);
+		XR_CHECK(xrCreateActionSpace(rve_xr_session, &action_space_info, &xr_input_state.handSpace[i]));
 	}
 
 	// Attach the action set we just made to the session
 	XrSessionActionSetsAttachInfo attach_info = { XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO };
 	attach_info.countActionSets = 1;
 	attach_info.actionSets = &xr_input_state.actionSet;
-	xrAttachSessionActionSets(rve_xr_session, &attach_info);
+	XR_CHECK(xrAttachSessionActionSets(rve_xr_session, &attach_info));
 }
 
 static void XrShutdown() {
 	if (xr_input_state.actionSet != XR_NULL_HANDLE) {
-		if (xr_input_state.handSpace[0] != XR_NULL_HANDLE) xrDestroySpace(xr_input_state.handSpace[0]);
-		if (xr_input_state.handSpace[1] != XR_NULL_HANDLE) xrDestroySpace(xr_input_state.handSpace[1]);
-		xrDestroyActionSet(xr_input_state.actionSet);
+		if (xr_input_state.handSpace[0] != XR_NULL_HANDLE) XR_CHECK(xrDestroySpace(xr_input_state.handSpace[0]));
+		if (xr_input_state.handSpace[1] != XR_NULL_HANDLE) XR_CHECK(xrDestroySpace(xr_input_state.handSpace[1]));
+		XR_CHECK(xrDestroyActionSet(xr_input_state.actionSet));
 
-		if (rve_xr_app_space != XR_NULL_HANDLE) xrDestroySpace(rve_xr_app_space);
-		if (rve_xr_session != XR_NULL_HANDLE) xrDestroySession(rve_xr_session);
+		if (rve_xr_app_space != XR_NULL_HANDLE) XR_CHECK(xrDestroySpace(rve_xr_app_space));
+		if (rve_xr_session != XR_NULL_HANDLE) XR_CHECK(xrDestroySession(rve_xr_session));
 		
-		if (rve_xr_instance != XR_NULL_HANDLE) xrDestroyInstance(rve_xr_instance);
+		if (rve_xr_instance != XR_NULL_HANDLE) XR_CHECK(xrDestroyInstance(rve_xr_instance));
 	}
 }
 #endif
@@ -302,7 +302,7 @@ int App::run(int argc, char** argv) {
 					sync_info.countActiveActionSets = 1;
 					sync_info.activeActionSets = &action_set;
 
-					xrSyncActions(rve_xr_session, &sync_info);
+					XR_CHECK(xrSyncActions(rve_xr_session, &sync_info));
 
 
 					for (uint32_t hand = 0; hand < 2; hand++) {
@@ -311,13 +311,13 @@ int App::run(int argc, char** argv) {
 
 						XrActionStatePose pose_state = { XR_TYPE_ACTION_STATE_POSE };
 						get_info.action = xr_input_state.poseAction;
-						xrGetActionStatePose(rve_xr_session, &get_info, &pose_state);
+						XR_CHECK(xrGetActionStatePose(rve_xr_session, &get_info, &pose_state));
 						xr_input_state.renderHand[hand] = pose_state.isActive;
 
 						// Events come with a timestamp
 						XrActionStateBoolean select_state = { XR_TYPE_ACTION_STATE_BOOLEAN };
 						get_info.action = xr_input_state.selectAction;
-						xrGetActionStateBoolean(rve_xr_session, &get_info, &select_state);
+						XR_CHECK(xrGetActionStateBoolean(rve_xr_session, &get_info, &select_state));
 						xr_input_state.handSelect[hand] = select_state.currentState && select_state.changedSinceLastSync;
 
 						// If we have a select event, update the hand pose to match the event's timestamp
@@ -332,38 +332,40 @@ int App::run(int argc, char** argv) {
 						}
 					}
 				}
-				{
-					XrEventDataBuffer event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
-					while (xrPollEvent(rve_xr_instance, &event_buffer) == XR_SUCCESS) {
-						switch (event_buffer.type) {
-						case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
-							XrEventDataSessionStateChanged* changed = (XrEventDataSessionStateChanged*)&event_buffer;
-							xr_session_state = changed->state;
+			}
+			// process these regardless of focused state
+			{
+				XrEventDataBuffer event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
+				while (xrPollEvent(rve_xr_instance, &event_buffer) == XR_SUCCESS) {
+					switch (event_buffer.type) {
+					case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+						XrEventDataSessionStateChanged* changed = (XrEventDataSessionStateChanged*)&event_buffer;
+						xr_session_state = changed->state;
 
-							// Session state change is where we can begin and end sessions, as well as find quit messages!
-							switch (xr_session_state) {
-								case XR_SESSION_STATE_READY: {
-									XrSessionBeginInfo begin_info = { XR_TYPE_SESSION_BEGIN_INFO };
-									begin_info.primaryViewConfigurationType = rve_app_config_view;
-									xrBeginSession(rve_xr_session, &begin_info);
-								} break;
-								case XR_SESSION_STATE_STOPPING: {
-									exit = true;
-									xrEndSession(rve_xr_session);
-								} 
-								break;
-								case XR_SESSION_STATE_EXITING:
-								case XR_SESSION_STATE_LOSS_PENDING:
-									exit = true; 
-									break;
-							}
-						} 
-						break;
-						case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: 
+						// Session state change is where we can begin and end sessions, as well as find quit messages!
+						switch (xr_session_state) {
+						case XR_SESSION_STATE_READY: {
+							XrSessionBeginInfo begin_info = { XR_TYPE_SESSION_BEGIN_INFO };
+							begin_info.primaryViewConfigurationType = rve_app_config_view;
+							XR_CHECK(xrBeginSession(rve_xr_session, &begin_info));
+						} break;
+						case XR_SESSION_STATE_STOPPING: {
 							exit = true;
+							XR_CHECK(xrEndSession(rve_xr_session));
 						}
-						event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
+						break;
+						case XR_SESSION_STATE_EXITING:
+						case XR_SESSION_STATE_LOSS_PENDING:
+							exit = true;
+							break;
+						}
 					}
+					break;
+					case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
+						exit = true;
+						break;
+					}
+					event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
 				}
 			}
 		}
@@ -387,9 +389,32 @@ int App::run(int argc, char** argv) {
 			front();
 		}
 
-		Renderer->Draw(renderWorld);
+#if XR_AVAILABLE
+		XrFrameState state{ XR_TYPE_FRAME_STATE };
+		if (wantsXR) {
+			XrFrameWaitInfo fwinfo{ XR_TYPE_FRAME_WAIT_INFO };
+			fwinfo.next = nullptr;
+			state.next = nullptr;
+			XR_CHECK(xrWaitFrame(rve_xr_session,&fwinfo,&state));
+
+			XrFrameBeginInfo fbinfo{ XR_TYPE_FRAME_BEGIN_INFO };
+			fbinfo.next = nullptr;
+			XR_CHECK(xrBeginFrame(rve_xr_session, &fbinfo));
+			if (state.shouldRender == XR_FALSE) {
+				goto skip_xr_frame;
+			}
+		}
+#endif
+		Renderer->Draw(renderWorld);		// in XR, this must be synchronous, to ensure xrEndFrame is called properly
+#if XR_AVAILABLE
+		if (wantsXR) {
+			skip_xr_frame:
+			Renderer->SignalXRFrameEnd(state.predictedDisplayTime);	// calls xrEndFrame
+		}
+		
+#endif
 		player.SetWorld(renderWorld);
-		        
+		
         //make up the difference
 		//can't use sleep because sleep is not very accurate
 		/*clocktype::duration work_time;

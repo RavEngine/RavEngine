@@ -1,5 +1,5 @@
 $input a_position, i_data0, i_data1, i_data2, i_data3, i_data4
-$output colorintensity, positionradius, penumbra, lightID
+$output colorintensity, positionradius, penumbra, lightID, forward
 
 #include "common.sh"
 #include <bgfx_shader.sh>
@@ -35,17 +35,30 @@ void main()
 	model[3][2] = lightdata[idx + 11];
 	model[3][3] = 1;
 		
-	//the intenisty is defined as the scale along the Y axis
+	//the intenisty is passed in along with the color
 	colorintensity = vec4(lightdata[idx + 12], lightdata[idx + 13], lightdata[idx + 14], lightdata[idx + 16]);
-	
-	//the radius is defined as the scale along the X or Z axes
-	float radius = lightdata[idx+15];
+	float coneAngle = lightdata[idx+15];
+
+	// scale the cone by the cone angle, where a radius of 1.0 corresponds to a cone angle of 45 degrees
+	float scaleFactor = tan(radians(coneAngle));
+	a_position.x *= scaleFactor;
+	a_position.z *= scaleFactor;
+
+	// extend the cone by intensity
+	// the top of the cone is at (0,0,0) and so does not get scaled
+	float len = length(a_position);
+	a_position *= colorintensity.w / (len == 0 ? 1 : len);
 	
 	vec4 worldpos = instMul(model, vec4(a_position, 1.0));
 	
 	gl_Position = mul(u_viewProj, worldpos);
+
+	mat3 rotScaleOnly = model;
+
+	forward = normalize(mul(rotScaleOnly, vec4(0, -1, 0, 1)));	// spot lights point down by default
 	
-	positionradius = vec4(model[3][0], model[3][1], model[3][2], radius);
-	penumbra = lightdata[idx+17];
+	positionradius = vec4(model[3][0], model[3][1], model[3][2], coneAngle);
+	float penumbraAngle = radians(lightdata[idx + 17]);
+	penumbra = sin(coneAngle - penumbraAngle);	// to avoid calculating in each pixel
 	lightID = gl_InstanceID;
 }

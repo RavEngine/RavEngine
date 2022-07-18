@@ -233,8 +233,8 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 		//mvp matrix (1 float[16]) (but 4 floats are not sent)
 		//light color (3 floats)
 		//light penumbra (1 float)
-		//light radius (1 float)
-		//light intensity (1 float) 
+		//light coneAngle (1 float)
+		//light intensity (1 float)
 		
 		return sizeof(float) * (3+1+1+1) + sizeof(float[16-4]);
 	}
@@ -255,8 +255,8 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	}
 	
 	//light properties
-	float radius = 1;
-	float penumbra = 0;
+	float coneAngle = 45.0;	// in degrees
+	float penumbra = 20;
 	
 	/**
 	 Calculate the shader's matrix
@@ -264,11 +264,8 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	 @return matrix for shader
 	 */
     inline matrix4 CalculateMatrix(const matrix4& mat) const{
-		auto intensity = Intensity;
-		auto r = radius;
-		intensity = intensity * intensity;
-		//scale = radius
-		return glm::scale(mat, vector3(r,intensity,r));
+		// no transformations occur, the cone is extended in the vertex shader
+		return mat;
 	}
 };
 

@@ -2,8 +2,11 @@
 #include "Common3D.hpp"
 #include "SpinLock.hpp"
 #include "Function.hpp"
+#include "Ref.hpp"
 
 namespace  RavEngine {
+
+class MeshAsset;
 
 class DebugDrawer{
 public:
@@ -58,6 +61,8 @@ public:
      @param color the color of the arrow
      */
     void DrawArrow(const vector3& start, const vector3& end, const color_t color);
+
+	void DrawWireframeMesh(const matrix4& transform, const Ref<MeshAsset>& mesh);
     
 private:
 	

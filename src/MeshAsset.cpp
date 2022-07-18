@@ -105,6 +105,8 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 
 	InitAll(scene, options);
+	bgfx::setName(vertexBuffer, fmt::format("MeshAsset {} VB", name).c_str());
+	bgfx::setName(indexBuffer, fmt::format("MeshAsset {} IB", name).c_str());
 }
 
 MeshAsset::MeshAsset(const Filesystem::Path& path, const MeshAssetOptions& opt){
@@ -117,12 +119,16 @@ MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, cons
 	auto scene = LoadSceneFilesystem(path);
 	
 	InitPart(scene, name, path.string(), opt);
+	bgfx::setName(vertexBuffer, fmt::format("MeshAsset-FS {} VB", name).c_str());
+	bgfx::setName(indexBuffer, fmt::format("MeshAsset-FS {} IB", name).c_str());
 }
 
 MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 	
 	InitPart(scene, meshName, name, options);
+	bgfx::setName(vertexBuffer, fmt::format("MeshAsset-FS {} ({}) VB", meshName, name).c_str());
+	bgfx::setName(indexBuffer, fmt::format("MeshAsset-FS {} ({}) IB", meshName, name).c_str());
 }
 
 

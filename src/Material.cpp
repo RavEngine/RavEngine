@@ -67,6 +67,8 @@ Material::Material(const std::string& name) : name(name) {
 	if (!bgfx::isValid(program)){
 		Debug::Fatal("Material is invalid.");
 	}
+	bgfx::setName(vsh, fmt::format("Material VS {}",name).c_str());
+	bgfx::setName(fsh, fmt::format("Material FS {}",name).c_str());
 }
 
 bgfx::ShaderHandle Material::loadShaderHandle(const std::string_view& full_path){

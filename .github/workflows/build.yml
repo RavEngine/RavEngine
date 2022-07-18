@@ -140,7 +140,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install cmake g++ ninja-build libgl1-mesa-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends 
       - name: Build and Test
         run: cd test && ./test-linux.sh
-
+      - name: Output test logs
+        if: ${{ failure() }}
+        run: cat build/Testing/Temporary/LastTest.log
+        
   test-mac:
     name: macOS Unit Tests
     runs-on: macos-latest
@@ -151,6 +154,9 @@ jobs:
           submodules: true
       - name: Build and Test
         run: cd test && ./test-mac.sh
+      - name: Output test logs
+        if: ${{ failure() }}
+        run: cat build/Testing/Temporary/LastTest.log
         
   test-windows:
     name: Windows Unit Tests
@@ -162,3 +168,6 @@ jobs:
           submodules: true
       - name: Build and Test
         run: cd test && .\test-win.bat
+      - name: Output test logs
+        if: ${{ failure() }}
+        run: cat build\Testing\Temporary\LastTest.log
