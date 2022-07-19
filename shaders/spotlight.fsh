@@ -24,7 +24,7 @@ void main()
 	}
 	
 	float intensity = colorintensity[3];
-	float radius = positionradius[3];
+	float coneDotFactor = positionradius.w;
 	
 	vec3 albedo = texture2D(s_albedo, texcoord);
 	vec3 normal = texture2D(s_normal, texcoord);
@@ -34,20 +34,19 @@ void main()
 	
 	float dist = distance(pos,positionradius.xyz);
 	
-	int falloffpower = 3;	//1 for linear, 2 for quadratic, 3 for cubic, ...
+	int falloffpower = 2;	//1 for linear, 2 for quadratic, 3 for cubic, ...
 	
-	float attenuation = 1;
+	float attenuation = 1/pow(dist,falloffpower);
 	
 	float nDotL = max(dot(normal, toLight), 0);
 	
 	vec3 diffuseLight = albedo * nDotL;
 
 	// is it inside the light?
-	float coneDotFactor = sin(radians(positionradius.w));
 	float pixelAngle = dot(-forward,toLight);
 	enabled = enabled && (pixelAngle > coneDotFactor);
 
-	float penumbraFactor = pixelAngle - (pixelAngle > penumbra ? coneDotFactor : 0);
+	float penumbraFactor = 1;
 	
 	gl_FragData[0] = vec4(attenuation * colorintensity.xyz * diffuseLight * penumbraFactor * enabled, enabled);
 }
