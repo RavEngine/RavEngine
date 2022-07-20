@@ -256,14 +256,14 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	
 	//light properties
 	float coneAngle = 45.0;	// in degrees
-	float penumbra = 20;
+	float penumbraAngle = 10;
 	
 	/**
 	 Calculate the shader's matrix
 	 @param mat input transformation matrix
 	 @return matrix for shader
 	 */
-    inline matrix4 CalculateMatrix(const matrix4& mat) const{
+    inline const matrix4& CalculateMatrix(const matrix4& mat) const{
 		// no transformations occur, the cone is extended in the vertex shader
 		return mat;
 	}

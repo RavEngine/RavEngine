@@ -46,7 +46,10 @@ void main()
 	float pixelAngle = dot(-forward,toLight);
 	enabled = enabled && (pixelAngle > coneDotFactor);
 
-	float penumbraFactor = 1;
+	// x is inner, y is outer
+
+	float epsilon = penumbra - coneDotFactor;
+	float penumbraFactor = clamp((pixelAngle - coneDotFactor) / epsilon, 0, 1);
 	
 	gl_FragData[0] = vec4(attenuation * colorintensity.xyz * diffuseLight * penumbraFactor * enabled, enabled);
 }

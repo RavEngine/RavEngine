@@ -57,8 +57,8 @@ void main()
 
 	forward = normalize(mul(rotScaleOnly, vec4(0, -1, 0, 1)));	// spot lights point down by default
 	
-	positionradius = vec4(model[3][0], model[3][1], model[3][2], sin(radians(coneAngle)));
+	positionradius = vec4(model[3][0], model[3][1], model[3][2], cos(radians(coneAngle)));
 	float penumbraAngle = radians(lightdata[idx + 17]);
-	penumbra = sin(radians(coneAngle) - penumbraAngle);	// to avoid calculating in each pixel
+	penumbra = cos(radians(coneAngle) - penumbraAngle);	// to avoid calculating in each pixel
 	lightID = gl_InstanceID;
 }

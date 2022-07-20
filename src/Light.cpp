@@ -100,7 +100,7 @@ void SpotLight::AddInstanceData(float* offset) const{
 	offset[14] = color.B;
 	offset[15] = angle;
 	offset[16] = intensity;
-	offset[17] = penumbra;
+	offset[17] = penumbraAngle;
 	
 	//the radius and intensity are derived in the shader by extracting the scale information
 }
