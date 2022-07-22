@@ -390,29 +390,15 @@ int App::run(int argc, char** argv) {
 		}
 
 #if XR_AVAILABLE
-		XrFrameState state{ XR_TYPE_FRAME_STATE };
 		if (wantsXR) {
-			XrFrameWaitInfo fwinfo{ XR_TYPE_FRAME_WAIT_INFO };
-			fwinfo.next = nullptr;
-			state.next = nullptr;
-			XR_CHECK(xrWaitFrame(rve_xr_session,&fwinfo,&state));
-
-			XrFrameBeginInfo fbinfo{ XR_TYPE_FRAME_BEGIN_INFO };
-			fbinfo.next = nullptr;
-			XR_CHECK(xrBeginFrame(rve_xr_session, &fbinfo));
-			if (state.shouldRender == XR_FALSE) {
-				goto skip_xr_frame;
-			}
+			Renderer->DoXRFrame(renderWorld);
 		}
+		else 
 #endif
-		Renderer->Draw(renderWorld);		// in XR, this must be synchronous, to ensure xrEndFrame is called properly
-#if XR_AVAILABLE
-		if (wantsXR) {
-			skip_xr_frame:
-			Renderer->SignalXRFrameEnd(state.predictedDisplayTime);	// calls xrEndFrame
+		{
+			Renderer->Draw(renderWorld);
 		}
 		
-#endif
 		player.SetWorld(renderWorld);
 		
         //make up the difference
@@ -427,7 +413,8 @@ int App::run(int argc, char** argv) {
 				std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dc.count()-1));
 			}
 		}while (work_time < min_tick_time);*/
-        
+	skip_xr_frame:
+
 		lastFrameTime = now;
 	}
 	

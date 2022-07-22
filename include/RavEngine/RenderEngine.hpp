@@ -296,7 +296,7 @@ namespace RavEngine {
         };
         const BufferedFramebuffer GetVRFrameBuffers() const;
 #if XR_AVAILABLE
-        void SignalXRFrameEnd(const XrTime& time) const;
+        void DoXRFrame(Ref<World>);
 #endif
 
         void ShutdownXR();

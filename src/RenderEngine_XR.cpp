@@ -242,7 +242,7 @@ void RenderEngine::InitXR() {
 		}
 		swapchains.push_back(swapchainHandles[view_idx]);
 	}
-
+	
 	bgfx::frame(); // necessary for creating textures, so that overrideInternal will work properly
 
 	uint16_t fbidx = 0;
@@ -291,10 +291,6 @@ void RenderEngine::InitXR() {
 #endif
 }
 
-void ConnectXRtoBGFX() {
-
-}
-
 const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
 	BufferedFramebuffer ret;
 #if XR_AVAILABLE
@@ -315,18 +311,26 @@ const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
 	return ret;
 }
 
-#if XR_AVAILABLE
-void RenderEngine::SignalXRFrameEnd(const XrTime& time) const{
-	// tell OpenXR we are done with the image
-	XrSwapchainImageReleaseInfo release_info = { XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
-	XR_CHECK(xrReleaseSwapchainImage(swapchains[0], &release_info));
-	XR_CHECK(xrReleaseSwapchainImage(swapchains[1], &release_info));
+void RenderEngine::DoXRFrame(Ref<World> world) {
+
+	XrFrameState state{ XR_TYPE_FRAME_STATE };
+	XrFrameWaitInfo fwinfo{ XR_TYPE_FRAME_WAIT_INFO };
+	fwinfo.next = nullptr;
+	state.next = nullptr;
+	XR_CHECK(xrWaitFrame(rve_xr_session, &fwinfo, &state));
+	if (state.shouldRender == XR_FALSE) {
+		return; // don't do a frame
+	}
+
+	XrFrameBeginInfo fbinfo{ XR_TYPE_FRAME_BEGIN_INFO };
+	fbinfo.next = nullptr;
+	XR_CHECK(xrBeginFrame(rve_xr_session, &fbinfo));
 
 	// how many views?
 	XrViewState view_state{ XR_TYPE_VIEW_STATE };
 	XrViewLocateInfo locate_info = { XR_TYPE_VIEW_LOCATE_INFO };
 	locate_info.viewConfigurationType = rve_app_config_view;
-	locate_info.displayTime = time;
+	locate_info.displayTime = state.predictedDisplayTime;
 	locate_info.space = rve_xr_app_space;
 	uint32_t view_count;
 	XR_CHECK(xrLocateViews(rve_xr_session, &locate_info, &view_state, (uint32_t)xr_views.size(), &view_count, xr_views.data()));
@@ -341,6 +345,14 @@ void RenderEngine::SignalXRFrameEnd(const XrTime& time) const{
 		views[i].subImage.imageRect.offset = { 0,0 };
 		views[i].subImage.imageRect.extent = { VRFramebuffers[i].dims.width, VRFramebuffers[i].dims.height };	// NOTE: this is wrong, but it may not matter
 	}
+
+	Draw(world); // in XR, this must be synchronous, to ensure xrEndFrame is called properly
+
+	// tell OpenXR we are done with the image
+	XrSwapchainImageReleaseInfo release_info = { XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
+	XR_CHECK(xrReleaseSwapchainImage(swapchains[0], &release_info));
+	XR_CHECK(xrReleaseSwapchainImage(swapchains[1], &release_info));
+
 
 	// configure the layer
 	XrCompositionLayerProjection mainLayer{ XR_TYPE_COMPOSITION_LAYER_PROJECTION };
@@ -358,10 +370,11 @@ void RenderEngine::SignalXRFrameEnd(const XrTime& time) const{
 	endinfo.environmentBlendMode = xr_blend;
 	endinfo.layerCount = 1;
 	endinfo.layers = &appLayer;
-	endinfo.displayTime = time;
+	endinfo.displayTime = state.predictedDisplayTime;
 	XR_CHECK(xrEndFrame(rve_xr_session, &endinfo));
+
+	Debug::Log("Frame");
 }
-#endif
 
 void RenderEngine::ShutdownXR() {
 #if XR_AVAILABLE
