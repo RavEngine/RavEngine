@@ -344,8 +344,8 @@ if (NOT TARGET_UWP)
 	set(BOOST_FS_LIB "boost_filesystem")
 endif()
 
-# OpenXR - available on Windows & Linux only
-if(TARGET_WINDOWS OR TARGET_LINUX)
+# OpenXR - available on Windows only
+if(TARGET_WINDOWS )
 	set(DYNAMIC_LOADER OFF)
 	set(BUILD_TESTS OFF)
 	set(BUILD_CONFORMANCE_TESTS OFF)

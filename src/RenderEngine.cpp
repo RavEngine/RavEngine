@@ -605,7 +605,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		return th;
 	};
 	constexpr bgfx::TextureFormat::Enum formats[] = { bgfx::TextureFormat::RGBA32F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::RGBA16F, bgfx::TextureFormat::D24S8 };
-	constexpr char* names[] = { "TX_GB_Albedo", "TX_GB_Normal", "TX_GB_Position", "TX_GB_DepthStencil"};
+	constexpr char const* const names[] = { "TX_GB_Albedo", "TX_GB_Normal", "TX_GB_Position", "TX_GB_DepthStencil"};
 	for (int i = 0; i < BX_COUNTOF(formats); i++) {
 		attachments[i] = gen_framebuffer(formats[i], names[i]);
 	}

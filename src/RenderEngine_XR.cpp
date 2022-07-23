@@ -310,7 +310,7 @@ const RenderEngine::BufferedFramebuffer RenderEngine::GetVRFrameBuffers() const{
 #endif
 	return ret;
 }
-
+#if XR_AVAILABLE
 void RenderEngine::DoXRFrame(Ref<World> world) {
 
 	XrFrameState state{ XR_TYPE_FRAME_STATE };
@@ -375,6 +375,7 @@ void RenderEngine::DoXRFrame(Ref<World> world) {
 
 	Debug::Log("Frame");
 }
+#endif
 
 void RenderEngine::ShutdownXR() {
 #if XR_AVAILABLE
