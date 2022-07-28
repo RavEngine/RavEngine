@@ -24,6 +24,7 @@
 #include "NetworkManager.hpp"
 #include "Constraint.hpp"
 #include <physfs.h>
+#include "ScriptSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -50,16 +51,16 @@ void RavEngine::World::Tick(float scale) {
 
 RavEngine::World::World(){
     SetupTaskGraph();
-    EmplacePolymorphicSystem<ScriptSystem,ScriptComponent>();
-    EmplaceSystem<AnimatorSystem,AnimatorComponent>();
-	EmplaceSystem<SocketSystem,SocketConstraint,Transform>();
+    EmplacePolymorphicSystem<ScriptSystem>();
+    EmplaceSystem<AnimatorSystem>();
+	EmplaceSystem<SocketSystem>();
     CreateDependency<AnimatorSystem,ScriptSystem>();			// run scripts before animations
     CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();	// run physics reads before animator
     CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();	// run physics write before scripts
 	CreateDependency<SocketSystem, AnimatorSystem>();			// run animator before socket system
         
-    EmplaceSystem<AudioRoomSyncSystem, AudioRoom,Transform>();
-    EmplaceSystem<RPCSystem,RPCComponent>();
+    EmplaceSystem<AudioRoomSyncSystem>();
+    EmplaceSystem<RPCSystem>();
     if (PHYSFS_isInit()){
         skybox = make_shared<Skybox>();
     }
@@ -158,8 +159,8 @@ void World::SetupTaskGraph(){
 			Solver.Tick(GetCurrentFPSScale());
 		}).name("PhysX Tick");
     
-        auto read = EmplaceSystem<PhysicsLinkSystemRead, RigidBodyDynamicComponent,Transform>(Solver.scene);
-        auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite, PhysicsBodyComponent,Transform>(Solver.scene);
+        auto read = EmplaceSystem<PhysicsLinkSystemRead>(Solver.scene);
+        auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>(Solver.scene);
         RunPhysics.precede(read.second);
 		RunPhysics.succeed(write.second);
 	//}

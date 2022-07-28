@@ -7,11 +7,13 @@
 //
 
 #include "PhysXDefines.h"
-#include <PxPhysicsAPI.h>
 #include "PhysicsBodyComponent.hpp"
-#include "ScriptSystem.hpp"
 #include "CTTI.hpp"
 #include "PolymorphicIndirection.hpp"
+
+namespace phsyx{
+    class PxScene;
+}
 
 namespace RavEngine {
 	/**

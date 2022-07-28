@@ -1,5 +1,5 @@
 # RavEngine
-A C++17 cross-platform game library, with emphasis on performance and ease of use. Notable features:
+A C++20 cross-platform game library, with emphasis on performance and ease of use. Notable features:
 1. Fast Parallel ECS
    - Unique feature: Supports querying by base classes without vtable!
    - Also supports Unity-style scripting with full automatic parallelization
@@ -23,7 +23,7 @@ Expect bugs and frequent breaking changes. Do not use in serious projects.
 ## Integrating and building
 Integrating this library with CMake is easy. 
 ```cmake
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.23)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -39,7 +39,7 @@ add_subdirectory("RavEngine") # configure the engine library
 file(GLOB SOURCES "src/*.cpp" "src/*.hpp" "src/*.h")
 add_executable("${PROJECT_NAME}" ${SOURCES})
 target_link_libraries("${PROJECT_NAME}" PUBLIC "RavEngine" )  # also adds header includes
-target_compile_features("${PROJECT_NAME}" PRIVATE cxx_std_17)  # require C++17
+target_compile_features("${PROJECT_NAME}" PRIVATE cxx_std_20)  # require C++20
 
 # inform engine about your different assets
 file(GLOB objects "objects/*.obj" "objects/*.fbx")
@@ -84,13 +84,13 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | Windows 10 (Win32) | x86_64, aarch64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10 (UWP) | x86_64 aarch64 | MSVC | Visual Studio | DX12 |
 | Linux | x86_64, aarch64 | Clang, GCC | Ninja, Make | Vulkan |
-| Raspi | aarch64 | Clang, GCC | Ninja, Make | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic
 - x11-dev, libgl-dev (for X11 support)
 - wayland-devel, libxkbcommon-devel, libegl-dev (for Wayland support, note that Wayland is currently not fully supported)
 - alsa-lib-devel (aka libasound2-devel) (or another SDL2-supported audio library)
+In addition the Raspberry Pi currently does not work due to missing support for 32-bit index buffers in Vulkan.
 
 ## Example programs
 View a respository with code samples here: [https://github.com/ravbug/ravengine-samples](https://github.com/ravbug/ravengine-samples)

@@ -376,7 +376,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 source_group("Shaders" FILES ${SHADERS})
 
 # vectorization
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 if(TARGET_APPLE OR TARGET_LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
 endif()
@@ -861,8 +861,8 @@ if (RAVENGINE_BUILD_TESTS)
 	add_executable("${PROJECT_NAME}_DSPerf" EXCLUDE_FROM_ALL "test/dsperf.cpp")
 	target_link_libraries("${PROJECT_NAME}_DSPerf" PUBLIC "RavEngine")
 
-	target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_17)
-	target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_17)
+	target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_20)
+	target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_20)
 
 	set_target_properties("${PROJECT_NAME}_TestBasics" "${PROJECT_NAME}_DSPerf" PROPERTIES 
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"

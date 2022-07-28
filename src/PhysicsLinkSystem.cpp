@@ -8,6 +8,8 @@
 #include "PhysicsLinkSystem.hpp"
 #include "PhysicsBodyComponent.hpp"
 #include "Entity.hpp"
+#include "Transform.hpp"
+
 using namespace RavEngine;
 
 void PhysicsLinkSystemRead::operator()(float fpsScale, const RigidBodyDynamicComponent& rigid, Transform& transform) const{

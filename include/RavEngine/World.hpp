@@ -18,6 +18,7 @@
 #include "Types.hpp"
 #include "AddRemoveAction.hpp"
 #include "PolymorphicIndirection.hpp"
+#include <boost/callable_traits.hpp>
 
 namespace RavEngine {
 	class Entity;
@@ -706,50 +707,76 @@ namespace RavEngine {
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
         
-        template<bool polymorphic, typename T, typename ... A, typename ... Args>
+    private:
+        // CTTI calls will fail on Polymorphic arguments, so
+        // need to extract their inner types
+        template<typename T>
+        struct remove_polymorphic_arg{
+            using type = T;
+        };
+        
+        template <typename T>
+        struct remove_polymorphic_arg<PolymorphicGetResult<T,World::PolymorphicIndirection>>{
+            using type = T;
+        };
+        template<typename T> using remove_polymorphic_arg_t = typename remove_polymorphic_arg<T>::type;
+
+        // "unit test" to sanity check the templates above
+        static_assert(std::is_same_v<remove_polymorphic_arg_t<float>,remove_polymorphic_arg_t<PolymorphicGetResult<float,World::PolymorphicIndirection>>>,"template failed");
+        
+        
+        template<bool polymorphic, typename T, typename ... Args>
         inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args... args){
-            T system(args...);
             
-            auto ptr = &ecsRangeSizes[CTTI<T>()];
+            using argtypes = boost::callable_traits::args_t<T>;
             
-            FuncModeCopy<T,polymorphic> fm{system};
-            
-            auto fd = GenFilterData<A...>(fm);
-            
-            FilterOneModeCopy fom(fm,fd.ptrs);
-            
-            auto setptr = fd.getMainFilter();
-            
-            // value update
-            auto range_update = ECSTasks.emplace([this,ptr,setptr](){
-                *ptr = static_cast<pos_t>(setptr->DenseSize());
-            }).name(StrFormat("{} range update",type_name<T>()));
-            
-            auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i) mutable{
-                auto scale = GetCurrentFPSScale();
-                FilterOne<A...>(fom,i,scale);
-            }).name(StrFormat("{}",type_name<T>().data()));
-            range_update.precede(do_task);
-            
-            auto pair = std::make_pair(range_update,do_task);
-            
-            typeToSystem[CTTI<T>()] = pair;
-            
-            return pair;
+            return
+            // step 1: get it as types
+            [&]<typename... Ts>(std::type_identity<std::tuple<Ts...>>) -> auto
+            {
+                using argtypes_noref = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
+                // step 2: get it as non-reference types, and slice off the first argument
+                // because it's a float and we don't want it
+                return
+                [&]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t,A...>>) -> auto
+                {
+                    // use `A...` here
+                    T system(args...);
+                    
+                    auto ptr = &ecsRangeSizes[CTTI<T>()];
+                    
+                    FuncModeCopy<T,polymorphic> fm{system};
+                    
+                    auto fd = GenFilterData<A...>(fm);
+                    
+                    FilterOneModeCopy fom(fm,fd.ptrs);
+                    
+                    auto setptr = fd.getMainFilter();
+                    
+                    // value update
+                    auto range_update = ECSTasks.emplace([this,ptr,setptr](){
+                        *ptr = static_cast<pos_t>(setptr->DenseSize());
+                    }).name(StrFormat("{} range update",type_name<T>()));
+                    
+                    auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i) mutable{
+                        auto scale = GetCurrentFPSScale();
+                        FilterOne<A...>(fom,i,scale);
+                    }).name(StrFormat("{}",type_name<T>().data()));
+                    range_update.precede(do_task);
+                    
+                    auto pair = std::make_pair(range_update,do_task);
+                    
+                    typeToSystem[CTTI<T>()] = pair;
+                    
+                    return pair;
+                    
+                }(std::type_identity<argtypes_noref>{});
+            }(std::type_identity<argtypes>{});
         }
         
-        template<typename T, typename U>
-        inline void CreateDependency(){
-            // T depends on (runs after) U
-            auto& tPair = typeToSystem.at(CTTI<T>());
-            auto& uPair = typeToSystem.at(CTTI<U>());
-            
-            tPair.second.succeed(uPair.second);
-        }
-        
-        template< bool polymorphic,typename T, typename ... A, typename interval_t, typename ... Args>
+        template< bool polymorphic,typename T, typename interval_t, typename ... Args>
         inline void EmplaceTimedSystemGeneric(const interval_t interval, Args ... args){
-            auto task = EmplaceSystemGeneric<polymorphic,T,A...>(args...);
+            auto task = EmplaceSystemGeneric<polymorphic,T>(args...);
             
             auto c_interval = std::chrono::duration_cast<decltype(TimedSystemEntry::interval)>(interval);
             auto ts = &timedSystemRecords[CTTI<T>()];
@@ -765,9 +792,19 @@ namespace RavEngine {
             condition.precede(task.first);
         }
         
-        template<typename T, typename ... A, typename ... Args>
+    public:
+        template<typename T, typename U>
+        inline void CreateDependency(){
+            // T depends on (runs after) U
+            auto& tPair = typeToSystem.at(CTTI<T>());
+            auto& uPair = typeToSystem.at(CTTI<U>());
+            
+            tPair.second.succeed(uPair.second);
+        }
+        
+        template<typename T, typename ... Args>
         inline auto EmplaceSystem(Args... args){
-            return EmplaceSystemGeneric<false,T,A...>(args...);
+            return EmplaceSystemGeneric<false,T>(args...);
         }
 
         template<typename T>
@@ -778,19 +815,19 @@ namespace RavEngine {
             typeToSystem.erase(CTTI<T>());
         }
         
-        template<typename T, typename ... A, typename interval_t, typename ... Args>
+        template<typename T, typename interval_t, typename ... Args>
         inline void EmplaceTimedSystem(const interval_t interval, Args ... args){
-            EmplaceTimedSystemGeneric<false,T,A...>(interval,args...);
+            EmplaceTimedSystemGeneric<false,T>(interval,args...);
         }
         
-        template<typename T, typename ... A, typename ... Args>
+        template<typename T, typename ... Args>
         inline auto EmplacePolymorphicSystem(Args ... args){
-            return EmplaceSystemGeneric<true,T,A...>(args...);
+            return EmplaceSystemGeneric<true,T>(args...);
         }
         
-        template<typename T, typename ... A, typename interval_t, typename ... Args>
+        template<typename T, typename interval_t, typename ... Args>
         inline void EmplacePolymorphicTimedSystem(const interval_t interval, Args ... args){
-            EmplaceTimedSystemGeneric<true,T,A...>(interval,args...);
+            EmplaceTimedSystemGeneric<true,T>(interval,args...);
         }
         
 	private:

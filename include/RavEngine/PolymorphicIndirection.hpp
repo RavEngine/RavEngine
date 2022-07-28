@@ -4,6 +4,7 @@ namespace RavEngine {
 
 template<typename T, typename PolymorphicIndirection_t>
     struct PolymorphicGetResult{
+        using type = T;
         PolymorphicIndirection_t& items;
         
         inline T& operator[](uint32_t idx) const{
