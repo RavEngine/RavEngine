@@ -4,9 +4,10 @@
  */
 
 #include "bgfx_p.h"
-#include <comdef.h>
+
 #if BGFX_CONFIG_RENDERER_DIRECT3D12
 #	include "renderer_d3d12.h"
+#include <comdef.h>
 
 #if !BX_PLATFORM_WINDOWS && !BX_PLATFORM_LINUX
 #	include <inspectable.h>
