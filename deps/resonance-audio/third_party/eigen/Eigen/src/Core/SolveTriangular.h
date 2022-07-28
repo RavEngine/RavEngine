@@ -10,8 +10,6 @@
 #ifndef EIGEN_SOLVETRIANGULAR_H
 #define EIGEN_SOLVETRIANGULAR_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -89,7 +87,7 @@ struct triangular_solver_selector<Lhs,Rhs,Side,Mode,NoUnrolling,Dynamic>
 
   static EIGEN_DEVICE_FUNC void run(const Lhs& lhs, Rhs& rhs)
   {
-    add_const_on_value_type_t<ActualLhsType> actualLhs = LhsProductTraits::extract(lhs);
+    typename internal::add_const_on_value_type<ActualLhsType>::type actualLhs = LhsProductTraits::extract(lhs);
 
     const Index size = lhs.rows();
     const Index othersize = Side==OnTheLeft? rhs.cols() : rhs.rows();
@@ -176,11 +174,11 @@ EIGEN_DEVICE_FUNC void TriangularViewImpl<MatrixType,Mode,Dense>::solveInPlace(c
     return;
 
   enum { copy = (internal::traits<OtherDerived>::Flags & RowMajorBit)  && OtherDerived::IsVectorAtCompileTime && OtherDerived::SizeAtCompileTime!=1};
-  typedef std::conditional_t<copy,
-    typename internal::plain_matrix_type_column_major<OtherDerived>::type, OtherDerived&> OtherCopy;
+  typedef typename internal::conditional<copy,
+    typename internal::plain_matrix_type_column_major<OtherDerived>::type, OtherDerived&>::type OtherCopy;
   OtherCopy otherCopy(other);
 
-  internal::triangular_solver_selector<MatrixType, std::remove_reference_t<OtherCopy>,
+  internal::triangular_solver_selector<MatrixType, typename internal::remove_reference<OtherCopy>::type,
     Side, Mode>::run(derived().nestedExpression(), otherCopy);
 
   if (copy)
@@ -208,7 +206,7 @@ struct traits<triangular_solve_retval<Side, TriangularType, Rhs> >
 template<int Side, typename TriangularType, typename Rhs> struct triangular_solve_retval
  : public ReturnByValue<triangular_solve_retval<Side, TriangularType, Rhs> >
 {
-  typedef remove_all_t<typename Rhs::Nested> RhsNestedCleaned;
+  typedef typename remove_all<typename Rhs::Nested>::type RhsNestedCleaned;
   typedef ReturnByValue<triangular_solve_retval> Base;
 
   triangular_solve_retval(const TriangularType& tri, const Rhs& rhs)

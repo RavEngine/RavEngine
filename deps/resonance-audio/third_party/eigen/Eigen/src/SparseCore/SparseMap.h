@@ -10,8 +10,6 @@
 #ifndef EIGEN_SPARSE_MAP_H
 #define EIGEN_SPARSE_MAP_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -60,12 +58,12 @@ class SparseMapBase<Derived,ReadOnlyAccessors>
     using Base::operator=;
   protected:
     
-    typedef std::conditional_t<
-                 bool(internal::is_lvalue<Derived>::value),
-                 Scalar *, const Scalar *> ScalarPointer;
-    typedef std::conditional_t<
-                 bool(internal::is_lvalue<Derived>::value),
-                 StorageIndex *, const StorageIndex *> IndexPointer;
+    typedef typename internal::conditional<
+                         bool(internal::is_lvalue<Derived>::value),
+                         Scalar *, const Scalar *>::type ScalarPointer;
+    typedef typename internal::conditional<
+                         bool(internal::is_lvalue<Derived>::value),
+                         StorageIndex *, const StorageIndex *>::type IndexPointer;
 
     Index   m_outerSize;
     Index   m_innerSize;

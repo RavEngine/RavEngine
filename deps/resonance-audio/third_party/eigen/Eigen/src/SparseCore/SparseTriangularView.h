@@ -11,8 +11,6 @@
 #ifndef EIGEN_SPARSE_TRIANGULARVIEW_H
 #define EIGEN_SPARSE_TRIANGULARVIEW_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 /** \ingroup SparseCore_Module
@@ -46,8 +44,8 @@ template<typename MatrixType, unsigned int Mode> class TriangularViewImpl<Matrix
     EIGEN_SPARSE_PUBLIC_INTERFACE(TriangularViewType)
     
     typedef typename MatrixType::Nested MatrixTypeNested;
-    typedef std::remove_reference_t<MatrixTypeNested> MatrixTypeNestedNonRef;
-    typedef internal::remove_all_t<MatrixTypeNested> MatrixTypeNestedCleaned;
+    typedef typename internal::remove_reference<MatrixTypeNested>::type MatrixTypeNestedNonRef;
+    typedef typename internal::remove_all<MatrixTypeNested>::type MatrixTypeNestedCleaned;
 
     template<typename RhsType, typename DstType>
     EIGEN_DEVICE_FUNC

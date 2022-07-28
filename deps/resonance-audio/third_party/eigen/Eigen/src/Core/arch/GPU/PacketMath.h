@@ -10,8 +10,6 @@
 #ifndef EIGEN_PACKET_MATH_GPU_H
 #define EIGEN_PACKET_MATH_GPU_H
 
-#include "../../InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -123,6 +121,7 @@ template<> EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE double2 pset1<double2>(const do
 // invoked by NVCC’ (e.g. on MacOS). The former needs to see both host and device implementation
 // of the functions, while the latter can only deal with one of them.
 #if defined(EIGEN_CUDA_ARCH) || defined(EIGEN_HIPCC) || (defined(EIGEN_CUDACC) && EIGEN_COMP_CLANG && !EIGEN_COMP_NVCC)
+namespace {
 
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE float bitwise_and(const float& a,
                                                         const float& b) {
@@ -180,6 +179,8 @@ EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE double lt_mask(const double& a,
                                                      const double& b) {
   return __longlong_as_double(a < b ? 0xffffffffffffffffull : 0ull);
 }
+
+}  // namespace
 
 template <>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE float4 pand<float4>(const float4& a,

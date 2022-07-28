@@ -11,8 +11,6 @@
 #ifndef EIGEN_CWISE_UNARY_OP_H
 #define EIGEN_CWISE_UNARY_OP_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -24,9 +22,9 @@ struct traits<CwiseUnaryOp<UnaryOp, XprType> >
                      UnaryOp(const typename XprType::Scalar&)
                    >::type Scalar;
   typedef typename XprType::Nested XprTypeNested;
-  typedef std::remove_reference_t<XprTypeNested> XprTypeNested_;
+  typedef typename remove_reference<XprTypeNested>::type _XprTypeNested;
   enum {
-    Flags = XprTypeNested_::Flags & RowMajorBit
+    Flags = _XprTypeNested::Flags & RowMajorBit
   };
 };
 }
@@ -61,7 +59,7 @@ class CwiseUnaryOp : public CwiseUnaryOpImpl<UnaryOp, XprType, typename internal
     typedef typename CwiseUnaryOpImpl<UnaryOp, XprType,typename internal::traits<XprType>::StorageKind>::Base Base;
     EIGEN_GENERIC_PUBLIC_INTERFACE(CwiseUnaryOp)
     typedef typename internal::ref_selector<XprType>::type XprTypeNested;
-    typedef internal::remove_all_t<XprType> NestedExpression;
+    typedef typename internal::remove_all<XprType>::type NestedExpression;
 
     EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
     explicit CwiseUnaryOp(const XprType& xpr, const UnaryOp& func = UnaryOp())
@@ -78,12 +76,12 @@ class CwiseUnaryOp : public CwiseUnaryOpImpl<UnaryOp, XprType, typename internal
 
     /** \returns the nested expression */
     EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-    const internal::remove_all_t<XprTypeNested>&
+    const typename internal::remove_all<XprTypeNested>::type&
     nestedExpression() const { return m_xpr; }
 
     /** \returns the nested expression */
     EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-    internal::remove_all_t<XprTypeNested>&
+    typename internal::remove_all<XprTypeNested>::type&
     nestedExpression() { return m_xpr; }
 
   protected:

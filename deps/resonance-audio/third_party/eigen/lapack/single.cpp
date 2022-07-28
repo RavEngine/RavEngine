@@ -12,7 +12,7 @@
 #define SCALAR_SUFFIX_UP "S"
 #define ISCOMPLEX     0
 
-#include "cholesky.inc"
-#include "lu.inc"
-#include "eigenvalues.inc"
-#include "svd.inc"
+#include "cholesky.cpp"
+#include "lu.cpp"
+#include "eigenvalues.cpp"
+#include "svd.cpp"

@@ -11,8 +11,6 @@
 #define EIGEN_GENERAL_BLOCK_PANEL_H
 
 
-#include "../InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -23,7 +21,7 @@ enum GEBPPacketSizeType {
   GEBPPacketQuarter
 };
 
-template<typename LhsScalar_, typename RhsScalar_, bool ConjLhs_=false, bool ConjRhs_=false, int Arch=Architecture::Target, int PacketSize_=GEBPPacketFull>
+template<typename _LhsScalar, typename _RhsScalar, bool _ConjLhs=false, bool _ConjRhs=false, int Arch=Architecture::Target, int _PacketSize=GEBPPacketFull>
 class gebp_traits;
 
 
@@ -356,7 +354,7 @@ struct RhsPanelHelper {
  private:
   static const int remaining_registers = EIGEN_ARCH_DEFAULT_NUMBER_OF_REGISTERS - registers_taken;
  public:
-  typedef std::conditional_t<remaining_registers>=4, RhsPacketx4, RhsPacket> type;
+  typedef typename conditional<remaining_registers>=4, RhsPacketx4, RhsPacket>::type type;
 };
 
 template <typename Packet>
@@ -378,12 +376,12 @@ struct packet_conditional<GEBPPacketFull, T1, T2, T3> { typedef T1 type; };
 template <typename T1, typename T2, typename T3>
 struct packet_conditional<GEBPPacketHalf, T1, T2, T3> { typedef T2 type; };
 
-#define PACKET_DECL_COND_POSTFIX(postfix, name, packet_size)       \
+#define PACKET_DECL_COND_PREFIX(prefix, name, packet_size)         \
   typedef typename packet_conditional<packet_size,                 \
                                       typename packet_traits<name ## Scalar>::type, \
                                       typename packet_traits<name ## Scalar>::half, \
                                       typename unpacket_traits<typename packet_traits<name ## Scalar>::half>::half>::type \
-  name ## Packet ## postfix
+  prefix ## name ## Packet
 
 #define PACKET_DECL_COND(name, packet_size)                        \
   typedef typename packet_conditional<packet_size,                 \
@@ -392,12 +390,12 @@ struct packet_conditional<GEBPPacketHalf, T1, T2, T3> { typedef T2 type; };
                                       typename unpacket_traits<typename packet_traits<name ## Scalar>::half>::half>::type \
   name ## Packet
 
-#define PACKET_DECL_COND_SCALAR_POSTFIX(postfix, packet_size)      \
+#define PACKET_DECL_COND_SCALAR_PREFIX(prefix, packet_size)        \
   typedef typename packet_conditional<packet_size,                 \
                                       typename packet_traits<Scalar>::type, \
                                       typename packet_traits<Scalar>::half, \
                                       typename unpacket_traits<typename packet_traits<Scalar>::half>::half>::type \
-  ScalarPacket ## postfix
+  prefix ## ScalarPacket
 
 #define PACKET_DECL_COND_SCALAR(packet_size)                       \
   typedef typename packet_conditional<packet_size,                 \
@@ -416,25 +414,25 @@ struct packet_conditional<GEBPPacketHalf, T1, T2, T3> { typedef T2 type; };
  *  cplx*real : unpack rhs to constant packets, ...
  *  real*cplx : load lhs as (a0,a0,a1,a1), and mul as usual
  */
-template<typename LhsScalar_, typename RhsScalar_, bool ConjLhs_, bool ConjRhs_, int Arch, int PacketSize_>
+template<typename _LhsScalar, typename _RhsScalar, bool _ConjLhs, bool _ConjRhs, int Arch, int _PacketSize>
 class gebp_traits
 {
 public:
-  typedef LhsScalar_ LhsScalar;
-  typedef RhsScalar_ RhsScalar;
+  typedef _LhsScalar LhsScalar;
+  typedef _RhsScalar RhsScalar;
   typedef typename ScalarBinaryOpTraits<LhsScalar, RhsScalar>::ReturnType ResScalar;
 
-  PACKET_DECL_COND_POSTFIX(_, Lhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Rhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Res, PacketSize_);
+  PACKET_DECL_COND_PREFIX(_, Lhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Rhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Res, _PacketSize);
 
   enum {
-    ConjLhs = ConjLhs_,
-    ConjRhs = ConjRhs_,
-    Vectorizable = unpacket_traits<LhsPacket_>::vectorizable && unpacket_traits<RhsPacket_>::vectorizable,
-    LhsPacketSize = Vectorizable ? unpacket_traits<LhsPacket_>::size : 1,
-    RhsPacketSize = Vectorizable ? unpacket_traits<RhsPacket_>::size : 1,
-    ResPacketSize = Vectorizable ? unpacket_traits<ResPacket_>::size : 1,
+    ConjLhs = _ConjLhs,
+    ConjRhs = _ConjRhs,
+    Vectorizable = unpacket_traits<_LhsPacket>::vectorizable && unpacket_traits<_RhsPacket>::vectorizable,
+    LhsPacketSize = Vectorizable ? unpacket_traits<_LhsPacket>::size : 1,
+    RhsPacketSize = Vectorizable ? unpacket_traits<_RhsPacket>::size : 1,
+    ResPacketSize = Vectorizable ? unpacket_traits<_ResPacket>::size : 1,
     
     NumberOfRegisters = EIGEN_ARCH_DEFAULT_NUMBER_OF_REGISTERS,
 
@@ -442,7 +440,7 @@ public:
     nr = 4,
 
     // register block size along the M direction (currently, this one cannot be modified)
-    default_mr = (plain_enum_min(16, NumberOfRegisters)/2/nr)*LhsPacketSize,
+    default_mr = (EIGEN_PLAIN_ENUM_MIN(16,NumberOfRegisters)/2/nr)*LhsPacketSize,
 #if defined(EIGEN_HAS_SINGLE_INSTRUCTION_MADD) && !defined(EIGEN_VECTORIZE_ALTIVEC) && !defined(EIGEN_VECTORIZE_VSX) \
     && ((!EIGEN_COMP_MSVC) || (EIGEN_COMP_MSVC>=1914))
     // we assume 16 registers or more
@@ -459,9 +457,9 @@ public:
   };
 
 
-  typedef std::conditional_t<Vectorizable,LhsPacket_,LhsScalar> LhsPacket;
-  typedef std::conditional_t<Vectorizable,RhsPacket_,RhsScalar> RhsPacket;
-  typedef std::conditional_t<Vectorizable,ResPacket_,ResScalar> ResPacket;
+  typedef typename conditional<Vectorizable,_LhsPacket,LhsScalar>::type LhsPacket;
+  typedef typename conditional<Vectorizable,_RhsPacket,RhsScalar>::type RhsPacket;
+  typedef typename conditional<Vectorizable,_ResPacket,ResScalar>::type ResPacket;
   typedef LhsPacket LhsPacket4Packing;
 
   typedef QuadPacket<RhsPacket> RhsPacketx4;
@@ -545,25 +543,25 @@ public:
 
 };
 
-template<typename RealScalar, bool ConjLhs_, int Arch, int PacketSize_>
-class gebp_traits<std::complex<RealScalar>, RealScalar, ConjLhs_, false, Arch, PacketSize_>
+template<typename RealScalar, bool _ConjLhs, int Arch, int _PacketSize>
+class gebp_traits<std::complex<RealScalar>, RealScalar, _ConjLhs, false, Arch, _PacketSize>
 {
 public:
   typedef std::complex<RealScalar> LhsScalar;
   typedef RealScalar RhsScalar;
   typedef typename ScalarBinaryOpTraits<LhsScalar, RhsScalar>::ReturnType ResScalar;
 
-  PACKET_DECL_COND_POSTFIX(_, Lhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Rhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Res, PacketSize_);
+  PACKET_DECL_COND_PREFIX(_, Lhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Rhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Res, _PacketSize);
 
   enum {
-    ConjLhs = ConjLhs_,
+    ConjLhs = _ConjLhs,
     ConjRhs = false,
-    Vectorizable = unpacket_traits<LhsPacket_>::vectorizable && unpacket_traits<RhsPacket_>::vectorizable,
-    LhsPacketSize = Vectorizable ? unpacket_traits<LhsPacket_>::size : 1,
-    RhsPacketSize = Vectorizable ? unpacket_traits<RhsPacket_>::size : 1,
-    ResPacketSize = Vectorizable ? unpacket_traits<ResPacket_>::size : 1,
+    Vectorizable = unpacket_traits<_LhsPacket>::vectorizable && unpacket_traits<_RhsPacket>::vectorizable,
+    LhsPacketSize = Vectorizable ? unpacket_traits<_LhsPacket>::size : 1,
+    RhsPacketSize = Vectorizable ? unpacket_traits<_RhsPacket>::size : 1,
+    ResPacketSize = Vectorizable ? unpacket_traits<_ResPacket>::size : 1,
     
     NumberOfRegisters = EIGEN_ARCH_DEFAULT_NUMBER_OF_REGISTERS,
     nr = 4,
@@ -571,16 +569,16 @@ public:
     // we assume 16 registers
     mr = 3*LhsPacketSize,
 #else
-    mr = (plain_enum_min(16, NumberOfRegisters)/2/nr)*LhsPacketSize,
+    mr = (EIGEN_PLAIN_ENUM_MIN(16,NumberOfRegisters)/2/nr)*LhsPacketSize,
 #endif
 
     LhsProgress = LhsPacketSize,
     RhsProgress = 1
   };
 
-  typedef std::conditional_t<Vectorizable,LhsPacket_,LhsScalar> LhsPacket;
-  typedef std::conditional_t<Vectorizable,RhsPacket_,RhsScalar> RhsPacket;
-  typedef std::conditional_t<Vectorizable,ResPacket_,ResScalar> ResPacket;
+  typedef typename conditional<Vectorizable,_LhsPacket,LhsScalar>::type LhsPacket;
+  typedef typename conditional<Vectorizable,_RhsPacket,RhsScalar>::type RhsPacket;
+  typedef typename conditional<Vectorizable,_ResPacket,ResScalar>::type ResPacket;
   typedef LhsPacket LhsPacket4Packing;
 
   typedef QuadPacket<RhsPacket> RhsPacketx4;
@@ -614,7 +612,7 @@ public:
   
   EIGEN_STRONG_INLINE void loadRhsQuad(const RhsScalar* b, RhsPacket& dest) const
   {
-    loadRhsQuad_impl(b,dest, std::conditional_t<RhsPacketSize==16,true_type,false_type>());
+    loadRhsQuad_impl(b,dest, typename conditional<RhsPacketSize==16,true_type,false_type>::type());
   }
 
   EIGEN_STRONG_INLINE void loadRhsQuad_impl(const RhsScalar* b, RhsPacket& dest, const true_type&) const
@@ -645,7 +643,7 @@ public:
   template <typename LhsPacketType, typename RhsPacketType, typename AccPacketType, typename LaneIdType>
   EIGEN_STRONG_INLINE void madd(const LhsPacketType& a, const RhsPacketType& b, AccPacketType& c, RhsPacketType& tmp, const LaneIdType&) const
   {
-    madd_impl(a, b, c, tmp, std::conditional_t<Vectorizable,true_type,false_type>());
+    madd_impl(a, b, c, tmp, typename conditional<Vectorizable,true_type,false_type>::type());
   }
 
   template <typename LhsPacketType, typename RhsPacketType, typename AccPacketType>
@@ -703,7 +701,7 @@ DoublePacket<Packet> padd(const DoublePacket<Packet> &a, const DoublePacket<Pack
 template<typename Packet>
 const DoublePacket<Packet>&
 predux_half_dowto4(const DoublePacket<Packet> &a,
-                   std::enable_if_t<unpacket_traits<Packet>::size<=8>* = 0)
+                   typename enable_if<unpacket_traits<Packet>::size<=8>::type* = 0)
 {
   return a;
 }
@@ -711,7 +709,7 @@ predux_half_dowto4(const DoublePacket<Packet> &a,
 template<typename Packet>
 DoublePacket<typename unpacket_traits<Packet>::half>
 predux_half_dowto4(const DoublePacket<Packet> &a,
-                   std::enable_if_t<unpacket_traits<Packet>::size==16>* = 0)
+                   typename enable_if<unpacket_traits<Packet>::size==16>::type* = 0)
 {
   // yes, that's pretty hackish :(
   DoublePacket<typename unpacket_traits<Packet>::half> res;
@@ -725,7 +723,7 @@ predux_half_dowto4(const DoublePacket<Packet> &a,
 // same here, "quad" actually means "8" in terms of real coefficients
 template<typename Scalar, typename RealPacket>
 void loadQuadToDoublePacket(const Scalar* b, DoublePacket<RealPacket>& dest,
-                            std::enable_if_t<unpacket_traits<RealPacket>::size<=8>* = 0)
+                            typename enable_if<unpacket_traits<RealPacket>::size<=8>::type* = 0)
 {
   dest.first  = pset1<RealPacket>(numext::real(*b));
   dest.second = pset1<RealPacket>(numext::imag(*b));
@@ -733,7 +731,7 @@ void loadQuadToDoublePacket(const Scalar* b, DoublePacket<RealPacket>& dest,
 
 template<typename Scalar, typename RealPacket>
 void loadQuadToDoublePacket(const Scalar* b, DoublePacket<RealPacket>& dest,
-                            std::enable_if_t<unpacket_traits<RealPacket>::size==16>* = 0)
+                            typename enable_if<unpacket_traits<RealPacket>::size==16>::type* = 0)
 {
   // yes, that's pretty hackish too :(
   typedef typename NumTraits<Scalar>::Real RealScalar;
@@ -756,8 +754,8 @@ template<typename Packet> struct unpacket_traits<DoublePacket<Packet> > {
 //   return res;
 // }
 
-template<typename RealScalar, bool ConjLhs_, bool ConjRhs_, int Arch, int PacketSize_>
-class gebp_traits<std::complex<RealScalar>, std::complex<RealScalar>, ConjLhs_, ConjRhs_, Arch, PacketSize_ >
+template<typename RealScalar, bool _ConjLhs, bool _ConjRhs, int Arch, int _PacketSize>
+class gebp_traits<std::complex<RealScalar>, std::complex<RealScalar>, _ConjLhs, _ConjRhs, Arch, _PacketSize >
 {
 public:
   typedef std::complex<RealScalar>  Scalar;
@@ -765,19 +763,19 @@ public:
   typedef std::complex<RealScalar>  RhsScalar;
   typedef std::complex<RealScalar>  ResScalar;
   
-  PACKET_DECL_COND_POSTFIX(_, Lhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Rhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Res, PacketSize_);
-  PACKET_DECL_COND(Real, PacketSize_);
-  PACKET_DECL_COND_SCALAR(PacketSize_);
+  PACKET_DECL_COND_PREFIX(_, Lhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Rhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Res, _PacketSize);
+  PACKET_DECL_COND(Real, _PacketSize);
+  PACKET_DECL_COND_SCALAR(_PacketSize);
 
   enum {
-    ConjLhs = ConjLhs_,
-    ConjRhs = ConjRhs_,
+    ConjLhs = _ConjLhs,
+    ConjRhs = _ConjRhs,
     Vectorizable = unpacket_traits<RealPacket>::vectorizable
                 && unpacket_traits<ScalarPacket>::vectorizable,
-    ResPacketSize   = Vectorizable ? unpacket_traits<ResPacket_>::size : 1,
-    LhsPacketSize = Vectorizable ? unpacket_traits<LhsPacket_>::size : 1,
+    ResPacketSize   = Vectorizable ? unpacket_traits<_ResPacket>::size : 1,
+    LhsPacketSize = Vectorizable ? unpacket_traits<_LhsPacket>::size : 1,
     RhsPacketSize = Vectorizable ? unpacket_traits<RhsScalar>::size : 1,
     RealPacketSize  = Vectorizable ? unpacket_traits<RealPacket>::size : 1,
 
@@ -791,13 +789,13 @@ public:
   
   typedef DoublePacket<RealPacket>                 DoublePacketType;
 
-  typedef std::conditional_t<Vectorizable,ScalarPacket,Scalar> LhsPacket4Packing;
-  typedef std::conditional_t<Vectorizable,RealPacket,  Scalar> LhsPacket;
-  typedef std::conditional_t<Vectorizable,DoublePacketType,Scalar> RhsPacket;
-  typedef std::conditional_t<Vectorizable,ScalarPacket,Scalar> ResPacket;
-  typedef std::conditional_t<Vectorizable,DoublePacketType,Scalar> AccPacket;
+  typedef typename conditional<Vectorizable,ScalarPacket,Scalar>::type LhsPacket4Packing;
+  typedef typename conditional<Vectorizable,RealPacket,  Scalar>::type LhsPacket;
+  typedef typename conditional<Vectorizable,DoublePacketType,Scalar>::type RhsPacket;
+  typedef typename conditional<Vectorizable,ScalarPacket,Scalar>::type ResPacket;
+  typedef typename conditional<Vectorizable,DoublePacketType,Scalar>::type AccPacket;
 
-  // this actually holds 8 packets!
+  // this actualy holds 8 packets!
   typedef QuadPacket<RhsPacket> RhsPacketx4;
   
   EIGEN_STRONG_INLINE void initAcc(Scalar& p) { p = Scalar(0); }
@@ -868,7 +866,7 @@ public:
 
   template<typename LhsPacketType, typename RhsPacketType, typename ResPacketType, typename TmpType, typename LaneIdType>
   EIGEN_STRONG_INLINE
-  std::enable_if_t<!is_same<RhsPacketType,RhsPacketx4>::value>
+  typename enable_if<!is_same<RhsPacketType,RhsPacketx4>::value>::type
   madd(const LhsPacketType& a, const RhsPacketType& b, DoublePacket<ResPacketType>& c, TmpType& /*tmp*/, const LaneIdType&) const
   {
     c.first   = padd(pmul(a,b.first), c.first);
@@ -922,8 +920,8 @@ protected:
   conj_helper<LhsScalar,RhsScalar,ConjLhs,ConjRhs> cj;
 };
 
-template<typename RealScalar, bool ConjRhs_, int Arch, int PacketSize_>
-class gebp_traits<RealScalar, std::complex<RealScalar>, false, ConjRhs_, Arch, PacketSize_ >
+template<typename RealScalar, bool _ConjRhs, int Arch, int _PacketSize>
+class gebp_traits<RealScalar, std::complex<RealScalar>, false, _ConjRhs, Arch, _PacketSize >
 {
 public:
   typedef std::complex<RealScalar>  Scalar;
@@ -931,38 +929,38 @@ public:
   typedef Scalar      RhsScalar;
   typedef Scalar      ResScalar;
 
-  PACKET_DECL_COND_POSTFIX(_, Lhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Rhs, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Res, PacketSize_);
-  PACKET_DECL_COND_POSTFIX(_, Real, PacketSize_);
-  PACKET_DECL_COND_SCALAR_POSTFIX(_, PacketSize_);
+  PACKET_DECL_COND_PREFIX(_, Lhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Rhs, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Res, _PacketSize);
+  PACKET_DECL_COND_PREFIX(_, Real, _PacketSize);
+  PACKET_DECL_COND_SCALAR_PREFIX(_, _PacketSize);
 
-#undef PACKET_DECL_COND_SCALAR_POSTFIX
-#undef PACKET_DECL_COND_POSTFIX
+#undef PACKET_DECL_COND_SCALAR_PREFIX
+#undef PACKET_DECL_COND_PREFIX
 #undef PACKET_DECL_COND_SCALAR
 #undef PACKET_DECL_COND
 
   enum {
     ConjLhs = false,
-    ConjRhs = ConjRhs_,
-    Vectorizable = unpacket_traits<RealPacket_>::vectorizable
-                && unpacket_traits<ScalarPacket_>::vectorizable,
-    LhsPacketSize = Vectorizable ? unpacket_traits<LhsPacket_>::size : 1,
-    RhsPacketSize = Vectorizable ? unpacket_traits<RhsPacket_>::size : 1,
-    ResPacketSize = Vectorizable ? unpacket_traits<ResPacket_>::size : 1,
+    ConjRhs = _ConjRhs,
+    Vectorizable = unpacket_traits<_RealPacket>::vectorizable
+                && unpacket_traits<_ScalarPacket>::vectorizable,
+    LhsPacketSize = Vectorizable ? unpacket_traits<_LhsPacket>::size : 1,
+    RhsPacketSize = Vectorizable ? unpacket_traits<_RhsPacket>::size : 1,
+    ResPacketSize = Vectorizable ? unpacket_traits<_ResPacket>::size : 1,
     
     NumberOfRegisters = EIGEN_ARCH_DEFAULT_NUMBER_OF_REGISTERS,
     // FIXME: should depend on NumberOfRegisters
     nr = 4,
-    mr = (plain_enum_min(16, NumberOfRegisters)/2/nr)*ResPacketSize,
+    mr = (EIGEN_PLAIN_ENUM_MIN(16,NumberOfRegisters)/2/nr)*ResPacketSize,
 
     LhsProgress = ResPacketSize,
     RhsProgress = 1
   };
 
-  typedef std::conditional_t<Vectorizable,LhsPacket_,LhsScalar> LhsPacket;
-  typedef std::conditional_t<Vectorizable,RhsPacket_,RhsScalar> RhsPacket;
-  typedef std::conditional_t<Vectorizable,ResPacket_,ResScalar> ResPacket;
+  typedef typename conditional<Vectorizable,_LhsPacket,LhsScalar>::type LhsPacket;
+  typedef typename conditional<Vectorizable,_RhsPacket,RhsScalar>::type RhsPacket;
+  typedef typename conditional<Vectorizable,_ResPacket,ResScalar>::type ResPacket;
   typedef LhsPacket LhsPacket4Packing;
   typedef QuadPacket<RhsPacket> RhsPacketx4;
   typedef ResPacket AccPacket;
@@ -1011,7 +1009,7 @@ public:
   template <typename LhsPacketType, typename RhsPacketType, typename AccPacketType, typename LaneIdType>
   EIGEN_STRONG_INLINE void madd(const LhsPacketType& a, const RhsPacketType& b, AccPacketType& c, RhsPacketType& tmp, const LaneIdType&) const
   {
-    madd_impl(a, b, c, tmp, std::conditional_t<Vectorizable,true_type,false_type>());
+    madd_impl(a, b, c, tmp, typename conditional<Vectorizable,true_type,false_type>::type());
   }
 
   template <typename LhsPacketType, typename RhsPacketType, typename AccPacketType>
@@ -1203,7 +1201,7 @@ struct lhs_process_one_packet
     traits.madd(*A0, *rhs_panel, *C1, *T0, fix<1>);
     traits.madd(*A0, *rhs_panel, *C2, *T0, fix<2>);
     traits.madd(*A0, *rhs_panel, *C3, *T0, fix<3>);
-    #if EIGEN_GNUC_AT_LEAST(6,0) && defined(EIGEN_VECTORIZE_SSE) && !(EIGEN_COMP_LCC)
+    #if EIGEN_GNUC_AT_LEAST(6,0) && defined(EIGEN_VECTORIZE_SSE)
     __asm__  ("" : "+x,m" (*A0));
     #endif
     EIGEN_ASM_COMMENT("end step of gebp micro kernel 1X4");
@@ -1729,7 +1727,7 @@ void gebp_kernel<LhsScalar,RhsScalar,Index,DataMapper,mr,nr,ConjugateLhs,Conjuga
 
           // NOTE: the begin/end asm comments below work around bug 935!
           // but they are not enough for gcc>=6 without FMA (bug 1637)
-          #if EIGEN_GNUC_AT_LEAST(6,0) && defined(EIGEN_VECTORIZE_SSE) && !(EIGEN_COMP_LCC)
+          #if EIGEN_GNUC_AT_LEAST(6,0) && defined(EIGEN_VECTORIZE_SSE)
             #define EIGEN_GEBP_2PX4_SPILLING_WORKAROUND __asm__  ("" : [a0] "+x,m" (A0),[a1] "+x,m" (A1));
           #else
             #define EIGEN_GEBP_2PX4_SPILLING_WORKAROUND
@@ -1976,10 +1974,10 @@ void gebp_kernel<LhsScalar,RhsScalar,Index,DataMapper,mr,nr,ConjugateLhs,Conjuga
             if(SwappedTraits::LhsProgress==8)
             {
               // Special case where we have to first reduce the accumulation register C0
-              typedef std::conditional_t<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SResPacket>::half,SResPacket> SResPacketHalf;
-              typedef std::conditional_t<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SLhsPacket>::half,SLhsPacket> SLhsPacketHalf;
-              typedef std::conditional_t<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SRhsPacket>::half,SRhsPacket> SRhsPacketHalf;
-              typedef std::conditional_t<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SAccPacket>::half,SAccPacket> SAccPacketHalf;
+              typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SResPacket>::half,SResPacket>::type SResPacketHalf;
+              typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SLhsPacket>::half,SLhsPacket>::type SLhsPacketHalf;
+              typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SRhsPacket>::half,SRhsPacket>::type SRhsPacketHalf;
+              typedef typename conditional<SwappedTraits::LhsProgress>=8,typename unpacket_traits<SAccPacket>::half,SAccPacket>::type SAccPacketHalf;
 
               SResPacketHalf R = res.template gatherPacket<SResPacketHalf>(i, j2);
               SResPacketHalf alphav = pset1<SResPacketHalf>(alpha);
@@ -2271,8 +2269,8 @@ EIGEN_DONT_INLINE void gemm_pack_lhs<Scalar, Index, DataMapper, Pack1, Pack2, Pa
   bool gone_half = false, gone_quarter = false, gone_last = false;
 
   Index i = 0;
-  Index pack = Pack1;
-  Index psize = PacketSize;
+  int pack = Pack1;
+  int psize = PacketSize;
   while(pack>0)
   {
     Index remaining_rows = rows-i;
@@ -2292,21 +2290,21 @@ EIGEN_DONT_INLINE void gemm_pack_lhs<Scalar, Index, DataMapper, Pack1, Pack2, Pa
           {
             if (psize == PacketSize) {
               PacketBlock<Packet> kernel;
-              for (Index p = 0; p < psize; ++p) kernel.packet[p] = lhs.template loadPacket<Packet>(i+p+m, k);
+              for (int p = 0; p < psize; ++p) kernel.packet[p] = lhs.template loadPacket<Packet>(i+p+m, k);
               ptranspose(kernel);
-              for (Index p = 0; p < psize; ++p) pstore(blockA+count+m+(pack)*p, cj.pconj(kernel.packet[p]));
+              for (int p = 0; p < psize; ++p) pstore(blockA+count+m+(pack)*p, cj.pconj(kernel.packet[p]));
             } else if (HasHalf && psize == HalfPacketSize) {
               gone_half = true;
               PacketBlock<HalfPacket> kernel_half;
-              for (Index p = 0; p < psize; ++p) kernel_half.packet[p] = lhs.template loadPacket<HalfPacket>(i+p+m, k);
+              for (int p = 0; p < psize; ++p) kernel_half.packet[p] = lhs.template loadPacket<HalfPacket>(i+p+m, k);
               ptranspose(kernel_half);
-              for (Index p = 0; p < psize; ++p) pstore(blockA+count+m+(pack)*p, cj.pconj(kernel_half.packet[p]));
+              for (int p = 0; p < psize; ++p) pstore(blockA+count+m+(pack)*p, cj.pconj(kernel_half.packet[p]));
             } else if (HasQuarter && psize == QuarterPacketSize) {
               gone_quarter = true;
               PacketBlock<QuarterPacket> kernel_quarter;
-              for (Index p = 0; p < psize; ++p) kernel_quarter.packet[p] = lhs.template loadPacket<QuarterPacket>(i+p+m, k);
+              for (int p = 0; p < psize; ++p) kernel_quarter.packet[p] = lhs.template loadPacket<QuarterPacket>(i+p+m, k);
               ptranspose(kernel_quarter);
-              for (Index p = 0; p < psize; ++p) pstore(blockA+count+m+(pack)*p, cj.pconj(kernel_quarter.packet[p]));
+              for (int p = 0; p < psize; ++p) pstore(blockA+count+m+(pack)*p, cj.pconj(kernel_quarter.packet[p]));
 	    }
           }
           count += psize*pack;

@@ -10,8 +10,6 @@
 #ifndef EIGEN_STABLENORM_H
 #define EIGEN_STABLENORM_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen { 
 
 namespace internal {
@@ -59,7 +57,7 @@ void stable_norm_impl_inner_step(const VectorType &vec, RealScalar& ssq, RealSca
   const Index blockSize = 4096;
   
   typedef typename internal::nested_eval<VectorType,2>::type VectorTypeCopy;
-  typedef internal::remove_all_t<VectorTypeCopy> VectorTypeCopyClean;
+  typedef typename internal::remove_all<VectorTypeCopy>::type VectorTypeCopyClean;
   const VectorTypeCopy copy(vec);
   
   enum {
@@ -68,8 +66,8 @@ void stable_norm_impl_inner_step(const VectorType &vec, RealScalar& ssq, RealSca
                ) && (blockSize*sizeof(Scalar)*2<EIGEN_STACK_ALLOCATION_LIMIT)
                  && (EIGEN_MAX_STATIC_ALIGN_BYTES>0) // if we cannot allocate on the stack, then let's not bother about this optimization
   };
-  typedef std::conditional_t<CanAlign, Ref<const Matrix<Scalar,Dynamic,1,0,blockSize,1>, internal::evaluator<VectorTypeCopyClean>::Alignment>,
-                                                   typename VectorTypeCopyClean::ConstSegmentReturnType> SegmentWrapper;
+  typedef typename internal::conditional<CanAlign, Ref<const Matrix<Scalar,Dynamic,1,0,blockSize,1>, internal::evaluator<VectorTypeCopyClean>::Alignment>,
+                                                   typename VectorTypeCopyClean::ConstSegmentReturnType>::type SegmentWrapper;
   Index n = vec.size();
   
   Index bi = internal::first_default_aligned(copy);
@@ -81,7 +79,7 @@ void stable_norm_impl_inner_step(const VectorType &vec, RealScalar& ssq, RealSca
 
 template<typename VectorType>
 typename VectorType::RealScalar
-stable_norm_impl(const VectorType &vec, std::enable_if_t<VectorType::IsVectorAtCompileTime>* = 0 )
+stable_norm_impl(const VectorType &vec, typename enable_if<VectorType::IsVectorAtCompileTime>::type* = 0 )
 {
   using std::sqrt;
   using std::abs;
@@ -103,7 +101,7 @@ stable_norm_impl(const VectorType &vec, std::enable_if_t<VectorType::IsVectorAtC
 
 template<typename MatrixType>
 typename MatrixType::RealScalar
-stable_norm_impl(const MatrixType &mat, std::enable_if_t<!MatrixType::IsVectorAtCompileTime>* = 0 )
+stable_norm_impl(const MatrixType &mat, typename enable_if<!MatrixType::IsVectorAtCompileTime>::type* = 0 )
 {
   using std::sqrt;
 

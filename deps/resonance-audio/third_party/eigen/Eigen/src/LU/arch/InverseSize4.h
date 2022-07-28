@@ -35,8 +35,6 @@
 #ifndef EIGEN_INVERSE_SIZE_4_H
 #define EIGEN_INVERSE_SIZE_4_H
 
-#include "../InternalHeaderCheck.h"
-
 namespace Eigen
 {
 namespace internal
@@ -50,7 +48,7 @@ struct compute_inverse_size4<Architecture::Target, float, MatrixType, ResultType
     ResultAlignment = traits<ResultType>::Alignment,
     StorageOrdersMatch = (MatrixType::Flags & RowMajorBit) == (ResultType::Flags & RowMajorBit)
   };
-  typedef std::conditional_t<(MatrixType::Flags & LinearAccessBit), MatrixType const &, typename MatrixType::PlainObject> ActualMatrixType;
+  typedef typename conditional<(MatrixType::Flags & LinearAccessBit), MatrixType const &, typename MatrixType::PlainObject>::type ActualMatrixType;
 
   static void run(const MatrixType &mat, ResultType &result)
   {
@@ -58,10 +56,10 @@ struct compute_inverse_size4<Architecture::Target, float, MatrixType, ResultType
 
     const float* data = matrix.data();
     const Index stride = matrix.innerStride();
-    Packet4f L1 = ploadt<Packet4f,MatrixAlignment>(data);
-    Packet4f L2 = ploadt<Packet4f,MatrixAlignment>(data + stride*4);
-    Packet4f L3 = ploadt<Packet4f,MatrixAlignment>(data + stride*8);
-    Packet4f L4 = ploadt<Packet4f,MatrixAlignment>(data + stride*12);
+    Packet4f _L1 = ploadt<Packet4f,MatrixAlignment>(data);
+    Packet4f _L2 = ploadt<Packet4f,MatrixAlignment>(data + stride*4);
+    Packet4f _L3 = ploadt<Packet4f,MatrixAlignment>(data + stride*8);
+    Packet4f _L4 = ploadt<Packet4f,MatrixAlignment>(data + stride*12);
 
     // Four 2x2 sub-matrices of the input matrix
     // input = [[A, B],
@@ -70,17 +68,17 @@ struct compute_inverse_size4<Architecture::Target, float, MatrixType, ResultType
 
     if (!StorageOrdersMatch)
     {
-      A = vec4f_unpacklo(L1, L2);
-      B = vec4f_unpacklo(L3, L4);
-      C = vec4f_unpackhi(L1, L2);
-      D = vec4f_unpackhi(L3, L4);
+      A = vec4f_unpacklo(_L1, _L2);
+      B = vec4f_unpacklo(_L3, _L4);
+      C = vec4f_unpackhi(_L1, _L2);
+      D = vec4f_unpackhi(_L3, _L4);
     }
     else
     {
-      A = vec4f_movelh(L1, L2);
-      B = vec4f_movehl(L2, L1);
-      C = vec4f_movelh(L3, L4);
-      D = vec4f_movehl(L4, L3);
+      A = vec4f_movelh(_L1, _L2);
+      B = vec4f_movehl(_L2, _L1);
+      C = vec4f_movelh(_L3, _L4);
+      D = vec4f_movehl(_L4, _L3);
     }
 
     Packet4f AB, DC;
@@ -120,7 +118,7 @@ struct compute_inverse_size4<Architecture::Target, float, MatrixType, ResultType
     Packet4f det = vec4f_duplane(psub(padd(d1, d2), d), 0);
 
     // reciprocal of the determinant of the input matrix, rd = 1/det
-    Packet4f rd = preciprocal(det);
+    Packet4f rd = pdiv(pset1<Packet4f>(1.0f), det);
 
     // Four sub-matrices of the inverse
     Packet4f iA, iB, iC, iD;
@@ -175,9 +173,9 @@ struct compute_inverse_size4<Architecture::Target, double, MatrixType, ResultTyp
     ResultAlignment = traits<ResultType>::Alignment,
     StorageOrdersMatch = (MatrixType::Flags & RowMajorBit) == (ResultType::Flags & RowMajorBit)
   };
-  typedef std::conditional_t<(MatrixType::Flags & LinearAccessBit),
-                         MatrixType const &,
-                         typename MatrixType::PlainObject>
+  typedef typename conditional<(MatrixType::Flags & LinearAccessBit),
+                               MatrixType const &,
+                               typename MatrixType::PlainObject>::type
       ActualMatrixType;
 
   static void run(const MatrixType &mat, ResultType &result)

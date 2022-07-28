@@ -10,8 +10,6 @@
 #ifndef EIGEN_COMPLEX_SSE_H
 #define EIGEN_COMPLEX_SSE_H
 
-#include "../../InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -137,9 +135,17 @@ template<> EIGEN_STRONG_INLINE void prefetch<std::complex<float> >(const std::co
 
 template<> EIGEN_STRONG_INLINE std::complex<float>  pfirst<Packet2cf>(const Packet2cf& a)
 {
-  alignas(alignof(__m64)) std::complex<float> res;
+  #if EIGEN_GNUC_AT_MOST(4,3)
+  // Workaround gcc 4.2 ICE - this is not performance wise ideal, but who cares...
+  // This workaround also fix invalid code generation with gcc 4.3
+  EIGEN_ALIGN16 std::complex<float> res[2];
+  _mm_store_ps((float*)res, a.v);
+  return res[0];
+  #else
+  std::complex<float> res;
   _mm_storel_pi((__m64*)&res, a.v);
   return res;
+  #endif
 }
 
 template<> EIGEN_STRONG_INLINE Packet2cf preverse(const Packet2cf& a) { return Packet2cf(_mm_castpd_ps(preverse(Packet2d(_mm_castps_pd(a.v))))); }
@@ -163,8 +169,13 @@ EIGEN_MAKE_CONJ_HELPER_CPLX_REAL(Packet2cf,Packet4f)
 
 template<> EIGEN_STRONG_INLINE Packet2cf pdiv<Packet2cf>(const Packet2cf& a, const Packet2cf& b)
 {
-  return pdiv_complex(a, b);
+  // TODO optimize it for SSE3 and 4
+  Packet2cf res = pmul(a, pconj(b));
+  __m128 s = _mm_mul_ps(b.v,b.v);
+  return Packet2cf(_mm_div_ps(res.v,_mm_add_ps(s,vec4f_swizzle1(s, 1, 0, 3, 2))));
 }
+
+
 
 //---------- double ----------
 struct Packet1cd
@@ -283,7 +294,10 @@ EIGEN_MAKE_CONJ_HELPER_CPLX_REAL(Packet1cd,Packet2d)
 
 template<> EIGEN_STRONG_INLINE Packet1cd pdiv<Packet1cd>(const Packet1cd& a, const Packet1cd& b)
 {
-  return pdiv_complex(a, b);
+  // TODO optimize it for SSE3 and 4
+  Packet1cd res = pmul(a,pconj(b));
+  __m128d s = _mm_mul_pd(b.v,b.v);
+  return Packet1cd(_mm_div_pd(res.v, _mm_add_pd(s,_mm_shuffle_pd(s, s, 0x1))));
 }
 
 EIGEN_STRONG_INLINE Packet1cd pcplxflip/* <Packet1cd> */(const Packet1cd& x)

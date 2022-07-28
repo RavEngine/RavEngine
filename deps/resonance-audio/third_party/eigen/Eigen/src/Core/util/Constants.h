@@ -12,8 +12,6 @@
 #ifndef EIGEN_CONSTANTS_H
 #define EIGEN_CONSTANTS_H
 
-#include "../InternalHeaderCheck.h"
-
 namespace Eigen {
 
 /** This value means that a positive quantity (e.g., a size) is not known at compile-time, and that instead the value is
@@ -314,7 +312,7 @@ enum SpecializedType {
 };
 
 /** \ingroup enums
-  * Enum containing possible values for the \p Options_ template parameter of
+  * Enum containing possible values for the \p _Options template parameter of
   * Matrix, Array and BandMatrix. */
 enum StorageOptions {
   /** Storage order is column major (see \ref TopicStorageOrders). */
@@ -423,14 +421,14 @@ enum DecompositionOptions {
 /** \ingroup enums
   * Possible values for the \p QRPreconditioner template parameter of JacobiSVD. */
 enum QRPreconditioners {
-  /** Use a QR decomposition with column pivoting as the first step. */
-  ColPivHouseholderQRPreconditioner = 0x0,
   /** Do not specify what is to be done if the SVD of a non-square matrix is asked for. */
-  NoQRPreconditioner = 0x40,
+  NoQRPreconditioner,
   /** Use a QR decomposition without pivoting as the first step. */
-  HouseholderQRPreconditioner = 0x80,
+  HouseholderQRPreconditioner,
+  /** Use a QR decomposition with column pivoting as the first step. */
+  ColPivHouseholderQRPreconditioner,
   /** Use a QR decomposition with full pivoting as the first step. */
-  FullPivHouseholderQRPreconditioner = 0xC0
+  FullPivHouseholderQRPreconditioner
 };
 
 #ifdef Success

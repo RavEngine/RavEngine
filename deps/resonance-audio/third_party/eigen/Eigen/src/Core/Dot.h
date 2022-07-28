@@ -10,8 +10,6 @@
 #ifndef EIGEN_DOT_H
 #define EIGEN_DOT_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen { 
 
 namespace internal {
@@ -20,9 +18,14 @@ namespace internal {
 // with mismatched types, the compiler emits errors about failing to instantiate cwiseProduct BEFORE
 // looking at the static assertions. Thus this is a trick to get better compile errors.
 template<typename T, typename U,
-         bool NeedToTranspose = T::IsVectorAtCompileTime && U::IsVectorAtCompileTime &&
-                ((int(T::RowsAtCompileTime) == 1 && int(U::ColsAtCompileTime) == 1) ||
-                 (int(T::ColsAtCompileTime) == 1 && int(U::RowsAtCompileTime) == 1))>
+// the NeedToTranspose condition here is taken straight from Assign.h
+         bool NeedToTranspose = T::IsVectorAtCompileTime
+                && U::IsVectorAtCompileTime
+                && ((int(T::RowsAtCompileTime) == 1 && int(U::ColsAtCompileTime) == 1)
+                      |  // FIXME | instead of || to please GCC 4.4.0 stupid warning "suggest parentheses around &&".
+                         // revert to || as soon as not needed anymore.
+                    (int(T::ColsAtCompileTime) == 1 && int(U::RowsAtCompileTime) == 1))
+>
 struct dot_nocheck
 {
   typedef scalar_conj_product_op<typename traits<T>::Scalar,typename traits<U>::Scalar> conj_prod;
@@ -120,8 +123,8 @@ template<typename Derived>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const typename MatrixBase<Derived>::PlainObject
 MatrixBase<Derived>::normalized() const
 {
-  typedef typename internal::nested_eval<Derived,2>::type Nested_;
-  Nested_ n(derived());
+  typedef typename internal::nested_eval<Derived,2>::type _Nested;
+  _Nested n(derived());
   RealScalar z = n.squaredNorm();
   // NOTE: after extensive benchmarking, this conditional does not impact performance, at least on recent x86 CPU
   if(z>RealScalar(0))
@@ -163,8 +166,8 @@ template<typename Derived>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const typename MatrixBase<Derived>::PlainObject
 MatrixBase<Derived>::stableNormalized() const
 {
-  typedef typename internal::nested_eval<Derived,3>::type Nested_;
-  Nested_ n(derived());
+  typedef typename internal::nested_eval<Derived,3>::type _Nested;
+  _Nested n(derived());
   RealScalar w = n.cwiseAbs().maxCoeff();
   RealScalar z = (n/w).squaredNorm();
   if(z>RealScalar(0))

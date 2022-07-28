@@ -431,7 +431,8 @@ extern "C" LOADER_EXPORT XRAPI_ATTR XrResult XRAPI_CALL xrBeginFrame(
     LoaderInstance* loader_instance;
     XrResult result = ActiveLoaderInstance::Get(&loader_instance, "xrBeginFrame");
     if (XR_SUCCEEDED(result)) {
-        result = loader_instance->DispatchTable()->BeginFrame(session, frameBeginInfo);
+        auto& table = loader_instance->DispatchTable();
+        result = table->BeginFrame(session, frameBeginInfo);
     }
     return result;
 }

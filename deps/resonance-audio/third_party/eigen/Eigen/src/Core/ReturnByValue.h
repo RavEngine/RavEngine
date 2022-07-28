@@ -11,8 +11,6 @@
 #ifndef EIGEN_RETURNBYVALUE_H
 #define EIGEN_RETURNBYVALUE_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -106,7 +104,7 @@ struct evaluator<ReturnByValue<Derived> >
   EIGEN_DEVICE_FUNC explicit evaluator(const XprType& xpr)
     : m_result(xpr.rows(), xpr.cols())
   {
-    internal::construct_at<Base>(this, m_result);
+    ::new (static_cast<Base*>(this)) Base(m_result);
     xpr.evalTo(m_result);
   }
 

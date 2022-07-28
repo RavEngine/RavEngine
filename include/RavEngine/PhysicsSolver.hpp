@@ -14,6 +14,7 @@
 #include <PxPhysicsAPI.h>
 #include <PxFiltering.h>
 #include <cstdint>
+#include "Types.hpp"
 
 struct FilterLayers {
     enum Enum {
@@ -73,18 +74,17 @@ namespace RavEngine {
         //scene query methods
         struct RaycastHit {
             RaycastHit() {}
-            //TODO: FIX
-            RaycastHit(const physx::PxRaycastBuffer& hit) /*: hitObject(((PhysicsBodyComponent*)hit.block.actor->userData)->GetOwner()),
+            RaycastHit(const physx::PxRaycastBuffer& hit) : hitObject(entity_t(hit.block.actor->userData)),
                 hasBlocking(hit.hasBlock),
                 hitPosition(vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z)),
                 hitNormal(vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z)),
-                hitDistance(hit.block.distance)*/{}
+                hitDistance(hit.block.distance){}
             
-            bool hasBlocking;
-            vector3 hitPosition;
-            vector3 hitNormal;
-            decimalType hitDistance;
-            Ref<Entity> hitObject;
+            bool hasBlocking{};
+            vector3 hitPosition{};
+            vector3 hitNormal{};
+            decimalType hitDistance{};
+            entity_t hitObject = INVALID_ENTITY;
         };
 
         /**

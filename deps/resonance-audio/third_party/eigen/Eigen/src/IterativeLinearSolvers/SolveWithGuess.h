@@ -10,8 +10,6 @@
 #ifndef EIGEN_SOLVEWITHGUESS_H
 #define EIGEN_SOLVEWITHGUESS_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 template<typename Decomposition, typename RhsType, typename GuessType> class SolveWithGuess;
@@ -85,7 +83,7 @@ struct evaluator<SolveWithGuess<Decomposition,RhsType, GuessType> >
   evaluator(const SolveType& solve)
     : m_result(solve.rows(), solve.cols())
   {
-    internal::construct_at<Base>(this, m_result);
+    ::new (static_cast<Base*>(this)) Base(m_result);
     m_result = solve.guess();
     solve.dec()._solve_with_guess_impl(solve.rhs(), m_result);
   }

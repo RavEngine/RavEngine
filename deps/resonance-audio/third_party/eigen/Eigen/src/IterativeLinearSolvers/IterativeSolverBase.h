@@ -10,8 +10,6 @@
 #ifndef EIGEN_ITERATIVE_SOLVER_BASE_H
 #define EIGEN_ITERATIVE_SOLVER_BASE_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -42,7 +40,7 @@ public:
 template<typename MatrixType>
 struct is_ref_compatible
 {
-  enum { value = is_ref_compatible_impl<remove_all_t<MatrixType>>::value };
+  enum { value = is_ref_compatible_impl<typename remove_all<MatrixType>::type>::value };
 };
 
 template<typename MatrixType, bool MatrixFree = !internal::is_ref_compatible<MatrixType>::value>
@@ -79,16 +77,16 @@ public:
   template<typename MatrixDerived>
   void grab(const EigenBase<MatrixDerived> &mat)
   {
-    internal::destroy_at(&m_matrix);
-    internal::construct_at(&m_matrix, mat.derived());
+    m_matrix.~Ref<const MatrixType>();
+    ::new (&m_matrix) Ref<const MatrixType>(mat.derived());
   }
 
   void grab(const Ref<const MatrixType> &mat)
   {
     if(&(mat.derived()) != &m_matrix)
     {
-      internal::destroy_at(&m_matrix);
-      internal::construct_at(&m_matrix, mat);
+      m_matrix.~Ref<const MatrixType>();
+      ::new (&m_matrix) Ref<const MatrixType>(mat);
     }
   }
 
@@ -187,9 +185,6 @@ public:
     init();
     compute(matrix());
   }
-
-
-  IterativeSolverBase(IterativeSolverBase&&) = default;
 
   ~IterativeSolverBase() {}
 
@@ -300,7 +295,7 @@ public:
   /** \returns the number of iterations performed during the last solve */
   Index iterations() const
   {
-    eigen_assert(m_isInitialized && "IterativeSolverBase is not initialized.");
+    eigen_assert(m_isInitialized && "ConjugateGradient is not initialized.");
     return m_iterations;
   }
 
@@ -309,7 +304,7 @@ public:
     */
   RealScalar error() const
   {
-    eigen_assert(m_isInitialized && "IterativeSolverBase is not initialized.");
+    eigen_assert(m_isInitialized && "ConjugateGradient is not initialized.");
     return m_error;
   }
 
@@ -369,7 +364,7 @@ public:
   }
 
   template<typename Rhs, typename DestDerived>
-  std::enable_if_t<Rhs::ColsAtCompileTime!=1 && DestDerived::ColsAtCompileTime!=1>
+  typename internal::enable_if<Rhs::ColsAtCompileTime!=1 && DestDerived::ColsAtCompileTime!=1>::type
   _solve_with_guess_impl(const Rhs& b, MatrixBase<DestDerived> &aDest) const
   {
     eigen_assert(rows()==b.rows());
@@ -394,7 +389,7 @@ public:
   }
 
   template<typename Rhs, typename DestDerived>
-  std::enable_if_t<Rhs::ColsAtCompileTime==1 || DestDerived::ColsAtCompileTime==1>
+  typename internal::enable_if<Rhs::ColsAtCompileTime==1 || DestDerived::ColsAtCompileTime==1>::type
   _solve_with_guess_impl(const Rhs& b, MatrixBase<DestDerived> &dest) const
   {
     derived()._solve_vector_with_guess_impl(b,dest.derived());

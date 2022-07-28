@@ -11,8 +11,6 @@
 #ifndef EIGEN_JACOBI_H
 #define EIGEN_JACOBI_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 /** \ingroup Jacobi_Module
@@ -163,7 +161,7 @@ template<typename Scalar>
 EIGEN_DEVICE_FUNC
 void JacobiRotation<Scalar>::makeGivens(const Scalar& p, const Scalar& q, Scalar* r)
 {
-  makeGivens(p, q, r, std::conditional_t<NumTraits<Scalar>::IsComplex, internal::true_type, internal::false_type>());
+  makeGivens(p, q, r, typename internal::conditional<NumTraits<Scalar>::IsComplex, internal::true_type, internal::false_type>::type());
 }
 
 
@@ -234,13 +232,13 @@ void JacobiRotation<Scalar>::makeGivens(const Scalar& p, const Scalar& q, Scalar
 {
   using std::sqrt;
   using std::abs;
-  if(numext::is_exactly_zero(q))
+  if(q==Scalar(0))
   {
     m_c = p<Scalar(0) ? Scalar(-1) : Scalar(1);
     m_s = Scalar(0);
     if(r) *r = abs(p);
   }
-  else if(numext::is_exactly_zero(p))
+  else if(p==Scalar(0))
   {
     m_c = Scalar(0);
     m_s = q<Scalar(0) ? Scalar(1) : Scalar(-1);
@@ -468,13 +466,13 @@ void /*EIGEN_DONT_INLINE*/ apply_rotation_in_the_plane(DenseBase<VectorX>& xpr_x
 
   OtherScalar c = j.c();
   OtherScalar s = j.s();
-  if (numext::is_exactly_one(c) && numext::is_exactly_zero(s))
+  if (c==OtherScalar(1) && s==OtherScalar(0))
     return;
 
   apply_rotation_in_the_plane_selector<
     Scalar,OtherScalar,
     VectorX::SizeAtCompileTime,
-    plain_enum_min(evaluator<VectorX>::Alignment, evaluator<VectorY>::Alignment),
+    EIGEN_PLAIN_ENUM_MIN(evaluator<VectorX>::Alignment, evaluator<VectorY>::Alignment),
     Vectorizable>::run(x,incrx,y,incry,size,c,s);
 }
 

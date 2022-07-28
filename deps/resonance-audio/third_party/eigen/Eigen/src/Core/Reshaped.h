@@ -11,8 +11,6 @@
 #ifndef EIGEN_RESHAPED_H
 #define EIGEN_RESHAPED_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 /** \class Reshaped
@@ -29,9 +27,10 @@ namespace Eigen {
   * It is the return type of DenseBase::reshaped(NRowsType,NColsType) and
   * most of the time this is the only way it is used.
   *
-  * If you want to directly manipulate reshaped expressions,
-  * for instance if you want to write a function returning such an expression,
-  * it is advised to use the \em auto keyword for such use cases.
+  * However, in C++98, if you want to directly maniputate reshaped expressions,
+  * for instance if you want to write a function returning such an expression, you
+  * will need to use this class. In C++11, it is advised to use the \em auto
+  * keyword for such use cases.
   *
   * Here is an example illustrating the dynamic case:
   * \include class_Reshaped.cpp
@@ -157,7 +156,7 @@ class ReshapedImpl_dense<XprType,Rows,Cols,Order,false>
     EIGEN_INHERIT_ASSIGNMENT_OPERATORS(ReshapedImpl_dense)
 
     typedef typename internal::ref_selector<XprType>::non_const_type MatrixTypeNested;
-    typedef internal::remove_all_t<XprType> NestedExpression;
+    typedef typename internal::remove_all<XprType>::type NestedExpression;
 
     class InnerIterator;
 
@@ -187,12 +186,12 @@ class ReshapedImpl_dense<XprType,Rows,Cols,Order,false>
 
     /** \returns the nested expression */
     EIGEN_DEVICE_FUNC
-    const internal::remove_all_t<XprType>&
+    const typename internal::remove_all<XprType>::type&
     nestedExpression() const { return m_xpr; }
 
     /** \returns the nested expression */
     EIGEN_DEVICE_FUNC
-    std::remove_reference_t<XprType>&
+    typename internal::remove_reference<XprType>::type&
     nestedExpression() { return m_xpr; }
 
   protected:
@@ -232,7 +231,7 @@ class ReshapedImpl_dense<XprType, Rows, Cols, Order, true>
     {}
 
     EIGEN_DEVICE_FUNC
-    const internal::remove_all_t<XprTypeNested>& nestedExpression() const
+    const typename internal::remove_all<XprTypeNested>::type& nestedExpression() const
     {
       return m_xpr;
     }
@@ -444,7 +443,7 @@ struct reshaped_evaluator<ArgType, Rows, Cols, Order, /* HasDirectAccess */ true
     : mapbase_evaluator<XprType, typename XprType::PlainObject>(xpr)
   {
     // TODO: for the 3.4 release, this should be turned to an internal assertion, but let's keep it as is for the beta lifetime
-    eigen_assert(((internal::UIntPtr(xpr.data()) % plain_enum_max(1, evaluator<XprType>::Alignment)) == 0) && "data is not aligned");
+    eigen_assert(((internal::UIntPtr(xpr.data()) % EIGEN_PLAIN_ENUM_MAX(1,evaluator<XprType>::Alignment)) == 0) && "data is not aligned");
   }
 };
 

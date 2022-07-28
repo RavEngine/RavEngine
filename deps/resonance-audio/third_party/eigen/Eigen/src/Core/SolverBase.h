@@ -10,8 +10,6 @@
 #ifndef EIGEN_SOLVERBASE_H
 #define EIGEN_SOLVERBASE_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -30,7 +28,7 @@ struct solve_assertion<Transpose<Derived> >
     template<bool Transpose_, typename Rhs>
     static void run(const type& transpose, const Rhs& b)
     {
-        internal::solve_assertion<internal::remove_all_t<Derived>>::template run<true>(transpose.nestedExpression(), b);
+        internal::solve_assertion<typename internal::remove_all<Derived>::type>::template run<true>(transpose.nestedExpression(), b);
     }
 };
 
@@ -42,7 +40,7 @@ struct solve_assertion<CwiseUnaryOp<Eigen::internal::scalar_conjugate_op<Scalar>
     template<bool Transpose_, typename Rhs>
     static void run(const type& adjoint, const Rhs& b)
     {
-        internal::solve_assertion<internal::remove_all_t<Transpose<Derived> >>::template run<true>(adjoint.nestedExpression(), b);
+        internal::solve_assertion<typename internal::remove_all<Transpose<Derived> >::type>::template run<true>(adjoint.nestedExpression(), b);
     }
 };
 } // end namespace internal
@@ -81,11 +79,12 @@ class SolverBase : public EigenBase<Derived>
     enum {
       RowsAtCompileTime = internal::traits<Derived>::RowsAtCompileTime,
       ColsAtCompileTime = internal::traits<Derived>::ColsAtCompileTime,
-      SizeAtCompileTime = (internal::size_of_xpr_at_compile_time<Derived>::ret),
+      SizeAtCompileTime = (internal::size_at_compile_time<internal::traits<Derived>::RowsAtCompileTime,
+                                                          internal::traits<Derived>::ColsAtCompileTime>::ret),
       MaxRowsAtCompileTime = internal::traits<Derived>::MaxRowsAtCompileTime,
       MaxColsAtCompileTime = internal::traits<Derived>::MaxColsAtCompileTime,
-      MaxSizeAtCompileTime = internal::size_at_compile_time(internal::traits<Derived>::MaxRowsAtCompileTime,
-                                                            internal::traits<Derived>::MaxColsAtCompileTime),
+      MaxSizeAtCompileTime = (internal::size_at_compile_time<internal::traits<Derived>::MaxRowsAtCompileTime,
+                                                             internal::traits<Derived>::MaxColsAtCompileTime>::ret),
       IsVectorAtCompileTime = internal::traits<Derived>::MaxRowsAtCompileTime == 1
                            || internal::traits<Derived>::MaxColsAtCompileTime == 1,
       NumDimensions = int(MaxSizeAtCompileTime) == 1 ? 0 : bool(IsVectorAtCompileTime) ? 1 : 2
@@ -106,12 +105,12 @@ class SolverBase : public EigenBase<Derived>
     inline const Solve<Derived, Rhs>
     solve(const MatrixBase<Rhs>& b) const
     {
-      internal::solve_assertion<internal::remove_all_t<Derived>>::template run<false>(derived(), b);
+      internal::solve_assertion<typename internal::remove_all<Derived>::type>::template run<false>(derived(), b);
       return Solve<Derived, Rhs>(derived(), b.derived());
     }
 
     /** \internal the return type of transpose() */
-    typedef std::add_const_t<Transpose<const Derived> > ConstTransposeReturnType;
+    typedef typename internal::add_const<Transpose<const Derived> >::type ConstTransposeReturnType;
     /** \returns an expression of the transposed of the factored matrix.
       *
       * A typical usage is to solve for the transposed problem A^T x = b:
@@ -125,10 +124,10 @@ class SolverBase : public EigenBase<Derived>
     }
 
     /** \internal the return type of adjoint() */
-    typedef std::conditional_t<NumTraits<Scalar>::IsComplex,
-               CwiseUnaryOp<internal::scalar_conjugate_op<Scalar>, ConstTransposeReturnType>,
-               ConstTransposeReturnType
-            > AdjointReturnType;
+    typedef typename internal::conditional<NumTraits<Scalar>::IsComplex,
+                        CwiseUnaryOp<internal::scalar_conjugate_op<Scalar>, ConstTransposeReturnType>,
+                        ConstTransposeReturnType
+                     >::type AdjointReturnType;
     /** \returns an expression of the adjoint of the factored matrix
       *
       * A typical usage is to solve for the adjoint problem A' x = b:

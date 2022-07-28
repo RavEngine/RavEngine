@@ -30,7 +30,7 @@ operator/(const EIGEN_CURRENT_STORAGE_BASE_CLASS<OtherDerived> &other) const
   *
   * \sa max()
   */
-template <int NaNPropagation=PropagateFast, typename OtherDerived>
+template <int NaNPropagation, typename OtherDerived>
 EIGEN_DEVICE_FUNC
 EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_min_op<Scalar,Scalar,NaNPropagation>, const Derived, const OtherDerived>
 #ifdef EIGEN_PARSED_BY_DOXYGEN
@@ -43,11 +43,24 @@ min
   return CwiseBinaryOp<internal::scalar_min_op<Scalar,Scalar,NaNPropagation>, const Derived, const OtherDerived>(derived(), other.derived());
 }
 
+template <typename OtherDerived>
+EIGEN_DEVICE_FUNC
+EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_min_op<Scalar,Scalar,PropagateFast>, const Derived, const OtherDerived>
+#ifdef EIGEN_PARSED_BY_DOXYGEN
+min
+#else
+(min)
+#endif
+(const OtherDerived &other) const
+{
+  return (min<PropagateFast>)(other);
+}
+
 /** \returns an expression of the coefficient-wise min of \c *this and scalar \a other
   *
   * \sa max()
   */
-template <int NaNPropagation=PropagateFast>
+template <int NaNPropagation>
 EIGEN_DEVICE_FUNC
 EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_min_op<Scalar,Scalar,NaNPropagation>, const Derived,
     const CwiseNullaryOp<internal::scalar_constant_op<Scalar>, PlainObject> >
@@ -61,6 +74,19 @@ min
   return (min<NaNPropagation>)(Derived::PlainObject::Constant(rows(), cols(), other));
 }
 
+EIGEN_DEVICE_FUNC
+    EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_min_op<Scalar,Scalar,PropagateFast>, const Derived,
+    const CwiseNullaryOp<internal::scalar_constant_op<Scalar>, PlainObject> >
+#ifdef EIGEN_PARSED_BY_DOXYGEN
+min
+#else
+(min)
+#endif
+(const Scalar &other) const
+{
+  return (min<PropagateFast>)(Derived::PlainObject::Constant(rows(), cols(), other));
+}
+
 /** \returns an expression of the coefficient-wise max of \c *this and \a other
   *
   * Example: \include Cwise_max.cpp
@@ -68,7 +94,7 @@ min
   *
   * \sa min()
   */
-template <int NaNPropagation=PropagateFast, typename OtherDerived>
+template <int NaNPropagation, typename OtherDerived>
 EIGEN_DEVICE_FUNC
 EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_max_op<Scalar,Scalar,NaNPropagation>, const Derived, const OtherDerived>
 #ifdef EIGEN_PARSED_BY_DOXYGEN
@@ -81,13 +107,26 @@ max
   return CwiseBinaryOp<internal::scalar_max_op<Scalar,Scalar,NaNPropagation>, const Derived, const OtherDerived>(derived(), other.derived());
 }
 
+template <typename OtherDerived>
+EIGEN_DEVICE_FUNC
+EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_max_op<Scalar,Scalar,PropagateFast>, const Derived, const OtherDerived>
+#ifdef EIGEN_PARSED_BY_DOXYGEN
+max
+#else
+(max)
+#endif
+(const OtherDerived &other) const
+{
+  return (max<PropagateFast>)(other);
+}
+
 /** \returns an expression of the coefficient-wise max of \c *this and scalar \a other
   *
   * \sa min()
   */
-template <int NaNPropagation=PropagateFast>
+template <int NaNPropagation>
 EIGEN_DEVICE_FUNC
-    EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_max_op<Scalar,Scalar,NaNPropagation>, const Derived,
+EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_max_op<Scalar,Scalar,NaNPropagation>, const Derived,
                                         const CwiseNullaryOp<internal::scalar_constant_op<Scalar>, PlainObject> >
 #ifdef EIGEN_PARSED_BY_DOXYGEN
 max
@@ -97,6 +136,19 @@ max
 (const Scalar &other) const
 {
   return (max<NaNPropagation>)(Derived::PlainObject::Constant(rows(), cols(), other));
+}
+
+EIGEN_DEVICE_FUNC
+EIGEN_STRONG_INLINE const CwiseBinaryOp<internal::scalar_max_op<Scalar,Scalar,PropagateFast>, const Derived,
+                                        const CwiseNullaryOp<internal::scalar_constant_op<Scalar>, PlainObject> >
+#ifdef EIGEN_PARSED_BY_DOXYGEN
+max
+#else
+(max)
+#endif
+(const Scalar &other) const
+{
+  return (max<PropagateFast>)(Derived::PlainObject::Constant(rows(), cols(), other));
 }
 
 /** \returns an expression of the coefficient-wise absdiff of \c *this and \a other

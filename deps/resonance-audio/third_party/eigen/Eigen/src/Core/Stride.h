@@ -10,8 +10,6 @@
 #ifndef EIGEN_STRIDE_H
 #define EIGEN_STRIDE_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 /** \class Stride
@@ -33,8 +31,8 @@ namespace Eigen {
   * arguments to the constructor.
   *
   * Indeed, this class takes two template parameters:
-  *  \tparam OuterStrideAtCompileTime_ the outer stride, or Dynamic if you want to specify it at runtime.
-  *  \tparam InnerStrideAtCompileTime_ the inner stride, or Dynamic if you want to specify it at runtime.
+  *  \tparam _OuterStrideAtCompileTime the outer stride, or Dynamic if you want to specify it at runtime.
+  *  \tparam _InnerStrideAtCompileTime the inner stride, or Dynamic if you want to specify it at runtime.
   *
   * Here is an example:
   * \include Map_general_stride.cpp
@@ -50,14 +48,14 @@ namespace Eigen {
   *
   * \sa class InnerStride, class OuterStride, \ref TopicStorageOrders
   */
-template<int OuterStrideAtCompileTime_, int InnerStrideAtCompileTime_>
+template<int _OuterStrideAtCompileTime, int _InnerStrideAtCompileTime>
 class Stride
 {
   public:
     typedef Eigen::Index Index; ///< \deprecated since Eigen 3.3
     enum {
-      InnerStrideAtCompileTime = InnerStrideAtCompileTime_,
-      OuterStrideAtCompileTime = OuterStrideAtCompileTime_
+      InnerStrideAtCompileTime = _InnerStrideAtCompileTime,
+      OuterStrideAtCompileTime = _OuterStrideAtCompileTime
     };
 
     /** Default constructor, for use when strides are fixed at compile time */

@@ -10,8 +10,6 @@
 #ifndef EIGEN_REPLICATE_H
 #define EIGEN_REPLICATE_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -23,7 +21,7 @@ struct traits<Replicate<MatrixType,RowFactor,ColFactor> >
   typedef typename traits<MatrixType>::StorageKind StorageKind;
   typedef typename traits<MatrixType>::XprKind XprKind;
   typedef typename ref_selector<MatrixType>::type MatrixTypeNested;
-  typedef std::remove_reference_t<MatrixTypeNested> MatrixTypeNested_;
+  typedef typename remove_reference<MatrixTypeNested>::type _MatrixTypeNested;
   enum {
     RowsAtCompileTime = RowFactor==Dynamic || int(MatrixType::RowsAtCompileTime)==Dynamic
                       ? Dynamic
@@ -64,19 +62,19 @@ template<typename MatrixType,int RowFactor,int ColFactor> class Replicate
   : public internal::dense_xpr_base< Replicate<MatrixType,RowFactor,ColFactor> >::type
 {
     typedef typename internal::traits<Replicate>::MatrixTypeNested MatrixTypeNested;
-    typedef typename internal::traits<Replicate>::MatrixTypeNested_ MatrixTypeNested_;
+    typedef typename internal::traits<Replicate>::_MatrixTypeNested _MatrixTypeNested;
   public:
 
     typedef typename internal::dense_xpr_base<Replicate>::type Base;
     EIGEN_DENSE_PUBLIC_INTERFACE(Replicate)
-    typedef internal::remove_all_t<MatrixType> NestedExpression;
+    typedef typename internal::remove_all<MatrixType>::type NestedExpression;
 
     template<typename OriginalMatrixType>
     EIGEN_DEVICE_FUNC
     inline explicit Replicate(const OriginalMatrixType& matrix)
       : m_matrix(matrix), m_rowFactor(RowFactor), m_colFactor(ColFactor)
     {
-      EIGEN_STATIC_ASSERT((internal::is_same<std::remove_const_t<MatrixType>,OriginalMatrixType>::value),
+      EIGEN_STATIC_ASSERT((internal::is_same<typename internal::remove_const<MatrixType>::type,OriginalMatrixType>::value),
                           THE_MATRIX_OR_EXPRESSION_THAT_YOU_PASSED_DOES_NOT_HAVE_THE_EXPECTED_TYPE)
       eigen_assert(RowFactor!=Dynamic && ColFactor!=Dynamic);
     }
@@ -86,7 +84,7 @@ template<typename MatrixType,int RowFactor,int ColFactor> class Replicate
     inline Replicate(const OriginalMatrixType& matrix, Index rowFactor, Index colFactor)
       : m_matrix(matrix), m_rowFactor(rowFactor), m_colFactor(colFactor)
     {
-      EIGEN_STATIC_ASSERT((internal::is_same<std::remove_const_t<MatrixType>,OriginalMatrixType>::value),
+      EIGEN_STATIC_ASSERT((internal::is_same<typename internal::remove_const<MatrixType>::type,OriginalMatrixType>::value),
                           THE_MATRIX_OR_EXPRESSION_THAT_YOU_PASSED_DOES_NOT_HAVE_THE_EXPECTED_TYPE)
     }
 
@@ -96,7 +94,7 @@ template<typename MatrixType,int RowFactor,int ColFactor> class Replicate
     inline Index cols() const { return m_matrix.cols() * m_colFactor.value(); }
 
     EIGEN_DEVICE_FUNC
-    const MatrixTypeNested_& nestedExpression() const
+    const _MatrixTypeNested& nestedExpression() const
     {
       return m_matrix;
     }

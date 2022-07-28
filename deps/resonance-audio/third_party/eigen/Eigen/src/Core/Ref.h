@@ -10,22 +10,20 @@
 #ifndef EIGEN_REF_H
 #define EIGEN_REF_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
 
-template<typename PlainObjectType_, int Options_, typename StrideType_>
-struct traits<Ref<PlainObjectType_, Options_, StrideType_> >
-  : public traits<Map<PlainObjectType_, Options_, StrideType_> >
+template<typename _PlainObjectType, int _Options, typename _StrideType>
+struct traits<Ref<_PlainObjectType, _Options, _StrideType> >
+  : public traits<Map<_PlainObjectType, _Options, _StrideType> >
 {
-  typedef PlainObjectType_ PlainObjectType;
-  typedef StrideType_ StrideType;
+  typedef _PlainObjectType PlainObjectType;
+  typedef _StrideType StrideType;
   enum {
-    Options = Options_,
-    Flags = traits<Map<PlainObjectType_, Options_, StrideType_> >::Flags | NestByRefBit,
-    Alignment = traits<Map<PlainObjectType_, Options_, StrideType_> >::Alignment
+    Options = _Options,
+    Flags = traits<Map<_PlainObjectType, _Options, _StrideType> >::Flags | NestByRefBit,
+    Alignment = traits<Map<_PlainObjectType, _Options, _StrideType> >::Alignment
   };
 
   template<typename Derived> struct match {
@@ -48,7 +46,7 @@ struct traits<Ref<PlainObjectType_, Options_, StrideType_> >
       ScalarTypeMatch = internal::is_same<typename PlainObjectType::Scalar, typename Derived::Scalar>::value,
       MatchAtCompileTime = HasDirectAccess && StorageOrderMatch && InnerStrideMatch && OuterStrideMatch && AlignmentMatch && ScalarTypeMatch
     };
-    typedef std::conditional_t<MatchAtCompileTime,internal::true_type,internal::false_type> type;
+    typedef typename internal::conditional<MatchAtCompileTime,internal::true_type,internal::false_type>::type type;
   };
 
 };
@@ -199,8 +197,8 @@ protected:
       return false;
     }
 
-    internal::construct_at<Base>(this, expr.data(), rows, cols);
-    internal::construct_at(&m_stride,
+    ::new (static_cast<Base*>(this)) Base(expr.data(), rows, cols);
+    ::new (&m_stride) StrideBase(
       (StrideType::OuterStrideAtCompileTime == 0) ? 0 : outer_stride,
       (StrideType::InnerStrideAtCompileTime == 0) ? 0 : inner_stride );
     return true;
@@ -287,7 +285,7 @@ template<typename PlainObjectType, int Options, typename StrideType> class Ref
     typedef internal::traits<Ref> Traits;
     template<typename Derived>
     EIGEN_DEVICE_FUNC inline Ref(const PlainObjectBase<Derived>& expr,
-                                 std::enable_if_t<bool(Traits::template match<Derived>::MatchAtCompileTime),Derived>* = 0);
+                                 typename internal::enable_if<bool(Traits::template match<Derived>::MatchAtCompileTime),Derived>::type* = 0);
   public:
 
     typedef RefBase<Ref> Base;
@@ -297,17 +295,17 @@ template<typename PlainObjectType, int Options, typename StrideType> class Ref
     #ifndef EIGEN_PARSED_BY_DOXYGEN
     template<typename Derived>
     EIGEN_DEVICE_FUNC inline Ref(PlainObjectBase<Derived>& expr,
-                                 std::enable_if_t<bool(Traits::template match<Derived>::MatchAtCompileTime),Derived>* = 0)
+                                 typename internal::enable_if<bool(Traits::template match<Derived>::MatchAtCompileTime),Derived>::type* = 0)
     {
       EIGEN_STATIC_ASSERT(bool(Traits::template match<Derived>::MatchAtCompileTime), STORAGE_LAYOUT_DOES_NOT_MATCH);
-      // Construction must pass since we will not create temporary storage in the non-const case.
+      // Construction must pass since we will not create temprary storage in the non-const case.
       const bool success = Base::construct(expr.derived());
       EIGEN_UNUSED_VARIABLE(success)
       eigen_assert(success);
     }
     template<typename Derived>
     EIGEN_DEVICE_FUNC inline Ref(const DenseBase<Derived>& expr,
-                                 std::enable_if_t<bool(Traits::template match<Derived>::MatchAtCompileTime),Derived>* = 0)
+                                 typename internal::enable_if<bool(Traits::template match<Derived>::MatchAtCompileTime),Derived>::type* = 0)
     #else
     /** Implicit constructor from any dense expression */
     template<typename Derived>
@@ -339,7 +337,7 @@ template<typename TPlainObjectType, int Options, typename StrideType> class Ref<
 
     template<typename Derived>
     EIGEN_DEVICE_FUNC inline Ref(const DenseBase<Derived>& expr,
-                                 std::enable_if_t<bool(Traits::template match<Derived>::ScalarTypeMatch),Derived>* = 0)
+                                 typename internal::enable_if<bool(Traits::template match<Derived>::ScalarTypeMatch),Derived>::type* = 0)
     {
 //      std::cout << match_helper<Derived>::HasDirectAccess << "," << match_helper<Derived>::OuterStrideMatch << "," << match_helper<Derived>::InnerStrideMatch << "\n";
 //      std::cout << int(StrideType::OuterStrideAtCompileTime) << " - " << int(Derived::OuterStrideAtCompileTime) << "\n";

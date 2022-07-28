@@ -13,6 +13,6 @@
 #define REAL_SCALAR_SUFFIX s
 #define ISCOMPLEX     1
 
-#include "cholesky.inc"
-#include "lu.inc"
-#include "svd.inc"
+#include "cholesky.cpp"
+#include "lu.cpp"
+#include "svd.cpp"

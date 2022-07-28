@@ -10,8 +10,6 @@
 #ifndef EIGEN_INVERSE_H
 #define EIGEN_INVERSE_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 template<typename XprType,typename StorageKind> class InverseImpl;
@@ -48,9 +46,9 @@ public:
   typedef typename XprType::StorageIndex StorageIndex;
   typedef typename XprType::Scalar                            Scalar;
   typedef typename internal::ref_selector<XprType>::type      XprTypeNested;
-  typedef internal::remove_all_t<XprTypeNested>  XprTypeNestedCleaned;
+  typedef typename internal::remove_all<XprTypeNested>::type  XprTypeNestedCleaned;
   typedef typename internal::ref_selector<Inverse>::type Nested;
-  typedef internal::remove_all_t<XprType> NestedExpression;
+  typedef typename internal::remove_all<XprType>::type NestedExpression;
 
   explicit EIGEN_DEVICE_FUNC Inverse(const XprType &xpr)
     : m_xpr(xpr)
@@ -104,7 +102,7 @@ struct unary_evaluator<Inverse<ArgType> >
   unary_evaluator(const InverseType& inv_xpr)
     : m_result(inv_xpr.rows(), inv_xpr.cols())
   {
-    internal::construct_at<Base>(this, m_result);
+    ::new (static_cast<Base*>(this)) Base(m_result);
     internal::call_assignment_no_alias(m_result, inv_xpr);
   }
 

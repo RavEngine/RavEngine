@@ -71,17 +71,24 @@ namespace RavEngine {
         
         /**
          Project a screen point to a worldspace coordinate
-         @param x x pos of point in [0,1]] space
-         @param y y pos of point in [0,1] space
-         @param z depth of the point from the camera
+         @param point in pixel coordinates
          @return vector3 representing world-space projected point
          */
-        inline vector3 ScreenPointToWorldPoint(float x, float y, float z) const{
+        inline vector3 ScreenPointToWorldPoint(const vector3& point) const{
             auto projmat = GenerateProjectionMatrix();
             auto viewmat = GenerateViewMatrix();
             auto G = glm::inverse(projmat * viewmat);
-            return glm::unProject(vector3(x * width,y * height,z), G, projmat, vector4(0,0,width,height));
+            return glm::unProject(point, G, projmat, vector4(0,0,width,height));
         }
+
+		/**
+		 Project a screen point to a worldspace coordinate
+		 @param point in [0,1] space
+		 @return vector3 representing world-space projected point
+		 */
+		inline vector3 NormalizedScreenPointToWorldPoint(const vector3& point) const {
+			return ScreenPointToWorldPoint(vector3(point.x * width, point.y * height, point.z));
+		}
 		
 		//camera details
 		float FOV;

@@ -10,8 +10,6 @@
 #ifndef EIGEN_STLITERATORS_H
 #define EIGEN_STLITERATORS_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -27,7 +25,7 @@ protected:
   typedef typename traits::XprType XprType;
   typedef indexed_based_stl_iterator_base<typename traits::non_const_iterator> non_const_iterator;
   typedef indexed_based_stl_iterator_base<typename traits::const_iterator> const_iterator;
-  typedef std::conditional_t<internal::is_const<XprType>::value,non_const_iterator,const_iterator> other_iterator;
+  typedef typename internal::conditional<internal::is_const<XprType>::value,non_const_iterator,const_iterator>::type other_iterator;
   // NOTE: in C++03 we cannot declare friend classes through typedefs because we need to write friend class:
   friend class indexed_based_stl_iterator_base<typename traits::const_iterator>;
   friend class indexed_based_stl_iterator_base<typename traits::non_const_iterator>;
@@ -106,7 +104,7 @@ protected:
   typedef typename traits::XprType XprType;
   typedef indexed_based_stl_reverse_iterator_base<typename traits::non_const_iterator> non_const_iterator;
   typedef indexed_based_stl_reverse_iterator_base<typename traits::const_iterator> const_iterator;
-  typedef std::conditional_t<internal::is_const<XprType>::value,non_const_iterator,const_iterator> other_iterator;
+  typedef typename internal::conditional<internal::is_const<XprType>::value,non_const_iterator,const_iterator>::type other_iterator;
   // NOTE: in C++03 we cannot declare friend classes through typedefs because we need to write friend class:
   friend class indexed_based_stl_reverse_iterator_base<typename traits::const_iterator>;
   friend class indexed_based_stl_reverse_iterator_base<typename traits::non_const_iterator>;
@@ -181,18 +179,18 @@ template<typename XprType>
 class pointer_based_stl_iterator
 {
   enum { is_lvalue  = internal::is_lvalue<XprType>::value };
-  typedef pointer_based_stl_iterator<std::remove_const_t<XprType>> non_const_iterator;
-  typedef pointer_based_stl_iterator<std::add_const_t<XprType>> const_iterator;
-  typedef std::conditional_t<internal::is_const<XprType>::value,non_const_iterator,const_iterator> other_iterator;
+  typedef pointer_based_stl_iterator<typename internal::remove_const<XprType>::type> non_const_iterator;
+  typedef pointer_based_stl_iterator<typename internal::add_const<XprType>::type> const_iterator;
+  typedef typename internal::conditional<internal::is_const<XprType>::value,non_const_iterator,const_iterator>::type other_iterator;
   // NOTE: in C++03 we cannot declare friend classes through typedefs because we need to write friend class:
-  friend class pointer_based_stl_iterator<std::add_const_t<XprType>>;
-  friend class pointer_based_stl_iterator<std::remove_const_t<XprType>>;
+  friend class pointer_based_stl_iterator<typename internal::add_const<XprType>::type>;
+  friend class pointer_based_stl_iterator<typename internal::remove_const<XprType>::type>;
 public:
   typedef Index difference_type;
   typedef typename XprType::Scalar value_type;
   typedef std::random_access_iterator_tag iterator_category;
-  typedef std::conditional_t<bool(is_lvalue), value_type*, const value_type*> pointer;
-  typedef std::conditional_t<bool(is_lvalue), value_type&, const value_type&> reference;
+  typedef typename internal::conditional<bool(is_lvalue), value_type*, const value_type*>::type pointer;
+  typedef typename internal::conditional<bool(is_lvalue), value_type&, const value_type&>::type reference;
 
 
   pointer_based_stl_iterator() EIGEN_NO_THROW : m_ptr(0) {}
@@ -258,12 +256,12 @@ protected:
   internal::variable_if_dynamic<Index, XprType::InnerStrideAtCompileTime> m_incr;
 };
 
-template<typename XprType_>
-struct indexed_based_stl_iterator_traits<generic_randaccess_stl_iterator<XprType_> >
+template<typename _XprType>
+struct indexed_based_stl_iterator_traits<generic_randaccess_stl_iterator<_XprType> >
 {
-  typedef XprType_ XprType;
-  typedef generic_randaccess_stl_iterator<std::remove_const_t<XprType>> non_const_iterator;
-  typedef generic_randaccess_stl_iterator<std::add_const_t<XprType>> const_iterator;
+  typedef _XprType XprType;
+  typedef generic_randaccess_stl_iterator<typename internal::remove_const<XprType>::type> non_const_iterator;
+  typedef generic_randaccess_stl_iterator<typename internal::add_const<XprType>::type> const_iterator;
 };
 
 template<typename XprType>
@@ -285,13 +283,13 @@ protected:
 
   // TODO currently const Transpose/Reshape expressions never returns const references,
   // so lets return by value too.
-  //typedef std::conditional_t<bool(has_direct_access), const value_type&, const value_type> read_only_ref_t;
+  //typedef typename internal::conditional<bool(has_direct_access), const value_type&, const value_type>::type read_only_ref_t;
   typedef const value_type read_only_ref_t;
 
 public:
   
-  typedef std::conditional_t<bool(is_lvalue), value_type *, const value_type *> pointer;
-  typedef std::conditional_t<bool(is_lvalue), value_type&, read_only_ref_t> reference;
+  typedef typename internal::conditional<bool(is_lvalue), value_type *, const value_type *>::type pointer;
+  typedef typename internal::conditional<bool(is_lvalue), value_type&, read_only_ref_t>::type reference;
   
   generic_randaccess_stl_iterator() : Base() {}
   generic_randaccess_stl_iterator(XprType& xpr, Index index) : Base(xpr,index) {}
@@ -303,12 +301,12 @@ public:
   pointer   operator->()        const { return &((*mp_xpr)(m_index)); }
 };
 
-template<typename XprType_, DirectionType Direction>
-struct indexed_based_stl_iterator_traits<subvector_stl_iterator<XprType_,Direction> >
+template<typename _XprType, DirectionType Direction>
+struct indexed_based_stl_iterator_traits<subvector_stl_iterator<_XprType,Direction> >
 {
-  typedef XprType_ XprType;
-  typedef subvector_stl_iterator<std::remove_const_t<XprType>, Direction> non_const_iterator;
-  typedef subvector_stl_iterator<std::add_const_t<XprType>, Direction> const_iterator;
+  typedef _XprType XprType;
+  typedef subvector_stl_iterator<typename internal::remove_const<XprType>::type, Direction> non_const_iterator;
+  typedef subvector_stl_iterator<typename internal::add_const<XprType>::type, Direction> const_iterator;
 };
 
 template<typename XprType, DirectionType Direction>
@@ -322,12 +320,12 @@ protected:
   using Base::m_index;
   using Base::mp_xpr;
 
-  typedef std::conditional_t<Direction==Vertical,typename XprType::ColXpr,typename XprType::RowXpr> SubVectorType;
-  typedef std::conditional_t<Direction==Vertical,typename XprType::ConstColXpr,typename XprType::ConstRowXpr> ConstSubVectorType;
+  typedef typename internal::conditional<Direction==Vertical,typename XprType::ColXpr,typename XprType::RowXpr>::type SubVectorType;
+  typedef typename internal::conditional<Direction==Vertical,typename XprType::ConstColXpr,typename XprType::ConstRowXpr>::type ConstSubVectorType;
 
 
 public:
-  typedef std::conditional_t<bool(is_lvalue), SubVectorType, ConstSubVectorType> reference;
+  typedef typename internal::conditional<bool(is_lvalue), SubVectorType, ConstSubVectorType>::type reference;
   typedef typename reference::PlainObject value_type;
 
 private:
@@ -351,12 +349,12 @@ public:
   pointer   operator->()        const { return (*mp_xpr).template subVector<Direction>(m_index); }
 };
 
-template<typename XprType_, DirectionType Direction>
-struct indexed_based_stl_iterator_traits<subvector_stl_reverse_iterator<XprType_,Direction> >
+template<typename _XprType, DirectionType Direction>
+struct indexed_based_stl_iterator_traits<subvector_stl_reverse_iterator<_XprType,Direction> >
 {
-  typedef XprType_ XprType;
-  typedef subvector_stl_reverse_iterator<std::remove_const_t<XprType>, Direction> non_const_iterator;
-  typedef subvector_stl_reverse_iterator<std::add_const_t<XprType>, Direction> const_iterator;
+  typedef _XprType XprType;
+  typedef subvector_stl_reverse_iterator<typename internal::remove_const<XprType>::type, Direction> non_const_iterator;
+  typedef subvector_stl_reverse_iterator<typename internal::add_const<XprType>::type, Direction> const_iterator;
 };
 
 template<typename XprType, DirectionType Direction>
@@ -370,12 +368,12 @@ protected:
   using Base::m_index;
   using Base::mp_xpr;
 
-  typedef std::conditional_t<Direction==Vertical,typename XprType::ColXpr,typename XprType::RowXpr> SubVectorType;
-  typedef std::conditional_t<Direction==Vertical,typename XprType::ConstColXpr,typename XprType::ConstRowXpr> ConstSubVectorType;
+  typedef typename internal::conditional<Direction==Vertical,typename XprType::ColXpr,typename XprType::RowXpr>::type SubVectorType;
+  typedef typename internal::conditional<Direction==Vertical,typename XprType::ConstColXpr,typename XprType::ConstRowXpr>::type ConstSubVectorType;
 
 
 public:
-  typedef std::conditional_t<bool(is_lvalue), SubVectorType, ConstSubVectorType> reference;
+  typedef typename internal::conditional<bool(is_lvalue), SubVectorType, ConstSubVectorType>::type reference;
   typedef typename reference::PlainObject value_type;
 
 private:

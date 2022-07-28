@@ -10,8 +10,6 @@
 #ifndef EIGEN_SPARSEPRODUCT_H
 #define EIGEN_SPARSEPRODUCT_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen { 
 
 /** \returns an expression of the product of two sparse matrices.
@@ -47,19 +45,19 @@ struct generic_product_impl<Lhs, Rhs, SparseShape, SparseShape, ProductType>
 
   // dense += sparse * sparse
   template<typename Dest,typename ActualLhs>
-  static void addTo(Dest& dst, const ActualLhs& lhs, const Rhs& rhs, std::enable_if_t<is_same<typename evaluator_traits<Dest>::Shape,DenseShape>::value,int*>* = 0)
+  static void addTo(Dest& dst, const ActualLhs& lhs, const Rhs& rhs, typename enable_if<is_same<typename evaluator_traits<Dest>::Shape,DenseShape>::value,int*>::type* = 0)
   {
     typedef typename nested_eval<ActualLhs,Dynamic>::type LhsNested;
     typedef typename nested_eval<Rhs,Dynamic>::type RhsNested;
     LhsNested lhsNested(lhs);
     RhsNested rhsNested(rhs);
-    internal::sparse_sparse_to_dense_product_selector<remove_all_t<LhsNested>,
-                                                      remove_all_t<RhsNested>, Dest>::run(lhsNested,rhsNested,dst);
+    internal::sparse_sparse_to_dense_product_selector<typename remove_all<LhsNested>::type,
+                                                      typename remove_all<RhsNested>::type, Dest>::run(lhsNested,rhsNested,dst);
   }
 
   // dense -= sparse * sparse
   template<typename Dest>
-  static void subTo(Dest& dst, const Lhs& lhs, const Rhs& rhs, std::enable_if_t<is_same<typename evaluator_traits<Dest>::Shape,DenseShape>::value,int*>* = 0)
+  static void subTo(Dest& dst, const Lhs& lhs, const Rhs& rhs, typename enable_if<is_same<typename evaluator_traits<Dest>::Shape,DenseShape>::value,int*>::type* = 0)
   {
     addTo(dst, -lhs, rhs);
   }
@@ -74,8 +72,8 @@ protected:
     typedef typename nested_eval<Rhs,Dynamic>::type RhsNested;
     LhsNested lhsNested(lhs);
     RhsNested rhsNested(rhs);
-    internal::conservative_sparse_sparse_product_selector<remove_all_t<LhsNested>,
-                                                          remove_all_t<RhsNested>, Dest>::run(lhsNested,rhsNested,dst);
+    internal::conservative_sparse_sparse_product_selector<typename remove_all<LhsNested>::type,
+                                                          typename remove_all<RhsNested>::type, Dest>::run(lhsNested,rhsNested,dst);
   }
 
   // dense = sparse * sparse
@@ -149,14 +147,14 @@ struct unary_evaluator<SparseView<Product<Lhs, Rhs, Options> >, IteratorBased>
     : m_result(xpr.rows(), xpr.cols())
   {
     using std::abs;
-    internal::construct_at<Base>(this, m_result);
+    ::new (static_cast<Base*>(this)) Base(m_result);
     typedef typename nested_eval<Lhs,Dynamic>::type LhsNested;
     typedef typename nested_eval<Rhs,Dynamic>::type RhsNested;
     LhsNested lhsNested(xpr.nestedExpression().lhs());
     RhsNested rhsNested(xpr.nestedExpression().rhs());
 
-    internal::sparse_sparse_product_with_pruning_selector<remove_all_t<LhsNested>,
-                                                          remove_all_t<RhsNested>, PlainObject>::run(lhsNested,rhsNested,m_result,
+    internal::sparse_sparse_product_with_pruning_selector<typename remove_all<LhsNested>::type,
+                                                          typename remove_all<RhsNested>::type, PlainObject>::run(lhsNested,rhsNested,m_result,
                                                                                                                   abs(xpr.reference())*xpr.epsilon());
   }
 
@@ -167,9 +165,9 @@ protected:
 } // end namespace internal
 
 // sparse matrix = sparse-product (can be sparse*sparse, sparse*perm, etc.)
-template<typename Scalar, int Options_, typename StorageIndex_>
+template<typename Scalar, int _Options, typename _StorageIndex>
 template<typename Lhs, typename Rhs>
-SparseMatrix<Scalar,Options_,StorageIndex_>& SparseMatrix<Scalar,Options_,StorageIndex_>::operator=(const Product<Lhs,Rhs,AliasFreeProduct>& src)
+SparseMatrix<Scalar,_Options,_StorageIndex>& SparseMatrix<Scalar,_Options,_StorageIndex>::operator=(const Product<Lhs,Rhs,AliasFreeProduct>& src)
 {
   // std::cout << "in Assignment : " << DstOptions << "\n";
   SparseMatrix dst(src.rows(),src.cols());

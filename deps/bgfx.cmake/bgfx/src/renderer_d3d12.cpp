@@ -4,7 +4,7 @@
  */
 
 #include "bgfx_p.h"
-
+#include <comdef.h>
 #if BGFX_CONFIG_RENDERER_DIRECT3D12
 #	include "renderer_d3d12.h"
 
@@ -794,13 +794,13 @@ namespace bgfx { namespace d3d12
 
 								if (SUCCEEDED(hr))
 								{
-//									debug1->SetEnableGPUBasedValidation(true);
+									debug1->SetEnableGPUBasedValidation(true);
 
 									// https://discordapp.com/channels/590611987420020747/593519198995742733/703642988345032804
 									// D3D12 Bug Number: 26131261
 									// There is a bug in the D3D12 validation that causes example-21 to fail when using UAV
 									// Setting this function below to false avoids the bug
-									debug1->SetEnableSynchronizedCommandQueueValidation(false);
+									debug1->SetEnableSynchronizedCommandQueueValidation(true);
 								}
 
 								DX_RELEASE(debug1, 1);
@@ -3106,10 +3106,16 @@ namespace bgfx { namespace d3d12
 
 			if (NULL == pso)
 			{
-				DX_CHECK(m_device->CreateGraphicsPipelineState(&desc
+				auto hr = m_device->CreateGraphicsPipelineState(&desc
 					, IID_ID3D12PipelineState
 					, (void**)&pso
-					) );
+					);
+				if (hr != S_OK) {
+					auto reason = m_device->GetDeviceRemovedReason();
+					_com_error err(reason);
+					LPCTSTR errMsg = err.ErrorMessage();
+					int x = 0;
+				}
 			}
 
 			BGFX_FATAL(NULL != pso, Fatal::InvalidShader, "Failed to create PSO!");
@@ -6257,7 +6263,7 @@ namespace bgfx { namespace d3d12
 												}
 												else
 												{
-													texture.setState(m_commandList, D3D12_RESOURCE_STATE_GENERIC_READ);
+													texture.setState(m_commandList, D3D12_RESOURCE_STATE_GENERIC_READ | D3D12_RESOURCE_STATE_RENDER_TARGET);
 													scratchBuffer.allocSrv(srvHandle[stage], texture, bind.m_mip);
 													samplerFlags[stage] = uint32_t(texture.m_flags);
 												}
@@ -6269,7 +6275,7 @@ namespace bgfx { namespace d3d12
 										case Binding::Texture:
 											{
 												TextureD3D12& texture = m_textures[bind.m_idx];
-												texture.setState(m_commandList, D3D12_RESOURCE_STATE_GENERIC_READ);
+												texture.setState(m_commandList, D3D12_RESOURCE_STATE_GENERIC_READ | D3D12_RESOURCE_STATE_RENDER_TARGET);
 												scratchBuffer.allocSrv(srvHandle[stage], texture);
 												samplerFlags[stage] = (0 == (BGFX_SAMPLER_INTERNAL_DEFAULT & bind.m_samplerFlags)
 													? bind.m_samplerFlags

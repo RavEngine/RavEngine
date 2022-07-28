@@ -84,6 +84,21 @@ static inline std::ostream& operator<<(std::ostream& os, const matrix4& mat){
     return os;
 }
 
+template <> struct fmt::formatter<vector3> {
+    constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
+        auto it = ctx.begin();
+        it++;
+        if (it != ctx.end() && *it != '}') throw format_error("invalid format");
+        return it;
+    }
+
+    template <typename FormatContext>
+    auto format(const vector3& p, FormatContext& ctx) const -> decltype(ctx.out()) {
+        // ctx.out() is an output iterator to write to.
+        return fmt::format_to(ctx.out(), "vector3({:.1f}, {:.1f}, {:.1f})", p.x, p.y, p.z);
+    }
+};
+
 #define print_vec3(vec) "vector3(" << vec.x << ", " << vec.y << ", " << vec.z << ")"
 #define print_quat(quat) "quat(" << quat.x << ", " << quat.y << ", " << quat.z << ", " << quat.w << ")"
 

@@ -11,8 +11,6 @@
 #ifndef EIGEN_IO_H
 #define EIGEN_IO_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen { 
 
 enum { DontAlignCols = 1 };
@@ -133,6 +131,7 @@ template<typename Derived>
 std::ostream & print_matrix(std::ostream & s, const Derived& _m, const IOFormat& fmt)
 {
   using internal::is_same;
+  using internal::conditional;
 
   if(_m.size() == 0)
   {
@@ -142,21 +141,22 @@ std::ostream & print_matrix(std::ostream & s, const Derived& _m, const IOFormat&
   
   typename Derived::Nested m = _m;
   typedef typename Derived::Scalar Scalar;
-  typedef std::conditional_t<
+  typedef typename
+      conditional<
           is_same<Scalar, char>::value ||
             is_same<Scalar, unsigned char>::value ||
             is_same<Scalar, numext::int8_t>::value ||
             is_same<Scalar, numext::uint8_t>::value,
           int,
-          std::conditional_t<
+          typename conditional<
               is_same<Scalar, std::complex<char> >::value ||
                 is_same<Scalar, std::complex<unsigned char> >::value ||
                 is_same<Scalar, std::complex<numext::int8_t> >::value ||
                 is_same<Scalar, std::complex<numext::uint8_t> >::value,
               std::complex<int>,
               const Scalar&
-            >
-        > PrintType;
+            >::type
+        >::type PrintType;
 
   Index width = 0;
 

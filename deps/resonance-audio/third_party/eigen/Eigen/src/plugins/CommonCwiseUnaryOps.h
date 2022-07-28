@@ -13,20 +13,20 @@
 #ifndef EIGEN_PARSED_BY_DOXYGEN
 
 /** \internal the return type of conjugate() */
-typedef std::conditional_t<NumTraits<Scalar>::IsComplex,
-            const CwiseUnaryOp<internal::scalar_conjugate_op<Scalar>, const Derived>,
-            const Derived&
-          > ConjugateReturnType;
+typedef typename internal::conditional<NumTraits<Scalar>::IsComplex,
+                    const CwiseUnaryOp<internal::scalar_conjugate_op<Scalar>, const Derived>,
+                    const Derived&
+                  >::type ConjugateReturnType;
 /** \internal the return type of real() const */
-typedef std::conditional_t<NumTraits<Scalar>::IsComplex,
-            const CwiseUnaryOp<internal::scalar_real_op<Scalar>, const Derived>,
-            const Derived&
-          > RealReturnType;
+typedef typename internal::conditional<NumTraits<Scalar>::IsComplex,
+                    const CwiseUnaryOp<internal::scalar_real_op<Scalar>, const Derived>,
+                    const Derived&
+                  >::type RealReturnType;
 /** \internal the return type of real() */
-typedef std::conditional_t<NumTraits<Scalar>::IsComplex,
-            CwiseUnaryView<internal::scalar_real_ref_op<Scalar>, Derived>,
-            Derived&
-          > NonConstRealReturnType;
+typedef typename internal::conditional<NumTraits<Scalar>::IsComplex,
+                    CwiseUnaryView<internal::scalar_real_ref_op<Scalar>, Derived>,
+                    Derived&
+                  >::type NonConstRealReturnType;
 /** \internal the return type of imag() const */
 typedef CwiseUnaryOp<internal::scalar_imag_op<Scalar>, const Derived> ImagReturnType;
 /** \internal the return type of imag() */
@@ -83,10 +83,10 @@ EIGEN_DOC_UNARY_ADDONS(conjugate,complex conjugate)
 /// \sa conjugate()
 template<bool Cond>
 EIGEN_DEVICE_FUNC
-inline std::conditional_t<Cond,ConjugateReturnType,const Derived&>
+inline typename internal::conditional<Cond,ConjugateReturnType,const Derived&>::type
 conjugateIf() const
 {
-  typedef std::conditional_t<Cond,ConjugateReturnType,const Derived&> ReturnType;
+  typedef typename internal::conditional<Cond,ConjugateReturnType,const Derived&>::type ReturnType;
   return ReturnType(derived());
 }
 

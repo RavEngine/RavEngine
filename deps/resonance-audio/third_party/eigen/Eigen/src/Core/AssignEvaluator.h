@@ -12,8 +12,6 @@
 #ifndef EIGEN_ASSIGN_EVALUATOR_H
 #define EIGEN_ASSIGN_EVALUATOR_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 // This implementation is based on Assign.h
@@ -42,7 +40,7 @@ public:
     DstAlignment = DstEvaluator::Alignment,
     SrcAlignment = SrcEvaluator::Alignment,
     DstHasDirectAccess = (DstFlags & DirectAccessBit) == DirectAccessBit,
-    JointAlignment = plain_enum_min(DstAlignment, SrcAlignment)
+    JointAlignment = EIGEN_PLAIN_ENUM_MIN(DstAlignment,SrcAlignment)
   };
 
 private:
@@ -53,8 +51,8 @@ private:
     InnerMaxSize = int(Dst::IsVectorAtCompileTime) ? int(Dst::MaxSizeAtCompileTime)
               : int(DstFlags)&RowMajorBit ? int(Dst::MaxColsAtCompileTime)
               : int(Dst::MaxRowsAtCompileTime),
-    RestrictedInnerSize = min_size_prefer_fixed(InnerSize, MaxPacketSize),
-    RestrictedLinearSize = min_size_prefer_fixed(Dst::SizeAtCompileTime, MaxPacketSize),
+    RestrictedInnerSize = EIGEN_SIZE_MIN_PREFER_FIXED(InnerSize,MaxPacketSize),
+    RestrictedLinearSize = EIGEN_SIZE_MIN_PREFER_FIXED(Dst::SizeAtCompileTime,MaxPacketSize),
     OuterStride = int(outer_stride_at_compile_time<Dst>::ret),
     MaxSizeAtCompileTime = Dst::SizeAtCompileTime
   };
@@ -113,7 +111,7 @@ public:
               || int(Traversal) == SliceVectorizedTraversal
   };
 
-  typedef std::conditional_t<int(Traversal)==LinearVectorizedTraversal, LinearPacketType, InnerPacketType> PacketType;
+  typedef typename conditional<int(Traversal)==LinearVectorizedTraversal, LinearPacketType, InnerPacketType>::type PacketType;
 
 private:
   enum {
@@ -329,7 +327,8 @@ struct dense_assignment_loop<Kernel, AllAtOnceTraversal, Unrolling>
 {
   EIGEN_DEVICE_FUNC static void EIGEN_STRONG_INLINE run(Kernel& /*kernel*/)
   {
-    EIGEN_STATIC_ASSERT(int(Kernel::DstEvaluatorType::XprType::SizeAtCompileTime) == 0,
+    typedef typename Kernel::DstEvaluatorType::XprType DstXprType;
+    EIGEN_STATIC_ASSERT(int(DstXprType::SizeAtCompileTime) == 0,
       EIGEN_INTERNAL_ERROR_PLEASE_FILE_A_BUG_REPORT)
   }
 };
@@ -846,7 +845,7 @@ void call_assignment(const Dst& dst, const Src& src)
 // Deal with "assume-aliasing"
 template<typename Dst, typename Src, typename Func>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-void call_assignment(Dst& dst, const Src& src, const Func& func, std::enable_if_t< evaluator_assume_aliasing<Src>::value, void*> = 0)
+void call_assignment(Dst& dst, const Src& src, const Func& func, typename enable_if< evaluator_assume_aliasing<Src>::value, void*>::type = 0)
 {
   typename plain_matrix_type<Src>::type tmp(src);
   call_assignment_no_alias(dst, tmp, func);
@@ -854,7 +853,7 @@ void call_assignment(Dst& dst, const Src& src, const Func& func, std::enable_if_
 
 template<typename Dst, typename Src, typename Func>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
-void call_assignment(Dst& dst, const Src& src, const Func& func, std::enable_if_t<!evaluator_assume_aliasing<Src>::value, void*> = 0)
+void call_assignment(Dst& dst, const Src& src, const Func& func, typename enable_if<!evaluator_assume_aliasing<Src>::value, void*>::type = 0)
 {
   call_assignment_no_alias(dst, src, func);
 }
@@ -879,8 +878,8 @@ void call_assignment_no_alias(Dst& dst, const Src& src, const Func& func)
                       ) && int(Dst::SizeAtCompileTime) != 1
   };
 
-  typedef std::conditional_t<NeedToTranspose, Transpose<Dst>, Dst> ActualDstTypeCleaned;
-  typedef std::conditional_t<NeedToTranspose, Transpose<Dst>, Dst&> ActualDstType;
+  typedef typename internal::conditional<NeedToTranspose, Transpose<Dst>, Dst>::type ActualDstTypeCleaned;
+  typedef typename internal::conditional<NeedToTranspose, Transpose<Dst>, Dst&>::type ActualDstType;
   ActualDstType actualDst(dst);
 
   // TODO check whether this is the right place to perform these checks:

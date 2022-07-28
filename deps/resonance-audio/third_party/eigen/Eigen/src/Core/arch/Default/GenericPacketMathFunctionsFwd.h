@@ -10,8 +10,6 @@
 #ifndef EIGEN_ARCH_GENERIC_PACKET_MATH_FUNCTIONS_FWD_H
 #define EIGEN_ARCH_GENERIC_PACKET_MATH_FUNCTIONS_FWD_H
 
-#include "../../InternalHeaderCheck.h"
-
 namespace Eigen {
 namespace internal {
 
@@ -44,21 +42,25 @@ Packet pldexp_generic(const Packet& a, const Packet& exponent);
 /** \internal \returns log(x) for single precision float */
 template <typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet plog_float(const Packet _x);
 
 /** \internal \returns log2(x) for single precision float */
 template <typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet plog2_float(const Packet _x);
 
 /** \internal \returns log(x) for single precision float */
 template <typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet plog_double(const Packet _x);
 
 /** \internal \returns log2(x) for single precision float */
 template <typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet plog2_double(const Packet _x);
 
 /** \internal \returns log(1 + x) */
@@ -72,32 +74,32 @@ Packet generic_expm1(const Packet& x);
 /** \internal \returns exp(x) for single precision float */
 template <typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet pexp_float(const Packet _x);
 
 /** \internal \returns exp(x) for double precision real numbers */
 template <typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet pexp_double(const Packet _x);
 
 /** \internal \returns sin(x) for single precision float */
 template<typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet psin_float(const Packet& x);
 
 /** \internal \returns cos(x) for single precision float */
 template<typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet pcos_float(const Packet& x);
 
 /** \internal \returns sqrt(x) for complex types */
 template<typename Packet>
 EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
+EIGEN_UNUSED
 Packet psqrt_complex(const Packet& a);
-
-/** \internal \returns x / y for complex types */
-template<typename Packet>
-EIGEN_DEFINE_FUNCTION_ALLOWING_MULTIPLE_DEFINITIONS
-Packet pdiv_complex(const Packet& x, const Packet& y);
 
 template <typename Packet, int N> struct ppolevl;
 

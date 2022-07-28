@@ -13,8 +13,6 @@
 #ifndef EIGEN_COREEVALUATORS_H
 #define EIGEN_COREEVALUATORS_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 namespace internal {
@@ -500,7 +498,7 @@ struct evaluator<CwiseNullaryOp<NullaryOp,PlainObjectType> >
   : evaluator_base<CwiseNullaryOp<NullaryOp,PlainObjectType> >
 {
   typedef CwiseNullaryOp<NullaryOp,PlainObjectType> XprType;
-  typedef internal::remove_all_t<PlainObjectType> PlainObjectTypeCleaned;
+  typedef typename internal::remove_all<PlainObjectType>::type PlainObjectTypeCleaned;
 
   enum {
     CoeffReadCost = internal::functor_traits<NullaryOp>::Cost,
@@ -657,9 +655,9 @@ struct ternary_evaluator<CwiseTernaryOp<TernaryOp, Arg1, Arg2, Arg3>, IndexBased
         )
      ),
     Flags = (Flags0 & ~RowMajorBit) | (Arg1Flags & RowMajorBit),
-    Alignment = plain_enum_min(
-            plain_enum_min(evaluator<Arg1>::Alignment, evaluator<Arg2>::Alignment),
-            evaluator<Arg3>::Alignment)
+    Alignment = EIGEN_PLAIN_ENUM_MIN(
+        EIGEN_PLAIN_ENUM_MIN(evaluator<Arg1>::Alignment, evaluator<Arg2>::Alignment),
+        evaluator<Arg3>::Alignment)
   };
 
   EIGEN_DEVICE_FUNC explicit ternary_evaluator(const XprType& xpr) : m_d(xpr)
@@ -753,7 +751,7 @@ struct binary_evaluator<CwiseBinaryOp<BinaryOp, Lhs, Rhs>, IndexBased, IndexBase
         )
      ),
     Flags = (Flags0 & ~RowMajorBit) | (LhsFlags & RowMajorBit),
-    Alignment = plain_enum_min(evaluator<Lhs>::Alignment, evaluator<Rhs>::Alignment)
+    Alignment = EIGEN_PLAIN_ENUM_MIN(evaluator<Lhs>::Alignment,evaluator<Rhs>::Alignment)
   };
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
@@ -812,11 +810,11 @@ protected:
 
 // -------------------- CwiseUnaryView --------------------
 
-template<typename UnaryOp, typename ArgType, typename StrideType>
-struct unary_evaluator<CwiseUnaryView<UnaryOp, ArgType, StrideType>, IndexBased>
-  : evaluator_base<CwiseUnaryView<UnaryOp, ArgType, StrideType> >
+template<typename UnaryOp, typename ArgType>
+struct unary_evaluator<CwiseUnaryView<UnaryOp, ArgType>, IndexBased>
+  : evaluator_base<CwiseUnaryView<UnaryOp, ArgType> >
 {
-  typedef CwiseUnaryView<UnaryOp, ArgType, StrideType> XprType;
+  typedef CwiseUnaryView<UnaryOp, ArgType> XprType;
 
   enum {
     CoeffReadCost = int(evaluator<ArgType>::CoeffReadCost) + int(functor_traits<UnaryOp>::Cost),
@@ -902,8 +900,7 @@ struct mapbase_evaluator : evaluator_base<Derived>
       m_innerStride(map.innerStride()),
       m_outerStride(map.outerStride())
   {
-    EIGEN_STATIC_ASSERT(check_implication((evaluator<Derived>::Flags & PacketAccessBit) != 0,
-                                          internal::inner_stride_at_compile_time<Derived>::ret == 1),
+    EIGEN_STATIC_ASSERT(EIGEN_IMPLIES(evaluator<Derived>::Flags&PacketAccessBit, internal::inner_stride_at_compile_time<Derived>::ret==1),
                         PACKET_ACCESS_REQUIRES_TO_HAVE_INNER_STRIDE_FIXED_TO_1);
     EIGEN_INTERNAL_CHECK_COST_VALUE(CoeffReadCost);
   }
@@ -1075,7 +1072,7 @@ struct evaluator<Block<ArgType, BlockRows, BlockCols, InnerPanel> >
     Alignment0 = (InnerPanel && (OuterStrideAtCompileTime!=Dynamic)
                              && (OuterStrideAtCompileTime!=0)
                              && (((OuterStrideAtCompileTime * int(sizeof(Scalar))) % int(PacketAlignment)) == 0)) ? int(PacketAlignment) : 0,
-    Alignment = plain_enum_min(evaluator<ArgType>::Alignment, Alignment0)
+    Alignment = EIGEN_PLAIN_ENUM_MIN(evaluator<ArgType>::Alignment, Alignment0)
   };
   typedef block_evaluator<ArgType, BlockRows, BlockCols, InnerPanel> block_evaluator_type;
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
@@ -1225,8 +1222,8 @@ struct block_evaluator<ArgType, BlockRows, BlockCols, InnerPanel, /* HasDirectAc
   explicit block_evaluator(const XprType& block)
     : mapbase_evaluator<XprType, typename XprType::PlainObject>(block)
   {
-    eigen_internal_assert((internal::is_constant_evaluated() || (internal::UIntPtr(block.data()) % plain_enum_max(1,evaluator<XprType>::Alignment)) == 0) \
-      && "data is not aligned");
+    // TODO: for the 3.3 release, this should be turned to an internal assertion, but let's keep it as is for the beta lifetime
+    eigen_assert(((internal::UIntPtr(block.data()) % EIGEN_PLAIN_ENUM_MAX(1,evaluator<XprType>::Alignment)) == 0) && "data is not aligned");
   }
 };
 
@@ -1242,12 +1239,12 @@ struct evaluator<Select<ConditionMatrixType, ThenMatrixType, ElseMatrixType> >
   typedef Select<ConditionMatrixType, ThenMatrixType, ElseMatrixType> XprType;
   enum {
     CoeffReadCost = evaluator<ConditionMatrixType>::CoeffReadCost
-                  + plain_enum_max(evaluator<ThenMatrixType>::CoeffReadCost,
-                                             evaluator<ElseMatrixType>::CoeffReadCost),
+                  + EIGEN_PLAIN_ENUM_MAX(evaluator<ThenMatrixType>::CoeffReadCost,
+                                         evaluator<ElseMatrixType>::CoeffReadCost),
 
     Flags = (unsigned int)evaluator<ThenMatrixType>::Flags & evaluator<ElseMatrixType>::Flags & HereditaryBits,
 
-    Alignment = plain_enum_min(evaluator<ThenMatrixType>::Alignment, evaluator<ElseMatrixType>::Alignment)
+    Alignment = EIGEN_PLAIN_ENUM_MIN(evaluator<ThenMatrixType>::Alignment, evaluator<ElseMatrixType>::Alignment)
   };
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE
@@ -1298,7 +1295,7 @@ struct unary_evaluator<Replicate<ArgType, RowFactor, ColFactor> >
     Factor = (RowFactor==Dynamic || ColFactor==Dynamic) ? Dynamic : RowFactor*ColFactor
   };
   typedef typename internal::nested_eval<ArgType,Factor>::type ArgTypeNested;
-  typedef internal::remove_all_t<ArgTypeNested> ArgTypeNestedCleaned;
+  typedef typename internal::remove_all<ArgTypeNested>::type ArgTypeNestedCleaned;
 
   enum {
     CoeffReadCost = evaluator<ArgTypeNestedCleaned>::CoeffReadCost,
@@ -1382,7 +1379,7 @@ template<typename XprType>
 struct evaluator_wrapper_base
   : evaluator_base<XprType>
 {
-  typedef remove_all_t<typename XprType::NestedExpressionType> ArgType;
+  typedef typename remove_all<typename XprType::NestedExpressionType>::type ArgType;
   enum {
     CoeffReadCost = evaluator<ArgType>::CoeffReadCost,
     Flags = evaluator<ArgType>::Flags,
@@ -1723,14 +1720,14 @@ struct evaluator<EvalToTemp<ArgType> >
   EIGEN_DEVICE_FUNC explicit evaluator(const XprType& xpr)
     : m_result(xpr.arg())
   {
-    internal::construct_at<Base>(this, m_result);
+    ::new (static_cast<Base*>(this)) Base(m_result);
   }
 
   // This constructor is used when nesting an EvalTo evaluator in another evaluator
   EIGEN_DEVICE_FUNC evaluator(const ArgType& arg)
     : m_result(arg)
   {
-    internal::construct_at<Base>(this, m_result);
+    ::new (static_cast<Base*>(this)) Base(m_result);
   }
 
 protected:

@@ -27,7 +27,7 @@
   *  - DiagonalPreconditioner - also called Jacobi preconditioner, work very well on diagonal dominant matrices.
   *  - IncompleteLUT - incomplete LU factorization with dual thresholding
   *
-  * Such problems can also be solved using the direct sparse decomposition modules: SparseCholesky, CholmodSupport, UmfPackSupport, SuperLUSupport, AccelerateSupport.
+  * Such problems can also be solved using the direct sparse decomposition modules: SparseCholesky, CholmodSupport, UmfPackSupport, SuperLUSupport.
   *
     \code
     #include <Eigen/IterativeLinearSolvers>

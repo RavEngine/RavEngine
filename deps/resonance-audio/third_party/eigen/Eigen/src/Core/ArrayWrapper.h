@@ -10,8 +10,6 @@
 #ifndef EIGEN_ARRAYWRAPPER_H
 #define EIGEN_ARRAYWRAPPER_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
 /** \class ArrayWrapper
@@ -28,12 +26,12 @@ namespace Eigen {
 namespace internal {
 template<typename ExpressionType>
 struct traits<ArrayWrapper<ExpressionType> >
-  : public traits<remove_all_t<typename ExpressionType::Nested> >
+  : public traits<typename remove_all<typename ExpressionType::Nested>::type >
 {
   typedef ArrayXpr XprKind;
   // Let's remove NestByRefBit
   enum {
-    Flags0 = traits<remove_all_t<typename ExpressionType::Nested> >::Flags,
+    Flags0 = traits<typename remove_all<typename ExpressionType::Nested>::type >::Flags,
     LvalueBitFlag = is_lvalue<ExpressionType>::value ? LvalueBit : 0,
     Flags = (Flags0 & ~(NestByRefBit | LvalueBit)) | LvalueBitFlag
   };
@@ -47,13 +45,13 @@ class ArrayWrapper : public ArrayBase<ArrayWrapper<ExpressionType> >
     typedef ArrayBase<ArrayWrapper> Base;
     EIGEN_DENSE_PUBLIC_INTERFACE(ArrayWrapper)
     EIGEN_INHERIT_ASSIGNMENT_OPERATORS(ArrayWrapper)
-    typedef internal::remove_all_t<ExpressionType> NestedExpression;
+    typedef typename internal::remove_all<ExpressionType>::type NestedExpression;
 
-    typedef std::conditional_t<
+    typedef typename internal::conditional<
                        internal::is_lvalue<ExpressionType>::value,
                        Scalar,
                        const Scalar
-                     > ScalarWithConstIfNotLvalue;
+                     >::type ScalarWithConstIfNotLvalue;
 
     typedef typename internal::ref_selector<ExpressionType>::non_const_type NestedExpressionType;
 
@@ -93,7 +91,7 @@ class ArrayWrapper : public ArrayBase<ArrayWrapper<ExpressionType> >
     inline void evalTo(Dest& dst) const { dst = m_expression; }
 
     EIGEN_DEVICE_FUNC
-    const internal::remove_all_t<NestedExpressionType>&
+    const typename internal::remove_all<NestedExpressionType>::type&
     nestedExpression() const
     {
       return m_expression;
@@ -126,12 +124,12 @@ class ArrayWrapper : public ArrayBase<ArrayWrapper<ExpressionType> >
 namespace internal {
 template<typename ExpressionType>
 struct traits<MatrixWrapper<ExpressionType> >
- : public traits<remove_all_t<typename ExpressionType::Nested> >
+ : public traits<typename remove_all<typename ExpressionType::Nested>::type >
 {
   typedef MatrixXpr XprKind;
   // Let's remove NestByRefBit
   enum {
-    Flags0 = traits<remove_all_t<typename ExpressionType::Nested> >::Flags,
+    Flags0 = traits<typename remove_all<typename ExpressionType::Nested>::type >::Flags,
     LvalueBitFlag = is_lvalue<ExpressionType>::value ? LvalueBit : 0,
     Flags = (Flags0 & ~(NestByRefBit | LvalueBit)) | LvalueBitFlag
   };
@@ -145,13 +143,13 @@ class MatrixWrapper : public MatrixBase<MatrixWrapper<ExpressionType> >
     typedef MatrixBase<MatrixWrapper<ExpressionType> > Base;
     EIGEN_DENSE_PUBLIC_INTERFACE(MatrixWrapper)
     EIGEN_INHERIT_ASSIGNMENT_OPERATORS(MatrixWrapper)
-    typedef internal::remove_all_t<ExpressionType> NestedExpression;
+    typedef typename internal::remove_all<ExpressionType>::type NestedExpression;
 
-    typedef std::conditional_t<
-              internal::is_lvalue<ExpressionType>::value,
-              Scalar,
-              const Scalar
-            > ScalarWithConstIfNotLvalue;
+    typedef typename internal::conditional<
+                       internal::is_lvalue<ExpressionType>::value,
+                       Scalar,
+                       const Scalar
+                     >::type ScalarWithConstIfNotLvalue;
 
     typedef typename internal::ref_selector<ExpressionType>::non_const_type NestedExpressionType;
 
@@ -187,7 +185,7 @@ class MatrixWrapper : public MatrixBase<MatrixWrapper<ExpressionType> >
     }
 
     EIGEN_DEVICE_FUNC
-    const internal::remove_all_t<NestedExpressionType>&
+    const typename internal::remove_all<NestedExpressionType>::type&
     nestedExpression() const
     {
       return m_expression;

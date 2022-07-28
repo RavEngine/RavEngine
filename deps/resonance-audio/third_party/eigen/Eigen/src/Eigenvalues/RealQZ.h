@@ -10,8 +10,6 @@
 #ifndef EIGEN_REAL_QZ_H
 #define EIGEN_REAL_QZ_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen {
 
   /** \eigenvalues_module \ingroup Eigenvalues_Module
@@ -21,7 +19,7 @@ namespace Eigen {
    *
    * \brief Performs a real QZ decomposition of a pair of square matrices
    *
-   * \tparam MatrixType_ the type of the matrix of which we are computing the
+   * \tparam _MatrixType the type of the matrix of which we are computing the
    * real QZ decomposition; this is expected to be an instantiation of the
    * Matrix class template.
    *
@@ -56,10 +54,10 @@ namespace Eigen {
    * \sa class RealSchur, class ComplexSchur, class EigenSolver, class ComplexEigenSolver
    */
 
-  template<typename MatrixType_> class RealQZ
+  template<typename _MatrixType> class RealQZ
   {
     public:
-      typedef MatrixType_ MatrixType;
+      typedef _MatrixType MatrixType;
       enum {
         RowsAtCompileTime = MatrixType::RowsAtCompileTime,
         ColsAtCompileTime = MatrixType::ColsAtCompileTime,
@@ -239,7 +237,7 @@ namespace Eigen {
         for (Index i=dim-1; i>=j+2; i--) {
           JRs G;
           // kill S(i,j)
-          if(!numext::is_exactly_zero(m_S.coeff(i, j)))
+          if(m_S.coeff(i,j) != 0)
           {
             G.makeGivens(m_S.coeff(i-1,j), m_S.coeff(i,j), &m_S.coeffRef(i-1, j));
             m_S.coeffRef(i,j) = Scalar(0.0);
@@ -250,7 +248,7 @@ namespace Eigen {
               m_Q.applyOnTheRight(i-1,i,G);
           }
           // kill T(i,i-1)
-          if(!numext::is_exactly_zero(m_T.coeff(i, i - 1)))
+          if(m_T.coeff(i,i-1)!=Scalar(0))
           {
             G.makeGivens(m_T.coeff(i,i), m_T.coeff(i,i-1), &m_T.coeffRef(i,i));
             m_T.coeffRef(i,i-1) = Scalar(0.0);
@@ -288,7 +286,7 @@ namespace Eigen {
       while (res > 0)
       {
         Scalar s = abs(m_S.coeff(res-1,res-1)) + abs(m_S.coeff(res,res));
-        if (numext::is_exactly_zero(s))
+        if (s == Scalar(0.0))
           s = m_normOfS;
         if (abs(m_S.coeff(res,res-1)) < NumTraits<Scalar>::epsilon() * s)
           break;
@@ -318,7 +316,7 @@ namespace Eigen {
       using std::abs;
       using std::sqrt;
       const Index dim=m_S.cols();
-      if (numext::is_exactly_zero(abs(m_S.coeff(i + 1, i))))
+      if (abs(m_S.coeff(i+1,i))==Scalar(0))
         return;
       Index j = findSmallDiagEntry(i,i+1);
       if (j==i-1)
@@ -629,7 +627,7 @@ namespace Eigen {
       {
         for(Index i=0; i<dim-1; ++i)
         {
-          if(!numext::is_exactly_zero(m_S.coeff(i + 1, i)))
+          if(m_S.coeff(i+1, i) != Scalar(0))
           {
             JacobiRotation<Scalar> j_left, j_right;
             internal::real_2x2_jacobi_svd(m_T, i, i+1, &j_left, &j_right);

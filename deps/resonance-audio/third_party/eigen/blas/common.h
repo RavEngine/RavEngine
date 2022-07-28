@@ -149,7 +149,7 @@ T* get_compact_vector(T* x, int n, int incx)
   if(incx==1)
     return x;
 
-  std::remove_const_t<T>* ret = new Scalar[n];
+  typename Eigen::internal::remove_const<T>::type* ret = new Scalar[n];
   if(incx<0) make_vector(ret,n) = make_vector(x,n,-incx).reverse();
   else       make_vector(ret,n) = make_vector(x,n, incx);
   return ret;

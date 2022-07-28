@@ -11,8 +11,6 @@
 #ifndef EIGEN_INVERSE_IMPL_H
 #define EIGEN_INVERSE_IMPL_H
 
-#include "./InternalHeaderCheck.h"
-
 namespace Eigen { 
 
 namespace internal {
@@ -311,13 +309,13 @@ struct Assignment<DstXprType, Inverse<XprType>, internal::assign_op<typename Dst
     if((dst.rows()!=dstRows) || (dst.cols()!=dstCols))
       dst.resize(dstRows, dstCols);
     
-    const int Size = plain_enum_min(XprType::ColsAtCompileTime, DstXprType::ColsAtCompileTime);
+    const int Size = EIGEN_PLAIN_ENUM_MIN(XprType::ColsAtCompileTime,DstXprType::ColsAtCompileTime);
     EIGEN_ONLY_USED_FOR_DEBUG(Size);
     eigen_assert(( (Size<=1) || (Size>4) || (extract_data(src.nestedExpression())!=extract_data(dst)))
               && "Aliasing problem detected in inverse(), you need to do inverse().eval() here.");
 
     typedef typename internal::nested_eval<XprType,XprType::ColsAtCompileTime>::type  ActualXprType;
-    typedef internal::remove_all_t<ActualXprType>                        ActualXprTypeCleanded;
+    typedef typename internal::remove_all<ActualXprType>::type                        ActualXprTypeCleanded;
     
     ActualXprType actual_xpr(src.nestedExpression());
     
@@ -387,11 +385,11 @@ inline void MatrixBase<Derived>::computeInverseAndDetWithCheck(
   eigen_assert(rows() == cols());
   // for 2x2, it's worth giving a chance to avoid evaluating.
   // for larger sizes, evaluating has negligible cost and limits code size.
-  typedef std::conditional_t<
+  typedef typename internal::conditional<
     RowsAtCompileTime == 2,
-    internal::remove_all_t<typename internal::nested_eval<Derived, 2>::type>,
+    typename internal::remove_all<typename internal::nested_eval<Derived, 2>::type>::type,
     PlainObject
-  > MatrixType;
+  >::type MatrixType;
   internal::compute_inverse_and_det_with_check<MatrixType, ResultType>::run
     (derived(), absDeterminantThreshold, inverse, determinant, invertible);
 }
