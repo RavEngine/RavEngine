@@ -23,7 +23,7 @@ jobs:
         run: |
             mkdir -p build 
             cd build
-            CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake -G "Ninja" .. 
+            CC=/usr/bin/clang-14 CXX=/usr/bin/clang++-14 cmake -G "Ninja" .. 
       - name: Build
         run: cd build; cmake --build . --config Release --target RavEngine
 
@@ -41,9 +41,14 @@ jobs:
               sudo apt remove build-essential
               sudo apt-get install cmake g++-11 ninja-build libgl1-mesa-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
       - name: Configure
-        run: mkdir -p build && cd build; cmake -G "Ninja" ..
+        run: |
+              mkdir -p build 
+              cd build
+              CC=/usr/bin/gcc-11 CXX=/usr/bin/g++-11 cmake -G "Ninja" ..
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine
+        run: | 
+              cd build
+              cmake --build . --config Release --target RavEngine
       
   build-emscripten:
     if: ${{ false }}  # disable for now, since emscripten is not possible without WebGPU
