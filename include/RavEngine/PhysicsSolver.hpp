@@ -74,7 +74,7 @@ namespace RavEngine {
         //scene query methods
         struct RaycastHit {
             RaycastHit() {}
-            RaycastHit(const physx::PxRaycastBuffer& hit) : hitObject(entity_t(hit.block.actor->userData)),
+            RaycastHit(const physx::PxRaycastBuffer& hit) : hitObject(entity_t(uintptr_t(hit.block.actor->userData))),
                 hasBlocking(hit.hasBlock),
                 hitPosition(vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z)),
                 hitNormal(vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z)),
