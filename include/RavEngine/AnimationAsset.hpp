@@ -23,11 +23,11 @@ struct IAnimGraphable{
 						float speed,
 						bool looping,
 						ozz::vector<ozz::math::SoaTransform>& output,
-						ozz::animation::SamplingCache& cache,
+						ozz::animation::SamplingJob::Context& cache,
 						const ozz::animation::Skeleton* skeleton) const = 0;
 	
 	
-    void SampleDirect(float t, const ozz::animation::Animation* anim, ozz::animation::SamplingCache& cache, ozz::vector<ozz::math::SoaTransform>& locals) const;
+    void SampleDirect(float t, const ozz::animation::Animation* anim, ozz::animation::SamplingJob::Context& cache, ozz::vector<ozz::math::SoaTransform>& locals) const;
 };
 
 
@@ -44,7 +44,7 @@ public:
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 	constexpr inline const decltype(anim)& GetAnim() const{
 		return anim;
@@ -66,7 +66,7 @@ public:
 	 */
 	AnimationAssetSegment(decltype(anim_asset) asset, float start, float end = 0) : anim_asset(asset), start_ticks(start), end_ticks(end){}
 	
-	bool Sample(float global_time, float last_globalplaytime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	bool Sample(float global_time, float last_globalplaytime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 };
 
 class AnimationClip : public IAnimGraphable{
@@ -106,7 +106,7 @@ public:
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 };
 }

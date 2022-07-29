@@ -55,7 +55,7 @@ void AnimatorComponent::Tick(float timeScale){
 		ozz::animation::BlendingJob blend_job;
 		blend_job.threshold = 0.1f;			//TODO: make threshold configurable
 		blend_job.layers = layers;
-		blend_job.bind_pose = skeleton->GetSkeleton()->joint_bind_poses();
+		blend_job.rest_pose = skeleton->GetSkeleton()->joint_rest_poses();
 		
 		blend_job.output = make_span(transforms);
 		if (!blend_job.Run()) {
@@ -73,7 +73,7 @@ void AnimatorComponent::Tick(float timeScale){
         else{
             //set all to skeleton bind pose
 			for(int i = 0; i < transforms.size(); i++){
-				transforms[i] = skeleton->GetSkeleton()->joint_bind_poses()[i];
+				transforms[i] = skeleton->GetSkeleton()->joint_rest_poses()[i];
 			}
         }
 	}
@@ -113,11 +113,11 @@ void AnimatorComponent::UpdateSocket(const std::string& name, Transform& t) cons
 	}
 }
 
-bool AnimBlendTree::Node::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
+bool AnimBlendTree::Node::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingJob::Context &cache, const ozz::animation::Skeleton* skeleton) const{
 	return state->Sample(t, start, speed, looping, output, cache, skeleton);
 }
 
-bool AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton* skeleton) const{
+bool AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingJob::Context &cache, const ozz::animation::Skeleton* skeleton) const{
 	//iterate though the nodes, sample all, and blend
 	//calculate the subtracks
 	ozz::animation::BlendingJob::Layer layers[kmax_nodes];
@@ -144,7 +144,7 @@ bool AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz:
 	ozz::animation::BlendingJob blend_job;
 	blend_job.threshold = 0.1;			//TODO: make threshold configurable
 	blend_job.layers = ozz::span(layers,states.size());
-	blend_job.bind_pose = skeleton->joint_bind_poses();
+	blend_job.rest_pose = skeleton->joint_rest_poses();
 	blend_job.output = make_span(output);
 	
 	if (!blend_job.Run()){

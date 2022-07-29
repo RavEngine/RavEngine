@@ -15,7 +15,7 @@
 using namespace RavEngine;
 using namespace std;
 
-bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingCache &cache, const ozz::animation::Skeleton *skeleton) const{
+bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> & transforms, ozz::animation::SamplingJob::Context &cache, const ozz::animation::Skeleton *skeleton) const{
 	
 	float asset_duration_ticks = (anim_asset->duration_seconds * anim_asset->tps);
 		
@@ -158,18 +158,18 @@ AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skele
 	}
 }
 
-void IAnimGraphable::SampleDirect(float t, const ozz::animation::Animation *anim, ozz::animation::SamplingCache &cache, ozz::vector<ozz::math::SoaTransform> &locals) const{
+void IAnimGraphable::SampleDirect(float t, const ozz::animation::Animation *anim, ozz::animation::SamplingJob::Context &cache, ozz::vector<ozz::math::SoaTransform> &locals) const{
 	//sample the animation
 	ozz::animation::SamplingJob sampling_job;
 	sampling_job.animation = anim;
-	sampling_job.cache = &cache;
+	sampling_job.context = &cache;
 	sampling_job.ratio = t;
 	sampling_job.output = ozz::make_span(locals);
 	
 	Debug::Assert(sampling_job.Run(), "Sampling job failed");
 }
 
-bool AnimationAsset::Sample(float time, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+bool AnimationAsset::Sample(float time, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const{
 	float t = (time - start) / (duration_seconds) * speed;
 	bool ret = false;
 	if (looping){
@@ -183,7 +183,7 @@ bool AnimationAsset::Sample(float time, float start, float speed, bool looping, 
 	return ret;
 }
 
-bool AnimationClip::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const{
+bool AnimationClip::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& transforms, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const{
 	//calculate the subtracks
 	stackarray(layers, ozz::animation::BlendingJob::Layer, influence.size());
 	int index = 0;
@@ -209,7 +209,7 @@ bool AnimationClip::Sample(float t, float start, float speed, bool looping, ozz:
 	ozz::animation::BlendingJob blend_job;
 	blend_job.threshold = 0;			//TODO: make threshold configurable
 	blend_job.layers = ozz::span(layers,influence.size());
-	blend_job.bind_pose = skeleton->joint_bind_poses();
+	blend_job.rest_pose = skeleton->joint_rest_poses();
 	
 	blend_job.output = make_span(transforms);
 	if (!blend_job.Run()){

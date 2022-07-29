@@ -164,7 +164,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	//convert from local space to model space
 	ozz::animation::LocalToModelJob job;
 	job.skeleton = skeleton.get();
-	job.input = ozz::span(skeleton->joint_bind_poses());
+	job.input = ozz::span(skeleton->joint_rest_poses());
 	job.output = ozz::span(bindpose_ozz, skeleton->joint_names().size_bytes());
 	
 	Debug::Assert(job.Run(), "Bindpose extraction failed");

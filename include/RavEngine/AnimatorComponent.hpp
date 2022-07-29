@@ -47,7 +47,7 @@ struct AnimBlendTree : public IAnimGraphable{
 		 @param output the vector to write the output transforms to
 		 @param cache a sampling cache, modified when used
 		 */
-		bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+		bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 	};
 
 	static constexpr uint16_t kmax_nodes = 64;
@@ -93,7 +93,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 */
-	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingCache& cache, const ozz::animation::Skeleton* skeleton) const override;
+	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
     constexpr inline void SetBlendPos(const clamped_vec2& newPos){
 		blend_pos = newPos;
@@ -311,7 +311,7 @@ protected:
 	id_t currentState = 0;
 	
 	ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
-    std::shared_ptr<ozz::animation::SamplingCache> cache = std::make_shared<ozz::animation::SamplingCache>();
+    std::shared_ptr<ozz::animation::SamplingJob::Context> cache = std::make_shared<ozz::animation::SamplingJob::Context>();
 	ozz::vector<ozz::math::Float4x4> models;
     mutable ozz::vector<matrix4> glm_pose;
 	ozz::vector<matrix4> local_pose;
