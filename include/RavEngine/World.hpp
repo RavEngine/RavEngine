@@ -732,24 +732,24 @@ namespace RavEngine {
             
             return
             // step 1: get it as types
-            [&]<typename... Ts>(std::type_identity<std::tuple<Ts...>>) -> auto
+            [this]<typename... Ts>(std::type_identity<std::tuple<Ts...>>, auto&& ... args) -> auto
             {
                 using argtypes_noref = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
                 // step 2: get it as non-reference types, and slice off the first argument
                 // because it's a float and we don't want it
                 return
-                [&]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t,A...>>) -> auto
+                [this]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t,A...>>, auto&& ... args) -> auto
                 {
+                    
                     // use `A...` here
-                    T system(args...);
                     
                     auto ptr = &ecsRangeSizes[CTTI<T>()];
                     
-                    FuncModeCopy<T,polymorphic> fm{system};
+                    FuncModeCopy<T,polymorphic> fm{T(args...)};
                     
                     auto fd = GenFilterData<A...>(fm);
                     
-                    FilterOneModeCopy fom(fm,fd.ptrs);
+                    FilterOneModeCopy fom(std::move(fm),fd.ptrs);
                     
                     auto setptr = fd.getMainFilter();
                     
@@ -770,8 +770,8 @@ namespace RavEngine {
                     
                     return pair;
                     
-                }(std::type_identity<argtypes_noref>{});
-            }(std::type_identity<argtypes>{});
+                }(std::type_identity<argtypes_noref>{},args...);
+            }(std::type_identity<argtypes>{},args...);
         }
         
         template< bool polymorphic,typename T, typename interval_t, typename ... Args>
