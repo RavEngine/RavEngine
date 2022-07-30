@@ -19,23 +19,23 @@ namespace RavEngine{
     public:
 		using Queryable<NavMeshComponent,IDebugRenderable>::GetQueryTypes;
         struct Options{
-            float cellSize = 0.3;
-            float cellHeight = 0.2;
-            float maxEdgeLen = 12;
-            float maxSimplificationError = 1.3;
-            float maxVertsPerPoly = 6;
-            float detailSampleDist = 6;
-            float detailSampleMaxError = 1;
+            float cellSize = 0.3f;
+            float cellHeight = 0.2f;
+            float maxEdgeLen = 12.f;
+            float maxSimplificationError = 1.3f;
+            float maxVertsPerPoly = 6.f;
+            float detailSampleDist = 6.f;
+            float detailSampleMaxError = 1.f;
             
             struct Agent{
-                float height = 2.0;
-                float radius = 0.6;
-                float maxClimb = 0.9;
-                float maxSlope = 45;
+                float height = 2.0f;
+                float radius = 0.6f;
+                float maxClimb = 0.9f;
+                float maxSlope = 45.f;
             } agent;
            
-            float regionMinDimension = 8;
-            float regionMergeDimension = 20;
+            float regionMinDimension = 8.f;
+            float regionMergeDimension = 20.f;
             
             enum PartitionMethod{
                 Watershed,  // best but slowest

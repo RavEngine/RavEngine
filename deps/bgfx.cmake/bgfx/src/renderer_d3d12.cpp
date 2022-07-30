@@ -7,7 +7,6 @@
 
 #if BGFX_CONFIG_RENDERER_DIRECT3D12
 #	include "renderer_d3d12.h"
-#include <comdef.h>
 
 #if !BX_PLATFORM_WINDOWS && !BX_PLATFORM_LINUX
 #	include <inspectable.h>
@@ -3107,16 +3106,10 @@ namespace bgfx { namespace d3d12
 
 			if (NULL == pso)
 			{
-				auto hr = m_device->CreateGraphicsPipelineState(&desc
+				DX_CHECK(m_device->CreateGraphicsPipelineState(&desc
 					, IID_ID3D12PipelineState
 					, (void**)&pso
-					);
-				if (hr != S_OK) {
-					auto reason = m_device->GetDeviceRemovedReason();
-					_com_error err(reason);
-					LPCTSTR errMsg = err.ErrorMessage();
-					int x = 0;
-				}
+					));
 			}
 
 			BGFX_FATAL(NULL != pso, Fatal::InvalidShader, "Failed to create PSO!");

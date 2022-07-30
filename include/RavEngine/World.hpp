@@ -21,7 +21,7 @@
 #include <boost/callable_traits.hpp>
 
 namespace RavEngine {
-	class Entity;
+	struct Entity;
 	class InputManager;
     struct Entity;
     struct PhysicsCallback;

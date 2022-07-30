@@ -95,7 +95,7 @@ inline constexpr std::string_view type_name() {
 }
 
 template<typename T>
-static constexpr bool is_eligible = (std::is_base_of<RavEngine::AutoCTTI, T>::value || std::is_pod<T>::value) && (!std::is_same<T,void>::value && !std::is_fundamental<T>::value);
+static constexpr bool is_eligible = (std::is_base_of<RavEngine::AutoCTTI, T>::value || std::is_trivially_copyable<T>::value) && (!std::is_same<T,void>::value && !std::is_fundamental<T>::value);
 
 template<typename T>
 static constexpr bool is_ineligible = !is_eligible<T>;

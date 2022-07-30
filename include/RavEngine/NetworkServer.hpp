@@ -10,7 +10,7 @@
 #include <string_view>
 
 namespace RavEngine {
-	class Entity;
+	struct Entity;
 
 class NetworkServer : public NetworkBase{
 public:

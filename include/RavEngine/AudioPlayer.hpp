@@ -6,7 +6,7 @@
 namespace RavEngine{
 
 class World;
-class AudioPlayerData;
+struct AudioPlayerData;
 /**
  Is responsible for making the buffers generated in the Audio Engine class come out your speakers
  */

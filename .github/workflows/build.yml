@@ -38,15 +38,14 @@ jobs:
       - name: Install Dependencies
         run: |
               sudo apt-get update
-              sudo apt remove build-essential
               sudo add-apt-repository ppa:ubuntu-toolchain-r/test
               sudo apt-get update
-              sudo apt-get install cmake g++-12 ninja-build libgl1-mesa-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
+              sudo apt-get install cmake g++-11 ninja-build libgl1-mesa-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
       - name: Configure
         run: |
               mkdir -p build 
               cd build
-              CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 cmake -G "Ninja" ..
+              CC=/usr/bin/gcc-11 CXX=/usr/bin/g++-11 cmake -G "Ninja" ..
       - name: Build
         run: | 
               cd build
@@ -159,12 +158,13 @@ jobs:
       - name: Install Dependencies
         run: |
               sudo apt-get update
-              sudo apt remove build-essential g++ gcc
               sudo add-apt-repository ppa:ubuntu-toolchain-r/test
               sudo apt-get update
-              sudo apt-get install cmake g++-12 ninja-build libgl1-mesa-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends 
+              sudo apt-get install cmake g++-11 ninja-build libgl1-mesa-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends 
       - name: Build and Test
-        run: cd test && ./test-linux.sh
+        run: |
+                cd test 
+                CC=/usr/bin/gcc-11 CXX=/usr/bin/g++-11 ./test-linux.sh
       - name: Output test logs
         if: ${{ failure() }}
         run: cat build/Testing/Temporary/LastTest.log

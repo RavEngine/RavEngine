@@ -9,7 +9,7 @@
 
 namespace RavEngine {
 	class World;
-	class Entity;
+	struct Entity;
 	class World;
 
 class NetworkClient : public NetworkBase{
