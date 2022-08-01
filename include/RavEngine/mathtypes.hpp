@@ -36,7 +36,7 @@ typedef double decimalType;
 //a float 3-component vector
 typedef glm::vec3 vector3;
 typedef glm::vec4 vector4;
-typedef glm::dvec2 vector2;
+typedef glm::vec2 vector2;
 
 //a float-precision quaternion
 typedef glm::quat quaternion;

@@ -289,3 +289,19 @@ PhysicsSolver::PhysicsSolver(){
 		Debug::Fatal("PhysX Scene failed to create");
     }
 }
+
+PhysicsSolver::RaycastHit::RaycastHit(const physx::PxRaycastBuffer& hit) : 
+    hasBlocking(hit.hasBlock),
+    hitPosition(vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z)),
+    hitNormal(vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z)),
+    hitDistance(hit.block.distance) {
+
+    if (hit.hasBlock) {
+        hitObject = (entity_t(uintptr_t(hit.block.actor->userData)));
+    }
+}
+
+Entity RavEngine::PhysicsSolver::RaycastHit::getEntity() const
+{
+    return Entity(hitObject);
+}

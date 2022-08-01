@@ -74,16 +74,14 @@ namespace RavEngine {
         //scene query methods
         struct RaycastHit {
             RaycastHit() {}
-            RaycastHit(const physx::PxRaycastBuffer& hit) : hitObject(entity_t(uintptr_t(hit.block.actor->userData))),
-                hasBlocking(hit.hasBlock),
-                hitPosition(vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z)),
-                hitNormal(vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z)),
-                hitDistance(hit.block.distance){}
+            RaycastHit(const physx::PxRaycastBuffer& hit);
             
             bool hasBlocking{};
             vector3 hitPosition{};
             vector3 hitNormal{};
             decimalType hitDistance{};
+            Entity getEntity() const;
+        private:
             entity_t hitObject = INVALID_ENTITY;
         };
 
