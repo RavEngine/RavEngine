@@ -90,6 +90,7 @@ Note for Linux users: You must have the following shared libaries installed on y
 - x11-dev, libgl-dev (for X11 support)
 - wayland-devel, libxkbcommon-devel, libegl-dev (for Wayland support, note that Wayland is currently not fully supported)
 - alsa-lib-devel (aka libasound2-devel) (or another SDL2-supported audio library)
+
 In addition the Raspberry Pi currently does not work due to missing support for 32-bit index buffers in Vulkan.
 
 ## Example programs
