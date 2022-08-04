@@ -29,7 +29,7 @@ void RenderEngine::begin(duDebugDrawPrimitives prim, float size){
             bgfx::setState(common | BGFX_STATE_MSAA | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
             break;
         case duDebugDrawPrimitives::DU_DRAW_LINES:
-            bgfx::setState(common | BGFX_STATE_PT_LINES | BGFX_STATE_CONSERVATIVE_RASTER | BGFX_STATE_LINEAA | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
+            bgfx::setState(common | BGFX_STATE_PT_LINES | BGFX_STATE_LINEAA | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
             break;
         case duDebugDrawPrimitives::DU_DRAW_POINTS:
             bgfx::setState(common | BGFX_STATE_PT_POINTS | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));

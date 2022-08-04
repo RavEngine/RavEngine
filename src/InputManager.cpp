@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include <RenderEngine.hpp>
 #include "Debug.hpp"
+#include "App.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -12,6 +13,16 @@ using namespace RavEngine;
 InputManager::InputManager() {
 	//register all the controllers
 	SDL_GameControllerEventState(SDL_ENABLE);
+}
+
+vector2i RavEngine::InputManager::GetMousePosPixels()
+{
+	vector2i pos;
+	SDL_GetMouseState(&pos.x, &pos.y);
+#ifdef __APPLE__
+	pos *= GetApp()->GetRenderEngine().GetDPIScale();
+#endif
+	return pos;
 }
 
 void InputManager::ProcessActionID(int id, ActionState state_in, CID controller){
@@ -164,4 +175,3 @@ void RavEngine::InputManager::SetRelativeMouseMode(bool mode){
 bool InputManager::GetRelativeMouseMode(){
 	return SDL_GetRelativeMouseMode();
 }
-

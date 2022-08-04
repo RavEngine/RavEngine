@@ -90,20 +90,20 @@ namespace RavEngine {
 			return ScreenPointToWorldPoint(vector3(point.x * width, point.y * height, point.z));
 		}
 
-		inline std::pair<vector3,vector3> ScreenPointToRay(vector2 point) {
+		inline std::pair<vector3,vector3> ScreenPointToRay(vector2 point) const {
 			vector2 scaledWindowsSize = vector2(width, height);
 			point.y = height - point.y;	// invert Y
-			point = (point / scaledWindowsSize ) * 2.0f - glm::vec2(1.0f);
+			point = (point / scaledWindowsSize ) * 2.0f - vector2(1.0f);
 
 			auto viewProjection = GenerateProjectionMatrix() * GenerateViewMatrix();
 			auto invViewProjection = glm::inverse(viewProjection);
 
-			glm::vec4 originClipSpace{ point,-1,1 };
-			glm::vec4 destClipSpace{ point,1,1 };
-			glm::vec4 originClipSpaceWS = invViewProjection * originClipSpace;
-			glm::vec4 destClipSpaceWS = invViewProjection * destClipSpace;
-			glm::vec3 originClipSpaceWS3 = glm::vec3(originClipSpaceWS) / originClipSpaceWS.w;
-			glm::vec3 destClipSpaceWS3 = glm::vec3(destClipSpaceWS) / destClipSpaceWS.w;
+			vector4 originClipSpace{ point,-1,1 };
+			vector4 destClipSpace{ point,1,1 };
+			vector4 originClipSpaceWS = invViewProjection * originClipSpace;
+			vector4 destClipSpaceWS = invViewProjection * destClipSpace;
+			vector3 originClipSpaceWS3 = vector3(originClipSpaceWS) / originClipSpaceWS.w;
+			vector3 destClipSpaceWS3 = vector3(destClipSpaceWS) / destClipSpaceWS.w;
 
 			return { originClipSpaceWS3, glm::normalize(destClipSpaceWS3 - originClipSpaceWS3) };
 		}

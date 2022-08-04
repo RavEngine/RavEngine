@@ -244,7 +244,7 @@ void DebugRender(const Im3d::DrawList& drawList){
 			bgfx::setState(BGFX_STATE_DEFAULT);
 			break;
 		case Im3d::DrawPrimitive_Lines:
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z /*| BGFX_STATE_DEPTH_TEST_LESS*/ | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_LINES | BGFX_STATE_CONSERVATIVE_RASTER);
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z /*| BGFX_STATE_DEPTH_TEST_LESS*/ | BGFX_STATE_CULL_CW | BGFX_STATE_LINEAA | BGFX_STATE_PT_LINES);
 			//set BGFX state to lines
 			break;
 		case Im3d::DrawPrimitive_Points:

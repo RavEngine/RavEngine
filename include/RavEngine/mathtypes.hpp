@@ -15,6 +15,10 @@
 //defines the vector and quaternion types
 //can change these to 32 bit float instead of 64 bit
 
+typedef glm::ivec2 vector2i;
+typedef glm::ivec3 vector3i;
+typedef glm::ivec4 vector4i;
+
 #define DOUBLE_PRECISION 0
 #if DOUBLE_PRECISION
 

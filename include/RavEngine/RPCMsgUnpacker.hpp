@@ -32,10 +32,10 @@ namespace RavEngine {
                 auto val = Deserialize<T>();
 
                 //advance the offset pointer
-                offset += TotalSerializedSize(val);
+                offset += TotalSerializedSize<decltype(val)>();
 
                 //emplace into the optional
-                result.emplace(val);
+                result.emplace(std::move(val));
             }
 				
 			return result;
@@ -47,7 +47,7 @@ namespace RavEngine {
         }
         
         template<typename T>
-        static inline constexpr size_t TotalSerializedSize(const T& value){
+        static inline constexpr size_t TotalSerializedSize(){
             return sizeof(CTTI<T>()) + SerializedSize<T>(); //encode what type it is + its size
         }
 	};

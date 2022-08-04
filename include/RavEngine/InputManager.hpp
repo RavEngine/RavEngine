@@ -8,6 +8,7 @@
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
+#include <RavEngine/mathtypes.hpp>
 
 namespace RavEngine {
 	enum ActionState{
@@ -274,6 +275,8 @@ namespace RavEngine {
 		void CleanupBindings();
 	public:
         InputManager();
+
+		static vector2i GetMousePosPixels();
 		
 		//process axis maps
 		void TickAxes();
