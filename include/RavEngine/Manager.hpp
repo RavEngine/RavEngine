@@ -6,12 +6,13 @@
 #include <boost/container_hash/hash.hpp>
 #include "DataStructures.hpp"
 #include "Function.hpp"
+#include <any>
 
 namespace RavEngine {
 struct CacheKey{
     size_t hash = 0;
-    RavEngine::Vector<boost::any> values;
-    RavEngine::Vector<Function<bool(const boost::any&)>> compareFuncs;
+    RavEngine::Vector<std::any> values;
+    RavEngine::Vector<Function<bool(const decltype(values)::value_type&)>> compareFuncs;
     
     inline bool operator==(const CacheKey& other) const{
         // ensure hashes match
@@ -32,8 +33,8 @@ struct CacheKey{
     template<typename T>
     inline void AddValue(const T& value){
         values.push_back(value);
-        compareFuncs.push_back([value](const boost::any& v) -> bool{
-            const auto& other = boost::any_cast<const T&>(v);
+        compareFuncs.push_back([value](const decltype(values)::value_type& v) -> bool{
+            const auto& other = std::any_cast<decltype(value)>(v);
             return value == other;
         });
     }

@@ -54,19 +54,24 @@ namespace RavEngine {
         };
         
         template<typename T, typename ... A>
-        ColliderHandle<T> EmplaceCollider(A ... args){
+        ColliderHandle<T> EmplaceCollider(A&& ... args){
             auto collider_iter = colliders.emplace<T>(this,args...);
             
             return ColliderHandle<T>{static_cast<void*>((*collider_iter).collider)};
         }
         
+        template<typename T, typename ... A>
+        ColliderHandle<T> UpdateCollider(ColliderHandle<T> handle){
+            
+        }
+        
         template<typename T>
         bool DestroyCollider(ColliderHandle<T> handle){
-            for(const auto& collider : colliders){
+            for(auto it = colliders.begin(); it != colliders.end(); it++){
+                auto& collider = *it;
                 if (collider.collider == handle.id){
-                    //
-                    static_cast<T*>(handle.id)->Destroy();
-                    colliders.erase(handle);
+                    rigidActor->detachShape(*collider.collider);
+                    colliders.erase(it);
                     return true;
                 }
             }
@@ -75,9 +80,9 @@ namespace RavEngine {
         
         template<typename T>
         T& GetColliderForHandle(ColliderHandle<T> handle){
-            for(const auto& collider : colliders){
+            for(auto& collider : colliders){
                 if (collider.collider == handle.id){
-                    return static_cast<T>(collider);
+                    return static_cast<T&>(collider);
                 }
             }
             // not found, this is an invalid use

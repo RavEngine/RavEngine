@@ -34,7 +34,7 @@ public:
 
 
 template<typename T, typename ... A>
-static inline std::string StrFormat(const T& formatstr, A ... args) {
+static inline std::string StrFormat(const T& formatstr, A&& ... args) {
 	return fmt::format(formatstr, args...);
 }
 /**

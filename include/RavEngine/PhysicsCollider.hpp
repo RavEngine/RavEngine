@@ -57,9 +57,7 @@ namespace RavEngine {
 		@pre This component must be added to an entity with a PhysicsBodyComponent before using this call.
 		*/
 		bool GetQueryable() const;
-        
-        void Destroy();
-				
+        				
 		/**
 		 Set PxShape relative transformation
 		 @param position the relative location of the shape
@@ -100,8 +98,6 @@ namespace RavEngine {
 	};
 
 	class SphereCollider : public PhysicsCollider {
-	protected:
-		decimalType radius;
 	public:
 		
 		/**
@@ -118,6 +114,8 @@ namespace RavEngine {
 		 @param color the hex color to use to draw, in format 0xRRGGBBAA
 		 */
 		void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override;
+        
+        decimalType GetRadius() const;
 	};
 
 	class CapsuleCollider : public PhysicsCollider {

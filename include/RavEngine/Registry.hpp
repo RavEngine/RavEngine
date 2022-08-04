@@ -55,7 +55,7 @@ class Registry{
     }
     
     template<typename T, typename ... A>
-    static inline T& EmplaceComponent(entity_t id, A ... args){
+    static inline T& EmplaceComponent(entity_t id, A&& ... args){
         // get the world
         assert(EntityIsValid(id));
         auto& data = entityData[id];

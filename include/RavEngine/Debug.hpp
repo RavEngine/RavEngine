@@ -41,7 +41,7 @@ public:
 	 @param values the optional values to log
 	 */
 	template <typename ... T>
-	static inline void LogTemp(const char* formatstr, T... values){
+	static inline void LogTemp(const char* formatstr, T&& ... values){
 #ifdef _DEBUG
 		LogHelper(stdout, StrFormat(formatstr,values...).c_str(),"LOGTEMP");
 #endif
@@ -61,7 +61,7 @@ public:
 	 @param values the optional values to log
 	 */
 	template <typename ... T>
-	static inline void Log(const char* formatstr, T... values){
+	static inline void Log(const char* formatstr, T&& ... values){
 		LogHelper(stdout, StrFormat(formatstr,values...).c_str(),"LOG");
 	}
 	
@@ -79,7 +79,7 @@ public:
 	 @param values the optional values to log
 	 */
 	template <typename ... T>
-	static inline void Warning(const char* formatstr, T... values){
+	static inline void Warning(const char* formatstr, T&& ... values){
 		LogHelper(stderr, StrFormat(formatstr,values...).c_str(), "WARN");
 	}
 	
@@ -102,7 +102,7 @@ public:
 	@param values the optional values to log
 	*/
 	template <typename ... T>
-	static inline void Error(const char* formatstr, T... values){
+	static inline void Error(const char* formatstr, T&& ... values){
 		LogHelper(stderr, StrFormat(formatstr,values...).c_str(), "ERROR");
 		PrintStacktraceHere();
 	}
@@ -123,7 +123,7 @@ public:
 	 @param values the optional values
 	 */
 	template <typename ... T>
-	static inline void Fatal(const char* formatstr, T... values){
+	static inline void Fatal(const char* formatstr, T&& ... values){
 		Debug::Error(formatstr,values...);
         auto formattedMsg = StrFormat(formatstr,values...);
         InvokeUserHandler(formattedMsg.c_str());
@@ -137,7 +137,7 @@ public:
      @param values the optional values for the failure message
      */
     template <typename ... T>
-    static inline void Assert(bool condition, const char* formatstr, T... values){
+    static inline void Assert(bool condition, const char* formatstr, T&& ... values){
         if (!condition){
             Fatal(formatstr,values...);
         }

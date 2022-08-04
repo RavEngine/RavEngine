@@ -124,7 +124,7 @@ struct FrameData{
     Vector<StoredLight<SpotLight>> spots;
     
     template<typename T, typename ... A>
-    inline void AddLight(T& structure, A... args){
+    inline void AddLight(T& structure, A&& ... args){
         structure.emplace_back(args...);
     }
     

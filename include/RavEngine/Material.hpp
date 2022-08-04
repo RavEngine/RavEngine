@@ -45,7 +45,7 @@ namespace RavEngine {
 			 @param args arguments to pass to material constructor if needed
 			 */
 			template<typename T, typename ... A>
-			static inline Ref<T> Get(A ... args){
+			static inline Ref<T> Get(A&& ... args){
                 return GenericWeakCache<ctti_t,T,false>::Get(CTTI<T>(),args...);
 			}
             

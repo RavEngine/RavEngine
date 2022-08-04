@@ -89,7 +89,7 @@ namespace RavEngine {
             using const_iterator = typename decltype(dense_set)::const_iterator_type;
             
             template<typename ... A>
-            inline T& Emplace(entity_t local_id, A ... args){
+            inline T& Emplace(entity_t local_id, A&& ... args){
                 auto& ret = dense_set.emplace(args...);
                 aux_set.emplace(local_id);
                 if (local_id >= sparse_set.size()){
@@ -424,7 +424,7 @@ namespace RavEngine {
         }
         
         template<typename T, typename ... A>
-        inline T& EmplaceComponent(entity_t local_id, A ... args){
+        inline T& EmplaceComponent(entity_t local_id, A&& ... args){
             auto ptr = MakeIfNotExists<T>();
             //constexpr bool isMoving = sizeof ... (A) == 1; && (std::is_rvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value || std::is_lvalue_reference<typename std::tuple_element<0, std::tuple<A...>>::type>::value);
                         
@@ -661,7 +661,7 @@ namespace RavEngine {
     public:
         
         template<typename T, typename ... A>
-        inline T CreatePrototype(A ... args){
+        inline T CreatePrototype(A&& ... args){
             auto id = CreateEntity();
             T en;
             en.id = id;
@@ -726,7 +726,7 @@ namespace RavEngine {
         
         
         template<bool polymorphic, typename T, typename ... Args>
-        inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args... args){
+        inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args&& ... args){
             
             using argtypes = boost::callable_traits::args_t<T>;
             
@@ -775,7 +775,7 @@ namespace RavEngine {
         }
         
         template< bool polymorphic,typename T, typename interval_t, typename ... Args>
-        inline void EmplaceTimedSystemGeneric(const interval_t interval, Args ... args){
+        inline void EmplaceTimedSystemGeneric(const interval_t interval, Args&& ... args){
             auto task = EmplaceSystemGeneric<polymorphic,T>(args...);
             
             auto c_interval = std::chrono::duration_cast<decltype(TimedSystemEntry::interval)>(interval);
@@ -803,7 +803,7 @@ namespace RavEngine {
         }
         
         template<typename T, typename ... Args>
-        inline auto EmplaceSystem(Args... args){
+        inline auto EmplaceSystem(Args&& ... args){
             return EmplaceSystemGeneric<false,T>(args...);
         }
 
@@ -816,17 +816,17 @@ namespace RavEngine {
         }
         
         template<typename T, typename interval_t, typename ... Args>
-        inline void EmplaceTimedSystem(const interval_t interval, Args ... args){
+        inline void EmplaceTimedSystem(const interval_t interval, Args&& ... args){
             EmplaceTimedSystemGeneric<false,T>(interval,args...);
         }
         
         template<typename T, typename ... Args>
-        inline auto EmplacePolymorphicSystem(Args ... args){
+        inline auto EmplacePolymorphicSystem(Args&& ... args){
             return EmplaceSystemGeneric<true,T>(args...);
         }
         
         template<typename T, typename interval_t, typename ... Args>
-        inline void EmplacePolymorphicTimedSystem(const interval_t interval, Args ... args){
+        inline void EmplacePolymorphicTimedSystem(const interval_t interval, Args&& ... args){
             EmplaceTimedSystemGeneric<true,T>(interval,args...);
         }
         

@@ -28,13 +28,23 @@ BoxCollider::BoxCollider(PhysicsBodyComponent* owner, const vector3& ext, Ref<Ph
     UpdateFilterData(owner);
 }
 
-SphereCollider::SphereCollider(PhysicsBodyComponent* owner, decimalType r, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : radius(r){
+SphereCollider::SphereCollider(PhysicsBodyComponent* owner, decimalType r, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation){
     material = mat;
-    collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxSphereGeometry(radius), *material->GetPhysXmat());
+    collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxSphereGeometry(r), *material->GetPhysXmat());
 
     SetRelativeTransform(position, rotation);
     UpdateFilterData(owner);
 }
+//
+//void SphereCollider::SetRadius(decimalType newRadius){
+//   
+//    collider->getGeometry().sphere().radius = radius;
+//}
+
+decimalType SphereCollider::GetRadius() const{
+    return collider->getGeometry().sphere().radius;
+}
+
 
 CapsuleCollider::CapsuleCollider(PhysicsBodyComponent* owner, decimalType r, decimalType hh, Ref<PhysicsMaterial> mat, const vector3& position, const quaternion& rotation) : radius(r), halfHeight(hh){
     material = mat;
@@ -150,18 +160,6 @@ bool RavEngine::PhysicsCollider::GetQueryable() const
 	return collider->getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE;
 }
 
-void PhysicsCollider::Destroy(){
-    if (collider != nullptr) {
-        auto actor = collider->getActor();
-        if (actor != nullptr) {
-            actor->detachShape(*collider);
-        }
-        else {
-            collider->release();
-        }
-    }
-}
-
 void PhysicsCollider::SetRelativeTransform(const vector3 &position, const quaternion &rotation){
 	collider->setLocalPose(PxTransform(PxVec3(position.x,position.y,position.z),PxQuat(rotation.x,rotation.y,rotation.z,rotation.w)));
 }
@@ -180,7 +178,7 @@ void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg,color_t debug_color, con
 }
 
 void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg,color_t debug_color, const RavEngine::Transform& tr) const{
-    dbg.DrawSphere(CalculateWorldMatrix(tr), debug_color, radius);
+    dbg.DrawSphere(CalculateWorldMatrix(tr), debug_color, GetRadius());
 }
 
 void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg, color_t debug_color, const RavEngine::Transform& tr) const{

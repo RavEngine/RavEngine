@@ -1,9 +1,10 @@
 #pragma once
-#include <boost/function.hpp>
+//#include <boost/function.hpp>
+#include <functional>
 
 namespace RavEngine{
 
 template<typename ... A>
-using Function = boost::function<A...>;
+using Function = std::function<A...>;
 
 }

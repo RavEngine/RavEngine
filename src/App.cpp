@@ -384,10 +384,12 @@ int App::run(int argc, char** argv) {
 		}
 				
 		//process main thread tasks
-		Function<void(void)> front;
-		while (main_tasks.try_dequeue(front)){
-			front();
-		}
+        {
+            Function<void(void)> front;
+            while (main_tasks.try_dequeue(front)){
+                front();
+            }
+        }
 
 #if XR_AVAILABLE
 		if (wantsXR) {

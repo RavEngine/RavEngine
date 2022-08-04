@@ -67,7 +67,7 @@ namespace RavEngine {
          @param row the row to display the text
          */
         template<typename ... T>
-        static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T... args){
+        static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T&& ... args){
 #ifdef _DEBUG
             dbgmtx.lock();
             debugprints[row] = {StrFormat(formatstr, args...),color};
@@ -132,11 +132,11 @@ namespace RavEngine {
 		/**
 		 @return the current window buffer size, in pixels
 		 */
-        constexpr const dim& GetBufferSize(){
+        constexpr const dim& GetBufferSize() const{
 			return bufferdims;
 		}
 		
-        constexpr const dim& GetWindowSize(){
+        constexpr const dim& GetWindowSize() const{
 			return windowdims;
 		}
 		

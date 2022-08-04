@@ -88,7 +88,7 @@ namespace RavEngine {
 		@param args the varargs to encode
 		*/
 		template<typename ... A>
-		inline std::string SerializeRPC(uint16_t id, A ... args) const{
+		inline std::string SerializeRPC(uint16_t id, A&& ... args) const{
 			constexpr size_t totalsize = (RPCMsgUnpacker::TotalSerializedSize(args) + ...) + RPCMsgUnpacker::header_size;
 
 			auto& uuid_bytes = GetOwner().GetComponent<NetworkIdentity>().GetNetworkID();
@@ -163,7 +163,7 @@ namespace RavEngine {
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-        constexpr inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A&& ... args) const{
 			if (data->ServerRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				GetApp()->networkManager.client->SendMessageToServer(msg, mode);
@@ -174,7 +174,7 @@ namespace RavEngine {
 		}
 
 		template<typename ... A>
-        constexpr inline void InvokeClientRPCDirected(uint16_t id, HSteamNetConnection target, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeClientRPCDirected(uint16_t id, HSteamNetConnection target, NetworkBase::Reliability mode, A&& ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				GetApp()->networkManager.server->SendMessageToClient(msg, target, mode);
@@ -185,7 +185,7 @@ namespace RavEngine {
 		}
 
 		template<typename ... A>
-        constexpr inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A&& ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				GetApp()->networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
@@ -202,7 +202,7 @@ namespace RavEngine {
 		@param args templated parameter list
 		*/
 		template<typename ... A>
-        constexpr inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A ... args) const{
+        constexpr inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A&& ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
 				GetApp()->networkManager.server->SendMessageToAllClients(msg, mode);

@@ -13,7 +13,7 @@ struct Entity : public AutoCTTI{
     Entity(){}
     
     template<typename T, typename ... A>
-    inline T& EmplaceComponent(A ... args) const{
+    inline T& EmplaceComponent(A&& ... args) const{
         return Registry::EmplaceComponent<T>(id, args...);
     }
     
