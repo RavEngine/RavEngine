@@ -62,16 +62,34 @@ static const aiScene* LoadSceneFilesystem(const Filesystem::Path& path){
 	return scene;
 }
 
+static MeshAsset::BitWidth GetRequiredBitwidth(const aiScene* scene, const aiNode* rootNode = nullptr) {
+	uint32_t totalVertCount = 0;
+	if (rootNode == nullptr) {
+		rootNode = scene->mRootNode;
+	}
+	for (int i = 0; i < rootNode->mNumMeshes; i++) {
+		aiMesh* mesh = scene->mMeshes[rootNode->mMeshes[i]];
+		totalVertCount += mesh->mNumVertices;
+	}
+	// can it fit in a 16 bit index buffer?
+	if (totalVertCount >= std::numeric_limits<uint16_t>::max()) {
+		return MeshAsset::BitWidth::uint32;
+	}
+	else {
+		return MeshAsset::BitWidth::uint16;
+	}
+}
+
 void MeshAsset::InitAll(const aiScene* scene, const MeshAssetOptions& options){
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
-	
+	indexBufferWidth = GetRequiredBitwidth(scene);
 	//generate the vertex and index lists
 	RavEngine::Vector<MeshPart> meshes;
 	meshes.reserve(scene->mNumMeshes);
 	for(int i = 0; i < scene->mNumMeshes; i++){
 		aiMesh* mesh = scene->mMeshes[i];
-		auto mp = AIMesh2MeshPart(mesh, scalemat);
-		meshes.push_back(mp);
+		auto mp = AIMesh2MeshPart(mesh, scalemat,indexBufferWidth);
+		meshes.push_back(std::move(mp));
 	}
 	
 	//free afterward
@@ -82,18 +100,18 @@ void MeshAsset::InitAll(const aiScene* scene, const MeshAssetOptions& options){
 
 void MeshAsset::InitPart(const aiScene* scene, const std::string& meshName, const std::string& fileName, const MeshAssetOptions& options){
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
-	
 	auto node = scene->mRootNode->FindNode(meshName.c_str());
 	if (node == nullptr){
 		Debug::Fatal("No mesh with name {} in scene {}",meshName, fileName);
 	}
 	else{
+		indexBufferWidth = GetRequiredBitwidth(scene,node);
 		RavEngine::Vector<MeshPart> meshes;
 		meshes.reserve(node->mNumMeshes);
 		for(int i = 0; i < node->mNumMeshes; i++){
 			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-			auto mp = AIMesh2MeshPart(mesh, scalemat);
-			meshes.push_back(mp);
+			auto mp = AIMesh2MeshPart(mesh, scalemat,indexBufferWidth);
+			meshes.push_back(std::move(mp));
 		}
 		//free afterward
 		aiReleaseImport(scene);
@@ -132,9 +150,11 @@ MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAsset
 }
 
 
-MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
+MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat, BitWidth indexBufferWidth)
 {
 	MeshPart mp;
+	mp.indices.mode = indexBufferWidth;
+
 	mp.indices.reserve(mesh->mNumFaces * 3);
 	mp.vertices.reserve(mesh->mNumVertices);
 	for (int vi = 0; vi < mesh->mNumVertices; vi++) {
@@ -173,7 +193,7 @@ MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, co
 	return mp;
 }
 
-void MeshAsset::InitializeFromMeshPartFragments(const  RavEngine::Vector<MeshPart>& meshes, const MeshAssetOptions& options){
+void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart>& meshes, const MeshAssetOptions& options){
 	//combine all meshes
 	decltype(totalVerts) tv = 0;
 	decltype(totalIndices) ti = 0;
@@ -184,6 +204,7 @@ void MeshAsset::InitializeFromMeshPartFragments(const  RavEngine::Vector<MeshPar
 	
 	MeshPart allMeshes;
 	allMeshes.vertices.reserve(tv);
+	allMeshes.indices.mode = indexBufferWidth;
 	allMeshes.indices.reserve(ti);
 	
 	uint32_t baseline_index = 0;
@@ -191,8 +212,8 @@ void MeshAsset::InitializeFromMeshPartFragments(const  RavEngine::Vector<MeshPar
 		for(const auto& vert : mesh.vertices){
 			allMeshes.vertices.push_back(vert);
 		}
-		for(const auto& index : mesh.indices){
-			allMeshes.indices.push_back(index + baseline_index);	//must recompute index here
+		for (int i = 0; i < mesh.indices.size(); i++) {
+			allMeshes.indices.push_back(mesh.indices[i] + baseline_index);	//must recompute index here
 		}
 		baseline_index += mesh.vertices.size();
 	}
@@ -222,6 +243,8 @@ void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, const MeshAsset
         auto& i = allMeshes.indices;
         totalVerts = v.size();
         totalIndices = i.size();
+
+		auto format = i.mode == BitWidth::uint32 ? BGFX_BUFFER_INDEX32 : BGFX_BUFFER_NONE;
         
         bgfx::VertexLayout pcvDecl;
         
@@ -238,10 +261,10 @@ void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, const MeshAsset
         auto vbm = bgfx::copy(&v[0],static_cast<uint32_t>(size_vbm));
         vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
         
-		auto size_ibm = i.size() * sizeof(decltype(allMeshes.indices)::value_type);
+		auto size_ibm = i.size_bytes();
 		assert(size_ibm < numeric_limits<uint32_t>::max());	// too many indices!
-        auto ibm = bgfx::copy(&i[0], static_cast<uint32_t>(size_ibm));
-        indexBuffer = bgfx::createIndexBuffer(ibm,BGFX_BUFFER_INDEX32);
+        auto ibm = bgfx::copy(i.first_element_ptr(), static_cast<uint32_t>(size_ibm));
+        indexBuffer = bgfx::createIndexBuffer(ibm,format);
         
         if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
             Debug::Fatal("Buffers could not be created.");

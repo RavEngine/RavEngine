@@ -10,6 +10,7 @@
 #include "Manager.hpp"
 #include <boost/container_hash/hash.hpp>
 #include "Filesystem.hpp"
+#include "Debug.hpp"
 
 struct aiMesh;
 struct aiScene;
@@ -30,8 +31,94 @@ class MeshAsset {
 public:
 	typedef VertexNormalUV vertex_t;
 
+	enum class BitWidth : uint8_t {
+		undefined,
+		uint16,
+		uint32
+	};
+
 	struct MeshPart{
-		RavEngine::Vector<uint32_t> indices;
+		struct Indices {
+			RavEngine::Vector<uint32_t> buffer32;
+			RavEngine::Vector<uint16_t> buffer16;
+			BitWidth mode;
+
+			void reserve(size_t size) {
+				switch (mode) {
+				case BitWidth::uint16:
+					buffer16.reserve(size);
+					break;
+				case BitWidth::uint32:
+					buffer32.reserve(size);
+					break;
+				default:
+					Debug::Fatal("Invalid Mode: {}",mode);
+				}
+			}
+
+			void push_back(uint32_t index) {
+				switch (mode) {
+				case BitWidth::uint16:
+					buffer16.push_back(index);
+					break;
+				case BitWidth::uint32:
+					buffer32.push_back(index);
+					break;
+				default:
+					Debug::Fatal("Invalid Mode: {}", mode);
+				}
+			}
+
+			auto size() const{
+				switch (mode) {
+				case BitWidth::uint16:
+					return buffer16.size();
+				case BitWidth::uint32:
+					return buffer32.size();
+					break;
+				default:
+					Debug::Fatal("Invalid Mode: {}", mode);
+				}
+			}
+
+			const void* first_element_ptr() const {
+				switch (mode) {
+				case BitWidth::uint16:
+					return static_cast<const void*>(& buffer16[0]);
+				case BitWidth::uint32:
+					return static_cast<const void*>(&buffer32[0]);
+					break;
+				default:
+					Debug::Fatal("Invalid Mode: {}", mode);
+				}
+			}
+
+			size_t size_bytes() const {
+				switch (mode) {
+				case BitWidth::uint16:
+					return buffer16.size() * sizeof(decltype(buffer16)::value_type);
+				case BitWidth::uint32:
+					return buffer32.size() * sizeof(decltype(buffer32)::value_type);
+					break;
+				default:
+					Debug::Fatal("Invalid Mode: {}", mode);
+				}
+			}
+
+			uint32_t operator[](size_t index) const{
+				switch (mode) {
+				case BitWidth::uint16:
+					return buffer16[index];
+				case BitWidth::uint32:
+					return buffer32[index];
+					break;
+				default:
+					Debug::Fatal("Invalid Mode: {}", mode);
+				}
+			}
+
+		} indices;
+
         RavEngine::Vector<vertex_t> vertices;
 	};
 
@@ -45,12 +132,13 @@ public:
 	@param scaleMat the matrix to apply to each vertex of the mesh
 	@return converted MeshPart
 	*/
-	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
+	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat, BitWidth mode);
     
     struct Bounds{
         float min[3] = {0,0,0};
         float max[3] = {0,0,0};
     };
+
     
 protected:
 	bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
@@ -58,7 +146,9 @@ protected:
 
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
-   	
+
+	BitWidth indexBufferWidth;
+
 	inline void Destroy(){
         if (destroyOnDestruction){
             if (bgfx::isValid(vertexBuffer)){
