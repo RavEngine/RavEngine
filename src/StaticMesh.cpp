@@ -1,5 +1,6 @@
 #include "StaticMesh.hpp"
 #include "World.hpp"
+#include "SkinnedMeshComponent.hpp"
 
 void RavEngine::StaticMesh::updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> to)
 {
@@ -7,5 +8,14 @@ void RavEngine::StaticMesh::updateMaterialInWorldRenderData(Ref<PBRMaterialInsta
 	auto owner = GetOwner();
 	auto world = owner.GetWorld();
 	auto localID = owner.GetIdInWorld();
-	world->updateStaticMeshMaterial(localID, prev, to,getMesh());
+	world->updateStaticMeshMaterial(localID, prev, to,GetMesh());
+}
+
+void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(Ref<MaterialInstanceBase> to)
+{
+	auto prev = GetMaterial();
+	auto owner = GetOwner();
+	auto world = owner.GetWorld();
+	auto localID = owner.GetIdInWorld();
+	world->updateSkinnedMeshMaterial(localID, prev, to, GetMesh(), GetSkeleton());
 }

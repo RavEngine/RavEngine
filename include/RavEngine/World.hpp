@@ -223,6 +223,8 @@ namespace RavEngine {
 		locked_node_hashmap<RavEngine::ctti_t, AnySparseSet,SpinLock> componentMap;
 
         friend class StaticMesh;
+        friend class SkinnedMeshComponent;
+        friend class RenderEngine;
         // renderer-friendly representation of static meshes
         struct MDIICommand {
             struct command {
@@ -234,8 +236,21 @@ namespace RavEngine {
             };
             Vector<command> commands;
         };
-        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand> staticMeshRenderData;
+        struct MDIICommandSkinned {
+            struct command {
+                WeakRef<MeshAssetSkinned> mesh;
+                WeakRef<SkeletonAsset> skeleton;
+                UnorderedSparseSet<entity_t, matrix4> transforms;
+                command(decltype(mesh) mesh, decltype(skeleton) skeleton, decltype(transforms)::index_type index, const decltype(transforms)::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
+                    transforms.Emplace(index, first_value);
+                }
+            };
+            Vector<command> commands;
+        };
+        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand,SpinLock> staticMeshRenderData;
+        locked_node_hashmap<Ref<MaterialInstanceBase>, MDIICommandSkinned, SpinLock> skinnedMeshRenderData;
         void updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
+        void updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
     public:
         struct PolymorphicIndirection{
             struct elt{

@@ -20,6 +20,7 @@
 #include <RmlUi/Debugger.h>
 #include "Utilities.hpp"
 #include "InputManager.hpp"
+#include "AnimatorComponent.hpp"
 
 	#if defined __linux__ && !defined(__ANDROID__)
 	#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work
@@ -728,71 +729,74 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	uint32_t allIndicesIncrement = 0;
 	auto execdraw = [&](const auto& row, const auto& skinningfunc, const auto& bindfunc) {
 		//call Draw with the staticmesh
-		if (std::get<1>(row.first)) {
-            if (row.second.items.size() == 0){
-                return;
-            }
+		const auto& material = row.first;
+		const auto& mdii = row.second;
+
+		// TODO: convert to multidraw indirect
+		for (const auto& command : mdii.commands) {
+			const uint32_t ntransforms = command.transforms.DenseSize();
+			const auto mesh = command.mesh.lock();
+			if (ntransforms == 0 || !mesh) {
+				continue;
+			}
 			skinningfunc(row);
+
+			//TODO: stop using instance data buffers for this
 
 			//fill the buffer using the material to write the material data for each instance
 				//get the stride for the material (only needs the matrix, all others are uniforms?
 			constexpr auto stride = closest_multiple_of(16 * sizeof(float), 16);
 			bgfx::InstanceDataBuffer idb;
-			assert(row.second.items.size() < numeric_limits<uint32_t>::max());	// too many items!
-			Debug::Assert(bgfx::getAvailInstanceDataBuffer(static_cast<uint32_t>(row.second.items.size()), stride) == row.second.items.size(), "Instance data buffer does not have enough space!");
-			bgfx::allocInstanceDataBuffer(&idb, static_cast<uint32_t>(row.second.items.size()), stride);
+			assert(ntransforms < numeric_limits<uint32_t>::max());	// too many items!
+			Debug::Assert(bgfx::getAvailInstanceDataBuffer(static_cast<uint32_t>(ntransforms), stride) == ntransforms, "Instance data buffer does not have enough space!");
+			bgfx::allocInstanceDataBuffer(&idb, static_cast<uint32_t>(ntransforms), stride);
 			size_t offset = 0;
-			for (const auto& mesh : row.second.items) {
+			for (const auto& mat : command.transforms) {
 				//write the data into the idb
-				auto matrix = glm::value_ptr(mesh);
 				float* ptr = (float*)(idb.data + offset);
 
-				copyMat4(matrix, ptr);
+				copyMat4(glm::value_ptr(mat), ptr);
 
 				offset += stride;
 			}
 			bgfx::setInstanceDataBuffer(&idb);
 			//set BGFX state
-			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | (std::get<1>(row.first)->doubleSided ? BGFX_STATE_NONE : BGFX_STATE_CULL_CW));
+			bgfx::setState((BGFX_STATE_DEFAULT & ~BGFX_STATE_CULL_MASK) | (material->doubleSided ? BGFX_STATE_NONE : BGFX_STATE_CULL_CW));
 
 			bindfunc();
-			
-            // both skinend and static need to write to this buffer
-            bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Write);
-            
+
+			// both skinend and static need to write to this buffer
+			bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Write);
+
 			//bind gbuffer textures
 			for (int i = 0; i < BX_COUNTOF(attachments); i++) {
 				bgfx::setTexture(i, gBufferSamplers[i], attachments[i]);
 			}
-            
-            // update time and other data
-            auto numIndiciesInThisDispatch = std::get<0>(row.first)->GetNumVerts();
-            float timeVals[] = {static_cast<float>(fd->Time),static_cast<float>(allVerticesOffset),static_cast<float>(numIndiciesInThisDispatch),0};
-            allVerticesOffset += numIndiciesInThisDispatch * row.second.items.size();   // need to account for the number of indices
-            timeUniform.value().SetValues(&timeVals, 1);
 
-			std::get<1>(row.first)->Draw(std::get<0>(row.first)->getVertexBuffer(), std::get<0>(row.first)->getIndexBuffer(), matrix4(), Views::DeferredGeo);
+			// update time and other data
+			auto numIndiciesInThisDispatch = mesh->GetNumVerts();
+			float timeVals[] = { static_cast<float>(fd->Time),static_cast<float>(allVerticesOffset),static_cast<float>(numIndiciesInThisDispatch),0 };
+			allVerticesOffset += numIndiciesInThisDispatch * ntransforms;   // need to account for the number of indices
+			timeUniform.value().SetValues(&timeVals, 1);
+
+			material->Draw(mesh->getVertexBuffer(), mesh->getIndexBuffer(), matrix4(), Views::DeferredGeo);
 
 			// dispatch the indices copy compute shader
 			bgfx::discard();
-			bgfx::setBuffer(0, std::get<0>(row.first)->getIndexBuffer(), bgfx::Access::Read);
+			bgfx::setBuffer(0,mesh->getIndexBuffer(), bgfx::Access::Read);
 			bgfx::setBuffer(1, allIndicesHandle, bgfx::Access::Write);
 			timeVals[0] = allIndicesOffset;
-			timeVals[1] = std::get<0>(row.first)->GetNumIndices();
+			timeVals[1] = mesh->GetNumIndices();
 			timeVals[2] = allIndicesIncrement;
-			timeVals[3] = std::get<0>(row.first)->GetNumVerts();
+			timeVals[3] = mesh->GetNumVerts();
 			numRowsUniform.SetValues(timeVals, 1);
-			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, Debug::AssertSize<uint32_t>(ceil(std::get<0>(row.first)->GetNumIndices() / 64.0)), Debug::AssertSize<uint32_t>(row.second.items.size()), 1);
-			allIndicesOffset += std::get<0>(row.first)->GetNumIndices() * row.second.items.size();	// account for the number of instances
-			allIndicesIncrement += std::get<0>(row.first)->GetNumVerts() * row.second.items.size();	// begin counting from here
-
-		}
-		else {
-			Debug::Fatal("Cannot draw a mesh with no material assigned.");
+			bgfx::dispatch(Views::DeferredGeo, copyIndicesShaderHandle, Debug::AssertSize<uint32_t>(ceil(mesh->GetNumIndices() / 64.0)), Debug::AssertSize<uint32_t>(ntransforms), 1);
+			allIndicesOffset += mesh->GetNumIndices() * ntransforms;	// account for the number of instances
+			allIndicesIncrement += mesh->GetNumVerts() * ntransforms;	// begin counting from here
 		}
 	};
 		
-	for(const auto& row : fd->opaques){
+	for(const auto& row : worldOwning->staticMeshRenderData){
 		execdraw(row, [this](const auto& row) {
 			// do nothing
 		}, [this]() {
@@ -801,63 +805,67 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(11, opaquemtxhandle, bgfx::Access::Read);
 		});
 	}
-	
-	for (const auto& row : fd->skinnedOpaques) {
+
+	for (const auto& row : worldOwning->skinnedMeshRenderData) {
 		size_t computeOffsetIndex;
 		float values[4];
-		execdraw(row, [&computeOffsetIndex, &values, this](const auto& row) {
-			// seed compute shader for skinning
+		execdraw(row, [&computeOffsetIndex, &values, &worldOwning, this](const auto& row) {
+			auto& drawdata = row.second;
+			for (const auto& command : drawdata.commands) {
+				// seed compute shader for skinning
 			// input buffer A: skeleton bind pose
-			Ref<SkeletonAsset> skeleton = std::get<2>(row.first);
-			// input buffer B: vertex weights by bone ID
-			auto mesh = std::get<0>(row.first);
-			// input buffer C: unposed vertices in mesh
-			
-			// output buffer A: posed output transformations for vertices
-			auto numverts = mesh->GetNumVerts();
-			auto numobjects = row.second.items.size();
-			
-			auto emptySpace = numverts * numobjects;
-			assert(emptySpace < numeric_limits<uint32_t>::max());
+				Ref<SkeletonAsset> skeleton = command.skeleton.lock();
+				// input buffer B: vertex weights by bone ID
+				auto mesh = command.mesh.lock();
+				// input buffer C: unposed vertices in mesh
 
-			computeOffsetIndex = skinningComputeBuffer.AddEmptySpace(static_cast<uint32_t>(emptySpace), skinningOutputLayout);
-			bgfx::setBuffer(0, skinningComputeBuffer.GetHandle(), bgfx::Access::Write);
-			bgfx::setBuffer(2, mesh->GetWeightsHandle(), bgfx::Access::Read);
-		
-			//pose SOA values
-			if(row.second.skinningdata.size() > 0){
+				// output buffer A: posed output transformations for vertices
+				auto numverts = mesh->GetNumVerts();
+				const auto numobjects = command.transforms.DenseSize();
+
+				auto emptySpace = numverts * numobjects;
+				assert(emptySpace < numeric_limits<uint32_t>::max());
+
+				computeOffsetIndex = skinningComputeBuffer.AddEmptySpace(static_cast<uint32_t>(emptySpace), skinningOutputLayout);
+				bgfx::setBuffer(0, skinningComputeBuffer.GetHandle(), bgfx::Access::Write);
+				bgfx::setBuffer(2, mesh->GetWeightsHandle(), bgfx::Access::Read);
+
+				//pose SOA values
 				//convert to float from double
 				size_t totalsize = 0;
-				for(const auto& array : row.second.skinningdata){
-					totalsize += array.size();
+				for (const auto& ownerid : command.transforms.reverse_map) {
+					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
+					totalsize += animator.GetSkinningMats().size();
 				}
-				typedef Array<float,16> arrtype;
+				typedef Array<float, 16> arrtype;
 				stackarray(pose_float, arrtype, totalsize);
 				size_t index = 0;
-				for(const auto& array : row.second.skinningdata){
+				for (const auto& ownerid : command.transforms.reverse_map) {
+					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
+					auto& array = animator.GetSkinningMats();
 					//in case of double mode, need to convert to float
-					for(int i = 0; i < array.size(); i++){
+					for (int i = 0; i < array.size(); i++) {
 						//populate stack array values
 						auto ptr = glm::value_ptr(array[i]);
-						for(int offset = 0; offset < 16; offset++){
+						for (int offset = 0; offset < 16; offset++) {
 							pose_float[index][offset] = static_cast<float>(ptr[offset]);
 						}
 						index++;
 					}
 				}
 				assert(totalsize < numeric_limits<uint32_t>::max());	// pose buffer is too big!
-				auto poseStart = poseStorageBuffer.AddData(reinterpret_cast<uint8_t*>(pose_float),static_cast<uint32_t>(totalsize), skinningInputLayout);
-				
+				auto poseStart = poseStorageBuffer.AddData(reinterpret_cast<uint8_t*>(pose_float), static_cast<uint32_t>(totalsize), skinningInputLayout);
+
 				// set skinning uniform
 				values[0] = static_cast<float>(numobjects);
 				values[1] = static_cast<float>(numverts);
 				values[2] = static_cast<float>(skeleton->GetBindposes().size());
 				values[3] = static_cast<float>(poseStart);
 				numRowsUniform.SetValues(&values, 1);
-				
-				float offsets[4] = {static_cast<float>(computeOffsetIndex),0,0,0};
+
+				float offsets[4] = { static_cast<float>(computeOffsetIndex),0,0,0 };
 				computeOffsetsUniform.SetValues(&offsets, 1);
-				
+
 				bgfx::setBuffer(1, poseStorageBuffer.GetHandle(), bgfx::Access::Read);
 				bgfx::dispatch(Views::DeferredGeo, skinningShaderHandle, std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);	//objects x number of vertices to pose
 			}
@@ -867,7 +875,6 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			bgfx::setBuffer(11, skinningComputeBuffer.GetHandle(), bgfx::Access::Read);
 		});
 	}
-
 	// debug: draw the unified mesh
 	/*bgfx::discard();
 	bgfx::setVertexBuffer(0,allVerticesHandle);

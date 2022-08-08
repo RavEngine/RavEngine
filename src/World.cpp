@@ -287,74 +287,15 @@ void World::setupRenderTasks(){
         }
 
 	}).name("Init iterators");
-	
-	//sort into the hashmap
-    auto sort = renderTasks.emplace([this]{
-        auto current = GetApp()->GetCurrentFramedata();
-        auto staticmeshes = GetAllComponentsOfType<StaticMesh>();
-        if (staticmeshes){
-            for(const auto& e : *staticmeshes.value()){
-                if (e.Enabled) {
-                    auto& pair = e.getTuple();
-                    auto mat = e.GetOwner().GetTransform().CalculateWorldMatrix();
-                    auto& item = current->opaques[pair];
-                    item.AddItem(mat);
-                }
-            }
-        }
-    }).name("sort static serial");
-//	auto sort = renderTasks.for_each(std::ref(geobegin),std::ref(geoend),[&](const StaticMesh& e){
-//		auto current = GetApp()->GetCurrentFramedata();
-//        if (e.Enabled) {
-//            auto& pair = e.getTuple();
-//            auto mat = e.GetOwner().GetTransform().CalculateWorldMatrix();
-//            auto& item = current->opaques[pair];
-//            item.AddItem(mat);
-//        }
-//	}).name("sort static");
-//	auto sortskinned = renderTasks.for_each(std::ref(skinnedgeobegin), std::ref(skinnedgeoend), [&](const SkinnedMeshComponent& m){
-//        if (m.Enabled) {
-//            auto& pair = m.getTuple();
-//            auto mat = m.GetOwner().GetTransform().CalculateWorldMatrix();
-//            auto current = GetApp()->GetCurrentFramedata();
-//            auto& item = current->skinnedOpaques[pair];
-//            item.AddItem(mat);
-//            // write the pose if there is one
-//            if (m.GetOwner().HasComponent<AnimatorComponent>()) {
-//                auto& animator = m.GetOwner().GetComponent<AnimatorComponent>();
-//                item.AddSkinningData(animator.GetSkinningMats());
-//            }
-//        }
-//	}).name("sort skinned");
-    auto sortskinned = renderTasks.emplace([this]{
-        auto skinneds = GetAllComponentsOfType<SkinnedMeshComponent>();
-        if (skinneds){
-            for(const auto& m : *skinneds.value()){
-                if (m.Enabled) {
-                    auto& pair = m.getTuple();
-                    auto mat = m.GetOwner().GetTransform().CalculateWorldMatrix();
-                    auto current = GetApp()->GetCurrentFramedata();
-                    auto& item = current->skinnedOpaques[pair];
-                    item.AddItem(mat);
-                    // write the pose if there is one
-                    if (m.GetOwner().HasComponent<AnimatorComponent>()) {
-                        auto& animator = m.GetOwner().GetComponent<AnimatorComponent>();
-                        item.AddSkinningData(animator.GetSkinningMats());
-                    }
-                }
-            }
-        }
-    }).name("sort skinned serial");
 
-    // TODO: this will replace the "sort" task  
-    auto updateRenderData = renderTasks.emplace([this] {
+    auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
         Filter<StaticMesh,Transform>([&](float, const StaticMesh& sm, Transform& trns) {
             if (trns.isTickDirty) {
                 // update
                 auto owner = trns.GetOwner();
 
                 assert(staticMeshRenderData.contains(sm.GetMaterial()));
-                auto meshToUpdate = sm.getMesh();
+                auto meshToUpdate = sm.GetMesh();
                 staticMeshRenderData.if_contains(sm.GetMaterial(), [owner,&meshToUpdate,&trns](MDIICommand& row) {
                     auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
                         return value.mesh.lock() == meshToUpdate;
@@ -363,46 +304,61 @@ void World::setupRenderTasks(){
                     auto& vec = *it;
                     // write new matrix
                     vec.transforms.GetForSparseIndex(owner.GetIdInWorld()) = trns.CalculateWorldMatrix();
+
+                    //TODO: if the staticmesh is not enabled, remove its matrix (need to rework the asserts above)
                 });
 
                 trns.ClearTickDirty();
             }
         });
-    }).name("Update invalidated static mesh transforms").succeed(sort);
-//    auto sortInstanced = renderTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
-//        auto current = GetApp()->GetCurrentFramedata();
-//        if (m.Enabled){
-//            auto& pair = m.getTuple();
-//            m.CalculateMatrices();
-//            auto& mats = m.GetAllTransforms();
-//
-//            auto& item = current->opaques[pair];
-//            item.mtx.lock();
-//            item.items.insert(item.items.end(), mats.begin(),mats.end());
-//            item.mtx.unlock();
-//        }
-//    }).name("sort instanced");
-    auto sortInstanced = renderTasks.emplace([this]{
-        auto current = GetApp()->GetCurrentFramedata();
-        auto instanced = GetAllComponentsOfType<InstancedStaticMesh>();
-        if (instanced){
-            for(const auto& m : *instanced.value()){
-                if (m.Enabled){
-                    auto& pair = m.getTuple();
-                    m.CalculateMatrices();
-                    auto& mats = m.GetAllTransforms();
+    }).name("Update invalidated static mesh transforms");
 
-                    auto& item = current->opaques[pair];
-                    //item.mtx.lock();
-                    item.items.insert(item.items.end(), mats.begin(),mats.end());
-                    //item.mtx.unlock();
-                }
+    auto updateRenderDataSkinnedMesh = renderTasks.emplace([this] {
+        Filter<SkinnedMeshComponent, AnimatorComponent, Transform>([&](float, const SkinnedMeshComponent& sm, const AnimatorComponent& am, Transform& trns) {
+            if (trns.isTickDirty) {
+                // update
+                auto owner = trns.GetOwner();
+
+                assert(skinnedMeshRenderData.contains(sm.GetMaterial()));
+                auto meshToUpdate = sm.GetMesh();
+                auto skeletonToUpdate = sm.GetSkeleton();
+                skinnedMeshRenderData.if_contains(sm.GetMaterial(), [owner, &meshToUpdate, &trns, &skeletonToUpdate](MDIICommandSkinned& row) {
+                    auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
+                        return value.mesh.lock() == meshToUpdate && value.skeleton.lock() == skeletonToUpdate;
+                    });
+                    assert(it != row.commands.end());
+                    auto& vec = *it;
+                    // write new matrix
+                    vec.transforms.GetForSparseIndex(owner.GetIdInWorld()) = trns.CalculateWorldMatrix();
+
+                    //TODO: if the staticmesh is not enabled, remove its matrix (need to rework the asserts above)
+                    });
+                trns.ClearTickDirty();
             }
-        }
-    }).name("sort instanced - serial");
+        });
+    }).name("Upate invalidated skinned mesh transforms");
 
-	init.precede(sort,sortskinned,sortInstanced);
-    sort.precede(sortInstanced);    // because these write to the same container
+    //auto sortInstanced = renderTasks.emplace([this]{
+    //    auto current = GetApp()->GetCurrentFramedata();
+    //    auto instanced = GetAllComponentsOfType<InstancedStaticMesh>();
+    //    if (instanced){
+    //        for(const auto& m : *instanced.value()){
+    //            if (m.Enabled){
+    //                auto& pair = m.getTuple();
+    //                m.CalculateMatrices();
+    //                auto& mats = m.GetAllTransforms();
+
+    //                auto& item = current->opaques[pair];
+    //                //item.mtx.lock();
+    //                item.items.insert(item.items.end(), mats.begin(),mats.end());
+    //                //item.mtx.unlock();
+    //            }
+    //        }
+    //    }
+    //}).name("sort instanced - serial");
+
+	init.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh/*, sortInstanced*/);
+    //updateRenderDataStaticMesh.precede(sortInstanced);    // because these write to the same container
 
 	auto copydirs = renderTasks.emplace([this](){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
@@ -482,10 +438,10 @@ void World::setupRenderTasks(){
 		current->Clear();
 	}).name("Clear-setup");
 	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints,tickGUI);
-	sort.precede(swap);
-	sortskinned.precede(swap);
-    sortInstanced.precede(swap);
-	camproc.precede(sort,sortskinned);
+    updateRenderDataStaticMesh.precede(swap);
+    updateRenderDataSkinnedMesh.precede(swap);
+    //sortInstanced.precede(swap);
+	camproc.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
 
 	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints,tickGUI);
     
@@ -515,7 +471,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(stati
         });
     }
 
-    // add the new mesh & its transform to the new 
+    // add the new mesh & its transform to the hashmap 
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
     auto& transform = GetComponent<Transform>(localId);
     auto& set = ( * (staticMeshRenderData.try_emplace(newMat, decltype(staticMeshRenderData)::mapped_type()).first)).second;
@@ -530,6 +486,41 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(stati
     // otherwise create a new entry
     if (!found) {
         set.commands.emplace_back(mesh, localId, transform.CalculateWorldMatrix());
+    }
+}
+
+void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton)
+{
+    // if the material has changed, need to reset the old one
+    if (oldMat != nullptr) {
+        skinnedMeshRenderData.if_contains(oldMat, [&](decltype(skinnedMeshRenderData)::mapped_type& value) {
+            // find the Mesh
+            for (auto& command : value.commands) {
+                auto cmpMesh = command.mesh.lock();
+                auto cmpSkeleton = command.skeleton.lock();
+                if (cmpMesh == mesh && cmpSkeleton == skeleton) {
+                    command.transforms.EraseAtSparseIndex(localId);
+                }
+            }
+        });
+    }
+
+    // add the new mesh, its skeleton, & its transform to the hashmap entry
+    assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
+    auto& transform = GetComponent<Transform>(localId);
+    auto& set = (*(skinnedMeshRenderData.try_emplace(newMat, decltype(skinnedMeshRenderData)::mapped_type()).first)).second;
+    bool found = false;
+    for (auto& command : set.commands) {
+        auto cmpMesh = command.mesh.lock();
+        auto cmpSkeleton = command.skeleton.lock();
+        if (cmpMesh == mesh && cmpSkeleton == skeleton) {
+            found = true;
+            command.transforms.Emplace(localId, transform.CalculateWorldMatrix());
+        }
+    }
+    // otherwise create a new entry
+    if (!found) {
+        set.commands.emplace_back(mesh, skeleton, localId, transform.CalculateWorldMatrix());
     }
 }
 

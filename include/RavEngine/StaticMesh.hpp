@@ -11,7 +11,7 @@ namespace RavEngine {
     private:
         std::tuple<Ref<MeshAsset>, Ref<PBRMaterialInstance>> tuple;
         StaticMesh(entity_t owner, Ref<MeshAsset> m) : ComponentWithOwner(owner){
-            setMesh(m);
+            SetMesh(m);
         }
         void updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> to);
     public:
@@ -21,11 +21,11 @@ namespace RavEngine {
 		}
 		virtual ~StaticMesh(){}
 		
-		inline Ref<MeshAsset> getMesh() const{
+		inline Ref<MeshAsset> GetMesh() const{
 			return std::get<0>(tuple);
 		}
 
-        inline void setMesh(Ref<MeshAsset> m) {
+        inline void SetMesh(Ref<MeshAsset> m) {
             std::get<0>(tuple) = m;
             //TODO: notify world render datastructure of this change
         }
@@ -37,7 +37,6 @@ namespace RavEngine {
 		inline void SetMaterial(Ref<PBRMaterialInstance> mat){
             updateMaterialInWorldRenderData(mat);
 			std::get<1>(tuple) = mat;
-            //TODO: notify world render datastructure of this change
 		}
 
         /**

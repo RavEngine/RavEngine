@@ -11,11 +11,10 @@ namespace RavEngine {
         using value_type = U;
     private:
         unordered_vector<U> dense_set;
-        std::vector<index_t> reverse_map;
         std::vector<index_t> sparse_set{ default_index };
 
     public:
-
+        std::vector<index_t> reverse_map;
         using const_iterator = typename decltype(dense_set)::const_iterator_type;
 
         template<typename ... A>
@@ -41,6 +40,8 @@ namespace RavEngine {
             if (denseidx < dense_set.size()) {    // did a move happen during this deletion?
                 auto ownerOfMoved = reverse_map[denseidx];
                 sparse_set[ownerOfMoved] = denseidx;
+                reverse_map[denseidx] = reverse_map.back();
+                reverse_map.pop_back();
             }
             sparse_set[sparse_index] = INVALID_INDEX;
         }
@@ -77,6 +78,11 @@ namespace RavEngine {
         // get by dense index, not by entity ID
         U& Get(index_t idx) {
             return dense_set[idx];
+        }
+
+        // given a dense index, return its sparse index
+        U& GetSparseIndexForDense(index_t idx) {
+            return reverse_map[idx];
         }
 
         const U& Get(index_t idx) const {

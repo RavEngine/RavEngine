@@ -58,7 +58,6 @@ struct FrameData{
     };
 	
 	//opaque pass data
-	UnorderedMap<std::tuple<Ref<MeshAsset>, Ref<MaterialInstanceBase>>,entry<matrix4>/*,SpinLock*/> opaques;
     UnorderedMap<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, skinningEntry<matrix4>/*,SpinLock*/> skinnedOpaques;
 	
 	template<typename T>
@@ -136,7 +135,6 @@ struct FrameData{
     }
 	
 	inline void Clear(){
-        ResetMap(opaques);
         ResetMap(skinnedOpaques);
 		directionals.clear();
 		ambients.clear();
