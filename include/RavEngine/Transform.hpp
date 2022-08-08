@@ -23,15 +23,23 @@ namespace RavEngine {
         vector3 position, scale;
         UnorderedVector<ComponentHandle<Transform>>  children;        //non-owning
         ComponentHandle<Transform> parent;    //non-owning
-        mutable bool isDirty = false;
+        mutable bool isDirty = false;		// used for when the transform hierarchy has been changed
+
+		friend class World;
+		mutable bool isTickDirty = false;	// used for when this transform has been updated in the current tick and needs updating in the world's render data
         
         inline void MarkAsDirty(Transform* root) const{
             root->isDirty = true;
+			root->isTickDirty = true;
             
             for(auto& t : root->children){
                 MarkAsDirty(t.get());
             }
         }
+
+		inline void ClearTickDirty() {
+			isTickDirty = false;
+		}
 
 	public:
 		virtual ~Transform(){}

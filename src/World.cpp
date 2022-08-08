@@ -30,10 +30,10 @@ using namespace std;
 using namespace RavEngine;
 
 template<typename T>
-static const World::SparseSet<T> staticEmptyContainer;
+static const World::EntitySparseSet<T> staticEmptyContainer;
 
 template<typename T>
-static inline void SetEmpty(typename World::SparseSet<T>::const_iterator& begin, typename World::SparseSet<T>::const_iterator& end){
+static inline void SetEmpty(typename World::EntitySparseSet<T>::const_iterator& begin, typename World::EntitySparseSet<T>::const_iterator& end){
     begin = staticEmptyContainer<T>.begin();
     end = staticEmptyContainer<T>.end();
 }
@@ -345,6 +345,30 @@ void World::setupRenderTasks(){
             }
         }
     }).name("sort skinned serial");
+
+    // TODO: this will replace the "sort" task  
+    auto updateRenderData = renderTasks.emplace([this] {
+        Filter<StaticMesh,Transform>([&](float, const StaticMesh& sm, Transform& trns) {
+            if (trns.isTickDirty) {
+                // update
+                auto owner = trns.GetOwner();
+
+                assert(staticMeshRenderData.contains(sm.GetMaterial()));
+                auto meshToUpdate = sm.getMesh();
+                staticMeshRenderData.if_contains(sm.GetMaterial(), [owner,&meshToUpdate,&trns](MDIICommand& row) {
+                    auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
+                        return value.mesh.lock() == meshToUpdate;
+                    });
+                    assert(it != row.commands.end());
+                    auto& vec = *it;
+                    // write new matrix
+                    vec.transforms.GetForSparseIndex(owner.GetIdInWorld()) = trns.CalculateWorldMatrix();
+                });
+
+                trns.ClearTickDirty();
+            }
+        });
+    }).name("Update invalidated static mesh transforms").succeed(sort);
 //    auto sortInstanced = renderTasks.for_each(std::ref(instancedBegin), std::ref(instancedEnd), [&](const InstancedStaticMesh& m){
 //        auto current = GetApp()->GetCurrentFramedata();
 //        if (m.Enabled){
@@ -474,6 +498,39 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     GetApp()->DispatchMainThread([=]{
         async_tasks.insert(make_shared<dispatched_func>(time + delaySeconds,func));
     });
+}
+
+void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh)
+{
+    // if the material has changed, need to reset the old one
+    if (oldMat != nullptr) {
+        staticMeshRenderData.if_contains(oldMat, [&](decltype(staticMeshRenderData)::mapped_type& value) {
+            // find the Mesh
+            for (auto& command : value.commands) {
+                auto cmpMesh = command.mesh.lock();
+                if (cmpMesh == mesh) {
+                    command.transforms.EraseAtSparseIndex(localId);
+                }
+            }
+        });
+    }
+
+    // add the new mesh & its transform to the new 
+    assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
+    auto& transform = GetComponent<Transform>(localId);
+    auto& set = ( * (staticMeshRenderData.try_emplace(newMat, decltype(staticMeshRenderData)::mapped_type()).first)).second;
+    bool found = false;
+    for (auto& command : set.commands) {
+        auto cmpMesh = command.mesh.lock();
+        if (cmpMesh == mesh) {
+            found = true;
+            command.transforms.Emplace(localId,transform.CalculateWorldMatrix());
+        }
+    }
+    // otherwise create a new entry
+    if (!found) {
+        set.commands.emplace_back(mesh, localId, transform.CalculateWorldMatrix());
+    }
 }
 
 entity_t World::CreateEntity(){

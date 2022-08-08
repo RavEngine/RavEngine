@@ -18,6 +18,7 @@
 #include "Types.hpp"
 #include "AddRemoveAction.hpp"
 #include "PolymorphicIndirection.hpp"
+#include "SparseSet.hpp"
 #include <boost/callable_traits.hpp>
 
 namespace RavEngine {
@@ -79,7 +80,7 @@ namespace RavEngine {
         friend class Registry;
     public:
         template<typename T>
-        class SparseSet{
+        class EntitySparseSet{
             unordered_vector<T> dense_set;
             UnorderedVector<entity_t> aux_set;
             Vector<entity_t> sparse_set{INVALID_ENTITY};
@@ -176,21 +177,21 @@ namespace RavEngine {
             }
         };
     private:
-        struct SparseSetErased{
-            constexpr static size_t buf_size = sizeof(SparseSet<size_t>);   // we use size_t here because all SparseSets are the same size
+        struct AnySparseSet{
+            constexpr static size_t buf_size = sizeof(EntitySparseSet<size_t>);   // we use size_t here because all SparseSets are the same size
             std::array<char, buf_size> buffer;
             std::function<void(entity_t id,World*)> destroyFn;
             std::function<void(void)> deallocFn;
             std::function<void(entity_t, entity_t, World*)> moveFn;
             
             template<typename T>
-            inline SparseSet<T>* GetSet() {
-                return reinterpret_cast<SparseSet<T>*>(buffer.data());
+            inline EntitySparseSet<T>* GetSet() {
+                return reinterpret_cast<EntitySparseSet<T>*>(buffer.data());
             }
             
             // the discard parameter is here to make the template work
             template<typename T>
-            SparseSetErased(T* discard) :
+            AnySparseSet(T* discard) :
                 destroyFn([&](entity_t local_id, World* wptr){
                     auto ptr = GetSet<T>();
                     if (ptr->HasComponent(local_id)){
@@ -198,7 +199,7 @@ namespace RavEngine {
                     }
                 }),
                 deallocFn([&]() {
-                    GetSet<T>()->~SparseSet<T>();
+                    GetSet<T>()->~EntitySparseSet<T>();
                 }),
                 moveFn([&](entity_t localID, entity_t otherLocalID, World* otherWorld){
                     auto sp = GetSet<T>();
@@ -210,16 +211,31 @@ namespace RavEngine {
                     }
                 })
             {
-                static_assert(sizeof(SparseSet<T>) <= buf_size);
-                new (buffer.data()) SparseSet<T>();
+                static_assert(sizeof(EntitySparseSet<T>) <= buf_size);
+                new (buffer.data()) EntitySparseSet<T>();
             }
 
-            ~SparseSetErased() {
+            ~AnySparseSet() {
                 deallocFn();
             }
         };
         
-		locked_node_hashmap<RavEngine::ctti_t, SparseSetErased,SpinLock> componentMap;
+		locked_node_hashmap<RavEngine::ctti_t, AnySparseSet,SpinLock> componentMap;
+
+        friend class StaticMesh;
+        // renderer-friendly representation of static meshes
+        struct MDIICommand {
+            struct command {
+                WeakRef<MeshAsset> mesh;
+                UnorderedSparseSet<entity_t,matrix4> transforms;
+                command(decltype(mesh) mesh, decltype(transforms)::index_type index, const decltype(transforms)::value_type& first_value) : mesh(mesh) {
+                    transforms.Emplace(index, first_value);
+                }
+            };
+            Vector<command> commands;
+        };
+        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand> staticMeshRenderData;
+        void updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
     public:
         struct PolymorphicIndirection{
             struct elt{
@@ -402,7 +418,7 @@ namespace RavEngine {
                 return dense_set;
             }
         };
-        
+
         UnorderedNodeMap<ctti_t,SparseSetForPolymorphic> polymorphicQueryMap;
 
         inline void DestroyEntity(entity_t local_id){
@@ -419,7 +435,7 @@ namespace RavEngine {
         }
         
         template<typename T>
-        inline SparseSet<T>* MakeIfNotExists(){
+        inline EntitySparseSet<T>* MakeIfNotExists(){
             return (*componentMap.try_emplace(RavEngine::CTTI<T>(),static_cast<T*>(nullptr)).first).second.template GetSet<T>();
         }
         
@@ -443,6 +459,14 @@ namespace RavEngine {
             }
             else{
                 return ptr->Emplace(local_id,args...);
+            }
+
+            // now, must update the render structures
+            if constexpr (std::is_same_v<T, Transform>) {
+                //TODO: update transform data structure
+            }
+            else if constexpr (std::is_same_v<T, StaticMesh>) {
+                // TODO: 
             }
         }
 
@@ -489,7 +513,7 @@ namespace RavEngine {
         }
                 
         template<typename T>
-        inline SparseSet<T>* GetRange(){
+        inline EntitySparseSet<T>* GetRange(){
             auto& set = componentMap.at(RavEngine::CTTI<T>());
             return set.template GetSet<T>();
         }
@@ -498,7 +522,7 @@ namespace RavEngine {
         inline void FilterValidityCheck(entity_t id, void* set, bool& satisfies){
             // in this order so that the first one the entity does not have aborts the rest of them
             if constexpr (!isPolymorphic) {
-                satisfies = satisfies && static_cast<SparseSet<T>*>(set)->HasComponent(id);
+                satisfies = satisfies && static_cast<EntitySparseSet<T>*>(set)->HasComponent(id);
             }
             else {
                 satisfies = satisfies && static_cast<SparseSetForPolymorphic*>(set)->HasForEntity(id);
@@ -507,7 +531,7 @@ namespace RavEngine {
         
         template<typename T>
         inline T& FilterComponentGet(entity_t idx, void* ptr){
-            return static_cast<SparseSet<T>*>(ptr)->GetComponent(idx);
+            return static_cast<EntitySparseSet<T>*>(ptr)->GetComponent(idx);
         }
 
         template<typename T>
@@ -518,7 +542,7 @@ namespace RavEngine {
         
         template<typename T>
         inline T& FilterComponentGetDirect(entity_t denseidx, void* ptr){
-            return static_cast<SparseSet<T>*>(ptr)->Get(denseidx);
+            return static_cast<EntitySparseSet<T>*>(ptr)->Get(denseidx);
         }
        
         template<typename T, bool isPolymorphic = false>
@@ -532,7 +556,7 @@ namespace RavEngine {
         }
         
         template<typename T>
-        inline SparseSet<T>* FilterGetSparseSetTyped(){
+        inline EntitySparseSet<T>* FilterGetSparseSetTyped(){
             return MakeIfNotExists<T>();
         }
         
@@ -600,7 +624,7 @@ namespace RavEngine {
             else{
                 entity_t owner;
                 if constexpr (!filterone_t::isPolymorphic()) {
-                    owner = static_cast<SparseSet<primary_t>*>(fom.ptrs[0])->GetOwner(i);
+                    owner = static_cast<EntitySparseSet<primary_t>*>(fom.ptrs[0])->GetOwner(i);
                 }
                 else {
                     owner = static_cast<SparseSetForPolymorphic*>(fom.ptrs[0])->GetOwnerForDenseIdx(i);
@@ -635,10 +659,10 @@ namespace RavEngine {
                 
                 inline auto getMainFilter() const{
                     if constexpr (!funcmode::isPolymorphic()){
-                        return static_cast<SparseSet<primary_t>*>(ptrs[0]);
+                        return static_cast<EntitySparseSet<primary_t>*>(ptrs[0]);
                     }
                     else{
-                        return static_cast<SparseSet<PolymorphicIndirection>*>(ptrs[0]);
+                        return static_cast<EntitySparseSet<PolymorphicIndirection>*>(ptrs[0]);
                     }
                 }
             } data {FilterGetSparseSet<A,funcmode::isPolymorphic()>()...};
@@ -671,12 +695,12 @@ namespace RavEngine {
         }
         
         template<typename ... A, typename func>
-        inline void Filter(func& f){
+        inline void Filter(func&& f){
             FilterGeneric<A...>(FuncMode<func, false>{ f });
         }
         
         template<typename ... A, typename func>
-        inline void FilterPolymorphic(func& f){
+        inline void FilterPolymorphic(func&& f){
             FilterGeneric<A...>(FuncMode<func, true>{ f });
         }
         
@@ -694,7 +718,7 @@ namespace RavEngine {
         inline entity_t AddEntityFrom(World* other,entity_t other_local_id){
             auto newID = CreateEntity();
             
-            other->EnumerateComponentsOn(other_local_id, [&](SparseSetErased& sp_erased){
+            other->EnumerateComponentsOn(other_local_id, [&](AnySparseSet& sp_erased){
                 // call the moveFn to move the other entity data into this
                 sp_erased.moveFn(other_local_id,newID,this);
             });
@@ -842,7 +866,7 @@ namespace RavEngine {
         tf::Task audioTaskModule;
         
         struct TypeErasureIterator{
-            constexpr static auto size = sizeof(SparseSet<size_t>::const_iterator);
+            constexpr static auto size = sizeof(EntitySparseSet<size_t>::const_iterator);
             
             char begin[size];
             char end[size];
@@ -855,9 +879,9 @@ namespace RavEngine {
             }
         };   
         
-        SparseSet<struct StaticMesh>::const_iterator geobegin, geoend;
-        SparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
-        SparseSet<struct SkinnedMeshComponent>::const_iterator skinnedgeobegin, skinnedgeoend;
+        EntitySparseSet<struct StaticMesh>::const_iterator geobegin, geoend;
+        EntitySparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
+        EntitySparseSet<struct SkinnedMeshComponent>::const_iterator skinnedgeobegin, skinnedgeoend;
         
         struct TimedSystemEntry{
              std::chrono::duration<double, std::micro> interval;
@@ -875,7 +899,6 @@ namespace RavEngine {
 		float currentFPSScale = 0.01f;
 		
 		//Entity list
-		typedef locked_hashset<Ref<Entity>, SpinLock> EntityStore;
         struct dispatched_func{
             double runAtTime;
             Function<void(void)> func;
@@ -1005,7 +1028,7 @@ namespace RavEngine {
         
         template<typename T>
         inline auto GetAllComponentsOfType(){
-            std::optional<SparseSet<T>*> ret;
+            std::optional<EntitySparseSet<T>*> ret;
             if (componentMap.find(CTTI<T>()) != componentMap.end()){
                 ret.emplace(GetRange<T>());
             }
