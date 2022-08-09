@@ -504,6 +504,9 @@ namespace RavEngine {
         inline bool HasComponentOfBase(entity_t local_id){
             return polymorphicQueryMap.at(CTTI<T>()).HasForEntity(local_id);
         }
+
+        void DestroyStaticMeshRenderData(const StaticMesh& mesh, entity_t local_id);
+        void DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entity_t local_id);
         
         template<typename T>
         inline void DestroyComponent(entity_t local_id){
@@ -515,13 +518,23 @@ namespace RavEngine {
                 RemoveAction<T> obj;
                 obj.DoAction(&comp);
             }
+
+            if constexpr (std::is_same_v<T, StaticMesh>) {
+                // remove the entry from the render data structure
+                auto& comp = setptr->GetComponent(local_id);
+                DestroyStaticMeshRenderData(comp, local_id);
+            }
+            else if constexpr (std::is_same_v<T, SkinnedMeshComponent>) {
+                auto& comp = setptr->GetComponent(local_id);
+                DestroySkinnedMeshRenderData(comp, local_id);
+            }
             
             setptr->Destroy(local_id);
             // does this component have alternate query types
-            if constexpr (HasQueryTypes<T>::value){
+            if constexpr (HasQueryTypes<T>::value) {
                 // polymorphic recordkeep
                 const auto ids = T::GetQueryTypes();
-                for(const auto id : ids){
+                for (const auto id : ids) {
                     polymorphicQueryMap[id].template Destroy<T>(local_id);
                 }
             }

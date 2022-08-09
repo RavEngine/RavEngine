@@ -38,17 +38,17 @@ namespace RavEngine {
             dense_set.erase(dense_set.begin() + denseidx);
 
             if (denseidx < dense_set.size()) {    // did a move happen during this deletion?
-                auto ownerOfMoved = reverse_map[denseidx];
+                auto ownerOfMoved = reverse_map.back();
                 sparse_set[ownerOfMoved] = denseidx;
                 reverse_map[denseidx] = reverse_map.back();
-                reverse_map.pop_back();
             }
+            reverse_map.pop_back();
             sparse_set[sparse_index] = INVALID_INDEX;
         }
 
         inline U& GetForSparseIndex(index_t sparse_index) {
             assert(HasForSparseIndex(sparse_index));
-            return dense_set[sparse_set[sparse_index]];
+            return dense_set[SparseToDense(sparse_index)];
         }
 
         inline auto SparseToDense(index_t sparse_index) {

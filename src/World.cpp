@@ -524,6 +524,29 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(skin
     }
 }
 
+void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entity_t local_id)
+{
+    staticMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(staticMeshRenderData)::mapped_type& data) {
+        auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
+            return other.mesh.lock() == mesh.GetMesh();
+        });
+        if (it != data.commands.end()) {
+            (*it).transforms.EraseAtSparseIndex(local_id);
+        }
+    });
+}
+
+void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entity_t local_id) {
+    skinnedMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(skinnedMeshRenderData)::mapped_type& data) {
+        auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
+            return other.mesh.lock() == mesh.GetMesh() && other.skeleton.lock() == mesh.GetSkeleton();
+        });
+        if (it != data.commands.end()) {
+            (*it).transforms.EraseAtSparseIndex(local_id);
+        }
+    });
+}
+
 entity_t World::CreateEntity(){
     entity_t id;
     if (available.size() > 0){
