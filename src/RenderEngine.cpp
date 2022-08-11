@@ -1085,7 +1085,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		gui.Render();	//bgfx state is set in renderer before actual draw calls
 	};
 	// update GUIs
-	worldOwning->Filter<GUIComponent>(fng);
+	worldOwning->Filter(fng);
 	
 #ifdef _DEBUG
 	// process debug shapes
@@ -1097,7 +1097,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 			}
 		}
 	};
-	worldOwning->FilterPolymorphic<IDebugRenderable, Transform>(fn);
+	worldOwning->FilterPolymorphic(fn);
 	Im3d::GetContext().draw();
 	if (debuggerContext){
 		auto& dbg = *debuggerContext;

@@ -22,44 +22,6 @@ struct FrameData{
 	matrix4 viewmatrix, projmatrix;
 	vector3 cameraWorldpos;
     
-	// these need to be ordered to
-	// ensure skinning data gets correct matrices
-	template<typename T>
-    struct entry{
-        Vector<T> items;
-        //SpinLock mtx;
-        
-        inline void AddItem(const typename decltype(items)::value_type& item){
-            //mtx.lock();
-            items.push_back(item);
-            //mtx.unlock();
-        }
-        inline void clear(){
-            items.clear();
-        }
-    };
-    
-    template<typename T>
-    struct skinningEntry : public entry<T>{
-        //SpinLock skinningMtx;
-        
-        //used by skinned mesh
-        ozz::vector<ozz::vector<T>> skinningdata;
-        
-        inline void AddSkinningData(const typename decltype(skinningdata)::value_type& item){
-            //skinningMtx.lock();
-            skinningdata.push_back(item);
-            //skinningMtx.unlock();
-        }
-        inline void clear(){
-            entry<T>::clear();
-            skinningdata.clear();
-        }
-    };
-	
-	//opaque pass data
-    UnorderedMap<std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>>, skinningEntry<matrix4>/*,SpinLock*/> skinnedOpaques;
-	
 	template<typename T>
 	struct StoredLight{
         using light_t = T;
@@ -127,15 +89,7 @@ struct FrameData{
         structure.emplace_back(args...);
     }
     
-    template<typename T>
-    inline void ResetMap(T& map){
-        for(auto& row : map){
-            row.second.clear();
-        }
-    }
-	
 	inline void Clear(){
-        ResetMap(skinnedOpaques);
 		directionals.clear();
 		ambients.clear();
 		points.clear();

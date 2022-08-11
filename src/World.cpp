@@ -176,16 +176,16 @@ void World::SetupTaskGraph(){
             ptr->listenerPos = transform.GetWorldPosition();
             ptr->listenerRot = transform.GetWorldRotation();
         };
-        Filter<AudioListener,Transform>(fn);
+        Filter(fn);
     }).name("Clear + Listener");
     
   
     
     auto copyAudios = audioTasks.emplace([this]{
-        auto fn = [this](float, auto& audioSource, auto& transform){
+        auto fn = [this](float, AudioSourceComponent& audioSource, Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
         };
-        Filter<AudioSourceComponent,Transform>(fn);
+        Filter(fn);
         
         // now clean up the fire-and-forget audios that have completed
         instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
@@ -200,10 +200,10 @@ void World::SetupTaskGraph(){
     
     auto copyAmbients = audioTasks.emplace([this]{
         if(componentMap.contains(CTTI<AmbientAudioSourceComponent>())){
-            auto fn = [this](float, auto& audioSource){
+            auto fn = [this](float, AmbientAudioSourceComponent& audioSource){
                 GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
             };
-            Filter<AmbientAudioSourceComponent>(fn);
+            Filter(fn);
             
         }
 
@@ -220,10 +220,10 @@ void World::SetupTaskGraph(){
     }).name("Ambient Audios").succeed(audioClear);
     
     auto copyRooms = audioTasks.emplace([this]{
-        auto fn = [this](float, auto& room, auto& transform){
+        auto fn = [this](float, AudioRoom& room, Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
         };
-        Filter<AudioRoom,Transform>(fn);
+        Filter(fn);
         
     }).name("Rooms").succeed(audioClear);
     
@@ -289,8 +289,8 @@ void World::setupRenderTasks(){
 	}).name("Init iterators");
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
-        Filter<StaticMesh,Transform>([&](float, const StaticMesh& sm, Transform& trns) {
-            if (trns.isTickDirty) {
+        Filter([&](float, const StaticMesh& sm, Transform& trns) {
+            if (trns.isTickDirty && sm.Enabled) {
                 // update
                 auto owner = trns.GetOwner();
 
@@ -314,8 +314,8 @@ void World::setupRenderTasks(){
     }).name("Update invalidated static mesh transforms");
 
     auto updateRenderDataSkinnedMesh = renderTasks.emplace([this] {
-        Filter<SkinnedMeshComponent, AnimatorComponent, Transform>([&](float, const SkinnedMeshComponent& sm, const AnimatorComponent& am, Transform& trns) {
-            if (trns.isTickDirty) {
+        Filter([&](float, const SkinnedMeshComponent& sm, const AnimatorComponent& am, Transform& trns) {
+            if (trns.isTickDirty && sm.Enabled) {
                 // update
                 auto owner = trns.GetOwner();
 
@@ -426,7 +426,7 @@ void World::setupRenderTasks(){
 			}
 			gui.Update();
 		};
-        Filter<GUIComponent>(fn);
+        Filter(fn);
 	}).name("UpdateGUI");
 
 	auto swap = renderTasks.emplace([this]{

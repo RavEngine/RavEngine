@@ -698,15 +698,42 @@ namespace RavEngine {
             return data;
         }
 
-        template<typename ... A, typename funcmode_t>
+        // CTTI calls will fail on Polymorphic arguments, so
+        // need to extract their inner types
+        template<typename T>
+        struct remove_polymorphic_arg {
+            using type = T;
+        };
+
+        template <typename T>
+        struct remove_polymorphic_arg<PolymorphicGetResult<T, World::PolymorphicIndirection>> {
+            using type = T;
+        };
+        template<typename T> using remove_polymorphic_arg_t = typename remove_polymorphic_arg<T>::type;
+
+        // "unit test" to sanity check the templates above
+        static_assert(std::is_same_v<remove_polymorphic_arg_t<float>, remove_polymorphic_arg_t<PolymorphicGetResult<float, World::PolymorphicIndirection>>>, "template failed");
+
+        template<typename funcmode_t>
         inline void FilterGeneric(const funcmode_t& fm) {
-            auto scale = GetCurrentFPSScale();
-            auto fd = GenFilterData<A...>(fm);
-            auto mainFilter = fd.getMainFilter();
-            FilterOneMode fom(fm, fd.ptrs);
-            for (entity_t i = 0; i < mainFilter->DenseSize(); i++) {
-                FilterOne<A...>(fom, i, scale);
-            }
+            using argtypes = boost::callable_traits::args_t<decltype(fm.f)>;
+            // step 1: get it as types
+            [this] <typename... Ts>(std::type_identity<std::tuple<Ts...>>) -> void
+            {
+                using argtypes_noref = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
+                // step 2: get it as non-reference types, and slice off the first argument
+                // because it's a float and we don't want it
+                [this]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t, A...>>) -> void
+                {
+                    auto scale = GetCurrentFPSScale();
+                    auto fd = GenFilterData<A...>(fm);
+                    auto mainFilter = fd.getMainFilter();
+                    FilterOneMode fom(fm, fd.ptrs);
+                    for (entity_t i = 0; i < mainFilter->DenseSize(); i++) {
+                        FilterOne<A...>(fom, i, scale);
+                    }
+                }(std::type_identity<argtypes_noref>{});
+            }(std::type_identity<argtypes>{});
         }
         void NetworkingSpawn(ctti_t,Entity&);
         void NetworkingDestroy(entity_t);
@@ -722,14 +749,14 @@ namespace RavEngine {
             return en;
         }
         
-        template<typename ... A, typename func>
+        template<typename func>
         inline void Filter(func&& f){
-            FilterGeneric<A...>(FuncMode<func, false>{ f });
+            FilterGeneric(FuncMode<func, false>{ f });
         }
         
-        template<typename ... A, typename func>
+        template<typename func>
         inline void FilterPolymorphic(func&& f){
-            FilterGeneric<A...>(FuncMode<func, true>{ f });
+            FilterGeneric(FuncMode<func, true>{ f });
         }
         
         // this does not check if the entity actually has the component
@@ -760,23 +787,7 @@ namespace RavEngine {
 		Ref<Skybox> skybox;
         
     private:
-        // CTTI calls will fail on Polymorphic arguments, so
-        // need to extract their inner types
-        template<typename T>
-        struct remove_polymorphic_arg{
-            using type = T;
-        };
-        
-        template <typename T>
-        struct remove_polymorphic_arg<PolymorphicGetResult<T,World::PolymorphicIndirection>>{
-            using type = T;
-        };
-        template<typename T> using remove_polymorphic_arg_t = typename remove_polymorphic_arg<T>::type;
-
-        // "unit test" to sanity check the templates above
-        static_assert(std::is_same_v<remove_polymorphic_arg_t<float>,remove_polymorphic_arg_t<PolymorphicGetResult<float,World::PolymorphicIndirection>>>,"template failed");
-        
-        
+      
         template<bool polymorphic, typename T, typename ... Args>
         inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args&& ... args){
             
