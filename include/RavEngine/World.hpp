@@ -24,8 +24,10 @@
 namespace RavEngine {
 	struct Entity;
 	class InputManager;
-    struct Entity;
-    struct PhysicsCallback;
+	struct Entity;
+	struct PhysicsCallback;
+	struct StaticMesh;
+	struct SkinnedMeshComponent;
 
     template <typename T, typename... Ts>
     struct Index;
