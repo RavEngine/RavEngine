@@ -720,12 +720,12 @@ namespace RavEngine {
         inline void FilterGeneric(const funcmode_t& fm) {
             using argtypes = boost::callable_traits::args_t<decltype(fm.f)>;
             // step 1: get it as types
-            [this] <typename... Ts>(std::type_identity<std::tuple<Ts...>>) -> void
+            [this,&fm] <typename... Ts>(std::type_identity<std::tuple<Ts...>>) -> void
             {
                 using argtypes_noref = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
                 // step 2: get it as non-reference types, and slice off the first argument
                 // because it's a float and we don't want it
-                [this]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t, A...>>) -> void
+                [this,&fm]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t, A...>>) -> void
                 {
                     auto scale = GetCurrentFPSScale();
                     auto fd = GenFilterData<A...>(fm);

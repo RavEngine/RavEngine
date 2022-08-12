@@ -171,21 +171,19 @@ void World::SetupTaskGraph(){
     auto audioClear = audioTasks.emplace([this]{
         GetApp()->GetCurrentAudioSnapshot()->Clear();
         //TODO: currently this selects the LAST listener, but there is no need for this
-        auto fn = [](float, const auto& listener, const auto& transform){
+        Filter([](float, const AudioListener& listener, const Transform& transform){
             auto ptr = GetApp()->GetCurrentAudioSnapshot();
             ptr->listenerPos = transform.GetWorldPosition();
             ptr->listenerRot = transform.GetWorldRotation();
-        };
-        Filter(fn);
+        });
     }).name("Clear + Listener");
     
   
     
     auto copyAudios = audioTasks.emplace([this]{
-        auto fn = [this](float, AudioSourceComponent& audioSource, Transform& transform){
+        Filter([this](float, AudioSourceComponent& audioSource, Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
-        };
-        Filter(fn);
+        });
         
         // now clean up the fire-and-forget audios that have completed
         instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
@@ -200,10 +198,9 @@ void World::SetupTaskGraph(){
     
     auto copyAmbients = audioTasks.emplace([this]{
         if(componentMap.contains(CTTI<AmbientAudioSourceComponent>())){
-            auto fn = [this](float, AmbientAudioSourceComponent& audioSource){
+            Filter([this](float, AmbientAudioSourceComponent& audioSource){
                 GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
-            };
-            Filter(fn);
+            });
             
         }
 
@@ -220,10 +217,9 @@ void World::SetupTaskGraph(){
     }).name("Ambient Audios").succeed(audioClear);
     
     auto copyRooms = audioTasks.emplace([this]{
-        auto fn = [this](float, AudioRoom& room, Transform& transform){
+        Filter( [this](float, AudioRoom& room, Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
-        };
-        Filter(fn);
+        });
         
     }).name("Rooms").succeed(audioClear);
     
@@ -419,14 +415,13 @@ void World::setupRenderTasks(){
         auto& renderer = GetApp()->GetRenderEngine();
         auto size = renderer.GetBufferSize();
         auto scale = renderer.GetDPIScale();
-		auto fn = [&](float, auto& gui) {
-			if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
-				gui.SetDimensions(size.width, size.height);
-				gui.SetDPIScale(scale);
-			}
-			gui.Update();
-		};
-        Filter(fn);
+        Filter([&](float, GUIComponent& gui) {
+            if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
+                gui.SetDimensions(size.width, size.height);
+                gui.SetDPIScale(scale);
+            }
+            gui.Update();
+        });
 	}).name("UpdateGUI");
 
 	auto swap = renderTasks.emplace([this]{

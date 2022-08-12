@@ -82,17 +82,15 @@ int Test_AddDel(){
     e2.EmplaceComponent<FloatComponent>().value = 54.2;
 
     int count = 0;
-    auto fn1 = [&](float,auto& ic, auto& fc) {
+    w.Filter([&](float,IntComponent& ic, FloatComponent& fc) {
         count++;
-    };
-    w.Filter<IntComponent, FloatComponent>(fn1);
+    });
     assert(count == 0);
     cout << "A 2-filter with 0 possibilities found " << count << " results\n";
 
-    auto fn2 = [&](float,auto& ic) {
+    w.Filter([&](float,IntComponent& ic) {
         ic.value *= 2;
-    };
-    w.Filter<IntComponent>(fn2);
+    });
     
     ComponentHandle<IntComponent> handle(e);
     
@@ -101,18 +99,16 @@ int Test_AddDel(){
     e.DestroyComponent<IntComponent>();
     assert(e.HasComponent<IntComponent>() == false);
     count = 0;
-    auto fn4 = [&](float,auto& fc) {
+    w.Filter([&](float,FloatComponent& fc) {
         count++;
-    };
-    w.Filter<FloatComponent>(fn4);
+    });
     cout << "After deleting the only intcomponent, the floatcomponent count is " << count << "\n";
     assert(count == 1);
 
     count = 0;
-    auto fn5 = [&](float,auto& fc) {
+    w.Filter([&](float,IntComponent& fc) {
         count++;
-    };
-    w.Filter<IntComponent>(fn5);
+    });
     cout << "After deleting the only intcomponent, the intcomponent count is " << count << "\n";
     assert(count == 0);
 
@@ -130,15 +126,13 @@ int Test_SpawnDestroy(){
    }
    {
        int icount = 0;
-       auto fic = [&](float,auto& fc) {
+       w.Filter([&](float,IntComponent& fc) {
            icount++;
-       };
-       w.Filter<IntComponent>(fic);
+       });
        int fcount = 0;
-       auto ffc = [&](float,auto& fc) {
+       w.Filter([&](float,FloatComponent& fc) {
            fcount++;
-       };
-       w.Filter<FloatComponent>(ffc);
+       });
        cout << "Spawning " << entities.size() << " 2-component entities yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
        assert(icount == entities.size());
        assert(fcount == entities.size());
@@ -151,15 +145,13 @@ int Test_SpawnDestroy(){
    
    {
        int icount = 0;
-       auto fic = [&](float,auto& fc) {
+       w.Filter([&](float,IntComponent& fc) {
            icount++;
-       };
-       w.Filter<IntComponent>(fic);
+       });
        int fcount = 0;
-       auto ffc = [&](float,auto& fc) {
+       w.Filter([&](float,FloatComponent& fc) {
            fcount++;
-       };
-       w.Filter<FloatComponent>(ffc);
+       });
        cout << "After destroying " << iend-ibegin << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
        assert(icount == (entities.size() - (iend - ibegin )));
        assert(fcount == (entities.size() - (iend - ibegin)));
@@ -184,18 +176,16 @@ int Test_MoveBetweenWorlds(){
     }
     
     int w1count = 0;
-    auto ffc = [&](float,auto& ic){
+    w1.Filter([&](float,IntComponent& ic){
         ic.value = 1;
         w1count++;
-    };
-    w1.Filter<IntComponent>(ffc);
+    });
     
     int w2count = 0;
-    auto fic = [&](float,auto& ic){
+    w2.Filter( [&](float,IntComponent& ic){
         ic.value = 2;
         w2count++;
-    };
-    w2.Filter<IntComponent>(fic);
+    });
     
     cout << "w1count = " << w1count << ", w2count = " << w2count << "\n";
     assert(w1count == w1entities.size());
@@ -208,18 +198,16 @@ int Test_MoveBetweenWorlds(){
     }
     
     w1count = 0;
-    auto fic2 = [&](float,const auto& ic){
+    w1.Filter([&](float,const IntComponent& ic){
         w1count++;
         cout << ic.value << " ";
-    };
-    w1.Filter<IntComponent>(fic2);
+    });
     cout << "\n";
     w2count = 0;
-    auto fic3 = [&](float,const auto& ic){
+    w2.Filter([&](float,const IntComponent& ic){
         w2count++;
         cout << ic.value << " ";
-    };
-    w2.Filter<IntComponent>(fic3);
+    });
     cout << "\nAfter moving " << move_c <<" entities to w1, w1count = " << w1count << ", w2count = " << w2count << "\n";
     assert(w1count == w1entities.size() + move_c);
     assert(w2count == w2entities.size() - move_c);
