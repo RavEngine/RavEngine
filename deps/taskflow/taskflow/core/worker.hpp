@@ -4,12 +4,16 @@
 #include "tsq.hpp"
 #include "notifier.hpp"
 
-/** 
+/**
 @file worker.hpp
 @brief worker include file
 */
 
 namespace tf {
+
+// ----------------------------------------------------------------------------
+// Class Definition: Worker
+// ----------------------------------------------------------------------------
 
 /**
 @private
@@ -27,32 +31,35 @@ class Worker {
     Notifier::Waiter* _waiter;
     std::default_random_engine _rdgen { std::random_device{}() };
     TaskQueue<Node*> _wsq;
-
 };
+
+// ----------------------------------------------------------------------------
+// Class Definition: PerThreadWorker
+// ----------------------------------------------------------------------------
 
 /**
 @private
 */
-struct PerThreadWorker {
-
-  Worker* worker;
-
-  PerThreadWorker() : worker {nullptr} {}
-
-  PerThreadWorker(const PerThreadWorker&) = delete;
-  PerThreadWorker(PerThreadWorker&&) = delete;
-
-  PerThreadWorker& operator = (const PerThreadWorker&) = delete;
-  PerThreadWorker& operator = (PerThreadWorker&&) = delete;
-};
+//struct PerThreadWorker {
+//
+//  Worker* worker;
+//
+//  PerThreadWorker() : worker {nullptr} {}
+//
+//  PerThreadWorker(const PerThreadWorker&) = delete;
+//  PerThreadWorker(PerThreadWorker&&) = delete;
+//
+//  PerThreadWorker& operator = (const PerThreadWorker&) = delete;
+//  PerThreadWorker& operator = (PerThreadWorker&&) = delete;
+//};
 
 /**
 @private
 */
-inline PerThreadWorker& this_worker() {
-  thread_local PerThreadWorker worker;
-  return worker;
-}
+//inline PerThreadWorker& this_worker() {
+//  thread_local PerThreadWorker worker;
+//  return worker;
+//}
 
 // ----------------------------------------------------------------------------
 // Class Definition: WorkerView
@@ -69,11 +76,11 @@ when a worker runs a task, and the view object is only accessible
 from an observer derived from tf::ObserverInterface.
 */
 class WorkerView {
-  
+
   friend class Executor;
-  
+
   public:
-    
+
     /**
     @brief queries the worker id associated with the executor
 
@@ -82,9 +89,9 @@ class WorkerView {
     time of the executor.
     */
     size_t id() const;
-    
+
     /**
-    @brief queries the size of the queue (i.e., number of pending tasks to 
+    @brief queries the size of the queue (i.e., number of pending tasks to
            run) associated with the worker
     */
     size_t queue_size() const;

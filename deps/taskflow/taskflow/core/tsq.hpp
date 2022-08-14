@@ -16,7 +16,7 @@ namespace tf {
 
 @brief Lock-free unbounded single-producer multiple-consumer queue.
 
-This class implements the work stealing queue described in the paper, 
+This class implements the work stealing queue described in the paper,
 "Correct and Efficient Work-Stealing for Weak Memory Models,"
 available at https://www.di.ens.fr/~zappa/readings/ppopp13.pdf.
 
@@ -34,7 +34,7 @@ class TaskQueue {
     int64_t M;
     std::atomic<T>* S;
 
-    explicit Array(int64_t c) : 
+    explicit Array(int64_t c) :
       C {c},
       M {c-1},
       S {new std::atomic<T>[static_cast<size_t>(C)]} {
@@ -47,7 +47,7 @@ class TaskQueue {
     int64_t capacity() const noexcept {
       return C;
     }
-    
+
     void push(int64_t i, T o) noexcept {
       S[i & M].store(o, std::memory_order_relaxed);
     }
@@ -66,13 +66,17 @@ class TaskQueue {
 
   };
 
-  std::atomic<int64_t> _top;
-  std::atomic<int64_t> _bottom;
+  // Doubling the alignment by 2 seems to generate the most
+  // decent performance.
+  alignas(2*TF_CACHELINE_SIZE) std::atomic<int64_t> _top;
+  alignas(2*TF_CACHELINE_SIZE) std::atomic<int64_t> _bottom;
   std::atomic<Array*> _array;
   std::vector<Array*> _garbage;
 
+  //std::atomic<T> _cache {nullptr};
+
   public:
-    
+
     /**
     @brief constructs the queue with a given capacity
 
@@ -84,12 +88,12 @@ class TaskQueue {
     @brief destructs the queue
     */
     ~TaskQueue();
-    
+
     /**
     @brief queries if the queue is empty at the time of this call
     */
     bool empty() const noexcept;
-    
+
     /**
     @brief queries the number of items at the time of this call
     */
@@ -99,28 +103,28 @@ class TaskQueue {
     @brief queries the capacity of the queue
     */
     int64_t capacity() const noexcept;
-    
+
     /**
     @brief inserts an item to the queue
 
-    Only the owner thread can insert an item to the queue. 
-    The operation can trigger the queue to resize its capacity 
+    Only the owner thread can insert an item to the queue.
+    The operation can trigger the queue to resize its capacity
     if more space is required.
 
-    @tparam O data type 
+    @tparam O data type
 
-    @param item the item to perfect-forward to the queue
+    @param item the item to push to the queue
     */
     void push(T item);
-    
+
     /**
     @brief pops out an item from the queue
 
-    Only the owner thread can pop out an item from the queue. 
+    Only the owner thread can pop out an item from the queue.
     The return can be a nullptr if this operation failed (empty queue).
     */
     T pop();
-    
+
     /**
     @brief steals an item from the queue
 
@@ -148,13 +152,14 @@ TaskQueue<T>::~TaskQueue() {
   }
   delete _array.load();
 }
-  
+
 // Function: empty
 template <typename T>
 bool TaskQueue<T>::empty() const noexcept {
   int64_t b = _bottom.load(std::memory_order_relaxed);
   int64_t t = _top.load(std::memory_order_relaxed);
-  return b <= t;
+  return (b <= t);
+  // && (_cache.load(std::memory_order_relaxed) == nullptr);
 }
 
 // Function: size
@@ -163,11 +168,17 @@ size_t TaskQueue<T>::size() const noexcept {
   int64_t b = _bottom.load(std::memory_order_relaxed);
   int64_t t = _top.load(std::memory_order_relaxed);
   return static_cast<size_t>(b >= t ? b - t : 0);
+         //+ (_cache.load(std::memory_order_relaxed) == nullptr ? 0: 1);
 }
 
 // Function: push
 template <typename T>
 void TaskQueue<T>::push(T o) {
+  //if(auto tmp = _cache.load(std::memory_order_relaxed); tmp) {
+  //  uncached_push(tmp);
+  //}
+  //_cache.store(o, std::memory_order_relaxed);
+
   int64_t b = _bottom.load(std::memory_order_relaxed);
   int64_t t = _top.load(std::memory_order_acquire);
   Array* a = _array.load(std::memory_order_relaxed);
@@ -190,6 +201,12 @@ void TaskQueue<T>::push(T o) {
 // Function: pop
 template <typename T>
 T TaskQueue<T>::pop() {
+
+  //if(auto tmp = _cache.load(std::memory_order_relaxed); tmp) {
+  //  _cache.store(nullptr, std::memory_order_relaxed);
+  //  return tmp;
+  //}
+
   int64_t b = _bottom.load(std::memory_order_relaxed) - 1;
   Array* a = _array.load(std::memory_order_relaxed);
   _bottom.store(b, std::memory_order_relaxed);
@@ -202,8 +219,8 @@ T TaskQueue<T>::pop() {
     item = a->pop(b);
     if(t == b) {
       // the last item just got stolen
-      if(!_top.compare_exchange_strong(t, t+1, 
-                                       std::memory_order_seq_cst, 
+      if(!_top.compare_exchange_strong(t, t+1,
+                                       std::memory_order_seq_cst,
                                        std::memory_order_relaxed)) {
         item = nullptr;
       }
@@ -223,7 +240,7 @@ T TaskQueue<T>::steal() {
   int64_t t = _top.load(std::memory_order_acquire);
   std::atomic_thread_fence(std::memory_order_seq_cst);
   int64_t b = _bottom.load(std::memory_order_acquire);
-  
+
   T item {nullptr};
 
   if(t < b) {

@@ -2,7 +2,7 @@
 
 #include "graph.hpp"
 
-/** 
+/**
 @file task.hpp
 @brief task include file
 */
@@ -37,15 +37,17 @@ enum class TaskType : int {
   MODULE,
   /** @brief asynchronous task type */
   ASYNC,
+  /** @brief runtime task type */
+  RUNTIME,
   /** @brief undefined task type (for internal use only) */
-  UNDEFINED 
+  UNDEFINED
 };
 
 /**
 @private
 @brief array of all task types (used for iterating task types)
 */
-inline constexpr std::array<TaskType, 9> TASK_TYPES = {
+inline constexpr std::array<TaskType, 10> TASK_TYPES = {
   TaskType::PLACEHOLDER,
   TaskType::CUDAFLOW,
   TaskType::SYCLFLOW,
@@ -54,7 +56,8 @@ inline constexpr std::array<TaskType, 9> TASK_TYPES = {
   TaskType::CONDITION,
   TaskType::MULTI_CONDITION,
   TaskType::MODULE,
-  TaskType::ASYNC
+  TaskType::ASYNC,
+  TaskType::RUNTIME
 };
 
 /**
@@ -63,15 +66,16 @@ inline constexpr std::array<TaskType, 9> TASK_TYPES = {
 The name of each task type is the litte-case string of its characters.
 
 @code{.cpp}
-TaskType::PLACEHOLDER     ->  "placeholder"    
-TaskType::CUDAFLOW        ->  "cudaflow"       
-TaskType::SYCLFLOW        ->  "syclflow"       
-TaskType::STATIC          ->  "static"         
-TaskType::DYNAMIC         ->  "subflow"        
-TaskType::CONDITION       ->  "condition"      
+TaskType::PLACEHOLDER     ->  "placeholder"
+TaskType::CUDAFLOW        ->  "cudaflow"
+TaskType::SYCLFLOW        ->  "syclflow"
+TaskType::STATIC          ->  "static"
+TaskType::DYNAMIC         ->  "subflow"
+TaskType::CONDITION       ->  "condition"
 TaskType::MULTI_CONDITION ->  "multi_condition"
-TaskType::MODULE          ->  "module"         
-TaskType::ASYNC           ->  "async"          
+TaskType::MODULE          ->  "module"
+TaskType::ASYNC           ->  "async"
+TaskType::RUNTIME         ->  "runtime"
 @endcode
 */
 inline const char* to_string(TaskType type) {
@@ -88,6 +92,7 @@ inline const char* to_string(TaskType type) {
     case TaskType::MULTI_CONDITION:  val = "multi_condition"; break;
     case TaskType::MODULE:           val = "module";          break;
     case TaskType::ASYNC:            val = "async";           break;
+    case TaskType::RUNTIME:          val = "runtime";         break;
     default:                         val = "undefined";       break;
   }
 
@@ -104,7 +109,7 @@ inline const char* to_string(TaskType type) {
 A static task is a callable object constructible from std::function<void()>.
 */
 template <typename C>
-constexpr bool is_static_task_v = 
+constexpr bool is_static_task_v =
   std::is_invocable_r_v<void, C> &&
   !std::is_invocable_r_v<int, C> &&
   !std::is_invocable_r_v<tf::SmallVector<int>, C>;
@@ -128,17 +133,17 @@ constexpr bool is_condition_task_v = std::is_invocable_r_v<int, C>;
 /**
 @brief determines if a callable is a multi-condition task
 
-A multi-condition task is a callable object constructible from 
+A multi-condition task is a callable object constructible from
 std::function<tf::SmallVector<int>()>.
 */
 template <typename C>
-constexpr bool is_multi_condition_task_v = 
+constexpr bool is_multi_condition_task_v =
   std::is_invocable_r_v<SmallVector<int>, C>;
 
 /**
 @brief determines if a callable is a %cudaFlow task
 
-A cudaFlow task is a callable object constructible from 
+A cudaFlow task is a callable object constructible from
 std::function<void(tf::cudaFlow&)> or std::function<void(tf::cudaFlowCapturer&)>.
 */
 template <typename C>
@@ -148,11 +153,20 @@ constexpr bool is_cudaflow_task_v = std::is_invocable_r_v<void, C, cudaFlow&> ||
 /**
 @brief determines if a callable is a %syclFlow task
 
-A syclFlow task is a callable object constructible from 
+A syclFlow task is a callable object constructible from
 std::function<void(tf::syclFlow&)>.
 */
 template <typename C>
 constexpr bool is_syclflow_task_v = std::is_invocable_r_v<void, C, syclFlow&>;
+
+/**
+@brief determines if a callable is a runtime task
+
+A runtime task is a callable object constructible from
+std::function<void(tf::Runtime&)>.
+*/
+template <typename C>
+constexpr bool is_runtime_task_v = std::is_invocable_r_v<void, C, Runtime&>;
 
 // ----------------------------------------------------------------------------
 // Task
@@ -161,19 +175,23 @@ constexpr bool is_syclflow_task_v = std::is_invocable_r_v<void, C, syclFlow&>;
 /**
 @class Task
 
-@brief handle to a node in a task dependency graph
+@brief class to create a task handle over a node in a taskflow graph
 
-A Task is handle to manipulate a node in a taskflow graph. 
-It provides a set of methods for users to access and modify the attributes of 
-the associated graph node without directly touching internal node data.
-
+A task is a wrapper over a node in a taskflow graph.
+It provides a set of methods for users to access and modify the attributes of
+the associated node in the taskflow graph.
+A task is very lightweight object (i.e., only storing a node pointer) that
+can be trivially copied around,
+and it does not own the lifetime of the associated node.
 */
 class Task {
 
   friend class FlowBuilder;
+  friend class Runtime;
   friend class Taskflow;
   friend class TaskView;
-  
+  friend class Executor;
+
   public:
 
     /**
@@ -185,12 +203,12 @@ class Task {
     @brief constructs the task with the copy of the other task
     */
     Task(const Task& other);
-    
+
     /**
     @brief replaces the contents with a copy of the other task
     */
     Task& operator = (const Task&);
-    
+
     /**
     @brief replaces the contents with a null pointer
     */
@@ -205,12 +223,12 @@ class Task {
     @brief compares if two tasks are not associated with the same graph node
     */
     bool operator != (const Task& rhs) const;
-    
+
     /**
     @brief queries the name of the task
     */
     const std::string& name() const;
-    
+
     /**
     @brief queries the number of successors of the task
     */
@@ -220,7 +238,7 @@ class Task {
     @brief queries the number of predecessors of the task
     */
     size_t num_dependents() const;
-    
+
     /**
     @brief queries the number of strong dependents of the task
     */
@@ -230,7 +248,7 @@ class Task {
     @brief queries the number of weak dependents of the task
     */
     size_t num_weak_dependents() const;
-    
+
     /**
     @brief assigns a name to the task
 
@@ -245,22 +263,25 @@ class Task {
 
     @tparam C callable type
 
-    @param callable callable to construct one of the static, dynamic, condition, and cudaFlow tasks
+    @param callable callable to construct one of the static, dynamic, condition,
+           and cudaFlow tasks
 
     @return @c *this
     */
     template <typename C>
     Task& work(C&& callable);
-    
+
     /**
     @brief creates a module task from a taskflow
 
-    @param taskflow a taskflow object for the module
+    @tparam T object type
+    @param object a custom object that defines @c T::graph() method
 
     @return @c *this
     */
-    Task& composed_of(Taskflow& taskflow);
-    
+    template <typename T>
+    Task& composed_of(T& object);
+
     /**
     @brief adds precedence links from this to other tasks
 
@@ -272,11 +293,11 @@ class Task {
     */
     template <typename... Ts>
     Task& precede(Ts&&... tasks);
-    
+
     /**
     @brief adds precedence links from other tasks to this
 
-    @tparam Ts parameter pack 
+    @tparam Ts parameter pack
 
     @param tasks one or multiple tasks
 
@@ -294,16 +315,38 @@ class Task {
     @brief makes the task acquire this semaphore
     */
     Task& acquire(Semaphore& semaphore);
-    
+
     /**
     @brief assigns pointer to user data
 
     @param data pointer to user data
 
+    The following example shows how to attach user data to a task and
+    run the task iteratively while changing the data value:
+
+    @code{.cpp}
+    tf::Executor executor;
+    tf::Taskflow taskflow("attach data to a task");
+
+    int data;
+
+    // create a task and attach it the data
+    auto A = taskflow.placeholder();
+    A.data(&data).work([A](){
+      auto d = *static_cast<int*>(A.data());
+      std::cout << "data is " << d << std::endl;
+    });
+
+    // run the taskflow iteratively with changing data
+    for(data = 0; data<10; data++){
+      executor.run(taskflow).wait();
+    }
+    @endcode
+
     @return @c *this
     */
     Task& data(void* data);
-    
+
     /**
     @brief resets the task handle to null
     */
@@ -323,13 +366,13 @@ class Task {
     @brief queries if the task has a work assigned
     */
     bool has_work() const;
-    
+
     /**
     @brief applies an visitor callable to each successor of the task
     */
     template <typename V>
     void for_each_successor(V&& visitor) const;
-    
+
     /**
     @brief applies an visitor callable to each dependents of the task
     */
@@ -340,7 +383,7 @@ class Task {
     @brief obtains a hash value of the underlying node
     */
     size_t hash_value() const;
-    
+
     /**
     @brief returns the task type
     */
@@ -358,7 +401,7 @@ class Task {
 
 
   private:
-    
+
     Task(Node*);
 
     Node* _node {nullptr};
@@ -389,8 +432,9 @@ Task& Task::succeed(Ts&&... tasks) {
 }
 
 // Function: composed_of
-inline Task& Task::composed_of(Taskflow& tf) {
-  _node->_handle.emplace<Node::Module>(&tf);
+template <typename T>
+Task& Task::composed_of(T& object) {
+  _node->_handle.emplace<Node::Module>(object);
   return *this;
 }
 
@@ -425,7 +469,6 @@ inline Task& Task::name(const std::string& name) {
 // Function: acquire
 inline Task& Task::acquire(Semaphore& s) {
   if(!_node->_semaphores) {
-    //_node->_semaphores.emplace();
     _node->_semaphores = std::make_unique<Node::Semaphores>();
   }
   _node->_semaphores->to_acquire.push_back(&s);
@@ -500,6 +543,7 @@ inline TaskType Task::type() const {
     case Node::SILENT_ASYNC:    return TaskType::ASYNC;
     case Node::CUDAFLOW:        return TaskType::CUDAFLOW;
     case Node::SYCLFLOW:        return TaskType::SYCLFLOW;
+    case Node::RUNTIME:         return TaskType::RUNTIME;
     default:                    return TaskType::UNDEFINED;
   }
 }
@@ -552,6 +596,9 @@ Task& Task::work(C&& c) {
   else if constexpr(is_cudaflow_task_v<C>) {
     _node->_handle.emplace<Node::cudaFlow>(std::forward<C>(c));
   }
+  else if constexpr(is_runtime_task_v<C>) {
+    _node->_handle.emplace<Node::Runtime>(std::forward<C>(c));
+  }
   else {
     static_assert(dependent_false_v<C>, "invalid task callable");
   }
@@ -589,7 +636,7 @@ inline std::ostream& operator << (std::ostream& os, const Task& task) {
 @brief class to access task information from the observer interface
 */
 class TaskView {
-  
+
   friend class Executor;
 
   public:
@@ -598,7 +645,7 @@ class TaskView {
     @brief queries the name of the task
     */
     const std::string& name() const;
-    
+
     /**
     @brief queries the number of successors of the task
     */
@@ -608,7 +655,7 @@ class TaskView {
     @brief queries the number of predecessors of the task
     */
     size_t num_dependents() const;
-    
+
     /**
     @brief queries the number of strong dependents of the task
     */
@@ -624,7 +671,7 @@ class TaskView {
     */
     template <typename V>
     void for_each_successor(V&& visitor) const;
-    
+
     /**
     @brief applies an visitor callable to each dependents of the task
     */
@@ -635,14 +682,14 @@ class TaskView {
     @brief queries the task type
     */
     TaskType type() const;
-  
+
     /**
     @brief obtains a hash value of the underlying node
     */
     size_t hash_value() const;
-    
+
   private:
-    
+
     TaskView(const Node&);
     TaskView(const TaskView&) = default;
 
@@ -691,10 +738,11 @@ inline TaskType TaskView::type() const {
     case Node::SILENT_ASYNC:    return TaskType::ASYNC;
     case Node::CUDAFLOW:        return TaskType::CUDAFLOW;
     case Node::SYCLFLOW:        return TaskType::SYCLFLOW;
+    case Node::RUNTIME:         return TaskType::RUNTIME;
     default:                    return TaskType::UNDEFINED;
   }
 }
-  
+
 // Function: hash_value
 inline size_t TaskView::hash_value() const {
   return std::hash<const Node*>{}(&_node);

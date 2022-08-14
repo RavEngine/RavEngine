@@ -53,7 +53,7 @@ namespace RavEngine{
     using Colony = plf::colony<T>;
 
     template<typename T, size_t N>
-    using Array = boost::array<T,N>;
+    using Array = std::array<T,N>;
 
     template<typename T>
     using UnorderedVector = unordered_vector<T,Vector<T>>;

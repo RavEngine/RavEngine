@@ -30,15 +30,15 @@ struct Segment {
   observer_stamp_t beg;
   observer_stamp_t end;
 
-  template <typename Archiver>
-  auto save(Archiver& ar) const {
-    return ar(name, type, beg, end);
-  }
+  //template <typename Archiver>
+  //auto save(Archiver& ar) const {
+  //  return ar(name, type, beg, end);
+  //}
 
-  template <typename Archiver>
-  auto load(Archiver& ar) {
-    return ar(name, type, beg, end);
-  }
+  //template <typename Archiver>
+  //auto load(Archiver& ar) {
+  //  return ar(name, type, beg, end);
+  //}
 
   Segment() = default;
 
@@ -70,15 +70,15 @@ struct Timeline {
   Timeline& operator = (const Timeline& rhs) = delete;
   Timeline& operator = (Timeline&& rhs) = default;
 
-  template <typename Archiver>
-  auto save(Archiver& ar) const {
-    return ar(uid, origin, segments);
-  }
+  //template <typename Archiver>
+  //auto save(Archiver& ar) const {
+  //  return ar(uid, origin, segments);
+  //}
 
-  template <typename Archiver>
-  auto load(Archiver& ar) {
-    return ar(uid, origin, segments);
-  }
+  //template <typename Archiver>
+  //auto load(Archiver& ar) {
+  //  return ar(uid, origin, segments);
+  //}
 };  
 
 /**
@@ -96,15 +96,15 @@ struct ProfileData {
   ProfileData& operator = (const ProfileData& rhs) = delete;
   ProfileData& operator = (ProfileData&&) = default;
   
-  template <typename Archiver>
-  auto save(Archiver& ar) const {
-    return ar(timelines);
-  }
+  //template <typename Archiver>
+  //auto save(Archiver& ar) const {
+  //  return ar(timelines);
+  //}
 
-  template <typename Archiver>
-  auto load(Archiver& ar) {
-    return ar(timelines);
-  }
+  //template <typename Archiver>
+  //auto load(Archiver& ar) {
+  //  return ar(timelines);
+  //}
 };
 
 // ----------------------------------------------------------------------------
@@ -114,7 +114,7 @@ struct ProfileData {
 /**
 @class: ObserverInterface
 
-@brief The interface class for creating an executor observer.
+@brief class to derive an executor observer 
 
 The tf::ObserverInterface class let users define custom methods to monitor 
 the behaviors of an executor. This is particularly useful when you want to 
@@ -205,7 +205,7 @@ class ObserverInterface {
 /**
 @class: ChromeObserver
 
-@brief observer interface based on Chrome tracing format
+@brief class to create an observer based on Chrome tracing format
 
 A tf::ChromeObserver inherits tf::ObserverInterface and defines methods to dump
 the observed thread activities into a format that can be visualized through
@@ -415,7 +415,7 @@ inline size_t ChromeObserver::num_tasks() const {
 /**
 @class TFProfObserver
 
-@brief observer interface based on the built-in taskflow profiler format
+@brief class to create an observer based on the built-in taskflow profiler format
 
 A tf::TFProfObserver inherits tf::ObserverInterface and defines methods to dump
 the observed thread activities into a format that can be visualized through
@@ -675,25 +675,32 @@ inline void TFProfManager::dump(std::ostream& os) const {
 inline TFProfManager::~TFProfManager() {
   std::ofstream ofs(_fpath);
   if(ofs) {
-    // .tfp
-    if(_fpath.rfind(".tfp") != std::string::npos) {
-      ProfileData data;
-      data.timelines.reserve(_observers.size());
-      for(size_t i=0; i<_observers.size(); ++i) {
-        data.timelines.push_back(std::move(_observers[i]->_timeline));
-      }
-      Serializer<std::ofstream> serializer(ofs); 
-      serializer(data);
+    //// .tfp
+    //if(_fpath.rfind(".tfp") != std::string::npos) {
+    //  ProfileData data;
+    //  data.timelines.reserve(_observers.size());
+    //  for(size_t i=0; i<_observers.size(); ++i) {
+    //    data.timelines.push_back(std::move(_observers[i]->_timeline));
+    //  }
+    //  Serializer<std::ofstream> serializer(ofs); 
+    //  serializer(data);
+    //}
+    //// .json
+    //else {
+    //  ofs << "[\n";
+    //  for(size_t i=0; i<_observers.size(); ++i) {
+    //    if(i) ofs << ',';
+    //    _observers[i]->dump(ofs);
+    //  }
+    //  ofs << "]\n";
+    //}
+
+    ofs << "[\n";
+    for(size_t i=0; i<_observers.size(); ++i) {
+      if(i) ofs << ',';
+      _observers[i]->dump(ofs);
     }
-    // .json
-    else {
-      ofs << "[\n";
-      for(size_t i=0; i<_observers.size(); ++i) {
-        if(i) ofs << ',';
-        _observers[i]->dump(ofs);
-      }
-      ofs << "]\n";
-    }
+    ofs << "]\n";
   }
 }
     

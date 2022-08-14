@@ -238,6 +238,7 @@ namespace RavEngine {
             };
             Vector<command> commands;
         };
+
         struct MDIICommandSkinned {
             struct command {
                 WeakRef<MeshAssetSkinned> mesh;
@@ -251,6 +252,7 @@ namespace RavEngine {
         };
         locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand,SpinLock> staticMeshRenderData;
         locked_node_hashmap<Ref<MaterialInstanceBase>, MDIICommandSkinned, SpinLock> skinnedMeshRenderData;
+
         void updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
         void updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
     public:
@@ -919,11 +921,7 @@ namespace RavEngine {
                 new (end) decltype(end)(end);
             }
         };   
-        
-        EntitySparseSet<struct StaticMesh>::const_iterator geobegin, geoend;
-        EntitySparseSet<struct InstancedStaticMesh>::const_iterator instancedBegin, instancedEnd;
-        EntitySparseSet<struct SkinnedMeshComponent>::const_iterator skinnedgeobegin, skinnedgeoend;
-        
+                
         struct TimedSystemEntry{
              std::chrono::duration<double, std::micro> interval;
              std::chrono::time_point<e_clock_t> last_timestamp = e_clock_t::now();
@@ -931,9 +929,7 @@ namespace RavEngine {
         UnorderedNodeMap<ctti_t, TimedSystemEntry> timedSystemRecords;
         UnorderedNodeMap<ctti_t, pos_t> ecsRangeSizes;
         UnorderedMap<ctti_t, std::pair<tf::Task,tf::Task>> typeToSystem;
-        		
-		void CreateFrameData();
-		
+        				
 		void SetupTaskGraph();
 		
 		std::chrono::time_point<e_clock_t> time_now = e_clock_t::now();
@@ -941,7 +937,7 @@ namespace RavEngine {
 		
 		//Entity list
         struct dispatched_func{
-            double runAtTime;
+            double runAtTime = 0;
             Function<void(void)> func;
             dispatched_func(const decltype(runAtTime) rt,const decltype(func)& func) : func(func), runAtTime(rt){}
             dispatched_func(const dispatched_func& other){

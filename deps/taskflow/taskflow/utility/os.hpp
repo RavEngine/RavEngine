@@ -14,7 +14,7 @@
 #define TF_OS_CNK 0
 #define TF_OS_HURD 0
 #define TF_OS_SOLARIS 0
-#define TF_OS_UNIX 0 
+#define TF_OS_UNIX 0
 
 #ifdef _WIN32
 #undef TF_OS_WINDOWS
@@ -32,10 +32,10 @@
 #endif
 
 // in some ppc64 linux installations, only the second condition is met
-#if (defined __linux || defined __EMSCRIPTEN__)
+#if (defined __linux)
 #undef TF_OS_LINUX
 #define TF_OS_LINUX 1
-#elif (defined __linux__ || defined __EMSCRIPTEN__)
+#elif (defined __linux__)
 #undef TF_OS_LINUX
 #define TF_OS_LINUX 1
 #else
@@ -89,6 +89,48 @@
 #define TF_OS_UNIX 1
 #endif
 
+
+//-----------------------------------------------------------------------------
+// Cache line alignment
+//-----------------------------------------------------------------------------
+#if defined(__i386__) || defined(__x86_64__)
+  #define TF_CACHELINE_SIZE 64
+#elif defined(__powerpc64__)
+  // TODO
+  // This is the L1 D-cache line size of our Power7 machines.
+  // Need to check if this is appropriate for other PowerPC64 systems.
+  #define TF_CACHELINE_SIZE 128
+#elif defined(__arm__)
+  // Cache line sizes for ARM: These values are not strictly correct since
+  // cache line sizes depend on implementations, not architectures.
+  // There are even implementations with cache line sizes configurable
+  // at boot time.
+  #if defined(__ARM_ARCH_5T__)
+    #define TF_CACHELINE_SIZE 32
+  #elif defined(__ARM_ARCH_7A__)
+    #define TF_CACHELINE_SIZE 64
+  #endif
+#endif
+
+#ifndef TF_CACHELINE_SIZE
+// A reasonable default guess.  Note that overestimates tend to waste more
+// space, while underestimates tend to waste more time.
+  #define TF_CACHELINE_SIZE 64
+#endif
+
+//-----------------------------------------------------------------------------
+// pause
+//-----------------------------------------------------------------------------
+//#if __has_include (<immintrin.h>)
+//  #define TF_HAS_MM_PAUSE 1
+//  #include <immintrin.h>
+//#endif
+
+
+
+
+
+
 namespace tf {
 
 // Function: get_env
@@ -96,7 +138,7 @@ inline std::string get_env(const std::string& str) {
 #ifdef _MSC_VER
   char *ptr = nullptr;
   size_t len = 0;
-  
+
   if(_dupenv_s(&ptr, &len, str.c_str()) == 0 && ptr != nullptr) {
     std::string res(ptr, len);
     std::free(ptr);
@@ -115,7 +157,7 @@ inline bool has_env(const std::string& str) {
 #ifdef _MSC_VER
   char *ptr = nullptr;
   size_t len = 0;
-  
+
   if(_dupenv_s(&ptr, &len, str.c_str()) == 0 && ptr != nullptr) {
     std::string res(ptr, len);
     std::free(ptr);
@@ -129,8 +171,12 @@ inline bool has_env(const std::string& str) {
 #endif
 }
 
-// ----------------------------------------------------------------------------
-
+// Procedure: relax_cpu
+//inline void relax_cpu() {
+//#ifdef TF_HAS_MM_PAUSE
+//  _mm_pause();
+//#endif
+//}
 
 
 

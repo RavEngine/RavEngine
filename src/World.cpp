@@ -152,18 +152,23 @@ void World::SetupTaskGraph(){
     }).name("Async cleanup");
     doAsync.precede(cleanupRanAsync);
     
-	//TODO: FIX (use conditional tasking)
-	//if (physicsActive){
-		//add the PhysX tick, must run after write but before read
-		auto RunPhysics = ECSTasks.emplace([this]{
-			Solver.Tick(GetCurrentFPSScale());
-		}).name("PhysX Tick");
+    //add the PhysX tick, must run after write but before read
+    auto checkRunPhsyics = ECSTasks.emplace([&] {
+        return physicsActive? 0 : 1;
+    }).name("Check Run Physics");
+
+    auto physicsRootTask = ECSTasks.emplace([] {}).name("PhysicsRootTask").succeed(checkRunPhsyics);
+
+	auto RunPhysics = ECSTasks.emplace([this]{
+		Solver.Tick(GetCurrentFPSScale());
+	}).name("PhysX Tick");
     
-        auto read = EmplaceSystem<PhysicsLinkSystemRead>(Solver.scene);
-        auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>(Solver.scene);
-        RunPhysics.precede(read.second);
-		RunPhysics.succeed(write.second);
-	//}
+    auto read = EmplaceSystem<PhysicsLinkSystemRead>(Solver.scene);
+    auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>(Solver.scene);
+    RunPhysics.precede(read.second);
+	RunPhysics.succeed(write.second);
+    physicsRootTask.precede(RunPhysics,read.first,write.first);
+    write.second.succeed(physicsRootTask);
     
     // setup audio tasks
     audioTasks.name("Audio");
@@ -254,33 +259,8 @@ void World::setupRenderTasks(){
         }
 
 	}).name("Camera data");
-	
-	//opaque geometry
-    SetEmpty<StaticMesh>(geobegin,geoend);
-    SetEmpty<SkinnedMeshComponent>(skinnedgeobegin, skinnedgeoend);
-    
+	    
 	auto init = renderTasks.emplace([&](){
-        if(auto geometry = GetAllComponentsOfType<StaticMesh>()){
-            geobegin = geometry.value()->begin();
-            geoend = geometry.value()->end();
-        }
-        else{
-            SetEmpty<StaticMesh>(geobegin,geoend);
-        }
-        if(auto skinnedGeo = GetAllComponentsOfType<SkinnedMeshComponent>()){
-            skinnedgeobegin = skinnedGeo.value()->begin();
-            skinnedgeoend = skinnedGeo.value()->end();
-        }
-        else{
-            SetEmpty<SkinnedMeshComponent>(skinnedgeobegin, skinnedgeoend);
-        }
-        if (auto instancedGeo = GetAllComponentsOfType<InstancedStaticMesh>()){
-            instancedBegin = instancedGeo.value()->begin();
-            instancedEnd = instancedGeo.value()->end();
-        }
-        else{
-            SetEmpty<InstancedStaticMesh>(instancedBegin, instancedEnd);
-        }
 
 	}).name("Init iterators");
 
@@ -334,27 +314,7 @@ void World::setupRenderTasks(){
         });
     }).name("Upate invalidated skinned mesh transforms");
 
-    //auto sortInstanced = renderTasks.emplace([this]{
-    //    auto current = GetApp()->GetCurrentFramedata();
-    //    auto instanced = GetAllComponentsOfType<InstancedStaticMesh>();
-    //    if (instanced){
-    //        for(const auto& m : *instanced.value()){
-    //            if (m.Enabled){
-    //                auto& pair = m.getTuple();
-    //                m.CalculateMatrices();
-    //                auto& mats = m.GetAllTransforms();
-
-    //                auto& item = current->opaques[pair];
-    //                //item.mtx.lock();
-    //                item.items.insert(item.items.end(), mats.begin(),mats.end());
-    //                //item.mtx.unlock();
-    //            }
-    //        }
-    //    }
-    //}).name("sort instanced - serial");
-
 	init.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh/*, sortInstanced*/);
-    //updateRenderDataStaticMesh.precede(sortInstanced);    // because these write to the same container
 
 	auto copydirs = renderTasks.emplace([this](){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
@@ -423,22 +383,14 @@ void World::setupRenderTasks(){
             gui.Update();
         });
 	}).name("UpdateGUI");
+    auto setup = renderTasks.emplace([this] {
+        auto current = GetApp()->GetCurrentFramedata();
+        current->Clear();
+    }).name("Clear-setup");
 
-	auto swap = renderTasks.emplace([this]{
-        //GetApp()->SwapCurrentFramedata();
-	}).name("Swap");
-
-	auto setup = renderTasks.emplace([this]{
-		auto current = GetApp()->GetCurrentFramedata();
-		current->Clear();
-	}).name("Clear-setup");
-	setup.precede(camproc, copydirs,copyambs,copyspots,copypoints,tickGUI);
-    updateRenderDataStaticMesh.precede(swap);
-    updateRenderDataSkinnedMesh.precede(swap);
-    //sortInstanced.precede(swap);
+    setup.precede(camproc, copydirs, copyambs, copyspots, copypoints, tickGUI);
 	camproc.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
 
-	swap.succeed(camproc,copydirs,copyambs,copyspots,copypoints,tickGUI);
     
     // attatch the renderTasks module to the masterTasks
     renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");
