@@ -132,18 +132,18 @@ void World::SetupTaskGraph(){
     renderTaskModule.succeed(ECSTaskModule);
     
     // process any dispatched coroutines
-    auto updateAsyncIterators = masterTasks.emplace([&]{
+    auto updateAsyncIterators = ECSTasks.emplace([&]{
         async_begin = async_tasks.begin();
         async_end = async_tasks.end();
     }).name("async iterator update");
-    auto doAsync = masterTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const shared_ptr<dispatched_func>& item){
+    auto doAsync = ECSTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const shared_ptr<dispatched_func>& item){
         if (GetApp()->GetCurrentTime() >= item->runAtTime){
             item->func();
             ranFunctions.push_back(async_tasks.hash_for(item));
         }
     }).name("Exec Async");
     updateAsyncIterators.precede(doAsync);
-    auto cleanupRanAsync = masterTasks.emplace([&]{
+    auto cleanupRanAsync = ECSTasks.emplace([&]{
         // remove functions that have been run
         for(const auto hash : ranFunctions){
             async_tasks.erase_by_hash(hash);
@@ -153,11 +153,12 @@ void World::SetupTaskGraph(){
     doAsync.precede(cleanupRanAsync);
     
     //add the PhysX tick, must run after write but before read
-    auto checkRunPhsyics = ECSTasks.emplace([&] {
-        return physicsActive? 0 : 1;
+    auto checkRunPhysics = ECSTasks.emplace([&] {
+		return 0;
+		//return physicsActive? 0 : 1;
     }).name("Check Run Physics");
 
-    auto physicsRootTask = ECSTasks.emplace([] {}).name("PhysicsRootTask").succeed(checkRunPhsyics);
+	auto physicsRootTask = ECSTasks.emplace([] {}).name("PhysicsRootTask");
 
 	auto RunPhysics = ECSTasks.emplace([this]{
 		Solver.Tick(GetCurrentFPSScale());
@@ -166,9 +167,11 @@ void World::SetupTaskGraph(){
     auto read = EmplaceSystem<PhysicsLinkSystemRead>(Solver.scene);
     auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>(Solver.scene);
     RunPhysics.precede(read.second);
-	RunPhysics.succeed(write.second);
-    physicsRootTask.precede(RunPhysics,read.first,write.first);
-    write.second.succeed(physicsRootTask);
+	checkRunPhysics.succeed(write.second);
+	
+	RunPhysics.succeed(checkRunPhysics);
+    physicsRootTask.precede(read.first,write.first);
+	read.second.succeed(checkRunPhysics);	// if checkRunPhysics returns a 1, it goes here anyways.
     
     // setup audio tasks
     audioTasks.name("Audio");
@@ -259,10 +262,6 @@ void World::setupRenderTasks(){
         }
 
 	}).name("Camera data");
-	    
-	auto init = renderTasks.emplace([&](){
-
-	}).name("Init iterators");
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
         Filter([&](float, const StaticMesh& sm, Transform& trns) {
@@ -313,8 +312,6 @@ void World::setupRenderTasks(){
             }
         });
     }).name("Upate invalidated skinned mesh transforms");
-
-	init.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh/*, sortInstanced*/);
 
 	auto copydirs = renderTasks.emplace([this](){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
