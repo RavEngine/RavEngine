@@ -98,7 +98,7 @@ template<typename T>
 static constexpr bool is_eligible = (std::is_base_of<RavEngine::AutoCTTI, T>::value || std::is_trivially_copyable<T>::value) && (!std::is_same<T,void>::value && !fundamental_specialized<T>);
 
 template<typename T>
-static constexpr bool is_ineligible = !is_eligible<T>;
+static constexpr bool is_ineligible = !is_eligible<T> && !fundamental_specialized<T>;
 
 // for structs, provide an automatic CTTI implementation using the derivation
 template <typename T, std::enable_if_t<is_eligible<T>,bool> = false>
@@ -121,9 +121,9 @@ inline constexpr std::string_view type_name() {
 
 // this is the catch-all for types that do not satisfy the above requirements
 // this specialization always fails.
-template<typename T, std::enable_if_t<is_ineligible<T> && !fundamental_specialized<T>, bool> = false>
+template<typename T, std::enable_if_t<is_ineligible<T>, bool> = false>
 inline constexpr std::string_view type_name(){
-	static_assert(!(is_ineligible<T>),"A platform-independent type-name string cannot be auto-generated for this type. Create a manual specialization. See mathtypes.hpp for an example.");
+	static_assert(is_ineligible<T>,"A platform-independent type-name string cannot be auto-generated for this type. Create a manual specialization. See mathtypes.hpp for an example.");
 	return "";
 }
 

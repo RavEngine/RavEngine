@@ -93,22 +93,14 @@ static inline std::ostream& operator<<(std::ostream& os, const matrix4& mat){
 
 namespace RavEngine {
     constexpr decimalType PI = 3.1415926535897932385;
-
+    
     typedef Array<decimalType, 3> RawVec3;
     typedef Array<decimalType, 4> RawQuat;
-}
-
-namespace RavEngine {
-	// manual specializations for the networking and CTTI systems
-	template<>
-    inline std::string_view type_name<RawVec3>() {
-		return "RawVec3";
-	}
-
-	template<>
-    inline std::string_view type_name<RawQuat>() {
-		return "RawQuat";
-	}
+    
+    static_assert(std::is_trivially_copyable_v<RawVec3>, "RawVec3 is not trivially copyable!");
+    static_assert(!std::is_fundamental_v<RawVec3>, "RawVec3 is fundamental!");
+    static_assert(!std::is_same_v<RawVec3,void>,"RawVec3 is void!");
+    static_assert(is_eligible<RawVec3>,"RawVec3 is not eligible for CTTI!");
 }
 
 static inline RavEngine::RawVec3 Vec3toRaw(const vector3& vec) {
