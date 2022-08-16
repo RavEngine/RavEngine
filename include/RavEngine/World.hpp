@@ -255,6 +255,8 @@ namespace RavEngine {
 
         void updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
         void updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
+		void StaticMeshChangedVisibility(const StaticMesh*);
+		void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
     public:
         struct PolymorphicIndirection{
             struct elt{

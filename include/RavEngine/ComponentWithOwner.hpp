@@ -14,6 +14,9 @@ public:
 };
 }
 
-struct Disableable{
+class Disableable{
     bool Enabled = true;
+public:
+	decltype(Enabled) GetEnabled() const {return Enabled; }
+	void SetEnabled(decltype(Enabled) in ) {Enabled = in; }
 };

@@ -49,5 +49,8 @@ namespace RavEngine {
         constexpr inline const auto& getTuple() const{
 			return tuple;
 		}
+		
+		// shadow Disableable::SetEnabled
+		void SetEnabled(bool);
     };
 }

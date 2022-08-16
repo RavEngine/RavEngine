@@ -265,7 +265,7 @@ void World::setupRenderTasks(){
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
         Filter([&](float, const StaticMesh& sm, Transform& trns) {
-            if (trns.isTickDirty && sm.Enabled) {
+            if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
                 auto owner = trns.GetOwner();
 
@@ -279,8 +279,6 @@ void World::setupRenderTasks(){
                     auto& vec = *it;
                     // write new matrix
                     vec.transforms.GetForSparseIndex(owner.GetIdInWorld()) = trns.CalculateWorldMatrix();
-
-                    //TODO: if the staticmesh is not enabled, remove its matrix (need to rework the asserts above)
                 });
 
                 trns.ClearTickDirty();
@@ -290,7 +288,7 @@ void World::setupRenderTasks(){
 
     auto updateRenderDataSkinnedMesh = renderTasks.emplace([this] {
         Filter([&](float, const SkinnedMeshComponent& sm, const AnimatorComponent& am, Transform& trns) {
-            if (trns.isTickDirty && sm.Enabled) {
+            if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
                 auto owner = trns.GetOwner();
 
@@ -305,9 +303,7 @@ void World::setupRenderTasks(){
                     auto& vec = *it;
                     // write new matrix
                     vec.transforms.GetForSparseIndex(owner.GetIdInWorld()) = trns.CalculateWorldMatrix();
-
-                    //TODO: if the staticmesh is not enabled, remove its matrix (need to rework the asserts above)
-                    });
+				});
                 trns.ClearTickDirty();
             }
         });
@@ -474,7 +470,7 @@ void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entit
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return other.mesh.lock() == mesh.GetMesh();
         });
-        if (it != data.commands.end()) {
+        if (it != data.commands.end() && (*it).transforms.HasForSparseIndex(local_id)) {
             (*it).transforms.EraseAtSparseIndex(local_id);
         }
     });
@@ -485,11 +481,32 @@ void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entit
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return other.mesh.lock() == mesh.GetMesh() && other.skeleton.lock() == mesh.GetSkeleton();
         });
-        if (it != data.commands.end()) {
+        if (it != data.commands.end() && (*it).transforms.HasForSparseIndex(local_id)) {
             (*it).transforms.EraseAtSparseIndex(local_id);
         }
     });
 }
+
+void World::StaticMeshChangedVisibility(const StaticMesh* mesh){
+	auto owner = mesh->GetOwner();
+	if (mesh->GetEnabled()){
+		updateStaticMeshMaterial(owner.GetIdInWorld(),nullptr,mesh->GetMaterial(),mesh->GetMesh());
+	}
+	else{
+		DestroyStaticMeshRenderData(*mesh, owner.GetIdInWorld());
+	}
+}
+
+void World::SkinnedMeshChangedVisibility(const SkinnedMeshComponent* mesh){
+	auto owner = mesh->GetOwner();
+	if (mesh->GetEnabled()){
+		updateSkinnedMeshMaterial(owner.GetIdInWorld(),nullptr,mesh->GetMaterial(),mesh->GetMesh(),mesh->GetSkeleton());
+	}
+	else{
+		DestroySkinnedMeshRenderData(*mesh, owner.GetIdInWorld());
+	}
+}
+
 
 entity_t World::CreateEntity(){
     entity_t id;
@@ -512,3 +529,4 @@ World::~World() {
         }
     }
 }
+

@@ -42,6 +42,9 @@ public:
     constexpr inline const decltype(tuple)& getTuple() const{
 		return tuple;
 	}
+	
+	// shadow Disableable::SetEnabled
+	void SetEnabled(bool);
 };
 
 }
