@@ -40,6 +40,9 @@ RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 {
 	int width, height, channels;
 	unsigned char* bytes = stbi_load(pathOnDisk.string().c_str(), &width, &height, &channels, 4);
+	if (bytes == nullptr) {
+		Debug::Fatal("Cannot load texture from disk {}: {}", pathOnDisk.string().c_str(), stbi_failure_reason());
+	}
 
 	CreateTexture(width,height,false,1,bytes);
 	stbi_image_free(bytes);
