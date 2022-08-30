@@ -30,7 +30,7 @@ public:
 	 @param message The message to log
 	 */
 	static inline void LogTemp(const char* message){
-#ifdef _DEBUG
+#ifndef NDEBUG
 		LogHelper(stdout, message, "LOGTEMP");
 #endif
 	}
@@ -42,7 +42,7 @@ public:
 	 */
 	template <typename ... T>
 	static inline void LogTemp(const char* formatstr, T&& ... values){
-#ifdef _DEBUG
+#ifndef NDEBUG
 		LogHelper(stdout, StrFormat(formatstr,values...).c_str(),"LOGTEMP");
 #endif
 	}

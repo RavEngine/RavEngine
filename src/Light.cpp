@@ -19,8 +19,8 @@ bgfx::VertexBufferHandle LightManager::screenSpaceQuadVert = BGFX_INVALID_HANDLE
 bgfx::IndexBufferHandle LightManager::screenSpaceQuadInd = BGFX_INVALID_HANDLE;
 
 void LightManager::Init(){
-	pointLightMesh = MeshAsset::Manager::GetDefault("sphere.obj");
-	spotLightMesh = MeshAsset::Manager::GetDefault("lightcone.obj");
+	pointLightMesh = MeshAsset::Manager::Get("sphere.obj");
+	spotLightMesh = MeshAsset::Manager::Get("lightcone.obj");
 	pointLightShader = make_shared<PointLightShaderInstance>(Material::Manager::Get<PointLightShader>());
 	ambientLightShader = make_shared<AmbientLightShaderInstance>(Material::Manager::Get<AmbientLightShader>());
 	directionalLightShader = make_shared<DirectionalLightShaderInstance>(Material::Manager::Get<DirectionalLightShader>());
@@ -84,7 +84,7 @@ void PointLight::AddInstanceData(float* offset) const{
 }
 
 void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
-#ifdef _DEBUG
+#ifndef NDEBUG
 	dbg.DrawWireframeMesh(tr.CalculateWorldMatrix(), LightManager::spotLightMesh);
 #endif
 }

@@ -76,7 +76,7 @@ static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
 // this one's externable
 bgfx::ProgramHandle rve_debugShaderHandle;
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 static std::optional<GUIComponent> debuggerContext;
 STATIC(RenderEngine::debuggerInput);
 UnorderedMap<uint16_t, RenderEngine::DebugMsg> RenderEngine::debugprints;
@@ -92,7 +92,7 @@ static bgfx::BackbufferRatio::Enum TexRatio = bgfx::BackbufferRatio::Equal;
 static constexpr uint16_t shadowMapSize = 2048;
 
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 static DebugDrawer dbgdraw;	//for rendering debug primitives
 #endif
 
@@ -110,7 +110,7 @@ struct bgfx_msghandler : public bgfx::CallbackI{
 		Debug::Fatal("BGFX error {} in {} line {}: {}",_code, _filePath, _line, _str);
 	}
 	void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) final{
-#ifdef _DEBUG
+#ifndef NDEBUG
 		if(diagnostic_logging){
             char buffer[256]{0};
             std::vsnprintf(buffer,sizeof(buffer)/sizeof(buffer[0]),_format,_argList);
@@ -238,7 +238,7 @@ inline bgfx::PlatformData sdlSetWindow(SDL_Window* _window)
 }
 
 void DebugRender(const Im3d::DrawList& drawList){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	switch(drawList.m_primType){
 		case Im3d::DrawPrimitive_Triangles:
 			//Set BGFX state to triangles
@@ -673,7 +673,7 @@ RavEngine::RenderEngine::~RenderEngine()
  */
 void RenderEngine::Draw(Ref<World> worldOwning){
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 	//display debug print messages
 	bgfx::dbgTextClear();
 	RenderEngine::dbgmtx.lock();
@@ -1087,7 +1087,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	// update GUIs
 	worldOwning->Filter(fng);
 	
-#ifdef _DEBUG
+#ifndef NDEBUG
 	// process debug shapes
 	worldOwning->FilterPolymorphic([](float scale, PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform){
         for(int i = 0; i < dbg.size(); i++){
@@ -1110,7 +1110,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	skinningComputeBuffer.Reset();
 	poseStorageBuffer.Reset();
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 	Im3d::NewFrame();
 #endif
 	bgfx::dbgTextClear();
@@ -1259,7 +1259,7 @@ void RenderEngine::UpdateBufferDims(){
 #endif
 }
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 void RenderEngine::InitDebugger() const{
 	if (!debuggerContext){
 		Im3d::AppData& data = Im3d::GetAppData();

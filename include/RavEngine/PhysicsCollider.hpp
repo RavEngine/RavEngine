@@ -147,10 +147,12 @@ namespace RavEngine {
 		 @param mat the PhysicsMaterial to use
 		 */
         MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> mesh, Ref<PhysicsMaterial> mat);
+        
+#ifndef NDEBUG
+        Ref<MeshAsset> mesh;    // used for debug wireframe
+#endif
 		
-		void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override{
-			//TODO: debug draw mesh collider
-		}
+        void DebugDraw(RavEngine::DebugDrawer& dbg, color_t, const RavEngine::Transform&) const override;
 	};
 
 	struct ConvexMeshCollider : public PhysicsCollider {

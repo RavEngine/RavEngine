@@ -11,6 +11,7 @@
 #include <boost/container_hash/hash.hpp>
 #include "Filesystem.hpp"
 #include "Debug.hpp"
+#include <span>
 
 struct aiMesh;
 struct aiScene;
@@ -37,90 +38,109 @@ public:
 		uint32
 	};
 
-	struct MeshPart{
-		struct Indices {
-			RavEngine::Vector<uint32_t> buffer32;
-			RavEngine::Vector<uint16_t> buffer16;
-			BitWidth mode;
+    template<template<typename...> class T>
+    struct MeshPartIndex {
+        T<uint32_t> buffer32;
+        T<uint16_t> buffer16;
+        BitWidth mode;
 
-			void reserve(size_t size) {
-				switch (mode) {
-				case BitWidth::uint16:
-					buffer16.reserve(size);
-					break;
-				case BitWidth::uint32:
-					buffer32.reserve(size);
-					break;
-				default:
-					Debug::Fatal("Invalid Mode: {}",mode);
-				}
-			}
+        void reserve(size_t size) {
+            switch (mode) {
+            case BitWidth::uint16:
+                buffer16.reserve(size);
+                break;
+            case BitWidth::uint32:
+                buffer32.reserve(size);
+                break;
+            default:
+                Debug::Fatal("Invalid Mode: {}",mode);
+            }
+        }
 
-			void push_back(uint32_t index) {
-				switch (mode) {
-				case BitWidth::uint16:
-					buffer16.push_back(index);
-					break;
-				case BitWidth::uint32:
-					buffer32.push_back(index);
-					break;
-				default:
-					Debug::Fatal("Invalid Mode: {}", mode);
-				}
-			}
+        void push_back(uint32_t index) {
+            switch (mode) {
+            case BitWidth::uint16:
+                buffer16.push_back(index);
+                break;
+            case BitWidth::uint32:
+                buffer32.push_back(index);
+                break;
+            default:
+                Debug::Fatal("Invalid Mode: {}", mode);
+            }
+        }
 
-			auto size() const{
-				switch (mode) {
-				case BitWidth::uint16:
-					return buffer16.size();
-				case BitWidth::uint32:
-					return buffer32.size();
-					break;
-				default:
-					Debug::Fatal("Invalid Mode: {}", mode);
-				}
-			}
+        auto size() const{
+            switch (mode) {
+            case BitWidth::uint16:
+                return buffer16.size();
+            case BitWidth::uint32:
+                return buffer32.size();
+                break;
+            default:
+                Debug::Fatal("Invalid Mode: {}", mode);
+            }
+        }
 
-			const void* first_element_ptr() const {
-				switch (mode) {
-				case BitWidth::uint16:
-					return static_cast<const void*>(& buffer16[0]);
-				case BitWidth::uint32:
-					return static_cast<const void*>(&buffer32[0]);
-					break;
-				default:
-					Debug::Fatal("Invalid Mode: {}", mode);
-				}
-			}
+        const void* first_element_ptr() const {
+            switch (mode) {
+            case BitWidth::uint16:
+                return static_cast<const void*>(& buffer16[0]);
+            case BitWidth::uint32:
+                return static_cast<const void*>(&buffer32[0]);
+                break;
+            default:
+                Debug::Fatal("Invalid Mode: {}", mode);
+            }
+        }
 
-			size_t size_bytes() const {
-				switch (mode) {
-				case BitWidth::uint16:
-					return buffer16.size() * sizeof(decltype(buffer16)::value_type);
-				case BitWidth::uint32:
-					return buffer32.size() * sizeof(decltype(buffer32)::value_type);
-					break;
-				default:
-					Debug::Fatal("Invalid Mode: {}", mode);
-				}
-			}
+        size_t size_bytes() const {
+            switch (mode) {
+            case BitWidth::uint16:
+                    return buffer16.size() * sizeof(typename decltype(buffer16)::value_type);
+            case BitWidth::uint32:
+                    return buffer32.size() * sizeof(typename decltype(buffer32)::value_type);
+                break;
+            default:
+                Debug::Fatal("Invalid Mode: {}", mode);
+            }
+        }
 
-			uint32_t operator[](size_t index) const{
-				switch (mode) {
-				case BitWidth::uint16:
-					return buffer16[index];
-				case BitWidth::uint32:
-					return buffer32[index];
-					break;
-				default:
-					Debug::Fatal("Invalid Mode: {}", mode);
-				}
-			}
-
-		} indices;
-
-        RavEngine::Vector<vertex_t> vertices;
-	};
+        uint32_t operator[](size_t index) const{
+            switch (mode) {
+            case BitWidth::uint16:
+                return buffer16[index];
+            case BitWidth::uint32:
+                return buffer32[index];
+                break;
+            default:
+                Debug::Fatal("Invalid Mode: {}", mode);
+            }
+        }
+    };
+    
+    template<template<typename...> class T>
+    struct MeshPartBase{
+        MeshPartIndex<T> indices;
+        T<vertex_t> vertices;
+    };
+	struct MeshPart : public MeshPartBase<RavEngine::Vector>{};
+    
+    template<typename T>
+    struct basic_immutable_span : public std::span<const T,std::dynamic_extent>{
+        basic_immutable_span(){}
+        basic_immutable_span(const T* ptr, size_t count) : std::span<const T,std::dynamic_extent>(ptr,count){}
+    };
+    
+    struct MeshPartView : public MeshPartBase<basic_immutable_span>{
+        MeshPartView(){}
+        MeshPartView(const MeshPart& other){
+            vertices = decltype(vertices)(other.vertices.data(),other.vertices.size());
+            indices.mode = other.indices.mode;
+            indices.buffer32 = decltype(indices.buffer32)(other.indices.buffer32.data(),other.indices.size());
+            indices.buffer16 = decltype(indices.buffer16)(other.indices.buffer16.data(),other.indices.size());
+        }
+    };
 
     // if we do not want this meshasset having ownership of the mesh (for example in use with Exchange)
     // set this to false
@@ -173,6 +193,7 @@ protected:
 	 @param mp the mesh to initialize from
 	 */
 	void InitializeFromRawMesh(const MeshPart& mp, const MeshAssetOptions& options = MeshAssetOptions());
+    void InitializeFromRawMeshView(const MeshPartView& mp, const MeshAssetOptions& options = MeshAssetOptions());
 	
 	// optionally stores a copy of the mesh in system memory
 	MeshPart systemRAMcopy;
@@ -182,17 +203,7 @@ protected:
 	
 public:
 	
-    struct Manager : public GenericWeakCache<std::string,MeshAsset>{
-    public:
-        
-        /**
-         Load a mesh from cache. If the mesh is not cached in memory, it will be loaded from disk.
-         @param str the name of the mesh
-         */
-        static Ref<MeshAsset> GetDefault(const std::string& str){
-            return ::RavEngine::GenericWeakCache<std::string,MeshAsset>::Get(str,MeshAssetOptions());
-        }
-    };
+    struct Manager : public GenericWeakReadThroughCache<std::string,MeshAsset>{};
     
 	/**
 	 Default constructor that creates an invalid MeshAsset. Useful in conjunction with Exchange.
@@ -224,7 +235,7 @@ public:
 	 @param rawMeshData the index and triangle data
 	 @param keepCopyInSystemMemory maintain a copy of the mesh data in system RAM, for use in features that need it like mesh colliders
 	 */
-	MeshAsset(const  RavEngine::Vector<MeshPart>& rawMeshData, const MeshAssetOptions& options = MeshAssetOptions()){
+	MeshAsset(const RavEngine::Vector<MeshPart>& rawMeshData, const MeshAssetOptions& options = MeshAssetOptions()){
 		InitializeFromMeshPartFragments(rawMeshData, options);
 	}
 	
@@ -235,6 +246,11 @@ public:
 	MeshAsset(const MeshPart& mesh, const MeshAssetOptions& options = MeshAssetOptions()){
 		InitializeFromRawMesh(mesh, options);
 	}
+    
+    MeshAsset(const MeshPartView& mesh, const MeshAssetOptions& options = MeshAssetOptions()){
+        InitializeFromRawMeshView(mesh,options);
+    }
+    
 	
 	/**
 	 Move a MeshAsset's data into this MeshAsset.

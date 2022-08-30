@@ -28,7 +28,7 @@ static inline Im3d::Mat4 matrix4ToMat4(const matrix4& m){
 }
 
 void DebugDrawer::DrawRectangularPrism(const matrix4 &transform, const color_t c, const vector3& d){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
 		Im3d::DrawAlignedBox(Im3d::Vec3(-d.x/2,-d.y/2,-d.z/2), Im3d::Vec3(d.x/2,d.y/2,d.z/2));
@@ -37,7 +37,7 @@ void DebugDrawer::DrawRectangularPrism(const matrix4 &transform, const color_t c
 }
 
 void DebugDrawer::DrawCylinder(const matrix4 &transform, const color_t c,decimalType radius, decimalType height){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
 		Im3d::DrawCylinder(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
@@ -46,7 +46,7 @@ void DebugDrawer::DrawCylinder(const matrix4 &transform, const color_t c,decimal
 }
 
 void DebugDrawer::DrawSphere(const matrix4 &transform, const color_t c, decimalType radius){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	DrawHelper(transform, [=]{
 		Im3d::SetColor(c);
 		Im3d::DrawSphere(Im3d::Vec3(0,0,0), radius);
@@ -55,7 +55,7 @@ void DebugDrawer::DrawSphere(const matrix4 &transform, const color_t c, decimalT
 }
 
 void DebugDrawer::DrawCapsule(const matrix4 &transform, const color_t color, decimalType radius, decimalType height){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	DrawHelper(transform, [=]{
         Im3d::SetColor(color);
         Im3d::DrawCapsule(Im3d::Vec3(0,0,0), Im3d::Vec3(0,height,0), radius);
@@ -64,7 +64,7 @@ void DebugDrawer::DrawCapsule(const matrix4 &transform, const color_t color, dec
 }
 
 void DebugDrawer::DrawPrism(const matrix4 &transform, const color_t color, decimalType radius, decimalType height, decimalType sides){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	DrawHelper(transform, [=] {
 		Im3d::SetColor(color);
 		Im3d::DrawPrism(Im3d::Vec3(0, 0, 0), Im3d::Vec3(0, height, 0), radius, sides);
@@ -74,7 +74,7 @@ void DebugDrawer::DrawPrism(const matrix4 &transform, const color_t color, decim
 }
 
 void DebugDrawer::DrawArrow(const vector3 &start, const vector3 &end, const color_t color){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	mtx.lock();
     Im3d::SetColor(color);
     Im3d::DrawArrow(Im3d::Vec3(start.x,start.y,start.z), Im3d::Vec3(end.x,end.y,end.z));
@@ -84,7 +84,7 @@ void DebugDrawer::DrawArrow(const vector3 &start, const vector3 &end, const colo
 
 
 void DebugDrawer::DrawHelper(const matrix4 &transform, Function<void()> impl){
-#ifdef _DEBUG
+#ifndef NDEBUG
 	mtx.lock();
 	Im3d::PushMatrix(matrix4ToMat4(transform));
 	impl();
@@ -94,7 +94,7 @@ void DebugDrawer::DrawHelper(const matrix4 &transform, Function<void()> impl){
 }
 
 void DebugDrawer::DrawWireframeMesh(const matrix4& transform, const Ref<MeshAsset>& mesh) {
-#ifdef _DEBUG
+#ifndef NDEBUG
 	bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_LINES);
 	float mtx[16];
 	copyMat4(glm::value_ptr(transform), mtx);

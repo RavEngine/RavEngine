@@ -28,7 +28,7 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 	
 	if (data.sampleRate != desiredSampleRate){
 		//assume that in release the user intends this behavior, so do not send the warning.
-#ifdef _DEBUG
+#ifndef NDEBUG
 		Debug::Warning("Sample rate mismatch in {} - requested {} hz but got {} hz. Beginning resampling - to reduce load times, supply audio in the correct sample rate.", path, desiredSampleRate, data.sampleRate);
 #endif
 

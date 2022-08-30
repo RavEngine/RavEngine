@@ -4,8 +4,8 @@
 #include <concurrentqueue.h>
 #include <boost/container/vector.hpp>
 #include <boost/container/small_vector.hpp>
+#include <boost/container/static_vector.hpp>
 #include <boost/array.hpp>
-#include <etl/vector.h>
 #include <vector>
 #include <plf_list.h>
 #include <plf_colony.h>
@@ -44,7 +44,7 @@ namespace RavEngine{
     using SmallVector = boost::container::small_vector<T,N>;
 
     template<typename T,size_t N>
-    using FixedVector = etl::vector<T,N>;
+    using FixedVector = boost::container::static_vector<T,N>;
 
     template<typename T>
     using LinkedList = plf::list<T>;

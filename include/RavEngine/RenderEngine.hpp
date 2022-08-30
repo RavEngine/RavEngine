@@ -68,7 +68,7 @@ namespace RavEngine {
          */
         template<typename ... T>
         static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T&& ... args){
-#ifdef _DEBUG
+#ifndef NDEBUG
             dbgmtx.lock();
             debugprints[row] = {StrFormat(formatstr, args...),color};
             dbgmtx.unlock();
@@ -80,7 +80,7 @@ namespace RavEngine {
          @param row the row to clear
          */
         static void ClearDebugPrint(uint16_t row){
-#ifdef _DEBUG
+#ifndef NDEBUG
             dbgmtx.lock();
             debugprints.erase(row);
             dbgmtx.unlock();
@@ -92,7 +92,7 @@ namespace RavEngine {
          @param row the row to clear
          */
         static void ClearAllDebugPrint(){
-#ifdef _DEBUG
+#ifndef NDEBUG
             dbgmtx.lock();
             debugprints.clear();
             dbgmtx.unlock();
@@ -208,7 +208,7 @@ namespace RavEngine {
 		/// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
 		void SetTransform(const Rml::Matrix4f* transform) override;
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 		void InitDebugger() const;
 		void DeactivateDebugger() const;
 		static std::unique_ptr<InputManager> debuggerInput;
@@ -237,7 +237,7 @@ namespace RavEngine {
         static bgfx::ProgramHandle debugNavProgram;
         bool navDebugDepthEnabled = false;
         
-#ifdef _DEBUG
+#ifndef NDEBUG
         struct DebugMsg{
             std::string message;
             uint8_t color;

@@ -55,7 +55,11 @@ CapsuleCollider::CapsuleCollider(PhysicsBodyComponent* owner, decimalType r, dec
     UpdateFilterData(owner);
 }
 
-MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset, Ref<PhysicsMaterial> mat){
+MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset, Ref<PhysicsMaterial> mat)
+#ifndef NDEBUG
+ : mesh(meshAsset)
+#endif
+{
     material = mat;
     auto& meshdata = meshAsset->GetSystemCopy();
     
@@ -88,7 +92,7 @@ MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset
         meshDesc.flags = PxMeshFlag::e16_BIT_INDICES;
     }    //otherwise assume 32 bit
     
-#ifdef _DEBUG
+#ifndef NDEBUG
     //Debug::Assert(PhysicsSolver::cooking->validateTriangleMesh(meshDesc), "Triangle mesh validation failed");
 #endif
     
@@ -121,9 +125,6 @@ ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsse
     meshDesc.points.count = static_cast<physx::PxU32>(vertices.size());
     meshDesc.points = pointdata;
     meshDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
-    
-    // no longer need to hold onto this, so release it
-    meshAsset.reset();
     
     physx::PxConvexMesh* convMesh = PhysicsSolver::cooking->createConvexMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
     
@@ -183,4 +184,10 @@ void SphereCollider::DebugDraw(RavEngine::DebugDrawer& dbg,color_t debug_color, 
 
 void CapsuleCollider::DebugDraw(RavEngine::DebugDrawer& dbg, color_t debug_color, const RavEngine::Transform& tr) const{
     dbg.DrawCapsule(glm::translate(glm::rotate(CalculateWorldMatrix(tr), deg_to_rad(90), vector3(0,0,1)), vector3(0,-halfHeight,0)) , debug_color, radius, halfHeight * 2);
+}
+
+void MeshCollider::DebugDraw(RavEngine::DebugDrawer &dbg, color_t color, const RavEngine::Transform & tr) const{
+#ifndef NDEBUG
+    dbg.DrawWireframeMesh(CalculateWorldMatrix(tr), mesh);
+#endif
 }

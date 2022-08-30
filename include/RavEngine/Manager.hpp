@@ -2,7 +2,6 @@
 #include "Ref.hpp"
 #include "WeakRef.hpp"
 #include "SpinLock.hpp"
-#include <boost/any.hpp>
 #include <boost/container_hash/hash.hpp>
 #include "DataStructures.hpp"
 #include "Function.hpp"
@@ -45,7 +44,7 @@ struct CacheKey{
  If the key type is not a parameter in the construction of your object, set the final template parameter to false
  */
 template<typename key_t, typename T, bool keyIsConstructionParam = true>
-struct GenericWeakCache{
+struct GenericWeakReadThroughCache{
     
 private:
     template<typename V>
@@ -119,10 +118,10 @@ public:
 };
 }
 template<typename key, typename T, bool keyIsConstructionParam>
-RavEngine::SpinLock RavEngine::GenericWeakCache<key,T,keyIsConstructionParam>::mtx;
+RavEngine::SpinLock RavEngine::GenericWeakReadThroughCache<key,T,keyIsConstructionParam>::mtx;
 
 template<typename key,typename T, bool keyIsConstructionParam>
-RavEngine::UnorderedMap<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakCache<key,T,keyIsConstructionParam>::items;
+RavEngine::UnorderedMap<RavEngine::CacheKey,WeakRef<T>> RavEngine::GenericWeakReadThroughCache<key,T,keyIsConstructionParam>::items;
 
 namespace std{
     template<>

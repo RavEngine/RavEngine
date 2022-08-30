@@ -46,7 +46,7 @@ namespace RavEngine {
 			 */
 			template<typename T, typename ... A>
 			static inline Ref<T> Get(A&& ... args){
-                return GenericWeakCache<ctti_t,T,false>::Get(CTTI<T>(),args...);
+                return GenericWeakReadThroughCache<ctti_t,T,false>::Get(CTTI<T>(),args...);
 			}
             
             /**
@@ -54,7 +54,7 @@ namespace RavEngine {
              */
             template<typename T>
             static inline void Compact(){
-                GenericWeakCache<ctti_t,T,false>::Compact();
+                GenericWeakReadThroughCache<ctti_t,T,false>::Compact();
             }
 		};
 

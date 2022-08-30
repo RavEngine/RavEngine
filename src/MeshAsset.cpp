@@ -221,9 +221,13 @@ void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart
 }
 
 void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, const MeshAssetOptions& options){
-	if (options.keepInSystemRAM){
-		systemRAMcopy = allMeshes;
-	}
+    if (options.keepInSystemRAM){
+        systemRAMcopy = allMeshes;
+    }
+    InitializeFromRawMeshView(allMeshes,options);
+}
+
+void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const MeshAssetOptions& options){
     
     // calculate bounding box
     for(const auto& vert : allMeshes.vertices){

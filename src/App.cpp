@@ -201,7 +201,7 @@ int App::run(int argc, char** argv) {
 	Rml::SetFileInterface(new VFSInterface());
 	Rml::Initialise();
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 	Renderer->InitDebugger();
 #endif
 
@@ -281,7 +281,7 @@ int App::run(int argc, char** argv) {
 			//process others
 			if (inputManager){
 				inputManager->ProcessInput(event,windowflags,scale);
-#ifdef _DEBUG
+#ifndef NDEBUG
 				RenderEngine::debuggerInput->ProcessInput(event,windowflags,scale);
 #endif
 			}
@@ -371,7 +371,7 @@ int App::run(int argc, char** argv) {
 		}
 #endif
 	
-#ifdef _DEBUG
+#ifndef NDEBUG
 		RenderEngine::debuggerInput->TickAxes();
 #endif
 		if (inputManager) {
@@ -440,7 +440,7 @@ App::~App(){
 	inputManager = nullptr;
 	renderWorld = nullptr;
 	loadedWorlds.clear();
-#ifdef _DEBUG
+#ifndef NDEBUG
 	Renderer->DeactivateDebugger();
 #endif
     MeshAsset::Manager::Clear();

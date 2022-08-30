@@ -7,7 +7,7 @@ using namespace std;
 STATIC(Skybox::defaultSkyMesh);
 
 void Skybox::Init() {
-	defaultSkyMesh = MeshAsset::Manager::GetDefault("skydome.obj");
+	defaultSkyMesh = MeshAsset::Manager::Get("skydome.obj");
 }
 
 void Skybox::Teardown() {

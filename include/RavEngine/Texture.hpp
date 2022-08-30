@@ -34,7 +34,7 @@ public:
      Use the manager to avoid loading duplicate textures
      Works with Runtime textures as well, using the construction arguments to differentiate textures
      */
-    struct Manager : public GenericWeakCache<std::string,Texture>{};
+    struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{};
 	
 protected:
 	bgfx::TextureHandle texture = BGFX_INVALID_HANDLE;

@@ -128,7 +128,6 @@ add_custom_command(
 
 # no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/etl" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/tweeny" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
@@ -495,7 +494,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"effolkronium_random"
 	"glm"
 	"fmt"
-	"etl"
 	"tweeny"
 	"SDL2-static"
 	"bgfx"
