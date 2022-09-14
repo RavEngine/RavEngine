@@ -18,7 +18,7 @@
 #include <ios>
 #include <cstdio>
 #include <cstdlib>
-#include <ciso646>
+#include <version>
 #include <vector>
 #include <string>
 #include <fstream>
