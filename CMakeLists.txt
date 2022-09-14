@@ -366,9 +366,14 @@ file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" 
 file(GLOB SHADERS "shaders/*.glsl" "shaders/*.vsh" "shaders/*.fsh" "shaders/*.sc" "shaders/*.glsl" "shaders/*.hlsl")
 set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
 
+# add deps headers to project so symbol lookup works
+file(GLOB_RECURSE BOOST_HEADERS "deps/boost/boost/*.hpp" "deps/boost/boost/*.h")
+
 # register the library
 set(UWP_SDL2MAIN "${DEPS_DIR}/SDL2/src/main/winrt/SDL_winrt_main_NonXAML.cpp" CACHE INTERNAL "")
-add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} "deps/parallel-hashmap/phmap.natvis")
+add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} ${BOOST_HEADERS} "deps/parallel-hashmap/phmap.natvis")
+source_group(TREE "${DEPS_DIR}/boost/boost" PREFIX "boost/boost" FILES ${BOOST_HEADERS})
+	
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
