@@ -927,7 +927,9 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				if constexpr (std::is_same_v<LightType, DirectionalLight>) {
 					Lname = "DL";
 					auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * -25.f, vector3(0, 0, 0), vector3(0, 1, 0));
-					//dirlightViewMat = glm::translate(dirlightViewMat, vector3(fd->viewmatrix[3][2], 0, fd->viewmatrix[3][0]));		// center the projection at the camera
+                    
+					dirlightViewMat = glm::translate(dirlightViewMat, vector3(-fd->cameraWorldpos.x, 0, -fd->cameraWorldpos.z));		// center the projection at the camera
+                    
 					copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
 					copyMat4(glm::value_ptr(dlProjMtx), shadowprojviewmtx);
 				}
