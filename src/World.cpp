@@ -313,7 +313,7 @@ void World::setupRenderTasks(){
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
             auto ptr = dirs.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
-                auto owner = Entity(ptr->GetOwner(i));
+                auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
                 auto rot = owner.GetTransform().Up();
                 FrameData::PackedDL::tinyvec3 r{
                     static_cast<float>(rot.x),
@@ -339,7 +339,7 @@ void World::setupRenderTasks(){
         if(auto spots = GetAllComponentsOfType<SpotLight>()){
             auto ptr = spots.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
-                Entity owner(ptr->GetOwner(i));
+                Entity owner(localToGlobal[ptr->GetOwner(i)]);
                 auto transform = owner.GetTransform().CalculateWorldMatrix();
                 auto current = GetApp()->GetCurrentFramedata();
                 const auto& l = ptr->Get(i);
@@ -352,7 +352,7 @@ void World::setupRenderTasks(){
         if(auto points = GetAllComponentsOfType<PointLight>()){
             auto ptr = points.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
-                Entity owner(ptr->GetOwner(i));
+                Entity owner(localToGlobal[ptr->GetOwner(i)]);
                 const auto& d = ptr->Get(i);
                 auto transform = owner.GetTransform().CalculateWorldMatrix();
                 auto current = GetApp()->GetCurrentFramedata();
