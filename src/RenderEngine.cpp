@@ -886,8 +886,8 @@ void RenderEngine::Draw(Ref<World> worldOwning){
    
     uint32_t shadowOffset = 0;
 	bgfx::ViewId currentShadowView = Views::LightingShadowsFirstView;
-	constexpr auto size = 20;
-	auto dlProjMtx = glm::ortho<float>(-size, size, -size, size, 0.5, 100);	// TODO: don't hardcode far clip
+	constexpr auto dirlightShadowArea = 20; //TODO: make configurable
+	auto dlProjMtx = glm::ortho<float>(-dirlightShadowArea, dirlightShadowArea, -dirlightShadowArea, dirlightShadowArea, 0.5, 200);	// TODO: don't hardcode far clip
 	float shadowprojviewmtx[32]{0};
 
 	/**
@@ -928,7 +928,13 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 					Lname = "DL";
 					auto dirlightViewMat = glm::lookAt(vector3(l.rotation.x, l.rotation.y, l.rotation.z) * -25.f, vector3(0, 0, 0), vector3(0, 1, 0));
                     
-					dirlightViewMat = glm::translate(dirlightViewMat, vector3(-fd->cameraWorldpos.x, 0, -fd->cameraWorldpos.z));		// center the projection at the camera
+                    // offset position to where the camera is
+                    vector3 reposVec{-fd->cameraWorldpos.x, fd->cameraWorldpos.y, -fd->cameraWorldpos.z};
+                    
+                    // then move it in front of the camera
+                    reposVec -= (fd->cameraFacingVector * (static_cast<float>(dirlightShadowArea)));
+                    
+					dirlightViewMat = glm::translate(dirlightViewMat, reposVec);		// center the projection at the camera
                     
 					copyMat4(glm::value_ptr(dirlightViewMat), lightViewMtx);
 					copyMat4(glm::value_ptr(dlProjMtx), shadowprojviewmtx);

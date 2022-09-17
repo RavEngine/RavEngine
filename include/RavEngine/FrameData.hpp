@@ -21,6 +21,7 @@ struct FrameData{
 	//global matrices
 	matrix4 viewmatrix, projmatrix;
 	vector3 cameraWorldpos;
+    vector3 cameraFacingVector{1,1,1};
     
 	template<typename T>
 	struct StoredLight{

@@ -54,7 +54,7 @@ namespace RavEngine {
         virtual void onAdvance(const physx::PxRigidBody* const* bodyBuffer, const physx::PxTransform* poseBuffer, const physx::PxU32 count) override {}
 
         // If deltatime > this value, the system will substep
-        constexpr static float max_step_time = 1.f/50;
+        constexpr static float max_step_time = 1.f/30;
         
         friend class PhysicsBodyComponent;
 

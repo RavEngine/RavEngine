@@ -764,6 +764,9 @@ function(pack_resources)
 	copy_helper("${ARGS_FONTS}" "fonts")
 	copy_helper("${ENG_FONTS}" "fonts")
 	copy_helper("${ARGS_SOUNDS}" "sounds")
+
+	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES})
+	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} PROPERTIES HEADER_FILE_ONLY ON)
 	
 	source_group("Objects" FILES ${ARGS_OBJECTS})
 	source_group("Textures" FILES ${ARGS_TEXTURES})

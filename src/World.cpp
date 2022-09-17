@@ -254,8 +254,9 @@ void World::setupRenderTasks(){
                     auto current = GetApp()->GetCurrentFramedata();
                     current->viewmatrix = cam.GenerateViewMatrix();
                     current->projmatrix = cam.GenerateProjectionMatrix();
-                    current->cameraWorldpos = cam.GetOwner().GetTransform().GetWorldPosition();
-
+                    const auto& ctrns = cam.GetOwner().GetTransform();
+                    current->cameraWorldpos = ctrns.GetWorldPosition();
+                    current->cameraFacingVector = ctrns.WorldForward();
                     break;
                 }
             }
