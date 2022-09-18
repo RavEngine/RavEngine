@@ -104,14 +104,14 @@ static constexpr bool is_ineligible = !is_eligible<T> && !fundamental_specialize
 template <typename T, std::enable_if_t<is_eligible<T>,bool> = false>
 consteval std::string_view type_name() {
 #ifdef _MSC_VER
-	consteval auto str = type_name_impl<T>();
+	constexpr auto str = type_name_impl<T>();
     size_t offset = 0;
     static_assert(str[0] == 'c' || str[0] == 's', "Type must be a class or struct");
-	if consteval (str[0] == 'c'){
-		offset = std::strlen("class "); //advance past 'class'
+	if constexpr (str[0] == 'c'){
+		offset = sizeof("class "); //advance past 'class'
 	}
 	else if (str[0] == 's'){
-		offset = std::strlen("struct "); //advance past 'struct'
+		offset = sizeof("struct "); //advance past 'struct'
 	}
     return std::string_view(str.data() + offset, str.size() - offset);
 #else
