@@ -108,10 +108,10 @@ consteval std::string_view type_name() {
     size_t offset = 0;
     static_assert(str[0] == 'c' || str[0] == 's', "Type must be a class or struct");
 	if constexpr (str[0] == 'c'){
-		offset = sizeof("class "); //advance past 'class'
+		offset = sizeof("class"); //advance past 'class'
 	}
 	else if (str[0] == 's'){
-		offset = sizeof("struct "); //advance past 'struct'
+		offset = sizeof("struct"); //advance past 'struct'
 	}
     return std::string_view(str.data() + offset, str.size() - offset);
 #else
