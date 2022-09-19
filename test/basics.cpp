@@ -44,9 +44,9 @@ struct MyExtendedPrototype : public MyPrototype{
 
 int Test_CTTI(){
 	
-	auto t1 = CTTI<int>;
-	auto t2 = CTTI<float>;
-	auto t3 = CTTI<int>;
+	auto t1 = CTTI<int>();
+	auto t2 = CTTI<float>();
+	auto t3 = CTTI<int>();
 	
 	assert(t1 == t3);
 	assert(t1 != t2);
