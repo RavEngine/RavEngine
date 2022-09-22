@@ -184,21 +184,23 @@ void NetworkClient::NetSpawn(const std::string_view& command){
     std::memcpy(worldname, command.data()+offset, World::id_size);
     if (auto world = GetApp()->GetWorldByName(std::string(worldname,World::id_size))){
         // try to create the entity, the result of this is the entity spawned in the world
-        if (auto e = GetApp()->networkManager.CreateEntity(id, world.value().get())){
-            // create a NetworkIdentity for this spawned entity
-            auto& eHandle = e.value();
-            auto& netid = eHandle.EmplaceComponent<NetworkIdentity>(uuid);
-            // track this entity
-            NetworkIdentities[uuid] = eHandle;
-            
-            // now invoke the netspawnhook
-            if (OnNetSpawnHooks.contains(id)) {
-                OnNetSpawnHooks.at(id)(e.value(),world.value());
+        GetApp()->DispatchMainThread([id,world,uuid,this](){
+            if (auto e = GetApp()->networkManager.CreateEntity(id, world.value().get())){
+                // create a NetworkIdentity for this spawned entity
+                auto& eHandle = e.value();
+                auto& netid = eHandle.EmplaceComponent<NetworkIdentity>(uuid);
+                // track this entity
+                NetworkIdentities[uuid] = eHandle;
+                
+                // now invoke the netspawnhook
+                if (OnNetSpawnHooks.contains(id)) {
+                    OnNetSpawnHooks.at(id)(e.value(),world.value());
+                }
             }
-        }
-        else{
-            Debug::Fatal("Cannot spawn entity with CTTI ID {}",id);
-        }
+            else{
+                Debug::Fatal("Cannot spawn entity with CTTI ID {}",id);
+            }
+        });
     }
     else{
         Debug::Fatal("Cannot spawn networked entity in unloaded world: {}", worldname);
@@ -215,15 +217,18 @@ void NetworkClient::NetDestroy(const std::string_view& command){
     uuids::uuid uuid(uuid_bytes);
         
     //lookup the entity and destroy it
-	if (NetworkIdentities.if_contains(uuid, [&](auto entity) {
-        entity.Destroy();
-	})) {
-		//this must be here, otherwise we will encounter deadlock
-		NetworkIdentities.erase(uuid);
-	}
-    else{
-        Debug::Warning("Cannot destroy entity with UUID {} because it does not exist",uuid.to_string());
-    }
+    GetApp()->DispatchMainThread([uuid,this](){
+        if (NetworkIdentities.if_contains(uuid, [&](auto entity) {
+            entity.Destroy();
+        })) {
+            //this must be here, otherwise we will encounter deadlock
+            NetworkIdentities.erase(uuid);
+        }
+        else{
+            Debug::Warning("Cannot destroy entity with UUID {} because it does not exist",uuid.to_string());
+        }
+    });
+	
 }
 
 void RavEngine::NetworkClient::OwnershipRevoked(const std::string_view& cmd)
@@ -240,13 +245,15 @@ void RavEngine::NetworkClient::OwnershipRevoked(const std::string_view& cmd)
 
 void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
 {
-	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [this](const auto id) {
-		GainOwnership(id);
-	});
-	if (!success) {
-		Debug::Warning("Cannot add ownership to an entity that does not exist, id = {}", id.to_string());
-	}
+	uuids::uuid netid(cmd.data() + 1);
+    GetApp()->DispatchMainThread([netid,this](){
+        bool success = NetworkIdentities.if_contains(netid, [this](const auto id) {
+            GainOwnership(id);
+        });
+        if (!success) {
+            Debug::Warning("Cannot add ownership to an entity that does not exist, id = {}", netid.to_string());
+        }
+    });
 }
 
 void NetworkClient::SendMessageToServer(const std::string_view& msg, Reliability mode) const {
@@ -272,9 +279,8 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 void RavEngine::NetworkClient::SendSyncWorldRequest(Ref<World> world)
 {
 	// sending this command code + the world ID to spawn
-	char buffer[1 + World::id_size];
-	std::memset(buffer, 0, World::id_size);
+    char buffer[1 + World::id_size]{0};
 	buffer[0] = CommandCode::ClientRequestingWorldSynchronization;
 	std::memcpy(buffer + 1, world->worldID.data(), world->worldID.size());
-	SendMessageToServer(buffer, Reliability::Reliable);
+	SendMessageToServer(std::string_view(buffer,sizeof(buffer)), Reliability::Reliable);
 }

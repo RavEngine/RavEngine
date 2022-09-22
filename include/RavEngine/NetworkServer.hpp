@@ -46,6 +46,10 @@ public:
 		
 	//attach event listeners here
 	Function<void(HSteamNetConnection)> OnClientConnecting, OnClientConnected, OnClientDisconnected;
+    
+    std::string CreateSpawnCommand(const uuids::uuid& id, ctti_t type, std::string_view& worldID);
+
+    std::string CreateDestroyCommand(const uuids::uuid& id);
 	
 protected:
 	void OnRPC(const std::string_view& cmd, HSteamNetConnection);

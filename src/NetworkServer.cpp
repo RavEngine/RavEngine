@@ -253,10 +253,9 @@ void NetworkServer::ServerTick(){
 
 void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection connection, const std::string_view& in_message)
 {
-	char buffer[World::id_size];
-	std::memset(buffer, 0, World::id_size);
+    char buffer[World::id_size]{0};
 	std::memcpy(buffer, in_message.data() + 1, in_message.size() - 1);
-	string name(buffer,World::id_size);
+	string name(buffer,sizeof(buffer));
 	if (auto world = GetApp()->GetWorldByName(name)) {
 		// get all the networkidentities in the world
 		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
@@ -268,7 +267,6 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 			auto& netID = identity.GetNetworkID();
 			//send highest-priority safe message with this info to clients
 			auto message = CreateSpawnCommand(netID, id, world.value()->worldID);
-			NetworkIdentities[netID] = entity;
 
 			SendMessageToClient(message, connection,Reliability::Reliable);
 		}
@@ -285,10 +283,11 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 		bool isOwner = origin == entity.template GetComponent<NetworkIdentity>().Owner;
 		entity.template GetComponent<RPCComponent>().CacheServerRPC(cmd, isOwner, origin);
 		})) {
-		Debug::Warning("Got RPC for {} but it has not been tracked, ids = ",id.to_string());
-		for (const auto& [id,entity] : NetworkIdentities) {
-			Debug::Warning("{}", id.to_string());
-		}
+		
+            Debug::Warning("Got RPC for {} but it has not been tracked, ids = ",id.to_string());
+            for (const auto& [id,entity] : NetworkIdentities) {
+                Debug::Warning(" - UUID = {}, id = {}", id.to_string(), entity.id);
+            }
 	}
 }
 
@@ -314,9 +313,8 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Com
 		char msg[uuids::uuid::size() + 1];
 		msg[0] = NetworkBase::CommandCode::OwnershipRevoked;
 		std::memcpy(msg + 1, uuid.raw(), uuid.size());
+        OwnershipTracker[object->Owner].erase(object);
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
-
-		OwnershipTracker[object->Owner].erase(object);
 	}
 
 	//update the object's ownership value
@@ -325,11 +323,53 @@ void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, Com
 	//send message to the new owner that it is now the owner, if the new owner is not the server
 	if (newOwner != k_HSteamNetConnection_Invalid) {
 		const auto& uuid = object->GetNetworkID();
-		char msg[uuids::uuid::size() + 1];
+        char msg[uuids::uuid::size() + 1]{0};
 		msg[0] = NetworkBase::CommandCode::OwnershipToThis;
 		std::memcpy(msg + 1, uuid.raw(), uuid.size());
+        OwnershipTracker[object->Owner].insert(object);
 		SendMessageToClient(std::string_view(msg, sizeof(msg)), object->Owner, Reliability::Reliable);
-
-		OwnershipTracker[object->Owner].insert(object);
 	}
 }
+
+std::string RavEngine::NetworkServer::CreateSpawnCommand(const uuids::uuid& id, ctti_t type, std::string_view& worldID)
+{
+    constexpr uint16_t size = 16 + sizeof(type) + World::id_size + 1;
+    char message[size];
+    memset(message, 0, size);
+
+    //set command code
+    message[0] = CommandCode::Spawn;
+
+    char offset = 1;
+    //set type
+    memcpy(message + offset, &type, sizeof(type));
+
+    offset += sizeof(type);
+
+    //set uuid
+    auto raw = id.raw();
+    memcpy(message + offset, raw, 16);
+    Debug::Log("Server spawned {} - {}", type, id.to_string());
+    offset += 16;
+
+    //set worldid
+    memcpy(message + offset, worldID.data(), World::id_size);
+
+    return string(message,size);
+}
+
+std::string RavEngine::NetworkServer::CreateDestroyCommand(const uuids::uuid& id)
+{
+    constexpr uint16_t size = 16 + 1;
+    char message[size];
+    
+    //set command code
+    message[0] = CommandCode::Destroy;
+    
+    //set uuid
+    auto raw = id.raw();
+    memcpy(message + 1, raw, 16);
+    
+    return string(message,size);
+}
+

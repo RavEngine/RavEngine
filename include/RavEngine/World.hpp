@@ -901,7 +901,7 @@ namespace RavEngine {
         
 	private:
 		std::atomic<bool> isRendering = false;
-		char worldIDbuf [id_size];
+        char worldIDbuf [id_size]{0};
 		tf::Taskflow masterTasks;
         tf::Taskflow renderTasks;
         tf::Taskflow audioTasks;

@@ -37,9 +37,7 @@ namespace RavEngine {
         bool isNetworkEntity(ctti_t id) const{
             return NetworkedObjects.contains(id);
         }
-        
-		void SyncVarUpdate(const std::string_view& data);
-        
+                
         std::optional<Entity> CreateEntity(ctti_t id, World* world){
             std::optional<Entity> value;
 			NetworkedObjects.if_contains(id, [&](const func_t& fn) {
