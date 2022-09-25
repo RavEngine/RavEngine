@@ -8,6 +8,8 @@ set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${DEPS_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
+set(CMAKE_XCODE_VERSION "12.0.0" CACHE INTERNAL "")
+set(CMAKE_XCODE_GENERATE_TOP_LEVEL_PROJECT_ONLY ON CACHE INTERNAL "")
 
 OPTION( BUILD_SHARED_LIBS "Build package with shared libraries." OFF)
 OPTION( RAVENGINE_BUILD_TESTS "Build tests" OFF)
@@ -377,6 +379,7 @@ source_group(TREE "${DEPS_DIR}/boost/boost" PREFIX "boost/boost" FILES ${BOOST_H
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
+set_source_files_properties(${SHADERS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.glsl")
 source_group("Shaders" FILES ${SHADERS})
 
 # vectorization
@@ -765,11 +768,12 @@ function(pack_resources)
 	copy_helper("${ENG_FONTS}" "fonts")
 	copy_helper("${ARGS_SOUNDS}" "sounds")
 
-	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES})
-	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} PROPERTIES HEADER_FILE_ONLY ON)
+	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS})
+	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} PROPERTIES HEADER_FILE_ONLY ON)
 	
 	source_group("Objects" FILES ${ARGS_OBJECTS})
 	source_group("Textures" FILES ${ARGS_TEXTURES})
+	source_group("Sounds" FILES ${ARGS_SOUNDS})
 	source_group("UI" FILES ${ARGS_UIS})
 
 	# get dependency outputs
@@ -801,6 +805,10 @@ function(pack_resources)
 	get_property(all_shaders_sources GLOBAL PROPERTY ALL_SHADER_SOURCES)
 	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shaders_sources})
 	set_source_files_properties(${ARGS_UIS} ${all_shaders_sources} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevents visual studio from trying to build these
+	set_source_files_properties(${all_shaders_sources} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.glsl")
+	set_source_files_properties(${ARGS_UIS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "text.html")
+	set_source_files_properties(${ARGS_OBJECTS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "compiled")
+	set_source_files_properties(${ARGS_SOUNDS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "audio.wav")
 	source_group("Shaders" FILES ${all_shaders_sources})
 
 	# on UWP, need an additional file w/ compile options for SDLmain to work
@@ -838,6 +846,7 @@ function(pack_resources)
 		MACOSX_PACKAGE_LOCATION Resources
 	)
 	source_group("Resources" FILES ${outpack})
+	set_source_files_properties(${outpack} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "archive.ar")
 
 	# Set the assets zip location on UWP
 	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_CONTENT 1)
