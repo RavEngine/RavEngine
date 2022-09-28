@@ -297,12 +297,13 @@ void RavEngine::NetworkServer::DisconnectClient(HSteamNetConnection con, int rea
 	net_interface->CloseConnection(con, reason, msg_optional, false);
 
 	// need to destroy any entities owned by this client
-	HandleDisconnect(con);
-	clients.erase(con);
+    GetApp()->DispatchMainThread([this,con]{
+        HandleDisconnect(con);
 
-	if (OnClientDisconnected) {
-		OnClientDisconnected(con);
-	}
+        if (OnClientDisconnected) {
+            OnClientDisconnected(con);
+        }
+    });
 }
 
 void RavEngine::NetworkServer::ChangeOwnership(HSteamNetConnection newOwner, ComponentHandle<NetworkIdentity> object)

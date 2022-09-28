@@ -59,7 +59,7 @@ protected:
 	HSteamNetPollGroup pollGroup = k_HSteamNetPollGroup_Invalid;
 	void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 	
-    UnorderedSet<HSteamNetConnection> clients;
+    locked_node_hashset<HSteamNetConnection,SpinLock> clients;
 
 	// since the server owns all objects by default, we only need to update this
 	// when the ownership changes to a non-server client. If an object is not in this

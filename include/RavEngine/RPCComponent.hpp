@@ -24,7 +24,7 @@ namespace RavEngine {
 			Directionality mode;
 		};
 
-		typedef locked_hashmap<uint16_t, rpc_entry, SpinLock> rpc_store;
+		typedef locked_node_hashmap<uint16_t, rpc_entry, phmap::NullMutex> rpc_store;
 
         struct enqueued_rpc {
 			std::string msg;
