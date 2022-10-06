@@ -53,7 +53,7 @@ include (SfizzDeps)
 include (SfizzFaust)
 
 # Don't use IPO in non Release builds
-include (CheckIPO)
+#include (CheckIPO)
 
 # Dylib bunder for macOS
 include (BundleDylibs)
