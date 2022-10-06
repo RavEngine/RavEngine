@@ -1,0 +1,77 @@
+; -*- mode: iss; -*-
+#define MyAppName      "sfizz"
+#define MyAppVersion   "@PROJECT_VERSION@"
+#define MyAppPublisher "sfizz Team"
+#define MyAppURL       "https://sfztools.github.io/sfizz/"
+
+#ifndef Arch
+#define Arch "x64"
+#endif
+
+[Setup]
+AlwaysShowDirOnReadyPage=yes
+; NOTE: The value of AppId uniquely identifies this application.
+; Do not use the same AppId value in installers for other applications.
+; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
+AppId={{55FB694B-774A-4BB8-B08C-F6C015821ECC}
+AppName={#MyAppName}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+;AppVerName={#MyAppName} {#MyAppVersion}
+AppVersion={#MyAppVersion}
+
+#if Arch=="x64"
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode={#Arch}
+#endif
+
+Compression=lzma
+SolidCompression=yes
+DefaultDirName={commonpf}\{#MyAppName}
+DefaultGroupName={#MyAppPublisher}
+;DisableDirPage=yes
+LicenseFile="sfizz.lv2\LICENSE.md"
+OutputBaseFileName={#MyAppName}-{#MyAppVersion}-msvc-{#Arch}-setup
+OutputDir=.
+UninstallFilesDir={app}
+WizardImageFile=compiler:WizClassicImage-IS.bmp
+WizardSmallImageFile=compiler:WizClassicSmallImage-IS.bmp
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Components]
+Name: "main"; Description: "Shared files"; Types: full custom; Flags: fixed
+Name: "lv2"; Description: "LV2 plugin"; Types: full custom;
+Name: "vst3"; Description: "VST3 plugin"; Types: full custom;
+Name: "puredata"; Description: "Puredata external"; Types: full custom;
+
+[Files]
+Source: "sfizz.lv2\Contents\Binary\sfizz.dll"; Components: lv2; DestDir: "{commoncf}\LV2\sfizz.lv2\Contents\Binary"; Flags: ignoreversion
+Source: "sfizz.lv2\Contents\Binary\sfizz_ui.dll"; Components: lv2; DestDir: "{commoncf}\LV2\sfizz.lv2\Contents\Binary"; Flags: ignoreversion
+Source: "sfizz.lv2\Contents\Resources\*"; Components: lv2; DestDir: "{commoncf}\LV2\sfizz.lv2\Contents\Resources"; Flags: recursesubdirs
+Source: "sfizz.lv2\manifest.ttl"; Components: lv2; DestDir: "{commoncf}\LV2\sfizz.lv2"
+Source: "sfizz.lv2\sfizz.ttl"; Components: lv2; DestDir: "{commoncf}\LV2\sfizz.lv2"
+Source: "sfizz.lv2\sfizz_ui.ttl"; Components: lv2; DestDir: "{commoncf}\LV2\sfizz.lv2"
+Source: "sfizz.lv2\LICENSE.md"; Components: main; DestDir: "{app}"
+Source: "sfizz.vst3\desktop.ini"; Components: vst3; DestDir: "{commoncf}\VST3\sfizz.vst3"
+Source: "sfizz.vst3\Contents\@VST3_PACKAGE_ARCHITECTURE@-win\sfizz.vst3"; Components: vst3; DestDir: "{commoncf}\VST3\sfizz.vst3\Contents\@VST3_PACKAGE_ARCHITECTURE@-win"; Flags: ignoreversion
+Source: "sfizz.vst3\Contents\Resources\*"; Components: vst3; DestDir: "{commoncf}\VST3\sfizz.vst3\Contents\Resources"; Flags: recursesubdirs
+Source: "sfizz.vst3\Plugin.ico"; Components: vst3; DestDir: "{commoncf}\VST3\sfizz.vst3"
+Source: "sfizz.vst3\gpl-3.0.txt"; Components: main; DestDir: "{app}"
+Source: "pd\*"; Components: puredata; DestDir: "{commoncf}\Pd"; Flags: recursesubdirs
+; Note(sfizz): OS older than Windows 10 require UI fonts to be installed system-wide
+Source: "sfizz.vst3\Contents\Resources\Fonts\sfizz-fluentui-system-r20.ttf"; DestDir: "{fonts}"; FontInstall: "Sfizz Fluent System R20"; Flags: uninsneveruninstall; OnlyBelowVersion: 6.4
+Source: "sfizz.vst3\Contents\Resources\Fonts\sfizz-fluentui-system-f20.ttf"; DestDir: "{fonts}"; FontInstall: "Sfizz Fluent System F20"; Flags: uninsneveruninstall; OnlyBelowVersion: 6.4
+Source: "sfizz.vst3\Contents\Resources\Fonts\sfizz-misc-icons.ttf"; DestDir: "{fonts}"; FontInstall: "Sfizz Misc Icons"; Flags: uninsneveruninstall; OnlyBelowVersion: 6.4
+Source: "sfizz.vst3\Contents\Resources\Fonts\Roboto-Regular.ttf"; DestDir: "{fonts}"; FontInstall: "Roboto Regular"; Flags: uninsneveruninstall; OnlyBelowVersion: 6.4
+;Source: "setup\vc_redist.x64.exe"; DestDir: {tmp}; Flags: deleteafterinstall
+; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+;[Run]
+;Filename: {tmp}\vc_redist.x64.exe; \
+    Parameters: "/install /passive /norestart"; \
+    StatusMsg: "Installing Microsoft Visual C++ 2015-2019 Redistributable (x64)..."
+;Filename: {app}\{#MyAppExeName}; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

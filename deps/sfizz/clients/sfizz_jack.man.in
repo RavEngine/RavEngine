@@ -1,0 +1,37 @@
+.TH sfizz_jack 1 "@MAN_TODAY@" "@CMAKE_PROJECT_VERSION@" "sfizz_jack man page"
+.SH NAME
+sfizz_jack \- Launch a sfizz instance as a JACK client
+.SH SYNOPSIS
+sfizz_jack [FILE] [OPTIONS...]
+.SH DESCRIPTION
+sfizz_jack wraps the sfizz SFZ library in a JACK client that can be controlled by a text interface.
+.SH OPTIONS
+.IP FILE
+An optional SFZ file name to load at firsts
+.IP "--client_name"
+Name for the JACK client
+.IP "--num_voices NUMBER"
+Change the maximum polyphony
+.IP "--preload_size NUMBER"
+Bytes to preload in cache for samples
+.IP "--state"
+Output the state in the JACK loop
+.IP "--jack_autoconnect"
+Autoconnect the JACK outputs
+.SH TEXT INTERFACE
+It is possible it interact with the JACK client through the standard input.
+The possible commands are
+.IP "load_instrument FILE"
+Load an instrument
+.IP "set_preload_size NUMBER"
+Set the number of bytes to preload in cache for samples
+.IP "set_voices NUMBER"
+Change the maximum polyphony
+.IP quit
+Quit
+.SH SEE ALSO
+sfizz_render(1)
+.SH BUGS
+See the main repository at @SFIZZ_REPOSITORY@.
+.SH AUTHOR
+Contributors can be seen on the main repository at @SFIZZ_REPOSITORY@.

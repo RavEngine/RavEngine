@@ -278,8 +278,15 @@ SET(RECASTNAVIGATION_TESTS OFF CACHE INTERNAL "")
 SET(RECASTNAVIGATION_EXAMPLES OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/recastnavigation" EXCLUDE_FROM_ALL)
 
-# date
-# add_subdirectory("${DEPS_DIR}/date")
+# sfizz
+set(BUILD_TESTING OFF CACHE INTERNAL "")
+set(SFIZZ_JACK OFF CACHE INTERNAL "")
+set(SFIZZ_LV2 OFF CACHE INTERNAL "")
+set(SFIZZ_LV2_UI OFF CACHE INTERNAL "")
+set(SFIZZ_VST OFF CACHE INTERNAL "")
+set(SFIZZ_AU OFF CACHE INTERNAL "")
+set(SFIZZ_SHARED OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/sfizz")
 
 # PhysX-specific CMake project setup
 set(NV_USE_DEBUG_WINCRT ON CACHE BOOL "Use the debug version of the CRT")
@@ -341,8 +348,8 @@ endif()
 
 # boost_filesystem
 if (NOT TARGET_UWP)
-	add_subdirectory(deps/boost/libs/filesystem)
-	set(BOOST_FS_LIB "boost_filesystem")
+	#add_subdirectory(deps/boost/libs/filesystem)
+	#set(BOOST_FS_LIB "boost_filesystem")
 endif()
 
 # OpenXR - available on Windows only
@@ -518,6 +525,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
+	"sfizz_static"
 	${ICONV_LIB}
 	${COCOA_LIB}
 	${SM_LIB}

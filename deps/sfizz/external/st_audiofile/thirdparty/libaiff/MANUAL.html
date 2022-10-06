@@ -1,0 +1,748 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- $Id: MANUAL.html,v 1.17 2007/09/20 19:34:51 toad32767 Exp $ -->
+<!--
+ ! Copyright (c) 2005, 2006 by Marco Trillo <marcotrillo@gmail.com>
+ !
+ ! Permission is hereby granted, free of charge, to any
+ ! person obtaining a copy of this software and associated
+ ! documentation files (the "Software"), to deal in the
+ ! Software without restriction, including without limitation
+ ! the rights to use, copy, modify, merge, publish,
+ ! distribute, sublicense, and/or sell copies of the
+ ! Software, and to permit persons to whom the Software is
+ ! furnished to do so, subject to the following conditions:
+ !
+ ! The above copyright notice and this permission notice
+ ! shall be included in all copies or substantial portions of
+ ! the Software.
+ !
+ ! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+ ! KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ ! WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ ! PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+ ! OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ ! OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ ! OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ ! SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ ! -->
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>LibAiff Reference Manual</title>
+<style type="text/css">
+body { font-family: serif; }
+pre { font-family: monospace; }
+h1 { font-size: 220%; }
+h2 { font-size: 160%; }
+h3 { color: #006; font-size: 130%; }
+#contentfront { margin-left: 2em; }
+#contentfront h2 { margin-top: 2em; margin-left: -1em; }
+h1, h2 { font-weight: bold; }
+@media screen {
+	h1, h2 { color: #900; }
+	a { color: #00F; text-decoration: underline; }
+	a:hover { color: #840084; }
+	code { color: #107; }
+}
+pre { padding-left: 2em; }
+@media screen { pre { border-left: solid 0.3em #900; } }
+@media print { pre { border-left: solid 0.3em #000; } }
+</style>
+</head>
+<body>
+<div align="center">
+<h1>LibAiff Reference Manual</h1>
+<h4>LibAiff 4.99, $Revision: 1.17 $</h4>
+</div>
+<hr>
+<h2>Contents</h2>
+<ol>
+<li><a href="#section1">About LibAiff</a></li>
+<li><a href="#section2">About Audio IFF</a></li>
+<li><a href="#section3">How digital audio is stored on Audio IFF files</a></li>
+<li><a href="#section4">Using LibAiff</a></li>
+<li><a href="#section5">Referencing to Audio IFF files</a></li>
+<li><a href="#section6">Opening and closing an Audio IFF file</a></li>
+<li><a href="#section7">Attributes</a></li>
+<li><a href="#section8">Getting and setting the sound format</a></li>
+<li><a href="#section9">Reading sound samples: the raw mode</a></li>
+<li><a href="#section10">Reading sound samples: the normal mode</a></li>
+<li><a href="#section11">Seeking</a></li>
+<li><a href="#section12">Writing sound data</a></li>
+<li><a href="#section13">Markers</a></li>
+<li><a href="#section14">Instrument data</a></li>
+</ol>
+<hr>
+<div id="contentfront">
+<h2 id="section1">1. About LibAiff</h2>
+<p>
+<strong>LibAiff</strong> is a library for C applications, providing
+transparent read &amp; write operations for <strong>Audio Interchange File Format</strong>
+files.
+</p>
+<p>
+With <strong>LibAiff</strong> your application can easily use the <strong>Audio IFF</strong> format
+to interchange digital audio.
+</p>
+<p>
+LibAiff wants to implement all the features of the <strong>AIFF 1.3 standard</strong>, including
+markers, comments, etc.
+</p>
+<h3>The LibAiff 5.0 version</h3>
+<p>
+This version of LibAiff supports the following features:
+</p>
+<ul>
+<li>Reading any valid <strong>Audio IFF</strong> file.</li>
+<li>Writing a valid <strong>Audio IFF</strong> or <strong>AIFF Compressed (AIFC)</strong> file.</li>
+<li>Reading a compressed <strong>AIFF Compressed (AIFC)</strong> file with audio encoded in the following formats:
+<ul>
+<li> <strong>Linear PCM</strong> (both big-endian and little-endian)</li>
+<li> <strong>&#181;-Law (u-Law)</strong></li>
+<li> <strong>A-Law</strong></li>
+<li> <strong>32-bit IEEE-754 floating point (float32)</strong></li>
+</ul></li>
+<li>Read &amp; write samples in all formats supported by the <strong>Audio IFF</strong> standard.</li>
+<li>Transparently receiving samples in 32-bit LPCM or floating-point PCM, with LibAiff doing all the conversions (if necessary).</li>
+<li>Transparently writing 32-bit LPCM audio, with LibAiff doing all the conversions (if necessary).</li>
+<li>Getting and setting all the <strong>AIFF Attributes</strong>.</li>
+<li>Reading and writing <strong>markers</strong> to positions on the sound.</li>
+<li>Reading <strong>instrument data</strong> from AIFF files.</li>
+</ul>
+<h2 id="section2">2. About Audio IFF</h2>
+<p>
+<strong>Audio Interchange File Format</strong> (<strong>Audio IFF</strong> or
+simply <strong>AIFF</strong>) is a flexible file standard for storing and interchanging
+<strong>digital audio</strong>, used by <strong>Apple</strong> and <strong>Silicon Graphics</strong>, and designed to facilitate the sharing of sound data between applications.
+</p>
+<p>
+According to the official specification, <em><strong>Audio IFF</strong> is the result of several meetings held with music developers over a period of ten months in 1987-88.</em>
+</p>
+<h2 id="section3">3. How digital audio is stored on Audio IFF files</h2>
+<h3>Encodings supported by LibAiff</h3>
+<p>
+LibAiff supports both <strong>linear encodings</strong> and <strong>logarithmic encodings</strong> when reading AIFF or AIFF-C files.
+However, the only format supported for writing is <strong>Linear PCM</strong>, the standard audio signal encoding.
+<p>
+<strong>Linear encodings</strong> divide the given voltage range in equidistant steps or quants. As a result, loud signals (multiplicative) are encoded with more precision than weak signals (which have more rounding error in the quantization to steps of the same difference than the multiplicative signals). 
+<p>
+LibAiff supports the following linear encodings:
+<ul>
+<li><strong>Linear PCM (LPCM)</strong>, both big-endian and little-endian. Any bitwidth from 8 bits to 32 bits is supported.
+</ul>
+<p>
+<strong>Logarithmic encodings</strong> or <strong>floating point encodings</strong> have more quantization points in the low level range than in the high level range. As a result, loud signals (multiplicative) and weak signals are given the same resolution. When compared to linear encodings, logarithmic encodings provide better resolution than linear ones for low signals but worse resolution for loud signals.
+<p>
+LibAiff supports the following logarithmic encodings:
+<ul>
+<li><strong>8-bit &#181;-Law</strong>
+<li><strong>8-bit A-Law</strong>
+<li><strong>32-bit IEEE-754 floating point (float32)</strong>
+</ul>
+<p>
+A 8-bit &#181;-Law encoding is equivalent to a 14-bit LPCM encoding for low signals, and equivalent to a 6-bit LPCM encoding for loud signals. Thus, it's a <em>lossy encoding</em> when compared to a full 14-bit LPCM, but provides a 2:1 size ratio (since 14-bit LPCM is packed into 2-byte segments) while retaining the same resolution for low signals, which can be used for compression purposes. It can efficiently compress signals which are statistically more likely to be near a low level than a high signal level.
+<p>
+As detailed before, LibAiff can do any conversions automatically, so any logarithmic encoded data will be transparently handled and converted by the library, so the application only needs to handle Linear PCM data (or floating-point PCM data if the application prefers that). &#181;-Law encodings are converted to full 14-bit LPCM data (lossless conversion), and A-Law encodings are converted to 13-bit LPCM.
+<p>
+32-bit IEEE-754 floating point can be converted to 32-bit integer LPCM. Note that this conversion loses some extra precision present
+on the original floating point values, due to the differences between linear and logarithmic encodings detailed above. Reading these samples in floating-point mode is a lossless operation.
+<h3>How Linear PCM is handled by AIFF and LibAiff</h3>
+<p>
+LPCM audio is stored as <strong>sample points</strong>, which are samples taken of the sound wave.
+Each sample point is a <strong>signed value</strong> quantized to a fixed number of bits (the bitwidth or <strong>sample size</strong>). Of course, increasing the sample size will increase the resolution or definition
+of the sound wave, resulting in a greater <strong>sound quality</strong>.
+</p>
+<p>
+<strong>Audio IFF</strong> supports sample sizes from <strong>8</strong> to <strong>32</strong> bits per sample.
+</p>
+<p>
+Sample points are aligned into byte-oriented <strong>segments</strong>. The size of the segments in bytes
+is the <strong>segment size</strong>. Audio IFF supports segment sizes from <strong>1</strong> to <strong>4</strong> bytes.
+</p>
+<p>
+Segments are used to make dealing with sample points easier, since most CPU's are byte-oriented. This means, in example, that <strong>13-bit sample points</strong> are aligned into <strong>2-byte segments</strong>.
+</p>
+<table border=1>
+<tr>
+<th>Sample size</th>
+<th>Segment size</th>
+</tr>
+<tr>
+<td>8 bits</td>
+<td>1 byte</td>
+</tr>
+<tr>
+<td>9 to 16 bits</td>
+<td>2 bytes</td>
+</tr>
+<tr>
+<td>17 to 24 bits</td>
+<td>3 bytes</td>
+</tr>
+<tr>
+<td>25 to 32 bits</td>
+<td>4 bytes</td>
+</tr>
+</table>
+
+<p>
+Sample points are left-justified inside a segment:
+</p>
+<pre>
+ ___ ___ ___ ___ ___ ___ ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
+|   |	|   |   |   |	|   |   |   |   |   |   |   |   |   |   |
+| 1   0   1   0   0   0   0   1   0   1   1   0   1   0   0   0 |
+|___|___|___|___|___|___|___|___|___|___|___|___|___|___|___|___|
+ &lt;-------------------------------------------------&gt; &lt;---------&gt;
+              13-bit sample point                      Padding
+ &lt;-------------------------------------------------------------&gt;
+                           2-byte segment
+</pre>
+<p>
+An audio file may contain <strong>more than one channel of sound</strong>. This is used, in example,
+in <strong>stereo</strong>, <strong>surround</strong> and <strong>quadraphonic</strong> speaker-arrangements.
+</p>
+<p>
+Each <strong>channel</strong> has its own independent <strong>sample points</strong> and <strong>segments</strong>.
+</p>
+<p>Channel segments that are meant to be played simultaneously are packed together into a <strong>sample frame</strong>. In example, in a <strong>2-channel stereo file</strong>, each sample frame contains 2 segments, one for
+each channel.</p>
+<pre>
+ ___________ ___________ ___________ ___________ 
+|           |           |           |           |
+| Channel 1 | Channel 2 | Channel 1 | Channel 2 |
+|___________|___________|___________|___________|
+ &lt;---------&gt; &lt;---------&gt; &lt;---------&gt; &lt;---------&gt;
+   Segment     Segment     Segment     Segment
+ &lt;---------------------&gt; &lt;---------------------&gt;
+     Sample frame 1          Sample frame 2  
+</pre>
+<p>
+All of the segments packed in a sample frame correspond to the same <strong>time</strong> on the sound.
+</p>
+<p>
+The number of <strong>sample frames per second</strong> taken of a sound wave is called the <strong>sampling rate</strong>. Audio IFF supports virtually any sampling rate, being this limited by your playing/recording software or hardware.
+</p>
+<p>The most used sampling rates are: <strong>8000</strong>, <strong>11025</strong>, <strong>16000</strong>,
+<strong>22050</strong>, <strong>24000</strong>, <strong>32000</strong>, <strong>44100</strong>,
+<strong>48000</strong>, <strong>88200</strong> and <strong>96000</strong> sample frames per second.</p>
+<p>Increasing the sampling rate will result in a greater sound quality.</p>
+<p>Also, modifying the sampling rate without modifying the samples will alter the sound <strong>speed</strong> and <strong>pitch</strong>.</p>
+<h2 id="section4">4. Using LibAiff</h2>
+<p>
+The first step to use the <strong>LibAiff</strong> in your C application,
+is to include the LibAiff header file (you need to have LibAiff installed or accessible from
+your development environment):
+</p>
+<pre>
+#include &lt;libaiff/libaiff.h&gt;
+</pre>
+<p>
+The &lt;libaiff.h&gt; file has the type definitions and function prototypes of LibAiff.
+</p>
+<p>
+When compiling your application, you need to link it with LibAiff. In example, using the command-line C
+compiler on a UNIX operating system:
+</p>
+<pre>
+% cc obj1.o obj2.o obj3.o <strong>-lm -laiff</strong> -o binary
+</pre>
+<p>
+(The <strong><tt>-lm</tt></strong> modifier is to link with the math library,
+used by LibAiff and perhaps by your application too).
+</p>
+<h2 id="section5">5. Referencing to Audio IFF files</h2>
+<p>
+<em>References</em> are an abstract form of representing Audio IFF files used
+for reading &amp; writing operations inside LibAiff.
+</p>
+<p>
+You pass these <em>references</em> as an argument to the LibAiff functions.
+</p>
+<p>
+The library uses the following C data type to refer to Audio IFF files:
+</p>
+<pre>
+AIFF_Ref  file;
+</pre>
+<h2 id="section6">6. Opening and closing an Audio IFF file</h2>
+<pre>
+<code>/*
+ * 'name' is a relative or absolute path
+ * to a file.
+ */</code>
+AIFF_Ref AIFF_OpenFile(const char* name, int flags) ;
+</pre>
+<p>
+<tt>name</tt> is the name (or path) of the file to open. <tt>flags</tt> are a combination of ORed binary flags which can be:
+<ul>
+<li><tt>F_RDONLY</tt>: Open the file for reading.
+<li><tt>F_WRONLY</tt>: Open the file for writing.
+<li><tt>F_NOTSEEKABLE</tt>: The input file is not seekable (for example, a UNIX pipe). This is for files opened for reading.
+<li><tt>F_AIFC</tt>: Write always AIFF-C files instead of normal AIFF files.
+<li><tt>F_OPTIMIZE</tt>: Write optimized AIFF-C files (this implies the <tt>F_AIFC</tt> option). Optimized means that the file will be written in native endianness, to avoid any CPU-consuming byte-swappings.
+</ul>
+<p>You use the above function to <strong>open</strong> an Audio IFF file for reading or writing.
+</p>
+<p>
+The function will return a reference (see <a href="#section5">section 5</a>) or <tt>NULL</tt>
+if the file cannot be opened (i.e, the file does not exist or it cannot be created).
+</p>
+<p>
+Since the function uses dynamic memory, you can open more than one Audio IFF file at the same time.
+</p>
+<p>
+When you have finished working with an Audio IFF file you
+should close it:
+</p>
+<pre>
+int AIFF_CloseFile(AIFF_Ref r) ;
+</pre>
+<p>
+In case of writing, you need to close it when finished to construct a valid Audio IFF.
+If your program finish without closing the file, it will be incomplete.
+</p>
+<p>
+Sample code:
+</p>
+<pre>
+AIFF_Ref ref ;
+
+ref = AIFF_OpenFile("../Music/track05.aiff", F_RDONLY) ;
+if( ref )
+{
+	puts("File opened successfully.") ;
+	AIFF_Close(ref);
+}
+</pre>
+<h2 id="section7">7. Attributes</h2>
+<p>
+<strong>Attributes</strong> are metadata stored into an Audio IFF file,
+which helps to identify the content of the file (like the name of the musical piece,
+its author or composer, its copyright and licensing, and some annotations).
+</p>
+<p>
+The available attribute identifiers are defined on the LibAiff header file.
+</p>
+<p>
+The following <strong>attributes</strong> can be used on Audio IFF files:
+</p>
+<ul>
+<li><strong>Name</strong> (<tt>AIFF_NAME</tt>)</li>
+<li><strong>Author</strong> (<tt>AIFF_AUTH</tt>)</li>
+<li><strong>Copyright</strong> (<tt>AIFF_COPY</tt>)</li>
+<li><strong>Annotations</strong> (<tt>AIFF_ANNO</tt>)</li>
+</ul>
+<h3>Reading attributes</h3>
+<p>
+To <strong>extract</strong> an attribute from a reading Audio IFF file:
+</p>
+<pre>
+char* AIFF_GetAttribute(AIFF_Ref r,IFFType typ) ;
+</pre>
+<p>
+<tt>IFFType</tt> should be a valid identifier of an attribute (see the list above).
+</p>
+<p>
+The function will return a valid nul-terminated C-string if the attribute is present on the file,
+or <tt>NULL</tt> if it isn`t.
+</p>
+<p>
+You should <strong>free</strong> the resulting pointer when you have finished using it.
+</p>
+<p>
+Sample code:
+</p>
+<pre>
+char* attrib ;
+
+attrib = AIFF_GetAttribute( ref, AIFF_COPY ) ;
+
+if( attrib )
+{
+	printf( "Copyright (C) %s\n", attrib ) ;
+	free( attrib ) ;
+}
+</pre>
+<h3>Storing attributes</h3>
+<p>
+To <strong>store</strong> an attribute into a writing Audio IFF file, you use:
+</p>
+<pre>
+int AIFF_SetAttribute(AIFF_Ref w,IFFType typ,char* attribute) ;
+</pre>
+<p><tt>typ</tt> should be a valid identifier, and <tt>attribute</tt> a valid
+C-string with the content of the attribute.
+</p>
+<p>
+This function will return <strong>1</strong> on success, <strong>&lt; 1</strong> on error.
+</p>
+<h3>Cloning attributes</h3>
+<p>
+If you want to edit an existing Audio IFF file, it's often useful to clone all the attributes 
+present on the file to the new edited copy.
+<p>
+You can use the <tt>AIFF_CloneAttributes</tt> function to accomplish this.
+<pre>
+int AIFF_CloneAttributes(AIFF_Ref w, AIFF_Ref r, int cloneMarkers);
+</pre>
+<p>
+The <tt>r</tt> parameter is a reference to an opening-for-reading Audio IFF file from which the 
+attributes will be cloned.
+<p>
+If the <tt>cloneMarkers</tt> parameter is 1, markers (see <a href="#section13">section 13</a>) will be
+cloned too (this is not desirable if you have modified the audio content).
+<p>
+This function will return <strong>1</strong> on success, <strong>&lt; 1</strong> on error.
+</p>
+<h2 id="section8">8. Getting and setting the sound format</h2>
+<pre>
+int AIFF_GetAudioFormat(AIFF_Ref r,uint64_t* nSamples,int* channels,double* samplingRate,
+			int* bitsPerSample,int* segmentSize) ;
+			
+int AIFF_SetAudioFormat(AIFF_Ref w,int channels,double samplingRate,
+			int bitsPerSample) ;
+</pre>
+<p>
+You use the <tt>AIFF_GetAudioFormat</tt> function to extract format information
+about the sound in the Audio IFF file, like number of sample frames, n. of channels,
+sampling rate, the sample size or the segment size (you have an explanation of
+these concepts on <a href="#section3">section 3</a>).
+</p>
+<p>
+The number of sample frames, <tt>nSamples</tt>, can be used to calculate the
+length in seconds of the sound:
+</p>
+<pre>
+uint64_t seconds, nSamples ;
+int channels ;
+double samplingRate ;
+int bitsPerSample ;
+int segmentSize ;
+
+if( AIFF_GetAudioFormat( ref,&amp;nSamples,&amp;channels,
+			&amp;samplingRate,&amp;bitsPerSample,
+			&amp;segmentSize ) &lt; 1 )
+{
+	puts( "Error" ) ;
+	AIFF_Close( ref ) ;
+}
+
+seconds = nSamples / samplingRate ;
+<code>/*
+ * Print out the seconds in H:MM:SS format
+ */</code>
+printf("Length: %lu:%02lu:%02lu \n", (unsigned long) seconds/3600,
+	(unsigned long) (seconds/60)%60, (unsigned long) seconds%60 ) ;
+</pre>
+<p>
+The <tt>AIFF_SetAudioFormat</tt> is used to set the sound format before writing the sound
+to the Audio IFF file.
+</p>
+<p>
+You should call this function <strong>before</strong> calling the sound writing functions (described in
+the next sections).
+</p>
+<p>
+Both of these functions will return <strong>1</strong> for success, <strong>0</strong> for errors,
+<strong>-1</strong> for critical errors.
+</p>
+<h2 id="section9">9. Reading sound samples: the raw mode</h2>
+<pre>
+size_t AIFF_ReadSamples(AIFF_Ref r,void* buffer,size_t len) ;
+</pre>
+<p>
+The above function is used to extract raw sound data from the Audio IFF file. This function is
+<strong>not recommended</strong> if you simply want to get the samples or play back the sound, use instead
+the function described on <a href="#section10">the next section</a>.
+</p>
+<p>
+You should pass the reference to the Audio IFF file, a point to a <tt>buffer</tt> which
+will be filled with sound data, and the <tt>len</tt> in bytes of the buffer which you want
+filled with sound data.
+</p>
+<p>
+The function will return the n. of bytes read from the file and stored in buffer, <strong>0</strong> when
+no more sound is present on the file, and <strong>-1</strong> for errors.
+</p>
+<p>
+The sound data will be presented according to the format provided with the <a href="#section8">AIFF_GetAudioFormat</a> function, as described on <a href="#section3">section 3</a>.
+</p>
+<p>
+Note that LibAiff will do the <strong>endian conversion</strong> automatically, so the samples will be in native endian form.
+</p>
+<p>
+Each call of this function will advance the current reading position, so you can
+extract all of the sound on an Audio IFF file by simply doing repeated calls in a loop.
+</p>
+<h2 id="section10">10. Reading sound samples: the normal mode</h2>
+<pre>
+int AIFF_ReadSamples32Bit(AIFF_Ref r,int32_t* samples,int nsamples) ;
+int AIFF_ReadSamplesFloat(AIFF_Ref r,float* samples,int nsamples) ;
+</pre>
+<p>
+Use this function to avoid dealing with segments, multiple sample sizes or byte order: it will provide
+samples into 32-bit (4-byte) signed values or floating-point values (respectively). If the samples are not stored in the requested format in the file, LibAiff will do the necessary conversions.
+</p>
+<p>
+<tt>nsamples</tt> is the <strong>number of sample points</strong> you want to read. <tt>samples</tt> is an array
+of 32-bit signed values or floating-point values (respectively).
+</p>
+<p>
+The function will return the n. of sample points read from the file. If the returned value is <strong>0</strong>, no more samples are present on the file. If it`s <strong>-1</strong>, an error occurred.
+</p>
+<p>
+The sampling rate of the samples is provided using the <a href="#section8">AIFF_GetAudioFormat</a> function.
+</p>
+<p>
+Each call of this function will advance the current reading position, so you can
+extract all of the sound on an Audio IFF file by simply doing repeated calls in a loop.
+</p>
+<h2 id="section11">11. Seeking</h2>
+<pre>
+int AIFF_Seek(AIFF_Ref r,uint64_t sampleFrame) ;
+</pre>
+<p>
+Use this function if you want to seek to a given <strong>sample frame</strong> into the file.
+</p>
+<p>
+If you simply want to rewind, pass <strong>0</strong> as <tt>sampleFrame</tt>.
+</p>
+<p>
+If you want to specify seek positions on seconds, do as in the sample code below:
+</p>
+<pre>
+uint32_t seconds = 67 ; <code>/* 01:07 */</code>
+uint32_t sampleFrame ;
+
+sampleFrame = seconds * samplingRate ;
+if( AIFF_Seek( ref,sampleFrame ) &lt; 1 )
+{
+	puts( "Error while seeking!" ) ;
+	AIFF_Close( ref ) ;
+}
+</pre>
+<p>
+Of course calling this function is valid both when using <a href="#section9">AIFF_ReadSamples</a> and <a href="#section10">AIFF_ReadSamples32Bit/AIFF_ReadSamplesFloat</a> methods.
+</p>
+<p>
+This function will return as usual.
+</p>
+<h2 id="section12">12. Writing sound data</h2>
+<p>
+<pre>
+int AIFF_StartWritingSamples(AIFF_Ref w) ;
+
+int AIFF_WriteSamples(AIFF_Ref w,void* buffer,size_t len) ;
+
+int AIFF_WriteSamples32Bit(AIFF_Ref w,int32_t* samples,int nsamples) ;
+
+int AIFF_EndWritingSamples(AIFF_Ref w) ;
+</pre>
+<p>
+To start writing sound data, use the <tt>AIFF_StartWritingSamples</tt> function which will return as usual.
+</p>
+<h3>The raw method for writing sound</h3>
+<p>
+The <tt>AIFF_WriteSamples</tt> function is <strong>not recommended</strong> for general sound writing,
+since <strong>it will not do any conversion</strong> (except endian-swap) of the sound data (use the <a href="#section12b">normal method</a> instead). Use only this function to do very specific operations.
+</p>
+<p>
+With this function you should provide a <tt>buffer</tt> filled with <tt>len</tt> bytes of sampled sound data.
+The sound data should be presented as described in <a href="#section3">section 3</a>.
+<p>
+Note that you don't have to endian-convert the samples, as LibAiff will do that for you.
+Your samples will be left untouched; LibAiff will use its internal buffers to do the byte-swapping (if necessary).
+<p>
+It will return as usual.
+</p>
+<h3 id="section12b">The normal method for writing sound</h3>
+<p>
+This is the preferred method to write samples to an Audio IFF file. <strong>It will convert automatically the samples</strong> to the values specified to the <a href="#section8">AIFF_SetAudioFormat</a> function (which should be called before this one) and will automatically align the samples on segments and deal with the byte-order.</p>
+<p>
+<tt>nsamples</tt> is the number of samples you want to write.
+</p>
+<p>
+<tt>samples</tt> is an array of <tt>nsamples</tt> signed 32-bit samples.
+</p>
+<p>
+It will return as usual.
+</p>
+<h3>End writing samples</h3>
+<p>
+Simply use the <tt>AIFF_EndWritingSamples</tt> function when you have done delivering the samples.
+<strong>You need to call this function</strong> before closing the Audio IFF file or terminating your program.
+</p>
+<p>
+If this function is not called, the resulting Audio IFF will be incomplete and could not be played back.
+</p>
+<p>
+This function will return as usual.
+</p>
+<h2 id="section13">13. Markers</h2>
+<p>
+<strong>Audio IFF</strong> allows the storage of <strong>markers</strong> into the file. Markers
+are references to some position on the sound, including a text describing what`s on that marker (<strong>marker name</strong>).
+</p>
+<p>
+In example, you can store a marker to the position <strong>0:28:13</strong> with a text <strong>Begin of Part II</strong>.</p>
+<p>
+These are the functions used to read &amp; write markers:
+</p>
+<pre>
+int AIFF_ReadMarker(AIFF_Ref r,int* id,uint32_t* position,char** name) ;
+
+int AIFF_StartWritingMarkers(AIFF_Ref w) ;
+
+int AIFF_WriteMarker(AIFF_Ref w,uint32_t position,char* name) ;
+
+int AIFF_EndWritingMarkers(AIFF_Ref w) ;
+</pre>
+<h3>Reading markers</h3>
+<p>
+You use the <tt>AIFF_ReadMarker</tt> function to read the markers stored on the file. It will return <strong>1</strong> if a marker is read, <strong>0</strong> when no more markers are stored on file, and <strong>-1</strong> on error. This function will automatically advance the reading position, so to read all the
+markers on a file just call the function repeatedly until it returns 0 (or -1 if an error has occurred).
+</p>
+<p>
+<tt>name</tt> will point to a valid C-string containing the marker name, or to <tt>NULL</tt> if that marker
+has not a name. It should be <strong>free</strong>d when you have done using it.
+</p>
+<p>
+<tt>position</tt> is the position where the marker points inside the sound, measured on <strong>sample frames</strong>.
+</p>
+<p>Sample code:</p>
+<pre>
+int id ;
+uint32_t position ;
+uint32_t seconds ;
+char* name ;
+
+while( 1 ) 
+{
+	if( AIFF_ReadMarker( ref, &amp;id, &amp;position, &amp;name ) &lt; 1 )
+		break ;
+		
+	seconds = position / samplingRate ;
+	
+	printf("Marker %d --&gt; [%lu:%02lu:%02lu]\n",id,
+		seconds/3600, (seconds/60)%60, seconds%60 ) ;
+	
+	if( name )
+	{
+		printf( "(%s)\n", name ) ;
+		free( name ) ;
+	}
+}
+</pre>
+<h3>Writing markers</h3>
+<p>
+To start the markers` writing procedure, just call the <tt>AIFF_StartWritingMarkers</tt> (it will return as usual).
+</p>
+<p>
+Then do one call for each marker to the <tt>AIFF_WriteMarker</tt> function. The <tt>name</tt> argument can
+be <tt>NULL</tt> if a marker has not a name.
+</p>
+<p>
+When you have finished writing markers, call the <tt>AIFF_EndWritingMarkers</tt> function. You <strong>need to call</strong> that function before closing the Audio IFF file or terminating your program, or the resulting Audio IFF file will be damaged and incomplete (LibAiff will complain of that to <tt>stderr</tt>).
+</p>
+<h2 id="section14">14. Instrument data</h2>
+<p>
+<strong>Audio IFF</strong> allows the storage of <strong>instrument data</strong> into the file.
+
+<p>
+<strong>Instrument data</strong> is used to store samples in AIFF files and describe them.
+
+<p>LibAiff provides the Instrument data type. The Instrument data type is defined as follows:</p>
+
+<pre>
+struct s_Loop
+{
+	int16_t playMode ;
+	uint32_t beginLoop ;
+	uint32_t endLoop ;
+} ;
+
+struct s_Instrument
+{
+	int8_t baseNote ;
+	int8_t detune ;
+	int8_t lowNote ;
+	int8_t highNote ;
+	int8_t lowVelocity ;
+	int8_t highVelocity ;
+	int16_t gain ;
+	struct s_Loop sustainLoop ;
+	struct s_Loop releaseLoop ;
+} ;
+typedef struct s_Instrument Instrument ;</pre>
+
+<p><tt>struct s_Loop</tt> defines the instrument loop points (<tt>sustainLoop</tt> and <tt>releaseLoop</tt>).
+<p>
+The <tt>sustainLoop</tt> is the loop to be played when the instrument sustains a sound.
+
+The <tt>releaseLoop</tt> is the loop to be played when the instrument is in the release phase of playing back a sound. The release phase usually occurs after a key on an instrument is released.
+<p>
+The field <tt>playMode</tt> in each loop describes its repetition mode:
+
+<pre>#define kModeNoLooping			0
+#define kModeForwardLooping		1
+#define kModeForwardBackwardLooping	2</pre>
+
+<p>
+Note that if the mode <tt>kModeNoLooping</tt> is used, the remaining fields are to be ignored.
+
+<p>
+<tt>beginLoop</tt> and <tt>endLoop</tt> reference to positions in the song, measured in <strong>sample frames</strong> (so they can be used as arguments to the <tt>AIFF_Seek</tt> function).
+
+<p>The remaining fields are used according to the official AIFF specification:
+
+<blockquote>
+<p>The detune field determines how much the instrument should alter the pitch of the sound when it is played back. Units are in cents (1/100 of a semitone) and range from -50 to +50. Negative numbers mean that the pitch of the sound should be lowered, while positive numbers mean that it should be raised.
+
+<p>The lowNote and highNote fields specify the suggested note range on a keyboard for playback of the waveform data. The waveform data should be played if the instrument is requested to play a note between the low and high note numbers, inclusive. The base note does not have to be within this range. Units for lowNote and highNote are MIDI note values.
+
+<p>The lowVelocity and highVelocity fields specify the suggested range of velocities for playback of the waveform data. The waveform data should be played if the note-on velocity is between low and high velocity, inclusive. Units are MIDI velocity values, 1 (lowest velocity) through 127 (highest velocity).
+
+<p>The gain is the amount by which to change the gain of the sound when it is played. Units are decibels. For example, 0db means no change, 6db means double the value of each sample point (ie, every additional 6db doubles the gain), while -6db means halve the value of each sample point.</blockquote>
+
+<p>
+To extract the data from a AIFF file you can use the following function:
+</p>
+
+<pre>
+int AIFF_GetInstrumentData(AIFF_Ref r,Instrument* ins) ;
+</pre>
+
+<p>
+The function returns as usual, and the data will be stored in the
+structure pointed to by `ins'.
+</p>
+
+</div>
+<hr>
+<p>
+Copyright &copy; 2005, 2006 by Marco Trillo &lt;<a href="mailto:marcotrillo@gmail.com">marcotrillo@gmail.com</a>&gt;
+<p>
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+<p>
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions of
+the Software.
+<p>
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+</body>
+</html>

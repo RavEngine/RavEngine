@@ -1,0 +1,80 @@
+// -*- C++ -*-
+// SPDX-License-Identifier: BSL-1.0
+//
+//          Copyright Jean Pierre Cimalando 2018-2020.
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+//
+#pragma once
+#include <limits>
+#include <utility>
+
+namespace jsl {
+
+template <class T, class Traits>
+struct ordinary_allocator {
+    typedef T value_type;
+    typedef T *pointer;
+    typedef const T *const_pointer;
+    typedef T &reference;
+    typedef const T &const_reference;
+    typedef std::size_t size_type;
+    typedef std::ptrdiff_t difference_type;
+    typedef std::true_type propagate_on_container_move_assignment;
+    template <class U> struct rebind { typedef ordinary_allocator<U, Traits> other; };
+    typedef std::true_type is_always_equal;
+
+    ordinary_allocator() noexcept {}
+    ordinary_allocator(const ordinary_allocator &) noexcept {}
+    template <class U> ordinary_allocator(const ordinary_allocator<U, Traits>&) noexcept {}
+
+    T *address(T &x) const noexcept;
+    const T *address(const T &x) const noexcept;
+
+    T *allocate(std::size_t n, const void * = nullptr);
+    void deallocate(T *p, std::size_t n) noexcept;
+    std::size_t max_size() const noexcept;
+
+    template <class U, class... Args> void construct(U *p, Args &&...args);
+    template <class U> void destroy(U *p);
+};
+
+template <class T, class Traits>
+inline bool operator==(const ordinary_allocator<T, Traits> &, const ordinary_allocator<T, Traits> &) noexcept
+{
+    return true;
+}
+
+template <class T, class Traits>
+inline bool operator!=(const ordinary_allocator<T, Traits> &, const ordinary_allocator<T, Traits> &) noexcept
+{
+    return false;
+}
+
+//------------------------------------------------------------------------------
+
+struct stdc_allocator_traits {
+    static void *allocate(std::size_t n);
+    static void deallocate(void *p, std::size_t = 0);
+};
+
+template <class T>
+using stdc_allocator = ordinary_allocator<T, stdc_allocator_traits>;
+
+//------------------------------------------------------------------------------
+
+template <std::size_t Al>
+struct aligned_allocator_traits {
+    static void *allocate(std::size_t n);
+    static void deallocate(void *p, std::size_t = 0);
+};
+
+template <class T, std::size_t Al>
+using aligned_allocator = ordinary_allocator<T, aligned_allocator_traits<Al>>;
+
+}  // namespace jsl
+
+#include "bits/allocator/ordinary_allocator.tcc"
+#include "bits/allocator/stdc_allocator.tcc"
+#include "bits/allocator/aligned_allocator.tcc"

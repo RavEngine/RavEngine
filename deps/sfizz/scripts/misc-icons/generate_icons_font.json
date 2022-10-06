@@ -1,0 +1,9 @@
+{
+ "glyph_map": {
+  "0xe000": "sfztools",
+  "0xe001": "github",
+  "0xe002": "discord",
+  "0xe003": "opencollective",
+  "0xe004": "sfzformat"
+ }
+}

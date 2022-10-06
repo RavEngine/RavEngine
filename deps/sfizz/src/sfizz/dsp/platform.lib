@@ -1,0 +1,18 @@
+//-----------------------------------------------------------------------------
+// A version of platform.lib which does not limit the sample rate.
+// This allows use of high oversampling factors.
+//-----------------------------------------------------------------------------
+
+declare name "sfizz Generic Platform Library";
+declare license "BSD-2-Clause";
+
+//---------------------------------`(pl.)SR`-----------------------------------
+// Current sampling rate (between 1Hz and 192000Hz). Constant during
+// program execution.
+//-----------------------------------------------------------------------------
+SR = fconstant(int fSamplingFreq, <math.h>);
+
+//---------------------------------`(pl.)tablesize`----------------------------
+// Oscillator table size
+//-----------------------------------------------------------------------------
+tablesize = 1 << 16;

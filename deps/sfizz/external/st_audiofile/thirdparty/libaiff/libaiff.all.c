@@ -1,0 +1,10 @@
+#define LIBAIFF_UNITY_BUILD
+#include "private.h"
+#include "iff.c"
+#include "aifx.c"
+#include "lpcm.c"
+#include "g711.c"
+#include "float32.c"
+#include "libaiff.c"
+#include "extended.c"
+#include "pascal.c"

@@ -83,3 +83,6 @@ rm -r etl/examples etl/images etl/support etl/temp etl/test etl/uml
 
 # OpenXR
 rm -r OpenXR-SDK/.azure-pipelines OpenXR-SDK/.github OpenXR-SDK/.reuse OpenXR-SDK/specification OpenXR-SDK/.appveyor.yml OpenXR-SDK/.editorconfig OpenXR-SDK/CHANGELOG.SDK.md
+
+# sfizz
+rm -r sfizz/benchmarks sfizz/tests sfizz/plugins

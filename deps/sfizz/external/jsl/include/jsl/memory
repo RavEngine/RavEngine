@@ -1,0 +1,42 @@
+// -*- C++ -*-
+// SPDX-License-Identifier: BSL-1.0
+//
+//          Copyright Jean Pierre Cimalando 2018-2020.
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+//
+#pragma once
+#include "./allocator"
+#include <memory>
+
+namespace jsl {
+
+template <class T, std::size_t Al>
+struct aligned_ptr_delete {
+    void operator()(T *p) const noexcept;
+};
+
+template <class T, std::size_t Al>
+using aligned_unique_ptr = std::unique_ptr<T, aligned_ptr_delete<T, Al>>;
+
+//------------------------------------------------------------------------------
+
+template <class T> struct make_aligned_traits;
+template <class T, size_t N> struct make_aligned_traits<T[N]> { struct invalid {}; };
+template <class T> struct make_aligned_traits<T[]> { struct invalid {}; };
+template <class T> struct make_aligned_traits { using single_element = T; };
+
+//------------------------------------------------------------------------------
+
+template <class T, std::size_t Al, class... Args>
+aligned_unique_ptr<typename make_aligned_traits<T>::single_element, Al>
+make_aligned(Args &&... args);
+
+template <class T, std::size_t Al, class... Args>
+typename make_aligned_traits<T>::invalid
+make_aligned(Args &&... args) = delete;
+
+}  // namespace jsl
+
+#include "bits/memory/aligned_unique_ptr.tcc"
