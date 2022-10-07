@@ -135,6 +135,7 @@ add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/midifile" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/r8brain-cmake" EXCLUDE_FROM_ALL)
 
 # randoms
@@ -288,6 +289,7 @@ set(SFIZZ_AU OFF CACHE INTERNAL "")
 set(SFIZZ_SHARED OFF CACHE INTERNAL "")
 set(ENABLE_LTO OFF CACHE INTERNAL "")
 set(SFIZZ_RENDER OFF CACHE INTERNAL "")
+set(SFIZZ_STATIC_DEPENDENCIES OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/sfizz")
 
 # PhysX-specific CMake project setup
@@ -440,6 +442,9 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
 	"${DEPS_DIR}/boost"
 	"${DEPS_DIR}/date/include"
+	"${DEPS_DIR}/sfizz/external/abseil-cpp/"
+	"${DEPS_DIR}/sfizz/external/simde/"
+	"${DEPS_DIR}/sfizz/external/filesystem/include/"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
@@ -528,6 +533,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_geometry"
 	"ozz_options"
 	"sfizz_static"
+	"midifile"
 	${ICONV_LIB}
 	${COCOA_LIB}
 	${SM_LIB}
@@ -704,11 +710,16 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem;\
+Abseil;midifile\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
 PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController")
+
+group_in("Libraries/sfizz" "aiff;sfizz_pugixml;sfizz_spline;sfizz_tunings;sfizz_hiir_polyphase_iir2designer;sfizz_kissfft;sfizz_cephes;sfizz_cpuid;sfizz_filesystem_impl;sfizz_fmidi;\
+st_audiofile;st_audiofile_formats;st_info;sfizz_parser;sfizz_messaging;sfizz_import;sfizz_spin_mutex;sfizz_internal;sfizz_match_definitions;sfizz_static;\
+sfizz-generate-git-build-id;sfizz-git-build-id")
 
 group_in("Libraries/ozz" "ozz_animation;ozz_animation_offline;ozz_base;ozz_geometry;ozz_options")
 group_in("Libraries/ozz/tools" "dump2ozz;gltf2ozz;ozz_animation_tools")

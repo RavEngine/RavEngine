@@ -4,8 +4,8 @@ include(CheckCXXCompilerFlag)
 include(CheckCXXSourceCompiles)
 include(GNUWarnings)
 
-set(CMAKE_CXX_STANDARD 11 CACHE STRING "C++ standard to be used")
-set(CMAKE_C_STANDARD 99 CACHE STRING "C standard to be used")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 
 # Export the compile_commands.json file
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
