@@ -439,7 +439,7 @@ target_sources(sfizz_internal PRIVATE
 
 # Windows installer
 if(WIN32)
-    include(VSTConfig)
+    #include(VSTConfig)
     configure_file(${PROJECT_SOURCE_DIR}/scripts/innosetup.iss.in ${PROJECT_BINARY_DIR}/innosetup.iss @ONLY)
 endif()
 
