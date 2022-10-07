@@ -21,7 +21,8 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 		auto& worldrot = rot;
 		
 		//get appropriate area in source's buffer if it is playing
-		stackarray(temp, float, nbytes/sizeof(float)/2);
+        const auto stackarr_size = nbytes/sizeof(float)/2;
+		stackarray(temp, float, stackarr_size);
 		source->GetSampleRegionAndAdvance(temp, nbytes/2);
 		
 		//create Eigen structures to calculate attenuation
@@ -32,7 +33,7 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 		auto gain = vraudio::ComputeRoomEffectsGain(eworldpos, eroompos, eroomrot, eroomdim);
 		
 		//mix results
-		for(int i = 0; i < nbytes/sizeof(float); i++){
+		for(int i = 0; i < stackarr_size; i++){
 			temp[i] *= gain;		//apply attenuation to source
 		}
 		
