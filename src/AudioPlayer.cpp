@@ -13,6 +13,8 @@ using namespace std;
 
 Ref<AudioPlayerData> AudioPlayer::silence;
 
+STATIC(AudioPlayer::SamplesPerSec);
+
 /**
  The audio player tick function. Called every time there is an audio update
  @param udata user data for application
@@ -102,6 +104,9 @@ void AudioPlayer::Init(){
 			Debug::Fatal("Could not get Float32 audio format");
 		}
 	}
+    
+    SamplesPerSec = have.freq;
+    
 	
 	if (!silence){
 		float* data = new float[4096];

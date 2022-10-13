@@ -18,8 +18,13 @@ struct SoundFont{
 
 class InstrumentSynth{
     sfz::Sfizz synthesizer;
+    friend class AudioMIDIPlayer;
+    void Callback(int delay, const char* path, const char* sig, const sfizz_arg_t* args);
 public:
     InstrumentSynth(const Filesystem::Path& path);
+    static void CallbackStatic(void* data, int delay, const char* path, const char* sig, const sfizz_arg_t* args){
+        static_cast<InstrumentSynth*>(data)->Callback(delay,path,sig,args);
+    }
 };
 
 class AudioMIDIPlayer{
@@ -35,6 +40,9 @@ class AudioMIDIPlayer{
         std::priority_queue<MidiEvent, std::vector<MidiEvent>, MIDIComparator> events;
     };
     std::vector<InstrumentChannelPair> instrumentTrackMap;
+    
+    double currentTime;
+    
 public:
     void EnqueueEvent(const MidiEvent& evt, uint16_t track);
     void SetInstrumentForTrack(uint16_t channel, std::unique_ptr<InstrumentSynth>& instrument);
@@ -44,7 +52,7 @@ public:
 };
     
 struct AudioMIDIRenderer{
-    Ref<AudioAsset> Render(const MidiFile& file, AudioMIDIPlayer& player);
+    Ref<AudioAsset> Render(MidiFile& file, AudioMIDIPlayer& player);
 };
 
 }

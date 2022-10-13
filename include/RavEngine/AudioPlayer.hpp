@@ -14,6 +14,9 @@ class AudioPlayer{
 	SDL_AudioDeviceID device;
 	WeakRef<World> worldToRender;
 	static Ref<AudioPlayerData> silence;
+    
+    static uint32_t SamplesPerSec;
+    
 public:
 	/**
 	 Set the current world to output audio for
@@ -31,6 +34,10 @@ public:
 	 Shut down the audio player
 	 */
 	void Shutdown();
+    
+    const static auto GetSamplesPerSec() {
+        return SamplesPerSec;
+    }
 	
 	/**
 	 Tick function, used internally

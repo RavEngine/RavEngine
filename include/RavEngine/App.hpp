@@ -111,6 +111,10 @@ namespace RavEngine {
             return Renderer.value();
         }
         
+        inline AudioPlayer& GetAudioPlayer(){
+            return player;
+        }
+        
         inline bool HasRenderEngine(){
             return static_cast<bool>(Renderer);
         }
