@@ -55,9 +55,17 @@ if(TARGET_ANDROID)
 	add_library(${ANDROID_GLUE_LIB} STATIC ${APP_GLUE_DIR}/android_native_app_glue.c)
 endif()
 
-# link time optimization check
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE CACHE INTERNAL "")	# only enable on release
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE CACHE INTERNAL "")	# only enable on profile
+
+# call this macro to add IPO to profile and release builds
+macro(rve_enable_IPO target)
+
+	set_target_properties(${target} PROPERTIES
+		INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+		INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE
+	)
+
+endmacro()
+
 
 # linux detection
 if(UNIX AND NOT CMAKE_HOST_APPLE)
@@ -385,6 +393,7 @@ file(GLOB_RECURSE BOOST_HEADERS "deps/boost/boost/*.hpp" "deps/boost/boost/*.h")
 # register the library
 set(UWP_SDL2MAIN "${DEPS_DIR}/SDL2/src/main/winrt/SDL_winrt_main_NonXAML.cpp" CACHE INTERNAL "")
 add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} ${BOOST_HEADERS} "deps/parallel-hashmap/phmap.natvis")
+rve_enable_IPO(${PROJECT_NAME})
 source_group(TREE "${DEPS_DIR}/boost/boost" PREFIX "boost/boost" FILES ${BOOST_HEADERS})
 	
 set_target_properties(${PROJECT_NAME} PROPERTIES

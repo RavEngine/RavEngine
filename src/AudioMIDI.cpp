@@ -75,7 +75,7 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(MidiFile& file, AudioMIDIPlayer& playe
 }
 
 InstrumentSynth::InstrumentSynth(const Filesystem::Path& pathOnDisk) {
-    synthesizer.loadSfzFile(pathOnDisk);
+    synthesizer.loadSfzFile(pathOnDisk.string());
     synthesizer.setSampleRate(AudioPlayer::GetSamplesPerSec());
 }
 
