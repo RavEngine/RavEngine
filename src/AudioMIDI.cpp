@@ -12,21 +12,30 @@ void AudioMIDIPlayer::EnqueueEvent(const MidiEvent &evt, uint16_t track){
 
 void AudioMIDIPlayer::Render(buffer_t out_buffer){
     // pop events off and give to the proper instrument
+    const auto samplesPerSec = AudioPlayer::GetSamplesPerSec();
+
     for (auto& instrument : instrumentTrackMap){
         // set the instrument's callback function
         instrument.instrument->synthesizer.setBroadcastCallback(InstrumentSynth::CallbackStatic,instrument.instrument.get());
         
-        while (true){
+        while (!instrument.events.empty()){
             // get the next event (without popping it)
             auto& nextEvent = instrument.events.top();
             
             // convert the start tick time into a buffer index
-            auto bufferidx = 0;// nextEvent.tick;   //TODO: replace with legit data
+            // I had help with these equations
+            auto seconds = (nextEvent.tick) * (1.0/ticksPerQuarterNote) * (1.0/beatsPerMinute) * 60;
+            auto bufferidx = size_t(seconds * AudioPlayer::GetSamplesPerSec()) - playhead;
             
             // is this event's start point within the buffer?
             if (bufferidx < out_buffer.size()){
                 // if so, pop it and provide it to the Instrument
-                instrument.instrument->synthesizer.noteOn(0, 0, 0); // TODO: replace with legit data
+                if (nextEvent.isNoteOn()){
+                    instrument.instrument->synthesizer.noteOn(bufferidx, nextEvent.getKeyNumber(), nextEvent.getVelocity());
+                }
+                else if (nextEvent.isNoteOff()){
+                    instrument.instrument->synthesizer.noteOff(bufferidx, nextEvent.getKeyNumber(), nextEvent.getVelocity());
+                }
                 
                 // consume the event
                 instrument.events.pop();
@@ -36,10 +45,12 @@ void AudioMIDIPlayer::Render(buffer_t out_buffer){
                 break;
             }
         }
+        //TODO: use the scratch buffer instead
         float* beginbuf = out_buffer.data();
-        instrument.instrument->synthesizer.renderBlock(&beginbuf, out_buffer.size());
-       
+        instrument.instrument->synthesizer.renderBlock(&beginbuf, out_buffer.size(),1);
     }
+    // advance playhead, now that this buffer processing has completed
+    playhead += out_buffer.size();
 }
 
 void AudioMIDIPlayer::SetInstrumentForTrack(uint16_t channel, std::unique_ptr<InstrumentSynth>& instrument){
@@ -59,6 +70,7 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(MidiFile& file, AudioMIDIPlayer& playe
             player.EnqueueEvent(event, i);
         }
     }
+    player.ticksPerQuarterNote = file.getTicksPerQuarterNote();
     
     auto totalSecs = file.getFileDurationInSeconds();
     

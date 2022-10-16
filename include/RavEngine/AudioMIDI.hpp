@@ -31,7 +31,7 @@ class AudioMIDIPlayer{
     // data structure for events
     struct MIDIComparator{
         constexpr bool operator() (const MidiEvent& a, const MidiEvent& b){
-            return a.tick < b.tick;
+            return b.tick < a.tick;
         };
     };
     
@@ -41,7 +41,7 @@ class AudioMIDIPlayer{
     };
     std::vector<InstrumentChannelPair> instrumentTrackMap;
     
-    double currentTime;
+    uint64_t playhead = 0;  // position in total samples emitted
     
 public:
     void EnqueueEvent(const MidiEvent& evt, uint16_t track);
@@ -49,6 +49,14 @@ public:
     
     using buffer_t = std::span<float,std::dynamic_extent>;
     void Render(buffer_t out_buffer);
+    
+    void ResetPlayhead(){
+        playhead = 0;
+    }
+    
+    int ticksPerQuarterNote = 0;
+    float beatsPerMinute = 60;
+
 };
     
 struct AudioMIDIRenderer{
