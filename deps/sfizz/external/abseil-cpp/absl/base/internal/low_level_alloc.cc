@@ -28,6 +28,29 @@
 #include "absl/base/macros.h"
 #include "absl/base/thread_annotations.h"
 
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
+#define _UWP 1   
+#else
+#define _UWP 0
+#endif
+
+#if _UWP
+// VirtualAlloc is not defined on UWP - need to replace it with VirtualAllocFromApp
+#if defined _M_IX386
+#define _X86_ 1
+#elif defined _M_X64 && !defined _M_ARM64
+#define _AMD64_ 1
+#elif defined _M_ARM64 || defined _M_ARM64EC
+#define _ARM64_ 1
+#endif
+
+// need to tell it that the target is high enough
+#define _WIN32_WINNT _WIN32_WINNT_WIN10
+
+#include <memoryapi.h>
+#define VirtualAlloc VirtualAllocFromApp
+#endif
+
 // LowLevelAlloc requires that the platform support low-level
 // allocation of virtual memory. Platforms lacking this cannot use
 // LowLevelAlloc.

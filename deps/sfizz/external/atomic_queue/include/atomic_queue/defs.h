@@ -15,7 +15,8 @@ static inline void spin_loop_pause() noexcept {
     _mm_pause();
 }
 } // namespace atomic_queue
-#elif defined(__arm__) || defined(__aarch64__)
+#elif defined(__arm__) || defined(__aarch64__) || defined _M_ARM64 || defined _M_ARM64EC
+#include <thread>
 namespace atomic_queue {
 constexpr int CACHE_LINE_SIZE = 64;
 static inline void spin_loop_pause() noexcept {
@@ -31,6 +32,8 @@ static inline void spin_loop_pause() noexcept {
      defined(__ARM_ARCH_8A__) || \
      defined(__aarch64__))
     asm volatile ("yield" ::: "memory");
+#elif defined _M_ARM64 || defined _M_ARM64EC
+    std::this_thread::yield();
 #else
     asm volatile ("nop" ::: "memory");
 #endif
