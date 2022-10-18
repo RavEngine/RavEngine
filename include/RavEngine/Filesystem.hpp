@@ -1,7 +1,7 @@
 #pragma once
 
 // boost::filesystem for legacy systems
-#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED < 130000)
+#if (TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED < 130000)
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 #include <boost/filesystem.hpp>
 namespace RavEngine{

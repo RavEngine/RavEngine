@@ -17,6 +17,8 @@ void AudioMIDIPlayer::Render(buffer_t out_buffer){
     for (auto& instrument : instrumentTrackMap){
         // set the instrument's callback function
         instrument.instrument->synthesizer.setBroadcastCallback(InstrumentSynth::CallbackStatic,instrument.instrument.get());
+        instrument.instrument->synthesizer.setSampleRate(samplesPerSec);
+        instrument.instrument->synthesizer.enableFreeWheeling();    //TODO: restore old state after processing is finished
         
         while (!instrument.events.empty()){
             // get the next event (without popping it)
