@@ -52,18 +52,18 @@ std::string DecentSamplerInstrumentImporter::convertToSfz(const fs::path& path) 
         return {};
     }
 
-    pugi::xml_node rootNode(doc.child("DecentSampler"));
+    pugi::xml_node rootNode(doc.child_2("DecentSampler"));
     if (!rootNode) {
         std::cerr << "[sfizz] dspreset: missing <DecentSampler> element\n";
         return {};
     }
 
-    pugi::xml_node uiNode(rootNode.child("ui"));
-    const char* image = uiNode.attribute("bgImage").as_string();
+    pugi::xml_node uiNode(rootNode.child_2("ui"));
+    const char* image = uiNode.attribute_2("bgImage").as_string();
     if (image[0] != '\0')
         os << "<control> image=" << image << '\n';
 
-    pugi::xml_node globalNode(rootNode.child("groups"));
+    pugi::xml_node globalNode(rootNode.child_2("groups"));
     os << "<global>\n";
     emitRegionalOpcodes(os, globalNode);
 
