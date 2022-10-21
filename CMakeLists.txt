@@ -542,6 +542,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_geometry"
 	"ozz_options"
 	"sfizz_static"
+    "sfizz_fmidi"
 	"midifile"
 	${ICONV_LIB}
 	${COCOA_LIB}

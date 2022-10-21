@@ -3,6 +3,40 @@
 #include "Common3D.hpp"
 #include "AudioPlayer.hpp"
 #include "AudioRoom.hpp"
+#include <sfizz/MathHelpers.h>
+#include <sfizz/SfzHelpers.h>
+#include <sfizz/SIMDHelpers.h>
+#include <sfizz/../../external/st_audiofile/thirdparty/dr_libs/dr_wav.h>
+
+#include <cstdint>
+
+namespace midi {
+constexpr uint8_t statusMask { 0b11110000 };
+constexpr uint8_t channelMask { 0b00001111 };
+constexpr uint8_t noteOff { 0x80 };
+constexpr uint8_t noteOn { 0x90 };
+constexpr uint8_t polyphonicPressure { 0xA0 };
+constexpr uint8_t controlChange { 0xB0 };
+constexpr uint8_t programChange { 0xC0 };
+constexpr uint8_t channelPressure { 0xD0 };
+constexpr uint8_t pitchBend { 0xE0 };
+constexpr uint8_t systemMessage { 0xF0 };
+
+constexpr uint8_t status(uint8_t midiStatusByte)
+{
+    return midiStatusByte & statusMask;
+}
+constexpr uint8_t channel(uint8_t midiStatusByte)
+{
+    return midiStatusByte & channelMask;
+}
+
+constexpr int buildAndCenterPitch(uint8_t firstByte, uint8_t secondByte)
+{
+    return (int)(((unsigned int)secondByte << 7) + (unsigned int)firstByte) - 8192;
+}
+}
+
 
 using namespace RavEngine;
 
@@ -13,10 +47,11 @@ void AudioMIDIPlayer::EnqueueEvent(const MidiEvent &evt, uint16_t track){
 void AudioMIDIPlayer::Render(buffer_t out_buffer){
     // pop events off and give to the proper instrument
     const auto samplesPerSec = AudioPlayer::GetSamplesPerSec();
+    
+    float* scratchbuffer[]{new float[out_buffer.size()], new float[out_buffer.size()]};
 
     for (auto& instrument : instrumentTrackMap){
         // set the instrument's callback function
-        instrument.instrument->synthesizer.setBroadcastCallback(InstrumentSynth::CallbackStatic,instrument.instrument.get());
         instrument.instrument->synthesizer.setSampleRate(samplesPerSec);
         instrument.instrument->synthesizer.enableFreeWheeling();    //TODO: restore old state after processing is finished
         
@@ -47,12 +82,12 @@ void AudioMIDIPlayer::Render(buffer_t out_buffer){
                 break;
             }
         }
-        //TODO: use the scratch buffer instead
-        float* beginbuf = out_buffer.data();
-        instrument.instrument->synthesizer.renderBlock(&beginbuf, out_buffer.size(),1);
+         instrument.instrument->synthesizer.renderBlock(scratchbuffer, out_buffer.size(),1);
     }
     // advance playhead, now that this buffer processing has completed
     playhead += out_buffer.size();
+    delete[] scratchbuffer[0];
+    delete[] scratchbuffer[1];
 }
 
 void AudioMIDIPlayer::SetInstrumentForTrack(uint16_t channel, std::unique_ptr<InstrumentSynth>& instrument){
@@ -83,16 +118,130 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(MidiFile& file, AudioMIDIPlayer& playe
     auto asset = RavEngine::New<AudioAsset>(buf, buffsize, 1);
     
     // render into it
-    player.Render(AudioMIDIPlayer::buffer_t(buf,buffsize));
+    player.Render(AudioMIDIPlayer::buffer_t(buf,1024));
     
     return asset;
+}
+
+struct CallbackData {
+    sfz::Sfizz& synth;
+    unsigned delay = 0;
+    bool finished = false;
+};
+
+void midiCallback(const fmidi_event_t * event, void * cbdata)
+{
+    auto data = reinterpret_cast<CallbackData*>(cbdata);
+
+    if (event->type != fmidi_event_type::fmidi_event_message)
+        return;
+
+    switch (midi::status(event->data[0])) {
+        case midi::noteOff:
+            data->synth.noteOff(data->delay, event->data[1], event->data[2]);
+            break;
+        case midi::noteOn:
+            if (event->data[2] == 0)
+                data->synth.noteOff(data->delay, event->data[1], event->data[2]);
+            else
+                data->synth.noteOn(data->delay, event->data[1], event->data[2]);
+            break;
+        case midi::polyphonicPressure:
+            break;
+        case midi::controlChange:
+            data->synth.cc(data->delay, event->data[1], event->data[2]);
+            break;
+        case midi::programChange:
+            break;
+        case midi::channelPressure:
+            break;
+        case midi::pitchBend:
+            data->synth.pitchWheel(data->delay, midi::buildAndCenterPitch(event->data[1], event->data[2]));
+            break;
+        case midi::systemMessage:
+            break;
+        }
+}
+
+void finishedCallback(void * cbdata)
+{
+    auto data = reinterpret_cast<CallbackData*>(cbdata);
+    data->finished = true;
+}
+
+
+Ref<AudioAsset> AudioMIDIRenderer::Render(const Filesystem::Path& path, AudioMIDIPlayer& player){
+    unsigned blockSize { 1024 };
+    int sampleRate { 48000 };
+    bool verbose { false };
+    bool help { false };
+    bool useEOT { false };
+    int quality { 2 };
+    int polyphony { 512 };
+    
+    fmidi_smf_u midiFile { fmidi_smf_file_read(path.string().c_str()) };
+    
+    drwav outputFile;
+    drwav_data_format outputFormat {};
+    outputFormat.container = drwav_container_riff;
+    outputFormat.format = DR_WAVE_FORMAT_PCM;
+    outputFormat.channels = 2;
+    outputFormat.sampleRate = sampleRate;
+    outputFormat.bitsPerSample = 16;
+    
+    Filesystem::Path outputPath{"/Users/Admin/output.wav"};
+    
+#if !defined(_WIN32)
+    drwav_bool32 outputFileOk = drwav_init_file_write(&outputFile, outputPath.c_str(), &outputFormat, nullptr);
+#else
+    drwav_bool32 outputFileOk = drwav_init_file_write_w(&outputFile, outputPath.c_str(), &outputFormat, nullptr);
+#endif
+    
+    auto sampleRateDouble = static_cast<double>(sampleRate);
+    const double increment { 1.0 / sampleRateDouble };
+    uint64_t numFramesWritten { 0 };
+    float* audioBuffer[]{new float[blockSize], new float[blockSize]};
+    float* interleavedBuffer = new float[blockSize * 2];
+    int16* interleavedPcm = new int16[blockSize * 2];
+    
+    sfz::Sfizz synth;
+    synth.setSamplesPerBlock(blockSize);
+    synth.setSampleRate(sampleRate);
+    synth.setSampleQuality(sfz::Sfizz::ProcessMode::ProcessFreewheeling, quality);
+    synth.setNumVoices(polyphony);
+    synth.setVolume(5);
+    synth.loadSfzFile("/Users/admin/Downloads/VSCO-2-CE-1.1.0/Harp.sfz");
+    synth.enableFreeWheeling();
+    
+    fmidi_player_u midiPlayer { fmidi_player_new(midiFile.get()) };
+    CallbackData callbackData { synth };
+    fmidi_player_event_callback(midiPlayer.get(), &midiCallback, &callbackData);
+    fmidi_player_finish_callback(midiPlayer.get(), &finishedCallback, &callbackData);
+    
+    fmidi_player_start(midiPlayer.get());
+    
+    while (!callbackData.finished) {
+        for (callbackData.delay = 0; callbackData.delay < blockSize && !callbackData.finished; callbackData.delay++)
+            fmidi_player_tick(midiPlayer.get(), increment);
+        synth.renderBlock(audioBuffer, blockSize);
+        for(int i = 0; i < blockSize * 2; i+=2){
+            interleavedBuffer[i] = audioBuffer[0][i/2];
+            interleavedBuffer[i+1] = audioBuffer[1][i/2];
+        }
+        //sfz::writeInterleaved(audioBuffer.getConstSpan(0), audioBuffer.getConstSpan(1), absl::MakeSpan(interleavedBuffer));
+        drwav_f32_to_s16(interleavedPcm, interleavedBuffer, 2 * blockSize);
+        numFramesWritten += drwav_write_pcm_frames(&outputFile, blockSize, interleavedPcm);
+    }
+    drwav_uninit(&outputFile);
+    
+    delete[] audioBuffer[0];
+    delete[] audioBuffer[1];
+    delete[] interleavedBuffer;
+    delete[] interleavedPcm;
+    
 }
 
 InstrumentSynth::InstrumentSynth(const Filesystem::Path& pathOnDisk) {
     synthesizer.loadSfzFile(pathOnDisk.string());
     synthesizer.setSampleRate(AudioPlayer::GetSamplesPerSec());
-}
-
-void InstrumentSynth::Callback(int delay, const char *path, const char *sig, const sfizz_arg_t *args){
-    // do we even need this?
 }

@@ -5,6 +5,7 @@
 #include "Manager.hpp"
 #include <span>
 #include "Filesystem.hpp"
+#include <fmidi/fmidi.h>
 
 namespace RavEngine{
 class AudioAsset;
@@ -19,12 +20,8 @@ struct SoundFont{
 class InstrumentSynth{
     sfz::Sfizz synthesizer;
     friend class AudioMIDIPlayer;
-    void Callback(int delay, const char* path, const char* sig, const sfizz_arg_t* args);
 public:
     InstrumentSynth(const Filesystem::Path& path);
-    static void CallbackStatic(void* data, int delay, const char* path, const char* sig, const sfizz_arg_t* args){
-        static_cast<InstrumentSynth*>(data)->Callback(delay,path,sig,args);
-    }
 };
 
 class AudioMIDIPlayer{
@@ -61,6 +58,7 @@ public:
     
 struct AudioMIDIRenderer{
     Ref<AudioAsset> Render(MidiFile& file, AudioMIDIPlayer& player);
+    Ref<AudioAsset> Render(const Filesystem::Path& path, AudioMIDIPlayer& player);
 };
 
 }
