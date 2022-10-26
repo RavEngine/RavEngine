@@ -172,37 +172,34 @@ void finishedCallback(void * cbdata)
 
 Ref<AudioAsset> AudioMIDIRenderer::Render(const Filesystem::Path& path, AudioMIDIPlayer& player){
     unsigned blockSize { 1024 };
-    int sampleRate { 48000 };
-    bool verbose { false };
-    bool help { false };
-    bool useEOT { false };
+    unsigned sampleRate { AudioPlayer::GetSamplesPerSec() };
     int quality { 2 };
     int polyphony { 512 };
     
     fmidi_smf_u midiFile { fmidi_smf_file_read(path.string().c_str()) };
     
-    drwav outputFile;
-    drwav_data_format outputFormat {};
-    outputFormat.container = drwav_container_riff;
-    outputFormat.format = DR_WAVE_FORMAT_PCM;
-    outputFormat.channels = 2;
-    outputFormat.sampleRate = sampleRate;
-    outputFormat.bitsPerSample = 16;
-    
-    Filesystem::Path outputPath{"/Users/Admin/output.wav"};
-    
-#if !defined(_WIN32)
-    drwav_bool32 outputFileOk = drwav_init_file_write(&outputFile, outputPath.c_str(), &outputFormat, nullptr);
-#else
-    drwav_bool32 outputFileOk = drwav_init_file_write_w(&outputFile, outputPath.c_str(), &outputFormat, nullptr);
-#endif
+//    drwav outputFile;
+//    drwav_data_format outputFormat {};
+//    outputFormat.container = drwav_container_riff;
+//    outputFormat.format = DR_WAVE_FORMAT_PCM;
+//    outputFormat.channels = 2;
+//    outputFormat.sampleRate = sampleRate;
+//    outputFormat.bitsPerSample = 16;
+//
+//    Filesystem::Path outputPath{"/Users/Admin/output.wav"};
+//
+//#if !defined(_WIN32)
+//    drwav_bool32 outputFileOk = drwav_init_file_write(&outputFile, outputPath.c_str(), &outputFormat, nullptr);
+//#else
+//    drwav_bool32 outputFileOk = drwav_init_file_write_w(&outputFile, outputPath.c_str(), &outputFormat, nullptr);
+//#endif
     
     auto sampleRateDouble = static_cast<double>(sampleRate);
     const double increment { 1.0 / sampleRateDouble };
     uint64_t numFramesWritten { 0 };
     float* audioBuffer[]{new float[blockSize], new float[blockSize]};
-    float* interleavedBuffer = new float[blockSize * 2];
-    int16* interleavedPcm = new int16[blockSize * 2];
+//    float* interleavedBuffer = new float[blockSize * 2];
+//    int16* interleavedPcm = new int16[blockSize * 2];
     
     sfz::Sfizz synth;
     synth.setSamplesPerBlock(blockSize);
@@ -218,27 +215,40 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const Filesystem::Path& path, AudioMID
     fmidi_player_event_callback(midiPlayer.get(), &midiCallback, &callbackData);
     fmidi_player_finish_callback(midiPlayer.get(), &finishedCallback, &callbackData);
     
+    const auto duration = fmidi_smf_compute_duration(midiFile.get());
+    
+    const size_t totalSamples = duration * AudioPlayer::GetSamplesPerSec();
+    auto assetData = new float[totalSamples]{0};
+    
     fmidi_player_start(midiPlayer.get());
     
     while (!callbackData.finished) {
         for (callbackData.delay = 0; callbackData.delay < blockSize && !callbackData.finished; callbackData.delay++)
             fmidi_player_tick(midiPlayer.get(), increment);
         synth.renderBlock(audioBuffer, blockSize);
-        for(int i = 0; i < blockSize * 2; i+=2){
-            interleavedBuffer[i] = audioBuffer[0][i/2];
-            interleavedBuffer[i+1] = audioBuffer[1][i/2];
-        }
-        //sfz::writeInterleaved(audioBuffer.getConstSpan(0), audioBuffer.getConstSpan(1), absl::MakeSpan(interleavedBuffer));
-        drwav_f32_to_s16(interleavedPcm, interleavedBuffer, 2 * blockSize);
-        numFramesWritten += drwav_write_pcm_frames(&outputFile, blockSize, interleavedPcm);
+        
+        auto nBytesToWrite = std::min<size_t>(blockSize * sizeof(audioBuffer[0]), totalSamples - numFramesWritten);
+        std::memcpy(assetData + numFramesWritten, audioBuffer[0],nBytesToWrite);
+        
+//        for(int i = 0; i < blockSize * 2; i+=2){
+//            interleavedBuffer[i] = audioBuffer[0][i/2];
+//            interleavedBuffer[i+1] = audioBuffer[1][i/2];
+//        }
+//        drwav_f32_to_s16(interleavedPcm, interleavedBuffer, 2 * blockSize);
+//        drwav_write_pcm_frames(&outputFile, blockSize, interleavedPcm);
+        numFramesWritten += nBytesToWrite / sizeof(audioBuffer[0]);//
     }
-    drwav_uninit(&outputFile);
+    
+//    drwav_uninit(&outputFile);
     
     delete[] audioBuffer[0];
     delete[] audioBuffer[1];
-    delete[] interleavedBuffer;
-    delete[] interleavedPcm;
+    //delete[] interleavedBuffer;
+    //delete[] interleavedPcm;
     
+    auto asset = New<AudioAsset>(assetData,totalSamples,1);
+    
+    return asset;
 }
 
 InstrumentSynth::InstrumentSynth(const Filesystem::Path& pathOnDisk) {
