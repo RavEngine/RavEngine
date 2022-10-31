@@ -222,12 +222,13 @@ void PhysicsSolver::Tick(float scaleFactor){
     //physics substepping
     int nsteps = ceil(step / max_step_time);
     float step_time = step / nsteps;
-	scene->lockWrite();
-    for (int i = 0; i < nsteps; i++) {
+	//scene->lockWrite();
+    //for (int i = 0; i < nsteps; i++)
+    {
         scene->simulate(step_time);
-        scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
+        //scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
     }
-	scene->unlockWrite();
+	//scene->unlockWrite();
 }
 
 //constructor which configures PhysX
@@ -252,12 +253,8 @@ PhysicsSolver::PhysicsSolver(){
     PxSceneDesc desc(phys->getTolerancesScale());
     desc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
 
-    //set the dispatcher (can be CPU or Multithreaded GPU)
-	auto cpuDispatcher = PxDefaultCpuDispatcherCreate(std::thread::hardware_concurrency());
-    if (!cpuDispatcher) {
-		Debug::Fatal("PhysX dispatcher failed to create");
-    }
-    desc.cpuDispatcher = cpuDispatcher;
+    //set the dispatcher
+    desc.cpuDispatcher = &taskDispatcher;
 
     desc.filterShader = FilterShader;
     desc.simulationEventCallback = this;

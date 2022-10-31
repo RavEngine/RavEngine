@@ -153,25 +153,36 @@ void World::SetupTaskGraph(){
     doAsync.precede(cleanupRanAsync);
     
     //add the PhysX tick, must run after write but before read
-    auto checkRunPhysics = ECSTasks.emplace([&] {
-		return 0;
-		//return physicsActive? 0 : 1;
-    }).name("Check Run Physics");
 
 	auto physicsRootTask = ECSTasks.emplace([] {}).name("PhysicsRootTask");
 
 	auto RunPhysics = ECSTasks.emplace([this]{
+        Solver.scene->lockWrite();
 		Solver.Tick(GetCurrentFPSScale());
-	}).name("PhysX Tick");
+	}).name("PhysX Enqueue Simulation Tasks");
+    
+    
+    auto tickPhysicsTasks = ECSTasks.emplace([this]{
+        physx::PxBaseTask* task = nullptr;
+        while(Solver.taskDispatcher.tasks.try_dequeue(task)){
+            task->run();         // optionally call runProfiled() to wrap with PVD profiling events
+            task->release();
+        }
+       
+    }).name("Execute Physics Tasks").succeed(RunPhysics);
+    
+    auto clearPhysicsTasks = ECSTasks.emplace([this]{
+        Solver.blockUntilSimulationCompleted();
+        Solver.scene->unlockWrite();
+    }).name("Clear Physics Tasks").succeed(tickPhysicsTasks);
     
     auto read = EmplaceSystem<PhysicsLinkSystemRead>(Solver.scene);
     auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>(Solver.scene);
     RunPhysics.precede(read.second);
-	checkRunPhysics.succeed(write.second);
+    RunPhysics.succeed(write.second);
 	
-	RunPhysics.succeed(checkRunPhysics);
     physicsRootTask.precede(read.first,write.first);
-	read.second.succeed(checkRunPhysics);	// if checkRunPhysics returns a 1, it goes here anyways.
+	read.second.succeed(clearPhysicsTasks);	// if checkRunPhysics returns a 1, it goes here anyways.
     
     // setup audio tasks
     audioTasks.name("Audio");
@@ -237,6 +248,8 @@ void World::SetupTaskGraph(){
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
     audioTaskModule.succeed(ECSTaskModule);
+    
+    ExportTaskGraph(cout);
 }
 
 void World::setupRenderTasks(){

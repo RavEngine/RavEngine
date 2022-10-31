@@ -11,6 +11,7 @@
 #include <PxQueryReport.h>
 #include "Ref.hpp"
 #include "PhysicsCollider.hpp"
+#include "PhysicsTaskDispatcher.hpp"
 #include <PxPhysicsAPI.h>
 #include <PxFiltering.h>
 #include <cstdint>
@@ -29,6 +30,11 @@ namespace RavEngine {
     struct Entity;
     struct PhysicsBodyComponent;
     class PhysicsSolver : public physx::PxSimulationEventCallback {
+        friend class World;
+        PhysicsTaskDispatcher taskDispatcher;
+        void blockUntilSimulationCompleted(){
+            scene->fetchResults(true);
+        }
     protected:
         //static members must exist only once in the application
         static physx::PxDefaultErrorCallback gDefaultErrorCallback;
