@@ -13,28 +13,31 @@
 using namespace RavEngine;
 
 void PhysicsLinkSystemRead::operator()(float fpsScale, const RigidBodyDynamicComponent& rigid, Transform& transform) const{
-        //physx requires reads and writes to be sequential
-        
-        //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
-        dynamicsWorld->lockRead();
-        auto pos = rigid.getPos();
-        auto rot = rigid.getRot();
-        dynamicsWorld->unlockRead();
-        transform.SetWorldPosition(pos);
-        transform.SetWorldRotation(rot);
+    //physx requires reads and writes to be sequential
+    
+    //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
+    rigid.getScene()->lockRead();
+    auto pos = rigid.getDynamicsWorldPos();
+    auto rot = rigid.getDynamicsWorldRot();
+    rigid.getScene()->unlockRead();
+    transform.SetWorldPosition(pos);
+    transform.SetWorldRotation(rot);
 }
 
 void PhysicsLinkSystemWrite::operator()(float fpsScale, const PolymorphicGetResult<PhysicsBodyComponent,World::PolymorphicIndirection>& r, const PolymorphicGetResult<Transform,World::PolymorphicIndirection>& t) const{
 
-        //physx requires reads and writes to be sequential
-        auto& rigid = r[0];
-        auto& transform = t[0];
-
+    //physx requires reads and writes to be sequential
+    auto& rigid = r[0];
+    auto& transform = t[0];
+    
+    if (transform.getTickDirty())
+    {
         //if there is a crash here: dynamicsWorld was not set on this class in the World when it was created
         auto pos = transform.GetWorldPosition();
         auto rot = transform.GetWorldRotation();
-        dynamicsWorld->lockWrite();
-        rigid.setPos(pos);
-        rigid.setRot(rot);
-        dynamicsWorld->unlockWrite();
+        rigid.getScene()->lockWrite();
+        rigid.setDynamicsWorldPos(pos);
+        rigid.setDynamicsWorldRot(rot);
+        rigid.getScene()->unlockWrite();
+    }
 }

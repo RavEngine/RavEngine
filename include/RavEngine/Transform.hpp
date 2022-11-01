@@ -40,9 +40,12 @@ namespace RavEngine {
 		inline void ClearTickDirty() {
 			isTickDirty = false;
 		}
-
+        
 	public:
-		virtual ~Transform(){}
+        inline bool getTickDirty() const{
+            return isTickDirty;
+        }
+        
 		Transform(entity_t owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale) : ComponentWithOwner(owner){
             matrix = matrix4(1);
 			SetLocalPosition(inpos);

@@ -52,8 +52,8 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent(entity_t owner) : PhysicsBo
     CompleteConstruction();
     Entity e(owner);
     assert(e.HasComponent<Transform>());    // must already have a transform!
-    setPos(e.GetTransform().GetWorldPosition());
-    setRot(e.GetTransform().GetWorldRotation());
+    setDynamicsWorldPos(e.GetTransform().GetWorldPosition());
+    setDynamicsWorldRot(e.GetTransform().GetWorldRotation());
 }
 
 void RavEngine::PhysicsBodyComponent::AddReceiver(decltype(receivers)::value_type& obj)
@@ -80,21 +80,21 @@ void PhysicsBodyComponent::RemoveReceiver(PhysicsCallback* ptr){
     Debug::Fatal("Bug: Cannot remove item that is not bound");
 }
 
-vector3 PhysicsBodyComponent::getPos() const {
+vector3 PhysicsBodyComponent::getDynamicsWorldPos() const {
 	auto pos = rigidActor->getGlobalPose();
 	return vector3(pos.p.x, pos.p.y, pos.p.z);
 }
 
-void PhysicsBodyComponent::setPos(const vector3& pos) {
+void PhysicsBodyComponent::setDynamicsWorldPos(const vector3& pos) {
 	rigidActor->setGlobalPose(PxTransform(convert(pos),rigidActor->getGlobalPose().q));
 }
 
-quaternion PhysicsBodyComponent::getRot() const {
+quaternion PhysicsBodyComponent::getDynamicsWorldRot() const {
 	auto rot = rigidActor->getGlobalPose();
 	return quaternion(rot.q.w, rot.q.x,rot.q.y,rot.q.z);
 }
 
-void PhysicsBodyComponent::setRot(const quaternion& quat) {
+void PhysicsBodyComponent::setDynamicsWorldRot(const quaternion& quat) {
 	rigidActor->setGlobalPose(PxTransform(rigidActor->getGlobalPose().p,convertQuat(quat)));
 }
 
@@ -146,6 +146,21 @@ bool RavEngine::PhysicsBodyComponent::GetSimulationEnabled() const
 
 RigidBodyDynamicComponent::~RigidBodyDynamicComponent() {
 	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it.
+}
+
+void RigidBodyDynamicComponent::SetKinematicTarget(const vector3 &targetPos, const quaternion &targetRot){
+    PxTransform transform(convert(targetPos), convertQuat(targetRot));
+    rigidActor->getScene()->lockWrite();
+    static_cast<PxRigidDynamic*>(rigidActor)->setKinematicTarget(transform);
+    rigidActor->getScene()->unlockWrite();
+}
+
+std::pair<vector3, quaternion> RigidBodyDynamicComponent::GetKinematicTarget() const{
+    PxTransform trns;
+    rigidActor->getScene()->lockRead();
+    static_cast<PxRigidDynamic*>(rigidActor)->getKinematicTarget(trns);
+    rigidActor->getScene()->unlockRead();
+    return std::make_pair(vector3(trns.p.x,trns.p.y,trns.p.z),quaternion(trns.q.w,trns.q.x,trns.q.y,trns.q.z));
 }
 
 vector3 RavEngine::RigidBodyDynamicComponent::GetLinearVelocity() const

@@ -166,8 +166,8 @@ void World::SetupTaskGraph(){
         Solver.scene->unlockWrite();
     }).name("Cleanup Physics Tasks").succeed(RunPhysics);
     
-    auto read = EmplaceSystem<PhysicsLinkSystemRead>(Solver.scene);
-    auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>(Solver.scene);
+    auto read = EmplaceSystem<PhysicsLinkSystemRead>();
+    auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>();
     RunPhysics.precede(read.second);
     RunPhysics.succeed(write.second);
 	

@@ -43,6 +43,10 @@ namespace RavEngine {
 		physx::PxU32 filterGroup = -1;
 		physx::PxU32 filterMask = -1;
         
+        auto getScene() const{
+            return rigidActor->getScene();
+        }
+        
         PhysicsBodyComponent(entity_t owner);
         virtual ~PhysicsBodyComponent();
         
@@ -103,10 +107,10 @@ namespace RavEngine {
         
         void RemoveReceiver(PhysicsCallback*);
 
-		virtual vector3 getPos() const;
-		virtual quaternion getRot() const;
-		virtual void setPos(const vector3&);
-		virtual void setRot(const quaternion&);
+		virtual vector3 getDynamicsWorldPos() const;
+		virtual quaternion getDynamicsWorldRot() const;
+		virtual void setDynamicsWorldPos(const vector3&);
+		virtual void setDynamicsWorldRot(const quaternion&);
 
 		void SetGravityEnabled(bool);
 
@@ -235,6 +239,9 @@ namespace RavEngine {
 		void SetLinearVelocity(const vector3&, bool);
 
 		void SetAngularVelocity(const vector3&, bool);
+        
+        void SetKinematicTarget(const vector3& targetPos, const quaternion& targetRot);
+        std::pair<vector3, quaternion> GetKinematicTarget() const;
 
 		/**
 		Wake the body
