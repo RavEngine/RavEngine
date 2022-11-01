@@ -161,20 +161,10 @@ void World::SetupTaskGraph(){
 		Solver.Tick(GetCurrentFPSScale());
 	}).name("PhysX Enqueue Simulation Tasks");
     
-    
-    auto tickPhysicsTasks = ECSTasks.emplace([this]{
-        physx::PxBaseTask* task = nullptr;
-        while(Solver.taskDispatcher.tasks.try_dequeue(task)){
-            task->run();         // optionally call runProfiled() to wrap with PVD profiling events
-            task->release();
-        }
-       
-    }).name("Execute Physics Tasks").succeed(RunPhysics);
-    
     auto clearPhysicsTasks = ECSTasks.emplace([this]{
         Solver.blockUntilSimulationCompleted();
         Solver.scene->unlockWrite();
-    }).name("Clear Physics Tasks").succeed(tickPhysicsTasks);
+    }).name("Cleanup Physics Tasks").succeed(RunPhysics);
     
     auto read = EmplaceSystem<PhysicsLinkSystemRead>(Solver.scene);
     auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>(Solver.scene);

@@ -1,12 +1,19 @@
 #include "PhysicsTaskDispatcher.hpp"
+#include "App.hpp"
+#include "GetApp.hpp"
 
 using namespace RavEngine;
 
 void PhysicsTaskDispatcher::submitTask(physx::PxBaseTask &task){
-    tasks.enqueue(&task);
+    // immediately place it on the task queue as background async
+    physx::PxBaseTask* taskptr = &task;
+    auto& executor = GetApp()->executor;
+    executor.silent_async([taskptr]{
+        taskptr->run();
+        taskptr->release();
+    });
 }
 
 uint32_t PhysicsTaskDispatcher::getWorkerCount() const {
-    //TODO: return the number of threads in the task graph
-    return 1;
+    return GetApp()->executor.num_workers();
 }

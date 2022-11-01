@@ -221,7 +221,8 @@ void PhysicsSolver::Tick(float scaleFactor){
 
     //physics substepping
     int nsteps = ceil(step / max_step_time);
-    float step_time = step / nsteps;
+    //float step_time = step / nsteps;
+    float step_time = step;
 	//scene->lockWrite();
     //for (int i = 0; i < nsteps; i++)
     {

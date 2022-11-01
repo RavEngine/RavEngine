@@ -7,7 +7,6 @@
 namespace RavEngine{
 class PhysicsTaskDispatcher : public physx::PxCpuDispatcher{
 private:
-    ConcurrentQueue<physx::PxBaseTask*> tasks;
     
     friend class World;
     friend class PhysicsSolver;
