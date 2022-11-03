@@ -237,7 +237,7 @@ void World::SetupTaskGraph(){
     }).name("Swap Current").succeed(copyAudios,copyAmbients,copyRooms);
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
-    audioTaskModule.succeed(ECSTaskModule);    
+    audioTaskModule.succeed(ECSTaskModule);
 }
 
 void World::setupRenderTasks(){
@@ -310,59 +310,85 @@ void World::setupRenderTasks(){
             }
         });
     }).name("Upate invalidated skinned mesh transforms");
-
-	auto copydirs = renderTasks.emplace([this](){
+    
+    auto updateInvalidatedDirs = renderTasks.emplace([this]{
         if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
             auto ptr = dirs.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
                 auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
-                auto rot = owner.GetTransform().Up();
-                FrameData::PackedDL::tinyvec3 r{
-                    static_cast<float>(rot.x),
-                    static_cast<float>(rot.y),
-                    static_cast<float>(rot.z)
-                };
-                auto current = GetApp()->GetCurrentFramedata();
-                current->AddLight(current->directionals,ptr->Get(i),r);
+                auto& transform = owner.GetTransform();
+                if (transform.isTickDirty){
+                    // update transform data if it has changed
+                    auto rot = owner.GetTransform().WorldUp();
+                    FrameData::PackedDL::tinyvec3 r{
+                        static_cast<float>(rot.x),
+                        static_cast<float>(rot.y),
+                        static_cast<float>(rot.z)
+                    };
+                    // use local ID here, no need for local-to-global translation
+                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).rotation = r;
+                }
+                if (ptr->Get(i).isInvalidated()){
+                    // update color data if it has changed
+                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).light = ptr->Get(i);
+                    ptr->Get(i).clearInvalidate();
+                }
+                // don't reset transform tickInvalidated here because the meshUpdater needs it after this
             }
         }
-	}).name("copydirs");
-	auto copyambs = renderTasks.emplace([this](){
+    }).name("Update Invalidated DirLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
+    
+    auto updateInvalidatedSpots = renderTasks.emplace([this]{
+        if (auto dirs = GetAllComponentsOfType<SpotLight>()){
+            auto ptr = dirs.value();
+            for(int i = 0; i < ptr->DenseSize(); i++){
+                auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
+                auto& transform = owner.GetTransform();
+                if (transform.isTickDirty){
+                    // update transform data if it has changed
+                    spotLightData.GetForSparseIndex(ptr->GetOwner(i)).transform = transform.CalculateWorldMatrix();
+                }
+                if (ptr->Get(i).isInvalidated()){
+                    // update color data if it has changed
+                    spotLightData.GetForSparseIndex(ptr->GetOwner(i)).light = ptr->Get(i);
+                    ptr->Get(i).clearInvalidate();
+                }
+                // don't reset transform tickInvalidated here because the meshUpdater needs it after this
+            }
+        }
+    }).name("Update Invalidated SpotLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
+    
+    auto updateInvalidatedPoints = renderTasks.emplace([this]{
+        if (auto dirs = GetAllComponentsOfType<PointLight>()){
+            auto ptr = dirs.value();
+            for(int i = 0; i < ptr->DenseSize(); i++){
+                auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
+                auto& transform = owner.GetTransform();
+                if (transform.isTickDirty){
+                    // update transform data if it has changed
+                    pointLightData.GetForSparseIndex(ptr->GetOwner(i)).transform = transform.CalculateWorldMatrix();
+                }
+                if (ptr->Get(i).isInvalidated()){
+                    // update color data if it has changed
+                    pointLightData.GetForSparseIndex(ptr->GetOwner(i)).light = ptr->Get(i);
+                    ptr->Get(i).clearInvalidate();
+                }
+                // don't reset transform tickInvalidated here because the meshUpdater needs it after this
+            }
+        }
+    }).name("Update Invalidated SpotLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
+    
+    auto updateInvalidatedAmbients = renderTasks.emplace([this]{
         if(auto ambs = GetAllComponentsOfType<AmbientLight>()){
             auto ptr = ambs.value();
-            for(const auto& a : *ptr){
-                auto current = GetApp()->GetCurrentFramedata();
-                current->AddLight(current->ambients,a);
-            }
-        }
-
-	}).name("copyambs");
-	auto copyspots = renderTasks.emplace([this](){
-        if(auto spots = GetAllComponentsOfType<SpotLight>()){
-            auto ptr = spots.value();
             for(int i = 0; i < ptr->DenseSize(); i++){
-                Entity owner(localToGlobal[ptr->GetOwner(i)]);
-                auto transform = owner.GetTransform().CalculateWorldMatrix();
-                auto current = GetApp()->GetCurrentFramedata();
-                const auto& l = ptr->Get(i);
-                current->AddLight(current->spots,l,l.CalculateMatrix(transform));
+                auto ownerLocalId = ptr->GetOwner(i);
+                auto& light = ptr->Get(i);
+                ambientLightData.GetForSparseIndex(ownerLocalId) = light;
+                light.clearInvalidate();
             }
         }
-
-	}).name("copyspots");
-	auto copypoints = renderTasks.emplace([this](){
-        if(auto points = GetAllComponentsOfType<PointLight>()){
-            auto ptr = points.value();
-            for(int i = 0; i < ptr->DenseSize(); i++){
-                Entity owner(localToGlobal[ptr->GetOwner(i)]);
-                const auto& d = ptr->Get(i);
-                auto transform = owner.GetTransform().CalculateWorldMatrix();
-                auto current = GetApp()->GetCurrentFramedata();
-                current->AddLight(current->points,d,d.CalculateMatrix(transform));
-            }
-        }
-
-	}).name("copypoints");
+    }).name("Update Invalidated AmbLights");
 
 	auto tickGUI = renderTasks.emplace([this]() {
         // also do the time here
@@ -383,9 +409,8 @@ void World::setupRenderTasks(){
         current->Clear();
     }).name("Clear-setup");
 
-    setup.precede(camproc, copydirs, copyambs, copyspots, copypoints, tickGUI);
+    setup.precede(camproc, tickGUI);
 	camproc.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
-
     
     // attatch the renderTasks module to the masterTasks
     renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");

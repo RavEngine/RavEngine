@@ -53,10 +53,11 @@ void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& t
 }
 
 void DirectionalLight::AddInstanceData(float* offset) const{
+    auto& color = GetColorRGBA();
 	offset[0] = color.R;
 	offset[1] = color.G;
 	offset[2] = color.B;
-	offset[3] = Intensity;
+	offset[3] = GetIntensity();
 }
 
 void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
@@ -64,10 +65,11 @@ void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) c
 }
 
 void AmbientLight::AddInstanceData(float* offset) const{
+    auto& color = GetColorRGBA();
 	offset[0] = color.R;
 	offset[1] = color.G;
 	offset[2] = color.B;
-	offset[3] = Intensity;
+	offset[3] = GetIntensity();
 }
 
 void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
@@ -75,12 +77,12 @@ void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) con
 }
 
 void PointLight::AddInstanceData(float* offset) const{
-
+    auto& color = GetColorRGBA();
 	//[0:11] filled with affine transform
 	offset[12] = color.R;
 	offset[13] = color.G;
 	offset[14] = color.B;
-	offset[15] = Intensity;
+	offset[15] = GetIntensity();
 }
 
 void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
@@ -90,10 +92,12 @@ void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) cons
 }
 
 void SpotLight::AddInstanceData(float* offset) const{
-	auto intensity = Intensity;
+	auto intensity = GetIntensity();
 	intensity = intensity * intensity;
 	auto angle = std::clamp(coneAngle, 0.f, 90.f);
-		
+    
+    auto& color = GetColorRGBA();
+
 	//[0:11] filled with affine transform
 	offset[12] = color.R;
 	offset[13] = color.G;

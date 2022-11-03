@@ -27,7 +27,8 @@ struct FrameData{
 	struct StoredLight{
         using light_t = T;
 		T light;
-		matrix4 transform;
+        matrix4 transform{1};
+        StoredLight(){}
 		StoredLight(const T& l, const matrix4& mtx) : light(l), transform(mtx){}
 		StoredLight(const StoredLight& other) : light(other.light), transform(other.transform){}
 		
@@ -77,6 +78,7 @@ struct FrameData{
 		}
 		
 		PackedDL(const DirectionalLight& l, const tinyvec3& tv) : light(l), rotation(tv){}
+        PackedDL(){}    // used by World, do not use
 	};
 	
 	//lighting data

@@ -9,9 +9,33 @@
 namespace RavEngine{
 class MeshAsset;
 class CameraComponent;
-struct Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable {
+class Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable {
+    ColorRGBA color{1,1,1,1};
 	float Intensity = 1.0;
-	ColorRGBA color{1,1,1,1};
+    bool tickInvalidated = true;    // trigger the world to update its parallel datastructure
+protected:
+    inline void invalidate(){tickInvalidated = true;}
+public:
+    void SetColorRBGA(const decltype(color)& inColor) {
+        invalidate();
+        color = inColor;
+    }
+    const decltype(color)& GetColorRGBA() const {
+        return color;
+    }
+    void SetIntensity(decltype(Intensity) inIntensity){
+        invalidate();
+        Intensity = inIntensity;
+    }
+    decltype(Intensity) GetIntensity() const{
+        return Intensity;
+    }
+    bool isInvalidated() const {
+        return tickInvalidated;
+    }
+    void clearInvalidate(){
+        tickInvalidated = false;
+    }
 };
 
 /**
@@ -23,7 +47,10 @@ private:
 	bool doesCastShadow = false;
 public:
 	bool CastsShadows() const { return doesCastShadow; }
-	void SetCastsShadows(bool casts) { doesCastShadow = casts; }
+	void SetCastsShadows(bool casts) {
+        invalidate();
+        doesCastShadow = casts;
+    }
 };
 
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
@@ -203,7 +230,8 @@ private:
 	 @return the radius
 	 */
     constexpr inline float CalculateRadius() const{
-		return Intensity*Intensity;
+        auto intensity = GetIntensity();
+		return intensity*intensity;
 	}
 };
 

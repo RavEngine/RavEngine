@@ -250,13 +250,20 @@ namespace RavEngine {
             };
             Vector<command> commands;
         };
-        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand,SpinLock> staticMeshRenderData;
-        locked_node_hashmap<Ref<MaterialInstanceBase>, MDIICommandSkinned, SpinLock> skinnedMeshRenderData;
+        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand,phmap::NullMutex> staticMeshRenderData;
+        locked_node_hashmap<Ref<MaterialInstanceBase>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
 
         void updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
         void updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
 		void StaticMeshChangedVisibility(const StaticMesh*);
 		void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
+    
+        
+        UnorderedSparseSet<entity_t, FrameData::PackedDL> directionalLightData;
+        UnorderedSparseSet<entity_t, AmbientLight> ambientLightData;
+        UnorderedSparseSet<entity_t, FrameData::StoredLight<PointLight>> pointLightData;
+        UnorderedSparseSet<entity_t, FrameData::StoredLight<SpotLight>> spotLightData;
+        
     public:
         struct PolymorphicIndirection{
             struct elt{
@@ -474,20 +481,26 @@ namespace RavEngine {
                 }
             }
             
+            // if it's a light, register it in the container
+            if constexpr (std::is_same_v<T, DirectionalLight>){
+                directionalLightData.Emplace(local_id,decltype(directionalLightData)::value_type{});
+            }
+            else if constexpr (std::is_same_v<T, AmbientLight>){
+                ambientLightData.Emplace(local_id);
+            }
+            else if constexpr (std::is_same_v<T, PointLight>){
+                pointLightData.Emplace(local_id,decltype(spotLightData)::value_type{});
+            }
+            else if constexpr (std::is_same_v<T, SpotLight>){
+                spotLightData.Emplace(local_id,decltype(spotLightData)::value_type{});
+            }
+            
             //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
             if constexpr(std::is_constructible<T,entity_t, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,entity_t>::value)){
                 return ptr->Emplace(local_id, localToGlobal[local_id], args...);
             }
             else{
                 return ptr->Emplace(local_id,args...);
-            }
-
-            // now, must update the render structures
-            if constexpr (std::is_same_v<T, Transform>) {
-                //TODO: update transform data structure
-            }
-            else if constexpr (std::is_same_v<T, StaticMesh>) {
-                // TODO: 
             }
         }
 
@@ -533,6 +546,20 @@ namespace RavEngine {
             else if constexpr (std::is_same_v<T, SkinnedMeshComponent>) {
                 auto& comp = setptr->GetComponent(local_id);
                 DestroySkinnedMeshRenderData(comp, local_id);
+            }
+            
+            // if it's a light, register it in the container
+            if constexpr (std::is_same_v<T, DirectionalLight>){
+                directionalLightData.EraseAtSparseIndex(local_id);
+            }
+            else if constexpr (std::is_same_v<T, AmbientLight>){
+                ambientLightData.EraseAtSparseIndex(local_id);
+            }
+            else if constexpr (std::is_same_v<T, PointLight>){
+                pointLightData.EraseAtSparseIndex(local_id);
+            }
+            else if constexpr (std::is_same_v<T, SpotLight>){
+                spotLightData.EraseAtSparseIndex(local_id);
             }
             
             setptr->Destroy(local_id);

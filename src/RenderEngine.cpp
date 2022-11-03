@@ -904,12 +904,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
         using LightType = typename std::remove_reference<decltype(lights)>::type::value_type::light_t;
         DrawLightsResult dr;
         //must set before changing shaders
-        if (lights.size() == 0){
+        if (lights.DenseSize() == 0){
             return;
         }
         
         constexpr auto stride = LightType::InstancingStride();
-        auto numLights = lights.size();
+        auto numLights = lights.DenseSize();
         
         //create buffer for GPU instancing
         auto mem = bgfx::alloc(Debug::AssertSize<uint32_t>(numLights * stride));
@@ -1008,7 +1008,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
     };
  
     
-    DrawLightsOfType(fd->directionals,0);
+    DrawLightsOfType(worldOwning->directionalLightData,0);
     //DrawLightsOfType(fd->points,1);
 	//DrawLightsOfType(fd->spots, 2);
 
@@ -1022,12 +1022,12 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		using LightType = typename std::remove_reference<decltype(lights)>::type::value_type::light_t;
 		DrawLightsResult dr;
 		//must set before changing shaders
-		if (lights.size() == 0) {
+		if (lights.DenseSize() == 0) {
 			return;
 		}
 
 		constexpr auto stride = LightType::InstancingStride();
-		auto numLights = lights.size();
+		auto numLights = lights.DenseSize();
 
 		//create buffer for GPU instancing
 		auto mem = bgfx::alloc(Debug::AssertSize<uint32_t>(numLights * stride));
@@ -1067,10 +1067,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 		shadowOffset += numLights * stride;
 	};
 
-	DrawLightsOfTypeNoShadow(fd->directionals);
-	DrawLightsOfTypeNoShadow(fd->points);
-	DrawLightsOfTypeNoShadow(fd->spots);
-	DrawLightsOfTypeNoShadow(fd->ambients);
+	DrawLightsOfTypeNoShadow(worldOwning->directionalLightData);
+	DrawLightsOfTypeNoShadow(worldOwning->pointLightData);
+	DrawLightsOfTypeNoShadow(worldOwning->spotLightData);
+	DrawLightsOfTypeNoShadow(worldOwning->ambientLightData);
 
 
 	// lighting is complete, so next we draw the skybox
