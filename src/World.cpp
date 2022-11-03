@@ -404,12 +404,7 @@ void World::setupRenderTasks(){
             gui.Update();
         });
 	}).name("UpdateGUI");
-    auto setup = renderTasks.emplace([this] {
-        auto current = GetApp()->GetCurrentFramedata();
-        current->Clear();
-    }).name("Clear-setup");
 
-    setup.precede(camproc, tickGUI);
 	camproc.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     // attatch the renderTasks module to the masterTasks

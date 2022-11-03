@@ -489,7 +489,7 @@ namespace RavEngine {
                 ambientLightData.Emplace(local_id);
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                pointLightData.Emplace(local_id,decltype(spotLightData)::value_type{});
+                pointLightData.Emplace(local_id,decltype(pointLightData)::value_type{});
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
                 spotLightData.Emplace(local_id,decltype(spotLightData)::value_type{});

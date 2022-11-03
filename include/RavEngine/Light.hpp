@@ -16,7 +16,7 @@ class Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable 
 protected:
     inline void invalidate(){tickInvalidated = true;}
 public:
-    void SetColorRBGA(const decltype(color)& inColor) {
+    void SetColorRGBA(const decltype(color)& inColor) {
         invalidate();
         color = inColor;
     }
@@ -235,12 +235,27 @@ private:
 	}
 };
 
-struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>{
+class SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>{
+    //light properties
+    float coneAngle = 45.0;    // in degrees
+    float penumbraAngle = 10;
+public:
 	using light_t = SpotLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>::GetQueryTypes;
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
-	
+    
+    void SetConeAngle(decltype(coneAngle) inAngle){
+        invalidate();
+        coneAngle = inAngle;
+    }
+    decltype(coneAngle) GetConeAngle() const {return coneAngle;}
+    void SetPenumbraAngle(decltype(penumbraAngle) inAngle){
+        invalidate();
+        penumbraAngle = inAngle;
+    }
+    decltype(penumbraAngle) GetPenumbraAngle() const {return penumbraAngle;}
+    
 	/**
 	Structure
 	@code
@@ -281,10 +296,6 @@ struct SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Ligh
 	static inline void SetState(){
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
 	}
-	
-	//light properties
-	float coneAngle = 45.0;	// in degrees
-	float penumbraAngle = 10;
 	
 	/**
 	 Calculate the shader's matrix

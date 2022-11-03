@@ -81,28 +81,6 @@ struct FrameData{
         PackedDL(){}    // used by World, do not use
 	};
 	
-	//lighting data
-    Vector<PackedDL> directionals;
-    Vector<AmbientLight> ambients;
-    Vector<StoredLight<PointLight>> points;
-    Vector<StoredLight<SpotLight>> spots;
-    
-    template<typename T, typename ... A>
-    inline void AddLight(T& structure, A&& ... args){
-        structure.emplace_back(args...);
-    }
-    
-	inline void Clear(){
-		directionals.clear();
-		ambients.clear();
-		points.clear();
-		spots.clear();
-	}
-    
-    // call on app quit
-    void Reset(){
-        Clear();
-    }
     double Time = 0;
 	
 };
