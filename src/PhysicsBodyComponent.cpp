@@ -52,8 +52,7 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent(entity_t owner) : PhysicsBo
     CompleteConstruction();
     Entity e(owner);
     assert(e.HasComponent<Transform>());    // must already have a transform!
-    setDynamicsWorldPos(e.GetTransform().GetWorldPosition());
-    setDynamicsWorldRot(e.GetTransform().GetWorldRotation());
+    setDynamicsWorldPose(e.GetTransform().GetWorldPosition(), e.GetTransform().GetWorldRotation());
 }
 
 void RavEngine::PhysicsBodyComponent::AddReceiver(decltype(receivers)::value_type& obj)
@@ -80,22 +79,13 @@ void PhysicsBodyComponent::RemoveReceiver(PhysicsCallback* ptr){
     Debug::Fatal("Bug: Cannot remove item that is not bound");
 }
 
-vector3 PhysicsBodyComponent::getDynamicsWorldPos() const {
-	auto pos = rigidActor->getGlobalPose();
-	return vector3(pos.p.x, pos.p.y, pos.p.z);
+std::pair<vector3,quaternion> PhysicsBodyComponent::getDynamicsWorldPose() const{
+    auto t = rigidActor->getGlobalPose();
+    return std::make_pair(vector3{t.p.x, t.p.y, t.p.z}, quaternion{t.q.w, t.q.x,t.q.y,t.q.z});
 }
 
-void PhysicsBodyComponent::setDynamicsWorldPos(const vector3& pos) {
-	rigidActor->setGlobalPose(PxTransform(convert(pos),rigidActor->getGlobalPose().q));
-}
-
-quaternion PhysicsBodyComponent::getDynamicsWorldRot() const {
-	auto rot = rigidActor->getGlobalPose();
-	return quaternion(rot.q.w, rot.q.x,rot.q.y,rot.q.z);
-}
-
-void PhysicsBodyComponent::setDynamicsWorldRot(const quaternion& quat) {
-	rigidActor->setGlobalPose(PxTransform(rigidActor->getGlobalPose().p,convertQuat(quat)));
+void PhysicsBodyComponent::setDynamicsWorldPose(const vector3& pos, const quaternion& quat) const{
+    rigidActor->setGlobalPose(PxTransform(convert(pos),convertQuat(quat)));
 }
 
 /**

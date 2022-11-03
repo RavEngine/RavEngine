@@ -237,9 +237,7 @@ void World::SetupTaskGraph(){
     }).name("Swap Current").succeed(copyAudios,copyAmbients,copyRooms);
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
-    audioTaskModule.succeed(ECSTaskModule);
-    
-    ExportTaskGraph(cout);
+    audioTaskModule.succeed(ECSTaskModule);    
 }
 
 void World::setupRenderTasks(){

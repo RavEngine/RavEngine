@@ -107,10 +107,8 @@ namespace RavEngine {
         
         void RemoveReceiver(PhysicsCallback*);
 
-		virtual vector3 getDynamicsWorldPos() const;
-		virtual quaternion getDynamicsWorldRot() const;
-		virtual void setDynamicsWorldPos(const vector3&);
-		virtual void setDynamicsWorldRot(const quaternion&);
+        std::pair<vector3,quaternion> getDynamicsWorldPose() const;
+        void setDynamicsWorldPose(const vector3&, const quaternion&) const;
 
 		void SetGravityEnabled(bool);
 
