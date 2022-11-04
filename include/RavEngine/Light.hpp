@@ -14,26 +14,26 @@ class Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable 
 	float Intensity = 1.0;
     bool tickInvalidated = true;    // trigger the world to update its parallel datastructure
 protected:
-    inline void invalidate(){tickInvalidated = true;}
+    constexpr inline void invalidate(){tickInvalidated = true;}
 public:
-    void SetColorRGBA(const decltype(color)& inColor) {
+    constexpr void SetColorRGBA(const decltype(color)& inColor) {
         invalidate();
         color = inColor;
     }
-    const decltype(color)& GetColorRGBA() const {
+    constexpr const decltype(color)& GetColorRGBA() const {
         return color;
     }
-    void SetIntensity(decltype(Intensity) inIntensity){
+    constexpr void SetIntensity(decltype(Intensity) inIntensity){
         invalidate();
         Intensity = inIntensity;
     }
-    decltype(Intensity) GetIntensity() const{
+    constexpr decltype(Intensity) GetIntensity() const{
         return Intensity;
     }
-    bool isInvalidated() const {
+    constexpr bool isInvalidated() const {
         return tickInvalidated;
     }
-    void clearInvalidate(){
+    constexpr void clearInvalidate(){
         tickInvalidated = false;
     }
 };
@@ -245,16 +245,16 @@ public:
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
     
-    void SetConeAngle(decltype(coneAngle) inAngle){
+    constexpr void SetConeAngle(decltype(coneAngle) inAngle){
         invalidate();
         coneAngle = inAngle;
     }
-    decltype(coneAngle) GetConeAngle() const {return coneAngle;}
-    void SetPenumbraAngle(decltype(penumbraAngle) inAngle){
+    constexpr decltype(coneAngle) GetConeAngle() const {return coneAngle;}
+    constexpr void SetPenumbraAngle(decltype(penumbraAngle) inAngle){
         invalidate();
         penumbraAngle = inAngle;
     }
-    decltype(penumbraAngle) GetPenumbraAngle() const {return penumbraAngle;}
+    constexpr decltype(penumbraAngle) GetPenumbraAngle() const {return penumbraAngle;}
     
 	/**
 	Structure
