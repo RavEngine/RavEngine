@@ -39,6 +39,13 @@ void main()
 	
 	float intensity = colorintensity[3];
 	float radius = intensity * intensity;
+    
+    model = model * mtxFromRows(
+                                vec4(radius,0,0,0),
+                                vec4(0,radius,0,0),
+                                vec4(0,0,radius,0),
+                                vec4(0,0,0,1)
+                                );
 		
 	vec4 worldpos = instMul(model, vec4(a_position, 1.0));
 	

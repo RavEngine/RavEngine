@@ -1041,7 +1041,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				i += stride;
 			}
 		}
-		numLights = i;	// get the actual number of lights
+		numLights = i / stride;	// get the actual number of lights
         if (numLights == 0){
             return; // don't submit 0 lights
         }
