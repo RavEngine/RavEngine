@@ -146,18 +146,46 @@ namespace RavEngine {
 		Set the current world to tick automatically
 		@param newWorld the new world
 		*/
-        void SetRenderedWorld(Ref<World> newWorld);
+		void SetRenderedWorld(Ref<World> newWorld) {
+			if (!loadedWorlds.contains(newWorld)) {
+				Debug::Fatal("Cannot render an inactive world");
+			}
+			if (renderWorld) {
+				renderWorld->OnDeactivate();
+				renderWorld->isRendering = false;
+			}
+			renderWorld = newWorld;
+			renderWorld->isRendering = true;
+			renderWorld->OnActivate();
+		}
 		
 		/**
 		 Add a world to be ticked
 		 @param world the world to tick
 		 */
-		void AddWorld(Ref<World> world);
+		void AddWorld(Ref<World> world) {
+			loadedWorlds.insert(world);
+			if (!renderWorld) {
+				SetRenderedWorld(world);
+			}
+
+			// synchronize network if necessary
+			if (networkManager.IsClient() && !networkManager.IsServer()) {
+				networkManager.client->SendSyncWorldRequest(world);
+			}
+		}
+
 		/**
 		Remove a world from the tick list
 		@param world the world to tick
 		*/
-        void RemoveWorld(Ref<World> world);
+		void RemoveWorld(Ref<World> world) {
+			loadedWorlds.erase(world);
+			if (renderWorld == world) {
+				renderWorld->OnDeactivate();
+				renderWorld.reset();    //this will cause nothing to render, so set a different world as rendered
+			}
+		}
 
 		/**
 		* Unload all worlds
@@ -189,7 +217,17 @@ namespace RavEngine {
 		 */
         void SetWindowTitle(const char* title);
 		
-        std::optional<Ref<World>> GetWorldByName(const std::string& name);
+		std::optional<Ref<World>> GetWorldByName(const std::string& name) {
+			std::optional<Ref<World>> value;
+			for (const auto& world : loadedWorlds) {
+				// because std::string "world\0\0" != "world", we need to use strncmp
+				if (std::strncmp(world->worldID.data(), name.data(), World::id_size) == 0) {
+					value.emplace(world);
+					break;
+				}
+			}
+			return value;
+		}
 
 		auto GetCurrentRenderWorld()  {
 			return renderWorld;
