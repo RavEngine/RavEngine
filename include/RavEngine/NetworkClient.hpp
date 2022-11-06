@@ -31,7 +31,13 @@ public:
 
 	void OnRPC(const std::string_view& cmd);
 
-	void SendSyncWorldRequest(Ref<World> world);
+	void SendSyncWorldRequest(Ref<World> world) {
+		// sending this command code + the world ID to spawn
+		char buffer[1 + World::id_size]{ 0 };
+		buffer[0] = CommandCode::ClientRequestingWorldSynchronization;
+		std::memcpy(buffer + 1, world->worldID.data(), world->worldID.size());
+		SendMessageToServer(std::string_view(buffer, sizeof(buffer)), Reliability::Reliable);
+	}
 
 	template<typename T>
     constexpr inline void SetNetSpawnHook(const decltype(OnNetSpawnHooks)::value_type::second_type& func) {

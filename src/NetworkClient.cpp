@@ -275,12 +275,3 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 		Debug::Warning("Cannot relay RPC, entity with ID {} does not exist", id.to_string());
 	}
 }
-
-void RavEngine::NetworkClient::SendSyncWorldRequest(Ref<World> world)
-{
-	// sending this command code + the world ID to spawn
-    char buffer[1 + World::id_size]{0};
-	buffer[0] = CommandCode::ClientRequestingWorldSynchronization;
-	std::memcpy(buffer + 1, world->worldID.data(), world->worldID.size());
-	SendMessageToServer(std::string_view(buffer,sizeof(buffer)), Reliability::Reliable);
-}
