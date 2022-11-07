@@ -179,12 +179,23 @@ namespace RavEngine {
             }
         };
     private:
-        struct AnySparseSet{
+        class AnySparseSet{
             constexpr static size_t buf_size = sizeof(EntitySparseSet<size_t>);   // we use size_t here because all SparseSets are the same size
             std::array<char, buf_size> buffer;
-            std::function<void(entity_t id,World*)> destroyFn;
-            std::function<void(void)> deallocFn;
-            std::function<void(entity_t, entity_t, World*)> moveFn;
+            Function<void(AnySparseSet*,entity_t,World*)> _impl_destroyFn;
+            Function<void(AnySparseSet*)> _impl_deallocFn;
+            Function<void(AnySparseSet*, entity_t, entity_t, World*)> _impl_moveFn;
+        public:
+            // avoid capture overhead by wrapping
+            void destroyFn(entity_t id, World* world){
+                _impl_destroyFn(this, id, world);
+            }
+            void deallocFn(){
+                _impl_deallocFn(this);
+            }
+            void moveFn(entity_t id_a, entity_t id_b, World* world){
+                _impl_moveFn(this, id_a, id_b, world);
+            }
             
             template<typename T>
             inline EntitySparseSet<T>* GetSet() {
@@ -194,17 +205,17 @@ namespace RavEngine {
             // the discard parameter is here to make the template work
             template<typename T>
             AnySparseSet(T* discard) :
-                destroyFn([&](entity_t local_id, World* wptr){
-                    auto ptr = GetSet<T>();
+                _impl_destroyFn([](AnySparseSet* thisptr, entity_t local_id, World* wptr){
+                    auto ptr = thisptr->GetSet<T>();
                     if (ptr->HasComponent(local_id)){
                         wptr->DestroyComponent<T>(local_id);
                     }
                 }),
-                deallocFn([&]() {
-                    GetSet<T>()->~EntitySparseSet<T>();
+                _impl_deallocFn([](AnySparseSet* thisptr) {
+                    thisptr->GetSet<T>()->~EntitySparseSet<T>();
                 }),
-                moveFn([&](entity_t localID, entity_t otherLocalID, World* otherWorld){
-                    auto sp = GetSet<T>();
+                _impl_moveFn([](AnySparseSet* thisptr, entity_t localID, entity_t otherLocalID, World* otherWorld){
+                    auto sp = thisptr->GetSet<T>();
                     if (sp->HasComponent(localID)){
                         auto& comp = sp->GetComponent(localID);
                         otherWorld->EmplaceComponent<T>(otherLocalID, std::move(comp));
@@ -454,7 +465,7 @@ namespace RavEngine {
             // and call destroy if the entity has that component type
             // possible optimization: vector of vector<ctti_t> to make this faster?
             NetworkingDestroy(local_id);
-            for(const auto& pair : componentMap){
+            for(auto& pair : componentMap){
                 pair.second.destroyFn(local_id,this);
             }
             // unset localToGlobal

@@ -32,9 +32,6 @@ namespace RavEngine {
     class PhysicsSolver : public physx::PxSimulationEventCallback {
         friend class World;
         PhysicsTaskDispatcher taskDispatcher;
-        void blockUntilSimulationCompleted(){
-            scene->fetchResults(true);
-        }
     protected:
         //static members must exist only once in the application
         static physx::PxDefaultErrorCallback gDefaultErrorCallback;

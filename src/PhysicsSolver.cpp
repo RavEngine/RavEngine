@@ -221,15 +221,14 @@ void PhysicsSolver::Tick(float scaleFactor){
 
     //physics substepping
     int nsteps = ceil(step / max_step_time);
-    //float step_time = step / nsteps;
-    float step_time = step;
-	//scene->lockWrite();
-    //for (int i = 0; i < nsteps; i++)
+    float step_time = step / nsteps;
+	scene->lockWrite();
+    for (int i = 0; i < nsteps; i++)
     {
         scene->simulate(step_time);
-        //scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
+        scene->fetchResults(true);      //simulate is async, this blocks until the results have been calculated
     }
-	//scene->unlockWrite();
+	scene->unlockWrite();
 }
 
 //constructor which configures PhysX

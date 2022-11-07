@@ -157,14 +157,8 @@ void World::SetupTaskGraph(){
 	auto physicsRootTask = ECSTasks.emplace([] {}).name("PhysicsRootTask");
 
 	auto RunPhysics = ECSTasks.emplace([this]{
-        Solver.scene->lockWrite();
 		Solver.Tick(GetCurrentFPSScale());
-	}).name("PhysX Enqueue Simulation Tasks");
-    
-    auto clearPhysicsTasks = ECSTasks.emplace([this]{
-        Solver.blockUntilSimulationCompleted();
-        Solver.scene->unlockWrite();
-    }).name("Cleanup Physics Tasks").succeed(RunPhysics);
+	}).name("PhysX Execute");
     
     auto read = EmplaceSystem<PhysicsLinkSystemRead>();
     auto write = EmplacePolymorphicSystem<PhysicsLinkSystemWrite>();
@@ -172,7 +166,7 @@ void World::SetupTaskGraph(){
     RunPhysics.succeed(write.second);
 	
     physicsRootTask.precede(read.first,write.first);
-	read.second.succeed(clearPhysicsTasks);	// if checkRunPhysics returns a 1, it goes here anyways.
+	read.second.succeed(RunPhysics);	// if checkRunPhysics returns a 1, it goes here anyways.
     
     // setup audio tasks
     audioTasks.name("Audio");
