@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 
 #include "foundation/PxPreprocessor.h"
-#include "PsVecMath.h"
-#include "PsFPU.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxVecMath.h"
+#include "foundation/PxFPU.h"
 #include "DySolverBody.h"
 #include "DySolverContactPF4.h"
 #include "DySolverConstraint1D.h"
 #include "DySolverConstraintDesc.h"
 #include "DyThresholdTable.h"
 #include "DySolverContext.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 #include "DyConstraint.h"
-#include "PsAtomic.h"
+#include "foundation/PxAtomic.h"
 #include "DySolverContact.h"
 
 namespace physx
@@ -136,23 +134,23 @@ static void solveContactCoulomb4_Block(const PxSolverConstraintDesc* PX_RESTRICT
 		const Vec4V normalT1 = hdr->normalY;
 		const Vec4V normalT2 = hdr->normalZ;
 
-		const Vec4V __normalVel1 = V4Mul(linVel0T0, normalT0);
-		const Vec4V __normalVel3 = V4Mul(linVel1T0, normalT0);
-		const Vec4V _normalVel1 = V4MulAdd(linVel0T1, normalT1, __normalVel1);
-		const Vec4V _normalVel3 = V4MulAdd(linVel1T1, normalT1, __normalVel3);
+		const Vec4V normalVel1_tmp2 = V4Mul(linVel0T0, normalT0);
+		const Vec4V normalVel3_tmp2 = V4Mul(linVel1T0, normalT0);
+		const Vec4V normalVel1_tmp1 = V4MulAdd(linVel0T1, normalT1, normalVel1_tmp2);
+		const Vec4V normalVel3_tmp1 = V4MulAdd(linVel1T1, normalT1, normalVel3_tmp2);
 
-		Vec4V normalVel1 = V4MulAdd(linVel0T2, normalT2, _normalVel1);
-		Vec4V normalVel3 = V4MulAdd(linVel1T2, normalT2, _normalVel3);
+		Vec4V normalVel1 = V4MulAdd(linVel0T2, normalT2, normalVel1_tmp1);
+		Vec4V normalVel3 = V4MulAdd(linVel1T2, normalT2, normalVel3_tmp1);
 
 		Vec4V accumDeltaF = vZero;
 
 		for(PxU32 i=0;i<numNormalConstr;i++)
 		{
 			SolverContact4Dynamic& c = contacts[i];
-			Ps::prefetchLine((&contacts[i+1]));
-			Ps::prefetchLine((&contacts[i+1]), 128);
-			Ps::prefetchLine((&contacts[i+1]), 256);
-			Ps::prefetchLine((&contacts[i+1]), 384);
+			PxPrefetchLine((&contacts[i+1]));
+			PxPrefetchLine((&contacts[i+1]), 128);
+			PxPrefetchLine((&contacts[i+1]), 256);
+			PxPrefetchLine((&contacts[i+1]), 384);
 
 			const Vec4V appliedForce = c.appliedForce;
 			const Vec4V velMultiplier = c.velMultiplier;
@@ -169,25 +167,25 @@ static void solveContactCoulomb4_Block(const PxSolverConstraintDesc* PX_RESTRICT
 			const Vec4V rbXnT2 = c.rbXnZ;
 
 			
-			const Vec4V __normalVel2 = V4Mul(raXnT0, angState0T0);
-			const Vec4V __normalVel4 = V4Mul(rbXnT0, angState1T0);
+			const Vec4V normalVel2_tmp2 = V4Mul(raXnT0, angState0T0);
+			const Vec4V normalVel4_tmp2 = V4Mul(rbXnT0, angState1T0);
 
 			
-			const Vec4V _normalVel2 = V4MulAdd(raXnT1, angState0T1, __normalVel2);
-			const Vec4V _normalVel4 = V4MulAdd(rbXnT1, angState1T1, __normalVel4);
+			const Vec4V normalVel2_tmp1 = V4MulAdd(raXnT1, angState0T1, normalVel2_tmp2);
+			const Vec4V normalVel4_tmp1 = V4MulAdd(rbXnT1, angState1T1, normalVel4_tmp2);
 
 			
-			const Vec4V normalVel2 = V4MulAdd(raXnT2, angState0T2, _normalVel2);
-			const Vec4V normalVel4 = V4MulAdd(rbXnT2, angState1T2, _normalVel4);
+			const Vec4V normalVel2 = V4MulAdd(raXnT2, angState0T2, normalVel2_tmp1);
+			const Vec4V normalVel4 = V4MulAdd(rbXnT2, angState1T2, normalVel4_tmp1);
 
 			const Vec4V biasedErr = V4MulAdd(targetVel, velMultiplier, V4Neg(scaledBias));
 
 			//Linear component - normal * invMass_dom
 
-			const Vec4V _normalVel(V4Add(normalVel1, normalVel2));
-			const Vec4V __normalVel(V4Add(normalVel3, normalVel4));
+			const Vec4V normalVel_tmp2(V4Add(normalVel1, normalVel2));
+			const Vec4V normalVel_tmp1(V4Add(normalVel3, normalVel4));
 		
-			const Vec4V normalVel = V4Sub(_normalVel, __normalVel );
+			const Vec4V normalVel = V4Sub(normalVel_tmp2, normalVel_tmp1 );
 
 			const Vec4V _deltaF = V4NegMulSub(normalVel, velMultiplier, biasedErr);
 			const Vec4V nAppliedForce = V4Neg(appliedForce);
@@ -325,19 +323,19 @@ static void solveContactCoulomb4_StaticBlock(const PxSolverConstraintDesc* PX_RE
 		const Vec4V normalT1 = hdr->normalY;
 		const Vec4V normalT2 = hdr->normalZ;
 
-		const Vec4V __normalVel1 = V4Mul(linVel0T0, normalT0);
-		const Vec4V _normalVel1 = V4MulAdd(linVel0T1, normalT1, __normalVel1);
+		const Vec4V normalVel1_tmp2 = V4Mul(linVel0T0, normalT0);
+		const Vec4V normalVel1_tmp1 = V4MulAdd(linVel0T1, normalT1, normalVel1_tmp2);
 
-		Vec4V normalVel1 = V4MulAdd(linVel0T2, normalT2, _normalVel1);
+		Vec4V normalVel1 = V4MulAdd(linVel0T2, normalT2, normalVel1_tmp1);
 
 		Vec4V accumDeltaF = vZero;
 
 		for(PxU32 i=0;i<numNormalConstr;i++)
 		{
 			SolverContact4Base& c = contacts[i];
-			Ps::prefetchLine((&contacts[i+1]));
-			Ps::prefetchLine((&contacts[i+1]), 128);
-			Ps::prefetchLine((&contacts[i+1]), 256);
+			PxPrefetchLine((&contacts[i+1]));
+			PxPrefetchLine((&contacts[i+1]), 128);
+			PxPrefetchLine((&contacts[i+1]), 256);
 
 			const Vec4V appliedForce = c.appliedForce;
 			const Vec4V velMultiplier = c.velMultiplier;
@@ -351,11 +349,11 @@ static void solveContactCoulomb4_StaticBlock(const PxSolverConstraintDesc* PX_RE
 			const Vec4V raXnT2 = c.raXnZ;
 
 			
-			const Vec4V __normalVel2 = V4Mul(raXnT0, angState0T0);
+			const Vec4V normalVel2_tmp2 = V4Mul(raXnT0, angState0T0);
 			
-			const Vec4V _normalVel2 = V4MulAdd(raXnT1, angState0T1, __normalVel2);
+			const Vec4V normalVel2_tmp1 = V4MulAdd(raXnT1, angState0T1, normalVel2_tmp2);
 			
-			const Vec4V normalVel2 = V4MulAdd(raXnT2, angState0T2, _normalVel2);
+			const Vec4V normalVel2 = V4MulAdd(raXnT2, angState0T2, normalVel2_tmp1);
 
 			const Vec4V biasedErr = V4MulAdd(targetVel, velMultiplier, V4Neg(scaledBias));
 
@@ -469,9 +467,9 @@ static void solveFriction4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc,
 
 		currPtr += hdr->numNormalConstr * sizeof(Vec4V);
 
-		Ps::prefetchLine(currPtr, 128);
-		Ps::prefetchLine(currPtr,256);
-		Ps::prefetchLine(currPtr,384);
+		PxPrefetchLine(currPtr, 128);
+		PxPrefetchLine(currPtr,256);
+		PxPrefetchLine(currPtr,384);
 		
 		const PxU32	numFrictionConstr = hdr->numFrictionConstr;
 
@@ -492,10 +490,10 @@ static void solveFriction4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc,
 		for(PxU32 i=0;i<maxFrictionConstr;i++)
 		{
 			SolverFriction4Dynamic& f = frictions[i];
-			Ps::prefetchLine((&f)+1);
-			Ps::prefetchLine((&f)+1,128);
-			Ps::prefetchLine((&f)+1,256);
-			Ps::prefetchLine((&f)+1,384);
+			PxPrefetchLine((&f)+1);
+			PxPrefetchLine((&f)+1,128);
+			PxPrefetchLine((&f)+1,256);
+			PxPrefetchLine((&f)+1,384);
 
 			const Vec4V appliedImpulse = appliedImpulses[i>>hdr->frictionPerContact];
 
@@ -521,26 +519,26 @@ static void solveFriction4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc,
 	
 			//4 x 4 Dot3 products encoded as 8 M44 transposes, 4 MulV and 8 MulAdd ops
 
-			const Vec4V __normalVel1 = V4Mul(linVel0T0, normalX);
-			const Vec4V __normalVel2 = V4Mul(raXnX, angState0T0);
-			const Vec4V __normalVel3 = V4Mul(linVel1T0, normalX);
-			const Vec4V __normalVel4 = V4Mul(rbXnX, angState1T0);
+			const Vec4V normalVel1_tmp2 = V4Mul(linVel0T0, normalX);
+			const Vec4V normalVel2_tmp2 = V4Mul(raXnX, angState0T0);
+			const Vec4V normalVel3_tmp2 = V4Mul(linVel1T0, normalX);
+			const Vec4V normalVel4_tmp2 = V4Mul(rbXnX, angState1T0);
 
-			const Vec4V _normalVel1 = V4MulAdd(linVel0T1, normalY, __normalVel1);
-			const Vec4V _normalVel2 = V4MulAdd(raXnY, angState0T1, __normalVel2);
-			const Vec4V _normalVel3 = V4MulAdd(linVel1T1, normalY, __normalVel3);
-			const Vec4V _normalVel4 = V4MulAdd(rbXnY, angState1T1, __normalVel4);
+			const Vec4V normalVel1_tmp1 = V4MulAdd(linVel0T1, normalY, normalVel1_tmp2);
+			const Vec4V normalVel2_tmp1 = V4MulAdd(raXnY, angState0T1, normalVel2_tmp2);
+			const Vec4V normalVel3_tmp1 = V4MulAdd(linVel1T1, normalY, normalVel3_tmp2);
+			const Vec4V normalVel4_tmp1 = V4MulAdd(rbXnY, angState1T1, normalVel4_tmp2);
 
-			const Vec4V normalVel1 = V4MulAdd(linVel0T2, normalZ, _normalVel1);
-			const Vec4V normalVel2 = V4MulAdd(raXnZ, angState0T2, _normalVel2);
-			const Vec4V normalVel3 = V4MulAdd(linVel1T2, normalZ, _normalVel3);
-			const Vec4V normalVel4 = V4MulAdd(rbXnZ, angState1T2, _normalVel4);
+			const Vec4V normalVel1 = V4MulAdd(linVel0T2, normalZ, normalVel1_tmp1);
+			const Vec4V normalVel2 = V4MulAdd(raXnZ, angState0T2, normalVel2_tmp1);
+			const Vec4V normalVel3 = V4MulAdd(linVel1T2, normalZ, normalVel3_tmp1);
+			const Vec4V normalVel4 = V4MulAdd(rbXnZ, angState1T2, normalVel4_tmp1);
 
 
-			const Vec4V _normalVel = V4Add(normalVel1, normalVel2);
-			const Vec4V __normalVel = V4Add(normalVel3, normalVel4);
+			const Vec4V normalVel_tmp2 = V4Add(normalVel1, normalVel2);
+			const Vec4V normalVel_tmp1 = V4Add(normalVel3, normalVel4);
 
-			const Vec4V normalVel = V4Sub(_normalVel, __normalVel );
+			const Vec4V normalVel = V4Sub(normalVel_tmp2, normalVel_tmp1 );
 
 			const Vec4V tmp = V4NegMulSub(targetVel, velMultiplier, appliedForce);
 			Vec4V newAppliedForce = V4MulAdd(normalVel, velMultiplier, tmp);
@@ -652,9 +650,9 @@ static void solveFriction4_StaticBlock(const PxSolverConstraintDesc* PX_RESTRICT
 
 		currPtr += hdr->numNormalConstr * sizeof(Vec4V);
 
-		Ps::prefetchLine(currPtr, 128);
-		Ps::prefetchLine(currPtr,256);
-		Ps::prefetchLine(currPtr,384);
+		PxPrefetchLine(currPtr, 128);
+		PxPrefetchLine(currPtr,256);
+		PxPrefetchLine(currPtr,384);
 		
 		const PxU32	numFrictionConstr = hdr->numFrictionConstr;
 
@@ -672,9 +670,9 @@ static void solveFriction4_StaticBlock(const PxSolverConstraintDesc* PX_RESTRICT
 		for(PxU32 i=0;i<maxFrictionConstr;i++)
 		{
 			SolverFriction4Base& f = frictions[i];
-			Ps::prefetchLine((&f)+1);
-			Ps::prefetchLine((&f)+1,128);
-			Ps::prefetchLine((&f)+1,256);
+			PxPrefetchLine((&f)+1);
+			PxPrefetchLine((&f)+1,128);
+			PxPrefetchLine((&f)+1,256);
 
 			const Vec4V appliedImpulse = appliedImpulses[i>>hdr->frictionPerContact];
 
@@ -696,14 +694,14 @@ static void solveFriction4_StaticBlock(const PxSolverConstraintDesc* PX_RESTRICT
 	
 			//4 x 4 Dot3 products encoded as 8 M44 transposes, 4 MulV and 8 MulAdd ops
 
-			const Vec4V __normalVel1 = V4Mul(linVel0T0, normalX);
-			const Vec4V __normalVel2 = V4Mul(raXnX, angState0T0);
+			const Vec4V normalVel1_tmp2 = V4Mul(linVel0T0, normalX);
+			const Vec4V normalVel2_tmp2 = V4Mul(raXnX, angState0T0);
 
-			const Vec4V _normalVel1 = V4MulAdd(linVel0T1, normalY, __normalVel1);
-			const Vec4V _normalVel2 = V4MulAdd(raXnY, angState0T1, __normalVel2);
+			const Vec4V normalVel1_tmp1 = V4MulAdd(linVel0T1, normalY, normalVel1_tmp2);
+			const Vec4V normalVel2_tmp1 = V4MulAdd(raXnY, angState0T1, normalVel2_tmp2);
 
-			const Vec4V normalVel1 = V4MulAdd(linVel0T2, normalZ, _normalVel1);
-			const Vec4V normalVel2 = V4MulAdd(raXnZ, angState0T2, _normalVel2);
+			const Vec4V normalVel1 = V4MulAdd(linVel0T2, normalZ, normalVel1_tmp1);
+			const Vec4V normalVel2 = V4MulAdd(raXnZ, angState0T2, normalVel2_tmp1);
 
 			const Vec4V delLinVel00 = V4Mul(normalX, invMass0D0);
 
@@ -774,10 +772,10 @@ static void concludeContactCoulomb4(const PxSolverConstraintDesc* desc, SolverCo
 		const PxU32 numNormalConstr = hdr->numNormalConstr;
 		
 		//if(cPtr < last)
-		//Ps::prefetchLine(cPtr, 512);
-		Ps::prefetchLine(cPtr,128);
-		Ps::prefetchLine(cPtr,256);
-		Ps::prefetchLine(cPtr,384);
+		//PxPrefetchLine(cPtr, 512);
+		PxPrefetchLine(cPtr,128);
+		PxPrefetchLine(cPtr,256);
+		PxPrefetchLine(cPtr,384);
 
 		for(PxU32 i=0;i<numNormalConstr;i++)
 		{
@@ -820,8 +818,8 @@ void  writeBackContactCoulomb4(const PxSolverConstraintDesc* desc, SolverContext
 
 		const PxU32 numNormalConstr = hdr->numNormalConstr;
 
-		Ps::prefetchLine(cPtr, 256);
-		Ps::prefetchLine(cPtr, 384);
+		PxPrefetchLine(cPtr, 256);
+		PxPrefetchLine(cPtr, 384);
 
 		
 		for(PxU32 i=0; i<numNormalConstr; i++)
@@ -852,16 +850,16 @@ void  writeBackContactCoulomb4(const PxSolverConstraintDesc* desc, SolverContext
 
 	for(PxU32 a = 0; a < 4; ++a)
 	{
-		if(writeBackThresholds[a] && desc[a].linkIndexA == PxSolverConstraintDesc::NO_LINK && desc[a].linkIndexB == PxSolverConstraintDesc::NO_LINK &&
+		if(writeBackThresholds[a] && desc[a].linkIndexA == PxSolverConstraintDesc::RIGID_BODY && desc[a].linkIndexB == PxSolverConstraintDesc::RIGID_BODY &&
 			nf[a] !=0.f && (bd0[a]->reportThreshold < PX_MAX_REAL  || bd1[a]->reportThreshold < PX_MAX_REAL))
 		{
 			ThresholdStreamElement elt;
 			elt.normalForce = nf[a];
 			elt.threshold = PxMin<float>(bd0[a]->reportThreshold, bd1[a]->reportThreshold);
-			elt.nodeIndexA = IG::NodeIndex(bd0[a]->nodeIndex);
-			elt.nodeIndexB = IG::NodeIndex(bd1[a]->nodeIndex);
+			elt.nodeIndexA = PxNodeIndex(bd0[a]->nodeIndex);
+			elt.nodeIndexB = PxNodeIndex(bd1[a]->nodeIndex);
 			elt.shapeInteraction = shapeInteractions[a];
-			Ps::order(elt.nodeIndexA, elt.nodeIndexB);
+			PxOrder(elt.nodeIndexA, elt.nodeIndexB);
 			PX_ASSERT(elt.nodeIndexA < elt.nodeIndexB);
 			PX_ASSERT(cache.mThresholdStreamIndex<cache.mThresholdStreamLength);
 			cache.mThresholdStream[cache.mThresholdStreamIndex++] = elt;
@@ -912,7 +910,7 @@ void solveContactCoulombPreBlock_WriteBack(const PxSolverConstraintDesc* PX_REST
 	if(cache.mThresholdStreamIndex > (cache.mThresholdStreamLength - 4))
 	{
 		//Write back to global buffer
-		PxI32 threshIndex = physx::shdfnd::atomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
+		PxI32 threshIndex = physx::PxAtomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
 		for(PxU32 a = 0; a < cache.mThresholdStreamIndex; ++a)
 		{
 			cache.mSharedThresholdStream[a + threshIndex] = cache.mThresholdStream[a];
@@ -939,7 +937,7 @@ void solveContactCoulombPreBlock_WriteBackStatic(const PxSolverConstraintDesc* P
 	if(cache.mThresholdStreamIndex > (cache.mThresholdStreamLength - 4))
 	{
 		//Write back to global buffer
-		PxI32 threshIndex = physx::shdfnd::atomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
+		PxI32 threshIndex = physx::PxAtomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
 		for(PxU32 a = 0; a < cache.mThresholdStreamIndex; ++a)
 		{
 			cache.mSharedThresholdStream[a + threshIndex] = cache.mThresholdStream[a];

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -52,13 +51,13 @@ namespace Gu
 		*/
 		PX_INLINE SphereV(): ConvexV(ConvexType::eSPHERE)
 		{
-			radius = Ps::aos::FZero();
+			radius = aos::FZero();
 			bMarginIsRadius = true;
 		}
 
-		PX_INLINE SphereV(const Ps::aos::Vec3VArg _center, const Ps::aos::FloatV _radius) : ConvexV(ConvexType::eSPHERE, _center)
+		PX_INLINE SphereV(const aos::Vec3VArg _center, const aos::FloatV _radius) : ConvexV(ConvexType::eSPHERE, _center)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			radius = _radius;
 			FStore(radius, &margin);
 			FStore(radius, &minMargin);
@@ -79,9 +78,9 @@ namespace Gu
 			bMarginIsRadius = true;
 		}
 
-		PX_INLINE SphereV(const PxGeometry& geom) : ConvexV(ConvexType::eSPHERE, Ps::aos::V3Zero())
+		PX_INLINE SphereV(const PxGeometry& geom) : ConvexV(ConvexType::eSPHERE, aos::V3Zero())
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const PxSphereGeometry& sphereGeom = static_cast<const PxSphereGeometry&>(geom);
 			const FloatV r = FLoad(sphereGeom.radius);
 			radius = r;
@@ -98,7 +97,7 @@ namespace Gu
 		{
 		}
 
-		PX_INLINE	void	setV(const Ps::aos::Vec3VArg _center, const Ps::aos::FloatVArg _radius)		
+		PX_INLINE	void	setV(const aos::Vec3VArg _center, const aos::FloatVArg _radius)		
 		{ 
 			center = _center;
 			radius = _radius;
@@ -112,7 +111,7 @@ namespace Gu
 		PX_INLINE bool isValid() const
 		{
 			// Consistency condition for spheres: Radius >= 0.0f
-			using namespace Ps::aos;
+			using namespace aos;
 			return BAllEqTTTT(FIsGrtrOrEq(radius, FZero())) != 0;
 		}
 
@@ -122,9 +121,9 @@ namespace Gu
 		\param[in] p the point to test
 		\return	true if inside the sphere
 		*/
-		PX_INLINE bool contains(const Ps::aos::Vec3VArg p) const
+		PX_INLINE bool contains(const aos::Vec3VArg p) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const FloatV rr = FMul(radius, radius);
 			const FloatV cc =  V3LengthSq(V3Sub(center, p));
 			return FAllGrtrOrEq(rr, cc) != 0;
@@ -138,7 +137,7 @@ namespace Gu
 		*/
 		PX_INLINE bool contains(const SphereV& sphere)	const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			
 			const Vec3V centerDif= V3Sub(center, sphere.center);
 			const FloatV radiusDif = FSub(radius, sphere.radius);
@@ -157,11 +156,11 @@ namespace Gu
 		\param		maximum		[in] maximum value of the box
 		\return		true if inside the sphere
 		*/
-		PX_INLINE bool contains(const Ps::aos::Vec3VArg minimum, const Ps::aos::Vec3VArg maximum) const
+		PX_INLINE bool contains(const aos::Vec3VArg minimum, const aos::Vec3VArg maximum) const
 		{
 		
 			//compute the sphere which wrap around the box
-			using namespace Ps::aos;
+			using namespace aos;
 			const FloatV zero = FZero();
 			const FloatV half = FHalf();
 
@@ -184,7 +183,7 @@ namespace Gu
 		*/
 		PX_INLINE bool intersect(const SphereV& sphere) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V centerDif = V3Sub(center, sphere.center);
 			const FloatV cc = V3Dot(centerDif, centerDif);
 			const FloatV r = FAdd(radius, sphere.radius);
@@ -193,27 +192,27 @@ namespace Gu
 		}
 
 		//return point in local space
-		PX_FORCE_INLINE Ps::aos::Vec3V getPoint(const PxU8)
+		PX_FORCE_INLINE aos::Vec3V getPoint(const PxU8)
 		{
-			return Ps::aos::V3Zero();
+			return aos::V3Zero();
 		}
   //  
 		//sweep code need to have full version
-		PX_FORCE_INLINE Ps::aos::Vec3V supportSweep(const Ps::aos::Vec3VArg dir)const
+		PX_FORCE_INLINE aos::Vec3V supportSweep(const aos::Vec3VArg dir)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V _dir = V3Normalize(dir);
 			return V3ScaleAdd(_dir, radius, center);  
 		}
 
 		//make the support function the same as support margin
-		PX_FORCE_INLINE Ps::aos::Vec3V support(const Ps::aos::Vec3VArg)const
+		PX_FORCE_INLINE aos::Vec3V support(const aos::Vec3VArg)const
 		{
 			return center;//_margin is the same as radius
 		}
   
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportMargin(const Ps::aos::Vec3VArg dir, const Ps::aos::FloatVArg _margin, Ps::aos::Vec3V& support)const
+		PX_FORCE_INLINE aos::Vec3V supportMargin(const aos::Vec3VArg dir, const aos::FloatVArg _margin, aos::Vec3V& support)const
 		{
 			PX_UNUSED(_margin);
 			PX_UNUSED(dir);
@@ -222,18 +221,18 @@ namespace Gu
 			return center;//_margin is the same as radius
 		}
 
-		PX_FORCE_INLINE Ps::aos::BoolV isMarginEqRadius()const
+		PX_FORCE_INLINE aos::BoolV isMarginEqRadius()const
 		{
-			return Ps::aos::BTTTT();
+			return aos::BTTTT();
 		}
 
-		PX_FORCE_INLINE Ps::aos::FloatV getSweepMargin() const
+		PX_FORCE_INLINE aos::FloatV getSweepMargin() const
 		{
-			return Ps::aos::FZero();
+			return aos::FZero();
 		}
 
 
-		Ps::aos::FloatV radius;		//!< Sphere's center, w component is radius
+		aos::FloatV radius;		//!< Sphere's center, w component is radius
 
 	};
 }

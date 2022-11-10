@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -37,7 +36,7 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 #define COLINEARITY_EPSILON 0.00001f
 
@@ -67,11 +66,13 @@ using namespace physx::shdfnd::aos;
 	nbExtrudedTris++; }
 
 
+//#define NEW_VERSION
+
 bool Gu::sweepCapsuleTriangles_Precise(	PxU32 nbTris, const PxTriangle* PX_RESTRICT triangles,	// Triangle data
 										const Capsule& capsule,									// Capsule data
 										const PxVec3& unitDir, const PxReal distance,			// Ray data
 										const PxU32* PX_RESTRICT cachedIndex,					// Cache data
-										PxSweepHit& hit, PxVec3& triNormalOut,					// Results
+										PxGeomSweepHit& hit, PxVec3& triNormalOut,				// Results
 										PxHitFlags hitFlags, bool isDoubleSided,				// Query modifiers
 										const BoxPadded* cullBox)								// Cull data
 {
@@ -156,17 +157,23 @@ bool Gu::sweepCapsuleTriangles_Precise(	PxU32 nbTris, const PxTriangle* PX_RESTR
 				if(!sweepSphereVSTri(currentTri.verts, triNormal, sphereCenter, capsule.radius, unitDir, currentDistance, unused, false))
 					continue;
 
-				const PxReal distEpsilon = GU_EPSILON_SAME_DISTANCE; // pick a farther hit within distEpsilon that is more opposing than the previous closest hit
 				const PxReal hitDot = computeAlignmentValue(triNormal, unitDir);
-				if(!keepTriangle(currentDistance, hitDot, curT, bestAlignmentValue, distance, distEpsilon))
-					continue;
+				if(keepTriangle(currentDistance, hitDot, curT, bestAlignmentValue, distance))
+				{
+					curT = PxMin(curT, currentDistance); // exact lower bound
 
-				curT = currentDistance;
-				index = i;
-				bestAlignmentValue = hitDot;
-				bestTriNormal = triNormal;
-				if(anyHit)
-					break;
+					index = i;
+					bestAlignmentValue = hitDot;
+					bestTriNormal = triNormal;
+					if(anyHit)
+						break;
+				}
+				//
+				else if(keepTriangleBasic(currentDistance, curT, distance))
+				{
+					curT = PxMin(curT, currentDistance); // exact lower bound
+				}
+				//
 			}
 			return computeSphereTriangleImpactData(hit, triNormalOut, index, curT, sphereCenter, unitDir, bestTriNormal, triangles, isDoubleSided, meshBothSides);
 		}
@@ -256,6 +263,10 @@ bool Gu::sweepCapsuleTriangles_Precise(	PxU32 nbTris, const PxTriangle* PX_RESTR
 		denormalizedNormal.normalize();
 		const PxReal hitDot1 = computeAlignmentValue(denormalizedNormal, unitDir);
 
+#ifdef NEW_VERSION
+		float localDistance = FLT_MAX;
+		PxU32 localIndex = 0xffffffff;
+#endif
 		for(PxU32 j=0;j<nbExtrudedTris;j++)
 		{
 			const PxTriangle& currentTri = extrudedTris[j];
@@ -280,18 +291,58 @@ bool Gu::sweepCapsuleTriangles_Precise(	PxU32 nbTris, const PxTriangle* PX_RESTR
 			if(!sweepSphereVSTri(currentTri.verts, triNormal, capsuleCenter, radius, unitDir, currentDistance, unused, false))
 				continue;
 
-			const PxReal distEpsilon = GU_EPSILON_SAME_DISTANCE; // pick a farther hit within distEpsilon that is more opposing than the previous closest hit			
-			if(!keepTriangle(currentDistance, hitDot1, curT, mostOpposingHitDot, distance, distEpsilon))
-				continue;
+#ifndef NEW_VERSION
+			if(keepTriangle(currentDistance, hitDot1, curT, mostOpposingHitDot, distance))
+			{
+				curT = PxMin(curT, currentDistance); // exact lower bound
 
-			curT = currentDistance;
-			hit.faceIndex = i;
-			mostOpposingHitDot = hitDot1; // arbitrary bias. works for hitDot1=-1, prevHitDot=0
-			bestTri = currentTri;
-			bestTriNormal = denormalizedNormal;
-			if(anyHit)
-				goto Exit;	// PT: using goto to have one test per hit, not test per triangle ('break' doesn't work here)
+				hit.faceIndex = i;
+				mostOpposingHitDot = hitDot1; // arbitrary bias. works for hitDot1=-1, prevHitDot=0
+				bestTri = currentTri;
+
+				bestTriNormal = denormalizedNormal;
+				if(anyHit)
+					goto Exit;	// PT: using goto to have one test per hit, not test per triangle ('break' doesn't work here)
+			}
+			//
+			else if(keepTriangleBasic(currentDistance, curT, distance))
+			{
+				curT = PxMin(curT, currentDistance); // exact lower bound
+			}
+			//
+#endif
+
+#ifdef NEW_VERSION
+			if(keepTriangleBasic(currentDistance, localDistance, distance))
+			{
+				localDistance = currentDistance;
+				localIndex = j;
+			}
+#endif
 		}
+
+#ifdef NEW_VERSION
+		if(localIndex!=0xffffffff)
+		{
+			if(keepTriangle(localDistance, hitDot1, curT, mostOpposingHitDot, distance))
+			{
+				curT = PxMin(curT, localDistance); // exact lower bound
+
+				hit.faceIndex = i;
+				mostOpposingHitDot = hitDot1; // arbitrary bias. works for hitDot1=-1, prevHitDot=0
+				bestTri = currentSrcTri;
+				bestTriNormal = denormalizedNormal;
+				if(anyHit)
+					goto Exit;	// PT: using goto to have one test per hit, not test per triangle ('break' doesn't work here)
+			}
+			//
+			else if(keepTriangleBasic(localDistance, curT, distance))
+			{
+				curT = PxMin(curT, localDistance); // exact lower bound
+			}
+		}
+#endif
+
 	}
 Exit:
 	if(hit.faceIndex==PX_INVALID_U32)

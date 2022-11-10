@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#include "geometry/PxSphereGeometry.h"
 #include "GuMidphaseInterface.h"
 #include "CmScaling.h"
 #include "GuSphere.h"
@@ -37,30 +37,19 @@
 #include "GuConvexMesh.h"
 #include "GuGJK.h"
 #include "GuSweepSharedTests.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Cm;
 using namespace Gu;
-using namespace physx::shdfnd::aos;
-
-// PT: TODO: remove this function, replace with Midphase:: call at calling sites (TA34704)
-bool Gu::checkOverlapAABB_triangleGeom(const PxGeometry& geom, const PxTransform& pose, const PxBounds3& box)
-{
-	PX_ASSERT(geom.getType() == PxGeometryType::eTRIANGLEMESH);
-	const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom);
-
-	// PT: TODO: pass AABB directly to interface
-	const Box obb(box.getCenter(), box.getExtents(), PxMat33(PxIdentity));
-
-	TriangleMesh* meshData = static_cast<TriangleMesh*>(meshGeom.triangleMesh);
-	return Midphase::intersectBoxVsMesh(obb, *meshData, pose, meshGeom.scale, NULL);
-}
+using namespace physx::aos;
 
 bool GeomOverlapCallback_SphereMesh(GU_OVERLAP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom0.getType()==PxGeometryType::eSPHERE);
 	PX_ASSERT(geom1.getType()==PxGeometryType::eTRIANGLEMESH);
 	PX_UNUSED(cache);
+	PX_UNUSED(threadContext);
 
 	const PxSphereGeometry& sphereGeom = static_cast<const PxSphereGeometry&>(geom0);
 	const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom1);	
@@ -76,6 +65,7 @@ bool GeomOverlapCallback_CapsuleMesh(GU_OVERLAP_FUNC_PARAMS)
 	PX_ASSERT(geom0.getType()==PxGeometryType::eCAPSULE);
 	PX_ASSERT(geom1.getType()==PxGeometryType::eTRIANGLEMESH);
 	PX_UNUSED(cache);
+	PX_UNUSED(threadContext);
 
 	const PxCapsuleGeometry& capsuleGeom = static_cast<const PxCapsuleGeometry&>(geom0);
 	const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom1);
@@ -92,6 +82,7 @@ bool GeomOverlapCallback_BoxMesh(GU_OVERLAP_FUNC_PARAMS)
 	PX_ASSERT(geom0.getType()==PxGeometryType::eBOX);
 	PX_ASSERT(geom1.getType()==PxGeometryType::eTRIANGLEMESH);
 	PX_UNUSED(cache);
+	PX_UNUSED(threadContext);
 
 	const PxBoxGeometry& boxGeom = static_cast<const PxBoxGeometry&>(geom0);
 	const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom1);
@@ -104,25 +95,28 @@ bool GeomOverlapCallback_BoxMesh(GU_OVERLAP_FUNC_PARAMS)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-struct ConvexVsMeshOverlapCallback : MeshHitCallback<PxRaycastHit>
+
+namespace
 {
-	PsMatTransformV MeshToBoxV;
+struct ConvexVsMeshOverlapCallback : MeshHitCallback<PxGeomRaycastHit>
+{
+	PxMatTransformV MeshToBoxV;
 	Vec3V boxExtents;
 
 	ConvexVsMeshOverlapCallback(
 		const ConvexMesh& cm, const PxMeshScale& convexScale, const FastVertex2ShapeScaling& meshScale,
 		const PxTransform& tr0, const PxTransform& tr1, bool identityScale, const Box& meshSpaceOBB)
 		:
-			MeshHitCallback<PxRaycastHit>(CallbackMode::eMULTIPLE),
+			MeshHitCallback<PxGeomRaycastHit>(CallbackMode::eMULTIPLE),
 			mAnyHit			(false),
 			mIdentityScale	(identityScale)
 	{
-		if (!mIdentityScale) // not done in initializer list for performance
-			mMeshScale = Ps::aos::Mat33V(
+		if (!identityScale) // not done in initializer list for performance
+			mMeshScale = aos::Mat33V(
 				V3LoadU(meshScale.getVertex2ShapeSkew().column0),
 				V3LoadU(meshScale.getVertex2ShapeSkew().column1),
 				V3LoadU(meshScale.getVertex2ShapeSkew().column2) );
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const ConvexHullData* hullData = &cm.getHull();
 
@@ -130,13 +124,11 @@ struct ConvexVsMeshOverlapCallback : MeshHitCallback<PxRaycastHit>
 		const QuatV vQuat0 = QuatVLoadU(&convexScale.rotation.x);
 
 		mConvex =  ConvexHullV(hullData, V3Zero(), vScale0, vQuat0, convexScale.isIdentity());
-		aToB = PsMatTransformV(tr0.transformInv(tr1));
+		aToB = PxMatTransformV(tr0.transformInv(tr1));
 		
-		mIdentityScale = identityScale;
-
 		{
 			// Move to AABB space
-			Matrix34 MeshToBox;
+			PxMat34 MeshToBox;
 			computeWorldToBoxMatrix(MeshToBox, meshSpaceOBB);
 
 			const Vec3V base0 = V3LoadU(MeshToBox.m.column0);
@@ -144,31 +136,35 @@ struct ConvexVsMeshOverlapCallback : MeshHitCallback<PxRaycastHit>
 			const Vec3V base2 = V3LoadU(MeshToBox.m.column2);
 			const Mat33V matV(base0, base1, base2);
 			const Vec3V p  = V3LoadU(MeshToBox.p);
-			MeshToBoxV = PsMatTransformV(p, matV);
+			MeshToBoxV = PxMatTransformV(p, matV);
 			boxExtents = V3LoadU(meshSpaceOBB.extents+PxVec3(0.001f));
 		}
 	}
 	virtual ~ConvexVsMeshOverlapCallback()	{}
 
 	virtual PxAgain processHit( // all reported coords are in mesh local space including hit.position
-		const PxRaycastHit&, const PxVec3& v0a, const PxVec3& v1a, const PxVec3& v2a, PxReal&, const PxU32*)
+		const PxGeomRaycastHit&, const PxVec3& v0a, const PxVec3& v1a, const PxVec3& v2a, PxReal&, const PxU32*)
 	{
-		using namespace Ps::aos;
-		Vec3V v0 = V3LoadU(v0a), v1 = V3LoadU(v1a), v2 = V3LoadU(v2a);
+		using namespace aos;
+		Vec3V v0 = V3LoadU(v0a);
+		Vec3V v1 = V3LoadU(v1a);
+		Vec3V v2 = V3LoadU(v2a);
 
 		// test triangle AABB in box space vs box AABB in box local space
-		const Vec3V triV0 = MeshToBoxV.transform(v0); // AP: MeshToBoxV already includes mesh scale so we have to use unscaled verts here
-		const Vec3V triV1 = MeshToBoxV.transform(v1);
-		const Vec3V triV2 = MeshToBoxV.transform(v2);
-		Vec3V triMn = V3Min(V3Min(triV0, triV1), triV2);
-		Vec3V triMx = V3Max(V3Max(triV0, triV1), triV2);
-		Vec3V negExtents = V3Neg(boxExtents);
-		BoolV minSeparated = V3IsGrtr(triMn, boxExtents), maxSeparated = V3IsGrtr(negExtents, triMx);
-		BoolV bSeparated = BAnyTrue3(BOr(minSeparated, maxSeparated));
-		if (BAllEqTTTT(bSeparated))
-			return true; // continue traversal
+		{
+			const Vec3V triV0 = MeshToBoxV.transform(v0); // AP: MeshToBoxV already includes mesh scale so we have to use unscaled verts here
+			const Vec3V triV1 = MeshToBoxV.transform(v1);
+			const Vec3V triV2 = MeshToBoxV.transform(v2);
+			const Vec3V triMn = V3Min(V3Min(triV0, triV1), triV2);
+			const Vec3V triMx = V3Max(V3Max(triV0, triV1), triV2);
+			const Vec3V negExtents = V3Neg(boxExtents);
+			const BoolV minSeparated = V3IsGrtr(triMn, boxExtents), maxSeparated = V3IsGrtr(negExtents, triMx);
+			const BoolV bSeparated = BAnyTrue3(BOr(minSeparated, maxSeparated));
+			if(BAllEqTTTT(bSeparated))
+				return true; // continue traversal
+		}
 
-		if (!mIdentityScale)
+		if(!mIdentityScale)
 		{
 			v0 = M33MulV3(mMeshScale, v0);
 			v1 = M33MulV3(mMeshScale, v1);
@@ -178,11 +174,10 @@ struct ConvexVsMeshOverlapCallback : MeshHitCallback<PxRaycastHit>
 		TriangleV triangle(v0, v1, v2);
 		Vec3V contactA, contactB, normal;
 		FloatV dist;
-		GjkStatus status;
-		RelativeConvex<TriangleV> convexA(triangle, aToB);
-		LocalConvex<ConvexHullV> convexB(mConvex);
-		status = gjk(convexA, convexB, aToB.p, FZero(), contactA, contactB, normal, dist);
-		if (status == GJK_CONTACT)// || FAllGrtrOrEq(mSqTolerance, sqDist))
+		const RelativeConvex<TriangleV> convexA(triangle, aToB);
+		const LocalConvex<ConvexHullV> convexB(mConvex);
+		const GjkStatus status = gjk(convexA, convexB, aToB.p, FZero(), contactA, contactB, normal, dist);
+		if(status == GJK_CONTACT || status == GJK_CLOSE)// || FAllGrtrOrEq(mSqTolerance, sqDist))
 		{
 			mAnyHit = true;
 			return false; // abort traversal
@@ -190,15 +185,16 @@ struct ConvexVsMeshOverlapCallback : MeshHitCallback<PxRaycastHit>
 		return true; // continue traversal
 	}
 	
-	ConvexHullV			mConvex;
-	PsMatTransformV		aToB;
-	Ps::aos::Mat33V		mMeshScale;
-	bool				mAnyHit;
-	bool				mIdentityScale;
+	ConvexHullV		mConvex;
+	PxMatTransformV	aToB;
+	aos::Mat33V		mMeshScale;
+	bool			mAnyHit;
+	const bool		mIdentityScale;
 
 private:
 	ConvexVsMeshOverlapCallback& operator=(const ConvexVsMeshOverlapCallback&);
 };
+}
 
 // PT: TODO: refactor bits of this with convex-vs-mesh code
 bool GeomOverlapCallback_ConvexMesh(GU_OVERLAP_FUNC_PARAMS)
@@ -206,6 +202,7 @@ bool GeomOverlapCallback_ConvexMesh(GU_OVERLAP_FUNC_PARAMS)
 	PX_ASSERT(geom0.getType()==PxGeometryType::eCONVEXMESH);
 	PX_ASSERT(geom1.getType()==PxGeometryType::eTRIANGLEMESH);
 	PX_UNUSED(cache);
+	PX_UNUSED(threadContext);
 
 	const PxConvexMeshGeometry& convexGeom = static_cast<const PxConvexMeshGeometry&>(geom0);
 	const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom1);
@@ -224,14 +221,15 @@ bool GeomOverlapCallback_ConvexMesh(GU_OVERLAP_FUNC_PARAMS)
 	if (!idtScaleMesh)
 		meshScaling.init(meshGeom.scale);
 
-	const Matrix34 world0(pose0);
-	const Matrix34 world1(pose1);
-
 	PX_ASSERT(!cm->getLocalBoundsFast().isEmpty());
 	const PxBounds3 hullAABB = cm->getLocalBoundsFast().transformFast(convexScaling.getVertex2ShapeSkew());
 
 	Box hullOBB;
-	computeHullOBB(hullOBB, hullAABB, 0.0f, world0, world1, meshScaling, idtScaleMesh);
+	{
+		const Matrix34FromTransform world0(pose0);
+		const Matrix34FromTransform world1(pose1);
+		computeHullOBB(hullOBB, hullAABB, 0.0f, world0, world1, meshScaling, idtScaleMesh);
+	}
 
 	ConvexVsMeshOverlapCallback cb(*cm, convexGeom.scale, meshScaling, pose0, pose1, idtScaleMesh, hullOBB);
 	Midphase::intersectOBB(meshData, hullOBB, cb, true, false);
@@ -239,3 +237,41 @@ bool GeomOverlapCallback_ConvexMesh(GU_OVERLAP_FUNC_PARAMS)
 	return cb.mAnyHit;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+bool GeomOverlapCallback_MeshMesh(GU_OVERLAP_FUNC_PARAMS)
+{
+	PX_ASSERT(geom0.getType()==PxGeometryType::eTRIANGLEMESH);
+	PX_ASSERT(geom1.getType()==PxGeometryType::eTRIANGLEMESH);
+	PX_UNUSED(cache);
+	PX_UNUSED(threadContext);
+
+	const PxTriangleMeshGeometry& meshGeom0 = static_cast<const PxTriangleMeshGeometry&>(geom0);
+	const PxTriangleMeshGeometry& meshGeom1 = static_cast<const PxTriangleMeshGeometry&>(geom1);
+
+	const TriangleMesh* tm0 = static_cast<const TriangleMesh*>(meshGeom0.triangleMesh);
+	const TriangleMesh* tm1 = static_cast<const TriangleMesh*>(meshGeom1.triangleMesh);
+
+	// PT: only implemented for BV4
+	if(!tm0 || !tm1 || tm0->getConcreteType()!=PxConcreteType::eTRIANGLE_MESH_BVH34 || tm1->getConcreteType()!=PxConcreteType::eTRIANGLE_MESH_BVH34)
+		return PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxGeometryQuery::overlap(): only available between two BVH34 triangles meshes.");
+
+	class AnyHitReportCallback : public PxReportCallback<PxGeomIndexPair>
+	{
+		public:
+		AnyHitReportCallback()
+		{
+			mCapacity = 1;
+		}
+
+		virtual	bool	flushResults(PxU32, const PxGeomIndexPair*)
+		{
+			return false;
+		}
+	};
+
+	AnyHitReportCallback callback;
+
+	// PT: ...so we don't need a table like for the other ops, just go straight to BV4
+	return intersectMeshVsMesh_BV4(callback, *tm0, *tm1, pose0, pose1, meshGeom0.scale, meshGeom1.scale, PxMeshMeshQueryFlag::eDEFAULT);
+}

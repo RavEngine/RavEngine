@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef DY_CONTACT_REDUCTION_H
 #define DY_CONTACT_REDUCTION_H
 
-#include "geomutils/GuContactPoint.h"
+#include "geomutils/PxContactPoint.h"
 #include "PxsMaterialManager.h"
 
 namespace physx
@@ -85,11 +84,11 @@ namespace Dy
 		ContactPatch mIntermediatePatches[CONTACT_REDUCTION_MAX_PATCHES];
 		ContactPatch* mIntermediatePatchesPtrs[CONTACT_REDUCTION_MAX_PATCHES];
 		PxU32 mNumIntermediatePatches;
-		Gu::ContactPoint* PX_RESTRICT mOriginalContacts;
+		PxContactPoint* PX_RESTRICT mOriginalContacts;
 		PxsMaterialInfo* PX_RESTRICT mMaterialInfo;
 		PxU32 mNumOriginalContacts;
 
-		ContactReduction(Gu::ContactPoint* PX_RESTRICT originalContacts, PxsMaterialInfo* PX_RESTRICT materialInfo, PxU32 numContacts) : 
+		ContactReduction(PxContactPoint* PX_RESTRICT originalContacts, PxsMaterialInfo* PX_RESTRICT materialInfo, PxU32 numContacts) : 
 		mNumPatches(0), mNumIntermediatePatches(0),	mOriginalContacts(originalContacts), mMaterialInfo(materialInfo), mNumOriginalContacts(numContacts)
 		{
 		}
@@ -166,7 +165,7 @@ namespace Dy
 
 
 			SortBoundsPredicateManifold predicate;
-			Ps::sort(mIntermediatePatchesPtrs, numPatches, predicate);
+			PxSort(mIntermediatePatchesPtrs, numPatches, predicate);
 
 			PxU32 numReducedPatches = 0;
 			for(PxU32 a = 0; a < numPatches; ++a)
@@ -324,7 +323,7 @@ namespace Dy
 						{
 							for(PxU32 b = 0; b < tmpPatch->stride; ++b)
 							{
-								Gu::ContactPoint& point = mOriginalContacts[tmpPatch->startIndex + b];
+								PxContactPoint& point = mOriginalContacts[tmpPatch->startIndex + b];
 								
 								PxReal distance = PX_MAX_REAL;
 								PxU32 index = 0;
@@ -368,7 +367,7 @@ namespace Dy
 							{
 								if(!chosen[tmpPatch->startIndex+b])
 								{
-									Gu::ContactPoint& point = mOriginalContacts[tmpPatch->startIndex + b];	
+									PxContactPoint& point = mOriginalContacts[tmpPatch->startIndex + b];	
 									for(PxU32 j = 4; j < CONTACT_REDUCTION_MAX_CONTACTS; ++j)
 									{
 										if(point.separation < separation[j])
@@ -406,4 +405,4 @@ namespace Dy
 }
 
 
-#endif //DY_CONTACT_REDUCTION_H
+#endif

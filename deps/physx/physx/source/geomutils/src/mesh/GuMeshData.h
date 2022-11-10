@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,13 +33,14 @@
 #include "foundation/PxVec4.h"
 #include "foundation/PxBounds3.h"
 #include "geometry/PxTriangleMesh.h"
+#include "geometry/PxTetrahedronMesh.h"
 
-#include "PsUserAllocated.h"
-#include "PsAllocator.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxAllocator.h"
 #include "GuRTree.h"
 #include "GuBV4.h"
 #include "GuBV32.h"
+#include "GuSDF.h"
 
 namespace physx
 {
@@ -61,8 +61,11 @@ namespace Gu {
 // 13: TA30159 removed deprecated convexEdgeThreshold and bumped version
 // 14: added midphase ID
 // 15: GPU data simplification
+// 16: vertex2Face mapping enabled by default if using GPU
 
-#define PX_MESH_VERSION 15
+#define PX_MESH_VERSION 16
+#define PX_TET_MESH_VERSION 1
+#define PX_SOFTBODY_MESH_VERSION 2
 
 // these flags are used to indicate/validate the contents of a cooked mesh file
 enum InternalMeshSerialFlag
@@ -72,17 +75,19 @@ enum InternalMeshSerialFlag
 	IMSF_8BIT_INDICES	=	(1<<2),	//!< if set, the cooked mesh file contains 8bit indices (topology)
 	IMSF_16BIT_INDICES	=	(1<<3),	//!< if set, the cooked mesh file contains 16bit indices (topology)
 	IMSF_ADJACENCIES	=	(1<<4),	//!< if set, the cooked mesh file contains adjacency structures
-	IMSF_GRB_DATA		=	(1<<5)	//!< if set, the cooked mesh file contains GRB data structures
+	IMSF_GRB_DATA		=	(1<<5),	//!< if set, the cooked mesh file contains GRB data structures
+	IMSF_SDF			=	(1<<6),	//!< if set, the cooked mesh file contains SDF data structures
+	IMSF_VERT_MAPPING	=   (1<<7), //!< if set, the cooked mesh file contains vertex mapping information
+	IMSF_GRB_INV_REMAP	=	(1<<8),	//!< if set, the cooked mesh file contains vertex inv mapping information. Required for cloth
+	IMSF_INERTIA		=	(1<<9)	//!< if set, the cooked mesh file contains inertia tensor for the mesh
 };
-
-
 
 #if PX_VC
 #pragma warning(push)
 #pragma warning(disable: 4324)	// Padding was added at the end of a structure because of a __declspec(align) value.
 #endif
 
-	class MeshDataBase : public Ps::UserAllocated
+	class MeshDataBase : public PxUserAllocated
 	{
 	public:
 		PxMeshMidPhase::Enum	mType;
@@ -90,66 +95,71 @@ enum InternalMeshSerialFlag
 		PxU32					mNbVertices;
 		PxVec3*					mVertices;
 
+		PxReal					mMass;					//this is mass assuming a unit density that can be scaled by instances!
+		PxMat33					mInertia;				//in local space of mesh!
+		PxVec3					mLocalCenterOfMass;		//local space com
+
 		PxBounds3				mAABB;
 		PxReal					mGeomEpsilon;
 
 		PxU32*					mFaceRemap;
-		PxU32*					mAdjacencies;
-
+		
 		// GRB data -------------------------
-		void *					mGRB_primIndices;				//!< GRB: GPU-friendly primitive indices(either triangle)
-																// TODO avoroshilov: adjacency info - duplicated, remove it and use 'mAdjacencies' and 'mExtraTrigData' see GuTriangleMesh.cpp:325
-		void *					mGRB_primAdjacencies;			//!< GRB: adjacency data, with BOUNDARY and NONCONVEX flags (flags replace adj indices where applicable) [uin4]
-		PxU32*					mGRB_faceRemap;					//!< GRB: this remap the GPU triangle indices to CPU triangle indices
+		void*					mGRB_primIndices;		//!< GRB: GPU-friendly primitive indices(either triangle or tetrahedron)
+		PxU32*					mGRB_faceRemap;			//!< GRB: this remap the GPU triangle indices to CPU triangle indices
+		PxU32*					mGRB_faceRemapInverse;	//
 		// End of GRB data ------------------
 
+		// SDF data
+		SDF						mSdfData;
+
+		//Cloth data : each vert has a list of associated triangles in the mesh, this is for attachement constraints to enable default filtering
+		PxU32*					mAccumulatedTrianglesRef;//runsum
+		PxU32*					mTrianglesReferences;
+		PxU32					mNbTrianglesReferences;
 
 		MeshDataBase() :
-			mFlags(0),
-			mNbVertices(0),
-			mVertices(NULL),
-			mAABB(PxBounds3::empty()),
-			mGeomEpsilon(0.0f),
-		
-			mFaceRemap(NULL),
-			mAdjacencies(NULL),
-
-			mGRB_primIndices(NULL),
-			mGRB_primAdjacencies(NULL),
-			mGRB_faceRemap(NULL)
+			mFlags					(0),
+			mNbVertices				(0),
+			mVertices				(NULL),
+			mMass					(0.f),
+			mInertia				(PxZero),
+			mLocalCenterOfMass		(0.f),
+			mAABB					(PxBounds3::empty()),
+			mGeomEpsilon			(0.0f),
+			mFaceRemap				(NULL),
+			mGRB_primIndices		(NULL),
+			mGRB_faceRemap			(NULL),
+			mGRB_faceRemapInverse	(NULL),
+			mSdfData				(PxZero),
+			mAccumulatedTrianglesRef(NULL),
+			mTrianglesReferences	(NULL),
+			mNbTrianglesReferences	(0)
 		{
 		}
 
 		virtual ~MeshDataBase()
 		{
-			if (mVertices)
-				PX_FREE(mVertices);
-			if (mFaceRemap)
-				PX_DELETE_POD(mFaceRemap);
-			if (mAdjacencies)
-				PX_DELETE_POD(mAdjacencies);
-		
+			PX_FREE(mVertices);
+			PX_FREE(mFaceRemap);
+			PX_FREE(mGRB_primIndices);	
+			PX_FREE(mGRB_faceRemap);
+			PX_FREE(mGRB_faceRemapInverse);
+			
+			PX_FREE(mAccumulatedTrianglesRef);
 
-			if (mGRB_primIndices)
-				PX_FREE(mGRB_primIndices);
-			if (mGRB_primAdjacencies)
-				PX_DELETE_POD(mGRB_primAdjacencies);
-
-			if (mGRB_faceRemap)
-				PX_DELETE_POD(mGRB_faceRemap);
+			PX_FREE(mTrianglesReferences);
 		}
 
-
-		PxVec3* allocateVertices(PxU32 nbVertices)
+		PX_NOINLINE PxVec3* allocateVertices(PxU32 nbVertices)
 		{
 			PX_ASSERT(!mVertices);
 			// PT: we allocate one more vertex to make sure it's safe to V4Load the last one
 			const PxU32 nbAllocatedVerts = nbVertices + 1;
-			mVertices = reinterpret_cast<PxVec3*>(PX_ALLOC(nbAllocatedVerts * sizeof(PxVec3), "PxVec3"));
+			mVertices = PX_ALLOCATE(PxVec3, nbAllocatedVerts, "PxVec3");
 			mNbVertices = nbVertices;
 			return mVertices;
 		}
-
 
 		PX_FORCE_INLINE	bool	has16BitIndices()	const
 		{
@@ -161,62 +171,57 @@ enum InternalMeshSerialFlag
 	{
 		public:
 		
-		PxU32					mNbTriangles;
-		void*					mTriangles;
+		PxU32			mNbTriangles;
+		void*			mTriangles;
 
-		PxU8*					mExtraTrigData;
-		PxU16*					mMaterialIndices;
+		PxU32*			mAdjacencies;
+		PxU8*			mExtraTrigData;
+		PxU16*			mMaterialIndices;
 
 		// GRB data -------------------------
-		void*					mGRB_BV32Tree;
+		void*			mGRB_primAdjacencies;	//!< GRB: adjacency data, with BOUNDARY and NONCONVEX flags (flags replace adj indices where applicable) [uin4]
+		Gu::BV32Tree*	mGRB_BV32Tree;
 		// End of GRB data ------------------
 
 		TriangleMeshData() :
-			mNbTriangles		(0),
-			mTriangles			(NULL),
-			mExtraTrigData		(NULL),
-			mMaterialIndices	(NULL),
-			mGRB_BV32Tree					(NULL)
+			mNbTriangles			(0),
+			mTriangles				(NULL),
+			mAdjacencies			(NULL),
+			mExtraTrigData			(NULL),
+			mMaterialIndices		(NULL),
+			mGRB_primAdjacencies	(NULL),
+			mGRB_BV32Tree			(NULL)
 		{
 		}
 
 		virtual ~TriangleMeshData()
 		{
-		
-			if(mTriangles) 
-				PX_FREE(mTriangles);
-			if(mMaterialIndices)
-				PX_DELETE_POD(mMaterialIndices);
-			if(mExtraTrigData)
-				PX_DELETE_POD(mExtraTrigData);
-
-			if (mGRB_BV32Tree)
-			{
-				Gu::BV32Tree* bv32Tree = reinterpret_cast<BV32Tree*>(mGRB_BV32Tree);
-				PX_DELETE(bv32Tree);
-				mGRB_BV32Tree = NULL;
-			}
-
+			PX_FREE(mTriangles);
+			PX_FREE(mAdjacencies);
+			PX_FREE(mMaterialIndices);
+			PX_FREE(mExtraTrigData);
+			PX_FREE(mGRB_primAdjacencies);
+			PX_DELETE(mGRB_BV32Tree);
 		}
 
-		PxU32* allocateAdjacencies()
+		PX_NOINLINE PxU32* allocateAdjacencies()
 		{
 			PX_ASSERT(mNbTriangles);
 			PX_ASSERT(!mAdjacencies);
-			mAdjacencies = PX_NEW(PxU32)[mNbTriangles * 3];
+			mAdjacencies = PX_ALLOCATE(PxU32, mNbTriangles * 3, "mAdjacencies");
 			mFlags |= PxTriangleMeshFlag::eADJACENCY_INFO;
 			return mAdjacencies;
 		}
 
-		PxU32* allocateFaceRemap()
+		PX_NOINLINE PxU32* allocateFaceRemap()
 		{
 			PX_ASSERT(mNbTriangles);
 			PX_ASSERT(!mFaceRemap);
-			mFaceRemap = PX_NEW(PxU32)[mNbTriangles];
+			mFaceRemap = PX_ALLOCATE(PxU32, mNbTriangles, "mFaceRemap");
 			return mFaceRemap;
 		}
 
-		void* allocateTriangles(PxU32 nbTriangles, bool force32Bit, PxU32 allocateGPUData = 0)
+		PX_NOINLINE void* allocateTriangles(PxU32 nbTriangles, bool force32Bit, PxU32 allocateGPUData = 0)
 		{
 			PX_ASSERT(mNbVertices);
 			PX_ASSERT(!mTriangles);
@@ -232,19 +237,19 @@ enum InternalMeshSerialFlag
 			return mTriangles;
 		}
 
-		PxU16* allocateMaterials()
+		PX_NOINLINE PxU16* allocateMaterials()
 		{
 			PX_ASSERT(mNbTriangles);
 			PX_ASSERT(!mMaterialIndices);
-			mMaterialIndices = PX_NEW(PxU16)[mNbTriangles];
+			mMaterialIndices = PX_ALLOCATE(PxU16, mNbTriangles, "mMaterialIndices");
 			return mMaterialIndices;
 		}
 
-		PxU8* allocateExtraTrigData()
+		PX_NOINLINE PxU8* allocateExtraTrigData()
 		{
 			PX_ASSERT(mNbTriangles);
 			PX_ASSERT(!mExtraTrigData);
-			mExtraTrigData = PX_NEW(PxU8)[mNbTriangles];
+			mExtraTrigData = PX_ALLOCATE(PxU8, mNbTriangles, "mExtraTrigData");
 			return mExtraTrigData;
 		}
 
@@ -253,8 +258,6 @@ enum InternalMeshSerialFlag
 			PX_ASSERT(mAdjacencies); 
 			mAdjacencies[triangleIndex*3 + offset] = adjacency; 
 		}
-
-	
 	};
 
 	class RTreeTriangleData : public TriangleMeshData
@@ -276,18 +279,358 @@ enum InternalMeshSerialFlag
 				Gu::BV4Tree		mBV4Tree;
 	};
 
+	// PT: TODO: the following classes should probably be in their own specific files (e.g. GuTetrahedronMeshData.h, GuSoftBodyMeshData.h)
 
-	class BV32TriangleData : public TriangleMeshData
+	class TetrahedronMeshData : public PxTetrahedronMeshData
 	{
 	public:
-		//using the same type as BV4 
-		BV32TriangleData()	{ mType = PxMeshMidPhase::eBVH34; }
-		virtual					~BV32TriangleData()	{}
+		PxU32					mNbVertices;
+		PxVec3*					mVertices;
+		PxU16*					mMaterialIndices; //each tetrahedron should have a material index
 
-		Gu::SourceMesh	mMeshInterface;
-		Gu::BV32Tree		mBV32Tree;
+		PxU32					mNbTetrahedrons;
+		void*					mTetrahedrons;	  //IndTetrahedron32		
+
+		PxU8					mFlags;
+
+		PxReal					mGeomEpsilon;
+		PxBounds3				mAABB;
+
+		TetrahedronMeshData() :			
+			mNbVertices(0),
+			mVertices(NULL),
+			mMaterialIndices(NULL),
+			mNbTetrahedrons(0),
+			mTetrahedrons(NULL),			
+			mFlags(0),
+			mGeomEpsilon(0.0f),
+			mAABB(PxBounds3::empty())
+		{}
+
+		TetrahedronMeshData(PxVec3* vertices, PxU32 nbVertices, void* tetrahedrons, PxU32 nbTetrahedrons, PxU8 flags, PxReal geomEpsilon, PxBounds3 aabb) :
+			mNbVertices(nbVertices),
+			mVertices(vertices),
+			mNbTetrahedrons(nbTetrahedrons),
+			mTetrahedrons(tetrahedrons),
+			mFlags(flags),
+			mGeomEpsilon(geomEpsilon),
+			mAABB(aabb)
+		{}
+
+		void allocateTetrahedrons(const PxU32 nbGridTetrahedrons, const PxU32 allocateGPUData = 0)
+		{
+			if (allocateGPUData)
+			{
+				mTetrahedrons = PX_ALLOC(nbGridTetrahedrons * sizeof(PxU32) * 4, "mGridModelTetrahedrons");			
+			}
+
+			mNbTetrahedrons = nbGridTetrahedrons;
+		}
+
+		PxVec3* allocateVertices(PxU32 nbVertices, const PxU32 allocateGPUData = 1)
+		{
+			PX_ASSERT(!mVertices);
+			// PT: we allocate one more vertex to make sure it's safe to V4Load the last one
+			if (allocateGPUData)
+			{
+				const PxU32 nbAllocatedVerts = nbVertices + 1;
+				mVertices = PX_ALLOCATE(PxVec3, nbAllocatedVerts, "PxVec3");
+			}
+			mNbVertices = nbVertices;
+			return mVertices;
+		}
+
+		PxU16* allocateMaterials()
+		{
+			PX_ASSERT(mNbTetrahedrons);
+			PX_ASSERT(!mMaterialIndices);
+			mMaterialIndices = PX_ALLOCATE(PxU16, mNbTetrahedrons, "mMaterialIndices");
+			return mMaterialIndices;
+		}
+
+		PX_FORCE_INLINE	bool	has16BitIndices()	const
+		{
+			return (mFlags & PxTriangleMeshFlag::e16_BIT_INDICES) ? true : false;
+		}
+
+		~TetrahedronMeshData()
+		{
+			PX_FREE(mTetrahedrons);
+			PX_FREE(mVertices);
+			PX_FREE(mMaterialIndices)
+		}
 	};
 
+	class SoftBodyCollisionData : public PxSoftBodyCollisionData
+	{
+	public:
+		PxU32*					mFaceRemap;
+
+		// GRB data -------------------------
+		void *					mGRB_primIndices;				//!< GRB: GPU-friendly primitive indices(either triangle or tetrahedron)
+		PxU32*					mGRB_faceRemap;					//!< GRB: this remap the GPU triangle indices to CPU triangle indices
+		PxU32*					mGRB_faceRemapInverse;
+		Gu::BV32Tree*			mGRB_BV32Tree;
+		PxU8*					mGRB_tetraSurfaceHint;
+
+
+		// End of GRB data ------------------
+		Gu::TetrahedronSourceMesh	mMeshInterface;
+		Gu::BV4Tree					mBV4Tree;
+
+		PxMat33*				mTetraRestPoses;
+
+
+		SoftBodyCollisionData() : 
+			mFaceRemap(NULL),
+			mGRB_primIndices(NULL),
+			mGRB_faceRemap(NULL),
+			mGRB_faceRemapInverse(NULL),
+			mGRB_BV32Tree(NULL),
+			mGRB_tetraSurfaceHint(NULL),
+			mTetraRestPoses(NULL)
+		{}
+
+		virtual ~SoftBodyCollisionData()
+		{
+			PX_FREE(mGRB_tetraSurfaceHint);
+			PX_DELETE(mGRB_BV32Tree);
+			PX_FREE(mFaceRemap);
+			PX_FREE(mGRB_primIndices);
+			PX_FREE(mGRB_faceRemap);
+			PX_FREE(mGRB_faceRemapInverse);
+			PX_FREE(mTetraRestPoses);
+		}
+
+		PxU32* allocateFaceRemap(PxU32 nbTetrahedrons)
+		{
+			PX_ASSERT(nbTetrahedrons);
+			PX_ASSERT(!mFaceRemap);
+			mFaceRemap = PX_ALLOCATE(PxU32, nbTetrahedrons, "mFaceRemap");
+			return mFaceRemap;
+		}
+
+		void allocateCollisionData(PxU32 nbTetrahedrons)
+		{
+			mGRB_primIndices = PX_ALLOC(nbTetrahedrons * 4 * sizeof(PxU32), "mGRB_primIndices");
+			mGRB_tetraSurfaceHint = PX_ALLOCATE(PxU8, nbTetrahedrons, "mGRB_tetraSurfaceHint");
+
+			mTetraRestPoses = PX_ALLOCATE(PxMat33, nbTetrahedrons, "mTetraRestPoses");
+
+			
+		}
+	};
+
+	class CollisionMeshMappingData : public PxCollisionMeshMappingData
+	{
+	public:
+		PxReal*					mVertsBarycentricInGridModel;
+		PxU32*					mVertsRemapInGridModel;
+
+		PxU32*					mTetsRemapColToSim;
+		PxU32					mTetsRemapSize;
+		PxU32*					mTetsAccumulatedRemapColToSim; //runsum, size of number of tetrahedrons in collision mesh
+		
+		//in the collision model, each vert has a list of associated simulation tetrahedrons, this is for attachement constraints to enable default filtering
+		PxU32*					mCollisionAccumulatedTetrahedronsRef;//runsum
+		PxU32*					mCollisionTetrahedronsReferences;
+		PxU32					mCollisionNbTetrahedronsReferences;
+
+		PxU32*					mCollisionSurfaceVertToTetRemap;
+		PxU8*					mCollisionSurfaceVertsHint;
+
+		CollisionMeshMappingData() : 
+			mVertsBarycentricInGridModel(NULL),
+			mVertsRemapInGridModel(NULL),
+			mTetsRemapColToSim(NULL),
+			mTetsRemapSize(0),
+			mTetsAccumulatedRemapColToSim(NULL),
+			mCollisionAccumulatedTetrahedronsRef(NULL),
+			mCollisionTetrahedronsReferences(NULL),
+			mCollisionNbTetrahedronsReferences(0),
+			mCollisionSurfaceVertToTetRemap(NULL),
+			mCollisionSurfaceVertsHint(NULL)			
+		{
+
+		}
+
+		virtual ~CollisionMeshMappingData()
+		{
+			PX_FREE(mVertsBarycentricInGridModel);
+			PX_FREE(mVertsRemapInGridModel);
+			PX_FREE(mTetsRemapColToSim);
+			PX_FREE(mTetsAccumulatedRemapColToSim);
+			PX_FREE(mCollisionAccumulatedTetrahedronsRef);
+			PX_FREE(mCollisionTetrahedronsReferences);
+			PX_FREE(mCollisionSurfaceVertsHint);
+			PX_FREE(mCollisionSurfaceVertToTetRemap);
+		}
+
+		void allocatemappingData(const PxU32 nbVerts, const PxU32 tetRemapSize, const PxU32 nbColTetrahedrons, const PxU32 allocateGPUData = 0)
+		{
+			if (allocateGPUData)
+			{	
+				mVertsBarycentricInGridModel = reinterpret_cast<PxReal*>(PX_ALLOC(nbVerts * sizeof(PxReal) * 4, "mVertsBarycentricInGridModel"));
+				mVertsRemapInGridModel = reinterpret_cast<PxU32*>(PX_ALLOC(nbVerts * sizeof(PxU32), "mVertsRemapInGridModel"));
+				mTetsRemapColToSim = reinterpret_cast<PxU32*>(PX_ALLOC(tetRemapSize * sizeof(PxU32), "mTetsRemapInSimModel"));
+				mTetsAccumulatedRemapColToSim = reinterpret_cast<PxU32*>(PX_ALLOC(nbColTetrahedrons * sizeof(PxU32), "mTetsAccumulatedRemapInSimModel"));
+				mCollisionSurfaceVertsHint = reinterpret_cast<PxU8*>(PX_ALLOC(nbVerts * sizeof(PxU8), "mCollisionSurfaceVertsHint"));
+				mCollisionSurfaceVertToTetRemap = reinterpret_cast<PxU32*>(PX_ALLOC(nbVerts * sizeof(PxU32), "mCollisionSurfaceVertToTetRemap"));
+			}
+			mTetsRemapSize = tetRemapSize;
+		}
+
+		void allocateTetRefData(const PxU32 totalTetReference, const PxU32 nbCollisionVerts, const PxU32 allocateGPUData /*= 0*/)
+		{
+			if (allocateGPUData)
+			{
+				mCollisionAccumulatedTetrahedronsRef = reinterpret_cast<PxU32*>(PX_ALLOC(nbCollisionVerts * sizeof(PxU32), "mGMAccumulatedTetrahedronsRef"));
+				mCollisionTetrahedronsReferences = reinterpret_cast<PxU32*>(PX_ALLOC(totalTetReference * sizeof(PxU32), "mGMTetrahedronsReferences"));
+				
+			}
+
+			mCollisionNbTetrahedronsReferences = totalTetReference;
+		}
+
+		virtual void release()
+		{
+			PX_DELETE_THIS; 
+		}
+	};	
+
+	class SoftBodySimulationData : public PxSoftBodySimulationData
+	{
+	public:
+		PxReal*					mGridModelInvMass;
+
+		PxMat33*				mGridModelTetraRestPoses;
+
+		PxU32					mGridModelNbPartitions;
+		PxU32					mGridModelMaxTetsPerPartitions;
+
+		PxU32*					mGridModelOrderedTetrahedrons; // the corresponding tetrahedron index for the runsum
+
+		PxU32*					mGMRemapOutputCP;
+		PxU32*					mGMAccumulatedPartitionsCP; //runsum for the combined partition 
+		PxU32*					mGMAccumulatedCopiesCP; //runsum for the vert copies in combined partitions
+
+		PxU32					mGMRemapOutputSize;
+
+		PxU32*					mGMPullIndices;
+
+		PxU32					mNumTetsPerElement;
+
+		SoftBodySimulationData() :
+			mGridModelInvMass(NULL),
+			mGridModelTetraRestPoses(NULL),
+			mGridModelNbPartitions(0),
+			mGridModelOrderedTetrahedrons(NULL),
+			mGMRemapOutputCP(NULL),
+			mGMAccumulatedPartitionsCP(NULL),
+			mGMAccumulatedCopiesCP(NULL),
+			mGMRemapOutputSize(0),
+			mGMPullIndices(NULL)
+		{}
+
+		virtual ~SoftBodySimulationData()
+		{
+			PX_FREE(mGridModelInvMass);
+			PX_FREE(mGridModelTetraRestPoses);
+			PX_FREE(mGridModelOrderedTetrahedrons);
+			PX_FREE(mGMRemapOutputCP);
+			PX_FREE(mGMAccumulatedPartitionsCP);
+			PX_FREE(mGMAccumulatedCopiesCP);		
+			PX_FREE(mGMPullIndices);
+		}
+
+		void allocateGridModelData(const PxU32 nbGridTetrahedrons, const PxU32 nbGridVerts,
+			const PxU32 nbVerts, const PxU32 nbPartitions, const PxU32 remapOutputSize, const PxU32 numTetsPerElement, const PxU32 allocateGPUData = 0)
+		{
+			PX_UNUSED(nbVerts);
+
+			if (allocateGPUData)
+			{
+				const PxU32 numElements = nbGridTetrahedrons / numTetsPerElement;
+				const PxU32 numVertsPerElement = numTetsPerElement == 6 ? 8 : 4;
+
+				mGridModelInvMass = reinterpret_cast<float*>(PX_ALLOC(nbGridVerts * sizeof(float), "mGridModelInvMass"));
+				mGridModelTetraRestPoses = reinterpret_cast<PxMat33*>(PX_ALLOC(nbGridTetrahedrons * sizeof(PxMat33), "mGridModelTetraRestPoses"));
+
+				mGridModelOrderedTetrahedrons = reinterpret_cast<PxU32*>(PX_ALLOC(numElements * sizeof(PxU32), "mGridModelOrderedTetrahedrons"));
+				mGMRemapOutputCP = reinterpret_cast<PxU32*>(PX_ALLOC(remapOutputSize * sizeof(PxU32), "mGMRemapOutputCP"));
+				mGMAccumulatedPartitionsCP = reinterpret_cast<PxU32*>(PX_ALLOC(nbPartitions * sizeof(PxU32), "mGMAccumulatedPartitionsCP"));
+				mGMAccumulatedCopiesCP = reinterpret_cast<PxU32*>(PX_ALLOC(nbGridVerts * sizeof(PxU32), "mGMAccumulatedCopiesCP"));			
+				mGMPullIndices = reinterpret_cast<PxU32*>(PX_ALLOC(numElements * numVertsPerElement * sizeof(PxU32) , "mGMPullIndices"));
+			}
+			
+			mGridModelNbPartitions = nbPartitions;
+			mGMRemapOutputSize = remapOutputSize;
+		}
+	};
+
+	class CollisionTetrahedronMeshData : public PxCollisionTetrahedronMeshData
+	{
+	public:
+		TetrahedronMeshData* mMesh;
+		SoftBodyCollisionData* mCollisionData;
+
+		virtual PxTetrahedronMeshData* getMesh() { return mMesh; }
+		virtual const PxTetrahedronMeshData* getMesh() const { return mMesh; }
+		virtual PxSoftBodyCollisionData* getData() { return mCollisionData; }
+		virtual const PxSoftBodyCollisionData* getData() const { return mCollisionData; }
+
+		virtual ~CollisionTetrahedronMeshData()
+		{
+			PX_FREE(mMesh);
+			PX_FREE(mCollisionData);
+		}
+
+		virtual void release()
+		{
+			PX_DELETE_THIS; 
+		}
+	};
+
+	class SimulationTetrahedronMeshData : public PxSimulationTetrahedronMeshData
+	{
+	public:
+		TetrahedronMeshData* mMesh;
+		SoftBodySimulationData* mSimulationData;
+
+		virtual PxTetrahedronMeshData* getMesh() { return mMesh; }
+		virtual PxSoftBodySimulationData* getData() { return mSimulationData; }
+
+		virtual ~SimulationTetrahedronMeshData()
+		{
+			PX_FREE(mMesh);
+			PX_FREE(mSimulationData);
+		}
+
+		virtual void release()
+		{
+			PX_DELETE_THIS; 
+		}
+	};
+
+	class SoftBodyMeshData : public PxUserAllocated
+	{
+		PX_NOCOPY(SoftBodyMeshData)
+	public:	
+		TetrahedronMeshData& mSimulationMesh;
+		SoftBodySimulationData& mSimulationData;
+		TetrahedronMeshData& mCollisionMesh;
+		SoftBodyCollisionData& mCollisionData;	
+		CollisionMeshMappingData& mMappingData;
+
+		SoftBodyMeshData(TetrahedronMeshData& simulationMesh, SoftBodySimulationData& simulationData, 
+			TetrahedronMeshData& collisionMesh, SoftBodyCollisionData& collisionData, CollisionMeshMappingData& mappingData) :
+			mSimulationMesh(simulationMesh),
+			mSimulationData(simulationData),
+			mCollisionMesh(collisionMesh),
+			mCollisionData(collisionData),
+			mMappingData(mappingData)
+		{ }
+	};
 
 #if PX_VC
 #pragma warning(pop)

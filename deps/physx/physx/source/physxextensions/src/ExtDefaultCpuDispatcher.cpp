@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "ExtDefaultCpuDispatcher.h"
 #include "ExtCpuWorkerThread.h"
 #include "ExtTaskQueueHelper.h"
-#include "PsString.h"
+#include "foundation/PxString.h"
 
 using namespace physx;
 
-PxDefaultCpuDispatcher* physx::PxDefaultCpuDispatcherCreate(PxU32 numThreads, PxU32* affinityMasks)
+PxDefaultCpuDispatcher* physx::PxDefaultCpuDispatcherCreate(PxU32 numThreads, PxU32* affinityMasks, PxDefaultCpuDispatcherWaitForWorkMode::Enum mode, PxU32 yieldProcessorCount)
 {
-	return PX_NEW(Ext::DefaultCpuDispatcher)(numThreads, affinityMasks);
+	return PX_NEW(Ext::DefaultCpuDispatcher)(numThreads, affinityMasks, mode, yieldProcessorCount);
 }
 
-#if !PX_PS4 && !PX_XBOXONE && !PX_SWITCH && !PX_XBOX_SERIES_X
+#if !PX_SWITCH
 void Ext::DefaultCpuDispatcher::getAffinityMasks(PxU32* affinityMasks, PxU32 threadCount)
 {
 	for(PxU32 i=0; i < threadCount; i++)
@@ -49,28 +48,33 @@ void Ext::DefaultCpuDispatcher::getAffinityMasks(PxU32* affinityMasks, PxU32 thr
 }
 #endif
 
-Ext::DefaultCpuDispatcher::DefaultCpuDispatcher(PxU32 numThreads, PxU32* affinityMasks)
+Ext::DefaultCpuDispatcher::DefaultCpuDispatcher(PxU32 numThreads, PxU32* affinityMasks, PxDefaultCpuDispatcherWaitForWorkMode::Enum mode, PxU32 yieldProcessorCount)
 	: mQueueEntryPool(EXT_TASK_QUEUE_ENTRY_POOL_SIZE, "QueueEntryPool"), mNumThreads(numThreads), mShuttingDown(false)
 #if PX_PROFILE
 	,mRunProfiled(true)
 #else
 	,mRunProfiled(false)
 #endif
+	, mWaitForWorkMode(mode)
+	, mYieldProcessorCount(yieldProcessorCount)
 {
+	PX_CHECK_MSG((((PxDefaultCpuDispatcherWaitForWorkMode::eYIELD_PROCESSOR == mWaitForWorkMode) && (mYieldProcessorCount > 0)) ||
+					(((PxDefaultCpuDispatcherWaitForWorkMode::eYIELD_THREAD == mWaitForWorkMode) || (PxDefaultCpuDispatcherWaitForWorkMode::eWAIT_FOR_WORK == mWaitForWorkMode)) && (0 == mYieldProcessorCount))), "Illegal yield processor count for chosen execute mode");
+
 	PxU32* defaultAffinityMasks = NULL;
 
 	if(!affinityMasks)
 	{
-		defaultAffinityMasks = reinterpret_cast<PxU32*>(PX_ALLOC(numThreads * sizeof(PxU32), "ThreadAffinityMasks"));
+		defaultAffinityMasks = PX_ALLOCATE(PxU32, numThreads, "ThreadAffinityMasks");
 		getAffinityMasks(defaultAffinityMasks, numThreads);
 		affinityMasks = defaultAffinityMasks;
 	}
 	 
 	// initialize threads first, then start
 
-	mWorkerThreads = reinterpret_cast<CpuWorkerThread*>(PX_ALLOC(numThreads * sizeof(CpuWorkerThread), "CpuWorkerThread"));
+	mWorkerThreads = PX_ALLOCATE(CpuWorkerThread, numThreads, "CpuWorkerThread");
 	const PxU32 nameLength = 32;
-	mThreadNames = reinterpret_cast<PxU8*>(PX_ALLOC(nameLength * numThreads, "CpuWorkerThreadName"));
+	mThreadNames = PX_ALLOCATE(PxU8, nameLength * numThreads, "CpuWorkerThreadName");
 
 	if (mWorkerThreads)
 	{
@@ -85,16 +89,15 @@ Ext::DefaultCpuDispatcher::DefaultCpuDispatcher(PxU32 numThreads, PxU32* affinit
 			if (mThreadNames)
 			{
 				char* threadName = reinterpret_cast<char*>(mThreadNames + (i*nameLength));
-				Ps::snprintf(threadName, nameLength, "PxWorker%02d", i);
+				Pxsnprintf(threadName, nameLength, "PxWorker%02d", i);
 				mWorkerThreads[i].setName(threadName);
 			}
 
 			mWorkerThreads[i].setAffinityMask(affinityMasks[i]);
-			mWorkerThreads[i].start(Ps::Thread::getDefaultStackSize());
+			mWorkerThreads[i].start(PxThread::getDefaultStackSize());
 		}
 
-		if (defaultAffinityMasks)
-			PX_FREE(defaultAffinityMasks);
+		PX_FREE(defaultAffinityMasks);
 	}
 	else
 	{
@@ -108,7 +111,8 @@ Ext::DefaultCpuDispatcher::~DefaultCpuDispatcher()
 		mWorkerThreads[i].signalQuit();
 
 	mShuttingDown = true;
-	mWorkReady.set();
+	if(PxDefaultCpuDispatcherWaitForWorkMode::eWAIT_FOR_WORK == mWaitForWorkMode)
+		mWorkReady.set();
 	for(PxU32 i = 0; i < mNumThreads; ++i)
 		mWorkerThreads[i].waitForQuit();
 
@@ -116,9 +120,12 @@ Ext::DefaultCpuDispatcher::~DefaultCpuDispatcher()
 		mWorkerThreads[i].~CpuWorkerThread();
 
 	PX_FREE(mWorkerThreads);
+	PX_FREE(mThreadNames);
+}
 
-	if (mThreadNames)
-		PX_FREE(mThreadNames);
+void Ext::DefaultCpuDispatcher::release()
+{
+	PX_DELETE_THIS;
 }
 
 void Ext::DefaultCpuDispatcher::submitTask(PxBaseTask& task)
@@ -132,18 +139,30 @@ void Ext::DefaultCpuDispatcher::submitTask(PxBaseTask& task)
 	}	
 
 	// TODO: Could use TLS to make this more efficient
-	const Ps::Thread::Id currentThread = Ps::Thread::getId();
-	for(PxU32 i = 0; i < mNumThreads; ++i)
+	const PxThread::Id currentThread = PxThread::getId();
+	const PxU32 nbThreads = mNumThreads;
+	for(PxU32 i=0; i<nbThreads; ++i)
 	{
 		if(mWorkerThreads[i].tryAcceptJobToLocalQueue(task, currentThread))
-			return mWorkReady.set();
+		{
+			if(PxDefaultCpuDispatcherWaitForWorkMode::eWAIT_FOR_WORK == mWaitForWorkMode)
+			{
+				return mWorkReady.set();
+			}
+			else
+			{
+				PX_ASSERT(PxDefaultCpuDispatcherWaitForWorkMode::eYIELD_PROCESSOR == mWaitForWorkMode || PxDefaultCpuDispatcherWaitForWorkMode::eYIELD_THREAD == mWaitForWorkMode);
+				return;
+			}
+		}
 	}
 
 	SharedQueueEntry* entry = mQueueEntryPool.getEntry(&task);
-	if (entry)
+	if(entry)
 	{
 		mJobList.push(*entry);
-		mWorkReady.set();
+		if(PxDefaultCpuDispatcherWaitForWorkMode::eWAIT_FOR_WORK == mWaitForWorkMode)
+			mWorkReady.set();
 	}
 }
 
@@ -157,33 +176,26 @@ PxBaseTask* Ext::DefaultCpuDispatcher::fetchNextTask()
 	return task;
 }
 
-void Ext::DefaultCpuDispatcher::release()
-{
-	PX_DELETE(this);
-}
-
-PxBaseTask* Ext::DefaultCpuDispatcher::getJob(void)
+PxBaseTask* Ext::DefaultCpuDispatcher::getJob()
 {
 	return TaskQueueHelper::fetchTask(mJobList, mQueueEntryPool);
 }
 
 PxBaseTask* Ext::DefaultCpuDispatcher::stealJob()
 {
-	PxBaseTask* ret = NULL;
-
-	for(PxU32 i = 0; i < mNumThreads; ++i)
+	const PxU32 nbThreads = mNumThreads;
+	for(PxU32 i=0; i<nbThreads; ++i)
 	{
-		ret = mWorkerThreads[i].giveUpJob();
-
-		if(ret != NULL)
-			break;
+		PxBaseTask* ret = mWorkerThreads[i].giveUpJob();
+		if(ret)
+			return ret;
 	}
-
-	return ret;
+	return NULL;
 }
 
 void Ext::DefaultCpuDispatcher::resetWakeSignal()
 {
+	PX_ASSERT(PxDefaultCpuDispatcherWaitForWorkMode::eWAIT_FOR_WORK == mWaitForWorkMode);
 	mWorkReady.reset();
 	
 	// The code below is necessary to avoid deadlocks on shut down.

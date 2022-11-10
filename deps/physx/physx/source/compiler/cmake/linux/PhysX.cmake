@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysX (PROJECT not SOLUTION)
@@ -36,7 +35,8 @@ SOURCE_GROUP(include\\gpu FILES ${PHYSX_GPU_HEADERS})
 
 SET(PHYSX_CUDACONTEXT_MANAGER_GPU_HEADERS
 	${PHYSX_ROOT_DIR}/include/cudamanager/PxCudaContextManager.h
-	${PHYSX_ROOT_DIR}/include/cudamanager/PxCudaMemoryManager.h
+	${PHYSX_ROOT_DIR}/include/cudamanager/PxCudaContext.h
+	${PHYSX_ROOT_DIR}/include/cudamanager/PxCudaTypes.h
 )
 SOURCE_GROUP(include\\cudamanager FILES ${PHYSX_CUDACONTEXT_MANAGER_GPU_HEADERS})
 
@@ -54,6 +54,8 @@ SET(PHYSX_PLATFORM_OBJECT_FILES
 )
 
 SET(PHYSX_PLATFORM_SRC_FILES
+	${PHYSX_GPU_HEADERS}
+	${PHYSX_CUDACONTEXT_MANAGER_GPU_HEADERS}
 	${PX_SOURCE_DIR}/device/linux/PhysXIndicatorLinux.cpp
 	${PX_SOURCE_DIR}/gpu/PxGpu.cpp
 	${PX_SOURCE_DIR}/gpu/PxPhysXGpuModuleLoader.cpp

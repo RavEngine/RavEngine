@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_GJKUTIL_H
 #define GU_GJKUTIL_H
 
-#include "PsVecMath.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxVecMath.h"
 
 /*
 	This file is used to avoid the inner loop cross DLL calls
@@ -59,15 +57,15 @@ struct GjkOutput
 public:
 	GjkOutput()
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		closestA = closestB = normal = V3Zero();
 		penDep = FZero();
 	}
-	Ps::aos::Vec3V closestA;
-	Ps::aos::Vec3V closestB;
-	Ps::aos::Vec3V normal;
-	Ps::aos::Vec3V searchDir;
-	Ps::aos::FloatV penDep;
+	aos::Vec3V closestA;
+	aos::Vec3V closestB;
+	aos::Vec3V normal;
+	aos::Vec3V searchDir;
+	aos::FloatV penDep;
 };
 
 }//Gu

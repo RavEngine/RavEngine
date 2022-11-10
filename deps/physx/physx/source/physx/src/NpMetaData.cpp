@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,20 +33,29 @@
 #include "NpConstraint.h"
 #include "NpRigidStatic.h"
 #include "NpRigidDynamic.h"
-#include "NpArticulation.h"
 #include "NpArticulationReducedCoordinate.h"
 #include "NpArticulationLink.h"
-#include "NpArticulationJoint.h"
 #include "NpArticulationJointReducedCoordinate.h"
+#include "NpArticulationSensor.h"
+#include "NpArticulationTendon.h"
 #include "NpAggregate.h"
+#include "NpPruningStructure.h"
+#include "NpMaterial.h"
+#include "NpFEMSoftBodyMaterial.h"
+#include "NpFEMClothMaterial.h"
+#include "NpMPMMaterial.h"
+#include "NpFLIPMaterial.h"
+#include "NpPBDMaterial.h"
 #include "GuConvexMesh.h"
 #include "GuTriangleMesh.h"
 #include "GuTriangleMeshBV4.h"
 #include "GuTriangleMeshRTree.h"
 #include "GuHeightField.h"
+#include "GuPrunerMergeData.h"
 
 using namespace physx;
 using namespace Cm;
+using namespace Gu;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -56,19 +64,16 @@ using namespace Cm;
 #define DefineMetaData_PxActor(x) \
 	PX_DEF_BIN_METADATA_ITEM(stream,	x, void,			userData,		PxMetaDataFlag::ePTR)
 
-#define DefineMetaData_PxArticulationBase(x) \
+#define DefineMetaData_NpArticulationReducedCoordinate(x) \
 	PX_DEF_BIN_METADATA_ITEM(stream,	x, void,			userData,		PxMetaDataFlag::ePTR)
 
 #define DefineMetaData_NpRigidActorTemplate(x) \
-	PX_DEF_BIN_METADATA_ITEM(stream,	x, NpShapeManager,	mShapeManager,	0) \
-	PX_DEF_BIN_METADATA_ITEM(stream,	x, PxU32,			mIndex,			0) \
+	PX_DEF_BIN_METADATA_ITEM(stream,	x, NpShapeManager,	mShapeManager,	0)
+//	PX_DEF_BIN_METADATA_ITEM(stream,	x, PxU32,			mIndex,			0)
 
 #define DefineMetaData_NpRigidBodyTemplate(x) \
-	PX_DEF_BIN_METADATA_ITEM(stream,	x, Scb::Body,		mBody,			0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	x, Sc::BodyCore,	mCore,			0)
 
-
-#define DefineMetaData_NpArticulationTemplate(x) \
-	PX_DEF_BIN_METADATA_ITEM(stream,	x, PxArticulationImpl, mImpl, 0)
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -131,7 +136,7 @@ static void getBinaryMetaData_SpatialVectorF(PxOutputStream& stream)
 
 namespace
 {
-	class ShadowBitMap : public BitMap
+	class ShadowBitMap : public PxBitMap
 	{
 	public:
 		static void getBinaryMetaData(PxOutputStream& stream_)
@@ -139,7 +144,7 @@ namespace
 			PX_DEF_BIN_METADATA_CLASS(stream_,		ShadowBitMap)
 			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowBitMap, PxU32,		mMap,		PxMetaDataFlag::ePTR)
 			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowBitMap, PxU32,		mWordCount,	0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowBitMap, Allocator,	mAllocator,	0)
+			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowBitMap, PxAllocator,	mAllocator,	0)
 			PX_DEF_BIN_METADATA_ITEMS_AUTO(stream_,	ShadowBitMap, PxU8,			mPadding,	PxMetaDataFlag::ePADDING)
 
 			//------ Extra-data ------
@@ -152,7 +157,7 @@ namespace
 
 static void getBinaryMetaData_BitMap(PxOutputStream& stream)
 {
-	PX_DEF_BIN_METADATA_TYPEDEF(stream, Allocator, PxU8)
+	PX_DEF_BIN_METADATA_TYPEDEF(stream, PxAllocator, PxU8)
 	ShadowBitMap::getBinaryMetaData(stream);
 	PX_DEF_BIN_METADATA_TYPEDEF(stream,	BitMap, ShadowBitMap)
 }
@@ -176,13 +181,25 @@ static void getBinaryMetaData_PxConstraintInvMassScale(PxOutputStream& stream)
 
 ///////////////////////////////////////////////////////////////////////////////
 
+void NpBase::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_TYPEDEF(stream,	NpType::Enum, PxU32)
+
+	PX_DEF_BIN_METADATA_CLASS(stream,	NpBase)
+
+	PX_DEF_BIN_METADATA_ITEM(stream,	NpBase, NpScene,		mScene,				PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	NpBase, PxU32,			mBaseIndexAndType,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	NpBase, PxU32,			mFreeSlot,			0)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 void NpActor::getBinaryMetaData(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_CLASS(stream,		NpActor)
-
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpActor, NpBase)
 	PX_DEF_BIN_METADATA_ITEM(stream,		NpActor, char,				mName,				PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,		NpActor, NpConnectorArray,	mConnectorArray,	PxMetaDataFlag::ePTR)
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -191,24 +208,94 @@ void NpMaterial::getBinaryMetaData(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_VCLASS(stream,		NpMaterial)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpMaterial, PxBase)
-	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpMaterial, RefCountable)
 
 	PX_DEF_BIN_METADATA_ITEM(stream,		NpMaterial, void,				userData,	PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpMaterial, MaterialCore,		mMaterial,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpMaterial, PxsMaterialCore,	mMaterial,	0)
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+void NpFEMSoftBodyMaterial::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpFEMSoftBodyMaterial)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpFEMSoftBodyMaterial, PxBase)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpFEMSoftBodyMaterial, void, userData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpFEMSoftBodyMaterial, PxsFEMSoftBodyMaterialCore, mMaterial, 0)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+void NpFEMClothMaterial::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpFEMClothMaterial)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpFEMClothMaterial, PxBase)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpFEMClothMaterial, void, userData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpFEMClothMaterial, PxsFEMClothMaterialCore, mMaterial, 0)
+}
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+
+void NpPBDMaterial::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpPBDMaterial)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpPBDMaterial, PxBase)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpPBDMaterial, void, userData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpPBDMaterial, PxsPBDMaterialCore, mMaterial, 0)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+void NpCustomMaterial::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpCustomMaterial)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpCustomMaterial, PxBase)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpCustomMaterial, void, userData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpCustomMaterial, PxsCustomMaterialCore, mMaterial, 0)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void NpFLIPMaterial::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpFLIPMaterial)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpFLIPMaterial, PxBase)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpFLIPMaterial, void, userData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpFLIPMaterial, PxsFLIPMaterialCore, mMaterial, 0)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void NpMPMMaterial::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpMPMMaterial)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpMPMMaterial, PxBase)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpMPMMaterial, void, userData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpMPMMaterial, PxsMPMMaterialCore, mMaterial, 0)
+}
+#endif
 ///////////////////////////////////////////////////////////////////////////////
 
 void NpConstraint::getBinaryMetaData(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_VCLASS(stream,		NpConstraint)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpConstraint, PxBase)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpConstraint, NpBase)
 
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, PxRigidActor,		mActor0,			PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, PxRigidActor,		mActor1,			PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, Scb::Constraint,	mConstraint,		0)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, bool,				mIsDirty,			0)
-	PX_DEF_BIN_METADATA_ITEMS_AUTO(stream,	NpConstraint, bool,				mPaddingFromBool,	PxMetaDataFlag::ePADDING)
+	// PxConstraint
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, void,				userData,	PxMetaDataFlag::ePTR)
+
+	// NpConstraint
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, PxRigidActor,		mActor0,	PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, PxRigidActor,		mActor1,	PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpConstraint, ConstraintCore,	mCore,		0)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -217,8 +304,7 @@ void NpShapeManager::getBinaryMetaData(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_CLASS(stream,	NpShapeManager)
 	PX_DEF_BIN_METADATA_ITEM(stream,	NpShapeManager, PtrTable,	mShapes,			0)
-	PX_DEF_BIN_METADATA_ITEM(stream,	NpShapeManager, PtrTable,	mSceneQueryData,	0)
-	PX_DEF_BIN_METADATA_ITEM(stream,	NpShapeManager, PxU32, mSqCompoundId,	0)	
+//	PX_DEF_BIN_METADATA_ITEM(stream,	NpShapeManager, PxU32,		mSqCompoundId,		0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	NpShapeManager, Sq::PruningStructure, mPruningStructure, PxMetaDataFlag::ePTR)
 }
 
@@ -226,23 +312,17 @@ void NpShapeManager::getBinaryMetaData(PxOutputStream& stream)
 
 void NpShape::getBinaryMetaData(PxOutputStream& stream)
 {
-	PX_DEF_BIN_METADATA_TYPEDEF(stream,	NpInternalShapeFlags, PxU8)
-
 	PX_DEF_BIN_METADATA_VCLASS(stream,		NpShape)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpShape, PxBase)
-	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpShape, RefCountable)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpShape, NpBase)
 
 	// PxShape
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, void,					userData,			PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, void,			userData,			PxMetaDataFlag::ePTR)
 
 	// NpShape
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, PxRigidActor,			mActor,				PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, Scb::Shape,			mShape,				0)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, char,					mName,				PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, PxI32,					mExclusiveAndActorCount,	0)
-
-
-	PX_DEF_BIN_METADATA_EXTRA_NAME(stream,	NpShape, mName, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, PxRigidActor,	mActor,				PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, ShapeCore,		mCore,				0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpShape, PxFilterData,	mQueryFilterData,	0)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -258,7 +338,7 @@ void NpRigidStatic::getBinaryMetaData(PxOutputStream& stream)
 	DefineMetaData_NpRigidActorTemplate(NpRigidStatic)
 
 	// NpRigidStatic
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpRigidStatic, Scb::RigidStatic,	mRigidStatic,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpRigidStatic, Sc::StaticCore,	mCore,		0)
 
 	//------ Extra-data ------
 
@@ -360,62 +440,155 @@ void NpArticulationLinkArray::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream,	NpArticulationLinkArray, NpArticulationLink, mBufferUsed, mCapacity, PxMetaDataFlag::eCONTROL_FLIP|PxMetaDataFlag::eCOUNT_MASK_MSB|PxMetaDataFlag::ePTR, 0)
 }
 
-void PxArticulationImpl::getBinaryMetaData(PxOutputStream& stream)
-{
-	PX_DEF_BIN_METADATA_CLASS(stream,	PxArticulationImpl)
+//void PxArticulationImpl::getBinaryMetaData(PxOutputStream& stream)
+//{
+//	PX_DEF_BIN_METADATA_CLASS(stream,	PxArticulationImpl)
+//	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	PxArticulationImpl, NpBase)
+//
+//	PX_DEF_BIN_METADATA_ITEM(stream,	PxArticulationImpl, ArticulationCore,	mCore,		0)
+//	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, NpArticulationLinkArray, mArticulationLinks, 0)
+//	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, PxU32, mNumShapes, 0)
+//	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, NpAggregate, mAggregate, PxMetaDataFlag::ePTR)
+//	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, char, mName, PxMetaDataFlag::ePTR)
+//	PX_DEF_BIN_METADATA_EXTRA_NAME(stream, PxArticulationImpl, mName, 0)
+//	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, PxU32, mCacheVersion, 0)
+//}
 
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, Scb::Articulation, mArticulation, 0)
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, NpArticulationLinkArray, mArticulationLinks, 0)
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, NpAggregate, mAggregate, PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, char, mName, PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_EXTRA_NAME(stream, PxArticulationImpl, mName, 0)
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationImpl, PxU32, mCacheVersion, 0)
-}
+//void PxArticulationJointImpl::getBinaryMetaData(PxOutputStream& stream)
+//{
+//	PX_DEF_BIN_METADATA_CLASS(stream, PxArticulationJointImpl)
+//	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	PxArticulationJointImpl, NpBase)
+//
+//	PX_DEF_BIN_METADATA_ITEM(stream,	PxArticulationJointImpl, ArticulationJointCore,	mCore,	0)
+//	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationJointImpl, NpArticulationLink, mParent, PxMetaDataFlag::ePTR)
+//	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationJointImpl, NpArticulationLink, mChild, PxMetaDataFlag::ePTR)
+//}
 
-void PxArticulationJointImpl::getBinaryMetaData(PxOutputStream& stream)
-{
-	PX_DEF_BIN_METADATA_CLASS(stream, PxArticulationJointImpl)
-
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationJointImpl, Scb::ArticulationJoint, mJoint, 0)
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationJointImpl, NpArticulationLink, mParent, PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream, PxArticulationJointImpl, NpArticulationLink, mChild, PxMetaDataFlag::ePTR)
-}
-
-void NpArticulation::getBinaryMetaData(PxOutputStream& stream)
-{
-	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulation)
-	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpArticulation, PxBase)
-
-	DefineMetaData_PxArticulationBase(NpArticulation)
-	DefineMetaData_NpArticulationTemplate(NpArticulation)
-}
 
 namespace
 {
-	struct ShadowLoopJointArray : public Ps::Array<PxJoint*>
+	struct ShadowLoopJointArray : public PxArray<PxConstraint*>
 	{
 		static void getBinaryMetaData(PxOutputStream& stream)
 		{
 			PX_DEF_BIN_METADATA_CLASS(stream, ShadowLoopJointArray)
 
-			PX_DEF_BIN_METADATA_ITEM(stream, ShadowLoopJointArray, PxJoint, mData, PxMetaDataFlag::ePTR)
+			PX_DEF_BIN_METADATA_ITEM(stream, ShadowLoopJointArray, NpConstraint, mData, PxMetaDataFlag::ePTR)
 			PX_DEF_BIN_METADATA_ITEM(stream, ShadowLoopJointArray, PxU32, mSize, 0)
 			PX_DEF_BIN_METADATA_ITEM(stream, ShadowLoopJointArray, PxU32, mCapacity, 0)
 		}
 	};
+
+#define DECL_SHADOW_PTR_ARRAY(T)														\
+struct ShadowArray##T : public PxArray<T*>												\
+{																						\
+	static void getBinaryMetaData(PxOutputStream& stream)								\
+	{																					\
+		PX_DEF_BIN_METADATA_CLASS(stream, ShadowArray##T)								\
+		PX_DEF_BIN_METADATA_ITEM(stream, ShadowArray##T, T, mData, PxMetaDataFlag::ePTR)\
+		PX_DEF_BIN_METADATA_ITEM(stream, ShadowArray##T, PxU32, mSize, 0)				\
+		PX_DEF_BIN_METADATA_ITEM(stream, ShadowArray##T, PxU32, mCapacity, 0)			\
+	}																					\
+};
+
+DECL_SHADOW_PTR_ARRAY(NpArticulationSpatialTendon)
+DECL_SHADOW_PTR_ARRAY(NpArticulationFixedTendon)
+DECL_SHADOW_PTR_ARRAY(NpArticulationSensor)
+
 }
 
 void NpArticulationReducedCoordinate::getBinaryMetaData(PxOutputStream& stream)
 {
 	ShadowLoopJointArray::getBinaryMetaData(stream);
+	ShadowArrayNpArticulationSpatialTendon::getBinaryMetaData(stream);
+	ShadowArrayNpArticulationFixedTendon::getBinaryMetaData(stream);
+	ShadowArrayNpArticulationSensor::getBinaryMetaData(stream);
 
 	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationReducedCoordinate)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpArticulationReducedCoordinate, PxBase)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpArticulationReducedCoordinate, NpBase)
 
-	DefineMetaData_PxArticulationBase(NpArticulationReducedCoordinate)
-	DefineMetaData_NpArticulationTemplate(NpArticulationReducedCoordinate)
+	DefineMetaData_NpArticulationReducedCoordinate(NpArticulationReducedCoordinate)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, ArticulationCore, mCore, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, NpArticulationLinkArray, mArticulationLinks, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, PxU32, mNumShapes, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, NpAggregate, mAggregate, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, char, mName, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_EXTRA_NAME(stream, NpArticulationReducedCoordinate, mName, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, PxU32, mCacheVersion, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, bool, mTopologyChanged, 0)
 
 	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, ShadowLoopJointArray, mLoopJoints, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, ShadowArrayNpArticulationSpatialTendon, mSpatialTendons, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, ShadowArrayNpArticulationFixedTendon, mFixedTendons, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationReducedCoordinate, ShadowArrayNpArticulationSensor, mSensors, 0)
+	
+}
+
+void NpArticulationSensor::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationSensor)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSensor, PxArticulationLink, mLink, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSensor, Sc::ArticulationSensorCore, mCore, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSensor, PxU32, mHandle, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSensor, void, userData, PxMetaDataFlag::ePTR)
+}
+
+void NpArticulationAttachment::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationAttachment)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationAttachment, NpArticulationAttachmentArray, mChildren, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationAttachment, NpArticulationSpatialTendon, mTendon, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationAttachment, Sc::ArticulationAttachmentCore, mCore, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationAttachment, void, userData, PxMetaDataFlag::ePTR)
+}
+
+void NpArticulationAttachmentArray::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationAttachmentArray)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationAttachmentArray, NpArticulationAttachment*, mData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationAttachmentArray, PxU32, mSize, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationAttachmentArray, PxU32, mCapacity, 0)
+}
+
+void NpArticulationTendonJoint::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationTendonJoint)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJoint, NpArticulationTendonJointArray, mChildren, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJoint, NpArticulationFixedTendon, mTendon, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJoint, Sc::ArticulationTendonJointCore, mCore, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJoint, PxU32, mHandle, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJoint, void, userData, PxMetaDataFlag::ePTR)
+}
+
+void NpArticulationTendonJointArray::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationTendonJointArray)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJointArray, NpArticulationTendonJoint*, mData, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJointArray, PxU32, mSize, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationTendonJointArray, PxU32, mCapacity, 0)
+}
+
+void NpArticulationSpatialTendon::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationSpatialTendon)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSpatialTendon, ArticulationTendonHandle, mHandle, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSpatialTendon, NpArticulationReducedCoordinate, mAttachments, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSpatialTendon, NpArticulationAttachmentArray, mArticulation, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSpatialTendon, Sc::ArticulationSpatialTendonCore, mCore, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationSpatialTendon, void, userData, PxMetaDataFlag::ePTR)
+}
+
+void NpArticulationFixedTendon::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationFixedTendon)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationFixedTendon, ArticulationTendonHandle, mHandle, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationFixedTendon, NpArticulationTendonJointArray, mTendonJoints, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationFixedTendon, NpArticulationAttachmentArray, mArticulation, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationFixedTendon, PxU32, mLLIndex, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationFixedTendon, Sc::ArticulationFixedTendonCore, mCore, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationFixedTendon, void, userData, PxMetaDataFlag::ePTR)
 }
 
 void NpArticulationLink::getBinaryMetaData(PxOutputStream& stream)
@@ -442,20 +615,19 @@ void NpArticulationLink::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_EXTRA_NAME(stream,	NpArticulationLink, mName, 0)
 }
 
-void NpArticulationJoint::getBinaryMetaData(PxOutputStream& stream)
-{
-	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationJoint)
-	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpArticulationJoint, PxBase)
-
-	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationJoint, PxArticulationJointImpl, mImpl, 0)
-}
 
 void NpArticulationJointReducedCoordinate::getBinaryMetaData(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_VCLASS(stream, NpArticulationJointReducedCoordinate)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpArticulationJointReducedCoordinate, NpBase)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream, NpArticulationJointReducedCoordinate, PxBase)
 
-	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationJointReducedCoordinate, PxArticulationJointImpl, mImpl, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationJointReducedCoordinate, void, userData, PxMetaDataFlag::ePTR)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationJointReducedCoordinate, ArticulationJointCore, mCore, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationJointReducedCoordinate, NpArticulationLink, mParent, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, NpArticulationJointReducedCoordinate, NpArticulationLink, mChild, PxMetaDataFlag::ePTR)
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -464,10 +636,19 @@ void NpAggregate::getBinaryMetaData(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_VCLASS(stream,		NpAggregate)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpAggregate, PxBase)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	NpAggregate, NpBase)
 
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, Scb::Aggregate,	mAggregate,		0)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxU32,				mNbActors,		0)
-	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxActor,			mActors,		PxMetaDataFlag::ePTR)
+	// PxAggregate
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, void,		userData,		PxMetaDataFlag::ePTR)
+
+	// NpAggregate
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxU32,		mAggregateID,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxU32,		mMaxNbActors,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxU32,		mMaxNbShapes,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxU32,		mFilterHint,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxU32,		mNbActors,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxU32,		mNbShapes,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		NpAggregate, PxActor,	mActors,		PxMetaDataFlag::ePTR)
 
 	//------ Extra-data ------
 
@@ -484,6 +665,30 @@ static void getBinaryMetaData_PxMeshScale(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	PxMeshScale,		PxQuat,	rotation,	0)
 }
 
+static void getBinaryMetaData_AABBPrunerMergeData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_CLASS(stream,	AABBPrunerMergeData)
+	PX_DEF_BIN_METADATA_ITEM(stream,	AABBPrunerMergeData,	PxU32,			mNbNodes,			0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	AABBPrunerMergeData,	Gu::BVHNode,	mAABBTreeNodes,		PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	AABBPrunerMergeData,	PxU32,			mNbObjects,			0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	AABBPrunerMergeData,	PxU32,			mAABBTreeIndices,	PxMetaDataFlag::ePTR)
+}
+
+void Sq::PruningStructure::getBinaryMetaData(PxOutputStream& stream)
+{	
+	getBinaryMetaData_AABBPrunerMergeData(stream);
+
+	PX_DEF_BIN_METADATA_VCLASS(stream, PruningStructure)
+		PX_DEF_BIN_METADATA_BASE_CLASS(stream, PruningStructure, PxBase)		
+
+		PX_DEF_BIN_METADATA_ITEM(stream, PruningStructure, AABBPrunerMergeData, mData[0], 0)
+		PX_DEF_BIN_METADATA_ITEM(stream, PruningStructure, AABBPrunerMergeData, mData[1], 0)
+
+		PX_DEF_BIN_METADATA_ITEM(stream, PruningStructure, PxU32, mNbActors, 0)
+		PX_DEF_BIN_METADATA_ITEM(stream, PruningStructure, PxActor*, mActors, PxMetaDataFlag::ePTR)
+		PX_DEF_BIN_METADATA_ITEM(stream, PruningStructure, bool, mValid, 0)
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 namespace physx
 {
@@ -494,6 +699,7 @@ void getBinaryMetaData_PxBase(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_VCLASS(stream,	PxBase)
 	PX_DEF_BIN_METADATA_ITEM(stream,	PxBase,			PxType,			mConcreteType,	0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	PxBase,			PxBaseFlags,	mBaseFlags,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	PxBase,			PxI32,			mBuiltInRefCount,	0)
 }
 }
 void RefCountable::getBinaryMetaData(PxOutputStream& stream)
@@ -530,57 +736,72 @@ static void getFoundationMetaData(PxOutputStream& stream)
 
 ///////////////////////////////////////////////////////////////////////////////
 
+namespace physx
+{
+template<> void PxsMaterialCore::getBinaryMetaData(PxOutputStream& stream);
+template<> void PxsFEMSoftBodyMaterialCore::getBinaryMetaData(PxOutputStream& stream);
+template<> void PxsFEMClothMaterialCore::getBinaryMetaData(PxOutputStream& stream);
+template<> void PxsPBDMaterialCore::getBinaryMetaData(PxOutputStream& stream);
+template<> void PxsCustomMaterialCore::getBinaryMetaData(PxOutputStream& stream);
+template<> void PxsFLIPMaterialCore::getBinaryMetaData(PxOutputStream& stream);
+template<> void PxsMPMMaterialCore::getBinaryMetaData(PxOutputStream& stream);
+}
+
 void PxGetPhysicsBinaryMetaData(PxOutputStream& stream)
 {
 	getFoundationMetaData(stream);
 	
 	getBinaryMetaData_PxMeshScale(stream);
 
-	MaterialIndicesStruct::getBinaryMetaData(stream);
-	Gu::GeometryUnion::getBinaryMetaData(stream);
 	Gu::ConvexMesh::getBinaryMetaData(stream);
 	Gu::TriangleMesh::getBinaryMetaData(stream);
 	Gu::RTreeTriangleMesh::getBinaryMetaData(stream);
 	Gu::BV4TriangleMesh::getBinaryMetaData(stream);
 	Gu::HeightField::getBinaryMetaData(stream);
 
+	PxsMaterialCore::getBinaryMetaData(stream);
+	PxsFEMSoftBodyMaterialCore::getBinaryMetaData(stream);
+	PxsFEMClothMaterialCore::getBinaryMetaData(stream);
+	PxsPBDMaterialCore::getBinaryMetaData(stream);
+	PxsCustomMaterialCore::getBinaryMetaData(stream);
+	PxsFLIPMaterialCore::getBinaryMetaData(stream);
+	PxsMPMMaterialCore::getBinaryMetaData(stream);
+
+	MaterialIndicesStruct::getBinaryMetaData(stream);
+	GeometryUnion::getBinaryMetaData(stream);
 	Sc::ActorCore::getBinaryMetaData(stream);
 	Sc::RigidCore::getBinaryMetaData(stream);
 	Sc::StaticCore::getBinaryMetaData(stream);
 	Sc::BodyCore::getBinaryMetaData(stream);
-	Sc::MaterialCore::getBinaryMetaData(stream);
 	Sc::ShapeCore::getBinaryMetaData(stream);
 	Sc::ConstraintCore::getBinaryMetaData(stream);
 	Sc::ArticulationCore::getBinaryMetaData(stream);
 	Sc::ArticulationJointCore::getBinaryMetaData(stream);
 
-	Scb::Base::getBinaryMetaData(stream);
-	Scb::Actor::getBinaryMetaData(stream);
-	Scb::RigidObject::getBinaryMetaData(stream);
-	Scb::RigidStatic::getBinaryMetaData(stream);
-	Scb::Body::getBinaryMetaData(stream);
-	Scb::Shape::getBinaryMetaData(stream);
-	Scb::Constraint::getBinaryMetaData(stream);
-	Scb::Articulation::getBinaryMetaData(stream);
-	Scb::ArticulationJoint::getBinaryMetaData(stream);
-	Scb::Aggregate::getBinaryMetaData(stream);
-
 	NpConnector::getBinaryMetaData(stream);
 	NpConnectorArray::getBinaryMetaData(stream);
+	NpBase::getBinaryMetaData(stream);
 	NpActor::getBinaryMetaData(stream);
-	NpMaterial::getBinaryMetaData(stream);			// NP_MATERIAL
-	NpRigidDynamic::getBinaryMetaData(stream);		// NP_RIGID_DYNAMIC
-	NpRigidStatic::getBinaryMetaData(stream);			// NP_RIGID_STATIC
-	NpShape::getBinaryMetaData(stream);				// NP_SHAPE
-	NpConstraint::getBinaryMetaData(stream);			// NP_CONSTRAINT
-	PxArticulationJointImpl::getBinaryMetaData(stream);
-	PxArticulationImpl::getBinaryMetaData(stream);
-	NpArticulation::getBinaryMetaData(stream);		// NP_ARTICULATION
-	NpArticulationReducedCoordinate::getBinaryMetaData(stream);		// NP_ARTICULATION_REDUCED_COORDINATE
-	NpArticulationLink::getBinaryMetaData(stream);	// NP_ARTICULATION_LINK
-	NpArticulationJoint::getBinaryMetaData(stream);	// NP_ARTICULATION_JOINT
-	NpArticulationJointReducedCoordinate::getBinaryMetaData(stream);	// NP_ARTICULATION_JOINT_REDUCED_COORDINATE
+	NpMaterial::getBinaryMetaData(stream);
+	NpFEMSoftBodyMaterial::getBinaryMetaData(stream);
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+	NpFEMClothMaterial::getBinaryMetaData(stream);
+#endif
+	NpPBDMaterial::getBinaryMetaData(stream);
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+	NpCustomMaterial::getBinaryMetaData(stream);
+	NpFLIPMaterial::getBinaryMetaData(stream);
+	NpMPMMaterial::getBinaryMetaData(stream);
+#endif
+	NpRigidDynamic::getBinaryMetaData(stream);
+	NpRigidStatic::getBinaryMetaData(stream);
+	NpShape::getBinaryMetaData(stream);
+	NpConstraint::getBinaryMetaData(stream);
+	NpArticulationReducedCoordinate::getBinaryMetaData(stream);
+	NpArticulationLink::getBinaryMetaData(stream);
+	NpArticulationJointReducedCoordinate::getBinaryMetaData(stream);
 	NpArticulationLinkArray::getBinaryMetaData(stream);
 	NpShapeManager::getBinaryMetaData(stream);
-	NpAggregate::getBinaryMetaData(stream);			// NP_AGGREGATE	
+	NpAggregate::getBinaryMetaData(stream);
 }
+

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef BP_AABB_MANAGER_TASKS_H
 #define BP_AABB_MANAGER_TASKS_H
 
-#include "PsUserAllocated.h"
+#include "foundation/PxUserAllocated.h"
 #include "CmTask.h"
 
 namespace physx
@@ -41,7 +40,7 @@ namespace Bp
 	class AABBManager;
 	class Aggregate;
 
-	class AggregateBoundsComputationTask : public Cm::Task, public shdfnd::UserAllocated
+	class AggregateBoundsComputationTask : public Cm::Task, public PxUserAllocated
 	{
 		public:
 										AggregateBoundsComputationTask(PxU64 contextId) :
@@ -72,35 +71,29 @@ namespace Bp
 		AggregateBoundsComputationTask& operator=(const AggregateBoundsComputationTask&);
 	};
 
-	class FinalizeUpdateTask : public Cm::Task, public shdfnd::UserAllocated
+	class PreBpUpdateTask : public Cm::Task, public PxUserAllocated
 	{
-		public:
-										FinalizeUpdateTask(PxU64 contextId) :
-											Cm::Task				(contextId),
-											mManager				(NULL),
-											mNumCpuTasks			(0),
-											mScratchAllocator		(NULL),
-											mNarrowPhaseUnlockTask	(NULL)
-										{}
-										~FinalizeUpdateTask()	{}
+	public:
+		PreBpUpdateTask(PxU64 contextId) :
+			Cm::Task(contextId),
+			mManager(NULL),
+			mNumCpuTasks(0)
+		{}
+		~PreBpUpdateTask() {}
 
-		virtual const char*				getName() const { return "FinalizeUpdateTask"; }
+		virtual const char*				getName() const { return "PreBpUpdateTask"; }
 		virtual void					runInternal();
 
-				void					Init(AABBManager* manager, PxU32 numCpuTasks, PxcScratchAllocator* scratchAllocator, PxBaseTask* narrowPhaseUnlockTask)
-										{
-											mManager				= manager;
-											mNumCpuTasks			= numCpuTasks;
-											mScratchAllocator		= scratchAllocator;
-											mNarrowPhaseUnlockTask	= narrowPhaseUnlockTask;
-										}
-		private:
-				AABBManager*			mManager;
-				PxU32					mNumCpuTasks;
-				PxcScratchAllocator*	mScratchAllocator;
-				PxBaseTask*				mNarrowPhaseUnlockTask;
+		void					Init(AABBManager* manager, PxU32 numCpuTasks)
+		{
+			mManager = manager;
+			mNumCpuTasks = numCpuTasks;
+		}
+	private:
+		AABBManager * mManager;
+		PxU32					mNumCpuTasks;
 
-		FinalizeUpdateTask& operator=(const FinalizeUpdateTask&);
+		PreBpUpdateTask& operator=(const PreBpUpdateTask&);
 	};
 
 }

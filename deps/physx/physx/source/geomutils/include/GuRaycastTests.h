@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,26 +31,29 @@
 
 #include "foundation/PxSimpleTypes.h"
 #include "geometry/PxGeometry.h"
-#include "PxQueryReport.h"
-#include "CmPhysXCommon.h"
+#include "geometry/PxGeometryHit.h"
+#include "geometry/PxGeometryQueryContext.h"
 
 namespace physx
 {
-	// PT: TODO: why is PxHitFlag::eMESH_MULTIPLE used in the ray-vs-hf function, but not in the ray-vs-mesh function?
+	#define UNUSED_RAYCAST_THREAD_CONTEXT	NULL
 
 	// PT: we use a define to be able to quickly change the signature of all raycast functions.
 	// (this also ensures they all use consistent names for passed parameters).
-	// \param[in]	geom		geometry object to raycast against
-	// \param[in]	pose		pose of geometry object
-	// \param[in]	rayOrigin	ray's origin
-	// \param[in]	rayDir		ray's unit dir
-	// \param[in]	maxDist		ray's length/max distance
-	// \param[in]	hitFlags	query behavior flags
-	// \param[in]	maxHits		max number of hits = size of 'hits' buffer
-	// \param[out]	hits		result buffer where to write raycast hits
+	// \param[in]	geom			geometry object to raycast against
+	// \param[in]	pose			pose of geometry object
+	// \param[in]	rayOrigin		ray's origin
+	// \param[in]	rayDir			ray's unit dir
+	// \param[in]	maxDist			ray's length/max distance
+	// \param[in]	hitFlags		query behavior flags
+	// \param[in]	maxHits			max number of hits = size of 'hits' buffer
+	// \param[out]	hits			result buffer where to write raycast hits
+	// \param[in]	stride			size of hit structure
+	// \param[in]	threadContext	optional per-thread context
 	#define GU_RAY_FUNC_PARAMS	const PxGeometry& geom, const PxTransform& pose,					\
 								const PxVec3& rayOrigin, const PxVec3& rayDir, PxReal maxDist,		\
-								PxHitFlags hitFlags, PxU32 maxHits, PxRaycastHit* PX_RESTRICT hits
+								PxHitFlags hitFlags, PxU32 maxHits, PxGeomRaycastHit* PX_RESTRICT hits, PxU32 stride, PxRaycastThreadContext* threadContext
+
 	namespace Gu
 	{
 		// PT: function pointer for Geom-indexed raycast functions

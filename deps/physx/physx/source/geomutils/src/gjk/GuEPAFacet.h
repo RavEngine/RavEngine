@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef	GU_EPA_FACET_H
 #define	GU_EPA_FACET_H
 
-#include "CmPhysXCommon.h"
-#include "PsVecMath.h"
-#include "PsFPU.h"
-#include "PsUtilities.h"
+#include "foundation/PxVecMath.h"
+#include "foundation/PxFPU.h"
+#include "foundation/PxUtilities.h"
 #include "CmIDPool.h"
 
 #if (defined __GNUC__ && defined _DEBUG)
@@ -71,9 +69,9 @@ namespace Gu
 		PX_FORCE_INLINE Facet(const PxU32 _i0, const PxU32 _i1, const PxU32 _i2)
 			: m_obsolete(false), m_inHeap(false)
 		{
-			m_indices[0]= Ps::toI8(_i0);
-			m_indices[1]= Ps::toI8(_i1);
-			m_indices[2]= Ps::toI8(_i2);
+			m_indices[0]= PxToI8(_i0);
+			m_indices[1]= PxToI8(_i1);
+			m_indices[2]= PxToI8(_i2);
 			 
 			m_adjFacets[0] = m_adjFacets[1] = m_adjFacets[2] = NULL;
 			m_adjEdges[0] = m_adjEdges[1] = m_adjEdges[2] = -1;
@@ -102,33 +100,33 @@ namespace Gu
 		PX_FORCE_INLINE bool isObsolete() const { return m_obsolete; }
 
 		//calculate the signed distance from a point to a plane
-		PX_FORCE_INLINE Ps::aos::FloatV getPlaneDist(const Ps::aos::Vec3VArg p, const Ps::aos::Vec3V* PX_RESTRICT aBuf, const Ps::aos::Vec3V* PX_RESTRICT bBuf) const; 
+		PX_FORCE_INLINE aos::FloatV getPlaneDist(const aos::Vec3VArg p, const aos::Vec3V* PX_RESTRICT aBuf, const aos::Vec3V* PX_RESTRICT bBuf) const; 
 
 		//check to see whether the triangle is a valid triangle, calculate plane normal and plane distance at the same time
-		Ps::aos::BoolV isValid2(const PxU32 i0, const PxU32 i1, const PxU32 i2, const Ps::aos::Vec3V* PX_RESTRICT aBuf, const Ps::aos::Vec3V* PX_RESTRICT bBuf, 
-		const Ps::aos::FloatVArg upper);
+		aos::BoolV isValid2(const PxU32 i0, const PxU32 i1, const PxU32 i2, const aos::Vec3V* PX_RESTRICT aBuf, const aos::Vec3V* PX_RESTRICT bBuf, 
+		const aos::FloatVArg upper);
 
 		//return the absolute value for the plane distance from origin 
-		PX_FORCE_INLINE Ps::aos::FloatV getPlaneDist() const 
+		PX_FORCE_INLINE aos::FloatV getPlaneDist() const 
 		{ 
-			return Ps::aos::FLoad(m_planeDist);
+			return aos::FLoad(m_planeDist);
 		}
 
 		//return the plane normal
-		PX_FORCE_INLINE Ps::aos::Vec3V getPlaneNormal()const
+		PX_FORCE_INLINE aos::Vec3V getPlaneNormal()const
 		{
 			return m_planeNormal; 
 		}
 
 		//calculate the closest points for a shape pair
-		void getClosestPoint(const Ps::aos::Vec3V* PX_RESTRICT aBuf, const Ps::aos::Vec3V* PX_RESTRICT bBuf, Ps::aos::Vec3V& closestA, 
-			Ps::aos::Vec3V& closestB);
+		void getClosestPoint(const aos::Vec3V* PX_RESTRICT aBuf, const aos::Vec3V* PX_RESTRICT bBuf, aos::Vec3V& closestA, 
+			aos::Vec3V& closestB);
 
 		//calculate the closest points for a shape pair
-		//void getClosestPoint(const Ps::aos::Vec3V* PX_RESTRICT aBuf, const Ps::aos::Vec3V* PX_RESTRICT bBuf, Ps::aos::FloatV& v, Ps::aos::FloatV& w);
+		//void getClosestPoint(const aos::Vec3V* PX_RESTRICT aBuf, const aos::Vec3V* PX_RESTRICT bBuf, aos::FloatV& v, aos::FloatV& w);
 		
 		//performs a flood fill over the boundary of the current polytope. 
-		void silhouette(const Ps::aos::Vec3VArg w, const Ps::aos::Vec3V* PX_RESTRICT aBuf, const Ps::aos::Vec3V* PX_RESTRICT bBuf, EdgeBuffer& edgeBuffer, EPAFacetManager& manager);
+		void silhouette(const aos::Vec3VArg w, const aos::Vec3V* PX_RESTRICT aBuf, const aos::Vec3V* PX_RESTRICT bBuf, EdgeBuffer& edgeBuffer, EPAFacetManager& manager);
 		
 
 		//m_planeDist is positive
@@ -138,10 +136,10 @@ namespace Gu
 		}
 	 
 		//store all the boundary facets for the new polytope in the edgeBuffer and free indices when an old facet isn't part of the boundary anymore
-		PX_FORCE_INLINE void silhouette(const PxU32 index, const Ps::aos::Vec3VArg w, const Ps::aos::Vec3V* PX_RESTRICT aBuf, const Ps::aos::Vec3V* PX_RESTRICT bBuf, EdgeBuffer& edgeBuffer, 
+		PX_FORCE_INLINE void silhouette(const PxU32 index, const aos::Vec3VArg w, const aos::Vec3V* PX_RESTRICT aBuf, const aos::Vec3V* PX_RESTRICT bBuf, EdgeBuffer& edgeBuffer, 
 			EPAFacetManager& manager);
 
-		Ps::aos::Vec3V m_planeNormal;																										//16
+		aos::Vec3V m_planeNormal;																										//16
 		PxF32 m_planeDist;
 #if EPA_DEBUG
 		PxF32 m_lambda1;
@@ -242,10 +240,10 @@ namespace Gu
 	};
 
 	//ML: calculate MTD points for a shape pair
-	PX_FORCE_INLINE void Facet::getClosestPoint(const Ps::aos::Vec3V* PX_RESTRICT aBuf, const Ps::aos::Vec3V* PX_RESTRICT bBuf, Ps::aos::Vec3V& closestA, 
-		Ps::aos::Vec3V& closestB)
+	PX_FORCE_INLINE void Facet::getClosestPoint(const aos::Vec3V* PX_RESTRICT aBuf, const aos::Vec3V* PX_RESTRICT bBuf, aos::Vec3V& closestA, 
+		aos::Vec3V& closestB)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const Vec3V pa0(aBuf[m_indices[0]]);
 		const Vec3V pa1(aBuf[m_indices[1]]);
@@ -292,9 +290,9 @@ namespace Gu
 	PX_FORCE_INLINE bool Facet::link(const PxU32 edge0, Facet * PX_RESTRICT facet, const PxU32 edge1) 
 	{
 		m_adjFacets[edge0] = facet;
-		m_adjEdges[edge0] = Ps::toI8(edge1);
+		m_adjEdges[edge0] = PxToI8(edge1);
 		facet->m_adjFacets[edge1] = this;
-		facet->m_adjEdges[edge1] = Ps::toI8(edge0);
+		facet->m_adjEdges[edge1] = PxToI8(edge0);
 
 		return (m_indices[edge0] == facet->m_indices[incMod3(edge1)]) && (m_indices[incMod3(edge0)] == facet->m_indices[edge1]);
 	} 

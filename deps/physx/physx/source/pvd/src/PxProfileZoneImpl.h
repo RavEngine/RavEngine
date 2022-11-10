@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-
-#ifndef PXPVDSDK_PXPROFILEZONEIMPL_H
-#define PXPVDSDK_PXPROFILEZONEIMPL_H
+#ifndef PX_PROFILE_ZONE_IMPL_H
+#define PX_PROFILE_ZONE_IMPL_H
 
 #include "PxPvdProfileZone.h"
 #include "PxProfileZoneManager.h"
 #include "PxProfileContextProviderImpl.h"
 #include "PxProfileScopedMutexLock.h"
 #include "PxProfileEventBufferAtomic.h"
-#include "PsMutex.h"
+#include "foundation/PxMutex.h"
 
 namespace physx { namespace profile {
 
@@ -49,7 +47,7 @@ namespace physx { namespace profile {
 		bool isEventEnabled( const PxProfileEventId&) const { return true; }
 	};
 
-	typedef shdfnd::MutexT<PxProfileWrapperReflectionAllocator<uint8_t> >	TZoneMutexType;
+	typedef PxMutexT<PxProfileWrapperReflectionAllocator<uint8_t> >	TZoneMutexType;
 	typedef ScopedLockImpl<TZoneMutexType>				TZoneLockType;
 	typedef EventBuffer< PxDefaultContextProvider, TZoneMutexType, TZoneLockType, PxProfileNullEventFilter > TZoneEventBufferType;
 	//typedef EventBufferAtomic< PxDefaultContextProvider, TZoneMutexType, TZoneLockType, PxProfileNullEventFilter > TZoneEventBufferType;
@@ -59,7 +57,7 @@ namespace physx { namespace profile {
 					, public PxProfileZone
 					, public PxProfileEventBufferClient
 	{
-		typedef shdfnd::MutexT<PxProfileWrapperReflectionAllocator<uint8_t> >	TMutexType;
+		typedef PxMutexT<PxProfileWrapperReflectionAllocator<uint8_t> >	TMutexType;
 		typedef PxProfileHashMap<const char*, uint32_t>			TNameToEvtIndexMap;
 		//ensure we don't reuse event ids.
 		typedef PxProfileHashMap<uint16_t, const char*>			TEvtIdToNameMap;
@@ -312,4 +310,5 @@ namespace physx { namespace profile {
 	};
 
 }}
-#endif // PXPVDSDK_PXPROFILEZONEIMPL_H
+#endif
+

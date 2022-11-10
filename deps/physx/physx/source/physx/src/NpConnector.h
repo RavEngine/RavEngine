@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NP_CONNECTOR
-#define PX_PHYSICS_NP_CONNECTOR
+#ifndef NP_CONNECTOR_H
+#define NP_CONNECTOR_H
 
 #include "common/PxSerialFramework.h"
-#include "PsInlineArray.h"
-#include "PsUtilities.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxInlineArray.h"
+#include "foundation/PxUtilities.h"
 #include "CmUtils.h"
 
 namespace physx
@@ -47,7 +44,7 @@ struct NpConnectorType
 		eConstraint,
 		eAggregate,
 		eObserver,
-		eBvhStructure,
+		eBvh,
 		eInvalid
 	};
 };
@@ -63,12 +60,12 @@ class NpConnector
 //==================================================================================================
 public:
 	NpConnector() : mType(NpConnectorType::eInvalid), mObject(NULL) {}
-	NpConnector(NpConnectorType::Enum type, PxBase* object) : mType(Ps::to8(type)), mObject(object) {}
+	NpConnector(NpConnectorType::Enum type, PxBase* object) : mType(PxTo8(type)), mObject(object) {}
 // PX_SERIALIZATION
 	NpConnector(const NpConnector& c)
 	{
 		//special copy constructor that initializes padding bytes for meta data verification (PX_CHECKED only)		
-		Cm::markSerializedMem(this, sizeof(NpConnector));
+		PxMarkSerializedMemory(this, sizeof(NpConnector));
 		mType = c.mType;
 		mObject = c.mObject;
 	}
@@ -111,7 +108,7 @@ private:
 };
 
 
-class NpConnectorArray: public Ps::InlineArray<NpConnector, 4> 
+class NpConnectorArray: public PxInlineArray<NpConnector, 4> 
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -121,13 +118,13 @@ class NpConnectorArray: public Ps::InlineArray<NpConnector, 4>
 //==================================================================================================
 public:
 // PX_SERIALIZATION
-	NpConnectorArray(const PxEMPTY) : Ps::InlineArray<NpConnector, 4> (PxEmpty) {}
+	NpConnectorArray(const PxEMPTY) : PxInlineArray<NpConnector, 4> (PxEmpty) {}
 	static	void	getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
-	NpConnectorArray() : Ps::InlineArray<NpConnector, 4>(PX_DEBUG_EXP("connectorArray")) 
+	NpConnectorArray() : PxInlineArray<NpConnector, 4>("connectorArray") 
 	{
 		//special default constructor that initializes padding bytes for meta data verification (PX_CHECKED only)
-		Cm::markSerializedMem(this->mData, 4*sizeof(NpConnector));
+		PxMarkSerializedMemory(this->mData, 4*sizeof(NpConnector));
 	}
 };
 

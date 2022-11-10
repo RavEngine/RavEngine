@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 #ifndef PX_EXTENSIONS_COMMON_H
@@ -33,6 +32,9 @@
 #include "foundation/PxSimpleTypes.h"
 #include "PxPhysXConfig.h"
 
+//Property overrides will output this exact property name instead of the general
+//property name that would be used.  The properties need to have no template arguments
+//and exactly the same initialization as the classes they are overriding.
 struct PropertyOverride
 {
 	const char* TypeName;
@@ -46,9 +48,9 @@ struct PropertyOverride
 	}
 };
 
-//Property overrides will output this exact property name instead of the general
-//property name that would be used.  The properties need to have no template arguments
-//and exactly the same initialization as the classes they are overriding.
+//The meta data generator ignores properties that are marked as disabled.  Note that in the declaration
+//for properties that are defined via getter and setter methods, the 'get' and 'set' prefix can be dropped.
+//For protected fields the "m" prefix can be dropped, however for public fields the whole field qualifier is expected.
 struct DisabledPropertyEntry
 {
 	const char* mTypeName;

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuIntersectionRayBox.h"
 #include "GuDistanceSegmentBox.h"
 #include "GuInternal.h"
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
 #include "GuBoxConversion.h"
 
-#include "PsMathUtils.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 
 using namespace physx;
 using namespace Gu;
@@ -48,7 +45,7 @@ const PxU8* getBoxEdges();
 }*/
 
 /////////
-	/*#include "CmRenderOutput.h"
+	/*#include "common/PxRenderOutput.h"
 	#include "PxsContext.h"
 	static void gVisualizeBox(const Box& box, PxcNpThreadContext& context, PxU32 color=0xffffff)
 	{
@@ -57,7 +54,7 @@ const PxU8* getBoxEdges();
 
 		DebugBox db(box.extent);
 
-		Cm::RenderOutput& out = context.mRenderOutput;
+		PxRenderOutput& out = context.mRenderOutput;
 		out << color << m;
 		out << db;
 	}
@@ -65,11 +62,10 @@ const PxU8* getBoxEdges();
 	{
 		PxMat44 m = PxMat44::identity();
 
-		Cm::RenderOutput& out = context.mRenderOutput;
-		out << color << m << Cm::RenderOutput::LINES << a << b;
+		RenderOutput& out = context.mRenderOutput;
+		out << color << m << RenderOutput::LINES << a << b;
 	}*/
 /////////
-
 
 static const PxReal fatBoxEdgeCoeff = 0.01f;
 
@@ -112,13 +108,12 @@ static bool intersectEdgeEdgePreca(const PxVec3& p1, const PxVec3& p2, const PxV
 	return false;	// no collision
 }
 
-
 static bool GuTestAxis(const PxVec3& axis, const Segment& segment, PxReal radius, const Box& box, PxReal& depth)
 {
 	// Project capsule
 	PxReal min0 = segment.p0.dot(axis);
 	PxReal max0 = segment.p1.dot(axis);
-	if(min0>max0) Ps::swap(min0, max0);
+	if(min0>max0) PxSwap(min0, max0);
 	min0 -= radius;
 	max0 += radius;
 
@@ -147,7 +142,6 @@ static bool GuTestAxis(const PxVec3& axis, const Segment& segment, PxReal radius
 	return true;
 }
 
-
 static bool GuCapsuleOBBOverlap3(const Segment& segment, PxReal radius, const Box& box, PxReal* t=NULL, PxVec3* pp=NULL)
 {
 	PxVec3 Sep(PxReal(0));
@@ -173,7 +167,7 @@ static bool GuCapsuleOBBOverlap3(const Segment& segment, PxReal radius, const Bo
 	for(PxU32 i=0;i<3;i++)
 	{
 		PxVec3 Cross = CapsuleAxis.cross(box.rot[i]);
-		if(!Ps::isAlmostZero(Cross))
+		if(!isAlmostZero(Cross))
 		{
 			Cross = Cross.getNormalized();
 			PxReal d;
@@ -201,8 +195,7 @@ static bool GuCapsuleOBBOverlap3(const Segment& segment, PxReal radius, const Bo
 	return true;
 }
 
-
-static void GuGenerateVFContacts(	ContactBuffer& contactBuffer,
+static void GuGenerateVFContacts(	PxContactBuffer& contactBuffer,
 									//
 									const Segment& segment,
 									const PxReal radius,
@@ -233,9 +226,8 @@ static void GuGenerateVFContacts(	ContactBuffer& contactBuffer,
 	}
 }
 
-
 // PT: this looks similar to PxcGenerateEEContacts2 but it is mandatory to properly handle thin capsules.
-static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
+static void GuGenerateEEContacts(	PxContactBuffer& contactBuffer,
 									//
 									const Segment& segment,
 									const PxReal radius,
@@ -251,7 +243,7 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 
 	PxVec3 s0 = segment.p0;
 	PxVec3 s1 = segment.p1;
-	Ps::makeFatEdge(s0, s1, fatBoxEdgeCoeff);
+	makeFatEdge(s0, s1, fatBoxEdgeCoeff);
 
 	// PT: precomputed part of edge-edge intersection test
 //	const PxVec3 v1 = segment.p1 - segment.p0;
@@ -262,16 +254,15 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 	plane.d = -(plane.n.dot(s0));
 
 	PxU32 ii,jj;
-	Ps::closestAxis(plane.n, ii, jj);
+	closestAxis(plane.n, ii, jj);
 
 	const float coeff = 1.0f /(v1[ii]*normal[jj]-v1[jj]*normal[ii]);
-
 
 	for(PxU32 i=0;i<12;i++)
 	{
 //		PxVec3 p1 = Pts[*Indices++];
 //		PxVec3 p2 = Pts[*Indices++];
-//		Ps::makeFatEdge(p1, p2, fatBoxEdgeCoeff);	// PT: TODO: make fat segment instead
+//		makeFatEdge(p1, p2, fatBoxEdgeCoeff);	// PT: TODO: make fat segment instead
 		const PxVec3& p1 = Pts[*Indices++];
 		const PxVec3& p2 = Pts[*Indices++];
 
@@ -284,7 +275,6 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 		PxReal dist;
 		PxVec3 ip;
 
-		
 		if(intersectEdgeEdgePreca(s0, s1, v1, plane, ii, jj, coeff, normal, p1, p2, dist, ip))
 //		if(intersectEdgeEdgePreca(segment.p0, segment.p1, v1, plane, ii, jj, coeff, normal, p1, p2, dist, ip))
 		{
@@ -295,8 +285,7 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 	}
 }
 
-
-static void GuGenerateEEContacts2(	ContactBuffer& contactBuffer,
+static void GuGenerateEEContacts2(	PxContactBuffer& contactBuffer,
 									//
 									const Segment& segment,
 									const PxReal radius,
@@ -313,7 +302,7 @@ static void GuGenerateEEContacts2(	ContactBuffer& contactBuffer,
 
 	PxVec3 s0 = segment.p0;
 	PxVec3 s1 = segment.p1;
-	Ps::makeFatEdge(s0, s1, fatBoxEdgeCoeff);
+	makeFatEdge(s0, s1, fatBoxEdgeCoeff);
 
 	// PT: precomputed part of edge-edge intersection test
 //		const PxVec3 v1 = segment.p1 - segment.p0;
@@ -324,7 +313,7 @@ static void GuGenerateEEContacts2(	ContactBuffer& contactBuffer,
 		plane.d = -(plane.n.dot(s0));
 
 		PxU32 ii,jj;
-		Ps::closestAxis(plane.n, ii, jj);
+		closestAxis(plane.n, ii, jj);
 
 		const float coeff = 1.0f /(v1[jj]*normal[ii]-v1[ii]*normal[jj]);
 
@@ -332,7 +321,7 @@ static void GuGenerateEEContacts2(	ContactBuffer& contactBuffer,
 	{
 //		PxVec3 p1 = Pts[*Indices++];
 //		PxVec3 p2 = Pts[*Indices++];
-//		Ps::makeFatEdge(p1, p2, fatBoxEdgeCoeff);	// PT: TODO: make fat segment instead
+//		makeFatEdge(p1, p2, fatBoxEdgeCoeff);	// PT: TODO: make fat segment instead
 		const PxVec3& p1 = Pts[*Indices++];
 		const PxVec3& p2 = Pts[*Indices++];
 
@@ -356,18 +345,14 @@ static void GuGenerateEEContacts2(	ContactBuffer& contactBuffer,
 	}
 }
 
-namespace physx
-{
-namespace Gu
-{
-bool contactCapsuleBox(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactCapsuleBox(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 
 	// Get actual shape data
-	const PxCapsuleGeometry& shapeCapsule = shape0.get<const PxCapsuleGeometry>();
-	const PxBoxGeometry& shapeBox = shape1.get<const PxBoxGeometry>();
+	const PxCapsuleGeometry& shapeCapsule = checkedCast<PxCapsuleGeometry>(shape0);
+	const PxBoxGeometry& shapeBox = checkedCast<PxBoxGeometry>(shape1);
 
 	// PT: TODO: move computations to local space
 
@@ -455,5 +440,3 @@ bool contactCapsuleBox(GU_CONTACT_METHOD_ARGS)
 	}
 	return true;
 }
-}//Gu
-}//physx

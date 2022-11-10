@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDUSERRENDERIMPL_H
-#define PXPVDSDK_PXPVDUSERRENDERIMPL_H
+#ifndef PX_PVD_USER_RENDER_IMPL_H
+#define PX_PVD_USER_RENDER_IMPL_H
 
 #include "PxPvdUserRenderer.h"
 
@@ -61,10 +60,10 @@ class RenderSerializer
 	virtual void streamify(uint32_t& val) = 0;
 	virtual void streamify(uint8_t& val) = 0;
 	virtual void streamify(DataRef<uint8_t>& val) = 0;
-	virtual void streamify(DataRef<PvdDebugPoint>& val) = 0;
-	virtual void streamify(DataRef<PvdDebugLine>& val) = 0;
-	virtual void streamify(DataRef<PvdDebugTriangle>& val) = 0;
-	virtual void streamify(PvdDebugText& val) = 0;
+	virtual void streamify(DataRef<PxDebugPoint>& val) = 0;
+	virtual void streamify(DataRef<PxDebugLine>& val) = 0;
+	virtual void streamify(DataRef<PxDebugTriangle>& val) = 0;
+	virtual void streamify(PxDebugText& val) = 0;
 	virtual bool isGood() = 0;
 	virtual uint32_t hasData() = 0;
 
@@ -135,27 +134,27 @@ struct SetInstanceIdRenderEvent
 		serializer.streamify(mInstanceId);
 	}
 };
-struct PointsRenderEvent : BulkRenderEvent<PvdDebugPoint>
+struct PointsRenderEvent : BulkRenderEvent<PxDebugPoint>
 {
-	PointsRenderEvent(const PvdDebugPoint* data, uint32_t count) : BulkRenderEvent<PvdDebugPoint>(data, count)
+	PointsRenderEvent(const PxDebugPoint* data, uint32_t count) : BulkRenderEvent<PxDebugPoint>(data, count)
 	{
 	}
 	PointsRenderEvent()
 	{
 	}
 };
-struct LinesRenderEvent : BulkRenderEvent<PvdDebugLine>
+struct LinesRenderEvent : BulkRenderEvent<PxDebugLine>
 {
-	LinesRenderEvent(const PvdDebugLine* data, uint32_t count) : BulkRenderEvent<PvdDebugLine>(data, count)
+	LinesRenderEvent(const PxDebugLine* data, uint32_t count) : BulkRenderEvent<PxDebugLine>(data, count)
 	{
 	}
 	LinesRenderEvent()
 	{
 	}
 };
-struct TrianglesRenderEvent : BulkRenderEvent<PvdDebugTriangle>
+struct TrianglesRenderEvent : BulkRenderEvent<PxDebugTriangle>
 {
-	TrianglesRenderEvent(const PvdDebugTriangle* data, uint32_t count) : BulkRenderEvent<PvdDebugTriangle>(data, count)
+	TrianglesRenderEvent(const PxDebugTriangle* data, uint32_t count) : BulkRenderEvent<PxDebugTriangle>(data, count)
 	{
 	}
 	TrianglesRenderEvent()
@@ -164,11 +163,11 @@ struct TrianglesRenderEvent : BulkRenderEvent<PvdDebugTriangle>
 };
 struct DebugRenderEvent
 {
-	DataRef<PvdDebugPoint> mPointData;
-	DataRef<PvdDebugLine> mLineData;
-	DataRef<PvdDebugTriangle> mTriangleData;
-	DebugRenderEvent(const PvdDebugPoint* pointData, uint32_t pointCount, const PvdDebugLine* lineData,
-	                 uint32_t lineCount, const PvdDebugTriangle* triangleData, uint32_t triangleCount)
+	DataRef<PxDebugPoint> mPointData;
+	DataRef<PxDebugLine> mLineData;
+	DataRef<PxDebugTriangle> mTriangleData;
+	DebugRenderEvent(const PxDebugPoint* pointData, uint32_t pointCount, const PxDebugLine* lineData,
+	                 uint32_t lineCount, const PxDebugTriangle* triangleData, uint32_t triangleCount)
 	: mPointData(pointData, pointCount), mLineData(lineData, lineCount), mTriangleData(triangleData, triangleCount)
 	{
 	}
@@ -186,8 +185,8 @@ struct DebugRenderEvent
 
 struct TextRenderEvent
 {
-	PvdDebugText mText;
-	TextRenderEvent(const PvdDebugText& text)
+	PxDebugText mText;
+	TextRenderEvent(const PxDebugText& text)
 	{
 		mText.color = text.color;
 		mText.position = text.position;
@@ -319,9 +318,9 @@ struct RenderSerializerMap<uint8_t>
 };
 
 template <>
-struct RenderSerializerMap<PvdDebugPoint>
+struct RenderSerializerMap<PxDebugPoint>
 {
-	void serialize(RenderSerializer& s, PvdDebugPoint& d)
+	void serialize(RenderSerializer& s, PxDebugPoint& d)
 	{
 		s.streamify(d.pos);
 		s.streamify(d.color);
@@ -329,9 +328,9 @@ struct RenderSerializerMap<PvdDebugPoint>
 };
 
 template <>
-struct RenderSerializerMap<PvdDebugLine>
+struct RenderSerializerMap<PxDebugLine>
 {
-	void serialize(RenderSerializer& s, PvdDebugLine& d)
+	void serialize(RenderSerializer& s, PxDebugLine& d)
 	{
 		s.streamify(d.pos0);
 		s.streamify(d.color0);
@@ -341,9 +340,9 @@ struct RenderSerializerMap<PvdDebugLine>
 };
 
 template <>
-struct RenderSerializerMap<PvdDebugTriangle>
+struct RenderSerializerMap<PxDebugTriangle>
 {
-	void serialize(RenderSerializer& s, PvdDebugTriangle& d)
+	void serialize(RenderSerializer& s, PxDebugTriangle& d)
 	{
 		s.streamify(d.pos0);
 		s.streamify(d.color0);
@@ -382,4 +381,5 @@ PvdUserRenderTypes::Enum getPvdRenderTypeFromType()
 }
 }
 
-#endif // PXPVDSDK_PXPVDUSERRENDERIMPL_H
+#endif
+

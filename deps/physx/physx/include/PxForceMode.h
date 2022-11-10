@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NX_FORCE_MODE
-#define PX_PHYSICS_NX_FORCE_MODE
+#ifndef PX_FORCE_MODE_H
+#define PX_FORCE_MODE_H
 
 #include "foundation/PxPreprocessor.h"
 
@@ -51,10 +49,10 @@ struct PxForceMode
 {
 	enum Enum
 	{
-		eFORCE,				//!< parameter has unit of mass * distance/ time^2, i.e. a force
-		eIMPULSE,			//!< parameter has unit of mass * distance /time
-		eVELOCITY_CHANGE,	//!< parameter has unit of distance / time, i.e. the effect is mass independent: a velocity change.
-		eACCELERATION		//!< parameter has unit of distance/ time^2, i.e. an acceleration. It gets treated just like a force except the mass is not divided out before integration.
+		eFORCE,				//!< parameter has unit of mass * length / time^2, i.e., a force
+		eIMPULSE,			//!< parameter has unit of mass * length / time, i.e., force * time
+		eVELOCITY_CHANGE,	//!< parameter has unit of length / time, i.e., the effect is mass independent: a velocity change.
+		eACCELERATION		//!< parameter has unit of length/ time^2, i.e., an acceleration. It gets treated just like a force except the mass is not divided out before integration.
 	};
 };
 

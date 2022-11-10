@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef NP_CONSTRAINT_HELPER_H
-#define NP_CONSTRAINT_HELPER_H
+#ifndef EXT_CONSTRAINT_HELPER_H
+#define EXT_CONSTRAINT_HELPER_H
 
 #include "foundation/PxAssert.h"
 #include "foundation/PxTransform.h"
 #include "foundation/PxMat33.h"
+#include "foundation/PxSIMDHelpers.h"
 #include "extensions/PxD6Joint.h"
 #include "ExtJointData.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
@@ -159,7 +160,7 @@ namespace Ext
 			c->angular0			= ra.cross(axis);
 			c->linear1			= axis;
 			c->angular1			= rb.cross(axis);
-			c->geometricError	= posErr;		
+			c->geometricError	= posErr;
 			PX_ASSERT(c->linear0.isFinite());
 			PX_ASSERT(c->linear1.isFinite());
 			PX_ASSERT(c->angular0.isFinite());
@@ -190,18 +191,21 @@ namespace Ext
 			ConstraintHelper(Px1DConstraint* c, const PxVec3& ra, const PxVec3& rb)
 				: mConstraints(c), mCurrent(c), mRa(ra), mRb(rb)	{}
 
-			ConstraintHelper(Px1DConstraint* c, PxConstraintInvMassScale& invMassScale,
-					PxTransform& cA2w, PxTransform& cB2w, PxVec3& body0WorldOffset,
+			/*PX_NOINLINE*/	ConstraintHelper(Px1DConstraint* c, PxConstraintInvMassScale& invMassScale,
+					PxTransform& cA2w, PxTransform& cB2w, PxVec3p& body0WorldOffset,
 					const JointData& data, const PxTransform& bA2w, const PxTransform& bB2w)
 				: mConstraints(c), mCurrent(c)
 			{
-				invMassScale = data.invMassScale;
+				using namespace aos;
+
+				V4StoreA(V4LoadA(&data.invMassScale.linear0), &invMassScale.linear0);	//invMassScale = data.invMassScale;
 
 				computeJointFrames(cA2w, cB2w, data, bA2w, bB2w);
 
-				body0WorldOffset = cB2w.p - bA2w.p;
+				const PxVec3 ra = cB2w.p - bA2w.p;
+				body0WorldOffset = ra;
 
-				mRa = cB2w.p - bA2w.p;
+				mRa = ra;
 				mRb = cB2w.p - bB2w.p;
 
 				mCA2w = cA2w.p;
@@ -227,7 +231,7 @@ namespace Ext
 			// limited linear & angular
 			PX_FORCE_INLINE void linearLimit(const PxVec3& axis, PxReal ordinate, PxReal limitValue, const PxJointLimitParameters& limit)
 			{
-				const PxReal pad = limit.isSoft() ? 0.0f : limit.contactDistance;
+				const PxReal pad = limit.isSoft() ? 0.0f : limit.contactDistance_deprecated;
 
 				if(ordinate + pad > limitValue)
 					addLimit(linear(axis, limitValue - ordinate, PxConstraintSolveHint::eNONE), limit);
@@ -277,13 +281,13 @@ namespace Ext
 			{
 				Px1DConstraint* current = mCurrent;
 				
-				PxVec3 errorVector(0.f);
+				PxVec3 errorVector(0.0f);
 
 				PxVec3 ra = mRa;
 				PxVec3 rb = mRb;
 				if(lin)
 				{
-					const PxMat33 axes(qA);
+					const PxMat33Padded axes(qA);
 					
 					if(lin&1) errorVector -= axes.column0 * cB2cAp.x;
 					if(lin&2) errorVector -= axes.column1 * cB2cAp.y;

@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXVehicle common
@@ -73,7 +72,6 @@ SET(PHYSX_VEHICLE_SOURCE
 	${LL_SOURCE_DIR}/VehicleUtilControl.cpp
 	${LL_SOURCE_DIR}/VehicleUtilSetup.cpp
 	${LL_SOURCE_DIR}/VehicleUtilTelemetry.cpp
-	${LL_SOURCE_DIR}/PxVehicleDefaults.h
 	${LL_SOURCE_DIR}/PxVehicleLinearMath.h
 	${LL_SOURCE_DIR}/PxVehicleSerialization.h
 	${LL_SOURCE_DIR}/PxVehicleSuspLimitConstraintShader.h

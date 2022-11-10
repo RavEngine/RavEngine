@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,19 +34,16 @@
 // ****************************************************************************
 
 #include <ctype.h>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetutils/SnippetUtils.h"
 
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
-
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics	= NULL;
-PxCooking*				gCooking	= NULL;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics	= NULL;
+static PxCooking*				gCooking	= NULL;
 
 float rand(float loVal, float hiVal)
 {
@@ -130,7 +126,7 @@ void setupCommonCookingParams(PxCookingParams& params, bool skipMeshCleanup, boo
 	else
 		params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
 
-	// If DISABLE_ACTIVE_EDGES_PREDOCOMPUTE is set, the cooking does not compute the active (convex) edges, and instead 
+	// If eDISABLE_ACTIVE_EDGES_PRECOMPUTE is set, the cooking does not compute the active (convex) edges, and instead 
 	// marks all edges as active. This makes cooking faster but can slow down contact generation. This flag may change 
 	// the collision behavior, as all edges of the triangle mesh will now be considered active.
 	if (!skipEdgeData)
@@ -377,9 +373,9 @@ void initPhysics()
 	
 void cleanupPhysics()
 {
-	gPhysics->release();
+	PX_RELEASE(gPhysics);
 	gCooking->release();
-	gFoundation->release();
+	PX_RELEASE(gFoundation);
 	
 	printf("SnippetTriangleMeshCreate done.\n");
 }

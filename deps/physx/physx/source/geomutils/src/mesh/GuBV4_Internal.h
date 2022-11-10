@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_BV4_INTERNAL_H
 #define GU_BV4_INTERNAL_H
 
-#include "CmPhysXCommon.h"
-#include "PsFPU.h"
+#include "foundation/PxFPU.h"
 
 	// PT: the general structure is that there is a root "process stream" function which is the entry point for the query.
 	// It then calls "process node" functions for each traversed node, except for the Slabs-based raycast versions that deal
@@ -41,16 +39,12 @@
 	// PT: Linux tries to compile templates even when they're not used so I had to wrap them all with defines to avoid build errors. Blame the only platform that does this.
 	#ifdef GU_BV4_PROCESS_STREAM_NO_ORDER
 		template<class LeafTestT, class ParamsT>
-		PX_FORCE_INLINE Ps::IntBool processStreamNoOrder(const BV4Tree& tree, ParamsT* PX_RESTRICT params)
+		PX_FORCE_INLINE PxIntBool processStreamNoOrder(const BV4Tree& tree, ParamsT* PX_RESTRICT params)
 		{
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			if(tree.mQuantized)
-		#endif
 				return BV4_ProcessStreamSwizzledNoOrderQ<LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedQ*>(tree.mNodes), tree.mInitData, params);
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			else
 				return BV4_ProcessStreamSwizzledNoOrderNQ<LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedNQ*>(tree.mNodes), tree.mInitData, params);
-		#endif
 		}
 	#endif
 
@@ -58,29 +52,21 @@
 		template<class LeafTestT, class ParamsT>
 		PX_FORCE_INLINE void processStreamOrdered(const BV4Tree& tree, ParamsT* PX_RESTRICT params)
 		{
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			if(tree.mQuantized)
-		#endif
 				BV4_ProcessStreamSwizzledOrderedQ<LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedQ*>(tree.mNodes), tree.mInitData, params);
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			else
 				BV4_ProcessStreamSwizzledOrderedNQ<LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedNQ*>(tree.mNodes), tree.mInitData, params);
-		#endif
 		}
 	#endif
 
 	#ifdef GU_BV4_PROCESS_STREAM_RAY_NO_ORDER
 		template<int inflateT, class LeafTestT, class ParamsT>
-		PX_FORCE_INLINE Ps::IntBool processStreamRayNoOrder(const BV4Tree& tree, ParamsT* PX_RESTRICT params)
+		PX_FORCE_INLINE PxIntBool processStreamRayNoOrder(const BV4Tree& tree, ParamsT* PX_RESTRICT params)
 		{
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			if(tree.mQuantized)
-		#endif
 				return BV4_ProcessStreamKajiyaNoOrderQ<inflateT, LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedQ*>(tree.mNodes), tree.mInitData, params);
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			else
 				return BV4_ProcessStreamKajiyaNoOrderNQ<inflateT, LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedNQ*>(tree.mNodes), tree.mInitData, params);
-		#endif
 		}
 	#endif
 
@@ -88,14 +74,10 @@
 		template<int inflateT, class LeafTestT, class ParamsT>
 		PX_FORCE_INLINE void processStreamRayOrdered(const BV4Tree& tree, ParamsT* PX_RESTRICT params)
 		{
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			if(tree.mQuantized)
-		#endif
 				BV4_ProcessStreamKajiyaOrderedQ<inflateT, LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedQ*>(tree.mNodes), tree.mInitData, params);
-		#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 			else
 				BV4_ProcessStreamKajiyaOrderedNQ<inflateT, LeafTestT, ParamsT>(reinterpret_cast<const BVDataPackedNQ*>(tree.mNodes), tree.mInitData, params);
-		#endif
 		}
 	#endif
 #else
@@ -181,9 +163,8 @@
 		if(code & (1<<c))	{ stack[nb++] = node[c].getChildData();	}		\
 		if(code & (1<<d))	{ stack[nb++] = node[d].getChildData();	}	}	\
 
-#if PX_INTEL_FAMILY
 	template<class LeafTestT, class ParamsT>
-	static Ps::IntBool BV4_ProcessStreamNoOrder(const BVDataPacked* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
+	static PxIntBool BV4_ProcessStreamNoOrder(const BVDataPacked* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
 	{
 		const BVDataPacked* root = node;
 
@@ -312,7 +293,6 @@
 			}
 		}while(nb);
 	}
-#endif	// PX_INTEL_FAMILY
 #endif	// GU_BV4_USE_SLABS
 
 #endif // GU_BV4_INTERNAL_H

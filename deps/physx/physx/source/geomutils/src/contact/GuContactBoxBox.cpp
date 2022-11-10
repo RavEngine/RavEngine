@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
-
 #include "CmMatrix34.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 
 using namespace physx;
 using namespace Gu;
+using namespace Cm;
 
 #define MAX_NB_CTCS	8 + 12*5 + 6*4
 #define ABS_GREATER(x, y)			(PxAbs(x) > (y))
@@ -75,38 +73,32 @@ struct VertexInfo
 	bool	area;
 };
 
-
 /*static PxI32 doBoxBoxContactGeneration(PxVec3 ctcPts[MAX_NB_CTCS], PxReal depths[MAX_NB_CTCS], PxVec3* ctcNrm,
 									 const PxVec3& extents0, const PxVec3& extents1,
 									 PxU32& collisionData,
-									 const Cm::Matrix34& transform0, const Cm::Matrix34& transform1, PxReal contactDistance);*/
+									 const PxMat34& transform0, const PxMat34& transform1, PxReal contactDistance);*/
 
-static PxI32 doBoxBoxContactGeneration(ContactBuffer& contactBuffer,
+static PxI32 doBoxBoxContactGeneration(PxContactBuffer& contactBuffer,
 									 const PxVec3& extents0, const PxVec3& extents1,
 									 PxU32& collisionData,
-									 const Cm::Matrix34& transform0, const Cm::Matrix34& transform1, PxReal contactDistance);
+									 const PxMat34& transform0, const PxMat34& transform1, PxReal contactDistance);
 
-namespace physx
-{
-
-namespace Gu
-{
-bool contactBoxBox(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactBoxBox(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 
 	// Get actual shape data
-	const PxBoxGeometry& shapeBox0 = shape0.get<const PxBoxGeometry>();
-	const PxBoxGeometry& shapeBox1 = shape1.get<const PxBoxGeometry>();
+	const PxBoxGeometry& shapeBox0 = checkedCast<PxBoxGeometry>(shape0);
+	const PxBoxGeometry& shapeBox1 = checkedCast<PxBoxGeometry>(shape1);
 
 	PxU32 pd = PxU32(cache.mPairData);
 	PxI32 Nb = doBoxBoxContactGeneration(contactBuffer,
 					shapeBox0.halfExtents, shapeBox1.halfExtents,
 					pd,
-					Cm::Matrix34(transform0), Cm::Matrix34(transform1),
+					Matrix34FromTransform(transform0), Matrix34FromTransform(transform1),
 					params.mContactDistance);
 
-	cache.mPairData = Ps::to8(pd);
+	cache.mPairData = PxTo8(pd);
 
 	if(!Nb)
 	{
@@ -115,8 +107,6 @@ bool contactBoxBox(GU_CONTACT_METHOD_ARGS)
 	}
 	return true;
 }
-}//Gu
-}//physx
 
 // face => 4 vertices of a face of the cube (i.e. a quad)
 static PX_FORCE_INLINE PxReal IsInYZ(const PxReal y, const PxReal z, const VertexInfo** PX_RESTRICT face)
@@ -169,16 +159,16 @@ static PX_FORCE_INLINE PxReal IsInYZ(const PxReal y, const PxReal z, const Verte
 //  |      |       |
 //  +------+ -y1   *-----z
 static PxI32 generateContacts(//PxVec3 ctcPts[], PxReal depths[], 
-								ContactBuffer& contactBuffer, const PxVec3& contactNormal,
+								PxContactBuffer& contactBuffer, const PxVec3& contactNormal,
 								PxReal y1, PxReal z1, const PxVec3& box2,
-								const Cm::Matrix34& transform0, const Cm::Matrix34& transform1, PxReal contactDistance)
+								const PxMat34& transform0, const PxMat34& transform1, PxReal contactDistance)
 {
 //	PxI32 NbContacts=0;
 	contactBuffer.reset();
 	y1 += contactDistance;
 	z1 += contactDistance;
 
-	const Cm::Matrix34 trans1to0 = transform0.getInverseRT() * transform1;
+	const PxMat34 trans1to0 = transform0.getInverseRT() * transform1;
 
 	VertexInfo vtx[8];	// The 8 cube vertices
 //	PxI32 i;
@@ -412,10 +402,10 @@ static PxI32 generateContacts(//PxVec3 ctcPts[], PxReal depths[],
 }
 
 //static PxI32 doBoxBoxContactGeneration(PxVec3 ctcPts[MAX_NB_CTCS], PxReal depths[MAX_NB_CTCS], PxVec3* ctcNrm,
-static PxI32 doBoxBoxContactGeneration(ContactBuffer& contactBuffer,
+static PxI32 doBoxBoxContactGeneration(PxContactBuffer& contactBuffer,
 									 const PxVec3& extents0, const PxVec3& extents1,
 									 PxU32& collisionData,
-									 const Cm::Matrix34& transform0, const Cm::Matrix34& transform1, PxReal contactDistance)
+									 const PxMat34& transform0, const PxMat34& transform1, PxReal contactDistance)
 {
 	PxReal aafC[3][3];			// matrix C = A^T B, c_{ij} = Dot(A_i,B_j)
 	PxReal aafAbsC[3][3];		// |c_{ij}|
@@ -560,7 +550,7 @@ static PxI32 doBoxBoxContactGeneration(ContactBuffer& contactBuffer,
 #else
 	const PxU32 sign = PxU32(PXC_IS_NEGATIVE(d1[minIndex]));
 #endif
-	Cm::Matrix34 trs;
+	PxMat34 trs;
 	PxVec3 ctcNrm;
 
 	switch(minIndex)

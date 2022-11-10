@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef DY_SOLVERCORE_H
-#define DY_SOLVERCORE_H
+#ifndef DY_SOLVER_CORE_H
+#define DY_SOLVER_CORE_H
 
 #include "PxvConfig.h"
-#include "PsArray.h"
-#include "PsThread.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxThread.h"
 
 
 namespace physx
@@ -106,7 +104,7 @@ PX_INLINE void WaitForProgressCount(volatile PxI32* pGlobalIndex, const PxI32 ta
 				}
 			}
 			if(!satisfied)
-				Ps::Thread::yield();
+				PxThread::yield();
 			count = ATTEMPTS_BEFORE_RETEST;
 		}
 		while(!satisfied);
@@ -139,7 +137,7 @@ PX_INLINE void WaitForProgressCount(volatile PxI32* pGlobalIndex, const PxI32 ta
 			PxU64 endTime = readTimer();
 			stallTime += (endTime - startTime);
 			if(!satisfied)
-				Ps::Thread::yield();
+				PxThread::yield();
 			count = ATTEMPTS_BEFORE_BACKOFF;
 		}
 		while(!satisfied);
@@ -248,4 +246,4 @@ public:
 
 }
 
-#endif //DY_SOLVERCORE_H
+#endif

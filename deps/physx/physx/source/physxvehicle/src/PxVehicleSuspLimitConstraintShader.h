@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -89,25 +88,27 @@ public:
 		const PxConstraint* c,
 		PxPvdUpdateType::Enum updateType) const	 { PX_UNUSED(c); PX_UNUSED(updateType); PX_UNUSED(&pvdConnection); return true;}
 
+	virtual void			updateOmniPvdProperties() const { }
+
 	virtual void			onConstraintRelease()
 	{
 		mVehicle->onConstraintRelease();
 	}
 
-	virtual void*			getExternalReference(PxU32& typeID) { typeID = PxConstraintExtIDs::eVEHICLE_SUSP_LIMIT; return this; }
+	virtual void* getExternalReference(PxU32& typeID) { typeID = PxConstraintExtIDs::eVEHICLE_SUSP_LIMIT_DEPRECATED; return this; }
 	virtual PxBase* getSerializable() { return NULL; }
 
-
+	//TAG:solverprepshader
 	static PxU32 vehicleSuspLimitConstraintSolverPrep(
 		Px1DConstraint* constraints,
-		PxVec3& body0WorldOffset,
+		PxVec3p& body0WorldOffset,
 		PxU32 maxConstraints,
 		PxConstraintInvMassScale&,
 		const void* constantBlock,
 		const PxTransform& bodyAToWorld,
 		const PxTransform& bodyBToWorld,
 		bool,
-		PxVec3& cA2w, PxVec3& cB2w
+		PxVec3p& cA2w, PxVec3p& cB2w
 		)
 	{
 		PX_UNUSED(maxConstraints);
@@ -119,8 +120,8 @@ public:
 		PxU32 numActive=0;
 		const PxQuat bodyRotation = bodyAToWorld.q * data->mCMassRotation.getConjugate();
 
-		//KS - the substep solver will use raXn to try to add to the angular part of the linear constraints.
-		//We overcome this by setting the ra and rb offsets to be 0. In addition, we will 
+		//KS - the TGS solver will use raXn to try to add to the angular part of the linear constraints.
+		//We overcome this by setting the ra and rb offsets to be 0.
 		cA2w = bodyAToWorld.p;
 		cB2w = bodyBToWorld.p;
 
@@ -310,4 +311,4 @@ PX_COMPILE_TIME_ASSERT(0==(sizeof(PxVehicleTireForceCalculator) & 15));
 
 
 /** @} */
-#endif //PX_VEHICLE_SUSP_LIMIT_CONSTRAINT_SHADER_H
+#endif

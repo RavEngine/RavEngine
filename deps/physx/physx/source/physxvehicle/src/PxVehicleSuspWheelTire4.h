@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_VEHICLE_SUSPWHEELTIRE_H
-#define PX_VEHICLE_SUSPWHEELTIRE_H
+#ifndef PX_VEHICLE_SUSP_WHEEL_TIRE4_H
+#define PX_VEHICLE_SUSP_WHEEL_TIRE4_H
 /** \addtogroup vehicle
   @{
 */
@@ -40,8 +39,8 @@
 #include "foundation/PxIO.h"
 #include "geometry/PxGeometryHelpers.h"
 #include "vehicle/PxVehicleComponents.h"
-#include "PxBatchQueryDesc.h"
 #include "PxVehicleSuspLimitConstraintShader.h"
+#include "extensions/PxSceneQueryExt.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -200,6 +199,7 @@ public:
 			mTireLowForwardSpeedTimers[i] = 0.0f;
 			mTireLowSideSpeedTimers[i] = 0.0f;
 			mJounces[i] = PX_MAX_F32;
+			mSteerAngles[i] = 0.0f;
 			mVehicleConstraints->mData.mStickyTireForwardData.mActiveFlags[i] = false;
 			mVehicleConstraints->mData.mStickyTireSideData.mActiveFlags[i] = false;
 			mVehicleConstraints->mData.mSuspLimitData.mActiveFlags[i] = false;
@@ -218,6 +218,26 @@ public:
 			mWheelSpeeds[i] = 0.0f;
 			mCorrectedWheelSpeeds[i] = 0.0f;
 			mJounces[i] = PX_MAX_F32; //Ensure that the jounce speed is zero when the car wakes up again. 
+			mSteerAngles[i] = 0.0f;
+		}
+	}
+
+	void setTireContacts(const PxU32* cachedHitCounts, const PxPlane* cachedHitPlanes, const PxF32* cachedFrictionMultipliers, const PxTireContactIntersectionMethod::Enum* cachedQueryTypes)
+	{
+		mHasCachedRaycastHitPlane = true;
+		mRaycastResults = NULL;
+		mSweepResults = NULL;
+
+		PxVehicleWheels4DynData::CachedSuspLineSceneQuerytHitResult* cachedRaycastHitResults =
+			reinterpret_cast<PxVehicleWheels4DynData::CachedSuspLineSceneQuerytHitResult*>(mQueryOrCachedHitResults);
+
+		for (PxU32 i = 0; i < 4; i++)
+		{
+			cachedRaycastHitResults->mCounts[i] = PxU16(cachedHitCounts[i]);
+			cachedRaycastHitResults->mPlanes[i] = cachedHitPlanes[i];
+			cachedRaycastHitResults->mDistances[i] = 1.0f;
+			cachedRaycastHitResults->mFrictionMultipliers[i] = cachedFrictionMultipliers[i];
+			cachedRaycastHitResults->mQueryTypes[i] = ((cachedQueryTypes[i] == PxTireContactIntersectionMethod::eRAY) ? 0 : 1);
 		}
 	}
 
@@ -255,6 +275,12 @@ public:
 	\note Used only internally to compute the jounce speed by comparing cached jounce and latest jounce.
 	*/
 	PxReal mJounces[4];
+
+	/**
+	\brief Previous steer angle
+	\note Used only internally to compute the rotation of the sweep pose.
+	*/
+	PxReal mSteerAngles[4];
 
 	struct SuspLineSweep
 	{
@@ -312,7 +338,7 @@ public:
 		\brief Cached raycast hit planes. These are the planes found from the last scene queries.
 		@see PxVehicleSuspensionRaycasts, PxVehicleSuspensionSweeps
 		*/
-		PxVec4 mPlanes[4];
+		PxPlane mPlanes[4];
 
 		/**
 		\brief Cached friction.
@@ -361,13 +387,13 @@ public:
 	\brief Set by PxVehicleSuspensionRaycasts
 	@see PxVehicleSuspensionRaycasts
 	*/
-	const PxRaycastQueryResult* mRaycastResults;
+	const PxRaycastBuffer* mRaycastResults;
 
 	/**
 	\brief Set by PxVehicleSuspensionSweeps
 	@see PxVehicleSuspensionSweeps
 	*/
-	const PxSweepQueryResult* mSweepResults;
+	const PxSweepBuffer* mSweepResults;
 
 	/**
 	\brief Set true if a raycast hit plane has been recorded and cached.
@@ -391,4 +417,4 @@ PX_COMPILE_TIME_ASSERT(sizeof(PxVehicleWheels4DynData::CachedSuspLineSceneQueryt
 #endif
 
 /** @} */
-#endif //PX_VEHICLE_SUSPWHEELTIRE_H
+#endif

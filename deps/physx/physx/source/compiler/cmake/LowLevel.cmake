@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build LowLevel common
@@ -38,7 +37,13 @@ include(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/Lo
 
 SET(LL_API_DIR ${LL_SOURCE_DIR}/api/)
 SET(LL_API_HEADERS	
+	${LL_API_DIR}/include/PxsMaterialShared.h
 	${LL_API_DIR}/include/PxsMaterialCore.h
+	${LL_API_DIR}/include/PxsFEMSoftBodyMaterialCore.h
+	${LL_API_DIR}/include/PxsFEMClothMaterialCore.h
+	${LL_API_DIR}/include/PxsPBDMaterialCore.h
+	${LL_API_DIR}/include/PxsFLIPMaterialCore.h
+	${LL_API_DIR}/include/PxsMPMMaterialCore.h
 	${LL_API_DIR}/include/PxsMaterialManager.h
 	${LL_API_DIR}/include/PxvConfig.h
 	${LL_API_DIR}/include/PxvDynamics.h
@@ -81,10 +86,7 @@ SOURCE_GROUP("Common Includes\\utils" FILES ${LL_COMMON_UTILS_HEADERS})
 SET(LL_COMMON_PIPELINE_SOURCE	
 	${LL_COMMON_DIR}/src/pipeline/PxcContactCache.cpp
 	${LL_COMMON_DIR}/src/pipeline/PxcContactMethodImpl.cpp
-	${LL_COMMON_DIR}/src/pipeline/PxcMaterialHeightField.cpp
-	${LL_COMMON_DIR}/src/pipeline/PxcMaterialMesh.cpp
 	${LL_COMMON_DIR}/src/pipeline/PxcMaterialMethodImpl.cpp
-	${LL_COMMON_DIR}/src/pipeline/PxcMaterialShape.cpp
 	${LL_COMMON_DIR}/src/pipeline/PxcNpBatch.cpp
 	${LL_COMMON_DIR}/src/pipeline/PxcNpCacheStreamPair.cpp
 	${LL_COMMON_DIR}/src/pipeline/PxcNpContactPrepShared.cpp
@@ -95,7 +97,6 @@ SOURCE_GROUP("Common Source\\pipeline" FILES ${LL_COMMON_PIPELINE_SOURCE})
 
 SET(LL_SOFTWARE_DIR ${LL_SOURCE_DIR}/software/)
 SET(LL_SOFTWARE_HEADERS		
-	${LL_SOFTWARE_DIR}/include/PxsBodySim.h
 	${LL_SOFTWARE_DIR}/include/PxsCCD.h
 	${LL_SOFTWARE_DIR}/include/PxsContactManager.h
 	${LL_SOFTWARE_DIR}/include/PxsContactManagerState.h
@@ -105,7 +106,6 @@ SET(LL_SOFTWARE_HEADERS
 	${LL_SOFTWARE_DIR}/include/PxsIncrementalConstraintPartitioning.h
 	${LL_SOFTWARE_DIR}/include/PxsIslandManagerTypes.h
 	${LL_SOFTWARE_DIR}/include/PxsIslandSim.h
-	${LL_SOFTWARE_DIR}/include/PxsIslandNodeIndex.h
 	${LL_SOFTWARE_DIR}/include/PxsKernelWrangler.h
 	${LL_SOFTWARE_DIR}/include/PxsMaterialCombiner.h
 	${LL_SOFTWARE_DIR}/include/PxsMemoryManager.h
@@ -115,6 +115,7 @@ SET(LL_SOFTWARE_HEADERS
 	${LL_SOFTWARE_DIR}/include/PxsSimpleIslandManager.h
 	${LL_SOFTWARE_DIR}/include/PxsSimulationController.h
 	${LL_SOFTWARE_DIR}/include/PxsTransformCache.h
+	${LL_SOFTWARE_DIR}/include/PxsNphaseCommon.h
 	${LL_SOFTWARE_DIR}/include/PxvNphaseImplementationContext.h
 )
 SOURCE_GROUP("Software Includes" FILES ${LL_SOFTWARE_HEADERS})
@@ -124,7 +125,6 @@ SET(LL_SOFTWARE_SOURCE
 	${LL_SOFTWARE_DIR}/src/PxsContext.cpp
 	${LL_SOFTWARE_DIR}/src/PxsDefaultMemoryManager.cpp
 	${LL_SOFTWARE_DIR}/src/PxsIslandSim.cpp
-	${LL_SOFTWARE_DIR}/src/PxsMaterialCombiner.cpp
 	${LL_SOFTWARE_DIR}/src/PxsNphaseImplementationContext.cpp
 	${LL_SOFTWARE_DIR}/src/PxsSimpleIslandManager.cpp
 )
@@ -202,12 +202,21 @@ IF(NV_USE_GAMEWORKS_OUTPUT_DIRS)
 	)
 ENDIF()
 
-IF(LOWLEVEL_COMPILE_PDB_NAME_DEBUG)
+IF(LL_COMPILE_PDB_NAME_DEBUG)
 	SET_TARGET_PROPERTIES(LowLevel PROPERTIES 
-		COMPILE_PDB_NAME_DEBUG "${LOWLEVEL_COMPILE_PDB_NAME_DEBUG}"
-		COMPILE_PDB_NAME_CHECKED "${LOWLEVEL_COMPILE_PDB_NAME_CHECKED}"
-		COMPILE_PDB_NAME_PROFILE "${LOWLEVEL_COMPILE_PDB_NAME_PROFILE}"
-		COMPILE_PDB_NAME_RELEASE "${LOWLEVEL_COMPILE_PDB_NAME_RELEASE}"
+		COMPILE_PDB_NAME_DEBUG "${LL_COMPILE_PDB_NAME_DEBUG}"
+		COMPILE_PDB_NAME_CHECKED "${LL_COMPILE_PDB_NAME_CHECKED}"
+		COMPILE_PDB_NAME_PROFILE "${LL_COMPILE_PDB_NAME_PROFILE}"
+		COMPILE_PDB_NAME_RELEASE "${LL_COMPILE_PDB_NAME_RELEASE}"
+	)
+ENDIF()
+
+IF(PX_EXPORT_LOWLEVEL_PDB)
+	SET_TARGET_PROPERTIES(LowLevel PROPERTIES 
+		COMPILE_PDB_OUTPUT_DIRECTORY_DEBUG "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/debug/"
+		COMPILE_PDB_OUTPUT_DIRECTORY_CHECKED "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/checked/"
+		COMPILE_PDB_OUTPUT_DIRECTORY_PROFILE "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/profile/"
+		COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/release/"
 	)
 ENDIF()
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,27 +22,25 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 #include "SnXmlImpl.h"
-#include "PsHash.h"
-#include "PsHashMap.h"
+#include "foundation/PxHash.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxString.h"
 #include "SnSimpleXmlWriter.h"
-#include "PsSort.h"
+#include "foundation/PxSort.h"
 #include "PsFastXml.h"
-#include "PsString.h"
 #include "SnXmlMemoryPool.h"
 #include "PxExtensionMetaDataObjects.h"
 #include "SnXmlVisitorWriter.h"
 #include "SnXmlVisitorReader.h"
 #include "SnXmlMemoryAllocator.h"
 #include "SnXmlStringToType.h"
-#include "PsString.h"
 #include "SnRepXCollection.h"
 #include "SnRepXUpgrader.h"
 #include "../SnSerializationRegistry.h"
-#include "PsFoundation.h"
 #include "CmCollection.h"
 
 using namespace physx;
@@ -325,7 +322,7 @@ namespace physx { namespace Sn {
 		release( &inManager, tempNode );
 	}
 
-	class XmlParser : public Ps::FastXml::Callback
+	class XmlParser : public shdfnd::FastXml::Callback
 	{
 		XmlParseArgs			mParseArgs;
 		//For parse time only allocations
@@ -360,7 +357,7 @@ namespace physx { namespace Sn {
 		virtual bool processElement(
 			const char *elementName,   // name of the element		
 			const char  *elementData,  // element data, null if none
-			const Ps::FastXml::AttributePairs& attr,      // attributes
+			const shdfnd::FastXml::AttributePairs& attr,      // attributes
 			PxI32 /*lineno*/)
 		{
 			XmlNode* newNode = allocateRepXNode( &mParseAllocator.mManager, elementName, elementData );
@@ -440,7 +437,7 @@ namespace physx { namespace Sn {
 		const RepXCollectionSharedData* operator->() const { return mData; }
 	};
 	
-	class RepXCollectionImpl : public RepXCollection, public Ps::UserAllocated
+	class RepXCollectionImpl : public RepXCollection, public PxUserAllocated
 	{
 		SharedDataPtr							mSharedData;
 
@@ -462,11 +459,11 @@ namespace physx { namespace Sn {
 			, mCollection( mSharedData->mWrapper )
 			, mSerializationManager( inAllocator )
 			, mPropertyBuffer( &mSerializationManager )
+			, mScale(0.f, 0.f)
 			, mUpVector( 0,0,0 )
 			, mVersionStr( getLatestVersion() )
 			, mPxCollection( &inPxCollection )
 		{
-			memset( &mScale, 0, sizeof( PxTolerancesScale ) );
 			PX_ASSERT( mScale.isValid() == false );
 		}
 
@@ -564,7 +561,7 @@ namespace physx { namespace Sn {
 				}
 				else
 				{
-					Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, 
+					PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, 
 						"PxSerialization::createCollectionFromXml: "
 						"PxRepXSerializer missing for type %s", theItem.liveObject.typeName);
 					return false;					
@@ -616,7 +613,7 @@ namespace physx { namespace Sn {
 		{
 			inFileBuf.seek(0);
 			XmlParser theParser( XmlParseArgs( &mAllocator, &mCollection ), mAllocator );
-			Ps::FastXml* theFastXml = Ps::createFastXml( &theParser );
+			shdfnd::FastXml* theFastXml = shdfnd::createFastXml( &theParser );
 			theFastXml->processXml( inFileBuf );
 			XmlNode* theTopNode = theParser.getTopNode();
 			if ( theTopNode != NULL )
@@ -639,9 +636,9 @@ namespace physx { namespace Sn {
 						theChild != NULL;
 						theChild = theChild->mNextSibling )
 				{
-					if ( physx::shdfnd::stricmp( theChild->mName, "scale" ) == 0 
-						|| physx::shdfnd::stricmp( theChild->mName, "version" ) == 0 
-						|| physx::shdfnd::stricmp( theChild->mName, "upvector" ) == 0 )
+					if ( physx::Pxstricmp( theChild->mName, "scale" ) == 0
+						|| physx::Pxstricmp( theChild->mName, "version" ) == 0
+						|| physx::Pxstricmp( theChild->mName, "upvector" ) == 0 )
 						continue;
 					XmlNodeReader theReader( theChild, mAllocator.getAllocator(), mAllocator.mManager );
 					PxRepXObject theObject;
@@ -655,7 +652,7 @@ namespace physx { namespace Sn {
 			}
 			else
 			{
-				Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+				PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 				"Cannot parse any object from the input buffer, please check the input repx data.");
 			}
 			theFastXml->release();
@@ -750,7 +747,7 @@ namespace physx { namespace Sn {
 			tmpCollection->add(*const_cast<PxCollection*>(externalRefs));
 		}
 		
-		PxAllocatorCallback& allocator = PxGetFoundation().getAllocatorCallback(); 
+		PxAllocatorCallback& allocator = *PxGetAllocatorCallback();
 		Sn::RepXCollection* theRepXCollection = Sn::create(sn, allocator, *tmpCollection );
 				
 		if(inArgs != NULL)
@@ -776,7 +773,7 @@ namespace physx { namespace Sn {
 				
 				PxSerialObjectId id = collection.getId(s);
 				if(id == PX_SERIAL_OBJECT_ID_INVALID)
-					id = static_cast<PxSerialObjectId>( reinterpret_cast<size_t>( &s ));
+					id = static_cast<PxSerialObjectId>( size_t( &s ));
 				
 				PxRepXObject ro = PxCreateRepXObject( &s, id );
 				if ( ro.serializable == NULL || ro.id == 0 )
@@ -806,7 +803,7 @@ namespace physx { namespace Sn {
 		if( externalRefs )
 			collection->add(*const_cast<PxCollection*>(externalRefs));
 
-		PxAllocatorCallback& allocator = PxGetFoundation().getAllocatorCallback(); 
+		PxAllocatorCallback& allocator = *PxGetAllocatorCallback();
 		Sn::RepXCollection* theRepXCollection = Sn::create(sn, inputData, allocator, *collection);
 		theRepXCollection = &Sn::RepXUpgrader::upgradeCollection( *theRepXCollection );
 				

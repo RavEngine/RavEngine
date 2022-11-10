@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,43 +22,72 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef PXS_HEAP_MEMORY_ALLOCATOR_H
 #define PXS_HEAP_MEMORY_ALLOCATOR_H
 
 #include "foundation/PxSimpleTypes.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
-	namespace shdfnd
+	struct PxsHeapStats
 	{
-		class VirtualAllocatorCallback;
-	}
+		enum Enum
+		{
+			eOTHER = 0,
+			eBROADPHASE,
+			eNARROWPHASE,
+			eSOLVER,
+			eARTICULATION,
+			eSIMULATION,
+			eSIMULATION_ARTICULATION,
+			eSIMULATION_PARTICLES,
+			eSIMULATION_SOFTBODY,
+			eSIMULATION_FEMCLOTH,
+			eSIMULATION_HAIRSYSTEM,
+			eSHARED_PARTICLES,
+			eSHARED_SOFTBODY,
+			eSHARED_FEMCLOTH,
+			eSHARED_HAIRSYSTEM,
+			eHEAPSTATS_COUNT
+		};
 
-	class PxErrorCallback;
-	class PxsHostMemoryAllocator;
+		PxU64 stats[eHEAPSTATS_COUNT];
 
-	class PxsHeapMemoryAllocator : public Ps::VirtualAllocatorCallback
+		PxsHeapStats()
+		{
+			for (PxU32 i = 0; i < eHEAPSTATS_COUNT; i++)
+			{
+				stats[i] = 0;
+			}
+		}
+	};
+
+	// PT: TODO: consider dropping this class
+	class PxsHeapMemoryAllocator : public PxVirtualAllocatorCallback, public PxUserAllocated
 	{
 	public:
 		virtual ~PxsHeapMemoryAllocator(){}
-		virtual void* allocate(const size_t size, const char* file, const int line) = 0;
-		virtual void deallocate(void* ptr) = 0;
 
+		// PxVirtualAllocatorCallback
+		//virtual void* allocate(const size_t size, const int group, const char* file, const int line) = 0;
+		//virtual void deallocate(void* ptr) = 0;
+		//~PxVirtualAllocatorCallback
 	};
 
-	class PxsHeapMemoryAllocatorManager
+	class PxsHeapMemoryAllocatorManager : public PxUserAllocated
 	{
 	public:
-		virtual ~PxsHeapMemoryAllocatorManager()
-		{
-	
-		}
-		PxsHeapMemoryAllocator*				mMappedMemoryAllocators;
+		virtual ~PxsHeapMemoryAllocatorManager() {}
+
+		virtual PxU64 getDeviceMemorySize() const = 0;
+		virtual PxsHeapStats getDeviceHeapStats() const = 0;
+
+		PxsHeapMemoryAllocator* mMappedMemoryAllocators;
 	};
 }
 

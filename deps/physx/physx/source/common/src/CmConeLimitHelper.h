@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_CONELIMITHELPER
-#define PX_PHYSICS_COMMON_CONELIMITHELPER
+#ifndef CM_CONE_LIMIT_HELPER_H
+#define CM_CONE_LIMIT_HELPER_H
 
 // This class contains methods for supporting the tan-quarter swing limit - that
 // is the, ellipse defined by tanQ(theta)^2/tanQ(thetaMax)^2 + tanQ(phi)^2/tanQ(phiMax)^2 = 1
@@ -37,8 +35,7 @@
 // Angles are passed as an PxVec3 swing vector with x = 0 and y and z the swing angles
 // around the y and z axes
 
-#include "CmPhysXCommon.h"
-#include "PsMathUtils.h"
+#include "foundation/PxMathUtils.h"
 
 namespace physx
 {
@@ -87,15 +84,15 @@ namespace Cm
 		{
 			PxReal tanQSwingYPadded = tanAdd(PxAbs(tanQSwing.y),mTanQPadding);
 			PxReal tanQSwingZPadded = tanAdd(PxAbs(tanQSwing.z),mTanQPadding);
-			return Ps::sqr(tanQSwingYPadded/mTanQYMax)+Ps::sqr(tanQSwingZPadded/mTanQZMax) <= 1;
+			return PxSqr(tanQSwingYPadded/mTanQYMax)+PxSqr(tanQSwingZPadded/mTanQZMax) <= 1;
 		}
 
 		PX_FORCE_INLINE PxVec3 clamp(const PxVec3& tanQSwing, PxVec3& normal)	const
 		{
-			PxVec3 p = Ps::ellipseClamp(tanQSwing, PxVec3(0,mTanQYMax,mTanQZMax));
-			normal = PxVec3(0, p.y/Ps::sqr(mTanQYMax), p.z/Ps::sqr(mTanQZMax));
+			PxVec3 p = PxEllipseClamp(tanQSwing, PxVec3(0,mTanQYMax,mTanQZMax));
+			normal = PxVec3(0, p.y/PxSqr(mTanQYMax), p.z/PxSqr(mTanQZMax));
 #ifdef PX_PARANOIA_ELLIPSE_CHECK
-			PxReal err = PxAbs(Ps::sqr(p.y/mTanQYMax) + Ps::sqr(p.z/mTanQZMax) - 1);
+			PxReal err = PxAbs(PxSqr(p.y/mTanQYMax) + PxSqr(p.z/mTanQZMax) - 1);
 			PX_ASSERT(err<1e-3);
 #endif
 			return p;
@@ -112,7 +109,7 @@ namespace Cm
 		{
 			PX_ASSERT(swing.w>0);
 			PxVec3 twistAxis = swing.getBasisVector0();
-			PxVec3 tanQSwing = PxVec3(0, Ps::tanHalf(swing.z,swing.w), -Ps::tanHalf(swing.y,swing.w));
+			PxVec3 tanQSwing = PxVec3(0, PxTanHalf(swing.z,swing.w), -PxTanHalf(swing.y,swing.w));
 			if(contains(tanQSwing))
 				return false;
 
@@ -126,7 +123,7 @@ namespace Cm
 			PX_ASSERT(PxAbs(axis.magnitude()-1)<1e-5f);
 
 #ifdef PX_PARANOIA_ELLIPSE_CHECK
-			bool inside = Ps::sqr(tanQSwing.y/mTanQYMax) + Ps::sqr(tanQSwing.z/mTanQZMax) <= 1;
+			bool inside = PxSqr(tanQSwing.y/mTanQYMax) + PxSqr(tanQSwing.z/mTanQZMax) <= 1;
 			PX_ASSERT(inside && error>-1e-4f || !inside && error<1e-4f);
 #endif
 			return true;
@@ -152,17 +149,17 @@ namespace Cm
 			PxReal swingYPadded = PxAbs(swing.y) + mPadding;
 			PxReal swingZPadded = PxAbs(swing.z) + mPadding;
 			// if angle is within ellipse defined by mYMax/mZMax
-			return Ps::sqr(swingYPadded/mYMax)+Ps::sqr(swingZPadded/mZMax) <= 1;
+			return PxSqr(swingYPadded/mYMax)+PxSqr(swingZPadded/mZMax) <= 1;
 		}
 
 		PX_FORCE_INLINE PxVec3 clamp(const PxVec3& swing, PxVec3& normal)	const
 		{
 			// finds the closest point on the ellipse to a given point
-			PxVec3 p = Ps::ellipseClamp(swing, PxVec3(0,mYMax,mZMax));
+			PxVec3 p = PxEllipseClamp(swing, PxVec3(0,mYMax,mZMax));
 			// normal to the point on ellipse
-			normal = PxVec3(0, p.y/Ps::sqr(mYMax), p.z/Ps::sqr(mZMax));
+			normal = PxVec3(0, p.y/PxSqr(mYMax), p.z/PxSqr(mZMax));
 #ifdef PX_PARANOIA_ELLIPSE_CHECK
-			PxReal err = PxAbs(Ps::sqr(p.y/mYMax) + Ps::sqr(p.z/mZMax) - 1);
+			PxReal err = PxAbs(PxSqr(p.y/mYMax) + PxSqr(p.z/mZMax) - 1);
 			PX_ASSERT(err<1e-3);
 #endif
 			return p;

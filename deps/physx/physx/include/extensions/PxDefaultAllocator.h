@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
-
 
 #ifndef PX_DEFAULT_ALLOCATOR_H
 #define PX_DEFAULT_ALLOCATOR_H
@@ -89,14 +87,14 @@ PX_FORCE_INLINE void platformAlignedFree(void* ptr)
 class PxDefaultAllocator : public PxAllocatorCallback
 {
 public:
-	void* allocate(size_t size, const char*, const char*, int)
+	virtual void* allocate(size_t size, const char*, const char*, int)
 	{
 		void* ptr = platformAlignedAlloc(size);
-		PX_ASSERT((reinterpret_cast<size_t>(ptr) & 15)==0);
+		PX_ASSERT((size_t(ptr) & 15)==0);
 		return ptr;
 	}
 
-	void deallocate(void* ptr)
+	virtual void deallocate(void* ptr)
 	{
 		platformAlignedFree(ptr);
 	}

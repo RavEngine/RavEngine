@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef NP_PRISMATICJOINTCONSTRAINT_H
-#define NP_PRISMATICJOINTCONSTRAINT_H
+#ifndef EXT_PRISMATIC_JOINT_H
+#define EXT_PRISMATIC_JOINT_H
 
 #include "common/PxTolerancesScale.h"
 #include "extensions/PxPrismaticJoint.h"
@@ -55,13 +54,12 @@ namespace Ext
 		PxReal					projectionAngularTolerance;
 
 		PxPrismaticJointFlags	jointFlags;
-		// forestall compiler complaints about not being able to generate a constructor
+
 	private:
-		PrismaticJointData(const PxJointLinearLimitPair &pair):
-			limit(pair) {}
+		PrismaticJointData(const PxJointLinearLimitPair& pair) : limit(pair)	{}
 	};
 
-    typedef Joint<PxPrismaticJoint, PxPrismaticJointGeneratedValues> PrismaticJointT;
+    typedef JointT<PxPrismaticJoint, PrismaticJointData, PxPrismaticJointGeneratedValues> PrismaticJointT;
    
 	class PrismaticJoint : public PrismaticJointT
 	{
@@ -73,61 +71,35 @@ namespace Ext
 	//==================================================================================================
 	public:
 // PX_SERIALIZATION
-									PrismaticJoint(PxBaseFlags baseFlags) : PrismaticJointT(baseFlags) {}
-		virtual		void			exportExtraData(PxSerializationContext& context);
-					void			importExtraData(PxDeserializationContext& context);
-					void			resolveReferences(PxDeserializationContext& context);
-		static		PrismaticJoint*	createObject(PxU8*& address, PxDeserializationContext& context);
-		static		void			getBinaryMetaData(PxOutputStream& stream);
+										PrismaticJoint(PxBaseFlags baseFlags) : PrismaticJointT(baseFlags) {}
+				void					resolveReferences(PxDeserializationContext& context);
+		static	PrismaticJoint*			createObject(PxU8*& address, PxDeserializationContext& context)	{ return createJointObject<PrismaticJoint>(address, context);	}
+		static	void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
-
-		PrismaticJoint(const PxTolerancesScale& scale, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1) :
-			PrismaticJointT(PxJointConcreteType::ePRISMATIC, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE, actor0, localFrame0, actor1, localFrame1, sizeof(PrismaticJointData), "PrismaticJointData")
-		{
-			PrismaticJointData* data = static_cast<PrismaticJointData*>(mData);
-
-			data->limit							= PxJointLinearLimitPair(scale);
-			data->projectionLinearTolerance		= 1e10f;
-			data->projectionAngularTolerance	= PxPi;
-			data->jointFlags					= PxPrismaticJointFlags();
-		}
-
+										PrismaticJoint(const PxTolerancesScale& scale, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1);
 		// PxPrismaticJoint
-		virtual	PxReal					getPosition()	const	{	return getRelativeTransform().p.x;		}
-		virtual	PxReal					getVelocity()	const 	{	return getRelativeLinearVelocity().x;	}
-		virtual	void					setLimit(const PxJointLinearLimitPair& limit);
-		virtual	PxJointLinearLimitPair	getLimit()	const;
-		virtual	void					setPrismaticJointFlags(PxPrismaticJointFlags flags);
-		virtual	void					setPrismaticJointFlag(PxPrismaticJointFlag::Enum flag, bool value);
-		virtual	PxPrismaticJointFlags	getPrismaticJointFlags()	const;
-		virtual	void					setProjectionLinearTolerance(PxReal tolerance);
-		virtual	PxReal					getProjectionLinearTolerance()	const;
-		virtual	void					setProjectionAngularTolerance(PxReal tolerance);
-		virtual	PxReal					getProjectionAngularTolerance()	const;
+		virtual	PxReal					getPosition()	const	PX_OVERRIDE	{	return getRelativeTransform().p.x;		}
+		virtual	PxReal					getVelocity()	const 	PX_OVERRIDE	{	return getRelativeLinearVelocity().x;	}
+		virtual	void					setLimit(const PxJointLinearLimitPair& limit)	PX_OVERRIDE;
+		virtual	PxJointLinearLimitPair	getLimit()	const	PX_OVERRIDE;
+		virtual	void					setPrismaticJointFlags(PxPrismaticJointFlags flags)	PX_OVERRIDE;
+		virtual	void					setPrismaticJointFlag(PxPrismaticJointFlag::Enum flag, bool value)	PX_OVERRIDE;
+		virtual	PxPrismaticJointFlags	getPrismaticJointFlags()	const	PX_OVERRIDE;
+		virtual	void					setProjectionLinearTolerance(PxReal tolerance)	PX_OVERRIDE;
+		virtual	PxReal					getProjectionLinearTolerance()	const	PX_OVERRIDE;
+		virtual	void					setProjectionAngularTolerance(PxReal tolerance)	PX_OVERRIDE;
+		virtual	PxReal					getProjectionAngularTolerance()	const	PX_OVERRIDE;
 		//~PxPrismaticJoint
-		
-		bool					attach(PxPhysics &physics, PxRigidActor* actor0, PxRigidActor* actor1);
-		
-		static const PxConstraintShaderTable& getConstraintShaderTable() { return sShaders; }
 
-		virtual PxConstraintSolverPrep getPrep() const { return sShaders.solverPrep; }
-
-	private:
-		PX_FORCE_INLINE PrismaticJointData& data() const				
-		{	
-			return *static_cast<PrismaticJointData*>(mData);
-		}
-
-		static PxConstraintShaderTable sShaders;
+		// PxConstraintConnector
+		virtual PxConstraintSolverPrep	getPrep()	const	PX_OVERRIDE;
+#if PX_SUPPORT_OMNI_PVD
+		virtual void updateOmniPvdProperties() const PX_OVERRIDE;
+#endif
+		//~PxConstraintConnector
 	};
 } // namespace Ext
 
-namespace Ext
-{
-	// global function to share the joint shaders with API capture	
-	extern "C" const PxConstraintShaderTable* GetPrismaticJointShaderTable();
-}
-
-}
+} // namespace physx
 
 #endif

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "foundation/PxErrorCallback.h"
+#include "foundation/PxString.h"
 #include "SnConvX.h"
 #include <stdarg.h>
-#include "PsString.h"
-#include "PsFoundation.h"
 
 #define MAX_DISPLAYED_ISSUES   10
 
@@ -72,19 +70,19 @@ void Sn::ConvX::displayMessage(PxErrorCode::Enum code, const char* format, ...)
 	{
 		va_list va;
 		va_start(va, format);
-		Ps::getFoundation().errorImpl(code, __FILE__, __LINE__, format, va);
-		va_end(va); 
+		PxGetFoundation().error(code, __FILE__, __LINE__, format, va);
+		va_end(va);
 	}
 
 	if(display)
 	{
 		if( sum == 0)
 		{
-			Ps::getFoundation().error(PxErrorCode::eDEBUG_INFO, __FILE__, __LINE__, "Hit warnings or errors: skipping further verbose output.\n");		    
+			PxGetFoundation().error(PxErrorCode::eDEBUG_INFO, __FILE__, __LINE__, "Hit warnings or errors: skipping further verbose output.\n");		    
 		}
 		else if(sum == MAX_DISPLAYED_ISSUES-1)
 		{
-			Ps::getFoundation().error(PxErrorCode::eDEBUG_INFO, __FILE__, __LINE__, "Exceeding 10 warnings or errors: skipping further output.\n");		    
+			PxGetFoundation().error(PxErrorCode::eDEBUG_INFO, __FILE__, __LINE__, "Exceeding 10 warnings or errors: skipping further output.\n");		    
 		}
 	}
 

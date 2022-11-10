@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef GU_CCD_SWEEP_H
-#define GU_CCD_SWEEP_H
+#ifndef GU_CCD_SWEEP_CONVEX_MESH_H
+#define GU_CCD_SWEEP_CONVEX_MESH_H
 
 #include "common/PxPhysXCommonConfig.h"
-#include "CmPhysXCommon.h"
-#include "PsVecTransform.h"
-#include "GuGeometryUnion.h"
+#include "foundation/PxVecTransform.h"
 #include "CmScaling.h"
 
 #define GU_TRIANGLE_SWEEP_METHOD_ARGS				\
-	const Gu::GeometryUnion& shape0,				\
-	const Gu::GeometryUnion& shape1,				\
+	const PxGeometry& shape0,						\
+	const PxGeometry& shape1,						\
 	const PxTransform& transform0,					\
 	const PxTransform& transform1,					\
 	const PxTransform& lastTm0,						\
@@ -50,7 +46,6 @@
 	const Cm::FastVertex2ShapeScaling& meshScaling,	\
 	Gu::TriangleV& triangle,						\
 	const PxF32 toiEstimate
-
 
 #define GU_SWEEP_METHOD_ARGS			\
 	const Gu::CCDShape& shape0,			\
@@ -66,17 +61,11 @@
 	PxU32& outCCDFaceIndex,				\
 	const PxReal fastMovingThreshold
 
-
 #define GU_SWEEP_ESTIMATE_ARGS			\
 	const CCDShape& shape0,				\
 	const CCDShape& shape1,				\
-	const PxTransform& transform0,		\
-	const PxTransform& transform1,		\
-	const PxTransform& lastTr0,			\
-	const PxTransform& lastTr1,			\
 	const PxReal restDistance,			\
 	const PxReal fastMovingThreshold
-
 
 #define GU_SWEEP_METHOD_ARGS_UNUSED		\
 	const Gu::CCDShape& /*shape0*/,		\
@@ -98,13 +87,13 @@ namespace Gu
 {
 	struct CCDShape
 	{
-		const Gu::GeometryUnion*	mGeometry;
-		PxReal						mFastMovingThreshold;		//The CCD threshold for this shape
-		PxTransform					mPrevTransform;				//This shape's previous transform
-		PxTransform					mCurrentTransform;			//This shape's current transform
-		PxVec3						mExtents;					//The extents of this shape's AABB
-		PxVec3						mCenter;					//The center of this shape's AABB
-		PxU32						mUpdateCount;				//How many times this shape has been updated in the CCD. This is correlated with the CCD body's update count.
+		const PxGeometry*	mGeometry;
+		PxReal				mFastMovingThreshold;		//The CCD threshold for this shape
+		PxTransform			mPrevTransform;				//This shape's previous transform
+		PxTransform			mCurrentTransform;			//This shape's current transform
+		PxVec3				mExtents;					//The extents of this shape's AABB
+		PxVec3				mCenter;					//The center of this shape's AABB
+		PxU32				mUpdateCount;				//How many times this shape has been updated in the CCD. This is correlated with the CCD body's update count.
 	};
 
 	PX_FORCE_INLINE PxF32 sweepAABBAABB(const PxVec3& centerA, const PxVec3& extentsA, const PxVec3& centerB, const PxVec3& extentsB, const PxVec3& trA, const PxVec3& trB)
@@ -170,8 +159,6 @@ namespace Gu
 	PX_PHYSX_COMMON_API PxReal SweepEstimateAnyShapeHeightfield(GU_SWEEP_ESTIMATE_ARGS);
 
 	PX_PHYSX_COMMON_API PxReal SweepEstimateAnyShapeMesh(GU_SWEEP_ESTIMATE_ARGS);
-
-
 }
 }
 #endif

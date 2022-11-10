@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved. 
 
-#ifndef DY_SOLVER_CORE_SHARED_H
-#define DY_SOLVER_CORE_SHARED_H
+#ifndef DY_SOLVER_CONSTRAINT_SHARED_H
+#define DY_SOLVER_CONSTRAINT_SHARED_H
 
 #include "foundation/PxPreprocessor.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
-#include "CmPhysXCommon.h"
 #include "DySolverBody.h"
 #include "DySolverContact.h"
 #include "DySolverConstraint1D.h"
 #include "DySolverConstraintDesc.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 #include "DyConstraint.h"
-#include "PsAtomic.h"
+#include "foundation/PxAtomic.h"
 
 
 namespace physx
@@ -64,14 +62,15 @@ namespace Dy
 	for(PxU32 i=0;i<nbContactPoints;i++)
 	{
 		SolverContactPoint& c = contacts[i];
-		Ps::prefetchLine(&contacts[i], 128);
+		PxPrefetchLine(&contacts[i], 128);
 
-		const Vec3V raXn = c.raXn;
+		const Vec3V raXn = Vec3V_From_Vec4V(c.raXn_velMultiplierW);
 
-		const Vec3V rbXn = c.rbXn;
+		const Vec3V rbXn = Vec3V_From_Vec4V(c.rbXn_maxImpulseW);
 
 		const FloatV appliedForce = FLoad(forceBuffer[i]);
 		const FloatV velMultiplier = c.getVelMultiplier();
+		const FloatV impulseMultiplier = c.getImpulseMultiplier();
 		
 		/*const FloatV targetVel = c.getTargetVelocity();
 		const FloatV nScaledBias = c.getScaledBias();*/
@@ -86,7 +85,7 @@ namespace Dy
 
 		//KS - clamp the maximum force
 		const FloatV _deltaF = FMax(FNegScaleSub(normalVel, velMultiplier, biasedErr), FNeg(appliedForce));
-		const FloatV _newForce = FAdd(appliedForce, _deltaF);
+		const FloatV _newForce = FAdd(FMul(impulseMultiplier, appliedForce), _deltaF);
 		const FloatV newForce = FMin(_newForce, maxImpulse);
 		const FloatV deltaF = FSub(newForce, appliedForce);
 
@@ -119,12 +118,13 @@ PX_FORCE_INLINE static FloatV solveStaticContacts(SolverContactPoint* contacts, 
 	for(PxU32 i=0;i<nbContactPoints;i++)
 	{
 		SolverContactPoint& c = contacts[i];
-		Ps::prefetchLine(&contacts[i],128);
+		PxPrefetchLine(&contacts[i],128);
 
-		const Vec3V raXn = c.raXn;
+		const Vec3V raXn = Vec3V_From_Vec4V(c.raXn_velMultiplierW);
 		
 		const FloatV appliedForce = FLoad(forceBuffer[i]);
 		const FloatV velMultiplier = c.getVelMultiplier();
+		const FloatV impulseMultiplier = c.getImpulseMultiplier();
 
 		/*const FloatV targetVel = c.getTargetVelocity();
 		const FloatV nScaledBias = c.getScaledBias();*/
@@ -139,7 +139,7 @@ PX_FORCE_INLINE static FloatV solveStaticContacts(SolverContactPoint* contacts, 
 		// still lots to do here: using loop pipelining we can interweave this code with the
 		// above - the code here has a lot of stalls that we would thereby eliminate
 		const FloatV _deltaF = FMax(FNegScaleSub(normalVel, velMultiplier, biasedErr), FNeg(appliedForce));
-		const FloatV _newForce = FAdd(appliedForce, _deltaF);
+		const FloatV _newForce = FAdd(FMul(appliedForce, impulseMultiplier), _deltaF);
 		const FloatV newForce = FMin(_newForce, maxImpulse);
 		const FloatV deltaF = FSub(newForce, appliedForce);
 
@@ -167,5 +167,4 @@ FloatV solveExtContacts(SolverContactPointExt* contacts, const PxU32 nbContactPo
 
 }
 
-#endif //DY_SOLVER_CORE_SHARED_H
-
+#endif

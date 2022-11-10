@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,22 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "PsIntrinsics.h"
-#include "PsUserAllocated.h"
-#include "GuSerialize.h"
+#include "foundation/PxIntrinsics.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxAllocator.h"
 #include "GuBigConvexData2.h"
 #include "GuCubeIndex.h"
-#include "PsIntrinsics.h"
 #include "CmUtils.h"
-#include "PsUtilities.h"
-#include "PsAllocator.h"
+#include "CmSerialize.h"
+#include "foundation/PxUtilities.h"
 
 using namespace physx;
 using namespace Gu;
+using namespace Cm;
 
 BigConvexData::BigConvexData() : mVBuffer(NULL)
 {
@@ -107,7 +106,7 @@ bool BigConvexData::VLoad(PxInputStream& stream)
 		PxU16* temp = reinterpret_cast<PxU16*>(mData.mValencies);
 
 		PxU32 MaxIndex = readDword(Mismatch, stream);
-		ReadIndices(Ps::to16(MaxIndex), mData.mNbVerts, temp, stream, Mismatch);
+		ReadIndices(PxTo16(MaxIndex), mData.mNbVerts, temp, stream, Mismatch);
 
 		// We transform from:
 		//
@@ -154,8 +153,8 @@ bool BigConvexData::Load(PxInputStream& stream)
 		return false;
 
 	// Import basic info
-	mData.mSubdiv		= Ps::to16(readDword(Mismatch, stream));
-	mData.mNbSamples	= Ps::to16(readDword(Mismatch, stream));
+	mData.mSubdiv		= PxTo16(readDword(Mismatch, stream));
+	mData.mNbSamples	= PxTo16(readDword(Mismatch, stream));
 
 	// Load map data
 	mData.mSamples = reinterpret_cast<PxU8*>(PX_ALLOC(sizeof(PxU8)*mData.mNbSamples*2, "BigConvex Samples Data"));

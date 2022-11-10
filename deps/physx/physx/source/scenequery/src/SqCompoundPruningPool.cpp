@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,22 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-
-#include "PsFoundation.h"
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
 #include "SqCompoundPruningPool.h"
-#include "SqAABBTree.h"
-#include "SqPruningPool.h"
-#include "GuBVHStructure.h"
+#include "GuPruningPool.h"
+#include "GuAABBTree.h"
+#include "GuBVH.h"
 
 using namespace physx;
+using namespace Cm;
 using namespace Gu;
 using namespace Sq;
-using namespace Cm;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -55,10 +52,10 @@ void CompoundTree::updateObjectAfterManualBoundsUpdates(PrunerHandle handle)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-void CompoundTree::removeObject(PrunerHandle handle)
+void CompoundTree::removeObject(PrunerHandle handle, PrunerPayloadRemovalCallback* removalCallback)
 {
 	const PoolIndex poolIndex = mPruningPool->getIndex(handle); // save the pool index for removed object
-	const PoolIndex poolRelocatedLastIndex = mPruningPool->removeObject(handle); // save the lastIndex returned by removeObject
+	const PoolIndex poolRelocatedLastIndex = mPruningPool->removeObject(handle, removalCallback); // save the lastIndex returned by removeObject
 
 	IncrementalAABBTreeNode* node = mTree->remove((*mUpdateMap)[poolIndex], poolIndex, mPruningPool->getCurrentWorldBoxes());
 	// if node moved to its parent
@@ -79,9 +76,9 @@ void CompoundTree::removeObject(PrunerHandle handle)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CompoundTree::addObject(PrunerHandle& result, const PxBounds3& bounds, const PrunerPayload payload)
+bool CompoundTree::addObject(PrunerHandle& result, const PxBounds3& bounds, const PrunerPayload& data, const PxTransform& transform)
 {
-	mPruningPool->addObjects(&result, &bounds, &payload, 1);
+	mPruningPool->addObjects(&result, &bounds, &data, &transform, 1);
 	if (mPruningPool->mMaxNbObjects > mUpdateMap->size())
 		mUpdateMap->resize(mPruningPool->mMaxNbObjects);
 	
@@ -130,11 +127,11 @@ void CompoundTree::updateMapping(const PoolIndex poolIndex, IncrementalAABBTreeN
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-CompoundTreePool::CompoundTreePool(): 
-	mNbObjects(0),
-	mMaxNbObjects(0),
-	mCompoundBounds(NULL),
-	mCompoundTrees(NULL)
+CompoundTreePool::CompoundTreePool(PxU64 contextID) :
+	mNbObjects		(0),
+	mMaxNbObjects	(0),
+	mCompoundTrees	(NULL),
+	mContextID		(contextID)
 {
 }
 
@@ -142,36 +139,26 @@ CompoundTreePool::CompoundTreePool():
 
 CompoundTreePool::~CompoundTreePool()
 {
-	PX_FREE_AND_RESET(mCompoundBounds);
-	PX_FREE_AND_RESET(mCompoundTrees);
+	PX_FREE(mCompoundTrees);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 bool CompoundTreePool::resize(PxU32 newCapacity)
 {
-	// PT: we always allocate one extra box, to make sure we can safely use V4 loads on the array
-	PxBounds3*				newBoxes			= reinterpret_cast<PxBounds3*>(PX_ALLOC(sizeof(PxBounds3)*(newCapacity+1), "PxBounds3"));
-	CompoundTree*			newTrees			= reinterpret_cast<CompoundTree*>(PX_ALLOC(sizeof(CompoundTree)*newCapacity, "IncrementalTrees*"));
+	mCompoundBounds.resize(newCapacity, mNbObjects);
+
+	CompoundTree* newTrees = PX_ALLOCATE(CompoundTree, newCapacity, "IncrementalTrees*");
+	if(!newTrees)
+		return false;
 
 	// memzero, we need to set the pointers in the compound tree to NULL
 	PxMemZero(newTrees, sizeof(CompoundTree)*newCapacity);
-
-	if((NULL==newBoxes) || (NULL==newTrees))
-	{
-		PX_FREE_AND_RESET(newBoxes);
-		PX_FREE_AND_RESET(newTrees);	
-		return false;
-	}
-
-	if(mCompoundBounds)		PxMemCopy(newBoxes, mCompoundBounds, mNbObjects*sizeof(PxBounds3));
-	if(mCompoundTrees)		PxMemCopy(newTrees, mCompoundTrees, mNbObjects*sizeof(CompoundTree));
+	if(mCompoundTrees)
+		PxMemCopy(newTrees, mCompoundTrees, mNbObjects*sizeof(CompoundTree));
 	mMaxNbObjects = newCapacity;
-
-	PX_FREE_AND_RESET(mCompoundBounds);
-	PX_FREE_AND_RESET(mCompoundTrees);
-	mCompoundBounds		= newBoxes;
-	mCompoundTrees		= newTrees;
+	PX_FREE(mCompoundTrees);
+	mCompoundTrees	= newTrees;
 	return true;
 }
 
@@ -187,10 +174,11 @@ void CompoundTreePool::preallocate(PxU32 newCapacity)
 
 void CompoundTreePool::shiftOrigin(const PxVec3& shift)
 {
+	PxBounds3* bounds = mCompoundBounds.getBounds();
 	for(PxU32 i=0; i < mNbObjects; i++)
 	{
-		mCompoundBounds[i].minimum -= shift;
-		mCompoundBounds[i].maximum -= shift;
+		bounds[i].minimum -= shift;
+		bounds[i].maximum -= shift;
 
 		mCompoundTrees[i].mGlobalPose.p -= shift;
 	}
@@ -198,15 +186,14 @@ void CompoundTreePool::shiftOrigin(const PxVec3& shift)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-PoolIndex CompoundTreePool::addCompound(PrunerHandle* results, const BVHStructure& bvhStructure, const PxBounds3& compoundBounds, const PxTransform& transform, 
-	CompoundFlag::Enum flags, const PrunerPayload* userData)
+PoolIndex CompoundTreePool::addCompound(PrunerHandle* results, const BVH& bvh, const PxBounds3& compoundBounds, const PxTransform& transform, bool isDynamic, const PrunerPayload* data, const PxTransform* transforms)
 {
 	if(mNbObjects==mMaxNbObjects) // increase the capacity on overflow
 	{
 		if(!resize(PxMax<PxU32>(mMaxNbObjects*2, 32)))
 		{
 			// pool can return an invalid handle if memory alloc fails			
-			Ps::getFoundation().error(PxErrorCode::eOUT_OF_MEMORY, __FILE__, __LINE__, "CompoundTreePool::addCompound memory allocation in resize failed.");
+			PxGetFoundation().error(PxErrorCode::eOUT_OF_MEMORY, __FILE__, __LINE__, "CompoundTreePool::addCompound memory allocation in resize failed.");
 			return INVALID_PRUNERHANDLE;
 		}
 	}
@@ -214,9 +201,9 @@ PoolIndex CompoundTreePool::addCompound(PrunerHandle* results, const BVHStructur
 
 	const PoolIndex index = mNbObjects++;
 		
-	mCompoundBounds[index] = compoundBounds;
+	mCompoundBounds.getBounds()[index] = compoundBounds;
 
-	const PxU32 nbObjects = bvhStructure.getNbBounds();
+	const PxU32 nbObjects = bvh.getNbBounds();
 
 	CompoundTree& tree = mCompoundTrees[index];
 	PX_ASSERT(tree.mPruningPool == NULL);
@@ -224,21 +211,21 @@ PoolIndex CompoundTreePool::addCompound(PrunerHandle* results, const BVHStructur
 	PX_ASSERT(tree.mUpdateMap == NULL);
 
 	tree.mGlobalPose = transform;
-	tree.mFlags = flags;
+	tree.mFlags = isDynamic ? PxCompoundPrunerQueryFlag::eDYNAMIC : PxCompoundPrunerQueryFlag::eSTATIC;
 
 	// prepare the pruning pool
-	PruningPool* pool = PX_PLACEMENT_NEW(PX_ALLOC(sizeof(PruningPool), PX_DEBUG_EXP("Pruning pool")), PruningPool);
+	PruningPool* pool = PX_NEW(PruningPool)(mContextID, TRANSFORM_CACHE_LOCAL);
 	pool->preallocate(nbObjects);
-	pool->addObjects(results, bvhStructure.getBounds(), userData, nbObjects);
+	pool->addObjects(results, bvh.getBounds(), data, transforms, nbObjects);
 	tree.mPruningPool = pool;
 
 	// prepare update map
-    UpdateMap* map = PX_PLACEMENT_NEW(PX_ALLOC(sizeof(UpdateMap), PX_DEBUG_EXP("Update map")), UpdateMap);
+    UpdateMap* map = PX_PLACEMENT_NEW(PX_ALLOC(sizeof(UpdateMap), "Update map"), UpdateMap);
 	map->resizeUninitialized(nbObjects);
 	tree.mUpdateMap = map;
 
-	IncrementalAABBTree* iTree = PX_NEW(IncrementalAABBTree)();
-	iTree->copy(bvhStructure, *map);
+	IncrementalAABBTree* iTree = PX_NEW(IncrementalAABBTree);
+	iTree->copy(bvh, *map);
 	tree.mTree = iTree;
 
 	return index;
@@ -246,21 +233,24 @@ PoolIndex CompoundTreePool::addCompound(PrunerHandle* results, const BVHStructur
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-PoolIndex CompoundTreePool::removeCompound(PoolIndex indexOfRemovedObject)
+PoolIndex CompoundTreePool::removeCompound(PoolIndex indexOfRemovedObject, PrunerPayloadRemovalCallback* removalCallback)
 {
 	PX_ASSERT(mNbObjects);
 
 	// release the tree
-	mCompoundTrees[indexOfRemovedObject].mTree->release();
-	mCompoundTrees[indexOfRemovedObject].mTree->~IncrementalAABBTree();
-	PX_FREE_AND_RESET(mCompoundTrees[indexOfRemovedObject].mTree);
+	PX_DELETE(mCompoundTrees[indexOfRemovedObject].mTree);
 
 	mCompoundTrees[indexOfRemovedObject].mUpdateMap->clear();
-	mCompoundTrees[indexOfRemovedObject].mUpdateMap->~Array();
-	PX_FREE_AND_RESET(mCompoundTrees[indexOfRemovedObject].mUpdateMap);
+	mCompoundTrees[indexOfRemovedObject].mUpdateMap->~PxArray();
+	PX_FREE(mCompoundTrees[indexOfRemovedObject].mUpdateMap);
 
-	mCompoundTrees[indexOfRemovedObject].mPruningPool->~PruningPool();
-	PX_FREE_AND_RESET(mCompoundTrees[indexOfRemovedObject].mPruningPool);
+	if(removalCallback)
+	{
+		const PruningPool* pool = mCompoundTrees[indexOfRemovedObject].mPruningPool;
+		removalCallback->invoke(pool->getNbActiveObjects(), pool->getObjects());
+	}
+
+	PX_DELETE(mCompoundTrees[indexOfRemovedObject].mPruningPool);
 
 	const PoolIndex indexOfLastObject = --mNbObjects; // swap the object at last index with index
 	if(indexOfLastObject!=indexOfRemovedObject)
@@ -268,12 +258,12 @@ PoolIndex CompoundTreePool::removeCompound(PoolIndex indexOfRemovedObject)
 		// PT: move last object's data to recycled spot (from removed object)
 
 		// PT: the last object has moved so we need to handle the mappings for this object
-		mCompoundBounds		[indexOfRemovedObject]	= mCompoundBounds	[indexOfLastObject];
-		mCompoundTrees		[indexOfRemovedObject]	= mCompoundTrees	[indexOfLastObject];
+		mCompoundBounds.getBounds()	[indexOfRemovedObject]	= mCompoundBounds.getBounds()	[indexOfLastObject];
+		mCompoundTrees				[indexOfRemovedObject]	= mCompoundTrees				[indexOfLastObject];
 
-		mCompoundTrees		[indexOfLastObject].mPruningPool = NULL;
-		mCompoundTrees		[indexOfLastObject].mUpdateMap = NULL;
-		mCompoundTrees		[indexOfLastObject].mTree = NULL;
+		mCompoundTrees	[indexOfLastObject].mPruningPool = NULL;
+		mCompoundTrees	[indexOfLastObject].mUpdateMap = NULL;
+		mCompoundTrees	[indexOfLastObject].mTree = NULL;
 	}
 
 	return indexOfLastObject;

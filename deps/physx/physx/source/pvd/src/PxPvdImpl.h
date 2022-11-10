@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDIMPL_H
-#define PXPVDSDK_PXPVDIMPL_H
+#ifndef PX_PVD_IMPL_H
+#define PX_PVD_IMPL_H
 
 #include "foundation/PxProfiler.h"
 
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
 #include "PsPvd.h"
-#include "PsArray.h"
-#include "PsMutex.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxMutex.h"
 #include "PxPvdCommStreamTypes.h"
 #include "PxPvdFoundation.h"
 #include "PxPvdObjectModelMetaData.h"
@@ -54,12 +53,12 @@ namespace pvdsdk
 class PvdMemClient;
 class PvdProfileZoneClient;
 
-struct MetaDataProvider : public PvdOMMetaDataProvider, public shdfnd::UserAllocated
+struct MetaDataProvider : public PvdOMMetaDataProvider, public PxUserAllocated
 {
-    typedef shdfnd::Mutex::ScopedLock TScopedLockType;
-    typedef shdfnd::HashMap<const void*, int32_t> TInstTypeMap;
+    typedef PxMutex::ScopedLock TScopedLockType;
+    typedef PxHashMap<const void*, int32_t> TInstTypeMap;
 	PvdObjectModelMetaData& mMetaData;
-    shdfnd::Mutex mMutex;
+    PxMutex mMutex;
 	uint32_t mRefCount;
 	TInstTypeMap mTypeMap;
 
@@ -147,11 +146,11 @@ It implements the interface methods and provides richer functionality for advanc
 PhysX or APEX), including handler notification for clients.
 */
 //////////////////////////////////////////////////////////////////////////
-class PvdImpl : public PsPvd, public shdfnd::UserAllocated
+class PvdImpl : public PsPvd, public PxUserAllocated
 {
 	PX_NOCOPY(PvdImpl)
 
-    typedef shdfnd::Mutex::ScopedLock TScopedLockType;
+    typedef PxMutex::ScopedLock TScopedLockType;
 	typedef void (PvdImpl::*TAllocationHandler)(size_t size, const char* typeName, const char* filename, int line,
 	                                            void* allocatedMemory);
 	typedef void (PvdImpl::*TDeallocationHandler)(void* allocatedMemory);
@@ -196,7 +195,7 @@ class PvdImpl : public PsPvd, public shdfnd::UserAllocated
 	void sendTransportInitialization();
 
 	PxPvdTransport*						mPvdTransport;
-	physx::shdfnd::Array<PvdClient*>	mPvdClients;
+	physx::PxArray<PvdClient*>	mPvdClients;
 
 	MetaDataProvider*					mSharedMetaProvider; // shared between clients
 	ObjectRegistrar						mObjectRegistrar;
@@ -205,6 +204,7 @@ class PvdImpl : public PsPvd, public shdfnd::UserAllocated
 
 	PxPvdInstrumentationFlags			mFlags;
 	bool								mIsConnected;
+	bool                                mGPUProfilingWasConnected;
 	bool								mIsNVTXSupportEnabled;
 	uint32_t							mNVTXContext;
 	uint64_t							mNextStreamId;
@@ -218,4 +218,5 @@ class PvdImpl : public PsPvd, public shdfnd::UserAllocated
 } // namespace pvdsdk
 }
 
-#endif // PXPVDSDK_PXPVDIMPL_H
+#endif
+

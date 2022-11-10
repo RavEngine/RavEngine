@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,32 +34,23 @@
 // ****************************************************************************
 
 #include <ctype.h>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 #include "../snippetutils/SnippetUtils.h"
 
-
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics	= NULL;
+static PxDefaultCpuDispatcher*	gDispatcher = NULL;
+static PxScene*					gScene		= NULL;
+static PxMaterial*				gMaterial	= NULL;
+static PxPvd*					gPvd        = NULL;
 
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics	= NULL;
-
-PxDefaultCpuDispatcher*	gDispatcher = NULL;
-PxScene*				gScene		= NULL;
-
-PxMaterial*				gMaterial	= NULL;
-
-PxPvd*                  gPvd        = NULL;
-
-PxReal chainZ = 10.0f;
-
-PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geometry, const PxVec3& velocity=PxVec3(0))
+static PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geometry, const PxVec3& velocity=PxVec3(0))
 {
 	PxRigidDynamic* dynamic = PxCreateDynamic(*gPhysics, t, geometry, *gMaterial, 10.0f);
 	dynamic->setAngularDamping(0.5f);
@@ -70,7 +60,7 @@ PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geometry, 
 }
 
 // spherical joint limited to an angle of at most pi/4 radians (45 degrees)
-PxJoint* createLimitedSpherical(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
+static PxJoint* createLimitedSpherical(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
 {
 	PxSphericalJoint* j = PxSphericalJointCreate(*gPhysics, a0, t0, a1, t1);
 	j->setLimitCone(PxJointLimitCone(PxPi/4, PxPi/4, 0.05f));
@@ -81,7 +71,7 @@ PxJoint* createLimitedSpherical(PxRigidActor* a0, const PxTransform& t0, PxRigid
 // revolute joint limited to an angle of at most pi/4 radians (45 degrees)
 
 // fixed, breakable joint
-PxJoint* createBreakableFixed(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
+static PxJoint* createBreakableFixed(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
 {
 	PxFixedJoint* j = PxFixedJointCreate(*gPhysics, a0, t0, a1, t1);
 	j->setBreakForce(1000, 100000);	
@@ -91,7 +81,7 @@ PxJoint* createBreakableFixed(PxRigidActor* a0, const PxTransform& t0, PxRigidAc
 }
 
 // D6 joint with a spring maintaining its position
-PxJoint* createDampedD6(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
+static PxJoint* createDampedD6(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
 {
 	PxD6Joint* j = PxD6JointCreate(*gPhysics, a0, t0, a1, t1);
 	j->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
@@ -105,7 +95,7 @@ typedef PxJoint* (*JointCreateFunction)(PxRigidActor* a0, const PxTransform& t0,
 
 // create a chain rooted at the origin and extending along the x-axis, all transformed by the argument t.
 
-void createChain(const PxTransform& t, PxU32 length, const PxGeometry& g, PxReal separation, JointCreateFunction createJoint)
+static void createChain(const PxTransform& t, PxU32 length, const PxGeometry& g, PxReal separation, JointCreateFunction createJoint)
 {
 	PxVec3 offset(separation/2, 0, 0);
 	PxTransform localTm(offset);

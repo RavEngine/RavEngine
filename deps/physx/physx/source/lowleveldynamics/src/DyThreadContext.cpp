@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 
 #include "DyThreadContext.h"
-#include "PsBitUtils.h"
+#include "foundation/PxBitUtils.h"
 
 namespace physx
 {
@@ -43,29 +42,30 @@ ThreadContext::ThreadContext(PxcNpMemBlockPool* memBlockPool):
 	mNumDifferentBodyConstraints(0),
 	mNumSelfConstraints(0),
 	mNumStaticConstraints(0),
-	mConstraintsPerPartition(PX_DEBUG_EXP("ThreadContext::mConstraintsPerPartition")),
-	mFrictionConstraintsPerPartition(PX_DEBUG_EXP("ThreadContext::frictionsConstraintsPerPartition")),
-	mPartitionNormalizationBitmap(PX_DEBUG_EXP("ThreadContext::mPartitionNormalizationBitmap")),
-	frictionConstraintDescArray(PX_DEBUG_EXP("ThreadContext::solverFrictionConstraintArray")),
-	frictionConstraintBatchHeaders(PX_DEBUG_EXP("ThreadContext::frictionConstraintBatchHeaders")),
-	compoundConstraints(PX_DEBUG_EXP("ThreadContext::compoundConstraints")),
-	orderedContactList(PX_DEBUG_EXP("ThreadContext::orderedContactList")),
-	tempContactList(PX_DEBUG_EXP("ThreadContext::tempContactList")),
-	sortIndexArray(PX_DEBUG_EXP("ThreadContext::sortIndexArray")),
+	mConstraintsPerPartition("ThreadContext::mConstraintsPerPartition"),
+	mFrictionConstraintsPerPartition("ThreadContext::frictionsConstraintsPerPartition"),
+	mPartitionNormalizationBitmap("ThreadContext::mPartitionNormalizationBitmap"),
+	frictionConstraintDescArray("ThreadContext::solverFrictionConstraintArray"),
+	frictionConstraintBatchHeaders("ThreadContext::frictionConstraintBatchHeaders"),
+	compoundConstraints("ThreadContext::compoundConstraints"),
+	orderedContactList("ThreadContext::orderedContactList"),
+	tempContactList("ThreadContext::tempContactList"),
+	sortIndexArray("ThreadContext::sortIndexArray"),
 	mConstraintSize			(0),
 	mAxisConstraintCount(0),
 	mSelfConstraintBlocks(NULL),
 	mMaxPartitions(0),
 	mMaxSolverPositionIterations(0),
 	mMaxSolverVelocityIterations(0),
-	mMaxArticulationLength(0),
 	mContactDescPtr(NULL),
 	mFrictionDescPtr(NULL),
-	mArticulations(PX_DEBUG_EXP("ThreadContext::articulations"))
+	mArticulations("ThreadContext::articulations")
 	
 {
 #if PX_ENABLE_SIM_STATS
 	mThreadSimStats.clear();
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 	//Defaulted to have space for 16384 bodies
 	mPartitionNormalizationBitmap.reserve(512); 
@@ -80,7 +80,7 @@ void ThreadContext::resizeArrays(PxU32 frictionConstraintDescCount, PxU32 articu
 	frictionConstraintDescArray.reserve((frictionConstraintDescCount+63)&~63);
 
 	mArticulations.forceSize_Unsafe(0);
-	mArticulations.reserve(PxMax<PxU32>(Ps::nextPowerOfTwo(articulationCount), 16));
+	mArticulations.reserve(PxMax<PxU32>(PxNextPowerOfTwo(articulationCount), 16));
 	mArticulations.forceSize_Unsafe(articulationCount);
 
 	mContactDescPtr = contactConstraintDescArray;

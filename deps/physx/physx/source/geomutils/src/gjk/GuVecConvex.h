@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_VEC_CONVEX_H
 #define GU_VEC_CONVEX_H
 
-#include "CmPhysXCommon.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 #define PX_SUPPORT_INLINE PX_FORCE_INLINE
 #define PX_SUPPORT_FORCE_INLINE PX_FORCE_INLINE
@@ -45,12 +43,14 @@ namespace Gu
 	{
 		enum Type
 		{
-			eCONVEXHULL = 0,
-			eCONVEXHULLNOSCALE = 1,
-			eSPHERE = 2,
-			eBOX = 3,
-			eCAPSULE = 4,
-			eTRIANGLE = 5
+			eCONVEXHULL,
+			eCONVEXHULLNOSCALE,
+			eSPHERE,
+			eBOX,
+			eCAPSULE,
+			eTRIANGLE,
+			eTETRAHEDRON,
+			eCUSTOM
 		};
 	};
 	
@@ -63,12 +63,12 @@ namespace Gu
 			margin = 0.f;
 			minMargin = 0.f;
 			sweepMargin = 0.f;
-			center = Ps::aos::V3Zero();
+			center = aos::V3Zero();
 		}
 
-		PX_FORCE_INLINE ConvexV(const ConvexType::Type type_, const Ps::aos::Vec3VArg center_) : type(type_), bMarginIsRadius(false)
+		PX_FORCE_INLINE ConvexV(const ConvexType::Type type_, const aos::Vec3VArg center_) : type(type_), bMarginIsRadius(false)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			center = center_;
 			margin = 0.f;
 			minMargin = 0.f;
@@ -76,14 +76,14 @@ namespace Gu
 		}
 
 		//everytime when someone transform the object, they need to up
-		PX_FORCE_INLINE void setCenter(const Ps::aos::Vec3VArg _center)
+		PX_FORCE_INLINE void setCenter(const aos::Vec3VArg _center)
 		{
 			center = _center;
 		}
 
-		PX_FORCE_INLINE void setMargin(const Ps::aos::FloatVArg margin_)
+		PX_FORCE_INLINE void setMargin(const aos::FloatVArg margin_)
 		{
-			Ps::aos::FStore(margin_, &margin);
+			aos::FStore(margin_, &margin);
 		}
 
 		PX_FORCE_INLINE void setMargin(const PxReal margin_)
@@ -92,34 +92,34 @@ namespace Gu
 		}
 
 
-		PX_FORCE_INLINE void setMinMargin(const Ps::aos::FloatVArg minMargin_)
+		PX_FORCE_INLINE void setMinMargin(const aos::FloatVArg minMargin_)
 		{
-			Ps::aos::FStore(minMargin_, & minMargin);
+			aos::FStore(minMargin_, & minMargin);
 		}
 
-		PX_FORCE_INLINE void setSweepMargin(const Ps::aos::FloatVArg sweepMargin_)
+		PX_FORCE_INLINE void setSweepMargin(const aos::FloatVArg sweepMargin_)
 		{
-			Ps::aos::FStore(sweepMargin_, &sweepMargin);
+			aos::FStore(sweepMargin_, &sweepMargin);
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V getCenter()const 
+		PX_FORCE_INLINE aos::Vec3V getCenter()const 
 		{
 			return center;
 		}
 
-		PX_FORCE_INLINE Ps::aos::FloatV getMargin() const
+		PX_FORCE_INLINE aos::FloatV getMargin() const
 		{
-			return Ps::aos::FLoad(margin);
+			return aos::FLoad(margin);
 		}
 
-		PX_FORCE_INLINE Ps::aos::FloatV getMinMargin() const
+		PX_FORCE_INLINE aos::FloatV getMinMargin() const
 		{
-			return Ps::aos::FLoad(minMargin);
+			return aos::FLoad(minMargin);
 		}
 
-		PX_FORCE_INLINE Ps::aos::FloatV getSweepMargin() const
+		PX_FORCE_INLINE aos::FloatV getSweepMargin() const
 		{
-			return Ps::aos::FLoad(sweepMargin);
+			return aos::FLoad(sweepMargin);
 		}
 
 		PX_FORCE_INLINE ConvexType::Type getType() const
@@ -127,9 +127,9 @@ namespace Gu
 			return type;
 		}
 
-		PX_FORCE_INLINE Ps::aos::BoolV isMarginEqRadius()const
+		PX_FORCE_INLINE aos::BoolV isMarginEqRadius()const
 		{
-			return Ps::aos::BLoad(bMarginIsRadius);
+			return aos::BLoad(bMarginIsRadius);
 		}
 
 		PX_FORCE_INLINE bool getMarginIsRadius() const
@@ -145,7 +145,7 @@ namespace Gu
 
 	protected:
 		~ConvexV(){}
-		Ps::aos::Vec3V center;
+		aos::Vec3V center;
 		PxReal margin;				//margin is the amount by which we shrunk the shape for a convex or box. If the shape are sphere/capsule, margin is the radius
 		PxReal minMargin;			//minMargin is some percentage of marginBase, which is used to determine the termination condition for gjk
 		PxReal sweepMargin;			//sweepMargin minMargin is some percentage of marginBase, which is used to determine the termination condition for gjkRaycast
@@ -153,9 +153,9 @@ namespace Gu
 		bool bMarginIsRadius;
 	};
 
-	PX_FORCE_INLINE Ps::aos::FloatV getContactEps(const Ps::aos::FloatV& _marginA, const Ps::aos::FloatV& _marginB)
+	PX_FORCE_INLINE aos::FloatV getContactEps(const aos::FloatV& _marginA, const aos::FloatV& _marginB)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const FloatV ratio = FLoad(0.25f);
 		const FloatV minMargin = FMin(_marginA, _marginB);
@@ -163,9 +163,9 @@ namespace Gu
 		return FMul(minMargin, ratio);
 	}
 
-	PX_FORCE_INLINE Ps::aos::FloatV getSweepContactEps(const Ps::aos::FloatV& _marginA, const Ps::aos::FloatV& _marginB)
+	PX_FORCE_INLINE aos::FloatV getSweepContactEps(const aos::FloatV& _marginA, const aos::FloatV& _marginB)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const FloatV ratio = FLoad(100.f);
 		const FloatV minMargin = FAdd(_marginA, _marginB);

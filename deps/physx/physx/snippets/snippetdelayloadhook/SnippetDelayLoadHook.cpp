@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -44,11 +43,9 @@
 
 #include <ctype.h>
 #include <wtypes.h>
-
 #include "PxPhysicsAPI.h"
 // Include the delay load hook headers
 #include "common/windows/PxWindowsDelayLoadHook.h"
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 #include "../snippetutils/SnippetUtils.h"
@@ -82,36 +79,36 @@ HMODULE physxLibrary = NULL;
 
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
-
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics	= NULL;
-
-PxDefaultCpuDispatcher*	gDispatcher = NULL;
-PxScene*				gScene		= NULL;
-
-PxMaterial*				gMaterial	= NULL;
-
-PxPvd*                  gPvd        = NULL;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics	= NULL;
+static PxDefaultCpuDispatcher*	gDispatcher = NULL;
+PxScene*						gScene		= NULL;
+static PxMaterial*				gMaterial	= NULL;
+static PxPvd*					gPvd        = NULL;
 
 // typedef the PhysX entry points
 typedef PxFoundation*(PxCreateFoundation_FUNC)(PxU32, PxAllocatorCallback&, PxErrorCallback&);
 typedef PxPhysics* (PxCreatePhysics_FUNC)(PxU32,PxFoundation&,const PxTolerancesScale& scale,bool,PxPvd*);
 typedef void (PxSetPhysXDelayLoadHook_FUNC)(const PxDelayLoadHook* hook);
 typedef void (PxSetPhysXCommonDelayLoadHook_FUNC)(const PxDelayLoadHook* hook);
+#if PX_SUPPORT_GPU_PHYSX
 typedef void (PxSetPhysXGpuLoadHook_FUNC)(const PxGpuLoadHook* hook);
 typedef int (PxGetSuggestedCudaDeviceOrdinal_FUNC)(PxErrorCallback& errc);
 typedef PxCudaContextManager* (PxCreateCudaContextManager_FUNC)(PxFoundation& foundation, const PxCudaContextManagerDesc& desc, physx::PxProfilerCallback* profilerCallback);
+#endif
 
 // set the function pointers to NULL
 PxCreateFoundation_FUNC* s_PxCreateFoundation_Func = NULL;
 PxCreatePhysics_FUNC* s_PxCreatePhysics_Func = NULL;
 PxSetPhysXDelayLoadHook_FUNC* s_PxSetPhysXDelayLoadHook_Func = NULL;
 PxSetPhysXCommonDelayLoadHook_FUNC* s_PxSetPhysXCommonDelayLoadHook_Func = NULL;
+#if PX_SUPPORT_GPU_PHYSX
 PxSetPhysXGpuLoadHook_FUNC* s_PxSetPhysXGpuLoadHook_Func = NULL;
 PxGetSuggestedCudaDeviceOrdinal_FUNC* s_PxGetSuggestedCudaDeviceOrdinal_Func = NULL;
 PxCreateCudaContextManager_FUNC* s_PxCreateCudaContextManager_Func = NULL;
+#endif
 
 bool loadPhysicsExplicitely()
 {
@@ -141,16 +138,20 @@ bool loadPhysicsExplicitely()
 	s_PxSetPhysXDelayLoadHook_Func = (PxSetPhysXDelayLoadHook_FUNC*)GetProcAddress(physxLibrary, "PxSetPhysXDelayLoadHook");
 	s_PxSetPhysXCommonDelayLoadHook_Func = (PxSetPhysXCommonDelayLoadHook_FUNC*)GetProcAddress(commonLibrary, "PxSetPhysXCommonDelayLoadHook");
 
+#if PX_SUPPORT_GPU_PHYSX
 	s_PxSetPhysXGpuLoadHook_Func = (PxSetPhysXGpuLoadHook_FUNC*)GetProcAddress(physxLibrary, "PxSetPhysXGpuLoadHook");
 	s_PxGetSuggestedCudaDeviceOrdinal_Func = (PxGetSuggestedCudaDeviceOrdinal_FUNC*)GetProcAddress(physxLibrary, "PxGetSuggestedCudaDeviceOrdinal");
 	s_PxCreateCudaContextManager_Func = (PxCreateCudaContextManager_FUNC*)GetProcAddress(physxLibrary, "PxCreateCudaContextManager");
+#endif
 
 	// check if we have all required function pointers
 	if(s_PxCreateFoundation_Func == NULL || s_PxCreatePhysics_Func == NULL || s_PxSetPhysXDelayLoadHook_Func == NULL || s_PxSetPhysXCommonDelayLoadHook_Func == NULL)
 		return false;
 
+#if PX_SUPPORT_GPU_PHYSX
 	if(s_PxSetPhysXGpuLoadHook_Func == NULL || s_PxGetSuggestedCudaDeviceOrdinal_Func == NULL || s_PxCreateCudaContextManager_Func == NULL)
 		return false;
+#endif
 	return true;
 }
 
@@ -176,6 +177,7 @@ struct SnippetDelayLoadHook : public PxDelayLoadHook
 	}
 };
 
+#if PX_SUPPORT_GPU_PHYSX
 // Overriding the PxGpuLoadHook allows the load of a custom GPU name dll
 struct SnippetGpuLoadHook : public PxGpuLoadHook
 {
@@ -184,6 +186,7 @@ struct SnippetGpuLoadHook : public PxGpuLoadHook
 		return gpuLibraryPath;
 	}
 };
+#endif
 
 PxReal stackZ = 10.0f;
 
@@ -228,9 +231,11 @@ void initPhysics(bool interactive)
 	s_PxSetPhysXDelayLoadHook_Func(&delayLoadHook);
 	s_PxSetPhysXCommonDelayLoadHook_Func(&delayLoadHook);
 
+#if PX_SUPPORT_GPU_PHYSX
 	// set PhysXGpu load hook
 	SnippetGpuLoadHook gpuLoadHook;
 	s_PxSetPhysXGpuLoadHook_Func(&gpuLoadHook);
+#endif
 
 	gPvd = PxCreatePvd(*gFoundation);
 	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);

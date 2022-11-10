@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,79 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
+#include "foundation/Px.h"
 #include "foundation/PxSimpleTypes.h"
-
-#define PX_RELEASE(x)	if(x)	{ x->release(); x = NULL;	}
 
 namespace physx
 {
 	namespace SnippetUtils
 	{
+		/////
+
+		void	setRotX(PxMat33& m, PxReal angle);
+		void	setRotY(PxMat33& m, PxReal angle);
+		void	setRotZ(PxMat33& m, PxReal angle);
+
+		PxQuat	getRotXQuat(float angle);
+		PxQuat	getRotYQuat(float angle);
+		PxQuat	getRotZQuat(float angle);
+
+		/////
+
+		class BasicRandom
+		{
+			public:
+										BasicRandom(PxU32 seed=0)	: mRnd(seed)	{}
+										~BasicRandom()								{}
+
+			PX_FORCE_INLINE	void		setSeed(PxU32 seed)			{ mRnd = seed;											}
+			PX_FORCE_INLINE	PxU32		getCurrentValue()	const	{ return mRnd;											}
+							PxU32		randomize()					{ mRnd = mRnd * 2147001325 + 715136305; return mRnd;	}
+
+			PX_FORCE_INLINE	PxU32		rand()						{ return randomize() & 0xffff;							}
+			PX_FORCE_INLINE	PxU32		rand32()					{ return randomize() & 0xffffffff;						}
+
+							PxF32		rand(PxF32 a, PxF32 b)
+										{
+											const PxF32 r = rand32()/(static_cast<PxF32>(0xffffffff));
+											return r*(b-a) + a;
+										}
+
+							PxI32		rand(PxI32 a, PxI32 b)
+										{
+											return a + static_cast<PxI32>(rand32()%(b-a));
+										}
+
+							PxF32		randomFloat()
+										{
+											return rand()/(static_cast<PxF32>(0xffff)) - 0.5f;
+										}									
+							PxF32		randomFloat32()
+										{
+											return rand32()/(static_cast<PxF32>(0xffffffff)) - 0.5f;
+										}
+
+							PxF32		randomFloat32(PxReal a, PxReal b) { return rand32()/PxF32(0xffffffff)*(b-a)+a; }
+							void		unitRandomPt(physx::PxVec3& v);	
+							void		unitRandomQuat(physx::PxQuat& v);
+
+							PxVec3		unitRandomPt();
+							PxQuat		unitRandomQuat();
+		private:
+							PxU32		mRnd;
+		};
+
+		/////
+
+		PxU32			Bunny_getNbVerts();
+		PxU32			Bunny_getNbFaces();
+		const PxVec3*	Bunny_getVerts();
+		const PxU32*	Bunny_getFaces();
+
+		/////
+
 		/* Increment the specified location. Return the incremented value. */
 		PxI32 atomicIncrement(volatile PxI32* val);
 

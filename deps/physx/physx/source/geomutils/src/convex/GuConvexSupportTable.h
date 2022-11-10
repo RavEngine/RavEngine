@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +31,7 @@
 
 #include "common/PxPhysXCommonConfig.h"
 #include "GuVecConvex.h"
-#include "PsVecTransform.h"
+#include "foundation/PxVecTransform.h"
 
 namespace physx
 {
@@ -52,25 +51,25 @@ namespace Gu
 	class SupportLocal
 	{
 	public:		
-		Ps::aos::Vec3V shapeSpaceCenterOfMass;
-		const Ps::aos::PsTransformV& transform;
-		const Ps::aos::Mat33V& vertex2Shape;
-		const Ps::aos::Mat33V& shape2Vertex;
+		aos::Vec3V shapeSpaceCenterOfMass;
+		const aos::PxTransformV& transform;
+		const aos::Mat33V& vertex2Shape;
+		const aos::Mat33V& shape2Vertex;
 		const bool isIdentityScale;	
 
-		SupportLocal(const Ps::aos::PsTransformV& _transform, const Ps::aos::Mat33V& _vertex2Shape, const Ps::aos::Mat33V& _shape2Vertex, const bool _isIdentityScale = true): transform(_transform), 
+		SupportLocal(const aos::PxTransformV& _transform, const aos::Mat33V& _vertex2Shape, const aos::Mat33V& _shape2Vertex, const bool _isIdentityScale = true): transform(_transform), 
 			vertex2Shape(_vertex2Shape), shape2Vertex(_shape2Vertex), isIdentityScale(_isIdentityScale)
 		{
 		}
 
-		PX_FORCE_INLINE void setShapeSpaceCenterofMass(const Ps::aos::Vec3VArg _shapeSpaceCenterOfMass)
+		PX_FORCE_INLINE void setShapeSpaceCenterofMass(const aos::Vec3VArg _shapeSpaceCenterOfMass)
 		{
 			shapeSpaceCenterOfMass = _shapeSpaceCenterOfMass;
 		}
         virtual ~SupportLocal() {}
-		virtual Ps::aos::Vec3V doSupport(const Ps::aos::Vec3VArg dir) const = 0;
-		virtual void doSupport(const Ps::aos::Vec3VArg dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max) const = 0;
-		virtual void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, Ps::aos::Vec3V* verts)const = 0;
+		virtual aos::Vec3V doSupport(const aos::Vec3VArg dir) const = 0;
+		virtual void doSupport(const aos::Vec3VArg dir, aos::FloatV& min, aos::FloatV& max) const = 0;
+		virtual void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, aos::Vec3V* verts)const = 0;
 	
 	protected:
 		SupportLocal& operator=(const SupportLocal&);
@@ -85,23 +84,23 @@ namespace Gu
 		
 	public:
 		const Convex& conv;
-		SupportLocalImpl(const Convex& _conv, const Ps::aos::PsTransformV& _transform, const Ps::aos::Mat33V& _vertex2Shape, const Ps::aos::Mat33V& _shape2Vertex, const bool _isIdentityScale = true) : 
+		SupportLocalImpl(const Convex& _conv, const aos::PxTransformV& _transform, const aos::Mat33V& _vertex2Shape, const aos::Mat33V& _shape2Vertex, const bool _isIdentityScale = true) : 
 		SupportLocal(_transform, _vertex2Shape, _shape2Vertex, _isIdentityScale), conv(_conv)
 		{
 		}
 
-		Ps::aos::Vec3V doSupport(const Ps::aos::Vec3VArg dir) const
+		aos::Vec3V doSupport(const aos::Vec3VArg dir) const
 		{
 			//return conv.supportVertsLocal(dir);
 			return conv.supportLocal(dir);
 		}
 
-		void doSupport(const Ps::aos::Vec3VArg dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max) const
+		void doSupport(const aos::Vec3VArg dir, aos::FloatV& min, aos::FloatV& max) const
 		{
 			return conv.supportLocal(dir, min, max);
 		}
 
-		void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, Ps::aos::Vec3V* verts) const 
+		void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, aos::Vec3V* verts) const 
 		{
 			conv.populateVerts(inds, numInds, originalVerts, verts);
 		}

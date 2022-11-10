@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_FLUSHPOOL
-#define PX_PHYSICS_COMMON_FLUSHPOOL
+#ifndef CM_FLUSH_POOL_H
+#define CM_FLUSH_POOL_H
 
 #include "foundation/Px.h"
-#include "PsUserAllocated.h"
-#include "CmPhysXCommon.h"
-#include "PsMutex.h"
-#include "PsArray.h"
-#include "PsBitUtils.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxBitUtils.h"
+#include "foundation/PxMutex.h"
+#include "foundation/PxArray.h"
 
 /*
 Pool used to allocate variable sized tasks. It's intended to be cleared after a short period (time step).
@@ -52,7 +49,7 @@ namespace Cm
 	{
 		PX_NOCOPY(FlushPool)
 	public:
-		FlushPool(PxU32 chunkSize) : mChunks(PX_DEBUG_EXP("FlushPoolChunk")), mChunkIndex(0), mOffset(0), mChunkSize(chunkSize)
+		FlushPool(PxU32 chunkSize) : mChunks("FlushPoolChunk"), mChunkIndex(0), mOffset(0), mChunkSize(chunkSize)
 		{
 			mChunks.pushBack(static_cast<PxU8*>(PX_ALLOC(mChunkSize, "PxU8")));
 		}
@@ -66,18 +63,18 @@ namespace Cm
 		// alignment must be a power of two
 		void* allocate(PxU32 size, PxU32 alignment=16)
 		{
-			Ps::Mutex::ScopedLock lock(mMutex);
+			PxMutex::ScopedLock lock(mMutex);
 			return allocateNotThreadSafe(size, alignment);
 		}
 
 		// alignment must be a power of two
 		void* allocateNotThreadSafe(PxU32 size, PxU32 alignment=16)
 		{
-			PX_ASSERT(shdfnd::isPowerOfTwo(alignment));
+			PX_ASSERT(PxIsPowerOfTwo(alignment));
 			PX_ASSERT(size <= mChunkSize && !mChunks.empty());
 			
 			// padding for alignment
-			size_t unalignedStart = reinterpret_cast<size_t>(mChunks[mChunkIndex]+mOffset);
+			size_t unalignedStart = size_t(mChunks[mChunkIndex]+mOffset);
 			PxU32 pad = PxU32(((unalignedStart+alignment-1)&~(size_t(alignment)-1)) - unalignedStart);
 
 			if (mOffset + size + pad > mChunkSize)
@@ -88,19 +85,19 @@ namespace Cm
 					mChunks.pushBack(static_cast<PxU8*>(PX_ALLOC(mChunkSize, "PxU8")));
 
 				// update padding to ensure new alloc is aligned
-				unalignedStart = reinterpret_cast<size_t>(mChunks[mChunkIndex]);
+				unalignedStart = size_t(mChunks[mChunkIndex]);
 				pad = PxU32(((unalignedStart+alignment-1)&~(size_t(alignment)-1)) - unalignedStart);
 			}
 
 			void* ptr = mChunks[mChunkIndex] + mOffset + pad;
-			PX_ASSERT((reinterpret_cast<size_t>(ptr)&(size_t(alignment)-1)) == 0);
+			PX_ASSERT((size_t(ptr)&(size_t(alignment)-1)) == 0);
 			mOffset += size + pad;
 			return ptr;
 		}
 
 		void clear(PxU32 spareChunkCount = sSpareChunkCount)
 		{
-			Ps::Mutex::ScopedLock lock(mMutex);
+			PxMutex::ScopedLock lock(mMutex);
 			
 			clearNotThreadSafe(spareChunkCount);
 		}
@@ -112,7 +109,10 @@ namespace Cm
 			//release memory not used previously
 			PxU32 targetSize = mChunkIndex+sSpareChunkCount;
 			while (mChunks.size() > targetSize)
-				PX_FREE(mChunks.popBack());
+			{
+				PxU8* ptr = mChunks.popBack();
+				PX_FREE(ptr);
+			}
 
 			mChunkIndex = 0;
 			mOffset = 0;
@@ -142,8 +142,8 @@ namespace Cm
 		}
 
 	private:
-		Ps::Mutex mMutex;
-		Ps::Array<PxU8*> mChunks;
+		PxMutex mMutex;
+		PxArray<PxU8*> mChunks;
 		PxU32 mChunkIndex;
 		PxU32 mOffset;
 		PxU32 mChunkSize;

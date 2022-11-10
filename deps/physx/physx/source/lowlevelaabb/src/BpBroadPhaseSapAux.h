@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,18 +30,19 @@
 #define BP_BROADPHASE_SAP_AUX_H
 
 #include "foundation/PxAssert.h"
-#include "CmPhysXCommon.h"
-#include "PsIntrinsics.h"
-#include "PsUserAllocated.h"
+#include "foundation/PxIntrinsics.h"
+#include "foundation/PxUserAllocated.h"
 #include "BpBroadPhase.h"
-#include "BpBroadPhaseUpdate.h"
-#include "CmBitMap.h"
-#include "PxcScratchAllocator.h"
+#include "BpBroadPhaseIntegerAABB.h"
+#include "foundation/PxBitMap.h"
 
 namespace physx
 {
+class PxcScratchAllocator;
 namespace Bp
 {
+#define ALIGN_SIZE_16(size) ((unsigned(size)+15)&(unsigned(~15)))
+
 #define NUM_SENTINELS 2
 
 #define BP_SAP_USE_PREFETCH 1//prefetch in batchUpdate
@@ -55,7 +55,6 @@ namespace Bp
 
 #define MAX_BP_HANDLE			0x3fffffff
 #define PX_REMOVED_BP_HANDLE	0x3ffffffd
-#define MAX_BP_PAIRS_MESSAGE "Only 4294967296 broadphase pairs are supported.  This limit has been exceeded and some pairs will be dropped \n"
 
 PX_FORCE_INLINE	void setMinSentinel(ValType& v, BpHandle& d)
 {
@@ -114,7 +113,7 @@ public:
 
 	const BroadPhasePair*	AddPair		(BpHandle id0, BpHandle id1, const PxU8 state);
 	bool					RemovePair	(BpHandle id0, BpHandle id1);
-	bool					RemovePairs	(const Cm::BitMap& removedAABBs);
+	bool					RemovePairs	(const PxBitMap& removedAABBs);
 	const BroadPhasePair*	FindPair	(BpHandle id0, BpHandle id1)	const;
 
 	PX_FORCE_INLINE	PxU32	GetPairIndex(const BroadPhasePair* PX_RESTRICT pair)	const
@@ -229,8 +228,6 @@ void ComputeCreatedDeletedPairsLists
  PxU32&numActualDeletedPairs,
  SapPairManager& pairManager);
 
-void DeletePairsLists(const PxU32 numActualDeletedPairs, BroadPhasePair* deletedPairsList, SapPairManager& pairManager);
-
 	struct BoxX
 	{
 		PxU32	mMinX;
@@ -258,16 +255,10 @@ void DeletePairsLists(const PxU32 numActualDeletedPairs, BroadPhasePair* deleted
 	};
 
 void performBoxPruningNewNew(	const AuxData* PX_RESTRICT auxData, PxcScratchAllocator* scratchAllocator,
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								const bool* lut,
-#endif
-								SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity);
+								const bool* lut, SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity);
 
 void performBoxPruningNewOld(	const AuxData* PX_RESTRICT auxData0, const AuxData* PX_RESTRICT auxData1, PxcScratchAllocator* scratchAllocator,
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								const bool* lut,
-#endif
-								SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity);
+								const bool* lut, SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity);
 
 PX_FORCE_INLINE bool Intersect2D_Handle
 (const BpHandle bDir1Min, const BpHandle bDir1Max, const BpHandle bDir2Min, const BpHandle bDir2Max,

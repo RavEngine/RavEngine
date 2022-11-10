@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "Ps.h"
 #include "GuVecCapsule.h"
 #include "GuVecBox.h"
 #include "GuVecConvexHull.h"
@@ -35,13 +33,16 @@
 #include "GuGJKRaycast.h"
 #include "GuCCDSweepConvexMesh.h"
 #include "GuGJKType.h"
+#include "geometry/PxSphereGeometry.h"
+
+//#define USE_VIRTUAL_GJK
 
 namespace physx
 {
 namespace Gu
 {
 
-using namespace Ps::aos;
+using namespace aos;
 
 template<typename Geom> PX_FORCE_INLINE  PxReal getRadius(const PxGeometry&) 
 {	
@@ -55,16 +56,20 @@ template<> PX_FORCE_INLINE PxReal getRadius<CapsuleV>(const PxGeometry& g)
 	return static_cast<const PxSphereGeometry&>(g).radius;
 }
 
-
+#ifdef USE_VIRTUAL_GJK
+static bool virtualGjkRaycastPenetration(const GjkConvex& a, const GjkConvex& b, const aos::Vec3VArg initialDir, const aos::FloatVArg initialLambda, const aos::Vec3VArg s, const aos::Vec3VArg r, aos::FloatV& lambda, 
+		aos::Vec3V& normal, aos::Vec3V& closestA, const PxReal _inflation, const bool initialOverlap)
+{
+	return gjkRaycastPenetration<GjkConvex, GjkConvex >(a, b, initialDir, initialLambda, s, r, lambda, normal, closestA, _inflation, initialOverlap);
+}
+#endif
 
 template<class ConvexA, class ConvexB>
-static PxReal CCDSweep(ConvexA& a, ConvexB& b,  const PxTransform& transform0, const PxTransform& transform1, const PxTransform& lastTm0, const PxTransform& lastTm1,
-					 const Ps::aos::FloatV& toiEstimate, PxVec3& worldPoint, PxVec3& worldNormal, PxReal inflation = 0.f)
+static PX_FORCE_INLINE PxReal CCDSweep(	ConvexA& a, ConvexB& b, const PxTransform& transform0, const PxTransform& transform1, const PxTransform& lastTm0, const PxTransform& lastTm1,
+										const aos::FloatV& toiEstimate, PxVec3& worldPoint, PxVec3& worldNormal, PxReal inflation = 0.0f)
 {
 	PX_UNUSED(toiEstimate); //KS - TODO - can we use this again?
-	using namespace Ps::aos;
-
-	const Vec3V zero = V3Zero();
+	using namespace aos;
 
 	const QuatV q0 = QuatVLoadA(&transform0.q.x);
 	const Vec3V p0 = V3LoadA(&lastTm0.p.x);
@@ -72,10 +77,10 @@ static PxReal CCDSweep(ConvexA& a, ConvexB& b,  const PxTransform& transform0, c
 	const QuatV q1 = QuatVLoadA(&transform1.q.x);
 	const Vec3V p1 = V3LoadA(&lastTm1.p.x);
 
-	const PsTransformV tr0(p0, q0);
-	const PsTransformV tr1(p1, q1);
+	const PxTransformV tr0(p0, q0);
+	const PxTransformV tr1(p1, q1);
 
-	const PsMatTransformV aToB(tr1.transformInv(tr0));
+	const PxMatTransformV aToB(tr1.transformInv(tr0));
 
 	const Vec3V trans0p = V3LoadU(transform0.p);
 	const Vec3V trans1p = V3LoadU(transform1.p);
@@ -88,7 +93,11 @@ static PxReal CCDSweep(ConvexA& a, ConvexB& b,  const PxTransform& transform0, c
 	const FloatV initialLambda = FZero();
 	const RelativeConvex<ConvexA> convexA(a, aToB);
 	const LocalConvex<ConvexB> convexB(b);
-	if(gjkRaycastPenetration<RelativeConvex<ConvexA>, LocalConvex<ConvexB> >(convexA, convexB, aToB.p, initialLambda, zero, relTr, lambda, normal, closestA, inflation, true))
+#ifdef USE_VIRTUAL_GJK
+	if(virtualGjkRaycastPenetration(convexA, convexB, aToB.p, initialLambda, V3Zero(), relTr, lambda, normal, closestA, inflation, true))
+#else
+	if(gjkRaycastPenetration<RelativeConvex<ConvexA>, LocalConvex<ConvexB> >(convexA, convexB, aToB.p, initialLambda, V3Zero(), relTr, lambda, normal, closestA, inflation, true))
+#endif
 	{
 		//Adjust closestA because it will be on the surface of convex a in its initial position (s). If the TOI > 0, we need to move 
 		//the point along the sweep direction to get the world-space hit position.
@@ -104,12 +113,9 @@ static PxReal CCDSweep(ConvexA& a, ConvexB& b,  const PxTransform& transform0, c
 	return PX_MAX_REAL;
 }
 
-
-
 //
 // lookup table for geometry-vs-geometry sweeps
 //
-
 
 PxReal UnimplementedSweep (GU_SWEEP_METHOD_ARGS_UNUSED)
 {
@@ -117,13 +123,13 @@ PxReal UnimplementedSweep (GU_SWEEP_METHOD_ARGS_UNUSED)
 }
 
 template<typename Geom0, typename Geom1>	
-PxReal SweepGeomGeom(GU_SWEEP_METHOD_ARGS)
+static PxReal SweepGeomGeom(GU_SWEEP_METHOD_ARGS)
 {
 	PX_UNUSED(outCCDFaceIndex);
 	PX_UNUSED(fastMovingThreshold);
 
-	const PxGeometry& g0 = shape0.mGeometry->getGeometry();
-	const PxGeometry& g1 = shape1.mGeometry->getGeometry();
+	const PxGeometry& g0 = *shape0.mGeometry;
+	const PxGeometry& g1 = *shape1.mGeometry;
 
 	typename ConvexGeom<Geom0>::Type geom0(g0);
 	typename ConvexGeom<Geom1>::Type geom1(g1);
@@ -136,39 +142,51 @@ typedef PxReal (*SweepMethod) (GU_SWEEP_METHOD_ARGS);
 PxReal SweepAnyShapeHeightfield(GU_SWEEP_METHOD_ARGS);
 PxReal SweepAnyShapeMesh(GU_SWEEP_METHOD_ARGS);
 
-SweepMethod g_SweepMethodTable[PxGeometryType::eGEOMETRY_COUNT][PxGeometryType::eGEOMETRY_COUNT] = 
+SweepMethod g_SweepMethodTable[][PxGeometryType::eGEOMETRY_COUNT] = 
 {
 	//PxGeometryType::eSPHERE
 	{
-		SweepGeomGeom<CapsuleV, CapsuleV>,				//PxGeometryType::eSPHERE
-		UnimplementedSweep,								//PxGeometryType::ePLANE
-		SweepGeomGeom<CapsuleV, CapsuleV>,				//PxGeometryType::eCAPSULE
-		SweepGeomGeom<CapsuleV, BoxV>,					//PxGeometryType::eBOX
-		SweepGeomGeom<CapsuleV, ConvexHullV>,			//PxGeometryType::eCONVEXMESH
-		SweepAnyShapeMesh,								//PxGeometryType::eTRIANGLEMESH
-		SweepAnyShapeHeightfield,						//PxGeometryType::eHEIGHTFIELD		//TODO		
+		SweepGeomGeom<CapsuleV, CapsuleV>,			//PxGeometryType::eSPHERE
+		UnimplementedSweep,							//PxGeometryType::ePLANE
+		SweepGeomGeom<CapsuleV, CapsuleV>,			//PxGeometryType::eCAPSULE
+		SweepGeomGeom<CapsuleV, BoxV>,				//PxGeometryType::eBOX
+		SweepGeomGeom<CapsuleV, ConvexHullV>,		//PxGeometryType::eCONVEXMESH
+		UnimplementedSweep,							//PxGeometryType::ePARTICLESYSTEM
+		UnimplementedSweep,							//PxGeometryType::eTETRAHEDRONMESH
+		SweepAnyShapeMesh,							//PxGeometryType::eTRIANGLEMESH
+		SweepAnyShapeHeightfield,					//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::ePLANE
 	{
-		0,												//PxGeometryType::eSPHERE
-		UnimplementedSweep,								//PxGeometryType::ePLANE
-		UnimplementedSweep,								//PxGeometryType::eCAPSULE
-		UnimplementedSweep,								//PxGeometryType::eBOX
-		UnimplementedSweep,								//PxGeometryType::eCONVEXMESH
-		UnimplementedSweep,								//PxGeometryType::eTRIANGLEMESH
-		UnimplementedSweep,								//PxGeometryType::eHEIGHTFIELD
+		0,											//PxGeometryType::eSPHERE
+		UnimplementedSweep,							//PxGeometryType::ePLANE
+		UnimplementedSweep,							//PxGeometryType::eCAPSULE
+		UnimplementedSweep,							//PxGeometryType::eBOX
+		UnimplementedSweep,							//PxGeometryType::eCONVEXMESH
+		UnimplementedSweep,							//PxGeometryType::ePARTICLESYSTEM
+		UnimplementedSweep,							//PxGeometryType::eTETRAHEDRONMESH
+		UnimplementedSweep,							//PxGeometryType::eTRIANGLEMESH
+		UnimplementedSweep,							//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eCAPSULE
 	{
-		0,												//PxGeometryType::eSPHERE
-		0,												//PxGeometryType::ePLANE
-		SweepGeomGeom<CapsuleV, CapsuleV>,				//PxGeometryType::eCAPSULE
-		SweepGeomGeom<CapsuleV, BoxV>,					//PxGeometryType::eBOX
-		SweepGeomGeom<CapsuleV, ConvexHullV>,			//PxGeometryType::eCONVEXMESH
-		SweepAnyShapeMesh,								//PxGeometryType::eTRIANGLEMESH
-		SweepAnyShapeHeightfield,						//PxGeometryType::eHEIGHTFIELD
+		0,											//PxGeometryType::eSPHERE
+		0,											//PxGeometryType::ePLANE
+		SweepGeomGeom<CapsuleV, CapsuleV>,			//PxGeometryType::eCAPSULE
+		SweepGeomGeom<CapsuleV, BoxV>,				//PxGeometryType::eBOX
+		SweepGeomGeom<CapsuleV, ConvexHullV>,		//PxGeometryType::eCONVEXMESH
+		UnimplementedSweep,							//PxGeometryType::ePARTICLESYSTEM
+		UnimplementedSweep,							//PxGeometryType::eTETRAHEDRONMESH
+		SweepAnyShapeMesh,							//PxGeometryType::eTRIANGLEMESH
+		SweepAnyShapeHeightfield,					//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eBOX
@@ -178,8 +196,12 @@ SweepMethod g_SweepMethodTable[PxGeometryType::eGEOMETRY_COUNT][PxGeometryType::
 		0,											//PxGeometryType::eCAPSULE
 		SweepGeomGeom<BoxV, BoxV>,					//PxGeometryType::eBOX
 		SweepGeomGeom<BoxV, ConvexHullV>,			//PxGeometryType::eCONVEXMESH
+		UnimplementedSweep,							//PxGeometryType::ePARTICLESYSTEM
+		UnimplementedSweep,							//PxGeometryType::eTETRAHEDRONMESH
 		SweepAnyShapeMesh,							//PxGeometryType::eTRIANGLEMESH
 		SweepAnyShapeHeightfield,					//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eCONVEXMESH
@@ -189,8 +211,42 @@ SweepMethod g_SweepMethodTable[PxGeometryType::eGEOMETRY_COUNT][PxGeometryType::
 		0,											//PxGeometryType::eCAPSULE
 		0,											//PxGeometryType::eBOX
 		SweepGeomGeom<ConvexHullV, ConvexHullV>,	//PxGeometryType::eCONVEXMESH
+		UnimplementedSweep,							//PxGeometryType::ePARTICLESYSTEM
+		UnimplementedSweep,							//PxGeometryType::eTETRAHEDRONMESH
 		SweepAnyShapeMesh,							//PxGeometryType::eTRIANGLEMESH
 		SweepAnyShapeHeightfield,					//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::ePARTICLESYSTEM
+	{
+		0,											//PxGeometryType::eSPHERE
+		0,											//PxGeometryType::ePLANE
+		0,											//PxGeometryType::eCAPSULE
+		0,											//PxGeometryType::eBOX
+		0,											//PxGeometryType::eCONVEXMESH
+		UnimplementedSweep,							//PxGeometryType::ePARTICLESYSTEM
+		UnimplementedSweep,							//PxGeometryType::eTETRAHEDRONMESH
+		UnimplementedSweep,							//PxGeometryType::eTRIANGLEMESH
+		UnimplementedSweep,							//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::eTETRAHEDRONMESH
+	{
+		0,											//PxGeometryType::eSPHERE
+		0,											//PxGeometryType::ePLANE
+		0,											//PxGeometryType::eCAPSULE
+		0,											//PxGeometryType::eBOX
+		0,											//PxGeometryType::eCONVEXMESH
+		0,											//PxGeometryType::ePARTICLESYSTEM
+		UnimplementedSweep,							//PxGeometryType::eTETRAHEDRONMESH
+		UnimplementedSweep,							//PxGeometryType::eTRIANGLEMESH
+		UnimplementedSweep,							//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eTRIANGLEMESH
@@ -200,8 +256,12 @@ SweepMethod g_SweepMethodTable[PxGeometryType::eGEOMETRY_COUNT][PxGeometryType::
 		0,											//PxGeometryType::eCAPSULE
 		0,											//PxGeometryType::eBOX
 		0,											//PxGeometryType::eCONVEXMESH
+		0,											//PxGeometryType::ePARTICLESYSTEM
+		0,											//PxGeometryType::eTETRAHEDRONMESH
 		UnimplementedSweep,							//PxGeometryType::eTRIANGLEMESH
 		UnimplementedSweep,							//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eHEIGHTFIELD
@@ -211,20 +271,53 @@ SweepMethod g_SweepMethodTable[PxGeometryType::eGEOMETRY_COUNT][PxGeometryType::
 		0,											//PxGeometryType::eCAPSULE
 		0,											//PxGeometryType::eBOX
 		0,											//PxGeometryType::eCONVEXMESH
+		0,											//PxGeometryType::ePARTICLESYSTEM
+		0,											//PxGeometryType::eTETRAHEDRONMESH
 		0,											//PxGeometryType::eTRIANGLEMESH
 		UnimplementedSweep,							//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::eHAIRSYSTEM
+	{
+		0,											//PxGeometryType::eSPHERE
+		0,											//PxGeometryType::ePLANE
+		0,											//PxGeometryType::eCAPSULE
+		0,											//PxGeometryType::eBOX
+		0,											//PxGeometryType::eCONVEXMESH
+		0,											//PxGeometryType::ePARTICLESYSTEM
+		0,											//PxGeometryType::eTETRAHEDRONMESH
+		0,											//PxGeometryType::eTRIANGLEMESH
+		0,											//PxGeometryType::eHEIGHTFIELD
+		UnimplementedSweep,							//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::eCUSTOM
+	{
+		0,											//PxGeometryType::eSPHERE
+		0,											//PxGeometryType::ePLANE
+		0,											//PxGeometryType::eCAPSULE
+		0,											//PxGeometryType::eBOX
+		0,											//PxGeometryType::eCONVEXMESH
+		0,											//PxGeometryType::ePARTICLESYSTEM
+		0,											//PxGeometryType::eTETRAHEDRONMESH
+		0,											//PxGeometryType::eTRIANGLEMESH
+		0,											//PxGeometryType::eHEIGHTFIELD
+		0,											//PxGeometryType::eHAIRSYSTEM
+		UnimplementedSweep,							//PxGeometryType::eCUSTOM
 	},
 };
-
+PX_COMPILE_TIME_ASSERT(sizeof(g_SweepMethodTable) / sizeof(g_SweepMethodTable[0]) == PxGeometryType::eGEOMETRY_COUNT);
 
 PxReal SweepShapeShape(GU_SWEEP_METHOD_ARGS)
 {
-	PxGeometryType::Enum type0 = shape0.mGeometry->getType();
-	PxGeometryType::Enum type1 = shape1.mGeometry->getType();
+	const PxGeometryType::Enum type0 = shape0.mGeometry->getType();
+	const PxGeometryType::Enum type1 = shape1.mGeometry->getType();
 
 	return g_SweepMethodTable[type0][type1](shape0, shape1, transform0, transform1, lastTm0, lastTm1,
 		restDistance, worldNormal, worldPoint, toiEstimate, outCCDFaceIndex, fastMovingThreshold);
-		
 }
 
 //
@@ -255,7 +348,7 @@ PxReal SweepGeomTriangles(GU_TRIANGLE_SWEEP_METHOD_ARGS)
 	PX_UNUSED(meshScaling);
 	PX_UNUSED(shape1);
 
-	const PxGeometry& g = shape0.getGeometry();
+	const PxGeometry& g = shape0;
 	//Geom geom(g);
 	typename ConvexGeom<Geom>::Type geom(g);
 
@@ -263,21 +356,26 @@ PxReal SweepGeomTriangles(GU_TRIANGLE_SWEEP_METHOD_ARGS)
 }
 
 typedef PxReal (*TriangleSweepMethod) (GU_TRIANGLE_SWEEP_METHOD_ARGS);
-TriangleSweepMethod g_TriangleSweepMethodTable[PxGeometryType::eGEOMETRY_COUNT] = 
+TriangleSweepMethod g_TriangleSweepMethodTable[] = 
 {
 	SweepGeomTriangles<CapsuleV>,		//PxGeometryType::eSPHERE
 	UnimplementedTriangleSweep,			//PxGeometryType::ePLANE
 	SweepGeomTriangles<CapsuleV>,		//PxGeometryType::eCAPSULE
 	SweepGeomTriangles<BoxV>,			//PxGeometryType::eBOX
 	SweepGeomTriangles<ConvexHullV>,	//PxGeometryType::eCONVEXMESH
+	UnimplementedTriangleSweep,			//PxGeometryType::ePARTICLESYSTEM
+	UnimplementedTriangleSweep,			//PxGeometryType::eTETRAHEDRONMESH
 	UnimplementedTriangleSweep,			//PxGeometryType::eTRIANGLEMESH
 	UnimplementedTriangleSweep,			//PxGeometryType::eHEIGHTFIELD
+	UnimplementedTriangleSweep,			//PxGeometryType::eHAIRSYSTEM
+	UnimplementedTriangleSweep,			//PxGeometryType::eCUSTOM
 };
+PX_COMPILE_TIME_ASSERT(sizeof(g_TriangleSweepMethodTable) / sizeof(g_TriangleSweepMethodTable[0]) == PxGeometryType::eGEOMETRY_COUNT);
 
 PxReal SweepShapeTriangle(GU_TRIANGLE_SWEEP_METHOD_ARGS)
 {
 	const PxGeometryType::Enum type0 = shape0.getType();
-	TriangleSweepMethod method = g_TriangleSweepMethodTable[type0];
+	const TriangleSweepMethod method = g_TriangleSweepMethodTable[type0];
 	return method(shape0, shape1, transform0, transform1, lastTm0, lastTm1, restDistance, worldNormal, worldPoint, meshScaling, triangle, toiEstimate);
 }
 

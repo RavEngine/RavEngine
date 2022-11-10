@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXC_CONSTRAINTBLOCKPOOL_H
-#define PXC_CONSTRAINTBLOCKPOOL_H
+#ifndef PXC_CONSTRAINT_BLOCK_POOL_H
+#define PXC_CONSTRAINT_BLOCK_POOL_H
 
 #include "PxvConfig.h"
-#include "PsArray.h"
-#include "PsMutex.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxMutex.h"
 #include "PxcNpMemBlockPool.h"
 
 namespace physx

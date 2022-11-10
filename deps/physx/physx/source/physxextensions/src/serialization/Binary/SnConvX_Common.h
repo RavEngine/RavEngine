@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PX_CONVX_COMMON_H
-#define PX_CONVX_COMMON_H
+#ifndef SN_CONVX_COMMON_H
+#define SN_CONVX_COMMON_H
 
 #if PX_VC
 #pragma warning(disable:4121)	// alignment of a member was sensitive to packing
@@ -34,10 +33,7 @@
 
 #include "common/PxPhysXCommonConfig.h"      
 
-#define DELETESINGLE(x)	if(x){ delete x;	x = NULL; }
-#define DELETEARRAY(x)	if(x){ delete []x;	x = NULL; }
-
 #define	inline_	PX_FORCE_INLINE
-#define PsArray physx::shdfnd::Array
+#define PsArray physx::PxArray
 
 #endif

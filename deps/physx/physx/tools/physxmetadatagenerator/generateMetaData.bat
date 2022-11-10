@@ -1,4 +1,3 @@
-::
 :: Redistribution and use in source and binary forms, with or without
 :: modification, are permitted provided that the following conditions
 :: are met:
@@ -23,57 +22,30 @@
 :: (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 :: OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ::
-:: Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+:: Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
+@call :CLEAN_EXIT
 @echo off
 setlocal EnableDelayedExpansion 
 
-:: batch script that runs generateMetaData.py with either
-::
-:: -environment variable PYTHON
-:: -p4sw location of python
-:: -python.exe in PATH 
-::
+:: batch script that runs generateMetaData.py
 :: see readme.txt
 
-cd %~dp0
+pushd %~dp0
+set PHYSX_ROOT_DIR=%CD%\..\..\
+popd
 
-:: Get PxShared path from packman, if packman available:
-set PACKMAN_CMD=..\..\buildtools\packman\packman
-if not exist !PACKMAN_CMD! goto no_packman
+SET PHYSX_ROOT_DIR=%PHYSX_ROOT_DIR:\=/%
 
-call "..\..\buildtools\update_packman.cmd"
-@if errorlevel 1 @exit /b %errorlevel%
+echo "PhysX root: %PHYSX_ROOT_DIR%"
 
-call !PACKMAN_CMD! pull "%~dp0..\..\dependencies.xml" --include-tag=RequiredForMetaGen
-@if errorlevel 1 @exit /b %errorlevel%
-:: use python from packman if available
-if not defined PYTHON (
-	set PYTHON=!PM_python_PATH!\python.exe
-)
-:no_packman
+set PACKMAN_CMD="%PHYSX_ROOT_DIR%buildtools\packman\packman"
 
-:: look for python in p4 location unless PYTHON is set
-if not defined PYTHON (
-	call :find_root_path %~p0 "tools\python\3.3" _RESULT
-	if not !_RESULT!==0 (
-		set PYTHON=!_RESULT!\tools\python\3.3\python.exe
-	)
-)
+call "%PHYSX_ROOT_DIR%\buildtools\packman\packman" init
+if errorlevel 1 @exit /b %errorlevel%
 
-:: look for python in PATH unless PYTHON is set
-if not defined PYTHON (
-	where python.exe > nul 2>&1
-	IF !ERRORLEVEL! == 0 (
-		set PYTHON=python.exe
-	)
-)
-
-if not defined PYTHON (
-	goto no_python
-)
-
-echo using: %PYTHON%
+call %PACKMAN_CMD% pull "%PHYSX_ROOT_DIR%dependencies.xml" --platform vc15win64 --include-tag=requiredForDistro
+if errorlevel 1 exit /b %ERRORLEVEL%
 
 :: visual studio 2015 is required for the meta data generation
 :: run vcvarsall.bat to get visual studio developer console environment variables
@@ -83,21 +55,17 @@ if not defined VS140COMNTOOLS (
 		
 echo calling: %VS140COMNTOOLS%..\..\VC\vcvarsall.bat
 call "%VS140COMNTOOLS%..\..\VC\vcvarsall.bat"
-%PYTHON% generateMetaData.py %1	
-
-endlocal
-exit /b %ERRORLEVEL%
-
-:no_python
-echo no python found, please set PYTHON environment variable to python.exe path, or make sure python.exe is in PATH.
-endlocal
-exit /b 1
+%PM_PYTHON%  %~dp0generateMetaData.py %1	
+if %ERRORLEVEL% neq 0 (
+    exit /b %errorlevel%
+) else (
+    goto CLEAN_EXIT
+)
 
 :no_vs140
 echo echo make sure vs 2015 is installed.
 endlocal
 exit /b 1
-
 
 :: **************************************************************************
 :: functions
@@ -134,3 +102,5 @@ exit /b 1
 	endlocal & set _RESULT=%OUT_DIR%
 	exit /b 0
 
+:CLEAN_EXIT
+exit /b 0

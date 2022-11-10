@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
-
+#include "geomutils/PxContactBuffer.h"
+#include "common/PxRenderOutput.h"
 #include "GuDistancePointTriangle.h"
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
 #include "GuFeatureCode.h"
 #include "GuMidphaseInterface.h"
 #include "GuEntityReport.h"
 #include "GuHeightFieldUtil.h"
 #include "GuBox.h"
 
-#include "PsSort.h"
-#include "CmRenderOutput.h"
+#include "foundation/PxSort.h"
 
 #define DEBUG_RENDER_MESHCONTACTS	0
 
@@ -51,7 +48,7 @@ static const bool gDrawTouchedTriangles = false;
 static void outputErrorMessage()
 {
 #if PX_CHECKED
-	Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Dropping contacts in sphere vs mesh: exceeded limit of 64 ");
+	PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "Dropping contacts in sphere vs mesh: exceeded limit of 64 ");
 #endif
 }
 
@@ -227,19 +224,19 @@ struct SphereMeshContactGeneration
 	const PxSphereGeometry&	mShapeSphere;
 	const PxTransform&		mTransform0;
 	const PxTransform&		mTransform1;
-	ContactBuffer&			mContactBuffer;
+	PxContactBuffer&		mContactBuffer;
 	const PxVec3&			mSphereCenterShape1Space;
 	PxF32					mInflatedRadius2;
 	PxU32					mNbDelayed;
-	TriangleData			mSavedData[ContactBuffer::MAX_CONTACTS];
-	SortKey					mSortKey[ContactBuffer::MAX_CONTACTS];
+	TriangleData			mSavedData[PxContactBuffer::MAX_CONTACTS];
+	SortKey					mSortKey[PxContactBuffer::MAX_CONTACTS];
 	PxU32					mNbCachedTris;
-	CachedTriangleIndices	mCachedTris[ContactBuffer::MAX_CONTACTS];
-	Cm::RenderOutput*		mRenderOutput;
+	CachedTriangleIndices	mCachedTris[PxContactBuffer::MAX_CONTACTS];
+	PxRenderOutput*			mRenderOutput;
 
 	SphereMeshContactGeneration(const PxSphereGeometry& shapeSphere, const PxTransform& transform0, const PxTransform& transform1,
-		ContactBuffer& contactBuffer, const PxVec3& sphereCenterShape1Space, PxF32 inflatedRadius,
-		Cm::RenderOutput* renderOutput) :
+		PxContactBuffer& contactBuffer, const PxVec3& sphereCenterShape1Space, PxF32 inflatedRadius,
+		PxRenderOutput* renderOutput) :
 		mShapeSphere				(shapeSphere),
 		mTransform0					(transform0),
 		mTransform1					(transform1),
@@ -328,12 +325,12 @@ struct SphereMeshContactGeneration
 		{
 			addContact(d, squareDist, triangleIndex);
 
-			if(mNbCachedTris<ContactBuffer::MAX_CONTACTS)
+			if(mNbCachedTris<PxContactBuffer::MAX_CONTACTS)
 				cacheTriangle(vertInds[0], vertInds[1], vertInds[2]);
 		}
 		else
 		{
-			if(mNbDelayed<ContactBuffer::MAX_CONTACTS)
+			if(mNbDelayed<PxContactBuffer::MAX_CONTACTS)
 			{
 				const PxU32 index = mNbDelayed++;
 				mSortKey[index].mSquareDist = squareDist;
@@ -357,7 +354,7 @@ struct SphereMeshContactGeneration
 		if(!count)
 			return;
 
-		Ps::sort(mSortKey, count, Ps::Less<SortKey>(), NullAllocator(), ContactBuffer::MAX_CONTACTS);
+		PxSort(mSortKey, count, PxLess<SortKey>(), NullAllocator(), PxContactBuffer::MAX_CONTACTS);
 
 		TriangleData* touchedTris = mSavedData;
 		for(PxU32 i=0;i<count;i++)
@@ -405,7 +402,7 @@ struct SphereMeshContactGeneration
 			if(generateContact)
 				addContact(data.mDelta, mSortKey[i].mSquareDist, data.mTriangleIndex);
 
-			if(mNbCachedTris<ContactBuffer::MAX_CONTACTS)
+			if(mNbCachedTris<PxContactBuffer::MAX_CONTACTS)
 				cacheTriangle(ref0, ref1, ref2);
 			else
 				outputErrorMessage();
@@ -416,17 +413,17 @@ private:
 	SphereMeshContactGeneration& operator=(const SphereMeshContactGeneration&);
 };
 
-struct SphereMeshContactGenerationCallback_NoScale : MeshHitCallback<PxRaycastHit>
+struct SphereMeshContactGenerationCallback_NoScale : MeshHitCallback<PxGeomRaycastHit>
 {
 	SphereMeshContactGeneration			mGeneration;
 	const TriangleMesh&					mMeshData;
 
 	SphereMeshContactGenerationCallback_NoScale(const TriangleMesh& meshData, const PxSphereGeometry& shapeSphere,
-		const PxTransform& transform0, const PxTransform& transform1, ContactBuffer& contactBuffer,
-		const PxVec3& sphereCenterShape1Space, PxF32 inflatedRadius, Cm::RenderOutput* renderOutput
-	) : MeshHitCallback<PxRaycastHit>	(CallbackMode::eMULTIPLE),
-		mGeneration						(shapeSphere, transform0, transform1, contactBuffer, sphereCenterShape1Space, inflatedRadius, renderOutput),
-		mMeshData						(meshData)
+		const PxTransform& transform0, const PxTransform& transform1, PxContactBuffer& contactBuffer,
+		const PxVec3& sphereCenterShape1Space, PxF32 inflatedRadius, PxRenderOutput* renderOutput
+	) : MeshHitCallback<PxGeomRaycastHit>	(CallbackMode::eMULTIPLE),
+		mGeneration							(shapeSphere, transform0, transform1, contactBuffer, sphereCenterShape1Space, inflatedRadius, renderOutput),
+		mMeshData							(meshData)
 	{
 	}
 
@@ -436,7 +433,7 @@ struct SphereMeshContactGenerationCallback_NoScale : MeshHitCallback<PxRaycastHi
 	}
 
 	virtual PxAgain processHit(
-		const PxRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
+		const PxGeomRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
 	{
 		if(gDrawTouchedTriangles)
 		{
@@ -464,7 +461,7 @@ struct SphereMeshContactGenerationCallback_Scale : SphereMeshContactGenerationCa
 
 	SphereMeshContactGenerationCallback_Scale(const TriangleMesh& meshData, const PxSphereGeometry& shapeSphere,
 		const PxTransform& transform0, const PxTransform& transform1, const Cm::FastVertex2ShapeScaling& meshScaling,
-		ContactBuffer& contactBuffer, const PxVec3& sphereCenterShape1Space, PxF32 inflatedRadius, Cm::RenderOutput* renderOutput
+		PxContactBuffer& contactBuffer, const PxVec3& sphereCenterShape1Space, PxF32 inflatedRadius, PxRenderOutput* renderOutput
 	) : SphereMeshContactGenerationCallback_NoScale(meshData, shapeSphere,
 		transform0, transform1, contactBuffer, sphereCenterShape1Space, inflatedRadius, renderOutput),
 		mMeshScaling	(meshScaling)
@@ -473,10 +470,20 @@ struct SphereMeshContactGenerationCallback_Scale : SphereMeshContactGenerationCa
 
 	virtual ~SphereMeshContactGenerationCallback_Scale() {}
 
-	virtual PxAgain processHit(const PxRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
+	virtual PxAgain processHit(const PxGeomRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
 	{
 		PxVec3 verts[3];
 		getScaledVertices(verts, v0, v1, v2, false, mMeshScaling);
+
+		const PxU32* vertexIndices = vinds;
+		PxU32 localStorage[3];
+		if(mMeshScaling.flipsNormal())
+		{
+			localStorage[0] = vinds[0];
+			localStorage[1] = vinds[2];
+			localStorage[2] = vinds[1];
+			vertexIndices = localStorage;
+		}
 
 		if(gDrawTouchedTriangles)
 		{
@@ -490,7 +497,7 @@ struct SphereMeshContactGenerationCallback_Scale : SphereMeshContactGenerationCa
 			mGeneration.mRenderOutput->outputSegment(wp2, wp0);
 		}
 
-		mGeneration.processTriangle(hit.faceIndex, verts[0], verts[1], verts[2], vinds);
+		mGeneration.processTriangle(hit.faceIndex, verts[0], verts[1], verts[2], vertexIndices);
 		return true;
 	}
 protected:
@@ -505,13 +512,13 @@ bool Gu::contactSphereMesh(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(cache);
 
-	const PxSphereGeometry& shapeSphere = shape0.get<const PxSphereGeometry>();
-	const PxTriangleMeshGeometryLL& shapeMesh = shape1.get<const PxTriangleMeshGeometryLL>();
+	const PxSphereGeometry& shapeSphere = checkedCast<PxSphereGeometry>(shape0);
+	const PxTriangleMeshGeometry& shapeMesh = checkedCast<PxTriangleMeshGeometry>(shape1);
 
 	// We must be in local space to use the cache
 	const PxVec3 sphereCenterInMeshSpace = transform1.transformInv(transform0.p);
 	const PxReal inflatedRadius = shapeSphere.radius + params.mContactDistance;
-	const TriangleMesh* meshData = shapeMesh.meshData;
+	const TriangleMesh* meshData = _getMeshData(shapeMesh);
 
 	// mesh scale is not baked into cached verts
 	if(shapeMesh.scale.isIdentity())
@@ -548,28 +555,28 @@ bool Gu::contactSphereMesh(GU_CONTACT_METHOD_ARGS)
 
 namespace
 {
-struct SphereHeightfieldContactGenerationCallback : EntityReport<PxU32>
+struct SphereHeightfieldContactGenerationCallback : OverlapReport
 {
 	SphereMeshContactGeneration mGeneration;
 	HeightFieldUtil&			mHfUtil;
 
 	SphereHeightfieldContactGenerationCallback(
-		HeightFieldUtil&		hfUtil,
-		const PxSphereGeometry&	shapeSphere,
-		const PxTransform&		transform0,
-		const PxTransform&		transform1,
-		ContactBuffer&			contactBuffer,
-		const PxVec3&			sphereCenterInMeshSpace,
-		PxF32					inflatedRadius,
-		Cm::RenderOutput*		renderOutput
+		HeightFieldUtil& hfUtil,
+		const PxSphereGeometry& shapeSphere,
+		const PxTransform& transform0,
+		const PxTransform& transform1,
+		PxContactBuffer& contactBuffer,
+		const PxVec3& sphereCenterInMeshSpace,
+		PxF32 inflatedRadius,
+		PxRenderOutput* renderOutput
 	) :
-		mGeneration				(shapeSphere, transform0, transform1, contactBuffer, sphereCenterInMeshSpace, inflatedRadius, renderOutput),
-		mHfUtil					(hfUtil)
+		mGeneration	(shapeSphere, transform0, transform1, contactBuffer, sphereCenterInMeshSpace, inflatedRadius, renderOutput),
+		mHfUtil		(hfUtil)
 	{
 	}
 
 	// PT: TODO: refactor/unify with similar code in other places
-	virtual bool onEvent(PxU32 nb, PxU32* indices)
+	virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 	{
 		while(nb--)
 		{
@@ -592,20 +599,19 @@ bool Gu::contactSphereHeightfield(GU_CONTACT_METHOD_ARGS)
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	const PxSphereGeometry& shapeSphere = shape0.get<const PxSphereGeometry>();
-	const PxHeightFieldGeometryLL& shapeMesh = shape1.get<const PxHeightFieldGeometryLL>();
+	const PxSphereGeometry& shapeSphere = checkedCast<PxSphereGeometry>(shape0);
+	const PxHeightFieldGeometry& shapeMesh = checkedCast<PxHeightFieldGeometry>(shape1);
 
 	HeightFieldUtil hfUtil(shapeMesh);
 
-	const PxVec3 sphereCenterInMeshSpace = transform1.transformInv(transform0.p);
 	const PxReal inflatedRadius = shapeSphere.radius + params.mContactDistance;
-	const PxVec3 inflatedRV3(inflatedRadius);
 
-	const PxBounds3 bounds(sphereCenterInMeshSpace - inflatedRV3, sphereCenterInMeshSpace + inflatedRV3);
+	PxBounds3 localBounds;
+	const PxVec3 localSphereCenter = getLocalSphereData(localBounds, transform0, transform1, inflatedRadius);
 
-	SphereHeightfieldContactGenerationCallback blockCallback(hfUtil, shapeSphere, transform0, transform1, contactBuffer, sphereCenterInMeshSpace, inflatedRadius, renderOutput);
+	SphereHeightfieldContactGenerationCallback blockCallback(hfUtil, shapeSphere, transform0, transform1, contactBuffer, localSphereCenter, inflatedRadius, renderOutput);
 
-	hfUtil.overlapAABBTriangles(transform1, bounds, 0, &blockCallback);
+	hfUtil.overlapAABBTriangles(localBounds, blockCallback);
 
 	blockCallback.mGeneration.generateLastContacts();
 

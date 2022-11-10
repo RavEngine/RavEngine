@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -48,9 +47,18 @@
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 static const PxReal gEpsilon = .01f;
+
+//#define USE_VIRTUAL_GJK
+#ifdef USE_VIRTUAL_GJK
+static bool virtualGjkRaycastPenetration(const GjkConvex& a, const GjkConvex& b, const aos::Vec3VArg initialDir, const aos::FloatVArg initialLambda, const aos::Vec3VArg s, const aos::Vec3VArg r, aos::FloatV& lambda, 
+		aos::Vec3V& normal, aos::Vec3V& closestA, const PxReal _inflation, const bool initialOverlap)
+{
+	return gjkRaycastPenetration<GjkConvex, GjkConvex >(a, b, initialDir, initialLambda, s, r, lambda, normal, closestA, _inflation, initialOverlap);
+}
+#endif
 
 static PxU32 computeSweepConvexPlane(
 	const PxConvexMeshGeometry& convexGeom, ConvexHullData* hullData, const PxU32& nbPolys, const PxTransform& pose,
@@ -90,7 +98,7 @@ static PxU32 computeSweepConvexPlane(
 	return minIndex;
 }
 
-static PX_FORCE_INLINE bool computeFaceIndex(PxSweepHit& sweepHit, const PxHitFlags hitFlags, const PxConvexMeshGeometry& convexGeom, ConvexHullData* hullData, const PxTransform& pose, const PxVec3& unitDir)
+static PX_FORCE_INLINE bool computeFaceIndex(PxGeomSweepHit& sweepHit, const PxHitFlags hitFlags, const PxConvexMeshGeometry& convexGeom, ConvexHullData* hullData, const PxTransform& pose, const PxVec3& unitDir)
 {
 	if(hitFlags & PxHitFlag::eFACE_INDEX)
 	{
@@ -101,10 +109,10 @@ static PX_FORCE_INLINE bool computeFaceIndex(PxSweepHit& sweepHit, const PxHitFl
 	return true;
 }
 
-static PX_FORCE_INLINE bool hasInitialOverlap(PxSweepHit& sweepHit, const PxVec3& unitDir,
+static PX_FORCE_INLINE bool hasInitialOverlap(PxGeomSweepHit& sweepHit, const PxVec3& unitDir,
 											  const FloatVArg toi,
 											  const Vec3VArg normal, const Vec3VArg closestA,
-											  const PsTransformV& convexPose,
+											  const PxTransformV& convexPose,
 											  const bool isMtd, const bool impactPointOnTheOtherShape)
 {
 	sweepHit.flags = PxHitFlag::eNORMAL;
@@ -147,6 +155,7 @@ static PX_FORCE_INLINE bool hasInitialOverlap(PxSweepHit& sweepHit, const PxVec3
 /////////////////////////////////////////////////  sweepCapsule/Sphere  //////////////////////////////////////////////////////
 bool sweepCapsule_SphereGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(capsuleGeom_);
 	PX_UNUSED(capsulePose_);
 
@@ -191,6 +200,7 @@ bool sweepCapsule_SphereGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 
 bool sweepCapsule_PlaneGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(capsuleGeom_);
 	PX_UNUSED(capsulePose_);
 
@@ -264,6 +274,7 @@ bool sweepCapsule_PlaneGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 
 bool sweepCapsule_CapsuleGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(capsuleGeom_);
 	PX_UNUSED(capsulePose_);
 
@@ -295,9 +306,10 @@ bool sweepCapsule_CapsuleGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 
 bool sweepCapsule_ConvexGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_ASSERT(geom.getType() == PxGeometryType::eCONVEXMESH);
 
-	using namespace Ps::aos;
+	using namespace aos;
 	
 	PX_ASSERT(geom.getType() == PxGeometryType::eCONVEXMESH);
 	const PxConvexMeshGeometry& convexGeom = static_cast<const PxConvexMeshGeometry&>(geom);
@@ -310,10 +322,10 @@ bool sweepCapsule_ConvexGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 	const FloatV dist = FLoad(distance);
 	const Vec3V worldDir = V3LoadU(unitDir);
 
-	const PsTransformV capPose = loadTransformU(capsulePose_);
-	const PsTransformV convexPose = loadTransformU(pose);
+	const PxTransformV capPose = loadTransformU(capsulePose_);
+	const PxTransformV convexPose = loadTransformU(pose);
 
-	const PsMatTransformV aToB(convexPose.transformInv(capPose));
+	const PxMatTransformV aToB(convexPose.transformInv(capPose));
 
 	const FloatV capsuleHalfHeight = FLoad(capsuleGeom_.halfHeight);
 	const FloatV capsuleRadius = FLoad(lss.radius);
@@ -321,8 +333,8 @@ bool sweepCapsule_ConvexGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 	const Vec3V vScale = V3LoadU_SafeReadW(convexGeom.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 	const QuatV vQuat = QuatVLoadU(&convexGeom.scale.rotation.x);
 
-	CapsuleV capsule(aToB.p, aToB.rotate( V3Scale(V3UnitX(), capsuleHalfHeight)), capsuleRadius);
-	ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
+	const CapsuleV capsule(aToB.p, aToB.rotate( V3Scale(V3UnitX(), capsuleHalfHeight)), capsuleRadius);
+	const ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
 
 	const Vec3V dir = convexPose.rotateInv(V3Neg(V3Scale(worldDir, dist)));
 
@@ -330,12 +342,16 @@ bool sweepCapsule_ConvexGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 
 	FloatV toi;
 	Vec3V closestA, normal;//closestA and normal is in the local space of convex hull
-	LocalConvex<CapsuleV> convexA(capsule);
-	LocalConvex<ConvexHullV> convexB(convexHull);
+	const LocalConvex<CapsuleV> convexA(capsule);
+	const LocalConvex<ConvexHullV> convexB(convexHull);
 	const Vec3V initialSearchDir = V3Sub(capsule.getCenter(), convexHull.getCenter());
-	if(!gjkRaycastPenetration< LocalConvex<CapsuleV>, LocalConvex<ConvexHullV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, lss.radius + inflation, isMtd))
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, lss.radius + inflation, isMtd))
 		return false;
-
+#else
+	if(!gjkRaycastPenetration<LocalConvex<CapsuleV>, LocalConvex<ConvexHullV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, lss.radius + inflation, isMtd))
+		return false;
+#endif
 	if(hasInitialOverlap(sweepHit, unitDir, toi, normal, closestA, convexPose, isMtd, true))
 		return true;
 
@@ -356,6 +372,7 @@ bool sweepCapsule_ConvexGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 bool sweepBox_PlaneGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::ePLANE);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(geom);
 	PX_UNUSED(boxPose_);
 	PX_UNUSED(boxGeom_);
@@ -423,9 +440,10 @@ bool sweepBox_PlaneGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 
 bool sweepBox_ConvexGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(boxGeom_);
 
-	using namespace Ps::aos;
+	using namespace aos;
 	PX_ASSERT(geom.getType() == PxGeometryType::eCONVEXMESH);
 	const PxConvexMeshGeometry& convexGeom = static_cast<const PxConvexMeshGeometry&>(geom);
 
@@ -435,18 +453,18 @@ bool sweepBox_ConvexGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 	const Vec3V zeroV = V3Zero();
 	const FloatV zero = FZero();
 
-	const PsTransformV boxPose = loadTransformU(boxPose_);
-	const PsTransformV convexPose = loadTransformU(pose);
+	const PxTransformV boxPose = loadTransformU(boxPose_);
+	const PxTransformV convexPose = loadTransformU(pose);
 
-	const PsMatTransformV aToB(convexPose.transformInv(boxPose));
+	const PxMatTransformV aToB(convexPose.transformInv(boxPose));
 
 	const Vec3V boxExtents = V3LoadU(box.extents);
 
 	const Vec3V vScale = V3LoadU_SafeReadW(convexGeom.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 	const QuatV vQuat = QuatVLoadU(&convexGeom.scale.rotation.x);
 	
-	BoxV boxV(zeroV, boxExtents);
-	ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
+	const BoxV boxV(zeroV, boxExtents);
+	const ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
 
 	const Vec3V worldDir = V3LoadU(unitDir);
 	const FloatV dist = FLoad(distance);
@@ -456,11 +474,15 @@ bool sweepBox_ConvexGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 
 	FloatV toi;
 	Vec3V closestA, normal;
-	RelativeConvex<BoxV> convexA(boxV, aToB);
-	LocalConvex<ConvexHullV> convexB(convexHull);
-	if(!gjkRaycastPenetration< RelativeConvex<BoxV>,LocalConvex<ConvexHullV> >(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
+	const RelativeConvex<BoxV> convexA(boxV, aToB);
+	const LocalConvex<ConvexHullV> convexB(convexHull);
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
 		return false;
-
+#else
+	if(!gjkRaycastPenetration<RelativeConvex<BoxV>,LocalConvex<ConvexHullV> >(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
+		return false;
+#endif
 	if(hasInitialOverlap(sweepHit, unitDir, toi, normal, closestA, convexPose, isMtd, true))
 		return true;
 
@@ -499,6 +521,7 @@ bool Gu::sweepCapsuleTriangles(GU_SWEEP_TRIANGLES_FUNC_PARAMS(PxCapsuleGeometry)
 
 bool sweepConvex_SphereGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_ASSERT(geom.getType() == PxGeometryType::eSPHERE);
 	const PxSphereGeometry& sphereGeom = static_cast<const PxSphereGeometry&>(geom);
 
@@ -513,29 +536,33 @@ bool sweepConvex_SphereGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 
 	const FloatV sphereRadius = FLoad(sphereGeom.radius);
 
-	const PsTransformV sphereTransf = loadTransformU(pose);
-	const PsTransformV convexTransf = loadTransformU(convexPose);
+	const PxTransformV sphereTransf = loadTransformU(pose);
+	const PxTransformV convexTransf = loadTransformU(convexPose);
 
-	const PsMatTransformV aToB(convexTransf.transformInv(sphereTransf));
+	const PxMatTransformV aToB(convexTransf.transformInv(sphereTransf));
 
 	const Vec3V worldDir = V3LoadU(unitDir);
 	const FloatV dist = FLoad(distance);
 	const Vec3V dir = convexTransf.rotateInv(V3Scale(worldDir, dist));
 
-	ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
+	const ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
 	//CapsuleV capsule(zeroV, sphereRadius);
-	CapsuleV capsule(aToB.p, sphereRadius);
+	const CapsuleV capsule(aToB.p, sphereRadius);
 
 	const bool isMtd = hitFlags & PxHitFlag::eMTD;
 
 	FloatV toi;
 	Vec3V closestA, normal;
-	LocalConvex<CapsuleV> convexA(capsule);
-	LocalConvex<ConvexHullV> convexB(convexHull);
+	const LocalConvex<CapsuleV> convexA(capsule);
+	const LocalConvex<ConvexHullV> convexB(convexHull);
 	const Vec3V initialSearchDir = V3Sub(capsule.getCenter(), convexHull.getCenter());
-	if(!gjkRaycastPenetration< LocalConvex<CapsuleV>, LocalConvex<ConvexHullV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, sphereGeom.radius+inflation, isMtd))
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, sphereGeom.radius+inflation, isMtd))
 		return false;
-
+#else
+	if(!gjkRaycastPenetration<LocalConvex<CapsuleV>, LocalConvex<ConvexHullV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, sphereGeom.radius+inflation, isMtd))
+		return false;
+#endif
 	if(hasInitialOverlap(sweepHit, unitDir, toi, normal, closestA, convexPose, isMtd, false))
 		return true;
 
@@ -555,6 +582,7 @@ bool sweepConvex_PlaneGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 	PX_ASSERT(geom.getType() == PxGeometryType::ePLANE);
 	PX_UNUSED(hitFlags);
 	PX_UNUSED(geom);
+	PX_UNUSED(threadContext);
 
 	ConvexMesh* convexMesh = static_cast<ConvexMesh*>(convexGeom.convexMesh);
 	ConvexHullData* hullData = &convexMesh->getHull();
@@ -634,7 +662,7 @@ bool sweepConvex_CapsuleGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 	PxHitFlags tempHitFlags = hitFlags;
 	tempHitFlags &= ~PxHitFlag::eFACE_INDEX;
 
-	if(!sweepCapsule_ConvexGeom(convexGeom, convexPose, capsuleGeom, pose, capsule, -unitDir, distance, sweepHit, tempHitFlags, inflation))
+	if(!sweepCapsule_ConvexGeom(convexGeom, convexPose, capsuleGeom, pose, capsule, -unitDir, distance, sweepHit, tempHitFlags, inflation, threadContext))
 		return false;
 
 	if(sweepHit.flags & PxHitFlag::ePOSITION)
@@ -657,7 +685,7 @@ bool sweepConvex_BoxGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 	PxHitFlags tempHitFlags = hitFlags;
 	tempHitFlags &= ~PxHitFlag::eFACE_INDEX;
 
-	if(!sweepBox_ConvexGeom(convexGeom, convexPose, boxGeom, pose, box, -unitDir, distance, sweepHit, tempHitFlags, inflation))
+	if(!sweepBox_ConvexGeom(convexGeom, convexPose, boxGeom, pose, box, -unitDir, distance, sweepHit, tempHitFlags, inflation, threadContext))
 		return false;
 
 	if(sweepHit.flags & PxHitFlag::ePOSITION)
@@ -670,7 +698,8 @@ bool sweepConvex_BoxGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 
 bool sweepConvex_ConvexGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 {
-	using namespace Ps::aos;
+	PX_UNUSED(threadContext);
+	using namespace aos;
 	PX_ASSERT(geom.getType() == PxGeometryType::eCONVEXMESH);
 	const PxConvexMeshGeometry& otherConvexGeom = static_cast<const PxConvexMeshGeometry&>(geom);
 	ConvexMesh& otherConvexMesh = *static_cast<ConvexMesh*>(otherConvexGeom.convexMesh);
@@ -689,27 +718,31 @@ bool sweepConvex_ConvexGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 	const Vec3V vScale = V3LoadU_SafeReadW(convexGeom.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 	const QuatV vQuat = QuatVLoadU(&convexGeom.scale.rotation.x);
 
-	const PsTransformV otherTransf = loadTransformU(pose);
-	const PsTransformV convexTransf = loadTransformU(convexPose);
+	const PxTransformV otherTransf = loadTransformU(pose);
+	const PxTransformV convexTransf = loadTransformU(convexPose);
 
 	const Vec3V worldDir = V3LoadU(unitDir);
 	const FloatV dist = FLoad(distance);
 	const Vec3V dir = convexTransf.rotateInv(V3Scale(worldDir, dist));
 
-	const PsMatTransformV aToB(convexTransf.transformInv(otherTransf));
+	const PxMatTransformV aToB(convexTransf.transformInv(otherTransf));
 	
-	ConvexHullV otherConvexHull(otherHullData, zeroV, otherVScale, otherVQuat, otherConvexGeom.scale.isIdentity());
-	ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
+	const ConvexHullV otherConvexHull(otherHullData, zeroV, otherVScale, otherVQuat, otherConvexGeom.scale.isIdentity());
+	const ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
 
 	const bool isMtd = hitFlags & PxHitFlag::eMTD;
 
 	FloatV toi;
 	Vec3V closestA, normal;
-	RelativeConvex<ConvexHullV> convexA(otherConvexHull, aToB);
-	LocalConvex<ConvexHullV> convexB(convexHull);
-	if(!gjkRaycastPenetration< RelativeConvex<ConvexHullV>, LocalConvex<ConvexHullV> >(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
+	const RelativeConvex<ConvexHullV> convexA(otherConvexHull, aToB);
+	const LocalConvex<ConvexHullV> convexB(convexHull);
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
 		return false;
-
+#else
+	if(!gjkRaycastPenetration<RelativeConvex<ConvexHullV>, LocalConvex<ConvexHullV> >(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
+		return false;
+#endif
 	if(hasInitialOverlap(sweepHit, unitDir, toi, normal, closestA, convexPose, isMtd, false))
 		return true;
 

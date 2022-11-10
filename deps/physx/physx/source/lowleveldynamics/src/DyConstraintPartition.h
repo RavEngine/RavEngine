@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef DY_CONSTRAINTPARTITION_H
-#define DY_CONSTRAINTPARTITION_H
+#ifndef DY_CONSTRAINT_PARTITION_H
+#define DY_CONSTRAINT_PARTITION_H
 
 #include "DyDynamics.h"
-
 
 
 namespace physx
@@ -53,23 +50,28 @@ struct ConstraintPartitionArgs
 	PxU32									mNumContactConstraintDescriptors;
 	//output
 	PxSolverConstraintDesc*					mOrderedContactConstraintDescriptors;
-	PxSolverConstraintDesc*					mTempContactConstraintDescriptors;
+	PxSolverConstraintDesc*					mOverflowConstraintDescriptors;
 	PxU32									mNumDifferentBodyConstraints;
 	PxU32									mNumSelfConstraints;
 	PxU32									mNumStaticConstraints;
-	Ps::Array<PxU32>*						mConstraintsPerPartition;
-	Ps::Array<PxU32>*						mBitField;
+	PxU32									mNumOverflowConstraints;
+	PxArray<PxU32>*							mConstraintsPerPartition;
+	PxArray<PxU32>*							mBitField;
+
+	PxU32									maxPartitions;
 
 	bool									enhancedDeterminism;
+	bool									forceStaticConstraintsToSolver;
+	
 };
 
 PxU32 partitionContactConstraints(ConstraintPartitionArgs& args);
+
+void processOverflowConstraints(PxU8* bodies, PxU32 bodyStride, PxU32 numBodies, ArticulationSolverDesc* articulations, PxU32 numArticulations,
+	PxSolverConstraintDesc* constraints, const PxU32 numConstraints);
 
 } // namespace physx
 
 }
 
-
-
-#endif // DY_CONSTRAINTPARTITION_H  
-
+#endif

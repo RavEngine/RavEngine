@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -47,6 +46,21 @@ PX_INLINE PxTransform getShapeGlobalPose(const PxShape& shape, const PxRigidActo
 {
 	return PxShapeExt::getGlobalPose(shape, actor);
 }
+
+PX_INLINE void decomposeVector(PxVec3& normalCompo, PxVec3& tangentCompo, const PxVec3& outwardDir,
+	const PxVec3& outwardNormal)
+{
+	normalCompo = outwardNormal * (outwardDir.dot(outwardNormal));
+	tangentCompo = outwardDir - normalCompo;
+}
+
+PX_FORCE_INLINE bool isAlmostZero(const PxVec3& v)
+{
+	if (PxAbs(v.x) > 1e-6f || PxAbs(v.y) > 1e-6f || PxAbs(v.z) > 1e-6f)
+		return false;
+	return true;
+}
+
 
 #ifdef PX_BIG_WORLDS
 

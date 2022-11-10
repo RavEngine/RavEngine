@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
-#ifndef PXPVDSDK_PXPVDUSERRENDERER_H
-#define PXPVDSDK_PXPVDUSERRENDERER_H
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+
+#ifndef PX_PVD_USER_RENDERER_H
+#define PX_PVD_USER_RENDERER_H
 
 /** \addtogroup pvd
 @{
 */
 #include "foundation/PxVec3.h"
 #include "foundation/PxTransform.h"
+#include "common/PxRenderBuffer.h"
 #include "pvd/PxPvd.h"
 
 #include "PxPvdDataStream.h"
-#include "PxPvdRenderBuffer.h"
-#include "PsUserAllocated.h"
+#include "foundation/PxUserAllocated.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -52,7 +52,7 @@ namespace pvdsdk
 
 class RendererEventClient;
 
-class PvdUserRenderer : public shdfnd::UserAllocated
+class PvdUserRenderer : public PxUserAllocated
 {
   protected:
 	virtual ~PvdUserRenderer()
@@ -66,17 +66,17 @@ class PvdUserRenderer : public shdfnd::UserAllocated
 	// Instance to associate the further rendering with.
 	virtual void setInstanceId(const void* instanceId) = 0;
 	// Draw these points associated with this instance
-	virtual void drawPoints(const PvdDebugPoint* points, uint32_t count) = 0;
+	virtual void drawPoints(const PxDebugPoint* points, uint32_t count) = 0;
 	// Draw these lines associated with this instance
-	virtual void drawLines(const PvdDebugLine* lines, uint32_t count) = 0;
+	virtual void drawLines(const PxDebugLine* lines, uint32_t count) = 0;
 	// Draw these triangles associated with this instance
-	virtual void drawTriangles(const PvdDebugTriangle* triangles, uint32_t count) = 0;
+	virtual void drawTriangles(const PxDebugTriangle* triangles, uint32_t count) = 0;
 	// Draw this text associated with this instance
-	virtual void drawText(const PvdDebugText& text) = 0;
+	virtual void drawText(const PxDebugText& text) = 0;
 
 	// Draw SDK debug render
-	virtual void drawRenderbuffer(const PvdDebugPoint* pointData, uint32_t pointCount, const PvdDebugLine* lineData,
-	                              uint32_t lineCount, const PvdDebugTriangle* triangleData, uint32_t triangleCount) = 0;
+	virtual void drawRenderbuffer(const PxDebugPoint* pointData, uint32_t pointCount, const PxDebugLine* lineData,
+	                              uint32_t lineCount, const PxDebugTriangle* triangleData, uint32_t triangleCount) = 0;
 
 	// Constraint visualization routines
 	virtual void visualizeJointFrames(const PxTransform& parent, const PxTransform& child) = 0;
@@ -104,4 +104,5 @@ class RendererEventClient
 }
 #endif
 /** @} */
-#endif // PXPVDSDK_PXPVDUSERRENDERER_H
+#endif
+

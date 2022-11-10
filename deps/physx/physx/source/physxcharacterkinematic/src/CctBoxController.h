@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -52,49 +51,49 @@ namespace Cct
 		virtual										~BoxController();
 
 		// Controller
-		virtual	PxF32								getHalfHeightInternal()				const					{ return mHalfHeight;					}
-		virtual	bool								getWorldBox(PxExtendedBounds3& box) const;
-		virtual	PxController*						getPxController()											{ return this;							}
+		virtual	PxF32								getHalfHeightInternal()				const		PX_OVERRIDE	{ return mHalfHeight;					}
+		virtual	bool								getWorldBox(PxExtendedBounds3& box) const		PX_OVERRIDE;
+		virtual	PxController*						getPxController()								PX_OVERRIDE	{ return this;							}
 		//~Controller
 
 		// PxController
-		virtual	PxControllerShapeType::Enum			getType()							const					{ return mType;							}
-		virtual void								release()													{ releaseInternal();					}
-		virtual	PxControllerCollisionFlags			move(const PxVec3& disp, PxF32 minDist, PxF32 elapsedTime, const PxControllerFilters& filters, const PxObstacleContext* obstacles);
-		virtual	bool								setPosition(const PxExtendedVec3& position)					{ return setPos(position);				}
-		virtual	const PxExtendedVec3&				getPosition()						const					{ return mPosition;						}
-		virtual	bool								setFootPosition(const PxExtendedVec3& position);
-		virtual	PxExtendedVec3						getFootPosition()					const;
-		virtual	PxRigidDynamic*						getActor()							const					{ return mKineActor;					}
-		virtual	void								setStepOffset(const float offset)							{ if(offset>=0.0f)
+		virtual	PxControllerShapeType::Enum			getType()							const		PX_OVERRIDE	{ return mType;							}
+		virtual void								release()										PX_OVERRIDE	{ releaseInternal();					}
+		virtual	PxControllerCollisionFlags			move(const PxVec3& disp, PxF32 minDist, PxF32 elapsedTime, const PxControllerFilters& filters, const PxObstacleContext* obstacles)	PX_OVERRIDE;
+		virtual	bool								setPosition(const PxExtendedVec3& position)		PX_OVERRIDE	{ return setPos(position);				}
+		virtual	const PxExtendedVec3&				getPosition()						const		PX_OVERRIDE	{ return mPosition;						}
+		virtual	bool								setFootPosition(const PxExtendedVec3& position)	PX_OVERRIDE;
+		virtual	PxExtendedVec3						getFootPosition()					const		PX_OVERRIDE;
+		virtual	PxRigidDynamic*						getActor()							const		PX_OVERRIDE	{ return mKineActor;					}
+		virtual	void								setStepOffset(const float offset)				PX_OVERRIDE	{ if(offset>=0.0f)
 																													mUserParams.mStepOffset = offset;	}
-		virtual	PxF32								getStepOffset()						const					{ return mUserParams.mStepOffset;		}
-		virtual	void								setNonWalkableMode(PxControllerNonWalkableMode::Enum flag)	{ mUserParams.mNonWalkableMode = flag;	}
-		virtual	PxControllerNonWalkableMode::Enum	getNonWalkableMode()				const					{ return mUserParams.mNonWalkableMode;	}
-		virtual PxF32								getContactOffset()					const					{ return mUserParams.mContactOffset;	}
-		virtual	void								setContactOffset(PxF32 offset)								{ if(offset>0.0f)
+		virtual	PxF32								getStepOffset()						const		PX_OVERRIDE	{ return mUserParams.mStepOffset;		}
+		virtual	void								setNonWalkableMode(PxControllerNonWalkableMode::Enum flag)	PX_OVERRIDE	{ mUserParams.mNonWalkableMode = flag;	}
+		virtual	PxControllerNonWalkableMode::Enum	getNonWalkableMode()				const		PX_OVERRIDE	{ return mUserParams.mNonWalkableMode;	}
+		virtual PxF32								getContactOffset()					const		PX_OVERRIDE	{ return mUserParams.mContactOffset;	}
+		virtual	void								setContactOffset(PxF32 offset)					PX_OVERRIDE	{ if(offset>0.0f)
 																													mUserParams.mContactOffset = offset;}
-		virtual PxVec3								getUpDirection()					const					{ return mUserParams.mUpDirection;		}
-		virtual	void								setUpDirection(const PxVec3& up)							{ setUpDirectionInternal(up);			}
-		virtual PxF32								getSlopeLimit()						const					{ return mUserParams.mSlopeLimit;		}
-		virtual void								setSlopeLimit(PxF32 slopeLimit)								{ if(slopeLimit>0.0f)
+		virtual PxVec3								getUpDirection()					const		PX_OVERRIDE	{ return mUserParams.mUpDirection;		}
+		virtual	void								setUpDirection(const PxVec3& up)				PX_OVERRIDE	{ setUpDirectionInternal(up);			}
+		virtual PxF32								getSlopeLimit()						const		PX_OVERRIDE	{ return mUserParams.mSlopeLimit;		}
+		virtual void								setSlopeLimit(PxF32 slopeLimit)					PX_OVERRIDE	{ if(slopeLimit>0.0f)
 																													mUserParams.mSlopeLimit = slopeLimit;}
 		virtual	void								invalidateCache();
-		virtual	PxScene*							getScene()													{ return mScene;						}
-		virtual	void*								getUserData()						const					{ return mUserData;						}
-		virtual	void								setUserData(void* userData)									{ mUserData = userData;					}
-		virtual	void								getState(PxControllerState& state)	const					{ return getInternalState(state);		}
-		virtual	void								getStats(PxControllerStats& stats)	const					{ return getInternalStats(stats);		}
+		virtual	PxScene*							getScene()										PX_OVERRIDE	{ return mScene;						}
+		virtual	void*								getUserData()						const		PX_OVERRIDE	{ return mUserData;						}
+		virtual	void								setUserData(void* userData)						PX_OVERRIDE	{ mUserData = userData;					}
+		virtual	void								getState(PxControllerState& state)	const		PX_OVERRIDE	{ return getInternalState(state);		}
+		virtual	void								getStats(PxControllerStats& stats)	const		PX_OVERRIDE	{ return getInternalStats(stats);		}
 		virtual	void								resize(PxReal height);
 		//~PxController
 
 		// PxBoxController
-		virtual	PxF32								getHalfHeight()						const;
-		virtual	PxF32								getHalfSideExtent()					const;
-		virtual	PxF32								getHalfForwardExtent()				const;
-		virtual	bool								setHalfHeight(PxF32 halfHeight);
-		virtual	bool								setHalfSideExtent(PxF32 halfSideExtent);
-		virtual	bool								setHalfForwardExtent(PxF32 halfForwardExtent);
+		virtual	PxF32								getHalfHeight()						const		PX_OVERRIDE;
+		virtual	PxF32								getHalfSideExtent()					const		PX_OVERRIDE;
+		virtual	PxF32								getHalfForwardExtent()				const		PX_OVERRIDE;
+		virtual	bool								setHalfHeight(PxF32 halfHeight)					PX_OVERRIDE;
+		virtual	bool								setHalfSideExtent(PxF32 halfSideExtent)			PX_OVERRIDE;
+		virtual	bool								setHalfForwardExtent(PxF32 halfForwardExtent)	PX_OVERRIDE;
 		//~ PxBoxController
 
 				PxF32								mHalfHeight;

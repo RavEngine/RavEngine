@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved. 
 
 #include "foundation/PxMemory.h"
-#include "CmPhysXCommon.h"
 #include "SnXmlImpl.h" 
 #include "SnXmlReader.h"
 #include "SnXmlMemoryAllocator.h"
-#include "PsFoundation.h"
 #include "SnRepXCollection.h"
 #include "SnRepXUpgrader.h"
 
@@ -92,7 +89,7 @@ namespace physx { namespace Sn {
 			char nameBuffer[512] = {0};
 			size_t nameLen = strlen( topNode->mName );
 			//For each default property entry for this node type.
-			for ( const RepXDefaultEntry* item = defaults + entry->second; strncmp( item->name, topNode->mName, nameLen ) == 0; ++item )
+			for ( const RepXDefaultEntry* item = defaults + entry->second; Pxstrncmp( item->name, topNode->mName, nameLen ) == 0; ++item )
 			{
 				bool childAdded = false;
 				const char* nameStart = item->name + nameLen;
@@ -297,13 +294,13 @@ namespace physx { namespace Sn {
 		
 			void updateNode()
 			{
-				if(!Ps::stricmp(mEditor.getCurrentItemName(), "yLimit") && !Ps::stricmp(mEditor.getCurrentItemValue(), "0"))
+				if(!Pxstricmp(mEditor.getCurrentItemName(), "yLimit") && !Pxstricmp(mEditor.getCurrentItemValue(), "0"))
 					mEditor.setCurrentItemValue("0.785398");
 
-				if(!Ps::stricmp(mEditor.getCurrentItemName(), "zLimit") && !Ps::stricmp(mEditor.getCurrentItemValue(), "0"))
+				if(!Pxstricmp(mEditor.getCurrentItemName(), "zLimit") && !Pxstricmp(mEditor.getCurrentItemValue(), "0"))
 					mEditor.setCurrentItemValue("0.785398");
 
-				if(!Ps::stricmp(mEditor.getCurrentItemName(), "TwistLimit"))
+				if(!Pxstricmp(mEditor.getCurrentItemName(), "TwistLimit"))
 				{
 					mEditor.gotoFirstChild();
 					PxReal lower = PxReal(strtod(mEditor.getCurrentItemValue(), NULL));
@@ -327,7 +324,7 @@ namespace physx { namespace Sn {
 
 			if ( strstr( newItem.liveObject.typeName, "PxCloth" ) || strstr( newItem.liveObject.typeName, "PxClothFabric" ) )
 			{  
-				physx::shdfnd::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "Didn't suppot PxCloth upgrate from 3.2 to 3.3! ");
+				PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "Didn't suppot PxCloth upgrate from 3.2 to 3.3! ");
 				continue;
 			}
 

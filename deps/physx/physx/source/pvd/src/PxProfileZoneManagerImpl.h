@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXPVDSDK_PXPROFILEZONEMANAGERIMPL_H
-#define PXPVDSDK_PXPROFILEZONEMANAGERIMPL_H
+#ifndef PX_PROFILE_ZONE_MANAGER_IMPL_H
+#define PX_PROFILE_ZONE_MANAGER_IMPL_H
 
 #include "PxProfileZoneManager.h"
 #include "PxProfileScopedMutexLock.h"
 #include "PxPvdProfileZone.h"
 #include "PxProfileAllocatorWrapper.h"
 
-#include "PsArray.h"
-#include "PsMutex.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxMutex.h"
 
 namespace physx { namespace profile {
 
@@ -48,11 +46,11 @@ namespace physx { namespace profile {
 
 	class ZoneManagerImpl : public PxProfileZoneManager
 	{
-		typedef ScopedLockImpl<shdfnd::Mutex> TScopedLockType;
+		typedef ScopedLockImpl<PxMutex> TScopedLockType;
 		PxProfileAllocatorWrapper					mWrapper;
 		PxProfileArray<PxProfileZone*>		mZones;
 		PxProfileArray<PxProfileZoneHandler*>	mHandlers;
-		shdfnd::Mutex mMutex;
+		PxMutex mMutex;
 
 		ZoneManagerImpl( const ZoneManagerImpl& inOther );
 		ZoneManagerImpl& operator=( const ZoneManagerImpl& inOther );
@@ -170,4 +168,5 @@ namespace physx { namespace profile {
 } }
 
 
-#endif // PXPVDSDK_PXPROFILEZONEMANAGERIMPL_H
+#endif
+

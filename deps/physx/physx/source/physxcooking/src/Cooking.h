@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,29 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PSCOOKING_H
-#define PX_PSCOOKING_H
+#ifndef COOKING_H
+#define COOKING_H
 
 #include "foundation/PxMemory.h"
 #include "cooking/PxCooking.h"
 
-#include "PsUserAllocated.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
 class TriangleMeshBuilder;
+class TetrahedronMeshBuilder;
 class ConvexMeshBuilder;
 class ConvexHullLib;
+class PxInsertionCallback;
+struct PxTriangleMeshInternalData;
+struct PxBVHInternalData;
 
-class Cooking: public PxCooking, public Ps::UserAllocated
+class Cooking : public PxCooking, public PxUserAllocated
 {
 public:
 									Cooking(const PxCookingParams& params): mParams(params) {}
@@ -51,41 +54,42 @@ public:
 	virtual const PxCookingParams&	getParams() const;
 	virtual bool					platformMismatch() const;
 	virtual bool					cookTriangleMesh(const PxTriangleMeshDesc& desc, PxOutputStream& stream, PxTriangleMeshCookingResult::Enum* condition = NULL) const;
-	virtual PxTriangleMesh*			createTriangleMesh(const PxTriangleMeshDesc& desc, PxPhysicsInsertionCallback& insertionCallback, PxTriangleMeshCookingResult::Enum* condition = NULL) const;
+	virtual PxTriangleMesh*			createTriangleMesh(const PxTriangleMeshDesc& desc, PxInsertionCallback& insertionCallback, PxTriangleMeshCookingResult::Enum* condition = NULL) const;
 	virtual bool					validateTriangleMesh(const PxTriangleMeshDesc& desc) const;
 
+	virtual bool					cookSoftBodyMesh(const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
+										const PxSoftBodySimulationDataDesc& softbodyDataDesc, PxOutputStream& stream) const;
+	virtual PxSoftBodyMesh*			createSoftBodyMesh(const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
+										const PxSoftBodySimulationDataDesc& softbodyDataDesc, PxInsertionCallback& insertionCallback) const;
+
+	virtual bool					cookTetrahedronMesh(const PxTetrahedronMeshDesc& meshDesc, PxOutputStream& stream) const;
+	virtual PxTetrahedronMesh*		createTetrahedronMesh(const PxTetrahedronMeshDesc& meshDesc, PxInsertionCallback& insertionCallback) const;
+
+	virtual PxCollisionMeshMappingData* computeModelsMapping(PxTetrahedronMeshData& simulationMesh, const PxTetrahedronMeshData& collisionMesh, const PxSoftBodyCollisionData& collisionData, const PxBoundedData* vertexToTet) const;
+	virtual PxCollisionTetrahedronMeshData* computeCollisionData(const PxTetrahedronMeshDesc& collisionMeshDesc) const;
+	virtual PxSimulationTetrahedronMeshData* computeSimulationData(const PxTetrahedronMeshDesc& simulationMeshDesc) const;
+	virtual PxSoftBodyMesh*			assembleSoftBodyMesh(PxTetrahedronMeshData& simulationMesh, PxSoftBodySimulationData& simulationData, PxTetrahedronMeshData& collisionMesh,
+										PxSoftBodyCollisionData& collisionData, PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback) const;
+	virtual PxSoftBodyMesh*			assembleSoftBodyMesh(PxSimulationTetrahedronMeshData& simulationMesh, PxCollisionTetrahedronMeshData& collisionMesh, PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback) const;
+
 	virtual bool					cookConvexMesh(const PxConvexMeshDesc& desc, PxOutputStream& stream, PxConvexMeshCookingResult::Enum* condition) const;
-	virtual PxConvexMesh*			createConvexMesh(const PxConvexMeshDesc& desc, PxPhysicsInsertionCallback& insertionCallback, PxConvexMeshCookingResult::Enum* condition) const;
+	virtual PxConvexMesh*			createConvexMesh(const PxConvexMeshDesc& desc, PxInsertionCallback& insertionCallback, PxConvexMeshCookingResult::Enum* condition) const;
 	virtual bool					validateConvexMesh(const PxConvexMeshDesc& desc) const;
 	virtual bool					computeHullPolygons(const PxSimpleTriangleMesh& mesh, PxAllocatorCallback& inCallback,PxU32& nbVerts, PxVec3*& vertices,
 											PxU32& nbIndices, PxU32*& indices, PxU32& nbPolygons, PxHullPolygon*& hullPolygons) const;
 	virtual bool					cookHeightField(const PxHeightFieldDesc& desc, PxOutputStream& stream) const;
-	virtual PxHeightField*			createHeightField(const PxHeightFieldDesc& desc, PxPhysicsInsertionCallback& insertionCallback) const;
-	virtual bool					cookBVHStructure(const PxBVHStructureDesc& desc, PxOutputStream& stream) const;
-	virtual PxBVHStructure*			createBVHStructure(const PxBVHStructureDesc& desc, PxPhysicsInsertionCallback& insertionCallback) const;
+	virtual PxHeightField*			createHeightField(const PxHeightFieldDesc& desc, PxInsertionCallback& insertionCallback) const;
+	virtual bool					cookBVH(const PxBVHDesc& desc, PxOutputStream& stream) const;
+	virtual PxBVH*					createBVH(const PxBVHDesc& desc, PxInsertionCallback& insertionCallback) const;
+	virtual PxInsertionCallback&	getStandaloneInsertionCallback();
 
-	PX_FORCE_INLINE static void		gatherStrided(const void* src, void* dst, PxU32 nbElem, PxU32 elemSize, PxU32 stride)
-	{
-		const PxU8* s = reinterpret_cast<const PxU8*>(src);
-		PxU8* d = reinterpret_cast<PxU8*>(dst);
-		while(nbElem--)
-		{
-			PxMemCopy(d, s, elemSize);
-			d += elemSize;
-			s += stride;
-		}
-	}
-
-private:
-	bool							cookConvexMeshInternal(const PxConvexMeshDesc& desc, ConvexMeshBuilder& meshBuilder, ConvexHullLib* hullLib, PxConvexMeshCookingResult::Enum* condition) const;
-	bool							cookTriangleMesh(TriangleMeshBuilder& builder, const PxTriangleMeshDesc& desc, PxOutputStream& stream, PxTriangleMeshCookingResult::Enum* condition) const;
-
-	PxTriangleMesh*					createTriangleMesh(TriangleMeshBuilder& builder, const PxTriangleMeshDesc& desc, PxPhysicsInsertionCallback& insertionCallback, PxTriangleMeshCookingResult::Enum* condition) const;
+	PxTriangleMesh*					createTriangleMesh(const PxTriangleMeshInternalData& data)	const;
+	PxBVH*							createBVH(const PxBVHInternalData& data)					const;
 
 private:
 	PxCookingParams					mParams;
-
 };
 
 }
-#endif //#define PX_PSCOOKING_H
+#endif
+

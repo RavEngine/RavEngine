@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,28 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
    
-
-#ifndef DY_SOLVERCONSTRAINTEXT_H
-#define DY_SOLVERCONSTRAINTEXT_H
+#ifndef DY_ARTICULATION_CONTACT_PREP_H
+#define DY_ARTICULATION_CONTACT_PREP_H
 
 #include "DySolverExt.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
-
 struct PxcNpWorkUnit;
-
-
-namespace Gu
-{
-	class ContactBuffer;
-	struct ContactPoint;
-}
+class PxContactBuffer;
+struct PxContactPoint;
 
 namespace Dy
 {
@@ -55,15 +47,15 @@ namespace Dy
 		const SolverExtBody& b1, const Cm::SpatialVector& impulse1, Cm::SpatialVector& deltaV1, PxReal dom1, PxReal angDom1,
 		Cm::SpatialVectorF* Z, bool allowSelfCollision = false);
 
-	Ps::aos::FloatV getImpulseResponse(const SolverExtBody& b0, const Cm::SpatialVectorV& impulse0, Cm::SpatialVectorV& deltaV0, const Ps::aos::FloatV& dom0, const Ps::aos::FloatV& angDom0,
-		const SolverExtBody& b1, const Cm::SpatialVectorV& impulse1, Cm::SpatialVectorV& deltaV1, const Ps::aos::FloatV& dom1, const Ps::aos::FloatV& angDom1,
+	aos::FloatV getImpulseResponse(const SolverExtBody& b0, const Cm::SpatialVectorV& impulse0, Cm::SpatialVectorV& deltaV0, const aos::FloatV& dom0, const aos::FloatV& angDom0,
+		const SolverExtBody& b1, const Cm::SpatialVectorV& impulse1, Cm::SpatialVectorV& deltaV1, const aos::FloatV& dom1, const aos::FloatV& angDom1,
 		Cm::SpatialVectorV* Z, bool allowSelfCollision = false);
 
 	Cm::SpatialVector createImpulseResponseVector(const PxVec3& linear, const PxVec3& angular, const SolverExtBody& body);
-	Cm::SpatialVectorV createImpulseResponseVector(const Ps::aos::Vec3V& linear, const Ps::aos::Vec3V& angular, const SolverExtBody& body);
+	Cm::SpatialVectorV createImpulseResponseVector(const aos::Vec3V& linear, const aos::Vec3V& angular, const SolverExtBody& body);
 
 	void setupFinalizeExtSolverContacts(
-		const Gu::ContactPoint* buffer,
+		const PxContactPoint* buffer,
 		const CorrelationBuffer& c,
 		const PxTransform& bodyFrame0,
 		const PxTransform& bodyFrame1,
@@ -71,21 +63,24 @@ namespace Dy
 		const SolverExtBody& b0,
 		const SolverExtBody& b1,
 		const PxReal invDtF32,
+		const PxReal dtF32,
 		PxReal bounceThresholdF32,
 		PxReal invMassScale0, PxReal invInertiaScale0,
 		PxReal invMassScale1, PxReal invInertiaScale1,
 		PxReal restDistance, PxU8* frictionDataPtr,
 		PxReal ccdMaxContactDist,
-		Cm::SpatialVectorF* Z);
+		Cm::SpatialVectorF* Z,
+		const PxReal offsetSlop);
 
 
 	bool setupFinalizeExtSolverContactsCoulomb(
-		const Gu::ContactBuffer& buffer,
+		const PxContactBuffer& buffer,
 		const CorrelationBuffer& c,
 		const PxTransform& bodyFrame0,
 		const PxTransform& bodyFrame1,
 		PxU8* workspace,
 		PxReal invDt,
+		PxReal dtF32,
 		PxReal bounceThreshold,
 		const SolverExtBody& b0,
 		const SolverExtBody& b1,
@@ -94,10 +89,12 @@ namespace Dy
 		PxReal invMassScale1, PxReal invInertiaScale1,
 		PxReal restDist,
 		PxReal ccdMaxContactDist,
-		Cm::SpatialVectorF* Z);
+		Cm::SpatialVectorF* Z,
+		const PxReal solverOffsetSlop);
 
 } //namespace Dy
 
 }
 
-#endif //DY_SOLVERCONSTRAINTEXT_H
+#endif
+

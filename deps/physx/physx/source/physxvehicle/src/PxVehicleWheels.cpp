@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,30 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "vehicle/PxVehicleWheels.h"
+#include "foundation/PxBitMap.h"
+#include "foundation/PxIntrinsics.h"
 #include "PxRigidDynamic.h"
 #include "PxShape.h"
 #include "PxPhysics.h"
 
 #include "PxVehicleSuspWheelTire4.h"
 #include "PxVehicleSuspLimitConstraintShader.h"
-#include "PxVehicleDefaults.h"
-#include "CmPhysXCommon.h"
-#include "CmBitMap.h"
-#include "PsUtilities.h"
-#include "PsIntrinsics.h"
-#include "PsFoundation.h"
+#include "foundation/PxUtilities.h"
 
 namespace physx
 {
-
-extern PxVec3 gRight;
-extern PxVec3 gUp;
-extern PxVec3 gForward;
 
 PxF32 gThresholdLongSpeed=5.0f;
 PxU32 gLowLongSpeedSubstepCount=3;
@@ -90,17 +82,17 @@ PxVehicleWheelsSimData::PxVehicleWheelsSimData(const PxU32 numWheels)
 	//Placement new for wheels4
 	for(PxU32 i=0;i<numWheels4;i++)
 	{
-		new(&mWheels4SimData[i]) PxVehicleWheels4SimData();
+		PX_PLACEMENT_NEW(&mWheels4SimData[i], PxVehicleWheels4SimData());
 	}
 
 	//Placement new for anti-roll bars
 	for(PxU32 i=0;i<numWheels4*2;i++)
 	{
-		new(&mAntiRollBars[i]) PxVehicleAntiRollBarData();
+		PX_PLACEMENT_NEW(&mAntiRollBars[i], PxVehicleAntiRollBarData());
 	}
 
 	//Placement new for tire load filter data.
-	new(&mNormalisedLoadFilter) PxVehicleTireLoadFilterData();
+	PX_PLACEMENT_NEW(&mNormalisedLoadFilter, PxVehicleTireLoadFilterData());
 
 	//Enable used wheels, disabled unused wheels.
 	PxMemZero(mActiveWheelsBitmapBuffer, sizeof(PxU32) * (((PX_MAX_NB_WHEELS + 31) & ~31) >> 5));
@@ -144,7 +136,7 @@ PxVehicleWheelsSimData* PxVehicleWheelsSimData::allocate(const PxU32 numWheels)
 	PX_ASSERT((ptrStart+ byteSize) == ptr);
 
 	//Constructor.
-	new(simData) PxVehicleWheelsSimData(numWheels);
+	PX_PLACEMENT_NEW(simData, PxVehicleWheelsSimData(numWheels));
 
 	//Finished.
 	return simData;
@@ -176,7 +168,7 @@ void PxVehicleWheelsSimData::free()
 		mWheels4SimData[i].~PxVehicleWheels4SimData();
 	}
 
-	PX_FREE(this);
+	PX_FREE_THIS;
 }
 
 PxVehicleWheelsSimData& PxVehicleWheelsSimData::operator=(const PxVehicleWheelsSimData& src)
@@ -251,7 +243,7 @@ void PxVehicleWheelsSimData::disableWheel(const PxU32 wheel)
 {
 	PX_CHECK_AND_RETURN(wheel < 4*mNbWheels4, "PxVehicleWheelsSimData::disableWheel - Illegal wheel");
 
-	Cm::BitMap bm;
+	PxBitMap bm;
 	bm.setWords(mActiveWheelsBitmapBuffer, ((PX_MAX_NB_WHEELS + 31) & ~31) >> 5);
 	bm.reset(wheel);
 }
@@ -260,7 +252,7 @@ void PxVehicleWheelsSimData::enableWheel(const PxU32 wheel)
 {
 	PX_CHECK_AND_RETURN(wheel < 4*mNbWheels4, "PxVehicleWheelsSimData::disableWheel - Illegal wheel");
 
-	Cm::BitMap bm;
+	PxBitMap bm;
 	bm.setWords(mActiveWheelsBitmapBuffer, ((PX_MAX_NB_WHEELS + 31) & ~31) >> 5);
 	bm.set(wheel);
 }
@@ -268,7 +260,7 @@ void PxVehicleWheelsSimData::enableWheel(const PxU32 wheel)
 bool PxVehicleWheelsSimData::getIsWheelDisabled(const PxU32 wheel) const
 {
 	PX_CHECK_AND_RETURN_VAL(wheel < 4*mNbWheels4, "PxVehicleWheelsSimData::getIsWheelDisabled - Illegal wheel", false);
-	Cm::BitMap bm;
+	PxBitMap bm;
 	bm.setWords(const_cast<PxU32*>(mActiveWheelsBitmapBuffer), ((PX_MAX_NB_WHEELS + 31) & ~31) >> 5);
 	return (bm.test(wheel) ? false : true);
 }
@@ -487,7 +479,7 @@ PxU8* PxVehicleWheelsDynData::patchUpPointers(const PxU32 numWheels, PxVehicleWh
 	ptr += sizeof(void*)*4*numWheels4;
 	for(PxU32 i=0;i<numWheels4;i++)
 	{
-		PxVehicleConstraintShader* shader = new(ptr) PxVehicleConstraintShader();
+		PxVehicleConstraintShader* shader = PX_PLACEMENT_NEW(ptr, PxVehicleConstraintShader());
 		dynData->mWheels4DynData[i].setVehicleConstraintShader(shader);
 		ptr += sizeof(PxVehicleConstraintShader);
 	}
@@ -506,7 +498,7 @@ PxVehicleWheelsDynData::PxVehicleWheelsDynData(const PxU32 numWheels)
 	//Placement new for wheels4
 	for(PxU32 i=0;i<numWheels4;i++)
 	{
-		new(&mWheels4DynData[i]) PxVehicleWheels4DynData();
+		PX_PLACEMENT_NEW(&mWheels4DynData[i], PxVehicleWheels4DynData());
 	}
 
 	//Initialise tire calculator
@@ -514,7 +506,7 @@ PxVehicleWheelsDynData::PxVehicleWheelsDynData(const PxU32 numWheels)
 	{
 		mTireForceCalculators->mShaderData[i]=NULL;
 	}
-	new(mTireForceCalculators) PxVehicleTireForceCalculator;
+	PX_PLACEMENT_NEW(mTireForceCalculators, PxVehicleTireForceCalculator);
 
 	//Initialise user data
 	for(PxU32 i=0;i<4*numWheels4;i++)
@@ -588,6 +580,61 @@ PxReal PxVehicleWheelsDynData::getWheelRotationAngle(const PxU32 wheelIdx) const
 	return suspWheelTire4.mWheelRotationAngles[wheelIdx & 3];
 }
 
+#if PX_CHECKED
+bool legalNumHits(const PxU32* nbHits, const PxU32 nbWheels)
+{
+	for(PxU32 i = 0; i < nbWheels; i++)
+	{
+		if(nbHits[i] !=0 && nbHits[i] != 1)
+			return false;
+	}
+	return true;
+}
+
+bool legalHitPlanes(const PxPlane* hitPlanes, const PxU32 nbWheels)
+{
+	for (PxU32 i = 0; i < nbWheels; i++)
+	{
+		if(PxAbs(1.0f - hitPlanes[i].n.magnitude()) >= 1e-3f)
+			return false;
+	}
+	return true;
+}
+
+bool legalHitFrictions(const PxReal* hitFrictions, const PxU32 nbWheels)
+{
+	for (PxU32 i = 0; i < nbWheels; i++)
+	{
+		if(hitFrictions[i] < 0.0f)
+			return false;
+	}
+	return true;
+}
+
+#endif
+
+void PxVehicleWheelsDynData::setTireContacts(const PxU32* nbHits, const PxPlane* hitPlanes, const PxReal* hitFrictions, const PxTireContactIntersectionMethod::Enum* queryTypes, const PxU32 nbWheels)
+{
+	PX_CHECK_AND_RETURN(nbWheels <= PX_MAX_NB_WHEELS, "PxVehicleWheelsDynData::setTireContacts - nbWheels must be <= PX_MAX_NB_WHEELS");
+	PX_CHECK_AND_RETURN(nbWheels >= mNbActiveWheels, "PxVehicleWheelsDynData::setTireContacts - nbWheels must be >= nbWheels");
+	PX_CHECK_AND_RETURN(legalNumHits(nbHits, nbWheels), "PxVehicleWheelsDynData::setTireContacts - nbHits[i] must be 0 or 1");
+	PX_CHECK_AND_RETURN(legalHitPlanes(hitPlanes, nbWheels), "PxVehicleWheelsDynData::setTireContacts - hitPlanes[i] must have a unit normal");
+	PX_CHECK_AND_RETURN(legalHitFrictions(hitFrictions, nbWheels), "PxVehicleWheelsDynData::setTireContacts - hitFrictions[i] must be >= 0.0f");
+
+	PxU32 hits[PX_MAX_NB_WHEELS];
+	PxPlane planes[PX_MAX_NB_WHEELS];
+	PxReal frictions[PX_MAX_NB_WHEELS];
+	PxTireContactIntersectionMethod types[PX_MAX_NB_WHEELS];
+	PxMemCopy(hits, nbHits, sizeof(PxU32)*nbWheels);
+	PxMemCopy(planes, hitPlanes, sizeof(PxPlane)*nbWheels);
+	PxMemCopy(frictions, hitFrictions, sizeof(PxReal)*nbWheels);
+	PxMemCopy(types, queryTypes, sizeof(PxTireContactIntersectionMethod)*nbWheels);
+	for (PxU32 i = 0; i < mNbWheels4; i++)
+	{
+		mWheels4DynData[i].setTireContacts(hits + 4 * i, planes + 4 * i, frictions + 4 * i, queryTypes + 4 * i);
+	}
+}
+
 void PxVehicleWheels::setToRestState()
 {
 	//Set the rigid body to rest and clear all the accumulated forces and impulses.
@@ -636,15 +683,15 @@ PxU8* PxVehicleWheels::patchupPointers(const PxU32 numWheels, PxVehicleWheels* v
 
 void PxVehicleWheels::init(const PxU32 numWheels)
 {
-	new(&mWheelsSimData) PxVehicleWheelsSimData(numWheels);
-	new(&mWheelsDynData) PxVehicleWheelsDynData(numWheels);
+	PX_PLACEMENT_NEW(&mWheelsSimData, PxVehicleWheelsSimData(numWheels));
+	PX_PLACEMENT_NEW(&mWheelsDynData, PxVehicleWheelsDynData(numWheels));
 
 	for(PxU32 i = 0; i < mWheelsSimData.mNbWheels4; i++)
 	{
-		new(&mWheelsDynData.mWheels4DynData[i].getVehicletConstraintShader()) PxVehicleConstraintShader(this);
+		PX_PLACEMENT_NEW(&mWheelsDynData.mWheels4DynData[i].getVehicletConstraintShader(), PxVehicleConstraintShader(this));
 	}
 
-	mOnConstraintReleaseCounter = Ps::to8(mWheelsSimData.mNbWheels4);
+	mOnConstraintReleaseCounter = PxTo8(mWheelsSimData.mNbWheels4);
 }
 
 void PxVehicleWheels::free()
@@ -664,7 +711,7 @@ void PxVehicleWheels::onConstraintRelease()
 	mOnConstraintReleaseCounter--;
 	if (0 == mOnConstraintReleaseCounter)
 	{
-		PX_FREE(this);
+		PX_FREE_THIS;
 	}
 }
 
@@ -689,12 +736,15 @@ void PxVehicleWheels::setup
 	PX_UNUSED(numDrivenWheels);
 	
 #if PX_CHECKED
-	PxF32 totalSprungMass=0.0f;
-	for(PxU32 i=0;i<(numDrivenWheels+numNonDrivenWheels);i++)
+	if (!(wheelsData.mFlags & PxVehicleWheelsSimFlag::eDISABLE_SPRUNG_MASS_SUM_CHECK))
 	{
-		totalSprungMass+=wheelsData.getSuspensionData(i).mSprungMass;
+		PxF32 totalSprungMass=0.0f;
+		for(PxU32 i=0;i<(numDrivenWheels+numNonDrivenWheels);i++)
+		{
+			totalSprungMass+=wheelsData.getSuspensionData(i).mSprungMass;
+		}
+		PX_CHECK_MSG(PxAbs((vehActor->getMass()-totalSprungMass)/vehActor->getMass()) < 0.01f, "Sum of suspension sprung masses doesn't match actor mass");
 	}
-	PX_CHECK_MSG(PxAbs((vehActor->getMass()-totalSprungMass)/vehActor->getMass()) < 0.01f, "Sum of suspension sprung masses doesn't match actor mass");
 #endif
 
 	//Copy the simulation data.
@@ -808,16 +858,16 @@ void PxVehicleWheels::resolveReferences(PxDeserializationContext& context)
 	}	
 }
 
-PxReal PxVehicleWheels::computeForwardSpeed() const
+PxReal PxVehicleWheels::computeForwardSpeed(const PxVec3& forwardAxis) const
 {
 	const PxTransform vehicleChassisTrnsfm=mActor->getGlobalPose().transform(mActor->getCMassLocalPose());
-	return mActor->getLinearVelocity().dot(vehicleChassisTrnsfm.q.rotate(gForward));
+	return mActor->getLinearVelocity().dot(vehicleChassisTrnsfm.q.rotate(forwardAxis));
 }
 
-PxReal PxVehicleWheels::computeSidewaysSpeed() const
+PxReal PxVehicleWheels::computeSidewaysSpeed(const PxVec3& sideAxis) const
 {
 	const PxTransform vehicleChassisTrnsfm=mActor->getGlobalPose().transform(mActor->getCMassLocalPose());
-	return mActor->getLinearVelocity().dot(vehicleChassisTrnsfm.q.rotate(gRight));
+	return mActor->getLinearVelocity().dot(vehicleChassisTrnsfm.q.rotate(sideAxis));
 }
 
 ////////////////////////////////////////////////////////////////////////////

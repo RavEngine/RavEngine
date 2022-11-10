@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_SWEEP_SHARED_TESTS_H
 #define GU_SWEEP_SHARED_TESTS_H
 
-#include "CmPhysXCommon.h"
 #include "GuBoxConversion.h"
 
 namespace physx
 {
-PX_FORCE_INLINE void computeWorldToBoxMatrix(physx::Cm::Matrix34& worldToBox, const physx::Gu::Box& box)
+PX_FORCE_INLINE void computeWorldToBoxMatrix(PxMat34& worldToBox, const physx::Gu::Box& box)
 {
-	physx::Cm::Matrix34 boxToWorld;
+	PxMat34 boxToWorld;
 	physx::buildMatrixFromBox(boxToWorld, box);
 	worldToBox = boxToWorld.getInverseRT();
 }

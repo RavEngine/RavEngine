@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,49 +22,54 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_COMMON_VISUALIZATION
-#define PX_PHYSICS_COMMON_VISUALIZATION
+#ifndef CM_VISUALIZATION_H
+#define CM_VISUALIZATION_H
 
 #include "foundation/PxTransform.h"
-#include "CmPhysXCommon.h"
-#include "CmRenderOutput.h"
+#include "common/PxRenderOutput.h"
 #include "PxConstraintDesc.h"
 
 namespace physx
 {
 namespace Cm
 {
-	PX_PHYSX_COMMON_API void visualizeJointFrames(RenderOutput& out,
+	// PT: the force-inlined functions in PxRenderOutput generate a lot of code. Use these non-inlined functions instead.
+	PX_PHYSX_COMMON_API	void renderOutputDebugBox(PxRenderOutput& out, const PxBounds3& box);
+	PX_PHYSX_COMMON_API	void renderOutputDebugCircle(PxRenderOutput& out, PxU32 s, PxReal r);
+	PX_PHYSX_COMMON_API	void renderOutputDebugBasis(PxRenderOutput& out, const PxDebugBasis& basis);
+	PX_PHYSX_COMMON_API	void renderOutputDebugArrow(PxRenderOutput& out, const PxDebugArrow& arrow);
+
+	PX_PHYSX_COMMON_API void visualizeJointFrames(PxRenderOutput& out,
 							  PxReal scale,
 							  const PxTransform& parent,
 							  const PxTransform& child);
 
-	PX_PHYSX_COMMON_API void visualizeLinearLimit(RenderOutput& out,
+	PX_PHYSX_COMMON_API void visualizeLinearLimit(PxRenderOutput& out,
 							  PxReal scale,
 							  const PxTransform& t0,
 							  const PxTransform& t1,
 							  PxReal value,
 							  bool active);
 
-	PX_PHYSX_COMMON_API void visualizeAngularLimit(RenderOutput& out,
+	PX_PHYSX_COMMON_API void visualizeAngularLimit(PxRenderOutput& out,
 							   PxReal scale,
 							   const PxTransform& t0,
 							   PxReal lower,
 							   PxReal upper,
 							   bool active);
 
-	PX_PHYSX_COMMON_API void visualizeLimitCone(RenderOutput& out,
+	PX_PHYSX_COMMON_API void visualizeLimitCone(PxRenderOutput& out,
 							PxReal scale,
 							const PxTransform& t,
 							PxReal ySwing,
 							PxReal zSwing,
 							bool active);
 
-	PX_PHYSX_COMMON_API void visualizeDoubleCone(RenderOutput& out,
+	PX_PHYSX_COMMON_API void visualizeDoubleCone(PxRenderOutput& out,
 							 PxReal scale,
 							 const PxTransform& t,
 							 PxReal angle,
@@ -75,12 +79,12 @@ namespace Cm
 	{
 		PxF32			mFrameScale;
 		PxF32			mLimitScale;
-		RenderOutput&	mCmOutput;
+		PxRenderOutput&	mCmOutput;
 
 		//Not possible to implement
 		ConstraintImmediateVisualizer& operator=( const ConstraintImmediateVisualizer& );
 
-		ConstraintImmediateVisualizer(PxF32 frameScale, PxF32 limitScale, RenderOutput& output) :
+		ConstraintImmediateVisualizer(PxF32 frameScale, PxF32 limitScale, PxRenderOutput& output) :
 			mFrameScale	(frameScale),
 			mLimitScale	(limitScale),
 			mCmOutput	(output)

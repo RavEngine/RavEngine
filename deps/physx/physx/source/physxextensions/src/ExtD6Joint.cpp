@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxRenderBuffer.h"
-#include "PxPhysics.h"
 
 #include "ExtD6Joint.h"
 #include "ExtConstraintHelper.h"
@@ -36,27 +34,10 @@
 
 using namespace physx;
 using namespace Ext;
-using namespace shdfnd;
-
-PxD6Joint* physx::PxD6JointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
-{
-	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxD6JointCreate: local frame 0 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxD6JointCreate: local frame 1 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxD6JointCreate: actors must be different");
-	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxD6JointCreate: at least one actor must be dynamic");
-
-	D6Joint* j;
-	PX_NEW_SERIALIZED(j, D6Joint)(physics.getTolerancesScale(), actor0, localFrame0, actor1, localFrame1);
-	if(j->attach(physics, actor0, actor1))
-		return j;
-
-	PX_DELETE(j);
-	return NULL;
-}
 
 D6Joint::D6Joint(const PxTolerancesScale& scale, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1) :
-	D6JointT(PxJointConcreteType::eD6, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE, actor0, localFrame0, actor1, localFrame1, sizeof(D6JointData), "D6JointData"),
-	mRecomputeMotion	(true)
+	D6JointT		(PxJointConcreteType::eD6, actor0, localFrame0, actor1, localFrame1, "D6JointData"),
+	mRecomputeMotion(true)
 {
 	D6JointData* data = static_cast<D6JointData*>(mData);
 
@@ -99,6 +80,12 @@ void D6Joint::setMotion(PxD6Axis::Enum index, PxD6Motion::Enum t)
 	data().motion[index] = t; 
 	mRecomputeMotion = true; 
 	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	PxD6Motion::Enum motions[6];
+	for (PxU32 i = 0; i < 6; ++i)
+		motions[i] = getMotion(PxD6Axis::Enum(i));
+	OMNI_PVD_SETB(joint, d6Motions, static_cast<PxJoint&>(*this), motions, sizeof(motions))
+#endif
 }
 
 PxReal D6Joint::getTwistAngle() const
@@ -128,6 +115,25 @@ void D6Joint::setDrive(PxD6Drive::Enum index, const PxD6JointDrive& d)
 	data().drive[index] = d; 
 	mRecomputeMotion = true; 
 	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	PxJoint& j = static_cast<PxJoint&>(*this);
+	PxReal forceLimit[6];
+	for (PxU32 i = 0; i < 6; ++i)
+		forceLimit[i] = getDrive(PxD6Drive::Enum(i)).forceLimit;
+	OMNI_PVD_SETB(joint, d6DriveForceLimit, j, forceLimit, sizeof(forceLimit))
+	PxD6JointDriveFlags flags[6];
+	for (PxU32 i = 0; i < 6; ++i)
+		flags[i] = getDrive(PxD6Drive::Enum(i)).flags;
+	OMNI_PVD_SETB(joint, d6DriveFlags, j, flags, sizeof(flags))
+	PxReal stiffness[6];
+	for (PxU32 i = 0; i < 6; ++i)
+		stiffness[i] = getDrive(PxD6Drive::Enum(i)).stiffness;
+	OMNI_PVD_SETB(joint, d6DriveStiffness, j, stiffness, sizeof(stiffness))
+	PxReal damping[6];
+	for (PxU32 i = 0; i < 6; ++i)
+		damping[i] = getDrive(PxD6Drive::Enum(i)).damping;
+	OMNI_PVD_SETB(joint, d6DriveDamping, j, damping, sizeof(damping))
+#endif
 }
 
 void D6Joint::setDistanceLimit(const PxJointLinearLimit& l)
@@ -136,6 +142,15 @@ void D6Joint::setDistanceLimit(const PxJointLinearLimit& l)
 	data().distanceLimit = l;
 	data().mUseDistanceLimit = true;
 	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	PxJoint& j = static_cast<PxJoint&>(*this);
+	OMNI_PVD_SET(joint, d6DistanceLimitValue, j, l.value)
+	OMNI_PVD_SET(joint, d6DistanceLimitRestitution, j, l.restitution)
+	OMNI_PVD_SET(joint, d6DistanceLimitBounceThreshold, j, l.bounceThreshold)
+	OMNI_PVD_SET(joint, d6DistanceLimitStiffness, j, l.stiffness)
+	OMNI_PVD_SET(joint, d6DistanceLimitDamping, j, l.damping)
+	OMNI_PVD_SET(joint, d6DistanceLimitContactDistance, j, l.contactDistance_deprecated)
+#endif
 }
 
 PxJointLinearLimit D6Joint::getDistanceLimit() const
@@ -158,6 +173,31 @@ void D6Joint::setLinearLimit(PxD6Axis::Enum axis, const PxJointLinearLimitPair& 
 		return;
 	d.mUseNewLinearLimits = true;
 	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	PxJoint& j = static_cast<PxJoint&>(*this);
+	PxReal values[3];
+	for (PxU32 i = 0; i < 3; ++i)
+		values[i] = getLinearLimit(PxD6Axis::Enum(i)).lower;
+	OMNI_PVD_SETB(joint, d6LinearLimitLower, j, values, sizeof(values))
+	for (PxU32 i = 0; i < 3; ++i)
+		values[i] = getLinearLimit(PxD6Axis::Enum(i)).upper;
+	OMNI_PVD_SETB(joint, d6LinearLimitUpper, j, values, sizeof(values))
+	for (PxU32 i = 0; i < 3; ++i)
+		values[i] = getLinearLimit(PxD6Axis::Enum(i)).restitution;
+	OMNI_PVD_SETB(joint, d6LinearLimitRestitution, j, values, sizeof(values))
+	for (PxU32 i = 0; i < 3; ++i)
+		values[i] = getLinearLimit(PxD6Axis::Enum(i)).bounceThreshold;
+	OMNI_PVD_SETB(joint, d6LinearLimitBounceThreshold, j, values, sizeof(values))
+	for (PxU32 i = 0; i < 3; ++i)
+		values[i] = getLinearLimit(PxD6Axis::Enum(i)).stiffness;
+	OMNI_PVD_SETB(joint, d6LinearLimitStiffness, j, values, sizeof(values))
+	for (PxU32 i = 0; i < 3; ++i)
+		values[i] = getLinearLimit(PxD6Axis::Enum(i)).damping;
+	OMNI_PVD_SETB(joint, d6LinearLimitDamping, j, values, sizeof(values))
+	for (PxU32 i = 0; i < 3; ++i)
+		values[i] = getLinearLimit(PxD6Axis::Enum(i)).contactDistance_deprecated;
+	OMNI_PVD_SETB(joint, d6LinearLimitContactDistance, j, values, sizeof(values))
+#endif
 }
 
 PxJointLinearLimitPair D6Joint::getLinearLimit(PxD6Axis::Enum axis) const
@@ -188,6 +228,17 @@ void D6Joint::setTwistLimit(const PxJointAngularLimitPair& l)
 
 	data().twistLimit = l; 
 	markDirty(); 
+
+#if PX_SUPPORT_OMNI_PVD
+	PxJoint& j = static_cast<PxJoint&>(*this);
+	OMNI_PVD_SET(joint, d6TwistLimitLower, j, l.lower)
+	OMNI_PVD_SET(joint, d6TwistLimitUpper, j, l.upper)
+	OMNI_PVD_SET(joint, d6TwistLimitRestitution, j, l.restitution)
+	OMNI_PVD_SET(joint, d6TwistLimitBounceThreshold, j, l.bounceThreshold)
+	OMNI_PVD_SET(joint, d6TwistLimitStiffness, j, l.stiffness)
+	OMNI_PVD_SET(joint, d6TwistLimitDamping, j, l.damping)
+	OMNI_PVD_SET(joint, d6TwistLimitContactDistance, j, l.contactDistance_deprecated)
+#endif
 }
 
 PxJointLimitPyramid D6Joint::getPyramidSwingLimit() const
@@ -202,6 +253,19 @@ void D6Joint::setPyramidSwingLimit(const PxJointLimitPyramid& l)
 	data().pyramidSwingLimit = l; 
 	data().mUsePyramidLimits = true;
 	markDirty(); 
+
+#if PX_SUPPORT_OMNI_PVD
+	PxJoint& j = static_cast<PxJoint&>(*this);
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitYAngleMin, j, l.yAngleMin)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitYAngleMax, j, l.yAngleMax)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitZAngleMin, j, l.zAngleMin)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitZAngleMax, j, l.zAngleMax)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitRestitution, j, l.restitution)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitBounceThreshold, j, l.bounceThreshold)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitStiffness, j, l.stiffness)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitDamping, j, l.damping)
+	OMNI_PVD_SET(joint, d6PyramidSwingLimitContactDistance, j, l.contactDistance_deprecated)
+#endif
 }
 
 PxJointLimitCone D6Joint::getSwingLimit() const
@@ -216,6 +280,17 @@ void D6Joint::setSwingLimit(const PxJointLimitCone& l)
 	data().swingLimit = l; 
 	data().mUseConeLimit = true;
 	markDirty(); 
+
+#if PX_SUPPORT_OMNI_PVD
+	PxJoint& j = static_cast<PxJoint&>(*this);
+	OMNI_PVD_SET(joint, d6SwingLimitYAngle, j, l.yAngle)
+	OMNI_PVD_SET(joint, d6SwingLimitZAngle, j, l.zAngle)
+	OMNI_PVD_SET(joint, d6SwingLimitRestitution, j, l.restitution)
+	OMNI_PVD_SET(joint, d6SwingLimitBounceThreshold, j, l.bounceThreshold)
+	OMNI_PVD_SET(joint, d6SwingLimitStiffness, j, l.stiffness)
+	OMNI_PVD_SET(joint, d6SwingLimitDamping, j, l.damping)
+	OMNI_PVD_SET(joint, d6SwingLimitContactDistance, j, l.contactDistance_deprecated)
+#endif
 }
 
 PxTransform D6Joint::getDrivePosition() const
@@ -230,6 +305,9 @@ void D6Joint::setDrivePosition(const PxTransform& pose, bool autowake)
 	if(autowake)
 		wakeUpActors();
 	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, d6DrivePosition, static_cast<PxJoint&>(*this), pose)
+#endif
 }
 
 void D6Joint::getDriveVelocity(PxVec3& linear, PxVec3& angular)	const
@@ -246,6 +324,10 @@ void D6Joint::setDriveVelocity(const PxVec3& linear, const PxVec3& angular, bool
 	if(autowake)
 		wakeUpActors();
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, d6DriveLinVelocity, static_cast<PxJoint&>(*this), linear)
+	OMNI_PVD_SET(joint, d6DriveAngVelocity, static_cast<PxJoint&>(*this), angular)
+#endif
 }
 
 void D6Joint::setProjectionAngularTolerance(PxReal tolerance)
@@ -253,6 +335,9 @@ void D6Joint::setProjectionAngularTolerance(PxReal tolerance)
 	PX_CHECK_AND_RETURN(PxIsFinite(tolerance) && tolerance >=0 && tolerance <= PxPi, "PxD6Joint::setProjectionAngularTolerance: tolerance invalid");
 	data().projectionAngularTolerance = tolerance;	
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, d6ProjectionAngularTolerance, static_cast<PxJoint&>(*this), tolerance)
+#endif
 }
 
 PxReal D6Joint::getProjectionAngularTolerance()	const
@@ -265,6 +350,9 @@ void D6Joint::setProjectionLinearTolerance(PxReal tolerance)
 	PX_CHECK_AND_RETURN(PxIsFinite(tolerance) && tolerance >=0, "PxD6Joint::setProjectionLinearTolerance: invalid parameter");
 	data().projectionLinearTolerance = tolerance;	
 	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, d6ProjectionLinearTolerance, static_cast<PxJoint&>(*this), tolerance)
+#endif
 }
 
 PxReal D6Joint::getProjectionLinearTolerance() const	
@@ -318,52 +406,6 @@ void* D6Joint::prepareData()
 
 	return mData;
 }
-
-bool D6Joint::attach(PxPhysics &physics, PxRigidActor* actor0, PxRigidActor* actor1)
-{
-	mPxConstraint = physics.createConstraint(actor0, actor1, *this, sShaders, sizeof(D6JointData));
-	return mPxConstraint!=NULL;
-}
-
-void D6Joint::exportExtraData(PxSerializationContext& stream)
-{
-	if(mData)
-	{
-		stream.alignData(PX_SERIAL_ALIGN);
-		stream.writeData(mData, sizeof(D6JointData));
-	}
-	stream.writeName(mName);
-}
-
-void D6Joint::importExtraData(PxDeserializationContext& context)
-{
-	if(mData)
-		mData = context.readExtraData<D6JointData, PX_SERIAL_ALIGN>();
-
-	context.readName(mName);
-}
-
-void D6Joint::resolveReferences(PxDeserializationContext& context)
-{
-	setPxConstraint(resolveConstraintPtr(context, getPxConstraint(), getConnector(), sShaders));	
-}
-
-D6Joint* D6Joint::createObject(PxU8*& address, PxDeserializationContext& context)
-{
-	D6Joint* obj = new (address) D6Joint(PxBaseFlag::eIS_RELEASABLE);
-	address += sizeof(D6Joint);	
-	obj->importExtraData(context);
-	obj->resolveReferences(context);
-	return obj;
-}
-
-// global function to share the joint shaders with API capture	
-const PxConstraintShaderTable* Ext::GetD6JointShaderTable() 
-{ 
-	return &D6Joint::getConstraintShaderTable();
-}
-
-//~PX_SERIALIZATION
 
 // Notes:
 /*
@@ -483,14 +525,14 @@ static PX_FORCE_INLINE PxReal computePhi(const PxQuat& q)
 
 static void visualizeAngularLimit(PxConstraintVisualizer& viz, const D6JointData& data, const PxTransform& t, float swingYZ, float swingW, float swingLimitYZ)
 {
-	bool active = PxAbs(computeSwingAngle(swingYZ, swingW)) > swingLimitYZ - data.swingLimit.contactDistance;					
+	bool active = PxAbs(computeSwingAngle(swingYZ, swingW)) > swingLimitYZ - data.swingLimit.contactDistance_deprecated;
 	viz.visualizeAngularLimit(t, -swingLimitYZ, swingLimitYZ, active);
 }
 
 static void visualizeDoubleCone(PxConstraintVisualizer& viz, const D6JointData& data, const PxTransform& t, float sin, float swingLimitYZ)
 {
 	const PxReal angle = PxAsin(sin);
-	const PxReal pad = data.swingLimit.contactDistance;
+	const PxReal pad = data.swingLimit.contactDistance_deprecated;
 	const PxReal low = -swingLimitYZ;
 	const PxReal high = swingLimitYZ;
 
@@ -502,14 +544,14 @@ static void visualizeDoubleCone(PxConstraintVisualizer& viz, const D6JointData& 
 static void visualizeCone(PxConstraintVisualizer& viz, const D6JointData& data, const PxQuat& swing, const PxTransform& cA2w)
 {
 	const PxVec3 swingAngle(0.0f, computeSwingAngle(swing.y, swing.w), computeSwingAngle(swing.z, swing.w));
-	const PxReal pad = data.swingLimit.isSoft() ? 0.0f : data.swingLimit.contactDistance;
+	const PxReal pad = data.swingLimit.isSoft() ? 0.0f : data.swingLimit.contactDistance_deprecated;
 	Cm::ConeLimitHelperTanLess coneHelper(data.swingLimit.yAngle, data.swingLimit.zAngle, pad);
 	viz.visualizeLimitCone(cA2w, PxTan(data.swingLimit.zAngle / 4), PxTan(data.swingLimit.yAngle / 4), !coneHelper.contains(swingAngle));
 }
 
 static PX_FORCE_INLINE bool isLinearLimitActive(const PxJointLinearLimitPair& limit, float ordinate)
 {
-	const PxReal pad = limit.isSoft() ? 0.0f : limit.contactDistance;
+	const PxReal pad = limit.isSoft() ? 0.0f : limit.contactDistance_deprecated;
 	return (ordinate < limit.lower + pad) || (ordinate > limit.upper - pad);
 }
 
@@ -597,45 +639,7 @@ static float computeLimitedDistance(const D6JointData& data, const PxTransform& 
 	return limitDir.magnitude();
 }
 
-void _setRotY(PxMat33& m, PxReal angle)
-{
-	m = PxMat33(PxIdentity);
-
-	const PxReal cos = cosf(angle);
-	const PxReal sin = sinf(angle);
-
-	m[0][0] = m[2][2] = cos;
-	m[0][2] = -sin;
-	m[2][0] = sin;
-}
-
-void _setRotZ(PxMat33& m, PxReal angle)
-{
-	m = PxMat33(PxIdentity);
-
-	const PxReal cos = cosf(angle);
-	const PxReal sin = sinf(angle);
-
-	m[0][0] = m[1][1] = cos;
-	m[0][1] = sin;
-	m[1][0] = -sin;
-}
-
-PxQuat _getRotYQuat(float angle)
-{
-	PxMat33 m;
-	_setRotY(m, angle);
-	return PxQuat(m);
-}
-
-PxQuat _getRotZQuat(float angle)
-{
-	PxMat33 m;
-	_setRotZ(m, angle);
-	return PxQuat(m);
-}
-
-void _setRotX(PxMat33& m, PxReal angle)
+void setRotX(PxMat33& m, PxReal angle)
 {
 	m = PxMat33(PxIdentity);
 
@@ -647,12 +651,51 @@ void _setRotX(PxMat33& m, PxReal angle)
 	m[2][1] = -sin;
 }
 
-PxQuat _getRotXQuat(float angle)
+void setRotY(PxMat33& m, PxReal angle)
+{
+	m = PxMat33(PxIdentity);
+
+	const PxReal cos = cosf(angle);
+	const PxReal sin = sinf(angle);
+
+	m[0][0] = m[2][2] = cos;
+	m[0][2] = -sin;
+	m[2][0] = sin;
+}
+
+void setRotZ(PxMat33& m, PxReal angle)
+{
+	m = PxMat33(PxIdentity);
+
+	const PxReal cos = cosf(angle);
+	const PxReal sin = sinf(angle);
+
+	m[0][0] = m[1][1] = cos;
+	m[0][1] = sin;
+	m[1][0] = -sin;
+}
+
+PxQuat getRotXQuat(float angle)
 {
 	PxMat33 m;
-	_setRotX(m, angle);
+	setRotX(m, angle);
 	return PxQuat(m);
 }
+
+PxQuat getRotYQuat(float angle)
+{
+	PxMat33 m;
+	setRotY(m, angle);
+	return PxQuat(m);
+}
+
+PxQuat getRotZQuat(float angle)
+{
+	PxMat33 m;
+	setRotZ(m, angle);
+	return PxQuat(m);
+}
+
 
 static void drawPyramid(PxConstraintVisualizer& viz, const D6JointData& data, const PxTransform& cA2w, const PxQuat& swing, bool useY, bool useZ)
 {
@@ -670,8 +713,8 @@ static void drawPyramid(PxConstraintVisualizer& viz, const D6JointData& data, co
 				const float z = coeff*zmax + (1.0f-coeff)*zmin;
 
 				const float r = 1.0f;
-				PxMat33 my;	_setRotZ(my, z);
-				PxMat33 mz;	_setRotY(mz, y);
+				PxMat33 my;	setRotZ(my, z);
+				PxMat33 mz;	setRotY(mz, y);
 				const PxVec3 p0 = (my*mz).transform(PxVec3(r, 0.0f, 0.0f));
 				const PxVec3 p0w = _cA2w.transform(p0);
 				_viz.visualizeLine(_cA2w.p, p0w, color);
@@ -683,8 +726,8 @@ static void drawPyramid(PxConstraintVisualizer& viz, const D6JointData& data, co
 	};
 
 	const PxJointLimitPyramid& l = data.pyramidSwingLimit;
-	const bool activeY = useY ? isLimitActive(l, l.contactDistance, computeSwingAngle(swing.y, swing.w), l.yAngleMin, l.yAngleMax) : false;
-	const bool activeZ = useZ ? isLimitActive(l, l.contactDistance, computeSwingAngle(swing.z, swing.w), l.zAngleMin, l.zAngleMax) : false;
+	const bool activeY = useY ? isLimitActive(l, l.contactDistance_deprecated, computeSwingAngle(swing.y, swing.w), l.yAngleMin, l.yAngleMax) : false;
+	const bool activeZ = useZ ? isLimitActive(l, l.contactDistance_deprecated, computeSwingAngle(swing.z, swing.w), l.zAngleMin, l.zAngleMax) : false;
 	const PxU32 color = (activeY||activeZ) ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY;
 
 	Local::drawArc(viz, cA2w, l.yAngleMin, l.yAngleMin, l.zAngleMin, l.zAngleMax, color);
@@ -768,7 +811,7 @@ static void D6JointVisualize(PxConstraintVisualizer& viz, const void* constantBl
 		}
 
 		PxQuat swing, twist;
-		Ps::separateSwingTwist(cB2cA.q, swing, twist);
+		PxSeparateSwingTwist(cB2cA.q, swing, twist);
 
 		const PxVec3& bX = cB2w_m.column0;
 		const PxVec3& aY = cA2w_m.column1;
@@ -777,7 +820,7 @@ static void D6JointVisualize(PxConstraintVisualizer& viz, const void* constantBl
 		if(data.limited&TWIST_FLAG)
 		{
 			const PxReal angle = computePhi(twist);
-			const PxReal pad = data.twistLimit.contactDistance;
+			const PxReal pad = data.twistLimit.contactDistance_deprecated;
 			const PxReal low = data.twistLimit.lower;
 			const PxReal high = data.twistLimit.upper;
 
@@ -832,12 +875,12 @@ static void D6JointVisualize(PxConstraintVisualizer& viz, const void* constantBl
 
 static PX_FORCE_INLINE void setupSingleSwingLimit(joint::ConstraintHelper& ch, const D6JointData& data, const PxVec3& axis, float swingYZ, float swingW, float swingLimitYZ)
 {
-	ch.anglePair(computeSwingAngle(swingYZ, swingW), -swingLimitYZ, swingLimitYZ, data.swingLimit.contactDistance, axis, data.swingLimit);
+	ch.anglePair(computeSwingAngle(swingYZ, swingW), -swingLimitYZ, swingLimitYZ, data.swingLimit.contactDistance_deprecated, axis, data.swingLimit);
 }
 
 static PX_FORCE_INLINE void setupDualConeSwingLimits(joint::ConstraintHelper& ch, const D6JointData& data, const PxVec3& axis, float sin, float swingLimitYZ)
 {
-	ch.anglePair(PxAsin(sin), -swingLimitYZ, swingLimitYZ, data.swingLimit.contactDistance, axis.getNormalized(), data.swingLimit);
+	ch.anglePair(PxAsin(sin), -swingLimitYZ, swingLimitYZ, data.swingLimit.contactDistance_deprecated, axis.getNormalized(), data.swingLimit);
 }
 
 // PT: TODO: refactor with spherical joint code
@@ -845,7 +888,7 @@ static void setupConeSwingLimits(joint::ConstraintHelper& ch, const D6JointData&
 {
 	PxVec3 axis;
 	PxReal error;
-	const PxReal pad = data.swingLimit.isSoft() ? 0.0f : data.swingLimit.contactDistance;
+	const PxReal pad = data.swingLimit.isSoft() ? 0.0f : data.swingLimit.contactDistance_deprecated;
 	const Cm::ConeLimitHelperTanLess coneHelper(data.swingLimit.yAngle, data.swingLimit.zAngle, pad);
 	bool active = coneHelper.getLimit(swing, axis, error);
 	if(active)
@@ -857,9 +900,9 @@ static void setupPyramidSwingLimits(joint::ConstraintHelper& ch, const D6JointDa
 	const PxQuat q = cA2w.q * swing;
 	const PxJointLimitPyramid& l = data.pyramidSwingLimit;
 	if(useY)
-		ch.anglePair(computeSwingAngle(swing.y, swing.w), l.yAngleMin, l.yAngleMax, l.contactDistance, q.getBasisVector1(), l);
+		ch.anglePair(computeSwingAngle(swing.y, swing.w), l.yAngleMin, l.yAngleMax, l.contactDistance_deprecated, q.getBasisVector1(), l);
 	if(useZ)
-		ch.anglePair(computeSwingAngle(swing.z, swing.w), l.zAngleMin, l.zAngleMax, l.contactDistance, q.getBasisVector2(), l);
+		ch.anglePair(computeSwingAngle(swing.z, swing.w), l.zAngleMin, l.zAngleMax, l.contactDistance_deprecated, q.getBasisVector2(), l);
 }
 
 static void setupLinearLimit(joint::ConstraintHelper& ch, const PxJointLinearLimitPair& limit, const float origin, const PxVec3& axis)
@@ -868,15 +911,16 @@ static void setupLinearLimit(joint::ConstraintHelper& ch, const PxJointLinearLim
 	ch.linearLimit(-axis, -origin, -limit.lower, limit);
 }
 
+//TAG:solverprepshader
 static PxU32 D6JointSolverPrep(Px1DConstraint* constraints,
-	PxVec3& body0WorldOffset,
+	PxVec3p& body0WorldOffset,
 	PxU32 /*maxConstraints*/,
 	PxConstraintInvMassScale& invMassScale,
 	const void* constantBlock,
 	const PxTransform& bA2w,
 	const PxTransform& bB2w,
 	bool useExtendedLimits,
-	PxVec3& cA2wOut, PxVec3& cB2wOut)
+	PxVec3p& cA2wOut, PxVec3p& cB2wOut)
 {
 	const D6JointData& data = *reinterpret_cast<const D6JointData*>(constantBlock);
 
@@ -908,8 +952,8 @@ static PxU32 D6JointSolverPrep(Px1DConstraint* constraints,
 	PX_ASSERT(cB2w.isValid());
 	PX_ASSERT(cB2cA.isValid());
 
-	const PxMat33 cA2w_m(cA2w.q);
-	const PxMat33 cB2w_m(cB2w.q);
+	const PxMat33Padded cA2w_m(cA2w.q);
+	const PxMat33Padded cB2w_m(cB2w.q);
 
 	// handy for swing computation
 	const PxVec3& bX = cB2w_m.column0;
@@ -954,13 +998,13 @@ static PxU32 D6JointSolverPrep(Px1DConstraint* constraints,
 
 			if(driving & (1<<PxD6Drive::eSWING))
 			{
-				const PxVec3 err = delta.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+				const PxVec3 err = delta.getBasisVector0();
 
 				if(!(locked & SWING1_FLAG))
-					ch.angular(cB2w_m[1], v.y, err.z, drives[PxD6Drive::eSWING]);
+					ch.angular(aY, v.y, err.z, drives[PxD6Drive::eSWING]);
 
 				if(!(locked & SWING2_FLAG))
-					ch.angular(cB2w_m[2], v.z, -err.y, drives[PxD6Drive::eSWING]);
+					ch.angular(aZ, v.z, -err.y, drives[PxD6Drive::eSWING]);
 			}
 		}
 	}
@@ -968,12 +1012,12 @@ static PxU32 D6JointSolverPrep(Px1DConstraint* constraints,
 	if(limited & ANGULAR_MASK)
 	{
 		PxQuat swing, twist;
-		Ps::separateSwingTwist(cB2cA.q, swing, twist);
+		PxSeparateSwingTwist(cB2cA.q, swing, twist);
 
 		// swing limits: if just one is limited: if the other is free, we support 
 		// (-pi/2, +pi/2) limit, using tan of the half-angle as the error measure parameter. 
 		// If the other is locked, we support (-pi, +pi) limits using the tan of the quarter-angle
-		// Notation: th == Ps::tanHalf, tq = tanQuarter
+		// Notation: th == PxTanHalf, tq = tanQuarter
 
 		if(limited & SWING1_FLAG && limited & SWING2_FLAG)
 		{
@@ -1000,7 +1044,7 @@ static PxU32 D6JointSolverPrep(Px1DConstraint* constraints,
 					if(!data.mUsePyramidLimits)
 						setupDualConeSwingLimits(ch, data, aZ.cross(bX), -aZ.dot(bX), data.swingLimit.yAngle);	// PT: swing Y limited, swing Z free
 					else
-						Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "D6JointSolverPrep: invalid joint setup. Double pyramid mode not supported.");
+						PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "D6JointSolverPrep: invalid joint setup. Double pyramid mode not supported.");
 				}
 			}
 			if(limited & SWING2_FLAG)
@@ -1016,13 +1060,13 @@ static PxU32 D6JointSolverPrep(Px1DConstraint* constraints,
 					if(!data.mUsePyramidLimits)
 						setupDualConeSwingLimits(ch, data, -aY.cross(bX), aY.dot(bX), data.swingLimit.zAngle);	// PT: swing Z limited, swing Y free
 					else
-						Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "D6JointSolverPrep: invalid joint setup. Double pyramid mode not supported.");
+						PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "D6JointSolverPrep: invalid joint setup. Double pyramid mode not supported.");
 			}
 		}
 
 		if(limited & TWIST_FLAG)
 		{
-			ch.anglePair(computePhi(twist), data.twistLimit.lower, data.twistLimit.upper, data.twistLimit.contactDistance, cB2w_m.column0, data.twistLimit);
+			ch.anglePair(computePhi(twist), data.twistLimit.lower, data.twistLimit.upper, data.twistLimit.contactDistance_deprecated, cB2w_m.column0, data.twistLimit);
 		}
 	}
 
@@ -1084,4 +1128,84 @@ static PxU32 D6JointSolverPrep(Px1DConstraint* constraints,
 	return ch.getCount();
 }
 
-PxConstraintShaderTable Ext::D6Joint::sShaders = { D6JointSolverPrep, D6JointProject, D6JointVisualize, /*PxConstraintFlag::Enum(0)*/PxConstraintFlag::eGPU_COMPATIBLE };
+///////////////////////////////////////////////////////////////////////////////
+
+static PxConstraintShaderTable gD6JointShaders = { D6JointSolverPrep, D6JointProject, D6JointVisualize, /*PxConstraintFlag::Enum(0)*/PxConstraintFlag::eGPU_COMPATIBLE };
+
+PxConstraintSolverPrep D6Joint::getPrep()	const	{ return gD6JointShaders.solverPrep; }
+
+PxD6Joint* physx::PxD6JointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+{
+	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxD6JointCreate: local frame 0 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxD6JointCreate: local frame 1 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxD6JointCreate: actors must be different");
+	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxD6JointCreate: at least one actor must be dynamic");
+
+	return createJointT<D6Joint, D6JointData>(physics, actor0, localFrame0, actor1, localFrame1, gD6JointShaders);
+}
+
+// PX_SERIALIZATION
+void D6Joint::resolveReferences(PxDeserializationContext& context)
+{
+	mPxConstraint = resolveConstraintPtr(context, mPxConstraint, this, gD6JointShaders);
+}
+//~PX_SERIALIZATION
+
+#if PX_SUPPORT_OMNI_PVD
+
+void D6Joint::updateOmniPvdProperties() const
+{
+	const PxJoint& j = static_cast<const PxJoint&>(*this);
+	OMNI_PVD_SET(joint, d6TwistAngle, j, getTwistAngle())
+	OMNI_PVD_SET(joint, d6SwingYAngle, j, getSwingYAngle())
+	OMNI_PVD_SET(joint, d6SwingZAngle, j, getSwingZAngle())
+}
+
+template<>
+void physx::Ext::omniPvdInitJoint<D6Joint>(D6Joint* joint)
+{
+	PxJoint& j = static_cast<PxJoint&>(*joint);
+	OMNI_PVD_SET(joint, type, j, PxJointConcreteType::eD6)
+	OMNI_PVD_SET(joint, d6ProjectionLinearTolerance, j, joint->getProjectionLinearTolerance())
+	OMNI_PVD_SET(joint, d6ProjectionAngularTolerance, j, joint->getProjectionAngularTolerance())
+
+	PxD6Motion::Enum motions[6];
+	for (PxU32 i = 0; i < 6; ++i)
+		motions[i] = joint->getMotion(PxD6Axis::Enum(i));
+	OMNI_PVD_SETB(joint, d6Motions, j, motions, sizeof(motions))
+
+	//Set limits lazily in the corresponding setters.
+	//This reduces unused data in OVD and allows for testing for the attribute presence 
+	//to figure out what limit approaches are used, instead of also serializing
+	//mUseDistanceLimit, mUseNewLinearLimits, mUseConeLimit and mUsePyramidLimits.
+
+	{
+		PxReal forceLimit[6];
+		for (PxU32 i = 0; i < 6; ++i)
+			forceLimit[i] = joint->getDrive(PxD6Drive::Enum(i)).forceLimit;
+		OMNI_PVD_SETB(joint, d6DriveForceLimit, j, forceLimit, sizeof(forceLimit))
+		PxD6JointDriveFlags flags[6];
+		for (PxU32 i = 0; i < 6; ++i)
+			flags[i] = joint->getDrive(PxD6Drive::Enum(i)).flags;
+		OMNI_PVD_SETB(joint, d6DriveFlags, j, flags, sizeof(flags))
+		PxReal stiffness[6];
+		for (PxU32 i = 0; i < 6; ++i)
+			stiffness[i] = joint->getDrive(PxD6Drive::Enum(i)).stiffness;
+		OMNI_PVD_SETB(joint, d6DriveStiffness, j, stiffness, sizeof(stiffness))
+		PxReal damping[6];
+		for (PxU32 i = 0; i < 6; ++i)
+			damping[i] = joint->getDrive(PxD6Drive::Enum(i)).damping;
+		OMNI_PVD_SETB(joint, d6DriveDamping, j, damping, sizeof(damping))
+	}
+	OMNI_PVD_SET(joint, d6DrivePosition, j, joint->getDrivePosition())
+	PxVec3 driveLinVel, driveAngVel; joint->getDriveVelocity(driveLinVel, driveAngVel);
+	OMNI_PVD_SET(joint, d6DriveLinVelocity, j, driveLinVel)
+	OMNI_PVD_SET(joint, d6DriveAngVelocity, j, driveAngVel)
+
+	OMNI_PVD_SET(joint, d6TwistAngle, j, joint->getTwistAngle())
+	OMNI_PVD_SET(joint, d6SwingYAngle, j, joint->getSwingYAngle())
+	OMNI_PVD_SET(joint, d6SwingZAngle, j, joint->getSwingZAngle())
+}
+
+#endif
+

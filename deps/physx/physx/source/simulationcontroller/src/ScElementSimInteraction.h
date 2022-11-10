@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_SCP_ELEMENT_SIM_INTERACTION
-#define PX_PHYSICS_SCP_ELEMENT_SIM_INTERACTION
+#ifndef SC_ELEMENT_SIM_INTERACTION_H
+#define SC_ELEMENT_SIM_INTERACTION_H
 
 #include "ScInteraction.h"
 #include "ScElementSim.h"
@@ -49,14 +47,14 @@ namespace Sc
 
 	protected:
 		PX_INLINE					ElementSimInteraction(ElementSim& element0, ElementSim& element1, InteractionType::Enum type, PxU8 flags);
-		virtual						~ElementSimInteraction() {}
+									~ElementSimInteraction() {}
 
 		ElementSimInteraction& operator=(const ElementSimInteraction&);
 
-	private:
 						ElementSim&	mElement0;
 						ElementSim&	mElement1;
 						PxU32		mFilterPairIndex;
+						PxU32		mFlags;		// PT: moved there in padding bytes, from ShapeInteraction
 	};
 
 } // namespace Sc

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPROFILECONTEXTPROVIDERIMPL_H
-#define PXPVDSDK_PXPROFILECONTEXTPROVIDERIMPL_H
+#ifndef PX_PROFILE_CONTEXT_PROVIDER_IMPL_H
+#define PX_PROFILE_CONTEXT_PROVIDER_IMPL_H
 
 #include "PxProfileContextProvider.h"
 
-#include "PsThread.h"
+#include "foundation/PxThread.h"
 
 namespace physx { namespace profile {
 	
@@ -38,15 +37,16 @@ namespace physx { namespace profile {
 	{
 		PxProfileEventExecutionContext getExecutionContext() 
 		{ 
-			shdfnd::Thread::Id theId( shdfnd::Thread::getId() );
-			return PxProfileEventExecutionContext( static_cast<uint32_t>( theId ), static_cast<uint8_t>( shdfnd::ThreadPriority::eNORMAL ), 0 );
+			PxThread::Id theId( PxThread::getId() );
+			return PxProfileEventExecutionContext( static_cast<uint32_t>( theId ), static_cast<uint8_t>( PxThreadPriority::eNORMAL ), 0 );
 		}
 
 		uint32_t getThreadId() 
 		{ 
-			return static_cast<uint32_t>( shdfnd::Thread::getId() ); 
+			return static_cast<uint32_t>( PxThread::getId() ); 
 		}
 	};
 } }
 
-#endif // PXPVDSDK_PXPROFILECONTEXTPROVIDERIMPL_H
+#endif
+

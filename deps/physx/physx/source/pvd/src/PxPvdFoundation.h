@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDFOUNDATION_H
-#define PXPVDSDK_PXPVDFOUNDATION_H
+#ifndef PX_PVD_FOUNDATION_H
+#define PX_PVD_FOUNDATION_H
 
 #include "foundation/PxVec3.h"
 #include "foundation/PxTransform.h"
 #include "foundation/PxBounds3.h"
-
-#include "PsArray.h"
-#include "PsHashMap.h"
-#include "PsHashSet.h"
-#include "PsPool.h"
-#include "PsString.h"
-
+#include "foundation/PxHashSet.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxString.h"
+#include "foundation/PxPool.h"
 #include "PxPvdObjectModelBaseTypes.h"
 
 namespace physx
@@ -51,11 +48,11 @@ class ForwardingAllocator : public PxAllocatorCallback
 {
 	void* allocate(size_t size, const char* typeName, const char* filename, int line)
 	{
-		return shdfnd::getAllocator().allocate(size, typeName, filename, line);
+		return PxGetBroadcastAllocator()->allocate(size, typeName, filename, line);
 	}
 	void deallocate(void* ptr)
 	{
-		shdfnd::getAllocator().deallocate(ptr);
+		PxGetBroadcastAllocator()->deallocate(ptr);
 	}
 };
 
@@ -73,8 +70,7 @@ class RawMemoryBuffer
 	}
 	~RawMemoryBuffer()
 	{
-		if(mBegin)
-			PX_FREE(mBegin);
+		PX_FREE(mBegin);
 	}
 	uint32_t size() const
 	{
@@ -198,7 +194,7 @@ struct ForwardingMemoryBuffer : public RawMemoryBuffer
 	inline ForwardingMemoryBuffer& toStream(const char* inFormat, const TDataType inData)
 	{
 		char buffer[128] = { 0 };
-		shdfnd::snprintf(buffer, 128, inFormat, inData);
+		Pxsnprintf(buffer, 128, inFormat, inData);
 		*this << buffer;
 		return *this;
 	}
@@ -315,4 +311,5 @@ inline void PvdDeleteAndDeallocate(TDataType* inDType)
 #define PVD_FOREACH(varname, stop) for(uint32_t varname = 0; varname < stop; ++varname)
 #define PVD_POINTER_TO_U64(ptr) static_cast<uint64_t>(reinterpret_cast<size_t>(ptr))
 
-#endif // PXPVDSDK_PXPVDFOUNDATION_H
+#endif
+

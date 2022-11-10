@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,9 +35,7 @@
 // ****************************************************************************
 
 #include <new>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 #include "../snippetutils/SnippetUtils.h"
@@ -47,16 +44,14 @@ using namespace physx;
 using namespace SnippetUtils;
 
 // The usual PhysX resources.
-PxDefaultAllocator			gAllocator;
-PxDefaultErrorCallback		gErrorCallback;
-
-PxFoundation*				gFoundation		= NULL;
-PxPhysics*					gPhysics		= NULL;
-PxMaterial*					gMaterial		= NULL;
-
-PxDefaultCpuDispatcher*		gDispatcher		= NULL;
-PxScene*					gScene			= NULL;
-PxRigidDynamic*				gKinematic		= NULL;
+static PxDefaultAllocator			gAllocator;
+static PxDefaultErrorCallback		gErrorCallback;
+static PxFoundation*				gFoundation		= NULL;
+static PxPhysics*					gPhysics		= NULL;
+static PxMaterial*					gMaterial		= NULL;
+static PxDefaultCpuDispatcher*		gDispatcher		= NULL;
+static PxScene*						gScene			= NULL;
+static PxRigidDynamic*				gKinematic		= NULL;
 
 // A very simple substepping policy: just take 2 60Hz substeps per step.
 static const PxReal			SUBSTEP_LENGTH	= 1.0f/60.0f;

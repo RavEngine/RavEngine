@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "geometry/PxTriangleMesh.h"
-#include "geomutils/GuContactBuffer.h"
-
+#include "geomutils/PxContactBuffer.h"
 #include "GuVecBox.h"
 #include "GuVecConvexHull.h"
 #include "GuVecConvexHullNoScale.h"
 #include "GuVecTriangle.h"
-#include "GuGeometryUnion.h"
 #include "GuContactMethodImpl.h"
 #include "GuHeightField.h"
 #include "GuPCMContactConvexCommon.h"
@@ -42,32 +39,28 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 namespace physx
 {
 
-struct PCMSphereVsHeightfieldContactGenerationCallback :  PCMHeightfieldContactGenerationCallback<PCMSphereVsHeightfieldContactGenerationCallback>
+struct PCMSphereVsHeightfieldContactGenerationCallback : PCMHeightfieldContactGenerationCallback<PCMSphereVsHeightfieldContactGenerationCallback>
 {
-
 public:
-	PCMSphereVsMeshContactGeneration		mGeneration;
+	PCMSphereVsMeshContactGeneration	mGeneration;
 
 	PCMSphereVsHeightfieldContactGenerationCallback(
-		const Ps::aos::Vec3VArg						sphereCenter,
-		const Ps::aos::FloatVArg					sphereRadius,
-		const Ps::aos::FloatVArg					contactDistance,
-		const Ps::aos::FloatVArg						replaceBreakingThreshold,
-	
-		const PsTransformV&								sphereTransform, 
-		const PsTransformV&								heightfieldTransform,
-		const PxTransform&								heightfieldTransform1,
-		Gu::MultiplePersistentContactManifold&			multiManifold,
-		Gu::ContactBuffer&								contactBuffer,
-		Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE>*	deferredContacts,
-		Gu::HeightFieldUtil& hfUtil 
-		
-		
+		const aos::Vec3VArg sphereCenter,
+		const aos::FloatVArg sphereRadius,
+		const aos::FloatVArg contactDistance,
+		const aos::FloatVArg replaceBreakingThreshold,
+		const PxTransformV& sphereTransform, 
+		const PxTransformV& heightfieldTransform,
+		const PxTransform& heightfieldTransform1,
+		MultiplePersistentContactManifold& multiManifold,
+		PxContactBuffer& contactBuffer,
+		PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE>* deferredContacts,
+		HeightFieldUtil& hfUtil 
 	) :
 		PCMHeightfieldContactGenerationCallback<PCMSphereVsHeightfieldContactGenerationCallback>(hfUtil, heightfieldTransform1),
 		mGeneration(sphereCenter, sphereRadius, contactDistance, replaceBreakingThreshold, sphereTransform,
@@ -76,22 +69,20 @@ public:
 	}
 
 	template<PxU32 CacheSize>
-	void processTriangleCache(Gu::TriangleCache<CacheSize>& cache)
+	void processTriangleCache(TriangleCache<CacheSize>& cache)
 	{
 		mGeneration.processTriangleCache<CacheSize, PCMSphereVsMeshContactGeneration>(cache);
 	}
-
 };
-
 
 bool Gu::pcmContactSphereHeightField(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 
-	const PxSphereGeometry& shapeSphere = shape0.get<const PxSphereGeometry>();
-	const PxHeightFieldGeometryLL& shapeHeight = shape1.get<const PxHeightFieldGeometryLL>();
+	const PxSphereGeometry& shapeSphere = checkedCast<PxSphereGeometry>(shape0);
+	const PxHeightFieldGeometry& shapeHeight = checkedCast<PxHeightFieldGeometry>(shape1);
 
-	Gu::MultiplePersistentContactManifold& multiManifold = cache.getMultipleManifold();
+	MultiplePersistentContactManifold& multiManifold = cache.getMultipleManifold();
 
 	const QuatV q0 = QuatVLoadA(&transform0.q.x);
 	const Vec3V p0 = V3LoadA(&transform0.p.x);
@@ -102,11 +93,10 @@ bool Gu::pcmContactSphereHeightField(GU_CONTACT_METHOD_ARGS)
 	const FloatV sphereRadius = FLoad(shapeSphere.radius);
 	const FloatV contactDist = FLoad(params.mContactDistance);
 	
-	const PsTransformV sphereTransform(p0, q0);//sphere transform
-	const PsTransformV heightfieldTransform(p1, q1);//height feild
-	const PsTransformV curTransform = heightfieldTransform.transformInv(sphereTransform);
+	const PxTransformV sphereTransform(p0, q0);//sphere transform
+	const PxTransformV heightfieldTransform(p1, q1);//height feild
+	const PxTransformV curTransform = heightfieldTransform.transformInv(sphereTransform);
 	
-
 	// We must be in local space to use the cache
 
 	if(multiManifold.invalidate(curTransform, sphereRadius, FLoad(0.02f)))
@@ -115,15 +105,14 @@ bool Gu::pcmContactSphereHeightField(GU_CONTACT_METHOD_ARGS)
 		multiManifold.setRelativeTransform(curTransform);
 
 		const FloatV replaceBreakingThreshold = FMul(sphereRadius, FLoad(0.001f));
-		Gu::HeightFieldUtil hfUtil(shapeHeight);
-		const PxVec3 sphereCenterShape1Space = transform1.transformInv(transform0.p);
-		const Vec3V sphereCenter = V3LoadU(sphereCenterShape1Space);
-		PxReal inflatedRadius = shapeSphere.radius + params.mContactDistance;
-		PxVec3 inflatedRadiusV(inflatedRadius);
+		HeightFieldUtil hfUtil(shapeHeight);
 
-		PxBounds3 bounds(sphereCenterShape1Space - inflatedRadiusV, sphereCenterShape1Space + inflatedRadiusV);
+		PxBounds3 localBounds;
+		const PxVec3 localSphereCenter = getLocalSphereData(localBounds, transform0, transform1, shapeSphere.radius + params.mContactDistance);
 
-		Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE> delayedContacts;
+		const Vec3V sphereCenter = V3LoadU(localSphereCenter);
+
+		PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE> delayedContacts;
 
 		PCMSphereVsHeightfieldContactGenerationCallback blockCallback(
 			sphereCenter,
@@ -138,22 +127,20 @@ bool Gu::pcmContactSphereHeightField(GU_CONTACT_METHOD_ARGS)
 			&delayedContacts,
 			hfUtil);
 
-		hfUtil.overlapAABBTriangles(transform1, bounds, 0, &blockCallback);
+		hfUtil.overlapAABBTriangles(localBounds, blockCallback);
 
 		blockCallback.mGeneration.generateLastContacts();
 		blockCallback.mGeneration.processContacts(GU_SPHERE_MANIFOLD_CACHE_SIZE, false);
 	}
 	else
 	{
-		const PsMatTransformV aToB(curTransform);
+		const PxMatTransformV aToB(curTransform);
 		const FloatV projectBreakingThreshold = FMul(sphereRadius, FLoad(0.05f));
 		const FloatV refereshDistance = FAdd(sphereRadius, contactDist);
 		multiManifold.refreshManifold(aToB, projectBreakingThreshold, refereshDistance);
-
 	}
 
 	return multiManifold.addManifoldContactsToContactBuffer(contactBuffer, sphereTransform, heightfieldTransform, sphereRadius);
 }
-
 
 }

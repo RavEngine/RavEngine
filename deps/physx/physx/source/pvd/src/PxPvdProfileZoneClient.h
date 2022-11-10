@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDPROFILEZONECLIENT_H
-#define PXPVDSDK_PXPVDPROFILEZONECLIENT_H
+#ifndef PX_PVD_PROFILE_ZONE_CLIENT_H
+#define PX_PVD_PROFILE_ZONE_CLIENT_H
+
 #include "PxPvdClient.h"
-#include "PsHashMap.h"
-#include "PsMutex.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxMutex.h"
 #include "PxProfileZoneManager.h"
 
 namespace physx
@@ -43,7 +43,7 @@ class PvdDataStream;
 
 struct ProfileZoneClient;
 
-class PvdProfileZoneClient : public PvdClient, public profile::PxProfileZoneHandler, public shdfnd::UserAllocated
+class PvdProfileZoneClient : public PvdClient, public profile::PxProfileZoneHandler, public PxUserAllocated
 {
 	PX_NOCOPY(PvdProfileZoneClient)
   public:
@@ -62,14 +62,15 @@ class PvdProfileZoneClient : public PvdClient, public profile::PxProfileZoneHand
 	void onZoneRemoved(profile::PxProfileZone& inSDK);
 
   private:
-	shdfnd::Mutex mMutex; // zoneAdded can called from different threads
+	PxMutex mMutex; // zoneAdded can called from different threads
 	PvdImpl& mSDKPvd;
 	PvdDataStream* mPvdDataStream;	
-	physx::shdfnd::Array<ProfileZoneClient*> mProfileZoneClients;
+	physx::PxArray<ProfileZoneClient*> mProfileZoneClients;
 	bool mIsConnected;
 };
 
 } // namespace pvdsdk
 } // namespace physx
 
-#endif // PXPVDSDK_PXPVDPROFILEZONECLIENT_H
+#endif
+

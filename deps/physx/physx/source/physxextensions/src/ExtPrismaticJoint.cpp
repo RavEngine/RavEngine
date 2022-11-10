@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,32 +22,25 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "ExtPrismaticJoint.h"
 #include "ExtConstraintHelper.h"
-#include "PxPhysics.h"
 
 using namespace physx;
 using namespace Ext;
 
-PxPrismaticJoint* physx::PxPrismaticJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+PrismaticJoint::PrismaticJoint(const PxTolerancesScale& scale, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1) :
+	PrismaticJointT(PxJointConcreteType::ePRISMATIC, actor0, localFrame0, actor1, localFrame1, "PrismaticJointData")
 {
-	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxPrismaticJointCreate: local frame 0 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxPrismaticJointCreate: local frame 1 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxPrismaticJointCreate: at least one actor must be dynamic");
-	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxPrismaticJointCreate: actors must be different");
+	PrismaticJointData* data = static_cast<PrismaticJointData*>(mData);
 
-	PrismaticJoint* j;
-	PX_NEW_SERIALIZED(j, PrismaticJoint)(physics.getTolerancesScale(), actor0, localFrame0, actor1, localFrame1);
-
-	if(j->attach(physics, actor0, actor1))
-		return j;
-
-	PX_DELETE(j);
-	return NULL;
+	data->limit							= PxJointLinearLimitPair(scale);
+	data->projectionLinearTolerance		= 1e10f;
+	data->projectionAngularTolerance	= PxPi;
+	data->jointFlags					= PxPrismaticJointFlags();
 }
 
 void PrismaticJoint::setProjectionAngularTolerance(PxReal tolerance)
@@ -56,6 +48,9 @@ void PrismaticJoint::setProjectionAngularTolerance(PxReal tolerance)
 	PX_CHECK_AND_RETURN(PxIsFinite(tolerance) && tolerance >=0 && tolerance <= PxPi, "PxPrismaticJoint::setProjectionAngularTolerance: invalid parameter");
 	data().projectionAngularTolerance = tolerance;	
 	markDirty();	
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, prismaticProjectionAngularTolerance, static_cast<PxJoint&>(*this), tolerance)
+#endif
 }
 
 PxReal PrismaticJoint::getProjectionAngularTolerance() const
@@ -68,6 +63,9 @@ void PrismaticJoint::setProjectionLinearTolerance(PxReal tolerance)
 	PX_CHECK_AND_RETURN(PxIsFinite(tolerance) && tolerance >=0, "PxPrismaticJoint::setProjectionLinearTolerance: invalid parameter");
 	data().projectionLinearTolerance = tolerance;	
 	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, prismaticProjectionLinearTolerance, static_cast<PxJoint&>(*this), tolerance)
+#endif
 }
 
 PxReal PrismaticJoint::getProjectionLinearTolerance() const	
@@ -83,6 +81,9 @@ PxPrismaticJointFlags PrismaticJoint::getPrismaticJointFlags(void) const
 void PrismaticJoint::setPrismaticJointFlags(PxPrismaticJointFlags flags)
 { 
 	data().jointFlags = flags; markDirty();	
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, prismaticJointFlags, static_cast<PxJoint&>(*this), flags)
+#endif
 }
 
 void PrismaticJoint::setPrismaticJointFlag(PxPrismaticJointFlag::Enum flag, bool value)
@@ -92,6 +93,9 @@ void PrismaticJoint::setPrismaticJointFlag(PxPrismaticJointFlag::Enum flag, bool
 	else
 		data().jointFlags &= ~flag;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, prismaticJointFlags, static_cast<PxJoint&>(*this), getPrismaticJointFlags())
+#endif
 }
 
 PxJointLinearLimitPair PrismaticJoint::getLimit() const
@@ -104,52 +108,17 @@ void PrismaticJoint::setLimit(const PxJointLinearLimitPair& limit)
 	PX_CHECK_AND_RETURN(limit.isValid(), "PxPrismaticJoint::setLimit: invalid parameter");
 	data().limit = limit;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	PxJoint& j = static_cast<PxJoint&>(*this);
+	OMNI_PVD_SET(joint, prismaticLimitLower, j, limit.lower)
+	OMNI_PVD_SET(joint, prismaticLimitUpper, j, limit.upper)
+	OMNI_PVD_SET(joint, prismaticLimitRestitution, j, limit.restitution)
+	OMNI_PVD_SET(joint, prismaticLimitBounceThreshold, j, limit.bounceThreshold)
+	OMNI_PVD_SET(joint, prismaticLimitStiffness, j, limit.stiffness)
+	OMNI_PVD_SET(joint, prismaticLimitDamping, j, limit.damping)
+	OMNI_PVD_SET(joint, prismaticLimitContactDistance, j, limit.contactDistance_deprecated)
+#endif
 }
-
-bool PrismaticJoint::attach(PxPhysics &physics, PxRigidActor* actor0, PxRigidActor* actor1)
-{
-	mPxConstraint = physics.createConstraint(actor0, actor1, *this, sShaders, sizeof(PrismaticJointData));
-	return mPxConstraint!=NULL;
-}
-
-void PrismaticJoint::exportExtraData(PxSerializationContext& stream)
-{
-	if(mData)
-	{
-		stream.alignData(PX_SERIAL_ALIGN);
-		stream.writeData(mData, sizeof(PrismaticJointData));
-	}
-	stream.writeName(mName);
-}
-
-void PrismaticJoint::importExtraData(PxDeserializationContext& context)
-{
-	if(mData)
-		mData = context.readExtraData<PrismaticJointData, PX_SERIAL_ALIGN>();
-	context.readName(mName);
-}
-
-void PrismaticJoint::resolveReferences(PxDeserializationContext& context)
-{
-	setPxConstraint(resolveConstraintPtr(context, getPxConstraint(), getConnector(), sShaders));	
-}
-
-PrismaticJoint* PrismaticJoint::createObject(PxU8*& address, PxDeserializationContext& context)
-{
-	PrismaticJoint* obj = new (address) PrismaticJoint(PxBaseFlag::eIS_RELEASABLE);
-	address += sizeof(PrismaticJoint);	
-	obj->importExtraData(context);
-	obj->resolveReferences(context);
-	return obj;
-}
-
-// global function to share the joint shaders with API capture	
-const PxConstraintShaderTable* Ext::GetPrismaticJointShaderTable() 
-{ 
-	return &PrismaticJoint::getConstraintShaderTable();
-}
-
-//~PX_SERIALIZATION
 
 static void PrismaticJointProject(const void* constantBlock, PxTransform& bodyAToWorld, PxTransform& bodyBToWorld, bool projectToA)
 {
@@ -184,21 +153,22 @@ static void PrismaticJointVisualize(PxConstraintVisualizer& viz, const void* con
 		const PxVec3 bOriginInA = cA2w.transformInv(cB2w.p);
 		const PxReal ordinate = bOriginInA.x;
 
-		const PxReal pad = data.limit.isSoft() ? 0.0f : data.limit.contactDistance;
+		const PxReal pad = data.limit.isSoft() ? 0.0f : data.limit.contactDistance_deprecated;
 		viz.visualizeLinearLimit(cA2w, cB2w, data.limit.lower, ordinate < data.limit.lower + pad);
 		viz.visualizeLinearLimit(cA2w, cB2w, data.limit.upper, ordinate > data.limit.upper - pad);
 	}
 }
 
+//TAG:solverprepshader
 static PxU32 PrismaticJointSolverPrep(Px1DConstraint* constraints,
-	PxVec3& body0WorldOffset,
+	PxVec3p& body0WorldOffset,
 	PxU32 /*maxConstraints*/,
 	PxConstraintInvMassScale& invMassScale,
 	const void* constantBlock,
 	const PxTransform& bA2w,
 	const PxTransform& bB2w,
 	bool /*useExtendedLimits*/,
-	PxVec3& cA2wOut, PxVec3& cB2wOut)
+	PxVec3p& cA2wOut, PxVec3p& cB2wOut)
 {
 	const PrismaticJointData& data = *reinterpret_cast<const PrismaticJointData*>(constantBlock);
 
@@ -220,7 +190,8 @@ static PxU32 PrismaticJointSolverPrep(Px1DConstraint* constraints,
 
 	if(limitEnabled && !limitIsLocked)
 	{
-		const PxVec3 axis = cA2w.rotate(PxVec3(1.0f, 0.0f, 0.0f));	// PT: TODO: this has already been computed as part of the quat-to-matrix transform within prepareLockedAxes
+		const PxVec3 axis = cA2w.q.getBasisVector0();	// PT: TODO: this has already been computed as part of the quat-to-matrix transform within prepareLockedAxes
+
 		const PxReal ordinate = bOriginInA.x;
 
 		ch.linearLimit(axis, ordinate, limit.upper, limit);
@@ -230,4 +201,57 @@ static PxU32 PrismaticJointSolverPrep(Px1DConstraint* constraints,
 	return ch.getCount();
 }
 
-PxConstraintShaderTable Ext::PrismaticJoint::sShaders = { PrismaticJointSolverPrep, PrismaticJointProject, PrismaticJointVisualize, PxConstraintFlag::Enum(0) };
+///////////////////////////////////////////////////////////////////////////////
+
+static PxConstraintShaderTable gPrismaticJointShaders = { PrismaticJointSolverPrep, PrismaticJointProject, PrismaticJointVisualize, PxConstraintFlag::Enum(0) };
+
+PxConstraintSolverPrep PrismaticJoint::getPrep()	const	{ return gPrismaticJointShaders.solverPrep; }
+
+PxPrismaticJoint* physx::PxPrismaticJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+{
+	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxPrismaticJointCreate: local frame 0 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxPrismaticJointCreate: local frame 1 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxPrismaticJointCreate: at least one actor must be dynamic");
+	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxPrismaticJointCreate: actors must be different");
+
+	return createJointT<PrismaticJoint, PrismaticJointData>(physics, actor0, localFrame0, actor1, localFrame1, gPrismaticJointShaders);
+}
+
+// PX_SERIALIZATION
+void PrismaticJoint::resolveReferences(PxDeserializationContext& context)
+{
+	mPxConstraint = resolveConstraintPtr(context, mPxConstraint, this, gPrismaticJointShaders);
+}
+//~PX_SERIALIZATION
+
+#if PX_SUPPORT_OMNI_PVD
+
+void PrismaticJoint::updateOmniPvdProperties() const
+{
+	const PxJoint& j = static_cast<const PxJoint&>(*this);
+	OMNI_PVD_SET(joint, prismaticPosition, j, getPosition())
+	OMNI_PVD_SET(joint, prismaticVelocity, j, getVelocity())
+}
+
+template<>
+void physx::Ext::omniPvdInitJoint<PrismaticJoint>(PrismaticJoint* joint)
+{
+	PxJoint& j = static_cast<PxJoint&>(*joint);
+	OMNI_PVD_SET(joint, type, j, PxJointConcreteType::ePRISMATIC)
+	OMNI_PVD_SET(joint, prismaticProjectionLinearTolerance, j, joint->getProjectionLinearTolerance())
+	OMNI_PVD_SET(joint, prismaticProjectionAngularTolerance, j, joint->getProjectionAngularTolerance())
+
+	PxJointLinearLimitPair limit = joint->getLimit();
+	OMNI_PVD_SET(joint, prismaticLimitLower, j, limit.lower)
+	OMNI_PVD_SET(joint, prismaticLimitUpper, j, limit.upper)
+	OMNI_PVD_SET(joint, prismaticLimitRestitution, j, limit.restitution)
+	OMNI_PVD_SET(joint, prismaticLimitBounceThreshold, j, limit.bounceThreshold)
+	OMNI_PVD_SET(joint, prismaticLimitStiffness, j, limit.stiffness)
+	OMNI_PVD_SET(joint, prismaticLimitDamping, j, limit.damping)
+	OMNI_PVD_SET(joint, prismaticLimitContactDistance, j, limit.contactDistance_deprecated)
+
+	OMNI_PVD_SET(joint, prismaticPosition, j, joint->getPosition())
+	OMNI_PVD_SET(joint, prismaticVelocity, j, joint->getVelocity())
+}
+
+#endif

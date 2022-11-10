@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,40 +22,94 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "NpShapeManager.h"
-#include "NpFactory.h"
-#include "NpActor.h"
-#include "NpScene.h"
 #include "NpPtrTableStorageManager.h"
 #include "NpRigidDynamic.h"
 #include "NpArticulationLink.h"
-#include "SqPruningStructure.h"
-#include "ScbRigidObject.h"
 #include "ScBodySim.h"
 #include "GuBounds.h"
-#include "CmUtils.h"
-#include "PsAlloca.h"
+#include "NpAggregate.h"
+#include "CmTransformUtils.h"
+#include "NpRigidStatic.h"
 
 using namespace physx;
 using namespace Sq;
 using namespace Gu;
 using namespace Cm;
 
+// PT: TODO: refactor if we keep it
+static void getSQGlobalPose(PxTransform& globalPose, const NpShape& npShape, const NpActor& npActor)
+{
+	const PxTransform& shape2Actor = npShape.getCore().getShape2Actor();
+
+	PX_ALIGN(16, PxTransform) kinematicTarget;
+
+	// PT: TODO: duplicated from SqBounds.cpp. Refactor.
+	const NpType::Enum actorType = npActor.getNpType();
+	const PxTransform* actor2World;
+	if(actorType==NpType::eRIGID_STATIC)
+	{
+		actor2World = &static_cast<const NpRigidStatic&>(npActor).getCore().getActor2World();
+
+		if(npShape.getCore().getCore().mShapeCoreFlags.isSet(PxShapeCoreFlag::eIDT_TRANSFORM))
+		{
+			PX_ASSERT(shape2Actor.p.isZero() && shape2Actor.q.isIdentity());
+			globalPose = *actor2World;
+			return;
+		}
+
+	}
+	else
+	{
+		PX_ASSERT(actorType==NpType::eBODY || actorType == NpType::eBODY_FROM_ARTICULATION_LINK);
+
+		const PxU16 sqktFlags = PxRigidBodyFlag::eKINEMATIC | PxRigidBodyFlag::eUSE_KINEMATIC_TARGET_FOR_SCENE_QUERIES;
+
+		// PT: TODO: revisit this once the dust has settled
+		const Sc::BodyCore& core = actorType==NpType::eBODY ? static_cast<const NpRigidDynamic&>(npActor).getCore() : static_cast<const NpArticulationLink&>(npActor).getCore();
+		const bool useTarget = (PxU16(core.getFlags()) & sqktFlags) == sqktFlags;
+		const PxTransform& body2World = (useTarget && core.getKinematicTarget(kinematicTarget)) ? kinematicTarget : core.getBody2World();
+
+		if(!core.getCore().hasIdtBody2Actor())
+		{
+			Cm::getDynamicGlobalPoseAligned(body2World, shape2Actor, core.getBody2Actor(), globalPose);
+			return;
+		}
+
+		actor2World = &body2World;
+	}
+
+	Cm::getStaticGlobalPoseAligned(*actor2World, shape2Actor, globalPose);
+}
+
+
 static PX_FORCE_INLINE bool isSceneQuery(const NpShape& shape) { return shape.getFlagsFast() & PxShapeFlag::eSCENE_QUERY_SHAPE; }
 
-NpShapeManager::NpShapeManager()
-	: mSqCompoundId(INVALID_PRUNERHANDLE), mPruningStructure(NULL)
+static PX_FORCE_INLINE bool isDynamicActor(const PxRigidActor& actor)
 {
+	const PxType actorType = actor.getConcreteType();
+	return actorType != PxConcreteType::eRIGID_STATIC;
+}
+
+static PX_FORCE_INLINE bool isDynamicActor(const NpActor& actor)
+{
+	const NpType::Enum actorType = actor.getNpType();
+	return actorType != NpType::eRIGID_STATIC;
+}
+
+NpShapeManager::NpShapeManager() :
+	mPruningStructure	(NULL)
+{
+	setCompoundID(NP_INVALID_COMPOUND_ID);
 }
 
 // PX_SERIALIZATION
 NpShapeManager::NpShapeManager(const PxEMPTY) :
-	mShapes			(PxEmpty),
-	mSceneQueryData	(PxEmpty) 
+	mShapes			(PxEmpty)
 {	
 }
 
@@ -65,43 +118,60 @@ NpShapeManager::~NpShapeManager()
 	PX_ASSERT(!mPruningStructure);
 	PtrTableStorageManager& sm = NpFactory::getInstance().getPtrTableStorageManager();
 	mShapes.clear(sm);
-	mSceneQueryData.clear(sm);
 }
 
 void NpShapeManager::preExportDataReset()
 {
-	//Clearing SceneQueryPruner handles to avoid stale references after deserialization and for deterministic serialization output.
-	//Multi shape cases handled in exportExtraData
-	if (getNbShapes() == 1)
-	{
-		setPrunerData(0, Sq::PrunerData(SQ_INVALID_PRUNER_DATA));
-	}
 }
 
 void NpShapeManager::exportExtraData(PxSerializationContext& stream)
 { 
 	mShapes.exportExtraData(stream);
-
-	//Clearing SceneQueryPruner handles to avoid stale references after deserialization and for deterministic serialization output.
-	//For single shape, it's handled on exportData.
-	PxU32 numShapes = getNbShapes();
-	if (numShapes > 1)
-	{
-		stream.alignData(PX_SERIAL_ALIGN);
-		for (PxU32 i = 0; i < numShapes; i++)
-		{
-			void* data = reinterpret_cast<void*>(Sq::PrunerData(SQ_INVALID_PRUNER_DATA));
-			stream.writeData(&data, sizeof(void*));
-		}
-	}
 }
 
 void NpShapeManager::importExtraData(PxDeserializationContext& context)
 { 
 	mShapes.importExtraData(context);	
-	mSceneQueryData.importExtraData(context);
 }
 //~PX_SERIALIZATION
+
+static PX_INLINE void onShapeAttach(NpActor& ro, NpShape& shape)
+{
+	// * if the shape is exclusive, set its Sc control state appropriately.
+	// * add the shape to pvd.
+	NpScene* npScene = ro.getNpScene();
+	if(!npScene)
+		return;
+
+	PX_ASSERT(!npScene->isAPIWriteForbidden());
+
+	if(!(ro.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)))
+		ro.getScRigidCore().addShapeToScene(shape.getCore());
+
+#if PX_SUPPORT_PVD
+	npScene->getScenePvdClientInternal().createPvdInstance(&shape, *ro.getScRigidCore().getPxActor()); 
+#endif
+	shape.setSceneIfExclusive(npScene);
+	
+}
+
+static PX_INLINE void onShapeDetach(NpActor& ro, NpShape& shape, bool wakeOnLostTouch)
+{
+	// see comments in onShapeAttach
+	NpScene* npScene = ro.getNpScene();
+	if(!npScene)
+		return;
+	PX_ASSERT(!npScene->isAPIWriteForbidden());
+
+#if PX_SUPPORT_PVD
+	npScene->getScenePvdClientInternal().releasePvdInstance(&shape, *ro.getScRigidCore().getPxActor());
+#endif
+	if(!(ro.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)))
+		ro.getScRigidCore().removeShapeFromScene(shape.getCore(), wakeOnLostTouch);
+
+	shape.setSceneIfExclusive(NULL);
+
+}
 
 void NpShapeManager::attachShape(NpShape& shape, PxRigidActor& actor)
 {
@@ -111,79 +181,97 @@ void NpShapeManager::attachShape(NpShape& shape, PxRigidActor& actor)
 
 	const PxU32 index = getNbShapes();
 	mShapes.add(&shape, sm);	
-	mSceneQueryData.add(reinterpret_cast<void*>(size_t(SQ_INVALID_PRUNER_DATA)), sm);
 
-	NpScene* scene = NpActor::getAPIScene(actor);		
+	NpActor& ro = NpActor::getFromPxActor(actor);
+
+	NpScene* scene = NpActor::getNpSceneFromActor(actor);
 	if(scene && isSceneQuery(shape))
-		setupSceneQuery(scene->getSceneQueryManagerFast(), actor, index);
+	{
+		// PT: SQ_CODEPATH2
+		setupSceneQuery_(scene->getSQAPI(), ro, actor, shape);
+	}
 
-	Scb::RigidObject& ro = static_cast<Scb::RigidObject&>(NpActor::getScbFromPxActor(actor));
-	ro.onShapeAttach(shape.getScbShape());	
+	onShapeAttach(ro, shape);
+
+	PxAggregate* agg = ro.getAggregate();
+	if(agg)
+		static_cast<NpAggregate*>(agg)->incShapeCount();
 
 	PX_ASSERT(!shape.isExclusive() || shape.getActor()==NULL);
 	shape.onActorAttach(actor);
+
+	shape.setShapeManagerArrayIndex(index);
 }
-				 
+
 bool NpShapeManager::detachShape(NpShape& s, PxRigidActor& actor, bool wakeOnLostTouch)
 {
 	PX_ASSERT(!mPruningStructure);
 
-	const PxU32 index = mShapes.find(&s);
+	const PxU32 index = s.getShapeManagerArrayIndex(mShapes);
 	if(index==0xffffffff)
 		return false;
 
-	NpScene* scene = NpActor::getAPIScene(actor);
+	NpScene* scene = NpActor::getNpSceneFromActor(actor);
 	if(scene && isSceneQuery(s))
 	{
-		scene->getSceneQueryManagerFast().removePrunerShape(mSqCompoundId, getPrunerData(index));
+		scene->getSQAPI().removeSQShape(actor, s);
+
 		// if this is the last shape of a compound shape, we have to remove the compound id 
 		// and in case of a dynamic actor, remove it from the active list
 		if(isSqCompound() && (mShapes.getCount() == 1))
 		{
-			mSqCompoundId = INVALID_PRUNERHANDLE;
+			setCompoundID(NP_INVALID_COMPOUND_ID);
 			const PxType actorType = actor.getConcreteType();
-			const bool isDynamic = actorType == PxConcreteType::eRIGID_DYNAMIC || actorType == PxConcreteType::eARTICULATION_LINK;
-			if(isDynamic)
-			{
-				// for PxRigidDynamic and PxArticulationLink we need to remove the compound rigid flag and remove them from active list
-				if(actor.is<PxRigidDynamic>())				
-					const_cast<NpRigidDynamic&>(static_cast<const NpRigidDynamic&>(actor)).getScbBodyFast().getScBody().getSim()->disableCompound();
-				else
-				{
-					if(actor.is<PxArticulationLink>())
-						const_cast<NpArticulationLink&>(static_cast<const NpArticulationLink&>(actor)).getScbBodyFast().getScBody().getSim()->disableCompound();
-				}
-			}
+			// for PxRigidDynamic and PxArticulationLink we need to remove the compound rigid flag and remove them from active list
+			if(actorType == PxConcreteType::eRIGID_DYNAMIC)
+				static_cast<NpRigidDynamic&>(actor).getCore().getSim()->disableCompound();
+			else if(actorType == PxConcreteType::eARTICULATION_LINK)
+				static_cast<NpArticulationLink&>(actor).getCore().getSim()->disableCompound();
 		} 
 	}
 
-	Scb::RigidObject& ro = static_cast<Scb::RigidObject&>(NpActor::getScbFromPxActor(actor));
-	ro.onShapeDetach(s.getScbShape(), wakeOnLostTouch, (s.getRefCount() == 1));
+	NpActor& ro = NpActor::getFromPxActor(actor);
+
+	onShapeDetach(ro, s, wakeOnLostTouch);
+
+	PxAggregate* agg = ro.getAggregate();
+	if (agg)
+		static_cast<NpAggregate*>(agg)->decShapeCount();
+
 	PtrTableStorageManager& sm = NpFactory::getInstance().getPtrTableStorageManager();
+
+	void** ptrs = mShapes.getPtrs();
+	PX_ASSERT(reinterpret_cast<NpShape*>(ptrs[index]) == &s);
+	const PxU32 last = mShapes.getCount() - 1;
+	if (index != last)
+	{
+		NpShape* moved = reinterpret_cast<NpShape*>(ptrs[last]);
+		PX_ASSERT(moved->checkShapeManagerArrayIndex(mShapes));
+		moved->setShapeManagerArrayIndex(index);
+	}
 	mShapes.replaceWithLast(index, sm);
-	mSceneQueryData.replaceWithLast(index, sm);
+	s.clearShapeManagerArrayIndex();
 	
 	s.onActorDetach();
 	return true;
 }
 
-void NpShapeManager::detachAll(NpScene* scene, const PxRigidActor& actor)
+void NpShapeManager::detachAll(PxSceneQuerySystem* pxsq, const PxRigidActor& actor)
 {
-	// assumes all SQ data has been released, which is currently the responsbility of the owning actor
+	// assumes all SQ data has been released, which is currently the responsibility of the owning actor
 	const PxU32 nbShapes = getNbShapes();
 	NpShape*const *shapes = getShapes();
 
-	if(scene)
-		teardownAllSceneQuery(scene->getSceneQueryManagerFast(), actor); 
+	if(pxsq)
+		teardownAllSceneQuery(*pxsq, actor); 
 
-	// actor cleanup in Scb/Sc will remove any outstanding references corresponding to sim objects, so we don't need to do that here.
+	// actor cleanup in Sc will remove any outstanding references corresponding to sim objects, so we don't need to do that here.
 	for(PxU32 i=0;i<nbShapes;i++)
 		shapes[i]->onActorDetach();
 
 	PtrTableStorageManager& sm = NpFactory::getInstance().getPtrTableStorageManager();
 
 	mShapes.clear(sm);
-	mSceneQueryData.clear(sm);
 }
 
 PxU32 NpShapeManager::getShapes(PxShape** buffer, PxU32 bufferSize, PxU32 startIndex) const
@@ -191,7 +279,8 @@ PxU32 NpShapeManager::getShapes(PxShape** buffer, PxU32 bufferSize, PxU32 startI
 	return getArrayOfPointers(buffer, bufferSize, startIndex, getShapes(), getNbShapes());
 }
 
-PxBounds3 NpShapeManager::getWorldBounds(const PxRigidActor& actor) const
+// PT: this one is only used by the API getWorldBounds() functions
+PxBounds3 NpShapeManager::getWorldBounds_(const PxRigidActor& actor) const
 {
 	PxBounds3 bounds(PxBounds3::empty());
 
@@ -200,25 +289,25 @@ PxBounds3 NpShapeManager::getWorldBounds(const PxRigidActor& actor) const
 	NpShape*const* PX_RESTRICT shapes = getShapes();
 
 	for(PxU32 i=0;i<nbShapes;i++)
-		bounds.include(Gu::computeBounds(shapes[i]->getScbShape().getGeometry(), actorPose * shapes[i]->getLocalPoseFast()));
+		bounds.include(computeBounds(shapes[i]->getCore().getGeometry(), actorPose * shapes[i]->getLocalPoseFast()));
 		
 	return bounds;
 }
 
-void NpShapeManager::clearShapesOnRelease(Scb::Scene& s, PxRigidActor& r)
+void NpShapeManager::clearShapesOnRelease(NpScene& s, PxRigidActor& r)
 {
-	PX_ASSERT(static_cast<Scb::RigidObject&>(NpActor::getScbFromPxActor(r)).isSimDisabledInternally());
+	PX_ASSERT(NpActor::getFromPxActor(r).getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION));
 	
 	const PxU32 nbShapes = getNbShapes();
+#if PX_SUPPORT_PVD
 	NpShape*const* PX_RESTRICT shapes = getShapes();
-
+#endif
 	for(PxU32 i=0;i<nbShapes;i++)
 	{
-		Scb::Shape& scbShape = shapes[i]->getScbShape();
-		scbShape.checkUpdateOnRemove<false>(&s);
 #if PX_SUPPORT_PVD
-		s.getScenePvdClient().releasePvdInstance(&scbShape, r);
+		s.getScenePvdClientInternal().releasePvdInstance(shapes[i], r);
 #else
+		PX_UNUSED(s);
 		PX_UNUSED(r);
 #endif
 	}
@@ -231,591 +320,172 @@ void NpShapeManager::releaseExclusiveUserReferences()
 	NpShape*const* PX_RESTRICT shapes = getShapes();
 	for(PxU32 i=0;i<nbShapes;i++)
 	{
-		if(shapes[i]->isExclusiveFast() && shapes[i]->getRefCount()>1)
+		if(shapes[i]->isExclusiveFast() && shapes[i]->getReferenceCount()>1)
 			shapes[i]->release();
 	}
 }
 
-void NpShapeManager::setupSceneQuery(SceneQueryManager& sqManager, const PxRigidActor& actor, const NpShape& shape)
+void NpShapeManager::setupSceneQuery(PxSceneQuerySystem& pxsq, const NpActor& npActor, const PxRigidActor& actor, const NpShape& shape)
 { 
 	PX_ASSERT(shape.getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE);
-	const PxU32 index = mShapes.find(&shape);
-	PX_ASSERT(index!=0xffffffff);
-	setupSceneQuery(sqManager, actor, index);
+
+	setupSceneQuery_(pxsq, npActor, actor, shape);
 }
 
-void NpShapeManager::teardownSceneQuery(SceneQueryManager& sqManager, const NpShape& shape)
+// PT: TODO: function called from a single place?
+void NpShapeManager::teardownSceneQuery(PxSceneQuerySystem& pxsq, const PxRigidActor& actor, const NpShape& shape)
 {
-	const PxU32 index = mShapes.find(&shape);
-	PX_ASSERT(index!=0xffffffff);
-	teardownSceneQuery(sqManager, index);
+	pxsq.removeSQShape(actor, shape);
 }
 
-void NpShapeManager::setupAllSceneQuery(NpScene* scene, const PxRigidActor& actor, bool hasPrunerStructure, const PxBounds3* bounds, const Gu::BVHStructure* bvhStructure)
-{ 
-	PX_ASSERT(scene);		// shouldn't get here unless we're in a scene
-	SceneQueryManager& sqManager = scene->getSceneQueryManagerFast();
-
+void NpShapeManager::setupAllSceneQuery(PxSceneQuerySystem& pxsq, const NpActor& npActor, const PxRigidActor& actor, const PruningStructure* ps, const PxBounds3* bounds, bool isDynamic)
+{
 	const PxU32 nbShapes = getNbShapes();
 	NpShape*const *shapes = getShapes();
-
-	// if BVH structure was provided, we add shapes into compound pruner
-	if(bvhStructure)
-	{
-		addBVHStructureShapes(sqManager, actor, bvhStructure);
-	}
-	else
-	{
-		const PxType actorType = actor.getConcreteType();
-		const bool isDynamic = actorType == PxConcreteType::eRIGID_DYNAMIC || actorType == PxConcreteType::eARTICULATION_LINK;
-		
-		for(PxU32 i=0;i<nbShapes;i++)
-		{
-			if(isSceneQuery(*shapes[i]))
-				addPrunerShape(sqManager, i, *shapes[i], actor, isDynamic, bounds ? bounds + i : NULL, hasPrunerStructure);
-		}
-	}
-}
-
-void NpShapeManager::teardownAllSceneQuery(SceneQueryManager& sqManager, const PxRigidActor& actor)
-{
-	NpShape*const *shapes = getShapes();
-	const PxU32 nbShapes = getNbShapes();
-
-	if(isSqCompound())
-	{
-		const PxType actorType = actor.getConcreteType();
-		const bool isDynamic = actorType == PxConcreteType::eRIGID_DYNAMIC || actorType == PxConcreteType::eARTICULATION_LINK;
-		sqManager.removeCompoundActor(mSqCompoundId, isDynamic);
-		for(PxU32 i=0;i<nbShapes;i++)
-		{
-			setPrunerData(i, SQ_INVALID_PRUNER_DATA);
-		}
-		mSqCompoundId = INVALID_PRUNERHANDLE;
-		return;
-	}
 
 	for(PxU32 i=0;i<nbShapes;i++)
 	{
 		if(isSceneQuery(*shapes[i]))
-			sqManager.removePrunerShape(INVALID_PRUNERHANDLE, getPrunerData(i));
-
-		setPrunerData(i, SQ_INVALID_PRUNER_DATA);
+			setupSQShape(pxsq, *shapes[i], npActor, actor, isDynamic, bounds ? bounds + i : NULL, ps);
 	}
 }
 
-void NpShapeManager::markAllSceneQueryForUpdate(SceneQueryManager& sqManager, const PxRigidActor& actor)
-{
-	if(isSqCompound())
-	{		
-		const PxType actorType = actor.getConcreteType();
-		const bool isDynamic = actorType == PxConcreteType::eRIGID_DYNAMIC || actorType == PxConcreteType::eARTICULATION_LINK;
-		sqManager.updateCompoundActor(mSqCompoundId, actor.getGlobalPose(), isDynamic);
-		return;
-	}
+void NpShapeManager::setupAllSceneQuery(PxSceneQuerySystem& pxsq, const PxRigidActor& actor, const PruningStructure* ps, const PxBounds3* bounds, const BVH* bvh)
+{ 
+	// if BVH was provided, we add shapes into compound pruner
+	if(bvh)
+		addBVHShapes(pxsq, actor, *bvh);
+	else
+		setupAllSceneQuery(pxsq, NpActor::getFromPxActor(actor), actor, ps, bounds, isDynamicActor(actor));
+}
 
+void NpShapeManager::teardownAllSceneQuery(PxSceneQuerySystem& pxsq, const PxRigidActor& actor)
+{
+	NpShape*const *shapes = getShapes();
 	const PxU32 nbShapes = getNbShapes();
 
-	for(PxU32 i=0;i<nbShapes;i++)
+	if(isSqCompound())
 	{
-		const PrunerData data = getPrunerData(i);
-		if(data!=SQ_INVALID_PRUNER_DATA)
-			sqManager.markForUpdate(INVALID_PRUNERHANDLE, data);
+		pxsq.removeSQCompound(getCompoundID());
+		setCompoundID(NP_INVALID_COMPOUND_ID);
+	}
+	else
+	{
+		for(PxU32 i=0;i<nbShapes;i++)
+		{
+			if(isSceneQuery(*shapes[i]))
+				pxsq.removeSQShape(actor, *shapes[i]);
+		}
 	}
 }
 
-Sq::PrunerData NpShapeManager::findSceneQueryData(const NpShape& shape) const
+void NpShapeManager::markShapeForSQUpdate(PxSceneQuerySystem& pxsq, const PxShape& shape, const PxRigidActor& actor)
 {
-	const PxU32 index = mShapes.find(&shape);
-	PX_ASSERT(index!=0xffffffff);
-	PX_ASSERT(!isSqCompound()); // used in cases we know it is not a compound
+	// PT: SQ_CODEPATH4
 
-	return getPrunerData(index);
+	PX_ALIGN(16, PxTransform) transform;
+
+	const NpShape& nbShape = static_cast<const NpShape&>(shape);
+
+	const NpActor& npActor = NpActor::getFromPxActor(actor);
+	if(getCompoundID() == NP_INVALID_COMPOUND_ID)
+		getSQGlobalPose(transform, nbShape, npActor);
+	else
+		transform = nbShape.getCore().getShape2Actor();		
+
+	pxsq.updateSQShape(actor, shape, transform);
 }
 
-
-Sq::PrunerData NpShapeManager::findSceneQueryData(const NpShape& shape, Sq::PrunerCompoundId& compoundId) const
+void NpShapeManager::markActorForSQUpdate(PxSceneQuerySystem& pxsq, const PxRigidActor& actor)
 {
-	const PxU32 index = mShapes.find(&shape);
-	PX_ASSERT(index!=0xffffffff);
+	// PT: SQ_CODEPATH5
+	if(isSqCompound())
+	{
+		pxsq.updateSQCompound(getCompoundID(), actor.getGlobalPose());
+	}
+	else
+	{
+		const NpActor& npActor = NpActor::getFromPxActor(actor);
+		const PxU32 nbShapes = getNbShapes();
+		for(PxU32 i=0;i<nbShapes;i++)
+		{
+			const NpShape& npShape = *getShapes()[i];
 
-	compoundId = mSqCompoundId;
-	return getPrunerData(index);
+			if(isSceneQuery(npShape))
+			{
+				PX_ALIGN(16, PxTransform) transform;
+				getSQGlobalPose(transform, npShape, npActor);
+
+				pxsq.updateSQShape(actor, npShape, transform);
+			}
+		}
+	}
 }
+
 
 //
 // internal methods
 // 
 
-void NpShapeManager::addBVHStructureShapes(SceneQueryManager& sqManager, const PxRigidActor& actor, const Gu::BVHStructure* bvhStructure)
-{
-	PX_ASSERT(bvhStructure);
+#include "NpBounds.h"
 
-	const Scb::Actor& scbActor = NpActor::getScbFromPxActor(actor);
+void NpShapeManager::addBVHShapes(PxSceneQuerySystem& pxsq, const PxRigidActor& actor, const BVH& bvh)
+{
 	const PxU32 nbShapes = getNbShapes();
 
-	PX_ALLOCA(scbShapes, const Scb::Shape*, nbShapes);
-	PX_ALLOCA(prunerData, Sq::PrunerData, nbShapes);
-
+	PX_ALLOCA(scShapes, const PxShape*, nbShapes);
 	PxU32 numSqShapes = 0;
-	for(PxU32 i = 0; i < nbShapes; i++)
 	{
-		const NpShape& shape = *getShapes()[i];
-		if(isSceneQuery(shape))
-			scbShapes[numSqShapes++] = &shape.getScbShape();
+		for(PxU32 i=0; i<nbShapes; i++)
+		{
+			const NpShape& shape = *getShapes()[i];
+			if(isSceneQuery(shape))
+				scShapes[numSqShapes++] = &shape;
+		}
+		PX_ASSERT(numSqShapes == bvh.getNbBounds());
 	}
-	PX_ASSERT(numSqShapes == bvhStructure->getNbBounds());
 
-	mSqCompoundId = static_cast<const Sc::RigidCore&>(NpActor::getScbFromPxActor(actor).getActorCore()).getRigidID();
-	sqManager.addCompoundShape(*bvhStructure, mSqCompoundId, actor.getGlobalPose(), prunerData, scbShapes, scbActor);
-
-	numSqShapes = 0;
-	for(PxU32 i = 0; i < nbShapes; i++)
+	PX_ALLOCA(transforms, PxTransform, numSqShapes);
+	for(PxU32 i=0; i<numSqShapes; i++)
 	{
-		const NpShape& shape = *getShapes()[i];
-		if(isSceneQuery(shape))
-			setPrunerData(i, prunerData[numSqShapes++]);
+		const NpShape* npShape = static_cast<const NpShape*>(scShapes[i]);
+		transforms[i] = npShape->getLocalPoseFast();
 	}
+
+	const PxSQCompoundHandle cid = pxsq.addSQCompound(actor, scShapes, bvh, transforms);
+	setCompoundID(cid);
 }
 
-void NpShapeManager::addPrunerShape(SceneQueryManager& sqManager, PxU32 index, const NpShape& shape, const PxRigidActor& actor, bool dynamic, const PxBounds3* bound, bool hasPrunerStructure)
+void NpShapeManager::setupSQShape(PxSceneQuerySystem& pxsq, const NpShape& shape, const NpActor& npActor, const PxRigidActor& actor, bool dynamic, const PxBounds3* bounds, const PruningStructure* ps)
 {
-	const Scb::Shape& scbShape = shape.getScbShape();
-	const Scb::Actor& scbActor = NpActor::getScbFromPxActor(actor);
-	setPrunerData(index, sqManager.addPrunerShape(scbShape, scbActor, dynamic, mSqCompoundId, bound, hasPrunerStructure));
+	PX_ALIGN(16, PxTransform) transform;
+
+	PxBounds3 b;
+	if(getCompoundID() == NP_INVALID_COMPOUND_ID)
+	{
+		if(bounds)
+			inflateBounds<true>(b, *bounds, SQ_PRUNER_EPSILON);
+		else
+			(gComputeBoundsTable[dynamic])(b, shape, npActor);
+
+		// PT: TODO: don't recompute it?
+		getSQGlobalPose(transform, shape, npActor);
+	}
+	else
+	{
+		const PxTransform& shape2Actor = shape.getCore().getShape2Actor();		
+		Gu::computeBounds(b, shape.getCore().getGeometry(), shape2Actor, 0.0f, SQ_PRUNER_INFLATION);
+
+		transform = shape2Actor;
+	}
+
+	const NpCompoundId cid = getCompoundID();
+	pxsq.addSQShape(actor, shape, b, transform, &cid, ps!=NULL);
 }
 
-void NpShapeManager::setupSceneQuery(SceneQueryManager& sqManager, const PxRigidActor& actor, PxU32 index)
+void NpShapeManager::setupSceneQuery_(PxSceneQuerySystem& pxsq, const NpActor& npActor, const PxRigidActor& actor, const NpShape& shape)
 { 
-	const PxType actorType = actor.getConcreteType();
-	const bool isDynamic = actorType == PxConcreteType::eRIGID_DYNAMIC || actorType == PxConcreteType::eARTICULATION_LINK;
-	addPrunerShape(sqManager, index, *(getShapes()[index]), actor, isDynamic, NULL, false);
+	const bool isDynamic = isDynamicActor(npActor);
+	setupSQShape(pxsq, shape, npActor, actor, isDynamic, NULL, NULL);
 }
 
-void NpShapeManager::teardownSceneQuery(SceneQueryManager& sqManager, PxU32 index)
-{
-	sqManager.removePrunerShape(mSqCompoundId, getPrunerData(index));
-	setPrunerData(index, SQ_INVALID_PRUNER_DATA);	
-}
-
-#if PX_ENABLE_DEBUG_VISUALIZATION
-#include "GuHeightFieldUtil.h"
-#include "geometry/PxGeometryQuery.h"
-#include "geometry/PxMeshQuery.h"
-#include "GuConvexEdgeFlags.h"
-#include "GuMidphaseInterface.h"
-
-static const PxU32 gCollisionShapeColor = PxU32(PxDebugColor::eARGB_MAGENTA);
-
-static void visualizeSphere(const PxSphereGeometry& geometry, RenderOutput& out, const PxTransform& absPose)
-{
-	out << gCollisionShapeColor;	// PT: no need to output this for each segment!
-
-	out << absPose << DebugCircle(100, geometry.radius);
-
-	PxMat44 rotPose(absPose);
-	Ps::swap(rotPose.column1, rotPose.column2);
-	rotPose.column1 = -rotPose.column1;
-	out << rotPose << DebugCircle(100, geometry.radius);
-
-	Ps::swap(rotPose.column0, rotPose.column2);
-	rotPose.column0 = -rotPose.column0;
-	out << rotPose << DebugCircle(100, geometry.radius);
-}
-
-static void visualizePlane(const PxPlaneGeometry& /*geometry*/, RenderOutput& out, const PxTransform& absPose)
-{
-	PxMat44 rotPose(absPose);
-	Ps::swap(rotPose.column1, rotPose.column2);
-	rotPose.column1 = -rotPose.column1;
-
-	Ps::swap(rotPose.column0, rotPose.column2);
-	rotPose.column0 = -rotPose.column0;
-
-	out << rotPose << gCollisionShapeColor;	// PT: no need to output this for each segment!
-	for(PxReal radius = 2.0f; radius < 20.0f ; radius += 2.0f)
-		out << DebugCircle(100, radius*radius);
-}
-
-static void visualizeCapsule(const PxCapsuleGeometry& geometry, RenderOutput& out, const PxTransform& absPose)
-{
-	out << gCollisionShapeColor;
-	out.outputCapsule(geometry.radius, geometry.halfHeight, absPose);
-}
-
-static void visualizeBox(const PxBoxGeometry& geometry, RenderOutput& out, const PxTransform& absPose)
-{
-	out << gCollisionShapeColor;
-	out << absPose << DebugBox(geometry.halfExtents);
-}
-
-static void visualizeConvexMesh(const PxConvexMeshGeometry& geometry, RenderOutput& out, const PxTransform& absPose)
-{
-	const ConvexMesh* convexMesh = static_cast<const ConvexMesh*>(geometry.convexMesh);
-	const ConvexHullData& hullData = convexMesh->getHull();
-
-	const PxVec3* vertices = hullData.getHullVertices();
-	const PxU8* indexBuffer = hullData.getVertexData8();
-	const PxU32 nbPolygons = convexMesh->getNbPolygonsFast();
-
-	const PxMat44 m44(PxMat33(absPose.q) * geometry.scale.toMat33(), absPose.p);
-
-	out << m44 << gCollisionShapeColor;	// PT: no need to output this for each segment!
-
-	for(PxU32 i=0; i<nbPolygons; i++)
-	{
-		const PxU32 pnbVertices = hullData.mPolygons[i].mNbVerts;
-
-		PxVec3 begin = m44.transform(vertices[indexBuffer[0]]);	// PT: transform it only once before the loop starts
-		for(PxU32 j=1; j<pnbVertices; j++)
-		{
-			const PxVec3 end = m44.transform(vertices[indexBuffer[j]]);
-			out.outputSegment(begin, end);
-			begin = end;
-		}
-		out.outputSegment(begin, m44.transform(vertices[indexBuffer[0]]));
-
-		indexBuffer += pnbVertices;
-	}
-}
-
-static void getTriangle(const Gu::TriangleMesh&, PxU32 i, PxVec3* wp, const PxVec3* vertices, const void* indices, bool has16BitIndices)
-{
-	PxU32 ref0, ref1, ref2;
-
-	if(!has16BitIndices)
-	{
-		const PxU32* dtriangles = reinterpret_cast<const PxU32*>(indices);
-		ref0 = dtriangles[i*3+0];
-		ref1 = dtriangles[i*3+1];
-		ref2 = dtriangles[i*3+2];
-	}
-	else
-	{
-		const PxU16* wtriangles = reinterpret_cast<const PxU16*>(indices);
-		ref0 = wtriangles[i*3+0];
-		ref1 = wtriangles[i*3+1];
-		ref2 = wtriangles[i*3+2];
-	}
-
-	wp[0] = vertices[ref0];
-	wp[1] = vertices[ref1];
-	wp[2] = vertices[ref2];
-}
-
-static void getTriangle(const Gu::TriangleMesh& mesh, PxU32 i, PxVec3* wp, const PxVec3* vertices, const void* indices, const Matrix34& absPose, bool has16BitIndices)
-{
-	PxVec3 localVerts[3];
-	getTriangle(mesh, i, localVerts, vertices, indices, has16BitIndices);
-
-	wp[0] = absPose.transform(localVerts[0]);
-	wp[1] = absPose.transform(localVerts[1]);
-	wp[2] = absPose.transform(localVerts[2]);
-}
-
-static void visualizeActiveEdges(RenderOutput& out, const Gu::TriangleMesh& mesh, PxU32 nbTriangles, const PxU32* results, const Matrix34& absPose)
-{
-	const PxU8* extraTrigData = mesh.getExtraTrigData();
-	PX_ASSERT(extraTrigData);
-
-	const PxVec3* vertices = mesh.getVerticesFast();
-	const void* indices = mesh.getTrianglesFast();
-
-	out << PxU32(PxDebugColor::eARGB_YELLOW);	// PT: no need to output this for each segment!
-
-	const bool has16Bit = mesh.has16BitIndices();
-	for(PxU32 i=0; i<nbTriangles; i++)
-	{
-		const PxU32 index = results ? results[i] : i;
-
-		PxVec3 wp[3];
-		getTriangle(mesh, index, wp, vertices, indices, absPose, has16Bit);
-
-		const PxU32 flags = extraTrigData[index];
-
-		if(flags & Gu::ETD_CONVEX_EDGE_01)
-			out.outputSegment(wp[0], wp[1]);
-
-		if(flags & Gu::ETD_CONVEX_EDGE_12)
-			out.outputSegment(wp[1], wp[2]);
-
-		if(flags & Gu::ETD_CONVEX_EDGE_20)
-			out.outputSegment(wp[0], wp[2]);
-	}
-}
-
-static void visualizeFaceNormals(	PxReal fscale, RenderOutput& out, const TriangleMesh& mesh, PxU32 nbTriangles, const PxVec3* vertices,
-									const void* indices, bool has16Bit, const PxU32* results, const Matrix34& absPose, const PxMat44& midt)
-{
-	if(fscale==0.0f)
-		return;
-
-	out << midt << PxU32(PxDebugColor::eARGB_DARKRED);	// PT: no need to output this for each segment!
-
-	for(PxU32 i=0; i<nbTriangles; i++)
-	{
-		const PxU32 index = results ? results[i] : i;
-		PxVec3 wp[3];
-		getTriangle(mesh, index, wp, vertices, indices, absPose, has16Bit);
-
-		const PxVec3 center = (wp[0] + wp[1] + wp[2]) / 3.0f;
-		PxVec3 normal = (wp[0] - wp[1]).cross(wp[0] - wp[2]);
-		PX_ASSERT(!normal.isZero());
-		normal = normal.getNormalized();
-
-		out << DebugArrow(center, normal * fscale);
-	}
-}
-
-static PX_FORCE_INLINE void outputTriangle(PxDebugLine* segments, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxU32 color)
-{
-	// PT: TODO: use SIMD
-	segments[0] = PxDebugLine(v0, v1, color);
-	segments[1] = PxDebugLine(v1, v2, color);
-	segments[2] = PxDebugLine(v2, v0, color);
-}
-
-static void visualizeTriangleMesh(const PxTriangleMeshGeometry& geometry, RenderOutput& out, const PxTransform& pose, const PxBounds3& cullbox, const PxReal fscale, bool visualizeShapes, bool visualizeEdges, bool useCullBox)
-{
-	const TriangleMesh* triangleMesh = static_cast<const TriangleMesh*>(geometry.triangleMesh);
-	
-	const PxMat44 midt(PxIdentity);
-	const Matrix34 absPose(PxMat33(pose.q) * geometry.scale.toMat33(), pose.p);
-
-	PxU32 nbTriangles = triangleMesh->getNbTrianglesFast();
-	const PxU32 nbVertices = triangleMesh->getNbVerticesFast();
-	const PxVec3* vertices = triangleMesh->getVerticesFast();
-	const void* indices = triangleMesh->getTrianglesFast();
-	const bool has16Bit = triangleMesh->has16BitIndices();
-
-	// PT: TODO: don't render the same edge multiple times
-
-	PxU32* results = NULL;
-	if(useCullBox)
-	{
-		const Gu::Box worldBox(
-			(cullbox.maximum + cullbox.minimum)*0.5f,
-			(cullbox.maximum - cullbox.minimum)*0.5f,
-			PxMat33(PxIdentity));
-		
-		// PT: TODO: use the callback version here to avoid allocating this huge array
-		results = reinterpret_cast<PxU32*>(PX_ALLOC_TEMP(sizeof(PxU32)*nbTriangles, "tmp triangle indices"));
-		LimitedResults limitedResults(results, nbTriangles, 0);
-		Midphase::intersectBoxVsMesh(worldBox, *triangleMesh, pose, geometry.scale, &limitedResults);
-		nbTriangles = limitedResults.mNbResults;
-
-		if(visualizeShapes)
-		{
-			const PxU32 scolor = gCollisionShapeColor;
-
-			out << midt << scolor;	// PT: no need to output this for each segment!
-
-			PxDebugLine* segments = out.reserveSegments(nbTriangles*3);
-			for(PxU32 i=0; i<nbTriangles; i++)
-			{
-				PxVec3 wp[3];
-				getTriangle(*triangleMesh, results[i], wp, vertices, indices, absPose, has16Bit);
-				outputTriangle(segments, wp[0], wp[1], wp[2], scolor);
-				segments+=3;
-			}
-		}
-	}
-	else
-	{
-		if(visualizeShapes)
-		{
-			const PxU32 scolor = gCollisionShapeColor;
-
-			out << midt << scolor;	// PT: no need to output this for each segment!
-
-			// PT: TODO: use SIMD
-			PxVec3* transformed = reinterpret_cast<PxVec3*>(PX_ALLOC(sizeof(PxVec3)*nbVertices, "PxVec3"));
-			for(PxU32 i=0;i<nbVertices;i++)
-				transformed[i] = absPose.transform(vertices[i]);
-
-			PxDebugLine* segments = out.reserveSegments(nbTriangles*3);
-			for(PxU32 i=0; i<nbTriangles; i++)
-			{
-				PxVec3 wp[3];
-				getTriangle(*triangleMesh, i, wp, transformed, indices, has16Bit);
-				outputTriangle(segments, wp[0], wp[1], wp[2], scolor);
-				segments+=3;
-			}
-
-			PX_FREE(transformed);
-		}
-	}
-
-	visualizeFaceNormals(fscale, out, *triangleMesh, nbTriangles, vertices, indices, has16Bit, results, absPose, midt);
-
-	if(visualizeEdges && triangleMesh->getExtraTrigData())
-		visualizeActiveEdges(out, *triangleMesh, nbTriangles, results, absPose);
-
-	if(results)
-		PX_FREE(results);
-}
-
-static void visualizeHeightField(const PxHeightFieldGeometry& hfGeometry, RenderOutput& out, const PxTransform& absPose, const PxBounds3& cullbox, bool useCullBox)
-{
-	const HeightField* heightfield = static_cast<const HeightField*>(hfGeometry.heightField);
-
-	// PT: TODO: the debug viz for HFs is minimal at the moment...
-	const PxU32 scolor = gCollisionShapeColor;
-	const PxMat44 midt = PxMat44(PxIdentity);
-
-	HeightFieldUtil hfUtil(hfGeometry);
-
-	const PxU32 nbRows = heightfield->getNbRowsFast();
-	const PxU32 nbColumns = heightfield->getNbColumnsFast();
-	const PxU32 nbVerts = nbRows * nbColumns;
-	const PxU32 nbTriangles = 2 * nbVerts;
-
-	out << midt << scolor;	// PT: no need to output the same matrix/color for each triangle
-
-	if(useCullBox)
-	{
-		const PxTransform pose0((cullbox.maximum + cullbox.minimum)*0.5f);
-		const PxBoxGeometry boxGeometry((cullbox.maximum - cullbox.minimum)*0.5f);
-
-		PxU32* results = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*nbTriangles, "tmp triangle indices"));
-
-		bool overflow = false;
-		PxU32 nbTouchedTris = PxMeshQuery::findOverlapHeightField(boxGeometry, pose0, hfGeometry, absPose, results, nbTriangles, 0, overflow);
-		
-		PxDebugLine* segments = out.reserveSegments(nbTouchedTris*3);
-
-		for(PxU32 i=0; i<nbTouchedTris; i++)
-		{
-			const PxU32 index = results[i];
-			PxTriangle currentTriangle;
-			PxMeshQuery::getTriangle(hfGeometry, absPose, index, currentTriangle);
-
-			//The check has been done in the findOverlapHeightField
-			//if(heightfield->isValidTriangle(index) && heightfield->getTriangleMaterial(index) != PxHeightFieldMaterial::eHOLE)
-			{
-				outputTriangle(segments, currentTriangle.verts[0], currentTriangle.verts[1], currentTriangle.verts[2], scolor);
-				segments+=3;
-			}
-		}
-		PX_FREE(results);
-	}
-	else
-	{
-		// PT: transform vertices only once
-		PxVec3* tmpVerts = reinterpret_cast<PxVec3*>(PX_ALLOC(sizeof(PxVec3)*nbVerts, "PxVec3"));
-		// PT: TODO: optimize the following line
-		for(PxU32 i=0;i<nbVerts;i++)
-			tmpVerts[i] = absPose.transform(hfUtil.hf2shapep(heightfield->getVertex(i)));
-
-		for(PxU32 i=0; i<nbTriangles; i++)
-		{
-			if(heightfield->isValidTriangle(i) && heightfield->getTriangleMaterial(i) != PxHeightFieldMaterial::eHOLE)
-			{
-				PxU32 vi0, vi1, vi2;
-				heightfield->getTriangleVertexIndices(i, vi0, vi1, vi2);
-
-				PxDebugLine* segments = out.reserveSegments(3);
-				outputTriangle(segments, tmpVerts[vi0], tmpVerts[vi1], tmpVerts[vi2], scolor);
-			}
-		}
-		PX_FREE(tmpVerts);
-	}
-}
-
-static void visualize(const PxGeometry& geometry, RenderOutput& out, const PxTransform& absPose, const PxBounds3& cullbox, const PxReal fscale, bool visualizeShapes, bool visualizeEdges, bool useCullBox)
-{
-	// triangle meshes can render active edges or face normals, but for other types we can just early out if there are no collision shapes
-	if(!visualizeShapes && geometry.getType() != PxGeometryType::eTRIANGLEMESH)
-		return;
-
-	switch(geometry.getType())
-	{
-	case PxGeometryType::eSPHERE:
-		visualizeSphere(static_cast<const PxSphereGeometry&>(geometry), out, absPose);
-		break;
-	case PxGeometryType::eBOX:
-		visualizeBox(static_cast<const PxBoxGeometry&>(geometry), out, absPose);
-		break;
-	case PxGeometryType::ePLANE:
-		visualizePlane(static_cast<const PxPlaneGeometry&>(geometry), out, absPose);
-		break;
-	case PxGeometryType::eCAPSULE:
-		visualizeCapsule(static_cast<const PxCapsuleGeometry&>(geometry), out, absPose);
-		break;
-	case PxGeometryType::eCONVEXMESH:
-		visualizeConvexMesh(static_cast<const PxConvexMeshGeometry&>(geometry), out, absPose);
-		break;
-	case PxGeometryType::eTRIANGLEMESH:
-		visualizeTriangleMesh(static_cast<const PxTriangleMeshGeometry&>(geometry), out, absPose, cullbox, fscale, visualizeShapes, visualizeEdges, useCullBox);
-		break;
-	case PxGeometryType::eHEIGHTFIELD:
-		visualizeHeightField(static_cast<const PxHeightFieldGeometry&>(geometry), out, absPose, cullbox, useCullBox);
-		break;
-	case PxGeometryType::eINVALID:
-		break;
-	case PxGeometryType::eGEOMETRY_COUNT:
-		break;
-	}
-}
-
-void NpShapeManager::visualize(RenderOutput& out, NpScene* scene, const PxRigidActor& actor)
-{
-	const PxReal scale = scene->getVisualizationParameter(PxVisualizationParameter::eSCALE);
-	if(!scale)
-		return;
-
-	const PxU32 nbShapes = getNbShapes();
-	NpShape*const* PX_RESTRICT shapes = getShapes();
-
-	const bool visualizeCompounds = (nbShapes>1) && scene->getVisualizationParameter(PxVisualizationParameter::eCOLLISION_COMPOUNDS)!=0.0f;
-
-	// PT: moved all these out of the loop, no need to grab them once per shape
-	const PxBounds3& cullbox		= scene->getScene().getVisualizationCullingBox();
-	const bool visualizeAABBs		= scene->getVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS)!=0.0f;
-	const bool visualizeShapes		= scene->getVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES)!=0.0f;
-	const bool visualizeEdges		= scene->getVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES)!=0.0f;
-	const float fNormals			= scene->getVisualizationParameter(PxVisualizationParameter::eCOLLISION_FNORMALS);
-	const bool visualizeFNormals	= fNormals!=0.0f;
-	const bool visualizeCollision	= visualizeShapes || visualizeFNormals || visualizeEdges;
-	const bool useCullBox			= !cullbox.isEmpty();
-	const bool needsShapeBounds0	= visualizeCompounds || (visualizeCollision && useCullBox);
-	const PxReal collisionAxes		= scale * scene->getVisualizationParameter(PxVisualizationParameter::eCOLLISION_AXES);
-	const PxReal fscale				= scale * fNormals;
-
-	const PxTransform actorPose = actor.getGlobalPose();
-
-	PxBounds3 compoundBounds(PxBounds3::empty());
-	for(PxU32 i=0;i<nbShapes;i++)
-	{
-		const Scb::Shape& scbShape = shapes[i]->getScbShape();
-
-		const PxTransform absPose = actorPose * scbShape.getShape2Actor();
-		const PxGeometry& geom = scbShape.getGeometry();
-
-		const bool shapeDebugVizEnabled = scbShape.getFlags() & PxShapeFlag::eVISUALIZATION;
-
-		const bool needsShapeBounds = needsShapeBounds0 || (visualizeAABBs && shapeDebugVizEnabled);
-		const PxBounds3 currentShapeBounds = needsShapeBounds ? Gu::computeBounds(geom, absPose) : PxBounds3::empty();
-
-		if(shapeDebugVizEnabled)
-		{
-			if(visualizeAABBs)
-				out << PxU32(PxDebugColor::eARGB_YELLOW) << PxMat44(PxIdentity) << DebugBox(currentShapeBounds);
-
-			if(collisionAxes != 0.0f)
-				out << PxMat44(absPose) << DebugBasis(PxVec3(collisionAxes), 0xcf0000, 0x00cf00, 0x0000cf);
-
-			if(visualizeCollision)
-			{
-				if(!useCullBox || cullbox.intersects(currentShapeBounds))
-					::visualize(geom, out, absPose, cullbox, fscale, visualizeShapes, visualizeEdges, useCullBox);
-			}
-		}
-
-		if(visualizeCompounds)
-			compoundBounds.include(currentShapeBounds);
-	}
-	if(visualizeCompounds && !compoundBounds.isEmpty())
-		out << gCollisionShapeColor << PxMat44(PxIdentity) << DebugBox(compoundBounds);
-}
-#endif  // PX_ENABLE_DEBUG_VISUALIZATION

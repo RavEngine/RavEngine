@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_TRIANGLE_CACHE_H
 #define GU_TRIANGLE_CACHE_H
-#include "PsHash.h"
-#include "PsUtilities.h"
+#include "foundation/PxHash.h"
+#include "foundation/PxUtilities.h"
 
 namespace physx
 {
@@ -61,7 +60,7 @@ namespace physx
 
 			PxU32 getHashCode() const
 			{
-				return Ps::hash(mId0 << 16 | mId1);
+				return PxComputeHash(mId0 << 16 | mId1);
 			}
 		};
 
@@ -128,11 +127,11 @@ namespace physx
 
 				if(mIndex[hash] == 0xFF)
 				{
-					mIndex[hash] = Ps::to8(mSize);
+					mIndex[hash] = PxTo8(mSize);
 				}
 				else
 				{
-					mNextInd[index] = Ps::to8(mSize);
+					mNextInd[index] = PxTo8(mSize);
 				}
 				mNextInd[mSize] = 0xFF;
 				mCache[mSize++] = data;
@@ -198,6 +197,39 @@ namespace physx
 				mIndices[triIndMul3+2] = indices[2];
 				mTriangleIndex[triInd] = triangleIndex;
 				mEdgeFlags[triInd] = edgeFlag;
+			}
+		};
+
+		template <PxU32 MaxTetrahedrons>
+		struct TetrahedronCache
+		{
+			PxVec3 mVertices[4 * MaxTetrahedrons];
+			PxU32 mTetVertIndices[4 * MaxTetrahedrons];
+			PxU32 mTetrahedronIndices[MaxTetrahedrons];
+			PxU32 mNumTetrahedrons;
+
+			TetrahedronCache() : mNumTetrahedrons(0)
+			{
+			}
+
+			PX_FORCE_INLINE bool isEmpty() const { return mNumTetrahedrons == 0; }
+			PX_FORCE_INLINE bool isFull() const { return mNumTetrahedrons == MaxTetrahedrons; }
+			PX_FORCE_INLINE void reset() { mNumTetrahedrons = 0; }
+
+			void addTetrahedrons(const PxVec3* verts, const PxU32* indices, PxU32 tetIndex)
+			{
+				PX_ASSERT(mNumTetrahedrons < MaxTetrahedrons);
+				PxU32 tetInd = mNumTetrahedrons++;
+				PxU32 tetIndMul4 = tetInd * 4;
+				mVertices[tetIndMul4] = verts[0];
+				mVertices[tetIndMul4 + 1] = verts[1];
+				mVertices[tetIndMul4 + 2] = verts[2];
+				mVertices[tetIndMul4 + 3] = verts[3];
+				mTetVertIndices[tetIndMul4] = indices[0];
+				mTetVertIndices[tetIndMul4 + 1] = indices[1];
+				mTetVertIndices[tetIndMul4 + 2] = indices[2];
+				mTetVertIndices[tetIndMul4 + 3] = indices[3];
+				mTetrahedronIndices[tetInd] = tetIndex;
 			}
 		};
 	}

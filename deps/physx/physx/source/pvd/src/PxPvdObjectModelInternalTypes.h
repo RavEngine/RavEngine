@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDOBJECTMODELINTERNALTYPES_H
-#define PXPVDSDK_PXPVDOBJECTMODELINTERNALTYPES_H
+#ifndef PX_PVD_OBJECT_MODEL_INTERNAL_TYPES_H
+#define PX_PVD_OBJECT_MODEL_INTERNAL_TYPES_H
 
 #include "foundation/PxMemory.h"
 #include "PxPvdObjectModelBaseTypes.h"
-#include "PsArray.h"
+#include "foundation/PxArray.h"
 #include "PxPvdFoundation.h"
 
 namespace physx
@@ -89,7 +88,7 @@ struct PvdTypeToDataTypeMap
 #undef DECLARE_INTERNAL_PVD_TYPE
 
 template <typename TDataType, typename TAlloc>
-DataRef<TDataType> toDataRef(const shdfnd::Array<TDataType, TAlloc>& data)
+DataRef<TDataType> toDataRef(const PxArray<TDataType, TAlloc>& data)
 {
 	return DataRef<TDataType>(data.begin(), data.end());
 }
@@ -151,4 +150,4 @@ struct BitMaskSetter
 
 }
 }
-#endif // PXPVDSDK_PXPVDOBJECTMODELINTERNALTYPES_H
+#endif

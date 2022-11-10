@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysX (PROJECT not SOLUTION) common
@@ -44,31 +43,42 @@ include(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/Ph
 
 SET(PHYSX_HEADERS
 	${PHYSX_ROOT_DIR}/include/PxActor.h
+	${PHYSX_ROOT_DIR}/include/PxActorData.h
 	${PHYSX_ROOT_DIR}/include/PxAggregate.h
-	${PHYSX_ROOT_DIR}/include/PxArticulationReducedCoordinate.h
-	${PHYSX_ROOT_DIR}/include/PxArticulationBase.h
-	${PHYSX_ROOT_DIR}/include/PxArticulation.h
-	${PHYSX_ROOT_DIR}/include/PxArticulationJoint.h
+	${PHYSX_ROOT_DIR}/include/PxArticulationFlag.h
 	${PHYSX_ROOT_DIR}/include/PxArticulationJointReducedCoordinate.h
 	${PHYSX_ROOT_DIR}/include/PxArticulationLink.h
-	${PHYSX_ROOT_DIR}/include/PxBatchQuery.h
-	${PHYSX_ROOT_DIR}/include/PxBatchQueryDesc.h
+	${PHYSX_ROOT_DIR}/include/PxArticulationReducedCoordinate.h
+	${PHYSX_ROOT_DIR}/include/PxArticulationTendon.h
+	${PHYSX_ROOT_DIR}/include/PxArticulationTendonData.h
+	${PHYSX_ROOT_DIR}/include/PxAttachment.h
 	${PHYSX_ROOT_DIR}/include/PxBroadPhase.h
+	${PHYSX_ROOT_DIR}/include/PxBuffer.h
 	${PHYSX_ROOT_DIR}/include/PxClient.h
+	${PHYSX_ROOT_DIR}/include/PxConeLimitedConstraint.h
 	${PHYSX_ROOT_DIR}/include/PxConstraint.h
 	${PHYSX_ROOT_DIR}/include/PxConstraintDesc.h
 	${PHYSX_ROOT_DIR}/include/PxContact.h
-	${PHYSX_ROOT_DIR}/include/PxContactModifyCallback.h	
+	${PHYSX_ROOT_DIR}/include/PxContactModifyCallback.h
+	${PHYSX_ROOT_DIR}/include/PxCustomParticleSystemSolverCallback.h
 	${PHYSX_ROOT_DIR}/include/PxDeletionListener.h
+	${PHYSX_ROOT_DIR}/include/PxFEMParameter.h
 	${PHYSX_ROOT_DIR}/include/PxFiltering.h
 	${PHYSX_ROOT_DIR}/include/PxForceMode.h
+	${PHYSX_ROOT_DIR}/include/PxHairSystemFlag.h
 	${PHYSX_ROOT_DIR}/include/PxImmediateMode.h
 	${PHYSX_ROOT_DIR}/include/PxLockedData.h
-	${PHYSX_ROOT_DIR}/include/PxMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxNodeIndex.h
+	${PHYSX_ROOT_DIR}/include/PxParticleBuffer.h
+	${PHYSX_ROOT_DIR}/include/PxParticleGpu.h
+	${PHYSX_ROOT_DIR}/include/PxParticlePhase.h
+	${PHYSX_ROOT_DIR}/include/PxParticleSolverType.h
+	${PHYSX_ROOT_DIR}/include/PxParticleSystem.h
+	${PHYSX_ROOT_DIR}/include/PxParticleSystemFlag.h
+	${PHYSX_ROOT_DIR}/include/PxPBDParticleSystem.h
 	${PHYSX_ROOT_DIR}/include/PxPhysics.h
 	${PHYSX_ROOT_DIR}/include/PxPhysicsAPI.h
 	${PHYSX_ROOT_DIR}/include/PxPhysicsSerialization.h
-	${PHYSX_ROOT_DIR}/include/PxPhysicsVersion.h
 	${PHYSX_ROOT_DIR}/include/PxPhysXConfig.h
 	${PHYSX_ROOT_DIR}/include/PxPruningStructure.h
 	${PHYSX_ROOT_DIR}/include/PxQueryFiltering.h
@@ -80,30 +90,64 @@ SET(PHYSX_HEADERS
 	${PHYSX_ROOT_DIR}/include/PxScene.h
 	${PHYSX_ROOT_DIR}/include/PxSceneDesc.h
 	${PHYSX_ROOT_DIR}/include/PxSceneLock.h
+	${PHYSX_ROOT_DIR}/include/PxSceneQueryDesc.h
+	${PHYSX_ROOT_DIR}/include/PxSceneQuerySystem.h
 	${PHYSX_ROOT_DIR}/include/PxShape.h
 	${PHYSX_ROOT_DIR}/include/PxSimulationEventCallback.h
 	${PHYSX_ROOT_DIR}/include/PxSimulationStatistics.h
+	${PHYSX_ROOT_DIR}/include/PxSoftBody.h
+	${PHYSX_ROOT_DIR}/include/PxSoftBodyFlag.h
+	${PHYSX_ROOT_DIR}/include/PxSparseGridParams.h
 	${PHYSX_ROOT_DIR}/include/PxVisualizationParameter.h
 )
+IF(NOT PX_GENERATE_SOURCE_DISTRO AND NOT PUBLIC_RELEASE)
+	LIST(APPEND PHYSX_HEADERS
+		${PHYSX_ROOT_DIR}/include/PxCustomParticleSystem.h
+		${PHYSX_ROOT_DIR}/include/PxFEMCloth.h
+		${PHYSX_ROOT_DIR}/include/PxFLIPParticleSystem.h
+		${PHYSX_ROOT_DIR}/include/PxGridParticleSystem.h
+		${PHYSX_ROOT_DIR}/include/PxHairSystem.h
+		${PHYSX_ROOT_DIR}/include/PxMPMParticleSystem.h
+	)
+ENDIF()
 SOURCE_GROUP(include FILES ${PHYSX_HEADERS})
+
+SET(PHYSX_MATERIAL_HEADERS
+	${PHYSX_ROOT_DIR}/include/PxBaseMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxFEMMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxFEMSoftBodyMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxFEMClothMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxParticleMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxPBDMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxFLIPMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxMPMMaterial.h
+	${PHYSX_ROOT_DIR}/include/PxMaterial.h
+)
+SOURCE_GROUP(include\\materials FILES ${PHYSX_MATERIAL_HEADERS})
 
 SET(PHYSX_COMMON_HEADERS
 	${PHYSX_ROOT_DIR}/include/common/PxBase.h
 	${PHYSX_ROOT_DIR}/include/common/PxCollection.h
 	${PHYSX_ROOT_DIR}/include/common/PxCoreUtilityTypes.h
+	${PHYSX_ROOT_DIR}/include/common/PxInsertionCallback.h
 	${PHYSX_ROOT_DIR}/include/common/PxMetaData.h
 	${PHYSX_ROOT_DIR}/include/common/PxMetaDataFlags.h
-	${PHYSX_ROOT_DIR}/include/common/PxPhysicsInsertionCallback.h
 	${PHYSX_ROOT_DIR}/include/common/PxPhysXCommonConfig.h
+	${PHYSX_ROOT_DIR}/include/common/PxProfileZone.h
 	${PHYSX_ROOT_DIR}/include/common/PxRenderBuffer.h
+	${PHYSX_ROOT_DIR}/include/common/PxRenderOutput.h
 	${PHYSX_ROOT_DIR}/include/common/PxSerialFramework.h
 	${PHYSX_ROOT_DIR}/include/common/PxSerializer.h
 	${PHYSX_ROOT_DIR}/include/common/PxStringTable.h
 	${PHYSX_ROOT_DIR}/include/common/PxTolerancesScale.h
 	${PHYSX_ROOT_DIR}/include/common/PxTypeInfo.h
-	${PHYSX_ROOT_DIR}/include/common/PxProfileZone.h
 )
 SOURCE_GROUP(include\\common FILES ${PHYSX_COMMON_HEADERS})
+
+SET(PHYSX_OMNIPVD_HEADERS
+	${PHYSX_ROOT_DIR}/include/omnipvd/PxOmniPvd.h
+)
+SOURCE_GROUP(include\\omnipvd FILES ${PHYSX_OMNIPVD_HEADERS})
 
 SET(PHYSX_PVD_HEADERS
 	${PHYSX_ROOT_DIR}/include/pvd/PxPvdSceneClient.h
@@ -120,7 +164,7 @@ SOURCE_GROUP(include\\collision FILES ${PHYSX_COLLISION_HEADERS})
 SET(PHYSX_SOLVER_HEADERS
 	${PHYSX_ROOT_DIR}/include/solver/PxSolverDefs.h
 )
-SOURCE_GROUP(include\\collision FILES ${PHYSX_SOLVER_HEADERS})
+SOURCE_GROUP(include\\solver FILES ${PHYSX_SOLVER_HEADERS})
 
 SET(PHYSX_METADATA_HEADERS
 	${MD_SOURCE_DIR}/core/include/PvdMetaDataDefineProperties.h
@@ -141,86 +185,106 @@ SET(PHYSX_METADATA_SOURCE
 )
 SOURCE_GROUP(metadata\\src FILES ${PHYSX_METADATA_SOURCE})
 
+SET(PHYSX_OMNIPVD_SOURCE
+	${PX_SOURCE_DIR}/omnipvd/NpOmniPvd.h
+	${PX_SOURCE_DIR}/omnipvd/NpOmniPvd.cpp
+	${PX_SOURCE_DIR}/omnipvd/OmniPvdPxSampler.cpp
+	${PX_SOURCE_DIR}/omnipvd/OmniPvdPxSampler.h
+	${PX_SOURCE_DIR}/omnipvd/OmniPvdChunkAlloc.cpp
+	${PX_SOURCE_DIR}/omnipvd/OmniPvdChunkAlloc.h
+	${PX_SOURCE_DIR}/omnipvd/OmniPvdTypes.h
+)
+SOURCE_GROUP(src\\omnipvd FILES ${PHYSX_OMNIPVD_SOURCE})
+
+SET(PHYSX_PVD_SOURCE
+	${PX_SOURCE_DIR}/NpPvdSceneClient.cpp
+	${PX_SOURCE_DIR}/NpPvdSceneClient.h
+	${PX_SOURCE_DIR}/NpPvdSceneQueryCollector.cpp
+	${PX_SOURCE_DIR}/NpPvdSceneQueryCollector.h
+	${PX_SOURCE_DIR}/PvdMetaDataPvdBinding.cpp
+	${PX_SOURCE_DIR}/PvdPhysicsClient.cpp
+	${PX_SOURCE_DIR}/PvdMetaDataBindingData.h
+	${PX_SOURCE_DIR}/PvdMetaDataPvdBinding.h
+	${PX_SOURCE_DIR}/PvdPhysicsClient.h
+	${PX_SOURCE_DIR}/PvdTypeNames.h  
+)
+SOURCE_GROUP(src\\pvd FILES ${PHYSX_PVD_SOURCE})
+
 SET(PHYSX_IMMEDIATEMODE_SOURCE
 	${PHYSX_ROOT_DIR}/source/immediatemode/src/NpImmediateMode.cpp
 )
 SOURCE_GROUP(src\\immediatemode FILES ${PHYSX_IMMEDIATEMODE_SOURCE})
 
-SET(PHYSX_BUFFERING_SOURCE
-	${PX_SOURCE_DIR}/buffering/ScbActor.cpp
-	${PX_SOURCE_DIR}/buffering/ScbAggregate.cpp
-	${PX_SOURCE_DIR}/buffering/ScbBase.cpp
-	${PX_SOURCE_DIR}/buffering/ScbMetaData.cpp
-	${PX_SOURCE_DIR}/buffering/ScbScene.cpp
-	${PX_SOURCE_DIR}/buffering/ScbScenePvdClient.cpp
-	${PX_SOURCE_DIR}/buffering/ScbShape.cpp
-	${PX_SOURCE_DIR}/buffering/ScbActor.h
-	${PX_SOURCE_DIR}/buffering/ScbAggregate.h
-	${PX_SOURCE_DIR}/buffering/ScbArticulation.h
-	${PX_SOURCE_DIR}/buffering/ScbArticulationJoint.h
-	${PX_SOURCE_DIR}/buffering/ScbBase.h
-	${PX_SOURCE_DIR}/buffering/ScbBody.h
-	${PX_SOURCE_DIR}/buffering/ScbConstraint.h
-	${PX_SOURCE_DIR}/buffering/ScbDefs.h
-	${PX_SOURCE_DIR}/buffering/ScbNpDeps.h
-	${PX_SOURCE_DIR}/buffering/ScbRigidObject.h
-	${PX_SOURCE_DIR}/buffering/ScbRigidStatic.h
-	${PX_SOURCE_DIR}/buffering/ScbScene.h
-	${PX_SOURCE_DIR}/buffering/ScbSceneBuffer.h
-	${PX_SOURCE_DIR}/buffering/ScbScenePvdClient.h
-	${PX_SOURCE_DIR}/buffering/ScbShape.h
-	${PX_SOURCE_DIR}/buffering/ScbType.h
+SET(PHYSX_MATERIALS_SOURCE
+	${PX_SOURCE_DIR}/NpMaterial.cpp
+	${PX_SOURCE_DIR}/NpFEMSoftBodyMaterial.cpp
+	${PX_SOURCE_DIR}/NpFEMClothMaterial.cpp
+	${PX_SOURCE_DIR}/NpPBDMaterial.cpp
+	${PX_SOURCE_DIR}/NpFLIPMaterial.cpp
+	${PX_SOURCE_DIR}/NpMPMMaterial.cpp
+	${PX_SOURCE_DIR}/NpPBDMaterial.h
+	${PX_SOURCE_DIR}/NpFLIPMaterial.h
+	${PX_SOURCE_DIR}/NpMPMMaterial.h
+	${PX_SOURCE_DIR}/NpFEMSoftBodyMaterial.h
+	${PX_SOURCE_DIR}/NpFEMClothMaterial.h
+	${PX_SOURCE_DIR}/NpMaterial.h
 )
-SOURCE_GROUP(src\\buffering FILES ${PHYSX_BUFFERING_SOURCE})
+SOURCE_GROUP(src\\materials FILES ${PHYSX_MATERIALS_SOURCE})
+
+SET(PHYSX_ARTICULATIONS_SOURCE
+	${PX_SOURCE_DIR}/NpArticulationReducedCoordinate.cpp
+	${PX_SOURCE_DIR}/NpArticulationJointReducedCoordinate.cpp
+	${PX_SOURCE_DIR}/NpArticulationLink.cpp
+	${PX_SOURCE_DIR}/NpArticulationTendon.cpp
+	${PX_SOURCE_DIR}/NpArticulationSensor.cpp
+	${PX_SOURCE_DIR}/NpArticulationReducedCoordinate.h
+	${PX_SOURCE_DIR}/NpArticulationJointReducedCoordinate.h
+	${PX_SOURCE_DIR}/NpArticulationLink.h
+	${PX_SOURCE_DIR}/NpArticulationTendon.h
+	${PX_SOURCE_DIR}/NpArticulationSensor.h
+)
+SOURCE_GROUP(src\\articulations FILES ${PHYSX_ARTICULATIONS_SOURCE})
 
 SET(PHYSX_CORE_SOURCE
 	${PX_SOURCE_DIR}/NpActor.cpp
 	${PX_SOURCE_DIR}/NpAggregate.cpp
-	${PX_SOURCE_DIR}/NpArticulationReducedCoordinate.cpp
-	${PX_SOURCE_DIR}/NpArticulation.cpp
-	${PX_SOURCE_DIR}/NpArticulationJoint.cpp
-	${PX_SOURCE_DIR}/NpArticulationJointReducedCoordinate.cpp
-	${PX_SOURCE_DIR}/NpArticulationLink.cpp
-	${PX_SOURCE_DIR}/NpBatchQuery.cpp
+	${PX_SOURCE_DIR}/NpSoftBody.cpp
+	${PX_SOURCE_DIR}/NpFEMCloth.cpp
+	${PX_SOURCE_DIR}/NpParticleSystem.cpp
+    ${PX_SOURCE_DIR}/NpHairSystem.cpp
 	${PX_SOURCE_DIR}/NpConstraint.cpp
 	${PX_SOURCE_DIR}/NpFactory.cpp
-	${PX_SOURCE_DIR}/NpMaterial.cpp
 	${PX_SOURCE_DIR}/NpMetaData.cpp
 	${PX_SOURCE_DIR}/NpPhysics.cpp
-	${PX_SOURCE_DIR}/NpPvdSceneQueryCollector.cpp
-	${PX_SOURCE_DIR}/NpReadCheck.cpp
+	${PX_SOURCE_DIR}/NpBounds.h
+	${PX_SOURCE_DIR}/NpBounds.cpp
+	${PX_SOURCE_DIR}/NpPruningStructure.h
+	${PX_SOURCE_DIR}/NpPruningStructure.cpp
+	${PX_SOURCE_DIR}/NpCheck.cpp
 	${PX_SOURCE_DIR}/NpRigidDynamic.cpp
 	${PX_SOURCE_DIR}/NpRigidStatic.cpp
 	${PX_SOURCE_DIR}/NpScene.cpp
+	${PX_SOURCE_DIR}/NpSceneFetchResults.cpp
 	${PX_SOURCE_DIR}/NpSceneQueries.cpp
 	${PX_SOURCE_DIR}/NpSerializerAdapter.cpp
 	${PX_SOURCE_DIR}/NpShape.cpp
 	${PX_SOURCE_DIR}/NpShapeManager.cpp
-	${PX_SOURCE_DIR}/NpWriteCheck.cpp
-	${PX_SOURCE_DIR}/PvdMetaDataPvdBinding.cpp
-	${PX_SOURCE_DIR}/PvdPhysicsClient.cpp
+	${PX_SOURCE_DIR}/NpBase.h
 	${PX_SOURCE_DIR}/NpActor.h
 	${PX_SOURCE_DIR}/NpActorTemplate.h
 	${PX_SOURCE_DIR}/NpAggregate.h
-	${PX_SOURCE_DIR}/NpArticulationReducedCoordinate.h
-	${PX_SOURCE_DIR}/NpArticulation.h
-	${PX_SOURCE_DIR}/NpArticulationJoint.h
-	${PX_SOURCE_DIR}/NpArticulationJointReducedCoordinate.h
-	${PX_SOURCE_DIR}/NpArticulationLink.h
-	${PX_SOURCE_DIR}/NpArticulationTemplate.h
-	${PX_SOURCE_DIR}/NpBatchQuery.h
-	${PX_SOURCE_DIR}/NpCast.h
+	${PX_SOURCE_DIR}/NpSoftBody.h
+	${PX_SOURCE_DIR}/NpFEMCloth.h	
+	${PX_SOURCE_DIR}/NpParticleSystem.h
+    ${PX_SOURCE_DIR}/NpHairSystem.h
 	${PX_SOURCE_DIR}/NpConnector.h
 	${PX_SOURCE_DIR}/NpConstraint.h
 	${PX_SOURCE_DIR}/NpFactory.h
-	${PX_SOURCE_DIR}/NpMaterial.h
 	${PX_SOURCE_DIR}/NpMaterialManager.h
 	${PX_SOURCE_DIR}/NpPhysics.h
 	${PX_SOURCE_DIR}/NpPhysicsInsertionCallback.h
 	${PX_SOURCE_DIR}/NpPtrTableStorageManager.h
-	${PX_SOURCE_DIR}/NpPvdSceneQueryCollector.h
-	${PX_SOURCE_DIR}/NpQueryShared.h
-	${PX_SOURCE_DIR}/NpReadCheck.h
+	${PX_SOURCE_DIR}/NpCheck.h
 	${PX_SOURCE_DIR}/NpRigidActorTemplate.h
 	${PX_SOURCE_DIR}/NpRigidActorTemplateInternal.h
 	${PX_SOURCE_DIR}/NpRigidBodyTemplate.h
@@ -231,19 +295,21 @@ SET(PHYSX_CORE_SOURCE
 	${PX_SOURCE_DIR}/NpSceneAccessor.h
 	${PX_SOURCE_DIR}/NpShape.h
 	${PX_SOURCE_DIR}/NpShapeManager.h
-	${PX_SOURCE_DIR}/NpWriteCheck.h
-	${PX_SOURCE_DIR}/PvdMetaDataBindingData.h
-	${PX_SOURCE_DIR}/PvdMetaDataPvdBinding.h
-	${PX_SOURCE_DIR}/PvdPhysicsClient.h
-	${PX_SOURCE_DIR}/PvdTypeNames.h
+	${PX_SOURCE_DIR}/NpDebugViz.h
+	${PX_SOURCE_DIR}/NpDebugViz.cpp
 )
 SOURCE_GROUP(src FILES ${PHYSX_CORE_SOURCE})
 
 ADD_LIBRARY(PhysX ${PHYSX_LIBTYPE}
 	${PHYSX_HEADERS}
 	${PHYSX_COMMON_HEADERS}
+	${PHYSX_MATERIAL_HEADERS}
 	${PHYSX_PVD_HEADERS}
+	${PHYSX_OMNIPVD_HEADERS}
+	${PHYSX_OMNIPVD_SOURCE}
+	${PHYSX_PVD_SOURCE}
 	${PHYSX_SOLVER_HEADERS}
+	${PHYSX_COLLISION_HEADERS}
 	
 	${PHYSX_METADATA_HEADERS}
 	${PHYSX_METADATA_SOURCE}
@@ -251,14 +317,18 @@ ADD_LIBRARY(PhysX ${PHYSX_LIBTYPE}
 	${PHYSX_CORE_SOURCE}
 	${PHYSX_BUFFERING_SOURCE}
 	${PHYSX_IMMEDIATEMODE_SOURCE}
+	${PHYSX_MATERIALS_SOURCE}
+	${PHYSX_ARTICULATIONS_SOURCE}
 	
 	${PHYSX_PLATFORM_SRC_FILES}	
 )
 
 # Add the headers to the install
 INSTALL(FILES ${PHYSX_HEADERS} DESTINATION include)
+INSTALL(FILES ${PHYSX_MATERIAL_HEADERS} DESTINATION include)
 INSTALL(FILES ${PHYSX_COMMON_HEADERS} DESTINATION include/common)
 INSTALL(FILES ${PHYSX_PVD_HEADERS} DESTINATION include/pvd)
+INSTALL(FILES ${PHYSX_OMNIPVD_HEADERS} DESTINATION include/omnipvd)
 INSTALL(FILES ${PHYSX_COLLISION_HEADERS} DESTINATION include/collision)
 INSTALL(FILES ${PHYSX_SOLVER_HEADERS} DESTINATION include/solver)
 # install the custom config file
@@ -274,7 +344,6 @@ TARGET_INCLUDE_DIRECTORIES(PhysX
 
 	PRIVATE ${PHYSX_SOURCE_DIR}/physx/src
 	PRIVATE ${PHYSX_SOURCE_DIR}/physx/src/device
-	PRIVATE ${PHYSX_SOURCE_DIR}/physx/src/buffering
 
 	PRIVATE ${PHYSX_SOURCE_DIR}/physxgpu/include
 	
@@ -295,6 +364,7 @@ TARGET_INCLUDE_DIRECTORIES(PhysX
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/api/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/software/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/common/include/pipeline
+	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/common/include/utils
 
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevelaabb/include
 	
@@ -303,10 +373,6 @@ TARGET_INCLUDE_DIRECTORIES(PhysX
 	PRIVATE ${PHYSX_SOURCE_DIR}/simulationcontroller/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/simulationcontroller/src
 	
-	PRIVATE ${PHYSX_SOURCE_DIR}/physxcooking/src
-	PRIVATE ${PHYSX_SOURCE_DIR}/physxcooking/src/mesh
-	PRIVATE ${PHYSX_SOURCE_DIR}/physxcooking/src/convex
-	
 	PRIVATE ${PHYSX_SOURCE_DIR}/scenequery/include
 	
 	PRIVATE ${PHYSX_SOURCE_DIR}/physxmetadata/core/include
@@ -314,6 +380,9 @@ TARGET_INCLUDE_DIRECTORIES(PhysX
     PRIVATE ${PHYSX_SOURCE_DIR}/immediatemode/include
 
     PRIVATE ${PHYSX_SOURCE_DIR}/pvd/include
+    
+  PRIVATE ${PHYSX_SOURCE_DIR}/omnipvd
+  PRIVATE ${PHYSX_ROOT_DIR}/pvdruntime/include
 )
 
 TARGET_COMPILE_DEFINITIONS(PhysX 
@@ -362,12 +431,18 @@ SET_TARGET_PROPERTIES(PhysX PROPERTIES
 IF(PX_GENERATE_SOURCE_DISTRO)
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_COMMON_HEADERS})
-	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_PVD_HEADERS})	
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_MATERIAL_HEADERS})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_PVD_HEADERS})
+  	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_OMNIPVD_HEADERS})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_OMNIPVD_SOURCE})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_PVD_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_METADATA_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_METADATA_SOURCE})	
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_CORE_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_BUFFERING_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_IMMEDIATEMODE_SOURCE})	
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_MATERIALS_SOURCE})		
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_ARTICULATIONS_SOURCE})		
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_PLATFORM_SRC_FILES})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_SOLVER_HEADERS})
 ENDIF()

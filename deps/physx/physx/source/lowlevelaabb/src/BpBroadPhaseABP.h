@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef BP_BROADPHASE_ABP_H
 #define BP_BROADPHASE_ABP_H
 
-#include "CmPhysXCommon.h"
+#include "foundation/PxArray.h"
 #include "BpBroadPhase.h"
 #include "PxPhysXConfig.h"
 #include "BpBroadPhaseUpdate.h"
-#include "PsUserAllocated.h"
+
+#define ABP_MT2
 
 namespace internalABP{
 	class ABP;
@@ -44,54 +44,51 @@ namespace physx
 {
 namespace Bp
 {
-	class BroadPhaseABP : public BroadPhase, public Ps::UserAllocated
+	class BroadPhaseABP : public BroadPhase
 	{
 											PX_NOCOPY(BroadPhaseABP)
 		public:
 											BroadPhaseABP(	PxU32 maxNbBroadPhaseOverlaps,
 															PxU32 maxNbStaticShapes,
 															PxU32 maxNbDynamicShapes,
-															PxU64 contextID);
+															PxU64 contextID,
+															bool enableMT);
 		virtual								~BroadPhaseABP();
 
 	// BroadPhase
-		virtual	PxBroadPhaseType::Enum		getType()					const	{ return PxBroadPhaseType::eABP;	}
-		virtual	void						destroy()							{ delete this;						}
-		virtual	void						update(const PxU32 numCpuTasks, PxcScratchAllocator* scratchAllocator, const BroadPhaseUpdateData& updateData, physx::PxBaseTask* continuation, physx::PxBaseTask* narrowPhaseUnblockTask);
-		virtual void						fetchBroadPhaseResults(physx::PxBaseTask*) {}
-		virtual	PxU32						getNbCreatedPairs()		const;
-		virtual BroadPhasePair*				getCreatedPairs();
-		virtual PxU32						getNbDeletedPairs()		const;
-		virtual BroadPhasePair*				getDeletedPairs();
-		virtual void						freeBuffers();
-		virtual void						shiftOrigin(const PxVec3& shift, const PxBounds3* boundsArray, const PxReal* contactDistances);
+		virtual	PxBroadPhaseType::Enum		getType()					const	PX_OVERRIDE	{ return mEnableMT ? PxBroadPhaseType::ePABP : PxBroadPhaseType::eABP;	}
+		virtual	void						release()							PX_OVERRIDE	{ PX_DELETE_THIS;														}
+		virtual	void						update(PxcScratchAllocator* scratchAllocator, const BroadPhaseUpdateData& updateData, physx::PxBaseTask* continuation)	PX_OVERRIDE;
+		virtual	void						preBroadPhase(const Bp::BroadPhaseUpdateData&) PX_OVERRIDE	{}
+		virtual void						fetchBroadPhaseResults()		PX_OVERRIDE	{}
+		virtual const BroadPhasePair*		getCreatedPairs(PxU32&)	const	PX_OVERRIDE;
+		virtual const BroadPhasePair*		getDeletedPairs(PxU32&)	const	PX_OVERRIDE;
+		virtual void						freeBuffers()					PX_OVERRIDE;
+		virtual void						shiftOrigin(const PxVec3& shift, const PxBounds3* boundsArray, const PxReal* contactDistances)	PX_OVERRIDE;
 #if PX_CHECKED
-		virtual bool						isValid(const BroadPhaseUpdateData& updateData)	const;
+		virtual bool						isValid(const BroadPhaseUpdateData& updateData)	const	PX_OVERRIDE;
 #endif
-		virtual BroadPhasePair*				getBroadPhasePairs() const  {return NULL;}  //KS - TODO - implement this!!!
-		virtual void						deletePairs(){}								//KS - TODO - implement this!!!
-		virtual	void						singleThreadedUpdate(PxcScratchAllocator* scratchAllocator, const BroadPhaseUpdateData& updateData);
 	//~BroadPhase
 
 		internalABP::ABP*					mABP;		// PT: TODO: aggregate
-
-				Ps::Array<BroadPhasePair>	mCreated;
-				Ps::Array<BroadPhasePair>	mDeleted;
+				PxU32						mNbAdded;
+				PxU32						mNbUpdated;
+				PxU32						mNbRemoved;
+				const BpHandle*				mCreatedHandles;
+				const BpHandle*				mUpdatedHandles;
+				const BpHandle*				mRemovedHandles;
+				PxArray<BroadPhasePair>		mCreated;
+				PxArray<BroadPhasePair>		mDeleted;
 
 				const Bp::FilterGroup::Enum*mGroups;
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-				const bool*					mLUT;
-#endif
-				void						setUpdateData(const BroadPhaseUpdateData& updateData);
-				void						addObjects(const BroadPhaseUpdateData& updateData);
-				void						removeObjects(const BroadPhaseUpdateData& updateData);
-				void						updateObjects(const BroadPhaseUpdateData& updateData);
+				const BpFilter*				mFilter;
 
-				void						update();
-				void						postUpdate();
+				const PxU64					mContextID;
+				const bool					mEnableMT;
 
-				PxU32						getCurrentNbPairs()	const;
-				void						setScratchAllocator(PxcScratchAllocator* scratchAllocator);
+				void						addObjects();
+				void						removeObjects();
+				void						updateObjects();
 	};
 
 } //namespace Bp

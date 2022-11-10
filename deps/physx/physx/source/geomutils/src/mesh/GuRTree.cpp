@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -41,18 +40,15 @@
 #define RTREE_INFLATION_EPSILON 5e-4f
 
 #include "GuRTree.h"
-#include "PsSort.h"
-#include "GuSerialize.h"
+#include "foundation/PxSort.h"
+#include "CmSerialize.h"
 #include "CmUtils.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 
 using namespace physx;
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
-using namespace shdfnd::aos;
-#endif
-using Ps::Array;
-using Ps::sort;
+using namespace aos;
 using namespace Gu;
+using namespace Cm;
 
 namespace physx
 {
@@ -84,8 +80,8 @@ bool RTree::load(PxInputStream& stream, PxU32 meshVersion, bool mismatch_)	// PT
 	mTotalNodes = readDword(mismatch, stream);
 	mTotalPages = readDword(mismatch, stream);
 	PxU32 unused = readDword(mismatch, stream); PX_UNUSED(unused); // backwards compatibility
-	mPages = static_cast<RTreePage*>(Ps::AlignedAllocator<128>().allocate(sizeof(RTreePage)*mTotalPages, __FILE__, __LINE__));
-	Cm::markSerializedMem(mPages, sizeof(RTreePage)*mTotalPages);
+	mPages = static_cast<RTreePage*>(PxAlignedAllocator<128>().allocate(sizeof(RTreePage)*mTotalPages, PX_FL));
+	PxMarkSerializedMemory(mPages, sizeof(RTreePage)*mTotalPages);
 	for(PxU32 j=0; j<mTotalPages; j++)
 	{
 		readFloatBuffer(mPages[j].minx, RTREE_N, mismatch, stream);
@@ -277,11 +273,7 @@ PX_FORCE_INLINE void RTreeNodeQ::grow(const RTreeNodeQ& node)
 }
 
 /////////////////////////////////////////////////////////////////////////
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 void RTree::validateRecursive(PxU32 level, RTreeNodeQ parentBounds, RTreePage* page, CallbackRefit* cbLeaf)
-#else
-void RTree::validateRecursive(PxU32 level, RTreeNodeQ parentBounds, RTreePage* page)
-#endif
 {
 	PX_UNUSED(parentBounds);
 
@@ -301,7 +293,6 @@ void RTree::validateRecursive(PxU32 level, RTreeNodeQ parentBounds, RTreePage* p
 		{
 			PX_ASSERT((n.ptr&1) == 0);
 			RTreePage* childPage = reinterpret_cast<RTreePage*>(size_t(mPages) + n.ptr);
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 			validateRecursive(level+1, n, childPage, cbLeaf);
 		} else if (cbLeaf)
 		{
@@ -313,10 +304,6 @@ void RTree::validateRecursive(PxU32 level, RTreeNodeQ parentBounds, RTreePage* p
 			PX_ASSERT(mn.x >= n.minx); PX_ASSERT(mn.y >= n.miny); PX_ASSERT(mn.z >= n.minz);
 			PX_ASSERT(mx.x <= n.maxx); PX_ASSERT(mx.y <= n.maxy); PX_ASSERT(mx.z <= n.maxz);
 		}
-#else
-			validateRecursive(level+1, n, childPage);
-		}
-#endif
 	}
 	RTreeNodeQ recomputedBounds;
 	page->computeBounds(recomputedBounds);
@@ -329,25 +316,16 @@ void RTree::validateRecursive(PxU32 level, RTreeNodeQ parentBounds, RTreePage* p
 }
 
 /////////////////////////////////////////////////////////////////////////
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 void RTree::validate(CallbackRefit* cbLeaf)
-#else
-void RTree::validate()
-#endif
 {
 	for (PxU32 j = 0; j < mNumRootPages; j++)
 	{
 		RTreeNodeQ rootBounds;
 		mPages[j].computeBounds(rootBounds);
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 		validateRecursive(0, rootBounds, mPages+j, cbLeaf);
-#else
-		validateRecursive(0, rootBounds, mPages+j);
-#endif
 	}
 }
 
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 void RTree::refitAllStaticTree(CallbackRefit& cb, PxBounds3* retBounds)
 {
 	PxU8* treeNodes8 = reinterpret_cast<PxU8*>(mPages);
@@ -419,7 +397,6 @@ void RTree::refitAllStaticTree(CallbackRefit& cb, PxBounds3* retBounds)
 	validate(&cb);
 #endif
 }
-#endif // PX_ENABLE_DYNAMIC_MESH_RTREE
 
 //~PX_SERIALIZATION
 const RTreeValue RTreePage::MN = -PX_MAX_F32;

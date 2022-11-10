@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,29 +22,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef DY_THREADCONTEXT_H
-#define DY_THREADCONTEXT_H
+#ifndef DY_THREAD_CONTEXT_H
+#define DY_THREAD_CONTEXT_H
 
 #include "foundation/PxTransform.h"
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "PxvConfig.h"
 #include "PxvDynamics.h"
 #include "PxcThreadCoherentCache.h"
 #include "PxcConstraintBlockStream.h"
-#include "CmBitMap.h"
-#include "CmMatrix34.h"
+#include "foundation/PxBitMap.h"
 #include "DyThresholdTable.h"
-#include "DyArticulation.h"
+#include "DyVArticulation.h"
 #include "DyFrictionPatchStreamPair.h"
 #include "DySolverConstraintDesc.h"
 #include "DyCorrelationBuffer.h"
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
 
 namespace physx
 {
@@ -88,6 +85,8 @@ public:
 		PxU32 numAxisSolverConstraints;
 
 	};
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 
 	//TODO: tune cache size based on number of active objects.
@@ -95,7 +94,7 @@ public:
 	void reset();
 	void resizeArrays(PxU32 frictionConstraintDescCount, PxU32 articulationCount);
 
-	PX_FORCE_INLINE	Ps::Array<ArticulationSolverDesc>&		getArticulations()								{ return mArticulations;					}
+	PX_FORCE_INLINE	PxArray<ArticulationSolverDesc>&		getArticulations()								{ return mArticulations;					}
 
 
 #if PX_ENABLE_SIM_STATS
@@ -103,9 +102,11 @@ public:
 	{
 		return mThreadSimStats;
 	}
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 
-	Gu::ContactBuffer mContactBuffer;
+	PxContactBuffer mContactBuffer;
 
 		// temporary buffer for correlation
 	PX_ALIGN(16, CorrelationBuffer			mCorrelationBuffer); 
@@ -126,13 +127,14 @@ public:
 	PxU32 mNumStaticConstraints;
 	PxU32 mNumSelfFrictionConstraints;
 	PxU32 mNumSelfConstraintFrictionBlocks;
+	bool mHasOverflowPartitions;
 
-	Ps::Array<PxU32>					mConstraintsPerPartition;
-	Ps::Array<PxU32>					mFrictionConstraintsPerPartition;
-	Ps::Array<PxU32>					mPartitionNormalizationBitmap;
+	PxArray<PxU32>						mConstraintsPerPartition;
+	PxArray<PxU32>						mFrictionConstraintsPerPartition;
+	PxArray<PxU32>						mPartitionNormalizationBitmap;
 	PxsBodyCore**						mBodyCoreArray;
 	PxsRigidBody**						mRigidBodyArray;
-	ArticulationV**						mArticulationArray;
+	FeatherstoneArticulation**			mArticulationArray;
 	Cm::SpatialVector*					motionVelocityArray;
 	PxU32*								bodyRemapTable;
 	PxU32*								mNodeIndexArray;
@@ -148,19 +150,19 @@ public:
 	PxSolverConstraintDesc*				tempConstraintDescArray;
 
 	//Additional constraint info for 1d/2d friction model
-	Ps::Array<PxSolverConstraintDesc>	frictionConstraintDescArray;
-	Ps::Array<PxConstraintBatchHeader>	frictionConstraintBatchHeaders;
+	PxArray<PxSolverConstraintDesc>	frictionConstraintDescArray;
+	PxArray<PxConstraintBatchHeader>	frictionConstraintBatchHeaders;
 
 	//Info for tracking compound contact managers (temporary data - could use scratch memory!)
-	Ps::Array<CompoundContactManager>	compoundConstraints;
+	PxArray<CompoundContactManager>	compoundConstraints;
 
 	//Used for sorting constraints. Temporary, could use scratch memory
-	Ps::Array<const PxsIndexedContactManager*>	orderedContactList;
-	Ps::Array<const PxsIndexedContactManager*>	tempContactList;
-	Ps::Array<PxU32>							sortIndexArray;
+	PxArray<const PxsIndexedContactManager*>	orderedContactList;
+	PxArray<const PxsIndexedContactManager*>	tempContactList;
+	PxArray<PxU32>							sortIndexArray;
 	
-	Ps::Array<Cm::SpatialVectorF>				mZVector;
-	Ps::Array<Cm::SpatialVectorF>				mDeltaV;
+	PxArray<Cm::SpatialVectorF>				mZVector;
+	PxArray<Cm::SpatialVectorF>				mDeltaV;
 
 
 	PxU32								numDifferentBodyBatchHeaders;
@@ -181,8 +183,6 @@ public:
 	PxU32 mMaxFrictionPartitions;
 	PxU32 mMaxSolverPositionIterations;
 	PxU32 mMaxSolverVelocityIterations;
-	PxU32 mMaxArticulationLength;
-	PxU32 mMaxArticulationSolverLength;
 	PxU32 mMaxArticulationLinks;
 	
 	PxSolverConstraintDesc* mContactDescPtr;
@@ -191,10 +191,12 @@ public:
 
 private:
 
-	Ps::Array<ArticulationSolverDesc>	mArticulations;
+	PxArray<ArticulationSolverDesc>	mArticulations;
 
 #if PX_ENABLE_SIM_STATS
 	ThreadSimStats				mThreadSimStats;
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 
 	public:
@@ -205,4 +207,4 @@ private:
 
 }
 
-#endif //DY_THREADCONTEXT_H
+#endif

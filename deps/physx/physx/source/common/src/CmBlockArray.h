@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -33,37 +32,37 @@
 #include "foundation/PxAssert.h"
 #include "foundation/PxMath.h"
 #include "foundation/PxMemory.h"
-#include "PsAllocator.h"
-#include "PsUserAllocated.h"
-#include "PsIntrinsics.h"
-#include "PsMathUtils.h"
-#include "CmPhysXCommon.h"
-#include "PsArray.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxIntrinsics.h"
+#include "foundation/PxArray.h"
 
 namespace physx
 {
 namespace Cm
 {
 
-template <typename T>
+template <typename T, PxU32 SlabSize = 4096>
 class BlockArray
 {
-	Ps::Array<T*> mBlocks;
+	PxArray<T*> mBlocks;
 	PxU32 mSize;
 	PxU32 mCapacity;
-	PxU32 mSlabSize;
 
 public:
 
-	BlockArray(PxU32 slabSize = 2048) : mSize(0), mCapacity(0), mSlabSize(slabSize)
+	BlockArray() : mSize(0), mCapacity(0)
 	{
-		PX_ASSERT(slabSize > 0);
 	}
 
 	~BlockArray()
 	{
 		for (PxU32 a = 0; a < mBlocks.size(); ++a)
 		{
+			for (PxU32 i = 0; i < SlabSize; ++i)
+			{
+				mBlocks[a][i].~T();
+			}
 			PX_FREE(mBlocks[a]);
 		}
 		mBlocks.resize(0);
@@ -73,15 +72,18 @@ public:
 	{
 		if (capacity > mCapacity)
 		{
-			PxU32 nbSlabsRequired = (capacity + mSlabSize - 1) / mSlabSize;
+			PxU32 nbSlabsRequired = (capacity + SlabSize - 1) / SlabSize;
 
 			PxU32 nbSlabsToAllocate = nbSlabsRequired - mBlocks.size();
 
-			mCapacity += nbSlabsToAllocate * mSlabSize;
+			mCapacity += nbSlabsToAllocate * SlabSize;
 
 			for (PxU32 a = 0; a < nbSlabsToAllocate; ++a)
 			{
-				mBlocks.pushBack(reinterpret_cast<T*>(PX_ALLOC(sizeof(T) * mSlabSize, PX_DEBUG_EXP("BlockArray"))));
+				T* ts = reinterpret_cast<T*>(PX_ALLOC(sizeof(T) * SlabSize, "BlockArray"));
+				for(PxU32 i = 0; i < SlabSize; ++i)
+					PX_PLACEMENT_NEW(ts+i, T)();
+				mBlocks.pushBack(ts);
 			}
 		}
 	}
@@ -91,7 +93,8 @@ public:
 		reserve(size);
 		for (PxU32 a = mSize; a < size; ++a)
 		{
-			mBlocks[a / mSlabSize][a%mSlabSize] = T();
+			mBlocks[a / SlabSize][a&(SlabSize - 1)].~T();
+			mBlocks[a / SlabSize][a&(SlabSize-1)] = T();
 		}
 		mSize = size;
 	}
@@ -107,37 +110,38 @@ public:
 		PX_ASSERT(idx < mSize);
 		for (PxU32 a = idx; a < mSize; ++a)
 		{
-			mBlocks[a / mSlabSize][a%mSlabSize] = mBlocks[(a + 1) / mSlabSize][(a + 1) % mSlabSize];
+			mBlocks[a / SlabSize][a&(SlabSize-1)] = mBlocks[(a + 1) / SlabSize][(a + 1) &(SlabSize-1)];
 		}
 
 		mSize--;
+		mBlocks[mSize / SlabSize][mSize&(SlabSize - 1)].~T();
 	}
 
 	void replaceWithLast(PxU32 idx)
 	{
 		PX_ASSERT(idx < mSize);
 		--mSize;
-		mBlocks[idx / mSlabSize][idx%mSlabSize] = mBlocks[mSize / mSlabSize][mSize%mSlabSize];
+		mBlocks[idx / SlabSize][idx%SlabSize] = mBlocks[mSize / SlabSize][mSize%SlabSize];
 	}
 
 	T& operator [] (const PxU32 idx)
 	{
 		PX_ASSERT(idx < mSize);
 
-		return mBlocks[idx / mSlabSize][idx%mSlabSize];
+		return mBlocks[idx / SlabSize][idx%SlabSize];
 	}
 
 	const T& operator [] (const PxU32 idx) const
 	{
 		PX_ASSERT(idx < mSize);
 
-		return mBlocks[idx / mSlabSize][idx%mSlabSize];
+		return mBlocks[idx / SlabSize][idx%SlabSize];
 	}
 
 	void pushBack(const T& item)
 	{
 		reserve(mSize + 1);
-		mBlocks[mSize / mSlabSize][mSize%mSlabSize] = item;
+		mBlocks[mSize / SlabSize][mSize%SlabSize] = item;
 		mSize++;
 	}
 

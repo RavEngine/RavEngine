@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,29 +33,26 @@
 // ****************************************************************************
 
 #include <ctype.h>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetutils/SnippetUtils.h"
 
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics	= NULL;
 
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics	= NULL;
-PxCooking*				gCooking	= NULL;
-
-float rand(float loVal, float hiVal)
+static float rand(float loVal, float hiVal)
 {
 	return loVal + (float(rand())/float(RAND_MAX))*(hiVal - loVal);
 }
 
 template<PxConvexMeshCookingType::Enum convexMeshCookingType, bool directInsertion, PxU32 gaussMapLimit>
-void createRandomConvex(PxU32 numVerts, const PxVec3* verts)
+static void createRandomConvex(PxU32 numVerts, const PxVec3* verts)
 {
-	PxCookingParams params = gCooking->getParams();
+	PxTolerancesScale tolerances;
+	PxCookingParams params(tolerances);
 
 	// Use the new (default) PxConvexMeshCookingType::eQUICKHULL
 	params.convexMeshCookingType = convexMeshCookingType;
@@ -64,7 +60,6 @@ void createRandomConvex(PxU32 numVerts, const PxVec3* verts)
 	// If the gaussMapLimit is chosen higher than the number of output vertices, no gauss map is added to the convex mesh data (here 256).
 	// If the gaussMapLimit is chosen lower than the number of output vertices, a gauss map is added to the convex mesh data (here 16).
 	params.gaussMapLimit = gaussMapLimit;
-	gCooking->setParams(params);
 
 	// Setup the convex mesh descriptor
 	PxConvexMeshDesc desc;
@@ -83,14 +78,14 @@ void createRandomConvex(PxU32 numVerts, const PxVec3* verts)
 	if(directInsertion)
 	{
 		// Directly insert mesh into PhysX
-		convex = gCooking->createConvexMesh(desc, gPhysics->getPhysicsInsertionCallback());
+		convex = PxCreateConvexMesh(params, desc, gPhysics->getPhysicsInsertionCallback());
 		PX_ASSERT(convex);
 	}
 	else
 	{
 		// Serialize the cooked mesh into a stream.
 		PxDefaultMemoryOutputStream outStream;
-		bool res = gCooking->cookConvexMesh(desc, outStream);
+		bool res = PxCookConvexMesh(params, desc, outStream);
 		PX_UNUSED(res);
 		PX_ASSERT(res);
 		meshSize = outStream.getSize();
@@ -119,7 +114,7 @@ void createRandomConvex(PxU32 numVerts, const PxVec3* verts)
 	convex->release();
 }
 
-void createConvexMeshes()
+static void createConvexMeshes()
 {
 	const PxU32 numVerts = 64;
 	PxVec3* vertices = new PxVec3[numVerts];
@@ -155,14 +150,12 @@ void initPhysics()
 {
 	gFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, gAllocator, gErrorCallback);
 	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(),true);
-	gCooking = PxCreateCooking(PX_PHYSICS_VERSION, *gFoundation, PxCookingParams(PxTolerancesScale()));
 }
 	
 void cleanupPhysics()
 {
-	gPhysics->release();
-	gCooking->release();
-	gFoundation->release();
+	PX_RELEASE(gPhysics);
+	PX_RELEASE(gFoundation);
 	
 	printf("SnippetConvexMeshCreate done.\n");
 }

@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,42 +22,28 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build Snippet linux template
 #
 
-IF(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-	SET(SNIPPET_COMPILE_DEFS
-		# Common to all configurations
+SET(SNIPPET_COMPILE_DEFS
+	# Common to all configurations
 
-		${PHYSX_LINUX_COMPILE_DEFS};
+	${PHYSX_LINUX_COMPILE_DEFS};RENDER_SNIPPET
 
-		$<$<CONFIG:debug>:${PHYSX_LINUX_DEBUG_COMPILE_DEFS};>
-		$<$<CONFIG:checked>:${PHYSX_LINUX_CHECKED_COMPILE_DEFS};>
-		$<$<CONFIG:profile>:${PHYSX_LINUX_PROFILE_COMPILE_DEFS};>
-		$<$<CONFIG:release>:${PHYSX_LINUX_RELEASE_COMPILE_DEFS};>
-	)
-ELSE()
-	SET(SNIPPET_COMPILE_DEFS
-		# Common to all configurations
-
-		${PHYSX_LINUX_COMPILE_DEFS};RENDER_SNIPPET;
-
-		$<$<CONFIG:debug>:${PHYSX_LINUX_DEBUG_COMPILE_DEFS};>
-		$<$<CONFIG:checked>:${PHYSX_LINUX_CHECKED_COMPILE_DEFS};>
-		$<$<CONFIG:profile>:${PHYSX_LINUX_PROFILE_COMPILE_DEFS};>
-		$<$<CONFIG:release>:${PHYSX_LINUX_RELEASE_COMPILE_DEFS};>
-	)
-ENDIF()
+	$<$<CONFIG:debug>:${PHYSX_LINUX_DEBUG_COMPILE_DEFS};>
+	$<$<CONFIG:checked>:${PHYSX_LINUX_CHECKED_COMPILE_DEFS};>
+	$<$<CONFIG:profile>:${PHYSX_LINUX_PROFILE_COMPILE_DEFS};>
+	$<$<CONFIG:release>:${PHYSX_LINUX_RELEASE_COMPILE_DEFS};>
+)
 
 SET(SNIPPET_PLATFORM_SOURCES
 	${PHYSX_ROOT_DIR}/snippets/snippetcommon/ClassicMain.cpp
 )
 
 SET(SNIPPET_PLATFORM_INCLUDES
-
 )
 
 IF(${SNIPPET_NAME} STREQUAL "ArticulationLoader")
@@ -71,20 +56,23 @@ IF(${SNIPPET_NAME} STREQUAL "ArticulationLoader")
 	)
 ENDIF()
 
-IF(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-	SET(SNIPPET_PLATFORM_LINKED_LIBS
-		rt pthread dl
-	)
+# gwoolery: aarch64 requires glut library to be lower case, for whatever reason
+IF(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+	SET(GLUT_LIB "glut")
 ELSE()
-	SET(SNIPPET_PLATFORM_LINKED_LIBS
-		SnippetRender GL GLU GLUT X11 rt pthread dl -Wl,-rpath='${ORIGIN}'
-	)
+	SET(GLUT_LIB "GLUT")
+ENDIF()
+
+SET(SNIPPET_PLATFORM_LINKED_LIBS SnippetRender GL GLU ${GLUT_LIB} X11 rt pthread dl -Wl,-rpath='${ORIGIN}')
+
+IF(NOT PUBLIC_RELEASE)
+	LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS PhysXGPUExtensions)
 ENDIF()
 
 IF(PX_GENERATE_GPU_STATIC_LIBRARIES)
+	LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS PhysXGpu)
+
 	IF(${SNIPPET_NAME} STREQUAL "ConvexDecomposition")
 		LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS VHACD)
 	ENDIF()
 ENDIF()
-
-

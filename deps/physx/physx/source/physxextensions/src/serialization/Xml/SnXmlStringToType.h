@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-#ifndef PX_XML_STRINGTOTYPE_H
-#define PX_XML_STRINGTOTYPE_H
+
+#ifndef SN_XML_STRING_TO_TYPE_H
+#define SN_XML_STRING_TO_TYPE_H
 
 #include "common/PxCoreUtilityTypes.h"
 #include "PxFiltering.h"
 
-#include "PsString.h"
+#include "foundation/PxString.h"
 
 #include <stdio.h>
 #include <ctype.h>
@@ -154,7 +154,7 @@ namespace physx { namespace Sn {
 	{
 		PxU64 theData;
 		StrToImpl<PxU64>().strto( theData, ioData );
-		ioDatatype = reinterpret_cast<void*>( static_cast<size_t>( theData ) );
+		ioDatatype = reinterpret_cast<void*>( size_t( theData ) );
 	}
 	};
 	
@@ -177,7 +177,7 @@ namespace physx { namespace Sn {
 	template<> struct StrToImpl<bool> {
 	inline void strto( bool& ioType,const char*& inValue )
 	{
-		ioType = physx::shdfnd::stricmp( inValue, "true" ) == 0 ? true : false;
+		ioType = physx::Pxstricmp( inValue, "true" ) == 0 ? true : false;
 	}
 	};
 	

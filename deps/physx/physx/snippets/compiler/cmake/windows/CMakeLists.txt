@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 IF(NOT DEFINED PHYSX_WINDOWS_COMPILE_DEFS)
 	MESSAGE(FATAL ERROR "Snippets uses the PhysX compile defs, and they're not defined when they need to be.")
@@ -37,8 +36,12 @@ IF(NOT DEFINED TINYXML2_PATH)
     SET(TINYXML2_PATH $ENV{PM_tinyxml2_PATH} CACHE INTERNAL "Path to tinyxml2")
 ENDIF()
 
+IF(MSVC_VERSION LESS_EQUAL 1900)
+	SET(SNIPPET_WARNING_DISABLES "/wd4714")
+ENDIF()
+
 # Get the CXX Flags from the Cached variables set by the PhysX CMakeLists
-SET(CMAKE_CXX_FLAGS "${PHYSX_CXX_FLAGS} /EHsc")
+SET(CMAKE_CXX_FLAGS "${PHYSX_CXX_FLAGS} ${SNIPPET_WARNING_DISABLES} /EHsc")
 
 SET(CMAKE_CXX_FLAGS_DEBUG   ${PHYSX_CXX_FLAGS_DEBUG})
 SET(CMAKE_CXX_FLAGS_CHECKED ${PHYSX_CXX_FLAGS_CHECKED})
@@ -57,14 +60,6 @@ SET(SNIPPET_RENDER_ENABLED 1)
 
 # Include all of the projects
 SET(PLATFORM_SNIPPETS_LIST Convert LoadCollection DelayLoadHook)
-
-IF(PUBLIC_RELEASE)
-	LIST(APPEND PLATFORM_SNIPPETS_LIST HelloGRB)
-ELSE()
-	IF(PX_GENERATE_GPU_PROJECTS)
-		LIST(APPEND PLATFORM_SNIPPETS_LIST HelloGRB)	
-	ENDIF()
-ENDIF()
 
 IF(PX_BUILDVHACD)
 	LIST(APPEND PLATFORM_SNIPPETS_LIST ConvexDecomposition)

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPROFILEEVENTS_H
-#define PXPVDSDK_PXPROFILEEVENTS_H
+#ifndef PX_PROFILE_EVENTS_H
+#define PX_PROFILE_EVENTS_H
 
 #include "foundation/PxMath.h"
 #include "foundation/PxAssert.h"
@@ -102,7 +101,7 @@ namespace physx { namespace profile {
 		};
 	};
 
-#if (PX_PS4) || (PX_APPLE_FAMILY)
+#if PX_APPLE_FAMILY
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wimplicit-fallthrough"
 #endif
@@ -161,7 +160,7 @@ namespace physx { namespace profile {
 		return EventStreamCompressionFlags::U32;
 	}
 
-#if (PX_PS4) || (PX_APPLE_FAMILY)
+#if PX_APPLE_FAMILY
 #pragma clang diagnostic pop
 #endif
 
@@ -702,4 +701,5 @@ namespace physx { namespace profile {
 	}
 } }
 
-#endif // PXPVDSDK_PXPROFILEEVENTS_H
+#endif
+

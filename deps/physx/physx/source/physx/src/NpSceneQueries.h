@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,201 +22,74 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_NP_SCENEQUERIES
-#define PX_PHYSICS_NP_SCENEQUERIES
+#ifndef NP_SCENE_QUERIES_H
+#define NP_SCENE_QUERIES_H
 
-#include "PxQueryReport.h"
-#include "PsIntrinsics.h"
-#include "CmPhysXCommon.h"
-#include "SqSceneQueryManager.h"
-#include "GuTriangleMesh.h"
-#include "GuRaycastTests.h"
-#include "GuSweepTests.h"
-#include "GuOverlapTests.h"
-#include "NpSceneAccessor.h"
-#include "ScbScene.h"
+#include "PxSceneQueryDesc.h"
 
+#include "SqQuery.h"
+
+#include "ScSqBoundsSync.h"
 #if PX_SUPPORT_PVD
-#include "NpPvdSceneQueryCollector.h"
+	#include "NpPvdSceneQueryCollector.h"
+	#include "NpPvdSceneClient.h"
 #endif
 
-namespace physx { namespace Sq {
+#include "PxSceneQuerySystem.h"
 
-	struct QueryID { enum Enum {
-		QUERY_RAYCAST_ANY_OBJECT,
-		QUERY_RAYCAST_CLOSEST_OBJECT,
-		QUERY_RAYCAST_ALL_OBJECTS,
+#include "NpBounds.h"	// PT: for SQ_PRUNER_EPSILON
 
-		QUERY_OVERLAP_SPHERE_ALL_OBJECTS,
-		QUERY_OVERLAP_AABB_ALL_OBJECTS,
-		QUERY_OVERLAP_OBB_ALL_OBJECTS,
-		QUERY_OVERLAP_CAPSULE_ALL_OBJECTS,
-		QUERY_OVERLAP_CONVEX_ALL_OBJECTS,
+namespace physx
+{
+	class PxScene;
+	class PxSceneDesc;
 
-		QUERY_LINEAR_OBB_SWEEP_CLOSEST_OBJECT,
-		QUERY_LINEAR_CAPSULE_SWEEP_CLOSEST_OBJECT,
-		QUERY_LINEAR_CONVEX_SWEEP_CLOSEST_OBJECT
-	}; };
+namespace Vd
+{
+	class PvdSceneClient;
 }
 
-struct MultiQueryInput
+class NpSceneQueries : public Sc::SqBoundsSync
+#if PX_SUPPORT_PVD
+	, public Sq::PVDCapture
+#endif
 {
-	const PxVec3* rayOrigin; // only valid for raycasts
-	const PxVec3* unitDir; // only valid for raycasts and sweeps
-	PxReal maxDistance; // only valid for raycasts and sweeps
-	const PxGeometry* geometry; // only valid for overlaps and sweeps
-	const PxTransform* pose; // only valid for overlaps and sweeps
-	PxReal inflation; // only valid for sweeps
+												PX_NOCOPY(NpSceneQueries)
+	public:
+	// PT: TODO: use PxSceneQueryDesc here, but we need some SQ-specific "scene limits"
+												NpSceneQueries(const PxSceneDesc& desc, Vd::PvdSceneClient* pvd, PxU64 contextID);
+												~NpSceneQueries();
 
-	// Raycast constructor
-	MultiQueryInput(const PxVec3& aRayOrigin, const PxVec3& aUnitDir, PxReal aMaxDist)
-	{
-		Ps::prefetchLine(&aRayOrigin);
-		Ps::prefetchLine(&aUnitDir);
-		rayOrigin = &aRayOrigin;
-		unitDir = &aUnitDir;
-		maxDistance = aMaxDist;
-		geometry = NULL;
-		pose = NULL;
-		inflation = 0.0f;
-	}
+	PX_FORCE_INLINE	PxSceneQuerySystem&			getSQAPI()			{ PX_ASSERT(mSQ);	return *mSQ;	}
+	PX_FORCE_INLINE	const PxSceneQuerySystem&	getSQAPI()	const	{ PX_ASSERT(mSQ);	return *mSQ;	}
 
-	// Overlap constructor
-	MultiQueryInput(const PxGeometry* aGeometry, const PxTransform* aPose)
-	{
-		Ps::prefetchLine(aGeometry);
-		Ps::prefetchLine(aPose);
-		geometry = aGeometry;
-		pose = aPose;
-		inflation = 0.0f;
-		rayOrigin = unitDir = NULL;
-	}
+	protected:
+	// SqBoundsSync
+	virtual			void						sync(PxU32 prunerIndex, const ScPrunerHandle* handles, const PxU32* boundsIndices, const PxBounds3* bounds,
+													const PxTransform32* transforms, PxU32 count, const PxBitMap& ignoredIndices)	PX_OVERRIDE;
+	//~SqBoundsSync
 
-	// Sweep constructor
-	MultiQueryInput(
-		const PxGeometry* aGeometry, const PxTransform* aPose,
-		const PxVec3& aUnitDir, const PxReal aMaxDist, const PxReal aInflation)
-	{
-		Ps::prefetchLine(aGeometry);
-		Ps::prefetchLine(aPose);
-		Ps::prefetchLine(&aUnitDir);
-		rayOrigin = NULL;
-		maxDistance = aMaxDist;
-		unitDir = &aUnitDir;
-		geometry = aGeometry;
-		pose = aPose;
-		inflation = aInflation;
-	}
-
-	PX_FORCE_INLINE const PxVec3& getDir() const { PX_ASSERT(unitDir); return *unitDir; }
-	PX_FORCE_INLINE const PxVec3& getOrigin() const { PX_ASSERT(rayOrigin); return *rayOrigin; }
-};
-
-struct BatchQueryFilterData
-{
-	void*							filterShaderData;
-	PxU32							filterShaderDataSize;
-	PxBatchQueryPreFilterShader		preFilterShader;	
-	PxBatchQueryPostFilterShader	postFilterShader;	
-	#if PX_SUPPORT_PVD
-	Vd::PvdSceneQueryCollector*	collector; // gets set to bq collector
-	#endif
-	BatchQueryFilterData(void* fsData, PxU32 fsSize, PxBatchQueryPreFilterShader preFs, PxBatchQueryPostFilterShader postFs)
-		: filterShaderData(fsData), filterShaderDataSize(fsSize), preFilterShader(preFs), postFilterShader(postFs)
-	{
-		#if PX_SUPPORT_PVD
-		collector = NULL;
-		#endif
-	}
-};
-
-class PxGeometry;
-
-class NpSceneQueries : public NpSceneAccessor
-{
-	PX_NOCOPY(NpSceneQueries)
-
-public:
-	NpSceneQueries(const PxSceneDesc& desc);
-	~NpSceneQueries();
-
-	template<typename QueryHit>
-					bool							multiQuery(
-														const MultiQueryInput& in,
-														PxHitCallback<QueryHit>& hits, PxHitFlags hitFlags, const PxQueryCache* cache,
-														const PxQueryFilterData& filterData, PxQueryFilterCallback* filterCall,
-														BatchQueryFilterData* bqFd) const;
-
-	// Synchronous scene queries
-	virtual			bool							raycast(
-														const PxVec3& origin, const PxVec3& unitDir, const PxReal distance,	// Ray data
-														PxRaycastCallback& hitCall, PxHitFlags hitFlags,
-														const PxQueryFilterData& filterData, PxQueryFilterCallback* filterCall,
-														const PxQueryCache* cache) const;
-
-	virtual			bool							sweep(
-														const PxGeometry& geometry, const PxTransform& pose,	// GeomObject data
-														const PxVec3& unitDir, const PxReal distance,	// Ray data
-														PxSweepCallback& hitCall, PxHitFlags hitFlags,
-														const PxQueryFilterData& filterData, PxQueryFilterCallback* filterCall,
-														const PxQueryCache* cache, const PxReal inflation) const;
-
-	virtual			bool							overlap(
-														const PxGeometry& geometry, const PxTransform& transform,	// GeomObject data
-														PxOverlapCallback& hitCall, 
-														const PxQueryFilterData& filterData, PxQueryFilterCallback* filterCall) const;
-
-	PX_FORCE_INLINE	PxU64							getContextId()				const	{ return PxU64(reinterpret_cast<size_t>(this)); }
-	PX_FORCE_INLINE	Scb::Scene&						getScene()							{ return mScene; }
-	PX_FORCE_INLINE	const Scb::Scene&				getScene()					const	{ return mScene; }
-	PX_FORCE_INLINE	PxU32							getFlagsFast()				const	{ return mScene.getFlags();						}
-	PX_FORCE_INLINE	Sq::SceneQueryManager&			getSceneQueryManagerFast()			{ return mSQManager;							}
-	PX_FORCE_INLINE	PxSceneQueryUpdateMode::Enum	getSceneQueryUpdateModeFast() const	{ return mSceneQueryUpdateMode;					}
-
-					void							sceneQueriesStaticPrunerUpdate(PxBaseTask* continuation);
-					void							sceneQueriesDynamicPrunerUpdate(PxBaseTask* continuation);
-
-					Scb::Scene						mScene;
-
-					Sq::SceneQueryManager			mSQManager;
-
-					const Gu::GeomRaycastTable&		mCachedRaycastFuncs;
-					const Gu::GeomSweepFuncs&		mCachedSweepFuncs;
-					const Gu::GeomOverlapTable*		mCachedOverlapFuncs;
-
-					typedef Cm::DelegateTask<NpSceneQueries, &NpSceneQueries::sceneQueriesStaticPrunerUpdate> SceneQueriesStaticPrunerUpdate;
-					typedef Cm::DelegateTask<NpSceneQueries, &NpSceneQueries::sceneQueriesDynamicPrunerUpdate> SceneQueriesDynamicPrunerUpdate;
-					SceneQueriesStaticPrunerUpdate	mSceneQueriesStaticPrunerUpdate;
-					SceneQueriesDynamicPrunerUpdate	mSceneQueriesDynamicPrunerUpdate;
-
-					PxSceneQueryUpdateMode::Enum    mSceneQueryUpdateMode;
+	public:
+					PxSceneQuerySystem*			mSQ;
 
 #if PX_SUPPORT_PVD
-public:
+					Vd::PvdSceneClient*			mPVDClient;
 					//Scene query and hits for pvd, collected in current frame
-					mutable Vd::PvdSceneQueryCollector		mSingleSqCollector;
-					mutable Vd::PvdSceneQueryCollector		mBatchedSqCollector;
+			mutable Vd::PvdSceneQueryCollector	mSingleSqCollector;
+	PX_FORCE_INLINE	Vd::PvdSceneQueryCollector&	getSingleSqCollector()	const	{ return mSingleSqCollector;	}
 
-PX_FORCE_INLINE				Vd::PvdSceneQueryCollector&	getSingleSqCollector() const {return mSingleSqCollector;}
-PX_FORCE_INLINE				Vd::PvdSceneQueryCollector&	getBatchedSqCollector() const {return mBatchedSqCollector;}
+	// PVDCapture
+	virtual			bool						transmitSceneQueries();
+	virtual			void						raycast(const PxVec3& origin, const PxVec3& unitDir, PxReal distance, const PxRaycastHit* hit, PxU32 hitsNum, const PxQueryFilterData& filterData, bool multipleHits);
+	virtual			void						sweep(const PxGeometry& geometry, const PxTransform& pose, const PxVec3& unitDir, PxReal distance, const PxSweepHit* hit, PxU32 hitsNum, const PxQueryFilterData& filterData, bool multipleHits);
+	virtual			void						overlap(const PxGeometry& geometry, const PxTransform& pose, const PxOverlapHit* hit, PxU32 hitsNum, const PxQueryFilterData& filterData);
+	//~PVDCapture
 #endif // PX_SUPPORT_PVD
 };
-
-#if PX_SUPPORT_EXTERN_TEMPLATE
-//explicit template instantiation declaration
-extern template
-bool NpSceneQueries::multiQuery<PxRaycastHit>(const MultiQueryInput&, PxHitCallback<PxRaycastHit>&, PxHitFlags, const PxQueryCache*, const PxQueryFilterData&, PxQueryFilterCallback*, BatchQueryFilterData*) const;
-
-extern template
-bool NpSceneQueries::multiQuery<PxOverlapHit>(const MultiQueryInput&, PxHitCallback<PxOverlapHit>&, PxHitFlags, const PxQueryCache*, const PxQueryFilterData&, PxQueryFilterCallback*, BatchQueryFilterData*) const;
-
-extern template
-bool NpSceneQueries::multiQuery<PxSweepHit>(const MultiQueryInput&, PxHitCallback<PxSweepHit>&, PxHitFlags, const PxQueryCache*, const PxQueryFilterData&, PxQueryFilterCallback*, BatchQueryFilterData*) const;
-#endif
 
 } // namespace physx, sq
 

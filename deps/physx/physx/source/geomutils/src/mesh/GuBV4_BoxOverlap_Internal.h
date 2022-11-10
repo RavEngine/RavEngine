@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -78,18 +77,18 @@
 
 	struct OBBTestParams	// Data needed to perform the OBB-OBB overlap test
 	{
-		BV4_ALIGN16(Vec3p	mCenterOrMinCoeff_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mExtentsOrMaxCoeff_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mTBoxToModel_PaddedAligned);		//!< Translation from obb space to model space
-		BV4_ALIGN16(Vec3p	mBB_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mBoxExtents_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mCenterOrMinCoeff_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mExtentsOrMaxCoeff_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mTBoxToModel_PaddedAligned);		//!< Translation from obb space to model space
+		BV4_ALIGN16(PxVec3p	mBB_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mBoxExtents_PaddedAligned);
 
-		BV4_ALIGN16(Vec3p	mPreca0_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mPreca1_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mPreca2_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mPreca0b_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mPreca1b_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mPreca2b_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mPreca0_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mPreca1_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mPreca2_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mPreca0b_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mPreca1b_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mPreca2b_PaddedAligned);
 
 		PX_FORCE_INLINE	void	precomputeBoxData(const PxVec3& extents, const PxMat33* PX_RESTRICT box_to_model)
 		{

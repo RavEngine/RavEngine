@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,46 +22,51 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
+#ifndef SQ_COMPOUND_PRUNING_POOL_H
+#define SQ_COMPOUND_PRUNING_POOL_H
 
-#ifndef SQ_COMPOUNDPRUNING_POOL_H
-#define SQ_COMPOUNDPRUNING_POOL_H
-
-#include "SqPrunerMergeData.h"
-#include "SqIncrementalAABBTree.h"
-#include "PsArray.h"
+#include "SqPruner.h"
+#include "foundation/PxArray.h"
+#include "GuPrunerMergeData.h"
+#include "GuIncrementalAABBTree.h"
+#include "GuAABBTreeBounds.h"
 
 namespace physx
 {
-namespace Sq
+namespace Gu
 {
 	class PruningPool;
+}
+
+namespace Sq
+{
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	typedef Ps::Array<IncrementalAABBTreeNode*>			UpdateMap;
+	typedef PxArray<Gu::IncrementalAABBTreeNode*>	UpdateMap;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	class CompoundTree
 	{
 	public:
-		void	updateObjectAfterManualBoundsUpdates(PrunerHandle handle);
-		void	removeObject(PrunerHandle handle);
-		bool	addObject(PrunerHandle& result, const PxBounds3& bounds, const PrunerPayload userData);
+		void	updateObjectAfterManualBoundsUpdates(Gu::PrunerHandle handle);
+		void	removeObject(Gu::PrunerHandle handle, Gu::PrunerPayloadRemovalCallback* removalCallback);
+		bool	addObject(Gu::PrunerHandle& result, const PxBounds3& bounds, const Gu::PrunerPayload& data, const PxTransform& transform);
 
 	private:
-		void	updateMapping(const PoolIndex poolIndex, IncrementalAABBTreeNode* node, const NodeList& changedLeaves);
+		void	updateMapping(const Gu::PoolIndex poolIndex, Gu::IncrementalAABBTreeNode* node, const Gu::NodeList& changedLeaves);
 
 	public:
-		IncrementalAABBTree*	mTree;
-		PruningPool*			mPruningPool;
-		UpdateMap*				mUpdateMap;
-		PxTransform				mGlobalPose;
-		CompoundFlag::Enum		mFlags;
+		Gu::IncrementalAABBTree*	mTree;
+		Gu::PruningPool*			mPruningPool;
+		UpdateMap*					mUpdateMap;
+		PxTransform					mGlobalPose;
+		PxCompoundPrunerQueryFlags	mFlags;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -70,39 +74,39 @@ namespace Sq
 	class CompoundTreePool
 	{
 	public:
-		CompoundTreePool();
-		~CompoundTreePool();
+													CompoundTreePool(PxU64 contextID);
+													~CompoundTreePool();
 
-		void					preallocate(PxU32 newCapacity);
+						void						preallocate(PxU32 newCapacity);
 
-		PoolIndex				addCompound(PrunerHandle* results, const Gu::BVHStructure& bvhStructure, const PxBounds3& compoundBounds, const PxTransform& transform, CompoundFlag::Enum flags, const PrunerPayload* userData);
-		PoolIndex				removeCompound(PoolIndex index);
+						Gu::PoolIndex				addCompound(Gu::PrunerHandle* results, const Gu::BVH& bvh, const PxBounds3& compoundBounds, const PxTransform& transform, bool isDynamic, const Gu::PrunerPayload* data, const PxTransform* transforms);
+						Gu::PoolIndex				removeCompound(Gu::PoolIndex index, Gu::PrunerPayloadRemovalCallback* removalCallback);
 
-		void					shiftOrigin(const PxVec3& shift);
+						void						shiftOrigin(const PxVec3& shift);
 
-		PX_FORCE_INLINE const PxBounds3*		getCurrentCompoundBounds() const { return mCompoundBounds; }
-		PX_FORCE_INLINE PxBounds3*				getCurrentCompoundBounds()  { return mCompoundBounds; }
+		PX_FORCE_INLINE const Gu::AABBTreeBounds&	getCurrentAABBTreeBounds()	const	{ return mCompoundBounds;				}
+		PX_FORCE_INLINE const PxBounds3*			getCurrentCompoundBounds()	const	{ return mCompoundBounds.getBounds();	}
+		PX_FORCE_INLINE PxBounds3*					getCurrentCompoundBounds()			{ return mCompoundBounds.getBounds();	}
 
-		PX_FORCE_INLINE const CompoundTree*		getCompoundTrees() const { return mCompoundTrees; }
-		PX_FORCE_INLINE CompoundTree*			getCompoundTrees() { return mCompoundTrees; }
+		PX_FORCE_INLINE const CompoundTree*			getCompoundTrees()			const	{ return mCompoundTrees;				}
+		PX_FORCE_INLINE CompoundTree*				getCompoundTrees()					{ return mCompoundTrees;				}
 
-		PX_FORCE_INLINE PxU32					getNbObjects() const { return mNbObjects; }
-
-
-	private:
-		bool					resize(PxU32 newCapacity);
+		PX_FORCE_INLINE PxU32						getNbObjects()				const	{ return mNbObjects;					}
 
 	private:
-		PxU32					mNbObjects;			//!< Current number of objects
-		PxU32					mMaxNbObjects;		//!< Max. number of objects (capacity for mWorldBoxes, mObjects)
+						bool						resize(PxU32 newCapacity);
+
+						PxU32						mNbObjects;			//!< Current number of objects
+						PxU32						mMaxNbObjects;		//!< Max. number of objects (capacity for mWorldBoxes, mObjects)
 
 		//!< these arrays are parallel
-		PxBounds3*				mCompoundBounds;	//!< List of compound world boxes, stores mNbObjects, capacity=mMaxNbObjects		
-		CompoundTree*			mCompoundTrees;
+						Gu::AABBTreeBounds			mCompoundBounds;	//!< List of compound world boxes, stores mNbObjects, capacity=mMaxNbObjects		
+						CompoundTree*				mCompoundTrees;
+
+						PxU64						mContextID;
 	};
 
 }
 }
 
 #endif
-

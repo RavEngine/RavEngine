@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,10 +31,8 @@
 using namespace physx;
 using namespace Gu;
 
-#if PX_INTEL_FAMILY  && !defined(PX_SIMD_DISABLED)
-
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+#include "foundation/PxVecMath.h"
+using namespace physx::aos;
 
 #include "GuBV4_Common.h"
 #include "GuInternal.h"
@@ -45,15 +42,15 @@ using namespace physx::shdfnd::aos;
 	// PT: TODO: refactor structure (TA34704)
 	struct RayParams
 	{
-		BV4_ALIGN16(Vec3p	mCenterOrMinCoeff_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mExtentsOrMaxCoeff_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mCenterOrMinCoeff_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mExtentsOrMaxCoeff_PaddedAligned);
 	#ifndef GU_BV4_USE_SLABS
-		BV4_ALIGN16(Vec3p	mData2_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mFDir_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mData_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mLocalDir_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mData2_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mFDir_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mData_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mLocalDir_PaddedAligned);
 	#endif
-		BV4_ALIGN16(Vec3p	mOrigin_Padded);		// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
+		BV4_ALIGN16(PxVec3p	mOrigin_Padded);		// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
 	};
 
 #include "GuBV4_BoxSweep_Params.h"
@@ -68,6 +65,9 @@ namespace
 		float	mBestAlignmentValue;
 		float	mBestDistance;
 		float	mMaxDist;
+
+//		PX_FORCE_INLINE float	getReportDistance()	const	{ return mStabbedFace.mDistance; }
+		PX_FORCE_INLINE float	getReportDistance()	const	{ return mBestDistance; }
 	};
 }
 
@@ -87,9 +87,9 @@ namespace
 #define GU_BV4_PROCESS_STREAM_RAY_ORDERED
 #include "GuBV4_Internal.h"
 
-Ps::IntBool BV4_CapsuleSweepSingleAA(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags)
+PxIntBool BV4_CapsuleSweepSingleAA(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	CapsuleSweepParams Params;
 	setupCapsuleParams(&Params, capsule, dir, maxDist, &tree, mesh, flags);
@@ -102,9 +102,8 @@ Ps::IntBool BV4_CapsuleSweepSingleAA(const Capsule& capsule, const PxVec3& dir, 
 			processStreamRayOrdered<1, LeafFunction_CapsuleSweepClosest>(tree, &Params);
 	}
 	else
-		doBruteForceTests<LeafFunction_CapsuleSweepAny, LeafFunction_CapsuleSweepClosest>(mesh->getNbTriangles(), &Params);
+		doBruteForceTests<LeafFunction_CapsuleSweepAny, LeafFunction_CapsuleSweepClosest>(mesh->getNbPrimitives(), &Params);
 
 	return computeImpactDataT<ImpactFunctionCapsule>(capsule, dir, hit, &Params, NULL, (flags & QUERY_MODIFIER_DOUBLE_SIDED)!=0, (flags & QUERY_MODIFIER_MESH_BOTH_SIDES)!=0);
 }
 
-#endif

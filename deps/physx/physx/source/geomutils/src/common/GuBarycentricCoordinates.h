@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,36 +30,35 @@
 #define GU_BARYCENTRIC_COORDINATES_H
 
 #include "common/PxPhysXCommonConfig.h"
-#include "CmPhysXCommon.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
 namespace Gu
 {
 	//calculate the barycentric coorinates for a point in a segment
-	void barycentricCoordinates(const Ps::aos::Vec3VArg p, 
-		const Ps::aos::Vec3VArg a, 
-		const Ps::aos::Vec3VArg b, 
-		Ps::aos::FloatV& v);
+	void barycentricCoordinates(const aos::Vec3VArg p, 
+		const aos::Vec3VArg a, 
+		const aos::Vec3VArg b, 
+		aos::FloatV& v);
 
 	//calculate the barycentric coorinates for a point in a triangle
-	void barycentricCoordinates(const Ps::aos::Vec3VArg p, 
-		const Ps::aos::Vec3VArg a, 
-		const Ps::aos::Vec3VArg b, 
-		const Ps::aos::Vec3VArg c, 
-		Ps::aos::FloatV& v, 
-		Ps::aos::FloatV& w);
+	void barycentricCoordinates(const aos::Vec3VArg p, 
+		const aos::Vec3VArg a, 
+		const aos::Vec3VArg b, 
+		const aos::Vec3VArg c, 
+		aos::FloatV& v, 
+		aos::FloatV& w);
 
-	void barycentricCoordinates(const Ps::aos::Vec3VArg v0, 
-		const Ps::aos::Vec3VArg v1, 
-		const Ps::aos::Vec3VArg v2,  
-		Ps::aos::FloatV& v, 
-		Ps::aos::FloatV& w);
+	void barycentricCoordinates(const aos::Vec3VArg v0, 
+		const aos::Vec3VArg v1, 
+		const aos::Vec3VArg v2,  
+		aos::FloatV& v, 
+		aos::FloatV& w);
 
-	PX_INLINE Ps::aos::BoolV isValidTriangleBarycentricCoord(const Ps::aos::FloatVArg v, const Ps::aos::FloatVArg w)
+	PX_INLINE aos::BoolV isValidTriangleBarycentricCoord(const aos::FloatVArg v, const aos::FloatVArg w)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const FloatV zero = FNeg(FEps());
 		const FloatV one = FAdd(FOne(), FEps());
 
@@ -70,9 +68,9 @@ namespace Gu
 		return BAnd(con0, BAnd(con1, con2));
 	}
 
-	PX_INLINE Ps::aos::BoolV isValidTriangleBarycentricCoord2(const Ps::aos::Vec4VArg vwvw)
+	PX_INLINE aos::BoolV isValidTriangleBarycentricCoord2(const aos::Vec4VArg vwvw)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const Vec4V eps = V4Splat(FEps());
 		const Vec4V zero =V4Neg(eps);
 		const Vec4V one = V4Add(V4One(), eps);

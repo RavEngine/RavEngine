@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,29 +22,26 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "foundation/PxTransform.h"
-#include "CmPhysXCommon.h"
-#include "CmRenderOutput.h"
 #include "CmVisualization.h"
 
 using namespace physx;
 using namespace Cm;
 
-void Cm::visualizeJointFrames(RenderOutput& out, PxReal scale, const PxTransform& parent, const PxTransform& child)
+void Cm::visualizeJointFrames(PxRenderOutput& out, PxReal scale, const PxTransform& parent, const PxTransform& child)
 {
 	if(scale==0.0f)
 		return;
 
-	out << parent << Cm::DebugBasis(PxVec3(scale, scale, scale) * 1.5f,
+	out << parent << PxDebugBasis(PxVec3(scale, scale, scale) * 1.5f,
 		PxU32(PxDebugColor::eARGB_DARKRED), PxU32(PxDebugColor::eARGB_DARKGREEN), PxU32(PxDebugColor::eARGB_DARKBLUE));
-	out << child << Cm::DebugBasis(PxVec3(scale, scale, scale));	
+	out << child << PxDebugBasis(PxVec3(scale, scale, scale));	
 }
 
-void Cm::visualizeLinearLimit(RenderOutput& out, PxReal scale, const PxTransform& t0, const PxTransform& /*t1*/, PxReal value, bool active)
+void Cm::visualizeLinearLimit(PxRenderOutput& out, PxReal scale, const PxTransform& t0, const PxTransform& /*t1*/, PxReal value, bool active)
 {
 	if(scale==0.0f)
 		return;
@@ -54,36 +50,36 @@ void Cm::visualizeLinearLimit(RenderOutput& out, PxReal scale, const PxTransform
 	PxTransform r(t0.p+value*t0.q.getBasisVector0(), t0.q*PxQuat(PxPi/2,PxVec3(0,1.f,0)));
 	out << (active ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY);
 	out << PxTransform(PxIdentity);
-	out << Cm::DebugArrow(t0.p,r.p-t0.p);
+	out << PxDebugArrow(t0.p,r.p-t0.p);
 
-	out << r << Cm::DebugCircle(20, scale*0.3f);
+	out << r << PxDebugCircle(20, scale*0.3f);
 }
 
-void Cm::visualizeAngularLimit(RenderOutput& out, PxReal scale, const PxTransform& t, PxReal lower, PxReal upper, bool active)
+void Cm::visualizeAngularLimit(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal lower, PxReal upper, bool active)
 {
 	if(scale==0.0f)
 		return;
 
 	out << t << (active ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY);
 	
-	out << Cm::RenderOutput::LINES 
+	out << PxRenderOutput::LINES 
 		<< PxVec3(0) << PxVec3(0, PxCos(lower), PxSin(lower)) * scale
 		<< PxVec3(0) << PxVec3(0, PxCos(upper), PxSin(upper)) * scale;
 
-	out << Cm::RenderOutput::LINESTRIP;
+	out << PxRenderOutput::LINESTRIP;
 	PxReal angle = lower, step = (upper-lower)/20;
 
 	for(PxU32 i=0; i<=20; i++, angle += step)
 		out << PxVec3(0, PxCos(angle), PxSin(angle)) * scale;
 }
 
-void Cm::visualizeLimitCone(RenderOutput& out, PxReal scale, const PxTransform& t, PxReal tanQSwingY, PxReal tanQSwingZ, bool active)
+void Cm::visualizeLimitCone(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal tanQSwingY, PxReal tanQSwingZ, bool active)
 {
 	if(scale==0.0f)
 		return;
 
 	out << t << (active ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY);	
-	out << Cm::RenderOutput::LINES;
+	out << PxRenderOutput::LINES;
 
 	PxVec3 prev(0,0,0);
 	
@@ -103,7 +99,7 @@ void Cm::visualizeLimitCone(RenderOutput& out, PxReal scale, const PxTransform& 
 	}
 }
 
-void Cm::visualizeDoubleCone(Cm::RenderOutput& out, PxReal scale, const PxTransform& t, PxReal angle, bool active)
+void Cm::visualizeDoubleCone(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal angle, bool active)
 {
 	if(scale==0.0f)
 		return;
@@ -114,7 +110,7 @@ void Cm::visualizeDoubleCone(Cm::RenderOutput& out, PxReal scale, const PxTransf
 
 	const PxU32 LINES = 32;
 
-	out << Cm::RenderOutput::LINESTRIP;
+	out << PxRenderOutput::LINESTRIP;
 
 	const PxReal step = PxPi*2/LINES;
 
@@ -122,12 +118,12 @@ void Cm::visualizeDoubleCone(Cm::RenderOutput& out, PxReal scale, const PxTransf
 		out << PxVec3(height, PxCos(step * i), PxSin(step * i)) * scale;
 
 	angle = 0;
-	out << Cm::RenderOutput::LINESTRIP;
+	out << PxRenderOutput::LINESTRIP;
 	for(PxU32 i=0; i<=LINES; i++, angle += PxPi*2/LINES)
 		out << PxVec3(-height, PxCos(step * i), PxSin(step * i)) * scale;
 
 	angle = 0;
-	out << Cm::RenderOutput::LINES;
+	out << PxRenderOutput::LINES;
 	for(PxU32 i=0;i<LINES;i++, angle += PxPi*2/LINES)
 	{
 		out << PxVec3(0) << PxVec3(-height, PxCos(step * i), PxSin(step * i)) * scale;
@@ -135,3 +131,22 @@ void Cm::visualizeDoubleCone(Cm::RenderOutput& out, PxReal scale, const PxTransf
 	}
 }
 
+void Cm::renderOutputDebugBox(PxRenderOutput& out, const PxBounds3& box)
+{
+	out << PxDebugBox(box, true);
+}
+
+void Cm::renderOutputDebugCircle(PxRenderOutput& out, PxU32 s, PxReal r)
+{
+	out << PxDebugCircle(s, r);
+}
+
+void Cm::renderOutputDebugBasis(PxRenderOutput& out, const PxDebugBasis& basis)
+{
+	out << basis;
+}
+
+void Cm::renderOutputDebugArrow(PxRenderOutput& out, const PxDebugArrow& arrow)
+{
+	out << arrow;
+}

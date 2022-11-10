@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-#ifndef PX_XML_IMPL_H
-#define PX_XML_IMPL_H
+
+#ifndef SN_XML_IMPL_H
+#define SN_XML_IMPL_H
 
 #include "SnXmlMemoryPool.h"
-#include "PsString.h"
+#include "foundation/PxString.h"
 #include "foundation/PxMemory.h"
 
 namespace physx { namespace Sn {
@@ -145,7 +145,7 @@ namespace snXmlImpl {
 			for ( XmlNode* theNode = mFirstChild; theNode; theNode = theNode->mNextSibling )
 			{
 				XmlNode* theRepXNode = theNode;
-				if ( physx::shdfnd::stricmp( theRepXNode->mName, inName ) == 0 )
+				if ( physx::Pxstricmp( theRepXNode->mName, inName ) == 0 )
 					return theNode;
 			}
 			return NULL;

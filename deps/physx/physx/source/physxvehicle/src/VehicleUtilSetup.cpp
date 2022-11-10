@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxMath.h"
+#include "foundation/PxFoundation.h"
+#include "foundation/PxErrors.h"
 #include "vehicle/PxVehicleUtilSetup.h"
 #include "vehicle/PxVehicleDrive4W.h"
 #include "vehicle/PxVehicleDriveNW.h"
@@ -37,43 +38,44 @@
 #include "vehicle/PxVehicleUtil.h"
 #include "vehicle/PxVehicleUpdate.h"
 
-#include "PsFoundation.h"
-#include "CmPhysXCommon.h"
-
 namespace physx
 {
 
 void enable3WMode(const PxU32 rightDirection, const PxU32 upDirection, const bool removeFrontWheel, PxVehicleWheelsSimData& wheelsSimData, PxVehicleWheelsDynData& wheelsDynData, PxVehicleDriveSimData4W& driveSimData);
 
-void computeDirection(PxU32& rightDirection, PxU32& upDirection);
+void computeDirection(const PxVec3& up, const PxVec3& right, PxU32& rightDirection, PxU32& upDirection);
 
-void PxVehicle4WEnable3WTadpoleMode(PxVehicleWheelsSimData& wheelsSimData, PxVehicleWheelsDynData& wheelsDynData, PxVehicleDriveSimData4W& driveSimData)
+void PxVehicle4WEnable3WTadpoleMode(PxVehicleWheelsSimData& wheelsSimData, PxVehicleWheelsDynData& wheelsDynData, PxVehicleDriveSimData4W& driveSimData,
+	const PxVehicleContext& context)
 {
 	PX_CHECK_AND_RETURN
 		(!wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eFRONT_LEFT) &&
 		 !wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eFRONT_RIGHT) &&
 		 !wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eREAR_LEFT) &&
 		 !wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eREAR_RIGHT), "PxVehicle4WEnable3WTadpoleMode requires no wheels to be disabled");
+	PX_CHECK_AND_RETURN(context.isValid(), "PxVehicle4WEnable3WTadpoleMode: provided PxVehicleContext is not valid");
 
 	PxU32 rightDirection=0xffffffff;
 	PxU32 upDirection=0xffffffff;
-	computeDirection(rightDirection, upDirection);
+	computeDirection(context.upAxis, context.sideAxis, rightDirection, upDirection);
 	PX_CHECK_AND_RETURN(rightDirection<3 && upDirection<3, "PxVehicle4WEnable3WTadpoleMode requires the vectors set in PxVehicleSetBasisVectors to be axis-aligned");
 
 	enable3WMode(rightDirection, upDirection, false, wheelsSimData, wheelsDynData, driveSimData);
 }
 
-void PxVehicle4WEnable3WDeltaMode(PxVehicleWheelsSimData& wheelsSimData, PxVehicleWheelsDynData& wheelsDynData, PxVehicleDriveSimData4W& driveSimData)
+void PxVehicle4WEnable3WDeltaMode(PxVehicleWheelsSimData& wheelsSimData, PxVehicleWheelsDynData& wheelsDynData, PxVehicleDriveSimData4W& driveSimData,
+	const PxVehicleContext& context)
 {
 	PX_CHECK_AND_RETURN
 		(!wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eFRONT_LEFT) &&
 		!wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eFRONT_RIGHT) &&
 		!wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eREAR_LEFT) &&
 		!wheelsSimData.getIsWheelDisabled(PxVehicleDrive4WWheelOrder::eREAR_RIGHT), "PxVehicle4WEnable3WDeltaMode requires no wheels to be disabled");
+	PX_CHECK_AND_RETURN(context.isValid(), "PxVehicle4WEnable3WDeltaMode: provided PxVehicleContext is not valid");
 
 	PxU32 rightDirection=0xffffffff;
 	PxU32 upDirection=0xffffffff;
-	computeDirection(rightDirection, upDirection);
+	computeDirection(context.upAxis, context.sideAxis, rightDirection, upDirection);
 	PX_CHECK_AND_RETURN(rightDirection<3 && upDirection<3, "PxVehicle4WEnable3WTadpoleMode requires the vectors set in PxVehicleSetBasisVectors to be axis-aligned");
 
 	enable3WMode(rightDirection, upDirection, true, wheelsSimData, wheelsDynData, driveSimData);

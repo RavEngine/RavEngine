@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef NP_REVOLUTEJOINTCONSTRAINT_H
-#define NP_REVOLUTEJOINTCONSTRAINT_H
+#ifndef EXT_REVOLUTE_JOINT_H
+#define EXT_REVOLUTE_JOINT_H
 
 #include "extensions/PxRevoluteJoint.h"
 
 #include "ExtJoint.h"
-#include "PsIntrinsics.h"
+#include "foundation/PxIntrinsics.h"
 #include "CmUtils.h"
 
 namespace physx
 {
-
-class PxConstraintSolverPrepKernel;
-class PxConstraintProjectionKernel;
 struct PxRevoluteJointGeneratedValues;
 
 namespace Ext
@@ -54,23 +50,21 @@ namespace Ext
 	// accordingly.
 	//==================================================================================================
 
-							PxReal					driveVelocity;
-							PxReal					driveForceLimit;
-							PxReal					driveGearRatio;
+		PxReal					driveVelocity;
+		PxReal					driveForceLimit;
+		PxReal					driveGearRatio;
 
-							PxJointAngularLimitPair	limit;
+		PxJointAngularLimitPair	limit;
 							
-							PxReal					projectionLinearTolerance;
-							PxReal					projectionAngularTolerance;
+		PxReal					projectionLinearTolerance;
+		PxReal					projectionAngularTolerance;
 							
-							PxRevoluteJointFlags	jointFlags;
-		// forestall compiler complaints about not being able to generate a constructor
+		PxRevoluteJointFlags	jointFlags;
 	private:
-		RevoluteJointData(const PxJointAngularLimitPair &pair):
-			limit(pair) {}
+		RevoluteJointData(const PxJointAngularLimitPair& pair) : limit(pair)	{}
 	};
 
-    typedef Joint<PxRevoluteJoint, PxRevoluteJointGeneratedValues> RevoluteJointT;
+    typedef JointT<PxRevoluteJoint, RevoluteJointData, PxRevoluteJointGeneratedValues> RevoluteJointT;
     
 	class RevoluteJoint : public RevoluteJointT
 	{
@@ -82,73 +76,42 @@ namespace Ext
 	//==================================================================================================
 	public:
 // PX_SERIALIZATION
-									RevoluteJoint(PxBaseFlags baseFlags) : RevoluteJointT(baseFlags) {}
-					void			resolveReferences(PxDeserializationContext& context);
-		virtual		void			exportExtraData(PxSerializationContext& context);
-					void			importExtraData(PxDeserializationContext& context);
-		static		RevoluteJoint*	createObject(PxU8*& address, PxDeserializationContext& context);
-		static		void			getBinaryMetaData(PxOutputStream& stream);
+										RevoluteJoint(PxBaseFlags baseFlags) : RevoluteJointT(baseFlags) {}
+				void					resolveReferences(PxDeserializationContext& context);
+		static	RevoluteJoint*			createObject(PxU8*& address, PxDeserializationContext& context)	{ return createJointObject<RevoluteJoint>(address, context);	}
+		static	void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
-
-		RevoluteJoint(const PxTolerancesScale& /*scale*/, PxRigidActor* actor0, const PxTransform& localFrame0,  PxRigidActor* actor1, const PxTransform& localFrame1) :
-			RevoluteJointT(PxJointConcreteType::eREVOLUTE, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE, actor0, localFrame0, actor1, localFrame1, sizeof(RevoluteJointData), "RevoluteJointData")
-		{
-			RevoluteJointData* data = static_cast<RevoluteJointData*>(mData);
-
-			data->projectionLinearTolerance		= 1e10f;
-			data->projectionAngularTolerance	= PxPi;
-			data->driveForceLimit				= PX_MAX_F32;
-			data->driveVelocity					= 0.0f;
-			data->driveGearRatio				= 1.0f;
-			data->limit							= PxJointAngularLimitPair(-PxPi/2, PxPi/2);
-			data->jointFlags					= PxRevoluteJointFlags();
-		}
-
+										RevoluteJoint(const PxTolerancesScale& /*scale*/, PxRigidActor* actor0, const PxTransform& localFrame0,  PxRigidActor* actor1, const PxTransform& localFrame1);
 		// PxRevoluteJoint
-		virtual	PxReal					getAngle() const;
-		virtual	PxReal					getVelocity() const;
-		virtual	void					setLimit(const PxJointAngularLimitPair& limit);
-		virtual	PxJointAngularLimitPair	getLimit()	const;
-		virtual	void					setDriveVelocity(PxReal velocity, bool autowake = true);
-		virtual	PxReal					getDriveVelocity() const;
-		virtual	void					setDriveForceLimit(PxReal forceLimit);
-		virtual	PxReal					getDriveForceLimit() const;
-		virtual	void					setDriveGearRatio(PxReal gearRatio);
-		virtual	PxReal					getDriveGearRatio() const;
-		virtual	void					setRevoluteJointFlags(PxRevoluteJointFlags flags);
-		virtual	void					setRevoluteJointFlag(PxRevoluteJointFlag::Enum flag, bool value);
-		virtual	PxRevoluteJointFlags	getRevoluteJointFlags()	const;
-		virtual	void					setProjectionLinearTolerance(PxReal distance);
-		virtual	PxReal					getProjectionLinearTolerance()	const;
-		virtual	void					setProjectionAngularTolerance(PxReal tolerance);
-		virtual	PxReal					getProjectionAngularTolerance()	const;
+		virtual	PxReal					getAngle() const	PX_OVERRIDE;
+		virtual	PxReal					getVelocity() const	PX_OVERRIDE;
+		virtual	void					setLimit(const PxJointAngularLimitPair& limit)	PX_OVERRIDE;
+		virtual	PxJointAngularLimitPair	getLimit()	const	PX_OVERRIDE;
+		virtual	void					setDriveVelocity(PxReal velocity, bool autowake = true)	PX_OVERRIDE;
+		virtual	PxReal					getDriveVelocity() const	PX_OVERRIDE;
+		virtual	void					setDriveForceLimit(PxReal forceLimit)	PX_OVERRIDE;
+		virtual	PxReal					getDriveForceLimit() const	PX_OVERRIDE;
+		virtual	void					setDriveGearRatio(PxReal gearRatio)	PX_OVERRIDE;
+		virtual	PxReal					getDriveGearRatio() const	PX_OVERRIDE;
+		virtual	void					setRevoluteJointFlags(PxRevoluteJointFlags flags)	PX_OVERRIDE;
+		virtual	void					setRevoluteJointFlag(PxRevoluteJointFlag::Enum flag, bool value)	PX_OVERRIDE;
+		virtual	PxRevoluteJointFlags	getRevoluteJointFlags()	const	PX_OVERRIDE;
+		virtual	void					setProjectionLinearTolerance(PxReal distance)	PX_OVERRIDE;
+		virtual	PxReal					getProjectionLinearTolerance()	const	PX_OVERRIDE;
+		virtual	void					setProjectionAngularTolerance(PxReal tolerance)	PX_OVERRIDE;
+		virtual	PxReal					getProjectionAngularTolerance()	const	PX_OVERRIDE;
 		//~PxRevoluteJoint
 	
-		bool					attach(PxPhysics &physics, PxRigidActor* actor0, PxRigidActor* actor1);
-		
-		static const PxConstraintShaderTable& getConstraintShaderTable() { return sShaders; }
-
-		virtual PxConstraintSolverPrep getPrep() const { return sShaders.solverPrep; }
-
-	private:
-
-		static PxConstraintShaderTable sShaders;
-
-		PX_FORCE_INLINE RevoluteJointData& data() const
-		{	
-			return *static_cast<RevoluteJointData*>(mData);
-		}
-
+		// PxConstraintConnector
+		virtual PxConstraintSolverPrep	getPrep()	const	PX_OVERRIDE;
+#if PX_SUPPORT_OMNI_PVD
+		virtual void updateOmniPvdProperties() const PX_OVERRIDE;
+#endif
+		//~PxConstraintConnector
 	};
 
 } // namespace Ext
 
-namespace Ext
-{
-	// global function to share the joint shaders with API capture	
-	extern "C" const PxConstraintShaderTable* GetRevoluteJointShaderTable();
-}
-
-}
+} // namespace physx
 
 #endif

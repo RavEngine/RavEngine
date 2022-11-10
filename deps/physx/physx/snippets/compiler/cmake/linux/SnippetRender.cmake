@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,12 +22,18 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build SnippetRender
 #
-find_package(OpenGL $ENV{PM_OpenGL_VERSION} CONFIG REQUIRED) # Pull in OpenGL and GLUT
+
+IF(NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+	find_package(OpenGL $ENV{PM_OpenGL_VERSION} CONFIG REQUIRED) # Pull in OpenGL and GLUT
+ENDIF()
+IF(NOT PUBLIC_RELEASE)
+	find_package(CUDA $ENV{PM_CUDA_Version} REQUIRED)
+ENDIF()
 
 SET(SNIPPETRENDER_COMPILE_DEFS
 	# Common to all configurations
@@ -41,8 +46,29 @@ SET(SNIPPETRENDER_COMPILE_DEFS
 	$<$<CONFIG:release>:${PHYSX_LINUX_RELEASE_COMPILE_DEFS};>
 )
 
+# vreutskyy: copied from SdkUnitTest.cmake
+# preist@: FIND_PACKAGE will not find the fallback stub/libcuda.so in case that the
+# machine does not have graphics drivers installed (that come with libcuda.so)
+# and linking will fail. So use stub fallback explicitly here:
+IF(NOT PUBLIC_RELEASE)
+	IF(${CUDA_CUDA_LIBRARY} STREQUAL "CUDA_CUDA_LIBRARY-NOTFOUND")
+		find_library(CUDA_CUDA_LIBRARY cuda PATHS ${CUDA_TOOLKIT_TARGET_DIR}/lib64/stubs)
+	ENDIF()
+	SET(CUDA_LIBS ${CUDA_CUDA_LIBRARY})
+ENDIF()
 
-SET(SNIPPETRENDER_PLATFORM_INCLUDES
-)
+SET(SNIPPETRENDER_PLATFORM_INCLUDES)
 
-SET(SNIPPETRENDER_PLATFORM_LINKED_LIBS GL GLUT GLU)
+# gwoolery: aarch64 requires glut library to be lower case, for whatever reason
+IF(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+	SET(GLUT_LIB "glut")
+ELSE()
+	SET(GLUT_LIB "GLUT")
+ENDIF()
+
+SET(SNIPPETRENDER_PLATFORM_LINKED_LIBS GL GLU ${GLUT_LIB})
+
+IF(NOT PUBLIC_RELEASE)
+	LIST(APPEND SNIPPETRENDER_PLATFORM_INCLUDES ${CUDA_INCLUDE_DIRS})
+	LIST(APPEND SNIPPETRENDER_PLATFORM_LINKED_LIBS ${CUDA_LIBS})
+ENDIF()

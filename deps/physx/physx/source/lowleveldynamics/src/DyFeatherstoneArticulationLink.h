@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXD_FEATHERSTONE_ARTICULATION_LINK_H
-#define PXD_FEATHERSTONE_ARTICULATION_LINK_H
+#ifndef DY_FEATHERSTONE_ARTICULATION_LINK_H
+#define DY_FEATHERSTONE_ARTICULATION_LINK_H
 
 #include "foundation/PxVec3.h"
 #include "foundation/PxQuat.h"
 #include "foundation/PxTransform.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 #include "CmUtils.h"
 #include "CmSpatialVector.h"
 #include "DyVArticulation.h"
@@ -54,11 +52,7 @@ namespace physx
 				maxPenBias = 0.f;
 			}
 
-			Cm::SpatialVectorF				IsW[MaxJointRows];//stI is the transpose of Is
 			PxVec3							childToBase;
-			PxVec3							r; //vector from parent com to child com
-			PxVec3							rw; //vector from parent com to child com
-			PxReal							qstZIc[MaxJointRows];//jointForce - stZIc
 			PxReal							maxPenBias;
 
 		};

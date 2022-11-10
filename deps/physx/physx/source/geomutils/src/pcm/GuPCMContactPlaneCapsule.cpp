@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,38 +22,34 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuVecCapsule.h"
-#include "GuGeometryUnion.h"
 #include "GuContactMethodImpl.h"
 #include "GuPersistentContactManifold.h"
 
-namespace physx
-{
-namespace Gu
-{
-bool pcmContactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
+using namespace physx;
+
+bool Gu::pcmContactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(shape0);
 	PX_UNUSED(renderOutput);
 
-	using namespace Ps::aos;
+	using namespace aos;
 
 	Gu::PersistentContactManifold& manifold = cache.getManifold();
-	Ps::prefetchLine(&manifold, 256);
+	PxPrefetchLine(&manifold, 256);
 
 	// Get actual shape data
-	const PxCapsuleGeometry& shapeCapsule = shape1.get<const PxCapsuleGeometry>();
+	const PxCapsuleGeometry& shapeCapsule = checkedCast<PxCapsuleGeometry>(shape1);
 
-	const PsTransformV transf0 = loadTransformA(transform1);//capsule transform
-	const PsTransformV transf1 = loadTransformA(transform0);//plane transform
+	const PxTransformV transf0 = loadTransformA(transform1);//capsule transform
+	const PxTransformV transf1 = loadTransformA(transform0);//plane transform
 	//capsule to plane
-	const PsTransformV aToB(transf1.transformInv(transf0));
+	const PxTransformV aToB(transf1.transformInv(transf0));
 
 	//in world space
 	const Vec3V planeNormal = V3Normalize(QuatGetBasisVector0(transf1.q));
@@ -127,6 +122,3 @@ bool pcmContactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
 		return manifold.getNumContacts() > 0;
 	}
 }
-
-}//Gu
-}//physx

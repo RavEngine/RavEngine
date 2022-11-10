@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,8 +42,6 @@
 //
 // The above equation results in a singularity when the anchor point is coincident with the attachment point; for simplicity
 // the constraint does not attempt to handle this case robustly.
-
-
 
 class PulleyJoint : public physx::PxConstraintConnector
 {
@@ -80,40 +77,15 @@ public:
 	void			onOriginShift(const physx::PxVec3& shift);
 	void*			getExternalReference(physx::PxU32& typeID);
 
-
 	bool			updatePvdProperties(physx::pvdsdk::PvdDataStream&,
 										const physx::PxConstraint*,
 										physx::PxPvdUpdateType::Enum) const { return true; }
+	void			updateOmniPvdProperties() const { }
 	physx::PxBase*	getSerializable() { return NULL; }
 
-	virtual physx::PxConstraintSolverPrep getPrep() const { return sShaderTable.solverPrep; }
+	virtual physx::PxConstraintSolverPrep getPrep() const;
 
 	virtual const void* getConstantBlock() const { return &mData; }
-
-private:
-
-	static physx::PxU32 solverPrep(physx::Px1DConstraint* constraints,
-								   physx::PxVec3& body0WorldOffset,
-								   physx::PxU32 maxConstraints,
-								   physx::PxConstraintInvMassScale&,
-								   const void* constantBlock,
-								   const physx::PxTransform& bA2w,
-								   const physx::PxTransform& bB2w,
-									bool useExtendedLimits,
-									physx::PxVec3& cA2wOut, physx::PxVec3& cB2wOut);
-
-
-	static void	visualize(physx::PxConstraintVisualizer& viz,
-						  const void* constantBlock,
-						  const physx::PxTransform&	body0Transform,
-						  const physx::PxTransform&	body1Transform,
-						  physx::PxU32 flags);
-
-	static void project(const void* constantBlock,
-						physx::PxTransform& bodyAToWorld,
-						physx::PxTransform& bodyBToWorld,
-						bool projectToA);
-
 
 	struct PulleyJointData
 	{
@@ -132,8 +104,6 @@ private:
 
 	physx::PxConstraint*	mConstraint;
 	PulleyJointData			mData;
-	static physx::PxConstraintShaderTable
-							sShaderTable;
 
 	~PulleyJoint() {}
 };

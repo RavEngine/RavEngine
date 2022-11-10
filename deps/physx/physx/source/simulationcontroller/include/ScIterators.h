@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
       
-
-#ifndef PX_PHYSICS_SCP_ITERATOR
-#define PX_PHYSICS_SCP_ITERATOR
+#ifndef SC_ITERATORS_H
+#define SC_ITERATORS_H
 
 #include "foundation/PxVec3.h"
 #include "PxContact.h"
@@ -41,7 +39,7 @@ class PxsContactManagerOutputIterator;
 
 namespace Sc
 {
-	class ShapeSim;
+	class ShapeSimBase;
 	class Interaction;
 	
 	struct Contact
@@ -72,7 +70,7 @@ namespace Sc
 			{
 			public:
 				Pair() : mIter(NULL, NULL, NULL, 0, 0) {}
-				Pair(const void*& contactPatches, const void*& contactPoints, const PxU32 /*contactDataSize*/, const PxReal*& forces, PxU32 numContacts, PxU32 numPatches, ShapeSim& shape0, ShapeSim& shape1);
+				Pair(const void*& contactPatches, const void*& contactPoints, const PxU32 /*contactDataSize*/, const PxReal*& forces, PxU32 numContacts, PxU32 numPatches, ShapeSimBase& shape0, ShapeSimBase& shape1);
 				Contact* getNextContact();
 
 			private:
@@ -86,7 +84,8 @@ namespace Sc
 			ContactIterator() {}
 			explicit ContactIterator(Interaction** first, Interaction** last, PxsContactManagerOutputIterator& outputs): mCurrent(first), mLast(last), mOffset(0), mOutputs(&outputs) {}
 			Pair* getNextPair();
-
+			Interaction* getCurrentInteraction() { return *mCurrent; }
+			
 		private:
 			Interaction**					mCurrent;
 			Interaction**					mLast;

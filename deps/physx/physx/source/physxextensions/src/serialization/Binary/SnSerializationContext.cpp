@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxBase.h"
 #include "SnSerializationContext.h"
-#include "PsFoundation.h"
 
 using namespace physx;
 using namespace Sn;
@@ -76,7 +74,7 @@ void SerializationContext::registerReference(PxBase& serializable, PxU32 kind, s
 #if PX_CHECKED
 	if ((kind & PX_SERIAL_REF_KIND_PTR_TYPE_BIT) == 0 && reference > 0xffff)
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerializationContext::registerReference: only 16 bit handles supported.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerializationContext::registerReference: only 16 bit handles supported.");
 		return;
 	}
 #endif
@@ -87,7 +85,7 @@ void SerializationContext::registerReference(PxBase& serializable, PxU32 kind, s
 	{
 		PxSerialObjectId id = mExternalRefs->getId(serializable);
 		PX_ASSERT(id != PX_SERIAL_OBJECT_ID_INVALID);
-		if (const Ps::HashMap<PxSerialObjectId, PxU32>::Entry* entry = mImportReferencesMap.find(id))
+		if (const PxHashMap<PxSerialObjectId, PxU32>::Entry* entry = mImportReferencesMap.find(id))
 		{
 			index = entry->second;
 		}

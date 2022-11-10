@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,42 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-     
 
 #include "foundation/PxPreprocessor.h"
-#include "PsVecMath.h"
-#include "PsMathUtils.h"
+#include "foundation/PxVecMath.h"
 #include "DySolverContact.h"
 #include "DySolverContactPF.h"
-#include "DySolverConstraintTypes.h"
 #include "PxcNpWorkUnit.h"
 #include "DyThreadContext.h"
-#include "DyContactPrep.h"
 #include "PxcNpContactPrepShared.h"
-//#include "PxvGeometry.h"
-#include "PxvDynamics.h"
-#include "DyCorrelationBuffer.h"
-#include "DySolverConstraintDesc.h"
-#include "DySolverBody.h"
-#include "DySolverContact4.h"
-#include "DySolverContactPF4.h"
-
-
-#include "PsVecMath.h"
-#include "PxContactModifyCallback.h"
 #include "PxsMaterialManager.h"
-#include "PxsMaterialCombiner.h"
-#include "DySolverExt.h"
-#include "DyArticulationContactPrep.h"
 #include "DyContactPrepShared.h"
 
-#include "PsFoundation.h"
-
 using namespace physx::Gu;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 namespace physx
 {
@@ -69,17 +48,17 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 		PxsContactManagerOutput& output,
 		ThreadContext& threadContext,
 		const PxReal invDtF32,
+		const PxReal dtF32,
 		PxReal bounceThresholdF32,
 		PxReal frictionOffsetThreshold,
 		PxReal correlationDistance,
-		PxReal solverOffsetSlop,
 		PxConstraintAllocator& constraintAllocator,
 		PxFrictionType::Enum frictionType,
 		Cm::SpatialVectorF* Z);
 
 static bool setupFinalizeSolverConstraintsCoulomb(
 												  Sc::ShapeInteraction* shapeInteraction,
-						    const ContactBuffer& buffer,
+						    const PxContactBuffer& buffer,
 							const CorrelationBuffer& c,
 							const PxTransform& bodyFrame0,
 							const PxTransform& bodyFrame1,
@@ -87,6 +66,7 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 							const PxSolverBodyData& data0,
 							const PxSolverBodyData& data1,
 							const PxReal invDtF32,
+							const PxReal dtF32,
 							PxReal bounceThresholdF32,
 							PxU32 frictionPerPointCount,
 							const bool hasForceThresholds,
@@ -109,15 +89,15 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 	const Vec3V bodyFrame0p = V3LoadU(bodyFrame0.p);
 	const Vec3V bodyFrame1p = V3LoadU(bodyFrame1.p);
 
-	Ps::prefetchLine(c.contactID);
-	Ps::prefetchLine(c.contactID, 128);
+	PxPrefetchLine(c.contactID);
+	PxPrefetchLine(c.contactID, 128);
 	
 	const PxU32 frictionPatchCount = c.frictionPatchCount;
 
 	const PxU32 pointStride = sizeof(SolverContactPoint);
 	const PxU32 frictionStride = sizeof(SolverContactFriction);
-	const PxU8 pointHeaderType = Ps::to8(staticBody ? DY_SC_TYPE_STATIC_CONTACT : DY_SC_TYPE_RB_CONTACT);
-	const PxU8 frictionHeaderType = Ps::to8(staticBody ? DY_SC_TYPE_STATIC_FRICTION : DY_SC_TYPE_FRICTION);
+	const PxU8 pointHeaderType = PxTo8(staticBody ? DY_SC_TYPE_STATIC_CONTACT : DY_SC_TYPE_RB_CONTACT);
+	const PxU8 frictionHeaderType = PxTo8(staticBody ? DY_SC_TYPE_STATIC_FRICTION : DY_SC_TYPE_FRICTION);
 
 
 	const Vec3V linVel0 = V3LoadU(data0.linearVelocity);
@@ -148,6 +128,7 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 	);
 
 	const FloatV invDt = FLoad(invDtF32);
+	const FloatV dt = FLoad(dtF32);
 	const FloatV p8 = FLoad(0.8f);
 	const FloatV bounceThreshold = FLoad(bounceThresholdF32);
 	const FloatV orthoThreshold = FLoad(0.70710678f);
@@ -171,14 +152,15 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 		if(contactCount == 0)
 			continue;
 
-		const Gu::ContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
+		const PxContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
 
-		const Vec3V normal = Ps::aos::V3LoadA(contactBase0->normal);
+		const Vec3V normal = aos::V3LoadA(contactBase0->normal);
 
 		const FloatV normalLenSq = V3LengthSq(normal);
 		const VecCrossV norCross = V3PrepareCross(normal);
 
 		const FloatV restitution = FLoad(contactBase0->restitution);
+		const FloatV damping = FLoad(contactBase0->damping);
 
 		const FloatV norVel = V3SumElems(V3NegMulSub(normal, linVel1, V3Mul(normal, linVel0)));
 		/*const FloatV norVel0 = V3Dot(normal, linVel0);
@@ -192,9 +174,9 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 		SolverContactCoulombHeader* PX_RESTRICT header = reinterpret_cast<SolverContactCoulombHeader*>(ptr);
 		ptr += sizeof(SolverContactCoulombHeader);
 
-		Ps::prefetchLine(ptr, 128);
-		Ps::prefetchLine(ptr, 256);
-		Ps::prefetchLine(ptr, 384);
+		PxPrefetchLine(ptr, 128);
+		PxPrefetchLine(ptr, 256);
+		PxPrefetchLine(ptr, 384);
 
 
 		header->numNormalConstr		= PxU8(contactCount);
@@ -216,13 +198,13 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 			patch = c.contactPatches[patch].next)
 		{
 			const PxU32 count = c.contactPatches[patch].count;
-			const Gu::ContactPoint* contactBase = buffer.contacts + c.contactPatches[patch].start;
+			const PxContactPoint* contactBase = buffer.contacts + c.contactPatches[patch].start;
 
 				
 			PxU8* p = ptr;
 			for(PxU32 j=0;j<count;j++)
 			{
-				const Gu::ContactPoint& contact = contactBase[j];
+				const PxContactPoint& contact = contactBase[j];
 
 				SolverContactPoint* PX_RESTRICT solverContact = reinterpret_cast<SolverContactPoint*>(p);
 				p += pointStride;
@@ -230,8 +212,8 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 				constructContactConstraint(invSqrtInertia0, invSqrtInertia1, invMassNorLenSq0, 
 					invMassNorLenSq1, angD0, angD1, bodyFrame0p, bodyFrame1p,
 					normal, norVel, norCross, angVel0, angVel1,
-					invDt, invDtp8, restDistance, maxPenBias,  restitution,
-					bounceThreshold, contact, *solverContact, ccdMaxSeparation, solverOffsetSlop);
+					invDt, invDtp8, dt, restDistance, maxPenBias,  restitution,
+					bounceThreshold, contact, *solverContact, ccdMaxSeparation, solverOffsetSlop, damping);
 			}			
 			ptr = p;
 		}
@@ -248,7 +230,7 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 		if(contactCount == 0)
 			continue;
 
-		const Gu::ContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
+		const PxContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
 
 		SolverContactCoulombHeader* header = reinterpret_cast<SolverContactCoulombHeader*>(ptr2); 
 		header->frictionOffset = PxU16(ptr - ptr2);// + sizeof(SolverFrictionHeader);
@@ -259,15 +241,15 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 		const bool haveFriction = (disableStrongFriction == 0);
 	
 		SolverFrictionHeader* frictionHeader = reinterpret_cast<SolverFrictionHeader*>(ptr);
-		frictionHeader->numNormalConstr = Ps::to8(c.frictionPatchContactCounts[i]);
-		frictionHeader->numFrictionConstr = Ps::to8(haveFriction ? c.frictionPatchContactCounts[i] * frictionPerPointCount : 0);
+		frictionHeader->numNormalConstr = PxTo8(c.frictionPatchContactCounts[i]);
+		frictionHeader->numFrictionConstr = PxTo8(haveFriction ? c.frictionPatchContactCounts[i] * frictionPerPointCount : 0);
 		ptr += sizeof(SolverFrictionHeader);
 		PxF32* appliedForceBuffer = reinterpret_cast<PxF32*>(ptr);
 		ptr += frictionHeader->getAppliedForcePaddingSize(c.frictionPatchContactCounts[i]);
 		PxMemZero(appliedForceBuffer, sizeof(PxF32)*contactCount*frictionPerPointCount);
-		Ps::prefetchLine(ptr, 128);
-		Ps::prefetchLine(ptr, 256);
-		Ps::prefetchLine(ptr, 384);
+		PxPrefetchLine(ptr, 128);
+		PxPrefetchLine(ptr, 256);
+		PxPrefetchLine(ptr, 384);
 
 		const Vec3V normal = V3LoadU(buffer.contacts[c.contactPatches[c.correlationListHeads[i]].start].normal);
 
@@ -276,7 +258,7 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 		const FloatV normalZ = V3GetZ(normal);
 		
 		const Vec3V t0Fallback1 = V3Merge(zero, FNeg(normalZ), normalY);
-		const Vec3V t0Fallback2 = V3Merge(FNeg(normalY), normalX, zero) ;
+		const Vec3V t0Fallback2 = V3Merge(FNeg(normalY), normalX, zero);
 
 		const BoolV con = FIsGrtr(orthoThreshold, FAbs(normalX));
 		const Vec3V tFallback1 = V3Sel(con, t0Fallback1, t0Fallback2);
@@ -301,21 +283,19 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 			FStore(angD1, &frictionHeader->angDom1);
 			frictionHeader->type			= frictionHeaderType;
 			
-			PxU32 totalPatchContactCount = 0;
-		
 			for(PxU32 patch=c.correlationListHeads[i]; 
 				patch!=CorrelationBuffer::LIST_END; 
 				patch = c.contactPatches[patch].next)
 			{
 				const PxU32 count = c.contactPatches[patch].count;
 				const PxU32 start = c.contactPatches[patch].start;
-				const Gu::ContactPoint* contactBase = buffer.contacts + start;
+				const PxContactPoint* contactBase = buffer.contacts + start;
 					
 				PxU8* p = ptr;
 				for(PxU32 j =0; j < count; j++)
 				{
 					hasFriction = true;
-					const Gu::ContactPoint& contact = contactBase[j];
+					const PxContactPoint& contact = contactBase[j];
 					const Vec3V point = V3LoadU(contact.point);
 					Vec3V ra = V3Sub(point, bodyFrame0p);
 					Vec3V rb = V3Sub(point, bodyFrame1p);
@@ -358,8 +338,6 @@ static bool setupFinalizeSolverConstraintsCoulomb(
 					}
 				}
 
-				totalPatchContactCount += c.contactPatches[patch].count;
-				
 				ptr = p;	
 			}
 		}
@@ -497,14 +475,14 @@ bool createFinalizeSolverContactsCoulomb1D(PxSolverContactDesc& contactDesc,
 	PxsContactManagerOutput& output,
 	ThreadContext& threadContext,
 	const PxReal invDtF32,
+	const PxReal dtF32,
 	PxReal bounceThresholdF32,
 	PxReal frictionOffsetThreshold,
 	PxReal correlationDistance,
-	PxReal solverOffsetSlop,
 	PxConstraintAllocator& constraintAllocator,
 	Cm::SpatialVectorF* Z)
 {
-	return createFinalizeSolverContactsCoulomb(contactDesc, output, threadContext, invDtF32, bounceThresholdF32, frictionOffsetThreshold, correlationDistance, solverOffsetSlop,
+	return createFinalizeSolverContactsCoulomb(contactDesc, output, threadContext, invDtF32, dtF32, bounceThresholdF32, frictionOffsetThreshold, correlationDistance,
 		constraintAllocator, PxFrictionType::eONE_DIRECTIONAL, Z);
 }
 
@@ -512,15 +490,15 @@ bool createFinalizeSolverContactsCoulomb2D(PxSolverContactDesc& contactDesc,
 	PxsContactManagerOutput& output,
 	ThreadContext& threadContext,
 	const PxReal invDtF32,
+	const PxReal dtF32,
 	PxReal bounceThresholdF32,
 	PxReal frictionOffsetThreshold,
 	PxReal correlationDistance,
-	PxReal solverOffsetSlop,
 	PxConstraintAllocator& constraintAllocator,
 	Cm::SpatialVectorF* Z)
 
 {
-	return createFinalizeSolverContactsCoulomb(contactDesc, output, threadContext, invDtF32, bounceThresholdF32, frictionOffsetThreshold, correlationDistance, solverOffsetSlop,
+	return createFinalizeSolverContactsCoulomb(contactDesc, output, threadContext, invDtF32, dtF32, bounceThresholdF32, frictionOffsetThreshold, correlationDistance,
 		constraintAllocator, PxFrictionType::eTWO_DIRECTIONAL, Z);
 }
 
@@ -528,10 +506,10 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 									PxsContactManagerOutput& output,
 								 ThreadContext& threadContext,
 								 const PxReal invDtF32,
+								 const PxReal dtF32,
 								 PxReal bounceThresholdF32,
 								 PxReal frictionOffsetThreshold,
 								 PxReal correlationDistance,
-								 PxReal solverOffsetSlop,
 								 PxConstraintAllocator& constraintAllocator,
 								 PxFrictionType::Enum frictionType,
 								 Cm::SpatialVectorF* Z)
@@ -543,7 +521,7 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 
 	desc.constraintLengthOver16 = 0;
 	
-	ContactBuffer& buffer = threadContext.mContactBuffer;
+	PxContactBuffer& buffer = threadContext.mContactBuffer;
 
 	buffer.count = 0;
 
@@ -551,7 +529,7 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 	// the cache is organized. Remember original addrs so we can write them back 
 	// efficiently.
 
-	Ps::prefetchLine(contactDesc.frictionPtr);
+	PxPrefetchLine(contactDesc.frictionPtr);
 
 	PxReal invMassScale0 = 1.f;
 	PxReal invMassScale1 = 1.f;
@@ -570,10 +548,10 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 		return true;
 	}
 
-	Ps::prefetchLine(contactDesc.body0);
-	Ps::prefetchLine(contactDesc.body1);
-	Ps::prefetchLine(contactDesc.data0);
-	Ps::prefetchLine(contactDesc.data1);
+	PxPrefetchLine(contactDesc.body0);
+	PxPrefetchLine(contactDesc.body1);
+	PxPrefetchLine(contactDesc.data0);
+	PxPrefetchLine(contactDesc.data1);
 
 	CorrelationBuffer& c = threadContext.mCorrelationBuffer;
 	c.frictionPatchCount = 0;
@@ -588,7 +566,7 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 #if PX_CHECKED
 	if(overflow)
 	{
-		Ps::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 					"Dropping contacts in solver because we exceeded limit of 32 friction patches.");
 	}
 #endif
@@ -622,8 +600,8 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 	if(successfulReserve)
 	{
 		desc.constraint = solverConstraint;
-		output.nbContacts = Ps::to8(numContacts);
-		desc.constraintLengthOver16 = Ps::to16(solverConstraintByteSize/16);
+		output.nbContacts = PxTo16(numContacts);
+		desc.constraintLengthOver16 = PxTo16(solverConstraintByteSize/16);
 
 		//Initialise solverConstraint buffer.
 		if(solverConstraint)
@@ -637,14 +615,15 @@ bool createFinalizeSolverContactsCoulomb(PxSolverContactDesc& contactDesc,
 				const SolverExtBody b1(reinterpret_cast<const void*>(contactDesc.body1), reinterpret_cast<const void*>(&data1), desc.linkIndexB);
 
 				hasFriction = setupFinalizeExtSolverContactsCoulomb(buffer, c, contactDesc.bodyFrame0, contactDesc.bodyFrame1, solverConstraint,
-					invDtF32, bounceThresholdF32, b0, b1, numFrictionPerPatch,
-					invMassScale0, invInertiaScale0, invMassScale1, invInertiaScale1, contactDesc.restDistance, contactDesc.maxCCDSeparation, Z);
+					invDtF32, dtF32, bounceThresholdF32, b0, b1, numFrictionPerPatch,
+					invMassScale0, invInertiaScale0, invMassScale1, invInertiaScale1, contactDesc.restDistance, contactDesc.maxCCDSeparation, Z,
+					contactDesc.offsetSlop);
 			}
 			else
 			{
-				hasFriction = setupFinalizeSolverConstraintsCoulomb(contactDesc.shapeInteraction, buffer, c, contactDesc.bodyFrame0, contactDesc.bodyFrame1, solverConstraint,
-					data0, data1, invDtF32, bounceThresholdF32, numFrictionPerPatch, contactDesc.hasForceThresholds, contactDesc.bodyState1 == PxSolverContactDesc::eSTATIC_BODY,
-					invMassScale0, invInertiaScale0, invMassScale1, invInertiaScale1, contactDesc.restDistance, contactDesc.maxCCDSeparation, solverOffsetSlop);
+				hasFriction = setupFinalizeSolverConstraintsCoulomb(getInteraction(contactDesc), buffer, c, contactDesc.bodyFrame0, contactDesc.bodyFrame1, solverConstraint,
+					data0, data1, invDtF32, dtF32, bounceThresholdF32, numFrictionPerPatch, contactDesc.hasForceThresholds, contactDesc.bodyState1 == PxSolverContactDesc::eSTATIC_BODY,
+					invMassScale0, invInertiaScale0, invMassScale1, invInertiaScale1, contactDesc.restDistance, contactDesc.maxCCDSeparation, contactDesc.offsetSlop);
 			}
 			*(reinterpret_cast<PxU32*>(solverConstraint + solverConstraintByteSize)) = 0;
 			*(reinterpret_cast<PxU32*>(solverConstraint + solverConstraintByteSize + 4)) = hasFriction ? 0xFFFFFFFF : 0;

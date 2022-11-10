@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxQuat.h"
+#include "foundation/PxBitMap.h"
 #include "common/PxProfileZone.h"
 #include "common/PxTolerancesScale.h"
 #include "vehicle/PxVehicleUpdate.h"
@@ -38,26 +38,23 @@
 #include "vehicle/PxVehicleUtil.h"
 #include "vehicle/PxVehicleUtilTelemetry.h"
 #include "extensions/PxRigidBodyExt.h"
+#include "extensions/PxSceneQueryExt.h"
 #include "PxShape.h"
 #include "PxRigidDynamic.h"
-#include "PxBatchQuery.h"
 #include "PxMaterial.h"
 #include "PxContactModifyCallback.h"
+#include "PxScene.h"
 
 #include "PxVehicleSuspLimitConstraintShader.h"
 #include "PxVehicleSuspWheelTire4.h"
-#include "PxVehicleDefaults.h"
 #include "PxVehicleLinearMath.h"
 
-#include "PsFoundation.h"
-#include "PsUtilities.h"
-#include "PsFPU.h"
-#include "CmBitMap.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxFPU.h"
 #include "CmUtils.h"
 
 using namespace physx;
 using namespace Cm;
-
 
 //TODO: lsd - handle case where wheels are spinning in different directions.
 //TODO: ackermann - use faster approximate functions for PxTan/PxATan because the results don't need to be too accurate here.
@@ -76,68 +73,53 @@ namespace physx
 //Implementation of public api function PxVehicleSetBasisVectors
 ////////////////////////////////////////////////////////////////////////////
 
-PxVec3 gRightDefault(1.f,0,0);
-PxVec3 gUpDefault(0,1.f,0);
-PxVec3 gForwardDefault(0,0,1.f);
-PxVec3 gRight;
-PxVec3 gUp;
-PxVec3 gForward;
+static PxVehicleContext gVehicleContextDefault;
 
 void PxVehicleSetBasisVectors(const PxVec3& up, const PxVec3& forward)
 {
-	gRight=up.cross(forward);
-	gUp=up;
-	gForward=forward;
+	gVehicleContextDefault.upAxis = up;
+	gVehicleContextDefault.forwardAxis = forward;
+	gVehicleContextDefault.computeSideAxis();
 }
 
 ////////////////////////////////////////////////////////////////////////////
 //Implementation of public api function PxVehicleSetUpdateMode
 ////////////////////////////////////////////////////////////////////////////
 
-const bool gApplyForcesDefault = false;
-bool gApplyForces;
-
 void PxVehicleSetUpdateMode(PxVehicleUpdateMode::Enum vehicleUpdateMode)
 {
-	switch(vehicleUpdateMode)
-	{
-	case PxVehicleUpdateMode::eVELOCITY_CHANGE:
-		gApplyForces=false;
-		break;
-	case PxVehicleUpdateMode::eACCELERATION:
-		gApplyForces=true;
-		break;
-	}
+	gVehicleContextDefault.updateMode = vehicleUpdateMode;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 //Implementation of public api function PxVehicleSetSweepHitRejectionAngles
 ////////////////////////////////////////////////////////////////////////////
-
-const PxF32 gPointRejectAngleThresholdDefault = 0.707f;  //PxCos(PxPi*0.25f);
-const PxF32 gNormalRejectAngleThresholdDefault = 0.707f;  //PxCos(PxPi*0.25f);
-PxF32 gPointRejectAngleThreshold;
-PxF32 gNormalRejectAngleThreshold;
 
 void PxVehicleSetSweepHitRejectionAngles(const PxF32 pointRejectAngle, const PxF32 normalRejectAngle)
 {
 	PX_CHECK_AND_RETURN(pointRejectAngle > 0.0f && pointRejectAngle < PxPi, "PxVehicleSetSweepHitRejectionAngles - pointRejectAngle must be in range (0, Pi)");
 	PX_CHECK_AND_RETURN(normalRejectAngle > 0.0f && normalRejectAngle < PxPi, "PxVehicleSetSweepHitRejectionAngles - normalRejectAngle must be in range (0, Pi)");
-	gPointRejectAngleThreshold = PxCos(pointRejectAngle);
-	gNormalRejectAngleThreshold = PxCos(normalRejectAngle);
+	gVehicleContextDefault.pointRejectAngleThresholdCosine = PxCos(pointRejectAngle);
+	gVehicleContextDefault.normalRejectAngleThresholdCosine = PxCos(normalRejectAngle);
 }
 
 ////////////////////////////////////////////////////////////////////////////
 //Implementation of public api function PxVehicleSetSweepHitRejectionAngles
 ////////////////////////////////////////////////////////////////////////////
 
-const PxF32 gMaxHitActorAccelerationDefault = PX_MAX_REAL;
-PxF32 gMaxHitActorAcceleration;
-
 void PxVehicleSetMaxHitActorAcceleration(const PxF32 maxHitActorAcceleration)
 {
 	PX_CHECK_AND_RETURN(maxHitActorAcceleration >= 0.0f, "PxVehicleSetMaxHitActorAcceleration - maxHitActorAcceleration must be greater than or equal to zero");
-	gMaxHitActorAcceleration = maxHitActorAcceleration;
+	gVehicleContextDefault.maxHitActorAcceleration = maxHitActorAcceleration;
+}
+
+////////////////////////////////////////////////////////////////////////////
+//Implementation of public api function PxVehicleGetDefaultContext
+////////////////////////////////////////////////////////////////////////////
+
+const PxVehicleContext& PxVehicleGetDefaultContext()
+{
+	return gVehicleContextDefault;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -146,16 +128,7 @@ void PxVehicleSetMaxHitActorAcceleration(const PxF32 maxHitActorAcceleration)
 
 void setVehicleDefaults()
 {
-	gRight = gRightDefault;
-	gUp = gUpDefault;
-	gForward = gForwardDefault;
-
-	gApplyForces = gApplyForcesDefault;
-
-	gPointRejectAngleThreshold = gPointRejectAngleThresholdDefault;
-	gNormalRejectAngleThreshold = gNormalRejectAngleThresholdDefault;
-
-	gMaxHitActorAcceleration = gMaxHitActorAccelerationDefault;
+	gVehicleContextDefault.setToDefault();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -430,7 +403,7 @@ bool PxVehicleIsInAir(const PxVehicleWheelQueryResult& vehWheelQueryResults)
 PxU32 PxVehicleModifyWheelContacts
 (const PxVehicleWheels& vehicle, const PxU32 wheelId, 
  const PxF32 wheelTangentVelocityMultiplier, const PxReal maxImpulse, 
- PxContactModifyPair& contactModifyPair)
+ PxContactModifyPair& contactModifyPair, const PxVehicleContext& context)
 {
 	const bool rejectPoints = true;
 	const bool rejectNormals = true;
@@ -464,7 +437,7 @@ PxU32 PxVehicleModifyWheelContacts
 	}
 
 	//Compute the "right" vector of the transform.
-	const PxVec3 right = vehWheelTransform.q.rotate(gRight);
+	const PxVec3 right = vehWheelTransform.q.rotate(context.sideAxis);
 
 	//The wheel transform includes rotation about the rolling axis.
 	//We want to compute the wheel transform at zero wheel rotation angle.
@@ -476,10 +449,7 @@ PxU32 PxVehicleModifyWheelContacts
 	}
 
 	//Construct a plane for the wheel
-	//n.p + d = 0
-	PxPlane wheelPlane;
-	wheelPlane.n = right;
-	wheelPlane.d = -(right.dot(correctedWheelShapeTransform.p));
+	const PxPlane wheelPlane(correctedWheelShapeTransform.p, right);
 
 	//Compute the suspension travel vector.
 	const PxVec3 suspTravelDir = correctedWheelShapeTransform.rotate(vehicle.mWheelsSimData.getSuspTravelDirection(wheelId));
@@ -508,7 +478,7 @@ PxU32 PxVehicleModifyWheelContacts
 		{
 			//Work out the dot product of the suspension direction and the direction from wheel centre to contact point.
 			const PxF32 dotProduct = dir.dot(suspTravelDir);
-			if (dotProduct > gPointRejectAngleThreshold)
+			if (dotProduct > context.pointRejectAngleThresholdCosine)
 			{
 				ignorePoint = true;
 				numIgnoredContacts++;
@@ -521,7 +491,7 @@ PxU32 PxVehicleModifyWheelContacts
 		{
 			const PxVec3& contactNormal = contactSet.getNormal(i) * normalMultiplier;
 			const PxF32 dotProduct = -(contactNormal.dot(suspTravelDir));
-			if(dotProduct > gNormalRejectAngleThreshold)
+			if(dotProduct > context.normalRejectAngleThresholdCosine)
 			{
 				ignorePoint = true;
 				numIgnoredContacts++;
@@ -572,32 +542,33 @@ PxU32 PxVehicleModifyWheelContacts
 //Enable a 4W vehicle in either tadpole or delta configuration.
 ////////////////////////////////////////////////////////////////////////////
 
-void computeDirection(PxU32& rightDirection, PxU32& upDirection)
+void computeDirection(const PxVec3& up, const PxVec3& right, 
+	PxU32& rightDirection, PxU32& upDirection)
 {
 	//Work out the up and right vectors.
 	rightDirection = 0xffffffff;
-	if(gRight == PxVec3(1.f,0,0) || gRight == PxVec3(-1.f,0,0))
+	if(right == PxVec3(1.f,0,0) || right == PxVec3(-1.f,0,0))
 	{
 		rightDirection = 0;
 	}
-	else if(gRight == PxVec3(0,1.f,0) || gRight == PxVec3(0,-1.f,0))
+	else if(right == PxVec3(0,1.f,0) || right == PxVec3(0,-1.f,0))
 	{
 		rightDirection = 1;
 	}
-	else if(gRight == PxVec3(0,0,1.f) || gRight == PxVec3(0,0,-1.f))
+	else if(right == PxVec3(0,0,1.f) || right == PxVec3(0,0,-1.f))
 	{
 		rightDirection = 2;
 	}
 	upDirection = 0xffffffff;
-	if(gUp== PxVec3(1.f,0,0) || gUp == PxVec3(-1.f,0,0))
+	if(up == PxVec3(1.f,0,0) || up == PxVec3(-1.f,0,0))
 	{
 		upDirection = 0;
 	}
-	else if(gUp == PxVec3(0,1.f,0) || gUp == PxVec3(0,-1.f,0))
+	else if(up == PxVec3(0,1.f,0) || up == PxVec3(0,-1.f,0))
 	{
 		upDirection = 1;
 	}
-	else if(gUp == PxVec3(0,0,1.f) || gUp == PxVec3(0,0,-1.f))
+	else if(up == PxVec3(0,0,1.f) || up == PxVec3(0,0,-1.f))
 	{
 		upDirection = 2;
 	}
@@ -912,7 +883,7 @@ PxU64 gTimers[MAX_NB_TIMERS]={0,0,0,0,0,0,0,0,0,0,0};
 PxU64 gStartTimers[MAX_NB_TIMERS]={0,0,0,0,0,0,0,0,0,0,0};
 PxU64 gEndTimers[MAX_NB_TIMERS]={0,0,0,0,0,0,0,0,0,0,0};
 PxU32 gTimerCount=0;
-physx::Ps::Time gTimer;
+physx::PxTime gTimer;
 
 PX_FORCE_INLINE void START_TIMER(const PxU32 id)
 {
@@ -952,191 +923,6 @@ PX_FORCE_INLINE void END_TIMER(const PxU32)
 }
 
 #endif
-
-
-////////////////////////////////////////////////////////////////////////////
-//Hash table of PxMaterial pointers used to associate each PxMaterial pointer
-//with a unique PxDrivableSurfaceType.  PxDrivableSurfaceType is just an integer
-//representing an id but introducing this type allows different PxMaterial pointers
-//to be associated with the same surface type.  The friction of a specific tire
-//touching a specific PxMaterial is found from a 2D table using the integers for
-//the tire type (stored in the tire) and drivable surface type (from the hash table).
-//It would be great to use PsHashSet for the hash table of PxMaterials but
-//PsHashSet will never, ever work on spu so this will need to do instead.
-//Perf isn't really critical so this will do in the meantime.
-//It is probably wasteful to compute the hash table each update
-//but this is really not an expensive operation so keeping the api as 
-//simple as possible wins out at the cost of a relatively very small number of wasted cycles.
-////////////////////////////////////////////////////////////////////////////
-
-class VehicleSurfaceTypeHashTable
-{
-public:
-
-	VehicleSurfaceTypeHashTable(const PxVehicleDrivableSurfaceToTireFrictionPairs& pairs)
-		: mNbEntries(pairs.mNbSurfaceTypes),
- 	      mMaterials(pairs.mDrivableSurfaceMaterials),
-	      mDrivableSurfaceTypes(pairs.mDrivableSurfaceTypes)
-	{
-		for(PxU32 i=0;i<eHASH_SIZE;i++)
-		{
-			mHeadIds[i]=PX_MAX_U32;
-		}
-		for(PxU32 i=0;i<eMAX_NB_KEYS;i++)
-		{
-			mNextIds[i]=PX_MAX_U32;
-		}
-
-		if(mNbEntries>0)
-		{
-			//Compute the number of bits to right-shift that gives the maximum number of unique hashes.
-			//Keep searching until we find either a set of completely unique hashes or a peak count of unique hashes.
-			PxU32 prevShift=0;
-			PxU32 shift=2;
-			PxU32 prevNumUniqueHashes=0;
-			PxU32 currNumUniqueHashes=0;
-			while( ((currNumUniqueHashes=computeNumUniqueHashes(shift)) > prevNumUniqueHashes) && currNumUniqueHashes!=mNbEntries)
-			{
-				prevNumUniqueHashes=currNumUniqueHashes;
-				prevShift=shift;
-				shift = (shift << 1);
-			}
-			if(currNumUniqueHashes!=mNbEntries)
-			{
-				//Stopped searching because we have gone past the peak number of unqiue hashes.
-				mShift = prevShift;
-			}
-			else
-			{
-				//Stopped searching because we found a unique hash for each key.
-				mShift = shift;
-			}
-
-			//Compute the hash values with the optimum shift.
-			for(PxU32 i=0;i<mNbEntries;i++)
-			{
-				const PxMaterial* const material=mMaterials[i];
-				const PxU32 hash=computeHash(material,mShift);
-				if(PX_MAX_U32==mHeadIds[hash])
-				{
-					mNextIds[i]=PX_MAX_U32;
-					mHeadIds[hash]=i;
-				}
-				else
-				{
-					mNextIds[i]=mHeadIds[hash];
-					mHeadIds[hash]=i;
-				}
-			}
-		}
-	}
-	~VehicleSurfaceTypeHashTable()
-	{
-	}
-
-	PX_FORCE_INLINE PxU32 get(const PxMaterial* const key) const 
-	{
-		PX_ASSERT(key);
-		const PxU32 hash=computeHash(key, mShift);
-		PxU32 id=mHeadIds[hash];
-		while(PX_MAX_U32!=id)
-		{
-			const PxMaterial* const mat=mMaterials[id];
-			if(key==mat)
-			{
-				return mDrivableSurfaceTypes[id].mType;
-			}
-			id=mNextIds[id];
-		}
-
-		return 0;
-	}
-
-private:
-
-	PxU32 mNbEntries; 
-	const PxMaterial* const* mMaterials;
-	const PxVehicleDrivableSurfaceType* mDrivableSurfaceTypes;
-
-	static PX_FORCE_INLINE PxU32 computeHash(const PxMaterial* const key, const PxU32 shift) 
-	{
-		const uintptr_t ptr = ((uintptr_t(key)) >> shift);
-		const uintptr_t hash = (ptr & (eHASH_SIZE-1));
-		return PxU32(hash);
-	}
-
-	PxU32 computeNumUniqueHashes(const PxU32 shift) const
-	{
-		PxU32 words[eHASH_SIZE >>5];
-		PxU8* bitmapBuffer[sizeof(BitMap)];
-		BitMap* bitmap=reinterpret_cast<BitMap*>(bitmapBuffer);
-		bitmap->setWords(words, eHASH_SIZE >>5);
-
-		PxU32 numUniqueHashes=0;
-		PxMemZero(words, sizeof(PxU32)*(eHASH_SIZE >>5));
-		for(PxU32 i=0;i<mNbEntries;i++)
-		{
-			const PxMaterial* const material=mMaterials[i];
-			const PxU32 hash=computeHash(material, shift);
-			if(!bitmap->test(hash))
-			{
-				bitmap->set(hash);
-				numUniqueHashes++;
-			}
-		}
-		return numUniqueHashes;
-	}
-
-	enum
-	{
-		eHASH_SIZE=PxVehicleDrivableSurfaceToTireFrictionPairs::eMAX_NB_SURFACE_TYPES
-	};
-	PxU32 mHeadIds[eHASH_SIZE];
-	enum
-	{
-		eMAX_NB_KEYS=PxVehicleDrivableSurfaceToTireFrictionPairs::eMAX_NB_SURFACE_TYPES
-	};
-	PxU32 mNextIds[eMAX_NB_KEYS];
-
-	PxU32 mShift;
-};
-
-
-////////////////////////////////////////////////////////////////////////////
-//Compute the suspension line raycast start point and direction.
-////////////////////////////////////////////////////////////////////////////
-
-PX_INLINE void computeSuspensionRaycast
-(const PxTransform& carChassisTrnsfm, const PxVec3& bodySpaceWheelCentreOffset, const PxVec3& bodySpaceSuspTravelDir, const PxF32 radius, const PxF32 maxBounce,
- PxVec3& suspLineStart, PxVec3& suspLineDir)
-{
-	//Direction of raycast.
-	suspLineDir=carChassisTrnsfm.rotate(bodySpaceSuspTravelDir);
-
-	//Position at top of wheel at maximum compression.
-	suspLineStart=carChassisTrnsfm.transform(bodySpaceWheelCentreOffset);
-	suspLineStart-=suspLineDir*(radius+maxBounce);
-}
-
-PX_INLINE void computeSuspensionSweep
-(const PxTransform& carChassisTrnsfm, 
- const PxQuat& wheelLocalPoseRotation, const PxF32 wheelTheta, 
- const PxVec3 bodySpaceWheelCentreOffset, const PxVec3& bodySpaceSuspTravelDir, const PxF32 radius, const PxF32 maxBounce,
- PxTransform& suspStartPose, PxVec3& suspLineDir)
-{
-	//Direction of raycast.
-	suspLineDir=carChassisTrnsfm.rotate(bodySpaceSuspTravelDir);
-
-	//Position of wheel at maximum compression.
-	suspStartPose.p = carChassisTrnsfm.transform(bodySpaceWheelCentreOffset);
-	suspStartPose.p -= suspLineDir*(radius + maxBounce);
-
-	//Rotation of wheel.
-	const PxVec3 right = wheelLocalPoseRotation.rotate(gRight);
-	const PxQuat negativeRotation(-wheelTheta, right);
-	suspStartPose.q = carChassisTrnsfm.q*(negativeRotation*wheelLocalPoseRotation);
-}
-
 
 ////////////////////////////////////////////////////////////////////////////
 //Functions used to integrate rigid body transform and velocity.
@@ -1811,7 +1597,7 @@ PX_FORCE_INLINE void computeWheelActiveStates(const PxU32 startId, PxU32* bitmap
 {
 	PX_ASSERT(!activeStates[0] && !activeStates[1] && !activeStates[2] && !activeStates[3]);
 
-	BitMap bm;
+	PxBitMap bm;
 	bm.setWords(bitmapBuffer, ((PX_MAX_NB_WHEELS + 31) & ~31) >> 5);
 
 	if(bm.test(startId + 0))
@@ -2264,17 +2050,49 @@ void PxVehicleComputeTireForceDefault
 	tireAlignMoment=fMy;
 }
 
+////////////////////////////////////////////////////////////////////////////
+//Compute the suspension line raycast start point and direction.
+////////////////////////////////////////////////////////////////////////////
+
+static PX_INLINE void computeSuspensionRaycast
+(const PxTransform& carChassisTrnsfm, const PxVec3& bodySpaceWheelCentreOffset, const PxVec3& bodySpaceSuspTravelDir, const PxF32 radius, const PxF32 maxBounce,
+ PxVec3& suspLineStart, PxVec3& suspLineDir)
+{
+	//Direction of raycast.
+	suspLineDir=carChassisTrnsfm.rotate(bodySpaceSuspTravelDir);
+
+	//Position at top of wheel at maximum compression.
+	suspLineStart=carChassisTrnsfm.transform(bodySpaceWheelCentreOffset);
+	suspLineStart-=suspLineDir*(radius+maxBounce);
+}
+
+static PX_INLINE void computeSuspensionSweep
+(const PxTransform& carChassisTrnsfm, 
+ const PxQuat& wheelLocalPoseRotation, 
+ const PxVec3& bodySpaceWheelCentreOffset, const PxVec3& bodySpaceSuspTravelDir, const PxF32 radius, const PxF32 maxBounce,
+ PxTransform& suspStartPose, PxVec3& suspLineDir)
+{
+	//Direction of raycast.
+	suspLineDir=carChassisTrnsfm.rotate(bodySpaceSuspTravelDir);
+
+	//Position of wheel at maximum compression.
+	suspStartPose.p = carChassisTrnsfm.transform(bodySpaceWheelCentreOffset);
+	suspStartPose.p -= suspLineDir*(radius + maxBounce);
+
+	//Rotation in world frame.
+	suspStartPose.q = carChassisTrnsfm.q*wheelLocalPoseRotation;
+}
 
 ////////////////////////////////////////////////////////////////////////////
 //Functions required to intersect the wheel with the hit plane
 //We support raycasts and sweeps.
 ////////////////////////////////////////////////////////////////////////////
 
-bool intersectRayPlane
+static bool intersectRayPlane
 (const PxTransform& carChassisTrnsfm, 
  const PxVec3& bodySpaceWheelCentreOffset, const PxVec3& bodySpaceSuspTravelDir, 
  const PxF32 width, const PxF32 radius, const PxF32 maxCompression,
- const PxVec4& hitPlane,
+ const PxPlane& hitPlane,
  PxF32& jounce, PxVec3& wheelBottomPos)
 {
     PX_UNUSED(width);	
@@ -2284,7 +2102,7 @@ bool intersectRayPlane
 	computeSuspensionRaycast(carChassisTrnsfm, bodySpaceWheelCentreOffset, bodySpaceSuspTravelDir, radius, maxCompression, v, w);
 
 	//If the raycast starts inside the hit plane then return false
-	if(hitPlane.x*v.x + hitPlane.y*v.y + hitPlane.z*v.z + hitPlane.w < 0.0f)
+	if((hitPlane.n.dot(v) + hitPlane.d) < 0.0f)
 	{
 		return false;
 	}
@@ -2302,9 +2120,9 @@ bool intersectRayPlane
 	//Work out the point on the susp line that touches the intersection plane.
 	//n.(v+wt)+d=0 where n,d describe the plane; v,w describe the susp ray; t is the point on the susp line.
 	//t=-(n.v + d)/n.w
-	const PxF32 hitD = hitPlane.w;
+	const PxF32 hitD = hitPlane.d;
 
-	const PxVec3 n = PxVec3(hitPlane.x, hitPlane.y, hitPlane.z);
+	const PxVec3 n = hitPlane.n;
 	const PxF32 d = hitD;
 	const PxF32 T=-(n.dot(v) + d)/(n.dot(w));
 
@@ -2323,17 +2141,17 @@ bool intersectRayPlane
 	return true;
 }
 
-bool intersectPlanes(const PxVec4& a, const PxVec4& b, PxVec3& v, PxVec3& w)
+static bool intersectPlanes(const PxPlane& a, const PxPlane& b, PxVec3& v, PxVec3& w)
 {
-	const PxF32 n1x = a.x;
-	const PxF32 n1y = a.y;
-	const PxF32 n1z = a.z;
-	const PxF32 n1d = a.w;
+	const PxF32 n1x = a.n.x;
+	const PxF32 n1y = a.n.y;
+	const PxF32 n1z = a.n.z;
+	const PxF32 n1d = a.d;
 
-	const PxF32 n2x = b.x;
-	const PxF32 n2y = b.y;
-	const PxF32 n2z = b.z;
-	const PxF32 n2d = b.w;
+	const PxF32 n2x = b.n.x;
+	const PxF32 n2y = b.n.y;
+	const PxF32 n2z = b.n.z;
+	const PxF32 n2d = b.d;
 
 	PxF32 dx = (n1y * n2z) - (n1z * n2y);
 	PxF32 dy = (n1z * n2x) - (n1x * n2z);
@@ -2386,60 +2204,42 @@ bool intersectPlanes(const PxVec4& a, const PxVec4& b, PxVec3& v, PxVec3& w)
 static bool intersectCylinderPlane
 (const PxTransform& wheelPoseAtZeroJounce, const PxVec3 suspDir,
  const PxF32 width, const PxF32 radius, const PxF32 maxCompression,
- const PxVec4& hitPlane, 
+ const PxPlane& hitPlane, 
+ const PxVec3& sideAxis,
  const bool rejectFromThresholds, 
+ const PxF32 pointRejectAngleThresholdCosine,
+ const PxF32 normalRejectAngleThresholdCosine,
  PxF32& jounce, PxVec3& wheelBottomPos,
  const PxVec3& contactPt, float hitDist, bool useDirectSweepResults)
 {
 	//Reject based on the contact normal.
 	if(rejectFromThresholds)
 	{
-		if(suspDir.dot(-hitPlane.getXYZ()) < gNormalRejectAngleThreshold)
+		if(suspDir.dot(-hitPlane.n) < normalRejectAngleThresholdCosine)
 			return false;
 	}
 
 	//Construct the wheel plane that contains the wheel disc.
-	PxVec4 wheelPlane;
-	{
-		const PxVec3 n = wheelPoseAtZeroJounce.rotate(gRight);
-		const PxF32 d = - n.dot(wheelPoseAtZeroJounce.p);
-		wheelPlane.x = n.x;
-		wheelPlane.y = n.y;
-		wheelPlane.z = n.z;
-		wheelPlane.w = d;
-	}
+	const PxPlane wheelPlane(wheelPoseAtZeroJounce.p, wheelPoseAtZeroJounce.rotate(sideAxis));
 
 	if(useDirectSweepResults)
 	{
-		// PT: looks like we didn't use actual planes in PhysX 4 so let's recreate them
-		PxPlane wheelPlane_;
-		wheelPlane_.n.x = wheelPlane.x;
-		wheelPlane_.n.y = wheelPlane.y;
-		wheelPlane_.n.z = wheelPlane.z;
-		wheelPlane_.d = wheelPlane.w;
-
 		// PT: this codepath fixes PX-2184 / PX-2170 / PX-2297
 		// We start from the results we want to obtain, i.e. the data provided by the sweeps:
 		jounce = maxCompression + radius - hitDist;
-		wheelBottomPos = wheelPlane_.project(contactPt);
+		wheelBottomPos = wheelPlane.project(contactPt);
 
 		// PT: and then we re-derive other variables from them, to do the culling.
 		// This is only needed for touching hits.
 		if(rejectFromThresholds)
 		{
-			PxPlane hitPlane_;
-			hitPlane_.n.x = hitPlane.x;
-			hitPlane_.n.y = hitPlane.y;
-			hitPlane_.n.z = hitPlane.z;
-			hitPlane_.d = hitPlane.w;
-
 			// Derive t & pos from above data
 			const PxF32 t = -jounce;						// From "jounce = -t;" in original codepath
 			const PxVec3 pos = wheelBottomPos - suspDir*t;	// From "wheelBottomPos = pos + suspDir*t;" in original codepath
 
 			//If the sweep started inside the hit plane then return false
 			const PxVec3 startPos = pos - suspDir*(radius + maxCompression);
-			if(hitPlane_.n.dot(startPos) + hitPlane_.d < 0.0f)
+			if(hitPlane.n.dot(startPos) + hitPlane.d < 0.0f)
 				return false;
 
 			// PT: derive dir from "const PxVec3 pos = wheelPoseAtZeroJounce.p + dir*radius;" in original codepath.
@@ -2449,7 +2249,7 @@ static bool intersectCylinderPlane
 
 			//Now work out if we accept the hit.
 			//Compare dir with the suspension direction.
-			if(suspDir.dot(dir) < gPointRejectAngleThreshold)
+			if(suspDir.dot(dir) < pointRejectAngleThresholdCosine)
 				return false;
 		}
 	}
@@ -2479,7 +2279,7 @@ static bool intersectCylinderPlane
 		//Compute the vector that joins the wheel centre to the intersection edge;
 		PxVec3 dir;
 		{
-			const PxF32 wheelCentreD = hitPlane.x*wheelPoseAtZeroJounce.p.x + hitPlane.y*wheelPoseAtZeroJounce.p.y + hitPlane.z*wheelPoseAtZeroJounce.p.z + hitPlane.w;
+			const PxF32 wheelCentreD = hitPlane.n.dot(wheelPoseAtZeroJounce.p) + hitPlane.d;
 			dir = ((wheelCentreD >= 0) ? closestPointOnIntersectionEdge - wheelPoseAtZeroJounce.p : wheelPoseAtZeroJounce.p - closestPointOnIntersectionEdge);
 			dir.normalize();
 		}
@@ -2488,7 +2288,7 @@ static bool intersectCylinderPlane
 		//Compare dir with the suspension direction.
 		if(rejectFromThresholds)
 		{
-			if(suspDir.dot(dir) < gPointRejectAngleThreshold)
+			if(suspDir.dot(dir) < pointRejectAngleThresholdCosine)
 				return false;
 		}
 
@@ -2497,20 +2297,20 @@ static bool intersectCylinderPlane
 
 		//If the sweep started inside the hit plane then return false
 		const PxVec3 startPos = pos - suspDir*(radius + maxCompression);
-		if(hitPlane.x*startPos.x + hitPlane.y*startPos.y + hitPlane.z*startPos.z + hitPlane.w < 0.0f)
+		if(hitPlane.n.dot(startPos) + hitPlane.d < 0.0f)
 			return false;
 
 		//Now compute the maximum depth of the inside and outside discs against the plane.
 		PxF32 depth;
 		{
-			const PxVec3 latDir = wheelPoseAtZeroJounce.rotate(gRight);
-			const PxF32 signDot = computeSign(hitPlane.x*latDir.x + hitPlane.y*latDir.y + hitPlane.z*latDir.z);
+			const PxVec3 latDir = wheelPoseAtZeroJounce.rotate(sideAxis);
+			const PxF32 signDot = computeSign(hitPlane.n.dot(latDir));
 			const PxVec3 deepestPos = pos - latDir*(signDot*0.5f*width);
-			depth = hitPlane.x*deepestPos.x + hitPlane.y*deepestPos.y + hitPlane.z*deepestPos.z + hitPlane.w;
+			depth = hitPlane.n.dot(deepestPos) + hitPlane.d;
 		}
 
 		//How far along the susp dir do we have to move to place the wheel exactly on the plane.
-		const PxF32 t = -depth/(hitPlane.x*suspDir.x + hitPlane.y*suspDir.y + hitPlane.z*suspDir.z);
+		const PxF32 t = -depth/(hitPlane.n.dot(suspDir));
 
 		//+ve means that the spring is compressed
 		//-ve means that the spring is elongated.
@@ -2522,12 +2322,15 @@ static bool intersectCylinderPlane
 	return true;
 }
 
-bool intersectCylinderPlane
+static bool intersectCylinderPlane
 (const PxTransform& carChassisTrnsfm, 
- const PxQuat& wheelLocalPoseRotation, const PxF32 wheelTheta,
+ const PxQuat& wheelLocalPoseRotation,
  const PxVec3& bodySpaceWheelCentreOffset, const PxVec3& bodySpaceSuspTravelDir, const PxF32 width, const PxF32 radius, const PxF32 maxCompression,
- const PxVec4& hitPlane,
+ const PxPlane& hitPlane,
+ const PxVec3& sideAxis,
  const bool rejectFromThresholds,
+ const PxF32 pointRejectAngleThresholdCosine,
+ const PxF32 normalRejectAngleThresholdCosine,
  PxF32& jounce, PxVec3& wheelBottomPos,
  const PxVec3& contactPt, float hitDist, bool useDirectSweepResults)
 {
@@ -2536,7 +2339,7 @@ bool intersectCylinderPlane
 	PxVec3 suspDir;
 	computeSuspensionSweep(
 		carChassisTrnsfm, 
-		wheelLocalPoseRotation, wheelTheta,
+		wheelLocalPoseRotation,
 		bodySpaceWheelCentreOffset, bodySpaceSuspTravelDir, 0.0f, 0.0f, 
 		wheelPostsAtZeroJounce, suspDir);
 
@@ -2545,7 +2348,8 @@ bool intersectCylinderPlane
 		(wheelPostsAtZeroJounce, suspDir,
 		 width, radius, maxCompression,
 		 hitPlane,
-		 rejectFromThresholds, 
+		 sideAxis,
+		 rejectFromThresholds, pointRejectAngleThresholdCosine, normalRejectAngleThresholdCosine,
 		 jounce, wheelBottomPos, contactPt, hitDist, useDirectSweepResults);
 }
 
@@ -2641,7 +2445,6 @@ public:
 
 	//Properties of the wheel shapes at the last sweep.
 	const PxQuat* wheelLocalPoseRotations;
-	const PxF32* wheelThetas;
 
 	//Simulation data for the 4 wheels being processed in processSuspTireWheels
 	//This data is actually logically constant.
@@ -2760,7 +2563,7 @@ public:
 	//The union of cached hit data and susp raycast data means we don't want to overwrite the 
 	//raycast data until we don't need it any more.
 	PxU32 cachedHitCounts[4];
-	PxVec4 cachedHitPlanes[4];
+	PxPlane cachedHitPlanes[4];
 	PxF32 cachedHitDistances[4];
 	PxF32 cachedFrictionMultipliers[4];
 	PxU16 cachedHitQueryTypes[4];
@@ -2785,15 +2588,38 @@ public:
 //6.  record telemetry data (if necessary) and record data for reporting such as hit material, hit normal etc.
 ////////////////////////////////////////////////////////////////////////////
 
+namespace
+{
+	struct LocalHitData
+	{
+		template<class T>
+		void setFrom(const T& hit)
+		{
+			actor		= hit.actor;
+			shape		= hit.shape;
+			position	= hit.position;
+			normal		= hit.normal;
+			distance	= hit.distance;
+			faceIndex	= hit.faceIndex;
+		}
 
-void storeHit
+		PxRigidActor*	actor;
+		PxShape*		shape;
+		PxVec3			position;
+		PxVec3			normal;
+		PxF32			distance;
+		PxU32			faceIndex;
+	};
+}
+
+static void storeHit
 (const ProcessSuspWheelTireConstData& constData, const ProcessSuspWheelTireInputData& inputData,
  const PxU16 hitQueryType, 
- const PxLocationHit& hit, const PxVec4&  hitPlane,
+ const LocalHitData& hit, const PxPlane& hitPlane,
  const PxU32 i,
  PxU32* hitCounts4,
  PxF32* hitDistances4,
- PxVec4* hitPlanes4,
+ PxPlane* hitPlanes4,
  PxF32* hitFrictionMultipliers4,
  PxU16* hitQueryTypes4,
  PxShape** hitContactShapes4,
@@ -2803,7 +2629,7 @@ void storeHit
  PxVec3* hitContactPoints4,
  PxVec3* hitContactNormals4,
  PxU32* cachedHitCounts,
- PxVec4* cachedHitPlanes,
+ PxPlane* cachedHitPlanes,
  PxF32* cachedHitDistances,
  PxF32* cachedFrictionMultipliers,
  PxU16* cachedHitQueryTypes)
@@ -2818,21 +2644,18 @@ void storeHit
 	hitPlanes4[i] = hitPlane;
 
 	//Hit friction.
-	PxU32 surfaceType = 0;
 	PxMaterial* material = NULL;
 	{
 		//Only get the material if the raycast started outside the hit shape.
-		material = (hit.distance != 0.0f) ? hit.shape->getMaterialFromInternalFaceIndex(hit.faceIndex) : NULL;
+		PxBaseMaterial* baseMaterial = (hit.distance != 0.0f) ? hit.shape->getMaterialFromInternalFaceIndex(hit.faceIndex) : NULL;
+		PX_ASSERT(!baseMaterial || baseMaterial->getConcreteType()==PxConcreteType::eMATERIAL);
+		material = static_cast<PxMaterial*>(baseMaterial);
 	}
-	//Hash table for quick lookup of drivable surface type from material.
 	const PxVehicleDrivableSurfaceToTireFrictionPairs* PX_RESTRICT frictionPairs = constData.frictionPairs;
-	VehicleSurfaceTypeHashTable surfaceTypeHashTable(*constData.frictionPairs);
-	if (NULL != material)
-	{
-		surfaceType = surfaceTypeHashTable.get(material);
-	}
+	const PxU32 surfaceType = material ? frictionPairs->getSurfaceType(*material) : 0;
 	const PxVehicleTireData& tire = inputData.vehWheels4SimData->getTireData(i);
-	const PxF32 frictionMultiplier = frictionPairs->getTypePairFriction(surfaceType, tire.mType);
+	const PxU32 tireType = tire.mType;
+	const PxF32 frictionMultiplier = frictionPairs->getTypePairFriction(surfaceType, tireType);
 	PX_ASSERT(frictionMultiplier >= 0);
 	hitFrictionMultipliers4[i] = frictionMultiplier;
 
@@ -2858,6 +2681,10 @@ void storeHit
 static void processSuspTireWheels
 (const PxU32 startWheelIndex, 
  const ProcessSuspWheelTireConstData& constData, const ProcessSuspWheelTireInputData& inputData, 
+ const PxVec3& sideAxis,
+ const PxF32 pointRejectAngleThresholdCosine,
+ const PxF32 normalRejectAngleThresholdCosine,
+ const PxF32 maxHitActorAcceleration,
  ProcessSuspWheelTireOutputData& outputData,
  VehicleTelemetryDataContext* vehTelemetryDataContext)
 {
@@ -2908,13 +2735,12 @@ static void processSuspTireWheels
 	const PxF32* PX_RESTRICT recipTireRestLoads=wheelsSimData.getRecipTireRestLoadsArray();
 	//Compute the right direction for later.
 	const PxTransform& carChassisTrnsfm=inputData.carChassisTrnsfm;
-	const PxVec3 latDir=inputData.carChassisTrnsfm.rotate(gRight);
+	const PxVec3 latDir=inputData.carChassisTrnsfm.rotate(sideAxis);
 	//Unpack the linear and angular velocity of the rigid body.
 	const PxVec3& carChassisLinVel=inputData.carChassisLinVel;
 	const PxVec3& carChassisAngVel=inputData.carChassisAngVel;
 	//Wheel local poses
 	const PxQuat* PX_RESTRICT wheelLocalPoseRotations = inputData.wheelLocalPoseRotations;
-	const PxF32* PX_RESTRICT wheelThetas = inputData.wheelThetas;
 	//Inputs (accel, steer, brake).
 	const bool isIntentionToAccelerate=inputData.isIntentionToAccelerate;
 	const PxF32* steerAngles=inputData.steerAngles;
@@ -2978,7 +2804,7 @@ static void processSuspTireWheels
 	PxF32* stickyTireSideTargetSpeeds=outputData.vehConstraintData.mStickyTireSideData.mTargetSpeeds;
 	//Hit data.  Store the contact data so it can be reused.
 	PxU32* cachedHitCounts=outputData.cachedHitCounts;
-	PxVec4* cachedHitPlanes=outputData.cachedHitPlanes;
+	PxPlane* cachedHitPlanes=outputData.cachedHitPlanes;
 	PxF32* cachedHitDistances=outputData.cachedHitDistances;
 	PxF32* cachedFrictionMultipliers=outputData.cachedFrictionMultipliers;
 	PxU16* cachedHitQueryTypes=outputData.cachedHitQueryTypes;
@@ -2995,7 +2821,7 @@ static void processSuspTireWheels
 	//If we are using cached raycast/sweep results then just copy the cached hit result data.
 	PxU32 hitCounts4[4];
 	PxF32 hitDistances4[4];
-	PxVec4 hitPlanes4[4];
+	PxPlane hitPlanes4[4];
 	PxF32 hitFrictionMultipliers4[4];
 	PxU16 hitQueryTypes4[4];
 	PxShape* hitContactShapes4[4];
@@ -3004,8 +2830,8 @@ static void processSuspTireWheels
 	PxU32 hitSurfaceTypes4[4];
 	PxVec3 hitContactPoints4[4];
 	PxVec3 hitContactNormals4[4];
-	const PxRaycastQueryResult* PX_RESTRICT raycastResults=inputData.vehWheels4DynData->mRaycastResults;
-	const PxSweepQueryResult* PX_RESTRICT sweepResults=inputData.vehWheels4DynData->mSweepResults;
+	const PxRaycastBuffer* PX_RESTRICT raycastResults=inputData.vehWheels4DynData->mRaycastResults;
+	const PxSweepBuffer* PX_RESTRICT sweepResults=inputData.vehWheels4DynData->mSweepResults;
 	if(raycastResults || sweepResults)
 	{
 		const PxU16 queryType = raycastResults ? 0u : 1u;
@@ -3016,12 +2842,17 @@ static void processSuspTireWheels
 		{
 			//Test that raycasts issue blocking hits.
 			PX_CHECK_AND_RETURN(!raycastResults || (0 == raycastResults[i].nbTouches), "Raycasts must generate blocking hits");
+			PX_CHECK_MSG(!sweepResults || (PxBatchQueryStatus::getStatus(sweepResults[i]) != PxBatchQueryStatus::eOVERFLOW), "PxVehicleUpdate::suspensionSweeps - batched sweep touch array not large enough to perform sweep.");
 
 			PxU32 hitCount = 0;
 			if ((raycastResults && raycastResults[i].hasBlock) || (sweepResults && sweepResults[i].hasBlock))
 			{
-				//We have a blocking it so use that.
-				const PxLocationHit& hit = raycastResults ? static_cast<const PxLocationHit&>(raycastResults[i].block) : static_cast<const PxLocationHit&>(sweepResults[i].block);
+				//We have a blocking hit so use that.
+				LocalHitData hit;
+				if(raycastResults)
+					hit.setFrom(raycastResults[i].block);
+				else
+					hit.setFrom(sweepResults[i].block);
 
 				//Test that the hit actor isn't the vehicle itself.
 				PX_CHECK_AND_RETURN(constData.vehActor != hit.actor, "Vehicle raycast has hit itself.  Please check the filter data to avoid this.");
@@ -3030,10 +2861,7 @@ static void processSuspTireWheels
 				if (hit.distance != 0)
 				{
 					//Compute the plane of the hit.
-					const PxVec3 hitPos = hit.position;
-					const PxVec3 hitNorm = hit.normal;
-					const PxF32 hitD = -hitNorm.dot(hitPos);
-					PxVec4 hitPlane(hitNorm, hitD);
+					const PxPlane hitPlane(hit.position, hit.normal);
 
 					//Store the hit data in the various arrays.
 					storeHit(constData, inputData,
@@ -3069,7 +2897,6 @@ static void processSuspTireWheels
 				const PxVec3& bodySpaceWheelCentreOffset = wheelsSimData.getWheelCentreOffset(i);
 				const PxVec3& bodySpaceSuspTravelDir = wheelsSimData.getSuspTravelDirection(i);
 				const PxQuat& wheelLocalPoseRotation = wheelLocalPoseRotations[i];
-				const PxF32 wheelTheta = wheelThetas[i];
 				const PxF32 width = wheel.mWidth;
 				const PxF32 radius = wheel.mRadius;
 				const PxF32 maxBounce = susp.mMaxCompression;
@@ -3079,7 +2906,7 @@ static void processSuspTireWheels
 				PxVec3 suspDir;
 				computeSuspensionSweep(
 					carChassisTrnsfm, 
-					wheelLocalPoseRotation, wheelTheta,
+					wheelLocalPoseRotation, 
 					bodySpaceWheelCentreOffset, bodySpaceSuspTravelDir, 0.0f, 0.0f, 
 					suspPose, suspDir);
 
@@ -3088,7 +2915,8 @@ static void processSuspTireWheels
 				for (PxU32 j = 0; j < sweepResults[i].nbTouches; j++)
 				{
 					//Get the next candidate hit.
-					const PxLocationHit& hit = sweepResults[i].touches[j];
+					LocalHitData hit;
+					hit.setFrom(sweepResults[i].touches[j]);
 
 					//Test that the hit actor isn't the vehicle itself.
 					PX_CHECK_AND_RETURN(constData.vehActor != hit.actor, "Vehicle raycast has hit itself.  Please check the filter data to avoid this.");
@@ -3097,10 +2925,7 @@ static void processSuspTireWheels
 					if (hit.distance != 0.0f)
 					{
 						//Compute the plane of the hit.
-						const PxVec3 hitPos = hit.position;
-						const PxVec3 hitNorm = hit.normal;
-						const PxF32 hitD = -hitNorm.dot(hitPos);
-						PxVec4 hitPlane(hitNorm, hitD);
+						const PxPlane hitPlane(hit.position, hit.normal);
 
 						const bool useDirectSweepResults = (wheelsSimFlags & PxVehicleWheelsSimFlag::eDISABLE_INTERNAL_CYLINDER_PLANE_INTERSECTION_TEST)!=0;
 
@@ -3112,7 +2937,8 @@ static void processSuspTireWheels
 								(suspPose, suspDir,
 								 width, radius, maxBounce,
 								 hitPlane,
-								 true, 
+								 sideAxis,
+								 true, pointRejectAngleThresholdCosine, normalRejectAngleThresholdCosine,
 								 dx, wheelBottomPos, hit.position, hit.distance, useDirectSweepResults);
 
 						//If we accept the intersection and it requires more jounce than previously encountered then 
@@ -3152,7 +2978,7 @@ static void processSuspTireWheels
 			{
 				hitCounts4[i]=0;
 				hitDistances4[i]=0;
-				hitPlanes4[i]=PxVec4(0,0,0,0);
+				hitPlanes4[i]=PxPlane(PxVec3(0,0,0),0);
 				hitFrictionMultipliers4[i]=0;
 				hitQueryTypes4[i]=0u;
 				hitContactShapes4[i]=NULL;
@@ -3164,7 +2990,7 @@ static void processSuspTireWheels
 
 				//When we're finished here we need to copy this back to the vehicle.
 				cachedHitCounts[i]=0;
-				cachedHitPlanes[i]=PxVec4(0,0,0,0);
+				cachedHitPlanes[i]= PxPlane(PxVec3(0,0,0),0);
 				cachedHitDistances[i]=0;
 				cachedFrictionMultipliers[i]=0;
 				cachedHitQueryTypes[i] = 0u;
@@ -3243,7 +3069,7 @@ static void processSuspTireWheels
 		//Ignore the hit if the raycast starts inside the hit shape (eg wheel completely underneath surface of a heightfield).
 		const bool activeWheelState=activeWheelStates[i];
 		const PxU32 numHits=hitCounts4[i];
-		const PxVec3 hitNorm(hitPlanes4[i].x, hitPlanes4[i].y,hitPlanes4[i].z);
+		const PxVec3 hitNorm(hitPlanes4[i].n);
 		const PxVec3 w = carChassisTrnsfm.q.rotate(bodySpaceSuspTravelDir);
 		if(activeWheelState && numHits > 0 && hitDistances4[i] != 0.0f && hitNorm.dot(w) < 0.0f)
 		{
@@ -3269,10 +3095,11 @@ static void processSuspTireWheels
 				PX_ASSERT(1 == hitQueryTypes4[i]);
 				successIntersection = intersectCylinderPlane
 					(carChassisTrnsfm, 
-					 wheelLocalPoseRotations[i], wheelThetas[i],
+					 wheelLocalPoseRotations[i], 
 					 bodySpaceWheelCentreOffset, bodySpaceSuspTravelDir, wheel.mWidth, wheel.mRadius, susp.mMaxCompression, 
 					 hitPlanes4[i], 
-					 false, 
+					 sideAxis,
+					 false, 0.0f, 0.0f,
 					 dx, wheelBottomPos, hitContactPoints4[i], hitDistances4[i], useDirectSweepResults);
 			}
 
@@ -3409,7 +3236,7 @@ static void processSuspTireWheels
 						const PxF32 dynamicActorMass = dynamicHitActor->getMass();
 						const PxF32 forceSign = computeSign(suspensionForceMag);
 						const PxF32 forceMag = PxAbs(suspensionForceMag);
-						const PxF32 clampedAccelMag = PxMin(forceMag*dynamicActorInvMass, gMaxHitActorAcceleration);
+						const PxF32 clampedAccelMag = PxMin(forceMag*dynamicActorInvMass, maxHitActorAcceleration);
 						const PxF32 clampedForceMag = clampedAccelMag*dynamicActorMass*forceSign;
 						PX_ASSERT(clampedForceMag*suspensionForceMag >= 0.0f);
 
@@ -3708,13 +3535,21 @@ void updateJounces(const PxF32* PX_RESTRICT jounces, PxF32* PX_RESTRICT prevJoun
 	}
 }
 
+void updateSteers(const PxF32* PX_RESTRICT steerAngles, PxF32* PX_RESTRICT prevSteers)
+{
+	for (PxU32 i = 0; i < 4; i++)
+	{
+		prevSteers[i] = steerAngles[i];
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //Set the hit plane, hit distance and hit friction multplier computed in processSuspTireWheels
 //Call immediately after completing processSuspTireWheels.
 ////////////////////////////////////////////////////////////////////////////
 
 void updateCachedHitData
-(const PxU32* PX_RESTRICT cachedHitCounts, const PxVec4* PX_RESTRICT cachedHitPlanes, const PxF32* PX_RESTRICT cachedHitDistances, const PxF32* PX_RESTRICT cachedFrictionMultipliers, const PxU16* cachedQueryTypes,
+(const PxU32* PX_RESTRICT cachedHitCounts, const PxPlane* PX_RESTRICT cachedHitPlanes, const PxF32* PX_RESTRICT cachedHitDistances, const PxF32* PX_RESTRICT cachedFrictionMultipliers, const PxU16* cachedQueryTypes,
  PxVehicleWheels4DynData* wheels4DynData)
 {
 	if(wheels4DynData->mRaycastResults || wheels4DynData->mSweepResults)
@@ -3728,7 +3563,7 @@ void updateCachedHitData
 
 	for(PxU32 i=0;i<4;i++)
 	{
-		cachedRaycastHitResults->mCounts[i]=Ps::to16(cachedHitCounts[i]);
+		cachedRaycastHitResults->mCounts[i]=PxTo16(cachedHitCounts[i]);
 		cachedRaycastHitResults->mPlanes[i]=cachedHitPlanes[i];
 		cachedRaycastHitResults->mDistances[i]=cachedHitDistances[i];
 		cachedRaycastHitResults->mFrictionMultipliers[i]=cachedFrictionMultipliers[i];
@@ -4577,44 +4412,69 @@ void integrateNoDriveWheelRotationAngles
 	}
 }
 
+PxQuat computeWheelLocalQuat(
+const PxVec3& forwardAxis, const PxVec3& sideAxis, const PxVec3& upAxis,
+const float jounce, const PxVehicleSuspensionData& suspData, const PxF32 rotationAngle, const PxF32 steerAngle)
+{
+	PX_ASSERT(jounce != PX_MAX_F32);
+
+	//Compute the camber angle.
+	PxF32 camberAngle = suspData.mCamberAtRest;
+	if (jounce > 0.0f)
+	{
+		camberAngle += jounce*suspData.mCamberAtMaxCompression*suspData.getRecipMaxCompression();
+	}
+	else
+	{
+		camberAngle -= jounce*suspData.mCamberAtMaxDroop*suspData.getRecipMaxDroop();
+	}
+	const PxQuat quat(steerAngle, upAxis);
+	const PxQuat quat2(camberAngle, quat.rotate(forwardAxis));
+	const PxQuat quat3 = quat2*quat;
+	const PxQuat quat4(rotationAngle, quat3.rotate(sideAxis));
+	const PxQuat result = quat4*quat3;
+	return result;
+}
+
 void computeWheelLocalPoses
 (const PxVehicleWheels4SimData& wheelsSimData,
  const PxVehicleWheels4DynData& wheelsDynData, 
  const PxWheelQueryResult* wheelQueryResults,
  const PxU32 numWheelsToPose,
  const PxTransform& vehChassisCMLocalPose,
+ const PxVec3& upAxis,
+ const PxVec3& sideAxis,
+ const PxVec3& forwardAxis,
  PxTransform* localPoses)
 {
 	const PxF32* PX_RESTRICT rotAngles=wheelsDynData.mWheelRotationAngles;
-
 	const PxVec3 cmOffset=vehChassisCMLocalPose.p;
-
-	const PxVec3 forward = gRight.cross(gUp);
-
 	for(PxU32 i=0;i<numWheelsToPose;i++)
 	{
 		const PxF32 jounce=wheelQueryResults[i].suspJounce;
-
-		//Compute the camber angle.
-		const PxVehicleSuspensionData& suspData=wheelsSimData.getSuspensionData(i);
-		PxF32 camberAngle=suspData.mCamberAtRest;
-		if(jounce > 0.0f)
-		{
-			camberAngle += jounce*suspData.mCamberAtMaxCompression*suspData.getRecipMaxCompression();
-		}
-		else
-		{
-			camberAngle -= jounce*suspData.mCamberAtMaxDroop*suspData.getRecipMaxDroop();
-		}
-
-		//Compute the transform of the wheel shapes. 
+		PX_ASSERT(jounce != PX_MAX_F32);
+		const PxQuat quat = computeWheelLocalQuat(forwardAxis, sideAxis, upAxis, jounce, wheelsSimData.getSuspensionData(i), rotAngles[i], wheelQueryResults[i].steerAngle);
 		const PxVec3 pos=cmOffset+wheelsSimData.getWheelCentreOffset(i)-wheelsSimData.getSuspTravelDirection(i)*jounce;
-		const PxQuat quat(wheelQueryResults[i].steerAngle, gUp);
-		const PxQuat quat2(camberAngle, quat.rotate(forward));
-		const PxQuat quat3=quat2*quat;
-		const PxQuat quat4(rotAngles[i],quat3.rotate(gRight));
-		const PxTransform t(pos,quat4*quat3);
-		localPoses[i] = t;
+		localPoses[i] = PxTransform(pos, quat);
+	}
+}
+
+void computeWheelLocalPoseRotations
+(const PxVehicleWheels4DynData* wheels4DynDatas, const PxVehicleWheels4SimData* wheels4SimDatas, const PxU32 numWheels4, 
+ const PxVehicleContext& context,
+ const float* steerAngles, 
+ PxQuat* wheelLocalPoseRotations)
+{
+	for (PxU32 i = 0; i < numWheels4; i++)
+	{
+		for (PxU32 j = 0; j < 4; j++)
+		{
+			const PxF32 jounce = (wheels4DynDatas[i].mJounces[j] != PX_MAX_F32) ? wheels4DynDatas[i].mJounces[j] : 0.0f;
+			const PxVehicleSuspensionData& suspData = wheels4SimDatas[i].getSuspensionData(j);
+			const PxF32 steerAngle = steerAngles[4 * i + j];
+			const PxQuat q = computeWheelLocalQuat(context.forwardAxis, context.sideAxis, context.upAxis, jounce, suspData, 0.0f, steerAngle);
+			wheelLocalPoseRotations[4 * i + j] = q;
+		}
 	}
 }
 
@@ -4663,56 +4523,58 @@ public:
 	static void updateSingleVehicleAndStoreTelemetryData(
 		const PxF32 timestep, const PxVec3& gravity, const PxVehicleDrivableSurfaceToTireFrictionPairs& vehicleDrivableSurfaceToTireFrictionPairs, 
 		PxVehicleWheels* focusVehicle, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleTelemetryData& telemetryData,
-		PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates);
+		PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxVehicleContext&);
 #endif
 
 	static void update(
 		const PxF32 timestep, const PxVec3& gravity, const PxVehicleDrivableSurfaceToTireFrictionPairs& vehicleDrivableSurfaceToTireFrictionPairs, 
 		const PxU32 numVehicles, PxVehicleWheels** vehicles, PxVehicleWheelQueryResult* wheelQueryResults, PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates,
-		VehicleTelemetryDataContext* vehicleTelemetryDataContext);
+		VehicleTelemetryDataContext* vehicleTelemetryDataContext, const PxVehicleContext&);
 
 	static void updatePost(
-		const PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxU32 numVehicles, PxVehicleWheels** vehicles);
+		const PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxU32 numVehicles, PxVehicleWheels** vehicles,
+		const PxVehicleContext&);
 
 	static void suspensionRaycasts(
-		PxBatchQuery* batchQuery, 
-		const PxU32 numVehicles, PxVehicleWheels** vehicles, const PxU32 numSceneQueryResults, PxRaycastQueryResult* sceneQueryResults,
-		const bool* vehiclesToRaycast);
+		PxBatchQueryExt* batchQuery, 
+		const PxU32 numVehicles, PxVehicleWheels** vehicles, 
+		const bool* vehiclesToRaycast, const PxQueryFlags queryFlags);
 
 	static void suspensionSweeps(
-		PxBatchQuery* batchQuery, 
+		PxBatchQueryExt* batchQuery,
 		const PxU32 numVehicles, PxVehicleWheels** vehicles, 
-		const PxU32 numSceneQueryResults, PxSweepQueryResult* sceneQueryResults, const PxU16 nbHitsPerQuery,
+		const PxU16 nbHitsPerQuery,
 		const bool* vehiclesToRaycast,
-		const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation);
+		const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation, const PxQueryFlags queryFlags,
+		const PxVec3& upAxis, const PxVec3& forwardAxis, const PxVec3& sideAxis);
 
 	static void updateDrive4W(
 		const PxF32 timestep, 
 		const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude, 
 		const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
 		PxVehicleDrive4W* vehDrive4W, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
-		VehicleTelemetryDataContext*);
+		VehicleTelemetryDataContext*, const PxVehicleContext&);
 
 	static void updateDriveNW(
 		const PxF32 timestep, 
 		const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude, 
 		const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
 		PxVehicleDriveNW* vehDriveNW, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
-		VehicleTelemetryDataContext*);
+		VehicleTelemetryDataContext*, const PxVehicleContext&);
 
 	static void updateTank(
 		const PxF32 timestep, 
 		const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude, 
 		const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
 		PxVehicleDriveTank* vehDriveTank, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
-		VehicleTelemetryDataContext*);
+		VehicleTelemetryDataContext*, const PxVehicleContext&);
 
 	static void updateNoDrive(
 		const PxF32 timestep, 
 		const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude, 
 		const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
 		PxVehicleNoDrive* vehDriveTank, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
-		VehicleTelemetryDataContext*);
+		VehicleTelemetryDataContext*, const PxVehicleContext&);
 
 	static PxU32 computeNumberOfSubsteps(const PxVehicleWheelsSimData& wheelsSimData, const PxVec3& linVel, const PxTransform& globalPose, const PxVec3& forward)
 	{
@@ -4772,19 +4634,17 @@ public:
 
 		for(PxU32 i=0;i<numWheels4;i++)
 		{
-			const PxRaycastQueryResult* raycastResults = wheels4DynDatas[i].mRaycastResults;
-			const PxSweepQueryResult* sweepResults = wheels4DynDatas[i].mSweepResults;
+			const PxRaycastBuffer* raycastResults = wheels4DynDatas[i].mRaycastResults;
+			const PxSweepBuffer* sweepResults = wheels4DynDatas[i].mSweepResults;
 
 			for(PxU32 j=0;j<4;j++)
 			{
-				if(!wheelsSimData.getIsWheelDisabled(4*i + j) && (raycastResults || sweepResults))
+				if (!wheelsSimData.getIsWheelDisabled(4 * i + j) && (raycastResults || sweepResults))
 				{
 					const PxU32 hitCount = PxU32(raycastResults ? raycastResults[j].hasBlock : sweepResults[j].hasBlock);
-					const PxLocationHit& hit = raycastResults ? static_cast<const PxLocationHit&>(raycastResults[j].block) : static_cast<const PxLocationHit&>(sweepResults[j].block);
-					if(hitCount && hit.actor && hit.actor->is<PxRigidDynamic>())
-					{
+					PxRigidActor* hitActor = raycastResults ? raycastResults[j].block.actor : sweepResults[j].block.actor;
+					if(hitCount && hitActor && hitActor->is<PxRigidDynamic>())
 						return true;
-					}
 				}
 			}
 		}
@@ -4871,7 +4731,7 @@ const PxF32 timestep,
 const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude, 
 const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
 PxVehicleDrive4W* vehDrive4W, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
-VehicleTelemetryDataContext* vehTelemetryDataContext)
+VehicleTelemetryDataContext* vehTelemetryDataContext, const PxVehicleContext& context)
 {
 #if !PX_DEBUG_VEHICLE_ON
 	PX_UNUSED(vehTelemetryDataContext);
@@ -4922,7 +4782,7 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 		const PxVec3 fr=vehDrive4W->mWheelsSimData.mWheels4SimData[0].getWheelCentreOffset(PxVehicleDrive4WWheelOrder::eFRONT_RIGHT);
 		const PxVec3 rl=vehDrive4W->mWheelsSimData.mWheels4SimData[0].getWheelCentreOffset(PxVehicleDrive4WWheelOrder::eREAR_LEFT);
 		const PxVec3 rr=vehDrive4W->mWheelsSimData.mWheels4SimData[0].getWheelCentreOffset(PxVehicleDrive4WWheelOrder::eREAR_RIGHT);
-		const PxVec3 right=gRight;
+		const PxVec3 right=context.sideAxis;
 		const PxF32 s0=computeSign((fr-fl).dot(right));
 		const PxF32 s1=computeSign((rr-rl).dot(right));
 		PX_CHECK_AND_RETURN(0==s0 || 0==s1 || s0==s1, "PxVehicle4W does not obey the rule that the eFRONT_RIGHT/eREAR_RIGHT wheels are to the right of the eFRONT_LEFT/eREAR_LEFT wheels");
@@ -5053,24 +4913,6 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 		carChassisAngVel = vehActor->getAngularVelocity();
 	}
 
-	//Get the local poses of the wheel shapes.
-	//These are the poses from the last frame and equal to the poses used for the raycast we will process.
-	PxQuat wheelLocalPoseRotations[PX_MAX_NB_WHEELS];
-	PxF32 wheelThetas[PX_MAX_NB_WHEELS];
-	{
-		for (PxU32 i = 0; i < numActiveWheels; i++)
-		{
-			const PxI32 shapeId = vehDrive4W->mWheelsSimData.getWheelShapeMapping(i);
-			if (-1 != shapeId)
-			{
-				PxShape* shape = NULL;
-				vehActor->getShapes(&shape, 1, PxU32(shapeId));
-				wheelLocalPoseRotations[i] = shape->getLocalPose().q;
-				wheelThetas[i] = vehDrive4W->mWheelsDynData.getWheelRotationAngle(i);
-			}
-		}
-	}
-
 	//Update the auto-box and decide whether to change gear up or down.
 	PxF32 autoboxCompensatedAnalogAccel = driveDynData.mControlAnalogVals[PxVehicleDrive4WControl::eANALOG_INPUT_ACCEL];
 	if(driveDynData.getUseAutoGears())
@@ -5172,12 +5014,27 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 		computeIsAccelApplied(aveWheelSpeedContributions, isAccelApplied);
 	}
 
-	//Ackermann-corrected steering angles.
+	//Ackermann-corrected steering angles for 1st block of 4 wheels.
 	//http://en.wikipedia.org/wiki/Ackermann_steering_geometry
-	PxF32 steerAngles[4]={0.0f,0.0f,0.0f,0.0f};
+	PxF32 steerAngles[PX_MAX_NB_WHEELS];
+	PxMemZero(steerAngles, sizeof(steerAngles));
 	{
 		computeAckermannCorrectedSteerAngles(driveSimData,wheels4SimData,steer,steerAngles);
 	}
+	//All other wheels need a steer angle too.
+	for(PxU32 i = 1; i < numWheels4; i++)
+	{
+		for(PxU32 j = 0; j < 4; j++)
+		{
+			const PxF32 steerAngle = wheels4SimDatas[i].getWheelData(j).mToeAngle;
+			steerAngles[4*i + j] = steerAngle;
+		}
+	}
+
+	//Get the local rotations of the wheel shapes with the latest steer.
+	//These should be very close to the poses at the most recent scene query.
+	PxQuat wheelLocalPoseRotations[PX_MAX_NB_WHEELS];
+	computeWheelLocalPoseRotations(wheels4DynDatas, wheels4SimDatas, numWheels4, context, steerAngles, wheelLocalPoseRotations);
 
 	END_TIMER(TIMER_COMPONENTS_UPDATE);
 	START_TIMER(TIMER_ADMIN);
@@ -5191,7 +5048,8 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 	//Ready to do the update.
 	PxVec3 carChassisLinVelOrig=carChassisLinVel;
 	PxVec3 carChassisAngVelOrig=carChassisAngVel;
-	const PxU32 numSubSteps=computeNumberOfSubsteps(vehDrive4W->mWheelsSimData,carChassisLinVel,carChassisTransform,gForward);
+	const PxU32 numSubSteps=computeNumberOfSubsteps(vehDrive4W->mWheelsSimData,carChassisLinVel,carChassisTransform,
+		context.forwardAxis);
 	const PxF32 timeFraction=1.0f/(1.0f*numSubSteps);
 	const PxF32 subTimestep=timestep*timeFraction;
 	const PxF32 recipSubTimeStep=1.0f/subTimestep;
@@ -5227,13 +5085,17 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 			{
 				isIntentionToAccelerate, isAccelApplied, isBrakeApplied, steerAngles, activeWheelStates,
 				carChassisTransform, carChassisLinVel, carChassisAngVel, 
-				wheelLocalPoseRotations, wheelThetas, &wheels4SimData, &wheels4DynData, &tires4ForceCalculator, &tireLoadFilterData, numActiveWheelsPerBlock4[0]
+				wheelLocalPoseRotations, &wheels4SimData, &wheels4DynData, &tires4ForceCalculator, &tireLoadFilterData, numActiveWheelsPerBlock4[0]
 			};
 			ProcessSuspWheelTireOutputData outputData;
-			processSuspTireWheels(0, constData, inputData, outputData, vehTelemetryDataContext);
+			processSuspTireWheels(0, constData, inputData, context.sideAxis, 
+				context.pointRejectAngleThresholdCosine, context.normalRejectAngleThresholdCosine,
+				context.maxHitActorAcceleration,
+				outputData, vehTelemetryDataContext);
 			updateLowSpeedTimers(outputData.newLowForwardSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowForwardSpeedTimers));
 			updateLowSpeedTimers(outputData.newLowSideSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowSideSpeedTimers));
 			updateJounces(outputData.jounces, const_cast<PxF32*>(inputData.vehWheels4DynData->mJounces));
+			updateSteers(steerAngles, const_cast<PxF32*>(inputData.vehWheels4DynData->mSteerAngles));
 			if((numSubSteps-1) == k)
 			{
 				updateCachedHitData(outputData.cachedHitCounts, outputData.cachedHitPlanes, outputData.cachedHitDistances, outputData.cachedFrictionMultipliers, outputData.cachedHitQueryTypes, &wheels4DynData);
@@ -5319,16 +5181,8 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 		//////////////////////////////////////////////////////////////////////////
 		for(PxU32 j=1;j<numWheels4;j++)
 		{
-			//Only the driven wheels can steer but the non-drive wheels can still have a toe angle.
-			const PxVehicleWheelData& wheelData0=wheels4SimDatas[j].getWheelData(0);
-			const PxVehicleWheelData& wheelData1=wheels4SimDatas[j].getWheelData(1);
-			const PxVehicleWheelData& wheelData2=wheels4SimDatas[j].getWheelData(2);
-			const PxVehicleWheelData& wheelData3=wheels4SimDatas[j].getWheelData(3);
-			const PxF32 toe0=wheelData0.mToeAngle;
-			const PxF32 toe1=wheelData1.mToeAngle;
-			const PxF32 toe2=wheelData2.mToeAngle;
-			const PxF32 toe3=wheelData3.mToeAngle;
-			PxF32 extraWheelSteerAngles[4]={toe0,toe1,toe2,toe3};
+			//We already computed the steer angles above.
+			PxF32* extraWheelSteerAngles= steerAngles + 4*j;
 
 			//Only the driven wheels are connected to the diff.
 			PxF32 extraWheelsDiffTorqueRatios[4]={0.0f,0.0f,0.0f,0.0f};
@@ -5349,13 +5203,17 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 			{
 				isIntentionToAccelerate, extraIsAccelApplied, extraIsBrakeApplied, extraWheelSteerAngles, extraWheelActiveStates,
 				carChassisTransform, carChassisLinVel, carChassisAngVel, 
-				&wheelLocalPoseRotations[j], &wheelThetas[j], &wheels4SimDatas[j], &wheels4DynDatas[j], &tires4ForceCalculators[j], &tireLoadFilterData, numActiveWheelsPerBlock4[j],
+				&wheelLocalPoseRotations[j], &wheels4SimDatas[j], &wheels4DynDatas[j], &tires4ForceCalculators[j], &tireLoadFilterData, numActiveWheelsPerBlock4[j],
 			};
 			ProcessSuspWheelTireOutputData extraOutputData;
-			processSuspTireWheels(4*j, constData, extraInputData, extraOutputData, vehTelemetryDataContext);
+			processSuspTireWheels(4*j, constData, extraInputData, context.sideAxis, 
+				context.pointRejectAngleThresholdCosine, context.normalRejectAngleThresholdCosine,
+				context.maxHitActorAcceleration,
+				extraOutputData, vehTelemetryDataContext);
 			updateLowSpeedTimers(extraOutputData.newLowForwardSpeedTimers, const_cast<PxF32*>(extraInputData.vehWheels4DynData->mTireLowForwardSpeedTimers));
 			updateLowSpeedTimers(extraOutputData.newLowSideSpeedTimers, const_cast<PxF32*>(extraInputData.vehWheels4DynData->mTireLowSideSpeedTimers));
 			updateJounces(extraOutputData.jounces, const_cast<PxF32*>(extraInputData.vehWheels4DynData->mJounces));
+			updateSteers(extraWheelSteerAngles, const_cast<PxF32*>(extraInputData.vehWheels4DynData->mSteerAngles));
 			if((numSubSteps-1) == k)
 			{
 				updateCachedHitData(extraOutputData.cachedHitCounts, extraOutputData.cachedHitPlanes, extraOutputData.cachedHitDistances, extraOutputData.cachedFrictionMultipliers, extraOutputData.cachedHitQueryTypes, &wheels4DynDatas[j]);
@@ -5395,7 +5253,7 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 	START_TIMER(TIMER_POSTUPDATE3);
 
 	//Set the new chassis linear/angular velocity.
-	if(!gApplyForces)
+	if(context.updateMode == PxVehicleUpdateMode::eVELOCITY_CHANGE)
 	{
 		vehicleConcurrentUpdates.linearMomentumChange = carChassisLinVel;
 		vehicleConcurrentUpdates.angularMomentumChange = carChassisAngVel;
@@ -5417,7 +5275,8 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 
 	//Compute and pose the wheels from jounces, rotations angles, and steer angles.
 	PxTransform localPoses0[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,localPoses0);
+	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,
+		context.upAxis, context.sideAxis, context.forwardAxis, localPoses0);
 	//Copy the poses to the wheelQueryResults
 	wheelQueryResults[4*0 + 0].localPose = localPoses0[0];
 	wheelQueryResults[4*0 + 1].localPose = localPoses0[1];
@@ -5431,7 +5290,8 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 	for(PxU32 i=1;i<numWheels4;i++)
 	{
 		PxTransform localPoses[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,localPoses);
+		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,
+			context.upAxis, context.sideAxis, context.forwardAxis, localPoses);
 		//Copy the poses to the wheelQueryResults
 		wheelQueryResults[4*i + 0].localPose = localPoses[0];
 		wheelQueryResults[4*i + 1].localPose = localPoses[1];
@@ -5462,7 +5322,7 @@ VehicleTelemetryDataContext* vehTelemetryDataContext)
 	{
 		//Apply the writes immediately.
 		PxVehicleWheels* vehWheels[1]={vehDrive4W};
-		PxVehiclePostUpdates(&vehicleConcurrentUpdates, 1, vehWheels);
+		PxVehicleUpdate::updatePost(&vehicleConcurrentUpdates, 1, vehWheels, context);
 	}
 
 	END_TIMER(TIMER_POSTUPDATE3);
@@ -5473,7 +5333,7 @@ void PxVehicleUpdate::updateDriveNW
  const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude,
  const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
  PxVehicleDriveNW* vehDriveNW, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
- VehicleTelemetryDataContext* vehTelemetryDataContext)
+ VehicleTelemetryDataContext* vehTelemetryDataContext, const PxVehicleContext& context)
 {
 #if !PX_DEBUG_VEHICLE_ON
 	PX_UNUSED(vehTelemetryDataContext);
@@ -5649,23 +5509,7 @@ void PxVehicleUpdate::updateDriveNW
 		carChassisAngVel = vehActor->getAngularVelocity();
 	}
 
-	//Get the local poses of the wheel shapes.
-	//These are the poses from the last frame and equal to the poses used for the raycast we will process.
-	PxQuat wheelLocalPoseRotations[PX_MAX_NB_WHEELS];
-	PxF32 wheelThetas[PX_MAX_NB_WHEELS];
-	{
-		for (PxU32 i = 0; i < numActiveWheels; i++)
-		{
-			const PxI32 shapeId = vehDriveNW->mWheelsSimData.getWheelShapeMapping(i);
-			if (-1 != shapeId)
-			{
-				PxShape* shape = NULL;
-				vehActor->getShapes(&shape, 1, PxU32(shapeId));
-				wheelLocalPoseRotations[i] = shape->getLocalPose().q;
-				wheelThetas[i] = vehDriveNW->mWheelsDynData.getWheelRotationAngle(i);
-			}
-		}
-	}
+
 
 	//Update the auto-box and decide whether to change gear up or down.
 	PxF32 autoboxCompensatedAnalogAccel = driveDynData.mControlAnalogVals[PxVehicleDriveNWControl::eANALOG_INPUT_ACCEL];
@@ -5782,6 +5626,11 @@ void PxVehicleUpdate::updateDriveNW
 		diffTorqueRatios[i] = diffData.getIsDrivenWheel(i) ? invNumDrivenWheels : 0.0f;
 	}
 
+	//Get the local rotations of the wheel shapes with the latest steer.
+	//These should be very close to the poses at the most recent scene query.
+	PxQuat wheelLocalPoseRotations[PX_MAX_NB_WHEELS];
+	computeWheelLocalPoseRotations(wheels4DynDatas, wheels4SimDatas, numWheels4, context, steerAngles, wheelLocalPoseRotations);
+
 	END_TIMER(TIMER_COMPONENTS_UPDATE);
 	START_TIMER(TIMER_ADMIN);
 
@@ -5794,7 +5643,8 @@ void PxVehicleUpdate::updateDriveNW
 	//Ready to do the update.
 	PxVec3 carChassisLinVelOrig=carChassisLinVel;
 	PxVec3 carChassisAngVelOrig=carChassisAngVel;
-	const PxU32 numSubSteps=computeNumberOfSubsteps(vehDriveNW->mWheelsSimData,carChassisLinVel,carChassisTransform,gForward);
+	const PxU32 numSubSteps=computeNumberOfSubsteps(vehDriveNW->mWheelsSimData,carChassisLinVel,carChassisTransform,
+		context.forwardAxis);
 	const PxF32 timeFraction=1.0f/(1.0f*numSubSteps);
 	const PxF32 subTimestep=timestep*timeFraction;
 	const PxF32 recipSubTimeStep=1.0f/subTimestep;
@@ -5832,12 +5682,16 @@ void PxVehicleUpdate::updateDriveNW
 			{
 				isIntentionToAccelerate, &isAccelApplied[4*i], &isBrakeApplied[4*i], &steerAngles[4*i], &activeWheelStates[4*i],
 				carChassisTransform, carChassisLinVel, carChassisAngVel, 
-				&wheelLocalPoseRotations[i], &wheelThetas[i], &wheels4SimDatas[i], &wheels4DynDatas[i], &tires4ForceCalculators[i], &tireLoadFilterData, numActiveWheelsPerBlock4[i]
+				&wheelLocalPoseRotations[i], &wheels4SimDatas[i], &wheels4DynDatas[i], &tires4ForceCalculators[i], &tireLoadFilterData, numActiveWheelsPerBlock4[i]
 			};
-			processSuspTireWheels(4*i, constData, inputData, outputData[i], vehTelemetryDataContext);
+			processSuspTireWheels(4*i, constData, inputData, context.sideAxis, 
+				context.pointRejectAngleThresholdCosine, context.normalRejectAngleThresholdCosine,
+				context.maxHitActorAcceleration,
+				outputData[i], vehTelemetryDataContext);
 			updateLowSpeedTimers(outputData[i].newLowForwardSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowForwardSpeedTimers));
 			updateLowSpeedTimers(outputData[i].newLowSideSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowSideSpeedTimers));
 			updateJounces(outputData[i].jounces, const_cast<PxF32*>(inputData.vehWheels4DynData->mJounces));
+			updateSteers(&steerAngles[4*i], const_cast<PxF32*>(inputData.vehWheels4DynData->mSteerAngles));
 			if((numSubSteps-1) == k)
 			{
 				updateCachedHitData(outputData[i].cachedHitCounts, outputData[i].cachedHitPlanes, outputData[i].cachedHitDistances, outputData[i].cachedFrictionMultipliers, outputData[i].cachedHitQueryTypes, &wheels4DynDatas[i]);
@@ -5928,7 +5782,7 @@ void PxVehicleUpdate::updateDriveNW
 	}
 
 	//Set the new chassis linear/angular velocity.
-	if(!gApplyForces)
+	if(context.updateMode == PxVehicleUpdateMode::eVELOCITY_CHANGE)
 	{
 		vehicleConcurrentUpdates.linearMomentumChange = carChassisLinVel;
 		vehicleConcurrentUpdates.angularMomentumChange = carChassisAngVel;
@@ -5952,7 +5806,8 @@ void PxVehicleUpdate::updateDriveNW
 
 	//Pose the wheels from jounces, rotations angles, and steer angles.
 	PxTransform localPoses0[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,localPoses0);
+	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,
+		context.upAxis, context.sideAxis, context.forwardAxis, localPoses0);
 	wheelQueryResults[4*0 + 0].localPose = localPoses0[0];
 	wheelQueryResults[4*0 + 1].localPose = localPoses0[1];
 	wheelQueryResults[4*0 + 2].localPose = localPoses0[2];
@@ -5964,7 +5819,8 @@ void PxVehicleUpdate::updateDriveNW
 	for(PxU32 i=1;i<numWheels4;i++)
 	{
 		PxTransform localPoses[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,localPoses);
+		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,
+			context.upAxis, context.sideAxis, context.forwardAxis, localPoses);
 		wheelQueryResults[4*i + 0].localPose = localPoses[0];
 		wheelQueryResults[4*i + 1].localPose = localPoses[1];
 		wheelQueryResults[4*i + 2].localPose = localPoses[2];
@@ -5993,7 +5849,7 @@ void PxVehicleUpdate::updateDriveNW
 	{
 		//Apply the writes immediately.
 		PxVehicleWheels* vehWheels[1]={vehDriveNW};
-		PxVehiclePostUpdates(&vehicleConcurrentUpdates, 1, vehWheels);
+		PxVehicleUpdate::updatePost(&vehicleConcurrentUpdates, 1, vehWheels, context);
 	}
 
 	END_TIMER(TIMER_POSTUPDATE3);
@@ -6004,7 +5860,7 @@ void PxVehicleUpdate::updateTank
  const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude, 
  const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
  PxVehicleDriveTank* vehDriveTank, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
- VehicleTelemetryDataContext* vehTelemetryDataContext)
+ VehicleTelemetryDataContext* vehTelemetryDataContext, const PxVehicleContext& context)
 {
 #if !PX_DEBUG_VEHICLE_ON
 	PX_UNUSED(vehTelemetryDataContext);
@@ -6065,7 +5921,7 @@ void PxVehicleUpdate::updateTank
 	{
 		PxVec3 fl=vehDriveTank->mWheelsSimData.getWheelCentreOffset(PxVehicleDriveTankWheelOrder::eFRONT_LEFT);
 		PxVec3 fr=vehDriveTank->mWheelsSimData.getWheelCentreOffset(PxVehicleDriveTankWheelOrder::eFRONT_RIGHT);
-		const PxVec3 right=gRight;
+		const PxVec3 right=context.sideAxis;
 		const PxF32 s0=computeSign((fr-fl).dot(right));
 		for(PxU32 i=PxVehicleDriveTankWheelOrder::e1ST_FROM_FRONT_LEFT;i<vehDriveTank->mWheelsSimData.getNbWheels();i+=2)
 		{
@@ -6195,23 +6051,6 @@ void PxVehicleUpdate::updateTank
 		carChassisAngVel = vehActor->getAngularVelocity();
 	}
 
-	//Get the local poses of the wheel shapes.
-	//These are the poses from the last frame and equal to the poses used for the raycast we will process.
-	PxQuat wheelLocalPoseRotations[PX_MAX_NB_WHEELS];
-	PxF32 wheelThetas[PX_MAX_NB_WHEELS];
-	{
-		for (PxU32 i = 0; i < numActiveWheels; i++)
-		{
-			const PxI32 shapeId = vehDriveTank->mWheelsSimData.getWheelShapeMapping(i);
-			if (-1 != shapeId)
-			{
-				PxShape* shape = NULL;
-				vehActor->getShapes(&shape, 1, PxU32(shapeId));
-				wheelLocalPoseRotations[i] = shape->getLocalPose().q;
-				wheelThetas[i] = vehDriveTank->mWheelsDynData.getWheelRotationAngle(i);
-			}
-		}
-	}
 
 
 	//Retrieve control values from vehicle controls.
@@ -6326,10 +6165,16 @@ void PxVehicleUpdate::updateTank
 		storeRaycasts(wheels4DynDatas[i], &wheelQueryResults[4*i]);
 	}
 
+	//Get the local rotations of the wheel shapes with the latest steer.
+	//These should be very close to the poses at the most recent scene query.
+	PxQuat wheelLocalPoseRotations[PX_MAX_NB_WHEELS];
+	computeWheelLocalPoseRotations(wheels4DynDatas, wheels4SimDatas, numWheels4, context, steerAngles, wheelLocalPoseRotations);
+
 	//Ready to do the update.
 	PxVec3 carChassisLinVelOrig=carChassisLinVel;
 	PxVec3 carChassisAngVelOrig=carChassisAngVel;
-	const PxU32 numSubSteps=computeNumberOfSubsteps(vehDriveTank->mWheelsSimData,carChassisLinVel,carChassisTransform,gForward);
+	const PxU32 numSubSteps=computeNumberOfSubsteps(vehDriveTank->mWheelsSimData,carChassisLinVel,carChassisTransform,
+		context.forwardAxis);
 	const PxF32 timeFraction=1.0f/(1.0f*numSubSteps);
 	const PxF32 subTimestep=timestep*timeFraction;
 	const PxF32 recipSubTimeStep=1.0f/subTimestep;
@@ -6364,12 +6209,16 @@ void PxVehicleUpdate::updateTank
 			{
 				isIntentionToAccelerate, &isAccelApplied[i*4], &isBrakeApplied[i*4], &steerAngles[i*4], &activeWheelStates[4*i],
 				carChassisTransform, carChassisLinVel, carChassisAngVel,
-				&wheelLocalPoseRotations[i], &wheelThetas[i], &wheels4SimDatas[i], &wheels4DynDatas[i], &tires4ForceCalculators[i], &tireLoadFilterData, numActiveWheelsPerBlock4[i],
+				&wheelLocalPoseRotations[i], &wheels4SimDatas[i], &wheels4DynDatas[i], &tires4ForceCalculators[i], &tireLoadFilterData, numActiveWheelsPerBlock4[i],
 			};
-			processSuspTireWheels(i*4, constData, inputData, outputData[i], vehTelemetryDataContext);
+			processSuspTireWheels(i*4, constData, inputData, context.sideAxis, 
+				context.pointRejectAngleThresholdCosine, context.normalRejectAngleThresholdCosine,
+				context.maxHitActorAcceleration,
+				outputData[i], vehTelemetryDataContext);
 			updateLowSpeedTimers(outputData[i].newLowForwardSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowForwardSpeedTimers));
 			updateLowSpeedTimers(outputData[i].newLowSideSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowSideSpeedTimers));
 			updateJounces(outputData[i].jounces, const_cast<PxF32*>(inputData.vehWheels4DynData->mJounces));
+			updateSteers(&steerAngles[i*4], const_cast<PxF32*>(inputData.vehWheels4DynData->mSteerAngles));
 			if((numSubSteps-1) == k)
 			{
 				updateCachedHitData(outputData[i].cachedHitCounts, outputData[i].cachedHitPlanes, outputData[i].cachedHitDistances, outputData[i].cachedFrictionMultipliers, outputData[i].cachedHitQueryTypes, &wheels4DynDatas[i]);
@@ -6449,7 +6298,7 @@ void PxVehicleUpdate::updateTank
 	}
 
 	//Set the new chassis linear/angular velocity.
-	if(!gApplyForces)
+	if(context.updateMode == PxVehicleUpdateMode::eVELOCITY_CHANGE)
 	{
 		vehicleConcurrentUpdates.linearMomentumChange = carChassisLinVel;
 		vehicleConcurrentUpdates.angularMomentumChange = carChassisAngVel;
@@ -6471,7 +6320,8 @@ void PxVehicleUpdate::updateTank
 
 	//Pose the wheels from jounces, rotations angles, and steer angles.
 	PxTransform localPoses0[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,localPoses0);
+	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,
+		context.upAxis, context.sideAxis, context.forwardAxis, localPoses0);
 	wheelQueryResults[4*0 + 0].localPose = localPoses0[0];
 	wheelQueryResults[4*0 + 1].localPose = localPoses0[1];
 	wheelQueryResults[4*0 + 2].localPose = localPoses0[2];
@@ -6483,7 +6333,8 @@ void PxVehicleUpdate::updateTank
 	for(PxU32 i=1;i<numWheels4;i++)
 	{
 		PxTransform localPoses[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,localPoses);
+		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,
+			context.upAxis, context.sideAxis, context.forwardAxis, localPoses);
 		wheelQueryResults[4*i + 0].localPose = localPoses[0];
 		wheelQueryResults[4*i + 1].localPose = localPoses[1];
 		wheelQueryResults[4*i + 2].localPose = localPoses[2];
@@ -6512,7 +6363,7 @@ void PxVehicleUpdate::updateTank
 	{
 		//Apply the writes immediately.
 		PxVehicleWheels* vehWheels[1]={vehDriveTank};
-		PxVehiclePostUpdates(&vehicleConcurrentUpdates, 1, vehWheels);
+		PxVehicleUpdate::updatePost(&vehicleConcurrentUpdates, 1, vehWheels, context);
 	}
 }
 
@@ -6521,7 +6372,7 @@ void PxVehicleUpdate::updateNoDrive
  const PxVec3& gravity, const PxF32 gravityMagnitude, const PxF32 recipGravityMagnitude,
  const PxVehicleDrivableSurfaceToTireFrictionPairs& drivableSurfaceToTireFrictionPairs,
  PxVehicleNoDrive* vehNoDrive, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleConcurrentUpdateData* vehConcurrentUpdates,
- VehicleTelemetryDataContext* vehTelemetryDataContext)
+ VehicleTelemetryDataContext* vehTelemetryDataContext, const PxVehicleContext& context)
 {
 #if !PX_DEBUG_VEHICLE_ON
 	PX_UNUSED(vehTelemetryDataContext);
@@ -6665,23 +6516,10 @@ void PxVehicleUpdate::updateNoDrive
 		carChassisAngVel = vehActor->getAngularVelocity();
 	}
 
-	//Get the local poses of the wheel shapes.
-	//These are the poses from the last frame and equal to the poses used for the raycast we will process.
+	//Get the local rotations of the wheel shapes with the latest steer.
+	//These should be very close to the poses at the most recent scene query.
 	PxQuat wheelLocalPoseRotations[PX_MAX_NB_WHEELS];
-	PxF32 wheelThetas[PX_MAX_NB_WHEELS];
-	{
-		for (PxU32 i = 0; i < numActiveWheels; i++)
-		{
-			const PxI32 shapeId = vehNoDrive->mWheelsSimData.getWheelShapeMapping(i);
-			if (-1 != shapeId)
-			{
-				PxShape* shape = NULL;
-				vehActor->getShapes(&shape, 1, PxU32(shapeId));
-				wheelLocalPoseRotations[i] = shape->getLocalPose().q;
-				wheelThetas[i] = vehNoDrive->mWheelsDynData.getWheelRotationAngle(i);
-			}
-		}
-	}
+	computeWheelLocalPoseRotations(wheels4DynDatas, wheels4SimDatas, numWheels4, context, vehNoDrive->mSteerAngles, wheelLocalPoseRotations);
 
 	PxF32 maxAccel=0;
 	PxF32 maxBrake=0;
@@ -6701,7 +6539,8 @@ void PxVehicleUpdate::updateNoDrive
 	//Ready to do the update.
 	PxVec3 carChassisLinVelOrig=carChassisLinVel;
 	PxVec3 carChassisAngVelOrig=carChassisAngVel;
-	const PxU32 numSubSteps=computeNumberOfSubsteps(vehNoDrive->mWheelsSimData,carChassisLinVel,carChassisTransform,gForward);
+	const PxU32 numSubSteps=computeNumberOfSubsteps(vehNoDrive->mWheelsSimData,carChassisLinVel,carChassisTransform,
+		context.forwardAxis);
 	const PxF32 timeFraction=1.0f/(1.0f*numSubSteps);
 	const PxF32 subTimestep=timestep*timeFraction;
 	const PxF32 recipSubTimeStep=1.0f/subTimestep;
@@ -6749,13 +6588,18 @@ void PxVehicleUpdate::updateNoDrive
 			{
 				isIntentionToAccelerate, isAccelApplied, isBrakeApplied, rawSteerAngles, activeWheelStates,
 				carChassisTransform, carChassisLinVel, carChassisAngVel,
-				&wheelLocalPoseRotations[i], &wheelThetas[i], &wheels4SimData, &wheels4DynData, &tires4ForceCalculators[i], &tireLoadFilterData, numActiveWheelsPerBlock4[i]
+				&wheelLocalPoseRotations[i], &wheels4SimData, &wheels4DynData, &tires4ForceCalculators[i], &tireLoadFilterData, numActiveWheelsPerBlock4[i]
 			};
 			ProcessSuspWheelTireOutputData outputData;
-			processSuspTireWheels(4*i, constData, inputData, outputData, vehTelemetryDataContext);
+			processSuspTireWheels(4*i, constData, inputData, context.sideAxis, 
+				context.pointRejectAngleThresholdCosine, context.normalRejectAngleThresholdCosine,
+				context.maxHitActorAcceleration,
+				outputData, vehTelemetryDataContext);
 			updateLowSpeedTimers(outputData.newLowForwardSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowForwardSpeedTimers));
 			updateLowSpeedTimers(outputData.newLowSideSpeedTimers, const_cast<PxF32*>(inputData.vehWheels4DynData->mTireLowSideSpeedTimers));
 			updateJounces(outputData.jounces, const_cast<PxF32*>(inputData.vehWheels4DynData->mJounces));
+			updateSteers(rawSteerAngles, const_cast<PxF32*>(inputData.vehWheels4DynData->mSteerAngles));
+
 			if((numSubSteps-1) == k)
 			{
 				updateCachedHitData(outputData.cachedHitCounts, outputData.cachedHitPlanes, outputData.cachedHitDistances, outputData.cachedFrictionMultipliers, outputData.cachedHitQueryTypes, &wheels4DynData);
@@ -6798,7 +6642,7 @@ void PxVehicleUpdate::updateNoDrive
 	}
 
 	//Set the new chassis linear/angular velocity.
-	if(!gApplyForces)
+	if(context.updateMode == PxVehicleUpdateMode::eVELOCITY_CHANGE)
 	{
 		vehicleConcurrentUpdates.linearMomentumChange = carChassisLinVel;
 		vehicleConcurrentUpdates.angularMomentumChange = carChassisAngVel;
@@ -6820,7 +6664,8 @@ void PxVehicleUpdate::updateNoDrive
 
 	//Pose the wheels from jounces, rotations angles, and steer angles.
 	PxTransform localPoses0[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,localPoses0);
+	computeWheelLocalPoses(wheels4SimDatas[0],wheels4DynDatas[0],&wheelQueryResults[4*0],numActiveWheelsPerBlock4[0],carChassisCMLocalPose,
+		context.upAxis, context.sideAxis, context.forwardAxis, localPoses0);
 	wheelQueryResults[4*0 + 0].localPose = localPoses0[0];
 	wheelQueryResults[4*0 + 1].localPose = localPoses0[1];
 	wheelQueryResults[4*0 + 2].localPose = localPoses0[2];
@@ -6832,7 +6677,8 @@ void PxVehicleUpdate::updateNoDrive
 	for(PxU32 i=1;i<numWheels4;i++)
 	{
 		PxTransform localPoses[4] = {PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity), PxTransform(PxIdentity)};
-		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,localPoses);
+		computeWheelLocalPoses(wheels4SimDatas[i],wheels4DynDatas[i],&wheelQueryResults[4*i],numActiveWheelsPerBlock4[i],carChassisCMLocalPose,
+			context.upAxis, context.sideAxis, context.forwardAxis, localPoses);
 		wheelQueryResults[4*i + 0].localPose = localPoses[0];
 		wheelQueryResults[4*i + 1].localPose = localPoses[1];
 		wheelQueryResults[4*i + 2].localPose = localPoses[2];
@@ -6861,7 +6707,7 @@ void PxVehicleUpdate::updateNoDrive
 	{
 		//Apply the writes immediately.
 		PxVehicleWheels* vehWheels[1]={vehNoDrive};
-		PxVehiclePostUpdates(&vehicleConcurrentUpdates, 1, vehWheels);
+		PxVehicleUpdate::updatePost(&vehicleConcurrentUpdates, 1, vehWheels, context);
 	}
 }
 
@@ -6928,7 +6774,7 @@ void PxVehicleUpdate::shiftOrigin(const PxVec3& shift, const PxU32 numVehicles, 
 PX_FORCE_INLINE void PxVehicleUpdate::updateSingleVehicleAndStoreTelemetryData
 (const PxF32 timestep, const PxVec3& gravity, const PxVehicleDrivableSurfaceToTireFrictionPairs& vehicleDrivableSurfaceToTireFrictionPairs, 
  PxVehicleWheels* vehWheels, PxVehicleWheelQueryResult* vehWheelQueryResults, PxVehicleTelemetryData& telemetryData,
- PxVehicleConcurrentUpdateData* vehConcurrentUpdates)
+ PxVehicleConcurrentUpdateData* vehConcurrentUpdates, const PxVehicleContext& context)
 {
 	START_TIMER(TIMER_ALL);
 
@@ -6941,7 +6787,7 @@ PX_FORCE_INLINE void PxVehicleUpdate::updateSingleVehicleAndStoreTelemetryData
 	PxMemZero(vehicleTelemetryDataContext.tireForceAppPoints, sizeof(vehicleTelemetryDataContext.tireForceAppPoints));
 
 	update(timestep, gravity, vehicleDrivableSurfaceToTireFrictionPairs, 1, &vehWheels, vehWheelQueryResults, vehConcurrentUpdates,
-		&vehicleTelemetryDataContext);
+		&vehicleTelemetryDataContext, context);
 
 	for(PxU32 i=0;i<vehWheels->mWheelsSimData.mNbActiveWheels;i++)
 	{
@@ -6993,11 +6839,13 @@ PX_FORCE_INLINE void PxVehicleUpdate::updateSingleVehicleAndStoreTelemetryData
 void physx::PxVehicleUpdateSingleVehicleAndStoreTelemetryData
 (const PxReal timestep, const PxVec3& gravity, const physx::PxVehicleDrivableSurfaceToTireFrictionPairs& vehicleDrivableSurfaceToTireFrictionPairs, 
  PxVehicleWheels* focusVehicle, PxVehicleWheelQueryResult* wheelQueryResults, PxVehicleTelemetryData& telemetryData,
- PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates)
+ PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxVehicleContext& context)
 {
+	PX_CHECK_AND_RETURN(context.isValid(), "PxVehicleUpdateSingleVehicleAndStoreTelemetryData: provided PxVehicleContext is not valid");
+
 	PxVehicleUpdate::updateSingleVehicleAndStoreTelemetryData
 		(timestep, gravity, vehicleDrivableSurfaceToTireFrictionPairs, focusVehicle, wheelQueryResults, telemetryData,
-		vehicleConcurrentUpdates);
+		vehicleConcurrentUpdates, context);
 }
 
 #endif
@@ -7009,7 +6857,7 @@ void physx::PxVehicleUpdateSingleVehicleAndStoreTelemetryData
 void PxVehicleUpdate::update
 (const PxF32 timestep, const PxVec3& gravity, const PxVehicleDrivableSurfaceToTireFrictionPairs& vehicleDrivableSurfaceToTireFrictionPairs, 
  const PxU32 numVehicles, PxVehicleWheels** vehicles, PxVehicleWheelQueryResult* vehicleWheelQueryResults, PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates,
- VehicleTelemetryDataContext* vehicleTelemetryDataContext)
+ VehicleTelemetryDataContext* vehicleTelemetryDataContext, const PxVehicleContext& context)
 {
 	PX_CHECK_AND_RETURN(gravity.magnitude()>0, "gravity vector must have non-zero length");
 	PX_CHECK_AND_RETURN(timestep>0, "timestep must be greater than zero");
@@ -7079,7 +6927,8 @@ void PxVehicleUpdate::update
 					timestep,
 					gravity,gravityMagnitude,recipGravityMagnitude,
 					vehicleDrivableSurfaceToTireFrictionPairs,
-					vehDrive4W, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext);
+					vehDrive4W, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext,
+					context);
 				}
 			break;
 
@@ -7091,7 +6940,8 @@ void PxVehicleUpdate::update
 					timestep,
 					gravity,gravityMagnitude,recipGravityMagnitude,
 					vehicleDrivableSurfaceToTireFrictionPairs,
-					vehDriveNW, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext);
+					vehDriveNW, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext,
+					context);
 			}
 			break;
 
@@ -7103,7 +6953,8 @@ void PxVehicleUpdate::update
 					timestep,
 					gravity,gravityMagnitude,recipGravityMagnitude,
 					vehicleDrivableSurfaceToTireFrictionPairs,
-					vehDriveTank, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext);
+					vehDriveTank, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext,
+					context);
 			}
 			break;	
 
@@ -7115,7 +6966,8 @@ void PxVehicleUpdate::update
 					timestep,
 					gravity,gravityMagnitude,recipGravityMagnitude,
 					vehicleDrivableSurfaceToTireFrictionPairs,
-					vehDriveNoDrive, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext);
+					vehDriveNoDrive, vehWheelQueryResults, vehConcurrentUpdateData, vehicleTelemetryDataContext,
+					context);
 			}
 			break;
 			
@@ -7128,8 +6980,11 @@ void PxVehicleUpdate::update
 
 
 void PxVehicleUpdate::updatePost
-(const PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxU32 numVehicles, PxVehicleWheels** vehicles)
+(const PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxU32 numVehicles, PxVehicleWheels** vehicles,
+ const PxVehicleContext& context)
 {
+	PX_PROFILE_ZONE("PxVehicleUpdates::ePROFILE_POSTUPDATES",0);
+
 	PX_CHECK_AND_RETURN(vehicleConcurrentUpdates, "vehicleConcurrentUpdates must be non-null.");
 
 #if PX_CHECKED
@@ -7172,7 +7027,7 @@ void PxVehicleUpdate::updatePost
 			}
 
 			//Apply momentum changes to vehicle's actor
-			if(!gApplyForces)
+			if(context.updateMode == PxVehicleUpdateMode::eVELOCITY_CHANGE)
 			{
 				vehActor->setLinearVelocity(vehicleConcurrentUpdate.linearMomentumChange, false);
 				vehActor->setAngularVelocity(vehicleConcurrentUpdate.angularMomentumChange, false);
@@ -7227,18 +7082,24 @@ void PxVehicleUpdate::updatePost
 
 void physx::PxVehicleUpdates
 (const PxReal timestep, const PxVec3& gravity, const PxVehicleDrivableSurfaceToTireFrictionPairs& vehicleDrivableSurfaceToTireFrictionPairs, 
- const PxU32 numVehicles, PxVehicleWheels** vehicles, PxVehicleWheelQueryResult* vehicleWheelQueryResults, PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates)
+ const PxU32 numVehicles, PxVehicleWheels** vehicles, PxVehicleWheelQueryResult* vehicleWheelQueryResults, PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates,
+ const PxVehicleContext& context)
 {
 	PX_PROFILE_ZONE("PxVehicleUpdates::ePROFILE_UPDATES",0);
+
+	PX_CHECK_AND_RETURN(context.isValid(), "PxVehicleUpdates: provided PxVehicleContext is not valid");
+
 	PxVehicleUpdate::update(timestep, gravity, vehicleDrivableSurfaceToTireFrictionPairs, numVehicles, vehicles, vehicleWheelQueryResults, vehicleConcurrentUpdates,
-		NULL);
+		NULL, context);
 }
 
 void physx::PxVehiclePostUpdates
-(const PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxU32 numVehicles, PxVehicleWheels** vehicles)
+(const PxVehicleConcurrentUpdateData* vehicleConcurrentUpdates, const PxU32 numVehicles, PxVehicleWheels** vehicles,
+ const PxVehicleContext& context)
 {
-	PX_PROFILE_ZONE("PxVehicleUpdates::ePROFILE_POSTUPDATES",0);
-	PxVehicleUpdate::updatePost(vehicleConcurrentUpdates, numVehicles, vehicles);
+	PX_CHECK_AND_RETURN(context.isValid(), "PxVehiclePostUpdates: provided PxVehicleContext is not valid");
+
+	PxVehicleUpdate::updatePost(vehicleConcurrentUpdates, numVehicles, vehicles, context);
 }
 
 void physx::PxVehicleShiftOrigin(const PxVec3& shift, const PxU32 numVehicles, PxVehicleWheels** vehicles)
@@ -7252,12 +7113,14 @@ void physx::PxVehicleShiftOrigin(const PxVec3& shift, const PxU32 numVehicles, P
 //for use in the next PxVehicleUpdates call.
 ///////////////////////////////////////////////////////////////////////////////////
 
-void PxVehicleWheels4SuspensionRaycasts
-(PxBatchQuery* batchQuery, 
+static const PxRaycastBuffer* vehicleWheels4SuspensionRaycasts
+(PxBatchQueryExt* batchQuery,
  const PxVehicleWheels4SimData& wheels4SimData, PxVehicleWheels4DynData& wheels4DynData, 
  const PxQueryFilterData* carFilterData, const bool* activeWheelStates, const PxU32 numActiveWheels,
  PxRigidDynamic* vehActor)
 {
+	const PxRaycastBuffer* buffer4 = NULL;
+
 	//Get the transform of the chassis.
 	PxTransform massXform = vehActor->getCMassLocalPose();
 	massXform.q = PxQuat(PxIdentity);
@@ -7304,30 +7167,23 @@ void PxVehicleWheels4SuspensionRaycasts
 		raycast.mLengths[j]=suspLineLength;
 
 		//Add the raycast to the scene query.
-		batchQuery->raycast(
+		const PxRaycastBuffer* raycastBuffer = batchQuery->raycast(
 			suspLineStart, suspLineDir, suspLineLength, 0,
 			PxHitFlag::ePOSITION|PxHitFlag::eNORMAL|PxHitFlag::eUV, carFilterData[j]);
+
+		if(0 == j)
+			buffer4 = raycastBuffer;
+
+		if (!raycastBuffer)
+			return buffer4 = NULL;
 	}
+
+	return buffer4;
 }
 
-void PxVehicleUpdate::suspensionRaycasts(PxBatchQuery* batchQuery, const PxU32 numVehicles, PxVehicleWheels** vehicles, const PxU32 numSceneQueryResults, PxRaycastQueryResult* sceneQueryResults, const bool* vehiclesToRaycast)
+void PxVehicleUpdate::suspensionRaycasts(PxBatchQueryExt* batchQuery, const PxU32 numVehicles, PxVehicleWheels** vehicles, const bool* vehiclesToRaycast, const PxQueryFlags queryFlags)
 {
 	START_TIMER(TIMER_RAYCASTS);
-
-	//Reset all hit counts to zero.
-	for(PxU32 i=0;i<numSceneQueryResults;i++)
-	{
-		sceneQueryResults[i].hasBlock=false;
-	}
-
-	PxRaycastQueryResult* sqres=sceneQueryResults;
-
-	const PxQueryFlags flags = PxQueryFlag::eSTATIC|PxQueryFlag::eDYNAMIC|PxQueryFlag::ePREFILTER;
-	PxQueryFilterData carFilterData[4];
-	carFilterData[0].flags=flags;
-	carFilterData[1].flags=flags;
-	carFilterData[2].flags=flags;
-	carFilterData[3].flags=flags;
 
 	//Work out the rays for the suspension line raycasts and perform all the raycasts.
 	for(PxU32 i=0;i<numVehicles;i++)
@@ -7353,22 +7209,18 @@ void PxVehicleUpdate::suspensionRaycasts(PxBatchQuery* batchQuery, const PxU32 n
 			wheels4DynData[j].mRaycastResults=NULL;
 			wheels4DynData[j].mSweepResults=NULL;
 
-			if(NULL==vehiclesToRaycast || vehiclesToRaycast[i])
+			if(!vehiclesToRaycast || vehiclesToRaycast[i])
 			{
-				if((sceneQueryResults + numSceneQueryResults) >= (sqres+4))
+				const PxQueryFilterData carFilterData[4] = 
 				{
-					carFilterData[0].data=wheels4SimData[j].getSceneQueryFilterData(0);
-					carFilterData[1].data=wheels4SimData[j].getSceneQueryFilterData(1);
-					carFilterData[2].data=wheels4SimData[j].getSceneQueryFilterData(2);
-					carFilterData[3].data=wheels4SimData[j].getSceneQueryFilterData(3);
-					wheels4DynData[j].mRaycastResults=sqres;
-					PxVehicleWheels4SuspensionRaycasts(batchQuery,wheels4SimData[j],wheels4DynData[j],carFilterData,activeWheelStates,4,vehActor);
-				}
-				else
-				{
-					PX_CHECK_MSG(false, "PxVehicleUpdate::suspensionRaycasts - numSceneQueryResults not big enough to support one raycast hit report per wheel.  Increase size of sceneQueryResults");
-				}
-				sqres+=4;
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(0), queryFlags),
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(1), queryFlags),
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(2), queryFlags),
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(3), queryFlags)
+				};
+				const PxRaycastBuffer* buffer = vehicleWheels4SuspensionRaycasts(batchQuery, wheels4SimData[j], wheels4DynData[j], carFilterData, activeWheelStates, 4, vehActor);
+				PX_CHECK_MSG(buffer, "PxVehicleUpdate::suspensionRaycasts - PxVehicleBatchUpdate raycast buffers not large enough to perform raycast.");
+				wheels4DynData[j].mRaycastResults = buffer;
 			}
 		}
 		//Remainder that don't make up a block of 4.
@@ -7382,21 +7234,20 @@ void PxVehicleUpdate::suspensionRaycasts(PxBatchQuery* batchQuery, const PxU32 n
 			wheels4DynData[j].mRaycastResults=NULL;
 			wheels4DynData[j].mSweepResults=NULL;
 			
-			if(NULL==vehiclesToRaycast || vehiclesToRaycast[i])
+			if(!vehiclesToRaycast || vehiclesToRaycast[i])
 			{
-				if((sceneQueryResults + numSceneQueryResults) >= (sqres+numActiveWheelsInLast4))
-				{
-					if(0<numActiveWheelsInLast4) carFilterData[0].data=wheels4SimData[j].getSceneQueryFilterData(0);
-					if(1<numActiveWheelsInLast4) carFilterData[1].data=wheels4SimData[j].getSceneQueryFilterData(1);
-					if(2<numActiveWheelsInLast4) carFilterData[2].data=wheels4SimData[j].getSceneQueryFilterData(2);
-					wheels4DynData[j].mRaycastResults=sqres;
-					PxVehicleWheels4SuspensionRaycasts(batchQuery,wheels4SimData[j],wheels4DynData[j],carFilterData,activeWheelStates,numActiveWheelsInLast4,vehActor);
-				}
-				else
-				{
-					PX_CHECK_MSG(false, "PxVehicleUpdate::suspensionRaycasts - numSceneQueryResults not big enough to support one raycast hit report per wheel.  Increase size of sceneQueryResults");
-				}
-				sqres+=numActiveWheelsInLast4;
+				PxQueryFilterData carFilterData[4];
+
+				if (0 < numActiveWheelsInLast4) 
+					carFilterData[0] = PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(0), queryFlags);
+				if (1 < numActiveWheelsInLast4) 
+					carFilterData[1] = PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(1), queryFlags);
+				if (2 < numActiveWheelsInLast4) 
+					carFilterData[2] = PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(2), queryFlags);
+
+				const PxRaycastBuffer* buffer = vehicleWheels4SuspensionRaycasts(batchQuery,wheels4SimData[j],wheels4DynData[j],carFilterData,activeWheelStates,numActiveWheelsInLast4,vehActor);
+				PX_CHECK_MSG(buffer, "PxVehicleUpdate::suspensionRaycasts - PxVehicleBatchUpdate raycast buffers not large enough to perform raycast.");
+				wheels4DynData[j].mRaycastResults = buffer;
 			}
 		}
 	}
@@ -7406,27 +7257,29 @@ void PxVehicleUpdate::suspensionRaycasts(PxBatchQuery* batchQuery, const PxU32 n
 	END_TIMER(TIMER_RAYCASTS);
 }
 
-void physx::PxVehicleSuspensionRaycasts(PxBatchQuery* batchQuery, const PxU32 numVehicles, PxVehicleWheels** vehicles, const PxU32 numSceneQueryesults, PxRaycastQueryResult* sceneQueryResults, const bool* vehiclesToRaycast)
+void physx::PxVehicleSuspensionRaycasts(PxBatchQueryExt* batchQuery, const PxU32 numVehicles, PxVehicleWheels** vehicles, const bool* vehiclesToRaycast, const PxQueryFlags queryFlags)
 {
 	PX_PROFILE_ZONE("PxVehicleSuspensionRaycasts::ePROFILE_RAYCASTS",0);
-	PxVehicleUpdate::suspensionRaycasts(batchQuery, numVehicles, vehicles, numSceneQueryesults, sceneQueryResults, vehiclesToRaycast);
+	PxVehicleUpdate::suspensionRaycasts(batchQuery, numVehicles, vehicles, vehiclesToRaycast, queryFlags);
 }
 
-
-void PxVehicleWheels4SuspensionSweeps
-(PxBatchQuery* batchQuery, 
+static const PxSweepBuffer* vehicleWheels4SuspensionSweeps
+(PxBatchQueryExt* batchQuery,
  const PxVehicleWheels4SimData& wheels4SimData, PxVehicleWheels4DynData& wheels4DynData, 
  const PxQueryFilterData* carFilterData, const bool* activeWheelStates, const PxU32 numActiveWheels,
  const PxU16 nbHitsPerQuery,
  const PxI32* wheelShapeIds,
  PxRigidDynamic* vehActor,
- const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation)
+ const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation,
+ const PxVec3& upAxis, const PxVec3& forwardAxis, const PxVec3& sideAxis)
 {
 	PX_UNUSED(sweepWidthScale);
 	PX_UNUSED(sweepRadiusScale);
 
 	//Get the transform of the chassis.
 	PxTransform carChassisTrnsfm=vehActor->getGlobalPose().transform(vehActor->getCMassLocalPose());
+
+	const PxSweepBuffer* buffer4 = NULL;
 
 	//Add a raycast for each wheel.
 	for(PxU32 j=0;j<numActiveWheels;j++)
@@ -7442,11 +7295,12 @@ void PxVehicleWheels4SuspensionSweeps
 		{
 			PxConvexMeshGeometry convMeshGeom;
 			wheelShape->getConvexMeshGeometry(convMeshGeom);
-			convMeshGeom.scale.scale =
+			convMeshGeom.scale.scale = convMeshGeom.scale.scale.multiply(
 				PxVec3(
-					PxAbs(gRight.x*sweepWidthScale + (gUp.x + gForward.x)*sweepRadiusScale),
-					PxAbs(gRight.y*sweepWidthScale + (gUp.y + gForward.y)*sweepRadiusScale),
-					PxAbs(gRight.z*sweepWidthScale + (gUp.z + gForward.z)*sweepRadiusScale));
+					PxAbs(sideAxis.x*sweepWidthScale + (upAxis.x + forwardAxis.x)*sweepRadiusScale),
+					PxAbs(sideAxis.y*sweepWidthScale + (upAxis.y + forwardAxis.y)*sweepRadiusScale),
+					PxAbs(sideAxis.z*sweepWidthScale + (upAxis.z + forwardAxis.z)*sweepRadiusScale))
+			);
 			suspGeometry.storeAny(convMeshGeom);
 		}
 		else if (PxGeometryType::eCAPSULE == wheelShape->getGeometryType())
@@ -7466,9 +7320,11 @@ void PxVehicleWheels4SuspensionSweeps
 			suspGeometry.storeAny(sphereGeom);
 		}
 
-		const PxQuat wheelLocalPoseRotation = wheelShape->getLocalPose().q;
-		const PxF32 wheelTheta = wheels4DynData.mWheelRotationAngles[j];
-
+		const float jounce = wheels4DynData.mJounces[j] != PX_MAX_F32 ? wheels4DynData.mJounces[j] : 0.0f;
+		const float steerAngle = wheels4DynData.mSteerAngles[j];
+		const PxVehicleSuspensionData& suspData = wheels4SimData.getSuspensionData(j);
+		const PxQuat wheelLocalPoseRotation = computeWheelLocalQuat(forwardAxis, sideAxis, upAxis, jounce, suspData, 0.0f, steerAngle);
+			
 		const PxVec3& bodySpaceSuspTravelDir = wheels4SimData.getSuspTravelDirection(j);
 		PxVec3 bodySpaceWheelCentreOffset = wheels4SimData.getWheelCentreOffset(j);
 		PxF32 maxDroop = susp.mMaxDroop;
@@ -7491,7 +7347,7 @@ void PxVehicleWheels4SuspensionSweeps
 		PxVec3 suspLineDir;
 		computeSuspensionSweep(
 			carChassisTrnsfm, 
-			wheelLocalPoseRotation, wheelTheta,
+			wheelLocalPoseRotation, 
 			bodySpaceWheelCentreOffset, bodySpaceSuspTravelDir, radius, maxBounce, 
 			suspPoseStart, suspLineDir);
 		const PxF32  suspLineLength = radius + maxBounce + maxDroop + radius;
@@ -7505,40 +7361,33 @@ void PxVehicleWheels4SuspensionSweeps
 		sweep.mGometries[j] = suspGeometry;
 
 		//Add the raycast to the scene query.
-		batchQuery->sweep(sweep.mGometries[j].any(),
+		const PxSweepBuffer* buffer = batchQuery->sweep(sweep.mGometries[j].any(),
 			suspPoseStart, suspLineDir, suspLineLength, nbHitsPerQuery,
 			PxHitFlag::ePOSITION|PxHitFlag::eNORMAL|PxHitFlag::eUV, 
-			carFilterData[j], NULL, NULL, sweepInflation);
+			carFilterData[j], NULL, sweepInflation);
+
+		if(0 == j)
+			buffer4 = buffer;
+
+		if(!buffer)
+			buffer4 = NULL;
 	}
+
+	return buffer4;
 }
 
-
 void PxVehicleUpdate::suspensionSweeps
-(PxBatchQuery* batchQuery, 
+(PxBatchQueryExt* batchQuery,
  const PxU32 numVehicles, PxVehicleWheels** vehicles, 
- const PxU32 numSceneQueryResults, PxSweepQueryResult* sceneQueryResults, const PxU16 nbHitsPerQuery,
+ const PxU16 nbHitsPerQuery,
  const bool* vehiclesToSweep,
- const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation)
+ const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation, const PxQueryFlags queryFlags,
+ const PxVec3& upAxis, const PxVec3& forwardAxis, const PxVec3& sideAxis)
 {
 	PX_CHECK_MSG(sweepWidthScale > 0.0f, "PxVehicleUpdate::suspensionSweeps - sweepWidthScale must be greater than 0.0");
 	PX_CHECK_MSG(sweepRadiusScale > 0.0f, "PxVehicleUpdate::suspensionSweeps - sweepRadiusScale must be greater than 0.0");
 
 	START_TIMER(TIMER_SWEEPS);
-
-	//Reset all hit counts to zero.
-	for(PxU32 i=0;i<numSceneQueryResults;i++)
-	{
-		sceneQueryResults[i].hasBlock=false;
-	}
-
-	PxSweepQueryResult* sqres=sceneQueryResults;
-
-	const PxQueryFlags flags = PxQueryFlag::eSTATIC|PxQueryFlag::eDYNAMIC|PxQueryFlag::ePREFILTER|PxQueryFlag::ePOSTFILTER;
-	PxQueryFilterData carFilterData[4];
-	carFilterData[0].flags=flags;
-	carFilterData[1].flags=flags;
-	carFilterData[2].flags=flags;
-	carFilterData[3].flags=flags;
 
 	//Work out the rays for the suspension line raycasts and perform all the raycasts.
 	for(PxU32 i=0;i<numVehicles;i++)
@@ -7575,31 +7424,30 @@ void PxVehicleUpdate::suspensionSweeps
 			wheels4DynData[j].mRaycastResults=NULL;
 			wheels4DynData[j].mSweepResults=NULL;
 
-			if(NULL==vehiclesToSweep || vehiclesToSweep[i])
+			if (!vehiclesToSweep || vehiclesToSweep[i])
 			{
-				if((sceneQueryResults + numSceneQueryResults) >= (sqres+4))
+				const PxQueryFilterData carFilterData[4] = 
 				{
-					carFilterData[0].data=wheels4SimData[j].getSceneQueryFilterData(0);
-					carFilterData[1].data=wheels4SimData[j].getSceneQueryFilterData(1);
-					carFilterData[2].data=wheels4SimData[j].getSceneQueryFilterData(2);
-					carFilterData[3].data=wheels4SimData[j].getSceneQueryFilterData(3);
-					wheels4DynData[j].mSweepResults=sqres;
-					PxVehicleWheels4SuspensionSweeps(
-						batchQuery,
-						wheels4SimData[j], wheels4DynData[j],
-						carFilterData, activeWheelStates, 4, 
-						nbHitsPerQuery,
-						wheelShapeIds4,
-						vehActor, 
-						sweepWidthScale, sweepRadiusScale, sweepInflation);
-				}
-				else
-				{
-					PX_CHECK_MSG(false, "PxVehicleUpdate::suspensionRaycasts - numSceneQueryResults not big enough to support one raycast hit report per wheel.  Increase size of sceneQueryResults");
-				}
-				sqres+=4;
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(0), queryFlags),
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(1), queryFlags),
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(2), queryFlags),
+					PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(3), queryFlags)
+				};
+
+				const PxSweepBuffer* buffer = vehicleWheels4SuspensionSweeps(
+							batchQuery,
+							wheels4SimData[j], wheels4DynData[j],
+							carFilterData, activeWheelStates, 4, 
+							nbHitsPerQuery,
+							wheelShapeIds4,
+							vehActor, 
+							sweepWidthScale, sweepRadiusScale, sweepInflation,
+							upAxis, forwardAxis, sideAxis);
+				PX_CHECK_MSG(buffer, "PxVehicleUpdate::suspensionSweeps - batched sweep result array not large enough to perform sweep.");
+				wheels4DynData[j].mSweepResults = buffer;
 			}
 		}
+
 		//Remainder that don't make up a block of 4.
 		if(numActiveWheelsInLast4>0)
 		{
@@ -7613,29 +7461,27 @@ void PxVehicleUpdate::suspensionSweeps
 			wheels4DynData[j].mRaycastResults=NULL;
 			wheels4DynData[j].mSweepResults=NULL;
 
-			if(NULL==vehiclesToSweep || vehiclesToSweep[i])
+			if(!vehiclesToSweep || vehiclesToSweep[i])
 			{
-				if((sceneQueryResults + numSceneQueryResults) >= (sqres+numActiveWheelsInLast4))
-				{
-					if(0<numActiveWheelsInLast4) carFilterData[0].data=wheels4SimData[j].getSceneQueryFilterData(0);
-					if(1<numActiveWheelsInLast4) carFilterData[1].data=wheels4SimData[j].getSceneQueryFilterData(1);
-					if(2<numActiveWheelsInLast4) carFilterData[2].data=wheels4SimData[j].getSceneQueryFilterData(2);
-					wheels4DynData[j].mRaycastResults=NULL;
-					wheels4DynData[j].mSweepResults=sqres;
-					PxVehicleWheels4SuspensionSweeps(
-						batchQuery,
-						wheels4SimData[j], wheels4DynData[j],
-						carFilterData, activeWheelStates, numActiveWheelsInLast4,
-						nbHitsPerQuery,
-						wheelShapeIds4,
-						vehActor,
-						sweepWidthScale, sweepRadiusScale, sweepInflation);
-				}
-				else
-				{
-					PX_CHECK_MSG(false, "PxVehicleUpdate::suspensionSweeps - numSceneQueryResults not big enough to support one sweep hit report per wheel.  Increase size of sceneQueryResults");
-				}
-				sqres+=numActiveWheelsInLast4;
+				PxQueryFilterData carFilterData[4];
+				if(0<numActiveWheelsInLast4) 
+					carFilterData[0] = PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(0), queryFlags);
+				if(1<numActiveWheelsInLast4) 
+					carFilterData[1] = PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(1), queryFlags);
+				if(2<numActiveWheelsInLast4) 
+					carFilterData[2] = PxQueryFilterData(wheels4SimData[j].getSceneQueryFilterData(2), queryFlags);
+
+				const PxSweepBuffer* buffer = vehicleWheels4SuspensionSweeps(
+							batchQuery,
+							wheels4SimData[j], wheels4DynData[j],
+							carFilterData, activeWheelStates, numActiveWheelsInLast4,
+							nbHitsPerQuery,
+							wheelShapeIds4,
+							vehActor,
+							sweepWidthScale, sweepRadiusScale, sweepInflation,
+							upAxis, forwardAxis, sideAxis);
+				PX_CHECK_MSG(buffer, "PxVehicleUpdate::suspensionSweeps - batched sweep result array not large enough to perform sweep.");
+				wheels4DynData[j].mSweepResults = buffer;
 			}
 		}
 	}
@@ -7648,14 +7494,17 @@ void PxVehicleUpdate::suspensionSweeps
 namespace physx
 {
     void PxVehicleSuspensionSweeps
-    (PxBatchQuery* batchQuery,
+    (PxBatchQueryExt* batchQuery,
      const PxU32 nbVehicles, PxVehicleWheels** vehicles,
-     const PxU32 nbSceneQueryResults, PxSweepQueryResult* sceneQueryResults, const PxU16 nbHitsPerQuery,
+     const PxU16 nbHitsPerQuery,
      const bool* vehiclesToSweep,
-     const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation)
+     const PxF32 sweepWidthScale, const PxF32 sweepRadiusScale, const PxF32 sweepInflation,
+	 const PxQueryFlags queryFlags, const PxVehicleContext& context)
     {
         PX_PROFILE_ZONE("PxVehicleSuspensionSweeps::ePROFILE_SWEEPS",0);
-        PxVehicleUpdate::suspensionSweeps(batchQuery, nbVehicles, vehicles, nbSceneQueryResults, sceneQueryResults, nbHitsPerQuery, vehiclesToSweep, sweepWidthScale, sweepRadiusScale, sweepInflation);
+		PX_CHECK_AND_RETURN(context.isValid(), "PxVehicleSuspensionSweeps: provided PxVehicleContext is not valid");
+        PxVehicleUpdate::suspensionSweeps(batchQuery, nbVehicles, vehicles, nbHitsPerQuery, vehiclesToSweep, 
+			sweepWidthScale, sweepRadiusScale, sweepInflation, queryFlags, context.upAxis, context.forwardAxis, context.sideAxis);
     }
 }
 

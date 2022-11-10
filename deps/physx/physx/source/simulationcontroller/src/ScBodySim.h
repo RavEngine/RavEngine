@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef SC_BODYSIM_H
+#define SC_BODYSIM_H
 
-#ifndef PX_PHYSICS_SCP_BODYSIM
-#define PX_PHYSICS_SCP_BODYSIM
-
-#include "PsUtilities.h"
-#include "PsIntrinsics.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxIntrinsics.h"
 #include "ScRigidSim.h"
 #include "PxvDynamics.h"
 #include "ScBodyCore.h"
 #include "ScSimStateData.h"
 #include "ScConstraintGroupNode.h"
 #include "PxRigidDynamic.h"
-#include "DyArticulation.h"
 #include "PxsRigidBody.h"
-#include "PxsSimpleIslandManager.h"
 
 namespace physx
 {
@@ -50,16 +46,10 @@ namespace Bp
 	class BoundsArray;
 }
 	class PxsTransformCache;
-	class PxsSimulationController;
 namespace Sc
 {
-	#define SC_NOT_IN_SCENE_INDEX		0xffffffff  // the body is not in the scene yet
-	#define SC_NOT_IN_ACTIVE_LIST_INDEX	0xfffffffe  // the body is in the scene but not in the active list
-
 	class Scene;
 	class ArticulationSim;
-
-	static const PxReal ScInternalWakeCounterResetValue = 20.0f*0.02f;
 
 #if PX_VC 
     #pragma warning(push)   
@@ -69,41 +59,71 @@ namespace Sc
 	class BodySim : public RigidSim
 	{
 	public:
-		enum InternalFlags
-		{
-			//BF_DISABLE_GRAVITY		= 1 << 0,	// Don't apply the scene's gravity
+		//enum InternalFlags
+		//{
+		//	//BF_DISABLE_GRAVITY		= 1 << 0,	// Don't apply the scene's gravity
 
-			BF_HAS_STATIC_TOUCH		= 1 << 1,	// Set when a body is part of an island with static contacts. Needed to be able to recalculate adaptive force if this changes
-			BF_KINEMATIC_MOVED		= 1 << 2,	// Set when the kinematic was moved
+		//	BF_HAS_STATIC_TOUCH		= 1 << 1,	// Set when a body is part of an island with static contacts. Needed to be able to recalculate adaptive force if this changes
+		//	BF_KINEMATIC_MOVED		= 1 << 2,	// Set when the kinematic was moved
 
-			BF_ON_DEATHROW			= 1 << 3,	// Set when the body is destroyed
+		//	BF_ON_DEATHROW			= 1 << 3,	// Set when the body is destroyed
 
-			BF_IS_IN_SLEEP_LIST		= 1 << 4,	// Set when the body is added to the list of bodies which were put to sleep
-			BF_IS_IN_WAKEUP_LIST	= 1 << 5,	// Set when the body is added to the list of bodies which were woken up
-			BF_SLEEP_NOTIFY			= 1 << 6,	// A sleep notification should be sent for this body (and not a wakeup event, even if the body is part of the woken list as well)
-			BF_WAKEUP_NOTIFY		= 1 << 7,	// A wake up notification should be sent for this body (and not a sleep event, even if the body is part of the sleep list as well)
+		//	BF_IS_IN_SLEEP_LIST		= 1 << 4,	// Set when the body is added to the list of bodies which were put to sleep
+		//	BF_IS_IN_WAKEUP_LIST	= 1 << 5,	// Set when the body is added to the list of bodies which were woken up
+		//	BF_SLEEP_NOTIFY			= 1 << 6,	// A sleep notification should be sent for this body (and not a wakeup event, even if the body is part of the woken list as well)
+		//	BF_WAKEUP_NOTIFY		= 1 << 7,	// A wake up notification should be sent for this body (and not a sleep event, even if the body is part of the sleep list as well)
 
-			BF_HAS_CONSTRAINTS		= 1 << 8,	// Set if the body has one or more constraints
-			BF_KINEMATIC_SETTLING	= 1 << 9,	// Set when the body was moved kinematically last frame
-			BF_KINEMATIC_SETTLING_2 = 1 << 10,
-			BF_KINEMATIC_MOVE_FLAGS = BF_KINEMATIC_MOVED | BF_KINEMATIC_SETTLING | BF_KINEMATIC_SETTLING_2, //Used to clear kinematic masks in 1 call
-			BF_KINEMATIC_SURFACE_VELOCITY = 1 << 11, //Set when the application calls setKinematicVelocity. Actor remains awake until application calls clearKinematicVelocity. 
-			BF_IS_COMPOUND_RIGID	= 1 << 12	// Set when the body is a compound actor, we dont want to set the sq bounds
+		//	BF_HAS_CONSTRAINTS		= 1 << 8,	// Set if the body has one or more constraints
+		//	BF_KINEMATIC_SETTLING	= 1 << 9,	// Set when the body was moved kinematically last frame
+		//	BF_KINEMATIC_SETTLING_2 = 1 << 10,
+		//	BF_KINEMATIC_MOVE_FLAGS = BF_KINEMATIC_MOVED | BF_KINEMATIC_SETTLING | BF_KINEMATIC_SETTLING_2, //Used to clear kinematic masks in 1 call
+		//	BF_KINEMATIC_SURFACE_VELOCITY = 1 << 11, //Set when the application calls setKinematicVelocity. Actor remains awake until application calls clearKinematicVelocity. 
+		//	BF_IS_COMPOUND_RIGID	= 1 << 12	// Set when the body is a compound actor, we dont want to set the sq bounds
 
-			// PT: WARNING: flags stored on 16-bits now.
-		};
+		//	// PT: WARNING: flags stored on 16-bits now.
+		//};
 
 	public:
 												BodySim(Scene&, BodyCore&, bool);
 		virtual									~BodySim();
 
-						void					notifyAddSpatialAcceleration();
-						void					notifyClearSpatialAcceleration();
-						void					notifyAddSpatialVelocity();
-						void					notifyClearSpatialVelocity();
-						void					updateCached(Cm::BitMapPinned* shapeChangedMap);
+	private:
+						bool					setupSimStateData(PxPool<SimStateData>* simStateDataPool, const bool isKinematic);
+						void					tearDownSimStateData(PxPool<SimStateData>* simStateDataPool, const bool isKinematic);
+	public:
+						void					switchToKinematic(PxPool<SimStateData>* simStateDataPool);
+						void					switchToDynamic(PxPool<SimStateData>* simStateDataPool);
+
+	private:
+						void					postSwitchToKinematic();
+						void					postSwitchToDynamic();
+	public:
+		PX_FORCE_INLINE const SimStateData*		getSimStateData(bool isKinematic)	const	{ return (mSimStateData && (checkSimStateKinematicStatus(isKinematic)) ? mSimStateData : NULL); }
+		PX_FORCE_INLINE SimStateData*			getSimStateData(bool isKinematic)			{ return (mSimStateData && (checkSimStateKinematicStatus(isKinematic)) ? mSimStateData : NULL); }
+		PX_FORCE_INLINE SimStateData*			getSimStateData_Unchecked()			const	{ return mSimStateData; }
+		PX_FORCE_INLINE	bool					checkSimStateKinematicStatus(const bool isKinematic) const
+												{
+													PX_ASSERT(mSimStateData);
+													return mSimStateData->isKine() == isKinematic;
+												}
+
+						void					setKinematicTarget(const PxTransform& p);
+
+						void					addSpatialAcceleration(PxPool<SimStateData>* simStateDataPool, const PxVec3* linAcc, const PxVec3* angAcc);
+						void					setSpatialAcceleration(PxPool<SimStateData>* simStateDataPool, const PxVec3* linAcc, const PxVec3* angAcc);
+						void					clearSpatialAcceleration(bool force, bool torque);
+						void					addSpatialVelocity(PxPool<SimStateData>* simStateDataPool, const PxVec3* linVelDelta, const PxVec3* angVelDelta);
+						void					clearSpatialVelocity(bool force, bool torque);
+	private:
+						void					raiseVelocityModFlagAndNotify(VelocityModFlags flag);
+		PX_FORCE_INLINE	void					notifyAddSpatialAcceleration()		{ raiseVelocityModFlagAndNotify(VMF_ACC_DIRTY);	}
+		PX_FORCE_INLINE	void					notifyClearSpatialAcceleration()	{ raiseVelocityModFlagAndNotify(VMF_ACC_DIRTY);	}
+		PX_FORCE_INLINE	void					notifyAddSpatialVelocity()			{ raiseVelocityModFlagAndNotify(VMF_VEL_DIRTY);	}
+		PX_FORCE_INLINE	void					notifyClearSpatialVelocity()		{ raiseVelocityModFlagAndNotify(VMF_VEL_DIRTY);	}
+	public:
+						void					updateCached(PxBitMapPinned* shapeChangedMap);
 						void					updateCached(PxsTransformCache& transformCache, Bp::BoundsArray& boundsArray);
-						void					updateContactDistance(PxReal* contactDistance, const PxReal dt, Bp::BoundsArray& boundsArray);
+						void					updateContactDistance(PxReal* contactDistance, const PxReal dt, const Bp::BoundsArray& boundsArray);
 
 		// hooks for actions in body core when it's attached to a sim object. Generally
 		// we get called after the attribute changed.
@@ -111,9 +131,6 @@ namespace Sc
 		virtual			void					postActorFlagChange(PxU32 oldFlags, PxU32 newFlags);
 						void					postBody2WorldChange();
 						void					postSetWakeCounter(PxReal t, bool forceWakeUp);
-						void					postSetKinematicTarget();
-						void					postSwitchToKinematic();
-						void					postSwitchToDynamic();
 						void					postPosePreviewChange(const PxU32 posePreviewFlag);  // called when PxRigidBodyFlag::eENABLE_POSE_INTEGRATION_PREVIEW changes
 
 		PX_FORCE_INLINE const PxTransform&		getBody2World()		const	{ return getBodyCore().getCore().body2World;		}
@@ -126,15 +143,13 @@ namespace Sc
 						void					disableCompound();
 
 		static			PxU32					getRigidBodyOffset()		{ return  PxU32(PX_OFFSET_OF_RT(BodySim, mLLBody));}
-
-	private:
-						void					activate();
-						void					deactivate();
+	
+		virtual			void					activate();
+		virtual			void					deactivate();
 
 		//---------------------------------------------------------------------------------
 		// Constraint projection
 		//---------------------------------------------------------------------------------
-	public:
 		PX_FORCE_INLINE	ConstraintGroupNode*	getConstraintGroup()								{ return mConstraintGroup; }
 		PX_FORCE_INLINE	void					setConstraintGroup(ConstraintGroupNode* node)		{ mConstraintGroup = node; }
 
@@ -144,9 +159,8 @@ namespace Sc
 		//---------------------------------------------------------------------------------
 		// Kinematics
 		//---------------------------------------------------------------------------------
-	public:
 		PX_FORCE_INLINE bool					isKinematic()								const	{ return getBodyCore().getFlags() & PxRigidBodyFlag::eKINEMATIC;	}
-		PX_FORCE_INLINE bool					isArticulationLink()						const	{ return getActorType() == PxActorType::eARTICULATION_LINK; }
+		PX_FORCE_INLINE bool					isArticulationLink()						const	{ return getActorType() == PxActorType::eARTICULATION_LINK;			}
 		PX_FORCE_INLINE bool					hasForcedKinematicNotif()					const
 												{
 													return getBodyCore().getFlags() & (PxRigidBodyFlag::eFORCE_KINE_KINE_NOTIFICATIONS|PxRigidBodyFlag::eFORCE_STATIC_KINE_NOTIFICATIONS);
@@ -161,16 +175,7 @@ namespace Sc
 		// Sleeping
 		//---------------------------------------------------------------------------------
 	public:
-		PX_FORCE_INLINE	bool					isActive() const { return (mActiveListIndex < SC_NOT_IN_ACTIVE_LIST_INDEX); }
-						void					setActive(bool active, PxU32 infoFlag=0);  // see ActivityChangeInfoFlag
-
-		PX_FORCE_INLINE PxU32					getActiveListIndex() const { return mActiveListIndex; }  // if the body is active, the index is smaller than SC_NOT_IN_ACTIVE_LIST_INDEX
-		PX_FORCE_INLINE void					setActiveListIndex(PxU32 index) { mActiveListIndex = index; }
-
-		PX_FORCE_INLINE PxU32					getActiveCompoundListIndex() const { return mActiveCompoundListIndex; }  // if the body is active and is compound, the index is smaller than SC_NOT_IN_ACTIVE_LIST_INDEX
-		PX_FORCE_INLINE void					setActiveCompoundListIndex(PxU32 index) { mActiveCompoundListIndex = index; }
-
-						void					internalWakeUp(PxReal wakeCounterValue=ScInternalWakeCounterResetValue);
+		virtual			void					internalWakeUp(PxReal wakeCounterValue);
 						void					internalWakeUpArticulationLink(PxReal wakeCounterValue);	// called by ArticulationSim to wake up this link
 
 						PxReal					updateWakeCounter(PxReal dt, PxReal energyThreshold, const Cm::SpatialVector& motionVelocity);
@@ -180,13 +185,13 @@ namespace Sc
 						void					notifyNotReadyForSleeping();		// inform the sleep island generation system that the body is not ready for sleeping
 		PX_FORCE_INLINE bool					checkSleepReadinessBesidesWakeCounter();  // for API triggered changes to test sleep readiness
 
-		PX_FORCE_INLINE void					registerCountedInteraction() { mLLBody.getCore().numCountedInteractions++; PX_ASSERT(mLLBody.getCore().numCountedInteractions); }
-		PX_FORCE_INLINE void					unregisterCountedInteraction() { PX_ASSERT(mLLBody.getCore().numCountedInteractions); mLLBody.getCore().numCountedInteractions--;}
-		PX_FORCE_INLINE PxU32					getNumCountedInteractions()	const { return mLLBody.getCore().numCountedInteractions; }
+		virtual			void					registerCountedInteraction()		{ mLLBody.getCore().numCountedInteractions++; PX_ASSERT(mLLBody.getCore().numCountedInteractions);	}
+		virtual			void					unregisterCountedInteraction()		{ PX_ASSERT(mLLBody.getCore().numCountedInteractions); mLLBody.getCore().numCountedInteractions--;	}
+		virtual PxU32							getNumCountedInteractions()	const	{ return mLLBody.getCore().numCountedInteractions;													}
 
-		PX_FORCE_INLINE Ps::IntBool				isFrozen()	const	{ return Ps::IntBool(mLLBody.mInternalFlags & PxsRigidBody::eFROZEN);	}
+		PX_FORCE_INLINE PxIntBool				isFrozen()					const	{ return PxIntBool(mLLBody.mInternalFlags & PxsRigidBody::eFROZEN);									}
 	private:
-		PX_FORCE_INLINE	void					notifyWakeUp(bool wakeUpInIslandGen = false);					// inform the sleep island generation system that the object got woken up
+		PX_FORCE_INLINE	void					notifyWakeUp();					// inform the sleep island generation system that the object got woken up
 		PX_FORCE_INLINE	void					notifyPutToSleep();				// inform the sleep island generation system that the object was put to sleep
 		PX_FORCE_INLINE void					internalWakeUpBase(PxReal wakeCounterValue);
 
@@ -195,54 +200,58 @@ namespace Sc
 		//---------------------------------------------------------------------------------
 	public:
 						void					updateForces(PxReal dt, PxsRigidBody** updatedBodySims, PxU32* updatedBodyNodeIndices, 
-													PxU32& index, Cm::SpatialVector* acceleration, const bool useAcceleration, bool simUsesAdaptiveForce);
+													PxU32& index, Cm::SpatialVector* acceleration);
+
+		PX_FORCE_INLINE bool					readVelocityModFlag(VelocityModFlags f) { return (mVelModState & f) != 0; }
 	private:
 		PX_FORCE_INLINE void					raiseVelocityModFlag(VelocityModFlags f)				{ mVelModState |= f;					}
 		PX_FORCE_INLINE void					clearVelocityModFlag(VelocityModFlags f)				{ mVelModState &= ~f;					}
-		PX_FORCE_INLINE bool					readVelocityModFlag(VelocityModFlags f)					{ return (mVelModState & f) != 0;		}
+
 		PX_FORCE_INLINE void					setForcesToDefaults(bool enableGravity);
 
 		//---------------------------------------------------------------------------------
 		// Miscellaneous
 		//---------------------------------------------------------------------------------
 	public:
-		PX_FORCE_INLINE	PxU16					getInternalFlag()								const	{ return mInternalFlags;  }
+	/*	PX_FORCE_INLINE	PxU16					getInternalFlag()								const	{ return mInternalFlags;  }
 		PX_FORCE_INLINE PxU16					readInternalFlag(InternalFlags flag)			const	{ return PxU16(mInternalFlags & flag);	}
 		PX_FORCE_INLINE void					raiseInternalFlag(InternalFlags flag)					{ mInternalFlags |= flag;				}
-		PX_FORCE_INLINE void					clearInternalFlag(InternalFlags flag)					{ mInternalFlags &= ~flag;				}
+		PX_FORCE_INLINE void					clearInternalFlag(InternalFlags flag)					{ mInternalFlags &= ~flag;				}*/
 		PX_FORCE_INLINE PxU32					getFlagsFast()									const	{ return getBodyCore().getFlags();		}
-
-		PX_FORCE_INLINE void					incrementBodyConstraintCounter()						{ mLLBody.mCore->numBodyInteractions++;					}
-		PX_FORCE_INLINE void					decrementBodyConstraintCounter()						{ PX_ASSERT(mLLBody.mCore->numBodyInteractions>0); mLLBody.mCore->numBodyInteractions--; }
 
 		PX_FORCE_INLINE	BodyCore&				getBodyCore()									const	{ return static_cast<BodyCore&>(getRigidCore());		}
 
 		PX_INLINE		ArticulationSim*		getArticulation()								const	{ return mArticulation; }
 						void 					setArticulation(ArticulationSim* a, PxReal wakeCounter, bool asleep, PxU32 bodyIndex);
 
-		PX_FORCE_INLINE IG::NodeIndex			getNodeIndex() const									{ return mNodeIndex; }
+		//PX_FORCE_INLINE IG::NodeIndex			getNodeIndex() const									{ return mNodeIndex; }
 
 		PX_FORCE_INLINE void					onConstraintAttach()									{ raiseInternalFlag(BF_HAS_CONSTRAINTS); registerCountedInteraction(); }
 						void					onConstraintDetach();
 
-		PX_FORCE_INLINE	void					onOriginShift(const PxVec3& shift)						{ mLLBody.mLastTransform.p -= shift; }
+		PX_FORCE_INLINE	void					onOriginShift(const PxVec3& shift, const bool isKinematic)						
+												{ 
+													PX_ASSERT(!mSimStateData || checkSimStateKinematicStatus(isKinematic));
+													mLLBody.mLastTransform.p -= shift; 
+													if (mSimStateData && isKinematic && mSimStateData->getKinematicData()->targetValid)
+														mSimStateData->getKinematicData()->targetPose.p -= shift;
+												}
 
 		PX_FORCE_INLINE	bool					notInScene()									const	{ return mActiveListIndex == SC_NOT_IN_SCENE_INDEX; }
 
 		PX_FORCE_INLINE bool					usingSqKinematicTarget()						const	
-		{ 	
-			PxU32 ktFlags(PxRigidBodyFlag::eUSE_KINEMATIC_TARGET_FOR_SCENE_QUERIES | PxRigidBodyFlag::eKINEMATIC);
-			return (getFlagsFast()&ktFlags) == ktFlags;
-		}
+												{
+													const PxU32 ktFlags(PxRigidBodyFlag::eUSE_KINEMATIC_TARGET_FOR_SCENE_QUERIES | PxRigidBodyFlag::eKINEMATIC);
+													return (getFlagsFast()&ktFlags) == ktFlags;
+												}
 
-		PX_FORCE_INLINE	PxU32					getNbShapes()									const	{ return mElementCount; }
+		PX_FORCE_INLINE	PxU32					getNbShapes()									const 	{ return mShapes.getCount(); }
 
 						void					createSqBounds();
 						void					destroySqBounds();
-						void					freezeTransforms(Cm::BitMapPinned* shapeChangedMap);
+						void					freezeTransforms(PxBitMapPinned* shapeChangedMap);
 						void					invalidateSqBounds();
 	private:
-
 		//---------------------------------------------------------------------------------
 		// Base body
 		//---------------------------------------------------------------------------------
@@ -251,7 +260,7 @@ namespace Sc
 		//---------------------------------------------------------------------------------
 		// Island manager
 		//---------------------------------------------------------------------------------
-						IG::NodeIndex			mNodeIndex;
+		//				IG::NodeIndex			mNodeIndex;
 
 		//---------------------------------------------------------------------------------
 		// External velocity changes
@@ -260,14 +269,9 @@ namespace Sc
 		// which need to be accumulated.
 		// VelMod dirty flags stored in BodySim so we can save ourselves the expense of looking at 
 		// the separate velmod data if no forces have been set.
-						PxU16					mInternalFlags;
+						//PxU16					mInternalFlags;
+						SimStateData*			mSimStateData;
 						PxU8					mVelModState;
-
-		//---------------------------------------------------------------------------------
-		// Sleeping
-		//---------------------------------------------------------------------------------
-						PxU32					mActiveListIndex;	// Used by Scene to track active bodies
-						PxU32					mActiveCompoundListIndex;	// Used by Scene to track active compound bodies
 
 		//---------------------------------------------------------------------------------
 		// Articulation
@@ -293,7 +297,7 @@ PX_FORCE_INLINE void Sc::BodySim::setForcesToDefaults(bool enableGravity)
 {
 	if (!(mLLBody.mCore->mFlags & PxRigidBodyFlag::eRETAIN_ACCELERATIONS))
 	{
-		SimStateData* simStateData = getBodyCore().getSimStateData(false);
+		SimStateData* simStateData = getSimStateData(false);
 		if(simStateData) 
 		{
 			VelocityMod* velmod = simStateData->getVelocityModData();
@@ -308,7 +312,7 @@ PX_FORCE_INLINE void Sc::BodySim::setForcesToDefaults(bool enableGravity)
 	}
 	else
 	{
-		SimStateData* simStateData = getBodyCore().getSimStateData(false);
+		SimStateData* simStateData = getSimStateData(false);
 		if (simStateData)
 		{
 			VelocityMod* velmod = simStateData->getVelocityModData();
@@ -322,7 +326,7 @@ PX_FORCE_INLINE void Sc::BodySim::setForcesToDefaults(bool enableGravity)
 PX_FORCE_INLINE bool Sc::BodySim::checkSleepReadinessBesidesWakeCounter()
 {
 	const BodyCore& bodyCore = getBodyCore();
-	const SimStateData* simStateData = bodyCore.getSimStateData(false);
+	const SimStateData* simStateData = getSimStateData(false);
 	const VelocityMod* velmod = simStateData ? simStateData->getVelocityModData() : NULL;
 
 	bool readyForSleep = bodyCore.getLinearVelocity().isZero() && bodyCore.getAngularVelocity().isZero();

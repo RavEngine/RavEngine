@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #include "foundation/PxAllocatorCallback.h"
+#include "foundation/PxString.h"
+#include "foundation/PxUserAllocated.h"
 #include "extensions/PxStringTableExt.h"
-
 #include "PxProfileAllocatorWrapper.h" //tools for using a custom allocator
-#include "PsString.h"
-#include "PsUserAllocated.h"
-#include "CmPhysXCommon.h"
 
 namespace physx
 {
 	using namespace physx::profile;
 
-	class PxStringTableImpl : public PxStringTable, public Ps::UserAllocated
+	class PxStringTableImpl : public PxStringTable, public PxUserAllocated
 	{
 		typedef PxProfileHashMap<const char*, PxU32> THashMapType;
 		PxProfileAllocatorWrapper mWrapper;
@@ -73,7 +69,7 @@ namespace physx
 				size_t len( strlen( inSrc ) );
 				len += 1;
 				char* newMem = reinterpret_cast<char*>(mWrapper.getAllocator().allocate( len, "PxStringTableImpl: const char*", __FILE__, __LINE__ ));
-				physx::shdfnd::strlcpy( newMem, len, inSrc );
+				physx::Pxstrlcpy( newMem, len, inSrc );
 				mHashMap.insert( newMem, 1 );
 				return newMem;
 			}

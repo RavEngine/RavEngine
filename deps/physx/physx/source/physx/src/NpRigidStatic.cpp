@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,22 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #include "NpRigidStatic.h"
-#include "NpPhysics.h"
-#include "ScbNpDeps.h"
-#include "NpScene.h"
 #include "NpRigidActorTemplateInternal.h"
 
 using namespace physx;
 
-NpRigidStatic::NpRigidStatic(const PxTransform& pose)
-: NpRigidStaticT(PxConcreteType::eRIGID_STATIC, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE)
-, mRigidStatic(pose)
+NpRigidStatic::NpRigidStatic(const PxTransform& pose) :
+	NpRigidStaticT	(PxConcreteType::eRIGID_STATIC, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE, NpType::eRIGID_STATIC),
+	mCore			(pose)
 {
 }
 
@@ -47,7 +42,6 @@ NpRigidStatic::~NpRigidStatic()
 }
 
 // PX_SERIALIZATION
-
 void NpRigidStatic::requiresObjects(PxProcessPxBaseCallback& c)
 {
 	NpRigidStaticT::requiresObjects(c);	
@@ -55,7 +49,7 @@ void NpRigidStatic::requiresObjects(PxProcessPxBaseCallback& c)
 
 NpRigidStatic* NpRigidStatic::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	NpRigidStatic* obj = new (address) NpRigidStatic(PxBaseFlag::eIS_RELEASABLE);
+	NpRigidStatic* obj = PX_PLACEMENT_NEW(address, NpRigidStatic(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(NpRigidStatic);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -65,40 +59,38 @@ NpRigidStatic* NpRigidStatic::createObject(PxU8*& address, PxDeserializationCont
 
 void NpRigidStatic::release()
 {
-	releaseActorT(this, mRigidStatic);
+	if(releaseRigidActorT<PxRigidStatic>(*this))
+	{
+		PX_ASSERT(!isAPIWriteForbidden());  // the code above should return false in that case
+		NpDestroyRigidActor(this);
+	}
 }
 
 void NpRigidStatic::setGlobalPose(const PxTransform& pose, bool /*wake*/)
 {
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(pose.isSane(), "PxRigidStatic::setGlobalPose: pose is not valid.");
 
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidStatic::setGlobalPose() not allowed while simulation is running. Call will be ignored.")
 
-	NpScene* npScene = NpActor::getAPIScene(*this);
 #if PX_CHECKED
 	if(npScene)
 		npScene->checkPositionSanity(*this, pose, "PxRigidStatic::setGlobalPose");
 #endif
 
-	mRigidStatic.setActor2World(pose.getNormalized());
+	const PxTransform newPose = pose.getNormalized();	//AM: added to fix 1461 where users read and write orientations for no reason.
+
+	mCore.setActor2World(newPose);
+	UPDATE_PVD_PROPERTY
 
 	if(npScene)
-	{
-		mShapeManager.markAllSceneQueryForUpdate(npScene->getSceneQueryManagerFast(), *this);
-		npScene->getSceneQueryManagerFast().get(Sq::PruningIndex::eSTATIC).invalidateTimestamp();
-	}
-
-#if PX_SUPPORT_PVD
-	// have to do this here since this call gets not forwarded to Scb::RigidStatic
-	Scb::Scene* scbScene = NpActor::getScbFromPxActor(*this).getScbSceneForAPI();
-	if(scbScene)
-		scbScene->getScenePvdClient().updatePvdProperties(&mRigidStatic);
-#endif
+		mShapeManager.markActorForSQUpdate(npScene->getSQAPI(), *this);
 
 	// invalidate the pruning structure if the actor bounds changed
-	if (mShapeManager.getPruningStructure())
+	if(mShapeManager.getPruningStructure())
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxRigidStatic::setGlobalPose: Actor is part of a pruning structure, pruning structure is now invalid!");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxRigidStatic::setGlobalPose: Actor is part of a pruning structure, pruning structure is now invalid!");
 		mShapeManager.getPruningStructure()->invalidate(this);
 	}
 
@@ -107,26 +99,25 @@ void NpRigidStatic::setGlobalPose(const PxTransform& pose, bool /*wake*/)
 
 PxTransform NpRigidStatic::getGlobalPose() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-	return mRigidStatic.getActor2World();
+	NP_READ_CHECK(getNpScene());
+	return mCore.getActor2World();
 }
 
-PxU32 physx::NpRigidStaticGetShapes(Scb::RigidStatic& rigid, void* const *&shapes)
+PxU32 physx::NpRigidStaticGetShapes(NpRigidStatic& rigid, NpShape* const *&shapes)
 {
-	NpRigidStatic* a = static_cast<NpRigidStatic*>(rigid.getScRigidCore().getPxActor());
-	NpShapeManager& sm = a->getShapeManager();
-	shapes = reinterpret_cast<void *const *>(sm.getShapes());
+	NpShapeManager& sm = rigid.getShapeManager();
+	shapes = sm.getShapes();
 	return sm.getNbShapes();
 }
 
 void NpRigidStatic::switchToNoSim()
 {
-	getScbRigidStaticFast().switchToNoSim(false);
+	NpActor::scSwitchToNoSim();
 }
 
 void NpRigidStatic::switchFromNoSim()
 {
-	getScbRigidStaticFast().switchFromNoSim(false);
+	NpActor::scSwitchFromNoSim();
 }
 
 #if PX_CHECKED
@@ -144,21 +135,4 @@ bool NpRigidStatic::checkConstraintValidity() const
 }
 #endif
 
-#if PX_ENABLE_DEBUG_VISUALIZATION
-void NpRigidStatic::visualize(Cm::RenderOutput& out, NpScene* scene)
-{
-	NpRigidStaticT::visualize(out, scene);
-
-	if (getScbRigidStaticFast().getActorFlags() & PxActorFlag::eVISUALIZATION)
-	{
-		Scb::Scene& scbScene = scene->getScene();
-		PxReal scale = scbScene.getVisualizationParameter(PxVisualizationParameter::eSCALE);
-
-		//visualize actor frames
-		PxReal actorAxes = scale * scbScene.getVisualizationParameter(PxVisualizationParameter::eACTOR_AXES);
-		if (actorAxes != 0)
-			out << getGlobalPose() << Cm::DebugBasis(PxVec3(actorAxes));
-	}
-}
-#endif
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -37,13 +36,10 @@
 #include "common/PxSerialFramework.h"
 #include "geometry/PxTriangleMesh.h"
 
-#include "PsUserAllocated.h" // for PxSerializationContext
-#include "PsAlignedMalloc.h"
+#include "foundation/PxUserAllocated.h" // for PxSerializationContext
+#include "foundation/PxAlignedMalloc.h"
 
-
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
-#include "PsVecMath.h"
-#endif
+#include "foundation/PxVecMath.h"
 
 #define RTREE_N 4 // changing this number will affect the mesh format
 PX_COMPILE_TIME_ASSERT(RTREE_N == 4 || RTREE_N == 8); // using the low 5 bits for storage of index(childPtr) for dynamic rtree
@@ -180,24 +176,19 @@ namespace Gu {
 						PxF32 maxT = PX_MAX_F32 // maximum ray t parameter, p(t)=origin+t*dir; use 1.0f for ray segment
 						) const;
 
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 		struct CallbackRefit
 		{
 			// In this callback index is the number stored in the RTree, which is a LeafTriangles object for current PhysX mesh
-			virtual void recomputeBounds(PxU32 index, shdfnd::aos::Vec3V& mn, shdfnd::aos::Vec3V& mx) = 0;
+			virtual void recomputeBounds(PxU32 index, aos::Vec3V& mn, aos::Vec3V& mx) = 0;
 			virtual ~CallbackRefit() {}
 		};
 		void		refitAllStaticTree(CallbackRefit& cb, PxBounds3* resultMeshBounds); // faster version of refit for static RTree only
-#endif
 
 
 		////////////////////////////////////////////////////////////////////////////
 		// DEBUG HELPER FUNCTIONS
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 		PX_PHYSX_COMMON_API void validate(CallbackRefit* cb = NULL); // verify that all children are indeed included in parent bounds
-#else
-		PX_PHYSX_COMMON_API void validate(); // verify that all children are indeed included in parent bounds
-#endif
+
 		void		openTextDump();
 		void		closeTextDump();
 		void		textDump(const char* prefix);
@@ -218,11 +209,7 @@ namespace Gu {
 
 	protected:
 		typedef PxU32 NodeHandle;
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 		void		validateRecursive(PxU32 level, RTreeNodeQ parentBounds, RTreePage* page, CallbackRefit* cb = NULL);
-#else
-		void		validateRecursive(PxU32 level, RTreeNodeQ parentBounds, RTreePage* page);
-#endif
 
 		friend struct RTreePage;
 	} PX_ALIGN_SUFFIX(16);
@@ -255,7 +242,7 @@ namespace Gu {
 	{
 		if ((mFlags & USER_ALLOCATED) == 0 && mPages)
 		{
-			physx::shdfnd::AlignedAllocator<128>().deallocate(mPages);
+			physx::PxAlignedAllocator<128>().deallocate(mPages);
 			mPages = NULL;
 		}
 	}

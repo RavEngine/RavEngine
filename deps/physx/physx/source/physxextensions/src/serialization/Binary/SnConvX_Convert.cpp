@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "foundation/PxErrorCallback.h"
 #include "extensions/PxDefaultStreams.h"
 
 #include "SnConvX.h"
 #include "serialization/SnSerialUtils.h"
-#include "PsAlloca.h"
+#include "foundation/PxAlloca.h"
+#include "foundation/PxString.h"
+
 #include "CmUtils.h"
 #include <assert.h>
 
@@ -47,6 +48,8 @@ void Sn::ConvX::_enumerateFields(const MetaClass* mc, ExtraDataEntry2* entries, 
 {
 	PxU32 nbFields = mc->mFields.size();
 	int offsetCheck = baseOffset;
+	PX_UNUSED(offsetCheck);
+
 	for(PxU32 j=0;j<nbFields;j++)
 	{
 		const PxMetaDataEntry& entry = mc->mFields[j];
@@ -126,7 +129,7 @@ void Sn::ConvX::_enumerateExtraData(const char* address, const MetaClass* mc, Ex
 		//
 		if (entry.mFlags & PxMetaDataFlag::eUNION)
 		{
-			if (!mc->mClassName || strcmp(mc->mClassName, "Gu::GeometryUnion")!=0)
+			if (!mc->mClassName || Pxstrcmp(mc->mClassName, "GeometryUnion")!=0)
 				continue;
 			else
 			{
@@ -138,8 +141,8 @@ void Sn::ConvX::_enumerateExtraData(const char* address, const MetaClass* mc, Ex
 				const char* typeName = tmpConv->getTypeName(entry.mType, unionType);
 				assert(typeName);
 
-				bool isTriMesh = (strcmp(typeName, "PxTriangleMeshGeometryLL") == 0);
-				bool isHeightField = (strcmp(typeName, "PxHeightFieldGeometryLL") == 0);
+				bool isTriMesh = (Pxstrcmp(typeName, "PxTriangleMeshGeometryLL") == 0);
+				bool isHeightField = (Pxstrcmp(typeName, "PxHeightFieldGeometryLL") == 0);
 				if (!isTriMesh && !isHeightField)
 				{
 					continue;
@@ -215,7 +218,7 @@ static bool compareEntries(const ExtraDataEntry2& e0, const ExtraDataEntry2& e1)
 		if(e0.entry.mType && e1.entry.mType)
 		{
 		    // We can't compare the ptrs since they index different string tables
-		    if(strcmp(e0.entry.mType, e1.entry.mType)==0)
+		    if(Pxstrcmp(e0.entry.mType, e1.entry.mType)==0)
 			   return true;
 		}		
 		return false;
@@ -224,7 +227,7 @@ static bool compareEntries(const ExtraDataEntry2& e0, const ExtraDataEntry2& e1)
 	if(e0.entry.mName && e1.entry.mName)
 	{
 	    // We can't compare the ptrs since they index different string tables
-	    if(strcmp(e0.entry.mName, e1.entry.mName)==0)
+	    if(Pxstrcmp(e0.entry.mName, e1.entry.mName)==0)
 		   return true;
 	}
 	return false;
@@ -245,7 +248,7 @@ bool Sn::ConvX::convertClass(const char* buffer, const MetaClass* mc, int offset
 	displayMessage(PxErrorCode::eDEBUG_INFO, "%s\n", mc->mClassName);
 	displayMessage(PxErrorCode::eDEBUG_INFO, "+++++++++++++++++++++++++++++++++++++++++++++\n");
 
-	if(strcmp(mc->mClassName, "ConvexMesh")==0)
+	if(Pxstrcmp(mc->mClassName, "ConvexMesh")==0)
 	{
 		convexSurgery = true;
 	}
@@ -299,6 +302,7 @@ bool Sn::ConvX::convertClass(const char* buffer, const MetaClass* mc, int offset
 
 	int srcOffsetCheck = 0;
 	int dstOffsetCheck = 0;
+	PX_UNUSED(dstOffsetCheck);
 	int j = 0;
 	// Track cases where the vtable pointer location is different for different platforms.
 	// The variables indicate whether a platform has a vtable pointer entry that has not been converted yet
@@ -333,7 +337,7 @@ bool Sn::ConvX::convertClass(const char* buffer, const MetaClass* mc, int offset
 				if(pad0)
 				{
 #if PX_CHECKED
-					if (mMarkedPadding && (strcmp(srcEntries[i].entry.mType, "paddingByte")==0))
+					if (mMarkedPadding && (Pxstrcmp(srcEntries[i].entry.mType, "paddingByte")==0))
 						if(!checkPaddingBytes(buffer + srcOffsetCheck, srcEntries[i].entry.mSize))
 						{							
 							if(i>0)
@@ -586,7 +590,7 @@ bool Sn::ConvX::convertClass(const char* buffer, const MetaClass* mc, int offset
 			// ---- big convex surgery ----
 			if(convexSurgery)
 			{
-				if(strcmp(srcEntry.entry.mName, "mNbHullVertices")==0)
+				if(Pxstrcmp(srcEntry.entry.mName, "mNbHullVertices")==0)
 				{
 					assert(srcEntry.entry.mSize==1);
 					const PxU8 nbVerts = static_cast<PxU8>(*(buffer+modSrcOffsetCheck));
@@ -608,8 +612,8 @@ bool Sn::ConvX::convertClass(const char* buffer, const MetaClass* mc, int offset
 				{
 					if(removeBigData)
 					{
-						const bool isBigConvexData = strcmp(srcEntry.entry.mType, "BigConvexData")==0 || 
-							                         strcmp(srcEntry.entry.mType, "BigConvexRawData")==0;
+						const bool isBigConvexData = Pxstrcmp(srcEntry.entry.mType, "BigConvexData")==0 || 
+							Pxstrcmp(srcEntry.entry.mType, "BigConvexRawData")==0;
 						if(isBigConvexData)
 						{
 							assert(foundNbVerts);
@@ -781,7 +785,7 @@ int Sn::ConvX::getConcreteType(const char* buffer)
 	return 0xffffffff;
 }
 
-struct Item : public shdfnd::UserAllocated
+struct Item : public PxUserAllocated
 {
 	MetaClass*	mc;
 	const char*	address;
@@ -849,7 +853,7 @@ bool Sn::ConvX::convertCollection(const void* buffer, int fileSize, int nbObject
 			//			printf("%d: %s\n", i, mc->mClassName);
 			//			if(strcmp(mc->mClassName, "TriangleMesh")==0)
 			//			if(strcmp(mc->mClassName, "NpRigidDynamic")==0)
-			if(strcmp(mc0->mClassName, "HybridModel")==0)
+			if(Pxstrcmp(mc0->mClassName, "HybridModel")==0)
 			{
 				int stop=1;
 				(void)(stop);
@@ -875,7 +879,7 @@ bool Sn::ConvX::convertCollection(const void* buffer, int fileSize, int nbObject
 					// ---- big convex surgery ----
 					if(1)
 					{
-						const bool isBigConvexData = strcmp(ed.entry.mType, "BigConvexData")==0;
+						const bool isBigConvexData = Pxstrcmp(ed.entry.mType, "BigConvexData")==0;
 						if(isBigConvexData)
 						{
 							assert(nbConvexes<mConvexFlags.size());
@@ -1246,7 +1250,7 @@ void Handle16Remap::setObjectRef(PxU16 object, PxU16 ref)
 }
 
 bool Handle16Remap::getObjectRef(PxU16 object, PxU16& ref) const
-{
+{	
 	const Handle16Map::Entry* entry = mData.find(object);
 	if(entry)
 	{

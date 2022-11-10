@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,6 +37,7 @@
 #include "../snippetrender/SnippetCamera.h"
 
 using namespace physx;
+using namespace immediate;
 
 extern void initPhysics(bool interactive);
 extern void stepPhysics(bool interactive);	
@@ -47,133 +47,16 @@ extern PxU32 getNbGeoms();
 extern const PxGeometryHolder* getGeoms();
 extern const PxTransform* getGeomPoses();
 extern PxU32 getNbContacts();
-extern const Gu::ContactPoint* getContacts();
+extern const PxContactPoint* getContacts();
 extern PxU32 getNbArticulations();
-extern Dy::ArticulationV** getArticulations();
+extern PxArticulationHandle* getArticulations();
 extern PxU32 getNbBounds();
 extern const PxBounds3* getBounds();
+extern void renderText();
 
 namespace
 {
-Snippets::Camera*	sCamera;
-
-void motionCallback(int x, int y)
-{
-	sCamera->handleMotion(x, y);
-}
-
-void keyboardCallback(unsigned char key, int x, int y)
-{
-	if(key==27)
-		exit(0);
-
-	if(!sCamera->handleKey(key, x, y))
-		keyPress(key, sCamera->getTransform());
-}
-
-void keyboardCallback2(int key, int /*x*/, int /*y*/)
-{
-	keyPress(key, sCamera->getTransform());
-}
-
-void mouseCallback(int button, int state, int x, int y)
-{
-	sCamera->handleMouse(button, state, x, y);
-}
-
-void idleCallback()
-{
-	glutPostRedisplay();
-}
-
-static void DrawLine(const PxVec3& p0, const PxVec3& p1, const PxVec3& color)
-{
-	glDisable(GL_LIGHTING);
-	glColor4f(color.x, color.y, color.z, 1.0f);
-	const PxVec3 Pts[] = { p0, p1 };
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, sizeof(PxVec3), &Pts[0].x);
-	glDrawArrays(GL_LINES, 0, 2);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glEnable(GL_LIGHTING);
-}
-
-static void DrawFrame(const PxVec3& pt, float scale=1.0f)
-{
-	DrawLine(pt, pt + PxVec3(scale, 0.0f, 0.0f), PxVec3(1.0f, 0.0f, 0.0f));
-	DrawLine(pt, pt + PxVec3(0.0f, scale, 0.0f), PxVec3(0.0f, 1.0f, 0.0f));
-	DrawLine(pt, pt + PxVec3(0.0f, 0.0f, scale), PxVec3(0.0f, 0.0f, 1.0f));
-}
-
-static void DrawBounds(const PxBounds3& box)
-{
-	DrawLine(PxVec3(box.minimum.x, box.minimum.y, box.minimum.z), PxVec3(box.maximum.x, box.minimum.y, box.minimum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.maximum.x, box.minimum.y, box.minimum.z), PxVec3(box.maximum.x, box.maximum.y, box.minimum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.maximum.x, box.maximum.y, box.minimum.z), PxVec3(box.minimum.x, box.maximum.y, box.minimum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.minimum.x, box.maximum.y, box.minimum.z), PxVec3(box.minimum.x, box.minimum.y, box.minimum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.minimum.x, box.minimum.y, box.minimum.z), PxVec3(box.minimum.x, box.minimum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.minimum.x, box.minimum.y, box.maximum.z), PxVec3(box.maximum.x, box.minimum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.maximum.x, box.minimum.y, box.maximum.z), PxVec3(box.maximum.x, box.maximum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.maximum.x, box.maximum.y, box.maximum.z), PxVec3(box.minimum.x, box.maximum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.minimum.x, box.maximum.y, box.maximum.z), PxVec3(box.minimum.x, box.minimum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.minimum.x, box.minimum.y, box.maximum.z), PxVec3(box.minimum.x, box.minimum.y, box.minimum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.maximum.x, box.minimum.y, box.minimum.z), PxVec3(box.maximum.x, box.minimum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.maximum.x, box.maximum.y, box.minimum.z), PxVec3(box.maximum.x, box.maximum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-	DrawLine(PxVec3(box.minimum.x, box.maximum.y, box.minimum.z), PxVec3(box.minimum.x, box.maximum.y, box.maximum.z), PxVec3(1.0f, 1.0f, 0.0f));
-}
-
-static void InitLighting()
-{
-	glEnable(GL_COLOR_MATERIAL);
-
-	const float zero[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, zero);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, zero);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, zero);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
-	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0.0f);
-
-	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, zero);
-
-	glEnable(GL_LIGHTING);
-	PxVec3 Dir(-1.0f, 1.0f, 0.5f);
-//	PxVec3 Dir(0.0f, 1.0f, 0.0f);
-	Dir.normalize();
-
-	const float AmbientValue = 0.3f;
-	const float ambientColor0[]		= { AmbientValue, AmbientValue, AmbientValue, 0.0f };
-	glLightfv(GL_LIGHT0, GL_AMBIENT, ambientColor0);
-
-	const float specularColor0[]	= { 0.0f, 0.0f, 0.0f, 0.0f };
-	glLightfv(GL_LIGHT0, GL_SPECULAR, specularColor0);
-
-	const float diffuseColor0[]	= { 0.7f, 0.7f, 0.7f, 0.0f };
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseColor0);
-
-	const float position0[]		= { Dir.x, Dir.y, Dir.z, 0.0f };
-	glLightfv(GL_LIGHT0, GL_POSITION, position0);
-
-	glEnable(GL_LIGHT0);
-
-//	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-//	glColor4f(0.0f, 0.0f, 0.0f, 0.0f);
-
-	if(0)
-	{
-		glEnable(GL_FOG);
-		glFogi(GL_FOG_MODE,GL_LINEAR); 
-		//glFogi(GL_FOG_MODE,GL_EXP); 
-		//glFogi(GL_FOG_MODE,GL_EXP2); 
-		glFogf(GL_FOG_START, 0.0f);
-		glFogf(GL_FOG_END, 100.0f);
-		glFogf(GL_FOG_DENSITY, 0.005f);
-//		glClearColor(0.2f, 0.2f, 0.2f, 1.0);
-//		const PxVec3 FogColor(0.2f, 0.2f, 0.2f);
-		const PxVec3 FogColor(1.0f);
-		glFogfv(GL_FOG_COLOR, &FogColor.x);
-	}
-}
+Snippets::Camera* sCamera;
 
 void renderCallback()
 {
@@ -187,8 +70,7 @@ void renderCallback()
 		printf("camDir: (%ff, %ff, %ff)\n", camDir.x, camDir.y, camDir.z);
 	}*/
 
-	Snippets::startRender(sCamera->getEye(), sCamera->getDir());
-	InitLighting();
+	Snippets::startRender(sCamera);
 
 	const PxVec3 color(0.6f, 0.8f, 1.0f);
 //	const PxVec3 color(0.75f, 0.75f, 1.0f);
@@ -218,24 +100,24 @@ void renderCallback()
 	if(1)
 	{				
 		const PxU32 nbContacts = getNbContacts();
-		const Gu::ContactPoint* contacts = getContacts();
+		const PxContactPoint* contacts = getContacts();
 		for(PxU32 j=0;j<nbContacts;j++)
 		{
-			DrawFrame(contacts[j].point, 1.0f);
+			Snippets::DrawFrame(contacts[j].point, 1.0f);
 		}
 	}
 
 	if(0)
 	{
 		const PxU32 nbArticulations = getNbArticulations();
-		Dy::ArticulationV** articulations = getArticulations();
+		PxArticulationHandle* articulations = getArticulations();
 		for(PxU32 j=0;j<nbArticulations;j++)
 		{
-			immediate::PxLinkData data[64];
+			immediate::PxArticulationLinkDerivedDataRC data[64];
 			const PxU32 nbLinks = immediate::PxGetAllLinkData(articulations[j], data);
 			for(PxU32 i=0;i<nbLinks;i++)
 			{
-				DrawFrame(data[i].pose.p, 1.0f);
+				Snippets::DrawFrame(data[i].pose.p, 1.0f);
 			}
 		}
 	}
@@ -244,8 +126,10 @@ void renderCallback()
 	const PxU32 nbBounds = getNbBounds();
 	for(PxU32 i=0;i<nbBounds;i++)
 	{
-		DrawBounds(bounds[i]);
+		Snippets::DrawBounds(bounds[i]);
 	}
+
+	renderText();
 
 	Snippets::finishRender();
 }
@@ -262,18 +146,7 @@ void renderLoop()
 	sCamera = new Snippets::Camera(	PxVec3(8.526230f, 5.546278f, 5.448466f),
 									PxVec3(-0.784231f, -0.210605f, -0.583632f));
 
-	Snippets::setupDefaultWindow("PhysX Snippet Immediate Articulation");
-	Snippets::setupDefaultRenderState();
-
-	glutIdleFunc(idleCallback);
-	glutDisplayFunc(renderCallback);
-	glutKeyboardFunc(keyboardCallback);
-	glutSpecialFunc(keyboardCallback2);
-	glutMouseFunc(mouseCallback);
-	glutMotionFunc(motionCallback);
-	motionCallback(0,0);
-
-	atexit(exitCallback);
+	Snippets::setupDefault("PhysX Snippet Immediate Articulation", sCamera, keyPress, renderCallback, exitCallback);
 
 	initPhysics(true);
 	glutMainLoop();

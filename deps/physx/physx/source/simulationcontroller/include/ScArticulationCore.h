@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_SCP_ARTICULATION_CORE
-#define PX_PHYSICS_SCP_ARTICULATION_CORE
+#ifndef SC_ARTICULATION_CORE_H
+#define SC_ARTICULATION_CORE_H
 
 #include "ScActorCore.h"
-#include "DyArticulation.h"
 #include "DyFeatherstoneArticulation.h"
 
 namespace physx
@@ -40,14 +37,11 @@ namespace physx
 
 class PxvArticulation;
 
-namespace IG
-{
-	class NodeIndex;
-}
+class PxNodeIndex;
 
 namespace Sc
 {
-	typedef Dy::FsData ArticulationDriveCache;
+	//typedef Dy::FsData ArticulationDriveCache;
 
 	class ArticulationSim;
 	class BodyCore;
@@ -69,27 +63,15 @@ namespace Sc
 
 // PX_SERIALIZATION
 		public:
-													ArticulationCore(const PxEMPTY) : mSim(NULL)	{}
+													ArticulationCore(const PxEMPTY) : mSim(NULL), mCore(PxEmpty) {}
 		static		void							getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
-													ArticulationCore(bool reducedCoordinate);
+													ArticulationCore();
 													~ArticulationCore();
 
 		//---------------------------------------------------------------------------------
 		// External API
 		//---------------------------------------------------------------------------------
-		PX_FORCE_INLINE	PxU32						getInternalDriveIterations()		const	{ return mCore.internalDriveIterations;	}
-		PX_FORCE_INLINE	void						setInternalDriveIterations(const PxU32 v)	{ mCore.internalDriveIterations = v;	}
-
-		PX_FORCE_INLINE	PxU32						getExternalDriveIterations()		const	{ return mCore.externalDriveIterations;	}
-		PX_FORCE_INLINE	void						setExternalDriveIterations(const PxU32 v)	{ mCore.externalDriveIterations = v;	}
-
-		PX_FORCE_INLINE	PxU32						getMaxProjectionIterations()		const	{ return mCore.maxProjectionIterations;	}
-		PX_FORCE_INLINE	void						setMaxProjectionIterations(const PxU32 v)	{ mCore.maxProjectionIterations = v;	}
-
-		PX_FORCE_INLINE	PxReal						getSeparationTolerance()			const	{ return mCore.separationTolerance;		}
-		PX_FORCE_INLINE	void						setSeparationTolerance(const PxReal v)		{ mCore.separationTolerance = v;		}
-
 		PX_FORCE_INLINE	PxReal						getSleepThreshold()					const	{ return mCore.sleepThreshold;			}
 		PX_FORCE_INLINE	void						setSleepThreshold(const PxReal v)			{ mCore.sleepThreshold = v;				}
 
@@ -103,38 +85,15 @@ namespace Sc
 		PX_FORCE_INLINE	void						setWakeCounterInternal(const PxReal v)		{ mCore.wakeCounter = v;				}
 						void						setWakeCounter(const PxReal v);
 
+		PX_FORCE_INLINE	PxReal						getMaxLinearVelocity()				const	{ return mCore.maxLinearVelocity;		}
+						void						setMaxLinearVelocity(const PxReal max);
+
+		PX_FORCE_INLINE	PxReal						getMaxAngularVelocity()				const	{ return mCore.maxAngularVelocity;		}
+						void						setMaxAngularVelocity(const PxReal max);
+
 						bool						isSleeping() const;
 						void						wakeUp(PxReal wakeCounter);
 						void						putToSleep();
-
-						PxArticulationBase*			getPxArticulationBase();
-						const PxArticulationBase*	getPxArticulationBase() const;
-
-		//---------------------------------------------------------------------------------
-		// Drive Cache API
-		//---------------------------------------------------------------------------------
-						ArticulationDriveCache*		createDriveCache(PxReal compliance,
-																	 PxU32 driveIterations) const;
-
-						void						updateDriveCache(ArticulationDriveCache& cache,
-																	 PxReal compliance,
-																	 PxU32 driveIterations) const;
-
-						void						releaseDriveCache(ArticulationDriveCache& cache) const;
-
-						PxU32						getCacheLinkCount(const ArticulationDriveCache& cache) const;
-
-						void						applyImpulse(BodyCore& link,
-																 const ArticulationDriveCache& driveCache,
-																 const PxVec3& force,
-																 const PxVec3& torque);
-
-						void						computeImpulseResponse(BodyCore& link,
-																		   PxVec3& linearResponse, 
-																		   PxVec3& angularResponse,
-																		   const ArticulationDriveCache& driveCache,
-																		   const PxVec3& force,
-																		   const PxVec3& torque) const;
 
 		//---------------------------------------------------------------------------------
 		// external reduced coordinate API
@@ -150,11 +109,9 @@ namespace Sc
 
 						void						zeroCache(PxArticulationCache& cache) const;
 
-						void						applyCache(PxArticulationCache& cache, const PxArticulationCacheFlags flag)const;
+						bool						applyCache(PxArticulationCache& cache, const PxArticulationCacheFlags flag)const;
 		
 						void						copyInternalStateToCache(PxArticulationCache& cache, const PxArticulationCacheFlags flag) const;
-
-						void						releaseCache(PxArticulationCache& cache) const;
 
 						void						packJointData(const PxReal* maximum, PxReal* reduced) const;
 
@@ -183,10 +140,11 @@ namespace Sc
 
 						PxU32						getCoefficientMatrixSize() const;
 
-						PxSpatialVelocity			getLinkVelocity(const PxU32 linkId) const;
-
 						PxSpatialVelocity			getLinkAcceleration(const PxU32 linkId) const;
 
+						PxU32						getGpuArticulationIndex() const;				
+
+						void						updateKinematic(PxArticulationKinematicFlags flags);
 		//---------------------------------------------------------------------------------
 		// Internal API
 		//---------------------------------------------------------------------------------
@@ -198,7 +156,7 @@ namespace Sc
 													}
 		PX_FORCE_INLINE	ArticulationSim*			getSim()			const	{ return mSim;			}
 
-		PX_FORCE_INLINE	const Dy::ArticulationCore&	getCore()					{ return mCore;			}
+		PX_FORCE_INLINE	Dy::ArticulationCore&		getCore()			{ return mCore;			}
 
 		static PX_FORCE_INLINE ArticulationCore&	getArticulationCore(ArticulationCore& core)
 													{
@@ -206,18 +164,13 @@ namespace Sc
 														return *reinterpret_cast<ArticulationCore*>(reinterpret_cast<PxU8*>(&core) - offset);
 													}
 
-		PX_INLINE		bool						isReducedCoordinate() const	{ return mIsReducedCoordinate;	}
-
-						IG::NodeIndex				getIslandNodeIndex() const;
+						PxNodeIndex				getIslandNodeIndex() const;
 
 						void						setGlobalPose();
-
-						void						setDirty(const bool dirty);
 
 	private:
 						ArticulationSim*			mSim;
 						Dy::ArticulationCore		mCore;
-						bool						mIsReducedCoordinate;
 	};
 
 } // namespace Sc

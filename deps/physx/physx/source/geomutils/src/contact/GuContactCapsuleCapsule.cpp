@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,30 +22,25 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuDistanceSegmentSegment.h"
 #include "GuContactMethodImpl.h"
 #include "GuInternal.h"
-#include "GuGeometryUnion.h"
 
 using namespace physx;
 
-namespace physx
-{
-namespace Gu
-{
-bool contactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 
-	const PxCapsuleGeometry& capsuleGeom0 = shape0.get<const PxCapsuleGeometry>();
-	const PxCapsuleGeometry& capsuleGeom1 = shape1.get<const PxCapsuleGeometry>();
+	const PxCapsuleGeometry& capsuleGeom0 = checkedCast<PxCapsuleGeometry>(shape0);
+	const PxCapsuleGeometry& capsuleGeom1 = checkedCast<PxCapsuleGeometry>(shape1);
 
 	// PT: get capsules in local space
 	PxVec3 dir[2];
@@ -152,5 +146,3 @@ bool contactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 	contactBuffer.contact(pos1 - normal * capsuleGeom0.radius, normal, PxSqrt(squareDist) - radiusSum);
 	return true;
 }
-}//Gu
-}//physx

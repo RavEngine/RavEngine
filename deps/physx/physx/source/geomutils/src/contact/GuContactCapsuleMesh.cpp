@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuIntersectionEdgeEdge.h"
 #include "GuDistanceSegmentTriangle.h"
@@ -40,12 +39,12 @@
 #include "GuEntityReport.h"
 #include "GuHeightFieldUtil.h"
 #include "GuConvexEdgeFlags.h"
-#include "GuGeometryUnion.h"
-#include "GuSIMDHelpers.h"
 #include "GuBox.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Gu;
+using namespace Cm;
 
 #define DEBUG_RENDER_MESHCONTACTS 0
 
@@ -62,22 +61,22 @@ using namespace Gu;
 #define VISUALIZE_CULLING_BOX	0
 
 #if VISUALIZE_TOUCHED_TRIS
-#include "CmRenderOutput.h"
+#include "PxRenderOutput.h"
 #include "PxsContactManager.h"
 #include "PxsContext.h"
 static void gVisualizeLine(const PxVec3& a, const PxVec3& b, PxcNpThreadContext& context, PxU32 color=0xffffff)
 {
 	PxMat44 m = PxMat44::identity();
 
-	Cm::RenderOutput& out = context.mRenderOutput;
-	out << color << m << Cm::RenderOutput::LINES << a << b;
+	PxRenderOutput& out = context.mRenderOutput;
+	out << color << m << PxRenderOutput::LINES << a << b;
 }
 static void gVisualizeTri(const PxVec3& a, const PxVec3& b, const PxVec3& c, PxcNpThreadContext& context, PxU32 color=0xffffff)
 {
 	PxMat44 m = PxMat44::identity();
 
-	Cm::RenderOutput& out = context.mRenderOutput;
-	out << color << m << Cm::RenderOutput::TRIANGLES << a << b << c;
+	PxRenderOutput& out = context.mRenderOutput;
+	out << color << m << PxRenderOutput::TRIANGLES << a << b << c;
 }
 
 static PxU32 gColors[8] = { 0xff0000ff, 0xff00ff00, 0xffff0000,
@@ -93,7 +92,7 @@ static bool PxcTestAxis(const PxVec3& axis, const Segment& segment, PxReal radiu
 	// Project capsule
 	PxReal min0 = segment.p0.dot(axis);
 	PxReal max0 = segment.p1.dot(axis);
-	if(min0>max0)	Ps::swap(min0, max0);
+	if(min0>max0)	PxSwap(min0, max0);
 	min0 -= radius;
 	max0 += radius;
 
@@ -155,11 +154,11 @@ static bool PxcCapsuleTriOverlap3(PxU8 edgeFlags, const Segment& segment, PxReal
 		
 			const PxVec3 e0 = triVerts[i];
 //			const PxVec3 e1 = triVerts[(i+1)%3];
-			const PxVec3 e1 = triVerts[Ps::getNextIndex3(i)];
+			const PxVec3 e1 = triVerts[PxGetNextIndex3(i)];
 			const PxVec3 edge = e0 - e1;
 
 			PxVec3 cross = capsuleAxis.cross(edge);
-			if(!Ps::isAlmostZero(cross))
+			if(!isAlmostZero(cross))
 			{
 				cross = cross.getNormalized();
 				PxReal d;
@@ -187,7 +186,7 @@ static bool PxcCapsuleTriOverlap3(PxU8 edgeFlags, const Segment& segment, PxReal
 	return true;
 }
 
-static void PxcGenerateVFContacts(	const Cm::Matrix34& meshAbsPose, ContactBuffer& contactBuffer, const Segment& segment,
+static void PxcGenerateVFContacts(	const PxMat34& meshAbsPose, PxContactBuffer& contactBuffer, const Segment& segment,
 									const PxReal radius, const PxVec3* PX_RESTRICT triVerts, const PxVec3& normal, 
 									PxU32 triangleIndex, PxReal contactDistance)
 {
@@ -204,7 +203,7 @@ static void PxcGenerateVFContacts(	const Cm::Matrix34& meshAbsPose, ContactBuffe
 			contactBuffer.contact(Hit, wn, t-radius, triangleIndex);
 			#if DEBUG_RENDER_MESHCONTACTS
 			PxScene *s; PxGetPhysics().getScenes(&s, 1, 0);
-			Cm::RenderOutput((Cm::RenderBuffer&)s->getRenderBuffer()) << Cm::RenderOutput::LINES << PxDebugColor::eARGB_BLUE // red
+			PxRenderOutput((PxRenderBufferImpl&)s->getRenderBuffer()) << PxRenderOutput::LINES << PxDebugColor::eARGB_BLUE // red
 				<< Hit << (Hit + wn * 10.0f);
 			#endif
 		}
@@ -214,18 +213,18 @@ static void PxcGenerateVFContacts(	const Cm::Matrix34& meshAbsPose, ContactBuffe
 // PT: PxcGenerateEEContacts2 uses a segment-triangle distance function, which breaks when the segment
 // intersects the triangle, in which case you need to switch to a penetration-depth computation.
 // If you don't do this thin capsules don't work.
-static void PxcGenerateEEContacts(	const Cm::Matrix34& meshAbsPose, ContactBuffer& contactBuffer, const Segment& segment, const PxReal radius,
+static void PxcGenerateEEContacts(	const PxMat34& meshAbsPose, PxContactBuffer& contactBuffer, const Segment& segment, const PxReal radius,
 									const PxVec3* PX_RESTRICT triVerts, const PxVec3& normal, PxU32 triangleIndex)
 {
 	PxVec3 s0 = segment.p0;
 	PxVec3 s1 = segment.p1;
-	Ps::makeFatEdge(s0, s1, fatBoxEdgeCoeff);
+	makeFatEdge(s0, s1, fatBoxEdgeCoeff);
 
 	for(PxU32 i=0;i<3;i++)
 	{
 		PxReal dist;
 		PxVec3 ip;
-		if(intersectEdgeEdge(triVerts[i], triVerts[Ps::getNextIndex3(i)], -normal, s0, s1, dist, ip))
+		if(intersectEdgeEdge(triVerts[i], triVerts[PxGetNextIndex3(i)], -normal, s0, s1, dist, ip))
 		{
 			ip = meshAbsPose.transform(ip);
 			const PxVec3 wn = meshAbsPose.rotate(normal);
@@ -233,25 +232,25 @@ static void PxcGenerateEEContacts(	const Cm::Matrix34& meshAbsPose, ContactBuffe
 			contactBuffer.contact(ip, wn, - (radius + dist), triangleIndex);
 			#if DEBUG_RENDER_MESHCONTACTS
 			PxScene *s; PxGetPhysics().getScenes(&s, 1, 0);
-			Cm::RenderOutput((Cm::RenderBuffer&)s->getRenderBuffer()) << Cm::RenderOutput::LINES << PxDebugColor::eARGB_BLUE // red
+			PxRenderOutput((PxRenderBufferImpl&)s->getRenderBuffer()) << PxRenderOutput::LINES << PxDebugColor::eARGB_BLUE // red
 				<< ip << (ip + wn * 10.0f);
 			#endif
 		}
 	}
 }
 
-static void PxcGenerateEEContacts2(	const Cm::Matrix34& meshAbsPose, ContactBuffer& contactBuffer, const Segment& segment, const PxReal radius,
+static void PxcGenerateEEContacts2(	const PxMat34& meshAbsPose, PxContactBuffer& contactBuffer, const Segment& segment, const PxReal radius,
 									const PxVec3* PX_RESTRICT triVerts, const PxVec3& normal, PxU32 triangleIndex, PxReal contactDistance)
 {
 	PxVec3 s0 = segment.p0;
 	PxVec3 s1 = segment.p1;
-	Ps::makeFatEdge(s0, s1, fatBoxEdgeCoeff);
+	makeFatEdge(s0, s1, fatBoxEdgeCoeff);
 
 	for(PxU32 i=0;i<3;i++)
 	{
 		PxReal dist;
 		PxVec3 ip;
-		if(intersectEdgeEdge(triVerts[i], triVerts[Ps::getNextIndex3(i)], normal, s0, s1, dist, ip) && dist < radius+contactDistance)
+		if(intersectEdgeEdge(triVerts[i], triVerts[PxGetNextIndex3(i)], normal, s0, s1, dist, ip) && dist < radius+contactDistance)
 		{
 			ip = meshAbsPose.transform(ip);
 			const PxVec3 wn = meshAbsPose.rotate(normal);
@@ -259,7 +258,7 @@ static void PxcGenerateEEContacts2(	const Cm::Matrix34& meshAbsPose, ContactBuff
 			contactBuffer.contact(ip, wn, dist - radius, triangleIndex);
 			#if DEBUG_RENDER_MESHCONTACTS
 			PxScene *s; PxGetPhysics().getScenes(&s, 1, 0);
-			Cm::RenderOutput((Cm::RenderBuffer&)s->getRenderBuffer()) << Cm::RenderOutput::LINES << PxDebugColor::eARGB_BLUE // red
+			PxRenderOutput((PxRenderBufferImpl&)s->getRenderBuffer()) << PxRenderOutput::LINES << PxDebugColor::eARGB_BLUE // red
 				<< ip << (ip + wn * 10.0f);
 			#endif
 		}
@@ -270,20 +269,20 @@ namespace
 {
 struct CapsuleMeshContactGeneration
 {
-	ContactBuffer&		mContactBuffer;
-	const Cm::Matrix34	mMeshAbsPose;
+	PxContactBuffer&	mContactBuffer;
+	const PxMat34		mMeshAbsPose;
 	const Segment&		mMeshCapsule;
 #ifdef USE_AABB_TRI_CULLING
-	Vec3p				mBC;
-	Vec3p				mBE;
+	PxVec3p				mBC;
+	PxVec3p				mBE;
 #endif
 	PxReal				mInflatedRadius;
 	PxReal				mContactDistance;
 	PxReal				mShapeCapsuleRadius;
 
-	CapsuleMeshContactGeneration(ContactBuffer& contactBuffer, const PxTransform& transform1, const Segment& meshCapsule, PxReal inflatedRadius, PxReal contactDistance, PxReal shapeCapsuleRadius) :
+	CapsuleMeshContactGeneration(PxContactBuffer& contactBuffer, const PxTransform& transform1, const Segment& meshCapsule, PxReal inflatedRadius, PxReal contactDistance, PxReal shapeCapsuleRadius) :
 		mContactBuffer		(contactBuffer),
-		mMeshAbsPose		(Cm::Matrix34(transform1)),
+		mMeshAbsPose		(Matrix34FromTransform(transform1)),
 		mMeshCapsule		(meshCapsule),
 		mInflatedRadius		(inflatedRadius),
 		mContactDistance	(contactDistance),
@@ -292,23 +291,23 @@ struct CapsuleMeshContactGeneration
 		PX_ASSERT(contactBuffer.count==0);
 #ifdef USE_AABB_TRI_CULLING
 		mBC = (meshCapsule.p0 + meshCapsule.p1)*0.5f;
-		const Vec3p be = (meshCapsule.p0 - meshCapsule.p1)*0.5f;
+		const PxVec3p be = (meshCapsule.p0 - meshCapsule.p1)*0.5f;
 		mBE.x = fabsf(be.x) + inflatedRadius;
 		mBE.y = fabsf(be.y) + inflatedRadius;
 		mBE.z = fabsf(be.z) + inflatedRadius;
 #endif
 	}
 
-	void processTriangle(PxU32 triangleIndex, const TrianglePadded& tri, PxU8 extraData/*, const PxU32* vertInds*/)
+	void processTriangle(PxU32 triangleIndex, const PxTrianglePadded& tri, PxU8 extraData/*, const PxU32* vertInds*/)
 	{
 #ifdef USE_AABB_TRI_CULLING
 	#if VISUALIZE_CULLING_BOX
 		{
-			Cm::RenderOutput& out = context.mRenderOutput;
+			PxRenderOutput& out = context.mRenderOutput;
 			PxTransform idt = PxTransform(PxIdentity);
 			out << idt;
 			out << 0xffffffff;
-			out << Cm::DebugBox(mBC, mBE, true);
+			out << PxDebugBox(mBC, mBE, true);
 		}
 	#endif
 #endif
@@ -368,7 +367,7 @@ struct CapsuleMeshContactGeneration
 			}
 			else
 			{
-				const PxVec3 pointOnTriangle = Ps::computeBarycentricPoint(p0, p1, p2, u, v);
+				const PxVec3 pointOnTriangle = computeBarycentricPoint(p0, p1, p2, u, v);
 
 				const PxVec3 pointOnSegment = mMeshCapsule.getPointAt(t);
 				normal = pointOnSegment - pointOnTriangle;
@@ -396,43 +395,40 @@ private:
 	CapsuleMeshContactGeneration& operator=(const CapsuleMeshContactGeneration&);
 };
 
-struct CapsuleMeshContactGenerationCallback_NoScale : MeshHitCallback<PxRaycastHit>
+struct CapsuleMeshContactGenerationCallback_NoScale : MeshHitCallback<PxGeomRaycastHit>
 {
 	CapsuleMeshContactGeneration		mGeneration;
 	const TriangleMesh*					mMeshData;
 
 	CapsuleMeshContactGenerationCallback_NoScale(
-		ContactBuffer& contactBuffer,
+		PxContactBuffer& contactBuffer,
 		const PxTransform& transform1, const Segment& meshCapsule,
 		PxReal inflatedRadius, PxReal contactDistance,
 		PxReal shapeCapsuleRadius, const TriangleMesh* meshData
 	)	:
-		MeshHitCallback<PxRaycastHit>	(CallbackMode::eMULTIPLE),
-		mGeneration						(contactBuffer, transform1, meshCapsule, inflatedRadius, contactDistance, shapeCapsuleRadius),
-		mMeshData						(meshData)
+		MeshHitCallback<PxGeomRaycastHit>	(CallbackMode::eMULTIPLE),
+		mGeneration							(contactBuffer, transform1, meshCapsule, inflatedRadius, contactDistance, shapeCapsuleRadius),
+		mMeshData							(meshData)
 	{
 		PX_ASSERT(contactBuffer.count==0);
 	}
 
-	PX_FORCE_INLINE PxAgain processTriangle(const PxRaycastHit& hit, const TrianglePadded& tri)
-	{
-		const PxU32 triangleIndex = hit.faceIndex;
-
-		//ML::set all the edges to be active, if the mExtraTrigData exist, we overwrite this flag
-		const PxU8 extraData = getConvexEdgeFlags(mMeshData->getExtraTrigData(), triangleIndex);
-		mGeneration.processTriangle(triangleIndex, tri, extraData);
-		return true;
-	}
-
 	virtual PxAgain processHit(
-		const PxRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* /*vInds*/)
+		const PxGeomRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* /*vInds*/)
 	{
-		TrianglePadded tri;
+		PxTrianglePadded tri;
 		// PT: TODO: revisit this, avoid the copy
 		tri.verts[0] = v0;
 		tri.verts[1] = v1;
 		tri.verts[2] = v2;
-		return processTriangle(hit, tri);
+
+		const PxU32 triangleIndex = hit.faceIndex;
+
+		//ML::set all the edges to be active, if the mExtraTrigData exist, we overwrite this flag
+		const PxU8 extraData = getConvexEdgeFlags(mMeshData->getExtraTrigData(), triangleIndex);
+
+		mGeneration.processTriangle(triangleIndex, tri, extraData);
+		return true;
 	}
 
 private:
@@ -441,12 +437,12 @@ private:
 
 struct CapsuleMeshContactGenerationCallback_Scale : CapsuleMeshContactGenerationCallback_NoScale
 {
-	const Cm::FastVertex2ShapeScaling&	mScaling;
+	const FastVertex2ShapeScaling&	mScaling;
 
 	CapsuleMeshContactGenerationCallback_Scale(
-		ContactBuffer& contactBuffer,
+		PxContactBuffer& contactBuffer,
 		const PxTransform& transform1, const Segment& meshCapsule,
-		PxReal inflatedRadius, const Cm::FastVertex2ShapeScaling& scaling, PxReal contactDistance,
+		PxReal inflatedRadius, const FastVertex2ShapeScaling& scaling, PxReal contactDistance,
 		PxReal shapeCapsuleRadius, const TriangleMesh* meshData
 	)	:
 		CapsuleMeshContactGenerationCallback_NoScale(contactBuffer, transform1, meshCapsule, inflatedRadius, contactDistance, shapeCapsuleRadius, meshData),
@@ -455,11 +451,21 @@ struct CapsuleMeshContactGenerationCallback_Scale : CapsuleMeshContactGeneration
 	}
 
 	virtual PxAgain processHit(
-		const PxRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* /*vInds*/)
+		const PxGeomRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* /*vInds*/)
 	{
-		TrianglePadded tri;
+		PxTrianglePadded tri;
 		getScaledVertices(tri.verts, v0, v1, v2, false, mScaling);
-		return processTriangle(hit, tri);
+
+		const PxU32 triangleIndex = hit.faceIndex;
+
+		//ML::set all the edges to be active, if the mExtraTrigData exist, we overwrite this flag
+		PxU8 extraData = getConvexEdgeFlags(mMeshData->getExtraTrigData(), triangleIndex);
+
+		if(mScaling.flipsNormal())
+			flipConvexEdgeFlags(extraData);
+
+		mGeneration.processTriangle(triangleIndex, tri, extraData);
+		return true;
 	}
 
 private:
@@ -483,13 +489,13 @@ bool Gu::contactCapsuleMesh(GU_CONTACT_METHOD_ARGS)
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	const PxCapsuleGeometry& shapeCapsule = shape0.get<const PxCapsuleGeometry>();
-	const PxTriangleMeshGeometryLL& shapeMesh = shape1.get<const PxTriangleMeshGeometryLL>();
+	const PxCapsuleGeometry& shapeCapsule = checkedCast<PxCapsuleGeometry>(shape0);
+	const PxTriangleMeshGeometry& shapeMesh = checkedCast<PxTriangleMeshGeometry>(shape1);
 
 	const PxReal inflatedRadius = shapeCapsule.radius + params.mContactDistance;		//AM: inflate!
 	const Segment meshCapsule = computeLocalCapsule(transform0, transform1, shapeCapsule);
 
-	const TriangleMesh* meshData = shapeMesh.meshData;
+	const TriangleMesh* meshData = _getMeshData(shapeMesh);
 
 	//bound the capsule in shape space by an OBB:
 	Box queryBox;
@@ -508,7 +514,7 @@ bool Gu::contactCapsuleMesh(GU_CONTACT_METHOD_ARGS)
 	}
 	else
 	{
-		const Cm::FastVertex2ShapeScaling meshScaling(shapeMesh.scale);
+		const FastVertex2ShapeScaling meshScaling(shapeMesh.scale);
 
 		CapsuleMeshContactGenerationCallback_Scale callback(contactBuffer, transform1, meshCapsule,
 			inflatedRadius, meshScaling, params.mContactDistance, shapeCapsule.radius, meshData);
@@ -525,15 +531,15 @@ bool Gu::contactCapsuleMesh(GU_CONTACT_METHOD_ARGS)
 
 namespace
 {
-struct CapsuleHeightfieldContactGenerationCallback : EntityReport<PxU32>
+struct CapsuleHeightfieldContactGenerationCallback : OverlapReport
 {
 	CapsuleMeshContactGeneration	mGeneration;
-	HeightFieldUtil&				mHfUtil;
+	const HeightFieldUtil&			mHfUtil;
 	const PxTransform&				mTransform1;
 
 	CapsuleHeightfieldContactGenerationCallback(
-		ContactBuffer& contactBuffer,
-		const PxTransform& transform1, HeightFieldUtil& hfUtil, const Segment& meshCapsule,
+		PxContactBuffer& contactBuffer,
+		const PxTransform& transform1, const HeightFieldUtil& hfUtil, const Segment& meshCapsule,
 		PxReal inflatedRadius, PxReal contactDistance, PxReal shapeCapsuleRadius
 	) : 
 		mGeneration	(contactBuffer, transform1, meshCapsule, inflatedRadius, contactDistance, shapeCapsuleRadius),
@@ -544,7 +550,7 @@ struct CapsuleHeightfieldContactGenerationCallback : EntityReport<PxU32>
 	}
 
 	// PT: TODO: refactor/unify with similar code in other places
-	virtual bool onEvent(PxU32 nb, PxU32* indices)
+	virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 	{
 		const PxU8 nextInd[] = {2,0,1};
 
@@ -553,7 +559,7 @@ struct CapsuleHeightfieldContactGenerationCallback : EntityReport<PxU32>
 			const PxU32 triangleIndex = *indices++;
 
 			PxU32 vertIndices[3];
-			TrianglePadded currentTriangle;	// in world space
+			PxTrianglePadded currentTriangle;	// in world space
 			PxU32 adjInds[3];
 			mHfUtil.getTriangle(mTransform1, currentTriangle, vertIndices, adjInds, triangleIndex, false, false);
 
@@ -607,30 +613,25 @@ bool Gu::contactCapsuleHeightfield(GU_CONTACT_METHOD_ARGS)
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	const PxCapsuleGeometry& shapeCapsule = shape0.get<const PxCapsuleGeometry>();
-	const PxHeightFieldGeometryLL& shapeMesh = shape1.get<const PxHeightFieldGeometryLL>();
+	const PxCapsuleGeometry& shapeCapsule = checkedCast<PxCapsuleGeometry>(shape0);
+	const PxHeightFieldGeometry& shapeMesh = checkedCast<PxHeightFieldGeometry>(shape1);
 
 	const PxReal inflatedRadius = shapeCapsule.radius + params.mContactDistance;		//AM: inflate!
 	const Segment meshCapsule = computeLocalCapsule(transform0, transform1, shapeCapsule);
 
 	// We must be in local space to use the cache
 
-	HeightFieldUtil hfUtil(shapeMesh);
+	const HeightFieldUtil hfUtil(shapeMesh);
 
 	CapsuleHeightfieldContactGenerationCallback callback(
 		contactBuffer, transform1, hfUtil, meshCapsule, inflatedRadius, params.mContactDistance, shapeCapsule.radius);
 
 	//switched from capsuleCollider to boxCollider so we can support nonuniformly scaled meshes by scaling the query region:
 
-	//bound the capsule in shape space by an OBB:
+	//bound the capsule in shape space by an AABB:
 
-	PxBounds3 bounds;
-	bounds.maximum = PxVec3(shapeCapsule.halfHeight + inflatedRadius, inflatedRadius, inflatedRadius);
-	bounds.minimum = -bounds.maximum;
-
-	bounds = PxBounds3::transformFast(transform1.transformInv(transform0), bounds);
-
-	hfUtil.overlapAABBTriangles(transform1, bounds, 0, &callback);
+	// PT: TODO: improve these bounds (see computeCapsuleBounds)
+	hfUtil.overlapAABBTriangles(transform0, transform1, getLocalCapsuleBounds(inflatedRadius, shapeCapsule.halfHeight), callback);
 
 	return contactBuffer.count > 0;
 }

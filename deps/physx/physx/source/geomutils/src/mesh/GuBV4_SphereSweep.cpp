@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,16 +31,13 @@
 #include "GuBV4.h"
 #include "GuBox.h"
 #include "GuSphere.h"
-#include "GuSIMDHelpers.h"
 #include "GuSweepSphereTriangle.h"
 
 using namespace physx;
 using namespace Gu;
 
-#if PX_INTEL_FAMILY  && !defined(PX_SIMD_DISABLED)
-
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+#include "foundation/PxVecMath.h"
+using namespace physx::aos;
 
 #include "GuBV4_Common.h"
 
@@ -52,15 +48,15 @@ namespace
 	// PT: TODO: refactor structure (TA34704)
 	struct RayParams
 	{
-		BV4_ALIGN16(Vec3p	mCenterOrMinCoeff_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mExtentsOrMaxCoeff_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mCenterOrMinCoeff_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mExtentsOrMaxCoeff_PaddedAligned);
 #ifndef GU_BV4_USE_SLABS
-		BV4_ALIGN16(Vec3p	mData2_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mFDir_PaddedAligned);
-		BV4_ALIGN16(Vec3p	mData_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mData2_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mFDir_PaddedAligned);
+		BV4_ALIGN16(PxVec3p	mData_PaddedAligned);
 #endif
-		BV4_ALIGN16(Vec3p	mLocalDir_Padded);	// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
-		BV4_ALIGN16(Vec3p	mOrigin_Padded);	// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
+		BV4_ALIGN16(PxVec3p	mLocalDir_Padded);	// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
+		BV4_ALIGN16(PxVec3p	mOrigin_Padded);	// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
 	};
 
 	struct SphereSweepParams : RayParams
@@ -80,6 +76,9 @@ namespace
 		float				mBestAlignmentValue;
 		float				mBestDistance;
 		float				mMaxDist;
+
+//		PX_FORCE_INLINE float	getReportDistance()	const	{ return mStabbedFace.mDistance; }
+		PX_FORCE_INLINE float	getReportDistance()	const	{ return mBestDistance; }
 	};
 }
 
@@ -112,9 +111,8 @@ static bool /*__fastcall*/ triSphereSweep(SphereSweepParams* PX_RESTRICT params,
 	if(!sweepSphereVSTri(T.verts, normal, params->mOrigin_Padded, params->mOriginalExtents_Padded.x, params->mLocalDir_Padded, dist, directHit, true))
 		return false;
 
-	const PxReal distEpsilon = GU_EPSILON_SAME_DISTANCE; // pick a farther hit within distEpsilon that is more opposing than the previous closest hit
 	const PxReal alignmentValue = computeAlignmentValue(normal, params->mLocalDir_Padded);
-	if(keepTriangle(dist, alignmentValue, params->mBestDistance, params->mBestAlignmentValue, params->mMaxDist, distEpsilon))
+	if(keepTriangle(dist, alignmentValue, params->mBestDistance, params->mBestAlignmentValue, params->mMaxDist))
 	{
 		params->mStabbedFace.mDistance = dist;
 		params->mStabbedFace.mTriangleID = primIndex;
@@ -127,11 +125,19 @@ static bool /*__fastcall*/ triSphereSweep(SphereSweepParams* PX_RESTRICT params,
 		if(nodeSorting)
 		{
 #ifndef GU_BV4_USE_SLABS
-			setupRayData(params, dist, params->mOrigin_Padded, params->mLocalDir_Padded);
+			setupRayData(params, params->mBestDistance, params->mOrigin_Padded, params->mLocalDir_Padded);
+			//setupRayData(params, dist, params->mOrigin_Padded, params->mLocalDir_Padded);
 #endif
 		}
 		return true;
 	}
+	//
+	else if(keepTriangleBasic(dist, params->mBestDistance, params->mMaxDist))
+	{
+		params->mStabbedFace.mDistance = dist;
+		params->mBestDistance = PxMin(params->mBestDistance, dist); // exact lower bound
+	}
+	//
 	return false;
 }
 
@@ -154,7 +160,7 @@ public:
 class LeafFunction_SphereSweepAny
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(SphereSweepParams* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(SphereSweepParams* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
@@ -172,7 +178,7 @@ public:
 class ImpactFunctionSphere
 {
 public:
-	static PX_FORCE_INLINE void computeImpact(PxVec3& impactPos, PxVec3& impactNormal, const Sphere& sphere, const PxVec3& dir, const PxReal t, const TrianglePadded& triangle)
+	static PX_FORCE_INLINE void computeImpact(PxVec3& impactPos, PxVec3& impactNormal, const Sphere& sphere, const PxVec3& dir, const PxReal t, const PxTrianglePadded& triangle)
 	{
 		computeSphereTriImpactData(impactPos, impactNormal, sphere.center, dir, t, triangle);
 	}
@@ -213,9 +219,9 @@ static PX_FORCE_INLINE void setupSphereParams(ParamsT* PX_RESTRICT params, const
 #define GU_BV4_PROCESS_STREAM_RAY_ORDERED
 #include "GuBV4_Internal.h"
 
-Ps::IntBool BV4_SphereSweepSingle(const Sphere& sphere, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags)
+PxIntBool BV4_SphereSweepSingle(const Sphere& sphere, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	SphereSweepParams Params;
 	setupSphereParams(&Params, sphere, dir, maxDist, &tree, worldm_Aligned, mesh, flags);
@@ -254,7 +260,7 @@ namespace
 class LeafFunction_SphereSweepCB
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(SphereSweepParamsCB* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(SphereSweepParamsCB* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
@@ -282,7 +288,7 @@ public:
 // PT: for design decisions in this function, refer to the comments of BV4_GenericSweepCB().
 void BV4_SphereSweepCB(const Sphere& sphere, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepUnlimitedCallback callback, void* userData, PxU32 flags, bool nodeSorting)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	SphereSweepParamsCB Params;
 	Params.mSphere			= sphere;
@@ -368,7 +374,7 @@ void BV4_GenericSweepCB_Old(const PxVec3& origin, const PxVec3& extents, const P
 	setupRayData(&Params, maxDist, Params.mOrigin_Padded, Params.mLocalDir_Padded);
 #endif
 
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	setupMeshPointersAndQuantizedCoeffs(&Params, mesh, &tree);
 
@@ -382,5 +388,4 @@ void BV4_GenericSweepCB_Old(const PxVec3& origin, const PxVec3& extents, const P
 	}
 }
 
-#endif
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PX_CONVX_METADATA_H
-#define PX_CONVX_METADATA_H
+#ifndef SN_CONVX_METADATA_H
+#define SN_CONVX_METADATA_H
 
 #include "common/PxMetaDataFlags.h"
 
@@ -42,7 +41,7 @@ namespace physx { namespace Sn {
 
 
 	// PT: beware, must match corresponding structure in PxMetaData.h
-	struct PxMetaDataEntry : public shdfnd::UserAllocated
+	struct PxMetaDataEntry : public PxUserAllocated
 	{
 		PxMetaDataEntry()
 		{
@@ -97,7 +96,7 @@ namespace physx { namespace Sn {
 
 	class MetaData;
 
-	struct MetaClass : public shdfnd::UserAllocated
+	struct MetaClass : public PxUserAllocated
 	{
 		bool					getFieldByType(const char* type, PxMetaDataEntry& entry)	const;
 		bool					getFieldByName(const char* name, PxMetaDataEntry& entry)	const;
@@ -127,7 +126,7 @@ namespace physx { namespace Sn {
 	};
 
 	class ConvX;
-	class MetaData : public shdfnd::UserAllocated
+	class MetaData : public PxUserAllocated
 	{
 		public:
 										MetaData(Sn::ConvX&);
@@ -164,7 +163,7 @@ namespace physx { namespace Sn {
 				int						mGaussMapLimit;
 				bool					mFlip;
 
-				PsArray< Ps::Pair<PxConcreteType::Enum, PxU32> > mConcreteTypeTable;
+				PsArray< PxPair<PxConcreteType::Enum, PxU32> > mConcreteTypeTable;
 
 		inline_ const char*				offsetToText(const char* text)	const
 										{

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_SCP_CONSTRAINT_GROUP_NODE
-#define PX_PHYSICS_SCP_CONSTRAINT_GROUP_NODE
+#ifndef SC_CONSTRAINT_GROUP_NODE_H
+#define SC_CONSTRAINT_GROUP_NODE_H
 
 #include "ScConstraintProjectionTree.h"
-#include "PsUtilities.h"  // for Ps::to8()
+#include "foundation/PxUtilities.h"  // for PxTo8()
 
 namespace physx
 {
@@ -43,7 +41,7 @@ namespace Sc
 	class ConstraintProjectionManager;
 
 	// A 'simulation island' of constraints. Created by a union-find algorithm every time a new constraint is added to any of the involved bodies.
-	struct ConstraintGroupNode : public Ps::UserAllocated
+	struct ConstraintGroupNode : public PxUserAllocated
 	{
 		enum StateFlags
 		{
@@ -92,7 +90,7 @@ namespace Sc
 							void					initProjectionData(ConstraintGroupNode* parent, ConstraintSim* c);
 							void					clearProjectionData();
 
-		static				void					projectPose(ConstraintGroupNode& root, Ps::Array<BodySim*>& projectedBodies);
+		static				void					projectPose(ConstraintGroupNode& root, PxArray<BodySim*>& projectedBodies);
 
 
 		BodySim*					body;		//the owner body of this node

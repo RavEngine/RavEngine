@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef SC_CONSTRAINT_PROJECTION_TREE_H
+#define SC_CONSTRAINT_PROJECTION_TREE_H
 
-#ifndef PX_PHYSICS_SCP_CONSTRAINT_PROJECTION_TREE
-#define PX_PHYSICS_SCP_CONSTRAINT_PROJECTION_TREE
-
-#include "PsArray.h"
-#include "PsUserAllocated.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
@@ -58,14 +55,14 @@ namespace Sc
 			static	void		buildProjectionTrees(ConstraintGroupNode& root);	
 			static	void		purgeProjectionTrees(ConstraintGroupNode& root);
 
-			static void			projectPose(ConstraintGroupNode& root, Ps::Array<BodySim*>& projectedBodies);
+			static void			projectPose(ConstraintGroupNode& root, PxArray<BodySim*>& projectedBodies);
 
 		private:
 			static	PxU32					projectionTreeBuildStep(ConstraintGroupNode& node, ConstraintSim* cToParent, ConstraintGroupNode** nodeStack);
 
 			static	void					getConstraintStatus(const ConstraintSim& c, const BodySim* b, BodySim*& otherBody, PxU32& projectToBody, PxU32& projectToOtherBody);
 			static	void					rankConstraint(ConstraintSim&, BodyRank&, PxU32& dominanceTracking, PxU32& constraintsToProjectCount);
-			static	void					projectPoseForTree(ConstraintGroupNode& node, Ps::Array<BodySim*>& projectedBodies);
+			static	void					projectPoseForTree(ConstraintGroupNode& node, PxArray<BodySim*>& projectedBodies);
 	};
 
 } // namespace Sc

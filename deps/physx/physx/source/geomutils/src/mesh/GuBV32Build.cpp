@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,31 +22,28 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxVec4.h"
+#include "foundation/PxBasicTemplates.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxMemory.h"
 #include "geometry/PxTriangle.h"
 
 #include "GuBV32Build.h"
 #include "GuBV32.h"
 #include "GuCenterExtents.h"
 #include "GuBV4Build.h"
-#include "CmPhysXCommon.h"
-#include "PsBasicTemplates.h"
-#include "PsAllocator.h"
 
 using namespace physx;
 using namespace Gu;
 
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+#include "foundation/PxVecMath.h"
+using namespace physx::aos;
 
-#define DELETESINGLE(x)	if (x) { delete x;		x = NULL; }
-#define DELETEARRAY(x)	if (x) { delete []x;	x = NULL; }
-
-struct BV32Node : public physx::shdfnd::UserAllocated
+struct BV32Node : public physx::PxUserAllocated
 {
 	BV32Node() : mNbChildBVNodes(0)
 	{}
@@ -104,7 +100,7 @@ static void fillInNodes(const AABBTreeNode* current_node, const PxU32 startIndex
 
 
 
-static void setPrimitive(const AABBTree& source, BV32Node* node32, PxU32 i, const AABBTreeNode* node, float epsilon)
+static void setPrimitive(const BV4_AABBTree& source, BV32Node* node32, PxU32 i, const AABBTreeNode* node, float epsilon)
 {
 	const PxU32 nbPrims = node->getNbPrimitives();
 	PX_ASSERT(nbPrims<=32);
@@ -120,14 +116,17 @@ static void setPrimitive(const AABBTree& source, BV32Node* node32, PxU32 i, cons
 #endif
 	const PxU32 primitiveIndex = (offset << 6) | (nbPrims & 63);
 
-	node32->mBVData[i].mCenter = node->getAABB().getCenter();
-	node32->mBVData[i].mExtents = node->getAABB().getExtents();
+	node32->mBVData[i].mMin = node->getAABB().minimum;
+	node32->mBVData[i].mMax = node->getAABB().maximum;
 	if (epsilon != 0.0f)
-		node32->mBVData[i].mExtents += PxVec3(epsilon, epsilon, epsilon);
+	{
+		node32->mBVData[i].mMin -= PxVec3(epsilon);
+		node32->mBVData[i].mMax += PxVec3(epsilon);
+	}
 	node32->mBVData[i].mData = (primitiveIndex << 1) | 1;
 }
 
-static BV32Node* setNode(const AABBTree& source, BV32Node* node32, PxU32 i, const AABBTreeNode* node, float epsilon)
+static BV32Node* setNode(const BV4_AABBTree& source, BV32Node* node32, PxU32 i, const AABBTreeNode* node, float epsilon)
 {
 	BV32Node* child = NULL;
 
@@ -139,10 +138,14 @@ static BV32Node* setNode(const AABBTree& source, BV32Node* node32, PxU32 i, cons
 		}
 		else
 		{
-			node32->mBVData[i].mCenter = node->getAABB().getCenter();
-			node32->mBVData[i].mExtents = node->getAABB().getExtents();
+
+			node32->mBVData[i].mMin = node->getAABB().minimum;
+			node32->mBVData[i].mMax = node->getAABB().maximum;
 			if (epsilon != 0.0f)
-				node32->mBVData[i].mExtents += PxVec3(epsilon, epsilon, epsilon);
+			{
+				node32->mBVData[i].mMin -= PxVec3(epsilon);
+				node32->mBVData[i].mMax += PxVec3(epsilon);
+			}
 
 			child = PX_NEW(BV32Node);
 			node32->mBVData[i].mData = size_t(child);
@@ -153,12 +156,12 @@ static BV32Node* setNode(const AABBTree& source, BV32Node* node32, PxU32 i, cons
 }
 
 
-static void _BuildBV32(const AABBTree& source, BV32Node* tmp, const AABBTreeNode* current_node, float epsilon, PxU32& nbNodes)
+static void buildBV32(const BV4_AABBTree& source, BV32Node* tmp, const AABBTreeNode* current_node, float epsilon, PxU32& nbNodes)
 {
 	PX_ASSERT(!current_node->isLeaf());
 
 	const AABBTreeNode* NODES[32];
-	memset(NODES, 0, sizeof(AABBTreeNode*) * 32);
+	PxMemSet(NODES, 0, sizeof(AABBTreeNode*) * 32);
 
 	fillInNodes(current_node, 0, 31, NODES, tmp->mNbChildBVNodes);
 
@@ -204,7 +207,7 @@ static void _BuildBV32(const AABBTree& source, BV32Node* tmp, const AABBTreeNode
 		BV32Node* Child = setNode(source, tmp, i, tempNode, epsilon);
 		if (Child)
 		{
-			_BuildBV32(source, Child, tempNode, epsilon, nbNodes);
+			buildBV32(source, Child, tempNode, epsilon, nbNodes);
 		}
 	}
 
@@ -234,8 +237,10 @@ static void _BuildBV32(const AABBTree& source, BV32Node* tmp, const AABBTreeNode
 //}
 
 #if BV32_VALIDATE
-static void validateNodeBound(const BV32Node* currentNode, SourceMesh* mesh)
+static void validateNodeBound(const BV32Node* currentNode, SourceMeshBase* mesh, float epsilon)
 {
+	const PxU32 nbPrimitivesFromMesh = mesh->getNbPrimitives();
+	const PxReal eps = 1e-5f;
 	const PxU32 nbNodes = currentNode->mNbChildBVNodes;
 	for (PxU32 i = 0; i < nbNodes; ++i)
 	{
@@ -243,71 +248,113 @@ static void validateNodeBound(const BV32Node* currentNode, SourceMesh* mesh)
 		if (currentNode->isLeaf(i))
 		{
 			BV32Data data = currentNode->mBVData[i];
-			PxU32 nbTriangles = data.getNbReferencedTriangles();
-			PxU32 startIndex = data.getTriangleStartIndex();
-			const IndTri32* triIndices = mesh->getTris32();
-			const PxVec3* verts = mesh->getVerts();
+			PxU32 nbPrimitives = data.getNbReferencedPrimitives();
+			PxU32 startIndex = data.getPrimitiveStartIndex();
+
+			PX_ASSERT(startIndex< nbPrimitivesFromMesh);
+
 			PxVec3 min(PX_MAX_F32, PX_MAX_F32, PX_MAX_F32);
 			PxVec3 max(-PX_MAX_F32, -PX_MAX_F32, -PX_MAX_F32);
-			for (PxU32 j = 0; j < nbTriangles; ++j)
+			const PxVec3* verts = mesh->getVerts();
+
+			if (mesh->getMeshType() == SourceMeshBase::MeshType::TRI_MESH)
 			{
-				IndTri32 index = triIndices[startIndex + j];
-
-				for (PxU32 k = 0; k < 3; ++k)
+				const IndTri32* triIndices = static_cast<SourceMesh*>(mesh)->getTris32();
+				for (PxU32 j = 0; j < nbPrimitives; ++j)
 				{
-					const PxVec3& v = verts[index.mRef[k]];
+					IndTri32 index = triIndices[startIndex + j];
 
-					min.x = (min.x > v.x) ? v.x : min.x;
-					min.y = (min.y > v.y) ? v.y : min.y;
-					min.z = (min.z > v.z) ? v.z : min.z;
+					for (PxU32 k = 0; k < 3; ++k)
+					{
+						const PxVec3& v = verts[index.mRef[k]];
 
-					max.x = (max.x < v.x) ? v.x : max.x;
-					max.y = (max.y > v.y) ? v.y : max.y;
-					max.z = (max.z > v.z) ? v.z : max.z;
+						min.x = (min.x > v.x) ? v.x : min.x;
+						min.y = (min.y > v.y) ? v.y : min.y;
+						min.z = (min.z > v.z) ? v.z : min.z;
+
+						max.x = (max.x < v.x) ? v.x : max.x;
+						max.y = (max.y < v.y) ? v.y : max.y;
+						max.z = (max.z < v.z) ? v.z : max.z;
+					}
+				}
+			}
+			else
+			{
+				const IndTetrahedron32* tetIndices = static_cast<TetrahedronSourceMesh*>(mesh)->getTetrahedrons32();
+				for (PxU32 j = 0; j < nbPrimitives; ++j)
+				{
+					IndTetrahedron32 index = tetIndices[startIndex + j];
+
+					for (PxU32 k = 0; k < 4; ++k)
+					{
+						const PxVec3& v = verts[index.mRef[k]];
+
+						min.x = (min.x > v.x) ? v.x : min.x;
+						min.y = (min.y > v.y) ? v.y : min.y;
+						min.z = (min.z > v.z) ? v.z : min.z;
+
+						max.x = (max.x < v.x) ? v.x : max.x;
+						max.y = (max.y < v.y) ? v.y : max.y;
+						max.z = (max.z < v.z) ? v.z : max.z;
+					}
 				}
 			}
 
 			PxVec3 dMin, dMax;
 			data.getMinMax(dMin, dMax);
-			PX_ASSERT(dMin.x <= min.x && dMin.y <= min.y && dMin.z <= min.z);
-			PX_ASSERT(dMax.x >= max.x && dMax.y >= max.y && dMax.z >= min.z);
+
+			const PxVec3 difMin = min - dMin;
+			const PxVec3 difMax = dMax - max;
+			PX_ASSERT(PxAbs(difMin.x - epsilon) < eps && PxAbs(difMin.y - epsilon) < eps && PxAbs(difMin.z - epsilon) < eps);
+			PX_ASSERT(PxAbs(difMax.x - epsilon) < eps && PxAbs(difMax.y - epsilon) < eps && PxAbs(difMax.z - epsilon) < eps);
 
 		}
 		else
 		{
-			validateNodeBound(node, mesh);
+			validateNodeBound(node, mesh, epsilon);
 		}
 	}
 }
 #endif
 
-static bool BuildBV32Internal(BV32Tree& bv32Tree, const AABBTree& Source, SourceMesh* mesh, float epsilon)
+static bool BuildBV32Internal(BV32Tree& bv32Tree, const BV4_AABBTree& Source, SourceMeshBase* mesh, float epsilon)
 {
-	if (mesh->getNbTriangles() <= 32)
+	GU_PROFILE_ZONE("..BuildBV32Internal")
+
+	const PxU32 nbPrimitives = mesh->getNbPrimitives();
+	if (nbPrimitives <= 32)
 	{
 		bv32Tree.mNbPackedNodes = 1;
 		bv32Tree.mPackedNodes = reinterpret_cast<BV32DataPacked*>(PX_ALLOC(sizeof(BV32DataPacked), "BV32DataPacked"));
 		BV32DataPacked& packedData = bv32Tree.mPackedNodes[0];
 		packedData.mNbNodes = 1;
-		packedData.mCenter[0] = PxVec4(Source.getBV().getCenter(), 0.f);
-		packedData.mExtents[0] = PxVec4(Source.getBV().getExtents(), 0.f);
-		packedData.mData[0] = (mesh->getNbTriangles() << 1) | 1;
+		packedData.mMin[0] = PxVec4(Source.getBV().minimum, 0.f);
+		packedData.mMax[0] = PxVec4(Source.getBV().maximum, 0.f);
+		packedData.mData[0] = (nbPrimitives << 1) | 1;
+		bv32Tree.mMaxTreeDepth = 1;
+		bv32Tree.mTreeDepthInfo = reinterpret_cast<BV32DataDepthInfo*>(PX_ALLOC(sizeof(BV32DataDepthInfo), "BV32DataDepthInfo"));
+		bv32Tree.mRemapPackedNodeIndexWithDepth = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32), "PxU32"));
+		bv32Tree.mTreeDepthInfo[0].offset = 0;
+		bv32Tree.mTreeDepthInfo[0].count = 1;
+		bv32Tree.mRemapPackedNodeIndexWithDepth[0] = 0;
+
 		return bv32Tree.init(mesh, Source.getBV());
 	}
 
 	{
+		GU_PROFILE_ZONE("...._checkMD")
 		struct Local
 		{
-			static void _CheckMD(const AABBTreeNode* current_node, PxU32& md, PxU32& cd)
+			static void _checkMD(const AABBTreeNode* current_node, PxU32& md, PxU32& cd)
 			{
 				cd++;
 				md = PxMax(md, cd);
 
-				if (current_node->getPos())	{ _CheckMD(current_node->getPos(), md, cd);	cd--; }
-				if (current_node->getNeg())	{ _CheckMD(current_node->getNeg(), md, cd);	cd--; }
+				if (current_node->getPos())	{ _checkMD(current_node->getPos(), md, cd);	cd--; }
+				if (current_node->getNeg())	{ _checkMD(current_node->getNeg(), md, cd);	cd--; }
 			}
 
-			static void _Check(AABBTreeNode* current_node)
+			static void _check(AABBTreeNode* current_node)
 			{
 				if (current_node->isLeaf())
 					return;
@@ -315,43 +362,49 @@ static bool BuildBV32Internal(BV32Tree& bv32Tree, const AABBTree& Source, Source
 				AABBTreeNode* P = const_cast<AABBTreeNode*>(current_node->getPos());
 				AABBTreeNode* N = const_cast<AABBTreeNode*>(current_node->getNeg());
 				{
-					PxU32 MDP = 0;	PxU32 CDP = 0;	_CheckMD(P, MDP, CDP);
-					PxU32 MDN = 0;	PxU32 CDN = 0;	_CheckMD(N, MDN, CDN);
+					PxU32 MDP = 0;	PxU32 CDP = 0;	_checkMD(P, MDP, CDP);
+					PxU32 MDN = 0;	PxU32 CDN = 0;	_checkMD(N, MDN, CDN);
 
 					if (MDP>MDN)
 						//					if(MDP<MDN)
 					{
-						Ps::swap(*P, *N);
-						Ps::swap(P, N);
+						PxSwap(*P, *N);
+						PxSwap(P, N);
 					}
 				}
-				_Check(P);
-				_Check(N);
+				_check(P);
+				_check(N);
 			}
 		};
-		Local::_Check(const_cast<AABBTreeNode*>(Source.getNodes()));
+		Local::_check(const_cast<AABBTreeNode*>(Source.getNodes()));
 	}
 
 
 	PxU32 nbNodes = 1;
 	BV32Node* Root32 = PX_NEW(BV32Node);
 
-
-	_BuildBV32(Source, Root32, Source.getNodes(), epsilon, nbNodes);
+	{
+		GU_PROFILE_ZONE("....buildBV32")
+		buildBV32(Source, Root32, Source.getNodes(), epsilon, nbNodes);
+	}
 
 #if BV32_VALIDATE
-	validateNodeBound(Root32, mesh);
+	validateNodeBound(Root32, mesh, epsilon);
 #endif
 
 	if (!bv32Tree.init(mesh, Source.getBV()))
 		return false;
 	BV32Tree* T = &bv32Tree;
 
+	PxU32 MaxDepth = 0;
+
 	// Version with variable-sized nodes in single stream
 	{
+		GU_PROFILE_ZONE("...._flatten")
+
 		struct Local
 		{
-			static void _Flatten(BV32Data* const dest, const PxU32 box_id, PxU32& current_id, const BV32Node* current, PxU32& max_depth, PxU32& current_depth, const PxU32 nb_nodes)
+			static void _flatten(BV32Data* const dest, const PxU32 box_id, PxU32& current_id, const BV32Node* current, PxU32& max_depth, PxU32& current_depth, const PxU32 nb_nodes)
 			{
 				// Entering a new node => increase depth
 				current_depth++;
@@ -361,18 +414,19 @@ static bool BuildBV32Internal(BV32Tree& bv32Tree, const AABBTree& Source, Source
 
 				for (PxU32 i = 0; i<current->mNbChildBVNodes; i++)
 				{
-					dest[box_id + i].mCenter = current->mBVData[i].mCenter;
-					dest[box_id + i].mExtents = current->mBVData[i].mExtents;
+					dest[box_id + i].mMin = current->mBVData[i].mMin;
+					dest[box_id + i].mMax = current->mBVData[i].mMax;
 					dest[box_id + i].mData = PxU32(current->mBVData[i].mData);
+					dest[box_id + i].mDepth = current_depth;
 
 					PX_ASSERT(box_id + i < nb_nodes);
 				}
 
 				PxU32 NbToGo = 0;
 				PxU32 NextIDs[32];
-				memset(NextIDs, PX_INVALID_U32, sizeof(PxU32)*32); 
+				PxMemSet(NextIDs, PX_INVALID_U32, sizeof(PxU32)*32); 
 				const BV32Node* ChildNodes[32];
-				memset(ChildNodes, 0, sizeof(BV32Node*)*32);
+				PxMemSet(ChildNodes, 0, sizeof(BV32Node*)*32);
 
 				BV32Data* data = dest + box_id;
 				for (PxU32 i = 0; i<current->mNbChildBVNodes; i++)
@@ -405,11 +459,11 @@ static bool BuildBV32Internal(BV32Tree& bv32Tree, const AABBTree& Source, Source
 
 				for (PxU32 i = 0; i<NbToGo; i++)
 				{
-					_Flatten(dest, NextIDs[i], current_id, ChildNodes[i], max_depth, current_depth, nb_nodes);
+					_flatten(dest, NextIDs[i], current_id, ChildNodes[i], max_depth, current_depth, nb_nodes);
 					current_depth--;
 				}
 
-				DELETESINGLE(current);
+				PX_DELETE(current);
 			}
 		};
 
@@ -417,8 +471,8 @@ static bool BuildBV32Internal(BV32Tree& bv32Tree, const AABBTree& Source, Source
 		PxU32 CurID = Root32->mNbChildBVNodes+1;
 
 		BV32Data* Nodes = PX_NEW(BV32Data)[nbNodes];
-		Nodes[0].mCenter = Source.getBV().getCenter();
-		Nodes[0].mExtents = Source.getBV().getExtents();
+		Nodes[0].mMin = Source.getBV().minimum;
+		Nodes[0].mMax = Source.getBV().maximum;
 
 		const PxU32 ChildType = Root32->mNbChildBVNodes << 1;
 		Nodes[0].mData = size_t(ChildType + (1 << GU_BV4_CHILD_OFFSET_SHIFT_COUNT));
@@ -429,10 +483,10 @@ static bool BuildBV32Internal(BV32Tree& bv32Tree, const AABBTree& Source, Source
 
 
 		T->mInitData = CurID;
-		PxU32 MaxDepth = 0;
+		
 		PxU32 CurrentDepth = 0;
 
-		Local::_Flatten(Nodes, 1, CurID, Root32, MaxDepth, CurrentDepth, nbNodes);
+		Local::_flatten(Nodes, 1, CurID, Root32, MaxDepth, CurrentDepth, nbNodes);
 
 		PX_ASSERT(CurID == nbNodes);
 
@@ -442,33 +496,115 @@ static bool BuildBV32Internal(BV32Tree& bv32Tree, const AABBTree& Source, Source
 	}
 
 	
-	bv32Tree.calculateLeafNode(bv32Tree.mNodes[0]);
+	{
+		GU_PROFILE_ZONE("....calculateLeafNode")
+		bv32Tree.calculateLeafNode(bv32Tree.mNodes[0]);
+	}
 	
-	bv32Tree.mPackedNodes = reinterpret_cast<BV32DataPacked*>(PX_ALLOC(sizeof(BV32DataPacked)*nbNodes, "BV32DataPacked"));
+	bv32Tree.mPackedNodes = PX_ALLOCATE(BV32DataPacked, nbNodes, "BV32DataPacked");
 	bv32Tree.mNbPackedNodes = nbNodes;
+	bv32Tree.mMaxTreeDepth = MaxDepth;
 
 	PxU32 nbPackedNodes = 1;
 	PxU32 currentIndex = bv32Tree.mNodes[0].getNbChildren() - bv32Tree.mNodes[0].mNbLeafNodes + 1;
 	BV32DataPacked& packedData = bv32Tree.mPackedNodes[0];
-	bv32Tree.createSOAformatNode(packedData, bv32Tree.mNodes[0], 1, currentIndex, nbPackedNodes);
-
-	bv32Tree.mNbPackedNodes = nbPackedNodes;
+	//BV32DataDepth& depthData = bv32Tree.mMaxDepthForPackedNodes[0];
+	{
+		GU_PROFILE_ZONE("....createSOAformatNode")
+		bv32Tree.createSOAformatNode(packedData, bv32Tree.mNodes[0], 1, currentIndex, nbPackedNodes);
+	}
 
 	PX_ASSERT(nbPackedNodes == currentIndex);
 	PX_ASSERT(nbPackedNodes > 0);
 
+	bv32Tree.mNbPackedNodes = nbPackedNodes;
+
+#if BV32_VALIDATE
+
+	/*for (PxU32 i = 0; i < nbNodes; ++i)
+	{
+		BV32Data& iNode = bv32Tree.mNodes[i];
+		for (PxU32 j =  i+1; j < nbNodes; ++j)
+		{
+			BV32Data& jNode = bv32Tree.mNodes[j];
+			PX_ASSERT(iNode.mDepth <= jNode.mDepth);
+		}
+	}*/
+
+#endif
+
+	{
+		GU_PROFILE_ZONE("....depth stuff")
+
+		//bv32Tree.mMaxDepthForPackedNodes = reinterpret_cast<BV32DataDepth*>(PX_ALLOC(sizeof(BV32DataDepth)*MaxDepth, "BV32DataDepth"));
+
+		bv32Tree.mTreeDepthInfo = PX_ALLOCATE(BV32DataDepthInfo, MaxDepth, "BV32DataDepthInfo");
+
+		PxU32 totalCount = 0;
+		for (PxU32 i = 0; i < MaxDepth; ++i)
+		{
+			PxU32 count = 0;
+			for (PxU32 j = 0; j < nbPackedNodes; ++j)
+			{
+				BV32DataPacked& jPackedData = bv32Tree.mPackedNodes[j];
+				if (jPackedData.mDepth == i)
+				{
+					count++;
+				}
+			}
+
+			bv32Tree.mTreeDepthInfo[i].offset = totalCount;
+			bv32Tree.mTreeDepthInfo[i].count = count;
+			totalCount += count;
+		}
+
+		PX_ASSERT(totalCount == nbPackedNodes);
+		bv32Tree.mRemapPackedNodeIndexWithDepth = PX_ALLOCATE(PxU32, nbPackedNodes, "PxU32");
+
+		for (PxU32 i = 0; i < MaxDepth; ++i)
+		{
+			PxU32 count = 0;
+			const PxU32 offset = bv32Tree.mTreeDepthInfo[i].offset;
+			PxU32* treeDepth = &bv32Tree.mRemapPackedNodeIndexWithDepth[offset];
+			for (PxU32 j = 0; j < nbPackedNodes; ++j)
+			{
+				BV32DataPacked& jPackedData = bv32Tree.mPackedNodes[j];
+				if (jPackedData.mDepth == i)
+				{
+					treeDepth[count++] = j;
+				}
+			}
+		}
+
+#if BV32_VALIDATE
+		for (PxU32 i = MaxDepth; i > 0; i--)
+		{
+			const PxU32 iOffset = bv32Tree.mTreeDepthInfo[i - 1].offset;
+			const PxU32 iCount = bv32Tree.mTreeDepthInfo[i - 1].count;
+			PxU32* iRempapNodeIndex = &bv32Tree.mRemapPackedNodeIndexWithDepth[iOffset];
+
+			for (PxU32 j = 0; j < iCount; ++j)
+			{
+				const PxU32 nodeIndex = iRempapNodeIndex[j];
+				BV32DataPacked& currentNode = bv32Tree.mPackedNodes[nodeIndex];
+				PX_ASSERT(currentNode.mDepth == i - 1);
+			}
+		
+		}
+#endif
+	}
 	return true;
 }
-
 /////
 
 struct ReorderData32
 {
-	const SourceMesh*	mMesh;
+	//const SourceMesh*	mMesh;
+	SourceMeshBase*		mMesh;
 	PxU32*				mOrder;
-	PxU32				mNbTrisPerLeaf;
+	PxU32				mNbPrimitivesPerLeaf;
 	PxU32				mIndex;
-	PxU32				mNbTris;
+	PxU32				mNbPrimitives;
 	PxU32				mStats[32];
 };
 
@@ -479,15 +615,15 @@ static bool gReorderCallback(const AABBTreeNode* current, PxU32 /*depth*/, void*
 	{
 		const PxU32 n = current->getNbPrimitives();
 		PX_ASSERT(n > 0);
-		PX_ASSERT(n <= Data->mNbTrisPerLeaf);
+		PX_ASSERT(n <= Data->mNbPrimitivesPerLeaf);
 		Data->mStats[n-1]++;
 		PxU32* Prims = const_cast<PxU32*>(current->getPrimitives());
 
 		for (PxU32 i = 0; i<n; i++)
 		{
-			PX_ASSERT(Prims[i]<Data->mNbTris);
+			PX_ASSERT(Prims[i]<Data->mNbPrimitives);
 			Data->mOrder[Data->mIndex] = Prims[i];
-			PX_ASSERT(Data->mIndex<Data->mNbTris);
+			PX_ASSERT(Data->mIndex<Data->mNbPrimitives);
 			Prims[i] = Data->mIndex;
 			Data->mIndex++;
 		}
@@ -496,27 +632,33 @@ static bool gReorderCallback(const AABBTreeNode* current, PxU32 /*depth*/, void*
 }
 
 
-bool physx::Gu::BuildBV32Ex(BV32Tree& tree, SourceMesh& mesh, float epsilon, PxU32 nbTrisPerLeaf)
+bool physx::Gu::BuildBV32Ex(BV32Tree& tree, SourceMeshBase& mesh, float epsilon, PxU32 nbPrimitivesPerLeaf)
 {
-	const PxU32 nbTris = mesh.mNbTris;
+	const PxU32 nbPrimitives = mesh.getNbPrimitives();
 
-	AABBTree Source;
-	if (!Source.buildFromMesh(mesh, nbTrisPerLeaf))
-		return false;
+	BV4_AABBTree Source;
+	{
+		GU_PROFILE_ZONE("..BuildBV32Ex_buildFromMesh")
 
+//		if (!Source.buildFromMesh(mesh, nbPrimitivesPerLeaf, BV4_SPLATTER_POINTS_SPLIT_GEOM_CENTER))
+		if (!Source.buildFromMesh(mesh, nbPrimitivesPerLeaf, BV4_SAH))
+			return false;
+	}
 
 	{
-		PxU32* order = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*nbTris, "BV32"));
+		GU_PROFILE_ZONE("..BuildBV32Ex_remap")
+
+		PxU32* order = PX_ALLOCATE(PxU32, nbPrimitives, "BV32");
 		ReorderData32 RD;
 		RD.mMesh = &mesh;
 		RD.mOrder = order;
-		RD.mNbTrisPerLeaf = nbTrisPerLeaf;
+		RD.mNbPrimitivesPerLeaf = nbPrimitivesPerLeaf;
 		RD.mIndex = 0;
-		RD.mNbTris = nbTris;
+		RD.mNbPrimitives = nbPrimitives;
 		for (PxU32 i = 0; i<32; i++)
 			RD.mStats[i] = 0;
 		Source.walk(gReorderCallback, &RD);
-		PX_ASSERT(RD.mIndex == nbTris);
+		PX_ASSERT(RD.mIndex == nbPrimitives);
 		mesh.remapTopology(order);
 		PX_FREE(order);
 		//		for(PxU32 i=0;i<16;i++)
@@ -524,8 +666,8 @@ bool physx::Gu::BuildBV32Ex(BV32Tree& tree, SourceMesh& mesh, float epsilon, PxU
 	}
 
 
-	//if (mesh.getNbTriangles() <= nbTrisPerLeaf)
-	//	return tree.init(&mesh, Source.getBV());
+	/*if (mesh.getNbPrimitives() <= nbPrimitivesPerLeaf)
+		return tree.init(&mesh, Source.getBV());*/
 
 	return BuildBV32Internal(tree, Source, &mesh, epsilon);
 }

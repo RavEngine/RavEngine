@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 cmake_minimum_required(VERSION 3.7)
 
@@ -69,19 +68,6 @@ MESSAGE("Using CXX Compiler: " ${CMAKE_CXX_COMPILER})
 
 INCLUDE(NvidiaBuildOptions)
 
-IF (NOT EXISTS ${PXSHARED_PATH})
-	IF (NOT EXISTS $ENV{PM_PxShared_PATH})
-		MESSAGE(FATAL_ERROR "Trying to set PxShared path, but PM_PxShared_PATH is not valid: '$ENV{PM_PxShared_PATH}'.")
-	ENDIF()
-	SET(PXSHARED_PATH_TMP $ENV{PM_PxShared_PATH})
-
-	STRING(REPLACE "\\" "/" PXSHARED_PATH_TMP ${PXSHARED_PATH_TMP})
-	SET(PXSHARED_PATH ${PXSHARED_PATH_TMP} CACHE INTERNAL "Path to PxShared")
-	
-	STRING(REGEX REPLACE "/PhysX$" "/PxShared" PXSHARED_INSTALL_PREFIX_TMP ${CMAKE_INSTALL_PREFIX})
-	SET(PXSHARED_INSTALL_PREFIX ${PXSHARED_INSTALL_PREFIX_TMP} CACHE INTERNAL "Path to PxShared")
-ENDIF()
-
 IF(CMAKE_CONFIGURATION_TYPES)
 	SET(CMAKE_CONFIGURATION_TYPES debug checked profile release)
 	SET(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING
@@ -125,12 +111,13 @@ SET(SOURCE_DISTRO_FILE_LIST "")
 
 SET(HEADER_GUARD_NAME "CONFIG")
 SET(HEADER_CONTENT "")
+FILE(READ ${PHYSX_ROOT_DIR}/buildtools/templates/boilerplate_bsd.txt BOILERPLATE_CONTENT)
 
 # Include the platform specific CMakeLists
 INCLUDE(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/CMakeLists.txt)
 
-# generate PxPhysXConfig.h header that will contain PhysX configuration defines like PX_PHYSX_STATIC_LIB
-CONFIGURE_FILE(${CMAKE_MODULE_PATH}/template/PxIncludeTemplate.h ${PHYSX_ROOT_DIR}/include/PxConfig.h)
+# generate PxConfig.h header that will contain PhysX configuration defines like PX_PHYSX_STATIC_LIB
+CONFIGURE_FILE(${PHYSX_ROOT_DIR}/buildtools/templates/PxIncludeTemplate.h ${PHYSX_ROOT_DIR}/include/PxConfig.h)
 
 IF(PX_GENERATE_SOURCE_DISTRO)
 	FOREACH(FILE_NAME ${SOURCE_DISTRO_FILE_LIST})

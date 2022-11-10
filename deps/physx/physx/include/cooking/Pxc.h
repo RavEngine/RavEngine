@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_COOKING_NX
-#define PX_COOKING_NX
+#ifndef PXC_H
+#define PXC_H
 
 #include "foundation/Px.h"
 
 // define API function declaration
 #if !defined PX_PHYSX_STATIC_LIB 
-	#if (PX_WINDOWS_FAMILY || PX_XBOXONE || PX_PS4 || PX_XBOX_SERIES_X)
+	#if PX_WINDOWS_FAMILY
 		#if defined PX_PHYSX_COOKING_EXPORTS
 			#define PX_PHYSX_COOKING_API __declspec(dllexport)
 		#else

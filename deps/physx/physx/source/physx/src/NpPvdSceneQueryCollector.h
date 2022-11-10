@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -33,22 +32,35 @@
 #include "geometry/PxGeometryHelpers.h"
 #include "PxFiltering.h"
 #include "PxQueryReport.h"
-#include "PxBatchQueryDesc.h"
+#include "PxQueryFiltering.h"
 
-#include "CmPhysXCommon.h"
-#include "PsArray.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxMutex.h"
 
 #if PX_SUPPORT_PVD
 
 namespace physx
 {
-namespace Scb
-{
-class Scene;
-}
-
 namespace Vd
 {
+	class PvdSceneClient;
+
+	struct QueryID { enum Enum {
+		QUERY_RAYCAST_ANY_OBJECT,
+		QUERY_RAYCAST_CLOSEST_OBJECT,
+		QUERY_RAYCAST_ALL_OBJECTS,
+
+		QUERY_OVERLAP_SPHERE_ALL_OBJECTS,
+		QUERY_OVERLAP_AABB_ALL_OBJECTS,
+		QUERY_OVERLAP_OBB_ALL_OBJECTS,
+		QUERY_OVERLAP_CAPSULE_ALL_OBJECTS,
+		QUERY_OVERLAP_CONVEX_ALL_OBJECTS,
+
+		QUERY_LINEAR_OBB_SWEEP_CLOSEST_OBJECT,
+		QUERY_LINEAR_CAPSULE_SWEEP_CLOSEST_OBJECT,
+		QUERY_LINEAR_CONVEX_SWEEP_CLOSEST_OBJECT
+	}; };
+
 struct PvdReference
 {
 	PX_FORCE_INLINE PvdReference()																													{}
@@ -106,17 +118,17 @@ struct PvdSqHit
 
 	PvdSqHit()
 	{
-		setDefaults(PxQueryHit());
+		setDefaults(0xFFFFffff, NULL, NULL);
 	}
 
 	explicit PvdSqHit(const PxOverlapHit& hit)
 	{
-		setDefaults(hit);
+		setDefaults(hit.faceIndex, hit.shape, hit.actor);
 	}
 
 	explicit PvdSqHit(const PxRaycastHit& hit)
 	{
-		setDefaults(hit);
+		setDefaults(hit.faceIndex, hit.shape, hit.actor);
 
 		mImpact = hit.position;
 		mNormal = hit.normal;
@@ -128,7 +140,7 @@ struct PvdSqHit
 
 	explicit PvdSqHit(const PxSweepHit& hit)
 	{
-		setDefaults(hit);
+		setDefaults(hit.faceIndex, hit.shape, hit.actor);
 
 		mImpact = hit.position;
 		mNormal = hit.normal;
@@ -137,11 +149,11 @@ struct PvdSqHit
 	}
 
   private:
-	void setDefaults(const PxQueryHit& hit)
+	void setDefaults(PxU32 faceIndex, const void* shape, const void* actor)
 	{
-		mShape = hit.shape;
-		mActor = hit.actor;
-		mFaceIndex = hit.faceIndex;
+		mShape = shape;
+		mActor = actor;
+		mFaceIndex = faceIndex;
 		mFlags = 0;
 		mImpact = mNormal = PxVec3(0.0f);
 		mDistance = mU = mV = 0.0f;
@@ -149,7 +161,7 @@ struct PvdSqHit
 };
 
 template <class T>
-class NamedArray : public Ps::Array<T>
+class NamedArray : public PxArray<T>
 {
 	public:
 		NamedArray(const char* names[2]) { mNames[0] = names[0]; mNames[1] = names[1]; }
@@ -161,12 +173,12 @@ class PvdSceneQueryCollector
 {
 	PX_NOCOPY(PvdSceneQueryCollector)
 public:
-	PvdSceneQueryCollector(Scb::Scene& scene, bool isBatched);
+	PvdSceneQueryCollector(Vd::PvdSceneClient* pvd, bool isBatched);
 	~PvdSceneQueryCollector()	{}
 
 	void clear()
 	{
-		Ps::Mutex::ScopedLock lock(mMutex);
+		PxMutex::ScopedLock lock(mMutex);
 
 		mAccumulatedRaycastQueries.clear();
 		mAccumulatedOverlapQueries.clear();
@@ -188,11 +200,7 @@ public:
 	void sweep(const PxGeometry& geometry, const PxTransform& pose, const PxVec3& unitDir, PxReal distance, const PxSweepHit* hit, PxU32 hitsNum, const PxQueryFilterData& filterData, bool multipleHits);
 	void overlapMultiple(const PxGeometry& geometry, const PxTransform& pose, const PxOverlapHit* hit, PxU32 hitsNum, const PxQueryFilterData& filterData);
 
-	void collectAllBatchedHits	(const PxRaycastQueryResult* raycastResults, PxU32 nbRaycastResults, PxU32 batchedRayQstartIdx,
-								const PxOverlapQueryResult* overlapResults, PxU32 nbOverlapResults, PxU32 batchedOverlapQstartIdx,
-								const PxSweepQueryResult* sweepResults, PxU32 nbSweepResults, PxU32 batchedSweepQstartIdx);
-
-	PX_FORCE_INLINE	Ps::Mutex&							getLock()												{ return mMutex;								}
+	PX_FORCE_INLINE	PxMutex&							getLock()												{ return mMutex;								}
 
 	template <class T>
 	PX_FORCE_INLINE	const char*							getArrayName(const NamedArray<T>& namedArray)	const	{ return namedArray.mNames[mIsBatched];			}
@@ -217,8 +225,8 @@ public:
 	NamedArray<PxFilterData>	mFilterData;
 
 private:
-	Scb::Scene&					mScene;
-	Ps::Mutex					mMutex;
+	Vd::PvdSceneClient*			mPVD;
+	PxMutex						mMutex;
 	NamedArray<PxGeometryHolder>mGeometries0;
 	NamedArray<PxGeometryHolder>mGeometries1;
 	PxU32						mInUse;

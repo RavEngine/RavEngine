@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,45 +22,72 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_NP_RIGIDACTOR_TEMPLATE_INTERNAL
-#define PX_PHYSICS_NP_RIGIDACTOR_TEMPLATE_INTERNAL
+#ifndef NP_RIGID_ACTOR_TEMPLATE_INTERNAL_H
+#define NP_RIGID_ACTOR_TEMPLATE_INTERNAL_H
+
+// PT: TODO: what is not internal about NpRigidActorTemplate.h ? Just merge the two files
+
+
 
 namespace physx
 {
 
-template<class T, class T2>
-static PX_FORCE_INLINE void releaseActorT(NpRigidActorTemplate<T>* actor, T2& scbActor)
+template<class APIClass, class T>
+static PX_FORCE_INLINE void removeRigidActorT(T& rigidActor)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*actor));
+	NpScene* s = rigidActor.getNpScene();
+	NP_WRITE_CHECK(s);
 
-	NpPhysics::getInstance().notifyDeletionListenersUserRelease(actor, actor->userData);
+	//Remove constraints (if any constraint is attached to the actor).
+	rigidActor.NpRigidActorTemplate<APIClass>::removeConstraints(rigidActor);
 
-	Scb::Scene* s = scbActor.getScbSceneForAPI();
+	//Remove from aggregate (if it is in an aggregate).
+	rigidActor.NpActorTemplate<APIClass>::removeFromAggregate(rigidActor);
 
-	const bool noSim = scbActor.isSimDisabledInternally();
-	// important to check the non-buffered flag because it tells what the current internal state of the object is
-	// (someone might switch to non-simulation and release all while the sim is running). Reading is fine even if 
-	// the sim is running because actor flags are read-only internally.
-	if(s && noSim)
-	{
-		// need to do it here because the Np-shape buffer will not be valid anymore after the release below
-		// and unlike simulation objects, there is no shape buffer in the simulation controller
-		actor->getShapeManager().clearShapesOnRelease(*s, *actor);
-	}
-
-	actor->NpRigidActorTemplate<T>::release();
-
+	//Remove from scene (if it is in a scene).
+	PxSceneQuerySystem* sqManager = NULL;
 	if(s)
 	{
-		s->removeActor(scbActor, true, noSim);
-		static_cast<NpScene*>(s->getPxScene())->removeFromRigidActorList(actor->getRigidActorArrayIndex());
+		sqManager = &s->getSQAPI();
+		const bool noSim = rigidActor.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION);
+		s->scRemoveActor(rigidActor, true, noSim);
 	}
 
-	scbActor.destroy();
+	//Remove associated shapes.
+	rigidActor.NpRigidActorTemplate<APIClass>::removeShapes(sqManager);
+}
+
+template<class APIClass, class T>
+static PX_FORCE_INLINE bool releaseRigidActorT(T& rigidActor)
+{
+	NpScene* s = rigidActor.getNpScene();
+	NP_WRITE_CHECK(s);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_AND_RETURN_VAL(s, "PxActor::release() not allowed while simulation is running. Call will be ignored.", false)
+
+	const bool noSim = rigidActor.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION);
+	if(s && noSim)
+	{
+		// need to do it here because the Np-shape buffer will not be valid anymore after the removal below
+		// and unlike simulation objects, there is no shape buffer in the simulation controller
+		rigidActor.getShapeManager().clearShapesOnRelease(*s, rigidActor);
+	}
+
+	NpPhysics::getInstance().notifyDeletionListenersUserRelease(&rigidActor, rigidActor.userData);
+
+	//Remove constraints, aggregates, scene, shapes. 
+	removeRigidActorT<APIClass, T>(rigidActor);
+
+	if (s)
+	{
+		s->removeFromRigidActorList(rigidActor);
+	}
+
+	return true;
 }
 
 }

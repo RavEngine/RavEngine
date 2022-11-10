@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_SCP_BODYCORE
-#define PX_PHYSICS_SCP_BODYCORE
+#ifndef SC_BODY_CORE_H
+#define SC_BODY_CORE_H
 
 #include "foundation/PxTransform.h"
 #include "ScRigidCore.h"
 #include "PxRigidDynamic.h"
 #include "PxvDynamics.h"
 #include "PxvConfig.h"
-#include "PsPool.h"
+#include "foundation/PxPool.h"
 
 namespace physx
 {
@@ -45,14 +44,6 @@ namespace Sc
 {
 	class BodySim;
 	struct SimStateData;
-
-	struct KinematicTransform
-	{
-		PxTransform		targetPose;		// The body will move to this pose over the superstep following this getting set.
-		PxU8			targetValid;	// User set a kinematic target.
-		PxU8			pad[2];
-		PxU8			type;		
-	};
 
 	class BodyCore : public RigidCore
 	{
@@ -68,14 +59,13 @@ namespace Sc
 		//---------------------------------------------------------------------------------
 	public:
 // PX_SERIALIZATION
-											BodyCore(const PxEMPTY) : RigidCore(PxEmpty), mCore(PxEmpty), mSimStateData(NULL)	{}
-		static			void				getBinaryMetaData(PxOutputStream& stream);
-						void				disableInternalCaching(bool disable);
-						void				restoreDynamicData();
+											BodyCore(const PxEMPTY) : RigidCore(PxEmpty), mCore(PxEmpty) {}
+			static			void			getBinaryMetaData(PxOutputStream& stream);
+							void			restoreDynamicData();
 
 //~PX_SERIALIZATION
 											BodyCore(PxActorType::Enum type, const PxTransform& bodyPose);
-		/*virtual*/							~BodyCore();
+											~BodyCore();
 
 		//---------------------------------------------------------------------------------
 		// External API
@@ -84,11 +74,14 @@ namespace Sc
 						void				setBody2World(const PxTransform& p);
 
 		PX_FORCE_INLINE	const PxVec3&		getLinearVelocity()			const	{ return mCore.linearVelocity;		}
-						void				setLinearVelocity(const PxVec3& v); 
+						void				setLinearVelocity(const PxVec3& v, bool skipBodySimUpdate=false);
 	
 		PX_FORCE_INLINE	const PxVec3&		getAngularVelocity()		const	{ return mCore.angularVelocity;		}
-						void				setAngularVelocity(const PxVec3& v);
+						void				setAngularVelocity(const PxVec3& v, bool skipBodySimUpdate=false);
 	
+		PX_FORCE_INLINE	PxReal				getCfmScale()				const { return mCore.cfmScale; }
+						void				setCfmScale(PxReal d);
+		
 		PX_FORCE_INLINE	void				updateVelocities(const PxVec3& linearVelModPerStep, const PxVec3& angularVelModPerStep)
 											{
 												mCore.linearVelocity += linearVelModPerStep;
@@ -98,10 +91,10 @@ namespace Sc
 		PX_FORCE_INLINE	const PxTransform&	getBody2Actor()				const	{ return mCore.getBody2Actor();			}
 						void				setBody2Actor(const PxTransform& p);
 
-						void				addSpatialAcceleration(Ps::Pool<SimStateData>* simStateDataPool, const PxVec3* linAcc, const PxVec3* angAcc);
-						void				setSpatialAcceleration(Ps::Pool<SimStateData>* simStateDataPool, const PxVec3* linAcc, const PxVec3* angAcc);
+						void				addSpatialAcceleration(PxPool<SimStateData>* simStateDataPool, const PxVec3* linAcc, const PxVec3* angAcc);
+						void				setSpatialAcceleration(PxPool<SimStateData>* simStateDataPool, const PxVec3* linAcc, const PxVec3* angAcc);
 						void				clearSpatialAcceleration(bool force, bool torque);
-						void				addSpatialVelocity(Ps::Pool<SimStateData>* simStateDataPool, const PxVec3* linVelDelta, const PxVec3* angVelDelta);
+						void				addSpatialVelocity(PxPool<SimStateData>* simStateDataPool, const PxVec3* linVelDelta, const PxVec3* angVelDelta);
 						void				clearSpatialVelocity(bool force, bool torque);
 
 		PX_FORCE_INLINE PxReal				getMaxPenetrationBias() const		{ return mCore.maxPenBias; }
@@ -119,7 +112,7 @@ namespace Sc
 						void				setAngularDamping(PxReal d);
 
 		PX_FORCE_INLINE	PxRigidBodyFlags	getFlags()					const	{ return mCore.mFlags;		}
-						void				setFlags(Ps::Pool<SimStateData>* simStateDataPool, PxRigidBodyFlags f);
+						void				setFlags(PxPool<SimStateData>* simStateDataPool, PxRigidBodyFlags f);
 
 		PX_FORCE_INLINE	PxRigidDynamicLockFlags	getRigidDynamicLockFlags()					const	{ return mCore.lockFlags; }
 
@@ -134,7 +127,10 @@ namespace Sc
 		PX_FORCE_INLINE PxReal				getMaxContactImpulse() const	{ return mCore.maxContactImpulse;  }
 						void				setMaxContactImpulse(PxReal m);
 
-						PxU32				getInternalIslandNodeIndex() const;
+		PX_FORCE_INLINE PxReal				getOffsetSlop() const	{ return mCore.offsetSlop;  }
+						void				setOffsetSlop(PxReal slop);
+
+						PxNodeIndex			getInternalIslandNodeIndex() const;
 
 		PX_FORCE_INLINE PxReal				getWakeCounter() const { return mCore.wakeCounter; }
 						void				setWakeCounter(PxReal wakeCounter, bool forceWakeUp=false);
@@ -154,9 +150,8 @@ namespace Sc
 
 						bool				getKinematicTarget(PxTransform& p) const;
 						bool				getHasValidKinematicTarget() const;
-						void				setKinematicTarget(Ps::Pool<SimStateData>* simStateDataPool, const PxTransform& p, PxReal wakeCounter);
+						void				setKinematicTarget(const PxTransform& p, PxReal wakeCounter);
 						void				invalidateKinematicTarget();
-						
 
 		PX_FORCE_INLINE	PxReal				getContactReportThreshold()	const	{ return mCore.contactReportThreshold;	}
 						void				setContactReportThreshold(PxReal t)	{ mCore.contactReportThreshold = t;		}
@@ -175,37 +170,24 @@ namespace Sc
 
 		PX_FORCE_INLINE	PxsBodyCore&		getCore()							{ return mCore;						}
 		PX_FORCE_INLINE	const PxsBodyCore&	getCore()			const			{ return mCore;						}
+		static PX_FORCE_INLINE size_t		getCoreOffset()						{ return PX_OFFSET_OF_RT(BodyCore, mCore);	}
 
 		PX_FORCE_INLINE	PxReal				getCCDAdvanceCoefficient() const	{ return mCore.ccdAdvanceCoefficient;	}
 		PX_FORCE_INLINE	void				setCCDAdvanceCoefficient(PxReal c)	{ mCore.ccdAdvanceCoefficient = c;		}
 
-						bool				setupSimStateData(Ps::Pool<SimStateData>* simStateDataPool, const bool isKinematic, const bool targetValid = false);
-						void				tearDownSimStateData(Ps::Pool<SimStateData>* simStateDataPool, const bool isKinematic);
+						void				onRemoveKinematicFromScene();
 
-						bool				checkSimStateKinematicStatus(bool) const;
+						PxIntBool			isFrozen()							const;
 
-						Ps::IntBool			isFrozen()							const;
+		static PX_FORCE_INLINE BodyCore&	getCore(PxsBodyCore& core)
+		{ 
+			return *reinterpret_cast<BodyCore*>(reinterpret_cast<PxU8*>(&core) - getCoreOffset());
+		}
 
-		PX_FORCE_INLINE const SimStateData*	getSimStateData(bool isKinematic)	const	{ return (mSimStateData && (checkSimStateKinematicStatus(isKinematic)) ? mSimStateData : NULL); }
-		PX_FORCE_INLINE SimStateData*		getSimStateData(bool isKinematic)			{ return (mSimStateData && (checkSimStateKinematicStatus(isKinematic)) ? mSimStateData : NULL); }
-
-		PX_FORCE_INLINE SimStateData*		getSimStateData_Unchecked()			const	{ return mSimStateData; }
-
-		static PX_FORCE_INLINE size_t		getCoreOffset()								{ return PX_OFFSET_OF_RT(BodyCore, mCore); }
-
-		static PX_FORCE_INLINE BodyCore&	getCore(PxsBodyCore& core)					{ return *reinterpret_cast<BodyCore*>(reinterpret_cast<PxU8*>(&core) - getCoreOffset()); }
-
-		void				setKinematicLink(const bool value);
-
+						void				setKinematicLink(const bool value);
 	private:
-						void				backup(SimStateData&);
-						void				restore();
-
 						PX_ALIGN_PREFIX(16) PxsBodyCore mCore PX_ALIGN_SUFFIX(16);
-						SimStateData*		mSimStateData;
 	};
-
-	PxActor* getPxActorFromBodyCore(Sc::BodyCore* bodyCore, PxActorType::Enum& type);
 
 } // namespace Sc
 

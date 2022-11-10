@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #include "PxsContactManager.h"
 #include "PxsRigidBody.h"
@@ -56,7 +54,6 @@ PxsContactManager::~PxsContactManager()
 {
 }
 
-
 void PxsContactManager::setCCD(bool enable)
 {
 	PxU32 flags = mFlags & (~PXS_CM_CCD_CONTACT);
@@ -67,21 +64,4 @@ void PxsContactManager::setCCD(bool enable)
 
 	mFlags = flags;
 }
-
-
-
-void PxsContactManager::resetCachedState()
-{ 
-	// happens when the body transform or shape relative transform changes.
-
-	PxcNpWorkUnitClearCachedState(mNpUnit);
-}
-
-void PxsContactManager::resetFrictionCachedState()
-{ 
-	// happens when the body transform or shape relative transform changes.
-
-	PxcNpWorkUnitClearFrictionCachedState(mNpUnit);
-}
-
 

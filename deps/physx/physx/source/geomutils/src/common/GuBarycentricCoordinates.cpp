@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,7 +30,7 @@
 #include "GuBarycentricCoordinates.h"
 
 using namespace physx;
-using namespace Ps::aos;
+using namespace aos;
 
 void Gu::barycentricCoordinates(const Vec3VArg p, const Vec3VArg a, const Vec3VArg b, FloatV& v)
 {
@@ -45,7 +44,7 @@ void Gu::barycentricCoordinates(const Vec3VArg p, const Vec3VArg a, const Vec3VA
 	v = FMul(numerator, denom);
 }
 
-void Gu::barycentricCoordinates(const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b, const Ps::aos::Vec3VArg c, Ps::aos::FloatV& v, Ps::aos::FloatV& w)
+void Gu::barycentricCoordinates(const aos::Vec3VArg p, const aos::Vec3VArg a, const aos::Vec3VArg b, const aos::Vec3VArg c, aos::FloatV& v, aos::FloatV& w)
 {
 	const Vec3V ab = V3Sub(b, a);
 	const Vec3V ac = V3Sub(c, a);

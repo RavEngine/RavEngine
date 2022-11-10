@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef DY_CONSTRAINTSHADER_H
-#define DY_CONSTRAINTSHADER_H
+#ifndef DY_CONSTRAINT_PREP_H
+#define DY_CONSTRAINT_PREP_H
 
 #include "DyConstraint.h"
 
 #include "DySolverConstraintDesc.h"
-#include "PsArray.h"
+#include "foundation/PxArray.h"
+#include "PxConstraint.h"
 
 #define DY_ARTICULATION_MIN_RESPONSE 1e-5f
-#define DY_ARTICULATION_CFM	1e-4f
+#define DY_ARTICULATION_CFM	2e-4f
 
 #define DY_ARTICULATION_BAD_RESPONSE 0.02f
 
@@ -58,45 +57,87 @@ namespace Cm
 namespace Dy
 {
 
-	static const PxU32 MAX_CONSTRAINT_ROWS = 12;
+	static const PxU32 MAX_CONSTRAINT_ROWS = 20;
 
-struct SolverConstraintShaderPrepDesc
-{
-	const Constraint* constraint;
-	PxConstraintSolverPrep solverPrep;
-	const void* constantBlock;
-	PxU32 constantBlockByteSize;
-};
+	struct SolverConstraintShaderPrepDesc
+	{
+		const Constraint* constraint;
+		PxConstraintSolverPrep solverPrep;
+		const void* constantBlock;
+		PxU32 constantBlockByteSize;
+	};
 
-SolverConstraintPrepState::Enum setupSolverConstraint4
-	(SolverConstraintShaderPrepDesc* PX_RESTRICT constraintShaderDescs,
-	PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
+	SolverConstraintPrepState::Enum setupSolverConstraint4
+		(SolverConstraintShaderPrepDesc* PX_RESTRICT constraintShaderDescs,
+		PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
+			const PxReal dt, const PxReal recipdt, PxU32& totalRows,
+			 PxConstraintAllocator& allocator);
+
+	SolverConstraintPrepState::Enum setupSolverConstraint4
+		(PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 		const PxReal dt, const PxReal recipdt, PxU32& totalRows,
-		 PxConstraintAllocator& allocator);
+		PxConstraintAllocator& allocator, PxU32 maxRows);
 
-SolverConstraintPrepState::Enum setupSolverConstraint4
-	(PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
-	const PxReal dt, const PxReal recipdt, PxU32& totalRows,
-	PxConstraintAllocator& allocator, PxU32 maxRows);
-
-PxU32 SetupSolverConstraint(SolverConstraintShaderPrepDesc& shaderDesc,
-							PxSolverConstraintPrepDesc& prepDesc,
-							   PxConstraintAllocator& allocator,
-							   PxReal dt, PxReal invdt, Cm::SpatialVectorF* Z);
+	PxU32 SetupSolverConstraint(SolverConstraintShaderPrepDesc& shaderDesc,
+								PxSolverConstraintPrepDesc& prepDesc,
+								   PxConstraintAllocator& allocator,
+								   PxReal dt, PxReal invdt, Cm::SpatialVectorF* Z);
 
 
-class ConstraintHelper
-{
-public:
+	class ConstraintHelper
+	{
+	public:
 
-	static PxU32 setupSolverConstraint(
-		PxSolverConstraintPrepDesc& prepDesc,
-		PxConstraintAllocator& allocator,
-		PxReal dt, PxReal invdt, Cm::SpatialVectorF* Z);
-};
+		static PxU32 setupSolverConstraint(
+			PxSolverConstraintPrepDesc& prepDesc,
+			PxConstraintAllocator& allocator,
+			PxReal dt, PxReal invdt, Cm::SpatialVectorF* Z);
+	};
 
+	template<class PrepDescT>
+	PX_FORCE_INLINE void setupConstraintFlags(PrepDescT& prepDesc, PxU16 flags)
+	{
+		prepDesc.disablePreprocessing	= (flags & PxConstraintFlag::eDISABLE_PREPROCESSING)!=0;
+		prepDesc.improvedSlerp			= (flags & PxConstraintFlag::eIMPROVED_SLERP)!=0;
+		prepDesc.driveLimitsAreForces	= (flags & PxConstraintFlag::eDRIVE_LIMITS_ARE_FORCES)!=0;
+		prepDesc.extendedLimits			= (flags & PxConstraintFlag::eENABLE_EXTENDED_LIMITS)!=0;
+		prepDesc.disableConstraint		= (flags & PxConstraintFlag::eDISABLE_CONSTRAINT)!=0;
+	}
+
+	void preprocessRows(Px1DConstraint** sorted,
+		Px1DConstraint* rows,
+		PxVec4* angSqrtInvInertia0,
+		PxVec4* angSqrtInvInertia1,
+		PxU32 rowCount,
+		const PxMat33& sqrtInvInertia0F32,
+		const PxMat33& sqrtInvInertia1F32,
+		const PxReal invMass0,
+		const PxReal invMass1,
+		const PxConstraintInvMassScale& ims,
+		bool disablePreprocessing,
+		bool diagonalizeDrive);
+
+	PX_FORCE_INLINE	void setupConstraintRows(Px1DConstraint* PX_RESTRICT rows, PxU32 size)
+	{
+		// This is necessary so that there will be sensible defaults and shaders will
+		// continue to work (albeit with a recompile) if the row format changes.
+		// It's a bit inefficient because it fills in all constraint rows even if there
+		// is only going to be one generated. A way around this would be for the shader to
+		// specify the maximum number of rows it needs, or it could call a subroutine to
+		// prep the row before it starts filling it it.
+
+		PxMemZero(rows, sizeof(Px1DConstraint)*size);
+
+		for(PxU32 i=0; i<size; i++)
+		{
+			Px1DConstraint& c = rows[i];
+			//Px1DConstraintInit(c);
+			c.minImpulse = -PX_MAX_REAL;
+			c.maxImpulse = PX_MAX_REAL;
+		}
+	}
 }
 
 }
 
-#endif //DY_CONSTRAINTSHADER_H
+#endif

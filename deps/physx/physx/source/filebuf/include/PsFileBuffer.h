@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,22 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #ifndef PSFILEBUFFER_PSFILEBUFFER_H
 #define PSFILEBUFFER_PSFILEBUFFER_H
 
 #include "filebuf/PxFileBuf.h"
 
-#include "Ps.h"
-#include "PsUserAllocated.h"
+#include "foundation/PxUserAllocated.h"
 #include <stdio.h>
 
 namespace physx
 {
 namespace general_PxIOStream2
 {
-	using namespace shdfnd;
 
 //Use this class if you want to use your own allocator
 class PxFileBufferBase : public PxFileBuf
@@ -237,7 +234,7 @@ private:
 };
 
 //Use this class if you want to use PhysX memory allocator
-class PsFileBuffer: public PxFileBufferBase, public UserAllocated
+class PsFileBuffer: public PxFileBufferBase, public PxUserAllocated
 {
 public:
 	PsFileBuffer(const char *fileName,OpenMode mode): PxFileBufferBase(fileName, mode) {}

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,38 +22,41 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-
-#include "PsFoundation.h"
 #include "SqCompoundPruner.h"
-#include "SqIncrementalAABBTree.h"
-#include "SqPruningPool.h"
+#include "GuSqInternal.h"
+#include "GuIncrementalAABBTree.h"
+#include "GuPruningPool.h"
 #include "GuAABBTreeQuery.h"
+#include "GuAABBTreeNode.h"
 #include "GuSphere.h"
 #include "GuBox.h"
 #include "GuCapsule.h"
-#include "GuBounds.h"
-#include "GuBVHStructure.h"
-
+#include "GuBVH.h"
+#include "GuQuery.h"
+#include "GuInternal.h"
+#include "common/PxRenderBuffer.h"
+#include "common/PxRenderOutput.h"
+#include "CmVisualization.h"
 
 using namespace physx;
 using namespace Gu;
 using namespace Sq;
-using namespace Cm;
+
+// PT: TODO: this is copied from SqBounds.h, should be either moved to Gu and shared or passed as a user parameter
+	#define SQ_PRUNER_EPSILON	0.005f
+	#define SQ_PRUNER_INFLATION	(1.0f + SQ_PRUNER_EPSILON)	// pruner test shape inflation (not narrow phase shape)
 
 #define PARANOIA_CHECKS 0
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-BVHCompoundPruner::BVHCompoundPruner()
+BVHCompoundPruner::BVHCompoundPruner(PxU64 contextID) : mCompoundTreePool(contextID), mDrawStatic(false), mDrawDynamic(false)
 {
-	mCompoundTreePool.preallocate(32);
-	mMainTreeUpdateMap.resizeUninitialized(32);
-	mPoolActorMap.resizeUninitialized(32);
-	mChangedLeaves.reserve(32);
+	preallocate(32);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,12 +67,12 @@ BVHCompoundPruner::~BVHCompoundPruner()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BVHCompoundPruner::addCompound(PrunerHandle* results, const Gu::BVHStructure& bvhStructure, PrunerCompoundId compoundId, const PxTransform& transform, CompoundFlag::Enum flags, const PrunerPayload* userData)
+bool BVHCompoundPruner::addCompound(PrunerHandle* results, const BVH& bvh, PrunerCompoundId compoundId, const PxTransform& transform, bool isDynamic, const PrunerPayload* data, const PxTransform* transforms)
 {
-	PX_ASSERT(bvhStructure.getNbBounds());
+	PX_ASSERT(bvh.getNbBounds());
 	
-	const PxBounds3 compoundBounds = PxBounds3::transformFast(transform, bvhStructure.getNodes()->mBV);
-	const PoolIndex poolIndex = mCompoundTreePool.addCompound(results, bvhStructure, compoundBounds, transform, flags, userData);
+	const PxBounds3 compoundBounds = PxBounds3::transformFast(transform, bvh.getNodes()->mBV);
+	const PoolIndex poolIndex = mCompoundTreePool.addCompound(results, bvh, compoundBounds, transform, isDynamic, data, transforms);
 
 	mChangedLeaves.clear();
 	IncrementalAABBTreeNode* node = mMainTree.insert(poolIndex, mCompoundTreePool.getCurrentCompoundBounds(), mChangedLeaves);
@@ -127,15 +129,21 @@ void BVHCompoundPruner::updateMapping(const PoolIndex poolIndex, IncrementalAABB
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-void BVHCompoundPruner::removeCompound(PrunerCompoundId compoundId)
+bool BVHCompoundPruner::removeCompound(PrunerCompoundId compoundId, PrunerPayloadRemovalCallback* removalCallback)
 {
 	const ActorIdPoolIndexMap::Entry* poolIndexEntry = mActorPoolMap.find(compoundId);
 	PX_ASSERT(poolIndexEntry);
 
+	bool isDynamic = false;
+
 	if(poolIndexEntry)
 	{
 		const PoolIndex poolIndex = poolIndexEntry->second;
-		const PoolIndex poolRelocatedLastIndex = mCompoundTreePool.removeCompound(poolIndex);
+
+		CompoundTree& compoundTree = mCompoundTreePool.getCompoundTrees()[poolIndex];
+		isDynamic = compoundTree.mFlags & PxCompoundPrunerQueryFlag::eDYNAMIC;
+
+		const PoolIndex poolRelocatedLastIndex = mCompoundTreePool.removeCompound(poolIndex, removalCallback);
 
 		IncrementalAABBTreeNode* node = mMainTree.remove(mMainTreeUpdateMap[poolIndex], poolIndex, mCompoundTreePool.getCurrentCompoundBounds());
 		// if node moved to its parent
@@ -164,25 +172,35 @@ void BVHCompoundPruner::removeCompound(PrunerCompoundId compoundId)
 #if PARANOIA_CHECKS
 	test();
 #endif
+
+	return isDynamic;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-void BVHCompoundPruner::updateCompound(PrunerCompoundId compoundId, const PxTransform& transform)
+bool BVHCompoundPruner::updateCompound(PrunerCompoundId compoundId, const PxTransform& transform)
 {
 	const ActorIdPoolIndexMap::Entry* poolIndexEntry = mActorPoolMap.find(compoundId);
 	PX_ASSERT(poolIndexEntry);
 
+	bool isDynamic = false;
+
 	if(poolIndexEntry)
 	{
 		const PxU32 poolIndex = poolIndexEntry->second;
+
+		CompoundTree& compoundTree = mCompoundTreePool.getCompoundTrees()[poolIndex];
+		isDynamic = compoundTree.mFlags & PxCompoundPrunerQueryFlag::eDYNAMIC;
+
+		compoundTree.mGlobalPose = transform;
+
 		PxBounds3 localBounds;
-		const IncrementalAABBTreeNode* node = mCompoundTreePool.getCompoundTrees()[poolIndex].mTree->getNodes();
-		mCompoundTreePool.getCompoundTrees()[poolIndex].mGlobalPose = transform;
+		const IncrementalAABBTreeNode* node = compoundTree.mTree->getNodes();
 		V4StoreU(node->mBVMin, &localBounds.minimum.x);
 		PX_ALIGN(16, PxVec4) max4;
 		V4StoreA(node->mBVMax, &max4.x);
 		localBounds.maximum = PxVec3(max4.x, max4.y, max4.z);
+
 		const PxBounds3 compoundBounds = PxBounds3::transformFast(transform, localBounds);
 		mCompoundTreePool.getCurrentCompoundBounds()[poolIndex] = compoundBounds;
 		mChangedLeaves.clear();
@@ -194,13 +212,14 @@ void BVHCompoundPruner::updateCompound(PrunerCompoundId compoundId, const PxTran
 #if PARANOIA_CHECKS
 	test();
 #endif
+
+	return isDynamic;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 void BVHCompoundPruner::test()
 {
-
 	if(mMainTree.getNodes())
 	{
 		for(PxU32 i = 0; i < mCompoundTreePool.getNbObjects(); i++)
@@ -219,20 +238,79 @@ void BVHCompoundPruner::release()
 //////////////////////////////////////////////////////////////////////////
 // Queries implementation
 //////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+	struct CompoundCallbackRaycastAdapter
+	{
+		PX_FORCE_INLINE	CompoundCallbackRaycastAdapter(CompoundPrunerRaycastCallback& pcb, const CompoundTree& tree) : mCallback(pcb), mTree(tree)	{}
+
+		PX_FORCE_INLINE bool	invoke(PxReal& distance, PxU32 primIndex)
+		{
+			return mCallback.invoke(distance, primIndex, mTree.mPruningPool->getObjects(), mTree.mPruningPool->getTransforms(), &mTree.mGlobalPose);
+		}
+
+		CompoundPrunerRaycastCallback&	mCallback;
+		const CompoundTree&				mTree;
+		PX_NOCOPY(CompoundCallbackRaycastAdapter)
+	};
+
+	struct CompoundCallbackOverlapAdapter
+	{
+		PX_FORCE_INLINE	CompoundCallbackOverlapAdapter(CompoundPrunerOverlapCallback& pcb, const CompoundTree& tree) : mCallback(pcb), mTree(tree)	{}
+
+		PX_FORCE_INLINE bool	invoke(PxU32 primIndex)
+		{
+			return mCallback.invoke(primIndex, mTree.mPruningPool->getObjects(), mTree.mPruningPool->getTransforms(), &mTree.mGlobalPose);
+		}
+
+		CompoundPrunerOverlapCallback&	mCallback;
+		const CompoundTree&				mTree;
+		PX_NOCOPY(CompoundCallbackOverlapAdapter)
+	};
+}
+
+template<class PrunerCallback>
+struct MainTreeCompoundPrunerCallback
+{
+	MainTreeCompoundPrunerCallback(PrunerCallback& prunerCallback, PxCompoundPrunerQueryFlags flags, const CompoundTree* compoundTrees)
+		: mPrunerCallback(prunerCallback), mQueryFlags(flags), mCompoundTrees(compoundTrees)
+	{
+	}
+
+	virtual ~MainTreeCompoundPrunerCallback() {}
+
+	PX_FORCE_INLINE bool filtering(const CompoundTree& compoundTree)	const
+	{
+		if(!(compoundTree.mFlags & mQueryFlags) || !compoundTree.mTree->getNodes())
+			return true;
+		return false;
+	}
+
+	protected:
+	PrunerCallback&						mPrunerCallback;
+	const PxCompoundPrunerQueryFlags	mQueryFlags;
+	const CompoundTree*					mCompoundTrees;
+
+	PX_NOCOPY(MainTreeCompoundPrunerCallback)
+};
+
 // Raycast/sweeps callback for main AABB tree
 template<bool tInflate>
-struct MainTreeRaycastCompoundPrunerCallback
+struct MainTreeRaycastCompoundPrunerCallback : MainTreeCompoundPrunerCallback<CompoundPrunerRaycastCallback>
 {
-	MainTreeRaycastCompoundPrunerCallback(const PxVec3& origin, const PxVec3& unitDir, const PxVec3& extent, PrunerCallback& prunerCallback, PxQueryFlags flags)
-		: mOrigin(origin), mUnitDir(unitDir), mExtent(extent), mPrunerCallback(prunerCallback), mQueryFlags(flags)
+	MainTreeRaycastCompoundPrunerCallback(const PxVec3& origin, const PxVec3& unitDir, const PxVec3& extent, CompoundPrunerRaycastCallback& prunerCallback, PxCompoundPrunerQueryFlags flags, const CompoundTree* compoundTrees)
+		: MainTreeCompoundPrunerCallback(prunerCallback, flags, compoundTrees), mOrigin(origin), mUnitDir(unitDir), mExtent(extent)
 	{
 	}
 
 	virtual ~MainTreeRaycastCompoundPrunerCallback() {}
 
-	virtual PxAgain invoke(PxReal& distance, const CompoundTree& compoundTree)
+	bool invoke(PxReal& distance, PxU32 primIndex)
 	{
-		if(!(compoundTree.mFlags &  PxU32(mQueryFlags)) || !compoundTree.mTree->getNodes())
+		const CompoundTree& compoundTree = mCompoundTrees[primIndex];
+
+		if(filtering(compoundTree))
 			return true;
 
 		// transfer to actor local space
@@ -242,41 +320,40 @@ struct MainTreeRaycastCompoundPrunerCallback
 
 		if(tInflate)
 		{
-			PxBounds3 wBounds = PxBounds3::centerExtents(mOrigin, mExtent);
-			PxBounds3 localBounds = PxBounds3::transformSafe(compoundTree.mGlobalPose.getInverse(), wBounds);
+			const PxBounds3 wBounds = PxBounds3::centerExtents(mOrigin, mExtent);
+			const PxBounds3 localBounds = PxBounds3::transformSafe(compoundTree.mGlobalPose.getInverse(), wBounds);
 			localExtent = localBounds.getExtents();
 		}
 
 		// raycast the merged tree
-		return AABBTreeRaycast<tInflate, IncrementalAABBTree, IncrementalAABBTreeNode, PrunerPayload, PrunerCallback>()
-			(compoundTree.mPruningPool->getObjects(), compoundTree.mPruningPool->getCurrentWorldBoxes(), *compoundTree.mTree, localOrigin, localDir, distance, localExtent, mPrunerCallback);
+		CompoundCallbackRaycastAdapter pcb(mPrunerCallback, compoundTree);
+		return AABBTreeRaycast<tInflate, true, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundCallbackRaycastAdapter>()
+			(compoundTree.mPruningPool->getCurrentAABBTreeBounds(), *compoundTree.mTree, localOrigin, localDir, distance, localExtent, pcb);
 	}
 
 	PX_NOCOPY(MainTreeRaycastCompoundPrunerCallback)
 
 private:
-	const PxVec3&		mOrigin;
-	const PxVec3&		mUnitDir;	
-	const PxVec3&		mExtent;
-	PrunerCallback&		mPrunerCallback;
-	PxQueryFlags		mQueryFlags;
+	const PxVec3&	mOrigin;
+	const PxVec3&	mUnitDir;	
+	const PxVec3&	mExtent;
 };
 
 //////////////////////////////////////////////////////////////////////////
 // raycast against the compound pruner
-PxAgain BVHCompoundPruner::raycast(const PxVec3& origin, const PxVec3& unitDir, PxReal& inOutDistance, PrunerCallback& prunerCallback, PxQueryFlags flags) const
+bool BVHCompoundPruner::raycast(const PxVec3& origin, const PxVec3& unitDir, PxReal& inOutDistance, CompoundPrunerRaycastCallback& prunerCallback, PxCompoundPrunerQueryFlags flags) const
 {
-	PxAgain again = true;	
+	bool again = true;	
 
 	// search the main tree if there are nodes
 	if(mMainTree.getNodes())
 	{
 		const PxVec3 extent(0.0f);
 		// main tree callback
-		MainTreeRaycastCompoundPrunerCallback<false> pcb(origin, unitDir, extent, prunerCallback, flags);
+		MainTreeRaycastCompoundPrunerCallback<false> pcb(origin, unitDir, extent, prunerCallback, flags, mCompoundTreePool.getCompoundTrees());
 		// traverse the main tree
-		again = AABBTreeRaycast<false, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundTree, MainTreeRaycastCompoundPrunerCallback<false> >()
-			(mCompoundTreePool.getCompoundTrees(), mCompoundTreePool.getCurrentCompoundBounds(), mMainTree, origin, unitDir, inOutDistance, extent, pcb);
+		again = AABBTreeRaycast<false, true, IncrementalAABBTree, IncrementalAABBTreeNode, MainTreeRaycastCompoundPrunerCallback<false> >()
+			(mCompoundTreePool.getCurrentAABBTreeBounds(), mMainTree, origin, unitDir, inOutDistance, extent, pcb);
 	}
 
 	return again;
@@ -285,10 +362,10 @@ PxAgain BVHCompoundPruner::raycast(const PxVec3& origin, const PxVec3& unitDir, 
 //////////////////////////////////////////////////////////////////////////
 // overlap main tree callback
 // A.B. templated version is complicated due to test transformations, will do a callback per primitive
-struct MainTreeOverlapCompoundPrunerCallback
+struct MainTreeOverlapCompoundPrunerCallback : MainTreeCompoundPrunerCallback<CompoundPrunerOverlapCallback>
 {
-	MainTreeOverlapCompoundPrunerCallback(const Gu::ShapeData& queryVolume, PrunerCallback& prunerCallback, PxQueryFlags flags)
-		: mQueryVolume(queryVolume), mPrunerCallback(prunerCallback), mQueryFlags(flags)
+	MainTreeOverlapCompoundPrunerCallback(const ShapeData& queryVolume, CompoundPrunerOverlapCallback& prunerCallback, PxCompoundPrunerQueryFlags flags, const CompoundTree* compoundTrees)
+		: MainTreeCompoundPrunerCallback(prunerCallback, flags, compoundTrees), mQueryVolume(queryVolume)
 	{
 	}
 
@@ -297,43 +374,47 @@ struct MainTreeOverlapCompoundPrunerCallback
 	PX_NOCOPY(MainTreeOverlapCompoundPrunerCallback)
 
 protected:
-	const Gu::ShapeData&	mQueryVolume;	
-	PrunerCallback&			mPrunerCallback;
-	PxQueryFlags			mQueryFlags;
+	const ShapeData&	mQueryVolume;	
 };
 
 // OBB
-struct MainTreeOBBOverlapCompoundPrunerCallback: public MainTreeOverlapCompoundPrunerCallback
+struct MainTreeOBBOverlapCompoundPrunerCallback : public MainTreeOverlapCompoundPrunerCallback
 {
-	MainTreeOBBOverlapCompoundPrunerCallback(const Gu::ShapeData& queryVolume, PrunerCallback& prunerCallback, PxQueryFlags flags)
-		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags) {}
-	virtual PxAgain invoke(PxReal& , const CompoundTree& compoundTree)
+	MainTreeOBBOverlapCompoundPrunerCallback(const ShapeData& queryVolume, CompoundPrunerOverlapCallback& prunerCallback, PxCompoundPrunerQueryFlags flags, const CompoundTree* compoundTrees)
+		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags, compoundTrees) {}
+
+	bool invoke(PxU32 primIndex)
 	{
-		if(!(compoundTree.mFlags & PxU32(mQueryFlags)) || !compoundTree.mTree->getNodes())
+		const CompoundTree& compoundTree = mCompoundTrees[primIndex];
+
+		if(filtering(compoundTree))
 			return true;
 
 		const PxVec3 localPos = compoundTree.mGlobalPose.transformInv(mQueryVolume.getPrunerWorldPos());
 		const PxMat33 transfMat(compoundTree.mGlobalPose.q);
 		const PxMat33 localRot = transfMat.getTranspose()*mQueryVolume.getPrunerWorldRot33();
 
-		const Gu::OBBAABBTest localTest(localPos, localRot, mQueryVolume.getPrunerBoxGeomExtentsInflated());		
+		const OBBAABBTest localTest(localPos, localRot, mQueryVolume.getPrunerBoxGeomExtentsInflated());		
 		// overlap the compound local tree
-		return AABBTreeOverlap<Gu::OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, PrunerPayload, PrunerCallback>()
-			(compoundTree.mPruningPool->getObjects(), compoundTree.mPruningPool->getCurrentWorldBoxes(), *compoundTree.mTree, localTest, mPrunerCallback);
+		CompoundCallbackOverlapAdapter pcb(mPrunerCallback, compoundTree);
+		return AABBTreeOverlap<true, OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundCallbackOverlapAdapter>()
+			(compoundTree.mPruningPool->getCurrentAABBTreeBounds(), *compoundTree.mTree, localTest, pcb);
 	}
 
 	PX_NOCOPY(MainTreeOBBOverlapCompoundPrunerCallback)
 };
 
 // AABB
-struct MainTreeAABBOverlapCompoundPrunerCallback: public MainTreeOverlapCompoundPrunerCallback
+struct MainTreeAABBOverlapCompoundPrunerCallback : public MainTreeOverlapCompoundPrunerCallback
 {
-	MainTreeAABBOverlapCompoundPrunerCallback(const Gu::ShapeData& queryVolume, PrunerCallback& prunerCallback, PxQueryFlags flags)
-		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags) {}
+	MainTreeAABBOverlapCompoundPrunerCallback(const ShapeData& queryVolume, CompoundPrunerOverlapCallback& prunerCallback, PxCompoundPrunerQueryFlags flags, const CompoundTree* compoundTrees)
+		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags, compoundTrees) {}
 
-	virtual PxAgain invoke(PxReal& , const CompoundTree& compoundTree)
+	bool invoke(PxU32 primIndex)
 	{
-		if(!(compoundTree.mFlags & PxU32(mQueryFlags)) || !compoundTree.mTree->getNodes())
+		const CompoundTree& compoundTree = mCompoundTrees[primIndex];
+
+		if(filtering(compoundTree))
 			return true;
 
 		const PxVec3 localPos = compoundTree.mGlobalPose.transformInv(mQueryVolume.getPrunerWorldPos());
@@ -342,58 +423,65 @@ struct MainTreeAABBOverlapCompoundPrunerCallback: public MainTreeOverlapCompound
 
 		// A.B. we dont have the AABB in local space, either we test OBB local space or
 		// we retest the AABB with the worldSpace AABB of the local tree???
-		const Gu::OBBAABBTest localTest(localPos, localRot, mQueryVolume.getPrunerBoxGeomExtentsInflated());		
+		const OBBAABBTest localTest(localPos, localRot, mQueryVolume.getPrunerBoxGeomExtentsInflated());		
 		// overlap the compound local tree
-		return AABBTreeOverlap<Gu::OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, PrunerPayload, PrunerCallback>()
-			(compoundTree.mPruningPool->getObjects(), compoundTree.mPruningPool->getCurrentWorldBoxes(), *compoundTree.mTree, localTest, mPrunerCallback);
+		CompoundCallbackOverlapAdapter pcb(mPrunerCallback, compoundTree);
+		return AABBTreeOverlap<true, OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundCallbackOverlapAdapter>()
+			(compoundTree.mPruningPool->getCurrentAABBTreeBounds(), *compoundTree.mTree, localTest, pcb);
 	}
 
 	PX_NOCOPY(MainTreeAABBOverlapCompoundPrunerCallback)
 };
 
 // Capsule
-struct MainTreeCapsuleOverlapCompoundPrunerCallback: public MainTreeOverlapCompoundPrunerCallback
+struct MainTreeCapsuleOverlapCompoundPrunerCallback : public MainTreeOverlapCompoundPrunerCallback
 {
-	MainTreeCapsuleOverlapCompoundPrunerCallback(const Gu::ShapeData& queryVolume, PrunerCallback& prunerCallback, PxQueryFlags flags)
-		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags) {}
+	MainTreeCapsuleOverlapCompoundPrunerCallback(const ShapeData& queryVolume, CompoundPrunerOverlapCallback& prunerCallback, PxCompoundPrunerQueryFlags flags, const CompoundTree* compoundTrees)
+		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags, compoundTrees) {}
 
-	virtual PxAgain invoke(PxReal& , const CompoundTree& compoundTree)
+	bool invoke(PxU32 primIndex)
 	{
-		if(!(compoundTree.mFlags & PxU32(mQueryFlags)) || !compoundTree.mTree->getNodes())
+		const CompoundTree& compoundTree = mCompoundTrees[primIndex];
+
+		if(filtering(compoundTree))
 			return true;
 
 		const PxMat33 transfMat(compoundTree.mGlobalPose.q);
-		const Gu::Capsule& capsule = mQueryVolume.getGuCapsule();
-		const Gu::CapsuleAABBTest localTest(
+		const Capsule& capsule = mQueryVolume.getGuCapsule();
+		const CapsuleAABBTest localTest(
 			compoundTree.mGlobalPose.transformInv(capsule.p1), 
 			transfMat.getTranspose()*mQueryVolume.getPrunerWorldRot33().column0,
 			mQueryVolume.getCapsuleHalfHeight()*2.0f, PxVec3(capsule.radius*SQ_PRUNER_INFLATION));
 
 		// overlap the compound local tree
-		return AABBTreeOverlap<Gu::CapsuleAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, PrunerPayload, PrunerCallback>()
-			(compoundTree.mPruningPool->getObjects(), compoundTree.mPruningPool->getCurrentWorldBoxes(), *compoundTree.mTree, localTest, mPrunerCallback);
+		CompoundCallbackOverlapAdapter pcb(mPrunerCallback, compoundTree);
+		return AABBTreeOverlap<true, CapsuleAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundCallbackOverlapAdapter>()
+			(compoundTree.mPruningPool->getCurrentAABBTreeBounds(), *compoundTree.mTree, localTest, pcb);
 	}
 
 	PX_NOCOPY(MainTreeCapsuleOverlapCompoundPrunerCallback)
 };
 
 // Sphere
-struct MainTreeSphereOverlapCompoundPrunerCallback: public MainTreeOverlapCompoundPrunerCallback
+struct MainTreeSphereOverlapCompoundPrunerCallback : public MainTreeOverlapCompoundPrunerCallback
 {
-	MainTreeSphereOverlapCompoundPrunerCallback(const Gu::ShapeData& queryVolume, PrunerCallback& prunerCallback, PxQueryFlags flags)
-		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags) {}
+	MainTreeSphereOverlapCompoundPrunerCallback(const ShapeData& queryVolume, CompoundPrunerOverlapCallback& prunerCallback, PxCompoundPrunerQueryFlags flags, const CompoundTree* compoundTrees)
+		: MainTreeOverlapCompoundPrunerCallback(queryVolume, prunerCallback, flags, compoundTrees) {}
 
-	virtual PxAgain invoke(PxReal& , const CompoundTree& compoundTree)
+	bool invoke(PxU32 primIndex)
 	{
-		if(!(compoundTree.mFlags & PxU32(mQueryFlags)) || !compoundTree.mTree->getNodes())
+		const CompoundTree& compoundTree = mCompoundTrees[primIndex];
+
+		if(filtering(compoundTree))
 			return true;
 
-		const Gu::Sphere& sphere = mQueryVolume.getGuSphere();
-		Gu::SphereAABBTest localTest(compoundTree.mGlobalPose.transformInv(sphere.center), sphere.radius);
+		const Sphere& sphere = mQueryVolume.getGuSphere();
+		const SphereAABBTest localTest(compoundTree.mGlobalPose.transformInv(sphere.center), sphere.radius);
 
 		// overlap the compound local tree
-		return AABBTreeOverlap<Gu::SphereAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, PrunerPayload, PrunerCallback>()
-			(compoundTree.mPruningPool->getObjects(), compoundTree.mPruningPool->getCurrentWorldBoxes(), *compoundTree.mTree, localTest, mPrunerCallback);
+		CompoundCallbackOverlapAdapter pcb(mPrunerCallback, compoundTree);
+		return AABBTreeOverlap<true, SphereAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundCallbackOverlapAdapter>()
+			(compoundTree.mPruningPool->getCurrentAABBTreeBounds(), *compoundTree.mTree, localTest, pcb);
 	}
 
 	PX_NOCOPY(MainTreeSphereOverlapCompoundPrunerCallback)
@@ -402,66 +490,56 @@ struct MainTreeSphereOverlapCompoundPrunerCallback: public MainTreeOverlapCompou
 
 //////////////////////////////////////////////////////////////////////////
 // overlap implementation
-PxAgain BVHCompoundPruner::overlap(const Gu::ShapeData& queryVolume, PrunerCallback& prunerCallback, PxQueryFlags flags) const
+bool BVHCompoundPruner::overlap(const ShapeData& queryVolume, CompoundPrunerOverlapCallback& prunerCallback, PxCompoundPrunerQueryFlags flags) const
 {
-	PxAgain again = true;
+	if(!mMainTree.getNodes())
+		return true;
 
-	if(mMainTree.getNodes())
+	bool again = true;
+
+	const Gu::AABBTreeBounds& bounds = mCompoundTreePool.getCurrentAABBTreeBounds();
+
+	switch (queryVolume.getType())
 	{
-		switch (queryVolume.getType())
+	case PxGeometryType::eBOX:
+	{
+		if(queryVolume.isOBB())
 		{
-		case PxGeometryType::eBOX:
+			const DefaultOBBAABBTest test(queryVolume);
+			MainTreeOBBOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags, mCompoundTreePool.getCompoundTrees());
+			again = AABBTreeOverlap<true, OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, MainTreeOBBOverlapCompoundPrunerCallback>()(bounds, mMainTree, test, pcb);
+		}
+		else
 		{
-			if(queryVolume.isOBB())
-			{
-				const Gu::OBBAABBTest test(queryVolume.getPrunerWorldPos(), queryVolume.getPrunerWorldRot33(), queryVolume.getPrunerBoxGeomExtentsInflated());
-				MainTreeOBBOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags);
-				again = AABBTreeOverlap<Gu::OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundTree, MainTreeOBBOverlapCompoundPrunerCallback>()
-					(mCompoundTreePool.getCompoundTrees(), mCompoundTreePool.getCurrentCompoundBounds(), mMainTree, test, pcb);
-			}
-			else
-			{
-				const Gu::AABBAABBTest test(queryVolume.getPrunerInflatedWorldAABB());
-				MainTreeAABBOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags);
-				again = AABBTreeOverlap<Gu::AABBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundTree, MainTreeAABBOverlapCompoundPrunerCallback>()
-					(mCompoundTreePool.getCompoundTrees(), mCompoundTreePool.getCurrentCompoundBounds(), mMainTree, test, pcb);				
-			}
+			const DefaultAABBAABBTest test(queryVolume);
+			MainTreeAABBOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags, mCompoundTreePool.getCompoundTrees());
+			again = AABBTreeOverlap<true, AABBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, MainTreeAABBOverlapCompoundPrunerCallback>()(bounds, mMainTree, test, pcb);
 		}
-		break;
-		case PxGeometryType::eCAPSULE:
-		{
-			const Gu::Capsule& capsule = queryVolume.getGuCapsule();
-			const Gu::CapsuleAABBTest test(capsule.p1, queryVolume.getPrunerWorldRot33().column0,
-				queryVolume.getCapsuleHalfHeight()*2.0f, PxVec3(capsule.radius*SQ_PRUNER_INFLATION));
-			MainTreeCapsuleOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags);			
-			again = AABBTreeOverlap<Gu::CapsuleAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundTree, MainTreeCapsuleOverlapCompoundPrunerCallback >()
-				(mCompoundTreePool.getCompoundTrees(), mCompoundTreePool.getCurrentCompoundBounds(), mMainTree, test, pcb);				
-		}
-		break;
-		case PxGeometryType::eSPHERE:
-		{
-			const Gu::Sphere& sphere = queryVolume.getGuSphere();
-			Gu::SphereAABBTest test(sphere.center, sphere.radius);
-			MainTreeSphereOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags);
-			again = AABBTreeOverlap<Gu::SphereAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundTree, MainTreeSphereOverlapCompoundPrunerCallback>()
-				(mCompoundTreePool.getCompoundTrees(), mCompoundTreePool.getCurrentCompoundBounds(), mMainTree, test, pcb);				
-		}
-		break;
-		case PxGeometryType::eCONVEXMESH:
-		{
-			const Gu::OBBAABBTest test(queryVolume.getPrunerWorldPos(), queryVolume.getPrunerWorldRot33(), queryVolume.getPrunerBoxGeomExtentsInflated());
-			MainTreeOBBOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags);			
-			again = AABBTreeOverlap<Gu::OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundTree, MainTreeOBBOverlapCompoundPrunerCallback>()
-				(mCompoundTreePool.getCompoundTrees(), mCompoundTreePool.getCurrentCompoundBounds(), mMainTree, test, pcb);				
-		}
-		break;
-		case PxGeometryType::ePLANE:
-		case PxGeometryType::eTRIANGLEMESH:
-		case PxGeometryType::eHEIGHTFIELD:
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
-			PX_ALWAYS_ASSERT_MESSAGE("unsupported overlap query volume geometry type");
-		}
+	}
+	break;
+	case PxGeometryType::eCAPSULE:
+	{
+		const DefaultCapsuleAABBTest test(queryVolume, SQ_PRUNER_INFLATION);
+		MainTreeCapsuleOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags, mCompoundTreePool.getCompoundTrees());
+		again = AABBTreeOverlap<true, CapsuleAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, MainTreeCapsuleOverlapCompoundPrunerCallback >()(bounds, mMainTree, test, pcb);
+	}
+	break;
+	case PxGeometryType::eSPHERE:
+	{
+		const DefaultSphereAABBTest test(queryVolume);
+		MainTreeSphereOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags, mCompoundTreePool.getCompoundTrees());
+		again = AABBTreeOverlap<true, SphereAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, MainTreeSphereOverlapCompoundPrunerCallback>()(bounds, mMainTree, test, pcb);
+	}
+	break;
+	case PxGeometryType::eCONVEXMESH:
+	{
+		const DefaultOBBAABBTest test(queryVolume);
+		MainTreeOBBOverlapCompoundPrunerCallback pcb(queryVolume, prunerCallback, flags, mCompoundTreePool.getCompoundTrees());
+		again = AABBTreeOverlap<true, OBBAABBTest, IncrementalAABBTree, IncrementalAABBTreeNode, MainTreeOBBOverlapCompoundPrunerCallback>()(bounds, mMainTree, test, pcb);
+	}
+	break;
+	default:
+		PX_ALWAYS_ASSERT_MESSAGE("unsupported overlap query volume geometry type");
 	}
 
 	return again;
@@ -469,40 +547,58 @@ PxAgain BVHCompoundPruner::overlap(const Gu::ShapeData& queryVolume, PrunerCallb
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-PxAgain BVHCompoundPruner::sweep(const Gu::ShapeData& queryVolume, const PxVec3& unitDir, PxReal& inOutDistance, PrunerCallback& prunerCallback, PxQueryFlags flags) const
+bool BVHCompoundPruner::sweep(const ShapeData& queryVolume, const PxVec3& unitDir, PxReal& inOutDistance, CompoundPrunerRaycastCallback& prunerCallback, PxCompoundPrunerQueryFlags flags) const
 {
-	PxAgain again = true;
+	bool again = true;
 
 	if(mMainTree.getNodes())
 	{
 		const PxBounds3& aabb = queryVolume.getPrunerInflatedWorldAABB();
 		const PxVec3 extents = aabb.getExtents();
 		const PxVec3 center = aabb.getCenter();
-		MainTreeRaycastCompoundPrunerCallback<true> pcb(center, unitDir, extents, prunerCallback, flags);
-		again = AABBTreeRaycast<true, IncrementalAABBTree, IncrementalAABBTreeNode, CompoundTree, MainTreeRaycastCompoundPrunerCallback<true> >()
-			(mCompoundTreePool.getCompoundTrees(), mCompoundTreePool.getCurrentCompoundBounds(), mMainTree, center, unitDir, inOutDistance, extents, pcb);
+		MainTreeRaycastCompoundPrunerCallback<true> pcb(center, unitDir, extents, prunerCallback, flags, mCompoundTreePool.getCompoundTrees());
+		again = AABBTreeRaycast<true, true, IncrementalAABBTree, IncrementalAABBTreeNode, MainTreeRaycastCompoundPrunerCallback<true> >()
+			(mCompoundTreePool.getCurrentAABBTreeBounds(), mMainTree, center, unitDir, inOutDistance, extents, pcb);
 	}
 	return again;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-const PrunerPayload& BVHCompoundPruner::getPayload(PrunerHandle handle, PrunerCompoundId compoundId) const
+const PrunerPayload& BVHCompoundPruner::getPayloadData(PrunerHandle handle, PrunerCompoundId compoundId, PrunerPayloadData* data) const
 {
 	const ActorIdPoolIndexMap::Entry* poolIndexEntry = mActorPoolMap.find(compoundId);
 	PX_ASSERT(poolIndexEntry);
 
-	return mCompoundTreePool.getCompoundTrees()[poolIndexEntry->second].mPruningPool->getPayload(handle);
+	return mCompoundTreePool.getCompoundTrees()[poolIndexEntry->second].mPruningPool->getPayloadData(handle, data);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-const PrunerPayload& BVHCompoundPruner::getPayload(PrunerHandle handle, PrunerCompoundId compoundId, PxBounds3*& bounds) const
+void BVHCompoundPruner::preallocate(PxU32 nbEntries)
+{
+	mCompoundTreePool.preallocate(nbEntries);
+	mMainTreeUpdateMap.resizeUninitialized(nbEntries);
+	mPoolActorMap.resizeUninitialized(nbEntries);
+	mChangedLeaves.reserve(nbEntries);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+bool BVHCompoundPruner::setTransform(PrunerHandle handle, PrunerCompoundId compoundId, const PxTransform& transform)
 {
 	const ActorIdPoolIndexMap::Entry* poolIndexEntry = mActorPoolMap.find(compoundId);
 	PX_ASSERT(poolIndexEntry);
 
-	return mCompoundTreePool.getCompoundTrees()[poolIndexEntry->second].mPruningPool->getPayload(handle, bounds);
+	return mCompoundTreePool.getCompoundTrees()[poolIndexEntry->second].mPruningPool->setTransform(handle, transform);
+}
+
+const PxTransform& BVHCompoundPruner::getTransform(PrunerCompoundId compoundId) const
+{
+	const ActorIdPoolIndexMap::Entry* poolIndexEntry = mActorPoolMap.find(compoundId);
+	PX_ASSERT(poolIndexEntry);
+
+	return mCompoundTreePool.getCompoundTrees()[poolIndexEntry->second].mGlobalPose;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -522,7 +618,7 @@ void BVHCompoundPruner::updateObjectAfterManualBoundsUpdates(PrunerCompoundId co
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-void BVHCompoundPruner::removeObject(PrunerCompoundId compoundId, const PrunerHandle handle)
+void BVHCompoundPruner::removeObject(PrunerCompoundId compoundId, const PrunerHandle handle, PrunerPayloadRemovalCallback* removalCallback)
 {
 	const ActorIdPoolIndexMap::Entry* poolIndexEntry = mActorPoolMap.find(compoundId);
 	PX_ASSERT(poolIndexEntry);
@@ -531,29 +627,25 @@ void BVHCompoundPruner::removeObject(PrunerCompoundId compoundId, const PrunerHa
 
 	const PxU32 poolIndex = poolIndexEntry->second;
 
-	mCompoundTreePool.getCompoundTrees()[poolIndex].removeObject(handle);
+	mCompoundTreePool.getCompoundTrees()[poolIndex].removeObject(handle, removalCallback);
 
 	// edge case, we removed all objects for the compound tree, we need to remove it now completely
 	if(!mCompoundTreePool.getCompoundTrees()[poolIndex].mTree->getNodes())
-	{
-		removeCompound(compoundId);
-	}
+		removeCompound(compoundId, removalCallback);
 	else
-	{
 		updateMainTreeNode(poolIndex);
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BVHCompoundPruner::addObject(PrunerCompoundId compoundId, PrunerHandle& result, const PxBounds3& bounds, const PrunerPayload userData)
+bool BVHCompoundPruner::addObject(PrunerCompoundId compoundId, PrunerHandle& result, const PxBounds3& bounds, const PrunerPayload userData, const PxTransform& transform)
 {
 	const ActorIdPoolIndexMap::Entry* poolIndexEntry = mActorPoolMap.find(compoundId);
 	PX_ASSERT(poolIndexEntry);
 	if(!poolIndexEntry)
 		return false;
 
-	mCompoundTreePool.getCompoundTrees()[poolIndexEntry->second].addObject(result, bounds, userData);
+	mCompoundTreePool.getCompoundTrees()[poolIndexEntry->second].addObject(result, bounds, userData, transform);
 
 	const PxU32 poolIndex = poolIndexEntry->second;
 	updateMainTreeNode(poolIndex);
@@ -590,8 +682,104 @@ void BVHCompoundPruner::shiftOrigin(const PxVec3& shift)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-void BVHCompoundPruner::visualize(Cm::RenderOutput&, PxU32) const
+namespace
 {
+	class CompoundTreeVizCb : public DebugVizCallback
+	{
+		PX_NOCOPY(CompoundTreeVizCb)
+		public:
+
+		CompoundTreeVizCb(PxRenderOutput& out, const CompoundTree& tree) :
+			mOut	(out),
+			mPose	(tree.mGlobalPose)
+		{
+		}
+			
+		virtual	bool	visualizeNode(const IncrementalAABBTreeNode& /*node*/, const PxBounds3& bounds)
+		{
+			if(0)
+			{
+				Cm::renderOutputDebugBox(mOut, PxBounds3::transformSafe(mPose, bounds));
+			}
+			else
+			{
+				PxVec3 pts[8];
+				computeBoxPoints(bounds, pts);
+				for(PxU32 i=0;i<8;i++)
+					pts[i] = mPose.transform(pts[i]);
+
+				const PxU8* edges = getBoxEdges();
+				for(PxU32 i=0;i<12;i++)
+				{
+					const PxVec3& p0 = pts[*edges++];
+					const PxVec3& p1 = pts[*edges++];
+					mOut.outputSegment(p0, p1);
+				}
+			}
+			return true;
+		}
+
+		PxRenderOutput&		mOut;
+		const PxTransform&	mPose;
+	};
+
+	class CompoundPrunerDebugVizCb : public DebugVizCallback
+	{
+		PX_NOCOPY(CompoundPrunerDebugVizCb)
+		public:
+
+		CompoundPrunerDebugVizCb(PxRenderOutput& out, const CompoundTree* trees, bool debugStatic, bool debugDynamic) :
+			mOut			(out),
+			mTrees			(trees),
+			mDebugVizStatic	(debugStatic),
+			mDebugVizDynamic(debugDynamic)
+		{}
+			
+		virtual	bool	visualizeNode(const IncrementalAABBTreeNode& node, const PxBounds3& /*bounds*/)
+		{
+			if(node.isLeaf())
+			{
+				PxU32 nbPrims = node.getNbPrimitives();
+				const PxU32* prims = node.getPrimitives(NULL);
+				while(nbPrims--)
+				{
+					const CompoundTree& compoundTree = mTrees[*prims++];
+
+					const bool isDynamic = compoundTree.mFlags & PxCompoundPrunerQueryFlag::eDYNAMIC;
+
+					if((mDebugVizDynamic && isDynamic) || (mDebugVizStatic && !isDynamic))
+					{
+						const PxU32 color = isDynamic ? SQ_DEBUG_VIZ_DYNAMIC_COLOR : SQ_DEBUG_VIZ_STATIC_COLOR;
+						CompoundTreeVizCb leafCB(mOut, compoundTree);
+						visualizeTree(mOut, color, compoundTree.mTree, &leafCB);
+						mOut << SQ_DEBUG_VIZ_COMPOUND_COLOR;
+					}
+				}
+			}
+			return false;
+		}
+
+		PxRenderOutput&		mOut;
+		const CompoundTree*	mTrees;
+		const bool			mDebugVizStatic;
+		const bool			mDebugVizDynamic;
+	};
+}
+
+void BVHCompoundPruner::visualize(PxRenderOutput& out, PxU32 primaryColor, PxU32 /*secondaryColor*/) const
+{
+	if(mDrawStatic || mDrawDynamic)
+	{
+		CompoundPrunerDebugVizCb cb(out, mCompoundTreePool.getCompoundTrees(), mDrawStatic, mDrawDynamic);
+		visualizeTree(out, primaryColor, &mMainTree, &cb);
+	}
+}
+
+void BVHCompoundPruner::visualizeEx(PxRenderOutput& out, PxU32 color, bool drawStatic, bool drawDynamic) const
+{
+	mDrawStatic = drawStatic;
+	mDrawDynamic = drawDynamic;
+	visualize(out, color, color);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////

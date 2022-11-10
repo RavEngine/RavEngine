@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,26 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuVecSphere.h"
 #include "GuVecCapsule.h"
-#include "GuGeometryUnion.h"
 #include "GuContactMethodImpl.h"
 
+using namespace physx;
 
-namespace physx
+static PX_FORCE_INLINE aos::FloatV PxcDistancePointSegmentSquared(const aos::Vec3VArg a, const aos::Vec3VArg b, const aos::Vec3VArg p, aos::FloatV& param)
 {
-
-namespace Gu
-{
-PX_FORCE_INLINE Ps::aos::FloatV PxcDistancePointSegmentSquared(const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b, const Ps::aos::Vec3VArg p, Ps::aos::FloatV& param)
-{
-	using namespace Ps::aos;
+	using namespace aos;
 	const FloatV zero = FZero();
 	const FloatV one = FOne();
 
@@ -59,14 +52,14 @@ PX_FORCE_INLINE Ps::aos::FloatV PxcDistancePointSegmentSquared(const Ps::aos::Ve
 	return V3Dot(v, v);
 }
 
-bool pcmContactSphereCapsule(GU_CONTACT_METHOD_ARGS)
+bool Gu::pcmContactSphereCapsule(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	using namespace Ps::aos;
-	const PxSphereGeometry& shapeSphere = shape0.get<const PxSphereGeometry>();
-	const PxCapsuleGeometry& shapeCapsule = shape1.get<const PxCapsuleGeometry>();
+	using namespace aos;
+	const PxSphereGeometry& shapeSphere = checkedCast<PxSphereGeometry>(shape0);
+	const PxCapsuleGeometry& shapeCapsule = checkedCast<PxCapsuleGeometry>(shape1);
 
 	//Sphere in world space
 	const Vec3V sphereCenter =  V3LoadA(&transform0.p.x);
@@ -84,7 +77,6 @@ bool pcmContactSphereCapsule(GU_CONTACT_METHOD_ARGS)
 	const Vec3V s = V3Add(p1, tmp0);
 	const Vec3V e = V3Sub(p1, tmp0);
 
-	
 	const FloatV radiusSum = FAdd(sphereRadius, capsuleRadius);
 	const FloatV inflatedSum = FAdd(radiusSum, cDist);
 
@@ -102,8 +94,8 @@ bool pcmContactSphereCapsule(GU_CONTACT_METHOD_ARGS)
 
 		const FloatV dist = FSub(FSqrt(squareDist), radiusSum);
 		//context.mContactBuffer.contact(point, normal, FSub(FSqrt(squareDist), radiusSum));
-		PX_ASSERT(contactBuffer.count < ContactBuffer::MAX_CONTACTS);
-		Gu::ContactPoint& contact = contactBuffer.contacts[contactBuffer.count++];
+		PX_ASSERT(contactBuffer.count < PxContactBuffer::MAX_CONTACTS);
+		PxContactPoint& contact = contactBuffer.contacts[contactBuffer.count++];
 
 		V4StoreA(Vec4V_From_Vec3V(normal), &contact.normal.x);
 		V4StoreA(Vec4V_From_Vec3V(point), &contact.point.x);
@@ -115,5 +107,4 @@ bool pcmContactSphereCapsule(GU_CONTACT_METHOD_ARGS)
 	}
 	return false;
 }
-}//Gu
-}//physx
+

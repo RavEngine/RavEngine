@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,12 +38,14 @@ namespace Gu
 {
 	struct PolygonalData;
 	typedef void	(*HullPrefetchCB)		(PxU32 numVerts, const PxVec3* PX_RESTRICT verts);
-	typedef void	(*HullProjectionCB)		(const PolygonalData& data, const PxVec3& dir, const Cm::Matrix34& world2hull, const Cm::FastVertex2ShapeScaling& scaling, PxReal& minimum, PxReal& maximum);
+	typedef void	(*HullProjectionCB)		(const PolygonalData& data, const PxVec3& dir, const PxMat34& world2hull, const Cm::FastVertex2ShapeScaling& scaling, PxReal& minimum, PxReal& maximum);
 	typedef PxU32	(*SelectClosestEdgeCB)	(const PolygonalData& data, const Cm::FastVertex2ShapeScaling& scaling, const PxVec3& localDirection);
 
 	struct PolygonalData
 	{
 		// Data
+		Gu::InternalObjectsData				mInternal;
+		PxMeshScale							mScale;
 		PxVec3								mCenter;
 		PxU32								mNbVerts;
 		PxU32								mNbPolygons;
@@ -54,8 +55,7 @@ namespace Gu
 		const PxU8*							mPolygonVertexRefs;
 		const PxU8*							mFacesByEdges;
 		const PxU16*						mVerticesByEdges;
-
-		Gu::InternalObjectsData				mInternal;
+		
 		union
 		{
 			const Gu::BigConvexRawData*		mBigData;	// Only for big convexes

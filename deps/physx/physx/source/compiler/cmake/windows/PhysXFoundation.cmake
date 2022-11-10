@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXFoundation
@@ -36,14 +35,17 @@ ELSE()
 	SET(PXFOUNDATION_LIBTYPE_DEFS	PX_PHYSX_FOUNDATION_EXPORTS)
 ENDIF()
 
-SET(PXSHARED_PLATFORM_HEADERS
-	${PXSHARED_PATH}/include/foundation/windows/PxWindowsIntrinsics.h
+SET(PHYSXFOUNDATION_PLATFORM_HEADERS
+	${PHYSX_ROOT_DIR}/include/foundation/windows/PxWindowsMathIntrinsics.h
+	${PHYSX_ROOT_DIR}/include/foundation/windows/PxWindowsIntrinsics.h
+	${PHYSX_ROOT_DIR}/include/foundation/windows/PxWindowsAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/windows/PxWindowsInlineAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/windows/PxWindowsTrigConstants.h
+	${PHYSX_ROOT_DIR}/include/foundation/windows/PxWindowsInclude.h
+	${PHYSX_ROOT_DIR}/include/foundation/windows/PxWindowsFPU.h
 )
-SOURCE_GROUP(shared\\include\\windows FILES ${PXSHARED_PLATFORM_HEADERS})
-SET(PXSHARED_UNIXPLATFORM_HEADERS
-	${PXSHARED_PATH}/include/foundation/unix/PxUnixIntrinsics.h
-)
-SOURCE_GROUP(shared\\include\\unix FILES ${PXSHARED_UNIXPLATFORM_HEADERS})
+SOURCE_GROUP(include\\windows FILES ${PHYSXFOUNDATION_PLATFORM_HEADERS})
+
 
 SET(PHYSXFOUNDATION_RESOURCE_FILE
 	${PHYSX_SOURCE_DIR}/compiler/resource_${RESOURCE_LIBPATH_SUFFIX}/PhysXFoundation.rc
@@ -51,42 +53,24 @@ SET(PHYSXFOUNDATION_RESOURCE_FILE
 SOURCE_GROUP(resource FILES ${PHYSXFOUNDATION_RESOURCE_FILE})
 
 SET(PHYSXFOUNDATION_PLATFORM_SOURCE
-	${LL_SOURCE_DIR}/src/windows/PsWindowsAtomic.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsCpu.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsFPU.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsMutex.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsPrintString.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsSList.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsSocket.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsSync.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsThread.cpp
-	${LL_SOURCE_DIR}/src/windows/PsWindowsTime.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsAtomic.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsMutex.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsSync.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsThread.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsPrintString.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsSList.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsSocket.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsTime.cpp
+	${LL_SOURCE_DIR}/windows/FdWindowsFPU.cpp
 )
-SOURCE_GROUP("src\\src\\windows" FILES ${PHYSXFOUNDATION_PLATFORM_SOURCE})
+SOURCE_GROUP(src\\windows FILES ${PHYSXFOUNDATION_PLATFORM_SOURCE})
 
-SET(PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS
-	${LL_SOURCE_DIR}/include/windows/PsWindowsAoS.h
-	${LL_SOURCE_DIR}/include/windows/PsWindowsFPU.h
-	${LL_SOURCE_DIR}/include/windows/PsWindowsInclude.h
-	${LL_SOURCE_DIR}/include/windows/PsWindowsInlineAoS.h
-	${LL_SOURCE_DIR}/include/windows/PsWindowsIntrinsics.h
-	${LL_SOURCE_DIR}/include/windows/PsWindowsTrigConstants.h
-)
-SOURCE_GROUP("src\\include\\windows" FILES ${PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS})
-
-INSTALL(FILES ${PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS} DESTINATION source/foundation/include/windows)
-INSTALL(FILES ${PXSHARED_PLATFORM_HEADERS} DESTINATION ${PXSHARED_INSTALL_PREFIX}/include/foundation/windows)
-INSTALL(FILES ${PXSHARED_UNIXPLATFORM_HEADERS} DESTINATION ${PXSHARED_INSTALL_PREFIX}/include/foundation/unix)
+INSTALL(FILES ${PHYSXFOUNDATION_PLATFORM_HEADERS} DESTINATION include/foundation/windows)
 
 SET(PHYSXFOUNDATION_PLATFORM_FILES
 	${PHYSXFOUNDATION_PLATFORM_HEADERS}
 	${PHYSXFOUNDATION_PLATFORM_SOURCE}
-	${PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS}
 	${PHYSXFOUNDATION_RESOURCE_FILE}
-)
-
-SET(PHYSXFOUNDATION_PLATFORM_INCLUDES
-	${LL_SOURCE_DIR}/include/windows
 )
 
 SET(PHYSXFOUNDATION_COMPILE_DEFS

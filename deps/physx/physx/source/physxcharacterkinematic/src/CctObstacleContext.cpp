@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxMemory.h"
 #include "CctObstacleContext.h"
 #include "CctCharacterControllerManager.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 
 using namespace physx;
 using namespace Cct;
@@ -41,10 +40,10 @@ using namespace Cct;
 HandleManager::HandleManager() : mCurrentNbObjects(0), mNbFreeIndices(0)
 {
 	mMaxNbObjects	= DEFAULT_HANDLEMANAGER_SIZE;
-	mObjects		= reinterpret_cast<void**>(PX_ALLOC(sizeof(void*)*mMaxNbObjects, "HandleManager"));
-	mOutToIn		= reinterpret_cast<PxU16*>(PX_ALLOC(sizeof(PxU16)*mMaxNbObjects, "HandleManager"));
-	mInToOut		= reinterpret_cast<PxU16*>(PX_ALLOC(sizeof(PxU16)*mMaxNbObjects, "HandleManager"));
-	mStamps			= reinterpret_cast<PxU16*>(PX_ALLOC(sizeof(PxU16)*mMaxNbObjects, "HandleManager"));
+	mObjects		= PX_ALLOCATE(void*, mMaxNbObjects, "HandleManager");
+	mOutToIn		= PX_ALLOCATE(PxU16, mMaxNbObjects, "HandleManager");
+	mInToOut		= PX_ALLOCATE(PxU16, mMaxNbObjects, "HandleManager");
+	mStamps			= PX_ALLOCATE(PxU16, mMaxNbObjects, "HandleManager");
 	PxMemSet(mOutToIn, 0xff, mMaxNbObjects*sizeof(PxU16));
 	PxMemSet(mInToOut, 0xff, mMaxNbObjects*sizeof(PxU16));
 	PxMemZero(mStamps, mMaxNbObjects*sizeof(PxU16));
@@ -58,10 +57,10 @@ HandleManager::~HandleManager()
 bool HandleManager::SetupLists(void** objects, PxU16* oti, PxU16* ito, PxU16* stamps)
 {
 	// Release old data
-	PX_FREE_AND_RESET(mStamps);
-	PX_FREE_AND_RESET(mInToOut);
-	PX_FREE_AND_RESET(mOutToIn);
-	PX_FREE_AND_RESET(mObjects);
+	PX_FREE(mStamps);
+	PX_FREE(mInToOut);
+	PX_FREE(mOutToIn);
+	PX_FREE(mObjects);
 	// Assign new data
 	mObjects	= objects;
 	mOutToIn	= oti;
@@ -77,7 +76,7 @@ Handle HandleManager::Add(void* object)
 	{
 		const PxU16 FreeIndex = mInToOut[mCurrentNbObjects];// Get the recycled virtual index
 		mObjects[mCurrentNbObjects]	= object;				// The physical location is always at the end of the list (it never has holes).
-		mOutToIn[FreeIndex]			= Ps::to16(mCurrentNbObjects++);	// Update virtual-to-physical remapping table.
+		mOutToIn[FreeIndex]			= PxTo16(mCurrentNbObjects++);	// Update virtual-to-physical remapping table.
 		mNbFreeIndices--;
 		return Handle((mStamps[FreeIndex]<<16)|FreeIndex);			// Return virtual index (handle) to the client app
 	}
@@ -91,10 +90,10 @@ Handle HandleManager::Add(void* object)
 			// Nope! Resize all arrays (could be avoided with linked lists... one day)
 			mMaxNbObjects<<=1;													// The more you eat, the more you're given
 			if(mMaxNbObjects>0xffff)	mMaxNbObjects = 0xffff;					// Clamp to 64K
-			void** NewList		= reinterpret_cast<void**>(PX_ALLOC(sizeof(void*)*mMaxNbObjects, "HandleManager"));		// New physical list
-			PxU16* NewOTI		= reinterpret_cast<PxU16*>(PX_ALLOC(sizeof(PxU16)*mMaxNbObjects, "HandleManager"));		// New remapping table
-			PxU16* NewITO		= reinterpret_cast<PxU16*>(PX_ALLOC(sizeof(PxU16)*mMaxNbObjects, "HandleManager"));		// New remapping table
-			PxU16* NewStamps	= reinterpret_cast<PxU16*>(PX_ALLOC(sizeof(PxU16)*mMaxNbObjects, "HandleManager"));		// New stamps
+			void** NewList		= PX_ALLOCATE(void*, mMaxNbObjects, "HandleManager");		// New physical list
+			PxU16* NewOTI		= PX_ALLOCATE(PxU16, mMaxNbObjects, "HandleManager");		// New remapping table
+			PxU16* NewITO		= PX_ALLOCATE(PxU16, mMaxNbObjects, "HandleManager");		// New remapping table
+			PxU16* NewStamps	= PX_ALLOCATE(PxU16, mMaxNbObjects, "HandleManager");		// New stamps
 			PxMemCopy(NewList, mObjects,	mCurrentNbObjects*sizeof(void*));	// Copy old data
 			PxMemCopy(NewOTI, mOutToIn,	mCurrentNbObjects*sizeof(PxU16));	// Copy old data
 			PxMemCopy(NewITO, mInToOut,	mCurrentNbObjects*sizeof(PxU16));	// Copy old data
@@ -106,8 +105,8 @@ Handle HandleManager::Add(void* object)
 		}
 
 		mObjects[mCurrentNbObjects]	= object;						// Store object at mCurrentNbObjects = physical index = virtual index
-		mOutToIn[mCurrentNbObjects]	= Ps::to16(mCurrentNbObjects);	// Update virtual-to-physical remapping table.
-		mInToOut[mCurrentNbObjects]	= Ps::to16(mCurrentNbObjects);	// Update physical-to-virtual remapping table.
+		mOutToIn[mCurrentNbObjects]	= PxTo16(mCurrentNbObjects);	// Update virtual-to-physical remapping table.
+		mInToOut[mCurrentNbObjects]	= PxTo16(mCurrentNbObjects);	// Update physical-to-virtual remapping table.
 		PxU32 tmp = mCurrentNbObjects++;
 		return (mStamps[tmp]<<16)|tmp;								// Return virtual index (handle) to the client app
 	}
@@ -177,7 +176,7 @@ static PX_FORCE_INLINE void* encodeInternalHandle(PxU32 index, PxGeometryType::E
 
 static PX_FORCE_INLINE PxGeometryType::Enum decodeInternalType(void* handle)
 {
-	return PxGeometryType::Enum((PxU32(reinterpret_cast<size_t>(handle)) & 0xffff)-1);
+	return PxGeometryType::Enum((PxU32(size_t(handle)) & 0xffff)-1);
 }
 
 static PX_FORCE_INLINE PxU32 decodeInternalIndex(void* handle)
@@ -222,16 +221,16 @@ PxControllerManager& ObstacleContext::getControllerManager() const
 	return mCCTManager;
 }
 
-ObstacleHandle ObstacleContext::addObstacle(const PxObstacle& obstacle)
+PxObstacleHandle ObstacleContext::addObstacle(const PxObstacle& obstacle)
 {
 	const PxGeometryType::Enum type = obstacle.getType();
 	if(type==PxGeometryType::eBOX)
 	{
 		const PxU32 index = mBoxObstacles.size();
 #ifdef NEW_ENCODING
-		const ObstacleHandle handle = mHandleManager.Add(encodeInternalHandle(index, type));
+		const PxObstacleHandle handle = mHandleManager.Add(encodeInternalHandle(index, type));
 #else
-		const ObstacleHandle handle = encodeHandle(index, type);
+		const PxObstacleHandle handle = encodeHandle(index, type);
 #endif
 		mBoxObstacles.pushBack(InternalBoxObstacle(handle, static_cast<const PxBoxObstacle&>(obstacle)));
 		mCCTManager.onObstacleAdded(handle, this);
@@ -241,20 +240,20 @@ ObstacleHandle ObstacleContext::addObstacle(const PxObstacle& obstacle)
 	{
 		const PxU32 index = mCapsuleObstacles.size();
 #ifdef NEW_ENCODING
-		const ObstacleHandle handle = mHandleManager.Add(encodeInternalHandle(index, type));
+		const PxObstacleHandle handle = mHandleManager.Add(encodeInternalHandle(index, type));
 #else
-		const ObstacleHandle handle = encodeHandle(index, type);
+		const PxObstacleHandle handle = encodeHandle(index, type);
 #endif
 		mCapsuleObstacles.pushBack(InternalCapsuleObstacle(handle, static_cast<const PxCapsuleObstacle&>(obstacle)));
 		mCCTManager.onObstacleAdded(handle, this);
 		return handle;
 	}
-	else return INVALID_OBSTACLE_HANDLE;
+	else return PX_INVALID_OBSTACLE_HANDLE;
 }
 
 #ifdef NEW_ENCODING
 template<class T>
-static PX_FORCE_INLINE void remove(HandleManager& manager, void* object, ObstacleHandle handle, PxU32 index, PxU32 size, const Ps::Array<T>& obstacles)
+static PX_FORCE_INLINE void remove(HandleManager& manager, void* object, PxObstacleHandle handle, PxU32 index, PxU32 size, const PxArray<T>& obstacles)
 {
 	manager.Remove(handle);
 	if(index!=size-1)
@@ -266,7 +265,7 @@ static PX_FORCE_INLINE void remove(HandleManager& manager, void* object, Obstacl
 }
 #endif
 
-bool ObstacleContext::removeObstacle(ObstacleHandle handle)
+bool ObstacleContext::removeObstacle(PxObstacleHandle handle)
 {
 #ifdef NEW_ENCODING
 	void* object = mHandleManager.GetObject(handle);
@@ -319,7 +318,7 @@ bool ObstacleContext::removeObstacle(ObstacleHandle handle)
 	else return false;
 }
 
-bool ObstacleContext::updateObstacle(ObstacleHandle handle, const PxObstacle& obstacle)
+bool ObstacleContext::updateObstacle(PxObstacleHandle handle, const PxObstacle& obstacle)
 {
 #ifdef NEW_ENCODING
 	void* object = mHandleManager.GetObject(handle);
@@ -382,7 +381,7 @@ const PxObstacle* ObstacleContext::getObstacle(PxU32 i) const
 	return NULL;
 }
 
-const PxObstacle* ObstacleContext::getObstacleByHandle(ObstacleHandle handle) const
+const PxObstacle* ObstacleContext::getObstacleByHandle(PxObstacleHandle handle) const
 {
 #ifdef NEW_ENCODING
 	void* object = mHandleManager.GetObject(handle);
@@ -417,11 +416,10 @@ const PxObstacle* ObstacleContext::getObstacleByHandle(ObstacleHandle handle) co
 #include "GuRaycastTests.h"
 #include "geometry/PxBoxGeometry.h"
 #include "geometry/PxCapsuleGeometry.h"
-#include "PsMathUtils.h"
 using namespace Gu;
-const PxObstacle* ObstacleContext::raycastSingle(PxRaycastHit& hit, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance, ObstacleHandle& obstacleHandle) const
+const PxObstacle* ObstacleContext::raycastSingle(PxGeomRaycastHit& hit, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance, PxObstacleHandle& obstacleHandle) const
 {
-	PxRaycastHit localHit;
+	PxGeomRaycastHit localHit;
 	PxF32 t = FLT_MAX;
 	const PxObstacle* touchedObstacle = NULL;
 
@@ -440,7 +438,7 @@ const PxObstacle* ObstacleContext::raycastSingle(PxRaycastHit& hit, const PxVec3
 										PxTransform(toVec3(userBoxObstacle.mPos), userBoxObstacle.mRot),
 										origin, unitDir, distance,
 										hitFlags,
-										1, &localHit);
+										1, &localHit, sizeof(PxGeomRaycastHit), UNUSED_RAYCAST_THREAD_CONTEXT);
 			if(status && localHit.distance<t)
 			{
 				t = localHit.distance;
@@ -464,7 +462,7 @@ const PxObstacle* ObstacleContext::raycastSingle(PxRaycastHit& hit, const PxVec3
 										PxTransform(toVec3(userCapsuleObstacle.mPos), userCapsuleObstacle.mRot),
 										origin, unitDir, distance,
 										hitFlags,
-										1, &localHit);
+										1, &localHit, sizeof(PxGeomRaycastHit), UNUSED_RAYCAST_THREAD_CONTEXT);
 			if(status && localHit.distance<t)
 			{
 				t = localHit.distance;
@@ -478,7 +476,7 @@ const PxObstacle* ObstacleContext::raycastSingle(PxRaycastHit& hit, const PxVec3
 }
 
 
-const PxObstacle* ObstacleContext::raycastSingle(PxRaycastHit& hit, const ObstacleHandle& obstacleHandle, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance) const
+const PxObstacle* ObstacleContext::raycastSingle(PxGeomRaycastHit& hit, const PxObstacleHandle& obstacleHandle, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance) const
 {	
 	const PxHitFlags hitFlags = PxHitFlags(0);
 
@@ -501,7 +499,7 @@ const PxObstacle* ObstacleContext::raycastSingle(PxRaycastHit& hit, const Obstac
 			PxTransform(toVec3(userBoxObstacle.mPos), userBoxObstacle.mRot),
 			origin, unitDir, distance,
 			hitFlags,
-			1, &hit);
+			1, &hit, sizeof(PxGeomRaycastHit), UNUSED_RAYCAST_THREAD_CONTEXT);
 
 		if(status)
 		{								
@@ -518,7 +516,7 @@ const PxObstacle* ObstacleContext::raycastSingle(PxRaycastHit& hit, const Obstac
 			PxTransform(toVec3(userCapsuleObstacle.mPos), userCapsuleObstacle.mRot),
 			origin, unitDir, distance,
 			hitFlags,
-			1, &hit);
+			1, &hit, sizeof(PxGeomRaycastHit), UNUSED_RAYCAST_THREAD_CONTEXT);
 		if(status)
 		{
 			return &userCapsuleObstacle;

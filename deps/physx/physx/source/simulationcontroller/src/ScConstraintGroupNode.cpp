@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 
 #include "ScConstraintGroupNode.h"
 #include "ScConstraintProjectionManager.h"
-#include "PsFoundation.h"
 #include "ScBodySim.h"
 #include "ScConstraintSim.h"
 #include "ScConstraintInteraction.h"
@@ -130,7 +128,7 @@ void Sc::ConstraintGroupNode::clearProjectionData()
 }
 
 
-void Sc::ConstraintGroupNode::projectPose(ConstraintGroupNode& node, Ps::Array<BodySim*>& projectedBodies)
+void Sc::ConstraintGroupNode::projectPose(ConstraintGroupNode& node, PxArray<BodySim*>& projectedBodies)
 {
 	PX_ASSERT(node.hasProjectionTreeRoot());
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,10 +31,8 @@
 using namespace physx;
 using namespace Ext;
 
-PxConstraint* physx::resolveConstraintPtr(PxDeserializationContext& v,
-										  PxConstraint* old,
-										  PxConstraintConnector* connector,
-										  PxConstraintShaderTable &shaders)
+// PX_SERIALIZATION
+PxConstraint* physx::resolveConstraintPtr(PxDeserializationContext& v, PxConstraint* old, PxConstraintConnector* connector, PxConstraintShaderTable &shaders)
 {
 	v.translatePxBase(old);
 	PxConstraint* new_nx = static_cast<PxConstraint*>(old);
@@ -124,3 +121,34 @@ void PxSetJointGlobalFrame(PxJoint& joint, const PxVec3* wsAnchor, const PxVec3*
 	for(PxU32 i=0; i<2; i++)
 		joint.setLocalPose(static_cast<PxJointActorIndex::Enum>( i ), localPose[i]);
 }
+
+#if PX_SUPPORT_OMNI_PVD
+
+void physx::Ext::omniPvdCreateJoint(PxJoint* joint)
+{
+	PxJoint& j = static_cast<PxJoint&>(*joint);
+	OMNI_PVD_CREATE(joint, j)
+	PxRigidActor* actors[2]; j.getActors(actors[0], actors[1]);
+	OMNI_PVD_SET(joint, actor0, j, actors[0])
+	OMNI_PVD_SET(joint, actor1, j, actors[1])
+	PxTransform actor0LocalPose = j.getLocalPose(PxJointActorIndex::eACTOR0);
+	OMNI_PVD_SET(joint, actor0LocalPose, j, actor0LocalPose)
+	PxTransform actor1LocalPose = j.getLocalPose(PxJointActorIndex::eACTOR1);
+	OMNI_PVD_SET(joint, actor1LocalPose, j, actor1LocalPose)
+	PxReal breakForce, breakTorque; j.getBreakForce(breakForce, breakTorque);
+	OMNI_PVD_SET(joint, breakForce, j, breakForce)
+	OMNI_PVD_SET(joint, breakTorque, j, breakTorque)
+	OMNI_PVD_SET(joint, constraintFlags, j, j.getConstraintFlags())
+	OMNI_PVD_SET(joint, invMassScale0, j, j.getInvMassScale0())
+	OMNI_PVD_SET(joint, invInertiaScale0, j, j.getInvInertiaScale0())
+	OMNI_PVD_SET(joint, invMassScale1, j, j.getInvMassScale1())
+	OMNI_PVD_SET(joint, invInertiaScale1, j, j.getInvInertiaScale1())
+	const char* name = j.getName() ? j.getName() : "";
+	PxU32 nameLen = PxU32(strlen(name)) + 1;
+	OMNI_PVD_SETB(joint, name, j, name, nameLen)
+	const char* typeName = j.getConcreteTypeName();
+	PxU32 typeNameLen = PxU32(strlen(typeName)) + 1;
+	OMNI_PVD_SETB(joint, concreteTypeName, j, typeName, typeNameLen)
+}
+
+#endif

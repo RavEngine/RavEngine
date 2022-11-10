@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "GuTriangleMesh.h"
 #include "GuTriangleMeshRTree.h"
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
-#include "GuConvexEdgeFlags.h"
-#endif
 
 using namespace physx;
 
 namespace physx
 {
 
-Gu::RTreeTriangleMesh::RTreeTriangleMesh(GuMeshFactory& factory, TriangleMeshData& d)
-:	TriangleMesh(factory, d)
+Gu::RTreeTriangleMesh::RTreeTriangleMesh(MeshFactory* factory, TriangleMeshData& d) : TriangleMesh(factory, d)
 {
 	PX_ASSERT(d.mType==PxMeshMidPhase::eBVH33);
 
@@ -50,7 +45,7 @@ Gu::RTreeTriangleMesh::RTreeTriangleMesh(GuMeshFactory& factory, TriangleMeshDat
 
 Gu::TriangleMesh* Gu::RTreeTriangleMesh::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	RTreeTriangleMesh* obj = new (address) RTreeTriangleMesh(PxBaseFlag::eIS_RELEASABLE);
+	RTreeTriangleMesh* obj = PX_PLACEMENT_NEW(address, RTreeTriangleMesh(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(RTreeTriangleMesh);	
 	obj->importExtraData(context);
 	return obj;
@@ -68,7 +63,6 @@ void Gu::RTreeTriangleMesh::importExtraData(PxDeserializationContext& context)
 	TriangleMesh::importExtraData(context);
 }
 
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
 PxVec3 * Gu::RTreeTriangleMesh::getVerticesForModification()
 {
 	return const_cast<PxVec3*>(getVertices());
@@ -83,9 +77,9 @@ struct RefitCallback : Gu::RTree::CallbackRefit
 	RefitCallback(const PxVec3* aNewPositions, const IndexType* aIndices) : newPositions(aNewPositions), indices(aIndices) {}
 	PX_FORCE_INLINE ~RefitCallback() {}
 
-	virtual void recomputeBounds(PxU32 index, shdfnd::aos::Vec3V& aMn, shdfnd::aos::Vec3V& aMx)
+	virtual void recomputeBounds(PxU32 index, aos::Vec3V& aMn, aos::Vec3V& aMx)
 	{
-		using namespace shdfnd::aos;
+		using namespace aos;
 
 		// Each leaf box has a set of triangles
 		Gu::LeafTriangles currentLeaf; currentLeaf.Data = index;
@@ -134,17 +128,11 @@ PxBounds3 Gu::RTreeTriangleMesh::refitBVH()
 	if ((mRTree.mFlags & RTree::IS_EDGE_SET) == 0)
 	{
 		mRTree.mFlags |= RTree::IS_EDGE_SET;
-		if(mExtraTrigData)
-		{
-			const PxU32 nbTris = getNbTriangles();
-			for(PxU32 i = 0; i < nbTris; i++)
-				mExtraTrigData[i] |= ETD_CONVEX_EDGE_ALL;
-		}
+		setAllEdgesActive();
 	}
 
 	mAABB = meshBounds;
 	return meshBounds;
 }
-#endif
 
 } // namespace physx

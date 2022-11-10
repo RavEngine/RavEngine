@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,76 +22,81 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
+#ifndef SQ_COMPOUND_PRUNER_H
+#define SQ_COMPOUND_PRUNER_H
 
-#ifndef SQ_COMPOUNDPRUNER_H
-#define SQ_COMPOUNDPRUNER_H
-
-#include "SqPrunerMergeData.h"
 #include "SqCompoundPruningPool.h"
-#include "SqPruningPool.h"
-#include "SqIncrementalAABBTree.h"
-#include "PsHashMap.h"
-#include "PsArray.h"
+#include "GuSqInternal.h"
+#include "GuPrunerMergeData.h"
+#include "GuIncrementalAABBTree.h"
+#include "GuPruningPool.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxArray.h"
 
 namespace physx
 {
 namespace Sq
 {
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	typedef PxHashMap<PrunerCompoundId, Gu::PoolIndex>	ActorIdPoolIndexMap;
+	typedef PxArray<PrunerCompoundId>					PoolIndexActorIdMap;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	typedef Ps::HashMap<PrunerCompoundId, PoolIndex>			ActorIdPoolIndexMap;
-	typedef Ps::Array<PrunerCompoundId>							PoolIndexActorIdMap;
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	class BVHCompoundPruner: public CompoundPruner
+	class BVHCompoundPruner : public CompoundPruner
 	{
-	public:
-		BVHCompoundPruner();
-		~BVHCompoundPruner();
+		public:
+												BVHCompoundPruner(PxU64 contextID);
+		virtual									~BVHCompoundPruner();
 
-		void release();
+					void						release();
 
-	// CompoundPruner
-		// compound level 
-		virtual bool						addCompound(PrunerHandle* results, const Gu::BVHStructure& bvhStructure, PrunerCompoundId compoundId, const PxTransform& transform, CompoundFlag::Enum flags, const PrunerPayload* userData);
-		virtual void						removeCompound(PrunerCompoundId compoundId);
-		virtual void						updateCompound(PrunerCompoundId compoundId, const PxTransform& transform);
+		// BasePruner
+												DECLARE_BASE_PRUNER_API
+		//~BasePruner
+
+		// CompoundPruner
+		// compound level
+		virtual		bool						addCompound(Gu::PrunerHandle* results, const Gu::BVH& bvh, PrunerCompoundId compoundId, const PxTransform& transform, bool isDynamic, const Gu::PrunerPayload* data, const PxTransform* transforms);
+		virtual		bool						removeCompound(PrunerCompoundId compoundId, Gu::PrunerPayloadRemovalCallback* removalCallback);
+		virtual		bool						updateCompound(PrunerCompoundId compoundId, const PxTransform& transform);
 		// object level
-		virtual void						updateObjectAfterManualBoundsUpdates(PrunerCompoundId compoundId, const PrunerHandle handle);
-		virtual void						removeObject(PrunerCompoundId compoundId, const PrunerHandle handle);
-		virtual bool						addObject(PrunerCompoundId compoundId, PrunerHandle& result, const PxBounds3& bounds, const PrunerPayload userData);
+		virtual		void						updateObjectAfterManualBoundsUpdates(PrunerCompoundId compoundId, const Gu::PrunerHandle handle);
+		virtual		void						removeObject(PrunerCompoundId compoundId, const Gu::PrunerHandle handle, Gu::PrunerPayloadRemovalCallback* removalCallback);
+		virtual		bool						addObject(PrunerCompoundId compoundId, Gu::PrunerHandle& result, const PxBounds3& bounds, const Gu::PrunerPayload userData, const PxTransform& transform);
 		//queries
-		virtual	PxAgain						raycast(const PxVec3& origin, const PxVec3& unitDir, PxReal& inOutDistance, PrunerCallback&, PxQueryFlags flags) const;
-		virtual	PxAgain						overlap(const Gu::ShapeData& queryVolume, PrunerCallback&, PxQueryFlags flags) const;
-		virtual	PxAgain						sweep(const Gu::ShapeData& queryVolume, const PxVec3& unitDir, PxReal& inOutDistance, PrunerCallback&, PxQueryFlags flags) const;
-		virtual const PrunerPayload&		getPayload(PrunerHandle handle, PrunerCompoundId compoundId) const;
-		virtual const PrunerPayload&		getPayload(PrunerHandle handle, PrunerCompoundId compoundId, PxBounds3*& bounds) const;
-		virtual void						shiftOrigin(const PxVec3& shift);
-		virtual	void						visualize(Cm::RenderOutput&, PxU32) const;
-	// ~CompoundPruner
+		virtual		bool						raycast(const PxVec3& origin, const PxVec3& unitDir, PxReal& inOutDistance, CompoundPrunerRaycastCallback&, PxCompoundPrunerQueryFlags flags) const;
+		virtual		bool						overlap(const Gu::ShapeData& queryVolume, CompoundPrunerOverlapCallback&, PxCompoundPrunerQueryFlags flags) const;
+		virtual		bool						sweep(const Gu::ShapeData& queryVolume, const PxVec3& unitDir, PxReal& inOutDistance, CompoundPrunerRaycastCallback&, PxCompoundPrunerQueryFlags flags) const;
+		virtual		const Gu::PrunerPayload&	getPayloadData(Gu::PrunerHandle handle, PrunerCompoundId compoundId, Gu::PrunerPayloadData* data) const;
+		virtual		void						preallocate(PxU32 nbEntries);
+		virtual		bool						setTransform(Gu::PrunerHandle handle, PrunerCompoundId compoundId, const PxTransform& transform);
+		virtual		const PxTransform&			getTransform(PrunerCompoundId compoundId)	const;
+		virtual		void						visualizeEx(PxRenderOutput& out, PxU32 color, bool drawStatic, bool drawDynamic)	const;
+		// ~CompoundPruner
 
-	private:
-		void updateMapping(const PoolIndex poolIndex, IncrementalAABBTreeNode* node);
-		void updateMainTreeNode(PoolIndex index);
+		private:
+					void						updateMapping(const Gu::PoolIndex poolIndex, Gu::IncrementalAABBTreeNode* node);
+					void						updateMainTreeNode(Gu::PoolIndex index);
 
-		void test();
-	private:
-		IncrementalAABBTree				mMainTree;
-		UpdateMap						mMainTreeUpdateMap;
+					void						test();
+
+					Gu::IncrementalAABBTree		mMainTree;
+					UpdateMap					mMainTreeUpdateMap;
 		
-		CompoundTreePool				mCompoundTreePool;
-		ActorIdPoolIndexMap				mActorPoolMap;
-		PoolIndexActorIdMap				mPoolActorMap;
-		NodeList						mChangedLeaves;
+					CompoundTreePool			mCompoundTreePool;
+					ActorIdPoolIndexMap			mActorPoolMap;
+					PoolIndexActorIdMap			mPoolActorMap;
+					Gu::NodeList				mChangedLeaves;
+		mutable		bool						mDrawStatic;
+		mutable		bool						mDrawDynamic;
 	};
 }
 }
 
 #endif
-

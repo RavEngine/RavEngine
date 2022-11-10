@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,12 +37,11 @@
 
 namespace physx
 {
-
 namespace Gu
 {
 
 template <typename Derived>
-struct PCMMeshContactGenerationCallback : MeshHitCallback<PxRaycastHit>
+struct PCMMeshContactGenerationCallback : MeshHitCallback<PxGeomRaycastHit>
 {
 public:
 	const Cm::FastVertex2ShapeScaling&		mMeshScaling;
@@ -53,7 +51,7 @@ public:
 	Gu::TriangleCache<CacheSize>			mCache;
 
 	PCMMeshContactGenerationCallback(const Cm::FastVertex2ShapeScaling& meshScaling, const PxU8* extraTrigData, bool idtMeshScale)
-	:	MeshHitCallback<PxRaycastHit>(CallbackMode::eMULTIPLE),
+	:	MeshHitCallback<PxGeomRaycastHit>(CallbackMode::eMULTIPLE),
 		mMeshScaling(meshScaling), mExtraTrigData(extraTrigData), mIdtMeshScale(idtMeshScale)
 	{
 	}
@@ -68,12 +66,17 @@ public:
 	}
 
 	virtual PxAgain processHit(
-		const PxRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
+		const PxGeomRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
 	{
 		if (!(static_cast<Derived*>(this))->doTest(v0, v1, v2))
 			return true;
 
+		const PxU32 triangleIndex = hit.faceIndex;
+		PxU8 extraData = getConvexEdgeFlags(mExtraTrigData, triangleIndex);
+
+		const PxU32* vertexIndices = vinds;
 		PxVec3 v[3];
+		PxU32 localStorage[3];
 		if(mIdtMeshScale)
 		{
 			v[0] = v0;
@@ -86,17 +89,23 @@ public:
 			v[0] = mMeshScaling * v0;
 			v[1 + winding] = mMeshScaling * v1;
 			v[2 - winding] = mMeshScaling * v2;
-		}
 
-		const PxU32 triangleIndex = hit.faceIndex;
-		const PxU8 extraData = getConvexEdgeFlags(mExtraTrigData, triangleIndex);
+			if(winding)
+			{
+				flipConvexEdgeFlags(extraData);
+				localStorage[0] = vinds[0];
+				localStorage[1] = vinds[2];
+				localStorage[2] = vinds[1];
+				vertexIndices = localStorage;
+			}
+		}
 
 		if (mCache.isFull())
 		{
 			(static_cast<Derived*>(this))->template processTriangleCache< CacheSize >(mCache);
 			mCache.reset();
 		}
-		mCache.addTriangle(v, vinds, triangleIndex, extraData);
+		mCache.addTriangle(v, vertexIndices, triangleIndex, extraData);
 
 		return true;
 	}
@@ -106,7 +115,7 @@ protected:
 };
 
 template <typename Derived>
-struct PCMHeightfieldContactGenerationCallback : Gu::EntityReport<PxU32>
+struct PCMHeightfieldContactGenerationCallback : Gu::OverlapReport
 {
 public:
 	const Gu::HeightFieldUtil&	mHfUtil;
@@ -120,14 +129,14 @@ public:
 	}
 
 	// PT: TODO: refactor/unify with similar code in other places
-	virtual PxAgain onEvent(PxU32 nb, PxU32* indices)
+	virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 	{
 		const PxU32 CacheSize = 16;
 		Gu::TriangleCache<CacheSize> cache;
 
 		const PxU32 nbPasses = (nb+(CacheSize-1))/CacheSize;
 		PxU32 nbTrigs = nb;
-		PxU32* inds0 = indices;
+		const PxU32* inds0 = indices;
 
 		const PxU8 nextInd[] = {2,0,1};
 
@@ -153,7 +162,6 @@ public:
 
 				for(PxU32 a = 0; a < 3; ++a)
 				{
-
 					if (adjInds[a] != 0xFFFFFFFF)
 					{
 						PxTriangle adjTri;
@@ -163,7 +171,6 @@ public:
 
 						PX_ASSERT(inds[0] == vertIndices[a] || inds[1] == vertIndices[a] || inds[2] == vertIndices[a]);
 						PX_ASSERT(inds[0] == vertIndices[(a + 1) % 3] || inds[1] == vertIndices[(a + 1) % 3] || inds[2] == vertIndices[(a + 1) % 3]);
-
 
 						PxVec3 adjNormal;
 						adjTri.denormalizedNormal(adjNormal);
@@ -200,6 +207,51 @@ public:
 	}	
 protected:
 	PCMHeightfieldContactGenerationCallback& operator=(const PCMHeightfieldContactGenerationCallback&);
+};
+
+template <typename Derived>
+struct PCMTetMeshContactGenerationCallback : TetMeshHitCallback<PxGeomRaycastHit>
+{
+public:
+		
+	static const PxU32 CacheSize = 16;
+	Gu::TetrahedronCache<CacheSize>			mCache;
+
+	PCMTetMeshContactGenerationCallback(): TetMeshHitCallback<PxGeomRaycastHit>(CallbackMode::eMULTIPLE)
+	{
+	}
+
+	void flushCache()
+	{
+		if (!mCache.isEmpty())
+		{
+			(static_cast<Derived*>(this))->template processTetrahedronCache< CacheSize >(mCache);
+			mCache.reset();
+		}
+	}
+
+	virtual PxAgain processHit(
+		const PxGeomRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, const PxVec3& v3, PxReal&, const PxU32* vinds)
+	{
+		if (!(static_cast<Derived*>(this))->doTest(v0, v1, v2, v3))
+			return true;
+
+		PxVec3 v[4] = { v0, v1, v2, v3 };
+
+		const PxU32 tetIndex = hit.faceIndex;
+		
+		if (mCache.isFull())
+		{
+			(static_cast<Derived*>(this))->template processTetrahedronCache< CacheSize >(mCache);
+			mCache.reset();
+		}
+		mCache.addTetrahedrons(v, vinds, tetIndex);
+
+		return true;
+	}
+
+protected:
+	PCMTetMeshContactGenerationCallback& operator=(const PCMTetMeshContactGenerationCallback&);
 };
 
 }//Gu

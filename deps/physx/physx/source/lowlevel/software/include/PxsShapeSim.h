@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,30 +22,34 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PXS_SHAPESIM_H
-#define PXS_SHAPESIM_H
+#ifndef PXS_SHAPE_SIM_H
+#define PXS_SHAPE_SIM_H
 
-#include "PxsBodySim.h"
-#include "PxsIslandNodeIndex.h"
+#include "PxsRigidBody.h"
+#include "PxNodeIndex.h"
 
 namespace physx
 {
 struct PxsShapeCore;
 
-//PxsBodySim is 12 or 16 bytes
-struct PxsShapeSim// : public PxsBodySim
-{	
+struct PxsShapeSim
+{
+
+	PxsShapeSim() : mShapeCore(NULL), mElementIndex_GPU(PX_INVALID_U32)
+	{
+	}
+
 	PxsShapeCore*	mShapeCore;		//	4 or 8
-	IG::NodeIndex	mBodySimIndex;	//	8 or 12	
-	PxU32			mElementIndex;	//	12	or	16	transform cache and bound index
-	PxU32			mShapeIndex;	//	16	or	20
-#if PX_P64_FAMILY
-	PxU32			mPad[3];
-#endif
+
+	// NodeIndex used to look up BodySim in island manager
+	PxNodeIndex		mBodySimIndex_GPU;	//	8 or 12	unique identified for body
+
+	// ElementID - copy of ElementSim's getElementID()
+	PxU32			mElementIndex_GPU;	//	12	or	16	transform cache and bound index
 };
 
 }//physx

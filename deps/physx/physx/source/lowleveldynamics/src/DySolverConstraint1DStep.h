@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef DY_SOLVER_CONSTRAINT_1D_STEP_H
 #define DY_SOLVER_CONSTRAINT_1D_STEP_H
@@ -87,8 +85,8 @@ namespace physx
 			PxF32 velMultiplier;
 			PxF32 targetVelocity;
 			PxF32 biasCoefficient;
-			//2 more slots here for extra data
-			PxU32 pad[2];
+			PxF32 recipResponse;
+			PxF32 maxImpulse;
 		};
 
 		struct SolverContactPointStepExt : public SolverContactPointStep
@@ -179,18 +177,17 @@ namespace physx
 			PxReal		velMultiplier;			//!< constraint velocity multiplier
 
 			PxVec3		ang1;					//!< angular velocity projection (body 1)
-			PxReal		impulseMultiplier;		//!< constraint impulse multiplier
-
 			PxReal		velTarget;				//!< Scaled target velocity of the constraint drive
 
 			PxReal		minImpulse;				//!< Lower bound on impulse magnitude	 
 			PxReal		maxImpulse;				//!< Upper bound on impulse magnitude
 			PxReal		appliedForce;			//!< applied force to correct velocity+bias
-
 			PxReal		maxBias;
+
 			PxU32		flags;
 			PxReal		recipResponse;			//Constant. Only used for articulations;
 			PxReal		angularErrorScale;		//Constant
+			PxU32		pad;
 		} PX_ALIGN_SUFFIX(16);
 
 		struct SolverConstraint1DExtStep : public SolverConstraint1DStep

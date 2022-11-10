@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,8 +34,10 @@
 #include "geometry/PxHeightField.h"
 #include "geometry/PxTriangleMesh.h"
 #include "extensions/PxTriangleMeshExt.h"
+#include "GuSDF.h"
+#include "GuTriangleMesh.h"
 
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
 
 using namespace physx;
 
@@ -69,7 +70,7 @@ PxU32 PxMeshOverlapUtil::findOverlap(const PxGeometry& geom, const PxTransform& 
 			if(mResultsMemory != mResults)
 				PX_FREE(mResultsMemory);
 
-			mResultsMemory = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*maxNbTris, "PxMeshOverlapUtil::findOverlap"));
+			mResultsMemory = PX_ALLOCATE(PxU32, maxNbTris, "PxMeshOverlapUtil::findOverlap");
 			mMaxNbResults = maxNbTris;
 		}
 		nbTouchedTris = PxMeshQuery::findOverlapTriangleMesh(geom, geomPose, meshGeom, meshPose, mResultsMemory, mMaxNbResults, 0, overflow);
@@ -99,7 +100,7 @@ PxU32 PxMeshOverlapUtil::findOverlap(const PxGeometry& geom, const PxTransform& 
 			if(mResultsMemory != mResults)
 				PX_FREE(mResultsMemory);
 
-			mResultsMemory = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*maxNbTris, "PxMeshOverlapUtil::findOverlap"));
+			mResultsMemory = PX_ALLOCATE(PxU32, maxNbTris, "PxMeshOverlapUtil::findOverlap");
 			mMaxNbResults = maxNbTris;
 		}
 		nbTouchedTris = PxMeshQuery::findOverlapHeightField(geom, geomPose, hfGeom, hfPose, mResultsMemory, mMaxNbResults, 0, overflow);
@@ -172,3 +173,17 @@ bool physx::PxComputeHeightFieldPenetration(PxVec3& direction,
 	return computeMeshPenetrationT(direction, depth, geom, geomPose, hfGeom, meshPose, maxIter, nbIter);
 }
 
+bool physx::PxExtractIsosurfaceFromSDF(const PxTriangleMesh& triangleMesh, PxArray<PxVec3>& isosurfaceVertices, PxArray<PxU32>& isosurfaceTriangleIndices)
+{
+	PxU32 dimX, dimY, dimZ;
+	triangleMesh.getSDFDimensions(dimX, dimY, dimZ);
+	if (dimX == 0 || dimY == 0 || dimZ == 0)
+		return false;
+
+	const Gu::TriangleMesh* guTriangleMesh = static_cast<const Gu::TriangleMesh*>(&triangleMesh);
+	const Gu::SDF& sdf = guTriangleMesh->getSdfDataFast();	
+
+	extractIsosurfaceFromSDF(sdf, isosurfaceVertices, isosurfaceTriangleIndices);
+
+	return true;
+}

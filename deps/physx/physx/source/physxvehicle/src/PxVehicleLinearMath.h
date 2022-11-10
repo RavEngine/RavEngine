@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -387,19 +386,19 @@ class Matrix33Solver
 {
 public:
 
-	bool solve(const MatrixNN& _A_, const VectorN& _b_, VectorN& result) const
+	bool solve(const MatrixNN& A_, const VectorN& b_, VectorN& result) const
 	{
-		const PxF32 a = _A_.get(0,0);
-		const PxF32 b = _A_.get(0,1);
-		const PxF32 c = _A_.get(0,2);
+		const PxF32 a = A_.get(0,0);
+		const PxF32 b = A_.get(0,1);
+		const PxF32 c = A_.get(0,2);
 
-		const PxF32 d = _A_.get(1,0);
-		const PxF32 e = _A_.get(1,1);
-		const PxF32 f = _A_.get(1,2);
+		const PxF32 d = A_.get(1,0);
+		const PxF32 e = A_.get(1,1);
+		const PxF32 f = A_.get(1,2);
 
-		const PxF32 g = _A_.get(2,0);
-		const PxF32 h = _A_.get(2,1);
-		const PxF32 k = _A_.get(2,2);
+		const PxF32 g = A_.get(2,0);
+		const PxF32 h = A_.get(2,1);
+		const PxF32 k = A_.get(2,2);
 
 		const PxF32 detA = a*(e*k - f*h) - b*(k*d - f*g) + c*(d*h - e*g);
 		if(0.0f == detA)
@@ -418,9 +417,9 @@ public:
 		const PxF32 F = -(a*h - b*g);
 		const PxF32 K = (a*e - b*d); 
 
-		result[0] = detAInv*(A*_b_[0] + D*_b_[1] + G*_b_[2]);
-		result[1] = detAInv*(B*_b_[0] + E*_b_[1] + H*_b_[2]);
-		result[2] = detAInv*(C*_b_[0] + F*_b_[1] + K*_b_[2]);
+		result[0] = detAInv*(A*b_[0] + D*b_[1] + G*b_[2]);
+		result[1] = detAInv*(B*b_[0] + E*b_[1] + H*b_[2]);
+		result[2] = detAInv*(C*b_[0] + F*b_[1] + K*b_[2]);
 
 		return true;
 	}
@@ -430,4 +429,4 @@ public:
 } // namespace physx
 #endif
 
-#endif //PX_VEHICLE_LINEAR_MATH_H
+#endif

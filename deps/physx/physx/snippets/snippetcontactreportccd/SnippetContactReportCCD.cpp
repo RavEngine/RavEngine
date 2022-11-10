@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -44,42 +43,33 @@
 // ****************************************************************************
 
 #include <vector>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetutils/SnippetUtils.h"
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 
-
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
-
-PxFoundation*			gFoundation			= NULL;
-PxPhysics*				gPhysics			= NULL;
-PxCooking*				gCooking			= NULL;
-
-PxDefaultCpuDispatcher*	gDispatcher			= NULL;
-PxScene*				gScene				= NULL;
-PxMaterial*				gMaterial			= NULL;
-
-PxTriangleMesh*			gTriangleMesh		= NULL;
-PxRigidStatic*			gTriangleMeshActor	= NULL;
-PxRigidDynamic*			gSphereActor		= NULL;
-PxPvd*                  gPvd                = NULL;
-
-PxU32					gSimStepCount		= 0;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation			= NULL;
+static PxPhysics*				gPhysics			= NULL;
+static PxDefaultCpuDispatcher*	gDispatcher			= NULL;
+static PxScene*					gScene				= NULL;
+static PxMaterial*				gMaterial			= NULL;
+static PxTriangleMesh*			gTriangleMesh		= NULL;
+static PxRigidStatic*			gTriangleMeshActor	= NULL;
+static PxRigidDynamic*			gSphereActor		= NULL;
+static PxPvd*					gPvd                = NULL;
+static PxU32					gSimStepCount		= 0;
 
 std::vector<PxVec3> gContactPositions;
 std::vector<PxVec3> gContactImpulses;
 std::vector<PxVec3> gContactSphereActorPositions;
 
-
-PxFilterFlags contactReportFilterShader(PxFilterObjectAttributes attributes0, PxFilterData filterData0, 
-										PxFilterObjectAttributes attributes1, PxFilterData filterData1,
-										PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize)
+static PxFilterFlags contactReportFilterShader(	PxFilterObjectAttributes attributes0, PxFilterData filterData0, 
+												PxFilterObjectAttributes attributes1, PxFilterData filterData1,
+												PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize)
 {
 	PX_UNUSED(attributes0);
 	PX_UNUSED(attributes1);
@@ -163,7 +153,7 @@ class ContactReportCallback: public PxSimulationEventCallback
 
 ContactReportCallback gContactReportCallback;
 
-void initScene()
+static void initScene()
 {
 	//
 	// Create a static triangle mesh
@@ -198,7 +188,9 @@ void initScene()
 	triangleMeshDesc.triangles.data = triangleIndices;
 	triangleMeshDesc.triangles.stride = 3 * sizeof(PxU32);
 
-	gTriangleMesh = gCooking->createTriangleMesh(triangleMeshDesc, gPhysics->getPhysicsInsertionCallback());
+	PxTolerancesScale tolerances;
+	const PxCookingParams params(tolerances);
+	gTriangleMesh = PxCreateTriangleMesh(params, triangleMeshDesc, gPhysics->getPhysicsInsertionCallback());
 
 	if (!gTriangleMesh)
 		return;
@@ -255,7 +247,6 @@ void initPhysics(bool /*interactive*/)
 	gPvd->connect(*transport,PxPvdInstrumentationFlag::eALL);
 
 	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(),true,gPvd);
-	gCooking = PxCreateCooking(PX_PHYSICS_VERSION, *gFoundation, PxCookingParams(PxTolerancesScale()));
 	PxInitExtensions(*gPhysics, gPvd);
 
 	PxU32 numCores = SnippetUtils::getNbPhysicalCores();
@@ -304,7 +295,6 @@ void cleanupPhysics(bool /*interactive*/)
 	PX_RELEASE(gDispatcher);
 	PxCloseExtensions();
 	PX_RELEASE(gPhysics);
-	PX_RELEASE(gCooking);
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();

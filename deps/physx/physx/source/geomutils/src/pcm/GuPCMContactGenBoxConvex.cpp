@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,27 +22,26 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "GuGeometryUnion.h"
 #include "GuPCMContactGen.h"
 #include "GuPCMShapeConvex.h"
-#include "CmRenderOutput.h"
 #include "GuPCMContactGenUtil.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
+#include "foundation/PxAlloca.h"
 #include "GuVecCapsule.h"
 #include "GuVecBox.h"
 #include "GuEPA.h"
-#include "geomutils/GuContactBuffer.h"
-
+#include "geomutils/PxContactBuffer.h"
+#include "common/PxRenderOutput.h"
 
 #define PCM_USE_INTERNAL_OBJECT 1
 
 using namespace physx;
 using namespace Gu;
-using namespace Ps::aos;
+using namespace aos;
 
 	//Precompute the convex data
 	//     7+------+6			0 = ---
@@ -61,7 +59,7 @@ namespace physx
 namespace Gu
 {
 	
-	static bool testFaceNormal(const PolygonalData& polyData0, const PolygonalData& polyData1, SupportLocal* map0, SupportLocal* map1, const PsMatTransformV& transform0To1, const PsMatTransformV& transform1To0, const FloatVArg contactDist, 
+	static bool testFaceNormal(const PolygonalData& polyData0, const PolygonalData& polyData1, SupportLocal* map0, SupportLocal* map1, const PxMatTransformV& transform0To1, const PxMatTransformV& transform1To0, const FloatVArg contactDist, 
 		FloatV& minOverlap, PxU32& feature, Vec3V& faceNormal, const FeatureStatus faceStatus, FeatureStatus& status)
 	{
 		PX_UNUSED(polyData1);
@@ -184,13 +182,13 @@ namespace Gu
 			const Gu::HullPolygonData& polygon = polyData.mPolygons[i];
 			const PxU8* inds = polyData.mPolygonVertexRefs + polygon.mVRef8;
 			
-			Vec3V v0 = M33MulV3(map->vertex2Shape, V3LoadU_SafeReadW(polyData.mVerts[inds[0]]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData
+			Vec3V v0 = M33MulV3(map->vertex2Shape, V3LoadU_SafeReadW(polyData.mVerts[inds[polygon.mNbVerts - 1]]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData
 		
 			FloatV dist0 = V3Dot(dir, V3Sub(v0, planeP));
 
-			for (PxU32 iStart = 0, iEnd = PxU32(polygon.mNbVerts - 1); iStart < polygon.mNbVerts; iEnd = iStart++)
+			for (PxU32 iStart = 0; iStart < polygon.mNbVerts; iStart++)
 			{
-				const Vec3V v1 = M33MulV3(map->vertex2Shape, V3LoadU_SafeReadW(polyData.mVerts[inds[iEnd]]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData
+				const Vec3V v1 = M33MulV3(map->vertex2Shape, V3LoadU_SafeReadW(polyData.mVerts[inds[iStart]]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData
 				
 				const FloatV dist1 = V3Dot(dir, V3Sub(v1, planeP));
 
@@ -212,7 +210,7 @@ namespace Gu
 	}
 
 
-	static bool testEdgeNormal(const PolygonalData& polyData0, const PolygonalData& polyData1, SupportLocal* map0, SupportLocal* map1, const PsMatTransformV& transform0To1, const PsMatTransformV& transform1To0, const FloatVArg contactDist,
+	static bool testEdgeNormal(const PolygonalData& polyData0, const PolygonalData& polyData1, SupportLocal* map0, SupportLocal* map1, const PxMatTransformV& transform0To1, const PxMatTransformV& transform1To0, const FloatVArg contactDist,
 		FloatV& minOverlap, Vec3V& edgeNormalIn0, const FeatureStatus edgeStatus, FeatureStatus& status)
 	{
 		
@@ -358,8 +356,8 @@ namespace Gu
 
 	//contactNormal is in the space of polyData0
 	void generatedContacts(PolygonalData& polyData0, PolygonalData& polyData1, const HullPolygonData& referencePolygon, const HullPolygonData& incidentPolygon,  
-		SupportLocal* map0, SupportLocal* map1, const PsMatTransformV& transform0To1, PersistentContact* manifoldContacts, 
-		PxU32& numContacts, const FloatVArg contactDist, Cm::RenderOutput* renderOutput)
+		SupportLocal* map0, SupportLocal* map1, const PxMatTransformV& transform0To1, PersistentContact* manifoldContacts, 
+		PxU32& numContacts, const FloatVArg contactDist, PxRenderOutput* renderOutput)
 	{
 
 		PX_UNUSED(renderOutput);
@@ -436,16 +434,17 @@ namespace Gu
 
 				if(contains(points0In0, referencePolygon.mNbVerts, points1In0[i], rPolygonMin, rPolygonMax))
 				{
+
 					inside++;
 
-					if (numContacts == Gu::ContactBuffer::MAX_CONTACTS)
+					if (numContacts == PxContactBuffer::MAX_CONTACTS)
 						return;
-
+				
 					const Vec4V localNormalPen = V4SetW(Vec4V_From_Vec3V(contactNormal), points1In0TValue[i]);
 					manifoldContacts[numContacts].mLocalPointA = vert1;
 					manifoldContacts[numContacts].mLocalPointB = M33TrnspsMulV3(rot, points1In0[i]);
 					manifoldContacts[numContacts++].mLocalNormalPen = localNormalPen;
-					
+				
 				}
 			}
 			else
@@ -485,19 +484,19 @@ namespace Gu
 				if(FAllGrtr(t, contactDist))
 					continue;
 
-				if (numContacts == Gu::ContactBuffer::MAX_CONTACTS)
-					return;
-
 
 				inside++;
 
+				if (numContacts == PxContactBuffer::MAX_CONTACTS)
+					return;
+			
 				const Vec3V projPoint = V3ScaleAdd(contactNormalIn1, t, a);
 				const Vec4V localNormalPen = V4SetW(Vec4V_From_Vec3V(contactNormal), t);
-		
+
 				manifoldContacts[numContacts].mLocalPointA = projPoint;
 				manifoldContacts[numContacts].mLocalPointB = vert0;
 				manifoldContacts[numContacts++].mLocalNormalPen = localNormalPen;
-
+		
 			}
 		}
 
@@ -562,14 +561,14 @@ namespace Gu
 						if(FAllGrtr(pen, contactDist))
 							continue;
 
-						if (numContacts == Gu::ContactBuffer::MAX_CONTACTS)
+						if (numContacts == PxContactBuffer::MAX_CONTACTS)
 							return;
-
 
 						const Vec4V localNormalPen = V4SetW(Vec4V_From_Vec3V(contactNormal), pen);
 						manifoldContacts[numContacts].mLocalPointA = pB;
 						manifoldContacts[numContacts].mLocalPointB = pA;
 						manifoldContacts[numContacts++].mLocalNormalPen = localNormalPen;
+						
 					}
 				}
 			}
@@ -580,11 +579,11 @@ namespace Gu
 
 	bool generateFullContactManifold(PolygonalData& polyData0, PolygonalData& polyData1, SupportLocal* map0, SupportLocal* map1,  PersistentContact* manifoldContacts, PxU32& numContacts,
 		const FloatVArg contactDist, const Vec3VArg normal, const Vec3VArg closestA, const Vec3VArg closestB, const PxReal marginA, const PxReal marginB, const bool doOverlapTest, 
-		Cm::RenderOutput* renderOutput, const PxReal toleranceLength)
+		PxRenderOutput* renderOutput, const PxReal toleranceLength)
 	{
 	
-		const PsMatTransformV transform1To0V = map0->transform.transformInv(map1->transform);
-		const PsMatTransformV transform0To1V = map1->transform.transformInv(map0->transform);
+		const PxMatTransformV transform1To0V = map0->transform.transformInv(map1->transform);
+		const PxMatTransformV transform0To1V = map1->transform.transformInv(map0->transform);
 
 	
 		if(doOverlapTest)
@@ -720,7 +719,7 @@ EdgeTest:
 	}
 
 	//This function called by box/convex and convex/convex pcm function
-	bool addGJKEPAContacts(const GjkConvex* relativeConvex, const GjkConvex* localConvex, const PsMatTransformV& aToB, GjkStatus status,
+	bool addGJKEPAContacts(const GjkConvex* relativeConvex, const GjkConvex* localConvex, const PxMatTransformV& aToB, GjkStatus status,
 		Gu::PersistentContact* manifoldContacts, const FloatV replaceBreakingThreshold, const FloatV tolerenceLength, GjkOutput& output,
 		Gu::PersistentContactManifold& manifold)
 	{
@@ -775,13 +774,13 @@ EdgeTest:
 	}
 
 
-	bool computeMTD(Gu::PolygonalData& polyData0, Gu::PolygonalData& polyData1,  SupportLocal* map0, SupportLocal* map1, Ps::aos::FloatV& penDepth, Ps::aos::Vec3V& normal)
+	bool computeMTD(Gu::PolygonalData& polyData0, Gu::PolygonalData& polyData1,  SupportLocal* map0, SupportLocal* map1, aos::FloatV& penDepth, aos::Vec3V& normal)
 	{
 	
-		using namespace Ps::aos;
+		using namespace aos;
 
-		const PsMatTransformV transform1To0V = map0->transform.transformInv(map1->transform);
-		const PsMatTransformV transform0To1V = map1->transform.transformInv(map0->transform);
+		const PxMatTransformV transform1To0V = map0->transform.transformInv(map1->transform);
+		const PxMatTransformV transform0To1V = map1->transform.transformInv(map0->transform);
 	
 		FeatureStatus status = POLYDATA0;
 		FloatV minOverlap = FMax();

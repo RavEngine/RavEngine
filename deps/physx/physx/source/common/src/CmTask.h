@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_TASK
-#define PX_PHYSICS_COMMON_TASK
+#ifndef CM_TASK_H
+#define CM_TASK_H
 
 #include "task/PxTask.h"
-#include "CmPhysXCommon.h"
-#include "PsUserAllocated.h"
-#include "PsAtomic.h"
-#include "PsMutex.h"
-#include "PsInlineArray.h"
-#include "PsFPU.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxAtomic.h"
+#include "foundation/PxMutex.h"
+#include "foundation/PxInlineArray.h"
+#include "foundation/PxFPU.h"
 
 namespace physx
 {
@@ -89,11 +86,21 @@ namespace Cm
 	};
 
 	template <class T, void (T::*Fn)(physx::PxBaseTask*) >
-	class DelegateTask : public Cm::Task, public shdfnd::UserAllocated
+	class DelegateTask : public Cm::Task, public PxUserAllocated
 	{
 	public:
 
 		DelegateTask(PxU64 contextID, T* obj, const char* name) : Cm::Task(contextID), mObj(obj), mName(name) {}
+
+		virtual void run()
+		{
+#if PX_SWITCH  // special case because default rounding mode is not nearest
+			PX_FPU_GUARD;
+#else
+			PX_SIMD_GUARD;
+#endif
+			(mObj->*Fn)(mCont);
+		}
 
 		virtual void runInternal()
 		{
@@ -136,11 +143,11 @@ namespace Cm
 		*/
 		virtual void removeReference()
 		{
-			shdfnd::Mutex::ScopedLock lock(mMutex);
-			if (!physx::shdfnd::atomicDecrement(&mRefCount))
+			PxMutex::ScopedLock lock(mMutex);
+			if (!physx::PxAtomicDecrement(&mRefCount))
 			{
 				// prevents access to mReferencesToRemove until release
-				physx::shdfnd::atomicIncrement(&mRefCount);
+				physx::PxAtomicIncrement(&mRefCount);
 				mNotifySubmission = false;
 				PX_ASSERT(mReferencesToRemove.empty());
 				for (PxU32 i = 0; i < mDependents.size(); i++)
@@ -155,8 +162,8 @@ namespace Cm
 		*/
 		virtual void addReference()
 		{
-			shdfnd::Mutex::ScopedLock lock(mMutex);
-			physx::shdfnd::atomicIncrement(&mRefCount);
+			PxMutex::ScopedLock lock(mMutex);
+			physx::PxAtomicIncrement(&mRefCount);
 			mNotifySubmission = true;
 		}
 
@@ -182,8 +189,8 @@ namespace Cm
 		*/
 		PX_INLINE void addDependent(physx::PxBaseTask& dependent)
 		{
-			shdfnd::Mutex::ScopedLock lock(mMutex);
-			physx::shdfnd::atomicIncrement(&mRefCount);
+			PxMutex::ScopedLock lock(mMutex);
+			physx::PxAtomicIncrement(&mRefCount);
 			mTm = dependent.getTaskManager();
 			mDependents.pushBack(&dependent);
 			dependent.addReference();
@@ -196,10 +203,10 @@ namespace Cm
 		*/
 		virtual void release()
 		{
-			Ps::InlineArray<physx::PxBaseTask*, 10> referencesToRemove;
+			PxInlineArray<physx::PxBaseTask*, 10> referencesToRemove;
 
 			{
-				shdfnd::Mutex::ScopedLock lock(mMutex);
+				PxMutex::ScopedLock lock(mMutex);
 
 				const PxU32 contCount = mReferencesToRemove.size(); 
 				referencesToRemove.reserve(contCount);
@@ -214,7 +221,7 @@ namespace Cm
 				}
 				else
 				{
-					physx::shdfnd::atomicDecrement(&mRefCount);
+					physx::PxAtomicDecrement(&mRefCount);
 				}
 
 				// the scoped lock needs to get freed before the continuation tasks get (potentially) submitted because
@@ -231,10 +238,10 @@ namespace Cm
 	protected:
 		volatile PxI32 mRefCount;
 		const char* mName;
-		Ps::InlineArray<physx::PxBaseTask*, 4> mDependents;
-		Ps::InlineArray<physx::PxBaseTask*, 4> mReferencesToRemove;
+		PxInlineArray<physx::PxBaseTask*, 4> mDependents;
+		PxInlineArray<physx::PxBaseTask*, 4> mReferencesToRemove;
 		bool mNotifySubmission;
-		Ps::Mutex mMutex; // guarding mDependents and mNotifySubmission
+		PxMutex mMutex; // guarding mDependents and mNotifySubmission
 	};
 
 
@@ -242,7 +249,7 @@ namespace Cm
 	\brief Specialization of FanoutTask class in order to provide the delegation mechanism.
 	*/
 	template <class T, void (T::*Fn)(physx::PxBaseTask*) >
-	class DelegateFanoutTask : public FanoutTask, public shdfnd::UserAllocated
+	class DelegateFanoutTask : public FanoutTask, public PxUserAllocated
 	{
 	public:
 		DelegateFanoutTask(PxU64 contextID, T* obj, const char* name) : 

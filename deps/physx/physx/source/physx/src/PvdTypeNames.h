@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 #ifndef PVD_TYPE_NAMES_H
@@ -58,6 +57,23 @@ struct PxArticulationLinkUpdateBlock
 	PxVec3 LinearVelocity;
 	PxVec3 AngularVelocity;
 };
+
+struct PxArticulationJointUpdateBlock
+{
+	PxReal JointPosition_eX;
+	PxReal JointPosition_eY;
+	PxReal JointPosition_eZ;
+	PxReal JointPosition_eTwist;
+	PxReal JointPosition_eSwing1;
+	PxReal JointPosition_eSwing2;
+	PxReal JointVelocity_eX;
+	PxReal JointVelocity_eY;
+	PxReal JointVelocity_eZ;
+	PxReal JointVelocity_eTwist;
+	PxReal JointVelocity_eSwing1;
+	PxReal JointVelocity_eSwing2;
+};
+
 struct PxRigidDynamicUpdateBlock : public PxArticulationLinkUpdateBlock
 {
 	bool IsSleeping;
@@ -101,10 +117,17 @@ DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxSimulationStatistics)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxSimulationStatisticsGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxMaterial)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxMaterialGeneratedValues)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMSoftBodyMaterial)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMSoftBodyMaterialGeneratedValues)
+// DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMClothMaterial) // jcarius: Commented-out until FEMCloth is not under construction anymore
+// DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMClothMaterialGeneratedValues) // jcarius: Commented-out until FEMCloth is not under construction anymore
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxPBDMaterial)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxPBDMaterialGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxHeightField)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxHeightFieldDesc)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxHeightFieldDescGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxTriangleMesh)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxTetrahedronMesh)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxConvexMesh)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxActor)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxRigidActor)
@@ -122,29 +145,25 @@ DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxCapsuleGeometry)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxSphereGeometry)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxHeightFieldGeometry)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxTriangleMeshGeometry)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxTetrahedronMeshGeometry)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxConvexMeshGeometry)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxCustomGeometry)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxBoxGeometryGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxPlaneGeometryGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxCapsuleGeometryGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxSphereGeometryGeneratedValues)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxTetrahedronMeshGeometryGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxHeightFieldGeometryGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxTriangleMeshGeometryGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxConvexMeshGeometryGeneratedValues)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxCustomGeometryGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxHeightFieldSample)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxConstraint)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxConstraintGeneratedValues)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationBase)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationBaseGeneratedValues)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulation)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationReducedCoordinate)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationReducedCoordinateGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationLink)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationLinkGeneratedValues)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationJointBase)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationJointBaseGeneratedValues)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationJoint)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationJointGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationJointReducedCoordinate)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxArticulationJointReducedCoordinateGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxAggregate)
@@ -156,6 +175,7 @@ DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxAggregateGeneratedValues)
 DEFINE_NATIVE_PVD_TYPE_MAP(PvdHullPolygonData)
 DEFINE_NATIVE_PVD_TYPE_MAP(PxRigidDynamicUpdateBlock)
 DEFINE_NATIVE_PVD_TYPE_MAP(PxArticulationLinkUpdateBlock)
+DEFINE_NATIVE_PVD_TYPE_MAP(PxArticulationJointUpdateBlock)
 DEFINE_NATIVE_PVD_TYPE_MAP(PvdContact)
 DEFINE_NATIVE_PVD_TYPE_MAP(PvdRaycast)
 DEFINE_NATIVE_PVD_TYPE_MAP(PvdSweep)

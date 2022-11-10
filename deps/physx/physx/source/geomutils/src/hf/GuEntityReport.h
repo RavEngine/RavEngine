@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,31 +22,36 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_ENTITY_REPORT_H
 #define GU_ENTITY_REPORT_H
 
-#include "Ps.h"
 #include "PxQueryReport.h"
 
 namespace physx
 {
 namespace Gu
 {
+	class EntityReport
+	{
+		public:
 
-template<class T>
-class EntityReport
-{
-	public:
+		virtual			~EntityReport()	{}
 
-	virtual			~EntityReport()	{}
+		virtual	bool	onEvent(PxU32 nbEntities, const PxU32* entities) = 0;
+	};
 
-	virtual	PxAgain	onEvent(PxU32 nbEntities, T* entities) = 0;
-};
+	class OverlapReport
+	{
+		public:
 
+		virtual			~OverlapReport()	{}
+
+		virtual	bool	reportTouchedTris(PxU32 nbEntities, const PxU32* entities) = 0;
+	};
 
 }  // namespace Gu
 

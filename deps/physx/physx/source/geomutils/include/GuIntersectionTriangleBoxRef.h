@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_INTERSECTION_TRIANGLE_BOX_REF_H
 #define GU_INTERSECTION_TRIANGLE_BOX_REF_H
 
-#include "CmPhysXCommon.h"
 #include "foundation/PxVec3.h"
-
 
 /********************************************************/
 /* AABB-triangle overlap test code                      */
@@ -47,7 +44,6 @@
 /* suggestions and discussions on how to optimize code. */
 /* Thanks to David Hunt for finding a ">="-bug!         */
 /********************************************************/
-
 
 namespace physx
 {
@@ -65,7 +61,7 @@ namespace physx
 	minimum = physx::intrinsics::selectMin(minimum, x2);	\
 	maximum = physx::intrinsics::selectMax(maximum, x2);
 
-	static PX_CUDA_CALLABLE PX_FORCE_INLINE Ps::IntBool planeBoxOverlap(const PxVec3& normal, PxReal d, const PxVec3& maxbox)
+	static PX_CUDA_CALLABLE PX_FORCE_INLINE PxIntBool planeBoxOverlap(const PxVec3& normal, PxReal d, const PxVec3& maxbox)
 	{
 		PxVec3 vmin, vmax;
 
@@ -102,9 +98,11 @@ namespace physx
 			vmax.z = -maxbox.z;
 		}
 
-		if (normal.dot(vmin) + d >  0.0f) return Ps::IntFalse;
-		if (normal.dot(vmax) + d >= 0.0f) return Ps::IntTrue;
-		return Ps::IntFalse;
+		if(normal.dot(vmin) + d >  0.0f)
+			return PxIntFalse;
+		if(normal.dot(vmax) + d >= 0.0f)
+			return PxIntTrue;
+		return PxIntFalse;
 	}
 
 	/*======================== X-tests ========================*/
@@ -114,7 +112,7 @@ namespace physx
 	minimum = physx::intrinsics::selectMin(p0, p2);			\
 	maximum = physx::intrinsics::selectMax(p0, p2);			\
 	rad = fa * extents.y + fb * extents.z;					\
-	if(minimum>rad || maximum<-rad) return Ps::IntFalse;
+	if(minimum>rad || maximum<-rad) return PxIntFalse;
 
 #define AXISTEST_X2(a, b, fa, fb)							\
 	p0 = a*v0.y - b*v0.z;									\
@@ -122,7 +120,7 @@ namespace physx
 	minimum = physx::intrinsics::selectMin(p0, p1);			\
 	maximum = physx::intrinsics::selectMax(p0, p1);			\
 	rad = fa * extents.y + fb * extents.z;					\
-	if(minimum>rad || maximum<-rad) return Ps::IntFalse;
+	if(minimum>rad || maximum<-rad) return PxIntFalse;
 
 	/*======================== Y-tests ========================*/
 #define AXISTEST_Y02(a, b, fa, fb)							\
@@ -131,7 +129,7 @@ namespace physx
 	minimum = physx::intrinsics::selectMin(p0, p2);			\
 	maximum = physx::intrinsics::selectMax(p0, p2);			\
 	rad = fa * extents.x + fb * extents.z;					\
-	if(minimum>rad || maximum<-rad) return Ps::IntFalse;
+	if(minimum>rad || maximum<-rad) return PxIntFalse;
 
 #define AXISTEST_Y1(a, b, fa, fb)							\
 	p0 = -a*v0.x + b*v0.z;									\
@@ -139,7 +137,7 @@ namespace physx
 	minimum = physx::intrinsics::selectMin(p0, p1);			\
 	maximum = physx::intrinsics::selectMax(p0, p1);			\
 	rad = fa * extents.x + fb * extents.z;					\
-	if(minimum>rad || maximum<-rad) return Ps::IntFalse;
+	if(minimum>rad || maximum<-rad) return PxIntFalse;
 
 	/*======================== Z-tests ========================*/
 #define AXISTEST_Z12(a, b, fa, fb)							\
@@ -148,7 +146,7 @@ namespace physx
 	minimum = physx::intrinsics::selectMin(p1, p2);			\
 	maximum = physx::intrinsics::selectMax(p1, p2);			\
 	rad = fa * extents.x + fb * extents.y;					\
-	if(minimum>rad || maximum<-rad) return Ps::IntFalse;
+	if(minimum>rad || maximum<-rad) return PxIntFalse;
 
 #define AXISTEST_Z0(a, b, fa, fb)							\
 	p0 = a*v0.x - b*v0.y;									\
@@ -156,12 +154,12 @@ namespace physx
 	minimum = physx::intrinsics::selectMin(p0, p1);			\
 	maximum = physx::intrinsics::selectMax(p0, p1);			\
 	rad = fa * extents.x + fb * extents.y;					\
-	if(minimum>rad || maximum<-rad) return Ps::IntFalse;
+	if(minimum>rad || maximum<-rad) return PxIntFalse;
 
 	namespace Gu
 	{
-
-		static PX_CUDA_CALLABLE PX_FORCE_INLINE Ps::IntBool intersectTriangleBox_RefImpl(const PxVec3& boxcenter, const PxVec3& extents, const PxVec3& tp0, const PxVec3& tp1, const PxVec3& tp2)
+		template <const bool bDoVertexChecks = false>
+		static PX_CUDA_CALLABLE PX_FORCE_INLINE PxIntBool intersectTriangleBox_RefImpl(const PxVec3& boxcenter, const PxVec3& extents, const PxVec3& tp0, const PxVec3& tp1, const PxVec3& tp2)
 		{
 			/*    use separating axis theorem to test overlap between triangle and box */
 			/*    need to test for overlap in these directions: */
@@ -175,6 +173,16 @@ namespace physx
 			const PxVec3 v0 = tp0 - boxcenter;
 			const PxVec3 v1 = tp1 - boxcenter;
 			const PxVec3 v2 = tp2 - boxcenter;
+
+			if (bDoVertexChecks)
+			{
+				if (PxAbs(v0.x) <= extents.x && PxAbs(v0.y) <= extents.y && PxAbs(v0.z) <= extents.z)
+					return PxIntTrue;
+				if (PxAbs(v1.x) <= extents.x && PxAbs(v1.y) <= extents.y && PxAbs(v1.z) <= extents.z)
+					return PxIntTrue;
+				if (PxAbs(v2.x) <= extents.x && PxAbs(v2.y) <= extents.y && PxAbs(v2.z) <= extents.z)
+					return PxIntTrue;
+			}
 
 			// compute triangle edges
 			const PxVec3 e0 = v1 - v0;	// tri edge 0
@@ -213,15 +221,18 @@ namespace physx
 
 			// test in X-direction
 			FINDMINMAX(v0.x, v1.x, v2.x, minimum, maximum);
-			if (minimum>extents.x || maximum<-extents.x) return Ps::IntFalse;
+			if(minimum>extents.x || maximum<-extents.x)
+				return PxIntFalse;
 
 			// test in Y-direction
 			FINDMINMAX(v0.y, v1.y, v2.y, minimum, maximum);
-			if (minimum>extents.y || maximum<-extents.y) return Ps::IntFalse;
+			if(minimum>extents.y || maximum<-extents.y)
+				return PxIntFalse;
 
 			// test in Z-direction
 			FINDMINMAX(v0.z, v1.z, v2.z, minimum, maximum);
-			if (minimum>extents.z || maximum<-extents.z) return Ps::IntFalse;
+			if(minimum>extents.z || maximum<-extents.z)
+				return PxIntFalse;
 
 			// Bullet 2:
 			//  test if the box intersects the plane of the triangle
@@ -229,9 +240,10 @@ namespace physx
 			PxVec3 normal;
 			CROSS(normal, e0, e1);
 			const float d = -DOT(normal, v0);	// plane eq: normal.x+d=0
-			if (!planeBoxOverlap(normal, d, extents)) return Ps::IntFalse;
+			if(!planeBoxOverlap(normal, d, extents))
+				return PxIntFalse;
 
-			return Ps::IntTrue;	// box and triangle overlaps
+			return PxIntTrue;	// box and triangle overlaps
 		}
 	}
 

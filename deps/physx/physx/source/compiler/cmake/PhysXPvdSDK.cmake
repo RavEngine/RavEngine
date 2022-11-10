@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXPvdSDK common
@@ -108,18 +107,12 @@ SET(PHYSXPVDSDK_INTERNAL_HEADERS
 	${LL_SOURCE_DIR}/include/PxPvdDataStreamHelpers.h
 	${LL_SOURCE_DIR}/include/PxPvdErrorCodes.h
 	${LL_SOURCE_DIR}/include/PxPvdObjectModelBaseTypes.h
-	${LL_SOURCE_DIR}/include/PxPvdRenderBuffer.h
 	${LL_SOURCE_DIR}/include/PxPvdUserRenderer.h
 )
 SOURCE_GROUP(src\\include FILES ${PHYSXPVDSDK_INTERNAL_HEADERS})
 
 SET(PHYSXPVDSDK_FILEBUF_FILES
-	${PHYSX_SOURCE_DIR}/filebuf/include/PsAsciiConversion.h
-	${PHYSX_SOURCE_DIR}/filebuf/include/PsAsciiConversion.inl
 	${PHYSX_SOURCE_DIR}/filebuf/include/PsFileBuffer.h
-	${PHYSX_SOURCE_DIR}/filebuf/include/PsIOStream.h
-	${PHYSX_SOURCE_DIR}/filebuf/include/PsIOStream.inl
-	${PHYSX_SOURCE_DIR}/filebuf/include/PsMemoryBuffer.h
 )
 SOURCE_GROUP(filebuf\\include FILES ${PHYSXPVDSDK_FILEBUF_FILES})
 
@@ -147,10 +140,17 @@ TARGET_COMPILE_DEFINITIONS(PhysXPvdSDK
 )
 
 # Add linked libraries
-TARGET_LINK_LIBRARIES(PhysXPvdSDK 
-	PUBLIC ${PHYSXPVDSDK_PLATFORM_LINKED_LIBS}
-	PUBLIC PhysXFoundation
-)
+IF(PX_GENERATE_STATIC_LIBRARIES)
+	TARGET_LINK_LIBRARIES(PhysXPvdSDK 
+		PUBLIC ${PHYSXPVDSDK_PLATFORM_LINKED_LIBS}
+		PRIVATE PhysX PhysXFoundation
+	)
+ELSE()
+	TARGET_LINK_LIBRARIES(PhysXPvdSDK 
+		PUBLIC ${PHYSXPVDSDK_PLATFORM_LINKED_LIBS}
+		PRIVATE PhysXFoundation
+	)
+ENDIF()
 
 SET_TARGET_PROPERTIES(PhysXPvdSDK PROPERTIES
 	OUTPUT_NAME PhysXPvdSDK

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "BpBroadPhaseShared.h"
 #include "foundation/PxMemory.h"
-#include "PsBitUtils.h"
+#include "foundation/PxBitUtils.h"
 
 using namespace physx;
 using namespace Bp;
 
-#define MBP_ALLOC(x)		PX_ALLOC(x, "MBP")
-#define MBP_FREE(x)			if(x)	PX_FREE_AND_RESET(x)
+#define MBP_ALLOC(x)	PX_ALLOC(x, "MBP")
+#define MBP_FREE(x)		PX_FREE(x)
 
 static PX_FORCE_INLINE void storeDwords(PxU32* dest, PxU32 nb, PxU32 value)
 {
@@ -114,7 +113,7 @@ void PairManagerData::reallocPairs()
 void PairManagerData::shrinkMemory()
 {
 	// Check correct memory against actually used memory
-	const PxU32 correctHashSize = Ps::nextPowerOfTwo(mNbActivePairs);
+	const PxU32 correctHashSize = PxNextPowerOfTwo(mNbActivePairs);
 	if(mHashSize==correctHashSize)
 		return;
 
@@ -135,8 +134,8 @@ void PairManagerData::reserveMemory(PxU32 memSize)
 	if(!memSize)
 		return;
 
-	if(!Ps::isPowerOfTwo(memSize))
-		memSize = Ps::nextPowerOfTwo(memSize);
+	if(!PxIsPowerOfTwo(memSize))
+		memSize = PxNextPowerOfTwo(memSize);
 
 	mHashSize = memSize;
 	mMask = mHashSize-1;
@@ -151,7 +150,7 @@ void PairManagerData::reserveMemory(PxU32 memSize)
 PX_NOINLINE PxU32 PairManagerData::growPairs(PxU32 fullHashValue)
 {
 	// Get more entries
-	mHashSize = Ps::nextPowerOfTwo(mNbActivePairs+1);
+	mHashSize = PxNextPowerOfTwo(mNbActivePairs+1);
 	mMask = mHashSize-1;
 
 	reallocPairs();

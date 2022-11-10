@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_SPHERICALJOINT_H
-#define PX_SPHERICALJOINT_H
+#ifndef PX_SPHERICAL_JOINT_H
+#define PX_SPHERICAL_JOINT_H
 /** \addtogroup extensions
   @{
 */
@@ -168,8 +167,10 @@ public:
 	\param[in] tolerance the linear tolerance threshold
 
 	@see getProjectionLinearTolerance() PxJoint::setConstraintFlags() PxConstraintFlag::ePROJECTION
+
+	@deprecated
 	*/
-	virtual void				setProjectionLinearTolerance(PxReal tolerance)	= 0;
+	PX_DEPRECATED	virtual void				setProjectionLinearTolerance(PxReal tolerance)	= 0;
 
 	/**
 	\brief Get the linear tolerance threshold for projection.
@@ -177,8 +178,10 @@ public:
 	\return the linear tolerance threshold
 
 	@see setProjectionLinearTolerance()
+
+	@deprecated
 	*/
-	virtual PxReal				getProjectionLinearTolerance()	const	= 0;
+	PX_DEPRECATED	virtual PxReal				getProjectionLinearTolerance()	const	= 0;
 
 	/**
 	\brief Returns string name of PxSphericalJoint, used for serialization

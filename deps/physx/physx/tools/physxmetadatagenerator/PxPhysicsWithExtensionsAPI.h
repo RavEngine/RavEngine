@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 #ifndef PX_PHYSICS_NXPHYSICSWITHEXTENSIONS_API
@@ -35,29 +34,38 @@
 //property name that would be used.  The properties need to have no template arguments
 //and exactly the same initialization as the classes they are overriding.
 static PropertyOverride gPropertyOverrides[] = {
-	PropertyOverride( "PxShape", "Geometry", "PxShapeGeometryProperty" ),
 	PropertyOverride( "PxShape", "Materials", "PxShapeMaterialsProperty" ),
 	PropertyOverride( "PxRigidActor", "Shapes", "PxRigidActorShapeCollection" ),
-	PropertyOverride( "PxArticulationBase", "Links", "PxArticulationLinkCollectionProp" ),
+	PropertyOverride( "PxArticulationReducedCoordinate", "Links", "PxArticulationLinkCollectionProp" ),
 };
 
+//The meta data generator ignores properties that are marked as disabled.  Note that in the declaration
+//for properties that are defined via getter and setter methods, the 'get' and 'set' prefix can be dropped.
+//For protected fields the "m" prefix can be dropped, however for public fields the whole field qualifier is expected.
 static DisabledPropertyEntry gDisabledProperties[] = {
 	DisabledPropertyEntry( "PxSceneLimits", "IsValid" ),
 	DisabledPropertyEntry( "PxSceneDesc", "TolerancesScale" ),
 	DisabledPropertyEntry( "PxSceneDesc", "IsValid" ),
+	DisabledPropertyEntry( "PxSceneDesc", "SceneQuerySystem" ),
 	DisabledPropertyEntry( "PxShape", "Actor" ),
+	DisabledPropertyEntry( "PxShape", "Geometry" ),
 	DisabledPropertyEntry( "PxArticulationLink", "Articulation" ),
-	DisabledPropertyEntry( "PxArticulationJointBase", "ParentArticulationLink" ),
-	DisabledPropertyEntry( "PxArticulationJointBase", "ChildArticulationLink" ),
-	DisabledPropertyEntry( "PxArticulationBase", "Impl" ),
-	DisabledPropertyEntry( "PxArticulationJointBase", "Impl" ),
+	DisabledPropertyEntry("PxArticulationJointReducedCoordinate", "ParentArticulationLink"),
+	DisabledPropertyEntry("PxArticulationJointReducedCoordinate", "ChildArticulationLink"),
+	DisabledPropertyEntry("PxArticulationJointReducedCoordinate", "Limit"),
 	DisabledPropertyEntry( "PxArticulationReducedCoordinate", "LoopJoints"),
+	DisabledPropertyEntry("PxArticulationReducedCoordinate", "Dofs"),
+	DisabledPropertyEntry("PxArticulationReducedCoordinate", "CacheDataSize"),
+	DisabledPropertyEntry("PxArticulationReducedCoordinate", "CoefficientMatrixSize"),
 	DisabledPropertyEntry( "PxRigidActor", "IsRigidActor" ),
 	DisabledPropertyEntry( "PxRigidActor", "ClassName" ),
+	DisabledPropertyEntry( "PxRigidActor", "InternalActorIndex" ),
 	DisabledPropertyEntry( "PxRigidStatic", "ClassName" ),
 	DisabledPropertyEntry( "PxRigidDynamic", "ClassName" ),
 	DisabledPropertyEntry( "PxRigidBody", "IsRigidBody" ),
 	DisabledPropertyEntry( "PxRigidBody", "InternalIslandNodeIndex"),
+	DisabledPropertyEntry( "PxRigidBody", "LinearVelocity"),
+	DisabledPropertyEntry("PxRigidBody", "AngularVelocity"),
 	DisabledPropertyEntry( "PxActor", "IsRigidStatic" ),
 	DisabledPropertyEntry( "PxActor", "Type" ),
 	DisabledPropertyEntry( "PxActor", "ClassName" ),
@@ -70,16 +78,22 @@ static DisabledPropertyEntry gDisabledProperties[] = {
 	DisabledPropertyEntry( "PxMeshScale", "IsValidForTriangleMesh" ),
 	DisabledPropertyEntry( "PxMeshScale", "IsValidForConvexMesh" ),
 	DisabledPropertyEntry( "PxGeometry", "Type" ),
+	DisabledPropertyEntry( "PxGeometry", "MTypePadding" ),
 	DisabledPropertyEntry( "PxBoxGeometry", "IsValid" ),
 	DisabledPropertyEntry( "PxSphereGeometry", "IsValid" ),
 	DisabledPropertyEntry( "PxPlaneGeometry", "IsValid" ),
 	DisabledPropertyEntry( "PxCapsuleGeometry", "IsValid" ),
 	DisabledPropertyEntry( "PxConvexMeshGeometry", "IsValid" ),
+	DisabledPropertyEntry( "PxTetrahedronMeshGeometry", "IsValid"),
 	DisabledPropertyEntry( "PxTriangleMeshGeometry", "IsValid" ),
 	DisabledPropertyEntry( "PxHeightFieldGeometry", "IsValid" ),
+	DisabledPropertyEntry( "PxCustomGeometry", "IsValid" ),
+	DisabledPropertyEntry( "PxCustomGeometry", "Callbacks" ),
 	DisabledPropertyEntry( "PxJoint", "ClassName" ),
 	DisabledPropertyEntry( "PxDistanceJoint", "ClassName" ),
 	DisabledPropertyEntry( "PxContactJoint", "ClassName"),
+	DisabledPropertyEntry( "PxGearJoint", "ClassName"),
+	DisabledPropertyEntry( "PxRackAndPinionJoint", "ClassName"),
 	DisabledPropertyEntry( "PxFixedJoint", "ClassName" ),
 	DisabledPropertyEntry( "PxRevoluteJoint", "ClassName" ),
 	DisabledPropertyEntry( "PxPrismaticJoint", "ClassName" ),
@@ -93,6 +107,11 @@ static DisabledPropertyEntry gDisabledProperties[] = {
 	DisabledPropertyEntry( "PxJointLimitCone", "IsValid" ),
 	DisabledPropertyEntry( "PxJointLimitPyramid", "IsValid" ),
 	DisabledPropertyEntry( "PxD6JointDrive", "IsValid" ),
+    DisabledPropertyEntry( "PxPhysics", "FLIPMaterials" ),
+    DisabledPropertyEntry( "PxPhysics", "MPMMaterials" ),
+	DisabledPropertyEntry( "PxScene", "ParticleSystems"),
+	DisabledPropertyEntry( "PxScene", "FEMCloths"),
+	DisabledPropertyEntry( "PxScene", "HairSystems"),
 	// PT: added this for PVD-315. It's a mystery to me why we don't need to do that here for PxConvexMeshDesc. Maybe because the convex desc is in the cooking lib.
 	DisabledPropertyEntry( "PxHeightFieldDesc", "IsValid" ),
 //	DisabledPropertyEntry( "PxConstraint", "IsValid" ),
@@ -109,6 +128,8 @@ static CustomProperty gCustomProperties[] = {
 #undef DEFINE_SIM_STATS_DUAL_INDEXED_PROPERTY
 	CustomProperty( "PxSimulationStatistics",	"NbShapes",				"NbShapesProperty", "PxU32 NbShapes[PxGeometryType::eGEOMETRY_COUNT];", "PxMemCopy( NbShapes, inSource->nbShapes, sizeof( NbShapes ) );" ),
 	CustomProperty( "PxScene",					"SimulationStatistics",	"SimulationStatisticsProperty", "PxSimulationStatistics SimulationStatistics;", "inSource->getSimulationStatistics(SimulationStatistics);"  ),
+	CustomProperty( "PxShape",					"Geom",					"PxShapeGeomProperty", "PxGeometryHolder Geom;", "Geom = PxGeometryHolder(inSource->getGeometry());"  ),
+	CustomProperty( "PxCustomGeometry", "CustomType", "PxCustomGeometryCustomTypeProperty", "PxU32 CustomType;", "PxCustomGeometry::Type t = inSource->callbacks->getCustomType(); CustomType = *reinterpret_cast<const PxU32*>(&t);"  ),
 };
 
 static const char* gImportantPhysXTypes[] =
@@ -116,16 +137,18 @@ static const char* gImportantPhysXTypes[] =
 	"PxRigidStatic",
 	"PxRigidDynamic",
 	"PxShape",
-	"PxArticulation",
 	"PxArticulationReducedCoordinate",
 	"PxArticulationLink",
 	"PxMaterial",
-	"PxArticulationJointBase",
-	"PxArticulationJoint",
+	"PxFEMSoftBodyMaterial",
+	"PxPBDMaterial",
+	"PxFLIPMaterial",
+	"PxMPMMaterial",
 	"PxArticulationJointReducedCoordinate",
+	"PxArticulationLimit",
+	"PxArticulationDrive",
 	"PxScene",
 	"PxPhysics",
-	"PxLowLevelArticulationFactory",
 	"PxHeightFieldDesc",
 	"PxMeshScale",
 	"PxConstraint",
@@ -141,8 +164,10 @@ static const char* gImportantPhysXTypes[] =
 	"PxConvexMeshGeometry",
 	"PxSphereGeometry",
 	"PxPlaneGeometry",
+	"PxTetrahedronMeshGeometry",
 	"PxTriangleMeshGeometry",
 	"PxHeightFieldGeometry",
+	"PxCustomGeometry",
     "PxAggregate",
     "PxPruningStructure",
 	//The mesh and heightfield buffers will need to be
@@ -163,6 +188,8 @@ static const char* gExtensionPhysXTypes[] =
 	"PxJointLimitPyramid",
 	"PxD6Joint",
 	"PxDistanceJoint",
+	"PxGearJoint",
+	"PxRackAndPinionJoint",
 	"PxContactJoint",
 	"PxFixedJoint",
 	"PxPrismaticJoint",
@@ -177,8 +204,9 @@ static const char* gAvoidedPhysXTypes[] =
 	"PxSerializable",
     "PxObservable",
 	"PxBase",
-	"PxLowLevelArticulationFactory",
     "PxBaseFlag::Enum",
+    "PxFLIPMaterial",
+    "PxMPMMaterial",
 };
 
 #include "PxPhysicsAPI.h"

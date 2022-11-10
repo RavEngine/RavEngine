@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,27 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "GuIntersectionTriangleBox.h"
 #include "GuIntersectionTriangleBoxRef.h"
-#include "CmMatrix34.h"
-#include "PsVecMath.h"
 #include "GuBox.h"
-#include "GuSIMDHelpers.h"
+#include "foundation/PxVecMath.h"
 
 using namespace physx;
 
-
-Ps::IntBool Gu::intersectTriangleBox_ReferenceCode(const PxVec3& boxcenter, const PxVec3& extents, const PxVec3& tp0, const PxVec3& tp1, const PxVec3& tp2)
+PxIntBool Gu::intersectTriangleBox_ReferenceCode(const PxVec3& boxcenter, const PxVec3& extents, const PxVec3& tp0, const PxVec3& tp1, const PxVec3& tp2)
 {
 	return intersectTriangleBox_RefImpl(boxcenter, extents, tp0, tp1, tp2);
 }
 
-
-using namespace Ps::aos;
+using namespace aos;
 
 static PX_FORCE_INLINE int testClassIIIAxes(const Vec4V& e0V, const Vec4V v0V, const Vec4V v1V, const Vec4V v2V, const PxVec3& extents)
 {
@@ -83,7 +78,7 @@ static PX_FORCE_INLINE int testClassIIIAxes(const Vec4V& e0V, const Vec4V v0V, c
 
 static const VecU32V signV = U4LoadXYZW(0x80000000, 0x80000000, 0x80000000, 0x80000000);
 
-static PX_FORCE_INLINE Ps::IntBool intersectTriangleBoxInternal(const Vec4V v0V, const Vec4V v1V, const Vec4V v2V, const PxVec3& extents)
+static PX_FORCE_INLINE PxIntBool intersectTriangleBoxInternal(const Vec4V v0V, const Vec4V v1V, const Vec4V v2V, const PxVec3& extents)
 {
 	// Test box axes
 	{
@@ -146,7 +141,7 @@ static PX_FORCE_INLINE Ps::IntBool intersectTriangleBoxInternal(const Vec4V v0V,
 }
 
 // PT: a SIMD version of Tomas Moller's triangle-box SAT code
-Ps::IntBool Gu::intersectTriangleBox_Unsafe(const PxVec3& center, const PxVec3& extents, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2)
+PxIntBool Gu::intersectTriangleBox_Unsafe(const PxVec3& center, const PxVec3& extents, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2)
 {
 	// Move everything so that the boxcenter is in (0,0,0)
 	const Vec4V BoxCenterV = V4LoadU(&center.x);
@@ -157,14 +152,14 @@ Ps::IntBool Gu::intersectTriangleBox_Unsafe(const PxVec3& center, const PxVec3& 
 	return intersectTriangleBoxInternal(v0V, v1V, v2V, extents);
 }
 
-Ps::IntBool Gu::intersectTriangleBox(const BoxPadded& box, const PxVec3& p0_, const PxVec3& p1_, const PxVec3& p2_)
+PxIntBool Gu::intersectTriangleBox(const BoxPadded& box, const PxVec3& p0_, const PxVec3& p1_, const PxVec3& p2_)
 {
 	// PT: TODO: SIMDify this part
 
-	// Vec3p ensures we can safely V4LoadU the data
-	const Vec3p p0 = box.rotateInv(p0_ - box.center);
-	const Vec3p p1 = box.rotateInv(p1_ - box.center);
-	const Vec3p p2 = box.rotateInv(p2_ - box.center);
+	// PxVec3p ensures we can safely V4LoadU the data
+	const PxVec3p p0 = box.rotateInv(p0_ - box.center);
+	const PxVec3p p1 = box.rotateInv(p1_ - box.center);
+	const PxVec3p p2 = box.rotateInv(p2_ - box.center);
 
 	const Vec4V v0V = V4LoadU(&p0.x);
 	const Vec4V v1V = V4LoadU(&p1.x);
@@ -186,7 +181,7 @@ static PX_FORCE_INLINE Vec4V multiply3x3V(const Vec4V p, const PxMat33& mat)
 }
 
 // PT: warning: all params must be safe to V4LoadU
-Ps::IntBool intersectTriangleBoxBV4(const PxVec3& p0, const PxVec3& p1, const PxVec3& p2,
+PxIntBool intersectTriangleBoxBV4(	const PxVec3& p0, const PxVec3& p1, const PxVec3& p2,
 									const PxMat33& rotModelToBox, const PxVec3& transModelToBox, const PxVec3& extents)
 {
 	const Vec4V transModelToBoxV = V4LoadU(&transModelToBox.x);

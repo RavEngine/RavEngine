@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,31 +22,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
-// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
+// Copyright (c) 2001-2004 NovodeX AG. All rights reserved. 
 
 #include "foundation/PxVec4.h"
 #include "foundation/PxMemory.h"
-#include "geometry/PxTriangle.h"
-
+#include "GuAABBTreeBuildStats.h"
+#include "GuAABBTree.h"
+#include "GuSAH.h"
+#include "GuBounds.h"
 #include "GuBV4Build.h"
 #include "GuBV4.h"
-#include "GuCenterExtents.h"
-#include "CmPhysXCommon.h"
-#include "PsBasicTemplates.h"
 #include <stdio.h>
 
 using namespace physx;
 using namespace Gu;
 
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+#include "foundation/PxVecMath.h"
+using namespace physx::aos;
 
 #define GU_BV4_USE_NODE_POOLS
-
-#define DELETESINGLE(x)	if (x) { delete x;		x = NULL; }
-#define DELETEARRAY(x)	if (x) { delete []x;	x = NULL; }
 
 static PX_FORCE_INLINE PxU32 largestAxis(const PxVec4& v)
 {
@@ -58,61 +53,69 @@ static PX_FORCE_INLINE PxU32 largestAxis(const PxVec4& v)
 	return m;
 }
 
-AABBTree::AABBTree() : mIndices(NULL), mPool(NULL), mTotalNbNodes(0)
+BV4_AABBTree::BV4_AABBTree() : mIndices(NULL), mPool(NULL), mTotalNbNodes(0)
 {
 }
 
-AABBTree::~AABBTree()
+BV4_AABBTree::~BV4_AABBTree()
 {
 	release();
 }
 
-void AABBTree::release()
+void BV4_AABBTree::release()
 {
-	DELETEARRAY(mPool);
-	PX_FREE_AND_RESET(mIndices);
+	PX_DELETE_ARRAY(mPool);
+	PX_FREE(mIndices);
 }
 
-static PxU32 local_Split(const AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_RESTRICT /*Boxes*/, const PxVec3* PX_RESTRICT centers, PxU32 axis)
+namespace
+{
+	struct BuildParams
+	{
+		PX_FORCE_INLINE	BuildParams(const PxBounds3* boxes, const PxVec3* centers, const AABBTreeNode* const node_base, const PxU32 limit, const SourceMesh* mesh) :
+			mBoxes(boxes), mCenters(centers), mNodeBase(node_base), mLimit(limit), mMesh(mesh)	{}
+
+		const PxBounds3*			mBoxes;
+		const PxVec3*				mCenters;
+		const AABBTreeNode* const	mNodeBase;
+		const PxU32					mLimit;
+		const SourceMesh*			mMesh;
+		PX_NOCOPY(BuildParams)
+	};
+}
+
+static PxU32 local_Split(const AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_RESTRICT /*Boxes*/, const PxVec3* PX_RESTRICT centers, PxU32 axis, const BuildParams& params)
 {
 	const PxU32 nb = node->mNbPrimitives;
 	PxU32* PX_RESTRICT prims = node->mNodePrimitives;
 
 	// Get node split value
-	const float splitValue = node->mBV.getCenter(axis);
-
-	PxU32 nbPos = 0;
-	// Loop through all node-related primitives. Their indices range from mNodePrimitives[0] to mNodePrimitives[mNbPrimitives-1].
-	// Those indices map the global list in the tree builder.
-	const size_t ptrValue = size_t(centers) + axis*sizeof(float);
-	const PxVec3* PX_RESTRICT centersX = reinterpret_cast<const PxVec3*>(ptrValue);
-
-	for(PxU32 i=0;i<nb;i++)
+	float splitValue = 0.0f;
+	if(params.mMesh)
 	{
-		// Get index in global list
-		const PxU32 index = prims[i];
-
-		// Test against the splitting value. The primitive value is tested against the enclosing-box center.
-		// [We only need an approximate partition of the enclosing box here.]
-		const float primitiveValue = centersX[index].x;
-
-		// Reorganize the list of indices in this order: positive - negative.
-		if(primitiveValue > splitValue)
+		VertexPointers VP;
+		for(PxU32 i=0;i<nb;i++)
 		{
-			// Swap entries
-			prims[i] = prims[nbPos];
-			prims[nbPos] = index;
-			// Count primitives assigned to positive space
-			nbPos++;
+			params.mMesh->getTriangle(VP, prims[i]);
+			splitValue += (*VP.Vertex[0])[axis];
+			splitValue += (*VP.Vertex[1])[axis];
+			splitValue += (*VP.Vertex[2])[axis];
 		}
+		splitValue /= float(nb*3);
 	}
-	return nbPos;
+	else
+		splitValue = node->mBV.getCenter(axis);
+
+	return reshuffle(nb, prims, centers, splitValue, axis);
 }
 
-static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_RESTRICT boxes, const PxVec3* PX_RESTRICT centers, BuildStats& stats, const AABBTreeNode* const PX_RESTRICT node_base, PxU32 limit)
+static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, BuildStats& stats, const BuildParams& params)
 {
 	const PxU32* PX_RESTRICT prims = node->mNodePrimitives;
 	const PxU32 nb = node->mNbPrimitives;
+
+	const PxBounds3* PX_RESTRICT boxes = params.mBoxes;
+	const PxVec3* PX_RESTRICT centers = params.mCenters;
 
 	// Compute bv & means at the same time
 	Vec4V meansV;
@@ -142,12 +145,14 @@ static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_
 		node->mBV.maximum = PxVec3(mergedMax.x, mergedMax.y, mergedMax.z);
 	}
 
+#ifndef GU_BV4_FILL_GAPS
 //	// Stop subdividing if we reach a leaf node. This is always performed here,
 //	// else we could end in trouble if user overrides this.
 //	if(nb==1)
 //		return false;
-	if(nb<=limit)
+	if(nb<=params.mLimit)
 		return false;
+#endif
 
 	bool validSplit = true;
 	PxU32 nbPos;
@@ -173,7 +178,7 @@ static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_
 		const PxU32 axis = largestAxis(vars);
 
 		// Split along the axis
-		nbPos = local_Split(node, boxes, centers, axis);
+		nbPos = local_Split(node, boxes, centers, axis, params);
 
 		// Check split validity
 		if(!nbPos || nbPos==nb)
@@ -192,11 +197,11 @@ static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_
 
 			if(1)
 			{
-				// Test 3 axis, take the best
+				// Test 3 axes, take the best
 				float results[3];
-				nbPos = local_Split(node, boxes, centers, 0);	results[0] = float(nbPos)/float(node->mNbPrimitives);
-				nbPos = local_Split(node, boxes, centers, 1);	results[1] = float(nbPos)/float(node->mNbPrimitives);
-				nbPos = local_Split(node, boxes, centers, 2);	results[2] = float(nbPos)/float(node->mNbPrimitives);
+				nbPos = local_Split(node, boxes, centers, 0, params);	results[0] = float(nbPos)/float(node->mNbPrimitives);
+				nbPos = local_Split(node, boxes, centers, 1, params);	results[1] = float(nbPos)/float(node->mNbPrimitives);
+				nbPos = local_Split(node, boxes, centers, 2, params);	results[2] = float(nbPos)/float(node->mNbPrimitives);
 				results[0]-=0.5f;	results[0]*=results[0];
 				results[1]-=0.5f;	results[1]*=results[1];
 				results[2]-=0.5f;	results[2]*=results[2];
@@ -205,7 +210,7 @@ static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_
 				if(results[2]<results[Min])	Min = 2;
 
 				// Split along the axis
-				nbPos = local_Split(node, boxes, centers, Min);
+				nbPos = local_Split(node, boxes, centers, Min, params);
 
 				// Check split validity
 				if(!nbPos || nbPos==node->mNbPrimitives)
@@ -215,10 +220,19 @@ static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_
 		//else return
 	}
 
+#ifdef GU_BV4_FILL_GAPS
+	// We split the node a last time before returning when we're below the limit, for the "fill the gaps" strategy
+	if(nb<=params.mLimit)
+	{
+		node->mNextSplit = nbPos;
+		return false;
+	}
+#endif
+
 	// Now create children and assign their pointers.
 	// We use a pre-allocated linear pool for complete trees [Opcode 1.3]
 	const PxU32 count = stats.getCount();
-	node->mPos = size_t(node_base + count);
+	node->mPos = size_t(params.mNodeBase + count);
 
 	// Update stats
 	stats.increaseCount(2);
@@ -233,37 +247,97 @@ static bool local_Subdivide(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_
 	return true;
 }
 
-static void local_BuildHierarchy(AABBTreeNode* PX_RESTRICT node, const PxBounds3* PX_RESTRICT Boxes, const PxVec3* PX_RESTRICT centers, BuildStats& stats, const AABBTreeNode* const PX_RESTRICT node_base, PxU32 limit)
+static bool local_Subdivide_SAH(AABBTreeNode* PX_RESTRICT node, BuildStats& stats, const BuildParams& params, SAH_Buffers& buffers)
 {
-	if(local_Subdivide(node, Boxes, centers, stats, node_base, limit))
+	const PxU32* prims = node->mNodePrimitives;
+	const PxU32 nb = node->mNbPrimitives;
+
+	const PxBounds3* PX_RESTRICT boxes = params.mBoxes;
+	const PxVec3* PX_RESTRICT centers = params.mCenters;
+
+	// Compute bv
+	computeGlobalBox(node->mBV, nb, boxes, prims);
+
+#ifndef GU_BV4_FILL_GAPS
+//	// Stop subdividing if we reach a leaf node. This is always performed here,
+//	// else we could end in trouble if user overrides this.
+//	if(nb==1)
+//		return false;
+	if(nb<=params.mLimit)
+		return false;
+#endif
+
+	PxU32 leftCount;
+	if(!buffers.split(leftCount, nb, prims, boxes, centers))
+	{
+		// Invalid split => fallback to previous strategy
+		return local_Subdivide(node, stats, params);
+	}
+
+#ifdef GU_BV4_FILL_GAPS
+	// We split the node a last time before returning when we're below the limit, for the "fill the gaps" strategy
+	if(nb<=params.mLimit)
+	{
+		node->mNextSplit = leftCount;
+		return false;
+	}
+#endif
+
+	// Now create children and assign their pointers.
+	// We use a pre-allocated linear pool for complete trees [Opcode 1.3]
+	const PxU32 count = stats.getCount();
+	node->mPos = size_t(params.mNodeBase + count);
+
+	// Update stats
+	stats.increaseCount(2);
+
+	// Assign children
+	AABBTreeNode* pos = const_cast<AABBTreeNode*>(node->getPos());
+	AABBTreeNode* neg = const_cast<AABBTreeNode*>(node->getNeg());
+	pos->mNodePrimitives	= node->mNodePrimitives;
+	pos->mNbPrimitives		= leftCount;
+	neg->mNodePrimitives	= node->mNodePrimitives + leftCount;
+	neg->mNbPrimitives		= node->mNbPrimitives - leftCount;
+	return true;
+}
+
+// PT: TODO: consider local_BuildHierarchy & local_BuildHierarchy_SAH
+
+static void local_BuildHierarchy(AABBTreeNode* PX_RESTRICT node, BuildStats& stats, const BuildParams& params)
+{
+	if(local_Subdivide(node, stats, params))
 	{
 		AABBTreeNode* pos = const_cast<AABBTreeNode*>(node->getPos());
 		AABBTreeNode* neg = const_cast<AABBTreeNode*>(node->getNeg());
-		local_BuildHierarchy(pos, Boxes, centers, stats, node_base, limit);
-		local_BuildHierarchy(neg, Boxes, centers, stats, node_base, limit);
+		local_BuildHierarchy(pos, stats, params);
+		local_BuildHierarchy(neg, stats, params);
 	}
 }
 
-bool AABBTree::buildFromMesh(SourceMesh& mesh, PxU32 limit)
+static void local_BuildHierarchy_SAH(AABBTreeNode* PX_RESTRICT node, BuildStats& stats, const BuildParams& params, SAH_Buffers& buffers)
 {
-	const PxU32 nbBoxes = mesh.getNbTriangles();
+	if(local_Subdivide_SAH(node, stats, params, buffers))
+	{
+		AABBTreeNode* pos = const_cast<AABBTreeNode*>(node->getPos());
+		AABBTreeNode* neg = const_cast<AABBTreeNode*>(node->getNeg());
+		local_BuildHierarchy_SAH(pos, stats, params, buffers);
+		local_BuildHierarchy_SAH(neg, stats, params, buffers);
+	}
+}
+
+bool BV4_AABBTree::buildFromMesh(SourceMeshBase& mesh, PxU32 limit, BV4_BuildStrategy strategy)
+{
+	const PxU32 nbBoxes = mesh.getNbPrimitives();
 	if(!nbBoxes)
 		return false;
-	PxBounds3* boxes = reinterpret_cast<PxBounds3*>(PX_ALLOC(sizeof(PxBounds3)*(nbBoxes+1), "BV4"));	// PT: +1 to safely V4Load/V4Store the last element
-	PxVec3* centers = reinterpret_cast<PxVec3*>(PX_ALLOC(sizeof(PxVec3)*(nbBoxes+1), "BV4"));			// PT: +1 to safely V4Load/V4Store the last element
+	PxBounds3* boxes = PX_ALLOCATE(PxBounds3, (nbBoxes + 1), "BV4");	// PT: +1 to safely V4Load/V4Store the last element
+	PxVec3* centers = PX_ALLOCATE(PxVec3, (nbBoxes + 1), "BV4");		// PT: +1 to safely V4Load/V4Store the last element
 	const FloatV halfV = FLoad(0.5f);
-	for(PxU32 i=0;i<nbBoxes;i++)
+	for (PxU32 i = 0; i<nbBoxes; i++)
 	{
-		VertexPointers VP;
-		mesh.getTriangle(VP, i);
+		Vec4V minV, maxV;
+		mesh.getPrimitiveBox(i, minV, maxV);
 
-		const Vec4V v0V = V4LoadU(&VP.Vertex[0]->x);	
-		const Vec4V v1V = V4LoadU(&VP.Vertex[1]->x);
-		const Vec4V v2V = V4LoadU(&VP.Vertex[2]->x);
-		Vec4V minV = V4Min(v0V, v1V);
-		minV = V4Min(minV, v2V);
-		Vec4V maxV = V4Max(v0V, v1V);
-		maxV = V4Max(maxV, v2V);
 		V4StoreU_Safe(minV, &boxes[i].minimum.x);	// PT: safe because 'maximum' follows 'minimum'
 		V4StoreU_Safe(maxV, &boxes[i].maximum.x);	// PT: safe because we allocated one more box
 
@@ -280,22 +354,39 @@ bool AABBTree::buildFromMesh(SourceMesh& mesh, PxU32 limit)
 		Stats.setCount(1);
 
 		// Initialize indices. This list will be modified during build.
-		mIndices = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*nbBoxes, "BV4 indices"));
+		mIndices = PX_ALLOCATE(PxU32, nbBoxes, "BV4 indices");
 		// Identity permutation
-		for(PxU32 i=0;i<nbBoxes;i++)
+		for (PxU32 i = 0; i<nbBoxes; i++)
 			mIndices[i] = i;
 
 		// Use a linear array for complete trees (since we can predict the final number of nodes) [Opcode 1.3]
 		// Allocate a pool of nodes
 		// PT: TODO: optimize memory here (TA34704)
-		mPool = PX_NEW(AABBTreeNode)[nbBoxes*2 - 1];
+		mPool = PX_NEW(AABBTreeNode)[nbBoxes * 2 - 1];
 
 		// Setup initial node. Here we have a complete permutation of the app's primitives.
-		mPool->mNodePrimitives	= mIndices;
-		mPool->mNbPrimitives	= nbBoxes;
+		mPool->mNodePrimitives = mIndices;
+		mPool->mNbPrimitives = nbBoxes;
 
 		// Build the hierarchy
-		local_BuildHierarchy(mPool, boxes, centers, Stats, mPool, limit);
+		if(strategy==BV4_SPLATTER_POINTS||strategy==BV4_SPLATTER_POINTS_SPLIT_GEOM_CENTER)
+		{
+			// PT: not sure what the equivalent would be for tet-meshes here
+			SourceMesh* triMesh = NULL;
+			if(strategy==BV4_SPLATTER_POINTS_SPLIT_GEOM_CENTER)
+			{
+				if(mesh.getMeshType()==SourceMeshBase::TRI_MESH)
+					triMesh = static_cast<SourceMesh*>(&mesh);
+			}
+			local_BuildHierarchy(mPool, Stats, BuildParams(boxes, centers, mPool, limit, triMesh));
+		}
+		else if(strategy==BV4_SAH)
+		{
+			SAH_Buffers sah(nbBoxes);
+			local_BuildHierarchy_SAH(mPool, Stats, BuildParams(boxes, centers, mPool, limit, NULL), sah);
+		}
+		else
+			return false;
 
 		// Get back total number of nodes
 		mTotalNbNodes = Stats.getCount();
@@ -303,10 +394,14 @@ bool AABBTree::buildFromMesh(SourceMesh& mesh, PxU32 limit)
 
 	PX_FREE(centers);
 	PX_FREE(boxes);
+
+	if(0)
+		printf("Tree depth: %d\n", walk(NULL, NULL));
+
 	return true;
 }
 
-PxU32 AABBTree::walk(WalkingCallback cb, void* userData) const
+PxU32 BV4_AABBTree::walk(WalkingCallback cb, void* userData) const
 {
 	// Call it without callback to compute max depth
 	PxU32 maxDepth = 0;
@@ -314,7 +409,7 @@ PxU32 AABBTree::walk(WalkingCallback cb, void* userData) const
 
 	struct Local
 	{
-		static void _Walk(const AABBTreeNode* current_node, PxU32& max_depth, PxU32& current_depth, WalkingCallback callback, void* userData_)
+		static void _walk(const AABBTreeNode* current_node, PxU32& max_depth, PxU32& current_depth, WalkingCallback callback, void* userData_)
 		{
 			// Checkings
 			if(!current_node)
@@ -330,16 +425,58 @@ PxU32 AABBTree::walk(WalkingCallback cb, void* userData) const
 				return;
 
 			// Recurse
-			if(current_node->getPos())	{ _Walk(current_node->getPos(), max_depth, current_depth, callback, userData_);	current_depth--;	}
-			if(current_node->getNeg())	{ _Walk(current_node->getNeg(), max_depth, current_depth, callback, userData_);	current_depth--;	}
+			if(current_node->getPos())	{ _walk(current_node->getPos(), max_depth, current_depth, callback, userData_);	current_depth--;	}
+			if(current_node->getNeg())	{ _walk(current_node->getNeg(), max_depth, current_depth, callback, userData_);	current_depth--;	}
 		}
 	};
-	Local::_Walk(mPool, maxDepth, currentDepth, cb, userData);
+	Local::_walk(mPool, maxDepth, currentDepth, cb, userData);
+	return maxDepth;
+}
+
+PxU32 BV4_AABBTree::walkDistance(WalkingCallback cb, WalkingDistanceCallback cb2, void* userData) const
+{
+	// Call it without callback to compute max depth
+	PxU32 maxDepth = 0;
+	PxU32 currentDepth = 0;
+
+	struct Local
+	{
+		static void _walk(const AABBTreeNode* current_node, PxU32& max_depth, PxU32& current_depth, WalkingCallback callback, WalkingDistanceCallback distanceCheck, void* userData_)
+		{
+			// Checkings
+			if (!current_node)
+				return;
+			// Entering a new node => increase depth
+			current_depth++;
+			// Keep track of max depth
+			if (current_depth > max_depth)
+				max_depth = current_depth;
+
+			// Callback
+			if (callback && !(callback)(current_node, current_depth, userData_))
+				return;
+
+			// Recurse
+			bool posHint = distanceCheck && (distanceCheck)(current_node, userData_);
+			if (posHint)
+			{
+				if (current_node->getPos()) { _walk(current_node->getPos(), max_depth, current_depth, callback, distanceCheck, userData_);	current_depth--; }
+				if (current_node->getNeg()) { _walk(current_node->getNeg(), max_depth, current_depth, callback, distanceCheck, userData_);	current_depth--; }
+			}
+			else
+			{
+				if (current_node->getNeg()) { _walk(current_node->getNeg(), max_depth, current_depth, callback, distanceCheck, userData_);	current_depth--; }
+				if (current_node->getPos()) { _walk(current_node->getPos(), max_depth, current_depth, callback, distanceCheck, userData_);	current_depth--; }
+			}
+		}
+	};
+	Local::_walk(mPool, maxDepth, currentDepth, cb, cb2, userData);
 	return maxDepth;
 }
 
 
 
+#include "GuBV4_Internal.h"
 
 #ifdef GU_BV4_PRECOMPUTED_NODE_SORT
 // PT: see http://www.codercorner.com/blog/?p=734
@@ -392,6 +529,7 @@ static PxU32 precomputeNodeSorting(const PxBounds3& box0, const PxBounds3& box1)
 	#include "GuBV4_Common.h"
 #endif
 
+// PT: warning, not the same as CenterExtents::setEmpty()
 static void setEmpty(CenterExtents& box)
 {
 	box.mCenter = PxVec3(0.0f, 0.0f, 0.0f);
@@ -414,7 +552,7 @@ static void setEmpty(CenterExtents& box)
 // For type1: we have 3 nodes, we need 8*2 = 16 bits => 6 bits/node = 18 bits available, ok
 // For type2: we have 4 nodes, we need 8*3 = 24 bits => 6 bits/node = 24 bits available, ok
 //#pragma pack(1)
-struct BVData : public physx::shdfnd::UserAllocated
+struct BVData : public physx::PxUserAllocated
 {
 	BVData();
 	CenterExtents	mAABB;
@@ -433,7 +571,7 @@ BVData::BVData() : mData(PX_INVALID_U32)
 #endif
 }
 
-struct BV4Node : public physx::shdfnd::UserAllocated
+struct BV4Node : public physx::PxUserAllocated
 {
 	PX_FORCE_INLINE	BV4Node()	{}
 	PX_FORCE_INLINE	~BV4Node()	{}
@@ -465,12 +603,15 @@ struct BV4Node : public physx::shdfnd::UserAllocated
 #define NB_NODES_PER_SLAB	256
 struct BV4BuildParams
 {
-	PX_FORCE_INLINE	BV4BuildParams(float epsilon) : mEpsilon(epsilon)
+	PX_FORCE_INLINE	BV4BuildParams(const BV4_AABBTree& source, const SourceMesh* mesh, float epsilon) : mSource(source), mMesh(mesh), mEpsilon(epsilon)
 #ifdef GU_BV4_USE_NODE_POOLS
 		,mTop(NULL)
 #endif
 	{}
 					~BV4BuildParams();
+
+	const BV4_AABBTree&	mSource;
+	const SourceMesh*	mMesh;
 
 	// Stats
 	PxU32			mNbNodes;
@@ -481,7 +622,7 @@ struct BV4BuildParams
 
 #ifdef GU_BV4_USE_NODE_POOLS
 	//
-	struct Slab : public physx::shdfnd::UserAllocated
+	struct Slab : public physx::PxUserAllocated
 	{
 		BV4Node	mNodes[NB_NODES_PER_SLAB];
 		PxU32	mNbUsedNodes;
@@ -492,6 +633,8 @@ struct BV4BuildParams
 	BV4Node*		allocateNode();
 	void			releaseNodes();
 #endif
+
+	PX_NOCOPY(BV4BuildParams)
 };
 
 BV4BuildParams::~BV4BuildParams()
@@ -527,7 +670,14 @@ void BV4BuildParams::releaseNodes()
 }
 #endif
 
-static void setPrimitive(const AABBTree& source, BV4Node* node4, PxU32 i, const AABBTreeNode* node, float epsilon)
+static PX_FORCE_INLINE void setupBounds(BV4Node* node4, PxU32 i, const AABBTreeNode* node, float epsilon)
+{
+	node4->mBVData[i].mAABB = node->getAABB();
+	if(epsilon!=0.0f)
+		node4->mBVData[i].mAABB.mExtents += PxVec3(epsilon);
+}
+
+static void setPrimitive(const BV4_AABBTree& source, BV4Node* node4, PxU32 i, const AABBTreeNode* node, float epsilon)
 {
 	const PxU32 nbPrims = node->getNbPrimitives();
 	PX_ASSERT(nbPrims<16);
@@ -540,13 +690,69 @@ static void setPrimitive(const AABBTree& source, BV4Node* node4, PxU32 i, const 
 	}
 	const PxU32 primitiveIndex = (offset<<4)|(nbPrims&15);
 
-	node4->mBVData[i].mAABB = node->getAABB();
-	if(epsilon!=0.0f)
-		node4->mBVData[i].mAABB.mExtents += PxVec3(epsilon);
+	setupBounds(node4, i, node, epsilon);
 	node4->mBVData[i].mData = (primitiveIndex<<1)|1;
 }
 
-static BV4Node* setNode(const AABBTree& source, BV4Node* node4, PxU32 i, const AABBTreeNode* node, BV4BuildParams& params)
+#ifdef GU_BV4_FILL_GAPS
+static bool splitPrimitives(const BV4BuildParams& params, BV4Node* node4, PxU32 i, const AABBTreeNode* node)
+{
+	if(!params.mMesh)
+		return false;
+
+	const PxU32 nbPrims = node->getNbPrimitives();
+	PX_ASSERT(nbPrims<16);
+	if(nbPrims<2)
+		return false;
+
+	const PxU32* indexBase = params.mSource.getIndices();
+	const PxU32* prims = node->getPrimitives();
+	PxU32 offset = PxU32(prims - indexBase);
+
+	// In theory we should reshuffle the list but it would mean updating the remap table again.
+	// A way to avoid that would be to virtually split & sort the triangles directly in the BV2
+	// source tree, before the initial remap table is created.
+
+	//const PxU32 splitPrims = NbPrims/2;	// ### actually should be the number in the last split in bv2
+	const PxU32 splitPrims = node->mNextSplit;
+	PxU32 j=0;
+	for(PxU32 ii=0;ii<2;ii++)
+	{
+		const PxU32 currentNb = ii==0 ? splitPrims : (nbPrims-splitPrims);
+
+		PxBounds3 bounds = PxBounds3::empty();
+		for(PxU32 k=0;k<currentNb;k++)
+		{
+			PX_ASSERT(prims[j] == offset+k);
+
+			PxU32 vref0, vref1, vref2;
+			getVertexReferences(vref0, vref1, vref2, prims[j], params.mMesh->getTris32(), params.mMesh->getTris16());
+
+			// PT: TODO: SIMD
+			const PxVec3* verts = params.mMesh->getVerts();
+			bounds.include(verts[vref0]);
+			bounds.include(verts[vref1]);
+			bounds.include(verts[vref2]);
+
+			j++;
+		}
+		PX_ASSERT(bounds.isInside(node->mBV));
+		const PxU32 primitiveIndex = (offset<<4)|(currentNb&15);
+
+//		SetupBounds(node4, i, node, context.mEpsilon);
+			node4->mBVData[i+ii].mAABB = bounds;
+			if(params.mEpsilon!=0.0f)
+				node4->mBVData[i+ii].mAABB.mExtents += PxVec3(params.mEpsilon);
+
+		node4->mBVData[i+ii].mData = (primitiveIndex<<1)|1;
+
+		offset += currentNb;
+	}
+	return true;
+}
+#endif
+
+static BV4Node* setNode(const BV4_AABBTree& source, BV4Node* node4, PxU32 i, const AABBTreeNode* node, BV4BuildParams& params)
 {
 	BV4Node* child = NULL;
 	if(node->isLeaf())
@@ -555,9 +761,7 @@ static BV4Node* setNode(const AABBTree& source, BV4Node* node4, PxU32 i, const A
 	}
 	else
 	{
-		node4->mBVData[i].mAABB = node->getAABB();
-		if(params.mEpsilon!=0.0f)
-			node4->mBVData[i].mAABB.mExtents += PxVec3(params.mEpsilon);
+		setupBounds(node4, i, node, params.mEpsilon);
 
 		params.mNbNodes++;
 #ifdef GU_BV4_USE_NODE_POOLS
@@ -570,7 +774,53 @@ static BV4Node* setNode(const AABBTree& source, BV4Node* node4, PxU32 i, const A
 	return child;
 }
 
-static void _BuildBV4(const AABBTree& source, BV4Node* tmp, const AABBTreeNode* current_node, BV4BuildParams& params)
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+static inline PxBounds3 getMinMaxBox(const CenterExtents& box)
+{
+	if(box.mExtents.x>=0.0f && box.mExtents.y>=0.0f && box.mExtents.z>=0.0f)
+//	if(!box.isEmpty())	// ### asserts!
+		return PxBounds3::centerExtents(box.mCenter, box.mExtents);
+	else
+		return PxBounds3::empty();
+}
+
+static void FigureOutPNS(BV4Node* node)
+{
+	//   ____A____
+	//   P       N
+	// __|__   __|__
+	// PP PN   NP NN
+
+	const CenterExtents& box0 = node->mBVData[0].mAABB;
+	const CenterExtents& box1 = node->mBVData[1].mAABB;
+	const CenterExtents& box2 = node->mBVData[2].mAABB;
+	const CenterExtents& box3 = node->mBVData[3].mAABB;
+
+	// PT: TODO: SIMD, optimize
+	const PxBounds3 boxPP = getMinMaxBox(box0);
+	const PxBounds3 boxPN = getMinMaxBox(box1);
+	const PxBounds3 boxNP = getMinMaxBox(box2);
+	const PxBounds3 boxNN = getMinMaxBox(box3);
+
+	PxBounds3 boxP = boxPP;	boxP.include(boxPN);
+	PxBounds3 boxN = boxNP;	boxN.include(boxNN);
+
+	node->mBVData[0].mTempPNS = precomputeNodeSorting(boxP, boxN);
+	node->mBVData[1].mTempPNS = precomputeNodeSorting(boxPP, boxPN);
+	node->mBVData[2].mTempPNS = precomputeNodeSorting(boxNP, boxNN);
+}
+#endif
+
+/*static bool hasTwoLeafChildren(const AABBTreeNode* current_node)
+{
+	if(current_node->isLeaf())
+		return false;
+	const AABBTreeNode* P = current_node->getPos();
+	const AABBTreeNode* N = current_node->getNeg();
+	return P->isLeaf() && N->isLeaf();
+}*/
+
+static void buildBV4(const BV4_AABBTree& source, BV4Node* tmp, const AABBTreeNode* current_node, BV4BuildParams& params)
 {
 	PX_ASSERT(!current_node->isLeaf());
 
@@ -614,13 +864,40 @@ static void _BuildBV4(const AABBTree& source, BV4Node* tmp, const AABBTreeNode* 
 			//   ____A____
 			//   P       N
 			// => store as (P,N) and keep bit0
+#ifndef GU_BV4_FILL_GAPS
 			params.mStats[0]++;
 			// PN leaves => store 2 triangle pointers, lose 50% of node space
 			setPrimitive(source, tmp, 0, P, params.mEpsilon);
 			setPrimitive(source, tmp, 1, N, params.mEpsilon);
+#else
+			{
+				PxU32 nextIndex = 2;
+				if(!splitPrimitives(params, tmp, 0, P))
+				{
+					setPrimitive(source, tmp, 0, P, params.mEpsilon);
+					nextIndex = 1;
+				}
 
-#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+				if(!splitPrimitives(params, tmp, nextIndex, N))
+					setPrimitive(source, tmp, nextIndex, N, params.mEpsilon);
+			
+				const PxU32 statIndex = tmp->getType();
+				if(statIndex==4)
+					params.mStats[3]++;
+				else if(statIndex==3)
+					params.mStats[1]++;
+				else if(statIndex==2)
+					params.mStats[0]++;
+				else
+					PX_ASSERT(0);
+			}
+#endif
+
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT0
 			tmp->mBVData[0].mTempPNS = precomputeNodeSorting(P->mBV, N->mBV);
+#endif
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+			FigureOutPNS(tmp);
 #endif
 		}
 		else
@@ -631,70 +908,110 @@ static void _BuildBV4(const AABBTree& source, BV4Node* tmp, const AABBTreeNode* 
 			//         __|__
 			//         NP NN
 			// => store as (P,NP,NN), keep bit0 and bit2
+//#define NODE_FUSION
+#ifdef NODE_FUSION
+			// P leaf => store 1 triangle pointers and 2 node pointers
+			// => 3 slots used, 25% wasted
+
+			const AABBTreeNode* NP = N->getPos();
+			const AABBTreeNode* NN = N->getNeg();
+
+			BV4Node* ChildNP;
+			BV4Node* ChildNN;
+
+	#ifdef GU_BV4_FILL_GAPS
+			if(splitPrimitives(params, tmp, 0, P))
+			{
+				// We used up the empty slot, continue as usual in slot 2
+				ChildNP = setNode(source, tmp, 2, NP, params);
+				ChildNN = setNode(source, tmp, 3, NN, params);
+			}
+			else
+	#endif
+			{
+				// We oouldn't split the prims, continue searching for a way to use the empty slot
+				setPrimitive(source, tmp, 0, P, params.mEpsilon);
+
+				PxU32 c=0;
+				if(hasTwoLeafChildren(NP))
+				{
+					// Drag the terminal leaves directly into this BV4 node, drop internal node NP
+					setPrimitive(source, tmp, 1, NP->getPos(), params.mEpsilon);
+					setPrimitive(source, tmp, 2, NP->getNeg(), params.mEpsilon);
+					ChildNP = NULL;
+					c=1;
+				}
+				else
+				{
+					ChildNP = setNode(source, tmp, 1, NP, params);
+				}
+
+				if(c==0 && hasTwoLeafChildren(NN))
+				{
+					// Drag the terminal leaves directly into this BV4 node, drop internal node NN
+					setPrimitive(source, tmp, 2, NN->getPos(), params.mEpsilon);
+					setPrimitive(source, tmp, 3, NN->getNeg(), params.mEpsilon);
+					ChildNN = NULL;
+				}
+				else
+				{
+	#ifdef GU_BV4_FILL_GAPS
+					if(c==0 && NN->isLeaf())
+					{
+						ChildNN = NULL;
+						if(!splitPrimitives(params, tmp, 2, NN))
+							setPrimitive(source, tmp, 2, NN, params.mEpsilon);
+					}
+					else
+	#endif
+					{
+						ChildNN = setNode(source, tmp, 2+c, NN, params);
+					}
+				}
+			}
+
+			const PxU32 statIndex = tmp->getType();
+			if(statIndex==4)
+				params.mStats[3]++;
+			else if(statIndex==3)
+				params.mStats[1]++;
+			else if(statIndex==2)
+				params.mStats[0]++;
+			else
+				PX_ASSERT(0);
+#else
 			params.mStats[1]++;
 			// P leaf => store 1 triangle pointers and 2 node pointers
 			// => 3 slots used, 25% wasted
 			setPrimitive(source, tmp, 0, P, params.mEpsilon);
 
-			//
-
 			const AABBTreeNode* NP = N->getPos();
 			const AABBTreeNode* NN = N->getNeg();
 
-//#define NODE_FUSION
-#ifdef NODE_FUSION
-			PxU32 c=0;
-			BV4Node* ChildNP;
-			if(!NP->isLeaf() && NP->getPos()->isLeaf() && NP->getNeg()->isLeaf())
-			{
-				// Drag the terminal leaves directly into this BV4 node, drop internal node NP
-				setPrimitive(source, tmp, 1, NP->getPos(), params.mEpsilon);
-				setPrimitive(source, tmp, 2, NP->getNeg(), params.mEpsilon);
-				ChildNP = NULL;
-				params.mStats[1]--;
-				params.mStats[3]++;
-				c=1;
-			}
-			else
-			{
-				ChildNP = setNode(source, tmp, 1, NP, params);
-			}
-
-			BV4Node* ChildNN;
-			if(c==0 && !NN->isLeaf() && NN->getPos()->isLeaf() && NN->getNeg()->isLeaf())
-			{
-				// Drag the terminal leaves directly into this BV4 node, drop internal node NN
-				setPrimitive(source, tmp, 2, NN->getPos(), params.mEpsilon);
-				setPrimitive(source, tmp, 3, NN->getNeg(), params.mEpsilon);
-				ChildNN = NULL;
-				params.mStats[1]--;
-				params.mStats[3]++;
-			}
-			else
-			{
-				ChildNN = setNode(source, tmp, 2+c, NN, params);
-			}
-
-			//BV4Node* ChildNN = setNode(tmp, 2+c, NN, epsilon, params);
-#else
 			BV4Node* ChildNP = setNode(source, tmp, 1, NP, params);
 			BV4Node* ChildNN = setNode(source, tmp, 2, NN, params);
 #endif
 
-#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT0
 			tmp->mBVData[0].mTempPNS = precomputeNodeSorting(P->mBV, N->mBV);
 			tmp->mBVData[2].mTempPNS = precomputeNodeSorting(NP->mBV, NN->mBV);
 #endif
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+			FigureOutPNS(tmp);
+#endif
+
 			if(ChildNP)
-				_BuildBV4(source, ChildNP, NP, params);
+				buildBV4(source, ChildNP, NP, params);
 			if(ChildNN)
-				_BuildBV4(source, ChildNN, NN, params);
+				buildBV4(source, ChildNN, NN, params);
 		}
 	}
 	else
 	{
 		if(NLeaf)
 		{
+			// Note: this case doesn't exist anymore because of the node reorganizing for shadow rays
+
 			// Case 3: P no leaf, N leaf
 			//   ____A____
 			//   P       N
@@ -715,14 +1032,18 @@ static void _BuildBV4(const AABBTree& source, BV4Node* tmp, const AABBTreeNode* 
 			BV4Node* ChildPP = setNode(source, tmp, 0, PP, params);
 			BV4Node* ChildPN = setNode(source, tmp, 1, PN, params);
 
-#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT0
 			tmp->mBVData[0].mTempPNS = precomputeNodeSorting(P->mBV, N->mBV);
 			tmp->mBVData[1].mTempPNS = precomputeNodeSorting(PP->mBV, PN->mBV);
 #endif
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+			FigureOutPNS(tmp);
+#endif
+
 			if(ChildPP)
-				_BuildBV4(source, ChildPP, PP, params);
+				buildBV4(source, ChildPP, PP, params);
 			if(ChildPN)
-				_BuildBV4(source, ChildPN, PN, params);
+				buildBV4(source, ChildPN, PN, params);
 		}
 		else
 		{
@@ -741,27 +1062,30 @@ static void _BuildBV4(const AABBTree& source, BV4Node* tmp, const AABBTreeNode* 
 			BV4Node* ChildNP = setNode(source, tmp, 2, NP, params);
 			BV4Node* ChildNN = setNode(source, tmp, 3, NN, params);
 
-#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT0
 			tmp->mBVData[0].mTempPNS = precomputeNodeSorting(P->mBV, N->mBV);
 			tmp->mBVData[1].mTempPNS = precomputeNodeSorting(PP->mBV, PN->mBV);
 			tmp->mBVData[2].mTempPNS = precomputeNodeSorting(NP->mBV, NN->mBV);
 #endif
+#ifdef GU_BV4_PRECOMPUTED_NODE_SORT
+			FigureOutPNS(tmp);
+#endif
 			if(ChildPP)
-				_BuildBV4(source, ChildPP, PP, params);
+				buildBV4(source, ChildPP, PP, params);
 			if(ChildPN)
-				_BuildBV4(source, ChildPN, PN, params);
+				buildBV4(source, ChildPN, PN, params);
 			if(ChildNP)
-				_BuildBV4(source, ChildNP, NP, params);
+				buildBV4(source, ChildNP, NP, params);
 			if(ChildNN)
-				_BuildBV4(source, ChildNN, NN, params);
+				buildBV4(source, ChildNN, NN, params);
 		}
 	}
 }
 
 #ifdef GU_BV4_USE_SLABS
-static void _ComputeMaxValues(const BV4Node* current, PxVec3& MinMax, PxVec3& MaxMax)
+static void computeMaxValues(const BV4Node* current, PxVec3& MinMax, PxVec3& MaxMax)
 #else
-static void _ComputeMaxValues(const BV4Node* current, PxVec3& CMax, PxVec3& EMax)
+static void computeMaxValues(const BV4Node* current, PxVec3& CMax, PxVec3& EMax)
 #endif
 {
 	for(PxU32 i=0; i<4; i++)
@@ -790,9 +1114,9 @@ static void _ComputeMaxValues(const BV4Node* current, PxVec3& CMax, PxVec3& EMax
 			{
 				const BV4Node* ChildNode = current->getChild(i);
 #ifdef GU_BV4_USE_SLABS
-				_ComputeMaxValues(ChildNode, MinMax, MaxMax);
+				computeMaxValues(ChildNode, MinMax, MaxMax);
 #else
-				_ComputeMaxValues(ChildNode, CMax, EMax);
+				computeMaxValues(ChildNode, CMax, EMax);
 #endif
 			}
 		}
@@ -801,7 +1125,7 @@ static void _ComputeMaxValues(const BV4Node* current, PxVec3& CMax, PxVec3& EMax
 
 // PT: duplicated for now.... 
 
-static void _FlattenQ(	BVDataPackedQ* const dest, const PxU32 box_id, PxU32& current_id, const BV4Node* current, PxU32& max_depth, PxU32& current_depth,
+static void flattenQ(	BVDataPackedQ* const dest, const PxU32 box_id, PxU32& current_id, const BV4Node* current, PxU32& max_depth, PxU32& current_depth,
 						const PxVec3& CQuantCoeff, const PxVec3& EQuantCoeff, const PxVec3& mCenterCoeff, const PxVec3& mExtentsCoeff)
 {
 	// Entering a new node => increase depth
@@ -957,17 +1281,16 @@ static void _FlattenQ(	BVDataPackedQ* const dest, const PxU32 box_id, PxU32& cur
 #ifndef DEPTH_FIRST
 	for(PxU32 i=0; i<NbToGo; i++)
 	{
-		_FlattenQ(dest, NextIDs[i], current_id, ChildNodes[i], max_depth, current_depth, CQuantCoeff, EQuantCoeff, mCenterCoeff, mExtentsCoeff);
+		flattenQ(dest, NextIDs[i], current_id, ChildNodes[i], max_depth, current_depth, CQuantCoeff, EQuantCoeff, mCenterCoeff, mExtentsCoeff);
 		current_depth--;
 	}
 #endif
 #ifndef GU_BV4_USE_NODE_POOLS
-	DELETESINGLE(current);
+	PX_DELETE(current);
 #endif
 }
 
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
-static void _FlattenNQ(	BVDataPackedNQ* const dest, const PxU32 box_id, PxU32& current_id, const BV4Node* current, PxU32& max_depth, PxU32& current_depth,
+static void flattenNQ(	BVDataPackedNQ* const dest, const PxU32 box_id, PxU32& current_id, const BV4Node* current, PxU32& max_depth, PxU32& current_depth,
 						const PxVec3& CQuantCoeff, const PxVec3& EQuantCoeff, const PxVec3& mCenterCoeff, const PxVec3& mExtentsCoeff)
 {
 	// Entering a new node => increase depth
@@ -1041,30 +1364,22 @@ static void _FlattenNQ(	BVDataPackedNQ* const dest, const PxU32 box_id, PxU32& c
 #ifndef DEPTH_FIRST
 	for(PxU32 i=0; i<NbToGo; i++)
 	{
-		_FlattenNQ(dest, NextIDs[i], current_id, ChildNodes[i], max_depth, current_depth, CQuantCoeff, EQuantCoeff, mCenterCoeff, mExtentsCoeff);
+		flattenNQ(dest, NextIDs[i], current_id, ChildNodes[i], max_depth, current_depth, CQuantCoeff, EQuantCoeff, mCenterCoeff, mExtentsCoeff);
 		current_depth--;
 	}
 #endif
 #ifndef GU_BV4_USE_NODE_POOLS
-	DELETESINGLE(current);
+	PX_DELETE(current);
 #endif
 }
-#endif
 
-
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Params, bool quantized, float epsilon)
-#else
-static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Params, bool, float)
-#endif
 {
+	GU_PROFILE_ZONE("....BuildBV4FromRoot")
+
 	BV4Tree* T = &tree;
 
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 	T->mQuantized = quantized;
-#else
-	T->mQuantized = true;
-#endif
 
 	// Version with variable-sized nodes in single stream
 	{
@@ -1081,11 +1396,8 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 //		BVDataPacked* Nodes = PX_NEW(BVDataPacked)[NbNeeded];
 		void* nodes;
 		{
-	#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
+
 			const PxU32 nodeSize = T->mQuantized ? sizeof(BVDataPackedQ) : sizeof(BVDataPackedNQ);
-	#else
-			const PxU32 nodeSize = sizeof(BVDataPackedQ);
-	#endif
 			const PxU32 dataSize = nodeSize*NbNeeded;
 			nodes = PX_ALLOC(dataSize, "BV4 nodes");	// PT: PX_NEW breaks alignment here
 		}
@@ -1137,7 +1449,7 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 			// Get max values
 			PxVec3 MinMax(-FLT_MAX);
 			PxVec3 MaxMax(-FLT_MAX);
-			_ComputeMaxValues(Root, MinMax, MaxMax);
+			computeMaxValues(Root, MinMax, MaxMax);
 
 			const PxU32 nbm = 15;
 
@@ -1164,7 +1476,7 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 			// Get max values
 			PxVec3 CMax(-FLT_MAX);
 			PxVec3 EMax(-FLT_MAX);
-			_ComputeMaxValues(Root, CMax, EMax);
+			computeMaxValues(Root, CMax, EMax);
 
 			const PxU32 nbc = 15;
 			const PxU32 nbe = 16;
@@ -1193,15 +1505,11 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 			T->mExtentsOrMaxCoeff.y = EMax.y / ECoeff;
 			T->mExtentsOrMaxCoeff.z = EMax.z / ECoeff;
 #endif
-			_FlattenQ(reinterpret_cast<BVDataPackedQ*>(nodes), 0, CurID, Root, MaxDepth, CurrentDepth, CQuantCoeff, EQuantCoeff, T->mCenterOrMinCoeff, T->mExtentsOrMaxCoeff);
+			flattenQ(reinterpret_cast<BVDataPackedQ*>(nodes), 0, CurID, Root, MaxDepth, CurrentDepth, CQuantCoeff, EQuantCoeff, T->mCenterOrMinCoeff, T->mExtentsOrMaxCoeff);
 		}
 		else
 		{
-	#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
-			_FlattenNQ(reinterpret_cast<BVDataPackedNQ*>(nodes), 0, CurID, Root, MaxDepth, CurrentDepth, CQuantCoeff, EQuantCoeff, T->mCenterOrMinCoeff, T->mExtentsOrMaxCoeff);
-	#else
-			PX_ASSERT(0);
-	#endif
+			flattenNQ(reinterpret_cast<BVDataPackedNQ*>(nodes), 0, CurID, Root, MaxDepth, CurrentDepth, CQuantCoeff, EQuantCoeff, T->mCenterOrMinCoeff, T->mExtentsOrMaxCoeff);
 		}
 
 #ifdef GU_BV4_USE_NODE_POOLS
@@ -1212,15 +1520,15 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 		// PT: TODO: revisit this, don't duplicate everything
 		if(T->mQuantized)
 		{
-			BVDataPackedQ* _Nodes = reinterpret_cast<BVDataPackedQ*>(nodes);
+			BVDataPackedQ* _nodes = reinterpret_cast<BVDataPackedQ*>(nodes);
 
 			PX_COMPILE_TIME_ASSERT(sizeof(BVDataSwizzledQ) == sizeof(BVDataPackedQ) * 4);
-			BVDataPackedQ* Copy = PX_NEW(BVDataPackedQ)[NbNeeded];
+			BVDataPackedQ* Copy = PX_ALLOCATE(BVDataPackedQ, NbNeeded, "BVDataPackedQ");
 			PxMemCopy(Copy, nodes, sizeof(BVDataPackedQ)*NbNeeded);
 			for (PxU32 i = 0; i<NbNeeded / 4; i++)
 			{
 				const BVDataPackedQ* Src = Copy + i * 4;
-				BVDataSwizzledQ* Dst = reinterpret_cast<BVDataSwizzledQ*>(_Nodes + i * 4);
+				BVDataSwizzledQ* Dst = reinterpret_cast<BVDataSwizzledQ*>(_nodes + i * 4);
 				for (PxU32 j = 0; j<4; j++)
 				{
 					// We previously stored m/M within c/e so we just need to swizzle now
@@ -1234,20 +1542,18 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 					Dst->mData[j] = Src[j].mData;
 				}
 			}
-			DELETEARRAY(Copy);
+			PX_FREE(Copy);
 		}
 		else
 		{
-	#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
-			BVDataPackedNQ* _Nodes = reinterpret_cast<BVDataPackedNQ*>(nodes);
-
+			BVDataPackedNQ* _nodes = reinterpret_cast<BVDataPackedNQ*>(nodes);
 			PX_COMPILE_TIME_ASSERT(sizeof(BVDataSwizzledNQ) == sizeof(BVDataPackedNQ) * 4);
-			BVDataPackedNQ* Copy = PX_NEW(BVDataPackedNQ)[NbNeeded];
+			BVDataPackedNQ* Copy = PX_ALLOCATE(BVDataPackedNQ, NbNeeded, "BVDataPackedNQ");
 			PxMemCopy(Copy, nodes, sizeof(BVDataPackedNQ)*NbNeeded);
 			for (PxU32 i = 0; i<NbNeeded / 4; i++)
 			{
 				const BVDataPackedNQ* Src = Copy + i * 4;
-				BVDataSwizzledNQ* Dst = reinterpret_cast<BVDataSwizzledNQ*>(_Nodes + i * 4);
+				BVDataSwizzledNQ* Dst = reinterpret_cast<BVDataSwizzledNQ*>(_nodes + i * 4);
 				for (PxU32 j = 0; j<4; j++)
 				{
 					// We previously stored m/M within c/e so we just need to swizzle now
@@ -1261,7 +1567,7 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 					Dst->mData[j] = Src[j].mData;
 				}
 			}
-			DELETEARRAY(Copy);
+			PX_FREE(Copy);
 
 			if(0)
 			{
@@ -1288,15 +1594,12 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 							PxU32 primIndex = current->getPrimitive(j);
 
 							PxU32 nbToGo = getNbPrimitives(primIndex);
-							VertexPointers VP;
+							
 							do
 							{
-								PX_ASSERT(primIndex<T->mMeshInterface->getNbTriangles());
-								T->mMeshInterface->getTriangle(VP, primIndex);
+								PX_ASSERT(primIndex<T->mMeshInterface->getNbPrimitives());
 
-								refitBox.include(*VP.Vertex[0]);
-								refitBox.include(*VP.Vertex[1]);
-								refitBox.include(*VP.Vertex[2]);
+								T->mMeshInterface->refit(primIndex, refitBox);
 
 								primIndex++;
 							}while(nbToGo--);
@@ -1352,12 +1655,10 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 						}
 					}
 				}
-				printf("maxError: %f\n", maxError);
+				printf("maxError: %f\n", double(maxError));
 			}
-#else
-			PX_ASSERT(0);
-#endif
 		}
+		PX_ASSERT(CurID == NbNeeded);
 		T->mNbNodes = NbNeeded;
 #else
 		PX_ASSERT(CurID == NbSingleNodes);
@@ -1368,24 +1669,28 @@ static bool BuildBV4FromRoot(BV4Tree& tree, BV4Node* Root, BV4BuildParams& Param
 	return true;
 }
 
-static bool BuildBV4Internal(BV4Tree& tree, const AABBTree& Source, SourceMesh* mesh, float epsilon, bool quantized)
+static bool BuildBV4Internal(BV4Tree& tree, const BV4_AABBTree& source, SourceMeshBase* mesh, float epsilon, bool quantized)
 {
-	if(mesh->getNbTriangles()<=4)
-		return tree.init(mesh, Source.getBV());
+	GU_PROFILE_ZONE("..BuildBV4Internal")
+
+	if(mesh->getNbPrimitives()<=4)
+		return tree.init(mesh, source.getBV());
 
 	{
+		GU_PROFILE_ZONE("....CheckMD")
+
 		struct Local
 		{
-			static void _CheckMD(const AABBTreeNode* current_node, PxU32& md, PxU32& cd)
+			static void _checkMD(const AABBTreeNode* current_node, PxU32& md, PxU32& cd)
 			{
 				cd++;
 				md = PxMax(md, cd);
 
-				if(current_node->getPos())	{ _CheckMD(current_node->getPos(), md, cd);	cd--;	}
-				if(current_node->getNeg())	{ _CheckMD(current_node->getNeg(), md, cd);	cd--;	}
+				if(current_node->getPos())	{ _checkMD(current_node->getPos(), md, cd);	cd--;	}
+				if(current_node->getNeg())	{ _checkMD(current_node->getNeg(), md, cd);	cd--;	}
 			}
 
-			static void _Check(AABBTreeNode* current_node)
+			static void _check(AABBTreeNode* current_node)
 			{
 				if(current_node->isLeaf())
 					return;
@@ -1393,24 +1698,29 @@ static bool BuildBV4Internal(BV4Tree& tree, const AABBTree& Source, SourceMesh* 
 				AABBTreeNode* P = const_cast<AABBTreeNode*>(current_node->getPos());
 				AABBTreeNode* N = const_cast<AABBTreeNode*>(current_node->getNeg());
 				{
-					PxU32 MDP = 0;	PxU32 CDP = 0;	_CheckMD(P, MDP, CDP);
-					PxU32 MDN = 0;	PxU32 CDN = 0;	_CheckMD(N, MDN, CDN);
+					PxU32 MDP = 0;	PxU32 CDP = 0;	_checkMD(P, MDP, CDP);
+					PxU32 MDN = 0;	PxU32 CDN = 0;	_checkMD(N, MDN, CDN);
 
 					if(MDP>MDN)
 //					if(MDP<MDN)
 					{
-						Ps::swap(*P, *N);
-						Ps::swap(P, N);
+						PxSwap(*P, *N);
+						PxSwap(P, N);
 					}
 				}
-				_Check(P);
-				_Check(N);
+				_check(P);
+				_check(N);
 			}
 		};
-		Local::_Check(const_cast<AABBTreeNode*>(Source.getNodes()));
+		Local::_check(const_cast<AABBTreeNode*>(source.getNodes()));
 	}
 
-	BV4BuildParams Params(epsilon);
+	// PT: not sure what the equivalent would be for tet-meshes here
+	SourceMesh* triMesh = NULL;
+	if(mesh->getMeshType()==SourceMeshBase::TRI_MESH)
+		triMesh = static_cast<SourceMesh*>(mesh);
+
+	BV4BuildParams Params(source, triMesh, epsilon);
 	Params.mNbNodes=1;	// Root node
 	Params.mStats[0]=0;
 	Params.mStats[1]=0;
@@ -1422,9 +1732,12 @@ static bool BuildBV4Internal(BV4Tree& tree, const AABBTree& Source, SourceMesh* 
 #else
 	BV4Node* Root = PX_NEW(BV4Node);
 #endif
-	_BuildBV4(Source, Root, Source.getNodes(), Params);
+	{
+		GU_PROFILE_ZONE("....buildBV4")
+		buildBV4(source, Root, source.getNodes(), Params);
+	}
 
-	if(!tree.init(mesh, Source.getBV()))
+	if(!tree.init(mesh, source.getBV()))
 		return false;
 	
 	return BuildBV4FromRoot(tree, Root, Params, quantized, epsilon);
@@ -1433,20 +1746,15 @@ static bool BuildBV4Internal(BV4Tree& tree, const AABBTree& Source, SourceMesh* 
 /////
 
 #define	REORDER_STATS_SIZE		16
-struct ReorderDataBase
+struct ReorderData
 {
 public:
-	PxU32*				mOrder;
-	PxU32				mNbPrimsPerLeaf;
-	PxU32				mIndex;
-	PxU32				mNbPrims;
-	PxU32				mStats[REORDER_STATS_SIZE];
-};
-
-struct ReorderData : public ReorderDataBase
-{
-public:
-	const SourceMesh*	mMesh;
+	PxU32*					mOrder;
+	PxU32					mNbPrimsPerLeaf;
+	PxU32					mIndex;
+	PxU32					mNbPrims;
+	PxU32					mStats[REORDER_STATS_SIZE];
+	const SourceMeshBase*	mMesh;
 };
 
 static bool gReorderCallback(const AABBTreeNode* current, PxU32 /*depth*/, void* userData)
@@ -1471,34 +1779,40 @@ static bool gReorderCallback(const AABBTreeNode* current, PxU32 /*depth*/, void*
 	return true;
 }
 
-bool physx::Gu::BuildBV4Ex(BV4Tree& tree, SourceMesh& mesh, float epsilon, PxU32 nbTrisPerLeaf)
+bool physx::Gu::BuildBV4Ex(BV4Tree& tree, SourceMeshBase& mesh, float epsilon, PxU32 nbPrimitivePerLeaf, bool quantized, BV4_BuildStrategy strategy)
 {
-	const PxU32 nbTris = mesh.mNbTris;
+	//either number of triangle or number of tetrahedron
+	const PxU32 nbPrimitives = mesh.getNbPrimitives();
 
-	AABBTree Source;
-	if(!Source.buildFromMesh(mesh, nbTrisPerLeaf))
-		return false;
+	BV4_AABBTree Source;
+	{
+		GU_PROFILE_ZONE("..BuildBV4Ex_buildFromMesh")
+		if(!Source.buildFromMesh(mesh, nbPrimitivePerLeaf, strategy))
+			return false;
+	}
 
 	{
-		PxU32* order = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*nbTris, "BV4"));
+		GU_PROFILE_ZONE("..BuildBV4Ex_remap")
+		PxU32* orderArray = PX_ALLOCATE(PxU32, nbPrimitives, "BV4");
 		ReorderData RD;
 		RD.mMesh			= &mesh;
-		RD.mOrder			= order;
-		RD.mNbPrimsPerLeaf	= nbTrisPerLeaf;
+		RD.mOrder			= orderArray;
+		RD.mNbPrimsPerLeaf	= nbPrimitivePerLeaf;
 		RD.mIndex			= 0;
-		RD.mNbPrims			= nbTris;
+		RD.mNbPrims			= nbPrimitives;
 		for(PxU32 i=0;i<REORDER_STATS_SIZE;i++)
 			RD.mStats[i] = 0;
 		Source.walk(gReorderCallback, &RD);
-		PX_ASSERT(RD.mIndex==nbTris);
-		mesh.remapTopology(order);
-		PX_FREE(order);
+		PX_ASSERT(RD.mIndex== nbPrimitives);
+		mesh.remapTopology(orderArray);
+		PX_FREE(orderArray);
 //		for(PxU32 i=0;i<16;i++)
 //			printf("%d: %d\n", i, RD.mStats[i]);
 	}
 
-	if(mesh.getNbTriangles()<=nbTrisPerLeaf)
+	if(mesh.getNbPrimitives()<= nbPrimitivePerLeaf)
 		return tree.init(&mesh, Source.getBV());
 
-	return BuildBV4Internal(tree, Source, &mesh, epsilon, true);
+	return BuildBV4Internal(tree, Source, &mesh, epsilon, quantized);
 }
+

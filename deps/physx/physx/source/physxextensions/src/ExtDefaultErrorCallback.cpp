@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxAssert.h"
+#include "foundation/PxString.h"
+#include "foundation/PxThread.h"
 #include "extensions/PxDefaultErrorCallback.h"
 
-#include "PsString.h"
-#include "PsThread.h"
 #include <stdio.h>
 
 using namespace physx;
@@ -89,7 +88,7 @@ void PxDefaultErrorCallback::reportError(PxErrorCode::Enum e, const char* messag
 		char buffer[1024];
 		sprintf(buffer, "%s (%d) : %s : %s\n", file, line, errorCode, message);
 
-		physx::shdfnd::printString(buffer);
+		PxPrintString(buffer);
 
 		// in debug builds halt execution for abort codes
 		PX_ASSERT(e != PxErrorCode::eABORT);
@@ -98,8 +97,8 @@ void PxDefaultErrorCallback::reportError(PxErrorCode::Enum e, const char* messag
 		// and make sure that the error message is flushed  
 		while (e == PxErrorCode::eABORT)
 		{
-			physx::shdfnd::printString(buffer);
-			physx::shdfnd::Thread::sleep(1000);
+			PxPrintString(buffer);
+			PxThread::sleep(1000);
 		}
 	}	
 }

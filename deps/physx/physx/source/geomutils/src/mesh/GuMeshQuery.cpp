@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,16 +38,15 @@
 #include "GuIntersectionTriangleBox.h"
 #include "CmScaling.h"
 #include "GuSweepTests.h"
-#include "GuSIMDHelpers.h"
 #include "GuMidphaseInterface.h"
-#include "PsFPU.h"
+#include "foundation/PxFPU.h"
 
 using namespace physx;
 using namespace Gu;
 
 namespace {
 
-	class HfTrianglesEntityReport2 : public EntityReport<PxU32>, public LimitedResults
+	class HfTrianglesEntityReport2 : public OverlapReport, public LimitedResults
 	{
 	public:
 		HfTrianglesEntityReport2(
@@ -63,7 +61,7 @@ namespace {
 			buildFrom(mBox2Hf, boxCenter, boxExtents, boxRot);
 		}
 
-		virtual bool onEvent(PxU32 nbEntities, PxU32* entities)
+		virtual bool reportTouchedTris(PxU32 nbEntities, const PxU32* entities)
 		{
 			if(mAABBOverlap)
 			{
@@ -76,7 +74,7 @@ namespace {
 				const PxTransform idt(PxIdentity);
 				for(PxU32 i=0; i<nbEntities; i++)
 				{
-					TrianglePadded tri;
+					PxTrianglePadded tri;
 					mHfUtil.getTriangle(idt, tri, NULL, NULL, entities[i], false, false);  // First parameter not needed if local space triangle is enough
 
 					// PT: this one is safe because triangle class is padded
@@ -98,19 +96,18 @@ namespace {
 		HfTrianglesEntityReport2& operator=(const HfTrianglesEntityReport2&);
 	};
 
-
 } // namespace
 
 void physx::PxMeshQuery::getTriangle(const PxTriangleMeshGeometry& triGeom, const PxTransform& globalPose, PxTriangleID triangleIndex, PxTriangle& triangle, PxU32* vertexIndices, PxU32* adjacencyIndices)
 {
-	TriangleMesh* tm = static_cast<TriangleMesh*>(triGeom.triangleMesh);
+	const TriangleMesh* tm = static_cast<const TriangleMesh*>(triGeom.triangleMesh);
 
 	PX_CHECK_AND_RETURN(triangleIndex<tm->getNbTriangles(), "PxMeshQuery::getTriangle: triangle index is out of bounds");
 
 	if(adjacencyIndices && !tm->getAdjacencies())
-		Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "Adjacency information not created. Set buildTriangleAdjacencies on Cooking params.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Adjacency information not created. Set buildTriangleAdjacencies on Cooking params.");
 
-	const Cm::Matrix34 vertex2worldSkew = globalPose * triGeom.scale;
+	const PxMat34 vertex2worldSkew = globalPose * triGeom.scale;
 	tm->computeWorldTriangle(triangle, triangleIndex, vertex2worldSkew, triGeom.scale.hasNegativeDeterminant(), vertexIndices, adjacencyIndices);
 }
 
@@ -128,13 +125,13 @@ void physx::PxMeshQuery::getTriangle(const PxHeightFieldGeometry& hfGeom, const 
 PxU32 physx::PxMeshQuery::findOverlapTriangleMesh(
 	const PxGeometry& geom, const PxTransform& geomPose,
 	const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshPose,
-	PxU32* results, PxU32 maxResults, PxU32 startIndex, bool& overflow)
+	PxU32* results, PxU32 maxResults, PxU32 startIndex, bool& overflow, PxGeometryQueryFlags queryFlags)
 {
-	PX_SIMD_GUARD;
+	PX_SIMD_GUARD_CNDT(queryFlags & PxGeometryQueryFlag::eSIMD_GUARD)
 
 	LimitedResults limitedResults(results, maxResults, startIndex);
 
-	TriangleMesh* tm = static_cast<TriangleMesh*>(meshGeom.triangleMesh);
+	const TriangleMesh* tm = static_cast<const TriangleMesh*>(meshGeom.triangleMesh);
 
 	switch(geom.getType())
 	{
@@ -167,12 +164,7 @@ PxU32 physx::PxMeshQuery::findOverlapTriangleMesh(
 			break;
 		}
 
-		case PxGeometryType::ePLANE:
-		case PxGeometryType::eCONVEXMESH:
-		case PxGeometryType::eTRIANGLEMESH:
-		case PxGeometryType::eHEIGHTFIELD:
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
+		default:
 		{
 			PX_CHECK_MSG(false, "findOverlapTriangleMesh: Only box, capsule and sphere geometries are supported.");
 		}
@@ -184,11 +176,32 @@ PxU32 physx::PxMeshQuery::findOverlapTriangleMesh(
 
 ///////////////////////////////////////////////////////////////////////////////
 
+bool physx::PxMeshQuery::findOverlapTriangleMesh(	PxReportCallback<PxGeomIndexPair>& callback,
+													const PxTriangleMeshGeometry& meshGeom0, const PxTransform& meshPose0,
+													const PxTriangleMeshGeometry& meshGeom1, const PxTransform& meshPose1,
+													PxGeometryQueryFlags queryFlags, PxMeshMeshQueryFlags meshMeshFlags)
+{
+	PX_SIMD_GUARD_CNDT(queryFlags & PxGeometryQueryFlag::eSIMD_GUARD)
+
+	const TriangleMesh* tm0 = static_cast<const TriangleMesh*>(meshGeom0.triangleMesh);
+	const TriangleMesh* tm1 = static_cast<const TriangleMesh*>(meshGeom1.triangleMesh);
+
+	// PT: only implemented for BV4
+	if(!tm0 || !tm1 || tm0->getConcreteType()!=PxConcreteType::eTRIANGLE_MESH_BVH34 || tm1->getConcreteType()!=PxConcreteType::eTRIANGLE_MESH_BVH34)
+		return PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxMeshQuery::findOverlapTriangleMesh(): only available between two BVH34 triangles meshes.");
+
+	// PT: ...so we don't need a table like for the other ops, just go straight to BV4
+	return intersectMeshVsMesh_BV4(callback, *tm0, *tm1, meshPose0, meshPose1, meshGeom0.scale, meshGeom1.scale, meshMeshFlags);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 PxU32 physx::PxMeshQuery::findOverlapHeightField(	const PxGeometry& geom, const PxTransform& geomPose,
 													const PxHeightFieldGeometry& hfGeom, const PxTransform& hfPose,
-													PxU32* results, PxU32 maxResults, PxU32 startIndex, bool& overflow)
+													PxU32* results, PxU32 maxResults, PxU32 startIndex, bool& overflow, PxGeometryQueryFlags queryFlags)
 {
-	PX_SIMD_GUARD;
+	PX_SIMD_GUARD_CNDT(queryFlags & PxGeometryQueryFlag::eSIMD_GUARD)
+
 	const PxTransform localPose0 = hfPose.transformInv(geomPose);
 	PxBoxGeometry boxGeom;
 
@@ -198,23 +211,23 @@ PxU32 physx::PxMeshQuery::findOverlapHeightField(	const PxGeometry& geom, const 
 		{
 			const PxCapsuleGeometry& cap = static_cast<const PxCapsuleGeometry&>(geom);
 			boxGeom.halfExtents = PxVec3(cap.halfHeight+cap.radius, cap.radius, cap.radius);
+			// PT: TODO: improve these bounds - see computeCapsuleBounds
 		}
 		break;
 		case PxGeometryType::eSPHERE:
 		{
 			const PxSphereGeometry& sph = static_cast<const PxSphereGeometry&>(geom);
-			boxGeom.halfExtents = PxVec3(sph.radius, sph.radius, sph.radius);
+			boxGeom.halfExtents = PxVec3(sph.radius);
+
+			// PT: TODO: could this codepath be improved using the following?
+			//PxBounds3 localBounds;
+			//const PxVec3 localSphereCenter = getLocalSphereData(localBounds, pose0, pose1, sphereGeom.radius);
 		}
 		break;
 		case PxGeometryType::eBOX:
 			boxGeom = static_cast<const PxBoxGeometry&>(geom);
 		break;
-		case PxGeometryType::ePLANE:
-		case PxGeometryType::eCONVEXMESH:
-		case PxGeometryType::eTRIANGLEMESH:
-		case PxGeometryType::eHEIGHTFIELD:
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
+		default:
 		{
 			overflow = false;
 			PX_CHECK_AND_RETURN_VAL(false, "findOverlapHeightField: Only box, sphere and capsule queries are supported.", false);
@@ -232,7 +245,7 @@ PxU32 physx::PxMeshQuery::findOverlapHeightField(	const PxGeometry& geom, const 
 	HeightFieldUtil hfUtil(hfGeom);
 	HfTrianglesEntityReport2 entityReport(results, maxResults, startIndex, hfUtil, localPose0.p, boxGeom.halfExtents, localPose0.q, isAABB);
 
-	hfUtil.overlapAABBTriangles(hfPose, bounds, 0, &entityReport);
+	hfUtil.overlapAABBTriangles(bounds, entityReport);
 	overflow = entityReport.mOverflow;
 	return entityReport.mNbResults;
 }
@@ -242,10 +255,10 @@ PxU32 physx::PxMeshQuery::findOverlapHeightField(	const PxGeometry& geom, const 
 bool physx::PxMeshQuery::sweep(	const PxVec3& unitDir, const PxReal maxDistance,
 								const PxGeometry& geom, const PxTransform& pose,
 								PxU32 triangleCount, const PxTriangle* triangles,
-								PxSweepHit& sweepHit, PxHitFlags hitFlags,
-								const PxU32* cachedIndex, const PxReal inflation, bool doubleSided)
+								PxGeomSweepHit& sweepHit, PxHitFlags hitFlags,
+								const PxU32* cachedIndex, const PxReal inflation, bool doubleSided, PxGeometryQueryFlags queryFlags)
 {
-	PX_SIMD_GUARD;
+	PX_SIMD_GUARD_CNDT(queryFlags & PxGeometryQueryFlag::eSIMD_GUARD)
 	PX_CHECK_AND_RETURN_VAL(pose.isValid(), "PxMeshQuery::sweep(): pose is not valid.", false);
 	PX_CHECK_AND_RETURN_VAL(unitDir.isFinite(), "PxMeshQuery::sweep(): unitDir is not valid.", false);
 	PX_CHECK_AND_RETURN_VAL(PxIsFinite(maxDistance), "PxMeshQuery::sweep(): distance is not valid.", false);
@@ -261,7 +274,6 @@ bool physx::PxMeshQuery::sweep(	const PxVec3& unitDir, const PxReal maxDistance,
 		{
 			const PxSphereGeometry& sphereGeom = static_cast<const PxSphereGeometry&>(geom);
 
-			// PT: TODO: technically this capsule with 0.0 half-height is invalid ("isValid" returns false)
 			const PxCapsuleGeometry capsuleGeom(sphereGeom.radius, 0.0f);
 
 			return sweepCapsuleTriangles(	triangleCount, triangles, doubleSided, capsuleGeom, pose, unitDir, distance,
@@ -291,15 +303,11 @@ bool physx::PxMeshQuery::sweep(	const PxVec3& unitDir, const PxReal maxDistance,
 											inflation, hitFlags);
 			}
 		}	
-		case PxGeometryType::ePLANE:
-		case PxGeometryType::eCONVEXMESH:
-		case PxGeometryType::eTRIANGLEMESH:
-		case PxGeometryType::eHEIGHTFIELD:
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
+		default:
 			PX_CHECK_MSG(false, "PxMeshQuery::sweep(): geometry object parameter must be sphere, capsule or box geometry.");
 	}
 	return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+

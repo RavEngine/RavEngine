@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,31 +22,28 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "ExtDistanceJoint.h"
 #include "ExtConstraintHelper.h"
-#include "PxPhysics.h"
 
 using namespace physx;
 using namespace Ext;
 
-PxDistanceJoint* physx::PxDistanceJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+DistanceJoint::DistanceJoint(const PxTolerancesScale& scale, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1) :
+	DistanceJointT(PxJointConcreteType::eDISTANCE, actor0, localFrame0, actor1, localFrame1, "DistanceJointData")
 {
-	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxDistanceJointCreate: local frame 0 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxDistanceJointCreate: local frame 1 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxDistanceJointCreate: actors must be different");
-	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxD6JointCreate: at least one actor must be dynamic");
+	DistanceJointData* data = static_cast<DistanceJointData*>(mData);
 
-	DistanceJoint* j;
-	PX_NEW_SERIALIZED(j, DistanceJoint)(physics.getTolerancesScale(), actor0, localFrame0, actor1, localFrame1);
-	if(j->attach(physics, actor0, actor1))
-		return j;
-
-	PX_DELETE(j);
-	return NULL;
+	data->stiffness			= 0.0f;
+	data->damping			= 0.0f;
+	data->contactDistance	= 0.0f;
+	data->minDistance		= 0.0f;
+	data->maxDistance		= 0.0f;
+	data->tolerance			= 0.025f * scale.length;
+	data->jointFlags		= PxDistanceJointFlag::eMAX_DISTANCE_ENABLED;
 }
 
 PxReal DistanceJoint::getDistance() const
@@ -57,9 +53,12 @@ PxReal DistanceJoint::getDistance() const
 
 void DistanceJoint::setMinDistance(PxReal distance)	
 { 
-	PX_CHECK_AND_RETURN(PxIsFinite(distance), "PxDistanceJoint::setMinDistance: invalid parameter");
+	PX_CHECK_AND_RETURN(PxIsFinite(distance) && distance>=0.0f, "PxDistanceJoint::setMinDistance: invalid parameter");
 	data().minDistance = distance;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceMinDistance, static_cast<PxJoint&>(*this), distance)
+#endif
 }
 
 PxReal DistanceJoint::getMinDistance() const
@@ -69,9 +68,12 @@ PxReal DistanceJoint::getMinDistance() const
 
 void DistanceJoint::setMaxDistance(PxReal distance)	
 { 
-	PX_CHECK_AND_RETURN(PxIsFinite(distance), "PxDistanceJoint::setMaxDistance: invalid parameter");
+	PX_CHECK_AND_RETURN(PxIsFinite(distance) && distance>=0.0f, "PxDistanceJoint::setMaxDistance: invalid parameter");
 	data().maxDistance = distance;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceMaxDistance, static_cast<PxJoint&>(*this), distance)
+#endif
 }
 
 PxReal DistanceJoint::getMaxDistance() const	
@@ -84,6 +86,9 @@ void DistanceJoint::setTolerance(PxReal tolerance)
 	PX_CHECK_AND_RETURN(PxIsFinite(tolerance), "PxDistanceJoint::setTolerance: invalid parameter");
 	data().tolerance = tolerance;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceTolerance, static_cast<PxJoint&>(*this), tolerance)
+#endif
 }
 
 PxReal DistanceJoint::getTolerance() const
@@ -96,6 +101,9 @@ void DistanceJoint::setStiffness(PxReal stiffness)
 	PX_CHECK_AND_RETURN(PxIsFinite(stiffness), "PxDistanceJoint::setStiffness: invalid parameter");
 	data().stiffness = stiffness;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceStiffness, static_cast<PxJoint&>(*this), stiffness)
+#endif
 }
 
 PxReal DistanceJoint::getStiffness() const	
@@ -108,11 +116,29 @@ void DistanceJoint::setDamping(PxReal damping)
 	PX_CHECK_AND_RETURN(PxIsFinite(damping), "PxDistanceJoint::setDamping: invalid parameter");
 	data().damping = damping;
 	markDirty();	
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceDamping, static_cast<PxJoint&>(*this), damping)
+#endif
 }
 
 PxReal DistanceJoint::getDamping() const
 { 
 	return data().damping;
+}
+
+void DistanceJoint::setContactDistance(PxReal contactDistance)
+{
+	PX_CHECK_AND_RETURN(PxIsFinite(contactDistance) && contactDistance>=0.0f, "PxDistanceJoint::setContactDistance: invalid parameter");
+	data().contactDistance = contactDistance;
+	markDirty();	
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceContactDistance, static_cast<PxJoint&>(*this), contactDistance)
+#endif
+}
+
+PxReal DistanceJoint::getContactDistance() const
+{
+	return data().contactDistance;
 }
 
 PxDistanceJointFlags DistanceJoint::getDistanceJointFlags(void) const
@@ -124,6 +150,9 @@ void DistanceJoint::setDistanceJointFlags(PxDistanceJointFlags flags)
 { 
 	data().jointFlags = flags; 
 	markDirty();	
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceJointFlags, static_cast<PxJoint&>(*this), flags)
+#endif
 }
 
 void DistanceJoint::setDistanceJointFlag(PxDistanceJointFlag::Enum flag, bool value)
@@ -133,53 +162,10 @@ void DistanceJoint::setDistanceJointFlag(PxDistanceJointFlag::Enum flag, bool va
 	else
 		data().jointFlags &= ~flag;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, distanceJointFlags, static_cast<PxJoint&>(*this), getDistanceJointFlags())
+#endif
 }
-
-bool DistanceJoint::attach(PxPhysics &physics, PxRigidActor* actor0, PxRigidActor* actor1)
-{
-	mPxConstraint = physics.createConstraint(actor0, actor1, *this, sShaders, sizeof(DistanceJointData));
-	return mPxConstraint!=NULL;
-}
-
-void DistanceJoint::exportExtraData(PxSerializationContext& stream)
-{
-	if(mData)
-	{
-		stream.alignData(PX_SERIAL_ALIGN);
-		stream.writeData(mData, sizeof(DistanceJointData));
-	}
-	stream.writeName(mName);
-}
-
-void DistanceJoint::importExtraData(PxDeserializationContext& context)
-{
-	if(mData)
-		mData = context.readExtraData<DistanceJointData, PX_SERIAL_ALIGN>();
-
-	context.readName(mName);
-}
-
-void DistanceJoint::resolveReferences(PxDeserializationContext& context)
-{
-	setPxConstraint(resolveConstraintPtr(context, getPxConstraint(), getConnector(), sShaders));	
-}
-
-DistanceJoint* DistanceJoint::createObject(PxU8*& address, PxDeserializationContext& context)
-{
-	DistanceJoint* obj = new (address) DistanceJoint(PxBaseFlag::eIS_RELEASABLE);
-	address += sizeof(DistanceJoint);	
-	obj->importExtraData(context);
-	obj->resolveReferences(context);
-	return obj;
-}
-
-// global function to share the joint shaders with API capture	
-const PxConstraintShaderTable* Ext::GetDistanceJointShaderTable() 
-{ 
-	return &DistanceJoint::getConstraintShaderTable();
-}
-
-//~PX_SERIALIZATION
 
 static void DistanceJointProject(const void* /*constantBlock*/, PxTransform& /*bodyAToWorld*/, PxTransform& /*bodyBToWorld*/, bool /*projectToA*/)
 {
@@ -216,7 +202,7 @@ static void DistanceJointVisualize(PxConstraintVisualizer& viz, const void* cons
 	}
 }
 
-PX_FORCE_INLINE void setupContraint(Px1DConstraint& c, const PxVec3& direction, const PxVec3& angular0, const PxVec3& angular1, const DistanceJointData& data)
+static PX_FORCE_INLINE void setupContraint(Px1DConstraint& c, const PxVec3& direction, const PxVec3& angular0, const PxVec3& angular1, const DistanceJointData& data)
 {
 	// constraint is breakable, so we need to output forces
 
@@ -233,17 +219,51 @@ PX_FORCE_INLINE void setupContraint(Px1DConstraint& c, const PxVec3& direction, 
 	}
 }
 
+static PX_FORCE_INLINE PxU32 setupMinConstraint(Px1DConstraint& c, const PxVec3& direction, const PxVec3& angular0, const PxVec3& angular1, const DistanceJointData& data, float distance, float contactDistance)
+{
+	if(distance < data.minDistance + contactDistance)
+	{
+		setupContraint(c, direction, angular0, angular1, data); 
+		c.geometricError = distance - data.minDistance + data.tolerance;	
+		c.minImpulse = 0.0f;
+		if(distance>=data.minDistance)
+			c.flags |= Px1DConstraintFlag::eKEEPBIAS;
+		return 1;
+	}
+	return 0;
+}
+
+static PX_FORCE_INLINE PxU32 setupMaxConstraint(Px1DConstraint& c, const PxVec3& direction, const PxVec3& angular0, const PxVec3& angular1, const DistanceJointData& data, float distance, float contactDistance)
+{
+	if(distance > data.maxDistance - contactDistance)
+	{
+		setupContraint(c, direction, angular0, angular1, data); 
+		c.geometricError = distance - data.maxDistance - data.tolerance;
+		c.maxImpulse = 0.0f;
+		if(distance<=data.maxDistance)
+			c.flags |= Px1DConstraintFlag::eKEEPBIAS;
+		return 1;
+	}
+	return 0;
+}
+
+//TAG:solverprepshader
 static PxU32 DistanceJointSolverPrep(Px1DConstraint* constraints,
-	PxVec3& body0WorldOffset,
+	PxVec3p& body0WorldOffset,
 	PxU32 /*maxConstraints*/,
 	PxConstraintInvMassScale& invMassScale,
 	const void* constantBlock,
 	const PxTransform& bA2w,
 	const PxTransform& bB2w,
 	bool /*useExtendedLimits*/,
-	PxVec3& cA2wOut, PxVec3& cB2wOut)
+	PxVec3p& cA2wOut, PxVec3p& cB2wOut)
 {
 	const DistanceJointData& data = *reinterpret_cast<const DistanceJointData*>(constantBlock);
+
+	const bool enforceMax = (data.jointFlags & PxDistanceJointFlag::eMAX_DISTANCE_ENABLED) && data.maxDistance>=0.0f;
+	const bool enforceMin = (data.jointFlags & PxDistanceJointFlag::eMIN_DISTANCE_ENABLED) && data.minDistance>=0.0f;
+	if(!enforceMax && !enforceMin)
+		return 0;
 
 	PxTransform cA2w, cB2w;
 	joint::ConstraintHelper ch(constraints, invMassScale, cA2w, cB2w, body0WorldOffset, data, bA2w, bB2w);
@@ -253,9 +273,6 @@ static PxU32 DistanceJointSolverPrep(Px1DConstraint* constraints,
 
 	PxVec3 direction = cA2w.p - cB2w.p;
 	const PxReal distance = direction.normalize();
-
-	const bool enforceMax = (data.jointFlags & PxDistanceJointFlag::eMAX_DISTANCE_ENABLED);
-	const bool enforceMin = (data.jointFlags & PxDistanceJointFlag::eMIN_DISTANCE_ENABLED);
 
 #define EPS_REAL 1.192092896e-07F
 
@@ -267,68 +284,77 @@ static PxU32 DistanceJointSolverPrep(Px1DConstraint* constraints,
 	const PxVec3 angular0 = ch.getRa().cross(direction);
 	const PxVec3 angular1 = ch.getRb().cross(direction);
 
-	setupContraint(*c, direction, angular0, angular1, data); 
-
-	//add tolerance so we don't have contact-style jitter problem.
-
-	if(data.minDistance == data.maxDistance && enforceMin && enforceMax)
-	{
-		const PxReal error = distance - data.maxDistance;
-		c->geometricError = error >  data.tolerance ? error - data.tolerance :
-			error < -data.tolerance ? error + data.tolerance : 0.0f;
-	}
-	else if(enforceMax && distance > data.maxDistance)
-	{
-		c->geometricError = distance - data.maxDistance - data.tolerance;
-		c->maxImpulse = 0.0f;
-	}
-	else if(enforceMin && distance < data.minDistance)
-	{
-		c->geometricError = distance - data.minDistance + data.tolerance;	
-		c->minImpulse = 0.0f;
-	}
+	if(enforceMin && !enforceMax)
+		return setupMinConstraint(*c, direction, angular0, angular1, data, distance, data.contactDistance);
+	else if(enforceMax && !enforceMin)
+		return setupMaxConstraint(*c, direction, angular0, angular1, data, distance, data.contactDistance);
 	else
 	{
-		if(enforceMin && enforceMax)
+		if(data.minDistance == data.maxDistance)
 		{
-			// since we dont know the current rigid velocity, we need to insert row for both limits
-			Px1DConstraint* minConstraint = constraints;
-			minConstraint->geometricError = distance - data.minDistance;
-			minConstraint->minImpulse = 0.0f;
-			minConstraint->maxImpulse = FLT_MAX;
-			minConstraint->flags |= Px1DConstraintFlag::eKEEPBIAS;
+			setupContraint(*c, direction, angular0, angular1, data); 
 
-			Px1DConstraint* maxConstraint = constraints;
-			maxConstraint++;
-
-			setupContraint(*maxConstraint, direction, angular0, angular1, data);
-
-			maxConstraint->geometricError = distance - data.maxDistance;
-			maxConstraint->minImpulse = -FLT_MAX;
-			maxConstraint->maxImpulse = 0.0f;
-			maxConstraint->flags |= Px1DConstraintFlag::eKEEPBIAS;
-
-			return 2;
+			//add tolerance so we don't have contact-style jitter problem.
+			const PxReal error = distance - data.maxDistance;
+			c->geometricError = error >  data.tolerance ? error - data.tolerance :
+				error < -data.tolerance ? error + data.tolerance : 0.0f;
+			return 1;
 		}
-		else if(enforceMax)
-		{			
-			c->geometricError = distance - data.maxDistance;
-			c->minImpulse = -FLT_MAX;
-			c->maxImpulse = 0.0f;
-			c->flags |= Px1DConstraintFlag::eKEEPBIAS;
-			return 0;
-		}
-		else if(enforceMin)
-		{			
-			c->geometricError = distance - data.minDistance;
-			c->minImpulse = 0.0f;
-			c->maxImpulse = FLT_MAX;
-			c->flags |= Px1DConstraintFlag::eKEEPBIAS;
-			return 0;
-		}		
+
+		// since we dont know the current rigid velocity, we need to insert row for both limits
+		PxU32 nb = setupMinConstraint(*c, direction, angular0, angular1, data, distance, data.contactDistance);
+		if(nb)
+			c++;
+		nb += setupMaxConstraint(*c, direction, angular0, angular1, data, distance, data.contactDistance);
+		return nb;
 	}
-
-	return 1;
 }
 
-PxConstraintShaderTable Ext::DistanceJoint::sShaders = { DistanceJointSolverPrep, DistanceJointProject, DistanceJointVisualize, PxConstraintFlag::Enum(0) };
+///////////////////////////////////////////////////////////////////////////////
+
+static PxConstraintShaderTable gDistanceJointShaders = { DistanceJointSolverPrep, DistanceJointProject, DistanceJointVisualize, PxConstraintFlag::Enum(0) };
+
+PxConstraintSolverPrep DistanceJoint::getPrep()	const	{ return gDistanceJointShaders.solverPrep;	}
+
+PxDistanceJoint* physx::PxDistanceJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+{
+	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxDistanceJointCreate: local frame 0 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxDistanceJointCreate: local frame 1 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxDistanceJointCreate: actors must be different");
+	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxD6JointCreate: at least one actor must be dynamic");
+
+	return createJointT<DistanceJoint, DistanceJointData>(physics, actor0, localFrame0, actor1, localFrame1, gDistanceJointShaders);
+}
+
+// PX_SERIALIZATION
+void DistanceJoint::resolveReferences(PxDeserializationContext& context)
+{
+	mPxConstraint = resolveConstraintPtr(context, mPxConstraint, this, gDistanceJointShaders);
+}
+//~PX_SERIALIZATION
+
+#if PX_SUPPORT_OMNI_PVD
+
+void DistanceJoint::updateOmniPvdProperties() const
+{
+	const PxJoint& j = static_cast<const PxJoint&>(*this);
+	OMNI_PVD_SET(joint, distanceDistance, j, getDistance())
+}
+
+template<>
+void physx::Ext::omniPvdInitJoint<DistanceJoint>(DistanceJoint* joint)
+{
+	PxJoint& j = static_cast<PxJoint&>(*joint);
+	OMNI_PVD_SET(joint, type, j, PxJointConcreteType::eDISTANCE)
+	OMNI_PVD_SET(joint, distanceMinDistance, j, joint->getMinDistance())
+	OMNI_PVD_SET(joint, distanceMaxDistance, j, joint->getMaxDistance())
+	OMNI_PVD_SET(joint, distanceTolerance, j, joint->getTolerance())
+	OMNI_PVD_SET(joint, distanceStiffness, j, joint->getStiffness())
+	OMNI_PVD_SET(joint, distanceDamping, j, joint->getDamping())
+	OMNI_PVD_SET(joint, distanceContactDistance, j, joint->getContactDistance())
+	OMNI_PVD_SET(joint, distanceJointFlags, j, joint->getDistanceJointFlags())
+	OMNI_PVD_SET(joint, distanceDistance, j, joint->getDistance())
+}
+
+#endif
+

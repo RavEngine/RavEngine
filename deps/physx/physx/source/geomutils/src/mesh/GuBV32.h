@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,24 +32,23 @@
 #include "foundation/PxBounds3.h"
 #include "foundation/PxVec4.h"
 #include "common/PxSerialFramework.h"
-#include "PsUserAllocated.h"
-#include "PsArray.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxArray.h"
 #include "GuBV4.h"
-#include "CmPhysXCommon.h"
 
 namespace physx
 {
 	namespace Gu
 	{
-		struct BV32Data : public physx::shdfnd::UserAllocated
+		struct BV32Data : public physx::PxUserAllocated
 		{
-			PxVec3		mCenter;
+			PxVec3		mMin;
+			PxVec3		mMax;
 			PxU32		mNbLeafNodes;
-			PxVec3		mExtents;
+			PxU32		mDepth;
 			size_t		mData;
-			
 
-			PX_FORCE_INLINE BV32Data() : mNbLeafNodes(0), mData(PX_INVALID_U32)
+			PX_FORCE_INLINE BV32Data() : mNbLeafNodes(0), mDepth(0),  mData(PX_INVALID_U32)
 			{
 				setEmpty();
 			}
@@ -58,8 +56,8 @@ namespace physx
 			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			isLeaf()			const	{ return mData & 1; }
 
 			//if the node is leaf, 
-			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getNbReferencedTriangles()	const	{ PX_ASSERT(isLeaf()); return PxU32((mData >>1)&63); }
-			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getTriangleStartIndex()	const	{ PX_ASSERT(isLeaf()); return PxU32(mData >> 7); }
+			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getNbReferencedPrimitives()	const	{ PX_ASSERT(isLeaf()); return PxU32((mData >>1)&63); }
+			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getPrimitiveStartIndex()	const	{ PX_ASSERT(isLeaf()); return PxU32(mData >> 7); }
 
 			//PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getPrimitive()		const	{ return mData >> 1; }
 			//if the node isn't leaf, we will get the childOffset
@@ -68,14 +66,19 @@ namespace physx
 			
 			PX_CUDA_CALLABLE PX_FORCE_INLINE	void			getMinMax(PxVec3& min, PxVec3& max)			const
 			{
-				min = mCenter - mExtents;
-				max = mCenter + mExtents;
+				//min = mCenter - mExtents;
+				//max = mCenter + mExtents;
+				min = mMin;
+				max = mMax;
 			}
 
 			PX_FORCE_INLINE	void setEmpty()
 			{
-				mCenter = PxVec3(0.0f, 0.0f, 0.0f);
-				mExtents = PxVec3(-1.0f, -1.0f, -1.0f);
+				//mCenter = PxVec3(0.0f, 0.0f, 0.0f);
+				//mExtents = PxVec3(-1.0f, -1.0f, -1.0f);
+
+				mMin = PxVec3(PX_MAX_F32);
+				mMax = PxVec3(-PX_MAX_F32);
 			}
 			
 		};
@@ -83,27 +86,38 @@ namespace physx
 		PX_ALIGN_PREFIX(16)
 		struct BV32DataPacked
 		{
-			PxVec4 mCenter[32];
-			PxVec4 mExtents[32];
+			/*PxVec4 mCenter[32];
+			PxVec4 mExtents[32];*/
+			PxVec4 mMin[32];
+			PxVec4 mMax[32];
 			PxU32 mData[32];
 			PxU32 mNbNodes;
-			PxU32 pad[3];
+			PxU32 mDepth;
+			PxU32 padding[2];
 
-			PX_CUDA_CALLABLE PX_FORCE_INLINE BV32DataPacked() : mNbNodes(0)
+			PX_CUDA_CALLABLE PX_FORCE_INLINE BV32DataPacked() : mNbNodes(0), mDepth(0)
 			{
 			}
 
 			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			isLeaf(const PxU32 index)			const	{ return mData[index] & 1; }
-			//if the node is leaf, 
-			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getNbReferencedTriangles(const PxU32 index)	const	{ PX_ASSERT(isLeaf(index)); return (mData[index] >> 1) & 63; }
-			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getTriangleStartIndex(const PxU32 index)	const	{ PX_ASSERT(isLeaf(index)); return (mData[index] >> 7); }
+			//if the node is leaf 
+			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getNbReferencedPrimitives(const PxU32 index)	const	{ PX_ASSERT(isLeaf(index)); return (mData[index] >> 1) & 63; }
+			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getPrimitiveStartIndex(const PxU32 index)	const	{ PX_ASSERT(isLeaf(index)); return (mData[index] >> 7); }
 			//if the node isn't leaf, we will get the childOffset
 			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getChildOffset(const PxU32 index)	const	{ PX_ASSERT(!isLeaf(index)); return mData[index] >> GU_BV4_CHILD_OFFSET_SHIFT_COUNT; }
 			PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32			getNbChildren(const PxU32 index)		const	{ PX_ASSERT(!isLeaf(index)); return ((mData[index])& ((1 << GU_BV4_CHILD_OFFSET_SHIFT_COUNT) - 1)) >> 1; }
 		} 
 		PX_ALIGN_SUFFIX(16);
 
-		class BV32Tree : public physx::shdfnd::UserAllocated
+		//This struct store the start and end index of the packed node at the same depth level in the tree
+		struct BV32DataDepthInfo
+		{
+		public:
+			PxU32 offset; 
+			PxU32 count;
+		};
+
+		class BV32Tree : public physx::PxUserAllocated
 		{
 		public:
 			// PX_SERIALIZATION
@@ -113,9 +127,11 @@ namespace physx
 			static			void			getBinaryMetaData(PxOutputStream& stream);
 			//~PX_SERIALIZATION
 
-			PX_PHYSX_COMMON_API				BV32Tree();
-			PX_PHYSX_COMMON_API				BV32Tree(SourceMesh* meshInterface, const PxBounds3& localBounds);
-			PX_PHYSX_COMMON_API				~BV32Tree();
+							BV32Tree();
+							BV32Tree(SourceMesh* meshInterface, const PxBounds3& localBounds);
+							~BV32Tree();
+
+							bool refit(const float epsilon);
 
 			bool			load(PxInputStream& stream, bool mismatch);
 
@@ -125,19 +141,22 @@ namespace physx
 			void			reset();
 			void			operator = (BV32Tree& v);
 
-			bool			init(SourceMesh* meshInterface, const PxBounds3& localBounds);
+			bool			init(SourceMeshBase* meshInterface, const PxBounds3& localBounds);
 			void			release();
 
-			SourceMesh*		mMeshInterface;
-			LocalBounds		mLocalBounds;
+			SourceMeshBase*		mMeshInterface;
+			LocalBounds			mLocalBounds;
 
-			PxU32			mNbNodes;
-			BV32Data*		mNodes;
-			BV32DataPacked*	mPackedNodes;
-			PxU32			mNbPackedNodes;
-			PxU32			mInitData;
-			bool			mUserAllocated;	// PT: please keep these 4 bytes right after mCenterOrMinCoeff/mExtentsOrMaxCoeff for safe V4 loading
-			bool			mPadding[3];
+			PxU32				mNbNodes;
+			BV32Data*			mNodes;
+			BV32DataPacked*		mPackedNodes;
+			PxU32				mNbPackedNodes;
+			PxU32*				mRemapPackedNodeIndexWithDepth;
+			BV32DataDepthInfo*	mTreeDepthInfo;
+			PxU32				mMaxTreeDepth;
+			PxU32				mInitData;
+			bool				mUserAllocated;	// PT: please keep these 4 bytes right after mCenterOrMinCoeff/mExtentsOrMaxCoeff for safe V4 loading
+			bool				mPadding[2];
 		};
 
 	} // namespace Gu

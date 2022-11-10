@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "PxPvdUserRenderImpl.h"
 #include "PxPvdInternalByteStreams.h"
@@ -85,7 +84,7 @@ struct RenderWriter : public RenderSerializer
 		writeRef(val);
 	}
 
-	virtual void streamify(PvdDebugText& val)
+	virtual void streamify(PxDebugText& val)
 	{
 		write(val.color);
 		write(val.position);
@@ -97,15 +96,15 @@ struct RenderWriter : public RenderSerializer
 			write(val.string, amount);
 	}
 
-	virtual void streamify(DataRef<PvdDebugPoint>& val)
+	virtual void streamify(DataRef<PxDebugPoint>& val)
 	{
 		writeRef(val);
 	}
-	virtual void streamify(DataRef<PvdDebugLine>& val)
+	virtual void streamify(DataRef<PxDebugLine>& val)
 	{
 		writeRef(val);
 	}
-	virtual void streamify(DataRef<PvdDebugTriangle>& val)
+	virtual void streamify(DataRef<PxDebugTriangle>& val)
 	{
 		writeRef(val);
 	}
@@ -158,28 +157,28 @@ struct UserRenderer : public PvdUserRenderer
 		handleEvent(SetInstanceIdRenderEvent(PVD_POINTER_TO_U64(iid)));
 	}
 	// Draw these points associated with this instance
-	virtual void drawPoints(const PvdDebugPoint* points, uint32_t count)
+	virtual void drawPoints(const PxDebugPoint* points, uint32_t count)
 	{
 		handleEvent(PointsRenderEvent(points, count));
 	}
 	// Draw these lines associated with this instance
-	virtual void drawLines(const PvdDebugLine* lines, uint32_t count)
+	virtual void drawLines(const PxDebugLine* lines, uint32_t count)
 	{
 		handleEvent(LinesRenderEvent(lines, count));
 	}
 	// Draw these triangles associated with this instance
-	virtual void drawTriangles(const PvdDebugTriangle* triangles, uint32_t count)
+	virtual void drawTriangles(const PxDebugTriangle* triangles, uint32_t count)
 	{
 		handleEvent(TrianglesRenderEvent(triangles, count));
 	}
 
-	virtual void drawText(const PvdDebugText& text)
+	virtual void drawText(const PxDebugText& text)
 	{
 		handleEvent(TextRenderEvent(text));
 	}
 
-	virtual void drawRenderbuffer(const PvdDebugPoint* pointData, uint32_t pointCount, const PvdDebugLine* lineData,
-	                              uint32_t lineCount, const PvdDebugTriangle* triangleData, uint32_t triangleCount)
+	virtual void drawRenderbuffer(const PxDebugPoint* pointData, uint32_t pointCount, const PxDebugLine* lineData,
+	                              uint32_t lineCount, const PxDebugTriangle* triangleData, uint32_t triangleCount)
 	{
 		handleEvent(DebugRenderEvent(pointData, pointCount, lineData, lineCount, triangleData, triangleCount));
 	}
@@ -263,19 +262,19 @@ struct RenderReader : public RenderSerializer
 		val = DataRef<TDataType>(dataPtr, count);
 	}
 
-	virtual void streamify(DataRef<PvdDebugPoint>& val)
+	virtual void streamify(DataRef<PxDebugPoint>& val)
 	{
 		readRef(val);
 	}
-	virtual void streamify(DataRef<PvdDebugLine>& val)
+	virtual void streamify(DataRef<PxDebugLine>& val)
 	{
 		readRef(val);
 	}
-	virtual void streamify(DataRef<PvdDebugTriangle>& val)
+	virtual void streamify(DataRef<PxDebugTriangle>& val)
 	{
 		readRef(val);
 	}
-	virtual void streamify(PvdDebugText& val)
+	virtual void streamify(PxDebugText& val)
 	{
 		mStream >> val.color;
 		mStream >> val.position;
@@ -354,19 +353,19 @@ struct RenderReader<true> : public RenderSerializer
 		val = DataRef<TDataType>(dataPtr, count);
 	}
 
-	virtual void streamify(DataRef<PvdDebugPoint>& val)
+	virtual void streamify(DataRef<PxDebugPoint>& val)
 	{
 		readRef(val);
 	}
-	virtual void streamify(DataRef<PvdDebugLine>& val)
+	virtual void streamify(DataRef<PxDebugLine>& val)
 	{
 		readRef(val);
 	}
-	virtual void streamify(DataRef<PvdDebugTriangle>& val)
+	virtual void streamify(DataRef<PxDebugTriangle>& val)
 	{
 		readRef(val);
 	}
-	virtual void streamify(PvdDebugText& val)
+	virtual void streamify(PxDebugText& val)
 	{
 		mStream >> val.color;
 		mStream >> val.position;

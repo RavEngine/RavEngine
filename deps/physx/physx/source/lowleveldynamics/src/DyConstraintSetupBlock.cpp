@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,40 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #include "foundation/PxMemory.h"
 #include "DyConstraintPrep.h"
 #include "PxsRigidBody.h"
 #include "DySolverConstraint1D.h"
 #include "DySolverConstraint1D4.h"
-#include "PsSort.h"
+#include "foundation/PxSort.h"
 #include "PxcConstraintBlockStream.h"
 #include "DyArticulationContactPrep.h"
-#include "PsFoundation.h"
 namespace physx
 {
 
 namespace Dy
 {
-
-	void preprocessRows(Px1DConstraint** sorted,
-		Px1DConstraint* rows,
-		PxVec4* angSqrtInvInertia0,
-		PxVec4* angSqrtInvInertia1,
-		PxU32 rowCount,
-		const PxMat33& sqrtInvInertia0F32,
-		const PxMat33& sqrtInvInertia1F32,
-		const PxReal invMass0,
-		const PxReal invMass1,
-		const PxConstraintInvMassScale& ims,
-		bool disablePreprocessing,
-		bool diagonalizeDrive,
-		bool preprocessLinear = true);
-
 
 namespace
 {
@@ -97,45 +79,38 @@ PxConstraintAllocator& allocator)
 	totalRows = 0;
 
 	Px1DConstraint allRows[MAX_CONSTRAINT_ROWS * 4];
+	Px1DConstraint* rows = allRows;
+	Px1DConstraint* rows2 = allRows;
 	
-	PxU32 numRows = 0;
-
 	PxU32 maxRows = 0;
-	PxU32 preppedIndex = 0;
+	PxU32 nbToPrep = MAX_CONSTRAINT_ROWS;
 
 	for (PxU32 a = 0; a < 4; ++a)
 	{
-		Px1DConstraint* rows = allRows + numRows;
 		SolverConstraintShaderPrepDesc& shaderDesc = constraintShaderDescs[a];
 		PxSolverConstraintPrepDesc& desc = constraintDescs[a];
 
 		if (!shaderDesc.solverPrep)
 			return SolverConstraintPrepState::eUNBATCHABLE;
 
-		PxMemZero(rows + preppedIndex, sizeof(Px1DConstraint)*(MAX_CONSTRAINT_ROWS));
-		for (PxU32 b = preppedIndex; b < MAX_CONSTRAINT_ROWS; ++b)
-		{
-			Px1DConstraint& c = rows[b];
-			//Px1DConstraintInit(c);
-			c.minImpulse = -PX_MAX_REAL;
-			c.maxImpulse = PX_MAX_REAL;
-		}
+		PX_ASSERT(rows2 + nbToPrep <= allRows + MAX_CONSTRAINT_ROWS*4);
+		setupConstraintRows(rows2, nbToPrep);
+		rows2 += nbToPrep;
 
-		desc.invMassScales.linear0 = desc.invMassScales.linear1 = desc.invMassScales.angular0 = desc.invMassScales.angular1 = 1.f;
+		desc.invMassScales.linear0 = desc.invMassScales.linear1 = desc.invMassScales.angular0 = desc.invMassScales.angular1 = 1.0f;
+		desc.body0WorldOffset = PxVec3(0.0f);
 
-		desc.body0WorldOffset = PxVec3(0.f);
+		PxVec3p unused_ra, unused_rb;
 
-		PxVec3 ra, rb;
-
-		PxU32 constraintCount = (*shaderDesc.solverPrep)(rows,
+		//TAG:solverprepcall
+		const PxU32 constraintCount = desc.disableConstraint ? 0 : (*shaderDesc.solverPrep)(rows,
 			desc.body0WorldOffset,
 			MAX_CONSTRAINT_ROWS,
 			desc.invMassScales,
 			shaderDesc.constantBlock,
-			desc.bodyFrame0, desc.bodyFrame1, desc.extendedLimits, ra, rb);
+			desc.bodyFrame0, desc.bodyFrame1, desc.extendedLimits, unused_ra, unused_rb);
 
-		preppedIndex = MAX_CONSTRAINT_ROWS - constraintCount;
-
+		nbToPrep = constraintCount;
 		maxRows = PxMax(constraintCount, maxRows);
 
 		if (constraintCount == 0)
@@ -143,7 +118,7 @@ PxConstraintAllocator& allocator)
 
 		desc.rows = rows;
 		desc.numRows = constraintCount;
-		numRows += constraintCount;
+		rows += constraintCount;
 	}
 
 	return setupSolverConstraint4(constraintDescs, dt, recipdt, totalRows, allocator, maxRows);
@@ -175,10 +150,8 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 		numRows += desc.numRows;
 	}
 
+	const PxU32 stride = sizeof(SolverConstraint1DDynamic4);
 
-	PxU32 stride = sizeof(SolverConstraint1DDynamic4);
-
-	
 	const PxU32 constraintLength = sizeof(SolverConstraint1DHeader4) + stride * maxRows;
 
 	//KS - +16 is for the constraint progress counter, which needs to be the last element in the constraint (so that we
@@ -333,10 +306,10 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 		header->type = DY_SC_TYPE_BLOCK_1D;
 		header->linBreakImpulse = V4Scale(linBreakForce, dtV);
 		header->angBreakImpulse = V4Scale(angBreakForce, dtV);
-		header->count0 = Ps::to8(constraintDescs[0].numRows);
-		header->count1 = Ps::to8(constraintDescs[1].numRows);
-		header->count2 = Ps::to8(constraintDescs[2].numRows);
-		header->count3 = Ps::to8(constraintDescs[3].numRows);
+		header->count0 = PxTo8(constraintDescs[0].numRows);
+		header->count1 = PxTo8(constraintDescs[1].numRows);
+		header->count2 = PxTo8(constraintDescs[2].numRows);
+		header->count3 = PxTo8(constraintDescs[3].numRows);
 
 		//Now we loop over the constraints and build the results...
 

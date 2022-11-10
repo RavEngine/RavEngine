@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,26 +22,25 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "geometry/PxGeometry.h"
-#include "Ps.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxUserAllocated.h"
 #include "GuCCDSweepConvexMesh.h"
-#include "PsHashMap.h"
 #include "PxsIslandSim.h"
 
 #ifndef PXS_CCD_H
 #define PXS_CCD_H
 
-#define CCD_DEBUG_PRINTS						0
-#define CCD_POST_DEPENETRATE_DIST				0.001f
-#define CCD_ROTATION_LOCKING					0
-#define CCD_MIN_TIME_LEFT						0.01f
-#define CCD_ANGULAR_IMPULSE						0
+#define CCD_DEBUG_PRINTS			0
+#define CCD_POST_DEPENETRATE_DIST	0.001f
+#define CCD_ROTATION_LOCKING		0
+#define CCD_MIN_TIME_LEFT			0.01f
 
-#define DEBUG_RENDER_CCD						0
+#define DEBUG_RENDER_CCD			0
 
 #if CCD_DEBUG_PRINTS
 namespace physx {
@@ -58,6 +56,7 @@ namespace physx {
 
 namespace physx
 {
+	float	computeCCDThreshold(const PxGeometry& geometry);
 
 // ------------------------------------------------------------------------------------------------------------
 // a fraction of objects will be CCD active so this is dynamic, not a member of PsxRigidBody
@@ -81,7 +80,6 @@ namespace Dy
 	class ThresholdStream;
 }
 
-
 /**
 \brief structure to represent interactions between a given body and another body.
 */
@@ -102,20 +100,20 @@ counter to determine if the shape needs its transforms re-calculated. This avoid
 struct PxsCCDShape : public Gu::CCDShape
 {
 public:
-	const PxsShapeCore*			mShapeCore;					//Shape core (can be shared)
-	const PxsRigidCore*			mRigidCore;					//Rigid body core
-	IG::NodeIndex				mNodeIndex;
+	const PxsShapeCore*		mShapeCore;		//Shape core (can be shared)
+	const PxsRigidCore*		mRigidCore;		//Rigid body core
+	PxNodeIndex				mNodeIndex;
 
 	/**
 	\brief Returns the world-space pose for this shape
 	\param[in] atom The rigid body that this CCD shape is associated with
 	*/
-	PxTransform										getAbsPose(const PxsRigidBody* atom)			const;
+	PxTransform				getAbsPose(const PxsRigidBody* atom)			const;
 	/**
 	\brief Returns the world-space previous pose for this shape
 	\param[in] atom The rigid body that this CCD shape is associated with
 	*/
-	PxTransform										getLastCCDAbsPose(const PxsRigidBody* atom)		const;						
+	PxTransform				getLastCCDAbsPose(const PxsRigidBody* atom)		const;						
 };
 
 /**
@@ -123,17 +121,15 @@ public:
 */
 struct PxsCCDBody
 {
-	Cm::SpatialVector			mPreSolverVelocity;
-	PxU16						mIndex;						//The CCD body's index
-	bool						mPassDone;					//Whether it has been processed in the current CCD pass
-	bool						mHasAnyPassDone;			//Whether this body was influenced by any passes
-	PxReal						mTimeLeft;					//CCD time left to elapse (normalized in range 0-1)
-	PxsRigidBody*				mBody;						//The rigid body 
-	PxsCCDOverlap*				mOverlappingObjects;		//A list of overlapping bodies for island update
-	PxU32						mUpdateCount;				//How many times this body has eben updated in the CCD. This is correlated with CCD shapes' update counts.
-	PxU32						mNbInteractionsThisPass;	//How many interactions this pass
-
-	
+	Cm::SpatialVector		mPreSolverVelocity;
+	PxU16					mIndex;						//The CCD body's index
+	bool					mPassDone;					//Whether it has been processed in the current CCD pass
+	bool					mHasAnyPassDone;			//Whether this body was influenced by any passes
+	PxReal					mTimeLeft;					//CCD time left to elapse (normalized in range 0-1)
+	PxsRigidBody*			mBody;						//The rigid body 
+	PxsCCDOverlap*			mOverlappingObjects;		//A list of overlapping bodies for island update
+	PxU32					mUpdateCount;				//How many times this body has eben updated in the CCD. This is correlated with CCD shapes' update counts.
+	PxU32					mNbInteractionsThisPass;	//How many interactions this pass
 
 	/**
 	\brief Returns the CCD body's index.
@@ -183,7 +179,7 @@ struct PxsCCDBlockArray
 	/**
 	\brief A block of data
 	*/
-	struct Block : Ps::UserAllocated { T items[BLOCK_SIZE]; };
+	struct Block : PxUserAllocated { T items[BLOCK_SIZE]; };
 	/**
 	\brief A header for a block of data.
 	*/
@@ -196,7 +192,7 @@ struct PxsCCDBlockArray
 	/*
 	\brief An array of block headers
 	*/
-	Ps::Array<BlockInfo> blocks;
+	PxArray<BlockInfo> blocks;
 	/**
 	\brief The current block.
 	*/
@@ -396,7 +392,6 @@ struct PxsCCDPair
 	\brief Updates the transforms of the shapes involved in this pair.
 	*/
 	void	updateShapes();
-
 };
 
 /**
@@ -419,26 +414,23 @@ typedef PxsCCDBlockArray<PxsCCDShape, 128> PxsCCDShapeArray;
 /**
 \brief Pair structure to be able to look-up a rigid body-shape pair in a map
 */
-typedef Ps::Pair<const PxsRigidCore*, const PxsShapeCore*> PxsRigidShapePair;
-
+typedef PxPair<const PxsRigidCore*, const PxsShapeCore*> PxsRigidShapePair;
 
 /**
 \brief CCD context object.
 */
-class PxsCCDContext
+class PxsCCDContext : public PxUserAllocated
 {
 public:
-
 	/**
-	\brief Creates this PxsCCDContext
+	\brief Constructor for PxsCCDContext
+	\param[in] context The PxsContext that is associated with this PxsCCDContext.
 	*/
-	static PxsCCDContext* create(PxsContext* context, Dy::ThresholdStream& dynamicsContext, PxvNphaseImplementationContext& nPhaseContext,
-		PxReal ccdThreshold);
-
+	PxsCCDContext(PxsContext* context, Dy::ThresholdStream& thresholdStream, PxvNphaseImplementationContext& nPhaseContext, PxReal ccdThreshold);
 	/**
-	\brief Destroys this PxsCCDContext
+	\brief Destructor for PxsCCDContext
 	*/
-	void						destroy();
+	~PxsCCDContext();
 
 	/**
 	\brief Returns the CCD contact modification callback
@@ -486,7 +478,8 @@ public:
 	*/
 	PX_FORCE_INLINE		void						clearUpdatedBodies()										{ mUpdatedCCDBodies.forceSize_Unsafe(0); }
 
-	PX_FORCE_INLINE		PxReal						getCCDThreshold() const										{ return mCCDThreshold;}
+	PX_FORCE_INLINE		PxReal						getCCDThreshold() const										{ return mCCDThreshold;	}
+	PX_FORCE_INLINE		void						setCCDThreshold(PxReal t)									{ mCCDThreshold = t;	}
 
 	/**
 	\brief Runs the CCD contact modification.
@@ -523,25 +516,8 @@ public:
 	\brief Resets the CCD contact state in any contact managers that previously had a reported CCD touch. This must be called if CCD update is bypassed for a frame
 	*/
 						void					resetContactManagers();
-	
-
-	
-
-protected:
-
-	/**
-	\brief Constructor for PxsCCDContext
-	\param[in] context The PxsContext that is associated with this PxsCCDContext.
-	*/
-	PxsCCDContext(PxsContext* context, Dy::ThresholdStream& thresholdStream, PxvNphaseImplementationContext& nPhaseContext,
-		PxReal ccdThreshold);
-	/**
-	\brief Destructor for PxsCCDContext
-	*/
-		~PxsCCDContext();
 
 private:
-
 	
 	/**
 	\brief Verifies the consistency of the CCD context at the beginning
@@ -588,17 +564,17 @@ private:
 		PxsCCDBodyArray mCCDBodies;
 		PxsCCDOverlapArray mCCDOverlaps;
 		PxsCCDShapeArray mCCDShapes;
-		Ps::Array<PxsCCDBody*> mIslandBodies;
-		Ps::Array<PxU16> mIslandSizes;
-		Ps::Array<PxsRigidBody*> mUpdatedCCDBodies;
-		Ps::HashMap<PxsRigidShapePair, PxsCCDShape*> mMap;
+		PxArray<PxsCCDBody*> mIslandBodies;
+		PxArray<PxU16> mIslandSizes;
+		PxArray<PxsRigidBody*> mUpdatedCCDBodies;
+		PxHashMap<PxsRigidShapePair, PxsCCDShape*> mMap;
 
 		// temporary array updated during CCD update
 		//Array<PxsCCDPair> mCCDPairs;
 		PxsCCDPairArray mCCDPairs;
-		Ps::Array<PxsCCDPair*> mCCDPtrPairs;
+		PxArray<PxsCCDPair*> mCCDPtrPairs;
 		// number of pairs per island
-		Ps::Array<PxU32> mCCDIslandHistogram; 
+		PxArray<PxU32> mCCDIslandHistogram; 
 		// thread context valid during CCD update
 		PxcNpThreadContext* mCCDThreadContext;
 		// number of pairs to process per thread
@@ -610,7 +586,7 @@ private:
 
 		PxvNphaseImplementationContext& mNphaseContext;
 
-		Ps::Mutex mMutex;
+		PxMutex mMutex;
 
 		PxReal mCCDThreshold;
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef EXT_PVD_H
 #define EXT_PVD_H
@@ -35,12 +33,19 @@
 
 #include "extensions/PxJoint.h"
 
-#include "CmPhysXCommon.h"
-#include "PsUserAllocated.h"
+#include "foundation/PxUserAllocated.h"
 #include "PxPvdDataStream.h"
 #include "PvdTypeNames.h"
-#include "PxExtensionMetaDataObjects.h"
 #include "PxPvdObjectModelBaseTypes.h"
+
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
+#include "PxExtensionMetaDataObjects.h"
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic pop
+#endif
 
 namespace physx
 {
@@ -53,6 +58,8 @@ class PxPrismaticJoint;
 class PxRevoluteJoint;
 class PxSphericalJoint;
 class PxContactJoint;
+class PxGearJoint;
+class PxRackAndPinionJoint;
 }
 
 #define JOINT_GROUP 3
@@ -77,6 +84,10 @@ namespace pvdsdk {
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxSphericalJointGeneratedValues)
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxD6Joint)
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxD6JointGeneratedValues)
+	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxGearJoint)
+	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxGearJointGeneratedValues)
+	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxRackAndPinionJoint)
+	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxRackAndPinionJointGeneratedValues)
 #undef DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP	
 } //pvdsdk
 } // physx
@@ -87,7 +98,7 @@ namespace Ext
 {
 	using namespace physx::pvdsdk;	
 	
-	class Pvd: public physx::shdfnd::UserAllocated
+	class Pvd: public physx::PxUserAllocated
 	{
 		Pvd& operator=(const Pvd&);
 	public:

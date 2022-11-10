@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,27 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_PTR_TABLE
-#define PX_PHYSICS_COMMON_PTR_TABLE
+#ifndef CM_PTR_TABLE_H
+#define CM_PTR_TABLE_H
 
 #include "common/PxPhysXCommonConfig.h"
-#include "CmPhysXCommon.h"
 
 namespace physx
 {
-
 class PxSerializationContext;
 class PxDeserializationContext;
 
-
 namespace Cm
 {
-
 class PtrTableStorageManager
 {
 	// This will typically be backed by a MultiPool implementation with fallback to the user
@@ -52,10 +46,8 @@ class PtrTableStorageManager
 
 public:
 
-	// capacity is in bytes
-
-	virtual void**	allocate(PxU32 capacity)												= 0;
-	virtual void	deallocate(void** addr, PxU32 originalCapacity)							= 0;
+	virtual void**	allocate(PxU32 capacity)							= 0;
+	virtual void	deallocate(void** addr, PxU32 originalCapacity)		= 0;
 
 	// whether memory allocated at one capacity can (and should) be safely reused at a different capacity
 	// allows realloc-style reuse by clients.
@@ -64,8 +56,6 @@ public:
 protected:
 	virtual ~PtrTableStorageManager() {}
 };
-
-
 
 // specialized class to hold an array of pointers with extrinsic storage management, 
 // serialization-compatible with 3.3.1 PtrTable
@@ -78,7 +68,6 @@ protected:
 // else the capacity is the power of 2 >= mCount
 // 
 // one implication of this is that if we want to add or remove a pointer from unowned memory, we always realloc
-
 struct PX_PHYSX_COMMON_API PtrTable
 {
 //= ATTENTION! =====================================================================================
@@ -100,7 +89,6 @@ struct PX_PHYSX_COMMON_API PtrTable
 	PX_FORCE_INLINE PxU32		getCount()	const	{ return mCount; }
 	PX_FORCE_INLINE	void*const*	getPtrs()	const	{ return mCount == 1 ? &mSingle : mList;	}
 	PX_FORCE_INLINE	void**		getPtrs()			{ return mCount == 1 ? &mSingle : mList;	}
-
 
 	// SERIALIZATION
 
@@ -128,14 +116,12 @@ private:
 
 	PxU16	mCount;
 	bool	mOwnsMemory;
-	bool	mBufferUsed;		// dark magic in serialization requires this, otherwise redundant because it's logically equivalent to mCount == 1.
-
+	bool	mBufferUsed;	// dark magic in serialization requires this, otherwise redundant because it's logically equivalent to mCount == 1.
+public:
+	PxU32	mFreeSlot;		// PT: padding bytes on x64
 };
 
 } // namespace Cm
-#if !PX_P64_FAMILY
-PX_COMPILE_TIME_ASSERT(sizeof(Cm::PtrTable)==8);
-#endif
 
 }
 

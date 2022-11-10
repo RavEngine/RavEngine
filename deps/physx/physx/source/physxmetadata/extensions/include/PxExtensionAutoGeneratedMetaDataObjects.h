@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -145,6 +144,118 @@ template<> struct PxEnumTraits< physx::PxJointActorIndex::Enum > { PxEnumTraits(
 	{ 
 		PxJointGeneratedInfo Info;
 		const PxJointGeneratedInfo* getInfo() { return &Info; }
+	};
+
+	class PxRackAndPinionJoint;
+	struct PxRackAndPinionJointGeneratedValues
+		: PxJointGeneratedValues	{
+		float Ratio;
+		const char * ConcreteTypeName;
+		  PxRackAndPinionJointGeneratedValues( const PxRackAndPinionJoint* inSource );
+	};
+	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxRackAndPinionJoint, Ratio, PxRackAndPinionJointGeneratedValues)
+	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxRackAndPinionJoint, ConcreteTypeName, PxRackAndPinionJointGeneratedValues)
+	struct PxRackAndPinionJointGeneratedInfo
+		: PxJointGeneratedInfo
+	{
+		static const char* getClassName() { return "PxRackAndPinionJoint"; }
+		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxRackAndPinionJoint_Ratio, PxRackAndPinionJoint, float, float > Ratio;
+		PxReadOnlyPropertyInfo<PX_PROPERTY_INFO_NAME::PxRackAndPinionJoint_ConcreteTypeName, PxRackAndPinionJoint, const char * > ConcreteTypeName;
+
+		 PxRackAndPinionJointGeneratedInfo();
+		template<typename TReturnType, typename TOperator>
+		TReturnType visitType( TOperator inOperator ) const
+		{
+			return inOperator( reinterpret_cast<PxRackAndPinionJoint*>(NULL) );
+		}
+		template<typename TOperator>
+		void visitBases( TOperator inOperator )
+		{
+			PX_UNUSED(inOperator);
+			inOperator( *static_cast<PxJointGeneratedInfo*>( this ) );
+		}
+		template<typename TOperator>
+		PxU32 visitBaseProperties( TOperator inOperator, PxU32 inStartIndex = 0 ) const
+		{
+			PX_UNUSED(inOperator);
+			PX_UNUSED(inStartIndex);
+			inStartIndex = PxJointGeneratedInfo::visitBaseProperties( inOperator, inStartIndex );
+			inStartIndex = PxJointGeneratedInfo::visitInstanceProperties( inOperator, inStartIndex );
+			return inStartIndex;
+		}
+		static PxU32 instancePropertyCount() { return 2; }
+		static PxU32 totalPropertyCount() { return instancePropertyCount()
+				+ PxJointGeneratedInfo::totalPropertyCount(); }
+		template<typename TOperator>
+		PxU32 visitInstanceProperties( TOperator inOperator, PxU32 inStartIndex = 0 ) const
+		{
+			PX_UNUSED(inOperator);
+			PX_UNUSED(inStartIndex);
+			inOperator( Ratio, inStartIndex + 0 );; 
+			inOperator( ConcreteTypeName, inStartIndex + 1 );; 
+			return 2 + inStartIndex;
+		}
+	};
+	template<> struct PxClassInfoTraits<PxRackAndPinionJoint>
+	{ 
+		PxRackAndPinionJointGeneratedInfo Info;
+		const PxRackAndPinionJointGeneratedInfo* getInfo() { return &Info; }
+	};
+
+	class PxGearJoint;
+	struct PxGearJointGeneratedValues
+		: PxJointGeneratedValues	{
+		float GearRatio;
+		const char * ConcreteTypeName;
+		  PxGearJointGeneratedValues( const PxGearJoint* inSource );
+	};
+	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxGearJoint, GearRatio, PxGearJointGeneratedValues)
+	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxGearJoint, ConcreteTypeName, PxGearJointGeneratedValues)
+	struct PxGearJointGeneratedInfo
+		: PxJointGeneratedInfo
+	{
+		static const char* getClassName() { return "PxGearJoint"; }
+		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxGearJoint_GearRatio, PxGearJoint, float, float > GearRatio;
+		PxReadOnlyPropertyInfo<PX_PROPERTY_INFO_NAME::PxGearJoint_ConcreteTypeName, PxGearJoint, const char * > ConcreteTypeName;
+
+		 PxGearJointGeneratedInfo();
+		template<typename TReturnType, typename TOperator>
+		TReturnType visitType( TOperator inOperator ) const
+		{
+			return inOperator( reinterpret_cast<PxGearJoint*>(NULL) );
+		}
+		template<typename TOperator>
+		void visitBases( TOperator inOperator )
+		{
+			PX_UNUSED(inOperator);
+			inOperator( *static_cast<PxJointGeneratedInfo*>( this ) );
+		}
+		template<typename TOperator>
+		PxU32 visitBaseProperties( TOperator inOperator, PxU32 inStartIndex = 0 ) const
+		{
+			PX_UNUSED(inOperator);
+			PX_UNUSED(inStartIndex);
+			inStartIndex = PxJointGeneratedInfo::visitBaseProperties( inOperator, inStartIndex );
+			inStartIndex = PxJointGeneratedInfo::visitInstanceProperties( inOperator, inStartIndex );
+			return inStartIndex;
+		}
+		static PxU32 instancePropertyCount() { return 2; }
+		static PxU32 totalPropertyCount() { return instancePropertyCount()
+				+ PxJointGeneratedInfo::totalPropertyCount(); }
+		template<typename TOperator>
+		PxU32 visitInstanceProperties( TOperator inOperator, PxU32 inStartIndex = 0 ) const
+		{
+			PX_UNUSED(inOperator);
+			PX_UNUSED(inStartIndex);
+			inOperator( GearRatio, inStartIndex + 0 );; 
+			inOperator( ConcreteTypeName, inStartIndex + 1 );; 
+			return 2 + inStartIndex;
+		}
+	};
+	template<> struct PxClassInfoTraits<PxGearJoint>
+	{ 
+		PxGearJointGeneratedInfo Info;
+		const PxGearJointGeneratedInfo* getInfo() { return &Info; }
 	};
 
 	static PxU32ToName g_physx__PxD6Axis__EnumConversion[] = {
@@ -302,6 +413,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 		PxReal Tolerance;
 		PxReal Stiffness;
 		PxReal Damping;
+		PxReal ContactDistance;
 		PxDistanceJointFlags DistanceJointFlags;
 		const char * ConcreteTypeName;
 		  PxDistanceJointGeneratedValues( const PxDistanceJoint* inSource );
@@ -312,6 +424,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxDistanceJoint, Tolerance, PxDistanceJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxDistanceJoint, Stiffness, PxDistanceJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxDistanceJoint, Damping, PxDistanceJointGeneratedValues)
+	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxDistanceJoint, ContactDistance, PxDistanceJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxDistanceJoint, DistanceJointFlags, PxDistanceJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxDistanceJoint, ConcreteTypeName, PxDistanceJointGeneratedValues)
 	struct PxDistanceJointGeneratedInfo
@@ -324,6 +437,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxDistanceJoint_Tolerance, PxDistanceJoint, PxReal, PxReal > Tolerance;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxDistanceJoint_Stiffness, PxDistanceJoint, PxReal, PxReal > Stiffness;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxDistanceJoint_Damping, PxDistanceJoint, PxReal, PxReal > Damping;
+		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxDistanceJoint_ContactDistance, PxDistanceJoint, PxReal, PxReal > ContactDistance;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxDistanceJoint_DistanceJointFlags, PxDistanceJoint, PxDistanceJointFlags, PxDistanceJointFlags > DistanceJointFlags;
 		PxReadOnlyPropertyInfo<PX_PROPERTY_INFO_NAME::PxDistanceJoint_ConcreteTypeName, PxDistanceJoint, const char * > ConcreteTypeName;
 
@@ -348,7 +462,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 			inStartIndex = PxJointGeneratedInfo::visitInstanceProperties( inOperator, inStartIndex );
 			return inStartIndex;
 		}
-		static PxU32 instancePropertyCount() { return 8; }
+		static PxU32 instancePropertyCount() { return 9; }
 		static PxU32 totalPropertyCount() { return instancePropertyCount()
 				+ PxJointGeneratedInfo::totalPropertyCount(); }
 		template<typename TOperator>
@@ -362,9 +476,10 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 			inOperator( Tolerance, inStartIndex + 3 );; 
 			inOperator( Stiffness, inStartIndex + 4 );; 
 			inOperator( Damping, inStartIndex + 5 );; 
-			inOperator( DistanceJointFlags, inStartIndex + 6 );; 
-			inOperator( ConcreteTypeName, inStartIndex + 7 );; 
-			return 8 + inStartIndex;
+			inOperator( ContactDistance, inStartIndex + 6 );; 
+			inOperator( DistanceJointFlags, inStartIndex + 7 );; 
+			inOperator( ConcreteTypeName, inStartIndex + 8 );; 
+			return 9 + inStartIndex;
 		}
 	};
 	template<> struct PxClassInfoTraits<PxDistanceJoint>
@@ -379,7 +494,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 		PxVec3 Contact;
 		PxVec3 ContactNormal;
 		PxReal Penetration;
-		PxReal Resititution;
+		PxReal Restitution;
 		PxReal BounceThreshold;
 		const char * ConcreteTypeName;
 		  PxContactJointGeneratedValues( const PxContactJoint* inSource );
@@ -387,7 +502,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxContactJoint, Contact, PxContactJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxContactJoint, ContactNormal, PxContactJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxContactJoint, Penetration, PxContactJointGeneratedValues)
-	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxContactJoint, Resititution, PxContactJointGeneratedValues)
+	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxContactJoint, Restitution, PxContactJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxContactJoint, BounceThreshold, PxContactJointGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxContactJoint, ConcreteTypeName, PxContactJointGeneratedValues)
 	struct PxContactJointGeneratedInfo
@@ -397,7 +512,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxContactJoint_Contact, PxContactJoint, const PxVec3 &, PxVec3 > Contact;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxContactJoint_ContactNormal, PxContactJoint, const PxVec3 &, PxVec3 > ContactNormal;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxContactJoint_Penetration, PxContactJoint, const PxReal, PxReal > Penetration;
-		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxContactJoint_Resititution, PxContactJoint, const PxReal, PxReal > Resititution;
+		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxContactJoint_Restitution, PxContactJoint, const PxReal, PxReal > Restitution;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxContactJoint_BounceThreshold, PxContactJoint, const PxReal, PxReal > BounceThreshold;
 		PxReadOnlyPropertyInfo<PX_PROPERTY_INFO_NAME::PxContactJoint_ConcreteTypeName, PxContactJoint, const char * > ConcreteTypeName;
 
@@ -433,7 +548,7 @@ template<> struct PxEnumTraits< physx::PxDistanceJointFlag::Enum > { PxEnumTrait
 			inOperator( Contact, inStartIndex + 0 );; 
 			inOperator( ContactNormal, inStartIndex + 1 );; 
 			inOperator( Penetration, inStartIndex + 2 );; 
-			inOperator( Resititution, inStartIndex + 3 );; 
+			inOperator( Restitution, inStartIndex + 3 );; 
 			inOperator( BounceThreshold, inStartIndex + 4 );; 
 			inOperator( ConcreteTypeName, inStartIndex + 5 );; 
 			return 6 + inStartIndex;
@@ -768,14 +883,14 @@ template<> struct PxEnumTraits< physx::PxSphericalJointFlag::Enum > { PxEnumTrai
 		PxReal BounceThreshold;
 		PxReal Stiffness;
 		PxReal Damping;
-		PxReal ContactDistance;
+		PxReal ContactDistance_deprecated;
 		  PxJointLimitParametersGeneratedValues( const PxJointLimitParameters* inSource );
 	};
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxJointLimitParameters, Restitution, PxJointLimitParametersGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxJointLimitParameters, BounceThreshold, PxJointLimitParametersGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxJointLimitParameters, Stiffness, PxJointLimitParametersGeneratedValues)
 	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxJointLimitParameters, Damping, PxJointLimitParametersGeneratedValues)
-	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxJointLimitParameters, ContactDistance, PxJointLimitParametersGeneratedValues)
+	DEFINE_PROPERTY_TO_VALUE_STRUCT_MAP( PxJointLimitParameters, ContactDistance_deprecated, PxJointLimitParametersGeneratedValues)
 	struct PxJointLimitParametersGeneratedInfo
 
 	{
@@ -784,7 +899,7 @@ template<> struct PxEnumTraits< physx::PxSphericalJointFlag::Enum > { PxEnumTrai
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxJointLimitParameters_BounceThreshold, PxJointLimitParameters, PxReal, PxReal > BounceThreshold;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxJointLimitParameters_Stiffness, PxJointLimitParameters, PxReal, PxReal > Stiffness;
 		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxJointLimitParameters_Damping, PxJointLimitParameters, PxReal, PxReal > Damping;
-		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxJointLimitParameters_ContactDistance, PxJointLimitParameters, PxReal, PxReal > ContactDistance;
+		PxPropertyInfo<PX_PROPERTY_INFO_NAME::PxJointLimitParameters_ContactDistance_deprecated, PxJointLimitParameters, PxReal, PxReal > ContactDistance_deprecated;
 
 		 PxJointLimitParametersGeneratedInfo();
 		template<typename TReturnType, typename TOperator>
@@ -815,7 +930,7 @@ template<> struct PxEnumTraits< physx::PxSphericalJointFlag::Enum > { PxEnumTrai
 			inOperator( BounceThreshold, inStartIndex + 1 );; 
 			inOperator( Stiffness, inStartIndex + 2 );; 
 			inOperator( Damping, inStartIndex + 3 );; 
-			inOperator( ContactDistance, inStartIndex + 4 );; 
+			inOperator( ContactDistance_deprecated, inStartIndex + 4 );; 
 			return 5 + inStartIndex;
 		}
 	};

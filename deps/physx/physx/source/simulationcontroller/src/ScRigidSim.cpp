@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "ScScene.h"
 #include "ScRigidSim.h"
 #include "ScShapeSim.h"
-#include "PsFoundation.h"
+#include "PxsSimulationController.h"
 
 using namespace physx;
 using namespace Sc;
@@ -38,9 +37,9 @@ using namespace Sc;
 /*
 	PT:
 
-	The BP group ID comes from a Cm::IDPool, and RigidSim is the only class releasing the ID.
+	The BP group ID comes from a Cm::IDPool, and ActorSim is the only class releasing the ID.
 
-	The rigid tracker ID comes from a Cm::IDPool internal to an ObjectIDTracker, and RigidSim
+	The rigid tracker ID comes from a Cm::IDPool internal to an ObjectIDTracker, and ActorSim
 	is the only class using it.
 
 	Thus we should:
@@ -50,39 +49,34 @@ using namespace Sc;
 
 RigidSim::RigidSim(Scene& scene, RigidCore& core) : ActorSim(scene, core)
 {
-	mRigidId = scene.getRigidIDTracker().createID();
 }
 
 RigidSim::~RigidSim()
 {
-	Scene& scScene = getScene();
-	scScene.getRigidIDTracker().releaseID(mRigidId);
 }
 
 void notifyActorInteractionsOfTransformChange(ActorSim& actor);
 void RigidSim::notifyShapesOfTransformChange()
 {
-	if(0)
+	PxU32 nbElems = getNbElements();
+	ElementSim** elems = getElements();
+	while (nbElems--)
 	{
-		ElementSim* current = getElements_();
-		while(current)
-		{
-			ShapeSim* sim = static_cast<ShapeSim*>(current);
-			sim->onVolumeOrTransformChange(false);
-			current = current->mNextInActor;
-		}
+		ShapeSim* sim = static_cast<ShapeSim*>(*elems++);
+		sim->markBoundsForUpdate();
 	}
-	else
-	{
-		ElementSim* current = getElements_();
-		while(current)
-		{
-			ShapeSim* sim = static_cast<ShapeSim*>(current);
-			sim->markBoundsForUpdate(false);
-			current = current->mNextInActor;
-		}
 
-		notifyActorInteractionsOfTransformChange(*this);
+	notifyActorInteractionsOfTransformChange(*this);
+}
+
+void RigidSim::setBodyNodeIndex(const PxNodeIndex nodeIndex)
+{
+	PxU32 nbElems = getNbElements();
+	ElementSim** elems = getElements();
+	while (nbElems--)
+	{
+		ShapeSim* sim = static_cast<ShapeSim*>(*elems++);
+		getScene().getSimulationController()->updateShape(sim->getLLShapeSim(), nodeIndex);
 	}
 }
 

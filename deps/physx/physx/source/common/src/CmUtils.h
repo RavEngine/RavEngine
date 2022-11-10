@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_UTILS
-#define PX_PHYSICS_COMMON_UTILS
-
+#ifndef CM_UTILS_H
+#define CM_UTILS_H
 
 #include "foundation/PxVec3.h"
 #include "foundation/PxMat33.h"
 #include "foundation/PxBounds3.h"
 #include "common/PxBase.h"
-#include "CmPhysXCommon.h"
-#include "PsInlineArray.h"
-#include "PsArray.h"
-#include "PsAllocator.h"
+#include "foundation/PxInlineArray.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxMemory.h"
 
 namespace physx
 {
@@ -203,7 +200,7 @@ private:
 /**
 Any object deriving from PxBase needs to call this function instead of 'delete object;'. 
 
-We don't want implement 'operator delete' in PxBase because that would impose how
+We don't want to implement 'operator delete' in PxBase because that would impose how
 memory of derived classes is allocated. Even though most or all of the time derived classes will 
 be user allocated, we don't want to put UserAllocatable into the API and derive from that.
 */
@@ -211,7 +208,9 @@ template<typename T>
 PX_INLINE void deletePxBase(T* object)
 {
 	if(object->getBaseFlags() & PxBaseFlag::eOWNS_MEMORY)
+	{
 		PX_DELETE(object);
+	}
 	else
 		object->~T();
 }
@@ -221,32 +220,21 @@ PX_INLINE void deletePxBase(T* object)
 #define PX_PADDING_32 0xcdcdcdcd
 
 #if PX_CHECKED
-/**
-Mark a specified amount of memory with 0xcd pattern. This is used to check that the meta data 
-definition for serialized classes is complete in checked builds.
-*/
-PX_INLINE void markSerializedMem(void* ptr, PxU32 byteSize)
-{
-	for (PxU32 i = 0; i < byteSize; ++i)
-      reinterpret_cast<PxU8*>(ptr)[i] = 0xcd;
-}
-
-/**
-Macro to instantiate a type for serialization testing. 
-Note: Only use PX_NEW_SERIALIZED once in a scope.
-*/
-#define PX_NEW_SERIALIZED(v,T) 															        \
-    void* _buf = physx::shdfnd::ReflectionAllocator<T>().allocate(sizeof(T),__FILE__,__LINE__);  \
-	Cm::markSerializedMem(_buf, sizeof(T));                                                      \
-    v = PX_PLACEMENT_NEW(_buf, T)
+	/**
+	Macro to instantiate a type for serialization testing. 
+	Note: Only use PX_NEW_SERIALIZED once in a scope.
+	*/
+	#define PX_NEW_SERIALIZED(v,T)																\
+		void* _buf = physx::PxReflectionAllocator<T>().allocate(sizeof(T),__FILE__,__LINE__);	\
+		PxMarkSerializedMemory(_buf, sizeof(T));													\
+		v = PX_PLACEMENT_NEW(_buf, T)
 
 #else
-PX_INLINE void markSerializedMem(void*, PxU32){}
-#define PX_NEW_SERIALIZED(v,T)  v = PX_NEW(T)
+	#define PX_NEW_SERIALIZED(v,T)  v = PX_NEW(T)
 #endif
 
 template<typename T, class Alloc>
-struct ArrayAccess: public Ps::Array<T, Alloc> 
+struct ArrayAccess: public PxArray<T, Alloc> 
 {
 	void store(PxSerializationContext& context) const
 	{
@@ -262,33 +250,33 @@ struct ArrayAccess: public Ps::Array<T, Alloc>
 };
 
 template<typename T, typename Alloc>
-void exportArray(const Ps::Array<T, Alloc>& a, PxSerializationContext& context)
+void exportArray(const PxArray<T, Alloc>& a, PxSerializationContext& context)
 {
 	static_cast<const ArrayAccess<T, Alloc>&>(a).store(context);
 }
 
 template<typename T, typename Alloc>
-void importArray(Ps::Array<T, Alloc>& a, PxDeserializationContext& context)
+void importArray(PxArray<T, Alloc>& a, PxDeserializationContext& context)
 {
 	static_cast<ArrayAccess<T, Alloc>&>(a).load(context);
 }
 
 template<typename T, PxU32 N, typename Alloc>
-void exportInlineArray(const Ps::InlineArray<T, N, Alloc>& a, PxSerializationContext& context)
+void exportInlineArray(const PxInlineArray<T, N, Alloc>& a, PxSerializationContext& context)
 {
 	if(!a.isInlined())
 		Cm::exportArray(a, context);
 }
 
 template<typename T, PxU32 N, typename Alloc>
-void importInlineArray(Ps::InlineArray<T, N, Alloc>& a, PxDeserializationContext& context)
+void importInlineArray(PxInlineArray<T, N, Alloc>& a, PxDeserializationContext& context)
 {
 	if(!a.isInlined())
 		Cm::importArray(a, context);
 }
 
 template<class T>
-static PX_INLINE T* reserveContainerMemory(Ps::Array<T>& container, PxU32 nb)
+static PX_INLINE T* reserveContainerMemory(PxArray<T>& container, PxU32 nb)
 {
 	const PxU32 maxNbEntries = container.capacity();
 	const PxU32 requiredSize = container.size() + nb;

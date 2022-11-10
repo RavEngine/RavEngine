@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_SCP_TRIGGER_PAIRS
-#define PX_PHYSICS_SCP_TRIGGER_PAIRS
+#ifndef SC_TRIGGER_PAIRS_H
+#define SC_TRIGGER_PAIRS_H
 
-#include "PsArray.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxArray.h"
 #include "PxFiltering.h"
 #include "PxClient.h"
 #include "PxSimulationEventCallback.h"
@@ -85,8 +83,8 @@ namespace Sc
 		PxClientID					client1ID;
 	};
 
-	typedef	Ps::Array<TriggerPairExtraData>	TriggerBufferExtraData;
-	typedef	Ps::Array<PxTriggerPair>		TriggerBufferAPI;
+	typedef	PxArray<TriggerPairExtraData>	TriggerBufferExtraData;
+	typedef	PxArray<PxTriggerPair>		TriggerBufferAPI;
 
 } // namespace Sc
 

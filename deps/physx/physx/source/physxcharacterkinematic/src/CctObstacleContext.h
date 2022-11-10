@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,20 +33,19 @@
 /** \cond */
 
 #include "characterkinematic/PxControllerObstacles.h"
-#include "PsUserAllocated.h"
-#include "PsArray.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxArray.h"
 
 namespace physx
 {
-	struct PxRaycastHit;
+	struct PxGeomRaycastHit;
 
 namespace Cct
 {
 	class CharacterControllerManager;
 
     typedef PxU32  Handle;
-	class HandleManager : public Ps::UserAllocated
+	class HandleManager : public PxUserAllocated
 	{
 		public:
 									HandleManager();
@@ -81,45 +79,45 @@ namespace Cct
 						bool		SetupLists(void** objects=NULL, PxU16* oti=NULL, PxU16* ito=NULL, PxU16* stamps=NULL);
 	};
 
-	class ObstacleContext : public PxObstacleContext, public Ps::UserAllocated
+	class ObstacleContext : public PxObstacleContext, public PxUserAllocated
 	{
 		public:
 												ObstacleContext(CharacterControllerManager& );
 		virtual									~ObstacleContext();
 
 		// PxObstacleContext
-		virtual	void							release();
-		virtual PxControllerManager&			getControllerManager() const;
-		virtual	ObstacleHandle					addObstacle(const PxObstacle& obstacle);
-		virtual	bool							removeObstacle(ObstacleHandle handle);
-		virtual	bool							updateObstacle(ObstacleHandle handle, const PxObstacle& obstacle);
-		virtual	PxU32							getNbObstacles()		const;
-		virtual	const PxObstacle*				getObstacle(PxU32 i)	const;
-		virtual	const PxObstacle*				getObstacleByHandle(ObstacleHandle handle)	const;
+		virtual	void							release()	PX_OVERRIDE;
+		virtual PxControllerManager&			getControllerManager() const	PX_OVERRIDE;
+		virtual	PxObstacleHandle				addObstacle(const PxObstacle& obstacle)	PX_OVERRIDE;
+		virtual	bool							removeObstacle(PxObstacleHandle handle)	PX_OVERRIDE;
+		virtual	bool							updateObstacle(PxObstacleHandle handle, const PxObstacle& obstacle)	PX_OVERRIDE;
+		virtual	PxU32							getNbObstacles()		const	PX_OVERRIDE;
+		virtual	const PxObstacle*				getObstacle(PxU32 i)	const	PX_OVERRIDE;
+		virtual	const PxObstacle*				getObstacleByHandle(PxObstacleHandle handle)	const	PX_OVERRIDE;
 		//~PxObstacleContext
 
-				const PxObstacle*				raycastSingle(PxRaycastHit& hit, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance, ObstacleHandle& obstacleHandle)	const;
-				const PxObstacle*				raycastSingle(PxRaycastHit& hit, const ObstacleHandle& obstacleHandle, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance)	const; // raycast just one obstacle handle
+				const PxObstacle*				raycastSingle(PxGeomRaycastHit& hit, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance, PxObstacleHandle& obstacleHandle)	const;
+				const PxObstacle*				raycastSingle(PxGeomRaycastHit& hit, const PxObstacleHandle& obstacleHandle, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance)	const; // raycast just one obstacle handle
 
 				void							onOriginShift(const PxVec3& shift);
 
 				struct InternalBoxObstacle
 				{
-					InternalBoxObstacle(ObstacleHandle handle, const PxBoxObstacle& data) : mHandle(handle), mData(data)	{}
+					InternalBoxObstacle(PxObstacleHandle handle, const PxBoxObstacle& data) : mHandle(handle), mData(data)	{}
 
-					ObstacleHandle	mHandle;
-					PxBoxObstacle	mData;
+					PxObstacleHandle	mHandle;
+					PxBoxObstacle		mData;
 				};
-				Ps::Array<InternalBoxObstacle>	mBoxObstacles;
+				PxArray<InternalBoxObstacle>	mBoxObstacles;
 
 				struct InternalCapsuleObstacle
 				{
-					InternalCapsuleObstacle(ObstacleHandle handle, const PxCapsuleObstacle& data) : mHandle(handle), mData(data)	{}
+					InternalCapsuleObstacle(PxObstacleHandle handle, const PxCapsuleObstacle& data) : mHandle(handle), mData(data)	{}
 
-					ObstacleHandle		mHandle;
+					PxObstacleHandle	mHandle;
 					PxCapsuleObstacle	mData;
 				};
-				Ps::Array<InternalCapsuleObstacle>	mCapsuleObstacles;
+				PxArray<InternalCapsuleObstacle>	mCapsuleObstacles;
 
 	private:
 				ObstacleContext&				operator=(const ObstacleContext&);

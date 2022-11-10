@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -37,7 +36,7 @@
 #include "PxScene.h"
 #include "PxRigidDynamic.h"
 
-#include "PsArray.h"
+#include "foundation/PxArray.h"
 
 using namespace physx;
 
@@ -51,6 +50,7 @@ class RaycastCCDManagerInternal
 				~RaycastCCDManagerInternal(){}
 
 		bool	registerRaycastCCDObject(PxRigidDynamic* actor, PxShape* shape);
+		bool	unregisterRaycastCCDObject(PxRigidDynamic* actor, PxShape* shape);
 
 		void	doRaycastCCD(bool doDynamicDynamicCCD);
 
@@ -64,7 +64,7 @@ class RaycastCCDManagerInternal
 
 	private:
 		PxScene*						mScene;
-		physx::shdfnd::Array<CCDObject>	mObjects;
+		physx::PxArray<CCDObject>	mObjects;
 };
 }
 
@@ -125,7 +125,7 @@ static PxReal computeInternalRadius(PxRigidActor* actor, PxShape* shape, const P
 			const PxVec3 virtualOrigin = pose.p + dir * offsetFromOrigin;
 
 			PxRaycastHit hit;
-			PxU32 nbHits = PxGeometryQuery::raycast(virtualOrigin, -dir, shape->getGeometry().any(), pose, length, PxHitFlags(0), 1, &hit);
+			PxU32 nbHits = PxGeometryQuery::raycast(virtualOrigin, -dir, shape->getGeometry(), pose, length, PxHitFlags(0), 1, &hit);
 			PX_UNUSED(nbHits);
 			PX_ASSERT(nbHits);
 
@@ -141,7 +141,7 @@ static PxReal computeInternalRadius(PxRigidActor* actor, PxShape* shape, const P
 
 			const PxVec3 virtualOrigin = shapeCenter + dir * offsetFromOrigin;
 			PxRaycastHit hit;
-			PxU32 nbHits = PxGeometryQuery::raycast(virtualOrigin, -dir, shape->getGeometry().any(), pose, length, PxHitFlags(0), 1, &hit);
+			PxU32 nbHits = PxGeometryQuery::raycast(virtualOrigin, -dir, shape->getGeometry(), pose, length, PxHitFlags(0), 1, &hit);
 			PX_UNUSED(nbHits);
 			PX_ASSERT(nbHits);
 
@@ -149,11 +149,7 @@ static PxReal computeInternalRadius(PxRigidActor* actor, PxShape* shape, const P
 		}
 		break;
 
-		case PxGeometryType::ePLANE:
-		case PxGeometryType::eHEIGHTFIELD:
-		case PxGeometryType::eTRIANGLEMESH:
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
+		default:
 		break;
 	}
 	return internalRadius;
@@ -174,7 +170,7 @@ public:
 		return PxQueryHitType::eBLOCK;
 	}
 
-	virtual PxQueryHitType::Enum postFilter(const PxFilterData&, const PxQueryHit&)
+	virtual PxQueryHitType::Enum postFilter(const PxFilterData&, const PxQueryHit&, const PxShape*, const PxRigidActor*)
 	{
 		return PxQueryHitType::eNONE;
 	}
@@ -266,6 +262,24 @@ bool RaycastCCDManagerInternal::registerRaycastCCDObject(PxRigidDynamic* actor, 
 	return true;
 }
 
+bool RaycastCCDManagerInternal::unregisterRaycastCCDObject(PxRigidDynamic* actor, PxShape* shape)
+{
+	if(!actor || !shape)
+		return false;
+
+	const PxU32 nbObjects = mObjects.size();
+	for(PxU32 i=0;i<nbObjects;i++)
+	{
+		if(mObjects[i].mActor==actor && mObjects[i].mShape==shape)
+		{
+			mObjects[i] = mObjects[nbObjects-1];
+			mObjects.popBack();
+			return true;
+		}
+	}
+	return false;
+}
+
 void RaycastCCDManagerInternal::doRaycastCCD(bool doDynamicDynamicCCD)
 {
 	const PxU32 nbObjects = mObjects.size();
@@ -297,6 +311,11 @@ RaycastCCDManager::~RaycastCCDManager()
 bool RaycastCCDManager::registerRaycastCCDObject(PxRigidDynamic* actor, PxShape* shape)
 {
 	return mImpl->registerRaycastCCDObject(actor, shape);
+}
+
+bool RaycastCCDManager::unregisterRaycastCCDObject(PxRigidDynamic* actor, PxShape* shape)
+{
+	return mImpl->unregisterRaycastCCDObject(actor, shape);
 }
 
 void RaycastCCDManager::doRaycastCCD(bool doDynamicDynamicCCD)

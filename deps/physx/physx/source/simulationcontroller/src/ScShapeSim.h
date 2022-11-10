@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,26 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_SCP_SHAPESIM
-#define PX_PHYSICS_SCP_SHAPESIM
+#ifndef SC_SHAPE_SIM_H
+#define SC_SHAPE_SIM_H
 
 #include "ScElementSim.h"
 #include "ScShapeCore.h"
 #include "ScRigidSim.h"
 #include "PxsShapeSim.h"
+#include "ScShapeSimBase.h"
 
 namespace physx
 {
 	class PxsTransformCache;
-namespace Gu
-{
-	class TriangleMesh;
-	class HeightField;
-}
 
 /** Simulation object corresponding to a shape core object. This object is created when
     a ShapeCore object is added to the simulation, and destroyed when it is removed
@@ -54,11 +49,9 @@ namespace Sc
 {
 	class RigidSim;
 	class ShapeCore;
-	class Scene;
 	class BodySim;
-	class StaticSim;
 
-	class ShapeSim : public ElementSim
+	class ShapeSim : public ShapeSimBase
 	{
 		ShapeSim &operator=(const ShapeSim &);
 	public:
@@ -68,71 +61,9 @@ namespace Sc
 		// constructed, but there is currently no spec for what the AABBMgr is allowed to do with the bounds, 
 		// hence better not to assume anything.
 
-												ShapeSim(RigidSim&, const ShapeCore& core);
-												~ShapeSim();
-
-						void					reinsertBroadPhase();
-
-		PX_FORCE_INLINE	const ShapeCore&		getCore()				const	{ return mCore; }
-
-						// TODO: compile time coupling
-
-		PX_INLINE		PxGeometryType::Enum	getGeometryType()		const	{ return mCore.getGeometryType();	}
-
-		// This is just for getting a reference for the user, so we cast away const-ness
-
-		PX_INLINE		PxShape*				getPxShape()			const	{ return const_cast<PxShape*>(mCore.getPxShape());	}
-		
-		PX_FORCE_INLINE	PxReal					getRestOffset()			const	{ return mCore.getRestOffset();		}
-		PX_FORCE_INLINE	PxReal					getTorsionalPatchRadius() const { return mCore.getTorsionalPatchRadius(); }
-		PX_FORCE_INLINE	PxReal					getMinTorsionalPatchRadius() const { return mCore.getMinTorsionalPatchRadius(); }
-		PX_FORCE_INLINE	PxU32					getFlags()				const	{ return mCore.getFlags();			}
-		PX_FORCE_INLINE	PxReal					getContactOffset()		const	{ return mCore.getContactOffset();	}
-
-		PX_FORCE_INLINE	RigidSim&				getRbSim()				const	{ return static_cast<RigidSim&>(getActor());	}
-						BodySim*				getBodySim()			const;
-
-						PxsRigidCore&			getPxsRigidCore()		const;
-
-						void					onFilterDataChange();
-						void					onRestOffsetChange();
-						void					onFlagChange(PxShapeFlags oldFlags);
-						void					onResetFiltering();
-						void					onVolumeOrTransformChange(bool forceBoundsUpdate);
-						void					onMaterialChange();  // remove when material properties are gone from PxcNpWorkUnit
-						void					onContactOffsetChange();
-						void					markBoundsForUpdate(bool forceBoundsUpdate);
-
-						void					getAbsPoseAligned(PxTransform* PX_RESTRICT globalPose)	const;
-
-		PX_FORCE_INLINE	PxU32					getID()								const	{ return mId;		}
-		PX_FORCE_INLINE	PxU32					getTransformCacheID()				const	{ return getElementID();	}
-
-						void					removeFromBroadPhase(bool wakeOnLostTouch);
-
-						void					createSqBounds();
-						void					destroySqBounds();
-
-		PX_FORCE_INLINE PxU32					getSqBoundsId()						const	{ return mSqBoundsId; }
-		PX_FORCE_INLINE void					setSqBoundsId(PxU32 id)						{ mSqBoundsId = id; }
-
-						void					updateCached(PxU32 transformCacheFlags, Cm::BitMapPinned* shapeChangedMap);
-						void					updateCached(PxsTransformCache& transformCache, Bp::BoundsArray& boundsArray);
-						void					updateContactDistance(PxReal* contactDistance, const PxReal inflation, const PxVec3 angVel, const PxReal dt, Bp::BoundsArray& boundsArray);
-						Ps::IntBool				updateSweptBounds();
-						void					updateBPGroup();
-
-		PX_FORCE_INLINE PxsShapeSim&			getLLShapeSim() 							{ return mLLShape; }
+										ShapeSim(RigidSim&, ShapeCore& core);
+										~ShapeSim();
 	private:
-						PxsShapeSim				mLLShape;
-						const ShapeCore&		mCore;
-						PxU32					mId;
-						PxU32					mSqBoundsId;
-
-		PX_FORCE_INLINE	void					internalAddToBroadPhase();
-		PX_FORCE_INLINE	void					internalRemoveFromBroadPhase(bool wakeOnLostTouch=true);
-						void					initSubsystemsDependingOnElementID();
-						Bp::FilterGroup::Enum	getBPGroup()	const;
 	};
 
 #if !PX_P64_FAMILY

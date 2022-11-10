@@ -1,19 +1,32 @@
 #!/bin/bash +x
 
 export PHYSX_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export PM_PxShared_PATH="$PHYSX_ROOT_DIR/../pxshared"
-export PM_CMakeModules_PATH="$PHYSX_ROOT_DIR/../externals/cmakemodules"
-export PM_opengllinux_PATH="$PHYSX_ROOT_DIR/../externals/opengl-linux"
-export PM_TARGA_PATH="$PHYSX_ROOT_DIR/../externals/targa"
-export PM_CGLINUX_PATH="$PHYSX_ROOT_DIR/../externals/cg-linux"
-export PM_GLEWLINUX_PATH="$PHYSX_ROOT_DIR/../externals/glew-linux"
-export PM_PATHS="$PM_opengllinux_PATH;$PM_TARGA_PATH;$PM_CGLINUX_PATH;$PM_GLEWLINUX_PATH"
 
+PACKMAN_CMD="$PHYSX_ROOT_DIR/buildtools/packman/packman"
+if [ ! -f "$PACKMAN_CMD" ]; then
+    PACKMAN_CMD="${PACKMAN_CMD}.sh"
+fi
+source "$PACKMAN_CMD" init
 
-cd "$( dirname "${BASH_SOURCE[0]}" )"
-python ./buildtools/cmake_generate_projects.py $1
+if [[ $# -eq 0 ]] ; then
+    exec "$PHYSX_ROOT_DIR/buildtools/packman/python.sh" "$PHYSX_ROOT_DIR/buildtools/cmake_generate_projects.py"
+    exit 1
+fi
+
+echo Running packman in preparation for cmake ...
+cutName=${1%%.*}
+export targetPlatform=$1
+
+if [ "$1" = "$cutName" ] ; then
+    source "$PACKMAN_CMD" pull "$PHYSX_ROOT_DIR/dependencies.xml" --platform $1
+    exec "$PHYSX_ROOT_DIR/buildtools/packman/python.sh" "$PHYSX_ROOT_DIR/buildtools/cmake_generate_projects.py" "$targetPlatform"
+else
+    source "$PACKMAN_CMD" pull "$PHYSX_ROOT_DIR/dependencies.xml" --platform $cutName
+    exec "$PHYSX_ROOT_DIR/buildtools/packman/python.sh" "$PHYSX_ROOT_DIR/buildtools/cmake_generate_projects.py" "$targetPlatform"
+fi
+
 status=$?
 if [ "$status" -ne "0" ]; then
-echo "Error $status"
-exit 1
+ echo "Error $status"
+ exit 1
 fi

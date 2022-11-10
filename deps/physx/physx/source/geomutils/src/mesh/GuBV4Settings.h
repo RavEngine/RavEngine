@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,5 +35,32 @@
 //	#define GU_BV4_QUANTIZED_TREE				// Use AABB quantization/compression or not.
 	#define GU_BV4_USE_SLABS					// Use swizzled data format or not. Swizzled = faster raycasts, but slower overlaps & larger trees.
 //	#define GU_BV4_COMPILE_NON_QUANTIZED_TREE	// 
+	#define GU_BV4_FILL_GAPS
+
+//#define PROFILE_MESH_COOKING
+#ifdef PROFILE_MESH_COOKING
+	#include <intrin.h>
+	#include <stdio.h>
+
+	struct LocalProfileZone
+	{
+		LocalProfileZone(const char* name)
+		{
+			mName = name;
+			mTime = __rdtsc();
+		}
+		~LocalProfileZone()
+		{
+			mTime = __rdtsc() - mTime;
+			printf("%s: %d\n", mName, unsigned int(mTime/1024));
+		}
+
+		const char*	mName;
+		unsigned long long mTime;
+	};
+	#define GU_PROFILE_ZONE(name)	LocalProfileZone zone(name);
+#else
+	#define GU_PROFILE_ZONE(name)
+#endif
 
 #endif // GU_BV4_SETTINGS_H

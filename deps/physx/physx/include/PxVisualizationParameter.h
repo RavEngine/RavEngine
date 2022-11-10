@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NX_DEBUG_VISUALIZATION_PARAMETER
-#define PX_PHYSICS_NX_DEBUG_VISUALIZATION_PARAMETER
+#ifndef PX_VISUALIZATION_PARAMETER_H
+#define PX_VISUALIZATION_PARAMETER_H
 
 #include "foundation/PxPreprocessor.h"
 
@@ -92,7 +90,6 @@ struct PxVisualizationParameter
 		*/
 		eSCALE,
 
-		
 		/**
 		\brief Visualize the world axes.
 		*/
@@ -132,7 +129,6 @@ struct PxVisualizationParameter
 		*/
 		eBODY_ANG_VELOCITY,
 
-
 	/* Contact visualisations */
 
 		/**
@@ -155,7 +151,6 @@ struct PxVisualizationParameter
 		*/
 		eCONTACT_FORCE,
 
-		
 		/**
 		\brief Visualize actor axes.
 
@@ -163,7 +158,6 @@ struct PxVisualizationParameter
 		*/
 		eACTOR_AXES,
 
-		
 		/**
 		\brief Visualize bounds (AABBs in world space)
 		*/
@@ -213,11 +207,6 @@ struct PxVisualizationParameter
 		eCOLLISION_DYNAMIC,
 
 		/**
-		\brief Visualizes pairwise state.
-		*/
-		eDEPRECATED_COLLISION_PAIRS,
-
-		/**
 		\brief Joint local axes
 		*/
 		eJOINT_LOCAL_FRAMES,
@@ -236,6 +225,16 @@ struct PxVisualizationParameter
 		\brief MBP regions
 		*/
 		eMBP_REGIONS,
+
+		/**
+		\brief Renders the simulation mesh instead of the collision mesh (only available for tetmeshes)
+		*/
+		eSIMULATION_MESH,
+
+		/**
+		\brief Renders the SDF of a mesh instead of the collision mesh (only available for triangle meshes with SDFs)
+		*/
+		eSDF,
 
 		/**
 		\brief This is not a parameter, it just records the current number of parameters (as maximum(PxVisualizationParameter)+1) for use in loops.

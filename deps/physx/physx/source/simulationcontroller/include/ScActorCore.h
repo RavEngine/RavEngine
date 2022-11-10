@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_COLLISION_ACTOR_CORE
-#define PX_COLLISION_ACTOR_CORE
+#ifndef SC_ACTOR_CORE_H
+#define SC_ACTOR_CORE_H
 
 #include "common/PxMetaData.h"
 #include "PxActor.h"
-#include "PsUserAllocated.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
@@ -47,7 +44,7 @@ namespace Sc
 	class Scene;
 	class ActorSim;
 
-	class ActorCore : public Ps::UserAllocated
+	class ActorCore : public PxUserAllocated
 	{
 	//= ATTENTION! =====================================================================================
 	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -107,6 +104,9 @@ namespace Sc
 												const PxU32 id = mAggregateIDOwnerClient & 0x00ffffff;
 												return id == 0x00ffffff ? PX_INVALID_U32 : id;
 											}
+		//virtual		PxActor*				getPxActor() const = 0;
+		//virtual		PxIntBool				isFrozen() const { return IntTrue; };
+
 	private:
 						ActorSim*			mSim;						// 
 						PxU32				mAggregateIDOwnerClient;	// PxClientID (8bit) | aggregate ID (24bit)

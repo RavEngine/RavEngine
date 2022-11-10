@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -41,51 +40,24 @@ using namespace physx;
 extern void initPhysics(bool interactive);
 extern void stepPhysics(bool interactive);	
 extern void cleanupPhysics(bool interactive);
-extern void keyPress(unsigned char key, const PxTransform& camera);
-
 
 namespace
 {
-Snippets::Camera*	sCamera;
-
-void motionCallback(int x, int y)
-{
-	sCamera->handleMotion(x, y);
-}
-
-void keyboardCallback(unsigned char key, int x, int y)
-{
-	if(key==27)
-		exit(0);
-
-	if(!sCamera->handleKey(key, x, y))
-		keyPress(key, sCamera->getTransform());
-}
-
-void mouseCallback(int button, int state, int x, int y)
-{
-	sCamera->handleMouse(button, state, x, y);
-}
-
-void idleCallback()
-{
-	glutPostRedisplay();
-}
+Snippets::Camera* sCamera;
 
 void renderCallback()
 {
 	stepPhysics(true);
 
-
-	Snippets::startRender(sCamera->getEye(), sCamera->getDir());
+	Snippets::startRender(sCamera);
 
 	PxScene* scene;
 	PxGetPhysics().getScenes(&scene,1);
 	PxU32 nbActors = scene->getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC);
 	if(nbActors)
 	{
-		PxVec3 dynColor(1.0f, 0.f, 1.f);
-		PxVec3 kinematicColor(0.f, 1.f, 0.f);
+		const PxVec3 dynColor(1.0f, 0.5f, 0.25f);
+		const PxVec3 kinematicColor(0.6f*0.5f, 0.8f*0.5f, 1.0f*0.5f);
 		std::vector<PxRigidActor*> actors(nbActors);
 		scene->getActors(PxActorTypeFlag::eRIGID_DYNAMIC, reinterpret_cast<PxActor**>(&actors[0]), nbActors);
 		for(PxU32 i=0; i<nbActors; ++i)
@@ -93,13 +65,9 @@ void renderCallback()
 			PxRigidActor* actor = actors[i];
 			PxRigidDynamic* dyn = actor->is<PxRigidDynamic>();
 			if(dyn->getRigidBodyFlags() & PxRigidBodyFlag::eKINEMATIC)
-			{
-				Snippets::renderActors(&actor, 1, true, kinematicColor);
-			}
+				Snippets::renderActors(&actor, 1, true, kinematicColor, NULL, false);
 			else
-			{
-				Snippets::renderActors(&actor, 1, true, dynColor);
-			}
+				Snippets::renderActors(&actor, 1, true, dynColor, NULL, false);
 		}
 	}
 	Snippets::finishRender();
@@ -114,19 +82,9 @@ void exitCallback(void)
 
 void renderLoop()
 {
-	sCamera = new Snippets::Camera(PxVec3(50.0f, 50.0f, 50.0f), PxVec3(-0.6f,-0.2f,-0.7f));
+	sCamera = new Snippets::Camera(PxVec3(34.110470f, 22.652895f, 19.877836f), PxVec3(-0.709846f, -0.583771f, -0.394120f));
 
-	Snippets::setupDefaultWindow("PhysX Snippet Split Sim");
-	Snippets::setupDefaultRenderState();
-
-	glutIdleFunc(idleCallback);
-	glutDisplayFunc(renderCallback);
-	glutKeyboardFunc(keyboardCallback);
-	glutMouseFunc(mouseCallback);
-	glutMotionFunc(motionCallback);
-	motionCallback(0,0);
-
-	atexit(exitCallback);
+	Snippets::setupDefault("PhysX Snippet Split Sim", sCamera, NULL, renderCallback, exitCallback);
 
 	initPhysics(true);
 	glutMainLoop();

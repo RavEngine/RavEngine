@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,31 +22,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NP_MATERIAL
-#define PX_PHYSICS_NP_MATERIAL
+#ifndef NP_MATERIAL_H
+#define NP_MATERIAL_H
 
 #include "common/PxSerialFramework.h"
-#include "PxMaterial.h"
-#include "ScMaterialCore.h"
-#include "PsUserAllocated.h"
-#include "PsUtilities.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxUtilities.h"
 #include "CmRefCountable.h"
+#include "PxsMaterialCore.h"
 
 namespace physx
 {
-
 // Compared to other objects, materials are special since they belong to the SDK and not to scenes
 // (similar to meshes). That's why the NpMaterial does have direct access to the core material instead
 // of having a buffered interface for it. Scenes will have copies of the SDK material table and there
 // the materials will be buffered.
 
-
-class NpMaterial : public PxMaterial,  public Ps::UserAllocated, public Cm::RefCountable
+class NpMaterial : public PxMaterial,  public PxUserAllocated
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -57,42 +52,46 @@ class NpMaterial : public PxMaterial,  public Ps::UserAllocated, public Cm::RefC
 //==================================================================================================
 public:
 // PX_SERIALIZATION            
-									NpMaterial(PxBaseFlags baseFlags) : PxMaterial(baseFlags), Cm::RefCountable(PxEmpty), mMaterial(PxEmpty) {}								
-	virtual		void				onRefCountZero();
+									NpMaterial(PxBaseFlags baseFlags) : PxMaterial(baseFlags), mMaterial(PxEmpty) {}								
 	virtual		void				resolveReferences(PxDeserializationContext& context);
 	static		NpMaterial*			createObject(PxU8*& address, PxDeserializationContext& context);
 	static		void				getBinaryMetaData(PxOutputStream& stream);
-				void				preExportDataReset() { Cm::RefCountable::preExportDataReset(); }
+
+				void				preExportDataReset() { Cm::RefCountable_preExportDataReset(*this); }
 				void				exportExtraData(PxSerializationContext&) {}
 				void				importExtraData(PxDeserializationContext&) {}
 	virtual		void				requiresObjects(PxProcessPxBaseCallback&){}
 //~PX_SERIALIZATION
-									NpMaterial(const Sc::MaterialCore& desc);
-									~NpMaterial();
+									NpMaterial(const PxsMaterialCore& desc);
+	virtual							~NpMaterial();
 
-	virtual		void				release();
+	// PxBase
+	virtual		void				release()	PX_OVERRIDE;
+	//~PxBase
 
-	virtual		void				acquireReference();
-	virtual		PxU32				getReferenceCount() const;
+	// PxRefCounted
+	virtual		void				acquireReference()	PX_OVERRIDE;
+	virtual		PxU32				getReferenceCount() const	PX_OVERRIDE;
+	virtual		void				onRefCountZero()	PX_OVERRIDE;
+	//~PxRefCounted
 
-	virtual		void				setDynamicFriction(PxReal);
-	virtual		PxReal				getDynamicFriction() const;
-	virtual		void				setStaticFriction(PxReal);
-	virtual		PxReal				getStaticFriction() const;
-	virtual		void				setRestitution(PxReal);
-	virtual		PxReal				getRestitution() const;  
-	virtual		void				setFlag(PxMaterialFlag::Enum flag, bool value);
-	virtual		void				setFlags(PxMaterialFlags inFlags);
-	virtual		PxMaterialFlags		getFlags() const;
-	virtual		void				setFrictionCombineMode(PxCombineMode::Enum);
-	virtual		PxCombineMode::Enum	getFrictionCombineMode() const;
-	virtual		void				setRestitutionCombineMode(PxCombineMode::Enum);
-	virtual		PxCombineMode::Enum	getRestitutionCombineMode() const;
-
-	PX_INLINE	const Sc::MaterialCore&	getScMaterial()	const	{ return mMaterial;			}
-	PX_INLINE	Sc::MaterialCore&	getScMaterial()				{ return mMaterial;			}
-	PX_INLINE	PxU16				getHandle()			const	{ return mMaterial.getMaterialIndex();}
-	PX_INLINE	void				setHandle(PxU16 handle)		{ return mMaterial.setMaterialIndex(handle);}
+	// PxMaterial
+	virtual		void				setDynamicFriction(PxReal)	PX_OVERRIDE;
+	virtual		PxReal				getDynamicFriction() const	PX_OVERRIDE;
+	virtual		void				setStaticFriction(PxReal)	PX_OVERRIDE;
+	virtual		PxReal				getStaticFriction() const	PX_OVERRIDE;
+	virtual		void				setRestitution(PxReal)	PX_OVERRIDE;
+	virtual		PxReal				getRestitution() const	PX_OVERRIDE; 
+	virtual		void				setDamping(PxReal)	PX_OVERRIDE;
+	virtual		PxReal				getDamping() const	PX_OVERRIDE;
+	virtual		void				setFlag(PxMaterialFlag::Enum flag, bool value)	PX_OVERRIDE;
+	virtual		void				setFlags(PxMaterialFlags inFlags)	PX_OVERRIDE;
+	virtual		PxMaterialFlags		getFlags() const	PX_OVERRIDE;
+	virtual		void				setFrictionCombineMode(PxCombineMode::Enum)	PX_OVERRIDE;
+	virtual		PxCombineMode::Enum	getFrictionCombineMode() const	PX_OVERRIDE;
+	virtual		void				setRestitutionCombineMode(PxCombineMode::Enum)	PX_OVERRIDE;
+	virtual		PxCombineMode::Enum	getRestitutionCombineMode() const	PX_OVERRIDE;
+	//~PxMaterial
 
 	PX_FORCE_INLINE static void		getMaterialIndices(PxMaterial*const* materials, PxU16* materialIndices, PxU32 materialCount);
 
@@ -102,19 +101,14 @@ private:
 // PX_SERIALIZATION
 public:
 //~PX_SERIALIZATION
-		Sc::MaterialCore			mMaterial;
+				PxsMaterialCore		mMaterial;
 };
-
 
 PX_FORCE_INLINE void NpMaterial::getMaterialIndices(PxMaterial*const* materials, PxU16* materialIndices, PxU32 materialCount)
 {
 	for(PxU32 i=0; i < materialCount; i++)
-	{
-		materialIndices[i] = static_cast<NpMaterial*>(materials[i])->getHandle();
-	}
+		materialIndices[i] = static_cast<NpMaterial*>(materials[i])->mMaterial.mMaterialIndex;
 }
-
-
 }
 
 #endif

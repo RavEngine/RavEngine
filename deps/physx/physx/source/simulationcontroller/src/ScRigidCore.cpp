@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,29 +22,36 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "ScBodyCore.h"
+#include "ScRigidCore.h"
 #include "ScStaticCore.h"
 #include "ScRigidSim.h"
 #include "ScShapeSim.h"
 #include "ScScene.h"
-#include "ScPhysics.h"
 
 using namespace physx;
 using namespace Sc;
 
 static ShapeSim& getSimForShape(const ShapeCore& core, const ActorSim& actorSim)
 {
-	const ElementSim* current = actorSim.getElements_();
-	while(current)
+	if(core.getSim())
 	{
-		const ShapeSim* sim = static_cast<const ShapeSim*>(current);
-		if(&sim->getCore() == &core)
-			return *const_cast<ShapeSim*>(sim);
-		current = current->mNextInActor;
+		//Exclusive shape.
+		return *core.getSim();
+	}
+
+	//Must be a shared shape.
+	//Search backwards to emulate the behaviour of the previous linked list.
+	PxU32 nbElems = actorSim.getNbElements();
+	ElementSim*const* elems = actorSim.getElements() + (nbElems - 1);
+	while (nbElems--)
+	{
+		ShapeSim* sim = static_cast<ShapeSim*>(*elems--);
+		if (&sim->getCore() == &core)
+			return *sim;
 	}
 
 	PX_ASSERT(0); // should never fail
@@ -79,33 +85,58 @@ void RigidCore::removeShapeFromScene(ShapeCore& shapeCore, bool wakeOnLostTouch)
 	sim->getScene().removeShape_(s, wakeOnLostTouch);
 }
 
-void RigidCore::onShapeChange(ShapeCore& shape, ShapeChangeNotifyFlags notifyFlags, PxShapeFlags oldShapeFlags, bool forceBoundsUpdate)
+void RigidCore::unregisterShapeFromNphase(Sc::ShapeCore& shapeCore)
 {
-	// DS: We pass flags to avoid searching multiple times or exposing RigidSim outside SC, and this form is
-	// more convenient for the Scb::Shape::syncState method. If we start hitting this a lot we should do it
-	// a different way, but shape modification after insertion is rare. 
+	RigidSim* sim = getSim();
+	if (!sim)
+		return;
+	ShapeSim& s = getSimForShape(shapeCore, *sim);
+	s.getScene().unregisterShapeFromNphase(shapeCore, s.getElementID());
+}
 
+void RigidCore::registerShapeInNphase(Sc::ShapeCore& shapeCore)
+{
+	RigidSim* sim = getSim();
+	if (!sim)
+		return;
+	ShapeSim& s = getSimForShape(shapeCore, *sim);
+	s.getScene().registerShapeInNphase(this, shapeCore, s.getElementID());
+}
+
+void RigidCore::onShapeChange(ShapeCore& shape, ShapeChangeNotifyFlags notifyFlags)
+{
 	RigidSim* sim = getSim();
 	if(!sim)
 		return;
 	ShapeSim& s = getSimForShape(shape, *sim);
 
 	if(notifyFlags & ShapeChangeNotifyFlag::eGEOMETRY)
-		s.onVolumeOrTransformChange(forceBoundsUpdate);
+		s.onVolumeOrTransformChange();
 	if(notifyFlags & ShapeChangeNotifyFlag::eMATERIAL)
 		s.onMaterialChange();
 	if(notifyFlags & ShapeChangeNotifyFlag::eRESET_FILTERING)
 		s.onResetFiltering();
 	if(notifyFlags & ShapeChangeNotifyFlag::eSHAPE2BODY)
-		s.onVolumeOrTransformChange(forceBoundsUpdate);
+		s.onVolumeOrTransformChange();
 	if(notifyFlags & ShapeChangeNotifyFlag::eFILTERDATA)
 		s.onFilterDataChange();
-	if(notifyFlags & ShapeChangeNotifyFlag::eFLAGS)
-		s.onFlagChange(oldShapeFlags);
 	if(notifyFlags & ShapeChangeNotifyFlag::eCONTACTOFFSET)
 		s.onContactOffsetChange();
 	if(notifyFlags & ShapeChangeNotifyFlag::eRESTOFFSET)
 		s.onRestOffsetChange();
+}
+
+void RigidCore::onShapeFlagsChange(ShapeCore& shape, PxShapeFlags oldShapeFlags)
+{
+	// DS: We pass flags to avoid searching multiple times or exposing RigidSim outside SC.
+	//If we start hitting this a lot we should do it
+	// a different way, but shape modification after insertion is rare. 
+
+	RigidSim* sim = getSim();
+	if(!sim)
+		return;
+	ShapeSim& s = getSimForShape(shape, *sim);
+	s.onFlagChange(oldShapeFlags);
 }
 
 RigidSim* RigidCore::getSim() const
@@ -115,11 +146,6 @@ RigidSim* RigidCore::getSim() const
 
 PxU32 RigidCore::getRigidID() const
 {
-	return static_cast<RigidSim*>(ActorCore::getSim())->getRigidID();
-}
-
-PxActor* RigidCore::getPxActor() const
-{
-	return Ps::pointerOffset<PxActor*>(const_cast<RigidCore*>(this), gOffsetTable.scCore2PxActor[getActorCoreType()]);
+	return static_cast<RigidSim*>(ActorCore::getSim())->getActorID();
 }
 

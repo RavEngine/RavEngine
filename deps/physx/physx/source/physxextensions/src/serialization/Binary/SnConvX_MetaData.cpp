@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "foundation/PxIO.h"
 #include "foundation/PxMemory.h"
+#include "foundation/PxString.h"
 #include "SnConvX.h"
 #include "common/PxSerialFramework.h"
 #include "serialization/SnSerialUtils.h"
@@ -56,7 +56,7 @@ bool MetaClass::getFieldByType(const char* type, PxMetaDataEntry& entry) const
 	PxU32 nbFields = mFields.size();
 	for(PxU32 i=0;i<nbFields;i++)
 	{
-		if(strcmp(mFields[i].mType, type)==0)
+		if(Pxstrcmp(mFields[i].mType, type)==0)
 		{
 			entry = mFields[i];
 			return true;
@@ -71,7 +71,7 @@ bool MetaClass::getFieldByName(const char* name, PxMetaDataEntry& entry) const
 	PxU32 nbFields = mFields.size();
 	for(PxU32 i=0;i<nbFields;i++)
 	{
-		if(strcmp(mFields[i].mName, name)==0)
+		if(Pxstrcmp(mFields[i].mName, name)==0)
 		{
 			entry = mFields[i];
 			return true;
@@ -252,7 +252,7 @@ MetaClass* MetaData::getMetaClass(const char* name)	const
 	for(PxU32 i=0;i<nbMetaClasses;i++)
 	{
 		MetaClass* current = mMetaClasses[i];
-		if(strcmp(current->mClassName, name)==0)
+		if(Pxstrcmp(current->mClassName, name)==0)
 		{
 			while(current->mMaster)
 				current = current->mMaster;
@@ -444,7 +444,7 @@ bool MetaData::load(PxInputStream& inputStream, MetaDataType type)
 				flip(nameOffset);
 			}
 			
-			mConcreteTypeTable.pushBack( Ps::Pair<PxConcreteType::Enum, PxU32>(PxConcreteType::Enum(concreteType), nameOffset) );
+			mConcreteTypeTable.pushBack( PxPair<PxConcreteType::Enum, PxU32>(PxConcreteType::Enum(concreteType), nameOffset) );
 		}
 
 		int tableSize;
@@ -706,15 +706,15 @@ namespace
 		if (src == dst)
 			return true;
 
-		if (src != nullptr && dst != nullptr)
-			return strcmp(src, dst) == 0;
+		if (src != NULL && dst != NULL)
+			return Pxstrcmp(src, dst) == 0;
 
 		return false;
 	}
 
 	const char* str_print(const char* str)
 	{
-		return str != nullptr ? str : "(nullptr)";
+		return str != NULL ? str : "(nullptr)";
 	}
 }
 
@@ -748,7 +748,7 @@ bool MetaData::compare(const MetaData& dst) const
 		MetaClass* mcSrc = mMetaClasses[i];
 		MetaClass* mcDst = dst.getMetaClass(mcSrc->mClassName);
 
-		if (mcDst == nullptr)
+		if (mcDst == NULL)
 		{
 			mConvX.displayMessage(PxErrorCode::eDEBUG_INFO, "dst is missing meta class %s", mcSrc->mClassName);
 		}
@@ -760,7 +760,7 @@ bool MetaData::compare(const MetaData& dst) const
 		MetaClass* mcDst = dst.mMetaClasses[i];
 		MetaClass* mcSrc = getMetaClass(mcDst->mClassName);
 
-		if (mcSrc == nullptr)
+		if (mcSrc == NULL)
 		{
 			mConvX.displayMessage(PxErrorCode::eDEBUG_INFO, "src is missing meta class %s", mcDst->mClassName);
 		}
@@ -772,7 +772,7 @@ bool MetaData::compare(const MetaData& dst) const
 		const char* className = mMetaClasses[i]->mClassName;
 		MetaClass* mcSrc = getMetaClass(className);
 		MetaClass* mcDst = dst.getMetaClass(className);
-		if (mcSrc != nullptr && mcDst != nullptr)
+		if (mcSrc != NULL && mcDst != NULL)
 		{
 			COMPARE_METADATA_INT_MD(MetaClass, *mcSrc, *mcDst, mCallback)
 			COMPARE_METADATA_INT_MD(MetaClass, *mcSrc, *mcDst, mMaster) //should be 0 for both anyway
@@ -820,8 +820,8 @@ bool MetaData::compare(const MetaData& dst) const
 
 void ConvX::releaseMetaData()
 {
-	DELETESINGLE(mMetaData_Dst);
-	DELETESINGLE(mMetaData_Src);
+	PX_DELETE(mMetaData_Dst);
+	PX_DELETE(mMetaData_Src);
 }
 
 const MetaData* ConvX::loadMetaData(PxInputStream& inputStream, MetaDataType type)
@@ -838,7 +838,7 @@ const MetaData* ConvX::loadMetaData(PxInputStream& inputStream, MetaDataType typ
 	MetaData*& metaDataPtr = (type == META_DATA_SRC) ? mMetaData_Src : mMetaData_Dst;
 	metaDataPtr = PX_NEW(MetaData)(*this);
 	if(!(metaDataPtr)->load(inputStream, type))
-		DELETESINGLE(metaDataPtr);
+		PX_DELETE(metaDataPtr);
 	return metaDataPtr;
 }
 

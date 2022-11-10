@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef EXT_CPU_WORKER_THREAD_H
+#define EXT_CPU_WORKER_THREAD_H
 
-#ifndef PX_PHYSICS_EXTENSIONS_NP_CPU_WORKER_THREAD_H
-#define PX_PHYSICS_EXTENSIONS_NP_CPU_WORKER_THREAD_H
-
-#include "CmPhysXCommon.h"
-#include "PsThread.h"
+#include "foundation/PxThread.h"
 #include "ExtDefaultCpuDispatcher.h"
 #include "ExtSharedQueueEntryPool.h"
-
 
 namespace physx
 {
@@ -43,29 +39,28 @@ namespace Ext
 {
 class DefaultCpuDispatcher;
 
-
 #if PX_VC
 #pragma warning(push)
 #pragma warning(disable:4324)	// Padding was added at the end of a structure because of a __declspec(align) value.
 #endif							// Because of the SList member I assume
 
-	class CpuWorkerThread : public Ps::Thread
+	class CpuWorkerThread : public PxThread
 	{
 	public:
-        CpuWorkerThread();
-        ~CpuWorkerThread();
+								CpuWorkerThread();
+								~CpuWorkerThread();
 		
 		void					initialize(DefaultCpuDispatcher* ownerDispatcher);
 		void					execute();
-		bool					tryAcceptJobToLocalQueue(PxBaseTask& task, Ps::Thread::Id taskSubmitionThread);
+		bool					tryAcceptJobToLocalQueue(PxBaseTask& task, PxThread::Id taskSubmitionThread);
 		PxBaseTask*				giveUpJob();
-		Ps::Thread::Id			getWorkerThreadId() const { return mThreadId; }
+		PxThread::Id			getWorkerThreadId() const { return mThreadId; }
 
 	protected:
-		SharedQueueEntryPool<>			mQueueEntryPool;
-		DefaultCpuDispatcher*			mOwner;
-		Ps::SList      				    mLocalJobList;
-		Ps::Thread::Id					mThreadId;
+		SharedQueueEntryPool<>	mQueueEntryPool;
+		DefaultCpuDispatcher*	mOwner;
+		PxSList					mLocalJobList;
+		PxThread::Id			mThreadId;
 	};
 
 #if PX_VC

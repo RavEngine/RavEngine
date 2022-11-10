@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_METADATAOBJECTS_H
 #define PX_METADATAOBJECTS_H
 #include "foundation/PxMemory.h"
+#include "foundation/PxPhysicsVersion.h"
 
 // include the base headers instead of the PxPhysicsAPI.h
 //Geometry Library
@@ -53,17 +53,16 @@
 #include "geometry/PxTriangle.h"
 #include "geometry/PxTriangleMesh.h"
 #include "geometry/PxTriangleMeshGeometry.h"
+#include "geometry/PxTetrahedron.h"
+#include "geometry/PxTetrahedronMesh.h"
+#include "geometry/PxTetrahedronMeshGeometry.h"
 
 // PhysX Core SDK
 #include "PxActor.h"
 #include "PxAggregate.h"
-#include "PxArticulation.h"
-#include "PxArticulationJoint.h"
 #include "PxArticulationReducedCoordinate.h"
 #include "PxArticulationJointReducedCoordinate.h"
 #include "PxArticulationLink.h"
-#include "PxBatchQuery.h"
-#include "PxBatchQueryDesc.h"
 #include "PxClient.h"
 #include "PxConstraint.h"
 #include "PxConstraintDesc.h"
@@ -74,8 +73,12 @@
 #include "PxForceMode.h"
 #include "PxLockedData.h"
 #include "PxMaterial.h"
+#include "PxFEMSoftBodyMaterial.h"
+#include "PxFEMClothMaterial.h"
+#include "PxPBDMaterial.h"
+#include "PxFLIPMaterial.h"
+#include "PxMPMMaterial.h"
 #include "PxPhysics.h"
-#include "PxPhysicsVersion.h"
 #include "PxPhysXConfig.h"
 #include "PxQueryFiltering.h"
 #include "PxQueryReport.h"
@@ -92,6 +95,10 @@
 #include "PxVisualizationParameter.h"
 #include "PxPruningStructure.h"
 
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
 
 /** \addtogroup physics
 @{
@@ -101,9 +108,7 @@ namespace physx
 {
 
 class PxArticulationLink;
-class PxArticulationJoint;
 class PxArticulationJointReducedCoordinate;
-class PxArticulationJointBase;
 
 struct PxPropertyInfoName
 {
@@ -496,7 +501,7 @@ struct PxPropertyToValueStructMemberMap
 	
 
 
-struct PxShapeGeometryPropertyHelper
+struct PxShapeGeomPropertyHelper
 {
 	PX_PHYSX_CORE_API PxGeometryType::Enum getGeometryType(const PxShape* inShape) const;
 	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxBoxGeometry& geometry) const;
@@ -504,18 +509,23 @@ struct PxShapeGeometryPropertyHelper
 	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxCapsuleGeometry& geometry) const;
 	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxPlaneGeometry& geometry) const;
 	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxConvexMeshGeometry& geometry) const;
+	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxTetrahedronMeshGeometry& geometry) const;
+	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxParticleSystemGeometry& geometry) const;
 	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxTriangleMeshGeometry& geometry) const;
 	PX_PHYSX_CORE_API bool getGeometry(const PxShape* inShape, PxHeightFieldGeometry& geometry) const;
 };
 
-
-struct PxShapeGeometryProperty : public PxWriteOnlyPropertyInfo< PxPropertyInfoName::PxShape_Geometry, PxShape, const PxGeometry & >
-								, public PxShapeGeometryPropertyHelper
+struct PxShapeGeomProperty : public PxWriteOnlyPropertyInfo< PxPropertyInfoName::PxShape_Geom, PxShape, const PxGeometry & >
+								, public PxShapeGeomPropertyHelper
 {
-	typedef PxWriteOnlyPropertyInfo< PxPropertyInfoName::PxShape_Geometry, PxShape, const PxGeometry & >::TSetterType TSetterType;
+
+	static void setPxShape_Geom( PxShape* inObj, const PxGeometry& inArg){ inObj->setGeometry( inArg ); }
+	static PxGeometryHolder getPxShape_Geom( const PxShape* inObj ) { return PxGeometryHolder(inObj->getGeometry()); }
+
+	typedef PxWriteOnlyPropertyInfo< PxPropertyInfoName::PxShape_Geom, PxShape, const PxGeometry & >::TSetterType TSetterType;
 	typedef PxGeometryHolder (*TGetterType)( const PxShape* inObj );
-	PxShapeGeometryProperty( const char* inName, TSetterType inSetter, TGetterType )
-		: PxWriteOnlyPropertyInfo< PxPropertyInfoName::PxShape_Geometry, PxShape, const PxGeometry & >( inName, inSetter )
+	PxShapeGeomProperty( const char* inName="Geometry", TSetterType inSetter=setPxShape_Geom, TGetterType=getPxShape_Geom )
+		: PxWriteOnlyPropertyInfo< PxPropertyInfoName::PxShape_Geom, PxShape, const PxGeometry & >( inName, inSetter )
 	{
 	}
 };
@@ -555,21 +565,16 @@ struct PxRigidActorShapeCollection : public PxReadOnlyCollectionPropertyInfo<PxP
 	}
 };
 
-struct PxArticulationLinkCollectionPropHelper
-{
-	PX_PHYSX_CORE_API PxArticulationLink*	createLink(PxArticulation* inArticulation, PxArticulationLink* parent, const PxTransform& pose) const;
-};
-
 struct PxArticulationReducedCoordinateLinkCollectionPropHelper
 {
 	PX_PHYSX_CORE_API PxArticulationLink*	createLink(PxArticulationReducedCoordinate* inArticulation, PxArticulationLink* parent, const PxTransform& pose) const;
 };
 
-struct PxArticulationLinkCollectionProp : public PxReadOnlyCollectionPropertyInfo<PxPropertyInfoName::PxArticulationBase_Links, PxArticulationBase, PxArticulationLink*>
-										, public PxArticulationLinkCollectionPropHelper
+struct PxArticulationLinkCollectionProp : public PxReadOnlyCollectionPropertyInfo<PxPropertyInfoName::PxArticulationReducedCoordinate_Links, PxArticulationReducedCoordinate, PxArticulationLink*>
+										, public PxArticulationReducedCoordinateLinkCollectionPropHelper
 {
 	PxArticulationLinkCollectionProp( const char* inName, TGetObjectsMember inGetter, TNbObjectsMember inNb )
-		: PxReadOnlyCollectionPropertyInfo<PxPropertyInfoName::PxArticulationBase_Links, PxArticulationBase, PxArticulationLink*>( inName, inGetter, inNb )
+		: PxReadOnlyCollectionPropertyInfo<PxPropertyInfoName::PxArticulationReducedCoordinate_Links, PxArticulationReducedCoordinate, PxArticulationLink*>( inName, inGetter, inNb )
 	{
 	}
 };
@@ -624,6 +629,11 @@ struct SimulationStatisticsProperty : public PxReadOnlyPropertyInfo<PxPropertyIn
 	PX_PHYSX_CORE_API SimulationStatisticsProperty();
 };
 
+struct PxCustomGeometryCustomTypeProperty : public PxReadOnlyPropertyInfo<PxPropertyInfoName::PxCustomGeometry_CustomType, PxCustomGeometry, PxU32>
+{
+	PX_PHYSX_CORE_API PxCustomGeometryCustomTypeProperty();
+};
+
 struct PxMetaDataPlane
 {
 	PxVec3 normal;
@@ -664,6 +674,10 @@ inline void visitInstanceProperties( TOperator inOperator )
 }
 
 }
+
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic pop
+#endif
 
 /** @} */
 #endif

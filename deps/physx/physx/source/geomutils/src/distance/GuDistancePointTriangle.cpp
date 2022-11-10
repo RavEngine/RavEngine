@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -110,15 +109,15 @@ PxVec3 Gu::closestPtPointTriangle(const PxVec3& p, const PxVec3& a, const PxVec3
 	return a + ab*v + ac*w;
 }
 
-//Ps::aos::FloatV Gu::distancePointTriangleSquared(	const Ps::aos::Vec3VArg p, 
-//													const Ps::aos::Vec3VArg a, 
-//													const Ps::aos::Vec3VArg b, 
-//													const Ps::aos::Vec3VArg c,
-//													Ps::aos::FloatV& u,
-//													Ps::aos::FloatV& v,
-//													Ps::aos::Vec3V& closestP)
+//aos::FloatV Gu::distancePointTriangleSquared(	const aos::Vec3VArg p, 
+//													const aos::Vec3VArg a, 
+//													const aos::Vec3VArg b, 
+//													const aos::Vec3VArg c,
+//													aos::FloatV& u,
+//													aos::FloatV& v,
+//													aos::Vec3V& closestP)
 //{
-//	using namespace Ps::aos;
+//	using namespace aos;
 //
 //	const FloatV zero = FZero();
 //	const FloatV one = FOne();
@@ -215,15 +214,15 @@ PxVec3 Gu::closestPtPointTriangle(const PxVec3& p, const PxVec3& a, const PxVec3
 //}
 
 
-Ps::aos::FloatV Gu::distancePointTriangleSquared(	const Ps::aos::Vec3VArg p, 
-													const Ps::aos::Vec3VArg a, 
-													const Ps::aos::Vec3VArg b, 
-													const Ps::aos::Vec3VArg c,
-													Ps::aos::FloatV& u,
-													Ps::aos::FloatV& v,
-													Ps::aos::Vec3V& closestP)
+aos::FloatV Gu::distancePointTriangleSquared(	const aos::Vec3VArg p, 
+													const aos::Vec3VArg a, 
+													const aos::Vec3VArg b, 
+													const aos::Vec3VArg c,
+													aos::FloatV& u,
+													aos::FloatV& v,
+													aos::Vec3V& closestP)
 {
-	using namespace Ps::aos;
+	using namespace aos;
 
 	const FloatV zero = FZero();
 	const FloatV one = FOne();

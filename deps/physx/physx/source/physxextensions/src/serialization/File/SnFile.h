@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,7 +32,7 @@
 
 // fopen_s - returns 0 on success, non-zero on failure
 
-#if PX_MICROSOFT_FAMILY
+#if PX_WINDOWS_FAMILY
 
 #include <stdio.h>
 
@@ -57,7 +56,7 @@ PX_INLINE PxI32 fopen_s(FILE** file, const char* name, const char* mode)
 } // namespace sn
 } // namespace physx
 
-#elif PX_UNIX_FAMILY || PX_PS4 || PX_SWITCH
+#elif PX_UNIX_FAMILY || PX_SWITCH
 
 #include <stdio.h>
 

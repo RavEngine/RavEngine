@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef DY_SOLVERCONTACT4_H
-#define DY_SOLVERCONTACT4_H
+#ifndef DY_SOLVER_CONTACT4_H
+#define DY_SOLVER_CONTACT4_H
 
 #include "foundation/PxSimpleTypes.h"
 #include "foundation/PxVec3.h"
 #include "PxvConfig.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 #include "DySolverContact.h"
 
 namespace physx
@@ -115,8 +114,9 @@ struct SolverContactBatchPointBase4
 	Vec4V velMultiplier;
 	Vec4V scaledBias;
 	Vec4V biasedErr;
+	Vec4V impulseMultiplier;
 };
-PX_COMPILE_TIME_ASSERT(sizeof(SolverContactBatchPointBase4) == 96);
+PX_COMPILE_TIME_ASSERT(sizeof(SolverContactBatchPointBase4) == 112);
 
 /**
 \brief Contains the additional data required to represent 4 contacts between 2 dynamic bodies
@@ -128,7 +128,7 @@ struct SolverContactBatchPointDynamic4 : public SolverContactBatchPointBase4
 	Vec4V rbXnY;
 	Vec4V rbXnZ;
 }; 
-PX_COMPILE_TIME_ASSERT(sizeof(SolverContactBatchPointDynamic4) == 144);
+PX_COMPILE_TIME_ASSERT(sizeof(SolverContactBatchPointDynamic4) == 160);
 
 /**
 \brief This represents the shared information of a batch of 4 friction constraints
@@ -176,4 +176,4 @@ PX_COMPILE_TIME_ASSERT(sizeof(SolverContactFrictionDynamic4) == 144);
 
 }
 
-#endif //DY_SOLVERCONTACT4_H
+#endif

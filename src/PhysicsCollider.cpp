@@ -42,7 +42,7 @@ SphereCollider::SphereCollider(PhysicsBodyComponent* owner, decimalType r, Ref<P
 //}
 
 decimalType SphereCollider::GetRadius() const{
-    return collider->getGeometry().sphere().radius;
+    return static_cast<const PxSphereGeometry&>(collider->getGeometry()).radius;
 }
 
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "PxPvdObjectModelInternalTypes.h"
 #include "PxPvdObjectModelMetaData.h"
@@ -32,14 +31,13 @@
 
 using namespace physx;
 using namespace pvdsdk;
-using namespace shdfnd;
 
 namespace
 {
 
-struct PropDescImpl : public PropertyDescription, public UserAllocated
+struct PropDescImpl : public PropertyDescription, public PxUserAllocated
 {
-    Array<NamedValue> mValueNames;
+    PxArray<NamedValue> mValueNames;
 	PropDescImpl(const PropertyDescription& inBase, StringTable& table)
 	: PropertyDescription(inBase), mValueNames("NamedValue")
 	{
@@ -66,11 +64,11 @@ struct PropDescImpl : public PropertyDescription, public UserAllocated
 	}
 };
 
-struct ClassDescImpl : public ClassDescription, public UserAllocated
+struct ClassDescImpl : public ClassDescription, public PxUserAllocated
 {
-    Array<PropDescImpl*> mPropImps;
-    Array<PtrOffset> m32OffsetArray;
-	Array<PtrOffset> m64OffsetArray;
+    PxArray<PropDescImpl*> mPropImps;
+    PxArray<PtrOffset> m32OffsetArray;
+	PxArray<PtrOffset> m64OffsetArray;
 	ClassDescImpl(const ClassDescription& inBase)
 	: ClassDescription(inBase)
 	, mPropImps("PropDescImpl*")
@@ -134,12 +132,12 @@ struct ClassDescImpl : public ClassDescription, public UserAllocated
 	}
 };
 
-class StringTableImpl : public StringTable, public UserAllocated
+class StringTableImpl : public StringTable, public PxUserAllocated
 {
-	HashMap<const char*, char*> mStrings;
+	PxHashMap<const char*, char*> mStrings;
 	uint32_t mNextStrHandle;
-	HashMap<uint32_t, char*> mHandleToStr;
-	HashMap<const char*, uint32_t> mStrToHandle;
+	PxHashMap<uint32_t, char*> mHandleToStr;
+	PxHashMap<const char*, uint32_t> mStrToHandle;
 
   public:
 	StringTableImpl()
@@ -155,7 +153,7 @@ class StringTableImpl : public StringTable, public UserAllocated
 	}
 	virtual ~StringTableImpl()
 	{
-		for(HashMap<const char*, char*>::Iterator iter = mStrings.getIterator(); !iter.done(); ++iter)
+		for(PxHashMap<const char*, char*>::Iterator iter = mStrings.getIterator(); !iter.done(); ++iter)
 			PX_FREE(iter->second);
 		mStrings.clear();
 	}
@@ -167,7 +165,7 @@ class StringTableImpl : public StringTable, public UserAllocated
 	{
 		startIdx = PxMin(getNbStrs(), startIdx);
 		uint32_t numStrs(PxMin(getNbStrs() - startIdx, bufLen));
-		HashMap<const char*, char*>::Iterator iter(mStrings.getIterator());
+		PxHashMap<const char*, char*>::Iterator iter(mStrings.getIterator());
 		for(uint32_t idx = 0; idx < startIdx; ++idx, ++iter)
 			;
 		for(uint32_t idx = 0; idx < numStrs && !iter.done(); ++idx, ++iter)
@@ -189,7 +187,7 @@ class StringTableImpl : public StringTable, public UserAllocated
 	const char* doRegisterStr(const char* str, bool& outAdded)
 	{
 		PX_ASSERT(isMeaningful(str));
-		const HashMap<const char*, char*>::Entry* entry(mStrings.find(str));
+		const PxHashMap<const char*, char*>::Entry* entry(mStrings.find(str));
         if(entry == NULL)
 		{
 			outAdded = true;
@@ -224,7 +222,7 @@ class StringTableImpl : public StringTable, public UserAllocated
 	{
 		if(isMeaningful(str) == false)
 			return 0;
-		const HashMap<const char*, uint32_t>::Entry* entry(mStrToHandle.find(str));
+		const PxHashMap<const char*, uint32_t>::Entry* entry(mStrToHandle.find(str));
 		if(entry)
 			return entry->second;
 		bool added = false;
@@ -239,7 +237,7 @@ class StringTableImpl : public StringTable, public UserAllocated
 	{
 		if(hdl == 0)
 			return "";
-		const HashMap<uint32_t, char*>::Entry* entry(mHandleToStr.find(hdl));
+		const PxHashMap<uint32_t, char*>::Entry* entry(mHandleToStr.find(hdl));
 		if(entry)
 			return entry->second;
 		// unregistered handle...
@@ -251,7 +249,7 @@ class StringTableImpl : public StringTable, public UserAllocated
 		uint32_t numStrs = static_cast<uint32_t>(mHandleToStr.size());
 		stream << numStrs;
 		stream << mNextStrHandle;
-		for(HashMap<uint32_t, char*>::Iterator iter = mHandleToStr.getIterator(); !iter.done(); ++iter)
+		for(PxHashMap<uint32_t, char*>::Iterator iter = mHandleToStr.getIterator(); !iter.done(); ++iter)
 		{
 			stream << iter->first;
 			uint32_t len = static_cast<uint32_t>(strlen(iter->second) + 1);
@@ -268,7 +266,7 @@ class StringTableImpl : public StringTable, public UserAllocated
 		uint32_t numStrs;
 		stream >> numStrs;
 		stream >> mNextStrHandle;
-		Array<uint8_t> readBuffer("StringTable::read::readBuffer");
+		PxArray<uint8_t> readBuffer("StringTable::read::readBuffer");
 		uint32_t bufSize = 0;
 		for(uint32_t idx = 0; idx < numStrs; ++idx)
 		{
@@ -299,7 +297,7 @@ struct NamespacedNameHasher
 {
 	uint32_t operator()(const NamespacedName& nm)
 	{
-		return Hash<const char*>()(nm.mNamespace) ^ Hash<const char*>()(nm.mName);
+		return PxHash<const char*>()(nm.mNamespace) ^ PxHash<const char*>()(nm.mName);
 	}
 	bool equal(const NamespacedName& lhs, const NamespacedName& rhs)
 	{
@@ -321,7 +319,7 @@ struct ClassPropertyNameHasher
 {
 	uint32_t operator()(const ClassPropertyName& nm)
 	{
-		return NamespacedNameHasher()(nm.mName) ^ Hash<const char*>()(nm.mPropName);
+		return NamespacedNameHasher()(nm.mName) ^ PxHash<const char*>()(nm.mPropName);
 	}
 	bool equal(const ClassPropertyName& lhs, const ClassPropertyName& rhs)
 	{
@@ -349,11 +347,11 @@ struct PropertyMessageEntryImpl : public PropertyMessageEntry
 	}
 };
 
-struct PropertyMessageDescriptionImpl : public PropertyMessageDescription, public UserAllocated
+struct PropertyMessageDescriptionImpl : public PropertyMessageDescription, public PxUserAllocated
 {
-	Array<PropertyMessageEntryImpl> mEntryImpls;
-	Array<PropertyMessageEntry> mEntries;
-	Array<uint32_t> mStringOffsetArray;
+	PxArray<PropertyMessageEntryImpl> mEntryImpls;
+	PxArray<PropertyMessageEntry> mEntries;
+	PxArray<uint32_t> mStringOffsetArray;
 	PropertyMessageDescriptionImpl(const PropertyMessageDescription& data)
 	: PropertyMessageDescription(data)
 	, mEntryImpls("PropertyMessageDescriptionImpl::mEntryImpls")
@@ -404,19 +402,19 @@ struct PropertyMessageDescriptionImpl : public PropertyMessageDescription, publi
 	PropertyMessageDescriptionImpl& operator=(const PropertyMessageDescriptionImpl&);
 };
 
-struct PvdObjectModelMetaDataImpl : public PvdObjectModelMetaData, public UserAllocated
+struct PvdObjectModelMetaDataImpl : public PvdObjectModelMetaData, public PxUserAllocated
 {
-	typedef HashMap<NamespacedName, ClassDescImpl*, NamespacedNameHasher> TNameToClassMap;
-	typedef HashMap<ClassPropertyName, PropDescImpl*, ClassPropertyNameHasher> TNameToPropMap;
-	typedef HashMap<NamespacedName, PropertyMessageDescriptionImpl*, NamespacedNameHasher> TNameToPropertyMessageMap;
+	typedef PxHashMap<NamespacedName, ClassDescImpl*, NamespacedNameHasher> TNameToClassMap;
+	typedef PxHashMap<ClassPropertyName, PropDescImpl*, ClassPropertyNameHasher> TNameToPropMap;
+	typedef PxHashMap<NamespacedName, PropertyMessageDescriptionImpl*, NamespacedNameHasher> TNameToPropertyMessageMap;
 
 	TNameToClassMap mNameToClasses;
 	TNameToPropMap mNameToProperties;
-	Array<ClassDescImpl*> mClasses;
-	Array<PropDescImpl*> mProperties;
+	PxArray<ClassDescImpl*> mClasses;
+	PxArray<PropDescImpl*> mProperties;
     StringTableImpl* mStringTable;
 	TNameToPropertyMessageMap mPropertyMessageMap;
-	Array<PropertyMessageDescriptionImpl*> mPropertyMessages;
+	PxArray<PropertyMessageDescriptionImpl*> mPropertyMessages;
 	int32_t mNextClassId;
 	uint32_t mRefCount;
 
@@ -803,8 +801,8 @@ struct PvdObjectModelMetaDataImpl : public PvdObjectModelMetaData, public UserAl
 		return offset;
 	}
 
-	void transferPtrOffsets(ClassDescriptionSizeInfo& destInfo, Array<PtrOffset>& destArray,
-	                        const Array<PtrOffset>& src, uint32_t offset)
+	void transferPtrOffsets(ClassDescriptionSizeInfo& destInfo, PxArray<PtrOffset>& destArray,
+	                        const PxArray<PtrOffset>& src, uint32_t offset)
 	{
 		PVD_FOREACH(idx, src.size())
 		destArray.pushBack(PtrOffset(src[idx].mOffsetType, src[idx].mOffset + offset));
@@ -1289,13 +1287,13 @@ struct PvdObjectModelMetaDataImpl : public PvdObjectModelMetaData, public UserAl
 				type->serialize(*this);
 		}
 		template <typename TArrayType>
-		void streamify(const Array<TArrayType>& type)
+		void streamify(const PxArray<TArrayType>& type)
 		{
 			mStream << static_cast<uint32_t>(type.size());
 			PVD_FOREACH(idx, type.size()) streamify(const_cast<TArrayType&>(type[idx]));
 		}
 		template <typename TArrayType>
-		void streamifyLinks(const Array<TArrayType>& type)
+		void streamifyLinks(const PxArray<TArrayType>& type)
 		{
 			mStream << static_cast<uint32_t>(type.size());
 			PVD_FOREACH(idx, type.size()) streamifyLinks(const_cast<TArrayType&>(type[idx]));
@@ -1389,7 +1387,7 @@ struct PvdObjectModelMetaDataImpl : public PvdObjectModelMetaData, public UserAl
 				type = NULL;
 		}
 		template <typename TArrayType>
-		void streamify(Array<TArrayType>& type)
+		void streamify(PxArray<TArrayType>& type)
 		{
 			uint32_t typeSize;
 			mStream >> typeSize;
@@ -1397,7 +1395,7 @@ struct PvdObjectModelMetaDataImpl : public PvdObjectModelMetaData, public UserAl
 			PVD_FOREACH(idx, type.size()) streamify(type[idx]);
 		}
 		template <typename TArrayType>
-		void streamifyLinks(Array<TArrayType>& type)
+		void streamifyLinks(PxArray<TArrayType>& type)
 		{
 			uint32_t typeSize;
 			mStream >> typeSize;

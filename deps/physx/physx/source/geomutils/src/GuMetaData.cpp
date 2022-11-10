@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,12 +35,9 @@
 #include "GuTriangleMesh.h"
 #include "GuTriangleMeshBV4.h"
 #include "GuTriangleMeshRTree.h"
-#include "GuGeometryUnion.h"
-#include "PsIntrinsics.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxIntrinsics.h"
 
 using namespace physx;
-using namespace Ps;
 using namespace Cm;
 using namespace Gu;
 
@@ -64,6 +60,26 @@ static void getBinaryMetaData_BigConvexRawData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BigConvexRawData, PxU32,	mNbAdjVerts,	0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BigConvexRawData, Valency,	mValencies,		PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BigConvexRawData, PxU8,		mAdjacentVerts,	PxMetaDataFlag::ePTR)
+}
+
+void SDF::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_CLASS(stream, SDF)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxVec3, mMeshLower, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxReal, mSpacing, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, Dim3, mDims, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxReal, mNumSdfs, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxReal, mSdf, PxMetaDataFlag::ePTR)
+
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxU32, mSubgridSize, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxU32, mNumStartSlots, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxU32, mSubgridStartSlots, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxU32, mNumSubgridSdfs, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxU8,	mSubgridSdf, PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, Dim3, mSdfSubgrids3DTexBlockDim, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxReal, mSubgridsMinSdfValue, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxReal, mSubgridsMaxSdfValue, 0)
+	PX_DEF_BIN_METADATA_ITEM(stream, SDF, PxU32, mBytesPerSparsePixel, 0)
 }
 
 void BigConvexData::getBinaryMetaData(PxOutputStream& stream)
@@ -114,6 +130,8 @@ static void getBinaryMetaData_ConvexHullData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexHullData, PxVec3,					mCenterOfMass,		0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexHullData, HullPolygonData,		mPolygons,			PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexHullData, BigConvexRawData,		mBigConvexRawData,	PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexHullData, SDF,					mSdfData,			PxMetaDataFlag::ePTR)
+
 	//ML: the most significant bit of mNbEdges is used to indicate whether we have grb data or not. However, we don't support grb data
 	//in serialization so we have to mask the most significant bit and force the contact gen run on CPU code path
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexHullData, PxU16,					mNbEdges,			PxMetaDataFlag::eCOUNT_MASK_MSB)
@@ -131,11 +149,11 @@ void Gu::ConvexMesh::getBinaryMetaData(PxOutputStream& stream)
 
 	PX_DEF_BIN_METADATA_VCLASS(stream,ConvexMesh)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,ConvexMesh, PxBase)
-	PX_DEF_BIN_METADATA_BASE_CLASS(stream,ConvexMesh, RefCountable)
 
 	//
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexMesh, ConvexHullData,	mHullData,		0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexMesh, PxU32,			mNb,			0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexMesh, SDF,			mSdfData,		PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexMesh, BigConvexData,	mBigConvexData,	PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexMesh, PxReal,			mMass,			0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	ConvexMesh, PxMat33,		mInertia,		0)
@@ -201,7 +219,6 @@ void Gu::HeightField::getBinaryMetaData(PxOutputStream& stream)
 
 	PX_DEF_BIN_METADATA_VCLASS(stream,		HeightField)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	HeightField, PxBase)
-	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	HeightField, RefCountable)
 
 	PX_DEF_BIN_METADATA_ITEM(stream,	HeightField, HeightFieldData,	mData,			0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	HeightField, PxU32,				mSampleStride,	0)
@@ -258,15 +275,24 @@ void RTree::getBinaryMetaData(PxOutputStream& stream)
 
 ///////////////////////////////////////////////////////////////////////////////
 
+void SourceMeshBase::getBinaryMetaData(PxOutputStream& stream)
+{
+	PX_DEF_BIN_METADATA_VCLASS(stream,	SourceMeshBase)
+	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMeshBase, PxU32,	mNbVerts,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMeshBase, PxVec3,	mVerts,		PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMeshBase, PxU32,	mType,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMeshBase, PxU32,	mRemap,		PxMetaDataFlag::ePTR)
+}
+
 void SourceMesh::getBinaryMetaData(PxOutputStream& stream)
 {
-	PX_DEF_BIN_METADATA_CLASS(stream,	SourceMesh)
-	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMesh, PxU32,	mNbVerts,		0)
-	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMesh, PxVec3,	mVerts,			PxMetaDataFlag::ePTR)
+	// SourceMesh
+	PX_DEF_BIN_METADATA_VCLASS(stream,	SourceMesh)
+	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	SourceMesh, SourceMeshBase)
+
 	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMesh, PxU32,	mNbTris,		0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMesh, void,	mTriangles32,	PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMesh, void,	mTriangles16,	PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream,	SourceMesh, PxU32,	mRemap,			PxMetaDataFlag::ePTR)
 }
 
 static void getBinaryMetaData_BVDataPackedQ(PxOutputStream& stream)
@@ -284,7 +310,6 @@ static void getBinaryMetaData_BVDataPackedQ(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BVDataPackedQ, PxU32,			mData,	0)
 }
 
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 static void getBinaryMetaData_BVDataPackedNQ(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_CLASS(stream,	CenterExtents)
@@ -295,14 +320,12 @@ static void getBinaryMetaData_BVDataPackedNQ(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BVDataPackedNQ, CenterExtents,	mAABB,	0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BVDataPackedNQ, PxU32,			mData,	0)
 }
-#endif
 
 void BV4Tree::getBinaryMetaData(PxOutputStream& stream)
 {
 	getBinaryMetaData_BVDataPackedQ(stream);
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 	getBinaryMetaData_BVDataPackedNQ(stream);
-#endif
+
 	PX_DEF_BIN_METADATA_CLASS(stream,	LocalBounds)
 	PX_DEF_BIN_METADATA_ITEM(stream,	LocalBounds, PxVec3,	mCenter,			0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	LocalBounds, float,		mExtentsMagnitude,	0)
@@ -312,7 +335,7 @@ void BV4Tree::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, void,			mMeshInterface,		PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, LocalBounds,	mLocalBounds,		0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, PxU32,			mNbNodes,			0)
-	//PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, void,			mNodes,				PxMetaDataFlag::eEXTRA_DATA)
+	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, void,			mNodes,				PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, PxU32,			mInitData,			0)
 
 	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, PxVec3,		mCenterOrMinCoeff,	0)
@@ -320,11 +343,14 @@ void BV4Tree::getBinaryMetaData(PxOutputStream& stream)
 
 	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, bool,			mUserAllocated,		0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, bool,			mQuantized,			0)
-	PX_DEF_BIN_METADATA_ITEMS(stream,	BV4Tree, bool,			mPadding,			PxMetaDataFlag::ePADDING, 2)
+	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, bool,			mIsEdgeSet,			0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	BV4Tree, bool,			mPadding,			PxMetaDataFlag::ePADDING)
 
 	//------ Extra-data ------
 
-	PX_DEF_BIN_METADATA_EXTRA_ARRAY(stream,	BV4Tree, BVDataPackedQ, mNbNodes, 16, 0)
+//	PX_DEF_BIN_METADATA_EXTRA_ARRAY(stream,	BV4Tree, BVDataPackedQ, mNbNodes, 16, 0)
+	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, BV4Tree, BVDataPackedQ, mQuantized, mNbNodes, PxMetaDataFlag::Enum(0), PX_SERIAL_ALIGN)
+	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, BV4Tree, BVDataPackedNQ, mQuantized, mNbNodes, PxMetaDataFlag::eCONTROL_FLIP, PX_SERIAL_ALIGN)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -333,14 +359,13 @@ void Gu::TriangleMesh::getBinaryMetaData(PxOutputStream& stream)
 {
 	PX_DEF_BIN_METADATA_VCLASS(stream,		TriangleMesh)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	TriangleMesh, PxBase)
-	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	TriangleMesh, RefCountable)
 
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mNbVertices,			0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mNbTriangles,			0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxVec3,			mVertices,				PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, void,				mTriangles,				PxMetaDataFlag::ePTR)
 
-	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxBounds3,		mAABB,					0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxBounds3,		mAABB,					0)	// PT: warning, this is actually a CenterExtents
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU8,				mExtraTrigData,			PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxReal,			mGeomEpsilon,			0)	
 
@@ -348,12 +373,42 @@ void Gu::TriangleMesh::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU16,			mMaterialIndices,		PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mFaceRemap,				PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mAdjacencies,			PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, GuMeshFactory,	mMeshFactory,			PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, void,				mEdgeList,				PxMetaDataFlag::ePTR)
+
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxReal,			mMass,					0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxMat33,			mInertia,				0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxVec3,			mLocalCenterOfMass,		0)
 
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, void,				mGRB_triIndices,		PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, void,				mGRB_triAdjacencies,	PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mGRB_faceRemap,			PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mGRB_faceRemapInverse,	PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, void,				mGRB_BV32Tree,			PxMetaDataFlag::ePTR)
 
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxVec3,			mSdfData.mMeshLower,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxReal,			mSdfData.mSpacing,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mDims.x,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mDims.y,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mDims.z,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mNumSdfs,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxReal,			mSdfData.mSdf,			PxMetaDataFlag::ePTR)
+
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mSubgridSize,					0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mNumStartSlots,				0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mSubgridStartSlots,			PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mNumSubgridSdfs,				0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU8,				mSdfData.mSubgridSdf,					PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mSdfSubgrids3DTexBlockDim.x,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mSdfSubgrids3DTexBlockDim.y,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mSdfSubgrids3DTexBlockDim.z,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxReal,			mSdfData.mSubgridsMinSdfValue,			0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxReal,			mSdfData.mSubgridsMaxSdfValue,			0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mSdfData.mBytesPerSparsePixel,			0)
+
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mAccumulatedTrianglesRef,	PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mTrianglesReferences,		PxMetaDataFlag::ePTR)
+	PX_DEF_BIN_METADATA_ITEM(stream,	TriangleMesh, PxU32,			mNbTrianglesReferences,		0)
 
 	//------ Extra-data ------
 
@@ -387,11 +442,19 @@ void Gu::TriangleMesh::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, TriangleMesh, PxU32, mAdjacencies, mNbTriangles, 0, 0)
 	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, TriangleMesh, PxU32, mAdjacencies, mNbTriangles, 0, 0)
 
-	PX_DEF_BIN_METADATA_ITEM(stream,		TriangleMesh, GuMeshFactory,		mMeshFactory,				PxMetaDataFlag::ePTR)
+	// mSdf
+	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, TriangleMesh, PxReal, mSdfData.mSdf, mSdfData.mNumSdfs, 0, PX_SERIAL_ALIGN)
+	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, TriangleMesh, PxU32, mSdfData.mSubgridStartSlots, mSdfData.mNumStartSlots, 0, PX_SERIAL_ALIGN)
+	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, TriangleMesh, PxU8, mSdfData.mSubgridSdf, mSdfData.mNumSubgridSdfs, 0, PX_SERIAL_ALIGN)
 
+	// mAccumulatedTrianglesRef
+//	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, TriangleMesh, PxU32, mAccumulatedTrianglesRef, mNbTrianglesReferences, 0, PX_SERIAL_ALIGN)
+
+	// mTrianglesReferences
+//	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, TriangleMesh, PxU32, mTrianglesReferences, mNbTrianglesReferences, 0, PX_SERIAL_ALIGN)
 
 #ifdef EXPLICIT_PADDING_METADATA
-	PX_DEF_BIN_METADATA_ITEMS_AUTO(stream,	TriangleMesh, PxU32,				mPaddingFromInternalMesh,	PxMetaDataFlag::ePADDING)
+	PX_DEF_BIN_METADATA_ITEMS_AUTO(stream,	TriangleMesh, PxU32,			mPaddingFromInternalMesh,	PxMetaDataFlag::ePADDING)
 #endif
 }
 
@@ -402,185 +465,21 @@ void Gu::RTreeTriangleMesh::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_VCLASS(stream,		RTreeTriangleMesh)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	RTreeTriangleMesh, TriangleMesh)
 
-	PX_DEF_BIN_METADATA_ITEM(stream,		RTreeTriangleMesh, RTree,			mRTree,					0)	
+	PX_DEF_BIN_METADATA_ITEM(stream,		RTreeTriangleMesh, RTree,		mRTree,				0)
 }
 
 void Gu::BV4TriangleMesh::getBinaryMetaData(PxOutputStream& stream)
 {
+	SourceMeshBase::getBinaryMetaData(stream);
 	SourceMesh::getBinaryMetaData(stream);
 	BV4Tree::getBinaryMetaData(stream);
 
 	PX_DEF_BIN_METADATA_VCLASS(stream,		BV4TriangleMesh)
 	PX_DEF_BIN_METADATA_BASE_CLASS(stream,	BV4TriangleMesh, TriangleMesh)
 
-	PX_DEF_BIN_METADATA_ITEM(stream,		BV4TriangleMesh, SourceMesh,		mMeshInterface,			0)	
-	PX_DEF_BIN_METADATA_ITEM(stream,		BV4TriangleMesh, BV4Tree,			mBV4Tree,				0)	
+	PX_DEF_BIN_METADATA_ITEM(stream,		BV4TriangleMesh, SourceMesh,	mMeshInterface,		0)
+	PX_DEF_BIN_METADATA_ITEM(stream,		BV4TriangleMesh, BV4Tree,		mBV4Tree,			0)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void MaterialIndicesStruct::getBinaryMetaData(PxOutputStream& stream)
-{
-	PX_DEF_BIN_METADATA_CLASS(stream,	MaterialIndicesStruct)
-	PX_DEF_BIN_METADATA_ITEM(stream,	MaterialIndicesStruct, PxU16,	indices,	PxMetaDataFlag::ePTR)
-	PX_DEF_BIN_METADATA_ITEM(stream,	MaterialIndicesStruct, PxU16,	numIndices,	0)
-	PX_DEF_BIN_METADATA_ITEM(stream,	MaterialIndicesStruct, PxU16,	pad,		PxMetaDataFlag::ePADDING)
-#if PX_P64_FAMILY
-	PX_DEF_BIN_METADATA_ITEM(stream,	MaterialIndicesStruct, PxU32,	pad64,		PxMetaDataFlag::ePADDING)
-#endif
-
-	//------ Extra-data ------
-	// indices
-	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, MaterialIndicesStruct, PxU16, indices, numIndices, PxMetaDataFlag::eHANDLE, PX_SERIAL_ALIGN)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void Gu::GeometryUnion::getBinaryMetaData(PxOutputStream& stream)
-{
-	PX_DEF_BIN_METADATA_TYPEDEF(stream, PxGeometryType::Enum, PxU32)
-
-	// The various PxGeometry classes are all public, so I can't really put the meta-data function in there. And then
-	// I can't access their protected members. So we use the same trick as for the ShapeContainer
-	class ShadowConvexMeshGeometry : public PxConvexMeshGeometryLL
-	{
-	public:
-		static void getBinaryMetaData(PxOutputStream& stream_)
-		{
-			PX_DEF_BIN_METADATA_TYPEDEF(stream_, PxConvexMeshGeometryFlags, PxU8)
-
-			PX_DEF_BIN_METADATA_CLASS(stream_,	ShadowConvexMeshGeometry)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowConvexMeshGeometry, PxGeometryType::Enum,			mType,				0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowConvexMeshGeometry, PxMeshScale,					scale,				0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowConvexMeshGeometry, PxConvexMesh,					convexMesh,			PxMetaDataFlag::ePTR)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowConvexMeshGeometry, PxConvexMeshGeometryFlags,	meshFlags,			0)
-			PX_DEF_BIN_METADATA_ITEMS(stream_,	ShadowConvexMeshGeometry, PxU8,							paddingFromFlags,	PxMetaDataFlag::ePADDING, 3)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowConvexMeshGeometry, ConvexHullData,				hullData,			PxMetaDataFlag::ePTR)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowConvexMeshGeometry, bool,							gpuCompatible,		0)
-		}
-	};
-	ShadowConvexMeshGeometry::getBinaryMetaData(stream);
-	PX_DEF_BIN_METADATA_TYPEDEF(stream, PxConvexMeshGeometryLL, ShadowConvexMeshGeometry)
-
-	/////////////////
-
-	class ShadowTriangleMeshGeometry : public PxTriangleMeshGeometryLL
-	{
-	public:
-		static void getBinaryMetaData(PxOutputStream& stream_)
-		{
-			PX_DEF_BIN_METADATA_TYPEDEF(stream_, PxMeshGeometryFlags, PxU8)
-
-			PX_DEF_BIN_METADATA_CLASS(stream_,	ShadowTriangleMeshGeometry)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowTriangleMeshGeometry, PxGeometryType::Enum,		mType,				0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowTriangleMeshGeometry, PxMeshScale,				scale,				0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowTriangleMeshGeometry, PxMeshGeometryFlags,		meshFlags,			0)
-			PX_DEF_BIN_METADATA_ITEMS(stream_,	ShadowTriangleMeshGeometry,	PxU8,						paddingFromFlags,	PxMetaDataFlag::ePADDING, 3)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowTriangleMeshGeometry, PxTriangleMesh,				triangleMesh,		PxMetaDataFlag::ePTR)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowTriangleMeshGeometry, TriangleMesh,				meshData,			PxMetaDataFlag::ePTR)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowTriangleMeshGeometry, PxU16,						materialIndices,	PxMetaDataFlag::ePTR)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowTriangleMeshGeometry, MaterialIndicesStruct,		materials,			0)
-		}
-	};
-	ShadowTriangleMeshGeometry::getBinaryMetaData(stream);
-	PX_DEF_BIN_METADATA_TYPEDEF(stream,PxTriangleMeshGeometryLL, ShadowTriangleMeshGeometry)
-
-	/////////////////
-
-	class ShadowHeightFieldGeometry : public PxHeightFieldGeometryLL
-	{
-	public:
-		static void getBinaryMetaData(PxOutputStream& stream_)
-		{
-			PX_DEF_BIN_METADATA_CLASS(stream_,		ShadowHeightFieldGeometry)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, PxGeometryType::Enum,	mType,					0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, PxHeightField,		    heightField,			PxMetaDataFlag::ePTR)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, PxReal,					heightScale,			0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, PxReal,					rowScale,				0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, PxReal,					columnScale,			0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, PxMeshGeometryFlags,		heightFieldFlags,		0)
-			PX_DEF_BIN_METADATA_ITEMS_AUTO(stream_,	ShadowHeightFieldGeometry, PxU8,					paddingFromFlags,		PxMetaDataFlag::ePADDING)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, HeightField,				heightFieldData,		PxMetaDataFlag::ePTR)
-			PX_DEF_BIN_METADATA_ITEM(stream_,		ShadowHeightFieldGeometry, MaterialIndicesStruct,	materials,				0)
-		}
-	};
-	ShadowHeightFieldGeometry::getBinaryMetaData(stream);
-	PX_DEF_BIN_METADATA_TYPEDEF(stream,PxHeightFieldGeometryLL, ShadowHeightFieldGeometry)
-
-	/////////////////
-
-	class ShadowPlaneGeometry : public PxPlaneGeometry
-	{
-	public:
-		static void getBinaryMetaData(PxOutputStream& stream_)
-		{
-			PX_DEF_BIN_METADATA_CLASS(stream_,	ShadowPlaneGeometry)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowPlaneGeometry, PxGeometryType::Enum,	mType,		0)
-		}
-	};
-	ShadowPlaneGeometry::getBinaryMetaData(stream);
-	PX_DEF_BIN_METADATA_TYPEDEF(stream,PxPlaneGeometry, ShadowPlaneGeometry)
-
-	/////////////////
-
-	class ShadowSphereGeometry : public PxSphereGeometry
-	{
-	public:
-		static void getBinaryMetaData(PxOutputStream& stream_)
-		{
-			PX_DEF_BIN_METADATA_CLASS(stream_,	ShadowSphereGeometry)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowSphereGeometry, PxGeometryType::Enum,		mType,		0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowSphereGeometry, PxReal,				    radius,		0)
-		}
-	};
-	ShadowSphereGeometry::getBinaryMetaData(stream);
-	PX_DEF_BIN_METADATA_TYPEDEF(stream, PxSphereGeometry, ShadowSphereGeometry)
-
-	/////////////////
-
-	class ShadowCapsuleGeometry : public PxCapsuleGeometry
-	{
-	public:
-		static void getBinaryMetaData(PxOutputStream& stream_)
-		{
-			PX_DEF_BIN_METADATA_CLASS(stream_,	ShadowCapsuleGeometry)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowCapsuleGeometry, PxGeometryType::Enum,	mType,		0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowCapsuleGeometry, PxReal,					radius,		0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowCapsuleGeometry, PxReal,					halfHeight,	0)
-		}
-	};
-	ShadowCapsuleGeometry::getBinaryMetaData(stream);
-	PX_DEF_BIN_METADATA_TYPEDEF(stream, PxCapsuleGeometry, ShadowCapsuleGeometry)
-
-	/////////////////
-
-	class ShadowBoxGeometry : public PxBoxGeometry
-	{
-	public:
-		static void getBinaryMetaData(PxOutputStream& stream_)
-		{
-			PX_DEF_BIN_METADATA_CLASS(stream_,	ShadowBoxGeometry)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowBoxGeometry, PxGeometryType::Enum,	mType,		0)
-			PX_DEF_BIN_METADATA_ITEM(stream_,	ShadowBoxGeometry, PxVec3,					halfExtents,0)
-		}
-	};
-	ShadowBoxGeometry::getBinaryMetaData(stream);
-	PX_DEF_BIN_METADATA_TYPEDEF(stream, PxBoxGeometry, ShadowBoxGeometry)
-
-	/*
-	- geom union offset & size
-	- control type offset & size
-	- type-to-class mapping
-	*/
-
-	PX_DEF_BIN_METADATA_CLASS(stream, Gu::GeometryUnion)
-
-	PX_DEF_BIN_METADATA_UNION(stream,		Gu::GeometryUnion, mGeometry)
-	PX_DEF_BIN_METADATA_UNION_TYPE(stream,	Gu::GeometryUnion, PxSphereGeometry,		PxGeometryType::eSPHERE)
-	PX_DEF_BIN_METADATA_UNION_TYPE(stream, 	Gu::GeometryUnion, PxPlaneGeometry,			PxGeometryType::ePLANE)
-	PX_DEF_BIN_METADATA_UNION_TYPE(stream, 	Gu::GeometryUnion, PxCapsuleGeometry,		PxGeometryType::eCAPSULE)
-	PX_DEF_BIN_METADATA_UNION_TYPE(stream, 	Gu::GeometryUnion, PxBoxGeometry,			PxGeometryType::eBOX)
-	PX_DEF_BIN_METADATA_UNION_TYPE(stream, 	Gu::GeometryUnion, PxConvexMeshGeometryLL,	PxGeometryType::eCONVEXMESH)
-	PX_DEF_BIN_METADATA_UNION_TYPE(stream, 	Gu::GeometryUnion, PxTriangleMeshGeometryLL,PxGeometryType::eTRIANGLEMESH)
-	PX_DEF_BIN_METADATA_UNION_TYPE(stream, 	Gu::GeometryUnion, PxHeightFieldGeometryLL,	PxGeometryType::eHEIGHTFIELD)
-}

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,8 +30,8 @@
 #define BP_BROADPHASE_MBP_COMMON_H
 
 #include "PxPhysXConfig.h"
-#include "BpBroadPhaseUpdate.h"
-#include "PsUserAllocated.h"
+#include "BpBroadPhaseIntegerAABB.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
@@ -53,7 +52,7 @@ namespace Bp
 	typedef	PxU32	MBP_ObjectIndex;	// PT: index in mMBP_Objects
 	typedef	PxU32	MBP_Handle;			// PT: returned to MBP users, combination of index/flip-flop/static-bit
 
-	struct IAABB : public Ps::UserAllocated
+	struct IAABB : public PxUserAllocated
 	{
 		PX_FORCE_INLINE bool isInside(const IAABB& box) const
 		{
@@ -66,24 +65,24 @@ namespace Bp
 			return true;
 		}
 
-		PX_FORCE_INLINE			Ps::IntBool		intersects(const IAABB& a)	const
+		PX_FORCE_INLINE			PxIntBool		intersects(const IAABB& a)	const
 		{
 			if(mMaxX < a.mMinX || a.mMaxX < mMinX
 			|| mMaxY < a.mMinY || a.mMaxY < mMinY
 			|| mMaxZ < a.mMinZ || a.mMaxZ < mMinZ
 			)
-				return Ps::IntFalse;
-			return Ps::IntTrue;
+				return PxIntFalse;
+			return PxIntTrue;
 		}
 
-		PX_FORCE_INLINE			Ps::IntBool		intersectNoTouch(const IAABB& a)	const
+		PX_FORCE_INLINE			PxIntBool		intersectNoTouch(const IAABB& a)	const
 		{
 			if(mMaxX <= a.mMinX || a.mMaxX <= mMinX
 			|| mMaxY <= a.mMinY || a.mMaxY <= mMinY
 			|| mMaxZ <= a.mMinZ || a.mMaxZ <= mMinZ
 			)
-				return Ps::IntFalse;
-			return Ps::IntTrue;
+				return PxIntFalse;
+			return PxIntTrue;
 		}
 
 		PX_FORCE_INLINE	void	initFrom2(const PxBounds3& box)
@@ -119,7 +118,7 @@ namespace Bp
 		PxU32 mMaxZ;
 	};
 
-	struct SIMD_AABB : public Ps::UserAllocated
+	struct SIMD_AABB : public PxUserAllocated
 	{
 		PX_FORCE_INLINE	void	initFrom(const PxBounds3& box)
 		{
@@ -165,24 +164,24 @@ namespace Bp
 			return true;
 		}
 
-		PX_FORCE_INLINE			Ps::IntBool		intersects(const SIMD_AABB& a)	const
+		PX_FORCE_INLINE			PxIntBool		intersects(const SIMD_AABB& a)	const
 		{
 			if(mMaxX < a.mMinX || a.mMaxX < mMinX
 			|| mMaxY < a.mMinY || a.mMaxY < mMinY
 			|| mMaxZ < a.mMinZ || a.mMaxZ < mMinZ
 			)
-				return Ps::IntFalse;
-			return Ps::IntTrue;
+				return PxIntFalse;
+			return PxIntTrue;
 		}
 
-		PX_FORCE_INLINE			Ps::IntBool		intersectNoTouch(const SIMD_AABB& a)	const
+		PX_FORCE_INLINE			PxIntBool		intersectNoTouch(const SIMD_AABB& a)	const
 		{
 			if(mMaxX <= a.mMinX || a.mMaxX <= mMinX
 			|| mMaxY <= a.mMinY || a.mMaxY <= mMinY
 			|| mMaxZ <= a.mMinZ || a.mMaxZ <= mMinZ
 			)
-				return Ps::IntFalse;
-			return Ps::IntTrue;
+				return PxIntFalse;
+			return PxIntTrue;
 		}
 
 		PxU32 mMinX;

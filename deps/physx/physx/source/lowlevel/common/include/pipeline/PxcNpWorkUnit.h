@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXC_NPWORKUNIT_H
-#define PXC_NPWORKUNIT_H
+#ifndef PXC_NP_WORK_UNIT_H
+#define PXC_NP_WORK_UNIT_H
 
 #include "PxcNpThreadContext.h"
 #include "PxcMaterialMethodImpl.h"
@@ -44,19 +42,20 @@ struct PxcNpWorkUnitFlag
 {
 	enum Enum
 	{
-		eOUTPUT_CONTACTS			= 1,
-		eOUTPUT_CONSTRAINTS			= 2,
-		eDISABLE_STRONG_FRICTION	= 4,
-		eARTICULATION_BODY0			= 8,
-		eARTICULATION_BODY1			= 16,
-		eDYNAMIC_BODY0				= 32,
-		eDYNAMIC_BODY1				= 64,
-		eMODIFIABLE_CONTACT			= 128,
-		eFORCE_THRESHOLD			= 256,
-		eDETECT_DISCRETE_CONTACT	= 512,
-		eHAS_KINEMATIC_ACTOR		= 1024,
-		eDISABLE_RESPONSE			= 2048,
-		eDETECT_CCD_CONTACTS		= 4096
+		eOUTPUT_CONTACTS			= 1 << 0,
+		eOUTPUT_CONSTRAINTS			= 1 << 1,
+		eDISABLE_STRONG_FRICTION	= 1 << 2,
+		eARTICULATION_BODY0			= 1 << 3,
+		eARTICULATION_BODY1			= 1 << 4,
+		eDYNAMIC_BODY0				= 1 << 5,
+		eDYNAMIC_BODY1				= 1 << 6,
+		eSOFT_BODY					= 1 << 7,
+		eMODIFIABLE_CONTACT			= 1 << 8,
+		eFORCE_THRESHOLD			= 1 << 9,
+		eDETECT_DISCRETE_CONTACT	= 1 << 10,
+		eHAS_KINEMATIC_ACTOR		= 1 << 11,
+		eDISABLE_RESPONSE			= 1 << 12,
+		eDETECT_CCD_CONTACTS		= 1 << 13,
 	};
 };
 
@@ -111,41 +110,19 @@ struct PxcNpWorkUnit
 
 	PxReal				mTorsionalPatchRadius;												//60	//84
 	PxReal				mMinTorsionalPatchRadius;											//64	//88
-};
+	PxReal				mOffsetSlop;														//68	//92
 
-/*
- * A struct to record the number of work units a particular constraint pointer references.
- * This is created at the beginning of the constriant data and is used to bypass constraint preparation when the 
- * bodies are not moving a lot. In this case, we can recycle the constraints and save ourselves some cycles.
-*/
-struct PxcNpWorkUnitBatch
-{
-	PxcNpWorkUnit*	mUnits[4];
-	PxU32			mSize;
+	PX_FORCE_INLINE void	clearCachedState()
+	{
+		frictionDataPtr = NULL;
+		frictionPatchCount = 0;
+		ccdContacts = NULL;
+	}
 };
 
 //#if !defined(PX_P64)
 //PX_COMPILE_TIME_ASSERT(0 == (sizeof(PxcNpWorkUnit) & 0x0f));
 //#endif
-
-PX_FORCE_INLINE void PxcNpWorkUnitClearContactState(PxcNpWorkUnit& n)
-{
-	n.ccdContacts = NULL;
-}
-
-PX_FORCE_INLINE void PxcNpWorkUnitClearCachedState(PxcNpWorkUnit& n)
-{
-	n.frictionDataPtr = 0;
-	n.frictionPatchCount = 0;
-	n.ccdContacts = NULL;
-}
-
-PX_FORCE_INLINE void PxcNpWorkUnitClearFrictionCachedState(PxcNpWorkUnit& n)
-{
-	n.frictionDataPtr = 0;
-	n.frictionPatchCount = 0;
-	n.ccdContacts = NULL;
-}
 
 #if !defined(PX_P64)
 //PX_COMPILE_TIME_ASSERT(sizeof(PxcNpWorkUnit)==128);

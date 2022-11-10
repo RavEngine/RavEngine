@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_COLLISION_ACTORPAIR
-#define PX_COLLISION_ACTORPAIR
+#ifndef SC_ACTOR_PAIR_H
+#define SC_ACTOR_PAIR_H
 
 #include "ScRigidSim.h"
 #include "ScContactStream.h"
 #include "ScNPhaseCore.h"
+#if PX_SUPPORT_GPU_PHYSX
+#include "ScSoftBodySim.h"
+#endif
+
 
 namespace physx
 {
@@ -75,7 +78,7 @@ namespace Sc
 		PX_FORCE_INLINE					ActorPair() : mInternalFlags(0), mTouchCount(0), mRefCount(0) {}
 		PX_FORCE_INLINE					~ActorPair() {}
 
-		PX_FORCE_INLINE	Ps::IntBool		isReportPair() const { return (mInternalFlags & eIS_REPORT_PAIR); }
+		PX_FORCE_INLINE	PxIntBool		isReportPair() const { return (mInternalFlags & eIS_REPORT_PAIR); }
 
 		PX_FORCE_INLINE	void			incTouchCount() { mTouchCount++; PX_ASSERT(mTouchCount); }
 		PX_FORCE_INLINE	void			decTouchCount() { PX_ASSERT(mTouchCount); mTouchCount--; }
@@ -112,18 +115,17 @@ namespace Sc
 			eIS_IN_CONTACT_REPORT_ACTOR_PAIR_SET = ActorPair::eNEXT_FREE	// PT: whether the pair is already stored in the 'ContactReportActorPairSet' or not
 		};
 
-		PX_FORCE_INLINE					ActorPairReport(RigidSim&, RigidSim&);
+		PX_FORCE_INLINE					ActorPairReport(ActorSim&, ActorSim&);
 		PX_FORCE_INLINE					~ActorPairReport();
 
 		PX_INLINE ContactStreamManager&	createContactStreamManager(NPhaseCore&);
 		PX_FORCE_INLINE ContactStreamManager& getContactStreamManager() const { PX_ASSERT(mReportData); return mReportData->mContactStreamManager; }
-		PX_FORCE_INLINE	RigidSim&		getActorA() const { return mActorA; }
-		PX_FORCE_INLINE	RigidSim&		getActorB() const { return mActorB; }
+		PX_FORCE_INLINE	ActorSim&		getActorA() const { return mActorA; }
+		PX_FORCE_INLINE ActorSim&		getActorB() const { return mActorB; }
 		PX_INLINE		PxU32			getActorAID() const { PX_ASSERT(mReportData); return mReportData->mActorAID; }
 		PX_INLINE		PxU32			getActorBID() const { PX_ASSERT(mReportData); return mReportData->mActorBID; }
 		PX_INLINE		PxActor*		getPxActorA() const { PX_ASSERT(mReportData); return mReportData->mPxActorA; }
 		PX_INLINE		PxActor*		getPxActorB() const { PX_ASSERT(mReportData); return mReportData->mPxActorB; }
-		PX_FORCE_INLINE	bool			streamResetNeeded(PxU32 cmpStamp) const;
 		PX_INLINE		bool			streamResetStamp(PxU32 cmpStamp);
 
 		PX_FORCE_INLINE	PxU16			isInContactReportActorPairSet() const { return PxU16(mInternalFlags & eIS_IN_CONTACT_REPORT_ACTOR_PAIR_SET); }
@@ -132,7 +134,6 @@ namespace Sc
 
 		PX_FORCE_INLINE void			createContactReportData(NPhaseCore&);
 		PX_FORCE_INLINE void			releaseContactReportData(NPhaseCore&);
-		PX_FORCE_INLINE const ActorPairContactReportData* hasReportData() const { return mReportData; }
 
 		PX_FORCE_INLINE	void			convert(ActorPair& aPair) { PX_ASSERT(!aPair.isReportPair()); mTouchCount = PxU16(aPair.getTouchCount()); mRefCount = PxU16(aPair.getRefCount()); }
 
@@ -141,15 +142,15 @@ namespace Sc
 	private:
 		ActorPairReport& operator=(const ActorPairReport&);
 
-						RigidSim&		mActorA;
-						RigidSim&		mActorB;
+						ActorSim&		mActorA;
+						ActorSim&		mActorB;
 
 			ActorPairContactReportData* mReportData;
 	};
 
 } // namespace Sc
 
-PX_FORCE_INLINE Sc::ActorPairReport::ActorPairReport(RigidSim& actor0, RigidSim& actor1) : ActorPair(),
+PX_FORCE_INLINE Sc::ActorPairReport::ActorPairReport(ActorSim& actor0, ActorSim& actor1) : ActorPair(),
 mActorA			(actor0),
 mActorB			(actor1),
 mReportData		(NULL)
@@ -163,15 +164,10 @@ PX_FORCE_INLINE Sc::ActorPairReport::~ActorPairReport()
 	PX_ASSERT(mReportData == NULL);
 }
 
-PX_FORCE_INLINE bool Sc::ActorPairReport::streamResetNeeded(PxU32 cmpStamp) const
-{
-	return (cmpStamp != mReportData->mStrmResetStamp);
-}
-
 PX_INLINE bool Sc::ActorPairReport::streamResetStamp(PxU32 cmpStamp) 
 {
 	PX_ASSERT(mReportData);
-	const bool ret = streamResetNeeded(cmpStamp);
+	const bool ret = (cmpStamp != mReportData->mStrmResetStamp);
 	mReportData->mStrmResetStamp = cmpStamp; 
 	return ret; 
 }
@@ -193,11 +189,25 @@ PX_FORCE_INLINE void Sc::ActorPairReport::createContactReportData(NPhaseCore& np
 
 	if(reportData)
 	{
-		reportData->mActorAID = mActorA.getRigidID();
-		reportData->mActorBID = mActorB.getRigidID();
+		const ActorCore& actorCoreA = mActorA.getActorCore();
+		const ActorCore& actorCoreB = mActorB.getActorCore();
 
-		reportData->mPxActorA = mActorA.getPxActor();
-		reportData->mPxActorB = mActorB.getPxActor();
+		reportData->mActorAID = mActorA.getActorID();
+		reportData->mActorBID = mActorB.getActorID();
+
+#if PX_SUPPORT_GPU_PHYSX
+		if (mActorA.getActorType() == PxActorType::eSOFTBODY)
+			reportData->mPxActorA = static_cast<const SoftBodyCore&>(actorCoreA).getPxActor();
+		else
+#endif
+			reportData->mPxActorA = static_cast<const RigidCore&>(actorCoreA).getPxActor();
+
+#if PX_SUPPORT_GPU_PHYSX
+		if (mActorA.getActorType() == PxActorType::eSOFTBODY)
+			reportData->mPxActorB = static_cast<const SoftBodyCore&>(actorCoreB).getPxActor();
+		else
+#endif
+			reportData->mPxActorB = static_cast<const RigidCore&>(actorCoreB).getPxActor();
 	}
 }
 

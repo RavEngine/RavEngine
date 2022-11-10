@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXPVDSDK_PXPROFILEMEMORYEVENTBUFFER_H
-#define PXPVDSDK_PXPROFILEMEMORYEVENTBUFFER_H
+#ifndef PX_PROFILE_MEMORY_EVENT_BUFFER_H
+#define PX_PROFILE_MEMORY_EVENT_BUFFER_H
 
 #include "PxProfileDataBuffer.h"
 #include "PxProfileMemoryEvents.h"
@@ -38,9 +36,9 @@
 #include "PxProfileAllocatorWrapper.h"
 #include "PxProfileEventMutex.h"
 
-#include "PsHash.h"
-#include "PsHashMap.h"
-#include "PsUserAllocated.h"
+#include "foundation/PxHash.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx { namespace profile {
 
@@ -55,7 +53,7 @@ namespace physx { namespace profile {
 		typedef typename TBaseType::TU8AllocatorType TU8AllocatorType;
 		typedef typename TBaseType::TMemoryBufferType TMemoryBufferType;
 		typedef typename TBaseType::TBufferClientArray TBufferClientArray;
-		typedef shdfnd::HashMap<const char*, uint32_t, shdfnd::Hash<const char*>, TU8AllocatorType> TCharPtrToHandleMap;
+		typedef PxHashMap<const char*, uint32_t, PxHash<const char*>, TU8AllocatorType> TCharPtrToHandleMap;
 
 	protected:
 		TCharPtrToHandleMap mStringTable;
@@ -123,7 +121,7 @@ namespace physx { namespace profile {
 		}
 	};
 
-	class PxProfileMemoryEventBufferImpl : public shdfnd::UserAllocated
+	class PxProfileMemoryEventBufferImpl : public PxUserAllocated
 		, public PxProfileMemoryEventBuffer
 	{
 		typedef MemoryEventBuffer<PxProfileEventMutex, NullLock> TMemoryBufferType;
@@ -154,4 +152,5 @@ namespace physx { namespace profile {
 	};
 }}
 
-#endif // PXPVDSDK_PXPROFILEMEMORYEVENTBUFFER_H
+#endif
+

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,31 +31,39 @@
 
 #include "geometry/PxHeightFieldGeometry.h"
 #include "geometry/PxTriangle.h"
+#include "foundation/PxBasicTemplates.h"
+#include "foundation/PxSIMDHelpers.h"
 
 #include "GuHeightField.h"
 #include "../intersection/GuIntersectionRayTriangle.h"
 #include "../intersection/GuIntersectionRayBox.h"
-#include "PsBasicTemplates.h"
 
 namespace physx
 {
 #define HF_SWEEP_REPORT_BUFFER_SIZE 64
-
-/**
-\brief Used to control contact queries.
-*/
-struct GuHfQueryFlags
-{
-	enum Enum
-	{
-		eWORLD_SPACE	= (1<<0),	//!< world-space parameter, else object space
-		eFIRST_CONTACT	= (1<<1)	//!< returns first contact only, else returns all contacts
-	};
-};
+#define HF_OVERLAP_REPORT_BUFFER_SIZE 64
 
 namespace Gu
 {
-	template<class T> class EntityReport;
+	class OverlapReport;
+
+	// PT: this is used in the context of sphere-vs-heightfield overlaps
+	PX_FORCE_INLINE	PxVec3	getLocalSphereData(PxBounds3& localBounds, const PxTransform& pose0, const PxTransform& pose1, float radius)
+	{
+		const PxVec3 localSphereCenter = pose1.transformInv(pose0.p);
+
+		const PxVec3 extents(radius);
+		localBounds.minimum = localSphereCenter - extents;
+		localBounds.maximum = localSphereCenter + extents;
+
+		return localSphereCenter;
+	}
+
+	PX_FORCE_INLINE	PxBounds3	getLocalCapsuleBounds(float radius, float halfHeight)
+	{
+		const PxVec3 extents(halfHeight + radius, radius, radius);
+		return PxBounds3(-extents, extents);
+	}
 
 	class PX_PHYSX_COMMON_API HeightFieldUtil
 	{
@@ -94,10 +101,7 @@ namespace Gu
 							PX_FORCE_INLINE	PxReal							getOneOverColumnScale()		const	{ return mOneOverColumnScale;	}
 	
 		void	computeLocalBounds(PxBounds3& bounds) const;
-		PX_FORCE_INLINE bool	isCollisionVertex(PxU32 vertexIndex, PxU32 row, PxU32 column) const
-		{
-			return mHeightField->isCollisionVertex(vertexIndex, row, column, PxHeightFieldMaterial::eHOLE);
-		}
+
 		PX_FORCE_INLINE	PxReal	getHeightAtShapePoint(PxReal x, PxReal z) const
 		{
 			return mHfGeom->heightScale * mHeightField->getHeightInternal(x * mOneOverRowScale, z * mOneOverColumnScale);
@@ -108,101 +112,35 @@ namespace Gu
 			return mHeightField->getNormal_(x * mOneOverRowScale, z * mOneOverColumnScale, mOneOverRowScale, mOneOverHeightScale, mOneOverColumnScale);
 		}
 
-		PxU32	getFaceIndexAtShapePoint(PxReal x, PxReal z) const;
+		PxU32	getTriangle(const PxTransform&, PxTriangle& worldTri, PxU32* vertexIndices, PxU32* adjacencyIndices, PxTriangleID triangleIndex, bool worldSpaceTranslation=true, bool worldSpaceRotation=true) const;
 
-		PxVec3	getVertexNormal(PxU32 vertexIndex, PxU32 row, PxU32 column) const;
-		PX_FORCE_INLINE PxVec3	getVertexNormal(PxU32 vertexIndex)	const
+		void	overlapAABBTriangles(const PxBounds3& localBounds, OverlapReport& callback, PxU32 batchSize=HF_OVERLAP_REPORT_BUFFER_SIZE) const;
+
+		PX_FORCE_INLINE	void	overlapAABBTriangles0to1(const PxTransform& pose0to1, const PxBounds3& bounds0, OverlapReport& callback, PxU32 batchSize=HF_OVERLAP_REPORT_BUFFER_SIZE) const
 		{
-			const PxU32 nbColumns = mHeightField->getData().columns;
-			const PxU32 row = vertexIndex / nbColumns;
-			const PxU32 column = vertexIndex % nbColumns;
-			return getVertexNormal(vertexIndex, row, column);
-		}
-
-		PxU32	getVertexFaceIndex(PxU32 vertexIndex, PxU32 row, PxU32 column) const;
-		void	getEdge(PxU32 edgeIndex, PxU32 cell, PxU32 row, PxU32 column, PxVec3& origin, PxVec3& extent) const;
-
-		PxU32	getEdgeFaceIndex(PxU32 edgeIndex) const;
-		PxU32	getEdgeFaceIndex(PxU32 edgeIndex, PxU32 cell, PxU32 row, PxU32 column) const;
-		PxU32	getEdgeFaceIndex(PxU32 edgeIndex, PxU32 count, const PxU32* PX_RESTRICT faceIndices) const;
-
-		enum Feature { eFACE, eEDGE, eVERTEX };
-		static PX_INLINE Feature	getFeatureType(PxU32 featureCode) { return Feature(featureCode >> 30); }
-		static PX_INLINE PxU32		getFeatureIndex(PxU32 featureCode) { return (featureCode & ~0xC0000000); }
-		static PX_INLINE PxU32		makeFeatureCode(PxU32 index, Feature type) { return (index | (PxU32(type) << 30)); }
-
-		// possible improvement: face index and edge index can be folded into one incremental feature index (along with vert index)
-		// such as, 0: vert index for cell, 1,2: edge indices, 3,4: face indices, then wrap around in multiples of 5 or 8
-		// all return arrays must have a size of 11 to accomodate the possible 11 contacts
-		// the feature index in featureIndices array is encoded as follows:
-		// the high 2 bits are 00 - face, 01 - edge, 10 - vertex, 11 - unused/hole
-		PxU32	findClosestPointsOnCell(
-			PxU32 row, PxU32 column, PxVec3 point,
-			PxVec3* PX_RESTRICT closestPoints, PxU32* PX_RESTRICT featureCodes,
-			bool testFaces, bool testEdges, bool skipEdgesIfFaceHits) const;
-
-		bool	findProjectionOnTriangle(PxU32 triangleIndex, PxU32 row, PxU32 column, const PxVec3& point, PxVec3& projection) const;
-
-		PxReal	findClosestPointOnEdge(PxU32 edgeIndex, PxU32 cell, PxU32 row, PxU32 column, const PxVec3& point, PxVec3& closestPoint) const;
-
-		PxU32	getTriangle(const PxTransform&, PxTriangle& worldTri,
-			PxU32* vertexIndices, PxU32* adjacencyIndices, PxTriangleID triangleIndex, bool worldSpaceTranslation=true, bool worldSpaceRotation=true) const;
-		bool	overlapAABBTriangles(const PxTransform&, const PxBounds3& bounds, PxU32 flags, EntityReport<PxU32>* callback) const;
-
-		// check's if vertex can be used for scene query - note it is not the same as collision vertex
-		// the difference here is because of the eNO_BOUNDARY_EDGES flag, which should not ignore boundary edges. 
-		// We don t have precomputed data for this case, we need to manually check these vertices if they are inside
-		// a hole or not - check if the vertex isSolid
-		PX_FORCE_INLINE bool isQueryVertex(PxU32 vertexIndex, PxU32 row, PxU32 column) const
-		{
-			// if noBoundaryEdges flag is on, we need to check the solid vertices manually for 
-			// vertices which are on the boundaries, as those data are not precomputed
-			if((mHeightField->getFlags() & PxHeightFieldFlag::eNO_BOUNDARY_EDGES) &&
-				(row == 0 || column == 0 || (row >= mHeightField->getNbRowsFast() - 1) || (column >= mHeightField->getNbColumnsFast() - 1)))
+			// PT: TODO: optimize PxBounds3::transformFast
+			//overlapAABBTriangles(PxBounds3::transformFast(pose0to1, bounds0), callback, batchSize);
 			{
-				// early exit if the material0 for the vertex is not a hole
-				if(mHeightField->getMaterialIndex0(vertexIndex) != PxHeightFieldMaterial::eHOLE)
-					return true;
-				bool nbSolid;
-				return mHeightField->isSolidVertex(vertexIndex, row, column, PxHeightFieldMaterial::eHOLE, nbSolid);
-			}
-			else
-			{
-				return mHeightField->isCollisionVertex(vertexIndex, row, column, PxHeightFieldMaterial::eHOLE);
+				// PT: below is the equivalent, slightly faster code. Still not optimal but better.
+				// PT: TODO: refactor with GuBounds.cpp
+
+				const PxMat33Padded basis(pose0to1.q);
+
+				// PT: TODO: pass c/e directly
+				const PxBounds3 b = PxBounds3::basisExtent(pose0to1.transform(bounds0.getCenter()), basis, bounds0.getExtents());
+
+				overlapAABBTriangles(b, callback, batchSize);
 			}
 		}
 
-		PX_FORCE_INLINE	PxVec3	computePointNormal(PxU32 meshFlags, const PxVec3& d, const PxTransform& transform, PxReal l_sqr, PxReal x, PxReal z, PxReal epsilon, PxReal& l)	const
+		PX_FORCE_INLINE	void	overlapAABBTriangles(const PxTransform& pose1, const PxBounds3& bounds0, OverlapReport& callback, PxU32 batchSize=HF_OVERLAP_REPORT_BUFFER_SIZE) const
 		{
-			PX_UNUSED(meshFlags);
-
-			PxVec3 n;
-			if(l_sqr > epsilon)
-			{
-				n = transform.rotate(d);
-				l = n.normalize();
-			}
-			else // l == 0
-			{
-				n = transform.rotate(getNormalAtShapePoint(x, z));
-				n = n.getNormalized();
-				l = PxSqrt(l_sqr);
-			}
-			return n;
+			overlapAABBTriangles0to1(pose1.getInverse(), bounds0, callback, batchSize);
 		}
 
-		PX_INLINE bool isShapePointOnHeightField(PxReal x, PxReal z) const
+		PX_FORCE_INLINE	void	overlapAABBTriangles(const PxTransform& pose0, const PxTransform& pose1, const PxBounds3& bounds0, OverlapReport& callback, PxU32 batchSize=HF_OVERLAP_REPORT_BUFFER_SIZE) const
 		{
-			x *= mOneOverRowScale;
-			z *= mOneOverColumnScale;
-/*			return ((!(x < 0))
-				&&  (!(z < 0))
-				&&  (x < (mHeightField.getNbRowsFast()-1)) 
-				&&  (z < (mHeightField.getNbColumnsFast()-1)));*/
-			return ((x >= 0.0f)
-				&&  (z >= 0.0f)
-				&&  (x < (mHeightField->getData().rowLimit+1.0f)) 
-				&&  (z < (mHeightField->getData().colLimit+1.0f)));
+			overlapAABBTriangles0to1(pose1.transformInv(pose0), bounds0, callback, batchSize);
 		}
 
 		PX_FORCE_INLINE	PxVec3 hf2shapen(const PxVec3& v) const
@@ -457,8 +395,6 @@ namespace Gu
 			// does height check and if succeeded adds to report
 			PX_INLINE bool testVertexIndex(const PxU32 vertexIndex)
 			{
-#define ISHOLE0 (mHf.getMaterialIndex0(vertexIndex) == PxHeightFieldMaterial::eHOLE)
-#define ISHOLE1 (mHf.getMaterialIndex1(vertexIndex) == PxHeightFieldMaterial::eHOLE)				
 				const PxReal h0 = mHf.getHeight(vertexIndex);
 				const PxReal h1 = mHf.getHeight(vertexIndex + 1);
 				const PxReal h2 = mHf.getHeight(vertexIndex + mNumColumns);
@@ -467,19 +403,17 @@ namespace Gu
 				if(!((mMaxY < h0 && mMaxY < h1 && mMaxY < h2 && mMaxY < h3) || (mMinY > h0 && mMinY > h1 && mMinY > h2 && mMinY > h3)))
 				{
 					// check if the triangle is not a hole
-					if(!ISHOLE0)
+					if(mHf.getMaterialIndex0(vertexIndex) != PxHeightFieldMaterial::eHOLE)
 					{
 						if(!addIndex(vertexIndex*2))
 							return false;
 					}
-					if(!ISHOLE1)
+					if(mHf.getMaterialIndex1(vertexIndex) != PxHeightFieldMaterial::eHOLE)
 					{
 						if(!addIndex(vertexIndex*2 + 1))
 							return false;
 					}
 				}
-#undef ISHOLE0
-#undef ISHOLE1
 				return true;
 			}
 
@@ -714,19 +648,19 @@ namespace Gu
 					// arrange h so that h00 corresponds to min(uif, uif+step_uif) h10 to max et c.
 					// this is only needed for backface culling to work so we know the proper winding order without branches
 					// uflip is 0 or 2, vflip is 0 or 1 (corresponding to positive and negative ui_step and vi_step)
-					PxF32 h00 = h[0+uflip+vflip];
-					PxF32 h01 = h[1+uflip-vflip];
-					PxF32 h10 = h[2-uflip+vflip];
-					PxF32 h11 = h[3-uflip-vflip];
+					const PxF32 h00 = h[0+uflip+vflip];
+					const PxF32 h01 = h[1+uflip-vflip];
+					const PxF32 h10 = h[2-uflip+vflip];
+					const PxF32 h11 = h[3-uflip-vflip];
 
-					PxF32 minuif = PxMin(uif, uif+step_uif);
-					PxF32 maxuif = PxMax(uif, uif+step_uif);
-					PxF32 minvif = PxMin(vif, vif+step_vif);
-					PxF32 maxvif = PxMax(vif, vif+step_vif);
-					PxVec3 p00(minuif, h00, minvif);
-					PxVec3 p01(minuif, h01, maxvif);
-					PxVec3 p10(maxuif, h10, minvif);
-					PxVec3 p11(maxuif, h11, maxvif);
+					const PxF32 minuif = PxMin(uif, uif+step_uif);
+					const PxF32 maxuif = PxMax(uif, uif+step_uif);
+					const PxF32 minvif = PxMin(vif, vif+step_vif);
+					const PxF32 maxvif = PxMax(vif, vif+step_vif);
+					const PxVec3 p00(minuif, h00, minvif);
+					const PxVec3 p01(minuif, h01, maxvif);
+					const PxVec3 p10(maxuif, h10, minvif);
+					const PxVec3 p11(maxuif, h11, maxvif);
 
 					const PxF32 enlargeEpsilon = 0.0001f;
 					const PxVec3* p00a = &p00, *p01a = &p01, *p10a = &p10, *p11a = &p11;
@@ -751,22 +685,23 @@ namespace Gu
 					// if zeroth vertex is not shared, the 00 index is the corner of 0-index triangle
 					if(!useUnderFaceCallback)
 					{
-						#define ISHOLE0 (hf.getMaterialIndex0(vertIndex) == PxHeightFieldMaterial::eHOLE)
-						#define ISHOLE1 (hf.getMaterialIndex1(vertIndex) == PxHeightFieldMaterial::eHOLE)
 						PxReal triT0 = PX_MAX_REAL, triT1 = PX_MAX_REAL;
 						bool hit0 = false, hit1 = false;
 						PxF32 triU0, triV0, triU1, triV1;
-						if(Gu::intersectRayTriangle(auhP0, duhvNormalized, *p10a, *p00a, *p11a, triT0, triU0, triV0, backfaceCull, enlargeEpsilon) &&
-							triT0 >= 0.0f && triT0 <= duhvLength && !ISHOLE0)
+
+						// PT: TODO: consider testing hole first and skipping ray-tri test. Might be faster.
+						if(Gu::intersectRayTriangle(auhP0, duhvNormalized, *p10a, *p00a, *p11a, triT0, triU0, triV0, backfaceCull, enlargeEpsilon) && triT0 >= 0.0f && triT0 <= duhvLength && (hf.getMaterialIndex0(vertIndex) != PxHeightFieldMaterial::eHOLE))
 						{
 							hit0 = true;
-						} else
+						}
+						else
 							triT0 = PX_MAX_REAL;
-						if(Gu::intersectRayTriangle(auhP0, duhvNormalized, *p01a, *p11a, *p00a, triT1, triU1, triV1, backfaceCull, enlargeEpsilon)
-							&& triT1 >= 0.0f && triT1 <= duhvLength && !ISHOLE1)
+
+						if(Gu::intersectRayTriangle(auhP0, duhvNormalized, *p01a, *p11a, *p00a, triT1, triU1, triV1, backfaceCull, enlargeEpsilon) && triT1 >= 0.0f && triT1 <= duhvLength && (hf.getMaterialIndex1(vertIndex) != PxHeightFieldMaterial::eHOLE))
 						{
 							hit1 = true;
-						} else
+						}
+						else
 							triT1 = PX_MAX_REAL;
 
 						if(hit0 && triT0 <= triT1)
@@ -793,17 +728,15 @@ namespace Gu
 									return;
 							}
 						}
-						#undef ISHOLE0
-						#undef ISHOLE1
 					}
 					else
 					{
 						// TODO: quite a few optimizations are possible here. edges can be shared, intersectRayTriangle inlined etc
 						// Go to shape space. Height is already in shape space so we only scale x and z
-						PxVec3 p00s(p00a->x * rowScale, p00a->y, p00a->z * columnScale);
-						PxVec3 p01s(p01a->x * rowScale, p01a->y, p01a->z * columnScale);
-						PxVec3 p10s(p10a->x * rowScale, p10a->y, p10a->z * columnScale);
-						PxVec3 p11s(p11a->x * rowScale, p11a->y, p11a->z * columnScale);
+						const PxVec3 p00s(p00a->x * rowScale, p00a->y, p00a->z * columnScale);
+						const PxVec3 p01s(p01a->x * rowScale, p01a->y, p01a->z * columnScale);
+						const PxVec3 p10s(p10a->x * rowScale, p10a->y, p10a->z * columnScale);
+						const PxVec3 p11s(p11a->x * rowScale, p11a->y, p11a->z * columnScale);
 
 						PxVec3 triNormals[2] = { (p00s - p10s).cross(p11s - p10s), (p11s - p01s).cross(p00s-p01s) };
 						triNormals[0] *= PxRecipSqrt(triNormals[0].magnitudeSquared());
@@ -813,31 +746,31 @@ namespace Gu
 
 						// at this point we need to compute the edge direction that we crossed
 						// also since we don't DDA the w we need to find u,v for w-intercept (w refers to diagonal adjusted with isZVS)
-						PxF32 wnu = isZVS ? -1.0f : 1.0f, wnv = 1.0f; // uv-normal to triangle edge that splits the cell
-						PxF32 wpu = uif + 0.5f * step_uif, wpv = vif + 0.5f * step_vif; // a point on triangle edge that splits the cell
+						const PxF32 wnu = isZVS ? -1.0f : 1.0f, wnv = 1.0f; // uv-normal to triangle edge that splits the cell
+						const PxF32 wpu = uif + 0.5f * step_uif, wpv = vif + 0.5f * step_vif; // a point on triangle edge that splits the cell
 						// note that (wpu, wpv) is on both edges (for isZVS and non-ZVS cases) which is nice
 
 						// we clamp tNext to 1 because we still want to issue callbacks even if we stay in one cell
 						// note that tNext can potentially be arbitrarily large for a segment contained within a cell
-						PxF32 tNext = PxMin(PxMin(tu, tv), 1.0f), tPrev = PxMax(last_tu, last_tv);
+						const PxF32 tNext = PxMin(PxMin(tu, tv), 1.0f), tPrev = PxMax(last_tu, last_tv);
 
 						// compute uvs corresponding to tPrev, tNext
-						PxF32 unext = u0 + tNext*du, vnext = v0 + tNext*dv;
-						PxF32 uprev = u0 + tPrev*du, vprev = v0 + tPrev*dv;
+						const PxF32 unext = u0 + tNext*du, vnext = v0 + tNext*dv;
+						const PxF32 uprev = u0 + tPrev*du, vprev = v0 + tPrev*dv;
 
 						const PxReal& h00_ = h[0], &h01_ = h[1], &h10_ = h[2]/*, h11_ = h[3]*/; // aliases for step-oriented h
 
 						// (wpu, wpv) is a point on the diagonal
 						// we compute a dot of ((unext, vnext) - (wpu, wpv), wn) to see on which side of triangle edge we are
 						// if the dot is positive we need to add 1 to triangle index
-						PxU32 dotPrevGtz = PxU32(((uprev - wpu) * wnu + (vprev - wpv) * wnv) > 0);
-						PxU32 dotNextGtz = PxU32(((unext - wpu) * wnu + (vnext - wpv) * wnv) > 0);
-						PxU32 triIndex0 = cellIndex*2 + dotPrevGtz;
-						PxU32 triIndex1 = cellIndex*2 + dotNextGtz;
+						const PxU32 dotPrevGtz = PxU32(((uprev - wpu) * wnu + (vprev - wpv) * wnv) > 0);
+						const PxU32 dotNextGtz = PxU32(((unext - wpu) * wnu + (vnext - wpv) * wnv) > 0);
+						const PxU32 triIndex0 = cellIndex*2 + dotPrevGtz;
+						const PxU32 triIndex1 = cellIndex*2 + dotNextGtz;
 						PxU32 isHole0 = PxU32(hf.getMaterialIndex0(vertIndex) == PxHeightFieldMaterial::eHOLE);
 						PxU32 isHole1 = PxU32(hf.getMaterialIndex1(vertIndex) == PxHeightFieldMaterial::eHOLE);
 						if(triIndex0 > triIndex1)
-							shdfnd::swap<PxU32>(isHole0, isHole1);
+							PxSwap<PxU32>(isHole0, isHole1);
 
 						// TODO: compute height at u,v inside here, change callback param to PxVec3
 						PxVec3 crossedEdge;

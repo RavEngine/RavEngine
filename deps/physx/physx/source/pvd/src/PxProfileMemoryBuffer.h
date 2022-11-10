@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef PX_PROFILE_MEMORY_BUFFER_H
+#define PX_PROFILE_MEMORY_BUFFER_H
 
-#ifndef PXPVDSDK_PXPROFILEMEMORYBUFFER_H
-#define PXPVDSDK_PXPROFILEMEMORYBUFFER_H
-
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
 #include "foundation/PxMemory.h"
 
 namespace physx { namespace profile {
 
-	template<typename TAllocator = typename shdfnd::AllocatorTraits<uint8_t>::Type >
+	template<typename TAllocator = typename PxAllocatorTraits<uint8_t>::Type >
 	class MemoryBuffer : public TAllocator
 	{
 		uint8_t* mBegin;
@@ -189,4 +187,4 @@ namespace physx { namespace profile {
 
 }}
 
-#endif // PXPVDSDK_PXPROFILEMEMORYBUFFER_H
+#endif

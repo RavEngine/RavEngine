@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "ScScene.h"
 #include "ScConstraintProjectionManager.h"
 #include "ScBodySim.h"
 #include "ScStaticSim.h"
-#include "PxsContext.h"
 #include "ScConstraintCore.h"
 #include "ScConstraintSim.h"
 #include "ScConstraintInteraction.h"
 #include "ScElementSimInteraction.h"
 #include "CmVisualization.h"
-#include "ScObjectIDTracker.h"
 #include "DyContext.h"
 
 using namespace physx;
@@ -63,7 +59,7 @@ Sc::ConstraintSim::ConstraintSim(ConstraintCore& core, RigidCore* r0, RigidCore*
 	mBodies[1] = (r1 && (r1->getActorCoreType() != PxActorType::eRIGID_STATIC)) ? static_cast<BodySim*>(r1->getSim()) : 0;
 	
 	mLowLevelConstraint.index = scene.getConstraintIDTracker().createID();
-	Ps::Array<Dy::ConstraintWriteback, Ps::VirtualAllocator>& writeBackPool = scene.getDynamicsContext()->getConstraintWriteBackPool();
+	PxPinnedArray<Dy::ConstraintWriteback>& writeBackPool = scene.getDynamicsContext()->getConstraintWriteBackPool();
 	if (mLowLevelConstraint.index >= writeBackPool.capacity())
 	{
 		writeBackPool.reserve(writeBackPool.capacity() * 2);
@@ -124,7 +120,7 @@ bool Sc::ConstraintSim::createLLConstraint()
 	void* constantBlock = mScene.allocateConstraintBlock(constantBlockSize);
 	if(!constantBlock)
 	{
-		Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Constraint: could not allocate low-level resources.");
+		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Constraint: could not allocate low-level resources.");
 		return false;
 	}
 
@@ -162,24 +158,19 @@ void Sc::ConstraintSim::destroyLLConstraint()
 	}
 }
 
-void Sc::ConstraintSim::preBodiesChange()
+void Sc::ConstraintSim::setBodies(RigidCore* r0, RigidCore* r1)
 {
 	PX_ASSERT(mInteraction);
 
 	BodySim* b = getConstraintGroupBody();
-	if (b)
+	if(b)
 		mScene.getProjectionManager().invalidateGroup(*b->getConstraintGroup(), this);
 
-	if (!isBroken())
+	if(!isBroken())
 		mInteraction->destroy();
 
 	mScene.getConstraintInteractionPool()->destroy(mInteraction);
 	mInteraction = NULL;
-}
-
-void Sc::ConstraintSim::postBodiesChange(RigidCore* r0, RigidCore* r1)
-{
-	PX_ASSERT(mInteraction == NULL);
 
 	BodySim* b0 = (r0 && (r0->getActorCoreType() != PxActorType::eRIGID_STATIC)) ? static_cast<BodySim*>(r0->getSim()) : 0;
 	BodySim* b1 = (r1 && (r1->getActorCoreType() != PxActorType::eRIGID_STATIC)) ? static_cast<BodySim*>(r1->getSim()) : 0;
@@ -381,7 +372,7 @@ static void constrainMotion(PxsRigidBody* body, PxTransform& targetPose)
 
 			const PxReal v = w * 0.5f;
 			PxReal s, q;
-			Ps::sincos(v, s, q);
+			PxSinCos(v, s, q);
 			s /= w;
 
 			const PxVec3 pqr = deltaRot * s;
@@ -399,7 +390,7 @@ static void constrainMotion(PxsRigidBody* body, PxTransform& targetPose)
 	}
 }
 
-void Sc::ConstraintSim::projectPose(BodySim* childBody, Ps::Array<BodySim*>& projectedBodies)
+void Sc::ConstraintSim::projectPose(BodySim* childBody, PxArray<BodySim*>& projectedBodies)
 {
 #if PX_DEBUG
 	// We expect bodies in low level constraints to have same order as high level counterpart
@@ -470,7 +461,7 @@ void Sc::ConstraintSim::visualize(PxRenderBuffer& output)
 	const PxReal frameScale = mScene.getVisualizationScale() * mScene.getVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES);
 	const PxReal limitScale = mScene.getVisualizationScale() * mScene.getVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS);
 
-	Cm::RenderOutput renderOut(static_cast<Cm::RenderBuffer &>(output));
+	PxRenderOutput renderOut(output);
 	Cm::ConstraintImmediateVisualizer viz(frameScale, limitScale, renderOut);
 
 	PxU32 flags = 0;
@@ -482,9 +473,3 @@ void Sc::ConstraintSim::visualize(PxRenderBuffer& output)
 	mCore.getVisualize()(viz, mLowLevelConstraint.constantBlock, t0, t1, flags);
 }
 
-void Sc::ConstraintSim::setConstantsLL(void* addr)
-{
-	PxMemCopy(mLowLevelConstraint.constantBlock, addr, mLowLevelConstraint.constantBlockSize);
-
-	getAnyBody()->getScene().getSimulationController()->updateJoint(mInteraction->getEdgeIndex(), &mLowLevelConstraint);
-}

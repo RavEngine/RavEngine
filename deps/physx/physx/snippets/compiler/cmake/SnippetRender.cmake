@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build SnippetRender common
@@ -33,27 +32,31 @@
 include(${PHYSX_ROOT_DIR}/snippets/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/SnippetRender.cmake)
 
 SET(SNIPPETRENDER_FILES
+	${PHYSX_ROOT_DIR}/snippets/graphics/src/glew.c
 	${PHYSX_ROOT_DIR}/snippets/snippetrender/SnippetCamera.cpp
 	${PHYSX_ROOT_DIR}/snippets/snippetrender/SnippetCamera.h
+	${PHYSX_ROOT_DIR}/snippets/snippetrender/SnippetFontData.h
+	${PHYSX_ROOT_DIR}/snippets/snippetrender/SnippetFontRenderer.h
+	${PHYSX_ROOT_DIR}/snippets/snippetrender/SnippetFontRenderer.cpp
 	${PHYSX_ROOT_DIR}/snippets/snippetrender/SnippetRender.cpp
 	${PHYSX_ROOT_DIR}/snippets/snippetrender/SnippetRender.h
 )
 
 ADD_LIBRARY(SnippetRender STATIC
 	${SNIPPETRENDER_FILES}
-	
 	${SNIPPETRENDER_PLATFORM_FILES}
 )
 
+#TODO remove all GL dependencies in SnippetRender.h interface would be nice to get rid of the PUBLIC headers
 TARGET_INCLUDE_DIRECTORIES(SnippetRender
 	PRIVATE ${PHYSX_ROOT_DIR}/include
+	PUBLIC ${PHYSX_ROOT_DIR}/snippets/graphics/include
 	PUBLIC ${SNIPPETRENDER_PLATFORM_INCLUDES}
 )
 
 TARGET_COMPILE_DEFINITIONS(SnippetRender 
 	PRIVATE ${SNIPPETRENDER_COMPILE_DEFS}
 )
-
 
 IF(NV_USE_GAMEWORKS_OUTPUT_DIRS)
 	SET_TARGET_PROPERTIES(SnippetRender PROPERTIES 

@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,11 +22,19 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build SnippetRender
 #
+
+IF(NOT PUBLIC_RELEASE)
+	FIND_PACKAGE(CUDA $ENV{PM_CUDA_Version} REQUIRED)
+ENDIF()
+
+IF(NOT FREEGLUT_PATH)
+	SET(FREEGLUT_PATH $ENV{PM_freeglut_PATH} CACHE INTERNAL "Freeglut package path")
+ENDIF()
 
 SET(SNIPPETRENDER_COMPILE_DEFS
 	# Common to all configurations
@@ -40,13 +47,14 @@ SET(SNIPPETRENDER_COMPILE_DEFS
 	$<$<CONFIG:release>:${PHYSX_WINDOWS_RELEASE_COMPILE_DEFS};>
 )
 
-SET(SNIPPETRENDER_PLATFORM_FILES
-	${PHYSX_ROOT_DIR}/snippets/graphics/include/win32/GL/glut.h 
-)
+SET(SNIPPETRENDER_PLATFORM_FILES ${FREEGLUT_PATH}/include/GL/freeglut.h)
 
 # Include OpenGL
-SET(SNIPPETRENDER_PLATFORM_INCLUDES
-	${PHYSX_ROOT_DIR}/snippets/Graphics/include/win32/GL
-)
+SET(SNIPPETRENDER_PLATFORM_INCLUDES ${FREEGLUT_PATH}/include)
+SET(SNIPPETRENDER_PLATFORM_LINKED_LIBS opengl32.lib glu32.lib)
 
-SET(SNIPPETRENDER_PLATFORM_LINKED_LIBS ${PHYSX_ROOT_DIR}/snippets/Graphics/lib/win${LIBPATH_SUFFIX}/glut/glut32.lib opengl32.lib glu32.lib)
+IF(NOT PUBLIC_RELEASE)
+	LIST(APPEND SNIPPETRENDER_PLATFORM_INCLUDES ${CUDA_INCLUDE_DIRS})
+	LIST(APPEND SNIPPETRENDER_PLATFORM_LINKED_LIBS ${CUDA_CUDA_LIBRARY})
+ENDIF()
+

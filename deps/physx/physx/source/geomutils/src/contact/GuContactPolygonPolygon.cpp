@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxMemory.h"
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuContactPolygonPolygon.h"
 #include "GuShapeConvex.h"
-#include "PsMathUtils.h"
-#include "PsAllocator.h"
-#include "PsFPU.h"
+#include "GuInternal.h"
+#include "foundation/PxAlloca.h"
+#include "foundation/PxFPU.h"
 
 using namespace physx;
 using namespace Gu;
@@ -42,10 +41,10 @@ using namespace Gu;
 #define CONTACT_REDUCTION
 
 /*
-void gVisualizeLocalLine(const PxVec3& a, const PxVec3& b, const Cm::Matrix34& m, PxsContactManager& manager)	//temp debug
+void gVisualizeLocalLine(const PxVec3& a, const PxVec3& b, const PxMat34& m, PxsContactManager& manager)	//temp debug
 {
-	Cm::RenderOutput out = manager.getContext()->getRenderOutput();
-	out << 0xffffff << m << Cm::RenderOutput::LINES << a << b;
+	RenderOutput out = manager.getContext()->getRenderOutput();
+	out << 0xffffff << m << RenderOutput::LINES << a << b;
 }
 */
 
@@ -55,7 +54,7 @@ static PX_FORCE_INLINE PxReal dot2D(const PxVec3& v0, const PxVec3& v1)
 	return v0.x * v1.x + v0.y * v1.y;
 }
 
-static void ContactReductionAllIn(	ContactBuffer& contactBuffer, PxU32 nbExistingContacts, PxU32 numIn,
+static void ContactReductionAllIn(	PxContactBuffer& contactBuffer, PxU32 nbExistingContacts, PxU32 numIn,
 									const PxMat33& rotT,
 									const PxVec3* PX_RESTRICT vertices, const PxU8* PX_RESTRICT indices)
 {
@@ -72,7 +71,7 @@ static void ContactReductionAllIn(	ContactBuffer& contactBuffer, PxU32 nbExistin
 	// The fast path can only be chosen when the contact buffer contains all the verts from current polygon,
 	// i.e. when contactBuffer.count == numIn == numVerts
 
-	Gu::ContactPoint* PX_RESTRICT ctcs = contactBuffer.contacts + nbExistingContacts;
+	PxContactPoint* PX_RESTRICT ctcs = contactBuffer.contacts + nbExistingContacts;
 
 	if(numIn == nbNewContacts)
 	{
@@ -134,7 +133,7 @@ static void ContactReductionAllIn(	ContactBuffer& contactBuffer, PxU32 nbExistin
 		const PxU32 nbAxes = 8;
 		PxVec3 dirs[nbAxes];
 		float angle = 0.0f;
-		const float angleStep = Ps::degToRad(180.0f/float(nbAxes));
+		const float angleStep = PxDegToRad(180.0f/float(nbAxes));
 		for(PxU32 i=0;i<nbAxes;i++)
 		{
 			dirs[i] = PxVec3(cosf(angle), sinf(angle), 0.0f);
@@ -261,7 +260,7 @@ static void ContactReductionAllIn(	ContactBuffer& contactBuffer, PxU32 nbExistin
 		// PT: please keep the normal case first for PS3 branch prediction
 
 		// Normal case, to and from are not parallel or anti-parallel
-		const PxVec3 v = Ps::cross001(to);
+		const PxVec3 v = cross001(to);
 		const PxReal h = 1.0f/(1.0f + e); /* optimization by Gottfried Chen */
 		const PxReal hvx = h * v.x;
 		const PxReal hvz = h * v.z;
@@ -324,13 +323,13 @@ static void ContactReductionAllIn(	ContactBuffer& contactBuffer, PxU32 nbExistin
 }
 
 // PT: using this specialized version avoids doing an explicit transpose, which reduces LHS
-PX_FORCE_INLINE Cm::Matrix34 transformTranspose(const PxMat33& a, const Cm::Matrix34& b)
+PX_FORCE_INLINE PxMat34 transformTranspose(const PxMat33& a, const PxMat34& b)
 {
-	return Cm::Matrix34(a.transformTranspose(b.m.column0), a.transformTranspose(b.m.column1), a.transformTranspose(b.m.column2), a.transformTranspose(b.p));
+	return PxMat34(a.transformTranspose(b.m.column0), a.transformTranspose(b.m.column1), a.transformTranspose(b.m.column2), a.transformTranspose(b.p));
 }
 
 // Helper function to transform x/y coordinate of point. 
-PX_FORCE_INLINE void transform2D(float& x, float& y, const PxVec3& src, const Cm::Matrix34& mat)
+PX_FORCE_INLINE void transform2D(float& x, float& y, const PxVec3& src, const PxMat34& mat)
 {
 	x = src.x * mat.m.column0.x + src.y * mat.m.column1.x + src.z * mat.m.column2.x + mat.p.x;
 	y = src.x * mat.m.column0.y + src.y * mat.m.column1.y + src.z * mat.m.column2.y + mat.p.y;
@@ -344,7 +343,7 @@ PX_FORCE_INLINE void transform2DT(float& x, float& y, const PxVec3& src, const P
 }
 
 // Helper function to transform z coordinate of point.
-PX_FORCE_INLINE PxReal transformZ(const PxVec3& src, const Cm::Matrix34& mat)
+PX_FORCE_INLINE PxReal transformZ(const PxVec3& src, const PxMat34& mat)
 {
 	return src.x * mat.m.column0.z + src.y * mat.m.column1.z + src.z * mat.m.column2.z + mat.p.z;
 }
@@ -554,17 +553,17 @@ PX_FORCE_INLINE bool EdgeEdgeContactSpecial(const PxVec3& v1, const PxPlane& pla
 
 //This one can also handle 2 vertex 'polygons' (useful for capsule surface segments) and can shift the results before contact generation.
 bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, const PxU8* indices0,	//polygon 0
-									const Cm::Matrix34& world0, const PxPlane& localPlane0,	//xform of polygon 0, plane of polygon
+									const PxMat34& world0, const PxPlane& localPlane0,	//xform of polygon 0, plane of polygon
 									const PxMat33& rotT0,
 									//
 									PxU32 numVerts1, const PxVec3* PX_RESTRICT vertices1, const PxU8* PX_RESTRICT indices1,	//polygon 1
-									const Cm::Matrix34& world1, const PxPlane& localPlane1,	//xform of polygon 1, plane of polygon
+									const PxMat34& world1, const PxPlane& localPlane1,	//xform of polygon 1, plane of polygon
 									const PxMat33& rotT1,
 								//
 									const PxVec3& worldSepAxis,	//world normal of separating plane - this is the world space normal of polygon0!!
-									const Cm::Matrix34& transform0to1, const Cm::Matrix34& transform1to0,	//transforms between polygons
+									const PxMat34& transform0to1, const PxMat34& transform1to0,	//transforms between polygons
 									PxU32 /*polyIndex0*/, PxU32 polyIndex1,	//feature indices for contact callback
-									ContactBuffer& contactBuffer,
+									PxContactBuffer& contactBuffer,
 									bool flipNormal, const PxVec3& posShift, PxReal sepShift)	// shape order, result shift
 {
 	const PxVec3 n = flipNormal ? -worldSepAxis : worldSepAxis;
@@ -586,20 +585,20 @@ bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, con
 	const PxU32 size0 = numVerts0 * sizeof(bool);
 	bool* PX_RESTRICT flags0 = reinterpret_cast<bool*>(PxAlloca(size0));
 	PxU8* PX_RESTRICT outCodes0 = reinterpret_cast<PxU8*>(PxAlloca(size0));
-//	Ps::memZero(flags0, size0);
-//	Ps::memZero(outCodes0, size0);
+//	PxMemZero(flags0, size0);
+//	PxMemZero(outCodes0, size0);
 
 	const PxU32 size1 = numVerts1 * sizeof(bool);
 	bool* PX_RESTRICT flags1 = reinterpret_cast<bool*>(PxAlloca(size1));
 	PxU8* PX_RESTRICT outCodes1 = reinterpret_cast<PxU8*>(PxAlloca(size1));
-//	Ps::memZero(flags1, size1);
-//	Ps::memZero(outCodes1, size1);
+//	PxMemZero(flags1, size1);
+//	PxMemZero(outCodes1, size1);
 
 #ifdef CONTACT_REDUCTION
 	// We want to do contact reduction on newly created contacts, not on all the already existing ones...
 	PxU32 nbExistingContacts = contactBuffer.count;
 	PxU32 nbCurrentContacts=0;
-	PxU8 indices[ContactBuffer::MAX_CONTACTS];
+	PxU8 indices[PxContactBuffer::MAX_CONTACTS];
 #endif
 
 	{
@@ -610,7 +609,7 @@ bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, con
 
 		const PxVec3 localDir = -world1.rotateTranspose(worldSepAxis);		//contactNormal in hull1 space
 																		//that's redundant, its equal to -localPlane1.d
-		const Cm::Matrix34 t0to2D = transformTranspose(rotT1, transform0to1);	//transform from hull0 to RotT
+		const PxMat34 t0to2D = transformTranspose(rotT1, transform0to1);	//transform from hull0 to RotT
 
 		PxReal dn = localDir.dot(localPlane1.n);					//if the contactNormal == +-(normal of poly0) is NOT orthogonal to poly1 ...this is just to protect the division below.
 
@@ -659,7 +658,7 @@ bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, con
 						{
 							status = true;	// PT: keep this first to avoid an LHS when leaving the function
 
-							Gu::ContactPoint* PX_RESTRICT ctc = contactBuffer.contact();
+							PxContactPoint* PX_RESTRICT ctc = contactBuffer.contact();
 							if(ctc)
 							{
 #ifdef CONTACT_REDUCTION
@@ -702,7 +701,7 @@ bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, con
 		verts2D = NULL;
 
 		//Polygon 0
-		const Cm::Matrix34 t1to2D = transformTranspose(rotT0, transform1to0);
+		const PxMat34 t1to2D = transformTranspose(rotT0, transform1to0);
 
 		if (numVerts0 > 2)											//no need to test whether we're 'inside' ignore capsule segments and points
 		{
@@ -744,7 +743,7 @@ bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, con
 					// a depth-based engine, this is not the case. So the contact point here is not exactly
 					// right, but preserving the friction patch seems more important.
 
-					Gu::ContactPoint* PX_RESTRICT ctc = contactBuffer.contact();
+					PxContactPoint* PX_RESTRICT ctc = contactBuffer.contact();
 					if(ctc)
 					{
 #ifdef CONTACT_REDUCTION
@@ -810,7 +809,7 @@ bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, con
 
 		// find largest 2D plane projection
 		PxU32 _i, _j;
-		Ps::closestAxis(planeNormal, _i, _j);
+		closestAxis(planeNormal, _i, _j);
 
 		const PxReal coeff = 1.0f / (v1[_i]*localPlane0.n[_j]-v1[_j]*localPlane0.n[_i]);
 
@@ -847,7 +846,7 @@ bool Gu::contactPolygonPolygonExt(	PxU32 numVerts0, const PxVec3* vertices0, con
 
 				contactBuffer.contact(p, n, -dist + sepShift, polyIndex0, polyIndex1, convexID);*/
 
-				Gu::ContactPoint* PX_RESTRICT ctc = contactBuffer.contact();
+				PxContactPoint* PX_RESTRICT ctc = contactBuffer.contact();
 				if(ctc)
 				{
 					ctc->normal				= n;

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-#ifndef PX_SIMPLEXMLWRITER_H
-#define PX_SIMPLEXMLWRITER_H
 
-#include "PsArray.h"
+#ifndef SN_SIMPLE_XML_WRITER_H
+#define SN_SIMPLE_XML_WRITER_H
+
+#include "foundation/PxArray.h"
 #include "SnXmlMemoryPoolStreams.h"
-#include "CmPhysXCommon.h"
 
 namespace physx { namespace Sn {
 	class SimpleXmlWriter
@@ -170,7 +169,7 @@ namespace physx { namespace Sn {
 						if (IsNormalizableWhitespace(*inContent))
 						{
 							char s[32];
-							Ps::snprintf(s, 32, "&#x%02X;", unsigned(*inContent));
+							Pxsnprintf(s, 32, "&#x%02X;", unsigned(*inContent));
 							mStream << s;
 						}
 						else

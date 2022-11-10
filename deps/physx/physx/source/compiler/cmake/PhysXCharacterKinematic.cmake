@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXCharacterKinematic common
@@ -85,20 +84,9 @@ TARGET_INCLUDE_DIRECTORIES(PhysXCharacterKinematic
 
 	PRIVATE ${PHYSX_ROOT_DIR}/include
 	
-	PRIVATE ${PHYSX_SOURCE_DIR}/common/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/common/src
 	
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/include
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/contact
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/common
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/convex
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/distance
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/gjk
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/intersection
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/mesh
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/hf
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/pcm
 )
 
 TARGET_COMPILE_DEFINITIONS(PhysXCharacterKinematic 

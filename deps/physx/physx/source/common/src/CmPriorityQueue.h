@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef CM_PRIORITY_QUEUE_H
+#define CM_PRIORITY_QUEUE_H
 
-#ifndef PX_PHYSICS_COMMON_PRIORITYQUEUE
-#define PX_PHYSICS_COMMON_PRIORITYQUEUE
-
-#include "PsBasicTemplates.h"
-#include "CmPhysXCommon.h"
-#include "PsAllocator.h"
+#include "foundation/PxBasicTemplates.h"
+#include "foundation/PxAllocator.h"
 #include "foundation/PxMemory.h"
 
 namespace physx
 {
 namespace Cm
 {
-	template<class Element, class Comparator = Ps::Less<Element> >
+	template<class Element, class Comparator = PxLess<Element> >
 	class PriorityQueueBase : protected Comparator // inherit so that stateless comparators take no space
 	{
 	public:
@@ -180,7 +177,7 @@ namespace Cm
 		InlinePriorityQueue<Element, Capacity, Comparator>& operator = (const InlinePriorityQueue<Element, Capacity, Comparator>);
 	};
 
-	template <typename Element, typename Comparator, typename Alloc = typename physx::shdfnd::AllocatorTraits<Element>::Type>
+	template <typename Element, typename Comparator, typename Alloc = typename physx::PxAllocatorTraits<Element>::Type>
 	class PriorityQueue : public PriorityQueueBase<Element, Comparator>, protected Alloc
 	{
 		PxU32 mCapacity;

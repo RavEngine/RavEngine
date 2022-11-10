@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#include "PsIntrinsics.h"
+#include "foundation/PxIntrinsics.h"
 #include "GuBoxConversion.h"
-#include "GuCapsule.h"
 #include "GuInternal.h"
-#include "CmMatrix34.h"
-#include "PsMathUtils.h"
 
 using namespace physx;
 
@@ -48,7 +43,7 @@ void Gu::Box::create(const Gu::Capsule& capsule)
 	if(d!=0.0f)
 	{
 		rot.column0 = dir / d;
-		Ps::computeBasis(rot.column0, rot.column1, rot.column2);
+		PxComputeBasisVectors(rot.column0, rot.column1, rot.column2);
 	}
 	else
 		rot = PxMat33(PxIdentity);

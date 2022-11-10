@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,10 +33,9 @@
 
 namespace physx
 {
-class GuMeshFactory;
-
 namespace Gu
 {
+class MeshFactory;
 
 #if PX_VC
 #pragma warning(push)
@@ -55,10 +53,17 @@ class BV4TriangleMesh : public TriangleMesh
 	PX_PHYSX_COMMON_API	static	TriangleMesh*			createObject(PxU8*& address, PxDeserializationContext& context);
 	PX_PHYSX_COMMON_API	static	void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
-														BV4TriangleMesh(GuMeshFactory& factory, TriangleMeshData& data);
+														BV4TriangleMesh(MeshFactory* factory, TriangleMeshData& data);
 						virtual							~BV4TriangleMesh(){}
 
 						virtual	PxMeshMidPhase::Enum	getMidphaseID()			const	{ return PxMeshMidPhase::eBVH34;	}
+
+						virtual PxVec3*					getVerticesForModification();
+						virtual PxBounds3				refitBVH();
+
+	PX_PHYSX_COMMON_API									BV4TriangleMesh(const PxTriangleMeshInternalData& data);
+						virtual	bool					getInternalData(PxTriangleMeshInternalData&, bool)	const;
+
 	PX_FORCE_INLINE				const Gu::BV4Tree&		getBV4Tree()			const	{ return mBV4Tree;				}
 	private:
 								Gu::SourceMesh			mMeshInterface;

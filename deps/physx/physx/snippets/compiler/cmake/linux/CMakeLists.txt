@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 IF(NOT DEFINED PHYSX_LINUX_COMPILE_DEFS)
 	MESSAGE(FATAL ERROR "Snippets uses the PhysX compile defs, and they're not defined when they need to be.")
@@ -53,9 +52,4 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath='$ORIGIN'")
 # Include all of the projects
 SET(PLATFORM_SNIPPETS_LIST Convert LoadCollection)
 
-IF(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-	SET(SNIPPET_RENDER_ENABLED 0)
-ELSE()
-	SET(SNIPPET_RENDER_ENABLED 1)
-	LIST(APPEND PLATFORM_SNIPPETS_LIST HelloGRB)
-ENDIF()
+SET(SNIPPET_RENDER_ENABLED 1)

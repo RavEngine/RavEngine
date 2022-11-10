@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifdef RENDER_SNIPPET
 
 #include <vector>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetrender/SnippetRender.h"
 #include "../snippetrender/SnippetCamera.h"
 
@@ -46,37 +43,13 @@ extern PxScene* gScene;
 
 namespace
 {
-Snippets::Camera*	sCamera;
-
-void motionCallback(int x, int y)
-{
-	sCamera->handleMotion(x, y);
-}
-
-void keyboardCallback(unsigned char key, int x, int y)
-{
-	if(key==27)
-		exit(0);
-
-	if(!sCamera->handleKey(key, x, y))
-		keyPress(key, sCamera->getTransform());
-}
-
-void mouseCallback(int button, int state, int x, int y)
-{
-	sCamera->handleMouse(button, state, x, y);
-}
-
-void idleCallback()
-{
-	glutPostRedisplay();
-}
+Snippets::Camera* sCamera;
 
 void renderCallback()
 {
 	stepPhysics(true);
 
-	Snippets::startRender(sCamera->getEye(), sCamera->getDir());
+	Snippets::startRender(sCamera);
 
 	if (gScene)
 	{
@@ -104,17 +77,7 @@ void renderLoop()
 {
 	sCamera = new Snippets::Camera(PxVec3(50.0f, 50.0f, 50.0f), PxVec3(-0.6f,-0.2f,-0.7f));
 
-	Snippets::setupDefaultWindow("PhysX Snippet Delay Load Hook");
-	Snippets::setupDefaultRenderState();
-
-	glutIdleFunc(idleCallback);
-	glutDisplayFunc(renderCallback);
-	glutKeyboardFunc(keyboardCallback);
-	glutMouseFunc(mouseCallback);
-	glutMotionFunc(motionCallback);
-	motionCallback(0,0);
-
-	atexit(exitCallback);
+	Snippets::setupDefault("PhysX Snippet Delay Load Hook", sCamera, keyPress, renderCallback, exitCallback);
 
 	initPhysics(true);
 	glutMainLoop();

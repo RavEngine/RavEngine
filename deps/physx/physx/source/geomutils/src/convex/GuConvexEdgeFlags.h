@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_CONVEX_EDGE_FLAGS_H
 #define GU_CONVEX_EDGE_FLAGS_H
 
-#include "CmPhysXCommon.h"
+#include "foundation/PxSimpleTypes.h"
 
 namespace physx
 {
@@ -52,6 +51,30 @@ namespace Gu
 	PX_FORCE_INLINE PxU8 getConvexEdgeFlags(const PxU8* extraTrigData, PxU32 triangleIndex)
 	{
 		return extraTrigData ? extraTrigData[triangleIndex] : PxU8(ETD_CONVEX_EDGE_ALL);
+	}
+
+	PX_FORCE_INLINE void flipConvexEdgeFlags(PxU8& extraData)
+	{
+		// PT: this is a fix for PX-2327. When we flip the winding we also need to flip the precomputed edge flags.
+		// 01 => 02
+		// 12 => 21
+		// 20 => 10
+
+		const PxU8 convex01 = extraData & Gu::ETD_CONVEX_EDGE_01;
+		const PxU8 convex12 = extraData & Gu::ETD_CONVEX_EDGE_12;
+		const PxU8 convex20 = extraData & Gu::ETD_CONVEX_EDGE_20;
+		const PxU8 silhouette01 = extraData & Gu::ETD_SILHOUETTE_EDGE_01;
+		const PxU8 silhouette12 = extraData & Gu::ETD_SILHOUETTE_EDGE_12;
+		const PxU8 silhouette20 = extraData & Gu::ETD_SILHOUETTE_EDGE_20;
+		extraData = convex12|silhouette12;
+		if(convex01)
+			extraData |= Gu::ETD_CONVEX_EDGE_20;
+		if(convex20)
+			extraData |= Gu::ETD_CONVEX_EDGE_01;
+		if(silhouette01)
+			extraData |= Gu::ETD_SILHOUETTE_EDGE_20;
+		if(silhouette20)
+			extraData |= Gu::ETD_SILHOUETTE_EDGE_01;
 	}
 }
 }

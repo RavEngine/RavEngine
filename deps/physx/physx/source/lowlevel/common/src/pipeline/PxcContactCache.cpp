@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "PxcContactCache.h"
 #include "PxsContactManager.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 #include "PxcNpCache.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Gu;
+using namespace Cm;
 
 //#define ENABLE_CONTACT_CACHE_STATS
 
@@ -68,8 +69,12 @@ namespace physx
 			true,		//PxcContactSphereCapsule
 			false,		//PxcContactSphereBox
 			true,		//PxcContactSphereConvex
+			false,		//ParticleSystem
+			true,		//SoftBody
 			true,		//PxcContactSphereMesh
 			true,		//PxcContactSphereHeightField
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcContactGeometryCustomGeometry
 		},
 
 		//PxGeometryType::ePLANE
@@ -79,8 +84,12 @@ namespace physx
 			true,		//PxcContactPlaneCapsule
 			true,		//PxcContactPlaneBox
 			true,		//PxcContactPlaneConvex
+			false,		//ParticleSystem
+			true,		//SoftBody
 			false,		//PxcInvalidContactPair
 			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcContactGeometryCustomGeometry
 		},
 
 		//PxGeometryType::eCAPSULE
@@ -90,8 +99,12 @@ namespace physx
 			true,		//PxcContactCapsuleCapsule
 			true,		//PxcContactCapsuleBox
 			true,		//PxcContactCapsuleConvex
+			false,		//ParticleSystem
+			true,		//SoftBody
 			true,		//PxcContactCapsuleMesh
 			true,		//PxcContactCapsuleHeightField
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcContactGeometryCustomGeometry
 		},
 
 		//PxGeometryType::eBOX
@@ -101,8 +114,12 @@ namespace physx
 			false,		//-
 			true,		//PxcContactBoxBox
 			true,		//PxcContactBoxConvex
+			false,		//ParticleSystem
+			true,		//SoftBody
 			true,		//PxcContactBoxMesh
 			true,		//PxcContactBoxHeightField
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcContactGeometryCustomGeometry
 		},
 
 		//PxGeometryType::eCONVEXMESH
@@ -112,8 +129,42 @@ namespace physx
 			false,		//-
 			false,		//-
 			true,		//PxcContactConvexConvex
+			false,		//-
+			true,		//-
 			true,		//PxcContactConvexMesh2
 			true,		//PxcContactConvexHeightField
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcContactGeometryCustomGeometry
+		},
+
+		//PxGeometryType::ePARTICLESYSTEM
+		{
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcInvalidContactPair
+		},
+
+		//PxGeometryType::eTETRAHEDRONMESH
+		{
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcInvalidContactPair
 		},
 
 		//PxGeometryType::eTRIANGLEMESH
@@ -123,7 +174,11 @@ namespace physx
 			false,		//-
 			false,		//-
 			false,		//-
+			false,		//-
+			true,		//-
 			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair (hair)
 			false,		//PxcInvalidContactPair
 		},
 
@@ -135,13 +190,48 @@ namespace physx
 			false,		//-
 			false,		//-
 			false,		//-
+			true,		//-
+			false,		//-
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair (hair)
+			false,		//PxcInvalidContactPair
+		},
+
+		//PxGeometryType::eHAIRSYSTEM
+		{
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			true,		//-
+			false,		//-
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair
+		},
+
+		//PxGeometryType::eCUSTOM
+		{
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			false,		//-
+			true,		//-
+			false,		//-
+			false,		//PxcInvalidContactPair
+			false,		//PxcInvalidContactPair
 			false,		//PxcInvalidContactPair
 		},
 	};
+	PX_COMPILE_TIME_ASSERT(sizeof(g_CanUseContactCache) / sizeof(g_CanUseContactCache[0]) == PxGeometryType::eGEOMETRY_COUNT);
 }
 
-static PX_FORCE_INLINE void updateContact(	Gu::ContactPoint& dst, const PxcLocalContactsCache& contactsData, 
-											const Cm::Matrix34& world0, const Cm::Matrix34& world1,
+static PX_FORCE_INLINE void updateContact(	PxContactPoint& dst, const PxcLocalContactsCache& contactsData, 
+											const PxMat34& world0, const PxMat34& world1,
 											const PxVec3& point, const PxVec3& normal, float separation)
 {
 	const PxVec3 tmp0 = contactsData.mTransform0.transformInv(point);
@@ -160,12 +250,12 @@ static PX_FORCE_INLINE void updateContact(	Gu::ContactPoint& dst, const PxcLocal
 static PX_FORCE_INLINE void prefetchData128(PxU8* PX_RESTRICT ptr, PxU32 size)
 {
 	// PT: always prefetch the cache line containing our address (which unfortunately won't be aligned to 128 most of the time)
-	Ps::prefetchLine(ptr, 0);
+	PxPrefetchLine(ptr, 0);
 	// PT: compute start offset of our data within its cache line
 	const PxU32 startOffset = PxU32(size_t(ptr)&127);
 	// PT: prefetch next cache line if needed
 	if(startOffset+size>128)
-		Ps::prefetchLine(ptr+128, 0);
+		PxPrefetchLine(ptr+128, 0);
 }
 
 static PX_FORCE_INLINE PxU8* outputToCache(PxU8* PX_RESTRICT bytes, const PxVec3& v)
@@ -206,19 +296,19 @@ static PX_FORCE_INLINE PxReal maxComponentDeltaRot(const PxTransform& t0, const 
 	return delta;
 }
 
-bool physx::PxcCacheLocalContacts(	PxcNpThreadContext& context, Gu::Cache& pairContactCache,
+bool physx::PxcCacheLocalContacts(	PxcNpThreadContext& context, Cache& pairContactCache,
 									const PxTransform& tm0, const PxTransform& tm1,
 									const PxcContactMethod conMethod,
-									const Gu::GeometryUnion& shape0, const Gu::GeometryUnion& shape1)
+									const PxGeometry& shape0, const PxGeometry& shape1)
 {
-	const Gu::NarrowPhaseParams& params = context.mNarrowPhaseParams;
+	const NarrowPhaseParams& params = context.mNarrowPhaseParams;
 
 //	gContactCache_NbCalls++;
 
 	if(pairContactCache.mCachedData)
 		prefetchData128(pairContactCache.mCachedData, pairContactCache.mCachedSize);
 
-	ContactBuffer& contactBuffer = context.mContactBuffer;
+	PxContactBuffer& contactBuffer = context.mContactBuffer;
 	contactBuffer.reset();
 
 	PxcLocalContactsCache contactsData;
@@ -253,10 +343,10 @@ bool physx::PxcCacheLocalContacts(	PxcNpThreadContext& context, Gu::Cache& pairC
 			contactBuffer.count = nbContacts;
 			if(nbContacts)
 			{
-				Gu::ContactPoint* PX_RESTRICT dst = contactBuffer.contacts;
+				PxContactPoint* PX_RESTRICT dst = contactBuffer.contacts;
 
-				const Cm::Matrix34 world1(tm1);
-				const Cm::Matrix34 world0(tm0);
+				const Matrix34FromTransform world1(tm1);
+				const Matrix34FromTransform world0(tm0);
 
 				const bool sameNormal = contactsData.mSameNormal;
 
@@ -265,7 +355,7 @@ bool physx::PxcCacheLocalContacts(	PxcNpThreadContext& context, Gu::Cache& pairC
 				for(PxU32 i=0;i<nbContacts;i++)
 				{
 					if(i!=nbContacts-1)
-						Ps::prefetchLine(contacts, 128);
+						PxPrefetchLine(contacts, 128);
 
 					const PxVec3* cachedNormal;
 					if(!i || !sameNormal)
@@ -323,10 +413,10 @@ bool physx::PxcCacheLocalContacts(	PxcNpThreadContext& context, Gu::Cache& pairC
 		if(count)
 		{
 			const bool useFaceIndices =		contactBuffer.contacts[0].internalFaceIndex1!=PXC_CONTACT_NO_FACE_INDEX;
-			contactsData.mNbCachedContacts	= Ps::to16(count);
+			contactsData.mNbCachedContacts	= PxTo16(count);
 			contactsData.mUseFaceIndices	= useFaceIndices;
 
-			const Gu::ContactPoint* PX_RESTRICT srcContacts = contactBuffer.contacts;
+			const PxContactPoint* PX_RESTRICT srcContacts = contactBuffer.contacts;
 			// PT: this loop should not be here. We should output the contacts directly compressed, as we used to.
 			bool sameNormal = true;
 			{

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #include "NpRigidDynamic.h"
 #include "NpRigidActorTemplateInternal.h"
 
 using namespace physx;
 
+///////////////////////////////////////////////////////////////////////////////
+
+PX_IMPLEMENT_OUTPUT_ERROR
+
+///////////////////////////////////////////////////////////////////////////////
+
 NpRigidDynamic::NpRigidDynamic(const PxTransform& bodyPose)
-:	NpRigidDynamicT(PxConcreteType::eRIGID_DYNAMIC, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE, PxActorType::eRIGID_DYNAMIC, bodyPose)
+:	NpRigidDynamicT(PxConcreteType::eRIGID_DYNAMIC, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE, PxActorType::eRIGID_DYNAMIC, NpType::eBODY, bodyPose)
 {}
 
 NpRigidDynamic::~NpRigidDynamic()
@@ -50,18 +54,19 @@ void NpRigidDynamic::requiresObjects(PxProcessPxBaseCallback& c)
 void NpRigidDynamic::preExportDataReset()
 {
 	NpRigidDynamicT::preExportDataReset();
-	if (isKinematic() && NpActor::getAPIScene(*this))
+	if (isKinematic() && getNpScene())
 	{
 		//Restore dynamic data in case the actor is configured as a kinematic.
 		//otherwise we would loose the data for switching the kinematic actor back to dynamic
-		//after deserialization.
-		getScbBodyFast().getScBody().restoreDynamicData();
+		//after deserialization. Not necessary if the kinematic is not yet part of
+		//a scene since the dynamic data will still hold the original values.
+		mCore.restoreDynamicData();
 	}
 }
 
 NpRigidDynamic* NpRigidDynamic::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	NpRigidDynamic* obj = new (address) NpRigidDynamic(PxBaseFlag::eIS_RELEASABLE);
+	NpRigidDynamic* obj = PX_PLACEMENT_NEW(address, NpRigidDynamic(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(NpRigidDynamic);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -71,92 +76,87 @@ NpRigidDynamic* NpRigidDynamic::createObject(PxU8*& address, PxDeserializationCo
 
 void NpRigidDynamic::release()
 {
-	releaseActorT(this, mBody);
+	if(releaseRigidActorT<PxRigidDynamic>(*this))
+	{
+		PX_ASSERT(!isAPIWriteForbidden());  // the code above should return false in that case
+		NpDestroyRigidDynamic(this);
+	}
 }
-
 
 void NpRigidDynamic::setGlobalPose(const PxTransform& pose, bool autowake)
 {
-	NpScene* scene = NpActor::getAPIScene(*this);
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(pose.isSane(), "PxRigidDynamic::setGlobalPose: pose is not valid.");
 
 #if PX_CHECKED
-	if(scene)
-		scene->checkPositionSanity(*this, pose, "PxRigidDynamic::setGlobalPose");
+	if(npScene)
+		npScene->checkPositionSanity(*this, pose, "PxRigidDynamic::setGlobalPose");
 #endif
 
-	PX_CHECK_AND_RETURN(pose.isSane(), "PxRigidDynamic::setGlobalPose: pose is not valid.");
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidDynamic::setGlobalPose() not allowed while simulation is running. Call will be ignored.")
 
 	const PxTransform newPose = pose.getNormalized();	//AM: added to fix 1461 where users read and write orientations for no reason.
 	
-	Scb::Body& b = getScbBodyFast();
-	const PxTransform body2World = newPose * b.getBody2Actor();
-	b.setBody2World(body2World, false);
+	const PxTransform body2World = newPose * mCore.getBody2Actor();
+	scSetBody2World(body2World);
 
-	if(scene)
-		updateDynamicSceneQueryShapes(mShapeManager, scene->getSceneQueryManagerFast(), *this);
+	if(npScene)
+		mShapeManager.markActorForSQUpdate(npScene->getSQAPI(), *this);
 
 	// invalidate the pruning structure if the actor bounds changed
 	if(mShapeManager.getPruningStructure())
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxRigidDynamic::setGlobalPose: Actor is part of a pruning structure, pruning structure is now invalid!");
+		outputError<PxErrorCode::eINVALID_OPERATION>(__LINE__, "PxRigidDynamic::setGlobalPose: Actor is part of a pruning structure, pruning structure is now invalid!");
 		mShapeManager.getPruningStructure()->invalidate(this);
 	}
 
-	if(scene && autowake && !(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION))
+	if(npScene && autowake && !(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)))
 		wakeUpInternal();
 }
 
-
 PX_FORCE_INLINE void NpRigidDynamic::setKinematicTargetInternal(const PxTransform& targetPose)
 {
-	Scb::Body& b = getScbBodyFast();
-
 	// The target is actor related. Transform to body related target
-	const PxTransform bodyTarget = targetPose * b.getBody2Actor();
+	const PxTransform bodyTarget = targetPose * mCore.getBody2Actor();
 
-	b.setKinematicTarget(bodyTarget);
+	scSetKinematicTarget(bodyTarget);
 
-	NpScene* scene = NpActor::getAPIScene(*this);
-	if ((b.getFlags() & PxRigidBodyFlag::eUSE_KINEMATIC_TARGET_FOR_SCENE_QUERIES) && scene)
-	{
-		updateDynamicSceneQueryShapes(mShapeManager, scene->getSceneQueryManagerFast(), *this);
-	}
+	NpScene* scene = getNpScene();
+	if((mCore.getFlags() & PxRigidBodyFlag::eUSE_KINEMATIC_TARGET_FOR_SCENE_QUERIES) && scene)
+		mShapeManager.markActorForSQUpdate(scene->getSQAPI(), *this);
 }
-
 
 void NpRigidDynamic::setKinematicTarget(const PxTransform& destination)
 {
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(destination.isSane(), "PxRigidDynamic::setKinematicTarget: destination is not valid.");
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::setKinematicTarget: Body must be in a scene!");
+	PX_CHECK_AND_RETURN((mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setKinematicTarget: Body must be kinematic!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::setKinematicTarget: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
 
 #if PX_CHECKED
-	NpScene* scene = NpActor::getAPIScene(*this);
-	if(scene)
-		scene->checkPositionSanity(*this, destination, "PxRigidDynamic::setKinematicTarget");
-
-	Scb::Body& b = getScbBodyFast();
-	PX_CHECK_AND_RETURN((b.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setKinematicTarget: Body must be kinematic!");
-	PX_CHECK_AND_RETURN(scene, "PxRigidDynamic::setKinematicTarget: Body must be in a scene!");
-	PX_CHECK_AND_RETURN(!(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::setKinematicTarget: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	if(npScene)
+		npScene->checkPositionSanity(*this, destination, "PxRigidDynamic::setKinematicTarget");
 #endif
-	
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::setKinematicTarget() not allowed while simulation is running. Call will be ignored.")
+
 	setKinematicTargetInternal(destination.getNormalized());
 }
 
-
 bool NpRigidDynamic::getKinematicTarget(PxTransform& target) const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
+	NP_READ_CHECK(getNpScene());
 
-	const Scb::Body& b = getScbBodyFast();
-	if(b.getFlags() & PxRigidBodyFlag::eKINEMATIC)
+	if(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC)
 	{
 		PxTransform bodyTarget;
-		if(b.getKinematicTarget(bodyTarget))
+		if(mCore.getKinematicTarget(bodyTarget))
 		{
 			// The internal target is body related. Transform to actor related target
-			target = bodyTarget * b.getBody2Actor().getInverse();
+			target = bodyTarget * mCore.getBody2Actor().getInverse();
 			return true;
 		}
 	}
@@ -165,20 +165,22 @@ bool NpRigidDynamic::getKinematicTarget(PxTransform& target) const
 
 void NpRigidDynamic::setCMassLocalPose(const PxTransform& pose)
 {
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(pose.isSane(), "PxRigidDynamic::setCMassLocalPose pose is not valid.");
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidDynamic::setCMassLocalPose() not allowed while simulation is running. Call will be ignored.")
 
 	const PxTransform p = pose.getNormalized();
 
-	const PxTransform oldBody2Actor = getScbBodyFast().getBody2Actor();
+	const PxTransform oldBody2Actor = mCore.getBody2Actor();
 
 	NpRigidDynamicT::setCMassLocalPoseInternal(p);
 
-	Scb::Body& b = getScbBodyFast();
-	if(b.getFlags() & PxRigidBodyFlag::eKINEMATIC)
+	if(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC)
 	{
 		PxTransform bodyTarget;
-		if(b.getKinematicTarget(bodyTarget))
+		if(mCore.getKinematicTarget(bodyTarget))
 		{
 			PxTransform actorTarget = bodyTarget * oldBody2Actor.getInverse();  // get old target pose for the actor from the body target
 			setKinematicTargetInternal(actorTarget);
@@ -186,341 +188,319 @@ void NpRigidDynamic::setCMassLocalPose(const PxTransform& pose)
 	}
 }
 
-
-void NpRigidDynamic::setLinearDamping(PxReal linearDamping)
-{
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(PxIsFinite(linearDamping), "PxRigidDynamic::setLinearDamping: invalid float");
-	PX_CHECK_AND_RETURN(linearDamping >=0, "PxRigidDynamic::setLinearDamping: The linear damping must be nonnegative!");
-
-	getScbBodyFast().setLinearDamping(linearDamping);
-}
-
-
-PxReal NpRigidDynamic::getLinearDamping() const
-{
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-
-	return getScbBodyFast().getLinearDamping();
-}
-
-
-void NpRigidDynamic::setAngularDamping(PxReal angularDamping)
-{
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(PxIsFinite(angularDamping), "PxRigidDynamic::setAngularDamping: invalid float");
-	PX_CHECK_AND_RETURN(angularDamping>=0, "PxRigidDynamic::setAngularDamping: The angular damping must be nonnegative!")
-	
-	getScbBodyFast().setAngularDamping(angularDamping);
-}
-
-
-PxReal NpRigidDynamic::getAngularDamping() const
-{
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-
-	return getScbBodyFast().getAngularDamping();
-}
-
-
 void NpRigidDynamic::setLinearVelocity(const PxVec3& velocity, bool autowake)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(velocity.isFinite(), "PxRigidDynamic::setLinearVelocity: velocity is not valid.");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setLinearVelocity: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::setLinearVelocity: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
-	
-	Scb::Body& b = getScbBodyFast();
-	b.setLinearVelocity(velocity);
+	PX_CHECK_AND_RETURN(!(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setLinearVelocity: Body must be non-kinematic!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::setLinearVelocity: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
 
-	NpScene* scene = NpActor::getAPIScene(*this);
-	if(scene)
-		wakeUpInternalNoKinematicTest(b, (!velocity.isZero()), autowake);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::setLinearVelocity() not allowed while simulation is running. Call will be ignored.")
+
+	scSetLinearVelocity(velocity);
+
+	if(npScene)
+		wakeUpInternalNoKinematicTest((!velocity.isZero()), autowake);
 }
-
 
 void NpRigidDynamic::setAngularVelocity(const PxVec3& velocity, bool autowake)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(velocity.isFinite(), "PxRigidDynamic::setAngularVelocity: velocity is not valid.");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setAngularVelocity: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::setAngularVelocity: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	PX_CHECK_AND_RETURN(!(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setAngularVelocity: Body must be non-kinematic!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::setAngularVelocity: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
 
-	Scb::Body& b = getScbBodyFast();
-	b.setAngularVelocity(velocity);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::setAngularVelocity() not allowed while simulation is running. Call will be ignored.")
 
-	NpScene* scene = NpActor::getAPIScene(*this);
-	if(scene)
-		wakeUpInternalNoKinematicTest(b, (!velocity.isZero()), autowake);
+	scSetAngularVelocity(velocity);
+
+	if(npScene)
+		wakeUpInternalNoKinematicTest((!velocity.isZero()), autowake);
 }
-
-
-void NpRigidDynamic::setMaxAngularVelocity(PxReal maxAngularVelocity)
-{
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(PxIsFinite(maxAngularVelocity), "PxRigidDynamic::setMaxAngularVelocity: invalid float");
-	PX_CHECK_AND_RETURN(maxAngularVelocity>=0.0f, "PxRigidDynamic::setMaxAngularVelocity: threshold must be non-negative!");
-
-	getScbBodyFast().setMaxAngVelSq(maxAngularVelocity * maxAngularVelocity);		
-}
-
-
-PxReal NpRigidDynamic::getMaxAngularVelocity() const
-{
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-
-	return PxSqrt(getScbBodyFast().getMaxAngVelSq());
-}
-
-void NpRigidDynamic::setMaxLinearVelocity(PxReal maxLinearVelocity)
-{
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(PxIsFinite(maxLinearVelocity), "PxRigidDynamic::setMaxAngularVelocity: invalid float");
-	PX_CHECK_AND_RETURN(maxLinearVelocity >= 0.0f, "PxRigidDynamic::setMaxAngularVelocity: threshold must be non-negative!");
-
-	getScbBodyFast().setMaxLinVelSq(maxLinearVelocity * maxLinearVelocity);
-}
-
-PxReal NpRigidDynamic::getMaxLinearVelocity() const
-{
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-
-	return PxSqrt(getScbBodyFast().getMaxLinVelSq());
-}
-
 
 void NpRigidDynamic::addForce(const PxVec3& force, PxForceMode::Enum mode, bool autowake)
 {
-	Scb::Body& b = getScbBodyFast();
-
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(force.isFinite(), "PxRigidDynamic::addForce: force is not valid.");
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(NpActor::getAPIScene(*this), "PxRigidDynamic::addForce: Body must be in a scene!");
-	PX_CHECK_AND_RETURN(!(b.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::addForce: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::addForce: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::addForce: Body must be in a scene!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::addForce: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::addForce() not allowed while simulation is running. Call will be ignored.")
+
+	if(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC)
+	{
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxRigidDynamic::addForce: Body must be non-kinematic!");
+		return;
+	}
 
 	addSpatialForce(&force, NULL, mode);
 
-	wakeUpInternalNoKinematicTest(b, (!force.isZero()), autowake);
+	wakeUpInternalNoKinematicTest(!force.isZero(), autowake);
 }
 
 void NpRigidDynamic::setForceAndTorque(const PxVec3& force, const PxVec3& torque, PxForceMode::Enum mode)
 {
-	Scb::Body& b = getScbBodyFast();
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(force.isFinite(), "PxRigidDynamic::setForceAndTorque: force is not valid.");
+	PX_CHECK_AND_RETURN(torque.isFinite(), "PxRigidDynamic::setForceAndTorque: torque is not valid.");
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::setForceAndTorque: Body must be in a scene!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::setForceAndTorque: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
 
-	PX_CHECK_AND_RETURN(force.isFinite(), "PxRigidDynamic::setForce: force is not valid.");
-	PX_CHECK_AND_RETURN(torque.isFinite(), "PxRigidDynamic::setForce: force is not valid.");
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(NpActor::getAPIScene(*this), "PxRigidDynamic::addForce: Body must be in a scene!");
-	PX_CHECK_AND_RETURN(!(b.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::addForce: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::addForce: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::setForceAndTorque() not allowed while simulation is running. Call will be ignored.")
+
+	if(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC)
+	{
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxRigidDynamic::setForceAndTorque: Body must be non-kinematic!");
+		return;
+	}
 
 	setSpatialForce(&force, &torque, mode);
 
-	wakeUpInternalNoKinematicTest(b, (!force.isZero()), true);
+	wakeUpInternalNoKinematicTest(!force.isZero(), true);
 }
-
 
 void NpRigidDynamic::addTorque(const PxVec3& torque, PxForceMode::Enum mode, bool autowake)
 {
-	Scb::Body& b = getScbBodyFast();
-
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(torque.isFinite(), "PxRigidDynamic::addTorque: torque is not valid.");
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(NpActor::getAPIScene(*this), "PxRigidDynamic::addTorque: Body must be in a scene!");
-	PX_CHECK_AND_RETURN(!(b.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::addTorque: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::addTorque: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::addTorque: Body must be in a scene!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::addTorque: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::addTorque() not allowed while simulation is running. Call will be ignored.")
+
+	if(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC)
+	{
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxRigidDynamic::addTorque: Body must be non-kinematic!");
+		return;
+	}
 
 	addSpatialForce(NULL, &torque, mode);
 
-	wakeUpInternalNoKinematicTest(b, (!torque.isZero()), autowake);
+	wakeUpInternalNoKinematicTest(!torque.isZero(), autowake);
 }
 
 void NpRigidDynamic::clearForce(PxForceMode::Enum mode)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(NpActor::getAPIScene(*this), "PxRigidDynamic::clearForce: Body must be in a scene!");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::clearForce: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::clearForce: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::clearForce: Body must be in a scene!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::clearForce: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::clearForce() not allowed while simulation is running. Call will be ignored.")
+
+	if(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC)
+	{
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxRigidDynamic::clearForce: Body must be non-kinematic!");
+		return;
+	}
 
 	clearSpatialForce(mode, true, false);
 }
 
-
 void NpRigidDynamic::clearTorque(PxForceMode::Enum mode)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(NpActor::getAPIScene(*this), "PxRigidDynamic::clearTorque: Body must be in a scene!");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::clearTorque: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(getScbBodyFast().getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::clearTorque: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::clearTorque: Body must be in a scene!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::clearTorque: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::clearTorque() not allowed while simulation is running. Call will be ignored.")
+
+	if(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC)
+	{
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxRigidDynamic::clearTorque: Body must be non-kinematic!");
+		return;
+	}
 
 	clearSpatialForce(mode, false, true);
 }
 
-
 bool NpRigidDynamic::isSleeping() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN_VAL(NpActor::getAPIScene(*this), "PxRigidDynamic::isSleeping: Body must be in a scene.", true);
+	NP_READ_CHECK(getNpScene());
+	PX_CHECK_AND_RETURN_VAL(getNpScene(), "PxRigidDynamic::isSleeping: Body must be in a scene.", true);
 
-	return getScbBodyFast().isSleeping();
+	PX_CHECK_SCENE_API_READ_FORBIDDEN_AND_RETURN_VAL(getNpScene(), "PxRigidDynamic::isSleeping() not allowed while simulation is running.", true);
+
+	return mCore.isSleeping();
 }
-
 
 void NpRigidDynamic::setSleepThreshold(PxReal threshold)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(threshold), "PxRigidDynamic::setSleepThreshold: invalid float.");
 	PX_CHECK_AND_RETURN(threshold>=0.0f, "PxRigidDynamic::setSleepThreshold: threshold must be non-negative!");
 
-	getScbBodyFast().setSleepThreshold(threshold);
-}
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidDynamic::setSleepThreshold() not allowed while simulation is running. Call will be ignored.")
 
+	OMNI_PVD_SET(actor, sleepThreshold, static_cast<PxActor&>(*this), threshold); // @@@
+
+	mCore.setSleepThreshold(threshold);
+	UPDATE_PVD_PROPERTY_BODY
+}
 
 PxReal NpRigidDynamic::getSleepThreshold() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
+	NP_READ_CHECK(getNpScene());
 
-	return getScbBodyFast().getSleepThreshold();
+	return mCore.getSleepThreshold();
 }
 
 void NpRigidDynamic::setStabilizationThreshold(PxReal threshold)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(threshold), "PxRigidDynamic::setSleepThreshold: invalid float.");
 	PX_CHECK_AND_RETURN(threshold>=0.0f, "PxRigidDynamic::setSleepThreshold: threshold must be non-negative!");
 
-	getScbBodyFast().setFreezeThreshold(threshold);
-}
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidDynamic::setStabilizationThreshold() not allowed while simulation is running. Call will be ignored.")
 
+	OMNI_PVD_SET(actor, stabilizationThreshold, static_cast<PxActor&>(*this), threshold); // @@@
+
+	mCore.setFreezeThreshold(threshold);
+	UPDATE_PVD_PROPERTY_BODY
+}
 
 PxReal NpRigidDynamic::getStabilizationThreshold() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
+	NP_READ_CHECK(getNpScene());
 
-	return getScbBodyFast().getFreezeThreshold();
+	return mCore.getFreezeThreshold();
 }
-
 
 void NpRigidDynamic::setWakeCounter(PxReal wakeCounterValue)
 {
-	Scb::Body& b = getScbBodyFast();
-
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(wakeCounterValue), "PxRigidDynamic::setWakeCounter: invalid float.");
 	PX_CHECK_AND_RETURN(wakeCounterValue>=0.0f, "PxRigidDynamic::setWakeCounter: wakeCounterValue must be non-negative!");
-	PX_CHECK_AND_RETURN(!(b.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setWakeCounter: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::setWakeCounter: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
+	PX_CHECK_AND_RETURN(!(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::setWakeCounter: Body must be non-kinematic!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::setWakeCounter: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
 
-	b.setWakeCounter(wakeCounterValue);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::setWakeCounter() not allowed while simulation is running. Call will be ignored.")
+
+	scSetWakeCounter(wakeCounterValue);
+
+	OMNI_PVD_SET(actor, wakeCounter, static_cast<PxActor&>(*this), wakeCounterValue); // @@@
 }
-
 
 PxReal NpRigidDynamic::getWakeCounter() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
+	NP_READ_CHECK(getNpScene());
 
-	return getScbBodyFast().getWakeCounter();
+	PX_CHECK_SCENE_API_READ_FORBIDDEN_AND_RETURN_VAL(getNpScene(), "PxRigidDynamic::getWakeCounter() not allowed while simulation is running.", 0.0f);
+
+	return mCore.getWakeCounter();
 }
-
 
 void NpRigidDynamic::wakeUp()
 {
-	Scb::Body& b = getScbBodyFast();
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::wakeUp: Body must be in a scene.");
+	PX_CHECK_AND_RETURN(!(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::wakeUp: Body must be non-kinematic!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::wakeUp: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
 
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(NpActor::getAPIScene(*this), "PxRigidDynamic::wakeUp: Body must be in a scene.");
-	PX_CHECK_AND_RETURN(!(b.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::wakeUp: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::wakeUp: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
-	
-	b.wakeUp();
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(npScene, "PxRigidDynamic::wakeUp() not allowed while simulation is running. Call will be ignored.")
+
+	scWakeUp();
 }
-
 
 void NpRigidDynamic::putToSleep()
 {
-	Scb::Body& b = getScbBodyFast();
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(npScene, "PxRigidDynamic::putToSleep: Body must be in a scene.");
+	PX_CHECK_AND_RETURN(!(mCore.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::putToSleep: Body must be non-kinematic!");
+	PX_CHECK_AND_RETURN(!(mCore.getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION)), "PxRigidDynamic::putToSleep: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
 
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(NpActor::getAPIScene(*this), "PxRigidDynamic::putToSleep: Body must be in a scene.");
-	PX_CHECK_AND_RETURN(!(b.getFlags() & PxRigidBodyFlag::eKINEMATIC), "PxRigidDynamic::putToSleep: Body must be non-kinematic!");
-	PX_CHECK_AND_RETURN(!(b.getActorFlags() & PxActorFlag::eDISABLE_SIMULATION), "PxRigidDynamic::putToSleep: Not allowed if PxActorFlag::eDISABLE_SIMULATION is set!");
-	
-	b.putToSleep();
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidDynamic::putToSleep() not allowed while simulation is running. Call will be ignored.")
+
+	scPutToSleep();
 }
-
 
 void NpRigidDynamic::setSolverIterationCounts(PxU32 positionIters, PxU32 velocityIters)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	PX_CHECK_AND_RETURN(positionIters > 0, "PxRigidDynamic::setSolverIterationCount: positionIters must be more than zero!");
-	PX_CHECK_AND_RETURN(positionIters <= 255, "PxRigidDynamic::setSolverIterationCount: positionIters must be no greater than 255!");
-	PX_CHECK_AND_RETURN(velocityIters <= 255, "PxRigidDynamic::setSolverIterationCount: velocityIters must be no greater than 255!");
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(positionIters > 0, "PxRigidDynamic::setSolverIterationCounts: positionIters must be more than zero!");
+	PX_CHECK_AND_RETURN(positionIters <= 255, "PxRigidDynamic::setSolverIterationCounts: positionIters must be no greater than 255!");
+	PX_CHECK_AND_RETURN(velocityIters <= 255, "PxRigidDynamic::setSolverIterationCounts: velocityIters must be no greater than 255!");
 
-	getScbBodyFast().setSolverIterationCounts((velocityIters & 0xff) << 8 | (positionIters & 0xff));
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidDynamic::setSolverIterationCounts() not allowed while simulation is running. Call will be ignored.")
+
+	scSetSolverIterationCounts((velocityIters & 0xff) << 8 | (positionIters & 0xff));
+
+	OMNI_PVD_SET(actor, positionIterations, static_cast<PxActor&>(*this), positionIters); // @@@
+	OMNI_PVD_SET(actor, velocityIterations, static_cast<PxActor&>(*this), velocityIters); // @@@
 }
-
 
 void NpRigidDynamic::getSolverIterationCounts(PxU32 & positionIters, PxU32 & velocityIters) const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
+	NP_READ_CHECK(getNpScene());
 
-	PxU16 x = getScbBodyFast().getSolverIterationCounts();
+	PxU16 x = mCore.getSolverIterationCounts();
 	velocityIters = PxU32(x >> 8);
 	positionIters = PxU32(x & 0xff);
 }
 
-
 void NpRigidDynamic::setContactReportThreshold(PxReal threshold)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(threshold), "PxRigidDynamic::setContactReportThreshold: invalid float.");
 	PX_CHECK_AND_RETURN(threshold >= 0.0f, "PxRigidDynamic::setContactReportThreshold: Force threshold must be greater than zero!");
 
-	getScbBodyFast().setContactReportThreshold(threshold<0 ? 0 : threshold);
-}
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxRigidDynamic::setContactReportThreshold() not allowed while simulation is running. Call will be ignored.")
 
+	OMNI_PVD_SET(actor, contactReportThreshold, static_cast<PxActor&>(*this), threshold); // @@@
+
+	mCore.setContactReportThreshold(threshold<0 ? 0 : threshold);
+	UPDATE_PVD_PROPERTY_BODY
+}
 
 PxReal NpRigidDynamic::getContactReportThreshold() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
+	NP_READ_CHECK(getNpScene());
 
-	return getScbBodyFast().getContactReportThreshold();
+	return mCore.getContactReportThreshold();
 }
 
-
-PxU32 physx::NpRigidDynamicGetShapes(Scb::Body& body, void* const*& shapes, bool* isCompound)
+PxU32 physx::NpRigidDynamicGetShapes(NpRigidDynamic& actor, NpShape* const*& shapes, bool* isCompound)
 {
-	NpRigidDynamic* a = static_cast<NpRigidDynamic*>(body.getScBody().getPxActor());
-	NpShapeManager& sm = a->getShapeManager();
-	shapes = reinterpret_cast<void *const *>(sm.getShapes());
+	NpShapeManager& sm = actor.getShapeManager();
+	shapes = sm.getShapes();
 	if(isCompound)
 		*isCompound = sm.isSqCompound();
 	return sm.getNbShapes();
 }
 
-
 void NpRigidDynamic::switchToNoSim()
 {
-	getScbBodyFast().switchBodyToNoSim();
+	NpActor::scSwitchToNoSim();
+	scPutToSleepInternal();
 }
-
 
 void NpRigidDynamic::switchFromNoSim()
 {
-	getScbBodyFast().switchFromNoSim(true);
+	NpActor::scSwitchFromNoSim();
 }
 
-
-void NpRigidDynamic::wakeUpInternalNoKinematicTest(Scb::Body& body, bool forceWakeUp, bool autowake)
+void NpRigidDynamic::wakeUpInternalNoKinematicTest(bool forceWakeUp, bool autowake)
 {
-	NpScene* scene = NpActor::getOwnerScene(*this);
+	NpScene* scene = getNpScene();
 	PX_ASSERT(scene);
-	PxReal wakeCounterResetValue = scene->getWakeCounterResetValueInteral();
+	PxReal wakeCounterResetValue = scene->getWakeCounterResetValueInternal();
 
-	PxReal wakeCounter = body.getWakeCounter();
+	PxReal wakeCounter = mCore.getWakeCounter();
 
-	bool needsWakingUp = body.isSleeping() && (autowake || forceWakeUp);
+	bool needsWakingUp = mCore.isSleeping() && (autowake || forceWakeUp);
 	if (autowake && (wakeCounter < wakeCounterResetValue))
 	{
 		wakeCounter = wakeCounterResetValue;
@@ -528,50 +508,33 @@ void NpRigidDynamic::wakeUpInternalNoKinematicTest(Scb::Body& body, bool forceWa
 	}
 
 	if (needsWakingUp)
-		body.wakeUpInternal(wakeCounter);
+		scWakeUpInternal(wakeCounter);
 }
 
 PxRigidDynamicLockFlags NpRigidDynamic::getRigidDynamicLockFlags() const
 {
-	return mBody.getLockFlags();
+	return mCore.getRigidDynamicLockFlags();
 }
+
 void NpRigidDynamic::setRigidDynamicLockFlags(PxRigidDynamicLockFlags flags)
 {
-	mBody.setLockFlags(flags);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxRigidDynamic::setRigidDynamicLockFlags() not allowed while simulation is running. Call will be ignored.")
+	scSetLockFlags(flags);
+
+	OMNI_PVD_SET(actor, rigidDynamicLockFlags, static_cast<PxActor&>(*this), flags); // @@@
 }
+
 void NpRigidDynamic::setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum flag, bool value)
 {
-	PxRigidDynamicLockFlags flags = mBody.getLockFlags();
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxRigidDynamic::setRigidDynamicLockFlag() not allowed while simulation is running. Call will be ignored.")
+	PxRigidDynamicLockFlags flags = mCore.getRigidDynamicLockFlags();
 	if (value)
 		flags = flags | flag;
 	else
 		flags = flags & (~flag);
 
-	mBody.setLockFlags(flags);
+	scSetLockFlags(flags);
+
+	OMNI_PVD_SET(actor, rigidDynamicLockFlags, static_cast<PxActor&>(*this), flags); // @@@
 }
 
-
-#if PX_ENABLE_DEBUG_VISUALIZATION
-void NpRigidDynamic::visualize(Cm::RenderOutput& out, NpScene* npScene)
-{
-	NpRigidDynamicT::visualize(out, npScene);
-
-	if (getScbBodyFast().getActorFlags() & PxActorFlag::eVISUALIZATION)
-	{
-		PX_ASSERT(npScene);
-		const PxReal scale = npScene->getVisualizationParameter(PxVisualizationParameter::eSCALE);
-
-		const PxReal massAxes = scale * npScene->getVisualizationParameter(PxVisualizationParameter::eBODY_MASS_AXES);
-		if (massAxes != 0.0f)
-		{
-			PxReal sleepTime = getScbBodyFast().getWakeCounter() / npScene->getWakeCounterResetValueInteral();
-			PxU32 color = PxU32(0xff * (sleepTime>1.0f ? 1.0f : sleepTime));
-			color = getScbBodyFast().isSleeping() ? 0xff0000 : (color<<16 | color<<8 | color);
-			PxVec3 dims = invertDiagInertia(getScbBodyFast().getInverseInertia());
-			dims = getDimsFromBodyInertia(dims, 1.0f / getScbBodyFast().getInverseMass());
-
-			out << color << getScbBodyFast().getBody2World() << Cm::DebugBox(dims * 0.5f);
-		}
-	}
-}
-#endif

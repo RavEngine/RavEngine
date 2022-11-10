@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,24 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDDEFAULTSOCKETTRANSPORT_H
-#define PXPVDSDK_PXPVDDEFAULTSOCKETTRANSPORT_H
+#ifndef PX_PVD_DEFAULT_SOCKET_TRANSPORT_H
+#define PX_PVD_DEFAULT_SOCKET_TRANSPORT_H
 
 #include "pvd/PxPvdTransport.h"
 
-#include "PsUserAllocated.h"
-#include "PsSocket.h"
-#include "PsMutex.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxSocket.h"
+#include "foundation/PxMutex.h"
 
 namespace physx
 {
 namespace pvdsdk
 {
-class PvdDefaultSocketTransport : public PxPvdTransport, public shdfnd::UserAllocated
+class PvdDefaultSocketTransport : public PxPvdTransport, public PxUserAllocated
 {
 	PX_NOCOPY(PvdDefaultSocketTransport)
   public:
@@ -63,17 +62,18 @@ class PvdDefaultSocketTransport : public PxPvdTransport, public shdfnd::UserAllo
 	virtual void release();
 
   private:
-	shdfnd::Socket mSocket;
+	PxSocket mSocket;
 	const char* mHost;
 	uint16_t mPort;
 	unsigned int mTimeout;
 	bool mConnected;
 	uint64_t mWrittenData;
-	shdfnd::Mutex mMutex;
+	PxMutex mMutex;
 	bool mlocked;
 };
 
 } // pvdsdk
 } // physx
 
-#endif // PXPVDSDK_PXPVDDEFAULTSOCKETTRANSPORT_H
+#endif
+

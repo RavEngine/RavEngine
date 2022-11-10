@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDMARSHALLING_H
-#define PXPVDSDK_PXPVDMARSHALLING_H
+#ifndef PX_PVD_MARSHALLING_H
+#define PX_PVD_MARSHALLING_H
 
-#include "foundation/PxIntrinsics.h"
+#include "foundation/PxMathIntrinsics.h"
 
 #include "PxPvdObjectModelBaseTypes.h"
 #include "PxPvdBits.h"
@@ -217,4 +216,5 @@ static inline bool getMarshalOperators(TSingleMarshaller& single, TBlockMarshall
 }
 }
 
-#endif // PXPVDSDK_PXPVDMARSHALLING_H
+#endif
+

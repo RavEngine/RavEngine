@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,12 +38,12 @@
 #include "GuSweepBoxTriangle_SAT.h"
 #include "GuSweepTriangleUtils.h"
 #include "GuInternal.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace Ps::aos;
+using namespace aos;
 
 static const bool gValidateBoxRadiusComputation = false;
 
@@ -53,6 +52,7 @@ static const bool gValidateBoxRadiusComputation = false;
 bool sweepCapsule_BoxGeom_Precise(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eBOX);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(inflation);
 	PX_UNUSED(capsulePose_);
 	PX_UNUSED(capsuleGeom_);
@@ -116,6 +116,7 @@ bool sweepCapsule_BoxGeom_Precise(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 
 bool sweepBox_SphereGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(boxPose_);
 	PX_UNUSED(boxGeom_);
 
@@ -152,6 +153,7 @@ bool sweepBox_CapsuleGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 	PX_ASSERT(geom.getType() == PxGeometryType::eCAPSULE);
 	PX_UNUSED(inflation);
 	PX_UNUSED(boxGeom_);
+	PX_UNUSED(threadContext);
 
 	const PxCapsuleGeometry& capsuleGeom = static_cast<const PxCapsuleGeometry&>(geom);
 
@@ -192,6 +194,7 @@ bool sweepBox_CapsuleGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 bool sweepBox_BoxGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eBOX);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(inflation);
 	PX_UNUSED(boxPose_);
 	PX_UNUSED(boxGeom_);
@@ -212,7 +215,7 @@ bool sweepBox_BoxGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 
 // PT: test: new version for CCT, based on code for general sweeps. Just to check it works or not with rotations
 // TODO: refactor this and the similar code in sweptBox for box-vs-mesh. Not so easy though.
-static bool sweepBoxVsTriangles(PxU32 nbTris, const PxTriangle* triangles, const Box& box, const PxVec3& unitDir, const PxReal distance, PxSweepHit& sweepHit,
+static bool sweepBoxVsTriangles(PxU32 nbTris, const PxTriangle* triangles, const Box& box, const PxVec3& unitDir, const PxReal distance, PxGeomSweepHit& sweepHit,
 								PxHitFlags hitFlags, bool isDoubleSided, const PxU32* cachedIndex)
 {
 	if(!nbTris)
@@ -222,7 +225,7 @@ static bool sweepBoxVsTriangles(PxU32 nbTris, const PxTriangle* triangles, const
 	const bool doBackfaceCulling = !isDoubleSided && !meshBothSides;
 
 	// Move to AABB space
-	Matrix34 worldToBox;
+	PxMat34 worldToBox;
 	computeWorldToBoxMatrix(worldToBox, box);
 
 	const PxVec3 localDir = worldToBox.rotate(unitDir);
@@ -321,7 +324,7 @@ float localMinDist = 1.0f;
 
 	if(status)
 	{
-		sweepHit.flags = PxHitFlags(0);
+		sweepHit.flags = PxHitFlag::eFACE_INDEX;
 
 		// PT: TODO: refactor with computeBoxLocalImpact (TA34704)
 		if(hitFlags & (PxHitFlag::eNORMAL|PxHitFlag::ePOSITION))
@@ -361,6 +364,7 @@ float localMinDist = 1.0f;
 bool sweepBox_HeightFieldGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eHEIGHTFIELD);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(inflation);
 	PX_UNUSED(boxPose_);
 	PX_UNUSED(boxGeom_);
@@ -377,9 +381,9 @@ bool sweepBox_HeightFieldGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 
 	sweepHit.distance = PX_MAX_F32;
 
-	struct LocalReport : EntityReport<PxU32>
+	struct LocalReport : OverlapReport
 	{
-		virtual bool onEvent(PxU32 nb, PxU32* indices)
+		virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 		{
 			for(PxU32 i=0; i<nb; i++)
 			{
@@ -388,7 +392,7 @@ bool sweepBox_HeightFieldGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 				PxTriangle currentTriangle;	// in world space
 				mHFUtil->getTriangle(*mPose, currentTriangle, NULL, NULL, triangleIndex, true, true);
 
-				PxSweepHit sweepHit_;
+				PxGeomSweepHit sweepHit_;
 				const bool b = sweepBoxVsTriangles(1, &currentTriangle, mBox, mDir, mDist, sweepHit_, mHitFlags, mIsDoubleSided, NULL);
 				if(b && sweepHit_.distance<mHit->distance)
 				{
@@ -402,7 +406,7 @@ bool sweepBox_HeightFieldGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 
 		const HeightFieldUtil*	mHFUtil;
 		const PxTransform*		mPose;
-		PxSweepHit*				mHit;
+		PxGeomSweepHit*			mHit;
 		bool					mStatus;
 		Box						mBox;
 		PxVec3					mDir;
@@ -424,7 +428,7 @@ bool sweepBox_HeightFieldGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 	const PxU32 meshBothSides = hitFlags & PxHitFlag::eMESH_BOTH_SIDES;
 	myReport.mIsDoubleSided = (heightFieldGeom.heightFieldFlags & PxMeshGeometryFlag::eDOUBLE_SIDED) || meshBothSides;
 
-	hfUtil.overlapAABBTriangles(pose, bounds, GuHfQueryFlags::eWORLD_SPACE, &myReport);
+	hfUtil.overlapAABBTriangles(pose, bounds, myReport);
 
 	return myReport.mStatus;
 }

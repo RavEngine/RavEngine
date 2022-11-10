@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,27 +22,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXC_SCRATCHALLOCATOR_H
-#define PXC_SCRATCHALLOCATOR_H
+#ifndef PXC_SCRATCH_ALLOCATOR_H
+#define PXC_SCRATCH_ALLOCATOR_H
 
 #include "foundation/PxAssert.h"
 #include "PxvConfig.h"
-#include "PsMutex.h"
-#include "PsArray.h"
-#include "PsAllocator.h"
+#include "foundation/PxMutex.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
-class PxcScratchAllocator
+class PxcScratchAllocator : public PxUserAllocated
 {
 	PX_NOCOPY(PxcScratchAllocator)
 public:
-	PxcScratchAllocator() : mStack(PX_DEBUG_EXP("PxcScratchAllocator")), mStart(NULL), mSize(0)
+	PxcScratchAllocator() : mStack("PxcScratchAllocator"), mStart(NULL), mSize(0)
 	{
 		mStack.reserve(64);
 		mStack.pushBack(0);
@@ -51,6 +50,8 @@ public:
 
 	void setBlock(void* addr, PxU32 size)
 	{
+		PX_ASSERT(!(size&15));
+
 		// if the stack is not empty then some scratch memory was not freed on the previous frame. That's 
 		// likely indicative of a problem, because when the scratch block is too small the memory will have
 		// come from the heap
@@ -65,7 +66,7 @@ public:
 
 	void* allocAll(PxU32& size)
 	{
-		Ps::Mutex::ScopedLock lock(mLock);
+		PxMutex::ScopedLock lock(mLock);
 		PX_ASSERT(mStack.size()>0);
 		size = PxU32(mStack.back()-mStart);
 
@@ -76,12 +77,11 @@ public:
 		return mStart;
 	}
 
-
 	void* alloc(PxU32 requestedSize, bool fallBackToHeap = false)
 	{
 		requestedSize = (requestedSize+15)&~15;
 
-		Ps::Mutex::ScopedLock lock(mLock);
+		PxMutex::ScopedLock lock(mLock);
 		PX_ASSERT(mStack.size()>=1);
 
 		PxU8* top = mStack.back();
@@ -108,7 +108,7 @@ public:
 			return;
 		}
 
-		Ps::Mutex::ScopedLock lock(mLock);
+		PxMutex::ScopedLock lock(mLock);
 		PX_ASSERT(mStack.size()>1);
 
 		PxU32 i=mStack.size()-1;		
@@ -119,7 +119,6 @@ public:
 		mStack.remove(i);
 	}
 
-
 	bool isScratchAddr(void* addr) const
 	{
 		PxU8* a = reinterpret_cast<PxU8*>(addr);
@@ -127,8 +126,8 @@ public:
 	}
 
 private:
-	Ps::Mutex			mLock;
-	Ps::Array<PxU8*>	mStack;
+	PxMutex				mLock;
+	PxArray<PxU8*>		mStack;
 	PxU8*				mStart;
 	PxU32				mSize;
 };

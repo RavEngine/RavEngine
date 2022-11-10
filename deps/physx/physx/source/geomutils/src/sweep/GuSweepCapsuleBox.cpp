@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxBounds3.h"
 #include "foundation/PxTransform.h"
+#include "foundation/PxSIMDHelpers.h"
 #include "geometry/PxTriangle.h"
 
 #include "GuSweepCapsuleBox.h"
@@ -36,8 +36,7 @@
 #include "GuCapsule.h"
 #include "GuDistanceSegmentBox.h"
 #include "GuInternal.h"
-#include "GuSIMDHelpers.h"
-#include "PsAlloca.h"
+#include "foundation/PxAlloca.h"
 
 using namespace physx;
 using namespace Gu;
@@ -200,7 +199,7 @@ bool Gu::sweepCapsuleBox(const Capsule& capsule, const PxTransform& boxWorldPose
 		PX_ASSERT(nbTris<=12*7);
 
 		// Sweep sphere vs extruded box
-		PxSweepHit h;	// PT: TODO: ctor!
+		PxGeomSweepHit h;	// PT: TODO: ctor!
 		PxVec3 bestNormal;
 		if(sweepSphereTriangles(nbTris, triangles, capsule.computeCenter(), capsule.radius, dir, length, NULL, h, bestNormal, false, false, false, false))
 		{

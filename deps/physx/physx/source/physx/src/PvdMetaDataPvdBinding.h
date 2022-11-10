@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#ifndef PX_META_DATA_PVD_BINDING_H
-#define PX_META_DATA_PVD_BINDING_H
+#ifndef PVD_META_DATA_PVD_BINDING_H
+#define PVD_META_DATA_PVD_BINDING_H
 
 #if PX_SUPPORT_PVD
 
 #include "PxPhysXConfig.h"
-#include "PsArray.h"
+#include "foundation/PxArray.h"
 
 namespace physx
 {
@@ -83,7 +82,7 @@ class PvdMetaDataBinding
 	void sendAllProperties(PvdDataStream& inStream, const PxScene& inScene);
 	// per frame update
 	void sendBeginFrame(PvdDataStream& inStream, const PxScene* inScene, PxReal simulateElapsedTime);
-	void sendContacts(PvdDataStream& inStream, const PxScene& inScene, shdfnd::Array<Sc::Contact>& inContacts);
+	void sendContacts(PvdDataStream& inStream, const PxScene& inScene, PxArray<Sc::Contact>& inContacts);
 	void sendContacts(PvdDataStream& inStream, const PxScene& inScene);
 	void sendStats(PvdDataStream& inStream, const PxScene* inScene);
 	void sendSceneQueries(PvdDataStream& inStream, const PxScene& inScene, PsPvd* pvd);
@@ -93,12 +92,37 @@ class PvdMetaDataBinding
 	void sendAllProperties(PvdDataStream& inStream, const PxMaterial& inMaterial);
 	void destroyInstance(PvdDataStream& inStream, const PxMaterial& inMaterial, const PxPhysics& ownerPhysics);
 
+	void createInstance(PvdDataStream& inStream, const PxFEMSoftBodyMaterial& inMaterial, const PxPhysics& ownerPhysics);
+	void sendAllProperties(PvdDataStream& inStream, const PxFEMSoftBodyMaterial& inMaterial);
+	void destroyInstance(PvdDataStream& inStream, const PxFEMSoftBodyMaterial& inMaterial, const PxPhysics& ownerPhysics);
+
+	// jcarius: Commented-out until FEMCloth is not under construction anymore
+	// void createInstance(PvdDataStream& inStream, const PxFEMClothMaterial& inMaterial, const PxPhysics& ownerPhysics);
+	// void sendAllProperties(PvdDataStream& inStream, const PxFEMClothMaterial& inMaterial);
+	// void destroyInstance(PvdDataStream& inStream, const PxFEMClothMaterial& inMaterial, const PxPhysics& ownerPhysics);
+
+	void createInstance(PvdDataStream& inStream, const PxPBDMaterial& inMaterial, const PxPhysics& ownerPhysics);
+	void sendAllProperties(PvdDataStream& inStream, const PxPBDMaterial& inMaterial);
+	void destroyInstance(PvdDataStream& inStream, const PxPBDMaterial& inMaterial, const PxPhysics& ownerPhysics);
+
+	void createInstance(PvdDataStream& inStream, const PxFLIPMaterial& inMaterial, const PxPhysics& ownerPhysics);
+	void sendAllProperties(PvdDataStream& inStream, const PxFLIPMaterial& inMaterial);
+	void destroyInstance(PvdDataStream& inStream, const PxFLIPMaterial& inMaterial, const PxPhysics& ownerPhysics);
+
+	void createInstance(PvdDataStream& inStream, const PxMPMMaterial& inMaterial, const PxPhysics& ownerPhysics);
+	void sendAllProperties(PvdDataStream& inStream, const PxMPMMaterial& inMaterial);
+	void destroyInstance(PvdDataStream& inStream, const PxMPMMaterial& inMaterial, const PxPhysics& ownerPhysics);
+
+
 	void createInstance(PvdDataStream& inStream, const PxHeightField& inData, const PxPhysics& ownerPhysics);
 	void sendAllProperties(PvdDataStream& inStream, const PxHeightField& inData);
 	void destroyInstance(PvdDataStream& inStream, const PxHeightField& inData, const PxPhysics& ownerPhysics);
 
 	void createInstance(PvdDataStream& inStream, const PxConvexMesh& inData, const PxPhysics& ownerPhysics);
 	void destroyInstance(PvdDataStream& inStream, const PxConvexMesh& inData, const PxPhysics& ownerPhysics);
+
+	void createInstance(PvdDataStream& inStream, const PxTetrahedronMesh& inData, const PxPhysics& ownerPhysics);
+	void destroyInstance(PvdDataStream& inStream, const PxTetrahedronMesh& inData, const PxPhysics& ownerPhysics);
 
 	void createInstance(PvdDataStream& inStream, const PxTriangleMesh& inData, const PxPhysics& ownerPhysics);
 	void destroyInstance(PvdDataStream& inStream, const PxTriangleMesh& inData, const PxPhysics& ownerPhysics);
@@ -111,9 +135,37 @@ class PvdMetaDataBinding
 	void sendAllProperties(PvdDataStream& inStream, const PxRigidDynamic& inObj);
 	void destroyInstance(PvdDataStream& inStream, const PxRigidDynamic& inObj, const PxScene& ownerScene);
 
-	void createInstance(PvdDataStream& inStream, const PxArticulationBase& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
-	void sendAllProperties(PvdDataStream& inStream, const PxArticulationBase& inObj);
-	void destroyInstance(PvdDataStream& inStream, const PxArticulationBase& inObj, const PxScene& ownerScene);
+	void createInstance(PvdDataStream& inStream, const PxSoftBody& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxSoftBody& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxSoftBody& inObj, const PxScene& ownerScene);
+
+	void createInstance(PvdDataStream& inStream, const PxFEMCloth& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxFEMCloth& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxFEMCloth& inObj, const PxScene& ownerScene);
+
+	void createInstance(PvdDataStream& inStream, const PxPBDParticleSystem& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxPBDParticleSystem& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxPBDParticleSystem& inObj, const PxScene& ownerScene);
+
+	void createInstance(PvdDataStream& inStream, const PxFLIPParticleSystem& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxFLIPParticleSystem& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxFLIPParticleSystem& inObj, const PxScene& ownerScene);
+
+	void createInstance(PvdDataStream& inStream, const PxMPMParticleSystem& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxMPMParticleSystem& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxMPMParticleSystem& inObj, const PxScene& ownerScene);
+
+	void createInstance(PvdDataStream& inStream, const PxCustomParticleSystem& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxCustomParticleSystem& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxCustomParticleSystem& inObj, const PxScene& ownerScene);
+
+	void createInstance(PvdDataStream& inStream, const PxHairSystem& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxHairSystem& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxHairSystem& inObj, const PxScene& ownerScene);
+
+	void createInstance(PvdDataStream& inStream, const PxArticulationReducedCoordinate& inObj, const PxScene& ownerScene, const PxPhysics& ownerPhysics, PsPvd* pvd);
+	void sendAllProperties(PvdDataStream& inStream, const PxArticulationReducedCoordinate& inObj);
+	void destroyInstance(PvdDataStream& inStream, const PxArticulationReducedCoordinate& inObj, const PxScene& ownerScene);
 
 	void createInstance(PvdDataStream& inStream, const PxArticulationLink& inObj, const PxPhysics& ownerPhysics, PsPvd* pvd);
 	void sendAllProperties(PvdDataStream& inStream, const PxArticulationLink& inObj);
@@ -127,7 +179,7 @@ class PvdMetaDataBinding
 
 	// These are created as part of the articulation link's creation process, so outside entities don't need to
 	// create them.
-	void sendAllProperties(PvdDataStream& inStream, const PxArticulationJointBase& inObj);
+	void sendAllProperties(PvdDataStream& inStream, const PxArticulationJointReducedCoordinate& inObj);
 
 	// per frame update
 	void updateDynamicActorsAndArticulations(PvdDataStream& inStream, const PxScene* inScene, PvdVisualizer* linkJointViz);

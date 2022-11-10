@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_COLLISION_TRIGGERINTERACTION
-#define PX_COLLISION_TRIGGERINTERACTION
+#ifndef SC_TRIGGER_INTERACTION_H
+#define SC_TRIGGER_INTERACTION_H
 
 #include "ScElementSimInteraction.h"
 #include "ScShapeSim.h"
@@ -55,22 +53,22 @@ namespace Sc
 			LAST							= (NEXT_FREE << 1)
 		};
 
-											TriggerInteraction(ShapeSim& triggerShape, ShapeSim& otherShape);
+											TriggerInteraction(ShapeSimBase& triggerShape, ShapeSimBase& otherShape);
 											~TriggerInteraction();
 
 		PX_FORCE_INLINE	Gu::TriggerCache&	getTriggerCache()									{ return mTriggerCache;							}
-		PX_FORCE_INLINE	ShapeSim&			getTriggerShape()							const	{ return static_cast<ShapeSim&>(getElement0());	}
-		PX_FORCE_INLINE	ShapeSim&			getOtherShape()								const	{ return static_cast<ShapeSim&>(getElement1());	}
+		PX_FORCE_INLINE	ShapeSimBase&		getTriggerShape()							const	{ return static_cast<ShapeSimBase&>(getElement0());	}
+		PX_FORCE_INLINE	ShapeSimBase&		getOtherShape()								const	{ return static_cast<ShapeSimBase&>(getElement1());	}
 
 		PX_FORCE_INLINE bool				lastFrameHadContacts()						const	{ return mLastFrameHadContacts;			}
 		PX_FORCE_INLINE void				updateLastFrameHadContacts(bool hasContact)			{ mLastFrameHadContacts = hasContact;	}
 
-		PX_FORCE_INLINE PxPairFlags			getTriggerFlags()							const	{ return PxPairFlags(PxU32(mFlags) & PAIR_FLAGS_MASK);		}
+		PX_FORCE_INLINE PxPairFlags			getTriggerFlags()							const	{ return PxPairFlags(mFlags & PAIR_FLAGS_MASK);		}
 		PX_FORCE_INLINE void				setTriggerFlags(PxPairFlags triggerFlags);
 
 		PX_FORCE_INLINE void				raiseFlag(TriggerFlag flag)				{ mFlags |= flag; }
 		PX_FORCE_INLINE void				clearFlag(TriggerFlag flag)				{ mFlags &= ~flag; }
-		PX_FORCE_INLINE	Ps::IntBool			readFlag(TriggerFlag flag)		const	{ return Ps::IntBool(mFlags & flag); }
+		PX_FORCE_INLINE	PxIntBool			readFlag(TriggerFlag flag)		const	{ return PxIntBool(mFlags & flag); }
 
 		PX_FORCE_INLINE void				forceProcessingThisFrame(Sc::Scene& scene);
 
@@ -79,7 +77,6 @@ namespace Sc
 
 	protected:
 						Gu::TriggerCache	mTriggerCache;
-						PxU16				mFlags;
 						bool				mLastFrameHadContacts;
 	};
 
@@ -102,9 +99,8 @@ PX_FORCE_INLINE void Sc::TriggerInteraction::setTriggerFlags(PxPairFlags trigger
 	newFlags &= (~PAIR_FLAGS_MASK);  // clear old flags
 	newFlags |= fl;
 
-	mFlags = PxU16(newFlags);
+	mFlags = newFlags;
 }
-
 
 PX_FORCE_INLINE void Sc::TriggerInteraction::forceProcessingThisFrame(Sc::Scene& scene)
 {

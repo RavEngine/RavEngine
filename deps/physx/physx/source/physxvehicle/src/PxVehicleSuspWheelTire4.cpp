@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "PxVehicleSuspWheelTire4.h"
-#include "PxVehicleDefaults.h"
-#include "PsFoundation.h"
-#include "CmPhysXCommon.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxFoundation.h"
+#include "foundation/PxErrors.h"
 
 namespace physx
 {
@@ -117,7 +115,7 @@ void PxVehicleWheels4SimData::setTireData(const PxU32 id, const PxVehicleTireDat
 	PX_CHECK_AND_RETURN(tire.mLongitudinalStiffnessPerUnitGravity>0, "Tire longitudinal stiffness must greater than zero");
 	PX_CHECK_AND_RETURN(tire.mCamberStiffnessPerUnitGravity>=0, "Tire camber stiffness must greater than or equal to zero");
 	PX_CHECK_AND_RETURN(tire.mFrictionVsSlipGraph[0][0]==0, "mFrictionVsSlipGraph[0][0] must be zero");
-	PX_CHECK_AND_RETURN(tire.mFrictionVsSlipGraph[0][1]>0, "mFrictionVsSlipGraph[0][0] must be greater than zero");
+	PX_CHECK_AND_RETURN(tire.mFrictionVsSlipGraph[0][1]>0, "mFrictionVsSlipGraph[0][1] must be greater than zero");
 	PX_CHECK_AND_RETURN(tire.mFrictionVsSlipGraph[1][0]>0, "mFrictionVsSlipGraph[1][0] must be greater than zero");
 	PX_CHECK_AND_RETURN(tire.mFrictionVsSlipGraph[1][1]>=tire.mFrictionVsSlipGraph[0][1], "mFrictionVsSlipGraph[1][1] must be greater than mFrictionVsSlipGraph[0][1]");
 	PX_CHECK_AND_RETURN(tire.mFrictionVsSlipGraph[2][0]> tire.mFrictionVsSlipGraph[1][0], "mFrictionVsSlipGraph[2][0] must be greater than mFrictionVsSlipGraph[1][0]");
@@ -175,7 +173,7 @@ void PxVehicleWheels4SimData::setWheelShapeMapping(const PxU32 id, const PxI32 s
 {
 	PX_CHECK_AND_RETURN(id<4, "Illegal wheel id");
 	PX_CHECK_AND_RETURN((-1==shapeId) || (PxU32(shapeId) < PX_MAX_U8), "Illegal shapeId: must be -1 or less than PX_MAX_U8");
-	mWheelShapeMap[id] = Ps::to8(-1!=shapeId ? shapeId : PX_MAX_U8);
+	mWheelShapeMap[id] = PxTo8(-1!=shapeId ? shapeId : PX_MAX_U8);
 }
 
 /////////////////////////////

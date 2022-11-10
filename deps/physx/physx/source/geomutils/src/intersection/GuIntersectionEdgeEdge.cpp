@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "GuIntersectionEdgeEdge.h"
-#include "PsMathUtils.h"
-#include "CmPhysXCommon.h"
+#include "GuInternal.h"
 
 using namespace physx;
 
@@ -67,7 +65,7 @@ bool Gu::intersectEdgeEdge(const PxVec3& p1, const PxVec3& p2, const PxVec3& dir
 
 	// find largest 2D plane projection
 	PxU32 i,j;
-	Ps::closestAxis(plane.n, i, j);
+	closestAxis(plane.n, i, j);
 
 	// compute distance of intersection from line (ip, -dir) to line (p1,p2)
 	dist =	(v1[i]*(ip[j]-p1[j])-v1[j]*(ip[i]-p1[i]))/(v1[i]*dir[j]-v1[j]*dir[i]);

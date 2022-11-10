@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -77,7 +76,7 @@ bool Gu::sweepSphereCapsule(const Sphere& sphere, const Capsule& lss, const PxVe
 			d = t;
 
 // PT: TODO:
-//			const Ps::IntBool needsImpactPoint = hitFlags & PxHitFlag::ePOSITION;
+//			const PxIntBool needsImpactPoint = hitFlags & PxHitFlag::ePOSITION;
 //			if(needsImpactPoint || hitFlags & PxHitFlag::eNORMAL)
 			{
 				// Move capsule against sphere

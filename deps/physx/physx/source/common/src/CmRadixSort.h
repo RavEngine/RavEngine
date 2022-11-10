@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,7 +35,6 @@ namespace physx
 {
 namespace Cm
 {
-
 	enum RadixHint
 	{
 		RADIX_SIGNED,		//!< Input values are signed
@@ -52,6 +50,7 @@ namespace Cm
 
 	class PX_PHYSX_COMMON_API RadixSort
 	{
+										PX_NOCOPY(RadixSort)
 		public:
 										RadixSort();
 		virtual							~RadixSort();
@@ -73,9 +72,6 @@ namespace Cm
 		PX_FORCE_INLINE	void			invalidateRanks()			{ INVALIDATE_RANKS;		}
 
 						bool			SetBuffers(PxU32* ranks0, PxU32* ranks1, PxU32* histogram1024, PxU32** links256);
-		private:
-										RadixSort(const RadixSort& object);
-										RadixSort& operator=(const RadixSort& object);
 		protected:
 						PxU32			mCurrentSize;		//!< Current size of the indices list
 						PxU32*			mRanks;				//!< Two lists, swapped each pass
@@ -95,8 +91,27 @@ namespace Cm
 		PxU32 histogramBuffer[1024];				\
 		PxU32* linksBuffer[256];					\
 		name.SetBuffers(ranks0, ranks1, histogramBuffer, linksBuffer);
-}
 
+	class PX_PHYSX_COMMON_API RadixSortBuffered : public RadixSort
+	{
+	public:
+							RadixSortBuffered();
+							~RadixSortBuffered();
+
+		void				reset();
+
+		RadixSortBuffered&	Sort(const PxU32* input, PxU32 nb, RadixHint hint=RADIX_SIGNED);
+		RadixSortBuffered&	Sort(const float* input, PxU32 nb);
+
+	private:
+							RadixSortBuffered(const RadixSortBuffered& object);
+							RadixSortBuffered& operator=(const RadixSortBuffered& object);
+
+		// Internal methods
+		void				CheckResize(PxU32 nb);
+		bool				Resize(PxU32 nb);
+	};
+}
 }
 
 #endif // CM_RADIX_SORT_H

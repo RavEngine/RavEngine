@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include "foundation/PxMemory.h"
 #include "foundation/PxAssert.h"
 #include "CmRadixSort.h"
+
+// PT: code archeology: this initially came from ICE (IceRevisitedRadix.h/cpp). Consider putting it back the way it was initially.
 
 using namespace physx;
 using namespace Cm;
@@ -147,30 +147,16 @@ PX_INLINE const PxU32* CheckPassValidity(PxU32 pass, const PxU32* mHistogram1024
 	return CurCount;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/**
- *	Constructor.
- */
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 RadixSort::RadixSort() : mCurrentSize(0), mRanks(NULL), mRanks2(NULL), mHistogram1024(0), mLinks256(0), mTotalCalls(0), mNbHits(0), mDeleteRanks(true)
 {
 	// Initialize indices
 	INVALIDATE_RANKS;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/**
- *	Destructor.
- */
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 RadixSort::~RadixSort()
 {
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /**
  *	Main sort routine.
  *	This one is for integer values. After the call, mRanks contains a list of indices in sorted order, i.e. in the order you may process your data.
@@ -179,8 +165,6 @@ RadixSort::~RadixSort()
  *	\param		hint	[in] RADIX_SIGNED to handle negative values, RADIX_UNSIGNED if you know your input buffer only contains positive values
  *	\return		Self-Reference
  */
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 RadixSort& RadixSort::Sort(const PxU32* input, PxU32 nb, RadixHint hint)
 {
 	PX_ASSERT(mHistogram1024);
@@ -189,7 +173,8 @@ RadixSort& RadixSort::Sort(const PxU32* input, PxU32 nb, RadixHint hint)
 	PX_ASSERT(mRanks2);
 
 	// Checkings
-	if(!input || !nb || nb&0x80000000)	return *this;
+	if(!input || !nb || nb&0x80000000)
+		return *this;
 
 	// Stats
 	mTotalCalls++;
@@ -278,7 +263,6 @@ RadixSort& RadixSort::Sort(const PxU32* input, PxU32 nb, RadixHint hint)
 	return *this;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /**
  *	Main sort routine.
  *	This one is for floating-point values. After the call, mRanks contains a list of indices in sorted order, i.e. in the order you may process your data.
@@ -287,8 +271,6 @@ RadixSort& RadixSort::Sort(const PxU32* input, PxU32 nb, RadixHint hint)
  *	\return		Self-Reference
  *	\warning	only sorts IEEE floating-point values
  */
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 RadixSort& RadixSort::Sort(const float* input2, PxU32 nb)
 {
 	PX_ASSERT(mHistogram1024);
@@ -297,7 +279,8 @@ RadixSort& RadixSort::Sort(const float* input2, PxU32 nb)
 	PX_ASSERT(mRanks2);
 
 	// Checkings
-	if(!input2 || !nb || nb&0x80000000)	return *this;
+	if(!input2 || !nb || nb&0x80000000)
+		return *this;
 
 	// Stats
 	mTotalCalls++;
@@ -447,7 +430,8 @@ RadixSort& RadixSort::Sort(const float* input2, PxU32 nb)
 
 bool RadixSort::SetBuffers(PxU32* ranks0, PxU32* ranks1, PxU32* histogram1024, PxU32** links256)
 {
-	if(!ranks0 || !ranks1 || !histogram1024 || !links256)	return false;
+	if(!ranks0 || !ranks1 || !histogram1024 || !links256)
+		return false;
 
 	mRanks			= ranks0;
 	mRanks2			= ranks1;
@@ -456,5 +440,120 @@ bool RadixSort::SetBuffers(PxU32* ranks0, PxU32* ranks1, PxU32* histogram1024, P
 	mDeleteRanks	= false;
 	INVALIDATE_RANKS;
 	return true;
+}
+
+
+#include "foundation/PxAllocator.h"
+
+using namespace physx;
+using namespace Cm;
+
+RadixSortBuffered::RadixSortBuffered()
+: RadixSort()
+{
+}
+
+RadixSortBuffered::~RadixSortBuffered()
+{
+	reset();
+}
+
+void RadixSortBuffered::reset()
+{
+	// Release everything
+	if(mDeleteRanks)
+	{
+		PX_FREE(mRanks2);
+		PX_FREE(mRanks);
+	}
+	mCurrentSize = 0;
+	INVALIDATE_RANKS;
+}
+
+/**
+ *	Resizes the inner lists.
+ *	\param		nb	[in] new size (number of dwords)
+ *	\return		true if success
+ */
+bool RadixSortBuffered::Resize(PxU32 nb)
+{
+	if(mDeleteRanks)
+	{
+		// Free previously used ram
+		PX_FREE(mRanks2);
+		PX_FREE(mRanks);
+
+		// Get some fresh one
+		mRanks	= PX_ALLOCATE(PxU32, nb, "RadixSortBuffered:mRanks");
+		mRanks2	= PX_ALLOCATE(PxU32, nb, "RadixSortBuffered:mRanks2");
+	}
+
+	return true;
+}
+
+PX_INLINE void RadixSortBuffered::CheckResize(PxU32 nb)
+{
+	PxU32 CurSize = CURRENT_SIZE;
+	if(nb!=CurSize)
+	{
+		if(nb>CurSize)
+			Resize(nb);
+		mCurrentSize = nb;
+		INVALIDATE_RANKS;
+	}
+}
+
+/**
+ *	Main sort routine.
+ *	This one is for integer values. After the call, mRanks contains a list of indices in sorted order, i.e. in the order you may process your data.
+ *	\param		input	[in] a list of integer values to sort
+ *	\param		nb		[in] number of values to sort, must be < 2^31
+ *	\param		hint	[in] RADIX_SIGNED to handle negative values, RADIX_UNSIGNED if you know your input buffer only contains positive values
+ *	\return		Self-Reference
+ */
+RadixSortBuffered& RadixSortBuffered::Sort(const PxU32* input, PxU32 nb, RadixHint hint)
+{
+	// Checkings
+	if(!input || !nb || nb&0x80000000)
+		return *this;
+
+	// Resize lists if needed
+	CheckResize(nb);
+
+	//Set histogram buffers.
+	PxU32 histogram[1024];
+	PxU32* links[256];
+	mHistogram1024 = histogram;
+	mLinks256 = links;
+
+	RadixSort::Sort(input, nb, hint);
+	return *this;
+}
+
+/**
+ *	Main sort routine.
+ *	This one is for floating-point values. After the call, mRanks contains a list of indices in sorted order, i.e. in the order you may process your data.
+ *	\param		input2			[in] a list of floating-point values to sort
+ *	\param		nb				[in] number of values to sort, must be < 2^31
+ *	\return		Self-Reference
+ *	\warning	only sorts IEEE floating-point values
+ */
+RadixSortBuffered& RadixSortBuffered::Sort(const float* input2, PxU32 nb)
+{
+	// Checkings
+	if(!input2 || !nb || nb&0x80000000)
+		return *this;
+
+	// Resize lists if needed
+	CheckResize(nb);
+
+	//Set histogram buffers.
+	PxU32 histogram[1024];
+	PxU32* links[256];
+	mHistogram1024 = histogram;
+	mLinks256 = links;
+
+	RadixSort::Sort(input2, nb);
+	return *this;
 }
 

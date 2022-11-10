@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 
 // ***********************************************************************************************
-// This snippet illustrates how to convert PhysX 3 serialized binary files from one platform to
+// This snippet illustrates how to convert PhysX serialized binary files from one platform to
 // another. The conversion requires three input files:
+//
+// Note: Binary conversion has been DEPRECATED
 // 
 // 1. A metadata file that was created on the source platform. This file specifies the 
 //   source platform as well as the layout of PhysX data structures on the source platform.
@@ -38,9 +39,6 @@
 //   (destination) platform as well as the layout of PhysX data structures on the target platform. 
 // 3. A source file containing a binary serialized collection. The platform this file was created
 //   on needs to match with the platform the source metadata file has been created on.
-//
-// A set of pre-built binary metadata files for various platforms is included with the PhysX SDK 
-// at [path to installed PhysX SDK]/Tools/BinaryMetaData.
 //
 // Optionally this snippet allows to create a example file with binary serialized data for the 
 // platform the snippet runs on.
@@ -60,21 +58,17 @@
 // ***********************************************************************************************
 
 #include "PxPhysicsAPI.h"
-
 #include <iostream>
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetutils/SnippetUtils.h"
 
-
 using namespace physx;
-PxDefaultAllocator		 gAllocator;
-PxDefaultErrorCallback	 gErrorCallback;
 
-PxFoundation*			 gFoundation = NULL;
-PxPhysics*				 gPhysics	= NULL;
-PxSerializationRegistry* gSerializationRegistry = NULL;
-
+static PxDefaultAllocator		 gAllocator;
+static PxDefaultErrorCallback	 gErrorCallback;
+static PxFoundation*			 gFoundation = NULL;
+static PxPhysics*				 gPhysics	= NULL;
+static PxSerializationRegistry*	gSerializationRegistry = NULL;
 
 struct CmdLineParameters
 {
@@ -115,9 +109,7 @@ static void printHelpMsg()
 		"--dstBinFile=<filename> "
 		"--generateExampleFile=<filename> "
 		"--dumpBinaryMetaData=<filename> "
-	    "--verbose \n"
-		"A set of pre-built binary metadata is included with the PhysX SDK "
-		"at [path to installed PhysX SDK]/Tools/BinaryMetaData.\n");
+		"--verbose \n");
 
 	printf("--srcMetadata=<filename>\n");
 	printf("  Defines source metadata file\n");
@@ -268,8 +260,8 @@ static void cleanupPhysics()
 
 	gSerializationRegistry->release();
 	
-	gPhysics->release();
-	gFoundation->release();
+	PX_RELEASE(gPhysics);
+	PX_RELEASE(gFoundation);
 
 	printf("SnippetConvert done.\n");
 }

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "GuBV4.h"
 using namespace physx;
 using namespace Gu;
-
-#if PX_INTEL_FAMILY  && !defined(PX_SIMD_DISABLED)
-
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 #include "GuInternal.h"
 #include "GuDistancePointSegment.h"
 #include "GuIntersectionCapsuleTriangle.h"
-#include "GuIntersectionTriangleBox.h"
-
 #include "GuBV4_BoxOverlap_Internal.h"
 #include "GuBV4_BoxBoxOverlapTest.h"
 
@@ -53,18 +46,28 @@ struct OBBParams : OBBTestParams
 	const PxVec3*	PX_RESTRICT	mVerts;
 
 	PxMat33			mRModelToBox_Padded;	//!< Rotation from model space to obb space
-	Vec3p			mTModelToBox_Padded;	//!< Translation from model space to obb space
+	PxVec3p			mTModelToBox_Padded;	//!< Translation from model space to obb space
+};
+
+struct OBBTetParams : OBBTestParams
+{
+	const IndTetrahedron32*	PX_RESTRICT	mTets32;
+	const IndTetrahedron16*	PX_RESTRICT	mTets16;
+	const PxVec3*			PX_RESTRICT	mVerts;
+
+	PxMat33					mRModelToBox_Padded;	//!< Rotation from model space to obb space
+	PxVec3p					mTModelToBox_Padded;	//!< Translation from model space to obb space
 };
 
 // PT: TODO: this used to be inlined so we lost some perf by moving to PhysX's version. Revisit. (TA34704)
-Ps::IntBool intersectTriangleBoxBV4(const PxVec3& p0, const PxVec3& p1, const PxVec3& p2,
+PxIntBool intersectTriangleBoxBV4(const PxVec3& p0, const PxVec3& p1, const PxVec3& p2,
 									const PxMat33& rotModelToBox, const PxVec3& transModelToBox, const PxVec3& extents);
 namespace
 {
 class LeafFunction_BoxOverlapAny
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(const OBBParams* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(const OBBParams* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
@@ -93,9 +96,19 @@ static PX_FORCE_INLINE void setupBoxParams(ParamsT* PX_RESTRICT params, const Bo
 	params->precomputeBoxData(localBox.extents, &localBox.rot);
 }
 
+template<class ParamsT>
+static PX_FORCE_INLINE void setupBoxParams(ParamsT* PX_RESTRICT params, const Box& localBox, const BV4Tree* PX_RESTRICT tree, const TetrahedronSourceMesh* PX_RESTRICT mesh)
+{
+	invertBoxMatrix(params->mRModelToBox_Padded, params->mTModelToBox_Padded, localBox);
+	params->mTBoxToModel_PaddedAligned = localBox.center;
+
+	setupMeshPointersAndQuantizedCoeffs(params, mesh, tree);
+
+	params->precomputeBoxData(localBox.extents, &localBox.rot);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "GuBV4_BoxBoxOverlapTest.h"
 #ifdef GU_BV4_USE_SLABS
 	#include "GuBV4_Slabs.h"
 #endif
@@ -107,9 +120,9 @@ static PX_FORCE_INLINE void setupBoxParams(ParamsT* PX_RESTRICT params, const Bo
 #define GU_BV4_PROCESS_STREAM_NO_ORDER
 #include "GuBV4_Internal.h"
 
-Ps::IntBool BV4_OverlapBoxAny(const Box& box, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned)
+PxIntBool BV4_OverlapBoxAny(const Box& box, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh =static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	Box localBox;
 	computeLocalBox(localBox, box, worldm_Aligned);
@@ -121,7 +134,7 @@ Ps::IntBool BV4_OverlapBoxAny(const Box& box, const BV4Tree& tree, const PxMat44
 		return processStreamNoOrder<LeafFunction_BoxOverlapAny>(tree, &Params);
 	else
 	{
-		const PxU32 nbTris = mesh->getNbTriangles();
+		const PxU32 nbTris = mesh->getNbPrimitives();
 		PX_ASSERT(nbTris<16);
 		return LeafFunction_BoxOverlapAny::doLeafTest(&Params, nbTris);
 	}
@@ -142,7 +155,7 @@ namespace
 class LeafFunction_BoxOverlapAll
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(OBBParams* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(OBBParams* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
@@ -169,7 +182,7 @@ public:
 
 PxU32 BV4_OverlapBoxAll(const Box& box, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxU32* results, PxU32 size, bool& overflow)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	Box localBox;
 	computeLocalBox(localBox, box, worldm_Aligned);
@@ -184,7 +197,7 @@ PxU32 BV4_OverlapBoxAll(const Box& box, const BV4Tree& tree, const PxMat44* PX_R
 		overflow = processStreamNoOrder<LeafFunction_BoxOverlapAll>(tree, &Params)!=0;
 	else
 	{
-		const PxU32 nbTris = mesh->getNbTriangles();
+		const PxU32 nbTris = mesh->getNbPrimitives();
 		PX_ASSERT(nbTris<16);
 		overflow = LeafFunction_BoxOverlapAll::doLeafTest(&Params, nbTris)!=0;
 	}
@@ -195,8 +208,14 @@ PxU32 BV4_OverlapBoxAll(const Box& box, const BV4Tree& tree, const PxMat44* PX_R
 
 struct OBBParamsCB : OBBParams
 {
-	MeshOverlapCallback	mCallback;
-	void*				mUserData;
+	MeshOverlapCallback			mCallback;
+	void*						mUserData;
+};
+
+struct OBBTetParamsCB : OBBTetParams
+{
+	TetMeshOverlapCallback	mCallback;
+	void*					mUserData;
 };
 
 namespace
@@ -204,22 +223,66 @@ namespace
 class LeafFunction_BoxOverlapCB
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(const OBBParamsCB* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(const OBBParamsCB* PX_RESTRICT params, PxU32 primIndex)
+	{
+		PxU32 nbToGo = getNbPrimitives(primIndex);
+
+		do
+		{
+			
+			PxU32 VRef0, VRef1, VRef2;
+			getVertexReferences(VRef0, VRef1, VRef2, primIndex, params->mTris32, params->mTris16);
+
+			if (intersectTriangleBoxBV4(params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], params->mRModelToBox_Padded, params->mTModelToBox_Padded, params->mBoxExtents_PaddedAligned))
+			{
+				const PxU32 vrefs[3] = { VRef0, VRef1, VRef2 };
+				if ((params->mCallback)(params->mUserData, params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], primIndex, vrefs))
+					return 1;
+			}
+			
+			primIndex++;
+		}while(nbToGo--);
+
+		return 0;
+	}
+
+	static PX_FORCE_INLINE PxIntBool doLeafTest(const OBBTetParamsCB* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
 		{
-			PxU32 VRef0, VRef1, VRef2;
-			getVertexReferences(VRef0, VRef1, VRef2, primIndex, params->mTris32, params->mTris16);
+			PxU32 VRef0, VRef1, VRef2, VRef3;
+			getVertexReferences(VRef0, VRef1, VRef2, VRef3, primIndex, params->mTets32, params->mTets16);
 
-			if(intersectTriangleBoxBV4(params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], params->mRModelToBox_Padded, params->mTModelToBox_Padded, params->mBoxExtents_PaddedAligned))
+			if (intersectTriangleBoxBV4(params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], params->mRModelToBox_Padded, params->mTModelToBox_Padded, params->mBoxExtents_PaddedAligned))
 			{
-				const PxU32 vrefs[3] = { VRef0, VRef1, VRef2 };
-				if((params->mCallback)(params->mUserData, params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], primIndex, vrefs))
+				const PxU32 vrefs[4] = { VRef0, VRef1, VRef2, VRef3};
+				if ((params->mCallback)(params->mUserData, params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], params->mVerts[VRef3], primIndex, vrefs))
+					return 1;
+			}
+
+			if (intersectTriangleBoxBV4(params->mVerts[VRef0], params->mVerts[VRef3], params->mVerts[VRef1], params->mRModelToBox_Padded, params->mTModelToBox_Padded, params->mBoxExtents_PaddedAligned))
+			{
+				const PxU32 vrefs[4] = { VRef0, VRef1, VRef2, VRef3 };
+				if ((params->mCallback)(params->mUserData, params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], params->mVerts[VRef3], primIndex, vrefs))
+					return 1;
+			}
+
+			if (intersectTriangleBoxBV4(params->mVerts[VRef1], params->mVerts[VRef3], params->mVerts[VRef2], params->mRModelToBox_Padded, params->mTModelToBox_Padded, params->mBoxExtents_PaddedAligned))
+			{
+				const PxU32 vrefs[4] = { VRef0, VRef1, VRef2, VRef3 };
+				if ((params->mCallback)(params->mUserData, params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], params->mVerts[VRef3], primIndex, vrefs))
+					return 1;
+			}
+
+			if (intersectTriangleBoxBV4(params->mVerts[VRef0], params->mVerts[VRef3], params->mVerts[VRef2], params->mRModelToBox_Padded, params->mTModelToBox_Padded, params->mBoxExtents_PaddedAligned))
+			{
+				const PxU32 vrefs[4] = { VRef0, VRef1, VRef2, VRef3 };
+				if ((params->mCallback)(params->mUserData, params->mVerts[VRef0], params->mVerts[VRef1], params->mVerts[VRef2], params->mVerts[VRef3], primIndex, vrefs))
 					return 1;
 			}
 			primIndex++;
-		}while(nbToGo--);
+		} while (nbToGo--);
 
 		return 0;
 	}
@@ -228,7 +291,7 @@ public:
 
 void BV4_OverlapBoxCB(const Box& localBox, const BV4Tree& tree, MeshOverlapCallback callback, void* userData)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	OBBParamsCB Params;
 	Params.mCallback	= callback;
@@ -239,9 +302,28 @@ void BV4_OverlapBoxCB(const Box& localBox, const BV4Tree& tree, MeshOverlapCallb
 		processStreamNoOrder<LeafFunction_BoxOverlapCB>(tree, &Params);
 	else
 	{
-		const PxU32 nbTris = mesh->getNbTriangles();
+		const PxU32 nbTris = mesh->getNbPrimitives();
 		PX_ASSERT(nbTris<16);
 		LeafFunction_BoxOverlapCB::doLeafTest(&Params, nbTris);
+	}
+}
+
+void BV4_OverlapBoxCB(const Box& localBox, const BV4Tree& tree, TetMeshOverlapCallback callback, void* userData)
+{
+	const TetrahedronSourceMesh* PX_RESTRICT mesh = static_cast<TetrahedronSourceMesh*>(tree.mMeshInterface);
+
+	OBBTetParamsCB Params;
+	Params.mCallback = callback;
+	Params.mUserData = userData;
+	setupBoxParams(&Params, localBox, &tree, mesh);
+
+	if (tree.mNodes)
+		processStreamNoOrder<LeafFunction_BoxOverlapCB>(tree, &Params);
+	else
+	{
+		const PxU32 nbTetrahedrons = mesh->getNbTetrahedrons();
+		PX_ASSERT(nbTetrahedrons<16);
+		LeafFunction_BoxOverlapCB::doLeafTest(&Params, nbTetrahedrons);
 	}
 }
 
@@ -286,7 +368,7 @@ static bool CapsuleVsTriangle_SAT(const PxVec3& p0, const PxVec3& p1, const PxVe
 	return 1;
 }
 
-static Ps::IntBool PX_FORCE_INLINE __CapsuleTriangle(const CapsuleParamsAny* PX_RESTRICT params, PxU32 primIndex)
+static PxIntBool PX_FORCE_INLINE capsuleTriangle(const CapsuleParamsAny* PX_RESTRICT params, PxU32 primIndex)
 {
 	PxU32 VRef0, VRef1, VRef2;
 	getVertexReferences(VRef0, VRef1, VRef2, primIndex, params->mTris32, params->mTris16);
@@ -298,12 +380,12 @@ namespace
 class LeafFunction_CapsuleOverlapAny
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(const OBBParams* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(const OBBParams* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
 		{
-			if(__CapsuleTriangle(static_cast<const CapsuleParamsAny*>(params), primIndex))
+			if(capsuleTriangle(static_cast<const CapsuleParamsAny*>(params), primIndex))
 				return 1;
 			primIndex++;
 		}while(nbToGo--);
@@ -326,9 +408,9 @@ static PX_FORCE_INLINE void setupCapsuleParams(ParamsT* PX_RESTRICT params, cons
 	setupBoxParams(params, localBox, tree, mesh);
 }
 
-Ps::IntBool BV4_OverlapCapsuleAny(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned)
+PxIntBool BV4_OverlapCapsuleAny(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<SourceMesh*>(tree.mMeshInterface);
 
 	CapsuleParamsAny Params;
 	setupCapsuleParams(&Params, capsule, &tree, worldm_Aligned, mesh);
@@ -358,14 +440,14 @@ namespace
 class LeafFunction_CapsuleOverlapAll
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(OBBParams* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(OBBParams* PX_RESTRICT params, PxU32 primIndex)
 	{
 		CapsuleParamsAll* ParamsAll = static_cast<CapsuleParamsAll*>(params);
 
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
 		{
-			if(__CapsuleTriangle(ParamsAll, primIndex))
+			if(capsuleTriangle(ParamsAll, primIndex))
 			{
 				if(ParamsAll->mNbHits==ParamsAll->mMaxNbHits)
 					return 1;
@@ -382,7 +464,7 @@ public:
 
 PxU32 BV4_OverlapCapsuleAll(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxU32* results, PxU32 size, bool& overflow)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<SourceMesh*>(tree.mMeshInterface);
 
 	CapsuleParamsAll Params;
 	Params.mNbHits		= 0;
@@ -414,7 +496,7 @@ namespace
 class LeafFunction_CapsuleOverlapCB
 {
 public:
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(const CapsuleParamsCB* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(const CapsuleParamsCB* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
@@ -443,7 +525,7 @@ public:
 // PT: this one is currently not used
 void BV4_OverlapCapsuleCB(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, MeshOverlapCallback callback, void* userData)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	CapsuleParamsCB Params;
 	Params.mCallback	= callback;
@@ -460,4 +542,3 @@ void BV4_OverlapCapsuleCB(const Capsule& capsule, const BV4Tree& tree, const PxM
 	}
 }
 
-#endif

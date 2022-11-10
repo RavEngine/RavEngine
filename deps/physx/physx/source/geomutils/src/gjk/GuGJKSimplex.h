@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_GJKSIMPLEX_H
 #define GU_GJKSIMPLEX_H
 
-#include "CmPhysXCommon.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 #include "GuBarycentricCoordinates.h"
 
 #if (defined __GNUC__ && defined _DEBUG)
@@ -47,24 +45,16 @@ namespace physx
 {
 namespace Gu
 {
+	PX_NOALIAS aos::Vec3V closestPtPointTetrahedron(aos::Vec3V* PX_RESTRICT Q, aos::Vec3V* PX_RESTRICT A, aos::Vec3V* PX_RESTRICT B, PxU32& size);
 
-
-	PX_NOALIAS Ps::aos::Vec3V closestPtPointTetrahedron(Ps::aos::Vec3V* PX_RESTRICT Q, Ps::aos::Vec3V* PX_RESTRICT A, Ps::aos::Vec3V* PX_RESTRICT B, PxU32& size);
-
-	PX_NOALIAS Ps::aos::Vec3V closestPtPointTetrahedron(Ps::aos::Vec3V* PX_RESTRICT Q, Ps::aos::Vec3V* PX_RESTRICT A, Ps::aos::Vec3V* PX_RESTRICT B, PxI32* PX_RESTRICT aInd, PxI32* PX_RESTRICT bInd, 
+	PX_NOALIAS aos::Vec3V closestPtPointTetrahedron(aos::Vec3V* PX_RESTRICT Q, aos::Vec3V* PX_RESTRICT A, aos::Vec3V* PX_RESTRICT B, PxI32* PX_RESTRICT aInd, PxI32* PX_RESTRICT bInd, 
 		PxU32& size);
 
-	PX_NOALIAS PX_FORCE_INLINE Ps::aos::BoolV PointOutsideOfPlane4(const Ps::aos::Vec3VArg _a, const Ps::aos::Vec3VArg _b, const Ps::aos::Vec3VArg _c, const Ps::aos::Vec3VArg _d)
+	PX_NOALIAS PX_FORCE_INLINE aos::BoolV PointOutsideOfPlane4(const aos::Vec3VArg _a, const aos::Vec3VArg _b, const aos::Vec3VArg _c, const aos::Vec3VArg _d)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		
-		// this is not 0 because of the following scenario:
-		// All the points lie on the same plane and the plane goes through the origin (0,0,0).
-		// On the Wii U, the math below has the problem that when point A gets projected on the
-		// plane cumputed by A, B, C, the distance to the plane might not be 0 for the mentioned
-		// scenario but a small positive or negative value. This can lead to the wrong boolean
-		// results. Using a small negative value as threshold is more conservative but safer.
-		const Vec4V zero = V4Load(-1e-6f);
+		const Vec4V zero = V4Load(0.f);
 
 		const Vec3V ab = V3Sub(_b, _a);
 		const Vec3V ac = V3Sub(_c, _a);
@@ -90,14 +80,11 @@ namespace Gu
 		const Vec4V signa = V4Merge(signa0, signa1, signa2, signa3);
 		const Vec4V signd = V4Merge(signd0, signd1, signd2, signd3);
 		return V4IsGrtrOrEq(V4Mul(signa, signd), zero);//same side, outside of the plane
-
-		
 	}
 
-
-	PX_NOALIAS PX_FORCE_INLINE Ps::aos::Vec3V closestPtPointSegment(Ps::aos::Vec3V* PX_RESTRICT Q, PxU32& size)
+	PX_NOALIAS PX_FORCE_INLINE aos::Vec3V closestPtPointSegment(aos::Vec3V* PX_RESTRICT Q, PxU32& size)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const Vec3V a = Q[0];
 		const Vec3V b = Q[1];
 
@@ -125,10 +112,9 @@ namespace Gu
 		return V3ScaleAdd(ab, tValue, a);
 	}
 
-
-	PX_FORCE_INLINE void getClosestPoint(const Ps::aos::Vec3V* PX_RESTRICT Q, const Ps::aos::Vec3V* PX_RESTRICT A, const Ps::aos::Vec3V* PX_RESTRICT B, const Ps::aos::Vec3VArg closest, Ps::aos::Vec3V& closestA, Ps::aos::Vec3V& closestB, const PxU32 size)
+	PX_FORCE_INLINE void getClosestPoint(const aos::Vec3V* PX_RESTRICT Q, const aos::Vec3V* PX_RESTRICT A, const aos::Vec3V* PX_RESTRICT B, const aos::Vec3VArg closest, aos::Vec3V& closestA, aos::Vec3V& closestB, const PxU32 size)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		switch(size)
 		{
@@ -166,10 +152,10 @@ namespace Gu
 		};
 	}
 
-	PX_NOALIAS PX_GJK_FORCE_INLINE Ps::aos::FloatV closestPtPointTriangleBaryCentric(const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b, const Ps::aos::Vec3VArg c, 
-		PxU32* PX_RESTRICT indices, PxU32& size, Ps::aos::Vec3V& closestPt)
+	PX_NOALIAS PX_GJK_FORCE_INLINE aos::FloatV closestPtPointTriangleBaryCentric(const aos::Vec3VArg a, const aos::Vec3VArg b, const aos::Vec3VArg c, 
+		PxU32* PX_RESTRICT indices, PxU32& size, aos::Vec3V& closestPt)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		size = 3;
 		const FloatV zero = FZero();
@@ -206,7 +192,6 @@ namespace Gu
 
 		const BoolV isFacePoints = BAnd(FIsGrtrOrEq(va, zero), BAnd(FIsGrtrOrEq(vb, zero), FIsGrtrOrEq(vc, zero)));
 
-
 		//face region
 		if(BAllEqTTTT(isFacePoints))
 		{	
@@ -226,7 +211,6 @@ namespace Gu
 		const FloatV d4 = V3Dot(ac, bp); //  unom = d4 - d3
 		const FloatV d5 = V3Dot(ab, cp); //  udenom = d5 - d6
 		const FloatV d6 = V3Dot(ac, cp); // -tdenom
-
 
 		const FloatV unom = FSub(d4, d3);
 		const FloatV udenom = FSub(d5, d6);
@@ -308,13 +292,11 @@ namespace Gu
 		indices[0] = indices[2];
 		closestPt = c;
 		return V3Dot(c, c);
-
 	}
 
-	PX_NOALIAS PX_GJK_FORCE_INLINE Ps::aos::Vec3V closestPtPointTriangle(Ps::aos::Vec3V* PX_RESTRICT Q, Ps::aos::Vec3V* A, Ps::aos::Vec3V* B, PxU32& size)
+	PX_NOALIAS PX_GJK_FORCE_INLINE aos::Vec3V closestPtPointTriangle(aos::Vec3V* PX_RESTRICT Q, aos::Vec3V* A, aos::Vec3V* B, PxU32& size)
 	{
-		
-		using namespace Ps::aos;
+		using namespace aos;
 
 		size = 3;
 	
@@ -340,7 +322,6 @@ namespace Gu
 
 		if(_size != 3)
 		{
-		
 			const Vec3V q0 = Q[indices[0]]; const Vec3V q1 = Q[indices[1]];
 			const Vec3V a0 = A[indices[0]]; const Vec3V a1 = A[indices[1]];
 			const Vec3V b0 = B[indices[0]]; const Vec3V b1 = B[indices[1]];
@@ -355,11 +336,10 @@ namespace Gu
 		return closestPt;
 	}
 
-	PX_NOALIAS PX_GJK_FORCE_INLINE Ps::aos::Vec3V closestPtPointTriangle(Ps::aos::Vec3V* PX_RESTRICT Q, Ps::aos::Vec3V* A, Ps::aos::Vec3V* B, PxI32* PX_RESTRICT aInd, PxI32* PX_RESTRICT bInd, 
+	PX_NOALIAS PX_GJK_FORCE_INLINE aos::Vec3V closestPtPointTriangle(aos::Vec3V* PX_RESTRICT Q, aos::Vec3V* A, aos::Vec3V* B, PxI32* PX_RESTRICT aInd, PxI32* PX_RESTRICT bInd, 
 		PxU32& size)
 	{
-		
-		using namespace Ps::aos;
+		using namespace aos;
 
 		size = 3;
 	
@@ -386,7 +366,6 @@ namespace Gu
 
 		if(_size != 3)
 		{
-		
 			const Vec3V q0 = Q[indices[0]]; const Vec3V q1 = Q[indices[1]];
 			const Vec3V a0 = A[indices[0]]; const Vec3V a1 = A[indices[1]];
 			const Vec3V b0 = B[indices[0]]; const Vec3V b1 = B[indices[1]];
@@ -405,13 +384,10 @@ namespace Gu
 		return closestPt;
 	}
 
-	
-	
-
-	PX_NOALIAS PX_FORCE_INLINE Ps::aos::Vec3V GJKCPairDoSimplex(Ps::aos::Vec3V* PX_RESTRICT Q, Ps::aos::Vec3V* PX_RESTRICT A, Ps::aos::Vec3V* PX_RESTRICT B, const Ps::aos::Vec3VArg support, 
+	PX_NOALIAS PX_FORCE_INLINE aos::Vec3V GJKCPairDoSimplex(aos::Vec3V* PX_RESTRICT Q, aos::Vec3V* PX_RESTRICT A, aos::Vec3V* PX_RESTRICT B, const aos::Vec3VArg support, 
 		PxU32& size)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		//const PxU32 tempSize = size;
 		//calculate a closest from origin to the simplex
@@ -437,11 +413,10 @@ namespace Gu
 		return support;
 	}
 
-
-	PX_NOALIAS PX_FORCE_INLINE Ps::aos::Vec3V GJKCPairDoSimplex(Ps::aos::Vec3V* PX_RESTRICT Q, Ps::aos::Vec3V* PX_RESTRICT A, Ps::aos::Vec3V* PX_RESTRICT B, PxI32* PX_RESTRICT aInd, PxI32* PX_RESTRICT bInd, 
-		const Ps::aos::Vec3VArg support, PxU32& size)
+	PX_NOALIAS PX_FORCE_INLINE aos::Vec3V GJKCPairDoSimplex(aos::Vec3V* PX_RESTRICT Q, aos::Vec3V* PX_RESTRICT A, aos::Vec3V* PX_RESTRICT B, PxI32* PX_RESTRICT aInd, PxI32* PX_RESTRICT bInd, 
+		const aos::Vec3VArg support, PxU32& size)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		//const PxU32 tempSize = size;
 		//calculate a closest from origin to the simplex

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef DY_SOLVEREXTBODY_H
-#define DY_SOLVEREXTBODY_H
+#ifndef DY_SOLVER_EXT_H
+#define DY_SOLVER_EXT_H
 
 #include "foundation/PxVec3.h"
 #include "foundation/PxTransform.h"
-#include "CmPhysXCommon.h"
 #include "CmSpatialVector.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
@@ -50,7 +47,7 @@ namespace Dy
 {
 
 
-class ArticulationV;
+class FeatherstoneArticulation;
 struct SolverConstraint1D;
 
 class SolverExtBody
@@ -58,15 +55,15 @@ class SolverExtBody
 public:
 	union
 	{
-		const ArticulationV* mArticulation;
+		const FeatherstoneArticulation* mArticulation;
 		const PxSolverBody* mBody;
 	};
 	const PxSolverBodyData* mBodyData;
 
-	PxU16 mLinkIndex;
+	PxU32 mLinkIndex;
 
-	SolverExtBody(const void* bodyOrArticulation, const void* bodyData, PxU16 linkIndex): 
-	  mBody(reinterpret_cast<const PxSolverBody*>(bodyOrArticulation)),
+	SolverExtBody(const void* bodyOrArticulationOrSoftBody, const void* bodyData, PxU32 linkIndex): 
+	  mBody(reinterpret_cast<const PxSolverBody*>(bodyOrArticulationOrSoftBody)),
 	  mBodyData(reinterpret_cast<const PxSolverBodyData*>(bodyData)),
 		  mLinkIndex(linkIndex)
 	  {}
@@ -74,22 +71,23 @@ public:
 	  void getResponse(const PxVec3& linImpulse, const PxVec3& angImpulse,
 					   PxVec3& linDeltaV, PxVec3& angDeltaV, PxReal dominance) const;
 
-	  void getResponse(const Ps::aos::Vec3V& linImpulse, const Ps::aos::Vec3V& angImpulse,
-		  Ps::aos::Vec3V& linDeltaV, Ps::aos::Vec3V& angDeltaV, Ps::aos::FloatV dominance) const;
+	  void getResponse(const aos::Vec3V& linImpulse, const aos::Vec3V& angImpulse,
+		  aos::Vec3V& linDeltaV, aos::Vec3V& angDeltaV, aos::FloatV dominance) const;
 
 	  PxReal projectVelocity(const PxVec3& linear, const PxVec3& angular) const;
-	  Ps::aos::FloatV projectVelocity(const Ps::aos::Vec3V& linear, const Ps::aos::Vec3V& angular) const;
+	  aos::FloatV projectVelocity(const aos::Vec3V& linear, const aos::Vec3V& angular) const;
 	  PxVec3 getLinVel() const;
 	  PxVec3 getAngVel() const;
 
-	  Ps::aos::Vec3V getLinVelV() const;
-	  Ps::aos::Vec3V getAngVelV() const;
+	  aos::Vec3V getLinVelV() const;
+	  aos::Vec3V getAngVelV() const;
 
 	  Cm::SpatialVectorV getVelocity() const;
+	  PxReal getCFM() const;
 };
 
 }
 
 }
 
-#endif //DY_SOLVEREXTBODY_H
+#endif

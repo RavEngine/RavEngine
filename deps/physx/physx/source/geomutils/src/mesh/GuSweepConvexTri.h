@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,12 +38,12 @@
 // return true if hit, false if no hit
 static PX_FORCE_INLINE bool sweepConvexVsTriangle(
 	const PxVec3& v0, const PxVec3& v1, const PxVec3& v2,
-	ConvexHullV& convexHull, const Ps::aos::PsMatTransformV& meshToConvex, const Ps::aos::PsTransformV& convexTransfV,
-	const Ps::aos::Vec3VArg convexSpaceDir, const PxVec3& unitDir, const PxVec3& meshSpaceUnitDir,
-	const Ps::aos::FloatVArg fullDistance, PxReal shrunkDistance,
-	PxSweepHit& hit, bool isDoubleSided, const PxReal inflation, bool& initialOverlap, PxU32 faceIndex)
+	ConvexHullV& convexHull, const aos::PxMatTransformV& meshToConvex, const aos::PxTransformV& convexTransfV,
+	const aos::Vec3VArg convexSpaceDir, const PxVec3& unitDir, const PxVec3& meshSpaceUnitDir,
+	const aos::FloatVArg fullDistance, PxReal shrunkDistance,
+	PxGeomSweepHit& hit, bool isDoubleSided, const PxReal inflation, bool& initialOverlap, PxU32 faceIndex)
 {
-	using namespace Ps::aos;
+	using namespace aos;
 	if(!isDoubleSided)
 	{
 		// Create triangle normal
@@ -70,8 +69,8 @@ static PX_FORCE_INLINE bool sweepConvexVsTriangle(
 	FloatV toi;
 	Vec3V closestA,normal;
 
-	LocalConvex<TriangleV> convexA(triangleV);
-	LocalConvex<ConvexHullV> convexB(convexHull);
+	const LocalConvex<TriangleV> convexA(triangleV);
+	const LocalConvex<ConvexHullV> convexB(convexHull);
 	const Vec3V initialSearchDir = V3Sub(triangleV.getCenter(), convexHull.getCenter());
 	// run GJK raycast
 	// sweep triangle in convex local space vs convex, closestA will be the impact point in convex local space

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -40,11 +39,12 @@
 #include "GuSweepSphereTriangle.h"
 #include "GuDistancePointTriangle.h"
 #include "GuCapsule.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 #include "GuSweepConvexTri.h"
 
@@ -53,7 +53,7 @@ using namespace physx::shdfnd::aos;
 static bool sweepSphereTriangle(const PxTriangle& tri,
 								const PxVec3& center, PxReal radius,
 								const PxVec3& unitDir, const PxReal distance,
-								PxSweepHit& hit, PxVec3& triNormalOut,
+								PxGeomSweepHit& hit, PxVec3& triNormalOut,
 								PxHitFlags hitFlags, bool isDoubleSided)
 {
 	const bool meshBothSides = hitFlags & PxHitFlag::eMESH_BOTH_SIDES;
@@ -93,19 +93,19 @@ static bool sweepSphereTriangle(const PxTriangle& tri,
 ///////////////////////////////////////////////////////////////////////////////
 
 SweepShapeMeshHitCallback::SweepShapeMeshHitCallback(CallbackMode::Enum inMode, const PxHitFlags& hitFlags, bool flipNormal, float distCoef) :
-	MeshHitCallback<PxRaycastHit>	(inMode),
-	mHitFlags						(hitFlags),
-	mStatus							(false),
-	mInitialOverlap					(false),
-	mFlipNormal						(flipNormal),
-	mDistCoeff						(distCoef)
+	MeshHitCallback<PxGeomRaycastHit>	(inMode),
+	mHitFlags							(hitFlags),
+	mStatus								(false),
+	mInitialOverlap						(false),
+	mFlipNormal							(flipNormal),
+	mDistCoeff							(distCoef)
 {		
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 SweepCapsuleMeshHitCallback::SweepCapsuleMeshHitCallback(
-	PxSweepHit& sweepHit, const Matrix34& worldMatrix, PxReal distance, bool meshDoubleSided,
+	PxGeomSweepHit& sweepHit, const PxMat34& worldMatrix, PxReal distance, bool meshDoubleSided,
 	const Capsule& capsule, const PxVec3& unitDir, const PxHitFlags& hitFlags, bool flipNormal, float distCoef) :
 	SweepShapeMeshHitCallback	(CallbackMode::eMULTIPLE, hitFlags, flipNormal, distCoef),
 	mSweepHit					(sweepHit),
@@ -122,13 +122,13 @@ SweepCapsuleMeshHitCallback::SweepCapsuleMeshHitCallback(
 }
 
 PxAgain SweepCapsuleMeshHitCallback::processHit( // all reported coords are in mesh local space including hit.position
-												const PxRaycastHit& aHit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal& shrunkMaxT, const PxU32*)
+												const PxGeomRaycastHit& aHit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal& shrunkMaxT, const PxU32*)
 {
 	const PxTriangle tmpt(	mVertexToWorldSkew.transform(v0),
 							mVertexToWorldSkew.transform(mFlipNormal ? v2 : v1),
 							mVertexToWorldSkew.transform(mFlipNormal ? v1 : v2));
 
-	PxSweepHit localHit;	// PT: TODO: ctor!
+	PxGeomSweepHit localHit;	// PT: TODO: ctor!
 	PxVec3 triNormal;
 	// pick a farther hit within distEpsilon that is more opposing than the previous closest hit
 	// make it a relative epsilon to make sure it still works with large distances
@@ -157,8 +157,7 @@ PxAgain SweepCapsuleMeshHitCallback::processHit( // all reported coords are in m
 	}
 
 	const PxReal alignmentValue = computeAlignmentValue(triNormal, mUnitDir);
-//	if(keepTriangle(localHit.distance, alignmentValue, mBestDist, mBestAlignmentValue, mTrueSweepDistance, distEpsilon))	
-	if(keepTriangle(localHit.distance, alignmentValue, mBestDist, mBestAlignmentValue, mTrueSweepDistance, GU_EPSILON_SAME_DISTANCE))	
+	if(keepTriangle(localHit.distance, alignmentValue, mBestDist, mBestAlignmentValue, mTrueSweepDistance))
 	{
 		mBestAlignmentValue = alignmentValue;
 
@@ -182,10 +181,17 @@ PxAgain SweepCapsuleMeshHitCallback::processHit( // all reported coords are in m
 		if(mHitFlags & PxHitFlag::eMESH_ANY)
 			return false; // abort traversal
 	}
+	///
+	else if(keepTriangleBasic(localHit.distance, mBestDist, mTrueSweepDistance))
+	{
+		mSweepHit.distance = localHit.distance;
+		mBestDist = PxMin(mBestDist, localHit.distance); // exact lower bound
+	}
+	///
 	return true;
 }
 
-bool SweepCapsuleMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const Capsule& lss, const PxTriangleMeshGeometry& triMeshGeom,
+bool SweepCapsuleMeshHitCallback::finalizeHit(	PxGeomSweepHit& sweepHit, const Capsule& lss, const PxTriangleMeshGeometry& triMeshGeom,
 												const PxTransform& pose, bool isDoubleSided) const
 {
 	if(!mStatus)
@@ -210,6 +216,7 @@ bool SweepCapsuleMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const Capsu
 	}
 	else
 	{
+		mSweepHit.distance = mBestDist;
 		sweepHit.flags = PxHitFlag::eNORMAL | PxHitFlag::ePOSITION | PxHitFlag::eFACE_INDEX;
 	}
 	return true;
@@ -219,6 +226,7 @@ bool SweepCapsuleMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const Capsu
 
 bool sweepCapsule_MeshGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(capsuleGeom_);
 	PX_UNUSED(capsulePose_);
 
@@ -233,7 +241,7 @@ bool sweepCapsule_MeshGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 ///////////////////////////////////////////////////////////////////////////////
 
 	// same as 'mat.transform(p)' but using SIMD
-	static PX_FORCE_INLINE Vec4V transformV(const Vec4V p, const Matrix34Padded& mat)
+	static PX_FORCE_INLINE Vec4V transformV(const Vec4V p, const PxMat34Padded& mat)
 	{
 		Vec4V ResV = V4Scale(V4LoadU(&mat.m.column0.x), V4GetX(p));
 		ResV = V4ScaleAdd(V4LoadU(&mat.m.column1.x), V4GetY(p), ResV);
@@ -244,7 +252,7 @@ bool sweepCapsule_MeshGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-SweepBoxMeshHitCallback::SweepBoxMeshHitCallback(	CallbackMode::Enum mode_, const Matrix34Padded& meshToBox, PxReal distance, bool bothTriangleSidesCollide,
+SweepBoxMeshHitCallback::SweepBoxMeshHitCallback(	CallbackMode::Enum mode_, const PxMat34Padded& meshToBox, PxReal distance, bool bothTriangleSidesCollide,
 													const Box& box, const PxVec3& localMotion, const PxVec3& localDir, const PxVec3& unitDir,
 													const PxHitFlags& hitFlags, const PxReal inflation, bool flipNormal, float distCoef) :
 	SweepShapeMeshHitCallback	(mode_, hitFlags, flipNormal,distCoef),
@@ -266,7 +274,7 @@ SweepBoxMeshHitCallback::SweepBoxMeshHitCallback(	CallbackMode::Enum mode_, cons
 }
 
 PxAgain SweepBoxMeshHitCallback::processHit( // all reported coords are in mesh local space including hit.position
-											const PxRaycastHit& meshHit, const PxVec3& lp0, const PxVec3& lp1, const PxVec3& lp2, PxReal& shrinkMaxT, const PxU32*)
+											const PxGeomRaycastHit& meshHit, const PxVec3& lp0, const PxVec3& lp1, const PxVec3& lp2, PxReal& shrinkMaxT, const PxU32*)
 {
 	if(mHitFlags & PxHitFlag::ePRECISE_SWEEP)
 	{
@@ -329,10 +337,10 @@ PxAgain SweepBoxMeshHitCallback::processHit( // all reported coords are in mesh 
 
 		FloatV lambda;   
 		Vec3V closestA, normal;//closestA and normal is in the local space of convex hull
-		LocalConvex<TriangleV> convexA(triangleV);
-		LocalConvex<BoxV> convexB(boxV);
+		const LocalConvex<TriangleV> convexA(triangleV);
+		const LocalConvex<BoxV> convexB(boxV);
 		const Vec3V initialSearchDir = V3Sub(triangleV.getCenter(), boxV.getCenter());
-		if(!gjkRaycastPenetration< LocalConvex<TriangleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, mLocalMotionV, lambda, normal, closestA, mInflation, false))
+		if(!gjkRaycastPenetration<LocalConvex<TriangleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, mLocalMotionV, lambda, normal, closestA, mInflation, false))
 			return true;
 
 		mStatus = true;
@@ -365,7 +373,7 @@ PxAgain SweepBoxMeshHitCallback::processHit( // all reported coords are in mesh 
 	return true;
 }
 
-bool SweepBoxMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
+bool SweepBoxMeshHitCallback::finalizeHit(	PxGeomSweepHit& sweepHit, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
 											const PxTransform& boxTransform, const PxVec3& localDir,
 											bool meshBothSides, bool isDoubleSided) const
 {
@@ -397,7 +405,7 @@ bool SweepBoxMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const PxTriangl
 
 		const Vec3V p0 = V3LoadU(&boxTransform.p.x);
 		const QuatV q0 = QuatVLoadU(&boxTransform.q.x);
-		const PsTransformV boxPos(p0, q0);
+		const PxTransformV boxPos(p0, q0);
 
 		if(mHitFlags & PxHitFlag::ePRECISE_SWEEP)
 		{
@@ -431,6 +439,7 @@ bool SweepBoxMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const PxTriangl
 bool sweepBox_MeshGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eTRIANGLEMESH);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(boxPose_);
 	PX_UNUSED(boxGeom_);
 
@@ -467,8 +476,8 @@ SweepConvexMeshHitCallback::SweepConvexMeshHitCallback(	const ConvexHullData& hu
 	const QuatV q1 = QuatVLoadU(&convexPose.q.x);
 	const Vec3V p1 = V3LoadU(&convexPose.p.x);
 
-	const PsTransformV meshPoseV(p0, q0);
-	const PsTransformV convexPoseV(p1, q1);
+	const PxTransformV meshPoseV(p0, q0);
+	const PxTransformV convexPoseV(p1, q1);
 
 	mMeshToConvex = convexPoseV.transformInv(meshPoseV);
 	mConvexPoseV = convexPoseV;
@@ -481,7 +490,7 @@ SweepConvexMeshHitCallback::SweepConvexMeshHitCallback(	const ConvexHullData& hu
 }
 
 PxAgain SweepConvexMeshHitCallback::processHit( // all reported coords are in mesh local space including hit.position
-												const PxRaycastHit& hit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal& shrunkMaxT, const PxU32*)
+												const PxGeomRaycastHit& hit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal& shrunkMaxT, const PxU32*)
 {
 	const PxVec3 v0 = mMeshScale * av0;
 	const PxVec3 v1 = mMeshScale * (mFlipNormal ?  av2 : av1);
@@ -511,7 +520,7 @@ PxAgain SweepConvexMeshHitCallback::processHit( // all reported coords are in me
 	return true; // continue traversal
 }
 
-bool SweepConvexMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose,
+bool SweepConvexMeshHitCallback::finalizeHit(	PxGeomSweepHit& sweepHit, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose,
 												const PxConvexMeshGeometry& convexGeom, const PxTransform& convexPose,
 												const PxVec3& unitDir, PxReal inflation,
 												bool isMtd, bool meshBothSides, bool isDoubleSided, bool bothTriangleSidesCollide)
@@ -549,6 +558,7 @@ bool SweepConvexMeshHitCallback::finalizeHit(	PxSweepHit& sweepHit, const PxTria
 bool sweepConvex_MeshGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eTRIANGLEMESH);
+	PX_UNUSED(threadContext);
 	const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom);
 
 	ConvexMesh* convexMesh = static_cast<ConvexMesh*>(convexGeom.convexMesh);
@@ -569,7 +579,7 @@ bool sweepConvex_MeshGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 	const PxBounds3 hullAABB = convexMesh->getLocalBoundsFast().transformFast(convexScaling.getVertex2ShapeSkew());
 
 	Box hullOBB;
-	computeHullOBB(hullOBB, hullAABB, 0.0f, Matrix34(convexPose), Matrix34(pose), meshScaling, idtScaleMesh);
+	computeHullOBB(hullOBB, hullAABB, 0.0f, Matrix34FromTransform(convexPose), Matrix34FromTransform(pose), meshScaling, idtScaleMesh);
 
 	hullOBB.extents.x += inflation;
 	hullOBB.extents.y += inflation;

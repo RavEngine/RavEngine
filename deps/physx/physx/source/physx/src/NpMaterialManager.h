@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,20 +31,20 @@
 #define NP_MATERIALMANAGER
 
 #include "foundation/PxMemory.h"
-#include "NpMaterial.h"
 #include "CmIDPool.h"
 
 namespace physx
 {
+	template<class Material>
 	class NpMaterialManager 
 	{
 	public:
 		NpMaterialManager()
 		{
 			const PxU32 matCount = 128;
-			mMaterials = reinterpret_cast<NpMaterial**>(PX_ALLOC(sizeof(NpMaterial*) * matCount,  "NpMaterialManager::initialise"));
+			mMaterials = reinterpret_cast<Material**>(PX_ALLOC(sizeof(Material*) * matCount,  "NpMaterialManager::initialise"));
 			mMaxMaterials = matCount;
-			PxMemZero(mMaterials, sizeof(NpMaterial*)*mMaxMaterials);
+			PxMemZero(mMaterials, sizeof(Material*)*mMaxMaterials);
 		}
 
 		~NpMaterialManager() {}
@@ -56,7 +55,7 @@ namespace physx
 			{
 				if(mMaterials[i])
 				{
-					const PxU32 handle(mMaterials[i]->getHandle());
+					const PxU32 handle(mMaterials[i]->mMaterial.mMaterialIndex);
 					mHandleManager.freeID(handle);
 					mMaterials[i]->release();
 					mMaterials[i] = NULL;
@@ -65,25 +64,25 @@ namespace physx
 			PX_FREE(mMaterials);
 		}
 
-		bool setMaterial(NpMaterial& mat)
+		bool setMaterial(Material& mat)
 		{
 			const PxU32 poolID = mHandleManager.getNewID();
 			if (poolID >= MATERIAL_INVALID_HANDLE)
 				return false;
 
-			const PxU16 materialIndex = Ps::to16(poolID);
+			const PxU16 materialIndex = PxTo16(poolID);
 
 			if(materialIndex >= mMaxMaterials)
 				resize();
 
 			mMaterials[materialIndex] = &mat;
-			mat.setHandle(materialIndex);
+			mat.mMaterial.mMaterialIndex = materialIndex;
 			return true;
 		}
 
-		void updateMaterial(NpMaterial& mat)
+		void updateMaterial(Material& mat)
 		{
-			mMaterials[mat.getHandle()] = &mat;
+			mMaterials[mat.mMaterial.mMaterialIndex] = &mat;
 		}
 
 		PX_FORCE_INLINE PxU32 getNumMaterials()	const
@@ -91,9 +90,9 @@ namespace physx
 			return mHandleManager.getNumUsedID();
 		}
 
-		void removeMaterial(NpMaterial& mat)
+		void removeMaterial(Material& mat)
 		{
-			const PxU16 handle = mat.getHandle();
+			const PxU16 handle = mat.mMaterial.mMaterialIndex;
 			if(handle != MATERIAL_INVALID_HANDLE)
 			{
 				mMaterials[handle] = NULL;
@@ -101,7 +100,7 @@ namespace physx
 			}
 		}
 
-		PX_FORCE_INLINE NpMaterial* getMaterial(const PxU32 index)	const
+		PX_FORCE_INLINE Material* getMaterial(const PxU32 index)	const
 		{
 			PX_ASSERT(index <  mMaxMaterials);
 			return mMaterials[index];
@@ -112,7 +111,7 @@ namespace physx
 			return mMaxMaterials;
 		}
 
-		PX_FORCE_INLINE NpMaterial** getMaterials() const
+		PX_FORCE_INLINE Material** getMaterials() const
 		{
 			return mMaterials;
 		}
@@ -123,8 +122,8 @@ namespace physx
 			const PxU32 numMaterials = mMaxMaterials;
 			mMaxMaterials = PxMin(mMaxMaterials*2, PxU32(MATERIAL_INVALID_HANDLE));
 
-			NpMaterial** mat = reinterpret_cast<NpMaterial**>(PX_ALLOC(sizeof(NpMaterial*)*mMaxMaterials,  "NpMaterialManager::resize"));
-			PxMemZero(mat, sizeof(NpMaterial*)*mMaxMaterials);
+			Material** mat = reinterpret_cast<Material**>(PX_ALLOC(sizeof(Material*)*mMaxMaterials,  "NpMaterialManager::resize"));
+			PxMemZero(mat, sizeof(Material*)*mMaxMaterials);
 			for(PxU32 i=0; i<numMaterials; ++i)
 				mat[i] = mMaterials[i];
 
@@ -134,18 +133,19 @@ namespace physx
 		}
 
 		Cm::IDPool		mHandleManager;
-		NpMaterial**	mMaterials;
+		Material**		mMaterials;
 		PxU32			mMaxMaterials;
 	};
 
+	template<class Material>
 	class NpMaterialManagerIterator
 	{
 	public:
-		NpMaterialManagerIterator(const NpMaterialManager& manager) : mManager(manager), mIndex(0)
+		NpMaterialManagerIterator(const NpMaterialManager<Material>& manager) : mManager(manager), mIndex(0)
 		{
 		}
 
-		bool getNextMaterial(NpMaterial*& np)
+		bool getNextMaterial(Material*& np)
 		{
 			const PxU32 maxSize = mManager.getMaxSize();
 			PxU32 index = mIndex;
@@ -160,8 +160,8 @@ namespace physx
 
 	private:
 		NpMaterialManagerIterator& operator=(const NpMaterialManagerIterator&);
-		const NpMaterialManager&	mManager;
-		PxU32						mIndex;
+		const NpMaterialManager<Material>&	mManager;
+		PxU32								mIndex;
 	};
 }
 

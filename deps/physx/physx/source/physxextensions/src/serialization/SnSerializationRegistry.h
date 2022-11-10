@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_SN_SERIALIZATION_REGISTRY
-#define PX_PHYSICS_SN_SERIALIZATION_REGISTRY
+#ifndef SN_SERIALIZATION_REGISTRY_H
+#define SN_SERIALIZATION_REGISTRY_H
 
 #include "extensions/PxSerialization.h"
 #include "extensions/PxRepXSerializer.h"
 
-#include "CmPhysXCommon.h"
-#include "PsUserAllocated.h"
-#include "PsArray.h"
-#include "PsHashMap.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxArray.h"
+
 
 namespace physx
 {
@@ -45,13 +44,13 @@ namespace Cm { class Collection; }
 
 namespace Sn {
 	
-	class SerializationRegistry : public PxSerializationRegistry, public Ps::UserAllocated
+	class SerializationRegistry : public PxSerializationRegistry, public PxUserAllocated
 	{
 	public:
 		SerializationRegistry(PxPhysics& physics);					
 		virtual						~SerializationRegistry();
 
-		virtual void				release(){ PX_DELETE(this);  }
+		virtual void				release(){ PX_DELETE_THIS;  }
 		
 		PxPhysics&			        getPhysics() const			{ return mPhysics; }
 		
@@ -72,13 +71,13 @@ namespace Sn {
 	protected:
 		SerializationRegistry &operator=(const SerializationRegistry &);
 	private:
-		typedef Ps::CoalescedHashMap<PxType, PxSerializer*>		SerializerMap;
-		typedef Ps::HashMap<PxType, PxRepXSerializer*>	        RepXSerializerMap;
+		typedef PxCoalescedHashMap<PxType, PxSerializer*>		SerializerMap;
+		typedef PxHashMap<PxType, PxRepXSerializer*>	        RepXSerializerMap;
 
 		PxPhysics&										mPhysics;
 		SerializerMap									mSerializers;
 		RepXSerializerMap								mRepXSerializers;
-		Ps::Array<PxBinaryMetaDataCallback>				mMetaDataCallbacks;	
+		PxArray<PxBinaryMetaDataCallback>				mMetaDataCallbacks;	
 	};
 
 	void  sortCollection(Cm::Collection& collection,  SerializationRegistry& sr, bool isRepx);

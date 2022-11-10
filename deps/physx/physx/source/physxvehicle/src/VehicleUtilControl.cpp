@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "vehicle/PxVehicleUtilControl.h"
 #include "vehicle/PxVehicleDrive4W.h"
 
-#include "PsFoundation.h"
-#include "PsUtilities.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxFoundation.h"
+#include "foundation/PxErrors.h"
 
 namespace physx
 {
@@ -65,12 +64,11 @@ PxF32 processDigitalValue
 	return PxClamp(newAnalogVal,0.0f,1.0f);
 }
 
-void PxVehicleDriveSmoothDigitalRawInputsAndSetAnalogInputs
+static void PxVehicleDriveSmoothDigitalRawInputsAndSetAnalogInputs
 (const PxVehicleKeySmoothingData& keySmoothing, const PxFixedSizeLookupTable<8>& steerVsForwardSpeedTable,
- const PxVehicleDrive4WRawInputData& rawInputData, 
- const PxF32 timestep, 
- const bool isVehicleInAir,
- const PxVehicleWheels& vehicle, PxVehicleDriveDynData& driveDynData)
+ const PxVehicleDrive4WRawInputData& rawInputData, const PxF32 timestep, const bool isVehicleInAir,
+ const PxVehicleWheels& vehicle, PxVehicleDriveDynData& driveDynData, const PxVehicleSteerFilter& steerFilter,
+ const PxVec3& forwardAxis)
 {
 	const bool gearup=rawInputData.getGearUp();
 	const bool geardown=rawInputData.getGearDown();
@@ -88,9 +86,10 @@ void PxVehicleDriveSmoothDigitalRawInputsAndSetAnalogInputs
 
 	PxF32 steerLeft=processDigitalValue(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_LEFT,keySmoothing,rawInputData.getDigitalSteerLeft(),timestep,driveDynData.getAnalogInput(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_LEFT));
 	PxF32 steerRight=processDigitalValue(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_RIGHT,keySmoothing,rawInputData.getDigitalSteerRight(),timestep,driveDynData.getAnalogInput(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_RIGHT));
-	const PxF32 vz=vehicle.computeForwardSpeed();
+	const PxF32 vz=vehicle.computeForwardSpeed(forwardAxis);
 	const PxF32 vzAbs=PxAbs(vz);
-	const PxF32 maxSteer=(isVehicleInAir ? 1.0f :steerVsForwardSpeedTable.getYVal(vzAbs));
+	const PxF32 maxSteer = steerFilter.computeMaxSteer(isVehicleInAir, steerVsForwardSpeedTable, vzAbs, timestep);
+
 	const PxF32 steer=PxAbs(steerRight-steerLeft);
 	if(steer>maxSteer)
 	{
@@ -180,12 +179,11 @@ PX_FORCE_INLINE PxF32 processAnalogValue
 	return val;
 }
 
-void PxVehicleDriveSmoothAnalogRawInputsAndSetAnalogInputs
+static void PxVehicleDriveSmoothAnalogRawInputsAndSetAnalogInputs
 (const PxVehiclePadSmoothingData& padSmoothing, const PxFixedSizeLookupTable<8>& steerVsForwardSpeedTable,
- const PxVehicleDrive4WRawInputData& rawInputData, 
- const PxF32 timestep, 
- const bool isVehicleInAir,
- const PxVehicleWheels& vehicle, PxVehicleDriveDynData& driveDynData)
+ const PxVehicleDrive4WRawInputData& rawInputData, const PxF32 timestep, const bool isVehicleInAir,
+ const PxVehicleWheels& vehicle, PxVehicleDriveDynData& driveDynData, const PxVehicleSteerFilter& steerFilter,
+ const PxVec3& forwardAxis)
 {
 	//gearup/geardown
 	const bool gearup=rawInputData.getGearUp();
@@ -227,12 +225,13 @@ void PxVehicleDriveSmoothAnalogRawInputsAndSetAnalogInputs
 
 	//Process the steer
 	{
-		const PxF32 vz=vehicle.computeForwardSpeed();
+		const PxF32 vz=vehicle.computeForwardSpeed(forwardAxis);
 		const PxF32 vzAbs=PxAbs(vz);
 		const PxF32 riseRate=padSmoothing.mRiseRates[PxVehicleDrive4WControl::eANALOG_INPUT_STEER_RIGHT];
 		const PxF32 fallRate=padSmoothing.mFallRates[PxVehicleDrive4WControl::eANALOG_INPUT_STEER_RIGHT];
 		const PxF32 currentVal=driveDynData.getAnalogInput(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_RIGHT)-driveDynData.getAnalogInput(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_LEFT);
-		const PxF32 targetVal=rawInputData.getAnalogSteer()*(isVehicleInAir ? 1.0f :steerVsForwardSpeedTable.getYVal(vzAbs));
+		const PxF32 maxSteer = steerFilter.computeMaxSteer(isVehicleInAir, steerVsForwardSpeedTable, vzAbs, timestep);
+		const PxF32 targetVal=rawInputData.getAnalogSteer()*maxSteer;
 		const PxF32 steer=processAnalogValue(riseRate,fallRate,currentVal,targetVal,timestep);
 		driveDynData.setAnalogInput(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_LEFT, 0.0f);
 		driveDynData.setAnalogInput(PxVehicleDrive4WControl::eANALOG_INPUT_STEER_RIGHT, steer);
@@ -244,48 +243,44 @@ void PxVehicleDriveSmoothAnalogRawInputsAndSetAnalogInputs
 
 void PxVehicleDrive4WSmoothDigitalRawInputsAndSetAnalogInputs
 (const PxVehicleKeySmoothingData& keySmoothing, const PxFixedSizeLookupTable<8>& steerVsForwardSpeedTable,
- const PxVehicleDrive4WRawInputData& rawInputData, 
- const PxF32 timestep, 
- const bool isVehicleInAir,
- PxVehicleDrive4W& focusVehicle)
+ const PxVehicleDrive4WRawInputData& rawInputData, const PxF32 timestep, const bool isVehicleInAir,
+ PxVehicleDrive4W& focusVehicle, const PxVehicleSteerFilter& steerFilter, const PxVec3& forwardAxis)
 {
 	PxVehicleDriveSmoothDigitalRawInputsAndSetAnalogInputs
-		(keySmoothing, steerVsForwardSpeedTable, rawInputData, timestep, isVehicleInAir, focusVehicle, focusVehicle.mDriveDynData);
+		(keySmoothing, steerVsForwardSpeedTable, rawInputData, timestep, isVehicleInAir, focusVehicle, focusVehicle.mDriveDynData, steerFilter,
+		 forwardAxis);
 }
 
 void PxVehicleDrive4WSmoothAnalogRawInputsAndSetAnalogInputs
 (const PxVehiclePadSmoothingData& padSmoothing, const PxFixedSizeLookupTable<8>& steerVsForwardSpeedTable,
- const PxVehicleDrive4WRawInputData& rawInputData, 
- const PxF32 timestep, 
- const bool isVehicleInAir,
- PxVehicleDrive4W& focusVehicle)
+ const PxVehicleDrive4WRawInputData& rawInputData, const PxF32 timestep, const bool isVehicleInAir,
+ PxVehicleDrive4W& focusVehicle, const PxVehicleSteerFilter& steerFilter, const PxVec3& forwardAxis)
 {
 	PxVehicleDriveSmoothAnalogRawInputsAndSetAnalogInputs
-		(padSmoothing,steerVsForwardSpeedTable,rawInputData,timestep,isVehicleInAir,focusVehicle,focusVehicle.mDriveDynData);
+		(padSmoothing,steerVsForwardSpeedTable,rawInputData,timestep,isVehicleInAir,focusVehicle,focusVehicle.mDriveDynData, steerFilter,
+		 forwardAxis);
 }
 
 ////////////////
 
 void PxVehicleDriveNWSmoothDigitalRawInputsAndSetAnalogInputs
 (const PxVehicleKeySmoothingData& keySmoothing, const PxFixedSizeLookupTable<8>& steerVsForwardSpeedTable,
- const PxVehicleDriveNWRawInputData& rawInputData, 
- const PxReal timestep, 
- const bool isVehicleInAir, 
- PxVehicleDriveNW& focusVehicle)
+ const PxVehicleDriveNWRawInputData& rawInputData, const PxReal timestep, const bool isVehicleInAir, 
+ PxVehicleDriveNW& focusVehicle, const PxVehicleSteerFilter& steerFilter, const PxVec3& forwardAxis)
 {
 	PxVehicleDriveSmoothDigitalRawInputsAndSetAnalogInputs
-		(keySmoothing,steerVsForwardSpeedTable,rawInputData,timestep,isVehicleInAir,focusVehicle,focusVehicle.mDriveDynData);
+		(keySmoothing,steerVsForwardSpeedTable,rawInputData,timestep,isVehicleInAir,focusVehicle,focusVehicle.mDriveDynData, steerFilter,
+		 forwardAxis);
 }
 
 void PxVehicleDriveNWSmoothAnalogRawInputsAndSetAnalogInputs
 (const PxVehiclePadSmoothingData& padSmoothing, const PxFixedSizeLookupTable<8>& steerVsForwardSpeedTable,
- const PxVehicleDriveNWRawInputData& rawInputData, 
- const PxReal timestep, 
- const bool isVehicleInAir, 
- PxVehicleDriveNW& focusVehicle)
+ const PxVehicleDriveNWRawInputData& rawInputData, const PxReal timestep, const bool isVehicleInAir, 
+ PxVehicleDriveNW& focusVehicle, const PxVehicleSteerFilter& steerFilter, const PxVec3& forwardAxis)
 {
 	PxVehicleDriveSmoothAnalogRawInputsAndSetAnalogInputs
-		(padSmoothing,steerVsForwardSpeedTable,rawInputData,timestep,isVehicleInAir,focusVehicle,focusVehicle.mDriveDynData);
+		(padSmoothing,steerVsForwardSpeedTable,rawInputData,timestep,isVehicleInAir,focusVehicle,focusVehicle.mDriveDynData, steerFilter,
+		 forwardAxis);
 }
 
 ////////////////

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxSerializer.h"
+#include "foundation/PxString.h"
 #include "PxPhysics.h"
 #include "PxPhysicsSerialization.h"
 #include "PxArticulationLink.h"
@@ -35,8 +35,6 @@
 #include "SnSerializationRegistry.h"
 #include "ExtSerialization.h"
 #include "CmCollection.h"
-#include "PsFoundation.h"
-#include "PsString.h"
 
 using namespace physx;
 
@@ -44,13 +42,13 @@ namespace
 {
 	class CollectionSorter : public PxProcessPxBaseCallback
 	{
-		typedef  Ps::Pair<PxBase*, PxSerialObjectId> Object;
+		typedef  PxPair<PxBase*, PxSerialObjectId> Object;
 
 		class Element 
 		{
 		public:	
 			Object			    object;
-			Ps::Array<PxU32>	children;
+			PxArray<PxU32>	children;
 			bool				isFinished;
 
 			Element(PxBase* obj = NULL) : object(obj, PX_SERIAL_OBJECT_ID_INVALID), isFinished(false)	{}
@@ -105,7 +103,7 @@ namespace
 			}
 
 			mCollection.mObjects.clear();
-			for(Ps::Array<Object>::Iterator o = mSorted.begin(); o != mSorted.end(); ++o )
+			for(PxArray<Object>::Iterator o = mSorted.begin(); o != mSorted.end(); ++o )
 			{				
 				mCollection.internalAdd(o->first, o->second);
 			}
@@ -115,7 +113,7 @@ namespace
 		{
 			if( !e.isFinished )
 			{
-				for( Ps::Array<PxU32>::Iterator child = e.children.begin(); child != e.children.end(); ++child )
+				for( PxArray<PxU32>::Iterator child = e.children.begin(); child != e.children.end(); ++child )
 				{
 					AddElement(mElements[*child]);
 				}				
@@ -128,17 +126,17 @@ namespace
 		PX_INLINE void addChild(PxBase* base)
 		{
 			PX_ASSERT(mCurElement);
-			const Ps::HashMap<PxBase*, PxU32>::Entry* entry = mObjToIdMap.find(base);
+			const PxHashMap<PxBase*, PxU32>::Entry* entry = mObjToIdMap.find(base);
 			if(entry)					
 				mCurElement->children.pushBack(entry->second);
 		}
 
 		CollectionSorter& operator=(const CollectionSorter&);
-		Ps::HashMap<PxBase*, PxU32>	mObjToIdMap;
-		Ps::Array<Element>			mElements;
+		PxHashMap<PxBase*, PxU32>	mObjToIdMap;
+		PxArray<Element>			mElements;
 		Cm::Collection&				mCollection;
 		Sn::SerializationRegistry&  mSr;
-		Ps::Array<Object>           mSorted;
+		PxArray<Object>           mSorted;
 		Element*                    mCurElement;
 		bool                        mIsRepx;
 	};
@@ -163,13 +161,13 @@ SerializationRegistry::~SerializationRegistry()
 
 	if(mSerializers.size() > 0)
 	{
-		shdfnd::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 			"PxSerializationRegistry::release(): some registered PxSerializer instances were not unregistered");	
 	}
 
 	if(mRepXSerializers.size() > 0)
 	{
-		shdfnd::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 			"PxSerializationRegistry::release(): some registered PxRepXSerializer instances were not unregistered");	
 	}
 }
@@ -178,7 +176,7 @@ void SerializationRegistry::registerSerializer(PxType type, PxSerializer& serial
 {
 	if(mSerializers.find(type))
 	{
-		shdfnd::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 			"PxSerializationRegistry::registerSerializer: Type %d has already been registered", type);		
 	}
 
@@ -192,7 +190,7 @@ PxSerializer* SerializationRegistry::unregisterSerializer(PxType type)
 
 	if(!mSerializers.erase(type))
 	{
-		shdfnd::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 			"PxSerializationRegistry::unregisterSerializer: failed to find PxSerializer instance for type %d", type);
 	}
 	return s;
@@ -204,7 +202,7 @@ const PxSerializer* SerializationRegistry::getSerializer(PxType type) const
 #if PX_CHECKED
 	if (!e)
 	{
-		shdfnd::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 			"PxSerializationRegistry::getSerializer: failed to find PxSerializer instance for type %d", type);
 	}
 #endif
@@ -240,7 +238,7 @@ void SerializationRegistry::registerRepXSerializer(PxType type, PxRepXSerializer
 {
 	if(mRepXSerializers.find(type))
 	{
-		shdfnd::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 			"PxSerializationRegistry::registerRepXSerializer: Type %d has already been registered", type);	
 	}
 
@@ -252,7 +250,7 @@ PxRepXSerializer* SerializationRegistry::getRepXSerializer(const char* typeName)
 	SerializationRegistry* sr = const_cast<SerializationRegistry*>(this);
 	for( RepXSerializerMap::Iterator iter = sr->mRepXSerializers.getIterator(); !iter.done(); ++iter)
 	{
-		if ( physx::shdfnd::stricmp( iter->second->getTypeName(), typeName ) == 0 )
+		if ( physx::Pxstricmp( iter->second->getTypeName(), typeName ) == 0 )
 			return iter->second;
 	}
 	return NULL;
@@ -265,7 +263,7 @@ PxRepXSerializer* SerializationRegistry::unregisterRepXSerializer(PxType type)
 
 	if(!mRepXSerializers.erase(type))
 	{
-		shdfnd::getFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 			"PxSerializationRegistry::unregisterRepXSerializer: failed to find PxRepXSerializer instance for type %d", type);	
 	}
 	return s;

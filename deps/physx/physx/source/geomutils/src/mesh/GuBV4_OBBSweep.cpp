@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,12 +30,11 @@
 using namespace physx;
 using namespace Gu;
 
-#if PX_INTEL_FAMILY  && !defined(PX_SIMD_DISABLED)
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+#include "foundation/PxVecMath.h"
+using namespace physx::aos;
 #include "GuBV4_BoxSweep_Internal.h"
 
-Ps::IntBool Sweep_AABB_BV4(const Box& localBox, const PxVec3& localDir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags);
+PxIntBool Sweep_AABB_BV4(const Box& localBox, const PxVec3& localDir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags);
 void GenericSweep_AABB_CB(const Box& localBox, const PxVec3& localDir, float maxDist, const BV4Tree& tree, MeshSweepCallback callback, void* userData, PxU32 flags);
 void Sweep_AABB_BV4_CB(const Box& localBox, const PxVec3& localDir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepUnlimitedCallback callback, void* userData, PxU32 flags, bool nodeSorting);
 
@@ -90,13 +88,13 @@ static PX_FORCE_INLINE bool isAABB(const Box& box)
 	return true;
 }
 
-Ps::IntBool BV4_BoxSweepSingle(const Box& box, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags)
+PxIntBool BV4_BoxSweepSingle(const Box& box, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags)
 {
 	Box localBox;
 	PxVec3 localDir;
 	computeLocalData(localBox, localDir, box, dir, worldm_Aligned);
 
-	Ps::IntBool Status;
+	PxIntBool Status;
 	if(isAABB(localBox))
 		Status = Sweep_AABB_BV4(localBox, localDir, maxDist, tree, hit, flags);
 	else
@@ -167,4 +165,3 @@ void BV4_GenericSweepCB(const Box& localBox, const PxVec3& localDir, float maxDi
 		GenericSweep_OBB_CB(localBox, localDir, maxDist, tree, callback, userData, flags);
 }
 
-#endif

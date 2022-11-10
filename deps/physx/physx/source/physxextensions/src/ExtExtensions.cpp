@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,7 +32,6 @@
 #include "extensions/PxExtensionsAPI.h"
 #include "extensions/PxRepXSerializer.h"
 
-#include "PsFoundation.h"
 #include "ExtDistanceJoint.h"
 #include "ExtD6Joint.h"
 #include "ExtFixedJoint.h"
@@ -50,6 +48,11 @@
 #include "PxPvdDataStream.h"
 #include "PxPvdClient.h"
 #include "PsPvd.h"
+#endif
+
+#if PX_SUPPORT_OMNI_PVD
+#	include "omnipvd/PxOmniPvd.h"
+#	include "omnipvd/OmniPvdPxExtensionsSampler.h"
 #endif
 
 using namespace physx;
@@ -99,10 +102,10 @@ static JointConnectionHandler gPvdHandler;
 
 bool PxInitExtensions(PxPhysics& physics, PxPvd* pvd)
 {
-	PX_ASSERT(static_cast<Ps::Foundation*>(&physics.getFoundation()) == &Ps::Foundation::getInstance());
+	PX_ASSERT(&physics.getFoundation() == &PxGetFoundation());
 	PX_UNUSED(physics);
 	PX_UNUSED(pvd);
-	Ps::Foundation::incRefCount();
+	PxIncFoundationRefCount();
 
 #if PX_SUPPORT_PVD
 	if(pvd)
@@ -112,12 +115,68 @@ bool PxInitExtensions(PxPhysics& physics, PxPvd* pvd)
 	}
 #endif
 
+#if PX_SUPPORT_OMNI_PVD
+	if (physics.getOmniPvd() && physics.getOmniPvd()->getWriter())
+	{
+		if (OmniPvdPxExtensionsSampler::createInstance())
+		{
+			OmniPvdPxExtensionsSampler::getInstance()->setOmniPvdWriter(physics.getOmniPvd()->getWriter());
+			OmniPvdPxExtensionsSampler::getInstance()->registerClasses();
+		}
+	}
+#endif
 	return true;
 }
 
+static PxArray<PxSceneQuerySystem*>*	gExternalSQ = NULL;
+
+void addExternalSQ(PxSceneQuerySystem* added)
+{
+	if(!gExternalSQ)
+		gExternalSQ = new PxArray<PxSceneQuerySystem*>;
+
+	gExternalSQ->pushBack(added);
+}
+
+void removeExternalSQ(PxSceneQuerySystem* removed)
+{
+	if(gExternalSQ)
+	{
+		const PxU32 nb = gExternalSQ->size();
+		for(PxU32 i=0;i<nb;i++)
+		{
+			PxSceneQuerySystem* sq = (*gExternalSQ)[i];
+			if(sq==removed)
+			{
+				gExternalSQ->replaceWithLast(i);
+				return;
+			}
+		}
+	}
+}
+
+static void releaseExternalSQ()
+{
+	if(gExternalSQ)
+	{
+		PxArray<PxSceneQuerySystem*>* copy = gExternalSQ;
+		gExternalSQ = NULL;
+
+		const PxU32 nb = copy->size();
+		for(PxU32 i=0;i<nb;i++)
+		{
+			PxSceneQuerySystem* sq = (*copy)[i];
+			sq->release();
+		}
+		PX_DELETE(copy);
+	}
+}
+
 void PxCloseExtensions(void)
-{	
-	Ps::Foundation::decRefCount();
+{
+	releaseExternalSQ();
+
+	PxDecFoundationRefCount();
 
 #if PX_SUPPORT_PVD
 	if(gPvdHandler.mConnected)
@@ -125,6 +184,13 @@ void PxCloseExtensions(void)
 		PX_ASSERT(gPvdHandler.mPvd);
 		gPvdHandler.mPvd->removeClient(&gPvdHandler);
 		gPvdHandler.mPvd = NULL;
+	}
+#endif
+
+#if PX_SUPPORT_OMNI_PVD
+	if (OmniPvdPxExtensionsSampler::getInstance())
+	{
+		OmniPvdPxExtensionsSampler::destroyInstance();
 	}
 #endif
 }
@@ -140,7 +206,6 @@ void Ext::RegisterExtensionsSerializers(PxSerializationRegistry& sr)
 	sr.registerRepXSerializer(PxConcreteType::eCONVEX_MESH,						PX_NEW_REPX_SERIALIZER( PxConvexMeshRepXSerializer ));
 	sr.registerRepXSerializer(PxConcreteType::eRIGID_STATIC,					PX_NEW_REPX_SERIALIZER( PxRigidStaticRepXSerializer ));	
 	sr.registerRepXSerializer(PxConcreteType::eRIGID_DYNAMIC,					PX_NEW_REPX_SERIALIZER( PxRigidDynamicRepXSerializer ));
-	sr.registerRepXSerializer(PxConcreteType::eARTICULATION,					PX_NEW_REPX_SERIALIZER( PxArticulationRepXSerializer ));
 	sr.registerRepXSerializer(PxConcreteType::eARTICULATION_REDUCED_COORDINATE,	PX_NEW_REPX_SERIALIZER( PxArticulationReducedCoordinateRepXSerializer));
 	sr.registerRepXSerializer(PxConcreteType::eAGGREGATE,						PX_NEW_REPX_SERIALIZER( PxAggregateRepXSerializer ));
 	
@@ -178,7 +243,6 @@ void Ext::UnregisterExtensionsSerializers(PxSerializationRegistry& sr)
 	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eCONVEX_MESH));
 	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eRIGID_STATIC));	
 	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eRIGID_DYNAMIC));
-	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eARTICULATION));
 	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eARTICULATION_REDUCED_COORDINATE));
 	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eAGGREGATE));
 

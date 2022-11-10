@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,9 +32,9 @@
 #include "geometry/PxHeightFieldSample.h"
 #include "geometry/PxHeightFieldDesc.h"
 #include "geometry/PxHeightField.h"
+#include "geometry/PxHeightFieldGeometry.h"
 
-#include "PsUserAllocated.h"
-#include "PsMathUtils.h"
+#include "foundation/PxUserAllocated.h"
 #include "CmRefCountable.h"
 #include "GuSphere.h"
 #include "GuHeightFieldData.h"
@@ -45,15 +44,12 @@
 
 namespace physx
 {
-class GuMeshFactory;
 class PxHeightFieldDesc;
-}
 
-namespace physx
-{
 namespace Gu
 {
-class HeightField : public PxHeightField, public Ps::UserAllocated, public Cm::RefCountable
+class MeshFactory;
+class HeightField : public PxHeightField, public PxUserAllocated
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -63,237 +59,208 @@ class HeightField : public PxHeightField, public Ps::UserAllocated, public Cm::R
 //==================================================================================================
 public:
 // PX_SERIALIZATION
-		HeightField(PxBaseFlags baseFlags) : PxHeightField(baseFlags), Cm::RefCountable(PxEmpty), mData(PxEmpty), mModifyCount(0) {}
+																	HeightField(PxBaseFlags baseFlags) : PxHeightField(baseFlags), mData(PxEmpty), mModifyCount(0) {}
 
-		PX_PHYSX_COMMON_API				void						preExportDataReset() { Cm::RefCountable::preExportDataReset(); }
-		PX_PHYSX_COMMON_API virtual		void						exportExtraData(PxSerializationContext& context);
-		PX_PHYSX_COMMON_API				void						importExtraData(PxDeserializationContext& context);
-		PX_FORCE_INLINE					void						setMeshFactory(GuMeshFactory* f)		{ mMeshFactory = f;					}
+										void						preExportDataReset() { Cm::RefCountable_preExportDataReset(*this); }
+							virtual		void						exportExtraData(PxSerializationContext& context);
+										void						importExtraData(PxDeserializationContext& context);
+		PX_FORCE_INLINE					void						setMeshFactory(MeshFactory* f)		{ mMeshFactory = f;					}
 		PX_PHYSX_COMMON_API	static		HeightField*				createObject(PxU8*& address, PxDeserializationContext& context);
 		PX_PHYSX_COMMON_API static		void						getBinaryMetaData(PxOutputStream& stream);
 										void						resolveReferences(PxDeserializationContext&) {}
 
 							virtual		void						requiresObjects(PxProcessPxBaseCallback&){}
 //~PX_SERIALIZATION
-
-		PX_PHYSX_COMMON_API 										HeightField(GuMeshFactory* meshFactory);
-		PX_PHYSX_COMMON_API											HeightField(GuMeshFactory& factory, Gu::HeightFieldData& data);
-
+		 															HeightField(MeshFactory* factory);
+																	HeightField(MeshFactory* factory, Gu::HeightFieldData& data);
 		// PxHeightField
-		PX_PHYSX_COMMON_API virtual		void						release();
-		PX_PHYSX_COMMON_API virtual		PxU32						saveCells(void* destBuffer, PxU32 destBufferSize) const;
-		PX_PHYSX_COMMON_API virtual		bool						modifySamples(PxI32 startCol, PxI32 startRow, const PxHeightFieldDesc& subfieldDesc, bool shrinkBounds);
-		PX_PHYSX_COMMON_API virtual		PxU32						getNbRows()						const	{ return mData.rows;					}
-		PX_PHYSX_COMMON_API virtual		PxU32						getNbColumns()					const	{ return mData.columns;					}
-		PX_PHYSX_COMMON_API virtual		PxHeightFieldFormat::Enum	getFormat()						const	{ return mData.format;					}
-		PX_PHYSX_COMMON_API virtual		PxU32						getSampleStride()				const	{ return sizeof(PxHeightFieldSample);	}
-		PX_PHYSX_COMMON_API virtual		PxReal						getConvexEdgeThreshold()		const	{ return mData.convexEdgeThreshold;		}
-		PX_PHYSX_COMMON_API virtual		PxHeightFieldFlags			getFlags()						const	{ return mData.flags;					}
-		PX_PHYSX_COMMON_API virtual		PxReal						getHeight(PxReal x, PxReal z)	const	{ return getHeightInternal(x, z);		}
-
-		PX_PHYSX_COMMON_API virtual		void						acquireReference();
-		PX_PHYSX_COMMON_API virtual		PxU32						getReferenceCount()				const;
-		//~PxHeightField
-
-		// RefCountable
-		PX_PHYSX_COMMON_API virtual		void						onRefCountZero();
-		//~RefCountable
-		PX_PHYSX_COMMON_API virtual		PxMaterialTableIndex		getTriangleMaterialIndex(PxTriangleID triangleIndex)	const
+							 virtual	void						release();
+							 virtual	PxU32						saveCells(void* destBuffer, PxU32 destBufferSize) const;
+							 virtual	bool						modifySamples(PxI32 startCol, PxI32 startRow, const PxHeightFieldDesc& subfieldDesc, bool shrinkBounds);
+							 virtual	PxU32						getNbRows()						const	{ return mData.rows;					}
+							 virtual	PxU32						getNbColumns()					const	{ return mData.columns;					}
+							 virtual	PxHeightFieldFormat::Enum	getFormat()						const	{ return mData.format;					}
+							 virtual	PxU32						getSampleStride()				const	{ return sizeof(PxHeightFieldSample);	}
+							 virtual	PxReal						getConvexEdgeThreshold()		const	{ return mData.convexEdgeThreshold;		}
+							 virtual	PxHeightFieldFlags			getFlags()						const	{ return mData.flags;					}
+							 virtual	PxReal						getHeight(PxReal x, PxReal z)	const	{ return getHeightInternal(x, z);		}
+							 virtual	PxMaterialTableIndex		getTriangleMaterialIndex(PxTriangleID triangleIndex)	const
 																	{
 																		return getTriangleMaterial(triangleIndex);
 																	}
 
-		PX_PHYSX_COMMON_API virtual		PxVec3						getTriangleNormal(PxTriangleID triangleIndex)	const
+							 virtual	PxVec3						getTriangleNormal(PxTriangleID triangleIndex)	const
 																	{
 																		return getTriangleNormalInternal(triangleIndex);
 																	}
 
-		PX_PHYSX_COMMON_API virtual	const PxHeightFieldSample&		getSample(PxU32 row, PxU32 column) const
+							 virtual	const PxHeightFieldSample&	getSample(PxU32 row, PxU32 column) const
 																	{
 																		const PxU32 cell = row * getNbColumnsFast() + column;
 																		return getSample(cell);
 																	}
-		/**
-		\brief Returns the number of times the heightfield data has been modified
+							 virtual	PxU32						getTimestamp()					const	{ return mModifyCount;	}
+		//~PxHeightField
+
+		// PxRefCounted
+							 virtual	void						acquireReference();
+							 virtual	PxU32						getReferenceCount()				const;
+		//~PxRefCounted
+
+		// PxBase
+							 virtual	void						onRefCountZero();
+		//~PxBase
+										 bool						loadFromDesc(const PxHeightFieldDesc&);
+										 bool						load(PxInputStream&);
+										 bool						save(PxOutputStream& stream, bool endianSwap);
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getNbRowsFast()					const	{ return mData.rows;	}
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getNbColumnsFast()				const	{ return mData.columns;	}
+						PX_FORCE_INLINE	PxHeightFieldFormat::Enum	getFormatFast()					const	{ return mData.format;	}
+						PX_FORCE_INLINE	PxU32						getFlagsFast()					const	{ return mData.flags;	}
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	bool						isZerothVertexShared(PxU32 vertexIndex) const
+																	{
+					//													return (getSample(vertexIndex).tessFlag & PxHeightFieldTessFlag::e0TH_VERTEX_SHARED);
+																		return getSample(vertexIndex).tessFlag() != 0;
+																	}
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU16						getMaterialIndex0(PxU32 vertexIndex) const	{ return getSample(vertexIndex).materialIndex0;	}
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU16						getMaterialIndex1(PxU32 vertexIndex) const	{ return getSample(vertexIndex).materialIndex1;	}
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getMaterialIndex01(PxU32 vertexIndex) const
+																	{
+																		const PxHeightFieldSample& sample = getSample(vertexIndex);
+																		return PxU32(sample.materialIndex0 | (sample.materialIndex1 << 16));
+																	}
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxReal						getHeight(PxU32 vertexIndex) const
+																	{
+																		return PxReal(getSample(vertexIndex).height);
+																	}
+
+						PX_INLINE		PxReal						getHeightInternal2(PxU32 vertexIndex, PxReal fracX, PxReal fracZ)	const;
+						PX_FORCE_INLINE	PxReal						getHeightInternal(PxReal x, PxReal z) const
+																	{
+																		PxReal fracX, fracZ;
+																		const PxU32 vertexIndex = computeCellCoordinates(x, z, fracX, fracZ);
+
+																		return getHeightInternal2(vertexIndex, fracX, fracZ);
+																	}
+
+						PX_FORCE_INLINE bool						isValidVertex(PxU32 vertexIndex) const	{ return vertexIndex < mData.rows*mData.columns;	}
+
+						PX_INLINE		PxVec3						getVertex(PxU32 vertexIndex) const;
+						PX_INLINE		bool						isConvexVertex(PxU32 vertexIndex, PxU32 row, PxU32 column) const;
+
+						PX_INLINE		bool						isValidEdge(PxU32 edgeIndex) const;
+						PX_INLINE		PxU32						getEdgeTriangleIndices(PxU32 edgeIndex, PxU32 triangleIndices[2]) const;
+						PX_INLINE		PxU32						getEdgeTriangleIndices(PxU32 edgeIndex, PxU32 triangleIndices[2], PxU32 cell, PxU32 row, PxU32 column) const;
+						PX_INLINE		void						getEdgeVertexIndices(PxU32 edgeIndex, PxU32& vertexIndex0, PxU32& vertexIndex1) const;
+					//	PX_INLINE		bool						isConvexEdge(PxU32 edgeIndex) const;
+						PX_INLINE		bool						isConvexEdge(PxU32 edgeIndex, PxU32 cell, PxU32 row, PxU32 column) const;
+						PX_FORCE_INLINE	bool						isConvexEdge(PxU32 edgeIndex) const
+																	{
+																		const PxU32 cell = edgeIndex / 3;
+																		const PxU32 row = cell / mData.columns;
+																		const PxU32 column = cell % mData.columns;
+																		return isConvexEdge(edgeIndex, cell, row, column);
+																	}
+
+										PxU32						computeCellCoordinates(PxReal x, PxReal z, PxReal& fracX, PxReal& fracZ) const;
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getMin(PxReal x, PxU32 nb)	const
+																	{
+																		if(x<0.0f)
+																			return 0;
+																		if(x>PxReal(nb))
+																			return nb;
+
+																		const PxReal cx = PxFloor(x);
+																		const PxU32 icx = PxU32(cx);
+																		return icx;
+																	}
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getMax(PxReal x, PxU32 nb)	const
+																	{
+																		if(x<0.0f)
+																			return 0;
+																		if(x>PxReal(nb))
+																			return nb;
+
+																		const PxReal cx = PxCeil(x);
+																		const PxU32 icx = PxU32(cx);
+																		return icx;
+																	}
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getMinRow(PxReal x)		const	{ return getMin(x, mData.rows-2);		}
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getMaxRow(PxReal x)		const	{ return getMax(x, mData.rows-1);		}
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getMinColumn(PxReal z)	const	{ return getMin(z, mData.columns-2);	}
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU32						getMaxColumn(PxReal z)	const	{ return getMax(z, mData.columns-1);	}
+
+	PX_CUDA_CALLABLE	PX_INLINE		bool						isValidTriangle(PxU32 triangleIndex) const;
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	bool						isFirstTriangle(PxU32 triangleIndex) const	{ return ((triangleIndex & 0x1) == 0);	}
+
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	PxU16						getTriangleMaterial(PxU32 triangleIndex) const
+																	{
+																		return isFirstTriangle(triangleIndex) ? getMaterialIndex0(triangleIndex >> 1) : getMaterialIndex1(triangleIndex >> 1);
+																	}
+
+	PX_CUDA_CALLABLE	PX_INLINE		void						getTriangleVertexIndices(PxU32 triangleIndex, PxU32& vertexIndex0, PxU32& vertexIndex1, PxU32& vertexIndex2) const;
+	PX_CUDA_CALLABLE	PX_INLINE		PxVec3						getTriangleNormalInternal(PxU32 triangleIndex) const;
+						PX_INLINE		void						getTriangleAdjacencyIndices(PxU32 triangleIndex,PxU32 vertexIndex0, PxU32 vertexIndex1, PxU32 vertexIndex2, PxU32& adjacencyIndex0, PxU32& adjacencyIndex1, PxU32& adjacencyIndex2) const;
+
+						PX_INLINE		PxVec3						getNormal_2(PxU32 vertexIndex, PxReal fracX, PxReal fracZ, PxReal xcoeff, PxReal ycoeff, PxReal zcoeff) const;
+						PX_FORCE_INLINE	PxVec3						getNormal_(PxReal x, PxReal z, PxReal xcoeff, PxReal ycoeff, PxReal zcoeff) const
+																	{
+																		PxReal fracX, fracZ;
+																		const PxU32 vertexIndex = computeCellCoordinates(x, z, fracX, fracZ);
+
+																		return getNormal_2(vertexIndex, fracX, fracZ, xcoeff, ycoeff, zcoeff);
+																	}
+
+						PX_INLINE		PxU32						getTriangleIndex(PxReal x, PxReal z) const;
+						PX_INLINE		PxU32						getTriangleIndex2(PxU32 cell, PxReal fracX, PxReal fracZ) const;
+						PX_FORCE_INLINE	PxU16						getMaterial(PxReal x, PxReal z) const
+																	{
+																		return getTriangleMaterial(getTriangleIndex(x, z));
+																	}
+
+						PX_FORCE_INLINE	PxReal						getMinHeight()					const	{ return mMinHeight; }
+						PX_FORCE_INLINE	PxReal						getMaxHeight()					const	{ return mMaxHeight; }
+
+						PX_FORCE_INLINE	const Gu::HeightFieldData&	getData()						const	{ return mData; }
 	
-		Each time the heightfield is changed via 'modifySamples' this increments a counter.  This method will return
-		the number of times the heightfield has been modified so that rendering code can know whether or not it needs to
-		rebuild the graphics representation of the mesh.
-	
-		\return the number of times the heightfield sample data has been modified.
-		*/
-		PX_PHYSX_COMMON_API virtual		PxU32						getTimestamp()			const	{ return mModifyCount;	}
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	void						getTriangleVertices(PxU32 triangleIndex, PxU32 row, PxU32 column, PxVec3& v0, PxVec3& v1, PxVec3& v2) const;
 
-	    PX_PHYSX_COMMON_API bool						loadFromDesc(const PxHeightFieldDesc&);
-	    PX_PHYSX_COMMON_API bool						load(PxInputStream&);
+																	// checks if current vertex is solid or not
+										bool						isSolidVertex(PxU32 vertexIndex, PxU32 row, PxU32 coloumn, PxU16 holeMaterialIndex, bool& nbSolid) const;	
 
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getNbRowsFast()					const	{ return mData.rows;				}
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getNbColumnsFast()				const	{ return mData.columns;				}
-	PX_FORCE_INLINE	PxHeightFieldFormat::Enum	getFormatFast()					const	{ return mData.format;				}
-	PX_FORCE_INLINE	PxU32						getFlagsFast()					const	{ return mData.flags;				}
+																	// PT: TODO: I think we could drop that whole precomputation thing now
+																	// if precomputed bitmap define is used, the collision vertex information
+																	// is precomputed during create height field and stored as a bit in materialIndex1
+	PX_PHYSX_COMMON_API					bool						isCollisionVertexPreca(PxU32 vertexIndex, PxU32 row, PxU32 column, PxU16 holeMaterialIndex) const;
+										void						parseTrianglesForCollisionVertices(PxU16 holeMaterialIndex);					
 
-	PX_FORCE_INLINE	bool						isDeltaHeightInsideExtent(PxReal dy, PxReal eps = 0.0f) const	
-												{ 
-													const float thickness = 0.0f;
-													return (thickness <= 0.0f && dy <= eps && dy >= thickness) || 
-															(thickness > 0.0f && dy > -eps && dy < thickness);
-												}
-
-	PX_FORCE_INLINE	bool						isDeltaHeightOppositeExtent(PxReal dy) const	
-												{
-													const float thickness = 0.0f;
-													return (thickness <= 0.0f && dy > 0.0f) || (thickness > 0.0f && dy < 0.0f);
-												}
-
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	bool	isZerothVertexShared(PxU32 vertexIndex) const
-												{
-//													return (getSample(vertexIndex).tessFlag & PxHeightFieldTessFlag::e0TH_VERTEX_SHARED);
-													return getSample(vertexIndex).tessFlag() != 0;
-												}
-
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU16	getMaterialIndex0(PxU32 vertexIndex) const	{ return getSample(vertexIndex).materialIndex0;	}
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU16	getMaterialIndex1(PxU32 vertexIndex) const	{ return getSample(vertexIndex).materialIndex1;	}
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getMaterialIndex01(PxU32 vertexIndex) const
-												{
-													const PxHeightFieldSample& sample = getSample(vertexIndex);
-													return PxU32(sample.materialIndex0 | (sample.materialIndex1 << 16));
-												}
-
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxReal	getHeight(PxU32 vertexIndex) const
-												{
-													return PxReal(getSample(vertexIndex).height);
-												}
-
-	PX_INLINE		PxReal						getHeightInternal2(PxU32 vertexIndex, PxReal fracX, PxReal fracZ)	const;
-	PX_FORCE_INLINE	PxReal						getHeightInternal(PxReal x, PxReal z) const
-												{
-													PxReal fracX, fracZ;
-													const PxU32 vertexIndex = computeCellCoordinates(x, z, fracX, fracZ);
-
-													return getHeightInternal2(vertexIndex, fracX, fracZ);
-												}
-
-	PX_FORCE_INLINE bool						isValidVertex(PxU32 vertexIndex) const	{ return vertexIndex < mData.rows*mData.columns;	}
-
-	PX_INLINE		PxVec3						getVertex(PxU32 vertexIndex) const;
-	PX_INLINE		bool						isConvexVertex(PxU32 vertexIndex, PxU32 row, PxU32 column) const;
-
-	PX_INLINE		bool						isValidEdge(PxU32 edgeIndex) const;
-	PX_INLINE		PxU32						getEdgeTriangleIndices(PxU32 edgeIndex, PxU32 triangleIndices[2]) const;
-	PX_INLINE		PxU32						getEdgeTriangleIndices(PxU32 edgeIndex, PxU32 triangleIndices[2], PxU32 cell, PxU32 row, PxU32 column) const;
-	PX_INLINE		void						getEdgeVertexIndices(PxU32 edgeIndex, PxU32& vertexIndex0, PxU32& vertexIndex1) const;
-//	PX_INLINE		bool						isConvexEdge(PxU32 edgeIndex) const;
-	PX_INLINE		bool						isConvexEdge(PxU32 edgeIndex, PxU32 cell, PxU32 row, PxU32 column) const;
-	PX_FORCE_INLINE	bool						isConvexEdge(PxU32 edgeIndex) const
-												{
-													const PxU32 cell = edgeIndex / 3;
-													const PxU32 row = cell / mData.columns;
-													const PxU32 column = cell % mData.columns;
-													return isConvexEdge(edgeIndex, cell, row, column);
-												}
-
-	PX_PHYSX_COMMON_API	PxU32					computeCellCoordinates(PxReal x, PxReal z, PxReal& fracX, PxReal& fracZ) const;
-
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getMin(PxReal x, PxU32 nb)	const
-												{
-													if(x<0.0f)
-														return 0;
-													if(x>PxReal(nb))
-														return nb;
-
-													const PxReal cx = Ps::floor(x);
-													const PxU32 icx = PxU32(cx);
-													return icx;
-												}
-
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getMax(PxReal x, PxU32 nb)	const
-												{
-													if(x<0.0f)
-														return 0;
-													if(x>PxReal(nb))
-														return nb;
-
-													const PxReal cx = Ps::ceil(x);
-													const PxU32 icx = PxU32(cx);
-													return icx;
-												}
-
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getMinRow(PxReal x)		const	{ return getMin(x, mData.rows-2);		}
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getMaxRow(PxReal x)		const	{ return getMax(x, mData.rows-1);		}
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getMinColumn(PxReal z)	const	{ return getMin(z, mData.columns-2);	}
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU32	getMaxColumn(PxReal z)	const	{ return getMax(z, mData.columns-1);	}
-
-	PX_CUDA_CALLABLE PX_INLINE			bool	isValidTriangle(PxU32 triangleIndex) const;
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	bool	isFirstTriangle(PxU32 triangleIndex) const	{ return ((triangleIndex & 0x1) == 0);	}
-
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	PxU16	getTriangleMaterial(PxU32 triangleIndex) const
-												{
-													return isFirstTriangle(triangleIndex) ? getMaterialIndex0(triangleIndex >> 1) : getMaterialIndex1(triangleIndex >> 1);
-												}
-
-	PX_CUDA_CALLABLE PX_INLINE			void	getTriangleVertexIndices(PxU32 triangleIndex, PxU32& vertexIndex0, PxU32& vertexIndex1, PxU32& vertexIndex2) const;
-	PX_CUDA_CALLABLE PX_INLINE			PxVec3	getTriangleNormalInternal(PxU32 triangleIndex) const;
-	PX_INLINE							void	getTriangleAdjacencyIndices(PxU32 triangleIndex,PxU32 vertexIndex0, PxU32 vertexIndex1, PxU32 vertexIndex2, PxU32& adjacencyIndex0, PxU32& adjacencyIndex1, PxU32& adjacencyIndex2) const;
-
-	PX_INLINE		PxVec3						getNormal_2(PxU32 vertexIndex, PxReal fracX, PxReal fracZ, PxReal xcoeff, PxReal ycoeff, PxReal zcoeff) const;
-	PX_FORCE_INLINE PxVec3						getNormal_(PxReal x, PxReal z, PxReal xcoeff, PxReal ycoeff, PxReal zcoeff) const
-												{
-													PxReal fracX, fracZ;
-													const PxU32 vertexIndex = computeCellCoordinates(x, z, fracX, fracZ);
-
-													return getNormal_2(vertexIndex, fracX, fracZ, xcoeff, ycoeff, zcoeff);
-												}
-
-	PX_INLINE		PxU32						getTriangleIndex(PxReal x, PxReal z) const;
-	PX_INLINE		PxU32						getTriangleIndex2(PxU32 cell, PxReal fracX, PxReal fracZ) const;
-	PX_FORCE_INLINE	PxU16						getMaterial(PxReal x, PxReal z) const
-												{
-													return getTriangleMaterial(getTriangleIndex(x, z));
-												}
-
-	PX_FORCE_INLINE	PxReal						getMinHeight()					const	{ return mMinHeight; }
-	PX_FORCE_INLINE	PxReal						getMaxHeight()					const	{ return mMaxHeight; }
-
-	PX_FORCE_INLINE	const Gu::HeightFieldData&	getData()						const	{ return mData; }
-	
-	PX_CUDA_CALLABLE PX_FORCE_INLINE	void	getTriangleVertices(PxU32 triangleIndex, PxU32 row, PxU32 column, PxVec3& v0, PxVec3& v1, PxVec3& v2) const;
-
-												// checks if current vertex is solid or not
-					bool						isSolidVertex(PxU32 vertexIndex, PxU32 row, PxU32 coloumn, PxU16 holeMaterialIndex, bool& nbSolid) const;	
-
-												// if precomputed bitmap define is used, the collision vertex information
-												// is precomputed during create height field and stored as a bit in materialIndex1
-	PX_PHYSX_COMMON_API		bool				isCollisionVertexPreca(PxU32 vertexIndex, PxU32 row, PxU32 column, PxU16 holeMaterialIndex) const;
-	PX_FORCE_INLINE	bool						isCollisionVertex(PxU32 vertexIndex, PxU32, PxU32, PxU16) const
-												{
-													return getSample(vertexIndex).materialIndex1.isBitSet()!=0;
-												}
-					void						parseTrianglesForCollisionVertices(PxU16 holeMaterialIndex);					
-
-	PX_FORCE_INLINE
-	PX_CUDA_CALLABLE const PxHeightFieldSample&	getSample(PxU32 vertexIndex) const
-												{
-													PX_ASSERT(isValidVertex(vertexIndex));
-													return mData.samples[vertexIndex];
-												}
-
+	PX_CUDA_CALLABLE	PX_FORCE_INLINE	const PxHeightFieldSample&	getSample(PxU32 vertexIndex) const
+																	{
+																		PX_ASSERT(isValidVertex(vertexIndex));
+																		return mData.samples[vertexIndex];
+																	}
 #ifdef __CUDACC__
-	PX_CUDA_CALLABLE void		setSamplePtr(PxHeightFieldSample* s) { mData.samples = s; }
+	PX_CUDA_CALLABLE					void						setSamplePtr(PxHeightFieldSample* s) { mData.samples = s; }
 #endif
+										Gu::HeightFieldData			mData;
+										PxU32						mSampleStride;
+										PxU32						mNbSamples;	// PT: added for platform conversion. Try to remove later.
+										PxReal						mMinHeight;
+										PxReal						mMaxHeight;
+										PxU32						mModifyCount;
 
-					Gu::HeightFieldData			mData;
-					PxU32						mSampleStride;
-					PxU32						mNbSamples;	// PT: added for platform conversion. Try to remove later.
-					PxReal						mMinHeight;
-					PxReal						mMaxHeight;
-					PxU32						mModifyCount;
-					// methods
-	PX_PHYSX_COMMON_API void					releaseMemory();
-
-	PX_PHYSX_COMMON_API virtual					~HeightField();
+										void						releaseMemory();
+						virtual										~HeightField();
 
 private:
-					GuMeshFactory*				mMeshFactory;	// PT: changed to pointer for serialization
+										MeshFactory*				mMeshFactory;	// PT: changed to pointer for serialization
 };
 
 } // namespace Gu
@@ -1253,15 +1220,10 @@ PX_FORCE_INLINE void Gu::HeightField::getTriangleVertices(PxU32 triangleIndex, P
 	}
 }
 
-struct EdgeData
+PX_FORCE_INLINE const Gu::HeightFieldData* _getHFData(const PxHeightFieldGeometry& hfGeom)
 {
-	PxU32	edgeIndex;
-	PxU32	cell;
-	PxU32	row;
-	PxU32	column;
-};
-PX_PHYSX_COMMON_API PxU32 getVertexEdgeIndices(const Gu::HeightField& heightfield, PxU32 vertexIndex, PxU32 row, PxU32 column, EdgeData edgeIndices[8]);
-PX_PHYSX_COMMON_API PxU32 getEdgeTriangleIndices(const Gu::HeightField& heightfield, const EdgeData& edgeData, PxU32* PX_RESTRICT triangleIndices);
+	return &static_cast<const Gu::HeightField*>(hfGeom.heightField)->getData();
+}
 
 }
 

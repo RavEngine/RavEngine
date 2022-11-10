@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,7 +30,7 @@
 #define GU_DISTANCE_SEGMENT_TRIANGLE_SIMD_H
 
 #include "common/PxPhysXCommonConfig.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
@@ -42,10 +41,10 @@ namespace Gu
 		closest0 is the closest point on segment pq
 		closest1 is the closest point on triangle abc
 	*/
-	PX_PHYSX_COMMON_API Ps::aos::FloatV distanceSegmentTriangleSquared(
-		const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg q,
-		const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b, const Ps::aos::Vec3VArg c,
-		Ps::aos::Vec3V& closest0, Ps::aos::Vec3V& closest1);
+	PX_PHYSX_COMMON_API aos::FloatV distanceSegmentTriangleSquared(
+		const aos::Vec3VArg p, const aos::Vec3VArg q,
+		const aos::Vec3VArg a, const aos::Vec3VArg b, const aos::Vec3VArg c,
+		aos::Vec3V& closest0, aos::Vec3V& closest1);
 
 } // namespace Gu
 

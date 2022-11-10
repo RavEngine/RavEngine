@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_PREALLOCATINGPOOL
-#define PX_PHYSICS_COMMON_PREALLOCATINGPOOL
+#ifndef CM_PREALLOCATING_POOL_H
+#define CM_PREALLOCATING_POOL_H
 
 #include "foundation/Px.h"
-#include "PsUserAllocated.h"
-#include "CmPhysXCommon.h"
-#include "PsSort.h"
-#include "PsArray.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxSort.h"
+#include "foundation/PxArray.h"
 
 namespace physx
 {
@@ -59,7 +56,7 @@ public:
 
 	void		reset()
 	{
-		PX_FREE_AND_RESET(mMemory);
+		PX_FREE(mMemory);
 	}
 
 	PX_FORCE_INLINE PxU8* allocateMemory(PxU32 maxElements, PxU32 elementSize)
@@ -120,7 +117,7 @@ class PreallocatingRegionManager
 						: mMaxElements		(maxElements)
 						, mElementSize		(elementSize)
 						, mActivePoolIndex	(0)
-						, mPools(PX_DEBUG_EXP("MyPoolManagerPools"))
+						, mPools			("MyPoolManagerPools")
 						, mNeedsSorting		(true)
 						, mTypeName			(typeName)
 						{
@@ -169,7 +166,7 @@ class PreallocatingRegionManager
 			return;
 
 		if(mNeedsSorting)
-			Ps::sort(mPools.begin(), mPools.size());
+			PxSort(mPools.begin(), mPools.size());
 
 		const PxU32 maxElements = mMaxElements;
 		const PxU32 elementSize = mElementSize;
@@ -254,13 +251,13 @@ private:
 	const PxU32			mElementSize;
 	PxU32				mActivePoolIndex;
 
-	Ps::Array<PreallocatingRegion>	mPools;
+	PxArray<PreallocatingRegion>	mPools;
 	bool				mNeedsSorting;
 	const char*			mTypeName;
 };
 
 template<class T>
-class PreallocatingPool : public Ps::UserAllocated
+class PreallocatingPool : public PxUserAllocated
 {
 	PreallocatingPool<T>& operator=(const PreallocatingPool<T>&);
 
@@ -286,49 +283,49 @@ public:
 	PX_FORCE_INLINE T* allocateAndPrefetch()
 	{
 		T* t = reinterpret_cast<T*>(mPool.allocateMemory());
-		Ps::prefetch(t, sizeof(T));
+		PxPrefetch(t, sizeof(T));
 		return t;
 	}
 
 	PX_INLINE T* construct()
 	{
 		T* t = reinterpret_cast<T*>(mPool.allocateMemory());
-		return t ? new (t) T() : 0;
+		return t ? PX_PLACEMENT_NEW(t, T()) : NULL;
 	}
 
 	template<class A1>
 	PX_INLINE T* construct(A1& a)
 	{
 		T* t = reinterpret_cast<T*>(mPool.allocateMemory());
-		return t ? new (t) T(a) : 0;
+		return t ? PX_PLACEMENT_NEW(t, T(a)) : NULL;
 	}
 
 	template<class A1, class A2>
 	PX_INLINE T* construct(A1& a, A2& b)
 	{
 		T* t = reinterpret_cast<T*>(mPool.allocateMemory());
-		return t ? new (t) T(a,b) : 0;
+		return t ? PX_PLACEMENT_NEW(t, T(a,b)) : NULL;
 	}
 
 	template<class A1, class A2, class A3>
 	PX_INLINE T* construct(A1& a, A2& b, A3& c)
 	{
 		T* t = reinterpret_cast<T*>(mPool.allocateMemory());
-		return t ? new (t) T(a,b,c) : 0;
+		return t ? PX_PLACEMENT_NEW(t, T(a,b,c)) : NULL;
 	}
 
 	template<class A1, class A2, class A3, class A4>
 	PX_INLINE T* construct(A1& a, A2& b, A3& c, A4& d)
 	{
 		T* t = reinterpret_cast<T*>(mPool.allocateMemory());
-		return t ? new (t) T(a,b,c,d) : 0;
+		return t ? PX_PLACEMENT_NEW(t, T(a,b,c,d)) : NULL;
 	}
 
 	template<class A1, class A2, class A3, class A4, class A5>
 	PX_INLINE T* construct(A1& a, A2& b, A3& c, A4& d, A5& e)
 	{
 		T* t = reinterpret_cast<T*>(mPool.allocateMemory());
-		return t ? new (t) T(a,b,c,d,e) : 0;
+		return t ? PX_PLACEMENT_NEW(t, T(a,b,c,d,e)) : NULL;
 	}
 
 	////
@@ -336,42 +333,42 @@ public:
 	PX_INLINE T* construct(T* t)
 	{
 		PX_ASSERT(t);
-		return new (t) T();
+		return PX_PLACEMENT_NEW(t, T());
 	}
 
 	template<class A1>
 	PX_INLINE T* construct(T* t, A1& a)
 	{
 		PX_ASSERT(t);
-		return new (t) T(a);
+		return PX_PLACEMENT_NEW(t, T(a));
 	}
 
 	template<class A1, class A2>
 	PX_INLINE T* construct(T* t, A1& a, A2& b)
 	{
 		PX_ASSERT(t);
-		return new (t) T(a,b);
+		return PX_PLACEMENT_NEW(t, T(a,b));
 	}
 
 	template<class A1, class A2, class A3>
 	PX_INLINE T* construct(T* t, A1& a, A2& b, A3& c)
 	{
 		PX_ASSERT(t);
-		return new (t) T(a,b,c);
+		return PX_PLACEMENT_NEW(t, T(a,b,c));
 	}
 
 	template<class A1, class A2, class A3, class A4>
 	PX_INLINE T* construct(T* t, A1& a, A2& b, A3& c, A4& d)
 	{
 		PX_ASSERT(t);
-		return new (t) T(a,b,c,d);
+		return PX_PLACEMENT_NEW(t, T(a,b,c,d));
 	}
 
 	template<class A1, class A2, class A3, class A4, class A5>
 	PX_INLINE T* construct(T* t, A1& a, A2& b, A3& c, A4& d, A5& e)
 	{
 		PX_ASSERT(t);
-		return new (t) T(a,b,c,d,e);
+		return PX_PLACEMENT_NEW(t, T(a,b,c,d,e));
 	}
 
 	PX_INLINE void destroy(T* const p)
@@ -395,7 +392,7 @@ protected:
 template<class T>
 class BufferedPreallocatingPool : public PreallocatingPool<T>
 {
-	Ps::Array<T*> mDeletedElems;
+	PxArray<T*> mDeletedElems;
 	PX_NOCOPY(BufferedPreallocatingPool<T>)
 public:
 	BufferedPreallocatingPool(PxU32 maxElements, const char* typeName) : PreallocatingPool<T>(maxElements, typeName)

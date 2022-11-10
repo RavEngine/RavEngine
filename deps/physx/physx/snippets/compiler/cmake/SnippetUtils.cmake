@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build SnippetUtils common
@@ -35,6 +34,8 @@ INCLUDE(${PHYSX_ROOT_DIR}/snippets/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLA
 SET(SNIPPETUTILS_FILES
 	${PHYSX_ROOT_DIR}/snippets/snippetutils/SnippetUtils.cpp
 	${PHYSX_ROOT_DIR}/snippets/snippetutils/SnippetUtils.h
+	${PHYSX_ROOT_DIR}/snippets/snippetutils/SnippetImmUtils.cpp
+	${PHYSX_ROOT_DIR}/snippets/snippetutils/SnippetImmUtils.h
 )
 
 ADD_LIBRARY(SnippetUtils STATIC

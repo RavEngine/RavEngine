@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -42,7 +41,6 @@ namespace physx
 {
 namespace Vd
 {	
-	using namespace physx::shdfnd;
 	using namespace physx::pvdsdk;
 
 	template<typename TPropType>
@@ -76,6 +74,7 @@ namespace Vd
 	}																						\
 	};
 
+	DEFINE_PROPERTY_DEFINITION_OBJECT_REF( PxTetrahedronMesh* )
 	DEFINE_PROPERTY_DEFINITION_OBJECT_REF( PxTriangleMesh* )
 	DEFINE_PROPERTY_DEFINITION_OBJECT_REF( PxBVH33TriangleMesh* )
 	DEFINE_PROPERTY_DEFINITION_OBJECT_REF( PxBVH34TriangleMesh* )
@@ -184,7 +183,7 @@ struct PvdClassInfoDefine
 	}
 
 	template<PxU32 TKey, typename TObjectType, typename TPropertyType, PxU32 TEnableFlag>
-	void handleBuffer( const PxBufferPropertyInfo<TKey, TObjectType, const Array< TPropertyType >&, TEnableFlag>& inProp )
+	void handleBuffer( const PxBufferPropertyInfo<TKey, TObjectType, const PxArray< TPropertyType >&, TEnableFlag>& inProp )
 	{
 		mHelper.pushName( inProp.mName );
 		defineProperty( getPvdNamespacedNameForType<TPropertyType>(), "", PropertyType::Array );
@@ -235,6 +234,7 @@ void addPropertyMessageArg( PvdPropertyDefinitionHelper& mHelper, PxU32 inOffset
 }																					\
 };
 
+DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_VOIDPTR_OP( PxTetrahedronMesh* )
 DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_VOIDPTR_OP( PxTriangleMesh* )
 DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_VOIDPTR_OP( PxBVH33TriangleMesh* )
 DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_VOIDPTR_OP( PxBVH34TriangleMesh* )

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "PxPhysXConfig.h"
 
@@ -34,21 +33,15 @@
 #include "cudamanager/PxCudaContextManager.h"
 #include "PxPhysics.h"
 
-#include "PsFoundation.h"
-
 #if PX_WINDOWS
 #include "common/windows/PxWindowsDelayLoadHook.h"
-#include "windows/PsWindowsInclude.h"
+#include "foundation/windows/PxWindowsInclude.h"
 #include "windows/CmWindowsModuleUpdateLoader.h"
 #elif PX_LINUX
 #include <dlfcn.h>
 #endif // ~PX_LINUX
 
-namespace physx
-{
-	// alias shared foundation to something usable
-	namespace Ps = shdfnd;
-}
+#include "stdio.h"
 
 #define STRINGIFY(x) #x
 #define GETSTRING(x) STRINGIFY(x)
@@ -59,15 +52,30 @@ static const char*	gPhysXGpuLibraryName = PHYSX_GPU_SHARED_LIB_NAME;
 #undef GETSTRING
 #undef STRINGIFY
 
+// Use reportError to handle cases where PxFoundation has not been created yet
+static void reportError(const char* file, int line, const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+
+	physx::PxFoundation* foundation = &PxGetFoundation();
+	if(foundation)
+	{
+		foundation->error(physx::PxErrorCode::eINTERNAL_ERROR, file, line, format, args);
+	}
+	else
+	{
+		printf("Error in %s:%i: ", file, line);
+		vprintf(format, args);
+	}
+
+	va_end(args);
+}
+
+
 void PxSetPhysXGpuLoadHook(const PxGpuLoadHook* hook)
 {
 	gPhysXGpuLibraryName = hook->getPhysXGpuDllName();
-}
-
-namespace grid
-{
-	class Server;
-	class ClientContextPredictionManager;
 }
 
 namespace physx
@@ -82,13 +90,24 @@ namespace physx
 	typedef physx::PxPhysXGpu* (PxCreatePhysXGpu_FUNC)();
 	typedef physx::PxCudaContextManager* (PxCreateCudaContextManager_FUNC)(physx::PxFoundation& foundation, const physx::PxCudaContextManagerDesc& desc, physx::PxProfilerCallback* profilerCallback);
 	typedef int (PxGetSuggestedCudaDeviceOrdinal_FUNC)(physx::PxErrorCallback& errc);
-	typedef grid::ClientContextPredictionManager* (PxCreateClientContextManager_FUNC)(grid::Server* server,  physx::PxU32 maxNbSleepMsg);
+	typedef void (PxSetPhysXGpuProfilerCallback_FUNC)(physx::PxProfilerCallback* cbk);
+	typedef void (PxCudaRegisterFunction_FUNC)(int, const char*);
+	typedef void** (PxCudaRegisterFatBinary_FUNC)(void*);
+	typedef physx::PxKernelIndex* (PxGetCudaFunctionTable_FUNC)();
+	typedef PxU32 (PxGetCudaFunctionTableSize_FUNC)();
+	typedef void** PxGetCudaModuleTable_FUNC();
+
 
 	PxCreatePhysXGpu_FUNC* g_PxCreatePhysXGpu_Func = NULL;
 	PxCreateCudaContextManager_FUNC* g_PxCreateCudaContextManager_Func = NULL;
 	PxGetSuggestedCudaDeviceOrdinal_FUNC* g_PxGetSuggestedCudaDeviceOrdinal_Func = NULL;
-
-	PxCreateClientContextManager_FUNC* g_CreateClientContextManager_Func = NULL;
+	PxSetPhysXGpuProfilerCallback_FUNC* g_PxSetPhysXGpuProfilerCallback_Func = NULL;
+	PxCudaRegisterFunction_FUNC* g_PxCudaRegisterFunction_Func = NULL;
+	PxCudaRegisterFatBinary_FUNC* g_PxCudaRegisterFatBinary_Func = NULL;
+	PxGetCudaFunctionTable_FUNC* g_PxGetCudaFunctionTable_Func = NULL;
+	PxGetCudaFunctionTableSize_FUNC* g_PxGetCudaFunctionTableSize_Func = NULL;
+	PxGetCudaFunctionTableSize_FUNC* g_PxGetCudaModuleTableSize_Func = NULL;
+	PxGetCudaModuleTable_FUNC* g_PxGetCudaModuleTable_Func = NULL;
 
 #if PX_WINDOWS
 
@@ -114,19 +133,25 @@ namespace physx
 			g_PxCreatePhysXGpu_Func = (PxCreatePhysXGpu_FUNC*)GetProcAddress(s_library, "PxCreatePhysXGpu");
 			g_PxCreateCudaContextManager_Func = (PxCreateCudaContextManager_FUNC*)GetProcAddress(s_library, "PxCreateCudaContextManager");
 			g_PxGetSuggestedCudaDeviceOrdinal_Func = (PxGetSuggestedCudaDeviceOrdinal_FUNC*)GetProcAddress(s_library, "PxGetSuggestedCudaDeviceOrdinal");
-			g_CreateClientContextManager_Func = (PxCreateClientContextManager_FUNC*)GetProcAddress(s_library, "PxCreateCudaClientContextManager");
+			g_PxSetPhysXGpuProfilerCallback_Func = (PxSetPhysXGpuProfilerCallback_FUNC*)GetProcAddress(s_library, "PxSetPhysXGpuProfilerCallback");
+			g_PxCudaRegisterFunction_Func = (PxCudaRegisterFunction_FUNC*)GetProcAddress(s_library, "PxGpuCudaRegisterFunction");
+			g_PxCudaRegisterFatBinary_Func = (PxCudaRegisterFatBinary_FUNC*)GetProcAddress(s_library, "PxGpuCudaRegisterFatBinary");
+			g_PxGetCudaFunctionTable_Func  = (PxGetCudaFunctionTable_FUNC*)GetProcAddress(s_library, "PxGpuGetCudaFunctionTable");
+			g_PxGetCudaFunctionTableSize_Func = (PxGetCudaFunctionTableSize_FUNC*)GetProcAddress(s_library, "PxGpuGetCudaFunctionTableSize");
+			g_PxGetCudaModuleTableSize_Func = (PxGetCudaFunctionTableSize_FUNC*)GetProcAddress(s_library, "PxGpuGetCudaModuleTableSize");
+			g_PxGetCudaModuleTable_Func = (PxGetCudaModuleTable_FUNC*)GetProcAddress(s_library, "PxGpuGetCudaModuleTable");
 		}
 
 		// Check for errors
 		if (s_library == NULL)
 		{
-			Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Failed to load PhysXGpu dll!");
+			reportError(PX_FL, "Failed to load %s!\n", gPhysXGpuLibraryName);
 			return;
 		}
 
-		if (g_PxCreatePhysXGpu_Func == NULL || g_PxCreateCudaContextManager_Func == NULL || g_PxGetSuggestedCudaDeviceOrdinal_Func == NULL)
+		if (g_PxCreatePhysXGpu_Func == NULL || g_PxCreateCudaContextManager_Func == NULL || g_PxGetSuggestedCudaDeviceOrdinal_Func == NULL || g_PxSetPhysXGpuProfilerCallback_Func == NULL)
 		{
-			Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "PhysXGpu dll is incompatible with this version of PhysX!");
+			reportError(PX_FL, "PhysXGpu dll is incompatible with this version of PhysX!\n");
 			return;
 		}
 	}
@@ -148,7 +173,7 @@ namespace physx
 			}
 			else
 			{
-				Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "libcuda.so!");
+				reportError(PX_FL, "Could not find libcuda.so!");
 				return;
 			}	
 		}
@@ -159,18 +184,24 @@ namespace physx
 			*reinterpret_cast<void**>(&g_PxCreatePhysXGpu_Func) = dlsym(s_library, "PxCreatePhysXGpu");
 			*reinterpret_cast<void**>(&g_PxCreateCudaContextManager_Func) = dlsym(s_library, "PxCreateCudaContextManager");
 			*reinterpret_cast<void**>(&g_PxGetSuggestedCudaDeviceOrdinal_Func) = dlsym(s_library, "PxGetSuggestedCudaDeviceOrdinal");
-			*reinterpret_cast<void**>(&g_CreateClientContextManager_Func ) = dlsym(s_library, "PxCreateCudaClientContextManager");
+			*reinterpret_cast<void**>(&g_PxSetPhysXGpuProfilerCallback_Func) = dlsym(s_library, "PxSetPhysXGpuProfilerCallback");
+			*reinterpret_cast<void**>(&g_PxCudaRegisterFunction_Func) = dlsym(s_library, "PxGpuCudaRegisterFunction");
+			*reinterpret_cast<void**>(&g_PxCudaRegisterFatBinary_Func) = dlsym(s_library, "PxGpuCudaRegisterFatBinary");
+			*reinterpret_cast<void**>(&g_PxGetCudaFunctionTable_Func)  = dlsym(s_library, "PxGpuGetCudaFunctionTable");
+			*reinterpret_cast<void**>(&g_PxGetCudaFunctionTableSize_Func) = dlsym(s_library, "PxGpuGetCudaFunctionTableSize");
+			*reinterpret_cast<void**>(&g_PxGetCudaModuleTableSize_Func) = dlsym(s_library, "PxGpuGetCudaModuleTableSize");
+			*reinterpret_cast<void**>(&g_PxGetCudaModuleTable_Func) = dlsym(s_library, "PxGpuGetCudaModuleTable");
 		}
 
 		// Check for errors
 		if (s_library == NULL)
 		{
-			Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Failed to load %s.", gPhysXGpuLibraryName);
+			reportError(PX_FL, "Failed to load %s!", gPhysXGpuLibraryName);
 			return;
 		}
 		if (g_PxCreatePhysXGpu_Func == NULL || g_PxCreateCudaContextManager_Func == NULL || g_PxGetSuggestedCudaDeviceOrdinal_Func == NULL)
 		{
-			Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "%s is incompatible with this version of PhysX!", gPhysXGpuLibraryName);
+			reportError(PX_FL, "%s is incompatible with this version of PhysX!", gPhysXGpuLibraryName);
 			return;
 		}
 	}

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,26 +22,28 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#include "PsFoundation.h"
-#include "PsUtilities.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxFoundation.h"
+#include "foundation/PxErrors.h"
 
 #include "PxMetaDataObjects.h"
 
 using namespace physx;
 
-PX_PHYSX_CORE_API PxGeometryType::Enum PxShapeGeometryPropertyHelper::getGeometryType(const PxShape* inShape) const { return inShape->getGeometryType(); }
-PX_PHYSX_CORE_API bool PxShapeGeometryPropertyHelper::getGeometry(const PxShape* inShape, PxBoxGeometry& geometry) const { return inShape->getBoxGeometry( geometry ); }
-PX_PHYSX_CORE_API bool PxShapeGeometryPropertyHelper::getGeometry(const PxShape* inShape, PxSphereGeometry& geometry) const { return inShape->getSphereGeometry( geometry ); }
-PX_PHYSX_CORE_API bool PxShapeGeometryPropertyHelper::getGeometry(const PxShape* inShape, PxCapsuleGeometry& geometry) const { return inShape->getCapsuleGeometry( geometry ); }
-PX_PHYSX_CORE_API bool PxShapeGeometryPropertyHelper::getGeometry(const PxShape* inShape, PxPlaneGeometry& geometry) const { return inShape->getPlaneGeometry( geometry ); }
-PX_PHYSX_CORE_API bool PxShapeGeometryPropertyHelper::getGeometry(const PxShape* inShape, PxConvexMeshGeometry& geometry) const { return inShape->getConvexMeshGeometry( geometry ); }
-PX_PHYSX_CORE_API bool PxShapeGeometryPropertyHelper::getGeometry(const PxShape* inShape, PxTriangleMeshGeometry& geometry) const { return inShape->getTriangleMeshGeometry( geometry ); }
-PX_PHYSX_CORE_API bool PxShapeGeometryPropertyHelper::getGeometry(const PxShape* inShape, PxHeightFieldGeometry& geometry) const { return inShape->getHeightFieldGeometry( geometry ); }
+PX_PHYSX_CORE_API PxGeometryType::Enum PxShapeGeomPropertyHelper::getGeometryType(const PxShape* inShape) const { return inShape->getGeometryType(); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxBoxGeometry& geometry) const { return inShape->getBoxGeometry( geometry ); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxSphereGeometry& geometry) const { return inShape->getSphereGeometry( geometry ); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxCapsuleGeometry& geometry) const { return inShape->getCapsuleGeometry( geometry ); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxPlaneGeometry& geometry) const { return inShape->getPlaneGeometry( geometry ); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxConvexMeshGeometry& geometry) const { return inShape->getConvexMeshGeometry( geometry ); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxTetrahedronMeshGeometry& geometry) const { return inShape->getTetrahedronMeshGeometry(geometry); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxParticleSystemGeometry& geometry) const { return inShape->getParticleSystemGeometry(geometry); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxTriangleMeshGeometry& geometry) const { return inShape->getTriangleMeshGeometry( geometry ); }
+PX_PHYSX_CORE_API bool PxShapeGeomPropertyHelper::getGeometry(const PxShape* inShape, PxHeightFieldGeometry& geometry) const { return inShape->getHeightFieldGeometry( geometry ); }
 
 PX_PHYSX_CORE_API void PxShapeMaterialsPropertyHelper::setMaterials(PxShape* inShape, PxMaterial*const* materials, PxU16 materialCount) const
 {
@@ -73,10 +74,10 @@ PX_PHYSX_CORE_API PxShape* PxRigidActorShapeCollectionHelper::createShape(PxRigi
 	return shape;
 }
 
-PX_PHYSX_CORE_API PxArticulationLink*	PxArticulationLinkCollectionPropHelper::createLink(PxArticulation* inArticulation, PxArticulationLink* parent,
+PX_PHYSX_CORE_API PxArticulationLink*	PxArticulationReducedCoordinateLinkCollectionPropHelper::createLink(PxArticulationReducedCoordinate* inArticulation, PxArticulationLink* parent,
 																	   const PxTransform& pose) const
 {
-	PX_CHECK_AND_RETURN_NULL(pose.isValid(), "PxArticulationLinkCollectionPropHelper::createLink pose is not valid.");
+	PX_CHECK_AND_RETURN_NULL(pose.isValid(), "PxArticulationReducedCoordinateLinkCollectionPropHelper::createLink pose is not valid.");
 	return inArticulation->createLink(parent, pose );
 }
 
@@ -143,6 +144,12 @@ PX_PHYSX_CORE_API NbTriggerPairsProperty::NbTriggerPairsProperty()
 inline PxSimulationStatistics GetStats( const PxScene* inScene ) { PxSimulationStatistics stats; inScene->getSimulationStatistics( stats ); return stats; }
 PX_PHYSX_CORE_API SimulationStatisticsProperty::SimulationStatisticsProperty() 
 	: PxReadOnlyPropertyInfo<PxPropertyInfoName::PxScene_SimulationStatistics, PxScene, PxSimulationStatistics >( "SimulationStatistics", GetStats )
+{
+}
+
+inline PxU32 GetCustomType(const PxCustomGeometry* inGeom) { PxCustomGeometry::Type t = inGeom->callbacks->getCustomType(); return *reinterpret_cast<const PxU32*>(&t); }
+PX_PHYSX_CORE_API PxCustomGeometryCustomTypeProperty::PxCustomGeometryCustomTypeProperty()
+	: PxReadOnlyPropertyInfo<PxPropertyInfoName::PxCustomGeometry_CustomType, PxCustomGeometry, PxU32 >("CustomType", GetCustomType)
 {
 }
 

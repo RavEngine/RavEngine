@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "GuShapeConvex.h"
 #include "GuBigConvexData.h"
-#include "GuEdgeListData.h"
+#include "GuEdgeList.h"
 #include "GuInternal.h"
 
-#include "CmMatrix34.h"
+#include "foundation/PxMat34.h"
 #include "GuHillClimbing.h"
-#include "PsFPU.h"
+#include "foundation/PxFPU.h"
 
 using namespace physx;
 using namespace Gu;
@@ -116,7 +115,7 @@ static PxU32 SelectClosestEdgeCB_Convex(const PolygonalData& data, const Cm::Fas
  
 // Hull projection callback for "small" hulls
 static void HullProjectionCB_SmallConvex(const PolygonalData& data, const PxVec3& dir,
-										 const Cm::Matrix34& world,
+										 const PxMat34& world,
 										 const Cm::FastVertex2ShapeScaling& scaling,
 										 PxReal& min, PxReal& max)
 {
@@ -188,8 +187,8 @@ static PxU32 computeNearestOffset(const PxU32 subdiv, const PxVec3& dir)
 	conv.aFloat = dir[index];
 	PxU32 sign = conv.aU32>>31;
 	
-	const PxU32 index2 = Ps::getNextIndex3(index);
-	const PxU32 index3 = Ps::getNextIndex3(index2);
+	const PxU32 index2 = PxGetNextIndex3(index);
+	const PxU32 index3 = PxGetNextIndex3(index2);
 	PxReal u = dir[index2] * coeff;
 	PxReal v = dir[index3] * coeff;
 	
@@ -214,7 +213,7 @@ static PxU32 computeNearestOffset(const PxU32 subdiv, const PxVec3& dir)
 }
 
 // Hull projection callback for "big" hulls
-static void HullProjectionCB_BigConvex(const PolygonalData& data, const PxVec3& dir, const Cm::Matrix34& world, const Cm::FastVertex2ShapeScaling& scaling, PxReal& minimum, PxReal& maximum)
+static void HullProjectionCB_BigConvex(const PolygonalData& data, const PxVec3& dir, const PxMat34& world, const Cm::FastVertex2ShapeScaling& scaling, PxReal& minimum, PxReal& maximum)
 {
 	const PxVec3* PX_RESTRICT verts = data.mVerts;
 
@@ -404,7 +403,7 @@ static PX_FORCE_INLINE void projectBox(PxVec3& p, const PxVec3& localDir, const 
 	p.z = physx::intrinsics::fsel(localDir.z, extents.z, -extents.z);
 }
 
-static void	HullProjectionCB_Box(const PolygonalData& data, const PxVec3& dir, const Cm::Matrix34& world, const Cm::FastVertex2ShapeScaling& scaling, PxReal& minimum, PxReal& maximum)
+static void	HullProjectionCB_Box(const PolygonalData& data, const PxVec3& dir, const PxMat34& world, const Cm::FastVertex2ShapeScaling& scaling, PxReal& minimum, PxReal& maximum)
 {
 	PX_UNUSED(scaling);
 

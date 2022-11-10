@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -59,7 +58,6 @@
 		}
 	}
 
-	#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 	template<class LeafTestT, int i, class ParamsT>
 	PX_FORCE_INLINE void BV4_ProcessNodeOrdered2_SwizzledNQ(PxU32& code, const BVDataSwizzledNQ* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
 	{
@@ -73,7 +71,7 @@
 				code |= 1<<i;
 		}
 	}
-	#endif
+	
 #else
 	template<class LeafTestT, class ParamsT>
 	PX_FORCE_INLINE void BV4_ProcessNodeOrdered(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataPacked* PX_RESTRICT node, ParamsT* PX_RESTRICT params, PxU32 i, PxU32 limit)

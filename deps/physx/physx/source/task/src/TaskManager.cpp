@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,34 +22,31 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "task/PxTask.h"
-#include "task/PxTaskDefine.h"
 #include "foundation/PxErrors.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxAtomic.h"
+#include "foundation/PxMutex.h"
+#include "foundation/PxArray.h"
 
-#include "PsThread.h"
-#include "PsAtomic.h"
-#include "PsMutex.h"
-#include "PsHashMap.h"
-#include "PsArray.h"
-#include "PsAllocator.h"
+#include "foundation/PxThread.h"
 
-#define DOT_LOG 0
-
-#define LOCK()  shdfnd::Mutex::ScopedLock __lock__(mMutex)
+#define LOCK()  PxMutex::ScopedLock _lock_(mMutex)
 
 namespace physx
 {
     const int EOL = -1;
-	typedef shdfnd::HashMap<const char *, PxTaskID> PxTaskNameToIDMap;
+	typedef PxHashMap<const char *, PxTaskID> PxTaskNameToIDMap;
 
 	struct PxTaskDepTableRow
 	{
 		PxTaskID    mTaskID;
 		int       mNextDep;
 	};
-	typedef shdfnd::Array<PxTaskDepTableRow> PxTaskDepTable;
+	typedef PxArray<PxTaskDepTableRow> PxTaskDepTable;
 
 	class PxTaskTableRow
 	{
@@ -81,11 +77,11 @@ namespace physx
 		int       mStartDep;
 		int       mLastDep;
 	};
-	typedef shdfnd::Array<PxTaskTableRow> PxTaskTable;
+	typedef PxArray<PxTaskTableRow> PxTaskTable;
 
 
 /* Implementation of PxTaskManager abstract API */
-class PxTaskMgr : public PxTaskManager, public shdfnd::UserAllocated
+class PxTaskMgr : public PxTaskManager, public PxUserAllocated
 {
 	PX_NOCOPY(PxTaskMgr)
 public:
@@ -108,8 +104,8 @@ public:
 	void	taskCompleted( PxTask& task );
 
 	PxTaskID  getNamedTask( const char *name );
-	PxTaskID  submitNamedTask( PxTask *task, const char *name, PxTaskType::Enum type = PxTaskType::TT_CPU );
-	PxTaskID  submitUnnamedTask( PxTask& task, PxTaskType::Enum type = PxTaskType::TT_CPU );
+	PxTaskID  submitNamedTask( PxTask *task, const char *name, PxTaskType::Enum type = PxTaskType::eCPU );
+	PxTaskID  submitUnnamedTask( PxTask& task, PxTaskType::Enum type = PxTaskType::eCPU );
 	PxTask*   getTaskFromID( PxTaskID );
 
 	void    dispatchTask( PxTaskID taskID );
@@ -131,12 +127,12 @@ public:
 	PxCpuDispatcher           *mCpuDispatcher;
 	PxTaskNameToIDMap          mName2IDmap;
 	volatile int			 mPendingTasks;
-    shdfnd::Mutex            mMutex;
+    PxMutex            mMutex;
 
 	PxTaskDepTable				 mDepTable;
 	PxTaskTable				 mTaskTable;
 
-	shdfnd::Array<PxTaskID>	 mStartDispatch;
+	PxArray<PxTaskID>	 mStartDispatch;
 	};
 
 PxTaskManager* PxTaskManager::createTaskManager(PxErrorCallback& errorCallback, PxCpuDispatcher* cpuDispatcher)
@@ -148,9 +144,9 @@ PxTaskMgr::PxTaskMgr(PxErrorCallback& errorCallback, PxCpuDispatcher* cpuDispatc
 	: mErrorCallback (errorCallback)
 	, mCpuDispatcher( cpuDispatcher )
 	, mPendingTasks( 0 )
-	, mDepTable(PX_DEBUG_EXP("PxTaskDepTable"))
-	, mTaskTable(PX_DEBUG_EXP("PxTaskTable"))	
-	, mStartDispatch(PX_DEBUG_EXP("StartDispatch"))
+	, mDepTable("PxTaskDepTable")
+	, mTaskTable("PxTaskTable")
+	, mStartDispatch("StartDispatch")
 {
 }
 
@@ -160,13 +156,13 @@ PxTaskMgr::~PxTaskMgr()
 
 void PxTaskMgr::release()
 {
-	PX_DELETE(this);
+	PX_DELETE_THIS;
 }
 
 void PxTaskMgr::decrReference(PxLightCpuTask& lighttask)
 {
 	/* This does not need a lock! */
-	if (!shdfnd::atomicDecrement(&lighttask.mRefCount))
+	if (!PxAtomicDecrement(&lighttask.mRefCount))
 	{
 		PX_ASSERT(mCpuDispatcher);
 		if (mCpuDispatcher)
@@ -183,7 +179,7 @@ void PxTaskMgr::decrReference(PxLightCpuTask& lighttask)
 void PxTaskMgr::addReference(PxLightCpuTask& lighttask)
 {
 	/* This does not need a lock! */
-	shdfnd::atomicIncrement(&lighttask.mRefCount);
+	PxAtomicIncrement(&lighttask.mRefCount);
 }
 
 /*
@@ -210,18 +206,15 @@ void PxTaskMgr::startSimulation()
 
 	/* Handle empty task graph */
 	if( mPendingTasks == 0 )
-    {
-
 		return;
-    }
 
     for( PxTaskID i = 0 ; i < mTaskTable.size() ; i++ )
     {
-		if(	mTaskTable[ i ].mType == PxTaskType::TT_COMPLETED )
+		if(	mTaskTable[ i ].mType == PxTaskType::eCOMPLETED )
 		{
 			continue;
 		}
-		if( !shdfnd::atomicDecrement( &mTaskTable[ i ].mRefCount ) )
+		if( !PxAtomicDecrement( &mTaskTable[ i ].mRefCount ) )
 		{
 			mStartDispatch.pushBack(i);
 		}
@@ -252,8 +245,8 @@ PxTaskID PxTaskMgr::getNamedTask( const char *name )
     else
 	{
         // create named entry in task table, without a task
-        return submitNamedTask( NULL, name, PxTaskType::TT_NOT_PRESENT );
-}
+        return submitNamedTask( NULL, name, PxTaskType::eNOT_PRESENT );
+	}
 }
 
 PxTask* PxTaskMgr::getTaskFromID( PxTaskID id )
@@ -261,7 +254,6 @@ PxTask* PxTaskMgr::getTaskFromID( PxTaskID id )
 	LOCK(); // todo: reader lock necessary?
 	return mTaskTable[ id ].mTask;
 }
-
 
 /* If called at runtime, must be thread-safe */
 PxTaskID PxTaskMgr::submitNamedTask( PxTask *task, const char *name, PxTaskType::Enum type )
@@ -282,7 +274,7 @@ PxTaskID PxTaskMgr::submitNamedTask( PxTask *task, const char *name, PxTaskType:
 		{
 			/* name was registered for us by a dependent task */
 			PX_ASSERT( !mTaskTable[ prereg ].mTask );
-			PX_ASSERT( mTaskTable[ prereg ].mType == PxTaskType::TT_NOT_PRESENT );
+			PX_ASSERT( mTaskTable[ prereg ].mType == PxTaskType::eNOT_PRESENT );
 			mTaskTable[ prereg ].mTask = task;
 			mTaskTable[ prereg ].mType = type;
 			task->mTaskID = prereg;
@@ -291,7 +283,7 @@ PxTaskID PxTaskMgr::submitNamedTask( PxTask *task, const char *name, PxTaskType:
     }
     else
     {
-        shdfnd::atomicIncrement(&mPendingTasks);
+        PxAtomicIncrement(&mPendingTasks);
         PxTaskID id = static_cast<PxTaskID>(mTaskTable.size());
         mName2IDmap[ name ] = id;
         if( task )
@@ -311,7 +303,7 @@ PxTaskID PxTaskMgr::submitNamedTask( PxTask *task, const char *name, PxTaskType:
  */
 PxTaskID PxTaskMgr::submitUnnamedTask( PxTask& task, PxTaskType::Enum type )
 {
-    shdfnd::atomicIncrement(&mPendingTasks);
+    PxAtomicIncrement(&mPendingTasks);
 
 	task.mTm = this;
     task.submitted();
@@ -324,7 +316,6 @@ PxTaskID PxTaskMgr::submitUnnamedTask( PxTask& task, PxTaskType::Enum type )
     mTaskTable.pushBack(r);
     return task.mTaskID;
 }
-
 
 /* Called by worker threads (or cooperating application threads) when a
  * PxTask has completed.  Propogate depdenencies, decrementing all
@@ -346,12 +337,11 @@ void PxTaskMgr::taskCompleted( PxTask& task )
 void PxTaskMgr::finishBefore( PxTask& task, PxTaskID taskID )
 {
     LOCK();
-	PX_ASSERT( mTaskTable[ taskID ].mType != PxTaskType::TT_COMPLETED );
+	PX_ASSERT( mTaskTable[ taskID ].mType != PxTaskType::eCOMPLETED );
 
     mTaskTable[ task.mTaskID ].addDependency( mDepTable, taskID );
-	shdfnd::atomicIncrement( &mTaskTable[ taskID ].mRefCount );
+	PxAtomicIncrement( &mTaskTable[ taskID ].mRefCount );
 }
-
 
 /*
  * Add a dependency to force 'task' to wait for the referenced 'taskID'
@@ -360,17 +350,16 @@ void PxTaskMgr::finishBefore( PxTask& task, PxTaskID taskID )
 void PxTaskMgr::startAfter( PxTask& task, PxTaskID taskID )
 {
     LOCK();
-	PX_ASSERT( mTaskTable[ taskID ].mType != PxTaskType::TT_COMPLETED );
+	PX_ASSERT( mTaskTable[ taskID ].mType != PxTaskType::eCOMPLETED );
 
     mTaskTable[ taskID ].addDependency( mDepTable, task.mTaskID );
-	shdfnd::atomicIncrement( &mTaskTable[ task.mTaskID ].mRefCount );
+	PxAtomicIncrement( &mTaskTable[ task.mTaskID ].mRefCount );
 }
-
 
 void PxTaskMgr::addReference( PxTaskID taskID )
 {
     LOCK();
-    shdfnd::atomicIncrement( &mTaskTable[ taskID ].mRefCount );
+    PxAtomicIncrement( &mTaskTable[ taskID ].mRefCount );
 }
 
 /*
@@ -380,7 +369,7 @@ void PxTaskMgr::decrReference( PxTaskID taskID )
 {
     LOCK();
 
-    if( !shdfnd::atomicDecrement( &mTaskTable[ taskID ].mRefCount ) )
+    if( !PxAtomicDecrement( &mTaskTable[ taskID ].mRefCount ) )
     {
 		dispatchTask(taskID);
     }
@@ -400,13 +389,12 @@ void PxTaskMgr::resolveRow( PxTaskID taskID )
 {
     int depRow = mTaskTable[ taskID ].mStartDep;
 
-
     while( depRow != EOL )
     {
         PxTaskDepTableRow& row = mDepTable[ uint32_t(depRow) ];
         PxTaskTableRow& dtt = mTaskTable[ row.mTaskID ];
 
-        if( !shdfnd::atomicDecrement( &dtt.mRefCount ) )
+        if( !PxAtomicDecrement( &dtt.mRefCount ) )
 		{
 			dispatchTask( row.mTaskID );
 		}
@@ -414,7 +402,7 @@ void PxTaskMgr::resolveRow( PxTaskID taskID )
         depRow = row.mNextDep;
     }
 
-    shdfnd::atomicDecrement( &mPendingTasks );
+    PxAtomicDecrement( &mPendingTasks );
 }
 
 /*
@@ -426,7 +414,7 @@ void PxTaskMgr::dispatchTask( PxTaskID taskID )
     PxTaskTableRow& tt = mTaskTable[ taskID ];
 
     // prevent re-submission
-    if( tt.mType == PxTaskType::TT_COMPLETED )
+    if( tt.mType == PxTaskType::eCOMPLETED )
     {		
 		mErrorCallback.reportError(PxErrorCode::eDEBUG_WARNING, "PxTask dispatched twice", __FILE__, __LINE__);
 		return;
@@ -434,23 +422,23 @@ void PxTaskMgr::dispatchTask( PxTaskID taskID )
 
     switch ( tt.mType )
     {
-    case PxTaskType::TT_CPU:
+    case PxTaskType::eCPU:
         mCpuDispatcher->submitTask( *tt.mTask );
         break;
-    case PxTaskType::TT_NOT_PRESENT:
+    case PxTaskType::eNOT_PRESENT:
 		/* No task registered with this taskID, resolve its dependencies */
 		PX_ASSERT(!tt.mTask);
-		//shdfnd::getFoundation().error(PX_INFO, "unregistered task resolved");
+		//PxGetFoundation().error(PX_INFO, "unregistered task resolved");
         resolveRow( taskID );
 		break;
-	case PxTaskType::TT_COMPLETED:
+	case PxTaskType::eCOMPLETED:
     default:
         mErrorCallback.reportError(PxErrorCode::eDEBUG_WARNING, "Unknown task type", __FILE__, __LINE__);
         resolveRow( taskID );
         break;
     }
 
-    tt.mType = PxTaskType::TT_COMPLETED;
+    tt.mType = PxTaskType::eCOMPLETED;
 }
 
 }// end physx namespace

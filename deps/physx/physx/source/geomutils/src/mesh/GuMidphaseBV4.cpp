@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,8 +32,8 @@
 using namespace physx;
 using namespace Gu;
 
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+#include "foundation/PxVecMath.h"
+using namespace physx::aos;
 
 #include "GuSweepMesh.h"
 #include "GuBV4Build.h"
@@ -49,6 +48,7 @@ using namespace physx::shdfnd::aos;
 #include "GuIntersectionRayBox.h"
 #include "GuTriangleMeshBV4.h"
 #include "CmScaling.h"
+#include "CmMatrix34.h"
 
 // This file contains code specific to the BV4 midphase.
 
@@ -58,31 +58,32 @@ using namespace physx;
 using namespace Gu;
 using namespace Cm;
 
-#if PX_INTEL_FAMILY && !defined(PX_SIMD_DISABLED)
-Ps::IntBool	BV4_RaycastSingle		(const PxVec3& origin, const PxVec3& dir, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxRaycastHit* PX_RESTRICT hit, float maxDist, float geomEpsilon, PxU32 flags, PxHitFlags hitFlags);
-PxU32		BV4_RaycastAll			(const PxVec3& origin, const PxVec3& dir, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxRaycastHit* PX_RESTRICT hits, PxU32 maxNbHits, float maxDist, float geomEpsilon, PxU32 flags, PxHitFlags hitFlags);
+PxIntBool	BV4_RaycastSingle		(const PxVec3& origin, const PxVec3& dir, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxGeomRaycastHit* PX_RESTRICT hit, float maxDist, float geomEpsilon, PxU32 flags, PxHitFlags hitFlags);
+PxU32		BV4_RaycastAll			(const PxVec3& origin, const PxVec3& dir, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxGeomRaycastHit* PX_RESTRICT hits, PxU32 maxNbHits, float maxDist, PxU32 stride, float geomEpsilon, PxU32 flags, PxHitFlags hitFlags);
 void		BV4_RaycastCB			(const PxVec3& origin, const PxVec3& dir, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, float maxDist, float geomEpsilon, PxU32 flags, MeshRayCallback callback, void* userData);
 
-Ps::IntBool	BV4_OverlapSphereAny	(const Sphere& sphere, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned);
+PxIntBool	BV4_OverlapSphereAny	(const Sphere& sphere, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned);
 PxU32		BV4_OverlapSphereAll	(const Sphere& sphere, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxU32* results, PxU32 size, bool& overflow);
 void		BV4_OverlapSphereCB		(const Sphere& sphere, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, MeshOverlapCallback callback, void* userData);
 
-Ps::IntBool	BV4_OverlapBoxAny		(const Box& box, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned);
+PxIntBool	BV4_OverlapBoxAny		(const Box& box, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned);
 PxU32		BV4_OverlapBoxAll		(const Box& box, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxU32* results, PxU32 size, bool& overflow);
 void		BV4_OverlapBoxCB		(const Box& box, const BV4Tree& tree, MeshOverlapCallback callback, void* userData);
 
-Ps::IntBool	BV4_OverlapCapsuleAny	(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned);
+void		BV4_OverlapBoxCB		(const Box& box, const BV4Tree& tree, TetMeshOverlapCallback callback, void* userData);
+
+PxIntBool	BV4_OverlapCapsuleAny	(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned);
 PxU32		BV4_OverlapCapsuleAll	(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxU32* results, PxU32 size, bool& overflow);
 void		BV4_OverlapCapsuleCB	(const Capsule& capsule, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, MeshOverlapCallback callback, void* userData);
 
-Ps::IntBool	BV4_SphereSweepSingle	(const Sphere& sphere, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags);
+PxIntBool	BV4_SphereSweepSingle	(const Sphere& sphere, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags);
 void		BV4_SphereSweepCB		(const Sphere& sphere, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepUnlimitedCallback callback, void* userData, PxU32 flags, bool nodeSorting);
 
-Ps::IntBool	BV4_BoxSweepSingle		(const Box& box, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags);
+PxIntBool	BV4_BoxSweepSingle		(const Box& box, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepHit* PX_RESTRICT hit, PxU32 flags);
 void		BV4_BoxSweepCB			(const Box& box, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepUnlimitedCallback callback, void* userData, PxU32 flags, bool nodeSorting);
 
-Ps::IntBool	BV4_CapsuleSweepSingle	(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags);
-Ps::IntBool	BV4_CapsuleSweepSingleAA(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags);
+PxIntBool	BV4_CapsuleSweepSingle	(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags);
+PxIntBool	BV4_CapsuleSweepSingleAA(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags);
 void		BV4_CapsuleSweepCB		(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepUnlimitedCallback callback, void* userData, PxU32 flags);
 void		BV4_CapsuleSweepAACB	(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepUnlimitedCallback callback, void* userData, PxU32 flags);
 
@@ -97,6 +98,7 @@ static PX_FORCE_INLINE void setIdentity(PxMat44& m)
 	m.column3 = PxVec4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
+// PT: TODO: PX-566
 static PX_FORCE_INLINE void setRotation(PxMat44& m, const PxQuat& q)
 {
 	const PxReal x = q.x;
@@ -171,7 +173,7 @@ static PX_FORCE_INLINE PxU32 setupFlags(bool anyHit, bool doubleSided, bool mesh
 	return flags;
 }
 
-static Ps::IntBool boxSweepVsMesh(SweepHit& h, const BV4Tree& tree, const float* meshPos, const float* meshRot, const Box& box, const PxVec3& dir, float maxDist, bool anyHit, bool doubleSided, bool meshBothSides)
+static PxIntBool boxSweepVsMesh(SweepHit& h, const BV4Tree& tree, const float* meshPos, const float* meshRot, const Box& box, const PxVec3& dir, float maxDist, bool anyHit, bool doubleSided, bool meshBothSides)
 {
 	BV4_ALIGN16(PxMat44 World);
 	const PxMat44* TM = setupWorldMatrix(World, meshPos, meshRot);
@@ -180,7 +182,7 @@ static Ps::IntBool boxSweepVsMesh(SweepHit& h, const BV4Tree& tree, const float*
 	return BV4_BoxSweepSingle(box, dir, maxDist, tree, TM, &h, flags);
 }
 
-static Ps::IntBool sphereSweepVsMesh(SweepHit& h, const BV4Tree& tree, const PxVec3& center, float radius, const PxVec3& dir, float maxDist, const PxMat44* TM, const PxU32 flags)
+static PxIntBool sphereSweepVsMesh(SweepHit& h, const BV4Tree& tree, const PxVec3& center, float radius, const PxVec3& dir, float maxDist, const PxMat44* TM, const PxU32 flags)
 {
 	// PT: TODO: avoid this copy (TA34704)
 	const Sphere tmp(center, radius);
@@ -210,7 +212,7 @@ static bool capsuleSweepVsMesh(SweepHit& h, const BV4Tree& tree, const Capsule& 
 	// PT: TODO: consider passing TM to BV4_CapsuleSweepSingleXX just to do the final transforms there instead
 	// of below. It would make the parameters slightly inconsistent (local input + world TM) but it might make
 	// the code better overall, more aligned with the "unlimited results" version.
-	Ps::IntBool status;
+	PxIntBool status;
 	if(nbNullComponents==2)
 	{
 		status = BV4_CapsuleSweepSingleAA(localCapsule, localDir, maxDist, tree, &h, flags);
@@ -237,7 +239,7 @@ static PX_FORCE_INLINE void boxSweepVsMeshCBOld(const BV4Tree& tree, const float
 
 //
 
-static PX_FORCE_INLINE bool raycastVsMesh(PxRaycastHit& hitData, const BV4Tree& tree, const float* meshPos, const float* meshRot, const PxVec3& orig, const PxVec3& dir, float maxDist, float geomEpsilon, bool doubleSided, PxHitFlags hitFlags)
+static PX_FORCE_INLINE bool raycastVsMesh(PxGeomRaycastHit& hitData, const BV4Tree& tree, const float* meshPos, const float* meshRot, const PxVec3& orig, const PxVec3& dir, float maxDist, float geomEpsilon, bool doubleSided, PxHitFlags hitFlags)
 {
 	BV4_ALIGN16(PxMat44 World);
 	const PxMat44* TM = setupWorldMatrix(World, meshPos, meshRot);
@@ -270,12 +272,13 @@ static PX_FORCE_INLINE void raycastVsMeshCB(const BV4Tree& tree, const PxVec3& o
 
 struct BV4RaycastCBParams
 {
-	PX_FORCE_INLINE BV4RaycastCBParams(	PxRaycastHit* hits, PxU32 maxHits, const PxMeshScale* scale, const PxTransform* pose,
-										const Cm::Matrix34* world2vertexSkew, PxU32 hitFlags,
+	PX_FORCE_INLINE BV4RaycastCBParams(	PxGeomRaycastHit* hits, PxU32 maxHits, PxU32 stride, const PxMeshScale* scale, const PxTransform* pose,
+										const PxMat34* world2vertexSkew, PxU32 hitFlags,
 										const PxVec3& rayDir, bool isDoubleSided, float distCoeff) :
-		mDstBase			(hits),
+		mDstBase			(reinterpret_cast<PxU8*>(hits)),
 		mHitNum				(0),
 		mMaxHits			(maxHits),
+		mStride				(stride),
 		mScale				(scale),
 		mPose				(pose),
 		mWorld2vertexSkew	(world2vertexSkew),
@@ -286,22 +289,23 @@ struct BV4RaycastCBParams
 	{
 	}
 
-	PxRaycastHit*		mDstBase;
+	PxU8*				mDstBase;
 	PxU32				mHitNum;
-	PxU32				mMaxHits;
+	const PxU32			mMaxHits;
+	const PxU32			mStride;
 	const PxMeshScale*	mScale;
 	const PxTransform*	mPose;
-	const Cm::Matrix34*	mWorld2vertexSkew;
-	PxU32				mHitFlags;
+	const PxMat34*		mWorld2vertexSkew;
+	const PxU32			mHitFlags;
 	const PxVec3&		mRayDir;
-	bool				mIsDoubleSided;
+	const bool			mIsDoubleSided;
 	float				mDistCoeff;
 
 private:
 	BV4RaycastCBParams& operator=(const BV4RaycastCBParams&);
 };
 
-static PX_FORCE_INLINE PxVec3 processLocalNormal(const Cm::Matrix34* PX_RESTRICT world2vertexSkew, const PxTransform* PX_RESTRICT pose, const PxVec3& localNormal, const PxVec3& rayDir, const bool isDoubleSided)
+static PX_FORCE_INLINE PxVec3 processLocalNormal(const PxMat34* PX_RESTRICT world2vertexSkew, const PxTransform* PX_RESTRICT pose, const PxVec3& localNormal, const PxVec3& rayDir, const bool isDoubleSided)
 {
 	PxVec3 normal;
 	if(world2vertexSkew)
@@ -322,13 +326,10 @@ static HitCode gRayCallback(void* userData, const PxVec3& lp0, const PxVec3& lp1
 {
 	BV4RaycastCBParams* params = reinterpret_cast<BV4RaycastCBParams*>(userData);
 
-//const bool last = params->mHitNum == params->mMaxHits;
+	if(params->mHitNum == params->mMaxHits)
+		return HIT_EXIT;
 
-	//not worth concatenating to do 1 transform: PxMat34Legacy vertex2worldSkew = scaling.getVertex2WorldSkew(absPose);
-	// PT: TODO: revisit this for N hits
-	PX_ALIGN_PREFIX(16)	char buffer[sizeof(PxRaycastHit)] PX_ALIGN_SUFFIX(16);
-	PxRaycastHit& hit = reinterpret_cast<PxRaycastHit&>(buffer);
-//PxRaycastHit& hit = last ? (PxRaycastHit&)buffer : params->mDstBase[params->mHitNum];
+	PxGeomRaycastHit& hit = *reinterpret_cast<PxGeomRaycastHit*>(params->mDstBase);
 
 	hit.distance = dist * params->mDistCoeff;
 	hit.u = u;
@@ -340,7 +341,7 @@ static HitCode gRayCallback(void* userData, const PxVec3& lp0, const PxVec3& lp1
 	{
 		localImpact = params->mScale->transform(localImpact);
 		if(params->mScale->hasNegativeDeterminant())
-			Ps::swap<PxReal>(hit.u, hit.v); // have to swap the UVs though since they were computed in mesh local space
+			PxSwap<PxReal>(hit.u, hit.v); // have to swap the UVs though since they were computed in mesh local space
 	}
 
 	hit.position = params->mPose->transform(localImpact);
@@ -356,25 +357,20 @@ static HitCode gRayCallback(void* userData, const PxVec3& lp0, const PxVec3& lp1
 	}
 	hit.normal = normal;
 
-	// PT: no callback => store results in provided buffer
-	if(params->mHitNum == params->mMaxHits)
-//	if(last)
-		return HIT_EXIT;
-
-	params->mDstBase[params->mHitNum++] = hit;
-//	params->mHitNum++;
+	params->mHitNum++;
+	params->mDstBase += params->mStride;
 
 	return HIT_NONE;
 }
 
 PxU32 physx::Gu::raycast_triangleMesh_BV4(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose,
 											const PxVec3& rayOrigin, const PxVec3& rayDir, PxReal maxDist,
-											PxHitFlags hitFlags, PxU32 maxHits, PxRaycastHit* PX_RESTRICT hits)
+											PxHitFlags hitFlags, PxU32 maxHits, PxGeomRaycastHit* PX_RESTRICT hits, PxU32 stride)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
 	const BV4TriangleMesh* meshData = static_cast<const BV4TriangleMesh*>(mesh);
 
-	const bool multipleHits = (maxHits > 1);
+	const bool multipleHits = hitFlags & PxHitFlag::eMESH_MULTIPLE;
 	const bool idtScale = meshGeom.scale.isIdentity();
 
 	const bool isDoubleSided = meshGeom.meshFlags.isSet(PxMeshGeometryFlag::eDOUBLE_SIDED);
@@ -423,8 +419,8 @@ PxU32 physx::Gu::raycast_triangleMesh_BV4(	const TriangleMesh* mesh, const PxTri
 
 	//scaling: transform the ray to vertex space
 	PxVec3 orig, dir;
-	Cm::Matrix34 world2vertexSkew;
-	Cm::Matrix34* world2vertexSkewP = NULL;
+	PxMat34 world2vertexSkew;
+	PxMat34* world2vertexSkewP = NULL;
 	PxReal distCoeff = 1.0f;
 	if(idtScale)
 	{
@@ -455,7 +451,7 @@ PxU32 physx::Gu::raycast_triangleMesh_BV4(	const TriangleMesh* mesh, const PxTri
 			PxHitFlags dstFlags = PxHitFlag::ePOSITION|PxHitFlag::eUV|PxHitFlag::eFACE_INDEX;
 
 			if(meshGeom.scale.hasNegativeDeterminant())
-				Ps::swap<PxReal>(hits->u, hits->v); // have to swap the UVs though since they were computed in mesh local space
+				PxSwap<PxReal>(hits->u, hits->v); // have to swap the UVs though since they were computed in mesh local space
 
 			// PT: TODO: pass flags to BV4 code (TA34704)
 			// Compute additional information if needed
@@ -473,7 +469,7 @@ PxU32 physx::Gu::raycast_triangleMesh_BV4(	const TriangleMesh* mesh, const PxTri
 		return PxU32(b);
 	}
 
-	BV4RaycastCBParams callback(hits, maxHits, &meshGeom.scale, &pose, world2vertexSkewP, hitFlags, rayDir, isDoubleSided, distCoeff);
+	BV4RaycastCBParams callback(hits, maxHits, stride, &meshGeom.scale, &pose, world2vertexSkewP, hitFlags, rayDir, isDoubleSided, distCoeff);
 
 	raycastVsMeshCB(	tree,
 						orig, dir,
@@ -492,7 +488,7 @@ struct IntersectShapeVsMeshCallback
 	bool			mAnyHits;
 	bool			mFlipNormal;
 
-	PX_FORCE_INLINE	bool	recordHit(PxU32 faceIndex, Ps::IntBool hit)
+	PX_FORCE_INLINE	bool	recordHit(PxU32 faceIndex, PxIntBool hit)
 	{
 		if(hit)
 		{
@@ -512,7 +508,7 @@ struct IntersectSphereVsMeshCallback : IntersectShapeVsMeshCallback
 	PX_FORCE_INLINE IntersectSphereVsMeshCallback(const PxMeshScale& meshScale, const PxTransform& meshTransform, const Sphere& sphere, LimitedResults* r, bool flipNormal) 
 		: IntersectShapeVsMeshCallback(r, flipNormal)
 	{
-		mVertexToShapeSkew = meshScale.toMat33();
+		mVertexToShapeSkew = toMat33(meshScale);
 		mLocalCenter = meshTransform.transformInv(sphere.center);	// sphereCenterInMeshSpace
 		mSphereRadius2 = sphere.radius*sphere.radius;
 	}
@@ -541,7 +537,7 @@ struct IntersectCapsuleVsMeshCallback : IntersectShapeVsMeshCallback
 	PX_FORCE_INLINE IntersectCapsuleVsMeshCallback(const PxMeshScale& meshScale, const PxTransform& meshTransform, const Capsule& capsule, LimitedResults* r, bool flipNormal)
 		: IntersectShapeVsMeshCallback(r, flipNormal)
 	{
-		mVertexToShapeSkew = meshScale.toMat33();
+		mVertexToShapeSkew = toMat33(meshScale);
 
 		// transform world capsule to mesh shape space
 		mLocalCapsule.p0		= meshTransform.transformInv(capsule.p0);
@@ -571,33 +567,33 @@ struct IntersectBoxVsMeshCallback : IntersectShapeVsMeshCallback
 	PX_FORCE_INLINE IntersectBoxVsMeshCallback(const PxMeshScale& meshScale, const PxTransform& meshTransform, const Box& box, LimitedResults* r, bool flipNormal)
 		: IntersectShapeVsMeshCallback(r, flipNormal)
 	{
-		const PxMat33 vertexToShapeSkew = meshScale.toMat33();
+		const PxMat33 vertexToShapeSkew = toMat33(meshScale);
 
 		// mesh scale needs to be included - inverse transform and optimize the box
 		const PxMat33 vertexToWorldSkew_Rot = PxMat33Padded(meshTransform.q) * vertexToShapeSkew;
 		const PxVec3& vertexToWorldSkew_Trans = meshTransform.p;
 
-		Matrix34 tmp;
+		PxMat34 tmp;
 		buildMatrixFromBox(tmp, box);
-		const Matrix34 inv = tmp.getInverseRT();
-		const Matrix34 _vertexToWorldSkew(vertexToWorldSkew_Rot, vertexToWorldSkew_Trans);
+		const PxMat34 inv = tmp.getInverseRT();
+		const PxMat34 _vertexToWorldSkew(vertexToWorldSkew_Rot, vertexToWorldSkew_Trans);
 
 		mVertexToBox = inv * _vertexToWorldSkew;
 		mBoxCenter = PxVec3(0.0f);
 		mBoxExtents = box.extents; // extents do not change
 	}
 
-	Matrix34	mVertexToBox;
-	Vec3p		mBoxExtents, mBoxCenter;
+	PxMat34	mVertexToBox;
+	PxVec3p	mBoxExtents, mBoxCenter;
 
 	PX_FORCE_INLINE PxAgain processHit(PxU32 faceIndex, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2)
 	{
-		const Vec3p v0 = mVertexToBox.transform(av0);
-		const Vec3p v1 = mVertexToBox.transform(mFlipNormal ? av2 : av1);
-		const Vec3p v2 = mVertexToBox.transform(mFlipNormal ? av1 : av2);
+		const PxVec3p v0 = mVertexToBox.transform(av0);
+		const PxVec3p v1 = mVertexToBox.transform(mFlipNormal ? av2 : av1);
+		const PxVec3p v2 = mVertexToBox.transform(mFlipNormal ? av1 : av2);
 
-		// PT: this one is safe because we're using Vec3p for all parameters
-		const Ps::IntBool hit = intersectTriangleBox_Unsafe(mBoxCenter, mBoxExtents, v0, v1, v2);
+		// PT: this one is safe because we're using PxVec3p for all parameters
+		const PxIntBool hit = intersectTriangleBox_Unsafe(mBoxCenter, mBoxExtents, v0, v1, v2);
 		return recordHit(faceIndex, hit);
 	}
 };
@@ -727,19 +723,34 @@ bool physx::Gu::intersectCapsuleVsMesh_BV4(const Capsule& capsule, const Triangl
 // PT: TODO: get rid of this (TA34704)
 static bool gVolumeCallback(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxU32 triangleIndex, const PxU32* vertexIndices)
 {
-	MeshHitCallback<PxRaycastHit>* callback = reinterpret_cast<MeshHitCallback<PxRaycastHit>*>(userData);
-	PX_ALIGN_PREFIX(16)	char buffer[sizeof(PxRaycastHit)] PX_ALIGN_SUFFIX(16);
-	PxRaycastHit& hit = reinterpret_cast<PxRaycastHit&>(buffer);
+	MeshHitCallback<PxGeomRaycastHit>* callback = reinterpret_cast<MeshHitCallback<PxGeomRaycastHit>*>(userData);
+	PX_ALIGN_PREFIX(16)	char buffer[sizeof(PxGeomRaycastHit)] PX_ALIGN_SUFFIX(16);
+	PxGeomRaycastHit& hit = reinterpret_cast<PxGeomRaycastHit&>(buffer);
 	hit.faceIndex = triangleIndex;
 	PxReal dummy;
 	return !callback->processHit(hit, p0, p1, p2, dummy, vertexIndices);
 }
 
-void physx::Gu::intersectOBB_BV4(const TriangleMesh* mesh, const Box& obb, MeshHitCallback<PxRaycastHit>& callback, bool bothTriangleSidesCollide, bool checkObbIsAligned)
+static bool gTetVolumeCallback(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, const PxVec3& p3, PxU32 tetIndex, const PxU32* vertexIndices)
+{
+	TetMeshHitCallback<PxGeomRaycastHit>* callback = reinterpret_cast<TetMeshHitCallback<PxGeomRaycastHit>*>(userData);
+	PX_ALIGN_PREFIX(16)	char buffer[sizeof(PxGeomRaycastHit)] PX_ALIGN_SUFFIX(16);
+	PxGeomRaycastHit& hit = reinterpret_cast<PxGeomRaycastHit&>(buffer);
+	hit.faceIndex = tetIndex;
+	PxReal dummy;
+	return !callback->processHit(hit, p0, p1, p2, p3, dummy, vertexIndices);
+}
+
+void physx::Gu::intersectOBB_BV4(const TriangleMesh* mesh, const Box& obb, MeshHitCallback<PxGeomRaycastHit>& callback, bool bothTriangleSidesCollide, bool checkObbIsAligned)
 {
 	PX_UNUSED(checkObbIsAligned);
 	PX_UNUSED(bothTriangleSidesCollide);
 	BV4_OverlapBoxCB(obb, static_cast<const BV4TriangleMesh*>(mesh)->getBV4Tree(), gVolumeCallback, &callback);
+}
+
+void physx::Gu::intersectOBB_BV4(const TetrahedronMesh* mesh, const Box& obb, TetMeshHitCallback<PxGeomRaycastHit>& callback)
+{
+	BV4_OverlapBoxCB(obb, static_cast<const BVTetrahedronMesh*>(mesh)->getBV4Tree(), gTetVolumeCallback, &callback);
 }
 
 
@@ -751,7 +762,7 @@ void physx::Gu::intersectOBB_BV4(const TriangleMesh* mesh, const Box& obb, MeshH
 static bool gCapsuleMeshSweepCallback(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxU32 triangleIndex, /*const PxU32* vertexIndices,*/ float& dist)
 {
 	SweepCapsuleMeshHitCallback* callback = reinterpret_cast<SweepCapsuleMeshHitCallback*>(userData);
-	PxRaycastHit meshHit;
+	PxGeomRaycastHit meshHit;
 	meshHit.faceIndex = triangleIndex;
 	return !callback->SweepCapsuleMeshHitCallback::processHit(meshHit, p0, p1, p2, dist, NULL/*vertexIndices*/);
 }
@@ -759,7 +770,7 @@ static bool gCapsuleMeshSweepCallback(void* userData, const PxVec3& p0, const Px
 // PT: TODO: refactor/share bits of this (TA34704)
 bool physx::Gu::sweepCapsule_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
 											const Capsule& lss, const PxVec3& unitDir, const PxReal distance,
-											PxSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
 	const BV4TriangleMesh* meshData = static_cast<const BV4TriangleMesh*>(mesh);
@@ -832,14 +843,14 @@ bool physx::Gu::sweepCapsule_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTri
 	PxVec3 sweepExtents = PxVec3(inflatedCapsule.radius) + (localP0-localP1).abs()*0.5f;
 	PxReal distance1 = distance;
 	PxReal distCoef = 1.0f;
-	Matrix34 poseWithScale;
+	PxMat34 poseWithScale;
 	if(!isIdentity)
 	{
 		poseWithScale = pose * triMeshGeom.scale;
 		distance1 = computeSweepData(triMeshGeom, sweepOrigin, sweepExtents, sweepDir, distance);
 		distCoef = distance1 / distance;
 	} else
-		poseWithScale = Matrix34(pose);
+		poseWithScale = Matrix34FromTransform(pose);
 
 	SweepCapsuleMeshHitCallback callback(sweepHit, poseWithScale, distance, isDoubleSided, inflatedCapsule, unitDir, hitFlags, triMeshGeom.scale.hasNegativeDeterminant(), distCoef);
 
@@ -855,7 +866,7 @@ bool physx::Gu::sweepCapsule_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTri
 static bool gBoxMeshSweepCallback(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxU32 triangleIndex, /*const PxU32* vertexIndices,*/ float& dist)
 {
 	SweepBoxMeshHitCallback* callback = reinterpret_cast<SweepBoxMeshHitCallback*>(userData);
-	PxRaycastHit meshHit;
+	PxGeomRaycastHit meshHit;
 	meshHit.faceIndex = triangleIndex;
 	return !callback->SweepBoxMeshHitCallback::processHit(meshHit, p0, p1, p2, dist, NULL/*vertexIndices*/);
 }
@@ -863,7 +874,7 @@ static bool gBoxMeshSweepCallback(void* userData, const PxVec3& p0, const PxVec3
 // PT: TODO: refactor/share bits of this (TA34704)
 bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
 										const Box& box, const PxVec3& unitDir, const PxReal distance,
-										PxSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
 	const BV4TriangleMesh* meshData = static_cast<const BV4TriangleMesh*>(mesh);
@@ -914,7 +925,7 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 
 	// PT: TODO: revisit this codepath, we don't need to sweep an AABB all the time (TA34704)
 
-	Matrix34 meshToWorldSkew;
+	PxMat34 meshToWorldSkew;
 	PxVec3 sweptAABBMeshSpaceExtents, meshSpaceOrigin, meshSpaceDir;
 
 	// Input sweep params: geom, pose, box, unitDir, distance
@@ -922,8 +933,8 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 	// and convert the box+pose to mesh space AABB
 	if(isIdentity)
 	{
-		meshToWorldSkew = Matrix34(pose);
-		PxMat33 worldToMeshRot(pose.q.getConjugate()); // extract rotation matrix from pose.q
+		meshToWorldSkew = Matrix34FromTransform(pose);
+		const PxMat33Padded worldToMeshRot(pose.q.getConjugate()); // extract rotation matrix from pose.q
 		meshSpaceOrigin = worldToMeshRot.transform(box.center - pose.p);
 		meshSpaceDir = worldToMeshRot.transform(unitDir) * distance;
 		PxMat33 boxToMeshRot = worldToMeshRot * box.rot;
@@ -934,7 +945,7 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 	else
 	{
 		meshToWorldSkew = pose * triMeshGeom.scale;
-		const PxMat33 meshToWorldSkew_Rot = PxMat33Padded(pose.q) * triMeshGeom.scale.toMat33();
+		const PxMat33 meshToWorldSkew_Rot = PxMat33Padded(pose.q) * toMat33(triMeshGeom.scale);
 		const PxVec3& meshToWorldSkew_Trans = pose.p;
 
 		PxMat33 worldToVertexSkew_Rot;
@@ -943,7 +954,7 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 
 		//make vertex space OBB
 		Box vertexSpaceBox1;
-		const Matrix34 worldToVertexSkew(worldToVertexSkew_Rot, worldToVertexSkew_Trans);
+		const PxMat34 worldToVertexSkew(worldToVertexSkew_Rot, worldToVertexSkew_Trans);
 		vertexSpaceBox1 = transform(worldToVertexSkew, box);
 		// compute swept aabb
 		sweptAABBMeshSpaceExtents = vertexSpaceBox1.computeAABBExtent();
@@ -961,12 +972,12 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 		distCoeff = dirLen / distance;
 
 	// Move to AABB space
-	Matrix34 worldToBox;
+	PxMat34 worldToBox;
 	computeWorldToBoxMatrix(worldToBox, box);
 
 	const bool bothTriangleSidesCollide = isDoubleSided || meshBothSides;
 
-	const Matrix34Padded meshToBox = worldToBox*meshToWorldSkew;
+	const PxMat34Padded meshToBox = worldToBox*meshToWorldSkew;
 	const PxTransform boxTransform = box.getTransform();	// PT: TODO: this is not needed when there's no hit (TA34704)
 
 	const PxVec3 localDir = worldToBox.rotate(unitDir);
@@ -983,8 +994,8 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 static bool gConvexVsMeshSweepCallback(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxU32 triangleIndex, /*const PxU32* vertexIndices,*/ float& dist)
 {
 	SweepConvexMeshHitCallback* callback = reinterpret_cast<SweepConvexMeshHitCallback*>(userData);
-	PX_ALIGN_PREFIX(16)	char buffer[sizeof(PxRaycastHit)] PX_ALIGN_SUFFIX(16);
-	PxRaycastHit& hit = reinterpret_cast<PxRaycastHit&>(buffer);
+	PX_ALIGN_PREFIX(16)	char buffer[sizeof(PxGeomRaycastHit)] PX_ALIGN_SUFFIX(16);
+	PxGeomRaycastHit& hit = reinterpret_cast<PxGeomRaycastHit&>(buffer);
 	hit.faceIndex = triangleIndex;
 	return !callback->SweepConvexMeshHitCallback::processHit(hit, p0, p1, p2, dist, NULL/*vertexIndices*/);
 }
@@ -996,5 +1007,79 @@ void physx::Gu::sweepConvex_MeshGeom_BV4(const TriangleMesh* mesh, const Box& hu
 	BV4_GenericSweepCB(hullBox, localDir, distance, meshData->getBV4Tree(), gConvexVsMeshSweepCallback, &callback, anyHit);
 }
 
-#endif
 
+
+
+void BV4_PointDistance(const PxVec3& point, const BV4Tree& tree, float maxDist, PxU32& index, float& dist, PxVec3& cp/*, const PxMat44* PX_RESTRICT worldm_Aligned*/);
+
+void Gu::pointMeshDistance_BV4(const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose, const PxVec3& point, float maxDist
+	, PxU32& index, float& dist, PxVec3& closestPt)
+{
+	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
+	const BV4TriangleMesh* meshData = static_cast<const BV4TriangleMesh*>(mesh);
+
+	const BV4Tree& tree = static_cast<const BV4TriangleMesh*>(meshData)->getBV4Tree();
+
+	const bool idtScale = meshGeom.scale.isIdentity();
+/*	if(idtScale)
+	{
+		BV4_ALIGN16(PxMat44 World);
+		const PxMat44* TM = setupWorldMatrix(World, &pose.p.x, &pose.q.x);
+
+		PxU32 index;
+		float dist;
+		PxVec3 cp;
+		BV4_PointDistance(point, tree, index, dist, cp, TM);
+	}
+	else*/
+
+	if(idtScale)
+	{
+		const PxVec3 orig = pose.transformInv(point);
+		PxVec3 cp;
+		BV4_PointDistance(orig, tree, maxDist, index, dist, cp);
+		closestPt = pose.transform(cp);
+	}
+	else
+	{
+		// Scaling: transform the point to vertex space
+		const PxMat34 world2vertexSkew = meshGeom.scale.getInverse() * pose.getInverse();
+		const PxVec3 orig = world2vertexSkew.transform(point);
+		PxVec3 cp;
+		BV4_PointDistance(orig, tree, maxDist, index, dist, cp);
+		// PT: TODO: do we need to fix the distance when mesh scale is not idt?
+		closestPt = pose.transform(meshGeom.scale.transform(cp));
+	}
+}
+
+
+
+
+bool BV4_OverlapMeshVsMesh(PxReportCallback<PxGeomIndexPair>& callback, const BV4Tree& tree0, const BV4Tree& tree1, const PxMat44* mat0to1, const PxMat44* mat1to0, PxMeshMeshQueryFlags meshMeshFlags);
+
+bool BV4_OverlapMeshVsMesh(PxReportCallback<PxGeomIndexPair>& callback, const BV4Tree& tree0, const BV4Tree& tree1, const PxMat44* mat0to1, const PxMat44* mat1to0,
+							const PxTransform& meshPose0, const PxTransform& meshPose1,
+							const PxMeshScale& meshScale0, const PxMeshScale& meshScale1,
+							PxMeshMeshQueryFlags meshMeshFlags);
+
+bool physx::Gu::intersectMeshVsMesh_BV4(PxReportCallback<PxGeomIndexPair>& callback, const TriangleMesh& triMesh0, const TriangleMesh& triMesh1, const PxTransform& meshPose0, const PxTransform& meshPose1, const PxMeshScale& meshScale0, const PxMeshScale& meshScale1, PxMeshMeshQueryFlags meshMeshFlags)
+{
+	PX_ASSERT(triMesh0.getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
+	PX_ASSERT(triMesh1.getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
+	const BV4Tree& tree0 = static_cast<const BV4TriangleMesh&>(triMesh0).getBV4Tree();
+	const BV4Tree& tree1 = static_cast<const BV4TriangleMesh&>(triMesh1).getBV4Tree();
+
+	const PxTransform t0to1 = meshPose1.transformInv(meshPose0);
+	const PxTransform t1to0 = meshPose0.transformInv(meshPose1);
+
+	BV4_ALIGN16(PxMat44 World0to1);
+	const PxMat44* TM0to1 = setupWorldMatrix(World0to1, &t0to1.p.x, &t0to1.q.x);
+
+	BV4_ALIGN16(PxMat44 World1to0);
+	const PxMat44* TM1to0 = setupWorldMatrix(World1to0, &t1to0.p.x, &t1to0.q.x);
+
+	if(!meshScale0.isIdentity() || !meshScale1.isIdentity())
+		return BV4_OverlapMeshVsMesh(callback, tree0, tree1, TM0to1, TM1to0, meshPose0, meshPose1, meshScale0, meshScale1, meshMeshFlags)!=0;
+	else
+		return BV4_OverlapMeshVsMesh(callback, tree0, tree1, TM0to1, TM1to0, meshMeshFlags)!=0;
+}

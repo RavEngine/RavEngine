@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #include "NpActor.h"
 #include "PxRigidActor.h"
@@ -41,26 +39,54 @@
 #include "NpArticulationLink.h"
 #include "CmTransformUtils.h"
 
+#if PX_SUPPORT_GPU_PHYSX
+#include "NpSoftBody.h"
+#include "NpParticleSystem.h"
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+#include "NpHairSystem.h"
+#include "NpFEMCloth.h"
+#endif
+#endif
+
 using namespace physx;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-NpActor::NpActor(const char* name) :
-	mName(name),
-	mConnectorArray(NULL)
+Sc::BodyCore* physx::getBodyCore(PxRigidActor* actor)
+{
+	Sc::BodyCore* core = NULL;
+	if(actor)
+	{
+		const PxType type = actor->getConcreteType();
+		if(type == PxConcreteType::eRIGID_DYNAMIC)
+		{
+			NpRigidDynamic* dyn = static_cast<NpRigidDynamic*>(actor);
+			core = &dyn->getCore();
+		}
+		else if(type == PxConcreteType::eARTICULATION_LINK)
+		{
+			NpArticulationLink* link = static_cast<NpArticulationLink*>(actor);
+			core = &link->getCore();
+		}
+	}
+	return core;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+NpActor::NpActor(NpType::Enum type) :
+	NpBase			(type),
+	mName			(NULL),
+	mConnectorArray	(NULL)
 {
 }
 
-NpActor::~NpActor()
-{
-}
-
-
-typedef Ps::HashMap<NpActor*, NpConnectorArray*> ConnectorMap;
+typedef PxHashMap<NpActor*, NpConnectorArray*> ConnectorMap;
 struct NpActorUserData
 {
-	PxU32				referenceCount;
-	ConnectorMap*		tmpOriginalConnectors;
+	PxU32			referenceCount;
+	ConnectorMap*	tmpOriginalConnectors;
 };
 
 void NpActor::exportExtraData(PxSerializationContext& stream)
@@ -115,7 +141,7 @@ void NpActor::importExtraData(PxDeserializationContext& context)
 	if(mConnectorArray)
 	{
 		mConnectorArray = context.readExtraData<NpConnectorArray, PX_SERIAL_ALIGN>();
-		new (mConnectorArray) NpConnectorArray(PxEmpty);
+		PX_PLACEMENT_NEW(mConnectorArray, NpConnectorArray(PxEmpty));
 
 		if(mConnectorArray->size() == 0)
 			mConnectorArray = NULL;
@@ -141,7 +167,7 @@ void NpActor::resolveReferences(PxDeserializationContext& context)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void NpActor::releaseConstraints(PxRigidActor& owner)
+void NpActor::removeConstraints(PxRigidActor& owner)
 {
 	if(mConnectorArray)
 	{
@@ -156,11 +182,8 @@ void NpActor::releaseConstraints(PxRigidActor& owner)
 				c->actorDeleted(&owner);
 
 				NpScene* s = c->getNpScene();
-				if (s)
-				{
-					s->getScene().removeConstraint(c->getScbConstraint());
+				if(s)
 					s->removeFromConstraintList(*c);
-				}
 
 				removeConnector(owner, currentIndex);
 			}
@@ -170,7 +193,7 @@ void NpActor::releaseConstraints(PxRigidActor& owner)
 	}
 }
 
-void NpActor::release(PxActor& owner)
+void NpActor::removeFromAggregate(PxActor& owner)
 {
 	if(mConnectorArray)  // Need to test again because the code above might purge the connector array if no element remains
 	{
@@ -186,9 +209,6 @@ void NpActor::release(PxActor& owner)
 
 	PX_ASSERT(!mConnectorArray);  // All the connector objects should have been removed at this point
 }
-
-///////////////////////////////////////////////////////////////////////////////
-
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -326,7 +346,6 @@ PxAggregate* NpActor::getAggregate()	const
 	return static_cast<PxAggregate*>(a);
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 
 void NpActor::removeConstraintsFromScene()
@@ -337,12 +356,8 @@ void NpActor::removeConstraintsFromScene()
 		NpConstraint* c = static_cast<NpConstraint*>(ser);
 			
 		NpScene* s = c->getNpScene();
-
-		if (s)
-		{
+		if(s)
 			s->removeFromConstraintList(*c);
-			s->getScene().removeConstraint(c->getScbConstraint());
-		}
 	}
 }
 
@@ -360,38 +375,14 @@ void NpActor::addConstraintsToSceneInternal()
 		c->markDirty();	// PT: "temp" fix for crash when removing/re-adding jointed actor from/to a scene
 
 		NpScene* s = c->getSceneFromActors();
-		if (s)
-		{
+		if(s)
 			s->addToConstraintList(*c);
-			s->getScene().addConstraint(c->getScbConstraint());
-		}
 	}
 }
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 
-NpShapeManager* NpActor::getShapeManager(PxRigidActor& actor)
-{
-	// DS: if the performance here becomes an issue we can use the same kind of offset hack as below
-
-	const PxType actorType = actor.getConcreteType();
-
-	if (actorType == PxConcreteType::eRIGID_DYNAMIC)
-		return &static_cast<NpRigidDynamic&>(actor).getShapeManager();
-	else if(actorType == PxConcreteType::eRIGID_STATIC)
-		return &static_cast<NpRigidStatic&>(actor).getShapeManager();
-	else if (actorType == PxConcreteType::eARTICULATION_LINK)
-		return &static_cast<NpArticulationLink&>(actor).getShapeManager();
-	else
-	{
-		PX_ASSERT(0);
-		return NULL;
-	}
-}
-
-const NpShapeManager* NpActor::getShapeManager(const PxRigidActor& actor)
+static PX_FORCE_INLINE const NpShapeManager* getShapeManager(const PxRigidActor& actor)
 {
 	// DS: if the performance here becomes an issue we can use the same kind of offset hack as below
 
@@ -410,36 +401,43 @@ const NpShapeManager* NpActor::getShapeManager(const PxRigidActor& actor)
 	}
 }
 
-void NpActor::getGlobalPose(PxTransform& globalPose, const NpShape& shape, const PxRigidActor& actor)
-{
-	const Scb::Actor& scbActor = NpActor::getScbFromPxActor(actor);
-	const Scb::Shape& scbShape = shape.getScbShape();
+NpShapeManager* NpActor::getShapeManager_(PxRigidActor& actor)				{ return const_cast<NpShapeManager*>(getShapeManager(actor));	}
+const NpShapeManager* NpActor::getShapeManager_(const PxRigidActor& actor)	{ return getShapeManager(actor);								}
 
-	NpActor::getGlobalPose(globalPose, scbShape, scbActor);
+void NpActor::onActorRelease(PxActor* actor)
+{
+	NpFactory::getInstance().onActorRelease(actor);
 }
 
-void NpActor::getGlobalPose(PxTransform& globalPose, const Scb::Shape& scbShape, const Scb::Actor& scbActor)
-{
-	const PxTransform& shape2Actor = scbShape.getShape2Actor();
+void	NpActor::scSetDominanceGroup(PxDominanceGroup v)
+		{
+			PX_ASSERT(!isAPIWriteForbidden());
+			getActorCore().setDominanceGroup(v);
+			UPDATE_PVD_PROPERTY
+			OMNI_PVD_SET(actor, dominance, *getPxActor(), v)
+		}
 
-	// PT: TODO: duplicated from SqBounds.cpp. Refactor.
-	const ScbType::Enum actorType = scbActor.getScbType();
-	if(actorType==ScbType::eRIGID_STATIC)
-	{
-		Cm::getStaticGlobalPoseAligned(static_cast<const Scb::RigidStatic&>(scbActor).getActor2World(), shape2Actor, globalPose);
-	}
-	else
-	{
-		PX_ASSERT(actorType==ScbType::eBODY || actorType == ScbType::eBODY_FROM_ARTICULATION_LINK);
+void	NpActor::scSetOwnerClient(PxClientID inId)
+		{
+			//This call is only valid if we aren't in a scene.
+			PX_ASSERT(!isAPIWriteForbidden());
+			getActorCore().setOwnerClient(inId);
+			UPDATE_PVD_PROPERTY
+			OMNI_PVD_SET(actor, ownerClient, *getPxActor(), inId)
+		}
 
-		const Scb::Body& body = static_cast<const Scb::Body&>(scbActor);
-		PX_ALIGN(16, PxTransform) kinematicTarget;
-		const PxU16 sqktFlags = PxRigidBodyFlag::eKINEMATIC | PxRigidBodyFlag::eUSE_KINEMATIC_TARGET_FOR_SCENE_QUERIES;
-		const bool useTarget = (PxU16(body.getFlags()) & sqktFlags) == sqktFlags;
-		const PxTransform& body2World = (useTarget && body.getKinematicTarget(kinematicTarget)) ? kinematicTarget : body.getBody2World();
-		Cm::getDynamicGlobalPoseAligned(body2World, shape2Actor, body.getBody2Actor(), globalPose);
-	}
-}
+const PxActor* NpActor::getPxActor() const
+		{
+			const PxActorType::Enum type = getActorCore().getActorCoreType();
+			if(type == PxActorType::eRIGID_DYNAMIC)
+				return static_cast<const NpRigidDynamic*>(this);
+			else if(type == PxActorType::eRIGID_STATIC)
+				return static_cast<const NpRigidStatic*>(this);
+			else if(type == PxActorType::eARTICULATION_LINK)
+				return static_cast<const NpArticulationLink*>(this);
+			PX_ASSERT(0);
+			return NULL;
+		}
 
 namespace
 {
@@ -452,35 +450,112 @@ namespace
 NpActor::Offsets::Offsets()
 {
 	for(PxU32 i=0;i<PxConcreteType::ePHYSX_CORE_COUNT;i++)
-		pxActorToScbActor[i] = pxActorToNpActor[i] = 0;
+		pxActorToNpActor[i] = 0;
 	size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
 	PxActor* n = reinterpret_cast<PxActor*>(addr);
-	pxActorToNpActor[PxConcreteType::eRIGID_STATIC]			= reinterpret_cast<size_t>(pxToNpActor<NpRigidStatic>(n)) - addr;
-	pxActorToNpActor[PxConcreteType::eRIGID_DYNAMIC]		= reinterpret_cast<size_t>(pxToNpActor<NpRigidDynamic>(n)) - addr;
-	pxActorToNpActor[PxConcreteType::eARTICULATION_LINK]	= reinterpret_cast<size_t>(pxToNpActor<NpArticulationLink>(n)) - addr;
-	pxActorToScbActor[PxConcreteType::eRIGID_STATIC]		= PX_OFFSET_OF_RT(NpRigidStatic, getScbActorFast());
-	pxActorToScbActor[PxConcreteType::eRIGID_DYNAMIC]		= PX_OFFSET_OF_RT(NpRigidDynamic, getScbActorFast());
-	pxActorToScbActor[PxConcreteType::eARTICULATION_LINK]	= PX_OFFSET_OF_RT(NpArticulationLink, getScbActorFast());
+	pxActorToNpActor[PxConcreteType::eRIGID_STATIC]			= size_t(pxToNpActor<NpRigidStatic>(n)) - addr;
+	pxActorToNpActor[PxConcreteType::eRIGID_DYNAMIC]		= size_t(pxToNpActor<NpRigidDynamic>(n)) - addr;
+	pxActorToNpActor[PxConcreteType::eARTICULATION_LINK]	= size_t(pxToNpActor<NpArticulationLink>(n)) - addr;
+
+#if PX_SUPPORT_GPU_PHYSX
+	pxActorToNpActor[PxConcreteType::eSOFT_BODY]							= size_t(pxToNpActor<NpSoftBody>(n)) - addr;
+	pxActorToNpActor[PxConcreteType::ePBD_PARTICLESYSTEM]					= size_t(pxToNpActor<NpPBDParticleSystem>(n)) - addr;
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+	pxActorToNpActor[PxConcreteType::eFLIP_PARTICLESYSTEM]					= size_t(pxToNpActor<NpFLIPParticleSystem>(n)) - addr;
+	pxActorToNpActor[PxConcreteType::eMPM_PARTICLESYSTEM]					= size_t(pxToNpActor<NpMPMParticleSystem>(n)) - addr;
+	pxActorToNpActor[PxConcreteType::eCUSTOM_PARTICLESYSTEM]				= size_t(pxToNpActor<NpCustomParticleSystem>(n)) - addr;
+	pxActorToNpActor[PxConcreteType::eFEM_CLOTH]							= size_t(pxToNpActor<NpFEMCloth>(n)) - addr;
+	pxActorToNpActor[PxConcreteType::eHAIR_SYSTEM]							= size_t(pxToNpActor<NpHairSystem>(n)) - addr;
+#endif
+#endif
 }
 
 const NpActor::Offsets NpActor::sOffsets;
 
-
-NpScene* NpActor::getOwnerScene(const PxActor& actor)
+NpActor::NpOffsets::NpOffsets()
 {
-	const Scb::Actor& scbActor = getScbFromPxActor(actor);
-	Scb::Scene* scbScene = scbActor.getScbScene();
-	return scbScene? static_cast<NpScene*>(scbScene->getPxScene()) : NULL;
+	// PT: .....
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpRigidStatic* n = reinterpret_cast<NpRigidStatic*>(addr);
+		const size_t npOffset		= size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t staticOffset	= NpRigidStatic::getCoreOffset() - npOffset;
+		npToSc[NpType::eRIGID_STATIC] = staticOffset;
+	}
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpRigidDynamic* n = reinterpret_cast<NpRigidDynamic*>(addr);
+		const size_t npOffset	= size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset	= NpRigidDynamic::getCoreOffset() - npOffset;
+		npToSc[NpType::eBODY] = bodyOffset;
+	}
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpArticulationLink* n = reinterpret_cast<NpArticulationLink*>(addr);
+		const size_t npOffset	= size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset	= NpArticulationLink::getCoreOffset() - npOffset;
+		npToSc[NpType::eBODY_FROM_ARTICULATION_LINK] = bodyOffset;
+	}
+#if PX_SUPPORT_GPU_PHYSX
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpSoftBody* n = reinterpret_cast<NpSoftBody*>(addr);
+		const size_t npOffset = size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset = NpSoftBody::getCoreOffset() - npOffset;
+		npToSc[NpType::eSOFTBODY] = bodyOffset;
+	}
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpFEMCloth* n = reinterpret_cast<NpFEMCloth*>(addr);
+		const size_t npOffset = size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset = NpFEMCloth::getCoreOffset() - npOffset;
+		npToSc[NpType::eFEMCLOTH] = bodyOffset;
+	}
+#endif
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpPBDParticleSystem* n = reinterpret_cast<NpPBDParticleSystem*>(addr);
+		const size_t npOffset = size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset = NpPBDParticleSystem::getCoreOffset() - npOffset;
+		npToSc[NpType::ePBD_PARTICLESYSTEM] = bodyOffset;
+	}
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpFLIPParticleSystem* n = reinterpret_cast<NpFLIPParticleSystem*>(addr);
+		const size_t npOffset = size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset = NpFLIPParticleSystem::getCoreOffset() - npOffset;
+		npToSc[NpType::eFLIP_PARTICLESYSTEM] = bodyOffset;
+	}
+
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpMPMParticleSystem* n = reinterpret_cast<NpMPMParticleSystem*>(addr);
+		const size_t npOffset = size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset = NpMPMParticleSystem::getCoreOffset() - npOffset;
+		npToSc[NpType::eMPM_PARTICLESYSTEM] = bodyOffset;
+	}
+
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpCustomParticleSystem* n = reinterpret_cast<NpCustomParticleSystem*>(addr);
+		const size_t npOffset = size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset = NpCustomParticleSystem::getCoreOffset() - npOffset;
+		npToSc[NpType::eCUSTOM_PARTICLESYSTEM] = bodyOffset;
+	}
+
+	{
+		size_t addr = 0x100;	// casting the null ptr takes a special-case code path, which we don't want
+		NpHairSystem* n = reinterpret_cast<NpHairSystem*>(addr);
+		const size_t npOffset = size_t(static_cast<NpActor*>(n)) - addr;
+		const size_t bodyOffset = NpHairSystem::getCoreOffset() - npOffset;
+		npToSc[NpType::eHAIRSYSTEM] = bodyOffset;
+	}
+#endif
+#endif
 }
 
-NpScene* NpActor::getAPIScene(const PxActor& actor)
-{
-	const Scb::Actor& scbActor = getScbFromPxActor(actor);
-	Scb::Scene* scbScene = scbActor.getScbSceneForAPI();
-	return scbScene? static_cast<NpScene*>(scbScene->getPxScene()) : NULL;
-}
+const NpActor::NpOffsets NpActor::sNpOffsets;
 
-void NpActor::onActorRelease(PxActor* actor)
-{
-	NpFactory::getInstance().onActorRelease(actor);
-}
+

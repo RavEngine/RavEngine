@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,20 +35,20 @@
 #include "extensions/PxCollectionExt.h"
 #include "PxShape.h"
 #include "PxMaterial.h"
-#include "PxArticulation.h"
+#include "PxArticulationReducedCoordinate.h"
 #include "PxAggregate.h"
 #include "PxPhysics.h"
 #include "PxScene.h"
 #include "PxPruningStructure.h"
 
 
-#include "PsArray.h"
+#include "foundation/PxArray.h"
 
 using namespace physx;
 
 void PxCollectionExt::releaseObjects(PxCollection& collection, bool releaseExclusiveShapes)
 {
-	shdfnd::Array<PxBase*> releasableObjects;
+	PxArray<PxBase*> releasableObjects;
 
 	for (PxU32 i = 0; i < collection.getNbObjects(); ++i)
 	{	
@@ -81,7 +80,7 @@ void PxCollectionExt::releaseObjects(PxCollection& collection, bool releaseExclu
 
 void PxCollectionExt::remove(PxCollection& collection, PxType concreteType, PxCollection* to)
 {	
-	shdfnd::Array<PxBase*> removeObjects;
+	PxArray<PxBase*> removeObjects;
 	
 	for (PxU32 i = 0; i < collection.getNbObjects(); i++)
 	{
@@ -107,7 +106,7 @@ PxCollection* PxCollectionExt::createCollection(PxPhysics& physics)
 
 	// Collect convexes
 	{
-		shdfnd::Array<PxConvexMesh*> objects(physics.getNbConvexMeshes());
+		PxArray<PxConvexMesh*> objects(physics.getNbConvexMeshes());
 		const PxU32 nb = physics.getConvexMeshes(objects.begin(), objects.size());
 		PX_ASSERT(nb == objects.size());
 		PX_UNUSED(nb);
@@ -118,7 +117,7 @@ PxCollection* PxCollectionExt::createCollection(PxPhysics& physics)
 
 	// Collect triangle meshes
 	{
-		shdfnd::Array<PxTriangleMesh*> objects(physics.getNbTriangleMeshes());
+		PxArray<PxTriangleMesh*> objects(physics.getNbTriangleMeshes());
 		const PxU32 nb = physics.getTriangleMeshes(objects.begin(), objects.size());
 
 		PX_ASSERT(nb == objects.size());
@@ -130,7 +129,7 @@ PxCollection* PxCollectionExt::createCollection(PxPhysics& physics)
 
 	// Collect heightfields
 	{
-		shdfnd::Array<PxHeightField*> objects(physics.getNbHeightFields());
+		PxArray<PxHeightField*> objects(physics.getNbHeightFields());
 		const PxU32 nb = physics.getHeightFields(objects.begin(), objects.size());
 
 		PX_ASSERT(nb == objects.size());
@@ -142,7 +141,7 @@ PxCollection* PxCollectionExt::createCollection(PxPhysics& physics)
 
 	// Collect materials
 	{
-		shdfnd::Array<PxMaterial*> objects(physics.getNbMaterials());
+		PxArray<PxMaterial*> objects(physics.getNbMaterials());
 		const PxU32 nb = physics.getMaterials(objects.begin(), objects.size());
 
 		PX_ASSERT(nb == objects.size());
@@ -154,7 +153,7 @@ PxCollection* PxCollectionExt::createCollection(PxPhysics& physics)
 
 	// Collect shapes
 	{
-		shdfnd::Array<PxShape*> objects(physics.getNbShapes());
+		PxArray<PxShape*> objects(physics.getNbShapes());
 		const PxU32 nb = physics.getShapes(objects.begin(), objects.size());
 
 		PX_ASSERT(nb == objects.size());
@@ -177,7 +176,7 @@ PxCollection* PxCollectionExt::createCollection(PxScene& scene)
 		PxActorTypeFlags selectionFlags = PxActorTypeFlag::eRIGID_STATIC | PxActorTypeFlag::eRIGID_DYNAMIC;
 
 
-		shdfnd::Array<PxActor*> objects(scene.getNbActors(selectionFlags));
+		PxArray<PxActor*> objects(scene.getNbActors(selectionFlags));
 		const PxU32 nb = scene.getActors(selectionFlags, objects.begin(), objects.size());
 
 		PX_ASSERT(nb==objects.size());
@@ -190,7 +189,7 @@ PxCollection* PxCollectionExt::createCollection(PxScene& scene)
 
 	// Collect constraints
 	{
-		shdfnd::Array<PxConstraint*> objects(scene.getNbConstraints());
+		PxArray<PxConstraint*> objects(scene.getNbConstraints());
 		const PxU32 nb = scene.getConstraints(objects.begin(), objects.size());
 
 		PX_ASSERT(nb==objects.size());
@@ -207,7 +206,7 @@ PxCollection* PxCollectionExt::createCollection(PxScene& scene)
 
 	// Collect articulations
 	{
-		shdfnd::Array<PxArticulationBase*> objects(scene.getNbArticulations());
+		PxArray<PxArticulationReducedCoordinate*> objects(scene.getNbArticulations());
 		const PxU32 nb = scene.getArticulations(objects.begin(), objects.size());
 
 		PX_ASSERT(nb==objects.size());
@@ -219,7 +218,7 @@ PxCollection* PxCollectionExt::createCollection(PxScene& scene)
 
 	// Collect aggregates
 	{
-		shdfnd::Array<PxAggregate*> objects(scene.getNbAggregates());
+		PxArray<PxAggregate*> objects(scene.getNbAggregates());
 		const PxU32 nb = scene.getAggregates(objects.begin(), objects.size());
 
 		PX_ASSERT(nb==objects.size());

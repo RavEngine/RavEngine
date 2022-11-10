@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,48 +22,45 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 // ****************************************************************************
-// This snippet illustrates the use of simple contact reports.
+// This snippet illustrates the use of split fetchResults() calls to improve
+// the performace contact report processing.
 //
 // It defines a filter shader function that requests touch reports for 
 // all pairs, and a contact callback function that saves the contact points.  
 // It configures the scene to use this filter and callback, and prints the 
 // number of contact reports each frame. If rendering, it renders each 
 // contact as a line whose length and direction are defined by the contact 
-// impulse.
+// impulse. The callback can be processed earlier than usual by using the
+// split fetchResults() sequence of fetchResultsStart(), processCallbacks(), 
+// fetchResultsFinish().
 // 
 // ****************************************************************************
 
 #include <vector>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 #include "../snippetutils/SnippetUtils.h"
-#include "PsAtomic.h"
+#include "foundation/PxAtomic.h"
 #include "task/PxTask.h"
 
 #define PARALLEL_CALLBACKS 1
 
-
 using namespace physx;
 
-
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
-
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics = NULL;
-
-PxDefaultCpuDispatcher*	gDispatcher = NULL;
-PxScene*				gScene = NULL;
-PxMaterial*				gMaterial = NULL;
-PxPvd*                  gPvd = NULL;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics = NULL;
+static PxDefaultCpuDispatcher*	gDispatcher = NULL;
+static PxScene*					gScene = NULL;
+static PxMaterial*				gMaterial = NULL;
+static PxPvd*					gPvd = NULL;
 
 const PxI32 maxCount = 10000;
 
@@ -136,7 +132,7 @@ class ContactReportCallback : public PxSimulationEventCallback
 			{
 				pairs[i].extractContacts(&contactPoints[0], contactCount);
 
-				PxI32 startIdx = physx::shdfnd::atomicAdd(&gSharedIndex, int32_t(contactCount));
+				PxI32 startIdx = physx::PxAtomicAdd(&gSharedIndex, int32_t(contactCount));
 				for (PxU32 j = 0; j<contactCount; j++)
 				{
 					gContactPositions[startIdx+j] = contactPoints[j].position;

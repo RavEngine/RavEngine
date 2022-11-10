@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDMEMCLIENT_H
-#define PXPVDSDK_PXPVDMEMCLIENT_H
+#ifndef PX_PVD_MEM_CLIENT_H
+#define PX_PVD_MEM_CLIENT_H
 
 #include "PxPvdClient.h"
-#include "PsHashMap.h"
-#include "PsMutex.h"
-#include "PsBroadcast.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxMutex.h"
+#include "foundation/PxBroadcast.h"
 #include "PxProfileEventBufferClient.h"
 #include "PxProfileMemory.h"
 
@@ -46,7 +45,7 @@ namespace pvdsdk
 class PvdImpl;
 class PvdMemClient : public PvdClient,                   
                      public profile::PxProfileEventBufferClient,
-                     public shdfnd::UserAllocated
+                     public PxUserAllocated
 {
 	PX_NOCOPY(PvdMemClient)
   public:
@@ -71,7 +70,7 @@ class PvdMemClient : public PvdClient,
 	bool mIsConnected;
 
 	// mem profile
-	shdfnd::Mutex mMutex; // mem onallocation can called from different threads
+	PxMutex mMutex; // mem onallocation can called from different threads
 	profile::PxProfileMemoryEventBuffer& mMemEventBuffer;
 	void handleBufferFlush(const uint8_t* inData, uint32_t inLength);
 	void handleClientRemoved();
@@ -80,4 +79,4 @@ class PvdMemClient : public PvdClient,
 } // namespace pvdsdk
 } // namespace physx
 
-#endif // PXPVDSDK_PXPVDMEMCLIENT_H
+#endif

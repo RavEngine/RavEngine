@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,11 +31,11 @@
 
 #define	PCM_MAX_CONTACTPATCH_SIZE	32
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuVecCapsule.h"
 #include "GuPCMTriangleContactGen.h"
 #include "GuTriangleCache.h"
-#include "PsInlineArray.h"
+#include "foundation/PxInlineArray.h"
 
 namespace physx
 {
@@ -46,39 +45,43 @@ namespace Gu
 
 #define MAX_CACHE_SIZE	128
 
+//sizeof(PCMDeferredPolyData)/sizeof(PxU32) = 15, 960/15 = 64 triangles in the local array
+#define LOCAL_PCM_CONTACTS_SIZE		960
+
 class PCMMeshContactGeneration
 {
 	PX_NOCOPY(PCMMeshContactGeneration)
 public:
-	PCMContactPatch										mContactPatch[PCM_MAX_CONTACTPATCH_SIZE];
-	PCMContactPatch*									mContactPatchPtr[PCM_MAX_CONTACTPATCH_SIZE];
-	const Ps::aos::FloatV								mContactDist;
-	const Ps::aos::FloatV								mReplaceBreakingThreshold;
-	const Ps::aos::PsTransformV&						mConvexTransform;
-	const Ps::aos::PsTransformV&						mMeshTransform;
-	Gu::MultiplePersistentContactManifold&				mMultiManifold;
-	Gu::ContactBuffer&									mContactBuffer;
+	PCMContactPatch									mContactPatch[PCM_MAX_CONTACTPATCH_SIZE];
+	PCMContactPatch*								mContactPatchPtr[PCM_MAX_CONTACTPATCH_SIZE];
+	const aos::FloatV								mContactDist;
+	const aos::FloatV								mReplaceBreakingThreshold;
+	const aos::PxTransformV&						mConvexTransform;
+	const aos::PxTransformV&						mMeshTransform;
+	Gu::MultiplePersistentContactManifold&			mMultiManifold;
+	PxContactBuffer&								mContactBuffer;
 
-	Ps::aos::FloatV										mAcceptanceEpsilon;
-	Ps::aos::FloatV										mSqReplaceBreakingThreshold;
-	Ps::aos::PsMatTransformV							mMeshToConvex;
-	Gu::MeshPersistentContact*							mManifoldContacts;
-	PxU32												mNumContacts;
-	PxU32												mNumContactPatch;
-	PxU32												mNumCalls;
-	Gu::CacheMap<Gu::CachedEdge, MAX_CACHE_SIZE>		mEdgeCache;
-	Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE>*		mDeferredContacts;
-	Cm::RenderOutput*									mRenderOutput;
+	aos::FloatV										mAcceptanceEpsilon;
+	aos::FloatV										mSqReplaceBreakingThreshold;
+	aos::PxMatTransformV							mMeshToConvex;
+	Gu::MeshPersistentContact*						mManifoldContacts;
+	PxU32											mNumContacts;
+	PxU32											mNumContactPatch;
+	PxU32											mNumCalls;
+	Gu::CacheMap<Gu::CachedEdge, MAX_CACHE_SIZE>	mEdgeCache;
+	Gu::CacheMap<Gu::CachedVertex, MAX_CACHE_SIZE>	mVertexCache;
+	PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE>*	mDeferredContacts;
+	PxRenderOutput*									mRenderOutput;
 
 	PCMMeshContactGeneration(
-		const Ps::aos::FloatVArg	contactDist,
-		const Ps::aos::FloatVArg	replaceBreakingThreshold,
-		const Ps::aos::PsTransformV& convexTransform,
-		const Ps::aos::PsTransformV& meshTransform,
+		const aos::FloatVArg	contactDist,
+		const aos::FloatVArg	replaceBreakingThreshold,
+		const aos::PxTransformV& convexTransform,
+		const aos::PxTransformV& meshTransform,
 		Gu::MultiplePersistentContactManifold& multiManifold,
-		Gu::ContactBuffer& contactBuffer,
-		Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE>* deferredContacts,
-		Cm::RenderOutput*  renderOutput
+		PxContactBuffer& contactBuffer,
+		PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE>* deferredContacts,
+		PxRenderOutput*  renderOutput
 
 	) :
 		mContactDist(contactDist),
@@ -91,7 +94,7 @@ public:
 		mRenderOutput(renderOutput)
 		
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		mNumContactPatch = 0;
 		mNumContacts = 0;
 		mNumCalls = 0;
@@ -130,7 +133,7 @@ public:
 		return true;
 	}
 	void prioritizeContactPatches();
-	void addManifoldPointToPatch(const Ps::aos::Vec3VArg currentPatchNormal, const Ps::aos::FloatVArg maxPen, const PxU32 previousNumContacts);
+	void addManifoldPointToPatch(const aos::Vec3VArg currentPatchNormal, const aos::FloatVArg maxPen, const PxU32 previousNumContacts);
 	void processContacts(const PxU8 maxContactPerManifold, const bool isNotLastPatch = true);
 };
 
@@ -138,9 +141,9 @@ public:
 	This function is based on the current patch normal to either create a new patch or merge the manifold contacts in this patch with the manifold contacts in the last existing
 	patch. This means there might be more than GU_SINGLE_MANIFOLD_CACHE_SIZE in a SinglePersistentContactManifold.
 */
-PX_FORCE_INLINE void PCMMeshContactGeneration::addManifoldPointToPatch(const Ps::aos::Vec3VArg currentPatchNormal, const Ps::aos::FloatVArg maxPen, const PxU32 previousNumContacts)
+PX_FORCE_INLINE void PCMMeshContactGeneration::addManifoldPointToPatch(const aos::Vec3VArg currentPatchNormal, const aos::FloatVArg maxPen, const PxU32 previousNumContacts)
 {
-	using namespace Ps::aos;
+	using namespace aos;
 
 	bool foundPatch = false;
 	//we have existing patch
@@ -197,7 +200,7 @@ PX_FORCE_INLINE void PCMMeshContactGeneration::addManifoldPointToPatch(const Ps:
 PX_FORCE_INLINE  void PCMMeshContactGeneration::prioritizeContactPatches()
 {
 	//we are using insertion sort to prioritize contact patchs
-	using namespace Ps::aos;
+	using namespace aos;
 	//sort the contact patch based on the max penetration
 	for(PxU32 i=1; i<mNumContactPatch; ++i)
 	{
@@ -226,7 +229,7 @@ PX_FORCE_INLINE  void PCMMeshContactGeneration::prioritizeContactPatches()
 
 PX_FORCE_INLINE void PCMMeshContactGeneration::processContacts(const PxU8 maxContactPerManifold, bool isNotLastPatch)
 {
-	using namespace Ps::aos;
+	using namespace aos;
 	
 	if(mNumContacts != 0)
 	{
@@ -260,7 +263,7 @@ public:
 	PxU32	mInds[3];			//48
 	PxU32	mTriangleIndex;		//52
 	PxU32	mFeatureIndex;		//56
-	PxU8	triFlags;			//57
+	PxU32	triFlags32;			//60
 };
 
 #if PX_VC 
@@ -273,30 +276,29 @@ class PCMConvexVsMeshContactGeneration : public PCMMeshContactGeneration
 	PCMConvexVsMeshContactGeneration &operator=(PCMConvexVsMeshContactGeneration  &);
 
 public:
-	Gu::CacheMap<Gu::CachedVertex, MAX_CACHE_SIZE>		mVertexCache;
-	Ps::aos::Vec3V										mHullCenterMesh;
+	aos::Vec3V							mHullCenterMesh;
 
-	const Gu::PolygonalData&							mPolyData;
-	SupportLocal*										mPolyMap;
-	const Cm::FastVertex2ShapeScaling&					mConvexScaling;  
-	bool												mIdtConvexScale;
-	bool												mSilhouetteEdgesAreActive;
+	const Gu::PolygonalData&			mPolyData;
+	SupportLocal*						mPolyMap;
+	const Cm::FastVertex2ShapeScaling&	mConvexScaling;  
+	bool								mIdtConvexScale;
+	bool								mSilhouetteEdgesAreActive;
 				
 	PCMConvexVsMeshContactGeneration(
-		const Ps::aos::FloatVArg						contactDistance,
-		const Ps::aos::FloatVArg						replaceBreakingThreshold,
-		const Ps::aos::PsTransformV&					convexTransform,
-		const Ps::aos::PsTransformV&					meshTransform,
-		Gu::MultiplePersistentContactManifold&			multiManifold,
-		Gu::ContactBuffer&								contactBuffer,
+		const aos::FloatVArg contactDistance,
+		const aos::FloatVArg replaceBreakingThreshold,
+		const aos::PxTransformV& convexTransform,
+		const aos::PxTransformV& meshTransform,
+		Gu::MultiplePersistentContactManifold& multiManifold,
+		PxContactBuffer& contactBuffer,
 
-		const Gu::PolygonalData&						polyData,
-		SupportLocal*									polyMap,
-		Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE>*	delayedContacts,
-		const Cm::FastVertex2ShapeScaling&				convexScaling,
-		bool											idtConvexScale,
-		bool											silhouetteEdgesAreActive,
-		Cm::RenderOutput*								renderOutput
+		const Gu::PolygonalData& polyData,
+		SupportLocal* polyMap,
+		PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE>* delayedContacts,
+		const Cm::FastVertex2ShapeScaling& convexScaling,
+		bool idtConvexScale,
+		bool silhouetteEdgesAreActive,
+		PxRenderOutput* renderOutput
 		
 	) : PCMMeshContactGeneration(contactDistance, replaceBreakingThreshold, convexTransform, meshTransform, multiManifold, contactBuffer, 
 		delayedContacts, renderOutput),
@@ -306,29 +308,28 @@ public:
 		mIdtConvexScale(idtConvexScale),
 		mSilhouetteEdgesAreActive(silhouetteEdgesAreActive)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 	
 		// Hull center in local space
 		const Vec3V hullCenterLocal = V3LoadU(mPolyData.mCenter);
 		// Hull center in mesh space
 		mHullCenterMesh = mMeshToConvex.transformInv(hullCenterLocal);
-
 	}
 
 	bool generateTriangleFullContactManifold(Gu::TriangleV& localTriangle, const PxU32 triangleIndex, const PxU32* triIndices, const PxU8 triFlags, const Gu::PolygonalData& polyData,  Gu::SupportLocalImpl<Gu::TriangleV>* localTriMap, Gu::SupportLocal* polyMap, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts,
-		const Ps::aos::FloatVArg contactDist, Ps::aos::Vec3V& patchNormal);
+		const aos::FloatVArg contactDist, aos::Vec3V& patchNormal);
 
-	bool generatePolyDataContactManifold(Gu::TriangleV& localTriangle, const PxU32 featureIndex, const PxU32 triangleIndex, const PxU8 triFlags, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts, const Ps::aos::FloatVArg contactDist, Ps::aos::Vec3V& patchNormal);
+	bool generatePolyDataContactManifold(Gu::TriangleV& localTriangle, const PxU32 featureIndex, const PxU32 triangleIndex, const PxU8 triFlags, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts, const aos::FloatVArg contactDist, aos::Vec3V& patchNormal);
 	void generateLastContacts();
-	void addContactsToPatch(const Ps::aos::Vec3VArg patchNormal, const PxU32 previousNumContacts);
+	void addContactsToPatch(const aos::Vec3VArg patchNormal, const PxU32 previousNumContacts);
 
 	bool processTriangle(const PxVec3* verts, PxU32 triangleIndex, PxU8 triFlags, const PxU32* vertInds); 
 
 	static bool generateTriangleFullContactManifold(Gu::TriangleV& localTriangle, const PxU32 triangleIndex, const PxU8 triFlags, const Gu::PolygonalData& polyData,  Gu::SupportLocalImpl<Gu::TriangleV>* localTriMap, Gu::SupportLocal* polyMap, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts,
-		const Ps::aos::FloatVArg contactDist, Ps::aos::Vec3V& patchNormal, Cm::RenderOutput* renderOutput = NULL);
+		const aos::FloatVArg contactDist, aos::Vec3V& patchNormal, PxRenderOutput* renderOutput = NULL);
 
-	static bool processTriangle(const Gu::PolygonalData& polyData, SupportLocal* polyMap, const PxVec3* verts, const PxU32 triangleIndex, PxU8 triFlags, const Ps::aos::FloatVArg inflation, const bool isDoubleSided, 
-		const Ps::aos::PsTransformV& convexTransform, const Ps::aos::PsMatTransformV& meshToConvex, Gu::MeshPersistentContact* manifoldContact, PxU32& numContacts); 
+	static bool processTriangle(const Gu::PolygonalData& polyData, SupportLocal* polyMap, const PxVec3* verts, const PxU32 triangleIndex, PxU8 triFlags, const aos::FloatVArg inflation, const bool isDoubleSided, 
+		const aos::PxTransformV& convexTransform, const aos::PxMatTransformV& meshToConvex, Gu::MeshPersistentContact* manifoldContact, PxU32& numContacts); 
 };
 
 #if PX_VC 
@@ -337,98 +338,98 @@ public:
 
 struct SortedTriangle
 {
-	Ps::aos::FloatV		mSquareDist;
-	PxU32				mIndex;
+	aos::FloatV	mSquareDist;
+	PxU32		mIndex;
 
 	PX_FORCE_INLINE bool operator < (const SortedTriangle& data) const
 	{
-		return Ps::aos::FAllGrtrOrEq(mSquareDist, data.mSquareDist) ==0;
+		return aos::FAllGrtrOrEq(mSquareDist, data.mSquareDist) ==0;
 	}
 };
 
 class PCMSphereVsMeshContactGeneration : public PCMMeshContactGeneration
 {
 public:
-	Ps::aos::Vec3V									mSphereCenter;
-	Ps::aos::FloatV									mSphereRadius;
-	Ps::aos::FloatV									mSqInflatedSphereRadius;
-	Ps::InlineArray<SortedTriangle, 64>				mSortedTriangle;
+	aos::Vec3V							mSphereCenter;
+	aos::FloatV							mSphereRadius;
+	aos::FloatV							mSqInflatedSphereRadius;
+	PxInlineArray<SortedTriangle, 64>	mSortedTriangle;
 
 	PCMSphereVsMeshContactGeneration(
-		const Ps::aos::Vec3VArg							sphereCenter,
-		const Ps::aos::FloatVArg						sphereRadius,
-		const Ps::aos::FloatVArg						contactDist,
-		const Ps::aos::FloatVArg						replaceBreakingThreshold,
-		const Ps::aos::PsTransformV&					sphereTransform,
-		const Ps::aos::PsTransformV&					meshTransform,
-		MultiplePersistentContactManifold&				multiManifold,
-		ContactBuffer&									contactBuffer,
-		Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE>*	deferredContacts,
-		Cm::RenderOutput*			renderOutput = NULL
+		const aos::Vec3VArg sphereCenter,
+		const aos::FloatVArg sphereRadius,
+		const aos::FloatVArg contactDist,
+		const aos::FloatVArg replaceBreakingThreshold,
+		const aos::PxTransformV& sphereTransform,
+		const aos::PxTransformV& meshTransform,
+		MultiplePersistentContactManifold& multiManifold,
+		PxContactBuffer& contactBuffer,
+		PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE>* deferredContacts,
+		PxRenderOutput* renderOutput = NULL
 
 	) : PCMMeshContactGeneration(contactDist, replaceBreakingThreshold, sphereTransform, meshTransform, multiManifold, 
 		contactBuffer, deferredContacts, renderOutput),
 		mSphereCenter(sphereCenter),
 		mSphereRadius(sphereRadius)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const FloatV inflatedSphereRadius = FAdd(sphereRadius, contactDist);
 		mSqInflatedSphereRadius = FMul(inflatedSphereRadius, inflatedSphereRadius);
 	}
 
 	bool processTriangle(const PxVec3* verts, PxU32 triangleIndex, PxU8 triFlags, const PxU32* vertInds);
 	void generateLastContacts();
-	void addToPatch(const Ps::aos::Vec3VArg contactP, const Ps::aos::Vec3VArg patchNormal, 
-		const Ps::aos::FloatV pen, const PxU32 triangleIndex);
+	void addToPatch(const aos::Vec3VArg contactP, const aos::Vec3VArg patchNormal, 
+		const aos::FloatV pen, const PxU32 triangleIndex);
 };
 
 class PCMCapsuleVsMeshContactGeneration : public PCMMeshContactGeneration
 {
 	PCMCapsuleVsMeshContactGeneration &operator=(PCMCapsuleVsMeshContactGeneration &);
 public:
-	Ps::aos::FloatV mInflatedRadius;
-	Ps::aos::FloatV	mSqInflatedRadius;
+	aos::FloatV mInflatedRadius;
+	aos::FloatV	mSqInflatedRadius;
 	const CapsuleV&	mCapsule;
 
 				
 	PCMCapsuleVsMeshContactGeneration( 
-		const CapsuleV&									capsule,
-		const Ps::aos::FloatVArg						contactDist,
-		const Ps::aos::FloatVArg						replaceBreakingThreshold,
-		const Ps::aos::PsTransformV&					sphereTransform,
-		const Ps::aos::PsTransformV&					meshTransform,
-		Gu::MultiplePersistentContactManifold&			multiManifold,
-		Gu::ContactBuffer&								contactBuffer,
-		Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE>*	deferredContacts,
-		Cm::RenderOutput*								renderOutput = NULL
+		const CapsuleV& capsule,
+		const aos::FloatVArg contactDist,
+		const aos::FloatVArg replaceBreakingThreshold,
+		const aos::PxTransformV& sphereTransform,
+		const aos::PxTransformV& meshTransform,
+		Gu::MultiplePersistentContactManifold& multiManifold,
+		PxContactBuffer& contactBuffer,
+		PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE>* deferredContacts,
+		PxRenderOutput* renderOutput = NULL
 
 	) : PCMMeshContactGeneration(contactDist, replaceBreakingThreshold, sphereTransform, meshTransform, multiManifold, contactBuffer, 
 		deferredContacts, renderOutput),
 		mCapsule(capsule)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		mInflatedRadius = FAdd(capsule.radius, contactDist);
 		mSqInflatedRadius = FMul(mInflatedRadius, mInflatedRadius);
 	}
 
-	void generateEEContacts(const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b,const Ps::aos::Vec3VArg c, const Ps::aos::Vec3VArg normal, const PxU32 triangleIndex, 
-		const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg q, const Ps::aos::FloatVArg sqInflatedRadius, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
+	void generateEEContacts(const aos::Vec3VArg a, const aos::Vec3VArg b,const aos::Vec3VArg c, const aos::Vec3VArg normal, const PxU32 triangleIndex, 
+		const aos::Vec3VArg p, const aos::Vec3VArg q, const aos::FloatVArg sqInflatedRadius, const PxU32 previousNumContacts, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
 
-	void generateEE(const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg q,  const Ps::aos::FloatVArg sqInflatedRadius, const Ps::aos::Vec3VArg normal, const PxU32 triangleIndex,
-		const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
+	void generateEE(const aos::Vec3VArg p, const aos::Vec3VArg q,  const aos::FloatVArg sqInflatedRadius, const aos::Vec3VArg normal, const PxU32 triangleIndex,
+		const aos::Vec3VArg a, const aos::Vec3VArg b, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
 	
-	static bool generateContacts(const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b,const Ps::aos::Vec3VArg c, const Ps::aos::Vec3VArg planeNormal, const Ps::aos::Vec3VArg normal,  
-		const PxU32 triangleIndex, const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg q, const Ps::aos::FloatVArg inflatedRadius, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
+	static void generateContacts(const aos::Vec3VArg a, const aos::Vec3VArg b,const aos::Vec3VArg c, const aos::Vec3VArg planeNormal, const aos::Vec3VArg normal,  
+		const PxU32 triangleIndex, const aos::Vec3VArg p, const aos::Vec3VArg q, const aos::FloatVArg inflatedRadius, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
 
-	static void generateEEContactsMTD(const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b,const Ps::aos::Vec3VArg c, const Ps::aos::Vec3VArg normal, const PxU32 triangleIndex,
-		const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg q, const Ps::aos::FloatVArg inflatedRadius, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
+	static void generateEEContactsMTD(const aos::Vec3VArg a, const aos::Vec3VArg b,const aos::Vec3VArg c, const aos::Vec3VArg normal, const PxU32 triangleIndex,
+		const aos::Vec3VArg p, const aos::Vec3VArg q, const aos::FloatVArg inflatedRadius, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
 
-	static void generateEEMTD(const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg q,  const Ps::aos::FloatVArg inflatedRadius, const Ps::aos::Vec3VArg normal, const PxU32 trianlgeIndex, 
-		const Ps::aos::Vec3VArg a, const Ps::aos::Vec3VArg b, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
+	static void generateEEMTD(const aos::Vec3VArg p, const aos::Vec3VArg q,  const aos::FloatVArg inflatedRadius, const aos::Vec3VArg normal, const PxU32 trianlgeIndex, 
+		const aos::Vec3VArg a, const aos::Vec3VArg b, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
 
 	bool processTriangle(const PxVec3* verts, const PxU32 triangleIndex, PxU8 triFlags, const PxU32* vertInds);
 
-	static bool processTriangle(const TriangleV& triangle, const PxU32 triangleIndex, const CapsuleV& capsule, const Ps::aos::FloatVArg inflatedRadius, const PxU8 triFlag, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
+	static bool processTriangle(const TriangleV& triangle, const PxU32 triangleIndex, const CapsuleV& capsule, const aos::FloatVArg inflatedRadius, const PxU8 triFlag, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts);
 };
 
 }

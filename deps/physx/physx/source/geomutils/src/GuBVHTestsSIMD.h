@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-
-#ifndef GU_RAWQUERY_TESTS_SIMD_H
-#define GU_RAWQUERY_TESTS_SIMD_H
+#ifndef GU_BVH_TESTS_SIMD_H
+#define GU_BVH_TESTS_SIMD_H
 
 #include "foundation/PxTransform.h"
 #include "foundation/PxBounds3.h"
 #include "geometry/PxBoxGeometry.h"
 #include "geometry/PxSphereGeometry.h"
 #include "geometry/PxCapsuleGeometry.h"
-#include "CmPhysXCommon.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
+	using namespace aos;
 namespace Gu
 {
 
@@ -114,15 +112,15 @@ struct AABBAABBTest
 	, mExtents(V3LoadU(b.getExtents()))
 	{ }
 
-	PX_FORCE_INLINE Ps::IntBool operator()(const Vec3V center, const Vec3V extents) const		
+	PX_FORCE_INLINE PxIntBool operator()(const Vec3V center, const Vec3V extents) const		
 	{	
 		//PxVec3 c; PxVec3_From_Vec3V(center, c);
 		//PxVec3 e; PxVec3_From_Vec3V(extents, e);
-		//if(PxAbs(c.x - mCenter.x) > mExtents.x + e.x) return Ps::IntFalse;
-		//if(PxAbs(c.y - mCenter.y) > mExtents.y + e.y) return Ps::IntFalse;
-		//if(PxAbs(c.z - mCenter.z) > mExtents.z + e.z) return Ps::IntFalse;
-		//return Ps::IntTrue;
-		return Ps::IntBool(V3AllGrtrOrEq(V3Add(mExtents, extents), V3Abs(V3Sub(center, mCenter))));
+		//if(PxAbs(c.x - mCenter.x) > mExtents.x + e.x) return IntFalse;
+		//if(PxAbs(c.y - mCenter.y) > mExtents.y + e.y) return IntFalse;
+		//if(PxAbs(c.z - mCenter.z) > mExtents.z + e.z) return IntFalse;
+		//return IntTrue;
+		return PxIntBool(V3AllGrtrOrEq(V3Add(mExtents, extents), V3Abs(V3Sub(center, mCenter))));
 	}
 
 private:
@@ -142,12 +140,12 @@ struct SphereAABBTest
 	, mRadius2(FLoad(radius * radius))
 	{}
 	
-	PX_FORCE_INLINE Ps::IntBool operator()(const Vec3V boxCenter, const Vec3V boxExtents) const		
+	PX_FORCE_INLINE PxIntBool operator()(const Vec3V boxCenter, const Vec3V boxExtents) const		
 	{	
 		const Vec3V offset = V3Sub(mCenter, boxCenter);
 		const Vec3V closest = V3Clamp(offset, V3Neg(boxExtents), boxExtents);
 		const Vec3V d = V3Sub(offset, closest);
-		return Ps::IntBool(BAllEqTTTT(FIsGrtrOrEq(mRadius2, V3Dot(d, d))));
+		return PxIntBool(BAllEqTTTT(FIsGrtrOrEq(mRadius2, V3Dot(d, d))));
 	}
 
 private:
@@ -166,9 +164,9 @@ struct CapsuleAABBTest: private RayAABBTest
 		: RayAABBTest(origin, unitDir, length, inflation)
 	{}
 
-	PX_FORCE_INLINE Ps::IntBool operator()(const Vec3VArg center, const Vec3VArg extents) const
+	PX_FORCE_INLINE PxIntBool operator()(const Vec3VArg center, const Vec3VArg extents) const
 	{
-		return Ps::IntBool(RayAABBTest::check<true>(center, extents));
+		return PxIntBool(RayAABBTest::check<true>(center, extents));
 	}
 };
 
@@ -198,13 +196,13 @@ struct OBBAABBTests
 	}
 
 	// TODO: force inline it?
-	Ps::IntBool operator()(const Vec3V center, const Vec3V extents) const
+	PxIntBool operator()(const Vec3V center, const Vec3V extents) const
 	{	
 		const Vec3V t = V3Sub(mT, center);
 
 		// class I - axes of AABB
 		if(V3OutOfBounds(t, V3Add(extents, mBB_xyz)))
-			return Ps::IntFalse;
+			return PxIntFalse;
 
 		const Vec3V rX = mRT.col0, rY = mRT.col1, rZ = mRT.col2;
 		const Vec3V arX = mART.col0, arY = mART.col1, arZ = mART.col2;
@@ -217,11 +215,11 @@ struct OBBAABBTests
 			const Vec3V v = V3ScaleAdd(rZ, tZ, V3ScaleAdd(rY, tY, V3Scale(rX, tX)));
 			const Vec3V v2 = V3ScaleAdd(arZ, eZ, V3ScaleAdd(arY, eY, V3ScaleAdd(arX, eX, mExtents)));
 			if(V3OutOfBounds(v, v2))
-				return Ps::IntFalse;
+				return PxIntFalse;
 		}
 
 		if(!fullTest)
-			return Ps::IntTrue;
+			return PxIntTrue;
 
 		// class III - edge cross products. Almost all OBB tests early-out with type I or type II,
 		// so early-outs here probably aren't useful (TODO: profile)
@@ -238,7 +236,7 @@ struct OBBAABBTests
 		const Vec3V vc2 = V3ScaleAdd(arX, eY, V3ScaleAdd(arY, eX, mBB_789));
 		const BoolV bc = BOr(V3IsGrtr(vc, vc2), V3IsGrtr(V3Neg(vc2), vc));
 
-		return Ps::IntBool(BAllEqFFFF(BOr(ba, BOr(bb,bc))));
+		return PxIntBool(BAllEqFFFF(BOr(ba, BOr(bb,bc))));
 	}
 
 	Vec3V		mExtents;	// extents of OBB

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,11 +33,12 @@
 using namespace physx;
 using namespace Sc;
 
-TriggerInteraction::TriggerInteraction(	ShapeSim& tShape, ShapeSim& oShape) :
+TriggerInteraction::TriggerInteraction(	ShapeSimBase& tShape, ShapeSimBase& oShape) :
 										ElementSimInteraction(tShape, oShape, InteractionType::eTRIGGER, InteractionFlag::eRB_ELEMENT | InteractionFlag::eFILTERABLE),
-										mFlags(PROCESS_THIS_FRAME),
 										mLastFrameHadContacts(false)
 {
+	mFlags = PROCESS_THIS_FRAME;
+
 	// The PxPairFlags eNOTIFY_TOUCH_FOUND and eNOTIFY_TOUCH_LOST get stored and mixed up with internal flags. Make sure any breaking change gets noticed.
 	PX_COMPILE_TIME_ASSERT(PxPairFlag::eNOTIFY_TOUCH_FOUND < PxPairFlag::eNOTIFY_TOUCH_LOST);
 	PX_COMPILE_TIME_ASSERT((PAIR_FLAGS_MASK & PxPairFlag::eNOTIFY_TOUCH_FOUND) == PxPairFlag::eNOTIFY_TOUCH_FOUND);
@@ -66,17 +66,21 @@ TriggerInteraction::~TriggerInteraction()
 
 static bool isOneActorActive(TriggerInteraction* trigger)
 {
-	const BodySim* bodySim0 = trigger->getTriggerShape().getBodySim();
-	if(bodySim0 && bodySim0->isActive())
+	const ActorSim& actorSim0 = trigger->getTriggerShape().getActor();
+	if(actorSim0.isActive() && actorSim0.isDynamicRigid())
 	{
+		const BodySim* bodySim0 = static_cast<const BodySim*>(&actorSim0);
+		PX_UNUSED(bodySim0);
 		PX_ASSERT(!bodySim0->isKinematic() || bodySim0->readInternalFlag(BodySim::BF_KINEMATIC_MOVED) || 
 					bodySim0->readInternalFlag(BodySim::InternalFlags(BodySim::BF_KINEMATIC_SETTLING | BodySim::BF_KINEMATIC_SETTLING_2)));
 		return true;
 	}
 
-	const BodySim* bodySim1 = trigger->getOtherShape().getBodySim();
-	if(bodySim1 && bodySim1->isActive())
+	const ActorSim& actorSim1 = trigger->getOtherShape().getActor();
+	if(actorSim1.isActive() && actorSim1.isDynamicRigid()) 
 	{
+		const BodySim* bodySim1 = static_cast<const BodySim*>(&actorSim1);
+		PX_UNUSED(bodySim1);
 		PX_ASSERT(!bodySim1->isKinematic() || bodySim1->readInternalFlag(BodySim::BF_KINEMATIC_MOVED) || 
 			bodySim1->readInternalFlag(BodySim::InternalFlags(BodySim::BF_KINEMATIC_SETTLING | BodySim::BF_KINEMATIC_SETTLING_2)));
 		return true;

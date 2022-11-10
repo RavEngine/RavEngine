@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_BIG_CONVEX_DATA2_H
 #define GU_BIG_CONVEX_DATA2_H
 
+#include "common/PxPhysXCommonConfig.h"
 #include "common/PxMetaData.h"
 #include "GuBigConvexData.h"
 
@@ -38,7 +38,7 @@ namespace physx
 	class PxSerializationContext;
 	class PxDeserializationContext;
 
-	class PX_PHYSX_COMMON_API BigConvexData : public Ps::UserAllocated
+	class PX_PHYSX_COMMON_API BigConvexData : public PxUserAllocated
 	{
 	//= ATTENTION! =====================================================================================
 	// Changing the data layout of this class breaks the binary serialization format.  See comments for 

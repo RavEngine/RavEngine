@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "SnConvX.h"
 #include <assert.h>
+#include "foundation/PxString.h"
 
 using namespace physx;
 
@@ -51,7 +51,7 @@ bool Sn::ConvX::registerUnionType(const char* unionName, const char* typeName, i
 	const PxU32 nb = mUnions.size();
 	for(PxU32 i=0;i<nb;i++)
 	{
-		if(strcmp(mUnions[i].mName, unionName)==0)
+		if(Pxstrcmp(mUnions[i].mName, unionName)==0)
 		{
 			UnionType t;
 			t.mTypeName		= typeName;
@@ -71,7 +71,7 @@ const char* Sn::ConvX::getTypeName(const char* unionName, int typeValue)
 	const PxU32 nb = mUnions.size();
 	for(PxU32 i=0;i<nb;i++)
 	{
-		if(strcmp(mUnions[i].mName, unionName)==0)
+		if(Pxstrcmp(mUnions[i].mName, unionName)==0)
 		{
 			const PxU32 nbTypes = mUnions[i].mTypes.size();
 			for(PxU32 j=0;j<nbTypes;j++)

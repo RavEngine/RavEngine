@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-#ifndef PX_XML_VISITOR_READER_H
-#define PX_XML_VISITOR_READER_H
 
-#include "PsArray.h"
-#include "PsUtilities.h"
+#ifndef SN_XML_VISITOR_READER_H
+#define SN_XML_VISITOR_READER_H
+
+#include "foundation/PxArray.h"
+#include "foundation/PxUtilities.h"
 #include "RepXMetaDataPropertyVisitor.h"
 #include "SnPxStreamOperators.h"
 #include "SnXmlMemoryPoolStreams.h"
@@ -46,7 +46,7 @@ namespace physx { namespace Sn {
 	{
 		for ( PxU32 idx = 0; inTable[idx].mName != NULL; ++idx )
 		{
-			if ( physx::shdfnd::stricmp( inTable[idx].mName, inName ) == 0 )
+			if ( physx::Pxstricmp( inTable[idx].mName, inName ) == 0 )
 				return inTable[idx].mValue;
 		}
 		return 0;
@@ -105,7 +105,7 @@ namespace physx { namespace Sn {
 		TObjType* outObject = static_cast<TObjType*>(const_cast<PxBase*>(collection.find(id)));
 		if (outObject == NULL)
 		{
-			Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 				"PxSerialization::createCollectionFromXml: "
 				"Reference to ID %d cannot be resolved. Make sure externalRefs collection is specified if required and "
 				"check Xml file for completeness.",
@@ -154,7 +154,7 @@ namespace physx { namespace Sn {
 		{
 			PxU32 tempValue = 0;
 			stringToFlagsType( value, allocator, tempValue, inConversions );
-			outFlags = PxFlags<TEnumType,TStorageType>(Ps::to16(tempValue) );
+			outFlags = PxFlags<TEnumType,TStorageType>(PxTo16(tempValue) );
 			return true;
 		}
 		return false;
@@ -178,7 +178,7 @@ namespace physx { namespace Sn {
 	
 
 	template<typename TReaderType>
-	inline void parseShape( TReaderType& visitor, PxGeometry*& outResult, Ps::Array<PxMaterial*>& outMaterials)
+	inline void parseShape( TReaderType& visitor, PxGeometry*& outResult, PxArray<PxMaterial*>& outMaterials)
 	{
 		XmlReader& theReader( visitor.mReader );
 		PxCollection& collection = visitor.mCollection;
@@ -214,13 +214,13 @@ namespace physx { namespace Sn {
 				{
 					const char* geomTypeName = visitor.getCurrentItemName();
 
-					if ( physx::shdfnd::stricmp( geomTypeName, "PxSphereGeometry" ) == 0 ) outResult = parseGeometry(visitor, sphere);
-					else if ( physx::shdfnd::stricmp( geomTypeName, "PxPlaneGeometry" ) == 0 ) outResult = parseGeometry(visitor, plane);
-					else if ( physx::shdfnd::stricmp( geomTypeName, "PxCapsuleGeometry" ) == 0 ) outResult = parseGeometry(visitor, capsule);
-					else if ( physx::shdfnd::stricmp( geomTypeName, "PxBoxGeometry" ) == 0 ) outResult = parseGeometry(visitor, box);
-					else if ( physx::shdfnd::stricmp( geomTypeName, "PxConvexMeshGeometry" ) == 0 ) outResult = parseGeometry(visitor, convex);
-					else if ( physx::shdfnd::stricmp( geomTypeName, "PxTriangleMeshGeometry" ) == 0 ) outResult = parseGeometry(visitor, mesh);
-					else if ( physx::shdfnd::stricmp( geomTypeName, "PxHeightFieldGeometry" ) == 0 ) outResult = parseGeometry(visitor, heightField);
+					if ( physx::Pxstricmp( geomTypeName, "PxSphereGeometry" ) == 0 ) outResult = parseGeometry(visitor, sphere);
+					else if ( physx::Pxstricmp( geomTypeName, "PxPlaneGeometry" ) == 0 ) outResult = parseGeometry(visitor, plane);
+					else if ( physx::Pxstricmp( geomTypeName, "PxCapsuleGeometry" ) == 0 ) outResult = parseGeometry(visitor, capsule);
+					else if ( physx::Pxstricmp( geomTypeName, "PxBoxGeometry" ) == 0 ) outResult = parseGeometry(visitor, box);
+					else if ( physx::Pxstricmp( geomTypeName, "PxConvexMeshGeometry" ) == 0 ) outResult = parseGeometry(visitor, convex);
+					else if ( physx::Pxstricmp( geomTypeName, "PxTriangleMeshGeometry" ) == 0 ) outResult = parseGeometry(visitor, mesh);
+					else if ( physx::Pxstricmp( geomTypeName, "PxHeightFieldGeometry" ) == 0 ) outResult = parseGeometry(visitor, heightField);
 					else
 						PX_ASSERT( false );
 				}
@@ -249,7 +249,7 @@ namespace physx { namespace Sn {
 			for ( bool success = visitor.gotoFirstChild(); success; 
 					success = visitor.gotoNextSibling() )
 			{
-				if( 0 == physx::shdfnd::stricmp( visitor.getCurrentItemName(), "PxShapeRef" ) )
+				if( 0 == physx::Pxstricmp( visitor.getCurrentItemName(), "PxShapeRef" ) )
 				{
 					PxShape* shape = NULL;
 					if(!readReference<PxShape>( theReader, collection, shape ))
@@ -259,13 +259,13 @@ namespace physx { namespace Sn {
 				}
 				else
 				{
-					Ps::Array<PxMaterial*> materials;
+					PxArray<PxMaterial*> materials;
 					PxGeometry* geometry = NULL;
 					parseShape( visitor, geometry, materials);
 					PxShape* theShape = NULL;
 					if ( materials.size() )
 					{
-						theShape = visitor.mArgs.physics.createShape( *geometry, materials.begin(), Ps::to16(materials.size()), true );
+						theShape = visitor.mArgs.physics.createShape( *geometry, materials.begin(), PxTo16(materials.size()), true );
 						if ( theShape )
 						{
 							readComplexObj( visitor, theShape );
@@ -300,6 +300,18 @@ namespace physx { namespace Sn {
 						break;
 					case PxGeometryType::eHEIGHTFIELD :
 						static_cast<PxHeightFieldGeometry*>(geometry)->~PxHeightFieldGeometry();
+						break;
+					case PxGeometryType::eTETRAHEDRONMESH :
+						static_cast<PxTetrahedronMeshGeometry*>(geometry)->~PxTetrahedronMeshGeometry();
+						break;
+					case PxGeometryType::ePARTICLESYSTEM:
+						static_cast<PxParticleSystemGeometry*>(geometry)->~PxParticleSystemGeometry();
+						break;
+					case PxGeometryType::eHAIRSYSTEM:
+						static_cast<PxHairSystemGeometry*>(geometry)->~PxHairSystemGeometry();
+						break;
+					case PxGeometryType::eCUSTOM :
+						static_cast<PxCustomGeometry*>(geometry)->~PxCustomGeometry();
 						break;
 
 					case PxGeometryType::eGEOMETRY_COUNT:
@@ -581,7 +593,7 @@ namespace physx { namespace Sn {
 		void bufferCollectionProperty( PxU32* /*key*/, const TAccessorType& inProp, TInfoType& inInfo )
 		{
 			typedef typename TAccessorType::prop_type TPropertyType;
-			Ps::InlineArray<TPropertyType,5> theData;
+			PxInlineArray<TPropertyType,5> theData;
 	
 			this->pushCurrentContext();
 			if (  this->gotoTopName() )
@@ -655,10 +667,10 @@ namespace physx { namespace Sn {
 		void handleRigidActorGlobalPose(const PxRigidActorGlobalPosePropertyInfo& inProp)
 		{
 			PxArticulationLink* link = mObj->template is<PxArticulationLink>();
-			bool isReducedCoordinateLink = (link != NULL) && link->getArticulation().getConcreteType() == PxConcreteType::eARTICULATION_REDUCED_COORDINATE;
+			bool isReducedCoordinateLink = (link != NULL);
 			if (!isReducedCoordinateLink)
 			{
-				PxRepXPropertyAccessor<PxPropertyInfoName::PxRigidActor_GlobalPose, PxRigidActor, const PxTransform &, PxTransform> theAccessor( inProp );
+				PxRepXPropertyAccessor<PxPropertyInfoName::PxRigidActor_GlobalPose, PxRigidActor, const PxTransform &, PxTransform> theAccessor(inProp);
 				simpleProperty(PxPropertyInfoName::PxRigidActor_GlobalPose, theAccessor);
 			}
 		}
@@ -722,7 +734,7 @@ namespace physx { namespace Sn {
 			{
 				// If the rigid body is kinematic, we cannot set the LinearVelocity or AngularVelocity
 				const bool kinematic = (mObj->getRigidBodyFlags() & PxRigidBodyFlag::eKINEMATIC);
-				if(kinematic && (inProp.mProperty.mKey == PxPropertyInfoName::PxRigidBody_LinearVelocity || inProp.mProperty.mKey == PxPropertyInfoName::PxRigidBody_AngularVelocity))
+				if(kinematic && (inProp.mProperty.mKey == PxPropertyInfoName::PxRigidDynamic_LinearVelocity || inProp.mProperty.mKey == PxPropertyInfoName::PxRigidDynamic_AngularVelocity))
 					return;
 
 				inProp.set(mObj, value );
@@ -747,7 +759,7 @@ namespace physx { namespace Sn {
 		void handleShapeMaterials( const PxShapeMaterialsProperty& ) //these were handled during construction.
 		{
 		}
-		void handleGeometryProperty( const PxShapeGeometryProperty& )
+		void handleGeomProperty( const PxShapeGeomProperty& )
 		{
 		}
 	private:
@@ -771,23 +783,12 @@ namespace physx { namespace Sn {
 			pushName( "Joint" );
 			if ( gotoTopName() )
 			{
-				PxArticulationBase& articulationBase = mObj->getArticulation();
-
-				if (articulationBase.getConcreteType() == PxConcreteType::eARTICULATION)
-				{
-					PxArticulationJoint* theJoint = static_cast<PxArticulationJoint*>((prop.get(mObj)));
-					readComplexObj(*this, theJoint);
-					//Add joint to PxCollection, since PxArticulation requires PxArticulationLink and joint.
-					mCollection.add(*theJoint);
-				}
-				else
-				{
-					PX_ASSERT(articulationBase.getConcreteType() == PxConcreteType::eARTICULATION_REDUCED_COORDINATE);
-					PxArticulationJointReducedCoordinate* theJoint = static_cast<PxArticulationJointReducedCoordinate*>((prop.get(mObj)));
-					readComplexObj(*this, theJoint);
-					//Add joint to PxCollection, since PxArticulation requires PxArticulationLink and joint.
-					mCollection.add(*theJoint);
-				}
+			
+				PxArticulationJointReducedCoordinate* theJoint = static_cast<PxArticulationJointReducedCoordinate*>((prop.get(mObj)));
+				readComplexObj(*this, theJoint);
+				//Add joint to PxCollection, since PxArticulation requires PxArticulationLink and joint.
+				mCollection.add(*theJoint);
+				
 			}
 			popName();
 		}
@@ -833,25 +834,6 @@ namespace physx { namespace Sn {
 		}
 		inSerializer.popCurrentContext();
 	}
-	
-	template<>
-	struct RepXVisitorReader<PxArticulation> : public RepXVisitorReaderBase<PxArticulation>
-	{
-		RepXVisitorReader( TReaderNameStack& names, PxProfileArray<PxU32>& contexts, const PxRepXInstantiationArgs& args, XmlReader& reader, PxArticulation* obj
-								, XmlMemoryAllocator&	alloc, PxCollection& collection, bool& ret)
-			: RepXVisitorReaderBase<PxArticulation>( names, contexts, args, reader, obj, alloc, collection, ret)
-		{
-		}
-		RepXVisitorReader( const RepXVisitorReader<PxArticulation>& other )
-			: RepXVisitorReaderBase<PxArticulation>( other )
-		{
-		}
-		
-		void handleArticulationLinks( const PxArticulationLinkCollectionProp& inProp )
-		{
-			physx::Sn::readProperty( *this, mObj, inProp );
-		}
-	};
 
 	template<>
 	struct RepXVisitorReader<PxArticulationReducedCoordinate> : public RepXVisitorReaderBase<PxArticulationReducedCoordinate>

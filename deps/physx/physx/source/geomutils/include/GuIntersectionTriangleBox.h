@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +31,6 @@
 
 #include "foundation/PxMat33.h"
 #include "common/PxPhysXCommonConfig.h"
-#include "CmPhysXCommon.h"
 
 namespace physx
 {
@@ -51,7 +49,7 @@ namespace Gu
 	\param p2		[in] triangle's third point
 	\return	true if triangle overlaps box
 	*/
-	PX_PHYSX_COMMON_API Ps::IntBool intersectTriangleBox_ReferenceCode(const PxVec3& center, const PxVec3& extents, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2);
+	PX_PHYSX_COMMON_API PxIntBool intersectTriangleBox_ReferenceCode(const PxVec3& center, const PxVec3& extents, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2);
 
 	/**
 	Tests if a triangle overlaps a box (AABB). This is the optimized SIMD code.
@@ -71,7 +69,7 @@ namespace Gu
 	\param p2		[in] triangle's third point
 	\return	true if triangle overlaps box
 	*/
-	PX_PHYSX_COMMON_API Ps::IntBool intersectTriangleBox_Unsafe(const PxVec3& center, const PxVec3& extents, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2);
+	PX_PHYSX_COMMON_API PxIntBool intersectTriangleBox_Unsafe(const PxVec3& center, const PxVec3& extents, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2);
 
 	/**
 	Tests if a triangle overlaps a box (OBB).
@@ -84,7 +82,7 @@ namespace Gu
 	\param p2		[in] triangle's third point
 	\return	true if triangle overlaps box
 	*/
-	PX_PHYSX_COMMON_API Ps::IntBool intersectTriangleBox(const BoxPadded& box, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2);
+	PX_PHYSX_COMMON_API PxIntBool intersectTriangleBox(const BoxPadded& box, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2);
 } // namespace Gu
 }
 

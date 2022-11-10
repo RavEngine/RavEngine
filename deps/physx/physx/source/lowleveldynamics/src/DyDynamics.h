@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef DY_DYNAMICS_H
 #define DY_DYNAMICS_H
@@ -60,23 +58,14 @@ namespace IG
 
 class PxsRigidBody;
 
-class PxsStreamedThresholdTable;
-
 struct PxsBodyCore;
-struct PxsIslandObjects;
 class PxsIslandIndices;
 struct PxsIndexedInteraction;
-class PxsIslandManager;
-struct PxsIndexedConstraint;
 struct PxsIndexedContactManager;
-class PxsHeapMemoryAllocator;
-class PxsMemoryManager;
-class PxsDefaultMemoryManager;
 struct PxSolverConstraintDesc;
 
 namespace Cm
 {
-	class Bitmap;
 	class SpatialVector;
 }
 
@@ -109,7 +98,7 @@ struct SolverIslandObjects;
 \brief Solver body pool (array) that enforces 128-byte alignment for base address of array.
 \note This reduces cache misses on platforms with 128-byte-size cache lines by aligning the start of the array to the beginning of a cache line.
 */
-class SolverBodyPool : public Ps::Array<PxSolverBody, Ps::AlignedAllocator<128, Ps::ReflectionAllocator<PxSolverBody> > > 
+class SolverBodyPool : public PxArray<PxSolverBody, PxAlignedAllocator<128, PxReflectionAllocator<PxSolverBody> > > 
 { 
 	PX_NOCOPY(SolverBodyPool)
 public:
@@ -120,14 +109,14 @@ public:
 \brief Solver body data pool (array) that enforces 128-byte alignment for base address of array.
 \note This reduces cache misses on platforms with 128-byte-size cache lines by aligning the start of the array to the beginning of a cache line.
 */
-class SolverBodyDataPool : public Ps::Array<PxSolverBodyData, Ps::AlignedAllocator<128, Ps::ReflectionAllocator<PxSolverBodyData> > >
+class SolverBodyDataPool : public PxArray<PxSolverBodyData, PxAlignedAllocator<128, PxReflectionAllocator<PxSolverBodyData> > >
 {
 	PX_NOCOPY(SolverBodyDataPool)
 public:
 	SolverBodyDataPool() {}
 };
 
-class SolverConstraintDescPool : public Ps::Array<PxSolverConstraintDesc, Ps::AlignedAllocator<128, Ps::ReflectionAllocator<PxSolverConstraintDesc> > >
+class SolverConstraintDescPool : public PxArray<PxSolverConstraintDesc, PxAlignedAllocator<128, PxReflectionAllocator<PxSolverConstraintDesc> > >
 {
 	PX_NOCOPY(SolverConstraintDescPool)
 public:
@@ -141,8 +130,8 @@ public:
 struct IslandContext
 {
 	//The thread context for this island (set in in the island start task, released in the island end task)
-	ThreadContext* mThreadContext;
-	PxsIslandIndices		mCounts;
+	ThreadContext*		mThreadContext;
+	PxsIslandIndices	mCounts;
 };
 
 
@@ -170,15 +159,15 @@ public:
 									Cm::FlushPool& taskPool,
 									PxvSimStats& simStats,
 									PxTaskManager* taskManager,
-									Ps::VirtualAllocatorCallback* allocator,
+									PxVirtualAllocatorCallback* allocator,
 									PxsMaterialManager* materialManager,
-									IG::IslandSim* accurateIslandSim,
+									IG::SimpleIslandManager* islandManager,
 									PxU64 contextID,
 									const bool enableStabilization,
 									const bool useEnhancedDeterminism,
-									const bool useAdaptiveForce,
 									const PxReal maxBiasCoefficient,
-									const bool frictionEveryIteration
+									const bool frictionEveryIteration,
+									const PxReal lengthScale
 									);
 	
 	/**
@@ -200,6 +189,8 @@ public:
 
 #if PX_ENABLE_SIM_STATS
 	void									addThreadStats(const ThreadContext::ThreadSimStats& stats);
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 
 	/**
@@ -217,13 +208,13 @@ public:
 	*/
 
 	virtual void						update(IG::SimpleIslandManager& simpleIslandManager, PxBaseTask* continuation, PxBaseTask* lostTouchTask,
-		PxsContactManager** foundPatchManagers, PxU32 nbFoundPatchManagers, PxsContactManager** lostPatchManagers, PxU32 nbLostPatchManagers,
-		PxU32 maxPatchesPerCM, PxsContactManagerOutputIterator& iter, PxsContactManagerOutput* gpuOutputs, const PxReal dt, const PxVec3& gravity, const PxU32 bitMapWordCounts);
+		PxvNphaseImplementationContext* nPhase, const PxU32 maxPatchesPerCM, const PxU32 maxArticulationLinks, const PxReal dt, const PxVec3& gravity, PxBitMapPinned& changedHandleMap);
 
 
-	void updatePostKinematic(IG::SimpleIslandManager& simpleIslandManager, PxBaseTask* continuation, PxBaseTask* lostTouchTask);
+	void updatePostKinematic(IG::SimpleIslandManager& simpleIslandManager, PxBaseTask* continuation, PxBaseTask* lostTouchTask, const PxU32 maxLinks);
 
-	virtual void						processLostPatches(IG::SimpleIslandManager& /*simpleIslandManager*/, PxsContactManager** /*lostPatchManagers*/, PxU32 /*nbLostPatchManagers*/, PxsContactManagerOutputIterator& /*iterator*/){}
+	virtual void						processLostPatches(IG::SimpleIslandManager& /*simpleIslandManager*/, PxsContactManager** /*lostPatchManagers*/, PxU32 /*nbLostPatchManagers*/, PxsContactManagerOutputCounts* /*outCounts*/){}
+	virtual void						processFoundPatches(IG::SimpleIslandManager& /*simpleIslandManager*/, PxsContactManager** /*foundPatchManagers*/, PxU32 /*nbFoundPatchManagers*/, PxsContactManagerOutputCounts* /*outCounts*/) {}
 
 	virtual void						updateBodyCore(PxBaseTask* continuation);
 
@@ -234,6 +225,8 @@ public:
 	virtual void							mergeResults();
 
 	virtual void							getDataStreamBase(void*& /*contactStreamBase*/, void*& /*patchStreamBase*/, void*& /*forceAndIndicesStreamBase*/){}
+
+	virtual PxSolverType::Enum				getSolverType()	const	{ return PxSolverType::ePGS;	}
 
 	/**
 	\brief Allocates and returns a thread context object.
@@ -267,15 +260,15 @@ protected:
 														Cm::FlushPool& taskPool,
 														PxvSimStats& simStats,
 														PxTaskManager* taskManager,
-														Ps::VirtualAllocatorCallback* allocator,
+														PxVirtualAllocatorCallback* allocator,
 														PxsMaterialManager* materialManager,
-														IG::IslandSim* accurateIslandSim,
+														IG::SimpleIslandManager* islandManager,
 														PxU64 contextID,
 														const bool enableStabilization,
 														const bool useEnhancedDeterminism,
-														const bool useAdaptiveForce,
 														const PxReal maxBiasCoefficient,
-														const bool frictionEveryIteration
+														const bool frictionEveryIteration,
+														const PxReal lengthScale
 														);
 	/**
 	\brief Destructor for DynamicsContext
@@ -295,8 +288,8 @@ protected:
 	\param[in,out] desc The PxSolverConstraintDesc
 	\param[in] constraint The PxsIndexedInteraction
 	*/
-	void								setDescFromIndices(PxSolverConstraintDesc& desc, 
-													  const PxsIndexedInteraction& constraint, const PxU32 solverBodyOffset);
+	void								setDescFromIndices(PxSolverConstraintDesc& desc, const IG::IslandSim& islandSim,
+										const PxsIndexedInteraction& constraint, const PxU32 solverBodyOffset);
 
 
 	void								setDescFromIndices(PxSolverConstraintDesc& desc, IG::EdgeIndex edgeIndex,
@@ -340,7 +333,7 @@ protected:
 
 	
 
-	void								integrateCoreParallel(SolverIslandParams& params, IG::IslandSim& islandSim);
+	void								integrateCoreParallel(SolverIslandParams& params, Cm::SpatialVectorF* deltaV, IG::IslandSim& islandSim);
 
 
 
@@ -390,27 +383,27 @@ protected:
 	/**
 	\brief An array of contact constraint batch headers
 	*/
-	Ps::Array<PxConstraintBatchHeader> mContactConstraintBatchHeaders;
+	PxArray<PxConstraintBatchHeader> mContactConstraintBatchHeaders;
 
 	/**
 	\brief Array of motion velocities for all bodies in the scene.
 	*/
-	Ps::Array<Cm::SpatialVector> mMotionVelocityArray;
+	PxArray<Cm::SpatialVector> mMotionVelocityArray;
 
 	/**
 	\brief Array of body core pointers for all bodies in the scene.
 	*/
-	Ps::Array<PxsBodyCore*>	mBodyCoreArray;
+	PxArray<PxsBodyCore*>	mBodyCoreArray;
 
 	/**
 	\brief Array of rigid body pointers for all bodies in the scene.
 	*/
-	Ps::Array<PxsRigidBody*> mRigidBodyArray;
+	PxArray<PxsRigidBody*> mRigidBodyArray;
 
 	/**
-	\brief Array of articulationpointers for all articulations in the scene.
+	\brief Array of articulation pointers for all articulations in the scene.
 	*/
-	Ps::Array<ArticulationV*> mArticulationArray;
+	PxArray<FeatherstoneArticulation*> mArticulationArray;
 
 	/**
 	\brief Global pool for solver bodies. Kinematic bodies are at the start, and then dynamic bodies
@@ -424,7 +417,7 @@ protected:
 
 	ThresholdStream*		mExceededForceThresholdStream[2]; //this store previous and current exceeded force thresholdStream	
 
-	Ps::Array<PxU32>		mExceededForceThresholdStreamMask;
+	PxArray<PxU32>		mExceededForceThresholdStreamMask;
 
 	/**
 	\brief Interface to the solver core.
@@ -432,11 +425,11 @@ protected:
 	*/
 	SolverCore*				mSolverCore[PxFrictionType::eFRICTION_COUNT];
 
-	Ps::Array<PxU32>		mSolverBodyRemapTable;				//Remaps from the "active island" index to the index within a solver island
+	PxArray<PxU32>		mSolverBodyRemapTable;				//Remaps from the "active island" index to the index within a solver island
 
-	Ps::Array<PxU32>		mNodeIndexArray;					//island node index
+	PxArray<PxU32>		mNodeIndexArray;					//island node index
 
-	Ps::Array<PxsIndexedContactManager> mContactList;
+	PxArray<PxsIndexedContactManager> mContactList;
 	
 	/**
 	\brief The total number of kinematic bodies in the scene
@@ -487,4 +480,4 @@ private:
 }
 }
 
-#endif //DY_DYNAMICS_H
+#endif

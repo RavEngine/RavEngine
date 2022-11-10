@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#include "foundation/PxUtilities.h"
 #include "GuConvexHelper.h"
-#include "GuGeometryUnion.h"
 #include "GuInternal.h"
-#include "PsUtilities.h"
+#include "GuConvexMesh.h"
 
 using namespace physx;
 using namespace Gu;
@@ -51,16 +50,14 @@ void Gu::getScaledConvex(	PxVec3*& scaledVertices, PxU8*& scaledIndices, PxVec3*
 		scaledVertices = dstVertices;
 		for(PxU32 i=0; i<nbVerts; i++)
 		{
-			scaledIndices[i] = Ps::to8(i);	//generate trivial indexing.
+			scaledIndices[i] = PxTo8(i);	//generate trivial indexing.
 			scaledVertices[i] = convexScaling * srcVerts[srcIndices[i]];
 		}
 	}
 }
 
-bool Gu::getConvexData(const Gu::GeometryUnion& shape, Cm::FastVertex2ShapeScaling& scaling, PxBounds3& bounds, PolygonalData& polyData)
+bool Gu::getConvexData(const PxConvexMeshGeometry& shapeConvex, Cm::FastVertex2ShapeScaling& scaling, PxBounds3& bounds, PolygonalData& polyData)
 {
-	const PxConvexMeshGeometryLL& shapeConvex = shape.get<const PxConvexMeshGeometryLL>();
-
 	const bool idtScale = shapeConvex.scale.isIdentity();
 	if(!idtScale)
 		scaling.init(shapeConvex.scale);
@@ -68,10 +65,11 @@ bool Gu::getConvexData(const Gu::GeometryUnion& shape, Cm::FastVertex2ShapeScali
 	// PT: this version removes all the FCMPs and almost all LHS. This is temporary until
 	// the legacy 3x3 matrix totally vanishes but meanwhile do NOT do useless matrix conversions,
 	// it's a perfect recipe for LHS.
-	PX_ASSERT(!shapeConvex.hullData->mAABB.isEmpty());
-	bounds = shapeConvex.hullData->mAABB.transformFast(scaling.getVertex2ShapeSkew());
+	const ConvexHullData* hullData = _getHullData(shapeConvex);
+	PX_ASSERT(!hullData->mAABB.isEmpty());
+	bounds = hullData->mAABB.transformFast(scaling.getVertex2ShapeSkew());
 
-	getPolygonalData_Convex(&polyData, shapeConvex.hullData, scaling);
+	getPolygonalData_Convex(&polyData, hullData, scaling);
 
 	// PT: non-uniform scaling invalidates the "internal objects" optimization, since our internal sphere
 	// might become an ellipsoid or something. Just disable the optimization if scaling is used...

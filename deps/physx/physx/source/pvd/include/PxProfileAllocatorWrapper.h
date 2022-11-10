@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-
-#ifndef PXPVDSDK_PXPROFILEALLOCATORWRAPPER_H
-#define PXPVDSDK_PXPROFILEALLOCATORWRAPPER_H
+#ifndef PX_PROFILE_ALLOCATOR_WRAPPER_H
+#define PX_PROFILE_ALLOCATOR_WRAPPER_H
 
 #include "foundation/PxPreprocessor.h"
 #include "foundation/PxAllocatorCallback.h"
 #include "foundation/PxErrorCallback.h"
 #include "foundation/PxAssert.h"
-
-#include "PsArray.h"
-#include "PsHashMap.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxArray.h"
 
 namespace physx { namespace profile {
 
@@ -74,7 +71,7 @@ namespace physx { namespace profile {
 	{
 		static const char* getName()
 		{
-#if PX_LINUX || PX_ANDROID || PX_PS4 || PX_IOS || PX_OSX || PX_EMSCRIPTEN || PX_SWITCH
+#if PX_LINUX || PX_OSX || PX_EMSCRIPTEN || PX_SWITCH
 			return __PRETTY_FUNCTION__;
 #else
 			return typeid(T).name();
@@ -151,17 +148,17 @@ namespace physx { namespace profile {
 	\brief Helper struct to encapsulate the array
 	*/
 	template<class T>
-	struct PxProfileArray : public shdfnd::Array<T, PxProfileWrapperReflectionAllocator<T> >
+	struct PxProfileArray : public PxArray<T, PxProfileWrapperReflectionAllocator<T> >
 	{
 		typedef PxProfileWrapperReflectionAllocator<T> TAllocatorType;
 
 		PxProfileArray( PxProfileAllocatorWrapper& inWrapper )
-			: shdfnd::Array<T, TAllocatorType >( TAllocatorType( inWrapper ) )
+			: PxArray<T, TAllocatorType >( TAllocatorType( inWrapper ) )
 		{
 		}
 
 		PxProfileArray( const PxProfileArray< T >& inOther )
-			: shdfnd::Array<T, TAllocatorType >( inOther, inOther )
+			: PxArray<T, TAllocatorType >( inOther, inOther )
 		{
 		}
 	};
@@ -169,10 +166,10 @@ namespace physx { namespace profile {
 	/**
 	\brief Helper struct to encapsulate the array
 	*/
-	template<typename TKeyType, typename TValueType, typename THashType=shdfnd::Hash<TKeyType> >
-	struct PxProfileHashMap : public shdfnd::HashMap<TKeyType, TValueType, THashType, PxProfileWrapperReflectionAllocator< TValueType > >
+	template<typename TKeyType, typename TValueType, typename THashType=PxHash<TKeyType> >
+	struct PxProfileHashMap : public PxHashMap<TKeyType, TValueType, THashType, PxProfileWrapperReflectionAllocator< TValueType > >
 	{
-		typedef shdfnd::HashMap<TKeyType, TValueType, THashType, PxProfileWrapperReflectionAllocator< TValueType > > THashMapType;
+		typedef PxHashMap<TKeyType, TValueType, THashType, PxProfileWrapperReflectionAllocator< TValueType > > THashMapType;
 		typedef PxProfileWrapperReflectionAllocator<TValueType> TAllocatorType;
 		PxProfileHashMap( PxProfileAllocatorWrapper& inWrapper )
 			: THashMapType( TAllocatorType( inWrapper ) )
@@ -228,4 +225,5 @@ namespace physx { namespace profile {
 #define PX_PROFILE_NEW( allocator, dtype ) new (physx::profile::PxProfileAllocate<dtype>( allocator, __FILE__, __LINE__ )) dtype
 #define PX_PROFILE_DELETE( allocator, obj ) physx::profile::PxProfileDeleteAndDeallocate( allocator, obj );
 
-#endif // PXPVDSDK_PXPROFILEALLOCATORWRAPPER_H
+#endif
+

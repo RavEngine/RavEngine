@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_CORE_UTILTY_TYPES_H
-#define PX_CORE_UTILTY_TYPES_H
+#ifndef PX_CORE_UTILITY_TYPES_H
+#define PX_CORE_UTILITY_TYPES_H
 /** \addtogroup common
 @{
 */
@@ -78,6 +76,20 @@ struct PxTypedStridedData
 	{
 	}
 
+	PxTypedStridedData(const TDataType* data_, PxU32 stride_ = 0)
+		: stride(stride_)
+		, data(data_)
+	{
+	}
+	
+	PX_INLINE const TDataType& at(PxU32 idx) const
+	{
+		PxU32 theStride(stride);
+		if (theStride == 0)
+			theStride = sizeof(TDataType);
+		PxU32 offset(theStride * idx);
+		return *(reinterpret_cast<const TDataType*>(reinterpret_cast<const PxU8*>(data) + offset));
+	}
 };
 
 struct PxBoundedData : public PxStridedData
@@ -183,7 +195,7 @@ public:
 	
 	void clear()
 	{
-		memset(mDataPairs, 0, NB_ELEMENTS*2*sizeof(PxReal));
+		PxMemSet(mDataPairs, 0, NB_ELEMENTS*2*sizeof(PxReal));
 		mNbDataPairs = 0;
 	}
 

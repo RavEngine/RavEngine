@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,30 +22,26 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
-
+#include "geomutils/PxContactBuffer.h"
 #include "GuContactMethodImpl.h"
 #include "GuInternal.h"
 #include "GuSegment.h"
-#include "GuGeometryUnion.h"
 
-namespace physx
-{
-namespace Gu
-{
-bool contactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
+using namespace physx;
+
+bool Gu::contactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 	PX_UNUSED(shape0);
 
 	// Get actual shape data
-	//const PxPlaneGeometry& shapePlane = shape.get<const PxPlaneGeometry>();
-	const PxCapsuleGeometry& shapeCapsule = shape1.get<const PxCapsuleGeometry>();
+	//const PxPlaneGeometry& shapePlane = checkedCast<PxPlaneGeometry>(shape0);
+	const PxCapsuleGeometry& shapeCapsule = checkedCast<PxCapsuleGeometry>(shape1);
 
 	const PxTransform capsuleToPlane = transform0.transformInv(transform1);
 
@@ -77,5 +72,3 @@ bool contactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
 	}
 	return contact;
 }
-}//Gu
-}//physx

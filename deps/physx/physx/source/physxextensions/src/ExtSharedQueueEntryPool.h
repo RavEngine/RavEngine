@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef EXT_SHARED_QUEUE_ENTRY_POOL_H
+#define EXT_SHARED_QUEUE_ENTRY_POOL_H
 
-#ifndef PX_PHYSICS_EXTENSIONS_NP_SHARED_QUEUE_ENTRY_POOL_H
-#define PX_PHYSICS_EXTENSIONS_NP_SHARED_QUEUE_ENTRY_POOL_H
-
-#include "CmPhysXCommon.h"
-#include "PsAllocator.h"
-#include "PsArray.h"
-#include "PsSList.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxSList.h"
 
 namespace physx
 {
 namespace Ext
 {
-	class SharedQueueEntry : public Ps::SListEntry
+	class SharedQueueEntry : public PxSListEntry
 	{
 	public:
 		SharedQueueEntry(void* objectRef) : mObjectRef(objectRef), mPooledEntry(false) {}
@@ -56,11 +53,11 @@ namespace Ext
 #pragma warning(disable:4324)	// Padding was added at the end of a structure because of a __declspec(align) value.
 #endif							// Because of the SList member I assume*/
 
-	template<class Alloc = typename Ps::AllocatorTraits<SharedQueueEntry>::Type >
+	template<class Alloc = typename PxAllocatorTraits<SharedQueueEntry>::Type >
 	class SharedQueueEntryPool : private Alloc
 	{
 	public:
-		SharedQueueEntryPool(PxU32 poolSize, const Alloc& alloc = Alloc(PX_DEBUG_EXP("SharedQueueEntryPool")));
+		SharedQueueEntryPool(PxU32 poolSize, const Alloc& alloc = Alloc("SharedQueueEntryPool"));
 		~SharedQueueEntryPool();
 
 		SharedQueueEntry* getEntry(void* objectRef);
@@ -68,21 +65,18 @@ namespace Ext
 
 	private:
 		SharedQueueEntry*					mTaskEntryPool;
-		Ps::SList							mTaskEntryPtrPool;
+		PxSList							mTaskEntryPtrPool;
 	};
 
 #if PX_VC
 #pragma warning(pop)
 #endif
 
-} // namespace Ext
-
-
 template <class Alloc>
-Ext::SharedQueueEntryPool<Alloc>::SharedQueueEntryPool(PxU32 poolSize, const Alloc& alloc)
+SharedQueueEntryPool<Alloc>::SharedQueueEntryPool(PxU32 poolSize, const Alloc& alloc)
 	: Alloc(alloc)
 {
-	Ps::AlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc("SharedQueueEntryPool");
+	PxAlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc("SharedQueueEntryPool");
 
 	mTaskEntryPool = poolSize ? reinterpret_cast<SharedQueueEntry*>(alignedAlloc.allocate(sizeof(SharedQueueEntry) * poolSize, __FILE__, __LINE__)) : NULL;
 
@@ -101,18 +95,18 @@ Ext::SharedQueueEntryPool<Alloc>::SharedQueueEntryPool(PxU32 poolSize, const All
 
 
 template <class Alloc>
-Ext::SharedQueueEntryPool<Alloc>::~SharedQueueEntryPool()
+SharedQueueEntryPool<Alloc>::~SharedQueueEntryPool()
 {
 	if (mTaskEntryPool)
 	{
-		Ps::AlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc("SharedQueueEntryPool");
+		PxAlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc("SharedQueueEntryPool");
 		alignedAlloc.deallocate(mTaskEntryPool);
 	}
 }
 
 
 template <class Alloc>
-Ext::SharedQueueEntry* Ext::SharedQueueEntryPool<Alloc>::getEntry(void* objectRef)
+SharedQueueEntry* SharedQueueEntryPool<Alloc>::getEntry(void* objectRef)
 {
 	SharedQueueEntry* e = static_cast<SharedQueueEntry*>(mTaskEntryPtrPool.pop());
 	if (e)
@@ -123,7 +117,7 @@ Ext::SharedQueueEntry* Ext::SharedQueueEntryPool<Alloc>::getEntry(void* objectRe
 	}
 	else
 	{
-		Ps::AlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc;
+		PxAlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc;
 		e = reinterpret_cast<SharedQueueEntry*>(alignedAlloc.allocate(sizeof(SharedQueueEntry), __FILE__, __LINE__));
 		if (e)
 		{
@@ -137,7 +131,7 @@ Ext::SharedQueueEntry* Ext::SharedQueueEntryPool<Alloc>::getEntry(void* objectRe
 
 
 template <class Alloc>
-void Ext::SharedQueueEntryPool<Alloc>::putEntry(Ext::SharedQueueEntry& entry)
+void SharedQueueEntryPool<Alloc>::putEntry(SharedQueueEntry& entry)
 {
 	if (entry.mPooledEntry)
 	{
@@ -146,11 +140,12 @@ void Ext::SharedQueueEntryPool<Alloc>::putEntry(Ext::SharedQueueEntry& entry)
 	}
 	else
 	{
-		Ps::AlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc;
+		PxAlignedAllocator<PX_SLIST_ALIGNMENT, Alloc> alignedAlloc;
 		alignedAlloc.deallocate(&entry);
 	}
 }
 
-}
+} // namespace Ext
+} // namespace physx
 
 #endif

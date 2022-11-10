@@ -20,7 +20,7 @@ def cmakeExt():
 
 
 def filterPreset(presetName):
-    winPresetFilter = ['win','uwp','ps4','switch','xboxone','android','crosscompile','xboxseriesx']
+    winPresetFilter = ['win','switch','crosscompile']
     if sys.platform == 'win32':        
         if any(presetName.find(elem) != -1 for elem in winPresetFilter):
             return True
@@ -59,8 +59,7 @@ def noPresetProvided():
     	input = raw_input
     except NameError: 
     	pass    
-    mode = int(input('Enter preset number: '))
-    print('Running generate_projects.bat ' + presetList[mode])
+    mode = int(eval(input('Enter preset number: ')))
     return presetList[mode]
 
 class CMakePreset:
@@ -102,10 +101,6 @@ class CMakePreset:
                 cmParam = '-D' + cmakeParam.attrib['name'] + '=\"' + \
                     os.environ['PHYSX_ROOT_DIR'] + '/' + \
                     cmakeParam.attrib['value'] + '\"'
-            elif cmakeParam.attrib['name'] == 'ANDROID_ABI':
-                cmParam = '-D' + \
-                    cmakeParam.attrib['name'] + '=\"' + \
-                    cmakeParam.attrib['value'] + '\"'
             else:
                 cmParam = '-D' + \
                     cmakeParam.attrib['name'] + '=' + \
@@ -117,8 +112,6 @@ class CMakePreset:
         if self.targetPlatform == 'linux':
             return False
         elif self.targetPlatform == 'linuxAarch64':
-            return False
-        elif self.targetPlatform == 'android':
             return False
         return True
 
@@ -159,8 +152,6 @@ class CMakePreset:
             outString = outString + '-G \"Visual Studio 16 2019\"'
         elif self.compiler == 'xcode':
             outString = outString + '-G Xcode'
-        elif self.targetPlatform == 'android':
-            outString = outString + '-G \"MinGW Makefiles\"'
         elif self.targetPlatform == 'linux':
             outString = outString + '-G \"Unix Makefiles\"'
         elif self.targetPlatform == 'linuxAarch64':
@@ -176,85 +167,6 @@ class CMakePreset:
             outString = outString + ' -DTARGET_BUILD_PLATFORM=windows'
             outString = outString + ' -DPX_OUTPUT_ARCH=x86'
             return outString
-        elif self.targetPlatform == 'uwp64':
-            outString = outString + ' -Ax64'
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=uwp'
-            outString = outString + ' -DPX_OUTPUT_ARCH=x86'
-            outString = outString + ' -DCMAKE_SYSTEM_NAME=WindowsStore'
-            outString = outString + ' -DCMAKE_SYSTEM_VERSION=10.0'            
-            return outString
-        elif self.targetPlatform == 'uwp32':
-            outString = outString + ' -AWin32'
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=uwp'
-            outString = outString + ' -DPX_OUTPUT_ARCH=x86'
-            outString = outString + ' -DCMAKE_SYSTEM_NAME=WindowsStore'
-            outString = outString + ' -DCMAKE_SYSTEM_VERSION=10.0'            
-            return outString
-        elif self.targetPlatform == 'uwparm32':
-            outString = outString + ' -AARM'
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=uwp'
-            outString = outString + ' -DPX_OUTPUT_ARCH=arm'
-            outString = outString + ' -DCMAKE_SYSTEM_NAME=WindowsStore'
-            outString = outString + ' -DCMAKE_SYSTEM_VERSION=10.0'            
-            return outString
-        elif self.targetPlatform == 'uwparm64':
-            outString = outString + ' -AARM64'
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=uwp'
-            outString = outString + ' -DPX_OUTPUT_ARCH=arm'
-            outString = outString + ' -DCMAKE_SYSTEM_NAME=WindowsStore'
-            outString = outString + ' -DCMAKE_SYSTEM_VERSION=10.0'            
-            return outString
-        elif self.targetPlatform == 'ps4':
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=ps4'
-            outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                os.environ['PM_CMakeModules_PATH'] + '/ps4/PS4Toolchain.txt'
-            outString = outString + ' -DCMAKE_GENERATOR_PLATFORM=ORBIS'
-            outString = outString + ' -DSUPPRESS_SUFFIX=ON'
-            return outString
-        elif self.targetPlatform == 'xboxone':
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=xboxone'
-            if self.compiler == 'vc14':
-                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                    os.environ['PM_CMakeModules_PATH'] + \
-                    '/xboxone/XboxOneToolchain.txt'
-            elif self.compiler == 'vc15':
-                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                    os.environ['PM_CMakeModules_PATH'] + \
-                    '/xboxone/XboxOneToolchainVC15.txt'
-                outString = outString + ' -T v141'
-                outString = outString + ' -DCMAKE_VS150PATH=' + \
-                    os.environ['VS150PATH']
-            elif self.compiler == 'vc16':
-                # TODO: Toolchain file need to be created
-                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                    os.environ['PM_CMakeModules_PATH'] + \
-                    '/xboxone/XboxOneToolchainVC16.txt'
-                outString = outString + ' -T v142'
-                outString = outString + ' -DCMAKE_VS160PATH=' + \
-                    os.environ['VS160PATH']            
-            outString = outString + ' -DCMAKE_GENERATOR_PLATFORM=Durango'
-            outString = outString + ' -DSUPPRESS_SUFFIX=ON'
-            return outString
-        elif self.targetPlatform == 'xboxseriesx':
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=xboxseriesx'
-            if self.compiler == 'vc15':
-                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                    os.environ['PM_CMakeModules_PATH'] + \
-                    '/xboxseriesx/XboxSeriesXToolchainVC15.txt'
-                outString = outString + ' -T v141'
-                outString = outString + ' -DCMAKE_VS150PATH=' + \
-                    os.environ['VS150PATH']
-            if self.compiler == 'vc16':
-                # TODO: Toolchain file need to be created
-                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                    os.environ['PM_CMakeModules_PATH'] + \
-                    '/xboxseriesx/XboxSeriesXToolchainVC16.txt'
-                outString = outString + ' -T v142'
-                outString = outString + ' -DCMAKE_VS160PATH=' + \
-                    os.environ['VS160PATH']
-            outString = outString + ' -DCMAKE_GENERATOR_PLATFORM=Gaming.Xbox.Scarlett.x64'
-            outString = outString + ' -DSUPPRESS_SUFFIX=ON'
-            return outString
         elif self.targetPlatform == 'switch32':
             outString = outString + ' -DTARGET_BUILD_PLATFORM=switch'
             outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
@@ -268,22 +180,6 @@ class CMakePreset:
                 os.environ['PM_CMakeModules_PATH'] + \
                 '/switch/NX64Toolchain.txt'
             outString = outString + ' -DCMAKE_GENERATOR_PLATFORM=NX64'
-            return outString
-        elif self.targetPlatform == 'android':
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=android'
-            outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                os.environ['PM_CMakeModules_PATH'] + \
-                '/android/android.toolchain.cmake'
-            outString = outString + ' -DANDROID_STL=\"gnustl_static\"'
-            outString = outString + ' -DCM_ANDROID_FP=\"softfp\"'
-            if os.environ.get('PM_AndroidNDK_PATH') is None:
-                print('Please provide path to android NDK in variable PM_AndroidNDK_PATH.')
-                exit(-1)
-            else:
-                outString = outString + ' -DANDROID_NDK=' + \
-                    os.environ['PM_AndroidNDK_PATH']
-                outString = outString + ' -DCMAKE_MAKE_PROGRAM=\"' + \
-                    os.environ['PM_AndroidNDK_PATH'] + '\\prebuilt\\windows\\bin\\make.exe\"'
             return outString
         elif self.targetPlatform == 'linux':
             outString = outString + ' -DTARGET_BUILD_PLATFORM=linux'
@@ -317,12 +213,6 @@ class CMakePreset:
         elif self.targetPlatform == 'mac64':
             outString = outString + ' -DTARGET_BUILD_PLATFORM=mac'
             outString = outString + ' -DPX_OUTPUT_ARCH=x86'
-            return outString
-        elif self.targetPlatform == 'ios64':
-            outString = outString + ' -DTARGET_BUILD_PLATFORM=ios'
-            outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=\"' + \
-                os.environ['PM_CMakeModules_PATH'] + '/ios/ios.toolchain.cmake\"'
-            outString = outString + ' -DPX_OUTPUT_ARCH=arm'
             return outString
         return ''
 
@@ -401,13 +291,22 @@ def presetProvided(pName):
 
 
 def main():
+    if (sys.version_info[0] < 3) or (sys.version_info[0] == 3 and sys.version_info[1] < 5):
+        print("You are using Python {}. You must use Python 3.5 and up. Please read README.md for requirements.").format(sys.version)
+        exit()
     if len(sys.argv) != 2:
         presetName = noPresetProvided()
-        os.chdir(os.environ['PHYSX_ROOT_DIR'])
         if sys.platform == 'win32':
-            os.system('generate_projects.bat ' + presetName)
+            print('Running generate_projects.bat ' + presetName)
+            cmd = 'generate_projects.bat {}'.format(presetName)
+            result = subprocess.run(cmd, cwd=os.environ['PHYSX_ROOT_DIR'], check=True, universal_newlines=True)
+            # TODO: catch exception and add capture errors
         else:
-            os.system('./generate_projects.sh ' + presetName)
+            print('Running generate_projects.sh ' + presetName)
+            # TODO: once we have Python 3.7.2 for linux, add the text=True instead of universal_newlines 
+            cmd = './generate_projects.sh {}'.format(presetName)
+            result = subprocess.run(['bash', './generate_projects.sh', presetName], cwd=os.environ['PHYSX_ROOT_DIR'], check=True, universal_newlines=True)
+            # TODO: catch exception and add capture errors
     else:
         presetName = sys.argv[1]
         if filterPreset(presetName):

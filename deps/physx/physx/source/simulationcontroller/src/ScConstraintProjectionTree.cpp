@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,10 +34,9 @@
 #include "ScConstraintSim.h"
 #include "ScConstraintInteraction.h"
 
-#include "PsFoundation.h"
-#include "PsBasicTemplates.h"
-#include "PsSort.h"
-#include "PsArray.h"
+#include "foundation/PxBasicTemplates.h"
+#include "foundation/PxSort.h"
+#include "foundation/PxArray.h"
 
 using namespace physx;
 
@@ -207,7 +205,7 @@ void Sc::ConstraintProjectionTree::buildProjectionTrees(ConstraintGroupNode& roo
 	PX_ASSERT(&root == root.parent);
 	PX_ASSERT(!root.hasProjectionTreeRoot());
 
-	Ps::InlineArray<BodyRank, 64> bodyRankArray PX_DEBUG_EXP("bodyRankArray");
+	PxInlineArray<BodyRank, 64> bodyRankArray;
 	BodyRank br;
 	PxU32 constraintsToProjectCount = 0;
 	ConstraintGroupNode* node0 = &root;
@@ -257,9 +255,9 @@ void Sc::ConstraintProjectionTree::buildProjectionTrees(ConstraintGroupNode& roo
 	{
 		//sort bodyRankArray
 
-		Ps::sort(&bodyRankArray.front(), bodyRankArray.size(), Ps::Greater<BodyRank>());
+		PxSort(&bodyRankArray.front(), bodyRankArray.size(), PxGreater<BodyRank>());
 
-		ConstraintGroupNode** nodeQueue = reinterpret_cast<ConstraintGroupNode**>(PX_ALLOC_TEMP(sizeof(ConstraintGroupNode*)*bodyRankArray.size(), "ProjectionNodeQueue"));
+		ConstraintGroupNode** nodeQueue = PX_ALLOCATE(ConstraintGroupNode*, bodyRankArray.size(), "ProjectionNodeQueue");
 		if (nodeQueue)
 		{
 			//build the projectionTree
@@ -402,7 +400,7 @@ void Sc::ConstraintProjectionTree::buildProjectionTrees(ConstraintGroupNode& roo
 			PX_FREE(nodeQueue);
 		}
 		else
-			Ps::getFoundation().error(PxErrorCode::eOUT_OF_MEMORY, __FILE__, __LINE__, "Allocating projection node queue failed!");
+			PxGetFoundation().error(PxErrorCode::eOUT_OF_MEMORY, __FILE__, __LINE__, "Allocating projection node queue failed!");
 	}
 }
 
@@ -508,7 +506,7 @@ void Sc::ConstraintProjectionTree::purgeProjectionTrees(ConstraintGroupNode& roo
 }
 
 
-void Sc::ConstraintProjectionTree::projectPoseForTree(ConstraintGroupNode& node, Ps::Array<BodySim*>& projectedBodies)
+void Sc::ConstraintProjectionTree::projectPoseForTree(ConstraintGroupNode& node, PxArray<BodySim*>& projectedBodies)
 {
 	// create a dummy node to keep the loops compact while covering the special case of the first node
 	PX_ASSERT(node.body);
@@ -552,7 +550,7 @@ void Sc::ConstraintProjectionTree::projectPoseForTree(ConstraintGroupNode& node,
 }
 
 
-void Sc::ConstraintProjectionTree::projectPose(ConstraintGroupNode& root, Ps::Array<BodySim*>& projectedBodies)
+void Sc::ConstraintProjectionTree::projectPose(ConstraintGroupNode& root, PxArray<BodySim*>& projectedBodies)
 {
 	PX_ASSERT(&root == root.parent);
 	PX_ASSERT(root.hasProjectionTreeRoot());

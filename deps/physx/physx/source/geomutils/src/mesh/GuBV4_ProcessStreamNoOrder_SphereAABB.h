@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +31,7 @@
 
 #ifdef GU_BV4_USE_SLABS
 /*	template<class LeafTestT, int i, class ParamsT>
-	PX_FORCE_INLINE Ps::IntBool BV4_ProcessNodeNoOrder_Swizzled(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataSwizzled* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
+	PX_FORCE_INLINE PxIntBool BV4_ProcessNodeNoOrder_Swizzled(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataSwizzled* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
 	{
 //		OPC_SLABS_GET_CE(i)
 		OPC_SLABS_GET_CE2(i)
@@ -51,7 +50,7 @@
 	}*/
 
 	template<class LeafTestT, int i, class ParamsT>
-	PX_FORCE_INLINE Ps::IntBool BV4_ProcessNodeNoOrder_SwizzledQ(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataSwizzledQ* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
+	PX_FORCE_INLINE PxIntBool BV4_ProcessNodeNoOrder_SwizzledQ(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataSwizzledQ* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
 	{
 		OPC_SLABS_GET_CE2Q(i)
 
@@ -68,9 +67,8 @@
 		return 0;
 	}
 
-	#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 	template<class LeafTestT, int i, class ParamsT>
-	PX_FORCE_INLINE Ps::IntBool BV4_ProcessNodeNoOrder_SwizzledNQ(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataSwizzledNQ* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
+	PX_FORCE_INLINE PxIntBool BV4_ProcessNodeNoOrder_SwizzledNQ(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataSwizzledNQ* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
 	{
 		OPC_SLABS_GET_CE2NQ(i)
 
@@ -86,11 +84,10 @@
 		}
 		return 0;
 	}
-	#endif
 
 #else
 	template<class LeafTestT, int i, class ParamsT>
-	PX_FORCE_INLINE Ps::IntBool BV4_ProcessNodeNoOrder(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataPacked* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
+	PX_FORCE_INLINE PxIntBool BV4_ProcessNodeNoOrder(PxU32* PX_RESTRICT Stack, PxU32& Nb, const BVDataPacked* PX_RESTRICT node, ParamsT* PX_RESTRICT params)
 	{
 	#ifdef GU_BV4_QUANTIZED_TREE
 		if(BV4_SphereAABBOverlap(node+i, params))

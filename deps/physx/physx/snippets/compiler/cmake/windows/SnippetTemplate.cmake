@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,11 +22,15 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build Snippet win template
 #
+
+IF(NOT FREEGLUT_PATH)
+	SET(FREEGLUT_PATH $ENV{PM_freeglut_PATH} CACHE INTERNAL "Freeglut package path")
+ENDIF()
 
 SET(SNIPPET_COMPILE_DEFS
 	# Common to all configurations
@@ -47,16 +50,34 @@ SET(SNIPPET_PLATFORM_SOURCES
 )
 
 SET(SNIPPET_PLATFORM_INCLUDES
-
+	#adding PhysXGpu include for configs that don't add link target PhysXGpu 
+	${PHYSX_ROOT_DIR}/include/cudamanager
+	${FREEGLUT_PATH}/include
 )
 
-SET(SNIPPET_PLATFORM_INCLUDES
-
+#LINK_DIRECTORIES(${FREEGLUT_PATH}/lib/win${LIBPATH_SUFFIX})
+SET(FREEGLUT_LIB
+	$<$<CONFIG:debug>:${FREEGLUT_PATH}/lib/win${LIBPATH_SUFFIX}/freeglutd.lib>
+	$<$<CONFIG:checked>:${FREEGLUT_PATH}/lib/win${LIBPATH_SUFFIX}/freeglut.lib>
+	$<$<CONFIG:profile>:${FREEGLUT_PATH}/lib/win${LIBPATH_SUFFIX}/freeglut.lib>
+	$<$<CONFIG:release>:${FREEGLUT_PATH}/lib/win${LIBPATH_SUFFIX}/freeglut.lib>
 )
 
-SET(SNIPPET_PLATFORM_LINKED_LIBS
-	SnippetRender
-)
+IF(PX_GENERATE_STATIC_LIBRARIES)
+	SET(SNIPPET_PLATFORM_LINKED_LIBS
+		SnippetRender ${FREEGLUT_LIB}
+	)
+ELSE()
+	SET(SNIPPET_PLATFORM_LINKED_LIBS
+		SnippetRender SceneQuery ${FREEGLUT_LIB}
+	)
+ENDIF()
+
+IF(NOT PUBLIC_RELEASE AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+	LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS
+		PhysXGPUExtensions
+	)
+ENDIF()
 
 IF(${SNIPPET_NAME} STREQUAL "ArticulationLoader")
 	LIST(APPEND SNIPPET_PLATFORM_SOURCES
@@ -66,15 +87,18 @@ IF(${SNIPPET_NAME} STREQUAL "ArticulationLoader")
 	LIST(APPEND SNIPPET_PLATFORM_INCLUDES
 		${TINYXML2_PATH}
 	)
-	
 ENDIF()
 
 IF(${SNIPPET_NAME} STREQUAL "ConvexDecomposition")
-	LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS 
+	LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS
 		VHACD
 	)
 ENDIF()
 
 IF(PX_GENERATE_GPU_STATIC_LIBRARIES)
-	LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS PhysXGpu ${CUDA_CUDA_LIBRARY})
+	LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS PhysXGpu)
+
+	IF(NOT PUBLIC_RELEASE)
+		LIST(APPEND SNIPPET_PLATFORM_LINKED_LIBS ${CUDA_CUDA_LIBRARY})
+	ENDIF()
 ENDIF()

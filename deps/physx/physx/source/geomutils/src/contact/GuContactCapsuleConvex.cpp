@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuConvexMesh.h"
 #include "GuConvexHelper.h"
@@ -36,20 +35,21 @@
 #include "GuVecCapsule.h"
 #include "GuInternal.h"
 #include "GuGJK.h"
-#include "GuGeometryUnion.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Gu;
+using namespace Cm;
 
 ///////////
-//	#include "CmRenderOutput.h"
+//	#include "PxRenderOutput.h"
 //	#include "PxsContext.h"
 //	static void gVisualizeLine(const PxVec3& a, const PxVec3& b, PxcNpThreadContext& context, PxU32 color=0xffffff)
 //	{
 //		PxMat44 m = PxMat44::identity();
 //
-//		Cm::RenderOutput& out = context.mRenderOutput;
-//		out << color << m << Cm::RenderOutput::LINES << a << b;
+//		PxRenderOutput& out = context.mRenderOutput;
+//		out << color << m << RenderOutput::LINES << a << b;
 //	}
 ///////////
 
@@ -98,15 +98,15 @@ static bool intersectEdgeEdgePreca(const PxVec3& p1, const PxVec3& p2, const PxV
 	return false;	// no collision
 }
 
-static bool GuTestAxis(const PxVec3& axis, const Gu::Segment& segment, PxReal radius,
-						const PolygonalData& polyData, const Cm::FastVertex2ShapeScaling& scaling,
-						const Cm::Matrix34& worldTM,
+static bool GuTestAxis(const PxVec3& axis, const Segment& segment, PxReal radius,
+						const PolygonalData& polyData, const FastVertex2ShapeScaling& scaling,
+						const PxMat34& worldTM,
 						PxReal& depth)
 {
 	// Project capsule
 	PxReal min0 = segment.p0.dot(axis);
 	PxReal max0 = segment.p1.dot(axis);
-	if(min0>max0) Ps::swap(min0, max0);
+	if(min0>max0) PxSwap(min0, max0);
 	min0 -= radius;
 	max0 += radius;
 
@@ -126,9 +126,9 @@ static bool GuTestAxis(const PxVec3& axis, const Gu::Segment& segment, PxReal ra
 	return true;
 }
 
-static bool GuCapsuleConvexOverlap(const Gu::Segment& segment, PxReal radius,
+static bool GuCapsuleConvexOverlap(const Segment& segment, PxReal radius,
 									const PolygonalData& polyData,
-									const Cm::FastVertex2ShapeScaling& scaling,
+									const FastVertex2ShapeScaling& scaling,
 									const PxTransform& transform,
 									PxReal* t, PxVec3* pp, bool isSphere)
 {
@@ -142,14 +142,14 @@ static bool GuCapsuleConvexOverlap(const Gu::Segment& segment, PxReal radius,
 	PxReal PenDepth = PX_MAX_REAL;
 
 	PxU32 nbPolys = polyData.mNbPolygons;
-	const Gu::HullPolygonData* polys = polyData.mPolygons;
+	const HullPolygonData* polys = polyData.mPolygons;
 
-	const Cm::Matrix34 worldTM(transform);
+	const Matrix34FromTransform worldTM(transform);
 
 	// Test normals
 	for(PxU32 i=0;i<nbPolys;i++)
 	{
-		const Gu::HullPolygonData& poly = polys[i];
+		const HullPolygonData& poly = polys[i];
 		const PxPlane& vertSpacePlane = poly.mPlane;
 
 		const PxVec3 worldNormal = worldTM.rotate(vertSpacePlane.n);
@@ -172,13 +172,13 @@ static bool GuCapsuleConvexOverlap(const Gu::Segment& segment, PxReal radius,
 		CapsuleAxis = CapsuleAxis.getNormalized();
 		for(PxU32 i=0;i<nbPolys;i++)
 		{
-			const Gu::HullPolygonData& poly = polys[i];
+			const HullPolygonData& poly = polys[i];
 			const PxPlane& vertSpacePlane = poly.mPlane;
 
 			const PxVec3 worldNormal = worldTM.rotate(vertSpacePlane.n);
 
 			PxVec3 Cross = CapsuleAxis.cross(worldNormal);
-			if(!Ps::isAlmostZero(Cross))
+			if(!isAlmostZero(Cross))
 			{
 				Cross = Cross.getNormalized();
 				PxReal d;
@@ -205,16 +205,12 @@ static bool GuCapsuleConvexOverlap(const Gu::Segment& segment, PxReal radius,
 	return true;
 }
 
-
-
-
-
 static bool raycast_convexMesh2(	const PolygonalData& polyData,
 									const PxVec3& vrayOrig, const PxVec3& vrayDir,
 									PxReal maxDist, PxF32& t)
 { 
 	PxU32 nPolys = polyData.mNbPolygons;
-	const Gu::HullPolygonData* PX_RESTRICT polys = polyData.mPolygons;
+	const HullPolygonData* PX_RESTRICT polys = polyData.mPolygons;
 
 	/*
 	Purely convex planes based algorithm
@@ -231,7 +227,7 @@ static bool raycast_convexMesh2(	const PolygonalData& polyData,
 
 	while(nPolys--)
 	{
-		const Gu::HullPolygonData& poly = *polys++;
+		const HullPolygonData& poly = *polys++;
 		const PxPlane& vertSpacePlane = poly.mPlane;
 
 		const PxReal distToPlane = vertSpacePlane.distance(vrayOrig);
@@ -267,7 +263,7 @@ static bool raycast_convexMesh2(	const PolygonalData& polyData,
 }
 
 // PT: version based on Gu::raycast_convexMesh to handle scaling, but modified to make sure it works when ray starts inside the convex
-static void GuGenerateVFContacts2(ContactBuffer& contactBuffer,
+static void GuGenerateVFContacts2(PxContactBuffer& contactBuffer,
 									//
 									const PxTransform& convexPose,
 									const PolygonalData& polyData,	// Convex data
@@ -283,7 +279,7 @@ static void GuGenerateVFContacts2(ContactBuffer& contactBuffer,
 	PX_ASSERT(PxAbs(normal.magnitudeSquared()-1)<1e-4f);
 
 	//scaling: transform the ray to vertex space
-	const Cm::Matrix34 world2vertexSkew = scale.getInverse() * convexPose.getInverse();	
+	const PxMat34 world2vertexSkew = scale.getInverse() * convexPose.getInverse();	
 
 	const PxVec3 vrayDir = world2vertexSkew.rotate( -normal );	
 
@@ -302,20 +298,20 @@ static void GuGenerateVFContacts2(ContactBuffer& contactBuffer,
 	}
 }
 
-static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
+static void GuGenerateEEContacts(	PxContactBuffer& contactBuffer,
 									//
-									const Gu::Segment& segment,
+									const Segment& segment,
 									const PxReal radius,
 									const PxReal contactDistance,
 									//
 									const PolygonalData& polyData,
 									const PxTransform& transform,
-									const Cm::FastVertex2ShapeScaling& scaling,
+									const FastVertex2ShapeScaling& scaling,
 									//
 									const PxVec3& normal)
 {
 	PxU32 numPolygons = polyData.mNbPolygons;
-	const Gu::HullPolygonData* PX_RESTRICT polygons = polyData.mPolygons;
+	const HullPolygonData* PX_RESTRICT polygons = polyData.mPolygons;
 	const PxU8* PX_RESTRICT vertexData = polyData.mPolygonVertexRefs;
 
 	ConvexEdge edges[512];
@@ -324,7 +320,7 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 	//
 	PxVec3 s0 = segment.p0;
 	PxVec3 s1 = segment.p1;
-	Ps::makeFatEdge(s0, s1, fatConvexEdgeCoeff);
+	makeFatEdge(s0, s1, fatConvexEdgeCoeff);
 
 	// PT: precomputed part of edge-edge intersection test
 //		const PxVec3 v1 = segment.p1 - segment.p0;
@@ -335,7 +331,7 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 		plane.d = -(plane.n.dot(s0));
 
 		PxU32 ii,jj;
-		Ps::closestAxis(plane.n, ii, jj);
+		closestAxis(plane.n, ii, jj);
 
 		const float coeff = 1.0f /(v1[ii]*normal[jj]-v1[jj]*normal[ii]);
 
@@ -349,7 +345,7 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 
 //		PxVec3 p1 = transform.transform(verts[vi0]);
 //		PxVec3 p2 = transform.transform(verts[vi1]);
-//		Ps::makeFatEdge(p1, p2, fatConvexEdgeCoeff);	// PT: TODO: make fat segment instead
+//		makeFatEdge(p1, p2, fatConvexEdgeCoeff);	// PT: TODO: make fat segment instead
 		const PxVec3 p1 = transform.transform(scaling * verts[vi0]);
 		const PxVec3 p2 = transform.transform(scaling * verts[vi1]);
 
@@ -367,14 +363,14 @@ static void GuGenerateEEContacts(	ContactBuffer& contactBuffer,
 	}
 }
 
-static void GuGenerateEEContacts2b(ContactBuffer& contactBuffer,
+static void GuGenerateEEContacts2b(PxContactBuffer& contactBuffer,
 									//
-									const Gu::Segment& segment, 
+									const Segment& segment, 
 									const PxReal radius, 
 									//
-									const Cm::Matrix34& transform,
+									const PxMat34& transform,
 									const PolygonalData& polyData,
-									const Cm::FastVertex2ShapeScaling& scaling,
+									const FastVertex2ShapeScaling& scaling,
 									//
 									const PxVec3& normal,
 									const PxReal contactDistance)
@@ -387,7 +383,7 @@ static void GuGenerateEEContacts2b(ContactBuffer& contactBuffer,
 
 	PxVec3 s0 = segment.p0;
 	PxVec3 s1 = segment.p1;
-	Ps::makeFatEdge(s0, s1, fatConvexEdgeCoeff);
+	makeFatEdge(s0, s1, fatConvexEdgeCoeff);
 
 	// PT: precomputed part of edge-edge intersection test
 //		const PxVec3 v1 = segment.p1 - segment.p0;
@@ -398,14 +394,14 @@ static void GuGenerateEEContacts2b(ContactBuffer& contactBuffer,
 		plane.d = -(plane.n.dot(s0));
 
 		PxU32 ii,jj;
-		Ps::closestAxis(plane.n, ii, jj);
+		closestAxis(plane.n, ii, jj);
 
 		const float coeff = 1.0f /(v1[jj]*normal[ii]-v1[ii]*normal[jj]);
 	//
 
 	const PxVec3* PX_RESTRICT verts = polyData.mVerts;
 
-	const Gu::HullPolygonData& polygon = polyData.mPolygons[polyIndex];
+	const HullPolygonData& polygon = polyData.mPolygons[polyIndex];
 	const PxU8* PX_RESTRICT vRefBase = polyData.mPolygonVertexRefs + polygon.mVRef8;
 	PxU32 numEdges = polygon.mNbVerts;
 
@@ -434,55 +430,51 @@ static void GuGenerateEEContacts2b(ContactBuffer& contactBuffer,
 	}
 }
 
-namespace physx
-{
-namespace Gu
-{
-bool contactCapsuleConvex(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactCapsuleConvex(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 
 	// Get actual shape data
-	const PxCapsuleGeometry& shapeCapsule = shape0.get<const PxCapsuleGeometry>();
-	const PxConvexMeshGeometryLL& shapeConvex = shape1.get<const PxConvexMeshGeometryLL>();
+	// PT: the capsule can be a sphere in this case so we do this special piece of code:
+	PxCapsuleGeometry shapeCapsule = static_cast<const PxCapsuleGeometry&>(shape0);
+	if(shape0.getType()==PxGeometryType::eSPHERE)
+		shapeCapsule.halfHeight = 0.0f;
+	const PxConvexMeshGeometry& shapeConvex = checkedCast<PxConvexMeshGeometry>(shape1);
 
 	PxVec3 onSegment, onConvex;
 	PxReal distance;
 	PxVec3 normal_;
 	{
-		Gu::ConvexMesh* cm = static_cast<Gu::ConvexMesh*>(shapeConvex.convexMesh);
+		const ConvexMesh* cm = static_cast<const ConvexMesh*>(shapeConvex.convexMesh);
 
-		using namespace Ps::aos;
+		using namespace aos;
 		Vec3V closA, closB, normalV;
 		GjkStatus status;
 		FloatV dist;
 		{
-	
 			const Vec3V zeroV = V3Zero();
-			const Gu::ConvexHullData* hullData = &cm->getHull();
+			const ConvexHullData* hullData = &cm->getHull();
 
 			const FloatV capsuleHalfHeight = FLoad(shapeCapsule.halfHeight);
 
 			const Vec3V vScale = V3LoadU_SafeReadW(shapeConvex.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 			const QuatV vQuat = QuatVLoadU(&shapeConvex.scale.rotation.x);
 
-			const PsMatTransformV aToB(transform1.transformInv(transform0));
+			const PxMatTransformV aToB(transform1.transformInv(transform0));
 
-			Gu::ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, shapeConvex.scale.isIdentity());
+			const ConvexHullV convexHull(hullData, zeroV, vScale, vQuat, shapeConvex.scale.isIdentity());
 
 			//transform capsule(a) into the local space of convexHull(b), treat capsule as segment
-			Gu::CapsuleV capsule(aToB.p, aToB.rotate(V3Scale(V3UnitX(), capsuleHalfHeight)), FZero());
+			const CapsuleV capsule(aToB.p, aToB.rotate(V3Scale(V3UnitX(), capsuleHalfHeight)), FZero());
 
-
-			LocalConvex<CapsuleV> convexA(capsule);
-			LocalConvex<ConvexHullV> convexB(convexHull);
+			const LocalConvex<CapsuleV> convexA(capsule);
+			const LocalConvex<ConvexHullV> convexB(convexHull);
 			const Vec3V initialSearchDir = V3Sub(convexA.getCenter(), convexB.getCenter());
 			
 			status = gjk<LocalConvex<CapsuleV>, LocalConvex<ConvexHullV> >(convexA, convexB, initialSearchDir, FMax(),closA, closB, normalV, dist);
 		}
 	
-
 		if(status == GJK_CONTACT)
 			distance = 0.f;
 		else
@@ -501,7 +493,7 @@ bool contactCapsuleConvex(GU_CONTACT_METHOD_ARGS)
 	if(distance >= inflatedRadius)  
 		return false;
 
-	Gu::Segment worldSegment;
+	Segment worldSegment;
 	getCapsuleSegment(transform0, shapeCapsule, worldSegment);
 
 	const bool isSphere = worldSegment.p0 == worldSegment.p1;
@@ -509,13 +501,13 @@ bool contactCapsuleConvex(GU_CONTACT_METHOD_ARGS)
 
 	PX_ASSERT(contactBuffer.count==0);
 
-	Cm::FastVertex2ShapeScaling convexScaling;
+	FastVertex2ShapeScaling convexScaling;
 	const bool idtConvexScale = shapeConvex.scale.isIdentity();
 	if(!idtConvexScale)
 		convexScaling.init(shapeConvex.scale);
 
 	PolygonalData polyData;
-	getPolygonalData_Convex(&polyData, shapeConvex.hullData, convexScaling);
+	getPolygonalData_Convex(&polyData, _getHullData(shapeConvex), convexScaling);
 
 //	if(0)
 	if(distance > 0.f)
@@ -536,7 +528,7 @@ bool contactCapsuleConvex(GU_CONTACT_METHOD_ARGS)
 		// PT: else generate slower EE contacts
 		if(!isSphere)
 		{
-			const Cm::Matrix34 worldTM(transform1);
+			const Matrix34FromTransform worldTM(transform1);
 			GuGenerateEEContacts2b(contactBuffer, worldSegment, shapeCapsule.radius,
 									worldTM, polyData, convexScaling,
 									normal, params.mContactDistance);
@@ -582,7 +574,4 @@ bool contactCapsuleConvex(GU_CONTACT_METHOD_ARGS)
 		}
 	}
 	return true;
-}
-
-}
 }

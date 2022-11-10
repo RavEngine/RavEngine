@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,36 +22,42 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef NP_SCENE_H
+#define NP_SCENE_H
 
-#ifndef PX_PHYSICS_NP_SCENE
-#define PX_PHYSICS_NP_SCENE
+#define NEW_DIRTY_SHADERS_CODE
 
-#include "PsUserAllocated.h"
-#include "PsSync.h"
-#include "PsArray.h"
-#include "PsThread.h"
-#include "PsHashSet.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxHashSet.h"
+#include "foundation/PxSync.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxThread.h"
 #include "PxPhysXConfig.h"
 
+#include "CmRenderBuffer.h"
+#include "CmIDPool.h"
+
 #if PX_SUPPORT_GPU_PHYSX
-#include "device/PhysXIndicator.h"
+	#include "device/PhysXIndicator.h"
 #endif
 
 #include "NpSceneQueries.h"
 #include "NpSceneAccessor.h"
+#include "NpPruningStructure.h"
+
+#if PX_SUPPORT_PVD
+	#include "PxPhysics.h"
+	#include "NpPvdSceneClient.h"
+#endif
+
+#include "ScScene.h"
 
 namespace physx
 {
-class PhysicsThread;
-class PxBatchQueryDesc;
-class NpMaterial;
-class NpScene;
-class NpArticulation;
-
 namespace Sc
 {
 	class Joint;
@@ -61,18 +66,50 @@ namespace Sc
 
 namespace Sq
 {
-	class SceneQueryManager;
+	class PrunerManager;
 }
 
+class PhysicsThread;
+class NpMaterial;
+class NpScene;
+class NpArticulationReducedCoordinate;
+class NpAggregate;
 class NpObjectFactory;
 class NpRigidStatic;
 class NpRigidDynamic;
 class NpConstraint;
 class NpArticulationLink;
+class NpArticulationJointReducedCoordinate;
+class NpArticulationAttachment;
+class NpArticulationTendonJoint;
+class NpArticulationSpatialTendon;
+class NpArticulationFixedTendon;
+class NpArticulationSensor;
 class NpShapeManager;
 class NpBatchQuery;
+class NpActor;
+class NpShape;
+class NpPhysics;
 
-class PxBatchQuery;
+#if PX_SUPPORT_GPU_PHYSX
+class NpSoftBody;
+class NpFEMCloth;
+class NpHairSystem;
+
+class NpPBDParticleSystem;
+class NpFLIPParticleSystem;
+class NpMPMParticleSystem;
+class NpCustomParticleSystem;
+class NpFEMSoftBodyMaterial;
+class NpFEMClothMaterial;
+class NpPBDMaterial;
+class NpFLIPMaterial;
+class NpMPMMaterial;
+class NpCustomMaterial;
+#endif
+
+class PxArticulationImpl;
+
 
 class NpContactCallbackTask : public physx::PxLightCpuTask
 {
@@ -92,7 +129,7 @@ public:
 	}
 };
 
-class NpScene : public NpSceneQueries, public Ps::UserAllocated
+class NpScene : public NpSceneAccessor, public PxUserAllocated
 {
 	//virtual interfaces:
 
@@ -111,31 +148,49 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 
 	virtual			void							setBounceThresholdVelocity(const PxReal t);
 	virtual			PxReal							getBounceThresholdVelocity() const;
-
+	virtual			void							setMaxBiasCoefficient(const PxReal t);
+	virtual			PxReal							getMaxBiasCoefficient() const;
+	virtual			void							setFrictionOffsetThreshold(const PxReal t);
 	virtual			PxReal							getFrictionOffsetThreshold() const;
+	virtual			void							setFrictionCorrelationDistance(const PxReal t);
+	virtual			PxReal							getFrictionCorrelationDistance() const;
 
 	virtual			void							setLimits(const PxSceneLimits& limits);
 	virtual			PxSceneLimits					getLimits() const;
 
-	virtual			void							addActor(PxActor& actor, const PxBVHStructure* bvhStructure);
+	virtual			bool							addActor(PxActor& actor, const PxBVH* bvh);
 	virtual			void							removeActor(PxActor& actor, bool wakeOnLostTouch);
 
 	virtual			PxU32							getNbConstraints() const;
 	virtual			PxU32							getConstraints(PxConstraint** buffer, PxU32 bufferSize, PxU32 startIndex=0) const;
 
-	virtual			void							addArticulation(PxArticulationBase&);
-	virtual			void							removeArticulation(PxArticulationBase&, bool wakeOnLostTouch);
+	virtual			bool							addArticulation(PxArticulationReducedCoordinate&);
+	virtual			void							removeArticulation(PxArticulationReducedCoordinate&, bool wakeOnLostTouch);
 
 	virtual			PxU32							getNbArticulations() const;
-	virtual			PxU32							getArticulations(PxArticulationBase** userBuffer, PxU32 bufferSize, PxU32 startIndex=0) const;
+	virtual			PxU32							getArticulations(PxArticulationReducedCoordinate** userBuffer, PxU32 bufferSize, PxU32 startIndex=0) const;
+
+	virtual			PxU32							getNbSoftBodies() const;
+	virtual			PxU32							getSoftBodies(PxSoftBody** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0) const;
+
+	virtual			PxU32							getNbParticleSystems(PxParticleSolverType::Enum type) const;
+	virtual			PxU32							getParticleSystems(PxParticleSolverType::Enum type, PxParticleSystem** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0) const;
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION	
+	virtual			PxU32							getNbFEMCloths() const;
+	virtual			PxU32							getFEMCloths(PxFEMCloth** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0) const;
+
+	virtual			PxU32							getNbHairSystems() const;
+	virtual			PxU32							getHairSystems(PxHairSystem** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0) const;
+#endif
 
 	// Aggregates
-	virtual			void							addAggregate(PxAggregate&);
+    virtual			bool							addAggregate(PxAggregate&);
 	virtual			void							removeAggregate(PxAggregate&, bool wakeOnLostTouch);
 	virtual			PxU32							getNbAggregates()	const;
 	virtual			PxU32							getAggregates(PxAggregate** userBuffer, PxU32 bufferSize, PxU32 startIndex=0)	const;
 	
-	virtual			void							addCollection(const PxCollection& collection);
+	virtual			bool							addCollection(const PxCollection& collection);
 
 	// Groups
 	virtual			void							setDominanceGroupPair(PxDominanceGroup group1, PxDominanceGroup group2, const PxDominanceGroupPair& dominance);
@@ -153,7 +208,6 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 	virtual			PxClientID						createClient();
 
 	// FrictionModel
-	virtual			void							setFrictionType(PxFrictionType::Enum frictionType);
 	virtual			PxFrictionType::Enum			getFrictionType() const;
 
 	// Callbacks
@@ -166,9 +220,13 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 	virtual			void							setBroadPhaseCallback(PxBroadPhaseCallback* callback);
 	virtual			PxBroadPhaseCallback*			getBroadPhaseCallback()		const;
 
-	//CCD passes
+	//CCD
 	virtual			void							setCCDMaxPasses(PxU32 ccdMaxPasses);
 	virtual			PxU32							getCCDMaxPasses()	const;
+	virtual			void							setCCDMaxSeparation(const PxReal t);
+	virtual			PxReal							getCCDMaxSeparation() const;
+	virtual			void							setCCDThreshold(const PxReal t);
+	virtual			PxReal							getCCDThreshold() const;
 
 	// Collision filtering
 	virtual			void							setFilterShaderData(const void* data, PxU32 dataSize);
@@ -176,8 +234,8 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 	virtual			PxU32							getFilterShaderDataSize() const;
 	virtual			PxSimulationFilterShader		getFilterShader() const;
 	virtual			PxSimulationFilterCallback*		getFilterCallback() const;
-	virtual			void							resetFiltering(PxActor& actor);
-	virtual			void							resetFiltering(PxRigidActor& actor, PxShape*const* shapes, PxU32 shapeCount);
+	virtual			bool							resetFiltering(PxActor& actor);
+	virtual			bool							resetFiltering(PxRigidActor& actor, PxShape*const* shapes, PxU32 shapeCount);
 	virtual			PxPairFilteringMode::Enum		getKinematicKinematicFilteringMode()	const;
 	virtual			PxPairFilteringMode::Enum		getStaticKinematicFilteringMode()		const;
 
@@ -185,9 +243,9 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 	virtual			PxPhysics&						getPhysics();
 
 	// new API methods
-	virtual			void							simulate(PxReal elapsedTime, physx::PxBaseTask* completionTask, void* scratchBlock, PxU32 scratchBlockSize, bool controlSimulation);
-	virtual			void							advance(physx::PxBaseTask* completionTask);
-	virtual			void							collide(PxReal elapsedTime, physx::PxBaseTask* completionTask, void* scratchBlock, PxU32 scratchBlockSize, bool controlSimulation = true);
+	virtual			bool							simulate(PxReal elapsedTime, physx::PxBaseTask* completionTask, void* scratchBlock, PxU32 scratchBlockSize, bool controlSimulation);
+	virtual			bool							advance(physx::PxBaseTask* completionTask);
+	virtual			bool							collide(PxReal elapsedTime, physx::PxBaseTask* completionTask, void* scratchBlock, PxU32 scratchBlockSize, bool controlSimulation = true);
 	virtual			bool							checkResults(bool block);
 	virtual			bool							checkCollision(bool block);
 	virtual			bool							fetchCollision(bool block);
@@ -198,19 +256,7 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 
 	virtual			void							flush(bool sendPendingReports) { flushSimulation(sendPendingReports); }
 	virtual			void							flushSimulation(bool sendPendingReports);
-	virtual			void							flushQueryUpdates();
 	virtual			const PxRenderBuffer&			getRenderBuffer();
-
-	virtual			PxBatchQuery*					createBatchQuery(const PxBatchQueryDesc& desc);
-					void							releaseBatchQuery(PxBatchQuery* bq);
-	virtual			void							setDynamicTreeRebuildRateHint(PxU32 dynamicTreeRebuildRateHint);
-	virtual			PxU32							getDynamicTreeRebuildRateHint() const;
-	virtual			void							forceDynamicTreeRebuild(bool rebuildStaticStructure, bool rebuildDynamicStructure);
-	virtual			void							sceneQueriesUpdate(physx::PxBaseTask* completionTask, bool controlSimulation);
-	virtual			bool							checkQueries(bool block);
-	virtual			bool							fetchQueries(bool block);
-	virtual			void							setSceneQueryUpdateMode(PxSceneQueryUpdateMode::Enum updateMode);
-	virtual			PxSceneQueryUpdateMode::Enum	getSceneQueryUpdateMode() const;
 
 	virtual			void							setSolverBatchSize(PxU32 solverBatchSize);
 	virtual			PxU32							getSolverBatchSize(void) const;
@@ -224,26 +270,23 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 	virtual			void							setVisualizationCullingBox(const PxBounds3& box);
 	virtual			PxBounds3						getVisualizationCullingBox() const;
 
-	virtual			PxTaskManager*					getTaskManager()	{ return mTaskManager; }
-					void							checkBeginWrite() const {}
+	virtual			PxTaskManager*					getTaskManager()	const	{ return mTaskManager; }
+					void							checkBeginWrite()	const	{}
 
 	virtual			PxCudaContextManager*			getCudaContextManager() { return mCudaContextManager; }
 					
-	virtual			void							setNbContactDataBlocks(PxU32 numBlocks);
-	virtual			PxU32							getNbContactDataBlocksUsed() const;
-	virtual			PxU32							getMaxNbContactDataBlocksUsed() const;
+	virtual         void							setNbContactDataBlocks(PxU32 numBlocks);
+	virtual         PxU32							getNbContactDataBlocksUsed() const;
+	virtual         PxU32							getMaxNbContactDataBlocksUsed() const;
 
 	virtual			PxU32							getContactReportStreamBufferSize() const;
 
 	virtual			PxU32							getTimestamp()	const;
-	virtual			PxU32							getSceneQueryStaticTimestamp()	const;
 
 	virtual			PxCpuDispatcher*				getCpuDispatcher() const;
 	virtual			PxCudaContextManager*			getCudaContextManager() const;
 
-	virtual			PxPruningStructureType::Enum	getStaticStructure() const;
-	virtual			PxPruningStructureType::Enum	getDynamicStructure() const;
-	
+
 	virtual			PxBroadPhaseType::Enum			getBroadPhaseType()									const;
 	virtual			bool							getBroadPhaseCaps(PxBroadPhaseCaps& caps)			const;
 	virtual			PxU32							getNbBroadPhaseRegions()							const;
@@ -251,8 +294,8 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 	virtual			PxU32							addBroadPhaseRegion(const PxBroadPhaseRegion& region, bool populateRegion);
 	virtual			bool							removeBroadPhaseRegion(PxU32 handle);
 
-	virtual			void							addActors(PxActor*const* actors, PxU32 nbActors);
-	virtual			void							addActors(const PxPruningStructure& prunerStructure);
+	virtual			bool							addActors(PxActor*const* actors, PxU32 nbActors);
+	virtual			bool							addActors(const PxPruningStructure& prunerStructure);
 	virtual			void							removeActors(PxActor*const* actors, PxU32 nbActors, bool wakeOnLostTouch);
 
 	virtual			void							lockRead(const char* file=NULL, PxU32 line=0);
@@ -265,36 +308,124 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 
 	virtual			void							shiftOrigin(const PxVec3& shift);
 
-	virtual			PxPvdSceneClient*				getScenePvdClient();
+	virtual         PxPvdSceneClient*				getScenePvdClient();
 
-	//Implementations for NpSceneAccessor interface!
-	virtual	PxsSimulationController*				getSimulationController();
-	virtual void									setActiveActors(PxActor** actors, PxU32 nbActors);
-	virtual PxActor**								getFrozenActors(PxU32& nbActorsOut);
-	virtual void									setFrozenActorFlag(const bool buildFrozenActors);
-	virtual void									forceSceneQueryRebuild();
-	virtual void									frameEnd();
+	virtual			void							copyArticulationData(void* data, void* index, PxArticulationGpuDataType::Enum dataType, const PxU32 nbCopyArticulations, void* copyEvent);
+	virtual			void							applyArticulationData(void* data, void* index, PxArticulationGpuDataType::Enum dataType, const PxU32 nbUpdatedArticulations, void* waitEvent, void* signalEvent);
+	virtual			void							copyContactData(void* data, const PxU32 numContactPatches, void* numContactPairs, void* copyEvent);
+	
+	virtual			void							copySoftBodyData(void** data, void* dataSizes, void* softBodyIndices, PxSoftBodyDataFlag::Enum flag, const PxU32 nbCopySoftBodies, const PxU32 maxSize, void* copyEvent);
+	virtual			void							applySoftBodyData(void** data, void* dataSizes, void* softBodyIndices, PxSoftBodyDataFlag::Enum flag, const PxU32 nbUpdatedSoftBodies, const PxU32 maxSize, void* applyEvent);
+
+	virtual			void							copyBodyData(PxGpuBodyData* data, PxGpuActorPair* index, const PxU32 nbCopyActors, void* copyEvent);	
+	virtual			void							applyActorData(void* data, PxGpuActorPair* index, PxActorCacheFlag::Enum flag, const PxU32 nbUpdatedActors, void* waitEvent, void* signalEvent);
+
+	virtual			void							computeDenseJacobians(const PxIndexDataPair* indices, PxU32 nbIndices, void* computeEvent);
+	virtual			void							computeGeneralizedMassMatrices(const PxIndexDataPair* indices, PxU32 nbIndices, void* computeEvent);
+	virtual			void							computeGeneralizedGravityForces(const PxIndexDataPair* indices, PxU32 nbIndices, void* computeEvent);
+	virtual			void							computeCoriolisAndCentrifugalForces(const PxIndexDataPair* indices, PxU32 nbIndices, void* computeEvent);
+	virtual			void							applyParticleBufferData(const PxU32* indices, const PxGpuParticleBufferIndexPair* bufferIndexPairs, const PxParticleBufferFlags* flags, PxU32 nbUpdatedBuffers, void* waitEvent, void* signalEvent);
+
+	virtual			PxSolverType::Enum				getSolverType()	const;
+
+	// NpSceneAccessor
+	virtual			PxsSimulationController*		getSimulationController();
+	virtual			void							setActiveActors(PxActor** actors, PxU32 nbActors);
+	virtual			PxActor**						getFrozenActors(PxU32& nbActorsOut);
+	virtual			void							setFrozenActorFlag(const bool buildFrozenActors);
+	virtual			void							forceSceneQueryRebuild();
+	virtual			void							frameEnd();
+	//~NpSceneAccessor
+
+	// PxSceneQuerySystemBase
+	virtual			void							setDynamicTreeRebuildRateHint(PxU32 dynamicTreeRebuildRateHint);
+	virtual			PxU32							getDynamicTreeRebuildRateHint() const;
+	virtual			void							forceRebuildDynamicTree(PxU32 prunerIndex);
+	virtual			void							setUpdateMode(PxSceneQueryUpdateMode::Enum updateMode);
+	virtual			PxSceneQueryUpdateMode::Enum	getUpdateMode() const;
+	virtual			PxU32							getStaticTimestamp()	const;
+	virtual			void							flushUpdates();
+	virtual			bool							raycast(
+														const PxVec3& origin, const PxVec3& unitDir, const PxReal distance,	// Ray data
+														PxRaycastCallback& hitCall, PxHitFlags hitFlags,
+														const PxQueryFilterData& filterData, PxQueryFilterCallback* filterCall,
+														const PxQueryCache* cache, PxGeometryQueryFlags flags) const;
+
+	virtual			bool							sweep(
+														const PxGeometry& geometry, const PxTransform& pose,	// GeomObject data
+														const PxVec3& unitDir, const PxReal distance,	// Ray data
+														PxSweepCallback& hitCall, PxHitFlags hitFlags,
+														const PxQueryFilterData& filterData, PxQueryFilterCallback* filterCall,
+														const PxQueryCache* cache, const PxReal inflation, PxGeometryQueryFlags flags) const;
+
+	virtual			bool							overlap(
+														const PxGeometry& geometry, const PxTransform& transform,	// GeomObject data
+														PxOverlapCallback& hitCall, 
+														const PxQueryFilterData& filterData, PxQueryFilterCallback* filterCall,
+														const PxQueryCache* cache, PxGeometryQueryFlags flags) const;
+	//~PxSceneQuerySystemBase
+
+	// PxSceneSQSystem
+	virtual			PxPruningStructureType::Enum	getStaticStructure()	const;
+	virtual			PxPruningStructureType::Enum	getDynamicStructure()	const;
+	virtual			void							sceneQueriesUpdate(physx::PxBaseTask* completionTask, bool controlSimulation);
+	virtual			bool							checkQueries(bool block);
+	virtual			bool							fetchQueries(bool block);
+	//~PxSceneSQSystem
 
 	//internal public methods:
 	public:
-													NpScene(const PxSceneDesc& desc);
+													NpScene(const PxSceneDesc& desc, NpPhysics&);
 													~NpScene();
 
-	PX_FORCE_INLINE	PxTaskManager*					getTaskManager()			const	{ return mTaskManager;			}
+	PX_FORCE_INLINE	NpSceneQueries&					getNpSQ()											{ return mNpSQ;							}
+	PX_FORCE_INLINE	const NpSceneQueries&			getNpSQ()					const					{ return mNpSQ;							}
 
-	PX_FORCE_INLINE Sc::SimulationStage::Enum		getSimulationStage()		const	{ return mScene.getSimulationStage(); }
-	PX_FORCE_INLINE void							setSimulationStage(Sc::SimulationStage::Enum stage) { mScene.setSimulationStage(stage); }
+	PX_FORCE_INLINE	PxSceneQuerySystem&				getSQAPI()											{ return mNpSQ.getSQAPI();				}
+	PX_FORCE_INLINE	const PxSceneQuerySystem&		getSQAPI()					const					{ return mNpSQ.getSQAPI();				}
 
-					void							addActorInternal(PxActor& actor, const PxBVHStructure* bvhStructure);
+	PX_FORCE_INLINE	PxU64							getContextId()				const					{ return PxU64(this);					}
+
+	PX_FORCE_INLINE	PxTaskManager*					getTaskManagerFast()		const					{ return mTaskManager;					}
+
+	PX_FORCE_INLINE Sc::SimulationStage::Enum		getSimulationStage()		const					{ return mScene.getSimulationStage();	}
+	PX_FORCE_INLINE void							setSimulationStage(Sc::SimulationStage::Enum stage)	{ mScene.setSimulationStage(stage);		}
+
+					bool							addActorInternal(PxActor& actor, const PxBVH* bvh);
 					void							removeActorInternal(PxActor& actor, bool wakeOnLostTouch, bool removeFromAggregate);
-					void							addActorsInternal(PxActor*const* PX_RESTRICT actors, PxU32 nbActors, const Sq::PruningStructure* ps = NULL);
+					bool							addActorsInternal(PxActor*const* PX_RESTRICT actors, PxU32 nbActors, const Sq::PruningStructure* ps = NULL);
 
-					void							addArticulationInternal(PxArticulationBase&);
-					void							removeArticulationInternal(PxArticulationBase&, bool wakeOnLostTouch,  bool removeFromAggregate);
+					bool							addArticulationInternal(PxArticulationReducedCoordinate&);
+					void							removeArticulationInternal(PxArticulationReducedCoordinate&, bool wakeOnLostTouch,  bool removeFromAggregate);
 	// materials
 					void							addMaterial(const NpMaterial& mat);
 					void							updateMaterial(const NpMaterial& mat);
 					void							removeMaterial(const NpMaterial& mat);
+#if PX_SUPPORT_GPU_PHYSX
+					void							addMaterial(const NpFEMSoftBodyMaterial& mat);
+					void							updateMaterial(const NpFEMSoftBodyMaterial& mat);
+					void							removeMaterial(const NpFEMSoftBodyMaterial& mat);
+
+					void							addMaterial(const NpFEMClothMaterial& mat);
+					void							updateMaterial(const NpFEMClothMaterial& mat);
+					void							removeMaterial(const NpFEMClothMaterial& mat);
+					
+					void							addMaterial(const NpPBDMaterial& mat);
+					void							updateMaterial(const NpPBDMaterial& mat);
+					void							removeMaterial(const NpPBDMaterial& mat);
+					
+					void							addMaterial(const NpFLIPMaterial& mat);
+					void							updateMaterial(const NpFLIPMaterial& mat);
+					void							removeMaterial(const NpFLIPMaterial& mat);
+					
+					void							addMaterial(const NpMPMMaterial& mat);
+					void							updateMaterial(const NpMPMMaterial& mat);
+					void							removeMaterial(const NpMPMMaterial& mat);
+
+					void							addMaterial(const NpCustomMaterial& mat);
+					void							updateMaterial(const NpCustomMaterial& mat);
+					void							removeMaterial(const NpCustomMaterial& mat);
+#endif
 
 					void							executeScene(PxBaseTask* continuation);
 					void							executeCollide(PxBaseTask* continuation);
@@ -303,17 +434,39 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 
 					bool							loadFromDesc(const PxSceneDesc&);
 
-					void							removeFromRigidActorList(const PxU32&);
-	PX_FORCE_INLINE	void							removeFromArticulationList(PxArticulationBase&);
+					template<typename T>
+					void							removeFromRigidActorList(T&);
+					void							removeFromRigidDynamicList(NpRigidDynamic&);
+					void							removeFromRigidStaticList(NpRigidStatic&);
+	PX_FORCE_INLINE	void							removeFromArticulationList(PxArticulationReducedCoordinate&);
+	PX_FORCE_INLINE	void							removeFromSoftBodyList(PxSoftBody&);
+	PX_FORCE_INLINE	void							removeFromFEMClothList(PxFEMCloth&);
+	PX_FORCE_INLINE	void							removeFromParticleSystemList(PxPBDParticleSystem&);
+	PX_FORCE_INLINE	void							removeFromParticleSystemList(PxFLIPParticleSystem&);
+	PX_FORCE_INLINE	void							removeFromParticleSystemList(PxMPMParticleSystem&);
+	PX_FORCE_INLINE	void							removeFromParticleSystemList(PxCustomParticleSystem&);
+	PX_FORCE_INLINE	void							removeFromHairSystemList(PxHairSystem&);
 	PX_FORCE_INLINE	void							removeFromAggregateList(PxAggregate&);
 
-	PX_FORCE_INLINE	void							addToConstraintList(PxConstraint&);
-	PX_FORCE_INLINE	void							removeFromConstraintList(PxConstraint&);
+#ifdef NEW_DIRTY_SHADERS_CODE
+					void							addDirtyConstraint(NpConstraint* constraint);
+#endif
+					void							addToConstraintList(PxConstraint&);
+					void							removeFromConstraintList(PxConstraint&);
 
 					void							addArticulationLink(NpArticulationLink& link);
 					void							addArticulationLinkBody(NpArticulationLink& link);
 					void							addArticulationLinkConstraint(NpArticulationLink& link);
 					void							removeArticulationLink(NpArticulationLink& link, bool wakeOnLostTouch);
+
+					void							addArticulationAttachment(NpArticulationAttachment& attachment);
+					void							removeArticulationAttachment(NpArticulationAttachment& attachment);
+
+					void							addArticulationTendonJoint(NpArticulationTendonJoint& joint);
+					void							removeArticulationTendonJoint(NpArticulationTendonJoint& joint);
+
+					void							removeArticulationTendons(PxArticulationReducedCoordinate& articulation);
+					void							removeArticulationSensors(PxArticulationReducedCoordinate& articulation);
 
 					struct StartWriteResult
 					{
@@ -338,23 +491,114 @@ class NpScene : public NpSceneQueries, public Ps::UserAllocated
 	PX_FORCE_INLINE	void							updatePhysXIndicator() {}
 #endif
 
-	PX_FORCE_INLINE PxReal							getWakeCounterResetValueInteral() const { return mScene.getWakeCounterResetValue(); }
+					void							scAddAggregate(NpAggregate&);
+					void							scRemoveAggregate(NpAggregate&);
 
-	static PX_FORCE_INLINE size_t					getScbSceneOffset() { return PX_OFFSET_OF_RT(NpScene, mScene); }
+					void							scSwitchRigidToNoSim(NpActor&);
+					void							scSwitchRigidFromNoSim(NpActor&);
 
+#if PX_SUPPORT_PVD
+	PX_FORCE_INLINE	Vd::PvdSceneClient&				getScenePvdClientInternal()					{ return mScenePvdClient;			}
+	PX_FORCE_INLINE	const Vd::PvdSceneClient&		getScenePvdClientInternal()			const	{ return mScenePvdClient;			}
+#endif
+	PX_FORCE_INLINE bool							isAPIReadForbidden()				const	{ return mIsAPIReadForbidden;		}
+	PX_FORCE_INLINE void							setAPIReadToForbidden()						{ mIsAPIReadForbidden = true;		}
+	PX_FORCE_INLINE void							setAPIReadToAllowed()						{ mIsAPIReadForbidden = false;		}
+
+	PX_FORCE_INLINE bool							isCollisionPhaseActive()			const	{ return mScene.isCollisionPhaseActive(); }
+
+	PX_FORCE_INLINE bool							isAPIWriteForbidden()				const	{ return mIsAPIWriteForbidden;		}
+	PX_FORCE_INLINE void							setAPIWriteToForbidden()					{ mIsAPIWriteForbidden = true;		}
+	PX_FORCE_INLINE void							setAPIWriteToAllowed()						{ mIsAPIWriteForbidden = false;		}
+
+	PX_FORCE_INLINE	const Sc::Scene&				getScScene()						const	{ return mScene;					}
+	PX_FORCE_INLINE	Sc::Scene&						getScScene()								{ return mScene;					}
+
+	PX_FORCE_INLINE	PxU32							getFlagsFast()						const	{ return mScene.getFlags();			}
+	PX_FORCE_INLINE PxReal							getWakeCounterResetValueInternal()	const	{ return mWakeCounterResetValue;	}
+
+					// PT: TODO: consider merging the "sc" methods with the np ones, as we did for constraints
+
+					void 							scAddActor(NpRigidStatic&, bool noSim, PxBounds3* uninflatedBounds, const Gu::BVH* bvh);
+					void 							scRemoveActor(NpRigidStatic&, bool wakeOnLostTouch, bool noSim);
+					void 							scAddActor(NpRigidDynamic&, bool noSim, PxBounds3* uninflatedBounds, const Gu::BVH* bvh);
+					void 							scRemoveActor(NpRigidDynamic&, bool wakeOnLostTouch, bool noSim);
+					void 							scAddActor(NpArticulationLink&, bool noSim, PxBounds3* uninflatedBounds, const Gu::BVH* bvh);
+					void 							scRemoveActor(NpArticulationLink&, bool wakeOnLostTouch, bool noSim);
+
+#if PX_SUPPORT_GPU_PHYSX
+					void							scAddSoftBody(NpSoftBody&);
+					void							scRemoveSoftBody(NpSoftBody&);
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+					void							scAddFEMCloth(NpScene* npScene, NpFEMCloth&);
+					void							scRemoveFEMCloth(NpFEMCloth&);
+#endif
+					void							scAddParticleSystem(NpPBDParticleSystem&);
+					void							scRemoveParticleSystem(NpPBDParticleSystem&);
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+					void							scAddParticleSystem(NpFLIPParticleSystem&);
+					void							scRemoveParticleSystem(NpFLIPParticleSystem&);
+
+					void							scAddParticleSystem(NpMPMParticleSystem&);
+					void							scRemoveParticleSystem(NpMPMParticleSystem&);
+
+					void							scAddParticleSystem(NpCustomParticleSystem&);
+					void							scRemoveParticleSystem(NpCustomParticleSystem&);
+#endif
+					void							scAddHairSystem(NpHairSystem&);
+					void							scRemoveHairSystem(NpHairSystem&);
+#endif
+					void							scAddArticulation(NpArticulationReducedCoordinate&);
+					void							scRemoveArticulation(NpArticulationReducedCoordinate&);
+
+					void							scAddArticulationJoint(NpArticulationJointReducedCoordinate&);
+					void							scRemoveArticulationJoint(NpArticulationJointReducedCoordinate&);
+
+					void							scAddArticulationSpatialTendon(NpArticulationSpatialTendon&);
+					void							scRemoveArticulationSpatialTendon(NpArticulationSpatialTendon&);
+
+					void							scAddArticulationFixedTendon(NpArticulationFixedTendon&);
+					void							scRemoveArticulationFixedTendon(NpArticulationFixedTendon&);
+
+					void							scAddArticulationSensor(NpArticulationSensor&);
+					void							scRemoveArticulationSensor(NpArticulationSensor&);
+
+					void							createInOmniPVD(const PxSceneDesc& desc);
+	PX_FORCE_INLINE	void							updatePvdProperties()
+													{
+#if PX_SUPPORT_PVD
+														// PT: TODO: shouldn't we test PxPvdInstrumentationFlag::eDEBUG here?						
+														if(mScenePvdClient.isConnected())
+															mScenePvdClient.updatePvdProperties(); 
+#endif
+													}
+
+					void							updateConstants(const PxArray<NpConstraint*>& constraints);
+
+					virtual		PxgDynamicsMemoryConfig getGpuDynamicsConfig() const { return mGpuDynamicsConfig; }
 private:
 					bool							checkResultsInternal(bool block);
 					bool							checkCollisionInternal(bool block);
 					bool							checkSceneQueriesInternal(bool block);
-					void							simulateOrCollide(PxReal elapsedTime, physx::PxBaseTask* completionTask, void* scratchBlock, PxU32 scratchBlockSize, bool controlSimulation, const char* invalidCallMsg, Sc::SimulationStage::Enum simStage);
+					bool							simulateOrCollide(PxReal elapsedTime, physx::PxBaseTask* completionTask, void* scratchBlock, PxU32 scratchBlockSize, bool controlSimulation, const char* invalidCallMsg, Sc::SimulationStage::Enum simStage);
 
-					void							addRigidStatic(NpRigidStatic& , const Gu::BVHStructure* bvhStructure, bool hasPrunerStructure = false);
+					bool							addRigidStatic(NpRigidStatic& , const Gu::BVH* bvh, const Sq::PruningStructure* ps = NULL);
 					void							removeRigidStatic(NpRigidStatic&, bool wakeOnLostTouch, bool removeFromAggregate);
-					void							addRigidDynamic(NpRigidDynamic& , const Gu::BVHStructure* bvhStructure, bool hasPrunerStructure = false);
+					bool							addRigidDynamic(NpRigidDynamic& , const Gu::BVH* bvh, const Sq::PruningStructure* ps = NULL);
 					void							removeRigidDynamic(NpRigidDynamic&, bool wakeOnLostTouch, bool removeFromAggregate);
 
-					bool							addRigidActorsInternal(PxU32 nbActors, PxActor** PX_RESTRICT actors);
+					bool							addSoftBody(PxSoftBody&);
+					void							removeSoftBody(PxSoftBody&, bool wakeOnLostTouch);
 
+					bool							addParticleSystem(PxParticleSystem& particleSystem);
+					void							removeParticleSystem(PxParticleSystem& particleSystem, bool wakeOnLostTouch);
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+					bool							addFEMCloth(PxFEMCloth&);
+					void							removeFEMCloth(PxFEMCloth&, bool wakeOnLostTouch);
+
+					bool							addHairSystem(PxHairSystem&);
+					void							removeHairSystem(PxHairSystem&, bool wakeOnLostTouch);
+#endif
 					void							visualize();
 
 					void							updateDirtyShaders();
@@ -362,36 +606,63 @@ private:
 					void							fireOutOfBoundsCallbacks();
 					void							fetchResultsPreContactCallbacks();
 					void							fetchResultsPostContactCallbacks();
+					void							fetchResultsParticleSystem();
 
-					void							updateScbStateAndSetupSq(const PxRigidActor& rigidActor, Scb::Actor& actor, NpShapeManager& shapeManager, bool actorDynamic, const PxBounds3* bounds, bool hasPrunerStructure);
-	PX_FORCE_INLINE	void							updateScbStateAndSetupSq(const PxRigidActor& rigidActor, Scb::Body& body, NpShapeManager& shapeManager, bool actorDynamic, const PxBounds3* bounds, bool hasPrunerStructure);
+					bool							addSpatialTendonInternal(NpArticulationReducedCoordinate* npaRC, Sc::ArticulationSim* scArtSim);
+					bool							addFixedTendonInternal(NpArticulationReducedCoordinate* npaRC, Sc::ArticulationSim* scArtSim);
+
+					bool							addArticulationSensorInternal(NpArticulationReducedCoordinate* npaRC, Sc::ArticulationSim* scArtSim);
+
+					void							syncSQ();
+					void							sceneQueriesStaticPrunerUpdate(PxBaseTask* continuation);
+					void							sceneQueriesDynamicPrunerUpdate(PxBaseTask* continuation);
+
+					NpSceneQueries					mNpSQ;
+					PxPruningStructureType::Enum	mPrunerType[2];
+					typedef Cm::DelegateTask<NpScene, &NpScene::sceneQueriesStaticPrunerUpdate> SceneQueriesStaticPrunerUpdate;
+					typedef Cm::DelegateTask<NpScene, &NpScene::sceneQueriesDynamicPrunerUpdate> SceneQueriesDynamicPrunerUpdate;
+					SceneQueriesStaticPrunerUpdate	mSceneQueriesStaticPrunerUpdate;
+					SceneQueriesDynamicPrunerUpdate	mSceneQueriesDynamicPrunerUpdate;
 
 					Cm::RenderBuffer				mRenderBuffer;
+	public:
+					Cm::IDPool						mRigidActorIndexPool;
+	private:
+					PxArray<NpRigidDynamic*>								mRigidDynamics;  // no hash set used because it would be quite a bit slower when adding a large number of actors
+					PxArray<NpRigidStatic*>									mRigidStatics;  // no hash set used because it would be quite a bit slower when adding a large number of actors
+					PxCoalescedHashSet<PxArticulationReducedCoordinate*>	mArticulations;
+					PxCoalescedHashSet<PxSoftBody*>							mSoftBodies;
+					PxCoalescedHashSet<PxFEMCloth*>							mFEMCloths;
+					PxCoalescedHashSet<PxPBDParticleSystem*>				mPBDParticleSystems;
+					PxCoalescedHashSet<PxFLIPParticleSystem*>				mFLIPParticleSystems;
+					PxCoalescedHashSet<PxMPMParticleSystem*>				mMPMParticleSystems;
+					PxCoalescedHashSet<PxCustomParticleSystem*>				mCustomParticleSystems;
+					PxCoalescedHashSet<PxHairSystem*>						mHairSystems;
+					PxCoalescedHashSet<PxAggregate*>						mAggregates;
 
-					Ps::CoalescedHashSet<PxConstraint*> mConstraints;
-					Ps::Array<PxRigidActor*>		mRigidActors;  // no hash set used because it would be quite a bit slower when adding a large number of actors
-					Ps::CoalescedHashSet<PxArticulationBase*> mArticulations;
-					Ps::CoalescedHashSet<PxAggregate*> mAggregates;
-					Ps::Array<NpBatchQuery*>		mBatchQueries;
+#ifdef NEW_DIRTY_SHADERS_CODE
+					PxArray<NpConstraint*>									mAlwaysUpdatedConstraints;
+					PxArray<NpConstraint*>									mDirtyConstraints;
+					PxMutex													mDirtyConstraintsLock;
+#endif
 
 					PxBounds3						mSanityBounds;
 #if PX_SUPPORT_GPU_PHYSX
 					PhysXIndicator					mPhysXIndicator;
 #endif
 
-					Ps::Sync						mPhysicsDone;		// physics thread signals this when update ready
-					Ps::Sync						mCollisionDone;		// physics thread signals this when all collisions ready
-					Ps::Sync						mSceneQueriesDone;	// physics thread signals this when all scene queries update ready
+					PxSync							mPhysicsDone;		// physics thread signals this when update ready
+					PxSync							mCollisionDone;		// physics thread signals this when all collisions ready
+					PxSync							mSceneQueriesDone;	// physics thread signals this when all scene queries update ready
 
 		//legacy timing settings:
 					PxReal							mElapsedTime;		//needed to transfer the elapsed time param from the user to the sim thread.
 
 					PxU32							mNbClients;		// Tracks reserved clients for multiclient support.
-					Ps::Array<PxU32>				mClientBehaviorFlags;// Tracks behavior bits for clients.
 
 					struct SceneCompletion : public Cm::Task
 					{
-						SceneCompletion(PxU64 contextId, Ps::Sync& sync) : Cm::Task(contextId), mSync(sync){}
+						SceneCompletion(PxU64 contextId, PxSync& sync) : Cm::Task(contextId), mSync(sync){}
 						virtual void runInternal() {}
 						//ML: As soon as mSync.set is called, and the scene is shutting down,
 						//the scene may be deleted. That means this running task may also be deleted.
@@ -414,7 +685,7 @@ private:
 
 						//	//This method just is called in the split sim approach as a way to set continuation after the task has been initialized
 						void setDependent(PxBaseTask* task){PX_ASSERT(mCont == NULL); mCont = task; if(task)task->addReference();}
-						Ps::Sync& mSync;
+						PxSync& mSync;
 					private:
 						SceneCompletion& operator=(const SceneCompletion&);
 					};
@@ -431,7 +702,13 @@ private:
 					SceneExecution					mSceneExecution;
 					SceneCollide					mSceneCollide;
 					SceneAdvance					mSceneAdvance;
+					PxSQBuildStepHandle				mStaticBuildStepHandle;
+					PxSQBuildStepHandle				mDynamicBuildStepHandle;
 					bool                            mControllingSimulation;
+					bool							mIsAPIReadForbidden;	// Set to true when the user is not allowed to call certain read APIs
+																			// (properties that get written to during the simulation. Search the macros PX_CHECK_SCENE_API_READ_FORBIDDEN... 
+																			// to see which calls)
+					bool							mIsAPIWriteForbidden;  // Set to true when the user is not allowed to do API write calls
 
 					PxU32							mSimThreadStackSize;
 
@@ -441,31 +718,125 @@ private:
 
 					// TLS slot index, keeps track of re-entry depth for this thread
 					PxU32							mThreadReadWriteDepth;
-					Ps::Thread::Id					mCurrentWriter;
-					Ps::ReadWriteLock				mRWLock;
+					PxThread::Id					mCurrentWriter;
+					PxReadWriteLock					mRWLock;
 
-					bool							mSceneQueriesUpdateRunning;
+					bool							mSQUpdateRunning;
 
 					bool							mHasSimulatedOnce;
 					bool							mBetweenFetchResults;
 					bool							mBuildFrozenActors;
+
+					//
+	public:
+					enum MATERIAL_EVENT
+					{
+						MATERIAL_ADD,
+						MATERIAL_UPDATE,
+						MATERIAL_REMOVE
+					};
+
+					class MaterialEvent
+					{
+					public:
+						PX_FORCE_INLINE	MaterialEvent(PxU16 handle, MATERIAL_EVENT type) : mHandle(handle), mType(type)	{}
+						PX_FORCE_INLINE	MaterialEvent()																	{}
+
+						PxU16			mHandle;//handle to the master material table
+						MATERIAL_EVENT	mType;
+					};
+	private:
+					PxArray<MaterialEvent>		mSceneMaterialBuffer;
+					PxArray<MaterialEvent>		mSceneFEMSoftBodyMaterialBuffer;
+					PxArray<MaterialEvent>		mSceneFEMClothMaterialBuffer;
+					PxArray<MaterialEvent>		mScenePBDMaterialBuffer;
+					PxArray<MaterialEvent>		mSceneFLIPMaterialBuffer;
+					PxArray<MaterialEvent>		mSceneMPMMaterialBuffer;
+					PxArray<MaterialEvent>		mSceneCustomMaterialBuffer;
+					PxMutex						mSceneMaterialBufferLock;
+					PxMutex						mSceneFEMSoftBodyMaterialBufferLock;
+					PxMutex						mSceneFEMClothMaterialBufferLock;
+					PxMutex						mScenePBDMaterialBufferLock;
+					PxMutex						mSceneFLIPMaterialBufferLock;
+					PxMutex						mSceneMPMMaterialBufferLock;
+					PxMutex						mSceneCustomMaterialBufferLock;
+					Sc::Scene					mScene;
+#if PX_SUPPORT_PVD
+					Vd::PvdSceneClient			mScenePvdClient;
+#endif
+					PxReal						mWakeCounterResetValue;
+
+					PxgDynamicsMemoryConfig		mGpuDynamicsConfig;
+
+					NpPhysics&					mPhysics;
 };
 
-PX_FORCE_INLINE	void NpScene::addToConstraintList(PxConstraint& constraint)
+template<>
+PX_FORCE_INLINE void NpScene::removeFromRigidActorList<NpRigidDynamic>(NpRigidDynamic& rigidDynamic)
 {
-	mConstraints.insert(&constraint);
+	removeFromRigidDynamicList(rigidDynamic);
 }
 
-PX_FORCE_INLINE	void NpScene::removeFromConstraintList(PxConstraint& constraint)
+template<>
+PX_FORCE_INLINE void NpScene::removeFromRigidActorList<NpRigidStatic>(NpRigidStatic& rigidStatic)
 {
-	const bool exists = mConstraints.erase(&constraint);
+	removeFromRigidStaticList(rigidStatic);
+}
+
+PX_FORCE_INLINE void NpScene::removeFromArticulationList(PxArticulationReducedCoordinate& articulation)
+{
+	const bool exists = mArticulations.erase(&articulation);
 	PX_ASSERT(exists);
 	PX_UNUSED(exists);
 }
 
-PX_FORCE_INLINE void NpScene::removeFromArticulationList(PxArticulationBase& articulation)
+PX_FORCE_INLINE	void NpScene::removeFromSoftBodyList(PxSoftBody& softBody)
 {
-	const bool exists = mArticulations.erase(&articulation);
+	const bool exists = mSoftBodies.erase(&softBody);
+	PX_ASSERT(exists);
+	PX_UNUSED(exists);
+}
+
+PX_FORCE_INLINE	void NpScene::removeFromFEMClothList(PxFEMCloth& femCloth)
+{
+	const bool exists = mFEMCloths.erase(&femCloth);
+	PX_ASSERT(exists);
+	PX_UNUSED(exists);
+}
+
+PX_FORCE_INLINE	void NpScene::removeFromParticleSystemList(PxPBDParticleSystem& particleSystem)
+{
+	const bool exists = mPBDParticleSystems.erase(&particleSystem);
+	PX_ASSERT(exists);
+	PX_UNUSED(exists);
+}
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+PX_FORCE_INLINE	void NpScene::removeFromParticleSystemList(PxFLIPParticleSystem& particleSystem)
+{
+	const bool exists = mFLIPParticleSystems.erase(&particleSystem);
+	PX_ASSERT(exists);
+	PX_UNUSED(exists);
+}
+
+PX_FORCE_INLINE	void NpScene::removeFromParticleSystemList(PxMPMParticleSystem& particleSystem)
+{
+	const bool exists = mMPMParticleSystems.erase(&particleSystem);
+	PX_ASSERT(exists);
+	PX_UNUSED(exists);
+}
+
+PX_FORCE_INLINE	void NpScene::removeFromParticleSystemList(PxCustomParticleSystem& particleSystem)
+{
+	const bool exists = mCustomParticleSystems.erase(&particleSystem);
+	PX_ASSERT(exists);
+	PX_UNUSED(exists);
+}
+#endif
+
+PX_FORCE_INLINE void NpScene::removeFromHairSystemList(PxHairSystem& hairSystem)
+{
+	const bool exists = mHairSystems.erase(&hairSystem);
 	PX_ASSERT(exists);
 	PX_UNUSED(exists);
 }
@@ -476,6 +847,11 @@ PX_FORCE_INLINE void NpScene::removeFromAggregateList(PxAggregate& aggregate)
 	PX_ASSERT(exists);
 	PX_UNUSED(exists);
 }
+
+
+	PxU32 NpRigidStaticGetShapes(NpRigidStatic& rigid, NpShape* const *& shapes);
+	PxU32 NpRigidDynamicGetShapes(NpRigidDynamic& actor, NpShape* const *& shapes, bool* isCompound = NULL);
+	PxU32 NpArticulationGetShapes(NpArticulationLink& actor, NpShape* const *& shapes, bool* isCompound = NULL);
 
 }
 

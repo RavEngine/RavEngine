@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,41 +22,43 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
-#ifndef PX_META_DATA_PVD_BINDING_DATA_H
-#define PX_META_DATA_PVD_BINDING_DATA_H
+
+#ifndef PVD_META_DATA_BINDING_DATA_H
+#define PVD_META_DATA_BINDING_DATA_H
+
 #if PX_SUPPORT_PVD
 #include "foundation/PxSimpleTypes.h"
-#include "PsArray.h"
-#include "PsHashSet.h"
-#include "PsHashMap.h"
+#include "foundation/PxHashSet.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxArray.h"
+
 
 namespace physx
 {
 namespace Vd
 {
-using namespace physx::shdfnd;
 
-typedef HashSet<const PxRigidActor*> OwnerActorsValueType;
-typedef HashMap<const PxShape*, OwnerActorsValueType*> OwnerActorsMap;
+typedef PxHashSet<const PxRigidActor*> OwnerActorsValueType;
+typedef PxHashMap<const PxShape*, OwnerActorsValueType*> OwnerActorsMap;
 
-struct PvdMetaDataBindingData : public UserAllocated
+struct PvdMetaDataBindingData : public PxUserAllocated
 {
-	Array<PxU8> mTempU8Array;
-	Array<PxActor*> mActors;
-	Array<PxArticulationBase*> mArticulations;
-	Array<PxArticulationLink*> mArticulationLinks;
-	HashSet<PxActor*> mSleepingActors;
+	PxArray<PxU8> mTempU8Array;
+	PxArray<PxActor*> mActors;
+	PxArray<PxArticulationReducedCoordinate*> mArticulations;
+	PxArray<PxArticulationLink*> mArticulationLinks;
+	PxHashSet<PxActor*> mSleepingActors;
 	OwnerActorsMap mOwnerActorsMap;
 
 	PvdMetaDataBindingData()
-	: mTempU8Array(PX_DEBUG_EXP("TempU8Array"))
-	, mActors(PX_DEBUG_EXP("PxActor"))
-	, mArticulations(PX_DEBUG_EXP("Articulations"))
-	, mArticulationLinks(PX_DEBUG_EXP("ArticulationLinks"))
-	, mSleepingActors(PX_DEBUG_EXP("SleepingActors"))
+	: mTempU8Array("TempU8Array")
+	, mActors("PxActor")
+	, mArticulations("Articulations")
+	, mArticulationLinks("ArticulationLinks")
+	, mSleepingActors("SleepingActors")
 	{
 	}
 

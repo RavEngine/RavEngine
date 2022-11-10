@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,7 +34,7 @@
 #include "GuGJKUtil.h"
 #include "GuConvexSupportTable.h"
 #include "GuGJKSimplex.h"
-#include "PsFPU.h"
+#include "foundation/PxFPU.h"
 
 #define	GJK_SEPERATING_AXIS_VALIDATE 0
 
@@ -48,9 +47,9 @@ namespace Gu
 
 #if	GJK_SEPERATING_AXIS_VALIDATE
 	template<typename ConvexA, typename ConvexB>
-	static void validateSeparatingAxis(const ConvexA& a, const ConvexB& b, const Ps::aos::Vec3VArg separatingAxis)
+	static void validateSeparatingAxis(const ConvexA& a, const ConvexB& b, const aos::Vec3VArg separatingAxis)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const Vec3V minV0 = a.ConvexA::support(V3Neg(separatingAxis));
 		const Vec3V maxV0 = a.ConvexA::support(separatingAxis); 
 
@@ -88,10 +87,10 @@ namespace Gu
 	//*         GJK_CLOSE if the minimum distance between the shapes is less than the sum of the margins and the the contactDistance
 	//*         GJK_CONTACT if the two shapes are overlapped with each other
 	template<typename ConvexA, typename ConvexB>
-	GjkStatus gjk(const ConvexA& a, const ConvexB& b, const Ps::aos::Vec3V& initialSearchDir, const Ps::aos::FloatV& contactDist, Ps::aos::Vec3V& closestA, Ps::aos::Vec3V& closestB, Ps::aos::Vec3V& normal, 
-		Ps::aos::FloatV& distance)
+	GjkStatus gjk(const ConvexA& a, const ConvexB& b, const aos::Vec3V& initialSearchDir, const aos::FloatV& contactDist, aos::Vec3V& closestA, aos::Vec3V& closestB, aos::Vec3V& normal, 
+		aos::FloatV& distance)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		Vec3V Q[4];
 		Vec3V A[4];
 		Vec3V B[4];

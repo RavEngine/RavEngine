@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "vehicle/PxVehicleUtilTelemetry.h"
-#include "PsFoundation.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxErrors.h"
+#include "foundation/PxFoundation.h"
+#include "foundation/PxAllocator.h"
 #include "stdio.h"
-#include "CmPhysXCommon.h"
 
 namespace physx
 {
@@ -519,12 +519,12 @@ PxVehicleTelemetryData* physx::PxVehicleTelemetryData::allocate(const PxU32 numW
 	//Patch up the pointers.
 	PxU8* ptr = reinterpret_cast<PxU8*>(vehTelData) + sizeof(PxVehicleTelemetryData);
 	vehTelData->mEngineGraph = reinterpret_cast<PxVehicleGraph*>(ptr);
-	new(vehTelData->mEngineGraph) PxVehicleGraph();
+	PX_PLACEMENT_NEW(vehTelData->mEngineGraph, PxVehicleGraph());
 	ptr += sizeof(PxVehicleGraph);			
 	vehTelData->mWheelGraphs = reinterpret_cast<PxVehicleGraph*>(ptr);
 	for(PxU32 i=0;i<numWheels;i++)
 	{
-		new(&vehTelData->mWheelGraphs[i]) PxVehicleGraph();
+		PX_PLACEMENT_NEW(&vehTelData->mWheelGraphs[i], PxVehicleGraph());
 	}
 	ptr += sizeof(PxVehicleGraph)*numWheels;	
 	vehTelData->mSuspforceAppPoints = reinterpret_cast<PxVec3*>(ptr);
@@ -541,7 +541,7 @@ PxVehicleTelemetryData* physx::PxVehicleTelemetryData::allocate(const PxU32 numW
 
 void PxVehicleTelemetryData::free()
 {
-	PX_FREE(this);
+	PX_FREE_THIS;
 }
 
 void physx::PxVehicleTelemetryData::setup

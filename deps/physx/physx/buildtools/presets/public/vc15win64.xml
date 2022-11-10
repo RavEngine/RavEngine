@@ -3,7 +3,7 @@
   <platform targetPlatform="win64" compiler="vc15" />
   <CMakeSwitches>
     <cmakeSwitch name="PX_BUILDSNIPPETS" value="True" comment="Generate the snippets" />
-    <cmakeSwitch name="PX_BUILDPUBLICSAMPLES" value="True" comment="Generate the samples projects" />
+    <cmakeSwitch name="PX_BUILDPVDRUNTIME" value="True" comment="Generate the OmniPVD project" />
     <cmakeSwitch name="PX_GENERATE_STATIC_LIBRARIES" value="False" comment="Generate static libraries" />
     <cmakeSwitch name="NV_USE_STATIC_WINCRT" value="True" comment="Use the statically linked windows CRT" />
     <cmakeSwitch name="NV_USE_DEBUG_WINCRT" value="True" comment="Use the debug version of the CRT" />

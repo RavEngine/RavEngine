@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "CmPhysXCommon.h"
 #include "BpBroadPhaseSapAux.h"
-#include "PsFoundation.h"
+#include "PxcScratchAllocator.h"
 
 namespace physx
 {
@@ -68,8 +66,7 @@ PX_FORCE_INLINE PxU32 Hash(BpHandle id0, BpHandle id1)
 	return PxU32(Hash32Bits_1( int(PxU32(id0)|(PxU32(id1)<<16)) ));
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 SapPairManager::SapPairManager() :
 	mHashTable				(NULL),
@@ -85,7 +82,7 @@ SapPairManager::SapPairManager() :
 {
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 SapPairManager::~SapPairManager()
 {
@@ -95,7 +92,7 @@ SapPairManager::~SapPairManager()
 	PX_ASSERT(NULL==mActivePairStates);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 
 void SapPairManager::init(const PxU32 size)
@@ -109,7 +106,7 @@ void SapPairManager::init(const PxU32 size)
 	mActivePairsCapacity=size;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void SapPairManager::release()
 {
@@ -117,10 +114,6 @@ void SapPairManager::release()
 	PX_FREE(mNext);
 	PX_FREE(mActivePairs);
 	PX_FREE(mActivePairStates);
-	mHashTable				= NULL;
-	mNext					= NULL;
-	mActivePairs			= NULL;
-	mActivePairStates		= NULL;
 	mHashSize				= 0;
 	mHashCapacity			= 0;
 	mMinAllowedHashCapacity	= 0;
@@ -129,7 +122,7 @@ void SapPairManager::release()
 	mMask					= 0;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 const BroadPhasePair* SapPairManager::FindPair(BpHandle id0, BpHandle id1) const
 {
@@ -160,7 +153,7 @@ const BroadPhasePair* SapPairManager::FindPair(BpHandle id0, BpHandle id1) const
 	return &mActivePairs[Offset];
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 // Internal version saving hash computation
 PX_FORCE_INLINE BroadPhasePair* SapPairManager::FindPair(BpHandle id0, BpHandle id1, PxU32 hash_value) const
@@ -185,16 +178,10 @@ PX_FORCE_INLINE BroadPhasePair* SapPairManager::FindPair(BpHandle id0, BpHandle 
 	return &mActivePairs[Offset];
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 const BroadPhasePair* SapPairManager::AddPair(BpHandle id0, BpHandle id1, const PxU8 state)
 {
-	if(MAX_BP_HANDLE == mNbActivePairs)
-	{
-		PX_WARN_ONCE(MAX_BP_PAIRS_MESSAGE);
-		return NULL;
-	}
-
 	// Order the ids
 	Sort(id0, id1);
 
@@ -210,7 +197,7 @@ const BroadPhasePair* SapPairManager::AddPair(BpHandle id0, BpHandle id1, const 
 	if(mNbActivePairs >= mHashSize)
 	{
 		// Get more entries
-		mHashSize = Ps::nextPowerOfTwo(mNbActivePairs+1);
+		mHashSize = PxNextPowerOfTwo(mNbActivePairs+1);
 		mMask = mHashSize-1;
 
 		reallocPairs(mHashSize>mHashCapacity);
@@ -233,7 +220,7 @@ const BroadPhasePair* SapPairManager::AddPair(BpHandle id0, BpHandle id1, const 
 	return p;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void SapPairManager::RemovePair(BpHandle /*id0*/, BpHandle /*id1*/, PxU32 hash_value, PxU32 pair_index)
 {
@@ -363,7 +350,7 @@ bool SapPairManager::RemovePair(BpHandle id0, BpHandle id1)
 	return true;
 }
 
-bool SapPairManager::RemovePairs(const Cm::BitMap& removedAABBs)
+bool SapPairManager::RemovePairs(const PxBitMap& removedAABBs)
 {
 	PxU32 i=0;
 	while(i<mNbActivePairs)
@@ -383,7 +370,7 @@ bool SapPairManager::RemovePairs(const Cm::BitMap& removedAABBs)
 void SapPairManager::shrinkMemory()
 {
 	//Compute the hash size given the current number of active pairs.
-	const PxU32 correctHashSize = Ps::nextPowerOfTwo(mNbActivePairs);
+	const PxU32 correctHashSize = PxNextPowerOfTwo(mNbActivePairs);
 
 	//If we have the correct hash size then no action required.
 	if(correctHashSize==mHashSize || (correctHashSize < mMinAllowedHashCapacity && mHashSize == mMinAllowedHashCapacity))	
@@ -606,22 +593,6 @@ void ComputeCreatedDeletedPairsLists
 #endif
 }
 
-void DeletePairsLists(const PxU32 numActualDeletedPairs, BroadPhasePair* deletedPairsList, SapPairManager& pairManager)
-{
-	// #### try batch removal here
-	for(PxU32 i=0;i<numActualDeletedPairs;i++)
-	{
-		const BpHandle id0 = deletedPairsList[i].mVolA;
-		const BpHandle id1 = deletedPairsList[i].mVolB;
-#if PX_DEBUG
-		const bool Status = pairManager.RemovePair(id0, id1);
-		PX_ASSERT(Status);
-#else
-		pairManager.RemovePair(id0, id1);
-#endif
-	}
-}
-
 //#define PRINT_STATS
 #ifdef PRINT_STATS
 	#include <stdio.h>
@@ -738,10 +709,10 @@ static void addPair(const AddPairParams* PX_RESTRICT params, const BpHandle id0_
 AuxData::AuxData(PxU32 nb, const SapBox1D*const* PX_RESTRICT boxes, const BpHandle* PX_RESTRICT indicesSorted, const Bp::FilterGroup::Enum* PX_RESTRICT groupIds)
 {
 	// PT: TODO: use scratch allocator / etc
-	BoxX* PX_RESTRICT boxX						= reinterpret_cast<BoxX*>(PX_ALLOC(sizeof(BoxX)*(nb+1), PX_DEBUG_EXP("mBoxX")));
-	BoxYZ* PX_RESTRICT boxYZ					= reinterpret_cast<BoxYZ*>(PX_ALLOC(sizeof(BoxYZ)*nb, PX_DEBUG_EXP("mBoxYZ")));
-	Bp::FilterGroup::Enum* PX_RESTRICT groups	= reinterpret_cast<Bp::FilterGroup::Enum*>(PX_ALLOC(sizeof(Bp::FilterGroup::Enum)*nb, PX_DEBUG_EXP("mGroups")));
-	PxU32* PX_RESTRICT remap					= reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*nb, PX_DEBUG_EXP("mRemap")));
+	BoxX* PX_RESTRICT boxX						= reinterpret_cast<BoxX*>(PX_ALLOC(sizeof(BoxX)*(nb+1), "mBoxX"));
+	BoxYZ* PX_RESTRICT boxYZ					= reinterpret_cast<BoxYZ*>(PX_ALLOC(sizeof(BoxYZ)*nb, "mBoxYZ"));
+	Bp::FilterGroup::Enum* PX_RESTRICT groups	= reinterpret_cast<Bp::FilterGroup::Enum*>(PX_ALLOC(sizeof(Bp::FilterGroup::Enum)*nb, "mGroups"));
+	PxU32* PX_RESTRICT remap					= reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*nb, "mRemap"));
 
 	mBoxX = boxX;
 	mBoxYZ = boxYZ;
@@ -787,10 +758,7 @@ AuxData::~AuxData()
 }
 
 void performBoxPruningNewNew(	const AuxData* PX_RESTRICT auxData, PxcScratchAllocator* scratchAllocator,
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								const bool* lut,
-#endif
-								SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity)
+								const bool* lut, SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity)
 {
 	const PxU32 nb = auxData->mNb;
 	if(!nb)
@@ -826,11 +794,7 @@ void performBoxPruningNewNew(	const AuxData* PX_RESTRICT auxData, PxcScratchAllo
 			{
 				INCREASE_STATS_NB_ITER
 #if BP_SAP_TEST_GROUP_ID_CREATEUPDATE
-	#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
 				if(groupFiltering(group0, groups[index1], lut))
-	#else
-				if(groupFiltering(group0, groups[index1]))
-	#endif
 #endif
 				{
 					INCREASE_STATS_NB_TESTS
@@ -862,11 +826,7 @@ template<int codepath>
 static void bipartitePruning(
 	const PxU32 nb0, const BoxX* PX_RESTRICT boxX0, const BoxYZ* PX_RESTRICT boxYZ0, const PxU32* PX_RESTRICT remap0, const Bp::FilterGroup::Enum* PX_RESTRICT groups0,
 	const PxU32 nb1, const BoxX* PX_RESTRICT boxX1, const BoxYZ* PX_RESTRICT boxYZ1, const PxU32* PX_RESTRICT remap1, const Bp::FilterGroup::Enum* PX_RESTRICT groups1,
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-	const bool* lut,
-#endif
-	PxcScratchAllocator* scratchAllocator, SapPairManager& pairManager, DataArray& dataArray
-	)
+	const bool* lut, PxcScratchAllocator* scratchAllocator, SapPairManager& pairManager, DataArray& dataArray)
 {
 	AddPairParams params(remap0, remap1, scratchAllocator, &pairManager, &dataArray);
 
@@ -897,11 +857,7 @@ static void bipartitePruning(
 		{
 			INCREASE_STATS_NB_ITER
 #if BP_SAP_TEST_GROUP_ID_CREATEUPDATE
-	#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
 			if(groupFiltering(group0, groups1[index1], lut))
-	#else
-			if(groupFiltering(group0, groups1[index1]))
-	#endif
 #endif
 			{
 				INCREASE_STATS_NB_TESTS
@@ -918,10 +874,7 @@ static void bipartitePruning(
 }
 
 void performBoxPruningNewOld(	const AuxData* PX_RESTRICT auxData0, const AuxData* PX_RESTRICT auxData1, PxcScratchAllocator* scratchAllocator, 
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								const bool* lut,
-#endif
-								SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity)
+								const bool* lut, SapPairManager& pairManager, BpHandle*& dataArray, PxU32& dataArraySize, PxU32& dataArrayCapacity)
 {
 	const PxU32 nb0 = auxData0->mNb;
 	const PxU32 nb1 = auxData1->mNb;
@@ -942,13 +895,8 @@ void performBoxPruningNewOld(	const AuxData* PX_RESTRICT auxData0, const AuxData
 		const BoxYZ* boxYZ1 = auxData1->mBoxYZ;
 		const Bp::FilterGroup::Enum* groups1 = auxData1->mGroups;
 		const PxU32* remap1 = auxData1->mRemap;
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
 		bipartitePruning<0>(nb0, boxX0, boxYZ0, remap0, groups0, nb1, boxX1, boxYZ1, remap1, groups1, lut, scratchAllocator, pairManager, da);
 		bipartitePruning<1>(nb1, boxX1, boxYZ1, remap1, groups1, nb0, boxX0, boxYZ0, remap0, groups0, lut, scratchAllocator, pairManager, da);
-#else
-		bipartitePruning<0>(nb0, boxX0, boxYZ0, remap0, groups0, nb1, boxX1, boxYZ1, remap1, groups1, scratchAllocator, pairManager, da);
-		bipartitePruning<1>(nb1, boxX1, boxYZ1, remap1, groups1, nb0, boxX0, boxYZ0, remap0, groups0, scratchAllocator, pairManager, da);
-#endif
 	}
 	DUMP_STATS
 

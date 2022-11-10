@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,29 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxSerializer.h"
-#include "extensions/PxSerialization.h"
+#include "foundation/PxPhysicsVersion.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxSort.h"
 #include "extensions/PxBinaryConverter.h"
-#include "extensions/PxDefaultStreams.h"
-#include "PxPhysicsVersion.h"
-
-#include "PsHash.h"
-#include "PsHashMap.h"
-#include "PsUtilities.h"
-#include "PsSort.h"
-#include "PsString.h"
-#include "PsIntrinsics.h"
-#include "SnFile.h"
 #include "SnSerializationContext.h"
 #include "serialization/SnSerialUtils.h"
 #include "serialization/SnSerializationRegistry.h"
-#include "SnConvX_Align.h"
-#include "CmIO.h"
-#include "CmCollection.h"
 
 using namespace physx;
 using namespace Cm;
@@ -151,6 +139,33 @@ using namespace Sn;
 
 namespace
 {
+	class OutputStreamWriter
+	{
+	public:
+
+		PX_INLINE OutputStreamWriter(PxOutputStream& stream) 
+		:	mStream(stream)
+		,	mCount(0)
+		{}
+
+		PX_INLINE	PxU32	write(const void* src, PxU32 offset)		
+		{		
+			PxU32 count = mStream.write(src, offset);
+			mCount += count;
+			return count;
+		}
+
+		PX_INLINE	PxU32	getStoredSize()
+		{
+			return mCount;
+		}
+
+	private:
+
+		OutputStreamWriter& operator=(const OutputStreamWriter&);
+		PxOutputStream& mStream;
+		PxU32 mCount;
+	};
 
 	class LegacySerialStream : public PxSerializationContext
 	{
@@ -158,8 +173,8 @@ namespace
 		LegacySerialStream(OutputStreamWriter& writer, 
 						   const PxCollection& collection,
 						   bool exportNames) : mWriter(writer), mCollection(collection), mExportNames(exportNames) {}
-		void		writeData(const void* buffer, PxU32 size)		{		mWriter.write(buffer, size);	}
-		PxU32		getTotalStoredSize()							{		return mWriter.getStoredSize();	}
+		void		writeData(const void* buffer, PxU32 size)	{ mWriter.write(buffer, size);		}
+		PxU32		getTotalStoredSize()						{ return mWriter.getStoredSize();	}
 		void		alignData(PxU32 alignment) 
 		{ 
 			if(!alignment)
@@ -177,9 +192,9 @@ namespace
 			PX_ASSERT(!getPadding(getTotalStoredSize(), alignment));
 		}
 
-		virtual void			registerReference(PxBase&, PxU32, size_t)
+		virtual void	registerReference(PxBase&, PxU32, size_t)
 		{
-			Ps::getFoundation().error(physx::PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, 
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, 
 					"Cannot register references during exportData, exportExtraData.");
 		}
 
@@ -283,7 +298,7 @@ bool PxSerialization::serializeCollectionToBinary(PxOutputStream& outputStream, 
 
 	// write the manifest table (PxU32 offset, PxConcreteType type)
 	{
-		Ps::Array<ManifestEntry> manifestTable(collection.internalGetNbObjects());
+		PxArray<ManifestEntry> manifestTable(collection.internalGetNbObjects());
 		PxU32 headerOffset = 0;
 		for(PxU32 i=0;i<collection.internalGetNbObjects();i++)
 		{
@@ -307,7 +322,7 @@ bool PxSerialization::serializeCollectionToBinary(PxOutputStream& outputStream, 
 
 	// write import references
 	{
-		const Ps::Array<ImportReference>& importReferences = context.getImportReferences();
+		const PxArray<ImportReference>& importReferences = context.getImportReferences();
 		stream.alignData(PX_SERIAL_ALIGN);
 		const PxU32 nb = importReferences.size();
 		stream.writeData(&nb, sizeof(PxU32));
@@ -317,7 +332,7 @@ bool PxSerialization::serializeCollectionToBinary(PxOutputStream& outputStream, 
 	// write export references
 	{
 		PxU32 nbIds = collection.getNbIds();
-		Ps::Array<ExportReference> exportReferences(nbIds);
+		PxArray<ExportReference> exportReferences(nbIds);
 		//we can't get quickly from id to object index in collection. 
 		//if we only need this here, its not worth to build a hash
 		nbIds = 0;
@@ -339,11 +354,11 @@ bool PxSerialization::serializeCollectionToBinary(PxOutputStream& outputStream, 
 	// write internal references
 	{
 		InternalPtrRefMap& internalPtrReferencesMap = context.getInternalPtrReferencesMap();
-		Ps::Array<InternalReferencePtr> internalReferencesPtr(internalPtrReferencesMap.size());
+		PxArray<InternalReferencePtr> internalReferencesPtr(internalPtrReferencesMap.size());
 		PxU32 nbInternalPtrReferences = 0;
 
 		InternalHandle16RefMap& internalHandle16ReferencesMap = context.getInternalHandle16ReferencesMap();
-		Ps::Array<InternalReferenceHandle16> internalReferencesHandle16(internalHandle16ReferencesMap.size());
+		PxArray<InternalReferenceHandle16> internalReferencesHandle16(internalHandle16ReferencesMap.size());
 		PxU32 nbInternalHandle16References = 0;
 
 		{
@@ -351,11 +366,11 @@ bool PxSerialization::serializeCollectionToBinary(PxOutputStream& outputStream, 
 				internalReferencesPtr[nbInternalPtrReferences++] = InternalReferencePtr(iter->first, iter->second);
 
 			for(InternalHandle16RefMap::Iterator iter = internalHandle16ReferencesMap.getIterator(); !iter.done(); ++iter)
-				internalReferencesHandle16[nbInternalHandle16References++] = InternalReferenceHandle16(Ps::to16(iter->first), iter->second);
+				internalReferencesHandle16[nbInternalHandle16References++] = InternalReferenceHandle16(PxTo16(iter->first), iter->second);
 
 			//sort InternalReferences according to SerialObjectIndex for determinism
-			Ps::sort<InternalReferencePtr, InternalReferencePredicate<InternalReferencePtr> >(internalReferencesPtr.begin(), internalReferencesPtr.size(), InternalReferencePredicate<InternalReferencePtr>());
-			Ps::sort<InternalReferenceHandle16, InternalReferencePredicate<InternalReferenceHandle16> >(internalReferencesHandle16.begin(), internalReferencesHandle16.size(), InternalReferencePredicate<InternalReferenceHandle16>());
+			PxSort<InternalReferencePtr, InternalReferencePredicate<InternalReferencePtr> >(internalReferencesPtr.begin(), internalReferencesPtr.size(), InternalReferencePredicate<InternalReferencePtr>());
+			PxSort<InternalReferenceHandle16, InternalReferencePredicate<InternalReferenceHandle16> >(internalReferencesHandle16.begin(), internalReferencesHandle16.size(), InternalReferencePredicate<InternalReferenceHandle16>());
 		}
 
 		stream.alignData(PX_SERIAL_ALIGN);

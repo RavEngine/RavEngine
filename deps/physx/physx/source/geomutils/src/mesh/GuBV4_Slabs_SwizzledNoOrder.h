@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +31,7 @@
 
 	// Generic, no sort
 /*	template<class LeafTestT, class ParamsT>
-	static Ps::IntBool BV4_ProcessStreamSwizzledNoOrder(const BVDataPacked* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
+	static PxIntBool BV4_ProcessStreamSwizzledNoOrder(const BVDataPacked* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
 	{
 		const BVDataPacked* root = node;
 
@@ -63,9 +62,8 @@
 		return 0;
 	}*/
 
-
 	template<class LeafTestT, class ParamsT>
-	static Ps::IntBool BV4_ProcessStreamSwizzledNoOrderQ(const BVDataPackedQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
+	static PxIntBool BV4_ProcessStreamSwizzledNoOrderQ(const BVDataPackedQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
 	{
 		const BVDataPackedQ* root = node;
 
@@ -96,9 +94,8 @@
 		return 0;
 	}
 
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
 	template<class LeafTestT, class ParamsT>
-	static Ps::IntBool BV4_ProcessStreamSwizzledNoOrderNQ(const BVDataPackedNQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
+	static PxIntBool BV4_ProcessStreamSwizzledNoOrderNQ(const BVDataPackedNQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
 	{
 		const BVDataPackedNQ* root = node;
 
@@ -128,6 +125,5 @@
 
 		return 0;
 	}
-#endif
 
 #endif // GU_BV4_SLABS_SWIZZLED_NO_ORDER_H

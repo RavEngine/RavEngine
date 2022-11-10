@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuContactPolygonPolygon.h"
-#include "GuGeometryUnion.h"
 #include "GuConvexHelper.h"
 #include "GuInternal.h"
 #include "GuSeparatingAxes.h"
 #include "GuContactMethodImpl.h"
 
-#include "PsMathUtils.h"
-#include "PsFPU.h"
+#include "foundation/PxFPU.h"
+#include "foundation/PxAlloca.h"
+#include "CmMatrix34.h"
 
 // csigg: the single reference of gEnableOptims (below) has been
 // replaced with the actual value to prevent ios64 compiler crash.
@@ -50,7 +49,8 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace shdfnd::aos;
+using namespace Cm;
+using namespace aos;
 using namespace intrinsics;
 
 #ifdef TEST_INTERNAL_OBJECTS
@@ -74,7 +74,7 @@ static const PxReal testInternalObjectsEpsilon = 1.0e-3f;
 #ifdef DO_NOT_REMOVE
 	PX_FORCE_INLINE void testInternalObjects_(	const PxVec3& delta_c, const PxVec3& axis,
 												const PolygonalData& polyData0, const PolygonalData& polyData1,
-												const Cm::Matrix34& tr0, const Cm::Matrix34& tr1,
+												const PxMat34& tr0, const PxMat34& tr1,
 												float& dmin, float contactDistance)
 	{
 		{
@@ -143,7 +143,7 @@ static const PxReal testInternalObjectsEpsilon = 1.0e-3f;
 
 static PX_FORCE_INLINE bool testInternalObjects(	const PxVec3& delta_c, const PxVec3& axis,
 													const PolygonalData& polyData0, const PolygonalData& polyData1,
-													const Cm::Matrix34& tr0, const Cm::Matrix34& tr1,
+													const PxMat34& tr0, const PxMat34& tr1,
 													float dmin)
 {
 #ifdef USE_BOX_DATA
@@ -178,20 +178,20 @@ static PX_FORCE_INLINE bool testInternalObjects(	const PxVec3& delta_c, const Px
 }
 #endif
 
-PX_FORCE_INLINE float PxcMultiplyAdd3x4(PxU32 i, const PxVec3& p0, const PxVec3& p1, const Cm::Matrix34& world)
+PX_FORCE_INLINE float PxcMultiplyAdd3x4(PxU32 i, const PxVec3& p0, const PxVec3& p1, const PxMat34& world)
 {
 	return (p1.x + p0.x) * world.m.column0[i] + (p1.y + p0.y) * world.m.column1[i] + (p1.z + p0.z) * world.m.column2[i] + 2.0f * world.p[i];
 }
 
-PX_FORCE_INLINE float PxcMultiplySub3x4(PxU32 i, const PxVec3& p0, const PxVec3& p1, const Cm::Matrix34& world)
+PX_FORCE_INLINE float PxcMultiplySub3x4(PxU32 i, const PxVec3& p0, const PxVec3& p1, const PxMat34& world)
 {
 	return (p1.x - p0.x) * world.m.column0[i] + (p1.y - p0.y) * world.m.column1[i] + (p1.z - p0.z) * world.m.column2[i];
 }
 
 static PX_FORCE_INLINE bool testNormal(	const PxVec3& axis, PxReal min0, PxReal max0,
 										const PolygonalData& polyData1,
-										const Cm::Matrix34& m1to0,
-										const Cm::FastVertex2ShapeScaling& scaling1,
+										const PxMat34& m1to0,
+										const FastVertex2ShapeScaling& scaling1,
 										PxReal& depth, PxReal contactDistance)
 {
 	//The separating axis we want to test is a face normal of hull0
@@ -208,8 +208,8 @@ static PX_FORCE_INLINE bool testNormal(	const PxVec3& axis, PxReal min0, PxReal 
 }
 
 static PX_FORCE_INLINE bool testSeparatingAxis(	const PolygonalData& polyData0, const PolygonalData& polyData1,
-												const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-												const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
+												const PxMat34& world0, const PxMat34& world1,
+												const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
 												const PxVec3& axis, PxReal& depth, PxReal contactDistance)
 {
 	PxReal min0, max0;
@@ -220,7 +220,7 @@ static PX_FORCE_INLINE bool testSeparatingAxis(	const PolygonalData& polyData0, 
 
 static bool PxcSegmentAABBIntersect(const PxVec3& p0, const PxVec3& p1, 
 									const PxVec3& minimum, const PxVec3& maximum, 
-									const Cm::Matrix34& world)
+									const PxMat34& world)
 {
 	PxVec3 boxExtent, diff, dir;
 	PxReal fAWdU[3];
@@ -257,19 +257,19 @@ Edge culling can clearly be improved : in ConvexTest02 for example, edges don't 
 */
 static void PxcFindSeparatingAxes(	SeparatingAxes& sa, const PxU32* PX_RESTRICT indices, PxU32 numPolygons,
 									const PolygonalData& polyData,
-									const Cm::Matrix34& world0, const PxPlane& plane,
-									const Cm::Matrix34& m0to1, const PxBounds3& aabb, PxReal contactDistance,
-									const Cm::FastVertex2ShapeScaling& scaling)
+									const PxMat34& world0, const PxPlane& plane,
+									const PxMat34& m0to1, const PxBounds3& aabb, PxReal contactDistance,
+									const FastVertex2ShapeScaling& scaling)
 {
 //	EdgeCache edgeCache;	// PT: TODO: check this is actually useful
 	const PxVec3* PX_RESTRICT vertices = polyData.mVerts;
-	const Gu::HullPolygonData* PX_RESTRICT polygons = polyData.mPolygons;
+	const HullPolygonData* PX_RESTRICT polygons = polyData.mPolygons;
 	const PxU8* PX_RESTRICT vrefsBase = polyData.mPolygonVertexRefs;
 
 	while(numPolygons--)
 	{
 		//Get current polygon
-		const Gu::HullPolygonData& P = polygons[*indices++];
+		const HullPolygonData& P = polygons[*indices++];
 		const PxU8* PX_RESTRICT VData = vrefsBase + P.mVRef8;
 
 		// Loop through polygon vertices == polygon edges
@@ -292,7 +292,7 @@ static void PxcFindSeparatingAxes(	SeparatingAxes& sa, const PxU32* PX_RESTRICT 
 #endif
 			PxU8 VRef1 = VData[j1];
 
-//			Ps::order(VRef0, VRef1); //make sure edge  (a,b) == edge (b,a)
+//			PxOrder(VRef0, VRef1); //make sure edge  (a,b) == edge (b,a)
 //			if (edgeCache.isInCache(VRef0, VRef1))
 //				continue;
 
@@ -331,9 +331,9 @@ static void PxcFindSeparatingAxes(	SeparatingAxes& sa, const PxU32* PX_RESTRICT 
 }
 
 static bool PxcTestFacesSepAxesBackface(const PolygonalData& polyData0, const PolygonalData& polyData1,
-										const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-										const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
-										const Cm::Matrix34& m1to0, const PxVec3& delta,
+										const PxMat34& world0, const PxMat34& world1,
+										const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
+										const PxMat34& m1to0, const PxVec3& delta,
 										PxReal& dmin, PxVec3& sep, PxU32& id, PxU32* PX_RESTRICT indices_, PxU32& numIndices,
 										PxReal contactDistance, float toleranceLength
 #ifdef TEST_INTERNAL_OBJECTS
@@ -347,21 +347,21 @@ static bool PxcTestFacesSepAxesBackface(const PolygonalData& polyData0, const Po
 
 	const PxU32 num = polyData0.mNbPolygons;
 	const PxVec3* PX_RESTRICT vertices = polyData0.mVerts;
-	const Gu::HullPolygonData* PX_RESTRICT polygons = polyData0.mPolygons;
+	const HullPolygonData* PX_RESTRICT polygons = polyData0.mPolygons;
 
 	//transform delta from hull0 shape into vertex space:
 	const PxVec3 vertSpaceDelta = scaling0 % delta;
 
 	// PT: prefetch polygon data
 	{
-		const PxU32 dataSize = num*sizeof(Gu::HullPolygonData);
+		const PxU32 dataSize = num*sizeof(HullPolygonData);
 		for(PxU32 offset=0; offset < dataSize; offset+=128)
-			Ps::prefetchLine(polygons, offset);
+			PxPrefetchLine(polygons, offset);
 	}
 
 	for(PxU32 i=0; i < num; i++)
 	{
-		const Gu::HullPolygonData& P = polygons[i];
+		const HullPolygonData& P = polygons[i];
 		const PxPlane& PL = P.mPlane;
 
 		// Do backface-culling
@@ -466,8 +466,8 @@ static void prepareData(PxPlane& witnessPlane0, PxPlane& witnessPlane1,
 						PxBounds3& aabb0, PxBounds3& aabb1,
 						const PxBounds3& hullBounds0, const PxBounds3& hullBounds1,
 						const PxPlane& vertSpacePlane0, const PxPlane& vertSpacePlane1,
-						const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
-						const Cm::Matrix34& m0to1, const Cm::Matrix34& m1to0,
+						const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
+						const PxMat34& m0to1, const PxMat34& m1to0,
 						PxReal contactDistance
 						)
 {
@@ -494,9 +494,9 @@ static void prepareData(PxPlane& witnessPlane0, PxPlane& witnessPlane1,
 
 static bool PxcBruteForceOverlapBackface(	const PxBounds3& hullBounds0, const PxBounds3& hullBounds1,
 											const PolygonalData& polyData0, const PolygonalData& polyData1,
-											const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-											const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
-											const Cm::Matrix34& m0to1, const Cm::Matrix34& m1to0, const PxVec3& delta,
+											const PxMat34& world0, const PxMat34& world1,
+											const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
+											const PxMat34& m0to1, const PxMat34& m1to0, const PxVec3& delta,
 											PxU32& id0, PxU32& id1,
 											PxReal& depth, PxVec3& sep, PxcSepAxisType& code, PxReal contactDistance, float toleranceLength)
 {
@@ -582,7 +582,7 @@ static bool PxcBruteForceOverlapBackface(	const PxBounds3& hullBounds0, const Px
 			const PxVec3& edge1 = edges1[j];
 
 			PxVec3 sepAxis = edge0.cross(edge1);
-			if(!Ps::isAlmostZero(sepAxis))
+			if(!isAlmostZero(sepAxis))
 			{
 				sepAxis = sepAxis.getNormalized();
 
@@ -621,9 +621,9 @@ static bool PxcBruteForceOverlapBackface(	const PxBounds3& hullBounds0, const Px
 
 static bool GuTestFacesSepAxesBackfaceRoughPass(
 										 const PolygonalData& polyData0, const PolygonalData& polyData1,
-										 const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-										 const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
-										 const Cm::Matrix34& m1to0, const PxVec3& /*witness*/, const PxVec3& delta,
+										 const PxMat34& world0, const PxMat34& world1,
+										 const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
+										 const PxMat34& m1to0, const PxVec3& /*witness*/, const PxVec3& delta,
 										 PxReal& dmin, PxVec3& sep, PxU32& id,
 										 PxReal contactDistance, float toleranceLength
 #ifdef TEST_INTERNAL_OBJECTS
@@ -635,7 +635,7 @@ static bool GuTestFacesSepAxesBackfaceRoughPass(
 	id = PX_INVALID_U32;
 
 	const PxU32 num = polyData0.mNbPolygons;
-	const Gu::HullPolygonData* PX_RESTRICT polygons = polyData0.mPolygons;
+	const HullPolygonData* PX_RESTRICT polygons = polyData0.mPolygons;
 	const PxVec3* PX_RESTRICT vertices = polyData0.mVerts;
 
 	//transform delta from hull0 shape into vertex space:
@@ -643,7 +643,7 @@ static bool GuTestFacesSepAxesBackfaceRoughPass(
 
 	for(PxU32 i=0; i < num; i++)
 	{
-		const Gu::HullPolygonData& P = polygons[i];
+		const HullPolygonData& P = polygons[i];
 		const PxPlane& PL = P.mPlane;
 
 		if(PL.n.dot(vertSpaceDelta) < 0.0f)
@@ -692,9 +692,9 @@ static bool GuTestFacesSepAxesBackfaceRoughPass(
 }
 
 static bool GuBruteForceOverlapBackfaceRoughPass(	const PolygonalData& polyData0, const PolygonalData& polyData1,
-													const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-													const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
-													const Cm::Matrix34& m0to1, const Cm::Matrix34& m1to0, const PxVec3& delta,
+													const PxMat34& world0, const PxMat34& world1,
+													const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
+													const PxMat34& m0to1, const PxMat34& m1to0, const PxVec3& delta,
 													PxU32& id0, PxU32& id1,
 													PxReal& depth, PxVec3& sep, PxcSepAxisType& code, PxReal contactDistance, PxReal toleranceLength)
 {
@@ -743,15 +743,10 @@ static bool GuBruteForceOverlapBackfaceRoughPass(	const PolygonalData& polyData0
 static bool GuContactHullHull(	const PolygonalData& polyData0, const PolygonalData& polyData1,
 								const PxBounds3& hullBounds0, const PxBounds3& hullBounds1,
 								const PxTransform& transform0, const PxTransform& transform1,
-								const NarrowPhaseParams& params, ContactBuffer& contactBuffer,
-								const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
+								const NarrowPhaseParams& params, PxContactBuffer& contactBuffer,
+								const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
 								bool idtScale0, bool idtScale1);
 
-namespace physx
-{
-
-namespace Gu
-{
 // Box-convex contact generation
 // this can no longer share code with convex-convex because that case needs scaling for both shapes, while this only needs it for one, which may be significant perf wise.
 //
@@ -759,14 +754,15 @@ namespace Gu
 // codepath significantly slower, and this is a lot more important than just box-vs-convex. The proper approach is to share the code and make sure scaling is NOT a perf hit.
 // PT: please leave this function in the same translation unit as PxcContactHullHull.
 
-bool contactBoxConvex(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactBoxConvex(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 
-	const PxBoxGeometry& shapeBox = shape0.get<const PxBoxGeometry>();
+	const PxBoxGeometry& shapeBox = checkedCast<PxBoxGeometry>(shape0);
+	const PxConvexMeshGeometry& shapeConvex = checkedCast<PxConvexMeshGeometry>(shape1);
 
-	Cm::FastVertex2ShapeScaling idtScaling;
+	FastVertex2ShapeScaling idtScaling;
 
 	const PxBounds3 boxBounds(-shapeBox.halfExtents, shapeBox.halfExtents);
 
@@ -776,10 +772,10 @@ bool contactBoxConvex(GU_CONTACT_METHOD_ARGS)
 
 	///////
 
-	Cm::FastVertex2ShapeScaling convexScaling;
+	FastVertex2ShapeScaling convexScaling;
 	PxBounds3 convexBounds;
 	PolygonalData polyData1;
-	const bool idtScale = getConvexData(shape1, convexScaling, convexBounds, polyData1);
+	const bool idtScale = getConvexData(shapeConvex, convexScaling, convexBounds, polyData1);
 
 	return GuContactHullHull(	polyData0, polyData1, boxBounds, convexBounds,
 								transform0, transform1, params, contactBuffer,
@@ -787,34 +783,35 @@ bool contactBoxConvex(GU_CONTACT_METHOD_ARGS)
 }
 
 // PT: please leave this function in the same translation unit as PxcContactHullHull.
-bool contactConvexConvex(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactConvexConvex(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	Cm::FastVertex2ShapeScaling scaling0, scaling1;
+	const PxConvexMeshGeometry& shapeConvex0 = checkedCast<PxConvexMeshGeometry>(shape0);
+	const PxConvexMeshGeometry& shapeConvex1 = checkedCast<PxConvexMeshGeometry>(shape1);
+
+	FastVertex2ShapeScaling scaling0, scaling1;
 	PxBounds3 convexBounds0, convexBounds1;
 	PolygonalData polyData0, polyData1;
-	const bool idtScale0 = getConvexData(shape0, scaling0, convexBounds0, polyData0);
-	const bool idtScale1 = getConvexData(shape1, scaling1, convexBounds1, polyData1);
+	const bool idtScale0 = getConvexData(shapeConvex0, scaling0, convexBounds0, polyData0);
+	const bool idtScale1 = getConvexData(shapeConvex1, scaling1, convexBounds1, polyData1);
 
 	return GuContactHullHull(	polyData0, polyData1, convexBounds0, convexBounds1,
 								transform0, transform1, params, contactBuffer,
 								scaling0, scaling1, idtScale0, idtScale1);
 }
-}//Gu
-}//physx
 
 static bool GuContactHullHull(	const PolygonalData& polyData0, const PolygonalData& polyData1,
 								const PxBounds3& hullBounds0, const PxBounds3& hullBounds1,
 								const PxTransform& transform0, const PxTransform& transform1,
-								const NarrowPhaseParams& params, ContactBuffer& contactBuffer,
-								const Cm::FastVertex2ShapeScaling& scaling0, const Cm::FastVertex2ShapeScaling& scaling1,
+								const NarrowPhaseParams& params, PxContactBuffer& contactBuffer,
+								const FastVertex2ShapeScaling& scaling0, const FastVertex2ShapeScaling& scaling1,
 								bool idtScale0, bool idtScale1)
 {
 	// Compute matrices
-	const Cm::Matrix34 world0(transform0);
-	const Cm::Matrix34 world1(transform1);
+	const Matrix34FromTransform world0(transform0);
+	const Matrix34FromTransform world1(transform1);
 
 	const PxVec3 worldCenter0 = world0.transform(polyData0.mCenter);
 	const PxVec3 worldCenter1 = world1.transform(polyData1.mCenter);
@@ -845,8 +842,8 @@ static bool GuContactHullHull(	const PolygonalData& polyData0, const PolygonalDa
 	PxU32 c1(0x7FFF);
 	PxVec3 worldNormal;
 
-	const Cm::Matrix34 m0to1(t0to1);
-	const Cm::Matrix34 m1to0(t1to0);
+	const Matrix34FromTransform m0to1(t0to1);
+	const Matrix34FromTransform m1to0(t1to0);
 
 #ifdef CONVEX_CONVEX_ROUGH_FIRST_PASS
 	// PT: it is a bad idea to skip the rough pass, for two reasons:
@@ -912,11 +909,11 @@ code = SA_EE;
 		}
 	}
 
-	const Gu::HullPolygonData& HP0 = polyData0.mPolygons[c0];
-	const Gu::HullPolygonData& HP1 = polyData1.mPolygons[c1];
+	const HullPolygonData& HP0 = polyData0.mPolygons[c0];
+	const HullPolygonData& HP1 = polyData1.mPolygons[c1];
 	// PT: prefetching those guys saves ~600.000 cycles in convex-convex benchmark
-	Ps::prefetchLine(&HP0.mPlane);
-	Ps::prefetchLine(&HP1.mPlane);
+	PxPrefetchLine(&HP0.mPlane);
+	PxPrefetchLine(&HP1.mPlane);
 
 	//ok, we have a new depth value. convert to real distance. 
 //	PxReal separation = -depth;		//depth was either computed in initial cached-axis check, or better, when skipIt was false, in sep axis search.
@@ -950,7 +947,7 @@ code = SA_EE;
 		worldNormal1 = world1.rotate(shapeSpacePlane1.n);
 	}
 
-	Ps::IntBool flag;
+	PxIntBool flag;
 	{
 		const PxReal d0 = PxAbs(worldNormal0.dot(worldNormal));
 		const PxReal d1 = PxAbs(worldNormal1.dot(worldNormal));
@@ -974,15 +971,13 @@ code = SA_EE;
 
 		//The system:  We always shift convex 0 (arbitrary).  If the contact is attached to convex 0 then we will need to shift the contact point, otherwise not.
 		const PxVec3 newp = world0.p - contactGenPositionShiftVec;
-		const Cm::Matrix34 world0_Tweaked(world0.m.column0, world0.m.column1, world0.m.column2, newp);
+		const PxMat34 world0_Tweaked(world0.m.column0, world0.m.column1, world0.m.column2, newp);
 		PxTransform shifted0(newp, transform0.q);
 
 		t0to1 = transform1.transformInv(shifted0);
 		t1to0 = shifted0.transformInv(transform1);
-		Cm::Matrix34 m0to1_Tweaked;
-		Cm::Matrix34 m1to0_Tweaked;
-		m0to1_Tweaked.set(t0to1.q);		m0to1_Tweaked.p = t0to1.p;
-		m1to0_Tweaked.set(t1to0.q);		m1to0_Tweaked.p = t1to0.p;
+		const Matrix34FromTransform m0to1_Tweaked(t0to1);
+		const Matrix34FromTransform m1to0_Tweaked(t1to0);
 
 //////////////////////////////////////////////////
 	//pretransform convex polygon if we have scaling!

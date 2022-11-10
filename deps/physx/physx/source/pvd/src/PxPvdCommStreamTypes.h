@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDCOMMSTREAMTYPES_H
-#define PXPVDSDK_PXPVDCOMMSTREAMTYPES_H
+#ifndef PX_PVD_COMM_STREAM_TYPES_H
+#define PX_PVD_COMM_STREAM_TYPES_H
 
 #include "foundation/PxErrorCallback.h"
+#include "common/PxRenderBuffer.h"
 #include "pvd/PxPvdTransport.h"
 
-#include "PxPvdRenderBuffer.h"
 #include "PxPvdObjectModelBaseTypes.h"
 #include "PxPvdCommStreamEvents.h"
 #include "PxPvdDataStream.h"
-#include "PsMutex.h"
+#include "foundation/PxMutex.h"
 
 namespace physx
 {
@@ -158,7 +157,7 @@ struct EventStreamifier : public PvdEventSerializer
 	{
 		write(val);
 	}
-	virtual void streamify(PvdDebugText& val)
+	virtual void streamify(PxDebugText& val)
 	{
 		write(val.color);
 		write(val.position);
@@ -226,4 +225,5 @@ struct DataStreamState
 
 } // pvdsdk
 } // physx
-#endif // PXPVDSDK_PXPVDCOMMSTREAMTYPES_H
+#endif
+

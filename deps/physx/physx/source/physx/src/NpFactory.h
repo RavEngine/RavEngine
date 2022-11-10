@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,28 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_NP_FACTORY
-#define PX_PHYSICS_NP_FACTORY
+#ifndef NP_FACTORY_H
+#define NP_FACTORY_H
 
-#include "PsPool.h"
-#include "PsMutex.h"
-#include "PsHashSet.h"
+#include "foundation/PxPool.h"
+#include "foundation/PxMutex.h"
+#include "foundation/PxHashSet.h"
 
 #include "GuMeshFactory.h"
-#include "CmPhysXCommon.h"
 #include "PxPhysXConfig.h"
 #include "PxShape.h"
-#include "PxArticulationBase.h"
+#include "PxAggregate.h"
+
+
+#include "NpFEMCloth.h"  // to be deleted
 
 namespace physx
 {
+class PxCudaContextManager;
 
 class PxActor;
 
@@ -60,28 +62,49 @@ class PxConstraintConnector;
 class PxConstraint;
 class NpConstraint;
 
-class PxArticulation;
 class PxArticulationReducedCoordinate;
-class NpArticulation;
 class NpArticulationReducedCoordinate;
 class PxArticulationLink;
 class NpArticulationLink;
-class NpArticulationJoint;
 class NpArticulationJointReducedCoordinate;
+
+class PxSoftBody;
+class PxFEMCloth;
+class PxParticleSystem;
+class PxHairSystem;
+
+#if PX_SUPPORT_GPU_PHYSX
+class NpSoftBody;
+class NpFEMCloth;
+class NpPBDParticleSystem;
+class NpFLIPParticleSystem;
+class NpMPMParticleSystem;
+class NpCustomParticSystem;
+class NpHairSystem;
+
+class NpFEMSoftBodyMaterial;
+class NpFEMClothMaterial;
+class NpPBDMaterial;
+class NpFLIPMaterial;
+class NpMPMMaterial;
+class NpCustomMaterial;
+#endif
 
 class PxMaterial;
 class NpMaterial;
+
+class PxFEMSoftBodyMaterial;
+class PxFEMClothMaterial;
+class PxPBDMaterial;
+class PxFLIPMaterial;
+class PxMPMMaterial;
 
 class PxGeometry;
 
 class NpShape;
 
-class NpScene;
-
-class PxAggregate;
 class NpAggregate;
 
-class NpConnectorArray;
 class NpPtrTableStorageManager;
 
 namespace Cm
@@ -89,36 +112,28 @@ namespace Cm
    class Collection;
 }
 
-namespace Scb
-{
-	class RigidObject;
-	class Articulation;
-}
-
-namespace pvdsdk
-{
-	class PvdDataStream;
-	class PsPvd;
-}
-
-class NpFactoryListener : public GuMeshFactoryListener
+class NpFactoryListener : public Gu::MeshFactoryListener
 {
 protected:
 	virtual ~NpFactoryListener(){}
 };
 
-class NpFactory : public GuMeshFactory
+class NpFactory : public Gu::MeshFactory
 {
 	PX_NOCOPY(NpFactory)
 public:
 														NpFactory();
 private:
 														~NpFactory();
+
+				template <typename PxMaterialType, typename NpMaterialType>
+				NpShape*								createShapeInternal(const PxGeometry& geometry, PxShapeFlags shapeFlags, PxMaterialType*const* materials, PxU16 materialCount, bool isExclusive, PxShapeCoreFlag::Enum flag);
 public:
 	static		void									createInstance();
 	static		void									destroyInstance();
 	static		void									registerArticulations();
 	static		void									registerArticulationRCs();
+	static		void									onParticleBufferRelease(PxParticleBuffer* buffer);
 
 				void									release();
 
@@ -144,6 +159,10 @@ public:
 
 				// Shapes
 				NpShape*								createShape(const PxGeometry& geometry, PxShapeFlags shapeFlags, PxMaterial*const* materials, PxU16 materialCount, bool isExclusive);
+				NpShape*								createShape(const PxGeometry& geometry, PxShapeFlags shapeFlags, PxFEMSoftBodyMaterial*const* materials, PxU16 materialCount, bool isExclusive);
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				NpShape*								createShape(const PxGeometry& geometry, PxShapeFlags shapeFlags, PxFEMClothMaterial*const* materials, PxU16 materialCount, bool isExclusive);
+#endif
 				void									addShape(PxShape*, bool lock=true);
 				void									releaseShapeToPool(NpShape&);
 				PxU32									getNbShapes() const;
@@ -158,29 +177,67 @@ public:
 //				PxU32									getConstraints(PxConstraint** userBuffer, PxU32 bufferSize, PxU32 startIndex)	const;
 
 				// Articulations
-				PxArticulation*							createArticulation();
-				void									addArticulation(PxArticulationBase*, bool lock=true);
-				void									releaseArticulationToPool(PxArticulationBase& articulation);
+				void									addArticulation(PxArticulationReducedCoordinate*, bool lock=true);
+				void									releaseArticulationToPool(PxArticulationReducedCoordinate& articulation);
 				PxArticulationReducedCoordinate*		createArticulationRC();
-				NpArticulation*							createNpArticulation();
 				NpArticulationReducedCoordinate*		createNpArticulationRC();
-// PT: TODO: add missing functions
-//				PxU32									getNbArticulations() const;
-//				PxU32									getArticulations(PxArticulation** userBuffer, PxU32 bufferSize, PxU32 startIndex)	const;
 
 				// Articulation links
-				NpArticulationLink*						createNpArticulationLink(PxArticulationBase&root, NpArticulationLink* parent, const PxTransform& pose);
-                void									releaseArticulationLinkToPool(NpArticulationLink& articulation);
-				PxArticulationLink*						createArticulationLink(PxArticulationBase&, NpArticulationLink* parent, const PxTransform& pose);
+				NpArticulationLink*						createNpArticulationLink(NpArticulationReducedCoordinate& root, NpArticulationLink* parent, const PxTransform& pose);
+				void									releaseArticulationLinkToPool(NpArticulationLink& articulation);
+				PxArticulationLink*						createArticulationLink(NpArticulationReducedCoordinate& root, NpArticulationLink* parent, const PxTransform& pose);
 
-				// Articulation joints
-				NpArticulationJoint*					createNpArticulationJoint(NpArticulationLink& parent, const PxTransform& parentFrame, NpArticulationLink& child, const PxTransform& childFrame);
-               	void									releaseArticulationJointToPool(NpArticulationJoint& articulationJoint);
 				NpArticulationJointReducedCoordinate*	createNpArticulationJointRC(NpArticulationLink& parent, const PxTransform& parentFrame, NpArticulationLink& child, const PxTransform& childFrame);
 				void									releaseArticulationJointRCToPool(NpArticulationJointReducedCoordinate& articulationJoint);
 
+				//Soft bodys
+				PxSoftBody*								createSoftBody(PxCudaContextManager& cudaContextManager);
+				void									releaseSoftBodyToPool(PxSoftBody& softBody);
+				
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				// FEMCloth
+				PxFEMCloth*								createFEMCloth(PxCudaContextManager& cudaContextManager);
+				void									releaseFEMClothToPool(PxFEMCloth& femCloth);
+#endif
+
+				//Particle systems
+				PxPBDParticleSystem*					createPBDParticleSystem(PxU32 maxNeighborhood, PxCudaContextManager& cudaContexManager);
+				void									releasePBDParticleSystemToPool(PxPBDParticleSystem& particleSystem);
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				//Particle systems
+				PxFLIPParticleSystem*					createFLIPParticleSystem(PxCudaContextManager& cudaContexManager);
+				void									releaseFLIPParticleSystemToPool(PxFLIPParticleSystem& particleSystem);
+
+				//Particle systems
+				PxMPMParticleSystem*					createMPMParticleSystem(PxCudaContextManager& cudaContexManager);
+				void									releaseMPMParticleSystemToPool(PxMPMParticleSystem& particleSystem);
+				
+				//Particle systems
+				PxCustomParticleSystem*					createCustomParticleSystem(PxCudaContextManager& cudaContexManager, PxU32 maxNeighborhood);
+				void									releaseCustomParticleSystemToPool(PxCustomParticleSystem& particleSystem);
+#endif
+
+				//Particle buffers
+				PxParticleBuffer*						createParticleBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxCudaContextManager* cudaContextManager);
+
+				//Diffuse Particle buffers
+				PxParticleAndDiffuseBuffer*				createParticleAndDiffuseBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxU32 maxDiffuseParticles, PxCudaContextManager* cudaContextManager);
+
+				//Particle cloth buffers
+				PxParticleClothBuffer*					createParticleClothBuffer(PxU32 maxParticles, PxU32 maxNumVolumes, PxU32 maxNumCloths, PxU32 maxNumTriangles, PxU32 maxNumSprings, PxCudaContextManager* cudaContextManager);
+
+				//Particle rigid buffers
+				PxParticleRigidBuffer*					createParticleRigidBuffer(PxU32 maxParticles, PxU32 maxNumVolumes, PxU32 maxNumRigids, PxCudaContextManager* cudaContextManager);
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				// HairSystem
+				PxHairSystem*							createHairSystem(PxCudaContextManager& cudaContextManager);
+				void									releaseHairSystemToPool(PxHairSystem& hairSystem);
+#endif
+
 				// Aggregates
-				PxAggregate*							createAggregate(PxU32 maxActors, bool selfCollisions);
+				PxAggregate*							createAggregate(PxU32 maxActors, PxU32 maxShapes, PxAggregateFilterHint filterHint);
 				void									addAggregate(PxAggregate*, bool lock=true);
 				void									releaseAggregateToPool(NpAggregate&);
 // PT: TODO: add missing functions
@@ -191,17 +248,40 @@ public:
 				PxMaterial*								createMaterial(PxReal staticFriction, PxReal dynamicFriction, PxReal restitution);
 				void									releaseMaterialToPool(NpMaterial& material);
 
+				PxFEMSoftBodyMaterial*					createFEMSoftBodyMaterial(PxReal youngs, PxReal poissons, PxReal dynamicFriction);
+				void									releaseFEMMaterialToPool(PxFEMSoftBodyMaterial& material);
+
+				PxFEMClothMaterial*						createFEMClothMaterial(PxReal youngs, PxReal poissons, PxReal dynamicFriction);
+				void									releaseFEMClothMaterialToPool(PxFEMClothMaterial& material);
+
+				PxPBDMaterial*							createPBDMaterial(PxReal friction, PxReal damping, PxReal adhesion, PxReal viscosity, PxReal vorticityConfinement, PxReal surfaceTension, PxReal cohesion, PxReal lift, PxReal drag, PxReal cflCoefficient, PxReal gravityScale);
+				void									releasePBDMaterialToPool(PxPBDMaterial& material);
+				
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				PxFLIPMaterial*							createFLIPMaterial(PxReal friction, PxReal damping, PxReal adhesion, PxReal viscosity, PxReal gravityScale);
+				void									releaseFLIPMaterialToPool(PxFLIPMaterial& material);
+#endif
+				
+				PxMPMMaterial*							createMPMMaterial(PxReal friction, PxReal damping, PxReal adhesion, bool isPlastic, PxReal youngsModulus, PxReal poissons, PxReal hardening, PxReal criticalCompression, PxReal criticalStretch, PxReal tensileDamageSensitivity, PxReal compressiveDamageSensitivity, PxReal attractiveForceResidual, PxReal gravityScale);
+				void									releaseMPMMaterialToPool(PxMPMMaterial& material);
+
+				PxCustomMaterial*						createCustomMaterial(void* gpuBuffer);
+				void									releaseCustomMaterialToPool(PxCustomMaterial& material);
+
 				// It's easiest to track these uninvasively, so it's OK to use the Px pointers
 				void									onActorRelease(PxActor*);
 				void									onConstraintRelease(PxConstraint*);
 				void									onAggregateRelease(PxAggregate*);
-				void									onArticulationRelease(PxArticulationBase*);
+				void									onArticulationRelease(PxArticulationReducedCoordinate*);
 				void									onShapeRelease(PxShape*);
+
+				void									addParticleBuffer(PxParticleBuffer* buffer, bool lock = true);
+				void									onParticleBufferReleaseInternal(PxParticleBuffer* buffer);
 
 				NpConnectorArray*						acquireConnectorArray();
 				void									releaseConnectorArray(NpConnectorArray*);
 				
-				NpPtrTableStorageManager&				getPtrTableStorageManager()	{ return *mPtrTableStorageManager; }
+	PX_FORCE_INLINE	NpPtrTableStorageManager&			getPtrTableStorageManager()	{ return *mPtrTableStorageManager; }
 
 #if PX_SUPPORT_PVD
 				void									setNpFactoryListener( NpFactoryListener& );
@@ -210,57 +290,120 @@ public:
 private:
 				void									releaseExclusiveShapeUserReferences();
 
-				Ps::Pool<NpConnectorArray>				mConnectorArrayPool;
-				Ps::Mutex								mConnectorArrayPoolLock;
+				PxPool<NpConnectorArray>				mConnectorArrayPool;
+				PxMutex									mConnectorArrayPoolLock;
 
 				NpPtrTableStorageManager*				mPtrTableStorageManager;
 
-				Ps::HashSet<PxAggregate*>				mAggregateTracking;
-				Ps::HashSet<PxArticulationBase*>		mArticulationTracking;
-				Ps::HashSet<PxConstraint*>				mConstraintTracking;
-				Ps::HashSet<PxActor*>					mActorTracking;				
-				Ps::CoalescedHashSet<PxShape*>			mShapeTracking;
+				PxHashSet<PxAggregate*>							mAggregateTracking;
+				PxHashSet<PxArticulationReducedCoordinate*>		mArticulationTracking;
+				PxHashSet<PxConstraint*>						mConstraintTracking;
+				PxHashSet<PxActor*>								mActorTracking;				
+				PxCoalescedHashSet<PxShape*>					mShapeTracking;
+				PxHashSet<PxParticleBuffer*>				mParticleBufferTracking;
 
-				Ps::Pool2<NpRigidDynamic, 4096>			mRigidDynamicPool;
-				Ps::Mutex								mRigidDynamicPoolLock;
+				PxPool2<NpRigidDynamic, 4096>			mRigidDynamicPool;
+				PxMutex									mRigidDynamicPoolLock;
 
-				Ps::Pool2<NpRigidStatic, 4096>			mRigidStaticPool;
-				Ps::Mutex								mRigidStaticPoolLock;
+				PxPool2<NpRigidStatic, 4096>			mRigidStaticPool;
+				PxMutex									mRigidStaticPoolLock;
 
-				Ps::Pool2<NpShape, 4096>				mShapePool;
-				Ps::Mutex								mShapePoolLock;
+				PxPool2<NpShape, 4096>					mShapePool;
+				PxMutex									mShapePoolLock;
 
-				Ps::Pool2<NpAggregate, 4096>			mAggregatePool;
-				Ps::Mutex								mAggregatePoolLock;
+				PxPool2<NpAggregate, 4096>				mAggregatePool;
+				PxMutex									mAggregatePoolLock;
 
-				Ps::Pool2<NpConstraint, 4096>			mConstraintPool;
-				Ps::Mutex								mConstraintPoolLock;
+				PxPool2<NpConstraint, 4096>				mConstraintPool;
+				PxMutex									mConstraintPoolLock;
 
-				Ps::Pool2<NpMaterial, 4096>				mMaterialPool;
-				Ps::Mutex								mMaterialPoolLock;
+				PxPool2<NpMaterial, 4096>				mMaterialPool;
+				PxMutex									mMaterialPoolLock;
 
-				Ps::Pool2<NpArticulation, 4096>			mArticulationPool;
-				Ps::Mutex								mArticulationPoolLock;
+				PxPool2<NpArticulationReducedCoordinate, 4096>	mArticulationRCPool;
+				PxMutex											mArticulationRCPoolLock;
 
-				Ps::Pool2<NpArticulationReducedCoordinate, 4096>	mArticulationRCPool;
-				Ps::Mutex											mArticulationRCPoolLock;
+				PxPool2<NpArticulationLink, 4096>		mArticulationLinkPool;
+				PxMutex									mArticulationLinkPoolLock;
 
-				Ps::Pool2<NpArticulationLink, 4096>		mArticulationLinkPool;
-				Ps::Mutex								mArticulationLinkPoolLock;
 
-				Ps::Pool2<NpArticulationJoint, 4096>	mArticulationJointPool;
-				Ps::Mutex								mArticulationJointPoolLock;	
+				PxPool2<NpArticulationJointReducedCoordinate, 4096> mArticulationRCJointPool;
+				PxMutex												mArticulationJointRCPoolLock;
 
-				Ps::Pool2<NpArticulationJointReducedCoordinate, 4096> mArticulationRCJointPool;
-				Ps::Mutex								mArticulationJointRCPoolLock;
+#if PX_SUPPORT_GPU_PHYSX
+				PxPool2<NpSoftBody, 4096>				mSoftBodyPool;
+				PxMutex									mSoftBodyPoolLock;
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				PxPool2<NpFEMCloth, 4096>				mFEMClothPool;
+				PxMutex									mFEMClothPoolLock;
+#endif
+
+				PxPool2<NpPBDParticleSystem, 4096>		mPBDParticleSystemPool;
+				PxMutex									mPBDParticleSystemPoolLock;
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				PxPool2<NpFLIPParticleSystem, 4096>		mFLIPParticleSystemPool;
+				PxMutex									mFLIPParticleSystemPoolLock;
+
+				PxPool2<NpMPMParticleSystem, 4096>		mMPMParticleSystemPool;
+				PxMutex									mMPMParticleSystemPoolLock;
+
+				PxPool2<NpCustomParticleSystem, 4096>	mCustomParticleSystemPool;
+				PxMutex									mCustomParticleSystemPoolLock;
+#endif
+
+				PxPool2<NpFEMSoftBodyMaterial, 4096>	mFEMMaterialPool;
+				PxMutex									mFEMMaterialPoolLock;
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				PxPool2<NpFEMClothMaterial, 4096>		mFEMClothMaterialPool;
+				PxMutex									mFEMClothMaterialPoolLock;
+#endif
+				PxPool2<NpPBDMaterial, 4096>			mPBDMaterialPool;
+				PxMutex									mPBDMaterialPoolLock;
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+				PxPool2<NpFLIPMaterial, 4096>			mFLIPMaterialPool;
+				PxMutex									mFLIPMaterialPoolLock;
+				
+				PxPool2<NpMPMMaterial, 4096>			mMPMMaterialPool;
+				PxMutex									mMPMMaterialPoolLock;
+
+				PxPool2<NpCustomMaterial, 4096>			mCustomMaterialPool;
+				PxMutex									mCustomMaterialPoolLock;
+				/*PxPool2<NpFEMSoftBodyMaterial, 4096>	mFEMMaterialPool;
+				PxMutex									mFEMMaterialPoolLock;*/
+
+				PxPool2<NpHairSystem, 4096>				mHairSystemPool;
+				PxMutex									mHairSystemPoolLock;
+#endif
+#endif
 
 	static		NpFactory*								mInstance;
+				PxU64									mGpuMemStat;
 
 #if PX_SUPPORT_PVD
 				NpFactoryListener*						mNpFactoryListener;
 #endif
 };
 
+	void	NpDestroyRigidActor(NpRigidStatic* np);
+	void	NpDestroyRigidDynamic(NpRigidDynamic* np);
+	void	NpDestroyArticulationLink(NpArticulationLink* np);
+	void	NpDestroyArticulationJoint(PxArticulationJointReducedCoordinate* np);
+	void	NpDestroyArticulation(PxArticulationReducedCoordinate* artic);
+	void	NpDestroyAggregate(NpAggregate* np);
+	void	NpDestroyShape(NpShape* np);
+	void	NpDestroyConstraint(NpConstraint* np);
+
+#if PX_SUPPORT_GPU_PHYSX
+	void	NpDestroySoftBody(NpSoftBody* softBody);
+	void	NpDestroyFEMCloth(NpFEMCloth* femCloth);
+	void	NpDestroyParticleSystem(NpPBDParticleSystem* particleSystem);
+	void	NpDestroyParticleSystem(NpFLIPParticleSystem* particleSystem);
+	void	NpDestroyParticleSystem(NpMPMParticleSystem* particleSystem);
+	void	NpDestroyParticleSystem(NpCustomParticleSystem* particleSystem);
+	void	NpDestroyHairSystem(NpHairSystem* hairSystem);
+#endif
 }
 
 #endif

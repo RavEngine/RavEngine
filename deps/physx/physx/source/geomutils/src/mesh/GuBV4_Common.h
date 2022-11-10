@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Include Guard
 #ifndef GU_BV4_COMMON_H
 #define GU_BV4_COMMON_H
 
 #include "foundation/PxMat44.h"
+#include "geometry/PxTriangle.h"
 #include "GuBox.h"
 #include "GuSphere.h"
 #include "GuCapsule.h"
-#include "GuSIMDHelpers.h"
+#include "GuBV4.h"
 
 #define BV4_ALIGN16(x)	PX_ALIGN_PREFIX(16)	x PX_ALIGN_SUFFIX(16)
 
@@ -65,7 +63,7 @@ namespace Gu
 		HIT_EXIT		= 2		//!< Hit found, you can early-exit (raycast any)
 	};
 
-	class RaycastHitInternal : public physx::shdfnd::UserAllocated
+	class RaycastHitInternal : public physx::PxUserAllocated
 	{
 		public:
 		PX_FORCE_INLINE		RaycastHitInternal()	{}
@@ -75,7 +73,7 @@ namespace Gu
 				PxU32		mTriangleID;
 	};
 
-	class SweepHit : public physx::shdfnd::UserAllocated
+	class SweepHit : public physx::PxUserAllocated
 	{
 		public:
 		PX_FORCE_INLINE		SweepHit()		{}
@@ -90,6 +88,7 @@ namespace Gu
 
 	typedef		HitCode		(*MeshRayCallback)			(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxU32 triangleIndex, float dist, float u, float v);
 	typedef		bool		(*MeshOverlapCallback)		(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxU32 triangleIndex, const PxU32* vertexIndices);
+	typedef		bool		(*TetMeshOverlapCallback)	(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, const PxVec3& p3, PxU32 tetIndex, const PxU32* vertexIndices);
 	typedef		bool		(*MeshSweepCallback)		(void* userData, const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxU32 triangleIndex, /*const PxU32* vertexIndices,*/ float& dist);
 	typedef		bool		(*SweepUnlimitedCallback)	(void* userData, const SweepHit& hit);
 
@@ -188,7 +187,7 @@ namespace Gu
 
 	// PT: now duplicated because not easy to do otherwise
 
-	struct BVDataSwizzledQ : public physx::shdfnd::UserAllocated
+	struct BVDataSwizzledQ : public physx::PxUserAllocated
 	{
 		struct Data
 		{
@@ -210,8 +209,7 @@ namespace Gu
 		PX_FORCE_INLINE	PxU32	decodePNSNoShift(PxU32 i)	const	{ return mData[i];									}
 	};
 
-	#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
-	struct BVDataSwizzledNQ : public physx::shdfnd::UserAllocated
+	struct BVDataSwizzledNQ : public physx::PxUserAllocated
 	{
 		float		mMinX[4];
 		float		mMinY[4];
@@ -229,7 +227,6 @@ namespace Gu
 		PX_FORCE_INLINE	PxU32	getChildData(PxU32 i)		const	{ return mData[i];									}
 		PX_FORCE_INLINE	PxU32	decodePNSNoShift(PxU32 i)	const	{ return mData[i];									}
 	};
-	#endif
 
 #else
 	#define SSE_CONST4(name, val) static const __declspec(align(16)) PxU32 name[4] = { (val), (val), (val), (val) }
@@ -247,11 +244,22 @@ namespace Gu
 	template<class ParamsT>
 	PX_FORCE_INLINE	void setupMeshPointersAndQuantizedCoeffs(ParamsT* PX_RESTRICT params, const SourceMesh* PX_RESTRICT mesh, const BV4Tree* PX_RESTRICT tree)
 	{
-		using namespace physx::shdfnd::aos;
+		using namespace physx::aos;
 		
 		params->mTris32	= mesh->getTris32();
 		params->mTris16	= mesh->getTris16();
 		params->mVerts	= mesh->getVerts();
+
+		V4StoreA_Safe(V4LoadU_Safe(&tree->mCenterOrMinCoeff.x), &params->mCenterOrMinCoeff_PaddedAligned.x);
+		V4StoreA_Safe(V4LoadU_Safe(&tree->mExtentsOrMaxCoeff.x), &params->mExtentsOrMaxCoeff_PaddedAligned.x);
+	}
+
+	template<class ParamsT>
+	PX_FORCE_INLINE	void setupMeshPointersAndQuantizedCoeffs(ParamsT* PX_RESTRICT params, const TetrahedronSourceMesh* PX_RESTRICT mesh, const BV4Tree* PX_RESTRICT tree)
+	{
+		params->mTets32 = mesh->getTetrahedrons32();
+		params->mTets16 = mesh->getTetrahedrons16();
+		params->mVerts = mesh->getVerts();
 
 		V4StoreA_Safe(V4LoadU_Safe(&tree->mCenterOrMinCoeff.x), &params->mCenterOrMinCoeff_PaddedAligned.x);
 		V4StoreA_Safe(V4LoadU_Safe(&tree->mExtentsOrMaxCoeff.x), &params->mExtentsOrMaxCoeff_PaddedAligned.x);
@@ -378,7 +386,7 @@ namespace Gu
 
 		if(hit)
 		{
-			const float t = params->mStabbedFace.mDistance;
+			const float t = params->getReportDistance();
 			hit->mTriangleID = params->mStabbedFace.mTriangleID;
 			hit->mDistance = t;
 
@@ -390,7 +398,7 @@ namespace Gu
 			else
 			{
 				// PT: TODO: we shouldn't compute impact in world space, and in fact moving this to local space is necessary if we want to reuse this for box-sweeps (TA34704)
-				TrianglePadded WP;
+				PxTrianglePadded WP;
 				if(worldm)
 				{
 					WP.verts[0] = worldm->transform(params->mP0);
@@ -428,7 +436,6 @@ namespace Gu
 			LeafFunction_ClosestT::doLeafTest(params, nbTris);
 	}
 
-#if PX_INTEL_FAMILY
 #ifndef GU_BV4_USE_SLABS
 	template<class ParamsT>
 	PX_FORCE_INLINE void setupRayData(ParamsT* PX_RESTRICT params, float max_dist, const PxVec3& origin, const PxVec3& dir)
@@ -436,14 +443,12 @@ namespace Gu
 		const float Half = 0.5f*max_dist;
 		const FloatV HalfV = FLoad(Half);
 		const Vec4V DataV = V4Scale(V4LoadU(&dir.x), HalfV);
-		const Vec4V Data2V = V4Add(V4LoadU(&origin.x), DataV);
-		const PxU32 MaskI = 0x7fffffff;
-		const Vec4V FDirV = _mm_and_ps(_mm_load1_ps((float*)&MaskI), DataV);
+		const Vec4V Data2V = V4Add(V4LoadU(&origin.x), DataV);		
+		const Vec4V FDirV = V4Abs(DataV);
 		V4StoreA_Safe(DataV, &params->mData_PaddedAligned.x);
 		V4StoreA_Safe(Data2V, &params->mData2_PaddedAligned.x);
 		V4StoreA_Safe(FDirV, &params->mFDir_PaddedAligned.x);
 	}
-#endif
 #endif
 
 }

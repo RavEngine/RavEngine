@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxProfileZone.h"
 #include "PxsSimpleIslandManager.h"
-#include "PsSort.h"
+#include "foundation/PxSort.h"
 #include "PxsContactManager.h"
 #include "CmTask.h"
 #include "DyVArticulation.h"
@@ -50,10 +49,10 @@ namespace IG
 	}
 
 	SimpleIslandManager::SimpleIslandManager(bool useEnhancedDeterminism, PxU64 contextID) : 
-		mDestroyedNodes				(PX_DEBUG_EXP("mDestroyedNodes")), 
-		mDestroyedEdges				(PX_DEBUG_EXP("mDestroyedEdges")), 
-		mFirstPartitionEdges		(PX_DEBUG_EXP("mFirstPartitionEdges")), 
-		mDestroyedPartitionEdges	(PX_DEBUG_EXP("IslandSim::mDestroyedPartitionEdges")), 
+		mDestroyedNodes				("mDestroyedNodes"), 
+		mDestroyedEdges				("mDestroyedEdges"), 
+		mFirstPartitionEdges		("mFirstPartitionEdges"), 
+		mDestroyedPartitionEdges	("IslandSim::mDestroyedPartitionEdges"), 
 		mIslandManager				(&mFirstPartitionEdges, mEdgeNodeIndices, &mDestroyedPartitionEdges, contextID),
 		mSpeculativeIslandManager	(NULL, mEdgeNodeIndices, NULL, contextID),
 		mSpeculativeThirdPassTask	(contextID, *this, mSpeculativeIslandManager),
@@ -69,31 +68,70 @@ SimpleIslandManager::~SimpleIslandManager()
 {
 }
 
-NodeIndex SimpleIslandManager::addRigidBody(PxsRigidBody* body, bool isKinematic, bool isActive)
+PxNodeIndex SimpleIslandManager::addRigidBody(PxsRigidBody* body, bool isKinematic, bool isActive)
 {
 	PxU32 handle = mNodeHandles.getHandle();
-	NodeIndex nodeIndex(handle);
+	PxNodeIndex nodeIndex(handle);
 	mIslandManager.addRigidBody(body, isKinematic, isActive, nodeIndex);
 	mSpeculativeIslandManager.addRigidBody(body, isKinematic, isActive, nodeIndex);
 	return nodeIndex;
 }
 
-void SimpleIslandManager::removeNode(const NodeIndex index)
+void SimpleIslandManager::removeNode(const PxNodeIndex index)
 {
 	PX_ASSERT(mNodeHandles.isValidHandle(index.index()));
 	mDestroyedNodes.pushBack(index);
 }
 
-NodeIndex SimpleIslandManager::addArticulation(Sc::ArticulationSim* articulation, Dy::ArticulationV* llArtic, bool isActive)
+PxNodeIndex SimpleIslandManager::addArticulation(Sc::ArticulationSim* articulation, Dy::FeatherstoneArticulation* llArtic, bool isActive)
 {
 	PxU32 handle = mNodeHandles.getHandle();
-	NodeIndex nodeIndex(handle);
+	PxNodeIndex nodeIndex(handle);
 	mIslandManager.addArticulation(articulation, llArtic, isActive, nodeIndex);
 	mSpeculativeIslandManager.addArticulation(articulation, llArtic, isActive, nodeIndex);
 	return nodeIndex;
 }
 
-EdgeIndex SimpleIslandManager::addContactManager(PxsContactManager* manager, NodeIndex nodeHandle1, NodeIndex nodeHandle2, Sc::Interaction* interaction)
+#if PX_SUPPORT_GPU_PHYSX
+PxNodeIndex SimpleIslandManager::addSoftBody(Dy::SoftBody* llSoftBody, bool isActive)
+{
+	PxU32 handle = mNodeHandles.getHandle();
+	PxNodeIndex nodeIndex(handle);
+	mIslandManager.addSoftBody(llSoftBody, isActive, nodeIndex);
+	mSpeculativeIslandManager.addSoftBody(llSoftBody, isActive, nodeIndex);
+	return nodeIndex;
+}
+
+PxNodeIndex SimpleIslandManager::addFEMCloth(Dy::FEMCloth* llFEMCloth, bool isActive)
+{
+	PxU32 handle = mNodeHandles.getHandle();
+	PxNodeIndex nodeIndex(handle);
+	mIslandManager.addFEMCloth(llFEMCloth, isActive, nodeIndex);
+	mSpeculativeIslandManager.addFEMCloth(llFEMCloth, isActive, nodeIndex);
+	return nodeIndex;
+}
+
+PxNodeIndex SimpleIslandManager::addParticleSystem(Dy::ParticleSystem* llParticleSystem, bool isActive)
+{
+	PxU32 handle = mNodeHandles.getHandle();
+	PxNodeIndex nodeIndex(handle);
+	mIslandManager.addParticleSystem(llParticleSystem, isActive, nodeIndex);
+	mSpeculativeIslandManager.addParticleSystem(llParticleSystem, isActive, nodeIndex);
+	return nodeIndex;
+}
+
+PxNodeIndex SimpleIslandManager::addHairSystem(Dy::HairSystem* llHairSystem, bool isActive)
+{
+	PxU32 handle = mNodeHandles.getHandle();
+	PxNodeIndex nodeIndex(handle);
+	mIslandManager.addHairSystem(llHairSystem, isActive, nodeIndex);
+	mSpeculativeIslandManager.addHairSystem(llHairSystem, isActive, nodeIndex);
+	return nodeIndex;
+}
+#endif //PX_SUPPORT_GPU_PHYSX
+
+EdgeIndex SimpleIslandManager::addContactManager(PxsContactManager* manager, PxNodeIndex nodeHandle1, PxNodeIndex nodeHandle2, Sc::Interaction* interaction,
+	Edge::EdgeType edgeType)
 {
 	EdgeIndex handle = mEdgeHandles.getHandle();
 
@@ -112,12 +150,12 @@ EdgeIndex SimpleIslandManager::addContactManager(PxsContactManager* manager, Nod
 	mConstraintOrCm[handle] = manager;
 	mInteractions[handle] = interaction;
 
-	mSpeculativeIslandManager.addContactManager(manager, nodeHandle1, nodeHandle2, handle);
+	mSpeculativeIslandManager.addConnection(nodeHandle1, nodeHandle2, edgeType, handle);
 
 	if (manager)
 		manager->getWorkUnit().mEdgeIndex = handle;
 
-	if(mConnectedMap.size() == handle)
+	if (mConnectedMap.size() == handle)
 	{
 		mConnectedMap.resize(2 * (handle + 1));
 	}
@@ -125,20 +163,22 @@ EdgeIndex SimpleIslandManager::addContactManager(PxsContactManager* manager, Nod
 	{
 		mFirstPartitionEdges.resize(2 * (handle + 1));
 	}
+
 	mConnectedMap.reset(handle);
 	return handle;
 }
 
-EdgeIndex SimpleIslandManager::addConstraint(Dy::Constraint* constraint, NodeIndex nodeHandle1, NodeIndex nodeHandle2, Sc::Interaction* interaction)
+EdgeIndex SimpleIslandManager::addConstraint(Dy::Constraint* constraint, PxNodeIndex nodeHandle1, PxNodeIndex nodeHandle2, Sc::Interaction* interaction)
 {
 	EdgeIndex handle = mEdgeHandles.getHandle();
 
 	PxU32 nodeIds = 2 * handle;
 	if (mEdgeNodeIndices.size() == nodeIds)
 	{
-		mEdgeNodeIndices.resize(2 * (mEdgeNodeIndices.size() + 2));
-		mConstraintOrCm.resize(2 * (handle + 1));
-		mInteractions.resize(2 * (handle + 1));
+		const PxU32 newSize = nodeIds + 2048;
+		mEdgeNodeIndices.resize(newSize);
+		mConstraintOrCm.resize(newSize);
+		mInteractions.resize(newSize);
 	}
 
 	mEdgeNodeIndices[nodeIds] = nodeHandle1;
@@ -163,19 +203,19 @@ EdgeIndex SimpleIslandManager::addConstraint(Dy::Constraint* constraint, NodeInd
 	return handle;
 }
 
-void SimpleIslandManager::activateNode(NodeIndex index)
+void SimpleIslandManager::activateNode(PxNodeIndex index)
 {
 	mIslandManager.activateNode(index);
 	mSpeculativeIslandManager.activateNode(index);
 }
 
-void SimpleIslandManager::deactivateNode(NodeIndex index)
+void SimpleIslandManager::deactivateNode(PxNodeIndex index)
 {
 	mIslandManager.deactivateNode(index);
 	mSpeculativeIslandManager.deactivateNode(index);
 }
 
-void SimpleIslandManager::putNodeToSleep(NodeIndex index)
+void SimpleIslandManager::putNodeToSleep(PxNodeIndex index)
 {
 	mIslandManager.putNodeToSleep(index);
 	mSpeculativeIslandManager.putNodeToSleep(index);
@@ -235,7 +275,7 @@ bool SimpleIslandManager::validateDeactivations() const
 	//This method sanity checks the deactivations produced by third-pass island gen. Specifically, it ensures that any bodies that 
 	//the speculative IG wants to deactivate are also candidates for deactivation in the accurate island gen. In practice, both should be the case. If this fails, something went wrong...
 
-	const NodeIndex* const nodeIndices = mSpeculativeIslandManager.getNodesToDeactivate(Node::eRIGID_BODY_TYPE);
+	const PxNodeIndex* const nodeIndices = mSpeculativeIslandManager.getNodesToDeactivate(Node::eRIGID_BODY_TYPE);
 	const PxU32 nbNodesToDeactivate = mSpeculativeIslandManager.getNbNodesToDeactivate(Node::eRIGID_BODY_TYPE);
 
 	for(PxU32 i = 0; i < nbNodesToDeactivate; ++i)
@@ -305,16 +345,11 @@ bool SimpleIslandManager::checkInternalConsistency()
 	return mIslandManager.checkInternalConsistency() && mSpeculativeIslandManager.checkInternalConsistency();
 }
 
-void SimpleIslandManager::clearDestroyedEdges()
-{
-	mDestroyedPartitionEdges.forceSize_Unsafe(0);
-}
-
-void SimpleIslandManager::setEdgeConnected(EdgeIndex edgeIndex)
+void SimpleIslandManager::setEdgeConnected(EdgeIndex edgeIndex, Edge::EdgeType edgeType)
 {
 	if(!mConnectedMap.test(edgeIndex))
 	{
-		mIslandManager.addContactManager(reinterpret_cast<PxsContactManager*>(mConstraintOrCm[edgeIndex]), mEdgeNodeIndices[edgeIndex * 2], mEdgeNodeIndices[edgeIndex * 2 + 1], edgeIndex);
+		mIslandManager.addConnection(mEdgeNodeIndices[edgeIndex * 2], mEdgeNodeIndices[edgeIndex * 2 + 1], edgeType, edgeIndex);
 		mConnectedMap.set(edgeIndex);
 	}
 }
@@ -360,13 +395,13 @@ void SimpleIslandManager::clearEdgeRigidCM(const EdgeIndex edgeIndex)
 	}
 }
 
-void SimpleIslandManager::setKinematic(IG::NodeIndex nodeIndex) 
+void SimpleIslandManager::setKinematic(PxNodeIndex nodeIndex) 
 { 
 	mIslandManager.setKinematic(nodeIndex); 
 	mSpeculativeIslandManager.setKinematic(nodeIndex);
 }
 
-void SimpleIslandManager::setDynamic(IG::NodeIndex nodeIndex) 
+void SimpleIslandManager::setDynamic(PxNodeIndex nodeIndex) 
 { 
 	mIslandManager.setDynamic(nodeIndex); 
 	mSpeculativeIslandManager.setDynamic(nodeIndex);

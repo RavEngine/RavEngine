@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,30 +22,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "ExtContactJoint.h"
-#include "PxPhysics.h"
 
 using namespace physx;
 using namespace Ext;
 
-PxContactJoint* physx::PxContactJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+ContactJoint::ContactJoint(const PxTolerancesScale& scale, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1) :
+	ContactJointT(PxJointConcreteType::eCONTACT, actor0, localFrame0, actor1, localFrame1, "ContactJointData")
 {
-	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxContactJointCreate: local frame 0 is not a valid transform");
-	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxContactJointCreate: local frame 1 is not a valid transform");
-	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxContactJointCreate: actors must be different");
-	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxContactJointCreate: at least one actor must be dynamic");
+	PX_UNUSED(scale);
 
-	ContactJoint* j;
-	PX_NEW_SERIALIZED(j, ContactJoint)(physics.getTolerancesScale(), actor0, localFrame0, actor1, localFrame1);
-	if (j->attach(physics, actor0, actor1))
-		return j;
+	ContactJointData* data = static_cast<ContactJointData*>(mData);
 
-	PX_DELETE(j);
-	return NULL;
+	data->contact = PxVec3(0.f);
+	data->normal = PxVec3(0.f);
+	data->penetration = 0.f;
+	data->restitution = 0.f;
+	data->bounceThreshold = 0.f;
 }
 
 PxVec3 ContactJoint::getContact() const
@@ -59,6 +55,9 @@ void ContactJoint::setContact(const PxVec3& contact)
 	PX_CHECK_AND_RETURN(contact.isFinite(), "PxContactJoint::setContact: invalid parameter");
 	data().contact = contact;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, contactPoint, static_cast<PxJoint&>(*this), getContact())
+#endif
 }
 
 PxVec3 ContactJoint::getContactNormal() const
@@ -71,6 +70,9 @@ void ContactJoint::setContactNormal(const PxVec3& normal)
 	PX_CHECK_AND_RETURN(normal.isFinite(), "PxContactJoint::setContactNormal: invalid parameter");
 	data().normal = normal;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, contactNormal, static_cast<PxJoint&>(*this), getContactNormal())
+#endif
 }
 
 PxReal ContactJoint::getPenetration() const
@@ -83,19 +85,24 @@ void ContactJoint::setPenetration(PxReal penetration)
 	PX_CHECK_AND_RETURN(PxIsFinite(penetration), "ContactJoint::setPenetration: invalid parameter");
 	data().penetration = penetration;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, contactPenetration, static_cast<PxJoint&>(*this), getPenetration())
+#endif
 }
 
-
-PxReal ContactJoint::getResititution() const
+PxReal ContactJoint::getRestitution() const
 {
 	return data().restitution;
 }
 
-void ContactJoint::setResititution(const PxReal restitution)
+void ContactJoint::setRestitution(const PxReal restitution)
 {
-	PX_CHECK_AND_RETURN(PxIsFinite(restitution) && restitution >= 0.f && restitution <= 1.f, "ContactJoint::setResititution: invalid parameter");
+	PX_CHECK_AND_RETURN(PxIsFinite(restitution) && restitution >= 0.f && restitution <= 1.f, "ContactJoint::setRestitution: invalid parameter");
 	data().restitution = restitution;
 	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, contactRestitution, static_cast<PxJoint&>(*this), getRestitution())
+#endif
 }
 
 PxReal ContactJoint::getBounceThreshold() const
@@ -108,36 +115,9 @@ void ContactJoint::setBounceThreshold(const PxReal bounceThreshold)
 	PX_CHECK_AND_RETURN(PxIsFinite(bounceThreshold) && bounceThreshold > 0.f, "ContactJoint::setBounceThreshold: invalid parameter");
 	data().bounceThreshold = bounceThreshold;
 	markDirty();
-}
-
-bool ContactJoint::attach(PxPhysics &physics, PxRigidActor* actor0, PxRigidActor* actor1)
-{
-	mPxConstraint = physics.createConstraint(actor0, actor1, *this, sShaders, sizeof(ContactJointData));
-	return mPxConstraint != NULL;
-}
-
-
-void ContactJoint::exportExtraData(PxSerializationContext& stream)
-{
-	if (mData)
-	{
-		stream.alignData(PX_SERIAL_ALIGN);
-		stream.writeData(mData, sizeof(ContactJointData));
-	}
-	stream.writeName(mName);
-}
-
-void ContactJoint::importExtraData(PxDeserializationContext& context)
-{
-	if (mData)
-		mData = context.readExtraData<ContactJointData, PX_SERIAL_ALIGN>();
-
-	context.readName(mName);
-}
-
-void ContactJoint::resolveReferences(PxDeserializationContext& context)
-{
-	setPxConstraint(resolveConstraintPtr(context, getPxConstraint(), getConnector(), sShaders));
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, contactBounceThreshold, static_cast<PxJoint&>(*this), getBounceThreshold())
+#endif
 }
 
 void ContactJoint::computeJacobians(PxJacobianRow* jacobian) const
@@ -175,24 +155,6 @@ PxU32 ContactJoint::getNbJacobianRows() const
 	return 1;
 }
 
-
-ContactJoint* ContactJoint::createObject(PxU8*& address, PxDeserializationContext& context)
-{
-	ContactJoint* obj = new (address) ContactJoint(PxBaseFlag::eIS_RELEASABLE);
-	address += sizeof(ContactJoint);
-	obj->importExtraData(context);
-	obj->resolveReferences(context);
-	return obj;
-}
-
-// global function to share the joint shaders with API capture	
-const PxConstraintShaderTable* Ext::GetContactJointShaderTable()
-{
-	return &ContactJoint::getConstraintShaderTable();
-}
-
-//~PX_SERIALIZATION
-
 static void ContactJointProject(const void* /*constantBlock*/, PxTransform& /*bodyAToWorld*/, PxTransform& /*bodyBToWorld*/, bool /*projectToA*/)
 {
 	// Not required
@@ -203,15 +165,16 @@ static void ContactJointVisualize(PxConstraintVisualizer& /*viz*/, const void* /
 	//TODO
 }
 
+//TAG:solverprepshader
 static PxU32 ContactJointSolverPrep(Px1DConstraint* constraints,
-	PxVec3& body0WorldOffset,
+	PxVec3p& body0WorldOffset,
 	PxU32 /*maxConstraints*/,
 	PxConstraintInvMassScale& /*invMassScale*/,
 	const void* constantBlock,
 	const PxTransform& bA2w,
 	const PxTransform& bB2w,
 	bool,
-	PxVec3& cA2wOut, PxVec3& cB2wOut)
+	PxVec3p& cA2wOut, PxVec3p& cB2wOut)
 {
 	const ContactJointData& data = *reinterpret_cast<const ContactJointData*>(constantBlock);
 
@@ -246,4 +209,41 @@ static PxU32 ContactJointSolverPrep(Px1DConstraint* constraints,
 	return 1;
 }
 
-PxConstraintShaderTable Ext::ContactJoint::sShaders = { ContactJointSolverPrep, ContactJointProject, ContactJointVisualize, PxConstraintFlag::Enum(0) };
+///////////////////////////////////////////////////////////////////////////////
+
+static PxConstraintShaderTable gContactJointShaders = { ContactJointSolverPrep, ContactJointProject, ContactJointVisualize, PxConstraintFlag::Enum(0) };
+
+PxConstraintSolverPrep ContactJoint::getPrep()	const	{ return gContactJointShaders.solverPrep; }
+
+PxContactJoint* physx::PxContactJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+{
+	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxContactJointCreate: local frame 0 is not a valid transform");
+	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxContactJointCreate: local frame 1 is not a valid transform");
+	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxContactJointCreate: actors must be different");
+	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxContactJointCreate: at least one actor must be dynamic");
+
+	return createJointT<ContactJoint, ContactJointData>(physics, actor0, localFrame0, actor1, localFrame1, gContactJointShaders);
+}
+
+// PX_SERIALIZATION
+void ContactJoint::resolveReferences(PxDeserializationContext& context)
+{
+	mPxConstraint = resolveConstraintPtr(context, mPxConstraint, this, gContactJointShaders);
+}
+//~PX_SERIALIZATION
+
+#if PX_SUPPORT_OMNI_PVD
+
+template<>
+void physx::Ext::omniPvdInitJoint<ContactJoint>(ContactJoint* joint)
+{
+	PxJoint& j = static_cast<PxJoint&>(*joint);
+	OMNI_PVD_SET(joint, type, j, PxJointConcreteType::eCONTACT)
+	OMNI_PVD_SET(joint, contactPoint, j, joint->getContact())
+	OMNI_PVD_SET(joint, contactNormal, j, joint->getContactNormal())
+	OMNI_PVD_SET(joint, contactPenetration, j, joint->getPenetration())
+	OMNI_PVD_SET(joint, contactRestitution, j, joint->getRestitution())
+	OMNI_PVD_SET(joint, contactBounceThreshold, j, joint->getBounceThreshold())
+}
+
+#endif

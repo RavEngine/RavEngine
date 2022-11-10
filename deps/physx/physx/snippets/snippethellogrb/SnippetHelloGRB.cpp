@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,46 +22,38 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 // ****************************************************************************
-// This snippet illustrates simple use of physx
+// This snippet illustrates GPU-accelerated rigid body simulation.
 //
-// It creates a number of box stacks on a plane, and if rendering, allows the
+// It creates a number of box stacks on a plane, and allows the
 // user to create new stacks and fire a ball from the camera position
 // ****************************************************************************
 
 #include <ctype.h>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 #include "../snippetutils/SnippetUtils.h"
 
-
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics	= NULL;
+static PxDefaultCpuDispatcher*	gDispatcher = NULL;
+static PxScene*					gScene		= NULL;
+static PxMaterial*				gMaterial	= NULL;
+static PxPvd*					gPvd = NULL;
+static PxCudaContextManager*	gCudaContextManager = NULL;
 
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics	= NULL;
+static PxReal stackZ = 10.0f;
 
-PxDefaultCpuDispatcher*	gDispatcher = NULL;
-PxScene*				gScene		= NULL;
-
-PxMaterial*				gMaterial	= NULL;
-
-PxPvd*                  gPvd = NULL;
-
-PxCudaContextManager* gCudaContextManager = NULL;
-
-PxReal stackZ = 10.0f;
-
-PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geometry, const PxVec3& velocity=PxVec3(0))
+static PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geometry, const PxVec3& velocity=PxVec3(0))
 {
 	PxRigidDynamic* dynamic = PxCreateDynamic(*gPhysics, t, geometry, *gMaterial, 10.0f);
 	dynamic->setAngularDamping(0.5f);
@@ -71,7 +62,7 @@ PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geometry, 
 	return dynamic;
 }
 
-void createStack(const PxTransform& t, PxU32 size, PxReal halfExtent)
+static void createStack(const PxTransform& t, PxU32 size, PxReal halfExtent)
 {
 	PxShape* shape = gPhysics->createShape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *gMaterial);
 	for(PxU32 i=0; i<size;i++)
@@ -153,8 +144,11 @@ void initPhysics(bool /*interactive*/)
 	for(PxU32 i=0;i<40;i++)
 		createStack(PxTransform(PxVec3(0,0,stackZ-=10.0f)), 20, 1.0f);
 
-	PxRigidDynamic* ball = createDynamic(PxTransform(PxVec3(0,20,100)), PxSphereGeometry(5), PxVec3(0,-25,-100));
-	PxRigidBodyExt::updateMassAndInertia(*ball, 1000.f);
+	//if(!interactive)
+	{
+		PxRigidDynamic* ball = createDynamic(PxTransform(PxVec3(0,20,100)), PxSphereGeometry(5), PxVec3(0,-25,-100));
+		PxRigidBodyExt::updateMassAndInertia(*ball, 1000.f);
+	}
 }
 
 void stepPhysics(bool /*interactive*/)
@@ -182,7 +176,7 @@ void cleanupPhysics(bool /*interactive*/)
 	printf("SnippetHelloWorld done.\n");
 }
 
-void keyPress(const char key, const PxTransform& camera)
+void keyPress(unsigned char key, const PxTransform& camera)
 {
 	switch(toupper(key))
 	{

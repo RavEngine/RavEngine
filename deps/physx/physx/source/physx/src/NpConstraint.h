@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,30 +22,24 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef NP_CONSTRAINT_H
+#define NP_CONSTRAINT_H
 
-#ifndef PX_PHYSICS_NP_CONSTRAINT
-#define PX_PHYSICS_NP_CONSTRAINT
-
-#include "PsUserAllocated.h"
+#include "foundation/PxUserAllocated.h"
 #include "PxConstraint.h"
-#include "ScbConstraint.h"
+#include "NpBase.h"
+#include "../../../simulationcontroller/include/ScConstraintCore.h"
+#include "NpActor.h"
 
 namespace physx
 {
-
 class NpScene;
-class NpRigidDynamic;
 
-namespace Scb
-{
-	class RigidObject;
-}
-
-class NpConstraint : public PxConstraint, public Ps::UserAllocated
+class NpConstraint : public PxConstraint, public NpBase
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -56,79 +49,64 @@ class NpConstraint : public PxConstraint, public Ps::UserAllocated
 //==================================================================================================
 public:
 // PX_SERIALIZATION
-													NpConstraint(PxBaseFlags baseFlags) : PxConstraint(baseFlags), mConstraint(PxEmpty) {}
-	virtual			void							setConstraintFunctions(PxConstraintConnector& n,
-																		   const PxConstraintShaderTable &t);
-	static			NpConstraint*					createObject(PxU8*& address, PxDeserializationContext& context);
-	static			void							getBinaryMetaData(PxOutputStream& stream);
-					void							preExportDataReset() {}
-					void							exportExtraData(PxSerializationContext&) {}
-					void							importExtraData(PxDeserializationContext&) {}
-					void							resolveReferences(PxDeserializationContext& context);
-	virtual			void							requiresObjects(PxProcessPxBaseCallback&) {}
-	virtual			bool							isSubordinate() const { return true; }  
+												NpConstraint(PxBaseFlags baseFlags) : PxConstraint(baseFlags), NpBase(PxEmpty), mCore(PxEmpty) {}
+	static			NpConstraint*				createObject(PxU8*& address, PxDeserializationContext& context);
+	static			void						getBinaryMetaData(PxOutputStream& stream);
+					void						preExportDataReset() {}
+					void						exportExtraData(PxSerializationContext&) {}
+					void						importExtraData(PxDeserializationContext&) {}
+					void						resolveReferences(PxDeserializationContext& context);
+	virtual			void						requiresObjects(PxProcessPxBaseCallback&) {}
+	virtual		    bool						isSubordinate() const { return true; }  
 //~PX_SERIALIZATION
-													NpConstraint(PxRigidActor* actor0, PxRigidActor* actor1, PxConstraintConnector& connector, const PxConstraintShaderTable& shaders, PxU32 dataSize);
-													~NpConstraint();
+												NpConstraint(PxRigidActor* actor0, PxRigidActor* actor1, PxConstraintConnector& connector, const PxConstraintShaderTable& shaders, PxU32 dataSize);
+	virtual										~NpConstraint();
+	// PxConstraint
+	virtual			void						release()	PX_OVERRIDE;
+	virtual			PxScene*					getScene()	const	PX_OVERRIDE;
+	virtual			void						getActors(PxRigidActor*& actor0, PxRigidActor*& actor1)	const	PX_OVERRIDE;
+	virtual			void						setActors(PxRigidActor* actor0, PxRigidActor* actor1)	PX_OVERRIDE;
+	virtual			void						markDirty()	PX_OVERRIDE;
+	virtual			PxConstraintFlags			getFlags()	const	PX_OVERRIDE;
+	virtual			void						setFlags(PxConstraintFlags flags)	PX_OVERRIDE;
+	virtual			void						setFlag(PxConstraintFlag::Enum flag, bool value)	PX_OVERRIDE;
+	virtual			void						getForce(PxVec3& linear, PxVec3& angular)	const	PX_OVERRIDE;
+	virtual			bool						isValid()	const	PX_OVERRIDE;
+	virtual			void						setBreakForce(PxReal linear, PxReal angular)	PX_OVERRIDE;
+	virtual			void						getBreakForce(PxReal& linear, PxReal& angular)	const	PX_OVERRIDE;
+	virtual			void						setMinResponseThreshold(PxReal threshold)	PX_OVERRIDE;
+	virtual			PxReal						getMinResponseThreshold()	const	PX_OVERRIDE;
+	virtual			void*						getExternalReference(PxU32& typeID)	PX_OVERRIDE;
+	virtual			void						setConstraintFunctions(PxConstraintConnector& n, const PxConstraintShaderTable& t)	PX_OVERRIDE;
+	//~PxConstraint
 
-	virtual			void							release();
+					void						updateConstants(PxsSimulationController& simController);
+					void						comShift(PxRigidActor*);
+					void						actorDeleted(PxRigidActor*);
 
-	virtual			PxScene*						getScene() const;
+					NpScene*					getSceneFromActors() const;
 
-	virtual			void							getActors(PxRigidActor*& actor0, PxRigidActor*& actor1)		const;
-	virtual			void							setActors(PxRigidActor* actor0, PxRigidActor* actor1);
+	PX_FORCE_INLINE	Sc::ConstraintCore&			getCore()			{ return mCore; }
+	PX_FORCE_INLINE	const Sc::ConstraintCore&	getCore() const		{ return mCore; }
+	static PX_FORCE_INLINE size_t				getCoreOffset()		{ return PX_OFFSET_OF_RT(NpConstraint, mCore); }
 
-	virtual			PxConstraintFlags				getFlags()													const;
-	virtual			void							setFlags(PxConstraintFlags flags);
-	virtual			void							setFlag(PxConstraintFlag::Enum flag, bool value);
-
-	virtual			void							getForce(PxVec3& linear, PxVec3& angular)					const;
-
-	virtual			void							markDirty();
-	
-	virtual			void							setBreakForce(PxReal linear, PxReal angular);
-	virtual			void							getBreakForce(PxReal& linear, PxReal& angular)				const;
-
-	virtual			void							setMinResponseThreshold(PxReal threshold);
-	virtual			PxReal							getMinResponseThreshold()									const;
-
-	virtual			bool							isValid() const;
-
-	virtual			void*							getExternalReference(PxU32& typeID);
-
-					void							initialize(const PxConstraintDesc&, Scb::Constraint*);
-					void							updateConstants();
-					void							comShift(PxRigidActor*);
-					void							actorDeleted(PxRigidActor*);
-
-
-
-					NpScene*						getNpScene() const;
-
-					NpScene*						getSceneFromActors() const;
-	PX_FORCE_INLINE	Scb::Constraint&				getScbConstraint()				{ return mConstraint; }
-	PX_FORCE_INLINE	const Scb::Constraint&			getScbConstraint() const		{ return mConstraint; }
-
-	static PX_FORCE_INLINE size_t					getScbConstraintOffset()		{ return PX_OFFSET_OF_RT(NpConstraint, mConstraint); }
-
-	PX_FORCE_INLINE	bool							isDirty() const					{ return mIsDirty; }
-	PX_FORCE_INLINE	void							markClean()						{ mIsDirty = false; }
-
-
-					static Scb::RigidObject*		getScbRigidObject(PxRigidActor*);
+	PX_FORCE_INLINE	bool						isDirty() const		{ return mCore.isDirty(); }
+	PX_FORCE_INLINE	void						markClean()			{ mCore.clearDirty(); }
 private:
-	PX_FORCE_INLINE	static NpScene*					getSceneFromActors(const PxRigidActor* actor0, const PxRigidActor* actor1);  // Returns the scene if both actors are in the scene, else NULL
+					PxRigidActor*				mActor0;
+					PxRigidActor*				mActor1;
+					Sc::ConstraintCore			mCore;
 
-					PxRigidActor*					mActor0;
-					PxRigidActor*					mActor1;
-					Scb::Constraint					mConstraint;
+					void						addConnectors(PxRigidActor* actor0, PxRigidActor* actor1);
+					void						removeConnectors(const char* errorMsg0, const char* errorMsg1);
 
-					// this used to be stored in Scb, but that doesn't really work since Scb::Constraint's 
-					// flags all get cleared on fetchResults. In any case, in order to support O(1) 
-					// insert/remove this really wants to be an index into NpScene's dirty joint array
-
-					bool							mIsDirty;
-					bool							mPaddingFromBool[3];	// PT: because of mIsDirty
+	PX_INLINE		void						scSetFlags(PxConstraintFlags f)
+												{
+													PX_ASSERT(!isAPIWriteForbidden());
+													mCore.setFlags(f);
+													markDirty();
+													UPDATE_PVD_PROPERTY
+												}
 };
 
 }

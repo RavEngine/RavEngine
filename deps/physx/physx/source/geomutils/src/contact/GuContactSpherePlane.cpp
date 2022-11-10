@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,27 +22,24 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
 
-namespace physx
-{
-namespace Gu
-{
-bool contactSpherePlane(GU_CONTACT_METHOD_ARGS)
+using namespace physx;
+
+bool Gu::contactSpherePlane(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 	PX_UNUSED(shape1);
 
 	// Get actual shape data
-	const PxSphereGeometry& shapeSphere = shape0.get<const PxSphereGeometry>();
-	//const PxPlaneGeometry& shapePlane = shape1.get<const PxPlaneGeometry>();
+	const PxSphereGeometry& shapeSphere = checkedCast<PxSphereGeometry>(shape0);
+	//const PxPlaneGeometry& shapePlane = checkedCast<PxPlaneGeometry>(shape1);
 
 	//Sphere in plane space
 	const PxVec3 sphere = transform1.transformInv(transform0.p);
@@ -64,5 +60,3 @@ bool contactSpherePlane(GU_CONTACT_METHOD_ARGS)
 	}
 	return false;
 }
-}//Gu
-}//physx

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,40 +22,59 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "NpCast.h"
+#include "NpShape.h"
+#include "NpCheck.h"
+#include "NpRigidStatic.h"
+#include "NpRigidDynamic.h"
+#include "NpArticulationLink.h"
 #include "GuConvexMesh.h"
 #include "GuTriangleMesh.h"
-#include "ScbNpDeps.h"
+#include "GuTetrahedronMesh.h"
 #include "GuBounds.h"
+#include "NpFEMCloth.h"
+#include "NpSoftBody.h"
+
+#include "omnipvd/OmniPvdPxSampler.h"
 
 using namespace physx;
 using namespace Sq;
+using namespace Cm;
 
-static PX_FORCE_INLINE void updatePvdProperties(const Scb::Shape& shape)
+///////////////////////////////////////////////////////////////////////////////
+
+PX_IMPLEMENT_OUTPUT_ERROR
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PT: we're using mFreeSlot as a replacement for previous mExclusiveAndActorCount
+static PX_FORCE_INLINE void increaseActorCount(PxU32* count)
 {
-#if PX_SUPPORT_PVD
-	Scb::Scene* scbScene = shape.getScbSceneForAPI();
-	if(scbScene)
-		scbScene->getScenePvdClient().updatePvdProperties(&shape);
-#else
-	PX_UNUSED(shape);
-#endif
+	volatile PxI32* val = reinterpret_cast<volatile PxI32*>(count);
+	PxAtomicIncrement(val);
 }
 
-NpShape::NpShape(const PxGeometry& geometry, PxShapeFlags shapeFlags, const PxU16* materialIndices, PxU16 materialCount, bool isExclusive)
-:	PxShape				(PxConcreteType::eSHAPE, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE)
-,	mActor				(NULL)
-,	mShape				(geometry, shapeFlags, materialIndices, materialCount, isExclusive)
-,	mName				(NULL)
-,	mExclusiveAndActorCount (isExclusive ? EXCLUSIVE_MASK : 0)
+static PX_FORCE_INLINE void decreaseActorCount(PxU32* count)
 {
-	PX_ASSERT(mShape.getScShape().getPxShape() == static_cast<PxShape*>(this));
+	volatile PxI32* val = reinterpret_cast<volatile PxI32*>(count);
+	PxAtomicDecrement(val);
+}
 
-	PxShape::userData = NULL;
+NpShape::NpShape(const PxGeometry& geometry, PxShapeFlags shapeFlags, const PxU16* materialIndices, PxU16 materialCount, bool isExclusive, PxShapeCoreFlag::Enum flag) :
+	PxShape	(PxConcreteType::eSHAPE, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE),
+	NpBase	(NpType::eSHAPE),
+	mActor	(NULL),
+	mCore	(geometry, shapeFlags, materialIndices, materialCount, isExclusive, flag)
+{
+	mFreeSlot = isExclusive ? EXCLUSIVE_MASK : 0;
+
+	PX_ASSERT(mCore.getPxShape() == static_cast<PxShape*>(this));
+	PX_ASSERT(!PxShape::userData);
+
+	mCore.mName = NULL;
 
 	incMeshRefCount();
 }
@@ -65,11 +83,25 @@ NpShape::~NpShape()
 {
 	decMeshRefCount();
 
-	PxU32 nbMaterials = mShape.getNbMaterials();
-	for (PxU32 i=0; i < nbMaterials; i++)
+	const PxU32 nbMaterials = scGetNbMaterials();
+	PxShapeCoreFlags flags = mCore.getCore().mShapeCoreFlags;
+
+	if (flags & PxShapeCoreFlag::eCLOTH_SHAPE)
 	{
-		NpMaterial* mat = static_cast<NpMaterial*>(mShape.getMaterial(i));
-		mat->decRefCount();
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+		for (PxU32 i = 0; i < nbMaterials; i++)
+			RefCountable_decRefCount(*scGetMaterial<NpFEMClothMaterial>(i));
+#endif
+	}
+	else if(flags & PxShapeCoreFlag::eSOFT_BODY_SHAPE)
+	{ 
+		for (PxU32 i = 0; i < nbMaterials; i++)
+			RefCountable_decRefCount(*scGetMaterial<NpFEMSoftBodyMaterial>(i));
+	}
+	else
+	{
+		for (PxU32 i = 0; i < nbMaterials; i++)
+			RefCountable_decRefCount(*scGetMaterial<NpMaterial>(i));
 	}
 }
 
@@ -77,63 +109,54 @@ void NpShape::onRefCountZero()
 {
 	NpFactory::getInstance().onShapeRelease(this);
 	// see NpShape.h for ref counting semantics for shapes
-	NpDestroy(getScbShape());
+	NpDestroyShape(this);
 }
 
 // PX_SERIALIZATION
 
-NpShape::NpShape(PxBaseFlags baseFlags) : PxShape(baseFlags), mShape(PxEmpty) {}
+NpShape::NpShape(PxBaseFlags baseFlags) : PxShape(baseFlags), NpBase(PxEmpty), mCore(PxEmpty), mQueryFilterData(PxEmpty)
+{
+}
 
 void NpShape::preExportDataReset()
 {
-	Cm::RefCountable::preExportDataReset();
-	mExclusiveAndActorCount &= EXCLUSIVE_MASK;
+	RefCountable_preExportDataReset(*this);
+	mFreeSlot &= EXCLUSIVE_MASK;
 }
 
 void NpShape::exportExtraData(PxSerializationContext& context)
 {	
-	getScbShape().getScShape().exportExtraData(context);
-	context.writeName(mName);
+	mCore.exportExtraData(context);
+	context.writeName(mCore.mName);
 }
 
 void NpShape::importExtraData(PxDeserializationContext& context)
 {
-	getScbShape().getScShape().importExtraData(context);
-	context.readName(mName);
+	mCore.importExtraData(context);
+	context.readName(mCore.mName);
 }
 
 void NpShape::requiresObjects(PxProcessPxBaseCallback& c)
 {
 	//meshes
 	PxBase* mesh = NULL;
-	switch(mShape.getGeometryType())
+	const PxGeometry& geometry = mCore.getGeometry();
+	switch(PxU32(mCore.getGeometryType()))
 	{
-	case PxGeometryType::eCONVEXMESH:
-		mesh = static_cast<const PxConvexMeshGeometry&>(mShape.getGeometry()).convexMesh;
-		break;
-	case PxGeometryType::eHEIGHTFIELD:
-		mesh = static_cast<const PxHeightFieldGeometry&>(mShape.getGeometry()).heightField;
-		break;
-	case PxGeometryType::eTRIANGLEMESH:
-		mesh = static_cast<const PxTriangleMeshGeometry&>(mShape.getGeometry()).triangleMesh;
-		break;
-	case PxGeometryType::eSPHERE:
-	case PxGeometryType::ePLANE:
-	case PxGeometryType::eCAPSULE:
-	case PxGeometryType::eBOX:
-	case PxGeometryType::eGEOMETRY_COUNT:
-	case PxGeometryType::eINVALID:
-		break;
+	case PxGeometryType::eCONVEXMESH:		mesh = static_cast<const PxConvexMeshGeometry&>(geometry).convexMesh;			break;
+	case PxGeometryType::eHEIGHTFIELD:		mesh = static_cast<const PxHeightFieldGeometry&>(geometry).heightField;			break;
+	case PxGeometryType::eTRIANGLEMESH:		mesh = static_cast<const PxTriangleMeshGeometry&>(geometry).triangleMesh;		break;
+	case PxGeometryType::eTETRAHEDRONMESH:	mesh = static_cast<const PxTetrahedronMeshGeometry&>(geometry).tetrahedronMesh;	break;
 	}
 	
 	if(mesh)
 		c.process(*mesh);
 
 	//material
-	PxU32 nbMaterials = mShape.getNbMaterials();
+	const PxU32 nbMaterials = scGetNbMaterials();
 	for (PxU32 i=0; i < nbMaterials; i++)
 	{
-		NpMaterial* mat = static_cast<NpMaterial*>(mShape.getMaterial(i));
+		NpMaterial* mat = scGetMaterial<NpMaterial>(i);
 		c.process(*mat);
 	}
 }
@@ -144,8 +167,8 @@ void NpShape::resolveReferences(PxDeserializationContext& context)
 	// in order to get to the new material indices, we need access to the new materials.
 	// this only leaves us with the option of acquiring the material through the context given an old material index (we do have the mapping)
 	{
-		PxU32 nbIndices = mShape.getScShape().getNbMaterialIndices();
-		const PxU16* indices = mShape.getScShape().getMaterialIndices();
+		PxU32 nbIndices = mCore.getNbMaterialIndices();
+		const PxU16* indices = mCore.getMaterialIndices();
 
 		for (PxU32 i=0; i < nbIndices; i++)
 		{
@@ -153,29 +176,25 @@ void NpShape::resolveReferences(PxDeserializationContext& context)
 			PX_ASSERT(base && base->is<PxMaterial>());
 
 			NpMaterial& material = *static_cast<NpMaterial*>(base);
-			getScbShape().getScShape().resolveMaterialReference(i, material.getHandle());
+			mCore.resolveMaterialReference(i, material.mMaterial.mMaterialIndex);
 		}
 	}
 
 	context.translatePxBase(mActor);
 
-	getScbShape().getScShape().resolveReferences(context);	
-
+	mCore.resolveReferences(context);	
 
 	incMeshRefCount();
 
 	// Increment materials' refcounts in a second pass. Works better in case of failure above.
-	PxU32 nbMaterials = mShape.getNbMaterials();
+	const PxU32 nbMaterials = scGetNbMaterials();
 	for (PxU32 i=0; i < nbMaterials; i++)
-	{
-		NpMaterial* mat = static_cast<NpMaterial*>(mShape.getMaterial(i));
-		mat->incRefCount();
-	}	
+		RefCountable_incRefCount(*scGetMaterial<NpMaterial>(i));
 }
 
 NpShape* NpShape::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	NpShape* obj = new (address) NpShape(PxBaseFlag::eIS_RELEASABLE);
+	NpShape* obj = PX_PLACEMENT_NEW(address, NpShape(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(NpShape);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -185,24 +204,25 @@ NpShape* NpShape::createObject(PxU8*& address, PxDeserializationContext& context
 
 PxU32 NpShape::getReferenceCount() const
 {
-	return getRefCount();
+	return RefCountable_getRefCount(*this);
 }
 
 void NpShape::acquireReference()
 {
-	incRefCount();
+	RefCountable_incRefCount(*this);
 }
 
 void NpShape::release()
 {
-	PX_CHECK_AND_RETURN(getRefCount() > 1 || getActorCount() == 0, "PxShape::release: last reference to a shape released while still attached to an actor!");
-	NP_WRITE_CHECK(getOwnerScene());
+	NP_WRITE_CHECK(getNpScene());
+	PX_CHECK_AND_RETURN(RefCountable_getRefCount(*this) > 1 || getActorCount() == 0, "PxShape::release: last reference to a shape released while still attached to an actor!");
+
 	releaseInternal();
 }
 
 void NpShape::releaseInternal()
 {
-	decRefCount();
+	RefCountable_decRefCount(*this);
 }
 
 Sc::RigidCore& NpShape::getScRigidObjectExclusive() const
@@ -210,242 +230,297 @@ Sc::RigidCore& NpShape::getScRigidObjectExclusive() const
 	const PxType actorType = mActor->getConcreteType();
 
 	if (actorType == PxConcreteType::eRIGID_DYNAMIC)
-		return static_cast<NpRigidDynamic&>(*mActor).getScbBodyFast().getScBody();
+		return static_cast<NpRigidDynamic&>(*mActor).getCore();
 	else if (actorType == PxConcreteType::eARTICULATION_LINK)
-		return static_cast<NpArticulationLink&>(*mActor).getScbBodyFast().getScBody();
+		return static_cast<NpArticulationLink&>(*mActor).getCore();
 	else
-		return static_cast<NpRigidStatic&>(*mActor).getScbRigidStaticFast().getScStatic();
+		return static_cast<NpRigidStatic&>(*mActor).getCore();
 }
 
 void NpShape::updateSQ(const char* errorMessage)
 {
-	if(mActor && (mShape.getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE))
+	PxRigidActor* actor = getActor();
+	if(actor && (mCore.getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE))
 	{
-		NpScene* scene = NpActor::getAPIScene(*mActor);
-		NpShapeManager* shapeManager = NpActor::getShapeManager(*mActor);
+		NpScene* scene = NpActor::getNpSceneFromActor(*actor);
+		NpShapeManager* shapeManager = NpActor::getShapeManager_(*actor);
 		if(scene)
-		{
-			PxU32 compoundId;
-			const PrunerData sqData = shapeManager->findSceneQueryData(*this, compoundId);
-			scene->getSceneQueryManagerFast().markForUpdate(compoundId, sqData);
-		}
+			shapeManager->markShapeForSQUpdate(scene->getSQAPI(), *this, static_cast<const PxRigidActor&>(*actor));
 
 		// invalidate the pruning structure if the actor bounds changed
 		if(shapeManager->getPruningStructure())
 		{
-			Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, errorMessage);
+			outputError<PxErrorCode::eINVALID_OPERATION>(__LINE__, errorMessage);
 			shapeManager->getPruningStructure()->invalidate(mActor);
 		}
 	}
 }
 
-PxGeometryType::Enum NpShape::getGeometryType() const
-{
-	NP_READ_CHECK(getOwnerScene());
-
-	return mShape.getGeometryType();
-}
+#if PX_CHECKED
+bool checkShape(const PxGeometry& g, const char* errorMsg);
+#endif
 
 void NpShape::setGeometry(const PxGeometry& g)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* ownerScene = getNpScene();
+	NP_WRITE_CHECK(ownerScene);
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setGeometry: shared shapes attached to actors are not writable.");
-	PX_SIMD_GUARD;
+#if PX_CHECKED
+	if(!checkShape(g, "PxShape::setGeometry(): Invalid geometry!"))
+		return;
+#endif
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(ownerScene, "PxShape::setGeometry() not allowed while simulation is running. Call will be ignored.")
 
 	// PT: fixes US2117
 	if(g.getType() != getGeometryTypeFast())
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxShape::setGeometry(): Invalid geometry type. Changing the type of the shape is not supported.");
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxShape::setGeometry(): Invalid geometry type. Changing the type of the shape is not supported.");
 		return;
 	}
 
-#if PX_CHECKED
-	bool isValid = false;
-	switch(g.getType())
+	PX_SIMD_GUARD;
+
+	//Do not decrement ref count here, but instead cache the refcountable mesh pointer if we had one.
+	//We instead decrement the ref counter after incrementing the ref counter on the new geometry.
+	//This resolves a case where the user changed a property of a mesh geometry and set the same mesh geometry. If the user had
+	//called release() on the mesh, the ref count could hit 0 and be destroyed and then crash when we call incMeshRefCount().
+	PxRefCounted* mesh = getMeshRefCountable();
+
 	{
-		case PxGeometryType::eSPHERE:
-			isValid = static_cast<const PxSphereGeometry&>(g).isValid();
-		break;
+		Sc::RigidCore* rigidCore = getScRigidObjectSLOW();
 
-		case PxGeometryType::ePLANE:
-			isValid = static_cast<const PxPlaneGeometry&>(g).isValid();
-		break;
+		if(rigidCore)
+			rigidCore->unregisterShapeFromNphase(mCore);
 
-		case PxGeometryType::eCAPSULE:
-			isValid = static_cast<const PxCapsuleGeometry&>(g).isValid();
-		break;
+		mCore.setGeometry(g);	
 
-		case PxGeometryType::eBOX:
-			isValid = static_cast<const PxBoxGeometry&>(g).isValid();
-		break;
+		if (rigidCore)
+		{
+			rigidCore->registerShapeInNphase(mCore);
+			rigidCore->onShapeChange(mCore, Sc::ShapeChangeNotifyFlag::eGEOMETRY);
+		}
 
-		case PxGeometryType::eCONVEXMESH:
-			isValid = static_cast<const PxConvexMeshGeometry&>(g).isValid();
-		break;
-
-		case PxGeometryType::eTRIANGLEMESH:
-			isValid = static_cast<const PxTriangleMeshGeometry&>(g).isValid();
-		break;
-
-		case PxGeometryType::eHEIGHTFIELD:
-			isValid = static_cast<const PxHeightFieldGeometry&>(g).isValid();
-		break;
-		
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
-			break;
-	}
-
-	if(!isValid)
-	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxShape::setGeometry(): Invalid geometry!");
-		return;
-	}
+#if PX_SUPPORT_PVD
+		NpScene* npScene = getNpScene();
+		if(npScene)
+			npScene->getScenePvdClientInternal().releaseAndRecreateGeometry(this);
 #endif
-
-	decMeshRefCount();
-
-	mShape.setGeometry(g);
+	}
 
 	incMeshRefCount();
+
+	if(mesh)
+		RefCountable_decRefCount(*mesh);
 
 	updateSQ("PxShape::setGeometry: Shape is a part of pruning structure, pruning structure is now invalid!");
 }
 
-PxGeometryHolder NpShape::getGeometry() const
+const PxGeometry& NpShape::getGeometry() const
 {
-	PX_COMPILE_TIME_ASSERT(sizeof(Gu::GeometryUnion)>=sizeof(PxGeometryHolder));
-	return reinterpret_cast<const PxGeometryHolder&>(mShape.getGeometry());
+	NP_READ_CHECK(getNpScene());
+	return mCore.getGeometry();
 }
-
-template<class T>
-static PX_FORCE_INLINE bool getGeometryT(const NpShape* npShape, PxGeometryType::Enum type, T& geom)
-{
-	NP_READ_CHECK(npShape->getOwnerScene());
-
-	if(npShape->getGeometryTypeFast() != type)
-		return false;
-
-	geom = static_cast<const T&>(npShape->getScbShape().getGeometry());
-	return true;
-}
-
-bool NpShape::getBoxGeometry(PxBoxGeometry& g)							const	{ return getGeometryT(this, PxGeometryType::eBOX, g);			}
-bool NpShape::getSphereGeometry(PxSphereGeometry& g)					const	{ return getGeometryT(this, PxGeometryType::eSPHERE, g);		}
-bool NpShape::getCapsuleGeometry(PxCapsuleGeometry& g)					const	{ return getGeometryT(this, PxGeometryType::eCAPSULE, g);		}
-bool NpShape::getPlaneGeometry(PxPlaneGeometry& g)						const	{ return getGeometryT(this, PxGeometryType::ePLANE, g);		}
-bool NpShape::getConvexMeshGeometry(PxConvexMeshGeometry& g)			const	{ return getGeometryT(this, PxGeometryType::eCONVEXMESH, g);	}
-bool NpShape::getTriangleMeshGeometry(PxTriangleMeshGeometry& g)		const	{ return getGeometryT(this, PxGeometryType::eTRIANGLEMESH, g);	}
-bool NpShape::getHeightFieldGeometry(PxHeightFieldGeometry& g)			const	{ return getGeometryT(this, PxGeometryType::eHEIGHTFIELD, g);	}
 
 PxRigidActor* NpShape::getActor() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return mActor;
+	NP_READ_CHECK(getNpScene());
+	return mActor ? mActor->is<PxRigidActor>() : NULL;
 }
 
 void NpShape::setLocalPose(const PxTransform& newShape2Actor)
 {
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(newShape2Actor.isSane(), "PxShape::setLocalPose: pose is not valid.");
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setLocalPose: shared shapes attached to actors are not writable.");
-	NP_WRITE_CHECK(getOwnerScene());
 
-	mShape.setShape2Actor(newShape2Actor.getNormalized());
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setLocalPose() not allowed while simulation is running. Call will be ignored.");
 
+	PxTransform normalizedTransform = newShape2Actor.getNormalized();
+	mCore.setShape2Actor(normalizedTransform);
+
+	notifyActorAndUpdatePVD(Sc::ShapeChangeNotifyFlag::eSHAPE2BODY);
+
+	OMNI_PVD_SET(shape, translation, static_cast<PxShape &>(*this), normalizedTransform.p)
+	OMNI_PVD_SET(shape, rotation, static_cast<PxShape &>(*this), normalizedTransform.q)
 	updateSQ("PxShape::setLocalPose: Shape is a part of pruning structure, pruning structure is now invalid!");
 }
 
 PxTransform NpShape::getLocalPose() const
 {
-	NP_READ_CHECK(getOwnerScene());
-
-	return mShape.getShape2Actor();
+	NP_READ_CHECK(getNpScene());
+	return mCore.getShape2Actor();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 void NpShape::setSimulationFilterData(const PxFilterData& data)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setSimulationFilterData: shared shapes attached to actors are not writable.");
-	mShape.setSimulationFilterData(data);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setSimulationFilterData() not allowed while simulation is running. Call will be ignored.")
+
+	mCore.setSimulationFilterData(data);
+
+	notifyActorAndUpdatePVD(Sc::ShapeChangeNotifyFlag::eFILTERDATA);
+
+	OMNI_PVD_SET(shape, simulationFilterData, static_cast<PxShape&>(*this), data);
 }
 
 PxFilterData NpShape::getSimulationFilterData() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return mShape.getSimulationFilterData();
+	NP_READ_CHECK(getNpScene());
+	return mCore.getSimulationFilterData();
 }
 
 void NpShape::setQueryFilterData(const PxFilterData& data)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setQueryFilterData: shared shapes attached to actors are not writable.");
 
-	mShape.getScShape().setQueryFilterData(data);	// PT: this one doesn't need double-buffering
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setQueryFilterData() not allowed while simulation is running. Call will be ignored.")
 
-	updatePvdProperties(mShape);
+	OMNI_PVD_SET(shape, queryFilterData, static_cast<PxShape&>(*this), data);
+
+	mQueryFilterData = data;
+	UPDATE_PVD_PROPERTY
 }
 
 PxFilterData NpShape::getQueryFilterData() const
 {
-	NP_READ_CHECK(getOwnerScene());
-
+	NP_READ_CHECK(getNpScene());
 	return getQueryFilterDataFast();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void NpShape::setMaterials(PxMaterial*const* materials, PxU16 materialCount)
+template<typename PxMaterialType, typename NpMaterialType> 
+void NpShape::setMaterialsInternal(PxMaterialType* const * materials, PxU16 materialCount)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setMaterials: shared shapes attached to actors are not writable.");
 
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setMaterials() not allowed while simulation is running. Call will be ignored.")
+
 #if PX_CHECKED
-	if (!NpShape::checkMaterialSetup(mShape.getGeometry(), "PxShape::setMaterials()", materials,  materialCount))
+	if (!NpShape::checkMaterialSetup(mCore.getGeometry(), "PxShape::setMaterials()", materials, materialCount))
 		return;
 #endif
 
-	PxU32 oldMaterialCount = mShape.getNbMaterials();
-	PX_ALLOCA(oldMaterials, PxMaterial*, oldMaterialCount);
-	PxU32 tmp = mShape.getMaterials(oldMaterials, oldMaterialCount);
+	const PxU32 oldMaterialCount = scGetNbMaterials();
+	PX_ALLOCA(oldMaterials, PxMaterialType*, oldMaterialCount);
+	PxU32 tmp = scGetMaterials<PxMaterialType, NpMaterialType>(oldMaterials, oldMaterialCount);
 	PX_ASSERT(tmp == oldMaterialCount);
 	PX_UNUSED(tmp);
 
-	if (mShape.setMaterials(materials, materialCount))
-	{
-		for(PxU32 i=0; i < materialCount; i++)
-			static_cast<NpMaterial*>(materials[i])->incRefCount();
+	const bool ret = setMaterialsHelper<PxMaterialType, NpMaterialType>(materials, materialCount);
+#if PX_SUPPORT_PVD
+	if (npScene)
+		npScene->getScenePvdClientInternal().updateMaterials(this);
+#endif
 
-		for(PxU32 i=0; i < oldMaterialCount; i++)
-			static_cast<NpMaterial*>(oldMaterials[i])->decRefCount();
+#if PX_SUPPORT_OMNI_PVD
+	streamShapeMaterials((physx::PxShape*)this, (physx::PxMaterial**)materials, materialCount);
+#endif
+
+	if (ret)
+	{
+		for (PxU32 i = 0; i < materialCount; i++)
+			RefCountable_incRefCount(*materials[i]);
+
+		for (PxU32 i = 0; i < oldMaterialCount; i++)
+			RefCountable_decRefCount(*oldMaterials[i]);
 	}
 }
 
+void NpShape::setMaterials(PxMaterial*const* materials, PxU16 materialCount)
+{
+	PX_CHECK_AND_RETURN(!(mCore.getCore().mShapeCoreFlags & PxShapeCoreFlag::eSOFT_BODY_SHAPE), "NpShape::setMaterials: cannot set rigid body materials to a soft body shape!");
+	PX_CHECK_AND_RETURN(!(mCore.getCore().mShapeCoreFlags & PxShapeCoreFlag::eCLOTH_SHAPE), "NpShape::setMaterials: cannot set rigid body materials to a cloth shape!");
+	setMaterialsInternal<PxMaterial, NpMaterial>(materials, materialCount);
+}
+void NpShape::setSoftBodyMaterials(PxFEMSoftBodyMaterial*const* materials, PxU16 materialCount)
+{
+#if PX_SUPPORT_GPU_PHYSX
+	PX_CHECK_AND_RETURN((mCore.getCore().mShapeCoreFlags & PxShapeCoreFlag::eSOFT_BODY_SHAPE), "NpShape::setMaterials: can only apply soft body materials to a soft body shape!");
+
+	setMaterialsInternal<PxFEMSoftBodyMaterial, NpFEMSoftBodyMaterial>(materials, materialCount);
+	if (this->mActor)
+	{
+		static_cast<NpSoftBody*>(mActor)->updateMaterials();
+	}
+#else
+	PX_UNUSED(materials);
+	PX_UNUSED(materialCount);
+#endif
+}
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+void NpShape::setClothMaterials(PxFEMClothMaterial*const* materials, PxU16 materialCount)
+{
+#if PX_SUPPORT_GPU_PHYSX
+
+	PX_CHECK_AND_RETURN((mCore.getCore().mShapeCoreFlags & PxShapeCoreFlag::eCLOTH_SHAPE), "NpShape::setMaterials: can only apply cloth materials to a cloth shape!");
+
+	setMaterialsInternal<PxFEMClothMaterial, NpFEMClothMaterial>(materials, materialCount);
+#else
+	PX_UNUSED(materials);
+	PX_UNUSED(materialCount);
+#endif
+}
+#endif
+
 PxU16 NpShape::getNbMaterials() const
 {
-	NP_READ_CHECK(getOwnerScene());
-
-	return mShape.getNbMaterials();
+	NP_READ_CHECK(getNpScene());
+	return scGetNbMaterials();
 }
 
 PxU32 NpShape::getMaterials(PxMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
 {
-	NP_READ_CHECK(getOwnerScene());
-
-	return mShape.getMaterials(userBuffer, bufferSize, startIndex);
+	NP_READ_CHECK(getNpScene());
+	return scGetMaterials<PxMaterial, NpMaterial>(userBuffer, bufferSize, startIndex);
 }
 
-PxMaterial* NpShape::getMaterialFromInternalFaceIndex(PxU32 faceIndex) const
+PxU32 NpShape::getSoftBodyMaterials(PxFEMSoftBodyMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
 {
-	NP_READ_CHECK(getOwnerScene());
+	NP_READ_CHECK(getNpScene());
+	return scGetMaterials<PxFEMSoftBodyMaterial, NpFEMSoftBodyMaterial>(userBuffer, bufferSize, startIndex);
+}
+
+#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+PxU32 NpShape::getClothMaterials(PxFEMClothMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
+{
+	NP_READ_CHECK(getNpScene());
+	return scGetMaterials<PxFEMClothMaterial, NpFEMClothMaterial>(userBuffer, bufferSize, startIndex);
+}
+#endif
+
+PxBaseMaterial* NpShape::getMaterialFromInternalFaceIndex(PxU32 faceIndex) const
+{
+	NP_READ_CHECK(getNpScene());
 
 	bool isHf = (getGeometryType() == PxGeometryType::eHEIGHTFIELD);
 	bool isMesh = (getGeometryType() == PxGeometryType::eTRIANGLEMESH);
+	
+	// if SDF tri-mesh, where no multi-material setup is allowed, return zero-index material
+	if (isMesh)
+	{
+		PxTriangleMeshGeometry triGeo;
+		getTriangleMeshGeometry(triGeo);
+		if (triGeo.triangleMesh->getSDF())
+		{
+			return getMaterial<PxMaterial, NpMaterial>(0);
+		}
+	}
+
 	if( faceIndex == 0xFFFFffff && (isHf || isMesh) )
 	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__,
-			"PxShape::getMaterialFromInternalFaceIndex received 0xFFFFffff as input - returning NULL.");
+		outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxShape::getMaterialFromInternalFaceIndex received 0xFFFFffff as input - returning NULL.");
 		return NULL;
 	}
 
@@ -468,93 +543,150 @@ PxMaterial* NpShape::getMaterialFromInternalFaceIndex(PxU32 faceIndex) const
 			hitMatTableId = triGeo.triangleMesh->getTriangleMaterialIndex(faceIndex);
 	}
 
-	return getMaterial(hitMatTableId);
+	// PT: TODO: what's going on here?
+	return getMaterial<PxMaterial, NpMaterial>(hitMatTableId);
 }
 
 void NpShape::setContactOffset(PxReal contactOffset)
 {
-	NP_WRITE_CHECK(getOwnerScene());
-
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(contactOffset), "PxShape::setContactOffset: invalid float");
-	PX_CHECK_AND_RETURN((contactOffset >= 0.0f && contactOffset > mShape.getRestOffset()), "PxShape::setContactOffset: contactOffset should be positive, and greater than restOffset!");
+	PX_CHECK_AND_RETURN((contactOffset >= 0.0f && contactOffset > mCore.getRestOffset()), "PxShape::setContactOffset: contactOffset should be positive, and greater than restOffset!");
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setContactOffset: shared shapes attached to actors are not writable.");
 
-	mShape.setContactOffset(contactOffset);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setContactOffset() not allowed while simulation is running. Call will be ignored.")
+
+	mCore.setContactOffset(contactOffset);
+
+	notifyActorAndUpdatePVD(Sc::ShapeChangeNotifyFlag::eCONTACTOFFSET);
+
+	OMNI_PVD_SET(shape, contactOffset, static_cast<PxShape&>(*this), contactOffset)
 }
 
 PxReal NpShape::getContactOffset() const
 {
-	NP_READ_CHECK(getOwnerScene());
-
-	return mShape.getContactOffset();
+	NP_READ_CHECK(getNpScene());
+	return mCore.getContactOffset();
 }
 
 void NpShape::setRestOffset(PxReal restOffset)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(restOffset), "PxShape::setRestOffset: invalid float");
-	PX_CHECK_AND_RETURN((restOffset < mShape.getContactOffset()), "PxShape::setRestOffset: restOffset should be less than contactOffset!");
+	PX_CHECK_AND_RETURN((restOffset < mCore.getContactOffset()), "PxShape::setRestOffset: restOffset should be less than contactOffset!");
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setRestOffset: shared shapes attached to actors are not writable.");
 
-	mShape.setRestOffset(restOffset);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setRestOffset() not allowed while simulation is running. Call will be ignored.")
+
+	mCore.setRestOffset(restOffset);
+
+	notifyActorAndUpdatePVD(Sc::ShapeChangeNotifyFlag::eRESTOFFSET);
+
+	OMNI_PVD_SET(shape, restOffset, static_cast<PxShape&>(*this), restOffset)
 }
 
 PxReal NpShape::getRestOffset() const
 {
-	NP_READ_CHECK(getOwnerScene());
+	NP_READ_CHECK(getNpScene());
+	return mCore.getRestOffset();
+}
 
-	return mShape.getRestOffset();
+void NpShape::setDensityForFluid(PxReal densityForFluid)
+{
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+	PX_CHECK_AND_RETURN(PxIsFinite(densityForFluid), "PxShape::setDensityForFluid: invalid float");
+	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setDensityForFluid: shared shapes attached to actors are not writable.");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setDensityForFluid() not allowed while simulation is running. Call will be ignored.")
+
+	mCore.setDensityForFluid(densityForFluid);
+
+	///notifyActorAndUpdatePVD(Sc::ShapeChangeNotifyFlag::eRESTOFFSET);
+
+	OMNI_PVD_SET(shape, densityForFluid, static_cast<PxShape &>(*this), densityForFluid);
+}
+
+PxReal NpShape::getDensityForFluid() const
+{
+	NP_READ_CHECK(getNpScene());
+	return mCore.getDensityForFluid();
 }
 
 void NpShape::setTorsionalPatchRadius(PxReal radius)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(radius), "PxShape::setTorsionalPatchRadius: invalid float");
 	PX_CHECK_AND_RETURN((radius >= 0.f), "PxShape::setTorsionalPatchRadius: must be >= 0.f");
 
-	mShape.setTorsionalPatchRadius(radius);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setTorsionalPatchRadius() not allowed while simulation is running. Call will be ignored.")
+
+//	const PxShapeFlags oldShapeFlags = mShape.getFlags();
+	mCore.setTorsionalPatchRadius(radius);
+
+	OMNI_PVD_SET(shape, torsionalPatchRadius, static_cast<PxShape &>(*this), radius);
+
+// shared shapes return NULL. But shared shapes aren't mutable when attached to an actor, so no notification needed.
+//	Sc::RigidCore* rigidCore = NpShapeGetScRigidObjectFromScSLOW();
+//	if(rigidCore)
+//		rigidCore->onShapeChange(mShape, Sc::ShapeChangeNotifyFlag::eFLAGS, oldShapeFlags);
+
+	UPDATE_PVD_PROPERTY
 }
 
 PxReal NpShape::getTorsionalPatchRadius() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return mShape.getTorsionalPatchRadius();
+	NP_READ_CHECK(getNpScene());
+	return mCore.getTorsionalPatchRadius();
 }
 
 void NpShape::setMinTorsionalPatchRadius(PxReal radius)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(PxIsFinite(radius), "PxShape::setMinTorsionalPatchRadius: invalid float");
 	PX_CHECK_AND_RETURN((radius >= 0.f), "PxShape::setMinTorsionalPatchRadius: must be >= 0.f");
 
-	mShape.setMinTorsionalPatchRadius(radius);
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setMinTorsionalPatchRadius() not allowed while simulation is running. Call will be ignored.")
+
+//	const PxShapeFlags oldShapeFlags = mShape.getFlags();
+	mCore.setMinTorsionalPatchRadius(radius);
+
+	OMNI_PVD_SET(shape, minTorsionalPatchRadius, static_cast<PxShape &>(*this), radius);
+
+//	Sc::RigidCore* rigidCore = NpShapeGetScRigidObjectFromSbSLOW();
+//	if(rigidCore)
+//		rigidCore->onShapeChange(mShape, Sc::ShapeChangeNotifyFlag::eFLAGS, oldShapeFlags);
+
+	UPDATE_PVD_PROPERTY
 }
 
 PxReal NpShape::getMinTorsionalPatchRadius() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return mShape.getMinTorsionalPatchRadius();
+	NP_READ_CHECK(getNpScene());
+	return mCore.getMinTorsionalPatchRadius();
 }
 
 void NpShape::setFlagsInternal(PxShapeFlags inFlags)
 {
-	const bool hasMeshTypeGeom = mShape.getGeometryType() == PxGeometryType::eTRIANGLEMESH || mShape.getGeometryType() == PxGeometryType::eHEIGHTFIELD;
+	const bool hasMeshTypeGeom = mCore.getGeometryType() == PxGeometryType::eTRIANGLEMESH || mCore.getGeometryType() == PxGeometryType::eHEIGHTFIELD;
 
 	if(hasMeshTypeGeom && (inFlags & PxShapeFlag::eTRIGGER_SHAPE))
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
-			"PxShape::setFlag(s): triangle mesh and heightfield triggers are not supported!");
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxShape::setFlag(s): triangle mesh and heightfield triggers are not supported!");
 		return;
 	}
 
 	if((inFlags & PxShapeFlag::eSIMULATION_SHAPE) && (inFlags & PxShapeFlag::eTRIGGER_SHAPE))
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
-			"PxShape::setFlag(s): shapes cannot simultaneously be trigger shapes and simulation shapes.");
+		outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxShape::setFlag(s): shapes cannot simultaneously be trigger shapes and simulation shapes.");
 		return;
 	}
 
-	const PxShapeFlags oldFlags = mShape.getFlags();
+	const PxShapeFlags oldFlags = mCore.getFlags();
 
 	const bool oldIsSimShape = oldFlags & PxShapeFlag::eSIMULATION_SHAPE;
 	const bool isSimShape = inFlags & PxShapeFlag::eSIMULATION_SHAPE;
@@ -571,10 +703,9 @@ void NpShape::setFlagsInternal(PxShapeFlags inFlags)
 			isKinematic = rigidDynamic->getRigidBodyFlags() & PxRigidBodyFlag::eKINEMATIC;
 		}
 
-		if((type != PxConcreteType::eRIGID_STATIC) && !isKinematic && isSimShape && !oldIsSimShape && (hasMeshTypeGeom || mShape.getGeometryType() == PxGeometryType::ePLANE))
+		if((type != PxConcreteType::eRIGID_STATIC) && !isKinematic && isSimShape && !oldIsSimShape && (hasMeshTypeGeom || mCore.getGeometryType() == PxGeometryType::ePLANE))
 		{
-			Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
-				"PxShape::setFlag(s): triangle mesh, heightfield and plane shapes can only be simulation shapes if part of a PxRigidStatic!");
+			outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "PxShape::setFlag(s): triangle mesh, heightfield and plane shapes can only be simulation shapes if part of a PxRigidStatic!");
 			return;
 		}
 	}
@@ -582,24 +713,36 @@ void NpShape::setFlagsInternal(PxShapeFlags inFlags)
 	const bool oldHasSceneQuery = oldFlags & PxShapeFlag::eSCENE_QUERY_SHAPE;
 	const bool hasSceneQuery = inFlags & PxShapeFlag::eSCENE_QUERY_SHAPE;
 
-	mShape.setFlags(inFlags);
-
-	if(oldHasSceneQuery != hasSceneQuery && mActor)
 	{
-		NpScene* npScene = getAPIScene();
-		NpShapeManager* shapeManager = NpActor::getShapeManager(*mActor);
+		PX_ASSERT(!isAPIWriteForbidden());
+		const PxShapeFlags oldShapeFlags = mCore.getFlags();
+		mCore.setFlags(inFlags);
+
+		notifyActorAndUpdatePVD(oldShapeFlags);
+	}
+
+	PxRigidActor* actor = getActor();
+	if(oldHasSceneQuery != hasSceneQuery && actor)
+	{
+		NpScene* npScene = getNpScene();
+		NpShapeManager* shapeManager = NpActor::getShapeManager_(*actor);
 		if(npScene)
 		{
 			if(hasSceneQuery)
-				shapeManager->setupSceneQuery(npScene->getSceneQueryManagerFast(), *mActor, *this);
+			{
+				// PT: SQ_CODEPATH3
+				shapeManager->setupSceneQuery(npScene->getSQAPI(), NpActor::getFromPxActor(*actor), *actor, *this);
+			}
 			else
-				shapeManager->teardownSceneQuery(npScene->getSceneQueryManagerFast(), *this);
+			{
+				shapeManager->teardownSceneQuery(npScene->getSQAPI(), *actor, *this);
+			}
 		}
 
 		// invalidate the pruning structure if the actor bounds changed
 		if(shapeManager->getPruningStructure())
 		{
-			Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxShape::setFlag: Shape is a part of pruning structure, pruning structure is now invalid!");
+			outputError<PxErrorCode::eINVALID_OPERATION>(__LINE__, "PxShape::setFlag: Shape is a part of pruning structure, pruning structure is now invalid!");
 			shapeManager->getPruningStructure()->invalidate(mActor);
 		}
 	}
@@ -607,134 +750,108 @@ void NpShape::setFlagsInternal(PxShapeFlags inFlags)
 
 void NpShape::setFlag(PxShapeFlag::Enum flag, bool value)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setFlag: shared shapes attached to actors are not writable.");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setFlag() not allowed while simulation is running. Call will be ignored.")
+
 	PX_SIMD_GUARD;
 
-	PxShapeFlags shapeFlags = mShape.getFlags();
+	PxShapeFlags shapeFlags = mCore.getFlags();
 	shapeFlags = value ? shapeFlags | flag : shapeFlags & ~flag;
 	
 	setFlagsInternal(shapeFlags);
+
+	OMNI_PVD_SET(shape, shapeFlags, static_cast<PxShape&>(*this), shapeFlags);
 }
 
 void NpShape::setFlags(PxShapeFlags inFlags)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setFlags: shared shapes attached to actors are not writable.");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxShape::setFlags() not allowed while simulation is running. Call will be ignored.")
+
 	PX_SIMD_GUARD;
 
 	setFlagsInternal(inFlags);
+
+	OMNI_PVD_SET(shape, shapeFlags, static_cast<PxShape&>(*this), inFlags);
 }
 
 PxShapeFlags NpShape::getFlags() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return mShape.getFlags();
+	NP_READ_CHECK(getNpScene());
+	return mCore.getFlags();
 }
 
 bool NpShape::isExclusive() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return (mExclusiveAndActorCount & EXCLUSIVE_MASK) != 0;
+	NP_READ_CHECK(getNpScene());
+	return isExclusiveFast();
 }
 
-void NpShape::onActorAttach(PxRigidActor& actor)
+void NpShape::onActorAttach(PxActor& actor)
 {
-	incRefCount();
+	RefCountable_incRefCount(*this);
 	if(isExclusiveFast())
 		mActor = &actor;
-	Ps::atomicIncrement(&mExclusiveAndActorCount);
+	increaseActorCount(&mFreeSlot);
 }
 
 void NpShape::onActorDetach()
 {
 	PX_ASSERT(getActorCount() > 0);
-	Ps::atomicDecrement(&mExclusiveAndActorCount);
+	decreaseActorCount(&mFreeSlot);
 	if(isExclusiveFast())
 		mActor = NULL;
-	decRefCount();
+	RefCountable_decRefCount(*this);
+}
+
+void NpShape::incActorCount()
+{
+	RefCountable_incRefCount(*this);
+	increaseActorCount(&mFreeSlot);
+}
+
+void NpShape::decActorCount()
+{
+	PX_ASSERT(getActorCount() > 0);
+	decreaseActorCount(&mFreeSlot);
+	RefCountable_decRefCount(*this);
 }
 
 void NpShape::setName(const char* debugName)		
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NP_WRITE_CHECK(getNpScene());
 	PX_CHECK_AND_RETURN(isWritable(), "PxShape::setName: shared shapes attached to actors are not writable.");
 
-	mName = debugName;
+	mCore.mName = debugName;
 
-	updatePvdProperties(mShape);
+	UPDATE_PVD_PROPERTY
 }
 
 const char* NpShape::getName() const
 {
-	NP_READ_CHECK(getOwnerScene());
-
-	return mName;
-}
-
-NpScene* NpShape::getOwnerScene()	const 
-{	
-	return mActor ? NpActor::getOwnerScene(*mActor) : NULL; 
-}
-
-NpScene* NpShape::getAPIScene()	const 
-{	
-	// gets called when we update SQ structures due to a write - in which case there must be an actor 
-	PX_ASSERT(mActor);
-	return NpActor::getAPIScene(*mActor);
+	NP_READ_CHECK(getNpScene());
+	return mCore.mName;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-namespace physx
-{
-Sc::RigidCore* NpShapeGetScRigidObjectFromScbSLOW(const Scb::Shape& scb)
-{
-	const NpShape* np = getNpShape(&scb);
-	return np->NpShape::getActor() ? &np->getScRigidObjectExclusive() : NULL;
-}
-
-size_t NpShapeGetScPtrOffset()
-{
-	return (NpShape::getScbShapeOffset() + Scb::Shape::getScOffset());
-}
-
-void NpShapeIncRefCount(Scb::Shape& scb)
-{
-	NpShape* np = const_cast<NpShape*>(getNpShape(&scb));
-	np->incRefCount();
-}
-
-void NpShapeDecRefCount(Scb::Shape& scb)
-{
-	NpShape* np = const_cast<NpShape*>(getNpShape(&scb));
-	np->decRefCount();
-}
-}
-
 // see NpConvexMesh.h, NpHeightField.h, NpTriangleMesh.h for details on how ref counting works for meshes
-Cm::RefCountable* NpShape::getMeshRefCountable()
+PxRefCounted* NpShape::getMeshRefCountable()
 {
-	switch(mShape.getGeometryType())
+	const PxGeometry& geometry = mCore.getGeometry();
+	switch(PxU32(mCore.getGeometryType()))
 	{
-		case PxGeometryType::eCONVEXMESH:
-			return static_cast<Gu::ConvexMesh*>(
-				static_cast<const PxConvexMeshGeometry&>(mShape.getGeometry()).convexMesh);
-
-		case PxGeometryType::eHEIGHTFIELD:
-			return static_cast<Gu::HeightField*>(
-				static_cast<const PxHeightFieldGeometry&>(mShape.getGeometry()).heightField);
-
-		case PxGeometryType::eTRIANGLEMESH:
-			return static_cast<Gu::TriangleMesh*>(
-				static_cast<const PxTriangleMeshGeometry&>(mShape.getGeometry()).triangleMesh);
-		
-		case PxGeometryType::eSPHERE:
-		case PxGeometryType::ePLANE:
-		case PxGeometryType::eCAPSULE:
-		case PxGeometryType::eBOX:
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
+		case PxGeometryType::eCONVEXMESH:		return static_cast<const PxConvexMeshGeometry&>(geometry).convexMesh;
+		case PxGeometryType::eHEIGHTFIELD:		return static_cast<const PxHeightFieldGeometry&>(geometry).heightField;
+		case PxGeometryType::eTRIANGLEMESH:		return static_cast<const PxTriangleMeshGeometry&>(geometry).triangleMesh;
+		case PxGeometryType::eTETRAHEDRONMESH:	return static_cast<const PxTetrahedronMeshGeometry&>(geometry).tetrahedronMesh;
+		default:
 			break;
 	}
 	return NULL;
@@ -743,83 +860,87 @@ Cm::RefCountable* NpShape::getMeshRefCountable()
 bool NpShape::isWritable()
 {
 	// a shape is writable if it's exclusive, or it's not connected to any actors (which is true if the ref count is 1 and the user ref is not released.)
-	return isExclusiveFast() || (getRefCount()==1 && (mBaseFlags & PxBaseFlag::eIS_RELEASABLE));
+	return isExclusiveFast() || (RefCountable_getRefCount(*this)==1 && (mBaseFlags & PxBaseFlag::eIS_RELEASABLE));
 }
 
 void NpShape::incMeshRefCount()
 {
-	Cm::RefCountable* npMesh = getMeshRefCountable();
-	if(npMesh)
-		npMesh->incRefCount();
+	PxRefCounted* mesh = getMeshRefCountable();
+	if(mesh)
+		RefCountable_incRefCount(*mesh);
 }
 
 void NpShape::decMeshRefCount()
 {
-	Cm::RefCountable* npMesh = getMeshRefCountable();
-	if(npMesh)
-		npMesh->decRefCount();
+	PxRefCounted* mesh = getMeshRefCountable();
+	if(mesh)
+		RefCountable_decRefCount(*mesh);
 }
 
-bool NpShape::checkMaterialSetup(const PxGeometry& geom, const char* errorMsgPrefix, PxMaterial*const* materials, PxU16 materialCount)
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename PxMaterialType, typename NpMaterialType>
+bool NpShape::setMaterialsHelper(PxMaterialType* const* materials, PxU16 materialCount)
 {
-	for(PxU32 i=0; i<materialCount; ++i)
+	PX_ASSERT(!isAPIWriteForbidden());
+
+	if(materialCount == 1)
 	{
-		if(!materials[i])
+		const PxU16 materialIndex = static_cast<NpMaterialType*>(materials[0])->mMaterial.mMaterialIndex;
+
+		mCore.setMaterialIndices(&materialIndex, 1);
+	}
+	else
+	{
+		PX_ASSERT(materialCount > 1);
+
+		PX_ALLOCA(materialIndices, PxU16, materialCount);
+
+		if(materialIndices)
 		{
-			Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
-					"material pointer %d is NULL!", i);
-			return false;
+			NpMaterialType::getMaterialIndices(materials, materialIndices, materialCount);
+			mCore.setMaterialIndices(materialIndices, materialCount);
 		}
+		else
+			return outputError<PxErrorCode::eOUT_OF_MEMORY>(__LINE__, "PxShape::setMaterials() failed. Out of memory. Call will be ignored.");
 	}
 
-	// check that simple shapes don't get assigned multiple materials
-	if (materialCount > 1 && (geom.getType() != PxGeometryType::eHEIGHTFIELD) && (geom.getType() != PxGeometryType::eTRIANGLEMESH))
-	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
-			"%s: multiple materials defined for single material geometry!", errorMsgPrefix);
-		return false;
-	}
-
-	//  verify we provide all materials required
-	if (materialCount > 1 && (geom.getType() == PxGeometryType::eTRIANGLEMESH))
-	{
-		const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom);
-		const PxTriangleMesh& mesh = *meshGeom.triangleMesh;
-		if(mesh.getTriangleMaterialIndex(0) != 0xffff)
-		{
-			for(PxU32 i = 0; i < mesh.getNbTriangles(); i++)
-			{
-				const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
-				if(meshMaterialIndex >= materialCount)
-				{
-					Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
-						"%s: PxTriangleMesh material indices reference more materials than provided!", errorMsgPrefix);
-					break;
-				}
-			}
-		}
-	}
-	if (materialCount > 1 && (geom.getType() == PxGeometryType::eHEIGHTFIELD))
-	{
-		const PxHeightFieldGeometry& meshGeom = static_cast<const PxHeightFieldGeometry&>(geom);
-		const PxHeightField& mesh = *meshGeom.heightField;
-		if(mesh.getTriangleMaterialIndex(0) != 0xffff)
-		{
-			const PxU32 nbTris = mesh.getNbColumns()*mesh.getNbRows()*2;
-			for(PxU32 i = 0; i < nbTris; i++)
-			{
-				const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
-				if(meshMaterialIndex != PxHeightFieldMaterial::eHOLE && meshMaterialIndex >= materialCount)
-				{
-					Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
-						"%s: PxHeightField material indices reference more materials than provided!", errorMsgPrefix);
-					break;
-				}
-			}
-		}
-	}
+	NpScene* npScene = getNpScene();
+	if(npScene)
+		npScene->getScScene().notifyNphaseOnUpdateShapeMaterial(mCore);
 
 	return true;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+void NpShape::notifyActorAndUpdatePVD(Sc::ShapeChangeNotifyFlags notifyFlags)
+{
+	// shared shapes return NULL. But shared shapes aren't mutable when attached to an actor, so no notification needed.
+	if(mActor)
+	{
+		Sc::RigidCore* rigidCore = getScRigidObjectSLOW();
+		if(rigidCore)
+			rigidCore->onShapeChange(mCore, notifyFlags);
+
+#if PX_SUPPORT_GPU_PHYSX
+		const PxType type = mActor->getConcreteType();
+	#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
+		if(type==PxConcreteType::eFEM_CLOTH)
+			static_cast<NpFEMCloth*>(mActor)->getCore().onShapeChange(mCore, notifyFlags);
+	#endif
+		if(type==PxConcreteType::eSOFT_BODY)
+			static_cast<NpSoftBody*>(mActor)->getCore().onShapeChange(mCore, notifyFlags);
+#endif
+	}
+
+	UPDATE_PVD_PROPERTY
+}
+
+void NpShape::notifyActorAndUpdatePVD(const PxShapeFlags oldShapeFlags)
+{
+	// shared shapes return NULL. But shared shapes aren't mutable when attached to an actor, so no notification needed.
+	Sc::RigidCore* rigidCore = getScRigidObjectSLOW();
+	if(rigidCore)
+		rigidCore->onShapeFlagsChange(mCore, oldShapeFlags);
+
+	UPDATE_PVD_PROPERTY
+}

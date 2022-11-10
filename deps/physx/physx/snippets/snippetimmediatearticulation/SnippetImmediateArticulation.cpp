@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,17 +30,27 @@
 // This snippet demonstrates the use of immediate articulations.
 // ****************************************************************************
 
-#include "PxPhysicsAPI.h"
 #include "PxImmediateMode.h"
-#include "PsArray.h"
-#include "PsHashSet.h"
-#include "PsHashMap.h"
+#include "geometry/PxGeometryQuery.h"
+#include "foundation/PxPhysicsVersion.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxHashSet.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxMathUtils.h"
+#include "foundation/PxFPU.h"
 #include "ExtConstraintHelper.h"
-
+#include "extensions/PxMassProperties.h"
+#include "extensions/PxDefaultAllocator.h"
+#include "extensions/PxDefaultErrorCallback.h"
 #include "../snippetutils/SnippetUtils.h"
+#include "../snippetutils/SnippetImmUtils.h"
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
+#ifdef RENDER_SNIPPET
+	#include "../snippetrender/SnippetRender.h"
+#endif
 
+//Enables TGS or PGS solver
 #define USE_TGS 0
 
 //#define PRINT_TIMINGS
@@ -56,8 +65,8 @@
 #define BATCH_CONTACTS 1
 
 using namespace physx;
-using namespace shdfnd;
 using namespace immediate;
+using namespace SnippetImmUtils;
 
 static const PxVec3	gGravity(0.0f, -9.81f, 0.0f);
 static const float	gContactDistance			= 0.1f;
@@ -106,114 +115,6 @@ struct PersistentContactPair
 };
 #endif
 
-	class BlockBasedAllocator
-	{
-		struct AllocationPage
-		{
-			static const PxU32 PageSize = 32 * 1024;
-			PxU8 mPage[PageSize];
-
-			PxU32 currentIndex;
-
-			AllocationPage() : currentIndex(0){}
-
-			PxU8* allocate(const PxU32 size)
-			{
-				PxU32 alignedSize = (size + 15)&(~15);
-				if ((currentIndex + alignedSize) < PageSize)
-				{
-					PxU8* ret = &mPage[currentIndex];
-					currentIndex += alignedSize;
-					return ret;
-				}
-				return NULL;
-			}
-		};
-
-		AllocationPage* currentPage;
-
-		Array<AllocationPage*> mAllocatedBlocks;
-		PxU32 mCurrentIndex;
-
-	public:
-		BlockBasedAllocator() : currentPage(NULL), mCurrentIndex(0)
-		{
-		}
-
-		virtual PxU8* allocate(const PxU32 byteSize)
-		{
-			if (currentPage)
-			{
-				PxU8* data = currentPage->allocate(byteSize);
-				if (data)
-					return data;
-			}
-
-			if (mCurrentIndex < mAllocatedBlocks.size())
-			{
-				currentPage = mAllocatedBlocks[mCurrentIndex++];
-				currentPage->currentIndex = 0;
-				return currentPage->allocate(byteSize);
-			}
-			currentPage = PX_PLACEMENT_NEW(PX_ALLOC(sizeof(AllocationPage), PX_DEBUG_EXP("AllocationPage")), AllocationPage)();
-			mAllocatedBlocks.pushBack(currentPage);
-			mCurrentIndex = mAllocatedBlocks.size();
-
-			return currentPage->allocate(byteSize);
-		}
-
-		void release() { for (PxU32 a = 0; a < mAllocatedBlocks.size(); ++a) PX_FREE(mAllocatedBlocks[a]); mAllocatedBlocks.clear(); currentPage = NULL; mCurrentIndex = 0; }
-
-		void reset() { currentPage = NULL; mCurrentIndex = 0; }
-
-		virtual ~BlockBasedAllocator()
-		{
-			release();
-		}
-	};
-
-	class TestCacheAllocator : public PxCacheAllocator
-	{
-		BlockBasedAllocator mAllocator[2];
-		PxU32 currIdx;
-
-	public:
-
-		TestCacheAllocator() : currIdx(0)
-		{
-		}
-
-		virtual PxU8* allocateCacheData(const PxU32 byteSize)
-		{
-			return mAllocator[currIdx].allocate(byteSize);
-		}
-
-		void release() { currIdx = 1 - currIdx; mAllocator[currIdx].release(); }
-
-		void reset() { currIdx = 1 - currIdx; mAllocator[currIdx].reset(); }
-
-		virtual ~TestCacheAllocator(){}
-	};
-
-	class TestConstraintAllocator : public PxConstraintAllocator
-	{
-		BlockBasedAllocator mConstraintAllocator;
-		BlockBasedAllocator mFrictionAllocator[2];
-
-		PxU32 currIdx;
-	public:
-
-		TestConstraintAllocator() : currIdx(0)
-		{
-		}
-		virtual PxU8* reserveConstraintData(const PxU32 byteSize){ return mConstraintAllocator.allocate(byteSize); }
-		virtual PxU8* reserveFrictionData(const PxU32 byteSize){ return mFrictionAllocator[currIdx].allocate(byteSize); }
-
-		void release() { currIdx = 1 - currIdx; mConstraintAllocator.release(); mFrictionAllocator[currIdx].release(); }
-
-		virtual ~TestConstraintAllocator() {}
-	};
-
 	struct IDS
 	{
 		PX_FORCE_INLINE	IDS(PxU32 id0, PxU32 id1) : mID0(id0), mID1(id1)	{}
@@ -226,9 +127,9 @@ struct PersistentContactPair
 		}
 	};
 
-	PX_FORCE_INLINE uint32_t hash(const IDS& p)
+	PX_FORCE_INLINE uint32_t PxComputeHash(const IDS& p)
 	{
-		return shdfnd::hash(uint64_t(p.mID0)|(uint64_t(p.mID1)<<32));
+		return PxComputeHash(uint64_t(p.mID0)|(uint64_t(p.mID1)<<32));
 	}
 
 struct MassProps
@@ -283,7 +184,7 @@ static void computeMassProps(MassProps& props, const PxGeometry& geometry, float
 
 			void								reset();
 
-			PxU32								createActor(const PxGeometry& geometry, const PxTransform& pose, const MassProps* massProps=NULL, Dy::ArticulationLinkHandle link=0);
+			PxU32								createActor(const PxGeometry& geometry, const PxTransform& pose, const MassProps* massProps=NULL, PxArticulationLinkCookie* linkCookie=0);
 
 			void								createGroundPlane()
 												{
@@ -307,9 +208,9 @@ static void computeMassProps(MassProps& props, const PxGeometry& geometry, float
 			TestConstraintAllocator*			mConstraintAllocator;
 
 			// PT: TODO: revisit this basic design once everything works
-			Array<PxGeometryHolder>				mGeoms;
-			Array<PxTransform>					mPoses;
-			Array<PxBounds3>					mBounds;
+			PxArray<PxGeometryHolder>			mGeoms;
+			PxArray<PxTransform>				mPoses;
+			PxArray<PxBounds3>					mBounds;
 
 			class ImmediateActor
 			{
@@ -328,23 +229,28 @@ static void computeMassProps(MassProps& props, const PxGeometry& geometry, float
 					MassProps					mMassProps;
 					PxVec3						mLinearVelocity;
 					PxVec3						mAngularVelocity;
-					Dy::ArticulationLinkHandle	mLink;
+					// PT: ### TODO: revisit, these two could be a union, the cookie is only needed for a brief time during scene creation
+					// Or move them to a completely different / hidden array
+					PxArticulationLinkCookie	mLinkCookie;
+					PxArticulationLinkHandle	mLink;
 			};
-			Array<ImmediateActor>				mActors;
+			PxArray<ImmediateActor>				mActors;
 #if USE_TGS
-			Array<PxTGSSolverBodyData>			mSolverBodyData;
-			Array<PxTGSSolverBodyVel>			mSolverBodies;
-			Array<PxTGSSolverBodyTxInertia>		mSolverBodyTxInertias;
+			PxArray<PxTGSSolverBodyData>		mSolverBodyData;
+			PxArray<PxTGSSolverBodyVel>			mSolverBodies;
+			PxArray<PxTGSSolverBodyTxInertia>	mSolverBodyTxInertias;
 #else
-			Array<PxSolverBodyData>				mSolverBodyData;
-			Array<PxSolverBody>					mSolverBodies;
+			PxArray<PxSolverBodyData>			mSolverBodyData;
+			PxArray<PxSolverBody>				mSolverBodies;
 #endif
-			Array<Dy::ArticulationV*>			mArticulations;
+			PxArray<PxArticulationHandle>		mArticulations;
+			PxArray<PxSpatialVector>			mTempZ;
+			PxArray<PxSpatialVector>			mTempDeltaV;
 #ifdef TEST_IMMEDIATE_JOINTS
-			Array<MyJointData>					mJointData;
+			PxArray<MyJointData>				mJointData;
 #endif
-			Array<IDS>							mBroadphasePairs;
-			HashSet<IDS>						mFilteredPairs;
+			PxArray<IDS>						mBroadphasePairs;
+			PxHashSet<IDS>						mFilteredPairs;
 
 			struct ContactPair
 			{
@@ -354,46 +260,54 @@ static void computeMassProps(MassProps& props, const PxGeometry& geometry, float
 				PxU32	mNbContacts;
 				PxU32	mStartContactIndex;
 			};
-			// PT: we use separate arrays here because the immediate mode API expects an array of Gu::ContactPoint
-			Array<ContactPair>					mContactPairs;
-			Array<Gu::ContactPoint>				mContactPoints;
+			// PT: we use separate arrays here because the immediate mode API expects an array of PxContactPoint
+			PxArray<ContactPair>					mContactPairs;
+			PxArray<PxContactPoint>					mContactPoints;
 #if WITH_PERSISTENCY
-			HashMap<IDS, PersistentContactPair>	mPersistentPairs;
+			PxHashMap<IDS, PersistentContactPair>	mPersistentPairs;
 #endif
-			Array<PxSolverConstraintDesc>		mSolverConstraintDesc;
+			PxArray<PxSolverConstraintDesc>			mSolverConstraintDesc;
 #if BATCH_CONTACTS
-			Array<PxSolverConstraintDesc>		mOrderedSolverConstraintDesc;
+			PxArray<PxSolverConstraintDesc>			mOrderedSolverConstraintDesc;
 #endif
-			Array<PxConstraintBatchHeader>		mHeaders;
-			Array<PxReal>						mContactForces;
+			PxArray<PxConstraintBatchHeader>		mHeaders;
+			PxArray<PxReal>							mContactForces;
 
-			Array<PxVec3>						mMotionLinearVelocity;	// Persistent to avoid runtime allocations but could be managed on the stack
-			Array<PxVec3>						mMotionAngularVelocity;	// Persistent to avoid runtime allocations but could be managed on the stack
+			PxArray<PxVec3>							mMotionLinearVelocity;	// Persistent to avoid runtime allocations but could be managed on the stack
+			PxArray<PxVec3>							mMotionAngularVelocity;	// Persistent to avoid runtime allocations but could be managed on the stack
 
-			PxU32								mNbStaticActors;
-			PxU32								mNbArticulationLinks;
+			PxU32									mNbStaticActors;
+			PxU32									mNbArticulationLinks;
+			PxU32									mMaxNumArticulationsLinks;
 
 			PX_FORCE_INLINE	void	disableCollision(PxU32 i, PxU32 j)
 			{
 				if(i>j)
-					swap(i, j);
+					PxSwap(i, j);
 				mFilteredPairs.insert(IDS(i, j));
 			}
 
 			PX_FORCE_INLINE	bool	isCollisionDisabled(PxU32 i, PxU32 j)	const
 			{
 				if(i>j)
-					swap(i, j);
+					PxSwap(i, j);
 				return mFilteredPairs.contains(IDS(i, j));
 			}
 
-			Dy::ArticulationLinkHandle			mMotorLink;
+			PxArticulationLinkCookie				mMotorLinkCookie;
+			PxArticulationLinkHandle				mMotorLink;
+
+			PxArticulationHandle					endCreateImmediateArticulation(PxArticulationCookie immArt);
+
+			void									allocateTempBuffer(const PxU32 maxLinks);
 	};
 
 ImmediateScene::ImmediateScene() :
-	mNbStaticActors		(0),
-	mNbArticulationLinks(0),
-	mMotorLink			(0)
+	mNbStaticActors				(0),
+	mNbArticulationLinks		(0),
+	mMaxNumArticulationsLinks	(0),
+	mMotorLinkCookie			(PxCreateArticulationLinkCookie()),
+	mMotorLink					(PxArticulationLinkHandle())
 {
 	mCacheAllocator = new TestCacheAllocator;
 	mConstraintAllocator = new TestConstraintAllocator;
@@ -403,8 +317,8 @@ ImmediateScene::~ImmediateScene()
 {
 	reset();
 
-	PX_DELETE_AND_RESET(mConstraintAllocator);
-	PX_DELETE_AND_RESET(mCacheAllocator);
+	PX_DELETE(mConstraintAllocator);
+	PX_DELETE(mCacheAllocator);
 }
 
 void ImmediateScene::reset()
@@ -443,10 +357,11 @@ void ImmediateScene::reset()
 	mPersistentPairs.clear();
 #endif
 	mNbStaticActors = mNbArticulationLinks = 0;
-	mMotorLink = 0;
+	mMotorLinkCookie = PxCreateArticulationLinkCookie();
+	mMotorLink = PxArticulationLinkHandle();
 }
 
-PxU32 ImmediateScene::createActor(const PxGeometry& geometry, const PxTransform& pose, const MassProps* massProps, Dy::ArticulationLinkHandle link)
+PxU32 ImmediateScene::createActor(const PxGeometry& geometry, const PxTransform& pose, const MassProps* massProps, PxArticulationLinkCookie* linkCookie)
 {
 	const PxU32 id = mActors.size();
 	// PT: we don't support compounds in this simple snippet. 1 actor = 1 shape/geom. 
@@ -457,7 +372,7 @@ PxU32 ImmediateScene::createActor(const PxGeometry& geometry, const PxTransform&
 	const bool isStaticActor = !massProps;
 	if(isStaticActor)
 	{
-		PX_ASSERT(!link);
+		PX_ASSERT(!linkCookie);
 		mNbStaticActors++;
 	}
 	else
@@ -465,21 +380,22 @@ PxU32 ImmediateScene::createActor(const PxGeometry& geometry, const PxTransform&
 		// PT: make sure we don't create dynamic actors after static ones. We could reorganize the array but
 		// in this simple snippet we just enforce the order in which actors are created.
 		PX_ASSERT(!mNbStaticActors);
-		if(link)
+		if(linkCookie)
 			mNbArticulationLinks++;
 	}
 
 	ImmediateActor actor;
 	if(isStaticActor)
 		actor.mType			= ImmediateActor::eSTATIC;
-	else if(link)
+	else if(linkCookie)
 		actor.mType			= ImmediateActor::eLINK;
 	else
 		actor.mType			= ImmediateActor::eDYNAMIC;
 	actor.mCollisionGroup	= 0;
 	actor.mLinearVelocity	= PxVec3(0.0f);
 	actor.mAngularVelocity	= PxVec3(0.0f);
-	actor.mLink				= link;
+	actor.mLinkCookie		= linkCookie ? *linkCookie : PxCreateArticulationLinkCookie();
+	actor.mLink				= PxArticulationLinkHandle();	// Not available yet
 
 	if(massProps)
 		actor.mMassProps	= *massProps;
@@ -507,18 +423,51 @@ PxU32 ImmediateScene::createActor(const PxGeometry& geometry, const PxTransform&
 	return id;
 }
 
-static Dy::ArticulationV* createImmediateArticulation(bool fixBase, Array<Dy::ArticulationV*>& articulations)
+static PxArticulationCookie beginCreateImmediateArticulation(bool fixBase)
 {
-	PxFeatherstoneArticulationData data;
+	PxArticulationDataRC data;
 	data.flags = fixBase ? PxArticulationFlag::eFIX_BASE : PxArticulationFlag::Enum(0);
-	Dy::ArticulationV* immArt = PxCreateFeatherstoneArticulation(data);
-	articulations.pushBack(immArt);
-	return immArt;
+	return PxBeginCreateArticulationRC(data);
 }
 
-static void setupCommonLinkData(PxFeatherstoneArticulationLinkData& data, Dy::ArticulationLinkHandle parent, const PxTransform& pose, const MassProps& massProps)
+void ImmediateScene::allocateTempBuffer(const PxU32 maxLinks)
 {
-	data.parent								= parent;
+	mTempZ.resize(maxLinks);
+	mTempDeltaV.resize(maxLinks);
+}
+
+PxArticulationHandle ImmediateScene::endCreateImmediateArticulation(PxArticulationCookie immArt)
+{
+	PxU32 expectedNbLinks = 0;
+	const PxU32 nbActors = mActors.size();
+	for(PxU32 i=0;i<nbActors;i++)
+	{
+		if(mActors[i].mLinkCookie.articulation)
+			expectedNbLinks++;
+	}
+
+	PxArticulationLinkHandle* realLinkHandles = PX_ALLOCATE(PxArticulationLinkHandle, sizeof(PxArticulationLinkHandle) * expectedNbLinks, "PxArticulationLinkHandle");
+
+	PxArticulationHandle immArt2 = PxEndCreateArticulationRC(immArt, realLinkHandles, expectedNbLinks);
+	mArticulations.pushBack(immArt2);
+
+	mMaxNumArticulationsLinks = PxMax(mMaxNumArticulationsLinks, expectedNbLinks);
+
+	PxU32 nbLinks = 0;
+	for(PxU32 i=0;i<nbActors;i++)
+	{
+		if(mActors[i].mLinkCookie.articulation)
+			mActors[i].mLink = realLinkHandles[nbLinks++];
+	}
+	PX_ASSERT(expectedNbLinks==nbLinks);
+
+	PX_FREE(realLinkHandles);
+
+	return immArt2;
+}
+
+static void setupCommonLinkData(PxArticulationLinkDataRC& data, const PxTransform& pose, const MassProps& massProps)
+{
 	data.pose								= pose;
 	data.inverseMass						= massProps.mInvMass;
 	data.inverseInertia						= massProps.mInvInertia;
@@ -558,7 +507,7 @@ void ImmediateScene::createSphericalJoint(PxU32 id0, PxU32 id1, const PxTransfor
 
 void ImmediateScene::createScene()
 {
-	mMotorLink = 0;
+	mMotorLink = PxArticulationLinkHandle();
 
 	const PxU32 index = gSceneIndex;
 	if(index==0)
@@ -640,37 +589,37 @@ void ImmediateScene::createScene()
 		MassProps massProps;
 		computeMassProps(massProps, boxGeom, 1.0f);
 
-		Dy::ArticulationV* immArt = createImmediateArticulation(true, mArticulations);
+		PxArticulationCookie immArt = beginCreateImmediateArticulation(true);
 
-		Dy::ArticulationLinkHandle base;
+		PxArticulationLinkCookie base;
 		PxU32 baseID;
 		{
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, 0, basePose, massProps);
-			base = PxAddArticulationLink(immArt, linkData);
-			baseID = createActor(boxGeom, basePose, &massProps, base);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, basePose, massProps);
+			base = PxAddArticulationLink(immArt, 0, linkData);
+			baseID = createActor(boxGeom, basePose, &massProps, &base);
 		}
 
-		Dy::ArticulationLinkHandle parent = base;
+		PxArticulationLinkCookie parent = base;
 		PxU32 parentID = baseID;
 		PxTransform linkPose = basePose;
 		for(PxU32 i=0;i<nbLinks;i++)
 		{
 			linkPose.p.z += s*2.0f;
 
-			Dy::ArticulationLinkHandle link;
+			PxArticulationLinkCookie link;
 			PxU32 linkID;
 			{
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, parent, linkPose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, linkPose, massProps);
 				//
 				linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
 				linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.0f, 0.0f, s));
 				linkData.inboundJoint.childPose		= PxTransform(PxVec3(0.0f, 0.0f, -s));
 				linkData.inboundJoint.motion[PxArticulationAxis::eTWIST] = PxArticulationMotion::eFREE;
 
-				link = PxAddArticulationLink(immArt, linkData, i==nbLinks-1);
-				linkID = createActor(boxGeom, linkPose, &massProps, link);
+				link = PxAddArticulationLink(immArt, &parent, linkData);
+				linkID = createActor(boxGeom, linkPose, &massProps, &link);
 
 				disableCollision(parentID, linkID);
 			}
@@ -678,6 +627,10 @@ void ImmediateScene::createScene()
 			parent = link;
 			parentID = linkID;
 		}
+
+		endCreateImmediateArticulation(immArt);
+
+		allocateTempBuffer(mMaxNumArticulationsLinks);
 
 		createGroundPlane();
 	}
@@ -695,29 +648,29 @@ void ImmediateScene::createScene()
 		MassProps massProps;
 		computeMassProps(massProps, boxGeom, 1.0f);
 
-		Dy::ArticulationV* immArt = createImmediateArticulation(true, mArticulations);
+		PxArticulationCookie immArt = beginCreateImmediateArticulation(true);
 
-		Dy::ArticulationLinkHandle base;
+		PxArticulationLinkCookie base;
 		PxU32 baseID;
 		{
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, 0, basePose, massProps);
-			base = PxAddArticulationLink(immArt, linkData);
-			baseID = createActor(boxGeom, basePose, &massProps, base);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, basePose, massProps);
+			base = PxAddArticulationLink(immArt, 0, linkData);
+			baseID = createActor(boxGeom, basePose, &massProps, &base);
 		}
 
-		Dy::ArticulationLinkHandle parent = base;
+		PxArticulationLinkCookie parent = base;
 		PxU32 parentID = baseID;
 		PxTransform linkPose = basePose;
 		for(PxU32 i=0;i<nbLinks;i++)
 		{
 			linkPose.p.z += s*2.0f;
 
-			Dy::ArticulationLinkHandle link;
+			PxArticulationLinkCookie link;
 			PxU32 linkID;
 			{
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, parent, linkPose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, linkPose, massProps);
 				//
 				linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
 				linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.0f, 0.0f, s));
@@ -726,8 +679,8 @@ void ImmediateScene::createScene()
 				linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].low = -PxPi/8.0f;
 				linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].high = PxPi/8.0f;
 
-				link = PxAddArticulationLink(immArt, linkData, i==nbLinks-1);
-				linkID = createActor(boxGeom, linkPose, &massProps, link);
+				link = PxAddArticulationLink(immArt, &parent, linkData);
+				linkID = createActor(boxGeom, linkPose, &massProps, &link);
 
 				disableCollision(parentID, linkID);
 			}
@@ -735,6 +688,10 @@ void ImmediateScene::createScene()
 			parent = link;
 			parentID = linkID;
 		}
+
+		endCreateImmediateArticulation(immArt);
+
+		allocateTempBuffer(mMaxNumArticulationsLinks);
 	}
 	else if(index==4)
 	{
@@ -748,19 +705,21 @@ void ImmediateScene::createScene()
 			MassProps massProps;
 			computeMassProps(massProps, boxGeom, 1.0f);
 
-			Dy::ArticulationV* immArt = createImmediateArticulation(false, mArticulations);
+			PxArticulationCookie immArt = beginCreateImmediateArticulation(false);
 
-			Dy::ArticulationLinkHandle base;
+			PxArticulationLinkCookie base;
 			PxU32 baseID;
 			{
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, 0, basePose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, basePose, massProps);
 
-				base = PxAddArticulationLink(immArt, linkData, true);
-				baseID = createActor(boxGeom, basePose, &massProps, base);
+				base = PxAddArticulationLink(immArt, 0, linkData);
+				baseID = createActor(boxGeom, basePose, &massProps, &base);
 				PX_UNUSED(baseID);
 			}
 
+			endCreateImmediateArticulation(immArt);
+			allocateTempBuffer(mMaxNumArticulationsLinks);
 			return;
 		}
 
@@ -777,29 +736,29 @@ void ImmediateScene::createScene()
 		MassProps massProps;
 		computeMassProps(massProps, boxGeom, 1.0f);
 
-		Dy::ArticulationV* immArt = createImmediateArticulation(true, mArticulations);
+		PxArticulationCookie immArt = beginCreateImmediateArticulation(true);
 
-		Dy::ArticulationLinkHandle base;
+		PxArticulationLinkCookie base;
 		PxU32 baseID;
 		{
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, 0, basePose, massProps);
-			base = PxAddArticulationLink(immArt, linkData);
-			baseID = createActor(boxGeom, basePose, &massProps, base);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, basePose, massProps);
+			base = PxAddArticulationLink(immArt, 0, linkData);
+			baseID = createActor(boxGeom, basePose, &massProps, &base);
 		}
 
-		Dy::ArticulationLinkHandle parent = base;
+		PxArticulationLinkCookie parent = base;
 		PxU32 parentID = baseID;
 		PxTransform linkPose = basePose;
 		for(PxU32 i=0;i<nbLinks;i++)
 		{
 			linkPose.p.z += s*2.0f;
 
-			Dy::ArticulationLinkHandle link;
+			PxArticulationLinkCookie link;
 			PxU32 linkID;
 			{
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, parent, linkPose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, linkPose, massProps);
 				//
 				linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
 				linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.0f, 0.0f, s));
@@ -811,17 +770,23 @@ void ImmediateScene::createScene()
 				linkData.inboundJoint.drives[PxArticulationAxis::eTWIST].driveType = PxArticulationDriveType::eFORCE;
 				linkData.inboundJoint.targetVel[PxArticulationAxis::eTWIST] = 4.0f;
 
-				link = PxAddArticulationLink(immArt, linkData, i==nbLinks-1);
-				linkID = createActor(boxGeom, linkPose, &massProps, link);
+				link = PxAddArticulationLink(immArt, &parent, linkData);
+				linkID = createActor(boxGeom, linkPose, &massProps, &link);
 
 				disableCollision(parentID, linkID);
 
-				mMotorLink = link;
+				mMotorLinkCookie = link;
+				mMotorLink = PxArticulationLinkHandle();
 			}
 
 			parent = link;
 			parentID = linkID;
 		}
+
+		endCreateImmediateArticulation(immArt);
+		allocateTempBuffer(mMaxNumArticulationsLinks);
+		//### not nice, revisit
+		mMotorLink = mActors[1].mLink;
 	}
 	else if(index==5)
 	{
@@ -837,11 +802,11 @@ void ImmediateScene::createScene()
 		const PxQuat leftRot(-angle, PxVec3(1.f, 0.f, 0.f));
 		const PxQuat rightRot(angle, PxVec3(1.f, 0.f, 0.f));
 
-		Dy::ArticulationV* immArt = createImmediateArticulation(false, mArticulations);
+		PxArticulationCookie immArt = beginCreateImmediateArticulation(false);
 
 		//
 
-		Dy::ArticulationLinkHandle base;
+		PxArticulationLinkCookie base;
 		PxU32 baseID;
 		{
 			const PxBoxGeometry boxGeom(0.5f, 0.25f, 1.5f);
@@ -850,15 +815,15 @@ void ImmediateScene::createScene()
 			computeMassProps(massProps, boxGeom, 3.0f);
 
 			const PxTransform pose(PxVec3(0.f, 0.25f, 0.f));
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, 0, pose, massProps);
-			base = PxAddArticulationLink(immArt, linkData);
-			baseID = createActor(boxGeom, pose, &massProps, base);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, pose, massProps);
+			base = PxAddArticulationLink(immArt, 0, linkData);
+			baseID = createActor(boxGeom, pose, &massProps, &base);
 		}
 
 		//
 
-		Dy::ArticulationLinkHandle leftRoot;
+		PxArticulationLinkCookie leftRoot;
 		PxU32 leftRootID;
 		{
 			const PxBoxGeometry boxGeom(0.5f, 0.05f, 0.05f);
@@ -867,21 +832,21 @@ void ImmediateScene::createScene()
 			computeMassProps(massProps, boxGeom, 1.0f);
 
 			const PxTransform pose(PxVec3(0.f, 0.55f, -0.9f));
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, base, pose, massProps);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, pose, massProps);
 
 				linkData.inboundJoint.type			= PxArticulationJointType::eFIX;
 				linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.f, 0.25f, -0.9f));
 				linkData.inboundJoint.childPose		= PxTransform(PxVec3(0.f, -0.05f, 0.f));
 
-			leftRoot = PxAddArticulationLink(immArt, linkData);
-			leftRootID = createActor(boxGeom, pose, &massProps, leftRoot);
+			leftRoot = PxAddArticulationLink(immArt, &base, linkData);
+			leftRootID = createActor(boxGeom, pose, &massProps, &leftRoot);
 			disableCollision(baseID, leftRootID);
 		}
 
 		//
 
-		Dy::ArticulationLinkHandle rightRoot;
+		PxArticulationLinkCookie rightRoot;
 		PxU32 rightRootID;
 		{
 			const PxBoxGeometry boxGeom(0.5f, 0.05f, 0.05f);
@@ -890,8 +855,8 @@ void ImmediateScene::createScene()
 			computeMassProps(massProps, boxGeom, 1.0f);
 
 			const PxTransform pose(PxVec3(0.f, 0.55f, 0.9f));
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, base, pose, massProps);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, pose, massProps);
 
 				linkData.inboundJoint.type			= PxArticulationJointType::ePRISMATIC;
 				linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.f, 0.25f, 0.9f));
@@ -907,8 +872,8 @@ void ImmediateScene::createScene()
 					linkData.inboundJoint.drives[PxArticulationAxis::eZ].driveType = PxArticulationDriveType::eFORCE;
 				}
 
-			rightRoot = PxAddArticulationLink(immArt, linkData);
-			rightRootID = createActor(boxGeom, pose, &massProps, rightRoot);
+			rightRoot = PxAddArticulationLink(immArt, &base, linkData);
+			rightRootID = createActor(boxGeom, pose, &massProps, &rightRoot);
 			disableCollision(baseID, rightRootID);
 		}
 
@@ -917,15 +882,15 @@ void ImmediateScene::createScene()
 		const PxU32 linkHeight = 3;
 		PxU32 currLeftID = leftRootID;
 		PxU32 currRightID = rightRootID;
-		Dy::ArticulationLinkHandle currLeft = leftRoot;
-		Dy::ArticulationLinkHandle currRight = rightRoot;
+		PxArticulationLinkCookie currLeft = leftRoot;
+		PxArticulationLinkCookie currRight = rightRoot;
 		PxQuat rightParentRot(PxIdentity);
 		PxQuat leftParentRot(PxIdentity);
 		for(PxU32 i=0; i<linkHeight; ++i)
 		{
 			const PxVec3 pos(0.5f, 0.55f + 0.1f*(1 + i), 0.f);
 
-			Dy::ArticulationLinkHandle leftLink;
+			PxArticulationLinkCookie leftLink;
 			PxU32 leftLinkID;
 			{
 				const PxBoxGeometry boxGeom(0.05f, 0.05f, 1.f);
@@ -934,8 +899,8 @@ void ImmediateScene::createScene()
 				computeMassProps(massProps, boxGeom, 1.0f);
 
 				const PxTransform pose(pos + PxVec3(0.f, sinAng*(2 * i + 1), 0.f), leftRot);
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, currLeft, pose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, pose, massProps);
 
 					const PxVec3 leftAnchorLocation = pos + PxVec3(0.f, sinAng*(2 * i), -0.9f);
 					linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
@@ -945,8 +910,8 @@ void ImmediateScene::createScene()
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].low = -PxPi;
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].high = angle;
 
-				leftLink = PxAddArticulationLink(immArt, linkData);
-				leftLinkID = createActor(boxGeom, pose, &massProps, leftLink);
+				leftLink = PxAddArticulationLink(immArt, &currLeft, linkData);
+				leftLinkID = createActor(boxGeom, pose, &massProps, &leftLink);
 				disableCollision(currLeftID, leftLinkID);
 				mActors[leftLinkID].mCollisionGroup = 1;
 			}
@@ -954,7 +919,7 @@ void ImmediateScene::createScene()
 
 			//
 
-			Dy::ArticulationLinkHandle rightLink;
+			PxArticulationLinkCookie rightLink;
 			PxU32 rightLinkID;
 			{
 				const PxBoxGeometry boxGeom(0.05f, 0.05f, 1.f);
@@ -963,8 +928,8 @@ void ImmediateScene::createScene()
 				computeMassProps(massProps, boxGeom, 1.0f);
 
 				const PxTransform pose(pos + PxVec3(0.f, sinAng*(2 * i + 1), 0.f), rightRot);
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, currRight, pose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, pose, massProps);
 
 					const PxVec3 rightAnchorLocation = pos + PxVec3(0.f, sinAng*(2 * i), 0.9f);
 					linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
@@ -974,8 +939,8 @@ void ImmediateScene::createScene()
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].low = -angle;
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].high = PxPi;
 
-				rightLink = PxAddArticulationLink(immArt, linkData);
-				rightLinkID = createActor(boxGeom, pose, &massProps, rightLink);
+				rightLink = PxAddArticulationLink(immArt, &currRight, linkData);
+				rightLinkID = createActor(boxGeom, pose, &massProps, &rightLink);
 				disableCollision(currRightID, rightLinkID);
 				mActors[rightLinkID].mCollisionGroup = 1;
 			}
@@ -994,7 +959,7 @@ void ImmediateScene::createScene()
 
 		//
 
-		Dy::ArticulationLinkHandle leftTop;
+		PxArticulationLinkCookie leftTop;
 		PxU32 leftTopID;
 		{
 			const PxBoxGeometry boxGeom(0.5f, 0.05f, 0.05f);
@@ -1003,23 +968,23 @@ void ImmediateScene::createScene()
 			computeMassProps(massProps, boxGeom, 1.0f);
 
 			const PxTransform pose(mPoses[currLeftID].transform(PxTransform(PxVec3(-0.5f, 0.f, -1.0f), leftParentRot)));
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, currLeft, pose, massProps);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, pose, massProps);
 
 				linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
 				linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.f, 0.f, -1.f), mPoses[currLeftID].q.getConjugate());
 				linkData.inboundJoint.childPose		= PxTransform(PxVec3(0.5f, 0.f, 0.f), pose.q.getConjugate());
 				linkData.inboundJoint.motion[PxArticulationAxis::eTWIST] = PxArticulationMotion::eFREE;
 
-			leftTop = PxAddArticulationLink(immArt, linkData);
-			leftTopID = createActor(boxGeom, pose, &massProps, leftTop);
+			leftTop = PxAddArticulationLink(immArt, &currLeft, linkData);
+			leftTopID = createActor(boxGeom, pose, &massProps, &leftTop);
 			disableCollision(currLeftID, leftTopID);
 			mActors[leftTopID].mCollisionGroup = 1;
 		}
 
 		//
 
-		Dy::ArticulationLinkHandle rightTop;
+		PxArticulationLinkCookie rightTop;
 		PxU32 rightTopID;
 		{
 			// TODO: use a capsule here
@@ -1030,16 +995,16 @@ void ImmediateScene::createScene()
 			computeMassProps(massProps, boxGeom, 1.0f);
 
 			const PxTransform pose(mPoses[currRightID].transform(PxTransform(PxVec3(-0.5f, 0.f, 1.0f), rightParentRot)));
-			PxFeatherstoneArticulationLinkData linkData;
-			setupCommonLinkData(linkData, currRight, pose, massProps);
+			PxArticulationLinkDataRC linkData;
+			setupCommonLinkData(linkData, pose, massProps);
 
 				linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
 				linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.f, 0.f, 1.f), mPoses[currRightID].q.getConjugate());
 				linkData.inboundJoint.childPose		= PxTransform(PxVec3(0.5f, 0.f, 0.f), pose.q.getConjugate());
 				linkData.inboundJoint.motion[PxArticulationAxis::eTWIST] = PxArticulationMotion::eFREE;
 
-			rightTop = PxAddArticulationLink(immArt, linkData);
-			rightTopID = createActor(boxGeom, pose, &massProps, rightTop);
+			rightTop = PxAddArticulationLink(immArt, &currRight, linkData);
+			rightTopID = createActor(boxGeom, pose, &massProps, &rightTop);
 			disableCollision(currRightID, rightTopID);
 			mActors[rightTopID].mCollisionGroup = 1;
 		}
@@ -1057,7 +1022,7 @@ void ImmediateScene::createScene()
 		{
 			const PxVec3 pos(-0.5f, 0.55f + 0.1f*(1 + i), 0.f);
 
-			Dy::ArticulationLinkHandle leftLink;
+			PxArticulationLinkCookie leftLink;
 			PxU32 leftLinkID;
 			{
 				const PxBoxGeometry boxGeom(0.05f, 0.05f, 1.f);
@@ -1066,8 +1031,8 @@ void ImmediateScene::createScene()
 				computeMassProps(massProps, boxGeom, 1.0f);
 
 				const PxTransform pose(pos + PxVec3(0.f, sinAng*(2 * i + 1), 0.f), leftRot);
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, currLeft, pose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, pose, massProps);
 
 					const PxVec3 leftAnchorLocation = pos + PxVec3(0.f, sinAng*(2 * i), -0.9f);
 					linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
@@ -1077,8 +1042,8 @@ void ImmediateScene::createScene()
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].low = -PxPi;
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].high = angle;
 
-				leftLink = PxAddArticulationLink(immArt, linkData);
-				leftLinkID = createActor(boxGeom, pose, &massProps, leftLink);
+				leftLink = PxAddArticulationLink(immArt, &currLeft, linkData);
+				leftLinkID = createActor(boxGeom, pose, &massProps, &leftLink);
 				disableCollision(currLeftID, leftLinkID);
 				mActors[leftLinkID].mCollisionGroup = 1;
 			}
@@ -1086,7 +1051,7 @@ void ImmediateScene::createScene()
 
 			//
 
-			Dy::ArticulationLinkHandle rightLink;
+			PxArticulationLinkCookie rightLink;
 			PxU32 rightLinkID;
 			{
 				const PxBoxGeometry boxGeom(0.05f, 0.05f, 1.f);
@@ -1095,8 +1060,8 @@ void ImmediateScene::createScene()
 				computeMassProps(massProps, boxGeom, 1.0f);
 
 				const PxTransform pose(pos + PxVec3(0.f, sinAng*(2 * i + 1), 0.f), rightRot);
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, currRight, pose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, pose, massProps);
 
 					const PxVec3 rightAnchorLocation = pos + PxVec3(0.f, sinAng*(2 * i), 0.9f);
 					linkData.inboundJoint.type			= PxArticulationJointType::eREVOLUTE;
@@ -1106,8 +1071,8 @@ void ImmediateScene::createScene()
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].low = -angle;
 					linkData.inboundJoint.limits[PxArticulationAxis::eTWIST].high = PxPi;
 
-				rightLink = PxAddArticulationLink(immArt, linkData);
-				rightLinkID = createActor(boxGeom, pose, &massProps, rightLink);
+				rightLink = PxAddArticulationLink(immArt, &currRight, linkData);
+				rightLinkID = createActor(boxGeom, pose, &massProps, &rightLink);
 				disableCollision(currRightID, rightLinkID);
 				mActors[rightLinkID].mCollisionGroup = 1;
 			}
@@ -1137,7 +1102,7 @@ void ImmediateScene::createScene()
 
 		// Create top
 		{
-			Dy::ArticulationLinkHandle top;
+			PxArticulationLinkCookie top;
 			PxU32 topID;
 			{
 				const PxBoxGeometry boxGeom(0.5f, 0.1f, 1.5f);
@@ -1146,20 +1111,23 @@ void ImmediateScene::createScene()
 				computeMassProps(massProps, boxGeom, 1.0f);
 
 				const PxTransform pose(PxVec3(0.f, mPoses[leftTopID].p.y + 0.15f, 0.f));
-				PxFeatherstoneArticulationLinkData linkData;
-				setupCommonLinkData(linkData, leftTop, pose, massProps);
+				PxArticulationLinkDataRC linkData;
+				setupCommonLinkData(linkData, pose, massProps);
 
 					linkData.inboundJoint.type			= PxArticulationJointType::eFIX;
 					linkData.inboundJoint.parentPose	= PxTransform(PxVec3(0.f, 0.0f, 0.f));
 					linkData.inboundJoint.childPose		= PxTransform(PxVec3(0.f, -0.15f, -0.9f));
 
-				top = PxAddArticulationLink(immArt, linkData, true);
-				topID = createActor(boxGeom, pose, &massProps, top);
+				top = PxAddArticulationLink(immArt, &leftTop, linkData);
+				topID = createActor(boxGeom, pose, &massProps, &top);
 				disableCollision(leftTopID, topID);
 			}
 		}
 
-		//
+
+		endCreateImmediateArticulation(immArt);
+
+		allocateTempBuffer(mMaxNumArticulationsLinks);
 
 		createGroundPlane();
 	}
@@ -1176,56 +1144,23 @@ void ImmediateScene::updateArticulations(float dt)
 	const PxU32 nbArticulations = mArticulations.size();
 	for(PxU32 i=0;i<nbArticulations;i++)
 	{
-		Dy::ArticulationV* articulation = mArticulations[i];
+		PxArticulationHandle articulation = mArticulations[i];
 #if USE_TGS
-		PxComputeUnconstrainedVelocitiesTGS(articulation, gGravity, stepDt, dt, stepInvDt, invTotalDt);
+		PxComputeUnconstrainedVelocitiesTGS(articulation, gGravity, stepDt, dt, stepInvDt, invTotalDt, 1.0f);
 #else
-		PxComputeUnconstrainedVelocities(articulation, gGravity, dt);
+		PxComputeUnconstrainedVelocities(articulation, gGravity, dt, 1.f);
 #endif
 	}
 }
 
 void ImmediateScene::updateBounds()
 {
+	PX_SIMD_GUARD
+
 	// PT: in this snippet we simply recompute all bounds each frame (i.e. even static ones)
 	const PxU32 nbActors = mActors.size();
 	for(PxU32 i=0;i<nbActors;i++)
-	{
-		const PxGeometry& currentGeom = mGeoms[i].any();
-		const PxTransform& currentPose = mPoses[i];
-
-		const PxVec3& center = currentPose.p;
-		PxVec3 extents;
-
-		switch(currentGeom.getType())
-		{
-			case PxGeometryType::ePLANE:
-			{
-				extents = PxVec3(1000000.0f);
-			}
-			break;
-			case PxGeometryType::eBOX:
-			{
-				const PxBoxGeometry& boxGeom = static_cast<const PxBoxGeometry&>(currentGeom);
-				extents = boxGeom.halfExtents;
-			}
-			break;
-
-			case PxGeometryType::eSPHERE:
-			case PxGeometryType::eCAPSULE:
-			case PxGeometryType::eCONVEXMESH:
-			case PxGeometryType::eTRIANGLEMESH:
-			case PxGeometryType::eHEIGHTFIELD:
-			case PxGeometryType::eGEOMETRY_COUNT:
-			case PxGeometryType::eINVALID:
-				PX_ASSERT(0);
-			break;
-		}
-
-		extents += PxVec3(gBoundsInflation);
-
-		mBounds[i] = PxBounds3::basisExtent(center, PxMat33(currentPose.q), extents);
-	}
+		PxGeometryQuery::computeGeomBounds(mBounds[i], mGeoms[i].any(), mPoses[i], gBoundsInflation, 1.0f, PxGeometryQueryFlag::Enum(0));
 }
 
 void ImmediateScene::broadPhase()
@@ -1260,7 +1195,7 @@ void ImmediateScene::broadPhase()
 #if WITH_PERSISTENCY
 			else
 			{
-				const HashMap<IDS, PersistentContactPair>::Entry* e = mPersistentPairs.find(IDS(i, j));
+				const PxHashMap<IDS, PersistentContactPair>::Entry* e = mPersistentPairs.find(IDS(i, j));
 				if(e)
 				{
 					PersistentContactPair& persistentData = const_cast<PersistentContactPair&>(e->second);
@@ -1280,7 +1215,7 @@ void ImmediateScene::narrowPhase()
 		public:
 						ContactRecorder(ImmediateScene* scene, PxU32 id0, PxU32 id1) : mScene(scene), mID0(id0), mID1(id1), mHasContacts(false)	{}
 
-		virtual	bool	recordContacts(const Gu::ContactPoint* contactPoints, const PxU32 nbContacts, const PxU32 /*index*/)
+		virtual	bool	recordContacts(const PxContactPoint* contactPoints, const PxU32 nbContacts, const PxU32 /*index*/)
 		{
 			{
 				ImmediateScene::ContactPair pair;
@@ -1295,7 +1230,7 @@ void ImmediateScene::narrowPhase()
 			for(PxU32 i=0; i<nbContacts; i++)
 			{
 				// Fill in solver-specific data that our contact gen does not produce...
-				Gu::ContactPoint point = contactPoints[i];
+				PxContactPoint point = contactPoints[i];
 				point.maxImpulse		= PX_MAX_F32;
 				point.targetVel			= PxVec3(0.0f);
 				point.staticFriction	= gStaticFriction;
@@ -1348,7 +1283,9 @@ void ImmediateScene::narrowPhase()
 	}
 
 	if(1)
-		printf("Narrow-phase: %d contacts    \n", mContactPoints.size());
+	{
+		printf("Narrow-phase: %d contacts         \r", mContactPoints.size());
+	}
 }
 
 void ImmediateScene::buildSolverBodyData(float dt)
@@ -1394,22 +1331,22 @@ static void setupDesc(PxSolverConstraintDesc& desc, const ImmediateScene::Immedi
 #endif
 {
 	if(!aorb)
-		desc.bodyADataIndex	= PxU16(id);
+		desc.bodyADataIndex	= id;
 	else
-		desc.bodyBDataIndex	= PxU16(id);
+		desc.bodyBDataIndex	= id;
 
-	Dy::ArticulationLinkHandle link = actors[id].mLink;
-	if(link)
+	const PxArticulationLinkHandle& link = actors[id].mLink;
+	if(link.articulation)
 	{
 		if(!aorb)
 		{
-			desc.articulationA	= PxGetLinkArticulation(link);
-			desc.linkIndexA		= PxU16(PxGetLinkIndex(link));
+			desc.articulationA	= link.articulation;
+			desc.linkIndexA		= link.linkId;
 		}
 		else
 		{
-			desc.articulationB	= PxGetLinkArticulation(link);
-			desc.linkIndexB		= PxU16(PxGetLinkIndex(link));
+			desc.articulationB	= link.articulation;
+			desc.linkIndexB		= link.linkId;
 		}
 	}
 	else
@@ -1421,7 +1358,7 @@ static void setupDesc(PxSolverConstraintDesc& desc, const ImmediateScene::Immedi
 #else
 			desc.bodyA			= &solverBodies[id];
 #endif
-			desc.linkIndexA		= PxSolverConstraintDesc::NO_LINK;
+			desc.linkIndexA		= PxSolverConstraintDesc::RIGID_BODY;
 		}
 		else
 		{
@@ -1430,7 +1367,7 @@ static void setupDesc(PxSolverConstraintDesc& desc, const ImmediateScene::Immedi
 #else
 			desc.bodyB			= &solverBodies[id];
 #endif
-			desc.linkIndexB		= PxSolverConstraintDesc::NO_LINK;
+			desc.linkIndexB		= PxSolverConstraintDesc::RIGID_BODY;
 		}
 	}
 }
@@ -1481,15 +1418,16 @@ void ImmediateScene::buildSolverConstraintDesc()
 #ifdef TEST_IMMEDIATE_JOINTS
 
 // PT: this is copied from PxExtensions, it's the solver prep function for spherical joints
+//TAG:solverprepshader
 static PxU32 SphericalJointSolverPrep(Px1DConstraint* constraints,
-	PxVec3& body0WorldOffset,
+	PxVec3p& body0WorldOffset,
 	PxU32 /*maxConstraints*/,
 	PxConstraintInvMassScale& invMassScale,
 	const void* constantBlock,							  
 	const PxTransform& bA2w,
 	const PxTransform& bB2w,
 	bool /*useExtendedLimits*/,
-	PxVec3& cA2wOut, PxVec3& cB2wOut)
+	PxVec3p& cA2wOut, PxVec3p& cB2wOut)
 {
 	const MyJointData& data = *reinterpret_cast<const MyJointData*>(constantBlock);
 
@@ -1502,7 +1440,7 @@ static PxU32 SphericalJointSolverPrep(Px1DConstraint* constraints,
 /*	if(data.jointFlags & PxSphericalJointFlag::eLIMIT_ENABLED)
 	{
 		PxQuat swing, twist;
-		Ps::separateSwingTwist(cA2w.q.getConjugate() * cB2w.q, swing, twist);
+		PxSeparateSwingTwist(cA2w.q.getConjugate() * cB2w.q, swing, twist);
 		PX_ASSERT(PxAbs(swing.x)<1e-6f);
 
 		// PT: TODO: refactor with D6 joint code
@@ -1524,44 +1462,18 @@ static PxU32 SphericalJointSolverPrep(Px1DConstraint* constraints,
 }
 #endif
 
-void setupDesc(PxSolverContactDesc& contactDesc, const ImmediateScene::ImmediateActor* actors, PxSolverBodyData* solverBodyData, const PxU32 id, const bool aorb)
-{
-	PxTransform& bodyFrame = aorb ? contactDesc.bodyFrame1 : contactDesc.bodyFrame0;
-	PxSolverConstraintPrepDescBase::BodyState& bodyState = aorb ? contactDesc.bodyState1 : contactDesc.bodyState0;
-	const PxSolverBodyData*& data = aorb ? contactDesc.data1 : contactDesc.data0;
-
-	Dy::ArticulationLinkHandle link = actors[id].mLink;
-	if(link)
-	{
-		PxLinkData linkData;
-		bool status = PxGetLinkData(link, linkData);
-		PX_ASSERT(status);
-		PX_UNUSED(status);
-
-		data		= NULL;
-		bodyFrame	= linkData.pose;
-		bodyState	= PxSolverConstraintPrepDescBase::eARTICULATION;
-	}
-	else
-	{
-		data		= &solverBodyData[id];
-		bodyFrame	= solverBodyData[id].body2World;
-		bodyState	= actors[id].mType == ImmediateScene::ImmediateActor::eDYNAMIC ? PxSolverConstraintPrepDescBase::eDYNAMIC_BODY : PxSolverConstraintPrepDescBase::eSTATIC_BODY;
-	}
-}
-
-void setupDesc(PxTGSSolverContactDesc& contactDesc, const ImmediateScene::ImmediateActor* actors, PxTGSSolverBodyTxInertia* txInertias, PxTGSSolverBodyData* solverBodyData, 
-	PxTransform* poses, const PxU32 id, const bool aorb)
+#if USE_TGS
+static void setupDesc(PxTGSSolverContactDesc& contactDesc, const ImmediateScene::ImmediateActor* actors, PxTGSSolverBodyTxInertia* txInertias, PxTGSSolverBodyData* solverBodyData, PxTransform* poses, const PxU32 id, const bool aorb)
 {
 	PxTransform& bodyFrame = aorb ? contactDesc.bodyFrame1 : contactDesc.bodyFrame0;
 	PxSolverConstraintPrepDescBase::BodyState& bodyState = aorb ? contactDesc.bodyState1 : contactDesc.bodyState0;
 	const PxTGSSolverBodyData*& data = aorb ? contactDesc.bodyData1 : contactDesc.bodyData0;
 	const PxTGSSolverBodyTxInertia*& txI = aorb ? contactDesc.body1TxI : contactDesc.body0TxI;
 
-	Dy::ArticulationLinkHandle link = actors[id].mLink;
-	if(link)
+	const PxArticulationLinkHandle& link = actors[id].mLink;
+	if(link.articulation)
 	{
-		PxLinkData linkData;
+		PxArticulationLinkDerivedDataRC linkData;
 		bool status = PxGetLinkData(link, linkData);
 		PX_ASSERT(status);
 		PX_UNUSED(status);
@@ -1579,45 +1491,36 @@ void setupDesc(PxTGSSolverContactDesc& contactDesc, const ImmediateScene::Immedi
 		bodyState = actors[id].mType == ImmediateScene::ImmediateActor::eDYNAMIC ? PxSolverConstraintPrepDescBase::eDYNAMIC_BODY : PxSolverConstraintPrepDescBase::eSTATIC_BODY;
 	}
 }
-
-void setupJointDesc(PxSolverConstraintPrepDesc& jointDesc, const ImmediateScene::ImmediateActor* actors, PxSolverBodyData* solverBodyData, const PxU32 bodyDataIndex, const bool aorb)
+#else
+static void setupDesc(PxSolverContactDesc& contactDesc, const ImmediateScene::ImmediateActor* actors, PxSolverBodyData* solverBodyData, const PxU32 id, const bool aorb)
 {
-	if(!aorb)
-		jointDesc.data0	= &solverBodyData[bodyDataIndex];
-	else
-		jointDesc.data1	= &solverBodyData[bodyDataIndex];
+	PxTransform& bodyFrame = aorb ? contactDesc.bodyFrame1 : contactDesc.bodyFrame0;
+	PxSolverConstraintPrepDescBase::BodyState& bodyState = aorb ? contactDesc.bodyState1 : contactDesc.bodyState0;
+	const PxSolverBodyData*& data = aorb ? contactDesc.data1 : contactDesc.data0;
 
-	PxTransform& bodyFrame = aorb ? jointDesc.bodyFrame1 : jointDesc.bodyFrame0;
-	PxSolverConstraintPrepDescBase::BodyState& bodyState = aorb ? jointDesc.bodyState1 : jointDesc.bodyState0;
-
-	if(actors[bodyDataIndex].mLink)
+	const PxArticulationLinkHandle& link = actors[id].mLink;
+	if(link.articulation)
 	{
-		PxLinkData linkData;
-		bool status = PxGetLinkData(actors[bodyDataIndex].mLink, linkData);
+		PxArticulationLinkDerivedDataRC linkData;
+		bool status = PxGetLinkData(link, linkData);
 		PX_ASSERT(status);
 		PX_UNUSED(status);
 
+		data		= NULL;
 		bodyFrame	= linkData.pose;
 		bodyState	= PxSolverConstraintPrepDescBase::eARTICULATION;
 	}
 	else
 	{
-		//This may seem redundant but the bodyFrame is not defined by the bodyData object when using articulations.
-		// PT: TODO: this is a bug in the immediate mode snippet
-		if(actors[bodyDataIndex].mType == ImmediateScene::ImmediateActor::eSTATIC)
-		{
-			bodyFrame	= PxTransform(PxIdentity);
-			bodyState	= PxSolverConstraintPrepDescBase::eSTATIC_BODY;
-		}
-		else
-		{
-			bodyFrame	= solverBodyData[bodyDataIndex].body2World;
-			bodyState	= PxSolverConstraintPrepDescBase::eDYNAMIC_BODY;
-		}
+		data		= &solverBodyData[id];
+		bodyFrame	= solverBodyData[id].body2World;
+		bodyState	= actors[id].mType == ImmediateScene::ImmediateActor::eDYNAMIC ? PxSolverConstraintPrepDescBase::eDYNAMIC_BODY : PxSolverConstraintPrepDescBase::eSTATIC_BODY;
 	}
 }
+#endif
 
-void setupJointDesc(PxTGSSolverConstraintPrepDesc& jointDesc, const ImmediateScene::ImmediateActor* actors, PxTGSSolverBodyTxInertia* txInertias, PxTGSSolverBodyData* solverBodyData, PxTransform* poses, const PxU32 bodyDataIndex, const bool aorb)
+#if USE_TGS
+static void setupJointDesc(PxTGSSolverConstraintPrepDesc& jointDesc, const ImmediateScene::ImmediateActor* actors, PxTGSSolverBodyTxInertia* txInertias, PxTGSSolverBodyData* solverBodyData, PxTransform* poses, const PxU32 bodyDataIndex, const bool aorb)
 {
 	if(!aorb)
 	{
@@ -1633,9 +1536,9 @@ void setupJointDesc(PxTGSSolverConstraintPrepDesc& jointDesc, const ImmediateSce
 	PxTransform& bodyFrame = aorb ? jointDesc.bodyFrame1 : jointDesc.bodyFrame0;
 	PxSolverConstraintPrepDescBase::BodyState& bodyState = aorb ? jointDesc.bodyState1 : jointDesc.bodyState0;
 
-	if(actors[bodyDataIndex].mLink)
+	if(actors[bodyDataIndex].mLink.articulation)
 	{
-		PxLinkData linkData;
+		PxArticulationLinkDerivedDataRC linkData;
 		bool status = PxGetLinkData(actors[bodyDataIndex].mLink, linkData);
 		PX_ASSERT(status);
 		PX_UNUSED(status);
@@ -1659,6 +1562,44 @@ void setupJointDesc(PxTGSSolverConstraintPrepDesc& jointDesc, const ImmediateSce
 		}
 	}
 }
+#else
+static void setupJointDesc(PxSolverConstraintPrepDesc& jointDesc, const ImmediateScene::ImmediateActor* actors, PxSolverBodyData* solverBodyData, const PxU32 bodyDataIndex, const bool aorb)
+{
+	if(!aorb)
+		jointDesc.data0	= &solverBodyData[bodyDataIndex];
+	else
+		jointDesc.data1	= &solverBodyData[bodyDataIndex];
+
+	PxTransform& bodyFrame = aorb ? jointDesc.bodyFrame1 : jointDesc.bodyFrame0;
+	PxSolverConstraintPrepDescBase::BodyState& bodyState = aorb ? jointDesc.bodyState1 : jointDesc.bodyState0;
+
+	if(actors[bodyDataIndex].mLink.articulation)
+	{
+		PxArticulationLinkDerivedDataRC linkData;
+		bool status = PxGetLinkData(actors[bodyDataIndex].mLink, linkData);
+		PX_ASSERT(status);
+		PX_UNUSED(status);
+
+		bodyFrame	= linkData.pose;
+		bodyState	= PxSolverConstraintPrepDescBase::eARTICULATION;
+	}
+	else
+	{
+		//This may seem redundant but the bodyFrame is not defined by the bodyData object when using articulations.
+		// PT: TODO: this is a bug in the immediate mode snippet
+		if(actors[bodyDataIndex].mType == ImmediateScene::ImmediateActor::eSTATIC)
+		{
+			bodyFrame	= PxTransform(PxIdentity);
+			bodyState	= PxSolverConstraintPrepDescBase::eSTATIC_BODY;
+		}
+		else
+		{
+			bodyFrame	= solverBodyData[bodyDataIndex].body2World;
+			bodyState	= PxSolverConstraintPrepDescBase::eDYNAMIC_BODY;
+		}
+	}
+}
+#endif
 
 void ImmediateScene::createContactConstraints(float dt, float invDt, float lengthScale, const PxU32 nbPosIterations)
 {
@@ -1675,7 +1616,7 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 	const PxU32 nbBodies = mActors.size() - mNbStaticActors;
 
 	mOrderedSolverConstraintDesc.resize(mSolverConstraintDesc.size());
-	Array<PxSolverConstraintDesc>& orderedDescs = mOrderedSolverConstraintDesc;
+	PxArray<PxSolverConstraintDesc>& orderedDescs = mOrderedSolverConstraintDesc;
 
 #if USE_TGS
 	const PxU32 nbContactHeaders = physx::immediate::PxBatchConstraintsTGS(	mSolverConstraintDesc.begin(), mContactPairs.size(), mSolverBodies.begin(), nbBodies,
@@ -1702,7 +1643,7 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 
 	mHeaders.forceSize_Unsafe(totalHeaders);
 #else
-	Array<PxSolverConstraintDesc>& orderedDescs = mSolverConstraintDesc;
+	PxArray<PxSolverConstraintDesc>& orderedDescs = mSolverConstraintDesc;
 
 	const PxU32 nbContactHeaders = mContactPairs.size();
 	#ifdef TEST_IMMEDIATE_JOINTS
@@ -1759,6 +1700,7 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 			const ContactPair& pair = *reinterpret_cast<const ContactPair*>(constraintDesc.constraint);
 #if USE_TGS
 			PxTGSSolverContactDesc& contactDesc = contactDescs[a];
+			PxMemZero(&contactDesc, sizeof(contactDesc));
 
 			setupDesc(contactDesc, mActors.begin(), mSolverBodyTxInertias.begin(), mSolverBodyData.begin(), mPoses.begin(), pair.mID0, false);
 			setupDesc(contactDesc, mActors.begin(), mSolverBodyTxInertias.begin(), mSolverBodyData.begin(), mPoses.begin(), pair.mID1, true);
@@ -1770,6 +1712,7 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 			contactDesc.minTorsionalPatchRadius	= 0.0f;
 #else
 			PxSolverContactDesc& contactDesc = contactDescs[a];
+			PxMemZero(&contactDesc, sizeof(contactDesc));
 
 			setupDesc(contactDesc, mActors.begin(), mSolverBodyData.begin(), pair.mID0, false);
 			setupDesc(contactDesc, mActors.begin(), mSolverBodyData.begin(), pair.mID1, true);
@@ -1782,7 +1725,7 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 			contactDesc.numContacts				= pair.mNbContacts;
 
 #if WITH_PERSISTENCY
-			const HashMap<IDS, PersistentContactPair>::Entry* e = mPersistentPairs.find(IDS(pair.mID0, pair.mID1));
+			const PxHashMap<IDS, PersistentContactPair>::Entry* e = mPersistentPairs.find(IDS(pair.mID0, pair.mID1));
 			PX_ASSERT(e);
 			{
 				PersistentContactPair& pcp = const_cast<PersistentContactPair&>(e->second);
@@ -1794,11 +1737,6 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 			contactDesc.frictionPtr				= NULL;
 			contactDesc.frictionCount			= 0;
 #endif
-			contactDesc.disableStrongFriction	= false;
-			contactDesc.hasMaxImpulse			= false;
-			contactDesc.hasForceThresholds		= false;
-			contactDesc.shapeInteraction		= NULL;
-			contactDesc.restDistance			= 0.0f;
 			contactDesc.maxCCDSeparation		= PX_MAX_F32;
 
 			contactDesc.desc					= &constraintDesc;
@@ -1808,7 +1746,7 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 #if USE_TGS
 		PxCreateContactConstraintsTGS(&header, 1, contactDescs, *mConstraintAllocator, stepInvDt, invDt, gBounceThreshold, gFrictionOffsetThreshold, gCorrelationDistance);
 #else
-		PxCreateContactConstraints(&header, 1, contactDescs, *mConstraintAllocator, invDt, gBounceThreshold, gFrictionOffsetThreshold, gCorrelationDistance);
+		PxCreateContactConstraints(&header, 1, contactDescs, *mConstraintAllocator, invDt, gBounceThreshold, gFrictionOffsetThreshold, gCorrelationDistance, mTempZ.begin());
 #endif
 
 #if WITH_PERSISTENCY
@@ -1878,7 +1816,7 @@ void ImmediateScene::createContactConstraints(float dt, float invDt, float lengt
 #if USE_TGS
 			immediate::PxCreateJointConstraintsWithImmediateShadersTGS(&header, 1, constraints, jointDescs, *mConstraintAllocator, stepDt, dt, stepInvDt, invDt, lengthScale);
 #else
-			immediate::PxCreateJointConstraintsWithImmediateShaders(&header, 1, constraints, jointDescs, *mConstraintAllocator, dt, invDt);
+			immediate::PxCreateJointConstraintsWithImmediateShaders(&header, 1, constraints, jointDescs, *mConstraintAllocator, dt, invDt, mTempZ.begin());
 #endif
 		}
 	}
@@ -1898,7 +1836,7 @@ void ImmediateScene::solveAndIntegrate(float dt)
 	mMotionAngularVelocity.resize(nbDynamic);
 
 	const PxU32 nbArticulations = mArticulations.size();
-	Dy::ArticulationV** articulations = mArticulations.begin();
+	PxArticulationHandle* articulations = mArticulations.begin();
 
 #if USE_TGS
 	const float stepDt = dt/float(gNbIterPos);
@@ -1910,7 +1848,8 @@ void ImmediateScene::solveAndIntegrate(float dt)
 		mSolverConstraintDesc.begin(),
 #endif
 		mSolverBodies.begin(), mSolverBodyTxInertias.begin(),
-		nbDynamic, gNbIterPos, gNbIterVel, stepDt, 1.0f / stepDt, nbArticulations, articulations);
+		nbDynamic, gNbIterPos, gNbIterVel, stepDt, 1.0f / stepDt, nbArticulations, articulations,
+		mTempZ.begin(), mTempDeltaV.begin());
 #else
 
 	PxMemZero(mSolverBodies.begin(), mSolverBodies.size() * sizeof(PxSolverBody));
@@ -1923,7 +1862,8 @@ void ImmediateScene::solveAndIntegrate(float dt)
 #endif
 						mSolverBodies.begin(),
 						mMotionLinearVelocity.begin(), mMotionAngularVelocity.begin(), nbDynamic, gNbIterPos, gNbIterVel,
-						dt, 1.0f/dt, nbArticulations, articulations);
+						dt, 1.0f/dt, nbArticulations, articulations,
+						mTempZ.begin(), mTempDeltaV.begin());
 #endif
 
 #ifdef PRINT_TIMINGS
@@ -1963,7 +1903,7 @@ void ImmediateScene::solveAndIntegrate(float dt)
 		const PxU32 j = nbDynamicActors + i;
 		PX_ASSERT(mActors[j].mType==ImmediateActor::eLINK);
 
-		PxLinkData data;
+		PxArticulationLinkDerivedDataRC data;
 		bool status = PxGetLinkData(mActors[j].mLink, data);
 		PX_ASSERT(status);
 		PX_UNUSED(status);
@@ -2011,7 +1951,7 @@ PxU32 getNbArticulations()
 	return gScene ? gScene->mArticulations.size() : 0;
 }
 
-Dy::ArticulationV** getArticulations()
+PxArticulationHandle* getArticulations()
 {
 	if(!gScene || !gScene->mArticulations.size())
 		return NULL;
@@ -2039,7 +1979,7 @@ PxU32 getNbContacts()
 	return gScene ? gScene->mContactPoints.size() : 0;
 }
 
-const Gu::ContactPoint* getContacts()
+const PxContactPoint* getContacts()
 {
 	if(!gScene || !gScene->mContactPoints.size())
 		return NULL;
@@ -2151,14 +2091,14 @@ void stepPhysics(bool /*interactive*/)
 #endif
 	}
 
-	if(gScene->mMotorLink)
+	if(gScene->mMotorLink.articulation)
 	{
 		static float time = 0.0f;
 		time += 0.1f;
 		const float target = sinf(time) * 4.0f;
 //		printf("target: %f\n", target);
 
-		PxFeatherstoneArticulationJointData data;
+		PxArticulationJointDataRC data;
 		bool status = PxGetJointData(gScene->mMotorLink, data);
 		PX_ASSERT(status);
 
@@ -2179,7 +2119,7 @@ void stepPhysics(bool /*interactive*/)
 
 void cleanupPhysics(bool /*interactive*/)
 {
-	PX_DELETE_AND_RESET(gScene);
+	PX_DELETE(gScene);
 	PX_RELEASE(gFoundation);
 
 	printf("SnippetImmediateArticulation done.\n");
@@ -2214,6 +2154,13 @@ void keyPress(unsigned char key, const PxTransform& /*camera*/)
 			gScene->createScene();
 		}
 	}
+}
+
+void renderText()
+{
+#ifdef RENDER_SNIPPET
+	Snippets::print("Press F1 to F6 to select a scene.");
+#endif
 }
 
 int snippetMain(int, const char*const*)

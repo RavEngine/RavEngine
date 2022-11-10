@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,18 +38,17 @@
 #include "GuConvexUtilsInternal.h"
 #include "GuVecTriangle.h"
 #include "GuIntersectionTriangleBox.h"
-#include "GuSIMDHelpers.h"
-#include "GuTriangleVertexPointers.h"
 #include "GuRTree.h"
 #include "GuTriangleMeshRTree.h"
 #include "GuInternal.h"
+#include "CmMatrix34.h"
 
 // This file contains code specific to the RTree midphase.
 
 using namespace physx;
 using namespace Cm;
 using namespace Gu;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 struct MeshRayCollider
 {
@@ -58,11 +56,11 @@ struct MeshRayCollider
 	PX_PHYSX_COMMON_API static void collide(
 		const PxVec3& orig, const PxVec3& dir, // dir is not normalized (full length), both in mesh space (unless meshWorld is non-zero)
 		PxReal maxT, // maxT is from [0,1], if maxT is 0.0f, AABB traversal will be used
-		bool bothTriangleSidesCollide, const RTreeTriangleMesh* mesh, MeshHitCallback<PxRaycastHit>& callback,
+		bool bothTriangleSidesCollide, const RTreeTriangleMesh* mesh, MeshHitCallback<PxGeomRaycastHit>& callback,
 		const PxVec3* inflate = NULL);
 
 	PX_PHYSX_COMMON_API static void collideOBB(
-		const Box& obb, bool bothTriangleSidesCollide, const RTreeTriangleMesh* mesh, MeshHitCallback<PxRaycastHit>& callback,
+		const Box& obb, bool bothTriangleSidesCollide, const RTreeTriangleMesh* mesh, MeshHitCallback<PxGeomRaycastHit>& callback,
 		bool checkObbIsAligned = true); // perf hint, pass false if obb is rarely axis aligned
 };
 
@@ -74,7 +72,7 @@ public:
 	{
 	}
 
-	PX_FORCE_INLINE Ps::IntBool overlap(const PxVec3& vert0, const PxVec3& vert1, const PxVec3& vert2, PxRaycastHit& hit) const
+	PX_FORCE_INLINE PxIntBool overlap(const PxVec3& vert0, const PxVec3& vert1, const PxVec3& vert2, PxGeomRaycastHit& hit) const
 	{
 		if(!intersectRayTriangle(mOrigin, mDir, vert0, vert1, vert2, hit.distance, hit.u, hit.v, !mBothSides, mGeomEpsilon))
 			return false;
@@ -104,14 +102,14 @@ using Gu::RTree;
 template <int tInflate, bool tRayTest>
 struct RayRTreeCallback : RTree::CallbackRaycast, RTree::Callback
 {
-	MeshHitCallback<PxRaycastHit>& outerCallback;
+	MeshHitCallback<PxGeomRaycastHit>& outerCallback;
 	PxI32 has16BitIndices;
 	const void* mTris;
 	const PxVec3* mVerts;
 	const PxVec3* mInflate;
 	const SimpleRayTriOverlap rayCollider;
 	PxReal maxT;
-	PxRaycastHit closestHit; // recorded closest hit over the whole traversal (only for callback mode eCLOSEST)
+	PxGeomRaycastHit closestHit; // recorded closest hit over the whole traversal (only for callback mode eCLOSEST)
 	PxVec3 cv0, cv1, cv2;	// PT: make sure these aren't last in the class, to safely V4Load them
 	PxU32 cis[3];
 	bool hadClosestHit;
@@ -119,7 +117,7 @@ struct RayRTreeCallback : RTree::CallbackRaycast, RTree::Callback
 	Vec3V inflateV, rayOriginV, rayDirV;
 
 	RayRTreeCallback(
-		PxReal geomEpsilon, MeshHitCallback<PxRaycastHit>& callback,
+		PxReal geomEpsilon, MeshHitCallback<PxGeomRaycastHit>& callback,
 		PxI32 has16BitIndices_, const void* tris, const PxVec3* verts,
 		const PxVec3& origin, const PxVec3& dir, PxReal maxT_, bool bothSides, const PxVec3* inflate)
 		:	outerCallback(callback), has16BitIndices(has16BitIndices_),
@@ -152,7 +150,7 @@ struct RayRTreeCallback : RTree::CallbackRaycast, RTree::Callback
 	{
 		PX_ASSERT(NumTouched > 0);
 		// Loop through touched leaves
-		PxRaycastHit tempHit;
+		PxGeomRaycastHit tempHit;
 		for(PxU32 leaf = 0; leaf<NumTouched; leaf++)
 		{
 			// Each leaf box has a set of triangles
@@ -172,7 +170,7 @@ struct RayRTreeCallback : RTree::CallbackRaycast, RTree::Callback
 
 				if (tRayTest)
 				{
-					Ps::IntBool overlap;
+					PxIntBool overlap;
 					if (tInflate)
 					{
 						// AP: mesh skew is already included here (ray is pre-transformed)
@@ -260,7 +258,7 @@ private:
 #endif
 
 void MeshRayCollider::collideOBB(
-	const Box& obb, bool bothTriangleSidesCollide, const RTreeTriangleMesh* mi, MeshHitCallback<PxRaycastHit>& callback,
+	const Box& obb, bool bothTriangleSidesCollide, const RTreeTriangleMesh* mi, MeshHitCallback<PxGeomRaycastHit>& callback,
 	bool checkObbIsAligned)
 {
 	const PxU32 maxResults = RTREE_N; // maxResults=rtree page size for more efficient early out
@@ -279,7 +277,7 @@ void MeshRayCollider::collideOBB(
 template <int tInflate, int tRayTest>
 void MeshRayCollider::collide(
 	const PxVec3& orig, const PxVec3& dir, PxReal maxT, bool bothSides,
-	const RTreeTriangleMesh* mi, MeshHitCallback<PxRaycastHit>& callback,
+	const RTreeTriangleMesh* mi, MeshHitCallback<PxGeomRaycastHit>& callback,
 	const PxVec3* inflate)
 {
 	const PxU32 maxResults = RTREE_N; // maxResults=rtree page size for more efficient early out
@@ -305,7 +303,7 @@ void MeshRayCollider::collide(
 #define TINST(a,b) \
 template void MeshRayCollider::collide<a,b>( \
 	const PxVec3& orig, const PxVec3& dir, PxReal maxT, bool bothSides, const RTreeTriangleMesh* mesh, \
-	MeshHitCallback<PxRaycastHit>& callback, const PxVec3* inflate);
+	MeshHitCallback<PxGeomRaycastHit>& callback, const PxVec3* inflate);
 
 TINST(0,0)
 TINST(1,0)
@@ -319,46 +317,53 @@ TINST(1,1)
 #include "GuTriangleMesh.h"
 #include "CmScaling.h"
 
-struct RayMeshColliderCallback  : public MeshHitCallback<PxRaycastHit>
+struct RayMeshColliderCallback  : public MeshHitCallback<PxGeomRaycastHit>
 {
-	PxRaycastHit*		mDstBase;
+	PxU8*				mDstBase;
 	PxU32				mHitNum;
-	PxU32				mMaxHits;
+	const PxU32			mMaxHits;
+	const PxU32			mStride;
 	const PxMeshScale*	mScale;
 	const PxTransform*	mPose;
-	const Matrix34*		mWorld2vertexSkew;
+	const PxMat34*		mWorld2vertexSkew;
 	PxU32				mHitFlags;
 	const PxVec3&		mRayDir;
 	bool				mIsDoubleSided;
 	float				mDistCoeff;
 
 	RayMeshColliderCallback(
-		CallbackMode::Enum mode_, PxRaycastHit* hits, PxU32 maxHits, const PxMeshScale* scale, const PxTransform* pose,
-		const Matrix34* world2vertexSkew, PxU32 hitFlags, const PxVec3& rayDir, bool isDoubleSided, float distCoeff) :
-			MeshHitCallback<PxRaycastHit>	(mode_),
-			mDstBase						(hits),
-			mHitNum							(0),
-			mMaxHits						(maxHits),
-			mScale							(scale),
-			mPose							(pose),
-			mWorld2vertexSkew				(world2vertexSkew),
-			mHitFlags						(hitFlags),
-			mRayDir							(rayDir),
-			mIsDoubleSided					(isDoubleSided),
-			mDistCoeff						(distCoeff)
+		CallbackMode::Enum mode_, PxGeomRaycastHit* hits, PxU32 maxHits, PxU32 stride, const PxMeshScale* scale, const PxTransform* pose,
+		const PxMat34* world2vertexSkew, PxU32 hitFlags, const PxVec3& rayDir, bool isDoubleSided, float distCoeff) :
+			MeshHitCallback<PxGeomRaycastHit>	(mode_),
+			mDstBase							(reinterpret_cast<PxU8*>(hits)),
+			mHitNum								(0),
+			mMaxHits							(maxHits),
+			mStride								(stride),
+			mScale								(scale),
+			mPose								(pose),
+			mWorld2vertexSkew					(world2vertexSkew),
+			mHitFlags							(hitFlags),
+			mRayDir								(rayDir),
+			mIsDoubleSided						(isDoubleSided),
+			mDistCoeff							(distCoeff)
 	{
 	}
 
 	// return false for early out
 	virtual bool processHit(
-		const PxRaycastHit& lHit, const PxVec3& lp0, const PxVec3& lp1, const PxVec3& lp2, PxReal&, const PxU32*)
+		const PxGeomRaycastHit& lHit, const PxVec3& lp0, const PxVec3& lp1, const PxVec3& lp2, PxReal&, const PxU32*)
 	{
+		if(mHitNum == mMaxHits)
+			return false;
+
 		const PxReal u = lHit.u, v = lHit.v;
 		const PxVec3 localImpact = (1.0f - u - v)*lp0 + u*lp1 + v*lp2;
 
 		//not worth concatenating to do 1 transform: PxMat34Legacy vertex2worldSkew = scaling.getVertex2WorldSkew(absPose);
 		// PT: TODO: revisit this for N hits
-		PxRaycastHit hit = lHit;
+		PxGeomRaycastHit& hit = *reinterpret_cast<PxGeomRaycastHit*>(mDstBase);
+		hit = lHit;
+
 		hit.position	= mPose->transform(mScale->transform(localImpact));
 		hit.flags		= PxHitFlag::ePOSITION|PxHitFlag::eUV|PxHitFlag::eFACE_INDEX;
 		hit.normal		= PxVec3(0.0f);
@@ -374,7 +379,7 @@ struct RayMeshColliderCallback  : public MeshHitCallback<PxRaycastHit>
 			{
 				hit.normal = mWorld2vertexSkew->rotateTranspose(localNormal);
 				if (mScale->hasNegativeDeterminant())
-					Ps::swap<PxReal>(hit.u, hit.v); // have to swap the UVs though since they were computed in mesh local space
+					PxSwap<PxReal>(hit.u, hit.v); // have to swap the UVs though since they were computed in mesh local space
 			}
 			else
 				hit.normal = mPose->rotate(localNormal);
@@ -389,11 +394,8 @@ struct RayMeshColliderCallback  : public MeshHitCallback<PxRaycastHit>
 			hit.flags |= PxHitFlag::eNORMAL;
 		}
 
-		// PT: no callback => store results in provided buffer
-		if(mHitNum == mMaxHits)
-			return false;
-
-		mDstBase[mHitNum++] = hit;
+		mHitNum++;
+		mDstBase += mStride;
 		return true;
 	}
 
@@ -403,7 +405,7 @@ private:
 
 PxU32 physx::Gu::raycast_triangleMesh_RTREE(const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose,
 											const PxVec3& rayOrigin, const PxVec3& rayDir, PxReal maxDist,
-											PxHitFlags hitFlags, PxU32 maxHits, PxRaycastHit* PX_RESTRICT hits)
+											PxHitFlags hitFlags, PxU32 maxHits, PxGeomRaycastHit* PX_RESTRICT hits, PxU32 stride)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH33);
 
@@ -412,8 +414,8 @@ PxU32 physx::Gu::raycast_triangleMesh_RTREE(const TriangleMesh* mesh, const PxTr
 	//scaling: transform the ray to vertex space
 
 	PxVec3 orig, dir;
-	Matrix34 world2vertexSkew;
-	Matrix34* world2vertexSkewP = NULL;
+	PxMat34 world2vertexSkew;
+	PxMat34* world2vertexSkewP = NULL;
 	PxReal distCoeff = 1.0f;
 	if(meshGeom.scale.isIdentity())
 	{
@@ -437,21 +439,48 @@ PxU32 physx::Gu::raycast_triangleMesh_RTREE(const TriangleMesh* mesh, const PxTr
 	const bool isDoubleSided = meshGeom.meshFlags.isSet(PxMeshGeometryFlag::eDOUBLE_SIDED);
 	const bool bothSides = isDoubleSided || (hitFlags & PxHitFlag::eMESH_BOTH_SIDES);
 
+	const bool multipleHits = hitFlags & PxHitFlag::eMESH_MULTIPLE;
+
 	RayMeshColliderCallback callback(
-		(maxHits > 1) ? CallbackMode::eMULTIPLE : (hitFlags & PxHitFlag::eMESH_ANY ? CallbackMode::eANY : CallbackMode::eCLOSEST),
-		hits, maxHits, &meshGeom.scale, &pose, world2vertexSkewP, hitFlags, rayDir, isDoubleSided, distCoeff);
+		multipleHits ? CallbackMode::eMULTIPLE : (hitFlags & PxHitFlag::eMESH_ANY ? CallbackMode::eANY : CallbackMode::eCLOSEST),
+		hits, maxHits, stride, &meshGeom.scale, &pose, world2vertexSkewP, hitFlags, rayDir, isDoubleSided, distCoeff);
 
 	MeshRayCollider::collide<0, 1>(orig, dir, maxDist, bothSides, static_cast<const RTreeTriangleMesh*>(meshData), callback, NULL);
 	return callback.mHitNum;
 }
 
 
+/**
+\brief returns indices for the largest axis and 2 other axii
+*/
+PX_FORCE_INLINE PxU32 largestAxis(const PxVec3& v, PxU32& other1, PxU32& other2)
+{
+	if (v.x >= PxMax(v.y, v.z))
+	{
+		other1 = 1;
+		other2 = 2;
+		return 0;
+	}
+	else if (v.y >= v.z)
+	{
+		other1 = 0;
+		other2 = 2;
+		return 1;
+	}
+	else
+	{
+		other1 = 0;
+		other2 = 1;
+		return 2;
+	}
+}
+
 static PX_INLINE void computeSweptAABBAroundOBB(
 	const Box& obb, PxVec3& sweepOrigin, PxVec3& sweepExtents, PxVec3& sweepDir, PxReal& sweepLen)
 {
 	PxU32 other1, other2;
 	// largest axis of the OBB is the sweep direction, sum of abs of two other is the swept AABB extents
-	PxU32 lai = Ps::largestAxis(obb.extents, other1, other2);
+	PxU32 lai = largestAxis(obb.extents, other1, other2);
 	PxVec3 longestAxis = obb.rot[lai]*obb.extents[lai];
 	PxVec3 absOther1 = obb.rot[other1].abs()*obb.extents[other1];
 	PxVec3 absOther2 = obb.rot[other2].abs()*obb.extents[other2];
@@ -471,12 +500,12 @@ enum { eSPHERE, eCAPSULE, eBOX }; // values for tSCB
 
 namespace
 {
-struct IntersectShapeVsMeshCallback : MeshHitCallback<PxRaycastHit>
+struct IntersectShapeVsMeshCallback : MeshHitCallback<PxGeomRaycastHit>
 {
 	PX_NOCOPY(IntersectShapeVsMeshCallback)
 public:
 	IntersectShapeVsMeshCallback(const PxMat33& vertexToShapeSkew, LimitedResults* results, bool flipNormal)
-		:	MeshHitCallback<PxRaycastHit>(CallbackMode::eMULTIPLE),
+		:	MeshHitCallback<PxGeomRaycastHit>(CallbackMode::eMULTIPLE),
 			mVertexToShapeSkew	(vertexToShapeSkew),
 			mResults			(results),
 			mAnyHits			(false),
@@ -490,7 +519,7 @@ public:
 	bool			mAnyHits;
 	bool			mFlipNormal;
 
-	PX_FORCE_INLINE	bool	recordHit(const PxRaycastHit& aHit, Ps::IntBool hit)
+	PX_FORCE_INLINE	bool	recordHit(const PxGeomRaycastHit& aHit, PxIntBool hit)
 	{
 		if(hit)
 		{
@@ -513,7 +542,7 @@ struct IntersectSphereVsMeshCallback : IntersectShapeVsMeshCallback
 	PxVec3					mLocalCenter;	// PT: sphere center in local/mesh space
 
 	virtual PxAgain processHit( // all reported coords are in mesh local space including hit.position
-		const PxRaycastHit& aHit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal&, const PxU32*)
+		const PxGeomRaycastHit& aHit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal&, const PxU32*)
 	{
 		const Vec3V v0 = V3LoadU(tScaleIsIdentity ? av0 : mVertexToShapeSkew * av0);
 		const Vec3V v1 = V3LoadU(tScaleIsIdentity ? av1 : mVertexToShapeSkew * (mFlipNormal ? av2 : av1));
@@ -537,7 +566,7 @@ struct IntersectCapsuleVsMeshCallback : IntersectShapeVsMeshCallback
 	CapsuleTriangleOverlapData	mParams;
 
 	virtual PxAgain processHit( // all reported coords are in mesh local space including hit.position
-		const PxRaycastHit& aHit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal&, const PxU32*)
+		const PxGeomRaycastHit& aHit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal&, const PxU32*)
 	{
 		bool hit;
 		if(tScaleIsIdentity)
@@ -563,13 +592,13 @@ struct IntersectBoxVsMeshCallback : IntersectShapeVsMeshCallback
 	IntersectBoxVsMeshCallback(const PxMat33& m, LimitedResults* r, bool flipNormal) : IntersectShapeVsMeshCallback(m, r, flipNormal)	{}
 	virtual	~IntersectBoxVsMeshCallback(){}
 
-	Matrix34	mVertexToBox;
-	Vec3p		mBoxExtents, mBoxCenter;
+	PxMat34	mVertexToBox;
+	PxVec3p	mBoxExtents, mBoxCenter;
 
 	virtual PxAgain processHit( // all reported coords are in mesh local space including hit.position
-		const PxRaycastHit& aHit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal&, const PxU32*)
+		const PxGeomRaycastHit& aHit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal&, const PxU32*)
 	{
-		Vec3p v0, v1, v2;
+		PxVec3p v0, v1, v2;
 		if(tScaleIsIdentity)
 		{
 			v0 = mVertexToShapeSkew * av0; // transform from skewed mesh vertex to box space,
@@ -583,8 +612,8 @@ struct IntersectBoxVsMeshCallback : IntersectShapeVsMeshCallback
 			v2 = mVertexToBox.transform(mFlipNormal ? av1 : av2);
 		}
 
-		// PT: this one is safe because we're using Vec3p for all parameters
-		const Ps::IntBool hit = intersectTriangleBox_Unsafe(mBoxCenter, mBoxExtents, v0, v1, v2);
+		// PT: this one is safe because we're using PxVec3p for all parameters
+		const PxIntBool hit = intersectTriangleBox_Unsafe(mBoxCenter, mBoxExtents, v0, v1, v2);
 		return recordHit(aHit, hit);
 	}
 };
@@ -604,7 +633,7 @@ static bool intersectAnyVsMeshT(
 	PxMat33 shapeToVertexSkew, vertexToShapeSkew;
 	if (!idtMeshScale && tSCB != eBOX)
 	{
-		vertexToShapeSkew = meshScale.toMat33();
+		vertexToShapeSkew = toMat33(meshScale);
 		shapeToVertexSkew = vertexToShapeSkew.getInverse();
 	}
 
@@ -694,13 +723,13 @@ static bool intersectAnyVsMeshT(
 			computeVertexSpaceOBB(vertexOBB, *worldOBB, meshTransform, meshScale);
 
 			// mesh scale needs to be included - inverse transform and optimize the box
-			const PxMat33 vertexToWorldSkew_Rot = PxMat33Padded(meshTransform.q) * meshScale.toMat33();
+			const PxMat33 vertexToWorldSkew_Rot = PxMat33Padded(meshTransform.q) * toMat33(meshScale);
 			const PxVec3& vertexToWorldSkew_Trans = meshTransform.p;
 
-			Matrix34 tmp;
+			PxMat34 tmp;
 			buildMatrixFromBox(tmp, *worldOBB);
-			const Matrix34 inv = tmp.getInverseRT();
-			const Matrix34 _vertexToWorldSkew(vertexToWorldSkew_Rot, vertexToWorldSkew_Trans);
+			const PxMat34 inv = tmp.getInverseRT();
+			const PxMat34 _vertexToWorldSkew(vertexToWorldSkew_Rot, vertexToWorldSkew_Trans);
 
 			IntersectBoxVsMeshCallback<idtMeshScale> callback(vertexToShapeSkew, results, flipNormal);
 			callback.mVertexToBox = inv * _vertexToWorldSkew;
@@ -747,7 +776,7 @@ bool physx::Gu::intersectCapsuleVsMesh_RTREE(const Capsule& capsule, const Trian
 	return intersectAnyVsMesh<eCAPSULE>(NULL, &capsule, NULL, triMesh, meshTransform, meshScale, results);
 }
 
-void physx::Gu::intersectOBB_RTREE(const TriangleMesh* mesh, const Box& obb, MeshHitCallback<PxRaycastHit>& callback, bool bothTriangleSidesCollide, bool checkObbIsAligned)
+void physx::Gu::intersectOBB_RTREE(const TriangleMesh* mesh, const Box& obb, MeshHitCallback<PxGeomRaycastHit>& callback, bool bothTriangleSidesCollide, bool checkObbIsAligned)
 {
 	MeshRayCollider::collideOBB(obb, bothTriangleSidesCollide, static_cast<const RTreeTriangleMesh*>(mesh), callback, checkObbIsAligned);
 }
@@ -755,7 +784,7 @@ void physx::Gu::intersectOBB_RTREE(const TriangleMesh* mesh, const Box& obb, Mes
 // PT: TODO: refactor/share bits of this
 bool physx::Gu::sweepCapsule_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
 											const Capsule& lss, const PxVec3& unitDir, const PxReal distance,
-											PxSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH33);
 	const RTreeTriangleMesh* meshData = static_cast<const RTreeTriangleMesh*>(mesh);
@@ -774,14 +803,14 @@ bool physx::Gu::sweepCapsule_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTr
 	PxVec3 sweepExtents = PxVec3(inflatedCapsule.radius) + (localP0-localP1).abs()*0.5f;
 	PxReal distance1 = distance;
 	PxReal distCoeff = 1.0f;
-	Matrix34 poseWithScale;
+	PxMat34 poseWithScale;
 	if(!isIdentity)
 	{
 		poseWithScale = pose * triMeshGeom.scale;
 		distance1 = computeSweepData(triMeshGeom, sweepOrigin, sweepExtents, sweepDir, distance);
 		distCoeff = distance1 / distance;
 	} else
-		poseWithScale = Matrix34(pose);
+		poseWithScale = Matrix34FromTransform(pose);
 
 	SweepCapsuleMeshHitCallback callback(sweepHit, poseWithScale, distance, isDoubleSided, inflatedCapsule, unitDir, hitFlags, triMeshGeom.scale.hasNegativeDeterminant(), distCoeff);
 
@@ -798,7 +827,7 @@ bool physx::Gu::sweepCapsule_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTr
 // PT: TODO: refactor/share bits of this
 bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
 										const Box& box, const PxVec3& unitDir, const PxReal distance,
-										PxSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH33);
 	const RTreeTriangleMesh* meshData = static_cast<const RTreeTriangleMesh*>(mesh);
@@ -808,7 +837,7 @@ bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriang
 	const bool meshBothSides = hitFlags & PxHitFlag::eMESH_BOTH_SIDES;
 	const bool isDoubleSided = triMeshGeom.meshFlags & PxMeshGeometryFlag::eDOUBLE_SIDED;
 
-	Matrix34 meshToWorldSkew;
+	PxMat34 meshToWorldSkew;
 	PxVec3 sweptAABBMeshSpaceExtents, meshSpaceOrigin, meshSpaceDir;
 
 	// Input sweep params: geom, pose, box, unitDir, distance
@@ -816,8 +845,8 @@ bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriang
 	// and convert the box+pose to mesh space AABB
 	if(isIdentity)
 	{
-		meshToWorldSkew = Matrix34(pose);
-		PxMat33 worldToMeshRot(pose.q.getConjugate()); // extract rotation matrix from pose.q
+		meshToWorldSkew = Matrix34FromTransform(pose);
+		const PxMat33Padded worldToMeshRot(pose.q.getConjugate()); // extract rotation matrix from pose.q
 		meshSpaceOrigin = worldToMeshRot.transform(box.center - pose.p);
 		meshSpaceDir = worldToMeshRot.transform(unitDir) * distance;
 		PxMat33 boxToMeshRot = worldToMeshRot * box.rot;
@@ -828,7 +857,7 @@ bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriang
 	else
 	{
 		meshToWorldSkew = pose * triMeshGeom.scale;
-		const PxMat33 meshToWorldSkew_Rot = PxMat33Padded(pose.q) * triMeshGeom.scale.toMat33();
+		const PxMat33 meshToWorldSkew_Rot = PxMat33Padded(pose.q) * toMat33(triMeshGeom.scale);
 		const PxVec3& meshToWorldSkew_Trans = pose.p;
 
 		PxMat33 worldToVertexSkew_Rot;
@@ -837,7 +866,7 @@ bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriang
 
 		//make vertex space OBB
 		Box vertexSpaceBox1;
-		const Matrix34 worldToVertexSkew(worldToVertexSkew_Rot, worldToVertexSkew_Trans);
+		const PxMat34 worldToVertexSkew(worldToVertexSkew_Rot, worldToVertexSkew_Trans);
 		vertexSpaceBox1 = transform(worldToVertexSkew, box);
 		// compute swept aabb
 		sweptAABBMeshSpaceExtents = vertexSpaceBox1.computeAABBExtent();
@@ -855,12 +884,12 @@ bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriang
 		distCoeff = dirLen / distance;
 
 	// Move to AABB space
-	Matrix34 worldToBox;
+	PxMat34 worldToBox;
 	computeWorldToBoxMatrix(worldToBox, box);
 
 	const bool bothTriangleSidesCollide = isDoubleSided || meshBothSides;
 
-	const Matrix34Padded meshToBox = worldToBox*meshToWorldSkew;
+	const PxMat34Padded meshToBox = worldToBox*meshToWorldSkew;
 	const PxTransform boxTransform = box.getTransform();
 
 	const PxVec3 localDir = worldToBox.rotate(unitDir);
@@ -884,4 +913,9 @@ void physx::Gu::sweepConvex_MeshGeom_RTREE(const TriangleMesh* mesh, const Box& 
 	computeSweptBox(querySweptBox, hullBox.extents, hullBox.center, hullBox.rot, localDir, distance);	
 
 	MeshRayCollider::collideOBB(querySweptBox, true, meshData, callback);
+}
+
+void physx::Gu::pointMeshDistance_RTREE(const TriangleMesh*, const PxTriangleMeshGeometry&, const PxTransform&, const PxVec3&, float, PxU32&, float&, PxVec3&)
+{
+	PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Point-mesh distance query not supported for BVH33. Please use a BVH34 mesh.\n");
 }

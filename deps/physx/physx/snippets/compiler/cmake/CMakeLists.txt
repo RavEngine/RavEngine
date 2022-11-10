@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 cmake_minimum_required(VERSION 3.7)
 project(Snippets C CXX)
@@ -57,15 +56,15 @@ INCLUDE(NvidiaBuildOptions)
 IF(CMAKE_CONFIGURATION_TYPES)
 	SET(CMAKE_CONFIGURATION_TYPES debug checked profile release)
 	SET(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING
-		"Reset config to what we need" 
+		"Reset config to what we need"
 		FORCE)
-	
-	# Need to define these at least once.	
+
+	# Need to define these at least once.
 	SET(CMAKE_SHARED_LINKER_FLAGS_CHECKED "/DEBUG")
 	SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE "/DEBUG")
 
 	SET(CMAKE_EXE_LINKER_FLAGS_PROFILE "/DEBUG")
-	SET(CMAKE_EXE_LINKER_FLAGS_CHECKED "/DEBUG")	
+	SET(CMAKE_EXE_LINKER_FLAGS_CHECKED "/DEBUG")
 ENDIF()
 
 
@@ -82,18 +81,32 @@ INCLUDE(${PHYSX_ROOT_DIR}/snippets/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLA
 SET(SOURCE_DISTRO_FILE_LIST "")
 
 # Include all of the projects
-SET(SNIPPETS_LIST Articulation BVHStructure ContactModification ContactReport ContactReportCCD ConvexMeshCreate
-	CustomJoint CustomProfiler DeformableMesh HelloWorld ImmediateArticulation ImmediateMode Joint MBP MultiThreading
-	PrunerSerialization RaycastCCD Serialization SplitFetchResults 
-	SplitSim Stepper ToleranceScale TriangleMeshCreate Triggers)
-	
+SET(SNIPPETS_LIST ArticulationRC BVHStructure CCD ContactModification ContactReport ContactReportCCD ConvexMeshCreate
+	CustomJoint CustomProfiler DeformableMesh FrustumQuery GearJoint GeometryQuery Gyroscopic HelloWorld ImmediateArticulation ImmediateMode Joint MassProperties
+	MBP MultiPruners MultiThreading OmniPvd PathTracing PointDistanceQuery PrunerSerialization QuerySystemAllQueries QuerySystemCustomCompound RackJoint Serialization SplitFetchResults
+	SplitSim StandaloneBVH StandaloneBroadphase StandaloneQuerySystem Stepper ToleranceScale TriangleMeshCreate Triggers CustomGeometry CustomConvex CustomGeometryCollision CustomGeometryQueries FixedTendon SpatialTendon)
 LIST(APPEND SNIPPETS_LIST ${PLATFORM_SNIPPETS_LIST})
-		
-SET(SNIPPETS_VEHICLE_LIST NestedScene Vehicle4W VehicleContactMod VehicleMultiThreading 
-	VehicleNoDrive VehicleScale VehicleTank)	
 
-LIST(APPEND SNIPPETS_VEHICLE_LIST ${PLATFORM_SNIPPETS_VEHICLE_LIST})
+# Add further snippets that use GPU features directly.
+# These are separate because we don't ship CUDA in the public release yet.
+# To be changed if we decide otherwise.
+SET(GPU_SNIPPET_LIST
+	HelloGRB SoftBody SoftBodyAttachment SDF PBF PBFMultiMat PBDCloth PBDInflatable)
 
+# Add snippets of GPU features that are under development OR require PhysXGpuExtensions
+IF(NOT PUBLIC_RELEASE AND NOT PX_GENERATE_SOURCE_DISTRO)
+	LIST(APPEND GPU_SNIPPET_LIST
+		BigHairSystem FLIPFluid HairSystem MPM Isosurface)
+ENDIF()
+
+#TODO, create a propper define for whether GPU features are enabled or not!
+IF ((PUBLIC_RELEASE OR PX_GENERATE_GPU_PROJECTS) AND (CMAKE_SIZEOF_VOID_P EQUAL 8))
+	LIST(APPEND SNIPPETS_LIST ${GPU_SNIPPET_LIST})
+ENDIF()
+	
+SET(SNIPPETS_VEHICLE2_LIST Vehicle2DirectDrive Vehicle2FourWheelDrive Vehicle2TankDrive Vehicle2Customization Vehicle2Multithreading Vehicle2Truck)	
+LIST(APPEND SNIPPETS_VEHICLE2_LIST ${PLATFORM_SNIPPETS_VEHICLE2_LIST})
+	
 IF(SNIPPET_RENDER_ENABLED)
 	INCLUDE(SnippetRender.cmake)
 	SET_PROPERTY(TARGET SnippetRender PROPERTY FOLDER "Snippets/Libraries only")
@@ -102,13 +115,15 @@ ENDIF()
 INCLUDE(SnippetUtils.cmake)
 SET_PROPERTY(TARGET SnippetUtils PROPERTY FOLDER "Snippets/Libraries only")
 
+# Compile snippets
 FOREACH(SNIPPET_NAME ${SNIPPETS_LIST})
 	INCLUDE(SnippetTemplate.cmake)
 	SET_PROPERTY(TARGET Snippet${SNIPPET_NAME} PROPERTY FOLDER "Snippets")
 ENDFOREACH()
 
-FOREACH(SNIPPET_NAME ${SNIPPETS_VEHICLE_LIST})
-	INCLUDE(SnippetVehicleTemplate.cmake)
+# Compile vehicle2 snippets
+FOREACH(SNIPPET_NAME ${SNIPPETS_VEHICLE2_LIST})
+	INCLUDE(SnippetVehicle2Template.cmake)
 	SET_PROPERTY(TARGET Snippet${SNIPPET_NAME} PROPERTY FOLDER "Snippets")
 ENDFOREACH()
 

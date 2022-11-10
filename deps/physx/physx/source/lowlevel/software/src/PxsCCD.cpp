@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxProfileZone.h"
-#include "geomutils/GuContactPoint.h"
+#include "geomutils/PxContactPoint.h"
 
 #include "PxsContactManager.h"
 #include "PxsContext.h"
@@ -42,27 +41,38 @@
 #include "PxcNpContactPrepShared.h"
 #include "PxvGeometry.h"
 #include "PxvGlobals.h"
-#include "PsSort.h"
-#include "PsAtomic.h"
-#include "PsUtilities.h"
+#include "foundation/PxSort.h"
+#include "foundation/PxAtomic.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxMathUtils.h"
 #include "CmFlushPool.h"
 #include "DyThresholdTable.h"
 #include "GuCCDSweepConvexMesh.h"
 #include "GuBounds.h"
+#include "GuConvexMesh.h"
+#include "geometry/PxGeometryQuery.h"
+
+// PT: this one currently makes these UTs fail
+// [  FAILED  ] CCDReportTest.CCD_soakTest_mesh
+// [  FAILED  ] CCDReportTest.CCD_soakTest_heightfield
+// [  FAILED  ] CCDNegativeScalingTest.SLOW_ccdNegScaledMesh
+// [  FAILED  ] OriginShift.CCD
+static const bool gUseGeometryQuery = false;
 
 #if DEBUG_RENDER_CCD
-#include "CmRenderOutput.h"
-#include "CmRenderBuffer.h"
-#include "PxPhysics.h"
-#include "PxScene.h"
+	#include "common/PxRenderOutput.h"
+	#include "common/PxRenderBuffer.h"
+	#include "PxPhysics.h"
+	#include "PxScene.h"
 #endif
 
 #define DEBUG_RENDER_CCD_FIRST_PASS_ONLY	1
 #define DEBUG_RENDER_CCD_ATOM_PTR			0
 #define DEBUG_RENDER_CCD_NORMAL				1
 
+#define CCD_ANGULAR_IMPULSE					0	// PT: this doesn't compile anymore
+
 using namespace physx;
-using namespace physx::shdfnd;
 using namespace physx::Dy;
 using namespace Gu;
 
@@ -185,8 +195,8 @@ void printShape(
 	if (!DEBUG_RENDER_CCD_FIRST_PASS_ONLY || pass == 0)
 	{
 		PxScene *s; PxGetPhysics()->getScenes(&s, 1, 0);
-		Cm::RenderOutput((Cm::RenderBuffer&)s->getRenderBuffer())
-			<< Cm::DebugText(atom0->getPose().p, 0.05f, "%x", atom0);
+		PxRenderOutput((PxRenderBufferImpl&)s->getRenderBuffer())
+			<< DebugText(atom0->getPose().p, 0.05f, "%x", atom0);
 	}
 	#endif
 }
@@ -218,40 +228,109 @@ static inline void printSeparator(
 } // namespace physx
 #endif
 
-namespace
+float physx::computeCCDThreshold(const PxGeometry& geometry)
 {
-	// PT: TODO: refactor with ShapeSim version (SIMD)
-	PX_INLINE PxTransform getShapeAbsPose(const PxsShapeCore* shapeCore, const PxsRigidCore* rigidCore, PxU32 isDynamic)
+	// Box, Convex, Mesh and HeightField will compute local bounds and pose to world space.
+	// Sphere, Capsule & Plane will compute world space bounds directly.
+
+	const PxReal inSphereRatio = 0.75f;
+
+	//The CCD thresholds are as follows:
+	//(1) sphere = inSphereRatio * radius
+	//(2) plane = inf (we never need CCD against this shape)
+	//(3) capsule = inSphereRatio * radius
+	//(4) box = inSphereRatio * (box minimum extent axis)
+	//(5) convex = inSphereRatio * convex in-sphere * min scale
+	//(6) triangle mesh = 0.0f (polygons have 0 thickness)
+	//(7) heightfields = 0.0f (polygons have 0 thickness)
+
+	//The decision to enter CCD depends on the sum of the shapes' CCD thresholds. One of the 2 shapes must be a 
+	//sphere/capsule/box/convex so the sum of the CCD thresholds will be non-zero.
+
+	switch (geometry.getType())
 	{
-		if(isDynamic)
+		case PxGeometryType::eSPHERE:
 		{
-			const PxsBodyCore* PX_RESTRICT bodyCore = static_cast<const PxsBodyCore*>(rigidCore);
-			return bodyCore->body2World * bodyCore->getBody2Actor().getInverse() *shapeCore->transform;
+			const PxSphereGeometry& shape = static_cast<const PxSphereGeometry&>(geometry);
+			return shape.radius*inSphereRatio;
 		}
-		else 
+		case PxGeometryType::ePLANE:
 		{
-			return rigidCore->body2World * shapeCore->transform;
+			return PX_MAX_REAL;
 		}
+		case PxGeometryType::eCAPSULE:
+		{
+			const PxCapsuleGeometry& shape = static_cast<const PxCapsuleGeometry&>(geometry);
+			return shape.radius * inSphereRatio;
+		}
+
+		case PxGeometryType::eBOX:
+		{
+			const PxBoxGeometry& shape = static_cast<const PxBoxGeometry&>(geometry);
+			return PxMin(PxMin(shape.halfExtents.x, shape.halfExtents.y), shape.halfExtents.z)*inSphereRatio;
+		}
+
+		case PxGeometryType::eCONVEXMESH:
+		{
+			const PxConvexMeshGeometry& shape = static_cast<const PxConvexMeshGeometry&>(geometry);
+			const Gu::ConvexHullData& hullData = static_cast<const Gu::ConvexMesh*>(shape.convexMesh)->getHull();
+			return PxMin(shape.scale.scale.z, PxMin(shape.scale.scale.x, shape.scale.scale.y)) * hullData.mInternal.mRadius * inSphereRatio;
+		}
+
+		case PxGeometryType::eTRIANGLEMESH:		{ return 0.0f;	}
+		case PxGeometryType::eHEIGHTFIELD:		{ return 0.0f;	}
+		case PxGeometryType::eTETRAHEDRONMESH:	{ return 0.0f;	}
+		case PxGeometryType::ePARTICLESYSTEM:	{ return 0.0f;	}
+		case PxGeometryType::eHAIRSYSTEM:		{ return 0.0f;	}
+		case PxGeometryType::eCUSTOM:			{ return 0.0f;	}
+
+		default:
+		{
+			PX_ASSERT(0);		
+			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Gu::computeBoundsWithCCDThreshold::computeBounds: Unknown shape type.");
+		}
+	}
+	return PX_MAX_REAL;
+}
+
+static float computeBoundsWithCCDThreshold(PxVec3p& origin, PxVec3p& extent, const PxGeometry& geometry, const PxTransform& transform)	//AABB in world space.	
+{
+	const PxBounds3 bounds = computeBounds(geometry, transform);
+
+	origin = bounds.getCenter();
+	extent = bounds.getExtents();
+
+	return computeCCDThreshold(geometry);
+}
+
+// PT: TODO: refactor with ShapeSim version (SIMD), simplify code when shape local pose = idt
+static PX_INLINE PxTransform getShapeAbsPose(const PxsShapeCore* shapeCore, const PxsRigidCore* rigidCore, PxU32 isDynamic)
+{
+	if(isDynamic)
+	{
+		const PxsBodyCore* PX_RESTRICT bodyCore = static_cast<const PxsBodyCore*>(rigidCore);
+		return bodyCore->body2World * bodyCore->getBody2Actor().getInverse() *shapeCore->getTransform();
+	}
+	else 
+	{
+		return rigidCore->body2World * shapeCore->getTransform();
 	}
 }
 
-namespace physx
-{
-	PxsCCDContext::PxsCCDContext(PxsContext* context, Dy::ThresholdStream& thresholdStream, PxvNphaseImplementationContext& nPhaseContext,
-		PxReal ccdThreshold) :
-		mPostCCDSweepTask			(context->getContextId(), this, "PxsContext.postCCDSweep"),
-		mPostCCDAdvanceTask			(context->getContextId(), this, "PxsContext.postCCDAdvance"),
-		mPostCCDDepenetrateTask		(context->getContextId(), this, "PxsContext.postCCDDepenetrate"),
-		mDisableCCDResweep			(false),
-		miCCDPass					(0),
-		mSweepTotalHits				(0),
-		mCCDThreadContext			(NULL),
-		mCCDPairsPerBatch			(0),
-		mCCDMaxPasses				(1),
-		mContext					(context),
-		mThresholdStream			(thresholdStream),
-		mNphaseContext				(nPhaseContext),
-		mCCDThreshold				(ccdThreshold)
+PxsCCDContext::PxsCCDContext(PxsContext* context, Dy::ThresholdStream& thresholdStream, PxvNphaseImplementationContext& nPhaseContext, PxReal ccdThreshold) :
+	mPostCCDSweepTask		(context->getContextId(), this, "PxsContext.postCCDSweep"),
+	mPostCCDAdvanceTask		(context->getContextId(), this, "PxsContext.postCCDAdvance"),
+	mPostCCDDepenetrateTask	(context->getContextId(), this, "PxsContext.postCCDDepenetrate"),
+	mDisableCCDResweep		(false),
+	miCCDPass				(0),
+	mSweepTotalHits			(0),
+	mCCDThreadContext		(NULL),
+	mCCDPairsPerBatch		(0),
+	mCCDMaxPasses			(1),
+	mContext				(context),
+	mThresholdStream		(thresholdStream),
+	mNphaseContext			(nPhaseContext),
+	mCCDThreshold			(ccdThreshold)
 {
 }
 
@@ -259,42 +338,24 @@ PxsCCDContext::~PxsCCDContext()
 {
 }
 
-PxsCCDContext* PxsCCDContext::create(PxsContext* context, Dy::ThresholdStream& thresholdStream, PxvNphaseImplementationContext& nPhaseContext,
-	PxReal ccdThreshold)
-{
-	PxsCCDContext* dc = reinterpret_cast<PxsCCDContext*>(
-		PX_ALLOC(sizeof(PxsCCDContext), "PxsCCDContext"));
-
-	if(dc)
-	{
-		new(dc) PxsCCDContext(context, thresholdStream, nPhaseContext, ccdThreshold);
-	}
-	return dc;
-}
-
-void PxsCCDContext::destroy()
-{
-	this->~PxsCCDContext();
-	PX_FREE(this);
-}
-
-PxTransform PxsCCDShape::getAbsPose(const PxsRigidBody* atom)						const
+PxTransform PxsCCDShape::getAbsPose(const PxsRigidBody* atom) const
 {
 	// PT: TODO: refactor with ShapeSim version (SIMD) - or with redundant getShapeAbsPose() above in this same file!
+	// PT: TODO: simplify code when shape local pose = idt
 	if(atom)
-		return atom->getPose() * atom->getCore().getBody2Actor().getInverse() * mShapeCore->transform;
+		return atom->getPose() * atom->getCore().getBody2Actor().getInverse() * mShapeCore->getTransform();
 	else
-		return mRigidCore->body2World * mShapeCore->transform;
+		return mRigidCore->body2World * mShapeCore->getTransform();
 }
 
-PxTransform PxsCCDShape::getLastCCDAbsPose(const PxsRigidBody* atom)						const
+PxTransform PxsCCDShape::getLastCCDAbsPose(const PxsRigidBody* atom) const
 {
 	// PT: TODO: refactor with ShapeSim version (SIMD)
-	return atom->getLastCCDTransform() * atom->getCore().getBody2Actor().getInverse() * mShapeCore->transform;
+	// PT: TODO: simplify code when shape local pose = idt
+	return atom->getLastCCDTransform() * atom->getCore().getBody2Actor().getInverse() * mShapeCore->getTransform();
 }
 
-PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pass,
-	PxReal ccdThreshold)
+PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pass, PxReal ccdThreshold)
 {
 	printSeparator("findToi", pass, mBa0, mG0, NULL, PxGeometryType::eGEOMETRY_COUNT);
 	//Update shape transforms if necessary
@@ -337,8 +398,6 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 	PxVec3 sweepNormal(0.0f);
 	PxVec3 sweepPoint(0.0f);
 
-	PxReal restDistance = PxMax(mCm->getWorkUnit().restDistance, 0.f);
-
 	context.mDt = dt;
 	context.mCCDFaceIndex = PXC_CONTACT_NO_FACE_INDEX;
 
@@ -348,15 +407,36 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 
 	const PxReal sumFastMovingThresh = PxMin(fastMovingThresh0 + fastMovingThresh1, ccdThreshold);
 
-	PxReal toi = Gu::SweepShapeShape(*ccdShape0, *ccdShape1, tm0, tm1, lastTm0, lastTm1, restDistance,
-		sweepNormal, sweepPoint, mMinToi, context.mCCDFaceIndex, sumFastMovingThresh);
+	PxReal toi = PX_MAX_REAL;
+	if(gUseGeometryQuery)
+	{
+		// PT: TODO: support restDistance & sumFastMovingThresh here
+
+		PxVec3 unitDir = relTr;
+		const PxReal length = unitDir.normalize();
+
+		PxGeomSweepHit sweepHit;
+		if(PxGeometryQuery::sweep(unitDir, length, *ccdShape0->mGeometry, lastTm0, *ccdShape1->mGeometry, lastTm1, sweepHit, PxHitFlag::eDEFAULT|PxHitFlag::ePRECISE_SWEEP, 0.0f, PxGeometryQueryFlag::Enum(0), NULL))
+		{
+			sweepNormal = sweepHit.normal;
+			sweepPoint = sweepHit.position;
+			context.mCCDFaceIndex = sweepHit.faceIndex;
+
+			toi = sweepHit.distance/length;
+		}
+	}
+	else
+	{
+		const PxReal restDistance = PxMax(mCm->getWorkUnit().restDistance, 0.0f);
+		toi = Gu::SweepShapeShape(*ccdShape0, *ccdShape1, tm0, tm1, lastTm0, lastTm1, restDistance, sweepNormal, sweepPoint, mMinToi, context.mCCDFaceIndex, sumFastMovingThresh);
+	}
 
 	//If toi is after the end of TOI, return no hit
 	if (toi >= 1.0f)
 	{
 		mToiType				= PxsCCDPair::ePrecise;
-		mPenetration			= 0.f;
-		mPenetrationPostStep	= 0.f;
+		mPenetration			= 0.0f;
+		mPenetrationPostStep	= 0.0f;
 		mMinToi					= PX_MAX_REAL; // needs to be reset in case of resweep
 		return toi;
 	}
@@ -374,39 +454,38 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 
 	mToiType = PxsCCDPair::ePrecise;
 
-	PxReal penetration = 0.f;
-	PxReal penetrationPostStep = 0.f;
+	PxReal penetration = 0.0f;
+	PxReal penetrationPostStep = 0.0f;
 
 	//If linear motion along normal < the CCD threshold, set toi to no-hit.
 	if((linearMotion) < sumFastMovingThresh)
 	{
-		mMinToi					= PX_MAX_REAL; // needs to be reset in case of resweep
+		mMinToi = PX_MAX_REAL; // needs to be reset in case of resweep
 		return PX_MAX_REAL;
 	}
-	else if(toi <= 0.f)
+	else if(toi <= 0.0f)
 	{
-		//If the toi <= 0.f, this implies an initial overlap. If the value < 0.f, it implies penetration
-		PxReal stepRatio0 = atom0 ? atom0->mCCD->mTimeLeft : 1.f;
-		PxReal stepRatio1 = atom1 ? atom1->mCCD->mTimeLeft : 1.f;
+		//If the toi <= 0.0f, this implies an initial overlap. If the value < 0.0f, it implies penetration
+		PxReal stepRatio0 = atom0 ? atom0->mCCD->mTimeLeft : 1.0f;
+		PxReal stepRatio1 = atom1 ? atom1->mCCD->mTimeLeft : 1.0f;
 
 		PxReal stepRatio = PxMin(stepRatio0, stepRatio1);
 		penetration = -toi;
 
-		toi = 0.f;
+		toi = 0.0f;
 		
-		if(stepRatio == 1.f)
+		if(stepRatio == 1.0f)
 		{
 			//If stepRatio == 1.f (i.e. neither body has stepped forwards any time at all)
 			//we extract the advance coefficients from the bodies and permit the bodies to step forwards a small amount
 			//to ensure that they won't remain jammed because TOI = 0.0
-			const PxReal advance0 = atom0 ? atom0->mCore->ccdAdvanceCoefficient : 1.f;
-			const PxReal advance1 = atom1 ? atom1->mCore->ccdAdvanceCoefficient : 1.f;
+			const PxReal advance0 = atom0 ? atom0->mCore->ccdAdvanceCoefficient : 1.0f;
+			const PxReal advance1 = atom1 ? atom1->mCore->ccdAdvanceCoefficient : 1.0f;
 			const PxReal advance = PxMin(advance0, advance1);
 
 			PxReal fastMoving = PxMin(fastMovingThresh0, atom1 ? fastMovingThresh1 : PX_MAX_REAL);
 			PxReal advanceCoeff = advance * fastMoving;
 			penetrationPostStep = advanceCoeff/linearMotion;
-			
 		}
 		PX_ASSERT(PxIsFinite(toi));
 	}
@@ -422,7 +501,7 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 
 	//Work out the materials for the contact (restitution, friction etc.)
 	context.mContactBuffer.count = 0;
-	context.mContactBuffer.contact(mMinToiPoint, mMinToiNormal, 0.f, g1 == PxGeometryType::eTRIANGLEMESH || g1 == PxGeometryType::eHEIGHTFIELD? mFaceIndex : PXC_CONTACT_NO_FACE_INDEX);
+	context.mContactBuffer.contact(mMinToiPoint, mMinToiNormal, 0.0f, g1 == PxGeometryType::eTRIANGLEMESH || g1 == PxGeometryType::eHEIGHTFIELD? mFaceIndex : PXC_CONTACT_NO_FACE_INDEX);
 
 	PxsMaterialInfo materialInfo;
 
@@ -432,17 +511,13 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 	const PxsMaterialData& data0 = *context.mMaterialManager->getMaterial(materialInfo.mMaterialIndex0);
 	const PxsMaterialData& data1 = *context.mMaterialManager->getMaterial(materialInfo.mMaterialIndex1);
 
-	const PxReal restitution = PxsMaterialCombiner::combineRestitution(data0, data1);
-	PxsMaterialCombiner combiner(1.0f, 1.0f);
-	PxsMaterialCombiner::PxsCombinedMaterial combinedMat = combiner.combineIsotropicFriction(data0, data1);
-	const PxReal sFriction = combinedMat.staFriction;
-	const PxReal dFriction = combinedMat.dynFriction;
+	mRestitution = PxsCombineRestitution(data0, data1);
+
+	PxU32 unused;
+	PxsCombineIsotropicFriction(data0, data1, mDynamicFriction, mStaticFriction, unused);
 
 	mMaterialIndex0 = materialInfo.mMaterialIndex0;
 	mMaterialIndex1 = materialInfo.mMaterialIndex1;
-	mDynamicFriction = dFriction;
-	mStaticFriction = sFriction;
-	mRestitution = restitution;
 
 	return toi;
 }
@@ -459,8 +534,8 @@ void PxsCCDPair::updateShapes()
 
 			const PxVec3 trA = tm0.p - lastTm0.p;
 
-			Gu::Vec3p origin, extents;
-			Gu::computeBoundsWithCCDThreshold(origin, extents, mCCDShape0->mShapeCore->geometry.getGeometry(), tm0, NULL);
+			PxVec3p origin, extents;
+			computeBoundsWithCCDThreshold(origin, extents, mCCDShape0->mShapeCore->mGeometry.getGeometry(), tm0);
 
 			mCCDShape0->mCenter = origin - trA;
 			mCCDShape0->mExtents = extents;
@@ -480,8 +555,8 @@ void PxsCCDPair::updateShapes()
 
 			const PxVec3 trB = tm1.p - lastTm1.p;
 
-			Vec3p origin, extents;
-			computeBoundsWithCCDThreshold(origin, extents, mCCDShape1->mShapeCore->geometry.getGeometry(), tm1, NULL);
+			PxVec3p origin, extents;
+			computeBoundsWithCCDThreshold(origin, extents, mCCDShape1->mShapeCore->mGeometry.getGeometry(), tm1);
 
 			mCCDShape1->mCenter = origin - trB;
 			mCCDShape1->mExtents = extents;
@@ -516,20 +591,9 @@ PxReal PxsCCDPair::sweepEstimateToi(PxReal ccdThreshold)
 	}
 
 	//Extract previous/current transforms, translations etc.
-	PxTransform tm0, lastTm0, tm1, lastTm1;
-
-	PxVec3 trA(0.f);
-	PxVec3 trB(0.f);
-	tm0 = ccdShape0->mCurrentTransform;
-	lastTm0 = ccdShape0->mPrevTransform;
-	trA = tm0.p - lastTm0.p;
-
-	tm1 = ccdShape1->mCurrentTransform;
-	lastTm1 = ccdShape1->mPrevTransform;
-	trB = tm1.p - lastTm1.p;
-
-	PxReal restDistance = PxMax(mCm->getWorkUnit().restDistance, 0.f);
-
+	const PxVec3 trA = ccdShape0->mCurrentTransform.p - ccdShape0->mPrevTransform.p;
+	const PxVec3 trB = ccdShape1->mCurrentTransform.p - ccdShape1->mPrevTransform.p;
+	const PxReal restDistance = PxMax(mCm->getWorkUnit().restDistance, 0.0f);
 	const PxVec3 relTr = trA - trB;
 
 	//Work out the sum of the fast moving thresholds scaled by the step ratio
@@ -551,7 +615,7 @@ PxReal PxsCCDPair::sweepEstimateToi(PxReal ccdThreshold)
 	if(g1 == PxGeometryType::eTRIANGLEMESH)
 	{
 		//Special-case estimation code for meshes
-		PxF32 toi = Gu::SweepEstimateAnyShapeMesh(*ccdShape0, *ccdShape1, tm0, tm1, lastTm0, lastTm1, restDistance, sumFastMovingThresh);
+		const PxF32 toi = Gu::SweepEstimateAnyShapeMesh(*ccdShape0, *ccdShape1, restDistance, sumFastMovingThresh);
 									
 		mMinToi	= toi;
 		return toi;
@@ -559,23 +623,21 @@ PxReal PxsCCDPair::sweepEstimateToi(PxReal ccdThreshold)
 	else if (g1 == PxGeometryType::eHEIGHTFIELD)
 	{
 		//Special-case estimation code for heightfields
-		PxF32 toi = Gu::SweepEstimateAnyShapeHeightfield(*ccdShape0, *ccdShape1, tm0, tm1, lastTm0, lastTm1, restDistance, sumFastMovingThresh);
+		const PxF32 toi = Gu::SweepEstimateAnyShapeHeightfield(*ccdShape0, *ccdShape1, restDistance, sumFastMovingThresh);
 									
 		mMinToi	= toi;
 		return toi;
 	}
 
 	//Generic estimation code for prim-prim sweeps
-	PxVec3 centreA, extentsA;
-	PxVec3 centreB, extentsB;
-	centreA = ccdShape0->mCenter;
-	extentsA = ccdShape0->mExtents + PxVec3(restDistance);
+	const PxVec3& centreA = ccdShape0->mCenter;
+	const PxVec3 extentsA = ccdShape0->mExtents + PxVec3(restDistance);
 
-	centreB = ccdShape1->mCenter;
-	extentsB = ccdShape1->mExtents;
+	const PxVec3& centreB = ccdShape1->mCenter;
+	const PxVec3& extentsB = ccdShape1->mExtents;
 
-	PxF32 toi = Gu::sweepAABBAABB(centreA, extentsA * 1.1f, centreB, extentsB * 1.1f, trA, trB);
-	mMinToi			= toi;
+	const PxF32 toi = Gu::sweepAABBAABB(centreA, extentsA * 1.1f, centreB, extentsB * 1.1f, trA, trB);
+	mMinToi	= toi;
 	return toi;
 }
 
@@ -593,23 +655,23 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 		return false;
 
 	//Test to validate that they're both infinite mass objects. If so, there can be no response so terminate on a notification-only
-	if((atom0 == NULL || atom0->mCore->inverseMass == 0.f) && (atom1 == NULL || atom1->mCore->inverseMass == 0.f))
+	if((atom0 == NULL || atom0->mCore->inverseMass == 0.0f) && (atom1 == NULL || atom1->mCore->inverseMass == 0.0f))
 		return false;
 
 	//If the TOI < 1.f. If not, this hit happens after this frame or at the very end of the frame. Either way, next frame can handle it
 	if (thisPair->mMinToi < 1.0f)
 	{
-		if(thisPair->mCm->getWorkUnit().flags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE || thisPair->mMaxImpulse == 0.f)
+		if(thisPair->mCm->getWorkUnit().flags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE || thisPair->mMaxImpulse == 0.0f)
 		{
 			//Don't mark pass as done on either body
 			return true;
 		}
 
-		PxReal minToi = thisPair->mMinToi;
+		const PxReal minToi = thisPair->mMinToi;
 
-		PxF32 penetration = -mPenetration * 10.f;
+		const PxF32 penetration = -mPenetration * 10.0f;
 		
-		PxVec3 minToiNormal = thisPair->mMinToiNormal;
+		const PxVec3 minToiNormal = thisPair->mMinToiNormal;
 
 		if (!minToiNormal.isNormalized())
 		{
@@ -629,16 +691,16 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 		const PxReal sFriction = mStaticFriction;
 		const PxReal dFriction = mDynamicFriction;
 
-		PxVec3 v0(0.f), v1(0.f);
+		PxVec3 v0(0.0f), v1(0.0f);
 
-		PxReal invMass0(0.f), invMass1(0.f);
+		PxReal invMass0(0.0f), invMass1(0.0f);
 #if CCD_ANGULAR_IMPULSE
-		PxMat33 invInertia0(PxVec3(0.f), PxVec3(0.f), PxVec3(0.f)), invInertia1(PxVec3(0.f), PxVec3(0.f), PxVec3(0.f));
-		PxVec3 localPoint0(0.f), localPoint1(0.f);
+		PxMat33 invInertia0(PxVec3(0.0f), PxVec3(0.0f), PxVec3(0.0f)), invInertia1(PxVec3(0.0f), PxVec3(0.0f), PxVec3(0.0f));
+		PxVec3 localPoint0(0.0f), localPoint1(0.0f);
 #endif
 
-		PxReal dom0 = mCm->getDominance0();
-		PxReal dom1 = mCm->getDominance1();
+		const PxReal dom0 = mCm->getDominance0();
+		const PxReal dom1 = mCm->getDominance1();
 
 		//Work out velocity and invMass for body 0
 		if(atom0)
@@ -674,20 +736,20 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 		PX_ASSERT(v0.isFinite() && v1.isFinite());
 
 		//Work out relative velocity
-		PxVec3 vRel = v1 - v0;
+		const PxVec3 vRel = v1 - v0;
 
 		//Project relative velocity onto contact normal and bias with penetration
-		PxReal relNorVel = vRel.dot(minToiNormal);
-		PxReal relNorVelPlusPen = relNorVel + penetration;
+		const PxReal relNorVel = vRel.dot(minToiNormal);
+		const PxReal relNorVelPlusPen = relNorVel + penetration;
 
 #if CCD_ANGULAR_IMPULSE
 		if(relNorVelPlusPen >= -1e-6f)
 		{
 			//we fall back on linear only parts...
-			localPoint0 = PxVec3(0.f);
-			localPoint1 = PxVec3(0.f);
-			v0 = atom0 ? atom0->getLinearVelocity() : PxVec3(0.f);
-			v1 = atom1 ? atom1->getLinearVelocity() : PxVec3(0.f);
+			localPoint0 = PxVec3(0.0f);
+			localPoint1 = PxVec3(0.0f);
+			v0 = atom0 ? atom0->getLinearVelocity() : PxVec3(0.0f);
+			v1 = atom1 ? atom1->getLinearVelocity() : PxVec3(0.0f);
 			vRel = v1 - v0;
 			relNorVel = vRel.dot(minToiNormal);
 			relNorVelPlusPen = relNorVel + penetration;
@@ -700,7 +762,7 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 			PxReal sumRecipMass = invMass0 + invMass1;
 
 			const PxReal jLin = relNorVelPlusPen;
-			const PxReal normalResponse = (1.f + restitution) * jLin;
+			const PxReal normalResponse = (1.0f + restitution) * jLin;
 
 #if CCD_ANGULAR_IMPULSE
 			const PxVec3 angularMom0 = invInertia0 * (localPoint0.cross(mMinToiNormal));
@@ -713,20 +775,20 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 #endif
 			const PxReal jImp = PxMax(-mMaxImpulse, normalResponse/impulseDivisor);
 
-			PxVec3 j(0.f);
+			PxVec3 j(0.0f);
 
 			//If the user requested CCD friction, calculate friction forces.
 			//Note, CCD is *linear* so friction is also linear. The net result is that CCD friction can stop bodies' lateral motion so its better to have it disabled
 			//unless there's a real need for it.
 			if(mHasFriction)
 			{
-				PxVec3 vPerp = vRel - relNorVel * minToiNormal;
+				const PxVec3 vPerp = vRel - relNorVel * minToiNormal;
 				PxVec3 tDir = vPerp;
-				PxReal length = tDir.normalize();
-				PxReal vPerpImp = length/impulseDivisor;
-				PxF32 fricResponse = 0.f;
-				PxF32 staticResponse = (jImp*sFriction);
-				PxF32 dynamicResponse = (jImp*dFriction);
+				const PxReal length = tDir.normalize();
+				const PxReal vPerpImp = length/impulseDivisor;
+				PxF32 fricResponse = 0.0f;
+				const PxF32 staticResponse = (jImp*sFriction);
+				const PxF32 dynamicResponse = (jImp*dFriction);
 					
 				if (PxAbs(staticResponse) >= vPerpImp)
 					fricResponse = vPerpImp;
@@ -746,7 +808,7 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 
 			verifyCCDPair(*this);
 			//If we have a negative impulse value, then we need to apply it. If not, the bodies are separating (no impulse to apply).
-			if(jImp < 0.f)
+			if(jImp < 0.0f)
 			{
 				mAppliedForce = -jImp;
 
@@ -754,7 +816,7 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 				if((atom0 != NULL && atom0->mCCD->mPassDone) || 
 					(atom1 != NULL && atom1->mCCD->mPassDone))
 				{
-					mPenetrationPostStep = 0.f;
+					mPenetrationPostStep = 0.0f;
 				}
 				else
 				{
@@ -789,18 +851,18 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 		if (atom0 && !atom0->mCCD->mPassDone)
 		{
 			atom0->advancePrevPoseToToi(minToi);
-			atom0->advanceToToi(minToi, dt, clipTrajectoryToToi && mPenetrationPostStep == 0.f);	
+			atom0->advanceToToi(minToi, dt, clipTrajectoryToToi && mPenetrationPostStep == 0.0f);	
 			atom0->mCCD->mUpdateCount++;
 		}
 		if (atom1 && !atom1->mCCD->mPassDone)
 		{
 			atom1->advancePrevPoseToToi(minToi);
-			atom1->advanceToToi(minToi, dt, clipTrajectoryToToi && mPenetrationPostStep == 0.f);
+			atom1->advanceToToi(minToi, dt, clipTrajectoryToToi && mPenetrationPostStep == 0.0f);
 			atom1->mCCD->mUpdateCount++;
 		}
 
 		//If we had a penetration post-step (i.e. an initial overlap), step forwards slightly after collision response
-		if(mPenetrationPostStep > 0.f)
+		if(mPenetrationPostStep > 0.0f)
 		{
 			if (atom0 && !atom0->mCCD->mPassDone)
 			{
@@ -838,6 +900,9 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 	return false;
 }
 
+namespace
+{
+
 struct IslandCompare
 {
 	bool operator()(PxsCCDPair& a, PxsCCDPair& b) const { return a.mIslandId < b.mIslandId; }
@@ -872,13 +937,12 @@ struct ToiPtrCompare
 */
 class PxsCCDSweepTask : public Cm::Task
 {
-	PxsCCDPair** 					mPairs;
-	PxU32							mNumPairs;
-	PxReal							mCCDThreshold;
+	PxsCCDPair**	mPairs;
+	PxU32			mNumPairs;
+	PxReal			mCCDThreshold;
 public:
-	PxsCCDSweepTask(PxU64 contextID, PxsCCDPair** pairs, PxU32 nPairs,
-		PxReal ccdThreshold)
-		:	Cm::Task(contextID), mPairs(pairs), mNumPairs(nPairs), mCCDThreshold(ccdThreshold)
+	PxsCCDSweepTask(PxU64 contextID, PxsCCDPair** pairs, PxU32 nPairs, PxReal ccdThreshold) :
+		Cm::Task(contextID), mPairs(pairs), mNumPairs(nPairs), mCCDThreshold(ccdThreshold)
 	{
 	}
 
@@ -909,23 +973,23 @@ private:
 */
 class PxsCCDAdvanceTask : public Cm::Task
 {
-	PxsCCDPair** 					mCCDPairs;
-	PxU32							mNumPairs;
-	PxsContext* 					mContext;
-	PxsCCDContext* 					mCCDContext;
-	PxReal							mDt;
-	PxU32							mCCDPass;
-	const PxsCCDBodyArray&			mCCDBodies;
+	PxsCCDPair** 			mCCDPairs;
+	PxU32					mNumPairs;
+	PxsContext* 			mContext;
+	PxsCCDContext* 			mCCDContext;
+	PxReal					mDt;
+	PxU32					mCCDPass;
+	const PxsCCDBodyArray&	mCCDBodies;
 
-	PxU32							mFirstThreadIsland;
-	PxU32							mIslandsPerThread;
-	PxU32							mTotalIslandCount;
-	PxU32							mFirstIslandPair; // pairs are sorted by island
-	PxsCCDBody**					mIslandBodies;
-	PxU16*							mNumIslandBodies;
-	PxI32*							mSweepTotalHits;
-	bool							mClipTrajectory;
-	bool							mDisableResweep;
+	PxU32					mFirstThreadIsland;
+	PxU32					mIslandsPerThread;
+	PxU32					mTotalIslandCount;
+	PxU32					mFirstIslandPair; // pairs are sorted by island
+	PxsCCDBody**			mIslandBodies;
+	PxU16*					mNumIslandBodies;
+	PxI32*					mSweepTotalHits;
+	bool					mClipTrajectory;
+	bool					mDisableResweep;
 	
 	PxsCCDAdvanceTask& operator=(const PxsCCDAdvanceTask&);
 public:
@@ -971,7 +1035,7 @@ public:
 				islandEnd++;
 
 			if (islandEnd > islandStart+1)
-				shdfnd::sort(mCCDPairs+islandStart, islandEnd-islandStart, ToiPtrCompare());
+				PxSort(mCCDPairs+islandStart, islandEnd-islandStart, ToiPtrCompare());
 
 			PX_ASSERT(islandEnd <= mNumPairs);
 
@@ -991,7 +1055,7 @@ public:
 				verifyCCDPair(pair);
 
 				//If we have reached a pair with a TOI after 1.0, we can terminate this island
-				if(pair.mMinToi > 1.f)
+				if(pair.mMinToi > 1.0f)
 					break;
 
 				bool needSweep0 = (pair.mBa0 && pair.mBa0->mCCD->mPassDone == false);
@@ -1027,7 +1091,7 @@ public:
 						}
 					}
 
-					if (pair.mMinToi > 1.f)
+					if (pair.mMinToi > 1.0f)
 						break;
 
 					//We now have the earliest contact pair for this island and one/both of the bodies have not been updated. We now perform
@@ -1071,10 +1135,10 @@ public:
 						point->dynamicFriction = pair.mDynamicFriction;
 						point->staticFriction = pair.mStaticFriction;
 						point->restitution = pair.mRestitution;
-						point->separation = 0.f;
+						point->separation = 0.0f;
 						point->maxImpulse = PX_MAX_REAL;
 						point->materialFlags = 0;
-						point->targetVelocity = PxVec3(0.f);
+						point->targetVelocity = PxVec3(0.0f);
 
 						mCCDContext->runCCDModifiableContact(point, 1, pair.mCCDShape0->mShapeCore, pair.mCCDShape1->mShapeCore,
 							pair.mCCDShape0->mRigidCore, pair.mCCDShape1->mRigidCore, pair.mBa0, pair.mBa1);
@@ -1101,8 +1165,8 @@ public:
 				// sweepAdvanceToToi sets mCCD->mPassDone flags on both atoms, doesn't advance atoms with flag already set
 				// can advance one atom if the other already has the flag set
 				bool advanced = pair.sweepAdvanceToToi( dt, mClipTrajectory);
-				if(pair.mMinToi < 0.f)
-					pair.mMinToi = 0.f;
+				if(pair.mMinToi < 0.0f)
+					pair.mMinToi = 0.0f;
 				verifyCCDPair(pair);
 
 				if (advanced && pair.mMinToi <= 1.0f)
@@ -1111,7 +1175,7 @@ public:
 					PxU32 islandStartIndex = iIsland == 0 ? 0 : PxU32(mNumIslandBodies[iIsland - 1]);
 					PxU32 islandEndIndex = mNumIslandBodies[iIsland];
 
-					if(pair.mMinToi > 0.f)
+					if(pair.mMinToi > 0.0f)
 					{
 						for(PxU32 a = islandStartIndex; a < islandEndIndex; ++a)
 						{	
@@ -1137,7 +1201,7 @@ public:
 					}
 
 					//If we disabled response, we don't need to resweep at all
-					if(!mDisableResweep && !(pair.mCm->getWorkUnit().flags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE) && pair.mMaxImpulse != 0.f)
+					if(!mDisableResweep && !(pair.mCm->getWorkUnit().flags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE) && pair.mMaxImpulse != 0.0f)
 					{
 						void* a0 = pair.mBa0 == NULL ? NULL : reinterpret_cast<void*>(pair.mBa0);
 						void* a1 = pair.mBa1 == NULL ? NULL : reinterpret_cast<void*>(pair.mBa1);
@@ -1207,7 +1271,7 @@ public:
 			islandStart = islandEnd;
 		} // for (PxU32 iIsland = mFirstThreadIsland; iIsland < lastIsland; iIsland++)
 
-		Ps::atomicAdd(mSweepTotalHits, sweepTotalHits);
+		PxAtomicAdd(mSweepTotalHits, sweepTotalHits);
 		mContext->putNpThreadContext(threadContext);
 	}
 
@@ -1216,6 +1280,7 @@ public:
 		return "PxsContext.CCDAdvance";
 	}
 };
+}
 
 // --------------------------------------------------------------
 // CCD main function
@@ -1299,8 +1364,8 @@ void PxsCCDContext::verifyCCDBegin()
 	// validate that all bodies have a NULL mCCD pointer
 	if (miCCDPass == 0)
 	{
-		Cm::BitMap::Iterator it(mActiveContactManager);
-		for (PxU32 index = it.getNext(); index != Cm::BitMap::Iterator::DONE; index = it.getNext())
+		PxBitMap::Iterator it(mActiveContactManager);
+		for (PxU32 index = it.getNext(); index != PxBitMap::Iterator::DONE; index = it.getNext())
 		{
 			PxsContactManager* cm = mContactManagerPool.findByIndexFast(index);
 			PxsRigidBody* b0 = cm->mBodyShape0->getBodyAtom(), *b1 = cm->mBodyShape1->getBodyAtom();
@@ -1313,9 +1378,9 @@ void PxsCCDContext::verifyCCDBegin()
 
 void PxsCCDContext::resetContactManagers()
 {
-	Cm::BitMap::Iterator it(mContext->mContactManagersWithCCDTouch);
+	PxBitMap::Iterator it(mContext->mContactManagersWithCCDTouch);
 
-	for (PxU32 index = it.getNext(); index != Cm::BitMap::Iterator::DONE; index = it.getNext())
+	for (PxU32 index = it.getNext(); index != PxBitMap::Iterator::DONE; index = it.getNext())
 	{
 		PxsContactManager* cm = mContext->mContactManagerPool.findByIndexFast(index);
 		cm->clearCCDContactInfo();
@@ -1325,6 +1390,38 @@ void PxsCCDContext::resetContactManagers()
 }
 
 // --------------------------------------------------------------
+
+// PT: version that early exits & doesn't read all the data
+static PX_FORCE_INLINE bool pairNeedsCCD(const PxsContactManager* cm)
+{
+	// skip disabled pairs
+	if(!cm->getCCD())
+		return false;
+
+	const PxcNpWorkUnit& workUnit = cm->getWorkUnit();
+
+	// skip articulation vs articulation ccd
+	//Actually. This is fundamentally wrong also :(. We only want to skip links in the same articulation - not all articulations!!!
+	{
+		const bool isJoint0 = (workUnit.flags & PxcNpWorkUnitFlag::eARTICULATION_BODY0) == PxcNpWorkUnitFlag::eARTICULATION_BODY0;
+		if(isJoint0)
+		{
+			const bool isJoint1 = (workUnit.flags & PxcNpWorkUnitFlag::eARTICULATION_BODY1) == PxcNpWorkUnitFlag::eARTICULATION_BODY1;
+			if(isJoint1)
+				return false;
+		}
+	}
+
+	{
+		const bool isFastMoving0 = static_cast<const PxsBodyCore*>(workUnit.rigidCore0)->isFastMoving != 0;
+		if(isFastMoving0)
+			return true;
+
+		const bool isFastMoving1 = (workUnit.flags & (PxcNpWorkUnitFlag::eARTICULATION_BODY1 | PxcNpWorkUnitFlag::eDYNAMIC_BODY1)) ? static_cast<const PxsBodyCore*>(workUnit.rigidCore1)->isFastMoving != 0: false;
+		return isFastMoving1;
+	}
+}
+
 void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim& islandSim, bool disableResweep, PxI32 numFastMovingShapes)
 {
 	//Flag to run a slightly less-accurate version of CCD that will ensure that objects don't tunnel through the static world but is not as reliable for dynamic-dynamic collisions
@@ -1375,30 +1472,15 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 	{
 		PX_PROFILE_ZONE("Sim.ccdPair", mContext->mContextID);
 	
-		Cm::BitMap::Iterator it(mContext->mActiveContactManagersWithCCD);
-		for (PxU32 index = it.getNext(); index != Cm::BitMap::Iterator::DONE; index = it.getNext())
+		PxBitMap::Iterator it(mContext->mActiveContactManagersWithCCD);
+		for (PxU32 index = it.getNext(); index != PxBitMap::Iterator::DONE; index = it.getNext())
 		{
 			PxsContactManager* cm = mContext->mContactManagerPool.findByIndexFast(index);
 
-			// skip disabled pairs
-			if(!cm->getCCD())
+			if(!pairNeedsCCD(cm))
 				continue;
 
-			bool isJoint0 = (cm->mNpUnit.flags & PxcNpWorkUnitFlag::eARTICULATION_BODY0) == PxcNpWorkUnitFlag::eARTICULATION_BODY0;
-			bool isJoint1 = (cm->mNpUnit.flags & PxcNpWorkUnitFlag::eARTICULATION_BODY1) == PxcNpWorkUnitFlag::eARTICULATION_BODY1;
-			// skip articulation vs articulation ccd
-			//Actually. This is fundamentally wrong also :(. We only want to skip links in the same articulation - not all articulations!!!
-			if (isJoint0 && isJoint1)
-				continue;
-
-			bool isFastMoving0 = static_cast<const PxsBodyCore*>(cm->mNpUnit.rigidCore0)->isFastMoving != 0;
-
-			bool isFastMoving1 = (cm->mNpUnit.flags & (PxcNpWorkUnitFlag::eARTICULATION_BODY1 | PxcNpWorkUnitFlag::eDYNAMIC_BODY1)) ? static_cast<const PxsBodyCore*>(cm->mNpUnit.rigidCore1)->isFastMoving != 0: false;
-
-			if (!(isFastMoving0 || isFastMoving1))
-				continue;
-
-			PxcNpWorkUnit& unit = cm->getWorkUnit();
+			const PxcNpWorkUnit& unit = cm->getWorkUnit();
 			const PxsRigidCore* rc0 = unit.rigidCore0;
 			const PxsRigidCore* rc1 = unit.rigidCore1;
 			
@@ -1410,18 +1492,18 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 				PxsRigidBody* ba1 = cm->mRigidBody1;
 
 				//Look up the body/shape pair in our CCDShape map
-				const Ps::Pair<const PxsRigidShapePair, PxsCCDShape*>* ccdShapePair0 = mMap.find(PxsRigidShapePair(rc0, sc0));
-				const Ps::Pair<const PxsRigidShapePair, PxsCCDShape*>* ccdShapePair1 = mMap.find(PxsRigidShapePair(rc1, sc1));
+				const PxPair<const PxsRigidShapePair, PxsCCDShape*>* ccdShapePair0 = mMap.find(PxsRigidShapePair(rc0, sc0));
+				const PxPair<const PxsRigidShapePair, PxsCCDShape*>* ccdShapePair1 = mMap.find(PxsRigidShapePair(rc1, sc1));
 
 				//If the CCD shapes exist, extract them from the map
 				PxsCCDShape* ccdShape0 = ccdShapePair0 ? ccdShapePair0->second : NULL;
 				PxsCCDShape* ccdShape1 = ccdShapePair1 ? ccdShapePair1->second : NULL;
 
-				PxReal threshold0 = 0.f;
-				PxReal threshold1 = 0.f;
+				PxReal threshold0 = 0.0f;
+				PxReal threshold1 = 0.0f;
 
-				PxVec3 trA(0.f);
-				PxVec3 trB(0.f);
+				PxVec3 trA(0.0f);
+				PxVec3 trB(0.0f);
 
 				if(ccdShape0 == NULL)
 				{
@@ -1431,17 +1513,16 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 
 					ccdShape0->mRigidCore = rc0;
 					ccdShape0->mShapeCore = sc0;
-					ccdShape0->mGeometry = &sc0->geometry;
+					ccdShape0->mGeometry = &sc0->mGeometry.getGeometry();
 
 					const PxTransform tm0 = ccdShape0->getAbsPose(ba0);
 					const PxTransform oldTm0 = ba0 ? ccdShape0->getLastCCDAbsPose(ba0) : tm0;
 
 					trA = tm0.p - oldTm0.p;
 
-					Vec3p origin, extents;
-
+					PxVec3p origin, extents;
 					//Compute the shape's bounds and CCD threshold
-					threshold0 = computeBoundsWithCCDThreshold(origin, extents, sc0->geometry.getGeometry(), tm0, NULL);
+					threshold0 = computeBoundsWithCCDThreshold(origin, extents, sc0->mGeometry.getGeometry(), tm0);
 
 					//Set up the CCD shape
 					ccdShape0->mCenter = origin - trA;
@@ -1465,7 +1546,7 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 					ccdShape1 = &mCCDShapes.pushBack();
 					ccdShape1->mRigidCore = rc1;
 					ccdShape1->mShapeCore = sc1;
-					ccdShape1->mGeometry = &sc1->geometry;
+					ccdShape1->mGeometry = &sc1->mGeometry.getGeometry();
 
 					mMap.insert(PxsRigidShapePair(rc1, sc1), ccdShape1);
 
@@ -1474,9 +1555,9 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 
 					trB = tm1.p - oldTm1.p;
 
-					Vec3p origin, extents;
+					PxVec3p origin, extents;
 					//Compute the shape's bounds and CCD threshold
-					threshold1 = computeBoundsWithCCDThreshold(origin, extents, sc1->geometry.getGeometry(), tm1, NULL);
+					threshold1 = computeBoundsWithCCDThreshold(origin, extents, sc1->mGeometry.getGeometry(), tm1);
 
 					//Set up the CCD shape
 					ccdShape1->mCenter = origin - trB;
@@ -1508,7 +1589,7 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 							// this rigid body has no CCD body created for it yet. Create and initialize one.
 							PxsCCDBody& newB = mCCDBodies.pushBack();
 							b->mCCD = &newB;
-							b->mCCD->mIndex = Ps::to16(mCCDBodies.size()-1);
+							b->mCCD->mIndex = PxTo16(mCCDBodies.size()-1);
 							b->mCCD->mBody = b;
 							b->mCCD->mTimeLeft = 1.0f;
 							b->mCCD->mOverlappingObjects = NULL;
@@ -1551,19 +1632,21 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 					p.mCCDShape1 = ccdShape1;
 					p.mHasFriction = rc0->hasCCDFriction() || rc1->hasCCDFriction();
 					p.mMinToi = PX_MAX_REAL;
-					p.mG0 = cm->mNpUnit.shapeCore0->geometry.getType();
-					p.mG1 = cm->mNpUnit.shapeCore1->geometry.getType();
+					p.mG0 = cm->mNpUnit.shapeCore0->mGeometry.getType();
+					p.mG1 = cm->mNpUnit.shapeCore1->mGeometry.getType();
 					p.mCm = cm;
 					p.mIslandId = 0xFFFFffff;
 					p.mIsEarliestToiHit = false;
 					p.mFaceIndex = PXC_CONTACT_NO_FACE_INDEX;
 					p.mIsModifiable = cm->isChangeable() != 0;
-					p.mAppliedForce = 0.f;
+					p.mAppliedForce = 0.0f;
 					p.mMaxImpulse = PxMin((ba0->mCore->mFlags & PxRigidBodyFlag::eENABLE_CCD_MAX_CONTACT_IMPULSE) ? ba0->mCore->maxContactImpulse : PX_MAX_F32,
 						(ba1 && ba1->mCore->mFlags & PxRigidBodyFlag::eENABLE_CCD_MAX_CONTACT_IMPULSE) ? ba1->mCore->maxContactImpulse : PX_MAX_F32);
 
 #if PX_ENABLE_SIM_STATS
 					mContext->mSimStats.mNbCCDPairs[PxMin(p.mG0, p.mG1)][PxMax(p.mG0, p.mG1)] ++;
+#else
+					PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 
 					//Calculate the sum of the thresholds and work out if we need to perform a sweep.
@@ -1594,7 +1677,7 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 			mCCDPtrPairs.pushBack(&mCCDPairs[a]);
 		}
 
-		mThresholdStream.reserve(Ps::nextPowerOfTwo(size));
+		mThresholdStream.reserve(PxNextPowerOfTwo(size));
 
 		for (PxU32 a = 0; a < mCCDBodies.size(); ++a)
 		{
@@ -1610,9 +1693,9 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 	const PxU16 noLabelYet = 0xFFFF;
 	
 	//Temporary array allocations. Ideally, we should use the scratch pad for there
-	Array<PxU32> islandLabels; 
+	PxArray<PxU32> islandLabels; 
 	islandLabels.resize(ccdBodyCount);
-	Array<const PxsCCDBody*> stack; 
+	PxArray<const PxsCCDBody*> stack; 
 	stack.reserve(ccdBodyCount);
 	stack.forceSize_Unsafe(ccdBodyCount);
 
@@ -1729,7 +1812,7 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 
 	// --------------------------------------------------------------------------------------
 	// sort all pairs by islands
-	shdfnd::sort(mCCDPtrPairs.begin(), mCCDPtrPairs.size(), IslandPtrCompare());
+	PxSort(mCCDPtrPairs.begin(), mCCDPtrPairs.size(), IslandPtrCompare());
 
 	// --------------------------------------------------------------------------------------
 	// sweep all CCD pairs
@@ -1797,6 +1880,11 @@ void PxsCCDContext::postCCDSweep(PxBaseTask* continuation)
 	} // for iIsland
 }
 
+static PX_FORCE_INLINE bool shouldCreateContactReports(const PxsRigidCore* rigidCore)
+{
+	return static_cast<const PxsBodyCore*>(rigidCore)->contactReportThreshold != PXV_CONTACT_REPORT_DISABLED;
+}
+
 void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 {	
 	// --------------------------------------------------------------------------------------
@@ -1817,7 +1905,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 				break;
 		
 			//If this was the earliest touch for the pair of bodies, we can notify the user about it. If not, it's a future collision that we haven't stepped to yet
-			if(p.mIsEarliestToiHit)
+			if (p.mIsEarliestToiHit)
 			{
 				//Flag that we had a CCD contact
 				p.mCm->setHadCCDContact();
@@ -1829,10 +1917,11 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 					mContext->mContactManagerTouchEvent.growAndSet(p.mCm->getIndex());
 					p.mCm->mNpUnit.statusFlags = PxU16((p.mCm->mNpUnit.statusFlags & (~PxcNpWorkUnitStatusFlag::eHAS_NO_TOUCH)) | PxcNpWorkUnitStatusFlag::eHAS_TOUCH);
 					//Also need to write it in the CmOutput structure!!!!!
-					
-					//The achieve this, we need to unregister the CM from the Nphase, then re-register it with the status set. This is the only way to force a push to the GPU
+
+					////The achieve this, we need to unregister the CM from the Nphase, then re-register it with the status set. This is the only way to force a push to the GPU
+					Sc::ShapeInteraction* interaction = p.mCm->getShapeInteraction();
 					mNphaseContext.unregisterContactManager(p.mCm);
-					mNphaseContext.registerContactManager(p.mCm, 1, 0);
+					mNphaseContext.registerContactManager(p.mCm, interaction, 1, 0);
 					countFound++;
 				}
 				else
@@ -1843,11 +1932,11 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 				}
 
 				//Do we want to create reports?
-				const bool createReports = 
+				const bool createReports =
 					p.mCm->mNpUnit.flags & PxcNpWorkUnitFlag::eOUTPUT_CONTACTS
 					|| (p.mCm->mNpUnit.flags & PxcNpWorkUnitFlag::eFORCE_THRESHOLD
-					&& ((p.mCm->mNpUnit.flags & PxcNpWorkUnitFlag::eDYNAMIC_BODY0 && static_cast<const PxsBodyCore*>(p.mCm->mNpUnit.rigidCore0)->shouldCreateContactReports())
-					|| (p.mCm->mNpUnit.flags & PxcNpWorkUnitFlag::eDYNAMIC_BODY1 && static_cast<const PxsBodyCore*>(p.mCm->mNpUnit.rigidCore1)->shouldCreateContactReports())));
+						&& ((p.mCm->mNpUnit.flags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY0 | PxcNpWorkUnitFlag::eARTICULATION_BODY0) && shouldCreateContactReports(p.mCm->mNpUnit.rigidCore0))
+					|| (p.mCm->mNpUnit.flags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY1 | PxcNpWorkUnitFlag::eARTICULATION_BODY1)  && shouldCreateContactReports(p.mCm->mNpUnit.rigidCore1))));
 
 				if(createReports)
 				{
@@ -1855,9 +1944,9 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 
 					const PxU32 numContacts = 1;
 					PxsMaterialInfo matInfo;
-					Gu::ContactBuffer& buffer = mCCDThreadContext->mContactBuffer;
+					PxContactBuffer& buffer = mCCDThreadContext->mContactBuffer;
 
-					Gu::ContactPoint& cp = buffer.contacts[0];
+					PxContactPoint& cp = buffer.contacts[0];
 					cp.point = p.mMinToiPoint;
 					cp.normal = -p.mMinToiNormal;						//KS - discrete contact gen produces contacts pointing in the opposite direction to CCD sweeps
 					cp.internalFaceIndex1 = p.mFaceIndex;
@@ -1865,7 +1954,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 					cp.restitution = p.mRestitution;
 					cp.dynamicFriction = p.mDynamicFriction;
 					cp.staticFriction = p.mStaticFriction;
-					cp.targetVel = PxVec3(0.f);
+					cp.targetVel = PxVec3(0.0f);
 					cp.maxImpulse = PX_MAX_REAL;
 					
 					matInfo.mMaterialIndex0 = p.mMaterialIndex0;
@@ -1877,7 +1966,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 					PxU8* contactPatches;
 					PxU8* contactPoints;
 					PxU16 contactStreamSize;
-					PxU8 contactCount;
+					PxU16 contactCount;
 					PxU8 nbPatches;
 					PxsCCDContactHeader* ccdHeader = reinterpret_cast<PxsCCDContactHeader*>(p.mCm->mNpUnit.ccdContacts);
 					if (writeCompressedContact(buffer.contacts, numContacts, mCCDThreadContext, contactCount, contactPatches,
@@ -1886,7 +1975,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 												false, NULL, NULL, NULL, p.mFaceIndex != PXC_CONTACT_NO_FACE_INDEX))
 					{
 						PxsCCDContactHeader* newCCDHeader = reinterpret_cast<PxsCCDContactHeader*>(contactPatches);
-						newCCDHeader->contactStreamSize = Ps::to16(contactStreamSize);
+						newCCDHeader->contactStreamSize = PxTo16(contactStreamSize);
 						newCCDHeader->isFromPreviousPass = 0;
 
 						p.mCm->mNpUnit.ccdContacts = contactPatches;	// put the latest stream at the head of the linked list since it needs to get accessed every CCD pass
@@ -1919,12 +2008,12 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 #if 1
 						ThresholdStreamElement elt;
 						elt.normalForce = p.mAppliedForce;
-						elt.accumulatedForce = 0.f;
+						elt.accumulatedForce = 0.0f;
 						elt.threshold = PxMin<float>(p.mBa0 == NULL ? PX_MAX_REAL : p.mBa0->mCore->contactReportThreshold, p.mBa1 == NULL ? PX_MAX_REAL : 
 							p.mBa1->mCore->contactReportThreshold);
 						elt.nodeIndexA = p.mCCDShape0->mNodeIndex;
 						elt.nodeIndexB =p.mCCDShape1->mNodeIndex;
-						Ps::order(elt.nodeIndexA,elt.nodeIndexB);
+						PxOrder(elt.nodeIndexA,elt.nodeIndexB);
 						PX_ASSERT(elt.nodeIndexA.index() < elt.nodeIndexB.index());
 						mThresholdStream.pushBack(elt);
 #endif
@@ -1966,7 +2055,7 @@ Cm::SpatialVector PxsRigidBody::getPreSolverVelocities() const
 {
 	if (mCCD)
 		return mCCD->mPreSolverVelocity;
-	return Cm::SpatialVector(PxVec3(0.f), PxVec3(0.f));
+	return Cm::SpatialVector(PxVec3(0.0f), PxVec3(0.0f));
 }
 
 /*PxTransform PxsRigidBody::getAdvancedTransform(PxReal toi) const
@@ -1988,13 +2077,13 @@ void PxsRigidBody::advancePrevPoseToToi(PxReal toi)
 		return;
 
 	//update latest pose
-	PxVec3 newLastP = mLastTransform.p*(1.0f-toi) + mCore->body2World.p*toi; // advance mLastTransform position to toi
+	const PxVec3 newLastP = mLastTransform.p*(1.0f-toi) + mCore->body2World.p*toi; // advance mLastTransform position to toi
 	mLastTransform.p = newLastP;
 #if CCD_ROTATION_LOCKING
 	mCore->body2World.q = getLastCCDTransform().q;
 #else
 	// slerp from last transform to current transform with ratio of toi
-	PxQuat newLastQ = slerp(toi, getLastCCDTransform().q, mCore->body2World.q); // advance mLastTransform rotation to toi
+	const PxQuat newLastQ = PxSlerp(toi, getLastCCDTransform().q, mCore->body2World.q); // advance mLastTransform rotation to toi
 	mLastTransform.q = newLastQ;
 #endif
 }
@@ -2017,10 +2106,10 @@ void PxsRigidBody::advanceToToi(PxReal toi, PxReal dt, bool clip)
 		// advance new CCD target after impact to remaining toi using post-impact velocities
 		mCore->body2World.p = getLastCCDTransform().p + getLinearVelocity() * dt * (1.0f - toi);
 #if !CCD_ROTATION_LOCKING
-		PxVec3 angularDelta = getAngularVelocity() * dt * (1.0f - toi);
-		PxReal deltaMag = angularDelta.magnitude();
-		PxVec3 deltaAng = deltaMag > 1e-20f ? angularDelta / deltaMag : PxVec3(1.0f, 0.0f, 0.0f);
-		PxQuat angularQuat(deltaMag, deltaAng);
+		const PxVec3 angularDelta = getAngularVelocity() * dt * (1.0f - toi);
+		const PxReal deltaMag = angularDelta.magnitude();
+		const PxVec3 deltaAng = deltaMag > 1e-20f ? angularDelta / deltaMag : PxVec3(1.0f, 0.0f, 0.0f);
+		const PxQuat angularQuat(deltaMag, deltaAng);
 		mCore->body2World.q = getLastCCDTransform().q * angularQuat;
 #endif
 		PX_ASSERT(mCore->body2World.isSane());
@@ -2067,8 +2156,4 @@ void PxsCCDContext::runCCDModifiableContact(PxModifiableContact* PX_RESTRICT con
 		mCCDContactModifyCallback->onCCDContactModify(&p, 1);
 	}
 }
-
-
-} //namespace physx
-
 

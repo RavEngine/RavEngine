@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NX_BOX_GEOMETRY
-#define PX_PHYSICS_NX_BOX_GEOMETRY
+#ifndef PX_BOX_GEOMETRY_H
+#define PX_BOX_GEOMETRY_H
 /** \addtogroup geomutils
 @{
 */
@@ -51,23 +49,34 @@ class PxBoxGeometry : public PxGeometry
 {
 public:
 	/**
-	\brief Default constructor, initializes to a box with zero dimensions.
-	*/
-	PX_INLINE PxBoxGeometry() :									PxGeometry(PxGeometryType::eBOX), halfExtents(0,0,0)		{}
-	
-	/**
 	\brief Constructor to initialize half extents from scalar parameters.
 	\param hx Initial half extents' x component.
 	\param hy Initial half extents' y component.
 	\param hz Initial half extents' z component.
 	*/
-	PX_INLINE PxBoxGeometry(PxReal hx, PxReal hy, PxReal hz) :	PxGeometry(PxGeometryType::eBOX), halfExtents(hx, hy, hz)	{}
+	PX_INLINE PxBoxGeometry(PxReal hx=0.0f, PxReal hy=0.0f, PxReal hz=0.0f) : PxGeometry(PxGeometryType::eBOX), halfExtents(hx, hy, hz)	{}
 
 	/**
 	\brief Constructor to initialize half extents from vector parameter.
 	\param halfExtents_ Initial half extents.
 	*/
-	PX_INLINE PxBoxGeometry(PxVec3 halfExtents_) :				PxGeometry(PxGeometryType::eBOX), halfExtents(halfExtents_)	{}
+	PX_INLINE PxBoxGeometry(PxVec3 halfExtents_) : PxGeometry(PxGeometryType::eBOX), halfExtents(halfExtents_)	{}
+
+	/**
+	\brief Copy constructor.
+
+	\param[in] that		Other object
+	*/
+	PX_INLINE PxBoxGeometry(const PxBoxGeometry& that) : PxGeometry(that), halfExtents(that.halfExtents)		{}
+
+	/**
+	\brief Assignment operator
+	*/
+	PX_INLINE void operator=(const PxBoxGeometry& that)
+	{
+		mType = that.mType;
+		halfExtents = that.halfExtents;
+	}
 
 	/**
 	\brief Returns true if the geometry is valid.
@@ -88,14 +97,13 @@ public:
 	PxVec3 halfExtents;
 };
 
-
 PX_INLINE bool PxBoxGeometry::isValid() const
 {
-	if (mType != PxGeometryType::eBOX)
+	if(mType != PxGeometryType::eBOX)
 		return false;
-	if (!halfExtents.isFinite())
+	if(!halfExtents.isFinite())
 		return false;
-	if (halfExtents.x <= 0.0f || halfExtents.y <= 0.0f || halfExtents.z <= 0.0f)
+	if(halfExtents.x <= 0.0f || halfExtents.y <= 0.0f || halfExtents.z <= 0.0f)
 		return false;
 
 	return true;

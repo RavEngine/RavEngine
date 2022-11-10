@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "GuGeometryUnion.h"
 #include "GuPCMTriangleContactGen.h"
 #include "GuPCMContactConvexCommon.h"
 #include "GuVecTriangle.h"
 #include "GuBarycentricCoordinates.h"
 #include "GuConvexEdgeFlags.h"
+#include "foundation/PxAlloca.h"
 
 #if	PCM_LOW_LEVEL_DEBUG
 #include "common/PxRenderBuffer.h"
@@ -43,7 +42,7 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace Ps::aos;
+using namespace aos;
 
 namespace physx
 {
@@ -253,12 +252,20 @@ namespace physx
 						if (BAllEqTTTT(con))
 							return false;
 
-						const FloatV tempOverlap = FSub(max0, min1);
+						const FloatV tempOverlap0 = FSub(max0, min1);
+						const FloatV tempOverlap1 = FSub(max1, min0);
 
-						if (FAllGrtr(overlap, tempOverlap))
+						if (FAllGrtr(overlap, tempOverlap0))
 						{
-							overlap = tempOverlap;
+							overlap = tempOverlap0;
 							minNormal = n0;
+							status = edgeStatus;
+						}
+
+						if (FAllGrtr(overlap, tempOverlap1))
+						{
+							overlap = tempOverlap1;
+							minNormal = V3Neg(n0);
 							status = edgeStatus;
 						}
 
@@ -620,11 +627,11 @@ namespace physx
 
 
 	static void generatedTriangleContacts(const Gu::TriangleV& triangle, const PxU32 triangleIndex, const PxU8/* _triFlags*/, const Gu::PolygonalData& polyData1, const Gu::HullPolygonData& incidentPolygon,  Gu::SupportLocal* map1, Gu::MeshPersistentContact* manifoldContacts, PxU32& numManifoldContacts, 
-		const Ps::aos::FloatVArg contactDist, const Ps::aos::Vec3VArg contactNormal, Cm::RenderOutput* renderOutput)
+		const aos::FloatVArg contactDist, const aos::Vec3VArg contactNormal, PxRenderOutput* renderOutput)
 	{
 
 		PX_UNUSED(renderOutput);
-		using namespace Ps::aos;
+		using namespace aos;
 
 		//PxU8 triFlags = _triFlags;
 		const PxU32 previousContacts = numManifoldContacts;
@@ -712,7 +719,7 @@ namespace physx
 					if (numContacts >= GU_MESH_CONTACT_REDUCTION_THRESHOLD)
 					{
 						//a polygon has more than GU_MESH_CONTACT_REDUCTION_THRESHOLD(16) contacts with this triangle, we will reduce
-						//the contacts to GU_SINGLE_MANIFOLD_SINGLE_POLYGONE_CACHE_SIZE(4) points
+						//the contacts to GU_SINGLE_MANIFOLD_SINGLE_POLYGONE_CACHE_SIZE(6) points
 						Gu::SinglePersistentContactManifold::reduceContacts(&manifoldContacts[previousContacts], numContacts);
 						numManifoldContacts = previousContacts + GU_SINGLE_MANIFOLD_SINGLE_POLYGONE_CACHE_SIZE;
 					}
@@ -851,13 +858,13 @@ namespace physx
 
 
 	static void generatedPolyContacts(const Gu::PolygonalData& polyData0, const Gu::HullPolygonData& referencePolygon, const Gu::TriangleV& triangle, const PxU32 triangleIndex, const PxU8 triFlags, 
-		Gu::SupportLocal* map0, Gu::MeshPersistentContact* manifoldContacts, PxU32& numManifoldContacts, const Ps::aos::FloatVArg contactDist, const Ps::aos::Vec3VArg contactNormal, 
-		Cm::RenderOutput* renderOutput)
+		Gu::SupportLocal* map0, Gu::MeshPersistentContact* manifoldContacts, PxU32& numManifoldContacts, const aos::FloatVArg contactDist, const aos::Vec3VArg contactNormal, 
+		PxRenderOutput* renderOutput)
 	{
 		PX_UNUSED(triFlags);
 		PX_UNUSED(renderOutput);
 
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const FloatV zero = FZero();
 
@@ -1098,10 +1105,10 @@ namespace physx
 
 
 	bool Gu::PCMConvexVsMeshContactGeneration::generateTriangleFullContactManifold(Gu::TriangleV& localTriangle, const PxU32 triangleIndex, const PxU32* triIndices, const PxU8 triFlags, const Gu::PolygonalData& polyData,  Gu::SupportLocalImpl<Gu::TriangleV>* localTriMap, Gu::SupportLocal* polyMap, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts,
-		const Ps::aos::FloatVArg contactDist, Ps::aos::Vec3V& patchNormal)
+		const aos::FloatVArg contactDist, aos::Vec3V& patchNormal)
 	{
 	
-		using namespace Ps::aos;
+		using namespace aos;
 
 		{
 				
@@ -1123,16 +1130,23 @@ namespace physx
 			if (!testPolyEdgeNormal(localTriangle, triFlags, polyData, localTriMap, polyMap, contactDist, minOverlap, minNormal, EDGE, status))
 				return false;
 
-
 			const Vec3V triNormal = localTriangle.normal();
 
 			if(status == POLYDATA0)
 			{
 				//minNormal is the triangle normal and it is in the local space of polydata0
-				const Gu::HullPolygonData& referencePolygon = polyData.mPolygons[getPolygonIndex(polyData, polyMap, minNormal)];
+
+				PxI32 index2;
+				PxI32 polyIndex = getPolygonIndex(polyData, polyMap, minNormal, index2);
+				const Gu::HullPolygonData& referencePolygon = polyData.mPolygons[polyIndex];
 
 				patchNormal = triNormal;
 				generatedTriangleContacts(localTriangle, triangleIndex, triFlags, polyData, referencePolygon, polyMap, manifoldContacts, numContacts, contactDist, triNormal, mRenderOutput);
+
+				if (index2 != -1)
+				{
+					generatedTriangleContacts(localTriangle, triangleIndex, triFlags, polyData, polyData.mPolygons[index2], polyMap, manifoldContacts, numContacts, contactDist, triNormal, mRenderOutput);
+				}
 			
 			}
 			else
@@ -1160,13 +1174,14 @@ namespace physx
 						{
 							const PxU32 nb = sizeof(PCMDeferredPolyData) / sizeof(PxU32);
 							PxU32 newSize = nb + mDeferredContacts->size();
-							mDeferredContacts->reserve(newSize);
+							if(mDeferredContacts->capacity() < newSize)
+								mDeferredContacts->reserve((newSize+1)*2);
 							PCMDeferredPolyData* PX_RESTRICT data = reinterpret_cast<PCMDeferredPolyData*>(mDeferredContacts->end());
 							mDeferredContacts->forceSize_Unsafe(newSize);
 
 							data->mTriangleIndex = triangleIndex;
 							data->mFeatureIndex = feature1;
-							data->triFlags = triFlags;
+							data->triFlags32 = PxU32(triFlags);
 							data->mInds[0] = triIndices[0];
 							data->mInds[1] = triIndices[1];
 							data->mInds[2] = triIndices[2];
@@ -1179,7 +1194,8 @@ namespace physx
 				}
 				else
 				{
-					feature1 = PxU32(getPolygonIndex(polyData, polyMap, minNormal));
+					PxI32 index2;
+					feature1 = PxU32(getPolygonIndex(polyData, polyMap, minNormal, index2));
 					const Gu::HullPolygonData* referencePolygon = &polyData.mPolygons[feature1];
 			
 					const Vec3V contactNormal = V3Normalize(M33TrnspsMulV3(polyMap->shape2Vertex, V3LoadU(referencePolygon->mPlane.n)));
@@ -1188,7 +1204,6 @@ namespace physx
 					//if the minimum sperating axis is edge case, we don't defer it because it is an activeEdge
 					patchNormal = nContactNormal;
 					generatedPolyContacts(polyData, *referencePolygon, localTriangle, triangleIndex, triFlags, polyMap, manifoldContacts, numContacts, contactDist, contactNormal, mRenderOutput);
-
 				}
 			}
 		}
@@ -1198,10 +1213,10 @@ namespace physx
 
 
 	bool Gu::PCMConvexVsMeshContactGeneration::generateTriangleFullContactManifold(Gu::TriangleV& localTriangle,  const PxU32 triangleIndex, const PxU8 triFlags, const Gu::PolygonalData& polyData,  Gu::SupportLocalImpl<Gu::TriangleV>* localTriMap, Gu::SupportLocal* polyMap, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts,
-		const Ps::aos::FloatVArg contactDist, Ps::aos::Vec3V& patchNormal, Cm::RenderOutput* renderOutput)
+		const aos::FloatVArg contactDist, aos::Vec3V& patchNormal, PxRenderOutput* renderOutput)
 	{
 	
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const FloatV threshold = FLoad(0.7071f);//about 45 degree
 		PX_UNUSED(threshold);
@@ -1234,10 +1249,10 @@ namespace physx
 		return true;
 	}
 
-	bool Gu::PCMConvexVsMeshContactGeneration::generatePolyDataContactManifold(Gu::TriangleV& localTriangle, const PxU32 featureIndex,  const PxU32 triangleIndex, const PxU8 triFlags, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts, const Ps::aos::FloatVArg contactDist, Ps::aos::Vec3V& patchNormal)
+	bool Gu::PCMConvexVsMeshContactGeneration::generatePolyDataContactManifold(Gu::TriangleV& localTriangle, const PxU32 featureIndex,  const PxU32 triangleIndex, const PxU8 triFlags, Gu::MeshPersistentContact* manifoldContacts, PxU32& numContacts, const aos::FloatVArg contactDist, aos::Vec3V& patchNormal)
 	{
 	
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const Gu::HullPolygonData* referencePolygon = &mPolyData.mPolygons[featureIndex];
 		

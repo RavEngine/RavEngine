@@ -10,7 +10,6 @@
 #include "App.hpp"
 #include "PhysXDefines.h"
 #include "Entity.hpp"
-#include <PxPhysicsVersion.h>
 #include <snippetcommon/SnippetPVD.h>
 #include <extensions/PxDefaultSimulationFilterShader.h>
 #define PX_RELEASE(x)    if(x)    { x->release(); x = NULL;    }

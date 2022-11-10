@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef SC_SHAPE_CORE_H
+#define SC_SHAPE_CORE_H
 
-#ifndef PX_PHYSICS_SCP_SHAPECORE
-#define PX_PHYSICS_SCP_SHAPECORE
-
-#include "PsUserAllocated.h"
-#include "GuGeometryUnion.h"
+#include "foundation/PxUtilities.h"
 #include "PxvGeometry.h"
-#include "PsUtilities.h"
 #include "PxFiltering.h"
 #include "PxShape.h"
 
@@ -44,13 +40,9 @@ class PxShape;
 
 namespace Sc
 {
-	class Scene;
-	class RigidCore;
-	class BodyCore;
 	class ShapeSim;
-	class MaterialCore;
 
-	class ShapeCore : public Ps::UserAllocated
+	class ShapeCore
 	{
 	//= ATTENTION! =====================================================================================
 	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -65,69 +57,82 @@ namespace Sc
 						void						importExtraData(PxDeserializationContext& context);
 						void						resolveReferences(PxDeserializationContext& context);
 		static			void						getBinaryMetaData(PxOutputStream& stream);
-						void						resolveMaterialReference(PxU32 materialTableIndex, PxU16 materialIndex);
+		                void                        resolveMaterialReference(PxU32 materialTableIndex, PxU16 materialIndex);
 //~PX_SERIALIZATION
-
-													ShapeCore(const PxGeometry& geometry, 
-															  PxShapeFlags shapeFlags,
-															  const PxU16* materialIndices, 
-															  PxU16 materialCount);
+													ShapeCore(const PxGeometry& geometry, PxShapeFlags shapeFlags,
+															  const PxU16* materialIndices, PxU16 materialCount, bool isExclusive,
+														PxShapeCoreFlag::Enum softOrClothFlags = PxShapeCoreFlag::Enum(0));
 
 													~ShapeCore();
 
-		PX_FORCE_INLINE	PxGeometryType::Enum		getGeometryType()							const	{ return mCore.geometry.getType();			}
+		PX_FORCE_INLINE	PxGeometryType::Enum		getGeometryType()							const	{ return mCore.mGeometry.getType();			}
 						PxShape*					getPxShape();
 						const PxShape*				getPxShape()								const;
 
-		PX_FORCE_INLINE	const Gu::GeometryUnion&	getGeometryUnion()							const	{ return mCore.geometry;					}
-		PX_FORCE_INLINE	const PxGeometry&			getGeometry()								const	{ return mCore.geometry.getGeometry();		}
+		PX_FORCE_INLINE	const GeometryUnion&		getGeometryUnion()							const	{ return mCore.mGeometry;					}
+		PX_FORCE_INLINE	const PxGeometry&			getGeometry()								const	{ return mCore.mGeometry.getGeometry();		}
 						void						setGeometry(const PxGeometry& geom);
 
 						PxU16						getNbMaterialIndices()						const;
 						const PxU16*				getMaterialIndices()						const;
 						void						setMaterialIndices(const PxU16* materialIndices, PxU16 materialIndexCount);
 
-		PX_FORCE_INLINE	const PxTransform&			getShape2Actor()							const	{ return mCore.transform;					}
-		PX_FORCE_INLINE	void						setShape2Actor(const PxTransform& s2b)				{ mCore.transform = s2b;					}
+		PX_FORCE_INLINE	const PxTransform&			getShape2Actor()							const	{ return mCore.getTransform();				}
+		PX_FORCE_INLINE	void						setShape2Actor(const PxTransform& s2b)				{ mCore.setTransform(s2b);					}
 		
 		PX_FORCE_INLINE	const PxFilterData&			getSimulationFilterData()					const	{ return mSimulationFilterData;				}
 		PX_FORCE_INLINE	void						setSimulationFilterData(const PxFilterData& data)	{ mSimulationFilterData = data;				}
 
-		// PT: this one doesn't need double buffering
-		PX_FORCE_INLINE	const PxFilterData&			getQueryFilterData()						const	{ return mQueryFilterData;					}
-		PX_FORCE_INLINE	void						setQueryFilterData(const PxFilterData& data)		{ mQueryFilterData = data;					}
+		PX_FORCE_INLINE	PxReal						getContactOffset()							const	{ return mCore.mContactOffset;				}
+						void						setContactOffset(PxReal offset);
 
-		PX_FORCE_INLINE	PxReal						getContactOffset()							const	{ return mCore.contactOffset;				}
-		PX_FORCE_INLINE	void						setContactOffset(PxReal offset)						{ mCore.contactOffset = offset;				}
+		PX_FORCE_INLINE	PxReal						getRestOffset()								const	{ return mCore.mRestOffset;					}
+		PX_FORCE_INLINE	void						setRestOffset(PxReal offset)						{ mCore.mRestOffset = offset;				}
 
-		PX_FORCE_INLINE	PxReal						getRestOffset()								const	{ return mRestOffset;						}
-		PX_FORCE_INLINE	void						setRestOffset(PxReal offset)						{ mRestOffset = offset;						}
+		PX_FORCE_INLINE	PxReal						getDensityForFluid()						const	{ return mCore.getDensityForFluid();		}
+		PX_FORCE_INLINE	void						setDensityForFluid(PxReal densityForFluid)			{ mCore.setDensityForFluid(densityForFluid); }
 
-		PX_FORCE_INLINE	PxReal						getTorsionalPatchRadius()					const	{ return mTorsionalRadius;					}
-		PX_FORCE_INLINE	void						setTorsionalPatchRadius(PxReal tpr)					{ mTorsionalRadius = tpr;					}
+		PX_FORCE_INLINE	PxReal						getTorsionalPatchRadius()					const	{ return mCore.mTorsionalRadius;			}
+		PX_FORCE_INLINE	void						setTorsionalPatchRadius(PxReal tpr)					{ mCore.mTorsionalRadius = tpr;				}
 
-		PX_FORCE_INLINE PxReal						getMinTorsionalPatchRadius()				const	{return mMinTorsionalPatchRadius;			}
-		PX_FORCE_INLINE	void						setMinTorsionalPatchRadius(PxReal radius)			{ mMinTorsionalPatchRadius = radius;		}
+		PX_FORCE_INLINE PxReal						getMinTorsionalPatchRadius()				const	{return mCore.mMinTorsionalPatchRadius;		}
+		PX_FORCE_INLINE	void						setMinTorsionalPatchRadius(PxReal radius)			{ mCore.mMinTorsionalPatchRadius = radius;	}
 
 		PX_FORCE_INLINE	PxShapeFlags				getFlags()									const	{ return PxShapeFlags(mCore.mShapeFlags);	}
 		PX_FORCE_INLINE	void						setFlags(PxShapeFlags f)							{ mCore.mShapeFlags = f;					}
 
-		static PX_FORCE_INLINE size_t				getCoreOffset()										{ return PX_OFFSET_OF(ShapeCore, mCore);	}
-
 		PX_FORCE_INLINE const PxsShapeCore&			getCore()									const	{ return mCore;								}
+		static PX_FORCE_INLINE size_t				getCoreOffset()										{ return PX_OFFSET_OF(ShapeCore, mCore);	}
+		static PX_FORCE_INLINE ShapeCore&			getCore(PxsShapeCore& core)			
+		{ 
+			return *reinterpret_cast<ShapeCore*>(reinterpret_cast<PxU8*>(&core) - getCoreOffset());
+		}	
 
-		static PX_FORCE_INLINE ShapeCore&			getCore(PxsShapeCore& core)
+		PX_FORCE_INLINE ShapeSim*					getSim() const			
 		{
-			return *reinterpret_cast<ShapeCore*>(reinterpret_cast<PxU8*>(&core) - getCoreOffset()); 
+			return reinterpret_cast<ShapeSim*>(size_t(mSimAndIsExclusive) & ~1);
+		}
+		PX_FORCE_INLINE void						setSim(ShapeSim* sim)	
+		{ 
+			PX_ASSERT((NULL == mSimAndIsExclusive) || (1 == size_t(mSimAndIsExclusive)));
+			PX_ASSERT(0 == (size_t(sim) & 1));
+			mSimAndIsExclusive = mSimAndIsExclusive ? reinterpret_cast<ShapeSim*>(size_t(sim) | size_t(mSimAndIsExclusive)) : mSimAndIsExclusive;
+		}
+		PX_FORCE_INLINE void						clearSim()
+		{
+			mSimAndIsExclusive = reinterpret_cast<ShapeSim*>(size_t(mSimAndIsExclusive) & 1);
 		}
 
+#if PX_WINDOWS_FAMILY	// PT: to avoid "error: offset of on non-standard-layout type" on Linux
 	protected:
-						PxFilterData				mQueryFilterData;		// Query filter data PT: TODO: consider moving this to SceneQueryShapeData
+#endif
 						PxFilterData				mSimulationFilterData;	// Simulation filter data
 						PxsShapeCore				PX_ALIGN(16, mCore);	
-						PxReal						mRestOffset;			// same as the API property of the same name
-						PxReal						mTorsionalRadius;
-						PxReal						mMinTorsionalPatchRadius;
+						ShapeSim*					mSimAndIsExclusive;
+#if PX_WINDOWS_FAMILY	// PT: to avoid "error: offset of on non-standard-layout type" on Linux
+	public:
+#endif
+						const char*					mName;		// PT: moved here from NpShape to fill padding bytes
 	};
 
 } // namespace Sc

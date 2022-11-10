@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -52,6 +51,14 @@ PxJoint_Name,
 PxJoint_Scene,
 PxJoint_UserData,
 PxJoint_PropertiesStop,
+PxRackAndPinionJoint_PropertiesStart,
+PxRackAndPinionJoint_Ratio,
+PxRackAndPinionJoint_ConcreteTypeName,
+PxRackAndPinionJoint_PropertiesStop,
+PxGearJoint_PropertiesStart,
+PxGearJoint_GearRatio,
+PxGearJoint_ConcreteTypeName,
+PxGearJoint_PropertiesStop,
 PxD6Joint_PropertiesStart,
 PxD6Joint_Motion,
 PxD6Joint_TwistAngle,
@@ -76,6 +83,7 @@ PxDistanceJoint_MaxDistance,
 PxDistanceJoint_Tolerance,
 PxDistanceJoint_Stiffness,
 PxDistanceJoint_Damping,
+PxDistanceJoint_ContactDistance,
 PxDistanceJoint_DistanceJointFlags,
 PxDistanceJoint_ConcreteTypeName,
 PxDistanceJoint_PropertiesStop,
@@ -83,7 +91,7 @@ PxContactJoint_PropertiesStart,
 PxContactJoint_Contact,
 PxContactJoint_ContactNormal,
 PxContactJoint_Penetration,
-PxContactJoint_Resititution,
+PxContactJoint_Restitution,
 PxContactJoint_BounceThreshold,
 PxContactJoint_ConcreteTypeName,
 PxContactJoint_PropertiesStop,
@@ -126,7 +134,7 @@ PxJointLimitParameters_Restitution,
 PxJointLimitParameters_BounceThreshold,
 PxJointLimitParameters_Stiffness,
 PxJointLimitParameters_Damping,
-PxJointLimitParameters_ContactDistance,
+PxJointLimitParameters_ContactDistance_deprecated,
 PxJointLimitParameters_PropertiesStop,
 PxJointLinearLimit_PropertiesStart,
 PxJointLinearLimit_Value,

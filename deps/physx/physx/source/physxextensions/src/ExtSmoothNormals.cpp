@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #include "foundation/PxMemory.h"
 #include "extensions/PxSmoothNormals.h"
 
-#include "PsMathUtils.h"
-#include "PsUserAllocated.h"
-#include "PsUtilities.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxMathUtils.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxUtilities.h"
 
 using namespace physx;
 
@@ -63,7 +60,7 @@ static PxReal computeAngle(const PxVec3* verts, const PxU32* refs, PxU32 vref)
 	const PxVec3 edge0 = verts[refs[e0]] - verts[vref];
 	const PxVec3 edge1 = verts[refs[e2]] - verts[vref];
 
-	return Ps::angle(edge0, edge1);
+	return PxComputeAngle(edge0, edge1);
 }
 
 bool PxBuildSmoothNormals(PxU32 nbTris, PxU32 nbVerts, const PxVec3* verts, const PxU32* dFaces, const PxU16* wFaces, PxVec3* normals, bool flip)
@@ -74,7 +71,7 @@ bool PxBuildSmoothNormals(PxU32 nbTris, PxU32 nbVerts, const PxVec3* verts, cons
 	// Get correct destination buffers
 	// - if available, write directly to user-provided buffers
 	// - else get some ram and keep track of it
-	PxVec3* FNormals = reinterpret_cast<PxVec3*>(PX_ALLOC_TEMP(sizeof(PxVec3)*nbTris, "PxVec3"));
+	PxVec3* FNormals = PX_ALLOCATE(PxVec3, nbTris, "PxVec3");
 	if(!FNormals) return false;
 
 	// Compute face normals
@@ -100,7 +97,7 @@ bool PxBuildSmoothNormals(PxU32 nbTris, PxU32 nbVerts, const PxVec3* verts, cons
 	PxMemSet(normals, 0, nbVerts*sizeof(PxVec3));
 
 	// TTP 3751
-	PxVec3* TmpNormals = reinterpret_cast<PxVec3*>(PX_ALLOC_TEMP(sizeof(PxVec3)*nbVerts, "PxVec3"));
+	PxVec3* TmpNormals = PX_ALLOCATE(PxVec3, nbVerts, "PxVec3");
 	PxMemSet(TmpNormals, 0, nbVerts*sizeof(PxVec3));
 	for(PxU32 i=0;i<nbTris;i++)
 	{
@@ -138,8 +135,8 @@ bool PxBuildSmoothNormals(PxU32 nbTris, PxU32 nbVerts, const PxVec3* verts, cons
 		normals[i].normalize();
 	}
 
-	PX_FREE_AND_RESET(TmpNormals);	// TTP 3751
-	PX_FREE_AND_RESET(FNormals);
+	PX_FREE(TmpNormals);	// TTP 3751
+	PX_FREE(FNormals);
 
 	return true;
 }

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -74,7 +73,7 @@ namespace physx {
 		PxRepXPropertyAccessor& operator=(const PxRepXPropertyAccessor&);
 	};
 
-	typedef PxReadOnlyPropertyInfo<PxPropertyInfoName::PxArticulationLink_InboundJoint, PxArticulationLink, PxArticulationJointBase *> TIncomingJointPropType;
+	typedef PxReadOnlyPropertyInfo<PxPropertyInfoName::PxArticulationLink_InboundJoint, PxArticulationLink, PxArticulationJointReducedCoordinate *> TIncomingJointPropType;
 
 
 	//RepX cares about fewer property types than PVD does,
@@ -150,10 +149,10 @@ namespace physx {
 			mFilter.mOperator.popName();
 		}
 
-		void operator()( const PxRigidActorGlobalPosePropertyInfo& inProp, PxU32 ) 
+		void operator()(const PxRigidActorGlobalPosePropertyInfo& inProp, PxU32)
 		{
-			mFilter.mOperator.pushName( inProp.mName );
-			mFilter.mOperator.handleRigidActorGlobalPose( inProp );
+			mFilter.mOperator.pushName(inProp.mName);
+			mFilter.mOperator.handleRigidActorGlobalPose(inProp);
 			mFilter.mOperator.popName();
 		}
 
@@ -183,9 +182,9 @@ namespace physx {
 			mFilter.mOperator.handleIncomingJoint( inProp );
 		}
         
-        void operator()( const PxShapeGeometryProperty& inProp, PxU32 )
+        void operator()( const PxShapeGeomProperty& inProp, PxU32 )
 		{
-			mFilter.mOperator.handleGeometryProperty( inProp );
+			mFilter.mOperator.handleGeomProperty( inProp );
 		}
 		
 #define DEFINE_REPX_PROPERTY_NOP(datatype)																\
@@ -209,7 +208,6 @@ namespace physx {
 		DEFINE_REPX_PROPERTY_NOP( const PxRigidActor& )
 		DEFINE_REPX_PROPERTY_NOP( PxScene* )
 		DEFINE_REPX_PROPERTY_NOP( PxAggregate * )
-		DEFINE_REPX_PROPERTY_NOP( PxArticulation& )
 		DEFINE_REPX_PROPERTY_NOP( PxArticulationReducedCoordinate& )
 		DEFINE_REPX_PROPERTY_NOP( const PxArticulationLink * )
 		DEFINE_REPX_PROPERTY_NOP( const PxRigidDynamic * )

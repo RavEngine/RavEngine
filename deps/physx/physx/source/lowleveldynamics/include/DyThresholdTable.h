@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef DY_THRESHOLD_TABLE_H
+#define DY_THRESHOLD_TABLE_H
 
-#ifndef PXD_THRESHOLDTABLE_H
-#define PXD_THRESHOLDTABLE_H
-#include "Ps.h"
-#include "PsArray.h"
-#include "CmPhysXCommon.h"
-#include "PsAllocator.h"
-#include "PsHash.h"
+#include "foundation/PxPinnedArray.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxHash.h"
 #include "foundation/PxMemory.h"
-#include "PxsIslandNodeIndex.h"
+#include "PxNodeIndex.h"
 
 namespace physx
 {
@@ -53,31 +50,37 @@ namespace Dy
 
 struct ThresholdStreamElement
 {
-	Sc::ShapeInteraction*	shapeInteraction;			//4		8
-	PxReal					normalForce;				//8		12
-	PxReal					threshold;					//12	16
-	IG::NodeIndex			nodeIndexA; //this is the unique node index in island gen which corresonding to that body and it is persistent	16	20
-	IG::NodeIndex			nodeIndexB; //This is the unique node index in island gen which corresonding to that body and it is persistent	20	24
-	PxReal					accumulatedForce;			//24	28
-	PxU32					pad;						//28	32
-
-#if !PX_P64_FAMILY
-	PxU32					pad1;						//32
-#endif // !PX_X64
+	Sc::ShapeInteraction*	shapeInteraction;			//4/8	4/8
+	PxReal					normalForce;				//4		8/12
+	PxReal					threshold;					//4		12/16
+	PxNodeIndex				nodeIndexA;					//8		24 This is the unique node index in island gen which corresonding to that body and it is persistent	16	20
+	PxNodeIndex				nodeIndexB;					//8		32 This is the unique node index in island gen which corresonding to that body and it is persistent	20	24
+	PxReal					accumulatedForce;			//4		36
+	PxU32					pad;						//4		40
 
 	PX_CUDA_CALLABLE bool operator <= (const ThresholdStreamElement& otherPair) const
 	{
 		return ((nodeIndexA < otherPair.nodeIndexA) ||(nodeIndexA == otherPair.nodeIndexA && nodeIndexB <= otherPair.nodeIndexB));
 	}
 
+	PX_CUDA_CALLABLE bool operator < (const ThresholdStreamElement& otherPair) const
+	{
+		return ((nodeIndexA < otherPair.nodeIndexA) || (nodeIndexA == otherPair.nodeIndexA && nodeIndexB < otherPair.nodeIndexB));
+	}
+
+	PX_CUDA_CALLABLE bool operator == (const ThresholdStreamElement& otherPair) const
+	{
+		return ((nodeIndexA == otherPair.nodeIndexA && nodeIndexB == otherPair.nodeIndexB));
+	}
+
 };
 
-typedef Ps::Array<ThresholdStreamElement, Ps::VirtualAllocator> ThresholdArray;
+typedef PxPinnedArray<ThresholdStreamElement> ThresholdArray;
 
-class ThresholdStream : public ThresholdArray
+class ThresholdStream : public ThresholdArray, public PxUserAllocated
 {
 public:
-	ThresholdStream(Ps::VirtualAllocatorCallback& allocatorCallback) : ThresholdArray(Ps::VirtualAllocator(&allocatorCallback))
+	ThresholdStream(PxVirtualAllocatorCallback& allocatorCallback) : ThresholdArray(PxVirtualAllocator(&allocatorCallback))
 	{
 	}
 
@@ -101,7 +104,7 @@ public:
 
 	~ThresholdTable()
 	{
-		if(mBuffer) PX_FREE(mBuffer);
+		PX_FREE(mBuffer);
 	}
 
 	void build(const ThresholdStream& stream);
@@ -116,28 +119,28 @@ public:
 
 	struct Pair 
 	{	
-		PxU32			thresholdStreamIndex;
-		PxReal			accumulatedForce;
-		//PxU32			next;		// hash key & next ptr
+		PxU32		thresholdStreamIndex;
+		PxReal		accumulatedForce;
+		//PxU32		next;		// hash key & next ptr
 	};
 
-	PxU8*					mBuffer;
+	PxU8*			mBuffer;
 
-	PxU32*					mHash;
-	PxU32					mHashSize;
-	PxU32					mHashCapactiy;
+	PxU32*			mHash;
+	PxU32			mHashSize;
+	PxU32			mHashCapactiy;
 
-	Pair*					mPairs;
-	PxU32*					mNexts;
-	PxU32					mPairsSize;
-	PxU32					mPairsCapacity;
+	Pair*			mPairs;
+	PxU32*			mNexts;
+	PxU32			mPairsSize;
+	PxU32			mPairsCapacity;
 };
 
 namespace
 {
 	static PX_FORCE_INLINE PxU32 computeHashKey(const PxU32 nodeIndexA, const PxU32 nodeIndexB, const PxU32 hashCapacity)
 	{
-		return (Ps::hash(PxU64(nodeIndexA)<<32 | PxU64(nodeIndexB)) % hashCapacity);
+		return (PxComputeHash(PxU64(nodeIndexA)<<32 | PxU64(nodeIndexB)) % hashCapacity);
 	}
 }
 
@@ -180,8 +183,7 @@ inline void ThresholdTable::build(const ThresholdStream& stream)
 		mPairsCapacity=0;
 		mHashSize=0;
 		mHashCapactiy=0;
-		if(mBuffer) PX_FREE(mBuffer);
-		mBuffer = NULL;
+		PX_FREE(mBuffer);
 		return;
 	}
 
@@ -190,7 +192,7 @@ inline void ThresholdTable::build(const ThresholdStream& stream)
 	const PxU32 hashCapacity = pairsCapacity*2+1;
 	if((pairsCapacity > mPairsCapacity) || (pairsCapacity < (mPairsCapacity >> 2)))
 	{
-		if(mBuffer) PX_FREE(mBuffer);
+		PX_FREE(mBuffer);
 		const PxU32 pairsByteSize = sizeof(Pair)*pairsCapacity;
 		const PxU32 nextsByteSize = sizeof(PxU32)*pairsCapacity;
 		const PxU32 hashByteSize = sizeof(PxU32)*hashCapacity;
@@ -227,8 +229,8 @@ inline void ThresholdTable::build(const ThresholdStream& stream)
 	for(PxU32 i = 0; i < pairsCapacity; i++)
 	{
 		const ThresholdStreamElement& element = stream[i];
-		const IG::NodeIndex nodeIndexA = element.nodeIndexA;
-		const IG::NodeIndex nodeIndexB = element.nodeIndexB;
+		const PxNodeIndex nodeIndexA = element.nodeIndexA;
+		const PxNodeIndex nodeIndexB = element.nodeIndexB;
 
 		const PxF32 force = element.normalForce;
 				
@@ -277,4 +279,4 @@ inline void ThresholdTable::build(const ThresholdStream& stream)
 
 }
 
-#endif //DY_THRESHOLDTABLE_H
+#endif

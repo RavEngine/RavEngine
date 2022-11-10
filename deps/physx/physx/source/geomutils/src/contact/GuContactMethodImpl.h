@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,22 +32,30 @@
 #include "foundation/PxAssert.h"
 #include "common/PxPhysXCommonConfig.h"
 #include "collision/PxCollisionDefs.h"
-#include "CmPhysXCommon.h"
+#include "GuGeometryChecks.h"
 
 namespace physx
 {
-namespace Cm
-{
-	class RenderOutput;
-}
+	class PxGeometry;
+	class PxRenderOutput;
+	class PxContactBuffer;
 
 namespace Gu
 {
-	class GeometryUnion;
-	class ContactBuffer;
-	struct NarrowPhaseParams;
 	class PersistentContactManifold;
 	class MultiplePersistentContactManifold;
+
+	struct NarrowPhaseParams
+	{
+		PX_FORCE_INLINE	NarrowPhaseParams(PxReal contactDistance, PxReal meshContactMargin, PxReal toleranceLength) :
+				mContactDistance(contactDistance),
+				mMeshContactMargin(meshContactMargin),
+				mToleranceLength(toleranceLength)	{}
+
+		PxReal	mContactDistance;
+		PxReal	mMeshContactMargin;	// PT: Margin used to generate mesh contacts. Temp & unclear, should be removed once GJK is default path.
+		PxReal	mToleranceLength;	// PT: copy of PxTolerancesScale::length
+	};
 
 	enum ManifoldFlags
 	{
@@ -104,15 +111,31 @@ namespace Gu
 	};
 }
 
+template<class Geom> PX_CUDA_CALLABLE PX_FORCE_INLINE const Geom& checkedCast(const PxGeometry& geom)
+{
+	checkType<Geom>(geom);
+	return static_cast<const Geom&>(geom);
+}
+
 #define GU_CONTACT_METHOD_ARGS				\
-	const Gu::GeometryUnion& shape0,		\
-	const Gu::GeometryUnion& shape1,		\
+	const PxGeometry& shape0,				\
+	const PxGeometry& shape1,				\
 	const PxTransform& transform0,			\
 	const PxTransform& transform1,			\
 	const Gu::NarrowPhaseParams& params,	\
 	Gu::Cache& cache,						\
-	Gu::ContactBuffer& contactBuffer,		\
-	Cm::RenderOutput* renderOutput
+	PxContactBuffer& contactBuffer,			\
+	PxRenderOutput* renderOutput
+
+#define GU_CONTACT_METHOD_ARGS_UNUSED	\
+	const PxGeometry&,					\
+	const PxGeometry&,					\
+	const PxTransform&,					\
+	const PxTransform&,					\
+	const Gu::NarrowPhaseParams&,		\
+	Gu::Cache&,							\
+	PxContactBuffer&,					\
+	PxRenderOutput*
 
 namespace Gu
 {
@@ -141,10 +164,14 @@ namespace Gu
 	PX_PHYSX_COMMON_API bool contactPlaneCapsule(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool contactPlaneConvex(GU_CONTACT_METHOD_ARGS);
 
+	PX_PHYSX_COMMON_API bool contactCustomGeometryGeometry(GU_CONTACT_METHOD_ARGS);
+	PX_PHYSX_COMMON_API bool contactGeometryCustomGeometry(GU_CONTACT_METHOD_ARGS);
+
 	PX_PHYSX_COMMON_API bool pcmContactSphereMesh(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactCapsuleMesh(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactBoxMesh(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactConvexMesh(GU_CONTACT_METHOD_ARGS);
+	
 	PX_PHYSX_COMMON_API bool pcmContactSphereHeightField(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactCapsuleHeightField(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactBoxHeightField(GU_CONTACT_METHOD_ARGS);
@@ -153,17 +180,21 @@ namespace Gu
 	PX_PHYSX_COMMON_API bool pcmContactPlaneCapsule(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactPlaneBox(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactPlaneConvex(GU_CONTACT_METHOD_ARGS);
+
 	PX_PHYSX_COMMON_API bool pcmContactSphereSphere(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactSpherePlane(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactSphereCapsule(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactSphereBox(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactSphereConvex(GU_CONTACT_METHOD_ARGS);
+	
 	PX_PHYSX_COMMON_API bool pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactCapsuleBox(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactCapsuleConvex(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactBoxBox(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactBoxConvex(GU_CONTACT_METHOD_ARGS);
 	PX_PHYSX_COMMON_API bool pcmContactConvexConvex(GU_CONTACT_METHOD_ARGS);
+
+	PX_PHYSX_COMMON_API bool pcmContactGeometryCustomGeometry(GU_CONTACT_METHOD_ARGS);
 }
 }
 

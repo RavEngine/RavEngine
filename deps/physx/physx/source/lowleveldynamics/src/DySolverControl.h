@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef DY_SOLVERCOREGENERAL_H
-#define DY_SOLVERCOREGENERAL_H
+#ifndef DY_SOLVER_CONTROL_H
+#define DY_SOLVER_CONTROL_H
 
 #include "DySolverCore.h"
 #include "DySolverConstraintDesc.h"
@@ -79,7 +77,7 @@ public:
 		PxU32 currentIndex = mCurrentIndex;
 		while((constraintIndex - constraintBatchHeaders[currentIndex].startIndex) >= constraintBatchHeaders[currentIndex].stride)
 			currentIndex = (currentIndex + 1)%mSize;
-		Ps::prefetchLine(&constraintBatchHeaders[currentIndex], 128);
+		PxPrefetchLine(&constraintBatchHeaders[currentIndex], 128);
 		mCurrentIndex = currentIndex;
 		return constraintBatchHeaders[currentIndex];
 	}
@@ -106,12 +104,12 @@ inline void SolveBlockParallel	(PxSolverConstraintDesc* PX_RESTRICT constraintLi
 		const PxI32 numToGrab = header.stride;
 		PxSolverConstraintDesc* PX_RESTRICT block = &constraintList[header.startIndex];
 
-		Ps::prefetch(block[0].constraint, 384);
+		PxPrefetch(block[0].constraint, 384);
 
 		for(PxI32 b = 0; b < numToGrab; ++b)
 		{
-			Ps::prefetchLine(block[b].bodyA);
-			Ps::prefetchLine(block[b].bodyB);
+			PxPrefetchLine(block[b].bodyA);
+			PxPrefetchLine(block[b].bodyB);
 		}
 
 		//OK. We have a number of constraints to run...
@@ -158,4 +156,4 @@ SolveWriteBackBlockMethod* getSolveWritebackBlockTable();
 
 }
 
-#endif //DY_SOLVERCOREGENERAL_H
+#endif

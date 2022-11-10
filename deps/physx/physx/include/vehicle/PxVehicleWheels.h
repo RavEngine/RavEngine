@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #ifndef PX_VEHICLE_WHEELS_H
 #define PX_VEHICLE_WHEELS_H
-/** \addtogroup vehicle
-  @{
-*/
 
 #include "foundation/PxSimpleTypes.h"
 #include "vehicle/PxVehicleShaders.h"
@@ -57,7 +52,7 @@ class PxMaterial;
 
 @see PxVehicleWheelsSimData::setFlags(), PxVehicleWheelsSimData::getFlags()
 */
-struct PxVehicleWheelsSimFlag
+struct PX_DEPRECATED PxVehicleWheelsSimFlag
 {
 	enum Enum
 	{
@@ -104,7 +99,17 @@ struct PxVehicleWheelsSimFlag
 		like GJK. Using this flag shortcuts these issues, which can improves the behavior when driving over kerbs or
 		small obstacles.
 		*/
-		eDISABLE_SUSPENSION_FORCE_PROJECTION = (1 << 2)
+		eDISABLE_SUSPENSION_FORCE_PROJECTION = (1 << 2),
+
+		/**
+		\brief Disable check for sprung mass values summing up to chassis mass.
+
+		Generally, the sum of the suspension sprung mass values should match the chassis mass. However, there can be
+		scenarios where this is not necessarily desired. Taking a semi-trailer truck as an example, a large part of
+		the trailer mass will rest on the tractor unit and not the trailer wheels. This flag allows the user to set
+		the values as desired without error messages being sent.
+		*/
+		eDISABLE_SPRUNG_MASS_SUM_CHECK = (1 << 3)
 	};
 };
 
@@ -120,7 +125,7 @@ PX_FLAGS_OPERATORS(PxVehicleWheelsSimFlag::Enum, PxU32)
 \brief Data structure describing configuration data of a vehicle with up to 20 wheels.
 */
 
-class PxVehicleWheelsSimData
+class PX_DEPRECATED PxVehicleWheelsSimData
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -616,10 +621,23 @@ public:
 };
 PX_COMPILE_TIME_ASSERT(0==(sizeof(PxVehicleWheelsSimData) & 15));
 
+
+/**
+\brief Description of the per wheel intersection method to be used by PxVehicleWheelsDynData::setTireContacts()
+*/
+struct PX_DEPRECATED PxTireContactIntersectionMethod
+{
+	enum Enum
+	{
+		eRAY = 0,
+		eCYLINDER
+	};
+};
+
 /**
 \brief Data structure with instanced dynamics data for wheels
 */
-class PxVehicleWheelsDynData
+class PX_DEPRECATED PxVehicleWheelsDynData
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -706,6 +724,24 @@ public:
 	*/
 	void copy(const PxVehicleWheelsDynData& src, const PxU32 srcWheel, const PxU32 trgWheel);
 
+	/**
+	\brief Directly set tire contact plane and friction for all tires on the vehicle as an alternative to using PxVehicleSuspensionSweeps() or PxVehicleSuspensionRaycasts().
+	\param[in] nbHits is an array describing whether each tire has a contact plane or not. Each element of the array is either 0 (no contact) or 1 (contact).
+	\param[in] contactPlanes is an array of contact planes describing the contact plane per tire.  
+	\param[in] contactFrictions is the friction value of each tire contact with the drivable surface.
+	\param[in] intersectionMethods describes how each tire will individually interact with its contact plane in order to compute the spring 
+	compression that places the tire on the contact plane. A value of eCYLINDER will compute the spring compression by intersecting the wheel's 
+	cylindrical shape with the contact plane. A value of eRAY will compute the spring compression by casting a ray through the wheel center
+	and along the suspension direction until it hits the contact plane. 
+	\param[in] nbWheels is the length of the arrays nbContacts, contactPlanes, contactFrictions and intersectionMethods.
+	\note Each contact plane (n, d) obeys the rule that all points P on the plane satisfy n.dot(P) + d = 0.0.
+	\note The contact planes specified by setTireContacts() will persist as driving surfaces until either the next call to setTireContacts() or the next call to 
+	\note The friction values are scaled by PxVehicleTireData::mFrictionVsSlipGraph before being applied to the tire.
+	\note The vehicle model assumes that the tire contacts are with static objects.
+	PxVehicleSuspensionSweeps() or PxVehicleSuspensionRaycasts().
+	*/
+	void setTireContacts(const PxU32* nbHits, const PxPlane* contactPlanes, const PxReal* contactFrictions, const PxTireContactIntersectionMethod::Enum* intersectionMethods, const PxU32 nbWheels);
+
 private:
 
     /**
@@ -787,7 +823,7 @@ PX_COMPILE_TIME_ASSERT(0==(sizeof(PxVehicleWheelsDynData) & 15));
 \brief Data structure with instanced dynamics data and configuration data of a vehicle with just wheels
 @see PxVehicleDrive, PxVehicleDrive4W, PxVehicleDriveTank
 */
-class PxVehicleWheels : public PxBase
+class PX_DEPRECATED PxVehicleWheels : public PxBase
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -818,15 +854,21 @@ public:
 	
 	/**
 	\brief Compute the rigid body velocity component along the forward vector of the rigid body transform.
+
+	\param[in] forwardAxis The axis denoting the local space forward direction of the vehicle.
+
 	@see PxVehicleSetBasisVectors
 	*/
-	PxReal computeForwardSpeed() const;
+	PxReal computeForwardSpeed(const PxVec3& forwardAxis = PxVehicleGetDefaultContext().forwardAxis) const;
 
 	/**
 	\brief Compute the rigid body velocity component along the right vector of the rigid body transform.
+
+	\param[in] sideAxis The axis denoting the local space side direction of the vehicle.
+
 	@see PxVehicleSetBasisVectors
 	*/
-	PxReal computeSidewaysSpeed() const;
+	PxReal computeSidewaysSpeed(const PxVec3& sideAxis = PxVehicleGetDefaultContext().sideAxis) const;
 
 	/**
 	\brief Data describing the setup of all the wheels/suspensions/tires.
@@ -901,7 +943,7 @@ protected:
 #if PX_P64_FAMILY
 	PxU8 mPad0[14];
 #else
-	PxU8 mPad0[14];
+	PxU8 mPad0[8];
 #endif
 
 //serialization
@@ -927,5 +969,4 @@ PX_COMPILE_TIME_ASSERT(0==(sizeof(PxVehicleWheels) & 15));
 } // namespace physx
 #endif
 
-/** @} */
-#endif //PX_VEHICLE_WHEELS_H
+#endif

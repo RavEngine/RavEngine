@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXFoundation common
@@ -36,128 +35,106 @@ SET(LL_SOURCE_DIR ${PHYSX_SOURCE_DIR}/foundation)
 include(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/PhysXFoundation.cmake)
 
 SET(PHYSXFOUNDATION_HEADERS
-	${PHYSX_ROOT_DIR}/include/PxFoundation.h
-)
-SOURCE_GROUP(include FILES ${PHYSXFOUNDATION_HEADERS})
-
-SET(PHYSXFOUNDATION_HEADERS_2
+	${PHYSX_ROOT_DIR}/include/foundation/PxFoundation.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxAssert.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxFoundationConfig.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxMathUtils.h
+	${PHYSX_ROOT_DIR}/include/foundation/Px.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxAlignedMalloc.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxAllocatorCallback.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxProfiler.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxAlloca.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxAllocator.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxArray.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxAtomic.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxBasicTemplates.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxBitMap.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxBitAndData.h	
+	${PHYSX_ROOT_DIR}/include/foundation/PxBitUtils.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxBounds3.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxBroadcast.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxErrorCallback.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxErrors.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxFlags.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxFPU.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxInlineAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxIntrinsics.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxHash.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxHashInternals.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxHashMap.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxHashSet.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxInlineAllocator.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxInlineArray.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxPinnedArray.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxMathIntrinsics.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxMutex.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxIO.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxMat33.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxMat34.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxMat44.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxMath.h	
+	${PHYSX_ROOT_DIR}/include/foundation/PxMemory.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxPlane.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxPool.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxPreprocessor.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxQuat.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxPhysicsVersion.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxSortInternals.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxSimpleTypes.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxSList.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxSocket.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxSort.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxStrideIterator.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxString.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxSync.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxTempAllocator.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxThread.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxTransform.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxTime.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxUnionCast.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxUserAllocated.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxUtilities.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVec2.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVec3.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVec4.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVecMath.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVecMathAoSScalar.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVecMathAoSScalarInline.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVecMathSSE.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVecQuat.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxVecTransform.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxSIMDHelpers.h
 )
-SOURCE_GROUP(include\\foundation FILES ${PHYSXFOUNDATION_HEADERS_2})
+SOURCE_GROUP(include FILES ${PHYSXFOUNDATION_HEADERS})
 
-
-SET(PXSHARED_HEADERS
-	${PXSHARED_PATH}/include/foundation/Px.h
-	${PXSHARED_PATH}/include/foundation/PxAllocatorCallback.h
-	${PXSHARED_PATH}/include/foundation/PxProfiler.h
-	${PXSHARED_PATH}/include/foundation/PxSharedAssert.h
-	${PXSHARED_PATH}/include/foundation/PxBitAndData.h
-	${PXSHARED_PATH}/include/foundation/PxBounds3.h
-	${PXSHARED_PATH}/include/foundation/PxErrorCallback.h
-	${PXSHARED_PATH}/include/foundation/PxErrors.h
-	${PXSHARED_PATH}/include/foundation/PxFlags.h
-	${PXSHARED_PATH}/include/foundation/PxIntrinsics.h
-	${PXSHARED_PATH}/include/foundation/PxIO.h
-	${PXSHARED_PATH}/include/foundation/PxMat33.h
-	${PXSHARED_PATH}/include/foundation/PxMat44.h
-	${PXSHARED_PATH}/include/foundation/PxMath.h	
-	${PXSHARED_PATH}/include/foundation/PxMemory.h
-	${PXSHARED_PATH}/include/foundation/PxPlane.h
-	${PXSHARED_PATH}/include/foundation/PxPreprocessor.h
-	${PXSHARED_PATH}/include/foundation/PxQuat.h
-	${PXSHARED_PATH}/include/foundation/PxSimpleTypes.h
-	${PXSHARED_PATH}/include/foundation/PxStrideIterator.h
-	${PXSHARED_PATH}/include/foundation/PxTransform.h
-	${PXSHARED_PATH}/include/foundation/PxUnionCast.h
-	${PXSHARED_PATH}/include/foundation/PxVec2.h
-	${PXSHARED_PATH}/include/foundation/PxVec3.h
-	${PXSHARED_PATH}/include/foundation/PxVec4.h
-)
-SOURCE_GROUP(shared\\include FILES ${PXSHARED_HEADERS})
 
 SET(PHYSXFOUNDATION_SOURCE
-	${LL_SOURCE_DIR}/src/PsAllocator.cpp
-	${LL_SOURCE_DIR}/src/PsAssert.cpp
-	${LL_SOURCE_DIR}/src/PsFoundation.cpp
-	${LL_SOURCE_DIR}/src/PsMathUtils.cpp
-	${LL_SOURCE_DIR}/src/PsString.cpp
-	${LL_SOURCE_DIR}/src/PsTempAllocator.cpp
-	${LL_SOURCE_DIR}/src/PsUtilities.cpp
+	${LL_SOURCE_DIR}/FdAllocator.cpp
+	${LL_SOURCE_DIR}/FdString.cpp
+	${LL_SOURCE_DIR}/FdTempAllocator.cpp
+	${LL_SOURCE_DIR}/FdAssert.cpp
+	${LL_SOURCE_DIR}/FdMathUtils.cpp
+	${LL_SOURCE_DIR}/FdFoundation.cpp
+	${LL_SOURCE_DIR}/FdFoundation.h
 )
-SOURCE_GROUP(src\\src FILES ${PHYSXFOUNDATION_SOURCE})
-
-SET(PHYSXFOUNDATION_SOURCE_HEADERS
-	${LL_SOURCE_DIR}/include/Ps.h
-	${LL_SOURCE_DIR}/include/PsAlignedMalloc.h
-	${LL_SOURCE_DIR}/include/PsAlloca.h
-	${LL_SOURCE_DIR}/include/PsAllocator.h
-	${LL_SOURCE_DIR}/include/PsAoS.h
-	${LL_SOURCE_DIR}/include/PsArray.h
-	${LL_SOURCE_DIR}/include/PsAtomic.h
-	${LL_SOURCE_DIR}/include/PsBasicTemplates.h
-	${LL_SOURCE_DIR}/include/PsBitUtils.h
-	${LL_SOURCE_DIR}/include/PsBroadcast.h
-	${LL_SOURCE_DIR}/include/PsCpu.h
-	${LL_SOURCE_DIR}/include/PsFoundation.h
-	${LL_SOURCE_DIR}/include/PsFPU.h
-	${LL_SOURCE_DIR}/include/PsHash.h
-	${LL_SOURCE_DIR}/include/PsHashInternals.h
-	${LL_SOURCE_DIR}/include/PsHashMap.h
-	${LL_SOURCE_DIR}/include/PsHashSet.h
-	${LL_SOURCE_DIR}/include/PsInlineAllocator.h
-	${LL_SOURCE_DIR}/include/PsInlineAoS.h
-	${LL_SOURCE_DIR}/include/PsInlineArray.h
-	${LL_SOURCE_DIR}/include/PsIntrinsics.h
-	${LL_SOURCE_DIR}/include/PsMathUtils.h
-	${LL_SOURCE_DIR}/include/PsMutex.h
-	${LL_SOURCE_DIR}/include/PsPool.h
-	${LL_SOURCE_DIR}/include/PsSList.h
-	${LL_SOURCE_DIR}/include/PsSocket.h
-	${LL_SOURCE_DIR}/include/PsSort.h
-	${LL_SOURCE_DIR}/include/PsSortInternals.h
-	${LL_SOURCE_DIR}/include/PsString.h
-	${LL_SOURCE_DIR}/include/PsSync.h
-	${LL_SOURCE_DIR}/include/PsTempAllocator.h
-	${LL_SOURCE_DIR}/include/PsThread.h
-	${LL_SOURCE_DIR}/include/PsTime.h
-	${LL_SOURCE_DIR}/include/PsUserAllocated.h
-	${LL_SOURCE_DIR}/include/PsUtilities.h
-	${LL_SOURCE_DIR}/include/PsVecMath.h
-	${LL_SOURCE_DIR}/include/PsVecMathAoSScalar.h
-	${LL_SOURCE_DIR}/include/PsVecMathAoSScalarInline.h
-	${LL_SOURCE_DIR}/include/PsVecMathSSE.h
-	${LL_SOURCE_DIR}/include/PsVecMathUtilities.h
-	${LL_SOURCE_DIR}/include/PsVecQuat.h
-	${LL_SOURCE_DIR}/include/PsVecTransform.h
-)
-SOURCE_GROUP("src\\include" FILES ${PHYSXFOUNDATION_SOURCE_HEADERS})
+SOURCE_GROUP(src FILES ${PHYSXFOUNDATION_SOURCE})
 
 ADD_LIBRARY(PhysXFoundation ${PHYSXFOUNDATION_LIBTYPE} 
-	${PHYSXFOUNDATION_SOURCE}
-	${PHYSXFOUNDATION_SOURCE_HEADERS}
 	${PHYSXFOUNDATION_HEADERS}
-	${PHYSXFOUNDATION_HEADERS_2}
+	${PHYSXFOUNDATION_SOURCE}
 	${PHYSXFOUNDATION_PLATFORM_FILES}
-	${PXSHARED_HEADERS}
-	${PXSHARED_PLATFORM_HEADERS}
 )
 
 # Add the headers to the install
-INSTALL(FILES ${PHYSXFOUNDATION_HEADERS} DESTINATION include)
-INSTALL(FILES ${PHYSXFOUNDATION_HEADERS_2} DESTINATION include/foundation)
-INSTALL(FILES ${PHYSXFOUNDATION_SOURCE_HEADERS} DESTINATION source/foundation/include)
-INSTALL(FILES ${PXSHARED_HEADERS} DESTINATION ${PXSHARED_INSTALL_PREFIX}/include/foundation)
+INSTALL(FILES ${PHYSXFOUNDATION_HEADERS} DESTINATION include/foundation)
 
 TARGET_INCLUDE_DIRECTORIES(PhysXFoundation 
 	PRIVATE ${PHYSX_ROOT_DIR}/include
-	PRIVATE ${PXSHARED_PATH}/include
 	PRIVATE ${LL_SOURCE_DIR}/include
 	PRIVATE ${PHYSXFOUNDATION_PLATFORM_INCLUDES}
 	
 	INTERFACE $<INSTALL_INTERFACE:include>$<BUILD_INTERFACE:${PHYSX_ROOT_DIR}/include>
-	INTERFACE $<INSTALL_INTERFACE:../PxShared/include>$<BUILD_INTERFACE:${PXSHARED_PATH}/include>
 
 	# FIXME: This is really terrible! Don't export src directories
 	INTERFACE $<INSTALL_INTERFACE:source/foundation/include>$<BUILD_INTERFACE:${LL_SOURCE_DIR}/include>
@@ -198,9 +175,7 @@ IF(PX_GENERATE_SOURCE_DISTRO)
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXFOUNDATION_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXFOUNDATION_SOURCE_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXFOUNDATION_HEADERS})
-	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXFOUNDATION_HEADERS_2})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXFOUNDATION_PLATFORM_FILES})
-	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PXSHARED_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PXSHARED_PLATFORM_HEADERS})
 ENDIF()
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -46,88 +45,7 @@ bool isTriggerShape(PxShape* shape);
 
 namespace
 {
-Snippets::Camera*	sCamera;
-
-void motionCallback(int x, int y)
-{
-	sCamera->handleMotion(x, y);
-}
-
-void keyboardCallback(unsigned char key, int x, int y)
-{
-	if(key==27)
-		exit(0);
-
-	if(!sCamera->handleKey(key, x, y))
-		keyPress(key, sCamera->getTransform());
-}
-
-void keyboardCallback2(int key, int /*x*/, int /*y*/)
-{
-	keyPress(key, sCamera->getTransform());
-}
-
-void mouseCallback(int button, int state, int x, int y)
-{
-	sCamera->handleMouse(button, state, x, y);
-}
-
-void idleCallback()
-{
-	glutPostRedisplay();
-}
-
-static void InitLighting()
-{
-	glEnable(GL_COLOR_MATERIAL);
-
-	const float zero[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, zero);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, zero);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, zero);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
-	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0.0f);
-
-	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, zero);
-
-	glEnable(GL_LIGHTING);
-	PxVec3 Dir(-1.0f, 1.0f, 0.5f);
-//	PxVec3 Dir(0.0f, 1.0f, 0.0f);
-	Dir.normalize();
-
-	const float AmbientValue = 0.3f;
-	const float ambientColor0[]		= { AmbientValue, AmbientValue, AmbientValue, 0.0f };
-	glLightfv(GL_LIGHT0, GL_AMBIENT, ambientColor0);
-
-	const float specularColor0[]	= { 0.0f, 0.0f, 0.0f, 0.0f };
-	glLightfv(GL_LIGHT0, GL_SPECULAR, specularColor0);
-
-	const float diffuseColor0[]	= { 0.7f, 0.7f, 0.7f, 0.0f };
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseColor0);
-
-	const float position0[]		= { Dir.x, Dir.y, Dir.z, 0.0f };
-	glLightfv(GL_LIGHT0, GL_POSITION, position0);
-
-	glEnable(GL_LIGHT0);
-
-//	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-//	glColor4f(0.0f, 0.0f, 0.0f, 0.0f);
-
-	if(0)
-	{
-		glEnable(GL_FOG);
-		glFogi(GL_FOG_MODE,GL_LINEAR); 
-		//glFogi(GL_FOG_MODE,GL_EXP); 
-		//glFogi(GL_FOG_MODE,GL_EXP2); 
-		glFogf(GL_FOG_START, 0.0f);
-		glFogf(GL_FOG_END, 100.0f);
-		glFogf(GL_FOG_DENSITY, 0.005f);
-//		glClearColor(0.2f, 0.2f, 0.2f, 1.0);
-//		const PxVec3 FogColor(0.2f, 0.2f, 0.2f);
-		const PxVec3 FogColor(1.0f);
-		glFogfv(GL_FOG_COLOR, &FogColor.x);
-	}
-}
+Snippets::Camera* sCamera;
 
 	class MyTriggerRender : public Snippets::TriggerRender
 	{
@@ -150,8 +68,7 @@ void renderCallback()
 		printf("camDir: (%ff, %ff, %ff)\n", double(camDir.x), double(camDir.y), double(camDir.z));
 	}
 
-	Snippets::startRender(sCamera->getEye(), sCamera->getDir());
-	InitLighting();
+	Snippets::startRender(sCamera);
 
 	PxScene* scene;
 	PxGetPhysics().getScenes(&scene,1);
@@ -179,18 +96,7 @@ void renderLoop()
 {
 	sCamera = new Snippets::Camera(PxVec3(8.757190f, 12.367847f, 23.541956f), PxVec3(-0.407947f, -0.042438f, -0.912019f));
 
-	Snippets::setupDefaultWindow("PhysX Snippet Triggers");
-	Snippets::setupDefaultRenderState();
-
-	glutIdleFunc(idleCallback);
-	glutDisplayFunc(renderCallback);
-	glutKeyboardFunc(keyboardCallback);
-	glutSpecialFunc(keyboardCallback2);
-	glutMouseFunc(mouseCallback);
-	glutMotionFunc(motionCallback);
-	motionCallback(0,0);
-
-	atexit(exitCallback);
+	Snippets::setupDefault("PhysX Snippet Triggers", sCamera, keyPress, renderCallback, exitCallback);
 
 	initPhysics(true);
 	glutMainLoop();

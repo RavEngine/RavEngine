@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxVec3.h"
-#include "foundation/PxIntrinsics.h"
-#include "PsFPU.h"
+#include "foundation/PxMathIntrinsics.h"
+#include "foundation/PxFPU.h"
 #include "GuIntersectionRayBox.h"
 #include "GuIntersectionRayBoxSIMD.h"
 
@@ -60,7 +59,7 @@ using namespace physx;
 #define RAYAABB_EPSILON 0.00001f
 bool Gu::rayAABBIntersect(const PxVec3& minimum, const PxVec3& maximum, const PxVec3& origin, const PxVec3& _dir, PxVec3& coord)
 {
-	Ps::IntBool Inside = Ps::IntTrue;
+	PxIntBool Inside = PxIntTrue;
 	PxVec3 MaxT(-1.0f, -1.0f, -1.0f);
 	const PxReal* dir = &_dir.x;
 	const PxU32* idir = reinterpret_cast<const PxU32*>(dir);
@@ -70,7 +69,7 @@ bool Gu::rayAABBIntersect(const PxVec3& minimum, const PxVec3& maximum, const Px
 		if(origin[i] < minimum[i])
 		{
 			coord[i]	= minimum[i];
-			Inside		= Ps::IntFalse;
+			Inside		= PxIntFalse;
 
 			// Calculate T distances to candidate planes
 			if(idir[i])
@@ -80,7 +79,7 @@ bool Gu::rayAABBIntersect(const PxVec3& minimum, const PxVec3& maximum, const Px
 		else if(origin[i] > maximum[i])
 		{
 			coord[i]	= maximum[i];
-			Inside		= Ps::IntFalse;
+			Inside		= PxIntFalse;
 
 			// Calculate T distances to candidate planes
 			if(idir[i])
@@ -154,7 +153,7 @@ bool Gu::rayAABBIntersect(const PxVec3& minimum, const PxVec3& maximum, const Px
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PxU32 Gu::rayAABBIntersect2(const PxVec3& minimum, const PxVec3& maximum, const PxVec3& origin, const PxVec3& _dir, PxVec3& coord, PxReal & t)
 {
-	Ps::IntBool Inside = Ps::IntTrue;
+	PxIntBool Inside = PxIntTrue;
 	PxVec3 MaxT(-1.0f, -1.0f, -1.0f);
 	const PxReal* dir = &_dir.x;
 	const PxU32* idir = reinterpret_cast<const PxU32*>(dir);
@@ -164,7 +163,7 @@ PxU32 Gu::rayAABBIntersect2(const PxVec3& minimum, const PxVec3& maximum, const 
 		if(origin[i] < minimum[i])
 		{
 			coord[i]	= minimum[i];
-			Inside		= Ps::IntFalse;
+			Inside		= PxIntFalse;
 
 			// Calculate T distances to candidate planes
 			if(idir[i])
@@ -174,7 +173,7 @@ PxU32 Gu::rayAABBIntersect2(const PxVec3& minimum, const PxVec3& maximum, const 
 		else if(origin[i] > maximum[i])
 		{
 			coord[i]	= maximum[i];
-			Inside		= Ps::IntFalse;
+			Inside		= PxIntFalse;
 
 			// Calculate T distances to candidate planes
 			if(idir[i])
@@ -423,11 +422,11 @@ bool Gu::intersectRayAABB2(
 	return (tnear<tfar);
 }
 
-bool Gu::intersectRayAABB2(const Ps::aos::Vec3VArg minimum, const Ps::aos::Vec3VArg maximum, 
-					   const Ps::aos::Vec3VArg ro, const Ps::aos::Vec3VArg rd, const Ps::aos::FloatVArg maxDist, 
-					   Ps::aos::FloatV& tnear, Ps::aos::FloatV& tfar)
+bool Gu::intersectRayAABB2(const aos::Vec3VArg minimum, const aos::Vec3VArg maximum, 
+					   const aos::Vec3VArg ro, const aos::Vec3VArg rd, const aos::FloatVArg maxDist, 
+					   aos::FloatV& tnear, aos::FloatV& tfar)
 {
-	using namespace Ps::aos;
+	using namespace aos;
 	const FloatV zero = FZero();
 	const Vec3V eps = V3Load(1e-9f);
 	const Vec3V absRD = V3Max(V3Abs(rd), eps);

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -99,7 +98,7 @@ namespace Gu
 
 
 	// PT: computes proper impact data for sphere-sweep-vs-tri, after the closest tri has been found
-	PX_FORCE_INLINE bool computeSphereTriangleImpactData(PxSweepHit& h, PxVec3& triNormalOut, PxU32 index, PxReal curT, 
+	PX_FORCE_INLINE bool computeSphereTriangleImpactData(PxGeomSweepHit& h, PxVec3& triNormalOut, PxU32 index, PxReal curT, 
 														 const PxVec3& center, const PxVec3& unitDir, const PxVec3& bestTriNormal,
 														 const PxTriangle* PX_RESTRICT triangles,
 														 bool isDoubleSided, bool meshBothSides)
@@ -146,7 +145,7 @@ namespace Gu
 								const PxVec3& center, const PxReal radius,										// Sphere data
 								const PxVec3& unitDir, PxReal distance,											// Ray data
 								const PxU32* PX_RESTRICT cachedIndex,											// Cache data
-								PxSweepHit& hit, PxVec3& triNormalOut,											// Results
+								PxGeomSweepHit& hit, PxVec3& triNormalOut,										// Results
 								bool isDoubleSided, bool meshBothSides, bool anyHit, bool testInitialOverlap);	// Query modifiers
 
 } // namespace Gu

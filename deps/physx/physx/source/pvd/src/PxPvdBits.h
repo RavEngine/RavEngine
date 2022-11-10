@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDBITS_H
-#define PXPVDSDK_PXPVDBITS_H
+#ifndef PX_PVD_BITS_H
+#define PX_PVD_BITS_H
 
 #include "PxPvdObjectModelBaseTypes.h"
 
@@ -129,4 +128,5 @@ static inline bool checkLength(const uint8_t* inStart, const uint8_t* inStop, ui
 }
 }
 }
-#endif // PXPVDSDK_PXPVDBITS_H
+#endif
+

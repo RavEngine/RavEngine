@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-#ifndef PX_XML_MEMORY_POOL_STREAMS_H
-#define PX_XML_MEMORY_POOL_STREAMS_H
+
+#ifndef SN_XML_MEMORY_POOL_STREAMS_H
+#define SN_XML_MEMORY_POOL_STREAMS_H
 
 #include "foundation/PxTransform.h"
 #include "foundation/PxIO.h"
 #include "SnXmlMemoryPool.h"
-#include "CmPhysXCommon.h"
 
 namespace physx {
 

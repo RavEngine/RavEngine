@@ -179,7 +179,7 @@ Set the linear velocity of the physics body
 void RavEngine::RigidBodyDynamicComponent::SetLinearVelocity(const vector3& newvel, bool autowake)
 {
 	LockWrite([&]{
-		static_cast<PxRigidBody*>(rigidActor)->setLinearVelocity(PxVec3(newvel.x, newvel.y, newvel.z),autowake);
+		static_cast<PxRigidDynamic*>(rigidActor)->setLinearVelocity(PxVec3(newvel.x, newvel.y, newvel.z),autowake);
 	});
 }
 
@@ -191,7 +191,7 @@ Set the angular velocity of the physics body
 void RavEngine::RigidBodyDynamicComponent::SetAngularVelocity(const vector3& newvel, bool autowake)
 {
 	LockWrite([&]{
-		static_cast<PxRigidBody*>(rigidActor)->setAngularVelocity(PxVec3(newvel.x, newvel.y, newvel.z), autowake);
+		static_cast<PxRigidDynamic*>(rigidActor)->setAngularVelocity(PxVec3(newvel.x, newvel.y, newvel.z), autowake);
 	});
 }
 

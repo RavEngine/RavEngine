@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,32 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "ExtFixedJoint.h"
 #include "ExtConstraintHelper.h"
-#include "PxPhysics.h"
 
 using namespace physx;
 using namespace Ext;
 
-PxFixedJoint* physx::PxFixedJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+FixedJoint::FixedJoint(const PxTolerancesScale& /*scale*/, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1) :
+	FixedJointT(PxJointConcreteType::eFIXED, actor0, localFrame0, actor1, localFrame1, "FixedJointData")
 {
-	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxFixedJointCreate: local frame 0 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxFixedJointCreate: local frame 1 is not a valid transform"); 
-	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxFixedJointCreate: at least one actor must be dynamic");
-	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxFixedJointCreate: actors must be different");
+	FixedJointData* data = static_cast<FixedJointData*>(mData);
 
-	FixedJoint* j;
-	PX_NEW_SERIALIZED(j, FixedJoint)(physics.getTolerancesScale(), actor0, localFrame0, actor1, localFrame1);
-
-	if(j->attach(physics, actor0, actor1))
-		return j;
-
-	PX_DELETE(j);
-	return NULL;
+	data->projectionLinearTolerance		= 1e10f;
+	data->projectionAngularTolerance	= PxPi;
 }
 
 PxReal FixedJoint::getProjectionLinearTolerance() const
@@ -60,7 +50,10 @@ void FixedJoint::setProjectionLinearTolerance(PxReal tolerance)
 { 
 	PX_CHECK_AND_RETURN(PxIsFinite(tolerance) && tolerance >=0, "PxFixedJoint::setProjectionLinearTolerance: invalid parameter");
 	data().projectionLinearTolerance = tolerance; 
-	markDirty(); 
+	markDirty();
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, fixedProjectionLinearTolerance, static_cast<PxJoint&>(*this), tolerance)
+#endif
 }
 
 PxReal FixedJoint::getProjectionAngularTolerance() const
@@ -71,53 +64,12 @@ PxReal FixedJoint::getProjectionAngularTolerance() const
 void FixedJoint::setProjectionAngularTolerance(PxReal tolerance)	
 { 
 	PX_CHECK_AND_RETURN(PxIsFinite(tolerance) && tolerance >=0 && tolerance <= PxPi, "PxFixedJoint::setProjectionAngularTolerance: invalid parameter");
-	data().projectionAngularTolerance = tolerance; markDirty(); 
+	data().projectionAngularTolerance = tolerance;
+	markDirty(); 
+#if PX_SUPPORT_OMNI_PVD
+	OMNI_PVD_SET(joint, fixedProjectionAngularTolerance, static_cast<PxJoint&>(*this), tolerance)
+#endif
 }
-
-bool FixedJoint::attach(PxPhysics &physics, PxRigidActor* actor0, PxRigidActor* actor1)
-{
-	mPxConstraint = physics.createConstraint(actor0, actor1, *this, sShaders, sizeof(FixedJointData));
-	return mPxConstraint!=NULL;
-}
-
-void FixedJoint::exportExtraData(PxSerializationContext& stream) const
-{
-	if(mData)
-	{
-		stream.alignData(PX_SERIAL_ALIGN);
-		stream.writeData(mData, sizeof(FixedJointData));
-	}
-	stream.writeName(mName);
-}
-
-void FixedJoint::importExtraData(PxDeserializationContext& context)
-{
-	if(mData)
-		mData = context.readExtraData<FixedJointData, PX_SERIAL_ALIGN>();
-	context.readName(mName);
-}
-
-void FixedJoint::resolveReferences(PxDeserializationContext& context)
-{
-	setPxConstraint(resolveConstraintPtr(context, getPxConstraint(), getConnector(), sShaders));	
-}
-
-FixedJoint* FixedJoint::createObject(PxU8*& address, PxDeserializationContext& context)
-{
-	FixedJoint* obj = new (address) FixedJoint(PxBaseFlag::eIS_RELEASABLE);
-	address += sizeof(FixedJoint);	
-	obj->importExtraData(context);
-	obj->resolveReferences(context);
-	return obj;
-}
-
-// global function to share the joint shaders with API capture	
-const PxConstraintShaderTable* Ext::GetFixedJointShaderTable() 
-{ 
-	return &FixedJoint::getConstraintShaderTable();
-}
-
-//~PX_SERIALIZATION
 
 static void FixedJointProject(const void* constantBlock, PxTransform& bodyAToWorld, PxTransform& bodyBToWorld, bool projectToA)
 {
@@ -146,15 +98,16 @@ static void FixedJointVisualize(PxConstraintVisualizer& viz, const void* constan
 	}
 }
 
+//TAG:solverprepshader
 static PxU32 FixedJointSolverPrep(Px1DConstraint* constraints,
-	PxVec3& body0WorldOffset,
+	PxVec3p& body0WorldOffset,
 	PxU32 /*maxConstraints*/,
 	PxConstraintInvMassScale& invMassScale,
 	const void* constantBlock,
 	const PxTransform& bA2w,
 	const PxTransform& bB2w,
 	bool /*useExtendedLimits*/,
-	PxVec3& cA2wOut, PxVec3& cB2wOut)
+	PxVec3p& cA2wOut, PxVec3p& cB2wOut)
 {
 	const FixedJointData& data = *reinterpret_cast<const FixedJointData*>(constantBlock);
 
@@ -172,4 +125,38 @@ static PxU32 FixedJointSolverPrep(Px1DConstraint* constraints,
 	return ch.getCount();
 }
 
-PxConstraintShaderTable Ext::FixedJoint::sShaders = { FixedJointSolverPrep, FixedJointProject, FixedJointVisualize, PxConstraintFlag::Enum(0) };
+///////////////////////////////////////////////////////////////////////////////
+
+static PxConstraintShaderTable gFixedJointShaders = { FixedJointSolverPrep, FixedJointProject, FixedJointVisualize, PxConstraintFlag::Enum(0) };
+
+PxConstraintSolverPrep FixedJoint::getPrep()	const	{ return gFixedJointShaders.solverPrep;  }
+
+PxFixedJoint* physx::PxFixedJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1)
+{
+	PX_CHECK_AND_RETURN_NULL(localFrame0.isSane(), "PxFixedJointCreate: local frame 0 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL(localFrame1.isSane(), "PxFixedJointCreate: local frame 1 is not a valid transform"); 
+	PX_CHECK_AND_RETURN_NULL((actor0 && actor0->is<PxRigidBody>()) || (actor1 && actor1->is<PxRigidBody>()), "PxFixedJointCreate: at least one actor must be dynamic");
+	PX_CHECK_AND_RETURN_NULL(actor0 != actor1, "PxFixedJointCreate: actors must be different");
+
+	return createJointT<FixedJoint, FixedJointData>(physics, actor0, localFrame0, actor1, localFrame1, gFixedJointShaders);
+}
+
+// PX_SERIALIZATION
+void FixedJoint::resolveReferences(PxDeserializationContext& context)
+{
+	mPxConstraint = resolveConstraintPtr(context, mPxConstraint, this, gFixedJointShaders);
+}
+//~PX_SERIALIZATION
+
+#if PX_SUPPORT_OMNI_PVD
+
+template<>
+void physx::Ext::omniPvdInitJoint<FixedJoint>(FixedJoint* joint)
+{
+	PxJoint& j = static_cast<PxJoint&>(*joint);
+	OMNI_PVD_SET(joint, type, j, PxJointConcreteType::eFIXED)
+	OMNI_PVD_SET(joint, fixedProjectionLinearTolerance, j, joint->getProjectionLinearTolerance())
+	OMNI_PVD_SET(joint, fixedProjectionAngularTolerance, j, joint->getProjectionAngularTolerance())
+}
+
+#endif

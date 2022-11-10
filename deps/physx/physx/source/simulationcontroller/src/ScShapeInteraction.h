@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-          
-#ifndef PX_COLLISION_SHAPE_INTERACTION
-#define PX_COLLISION_SHAPE_INTERACTION
+#ifndef SC_SHAPE_INTERACTION_H
+#define SC_SHAPE_INTERACTION_H
 
 #include "ScElementSimInteraction.h"
 #include "ScShapeSim.h"
@@ -87,7 +85,7 @@ namespace Sc
 			LL_MANAGER_RECREATE_EVENT		= CONTACT_REPORT_EVENTS | CONTACTS_COLLECT_POINTS |
 											  CONTACTS_RESPONSE_DISABLED | PxU32(PxPairFlag::eMODIFY_CONTACTS)
 		};
-												ShapeInteraction(ShapeSim& s1, ShapeSim& s2, PxPairFlags pairFlags, PxsContactManager* contactManager);
+												ShapeInteraction(ShapeSimBase& s1, ShapeSimBase& s2, PxPairFlags pairFlags, PxsContactManager* contactManager);
 												~ShapeInteraction();
 
 		// Submits to contact stream
@@ -97,72 +95,67 @@ namespace Sc
 						void					processUserNotificationSync();
 
 						void					processUserNotificationAsync(PxU32 contactEvent, PxU16 infoFlags, bool touchLost, const PxU32 ccdPass, const bool useCurrentTransform,
-							PxsContactManagerOutputIterator& outputs, ContactReportAllocationManager* alloc = NULL);  // ccdPass is 0 for discrete collision and then 1,2,... for the CCD passes
+																			PxsContactManagerOutputIterator& outputs, ContactReportAllocationManager* alloc = NULL);  // ccdPass is 0 for discrete collision and then 1,2,... for the CCD passes
 
-						void					visualize(Cm::RenderOutput&, PxsContactManagerOutputIterator&);
+						void					visualize(	PxRenderOutput&, PxsContactManagerOutputIterator&,
+															float scale, float param_contactForce, float param_contactNormal, float param_contactError, float param_contactPoint
+															);
 
 						PxU32					getContactPointData(const void*& contactPatches, const void*& contactPoints, PxU32& contactDataSize, PxU32& contactPointCount, PxU32& patchCount, const PxReal*& impulses, PxU32 startOffset, PxsContactManagerOutputIterator& outputs);
 
-						bool					managerLostTouch(const PxU32 ccdPass, bool adjustCounters, PxsContactManagerOutputIterator& outputs, bool useAdaptiveForce);
-						void					managerNewTouch(const PxU32 ccdPass, bool adjustCounters, PxsContactManagerOutputIterator& outputs, bool useAdaptiveForce);
+						bool					managerLostTouch(const PxU32 ccdPass, bool adjustCounters, PxsContactManagerOutputIterator& outputs);
+						void					managerNewTouch(const PxU32 ccdPass, bool adjustCounters, PxsContactManagerOutputIterator& outputs);
 
-		PX_FORCE_INLINE	void					adjustCountersOnLostTouch(BodySim*, BodySim*, bool useAdaptiveForce);
-		PX_FORCE_INLINE	void					adjustCountersOnNewTouch(bool useAdaptiveForce);
+		PX_FORCE_INLINE	void					adjustCountersOnLostTouch();
+		PX_FORCE_INLINE	void					adjustCountersOnNewTouch();
 
 		PX_FORCE_INLINE	void					sendCCDRetouch(const PxU32 ccdPass, PxsContactManagerOutputIterator& outputs);
 						void					setContactReportPostSolverVelocity(ContactStreamManager& cs);
 		PX_FORCE_INLINE	void					sendLostTouchReport(bool shapeVolumeRemoved, const PxU32 ccdPass, PxsContactManagerOutputIterator& ouptuts);
 						void					resetManagerCachedState()	const;
 	
-		PX_FORCE_INLINE	ActorPair*				getActorPair()				const	{ return mActorPair;								}
-		PX_FORCE_INLINE	void					setActorPair(ActorPair& aPair)		{ mActorPair = &aPair;								}
+		PX_FORCE_INLINE	ActorPair*				getActorPair()				const	{ return mActorPair;							}
+		PX_FORCE_INLINE	void					setActorPair(ActorPair& aPair)		{ mActorPair = &aPair;							}
 		PX_FORCE_INLINE	void					clearActorPair()					{ mActorPair = NULL;							}
-		PX_FORCE_INLINE	ActorPairReport&		getActorPairReport()		const	{ return ActorPairReport::cast(*mActorPair); }
-		PX_INLINE		Ps::IntBool				isReportPair()				const	{ /*PX_ASSERT(!(Ps::IntBool(getPairFlags() & CONTACT_REPORT_EVENTS)) || mActorPair->isReportPair());*/ return Ps::IntBool(getPairFlags() & CONTACT_REPORT_EVENTS);	}
-		PX_INLINE		Ps::IntBool				hasTouch()					const	{ return readFlag(HAS_TOUCH); }
-		PX_INLINE		Ps::IntBool				hasCCDTouch()				const	{ PX_ASSERT(mManager); return mManager->getHadCCDContact(); }
+		PX_FORCE_INLINE	ActorPairReport&		getActorPairReport()		const	{ return ActorPairReport::cast(*mActorPair);	}
+		PX_INLINE		PxIntBool				isReportPair()				const	{ /*PX_ASSERT(!(PxIntBool(getPairFlags() & CONTACT_REPORT_EVENTS)) || mActorPair->isReportPair());*/ return PxIntBool(getPairFlags() & CONTACT_REPORT_EVENTS);	}
+		PX_INLINE		PxIntBool				hasTouch()					const	{ return readFlag(HAS_TOUCH);					}
+		PX_INLINE		PxIntBool				hasCCDTouch()				const	{ PX_ASSERT(mManager); return mManager->getHadCCDContact(); }
 		PX_INLINE		void					swapAndClearForceThresholdExceeded();
 
-		PX_FORCE_INLINE void					raiseFlag(SiFlag flag) { mFlags |= flag; }
-		PX_FORCE_INLINE	Ps::IntBool				readFlag(SiFlag flag) const { return Ps::IntBool(mFlags & flag); }
-		PX_FORCE_INLINE	PxU32					getPairFlags() const;
+		PX_FORCE_INLINE void					raiseFlag(SiFlag flag)				{ mFlags |= flag;					}
+		PX_FORCE_INLINE	PxIntBool				readFlag(SiFlag flag)		const	{ return PxIntBool(mFlags & flag);	}
+		PX_FORCE_INLINE	PxU32					getPairFlags()				const;
 
 		PX_FORCE_INLINE	void					removeFromReportPairList();
 
 						void					onShapeChangeWhileSleeping(bool shapeOfDynamicChanged);
 
-		PX_FORCE_INLINE	Ps::IntBool				hasKnownTouchState() const;
+		PX_FORCE_INLINE	PxIntBool				hasKnownTouchState() const;
 
 						bool					onActivate_(void* data);
 						bool					onDeactivate_();
 
 						void					updateState(const PxU8 externalDirtyFlags);
 
-						const PxsContactManager*	getContactManager() const { return mManager; }
+					const PxsContactManager*	getContactManager() const { return mManager; }
 
 						void					clearIslandGenData();
 
 		PX_FORCE_INLINE PxU32					getEdgeIndex() const { return mEdgeIndex;  }
 
-		PX_FORCE_INLINE	Sc::ShapeSim&			getShape0()	const	{ return static_cast<ShapeSim&>(getElement0());	}
-		PX_FORCE_INLINE	Sc::ShapeSim&			getShape1()	const	{ return static_cast<ShapeSim&>(getElement1());	}
+		PX_FORCE_INLINE	Sc::ShapeSimBase&		getShape0()	const { return static_cast<ShapeSimBase&>(getElement0()); }
+		PX_FORCE_INLINE	Sc::ShapeSimBase&		getShape1()	const { return static_cast<ShapeSimBase&>(getElement1()); }
 
 	private:
-						PxU32					mContactReportStamp;
-						PxU32					mFlags;
 						ActorPair*				mActorPair;
-						PxU32					mReportPairIndex;			// Owned by NPhaseCore for its report pair list
-
 						PxsContactManager*		mManager;
-
+						PxU32					mContactReportStamp;
+						PxU32					mReportPairIndex;	// Owned by NPhaseCore for its report pair list
 						PxU32					mEdgeIndex;
-
 						PxU16					mReportStreamIndex;  // position of this pair in the contact report stream
 
-		// Internal functions:
-
 						void					createManager(void* contactManager);
-		PX_INLINE		void					resetManager();
 		PX_INLINE		bool					updateManager(void* contactManager);
 		PX_INLINE		void					destroyManager();
 		PX_FORCE_INLINE	bool					activeManagerAllowed() const;
@@ -186,61 +179,47 @@ namespace Sc
 
 		// Certain SiFlag cache properties of the pair. If these properties change then the flags have to be updated.
 		// For example: is collision enabled for this pair? are contact points requested for this pair?
-		PX_FORCE_INLINE	void					updateFlags(const Sc::Scene&, const Sc::BodySim*, const Sc::BodySim*, const PxU32 pairFlags);
+		PX_FORCE_INLINE	void					updateFlags(const Sc::Scene&, const Sc::ActorSim&, const Sc::ActorSim&, const PxU32 pairFlags);
 
 		friend class Sc::Scene;
 	};
 
 } // namespace Sc
 
+// PT: TODO: is there a reason for force-inlining all that stuff?
 
 PX_FORCE_INLINE void Sc::ShapeInteraction::sendLostTouchReport(bool shapeVolumeRemoved, const PxU32 ccdPass, PxsContactManagerOutputIterator& outputs)
 {
 	PX_ASSERT(hasTouch());
 	PX_ASSERT(isReportPair());
 
-	PxU32 thresholdForceLost = readFlag(ShapeInteraction::FORCE_THRESHOLD_EXCEEDED_NOW) ? PxU32(PxPairFlag::eNOTIFY_THRESHOLD_FORCE_LOST) : 0;  // make sure to only send report if force is still above threshold
-	PxU32 triggeredFlags = getPairFlags() & (PxU32(PxPairFlag::eNOTIFY_TOUCH_LOST) | thresholdForceLost);
-	if (triggeredFlags)
-	{
-		PxU16 infoFlag = 0;
-		if (mActorPair->getTouchCount() == 1)  // this code assumes that the actor pair touch count does get decremented afterwards
-		{
-			infoFlag |= PxContactPairFlag::eACTOR_PAIR_LOST_TOUCH;
-		}
+	const PxU32 pairFlags = getPairFlags();
+	const PxU32 notifyTouchLost = pairFlags & PxU32(PxPairFlag::eNOTIFY_TOUCH_LOST);
+	const PxIntBool thresholdExceeded = readFlag(ShapeInteraction::FORCE_THRESHOLD_EXCEEDED_NOW);
+	const PxU32 notifyThresholdLost = thresholdExceeded ? (pairFlags & PxU32(PxPairFlag::eNOTIFY_THRESHOLD_FORCE_LOST)) : 0;
+	if(!notifyTouchLost && !notifyThresholdLost)
+		return;
 
-		//Lost touch is processed after solver, so we should use the previous transform to update the pose for objects if user request eCONTACT_EVENT_POSE
-		processUserNotification(triggeredFlags, infoFlag, true, ccdPass, false, outputs);
+	PxU16 infoFlag = 0;
+	if (mActorPair->getTouchCount() == 1)  // this code assumes that the actor pair touch count does get decremented afterwards
+	{
+		infoFlag |= PxContactPairFlag::eACTOR_PAIR_LOST_TOUCH;
 	}
 
-	ActorPairReport& apr = getActorPairReport();
-	if (apr.hasReportData() && !apr.streamResetNeeded(getScene().getTimeStamp()))
+	//Lost touch is processed after solver, so we should use the previous transform to update the pose for objects if user request eCONTACT_EVENT_POSE
+	const bool useCurrentTransform = false;
+
+	const PxU32 triggeredFlags = notifyTouchLost | notifyThresholdLost;
+	PX_ASSERT(triggeredFlags); 
+	processUserNotification(triggeredFlags, infoFlag, true, ccdPass, useCurrentTransform, outputs);
+
+	if(shapeVolumeRemoved)
 	{
-		// If there has been no event recorded yet, there is no need to worry about events with shape pointers which might later reference
-		// removed shapes due to buffered removal, i.e., removal while the simulation was running.
-		// This is also correct for CCD scenarios where a touch could get lost and then found again etc. If in such a case there ever is a contact event
-		// recorded, there will always be another sendLostTouchReport() call at some later point (caused by the simulation or when the shape gets
-		// removed at fetchResults).
-		PxU16 flagsToRaise = ContactStreamManagerFlag::eHAS_PAIRS_THAT_LOST_TOUCH;
-
+		ActorPairReport& apr = getActorPairReport();
 		ContactStreamManager& cs = apr.getContactStreamManager();
-
-		if (shapeVolumeRemoved)
-		{
-			flagsToRaise |= ContactStreamManagerFlag::eTEST_FOR_REMOVED_SHAPES;
-
-			// if an actor gets deleted while the simulation is running and the actor has a pending contact report with post solver 
-			// velocity extra data, then the post solver velocity needs to get written now because it is too late when the reports
-			// get fired (the object will have been deleted already)
-
-			if (cs.getFlags() & ContactStreamManagerFlag::eNEEDS_POST_SOLVER_VELOCITY)
-				setContactReportPostSolverVelocity(cs);
-		}
-
-		cs.raiseFlags(flagsToRaise);
+		cs.raiseFlags(ContactStreamManagerFlag::eTEST_FOR_REMOVED_SHAPES);
 	}
 }
-
 
 PX_FORCE_INLINE void Sc::ShapeInteraction::setPairFlags(PxPairFlags flags)
 {
@@ -254,13 +233,11 @@ PX_FORCE_INLINE void Sc::ShapeInteraction::setPairFlags(PxPairFlags flags)
 	mFlags = newFlags;
 }
 
-
 // PT: returning PxU32 instead of PxPairFlags to remove LHS. Please do not undo this.
 PX_FORCE_INLINE PxU32 Sc::ShapeInteraction::getPairFlags() const
 {
 	return (mFlags & PAIR_FLAGS_MASK);
 }
-
 
 PX_INLINE void Sc::ShapeInteraction::swapAndClearForceThresholdExceeded()
 {
@@ -322,90 +299,55 @@ PX_INLINE void Sc::ShapeInteraction::destroyManager()
 	mManager = 0;
 }
 
-
 PX_FORCE_INLINE bool Sc::ShapeInteraction::activeManagerAllowed() const
 {
-	PX_ASSERT(getShape0().getActor().isDynamicRigid() || getShape1().getActor().isDynamicRigid());
-	
-	const BodySim* bodySim0 = getShape0().getBodySim();
-	const BodySim* bodySim1 = getShape1().getBodySim();
-	PX_ASSERT(bodySim0);  // the first shape always belongs to a dynamic body
+	ShapeSimBase& shape0 = getShape0();
+	ShapeSimBase& shape1 = getShape1();
 
+	ActorSim& bodySim0 = shape0.getActor();
+	ActorSim& bodySim1 = shape1.getActor();
+
+	// the first shape always belongs to a dynamic body or soft body
+	PX_ASSERT(bodySim0.isDynamicRigid() || bodySim0.isSoftBody() || bodySim0.isFEMCloth() || bodySim0.isParticleSystem() || bodySim0.isHairSystem());
+	
 	const IG::IslandSim& islandSim = getScene().getSimpleIslandManager()->getSpeculativeIslandSim();
 
-	//if((bodySim0->isActive()) || (bodySim1 && bodySim1->isActive()))
 	//check whether active in the speculative sim!
-	if (islandSim.getNode(bodySim0->getNodeIndex()).isActive() || 
-		(bodySim1 && islandSim.getNode(bodySim1->getNodeIndex()).isActive()))
-	{
-		return true;
-	}
-	else
-	{
-		//Sleeping kinematic 0 vs sleeping kinematic 1
-		return false;
-	}
-}
 
+	return (islandSim.getNode(bodySim0.getNodeIndex()).isActive() ||
+		(!bodySim1.isStaticRigid() && islandSim.getNode(bodySim1.getNodeIndex()).isActive()));
+}
 
 PX_FORCE_INLINE void Sc::ShapeInteraction::sendCCDRetouch(const PxU32 ccdPass, PxsContactManagerOutputIterator& outputs)
 {
-	PxU32 pairFlags = getPairFlags();
+	const PxU32 pairFlags = getPairFlags();
 	if (pairFlags & PxPairFlag::eNOTIFY_TOUCH_CCD)
-	{
 		processUserNotification(PxPairFlag::eNOTIFY_TOUCH_CCD, 0, false, ccdPass, false, outputs);
-	}
 }
 
-
-PX_FORCE_INLINE void Sc::ShapeInteraction::adjustCountersOnLostTouch(BodySim* body0, BodySim* body1, bool useAdaptiveForce)
+PX_FORCE_INLINE void Sc::ShapeInteraction::adjustCountersOnLostTouch()
 {
-	PX_ASSERT(body0);  // the first shape always belongs to a dynamic body
-
 	PX_ASSERT(mActorPair->getTouchCount());
 
 	mActorPair->decTouchCount();
-
-	if (useAdaptiveForce || mActorPair->getTouchCount() == 0)
-	{
-		body0->decrementBodyConstraintCounter();
-		if (body1)
-			body1->decrementBodyConstraintCounter();
-	}
 }
 
-
-PX_FORCE_INLINE void Sc::ShapeInteraction::adjustCountersOnNewTouch(bool useAdaptiveForce)
+PX_FORCE_INLINE void Sc::ShapeInteraction::adjustCountersOnNewTouch()
 {
-	BodySim* body0 = getShape0().getBodySim();
-	BodySim* body1 = getShape1().getBodySim();
-	PX_ASSERT(body0);  // the first shape always belongs to a dynamic body
-
 	mActorPair->incTouchCount();
-	//If using adaptive force, always record a body constraint, otherwise only record if this is the first constraint
-	//with this pair of bodies (doubling up usage of this counter for both adaptive force and stabilization)
-	if (useAdaptiveForce || mActorPair->getTouchCount() == 1)
-	{
-		body0->incrementBodyConstraintCounter();
-		if (body1)
-			body1->incrementBodyConstraintCounter();
-	}
 }
 
-
-PX_FORCE_INLINE Ps::IntBool Sc::ShapeInteraction::hasKnownTouchState() const
+PX_FORCE_INLINE PxIntBool Sc::ShapeInteraction::hasKnownTouchState() const
 {
 	// For a pair where the bodies were added asleep, the touch state is not known until narrowphase runs on the pair for the first time.
 	// If such a pair looses AABB overlap before, the conservative approach is to wake the bodies up. This method provides an indicator that
 	// this is such a pair. Note: this might also wake up objects that do not touch but that's the price to pay (unless we want to run
 	// overlap tests on such pairs).
-	
 	if (mManager)
 		return mManager->touchStatusKnown();
 	else
 		return readFlag(TOUCH_KNOWN);
 }
-
 
 }
 

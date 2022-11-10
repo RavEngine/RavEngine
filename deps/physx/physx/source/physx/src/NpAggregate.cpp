@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,56 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #include "NpAggregate.h"
-
-///////////////////////////////////////////////////////////////////////////////
-
 #include "PxActor.h"
 #include "NpRigidStatic.h"
 #include "NpRigidDynamic.h"
-#include "NpArticulation.h"
 #include "NpActor.h"
-#include "GuBVHStructure.h"
+#include "GuBVH.h"
 #include "CmUtils.h"
-#include "NpArticulationTemplate.h"
+#include "NpArticulationReducedCoordinate.h"
 
 using namespace physx;
+
+namespace
+{
+#if PX_SUPPORT_PVD
+	PX_FORCE_INLINE void PvdAttachActorToAggregate(NpAggregate* pAggregate, NpActor* pscActor)
+	{
+		NpScene* npScene = pAggregate->getNpScene();
+		if(npScene/* && scScene->getScenePvdClient().isInstanceValid(pAggregate)*/)
+			npScene->getScenePvdClientInternal().attachAggregateActor( pAggregate, pscActor );
+	}
+
+	PX_FORCE_INLINE void PvdDetachActorFromAggregate(NpAggregate* pAggregate, NpActor* pscActor)
+	{
+		NpScene* npScene = pAggregate->getNpScene();
+		if(npScene/*&& scScene->getScenePvdClient().isInstanceValid(pAggregate)*/)
+			npScene->getScenePvdClientInternal().detachAggregateActor( pAggregate, pscActor );
+	}
+
+	PX_FORCE_INLINE void PvdUpdateProperties(NpAggregate* pAggregate)
+	{
+		NpScene* npScene = pAggregate->getNpScene();
+		if(npScene /*&& scScene->getScenePvdClient().isInstanceValid(pAggregate)*/)
+			npScene->getScenePvdClientInternal().updatePvdProperties( pAggregate );
+	}
+#else
+#define PvdAttachActorToAggregate(aggregate, scActor)		{}
+#define PvdDetachActorFromAggregate(aggregate, scActor)	{}
+#define PvdUpdateProperties(aggregate)						{}
+#endif
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+PX_IMPLEMENT_OUTPUT_ERROR
+
+///////////////////////////////////////////////////////////////////////////////
 
 PX_FORCE_INLINE void setAggregate(NpAggregate* aggregate, PxActor& actor)
 {
@@ -51,13 +81,17 @@ PX_FORCE_INLINE void setAggregate(NpAggregate* aggregate, PxActor& actor)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-
-NpAggregate::NpAggregate(PxU32 maxActors, bool selfCollisions)
-: PxAggregate(PxConcreteType::eAGGREGATE, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE)
-, mAggregate(this, maxActors, selfCollisions)
-, mNbActors(0)
+NpAggregate::NpAggregate(PxU32 maxActors, PxU32 maxShapes, PxAggregateFilterHint filterHint) :
+	PxAggregate		(PxConcreteType::eAGGREGATE, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE),
+	NpBase			(NpType::eAGGREGATE),
+	mAggregateID	(PX_INVALID_U32),
+	mMaxNbActors	(maxActors),
+	mMaxNbShapes	(maxShapes),
+	mFilterHint		(filterHint),
+	mNbActors		(0),
+	mNbShapes		(0)
 {
-	mActors = reinterpret_cast<PxActor**>(PX_ALLOC(sizeof(PxActor*)*maxActors, "PxActor*"));
+	mActors = PX_ALLOCATE(PxActor*, maxActors, "PxActor*");
 }
 
 NpAggregate::~NpAggregate()
@@ -70,16 +104,19 @@ NpAggregate::~NpAggregate()
 void NpAggregate::removeAndReinsert(PxActor& actor, bool reinsert)
 {
 	NpActor& np = NpActor::getFromPxActor(actor);
-	Scb::Actor& scb = NpActor::getScbFromPxActor(actor);
 
 	np.setAggregate(NULL, actor);
 	
-	mAggregate.removeActor(scb, reinsert);
+	scRemoveActor(np, reinsert);
 }
 
 void NpAggregate::release()
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* s = getNpScene();
+	NP_WRITE_CHECK(s);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(s, "PxAggregate::release() not allowed while simulation is running. Call will be ignored.")
+
 	PX_SIMD_GUARD;
 
 	NpPhysics::getInstance().notifyDeletionListenersUserRelease(this, NULL);
@@ -94,99 +131,118 @@ void NpAggregate::release()
 		if (mActors[i]->getType() == PxActorType::eARTICULATION_LINK)
 		{
 			NpArticulationLink* link = static_cast<NpArticulationLink*>(mActors[i]);
-			PxArticulationImpl* impl = reinterpret_cast<PxArticulationImpl*>(link->getRoot().getImpl());
-			impl->setAggregate(NULL);
+			NpArticulationReducedCoordinate& articulation = static_cast<NpArticulationReducedCoordinate&>(link->getRoot());
+			articulation.setAggregate(NULL);
 		}
 
 		removeAndReinsert(*mActors[i], true);
 	}
 
-	NpScene* s = getAPIScene();
 	if(s)
 	{
-		s->getScene().removeAggregate(getScbAggregate());
+		s->scRemoveAggregate(*this);
 		s->removeFromAggregateList(*this);
 	}
 
-	mAggregate.destroy();
+	NpDestroyAggregate(this);
 }
 
-void NpAggregate::addActorInternal(PxActor& actor, NpScene& s, const PxBVHStructure* bvhStructure)
+void NpAggregate::addActorInternal(PxActor& actor, NpScene& s, const PxBVH* bvh)
 {
 	if (actor.getType() != PxActorType::eARTICULATION_LINK)
 	{
-		Scb::Actor& scb = NpActor::getScbFromPxActor(actor);
+		NpActor& np = NpActor::getFromPxActor(actor);
 
-		mAggregate.addActor(scb);
+		scAddActor(np);
 
-		s.addActorInternal(actor, bvhStructure);
+		s.addActorInternal(actor, bvh);
 	}
 	else if (!actor.getScene())  // This check makes sure that a link of an articulation gets only added once.
 	{
 		NpArticulationLink& al = static_cast<NpArticulationLink&>(actor);
-		PxArticulationBase& npArt = al.getRoot();
+		PxArticulationReducedCoordinate& npArt = al.getRoot();
 		for(PxU32 i=0; i < npArt.getNbLinks(); i++)
 		{
 			PxArticulationLink* link;
 			npArt.getLinks(&link, 1, i);
-			mAggregate.addActor(static_cast<NpArticulationLink*>(link)->getScbActorFast());
+			scAddActor(*static_cast<NpArticulationLink*>(link));
 		}
 
 		s.addArticulationInternal(npArt);
 	}
 }
 
-bool NpAggregate::addActor(PxActor& actor, const PxBVHStructure* bvhStructure)
+bool NpAggregate::addActor(PxActor& actor, const PxBVH* bvh)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_AND_RETURN_VAL(npScene, "PxAggregate::addActor() not allowed while simulation is running. Call will be ignored.", false);
+
 	PX_SIMD_GUARD;
 
-	if(mNbActors==mAggregate.getMaxActorCount())
+	if(mNbActors==mMaxNbActors)
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add actor to aggregate, max number of actors reached");
+
+	PxRigidActor* rigidActor = actor.is<PxRigidActor>();
+
+	PxU32 numShapes = 0;
+	if(rigidActor)
 	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't add actor to aggregate, max number of actors reached");
-		return false;
+		numShapes = rigidActor->getNbShapes();
+		if ((mNbShapes + numShapes) > mMaxNbShapes)
+			return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add actor to aggregate, max number of shapes reached");
 	}
 
 	if(actor.getAggregate())
-	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't add actor to aggregate, actor already belongs to an aggregate");
-		return false;
-	}
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add actor to aggregate, actor already belongs to an aggregate");
 
 	if(actor.getScene())
-	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't add actor to aggregate, actor already belongs to a scene");
-		return false;
-	}
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add actor to aggregate, actor already belongs to a scene");
 
-	if(actor.getType() == PxActorType::eARTICULATION_LINK)
-	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't add articulation link to aggregate, only whole articulations can be added");
-		return false;
+	const PxType ctype = actor.getConcreteType();
+	if(ctype == PxConcreteType::eARTICULATION_LINK)
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add articulation link to aggregate, only whole articulations can be added");
+
+	if(PxGetAggregateType(mFilterHint)==PxAggregateType::eSTATIC && ctype != PxConcreteType::eRIGID_STATIC)
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add non-static actor to static aggregate");
+
+	if(PxGetAggregateType(mFilterHint)==PxAggregateType::eKINEMATIC)
+	{	
+		bool isKine = false;
+		if(ctype == PxConcreteType::eRIGID_DYNAMIC)
+		{
+			PxRigidDynamic& dyna = static_cast<PxRigidDynamic&>(actor);
+			isKine = dyna.getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC);
+		}
+		if(!isKine)
+			return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add non-kinematic actor to kinematic aggregate");
 	}
 
 	setAggregate(this, actor);
 
 	mActors[mNbActors++] = &actor;
 
+	mNbShapes += numShapes;
+
+	OMNI_PVD_ADD(aggregate, actors, static_cast<PxAggregate&>(*this), actor);
+
 	// PT: when an object is added to a aggregate at runtime, i.e. when the aggregate has already been added to the scene,
 	// we need to immediately add the newcomer to the scene as well.
-	NpScene* s = getAPIScene();
-	if(s)
+	if(npScene)
 	{
-		addActorInternal(actor, *s, bvhStructure);
+		addActorInternal(actor, *npScene, bvh);
 	}
 	else
 	{
-		// A.B. if BVH structure is provided we need to keep it stored till the aggregate is inseted into a scene
-		if(bvhStructure)
+		// A.B. if BVH is provided we need to keep it stored till the aggregate is inserted into a scene
+		if(bvh)
 		{
-			PxBVHStructure* bvhStructureMutable = const_cast<PxBVHStructure*>(bvhStructure);
-			static_cast<Gu::BVHStructure*>(bvhStructureMutable)->incRefCount();
-			NpActor::getFromPxActor(actor).addConnector(NpConnectorType::eBvhStructure, bvhStructureMutable, "PxBVHStructure already added to the PxActor!");
+			PxBVH* bvhMutable = const_cast<PxBVH*>(bvh);
+			static_cast<Gu::BVH*>(bvhMutable)->incRefCount();
+			NpActor::getFromPxActor(actor).addConnector(NpConnectorType::eBvh, bvhMutable, "PxBVH already added to the PxActor!");
 		}
 	}
-
 	return true;
 }
 
@@ -196,38 +252,44 @@ bool NpAggregate::removeActorAndReinsert(PxActor& actor, bool reinsert)
 	{
 		if(mActors[i]==&actor)
 		{
+			PxRigidActor* rigidActor = actor.is<PxRigidActor>();
+			if(rigidActor)
+				mNbShapes -= rigidActor->getNbShapes();
+			
 			mActors[i] = mActors[--mNbActors];
 			removeAndReinsert(actor, reinsert);
+
 			return true;
 		}
 	}
-	Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't remove actor, actor doesn't belong to aggregate");
-	return false;
+	return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't remove actor, actor doesn't belong to aggregate");
 }
 
 bool NpAggregate::removeActor(PxActor& actor)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_AND_RETURN_VAL(npScene, "PxAggregate::removeActor() not allowed while simulation is running. Call will be ignored.", false);
+
 	PX_SIMD_GUARD;
 
 	if(actor.getType() == PxActorType::eARTICULATION_LINK)
-	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't remove articulation link, only whole articulations can be removed");
-		return false;
-	}
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't remove articulation link, only whole articulations can be removed");
 
-	// A.B. remove the BVH structure reference if there is and the aggregate was not added to a scene
-	NpScene* s = getAPIScene();	
-	if(!s)
+	// A.B. remove the BVH reference if there is and the aggregate was not added to a scene
+	if(!npScene)
 	{
 		NpActor& np = NpActor::getFromPxActor(actor);
-		Gu::BVHStructure* bvhStructure = NULL;
-		if(np.getConnectors<Gu::BVHStructure>(NpConnectorType::eBvhStructure, &bvhStructure, 1))
+		Gu::BVH* bvh = NULL;
+		if(np.getConnectors<Gu::BVH>(NpConnectorType::eBvh, &bvh, 1))
 		{
-			np.removeConnector(actor, NpConnectorType::eBvhStructure, bvhStructure, "PxBVHStructure connector could not have been removed!");
-			bvhStructure->decRefCount();
+			np.removeConnector(actor, NpConnectorType::eBvh, bvh, "PxBVH connector could not have been removed!");
+			bvh->decRefCount();
 		}
 	}
+
+	OMNI_PVD_REMOVE(aggregate, actors, static_cast<PxAggregate&>(*this), actor);
 
 	// PT: there are really 2 cases here:
 	// a) the user just wants to remove the actor from the aggregate, but the actor is still alive so if the aggregate has been added to a scene,
@@ -239,32 +301,31 @@ bool NpAggregate::removeActor(PxActor& actor)
 	return removeActorAndReinsert(actor, true);
 }
 
-bool NpAggregate::addArticulation(PxArticulationBase& art)
+bool NpAggregate::addArticulation(PxArticulationReducedCoordinate& art)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_AND_RETURN_VAL(npScene, "PxAggregate::addArticulation() not allowed while simulation is running. Call will be ignored.", false);
+
 	PX_SIMD_GUARD;
 
-	if((mNbActors+art.getNbLinks()) > mAggregate.getMaxActorCount())
-	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't add articulation links, max number of actors reached");
-		return false;
-	}
+	if((mNbActors+art.getNbLinks()) > mMaxNbActors)
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add articulation links, max number of actors reached");
+
+	if((mNbShapes + art.getNbShapes()) > mMaxNbShapes)
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add articulation, max number of shapes reached");
 
 	if(art.getAggregate())
-	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't add articulation to aggregate, articulation already belongs to an aggregate");
-		return false;
-	}
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add articulation to aggregate, articulation already belongs to an aggregate");
 
 	if(art.getScene())
-	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't add articulation to aggregate, articulation already belongs to a scene");
-		return false;
-	}
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't add articulation to aggregate, articulation already belongs to a scene");
 
-	PxArticulationImpl* impl = reinterpret_cast<PxArticulationImpl*>(art.getImpl());
+	NpArticulationReducedCoordinate* impl = static_cast<NpArticulationReducedCoordinate*>(&art);
 	impl->setAggregate(this);
 	NpArticulationLink* const* links = impl->getLinks();
+
 	for(PxU32 i=0; i < impl->getNbLinks(); i++)
 	{
 		NpArticulationLink& l = *links[i];
@@ -273,21 +334,18 @@ bool NpAggregate::addArticulation(PxArticulationBase& art)
 
 		mActors[mNbActors++] = &l;
 
-		mAggregate.addActor(l.getScbActorFast());
+		scAddActor(l);
 	}
 
 	// PT: when an object is added to a aggregate at runtime, i.e. when the aggregate has already been added to the scene,
 	// we need to immediately add the newcomer to the scene as well.
-	NpScene* s = getAPIScene();
-	if(s)
-	{
-		s->addArticulationInternal(art);
-	}
+	if(npScene)
+		npScene->addArticulationInternal(art);
 
 	return true;
 }
 
-bool NpAggregate::removeArticulationAndReinsert(PxArticulationBase& art, bool reinsert)
+bool NpAggregate::removeArticulationAndReinsert(PxArticulationReducedCoordinate& art, bool reinsert)
 {
 	bool found = false;
 	PxU32 idx = 0;
@@ -296,6 +354,7 @@ bool NpAggregate::removeArticulationAndReinsert(PxArticulationBase& art, bool re
 		if ((mActors[idx]->getType() == PxActorType::eARTICULATION_LINK) && (&static_cast<NpArticulationLink*>(mActors[idx])->getRoot() == &art))
 		{
 			PxActor* a = mActors[idx];
+			mNbShapes -= static_cast<NpArticulationLink*>(mActors[idx])->getNbShapes();
 			mActors[idx] = mActors[--mNbActors];
 			removeAndReinsert(*a, reinsert);
 			found = true;
@@ -304,16 +363,20 @@ bool NpAggregate::removeArticulationAndReinsert(PxArticulationBase& art, bool re
 			idx++;
 	}
 
-	reinterpret_cast<PxArticulationImpl*>(art.getImpl())->setAggregate(NULL);
+	static_cast<NpArticulationReducedCoordinate&>(art).setAggregate(NULL);
 
-	if (!found)
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "PxAggregate: can't remove articulation, articulation doesn't belong to aggregate");
+	if(!found)
+		outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxAggregate: can't remove articulation, articulation doesn't belong to aggregate");
 	return found;
 }
 
-bool NpAggregate::removeArticulation(PxArticulationBase& art)
+bool NpAggregate::removeArticulation(PxArticulationReducedCoordinate& art)
 {
-	NP_WRITE_CHECK(getOwnerScene());
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_AND_RETURN_VAL(npScene, "PxAggregate::removeArticulation() not allowed while simulation is running. Call will be ignored.", false);
+
 	PX_SIMD_GUARD;
 
 	// see comments in removeActor()
@@ -322,48 +385,44 @@ bool NpAggregate::removeArticulation(PxArticulationBase& art)
 
 PxU32 NpAggregate::getNbActors() const
 {
-	NP_READ_CHECK(getOwnerScene());
+	NP_READ_CHECK(getNpScene());
 	return mNbActors;
 }
 
 PxU32 NpAggregate::getMaxNbActors() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return mAggregate.getMaxActorCount();
+	NP_READ_CHECK(getNpScene());
+	return mMaxNbActors;
+}
+
+PxU32 NpAggregate::getMaxNbShapes() const
+{
+	NP_READ_CHECK(getNpScene());
+	return mMaxNbShapes;
 }
 
 PxU32 NpAggregate::getActors(PxActor** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
 {
-	NP_READ_CHECK(getOwnerScene());
+	NP_READ_CHECK(getNpScene());
 	return Cm::getArrayOfPointers(userBuffer, bufferSize, startIndex, mActors, getCurrentSizeFast());
 }
 
 PxScene* NpAggregate::getScene()
 {
-	return getAPIScene();
-}
-
-NpScene* NpAggregate::getAPIScene() const
-{
-	return mAggregate.getScbSceneForAPI() ? static_cast<NpScene*>(mAggregate.getScbSceneForAPI()->getPxScene()) : NULL;
-}
-
-NpScene* NpAggregate::getOwnerScene() const
-{
-	return mAggregate.getScbScene() ? static_cast<NpScene*>(mAggregate.getScbScene()->getPxScene()) : NULL;
+	return getNpScene();
 }
 
 bool NpAggregate::getSelfCollision() const
 {
-	NP_READ_CHECK(getOwnerScene());
-	return mAggregate.getSelfCollide();
+	NP_READ_CHECK(getNpScene());
+	return getSelfCollideFast();
 }
 
 // PX_SERIALIZATION
 
 void NpAggregate::preExportDataReset()
 {
-	mAggregate.setAggregateID(PX_INVALID_U32);
+	mAggregateID = PX_INVALID_U32;
 }
 
 void NpAggregate::exportExtraData(PxSerializationContext& stream)
@@ -396,9 +455,9 @@ void NpAggregate::resolveReferences(PxDeserializationContext& context)
 			}
 			if(mActors[i]->getType() == PxActorType::eARTICULATION_LINK)
 			{
-				PxArticulationBase& articulation = static_cast<NpArticulationLink*>(mActors[i])->getRoot();
+				PxArticulationReducedCoordinate& articulation = static_cast<NpArticulationLink*>(mActors[i])->getRoot();
 				if(!articulation.getAggregate())
-					reinterpret_cast<PxArticulationImpl*>(articulation.getImpl())->setAggregate(this);
+					static_cast<NpArticulationReducedCoordinate&>(articulation).setAggregate(this);
 			}
 		}
 	}	
@@ -406,7 +465,7 @@ void NpAggregate::resolveReferences(PxDeserializationContext& context)
 
 NpAggregate* NpAggregate::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	NpAggregate* obj = new (address) NpAggregate(PxBaseFlag::eIS_RELEASABLE);
+	NpAggregate* obj = PX_PLACEMENT_NEW(address, NpAggregate(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(NpAggregate);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -425,3 +484,40 @@ void NpAggregate::requiresObjects(PxProcessPxBaseCallback& c)
 	}
 }
 // ~PX_SERIALIZATION
+
+void NpAggregate::scAddActor(NpActor& actor)
+{
+	PX_ASSERT(!isAPIWriteForbidden());
+
+	actor.getActorCore().setAggregateID(mAggregateID);
+	PvdAttachActorToAggregate( this, &actor );
+	PvdUpdateProperties( this );
+}
+
+void NpAggregate::scRemoveActor(NpActor& actor, bool reinsert)
+{
+	PX_ASSERT(!isAPIWriteForbidden());
+
+	Sc::ActorCore& ac = actor.getActorCore();
+	ac.setAggregateID(PX_INVALID_U32);
+		
+	if(getNpScene() && reinsert)
+		ac.reinsertShapes();
+
+	//Update pvd status
+	PvdDetachActorFromAggregate( this, &actor );
+	PvdUpdateProperties( this );
+}
+
+void NpAggregate::incShapeCount()
+{
+	if(mNbShapes == mMaxNbShapes)
+		outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "PxRigidActor::attachShape: Actor is part of an aggregate and max number of shapes reached!");
+
+	mNbShapes++;
+}
+void NpAggregate::decShapeCount()
+{
+	PX_ASSERT(mNbShapes > 0);
+	mNbShapes--;
+}

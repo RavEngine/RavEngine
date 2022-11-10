@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,49 +22,68 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geometry/PxGeometryQuery.h"
 #include "extensions/PxRigidActorExt.h"
-#include "PxShape.h"
+#include "foundation/PxFPU.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxInlineArray.h"
+#include "geometry/PxGeometryQuery.h"
 
-#include "PsAllocator.h"
-#include "PsInlineArray.h"
-#include "CmPhysXCommon.h"
+#include "cooking/PxBVHDesc.h"
+#include "cooking/PxCooking.h"
 
 using namespace physx;
 
-PxBounds3*	PxRigidActorExt::getRigidActorShapeLocalBoundsList(const PxRigidActor& actor, PxU32& numBounds)
+PxBounds3* PxRigidActorExt::getRigidActorShapeLocalBoundsList(const PxRigidActor& actor, PxU32& numBounds)
 {
 	const PxU32 numShapes = actor.getNbShapes();
 	if(numShapes == 0)
 		return NULL;
 	
-	Ps::InlineArray<PxShape*, 64> shapes("PxShape*"); 
+	PxInlineArray<PxShape*, 64> shapes("PxShape*"); 
 	shapes.resize(numShapes);
 
 	actor.getShapes(shapes.begin(), shapes.size());
 
 	PxU32 numSqShapes = 0;
-	for(PxU32 i = 0; i < numShapes; i++)
+	for(PxU32 i=0; i<numShapes; i++)
 	{
 		if(shapes[i]->getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE)
 			numSqShapes++;
 	}
 
-	PxBounds3* bounds = reinterpret_cast<PxBounds3*>(PX_ALLOC(numSqShapes * sizeof(PxBounds3), "PxBounds3"));
+	PxBounds3* bounds = PX_ALLOCATE(PxBounds3, numSqShapes, "PxBounds3");
 
 	numSqShapes = 0;
-	for(PxU32 i = 0; i < numShapes; i++)
 	{
-		if(shapes[i]->getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE)
-		{			
-			bounds[numSqShapes++] = PxGeometryQuery::getWorldBounds(shapes[i]->getGeometry().any(), shapes[i]->getLocalPose(), 1.0f);
+		PX_SIMD_GUARD	// PT: external guard because we use PxGeometryQueryFlag::Enum(0) below
+		for(PxU32 i=0; i<numShapes; i++)
+		{
+			if(shapes[i]->getFlags() & PxShapeFlag::eSCENE_QUERY_SHAPE)
+				PxGeometryQuery::computeGeomBounds(bounds[numSqShapes++], shapes[i]->getGeometry(), shapes[i]->getLocalPose(), 0.0f, 1.0f, PxGeometryQueryFlag::Enum(0));
 		}
 	}
 
 	numBounds = numSqShapes;
 	return bounds;
 }
+
+PxBVH* PxRigidActorExt::createBVHFromActor(PxPhysics& physics, const PxRigidActor& actor)
+{
+	PxU32 nbBounds = 0;
+	PxBounds3* bounds = PxRigidActorExt::getRigidActorShapeLocalBoundsList(actor, nbBounds);
+
+	PxBVHDesc bvhDesc;
+	bvhDesc.bounds.count	= nbBounds;
+	bvhDesc.bounds.data		= bounds;
+	bvhDesc.bounds.stride	= sizeof(PxBounds3);
+
+	PxBVH* bvh = PxCreateBVH(bvhDesc, physics.getPhysicsInsertionCallback());
+
+	PX_FREE(bounds);
+	return bvh;
+}
+

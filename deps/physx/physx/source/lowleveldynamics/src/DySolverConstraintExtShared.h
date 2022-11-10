@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,16 +30,14 @@
 #define DY_SOLVER_CONSTRAINT_EXT_SHARED_H
 
 #include "foundation/PxPreprocessor.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 #include "DyArticulationContactPrep.h"
 #include "DySolverConstraintDesc.h"
 #include "DySolverConstraint1D.h"
 #include "DySolverContact.h"
 #include "DySolverContactPF.h"
-#include "DyArticulationHelper.h"
 #include "PxcNpWorkUnit.h"
 #include "PxsMaterialManager.h"
-#include "PxsMaterialCombiner.h"
 
 namespace physx
 {
@@ -48,10 +45,11 @@ namespace physx
 	{
 		FloatV setupExtSolverContact(const SolverExtBody& b0, const SolverExtBody& b1,
 			const FloatV& d0, const FloatV& d1, const FloatV& angD0, const FloatV& angD1, const Vec3V& bodyFrame0p, const Vec3V& bodyFrame1p,
-			const Vec3VArg normal, const FloatVArg invDt, const FloatVArg invDtp8, const FloatVArg restDistance, const FloatVArg maxPenBias, const FloatVArg restitution,
-			const FloatVArg bounceThreshold, const Gu::ContactPoint& contact, SolverContactPointExt& solverContact, const FloatVArg ccdMaxSeparation,
-			Cm::SpatialVectorF* Z, const Cm::SpatialVectorV& v0, const Cm::SpatialVectorV& v1);
+			const Vec3VArg normal, const FloatVArg invDt, const FloatVArg invDtp8, const FloatVArg dt, const FloatVArg restDistance, const FloatVArg maxPenBias, const FloatVArg restitution,
+			const FloatVArg bounceThreshold, const PxContactPoint& contact, SolverContactPointExt& solverContact, const FloatVArg ccdMaxSeparation,
+			Cm::SpatialVectorF* Z, const Cm::SpatialVectorV& v0, const Cm::SpatialVectorV& v1, const FloatV& cfm, const Vec3VArg solverOffsetSlop,
+			const FloatVArg norVel0, const FloatVArg norVel1, const FloatVArg damping);
 	} //namespace Dy
 }
 
-#endif //DY_SOLVER_CONSTRAINT_EXT_SHARED_H
+#endif

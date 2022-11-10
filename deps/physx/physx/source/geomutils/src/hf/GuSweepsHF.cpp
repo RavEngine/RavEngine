@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -38,16 +37,21 @@
 #include "GuSweepCapsuleTriangle.h"
 #include "GuInternal.h"
 #include "GuGJKRaycast.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 #include "GuSweepConvexTri.h"
 
 #define AbortTraversal		false
 #define ContinueTraversal	true
+
+#if PX_VC 
+	#pragma warning( disable : 4324 ) // Padding was added at the end of a structure because of a __declspec(align) value.
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -78,7 +82,7 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class HeightFieldTraceSegmentReport : public EntityReport<PxU32>
+class HeightFieldTraceSegmentReport : public EntityReport
 {
 	PX_NOCOPY(HeightFieldTraceSegmentReport)
 public:
@@ -120,7 +124,7 @@ class CapsuleTraceSegmentReport : public HeightFieldTraceSegmentReport
 public:
 	CapsuleTraceSegmentReport(	const HeightFieldUtil& hfUtil, const PxHitFlags hitFlags,
 								const Capsule& inflatedCapsule,
-								const PxVec3& unitDir, PxSweepHit& sweepHit, const PxTransform& pose, PxReal distance) :
+								const PxVec3& unitDir, PxGeomSweepHit& sweepHit, const PxTransform& pose, PxReal distance) :
 		HeightFieldTraceSegmentReport	(hfUtil, hitFlags),
 		mInflatedCapsule				(inflatedCapsule),
 		mUnitDir						(unitDir),
@@ -131,7 +135,7 @@ public:
 		mSweepHit.faceIndex = 0xFFFFffff;
 	}
 
-	virtual PxAgain onEvent(PxU32 nb, PxU32* indices)
+	virtual bool onEvent(PxU32 nb, const PxU32* indices)
 	{
 		PX_ALIGN_PREFIX(16) PxU8 tribuf[HF_SWEEP_REPORT_BUFFER_SIZE*sizeof(PxTriangle)] PX_ALIGN_SUFFIX(16);
 		PxTriangle* tmpT = reinterpret_cast<PxTriangle*>(tribuf);
@@ -142,7 +146,7 @@ public:
 			mHfUtil.getTriangle(mPose, tmpT[i], NULL, NULL, triangleIndex, true);
 		}
 
-		PxSweepHit h;	// PT: TODO: ctor!
+		PxGeomSweepHit h;	// PT: TODO: ctor!
 		// PT: this one is safe because cullbox is NULL (no need to allocate one more triangle)
 		// PT: TODO: is it ok to pass the initial distance here?
 		PxVec3 bestNormal;
@@ -167,7 +171,7 @@ public:
 		return ContinueTraversal;
 	}
 
-	bool finalizeHit(PxSweepHit& sweepHit, const PxHeightFieldGeometry& hfGeom, const PxTransform& pose, const Capsule& lss, const Capsule& inflatedCapsule, const PxVec3& unitDir)
+	bool finalizeHit(PxGeomSweepHit& sweepHit, const PxHeightFieldGeometry& hfGeom, const PxTransform& pose, const Capsule& lss, const Capsule& inflatedCapsule, const PxVec3& unitDir)
 	{
 		if(!mStatus)
 			return false;
@@ -186,7 +190,7 @@ public:
 				capsuleV.initialize(p0, p1, radius);
 
 				//calculate MTD
-				const bool hasContacts = computeCapsule_HeightFieldMTD(hfGeom, pose, capsuleV, inflatedCapsule.radius, mIsDoubleSided, GuHfQueryFlags::eWORLD_SPACE, sweepHit);
+				const bool hasContacts = computeCapsule_HeightFieldMTD(hfGeom, pose, capsuleV, inflatedCapsule.radius, mIsDoubleSided, sweepHit);
 
 				//ML: the center of mass is below the surface, we won't have MTD contact generate
 				if(!hasContacts)
@@ -215,13 +219,14 @@ public:
 	private:
 	const Capsule&		mInflatedCapsule;
 	const PxVec3&		mUnitDir;
-	PxSweepHit&			mSweepHit;
+	PxGeomSweepHit&		mSweepHit;
 	const PxTransform&	mPose;
 	const PxReal		mDistance;
 };
 
 bool sweepCapsule_HeightFieldGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(capsuleGeom_);
 	PX_UNUSED(capsulePose_);
 
@@ -266,7 +271,7 @@ public:
 			mUnitDir						(unitDir),
 			mInflation						(inflation)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		mSweepHit.faceIndex = 0xFFFFffff;
 		mSweepHit.distance = distance;
 		const Vec3V worldDir = V3LoadU(unitDir);
@@ -277,8 +282,8 @@ public:
 		const QuatV q1 = QuatVLoadU(&convexPose.q.x);
 		const Vec3V p1 = V3LoadU(&convexPose.p.x);
 
-		const PsTransformV meshTransf(p0, q0);
-		const PsTransformV convexTransf(p1, q1);
+		const PxTransformV meshTransf(p0, q0);
+		const PxTransformV convexTransf(p1, q1);
 
 		mMeshToConvex = convexTransf.transformInv(meshTransf);
 		mConvexPoseV = convexTransf;
@@ -292,7 +297,7 @@ public:
 		mConvexHull.initialize(&hull, V3Zero(), vScale, vQuat, convexScale.isIdentity());
 	}
 
-	virtual PxAgain onEvent(PxU32 nbEntities, PxU32* entities)
+	virtual bool onEvent(PxU32 nbEntities, const PxU32* entities)
 	{
 		const PxTransform idt(PxIdentity);
 		for(PxU32 i=0; i<nbEntities; i++)
@@ -313,7 +318,7 @@ public:
 		return ContinueTraversal;
 	}
 
-	bool finalizeHit(PxSweepHit& sweepHit,
+	bool finalizeHit(PxGeomSweepHit& sweepHit,
 		const PxHeightFieldGeometry& hfGeom, const PxTransform& pose,
 		const PxConvexMeshGeometry& convexGeom, const PxTransform& convexPose,
 		const PxVec3& unitDir, PxReal inflation)
@@ -325,7 +330,7 @@ public:
 		{
 			if(mHitFlags & PxHitFlag::eMTD)
 			{
-				const bool hasContacts = computeConvex_HeightFieldMTD(hfGeom,  pose, convexGeom, convexPose, inflation, mIsDoubleSided, GuHfQueryFlags::eWORLD_SPACE, sweepHit);
+				const bool hasContacts = computeConvex_HeightFieldMTD(hfGeom,  pose, convexGeom, convexPose, inflation, mIsDoubleSided, sweepHit);
 
 				sweepHit.faceIndex = mSweepHit.faceIndex;
 				sweepHit.flags = PxHitFlag::eNORMAL | PxHitFlag::eFACE_INDEX;
@@ -354,10 +359,10 @@ public:
 	}
 
 	private:
-	PsMatTransformV		mMeshToConvex;
-	PsTransformV		mConvexPoseV;
+	PxMatTransformV		mMeshToConvex;
+	PxTransformV		mConvexPoseV;
 	ConvexHullV			mConvexHull;
-	PxSweepHit			mSweepHit;
+	PxGeomSweepHit		mSweepHit;
 	Vec3V				mConvexSpaceDir;
 	FloatV				mDistance;
 	const PxVec3		mUnitDir;
@@ -368,10 +373,11 @@ public:
 bool sweepConvex_HeightFieldGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eHEIGHTFIELD);
+	PX_UNUSED(threadContext);
 	const PxHeightFieldGeometry& hfGeom = static_cast<const PxHeightFieldGeometry&>(geom);
 
-	const Matrix34 convexTM(convexPose);
-	const Matrix34 meshTM(pose);
+	const Matrix34FromTransform convexTM(convexPose);
+	const Matrix34FromTransform meshTM(pose);
 
 	ConvexMesh* convexMesh = static_cast<ConvexMesh*>(convexGeom.convexMesh);
 
@@ -404,18 +410,13 @@ bool sweepConvex_HeightFieldGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#if PX_VC 
-    #pragma warning(push)
-	#pragma warning( disable : 4324 ) // Padding was added at the end of a structure because of a __declspec(align) value.
-#endif
-
 class BoxTraceSegmentReport : public HeightFieldTraceSegmentReport
 {
 	PX_NOCOPY(BoxTraceSegmentReport)
 public:
 	BoxTraceSegmentReport(	const HeightFieldUtil& hfUtil, const PxHitFlags hitFlags,
-							const PsTransformV& worldToBoxV, const PxTransform& pose, const BoxV& box, const PxVec3& localMotion,
-							PxSweepHit& sweepHit, PxReal inflation) :
+							const PxTransformV& worldToBoxV, const PxTransform& pose, const BoxV& box, const PxVec3& localMotion,
+							PxGeomSweepHit& sweepHit, PxReal inflation) :
 		HeightFieldTraceSegmentReport	(hfUtil, hitFlags),
 		mWorldToBoxV					(worldToBoxV),
 		mPose							(pose),
@@ -428,7 +429,7 @@ public:
 		mSweepHit.faceIndex = 0xFFFFffff;
 	}
 
-	virtual PxAgain onEvent(PxU32 nb, PxU32* indices)
+	virtual bool onEvent(PxU32 nb, const PxU32* indices)
 	{
 		const FloatV zero = FZero();
 		const Vec3V zeroV = V3Zero();
@@ -471,7 +472,7 @@ public:
 			const LocalConvex<BoxV> convexB(mBox);
 			const Vec3V initialSearchDir = V3Sub(triangle.getCenter(), mBox.getCenter());
 
-			if(gjkRaycastPenetration< LocalConvex<TriangleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, mInflation, false))
+			if(gjkRaycastPenetration<LocalConvex<TriangleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, mInflation, false))
 			{
 				mStatus	= true;
 				if(FAllGrtr(toi, zero))
@@ -500,7 +501,7 @@ public:
 		return ContinueTraversal;
 	}
 
-	bool finalizeHit(PxSweepHit& sweepHit,
+	bool finalizeHit(PxGeomSweepHit& sweepHit,
 			const PxHeightFieldGeometry& hfGeom, const PxTransform& pose,
 			const PxTransform& boxPose_, const Box& box,
 			const PxVec3& unitDir, PxReal distance, PxReal inflation)
@@ -516,7 +517,7 @@ public:
 
 			if(mHitFlags & PxHitFlag::eMTD)
 			{
-				const bool hasContacts = computeBox_HeightFieldMTD(hfGeom, pose, box, boxPose_, inflation, mIsDoubleSided, GuHfQueryFlags::eWORLD_SPACE, sweepHit);
+				const bool hasContacts = computeBox_HeightFieldMTD(hfGeom, pose, box, boxPose_, inflation, mIsDoubleSided, sweepHit);
 				
 				//ML: the center of mass is below the surface, we won't have MTD contact generate
 				if(!hasContacts)
@@ -550,22 +551,19 @@ public:
 	}
 
 	private:
-	const PsTransformV&	mWorldToBoxV;
+	const PxTransformV&	mWorldToBoxV;
 	const PxTransform&	mPose;
 	const BoxV&			mBox;
 	FloatV				mMinToi;
 	const PxVec3		mLocalMotion;
-	PxSweepHit&			mSweepHit;
+	PxGeomSweepHit&		mSweepHit;
 	const PxReal		mInflation;
 };
-
-#if PX_VC 
-     #pragma warning(pop) 
-#endif
 
 bool sweepBox_HeightFieldGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eHEIGHTFIELD);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(boxGeom_);
 	PX_UNUSED(hitFlags);
 
@@ -579,7 +577,7 @@ bool sweepBox_HeightFieldGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 
 	const QuatV q1 = QuatVLoadA(&WorldToBox.q.x);
 	const Vec3V p1 = V3LoadA(&WorldToBox.p.x);
-	const PsTransformV WorldToBoxV(p1, q1);
+	const PxTransformV WorldToBoxV(p1, q1);
 
 	const PxVec3 motion = unitDir * distance;
 	const PxVec3 localMotion = WorldToBox.rotate(motion);

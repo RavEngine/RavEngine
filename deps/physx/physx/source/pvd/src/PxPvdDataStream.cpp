@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #include "foundation/PxAssert.h"
 #include "PxPvdCommStreamEventSink.h"
 #include "PxPvdDataStreamHelpers.h"
 #include "PxPvdObjectModelInternalTypes.h"
 #include "PxPvdImpl.h"
-#include "PsFoundation.h"
 
 using namespace physx;
 using namespace physx::pvdsdk;
-using namespace physx::shdfnd;
 
 namespace
 {
@@ -63,10 +60,10 @@ struct PropertyDefinitionHelper : public PvdPropertyDefinitionHelper
 {
 	PvdDataStream* mStream;
 	PvdOMMetaDataProvider& mProvider;
-    Array<char> mNameBuffer;
-    Array<uint32_t> mNameStack;
-    Array<NamedValue> mNamedValues;
-    Array<PropertyMessageArg> mPropertyMessageArgs;
+    PxArray<char> mNameBuffer;
+    PxArray<uint32_t> mNameStack;
+    PxArray<NamedValue> mNamedValues;
+    PxArray<PropertyMessageArg> mPropertyMessageArgs;
 
 	PropertyDefinitionHelper(PvdOMMetaDataProvider& provider)
 	: mStream(NULL)
@@ -195,7 +192,7 @@ struct PropertyDefinitionHelper : public PvdPropertyDefinitionHelper
 class PvdMemPool
 {
 	// Link List
-    Array<uint8_t*> mMemBuffer;
+    PxArray<uint8_t*> mMemBuffer;
 	uint32_t mLength;
 	uint32_t mBufIndex;
 
@@ -250,11 +247,11 @@ class PvdMemPool
 		mBufIndex = 0;
 	}
 };
-struct PvdOutStream : public PvdDataStream, public UserAllocated
+struct PvdOutStream : public PvdDataStream, public PxUserAllocated
 {
-    HashMap<String, uint32_t> mStringHashMap;
+    PxHashMap<String, uint32_t> mStringHashMap;
 	PvdOMMetaDataProvider& mMetaDataProvider;
-    Array<uint8_t> mTempBuffer;
+    PxArray<uint8_t> mTempBuffer;
 	PropertyDefinitionHelper mPropertyDefinitionHelper;
 	DataStreamState::Enum mStreamState;
 
@@ -268,7 +265,7 @@ struct PvdOutStream : public PvdDataStream, public UserAllocated
 	uint32_t mPropertyMessageSize;
 	bool mConnected;
 	uint64_t mStreamId;
-    Array<PvdCommand*> mPvdCommandArray;
+    PxArray<PvdCommand*> mPvdCommandArray;
 	PvdMemPool mPvdCommandPool;
 	PxPvdTransport& mTransport;
 
@@ -302,7 +299,7 @@ struct PvdOutStream : public PvdDataStream, public UserAllocated
 	{
 		if(nm == NULL || *nm == 0)
 			return 0;
-        const HashMap<String, uint32_t>::Entry* entry(mStringHashMap.find(nm));
+        const PxHashMap<String, uint32_t>::Entry* entry(mStringHashMap.find(nm));
 		if(entry)
 			return entry->second;
 		ScopedMetaData meta(mMetaDataProvider);
@@ -751,14 +748,14 @@ struct PvdOutStream : public PvdDataStream, public UserAllocated
 	{
 		PX_ASSERT(mStreamState == DataStreamState::Open);
 		return boolToError(handlePvdEvent(
-            BeginSection(toStream(instance), toStream(name), Time::getCurrentCounterValue())));
+            BeginSection(toStream(instance), toStream(name), PxTime::getCurrentCounterValue())));
 	}
 
 	virtual PvdError endSection(const void* instance, String name)
 	{
 		PX_ASSERT(mStreamState == DataStreamState::Open);
 		return boolToError(handlePvdEvent(
-            EndSection(toStream(instance), toStream(name), Time::getCurrentCounterValue())));
+            EndSection(toStream(instance), toStream(name), PxTime::getCurrentCounterValue())));
 	}
 
 	virtual PvdError originShift(const void* scene, PxVec3 shift)
@@ -781,7 +778,7 @@ struct PvdOutStream : public PvdDataStream, public UserAllocated
 	{
 		MeasureStream measure;
 		PvdCommStreamEventSink::writeStreamEvent(evt, evtType, measure);
-        EventGroup evtGroup(measure.mSize, 1, mStreamId, Time::getCurrentCounterValue());
+        EventGroup evtGroup(measure.mSize, 1, mStreamId, PxTime::getCurrentCounterValue());
 		EventStreamifier<PxPvdTransport> streamifier(mTransport.lock());
 		evtGroup.serialize(streamifier);
 		PvdCommStreamEventSink::writeStreamEvent(evt, evtType, mTransport);
@@ -856,7 +853,7 @@ PvdDataStream* PvdDataStream::create(PxPvd* pvd)
 {
 	if(pvd == NULL)
 	{
-        getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PvdDataStream::create - pvd must be non-NULL!");
+        PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PvdDataStream::create - pvd must be non-NULL!");
 	    return NULL;
 	}
 

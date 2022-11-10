@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,7 +37,7 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 #define GU_SAFE_DISTANCE_FOR_NORMAL_COMPUTATION 0.1f
 
@@ -83,8 +82,8 @@ static bool runBackupProcedure(PxVec3& hit, PxVec3& normal, const PxVec3& localM
 	Vec3V closestB;
 	Vec3V normalV;
 	FloatV distV;
-	LocalConvex<TriangleV> convexA(triangleV);
-	LocalConvex<BoxV> convexB(boxV);
+	const LocalConvex<TriangleV> convexA(triangleV);
+	const LocalConvex<BoxV> convexB(boxV);
 	const Vec3V initialSearchDir = V3Sub(triangleV.getCenter(), boxV.getCenter());
 	const FloatV contactDist = FMax();
 	GjkStatus status_ = gjk<LocalConvex<TriangleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, contactDist, closestA, closestB, normalV, distV);

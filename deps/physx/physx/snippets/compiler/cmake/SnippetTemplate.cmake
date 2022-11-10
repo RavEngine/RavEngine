@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build Snippet common template
@@ -48,6 +47,7 @@ TARGET_INCLUDE_DIRECTORIES(Snippet${SNIPPET_NAME}
 	
 	PRIVATE ${PHYSX_ROOT_DIR}/include/
 	PRIVATE ${PHYSX_ROOT_DIR}/source/physxextensions/src
+	PRIVATE ${PHYSX_ROOT_DIR}/source/physxgpuextensions/src
 )
 
 TARGET_COMPILE_DEFINITIONS(Snippet${SNIPPET_NAME}
@@ -74,8 +74,14 @@ ELSE()
 	ENDIF()
 ENDIF()
 
+IF(PVDRuntimeBuilt)
+	SET(PVDRuntime_Lib "PVDRuntime")
+ELSE()
+	SET(PVDRuntime_Lib "")
+ENDIF()
+
 TARGET_LINK_LIBRARIES(Snippet${SNIPPET_NAME} 
-	PUBLIC PhysXExtensions PhysX PhysXPvdSDK PhysXVehicle PhysXCharacterKinematic PhysXCooking PhysXCommon PhysXFoundation SnippetUtils
+	PUBLIC PhysXExtensions PhysXPvdSDK PhysX PhysXVehicle PhysXVehicle2 PhysXCharacterKinematic PhysXCooking PhysXCommon PhysXFoundation SnippetUtils ${PVDRuntime_Lib}
 	PUBLIC ${SNIPPET_PLATFORM_LINKED_LIBS})
 
 IF(CUSTOM_SNIPPET_TARGET_PROPERTIES)

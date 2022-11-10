@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -33,7 +32,16 @@
 // Chris Nuernberger <chrisn@nvidia.com> or Dilip or Adam.
 // The source code for the generate was at one time checked into:
 // physx/PhysXMetaDataGenerator/llvm/tools/clang/lib/Frontend/PhysXMetaDataAction.cpp
+#include "foundation/PxPreprocessor.h"
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
 #include "PxVehicleMetaDataObjects.h"
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic pop
+#endif
+
 #include "PxMetaDataCppPrefix.h"
 #include "PxVehicleSuspWheelTire4.h"
 using namespace physx;

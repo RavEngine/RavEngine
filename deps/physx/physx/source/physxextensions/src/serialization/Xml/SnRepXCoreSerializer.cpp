@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "PxPhysicsAPI.h"
 #include "PxMetaDataObjects.h"
-#include "CmIO.h"
 #include "SnPxStreamOperators.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 #include "SnXmlImpl.h"			
 #include "SnXmlSerializer.h"		
 #include "SnXmlDeserializer.h"		
@@ -39,7 +37,7 @@
 
 using namespace physx::Sn;
 namespace physx { 
-	typedef PxReadOnlyPropertyInfo<PxPropertyInfoName::PxArticulationLink_InboundJoint, PxArticulationLink, PxArticulationJointBase *> TIncomingJointPropType;
+	typedef PxReadOnlyPropertyInfo<PxPropertyInfoName::PxArticulationLink_InboundJoint, PxArticulationLink, PxArticulationJointReducedCoordinate *> TIncomingJointPropType;
 		
 	//*************************************************************
 	//	Actual RepXSerializer implementations for PxMaterial
@@ -57,12 +55,12 @@ namespace physx {
 		bool hadError = false;
 		RepXVisitorReader<PxShape> theVisitor( names, contexts, inArgs, inReader, NULL, inAllocator, *inCollection, hadError );
 
-		Ps::Array<PxMaterial*> materials;
+		PxArray<PxMaterial*> materials;
 		PxGeometry* geometry = NULL; 
 		parseShape( theVisitor, geometry, materials );
 		if(hadError)
 			return PxRepXObject();
-		PxShape *theShape = inArgs.physics.createShape( *geometry, materials.begin(), Ps::to16(materials.size()) );
+		PxShape *theShape = inArgs.physics.createShape( *geometry, materials.begin(), PxTo16(materials.size()) );
 
 		switch(geometry->getType())
 		{
@@ -86,6 +84,18 @@ namespace physx {
 			break;
 		case PxGeometryType::eHEIGHTFIELD :
 			static_cast<PxHeightFieldGeometry*>(geometry)->~PxHeightFieldGeometry();
+			break;
+		case PxGeometryType::eTETRAHEDRONMESH :
+			static_cast<PxTetrahedronMeshGeometry*>(geometry)->~PxTetrahedronMeshGeometry();
+			break;
+		case PxGeometryType::ePARTICLESYSTEM:
+			static_cast<PxParticleSystemGeometry*>(geometry)->~PxParticleSystemGeometry();
+			break;
+		case PxGeometryType::eHAIRSYSTEM:
+			static_cast<PxHairSystemGeometry*>(geometry)->~PxHairSystemGeometry();
+			break;
+		case PxGeometryType::eCUSTOM :
+			static_cast<PxCustomGeometry*>(geometry)->~PxCustomGeometry();
 			break;
 
 		case PxGeometryType::eGEOMETRY_COUNT:
@@ -439,19 +449,6 @@ namespace physx {
 	}
 
 	//*************************************************************
-	//	Actual RepXSerializer implementations for PxArticulation
-	//*************************************************************
-	void PxArticulationRepXSerializer::objectToFileImpl( const PxArticulation* inObj, PxCollection* inCollection, XmlWriter& inWriter, MemoryBuffer& inTempBuffer, PxRepXInstantiationArgs& /*inArgs*/)
-	{
-		TNameStack nameStack( inTempBuffer.mManager->mWrapper );
-		Sn::TArticulationLinkLinkMap linkMap( inTempBuffer.mManager->mWrapper );
-		RepXVisitorWriter<PxArticulation> writer( nameStack, inWriter, inObj, inTempBuffer, *inCollection, &linkMap );
-		RepXPropertyFilter<RepXVisitorWriter<PxArticulation> > theOp( writer );
-		visitAllProperties<PxArticulation>( theOp );
-	}
-	PxArticulation* PxArticulationRepXSerializer::allocateObject( PxRepXInstantiationArgs& inArgs ) { return inArgs.physics.createArticulation(); }
-
-	//*************************************************************
 	//	Actual RepXSerializer implementations for PxArticulationReducedCoordinate
 	//*************************************************************
 	void PxArticulationReducedCoordinateRepXSerializer::objectToFileImpl(const PxArticulationReducedCoordinate* inObj, PxCollection* inCollection, XmlWriter& inWriter, MemoryBuffer& inTempBuffer, PxRepXInstantiationArgs& /*inArgs*/)
@@ -490,7 +487,7 @@ namespace physx {
 
 				theId = inCollection->getId( *actor );
 				if( theId == 0 )
-					theId = static_cast<uint64_t>(reinterpret_cast<size_t>(actor));
+					theId = static_cast<uint64_t>(size_t(actor));
 
 				writeProperty( inWriter, *inCollection, inTempBuffer, "PxActorRef", theId );			
 			}
@@ -500,6 +497,7 @@ namespace physx {
 
 		writeProperty( inWriter, *inCollection, inTempBuffer, "NumActors", data->getNbActors() );
 		writeProperty( inWriter, *inCollection, inTempBuffer, "MaxNbActors", data->getMaxNbActors() );
+		writeProperty(inWriter, *inCollection, inTempBuffer, "MaxNbShapes", data->getMaxNbShapes());
 		writeProperty( inWriter, *inCollection, inTempBuffer, "SelfCollision", data->getSelfCollision() );
 
 		writeAllProperties( data, inWriter, inTempBuffer, *inCollection );
@@ -511,11 +509,14 @@ namespace physx {
 		readProperty( inReader, "NumActors", numActors );
 		PxU32 maxNbActors;
 		readProperty( inReader, "MaxNbActors", maxNbActors );
+
+		PxU32 maxNbShapes;
+		readProperty(inReader, "MaxNbShapes", maxNbShapes);
 		
 		bool selfCollision;
 		bool ret = readProperty( inReader, "SelfCollision", selfCollision );
 
-		PxAggregate* theAggregate = inArgs.physics.createAggregate(maxNbActors, selfCollision);
+		PxAggregate* theAggregate = inArgs.physics.createAggregate(maxNbActors, maxNbShapes, selfCollision);
 		ret &= readAllProperties( inArgs, inReader, theAggregate, inAllocator, *inCollection );
 
 		inReader.pushCurrentContext();
@@ -526,7 +527,7 @@ namespace physx {
 				matSuccess = inReader.gotoNextSibling() )
 			{
 				const char* actorType = inReader.getCurrentItemName();
-				if ( 0 == physx::shdfnd::stricmp( actorType, "PxActorRef" ) ) 
+				if ( 0 == physx::Pxstricmp( actorType, "PxActorRef" ) ) 
 				{
 					PxActor *actor = NULL;
 					ret &= readReference<PxActor>( inReader, *inCollection, actor );
@@ -541,10 +542,10 @@ namespace physx {
 						theAggregate->addActor(*actor);
 					}
 				}
-				else if ( 0 == physx::shdfnd::stricmp( actorType, "PxArticulationRef" ) ) 
+				else if ( 0 == physx::Pxstricmp( actorType, "PxArticulationRef" ) ) 
 				{
-					PxArticulation* articulation = NULL;
-					ret &= readReference<PxArticulation>( inReader, *inCollection, articulation );
+					PxArticulationReducedCoordinate* articulation = NULL;
+					ret &= readReference<PxArticulationReducedCoordinate>( inReader, *inCollection, articulation );
 					if(articulation)
 					{
 						PxScene *currScene = articulation->getScene();

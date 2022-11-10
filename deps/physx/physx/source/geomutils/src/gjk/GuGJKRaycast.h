@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,14 +35,11 @@
 #include "GuGJKPenetration.h"
 #include "GuEPA.h"
 
-
 namespace physx
 {
 
-
 namespace Gu
 {
-
 	/*
 		ConvexA is in the local space of ConvexB
 		lambda			:	the time of impact(TOI)
@@ -54,14 +50,13 @@ namespace Gu
 		inflation		:	the amount by which we inflate the swept shape. If the inflated shapes aren't initially-touching, 
 							the TOI will return the time at which both shapes are at a distance equal to inflation separated. If inflation is 0
 							the TOI will return the time at which both shapes are touching.
-	
 	*/
 	template<class ConvexA, class ConvexB>
-	bool gjkRaycast(const ConvexA& a, const ConvexB& b, const Ps::aos::Vec3VArg initialDir, const Ps::aos::FloatVArg initialLambda, const Ps::aos::Vec3VArg s, const Ps::aos::Vec3VArg r, Ps::aos::FloatV& lambda, Ps::aos::Vec3V& normal, Ps::aos::Vec3V& closestA, const PxReal _inflation)
+	bool gjkRaycast(const ConvexA& a, const ConvexB& b, const aos::Vec3VArg initialDir, const aos::FloatVArg initialLambda, const aos::Vec3VArg s, const aos::Vec3VArg r, aos::FloatV& lambda, aos::Vec3V& normal, aos::Vec3V& closestA, const PxReal _inflation)
 	{
 		PX_UNUSED(initialLambda);
 
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const FloatV inflation = FLoad(_inflation);
 		const Vec3V zeroV = V3Zero();
@@ -86,7 +81,6 @@ namespace Gu
 		Vec3V A[4] = {initialSupportA, zeroV, zeroV, zeroV}; //ConvexHull a simplex set
 		Vec3V B[4] = {initialSupportB, zeroV, zeroV, zeroV}; //ConvexHull b simplex set
 		 
-
 		Vec3V v = V3Neg(Q[0]);
 		Vec3V supportA = initialSupportA;
 		Vec3V supportB = initialSupportB;
@@ -113,8 +107,7 @@ namespace Gu
 		Vec3V nor = v;
 		
 		while(BAllEqTTTT(bNotTerminated))
-		{
-			
+		{	
 			minDist = sDist;
 			preClos = clos;
 
@@ -184,7 +177,6 @@ namespace Gu
 			bNotTerminated = BAnd(FIsGrtr(sDist, inflation2), bNotDegenerated);
 		}
 
-		
 		const BoolV aQuadratic = a.isMarginEqRadius();
 		//ML:if the Minkowski sum of two objects are too close to the original(eps2 > sDist), we can't take v because we will lose lots of precision. Therefore, we will take
 		//previous configuration's normal which should give us a reasonable approximation. This effectively means that, when we do a sweep with inflation, we always keep v because
@@ -203,7 +195,6 @@ namespace Gu
 	}
 
 
-
 	/*
 		ConvexA is in the local space of ConvexB
 		lambda			:	the time of impact(TOI)
@@ -215,13 +206,12 @@ namespace Gu
 		inflation		:	the amount by which we inflate the swept shape. If the inflated shapes aren't initially-touching, 
 							the TOI will return the time at which both shapes are at a distance equal to inflation separated. If inflation is 0
 							the TOI will return the time at which both shapes are touching.
-	
 	*/
 	template<class ConvexA, class ConvexB>
-	bool gjkRaycastPenetration(const ConvexA& a, const ConvexB& b, const Ps::aos::Vec3VArg initialDir, const Ps::aos::FloatVArg initialLambda, const Ps::aos::Vec3VArg s, const Ps::aos::Vec3VArg r, Ps::aos::FloatV& lambda, 
-		Ps::aos::Vec3V& normal, Ps::aos::Vec3V& closestA, const PxReal _inflation, const bool initialOverlap)
+	bool gjkRaycastPenetration(const ConvexA& a, const ConvexB& b, const aos::Vec3VArg initialDir, const aos::FloatVArg initialLambda, const aos::Vec3VArg s, const aos::Vec3VArg r, aos::FloatV& lambda, 
+		aos::Vec3V& normal, aos::Vec3V& closestA, const PxReal _inflation, const bool initialOverlap)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		Vec3V closA;
 		Vec3V norm; 
 		FloatV _lambda;
@@ -231,7 +221,6 @@ namespace Gu
 			lambda = _lambda;
 			if(FAllEq(_lambda, zero) && initialOverlap)
 			{
-
 				//time of impact is zero, the sweep shape is intesect, use epa to get the normal and contact point
 				const FloatV contactDist = getSweepContactEps(a.getMargin(), b.getMargin());
 
@@ -243,10 +232,14 @@ namespace Gu
 
 				//PX_COMPILE_TIME_ASSERT(typename Shrink<ConvexB>::Type != Gu::BoxV);
 				
+#ifdef USE_VIRTUAL_GJK
+				GjkStatus status = gjkPenetration<ConvexA, ConvexB>(a, b,
+#else
 				typename ConvexA::ConvexGeomType convexA = a.getGjkConvex();
 				typename ConvexB::ConvexGeomType convexB = b.getGjkConvex();
 
 				GjkStatus status = gjkPenetration<typename ConvexA::ConvexGeomType, typename ConvexB::ConvexGeomType>(convexA, convexB,
+#endif
 					initialDir, contactDist, false, aIndices, bIndices, size, output);
 				//norm = V3Neg(norm);
 				if(status == GJK_CONTACT)

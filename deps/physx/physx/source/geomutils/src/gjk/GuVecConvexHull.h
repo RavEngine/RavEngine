@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,15 +31,15 @@
 
 #include "common/PxPhysXCommonConfig.h"
 #include "geometry/PxMeshScale.h"
-
+#include "GuConvexMesh.h"
 #include "GuVecConvex.h"
 #include "GuConvexMeshData.h"
 #include "GuBigConvexData.h"
 #include "GuConvexSupportTable.h"
 #include "GuCubeIndex.h"
-#include "PsFPU.h"
-#include "GuGeometryUnion.h"
-#include "PsVecQuat.h"
+#include "foundation/PxFPU.h"
+#include "foundation/PxVecQuat.h"
+#include "GuShapeConvex.h"
 
 namespace physx
 {
@@ -54,11 +53,11 @@ namespace Gu
 
 
 	//This margin is used in Persistent contact manifold
-	PX_SUPPORT_FORCE_INLINE Ps::aos::FloatV CalculatePCMConvexMargin(const Gu::ConvexHullData* hullData, const Ps::aos::Vec3VArg scale, 
+	PX_SUPPORT_FORCE_INLINE aos::FloatV CalculatePCMConvexMargin(const Gu::ConvexHullData* hullData, const aos::Vec3VArg scale, 
 		const PxReal toleranceLength, const PxReal toleranceRatio = TOLERANCE_MIN_MARGIN_RATIO)
 	{
 		
-		using namespace Ps::aos;
+		using namespace aos;
 		const Vec3V extents= V3Mul(V3LoadU(hullData->mInternal.mExtents), scale);
 		const FloatV min = V3ExtractMin(extents);
 		const FloatV toleranceMargin = FLoad(toleranceLength * toleranceRatio);
@@ -66,9 +65,9 @@ namespace Gu
 		return FMin(FMul(min, FLoad(0.25f)), toleranceMargin);
 	}
 
-	PX_SUPPORT_FORCE_INLINE Ps::aos::FloatV CalculateMTDConvexMargin(const Gu::ConvexHullData* hullData, const Ps::aos::Vec3VArg scale)
+	PX_SUPPORT_FORCE_INLINE aos::FloatV CalculateMTDConvexMargin(const Gu::ConvexHullData* hullData, const aos::Vec3VArg scale)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const Vec3V extents = V3Mul(V3LoadU(hullData->mInternal.mExtents), scale);
 		const FloatV min = V3ExtractMin(extents);
 		//ML: 25% of the minimum extents of the internal AABB as this convex hull's margin
@@ -77,12 +76,12 @@ namespace Gu
 
 
 	//This minMargin is used in PCM contact gen
-	PX_SUPPORT_FORCE_INLINE void CalculateConvexMargin(const Gu::ConvexHullData* hullData, PxReal& margin, PxReal& minMargin, PxReal& sweepMargin,
-		const Ps::aos::Vec3VArg scale)
+	PX_SUPPORT_FORCE_INLINE void CalculateConvexMargin(const InternalObjectsData& internalObject, PxReal& margin, PxReal& minMargin, PxReal& sweepMargin,
+		const aos::Vec3VArg scale)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		
-		const Vec3V extents = V3Mul(V3LoadU(hullData->mInternal.mExtents), scale);
+		const Vec3V extents = V3Mul(V3LoadU(internalObject.mExtents), scale);
 		const FloatV min_ = V3ExtractMin(extents);
 
 		PxReal minExtent;
@@ -96,9 +95,10 @@ namespace Gu
 		sweepMargin = minExtent * CONVEX_SWEEP_MARGIN_RATIO;
 	}
 
-	PX_SUPPORT_FORCE_INLINE Ps::aos::Mat33V ConstructSkewMatrix(const Ps::aos::Vec3VArg scale, const Ps::aos::QuatVArg rotation) 
+
+	PX_SUPPORT_FORCE_INLINE aos::Mat33V ConstructSkewMatrix(const aos::Vec3VArg scale, const aos::QuatVArg rotation) 
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		Mat33V rot;
 		QuatGetMat33V(rotation, rot.col0, rot.col1, rot.col2);
 		Mat33V trans = M33Trnsps(rot);
@@ -108,9 +108,9 @@ namespace Gu
 		return M33MulM33(trans, rot);
 	}
 
-	PX_SUPPORT_FORCE_INLINE void ConstructSkewMatrix(const Ps::aos::Vec3VArg scale, const Ps::aos::QuatVArg rotation, Ps::aos::Mat33V& vertex2Shape, Ps::aos::Mat33V& shape2Vertex, Ps::aos::Vec3V& center, const bool idtScale) 
+	PX_SUPPORT_FORCE_INLINE void ConstructSkewMatrix(const aos::Vec3VArg scale, const aos::QuatVArg rotation, aos::Mat33V& vertex2Shape, aos::Mat33V& shape2Vertex, aos::Vec3V& center, const bool idtScale) 
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		PX_ASSERT(!V3AllEq(scale, V3Zero()));
 	
@@ -164,9 +164,9 @@ namespace Gu
 		}
 	}
 
-	PX_SUPPORT_FORCE_INLINE Ps::aos::Mat33V ConstructVertex2ShapeMatrix(const Ps::aos::Vec3VArg scale, const Ps::aos::QuatVArg rotation) 
+	PX_SUPPORT_FORCE_INLINE aos::Mat33V ConstructVertex2ShapeMatrix(const aos::Vec3VArg scale, const aos::QuatVArg rotation) 
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		Mat33V rot;
 		QuatGetMat33V(rotation, rot.col0, rot.col1, rot.col2);
 		const Mat33V trans = M33Trnsps(rot);
@@ -201,27 +201,38 @@ namespace Gu
 		{
 		}
 
-		PX_SUPPORT_INLINE ConvexHullV(const Gu::ConvexHullData* _hullData, const Ps::aos::Vec3VArg _center, const Ps::aos::Vec3VArg scale, const Ps::aos::QuatVArg scaleRot,
+		PX_SUPPORT_INLINE ConvexHullV(const Gu::ConvexHullData* _hullData, const aos::Vec3VArg _center, const aos::Vec3VArg scale, const aos::QuatVArg scaleRot,
 			const bool idtScale) :
 			ConvexV(ConvexType::eCONVEXHULL, _center)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			hullData = _hullData;
 			const PxVec3* PX_RESTRICT tempVerts = _hullData->getHullVertices();
 			verts = tempVerts;
 			numVerts = _hullData->mNbHullVertices;
-			CalculateConvexMargin(_hullData, margin, minMargin, sweepMargin, scale);
+			CalculateConvexMargin(_hullData->mInternal, margin, minMargin, sweepMargin, scale);
 			ConstructSkewMatrix(scale, scaleRot, vertex2Shape, shape2Vertex, center, idtScale);
 			data = _hullData->mBigConvexRawData;
 		}
 
-		//this is used by CCD system
-		PX_SUPPORT_INLINE ConvexHullV(const PxGeometry& geom) : ConvexV(ConvexType::eCONVEXHULL, Ps::aos::V3Zero())
+		PX_SUPPORT_INLINE ConvexHullV(const Gu::ConvexHullData* _hullData, const aos::Vec3VArg _center) :
+			ConvexV(ConvexType::eCONVEXHULL, _center)
 		{
-			using namespace Ps::aos;
-			const PxConvexMeshGeometryLL& convexGeom = static_cast<const PxConvexMeshGeometryLL&>(geom);
-			const Gu::ConvexHullData* hData = convexGeom.hullData;
+			using namespace aos;
+
+			hullData = _hullData;
+			verts = _hullData->getHullVertices();
+			numVerts = _hullData->mNbHullVertices;
+			data = _hullData->mBigConvexRawData;
+		}
+
+		//this is used by CCD system
+		PX_SUPPORT_INLINE ConvexHullV(const PxGeometry& geom) : ConvexV(ConvexType::eCONVEXHULL, aos::V3Zero())
+		{
+			using namespace aos;
+			const PxConvexMeshGeometry& convexGeom = static_cast<const PxConvexMeshGeometry&>(geom);
+			const Gu::ConvexHullData* hData = _getHullData(convexGeom);
 
 			const Vec3V vScale = V3LoadU_SafeReadW(convexGeom.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 			const QuatV vRot = QuatVLoadU(&convexGeom.scale.rotation.x);
@@ -231,20 +242,46 @@ namespace Gu
 			const PxVec3* PX_RESTRICT tempVerts = hData->getHullVertices();
 			verts = tempVerts;
 			numVerts = hData->mNbHullVertices;
-			CalculateConvexMargin(hData, margin, minMargin, sweepMargin, vScale);
+			CalculateConvexMargin(hData->mInternal, margin, minMargin, sweepMargin, vScale);
 			ConstructSkewMatrix(vScale, vRot, vertex2Shape, shape2Vertex, center, idtScale);
 
 			data = hData->mBigConvexRawData;
+		}
+
+		//this is used by convex vs tetrahedron collision
+		PX_SUPPORT_INLINE ConvexHullV(const Gu::PolygonalData& polyData, const Cm::FastVertex2ShapeScaling& convexScale) :
+			ConvexV(ConvexType::eCONVEXHULL, aos::V3LoadU(polyData.mCenter))
+		{
+			using namespace aos;
+
+			const Vec3V vScale = V3LoadU(polyData.mScale.scale);
+
+			verts = polyData.mVerts;
+			numVerts = PxU8(polyData.mNbVerts);
+			CalculateConvexMargin(polyData.mInternal, margin, minMargin, sweepMargin, vScale);
+
+			const PxMat33& v2s = convexScale.getVertex2ShapeSkew();
+			const PxMat33& s2v = convexScale.getShape2VertexSkew();
+
+			vertex2Shape.col0 = V3LoadU(v2s.column0);
+			vertex2Shape.col1 = V3LoadU(v2s.column1);
+			vertex2Shape.col2 = V3LoadU(v2s.column2);
+
+			shape2Vertex.col0 = V3LoadU(s2v.column0);
+			shape2Vertex.col1 = V3LoadU(s2v.column1);
+			shape2Vertex.col2 = V3LoadU(s2v.column2);
+
+			data = polyData.mBigData;
 
 		}
 
-		PX_SUPPORT_INLINE void initialize(const Gu::ConvexHullData* _hullData, const Ps::aos::Vec3VArg _center, const Ps::aos::Vec3VArg scale,
-			const Ps::aos::QuatVArg scaleRot, const bool idtScale)
+		PX_SUPPORT_INLINE void initialize(const Gu::ConvexHullData* _hullData, const aos::Vec3VArg _center, const aos::Vec3VArg scale,
+			const aos::QuatVArg scaleRot, const bool idtScale)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			const PxVec3* tempVerts = _hullData->getHullVertices();
-			CalculateConvexMargin(_hullData, margin, minMargin, sweepMargin, scale);
+			CalculateConvexMargin(_hullData->mInternal, margin, minMargin, sweepMargin, scale);
 			ConstructSkewMatrix(scale, scaleRot, vertex2Shape, shape2Vertex, center, idtScale);
 
 			verts = tempVerts;
@@ -259,13 +296,14 @@ namespace Gu
 			hullData = _hullData;
 			if (_hullData->mBigConvexRawData)
 			{
-				Ps::prefetchLine(hullData->mBigConvexRawData->mValencies);
-				Ps::prefetchLine(hullData->mBigConvexRawData->mValencies, 128);
-				Ps::prefetchLine(hullData->mBigConvexRawData->mAdjacentVerts);
+				PxPrefetchLine(hullData->mBigConvexRawData->mValencies);
+				PxPrefetchLine(hullData->mBigConvexRawData->mValencies, 128);
+				PxPrefetchLine(hullData->mBigConvexRawData->mAdjacentVerts);
 			}
 		}
 
 
+	
 		PX_FORCE_INLINE void resetMargin(const PxReal toleranceLength)
 		{
 			const PxReal toleranceMinMargin = toleranceLength * TOLERANCE_MIN_MARGIN_RATIO;
@@ -275,16 +313,16 @@ namespace Gu
 			minMargin = PxMin(minMargin, toleranceMinMargin);
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportPoint(const PxI32 index)const
+		PX_FORCE_INLINE aos::Vec3V supportPoint(const PxI32 index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			
 			return M33MulV3(vertex2Shape, V3LoadU_SafeReadW(verts[index]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
 		}
 
-		PX_NOINLINE PxU32 hillClimbing(const Ps::aos::Vec3VArg _dir)const
+		PX_NOINLINE PxU32 hillClimbing(const aos::Vec3VArg _dir)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			const Gu::Valency* valency = data->mValencies;
 			const PxU8* adjacentVerts = data->mAdjacentVerts;
@@ -338,9 +376,9 @@ namespace Gu
 			return index;
 		}
 
-		PX_SUPPORT_INLINE PxU32 bruteForceSearch(const Ps::aos::Vec3VArg _dir)const 
+		PX_SUPPORT_INLINE PxU32 bruteForceSearch(const aos::Vec3VArg _dir)const 
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//brute force
 			PxVec3 dir;
 			V3StoreU(_dir, dir);
@@ -361,9 +399,9 @@ namespace Gu
 		}
 
 		//points are in vertex space, _dir in vertex space
-		PX_NOINLINE PxU32 supportVertexIndex(const Ps::aos::Vec3VArg _dir)const
+		PX_NOINLINE PxU32 supportVertexIndex(const aos::Vec3VArg _dir)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			if(data)
 				return hillClimbing(_dir);
 			else
@@ -371,9 +409,9 @@ namespace Gu
 		}
 
 		//dir is in the vertex space
-		PX_SUPPORT_INLINE void bruteForceSearchMinMax(const Ps::aos::Vec3VArg _dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max)const 
+		PX_SUPPORT_INLINE void bruteForceSearchMinMax(const aos::Vec3VArg _dir, aos::FloatV& min, aos::FloatV& max)const 
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			//brute force
 			PxVec3 dir;
@@ -394,9 +432,9 @@ namespace Gu
 
 		//This function is used in the full contact manifold generation code, points are in vertex space.
 		//This function support scaling, _dir is in the shape space	
-		PX_SUPPORT_INLINE void supportVertexMinMax(const Ps::aos::Vec3VArg _dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max)const
+		PX_SUPPORT_INLINE void supportVertexMinMax(const aos::Vec3VArg _dir, aos::FloatV& min, aos::FloatV& max)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			//dir is in the vertex space
 			const Vec3V dir = M33TrnspsMulV3(vertex2Shape, _dir);
@@ -418,9 +456,9 @@ namespace Gu
 		}  
  
 		//This function is used in the full contact manifold generation code
-		PX_SUPPORT_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, Ps::aos::Vec3V* _verts)const
+		PX_SUPPORT_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, aos::Vec3V* _verts)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			for(PxU32 i=0; i<numInds; ++i)
 				_verts[i] = M33MulV3(vertex2Shape, V3LoadU_SafeReadW(originalVerts[inds[i]]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'populateVerts' is always called with polyData.mVerts)
@@ -428,9 +466,9 @@ namespace Gu
 
 		//This function is used in epa
 		//dir is in the shape space
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir)const
+		PX_SUPPORT_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//scale dir and put it in the vertex space
 			const Vec3V _dir = M33TrnspsMulV3(vertex2Shape, dir);
 			const PxU32 maxIndex = supportVertexIndex(_dir);
@@ -438,17 +476,17 @@ namespace Gu
 		}
 
 		//this is used in the sat test for the full contact gen
-		PX_SUPPORT_INLINE void supportLocal(const Ps::aos::Vec3VArg dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max)const
+		PX_SUPPORT_INLINE void supportLocal(const aos::Vec3VArg dir, aos::FloatV& min, aos::FloatV& max)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//dir is in the shape space
 			supportVertexMinMax(dir, min, max);
 		}
 
 		//This function is used in epa
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportRelative(const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aTob, const Ps::aos::PsMatTransformV& aTobT) const
+		PX_SUPPORT_INLINE aos::Vec3V supportRelative(const aos::Vec3VArg dir, const aos::PxMatTransformV& aTob, const aos::PxMatTransformV& aTobT) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 		
 			//transform dir into the shape space
 //			const Vec3V dir_ = aTob.rotateInv(dir);//relTra.rotateInv(dir);
@@ -459,9 +497,9 @@ namespace Gu
 		}
 
 		//dir in the shape space, this function is used in gjk	
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir, PxI32& index)const
+		PX_SUPPORT_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir, PxI32& index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//scale dir and put it in the vertex space, for non-uniform scale, we don't want the scale in the dir, therefore, we are using
 			//the transpose of the inverse of shape2Vertex(which is vertex2shape). This will allow us igore the scale and keep the rotation
 			const Vec3V dir_ = M33TrnspsMulV3(vertex2Shape, dir);
@@ -473,10 +511,10 @@ namespace Gu
 		}
 
 		//this function is used in gjk	
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportRelative(	const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aTob,
-															const Ps::aos::PsMatTransformV& aTobT, PxI32& index)const
+		PX_SUPPORT_INLINE aos::Vec3V supportRelative(	const aos::Vec3VArg dir, const aos::PxMatTransformV& aTob,
+															const aos::PxMatTransformV& aTobT, PxI32& index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			//transform dir from b space to the shape space of a space
 //			const Vec3V dir_ = aTob.rotateInv(dir);//relTra.rotateInv(dir);//M33MulV3(skewInvRot, dir);
@@ -486,8 +524,8 @@ namespace Gu
 			return aTob.transform(p);
 		}
 
-		Ps::aos::Mat33V vertex2Shape;//inv(R)*S*R
-		Ps::aos::Mat33V shape2Vertex;//inv(vertex2Shape)
+		aos::Mat33V vertex2Shape;//inv(R)*S*R
+		aos::Mat33V shape2Vertex;//inv(vertex2Shape)
 
 		const Gu::ConvexHullData* hullData;
 		const BigConvexRawData* data;  

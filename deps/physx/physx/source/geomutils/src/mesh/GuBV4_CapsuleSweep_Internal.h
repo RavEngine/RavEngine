@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -46,7 +45,7 @@ static PX_FORCE_INLINE bool sweepSphereVSTriangle(	const PxVec3& center, const f
 		return false;
 
 	// PT: using ">" or ">=" is enough to block the CCT or not in the DE5967 visual test. Change to ">=" if a repro is needed.
-	if(currentDistance > curT)
+	if(currentDistance > curT + GU_EPSILON_SAME_DISTANCE * PxMax(1.0f, curT))
 		return false;
 	curT = currentDistance;
 	return true;
@@ -62,7 +61,7 @@ static PX_FORCE_INLINE bool sweepSphereVSQuad(	const PxVec3& center, const float
 		return false;
 
 	// PT: using ">" or ">=" is enough to block the CCT or not in the DE5967 visual test. Change to ">=" if a repro is needed.
-	if(currentDistance > curT)
+	if(currentDistance > curT + GU_EPSILON_SAME_DISTANCE * PxMax(1.0f, curT))
 		return false;
 	curT = currentDistance;
 	return true;
@@ -151,7 +150,7 @@ static PX_FORCE_INLINE bool sweepCapsuleVsTriangle(const CapsuleSweepParams* PX_
 	}
 
 	const float capsuleRadius = params->mLocalCapsule.radius;
-	float curT = params->mStabbedFace.mDistance;
+	float curT = params->mStabbedFace.mDistance;// + GU_EPSILON_SAME_DISTANCE*20.0f;
 	const float dpc0 = params->mCapsuleCenter.dot(unitDir);
 
 	bool status = false;
@@ -253,23 +252,23 @@ static bool /*__fastcall*/ triCapsuleSweep(CapsuleSweepParams* PX_RESTRICT param
 
 	const bool isDoubleSided = params->mBackfaceCulling==0;
 
-	float Dist;
+	float dist;
 	PxVec3 denormalizedNormal;
-	if(sweepCapsuleVsTriangle(params, Tri, Dist, isDoubleSided, denormalizedNormal))
+	if(sweepCapsuleVsTriangle(params, Tri, dist, isDoubleSided, denormalizedNormal))
 	{
-		const PxReal distEpsilon = GU_EPSILON_SAME_DISTANCE; // pick a farther hit within distEpsilon that is more opposing than the previous closest hit
+		denormalizedNormal.normalize();
 		const PxReal alignmentValue = computeAlignmentValue(denormalizedNormal, params->mLocalDir_Padded);
 
-		if(keepTriangle(Dist, alignmentValue, params->mBestDistance, params->mBestAlignmentValue, params->mMaxDist, distEpsilon))		
+		if(keepTriangle(dist, alignmentValue, params->mBestDistance, params->mBestAlignmentValue, params->mMaxDist))
 		{
-			params->mStabbedFace.mDistance = Dist;
+			params->mStabbedFace.mDistance = dist;
 			params->mStabbedFace.mTriangleID = primIndex;
 
 			params->mP0 = p0;
 			params->mP1 = p1;
 			params->mP2 = p2;
 
-			params->mBestDistance = PxMin(params->mBestDistance, Dist); // exact lower bound
+			params->mBestDistance = PxMin(params->mBestDistance, dist); // exact lower bound
 			params->mBestAlignmentValue = alignmentValue;
 			params->mBestTriNormal = denormalizedNormal;
 
@@ -277,14 +276,23 @@ static bool /*__fastcall*/ triCapsuleSweep(CapsuleSweepParams* PX_RESTRICT param
 			{
 #ifdef SWEEP_AABB_IMPL
 	#ifndef GU_BV4_USE_SLABS
-				setupRayData(params, Dist, params->mOrigin_Padded, params->mLocalDir_PaddedAligned);
+				//setupRayData(params, dist, params->mOrigin_Padded, params->mLocalDir_PaddedAligned);
+				setupRayData(params, params->mBestDistance, params->mOrigin_Padded, params->mLocalDir_PaddedAligned);
 	#endif
 #else
-				params->ShrinkOBB(Dist);
+				//params->ShrinkOBB(dist);
+				params->ShrinkOBB(params->mBestDistance);
 #endif
 			}
 			return true;
 		}
+		///
+		else if(keepTriangleBasic(dist, params->mBestDistance, params->mMaxDist))
+		{
+			params->mStabbedFace.mDistance = dist;
+			params->mBestDistance = PxMin(params->mBestDistance, dist); // exact lower bound
+		}
+		///
 	}
 	return false;
 }
@@ -311,7 +319,7 @@ class LeafFunction_CapsuleSweepAny
 {
 public:
 
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(CapsuleSweepParams* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(CapsuleSweepParams* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
@@ -328,16 +336,16 @@ public:
 class ImpactFunctionCapsule
 {
 public:
-	static PX_FORCE_INLINE void computeImpact(PxVec3& impactPos, PxVec3& impactNormal, const Capsule& capsule, const PxVec3& dir, const PxReal t, const TrianglePadded& triangle)
+	static PX_FORCE_INLINE void computeImpact(PxVec3& impactPos, PxVec3& impactNormal, const Capsule& capsule, const PxVec3& dir, const PxReal t, const PxTrianglePadded& triangle)
 	{
 		const PxVec3 delta = dir * t;
-		const Vec3p P0 = capsule.p0 + delta;
-		const Vec3p P1 = capsule.p1 + delta;
+		const PxVec3p P0 = capsule.p0 + delta;
+		const PxVec3p P1 = capsule.p1 + delta;
 		Vec3V pointOnSeg, pointOnTri;
 		distanceSegmentTriangleSquared(
-			// PT: we use Vec3p so it is safe to V4LoadU P0 and P1
+			// PT: we use PxVec3p so it is safe to V4LoadU P0 and P1
 			V3LoadU_SafeReadW(P0), V3LoadU_SafeReadW(P1),
-			// PT: we use TrianglePadded so it is safe to V4LoadU the triangle vertices
+			// PT: we use PxTrianglePadded so it is safe to V4LoadU the triangle vertices
 			V3LoadU_SafeReadW(triangle.verts[0]), V3LoadU_SafeReadW(triangle.verts[1]), V3LoadU_SafeReadW(triangle.verts[2]),
 			pointOnSeg, pointOnTri);
 
@@ -383,7 +391,7 @@ static void computeBoxAroundCapsule(const Capsule& capsule, Box& box, PxVec3& ex
 	else
 	{
 		PxVec3 dir, right, up;
-		Ps::computeBasis(capsule.p0, capsule.p1, dir, right, up);
+		PxComputeBasisVectors(capsule.p0, capsule.p1, dir, right, up);
 		box.setAxes(dir, right, up);
 	}
 }

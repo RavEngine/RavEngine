@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_SCP_ELEMENT_SIM
-#define PX_PHYSICS_SCP_ELEMENT_SIM
+#ifndef SC_ELEMENT_SIM_H
+#define SC_ELEMENT_SIM_H
 
-#include "PsUserAllocated.h"
+#include "foundation/PxUserAllocated.h"
 #include "PxFiltering.h"
 #include "PxvConfig.h"
 #include "ScActorSim.h"
@@ -47,7 +46,7 @@ namespace Sc
 	/*
 	A ElementSim is a part of a ActorSim. It contributes to the activation framework by adding its 
 	interactions to the actor. */
-	class ElementSim : public Ps::UserAllocated
+	class ElementSim : public PxUserAllocated
 	{
 		PX_NOCOPY(ElementSim)
 
@@ -93,9 +92,11 @@ namespace Sc
 
 		PX_FORCE_INLINE PxU32					getElementID()				const	{ return mElementID;	}
 		PX_FORCE_INLINE bool					isInBroadPhase()			const	{ return mInBroadPhase;	}
+
+		//PX_FORCE_INLINE Bp::ElementType::Enum	getElementType()			const { return mType; }
 		
-						void					addToAABBMgr(PxReal contactDistance, Bp::FilterGroup::Enum group, Ps::IntBool isTrigger);
-						void					removeFromAABBMgr();
+						void					addToAABBMgr(PxReal contactDistance, Bp::FilterGroup::Enum group, Bp::ElementType::Enum type);
+						bool					removeFromAABBMgr();
 
 						void					setElementInteractionsDirty(InteractionDirtyFlag::Enum flag, PxU8 interactionFlag);
 
@@ -110,13 +111,14 @@ namespace Sc
 												{
 													getScene().getElementIDPool().releaseID(mElementID);
 												}
-	public:
-						ElementSim*				mNextInActor;
-	private:
+	protected:
 						ActorSim&				mActor;
 
 						PxU32					mElementID : 31;
 						PxU32					mInBroadPhase : 1;
+						//Bp::ElementType::Enum   mType;
+	public:
+						PxU32					mShapeArrayIndex;
 	};
 
 	PX_FORCE_INLINE void setFilterObjectAttributeType(PxFilterObjectAttributes& attr, PxFilterObjectType::Enum type)

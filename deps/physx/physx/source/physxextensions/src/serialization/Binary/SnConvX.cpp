@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 /*
 - get rid of STL
@@ -47,7 +46,6 @@
 #include "SnConvX.h"
 #include "serialization/SnSerializationRegistry.h"
 #include <assert.h>
-#include "PsFoundation.h"
 
 using namespace physx;
 
@@ -81,7 +79,7 @@ Sn::ConvX::~ConvX()
 
 void Sn::ConvX::release()
 {
-	delete this;
+	PX_DELETE_THIS;
 }
 
 bool Sn::ConvX::setMetaData(PxInputStream& inputStream, MetaDataType type)
@@ -106,7 +104,7 @@ bool Sn::ConvX::setMetaData(PxInputStream& srcMetaData, PxInputStream& dstMetaDa
 bool Sn::ConvX::compareMetaData() const
 {
 	if (!mMetaData_Src || !mMetaData_Dst) {
-		Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
 			"PxBinaryConverter: metadata not defined. Call PxBinaryConverter::setMetaData first.\n");
 		return false;
 	}
@@ -118,7 +116,7 @@ bool Sn::ConvX::convert(PxInputStream& srcStream, PxU32 srcSize, PxOutputStream&
 {
 	if(!mMetaData_Src || !mMetaData_Dst)
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
 			"PxBinaryConverter: metadata not defined. Call PxBinaryConverter::setMetaData first.\n");
 		return false;
 	}
@@ -131,18 +129,18 @@ bool Sn::ConvX::convert(PxInputStream& srcStream, PxU32 srcSize, PxOutputStream&
 	{	
 		if(srcSize == 0)
 		{
-			Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 				"PxBinaryConverter: source serialized data size is zero.\n");
 			return false;
 		}
 
-		void* memory = PX_ALLOC_TEMP(srcSize+ALIGN_FILE, "ConvX source file");
+		void* memory = PX_ALLOC(srcSize+ALIGN_FILE, "ConvX source file");
 		void* memoryA = reinterpret_cast<void*>((size_t(memory) + ALIGN_FILE)&~(ALIGN_FILE-1));
 
 		const PxU32 nbBytesRead = srcStream.read(memoryA, srcSize);
 		if(nbBytesRead != srcSize)
 		{
-			Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 				"PxBinaryConverter: failure on reading source serialized data.\n");
 			PX_FREE(memory);
 			return false;

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,7 +32,6 @@
 #include "geometry/PxTriangle.h"
 #include "PxQueryReport.h"
 
-#include "CmPhysXCommon.h"
 #include "GuSweepSharedTests.h"
 #include "GuInternal.h"
 
@@ -119,7 +117,7 @@ namespace Gu
 		dp = physx::intrinsics::selectMin(dp, dp3);
 
 		// PT: make sure we keep quads that are about as close as best current distance
-		radius += 0.001f;
+		radius += 0.001f + GU_EPSILON_SAME_DISTANCE;
 
 		// PT: if earliest possible impact distance for this quad is already larger than
 		// sphere's current best known impact distance, we can skip the quad
@@ -283,7 +281,7 @@ namespace Gu
 	}
 
 	// PT: implements the spec for IO sweeps in a single place (to ensure consistency)
-	PX_FORCE_INLINE bool setInitialOverlapResults(PxSweepHit& hit, const PxVec3& unitDir, PxU32 faceIndex)
+	PX_FORCE_INLINE bool setInitialOverlapResults(PxGeomSweepHit& hit, const PxVec3& unitDir, PxU32 faceIndex)
 	{
 		// PT: please write these fields in the order they are listed in the struct.
 		hit.faceIndex	= faceIndex;

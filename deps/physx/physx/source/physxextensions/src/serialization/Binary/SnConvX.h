@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PX_CONVX_H
-#define PX_CONVX_H
+#ifndef SN_CONVX_H
+#define SN_CONVX_H
 
 #include "foundation/PxErrors.h"
 #include "common/PxTypeInfo.h"
 #include "extensions/PxBinaryConverter.h"
 
-#include "CmPhysXCommon.h"
-#include "PsUserAllocated.h"
-#include "PsHashMap.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxHashMap.h"
 #include "SnConvX_Common.h"
 #include "SnConvX_Union.h"
 #include "SnConvX_MetaData.h"
@@ -58,7 +57,7 @@ namespace Sn {
 		void	setObjectRef(PxU64 object64, PxU32 ref);
 		bool	getObjectRef(PxU64 object64, PxU32& ref)	const;
 
-		typedef Ps::HashMap<PxU64, PxU32> PointerMap;
+		typedef PxHashMap<PxU64, PxU32> PointerMap;
 		PointerMap	mData;
 	};
 
@@ -71,11 +70,11 @@ namespace Sn {
 		void	setObjectRef(PxU16 object, PxU16 ref);
 		bool	getObjectRef(PxU16 object, PxU16& ref)	const;
 
-		typedef Ps::HashMap<PxU16, PxU16> Handle16Map;
+		typedef PxHashMap<PxU16, PxU16> Handle16Map;
 		Handle16Map	mData;
 	};
 
-	class ConvX : public physx::PxBinaryConverter, public shdfnd::UserAllocated
+	class ConvX : public physx::PxBinaryConverter, public PxUserAllocated
 	{
 		public:
 												ConvX();

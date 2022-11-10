@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxMemory.h"
 #include "GuBV32.h"
-#include "GuSerialize.h"
+#include "CmSerialize.h"
 #include "CmUtils.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxVecMath.h"
 
 using namespace physx;
 using namespace Gu;
-
-#define DELETEARRAY(x)		if (x) { delete []x;	x = NULL; }
-
+using namespace Cm;
 
 BV32Tree::BV32Tree(SourceMesh* meshInterface, const PxBounds3& localBounds)
 {
@@ -54,11 +52,14 @@ void BV32Tree::release()
 {
 	if (!mUserAllocated)
 	{
-		DELETEARRAY(mNodes);
-		PX_FREE_AND_RESET(mPackedNodes);
+		PX_DELETE_ARRAY(mNodes);
+		PX_FREE(mPackedNodes);
+		PX_FREE(mTreeDepthInfo);
+		PX_FREE(mRemapPackedNodeIndexWithDepth);
 	}
 	mNodes = NULL;
 	mNbNodes = 0;
+	mMaxTreeDepth = 0;
 }
 
 BV32Tree::~BV32Tree()
@@ -73,6 +74,9 @@ void BV32Tree::reset()
 	mNodes = NULL;
 	mNbPackedNodes = 0;
 	mPackedNodes = NULL;
+	mMaxTreeDepth = 0;
+	mTreeDepthInfo = NULL;
+	mRemapPackedNodeIndexWithDepth = NULL;
 	mInitData = 0;
 	mUserAllocated = false;
 }
@@ -88,7 +92,7 @@ void BV32Tree::operator=(BV32Tree& v)
 	v.reset();
 }
 
-bool BV32Tree::init(SourceMesh* meshInterface, const PxBounds3& localBounds)
+bool BV32Tree::init(SourceMeshBase* meshInterface, const PxBounds3& localBounds)
 {
 	mMeshInterface = meshInterface;
 	mLocalBounds.init(localBounds);
@@ -145,7 +149,7 @@ bool BV32Tree::load(PxInputStream& stream, bool mismatch_)
 		BV32Data* nodes = PX_NEW(BV32Data)[nbNodes];
 
 		mNodes = nodes;
-		Cm::markSerializedMem(nodes, sizeof(BV32Data)*nbNodes);
+		PxMarkSerializedMemory(nodes, sizeof(BV32Data)*nbNodes);
 
 		for (PxU32 i = 0; i<nbNodes; i++)
 		{
@@ -166,20 +170,42 @@ bool BV32Tree::load(PxInputStream& stream, bool mismatch_)
 	{
 		mPackedNodes = reinterpret_cast<BV32DataPacked*>(PX_ALLOC(sizeof(BV32DataPacked)*nbPackedNodes, "BV32DataPacked"));
 
-		Cm::markSerializedMem(mPackedNodes, sizeof(BV32DataPacked)*nbPackedNodes);
+		PxMarkSerializedMemory(mPackedNodes, sizeof(BV32DataPacked)*nbPackedNodes);
 
 		for (PxU32 i = 0; i < nbPackedNodes; ++i)
 		{
 			BV32DataPacked& node = mPackedNodes[i];
 			node.mNbNodes = readDword(mismatch, stream);
 			PX_ASSERT(node.mNbNodes > 0);
+			node.mDepth = readDword(mismatch, stream);
 			ReadDwordBuffer(node.mData, node.mNbNodes, mismatch, stream);
 			const PxU32 nbElements = 4 * node.mNbNodes;
-			readFloatBuffer(&node.mCenter[0].x, nbElements, mismatch, stream);
-			readFloatBuffer(&node.mExtents[0].x, nbElements, mismatch, stream);
+			readFloatBuffer(&node.mMin[0].x, nbElements, mismatch, stream);
+			readFloatBuffer(&node.mMax[0].x, nbElements, mismatch, stream);
 			
 		}
 	}
+
+	const PxU32 maxTreeDepth = readDword(mismatch, stream);
+	mMaxTreeDepth = maxTreeDepth;
+
+	if (maxTreeDepth > 0)
+	{
+		mTreeDepthInfo = reinterpret_cast<BV32DataDepthInfo*>(PX_ALLOC(sizeof(BV32DataDepthInfo)*maxTreeDepth, "BV32DataDepthInfo"));
+
+		for (PxU32 i = 0; i < maxTreeDepth; ++i)
+		{
+			BV32DataDepthInfo& info = mTreeDepthInfo[i];
+
+			info.offset = readDword(mismatch, stream);
+			info.count = readDword(mismatch, stream);
+		}
+
+		mRemapPackedNodeIndexWithDepth = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)*nbPackedNodes, "PxU32"));
+
+		ReadDwordBuffer(mRemapPackedNodeIndexWithDepth, nbPackedNodes, mismatch, stream);
+	}
+
 
 	return true;
 }
@@ -215,7 +241,8 @@ void BV32Tree::calculateLeafNode(BV32Data& node)
 
 
 
-void BV32Tree::createSOAformatNode(BV32DataPacked& packedData, const BV32Data& node, const PxU32 childOffset, PxU32& currentIndex, PxU32& nbPackedNodes)
+void BV32Tree::createSOAformatNode(BV32DataPacked& packedData, 
+	const BV32Data& node, const PxU32 childOffset, PxU32& currentIndex, PxU32& nbPackedNodes)
 {
 	
 	//found the next 32 nodes and fill it in SOA format
@@ -223,13 +250,14 @@ void BV32Tree::createSOAformatNode(BV32DataPacked& packedData, const BV32Data& n
 	const PxU32 nbChildren = node.getNbChildren();
 	const PxU32 offset = node.getChildOffset();
 
+	packedData.mDepth = node.mDepth;
 
 	for (PxU32 i = 0; i < nbChildren; ++i)
 	{
 		BV32Data& child = mNodes[offset + i];
 
-		packedData.mCenter[i] = PxVec4(child.mCenter, 0.f);
-		packedData.mExtents[i] = PxVec4(child.mExtents, 0.f);
+		packedData.mMin[i] = PxVec4(child.mMin, 0.f);
+		packedData.mMax[i] = PxVec4(child.mMax, 0.f);
 		packedData.mData[i] = PxU32(child.mData);
 	}
 
@@ -237,9 +265,9 @@ void BV32Tree::createSOAformatNode(BV32DataPacked& packedData, const BV32Data& n
 	
 	PxU32 NbToGo = 0;
 	PxU32 NextIDs[32];
-	memset(NextIDs, PX_INVALID_U32, sizeof(PxU32) * 32);
+	PxMemSet(NextIDs, PX_INVALID_U32, sizeof(PxU32) * 32);
 	const BV32Data* ChildNodes[32];
-	memset(ChildNodes, 0, sizeof(BV32Data*) * 32);
+	PxMemSet(ChildNodes, 0, sizeof(BV32Data*) * 32);
 	
 
 	for (PxU32 i = 0; i< nbChildren; i++)
@@ -273,4 +301,150 @@ void BV32Tree::createSOAformatNode(BV32DataPacked& packedData, const BV32Data& n
 
 	}
 
+}
+
+bool BV32Tree::refit(float epsilon)
+{
+	using namespace physx::aos;
+
+	if (!mPackedNodes)
+	{
+		PxBounds3 bounds;
+		bounds.setEmpty();
+		if (mMeshInterface)
+		{
+			PxU32 nbVerts = mMeshInterface->getNbVertices();
+			const PxVec3* verts = mMeshInterface->getVerts();
+			while (nbVerts--)
+				bounds.include(*verts++);
+			mLocalBounds.init(bounds);
+		}
+		return true;
+	}
+
+	class PxBounds3Padded : public PxBounds3
+	{
+	public:
+		PX_FORCE_INLINE PxBounds3Padded() {}
+		PX_FORCE_INLINE ~PxBounds3Padded() {}
+		PxU32	padding;
+	};
+
+	PxU32 nb = mNbPackedNodes;
+
+	while (nb--)
+	{
+		BV32DataPacked* PX_RESTRICT current = mPackedNodes + nb;
+		const PxU32 nbChildren = current->mNbNodes;
+
+		for (PxU32 j = 0; j< nbChildren; j++)
+		{
+			if (current->isLeaf(j))
+			{
+				PxU32 nbTets = current->getNbReferencedPrimitives(j);
+				PxU32 primIndex = current->getPrimitiveStartIndex(j);
+
+				Vec4V minV = V4Load(FLT_MAX);
+				Vec4V maxV = V4Load(-FLT_MAX);
+
+				//TetrahedronPointers
+				do
+				{
+					PX_ASSERT(primIndex< mMeshInterface->getNbPrimitives());
+
+
+					//meshInterface->getTriangle(VP, primIndex);
+					Vec4V tMin, tMax;
+					mMeshInterface->getPrimitiveBox(primIndex, tMin, tMax);
+					minV = V4Min(minV, tMin);
+					maxV = V4Max(maxV, tMax);
+
+					primIndex++;
+				} while (--nbTets);
+
+				const Vec4V epsilonV = V4Load(epsilon);
+				minV = V4Sub(minV, epsilonV);
+				maxV = V4Add(maxV, epsilonV);
+
+				PxBounds3Padded refitBox;
+				V4StoreU_Safe(minV, &refitBox.minimum.x);
+				V4StoreU_Safe(maxV, &refitBox.maximum.x);
+
+				current->mMin[j].x = refitBox.minimum.x;
+				current->mMin[j].y = refitBox.minimum.y;
+				current->mMin[j].z = refitBox.minimum.z;
+				current->mMax[j].x = refitBox.maximum.x;
+				current->mMax[j].y = refitBox.maximum.y;
+				current->mMax[j].z = refitBox.maximum.z;
+			}
+			else
+			{
+				PxU32 childOffset = current->getChildOffset(j);
+
+				PX_ASSERT(childOffset < mNbPackedNodes);
+				
+				BV32DataPacked* next = mPackedNodes + childOffset;
+
+				const PxU32 nextNbChilds = next->mNbNodes;
+
+				Vec4V minV = V4Load(FLT_MAX);
+				Vec4V maxV = V4Load(-FLT_MAX);
+
+				for (PxU32 a = 0; a < nextNbChilds; ++a)
+				{
+					const Vec4V tMin = V4LoadU(&next->mMin[a].x);
+					const Vec4V tMax = V4LoadU(&next->mMax[a].x);
+
+					minV = V4Min(minV, tMin);
+					maxV = V4Max(maxV, tMax);
+				}
+
+				PxBounds3Padded refitBox;
+				V4StoreU_Safe(minV, &refitBox.minimum.x);
+				V4StoreU_Safe(maxV, &refitBox.maximum.x);
+
+				current->mMin[j].x = refitBox.minimum.x;
+				current->mMin[j].y = refitBox.minimum.y;
+				current->mMin[j].z = refitBox.minimum.z;
+
+				current->mMax[j].x = refitBox.maximum.x;
+				current->mMax[j].y = refitBox.maximum.y;
+				current->mMax[j].z = refitBox.maximum.z;
+			}
+		}
+	}
+
+	BV32DataPacked* root = mPackedNodes;
+	{
+		PxBounds3 globalBounds;
+		globalBounds.setEmpty();
+
+		const PxU32 nbChildren = root->mNbNodes;
+
+		Vec4V minV = V4Load(FLT_MAX);
+		Vec4V maxV = V4Load(-FLT_MAX);
+
+		for (PxU32 a = 0; a < nbChildren; ++a)
+		{
+			const Vec4V tMin = V4LoadU(&root->mMin[a].x);
+			const Vec4V tMax = V4LoadU(&root->mMax[a].x);
+
+			minV = V4Min(minV, tMin);
+			maxV = V4Max(maxV, tMax);
+		}
+
+		PxBounds3Padded refitBox;
+		V4StoreU_Safe(minV, &refitBox.minimum.x);
+		V4StoreU_Safe(maxV, &refitBox.maximum.x);
+		globalBounds.minimum.x = refitBox.minimum.x;
+		globalBounds.minimum.y = refitBox.minimum.y;
+		globalBounds.minimum.z = refitBox.minimum.z;
+
+		globalBounds.maximum.x = refitBox.maximum.x;
+		globalBounds.maximum.y = refitBox.maximum.y;
+		globalBounds.maximum.z = refitBox.maximum.z;
+
+		mLocalBounds.init(globalBounds);
+	}
+	return true;
 }

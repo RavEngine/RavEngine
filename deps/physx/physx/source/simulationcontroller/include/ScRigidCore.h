@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,24 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_SCP_RB_CORE
-#define PX_PHYSICS_SCP_RB_CORE
+#ifndef SC_RIGID_CORE_H
+#define SC_RIGID_CORE_H
 
 #include "ScActorCore.h"
+#include "ScPhysics.h"
 #include "PxvDynamics.h"
 #include "PxShape.h"
 
 namespace physx
 {
-
 namespace Sc
 {
-
 	class RigidSim;
+	class ShapeCore;
 
 	struct ShapeChangeNotifyFlag
 	{
@@ -53,16 +51,11 @@ namespace Sc
 			eFILTERDATA			= 1<<3,
 			eCONTACTOFFSET		= 1<<4,
 			eRESTOFFSET			= 1<<5,
-			eFLAGS				= 1<<6,
-			eRESET_FILTERING	= 1<<7
-
+			eRESET_FILTERING	= 1<<6
 		};
 	};
 	typedef PxFlags<ShapeChangeNotifyFlag::Enum, PxU32> ShapeChangeNotifyFlags;
 	PX_FLAGS_OPERATORS(ShapeChangeNotifyFlag::Enum,PxU32)
-
-
-	class ShapeCore;
 
 	class RigidCore : public ActorCore
 	{
@@ -73,18 +66,27 @@ namespace Sc
 	// accordingly.
 	//==================================================================================================
 	public:
-				PxActor*	getPxActor() const;
-				void		addShapeToScene(ShapeCore& shape);
-				void		removeShapeFromScene(ShapeCore& shape, bool wakeOnLostTouch);
-				void		onShapeChange(ShapeCore& shape, ShapeChangeNotifyFlags notifyFlags, PxShapeFlags newShapeFlags = PxShapeFlags(), bool forceBoundsUpdate = false);
 
-				RigidSim*	getSim() const;
-				PxU32		getRigidID() const;
-		static	void		getBinaryMetaData(PxOutputStream& stream);
+	PX_FORCE_INLINE	PxActor*	getPxActor()	const
+								{
+									return PxPointerOffset<PxActor*>(const_cast<RigidCore*>(this), gOffsetTable.scCore2PxActor[getActorCoreType()]);
+								}
+
+					void		addShapeToScene(ShapeCore& shape);
+					void		removeShapeFromScene(ShapeCore& shape, bool wakeOnLostTouch);
+					void		onShapeChange(ShapeCore& shape, ShapeChangeNotifyFlags notifyFlags);
+					void		onShapeFlagsChange(ShapeCore& shape, PxShapeFlags oldShapeFlags);
+					void		unregisterShapeFromNphase(ShapeCore& shapeCore);
+					void		registerShapeInNphase(ShapeCore& shapeCore);
+
+					RigidSim*	getSim() const;
+
+					PxU32		getRigidID() const;
+	static			void		getBinaryMetaData(PxOutputStream& stream);
 	protected:
-							RigidCore(const PxEMPTY) :	ActorCore(PxEmpty)	{}
-							RigidCore(PxActorType::Enum type);
-							~RigidCore();
+								RigidCore(const PxEMPTY) :	ActorCore(PxEmpty)	{}
+								RigidCore(PxActorType::Enum type);
+								~RigidCore();
 	};
 
 } // namespace Sc

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef GU_GEOM_UTILS_INTERNAL_H
-#define GU_GEOM_UTILS_INTERNAL_H
+#ifndef GU_INTERNAL_H
+#define GU_INTERNAL_H
 
 #include "geometry/PxCapsuleGeometry.h"
 #include "geometry/PxBoxGeometry.h"
-#include "CmPhysXCommon.h"
 #include "GuCapsule.h"
-#include "PsMathUtils.h"
-#include "PsUtilities.h"
+#include "foundation/PxTransform.h"
+#include "foundation/PxMathUtils.h"
+#include "foundation/PxUtilities.h"
+#include "foundation/PxMat33.h"
 
 #define GU_EPSILON_SAME_DISTANCE 1e-3f
 
@@ -51,7 +51,6 @@ namespace Gu
 	PX_PHYSX_COMMON_API const PxU8*	getBoxEdges();
 
 	PX_PHYSX_COMMON_API void		computeBoxPoints(const PxBounds3& bounds, PxVec3* PX_RESTRICT pts);
-	PX_PHYSX_COMMON_API void		computeBoundsAroundVertices(PxBounds3& bounds, PxU32 nbVerts, const PxVec3* PX_RESTRICT verts);
 
 						void		computeBoxAroundCapsule(const Capsule& capsule, Box& box);
 
@@ -88,6 +87,7 @@ namespace Gu
 	*/
 	PX_FORCE_INLINE		PxReal		computeAlignmentValue(const PxVec3& triNormal, const PxVec3& unitDir)
 	{
+		PX_ASSERT(triNormal.isNormalized());
 		// PT: initial dot product gives the angle between the two, with "best" triangles getting a +1 or -1 score
 		// depending on their winding. We take the absolute value to ignore the impact of winding. We negate the result
 		// to make the function compatible with the initial code, which assumed single-sided triangles and expected -1
@@ -105,16 +105,21 @@ namespace Gu
 	*	\param		bestImpactDistance	[in] current best triangle's impact distance
 	*	\param		bestAlignmentValue	[in] current best triangle's alignment value (as computed by computeAlignmentValue)
 	*   \param		maxDistance			[in] maximum distance of the query, hit cannot be longer than this maxDistance
-	*	\param		distEpsilon			[in] tris have "similar" impact distances if the difference is smaller than 2*distEpsilon
 	*	\return		true if new triangle is better
 	*/
 	PX_FORCE_INLINE		bool		keepTriangle(	float triImpactDistance, float triAlignmentValue,
-										float bestImpactDistance, float bestAlignmentValue, float maxDistance,
-										float distEpsilon)
+													float bestImpactDistance, float bestAlignmentValue, float maxDistance)
 	{
 		// Reject triangle if further than the maxDistance
 		if(triImpactDistance > maxDistance)
 			return false;
+
+		// If initial overlap happens, keep the triangle
+		if(triImpactDistance == 0.0f)
+			return true;
+
+		// tris have "similar" impact distances if the difference is smaller than 2*distEpsilon
+		float distEpsilon = GU_EPSILON_SAME_DISTANCE; // pick a farther hit within distEpsilon that is more opposing than the previous closest hit
 
 		// PT: make it a relative epsilon to make sure it still works with large distances
 		distEpsilon *= PxMax(1.0f, PxMax(triImpactDistance, bestImpactDistance));
@@ -131,18 +136,175 @@ namespace Gu
 		if(triAlignmentValue == bestAlignmentValue && triImpactDistance < bestImpactDistance)
 			return true;
 
+		return false;
+	}
+
+	PX_FORCE_INLINE		bool		keepTriangleBasic(float triImpactDistance, float bestImpactDistance, float maxDistance)
+	{
+		// Reject triangle if further than the maxDistance
+		if(triImpactDistance > maxDistance)
+			return false;
+
 		// If initial overlap happens, keep the triangle
 		if(triImpactDistance == 0.0f)
+			return true;
+
+		// If new distance is more than epsilon closer than old distance
+		if(triImpactDistance < bestImpactDistance)
 			return true;
 
 		return false;
 	}
 
-	#define StoreBounds(bounds, minV, maxV)	\
-		V4StoreU(minV, &bounds.minimum.x);	\
-		PX_ALIGN(16, PxVec4) max4;			\
-		V4StoreA(maxV, &max4.x);			\
-		bounds.maximum = PxVec3(max4.x, max4.y, max4.z);
+	PX_FORCE_INLINE PxVec3 cross100(const PxVec3& b)
+	{
+		return PxVec3(0.0f, -b.z, b.y);
+	}
+	PX_FORCE_INLINE PxVec3 cross010(const PxVec3& b)
+	{
+		return PxVec3(b.z, 0.0f, -b.x);
+	}
+	PX_FORCE_INLINE PxVec3 cross001(const PxVec3& b)
+	{
+		return PxVec3(-b.y, b.x, 0.0f);
+	}
+
+	//! Compute point as combination of barycentric coordinates
+	PX_FORCE_INLINE PxVec3 computeBarycentricPoint(const PxVec3& p0, const PxVec3& p1, const PxVec3& p2, PxReal u, PxReal v)
+	{
+		// This seems to confuse the compiler...
+		// return (1.0f - u - v)*p0 + u*p1 + v*p2;
+		const PxF32 w = 1.0f - u - v;
+		return PxVec3(w * p0.x + u * p1.x + v * p2.x, w * p0.y + u * p1.y + v * p2.y, w * p0.z + u * p1.z + v * p2.z);
+	}
+
+	PX_FORCE_INLINE PxReal computeTetrahedronVolume(const PxVec3& x0, const PxVec3& x1, const PxVec3& x2, const PxVec3& x3, PxMat33& edgeMatrix)
+	{
+		const PxVec3 u1 = x1 - x0;
+		const PxVec3 u2 = x2 - x0;
+		const PxVec3 u3 = x3 - x0;
+
+		edgeMatrix = PxMat33(u1, u2, u3);
+
+		const PxReal det = edgeMatrix.getDeterminant();
+
+		const PxReal volume = det / 6.0f;
+		return volume;
+	}
+
+	PX_FORCE_INLINE PxReal computeTetrahedronVolume(const PxVec3& x0, const PxVec3& x1, const PxVec3& x2, const PxVec3& x3)
+	{
+		PxMat33 edgeMatrix;
+		return computeTetrahedronVolume(x0, x1, x2, x3, edgeMatrix);
+	}
+	
+	// IndexType should be PxU16 or PxU32.
+	template<typename IndexType>
+    PX_FORCE_INLINE PxReal computeTriangleMeshVolume(const PxVec3* vertices, const IndexType* indices,
+                                                     const PxU32 numTriangles)
+	{
+		// See https://twitter.com/keenanisalive/status/1437178786286653445?lang=en
+	    float volume = 0.0f;
+
+	    for(PxU32 i = 0; i < numTriangles; ++i)
+	    {
+		    PxVec3 v0 = vertices[indices[3*i]];
+		    PxVec3 v1 = vertices[indices[3 * i + 1]];
+		    PxVec3 v2 = vertices[indices[3 * i + 2]];
+
+			PxVec3 v0v1 = v0.cross(v1);
+
+		    volume += v0v1.dot(v2);
+	    }
+		return volume / 6.0f;
+	}
+
+	// IndexType should be PxU16 or PxU32.
+	// W in PxVec4 of vertices are ignored.
+    template <typename IndexType>
+    PX_FORCE_INLINE PxReal computeTriangleMeshVolume(const PxVec4* vertices, const IndexType* indices,
+                                                     const PxU32 numTriangles)
+    {
+	    // See https://twitter.com/keenanisalive/status/1437178786286653445?lang=en
+	    float volume = 0.0f;
+
+		for(PxU32 i = 0; i < numTriangles; ++i)
+	    {
+		    PxVec3 v0 = vertices[indices[3 * i]].getXYZ();
+		    PxVec3 v1 = vertices[indices[3 * i + 1]].getXYZ();
+		    PxVec3 v2 = vertices[indices[3 * i + 2]].getXYZ();
+
+		    PxVec3 v0v1 = v0.cross(v1);
+
+		    volume += v0v1.dot(v2);
+	    }
+	    return volume / 6.0f;
+    }
+
+	/*!
+	Extend an edge along its length by a factor
+	*/
+	PX_FORCE_INLINE void makeFatEdge(PxVec3& p0, PxVec3& p1, PxReal fatCoeff)
+	{
+		PxVec3 delta = p1 - p0;
+
+		const PxReal m = delta.magnitude();
+		if (m > 0.0f)
+		{
+			delta *= fatCoeff / m;
+			p0 -= delta;
+			p1 += delta;
+		}
+	}
+
+#if 0
+	/*!
+	Extend an edge along its length by a factor
+	*/
+	PX_FORCE_INLINE void makeFatEdge(aos::Vec3V& p0, aos::Vec3V& p1, const aos::FloatVArg fatCoeff)
+	{
+		const aos::Vec3V delta = aos::V3Sub(p1, p0);
+		const aos::FloatV m = aos::V3Length(delta);
+		const aos::BoolV con = aos::FIsGrtr(m, aos::FZero());
+		const aos::Vec3V fatDelta = aos::V3Scale(aos::V3ScaleInv(delta, m), fatCoeff);
+		p0 = aos::V3Sel(con, aos::V3Sub(p0, fatDelta), p0);
+		p1 = aos::V3Sel(con, aos::V3Add(p1, fatDelta), p1);
+	}
+#endif
+
+	PX_FORCE_INLINE PxU32 closestAxis(const PxVec3& v, PxU32& j, PxU32& k)
+	{
+		// find largest 2D plane projection
+		const PxF32 absPx = PxAbs(v.x);
+		const PxF32 absNy = PxAbs(v.y);
+		const PxF32 absNz = PxAbs(v.z);
+
+		PxU32 m = 0; // x biggest axis
+		j = 1;
+		k = 2;
+		if (absNy > absPx && absNy > absNz)
+		{
+			// y biggest
+			j = 2;
+			k = 0;
+			m = 1;
+		}
+		else if (absNz > absPx)
+		{
+			// z biggest
+			j = 0;
+			k = 1;
+			m = 2;
+		}
+		return m;
+	}
+
+	PX_FORCE_INLINE bool isAlmostZero(const PxVec3& v)
+	{
+		if (PxAbs(v.x) > 1e-6f || PxAbs(v.y) > 1e-6f || PxAbs(v.z) > 1e-6f)
+			return false;
+		return true;
+	}
 
 }  // namespace Gu
 

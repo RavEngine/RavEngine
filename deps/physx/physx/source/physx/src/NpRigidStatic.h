@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,28 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NP_RIGIDSTATIC
-#define PX_PHYSICS_NP_RIGIDSTATIC
+#ifndef NP_RIGID_STATIC_H
+#define NP_RIGID_STATIC_H
 
 #include "common/PxMetaData.h"
 #include "PxRigidStatic.h"
 #include "NpRigidActorTemplate.h"
-#include "ScbRigidStatic.h"
+#include "ScStaticCore.h"
 
 namespace physx
 {
-
-namespace Scb
-{
-	class RigidObject;
-}
-
-class NpRigidStatic;
 typedef NpRigidActorTemplate<PxRigidStatic> NpRigidStaticT;
 
 class NpRigidStatic : public NpRigidStaticT
@@ -57,60 +48,52 @@ class NpRigidStatic : public NpRigidStaticT
 //==================================================================================================
 public:
 // PX_SERIALIZATION
-											NpRigidStatic(PxBaseFlags baseFlags) : NpRigidStaticT(baseFlags), mRigidStatic(PxEmpty) {}
+											NpRigidStatic(PxBaseFlags baseFlags) : NpRigidStaticT(baseFlags), mCore(PxEmpty) {}
 					void					preExportDataReset() { NpRigidStaticT::preExportDataReset(); }
 	virtual			void					requiresObjects(PxProcessPxBaseCallback& c);
 	static			NpRigidStatic*			createObject(PxU8*& address, PxDeserializationContext& context);
 	static			void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 
+											NpRigidStatic(const PxTransform& pose);
 	virtual									~NpRigidStatic();
 
-	//---------------------------------------------------------------------------------
-	// PxActor implementation
-	//---------------------------------------------------------------------------------
-	virtual			void					release();
+	// PxActor
+	virtual			void					release()	PX_OVERRIDE;
+	virtual			PxActorType::Enum		getType() const PX_OVERRIDE	{ return PxActorType::eRIGID_STATIC; }
+	//~PxActor
 
-	virtual			PxActorType::Enum		getType() const { return PxActorType::eRIGID_STATIC; }
+	// PxRigidActor
+	virtual			void 					setGlobalPose(const PxTransform& pose, bool wake)	PX_OVERRIDE;
 
-	//---------------------------------------------------------------------------------
-	// PxRigidActor implementation
-	//---------------------------------------------------------------------------------
+	virtual			PxTransform				getGlobalPose() const	PX_OVERRIDE;
+	
+	//~PxRigidActor
 
-	// Pose
-	virtual			void 					setGlobalPose(const PxTransform& pose, bool wake);
-	virtual			PxTransform				getGlobalPose() const;
 
-	//---------------------------------------------------------------------------------
-	// Miscellaneous
-	//---------------------------------------------------------------------------------
-											NpRigidStatic(const PxTransform& pose);
-
-	virtual			void					switchToNoSim();
-	virtual			void					switchFromNoSim();
+	// PT: I think these come from NpRigidActorTemplate
+	// PT: TODO: drop them eventually, they all re-route to NpActor now
+	virtual			void					switchToNoSim()	PX_OVERRIDE;
+	virtual			void					switchFromNoSim()	PX_OVERRIDE;
 
 #if PX_CHECKED
-	bool									checkConstraintValidity() const;
+					bool					checkConstraintValidity() const;
 #endif
 
-	PX_FORCE_INLINE	const Scb::Actor&		getScbActorFast()		const	{ return mRigidStatic;	}
-	PX_FORCE_INLINE	Scb::Actor&				getScbActorFast()				{ return mRigidStatic;	}
+	PX_FORCE_INLINE	const Sc::StaticCore&	getCore()				const	{ return mCore;	}
+	PX_FORCE_INLINE	Sc::StaticCore&			getCore()						{ return mCore;	}
 
-	PX_FORCE_INLINE	const Scb::RigidStatic&	getScbRigidStaticFast()	const	{ return mRigidStatic;	}
-	PX_FORCE_INLINE	Scb::RigidStatic&		getScbRigidStaticFast()			{ return mRigidStatic;	}
-
-	static PX_FORCE_INLINE size_t			getScbRigidStaticOffset()		{ return PX_OFFSET_OF_RT(NpRigidStatic, mRigidStatic); }
-	static PX_FORCE_INLINE size_t			getNpShapeManagerOffset()		{ return PX_OFFSET_OF_RT(NpRigidStatic, mShapeManager); }
-
-	PX_FORCE_INLINE	const PxTransform&		getGlobalPoseFast()		const	{ return mRigidStatic.getActor2World();	}
+	static PX_FORCE_INLINE size_t			getCoreOffset()					{ return PX_OFFSET_OF_RT(NpRigidStatic, mCore);			}
+	static PX_FORCE_INLINE size_t			getNpShapeManagerOffset()		{ return PX_OFFSET_OF_RT(NpRigidStatic, mShapeManager);	}
 
 #if PX_ENABLE_DEBUG_VISUALIZATION
-public:
-					void					visualize(Cm::RenderOutput& out, NpScene* scene);
+					void					visualize(PxRenderOutput& out, NpScene& scene, float scale)	const;
+#else
+	PX_CATCH_UNDEFINED_ENABLE_DEBUG_VISUALIZATION
 #endif
 
 private:
-					Scb::RigidStatic 		mRigidStatic;
+					Sc::StaticCore			mCore;
 };
 
 }

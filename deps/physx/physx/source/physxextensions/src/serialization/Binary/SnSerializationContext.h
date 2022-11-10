@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_SN_SERIALIZATION_CONTEXT
-#define PX_PHYSICS_SN_SERIALIZATION_CONTEXT
+#ifndef SN_SERIALIZATION_CONTEXT_H
+#define SN_SERIALIZATION_CONTEXT_H
 
 #include "foundation/PxAssert.h"
 #include "foundation/PxMemory.h"
+#include "foundation/PxHash.h"
 #include "common/PxSerialFramework.h"
 #include "extensions/PxDefaultStreams.h"
 
-#include "PsHash.h"
-#include "PsUserAllocated.h"
-#include "PsFoundation.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxUserAllocated.h"
 #include "CmCollection.h"
 #include "CmUtils.h"
 #include "SnConvX_Align.h"
@@ -60,11 +56,11 @@ namespace physx
 
 			PX_FORCE_INLINE	ManifestEntry(PxU32 _offset, PxType _type)
 			{
-				Cm::markSerializedMem(this, sizeof(ManifestEntry));
+				PxMarkSerializedMemory(this, sizeof(ManifestEntry));
 				offset = _offset;
 				type = _type;
 			}			
-			PX_FORCE_INLINE	ManifestEntry() { Cm::markSerializedMem(this, sizeof(ManifestEntry)); }
+			PX_FORCE_INLINE	ManifestEntry() { PxMarkSerializedMemory(this, sizeof(ManifestEntry)); }
 			PX_FORCE_INLINE void operator =(const ManifestEntry& m)
 			{
 				PxMemCopy(this, &m, sizeof(ManifestEntry));				
@@ -85,11 +81,11 @@ namespace physx
 
 			PX_FORCE_INLINE	ImportReference(PxSerialObjectId _id, PxType _type)
 			{ 
-				Cm::markSerializedMem(this, sizeof(ImportReference));
+				PxMarkSerializedMemory(this, sizeof(ImportReference));
 				id = _id;
 				type = _type;
 			}
-			PX_FORCE_INLINE	ImportReference() { Cm::markSerializedMem(this, sizeof(ImportReference)); }
+			PX_FORCE_INLINE	ImportReference() { PxMarkSerializedMemory(this, sizeof(ImportReference)); }
 			PX_FORCE_INLINE void operator =(const ImportReference& m)
 			{
 				PxMemCopy(this, &m, sizeof(ImportReference));				
@@ -145,11 +141,11 @@ namespace physx
 
 			PX_FORCE_INLINE	ExportReference(PxSerialObjectId _id, SerialObjectIndex _objIndex)
 			{
-				Cm::markSerializedMem(this, sizeof(ExportReference));
+				PxMarkSerializedMemory(this, sizeof(ExportReference));
 				id = _id;
 				objIndex = _objIndex;
 			}
-			PX_FORCE_INLINE	ExportReference() { Cm::markSerializedMem(this, sizeof(ExportReference)); }
+			PX_FORCE_INLINE	ExportReference() { PxMarkSerializedMemory(this, sizeof(ExportReference)); }
 			PX_FORCE_INLINE void operator =(const ExportReference& m)
 			{
 				PxMemCopy(this, &m, sizeof(ExportReference));				
@@ -211,7 +207,7 @@ namespace physx
 		typedef Cm::CollectionHashMap<size_t, SerialObjectIndex> InternalPtrRefMap;
 		typedef Cm::CollectionHashMap<PxU16, SerialObjectIndex> InternalHandle16RefMap;
 
-		class DeserializationContext : public PxDeserializationContext, public Ps::UserAllocated
+		class DeserializationContext : public PxDeserializationContext, public PxUserAllocated
 		{
 			PX_NOCOPY(DeserializationContext)
 		
@@ -250,7 +246,7 @@ namespace physx
 			//const PxU32 mPhysXVersion;
 		};
 
-		class SerializationContext : public PxSerializationContext, public Ps::UserAllocated
+		class SerializationContext : public PxSerializationContext, public PxUserAllocated
 		{
 			PX_NOCOPY(SerializationContext)
 		public:
@@ -286,7 +282,7 @@ namespace physx
 
 			virtual void writeName(const char*)
 			{
-				Ps::getFoundation().error(physx::PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, 
+				PxGetFoundation().error(physx::PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, 
 					"Cannot export names during exportData.");
 			}
 
@@ -294,7 +290,7 @@ namespace physx
 
 			virtual void registerReference(PxBase& serializable, PxU32 kind, size_t reference);
 
-			const Ps::Array<ImportReference>& getImportReferences() { return mImportReferences; }
+			const PxArray<ImportReference>& getImportReferences() { return mImportReferences; }
 			InternalPtrRefMap& getInternalPtrReferencesMap() { return mInternalPtrReferencesMap; }
 			InternalHandle16RefMap& getInternalHandle16ReferencesMap() { return mInternalHandle16ReferencesMap; }
 
@@ -305,15 +301,15 @@ namespace physx
 
 		private:
 			//import reference map for unique registration of import references and corresponding buffer.
-			Ps::HashMap<PxSerialObjectId, PxU32> mImportReferencesMap;
-			Ps::Array<ImportReference> mImportReferences;
+			PxHashMap<PxSerialObjectId, PxU32> mImportReferencesMap;
+			PxArray<ImportReference> mImportReferences;
 			
 			//maps for unique registration of internal references
 			InternalPtrRefMap mInternalPtrReferencesMap;
 			InternalHandle16RefMap mInternalHandle16ReferencesMap;
 
 			//map for quick lookup of manifest index. 
-			Ps::HashMap<const PxBase*, PxU32> mObjToCollectionIndexMap;
+			PxHashMap<const PxBase*, PxU32> mObjToCollectionIndexMap;
 
 			//collection and externalRefs collection for assigning references.
 			const Cm::Collection& mCollection;

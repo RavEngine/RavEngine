@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,37 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_SCALING
-#define PX_PHYSICS_COMMON_SCALING
+#ifndef CM_SCALING_H
+#define CM_SCALING_H
 
 #include "foundation/PxBounds3.h"
 #include "foundation/PxMat33.h"
+#include "foundation/PxMathUtils.h"
+#include "foundation/PxMat34.h"
+#include "foundation/PxSIMDHelpers.h"
 #include "geometry/PxMeshScale.h"
-#include "CmMatrix34.h"
 #include "CmUtils.h"
-#include "PsMathUtils.h"
 
 namespace physx
 {
 namespace Cm
 {
+	// PT: same as PxMeshScale::toMat33() but faster
+	PX_FORCE_INLINE PxMat33 toMat33(const PxMeshScale& meshScale)
+	{
+		const PxMat33Padded rot(meshScale.rotation);
+
+		PxMat33 trans = rot.getTranspose();
+		trans.column0 *= meshScale.scale[0];
+		trans.column1 *= meshScale.scale[1];
+		trans.column2 *= meshScale.scale[2];
+		return trans * rot;
+	}
+
 	// class that can perform scaling fast.  Relatively large size, generated from PxMeshScale on demand.
 	// CS: I've removed most usages of this class, because most of the time only one-way transform is needed.
 	// If you only need a temporary FastVertex2ShapeScaling, setup your transform as PxMat34Legacy and use
@@ -85,7 +96,7 @@ namespace Cm
 			// That would introduce branches and it's unclear to me whether that's faster than just doing the math.
 			// Lazy computation would be another option, at the cost of introducing even more branches.
 
-			const PxMat33 R(rotation);
+			const PxMat33Padded R(rotation);
 			vertex2ShapeSkew = R.getTranspose();
 			const PxMat33 diagonal = PxMat33::createDiagonal(scale);
 			vertex2ShapeSkew = vertex2ShapeSkew * diagonal;
@@ -117,6 +128,7 @@ namespace Cm
 		{
 			return vertex2ShapeSkew * src;
 		}
+
 		PX_FORCE_INLINE PxVec3 operator%  (const PxVec3& src) const
 		{
 			return shape2VertexSkew * src;
@@ -132,22 +144,22 @@ namespace Cm
 			return shape2VertexSkew;
 		}
 
-		PX_INLINE Cm::Matrix34 getVertex2WorldSkew(const Cm::Matrix34& shape2world) const
+		PX_INLINE PxMat34 getVertex2WorldSkew(const PxMat34& shape2world) const
 		{
-			const Cm::Matrix34 vertex2worldSkew = shape2world * getVertex2ShapeSkew();
+			const PxMat34 vertex2worldSkew = shape2world * getVertex2ShapeSkew();
 			//vertex2worldSkew = shape2world * [vertex2shapeSkew, 0]
 			//[aR at] * [bR bt] = [aR * bR		aR * bt + at]  NOTE: order of operations important so it works when this ?= left ?= right.
 			return vertex2worldSkew;
 		}
 
-		PX_INLINE Cm::Matrix34 getWorld2VertexSkew(const Cm::Matrix34& shape2world) const
+		PX_INLINE PxMat34 getWorld2VertexSkew(const PxMat34& shape2world) const
 		{
 			//world2vertexSkew = shape2vertex * invPQ(shape2world)
 			//[aR 0] * [bR' -bR'*bt] = [aR * bR'		-aR * bR' * bt + 0]
 
 			const PxMat33 rotate( shape2world[0], shape2world[1], shape2world[2] );
 			const PxMat33 M = getShape2VertexSkew() * rotate.getTranspose();
-			return Cm::Matrix34(M[0], M[1], M[2], -M * shape2world[3]);			
+			return PxMat34(M[0], M[1], M[2], -M * shape2world[3]);			
 		}
 
 		//! Transforms a shape space OBB to a vertex space OBB.  All 3 params are in and out.
@@ -158,7 +170,7 @@ namespace Cm
 			basis.column2 = shape2VertexSkew * (basis.column2 * extents.z);
 
 			center = shape2VertexSkew * center;
-			extents = Ps::optimizeBoundingBox(basis);
+			extents = PxOptimizeBoundingBox(basis);
 		}
 
 		void transformPlaneToShapeSpace(const PxVec3& nIn, const PxReal dIn, PxVec3& nOut, PxReal& dOut)	const
@@ -197,29 +209,31 @@ namespace Cm
 } // namespace Cm
 
 
-PX_INLINE Cm::Matrix34 operator*(const PxTransform& transform, const PxMeshScale& scale) 
+PX_INLINE PxMat34 operator*(const PxTransform& transform, const PxMeshScale& scale) 
 {
-	return Cm::Matrix34(PxMat33(transform.q) * scale.toMat33(), transform.p);
+	const PxMat33Padded tmp(transform.q);
+
+	return PxMat34(tmp * Cm::toMat33(scale), transform.p);
 }
 
-PX_INLINE Cm::Matrix34 operator*(const PxMeshScale& scale, const PxTransform& transform) 
+PX_INLINE PxMat34 operator*(const PxMeshScale& scale, const PxTransform& transform) 
 {
-	const PxMat33 scaleMat = scale.toMat33();
-	const PxMat33 t = PxMat33(transform.q);
+	const PxMat33 scaleMat = Cm::toMat33(scale);
+	const PxMat33Padded t(transform.q);
 	const PxMat33 r = scaleMat * t;
 	const PxVec3 p = scaleMat * transform.p;
-	return Cm::Matrix34(r, p);
+	return PxMat34(r, p);
 }
 
-PX_INLINE Cm::Matrix34 operator*(const Cm::Matrix34& transform, const PxMeshScale& scale) 
+PX_INLINE PxMat34 operator*(const PxMat34& transform, const PxMeshScale& scale) 
 {
-	return Cm::Matrix34(transform.m * scale.toMat33(), transform.p);
+	return PxMat34(transform.m * Cm::toMat33(scale), transform.p);
 }
 
-PX_INLINE Cm::Matrix34 operator*(const PxMeshScale& scale, const Cm::Matrix34& transform) 
+PX_INLINE PxMat34 operator*(const PxMeshScale& scale, const PxMat34& transform) 
 {
-	const PxMat33 scaleMat = scale.toMat33();
-	return Cm::Matrix34(scaleMat * transform.m, scaleMat * transform.p);
+	const PxMat33 scaleMat = Cm::toMat33(scale);
+	return PxMat34(scaleMat * transform.m, scaleMat * transform.p);
 }
 
 }

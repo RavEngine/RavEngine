@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef PXV_DYNAMICS_H
 #define PXV_DYNAMICS_H
@@ -35,7 +33,7 @@
 #include "foundation/PxQuat.h"
 #include "foundation/PxTransform.h"
 #include "foundation/PxSimpleTypes.h"
-#include "PsIntrinsics.h"
+#include "foundation/PxIntrinsics.h"
 #include "PxRigidDynamic.h"
 
 namespace physx
@@ -70,7 +68,9 @@ struct PxsRigidCore
 };
 PX_COMPILE_TIME_ASSERT(sizeof(PxsRigidCore) == 32);
 
-struct PxsBodyCore: public PxsRigidCore
+#define PXV_CONTACT_REPORT_DISABLED	PX_MAX_F32
+
+struct PxsBodyCore : public PxsRigidCore
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -86,7 +86,7 @@ struct PxsBodyCore: public PxsRigidCore
 	PX_FORCE_INLINE	void setBody2Actor(const PxTransform& t)
 	{
 		if(t.p.isZero() && t.q.isIdentity())
-			mFlags |= PxRigidBodyFlag::eRESERVED;
+			mFlags.raise(PxRigidBodyFlag::eRESERVED);
 		else
 			mFlags.clear(PxRigidBodyFlag::eRESERVED);
 
@@ -112,31 +112,30 @@ struct PxsBodyCore: public PxsRigidCore
 	PxReal					inverseMass;			//128
 	
 	PxReal					maxContactImpulse;			
-	PxReal					sleepThreshold;				   
-	PxReal					freezeThreshold;			
+	PxReal					sleepThreshold;
+	union
+	{
+		PxReal				freezeThreshold;
+		PxReal				cfmScale;
+	};
+		
 	PxReal					wakeCounter;			//144 this is authoritative wakeCounter
 
 	PxReal					solverWakeCounter;		//this is calculated by the solver when it performs sleepCheck. It is committed to wakeCounter in ScAfterIntegrationTask if the body is still awake.
 	PxU32					numCountedInteractions;
-	PxU32					numBodyInteractions;	//Used by adaptive force to keep track of the total number of body interactions
+	PxReal					offsetSlop;				//Slop value used to snap contact line of action back in-line with the COM
 	PxU8					isFastMoving;			//This could be a single bit but it's a u8 at the moment for simplicity's sake
 	PxU8					disableGravity;			//This could be a single bit but it's a u8 at the moment for simplicity's sake
 	PxRigidDynamicLockFlags	lockFlags;				//This is u8. 
 	PxU8					kinematicLink;			//160 This indicates whether the articulation link is kinematic link. All fits into 16 byte alignment
 	
-													// PT: TODO: revisit this / move to PxsCCD.cpp
-	PX_FORCE_INLINE	bool	shouldCreateContactReports()	const
-	{
-		const PxU32* binary = reinterpret_cast<const PxU32*>(&contactReportThreshold);
-		return *binary != 0x7f7fffff;	// PX_MAX_REAL
-	}
-
 	// PT: moved from Sc::BodyCore ctor - we don't want to duplicate all this in immediate mode
 	PX_FORCE_INLINE	void	init(	const PxTransform& bodyPose,
 									const PxVec3& inverseInertia_, PxReal inverseMass_,
 									PxReal wakeCounter_, PxReal scaleSpeed,
 									PxReal linearDamping_, PxReal angularDamping_,
-									PxReal maxLinearVelocitySq_, PxReal maxAngularVelocitySq_)
+									PxReal maxLinearVelocitySq_, PxReal maxAngularVelocitySq_,
+									PxActorType::Enum type)
 	{
 		PX_ASSERT(bodyPose.p.isFinite());
 		PX_ASSERT(bodyPose.q.isFinite());
@@ -154,7 +153,7 @@ struct PxsBodyCore: public PxsRigidCore
 		linearVelocity			= PxVec3(0.0f);
 		maxPenBias				= -1e32f;//-PX_MAX_F32;
 		angularVelocity			= PxVec3(0.0f);
-		contactReportThreshold	= PX_MAX_F32;	
+		contactReportThreshold	= PXV_CONTACT_REPORT_DISABLED;
 		maxAngularVelocitySq	= maxAngularVelocitySq_;
 		maxLinearVelocitySq		= maxLinearVelocitySq_;
 		linearDamping			= linearDamping_;
@@ -163,8 +162,12 @@ struct PxsBodyCore: public PxsRigidCore
 		inverseMass				= inverseMass_;
 		maxContactImpulse		= 1e32f;// PX_MAX_F32;
 		sleepThreshold			= 5e-5f * scaleSpeed * scaleSpeed;
-		freezeThreshold			= 2.5e-5f * scaleSpeed * scaleSpeed;
+		if(type == PxActorType::eARTICULATION_LINK)
+			cfmScale			= 0.025f;
+		else
+			freezeThreshold		= 2.5e-5f * scaleSpeed * scaleSpeed;
 		wakeCounter				= wakeCounter_;
+		offsetSlop				= 0.f;
 		// PT: this one is not initialized?
 		//solverWakeCounter
 		// PT: these are initialized in BodySim ctor

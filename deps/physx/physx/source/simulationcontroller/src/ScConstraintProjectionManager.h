@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef SC_CONSTRAINT_PROJECTION_MANAGER_H
+#define SC_CONSTRAINT_PROJECTION_MANAGER_H
 
-#ifndef PX_PHYSICS_SCP_CONSTRAINT_PROJECTION_MANAGER
-#define PX_PHYSICS_SCP_CONSTRAINT_PROJECTION_MANAGER
-
-#include "PsPool.h"
-#include "PsHashSet.h"
+#include "foundation/PxPool.h"
+#include "foundation/PxHashSet.h"
 #include "ScConstraintGroupNode.h"
 
 namespace physx
@@ -45,7 +43,7 @@ namespace Sc
 	class BodySim;
 	template<typename T, const PxU32 elementsPerBlock = 64> class ScratchAllocatorList;
 
-	class ConstraintProjectionManager : public Ps::UserAllocated
+	class ConstraintProjectionManager : public PxUserAllocated
 	{
 	public:
 		ConstraintProjectionManager();
@@ -70,9 +68,9 @@ namespace Sc
 
 
 	private:
-		Ps::Pool<ConstraintGroupNode>				mNodePool;
-		Ps::CoalescedHashSet<ConstraintSim*>		mPendingGroupUpdates; //list of constraints for which constraint projection groups need to be generated/updated
-		Ps::CoalescedHashSet<ConstraintGroupNode*>	mPendingTreeUpdates;	//list of constraint groups that need their projection trees rebuilt. Note: non of the
+		PxPool<ConstraintGroupNode>				mNodePool;
+		PxCoalescedHashSet<ConstraintSim*>		mPendingGroupUpdates; //list of constraints for which constraint projection groups need to be generated/updated
+		PxCoalescedHashSet<ConstraintGroupNode*>	mPendingTreeUpdates;	//list of constraint groups that need their projection trees rebuilt. Note: non of the
 																			//constraints in those groups are allowed to be in mPendingGroupUpdates at the same time
 																			//because a group update will automatically trigger tree rebuilds.
 	};

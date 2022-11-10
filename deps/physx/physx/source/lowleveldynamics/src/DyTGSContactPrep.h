@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef DY_TGS_CONTACTPREP_H
-#define DY_TGS_CONTACTPREP_H
+#ifndef DY_TGS_CONTACT_PREP_H
+#define DY_TGS_CONTACT_PREP_H
 
 #include "foundation/PxPreprocessor.h"
 #include "DySolverConstraintDesc.h"
@@ -59,9 +57,12 @@ namespace physx
 			ThreadContext& threadContext,
 			const PxReal invDtF32,
 			const PxReal invTotalDtF32,
-			PxReal bounceThresholdF32,
-			PxReal frictionOffsetThreshold,
-			PxReal correlationDistance,
+			const PxReal totalDtF32,
+			const PxReal stepDt,
+			const PxReal bounceThresholdF32,
+			const PxReal frictionOffsetThreshold,
+			const PxReal correlationDistance,
+			const PxReal biasCoefficient,
 			PxConstraintAllocator& constraintAllocator);
 
 		bool createFinalizeSolverContactsStep(
@@ -69,56 +70,63 @@ namespace physx
 			CorrelationBuffer& c,
 			const PxReal invDtF32,
 			const PxReal invTotalDtF32,
-			PxReal bounceThresholdF32,
-			PxReal frictionOffsetThreshold,
-			PxReal correlationDistance,
+			const PxReal totalDtF32,
+			const PxReal dtF32,
+			const PxReal bounceThresholdF32,
+			const PxReal frictionOffsetThreshold,
+			const PxReal correlationDistance,
+			const PxReal biasCoefficient,
 			PxConstraintAllocator& constraintAllocator);
 
 		SolverConstraintPrepState::Enum setupSolverConstraintStep4
 		(PxTGSSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 			const PxReal dt, const PxReal totalDt, const PxReal recipdt, const PxReal recipTotalDt, PxU32& totalRows,
 			PxConstraintAllocator& allocator, PxU32 maxRows,
-			const PxReal lengthScale);
+			const PxReal lengthScale, const PxReal biasCoefficient);
 
 		PxU32 SetupSolverConstraintStep(SolverConstraintShaderPrepDesc& shaderDesc,
 			PxTGSSolverConstraintPrepDesc& prepDesc,
 			PxConstraintAllocator& allocator,
 			const PxReal dt, const PxReal totalDt, const PxReal invdt, const PxReal invTotalDt,
-			const PxReal lengthScale);
+			const PxReal lengthScale, const PxReal biasCoefficient);
 
 		PxU32 setupSolverConstraintStep(
 			const PxTGSSolverConstraintPrepDesc& prepDesc,
 			PxConstraintAllocator& allocator,
 			const PxReal dt, const PxReal totalDt, const PxReal invdt, const PxReal invTotalDt,
-			const PxReal lengthScale);
+			const PxReal lengthScale, const PxReal biasCoefficient);
 
 		SolverConstraintPrepState::Enum setupSolverConstraintStep4
 		(SolverConstraintShaderPrepDesc* PX_RESTRICT constraintShaderDescs,
 			PxTGSSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 			const PxReal dt, const PxReal totalDt, const PxReal recipdt, const PxReal recipTotalDt, PxU32& totalRows,
-			PxConstraintAllocator& allocator, const PxReal lengthScale);
+			PxConstraintAllocator& allocator, const PxReal lengthScale, const PxReal biasCoefficient);
 
 		SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 			PxsContactManagerOutput** cmOutputs,
 			ThreadContext& threadContext,
 			PxTGSSolverContactDesc* blockDescs,
 			const PxReal invDtF32,
+			const PxReal totalDtF32,
 			const PxReal invTotalDtF32,
-			PxReal bounceThresholdF32,
-			PxReal	frictionOffsetThreshold,
-			PxReal correlationDistance,
-			PxReal solverOffsetSlop,
+			const PxReal dt,
+			const PxReal bounceThresholdF32,
+			const PxReal frictionOffsetThreshold,
+			const PxReal correlationDistance,
+			const PxReal biasCoefficient,
 			PxConstraintAllocator& constraintAllocator);
 
 		SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 			Dy::CorrelationBuffer& c,
 			PxTGSSolverContactDesc* blockDescs,
 			const PxReal invDtF32,
+			const PxReal totalDt,
 			const PxReal invTotalDtF32,
-			PxReal bounceThresholdF32,
-			PxReal	frictionOffsetThreshold,
-			PxReal correlationDistance,
-			PxReal solverOffsetSlop,
+			const PxReal dt,
+			const PxReal bounceThresholdF32,
+			const PxReal frictionOffsetThreshold,
+			const PxReal correlationDistance,
+			const PxReal biasCoefficient,
 			PxConstraintAllocator& constraintAllocator);
 
 		typedef void(*TGSSolveBlockMethod) (const PxConstraintBatchHeader& hdr, const PxSolverConstraintDesc* desc,

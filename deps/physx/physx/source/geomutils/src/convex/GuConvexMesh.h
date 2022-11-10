@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,33 +22,29 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef GU_COLLISION_CONVEXMESH_H
-#define GU_COLLISION_CONVEXMESH_H
+#ifndef GU_CONVEX_MESH_H
+#define GU_CONVEX_MESH_H
 
 #include "foundation/PxBitAndData.h"
 #include "common/PxMetaData.h"
 #include "geometry/PxConvexMesh.h"
-#include "PsUserAllocated.h"
-#include "CmPhysXCommon.h"
+#include "geometry/PxConvexMeshGeometry.h"
+#include "foundation/PxUserAllocated.h"
 #include "CmRefCountable.h"
-#include "CmRenderOutput.h"
+#include "common/PxRenderOutput.h"
 #include "GuConvexMeshData.h"
-
 
 namespace physx
 {
-
 class BigConvexData;
-class GuMeshFactory;
-class PxMeshScale;
-
 
 namespace Gu
 {
+	class MeshFactory;
 	struct HullPolygonData;
 
 	PX_INLINE PxU32 computeBufferSize(const Gu::ConvexHullData& data, PxU32 nb)
@@ -75,8 +70,8 @@ namespace Gu
 		PxReal			mMass;		
 		PxMat33			mInertia;
 		BigConvexData*	mBigConvexData;
+		SDF*			mSdfData;
 	};
-
 
 	// 0: includes raycast map
 	// 1: discarded raycast map
@@ -87,15 +82,15 @@ namespace Gu
 	// 6: removed support for edgeData16.
 	// 7: removed support for edge8Data.
 	// 8: removed support for triangles.
-
 	// 9: removed local sphere.
 	//10: removed geometric center.
 	//11: removed mFlags, and mERef16 from Poly; nbVerts is just a byte.
 	//12: removed explicit minimum, maximum from Poly
 	//13: internal objects
-    #define  PX_CONVEX_VERSION 13
+	//14: SDF
+    #define  PX_CONVEX_VERSION 14
   
-	class ConvexMesh : public PxConvexMesh, public Ps::UserAllocated, public Cm::RefCountable
+	class ConvexMesh : public PxConvexMesh, public PxUserAllocated
 	{
 	//= ATTENTION! =====================================================================================
 	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -105,80 +100,93 @@ namespace Gu
 	//==================================================================================================
 	public:
 	// PX_SERIALIZATION
-							 						ConvexMesh(PxBaseFlags baseFlags) : PxConvexMesh(baseFlags), Cm::RefCountable(PxEmpty), mHullData(PxEmpty), mNb(PxEmpty) 
-													{
-														mNb.setBit();
-													}									
+							 					ConvexMesh(PxBaseFlags baseFlags) : PxConvexMesh(baseFlags), mHullData(PxEmpty), mNb(PxEmpty) 
+												{
+													mNb.setBit();
+												}									
 
-		PX_PHYSX_COMMON_API			void			preExportDataReset() { Cm::RefCountable::preExportDataReset(); }
-		PX_PHYSX_COMMON_API virtual	void			exportExtraData(PxSerializationContext& stream);
-		PX_PHYSX_COMMON_API			void			importExtraData(PxDeserializationContext& context);
-		PX_PHYSX_COMMON_API virtual	void			onRefCountZero();
-		PX_PHYSX_COMMON_API static	ConvexMesh*		createObject(PxU8*& address, PxDeserializationContext& context);
-		PX_PHYSX_COMMON_API static	void			getBinaryMetaData(PxOutputStream& stream);
-									void			resolveReferences(PxDeserializationContext&)				{}
-		virtual						void			requiresObjects(PxProcessPxBaseCallback&){}
+						void					preExportDataReset() { Cm::RefCountable_preExportDataReset(*this); }
+		 virtual		void					exportExtraData(PxSerializationContext& stream);
+						void					importExtraData(PxDeserializationContext& context);
+		PX_PHYSX_COMMON_API static	ConvexMesh*	createObject(PxU8*& address, PxDeserializationContext& context);
+		PX_PHYSX_COMMON_API static	void		getBinaryMetaData(PxOutputStream& stream);
+						void					resolveReferences(PxDeserializationContext&)				{}
+		virtual			void					requiresObjects(PxProcessPxBaseCallback&){}
 	//~PX_SERIALIZATION
-		PX_PHYSX_COMMON_API 						ConvexMesh();
+		 										ConvexMesh(MeshFactory* factory);
 
-		PX_PHYSX_COMMON_API							ConvexMesh(GuMeshFactory& factory, ConvexHullInitData& data);
+												ConvexMesh(MeshFactory* factory, ConvexHullInitData& data);
 
-		PX_PHYSX_COMMON_API bool					load(PxInputStream& stream);
+						bool					load(PxInputStream& stream);
+
+		// PxBase
+		virtual			void					onRefCountZero();
+		//~PxBase
+
+		// PxRefCounted
+		virtual			PxU32					getReferenceCount()								const;
+		virtual			void					acquireReference();
+		//~PxRefCounted
 
 		// PxConvexMesh										
-		PX_PHYSX_COMMON_API virtual	void			release();
-		PX_PHYSX_COMMON_API virtual	PxU32			getNbVertices()									const	{ return mHullData.mNbHullVertices;		}
-		PX_PHYSX_COMMON_API virtual	const PxVec3*	getVertices()									const	{ return mHullData.getHullVertices();	}
-		PX_PHYSX_COMMON_API virtual	const PxU8*		getIndexBuffer()								const	{ return mHullData.getVertexData8();	}
-		PX_PHYSX_COMMON_API virtual	PxU32			getNbPolygons()									const	{ return mHullData.mNbPolygons;			}
-		PX_PHYSX_COMMON_API virtual	bool			getPolygonData(PxU32 i, PxHullPolygon& data)	const;
-		PX_PHYSX_COMMON_API virtual bool			isGpuCompatible()								const;						
-		PX_PHYSX_COMMON_API virtual	PxU32			getReferenceCount()								const;
-		PX_PHYSX_COMMON_API virtual	void			acquireReference();
+		virtual			void					release();
+		virtual			PxU32					getNbVertices()									const	{ return mHullData.mNbHullVertices;		}
+		virtual			const PxVec3*			getVertices()									const	{ return mHullData.getHullVertices();	}
+		virtual			const PxU8*				getIndexBuffer()								const	{ return mHullData.getVertexData8();	}
+		virtual			PxU32					getNbPolygons()									const	{ return mHullData.mNbPolygons;			}
+		virtual			bool					getPolygonData(PxU32 i, PxHullPolygon& data)	const;
+		virtual			bool					isGpuCompatible()								const;						
 
-		PX_PHYSX_COMMON_API virtual	void			getMassInformation(PxReal& mass, PxMat33& localInertia, PxVec3& localCenterOfMass)	const;
-		PX_PHYSX_COMMON_API virtual	PxBounds3		getLocalBounds()								const;
+		virtual			void					getMassInformation(PxReal& mass, PxMat33& localInertia, PxVec3& localCenterOfMass)	const;
+		virtual			PxBounds3				getLocalBounds()								const;
+		virtual			const PxReal*			getSDF() const;
+		
 		//~PxConvexMesh
 
-		PX_FORCE_INLINE	PxU32					getNbVerts()										const	{ return mHullData.mNbHullVertices;		}
-		PX_FORCE_INLINE	const PxVec3*			getVerts()											const	{ return mHullData.getHullVertices();	}
-		PX_FORCE_INLINE	PxU32					getNbPolygonsFast()									const	{ return mHullData.mNbPolygons;			}
-		PX_FORCE_INLINE	const HullPolygonData&	getPolygon(PxU32 i)									const	{ return mHullData.mPolygons[i];		}
-		PX_FORCE_INLINE	const HullPolygonData*	getPolygons()										const	{ return mHullData.mPolygons;			}
-		PX_FORCE_INLINE	PxU32					getNbEdges()										const	{ return mHullData.mNbEdges;			}
+		PX_FORCE_INLINE	PxU32					getNbVerts()									const	{ return mHullData.mNbHullVertices;		}
+		PX_FORCE_INLINE	const PxVec3*			getVerts()										const	{ return mHullData.getHullVertices();	}
+		PX_FORCE_INLINE	PxU32					getNbPolygonsFast()								const	{ return mHullData.mNbPolygons;			}
+		PX_FORCE_INLINE	const HullPolygonData&	getPolygon(PxU32 i)								const	{ return mHullData.mPolygons[i];		}
+		PX_FORCE_INLINE	const HullPolygonData*	getPolygons()									const	{ return mHullData.mPolygons;			}
+		PX_FORCE_INLINE	PxU32					getNbEdges()									const	{ return mHullData.mNbEdges;			}
 
-		PX_FORCE_INLINE	const ConvexHullData&	getHull()											const	{ return mHullData;						}
-		PX_FORCE_INLINE	ConvexHullData&			getHull()													{ return mHullData;						}
-		PX_FORCE_INLINE	const CenterExtents&	getLocalBoundsFast()								const	{ return mHullData.mAABB;				}
-		PX_FORCE_INLINE	PxReal					getMass()											const	{ return mMass;							}
-		PX_FORCE_INLINE void					setMass(PxReal mass)										{ mMass = mass;							}		
-		PX_FORCE_INLINE	const PxMat33&			getInertia()										const	{ return mInertia;						}
-		PX_FORCE_INLINE void					setInertia(const PxMat33& inertia)							{ mInertia = inertia;					}
+		PX_FORCE_INLINE	const ConvexHullData&	getHull()										const	{ return mHullData;						}
+		PX_FORCE_INLINE	ConvexHullData&			getHull()												{ return mHullData;						}
+		PX_FORCE_INLINE	const CenterExtents&	getLocalBoundsFast()							const	{ return mHullData.mAABB;				}
+		PX_FORCE_INLINE	PxReal					getMass()										const	{ return mMass;							}
+		PX_FORCE_INLINE void					setMass(PxReal mass)									{ mMass = mass;							}		
+		PX_FORCE_INLINE	const PxMat33&			getInertia()									const	{ return mInertia;						}
+		PX_FORCE_INLINE void					setInertia(const PxMat33& inertia)						{ mInertia = inertia;					}
 
-		PX_FORCE_INLINE BigConvexData*			getBigConvexData()									const	{ return mBigConvexData;				}
-		PX_FORCE_INLINE void					setBigConvexData(BigConvexData* bcd)						{ mBigConvexData = bcd;					}
+		PX_FORCE_INLINE BigConvexData*			getBigConvexData()								const	{ return mBigConvexData;				}
+		PX_FORCE_INLINE void					setBigConvexData(BigConvexData* bcd)					{ mBigConvexData = bcd;					}
 
-		PX_FORCE_INLINE	PxU32					getBufferSize()										const	{ return computeBufferSize(mHullData, getNb());	}
+		PX_FORCE_INLINE	PxU32					getBufferSize()									const	{ return computeBufferSize(mHullData, getNb());	}
 
-		PX_PHYSX_COMMON_API virtual				~ConvexMesh();
+		virtual									~ConvexMesh();
 
-		PX_FORCE_INLINE	void					setMeshFactory(GuMeshFactory* f)							{ mMeshFactory = f;						}
-
-		PX_FORCE_INLINE void					setNb(PxU32 nb)												{ mNb = nb; }
+		PX_FORCE_INLINE	void					setMeshFactory(MeshFactory* f)							{ mMeshFactory = f;						}
+		PX_FORCE_INLINE void					setNb(PxU32 nb)											{ mNb = nb;								}
 
 	protected:
 						ConvexHullData			mHullData;
 						PxBitAndDword			mNb;	// ### PT: added for serialization. Try to remove later?
 
+						SDF*					mSdfData;
 						BigConvexData*			mBigConvexData;		//!< optional, only for large meshes! PT: redundant with ptr in chull data? Could also be end of other buffer
 						PxReal					mMass;				//this is mass assuming a unit density that can be scaled by instances!
 						PxMat33					mInertia;			//in local space of mesh!
-private:
-						GuMeshFactory*			mMeshFactory;	// PT: changed to pointer for serialization
+	private:
+						MeshFactory*			mMeshFactory;	// PT: changed to pointer for serialization
 
 		PX_FORCE_INLINE	PxU32					getNb()												const	{ return mNb;						}
 		PX_FORCE_INLINE	PxU32					ownsMemory()										const	{ return PxU32(!mNb.isBitSet());	}
 	};
+
+	PX_FORCE_INLINE const Gu::ConvexHullData* _getHullData(const PxConvexMeshGeometry& convexGeom)
+	{
+		return &static_cast<const Gu::ConvexMesh*>(convexGeom.convexMesh)->getHull();
+	}
 
 } // namespace Gu
 

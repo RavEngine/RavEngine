@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PXS_TRANSFORM_CACHE_H
 #define PXS_TRANSFORM_CACHE_H
 
-#include "CmPhysXCommon.h"
 #include "CmIDPool.h"
-#include "CmBitMap.h"
-#include "PsUserAllocated.h"
-#include "PsAllocator.h"
+#include "foundation/PxBitMap.h"
+#include "foundation/PxTransform.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxPinnedArray.h"
 
 #define PX_DEFAULT_CACHE_SIZE 512
 
@@ -57,13 +56,12 @@ namespace physx
 	}
 	PX_ALIGN_SUFFIX(16);
 
-
-	class PxsTransformCache : public Ps::UserAllocated
+	class PxsTransformCache : public PxUserAllocated
 	{
 		typedef PxU32 RefCountType;
 
 	public:
-		PxsTransformCache(Ps::VirtualAllocatorCallback& allocatorCallback) : mTransformCache(Ps::VirtualAllocator(&allocatorCallback)), mHasAnythingChanged(true)
+		PxsTransformCache(PxVirtualAllocatorCallback& allocatorCallback) : mTransformCache(PxVirtualAllocator(&allocatorCallback)), mHasAnythingChanged(true)
 		{
 			/*mTransformCache.reserve(PX_DEFAULT_CACHE_SIZE);
 			mTransformCache.forceSize_Unsafe(PX_DEFAULT_CACHE_SIZE);*/
@@ -75,13 +73,12 @@ namespace physx
 			PxU32 oldCapacity = mTransformCache.capacity();
 			if (index >= oldCapacity)
 			{
-				PxU32 newCapacity = Ps::nextPowerOfTwo(index);
+				PxU32 newCapacity = PxNextPowerOfTwo(index);
 				mTransformCache.reserve(newCapacity);
 				mTransformCache.forceSize_Unsafe(newCapacity);
 			}
 			mUsedSize = PxMax(mUsedSize, index + 1u);
 		}
-
 
 		PX_FORCE_INLINE void setTransformCache(const PxTransform& transform, const PxU32 flags, const PxU32 index)
 		{
@@ -94,7 +91,6 @@ namespace physx
 		{
 			return mTransformCache[index];
 		}
-
 
 		PX_FORCE_INLINE PxsCachedTransform& getTransformCache(const PxU32 index)
 		{
@@ -125,7 +121,7 @@ namespace physx
 			return mTransformCache.begin();
 		}
 
-		PX_FORCE_INLINE Ps::Array<PxsCachedTransform, Ps::VirtualAllocator>* getCachedTransformArray()
+		PX_FORCE_INLINE PxPinnedArray<PxsCachedTransform>* getCachedTransformArray()
 		{
 			return &mTransformCache;
 		}
@@ -135,9 +131,9 @@ namespace physx
 		PX_FORCE_INLINE	bool hasChanged()	const	{ return mHasAnythingChanged;	}
 
 	private:
-		Ps::Array<PxsCachedTransform, Ps::VirtualAllocator>	mTransformCache;
-		PxU32												mUsedSize;
-		bool												mHasAnythingChanged;
+		PxPinnedArray<PxsCachedTransform>	mTransformCache;
+		PxU32								mUsedSize;
+		bool								mHasAnythingChanged;
 	};
 }
 

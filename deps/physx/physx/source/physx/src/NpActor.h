@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NP_ACTOR
-#define PX_PHYSICS_NP_ACTOR
+#ifndef NP_ACTOR_H
+#define NP_ACTOR_H
 
 #include "NpConnector.h"
-#include "ScbActor.h" // DM: without this inclusion PVD-diabled android build fails, lacking Scb::Actor definition
+#include "NpBase.h"
 
 namespace physx
 {
@@ -41,7 +39,9 @@ namespace physx
 	class NpScene;
 	class NpShape;
 
-class NpActor
+	Sc::BodyCore* getBodyCore(PxRigidActor* actor);
+
+class NpActor : public NpBase
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -50,117 +50,155 @@ class NpActor
 // accordingly.
 //==================================================================================================
 
-	// We sometimes pass in the PxActor here even though it's always a base class 
-	// of the objects which inherit from this class too. But passing 
-	// context to functions which need it allows this to be purely a mixin containing shared 
-	// utility code rather than an abstract base class.
-
 public:
 // PX_SERIALIZATION
-												NpActor(const PxEMPTY)	{}					
-					
-					void						exportExtraData(PxSerializationContext& stream);	
-					void						importExtraData(PxDeserializationContext& context);
-					void						resolveReferences(PxDeserializationContext& context);
-	static			void						getBinaryMetaData(PxOutputStream& stream);
+											NpActor(const PxEMPTY) : NpBase(PxEmpty)	{}				
+					void					exportExtraData(PxSerializationContext& stream);	
+					void					importExtraData(PxDeserializationContext& context);
+					void					resolveReferences(PxDeserializationContext& context);
+	static			void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
-												NpActor(const char* name);					
+											NpActor(NpType::Enum type);
 
-					void						releaseConstraints(PxRigidActor& owner);
-					void						release(PxActor& owner);
+					void					removeConstraints(PxRigidActor& owner);
+					void					removeFromAggregate(PxActor& owner);
 
-					NpAggregate*				getNpAggregate(PxU32& index)	const;
-					void						setAggregate(NpAggregate* np, PxActor& owner);
-					PxAggregate*				getAggregate()					const;
+					NpAggregate*			getNpAggregate(PxU32& index)	const;
+					void					setAggregate(NpAggregate* np, PxActor& owner);
+					PxAggregate*			getAggregate()					const;
+					void					scSetDominanceGroup(PxDominanceGroup v);
+					void					scSetOwnerClient(PxClientID inId);
+					void					removeConstraintsFromScene();
+	PX_FORCE_INLINE void					addConstraintsToScene()		// inline the fast path for addActors()
+											{
+												if(mConnectorArray)
+													addConstraintsToSceneInternal();
+											}
 
-					void						removeConstraintsFromScene();
-					PX_FORCE_INLINE void		addConstraintsToScene()		// inline the fast path for addActors()
-					{
-						if(mConnectorArray)
-							addConstraintsToSceneInternal();
-					}
+					PxU32					findConnector(NpConnectorType::Enum type, PxBase* object)	const;
+					void					addConnector(NpConnectorType::Enum type, PxBase* object, const char* errMsg);
+					void					removeConnector(PxActor& owner, NpConnectorType::Enum type, PxBase* object, const char* errorMsg);
+					PxU32					getNbConnectors(NpConnectorType::Enum type)	const;
 
-	PX_FORCE_INLINE	NpConnectorArray**			getConnectorArrayAddress()		{ return &mConnectorArray;}
-					PxU32						findConnector(NpConnectorType::Enum type, PxBase* object)	const;
-					void						addConnector(NpConnectorType::Enum type, PxBase* object, const char* errMsg);
-					void						removeConnector(PxActor& owner, NpConnectorType::Enum type, PxBase* object, const char* errorMsg);
-					PxU32						getNbConnectors(NpConnectorType::Enum type)	const;
+	static			NpShapeManager*			getShapeManager_(PxRigidActor& actor);			// bit misplaced here, but we don't want a separate subclass just for this
+	static			const NpShapeManager*	getShapeManager_(const PxRigidActor& actor);	// bit misplaced here, but we don't want a separate subclass just for this
 
-					static NpShapeManager*			getShapeManager(PxRigidActor& actor);			// bit misplaced here, but we don't want a separate subclass just for this
-					static const NpShapeManager*	getShapeManager(const PxRigidActor& actor);			// bit misplaced here, but we don't want a separate subclass just for this
+	static			NpActor&				getFromPxActor(PxActor& actor)			{ 	return *PxPointerOffset<NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
+	static			const NpActor&			getFromPxActor(const PxActor& actor)	{	return *PxPointerOffset<const NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
+				
+					const PxActor*			getPxActor() const;
 
-					static void					getGlobalPose(PxTransform& globalPose, const NpShape& shape, const PxRigidActor& actor);
-					static void					getGlobalPose(PxTransform& globalPose, const Scb::Shape& scbShape, const Scb::Actor& scbActor);
+	static			NpScene*				getNpSceneFromActor(const PxActor& actor)
+											{
+												return getFromPxActor(actor).getNpScene();
+											}
 
-					static NpActor&				getFromPxActor(PxActor& actor)			{ 	return *Ps::pointerOffset<NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
-					static const NpActor&		getFromPxActor(const PxActor& actor)	{	return *Ps::pointerOffset<const NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
+	PX_FORCE_INLINE	NpConnectorIterator		getConnectorIterator(NpConnectorType::Enum type)
+											{
+												if (mConnectorArray)
+													return NpConnectorIterator(&mConnectorArray->front(), mConnectorArray->size(), type);
+												else
+													return NpConnectorIterator(NULL, 0, type);
+											}
 
-					static Scb::Actor&			getScbFromPxActor(PxActor& actor)		{	return *Ps::pointerOffset<Scb::Actor*>(&actor, ptrdiff_t(sOffsets.pxActorToScbActor[actor.getConcreteType()])); }
-					static const Scb::Actor&	getScbFromPxActor(const PxActor& actor)	{ 	return *Ps::pointerOffset<const Scb::Actor*>(&actor, ptrdiff_t(sOffsets.pxActorToScbActor[actor.getConcreteType()])); }
-					
-					static NpScene*				getAPIScene(const PxActor& actor);			// the scene the user thinks the actor is in
-					static NpScene*				getOwnerScene(const PxActor& actor);		// the scene the user thinks the actor is in, or from which the actor is pending removal
+	static			void					onActorRelease(PxActor* actor);
 
-	PX_FORCE_INLINE	NpConnectorIterator			getConnectorIterator(NpConnectorType::Enum type)
+	template<typename T>	PxU32			getConnectors(NpConnectorType::Enum type, T** userBuffer, PxU32 bufferSize, PxU32 startIndex=0) const
+											{
+												PxU32 nbConnectors = 0;
+												if(mConnectorArray)
 												{
-													if (mConnectorArray)
-														return NpConnectorIterator(&mConnectorArray->front(), mConnectorArray->size(), type);
-													else
-														return NpConnectorIterator(NULL, 0, type);
+													for(PxU32 i=0; i<mConnectorArray->size(); i++)
+													{
+														NpConnector& c = (*mConnectorArray)[i];
+														if(c.mType == type && nbConnectors < bufferSize && i>=startIndex)
+															userBuffer[nbConnectors++] = static_cast<T*>(c.mObject);
+													}
 												}
+												return nbConnectors;
+											}
 
-		// a couple of methods that sever include dependencies in NpActor.h
+	PX_INLINE		PxActorFlags			getActorFlags()		const		{ return getActorCore().getActorFlags();		}
+	PX_INLINE		PxDominanceGroup		getDominanceGroup()	const		{ return getActorCore().getDominanceGroup();	}
+	PX_INLINE		PxClientID				getOwnerClient()	const		{ return getActorCore().getOwnerClient();		}
 
-					static void					onActorRelease(PxActor* actor);
+	PX_INLINE		void					scSetActorFlags(PxActorFlags v)
+											{
+												PX_ASSERT(!isAPIWriteForbidden());
+
+												// PT: TODO: move this check out of here, they should be done in Np!
+#if PX_CHECKED
+												const PxActorFlags aFlags = getActorFlags();
+												const NpType::Enum npType = getNpType();
+												if((!aFlags.isSet(PxActorFlag::eDISABLE_SIMULATION)) && v.isSet(PxActorFlag::eDISABLE_SIMULATION) &&
+													(npType != NpType::eBODY) && (npType != NpType::eRIGID_STATIC))
+												{
+													PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+														"PxActor::setActorFlag: PxActorFlag::eDISABLE_SIMULATION is only supported by PxRigidDynamic and PxRigidStatic objects.");
+												}
+#endif
+												getActorCore().setActorFlags(v);
+												UPDATE_PVD_PROPERTY
+											}
 
 
+	PX_FORCE_INLINE const Sc::ActorCore&	getActorCore() const 
+											{
+												return *reinterpret_cast<const Sc::ActorCore*>(size_t(this) + sNpOffsets.npToSc[getNpType()]);
+											}
+	PX_FORCE_INLINE	Sc::ActorCore&			getActorCore()
+											{
+												return *reinterpret_cast<Sc::ActorCore*>(size_t(this) + sNpOffsets.npToSc[getNpType()]);
+											}
 
-template<typename T>
-PxU32 getConnectors(NpConnectorType::Enum type, T** userBuffer, PxU32 bufferSize, PxU32 startIndex=0) const
-{
-	PxU32 nbConnectors = 0;
-	PxU32 virtualIndex = 0;
+	PX_INLINE const Sc::RigidCore&			getScRigidCore()	const
+											{
+												return static_cast<const Sc::RigidCore&>(getActorCore());
+											}
+	PX_INLINE Sc::RigidCore&				getScRigidCore()
+											{
+												return static_cast<Sc::RigidCore&>(getActorCore());
+											}
 
-	if(mConnectorArray)
-	{
-		for(PxU32 i=0; i < mConnectorArray->size(); i++)
-		{
-			NpConnector& c = (*mConnectorArray)[i];
-			if (c.mType == type && nbConnectors < bufferSize)
-			{
-				if (virtualIndex++ >= startIndex)
-				{
-					userBuffer[nbConnectors] = static_cast<T*>(c.mObject);
-					nbConnectors++;
-				}
-			}
-		}
-	}
+	PX_FORCE_INLINE	void					scSwitchToNoSim()
+											{
+												NpScene* scene = getNpScene();
 
-	return nbConnectors;
-}
+												if(scene && (!scene->isAPIWriteForbidden()))
+													scene->scSwitchRigidToNoSim(*this);
+											}
 
+	PX_FORCE_INLINE void					scSwitchFromNoSim()
+											{
+												NpScene* scene = getNpScene();
+
+												if(scene && (!scene->isAPIWriteForbidden()))
+													scene->scSwitchRigidFromNoSim(*this);
+											}
 protected:
-									~NpActor();
-				const char*			mName;
+											~NpActor()	{}
+					const char*				mName;
 				// Lazy-create array for connector objects like constraints, observers, ... 
 				// Most actors have no such objects, so we bias this class accordingly:
-				NpConnectorArray*	mConnectorArray;
-
+					NpConnectorArray*		mConnectorArray;
 private:
-					void						addConstraintsToSceneInternal();
-					void						removeConnector(PxActor& owner, PxU32 index);
+					void					addConstraintsToSceneInternal();
+					void					removeConnector(PxActor& owner, PxU32 index);
 	struct Offsets
 	{
 		size_t pxActorToNpActor[PxConcreteType::ePHYSX_CORE_COUNT];
-		size_t pxActorToScbActor[PxConcreteType::ePHYSX_CORE_COUNT];
 		Offsets();
 	};
 public:
 	static const Offsets sOffsets;
+
+	struct NpOffsets
+	{
+		size_t npToSc[NpType::eTYPE_COUNT];
+		NpOffsets();
+	};
+	static const NpOffsets					sNpOffsets;
 };
-
-
 
 }
 

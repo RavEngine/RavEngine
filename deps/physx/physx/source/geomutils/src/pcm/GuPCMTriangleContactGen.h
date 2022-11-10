@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,34 +34,31 @@
 
 namespace physx
 {
-	struct PxTriangleMeshGeometryLL;
+	class PxTriangleMeshGeometry;
 	class PxHeightFieldGeometry;
 
 namespace Gu
 {
-
 	bool PCMContactConvexMesh(const Gu::PolygonalData& polyData0, 
 						Gu::SupportLocal* polyMap, 
-						const Ps::aos::FloatVArg minMargin, 
+						const aos::FloatVArg minMargin, 
 						const PxBounds3& hullAABB, 
-						const PxTriangleMeshGeometryLL& shapeMesh,
+						const PxTriangleMeshGeometry& shapeMesh,
 						const PxTransform& transform0, const PxTransform& transform1,
-						PxReal contactDistance, Gu::ContactBuffer& contactBuffer,
+						PxReal contactDistance, PxContactBuffer& contactBuffer,
 						const Cm::FastVertex2ShapeScaling& convexScaling, const Cm::FastVertex2ShapeScaling& meshScaling,
 						bool idtConvexScale, bool idtMeshScale, Gu::MultiplePersistentContactManifold& multiManifold,
-						Cm::RenderOutput* renderOutput);
+						PxRenderOutput* renderOutput);
 
 	bool PCMContactConvexHeightfield(const Gu::PolygonalData& polyData0, 
 						Gu::SupportLocal* polyMap, 
-						const Ps::aos::FloatVArg minMargin, 
+						const aos::FloatVArg minMargin, 
 						const PxBounds3& hullAABB, 
 						const PxHeightFieldGeometry& shapeHeightfield,
 						const PxTransform& transform0, const PxTransform& transform1,
-						PxReal contactDistance, Gu::ContactBuffer& contactBuffer,
+						PxReal contactDistance, PxContactBuffer& contactBuffer,
 						const Cm::FastVertex2ShapeScaling& convexScaling, bool idtConvexScale, Gu::MultiplePersistentContactManifold& multiManifold,
-						Cm::RenderOutput* renderOutput);
-
-
+						PxRenderOutput* renderOutput);
 }
 }
 

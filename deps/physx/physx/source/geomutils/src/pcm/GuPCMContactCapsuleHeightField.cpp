@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "geometry/PxTriangleMesh.h"
-#include "geomutils/GuContactBuffer.h"
-
-#include "PsVecMath.h"
-#include "PsVecTransform.h"
-
+#include "geomutils/PxContactBuffer.h"
+#include "foundation/PxVecMath.h"
+#include "foundation/PxVecTransform.h"
 #include "GuVecTriangle.h"
-#include "GuGeometryUnion.h"
 #include "GuContactMethodImpl.h"
 #include "GuHeightField.h"
 #include "GuPCMContactConvexCommon.h"
@@ -44,32 +40,26 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace Ps::aos;
+using namespace aos;
 
-namespace physx
-{
-
-struct PCMCapsuleVsHeightfieldContactGenerationCallback :  PCMHeightfieldContactGenerationCallback<PCMCapsuleVsHeightfieldContactGenerationCallback>
+struct PCMCapsuleVsHeightfieldContactGenerationCallback : PCMHeightfieldContactGenerationCallback<PCMCapsuleVsHeightfieldContactGenerationCallback>
 {
 	PCMCapsuleVsHeightfieldContactGenerationCallback& operator=(const PCMCapsuleVsHeightfieldContactGenerationCallback&);
 
 public:
-	PCMCapsuleVsMeshContactGeneration		mGeneration;
+	PCMCapsuleVsMeshContactGeneration	mGeneration;
 
 	PCMCapsuleVsHeightfieldContactGenerationCallback(
-		const Gu::CapsuleV&								capsule,
-		const Ps::aos::FloatVArg						contactDistance,
-		const Ps::aos::FloatVArg						replaceBreakingThreshold,
-	
-		const PsTransformV&								capsuleTransform, 
-		const PsTransformV&								heightfieldTransform,
-		const PxTransform&								heightfieldTransform1,
-		Gu::MultiplePersistentContactManifold&			multiManifold,
-		Gu::ContactBuffer&								contactBuffer,
-		Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE>*	deferredContacts,
-		Gu::HeightFieldUtil& hfUtil 
-		
-		
+		const CapsuleV& capsule,
+		const aos::FloatVArg contactDistance,
+		const aos::FloatVArg replaceBreakingThreshold,
+		const PxTransformV& capsuleTransform, 
+		const PxTransformV& heightfieldTransform,
+		const PxTransform& heightfieldTransform1,
+		MultiplePersistentContactManifold& multiManifold,
+		PxContactBuffer& contactBuffer,
+		PxInlineArray<PxU32, LOCAL_PCM_CONTACTS_SIZE>* deferredContacts,
+		HeightFieldUtil& hfUtil 
 	) :
 		PCMHeightfieldContactGenerationCallback<PCMCapsuleVsHeightfieldContactGenerationCallback>(hfUtil, heightfieldTransform1),
 		mGeneration(capsule, contactDistance, replaceBreakingThreshold, capsuleTransform, heightfieldTransform, multiManifold, 
@@ -78,39 +68,37 @@ public:
 	}
 
 	template<PxU32 CacheSize>
-	void processTriangleCache(Gu::TriangleCache<CacheSize>& cache)
+	void processTriangleCache(TriangleCache<CacheSize>& cache)
 	{
 		mGeneration.processTriangleCache<CacheSize, PCMCapsuleVsMeshContactGeneration>(cache);
 	}
-	
 };
 
 bool Gu::pcmContactCapsuleHeightField(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 
-	const PxCapsuleGeometry& shapeCapsule = shape0.get<const PxCapsuleGeometry>();
-	const PxHeightFieldGeometryLL& shapeHeight = shape1.get<const PxHeightFieldGeometryLL>();
+	const PxCapsuleGeometry& shapeCapsule = checkedCast<PxCapsuleGeometry>(shape0);
+	const PxHeightFieldGeometry& shapeHeight = checkedCast<PxHeightFieldGeometry>(shape1);
 
-	Gu::MultiplePersistentContactManifold& multiManifold = cache.getMultipleManifold();
+	MultiplePersistentContactManifold& multiManifold = cache.getMultipleManifold();
 
 	const FloatV capsuleRadius = FLoad(shapeCapsule.radius);
 	const FloatV contactDist = FLoad(params.mContactDistance);
 
-	const PsTransformV capsuleTransform = loadTransformA(transform0);//capsule transform
-	const PsTransformV heightfieldTransform = loadTransformA(transform1);//height feild
+	const PxTransformV capsuleTransform = loadTransformA(transform0);//capsule transform
+	const PxTransformV heightfieldTransform = loadTransformA(transform1);//height feild
 
-	const PsTransformV curTransform = heightfieldTransform.transformInv(capsuleTransform);
+	const PxTransformV curTransform = heightfieldTransform.transformInv(capsuleTransform);
 	
 	const FloatV replaceBreakingThreshold = FMul(capsuleRadius, FLoad(0.001f));
 
 	if(multiManifold.invalidate(curTransform, capsuleRadius, FLoad(0.02f)))
 	{
-
 		multiManifold.mNumManifolds = 0;
 		multiManifold.setRelativeTransform(curTransform); 
 
-		Gu::HeightFieldUtil hfUtil(shapeHeight);
+		HeightFieldUtil hfUtil(shapeHeight);
 
 		const PxVec3 tmp = getCapsuleHalfHeightVector(transform0, shapeCapsule);
 
@@ -118,7 +106,7 @@ bool Gu::pcmContactCapsuleHeightField(GU_CONTACT_METHOD_ARGS)
 
 		const PxVec3 capsuleCenterInMesh = transform1.transformInv(transform0.p);
 		const PxVec3 capsuleDirInMesh = transform1.rotateInv(tmp);
-		const Gu::CapsuleV capsule(V3LoadU(capsuleCenterInMesh), V3LoadU(capsuleDirInMesh), capsuleRadius);
+		const CapsuleV capsule(V3LoadU(capsuleCenterInMesh), V3LoadU(capsuleDirInMesh), capsuleRadius);
 
 		PCMCapsuleVsHeightfieldContactGenerationCallback callback(
 			capsule,
@@ -133,27 +121,19 @@ bool Gu::pcmContactCapsuleHeightField(GU_CONTACT_METHOD_ARGS)
 			hfUtil
 		);
 
-		PxBounds3 bounds;
-		bounds.maximum = PxVec3(shapeCapsule.halfHeight + inflatedRadius, inflatedRadius, inflatedRadius);
-		bounds.minimum = -bounds.maximum;
-
-		bounds = PxBounds3::transformFast(transform1.transformInv(transform0), bounds);
-
-		hfUtil.overlapAABBTriangles(transform1, bounds, 0, &callback);
+		// PT: TODO: improve these bounds - see computeCapsuleBounds
+		hfUtil.overlapAABBTriangles(transform0, transform1, getLocalCapsuleBounds(inflatedRadius, shapeCapsule.halfHeight), callback);
 
 		callback.mGeneration.processContacts(GU_CAPSULE_MANIFOLD_CACHE_SIZE, false);
 	}
 	else
 	{
-		const PsMatTransformV aToB(curTransform);
+		const PxMatTransformV aToB(curTransform);
 		// We must be in local space to use the cache
 		const FloatV projectBreakingThreshold = FMul(capsuleRadius, FLoad(0.05f));
 		const FloatV refereshDistance = FAdd(capsuleRadius, contactDist);
 		multiManifold.refreshManifold(aToB, projectBreakingThreshold, refereshDistance);
-
 	}
+
 	return multiManifold.addManifoldContactsToContactBuffer(contactBuffer, capsuleTransform, heightfieldTransform, capsuleRadius);
-}
-
-
 }

@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXCooking common
@@ -46,72 +45,26 @@ SET(PHYSX_COOKING_HEADERS
 	${PHYSX_ROOT_DIR}/include/cooking/Pxc.h
 	${PHYSX_ROOT_DIR}/include/cooking/PxConvexMeshDesc.h
 	${PHYSX_ROOT_DIR}/include/cooking/PxCooking.h
+	${PHYSX_ROOT_DIR}/include/cooking/PxCookingInternal.h
 	${PHYSX_ROOT_DIR}/include/cooking/PxMidphaseDesc.h
 	${PHYSX_ROOT_DIR}/include/cooking/PxTriangleMeshDesc.h
-	${PHYSX_ROOT_DIR}/include/cooking/PxBVHStructureDesc.h
+	${PHYSX_ROOT_DIR}/include/cooking/PxTetrahedronMeshDesc.h
+	${PHYSX_ROOT_DIR}/include/cooking/PxBVHDesc.h
+	${PHYSX_ROOT_DIR}/include/cooking/PxTetrahedronMeshDesc.h
+	${PHYSX_ROOT_DIR}/include/cooking/PxSDFDesc.h
 )
 SOURCE_GROUP(include FILES ${PHYSX_COOKING_HEADERS})
 
 SET(PHYSX_COOKING_SOURCE
-	${LL_SOURCE_DIR}/Adjacencies.cpp
 	${LL_SOURCE_DIR}/Cooking.cpp
-	${LL_SOURCE_DIR}/CookingUtils.cpp
-	${LL_SOURCE_DIR}/EdgeList.cpp
-	${LL_SOURCE_DIR}/MeshCleaner.cpp
-	${LL_SOURCE_DIR}/Quantizer.cpp	
-	${LL_SOURCE_DIR}/Adjacencies.h
 	${LL_SOURCE_DIR}/Cooking.h
-	${LL_SOURCE_DIR}/CookingUtils.h
-	${LL_SOURCE_DIR}/EdgeList.h
-	${LL_SOURCE_DIR}/MeshCleaner.h
-	${LL_SOURCE_DIR}/Quantizer.h
-	${LL_SOURCE_DIR}/BVHStructureBuilder.cpp
-	${LL_SOURCE_DIR}/BVHStructureBuilder.h
 )
 SOURCE_GROUP(src FILES ${PHYSX_COOKING_SOURCE})
-
-SET(PHYSX_COOKING_MESH_SOURCE
-	${LL_SOURCE_DIR}/mesh/HeightFieldCooking.cpp
-	${LL_SOURCE_DIR}/mesh/RTreeCooking.cpp
-	${LL_SOURCE_DIR}/mesh/MeshBuilder.cpp	
-	${LL_SOURCE_DIR}/mesh/TriangleMeshBuilder.cpp
-	${LL_SOURCE_DIR}/mesh/GrbTriangleMeshCooking.cpp
-	${LL_SOURCE_DIR}/mesh/GrbTriangleMeshCooking.h
-	${LL_SOURCE_DIR}/mesh/HeightFieldCooking.h
-	${LL_SOURCE_DIR}/mesh/QuickSelect.h
-	${LL_SOURCE_DIR}/mesh/RTreeCooking.h
-	${LL_SOURCE_DIR}/mesh/MeshBuilder.h
-	${LL_SOURCE_DIR}/mesh/TriangleMeshBuilder.h
-)
-SOURCE_GROUP(src\\mesh FILES ${PHYSX_COOKING_MESH_SOURCE})
-
-
-SET(PHYSX_COOKING_CONVEX_SOURCE
-	${LL_SOURCE_DIR}/convex/BigConvexDataBuilder.cpp
-	${LL_SOURCE_DIR}/convex/ConvexHullBuilder.cpp
-	${LL_SOURCE_DIR}/convex/ConvexHullLib.cpp
-	${LL_SOURCE_DIR}/convex/ConvexHullUtils.cpp
-	${LL_SOURCE_DIR}/convex/ConvexMeshBuilder.cpp
-	${LL_SOURCE_DIR}/convex/ConvexPolygonsBuilder.cpp	
-	${LL_SOURCE_DIR}/convex/QuickHullConvexHullLib.cpp
-	${LL_SOURCE_DIR}/convex/VolumeIntegration.cpp
-	${LL_SOURCE_DIR}/convex/BigConvexDataBuilder.h
-	${LL_SOURCE_DIR}/convex/ConvexHullBuilder.h
-	${LL_SOURCE_DIR}/convex/ConvexHullLib.h
-	${LL_SOURCE_DIR}/convex/ConvexHullUtils.h
-	${LL_SOURCE_DIR}/convex/ConvexMeshBuilder.h
-	${LL_SOURCE_DIR}/convex/ConvexPolygonsBuilder.h	
-	${LL_SOURCE_DIR}/convex/QuickHullConvexHullLib.h
-	${LL_SOURCE_DIR}/convex/VolumeIntegration.h
-)
-SOURCE_GROUP(src\\convex FILES ${PHYSX_COOKING_CONVEX_SOURCE})
 
 ADD_LIBRARY(PhysXCooking ${PHYSXCOOKING_LIBTYPE} 
 	${PHYSX_COOKING_HEADERS}
 	
 	${PHYSX_COOKING_SOURCE}
-	${PHYSX_COOKING_MESH_SOURCE}
-	${PHYSX_COOKING_CONVEX_SOURCE}
 	
 	${PHYSXCOOKING_PLATFORM_SRC_FILES}
 )
@@ -128,26 +81,9 @@ TARGET_INCLUDE_DIRECTORIES(PhysXCooking
 	PRIVATE ${PHYSX_SOURCE_DIR}/common/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/common/src
 	
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/include
+	PUBLIC ${PHYSX_SOURCE_DIR}/geomutils/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/contact
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/common
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/convex
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/distance
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/sweep
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/gjk
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/intersection
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/mesh
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/hf
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/pcm
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/ccd
-
-	PRIVATE ${PHYSX_SOURCE_DIR}/physxcooking/src
-	PRIVATE ${PHYSX_SOURCE_DIR}/physxcooking/src/mesh
-	PRIVATE ${PHYSX_SOURCE_DIR}/physxcooking/src/convex
-
-	PRIVATE ${PHYSX_SOURCE_DIR}/physxgpu/include
-	
 )
 
 TARGET_LINK_LIBRARIES(PhysXCooking 
@@ -195,8 +131,6 @@ SET_TARGET_PROPERTIES(PhysXCooking PROPERTIES
 IF(PX_GENERATE_SOURCE_DISTRO)	
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_COOKING_HEADERS})	
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_COOKING_SOURCE})
-	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_COOKING_MESH_SOURCE})
-	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_COOKING_CONVEX_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOOKING_PLATFORM_SRC_FILES})
 ENDIF()
 

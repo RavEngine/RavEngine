@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "vehicle/PxVehicleComponents.h"
-#include "PxVehicleDefaults.h"
-#include "CmPhysXCommon.h"
-#include "CmBitMap.h"
-#include "PsFoundation.h"
+#include "foundation/PxBitMap.h"
 
 namespace physx
 {
@@ -39,7 +35,7 @@ namespace physx
 bool PxVehicleChassisData::isValid() const
 {
 	PX_CHECK_AND_RETURN_VAL(mMOI.x>0.0f && mMOI.y>0.0f && mMOI.z>0.0f, "Illegal PxVehicleChassisData.mMOI - each element of the chassis moi needs to non-zero", false);
-	PX_CHECK_AND_RETURN_VAL(mMass>0.0f, "Ilegal PxVehicleChassisData.mMass -  chassis mass needs to be non-zero", false);
+	PX_CHECK_AND_RETURN_VAL(mMass>0.0f, "Illegal PxVehicleChassisData.mMass -  chassis mass needs to be non-zero", false);
 	return true;
 }
 
@@ -100,7 +96,7 @@ bool PxVehicleDifferential4WData::isValid() const
 
 void PxVehicleDifferentialNWData::setDrivenWheel(const PxU32 wheelId, const bool drivenState)
 {
-	Cm::BitMap bitmap;
+	PxBitMap bitmap;
 	bitmap.setWords(mBitmapBuffer,((PX_MAX_NB_WHEELS + 31) & ~31) >> 5);
 	PxU32 numDrivenWheels=mNbDrivenWheels;
 	if(drivenState)
@@ -123,7 +119,7 @@ void PxVehicleDifferentialNWData::setDrivenWheel(const PxU32 wheelId, const bool
 
 bool PxVehicleDifferentialNWData::getIsDrivenWheel(const PxU32 wheelId) const
 {
-	Cm::BitMap bitmap;
+	PxBitMap bitmap;
 	bitmap.setWords(const_cast<PxU32*>(mBitmapBuffer),((PX_MAX_NB_WHEELS + 31) & ~31) >> 5);
 	return (bitmap.test(wheelId) ? true : false);
 }
@@ -138,7 +134,7 @@ void PxVehicleDifferentialNWData::setDrivenWheelStatus(PxU32 status)
 {
 	PX_ASSERT(((PX_MAX_NB_WHEELS + 31) & ~31) >> 5 == 1);
 
-	Cm::BitMap bitmap;
+	PxBitMap bitmap;
 	bitmap.setWords(&status, 1);
 	
 	for(PxU32 i = 0; i < PX_MAX_NB_WHEELS; ++i)

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
 
-namespace physx
-{
-namespace Gu
-{
-bool contactSphereSphere(GU_CONTACT_METHOD_ARGS)
+using namespace physx;
+
+bool Gu::contactSphereSphere(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 
-	const PxSphereGeometry& sphereGeom0 = shape0.get<const PxSphereGeometry>();
-	const PxSphereGeometry& sphereGeom1 = shape1.get<const PxSphereGeometry>();
+	const PxSphereGeometry& sphereGeom0 = checkedCast<PxSphereGeometry>(shape0);
+	const PxSphereGeometry& sphereGeom1 = checkedCast<PxSphereGeometry>(shape1);
 
 	PxVec3 delta = transform0.p - transform1.p;
 
@@ -64,5 +60,3 @@ bool contactSphereSphere(GU_CONTACT_METHOD_ARGS)
 	contactBuffer.contact(contact, delta, magn - radiusSum);
 	return true;
 }
-}//Gu
-}//physx

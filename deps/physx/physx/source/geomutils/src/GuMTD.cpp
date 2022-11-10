@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,57 +22,29 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geometry/PxMeshScale.h"
-#include "geometry/PxConvexMeshGeometry.h"
-#include "geomutils/GuContactBuffer.h"
-#include "foundation/PxMathUtils.h"
-
 #include "GuMTD.h"
-#include "GuSphere.h"
-#include "GuCapsule.h"
 #include "GuDistancePointSegment.h"
 #include "GuDistanceSegmentSegment.h"
 #include "GuDistanceSegmentBox.h"
-
-
 #include "GuVecBox.h"
 #include "GuVecCapsule.h"
-#include "GuVecConvexHull.h"
 #include "GuVecConvexHullNoScale.h"
 #include "GuInternal.h"
-
 #include "GuContactMethodImpl.h"
 #include "GuBoxConversion.h"
-#include "GuGeometryUnion.h"
-#include "GuShapeConvex.h"
 #include "GuPCMShapeConvex.h"
 #include "GuPCMContactGen.h"
 #include "GuConvexMesh.h"
 #include "GuGJK.h"
-
-#include "PsUtilities.h"
-#include "PsVecTransform.h"
-#include "PsMathUtils.h"
+#include "GuSphere.h"
+#include "geomutils/PxContactBuffer.h"
 
 using namespace physx;
 using namespace Gu;
-
-static PX_FORCE_INLINE PxF32 manualNormalize(PxVec3& mtd, const PxVec3& normal, PxReal lenSq)
-{
-	const PxF32 len = PxSqrt(lenSq);
-
-	// We do a *manual* normalization to check for singularity condition
-	if(lenSq < 1e-6f)
-		mtd = PxVec3(1.0f, 0.0f, 0.0f);			// PT: zero normal => pick up random one
-	else
-		mtd = normal * 1.0f / len;
-
-	return len;
-}
 
 static PX_FORCE_INLINE float validateDepth(float depth)
 {
@@ -134,7 +105,6 @@ static bool computeMTD_SphereCapsule(PxVec3& mtd, PxF32& depth, const Sphere& sp
 
 ///////////////////////////////////////////////////////////////////////////////
 
-
 //This version is ported 1:1 from novodex
 static PX_FORCE_INLINE bool ContactSphereBox(const PxVec3& sphereOrigin, 
 							 PxReal sphereRadius,
@@ -146,7 +116,6 @@ static PX_FORCE_INLINE bool ContactSphereBox(const PxVec3& sphereOrigin,
 							 PxReal& separation, 
 							 PxReal contactDistance)
 {
-
 	//returns true on contact
 	const PxVec3 delta = sphereOrigin - boxTransform.p; // s1.center - s2.center;
 	PxVec3 dRot = boxTransform.rotateInv(delta); //transform delta into OBB body coords.
@@ -154,46 +123,46 @@ static PX_FORCE_INLINE bool ContactSphereBox(const PxVec3& sphereOrigin,
 	//check if delta is outside ABB - and clip the vector to the ABB.
 	bool outside = false;
 
-	if (dRot.x < -boxExtents.x)
+	if(dRot.x < -boxExtents.x)
 	{ 
 		outside = true; 
 		dRot.x = -boxExtents.x;
 	}
-	else if (dRot.x >  boxExtents.x)
+	else if(dRot.x >  boxExtents.x)
 	{ 
 		outside = true; 
 		dRot.x = boxExtents.x;
 	}
 
-	if (dRot.y < -boxExtents.y)
+	if(dRot.y < -boxExtents.y)
 	{ 
 		outside = true; 
 		dRot.y = -boxExtents.y;
 	}
-	else if (dRot.y >  boxExtents.y)
+	else if(dRot.y >  boxExtents.y)
 	{ 
 		outside = true; 
 		dRot.y = boxExtents.y;
 	}
 
-	if (dRot.z < -boxExtents.z)
+	if(dRot.z < -boxExtents.z)
 	{ 
 		outside = true; 
 		dRot.z =-boxExtents.z;
 	}
-	else if (dRot.z >  boxExtents.z)
+	else if(dRot.z >  boxExtents.z)
 	{ 
 		outside = true; 
 		dRot.z = boxExtents.z;
 	}
 
-	if (outside) //if clipping was done, sphere center is outside of box.
+	if(outside) //if clipping was done, sphere center is outside of box.
 	{
 		point = boxTransform.rotate(dRot); //get clipped delta back in world coords.
 		normal = delta - point; //what we clipped away.	
 		const PxReal lenSquared = normal.magnitudeSquared();
 		const PxReal inflatedDist = sphereRadius + contactDistance;
-		if (lenSquared > inflatedDist * inflatedDist) 
+		if(lenSquared > inflatedDist * inflatedDist) 
 			return false;	//disjoint
 
 		//normalize to make it into the normal:
@@ -219,9 +188,9 @@ static PX_FORCE_INLINE bool ContactSphereBox(const PxVec3& sphereOrigin,
 		PxVec3 distToSurface = boxExtents - absdRot;	//dist from embedded center to box surface along 3 dimensions.
 
 		//find smallest element of distToSurface
-		if (distToSurface.y < distToSurface.x)
+		if(distToSurface.y < distToSurface.x)
 		{
-			if (distToSurface.y < distToSurface.z)
+			if(distToSurface.y < distToSurface.z)
 			{
 				//y
 				locNorm = PxVec3(0.0f, dRot.y > 0.0f ? 1.0f : -1.0f, 0.0f);
@@ -236,7 +205,7 @@ static PX_FORCE_INLINE bool ContactSphereBox(const PxVec3& sphereOrigin,
 		}
 		else
 		{
-			if (distToSurface.x < distToSurface.z)
+			if(distToSurface.x < distToSurface.z)
 			{
 				//x
 				locNorm = PxVec3(dRot.x > 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f);
@@ -291,7 +260,6 @@ static bool computeMTD_CapsuleCapsule(PxVec3& mtd, PxF32& depth, const Capsule& 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-
 static PX_FORCE_INLINE void reorderMTD(PxVec3& mtd, const PxVec3& center0, const PxVec3& center1)
 {
 	const PxVec3 witness = center0 - center1;
@@ -316,7 +284,7 @@ static bool PxcTestAxis(const PxVec3& axis, const Segment& segment, PxReal radiu
 	// Project capsule
 	PxReal min0 = segment.p0.dot(axis);
 	PxReal max0 = segment.p1.dot(axis);
-	if(min0>max0) Ps::swap(min0, max0);
+	if(min0>max0) PxSwap(min0, max0);
 	min0 -= radius;
 	max0 += radius;
 
@@ -361,7 +329,7 @@ static bool PxcCapsuleOBBOverlap3(const Segment& segment, PxReal radius, const B
 	for(PxU32 i=0;i<3;i++)
 	{
 		PxVec3 Cross = CapsuleAxis.cross(box.rot[i]);
-		if(!Ps::isAlmostZero(Cross))
+		if(!isAlmostZero(Cross))
 		{
 			Cross = Cross.getNormalized();
 			PxReal d;
@@ -480,7 +448,7 @@ static bool computeMTD_BoxBox(PxVec3& _mtd, PxF32& _depth, const Box& box0, cons
 		for(PxU32 i=0;i<3;i++)
 		{
 			PxVec3 cross = box0.rot[i].cross(box1.rot[j]);
-			if(!Ps::isAlmostZero(cross))
+			if(!isAlmostZero(cross))
 			{
 				cross = cross.getNormalized();
 
@@ -489,7 +457,6 @@ static bool computeMTD_BoxBox(PxVec3& _mtd, PxF32& _depth, const Box& box0, cons
 			}
 		}
 	}
-
 
 	reorderMTD(mtd, box1.center, box0.center);
 
@@ -501,7 +468,7 @@ static bool computeMTD_BoxBox(PxVec3& _mtd, PxF32& _depth, const Box& box0, cons
 
 ///////////////////////////////////////////////////////////////////////////////
 
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 bool pointConvexDistance(PxVec3& normal_, PxVec3& closestPoint_, PxReal& sqDistance, const PxVec3& pt, const ConvexMesh* convexMesh, const PxMeshScale& meshScale, const PxTransform& convexPose)
 {
@@ -509,7 +476,7 @@ bool pointConvexDistance(PxVec3& normal_, PxVec3& closestPoint_, PxReal& sqDista
   
 	PxVec3 onSegment, onConvex;
 
-	using namespace Ps::aos;
+	using namespace aos;
 	const Vec3V zeroV = V3Zero();
 	Vec3V closA, closB, normalV;
 	GjkStatus status;
@@ -520,12 +487,12 @@ bool pointConvexDistance(PxVec3& normal_, PxVec3& closestPoint_, PxReal& sqDista
 		const QuatV vQuat = QuatVLoadU(&meshScale.rotation.x);
 		const ConvexHullV convexHull_(hullData, zeroV, vScale, vQuat, meshScale.isIdentity());
 
-		const PsMatTransformV aToB(convexPose.transformInv(transform0)); 
+		const PxMatTransformV aToB(convexPose.transformInv(transform0)); 
 
 		//const CapsuleV capsule(zeroV, zeroV, FZero());//this is a point
 		const CapsuleV capsule_(aToB.p, FZero());//this is a point
-		LocalConvex<CapsuleV> capsule(capsule_);
-		LocalConvex<ConvexHullV> convexHull(convexHull_);
+		const LocalConvex<CapsuleV> capsule(capsule_);
+		const LocalConvex<ConvexHullV> convexHull(convexHull_);
 		
 		status = gjk<LocalConvex<CapsuleV>, LocalConvex<ConvexHullV> >(capsule, convexHull, aToB.p, FMax(), closA, closB, normalV, dist);
 	}
@@ -586,15 +553,15 @@ static bool computeMTD_SphereConvex(PxVec3& mtd, PxF32& depth, const Sphere& sph
 ///////////////////////////////////////////////////////////////////////////////
 
 //ML : capsule will be in the local space of convexHullV
-static bool internalComputeMTD_CapsuleConvex(const CapsuleV& capsule, const bool idtScale,  ConvexHullV& convexHullV, const Ps::aos::PsTransformV& transf1,
-									   Ps::aos::FloatV& penetrationDepth, Ps::aos::Vec3V& normal)
+static bool internalComputeMTD_CapsuleConvex(const CapsuleV& capsule, const bool idtScale, const ConvexHullV& convexHullV, const aos::PxTransformV& transf1,
+									   aos::FloatV& penetrationDepth, aos::Vec3V& normal)
 {
 	PolygonalData polyData;
 	getPCMConvexData(convexHullV, idtScale, polyData);
 
 	PxU8 buff[sizeof(SupportLocalImpl<ConvexHullV>)];
 
-	SupportLocal* map = (idtScale ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<ConvexHullNoScaleV&>(convexHullV), transf1, convexHullV.vertex2Shape, convexHullV.shape2Vertex, idtScale)) : 
+	SupportLocal* map = (idtScale ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<const ConvexHullNoScaleV&>(convexHullV), transf1, convexHullV.vertex2Shape, convexHullV.shape2Vertex, idtScale)) : 
 	static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff, SupportLocalImpl<ConvexHullV>)(convexHullV, transf1, convexHullV.vertex2Shape, convexHullV.shape2Vertex, idtScale)));
 
 	return computeMTD(capsule, polyData, map, penetrationDepth, normal); 
@@ -611,9 +578,8 @@ static bool computeMTD_CapsuleConvex(PxVec3& mtd, PxF32& depth, const Capsule& c
 		const ConvexHullData* hull = &convexMesh->getHull();
 		const Vec3V vScale	= V3LoadU_SafeReadW(convexGeom.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 		const QuatV vQuat	= QuatVLoadU(&convexGeom.scale.rotation.x);
-		ConvexHullV convexHullV(hull, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
+		const ConvexHullV convexHullV(hull, zeroV, vScale, vQuat, convexGeom.scale.isIdentity());
 	//~Convex mesh
-
 
 	const QuatV q0 = QuatVLoadU(&capsulePose.q.x);
 	const Vec3V p0 = V3LoadU(&capsulePose.p.x);
@@ -621,15 +587,15 @@ static bool computeMTD_CapsuleConvex(PxVec3& mtd, PxF32& depth, const Capsule& c
 	const QuatV q1 = QuatVLoadU(&convexPose.q.x);
 	const Vec3V p1 = V3LoadU(&convexPose.p.x);
 
-	const PsTransformV transf0(p0, q0);
-	const PsTransformV transf1(p1, q1);
-	const PsTransformV curRTrans(transf1.transformInv(transf0));
-	const PsMatTransformV aToB(curRTrans);
+	const PxTransformV transf0(p0, q0);
+	const PxTransformV transf1(p1, q1);
+	const PxTransformV curRTrans(transf1.transformInv(transf0));
+	const PxMatTransformV aToB(curRTrans);
 
 	Vec3V normal = zeroV;
 	FloatV penetrationDepth = FZero();
 
-	CapsuleV capsuleV(aToB.p, aToB.rotate(V3Scale(V3UnitX(), capsuleHalfHeight)), capsuleRadius);
+	const CapsuleV capsuleV(aToB.p, aToB.rotate(V3Scale(V3UnitX(), capsuleHalfHeight)), capsuleRadius);
 
 	const bool idtScale = convexGeom.scale.isIdentity();
 	bool hasContacts = internalComputeMTD_CapsuleConvex(capsuleV, idtScale, convexHullV, transf1, penetrationDepth, normal);
@@ -644,8 +610,8 @@ static bool computeMTD_CapsuleConvex(PxVec3& mtd, PxF32& depth, const Capsule& c
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-static bool internalComputeMTD_BoxConvex(const PxVec3 halfExtents, const BoxV& box, const bool idtScale,  ConvexHullV& convexHullV, const Ps::aos::PsTransformV& transf0, const Ps::aos::PsTransformV& transf1,
-									   Ps::aos::FloatV& penetrationDepth, Ps::aos::Vec3V& normal)
+static bool internalComputeMTD_BoxConvex(const PxVec3 halfExtents, const BoxV& box, const bool idtScale, const ConvexHullV& convexHullV, const aos::PxTransformV& transf0, const aos::PxTransformV& transf1,
+									   aos::FloatV& penetrationDepth, aos::Vec3V& normal)
 {
 	PolygonalData polyData0;
 	PCMPolygonalBox polyBox0(halfExtents);
@@ -660,11 +626,10 @@ static bool internalComputeMTD_BoxConvex(const PxVec3 halfExtents, const BoxV& b
 
 	PxU8 buff[sizeof(SupportLocalImpl<ConvexHullV>)];
 
-	SupportLocal* map1 = (idtScale ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<ConvexHullNoScaleV&>(convexHullV), transf1, convexHullV.vertex2Shape, convexHullV.shape2Vertex, idtScale)) : 
+	SupportLocal* map1 = (idtScale ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<const ConvexHullNoScaleV&>(convexHullV), transf1, convexHullV.vertex2Shape, convexHullV.shape2Vertex, idtScale)) : 
 	static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff, SupportLocalImpl<ConvexHullV>)(convexHullV, transf1, convexHullV.vertex2Shape, convexHullV.shape2Vertex, idtScale)));
 
-	return computeMTD(polyData0, polyData1, &map0, map1, penetrationDepth, normal); 
-
+	return computeMTD(polyData0, polyData1, &map0, map1, penetrationDepth, normal);
 }
 
 static bool computeMTD_BoxConvex(PxVec3& mtd, PxF32& depth, const Box& box, const PxConvexMeshGeometry& convexGeom, const PxTransform& convexPose)
@@ -672,16 +637,15 @@ static bool computeMTD_BoxConvex(PxVec3& mtd, PxF32& depth, const Box& box, cons
 	const Vec3V zeroV = V3Zero();
 	const PxTransform boxPose = box.getTransform();
 	const Vec3V boxExtents = V3LoadU(box.extents);
-	BoxV boxV(zeroV, boxExtents);
+	const BoxV boxV(zeroV, boxExtents);
 
 	// Convex mesh
 		const ConvexMesh* convexMesh = static_cast<const ConvexMesh*>(convexGeom.convexMesh);
 		const ConvexHullData* hull = &convexMesh->getHull();
 		const Vec3V vScale	= V3LoadU_SafeReadW(convexGeom.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 		const QuatV vQuat	= QuatVLoadU(&convexGeom.scale.rotation.x);
-		ConvexHullV convexHullV(hull, zeroV, vScale, vQuat, convexGeom.scale.isIdentity()); 
+		const ConvexHullV convexHullV(hull, zeroV, vScale, vQuat, convexGeom.scale.isIdentity()); 
 	//~Convex mesh
-
 
 	const QuatV q0 = QuatVLoadU(&boxPose.q.x);
 	const Vec3V p0 = V3LoadU(&boxPose.p.x);
@@ -689,8 +653,8 @@ static bool computeMTD_BoxConvex(PxVec3& mtd, PxF32& depth, const Box& box, cons
 	const QuatV q1 = QuatVLoadU(&convexPose.q.x);
 	const Vec3V p1 = V3LoadU(&convexPose.p.x);
 
-	const PsTransformV transf0(p0, q0);
-	const PsTransformV transf1(p1, q1);
+	const PxTransformV transf0(p0, q0);
+	const PxTransformV transf1(p1, q1);
 
 	Vec3V normal=zeroV;
 	FloatV penetrationDepth=FZero();
@@ -705,12 +669,10 @@ static bool computeMTD_BoxConvex(PxVec3& mtd, PxF32& depth, const Box& box, cons
 	}
 
 	return hasContacts;
-
 }
 
-
-static bool internalComputeMTD_ConvexConvex(const bool idtScale0, const bool idtScale1, ConvexHullV& convexHullV0, ConvexHullV& convexHullV1, const Ps::aos::PsTransformV& transf0, const Ps::aos::PsTransformV& transf1,
-									   Ps::aos::FloatV& penetrationDepth, Ps::aos::Vec3V& normal)
+static bool internalComputeMTD_ConvexConvex(const bool idtScale0, const bool idtScale1, const ConvexHullV& convexHullV0, const ConvexHullV& convexHullV1, const aos::PxTransformV& transf0, const aos::PxTransformV& transf1,
+									   aos::FloatV& penetrationDepth, aos::Vec3V& normal)
 {
 	PolygonalData polyData0, polyData1;
 	getPCMConvexData(convexHullV0, idtScale0, polyData0);
@@ -719,10 +681,10 @@ static bool internalComputeMTD_ConvexConvex(const bool idtScale0, const bool idt
 	PxU8 buff0[sizeof(SupportLocalImpl<ConvexHullV>)];
 	PxU8 buff1[sizeof(SupportLocalImpl<ConvexHullV>)];
 
-	SupportLocal* map0 = (idtScale0 ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff0, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<ConvexHullNoScaleV&>(convexHullV0), transf0, convexHullV0.vertex2Shape, convexHullV0.shape2Vertex, idtScale0)) : 
+	SupportLocal* map0 = (idtScale0 ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff0, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<const ConvexHullNoScaleV&>(convexHullV0), transf0, convexHullV0.vertex2Shape, convexHullV0.shape2Vertex, idtScale0)) : 
 	static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff0, SupportLocalImpl<ConvexHullV>)(convexHullV0, transf0, convexHullV0.vertex2Shape, convexHullV0.shape2Vertex, idtScale0)));
 
-	SupportLocal* map1 = (idtScale1 ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff1, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<ConvexHullNoScaleV&>(convexHullV1), transf1, convexHullV1.vertex2Shape, convexHullV1.shape2Vertex, idtScale1)) : 
+	SupportLocal* map1 = (idtScale1 ? static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff1, SupportLocalImpl<ConvexHullNoScaleV>)(static_cast<const ConvexHullNoScaleV&>(convexHullV1), transf1, convexHullV1.vertex2Shape, convexHullV1.shape2Vertex, idtScale1)) : 
 	static_cast<SupportLocal*>(PX_PLACEMENT_NEW(buff1, SupportLocalImpl<ConvexHullV>)(convexHullV1, transf1, convexHullV1.vertex2Shape, convexHullV1.shape2Vertex, idtScale1)));
 
 	return computeMTD(polyData0, polyData1, map0, map1, penetrationDepth, normal); 
@@ -731,7 +693,7 @@ static bool internalComputeMTD_ConvexConvex(const bool idtScale0, const bool idt
 ///////////////////////////////////////////////////////////////////////////////
 static bool computeMTD_ConvexConvex(PxVec3& mtd, PxF32& depth, const PxConvexMeshGeometry& convexGeom0, const PxTransform& convexPose0, const PxConvexMeshGeometry& convexGeom1, const PxTransform& convexPose1)
 {
-	using namespace Ps::aos;
+	using namespace aos;
 
 	const Vec3V zeroV = V3Zero();
 	// Convex mesh
@@ -739,7 +701,7 @@ static bool computeMTD_ConvexConvex(PxVec3& mtd, PxF32& depth, const PxConvexMes
 		const ConvexHullData* hull0 = &convexMesh0->getHull();
 		const Vec3V vScale0	= V3LoadU_SafeReadW(convexGeom0.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 		const QuatV vQuat0	= QuatVLoadU(&convexGeom0.scale.rotation.x);
-		ConvexHullV convexHullV0(hull0, zeroV, vScale0, vQuat0, convexGeom0.scale.isIdentity());
+		const ConvexHullV convexHullV0(hull0, zeroV, vScale0, vQuat0, convexGeom0.scale.isIdentity());
 	//~Convex mesh
 
 	// Convex mesh
@@ -747,7 +709,7 @@ static bool computeMTD_ConvexConvex(PxVec3& mtd, PxF32& depth, const PxConvexMes
 		const ConvexHullData* hull1 = &convexMesh1->getHull();
 		const Vec3V vScale1	= V3LoadU_SafeReadW(convexGeom1.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 		const QuatV vQuat1	= QuatVLoadU(&convexGeom1.scale.rotation.x);
-		ConvexHullV convexHullV1(hull1, zeroV, vScale1, vQuat1, convexGeom1.scale.isIdentity());
+		const ConvexHullV convexHullV1(hull1, zeroV, vScale1, vQuat1, convexGeom1.scale.isIdentity());
 	//~Convex mesh
 
 	const QuatV q0 = QuatVLoadU(&convexPose0.q.x);
@@ -756,12 +718,11 @@ static bool computeMTD_ConvexConvex(PxVec3& mtd, PxF32& depth, const PxConvexMes
 	const QuatV q1 = QuatVLoadU(&convexPose1.q.x);
 	const Vec3V p1 = V3LoadU(&convexPose1.p.x);
 
-	const PsTransformV transf0(p0, q0);
-	const PsTransformV transf1(p1, q1);
+	const PxTransformV transf0(p0, q0);
+	const PxTransformV transf1(p1, q1);
 
 	Vec3V normal = zeroV;
 	FloatV penetrationDepth = FZero();
-
 
 	const bool idtScale0 = convexGeom0.scale.isIdentity();
 	const bool idtScale1 = convexGeom1.scale.isIdentity();
@@ -844,14 +805,14 @@ static bool computeMTD_PlaneConvex(PxVec3& mtd, PxF32& depth, const PxPlane& pla
 
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool processContacts(PxVec3& mtd, PxF32& depth, PxU32 nbContacts, const ContactPoint* contacts)
+static bool processContacts(PxVec3& mtd, PxF32& depth, const PxU32 nbContacts, const PxContactPoint* contacts)
 {
 	if(nbContacts)
 	{
 		PxVec3 mn(0.0f), mx(0.0f);
 		for(PxU32 i=0; i<nbContacts; i++)
 		{
-			const ContactPoint& ct = contacts[i];
+			const PxContactPoint& ct = contacts[i];
 			PxVec3 depenetration = ct.separation * ct.normal;
 			
 			mn = mn.minimum(depenetration);
@@ -871,37 +832,25 @@ static bool processContacts(PxVec3& mtd, PxF32& depth, PxU32 nbContacts, const C
 		PxVec3 sepDir((mn1 + mx1)*0.5f);
 
 		if(sepDir.magnitudeSquared() < 1e-10f)
-		{
-
 			return false;
 
-		}
 		mtd = -sepDir.getNormalized();
 		depth = sepDir.magnitude();
 	}
-	return true;
+
+	return nbContacts!=0;
 }
 
 static bool computeMTD_SphereMesh(PxVec3& mtd, PxF32& depth, const Sphere& sphere, const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshPose)
 {
-	GeometryUnion shape0;
-	shape0.set(PxSphereGeometry(sphere.radius));
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
-	if(!contactSphereMesh(shape0, shape1, PxTransform(sphere.center), meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactSphereMesh(PxSphereGeometry(sphere.radius), meshGeom, PxTransform(sphere.center), meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
 static bool computeMTD_CapsuleMesh(PxVec3& mtd, PxF32& depth, const Capsule& capsule, const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshPose)
@@ -909,94 +858,54 @@ static bool computeMTD_CapsuleMesh(PxVec3& mtd, PxF32& depth, const Capsule& cap
 	PxReal halfHeight;
 	const PxTransform capsuleTransform = PxTransformFromSegment(capsule.p0, capsule.p1, &halfHeight);
 
-	GeometryUnion shape0;
-	shape0.set(PxCapsuleGeometry(capsule.radius, halfHeight));
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
-	if(!contactCapsuleMesh(shape0, shape1, capsuleTransform, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactCapsuleMesh(PxCapsuleGeometry(capsule.radius, halfHeight), meshGeom, capsuleTransform, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
 static bool computeMTD_BoxMesh(PxVec3& mtd, PxF32& depth, const Box& box, const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshPose)
 {
 	const PxTransform boxPose(box.center, PxQuat(box.rot));
 
-	GeometryUnion shape0;
-	shape0.set(PxBoxGeometry(box.extents));
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
-	if(!contactBoxMesh(shape0, shape1, boxPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactBoxMesh(PxBoxGeometry(box.extents), meshGeom, boxPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
 static bool computeMTD_ConvexMesh(PxVec3& mtd, PxF32& depth, const PxConvexMeshGeometry& convexGeom, const PxTransform& convexPose, const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshPose)
 {
-	GeometryUnion shape0;
-	shape0.set(convexGeom);
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
-	if(!contactConvexMesh(shape0, shape1, convexPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactConvexMesh(convexGeom, meshGeom, convexPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
 static bool computeMTD_SphereHeightField(PxVec3& mtd, PxF32& depth, const Sphere& sphere, const PxHeightFieldGeometry& meshGeom, const PxTransform& meshPose)
 {
-	GeometryUnion shape0;
-	shape0.set(PxSphereGeometry(sphere.radius));
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
 	const PxTransform spherePose(sphere.center);
 
-	if(!contactSphereHeightfield(shape0, shape1, spherePose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactSphereHeightfield(PxSphereGeometry(sphere.radius), meshGeom, spherePose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
 static bool computeMTD_CapsuleHeightField(PxVec3& mtd, PxF32& depth, const Capsule& capsule, const PxHeightFieldGeometry& meshGeom, const PxTransform& meshPose)
@@ -1004,72 +913,53 @@ static bool computeMTD_CapsuleHeightField(PxVec3& mtd, PxF32& depth, const Capsu
 	PxReal halfHeight;
 	const PxTransform capsuleTransform = PxTransformFromSegment(capsule.p0, capsule.p1, &halfHeight);
 
-	GeometryUnion shape0;
-	shape0.set(PxCapsuleGeometry(capsule.radius, halfHeight));
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
-	if(!contactCapsuleHeightfield(shape0, shape1, capsuleTransform, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactCapsuleHeightfield(PxCapsuleGeometry(capsule.radius, halfHeight), meshGeom, capsuleTransform, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
 static bool computeMTD_BoxHeightField(PxVec3& mtd, PxF32& depth, const Box& box, const PxHeightFieldGeometry& meshGeom, const PxTransform& meshPose)
 {
 	const PxTransform boxPose(box.center, PxQuat(box.rot));
 
-	GeometryUnion shape0;
-	shape0.set(PxBoxGeometry(box.extents));
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
-	if(!contactBoxHeightfield(shape0, shape1, boxPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactBoxHeightfield(PxBoxGeometry(box.extents), meshGeom, boxPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
 static bool computeMTD_ConvexHeightField(PxVec3& mtd, PxF32& depth, const PxConvexMeshGeometry& convexGeom, const PxTransform& convexPose, const PxHeightFieldGeometry& meshGeom, const PxTransform& meshPose)
 {
-	GeometryUnion shape0;
-	shape0.set(convexGeom);
-
-	GeometryUnion shape1;
-	shape1.set(meshGeom);
-
 	Cache cache;
-
-	ContactBuffer contactBuffer;
+	PxContactBuffer contactBuffer;
 	contactBuffer.reset();
 
-	if(!contactConvexHeightfield(shape0, shape1, convexPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
+	if(!contactConvexHeightfield(convexGeom, meshGeom, convexPose, meshPose, NarrowPhaseParams(0.0f, 0.0f, 1.0f), cache, contactBuffer, NULL))
 		return false;
 
-	if(!processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts))
-		return false;
-
-	return contactBuffer.count!=0;
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
 }
 
+static bool computeMTD_CustomGeometry(PxVec3& mtd, PxF32& depth, const PxCustomGeometry& geom0, const PxTransform& pose0, const PxGeometry& geom1, const PxTransform& pose1)
+{
+	Cache cache;
+	PxContactBuffer contactBuffer;
+	contactBuffer.reset();
+
+	if(!geom0.callbacks->generateContacts(geom0, geom1, pose0, pose1, FLT_EPSILON, FLT_EPSILON, 1.0f, contactBuffer))
+		return false;
+
+	return processContacts(mtd, depth, contactBuffer.count, contactBuffer.contacts);
+}
 
 static bool GeomMTDCallback_NotSupported(GU_MTD_FUNC_PARAMS)
 {
@@ -1378,6 +1268,30 @@ static bool GeomMTDCallback_ConvexHeightField(GU_MTD_FUNC_PARAMS)
 	return computeMTD_ConvexHeightField(mtd, depth, convexGeom, pose0, meshGeom, pose1);
 }
 
+static bool GeomMTDCallback_CustomGeometryGeometry(GU_MTD_FUNC_PARAMS)
+{
+	PX_ASSERT(geom0.getType() == PxGeometryType::eCUSTOM);
+
+	const PxCustomGeometry& customGeom = static_cast<const PxCustomGeometry&>(geom0);
+
+	return computeMTD_CustomGeometry(mtd, depth, customGeom, pose0, geom1, pose1);
+}
+
+static bool GeomMTDCallback_GeometryCustomGeometry(GU_MTD_FUNC_PARAMS)
+{
+	PX_ASSERT(geom1.getType() == PxGeometryType::eCUSTOM);
+
+	const PxCustomGeometry& customGeom = static_cast<const PxCustomGeometry&>(geom1);
+
+	if (computeMTD_CustomGeometry(mtd, depth, customGeom, pose1, geom0, pose0))
+	{
+		mtd = -mtd;
+		return true;
+	}
+
+	return false;
+}
+
 Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] = 
 {
 	//PxGeometryType::eSPHERE
@@ -1387,8 +1301,12 @@ Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] =
 		GeomMTDCallback_SphereCapsule,		//PxGeometryType::eCAPSULE
 		GeomMTDCallback_SphereBox,			//PxGeometryType::eBOX
 		GeomMTDCallback_SphereConvex,		//PxGeometryType::eCONVEXMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::ePARTICLESYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTETRAHEDRONMESH
 		GeomMTDCallback_SphereMesh,			//PxGeometryType::eTRIANGLEMESH
 		GeomMTDCallback_SphereHeightField,	//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_GeometryCustomGeometry,	//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::ePLANE
@@ -1398,8 +1316,12 @@ Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] =
 		GeomMTDCallback_PlaneCapsule,		//PxGeometryType::eCAPSULE
 		GeomMTDCallback_PlaneBox,			//PxGeometryType::eBOX
 		GeomMTDCallback_PlaneConvex,		//PxGeometryType::eCONVEXMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::ePARTICLESYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTETRAHEDRONMESH
 		GeomMTDCallback_NotSupported,		//PxGeometryType::eTRIANGLEMESH
 		GeomMTDCallback_NotSupported,		//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_GeometryCustomGeometry,	//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eCAPSULE
@@ -1409,8 +1331,12 @@ Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] =
 		GeomMTDCallback_CapsuleCapsule,		//PxGeometryType::eCAPSULE
 		GeomMTDCallback_CapsuleBox,			//PxGeometryType::eBOX
 		GeomMTDCallback_CapsuleConvex,		//PxGeometryType::eCONVEXMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::ePARTICLESYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTETRAHEDRONMESH
 		GeomMTDCallback_CapsuleMesh,		//PxGeometryType::eTRIANGLEMESH
 		GeomMTDCallback_CapsuleHeightField,	//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_GeometryCustomGeometry,	//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eBOX
@@ -1420,8 +1346,12 @@ Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] =
 		0,									//PxGeometryType::eCAPSULE
 		GeomMTDCallback_BoxBox,				//PxGeometryType::eBOX
 		GeomMTDCallback_BoxConvex,			//PxGeometryType::eCONVEXMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::ePARTICLESYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTETRAHEDRONMESH
 		GeomMTDCallback_BoxMesh,			//PxGeometryType::eTRIANGLEMESH
 		GeomMTDCallback_BoxHeightField,		//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_GeometryCustomGeometry,	//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eCONVEXMESH
@@ -1431,8 +1361,42 @@ Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] =
 		0,									//PxGeometryType::eCAPSULE
 		0,									//PxGeometryType::eBOX
 		GeomMTDCallback_ConvexConvex,		//PxGeometryType::eCONVEXMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::ePARTICLESYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTETRAHEDRONMESH
 		GeomMTDCallback_ConvexMesh,			//PxGeometryType::eTRIANGLEMESH
 		GeomMTDCallback_ConvexHeightField,	//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_GeometryCustomGeometry,	//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::ePARTICLESYSTEM
+	{
+		0,									//PxGeometryType::eSPHERE
+		0,									//PxGeometryType::ePLANE
+		0,									//PxGeometryType::eCAPSULE
+		0,									//PxGeometryType::eBOX
+		0,									//PxGeometryType::eCONVEXMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::ePARTICLESYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTETRAHEDRONMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTRIANGLEMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::eTETRAHEDRONMESH
+	{
+		0,									//PxGeometryType::eSPHERE
+		0,									//PxGeometryType::ePLANE
+		0,									//PxGeometryType::eCAPSULE
+		0,									//PxGeometryType::eBOX
+		0,									//PxGeometryType::eCONVEXMESH
+		0,									//PxGeometryType::ePARTICLESYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTETRAHEDRONMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eTRIANGLEMESH
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eTRIANGLEMESH
@@ -1442,8 +1406,12 @@ Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] =
 		0,									//PxGeometryType::eCAPSULE
 		0,									//PxGeometryType::eBOX
 		0,									//PxGeometryType::eCONVEXMESH
+		0,									//PxGeometryType::ePARTICLESYSTEM
+		0,									//PxGeometryType::eTETRAHEDRONMESH
 		GeomMTDCallback_NotSupported,		//PxGeometryType::eTRIANGLEMESH
 		GeomMTDCallback_NotSupported,		//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_GeometryCustomGeometry,	//PxGeometryType::eCUSTOM
 	},
 
 	//PxGeometryType::eHEIGHTFIELD
@@ -1453,7 +1421,42 @@ Gu::GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT] =
 		0,									//PxGeometryType::eCAPSULE
 		0,									//PxGeometryType::eBOX
 		0,									//PxGeometryType::eCONVEXMESH
+		0,									//PxGeometryType::ePARTICLESYSTEM
+		0,									//PxGeometryType::eTETRAHEDRONMESH
 		0,									//PxGeometryType::eTRIANGLEMESH
 		GeomMTDCallback_NotSupported,		//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_GeometryCustomGeometry,	//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::eHAIRSYSTEM
+	{
+		0,									//PxGeometryType::eSPHERE
+		0,									//PxGeometryType::ePLANE
+		0,									//PxGeometryType::eCAPSULE
+		0,									//PxGeometryType::eBOX
+		0,									//PxGeometryType::eCONVEXMESH
+		0,									//PxGeometryType::ePARTICLESYSTEM
+		0,									//PxGeometryType::eTETRAHEDRONMESH
+		0,									//PxGeometryType::eTRIANGLEMESH
+		0,									//PxGeometryType::eHEIGHTFIELD
+		GeomMTDCallback_NotSupported,		//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_CustomGeometryGeometry,	//PxGeometryType::eCUSTOM
+	},
+
+	//PxGeometryType::eCUSTOM
+	{
+		0,									//PxGeometryType::eSPHERE
+		0,									//PxGeometryType::ePLANE
+		0,									//PxGeometryType::eCAPSULE
+		0,									//PxGeometryType::eBOX
+		0,									//PxGeometryType::eCONVEXMESH
+		0,									//PxGeometryType::ePARTICLESYSTEM
+		0,									//PxGeometryType::eTETRAHEDRONMESH
+		0,									//PxGeometryType::eTRIANGLEMESH
+		0,									//PxGeometryType::eHEIGHTFIELD
+		0,									//PxGeometryType::eHAIRSYSTEM
+		GeomMTDCallback_CustomGeometryGeometry,	//PxGeometryType::eCUSTOM
 	},
 };
+PX_COMPILE_TIME_ASSERT(sizeof(gGeomMTDMethodTable) / sizeof(gGeomMTDMethodTable[0]) == PxGeometryType::eGEOMETRY_COUNT);

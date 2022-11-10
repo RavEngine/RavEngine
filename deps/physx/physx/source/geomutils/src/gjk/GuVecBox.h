@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,13 +35,13 @@
 #include "foundation/PxTransform.h"
 #include "common/PxPhysXCommonConfig.h"
 #include "geometry/PxBoxGeometry.h"
-#include "PsVecTransform.h"
+#include "foundation/PxVecTransform.h"
 #include "GuVecConvex.h"
 #include "GuConvexSupportTable.h"
 
 namespace physx
 {
-PX_PHYSX_COMMON_API extern const Ps::aos::BoolV boxVertexTable[8];
+PX_PHYSX_COMMON_API extern const aos::BoolV boxVertexTable[8];
 
 namespace Gu
 {
@@ -58,10 +57,10 @@ namespace Gu
 	class CapsuleV;
 
 
-	PX_FORCE_INLINE void CalculateBoxMargin(const Ps::aos::Vec3VArg extent, PxReal& margin, PxReal& minMargin, PxReal& sweepMargin,
+	PX_FORCE_INLINE void CalculateBoxMargin(const aos::Vec3VArg extent, PxReal& margin, PxReal& minMargin, PxReal& sweepMargin,
 		const PxReal marginR = BOX_MARGIN_RATIO, const PxReal minMarginR = BOX_MIN_MARGIN_RATIO)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		PxReal minExtent;
 		const FloatV min = V3ExtractMin(extent);
@@ -72,9 +71,9 @@ namespace Gu
 		sweepMargin = minExtent * BOX_SWEEP_MARGIN_RATIO;
 	}
 
-	PX_FORCE_INLINE Ps::aos::FloatV CalculateBoxTolerance(const Ps::aos::Vec3VArg extent)
+	PX_FORCE_INLINE aos::FloatV CalculateBoxTolerance(const aos::Vec3VArg extent)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		
 		const FloatV r0 = FLoad(0.01f);
 		const FloatV min = V3ExtractMin(extent);//FMin(V3GetX(extent), FMin(V3GetY(extent), V3GetZ(extent)));
@@ -82,18 +81,18 @@ namespace Gu
 	}
 
 	//This method is called in the PCM contact gen for the refreshing contacts 
-	PX_FORCE_INLINE Ps::aos::FloatV CalculatePCMBoxMargin(const Ps::aos::Vec3VArg extent, const PxReal toleranceLength, const PxReal toleranceMarginRatio = BOX_MARGIN_RATIO)
+	PX_FORCE_INLINE aos::FloatV CalculatePCMBoxMargin(const aos::Vec3VArg extent, const PxReal toleranceLength, const PxReal toleranceMarginRatio = BOX_MARGIN_RATIO)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 	
 		const FloatV min = V3ExtractMin(extent);//FMin(V3GetX(extent), FMin(V3GetY(extent), V3GetZ(extent)));
 		const FloatV toleranceMargin = FLoad(toleranceLength * toleranceMarginRatio);
 		return FMin(FMul(min, FLoad(BOX_MARGIN_RATIO)), toleranceMargin);
 	}
 
-	PX_FORCE_INLINE Ps::aos::FloatV CalculateMTDBoxMargin(const Ps::aos::Vec3VArg extent)
+	PX_FORCE_INLINE aos::FloatV CalculateMTDBoxMargin(const aos::Vec3VArg extent)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const FloatV min = V3ExtractMin(extent);//FMin(V3GetX(extent), FMin(V3GetY(extent), V3GetZ(extent)));
 		return FMul(min, FLoad(BOX_MARGIN_RATIO));
@@ -110,18 +109,18 @@ namespace Gu
 		{
 		}
 
-		PX_FORCE_INLINE BoxV(const Ps::aos::Vec3VArg origin, const Ps::aos::Vec3VArg extent) : 
+		PX_FORCE_INLINE BoxV(const aos::Vec3VArg origin, const aos::Vec3VArg extent) : 
 			ConvexV(ConvexType::eBOX, origin), extents(extent)
 		{
 			CalculateBoxMargin(extent, margin, minMargin, sweepMargin);
 		}
 		
 		//this constructor is used by the CCD system
-		PX_FORCE_INLINE BoxV(const PxGeometry& geom) : ConvexV(ConvexType::eBOX, Ps::aos::V3Zero())
+		PX_FORCE_INLINE BoxV(const PxGeometry& geom) : ConvexV(ConvexType::eBOX, aos::V3Zero())
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const PxBoxGeometry& boxGeom = static_cast<const PxBoxGeometry&>(geom);
-			const Vec3V extent = Ps::aos::V3LoadU(boxGeom.halfExtents);
+			const Vec3V extent = aos::V3LoadU(boxGeom.halfExtents);
 			extents = extent;
 			CalculateBoxMargin(extent, margin, minMargin, sweepMargin, BOX_MARGIN_CCD_RATIO, BOX_MIN_MARGIN_CCD_RATIO);
 		}
@@ -149,46 +148,46 @@ namespace Gu
 			return *this;
 		}
 
-		PX_FORCE_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, Ps::aos::Vec3V* verts)const
+		PX_FORCE_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, aos::Vec3V* verts)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			for(PxU32 i=0; i<numInds; ++i)
 				verts[i] = V3LoadU_SafeReadW(originalVerts[inds[i]]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'populateVerts' is always called with polyData.mVerts)
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportPoint(const PxI32 index)const
+		PX_FORCE_INLINE aos::Vec3V supportPoint(const PxI32 index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const BoolV con = boxVertexTable[index];
 			return V3Sel(con, extents, V3Neg(extents));
 		}  
 
-		PX_FORCE_INLINE void getIndex(const Ps::aos::BoolV con, PxI32& index)const 
+		PX_FORCE_INLINE void getIndex(const aos::BoolV con, PxI32& index)const 
 		{ 
-			using namespace Ps::aos;
+			using namespace aos;
 			index = PxI32(BGetBitMask(con) & 0x7); 
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir)const  
+		PX_FORCE_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir)const  
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			return V3Sel(V3IsGrtr(dir,  V3Zero()), extents, V3Neg(extents));
 		}
 
 		//this is used in the sat test for the full contact gen
-		PX_SUPPORT_INLINE void supportLocal(const Ps::aos::Vec3VArg dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max)const
+		PX_SUPPORT_INLINE void supportLocal(const aos::Vec3VArg dir, aos::FloatV& min, aos::FloatV& max)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V point = V3Sel(V3IsGrtr(dir,  V3Zero()), extents, V3Neg(extents));
 			max = V3Dot(dir, point);
 			min = FNeg(max);
 		}
 
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportRelative(const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aTob, const Ps::aos::PsMatTransformV& aTobT) const  
+		PX_SUPPORT_INLINE aos::Vec3V supportRelative(const aos::Vec3VArg dir, const aos::PxMatTransformV& aTob, const aos::PxMatTransformV& aTobT) const  
 		{
 			//a is the current object, b is the other object, dir is in the local space of b
-			using namespace Ps::aos;
+			using namespace aos;
 //			const Vec3V _dir = aTob.rotateInv(dir);//relTra.rotateInv(dir);//from b to a
 			const Vec3V _dir = aTobT.rotate(dir);//relTra.rotateInv(dir);//from b to a
 			const Vec3V p =  supportLocal(_dir);
@@ -196,19 +195,19 @@ namespace Gu
 			return aTob.transform(p);//relTra.transform(p);
 		}
 
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir, PxI32& index)const  
+		PX_SUPPORT_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir, PxI32& index)const  
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const BoolV comp = V3IsGrtr(dir, V3Zero());
 			getIndex(comp, index);
 			return  V3Sel(comp, extents, V3Neg(extents));
 		}
 
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportRelative(	const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aTob,
-															const Ps::aos::PsMatTransformV& aTobT, PxI32& index)const  
+		PX_SUPPORT_INLINE aos::Vec3V supportRelative(	const aos::Vec3VArg dir, const aos::PxMatTransformV& aTob,
+															const aos::PxMatTransformV& aTobT, PxI32& index)const  
 		{
 			//a is the current object, b is the other object, dir is in the local space of b
-			using namespace Ps::aos;
+			using namespace aos;
 //			const Vec3V _dir = aTob.rotateInv(dir);//relTra.rotateInv(dir);//from b to a
 			const Vec3V _dir = aTobT.rotate(dir);//relTra.rotateInv(dir);//from b to a
 			const Vec3V p = supportLocal(_dir, index);
@@ -216,7 +215,7 @@ namespace Gu
 			return aTob.transform(p);//relTra.transform(p);
 		}
 
-		Ps::aos::Vec3V  extents;
+		aos::Vec3V  extents;
 	};
 }	//PX_COMPILE_TIME_ASSERT(sizeof(Gu::BoxV) == 96);
 

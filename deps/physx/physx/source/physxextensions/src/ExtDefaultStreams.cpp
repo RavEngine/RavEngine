@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,13 +30,11 @@
 #include "foundation/PxAssert.h"
 #include "foundation/PxAllocatorCallback.h"
 #include "foundation/PxMemory.h"
+#include "foundation/PxBitUtils.h"
 #include "extensions/PxDefaultStreams.h"
 
-#include "PsFoundation.h"
 #include "SnFile.h"
-#include "CmPhysXCommon.h"
-#include "PsUtilities.h"
-#include "PsBitUtils.h"
+#include "foundation/PxUtilities.h"
 
 #include <errno.h>
 
@@ -62,7 +59,7 @@ PxU32 PxDefaultMemoryOutputStream::write(const void* src, PxU32 size)
 	PxU32 expectedSize = mSize + size;
 	if(expectedSize > mCapacity)
 	{
-		mCapacity = PxMax(Ps::nextPowerOfTwo(expectedSize), 4096u);
+		mCapacity = PxMax(PxNextPowerOfTwo(expectedSize), 4096u);
 
 		PxU8* newData = reinterpret_cast<PxU8*>(mAllocator.allocate(mCapacity,"PxDefaultMemoryOutputStream",__FILE__,__LINE__));
 		PX_ASSERT(newData!=NULL);
@@ -119,7 +116,7 @@ PxDefaultFileOutputStream::PxDefaultFileOutputStream(const char* filename)
 	// - the file does not already exist. If it does, check that it is not write protected.
 	if(NULL == mFile)
 	{
-		Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, 
 			"Unable to open file %s, errno 0x%x\n",filename,errno);
 	}
 	PX_ASSERT(mFile);
@@ -129,6 +126,7 @@ PxDefaultFileOutputStream::~PxDefaultFileOutputStream()
 {
 	if(mFile)
 		fclose(mFile);
+	mFile = NULL;
 }
 
 PxU32 PxDefaultFileOutputStream::write(const void* src, PxU32 count)

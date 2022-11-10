@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,40 +22,36 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxUnionCast.h"
-#include "geomutils/GuContactBuffer.h"
-
+#include "geomutils/PxContactBuffer.h"
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
-
 #include "CmMatrix34.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 
-namespace physx
-{
-namespace Gu
-{
-bool contactPlaneBox(GU_CONTACT_METHOD_ARGS)
+using namespace physx;
+using namespace Cm;
+
+bool Gu::contactPlaneBox(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 	PX_UNUSED(shape0);
 
 	// Get actual shape data      
-	//const PxPlaneGeometry& shapePlane = shape.get<const PxPlaneGeometry>();
-	const PxBoxGeometry& shapeBox = shape1.get<const PxBoxGeometry>();
+	//const PxPlaneGeometry& shapePlane = checkedCast<PxPlaneGeometry>(shape0);
+	const PxBoxGeometry& shapeBox = checkedCast<PxBoxGeometry>(shape1);
 	
 	const PxVec3 negPlaneNormal = -transform0.q.getBasisVector0();
 	
 	//Make sure we have a normalized plane
 	//PX_ASSERT(PxAbs(shape0.mNormal.magnitudeSquared() - 1.0f) < 0.000001f);
 
-	Cm::Matrix34 boxMatrix(transform1);
-	Cm::Matrix34 boxToPlane(transform0.transformInv(transform1));
+	const Matrix34FromTransform boxMatrix(transform1);
+	const Matrix34FromTransform boxToPlane(transform0.transformInv(transform1));
 
 	PxVec3 point;
 
@@ -125,5 +120,3 @@ bool contactPlaneBox(GU_CONTACT_METHOD_ARGS)
 
 	return contactBuffer.count > 0;
 }
-}//Gu
-}//physx

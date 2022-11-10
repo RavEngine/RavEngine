@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,10 +42,10 @@ namespace physx
 namespace Gu
 {
 
-	PX_FORCE_INLINE Ps::aos::FloatV CalculateCapsuleMinMargin(const Ps::aos::FloatVArg radius)
+	PX_FORCE_INLINE aos::FloatV CalculateCapsuleMinMargin(const aos::FloatVArg radius)
 	{
-		using namespace Ps::aos;
-		const FloatV ratio = Ps::aos::FLoad(0.05f);
+		using namespace aos;
+		const FloatV ratio = aos::FLoad(0.05f);
 		return FMul(radius, ratio);
 	}
 
@@ -63,9 +62,9 @@ namespace Gu
 		}
 
 		//constructor for sphere
-		PX_INLINE CapsuleV(const Ps::aos::Vec3VArg p, const Ps::aos::FloatVArg radius_) : ConvexV(ConvexType::eCAPSULE)
+		PX_INLINE CapsuleV(const aos::Vec3VArg p, const aos::FloatVArg radius_) : ConvexV(ConvexType::eCAPSULE)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			center = p;
 			radius = radius_;
 			p0 = p;
@@ -76,10 +75,10 @@ namespace Gu
 			bMarginIsRadius = true; 
 		}
 
-		PX_INLINE CapsuleV(const Ps::aos::Vec3VArg center_, const Ps::aos::Vec3VArg v_, const Ps::aos::FloatVArg radius_) : 
+		PX_INLINE CapsuleV(const aos::Vec3VArg center_, const aos::Vec3VArg v_, const aos::FloatVArg radius_) : 
 			ConvexV(ConvexType::eCAPSULE, center_)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			radius = radius_;
 			p0 = V3Add(center_, v_);
 			p1 = V3Sub(center_, v_);
@@ -89,9 +88,9 @@ namespace Gu
 			bMarginIsRadius = true;
 		}
 
-		PX_INLINE CapsuleV(const PxGeometry& geom) : ConvexV(ConvexType::eCAPSULE, Ps::aos::V3Zero())
+		PX_INLINE CapsuleV(const PxGeometry& geom) : ConvexV(ConvexType::eCAPSULE, aos::V3Zero())
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const PxCapsuleGeometry& capsuleGeom = static_cast<const PxCapsuleGeometry&>(geom);
 
 			const Vec3V axis = V3Scale(V3UnitX(), FLoad(capsuleGeom.halfHeight));
@@ -118,9 +117,9 @@ namespace Gu
 		{
 		}
 
-		PX_FORCE_INLINE void initialize(const Ps::aos::Vec3VArg _p0, const Ps::aos::Vec3VArg _p1, const Ps::aos::FloatVArg _radius)
+		PX_FORCE_INLINE void initialize(const aos::Vec3VArg _p0, const aos::Vec3VArg _p1, const aos::FloatVArg _radius)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			radius = _radius;
 			p0 = _p0;
 			p1 = _p1;
@@ -130,32 +129,32 @@ namespace Gu
 			center = V3Scale(V3Add(_p0, _p1), FHalf());
 		}   
 
-		PX_INLINE Ps::aos::Vec3V computeDirection() const
+		PX_INLINE aos::Vec3V computeDirection() const
 		{
-			return Ps::aos::V3Sub(p1, p0);
+			return aos::V3Sub(p1, p0);
 		}
 
-		PX_FORCE_INLINE	Ps::aos::FloatV	getRadius()	const
+		PX_FORCE_INLINE	aos::FloatV	getRadius()	const
 		{
 			return radius;
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportPoint(const PxI32 index)const
+		PX_FORCE_INLINE aos::Vec3V supportPoint(const PxI32 index)const
 		{
 			return (&p0)[1-index];
 		}
 
-		PX_FORCE_INLINE void getIndex(const Ps::aos::BoolV con, PxI32& index)const
+		PX_FORCE_INLINE void getIndex(const aos::BoolV con, PxI32& index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const VecI32V v = VecI32V_From_BoolV(con);
 			const VecI32V t = VecI32V_And(v, VecI32V_One());
 			PxI32_From_VecI32V(t, &index);
 		}
 
-		PX_FORCE_INLINE void setCenter(const Ps::aos::Vec3VArg _center)
+		PX_FORCE_INLINE void setCenter(const aos::Vec3VArg _center)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			Vec3V offset = V3Sub(_center, center);
 			center = _center;
 
@@ -164,18 +163,18 @@ namespace Gu
 		}
 
 		//dir, p0 and p1 are in the local space of dir
-		PX_FORCE_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir)const
+		PX_FORCE_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//const Vec3V _dir = V3Normalize(dir);
 			const FloatV dist0 = V3Dot(p0, dir);
 			const FloatV dist1 = V3Dot(p1, dir);
 			return V3Sel(FIsGrtr(dist0, dist1), p0, p1);
 		}
 	
-		PX_FORCE_INLINE Ps::aos::Vec3V supportRelative(const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aToB, const Ps::aos::PsMatTransformV& aTobT) const
+		PX_FORCE_INLINE aos::Vec3V supportRelative(const aos::Vec3VArg dir, const aos::PxMatTransformV& aToB, const aos::PxMatTransformV& aTobT) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//transform dir into the local space of a
 //			const Vec3V _dir = aToB.rotateInv(dir);
 			const Vec3V _dir = aTobT.rotate(dir);
@@ -185,9 +184,9 @@ namespace Gu
 		}
 
 		//dir, p0 and p1 are in the local space of dir
-		PX_FORCE_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir, PxI32& index)const
+		PX_FORCE_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir, PxI32& index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			
 			const FloatV dist0 = V3Dot(p0, dir);
 			const FloatV dist1 = V3Dot(p1, dir);
@@ -196,10 +195,10 @@ namespace Gu
 			return V3Sel(comp, p0, p1);
 		}
 	
-		PX_FORCE_INLINE Ps::aos::Vec3V supportRelative(	const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aToB,
-														const Ps::aos::PsMatTransformV& aTobT, PxI32& index)const
+		PX_FORCE_INLINE aos::Vec3V supportRelative(	const aos::Vec3VArg dir, const aos::PxMatTransformV& aToB,
+														const aos::PxMatTransformV& aTobT, PxI32& index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//transform dir into the local space of a
 //			const Vec3V _dir = aToB.rotateInv(dir);
 			const Vec3V _dir = aTobT.rotate(dir);
@@ -210,25 +209,25 @@ namespace Gu
 		}
 
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportLocal(Ps::aos::Vec3V& support, const PxI32& index, const Ps::aos::BoolV comp)const
+		PX_FORCE_INLINE aos::Vec3V supportLocal(aos::Vec3V& support, const PxI32& index, const aos::BoolV comp)const
 		{
 			PX_UNUSED(index);
 
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V p = V3Sel(comp, p0, p1);
 			support = p;
 			return p;
 		}
 
-		PX_FORCE_INLINE Ps::aos::FloatV getSweepMargin() const
+		PX_FORCE_INLINE aos::FloatV getSweepMargin() const
 		{
-			return Ps::aos::FZero();
+			return aos::FZero();
 		}
 
 		//don't change the order of p0 and p1, the getPoint function depend on the order
-		Ps::aos::Vec3V	p0;		//!< Start of segment
-		Ps::aos::Vec3V	p1;		//!< End of segment
-		Ps::aos::FloatV	radius;
+		aos::Vec3V	p0;		//!< Start of segment
+		aos::Vec3V	p1;		//!< End of segment
+		aos::FloatV	radius;
 	};
 }
 

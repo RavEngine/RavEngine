@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #include "foundation/PxPreprocessor.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
-#include "CmPhysXCommon.h"
 #include "DySolverBody.h"
 #include "DySolverContact.h"
 #include "DySolverContactPF.h"
@@ -39,15 +36,15 @@
 #include "DySolverConstraintDesc.h"
 #include "DyThresholdTable.h"
 #include "DySolverContext.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 #include "DyConstraint.h"
-#include "PsAtomic.h"
+#include "foundation/PxAtomic.h"
 #include "DyThresholdTable.h"
 #include "DySolverConstraintsShared.h"
+#include "DyFeatherstoneArticulation.h"
 
 namespace physx
 {
-
 namespace Dy
 {
 
@@ -67,7 +64,6 @@ void solveContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& /*ca
 	//hopefully pointer aliasing doesn't bite.
 	PxU8* PX_RESTRICT currPtr = desc.constraint;
 
-	
 	//const FloatV zero = FZero();
 
 	while(currPtr < last)
@@ -83,13 +79,11 @@ void solveContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& /*ca
 		const FloatV angD0 = FLoad(hdr->angDom0);
 		const FloatV angD1 = FLoad(hdr->angDom1);
 		
-
-
 		SolverContactPoint* PX_RESTRICT contacts = reinterpret_cast<SolverContactPoint*>(currPtr);
 		currPtr += numNormalConstr * sizeof(SolverContactPoint);
 
 		PxF32* appliedImpulse = reinterpret_cast<PxF32*> ((reinterpret_cast<PxU8*>(hdr)) + hdr->frictionOffset + sizeof(SolverFrictionHeader));
-		Ps::prefetchLine(appliedImpulse);
+		PxPrefetchLine(appliedImpulse);
 
 		solveDynamicContacts(contacts, numNormalConstr, normal, invMassDom0, invMassDom1, 
 			angD0, angD1, linVel0, angState0, linVel1, angState1, appliedImpulse); 
@@ -119,7 +113,6 @@ void solveFriction(const PxSolverConstraintDesc& desc, SolverContext& /*cache*/)
 
 	const PxU8* PX_RESTRICT last = ptr + getConstraintLength(desc);
 
-
 	while(currPtr < last)
 	{
 		const SolverFrictionHeader* PX_RESTRICT frictionHeader = reinterpret_cast<SolverFrictionHeader*>(currPtr);
@@ -138,8 +131,7 @@ void solveFriction(const PxSolverConstraintDesc& desc, SolverContext& /*cache*/)
 
 		const FloatV invMass0D0 = FLoad(frictionHeader->invMass0D0);
 		const FloatV invMass1D1 = FLoad(frictionHeader->invMass1D1);
-
-		
+	
 		const FloatV angD0 = FLoad(frictionHeader->angDom0);
 		const FloatV angD1 = FLoad(frictionHeader->angDom1);
 
@@ -147,9 +139,8 @@ void solveFriction(const PxSolverConstraintDesc& desc, SolverContext& /*cache*/)
 		{
 			for(PxU32 p = 0; p < numFrictionPerPoint; p++, i++)
 			{
-		
 				SolverContactFriction& f = frictions[i];
-				Ps::prefetchLine(&frictions[i], 128);
+				PxPrefetchLine(&frictions[i], 128);
 
 				const Vec3V t0 = Vec3V_From_Vec4V(f.normalXYZ_appliedForceW);
 				const Vec3V raXt0 = Vec3V_From_Vec4V(f.raXnXYZ_velMultiplierW);
@@ -170,7 +161,6 @@ void solveFriction(const PxSolverConstraintDesc& desc, SolverContext& /*cache*/)
 				const FloatV t0Vel2 = V3Dot(raXt0, angState0);
 				const FloatV t0Vel3 = V3Dot(t0, linVel1);
 				const FloatV t0Vel4 = V3Dot(rbXt0, angState1);
-
 
 				const FloatV t0Vel = FSub(FAdd(t0Vel1, t0Vel2), FAdd(t0Vel3, t0Vel4));
 
@@ -201,14 +191,12 @@ void solveFriction(const PxSolverConstraintDesc& desc, SolverContext& /*cache*/)
 	V3StoreA(angState0, b0.angularState);
 	V3StoreA(angState1, b1.angularState);
 
-
 	PX_ASSERT(currPtr == last);
 }
 
 void solveContactCoulomb_BStatic(const PxSolverConstraintDesc& desc, SolverContext& /*cache*/)
 {
 	PxSolverBody& b0 = *desc.bodyA;
-
 
 	Vec3V linVel0 = V3LoadA(b0.linearVelocity);
 	Vec3V angState0 = V3LoadA(b0.angularState);
@@ -229,11 +217,11 @@ void solveContactCoulomb_BStatic(const PxSolverConstraintDesc& desc, SolverConte
 		const PxU32 numNormalConstr = hdr->numNormalConstr;
 
 		SolverContactPoint* PX_RESTRICT contacts = reinterpret_cast<SolverContactPoint*>(currPtr);
-		Ps::prefetchLine(contacts);
+		PxPrefetchLine(contacts);
 		currPtr += numNormalConstr * sizeof(SolverContactPoint);
 
 		PxF32* appliedImpulse = reinterpret_cast<PxF32*> ((reinterpret_cast<PxU8*>(hdr)) + hdr->frictionOffset + sizeof(SolverFrictionHeader));
-		Ps::prefetchLine(appliedImpulse);
+		PxPrefetchLine(appliedImpulse);
 
 		const Vec3V normal = hdr->getNormal();
 
@@ -265,7 +253,6 @@ void solveFriction_BStatic(const PxSolverConstraintDesc& desc, SolverContext& /*
 
 	while(currPtr < last)
 	{
-
 		const SolverFrictionHeader* PX_RESTRICT frictionHeader = reinterpret_cast<SolverFrictionHeader*>(currPtr);
 		const PxU32 numFrictionConstr = frictionHeader->numFrictionConstr;
 		const PxU32 numNormalConstr = frictionHeader->numNormalConstr;
@@ -281,7 +268,6 @@ void solveFriction_BStatic(const PxSolverConstraintDesc& desc, SolverContext& /*
 		const FloatV angD0 = FLoad(frictionHeader->angDom0);
 		//const FloatV angD1 = FLoad(frictionHeader->angDom1);
 
-
 		const FloatV staticFriction = frictionHeader->getStaticFriction();
 
 		for(PxU32 i=0, j = 0;i<numFrictionConstr;j++)
@@ -289,7 +275,7 @@ void solveFriction_BStatic(const PxSolverConstraintDesc& desc, SolverContext& /*
 			for(PxU32 p = 0; p < numFrictionPerPoint; p++, i++)
 			{
 				SolverContactFriction& f = frictions[i];
-				Ps::prefetchLine(&frictions[i+1]);
+				PxPrefetchLine(&frictions[i+1]);
 
 				const Vec3V t0 = Vec3V_From_Vec4V(f.normalXYZ_appliedForceW);
 				const Vec3V raXt0 = Vec3V_From_Vec4V(f.raXnXYZ_velMultiplierW);
@@ -337,7 +323,6 @@ void solveFriction_BStatic(const PxSolverConstraintDesc& desc, SolverContext& /*
 	PX_ASSERT(currPtr == last);
 }
 
-
 void concludeContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& /*cache*/)
 {
 	PxU8* PX_RESTRICT cPtr = desc.constraint;
@@ -352,10 +337,10 @@ void concludeContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& /
 		const PxU32 numNormalConstr = hdr->numNormalConstr;
 		
 		//if(cPtr < last)
-		//Ps::prefetchLine(cPtr, 512);
-		Ps::prefetchLine(cPtr,128);
-		Ps::prefetchLine(cPtr,256);
-		Ps::prefetchLine(cPtr,384);
+		//PxPrefetchLine(cPtr, 512);
+		PxPrefetchLine(cPtr,128);
+		PxPrefetchLine(cPtr,256);
+		PxPrefetchLine(cPtr,384);
 
 		const PxU32 pointStride = hdr->type == DY_SC_TYPE_EXT_CONTACT ? sizeof(SolverContactPointExt)
 																	   : sizeof(SolverContactPoint);
@@ -373,7 +358,6 @@ void concludeContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& /
 void  writeBackContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& cache,
 					  PxSolverBodyData& bd0, PxSolverBodyData& bd1)
 {
-
 	PxReal normalForce = 0.f;
 
 	PxU8* PX_RESTRICT cPtr = desc.constraint;
@@ -396,8 +380,8 @@ void  writeBackContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext&
 
 		const PxU32 numNormalConstr = hdr->numNormalConstr;
 
-		Ps::prefetchLine(cPtr, 256);
-		Ps::prefetchLine(cPtr, 384);
+		PxPrefetchLine(cPtr, 256);
+		PxPrefetchLine(cPtr, 384);
 
 		if(vForceWriteback!=NULL)
 		{
@@ -413,24 +397,22 @@ void  writeBackContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext&
 	}
 	PX_ASSERT(cPtr == last);
 
-	if(hasForceThresholds && desc.linkIndexA == PxSolverConstraintDesc::NO_LINK && desc.linkIndexB == PxSolverConstraintDesc::NO_LINK &&
+	if(hasForceThresholds && desc.linkIndexA == PxSolverConstraintDesc::RIGID_BODY && desc.linkIndexB == PxSolverConstraintDesc::RIGID_BODY &&
 		normalForce !=0 && (bd0.reportThreshold < PX_MAX_REAL  || bd1.reportThreshold < PX_MAX_REAL))
 	{
 		ThresholdStreamElement elt;
 		elt.normalForce = normalForce;
 		elt.threshold = PxMin<float>(bd0.reportThreshold, bd1.reportThreshold);
-		elt.nodeIndexA = IG::NodeIndex(bd0.nodeIndex);
-		elt.nodeIndexB = IG::NodeIndex(bd1.nodeIndex);
+		elt.nodeIndexA = PxNodeIndex(bd0.nodeIndex);
+		elt.nodeIndexB = PxNodeIndex(bd1.nodeIndex);
 		elt.shapeInteraction = (reinterpret_cast<SolverContactCoulombHeader*>(desc.constraint))->shapeInteraction;
-		Ps::order(elt.nodeIndexA, elt.nodeIndexB);
+		PxOrder(elt.nodeIndexA, elt.nodeIndexB);
 		PX_ASSERT(elt.nodeIndexA < elt.nodeIndexB);
 
 		PX_ASSERT(cache.mThresholdStreamIndex<cache.mThresholdStreamLength);
 		cache.mThresholdStream[cache.mThresholdStreamIndex++] = elt;
 	}
-
 }
-
 
 void solveFrictionBlock(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxU32 constraintCount, SolverContext& cache)
 {
@@ -439,7 +421,6 @@ void solveFrictionBlock(const PxSolverConstraintDesc* PX_RESTRICT desc, const Px
 		solveFriction(desc[a], cache);
 	}
 }
-
 
 void solveFrictionBlockWriteBack(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxU32 constraintCount, SolverContext& cache)
 {
@@ -457,7 +438,6 @@ void solveFriction_BStaticBlock(const PxSolverConstraintDesc* PX_RESTRICT desc, 
 	}
 }
 
-
 void solveFriction_BStaticConcludeBlock(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxU32 constraintCount, SolverContext& cache)
 {
 	for(PxU32 a = 0; a < constraintCount; ++a)
@@ -473,7 +453,6 @@ void solveFriction_BStaticBlockWriteBack(const PxSolverConstraintDesc* PX_RESTRI
 		solveFriction_BStatic(desc[a], cache);
 	}
 }
-
 
 void solveContactCoulombBlock(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxU32 constraintCount, SolverContext& cache)
 {
@@ -505,7 +484,7 @@ void solveContactCoulombBlockWriteBack(const PxSolverConstraintDesc* PX_RESTRICT
 	if(cache.mThresholdStreamIndex > (cache.mThresholdStreamLength - 4))
 	{
 		//Write back to global buffer
-		PxI32 threshIndex = physx::shdfnd::atomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
+		PxI32 threshIndex = physx::PxAtomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
 		for(PxU32 a = 0; a < cache.mThresholdStreamIndex; ++a)
 		{
 			cache.mSharedThresholdStream[a + threshIndex] = cache.mThresholdStream[a];
@@ -545,7 +524,7 @@ void solveContactCoulomb_BStaticBlockWriteBack(const PxSolverConstraintDesc* PX_
 	{
 		//Not enough space to write 4 more thresholds back!
 		//Write back to global buffer
-		PxI32 threshIndex = physx::shdfnd::atomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
+		PxI32 threshIndex = physx::PxAtomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
 		for(PxU32 a = 0; a < cache.mThresholdStreamIndex; ++a)
 		{
 			cache.mSharedThresholdStream[a + threshIndex] = cache.mThresholdStream[a];
@@ -562,26 +541,34 @@ void solveExtContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& c
 
 	Vec3V linVel0, angVel0, linVel1, angVel1;
 
-	if(desc.linkIndexA == PxSolverConstraintDesc::NO_LINK)
+	if (desc.linkIndexA == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		linVel0 = V3LoadA(desc.bodyA->linearVelocity);
 		angVel0 = V3LoadA(desc.bodyA->angularState);
 	}
 	else
 	{
-		Cm::SpatialVectorV v = desc.articulationA->pxcFsGetVelocity(desc.linkIndexA);
+		//articulation
+		Cm::SpatialVectorV v = getArticulationA(desc)->pxcFsGetVelocity(desc.linkIndexA);
 		linVel0 = v.linear;
 		angVel0 = v.angular;
 	}
 
-	if(desc.linkIndexB == PxSolverConstraintDesc::NO_LINK)
+	if (desc.linkIndexB == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		linVel1 = V3LoadA(desc.bodyB->linearVelocity);
 		angVel1 = V3LoadA(desc.bodyB->angularState);
 	}
+	else if (desc.linkIndexB == PxSolverConstraintDesc::RIGID_BODY)
+	{
+		//soft body, need to implement
+		linVel1 = V3Zero();
+		angVel1 = V3Zero();
+	}
 	else
 	{
-		Cm::SpatialVectorV v = desc.articulationB->pxcFsGetVelocity(desc.linkIndexB);
+		//articulation
+		Cm::SpatialVectorV v = getArticulationB(desc)->pxcFsGetVelocity(desc.linkIndexB);
 		linVel1 = v.linear;
 		angVel1 = v.angular;
 	}
@@ -598,7 +585,7 @@ void solveExtContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& c
 
 	Vec3V linImpulse0 = V3Zero(), linImpulse1 = V3Zero(), angImpulse0 = V3Zero(), angImpulse1 = V3Zero();
 
-	while(currPtr < last)
+	while (currPtr < last)
 	{
 		const SolverContactCoulombHeader* PX_RESTRICT hdr = reinterpret_cast<SolverContactCoulombHeader*>(currPtr);
 		currPtr += sizeof(SolverContactCoulombHeader);
@@ -606,10 +593,10 @@ void solveExtContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& c
 		const PxU32 numNormalConstr = hdr->numNormalConstr;
 
 		PxF32* appliedImpulse = reinterpret_cast<PxF32*>(const_cast<PxU8*>(((reinterpret_cast<const PxU8*>(hdr)) + hdr->frictionOffset + sizeof(SolverFrictionHeader))));
-		Ps::prefetchLine(appliedImpulse);
-		
+		PxPrefetchLine(appliedImpulse);
+
 		SolverContactPointExt* PX_RESTRICT contacts = reinterpret_cast<SolverContactPointExt*>(currPtr);
-		Ps::prefetchLine(contacts);
+		PxPrefetchLine(contacts);
 		currPtr += numNormalConstr * sizeof(SolverContactPointExt);
 
 		Vec3V li0 = V3Zero(), li1 = V3Zero(), ai0 = V3Zero(), ai1 = V3Zero();
@@ -618,34 +605,30 @@ void solveExtContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& c
 
 		solveExtContacts(contacts, numNormalConstr, normal, linVel0, angVel0, linVel1, angVel1, li0, ai0, li1, ai1, appliedImpulse);
 
-		linImpulse0 = V3ScaleAdd(li0, FLoad(hdr->dominance0), linImpulse0);		
+		linImpulse0 = V3ScaleAdd(li0, FLoad(hdr->dominance0), linImpulse0);
 		angImpulse0 = V3ScaleAdd(ai0, FLoad(hdr->angDom0), angImpulse0);
-		linImpulse1 = V3NegScaleSub(li1, FLoad(hdr->dominance1), linImpulse1);	
+		linImpulse1 = V3NegScaleSub(li1, FLoad(hdr->dominance1), linImpulse1);
 		angImpulse1 = V3NegScaleSub(ai1, FLoad(hdr->angDom1), angImpulse1);
 	}
 
-	if(desc.linkIndexA == PxSolverConstraintDesc::NO_LINK)
+	if (desc.linkIndexA == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		V3StoreA(linVel0, desc.bodyA->linearVelocity);
 		V3StoreA(angVel0, desc.bodyA->angularState);
 	}
 	else
 	{
-		Cm::SpatialVectorF Z[64];
-		Cm::SpatialVectorF deltaV[64];
-		desc.articulationA->pxcFsApplyImpulse(desc.linkIndexA, linImpulse0, 
-			angImpulse0, Z, deltaV);
+		getArticulationA(desc)->pxcFsApplyImpulse(desc.linkIndexA, linImpulse0, angImpulse0, cache.Z, cache.deltaV);
 	}
 
-	if(desc.linkIndexB == PxSolverConstraintDesc::NO_LINK)
+	if (desc.linkIndexB == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		V3StoreA(linVel1, desc.bodyB->linearVelocity);
 		V3StoreA(angVel1, desc.bodyB->angularState);
 	}
 	else
 	{
-		desc.articulationB->pxcFsApplyImpulse(desc.linkIndexB, linImpulse1,
-			angImpulse1, cache.Z, cache.deltaV);
+		getArticulationB(desc)->pxcFsApplyImpulse(desc.linkIndexB, linImpulse1, angImpulse1, cache.Z, cache.deltaV);
 	}
 
 	PX_ASSERT(currPtr == last);
@@ -655,30 +638,29 @@ void solveExtFriction(const PxSolverConstraintDesc& desc, SolverContext& cache)
 {
 	Vec3V linVel0, angVel0, linVel1, angVel1;
 
-	if(desc.linkIndexA == PxSolverConstraintDesc::NO_LINK)
+	if(desc.linkIndexA == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		linVel0 = V3LoadA(desc.bodyA->linearVelocity);
 		angVel0 = V3LoadA(desc.bodyA->angularState);
 	}
 	else
 	{
-		Cm::SpatialVectorV v = desc.articulationA->pxcFsGetVelocity(desc.linkIndexA);
+		Cm::SpatialVectorV v = getArticulationA(desc)->pxcFsGetVelocity(desc.linkIndexA);
 		linVel0 = v.linear;
 		angVel0 = v.angular;
 	}
 
-	if(desc.linkIndexB == PxSolverConstraintDesc::NO_LINK)
+	if(desc.linkIndexB == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		linVel1 = V3LoadA(desc.bodyB->linearVelocity);
 		angVel1 = V3LoadA(desc.bodyB->angularState);
 	}
 	else
 	{
-		Cm::SpatialVectorV v = desc.articulationB->pxcFsGetVelocity(desc.linkIndexB);
+		Cm::SpatialVectorV v = getArticulationB(desc)->pxcFsGetVelocity(desc.linkIndexB);
 		linVel1 = v.linear;
 		angVel1 = v.angular;
 	}
-
 
 	//hopefully pointer aliasing doesn't bite.
 	PxU8* PX_RESTRICT currPtr = desc.constraint;
@@ -689,7 +671,6 @@ void solveExtFriction(const PxSolverConstraintDesc& desc, SolverContext& cache)
 
 	while(currPtr < last)
 	{
-	
 		const SolverFrictionHeader* PX_RESTRICT frictionHeader = reinterpret_cast<SolverFrictionHeader*>(currPtr);
 		currPtr += sizeof(SolverFrictionHeader);
 		PxF32* appliedImpulse = reinterpret_cast<PxF32*>(currPtr);
@@ -707,17 +688,13 @@ void solveExtFriction(const PxSolverConstraintDesc& desc, SolverContext& cache)
 		PxU32 numNormalConstr = frictionHeader->numNormalConstr;
 		PxU32 nbFrictionsPerPoint = numFrictionConstr/numNormalConstr;
 
-
-
-
 		for(PxU32 i = 0, j = 0; i < numFrictionConstr; j++)
 		{
 			for(PxU32 p=0;p<nbFrictionsPerPoint;p++, i++)
 			{
 				SolverContactFrictionExt& f = frictions[i];
-				Ps::prefetchLine(&frictions[i+1]);
+				PxPrefetchLine(&frictions[i+1]);
 			
-
 				const Vec3V t0 = Vec3V_From_Vec4V(f.normalXYZ_appliedForceW);
 				const Vec3V raXt0 = Vec3V_From_Vec4V(f.raXnXYZ_velMultiplierW);
 				const Vec3V rbXt0 = Vec3V_From_Vec4V(f.rbXnXYZ_biasW);
@@ -753,37 +730,33 @@ void solveExtFriction(const PxSolverConstraintDesc& desc, SolverContext& cache)
 			}
 		}
 
-
 		linImpulse0 = V3ScaleAdd(li0, FLoad(frictionHeader->invMass0D0), linImpulse0);		
 		angImpulse0 = V3ScaleAdd(ai0, FLoad(frictionHeader->angDom0), angImpulse0);
 		linImpulse1 = V3NegScaleSub(li1, FLoad(frictionHeader->invMass1D1), linImpulse1);	
 		angImpulse1 = V3NegScaleSub(ai1, FLoad(frictionHeader->angDom1), angImpulse1);
 	}
 
-	if(desc.linkIndexA == PxSolverConstraintDesc::NO_LINK)
+	if(desc.linkIndexA == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		V3StoreA(linVel0, desc.bodyA->linearVelocity);
 		V3StoreA(angVel0, desc.bodyA->angularState);
 	}
 	else
 	{
-		desc.articulationA->pxcFsApplyImpulse(desc.linkIndexA, 
-			linImpulse0, angImpulse0, cache.Z, cache.deltaV);
+		getArticulationA(desc)->pxcFsApplyImpulse(desc.linkIndexA, linImpulse0, angImpulse0, cache.Z, cache.deltaV);
 	}
 
-	if(desc.linkIndexB == PxSolverConstraintDesc::NO_LINK)
+	if(desc.linkIndexB == PxSolverConstraintDesc::RIGID_BODY)
 	{
 		V3StoreA(linVel1, desc.bodyB->linearVelocity);
 		V3StoreA(angVel1, desc.bodyB->angularState);
 	}
 	else
 	{
-		desc.articulationB->pxcFsApplyImpulse(desc.linkIndexB, 
-			linImpulse1, angImpulse1, cache.Z, cache.deltaV);
+		getArticulationB(desc)->pxcFsApplyImpulse(desc.linkIndexB, linImpulse1, angImpulse1, cache.Z, cache.deltaV);
 	}
 
 	PX_ASSERT(currPtr == last);
-
 }
 
 void solveExtFrictionBlock(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxU32 constraintCount, SolverContext& cache)
@@ -809,7 +782,6 @@ void solveExtFrictionBlockWriteBack(const PxSolverConstraintDesc* PX_RESTRICT de
 		solveExtFriction(desc[a], cache);
 	}
 }
-
 
 void solveConcludeExtContactCoulomb		(const PxSolverConstraintDesc& desc, SolverContext& cache)
 {
@@ -837,9 +809,12 @@ void solveExtContactCoulombConcludeBlock(const PxSolverConstraintDesc* PX_RESTRI
 void solveExtContactCoulombBlockWriteBack(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxU32 constraintCount, SolverContext& cache)
 {
 	for(PxU32 a = 0; a < constraintCount; ++a)
-	{
-		PxSolverBodyData& bd0 = cache.solverBodyArray[desc[a].linkIndexA != PxSolverConstraintDesc::NO_LINK ? 0 : desc[a].bodyADataIndex];
-		PxSolverBodyData& bd1 = cache.solverBodyArray[desc[a].linkIndexB != PxSolverConstraintDesc::NO_LINK ? 0 : desc[a].bodyBDataIndex];
+	{	
+		//PxSolverBodyData& bd0 = cache.solverBodyArray[desc[a].linkIndexA != PxSolverConstraintDesc::NO_LINK ? 0 : desc[a].bodyADataIndex];
+		//PxSolverBodyData& bd1 = cache.solverBodyArray[desc[a].linkIndexB != PxSolverConstraintDesc::NO_LINK ? 0 : desc[a].bodyBDataIndex];
+
+		PxSolverBodyData& bd0 = cache.solverBodyArray[desc[a].linkIndexA == PxSolverConstraintDesc::RIGID_BODY ? desc[a].bodyADataIndex : 0];
+		PxSolverBodyData& bd1 = cache.solverBodyArray[desc[a].linkIndexB == PxSolverConstraintDesc::RIGID_BODY ? desc[a].bodyBDataIndex : 0];
 
 		solveExtContactCoulomb(desc[a], cache);
 		writeBackContactCoulomb(desc[a], cache, bd0, bd1);
@@ -848,7 +823,7 @@ void solveExtContactCoulombBlockWriteBack(const PxSolverConstraintDesc* PX_RESTR
 	{
 		//Not enough space to write 4 more thresholds back!
 		//Write back to global buffer
-		PxI32 threshIndex = physx::shdfnd::atomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
+		PxI32 threshIndex = physx::PxAtomicAdd(cache.mSharedOutThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
 		for(PxU32 a = 0; a < cache.mThresholdStreamIndex; ++a)
 		{
 			cache.mSharedThresholdStream[a + threshIndex] = cache.mThresholdStream[a];
@@ -857,21 +832,17 @@ void solveExtContactCoulombBlockWriteBack(const PxSolverConstraintDesc* PX_RESTR
 	}
 }
 
-
-void solveConcludeContactCoulomb			(const PxSolverConstraintDesc& desc, SolverContext& cache)
+void solveConcludeContactCoulomb(const PxSolverConstraintDesc& desc, SolverContext& cache)
 {
 	solveContactCoulomb(desc, cache);
 	concludeContactCoulomb(desc, cache);
 }
 
-
-void solveConcludeContactCoulomb_BStatic	(const PxSolverConstraintDesc& desc, SolverContext& cache)
+void solveConcludeContactCoulomb_BStatic(const PxSolverConstraintDesc& desc, SolverContext& cache)
 {
 	solveContactCoulomb_BStatic(desc, cache);
 	concludeContactCoulomb(desc, cache);
 }
-
-
 
 }
 

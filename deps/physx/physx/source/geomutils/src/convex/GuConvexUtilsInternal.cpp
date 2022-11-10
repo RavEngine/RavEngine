@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,16 +32,18 @@
 #include "GuBoxConversion.h"
 #include "GuConvexMesh.h"
 #include "CmScaling.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Gu;
+using namespace Cm;
 
 void Gu::computeHullOBB(Box& hullOBB, const PxBounds3& hullAABB, float offset, 
-						const Cm::Matrix34& convexPose, 
-						const Cm::Matrix34& meshPose, const Cm::FastVertex2ShapeScaling& meshScaling, bool idtScaleMesh)
+						const PxMat34& convexPose, 
+						const PxMat34& meshPose, const FastVertex2ShapeScaling& meshScaling, bool idtScaleMesh)
 {
 	// transform bounds = mesh space
-	Cm::Matrix34 m0to1 = meshPose.transformTranspose(convexPose);
+	const PxMat34 m0to1 = meshPose.transformTranspose(convexPose);
 
 	hullOBB.extents = hullAABB.getExtents() + PxVec3(offset);
 	hullOBB.center = m0to1.transform(hullAABB.getCenter());
@@ -57,7 +58,7 @@ void Gu::computeVertexSpaceOBB(Box& dst, const Box& src, const PxTransform& mesh
 	// AP scaffold failure in x64 debug in GuConvexUtilsInternal.cpp
 	//PX_ASSERT("Performance warning - this path shouldn't execute for identity mesh scale." && !meshScale.isIdentity());
 
-	dst = transform(meshScale.getInverse() * Cm::Matrix34(meshPose.getInverse()), src);
+	dst = transform(meshScale.getInverse() * Matrix34FromTransform(meshPose.getInverse()), src);
 }
 
 void Gu::computeOBBAroundConvex(
@@ -67,11 +68,11 @@ void Gu::computeOBBAroundConvex(
 
 	if(convexGeom.scale.isIdentity())
 	{
-		const PxMat33 m(convexPose.q);
+		const PxMat33Padded m(convexPose.q);
 		obb = Gu::Box(m.transform(aabb.mCenter) + convexPose.p, aabb.mExtents, m);
 	}
 	else
 	{
-		obb = transform(Cm::Matrix34(convexPose) * convexGeom.scale.toMat33(), Box(aabb.mCenter, aabb.mExtents, PxMat33(PxIdentity)));
+		obb = transform(Matrix34FromTransform(convexPose) * toMat33(convexGeom.scale), Box(aabb.mCenter, aabb.mExtents, PxMat33(PxIdentity)));
 	}
 }

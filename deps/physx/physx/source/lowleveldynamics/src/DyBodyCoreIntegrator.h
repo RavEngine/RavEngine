@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef DY_BODYCORE_INTEGRATOR_H
 #define DY_BODYCORE_INTEGRATOR_H
 
-#include "CmPhysXCommon.h"
 #include "PxvDynamics.h"
-#include "PsMathUtils.h"
 #include "PxsRigidBody.h"
 #include "DySolverBody.h"
 #include "DySleepingConfigulation.h"
@@ -91,9 +87,9 @@ bool disableGravity)
 }
 
 
-PX_FORCE_INLINE void integrateCore(PxVec3& motionLinearVelocity, PxVec3& motionAngularVelocity, PxSolverBody& solverBody, PxSolverBodyData& solverBodyData, const PxF32 dt)
+PX_FORCE_INLINE void integrateCore(PxVec3& motionLinearVelocity, PxVec3& motionAngularVelocity, 
+	PxSolverBody& solverBody, PxSolverBodyData& solverBodyData, const PxF32 dt, const PxU32 lockFlags)
 {
-	PxU32 lockFlags = solverBodyData.lockFlags;
 	if (lockFlags)
 	{
 		if (lockFlags & PxRigidDynamicLockFlag::eLOCK_LINEAR_X)
@@ -158,7 +154,7 @@ PX_FORCE_INLINE void integrateCore(PxVec3& motionLinearVelocity, PxVec3& motionA
 		}
 		const PxReal v = dt * w * 0.5f;
 		PxReal s, q;
-		Ps::sincos(v, s, q);
+		PxSinCos(v, s, q);
 		s /= w;
 
 		const PxVec3 pqr = angularMotionVel * s;
@@ -177,11 +173,10 @@ PX_FORCE_INLINE void integrateCore(PxVec3& motionLinearVelocity, PxVec3& motionA
 }
 
 
-PX_FORCE_INLINE PxReal updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, PxReal /*invDt*/, const bool enableStabilization, const bool useAdaptiveForce, Cm::SpatialVector& motionVelocity,
+// PT: TODO: why do we force-inline this?
+PX_FORCE_INLINE PxReal _updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, PxReal /*invDt*/, const bool enableStabilization, const Cm::SpatialVector& motionVelocity,
 	bool hasStaticTouch)
 {
-	//KS - at most one of these features can be enabled at any time
-	PX_ASSERT(!useAdaptiveForce || !enableStabilization);
 	PxsBodyCore& bodyCore = originalBody->getCore();
 
 	// update the body's sleep state and 
@@ -197,12 +192,11 @@ PX_FORCE_INLINE PxReal updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, 
 
 			// calculate normalized energy: kinetic energy divided by mass
 
-			const PxVec3 t = bodyCore.inverseInertia;
+			const PxVec3& t = bodyCore.inverseInertia;
 			const PxVec3 inertia(t.x > 0.f ? 1.0f / t.x : 1.f, t.y > 0.f ? 1.0f / t.y : 1.f, t.z > 0.f ? 1.0f / t.z : 1.f);
 
-
-			PxVec3 sleepLinVelAcc = motionVelocity.linear;
-			PxVec3 sleepAngVelAcc = body2World.q.rotateInv(motionVelocity.angular);
+			const PxVec3& sleepLinVelAcc = motionVelocity.linear;
+			const PxVec3 sleepAngVelAcc = body2World.q.rotateInv(motionVelocity.angular);
 
 			// scale threshold by cluster factor (more contacts => higher sleep threshold)
 			//const PxReal clusterFactor = PxReal(1u + getNumUniqueInteractions());
@@ -213,9 +207,9 @@ PX_FORCE_INLINE PxReal updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, 
 
 			const PxReal angular = sleepAngVelAcc.multiply(sleepAngVelAcc).dot(inertia) * invMass;
 			const PxReal linear = sleepLinVelAcc.magnitudeSquared();
-			PxReal frameNormalizedEnergy = 0.5f * (angular + linear);
+			const PxReal frameNormalizedEnergy = 0.5f * (angular + linear);
 
-			const PxReal cf = hasStaticTouch ? PxReal(PxMin(10u, bodyCore.numBodyInteractions)) : 0.f;
+			const PxReal cf = hasStaticTouch ? PxReal(PxMin(10u, bodyCore.numCountedInteractions)) : 0.f;
 			const PxReal freezeThresh = cf*bodyCore.freezeThreshold;
 
 			originalBody->freezeCount = PxMax(originalBody->freezeCount - dt, 0.0f);
@@ -287,7 +281,7 @@ PX_FORCE_INLINE PxReal updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, 
 					//Compute energy over sleep preparation time
 					const PxReal sleepAngular = originalBody->sleepAngVelAcc.multiply(originalBody->sleepAngVelAcc).dot(inertia) * invMass;
 					const PxReal sleepLinear = originalBody->sleepLinVelAcc.magnitudeSquared();
-					PxReal normalizedEnergy = 0.5f * (sleepAngular + sleepLinear);
+					const PxReal normalizedEnergy = 0.5f * (sleepAngular + sleepLinear);
 					const PxReal sleepClusterFactor = PxReal(1u + bodyCore.numCountedInteractions);
 					// scale threshold by cluster factor (more contacts => higher sleep threshold)
 					const PxReal threshold = sleepClusterFactor*bodyCore.sleepThreshold;
@@ -318,23 +312,16 @@ PX_FORCE_INLINE PxReal updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, 
 		}
 		else 
 		{
-			if (useAdaptiveForce)
-			{
-				if (hasStaticTouch && bodyCore.numBodyInteractions > 1)
-					originalBody->accelScale = 1.f / PxReal(bodyCore.numBodyInteractions);
-				else
-					originalBody->accelScale = 1.f;
-			}
 			if (wc < wakeCounterResetTime * 0.5f || wc < dt)
 			{
 				const PxTransform& body2World = bodyCore.body2World;
 
 				// calculate normalized energy: kinetic energy divided by mass
-				const PxVec3 t = bodyCore.inverseInertia;
+				const PxVec3& t = bodyCore.inverseInertia;
 				const PxVec3 inertia(t.x > 0.f ? 1.0f / t.x : 1.f, t.y > 0.f ? 1.0f / t.y : 1.f, t.z > 0.f ? 1.0f / t.z : 1.f);
 
-				PxVec3 sleepLinVelAcc = motionVelocity.linear;
-				PxVec3 sleepAngVelAcc = body2World.q.rotateInv(motionVelocity.angular);
+				const PxVec3& sleepLinVelAcc = motionVelocity.linear;
+				const PxVec3 sleepAngVelAcc = body2World.q.rotateInv(motionVelocity.angular);
 
 				originalBody->sleepLinVelAcc += sleepLinVelAcc;
 				originalBody->sleepAngVelAcc += sleepAngVelAcc;
@@ -345,7 +332,7 @@ PX_FORCE_INLINE PxReal updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, 
 
 				const PxReal angular = originalBody->sleepAngVelAcc.multiply(originalBody->sleepAngVelAcc).dot(inertia) * invMass;
 				const PxReal linear = originalBody->sleepLinVelAcc.magnitudeSquared();
-				PxReal normalizedEnergy = 0.5f * (angular + linear);
+				const PxReal normalizedEnergy = 0.5f * (angular + linear);
 
 				// scale threshold by cluster factor (more contacts => higher sleep threshold)
 				const PxReal clusterFactor = PxReal(1 + bodyCore.numCountedInteractions);
@@ -380,12 +367,11 @@ PX_FORCE_INLINE PxReal updateWakeCounter(PxsRigidBody* originalBody, PxReal dt, 
 	return wc;
 }
 
-PX_FORCE_INLINE void sleepCheck(PxsRigidBody* originalBody, const PxReal dt, const PxReal intDt, const bool enableStabilization, bool useAdaptiveForce, Cm::SpatialVector& motionVelocity,
+PX_FORCE_INLINE void sleepCheck(PxsRigidBody* originalBody, const PxReal dt, const PxReal intDt, const bool enableStabilization, const Cm::SpatialVector& motionVelocity,
 	bool hasStaticTouch)
 {
-
-	PxReal wc = updateWakeCounter(originalBody, dt, intDt, enableStabilization, useAdaptiveForce, motionVelocity, hasStaticTouch);
-	bool wakeCounterZero = (wc == 0.0f);
+	const PxReal wc = _updateWakeCounter(originalBody, dt, intDt, enableStabilization, motionVelocity, hasStaticTouch);
+	const bool wakeCounterZero = (wc == 0.0f);
 
 	if (wakeCounterZero)
 	{
@@ -401,4 +387,4 @@ PX_FORCE_INLINE void sleepCheck(PxsRigidBody* originalBody, const PxReal dt, con
 
 }
 
-#endif //DY_BODYCORE_INTEGRATOR_H
+#endif

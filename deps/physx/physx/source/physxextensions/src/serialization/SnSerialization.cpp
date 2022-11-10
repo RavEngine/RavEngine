@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,17 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxMetaData.h"
 #include "common/PxSerializer.h"
 #include "extensions/PxConstraintExt.h"
+#include "foundation/PxPhysicsVersion.h"
 #include "PxPhysicsAPI.h"
-#include "PxPhysicsVersion.h"
 
-#include "PsFoundation.h"
 #include "SnConvX.h"
 #include "SnSerializationRegistry.h"
 #include "SnSerialUtils.h"
@@ -91,7 +89,7 @@ namespace
 				PxRigidActor* actor = s.is<PxRigidActor>();
 				if(actor)
 				{
-					Ps::Array<PxConstraint*> objects(actor->getNbConstraints());
+					PxArray<PxConstraint*> objects(actor->getNbConstraints());
 					actor->getConstraints(objects.begin(), objects.size());
 
 					for(PxU32 j=0;j<objects.size();j++)
@@ -135,7 +133,7 @@ bool PxSerialization::isSerializable(PxCollection& collection, PxSerializationRe
 				if(object && (object != &s))
 				{					
 					subordinateCollection->release();					
-					Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+					PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 						"PxSerialization::isSerializable: Reference id %" PX_PRIu64 " used both in current collection and in externalReferences. "
 						"Please use unique identifiers.", id);	
 					return false;
@@ -175,14 +173,14 @@ bool PxSerialization::isSerializable(PxCollection& collection, PxSerializationRe
 				{
 					if(!externalReferences->contains(s0))
 					{						
-						Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+						PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 							"PxSerialization::isSerializable: Object of type %s references a missing object of type %s. "
 							"The missing object needs to be added to either the current collection or the externalReferences collection.",
 							s.getConcreteTypeName(), s0.getConcreteTypeName());						
 					}
 					else if(externalReferences->getId(s0) == PX_SERIAL_OBJECT_ID_INVALID)
 					{						
-						Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+						PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 							"PxSerialization::isSerializable: Object of type %s in externalReferences collection requires an id.", 
 							s0.getConcreteTypeName());
 					}
@@ -191,7 +189,7 @@ bool PxSerialization::isSerializable(PxCollection& collection, PxSerializationRe
 				}
 				else
 				{				
-					Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+					PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 						"PxSerialization::isSerializable: Object of type %s references a missing serial object of type %s. "
 						"Please completed the collection or specify an externalReferences collection containing the object.",
 						s.getConcreteTypeName(), s0.getConcreteTypeName());					
@@ -211,7 +209,7 @@ bool PxSerialization::isSerializable(PxCollection& collection, PxSerializationRe
 	{
 		PxBase& subordinate = subordinateCollection->getObject(j);
 
-		Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 			"PxSerialization::isSerializable: An object of type %s is subordinate but not required "
 			"by other objects in the collection (orphan). Please remove the object from the collection or add its owner.", 
 			subordinate.getConcreteTypeName());
@@ -245,7 +243,7 @@ bool PxSerialization::isSerializable(PxCollection& collection, PxSerializationRe
 				if(collection.contains(s0))
 				{
 					oppositeRequiresCollection->release();
-					Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+					PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 						"PxSerialization::isSerializable: Object of type %s in externalReferences references an object "
 						"of type %s in collection (circular dependency).",
 						s.getConcreteTypeName(), s0.getConcreteTypeName());
@@ -309,7 +307,7 @@ void PxSerialization::createSerialObjectIds(PxCollection& collection, const PxSe
 
 namespace physx { namespace Sn
 {
-	static PxU32 addToStringTable(physx::shdfnd::Array<char>& stringTable, const char* str)
+	static PxU32 addToStringTable(physx::PxArray<char>& stringTable, const char* str)
 	{
 		if(!str)
 			return 0xffffffff;
@@ -319,7 +317,7 @@ namespace physx { namespace Sn
 		const char* start = table;
 		while(length)
 		{
-			if(strcmp(table, str)==0)
+			if(Pxstrcmp(table, str)==0)
 				return PxU32(table - start);
 
 			const char* saved = table;
@@ -346,7 +344,7 @@ void PxSerialization::dumpBinaryMetaData(PxOutputStream& outputStream, PxSeriali
 		{			
 			for(PxU32 i=0;i<types.size();i++)
 			{			
-				if(strcmp(types[i], typeName)==0)
+				if(Pxstrcmp(types[i], typeName)==0)
 					return false;
 			}
 			types.pushBack(typeName);
@@ -362,15 +360,15 @@ void PxSerialization::dumpBinaryMetaData(PxOutputStream& outputStream, PxSeriali
 			   metaData.pushBack(*entry);
 			return count;
 		}		
-		shdfnd::Array<PxMetaDataEntry> metaData;
-		shdfnd::Array<const char*> types;
+		PxArray<PxMetaDataEntry> metaData;
+		PxArray<const char*> types;
 		bool newType;
 	}s;
 
 	SerializationRegistry& sn = static_cast<SerializationRegistry&>(sr);
 	sn.getBinaryMetaData(s);
 
-	shdfnd::Array<char>	stringTable;
+	PxArray<char>	stringTable;
 
 	PxU32 nb = s.metaData.size();
 	PxMetaDataEntry* entries = s.metaData.begin();

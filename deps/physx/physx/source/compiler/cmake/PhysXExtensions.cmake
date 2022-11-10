@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXExtensions common
@@ -35,58 +34,117 @@ SET(LL_SOURCE_DIR ${PHYSX_SOURCE_DIR}/physxextensions/src)
 # Include here after the directories are defined so that the platform specific file can use the variables.
 include(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/PhysXExtensions.cmake)
 
-
-
 SET(PHYSX_EXTENSIONS_SOURCE
 	${LL_SOURCE_DIR}/ExtBroadPhase.cpp
 	${LL_SOURCE_DIR}/ExtCollection.cpp
 	${LL_SOURCE_DIR}/ExtConvexMeshExt.cpp
 	${LL_SOURCE_DIR}/ExtCpuWorkerThread.cpp
-	${LL_SOURCE_DIR}/ExtD6Joint.cpp
-	${LL_SOURCE_DIR}/ExtD6JointCreate.cpp
 	${LL_SOURCE_DIR}/ExtDefaultCpuDispatcher.cpp
 	${LL_SOURCE_DIR}/ExtDefaultErrorCallback.cpp
 	${LL_SOURCE_DIR}/ExtDefaultSimulationFilterShader.cpp
 	${LL_SOURCE_DIR}/ExtDefaultStreams.cpp
-	${LL_SOURCE_DIR}/ExtDistanceJoint.cpp
-	${LL_SOURCE_DIR}/ExtContactJoint.cpp
 	${LL_SOURCE_DIR}/ExtExtensions.cpp
-	${LL_SOURCE_DIR}/ExtFixedJoint.cpp
-	${LL_SOURCE_DIR}/ExtJoint.cpp
 	${LL_SOURCE_DIR}/ExtMetaData.cpp
-	${LL_SOURCE_DIR}/ExtPrismaticJoint.cpp
 	${LL_SOURCE_DIR}/ExtPvd.cpp
 	${LL_SOURCE_DIR}/ExtPxStringTable.cpp
 	${LL_SOURCE_DIR}/ExtRaycastCCD.cpp
-	${LL_SOURCE_DIR}/ExtRevoluteJoint.cpp
 	${LL_SOURCE_DIR}/ExtRigidBodyExt.cpp
 	${LL_SOURCE_DIR}/ExtRigidActorExt.cpp	
 	${LL_SOURCE_DIR}/ExtSceneQueryExt.cpp
+	${LL_SOURCE_DIR}/ExtSceneQuerySystem.cpp
+	${LL_SOURCE_DIR}/ExtCustomSceneQuerySystem.cpp
+	${LL_SOURCE_DIR}/ExtSqQuery.cpp
+	${LL_SOURCE_DIR}/ExtSqQuery.h
+	${LL_SOURCE_DIR}/ExtSqManager.cpp
+	${LL_SOURCE_DIR}/ExtSqManager.h
 	${LL_SOURCE_DIR}/ExtSimpleFactory.cpp
 	${LL_SOURCE_DIR}/ExtSmoothNormals.cpp
-	${LL_SOURCE_DIR}/ExtSphericalJoint.cpp
+	${LL_SOURCE_DIR}/ExtSoftBodyExt.cpp
 	${LL_SOURCE_DIR}/ExtTriangleMeshExt.cpp
-	${LL_SOURCE_DIR}/ExtConstraintHelper.h
+	${LL_SOURCE_DIR}/ExtTetrahedronMeshExt.cpp
+	${LL_SOURCE_DIR}/ExtRemeshingExt.cpp
 	${LL_SOURCE_DIR}/ExtCpuWorkerThread.h
-	${LL_SOURCE_DIR}/ExtD6Joint.h
 	${LL_SOURCE_DIR}/ExtDefaultCpuDispatcher.h
+	${LL_SOURCE_DIR}/ExtInertiaTensor.h
+	${LL_SOURCE_DIR}/ExtPlatform.h
+	${LL_SOURCE_DIR}/ExtPvd.h
+	${LL_SOURCE_DIR}/ExtSerialization.h
+	${LL_SOURCE_DIR}/ExtSharedQueueEntryPool.h
+	${LL_SOURCE_DIR}/ExtTaskQueueHelper.h
+	${LL_SOURCE_DIR}/ExtSampling.cpp
+	${LL_SOURCE_DIR}/ExtTetMakerExt.cpp
+	${LL_SOURCE_DIR}/ExtGjkQueryExt.cpp
+	${LL_SOURCE_DIR}/ExtCustomGeometryExt.cpp
+)
+
+#TODO, create a propper define for whether GPU features are enabled or not!
+IF ((PUBLIC_RELEASE OR PX_GENERATE_GPU_PROJECTS) AND (CMAKE_SIZEOF_VOID_P EQUAL 8))
+	LIST(APPEND PHYSX_EXTENSIONS_SOURCE "${LL_SOURCE_DIR}/ExtParticleExt.cpp")
+	LIST(APPEND PHYSX_EXTENSIONS_SOURCE "${LL_SOURCE_DIR}/ExtParticleClothCooker.cpp")
+ENDIF()
+
+SOURCE_GROUP(src FILES ${PHYSX_EXTENSIONS_SOURCE})
+
+SET(PHYSX_EXTENSIONS_JOINTS_SOURCE
+	${LL_SOURCE_DIR}/ExtGearJoint.cpp
+	${LL_SOURCE_DIR}/ExtGearJoint.h
+	${LL_SOURCE_DIR}/ExtRackAndPinionJoint.cpp
+	${LL_SOURCE_DIR}/ExtRackAndPinionJoint.h
+	${LL_SOURCE_DIR}/ExtD6Joint.cpp
+	${LL_SOURCE_DIR}/ExtD6JointCreate.cpp
+	${LL_SOURCE_DIR}/ExtDistanceJoint.cpp
+	${LL_SOURCE_DIR}/ExtContactJoint.cpp
+	${LL_SOURCE_DIR}/ExtFixedJoint.cpp
+	${LL_SOURCE_DIR}/ExtJoint.cpp
+	${LL_SOURCE_DIR}/ExtPrismaticJoint.cpp
+	${LL_SOURCE_DIR}/ExtRevoluteJoint.cpp
+	${LL_SOURCE_DIR}/ExtSphericalJoint.cpp
+	${LL_SOURCE_DIR}/ExtConstraintHelper.h
+	${LL_SOURCE_DIR}/ExtD6Joint.h
 	${LL_SOURCE_DIR}/ExtDistanceJoint.h
 	${LL_SOURCE_DIR}/ExtContactJoint.h
 	${LL_SOURCE_DIR}/ExtFixedJoint.h
-	${LL_SOURCE_DIR}/ExtInertiaTensor.h
 	${LL_SOURCE_DIR}/ExtJoint.h
 	${LL_SOURCE_DIR}/ExtJointData.h
 	${LL_SOURCE_DIR}/ExtJointMetaDataExtensions.h
-	${LL_SOURCE_DIR}/ExtPlatform.h
 	${LL_SOURCE_DIR}/ExtPrismaticJoint.h
-	${LL_SOURCE_DIR}/ExtPvd.h
 	${LL_SOURCE_DIR}/ExtRevoluteJoint.h
-	${LL_SOURCE_DIR}/ExtSerialization.h
-	${LL_SOURCE_DIR}/ExtSharedQueueEntryPool.h
 	${LL_SOURCE_DIR}/ExtSphericalJoint.h
-	${LL_SOURCE_DIR}/ExtTaskQueueHelper.h	
 )
-SOURCE_GROUP(src FILES ${PHYSX_EXTENSIONS_SOURCE})
+SOURCE_GROUP(src\\joints FILES ${PHYSX_EXTENSIONS_JOINTS_SOURCE})
+
+SET(PHYSX_EXTENSIONS_TET_SOURCE
+	${LL_SOURCE_DIR}/tet/ExtUtilities.h
+	${LL_SOURCE_DIR}/tet/ExtUtilities.cpp
+	${LL_SOURCE_DIR}/tet/ExtTetUnionFind.h
+	${LL_SOURCE_DIR}/tet/ExtTetUnionFind.cpp
+	${LL_SOURCE_DIR}/tet/ExtDelaunayBoundaryInserter.cpp
+	${LL_SOURCE_DIR}/tet/ExtDelaunayBoundaryInserter.h
+	${LL_SOURCE_DIR}/tet/ExtDelaunayTetrahedralizer.cpp
+	${LL_SOURCE_DIR}/tet/ExtDelaunayTetrahedralizer.h
+	${LL_SOURCE_DIR}/tet/ExtVec3.h
+	${LL_SOURCE_DIR}/tet/ExtTetSplitting.cpp
+	${LL_SOURCE_DIR}/tet/ExtTetSplitting.h
+	${LL_SOURCE_DIR}/tet/ExtFastWindingNumber.cpp
+	${LL_SOURCE_DIR}/tet/ExtFastWindingNumber.h
+	${LL_SOURCE_DIR}/tet/ExtRandomAccessHeap.h
+	${LL_SOURCE_DIR}/tet/ExtQuadric.h
+	${LL_SOURCE_DIR}/tet/ExtMeshSimplificator.h
+	${LL_SOURCE_DIR}/tet/ExtMeshSimplificator.cpp
+	${LL_SOURCE_DIR}/tet/ExtBVH.cpp
+	${LL_SOURCE_DIR}/tet/ExtBVH.h
+	${LL_SOURCE_DIR}/tet/ExtRemesher.cpp
+	${LL_SOURCE_DIR}/tet/ExtRemesher.h
+	${LL_SOURCE_DIR}/tet/ExtMarchingCubesTable.h
+	${LL_SOURCE_DIR}/tet/ExtMultiList.h
+	${LL_SOURCE_DIR}/tet/ExtInsideTester.cpp
+	${LL_SOURCE_DIR}/tet/ExtInsideTester.h
+	${LL_SOURCE_DIR}/tet/ExtOctreeTetrahedralizer.cpp
+	${LL_SOURCE_DIR}/tet/ExtOctreeTetrahedralizer.h
+	${LL_SOURCE_DIR}/tet/ExtVoxelTetrahedralizer.cpp
+	${LL_SOURCE_DIR}/tet/ExtVoxelTetrahedralizer.h
+)
+SOURCE_GROUP(src\\tet FILES ${PHYSX_EXTENSIONS_TET_SOURCE})
 
 SET(PHYSX_EXTENSIONS_METADATA_SOURCE
 	${PHYSX_SOURCE_DIR}/physxmetadata/extensions/src/PxExtensionAutoGeneratedMetaDataObjects.cpp
@@ -96,50 +154,81 @@ SET(PHYSX_EXTENSIONS_METADATA_SOURCE
 )
 SOURCE_GROUP(src\\metadata FILES ${PHYSX_EXTENSIONS_METADATA_SOURCE})
 
+SET(PHYSX_EXTENSIONS_OMNIPVD_SOURCE
+	${LL_SOURCE_DIR}/omnipvd/OmniPvdPxExtensionsTypes.h
+	${LL_SOURCE_DIR}/omnipvd/OmniPvdPxExtensionsSampler.h
+	${LL_SOURCE_DIR}/omnipvd/OmniPvdPxExtensionsSampler.cpp
+)
+SOURCE_GROUP(src\\omnipvd FILES ${PHYSX_EXTENSIONS_OMNIPVD_SOURCE})
+
 SET(PHYSX_EXTENSIONS_HEADERS
 	${PHYSX_ROOT_DIR}/include/extensions/PxBinaryConverter.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxBroadPhaseExt.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxCollectionExt.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxConstraintExt.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxContactJoint.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxConvexMeshExt.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxD6Joint.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxD6JointCreate.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxDefaultAllocator.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxDefaultCpuDispatcher.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxDefaultErrorCallback.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxDefaultSimulationFilterShader.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxDefaultStreams.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxDistanceJoint.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxContactJoint.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxExtensionsAPI.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxFixedJoint.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxJoint.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxJointLimit.h
-#	${PHYSX_ROOT_DIR}/include/extensions/PxJointRepXSerializer.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxMassProperties.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxPrismaticJoint.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxRaycastCCD.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxRepXSerializer.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxRepXSimpleType.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxRevoluteJoint.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxRigidActorExt.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxRigidBodyExt.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxSceneQueryExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxSceneQuerySystemExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxCustomSceneQuerySystem.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxSerialization.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxShapeExt.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxSimpleFactory.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxSmoothNormals.h
-	${PHYSX_ROOT_DIR}/include/extensions/PxSphericalJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxSoftBodyExt.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxStringTableExt.h
 	${PHYSX_ROOT_DIR}/include/extensions/PxTriangleMeshExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxTetrahedronMeshExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxRemeshingExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxTriangleMeshAnalysisResult.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxTetrahedronMeshAnalysisResult.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxTetMakerExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxGjkQueryExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxCustomGeometryExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxSamplingExt.h
 )
+
+#TODO, create a propper define for whether GPU features are enabled or not!
+IF ((PUBLIC_RELEASE OR PX_GENERATE_GPU_PROJECTS) AND (CMAKE_SIZEOF_VOID_P EQUAL 8))
+	LIST(APPEND PHYSX_EXTENSIONS_HEADERS "${PHYSX_ROOT_DIR}/include/extensions/PxParticleClothCooker.h")
+	LIST(APPEND PHYSX_EXTENSIONS_HEADERS "${PHYSX_ROOT_DIR}/include/extensions/PxParticleExt.h")
+ENDIF()
+
 SOURCE_GROUP(include FILES ${PHYSX_EXTENSIONS_HEADERS})
+
+SET(PHYSX_JOINT_HEADERS
+	${PHYSX_ROOT_DIR}/include/extensions/PxConstraintExt.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxContactJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxD6Joint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxD6JointCreate.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxDistanceJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxContactJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxFixedJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxGearJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxRackAndPinionJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxJointLimit.h
+#	${PHYSX_ROOT_DIR}/include/extensions/PxJointRepXSerializer.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxPrismaticJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxRevoluteJoint.h
+	${PHYSX_ROOT_DIR}/include/extensions/PxSphericalJoint.h
+)
+SOURCE_GROUP(include\\joints FILES ${PHYSX_JOINT_HEADERS})
 
 SET(PHYSX_FILEBUF_HEADERS
 	${PHYSX_ROOT_DIR}/include/filebuf/PxFileBuf.h
 )
-SOURCE_GROUP(include FILES ${PHYSX_FILEBUF_HEADERS})
+SOURCE_GROUP(include\\filebuf FILES ${PHYSX_FILEBUF_HEADERS})
 
 SET(PHYSX_EXTENSIONS_SERIALIZATION_SOURCE
 	${LL_SOURCE_DIR}/serialization/SnSerialization.cpp
@@ -210,9 +299,13 @@ ADD_LIBRARY(PhysXExtensions ${PHYSXEXTENSIONS_LIBTYPE}
 	${PHYSXEXTENSIONS_PLATFORM_SRC_FILES}
 	
 	${PHYSX_EXTENSIONS_SOURCE}
+	${PHYSX_EXTENSIONS_TET_SOURCE}
+	${PHYSX_EXTENSIONS_JOINTS_SOURCE}
 	${PHYSX_EXTENSIONS_METADATA_SOURCE}
+	${PHYSX_EXTENSIONS_OMNIPVD_SOURCE}
 	
 	${PHYSX_EXTENSIONS_HEADERS}
+	${PHYSX_JOINT_HEADERS}	
 	${PHYSX_FILEBUF_HEADERS}
 	
 	${PHYSX_EXTENSIONS_SERIALIZATION_SOURCE}
@@ -222,6 +315,7 @@ ADD_LIBRARY(PhysXExtensions ${PHYSXEXTENSIONS_LIBTYPE}
 )
 
 INSTALL(FILES ${PHYSX_EXTENSIONS_HEADERS} DESTINATION include/extensions)
+INSTALL(FILES ${PHYSX_JOINT_HEADERS} DESTINATION include/extensions)
 INSTALL(FILES ${PHYSX_FILEBUF_HEADERS} DESTINATION include/filebuf)
 
 TARGET_INCLUDE_DIRECTORIES(PhysXExtensions 
@@ -235,16 +329,8 @@ TARGET_INCLUDE_DIRECTORIES(PhysXExtensions
 	
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/contact
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/common
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/convex
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/distance
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/sweep
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/gjk
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/intersection
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/mesh
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/hf
-	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/pcm
 
 	PRIVATE ${PHYSX_SOURCE_DIR}/physxmetadata/core/include
 	PRIVATE ${PHYSX_SOURCE_DIR}/physxmetadata/extensions/include
@@ -254,11 +340,12 @@ TARGET_INCLUDE_DIRECTORIES(PhysXExtensions
 	PRIVATE ${PHYSX_SOURCE_DIR}/physxextensions/src/serialization/Binary
 	PRIVATE ${PHYSX_SOURCE_DIR}/physxextensions/src/serialization/File
 
-	PRIVATE ${PHYSX_SOURCE_DIR}/pvdsdk/src
 	PRIVATE ${PHYSX_SOURCE_DIR}/physx/src
 	
 	PRIVATE ${PHYSX_SOURCE_DIR}/pvd/include
-	
+
+	PRIVATE ${PHYSX_SOURCE_DIR}/scenequery/include
+
 	PRIVATE ${PHYSX_SOURCE_DIR}/fastxml/include
 )
 
@@ -301,8 +388,12 @@ ENDIF()
 IF(PX_GENERATE_SOURCE_DISTRO)	
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXEXTENSIONS_PLATFORM_SRC_FILES})	
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_SOURCE})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_TET_SOURCE})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_JOINTS_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_METADATA_SOURCE})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_OMNIPVD_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_HEADERS})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_JOINT_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_FILEBUF_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_SERIALIZATION_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_EXTENSIONS_SERIALIZATION_XML_SOURCE})

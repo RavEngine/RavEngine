@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXFoundation
@@ -39,61 +38,54 @@ ELSE()
 	)	
 ENDIF()
 
-SET(PXSHARED_PLATFORM_HEADERS
-	${PXSHARED_PATH}/include/foundation/unix/PxUnixIntrinsics.h	
+SET(PHYSXFOUNDATION_PLATFORM_HEADERS
+	${PHYSX_ROOT_DIR}/include/foundation/unix/PxUnixMathIntrinsics.h	
+	${PHYSX_ROOT_DIR}/include/foundation/unix/PxUnixIntrinsics.h	
+	${PHYSX_ROOT_DIR}/include/foundation/unix/PxUnixAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/unix/PxUnixInlineAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/unix/PxUnixTrigConstants.h
+	${PHYSX_ROOT_DIR}/include/foundation/unix/PxUnixFPU.h
 )
-SOURCE_GROUP(shared\\include\\unix FILES ${PXSHARED_PLATFORM_HEADERS})
+SOURCE_GROUP(include\\unix FILES ${PHYSXFOUNDATION_PLATFORM_HEADERS})
 
 SET(PHYSXFOUNDATION_PLATFORM_SOURCE
-	${LL_SOURCE_DIR}/src/unix/PsUnixAtomic.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixCpu.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixFPU.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixMutex.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixPrintString.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixSList.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixSocket.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixSync.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixThread.cpp
-	${LL_SOURCE_DIR}/src/unix/PsUnixTime.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixAtomic.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixMutex.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixSync.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixThread.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixPrintString.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixSList.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixSocket.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixTime.cpp
+	${LL_SOURCE_DIR}/unix/FdUnixFPU.cpp
 )
-SOURCE_GROUP("src\\src\\unix" FILES ${PHYSXFOUNDATION_PLATFORM_FILES})
-
-SET(PHYSXFOUNDATION_PLATFORM_INCLUDES
-	${LL_SOURCE_DIR}/include/linux
-)
+SOURCE_GROUP("src\\src\\unix" FILES ${PHYSXFOUNDATION_PLATFORM_SOURCE})
 
 SET(PHYSXFOUNDATION_NEON_FILES
-	${LL_SOURCE_DIR}/include/unix/neon/PsUnixNeonAoS.h
-	${LL_SOURCE_DIR}/include/unix/neon/PsUnixNeonInlineAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/unix/neon/PxUnixNeonAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/unix/neon/PxUnixNeonInlineAoS.h
 )
 
 SET(PHYSXFOUNDATION_SSE2_FILES
-	${LL_SOURCE_DIR}/include/unix/sse2/PsUnixSse2AoS.h
-	${LL_SOURCE_DIR}/include/unix/sse2/PsUnixSse2InlineAoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/unix/sse2/PxUnixSse2AoS.h
+	${PHYSX_ROOT_DIR}/include/foundation/unix/sse2/PxUnixSse2InlineAoS.h
 )
 
-SET(PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS
-	${LL_SOURCE_DIR}/include/unix/PsUnixAoS.h
-	${LL_SOURCE_DIR}/include/unix/PsUnixFPU.h
-	${LL_SOURCE_DIR}/include/unix/PsUnixInlineAoS.h
-	${LL_SOURCE_DIR}/include/unix/PsUnixIntrinsics.h
-	${LL_SOURCE_DIR}/include/unix/PsUnixTrigConstants.h
-)
-SOURCE_GROUP("src\\include\\unix" FILES ${PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS})
-
-INSTALL(FILES ${PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS} DESTINATION source/foundation/include/unix)
-INSTALL(FILES ${PHYSXFOUNDATION_NEON_FILES} DESTINATION source/foundation/include/unix/neon)
-INSTALL(FILES ${PHYSXFOUNDATION_SSE2_FILES} DESTINATION source/foundation/include/unix/sse2)
-INSTALL(FILES ${PXSHARED_PLATFORM_HEADERS} DESTINATION ${PXSHARED_INSTALL_PREFIX}/include/foundation/unix)
+INSTALL(FILES ${PHYSXFOUNDATION_NEON_FILES} DESTINATION include/foundation/unix/neon)
+INSTALL(FILES ${PHYSXFOUNDATION_SSE2_FILES} DESTINATION include/foundation/unix/sse2)
+INSTALL(FILES ${PHYSXFOUNDATION_PLATFORM_HEADERS} DESTINATION include/foundation/unix)
 
 SET(PHYSXFOUNDATION_PLATFORM_FILES
 	${PHYSXFOUNDATION_PLATFORM_SOURCE}
-	${PHYSXFOUNDATION_PLATFORM_SOURCE_HEADERS}
+	${PHYSXFOUNDATION_PLATFORM_HEADERS}
 	${PHYSXFOUNDATION_NEON_FILES}
 	${PHYSXFOUNDATION_SSE2_FILES}
 	${PHYSXFOUNDATION_RESOURCE_FILE}
 )
 
+SET(PHYSXFOUNDATION_PLATFORM_INCLUDES
+	${PHYSX_ROOT_DIR}/include/foundation/linux
+)
 
 
 # Use generator expressions to set config specific preprocessor definitions

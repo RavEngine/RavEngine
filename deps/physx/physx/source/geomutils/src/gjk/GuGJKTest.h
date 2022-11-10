@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,7 +30,6 @@
 #define GU_GJK_TEST_H
 
 #include "common/PxPhysXCommonConfig.h"
-#include "CmPhysXCommon.h"
 #include "GuGJKUtil.h"
 
 namespace physx
@@ -39,18 +37,17 @@ namespace physx
 namespace Gu
 {
 	struct GjkConvex;
-		
 
-	PX_PHYSX_COMMON_API GjkStatus testGjk(GjkConvex& a, GjkConvex& b,  const Ps::aos::Vec3VArg initialSearchDir, const Ps::aos::FloatVArg contactDist, Ps::aos::Vec3V& closestA, Ps::aos::Vec3V& closestB,
-		Ps::aos::Vec3V& normal, Ps::aos::FloatV& dist);
+	PX_PHYSX_COMMON_API GjkStatus testGjk(const GjkConvex& a, const GjkConvex& b,  const aos::Vec3VArg initialSearchDir, const aos::FloatVArg contactDist, aos::Vec3V& closestA, aos::Vec3V& closestB,
+		aos::Vec3V& normal, aos::FloatV& dist);
 	
-	PX_PHYSX_COMMON_API	bool testGjkRaycast(GjkConvex& a, GjkConvex& b,  const Ps::aos::Vec3VArg initialSearchDir, const Ps::aos::FloatVArg initialLambda, const Ps::aos::Vec3VArg s, const Ps::aos::Vec3VArg r, 
-		Ps::aos::FloatV& lambda, Ps::aos::Vec3V& normal, Ps::aos::Vec3V& closestA, const PxReal _inflation, const bool initialOverlap);
+	PX_PHYSX_COMMON_API	bool testGjkRaycast(const GjkConvex& a, const GjkConvex& b,  const aos::Vec3VArg initialSearchDir, const aos::FloatVArg initialLambda, const aos::Vec3VArg s, const aos::Vec3VArg r, 
+		aos::FloatV& lambda, aos::Vec3V& normal, aos::Vec3V& closestA, const PxReal _inflation, const bool initialOverlap);
 
-	PX_PHYSX_COMMON_API GjkStatus testGjkPenetration(GjkConvex& a, GjkConvex& b, const Ps::aos::Vec3VArg initialSearchDir, const Ps::aos::FloatVArg contactDist,
+	PX_PHYSX_COMMON_API GjkStatus testGjkPenetration(const GjkConvex& a, const GjkConvex& b, const aos::Vec3VArg initialSearchDir, const aos::FloatVArg contactDist,
 		PxU8* aIndices, PxU8* bIndices, PxU8& size, GjkOutput& output);
 
-	PX_PHYSX_COMMON_API GjkStatus testEpaPenetration(GjkConvex& a, GjkConvex& b, const PxU8* aIndices, const PxU8* bIndices, const PxU8 size,
+	PX_PHYSX_COMMON_API GjkStatus testEpaPenetration(const GjkConvex& a, const GjkConvex& b, const PxU8* aIndices, const PxU8* bIndices, const PxU8 size,
 		GjkOutput& output);
 }
 }

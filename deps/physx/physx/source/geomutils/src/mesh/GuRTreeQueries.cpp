@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -50,12 +49,12 @@ General notes:
 */
 
 #include "foundation/PxBounds3.h"
+#include "foundation/PxIntrinsics.h"
+#include "foundation/PxBitUtils.h"
 #include "GuRTree.h"
-#include "PsIntrinsics.h"
 #include "GuBox.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 #include "PxQueryReport.h" // for PxAgain
-#include "PsBitUtils.h"
 #include "GuBVConstants.h"
 
 //#define VERIFY_RTREE
@@ -66,14 +65,13 @@ General notes:
 #endif
 
 using namespace physx;
-using namespace physx::shdfnd;
-using namespace Ps::aos;
+using namespace aos;
 
 namespace physx
 {
 namespace Gu {
 
-using namespace Ps::aos;
+using namespace aos;
 
 #define v_absm(a) V4Andc(a, signMask)
 #define V4FromF32A(x) V4LoadA(x)
@@ -114,7 +112,7 @@ void RTree::traverseAABB(const PxVec3& boxMin, const PxVec3& boxMax, const PxU32
 
 	// AP potential perf optimization - fetch the top level right away
 	PX_ASSERT(RTREE_N == 4 || RTREE_N == 8);
-	PX_ASSERT(Ps::isPowerOfTwo(mPageSize));
+	PX_ASSERT(PxIsPowerOfTwo(mPageSize));
 
 	for (PxI32 j = PxI32(mNumRootPages-1); j >= 0; j --)
 		*stackPtr++ = j*sizeof(RTreePage);
@@ -355,7 +353,7 @@ void RTree::traverseOBB(
 	Vec4V obbY = Vec4V_From_PxVec3_WUndefined(obb.rot.column1);
 	Vec4V obbZ = Vec4V_From_PxVec3_WUndefined(obb.rot.column2);
 
-#if PX_WINDOWS || PX_XBOXONE || PX_XBOX_SERIES_X
+#if PX_WINDOWS
 	// Visual Studio compiler hangs with #defines
 	// On VMX platforms we use #defines in the other branch of this #ifdef to avoid register spills (LHS)
 	Vec4V obbESplatX = V4SplatElement<0>(obbE);

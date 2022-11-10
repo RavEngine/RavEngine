@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDCOMMSTREAMEVENTSINK_H
-#define PXPVDSDK_PXPVDCOMMSTREAMEVENTSINK_H
+#ifndef PX_PVD_COMM_STREAM_EVENT_SINK_H
+#define PX_PVD_COMM_STREAM_EVENT_SINK_H
 
 #include "PxPvdObjectModelBaseTypes.h"
 #include "PxPvdCommStreamEvents.h"
@@ -52,4 +51,5 @@ class PvdCommStreamEventSink
 
 } // pvd
 } // physx
-#endif // PXPVDSDK_PXPVDCOMMSTREAMEVENTSINK_H
+#endif
+

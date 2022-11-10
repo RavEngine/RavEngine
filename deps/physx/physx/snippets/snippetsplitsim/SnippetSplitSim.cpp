@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -54,10 +53,8 @@
 //    the first frame is cheaper than subsequent frames.
 // ********************************************************************************************************
 
-
 #include <ctype.h>
 #include "PxPhysicsAPI.h"
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 #include "../snippetutils/SnippetUtils.h"
@@ -68,18 +65,14 @@
 
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
-
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics	= NULL;
-
-PxDefaultCpuDispatcher*	gDispatcher = NULL;
-PxScene*				gScene		= NULL;
-
-PxMaterial*				gMaterial	= NULL;
-
-PxPvd*                  gPvd        = NULL;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics	= NULL;
+static PxDefaultCpuDispatcher*	gDispatcher = NULL;
+static PxScene*					gScene		= NULL;
+static PxMaterial*				gMaterial	= NULL;
+static PxPvd*					gPvd        = NULL;
 
 #define NB_KINE_X	16
 #define NB_KINE_Y	16
@@ -88,6 +81,7 @@ PxPvd*                  gPvd        = NULL;
 static bool isFirstFrame = true;
 
 PxRigidDynamic* gKinematics[NB_KINE_Y][NB_KINE_X];
+PxTransform gKinematicTargets[NB_KINE_Y][NB_KINE_X];
 
 PxQuat setRotY(PxMat33& m, const PxReal angle)
 {
@@ -219,7 +213,7 @@ void createKinematics()
 	
 }
 
-void updateKinematics(PxReal timeStep)
+void updateKinematicTargets(PxReal timeStep)
 {
 	const float YScale = 0.4f;
 	
@@ -246,8 +240,23 @@ void updateKinematics(PxReal timeStep)
 			const float h = sinf(gTime*2.0f + float(x)*Coeff + + float(y)*Coeff)*2.0f;
 			motion.p = PxVec3(xf, h + 2.0f + YScale, yf);
 
+			gKinematicTargets[y][x] = motion;
+		}
+	}
+}
+
+void applyKinematicTargets()
+{
+	const PxU32 NbX = NB_KINE_X;
+	const PxU32 NbY = NB_KINE_Y;
+
+	for(PxU32 y=0;y<NbY;y++)
+	{
+		for(PxU32 x=0;x<NbX;x++)
+		{
 			PxRigidDynamic* kine = gKinematics[y][x];
-			kine->setKinematicTarget(motion);
+			const PxTransform& target = gKinematicTargets[y][x];
+			kine->setKinematicTarget(target);
 		}
 	}
 }
@@ -296,8 +305,10 @@ void stepPhysics(bool /*interactive*/)
 		isFirstFrame = false;
 	}
 	//update the kinematice target pose in parallel with collision running
-	updateKinematics(timeStep);
+	updateKinematicTargets(timeStep);
 	gScene->fetchCollision(true);
+	//apply the computed and buffered kinematic target poses
+	applyKinematicTargets();
 	gScene->advance();
 	gScene->fetchResults(true); 
 	
@@ -311,13 +322,17 @@ void stepPhysics(bool /*interactive*/)
 	PxReal timeStep = 1.0/60.0f;
 
 	//update the kinematice target pose in parallel with collision running
-	updateKinematics(timeStep);
+	updateKinematicTargets(timeStep);
 	if(!isFirstFrame)
 	{
 		gScene->fetchCollision(true);
+		//apply the computed and buffered kinematic target poses
+		applyKinematicTargets();
 		gScene->advance();
 		gScene->fetchResults(true); 
 	}
+	else
+		applyKinematicTargets();
 
 	isFirstFrame = false;
 	//Run the deferred collision detection for the next frame. This will run in parallel with render.
@@ -331,8 +346,10 @@ void stepPhysics(bool /*interactive*/)
 	PxReal timeStep = 1.0/60.0f;
 	//update the kinematice target pose in parallel with collision running
 	gScene->collide(timeStep);
-	updateKinematics(timeStep);
+	updateKinematicTargets(timeStep);
 	gScene->fetchCollision(true);
+	//apply the computed and buffered kinematic target poses
+	applyKinematicTargets();
 	gScene->advance();
 	gScene->fetchResults(true); 
 }
@@ -360,12 +377,6 @@ void cleanupPhysics(bool /*interactive*/)
 	PX_RELEASE(gFoundation);
 	
 	printf("SnippetSplitSim done.\n");
-}
-
-void keyPress(unsigned char key, const PxTransform& camer)
-{
-	PX_UNUSED(key);
-	PX_UNUSED(camer);
 }
 
 int snippetMain(int, const char*const*)

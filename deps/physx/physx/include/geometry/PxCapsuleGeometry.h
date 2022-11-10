@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NX_CAPSULE_GEOMETRY
-#define PX_PHYSICS_NX_CAPSULE_GEOMETRY
+#ifndef PX_CAPSULE_GEOMETRY_H
+#define PX_CAPSULE_GEOMETRY_H
 /** \addtogroup geomutils
 @{
 */
@@ -56,21 +54,33 @@ class PxCapsuleGeometry : public PxGeometry
 {
 public:
 	/**
-	\brief Default constructor, initializes to a capsule with zero height and radius.
-	*/
-	PX_INLINE PxCapsuleGeometry() : PxGeometry(PxGeometryType::eCAPSULE), radius(0), halfHeight(0)		{}
-
-	/**
 	\brief Constructor, initializes to a capsule with passed radius and half height.
 	*/
-	PX_INLINE PxCapsuleGeometry(PxReal radius_, PxReal halfHeight_) :	PxGeometry(PxGeometryType::eCAPSULE), radius(radius_), halfHeight(halfHeight_)	{}
+	PX_INLINE PxCapsuleGeometry(PxReal radius_=0.0f, PxReal halfHeight_=0.0f) :	PxGeometry(PxGeometryType::eCAPSULE), radius(radius_), halfHeight(halfHeight_)	{}
+
+	/**
+	\brief Copy constructor.
+
+	\param[in] that		Other object
+	*/
+	PX_INLINE PxCapsuleGeometry(const PxCapsuleGeometry& that) : PxGeometry(that), radius(that.radius), halfHeight(that.halfHeight)								{}
+
+	/**
+	\brief Assignment operator
+	*/
+	PX_INLINE void operator=(const PxCapsuleGeometry& that)
+	{
+		mType = that.mType;
+		radius = that.radius;
+		halfHeight = that.halfHeight;
+	}
 
 	/**
 	\brief Returns true if the geometry is valid.
 
 	\return True if the current settings are valid.
 
-	\note A valid capsule has radius > 0, halfHeight > 0.
+	\note A valid capsule has radius > 0, halfHeight >= 0.
 	It is illegal to call PxRigidActor::createShape and PxPhysics::createShape with a capsule that has zero radius or height.
 
 	@see PxRigidActor::createShape, PxPhysics::createShape
@@ -91,11 +101,11 @@ public:
 
 PX_INLINE bool PxCapsuleGeometry::isValid() const
 {
-	if (mType != PxGeometryType::eCAPSULE)
+	if(mType != PxGeometryType::eCAPSULE)
 		return false;
-	if (!PxIsFinite(radius) || !PxIsFinite(halfHeight))
+	if(!PxIsFinite(radius) || !PxIsFinite(halfHeight))
 		return false;
-	if (radius <= 0.0f || halfHeight <= 0.0f)
+	if(radius <= 0.0f || halfHeight < 0.0f)
 		return false;
 
 	return true;

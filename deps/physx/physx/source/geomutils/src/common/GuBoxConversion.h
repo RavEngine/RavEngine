@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,16 +30,16 @@
 #define GU_BOX_CONVERSION_H
 
 #include "GuBox.h"
-#include "PsMathUtils.h"
-#include "CmMatrix34.h"
-#include "PsVecMath.h"
+#include "foundation/PxMathUtils.h"
+#include "foundation/PxMat34.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
 	// PT: builds rot from quat. WARNING: writes 4 bytes after 'dst.rot'.
 	PX_FORCE_INLINE void buildFrom(Gu::Box& dst, const PxQuat& q)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const QuatV qV = V4LoadU(&q.x);
 		Vec3V column0, column1, column2;
 		QuatGetMat33V(qV, column0, column1, column2);
@@ -52,14 +51,14 @@ namespace physx
 
 	PX_FORCE_INLINE void buildFrom(Gu::Box& dst, const PxVec3& center, const PxVec3& extents, const PxQuat& q)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		// PT: writes 4 bytes after 'rot' but it's safe since we then write 'center' just afterwards
 		buildFrom(dst, q);
 		dst.center	= center;
 		dst.extents	= extents;
 	}
 
-	PX_FORCE_INLINE void buildMatrixFromBox(Cm::Matrix34& mat34, const Gu::Box& box)
+	PX_FORCE_INLINE void buildMatrixFromBox(PxMat34& mat34, const Gu::Box& box)
 	{
 		mat34.m	= box.rot;
 		mat34.p	= box.center;
@@ -67,7 +66,7 @@ namespace physx
 
 	// SD: function is now the same as FastVertex2ShapeScaling::transformQueryBounds
 	// PT: lots of LHS in that one. TODO: revisit...
-	PX_INLINE Gu::Box transform(const Cm::Matrix34& transfo, const Gu::Box& box)
+	PX_INLINE Gu::Box transform(const PxMat34& transfo, const Gu::Box& box)
 	{
 		Gu::Box ret;
 		PxMat33& obbBasis = ret.rot;
@@ -77,7 +76,7 @@ namespace physx
 		obbBasis.column2 = transfo.rotate(box.rot.column2 * box.extents.z);
 
 		ret.center = transfo.transform(box.center);
-		ret.extents = Ps::optimizeBoundingBox(obbBasis);
+		ret.extents = PxOptimizeBoundingBox(obbBasis);
 		return ret;
 	}
 
@@ -98,7 +97,7 @@ namespace physx
 	\param	mtx		[in] the transform matrix
 	\param	obb		[out] the transformed OBB
 	*/
-	PX_INLINE	void rotate(const Gu::Box& src, const Cm::Matrix34& mtx, Gu::Box& obb)
+	PX_INLINE	void rotate(const Gu::Box& src, const PxMat34& mtx, Gu::Box& obb)
 	{
 		// The extents remain constant
 		obb.extents = src.extents;

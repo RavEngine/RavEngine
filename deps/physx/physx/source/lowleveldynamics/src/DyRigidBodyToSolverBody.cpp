@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,25 +30,45 @@
 #include "DySolverBody.h"
 #include "PxsRigidBody.h"
 #include "PxvDynamics.h"
+#include "foundation/PxSIMDHelpers.h"
 
 using namespace physx;
 
 // PT: TODO: SIMDify all this...
 void Dy::copyToSolverBodyData(const PxVec3& linearVelocity, const PxVec3& angularVelocity, const PxReal invMass, const PxVec3& invInertia, const PxTransform& globalPose,
-	const PxReal maxDepenetrationVelocity, const PxReal maxContactImpulse, const PxU32 nodeIndex, const PxReal reportThreshold, PxSolverBodyData& data, PxU32 lockFlags)
+	const PxReal maxDepenetrationVelocity, const PxReal maxContactImpulse, const PxU32 nodeIndex, const PxReal reportThreshold, PxSolverBodyData& data, PxU32 lockFlags,
+	const PxReal dt, bool gyroscopicForces)
 {
 	data.nodeIndex = nodeIndex;
 
 	const PxVec3 safeSqrtInvInertia = computeSafeSqrtInertia(invInertia);
 
-	// PT: TODO: re-SIMDify this one
-	const PxMat33 rotation(globalPose.q);
+	const PxMat33Padded rotation(globalPose.q);
 
 	Cm::transformInertiaTensor(safeSqrtInvInertia, rotation, data.sqrtInvInertia);
 
-	// Copy simple properties
-	data.linearVelocity = linearVelocity;
-	data.angularVelocity = angularVelocity;
+	PxVec3 ang = angularVelocity;
+	PxVec3 lin = linearVelocity;
+
+	if (gyroscopicForces)
+	{
+		const PxVec3 localInertia(
+			invInertia.x == 0.f ? 0.f : 1.f / invInertia.x,
+			invInertia.y == 0.f ? 0.f : 1.f / invInertia.y,
+			invInertia.z == 0.f ? 0.f : 1.f / invInertia.z);
+
+		const PxVec3 localAngVel = globalPose.q.rotateInv(ang);
+		const PxVec3 origMom = localInertia.multiply(localAngVel);
+		const PxVec3 torque = -localAngVel.cross(origMom);
+		PxVec3 newMom = origMom + torque * dt;
+		const PxReal denom = newMom.magnitude();
+		const PxReal ratio = denom > 0.f ? origMom.magnitude() / denom : 0.f;
+		newMom *= ratio;
+		const PxVec3 newDeltaAngVel = globalPose.q.rotate(invInertia.multiply(newMom) - localAngVel);
+
+		ang += newDeltaAngVel;
+	}	
+	
 
 	if (lockFlags)
 	{
@@ -65,30 +84,31 @@ void Dy::copyToSolverBodyData(const PxVec3& linearVelocity, const PxVec3& angula
 		//this is handled automatically, it's probably better not to zero these inertia rows
 		if (lockFlags & PxRigidDynamicLockFlag::eLOCK_ANGULAR_X)
 		{
-			data.angularVelocity.x = 0.f;
+			ang.x = 0.f;
 			//data.sqrtInvInertia.column0 = PxVec3(0.f);
 		}
 		if (lockFlags & PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y)
 		{
-			data.angularVelocity.y = 0.f;
+			ang.y = 0.f;
 			//data.sqrtInvInertia.column1 = PxVec3(0.f);
 		}
 		if (lockFlags & PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z)
 		{
-			data.angularVelocity.z = 0.f;
+			ang.z = 0.f;
 			//data.sqrtInvInertia.column2 = PxVec3(0.f);
 		}
 	}
 
-	PX_ASSERT(linearVelocity.isFinite());
-	PX_ASSERT(angularVelocity.isFinite());
+	PX_ASSERT(lin.isFinite());
+	PX_ASSERT(ang.isFinite());
+
+	data.angularVelocity = ang;
+	data.linearVelocity = lin;
 
 	data.invMass = invMass;
 	data.penBiasClamp = maxDepenetrationVelocity;
 	data.maxContactImpulse = maxContactImpulse;
 	data.body2World = globalPose;
-
-	data.lockFlags = PxU16(lockFlags);
 
 	data.reportThreshold = reportThreshold;
 }

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#ifndef PXPVDSDK_PSPVD_H
-#define PXPVDSDK_PSPVD_H
+#ifndef PS_PVD_H
+#define PS_PVD_H
 
 /** \addtogroup pvd
 @{
 */
 #include "pvd/PxPvd.h"
-#include "PsBroadcast.h"
+#include "foundation/PxBroadcast.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -53,7 +52,7 @@ class PvdClient;
 class PvdOMMetaDataProvider;
 
 // PsPvd is used for advanced user, it support custom pvd client API
-class PsPvd : public physx::PxPvd, public shdfnd::AllocationListener
+class PsPvd : public physx::PxPvd, public PxAllocationListener
 {
   public:
 	virtual void addClient(PvdClient* client) = 0;
@@ -80,4 +79,5 @@ class PsPvd : public physx::PxPvd, public shdfnd::AllocationListener
 #endif
 
 /** @} */
-#endif // PXPVDSDK_PSPVD_H
+#endif
+

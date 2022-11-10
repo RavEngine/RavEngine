@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef PX_COLLECTION_EXT_H
 #define PX_COLLECTION_EXT_H
@@ -41,6 +39,9 @@
 namespace physx
 {
 #endif
+
+	class PxCollection;
+	class PxScene;
 
 	class PxCollectionExt
 	{
@@ -75,7 +76,6 @@ namespace physx
 		*/	
 		static void remove(PxCollection& collection, PxType concreteType, PxCollection* to = NULL);
 
-
 		/**
 		\brief Collects all objects in PxPhysics that are shareable across multiple scenes.
 
@@ -95,9 +95,9 @@ namespace physx
 		/**
 		\brief Collects all objects from a PxScene.
 
-		This function creates a new collection from all objects that where added to the specified 
+		This function creates a new collection from all objects that were added to the specified 
 		PxScene. Instances of the following types are included: PxActor, PxAggregate, 
-		PxArticulation and PxJoint (other PxConstraint types are not included).
+		PxArticulationReducedCoordinate and PxJoint (other PxConstraint types are not included).
 	
 		This is a helper function to ease the creation of collections for serialization. 
 		The function PxSerialization.complete() can be used to complete the collection with required objects prior to 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,13 +37,11 @@
 #include "GuTriangleMeshBV4.h"
 #include "GuTriangleMeshRTree.h"
 #include "GuHeightFieldData.h"
-#include "SqPruningStructure.h"
+#include "NpPruningStructure.h"
 #include "NpRigidStatic.h"
 #include "NpRigidDynamic.h"
-#include "NpArticulation.h"
 #include "NpArticulationReducedCoordinate.h"
 #include "NpArticulationLink.h"
-#include "NpArticulationJoint.h"
 #include "NpMaterial.h"
 #include "NpAggregate.h"
 
@@ -57,7 +54,7 @@ namespace physx
 	{
 		NpMaterial& t = static_cast<NpMaterial&>(obj);
 		context.registerReference(obj, PX_SERIAL_REF_KIND_PXBASE, size_t(&obj));
-		context.registerReference(obj, PX_SERIAL_REF_KIND_MATERIAL_IDX, size_t(t.getHandle()));
+		context.registerReference(obj, PX_SERIAL_REF_KIND_MATERIAL_IDX, size_t(t.mMaterial.mMaterialIndex));
 	}
 
 	template<>
@@ -109,7 +106,7 @@ namespace physx
 				else
 				{
 					//ideally we would move this part to ScShapeCore but we don't yet have a MaterialManager available there.
-					PxU16 index = static_cast<NpMaterial*>(pxMaterial)->getHandle();
+					const PxU16 index = static_cast<NpMaterial*>(pxMaterial)->mMaterial.mMaterialIndex;
 					context.registerReference(base, PX_SERIAL_REF_KIND_MATERIAL_IDX, size_t(index));
 				}
 			}
@@ -127,7 +124,7 @@ namespace physx
 	}
 
 	template<>
-	bool PxSerializerDefaultAdapter<NpArticulationJoint>::isSubordinate() const
+	bool PxSerializerDefaultAdapter<NpArticulationJointReducedCoordinate>::isSubordinate() const
 	{
 		return true;
 	}
@@ -148,10 +145,8 @@ void PxRegisterPhysicsSerializers(PxSerializationRegistry& sr)
 	sr.registerSerializer(PxConcreteType::eMATERIAL,								PX_NEW_SERIALIZER_ADAPTER(NpMaterial));
 	sr.registerSerializer(PxConcreteType::eCONSTRAINT,								PX_NEW_SERIALIZER_ADAPTER(NpConstraint));
 	sr.registerSerializer(PxConcreteType::eAGGREGATE,								PX_NEW_SERIALIZER_ADAPTER(NpAggregate));
-	sr.registerSerializer(PxConcreteType::eARTICULATION,							PX_NEW_SERIALIZER_ADAPTER(NpArticulation));
 	sr.registerSerializer(PxConcreteType::eARTICULATION_REDUCED_COORDINATE,			PX_NEW_SERIALIZER_ADAPTER(NpArticulationReducedCoordinate));
 	sr.registerSerializer(PxConcreteType::eARTICULATION_LINK,						PX_NEW_SERIALIZER_ADAPTER(NpArticulationLink));
-	sr.registerSerializer(PxConcreteType::eARTICULATION_JOINT,						PX_NEW_SERIALIZER_ADAPTER(NpArticulationJoint));
 	sr.registerSerializer(PxConcreteType::eARTICULATION_JOINT_REDUCED_COORDINATE,	PX_NEW_SERIALIZER_ADAPTER(NpArticulationJointReducedCoordinate));
 	sr.registerSerializer(PxConcreteType::ePRUNING_STRUCTURE,						PX_NEW_SERIALIZER_ADAPTER(Sq::PruningStructure));
 }
@@ -169,10 +164,8 @@ void PxUnregisterPhysicsSerializers(PxSerializationRegistry& sr)
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eMATERIAL));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eCONSTRAINT));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eAGGREGATE));
-	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eARTICULATION));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eARTICULATION_REDUCED_COORDINATE));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eARTICULATION_LINK));
-	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eARTICULATION_JOINT));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::eARTICULATION_JOINT_REDUCED_COORDINATE));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxConcreteType::ePRUNING_STRUCTURE));
 }

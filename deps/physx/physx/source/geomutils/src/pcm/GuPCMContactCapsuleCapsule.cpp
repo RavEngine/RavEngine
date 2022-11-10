@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.     
 
-#include "geomutils/GuContactBuffer.h"
-
+#include "geomutils/PxContactBuffer.h"
 #include "GuVecCapsule.h"
-#include "GuGeometryUnion.h"
 #include "GuContactMethodImpl.h"
 #include "GuDistanceSegmentSegmentSIMD.h"
 
 using namespace physx;
 using namespace Gu;
-using namespace Ps;
 using namespace aos;
 
 static Vec4V pcmDistancePointSegmentTValue22(	const Vec3VArg a0, const Vec3VArg b0, 
@@ -74,29 +70,25 @@ static Vec4V pcmDistancePointSegmentTValue22(	const Vec3VArg a0, const Vec3VArg 
 	return V4Sel(V4IsEq(denom, zero), zero, tValue);
 }
 
-namespace physx
+static void storeContact(const Vec3VArg contact, const Vec3VArg normal, const FloatVArg separation, PxContactBuffer& buffer)
 {
-namespace Gu
-{
-	static void storeContact(const Vec3VArg contact, const Vec3VArg normal, const FloatVArg separation, Gu::ContactBuffer& buffer)
-	{
-		Gu::ContactPoint& point = buffer.contacts[buffer.count++];
+	PxContactPoint& point = buffer.contacts[buffer.count++];
 
-		const Vec4V normalSep = Ps::aos::V4SetW(Vec4V_From_Vec3V(normal), separation);
+	const Vec4V normalSep = aos::V4SetW(Vec4V_From_Vec3V(normal), separation);
 
-		V4StoreA(normalSep, &point.normal.x);
-		V3StoreA(contact, point.point);
-		point.internalFaceIndex1 = PXC_CONTACT_NO_FACE_INDEX;
-	}
+	V4StoreA(normalSep, &point.normal.x);
+	V3StoreA(contact, point.point);
+	point.internalFaceIndex1 = PXC_CONTACT_NO_FACE_INDEX;
+}
 
-bool pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
+bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 
 	// Get actual shape data
-	const PxCapsuleGeometry& shapeCapsule0 = shape0.get<const PxCapsuleGeometry>();
-	const PxCapsuleGeometry& shapeCapsule1 = shape1.get<const PxCapsuleGeometry>();
+	const PxCapsuleGeometry& shapeCapsule0 = checkedCast<PxCapsuleGeometry>(shape0);
+	const PxCapsuleGeometry& shapeCapsule1 = checkedCast<PxCapsuleGeometry>(shape1);
 
 	PX_ASSERT(transform1.q.isSane());
 	PX_ASSERT(transform0.q.isSane());
@@ -287,5 +279,3 @@ bool pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 	}
 	return false;
 }
-}//Gu
-}//physx

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_EXTENSIONS_DEFAULT_ERROR_CALLBACK_H
-#define PX_PHYSICS_EXTENSIONS_DEFAULT_ERROR_CALLBACK_H
+#ifndef PX_DEFAULT_ERROR_CALLBACK_H
+#define PX_DEFAULT_ERROR_CALLBACK_H
+/** \addtogroup extensions
+  @{
+*/
 
 #include "foundation/PxErrorCallback.h"
 #include "PxPhysXConfig.h"
@@ -49,14 +51,15 @@ namespace physx
 	class PxDefaultErrorCallback : public PxErrorCallback
 	{
 	public:
-		PxDefaultErrorCallback();
-		~PxDefaultErrorCallback();
+				PxDefaultErrorCallback();
+		virtual	~PxDefaultErrorCallback();
 
-		virtual void reportError(PxErrorCode::Enum code, const char* message, const char* file, int line);
+		virtual void reportError(PxErrorCode::Enum code, const char* message, const char* file, int line) PX_OVERRIDE;
 	};
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
+/** @} */
 #endif

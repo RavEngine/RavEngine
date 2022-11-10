@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -33,7 +32,16 @@
 // Chris Nuernberger <chrisn@nvidia.com> or Dilip or Adam.
 // The source code for the generate was at one time checked into:
 // physx/PhysXMetaDataGenerator/llvm/tools/clang/lib/Frontend/PhysXMetaDataAction.cpp
+#include "foundation/PxPreprocessor.h"
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
 #include "PxExtensionMetaDataObjects.h"
+#if PX_LINUX && PX_CLANG
+#pragma clang diagnostic pop
+#endif
+
 #include "PxMetaDataCppPrefix.h"
 #include "extensions/PxExtensionsAPI.h"
 using namespace physx;
@@ -98,6 +106,34 @@ inline void setPxJointUserData( PxJoint* inOwner, void * inData) { inOwner->user
 		for ( PxU32 idx = 0; idx < static_cast<PxU32>( physx::PxJointActorIndex::COUNT ); ++idx )
 		LocalPose[idx] = getPxJoint_LocalPose( inSource, static_cast< PxJointActorIndex::Enum >( idx ) );
 	getPxJoint_BreakForce( inSource, BreakForce[0], BreakForce[1] );
+}
+void setPxRackAndPinionJoint_Ratio( PxRackAndPinionJoint* inObj, float inArg){ inObj->setRatio( inArg ); }
+float getPxRackAndPinionJoint_Ratio( const PxRackAndPinionJoint* inObj ) { return inObj->getRatio(); }
+const char * getPxRackAndPinionJoint_ConcreteTypeName( const PxRackAndPinionJoint* inObj ) { return inObj->getConcreteTypeName(); }
+ PxRackAndPinionJointGeneratedInfo::PxRackAndPinionJointGeneratedInfo()
+	: Ratio( "Ratio", setPxRackAndPinionJoint_Ratio, getPxRackAndPinionJoint_Ratio)
+	, ConcreteTypeName( "ConcreteTypeName", getPxRackAndPinionJoint_ConcreteTypeName)
+{}
+ PxRackAndPinionJointGeneratedValues::PxRackAndPinionJointGeneratedValues( const PxRackAndPinionJoint* inSource )
+		:PxJointGeneratedValues( inSource )
+		,Ratio( getPxRackAndPinionJoint_Ratio( inSource ) )
+		,ConcreteTypeName( getPxRackAndPinionJoint_ConcreteTypeName( inSource ) )
+{
+	PX_UNUSED(inSource);
+}
+void setPxGearJoint_GearRatio( PxGearJoint* inObj, float inArg){ inObj->setGearRatio( inArg ); }
+float getPxGearJoint_GearRatio( const PxGearJoint* inObj ) { return inObj->getGearRatio(); }
+const char * getPxGearJoint_ConcreteTypeName( const PxGearJoint* inObj ) { return inObj->getConcreteTypeName(); }
+ PxGearJointGeneratedInfo::PxGearJointGeneratedInfo()
+	: GearRatio( "GearRatio", setPxGearJoint_GearRatio, getPxGearJoint_GearRatio)
+	, ConcreteTypeName( "ConcreteTypeName", getPxGearJoint_ConcreteTypeName)
+{}
+ PxGearJointGeneratedValues::PxGearJointGeneratedValues( const PxGearJoint* inSource )
+		:PxJointGeneratedValues( inSource )
+		,GearRatio( getPxGearJoint_GearRatio( inSource ) )
+		,ConcreteTypeName( getPxGearJoint_ConcreteTypeName( inSource ) )
+{
+	PX_UNUSED(inSource);
 }
 void setPxD6Joint_Motion( PxD6Joint* inObj, PxD6Axis::Enum inIndex, PxD6Motion::Enum inArg ){ inObj->setMotion( inIndex, inArg ); }
 PxD6Motion::Enum getPxD6Joint_Motion( const PxD6Joint* inObj, PxD6Axis::Enum inIndex ) { return inObj->getMotion( inIndex ); }
@@ -174,6 +210,8 @@ void setPxDistanceJoint_Stiffness( PxDistanceJoint* inObj, PxReal inArg){ inObj-
 PxReal getPxDistanceJoint_Stiffness( const PxDistanceJoint* inObj ) { return inObj->getStiffness(); }
 void setPxDistanceJoint_Damping( PxDistanceJoint* inObj, PxReal inArg){ inObj->setDamping( inArg ); }
 PxReal getPxDistanceJoint_Damping( const PxDistanceJoint* inObj ) { return inObj->getDamping(); }
+void setPxDistanceJoint_ContactDistance( PxDistanceJoint* inObj, PxReal inArg){ inObj->setContactDistance( inArg ); }
+PxReal getPxDistanceJoint_ContactDistance( const PxDistanceJoint* inObj ) { return inObj->getContactDistance(); }
 void setPxDistanceJoint_DistanceJointFlags( PxDistanceJoint* inObj, PxDistanceJointFlags inArg){ inObj->setDistanceJointFlags( inArg ); }
 PxDistanceJointFlags getPxDistanceJoint_DistanceJointFlags( const PxDistanceJoint* inObj ) { return inObj->getDistanceJointFlags(); }
 const char * getPxDistanceJoint_ConcreteTypeName( const PxDistanceJoint* inObj ) { return inObj->getConcreteTypeName(); }
@@ -184,6 +222,7 @@ const char * getPxDistanceJoint_ConcreteTypeName( const PxDistanceJoint* inObj )
 	, Tolerance( "Tolerance", setPxDistanceJoint_Tolerance, getPxDistanceJoint_Tolerance)
 	, Stiffness( "Stiffness", setPxDistanceJoint_Stiffness, getPxDistanceJoint_Stiffness)
 	, Damping( "Damping", setPxDistanceJoint_Damping, getPxDistanceJoint_Damping)
+	, ContactDistance( "ContactDistance", setPxDistanceJoint_ContactDistance, getPxDistanceJoint_ContactDistance)
 	, DistanceJointFlags( "DistanceJointFlags", setPxDistanceJoint_DistanceJointFlags, getPxDistanceJoint_DistanceJointFlags)
 	, ConcreteTypeName( "ConcreteTypeName", getPxDistanceJoint_ConcreteTypeName)
 {}
@@ -195,6 +234,7 @@ const char * getPxDistanceJoint_ConcreteTypeName( const PxDistanceJoint* inObj )
 		,Tolerance( getPxDistanceJoint_Tolerance( inSource ) )
 		,Stiffness( getPxDistanceJoint_Stiffness( inSource ) )
 		,Damping( getPxDistanceJoint_Damping( inSource ) )
+		,ContactDistance( getPxDistanceJoint_ContactDistance( inSource ) )
 		,DistanceJointFlags( getPxDistanceJoint_DistanceJointFlags( inSource ) )
 		,ConcreteTypeName( getPxDistanceJoint_ConcreteTypeName( inSource ) )
 {
@@ -206,8 +246,8 @@ void setPxContactJoint_ContactNormal( PxContactJoint* inObj, const PxVec3 & inAr
 PxVec3 getPxContactJoint_ContactNormal( const PxContactJoint* inObj ) { return inObj->getContactNormal(); }
 void setPxContactJoint_Penetration( PxContactJoint* inObj, const PxReal inArg){ inObj->setPenetration( inArg ); }
 PxReal getPxContactJoint_Penetration( const PxContactJoint* inObj ) { return inObj->getPenetration(); }
-void setPxContactJoint_Resititution( PxContactJoint* inObj, const PxReal inArg){ inObj->setResititution( inArg ); }
-PxReal getPxContactJoint_Resititution( const PxContactJoint* inObj ) { return inObj->getResititution(); }
+void setPxContactJoint_Restitution( PxContactJoint* inObj, const PxReal inArg){ inObj->setRestitution( inArg ); }
+PxReal getPxContactJoint_Restitution( const PxContactJoint* inObj ) { return inObj->getRestitution(); }
 void setPxContactJoint_BounceThreshold( PxContactJoint* inObj, const PxReal inArg){ inObj->setBounceThreshold( inArg ); }
 PxReal getPxContactJoint_BounceThreshold( const PxContactJoint* inObj ) { return inObj->getBounceThreshold(); }
 const char * getPxContactJoint_ConcreteTypeName( const PxContactJoint* inObj ) { return inObj->getConcreteTypeName(); }
@@ -215,7 +255,7 @@ const char * getPxContactJoint_ConcreteTypeName( const PxContactJoint* inObj ) {
 	: Contact( "Contact", setPxContactJoint_Contact, getPxContactJoint_Contact)
 	, ContactNormal( "ContactNormal", setPxContactJoint_ContactNormal, getPxContactJoint_ContactNormal)
 	, Penetration( "Penetration", setPxContactJoint_Penetration, getPxContactJoint_Penetration)
-	, Resititution( "Resititution", setPxContactJoint_Resititution, getPxContactJoint_Resititution)
+	, Restitution( "Restitution", setPxContactJoint_Restitution, getPxContactJoint_Restitution)
 	, BounceThreshold( "BounceThreshold", setPxContactJoint_BounceThreshold, getPxContactJoint_BounceThreshold)
 	, ConcreteTypeName( "ConcreteTypeName", getPxContactJoint_ConcreteTypeName)
 {}
@@ -224,7 +264,7 @@ const char * getPxContactJoint_ConcreteTypeName( const PxContactJoint* inObj ) {
 		,Contact( getPxContactJoint_Contact( inSource ) )
 		,ContactNormal( getPxContactJoint_ContactNormal( inSource ) )
 		,Penetration( getPxContactJoint_Penetration( inSource ) )
-		,Resititution( getPxContactJoint_Resititution( inSource ) )
+		,Restitution( getPxContactJoint_Restitution( inSource ) )
 		,BounceThreshold( getPxContactJoint_BounceThreshold( inSource ) )
 		,ConcreteTypeName( getPxContactJoint_ConcreteTypeName( inSource ) )
 {
@@ -360,21 +400,21 @@ inline PxReal getPxJointLimitParametersStiffness( const PxJointLimitParameters* 
 inline void setPxJointLimitParametersStiffness( PxJointLimitParameters* inOwner, PxReal inData) { inOwner->stiffness = inData; }
 inline PxReal getPxJointLimitParametersDamping( const PxJointLimitParameters* inOwner ) { return inOwner->damping; }
 inline void setPxJointLimitParametersDamping( PxJointLimitParameters* inOwner, PxReal inData) { inOwner->damping = inData; }
-inline PxReal getPxJointLimitParametersContactDistance( const PxJointLimitParameters* inOwner ) { return inOwner->contactDistance; }
-inline void setPxJointLimitParametersContactDistance( PxJointLimitParameters* inOwner, PxReal inData) { inOwner->contactDistance = inData; }
+inline PxReal getPxJointLimitParametersContactDistance_deprecated( const PxJointLimitParameters* inOwner ) { return inOwner->contactDistance_deprecated; }
+inline void setPxJointLimitParametersContactDistance_deprecated( PxJointLimitParameters* inOwner, PxReal inData) { inOwner->contactDistance_deprecated = inData; }
  PxJointLimitParametersGeneratedInfo::PxJointLimitParametersGeneratedInfo()
 	: Restitution( "Restitution", setPxJointLimitParametersRestitution, getPxJointLimitParametersRestitution )
 	, BounceThreshold( "BounceThreshold", setPxJointLimitParametersBounceThreshold, getPxJointLimitParametersBounceThreshold )
 	, Stiffness( "Stiffness", setPxJointLimitParametersStiffness, getPxJointLimitParametersStiffness )
 	, Damping( "Damping", setPxJointLimitParametersDamping, getPxJointLimitParametersDamping )
-	, ContactDistance( "ContactDistance", setPxJointLimitParametersContactDistance, getPxJointLimitParametersContactDistance )
+	, ContactDistance_deprecated( "ContactDistance_deprecated", setPxJointLimitParametersContactDistance_deprecated, getPxJointLimitParametersContactDistance_deprecated )
 {}
  PxJointLimitParametersGeneratedValues::PxJointLimitParametersGeneratedValues( const PxJointLimitParameters* inSource )
 		:Restitution( inSource->restitution )
 		,BounceThreshold( inSource->bounceThreshold )
 		,Stiffness( inSource->stiffness )
 		,Damping( inSource->damping )
-		,ContactDistance( inSource->contactDistance )
+		,ContactDistance_deprecated( inSource->contactDistance_deprecated )
 {
 	PX_UNUSED(inSource);
 }

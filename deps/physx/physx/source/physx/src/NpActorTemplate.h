@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#ifndef NP_ACTOR_TEMPLATE_H
+#define NP_ACTOR_TEMPLATE_H
 
-#ifndef PX_PHYSICS_NP_ACTOR_TEMPLATE
-#define PX_PHYSICS_NP_ACTOR_TEMPLATE
-
-#include "PsUserAllocated.h"
-#include "NpWriteCheck.h"
-#include "NpReadCheck.h"
+#include "NpCheck.h"
 #include "NpActor.h"
-#include "ScbActor.h"
 #include "NpScene.h"
+
+#include "omnipvd/OmniPvdPxSampler.h"
 
 namespace physx
 {
@@ -53,7 +50,7 @@ Changing the data layout of this class breaks the binary serialization format.
 See comments for PX_BINARY_SERIAL_VERSION.
 */
 template<class APIClass>
-class NpActorTemplate : public APIClass, public NpActor, public Ps::UserAllocated
+class NpActorTemplate : public APIClass, public NpActor
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -64,71 +61,49 @@ class NpActorTemplate : public APIClass, public NpActor, public Ps::UserAllocate
 	PX_NOCOPY(NpActorTemplate)
 public:
 // PX_SERIALIZATION
-											NpActorTemplate(PxBaseFlags baseFlags) : APIClass(baseFlags), NpActor(PxEmpty) {}
+									NpActorTemplate(PxBaseFlags baseFlags) : APIClass(baseFlags), NpActor(PxEmpty) {}
 
-	virtual	void							exportExtraData(PxSerializationContext& context) { NpActor::exportExtraData(context); }
-	virtual	void							importExtraData(PxDeserializationContext& context) { NpActor::importExtraData(context); }
-	virtual void							resolveReferences(PxDeserializationContext& context) { NpActor::resolveReferences(context); }
+	virtual	void					exportExtraData(PxSerializationContext& context) { NpActor::exportExtraData(context); }
+	virtual	void					importExtraData(PxDeserializationContext& context) { NpActor::importExtraData(context); }
+	virtual void					resolveReferences(PxDeserializationContext& context) { NpActor::resolveReferences(context); }
 //~PX_SERIALIZATION
 
-											NpActorTemplate(PxType concreteType, PxBaseFlags baseFlags, const char* name, void* inUserData);
-	virtual									~NpActorTemplate();
-
-	//---------------------------------------------------------------------------------
-	// PxActor implementation
-	//---------------------------------------------------------------------------------
-	virtual		void						release()												{ NpActor::release(*this);	}
+									NpActorTemplate(PxType concreteType, PxBaseFlags baseFlags, NpType::Enum type);
+	virtual							~NpActorTemplate();
 
 	// The rule is: If an API method is used somewhere in here, it has to be redeclared, else GCC whines
-	virtual		PxActorType::Enum			getType() const = 0;
 
-	virtual		PxScene*					getScene()				const;
-	
-	// Debug name
-	virtual		void						setName(const char*);
-	virtual		const char*					getName()				const;
+	// PxActor
+	virtual		void				release()	= 0;
+	virtual		PxActorType::Enum	getType()	const = 0;
+	virtual		PxScene*			getScene()	const	PX_OVERRIDE;
+	virtual		void				setName(const char*)	PX_OVERRIDE;
+	virtual		const char*			getName()	const	PX_OVERRIDE;
+	virtual		PxBounds3			getWorldBounds(float inflation=1.01f)	const = 0;
+	virtual		void				setActorFlag(PxActorFlag::Enum flag, bool value)	PX_OVERRIDE;
+	virtual		void				setActorFlags(PxActorFlags inFlags)	PX_OVERRIDE;
+	virtual		PxActorFlags		getActorFlags()	const	PX_OVERRIDE;
+	virtual		void				setDominanceGroup(PxDominanceGroup dominanceGroup)	PX_OVERRIDE;
+	virtual		PxDominanceGroup	getDominanceGroup()	const	PX_OVERRIDE;
+	virtual		void				setOwnerClient( PxClientID inClient )	PX_OVERRIDE;
+	virtual		PxClientID			getOwnerClient()	const	PX_OVERRIDE;
+	virtual		PxAggregate*		getAggregate()	const	PX_OVERRIDE { return NpActor::getAggregate();	}
+	//~PxActor
 
-	virtual		PxBounds3					getWorldBounds(float inflation=1.01f) const = 0;
-
-	// Flags
-	virtual		void						setActorFlag(PxActorFlag::Enum flag, bool value);
-	virtual		void						setActorFlags(PxActorFlags inFlags);
-	virtual		PxActorFlags				getActorFlags() const;
-
-	// Dominance
-	virtual		void						setDominanceGroup(PxDominanceGroup dominanceGroup);
-	virtual		PxDominanceGroup			getDominanceGroup() const;
-
-	// Multiclient
-	virtual		void						setOwnerClient( PxClientID inClient );
-	virtual		PxClientID					getOwnerClient() const;
-
-	// Aggregates
-	virtual		PxAggregate*				getAggregate()	const	{ return NpActor::getAggregate();	}
-
-	//---------------------------------------------------------------------------------
-	// Miscellaneous
-	//---------------------------------------------------------------------------------
 protected:
-	PX_FORCE_INLINE void					setActorFlagInternal(PxActorFlag::Enum flag, bool value);
-	PX_FORCE_INLINE void					setActorFlagsInternal(PxActorFlags inFlags);
+	PX_FORCE_INLINE void			setActorFlagInternal(PxActorFlag::Enum flag, bool value);
+	PX_FORCE_INLINE void			setActorFlagsInternal(PxActorFlags inFlags);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 
 template<class APIClass>
-NpActorTemplate<APIClass>::NpActorTemplate(PxType concreteType,
-										   PxBaseFlags baseFlags,
-										   const char* name,
-										   void* actorUserData)
-:APIClass(concreteType, baseFlags),
-NpActor(name)
+NpActorTemplate<APIClass>::NpActorTemplate(PxType concreteType, PxBaseFlags baseFlags, NpType::Enum type) :
+	APIClass(concreteType, baseFlags),
+	NpActor	(type)
 {
-	// don't ref Scb actor here, it hasn't been assigned yet
-
-	APIClass::userData = actorUserData;
+	PX_ASSERT(!APIClass::userData);
 }
-
 
 template<class APIClass>
 NpActorTemplate<APIClass>::~NpActorTemplate()
@@ -138,11 +113,10 @@ NpActorTemplate<APIClass>::~NpActorTemplate()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PT: this one is very slow
 template<class APIClass>
 PxScene* NpActorTemplate<APIClass>::getScene() const
 {
-	return NpActor::getAPIScene(*this);
+	return getNpScene();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -150,22 +124,30 @@ PxScene* NpActorTemplate<APIClass>::getScene() const
 template<class APIClass>
 void NpActorTemplate<APIClass>::setName(const char* debugName)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NP_WRITE_CHECK(getNpScene());
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(getNpScene(), "PxActor::setName() not allowed while simulation is running. Call will be ignored.")
+
 	mName = debugName;
 
+#if PX_SUPPORT_OMNI_PVD
+	PxActor & a = *this;
+	streamActorName(a, mName);
+#endif
+
+
 #if PX_SUPPORT_PVD
-		Scb::Scene* scbScene = getScbFromPxActor(*this).getScbSceneForAPI();
-		Scb::Actor& scbActor = NpActor::getScbFromPxActor(*this);
-		//Name changing is not bufferred
-		if(scbScene)
-			scbScene->getScenePvdClient().updatePvdProperties(&scbActor);	
+	NpScene* npScene = getNpScene();
+	//Name changing is not bufferred
+	if(npScene)
+		npScene->getScenePvdClientInternal().updatePvdProperties(static_cast<NpActor*>(this));	
 #endif
 }
 
 template<class APIClass>
 const char* NpActorTemplate<APIClass>::getName() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
+	NP_READ_CHECK(getNpScene());
 	return mName;
 }
 
@@ -174,16 +156,19 @@ const char* NpActorTemplate<APIClass>::getName() const
 template<class APIClass>
 void NpActorTemplate<APIClass>::setDominanceGroup(PxDominanceGroup dominanceGroup)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
-	NpActor::getScbFromPxActor(*this).setDominanceGroup(dominanceGroup);
-}
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
 
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxActor::setDominanceGroup() not allowed while simulation is running. Call will be ignored.")
+
+	NpActor::scSetDominanceGroup(dominanceGroup);
+}
 
 template<class APIClass>
 PxDominanceGroup NpActorTemplate<APIClass>::getDominanceGroup() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-	return NpActor::getScbFromPxActor(*this).getDominanceGroup();
+	NP_READ_CHECK(getNpScene());
+	return NpActor::getDominanceGroup();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -191,19 +176,19 @@ PxDominanceGroup NpActorTemplate<APIClass>::getDominanceGroup() const
 template<class APIClass>
 void NpActorTemplate<APIClass>::setOwnerClient( PxClientID inId )
 {
-	if ( NpActor::getOwnerScene(*this) != NULL )
+	if ( getNpScene() != NULL )
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, 
 				"Attempt to set the client id when an actor is already in a scene.");
 	}
 	else
-		NpActor::getScbFromPxActor(*this).setOwnerClient( inId );
+		NpActor::scSetOwnerClient( inId );
 }
 
 template<class APIClass>
 PxClientID NpActorTemplate<APIClass>::getOwnerClient() const
 {
-	return NpActor::getScbFromPxActor(*this).getOwnerClient();
+	return NpActor::getOwnerClient();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -211,24 +196,26 @@ PxClientID NpActorTemplate<APIClass>::getOwnerClient() const
 template<class APIClass>
 PX_FORCE_INLINE void NpActorTemplate<APIClass>::setActorFlagInternal(PxActorFlag::Enum flag, bool value)
 {
-	Scb::Actor& a = NpActor::getScbFromPxActor(*this);
+	NpActor& a = *this;
 	if (value)
-		a.setActorFlags( a.getActorFlags() | flag );
+		a.scSetActorFlags( a.getActorFlags() | flag );
 	else
-		a.setActorFlags( a.getActorFlags() & (~PxActorFlags(flag)) );
+		a.scSetActorFlags( a.getActorFlags() & (~PxActorFlags(flag)) );
 }
 
 template<class APIClass>
 PX_FORCE_INLINE void NpActorTemplate<APIClass>::setActorFlagsInternal(PxActorFlags inFlags)
 {
-	Scb::Actor& a = NpActor::getScbFromPxActor(*this);
-	a.setActorFlags( inFlags );
+	NpActor::scSetActorFlags(inFlags);
 }
 
 template<class APIClass>
 void NpActorTemplate<APIClass>::setActorFlag(PxActorFlag::Enum flag, bool value)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxActor::setActorFlag() not allowed while simulation is running. Call will be ignored.")
 
 	setActorFlagInternal(flag, value);
 }
@@ -236,7 +223,10 @@ void NpActorTemplate<APIClass>::setActorFlag(PxActorFlag::Enum flag, bool value)
 template<class APIClass>
 void NpActorTemplate<APIClass>::setActorFlags(PxActorFlags inFlags)
 {
-	NP_WRITE_CHECK(NpActor::getOwnerScene(*this));
+	NpScene* npScene = getNpScene();
+	NP_WRITE_CHECK(npScene);
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(npScene, "PxActor::setActorFlags() not allowed while simulation is running. Call will be ignored.")
 	
 	setActorFlagsInternal(inFlags);
 }
@@ -244,8 +234,8 @@ void NpActorTemplate<APIClass>::setActorFlags(PxActorFlags inFlags)
 template<class APIClass>
 PxActorFlags NpActorTemplate<APIClass>::getActorFlags() const
 {
-	NP_READ_CHECK(NpActor::getOwnerScene(*this));
-	return NpActor::getScbFromPxActor(*this).getActorFlags();
+	NP_READ_CHECK(getNpScene());
+	return NpActor::getActorFlags();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

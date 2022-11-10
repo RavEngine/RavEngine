@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,20 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXPVDSDK_PXPROFILEEVENTBUFFER_H
-#define PXPVDSDK_PXPROFILEEVENTBUFFER_H
+#ifndef PX_PROFILE_EVENT_BUFFER_H
+#define PX_PROFILE_EVENT_BUFFER_H
 
 #include "PxProfileEvents.h"
 #include "PxProfileEventSerialization.h"
 #include "PxProfileDataBuffer.h"
 #include "PxProfileContextProvider.h"
 
-#include "PsTime.h"
+#include "foundation/PxTime.h"
 
 namespace physx { namespace profile {
 
@@ -155,12 +153,12 @@ namespace physx { namespace profile {
 		PX_FORCE_INLINE void startEvent(uint16_t inId, uint64_t contextId)
 		{
 			PxProfileEventExecutionContext ctx( mContextProvider.getExecutionContext() );
-			startEvent( inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), shdfnd::Time::getCurrentCounterValue() );
+			startEvent( inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), PxTime::getCurrentCounterValue() );
 		}
 
 		PX_FORCE_INLINE void startEvent(uint16_t inId, uint64_t contextId, uint32_t threadId)
 		{
-			startEvent( inId, threadId, contextId, 0, 0, shdfnd::Time::getCurrentCounterValue() );
+			startEvent( inId, threadId, contextId, 0, 0, PxTime::getCurrentCounterValue() );
 		}
 
 		PX_FORCE_INLINE void stopEvent(uint16_t inId, uint32_t threadId, uint64_t contextId, uint8_t cpuId, uint8_t threadPriority, uint64_t inTimestamp)
@@ -177,12 +175,12 @@ namespace physx { namespace profile {
 		PX_FORCE_INLINE void stopEvent(uint16_t inId, uint64_t contextId)
 		{
 			PxProfileEventExecutionContext ctx( mContextProvider.getExecutionContext() );
-			stopEvent( inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), shdfnd::Time::getCurrentCounterValue() );
+			stopEvent( inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), PxTime::getCurrentCounterValue() );
 		}
 
 		PX_FORCE_INLINE void stopEvent(uint16_t inId, uint64_t contextId, uint32_t threadId)
 		{
-			stopEvent( inId, threadId, contextId, 0, 0, shdfnd::Time::getCurrentCounterValue() );
+			stopEvent( inId, threadId, contextId, 0, 0, PxTime::getCurrentCounterValue() );
 		}
 
 		inline void eventValue( uint16_t inId, uint64_t contextId, int64_t inValue )
@@ -264,4 +262,5 @@ namespace physx { namespace profile {
 
 	};
 }}
-#endif // PXPVDSDK_PXPROFILEEVENTBUFFER_H
+#endif
+

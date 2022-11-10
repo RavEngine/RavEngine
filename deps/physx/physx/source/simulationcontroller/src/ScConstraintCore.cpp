@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,41 +22,30 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#include "PsFoundation.h"
-
-#include "ScPhysics.h"
-#include "ScBodyCore.h"
 #include "ScConstraintCore.h"
+#include "ScPhysics.h"
 #include "ScConstraintSim.h"
 
 using namespace physx;
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-Sc::ConstraintCore::ConstraintCore(PxConstraintConnector& connector, const PxConstraintShaderTable& shaders, PxU32 dataSize)
-:	mFlags(PxConstraintFlag::eDRIVE_LIMITS_ARE_FORCES)
-,	mAppliedForce(PxVec3(0))
-,	mAppliedTorque(PxVec3(0))
-,	mConnector(&connector)
-,	mProject(shaders.project)
-,	mSolverPrep(shaders.solverPrep)
-,	mVisualize(shaders.visualize)
-,	mDataSize(dataSize)
-,	mLinearBreakForce(PX_MAX_F32)
-,	mAngularBreakForce(PX_MAX_F32)
-,	mMinResponseThreshold(0)
-,	mSim(NULL)
-{
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-Sc::ConstraintCore::~ConstraintCore()
+Sc::ConstraintCore::ConstraintCore(PxConstraintConnector& connector, const PxConstraintShaderTable& shaders, PxU32 dataSize) :
+	mFlags					(PxConstraintFlag::eDRIVE_LIMITS_ARE_FORCES),
+	mIsDirty				(1),
+	mAppliedForce			(PxVec3(0.0f)),
+	mAppliedTorque			(PxVec3(0.0f)),
+	mConnector				(&connector),
+	mProject				(shaders.project),
+	mSolverPrep				(shaders.solverPrep),
+	mVisualize				(shaders.visualize),
+	mDataSize				(dataSize),
+	mLinearBreakForce		(PX_MAX_F32),
+	mAngularBreakForce		(PX_MAX_F32),
+	mMinResponseThreshold	(0.0f),
+	mSim					(NULL)
 {
 }
 
@@ -68,8 +56,8 @@ void Sc::ConstraintCore::setFlags(PxConstraintFlags flags)
 	if(flags != old)
 	{		
 		mFlags = flags;
-		if(getSim())
-			getSim()->postFlagChange(old, flags);
+		if(mSim)
+			mSim->postFlagChange(old, flags);
 	}
 }
 
@@ -77,28 +65,17 @@ void Sc::ConstraintCore::getForce(PxVec3& force, PxVec3& torque) const
 {
 	if(!mSim)
 	{
-		force = PxVec3(0,0,0);
-		torque = PxVec3(0,0,0);
+		force = PxVec3(0.0f);
+		torque = PxVec3(0.0f);
 	}
 	else
 		mSim->getForce(force, torque);
-
 }
 
 void Sc::ConstraintCore::setBodies(RigidCore* r0v, RigidCore* r1v)
 {
 	if(mSim)
-		mSim->postBodiesChange(r0v, r1v);
-}
-
-bool Sc::ConstraintCore::updateConstants(void* addr)
-{
-	if (getSim())
-	{
-		getSim()->setConstantsLL(addr);
-		return true;
-	}
-	return false;
+		mSim->setBodies(r0v, r1v);
 }
 
 void Sc::ConstraintCore::setBreakForce(PxReal linear, PxReal angular)
@@ -106,22 +83,16 @@ void Sc::ConstraintCore::setBreakForce(PxReal linear, PxReal angular)
 	mLinearBreakForce = linear;
 	mAngularBreakForce = angular;
 
-	if (getSim())
-		getSim()->setBreakForceLL(linear, angular);
-}
-
-void Sc::ConstraintCore::getBreakForce(PxReal& linear, PxReal& angular) const
-{
-	linear = mLinearBreakForce;
-	angular = mAngularBreakForce;
+	if(mSim)
+		mSim->setBreakForceLL(linear, angular);
 }
 
 void Sc::ConstraintCore::setMinResponseThreshold(PxReal threshold)
 {
 	mMinResponseThreshold = threshold;
 
-	if (getSim())
-		getSim()->setMinResponseThresholdLL(threshold);
+	if(mSim)
+		mSim->setMinResponseThresholdLL(threshold);
 }
 
 PxConstraint* Sc::ConstraintCore::getPxConstraint()
@@ -142,8 +113,3 @@ void Sc::ConstraintCore::breakApart()
 	mFlags |= PxConstraintFlag::eBROKEN;
 }
 
-void Sc::ConstraintCore::prepareForSetBodies()
-{
-	if(mSim)
-		mSim->preBodiesChange();
-}

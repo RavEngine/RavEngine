@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,50 +22,49 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
-
+#include "geomutils/PxContactBuffer.h"
 #include "GuConvexMeshData.h"
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
+#include "GuConvexMesh.h"
 #include "CmScaling.h"
+#include "CmMatrix34.h"
 
+using namespace physx;
+using namespace Cm;
 
-namespace physx
-{
-namespace Gu
-{
-bool contactPlaneConvex(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactPlaneConvex(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 	PX_UNUSED(shape0);
 
 	// Get actual shape data
-	//const PxPlaneGeometry& shapePlane = shape.get<const PxPlaneGeometry>();
-	const PxConvexMeshGeometryLL& shapeConvex = shape1.get<const PxConvexMeshGeometryLL>();
+	//const PxPlaneGeometry& shapePlane = checkedCast<PxPlaneGeometry>(shape0);
+	const PxConvexMeshGeometry& shapeConvex = checkedCast<PxConvexMeshGeometry>(shape1);
 
-	const PxVec3* PX_RESTRICT hullVertices = shapeConvex.hullData->getHullVertices();
-	PxU32 numHullVertices = shapeConvex.hullData->mNbHullVertices;
-//	Ps::prefetch128(hullVertices);
+	const ConvexHullData* hullData = _getHullData(shapeConvex);
+	const PxVec3* PX_RESTRICT hullVertices = hullData->getHullVertices();
+	PxU32 numHullVertices = hullData->mNbHullVertices;
+//	PxPrefetch128(hullVertices);
 
 	// Plane is implicitly <1,0,0> 0 in localspace
-	Cm::Matrix34 convexToPlane (transform0.transformInv(transform1));
-	PxMat33 convexToPlane_rot(convexToPlane[0], convexToPlane[1], convexToPlane[2] );
+	const Matrix34FromTransform convexToPlane0 (transform0.transformInv(transform1));
+	const PxMat33 convexToPlane_rot(convexToPlane0[0], convexToPlane0[1], convexToPlane0[2] );
 
 	bool idtScale = shapeConvex.scale.isIdentity();
-	Cm::FastVertex2ShapeScaling convexScaling;	// PT: TODO: remove default ctor
+	FastVertex2ShapeScaling convexScaling;	// PT: TODO: remove default ctor
 	if(!idtScale)
 		convexScaling.init(shapeConvex.scale);
 
-	convexToPlane = Cm::Matrix34( convexToPlane_rot * convexScaling.getVertex2ShapeSkew(), convexToPlane[3] );
+	const PxMat34 convexToPlane(convexToPlane_rot * convexScaling.getVertex2ShapeSkew(), convexToPlane0[3]);
 
 	//convexToPlane = context.mVertex2ShapeSkew[1].getVertex2WorldSkew(convexToPlane);
 
-	const Cm::Matrix34 planeToW (transform0);
+	const Matrix34FromTransform planeToW(transform0);
 
 	// This is rather brute-force
 	
@@ -78,7 +76,7 @@ bool contactPlaneConvex(GU_CONTACT_METHOD_ARGS)
 	{
 		const PxVec3& vertex = *hullVertices++;
 //		if(numHullVertices)
-//			Ps::prefetch128(hullVertices);
+//			PxPrefetch128(hullVertices);
 
 		const PxVec3 pointInPlane = convexToPlane.transform(vertex);		//TODO: this multiply could be factored out!
 		if(pointInPlane.x <= params.mContactDistance)
@@ -86,7 +84,7 @@ bool contactPlaneConvex(GU_CONTACT_METHOD_ARGS)
 //			const PxVec3 pointInW = planeToW.transform(pointInPlane);
 //			contactBuffer.contact(pointInW, -planeToW.m.column0, pointInPlane.x);
 			status = true;
-			Gu::ContactPoint* PX_RESTRICT pt = contactBuffer.contact();
+			PxContactPoint* PX_RESTRICT pt = contactBuffer.contact();
 			if(pt)
 			{
 				pt->normal				= contactNormal;
@@ -98,5 +96,3 @@ bool contactPlaneConvex(GU_CONTACT_METHOD_ARGS)
 	}
 	return status;
 }
-}//Gu
-}//physx

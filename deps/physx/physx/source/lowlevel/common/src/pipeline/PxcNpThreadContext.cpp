@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -37,15 +36,16 @@ PxcNpThreadContext::PxcNpThreadContext(PxcNpContext* params) :
 	mContactBlockStream					(params->mNpMemBlockPool),
 	mNpCacheStreamPair					(params->mNpMemBlockPool),
 	mNarrowPhaseParams					(0.0f, params->mMeshContactMargin, params->mToleranceLength),
-	mBodySimPool						(PX_DEBUG_EXP("BodySimPool")),
+	mBodySimPool						("BodySimPool"),
 	mPCM								(false),
 	mContactCache						(false),
-	mCreateContactStream				(params->mCreateContactStream),
 	mCreateAveragePoint					(false),
 #if PX_ENABLE_SIM_STATS
 	mCompressedCacheSize				(0),
 	mNbDiscreteContactPairsWithCacheHits(0),
 	mNbDiscreteContactPairsWithContacts	(0),
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 	mMaxPatches							(0),
 	mTotalCompressedCacheSize			(0),
@@ -54,12 +54,12 @@ PxcNpThreadContext::PxcNpThreadContext(PxcNpContext* params) :
 	mForceAndIndiceStreamPool			(params->mForceAndIndiceStreamPool),
 	mMaterialManager					(params->mMaterialManager),
 	mLocalNewTouchCount					(0), 
-	mLocalLostTouchCount				(0),
-	mLocalFoundPatchCount				(0),	
-	mLocalLostPatchCount				(0)
+	mLocalLostTouchCount				(0)
 {
 #if PX_ENABLE_SIM_STATS
 	clearStats();
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 }
 
@@ -76,6 +76,8 @@ void PxcNpThreadContext::clearStats()
 	mNbDiscreteContactPairsWithCacheHits	= 0;
 	mNbDiscreteContactPairsWithContacts		= 0;
 }
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 
 void PxcNpThreadContext::reset(PxU32 cmCount)
@@ -85,10 +87,6 @@ void PxcNpThreadContext::reset(PxU32 cmCount)
 
 	mLocalChangeTouch.clear();
 	mLocalChangeTouch.resize(cmCount);
-	mLocalPatchCountChange.clear();
-	mLocalPatchCountChange.resize(cmCount);
 	mLocalNewTouchCount = 0;
 	mLocalLostTouchCount = 0;
-	mLocalFoundPatchCount = 0;
-	mLocalLostPatchCount = 0;
 }

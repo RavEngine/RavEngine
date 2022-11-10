@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,16 +33,12 @@
 #include "common/PxPhysXCommonConfig.h"
 #include "GuVecConvexHull.h"
 
-
 namespace physx
 {
 namespace Gu
 {
-
 	class ConvexHullNoScaleV : public ConvexHullV
 	{
-
-
 		public:
 		/**
 		\brief Constructor
@@ -52,43 +47,40 @@ namespace Gu
 		{
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportPoint(const PxI32 index)const
+		PX_FORCE_INLINE aos::Vec3V supportPoint(const PxI32 index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			return V3LoadU_SafeReadW(verts[index]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
 		}
 
-
 		//This funcation is just to load the PxVec3 to Vec3V. However, for GuVecConvexHul.h, this is used to transform all the verts from vertex space to shape space
-		PX_SUPPORT_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, Ps::aos::Vec3V* verts_)const
+		PX_SUPPORT_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, aos::Vec3V* verts_)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			for(PxU32 i=0; i<numInds; ++i)
 				verts_[i] = V3LoadU_SafeReadW(originalVerts[inds[i]]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'populateVerts' is always called with polyData.mVerts)
 		}
 		
-
 		//This function is used in epa
 		//dir is in the shape space
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir)const
+		PX_SUPPORT_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const PxU32 maxIndex = supportVertexIndex(dir);
 			return V3LoadU_SafeReadW(verts[maxIndex]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
 		}
 
 		//this is used in the sat test for the full contact gen
-		PX_SUPPORT_INLINE void supportLocal(const Ps::aos::Vec3VArg dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max)const
+		PX_SUPPORT_INLINE void supportLocal(const aos::Vec3VArg dir, aos::FloatV& min, aos::FloatV& max)const
 		{
 			supportVertexMinMax(dir, min, max);
 		}
 
-
 		//This function is used in epa
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportRelative(const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aTob, const Ps::aos::PsMatTransformV& aTobT) const
+		PX_SUPPORT_INLINE aos::Vec3V supportRelative(const aos::Vec3VArg dir, const aos::PxMatTransformV& aTob, const aos::PxMatTransformV& aTobT) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 		
 			//transform dir into the shape space
 			const Vec3V _dir = aTobT.rotate(dir);//relTra.rotateInv(dir);
@@ -98,9 +90,9 @@ namespace Gu
 		}
 
 		//dir in the shape space, this function is used in gjk
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir, PxI32& index)const
+		PX_SUPPORT_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir, PxI32& index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//scale dir and put it in the vertex space, for non-uniform scale, we don't want the scale in the dir, therefore, we are using
 			//the transpose of the inverse of shape2Vertex(which is vertex2shape). This will allow us igore the scale and keep the rotation
 			//get the extreme point index
@@ -110,10 +102,10 @@ namespace Gu
 		}
 
 		//this function is used in gjk
-		PX_SUPPORT_INLINE Ps::aos::Vec3V supportRelative(	const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aTob,
-															const Ps::aos::PsMatTransformV& aTobT, PxI32& index)const
+		PX_SUPPORT_INLINE aos::Vec3V supportRelative(	const aos::Vec3VArg dir, const aos::PxMatTransformV& aTob,
+														const aos::PxMatTransformV& aTobT, PxI32& index)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			//transform dir from b space to the shape space of a space
 			const Vec3V _dir = aTobT.rotate(dir);//relTra.rotateInv(dir);//M33MulV3(skewInvRot, dir);
@@ -122,10 +114,9 @@ namespace Gu
 			return aTob.transform(p);
 		}
 
-		
-		PX_SUPPORT_INLINE void bruteForceSearchMinMax(const Ps::aos::Vec3VArg _dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max)const 
+		PX_SUPPORT_INLINE void bruteForceSearchMinMax(const aos::Vec3VArg _dir, aos::FloatV& min, aos::FloatV& max)const 
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//brute force
 			//get the support point from the orignal margin
 			FloatV _max = V3Dot(V3LoadU_SafeReadW(verts[0]), _dir);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
@@ -133,7 +124,7 @@ namespace Gu
 
 			for(PxU32 i = 1; i < numVerts; ++i)
 			{ 
-				Ps::prefetchLine(&verts[i], 128);
+				PxPrefetchLine(&verts[i], 128);
 				const Vec3V vertex = V3LoadU_SafeReadW(verts[i]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
 				const FloatV dist = V3Dot(vertex, _dir);
 
@@ -146,9 +137,9 @@ namespace Gu
 		}
 
 		//This function support no scaling, dir is in the shape space(the same as vertex space)
-		PX_SUPPORT_INLINE void supportVertexMinMax(const Ps::aos::Vec3VArg dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max)const
+		PX_SUPPORT_INLINE void supportVertexMinMax(const aos::Vec3VArg dir, aos::FloatV& min, aos::FloatV& max)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			if(data)
 			{
@@ -164,11 +155,9 @@ namespace Gu
 				bruteForceSearchMinMax(dir, min, max);
 			}
 		}  
-
-
 	};
 
-	#define PX_CONVEX_TO_NOSCALECONVEX(x)			(static_cast<ConvexHullNoScaleV*>(x))
+	#define PX_CONVEX_TO_NOSCALECONVEX(x)	(static_cast<const ConvexHullNoScaleV*>(x))
 }
 
 }

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #ifndef PXS_ISLAND_MANAGER_TYPES_H
 #define PXS_ISLAND_MANAGER_TYPES_H
-
-#include "CmPhysXCommon.h"
 
 namespace physx
 {
@@ -50,11 +46,6 @@ typedef PxU32 IslandType;
 #define INVALID_NODE 0xffffffff
 #define INVALID_EDGE 0xffffffff
 #define INVALID_ISLAND 0xffffffff
-
-namespace Dy
-{
-	typedef size_t ArticulationLinkHandle;
-}
 
 //----------------------------------------------------------------------------//
 
@@ -83,144 +74,22 @@ typedef PxsIslandManagerHook<IslandType,INVALID_ISLAND> PxsIslandManagerIslandHo
 
 //----------------------------------------------------------------------------//
 
-/** 
-\brief PxsIslandObjects contains arrays of all rigid bodies, articulations, contact managers, and constraints that 
-belong to all awake islands.  The per array indices denoting the ownership per island are stored in PxsIslandIndices.
-
-@see PxsIslandManager::getIslandObjects
-*/
-struct PxsIslandObjects
-{
-	/**
-	\brief Array of all rigid bodies in all awake islands. 
-
-	\note Each rigid body corresponds to the void* passed to PxsIslandManager::addBody.  The PxsRigidBody ptr is computed
-	by adding the rigid body offset value (passed to PxsIslandManager::create) to the void* pointer 
-	ie [(PxsRigidBody*)((PxU8*)owner + rigidBodyOffset)]
-
-	@see PxsIslandManager::addBody, PxsIslandManager::create
-	*/
-	PxsRigidBody*const*			bodies;	
-
-	/**
-	\brief Array of all articulation roots in all awake islands.
-
-	\note Each Articulation* corresponds to Dy::getArticulation(articLinkHandle) where
-	articLinkHandle is the handle passed to PxsIslandManager::setArticulationRootLinkHandle.
-
-	@see PxsIslandManager::setArticulationRootLinkHandle, Dy::getArticulation
-	*/
-	Dy::Articulation*const*		articulations;
-
-	/**
-	\brief Array of all articulation roots in all awake islands.
-
-	\note Each void* corresponds to the void* passed to PxsIslandManager::setArticulationRootLinkHandle
-
-	@see PxsIslandManager::setArticulationRootLinkHandle
-	*/
-	void*const*					articulationOwners;
-
-	/**
-	\brief Array of all contact managers in all awake islands.
-
-	@see PxsIslandManager::setEdgeRigidCM
-	*/
-	struct PxsIndexedContactManager*	contactManagers;
-
-	/**
-	\brief Array of all constraints in all awake islands.
-
-	@see PxsIslandManager::setEdgeConstraint
-	*/
-	struct PxsIndexedConstraint*		constraints;
-
-
-	PxsIslandObjects() : bodies(NULL), articulations(NULL), articulationOwners(NULL), contactManagers(NULL), constraints(NULL)
-	{
-	}
-};
-
-
-//----------------------------------------------------------------------------//
-
-/** 
-\brief An array of PxsIslandIndices describes the rigid bodies, articulations, contacts and constraints that 
-belong to each island.
-
-\note Given an array of PxsIslandIndices, the rigid bodies of the ith island span the inclusive range:
-		(PxsIslandObjects::bodies[PxsIslandIndices[i]], PxsIslandObjects::bodies[PxsIslandIndices[i+1]-1]) 
-
-\note Given an array of PxsIslandIndices, the constraints of the ith island span the inclusive range:
-		(PxsIslandObjects::constraints[PxsIslandIndices[i]], PxsIslandObjects::constraints[PxsIslandIndices[i+1]-1]) 
-
-@see PxsIslandObjects::getIslandIndices, PxsIslandObjects::getIslandCount
-*/
 class PxsIslandIndices
 {
 public:
 
-	PxsIslandIndices(){}
-	~PxsIslandIndices(){}
+	PxsIslandIndices()	{}
+	~PxsIslandIndices()	{}
 
-	/**
-	\brief Return true if the corresponding island has a contact with a static rigid body.
-	*/
-	PX_FORCE_INLINE bool getHasStaticContact() const
-	{
-		return (1 & hasStaticContact) ? true : false;
-	}
-
-	/**
-	\brief The starting index of island rigid bodies in the array PxsIslandObjects::bodies 
-	*/
 	NodeType	bodies;
-
-	/**
-	\brief The starting index of island articulations in the arrays PxsIslandObjects::articulations and PxsIslandObjects::articulationOwners
-
-	\note The total number of articulations is clamped at 32767 on any platform that uses 16-bit handles.
-	*/
-	NodeType	articulations : 8*sizeof(NodeType)-1;
-
-private:
-
-	NodeType	hasStaticContact : 1;
-
-public:
-
-	/**
-	\brief The starting index of island contact managers in the array PxsIslandObjects::contactManagers.
-	*/
+	NodeType	articulations;
 	EdgeType	contactManagers;
-
-	/**
-	\brief The starting index of island constraints in the array PxsIslandObjects::constraints.
-
-	\note islandId is for internal use only and is used for tracking islands that need a second pass.
-	*/
-	union
-	{
-		EdgeType	constraints;	
-		IslandType	islandId;		
-	};
-
-//private:
-
-	/**
-	\brief Internal use only.
-	*/
-	PX_FORCE_INLINE void setHasStaticContact(const bool b) 
-	{
-		hasStaticContact = NodeType(b ? 1 : 0);
-	}
+	EdgeType	constraints;
 };
-PX_COMPILE_TIME_ASSERT(0==(0x07 & sizeof(PxsIslandIndices)));
-
 
 //----------------------------------------------------------------------------//
 
-typedef Dy::ArticulationLinkHandle PxsNodeType;
+typedef PxU64 PxsNodeType;
 
 
 /**
@@ -251,11 +120,13 @@ struct PxsIndexedInteraction
 	\note If body0 is a static (eWORLD) then solverBody0 is PX_MAX_U32 or PX_MAX_U64, depending on the platform being 32- or 64-bit.
 
 	\note If body0 is an articulation then the articulation is found directly from Dy::getArticulation(articulation0)
+
+	\note If body0 is an soft body then the soft body is found directly from Dy::getSoftBody(softBody0)
 	*/
 	union
 	{
-		PxsNodeType					solverBody0;
-		Dy::ArticulationLinkHandle	articulation0;
+		PxsNodeType				solverBody0;
+		PxsNodeType				articulation0;
 	};
 
 	/**
@@ -267,11 +138,13 @@ struct PxsIndexedInteraction
 	\note If body1 is a static (eWORLD) then solverBody1 is PX_MAX_U32 or PX_MAX_U64, depending on the platform being 32- or 64-bit.
 
 	\note If body1 is an articulation then the articulation is found directly from Dy::getArticulation(articulation1)
+	
+	\note If body0 is an soft body then the soft body is found directly from Dy::getSoftBody(softBody1)
 	*/
 	union
 	{
 		PxsNodeType					solverBody1;
-		Dy::ArticulationLinkHandle	articulation1;
+		PxsNodeType					articulation1;
 	};
 
 	/**

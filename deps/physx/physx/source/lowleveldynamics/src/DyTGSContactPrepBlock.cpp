@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,44 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxPreprocessor.h"
-#include "PxSceneDesc.h"
-#include "PsVecMath.h"
-#include "PsMathUtils.h"
-#include "DySolverContact.h"
-#include "DySolverContact4.h"
-#include "DySolverConstraintTypes.h"
+#include "foundation/PxVecMath.h"
 #include "PxcNpWorkUnit.h"
-#include "DyThreadContext.h"
-#include "DyContactPrep.h"
 #include "PxcNpContactPrepShared.h"
-#include "PxvDynamics.h"
-#include "DyCorrelationBuffer.h"
-#include "DyDynamics.h"
-#include "DyArticulationContactPrep.h"
-#include "PxsContactManager.h"
-#include "PsFoundation.h"
 #include "DyTGSDynamics.h"
 
 using namespace physx;
 using namespace Gu;
 
-
-#include "PsVecMath.h"
-#include "PxContactModifyCallback.h"
 #include "PxsMaterialManager.h"
-#include "PxsMaterialCombiner.h"
 #include "DyContactPrepShared.h"
-#include "DySolverConstraint1D.h"
 #include "DyConstraintPrep.h"
-
-#include "CmConeLimitHelper.h"
-
-#include "DySolverContext.h"
 
 namespace physx
 {
@@ -70,7 +47,7 @@ namespace Dy
 	inline bool ValidateVec4(const Vec4V v)
 	{
 		PX_ALIGN(16, PxVec4 vF);
-		Ps::aos::V4StoreA(v, &vF.x);
+		aos::V4StoreA(v, &vF.x);
 		return vF.isFinite();
 	}
 
@@ -126,7 +103,7 @@ struct SolverContactHeaderStepBlock
 	PxU8	numNormalConstrs[4];
 	PxU8	numFrictionConstrs[4];
 
-	Vec4V	restitution;
+	//Vec4V	restitution;
 	Vec4V   staticFriction;
 	Vec4V	dynamicFriction;
 	//Technically, these mass properties could be pulled out into a new structure and shared. For multi-manifold contacts,
@@ -156,6 +133,7 @@ struct SolverContactPointStepBlock
 	Vec4V velMultiplier;
 	Vec4V targetVelocity;
 	Vec4V biasCoefficient;
+	Vec4V recipResponse;
 };
 
 //KS - technically, this friction constraint has identical data to the above contact constraint.
@@ -203,7 +181,6 @@ struct SolverConstraint1DHeaderStep4
 	Vec4V	angOrthoError[3];	
 };
 
-
 PX_ALIGN_PREFIX(16)
 struct SolverConstraint1DStep4
 {
@@ -218,7 +195,6 @@ public:
 	Vec4V		velMultiplier;			//!< constraint velocity multiplier
 
 	Vec4V		ang1[3];					//!< angular velocity projection (body 1)
-	Vec4V		impulseMultiplier;		//!< constraint impulse multiplier
 
 	Vec4V		velTarget;				//!< Scaled target velocity of the constraint drive
 
@@ -231,19 +207,16 @@ public:
 	PxU32		flags[4];
 } PX_ALIGN_SUFFIX(16);
 
-
-
-
 static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTRICT descs, CorrelationBuffer& c,
-	PxU8* PX_RESTRICT workspace, const PxReal invDtF32, const PxReal invTotalDtF32, PxReal bounceThresholdF32, const PxReal solverOffsetSlopF32,
-	const Ps::aos::Vec4VArg invMassScale0, const Ps::aos::Vec4VArg invInertiaScale0,
-	const Ps::aos::Vec4VArg invMassScale1, const Ps::aos::Vec4VArg invInertiaScale1)
+	PxU8* PX_RESTRICT workspace, const PxReal invDtF32, const PxReal totalDtF32, const PxReal invTotalDtF32,
+	const PxReal dtF32, PxReal bounceThresholdF32, const PxReal biasCoefficient,
+	const aos::Vec4VArg invMassScale0, const aos::Vec4VArg invInertiaScale0,
+	const aos::Vec4VArg invMassScale1, const aos::Vec4VArg invInertiaScale1)
 {
-
 	//OK, we have a workspace of pre-allocated space to store all 4 descs in. We now need to create the constraints in it
 
-	//const Vec4V ccdMaxSeparation = Ps::aos::V4LoadXYZW(descs[0].maxCCDSeparation, descs[1].maxCCDSeparation, descs[2].maxCCDSeparation, descs[3].maxCCDSeparation);
-	const Vec4V solverOffsetSlop = V4Load(solverOffsetSlopF32);
+	//const Vec4V ccdMaxSeparation = aos::V4LoadXYZW(descs[0].maxCCDSeparation, descs[1].maxCCDSeparation, descs[2].maxCCDSeparation, descs[3].maxCCDSeparation);
+	const Vec4V solverOffsetSlop = aos::V4LoadXYZW(descs[0].offsetSlop, descs[1].offsetSlop, descs[2].offsetSlop, descs[3].offsetSlop);
 
 	const Vec4V zero = V4Zero();
 	const BoolV bFalse = BFFFF();
@@ -390,9 +363,13 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 
 
 	const FloatV invDt = FLoad(invDtF32);
-	const FloatV frictionBiasScale = FMul(invDt, FLoad(0.8f));
+	const PxReal scale = PxMin(0.8f, biasCoefficient);
+	
+	const FloatV p8 = FLoad(scale);
+	const FloatV frictionBiasScale = FMul(invDt, p8);
+	const Vec4V totalDt = V4Load(totalDtF32);
 	const FloatV invTotalDt = FLoad(invTotalDtF32);
-	const FloatV p8 = FLoad(0.8f);
+	
 	const Vec4V p84 = V4Splat(p8);
 	const Vec4V bounceThreshold = V4Splat(FLoad(bounceThresholdF32));
 
@@ -402,6 +379,8 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 	const Vec3V bodyFrame01p = V3LoadU(descs[1].bodyFrame0.p);
 	const Vec3V bodyFrame02p = V3LoadU(descs[2].bodyFrame0.p);
 	const Vec3V bodyFrame03p = V3LoadU(descs[3].bodyFrame0.p);
+
+	const FloatV dt = FLoad(dtF32);
 
 	Vec4V bodyFrame00p4 = Vec4V_From_Vec3V(bodyFrame00p);
 	Vec4V bodyFrame01p4 = Vec4V_From_Vec3V(bodyFrame01p);
@@ -441,8 +420,8 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 	PxU32 frictionPatchWritebackAddrIndex2 = 0;
 	PxU32 frictionPatchWritebackAddrIndex3 = 0;
 
-	Ps::prefetchLine(c.contactID);
-	Ps::prefetchLine(c.contactID, 128);
+	PxPrefetchLine(c.contactID);
+	PxPrefetchLine(c.contactID, 128);
 
 	PxU32 frictionIndex0 = 0, frictionIndex1 = 0, frictionIndex2 = 0, frictionIndex3 = 0;
 	//PxU32 contactIndex0 = 0, contactIndex1 = 0, contactIndex2 = 0, contactIndex3 = 0;
@@ -463,36 +442,39 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 	if (hasMaxImpulse)
 		flag |= SolverContactHeader4::eHAS_MAX_IMPULSE;
 
+	bool hasFinished[4];
+
 	for (PxU32 i = 0; i<maxPatches; i++)
 	{
-		const bool hasFinished0 = i >= descs[0].numFrictionPatches;
-		const bool hasFinished1 = i >= descs[1].numFrictionPatches;
-		const bool hasFinished2 = i >= descs[2].numFrictionPatches;
-		const bool hasFinished3 = i >= descs[3].numFrictionPatches;
+		hasFinished[0] = i >= descs[0].numFrictionPatches;
+		hasFinished[1] = i >= descs[1].numFrictionPatches;
+		hasFinished[2] = i >= descs[2].numFrictionPatches;
+		hasFinished[3] = i >= descs[3].numFrictionPatches;
 
 
-		frictionIndex0 = hasFinished0 ? frictionIndex0 : descs[0].startFrictionPatchIndex + i;
-		frictionIndex1 = hasFinished1 ? frictionIndex1 : descs[1].startFrictionPatchIndex + i;
-		frictionIndex2 = hasFinished2 ? frictionIndex2 : descs[2].startFrictionPatchIndex + i;
-		frictionIndex3 = hasFinished3 ? frictionIndex3 : descs[3].startFrictionPatchIndex + i;
+		frictionIndex0 = hasFinished[0] ? frictionIndex0 : descs[0].startFrictionPatchIndex + i;
+		frictionIndex1 = hasFinished[1] ? frictionIndex1 : descs[1].startFrictionPatchIndex + i;
+		frictionIndex2 = hasFinished[2] ? frictionIndex2 : descs[2].startFrictionPatchIndex + i;
+		frictionIndex3 = hasFinished[3] ? frictionIndex3 : descs[3].startFrictionPatchIndex + i;
 
-		PxU32 clampedContacts0 = hasFinished0 ? 0 : c.frictionPatchContactCounts[frictionIndex0];
-		PxU32 clampedContacts1 = hasFinished1 ? 0 : c.frictionPatchContactCounts[frictionIndex1];
-		PxU32 clampedContacts2 = hasFinished2 ? 0 : c.frictionPatchContactCounts[frictionIndex2];
-		PxU32 clampedContacts3 = hasFinished3 ? 0 : c.frictionPatchContactCounts[frictionIndex3];
+		PxU32 clampedContacts0 = hasFinished[0] ? 0 : c.frictionPatchContactCounts[frictionIndex0];
+		PxU32 clampedContacts1 = hasFinished[1] ? 0 : c.frictionPatchContactCounts[frictionIndex1];
+		PxU32 clampedContacts2 = hasFinished[2] ? 0 : c.frictionPatchContactCounts[frictionIndex2];
+		PxU32 clampedContacts3 = hasFinished[3] ? 0 : c.frictionPatchContactCounts[frictionIndex3];
 
 		PxU32 firstPatch0 = c.correlationListHeads[frictionIndex0];
 		PxU32 firstPatch1 = c.correlationListHeads[frictionIndex1];
 		PxU32 firstPatch2 = c.correlationListHeads[frictionIndex2];
 		PxU32 firstPatch3 = c.correlationListHeads[frictionIndex3];
 
-		const Gu::ContactPoint* contactBase0 = descs[0].contacts + c.contactPatches[firstPatch0].start;
-		const Gu::ContactPoint* contactBase1 = descs[1].contacts + c.contactPatches[firstPatch1].start;
-		const Gu::ContactPoint* contactBase2 = descs[2].contacts + c.contactPatches[firstPatch2].start;
-		const Gu::ContactPoint* contactBase3 = descs[3].contacts + c.contactPatches[firstPatch3].start;
+		const PxContactPoint* contactBase0 = descs[0].contacts + c.contactPatches[firstPatch0].start;
+		const PxContactPoint* contactBase1 = descs[1].contacts + c.contactPatches[firstPatch1].start;
+		const PxContactPoint* contactBase2 = descs[2].contacts + c.contactPatches[firstPatch2].start;
+		const PxContactPoint* contactBase3 = descs[3].contacts + c.contactPatches[firstPatch3].start;
 
 		const Vec4V restitution = V4Neg(V4LoadXYZW(contactBase0->restitution, contactBase1->restitution, contactBase2->restitution,
 			contactBase3->restitution));
+		const Vec4V damping = V4LoadXYZW(contactBase0->damping, contactBase1->damping, contactBase2->damping, contactBase3->damping);
 
 		SolverContactHeaderStepBlock* PX_RESTRICT header = reinterpret_cast<SolverContactHeaderStepBlock*>(ptr);
 		ptr += sizeof(SolverContactHeaderStepBlock);
@@ -512,25 +494,23 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 
 		PxMemZero(appliedNormalForces, sizeof(Vec4V) * totalContacts);
 
-		header->numNormalConstr = Ps::to8(totalContacts);
-		header->numNormalConstrs[0] = Ps::to8(clampedContacts0);
-		header->numNormalConstrs[1] = Ps::to8(clampedContacts1);
-		header->numNormalConstrs[2] = Ps::to8(clampedContacts2);
-		header->numNormalConstrs[3] = Ps::to8(clampedContacts3);
+		header->numNormalConstr = PxTo8(totalContacts);
+		header->numNormalConstrs[0] = PxTo8(clampedContacts0);
+		header->numNormalConstrs[1] = PxTo8(clampedContacts1);
+		header->numNormalConstrs[2] = PxTo8(clampedContacts2);
+		header->numNormalConstrs[3] = PxTo8(clampedContacts3);
 		//header->sqrtInvMassA = sqrtInvMass0;
 		//header->sqrtInvMassB = sqrtInvMass1;
 		header->invMass0D0 = invMass0D0;
 		header->invMass1D1 = invMass1D1;
 		header->angDom0 = angDom0;
 		header->angDom1 = angDom1;
-		header->shapeInteraction[0] = descs[0].shapeInteraction; header->shapeInteraction[1] = descs[1].shapeInteraction;
-		header->shapeInteraction[2] = descs[2].shapeInteraction; header->shapeInteraction[3] = descs[3].shapeInteraction;
-
-		
+		header->shapeInteraction[0] = getInteraction(descs[0]); header->shapeInteraction[1] = getInteraction(descs[1]);
+		header->shapeInteraction[2] = getInteraction(descs[2]); header->shapeInteraction[3] = getInteraction(descs[3]);
 
 		Vec4V* maxImpulse = reinterpret_cast<Vec4V*>(ptr + constraintSize * totalContacts);
 
-		header->restitution = restitution;
+		//header->restitution = restitution;
 
 		Vec4V normal0 = V4LoadA(&contactBase0->normal.x);
 		Vec4V normal1 = V4LoadA(&contactBase1->normal.x);
@@ -557,10 +537,10 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 		//For all correlation heads - need to pull this out I think
 
 		//OK, we have a counter for all our patches...
-		PxU32 finished = (PxU32(hasFinished0)) |
-			((PxU32(hasFinished1)) << 1) |
-			((PxU32(hasFinished2)) << 2) |
-			((PxU32(hasFinished3)) << 3);
+		PxU32 finished = (PxU32(hasFinished[0])) |
+			((PxU32(hasFinished[1])) << 1) |
+			((PxU32(hasFinished[2])) << 2) |
+			((PxU32(hasFinished[3])) << 3);
 
 		CorrelationListIterator iter0(c, firstPatch0);
 		CorrelationListIterator iter1(c, firstPatch1);
@@ -570,39 +550,41 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 		//PxU32 contact0, contact1, contact2, contact3;
 		//PxU32 patch0, patch1, patch2, patch3;
 
-		if (!hasFinished0)
+		if (!hasFinished[0])
 			iter0.nextContact(patch0, contact0);
-		if (!hasFinished1)
+		if (!hasFinished[1])
 			iter1.nextContact(patch1, contact1);
-		if (!hasFinished2)
+		if (!hasFinished[2])
 			iter2.nextContact(patch2, contact2);
-		if (!hasFinished3)
+		if (!hasFinished[3])
 			iter3.nextContact(patch3, contact3);
 
 		PxU8* p = ptr;
 
 		PxU32 contactCount = 0;
 		PxU32 newFinished =
-			(PxU32(hasFinished0 || !iter0.hasNextContact())) |
-			((PxU32(hasFinished1 || !iter1.hasNextContact())) << 1) |
-			((PxU32(hasFinished2 || !iter2.hasNextContact())) << 2) |
-			((PxU32(hasFinished3 || !iter3.hasNextContact())) << 3);
+			(PxU32(hasFinished[0] || !iter0.hasNextContact())) |
+			((PxU32(hasFinished[1] || !iter1.hasNextContact())) << 1) |
+			((PxU32(hasFinished[2] || !iter2.hasNextContact())) << 2) |
+			((PxU32(hasFinished[3] || !iter3.hasNextContact())) << 3);
+
+		BoolV bFinished = BLoad(hasFinished);
 
 		while (finished != 0xf)
 		{
 			finished = newFinished;
 			++contactCount;
-			Ps::prefetchLine(p, 384);
-			Ps::prefetchLine(p, 512);
-			Ps::prefetchLine(p, 640);
+			PxPrefetchLine(p, 384);
+			PxPrefetchLine(p, 512);
+			PxPrefetchLine(p, 640);
 
 			SolverContactPointStepBlock* PX_RESTRICT solverContact = reinterpret_cast<SolverContactPointStepBlock*>(p);
 			p += constraintSize;
 
-			const Gu::ContactPoint& con0 = descs[0].contacts[c.contactPatches[patch0].start + contact0];
-			const Gu::ContactPoint& con1 = descs[1].contacts[c.contactPatches[patch1].start + contact1];
-			const Gu::ContactPoint& con2 = descs[2].contacts[c.contactPatches[patch2].start + contact2];
-			const Gu::ContactPoint& con3 = descs[3].contacts[c.contactPatches[patch3].start + contact3];
+			const PxContactPoint& con0 = descs[0].contacts[c.contactPatches[patch0].start + contact0];
+			const PxContactPoint& con1 = descs[1].contacts[c.contactPatches[patch1].start + contact1];
+			const PxContactPoint& con2 = descs[2].contacts[c.contactPatches[patch2].start + contact2];
+			const PxContactPoint& con3 = descs[3].contacts[c.contactPatches[patch3].start + contact3];
 
 			//Now we need to splice these 4 contacts into a single structure
 
@@ -658,9 +640,21 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 				Vec4V raXnY = V4NegMulSub(raX, normalZ, V4Mul(raZ, normalX));
 				Vec4V raXnZ = V4NegMulSub(raY, normalX, V4Mul(raX, normalY));
 
-				raXnX = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(raXnX)), zero, raXnX);
-				raXnY = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(raXnY)), zero, raXnY);
-				raXnZ = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(raXnZ)), zero, raXnZ);
+				Vec4V rbXnX = V4NegMulSub(rbZ, normalY, V4Mul(rbY, normalZ));
+				Vec4V rbXnY = V4NegMulSub(rbX, normalZ, V4Mul(rbZ, normalX));
+				Vec4V rbXnZ = V4NegMulSub(rbY, normalX, V4Mul(rbX, normalY));
+
+
+				const Vec4V relAngVel0 = V4MulAdd(raXnZ, angVelT20, V4MulAdd(raXnY, angVelT10, V4Mul(raXnX, angVelT00)));
+				const Vec4V relAngVel1 = V4MulAdd(rbXnZ, angVelT21, V4MulAdd(rbXnY, angVelT11, V4Mul(rbXnX, angVelT01)));
+
+				const Vec4V relAng = V4Sub(relAngVel0, relAngVel1);
+
+				const Vec4V slop = V4Mul(solverOffsetSlop, V4Max(V4Sel(V4IsEq(relNorVel, zero), V4Splat(FMax()), V4Div(relAng, relNorVel)), V4One()));
+
+				raXnX = V4Sel(V4IsGrtr(slop, V4Abs(raXnX)), zero, raXnX);
+				raXnY = V4Sel(V4IsGrtr(slop, V4Abs(raXnY)), zero, raXnY);
+				raXnZ = V4Sel(V4IsGrtr(slop, V4Abs(raXnZ)), zero, raXnZ);
 
 				Vec4V delAngVel0X = V4Mul(invInertia0X0, raXnX);
 				Vec4V delAngVel0Y = V4Mul(invInertia0X1, raXnX);
@@ -675,16 +669,18 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 				delAngVel0Z = V4MulAdd(invInertia0Z2, raXnZ, delAngVel0Z);
 
 
+
+
 				PX_ASSERT(ValidateVec4(delAngVel0X));
 				PX_ASSERT(ValidateVec4(delAngVel0Y));
 				PX_ASSERT(ValidateVec4(delAngVel0Z));
 
 				const Vec4V dotDelAngVel0 = V4MulAdd(delAngVel0X, delAngVel0X, V4MulAdd(delAngVel0Y, delAngVel0Y, V4Mul(delAngVel0Z, delAngVel0Z)));
-				const Vec4V relAngVel0 = V4MulAdd(raXnZ, angVelT20, V4MulAdd(raXnY, angVelT10, V4Mul(raXnX, angVelT00)));
+				
 
 				Vec4V unitResponse = V4MulAdd(dotDelAngVel0, angDom0, invMass0D0);
 				Vec4V vrel0 = V4Add(norVel0, relAngVel0);
-				Vec4V vrel1 = norVel1;
+				Vec4V vrel1 = V4Add(norVel1, relAngVel1);
 
 				Vec4V delAngVel1X = zero;
 				Vec4V delAngVel1Y = zero;
@@ -693,13 +689,11 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 				//The dynamic-only parts - need to if-statement these up. A branch here shouldn't cost us too much
 				if (isDynamic)
 				{
-					Vec4V rbXnX = V4NegMulSub(rbZ, normalY, V4Mul(rbY, normalZ));
-					Vec4V rbXnY = V4NegMulSub(rbX, normalZ, V4Mul(rbZ, normalX));
-					Vec4V rbXnZ = V4NegMulSub(rbY, normalX, V4Mul(rbX, normalY));
+					
 
-					rbXnX = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(rbXnX)), zero, rbXnX);
-					rbXnY = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(rbXnY)), zero, rbXnY);
-					rbXnZ = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(rbXnZ)), zero, rbXnZ);
+					rbXnX = V4Sel(V4IsGrtr(slop, V4Abs(rbXnX)), zero, rbXnX);
+					rbXnY = V4Sel(V4IsGrtr(slop, V4Abs(rbXnY)), zero, rbXnY);
+					rbXnZ = V4Sel(V4IsGrtr(slop, V4Abs(rbXnZ)), zero, rbXnZ);
 
 					delAngVel1X = V4Mul(invInertia1X0, rbXnX);
 					delAngVel1Y = V4Mul(invInertia1X1, rbXnX);
@@ -718,27 +712,10 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 					PX_ASSERT(ValidateVec4(delAngVel1Z));
 
 					const Vec4V dotDelAngVel1 = V4MulAdd(delAngVel1X, delAngVel1X, V4MulAdd(delAngVel1Y, delAngVel1Y, V4Mul(delAngVel1Z, delAngVel1Z)));
-					const Vec4V relAngVel1 = V4MulAdd(rbXnZ, angVelT21, V4MulAdd(rbXnY, angVelT11, V4Mul(rbXnX, angVelT01)));
 
 					const Vec4V resp1 = V4MulAdd(dotDelAngVel1, angDom1, invMass1D1);
 
 					unitResponse = V4Add(unitResponse, resp1);
-
-					vrel1 = V4Add(vrel1, relAngVel1);
-
-					//These are for dynamic-only contacts.
-					
-
-				}
-				else if (hasKinematic)
-				{
-					const Vec4V rbXnX = V4NegMulSub(rbZ, normalY, V4Mul(rbY, normalZ));
-					const Vec4V rbXnY = V4NegMulSub(rbX, normalZ, V4Mul(rbZ, normalX));
-					const Vec4V rbXnZ = V4NegMulSub(rbY, normalX, V4Mul(rbX, normalY));
-
-					const Vec4V relAngVel1 = V4MulAdd(rbXnZ, angVelT21, V4MulAdd(rbXnY, angVelT11, V4Mul(rbXnX, angVelT01)));
-
-					vrel1 = V4Add(vrel1, relAngVel1);
 				}
 
 				Vec4V vrel = V4Sub(vrel0, vrel1);
@@ -747,21 +724,32 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 				solverContact->rbXnI[1] = delAngVel1Y;
 				solverContact->rbXnI[2] = delAngVel1Z;
 				
-				const Vec4V velMultiplier = V4Sel(V4IsGrtr(unitResponse, zero), V4Recip(unitResponse), zero);
 
-				const Vec4V penetration = V4Sub(separation, restDistance);
-				//const Vec4V penInvDtPt8 = V4Max(maxPenBias, V4Scale(penetration, invDtp8));
-				//Vec4V scaledBias = invDtPt8;
+				Vec4V penetration = V4Sub(separation, restDistance);
 
 				const Vec4V penetrationInvDt = V4Scale(penetration, invTotalDt);
 
 				const BoolV isGreater2 = BAnd(BAnd(V4IsGrtr(zero, restitution), V4IsGrtr(bounceThreshold, vrel)),
-					V4IsGrtr(V4Neg(vrel), penetrationInvDt));
+						V4IsGrtr(V4Neg(vrel), penetrationInvDt));
 
+				const Vec4V ratio = V4Sel(isGreater2, V4Add(totalDt, V4Div(penetration, vrel)), zero);
 
-				const Vec4V scaledBias = V4Neg(invDtp8);
+				const Vec4V recipResponse = V4Sel(V4IsGrtr(unitResponse, zero), V4Recip(unitResponse), zero);
+
+				//Restitution is negated in the block setup code
+				const BoolV isCompliant = V4IsGrtr(restitution, zero);
+				const Vec4V rdt = V4Scale(restitution, dt);
+				const Vec4V a = V4Scale(V4Add(damping, rdt), dt);
+				const Vec4V x = V4Recip(V4MulAdd(a, unitResponse, V4One()));
+				const Vec4V velMultiplier = V4Sel(isCompliant, V4Mul(x, a), recipResponse);
+
+				const Vec4V scaledBias = V4Neg(V4Sel(isCompliant, V4Mul(rdt, V4Mul(x, unitResponse)), V4Sel(V4IsGrtr(penetration, zero), V4Splat(invDt), invDtp8)));
 
 				Vec4V targetVelocity = V4NegMulSub(vrel0, kinematicScale0, V4MulAdd(vrel1, kinematicScale1, V4Sel(isGreater2, V4Mul(vrel, restitution), zero)));
+
+				penetration = V4MulAdd(targetVelocity, ratio, penetration);
+
+
 
 
 
@@ -774,10 +762,11 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 				solverContact->raXnI[0] = delAngVel0X;
 				solverContact->raXnI[1] = delAngVel0Y;
 				solverContact->raXnI[2] = delAngVel0Z;
-				solverContact->velMultiplier = velMultiplier;
+				solverContact->velMultiplier = V4Sel(bFinished, zero, velMultiplier);
 				solverContact->targetVelocity = V4Add(cTargetNorVel, targetVelocity);
 				solverContact->separation = penetration;
-				solverContact->biasCoefficient = scaledBias;
+				solverContact->biasCoefficient = V4Sel(bFinished, zero, scaledBias);
+				solverContact->recipResponse = V4Sel(bFinished, zero, recipResponse);
 
 				if (hasMaxImpulse)
 				{
@@ -790,24 +779,32 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 				iter0.nextContact(patch0, contact0);
 				newFinished |= PxU32(!iter0.hasNextContact());
 			}
+			else
+				bFinished = BSetX(bFinished, bFalse);
 
 			if (!(finished & 0x2))
 			{
 				iter1.nextContact(patch1, contact1);
 				newFinished |= (PxU32(!iter1.hasNextContact()) << 1);
 			}
+			else
+				bFinished = BSetY(bFinished, bFalse);
 
 			if (!(finished & 0x4))
 			{
 				iter2.nextContact(patch2, contact2);
 				newFinished |= (PxU32(!iter2.hasNextContact()) << 2);
 			}
+			else
+				bFinished = BSetZ(bFinished, bFalse);
 
 			if (!(finished & 0x8))
 			{
 				iter3.nextContact(patch3, contact3);
 				newFinished |= (PxU32(!iter3.hasNextContact()) << 3);
 			}
+			else
+				bFinished = BSetW(bFinished, bFalse);
 		}
 		ptr = p;
 		if (hasMaxImpulse)
@@ -830,10 +827,10 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 			PxU32 anchorCount2 = frictionPatch2.anchorCount;
 			PxU32 anchorCount3 = frictionPatch3.anchorCount;
 
-			PxU32 clampedAnchorCount0 = hasFinished0 || (contactBase0->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount0;
-			PxU32 clampedAnchorCount1 = hasFinished1 || (contactBase1->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount1;
-			PxU32 clampedAnchorCount2 = hasFinished2 || (contactBase2->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount2;
-			PxU32 clampedAnchorCount3 = hasFinished3 || (contactBase3->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount3;
+			PxU32 clampedAnchorCount0 = hasFinished[0] || (contactBase0->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount0;
+			PxU32 clampedAnchorCount1 = hasFinished[1] || (contactBase1->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount1;
+			PxU32 clampedAnchorCount2 = hasFinished[2] || (contactBase2->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount2;
+			PxU32 clampedAnchorCount3 = hasFinished[3] || (contactBase3->materialFlags & PxMaterialFlag::eDISABLE_FRICTION) ? 0 : anchorCount3;
 
 			const PxU32 maxAnchorCount = PxMax(clampedAnchorCount0, PxMax(clampedAnchorCount1, PxMax(clampedAnchorCount2, clampedAnchorCount3)));
 
@@ -859,14 +856,14 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 
 			PX_ASSERT(totalContacts == contactCount);
 			
-			header->numFrictionConstr = Ps::to8(maxAnchorCount * 2);
-			header->numFrictionConstrs[0] = Ps::to8(clampedAnchorCount0 * 2);
-			header->numFrictionConstrs[1] = Ps::to8(clampedAnchorCount1 * 2);
-			header->numFrictionConstrs[2] = Ps::to8(clampedAnchorCount2 * 2);
-			header->numFrictionConstrs[3] = Ps::to8(clampedAnchorCount3 * 2);
+			header->numFrictionConstr = PxTo8(maxAnchorCount * 2);
+			header->numFrictionConstrs[0] = PxTo8(clampedAnchorCount0 * 2);
+			header->numFrictionConstrs[1] = PxTo8(clampedAnchorCount1 * 2);
+			header->numFrictionConstrs[2] = PxTo8(clampedAnchorCount2 * 2);
+			header->numFrictionConstrs[3] = PxTo8(clampedAnchorCount3 * 2);
 
 			//KS - TODO - extend this if needed
-			header->type = Ps::to8(DY_SC_TYPE_BLOCK_RB_CONTACT);
+			header->type = PxTo8(DY_SC_TYPE_BLOCK_RB_CONTACT);
 
 			if (maxAnchorCount)
 			{
@@ -936,9 +933,9 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 
 				for (PxU32 j = 0; j < maxAnchorCount; j++)
 				{
-					Ps::prefetchLine(ptr, 384);
-					Ps::prefetchLine(ptr, 512);
-					Ps::prefetchLine(ptr, 640);
+					PxPrefetchLine(ptr, 384);
+					PxPrefetchLine(ptr, 512);
+					PxPrefetchLine(ptr, 640);
 					SolverContactFrictionStepBlock* PX_RESTRICT f0 = reinterpret_cast<SolverContactFrictionStepBlock*>(ptr);
 					ptr += frictionSize;
 					SolverContactFrictionStepBlock* PX_RESTRICT f1 = reinterpret_cast<SolverContactFrictionStepBlock*>(ptr);
@@ -1139,7 +1136,6 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 						Vec4V raXnX = V4NegMulSub(raZ, t1Y, V4Mul(raY, t1Z));
 						Vec4V raXnY = V4NegMulSub(raX, t1Z, V4Mul(raZ, t1X));
 						Vec4V raXnZ = V4NegMulSub(raY, t1X, V4Mul(raX, t1Y));
-
 						raXnX = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(raXnX)), zero, raXnX);
 						raXnY = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(raXnY)), zero, raXnY);
 						raXnZ = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(raXnZ)), zero, raXnZ);
@@ -1175,7 +1171,6 @@ static void setupFinalizeSolverConstraints4Step(PxTGSSolverContactDesc* PX_RESTR
 							Vec4V rbXnX = V4NegMulSub(rbZ, t1Y, V4Mul(rbY, t1Z));
 							Vec4V rbXnY = V4NegMulSub(rbX, t1Z, V4Mul(rbZ, t1X));
 							Vec4V rbXnZ = V4NegMulSub(rbY, t1X, V4Mul(rbX, t1Y));
-
 							rbXnX = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(rbXnX)), zero, rbXnX);
 							rbXnY = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(rbXnY)), zero, rbXnY);
 							rbXnZ = V4Sel(V4IsGrtr(solverOffsetSlop, V4Abs(rbXnZ)), zero, rbXnZ);
@@ -1399,7 +1394,7 @@ void computeBlockStreamByteSizes4(PxTGSSolverContactDesc* descs,
 
 	//If we have max impulse, reserve a buffer for it
 	if (hasMaxImpulse)
-		constraintSize += sizeof(Ps::aos::Vec4V) * totalContacts;
+		constraintSize += sizeof(aos::Vec4V) * totalContacts;
 
 	_solverConstraintByteSize = ((constraintSize + headerSize + 0x0f) & ~0x0f);
 	PX_ASSERT(0 == (_solverConstraintByteSize & 0x0f));
@@ -1467,11 +1462,13 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 	Dy::CorrelationBuffer& c,
 	PxTGSSolverContactDesc* blockDescs,
 	const PxReal invDtF32,
+	const PxReal totalDtF32,
 	const PxReal invTotalDtF32,
-	PxReal bounceThresholdF32,
-	PxReal	frictionOffsetThreshold,
-	PxReal correlationDistance,
-	PxReal solverOffsetSlop,
+	const PxReal dt,
+	const PxReal bounceThresholdF32,
+	const PxReal	frictionOffsetThreshold,
+	const PxReal correlationDistance,
+	const PxReal biasCoefficient,
 	PxConstraintAllocator& constraintAllocator)
 {
 	PX_ALIGN(16, PxReal invMassScale0[4]);
@@ -1511,7 +1508,7 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 		if (overflow)
 			return SolverConstraintPrepState::eUNBATCHABLE;
 
-		growPatches(c, blockDesc.contacts, blockDesc.bodyFrame0, blockDesc.bodyFrame1, correlationDistance, blockDesc.startFrictionPatchIndex,
+		growPatches(c, blockDesc.contacts, blockDesc.bodyFrame0, blockDesc.bodyFrame1, blockDesc.startFrictionPatchIndex,
 			frictionOffsetThreshold + blockDescs[a].restDistance);
 
 		//Remove the empty friction patches - do we actually need to do this?
@@ -1556,8 +1553,6 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 	PxU8* solverConstraint = NULL;
 	PxU32 solverConstraintByteSize = 0;
 
-
-
 	{
 		PxU32 axisConstraintCount[4];
 		SolverConstraintPrepState::Enum state = reserveBlockStreams4(blockDescs, c,
@@ -1568,25 +1563,23 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 		if (state != SolverConstraintPrepState::eSUCCESS)
 			return state;
 
-
 		for (PxU32 a = 0; a < 4; ++a)
 		{
-
 			FrictionPatch* frictionPatches = frictionPatchArray[a];
 
 			PxTGSSolverContactDesc& blockDesc = blockDescs[a];
 			PxSolverConstraintDesc& desc = *blockDesc.desc;
 			blockDesc.frictionPtr = reinterpret_cast<PxU8*>(frictionPatches);
-			blockDesc.frictionCount = Ps::to8(frictionPatchCounts[a]);
+			blockDesc.frictionCount = PxTo8(frictionPatchCounts[a]);
 
 			//Initialise friction buffer.
 			if (frictionPatches)
 			{
 				// PT: TODO: revisit this... not very satisfying
 				//const PxU32 maxSize = numFrictionPatches*sizeof(FrictionPatch);
-				Ps::prefetchLine(frictionPatches);
-				Ps::prefetchLine(frictionPatches, 128);
-				Ps::prefetchLine(frictionPatches, 256);
+				PxPrefetchLine(frictionPatches);
+				PxPrefetchLine(frictionPatches, 128);
+				PxPrefetchLine(frictionPatches, 256);
 
 				for (PxU32 i = 0; i<blockDesc.numFrictionPatches; i++)
 				{
@@ -1594,17 +1587,16 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 					{
 						//*frictionPatches++ = c.frictionPatches[blockDesc.startFrictionPatchIndex + i];
 						PxMemCopy(frictionPatches++, &c.frictionPatches[blockDesc.startFrictionPatchIndex + i], sizeof(FrictionPatch));
-						//Ps::prefetchLine(frictionPatches, 256);
+						//PxPrefetchLine(frictionPatches, 256);
 					}
 				}
 			}
 
 
-			blockDesc.axisConstraintCount += Ps::to16(axisConstraintCount[a]);
+			blockDesc.axisConstraintCount += PxTo16(axisConstraintCount[a]);
 
 			desc.constraint = solverConstraint;
-			desc.constraintLengthOver16 = Ps::to16(solverConstraintByteSize / 16);
-			desc.writeBackLengthOver4 = PxU16(blockDesc.numContacts);
+			desc.constraintLengthOver16 = PxTo16(solverConstraintByteSize / 16);
 			desc.writeBack = blockDesc.contactForces;
 		}
 
@@ -1613,8 +1605,8 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 		const Vec4V iMassScale1 = V4LoadA(invMassScale1);
 		const Vec4V iInertiaScale1 = V4LoadA(invInertiaScale1);
 
-		setupFinalizeSolverConstraints4Step(blockDescs, c, solverConstraint, invDtF32, invTotalDtF32, bounceThresholdF32, solverOffsetSlop,
-			iMassScale0, iInertiaScale0, iMassScale1, iInertiaScale1);
+		setupFinalizeSolverConstraints4Step(blockDescs, c, solverConstraint, invDtF32, totalDtF32, invTotalDtF32, dt, bounceThresholdF32,
+			biasCoefficient, iMassScale0, iInertiaScale0, iMassScale1, iInertiaScale1);
 
 		PX_ASSERT((*solverConstraint == DY_SC_TYPE_BLOCK_RB_CONTACT) || (*solverConstraint == DY_SC_TYPE_BLOCK_STATIC_RB_CONTACT));
 
@@ -1623,17 +1615,18 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 	return SolverConstraintPrepState::eSUCCESS;
 }
 
-
 SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 	PxsContactManagerOutput** cmOutputs,
 	ThreadContext& threadContext,
 	PxTGSSolverContactDesc* blockDescs,
 	const PxReal invDtF32,
+	const PxReal totalDtF32,
 	const PxReal invTotalDtF32,
-	PxReal bounceThresholdF32,
-	PxReal	frictionOffsetThreshold,
-	PxReal correlationDistance,
-	PxReal solverOffsetSlop,
+	const PxReal dtF32,
+	const PxReal bounceThresholdF32,
+	const PxReal frictionOffsetThreshold,
+	const PxReal correlationDistance,
+	const PxReal biasCoefficient,
 	PxConstraintAllocator& constraintAllocator)
 {
 
@@ -1644,8 +1637,7 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 
 	//PX_ASSERT(cmOutputs[0]->nbContacts && cmOutputs[1]->nbContacts && cmOutputs[2]->nbContacts && cmOutputs[3]->nbContacts);
 
-
-	Gu::ContactBuffer& buffer = threadContext.mContactBuffer;
+	PxContactBuffer& buffer = threadContext.mContactBuffer;
 
 	buffer.count = 0;
 
@@ -1661,9 +1653,8 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 		//blockDesc.startContactIndex = buffer.count;
 		blockDesc.contacts = buffer.contacts + buffer.count;
 
-		Ps::prefetchLine(desc.bodyA);
-		Ps::prefetchLine(desc.bodyB);
-
+		PxPrefetchLine(desc.bodyA);
+		PxPrefetchLine(desc.bodyB);
 
 		//Unbatchable if we have (a) too many contacts or (b) torsional friction enabled - it just seems easier to handle this on an individual contact basis because it is expected to 
 		//be used relatively rarely
@@ -1676,14 +1667,14 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 		bool hasTargetVelocity = false;
 
 		//OK...do the correlation here as well...
-		Ps::prefetchLine(blockDescs[a].frictionPtr);
-		Ps::prefetchLine(blockDescs[a].frictionPtr, 64);
-		Ps::prefetchLine(blockDescs[a].frictionPtr, 128);
+		PxPrefetchLine(blockDescs[a].frictionPtr);
+		PxPrefetchLine(blockDescs[a].frictionPtr, 64);
+		PxPrefetchLine(blockDescs[a].frictionPtr, 128);
 
 		if (a < 3)
 		{
-			Ps::prefetchLine(cmOutputs[a]->contactPatches);
-			Ps::prefetchLine(cmOutputs[a]->contactPoints);
+			PxPrefetchLine(cmOutputs[a]->contactPatches);
+			PxPrefetchLine(cmOutputs[a]->contactPoints);
 		}
 
 		PxReal invMassScale0, invMassScale1, invInertiaScale0, invInertiaScale1;
@@ -1707,32 +1698,15 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Step(
 	}
 
 	return createFinalizeSolverContacts4Step(c, blockDescs,
-		invDtF32, invTotalDtF32, bounceThresholdF32, frictionOffsetThreshold,
-		correlationDistance, solverOffsetSlop, constraintAllocator);
+		invDtF32, totalDtF32, invTotalDtF32, dtF32, bounceThresholdF32, frictionOffsetThreshold,
+		correlationDistance, biasCoefficient, constraintAllocator);
 }
-
-
-
-void preprocessRows(Px1DConstraint** sorted,
-	Px1DConstraint* rows,
-	PxVec4* angSqrtInvInertia0,
-	PxVec4* angSqrtInvInertia1,
-	PxU32 rowCount,
-	const PxMat33& sqrtInvInertia0F32,
-	const PxMat33& sqrtInvInertia1F32,
-	const PxReal invMass0,
-	const PxReal invMass1,
-	const PxConstraintInvMassScale& ims,
-	bool disablePreprocessing,
-	bool diagonalizeDrive,
-	bool preprocessLinear = true);
 
 void setSolverConstantsStep(PxReal& error,
 	PxReal& biasScale,
 	PxReal& targetVel,
 	PxReal& maxBias,
 	PxReal& velMultiplier,
-	PxReal& impulseMultiplier,
 	PxReal& rcpResponse,
 	const Px1DConstraint& c,
 	PxReal normalVel,
@@ -1746,13 +1720,13 @@ void setSolverConstantsStep(PxReal& error,
 	PxReal recipTotalDt,
 	PxReal velTarget);
 
-
 namespace
 {
-	void setConstants(PxReal& error, PxReal& biasScale, PxReal& targetVel, PxReal& maxBias, PxReal& velMultiplier, PxReal& impulseMultiplier,
+	void setConstants(PxReal& error, PxReal& biasScale, PxReal& targetVel, PxReal& maxBias, PxReal& velMultiplier,
 		PxReal& rcpResponse, const Px1DConstraint& c, PxReal unitResponse, PxReal minRowResponse, PxReal dt, PxReal totalDt,
 		PxReal recipdt, PxReal recipTotalDt, const bool finished,
-		const PxReal lengthScale, const PxReal nv, const PxReal nv0, const PxReal nv1, const bool isKinematic0, const bool isKinematic1)
+		const PxReal lengthScale, const PxReal nv, const PxReal nv0, const PxReal nv1, const bool isKinematic0, const bool isKinematic1,
+		const PxReal erp)
 	{
 		PX_UNUSED(dt);
 		if (finished)
@@ -1761,28 +1735,22 @@ namespace
 			biasScale = 0.f;
 			maxBias = 0.f;
 			velMultiplier = 0.f;
-			impulseMultiplier = 0.f;
 			rcpResponse = 0.f;
 			targetVel = 0.f;
 			return;
 		}
 
-		PxReal erp = 1.f;
-		PxReal linearErp = 1.f;
-
 		//PxReal biasClamp = c.flags & Px1DConstraintFlag::eANGULAR_CONSTRAINT ? 50.f : 200.f*lengthScale;
 		PxReal biasClamp = c.flags & Px1DConstraintFlag::eANGULAR_CONSTRAINT ? 100.f : 1000.f*lengthScale;
 
-		PxReal velTarget = 0.f;
+		PxReal vt = 0.f;
 		if (isKinematic0)
-			velTarget -= nv0;
+			vt -= nv0;
 		if (isKinematic1)
-			velTarget += nv1;
+			vt += nv1;
 
-		setSolverConstantsStep(error, biasScale, targetVel, maxBias, velMultiplier, impulseMultiplier, rcpResponse, c, nv, unitResponse,
-			minRowResponse, c.flags & Px1DConstraintFlag::eANGULAR_CONSTRAINT ? erp : linearErp, dt, totalDt, biasClamp, recipdt, recipTotalDt, velTarget);
-
-		
+		setSolverConstantsStep(error, biasScale, targetVel, maxBias, velMultiplier, rcpResponse, c, nv, unitResponse,
+			minRowResponse, erp, dt, totalDt, biasClamp, recipdt, recipTotalDt, vt);
 	}
 
 	void setOrthoData(const PxReal& ang0X, const PxReal& ang0Y, const PxReal& ang0Z, const PxReal& ang1X, const PxReal& ang1Y, const PxReal& ang1Z,
@@ -1809,57 +1777,49 @@ namespace
 SolverConstraintPrepState::Enum setupSolverConstraintStep4
 (PxTGSSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 	const PxReal dt, const PxReal totalDt, const PxReal recipdt, const PxReal recipTotalDt, PxU32& totalRows,
-	PxConstraintAllocator& allocator, PxU32 maxRows, const PxReal lengthScale);
+	PxConstraintAllocator& allocator, PxU32 maxRows, const PxReal lengthScale, const PxReal biasCoefficient);
 
 SolverConstraintPrepState::Enum setupSolverConstraintStep4
 (SolverConstraintShaderPrepDesc* PX_RESTRICT constraintShaderDescs,
 	PxTGSSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 	const PxReal dt, const PxReal totalDt, const PxReal recipdt, const PxReal recipTotalDt, PxU32& totalRows,
-	PxConstraintAllocator& allocator, const PxReal lengthScale)
-
+	PxConstraintAllocator& allocator, const PxReal lengthScale, const PxReal biasCoefficient)
 {
 	//KS - we will never get here with constraints involving articulations so we don't need to stress about those in here
 
 	totalRows = 0;
 
 	Px1DConstraint allRows[MAX_CONSTRAINT_ROWS * 4];
-
-	PxU32 numRows = 0;
+	Px1DConstraint* rows = allRows;
+	Px1DConstraint* rows2 = allRows;
 
 	PxU32 maxRows = 0;
-	PxU32 preppedIndex = 0;
+	PxU32 nbToPrep = MAX_CONSTRAINT_ROWS;
 
 	for (PxU32 a = 0; a < 4; ++a)
 	{
-		Px1DConstraint* rows = allRows + numRows;
 		SolverConstraintShaderPrepDesc& shaderDesc = constraintShaderDescs[a];
 		PxTGSSolverConstraintPrepDesc& desc = constraintDescs[a];
 
 		if (!shaderDesc.solverPrep)
 			return SolverConstraintPrepState::eUNBATCHABLE;
 
-		PxMemZero(rows + preppedIndex, sizeof(Px1DConstraint)*(MAX_CONSTRAINT_ROWS));
-		for (PxU32 b = preppedIndex; b < MAX_CONSTRAINT_ROWS; ++b)
-		{
-			Px1DConstraint& c = rows[b];
-			//Px1DConstraintInit(c);
-			c.minImpulse = -PX_MAX_REAL;
-			c.maxImpulse = PX_MAX_REAL;
-		}
+		PX_ASSERT(rows2 + nbToPrep <= allRows + MAX_CONSTRAINT_ROWS*4);
+		setupConstraintRows(rows2, nbToPrep);
+		rows2 += nbToPrep;
 
-		desc.invMassScales.linear0 = desc.invMassScales.linear1 = desc.invMassScales.angular0 = desc.invMassScales.angular1 = 1.f;
+		desc.invMassScales.linear0 = desc.invMassScales.linear1 = desc.invMassScales.angular0 = desc.invMassScales.angular1 = 1.0f;
+		desc.body0WorldOffset = PxVec3(0.0f);
 
-		desc.body0WorldOffset = PxVec3(0.f);
-
-		PxU32 constraintCount = (*shaderDesc.solverPrep)(rows,
+		//TAG:solverprepcall
+		const PxU32 constraintCount = desc.disableConstraint ? 0 : (*shaderDesc.solverPrep)(rows,
 			desc.body0WorldOffset,
 			MAX_CONSTRAINT_ROWS,
 			desc.invMassScales,
 			shaderDesc.constantBlock,
 			desc.bodyFrame0, desc.bodyFrame1, desc.extendedLimits, desc.cA2w, desc.cB2w);
 
-		preppedIndex = MAX_CONSTRAINT_ROWS - constraintCount;
-
+		nbToPrep = constraintCount;
 		maxRows = PxMax(constraintCount, maxRows);
 
 		if (constraintCount == 0)
@@ -1867,23 +1827,22 @@ SolverConstraintPrepState::Enum setupSolverConstraintStep4
 
 		desc.rows = rows;
 		desc.numRows = constraintCount;
-		numRows += constraintCount;
+		rows += constraintCount;
 
 		if (desc.body0->isKinematic)
-			desc.invMassScales.angular0 = 0.f;
+			desc.invMassScales.angular0 = 0.0f;
 		if (desc.body1->isKinematic)
-			desc.invMassScales.angular1 = 0.f;
-
+			desc.invMassScales.angular1 = 0.0f;
 	}
 
-	return setupSolverConstraintStep4(constraintDescs, dt, totalDt, recipdt, recipTotalDt, totalRows, allocator, maxRows, lengthScale);
+	return setupSolverConstraintStep4(constraintDescs, dt, totalDt, recipdt, recipTotalDt, totalRows, allocator, maxRows, lengthScale, biasCoefficient);
 }
 
 SolverConstraintPrepState::Enum setupSolverConstraintStep4
 (PxTGSSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 	const PxReal dt, const PxReal totalDt, const PxReal recipdt, const PxReal recipTotalDt, PxU32& totalRows,
 	PxConstraintAllocator& allocator, PxU32 maxRows,
-	const PxReal lengthScale)
+	const PxReal lengthScale, const PxReal biasCoefficient)
 {
 	const Vec4V zero = V4Zero();
 	Px1DConstraint* allSorted[MAX_CONSTRAINT_ROWS * 4];
@@ -1910,17 +1869,14 @@ SolverConstraintPrepState::Enum setupSolverConstraintStep4
 			}
 		}
 
-
 		preprocessRows(sorted, desc.rows, angSqrtInvInertia0 + numRows, angSqrtInvInertia1 + numRows, desc.numRows,
 			desc.body0TxI->sqrtInvInertia, desc.body1TxI->sqrtInvInertia, desc.bodyData0->invMass, desc.bodyData1->invMass,
-			desc.invMassScales, desc.disablePreprocessing, desc.improvedSlerp, false);
+			desc.invMassScales, desc.disablePreprocessing, desc.improvedSlerp);
 
 		numRows += desc.numRows;
 	}
 
-
-	PxU32 stride = sizeof(SolverConstraint1DStep4);
-
+	const PxU32 stride = sizeof(SolverConstraint1DStep4);
 
 	const PxU32 constraintLength = sizeof(SolverConstraint1DHeaderStep4) + stride * maxRows;
 
@@ -1956,6 +1912,8 @@ SolverConstraintPrepState::Enum setupSolverConstraintStep4
 	//desc.constraint = ptr;
 
 	totalRows = numRows;
+
+	const PxReal erp = 0.5f * biasCoefficient;
 
 	const bool isKinematic00 = constraintDescs[0].body0->isKinematic;
 	const bool isKinematic01 = constraintDescs[0].body1->isKinematic;
@@ -2047,10 +2005,10 @@ SolverConstraintPrepState::Enum setupSolverConstraintStep4
 		header->type = DY_SC_TYPE_BLOCK_1D;
 		header->linBreakImpulse = V4Scale(linBreakForce, dtV);
 		header->angBreakImpulse = V4Scale(angBreakForce, dtV);
-		header->counts[0] = Ps::to8(constraintDescs[0].numRows);
-		header->counts[1] = Ps::to8(constraintDescs[1].numRows);
-		header->counts[2] = Ps::to8(constraintDescs[2].numRows);
-		header->counts[3] = Ps::to8(constraintDescs[3].numRows);
+		header->counts[0] = PxTo8(constraintDescs[0].numRows);
+		header->counts[1] = PxTo8(constraintDescs[1].numRows);
+		header->counts[2] = PxTo8(constraintDescs[2].numRows);
+		header->counts[3] = PxTo8(constraintDescs[3].numRows);
 
 
 		Vec4V ca2WX, ca2WY, ca2WZ;
@@ -2322,26 +2280,25 @@ SolverConstraintPrepState::Enum setupSolverConstraintStep4
 				PxVec4& cMaxBias = reinterpret_cast<PxVec4&>(c->maxBias);
 				PxVec4& cTargetVel = reinterpret_cast<PxVec4&>(c->velTarget);
 				PxVec4& cVelMultiplier = reinterpret_cast<PxVec4&>(c->velMultiplier);
-				PxVec4& cImpulseMultiplier = reinterpret_cast<PxVec4&>(c->impulseMultiplier);
 				const PxVec4& nVel = reinterpret_cast<const PxVec4&>(normalVel);
 				const PxVec4& nVel0 = reinterpret_cast<const PxVec4&>(normalVel0);
 				const PxVec4& nVel1 = reinterpret_cast<const PxVec4&>(normalVel1);
 
-				setConstants(cError.x, cBiasScale.x, cTargetVel.x, cMaxBias.x, cVelMultiplier.x, cImpulseMultiplier.x,
+				setConstants(cError.x, cBiasScale.x, cTargetVel.x, cMaxBias.x, cVelMultiplier.x,
 					recipResponse[0], *con0, ur.x, constraintDescs[0].minResponseThreshold, dt, totalDt, recipdt, recipTotalDt,
-					a >= constraintDescs[0].numRows, lengthScale, nVel.x, nVel0.x, nVel1.x, isKinematic00, isKinematic01);
+					a >= constraintDescs[0].numRows, lengthScale, nVel.x, nVel0.x, nVel1.x, isKinematic00, isKinematic01, erp);
 
-				setConstants(cError.y, cBiasScale.y, cTargetVel.y, cMaxBias.y, cVelMultiplier.y, cImpulseMultiplier.y,
+				setConstants(cError.y, cBiasScale.y, cTargetVel.y, cMaxBias.y, cVelMultiplier.y,
 					recipResponse[1], *con1, ur.y, constraintDescs[1].minResponseThreshold, dt, totalDt, recipdt, recipTotalDt,
-					a >= constraintDescs[1].numRows, lengthScale, nVel.y, nVel0.y, nVel1.y, isKinematic10, isKinematic11);
+					a >= constraintDescs[1].numRows, lengthScale, nVel.y, nVel0.y, nVel1.y, isKinematic10, isKinematic11, erp);
 
-				setConstants(cError.z, cBiasScale.z, cTargetVel.z, cMaxBias.z, cVelMultiplier.z, cImpulseMultiplier.z,
+				setConstants(cError.z, cBiasScale.z, cTargetVel.z, cMaxBias.z, cVelMultiplier.z,
 					recipResponse[2], *con2, ur.z, constraintDescs[2].minResponseThreshold, dt, totalDt, recipdt, recipTotalDt,
-					a >= constraintDescs[2].numRows, lengthScale, nVel.z, nVel0.z, nVel1.z, isKinematic20, isKinematic21);
+					a >= constraintDescs[2].numRows, lengthScale, nVel.z, nVel0.z, nVel1.z, isKinematic20, isKinematic21, erp);
 
-				setConstants(cError.w, cBiasScale.w, cTargetVel.w, cMaxBias.w, cVelMultiplier.w, cImpulseMultiplier.w,
+				setConstants(cError.w, cBiasScale.w, cTargetVel.w, cMaxBias.w, cVelMultiplier.w,
 					recipResponse[3], *con3, ur.w, constraintDescs[3].minResponseThreshold, dt, totalDt, recipdt, recipTotalDt,
-					a >= constraintDescs[3].numRows, lengthScale, nVel.w, nVel0.w, nVel1.w, isKinematic30, isKinematic31);
+					a >= constraintDescs[3].numRows, lengthScale, nVel.w, nVel0.w, nVel1.w, isKinematic30, isKinematic31, erp);
 
 				PxVec4* angOrthoAxes0X = reinterpret_cast<PxVec4*>(header->angOrthoAxis0X);
 				PxVec4* angOrthoAxes0Y = reinterpret_cast<PxVec4*>(header->angOrthoAxis0Y);
@@ -2463,37 +2420,37 @@ void solveContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, const b
 	Vec4V angState31 = V4LoadA(&b31.angularVelocity.x);
 
 
-	Vec4V linVel0T0, linVel0T1, linVel0T2;
-	Vec4V linVel1T0, linVel1T1, linVel1T2;
-	Vec4V angState0T0, angState0T1, angState0T2;
-	Vec4V angState1T0, angState1T1, angState1T2;
+	Vec4V linVel0T0, linVel0T1, linVel0T2, linVel0T3;
+	Vec4V linVel1T0, linVel1T1, linVel1T2, linVel1T3;
+	Vec4V angState0T0, angState0T1, angState0T2, angState0T3;
+	Vec4V angState1T0, angState1T1, angState1T2, angState1T3;
 
 
-	PX_TRANSPOSE_44_34(linVel00, linVel10, linVel20, linVel30, linVel0T0, linVel0T1, linVel0T2);
-	PX_TRANSPOSE_44_34(linVel01, linVel11, linVel21, linVel31, linVel1T0, linVel1T1, linVel1T2);
-	PX_TRANSPOSE_44_34(angState00, angState10, angState20, angState30, angState0T0, angState0T1, angState0T2);
-	PX_TRANSPOSE_44_34(angState01, angState11, angState21, angState31, angState1T0, angState1T1, angState1T2);
+	PX_TRANSPOSE_44(linVel00, linVel10, linVel20, linVel30, linVel0T0, linVel0T1, linVel0T2, linVel0T3);
+	PX_TRANSPOSE_44(linVel01, linVel11, linVel21, linVel31, linVel1T0, linVel1T1, linVel1T2, linVel1T3);
+	PX_TRANSPOSE_44(angState00, angState10, angState20, angState30, angState0T0, angState0T1, angState0T2, angState0T3);
+	PX_TRANSPOSE_44(angState01, angState11, angState21, angState31, angState1T0, angState1T1, angState1T2, angState1T3);
 
 
-	Vec4V linDelta00 = V4LoadA(&b00.deltaLinDt.x);
-	Vec4V linDelta01 = V4LoadA(&b01.deltaLinDt.x);
-	Vec4V angDelta00 = V4LoadA(&b00.deltaAngDt.x);
-	Vec4V angDelta01 = V4LoadA(&b01.deltaAngDt.x);
+	Vec4V linDelta00_ = V4LoadA(&b00.deltaLinDt.x);
+	Vec4V linDelta01_ = V4LoadA(&b01.deltaLinDt.x);
+	Vec4V angDelta00_ = V4LoadA(&b00.deltaAngDt.x);
+	Vec4V angDelta01_ = V4LoadA(&b01.deltaAngDt.x);
 
-	Vec4V linDelta10 = V4LoadA(&b10.deltaLinDt.x);
-	Vec4V linDelta11 = V4LoadA(&b11.deltaLinDt.x);
-	Vec4V angDelta10 = V4LoadA(&b10.deltaAngDt.x);
-	Vec4V angDelta11 = V4LoadA(&b11.deltaAngDt.x);
+	Vec4V linDelta10_ = V4LoadA(&b10.deltaLinDt.x);
+	Vec4V linDelta11_ = V4LoadA(&b11.deltaLinDt.x);
+	Vec4V angDelta10_ = V4LoadA(&b10.deltaAngDt.x);
+	Vec4V angDelta11_ = V4LoadA(&b11.deltaAngDt.x);
 
-	Vec4V linDelta20 = V4LoadA(&b20.deltaLinDt.x);
-	Vec4V linDelta21 = V4LoadA(&b21.deltaLinDt.x);
-	Vec4V angDelta20 = V4LoadA(&b20.deltaAngDt.x);
-	Vec4V angDelta21 = V4LoadA(&b21.deltaAngDt.x);
+	Vec4V linDelta20_ = V4LoadA(&b20.deltaLinDt.x);
+	Vec4V linDelta21_ = V4LoadA(&b21.deltaLinDt.x);
+	Vec4V angDelta20_ = V4LoadA(&b20.deltaAngDt.x);
+	Vec4V angDelta21_ = V4LoadA(&b21.deltaAngDt.x);
 
-	Vec4V linDelta30 = V4LoadA(&b30.deltaLinDt.x);
-	Vec4V linDelta31 = V4LoadA(&b31.deltaLinDt.x);
-	Vec4V angDelta30 = V4LoadA(&b30.deltaAngDt.x);
-	Vec4V angDelta31 = V4LoadA(&b31.deltaAngDt.x);
+	Vec4V linDelta30_ = V4LoadA(&b30.deltaLinDt.x);
+	Vec4V linDelta31_ = V4LoadA(&b31.deltaLinDt.x);
+	Vec4V angDelta30_ = V4LoadA(&b30.deltaAngDt.x);
+	Vec4V angDelta31_ = V4LoadA(&b31.deltaAngDt.x);
 
 	Vec4V linDelta0T0, linDelta0T1, linDelta0T2;
 	Vec4V linDelta1T0, linDelta1T1, linDelta1T2;
@@ -2501,10 +2458,10 @@ void solveContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, const b
 	Vec4V angDelta1T0, angDelta1T1, angDelta1T2;
 
 
-	PX_TRANSPOSE_44_34(linDelta00, linDelta10, linDelta20, linDelta30, linDelta0T0, linDelta0T1, linDelta0T2);
-	PX_TRANSPOSE_44_34(linDelta01, linDelta11, linDelta21, linDelta31, linDelta1T0, linDelta1T1, linDelta1T2);
-	PX_TRANSPOSE_44_34(angDelta00, angDelta10, angDelta20, angDelta30, angDelta0T0, angDelta0T1, angDelta0T2);
-	PX_TRANSPOSE_44_34(angDelta01, angDelta11, angDelta21, angDelta31, angDelta1T0, angDelta1T1, angDelta1T2);
+	PX_TRANSPOSE_44_34(linDelta00_, linDelta10_, linDelta20_, linDelta30_, linDelta0T0, linDelta0T1, linDelta0T2);
+	PX_TRANSPOSE_44_34(linDelta01_, linDelta11_, linDelta21_, linDelta31_, linDelta1T0, linDelta1T1, linDelta1T2);
+	PX_TRANSPOSE_44_34(angDelta00_, angDelta10_, angDelta20_, angDelta30_, angDelta0T0, angDelta0T1, angDelta0T2);
+	PX_TRANSPOSE_44_34(angDelta01_, angDelta11_, angDelta21_, angDelta31_, angDelta1T0, angDelta1T1, angDelta1T2);
 
 
 	const PxU8* PX_RESTRICT last = desc[0].constraint + getConstraintLength(desc[0]);
@@ -2513,8 +2470,6 @@ void solveContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, const b
 	PxU8* PX_RESTRICT currPtr = desc[0].constraint;
 
 	Vec4V vMax = V4Splat(FMax());
-
-	const PxU8* PX_RESTRICT prefetchAddress = currPtr + sizeof(SolverContactHeaderStepBlock) + sizeof(SolverContactPointStepBlock);
 
 	SolverContactHeaderStepBlock* PX_RESTRICT hdr = reinterpret_cast<SolverContactHeaderStepBlock*>(currPtr);
 
@@ -2602,11 +2557,11 @@ void solveContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, const b
 		{
 			const SolverContactPointStepBlock& c = contacts[i];
 
-			PxU32 offset = 0;
-			Ps::prefetchLine(prefetchAddress, offset += 64);
-			Ps::prefetchLine(prefetchAddress, offset += 64);
-			Ps::prefetchLine(prefetchAddress, offset += 64);
-			prefetchAddress += offset;
+			/*PxU32 offset = 0;
+			PxPrefetchLine(prefetchAddress, offset += 64);
+			PxPrefetchLine(prefetchAddress, offset += 64);
+			PxPrefetchLine(prefetchAddress, offset += 64);
+			prefetchAddress += offset;*/
 
 			const Vec4V appliedForce = appliedForces[i];
 			const Vec4V maxImpulse = maxImpulses[i & maxImpulseMask];
@@ -2634,6 +2589,7 @@ void solveContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, const b
 			const Vec4V targetVel = c.targetVelocity;
 
 			const Vec4V deltaBias = V4Sub(V4Add(deltaNormalV, deltaAng), V4Mul(targetVel, elapsedTime));
+			//const Vec4V deltaBias = V4Add(deltaNormalV, deltaAng);
 
 			const Vec4V biasCoefficient = c.biasCoefficient;
 
@@ -2645,9 +2601,9 @@ void solveContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, const b
 
 			const Vec4V velMultiplier = c.velMultiplier;
 
-			const Vec4V tVel = V4Add(bias, targetVel);
+			const Vec4V tVelBias = V4Mul(bias, c.recipResponse);
 
-			const Vec4V _deltaF = V4Max(V4Mul(V4Sub(tVel, normalVel), velMultiplier), V4Neg(appliedForce));
+			const Vec4V _deltaF = V4Max(V4Sub(tVelBias, V4Mul(V4Sub(normalVel, targetVel), velMultiplier)), V4Neg(appliedForce));
 			//Vec4V deltaF = V4NegMulSub(normalVel, c.velMultiplier, c.biasedErr);
 
 			const Vec4V newAppliedForce = V4Min(V4Add(appliedForce, _deltaF), maxImpulse);
@@ -2690,114 +2646,158 @@ void solveContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, const b
 			const Vec4V staticFric = hdr->staticFriction;
 			const Vec4V dynamicFric = hdr->dynamicFriction;
 
-			const Vec4V maxFrictionImpulse = V4Mul(staticFric, accumulatedNormalImpulse);
+			const Vec4V maxFrictionImpulse = V4Add(V4Mul(staticFric, accumulatedNormalImpulse), V4Load(1e-5f));
 			const Vec4V maxDynFrictionImpulse = V4Mul(dynamicFric, accumulatedNormalImpulse);
-			const Vec4V negMaxDynFrictionImpulse = V4Neg(maxDynFrictionImpulse);
-			//const Vec4V negMaxFrictionImpulse = V4Neg(maxFrictionImpulse);
 			BoolV broken = BFFFF();
 
 
-			for (PxU32 i = 0; i<numFrictionConstr; i++)
+			for (PxU32 i = 0; i<numFrictionConstr; i+=2)
 			{
-				const SolverContactFrictionStepBlock& f = frictions[i];
+				const SolverContactFrictionStepBlock& f0 = frictions[i];
+				const SolverContactFrictionStepBlock& f1 = frictions[i+1];
 
-				PxU32 offset = 0;
-				Ps::prefetchLine(prefetchAddress, offset += 64);
-				Ps::prefetchLine(prefetchAddress, offset += 64);
-				Ps::prefetchLine(prefetchAddress, offset += 64);
-				Ps::prefetchLine(prefetchAddress, offset += 64);
-				prefetchAddress += offset;
+				/*PxU32 offset = 0;
+				PxPrefetchLine(prefetchAddress, offset += 64);
+				PxPrefetchLine(prefetchAddress, offset += 64);
+				PxPrefetchLine(prefetchAddress, offset += 64);
+				PxPrefetchLine(prefetchAddress, offset += 64);
+				prefetchAddress += offset;*/
 
-				const Vec4V appliedForce = frictionAppliedForce[i];
+				const Vec4V appliedForce0 = frictionAppliedForce[i];
+				const Vec4V appliedForce1 = frictionAppliedForce[i+1];
 
-				const Vec4V normalT0 = f.normal[0];
-				const Vec4V normalT1 = f.normal[1];
-				const Vec4V normalT2 = f.normal[2];
+				const Vec4V normalT00 = f0.normal[0];
+				const Vec4V normalT10 = f0.normal[1];
+				const Vec4V normalT20 = f0.normal[2];
 
-				Vec4V normalVel1 = V4Mul(linVel0T0, normalT0);
-				Vec4V normalVel2 = V4Mul(f.raXnI[0], angState0T0);
-				Vec4V normalVel3 = V4Mul(linVel1T0, normalT0);
-				Vec4V normalVel4 = V4Mul(f.rbXnI[0], angState1T0);
+				const Vec4V normalT01 = f1.normal[0];
+				const Vec4V normalT11 = f1.normal[1];
+				const Vec4V normalT21 = f1.normal[2];
 
-				normalVel1 = V4MulAdd(linVel0T1, normalT1, normalVel1);
-				normalVel2 = V4MulAdd(f.raXnI[1], angState0T1, normalVel2);
-				normalVel3 = V4MulAdd(linVel1T1, normalT1, normalVel3);
-				normalVel4 = V4MulAdd(f.rbXnI[1], angState1T1, normalVel4);
+				Vec4V normalVel10 = V4Mul(linVel0T0, normalT00);
+				Vec4V normalVel20 = V4Mul(f0.raXnI[0], angState0T0);
+				Vec4V normalVel30 = V4Mul(linVel1T0, normalT00);
+				Vec4V normalVel40 = V4Mul(f0.rbXnI[0], angState1T0);
+				Vec4V normalVel11 = V4Mul(linVel0T0, normalT01);
+				Vec4V normalVel21 = V4Mul(f1.raXnI[0], angState0T0);
+				Vec4V normalVel31 = V4Mul(linVel1T0, normalT01);
+				Vec4V normalVel41 = V4Mul(f1.rbXnI[0], angState1T0);
 
-				normalVel1 = V4MulAdd(linVel0T2, normalT2, normalVel1);
-				normalVel2 = V4MulAdd(f.raXnI[2], angState0T2, normalVel2);
-				normalVel3 = V4MulAdd(linVel1T2, normalT2, normalVel3);
-				normalVel4 = V4MulAdd(f.rbXnI[2], angState1T2, normalVel4);
+				normalVel10 = V4MulAdd(linVel0T1, normalT10, normalVel10);
+				normalVel20 = V4MulAdd(f0.raXnI[1], angState0T1, normalVel20);
+				normalVel30 = V4MulAdd(linVel1T1, normalT10, normalVel30);
+				normalVel40 = V4MulAdd(f0.rbXnI[1], angState1T1, normalVel40);
+				normalVel11 = V4MulAdd(linVel0T1, normalT11, normalVel11);
+				normalVel21 = V4MulAdd(f1.raXnI[1], angState0T1, normalVel21);
+				normalVel31 = V4MulAdd(linVel1T1, normalT11, normalVel31);
+				normalVel41 = V4MulAdd(f1.rbXnI[1], angState1T1, normalVel41);
 
-				const Vec4V _normalVel = V4Add(normalVel1, normalVel2);
-				const Vec4V __normalVel = V4Add(normalVel3, normalVel4);
+				normalVel10 = V4MulAdd(linVel0T2, normalT20, normalVel10);
+				normalVel20 = V4MulAdd(f0.raXnI[2], angState0T2, normalVel20);
+				normalVel30 = V4MulAdd(linVel1T2, normalT20, normalVel30);
+				normalVel40 = V4MulAdd(f0.rbXnI[2], angState1T2, normalVel40);
+				normalVel11 = V4MulAdd(linVel0T2, normalT21, normalVel11);
+				normalVel21 = V4MulAdd(f1.raXnI[2], angState0T2, normalVel21);
+				normalVel31 = V4MulAdd(linVel1T2, normalT21, normalVel31);
+				normalVel41 = V4MulAdd(f1.rbXnI[2], angState1T2, normalVel41);
 
-				// appliedForce -bias * velMultiplier - a hoisted part of the total impulse computation
+				const Vec4V normalVel0_tmp1 = V4Add(normalVel10, normalVel20);
+				const Vec4V normalVel0_tmp2 = V4Add(normalVel30, normalVel40);
+				const Vec4V normalVel0 = V4Sub(normalVel0_tmp1, normalVel0_tmp2);
+				const Vec4V normalVel1_tmp1 = V4Add(normalVel11, normalVel21);
+				const Vec4V normalVel1_tmp2 = V4Add(normalVel31, normalVel41);
+				const Vec4V normalVel1 = V4Sub(normalVel1_tmp1, normalVel1_tmp2);
 
-				const Vec4V normalVel = V4Sub(_normalVel, __normalVel);
+				Vec4V deltaV0 = V4Mul(linDeltaX, normalT00);
+				deltaV0 = V4MulAdd(linDeltaY, normalT10, deltaV0);
+				deltaV0 = V4MulAdd(linDeltaZ, normalT20, deltaV0);
+				Vec4V deltaV1 = V4Mul(linDeltaX, normalT01);
+				deltaV1 = V4MulAdd(linDeltaY, normalT11, deltaV1);
+				deltaV1 = V4MulAdd(linDeltaZ, normalT21, deltaV1);
 
-				Vec4V deltaV = V4Mul(linDeltaX, normalT0);
-				deltaV = V4MulAdd(linDeltaY, normalT1, deltaV);
-				deltaV = V4MulAdd(linDeltaZ, normalT2, deltaV);
+				Vec4V angDelta00 = V4Mul(angDelta0T0, f0.raXnI[0]);
+				Vec4V angDelta10 = V4Mul(angDelta1T0, f0.rbXnI[0]);
+				angDelta00 = V4MulAdd(angDelta0T1, f0.raXnI[1], angDelta00);
+				angDelta10 = V4MulAdd(angDelta1T1, f0.rbXnI[1], angDelta10);
+				angDelta00 = V4MulAdd(angDelta0T2, f0.raXnI[2], angDelta00);
+				angDelta10 = V4MulAdd(angDelta1T2, f0.rbXnI[2], angDelta10);
 
-				Vec4V angDelta0 = V4Mul(angDelta0T0, f.raXnI[0]);
-				Vec4V angDelta1 = V4Mul(angDelta1T0, f.rbXnI[0]);
-				angDelta0 = V4MulAdd(angDelta0T1, f.raXnI[1], angDelta0);
-				angDelta1 = V4MulAdd(angDelta1T1, f.rbXnI[1], angDelta1);
-				angDelta0 = V4MulAdd(angDelta0T2, f.raXnI[2], angDelta0);
-				angDelta1 = V4MulAdd(angDelta1T2, f.rbXnI[2], angDelta1);
+				Vec4V angDelta01 = V4Mul(angDelta0T0, f1.raXnI[0]);
+				Vec4V angDelta11 = V4Mul(angDelta1T0, f1.rbXnI[0]);
+				angDelta01 = V4MulAdd(angDelta0T1, f1.raXnI[1], angDelta01);
+				angDelta11 = V4MulAdd(angDelta1T1, f1.rbXnI[1], angDelta11);
+				angDelta01 = V4MulAdd(angDelta0T2, f1.raXnI[2], angDelta01);
+				angDelta11 = V4MulAdd(angDelta1T2, f1.rbXnI[2], angDelta11);
 
-				const Vec4V deltaAng = V4Sub(angDelta0, angDelta1);
+				const Vec4V deltaAng0 = V4Sub(angDelta00, angDelta10);
+				const Vec4V deltaAng1 = V4Sub(angDelta01, angDelta11);
 
-				const Vec4V deltaBias = V4Sub(V4Add(deltaV, deltaAng), V4Mul(f.targetVel, elapsedTime));
+				const Vec4V deltaBias0 = V4Sub(V4Add(deltaV0, deltaAng0), V4Mul(f0.targetVel, elapsedTime));
+				const Vec4V deltaBias1 = V4Sub(V4Add(deltaV1, deltaAng1), V4Mul(f1.targetVel, elapsedTime));
 
-				const Vec4V error = V4Add(f.error, deltaBias);
+				const Vec4V error0 = V4Add(f0.error, deltaBias0);
+				const Vec4V error1 = V4Add(f1.error, deltaBias1);
 
-				const Vec4V bias = V4Mul(error, f.biasCoefficient);
+				const Vec4V bias0 = V4Mul(error0, f0.biasCoefficient);
+				const Vec4V bias1 = V4Mul(error1, f1.biasCoefficient);
 
-				const Vec4V tmp1 = V4NegMulSub(V4Sub(bias, f.targetVel), f.velMultiplier, appliedForce);
+				const Vec4V tmp10 = V4NegMulSub(V4Sub(bias0, f0.targetVel), f0.velMultiplier, appliedForce0);
+				const Vec4V tmp11 = V4NegMulSub(V4Sub(bias1, f1.targetVel), f1.velMultiplier, appliedForce1);
 
-				const Vec4V totalImpulse = V4NegMulSub(normalVel, f.velMultiplier, tmp1);
+				const Vec4V totalImpulse0 = V4NegMulSub(normalVel0, f0.velMultiplier, tmp10);
+				const Vec4V totalImpulse1 = V4NegMulSub(normalVel1, f1.velMultiplier, tmp11);
 
-				const BoolV clamped = V4IsGrtr(V4Abs(totalImpulse), maxFrictionImpulse);
+				const Vec4V totalImpulse = V4Sqrt(V4MulAdd(totalImpulse0, totalImpulse0, V4Mul(totalImpulse1, totalImpulse1)));
+
+				const BoolV clamped = V4IsGrtr(totalImpulse, maxFrictionImpulse);
 
 				broken = BOr(broken, clamped);
 
-				const Vec4V newAppliedForce = V4Min(maxDynFrictionImpulse, V4Max(negMaxDynFrictionImpulse, totalImpulse));
+				const Vec4V totalClamped = V4Sel(broken, V4Min(totalImpulse, maxDynFrictionImpulse), totalImpulse);
+				const Vec4V ratio = V4Sel(V4IsGrtr(totalImpulse, vZero), V4Div(totalClamped, totalImpulse), vZero);
 
-				const Vec4V deltaF = V4Sub(newAppliedForce, appliedForce);
+				const Vec4V newAppliedForce0 = V4Mul(totalImpulse0, ratio);
+				const Vec4V newAppliedForce1 = V4Mul(totalImpulse1, ratio);
 
-				frictionAppliedForce[i] = newAppliedForce;
+				const Vec4V deltaF0 = V4Sub(newAppliedForce0, appliedForce0);
+				const Vec4V deltaF1 = V4Sub(newAppliedForce1, appliedForce1);
 
-				const Vec4V deltaFIM0 = V4Mul(deltaF, invMassA);
-				const Vec4V deltaFIM1 = V4Mul(deltaF, invMassB);
+				frictionAppliedForce[i] = newAppliedForce0;
+				frictionAppliedForce[i+1] = newAppliedForce1;
 
-				const Vec4V angDetaF0 = V4Mul(deltaF, angD0);
-				const Vec4V angDetaF1 = V4Mul(deltaF, angD1);
+				const Vec4V deltaFIM00 = V4Mul(deltaF0, invMassA);
+				const Vec4V deltaFIM10 = V4Mul(deltaF0, invMassB);
+				const Vec4V angDetaF00 = V4Mul(deltaF0, angD0);
+				const Vec4V angDetaF10 = V4Mul(deltaF0, angD1);
 
-				linVel0T0 = V4MulAdd(normalT0, deltaFIM0, linVel0T0);
-				linVel1T0 = V4NegMulSub(normalT0, deltaFIM1, linVel1T0);
-				angState0T0 = V4MulAdd(f.raXnI[0], angDetaF0, angState0T0);
-				angState1T0 = V4NegMulSub(f.rbXnI[0], angDetaF1, angState1T0);
+				const Vec4V deltaFIM01 = V4Mul(deltaF1, invMassA);
+				const Vec4V deltaFIM11 = V4Mul(deltaF1, invMassB);
+				const Vec4V angDetaF01 = V4Mul(deltaF1, angD0);
+				const Vec4V angDetaF11 = V4Mul(deltaF1, angD1);
 
-				linVel0T1 = V4MulAdd(normalT1, deltaFIM0, linVel0T1);
-				linVel1T1 = V4NegMulSub(normalT1, deltaFIM1, linVel1T1);
-				angState0T1 = V4MulAdd(f.raXnI[1], angDetaF0, angState0T1);
-				angState1T1 = V4NegMulSub(f.rbXnI[1], angDetaF1, angState1T1);
+				linVel0T0 = V4MulAdd(normalT00, deltaFIM00, V4MulAdd(normalT01, deltaFIM01, linVel0T0));
+				linVel1T0 = V4NegMulSub(normalT00, deltaFIM10, V4NegMulSub(normalT01, deltaFIM11, linVel1T0));
+				angState0T0 = V4MulAdd(f0.raXnI[0], angDetaF00, V4MulAdd(f1.raXnI[0], angDetaF01, angState0T0));
+				angState1T0 = V4NegMulSub(f0.rbXnI[0], angDetaF10, V4NegMulSub(f1.rbXnI[0], angDetaF11, angState1T0));
 
-				linVel0T2 = V4MulAdd(normalT2, deltaFIM0, linVel0T2);
-				linVel1T2 = V4NegMulSub(normalT2, deltaFIM1, linVel1T2);
-				angState0T2 = V4MulAdd(f.raXnI[2], angDetaF0, angState0T2);
-				angState1T2 = V4NegMulSub(f.rbXnI[2], angDetaF1, angState1T2);
+				linVel0T1 = V4MulAdd(normalT10, deltaFIM00, V4MulAdd(normalT11, deltaFIM01, linVel0T1));
+				linVel1T1 = V4NegMulSub(normalT10, deltaFIM10, V4NegMulSub(normalT11, deltaFIM11, linVel1T1));
+				angState0T1 = V4MulAdd(f0.raXnI[1], angDetaF00, V4MulAdd(f1.raXnI[1], angDetaF01, angState0T1));
+				angState1T1 = V4NegMulSub(f0.rbXnI[1], angDetaF10, V4NegMulSub(f1.rbXnI[1], angDetaF11, angState1T1));
+
+				linVel0T2 = V4MulAdd(normalT20, deltaFIM00, V4MulAdd(normalT21, deltaFIM01, linVel0T2));
+				linVel1T2 = V4NegMulSub(normalT20, deltaFIM10, V4NegMulSub(normalT21, deltaFIM11, linVel1T2));
+				angState0T2 = V4MulAdd(f0.raXnI[2], angDetaF00, V4MulAdd(f1.raXnI[2], angDetaF01, angState0T2));
+				angState1T2 = V4NegMulSub(f0.rbXnI[2], angDetaF10, V4NegMulSub(f1.rbXnI[2], angDetaF11, angState1T2));
 			}
 			hdr->broken = broken;
 		}
 	}
 
-	PX_TRANSPOSE_34_44(linVel0T0, linVel0T1, linVel0T2, linVel00, linVel10, linVel20, linVel30);
-	PX_TRANSPOSE_34_44(linVel1T0, linVel1T1, linVel1T2, linVel01, linVel11, linVel21, linVel31);
-	PX_TRANSPOSE_34_44(angState0T0, angState0T1, angState0T2, angState00, angState10, angState20, angState30);
-	PX_TRANSPOSE_34_44(angState1T0, angState1T1, angState1T2, angState01, angState11, angState21, angState31);
+	PX_TRANSPOSE_44(linVel0T0, linVel0T1, linVel0T2, linVel0T3, linVel00, linVel10, linVel20, linVel30);
+	PX_TRANSPOSE_44(linVel1T0, linVel1T1, linVel1T2, linVel1T3, linVel01, linVel11, linVel21, linVel31);
+	PX_TRANSPOSE_44(angState0T0, angState0T1, angState0T2, angState0T3, angState00, angState10, angState20, angState30);
+	PX_TRANSPOSE_44(angState1T0, angState1T1, angState1T2, angState1T3, angState01, angState11, angState21, angState31);
 
 	PX_ASSERT(b00.linearVelocity.isFinite());
 	PX_ASSERT(b00.angularVelocity.isFinite());
@@ -2981,7 +2981,7 @@ void writeBackContact4_Block(const PxSolverConstraintDesc* PX_RESTRICT desc, Sol
 				elt.nodeIndexA = bd0[a]->nodeIndex;
 				elt.nodeIndexB = bd1[a]->nodeIndex;
 				elt.shapeInteraction = shapeInteractions[a];
-				Ps::order(elt.nodeIndexA, elt.nodeIndexB);
+				PxOrder(elt.nodeIndexA, elt.nodeIndexB);
 				PX_ASSERT(elt.nodeIndexA < elt.nodeIndexB);
 				PX_ASSERT(cache.mThresholdStreamIndex < cache.mThresholdStreamLength);
 				cache.mThresholdStream[cache.mThresholdStreamIndex++] = elt;
@@ -3056,16 +3056,16 @@ void solve1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxTGSSol
 	Vec4V angState31 = V4LoadA(&b31.angularVelocity.x);
 
 
-	Vec4V linVel0T0, linVel0T1, linVel0T2;
-	Vec4V linVel1T0, linVel1T1, linVel1T2;
-	Vec4V angState0T0, angState0T1, angState0T2;
-	Vec4V angState1T0, angState1T1, angState1T2;
+	Vec4V linVel0T0, linVel0T1, linVel0T2, linVel0T3;
+	Vec4V linVel1T0, linVel1T1, linVel1T2, linVel1T3;
+	Vec4V angState0T0, angState0T1, angState0T2, angState0T3;
+	Vec4V angState1T0, angState1T1, angState1T2, angState1T3;
 
 
-	PX_TRANSPOSE_44_34(linVel00, linVel10, linVel20, linVel30, linVel0T0, linVel0T1, linVel0T2);
-	PX_TRANSPOSE_44_34(linVel01, linVel11, linVel21, linVel31, linVel1T0, linVel1T1, linVel1T2);
-	PX_TRANSPOSE_44_34(angState00, angState10, angState20, angState30, angState0T0, angState0T1, angState0T2);
-	PX_TRANSPOSE_44_34(angState01, angState11, angState21, angState31, angState1T0, angState1T1, angState1T2);
+	PX_TRANSPOSE_44(linVel00, linVel10, linVel20, linVel30, linVel0T0, linVel0T1, linVel0T2, linVel0T3);
+	PX_TRANSPOSE_44(linVel01, linVel11, linVel21, linVel31, linVel1T0, linVel1T1, linVel1T2, linVel1T3);
+	PX_TRANSPOSE_44(angState00, angState10, angState20, angState30, angState0T0, angState0T1, angState0T2, angState0T3);
+	PX_TRANSPOSE_44(angState01, angState11, angState21, angState31, angState1T0, angState1T1, angState1T2, angState1T3);
 
 
 	Vec4V linDelta00 = V4LoadA(&b00.deltaLinDt.x);
@@ -3209,7 +3209,7 @@ void solve1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxTGSSol
 
 	for (PxU32 i = 0; i<header->count; ++i, base++)
 	{
-		Ps::prefetchLine(base + 1);
+		PxPrefetchLine(base + 1);
 		SolverConstraint1DStep4& c = *base;
 
 		const Vec4V cangVel0X = V4Add(c.ang0[0], V4NegMulSub(raZ, c.lin0[1], V4Mul(raY, c.lin0[2])));
@@ -3344,7 +3344,7 @@ void solve1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxTGSSol
 		const Vec4V dotRbMotion = V4MulAdd(clinVel1X_, rbMotionX, V4MulAdd(clinVel1Y_, rbMotionY, V4Mul(clinVel1Z_, rbMotionZ)));
 
 		const Vec4V deltaAng = V4Mul(c.angularErrorScale, V4Sub(dotRbXnAngDelta0, dotRbXnAngDelta1));
-		const Vec4V error = V4NegScaleSub(c.velTarget, elapsedTime, V4Add(V4Add(err, V4Sub(dotRaMotion, dotRbMotion)), deltaAng));
+		const Vec4V errorChange = V4NegScaleSub(c.velTarget, elapsedTime, V4Add(V4Sub(dotRaMotion, dotRbMotion), deltaAng));
 
 		const Vec4V dotClinVel0 = V4MulAdd(clinVel0X, clinVel0X, V4MulAdd(clinVel0Y, clinVel0Y, V4Mul(clinVel0Z, clinVel0Z)));
 		const Vec4V dotClinVel1 = V4MulAdd(clinVel1X, clinVel1X, V4MulAdd(clinVel1Y, clinVel1Y, V4Mul(clinVel1Z, clinVel1Z)));
@@ -3360,7 +3360,7 @@ void solve1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxTGSSol
 		const BoolV isLimitConstraint = VecI32V_IsEq(VecI32V_And(flags, limitMask), limitMask);
 
 		const Vec4V minBias = V4Sel(isLimitConstraint, V4Neg(Vec4V_From_FloatV(FMax())), V4Neg(c.maxBias));
-		const Vec4V unclampedBias = V4Mul(error, c.biasScale);
+		const Vec4V unclampedBias = V4MulAdd(errorChange, c.biasScale, err);
 		const Vec4V bias = V4Clamp(unclampedBias, minBias, c.maxBias);
 
 		const Vec4V constant = V4Mul(recipResponse, V4Add(bias, c.velTarget));
@@ -3374,7 +3374,7 @@ void solve1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxTGSSol
 		const Vec4V normalVel = V4Add(V4Sub(normalVel0, normalVel1), V4Sub(angVel0, angVel1));
 
 
-		const Vec4V unclampedForce = V4MulAdd(c.impulseMultiplier, c.appliedForce, V4MulAdd(vMul, normalVel, constant));
+		const Vec4V unclampedForce = V4Add(c.appliedForce, V4MulAdd(vMul, normalVel, constant));
 		const Vec4V clampedForce = V4Clamp(unclampedForce, c.minImpulse, c.maxImpulse);
 		const Vec4V deltaF = V4Sub(clampedForce, c.appliedForce);
 
@@ -3403,10 +3403,10 @@ void solve1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc, const PxTGSSol
 
 	}
 
-	PX_TRANSPOSE_34_44(linVel0T0, linVel0T1, linVel0T2, linVel00, linVel10, linVel20, linVel30);
-	PX_TRANSPOSE_34_44(linVel1T0, linVel1T1, linVel1T2, linVel01, linVel11, linVel21, linVel31);
-	PX_TRANSPOSE_34_44(angState0T0, angState0T1, angState0T2, angState00, angState10, angState20, angState30);
-	PX_TRANSPOSE_34_44(angState1T0, angState1T1, angState1T2, angState01, angState11, angState21, angState31);
+	PX_TRANSPOSE_44(linVel0T0, linVel0T1, linVel0T2, linVel0T3, linVel00, linVel10, linVel20, linVel30);
+	PX_TRANSPOSE_44(linVel1T0, linVel1T1, linVel1T2, linVel1T3, linVel01, linVel11, linVel21, linVel31);
+	PX_TRANSPOSE_44(angState0T0, angState0T1, angState0T2, angState0T3, angState00, angState10, angState20, angState30);
+	PX_TRANSPOSE_44(angState1T0, angState1T1, angState1T2, angState1T3, angState01, angState11, angState21, angState31);
 
 	PX_ASSERT(b00.linearVelocity.isFinite());
 	PX_ASSERT(b00.angularVelocity.isFinite());
@@ -3630,7 +3630,7 @@ void conclude1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc)
 
 	for (PxU32 i = 0; i<header->count; ++i, base++)
 	{
-		Ps::prefetchLine(base + 1);
+		PxPrefetchLine(base + 1);
 		SolverConstraint1DStep4& c = *base;
 
 		const VecI32V flags = I4LoadA(reinterpret_cast<PxI32*>(c.flags));
@@ -3638,6 +3638,7 @@ void conclude1DStep4(const PxSolverConstraintDesc* PX_RESTRICT desc)
 		const BoolV keepBias = VecI32V_IsEq(VecI32V_And(flags, mask), mask);
 
 		c.biasScale = V4Sel(keepBias, c.biasScale, zero);
+		c.error = V4Sel(keepBias, c.error, zero);
 	}
 }
 

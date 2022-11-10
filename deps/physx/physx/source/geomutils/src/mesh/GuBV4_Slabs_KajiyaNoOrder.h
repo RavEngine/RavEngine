@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,7 +34,7 @@
 #ifdef REMOVED
 	// Kajiya, no sort
 	template<int inflateT, class LeafTestT, class ParamsT>
-	static Ps::IntBool BV4_ProcessStreamKajiyaNoOrder(const BVDataPacked* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
+	static PxIntBool BV4_ProcessStreamKajiyaNoOrder(const BVDataPacked* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
 	{
 		const BVDataPacked* root = node;
 
@@ -138,9 +137,6 @@
 #endif
 
 
-
-
-
 #define DO_LEAF_TEST(x)														\
 				{if(tn->isLeaf(x))											\
 				{															\
@@ -153,7 +149,7 @@
 
 	// Kajiya, no sort
 	template<int inflateT, class LeafTestT, class ParamsT>
-	static Ps::IntBool BV4_ProcessStreamKajiyaNoOrderQ(const BVDataPackedQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
+	static PxIntBool BV4_ProcessStreamKajiyaNoOrderQ(const BVDataPackedQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
 	{
 		const BVDataPackedQ* root = node;
 
@@ -233,10 +229,10 @@
 		return 0;
 	}
 
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
+
 	// Kajiya, no sort
 	template<int inflateT, class LeafTestT, class ParamsT>
-	static Ps::IntBool BV4_ProcessStreamKajiyaNoOrderNQ(const BVDataPackedNQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
+	static PxIntBool BV4_ProcessStreamKajiyaNoOrderNQ(const BVDataPackedNQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
 	{
 		const BVDataPackedNQ* root = node;
 
@@ -302,7 +298,7 @@
 
 		return 0;
 	}
-#endif
+
 
 #undef DO_LEAF_TEST
 

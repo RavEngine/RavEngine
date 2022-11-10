@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,76 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #ifndef PXS_DEFAULT_MEMORY_MANAGER_H
 #define PXS_DEFAULT_MEMORY_MANAGER_H
-
-#include "PxsMemoryManager.h"
-#include "PsAllocator.h"
-#include "PsArray.h"
-
-namespace physx
-{
-	
-	class PxsDefaultMemoryAllocator : public Ps::VirtualAllocatorCallback
-	{
-	public:
-
-		PxsDefaultMemoryAllocator(const char* name = NULL)
-		{
-			PX_UNUSED(name);
-#if 0 //PX_USE_NAMED_ALLOCATOR
-			if (name)
-				strcpy(mName, name);
-			else
-				strcpy(mName, "");
-#endif
-		}
-
-		virtual ~PxsDefaultMemoryAllocator()
-		{
-		}
-
-		virtual void* allocate(const size_t newByteSize, const char* filename, const int line)
-		{
-			PX_UNUSED(line);
-			PX_UNUSED(filename);
-#if 0 //PX_USE_NAMED_ALLOCATOR
-			return PX_ALLOC(newByteSize, mName);
-#else
-			return PX_ALLOC(newByteSize, filename);
-#endif
-		}
-
-		virtual void deallocate(void* ptr)
-		{
-			if (ptr)
-				PX_FREE(ptr);
-		}
-
-#if 0 //PX_USE_NAMED_ALLOCATOR
-		char mName[32];
-#endif
-	};
-
-
-	class PxsDefaultMemoryManager : public PxsMemoryManager
-	{
-	public:
-		virtual ~PxsDefaultMemoryManager();
-		virtual Ps::VirtualAllocatorCallback* createHostMemoryAllocator(const PxU32 gpuComputeVersion = 0);
-		virtual Ps::VirtualAllocatorCallback* createDeviceMemoryAllocator(const PxU32 gpuComputeVersion = 0);
-
-		virtual void destroyMemoryAllocator();
-
-		Ps::Array<Ps::VirtualAllocatorCallback*> mAllocators;
-
-	};
-
-}
 
 #endif

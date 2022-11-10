@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,29 +35,46 @@
 #include "geometry/PxSimpleTriangleMesh.h"
 #include "geometry/PxTriangleMesh.h"
 
-#include "GuTriangle32.h"
 #include "GuMeshData.h"
 #include "GuCenterExtents.h"
 #include "CmScaling.h"
 #include "CmRefCountable.h"
-#include "CmRenderOutput.h"
+#include "common/PxRenderOutput.h"
 
 namespace physx
 {
-
-class GuMeshFactory;
 class PxMeshScale;
+struct PxTriangleMeshInternalData;
 
 namespace Gu
 {
+	PX_FORCE_INLINE	void	getVertexRefs(PxU32 triangleIndex, PxU32& vref0, PxU32& vref1, PxU32& vref2, const void* indices, bool has16BitIndices)
+	{
+		if(has16BitIndices)
+		{
+			const PxU16* inds = reinterpret_cast<const PxU16*>(indices) + triangleIndex*3;
+			vref0 = inds[0];
+			vref1 = inds[1];
+			vref2 = inds[2];
+		} 
+		else 
+		{ 
+			const PxU32* inds = reinterpret_cast<const PxU32*>(indices) + triangleIndex*3;
+			vref0 = inds[0];
+			vref1 = inds[1];
+			vref2 = inds[2];
+		} 
+	}
 
+class MeshFactory;
 #if PX_VC
 #pragma warning(push)
 #pragma warning(disable: 4324)	// Padding was added at the end of a structure because of a __declspec(align) value.
 #endif
 
-// Possible optimization: align the whole struct to cache line
-class TriangleMesh : public PxTriangleMesh, public Ps::UserAllocated, public Cm::RefCountable
+class EdgeList;
+
+class TriangleMesh : public PxTriangleMesh, public PxUserAllocated
 {
 //= ATTENTION! =====================================================================================
 // Changing the data layout of this class breaks the binary serialization format.  See comments for 
@@ -69,75 +85,127 @@ class TriangleMesh : public PxTriangleMesh, public Ps::UserAllocated, public Cm:
 public:
 
 // PX_SERIALIZATION
-														TriangleMesh(PxBaseFlags baseFlags)	: PxTriangleMesh(baseFlags), Cm::RefCountable(PxEmpty) {}
-								void					preExportDataReset() { Cm::RefCountable::preExportDataReset(); }
-						virtual void					exportExtraData(PxSerializationContext& context);
+														TriangleMesh(PxBaseFlags baseFlags)	: PxTriangleMesh(baseFlags)	{}
+
+								void					preExportDataReset() { Cm::RefCountable_preExportDataReset(*this); }
+	virtual						void					exportExtraData(PxSerializationContext& context);
 								void					importExtraData(PxDeserializationContext& context);
 	PX_PHYSX_COMMON_API	static	void					getBinaryMetaData(PxOutputStream& stream);
-						virtual	void					release();
-						virtual	void					requiresObjects(PxProcessPxBaseCallback&){}
+	virtual						void					release();
+	virtual						void					requiresObjects(PxProcessPxBaseCallback&){}
 //~PX_SERIALIZATION
-
-// Cm::RefCountable
-						virtual	void					onRefCountZero();
-//~Cm::RefCountable
-
-														TriangleMesh(GuMeshFactory& factory, TriangleMeshData& data);
-						 virtual						~TriangleMesh();
+														TriangleMesh(MeshFactory* factory, TriangleMeshData& data);
+														TriangleMesh(const PxTriangleMeshInternalData& data);
+	virtual												~TriangleMesh();
 	
-// PxTriangleMesh
-						virtual	PxU32					getNbVertices()						const	{ return mNbVertices; }
-						virtual	const PxVec3*			getVertices()						const	{ return mVertices; }
-						virtual	const PxU32*			getTrianglesRemap()					const	{ return mFaceRemap; }
-						virtual	PxU32					getNbTriangles()					const	{ return mNbTriangles; }
-						virtual	const void*				getTriangles()						const	{ return mTriangles; }
-						virtual	PxTriangleMeshFlags		getTriangleMeshFlags()				const	{ return PxTriangleMeshFlags(mFlags); }
-						virtual	PxMaterialTableIndex	getTriangleMaterialIndex(PxTriangleID triangleIndex) const {
-																				return hasPerTriangleMaterials() ? getMaterials()[triangleIndex] : PxMaterialTableIndex(0xffff);	}
+	// PxBase
+	virtual						void					onRefCountZero();
+	//~PxBase
+
+	// PxRefCounted
+	virtual						void					acquireReference()					{ Cm::RefCountable_incRefCount(*this);			}
+	virtual						PxU32					getReferenceCount()			const	{ return Cm::RefCountable_getRefCount(*this);	}
+	//~PxRefCounted
 	
-#if PX_ENABLE_DYNAMIC_MESH_RTREE
-						virtual PxVec3*					getVerticesForModification();
-						virtual PxBounds3				refitBVH();
-#endif 
+	// PxTriangleMesh
+	virtual						PxU32					getNbVertices()				const   { return mNbVertices;}
+	virtual						const PxVec3*			getVertices()				const   { return mVertices; }
 
-						virtual	PxBounds3				getLocalBounds()					const
-						{
-							PX_ASSERT(mAABB.isValid());
-							return PxBounds3::centerExtents(mAABB.mCenter, mAABB.mExtents);
-						}
+	virtual						PxVec3*					getVerticesForModification();
+	virtual						PxBounds3				refitBVH();
+	virtual						PxU32					getNbTriangles()			const	{ return mNbTriangles;					}
+	virtual						const void*				getTriangles()				const	{ return mTriangles;					}
+	virtual						PxTriangleMeshFlags		getTriangleMeshFlags()		const	{ return PxTriangleMeshFlags(mFlags);	}
+	virtual						const PxU32*			getTrianglesRemap()			const	{ return mFaceRemap;					}
+	virtual						void					setPreferSDFProjection(bool preferProjection)
+	{
+		if (preferProjection)
+			mFlags &= PxU8(~PxTriangleMeshFlag::ePREFER_NO_SDF_PROJ);
+		else
+			mFlags |= PxTriangleMeshFlag::ePREFER_NO_SDF_PROJ;
+	}
 
-						virtual	void					acquireReference()							{ incRefCount();  }
-						virtual	PxU32					getReferenceCount()					const	{ return getRefCount(); }
-//~PxTriangleMesh
-						// PT: this one is just to prevent instancing Gu::TriangleMesh.
-						// But you should use PxBase::getConcreteType() instead to avoid the virtual call.
-						virtual	PxMeshMidPhase::Enum	getMidphaseID()						const	= 0;
+	virtual						bool					getPreferSDFProjection()	const { return !(mFlags & PxTriangleMeshFlag::ePREFER_NO_SDF_PROJ); }
 
-	PX_FORCE_INLINE				const PxU32*			getFaceRemap()						const	{ return mFaceRemap;											}
-	PX_FORCE_INLINE				bool					has16BitIndices()					const	{ return (mFlags & PxMeshFlag::e16_BIT_INDICES) ? true : false;	}
-	PX_FORCE_INLINE				bool					hasPerTriangleMaterials()			const	{ return mMaterialIndices != NULL;								}
-	PX_FORCE_INLINE				PxU32					getNbVerticesFast()					const	{ return mNbVertices;		}
-	PX_FORCE_INLINE				PxU32					getNbTrianglesFast()				const	{ return mNbTriangles;		}
-	PX_FORCE_INLINE				const void*				getTrianglesFast()					const	{ return mTriangles;		}
-	PX_FORCE_INLINE				const PxVec3*			getVerticesFast()					const	{ return mVertices;			}
-	PX_FORCE_INLINE				const PxU32*			getAdjacencies()					const	{ return mAdjacencies;		}
-	PX_FORCE_INLINE				PxReal					getGeomEpsilon()					const	{ return mGeomEpsilon;		}
-	PX_FORCE_INLINE				const CenterExtents&	getLocalBoundsFast()				const	{ return mAABB;				}
-	PX_FORCE_INLINE				const PxU16*			getMaterials()						const	{ return mMaterialIndices;	}
-	PX_FORCE_INLINE				const PxU8*				getExtraTrigData()					const	{ return mExtraTrigData;	}
+	virtual						PxMaterialTableIndex	getTriangleMaterialIndex(PxTriangleID triangleIndex)	const
+														{
+															return hasPerTriangleMaterials() ? getMaterials()[triangleIndex] : PxMaterialTableIndex(0xffff);
+														}
 
-	PX_FORCE_INLINE				const CenterExtentsPadded&	getPaddedBounds()				const
+	virtual						PxBounds3				getLocalBounds()			const
+														{
+															PX_ASSERT(mAABB.isValid());
+															return PxBounds3::centerExtents(mAABB.mCenter, mAABB.mExtents);
+														}
+
+	virtual						const PxReal*			getSDF()					const
+														{
+															return mSdfData.mSdf;
+														}
+
+	virtual						void					getSDFDimensions(PxU32& numX, PxU32& numY, PxU32& numZ) const
+														{
+															if(mSdfData.mSdf)
+															{
+																numX = mSdfData.mDims.x;
+																numY = mSdfData.mDims.y;
+																numZ = mSdfData.mDims.z;
+															}
+															else
+																numX = numY = numZ = 0;
+														}
+
+	virtual						void					getMassInformation(PxReal& mass, PxMat33& localInertia, PxVec3& localCenterOfMass)	const
+														{
+															mass = mMass; localInertia = mInertia; localCenterOfMass = mLocalCenterOfMass;
+														}
+	
+	//~PxTriangleMesh
+
+	virtual						bool					getInternalData(PxTriangleMeshInternalData&, bool)	const	{ return false; }
+
+	// PT: this one is just to prevent instancing Gu::TriangleMesh.
+	// But you should use PxBase::getConcreteType() instead to avoid the virtual call.
+	virtual						PxMeshMidPhase::Enum	getMidphaseID()				const	= 0;
+
+	PX_FORCE_INLINE				const PxU32*			getFaceRemap()				const	{ return mFaceRemap;											}
+	PX_FORCE_INLINE				bool					has16BitIndices()			const	{ return (mFlags & PxMeshFlag::e16_BIT_INDICES) ? true : false;	}
+	PX_FORCE_INLINE				bool					hasPerTriangleMaterials()	const	{ return mMaterialIndices != NULL;								}
+	PX_FORCE_INLINE				PxU32					getNbVerticesFast()			const	{ return mNbVertices;		}
+	PX_FORCE_INLINE				PxU32					getNbTrianglesFast()		const	{ return mNbTriangles;		}
+	PX_FORCE_INLINE				const void*				getTrianglesFast()			const	{ return mTriangles;		}
+	PX_FORCE_INLINE				const PxVec3*			getVerticesFast()			const	{ return mVertices;			}
+	PX_FORCE_INLINE				const PxU32*			getAdjacencies()			const	{ return mAdjacencies;		}
+	PX_FORCE_INLINE				PxReal					getGeomEpsilon()			const	{ return mGeomEpsilon;		}
+	PX_FORCE_INLINE				const CenterExtents&	getLocalBoundsFast()		const	{ return mAABB;				}
+	PX_FORCE_INLINE				const PxU16*			getMaterials()				const	{ return mMaterialIndices;	}
+	PX_FORCE_INLINE				const PxU8*				getExtraTrigData()			const	{ return mExtraTrigData;	}
+	
+	PX_FORCE_INLINE				const PxU32*			getAccumulatedTriangleRef()	const	{ return mAccumulatedTrianglesRef;	}
+	PX_FORCE_INLINE				const PxU32*			getTriangleReferences()		const	{ return mTrianglesReferences;		}
+	PX_FORCE_INLINE				PxU32					getNbTriangleReferences()	const	{ return mNbTrianglesReferences;	}
+
+	PX_FORCE_INLINE			const CenterExtentsPadded&	getPaddedBounds()			const
 														{
 															// PT: see compile-time assert in cpp
 															return static_cast<const CenterExtentsPadded&>(mAABB);
 														}
 
 	PX_FORCE_INLINE				void					computeWorldTriangle(
-															PxTriangle& worldTri, PxTriangleID triangleIndex, const Cm::Matrix34& worldMatrix, bool flipNormal = false,
-													PxU32* PX_RESTRICT vertexIndices=NULL, PxU32* PX_RESTRICT adjacencyIndices=NULL) const;
-	PX_FORCE_INLINE				void							getLocalTriangle(PxTriangle& localTri, PxTriangleID triangleIndex, bool flipNormal = false) const;
+															PxTriangle& worldTri, PxTriangleID triangleIndex, const PxMat34& worldMatrix, bool flipNormal = false,
+															PxU32* PX_RESTRICT vertexIndices=NULL, PxU32* PX_RESTRICT adjacencyIndices=NULL) const;
+	PX_FORCE_INLINE				void					getLocalTriangle(PxTriangle& localTri, PxTriangleID triangleIndex, bool flipNormal = false) const;
 
-								void					setMeshFactory(GuMeshFactory* factory) { mMeshFactory = factory; }
+								void					setMeshFactory(MeshFactory* factory) { mMeshFactory = factory; }
+
+								// SDF methods
+	PX_FORCE_INLINE				const SDF&				getSdfDataFast()			const { return mSdfData; }
+								//~SDF methods
+
+	PX_FORCE_INLINE				PxReal					getMass()			const { return mMass; }
+
+								// PT: for debug viz
+	PX_PHYSX_COMMON_API			const Gu::EdgeList*		requestEdgeList()			const;
 
 protected:
 								PxU32					mNbVertices;
@@ -158,25 +226,42 @@ protected:
 		b100 = 4 = ignore edge 2 = edge v1-->v2
 		*/
 								PxU8					mFlags;					//!< Flag whether indices are 16 or 32 bits wide
-																					//!< Flag whether triangle adajacencies are build
+																				//!< Flag whether triangle adajacencies are build
 								PxU16*					mMaterialIndices;		//!< the size of the array is numTriangles.
 								PxU32*					mFaceRemap;				//!< new faces to old faces mapping (after cleaning, etc). Usage: old = faceRemap[new]
 								PxU32*					mAdjacencies;			//!< Adjacency information for each face - 3 adjacent faces
-																					//!< Set to 0xFFFFffff if no adjacent face
+																				//!< Set to 0xFFFFffff if no adjacent face
 	
-								GuMeshFactory*			mMeshFactory;					// PT: changed to pointer for serialization
+								MeshFactory*			mMeshFactory;			// PT: changed to pointer for serialization
+				mutable			Gu::EdgeList*			mEdgeList;				// PT: for debug viz
+
+
+								PxReal					mMass;					//this is mass assuming a unit density that can be scaled by instances!
+								PxMat33					mInertia;				//in local space of mesh!
+								PxVec3					mLocalCenterOfMass;		//local space com
 public:
 								
 								// GRB data -------------------------
-								void *					mGRB_triIndices;				//!< GRB: GPU-friendly tri indices [uint4]
+								void*					mGRB_triIndices;		//!< GRB: GPU-friendly tri indices
 
 								// TODO avoroshilov: cooking - adjacency info - duplicated, remove it and use 'mAdjacencies' and 'mExtraTrigData' see GuTriangleMesh.cpp:325
-								void *					mGRB_triAdjacencies;			//!< GRB: adjacency data, with BOUNDARY and NONCONVEX flags (flags replace adj indices where applicable)
+								void*					mGRB_triAdjacencies;	//!< GRB: adjacency data, with BOUNDARY and NONCONVEX flags (flags replace adj indices where applicable)
 
-								PxU32*					mGRB_faceRemap;					//!< GRB : gpu to cpu triangle indice remap
-								void*					mGRB_BV32Tree;					//!< GRB: BV32 tree
+								PxU32*					mGRB_faceRemap;			//!< GRB : gpu to cpu triangle indice remap
+								PxU32*					mGRB_faceRemapInverse;
+								Gu::BV32Tree*			mGRB_BV32Tree;			//!< GRB: BV32 tree
 								// End of GRB data ------------------
 
+								// SDF data -------------------------
+								SDF						mSdfData;
+								// End of SDF data ------------------
+
+								void					setAllEdgesActive();
+								//Vertex mapping data
+								PxU32*					mAccumulatedTrianglesRef;//runsum
+								PxU32*					mTrianglesReferences;
+								PxU32					mNbTrianglesReferences;
+								//End of vertex mapping data
 };
 
 #if PX_VC
@@ -185,26 +270,15 @@ public:
 
 } // namespace Gu
 
-PX_FORCE_INLINE void Gu::TriangleMesh::computeWorldTriangle(PxTriangle& worldTri, PxTriangleID triangleIndex, const Cm::Matrix34& worldMatrix, bool flipNormal,
+PX_FORCE_INLINE void Gu::TriangleMesh::computeWorldTriangle(PxTriangle& worldTri, PxTriangleID triangleIndex, const PxMat34& worldMatrix, bool flipNormal,
 	PxU32* PX_RESTRICT vertexIndices, PxU32* PX_RESTRICT adjacencyIndices) const
 {
 	PxU32 vref0, vref1, vref2;
-	if(has16BitIndices())
-	{
-		const Gu::TriangleT<PxU16>& T = (reinterpret_cast<const Gu::TriangleT<PxU16>*>(getTrianglesFast()))[triangleIndex];
-		vref0 = T.v[0];
-		vref1 = T.v[1];
-		vref2 = T.v[2];
-	}
-	else
-	{
-		const Gu::TriangleT<PxU32>& T = (reinterpret_cast<const Gu::TriangleT<PxU32>*>(getTrianglesFast()))[triangleIndex];
-		vref0 = T.v[0];
-		vref1 = T.v[1];
-		vref2 = T.v[2];
-	}
-	if (flipNormal)
-		Ps::swap<PxU32>(vref1, vref2);
+	getVertexRefs(triangleIndex, vref0, vref1, vref2, mTriangles, has16BitIndices());
+
+	if(flipNormal)
+		PxSwap<PxU32>(vref1, vref2);
+
 	const PxVec3* PX_RESTRICT vertices = getVerticesFast();
 	worldTri.verts[0] = worldMatrix.transform(vertices[vref0]);
 	worldTri.verts[1] = worldMatrix.transform(vertices[vref1]);
@@ -219,11 +293,12 @@ PX_FORCE_INLINE void Gu::TriangleMesh::computeWorldTriangle(PxTriangle& worldTri
 
 	if(adjacencyIndices)
 	{
-		if(getAdjacencies())
+		if(mAdjacencies)
 		{
-			adjacencyIndices[0] = flipNormal ? getAdjacencies()[triangleIndex*3 + 2] : getAdjacencies()[triangleIndex*3 + 0];
-			adjacencyIndices[1] = getAdjacencies()[triangleIndex*3 + 1];
-			adjacencyIndices[2] = flipNormal ? getAdjacencies()[triangleIndex*3 + 0] : getAdjacencies()[triangleIndex*3 + 2];
+			// PT: TODO: is this correct?
+			adjacencyIndices[0] = flipNormal ? mAdjacencies[triangleIndex*3 + 2] : mAdjacencies[triangleIndex*3 + 0];
+			adjacencyIndices[1] = mAdjacencies[triangleIndex*3 + 1];
+			adjacencyIndices[2] = flipNormal ? mAdjacencies[triangleIndex*3 + 0] : mAdjacencies[triangleIndex*3 + 2];
 		}
 		else
 		{
@@ -237,22 +312,11 @@ PX_FORCE_INLINE void Gu::TriangleMesh::computeWorldTriangle(PxTriangle& worldTri
 PX_FORCE_INLINE void Gu::TriangleMesh::getLocalTriangle(PxTriangle& localTri, PxTriangleID triangleIndex, bool flipNormal) const
 {
 	PxU32 vref0, vref1, vref2;
-	if(has16BitIndices())
-	{
-		const Gu::TriangleT<PxU16>& T = (reinterpret_cast<const Gu::TriangleT<PxU16>*>(getTrianglesFast()))[triangleIndex];
-		vref0 = T.v[0];
-		vref1 = T.v[1];
-		vref2 = T.v[2];
-	}
-	else
-	{
-		const Gu::TriangleT<PxU32>& T = (reinterpret_cast<const Gu::TriangleT<PxU32>*>(getTrianglesFast()))[triangleIndex];
-		vref0 = T.v[0];
-		vref1 = T.v[1];
-		vref2 = T.v[2];
-	}
-	if (flipNormal)
-		Ps::swap<PxU32>(vref1, vref2);
+	getVertexRefs(triangleIndex, vref0, vref1, vref2, mTriangles, has16BitIndices());
+
+	if(flipNormal)
+		PxSwap<PxU32>(vref1, vref2);
+
 	const PxVec3* PX_RESTRICT vertices = getVerticesFast();
 	localTri.verts[0] = vertices[vref0];
 	localTri.verts[1] = vertices[vref1];
@@ -277,6 +341,11 @@ PX_INLINE float computeSweepData(const PxTriangleMeshGeometry& triMeshGeom, /*co
 	sweepExtents = originBoundsExtents;
 	sweepDir = (vertex2ShapeSkew * endPt) - originBoundsCenter;
 	return sweepDir.normalizeSafe();
+}
+
+PX_FORCE_INLINE const Gu::TriangleMesh* _getMeshData(const PxTriangleMeshGeometry& meshGeom)
+{
+	return static_cast<const Gu::TriangleMesh*>(meshGeom.triangleMesh);
 }
 
 }

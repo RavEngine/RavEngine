@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 // ****************************************************************************
-// This snippet illustrates the usage of PxBVHStructure
+// This snippet illustrates the usage of PxBVH for PxScene's addActor function.
 //
 // It creates a large number of small sphere shapes forming a large sphere. Large sphere
-// represents an actor and the actor is inserted into the scene with BVHStructure
-// that is precomputed from all the small spheres. When an actor is insterted this
+// represents an actor and the actor is inserted into the scene with a BVH
+// that is precomputed from all the small spheres. When an actor is inserted this
 // way the scene queries against this object behave actor centric rather than shape
 // centric.
-// Each actor that is added with a BVHSctructure does not update any of its shape bounds
+// Each actor that is added with a BVH does not update any of its shape bounds
 // within a pruning structure. It does update just the actor bounds and the query then
 // goes into actors bounds pruner, then a local query is done against the shapes in the
 // actor.
@@ -46,30 +45,23 @@
 // ****************************************************************************
 
 #include <ctype.h>
-
 #include "PxPhysicsAPI.h"
-
 #include "../snippetcommon/SnippetPrint.h"
 #include "../snippetcommon/SnippetPVD.h"
 #include "../snippetutils/SnippetUtils.h"
 
 using namespace physx;
 
-PxDefaultAllocator		gAllocator;
-PxDefaultErrorCallback	gErrorCallback;
+static PxDefaultAllocator		gAllocator;
+static PxDefaultErrorCallback	gErrorCallback;
+static PxFoundation*			gFoundation = NULL;
+static PxPhysics*				gPhysics	= NULL;
+static PxDefaultCpuDispatcher*	gDispatcher = NULL;
+static PxScene*					gScene		= NULL;
+static PxMaterial*				gMaterial	= NULL;
+static PxPvd*					gPvd        = NULL;
 
-PxFoundation*			gFoundation = NULL;
-PxPhysics*				gPhysics	= NULL;
-PxCooking*				gCooking	= NULL;
-
-PxDefaultCpuDispatcher*	gDispatcher = NULL;
-PxScene*				gScene		= NULL;
-
-PxMaterial*				gMaterial	= NULL;
-
-PxPvd*                  gPvd        = NULL;
-
-void createLargeSphere(const PxTransform& t, PxU32 density, PxReal largeRadius, PxReal radius, bool useAggregate)
+static void createLargeSphere(const PxTransform& t, PxU32 density, PxReal largeRadius, PxReal radius, bool useAggregate)
 {
 	PxRigidDynamic* body = gPhysics->createRigidDynamic(t);
 
@@ -98,17 +90,24 @@ void createLargeSphere(const PxTransform& t, PxU32 density, PxReal largeRadius, 
 	PxU32 numBounds = 0;
 	PxBounds3* bounds = PxRigidActorExt::getRigidActorShapeLocalBoundsList(*body, numBounds);
 
-	// setup the PxBVHStructureDesc, it does contain only the PxBounds3 data
-	PxBVHStructureDesc bvhDesc;
+	printf("Creating BVH structure for large compound actor...\n");
+
+	// setup the PxBVHDesc, it does contain only the PxBounds3 data
+	PxBVHDesc bvhDesc;
 	bvhDesc.bounds.count = numBounds;
 	bvhDesc.bounds.data = bounds;
 	bvhDesc.bounds.stride = sizeof(PxBounds3);
 
-	// cook the bvh structure
-	PxBVHStructure* bvh = gCooking->createBVHStructure(bvhDesc, gPhysics->getPhysicsInsertionCallback());
+	// cook the bvh
+	PxBVH* bvh = PxCreateBVH(bvhDesc, gPhysics->getPhysicsInsertionCallback());
 
 	// release the memory allocated within extensions, the bounds are not required anymore
 	gAllocator.deallocate(bounds);
+
+	if(useAggregate)
+		printf("Adding actor + BVH structure to aggregate...\n");
+	else
+		printf("Adding actor + BVH structure to scene...\n");
 
 	// add the actor to the scene and provide the bvh structure (regular path without aggregate usage)
 	if(!useAggregate)
@@ -119,11 +118,10 @@ void createLargeSphere(const PxTransform& t, PxU32 density, PxReal largeRadius, 
 	// the gScene->addActor(*body, bvh)
 	if(useAggregate)
 	{
-		PxAggregate* aggregate = gPhysics->createAggregate(1, false);
+		PxAggregate* aggregate = gPhysics->createAggregate(1, body->getNbShapes(), false);
 		aggregate->addActor(*body, bvh);
 		gScene->addAggregate(*aggregate);
 	}
-
 
 	// bvh can be released at this point, the precomputed BVH structure was copied to the SDK pruners.
 	bvh->release();
@@ -138,7 +136,6 @@ void initPhysics(bool /*interactive*/)
 	gPvd->connect(*transport,PxPvdInstrumentationFlag::eALL);
 
 	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(),true,gPvd);
-	gCooking = PxCreateCooking(PX_PHYSICS_VERSION, *gFoundation, PxCookingParams(PxTolerancesScale()));
 
 	PxSceneDesc sceneDesc(gPhysics->getTolerancesScale());
 	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
@@ -165,6 +162,7 @@ void initPhysics(bool /*interactive*/)
 
 void stepPhysics(bool /*interactive*/)
 {
+	printf("Simulating...\n");
 	gScene->simulate(1.0f/60.0f);
 	gScene->fetchResults(true);
 }
@@ -174,7 +172,6 @@ void cleanupPhysics(bool /*interactive*/)
 	PX_RELEASE(gScene);
 	PX_RELEASE(gDispatcher);
 	PX_RELEASE(gPhysics);
-	PX_RELEASE(gCooking);
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
@@ -183,7 +180,7 @@ void cleanupPhysics(bool /*interactive*/)
 	}
 	PX_RELEASE(gFoundation);
 
-	printf("SnippetBVHStructure done.\n");
+	printf("SnippetBVH done.\n");
 }
 
 void keyPress(unsigned char , const PxTransform& )

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_COLLISION_NXCONVEXMESHDESC
-#define PX_COLLISION_NXCONVEXMESHDESC
+#ifndef PX_CONVEX_MESH_DESC_H
+#define PX_CONVEX_MESH_DESC_H
 /** \addtogroup cooking
 @{
 */
@@ -38,12 +36,12 @@
 #include "foundation/PxFlags.h"
 #include "common/PxCoreUtilityTypes.h"
 #include "geometry/PxConvexMesh.h"
+#include "PxSDFDesc.h"
 
 #if !PX_DOXYGEN
 namespace physx
 {
 #endif
-
 /**
 \brief Flags which describe the format and behavior of a convex mesh.
 */
@@ -219,6 +217,13 @@ public:
 	PxU16 quantizedCount;
 
 	/**
+	\brief SDF descriptor. When this descriptor is set, signed distance field is calculated for this convex mesh.
+
+	<b>Default:</b> NULL
+	*/
+	PxSDFDesc* sdfDesc;
+
+	/**
 	\brief constructor sets to default.
 	*/
 	PX_INLINE PxConvexMeshDesc();
@@ -226,6 +231,8 @@ public:
 	\brief (re)sets the structure to the default.	
 	*/
 	PX_INLINE void setToDefault();
+
+	
 	/**
 	\brief Returns true if the descriptor is valid.
 
@@ -235,8 +242,9 @@ public:
 };
 
 PX_INLINE PxConvexMeshDesc::PxConvexMeshDesc()	//constructor sets to default
-: vertexLimit(255), quantizedCount(255)
+: vertexLimit(255), quantizedCount(255), sdfDesc(NULL)
 {
+
 }
 
 PX_INLINE void PxConvexMeshDesc::setToDefault()
@@ -296,6 +304,12 @@ PX_INLINE bool PxConvexMeshDesc::isValid() const
 	{
 		return false;
 	}
+
+	if (sdfDesc && !sdfDesc->isValid())
+	{
+		return false;
+	}
+
 	return true;
 }
 

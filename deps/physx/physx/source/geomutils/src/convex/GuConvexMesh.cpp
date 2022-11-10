@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,34 +22,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geometry/PxMeshScale.h"
-#include "PxVisualizationParameter.h"
-
-#include "PsIntrinsics.h"
-#include "PsMathUtils.h"
-#include "PsAllocator.h"
-#include "PsFoundation.h"
+#include "foundation/PxFoundation.h"
 #include "GuConvexMesh.h"
-#include "GuTriangle32.h"
 #include "GuBigConvexData2.h"
-#include "GuSerialize.h"
 #include "GuMeshFactory.h"
-#include "CmPhysXCommon.h"
-#include "CmRenderOutput.h"
-#include "CmUtils.h"
 
 using namespace physx;
 using namespace Gu;
+using namespace Cm;
 
-// PX_SERIALIZATION
-#include "PsIntrinsics.h"
-//~PX_SERIALIZATION
-
-bool Gu::ConvexMesh::getPolygonData(PxU32 i, PxHullPolygon& data) const
+bool ConvexMesh::getPolygonData(PxU32 i, PxHullPolygon& data) const
 {
 	if(i>=mHullData.mNbPolygons)
 		return false;
@@ -65,9 +50,7 @@ bool Gu::ConvexMesh::getPolygonData(PxU32 i, PxHullPolygon& data) const
 	return true;
 }
 
-/// ======================================
-
-static void initConvexHullData(Gu::ConvexHullData& data)
+static void initConvexHullData(ConvexHullData& data)
 {
 	data.mAABB.setEmpty();
 	data.mCenterOfMass = PxVec3(0);
@@ -80,48 +63,54 @@ static void initConvexHullData(Gu::ConvexHullData& data)
 	data.mInternal.mExtents[0] = data.mInternal.mExtents[1] = data.mInternal.mExtents[2] = 0.0f;
 }
 
-Gu::ConvexMesh::ConvexMesh()
-: PxConvexMesh(PxConcreteType::eCONVEX_MESH, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE)
-, mNb				(0)
-, mBigConvexData	(NULL)
-, mMass				(0)
-, mInertia			(PxMat33(PxIdentity))
+ConvexMesh::ConvexMesh(MeshFactory* factory) :
+	PxConvexMesh	(PxConcreteType::eCONVEX_MESH, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE),
+	mNb				(0),
+	mSdfData		(NULL),
+	mBigConvexData	(NULL),
+	mMass			(0),
+	mInertia		(PxMat33(PxIdentity)),
+	mMeshFactory	(factory)
 {
 	initConvexHullData(mHullData);
 }
 
-Gu::ConvexMesh::ConvexMesh(GuMeshFactory& factory, ConvexHullInitData& data)
-: PxConvexMesh(PxConcreteType::eCONVEX_MESH, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE)
-, mNb(data.mNb)
-, mBigConvexData(data.mBigConvexData)
-, mMass(data.mMass)
-, mInertia(data.mInertia)
-, mMeshFactory(&factory)
+ConvexMesh::ConvexMesh(MeshFactory* factory, ConvexHullInitData& data) :
+	PxConvexMesh	(PxConcreteType::eCONVEX_MESH, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE),
+	mNb				(data.mNb),
+	mSdfData		(data.mSdfData),
+	mBigConvexData	(data.mBigConvexData),
+	mMass			(data.mMass),
+	mInertia		(data.mInertia),
+	mMeshFactory	(factory)
 {
 	mHullData = data.mHullData;	
 }
 
-Gu::ConvexMesh::~ConvexMesh()
+ConvexMesh::~ConvexMesh()
 {
-// PX_SERIALIZATION
 	if(getBaseFlags()&PxBaseFlag::eOWNS_MEMORY)
-//~PX_SERIALIZATION
 	{
-		PX_DELETE_POD(mHullData.mPolygons);
-		PX_DELETE_AND_RESET(mBigConvexData);
+		PX_FREE(mHullData.mPolygons);
+		PX_DELETE(mBigConvexData);
+		PX_DELETE(mSdfData);
 	}
 }
 
-bool Gu::ConvexMesh::isGpuCompatible() const
+bool ConvexMesh::isGpuCompatible() const
 {
+	PxReal maxR = PxMax(mHullData.mInternal.mExtents[0], PxMax(mHullData.mInternal.mExtents[1], mHullData.mInternal.mExtents[2]));
+	PxReal minR = mHullData.mInternal.mRadius;
+
+	PxReal ratio = maxR/minR;
+
 	return mHullData.mNbHullVertices <= 64 &&
 		mHullData.mPolygons[0].mNbVerts <= 32 &&
-		mHullData.mNbEdges.isBitSet();
+		mHullData.mNbEdges.isBitSet() &&
+		ratio < 100.f;
 }
 
-// PX_SERIALIZATION
-
-void Gu::ConvexMesh::exportExtraData(PxSerializationContext& context)
+void ConvexMesh::exportExtraData(PxSerializationContext& context)
 {
 	context.alignData(PX_SERIAL_ALIGN);
 	const PxU32 bufferSize = computeBufferSize(mHullData, getNb());
@@ -136,30 +125,30 @@ void Gu::ConvexMesh::exportExtraData(PxSerializationContext& context)
 	}
 }
 
-void Gu::ConvexMesh::importExtraData(PxDeserializationContext& context)
+void ConvexMesh::importExtraData(PxDeserializationContext& context)
 {
 	const PxU32 bufferSize = computeBufferSize(mHullData, getNb());
-	mHullData.mPolygons = reinterpret_cast<Gu::HullPolygonData*>(context.readExtraData<PxU8, PX_SERIAL_ALIGN>(bufferSize));
+	mHullData.mPolygons = reinterpret_cast<HullPolygonData*>(context.readExtraData<PxU8, PX_SERIAL_ALIGN>(bufferSize));
 
 	if(mBigConvexData)
 	{
 		mBigConvexData = context.readExtraData<BigConvexData, PX_SERIAL_ALIGN>();
-		new(mBigConvexData)BigConvexData(PxEmpty);
+		PX_PLACEMENT_NEW(mBigConvexData, BigConvexData(PxEmpty));
 		mBigConvexData->importExtraData(context);
 		mHullData.mBigConvexRawData = &mBigConvexData->mData;
 	}
 }
 
-Gu::ConvexMesh* Gu::ConvexMesh::createObject(PxU8*& address, PxDeserializationContext& context)
+ConvexMesh* ConvexMesh::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	ConvexMesh* obj = new (address) ConvexMesh(PxBaseFlag::eIS_RELEASABLE);
+	ConvexMesh* obj = PX_PLACEMENT_NEW(address, ConvexMesh(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(ConvexMesh);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
 	return obj;
 }
 
-static bool convexHullLoad(Gu::ConvexHullData& data, PxInputStream& stream, PxBitAndDword& bufferSize)
+static bool convexHullLoad(ConvexHullData& data, PxInputStream& stream, PxBitAndDword& bufferSize)
 {
 	PxU32 version;
 	bool Mismatch;
@@ -178,34 +167,33 @@ static bool convexHullLoad(Gu::ConvexHullData& data, PxInputStream& stream, PxBi
 	{
 		PxU32 tmp[4];
 		ReadDwordBuffer(tmp, 4, Mismatch, stream);
-		data.mNbHullVertices	= Ps::to8(tmp[0]);
-		data.mNbEdges			= Ps::to16(tmp[1]);
-		data.mNbPolygons		= Ps::to8(tmp[2]);
+		data.mNbHullVertices	= PxTo8(tmp[0]);
+		data.mNbEdges			= PxTo16(tmp[1]);
+		data.mNbPolygons		= PxTo8(tmp[2]);
 		Nb						= tmp[3];
 	}
 
 	//AM: In practice the old aligner approach wastes 20 bytes and there is no reason to 20 byte align this data.
 	//I changed the code to just 4 align for the time being.  
 	//On consoles if anything we will need to make this stuff 16 byte align vectors to have any sense, which will have to be done by padding data structures.
-	PX_ASSERT(sizeof(Gu::HullPolygonData) % sizeof(PxReal) == 0);	//otherwise please pad it.
+	PX_ASSERT(sizeof(HullPolygonData) % sizeof(PxReal) == 0);	//otherwise please pad it.
 	PX_ASSERT(sizeof(PxVec3) % sizeof(PxReal) == 0);
 
 	PxU32 bytesNeeded = computeBufferSize(data, Nb);
 
-	PX_FREE(data.mPolygons);	// Load() can be called for an existing convex mesh. In that case we need to free
-	// the memory first.
+	PX_FREE(data.mPolygons);	// Load() can be called for an existing convex mesh. In that case we need to free the memory first.
 
 	bufferSize = Nb;
 	void* mDataMemory = PX_ALLOC(bytesNeeded, "ConvexHullData data");
 
 	PxU8* address = reinterpret_cast<PxU8*>(mDataMemory);
 
-	data.mPolygons				= reinterpret_cast<Gu::HullPolygonData*>(address);	address += sizeof(Gu::HullPolygonData) * data.mNbPolygons;
-	PxVec3* mDataHullVertices	= reinterpret_cast<PxVec3*>(address);				address += sizeof(PxVec3) * data.mNbHullVertices;
-	PxU8* mDataFacesByEdges8	= address;											address += sizeof(PxU8) * data.mNbEdges * 2;
-	PxU8* mDataFacesByVertices8 = address;											address += sizeof(PxU8) * data.mNbHullVertices * 3;
-	PxU16* mEdges				= reinterpret_cast<PxU16*>(address);				address += data.mNbEdges.isBitSet() ? (sizeof(PxU16) * data.mNbEdges * 2) : 0;
-	PxU8* mDataVertexData8		= address;											address += sizeof(PxU8) * Nb;	// PT: leave that one last, so that we don't need to serialize "Nb"
+	data.mPolygons				= reinterpret_cast<HullPolygonData*>(address);	address += sizeof(HullPolygonData) * data.mNbPolygons;
+	PxVec3* mDataHullVertices	= reinterpret_cast<PxVec3*>(address);			address += sizeof(PxVec3) * data.mNbHullVertices;
+	PxU8* mDataFacesByEdges8	= address;										address += sizeof(PxU8) * data.mNbEdges * 2;
+	PxU8* mDataFacesByVertices8 = address;										address += sizeof(PxU8) * data.mNbHullVertices * 3;
+	PxU16* mEdges				= reinterpret_cast<PxU16*>(address);			address += data.mNbEdges.isBitSet() ? (sizeof(PxU16) * data.mNbEdges * 2) : 0;
+	PxU8* mDataVertexData8		= address;										address += sizeof(PxU8) * Nb;	// PT: leave that one last, so that we don't need to serialize "Nb"
 
 	PX_ASSERT(!(size_t(mDataHullVertices) % sizeof(PxReal)));
 	PX_ASSERT(!(size_t(data.mPolygons) % sizeof(PxReal)));
@@ -221,7 +209,7 @@ static bool convexHullLoad(Gu::ConvexHullData& data, PxInputStream& stream, PxBi
 	}
 
 	// Import polygons
-	stream.read(data.mPolygons, data.mNbPolygons*sizeof(Gu::HullPolygonData));
+	stream.read(data.mPolygons, data.mNbPolygons*sizeof(HullPolygonData));
 
 	if(Mismatch)
 	{
@@ -242,14 +230,14 @@ static bool convexHullLoad(Gu::ConvexHullData& data, PxInputStream& stream, PxBi
 			PxU8 inds[3];
 			for(PxU32 j=0; j<data.mNbPolygons; ++j)
 			{
-				Gu::HullPolygonData& polygon = data.mPolygons[j];
+				HullPolygonData& polygon = data.mPolygons[j];
 				for(PxU32 k=0; k< polygon.mNbVerts; ++k)
 				{
 					PxU8 index = mDataVertexData8[polygon.mVRef8 + k];
 					if(i == index)
 					{
 						//Found a polygon
-						inds[count++] = Ps::to8(j);
+						inds[count++] = PxTo8(j);
 						break;
 					}
 				}
@@ -304,7 +292,7 @@ static bool convexHullLoad(Gu::ConvexHullData& data, PxInputStream& stream, PxBi
 	return true;
 }
 
-bool Gu::ConvexMesh::load(PxInputStream& stream)
+bool ConvexMesh::load(PxInputStream& stream)
 {
 	// Import header
 	PxU32 version;
@@ -314,11 +302,7 @@ bool Gu::ConvexMesh::load(PxInputStream& stream)
 
 	// Check if old (incompatible) mesh format is loaded
 	if (version < PX_CONVEX_VERSION)
-	{
-		Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Loading convex mesh failed: "
-			"Deprecated mesh cooking format.");
-		return false;
-	}
+		return PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "Loading convex mesh failed: Deprecated mesh cooking format.");
 
 	// Import serialization flags
 	PxU32 serialFlags	= readDword(mismatch, stream);
@@ -347,8 +331,8 @@ bool Gu::ConvexMesh::load(PxInputStream& stream)
 	{
 		PX_ASSERT(gaussMapFlag == 1.0f);	//otherwise file is corrupt
 
-		PX_DELETE_AND_RESET(mBigConvexData);
-		PX_NEW_SERIALIZED(mBigConvexData,BigConvexData);	
+		PX_DELETE(mBigConvexData);
+		PX_NEW_SERIALIZED(mBigConvexData, BigConvexData);	
       
 		if(mBigConvexData)	
 		{
@@ -356,6 +340,52 @@ bool Gu::ConvexMesh::load(PxInputStream& stream)
 			mHullData.mBigConvexRawData = &mBigConvexData->mData;
 		}
 	}
+
+	//Import Sdf data
+	PxF32 sdfFlag = readFloat(mismatch, stream);
+	if (sdfFlag != -1.0f)
+	{
+		PX_ASSERT(sdfFlag == 1.0f);	//otherwise file is corrupt
+
+		PX_DELETE(mSdfData);
+		PX_NEW_SERIALIZED(mSdfData, SDF);
+
+		if (mSdfData)
+		{
+			// Import sdf values
+			mSdfData->mMeshLower.x = readFloat(mismatch, stream);
+			mSdfData->mMeshLower.y = readFloat(mismatch, stream);
+			mSdfData->mMeshLower.z = readFloat(mismatch, stream);
+			mSdfData->mSpacing = readFloat(mismatch, stream);
+			mSdfData->mDims.x = readDword(mismatch, stream);
+			mSdfData->mDims.y = readDword(mismatch, stream);
+			mSdfData->mDims.z = readDword(mismatch, stream);
+			mSdfData->mNumSdfs = readDword(mismatch, stream);
+
+			mSdfData->mNumSubgridSdfs = readDword(mismatch, stream);
+			mSdfData->mNumStartSlots = readDword(mismatch, stream);
+			mSdfData->mSubgridSize = readDword(mismatch, stream);
+			mSdfData->mSdfSubgrids3DTexBlockDim.x = readDword(mismatch, stream);
+			mSdfData->mSdfSubgrids3DTexBlockDim.y = readDword(mismatch, stream);
+			mSdfData->mSdfSubgrids3DTexBlockDim.z = readDword(mismatch, stream);
+			
+			mSdfData->mSubgridsMinSdfValue = readFloat(mismatch, stream);
+			mSdfData->mSubgridsMaxSdfValue = readFloat(mismatch, stream);
+			mSdfData->mBytesPerSparsePixel = readDword(mismatch, stream);
+
+			//allocate sdf 
+			mSdfData->allocateSdfs(mSdfData->mMeshLower, mSdfData->mSpacing, mSdfData->mDims.x, mSdfData->mDims.y, mSdfData->mDims.z,
+				mSdfData->mSubgridSize, mSdfData->mSdfSubgrids3DTexBlockDim.x, mSdfData->mSdfSubgrids3DTexBlockDim.y, mSdfData->mSdfSubgrids3DTexBlockDim.z,
+				mSdfData->mSubgridsMinSdfValue, mSdfData->mSubgridsMaxSdfValue, mSdfData->mBytesPerSparsePixel);
+						
+			readFloatBuffer(mSdfData->mSdf, mSdfData->mNumSdfs, mismatch, stream);
+			readByteBuffer(mSdfData->mSubgridSdf, mSdfData->mNumSubgridSdfs, stream);
+			readIntBuffer(mSdfData->mSubgridStartSlots, mSdfData->mNumStartSlots, mismatch, stream);
+
+			mHullData.mSdfData = mSdfData;
+		}
+	}
+	
 	
 /*
 	printf("\n\n");
@@ -376,45 +406,44 @@ bool Gu::ConvexMesh::load(PxInputStream& stream)
 	return true;
 }
 
-void Gu::ConvexMesh::release()
+void ConvexMesh::release()
 {
-	decRefCount();
+	RefCountable_decRefCount(*this);
 }
 
-void Gu::ConvexMesh::onRefCountZero()
+void ConvexMesh::onRefCountZero()
 {
-	if ((!getBufferSize()) || mMeshFactory->removeConvexMesh(*this))  // when the mesh failed to load properly, it will not have been added to the convex array
-	{
-		GuMeshFactory* mf = mMeshFactory;
-		Cm::deletePxBase(this);
-		mf->notifyFactoryListener(this, PxConcreteType::eCONVEX_MESH);
-		return;
-	}
-
-	// PT: if we reach this point, we didn't find the mesh in the Physics object => don't delete!
-	// This prevents deleting the object twice.
-	Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "Gu::ConvexMesh::release: double deletion detected!");
+	// when the mesh failed to load properly, it will not have been added to the convex array
+	::onRefCountZero(this, mMeshFactory, !getBufferSize(), "PxConvexMesh::release: double deletion detected!");
 }
 
-void Gu::ConvexMesh::acquireReference()
+void ConvexMesh::acquireReference()
 {
-	incRefCount();
+	RefCountable_incRefCount(*this);
 }
 
-PxU32 Gu::ConvexMesh::getReferenceCount() const
+PxU32 ConvexMesh::getReferenceCount() const
 {
-	return getRefCount();
+	return RefCountable_getRefCount(*this);
 }
 
-void Gu::ConvexMesh::getMassInformation(PxReal& mass, PxMat33& localInertia, PxVec3& localCenterOfMass) const
+void ConvexMesh::getMassInformation(PxReal& mass, PxMat33& localInertia, PxVec3& localCenterOfMass) const
 {
-	mass = Gu::ConvexMesh::getMass();
-	localInertia = Gu::ConvexMesh::getInertia();
-	localCenterOfMass = Gu::ConvexMesh::getHull().mCenterOfMass;
+	mass = ConvexMesh::getMass();
+	localInertia = ConvexMesh::getInertia();
+	localCenterOfMass = ConvexMesh::getHull().mCenterOfMass;
 }
 
-PxBounds3 Gu::ConvexMesh::getLocalBounds() const
+PxBounds3 ConvexMesh::getLocalBounds() const
 {
 	PX_ASSERT(mHullData.mAABB.isValid());
 	return PxBounds3::centerExtents(mHullData.mAABB.mCenter, mHullData.mAABB.mExtents);
+}
+
+const PxReal* ConvexMesh::getSDF() const
+{
+	if(mSdfData)
+		return mSdfData->mSdf;
+
+	return NULL;
 }

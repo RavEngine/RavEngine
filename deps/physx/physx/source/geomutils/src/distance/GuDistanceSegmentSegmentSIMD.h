@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,25 +30,25 @@
 #define GU_DISTANCE_SEGMENT_SEGMENT_SIMD_H
 
 #include "common/PxPhysXCommonConfig.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
 namespace Gu
 {
-	PX_PHYSX_COMMON_API Ps::aos::FloatV distanceSegmentSegmentSquared(	const Ps::aos::Vec3VArg p1, const Ps::aos::Vec3VArg d1, const Ps::aos::Vec3VArg p2, const Ps::aos::Vec3VArg d2,
-					 								Ps::aos::FloatV& param0, 
-					 								Ps::aos::FloatV& param1);
+	PX_PHYSX_COMMON_API aos::FloatV distanceSegmentSegmentSquared(	const aos::Vec3VArg p1, const aos::Vec3VArg d1, const aos::Vec3VArg p2, const aos::Vec3VArg d2,
+					 								aos::FloatV& param0, 
+					 								aos::FloatV& param1);
 
 	/*
 		This function do four segment segment closest point test in one go
 	*/
-	Ps::aos::Vec4V distanceSegmentSegmentSquared4(  const Ps::aos::Vec3VArg p, const Ps::aos::Vec3VArg d, 
-													const Ps::aos::Vec3VArg p02, const Ps::aos::Vec3VArg d02, 
-													const Ps::aos::Vec3VArg p12, const Ps::aos::Vec3VArg d12, 
-													const Ps::aos::Vec3VArg p22, const Ps::aos::Vec3VArg d22,
-													const Ps::aos::Vec3VArg p32, const Ps::aos::Vec3VArg d32,
-													Ps::aos::Vec4V& s, Ps::aos::Vec4V& t);
+	aos::Vec4V distanceSegmentSegmentSquared4(  const aos::Vec3VArg p, const aos::Vec3VArg d, 
+													const aos::Vec3VArg p02, const aos::Vec3VArg d02, 
+													const aos::Vec3VArg p12, const aos::Vec3VArg d12, 
+													const aos::Vec3VArg p22, const aos::Vec3VArg d22,
+													const aos::Vec3VArg p32, const aos::Vec3VArg d32,
+													aos::Vec4V& s, aos::Vec4V& t);
 } // namespace Gu
 
 }

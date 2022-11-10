@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-
-#ifndef DY_SOLVERCONTACT_H
-#define DY_SOLVERCONTACT_H
+#ifndef DY_SOLVER_CONTACT_H
+#define DY_SOLVER_CONTACT_H
 
 #include "foundation/PxSimpleTypes.h"
 #include "foundation/PxVec3.h"
 #include "PxvConfig.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
 
-using namespace Ps::aos;
+using namespace aos;
 
 namespace Sc
 {
@@ -118,33 +115,34 @@ PX_COMPILE_TIME_ASSERT(sizeof(SolverContactHeader) == 80);
 */
 struct SolverContactPoint
 {
-	Vec3V raXn;
-	Vec3V rbXn;
+	Vec4V raXn_velMultiplierW;
+	Vec4V rbXn_maxImpulseW;
 
-	PxF32 velMultiplier;
 	PxF32 biasedErr;
 	PxF32 unbiasedErr;
-	PxF32 maxImpulse;
+	PxF32 impulseMultiplier;
+	PxU32 pad;
 
-	PX_FORCE_INLINE FloatV getVelMultiplier() const			{return FLoad(velMultiplier);}
+	PX_FORCE_INLINE FloatV getVelMultiplier() const			{return V4GetW(raXn_velMultiplierW);}
+	PX_FORCE_INLINE FloatV getImpulseMultiplier() const { return FLoad(impulseMultiplier); }
 
 	PX_FORCE_INLINE FloatV getBiasedErr() const				{return FLoad(biasedErr);}
-	PX_FORCE_INLINE FloatV getMaxImpulse() const			{return FLoad(maxImpulse);}
+	PX_FORCE_INLINE FloatV getMaxImpulse() const			{return V4GetW(rbXn_maxImpulseW);}
 
-	PX_FORCE_INLINE Vec3V getRaXn() const					{return raXn;}
-	PX_FORCE_INLINE Vec3V getRbXn() const					{return rbXn;}
+	PX_FORCE_INLINE Vec3V getRaXn() const					{return Vec3V_From_Vec4V(raXn_velMultiplierW);}
+	PX_FORCE_INLINE Vec3V getRbXn() const					{return Vec3V_From_Vec4V(rbXn_maxImpulseW);}
 
-	PX_FORCE_INLINE void setRaXn(const PxVec3& v)			{V3WriteXYZ(raXn, v);}
-	PX_FORCE_INLINE void setRbXn(const PxVec3& v)			{V3WriteXYZ(rbXn, v);}
-	PX_FORCE_INLINE void setVelMultiplier(PxF32 f)			{velMultiplier = f;}
+	/*PX_FORCE_INLINE void setRaXn(const PxVec3& v)			{V4WriteXYZ(raXn_velMultiplierW, v);}
+	PX_FORCE_INLINE void setRbXn(const PxVec3& v)			{V4WriteXYZ(rbXn_maxImpulseW, v);}
+	PX_FORCE_INLINE void setVelMultiplier(PxF32 f)			{V4WriteW(raXn_velMultiplierW, f);}
 
 	PX_FORCE_INLINE void setBiasedErr(PxF32 f)				{biasedErr = f;}
 	PX_FORCE_INLINE void setUnbiasedErr(PxF32 f)			{unbiasedErr = f;}
 
-	PX_FORCE_INLINE PxF32 getVelMultiplierPxF32() const		{return velMultiplier;}
+	PX_FORCE_INLINE PxF32 getVelMultiplierPxF32() const		{return V4ReadW(raXn_velMultiplierW);}
 	PX_FORCE_INLINE const PxVec3& getRaXnPxVec3() const		{return V3ReadXYZ(raXn);}
 	PX_FORCE_INLINE const PxVec3& getRbXnPxVec3() const		{return V3ReadXYZ(rbXn);}
-	PX_FORCE_INLINE PxF32 getBiasedErrPxF32() const			{return biasedErr;}
+	PX_FORCE_INLINE PxF32 getBiasedErrPxF32() const			{return biasedErr;}*/
 }; 
 
 
@@ -223,6 +221,4 @@ PX_COMPILE_TIME_ASSERT(sizeof(SolverContactFrictionExt) == 128);
 
 }
 
-
-
-#endif //DY_SOLVERCONTACT_H
+#endif

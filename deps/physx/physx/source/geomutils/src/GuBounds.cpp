@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,34 +22,115 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#include "GuBounds.h"
+
 #include "geometry/PxBoxGeometry.h"
 #include "geometry/PxSphereGeometry.h"
-#include "geometry/PxCapsuleGeometry.h"
 #include "geometry/PxPlaneGeometry.h"
 #include "geometry/PxConvexMeshGeometry.h"
+#include "geometry/PxTetrahedronMeshGeometry.h"
 #include "geometry/PxTriangleMeshGeometry.h"
 #include "geometry/PxHeightFieldGeometry.h"
-#include "GuBounds.h"
+#include "geometry/PxCustomGeometry.h"
 #include "GuInternal.h"
 #include "CmUtils.h"
 #include "GuConvexMesh.h"
 #include "GuConvexMeshData.h"
 #include "GuTriangleMesh.h"
+#include "GuTetrahedronMesh.h"
 #include "GuHeightFieldData.h"
 #include "GuHeightField.h"
-#include "PsFoundation.h"
 #include "GuConvexUtilsInternal.h"
 #include "GuBoxConversion.h"
 
 using namespace physx;
 using namespace Gu;
-using namespace Ps::aos;
+using namespace aos;
 
-static PX_FORCE_INLINE void transformNoEmptyTest(Vec3p& c, Vec3p& ext, const PxMat33& rot, const PxVec3& pos, const CenterExtentsPadded& bounds)
+// Compute global box for current node. The box is stored in mBV.
+void Gu::computeGlobalBox(PxBounds3& bounds, PxU32 nbPrims, const PxBounds3* PX_RESTRICT boxes, const PxU32* PX_RESTRICT primitives)
+{
+	PX_ASSERT(boxes);
+	PX_ASSERT(primitives);
+	PX_ASSERT(nbPrims);
+
+	Vec4V minV = V4LoadU(&boxes[primitives[0]].minimum.x);
+	Vec4V maxV = V4LoadU(&boxes[primitives[0]].maximum.x);
+
+	for (PxU32 i=1; i<nbPrims; i++)
+	{
+		const PxU32 index = primitives[i];
+		minV = V4Min(minV, V4LoadU(&boxes[index].minimum.x));
+		maxV = V4Max(maxV, V4LoadU(&boxes[index].maximum.x));
+	}
+
+	StoreBounds(bounds, minV, maxV);
+}
+
+void Gu::computeBoundsAroundVertices(PxBounds3& bounds, PxU32 nbVerts, const PxVec3* PX_RESTRICT verts)
+{
+	// PT: we can safely V4LoadU the first N-1 vertices. We must V3LoadU the last vertex, to make sure we don't read
+	// invalid memory. Since we have to special-case that last vertex anyway, we reuse that code to also initialize
+	// the minV/maxV values (bypassing the need for a 'setEmpty()' initialization).
+
+	if(!nbVerts)
+	{
+		bounds.setEmpty();
+		return;
+	}
+
+	PxU32 nbSafe = nbVerts-1;
+
+	// PT: read last (unsafe) vertex using V3LoadU, initialize minV/maxV
+	const Vec4V lastVertexV = Vec4V_From_Vec3V(V3LoadU(&verts[nbSafe].x));
+	Vec4V minV = lastVertexV;
+	Vec4V maxV = lastVertexV;
+
+	// PT: read N-1 first (safe) vertices using V4LoadU
+	while(nbSafe--)
+	{
+		const Vec4V vertexV = V4LoadU(&verts->x);
+		verts++;
+
+		minV = V4Min(minV, vertexV);
+		maxV = V4Max(maxV, vertexV);
+	}
+
+	StoreBounds(bounds, minV, maxV);
+}
+
+void Gu::computeLocalBoundsAndGeomEpsilon(const PxVec3* vertices, PxU32 nbVerties, PxBounds3& localBounds, PxReal& geomEpsilon)
+{
+	computeBoundsAroundVertices(localBounds, nbVerties, vertices);
+
+	// Derive a good geometric epsilon from local bounds. We must do this before bounds extrusion for heightfields.
+	//
+	// From Charles Bloom:
+	// "Epsilon must be big enough so that the consistency condition abs(D(Hit))
+	// <= Epsilon is satisfied for all queries. You want the smallest epsilon
+	// you can have that meets that constraint. Normal floats have a 24 bit
+	// mantissa. When you do any float addition, you may have round-off error
+	// that makes the result off by roughly 2^-24 * result. Our result is
+	// scaled by the position values. If our world is strictly required to be
+	// in a box of world size W (each coordinate in -W to W), then the maximum
+	// error is 2^-24 * W. Thus Epsilon must be at least >= 2^-24 * W. If
+	// you're doing coordinate transforms, that may scale your error up by some
+	// amount, so you'll need a bigger epsilon. In general something like
+	// 2^-22*W is reasonable. If you allow scaled transforms, it needs to be
+	// something like 2^-22*W*MAX_SCALE."
+	// PT: TODO: runtime checkings for this
+	PxReal eps = 0.0f;
+	for (PxU32 i = 0; i < 3; i++)
+		eps = PxMax(eps, PxMax(PxAbs(localBounds.maximum[i]), PxAbs(localBounds.minimum[i])));
+	eps *= powf(2.0f, -22.0f);	
+	geomEpsilon = eps;
+}
+
+static PX_FORCE_INLINE void transformNoEmptyTest(PxVec3p& c, PxVec3p& ext, const PxMat33& rot, const PxVec3& pos, const CenterExtentsPadded& bounds)
 {
 	c = rot.transform(bounds.mCenter) + pos;
 	ext = Cm::basisExtent(rot.column0, rot.column1, rot.column2, bounds.mExtents);
@@ -65,7 +145,7 @@ static PX_FORCE_INLINE Vec4V multiply3x3V(const Vec4V p, const PxMat33Padded& ma
 	return ResV;
 }
 
-static PX_FORCE_INLINE void transformNoEmptyTestV(Vec3p& c, Vec3p& ext, const PxMat33Padded& rot, const PxVec3& pos, const CenterExtentsPadded& bounds)
+static PX_FORCE_INLINE void transformNoEmptyTestV(PxVec3p& c, PxVec3p& ext, const PxMat33Padded& rot, const PxVec3& pos, const CenterExtentsPadded& bounds)
 {
 	const Vec4V boundsCenterV = V4LoadU(&bounds.mCenter.x);	// PT: this load is safe since extents follow center in the class
 
@@ -98,10 +178,10 @@ static PX_FORCE_INLINE PxU32 isNonIdentity(const PxVec3& scale)
 // PT: please don't inline this one - 300+ lines of rarely used code
 static void computeScaledMatrix(PxMat33Padded& rot, const PxMeshScale& scale)
 {
-	rot = rot * scale.toMat33();
+	rot = rot * Cm::toMat33(scale);
 }
 
-static PX_FORCE_INLINE void transformNoEmptyTest(Vec3p& c, Vec3p& ext, const PxTransform& transform, const PxMeshScale& scale, const CenterExtentsPadded& bounds)
+static PX_FORCE_INLINE void transformNoEmptyTest(PxVec3p& c, PxVec3p& ext, const PxTransform& transform, const PxMeshScale& scale, const CenterExtentsPadded& bounds)
 {
 	PxMat33Padded rot(transform.q);
 
@@ -111,15 +191,15 @@ static PX_FORCE_INLINE void transformNoEmptyTest(Vec3p& c, Vec3p& ext, const PxT
 	transformNoEmptyTestV(c, ext, rot, transform.p, bounds);
 }
 
-static PX_FORCE_INLINE void transformNoEmptyTest(Vec3p& c, Vec3p& ext, const PxVec3& pos, const PxMat33Padded& rot, const PxMeshScale& scale, const CenterExtentsPadded& bounds)
+static PX_FORCE_INLINE void transformNoEmptyTest(PxVec3p& c, PxVec3p& ext, const PxVec3& pos, const PxMat33Padded& rot, const PxMeshScale& scale, const CenterExtentsPadded& bounds)
 {
 	if(scale.isIdentity())
 		transformNoEmptyTest(c, ext, rot, pos, bounds);
 	else
-		transformNoEmptyTest(c, ext, rot * scale.toMat33(), pos, bounds);
+		transformNoEmptyTest(c, ext, rot * Cm::toMat33(scale), pos, bounds);
 }
 
-static void computeMeshBounds(const PxTransform& pose, const CenterExtentsPadded* PX_RESTRICT localSpaceBounds, const PxMeshScale& meshScale, Vec3p& origin, Vec3p& extent)
+static void computeMeshBounds(const PxTransform& pose, const CenterExtentsPadded* PX_RESTRICT localSpaceBounds, const PxMeshScale& meshScale, PxVec3p& origin, PxVec3p& extent)
 {
 	transformNoEmptyTest(origin, extent, pose, meshScale, *localSpaceBounds);
 }
@@ -179,7 +259,7 @@ static void computePlaneBounds(PxBounds3& bounds, const PxTransform& pose, float
 	bounds.maximum = maxPt;
 }
 
-static PX_FORCE_INLINE void inflateBounds(PxBounds3& bounds, const Vec3p& origin, const Vec3p& extents, float contactOffset, float inflation)
+static PX_FORCE_INLINE void inflateBounds(PxBounds3& bounds, const PxVec3p& origin, const PxVec3p& extents, float contactOffset, float inflation)
 {
 	Vec4V extentsV = V4LoadU(&extents.x);
 	extentsV = V4Add(extentsV, V4Load(contactOffset));
@@ -207,10 +287,58 @@ static PX_FORCE_INLINE Vec4V basisExtentV(const PxMat33Padded& basis, const PxVe
 	return extentsV;
 }
 
-void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTransform& pose, float contactOffset, const CenterExtentsPadded* PX_RESTRICT localSpaceBounds, float inflation)
+static PX_FORCE_INLINE void computeMeshBounds(PxBounds3& bounds, float contactOffset, float inflation, const PxTransform& pose, const CenterExtentsPadded* PX_RESTRICT localSpaceBounds, const PxMeshScale& scale)
 {
-	PX_ASSERT(contactOffset==0.0f || inflation==1.0f);
+	PxVec3p origin, extents;
+	computeMeshBounds(pose, localSpaceBounds, scale, origin, extents);
 
+	::inflateBounds(bounds, origin, extents, contactOffset, inflation);
+}
+
+static void computeTightBounds(PxBounds3& bounds, PxU32 nb, const PxVec3* PX_RESTRICT v, const PxMat33Padded& rot, const PxTransform& pose, float contactOffset, float inflation)
+{
+	Vec4V minV;
+	Vec4V maxV;
+
+	{
+		const Vec4V vertexV = multiply3x3V(V4LoadU(&v->x), rot);
+		v++;
+
+		minV = vertexV;
+		maxV = vertexV;
+		nb--;
+	}
+
+	while(nb--)
+	{
+		const Vec4V vertexV = multiply3x3V(V4LoadU(&v->x), rot);
+		v++;
+
+		minV = V4Min(minV, vertexV);
+		maxV = V4Max(maxV, vertexV);
+	}
+
+	const Vec4V offsetV = V4Load(contactOffset);
+	minV = V4Sub(minV, offsetV);
+	maxV = V4Add(maxV, offsetV);
+
+	const Vec4V posV = Vec4V_From_Vec3V(V3LoadU(&pose.p.x));
+	maxV = V4Add(maxV, posV);
+	minV = V4Add(minV, posV);
+
+	// Inflation
+	{
+		const Vec4V centerV = V4Scale(V4Add(maxV, minV), FLoad(0.5f));
+		const Vec4V extentsV = V4Scale(V4Sub(maxV, minV), FLoad(0.5f*inflation));
+		maxV = V4Add(centerV, extentsV);
+		minV = V4Sub(centerV, extentsV);
+	}
+
+	StoreBounds(bounds, minV, maxV);
+}
+
+void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTransform& pose, float contactOffset, float inflation)
+{
 	// Box, Convex, Mesh and HeightField will compute local bounds and pose to world space.
 	// Sphere, Capsule & Plane will compute world space bounds directly.
 
@@ -218,8 +346,6 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 	{
 		case PxGeometryType::eSPHERE:
 		{
-			PX_ASSERT(!localSpaceBounds);
-
 			const PxSphereGeometry& shape = static_cast<const PxSphereGeometry&>(geometry);
 			const PxVec3 extents((shape.radius+contactOffset)*inflation);
 			bounds.minimum = pose.p - extents;
@@ -229,33 +355,21 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 
 		case PxGeometryType::ePLANE:
 		{
-			PX_ASSERT(!localSpaceBounds);
-
 			computePlaneBounds(bounds, pose, contactOffset, inflation);
 		}
 		break;
 
 		case PxGeometryType::eCAPSULE:
 		{
-			PX_ASSERT(!localSpaceBounds);
-
-			const PxCapsuleGeometry& shape = static_cast<const PxCapsuleGeometry& >(geometry);
-			const PxVec3 d = pose.q.getBasisVector0();
-			PxVec3 extents;
-			for(PxU32 ax = 0; ax<3; ax++)
-				extents[ax] = (PxAbs(d[ax]) * shape.halfHeight + shape.radius + contactOffset)*inflation;
-			bounds.minimum = pose.p - extents;
-			bounds.maximum = pose.p + extents;
+			computeCapsuleBounds(bounds, static_cast<const PxCapsuleGeometry&>(geometry), pose, contactOffset, inflation);
 		}
 		break;
 
 		case PxGeometryType::eBOX:
 		{
-			PX_ASSERT(!localSpaceBounds);
+			const PxBoxGeometry& shape = static_cast<const PxBoxGeometry&>(geometry);
 
-			const PxBoxGeometry& shape = static_cast<const PxBoxGeometry& >(geometry);
-
-			const Vec3p origin(pose.p);
+			const PxVec3p origin(pose.p);
 
 			const PxMat33Padded basis(pose.q);
 
@@ -271,7 +385,7 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 
 		case PxGeometryType::eCONVEXMESH:
 		{
-			const PxConvexMeshGeometry& shape = static_cast<const PxConvexMeshGeometry& >(geometry);
+			const PxConvexMeshGeometry& shape = static_cast<const PxConvexMeshGeometry&>(geometry);
 			const Gu::ConvexHullData& hullData = static_cast<const Gu::ConvexMesh*>(shape.convexMesh)->getHull();
 
 			const bool useTightBounds = shape.meshFlags & PxConvexMeshGeometryFlag::eTIGHT_BOUNDS;
@@ -282,167 +396,93 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 				if(isNonIdentity(shape.scale.scale))
 					computeScaledMatrix(rot, shape.scale);
 
-				PxU32 nb = hullData.mNbHullVertices;
-				const PxVec3* v = hullData.getHullVertices();
-				Vec4V minV;
-				Vec4V maxV;
-
-				{
-					const Vec4V vertexV = multiply3x3V(V4LoadU(&v->x), rot);
-					v++;
-
-					minV = vertexV;
-					maxV = vertexV;
-					nb--;
-				}
-
-				while(nb--)
-				{
-					const Vec4V vertexV = multiply3x3V(V4LoadU(&v->x), rot);
-					v++;
-
-					minV = V4Min(minV, vertexV);
-					maxV = V4Max(maxV, vertexV);
-				}
-
-				const Vec4V offsetV = V4Load(contactOffset);
-				minV = V4Sub(minV, offsetV);
-				maxV = V4Add(maxV, offsetV);
-
-				const Vec4V posV = Vec4V_From_Vec3V(V3LoadU(&pose.p.x));
-				maxV = V4Add(maxV, posV);
-				minV = V4Add(minV, posV);
-
-				// Inflation
-				{
-					const Vec4V centerV = V4Scale(V4Add(maxV, minV), FLoad(0.5f));
-					const Vec4V extentsV = V4Scale(V4Sub(maxV, minV), FLoad(0.5f*inflation));
-					maxV = V4Add(centerV, extentsV);
-					minV = V4Sub(centerV, extentsV);
-				}
-
-				StoreBounds(bounds, minV, maxV);
+				computeTightBounds(bounds, hullData.mNbHullVertices, hullData.getHullVertices(), rot, pose, contactOffset, inflation);
 			}
 			else
+				computeMeshBounds(bounds, contactOffset, inflation, pose, &hullData.getPaddedBounds(), shape.scale);
+		}
+		break;
+
+		case PxGeometryType::eTRIANGLEMESH:
+		{
+			const PxTriangleMeshGeometry& shape = static_cast<const PxTriangleMeshGeometry&>(geometry);
+			const TriangleMesh* triangleMesh = static_cast<const TriangleMesh*>(shape.triangleMesh);
+
+			const bool useTightBounds = shape.meshFlags & PxMeshGeometryFlag::eTIGHT_BOUNDS;
+			if(useTightBounds)
 			{
-				Vec3p origin, extents;
-				computeMeshBounds(pose, localSpaceBounds ? localSpaceBounds : &hullData.getPaddedBounds(), shape.scale, origin, extents);
+				PxMat33Padded rot(pose.q);
 
-				inflateBounds(bounds, origin, extents, contactOffset, inflation);
+				if(isNonIdentity(shape.scale.scale))
+					computeScaledMatrix(rot, shape.scale);
+
+				computeTightBounds(bounds, triangleMesh->getNbVerticesFast(), triangleMesh->getVerticesFast(), rot, pose, contactOffset, inflation);
 			}
-		}
-		break;
-
-		case PxGeometryType::eTRIANGLEMESH:
-		{
-			Vec3p origin, extents;
-			const PxTriangleMeshGeometry& shape = static_cast<const PxTriangleMeshGeometry& >(geometry);
-			computeMeshBounds(pose, localSpaceBounds ? localSpaceBounds : &static_cast<const Gu::TriangleMesh*>(shape.triangleMesh)->getPaddedBounds(), shape.scale, origin, extents);
-
-			inflateBounds(bounds, origin, extents, contactOffset, inflation);
+			else
+				computeMeshBounds(bounds, contactOffset, inflation, pose, &triangleMesh->getPaddedBounds(), shape.scale);
 		}
 		break;
 
 		case PxGeometryType::eHEIGHTFIELD:
 		{
-			const PxHeightFieldGeometry& shape = static_cast<const PxHeightFieldGeometry& >(geometry);
-			const PxMeshScale scale(PxVec3(shape.rowScale, shape.heightScale, shape.columnScale), PxQuat(PxIdentity));
-			
-			if(!localSpaceBounds)
-				localSpaceBounds = &static_cast<const Gu::HeightField*>(shape.heightField)->getData().getPaddedBounds();
-
-			//Compute and inflate the bounds from the pose, scale and center/extents.
-			Vec3p origin, extents;
-			computeMeshBounds(pose, localSpaceBounds, scale, origin, extents);
-			inflateBounds(bounds, origin, extents, contactOffset, inflation);
+			const PxHeightFieldGeometry& shape = static_cast<const PxHeightFieldGeometry&>(geometry);
+			computeMeshBounds(bounds, contactOffset, inflation, pose, &static_cast<const Gu::HeightField*>(shape.heightField)->getData().getPaddedBounds(), PxMeshScale(PxVec3(shape.rowScale, shape.heightScale, shape.columnScale)));
 		}
 		break;
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
+
+		case PxGeometryType::eTETRAHEDRONMESH:
+		{		
+			const PxTetrahedronMeshGeometry& shape = static_cast<const PxTetrahedronMeshGeometry&>(geometry);
+			computeMeshBounds(bounds, contactOffset, inflation, pose, &static_cast<const Gu::TetrahedronMesh*>(shape.tetrahedronMesh)->getPaddedBounds(), PxMeshScale());
+		}
+		break;
+
+		case PxGeometryType::ePARTICLESYSTEM:
+		{
+			// implement!
+			PX_ASSERT(0);			
+		}
+		break;
+		
+		case PxGeometryType::eHAIRSYSTEM:
+		{
+			// jcarius: Hairsystem bounds only available on GPU
+			bounds.setEmpty();
+		}
+		break;
+
+		case PxGeometryType::eCUSTOM:
+		{
+			const PxCustomGeometry& shape = static_cast<const PxCustomGeometry&>(geometry);
+
+			PxVec3p centre(0), extents(0);
+			if (shape.callbacks)
+			{
+				const PxBounds3 b = shape.callbacks->getLocalBounds(shape);
+				centre = b.getCenter(); extents = b.getExtents();
+			}
+
+			const PxVec3p origin(pose.transform(centre));
+
+			const PxMat33Padded basis(pose.q);
+
+			const Vec4V extentsV = basisExtentV(basis, extents, contactOffset, inflation);
+
+			const Vec4V originV = V4LoadU(&origin.x);
+			const Vec4V minV = V4Sub(originV, extentsV);
+			const Vec4V maxV = V4Add(originV, extentsV);
+
+			StoreBounds(bounds, minV, maxV);
+		}
+		break;
+
+		default:
 		{
 			PX_ASSERT(0);		
-			Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Gu::GeometryUnion::computeBounds: Unknown shape type.");
+			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "Gu::computeBounds: Unknown shape type.");
 		}
 	}
 }
-
-// PT: TODO: refactor this with regular function
-PxF32 Gu::computeBoundsWithCCDThreshold(Vec3p& origin, Vec3p& extent, const PxGeometry& geometry, const PxTransform& pose, const CenterExtentsPadded* PX_RESTRICT localSpaceBounds)
-{
-	// Box, Convex, Mesh and HeightField will compute local bounds and pose to world space.
-	// Sphere, Capsule & Plane will compute world space bounds directly.
-
-	const PxReal inSphereRatio = 0.75f;
-
-	//The CCD thresholds are as follows:
-	//(1) sphere = inSphereRatio * radius
-	//(2) plane = inf (we never need CCD against this shape)
-	//(3) capsule = inSphereRatio * radius
-	//(4) box = inSphereRatio * (box minimum extent axis)
-	//(5) convex = inSphereRatio * convex in-sphere * min scale
-	//(6) triangle mesh = 0.f (polygons have 0 thickness)
-	//(7) heightfields = 0.f (polygons have 0 thickness)
-
-	//The decision to enter CCD depends on the sum of the shapes' CCD thresholds. One of the 2 shapes must be a 
-	//sphere/capsule/box/convex so the sum of the CCD thresholds will be non-zero.
-
-	PxBounds3 bounds;
-
-	computeBounds(bounds, geometry, pose, 0.f, localSpaceBounds, 1.f);
-
-	origin = bounds.getCenter();
-	extent = bounds.getExtents();
-
-	switch (geometry.getType())
-	{
-		case PxGeometryType::eSPHERE:
-		{
-			const PxSphereGeometry& shape = static_cast<const PxSphereGeometry&>(geometry);
-			return shape.radius*inSphereRatio;
-		}
-		case PxGeometryType::ePLANE:
-		{
-			return PX_MAX_REAL;
-		}
-		case PxGeometryType::eCAPSULE:
-		{
-			const PxCapsuleGeometry& shape = static_cast<const PxCapsuleGeometry&>(geometry);
-			return shape.radius * inSphereRatio;
-		}
-
-		case PxGeometryType::eBOX:
-		{
-			const PxBoxGeometry& shape = static_cast<const PxBoxGeometry&>(geometry);
-			return PxMin(PxMin(shape.halfExtents.x, shape.halfExtents.y), shape.halfExtents.z)*inSphereRatio;
-		}
-
-		case PxGeometryType::eCONVEXMESH:
-		{
-			const PxConvexMeshGeometry& shape = static_cast<const PxConvexMeshGeometry&>(geometry);
-			const Gu::ConvexHullData& hullData = static_cast<const Gu::ConvexMesh*>(shape.convexMesh)->getHull();
-			return PxMin(shape.scale.scale.z, PxMin(shape.scale.scale.x, shape.scale.scale.y)) * hullData.mInternal.mRadius * inSphereRatio;
-		}
-
-		case PxGeometryType::eTRIANGLEMESH:
-		{
-			return 0.0f;
-		}
-
-		case PxGeometryType::eHEIGHTFIELD:
-		{
-			return 0.f;
-		}
-
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
-		{
-			PX_ASSERT(0);		
-			Ps::getFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Gu::GeometryUnion::computeBounds: Unknown shape type.");
-		}
-	}
-	return PX_MAX_REAL;
-}
-
 
 static PX_FORCE_INLINE void computeBoxExtentsAroundCapsule(PxVec3& extents, const PxCapsuleGeometry& capsuleGeom, float inflation)
 {
@@ -453,14 +493,14 @@ static PX_FORCE_INLINE void computeBoxExtentsAroundCapsule(PxVec3& extents, cons
 
 static const PxReal SQ_PRUNER_INFLATION = 1.01f; // pruner test shape inflation (not narrow phase shape)
 
-static void computeMeshBounds(const PxVec3& pos, const PxMat33Padded& rot, const CenterExtentsPadded* PX_RESTRICT localSpaceBounds, const PxMeshScale& meshScale, Vec3p& origin, Vec3p& extent)
+static void computeMeshBounds(const PxVec3& pos, const PxMat33Padded& rot, const CenterExtentsPadded* PX_RESTRICT localSpaceBounds, const PxMeshScale& meshScale, PxVec3p& origin, PxVec3p& extent)
 {
-	Ps::prefetchLine(localSpaceBounds);	// PT: this one helps reducing L2 misses in transformNoEmptyTest
+	PxPrefetchLine(localSpaceBounds);	// PT: this one helps reducing L2 misses in transformNoEmptyTest
 	transformNoEmptyTest(origin, extent, pos, rot, meshScale, *localSpaceBounds);
 }
 
 // PT: warning: this writes 4 bytes after the end of 'bounds'. Calling code must ensure it is safe to do so.
-static PX_FORCE_INLINE void computeMinMaxBounds(PxBounds3* PX_RESTRICT bounds, const Vec3p& c, const Vec3p& e, float prunerInflation, float offset)
+static PX_FORCE_INLINE void computeMinMaxBounds(PxBounds3* PX_RESTRICT bounds, const PxVec3p& c, const PxVec3p& e, float prunerInflation, float offset)
 {
 	const Vec4V extentsV = V4Scale(V4Add(V4LoadU(&e.x), V4Load(offset)), FLoad(prunerInflation));
 	const Vec4V centerV = V4LoadU(&c.x);
@@ -472,7 +512,7 @@ static PX_FORCE_INLINE void computeMinMaxBounds(PxBounds3* PX_RESTRICT bounds, c
 
 ShapeData::ShapeData(const PxGeometry& g, const PxTransform& t, PxReal inflation)
 {
-	using namespace physx::shdfnd::aos;
+	using namespace physx::aos;
 
 	// PT: this cast to matrix is already done in GeometryUnion::computeBounds (e.g. for boxes). So we do it first,
 	// then we'll pass the matrix directly to computeBoundsShapeData, to avoid the double conversion.
@@ -508,7 +548,7 @@ ShapeData::ShapeData(const PxGeometry& g, const PxTransform& t, PxReal inflation
 		case PxGeometryType::eCAPSULE:
 		{
 			const PxCapsuleGeometry& shape = static_cast<const PxCapsuleGeometry&>(g);
-			const Vec3p extents = mGuBox.rot.column0.abs() * shape.halfHeight;
+			const PxVec3p extents = mGuBox.rot.column0.abs() * shape.halfHeight;
 			computeMinMaxBounds(&mPrunerInflatedAABB, mGuBox.center, extents, SQ_PRUNER_INFLATION, shape.radius+inflation);
 
 			//
@@ -552,7 +592,7 @@ ShapeData::ShapeData(const PxGeometry& g, const PxTransform& t, PxReal inflation
 			const ConvexHullData* hullData = &cm->getHull();
 
 			// PT: cast is safe since 'rot' is followed by other members of the box
-			Vec3p center, extents;
+			PxVec3p center, extents;
 			computeMeshBounds(mGuBox.center, static_cast<const PxMat33Padded&>(mGuBox.rot), &hullData->getPaddedBounds(), shape.scale, center, extents);
 
 			computeMinMaxBounds(&mPrunerInflatedAABB, center, extents, SQ_PRUNER_INFLATION, inflation);
@@ -569,11 +609,7 @@ ShapeData::ShapeData(const PxGeometry& g, const PxTransform& t, PxReal inflation
 		}
 		break;
 
-		case PxGeometryType::ePLANE:
-		case PxGeometryType::eTRIANGLEMESH:
-		case PxGeometryType::eHEIGHTFIELD:
-		case PxGeometryType::eGEOMETRY_COUNT:
-		case PxGeometryType::eINVALID:
+		default:
 			PX_ALWAYS_ASSERT_MESSAGE("PhysX internal error: Invalid shape in ShapeData contructor.");
 	}
 
@@ -581,7 +617,4 @@ ShapeData::ShapeData(const PxGeometry& g, const PxTransform& t, PxReal inflation
 	mIsOBB = PxU32(isOBB);
 	mType = PxU16(g.getType());
 }
-
-
-
 

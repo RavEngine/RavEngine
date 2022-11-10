@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXPVDSDK_PXPROFILEEVENTBUFFERATOMIC_H
-#define PXPVDSDK_PXPROFILEEVENTBUFFERATOMIC_H
+#ifndef PX_PROFILE_EVENT_BUFFER_ATOMIC_H
+#define PX_PROFILE_EVENT_BUFFER_ATOMIC_H
 
 #include "PxProfileEvents.h"
 #include "PxProfileEventSerialization.h"
 #include "PxProfileDataBuffer.h"
 
-#include "PsArray.h"
-#include "PsAlloca.h"
-#include "PsTime.h"
-#include "PsCpu.h"
-#include "PsAtomic.h"
-#include "PsAllocator.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxAtomic.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxAlloca.h"
+#include "foundation/PxTime.h"
 
 
 namespace physx {
@@ -162,12 +159,12 @@ namespace physx {
 			PX_FORCE_INLINE void startEvent(uint16_t inId, uint64_t contextId)
 			{
 				PxProfileEventExecutionContext ctx(mContextProvider.getExecutionContext());
-				startEvent(inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), shdfnd::Time::getCurrentCounterValue());
+				startEvent(inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), PxTime::getCurrentCounterValue());
 			}
 
 			PX_FORCE_INLINE void startEvent(uint16_t inId, uint64_t contextId, uint32_t threadId)
 			{
-				startEvent(inId, threadId, contextId, 0, 0, shdfnd::Time::getCurrentCounterValue());
+				startEvent(inId, threadId, contextId, 0, 0, PxTime::getCurrentCounterValue());
 			}
 
 			PX_FORCE_INLINE void stopEvent(uint16_t inId, uint32_t threadId, uint64_t contextId, uint8_t cpuId, uint8_t threadPriority, uint64_t inTimestamp)
@@ -183,12 +180,12 @@ namespace physx {
 			PX_FORCE_INLINE void stopEvent(uint16_t inId, uint64_t contextId)
 			{
 				PxProfileEventExecutionContext ctx(mContextProvider.getExecutionContext());
-				stopEvent(inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), shdfnd::Time::getCurrentCounterValue());
+				stopEvent(inId, ctx.mThreadId, contextId, ctx.mCpuId, static_cast<uint8_t>(ctx.mThreadPriority), PxTime::getCurrentCounterValue());
 			}
 
 			PX_FORCE_INLINE void stopEvent(uint16_t inId, uint64_t contextId, uint32_t threadId)
 			{
-				stopEvent(inId, threadId, contextId, 0, 0, shdfnd::Time::getCurrentCounterValue());
+				stopEvent(inId, threadId, contextId, 0, 0, PxTime::getCurrentCounterValue());
 			}
 
 			inline void eventValue(uint16_t inId, uint64_t contextId, int64_t inValue)
@@ -206,7 +203,7 @@ namespace physx {
 				theType.setupHeader(theHeader);
 
 				int32_t sizeToWrite = int32_t(sizeof(theHeader) + theType.getEventSize(theHeader));
-				int32_t reserved = shdfnd::atomicAdd(&mReserved, sizeToWrite);
+				int32_t reserved = PxAtomicAdd(&mReserved, sizeToWrite);
 				sendEvent(theHeader, theType, reserved, sizeToWrite);
 			}
 
@@ -215,7 +212,7 @@ namespace physx {
 				TScopedLockType lock(TBaseType::mBufferMutex);
 
 				// set the buffer full to lock additional writes
-				int32_t reservedOld = shdfnd::atomicExchange(&mReserved, int32_t(TBaseType::mBufferFullAmount + 1));
+				int32_t reservedOld = PxAtomicExchange(&mReserved, int32_t(TBaseType::mBufferFullAmount + 1));
 				if (reserved == -1)
 					reserved = reservedOld;
 
@@ -265,7 +262,7 @@ namespace physx {
 
 				const int32_t sizeToWrite = int32_t(sizeof(theHeader) + theType.getEventSize(theHeader));
 
-				int32_t reserved = shdfnd::atomicAdd(&mReserved, sizeToWrite);
+				int32_t reserved = PxAtomicAdd(&mReserved, sizeToWrite);
 				sendEvent(theHeader, theType, reserved, sizeToWrite);				
 			}
 
@@ -280,7 +277,7 @@ namespace physx {
 						// I32 overflow 
 						if (mReserved < int32_t(TBaseType::mBufferFullAmount))
 						{							
-							reserved = shdfnd::atomicAdd(&mReserved, sizeToWrite);
+							reserved = PxAtomicAdd(&mReserved, sizeToWrite);
 						}
 					}
 				}
@@ -301,7 +298,7 @@ namespace physx {
 				TBaseType::mSerializer.mArray->write(&tempBuffer[0], writtenSize, writeIndex);
 				
 				PX_ASSERT(writtenSize == uint32_t(sizeToWrite));					
-				shdfnd::atomicAdd(&mWritten, sizeToWrite);
+				PxAtomicAdd(&mWritten, sizeToWrite);
 
 				if (reserved >= int32_t(TBaseType::mBufferFullAmount))
 				{	
@@ -315,4 +312,5 @@ namespace physx {
 		};
 	}
 }
-#endif // PXPVDSDK_PXPROFILEEVENTBUFFERATOMIC_H
+#endif
+

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,21 +30,20 @@
 #define GU_DISTANCE_POINT_TRIANGLE_SIMD_H
 
 #include "common/PxPhysXCommonConfig.h"
-#include "CmPhysXCommon.h"
-#include "PsVecMath.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
 namespace Gu
 {
 
-	PX_PHYSX_COMMON_API Ps::aos::FloatV distancePointTriangleSquared(	const Ps::aos::Vec3VArg point, 
-																		const Ps::aos::Vec3VArg a, 
-																		const Ps::aos::Vec3VArg b, 
-																		const Ps::aos::Vec3VArg c,
-																		Ps::aos::FloatV& u,
-																		Ps::aos::FloatV& v,
-																		Ps::aos::Vec3V& closestP); 
+	PX_PHYSX_COMMON_API aos::FloatV distancePointTriangleSquared(	const aos::Vec3VArg point, 
+																		const aos::Vec3VArg a, 
+																		const aos::Vec3VArg b, 
+																		const aos::Vec3VArg c,
+																		aos::FloatV& u,
+																		aos::FloatV& v,
+																		aos::Vec3V& closestP); 
 
 } // namespace Gu
 

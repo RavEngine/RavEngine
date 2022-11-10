@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_BV4_SLABS_H
 #define GU_BV4_SLABS_H
 
-#include "PsFPU.h"
+#include "foundation/PxFPU.h"
 #include "GuBV4_Common.h"
 
 #ifdef GU_BV4_USE_SLABS
@@ -49,12 +48,12 @@
 		if(code2 & (1<<d))	{ stack[nb++] = tn->getChildData(d);	}	}	\
 
 	#define OPC_SLABS_GET_MIN_MAX(i)																	\
-		const __m128i minVi = _mm_set_epi32(0, node->mZ[i].mMin, node->mY[i].mMin, node->mX[i].mMin);	\
+		const VecI32V minVi = I4LoadXYZW(node->mX[i].mMin, node->mY[i].mMin, node->mZ[i].mMin, 0);		\
 		const Vec4V minCoeffV = V4LoadA_Safe(&params->mCenterOrMinCoeff_PaddedAligned.x);				\
-		Vec4V minV = V4Mul(_mm_cvtepi32_ps(minVi), minCoeffV);											\
-		const __m128i maxVi = _mm_set_epi32(0, node->mZ[i].mMax, node->mY[i].mMax, node->mX[i].mMax);	\
+		Vec4V minV = V4Mul(Vec4V_From_VecI32V(minVi), minCoeffV);										\
+		const VecI32V maxVi = I4LoadXYZW(node->mX[i].mMax, node->mY[i].mMax, node->mZ[i].mMax, 0);		\
 		const Vec4V maxCoeffV = V4LoadA_Safe(&params->mExtentsOrMaxCoeff_PaddedAligned.x);				\
-		Vec4V maxV = V4Mul(_mm_cvtepi32_ps(maxVi), maxCoeffV);											\
+		Vec4V maxV = V4Mul(Vec4V_From_VecI32V(maxVi), maxCoeffV);										\
 
 	#define OPC_SLABS_GET_CEQ(i)									\
 		OPC_SLABS_GET_MIN_MAX(i)									\
@@ -69,41 +68,25 @@
 
 	#define OPC_SLABS_GET_CENQ(i)																\
 		const FloatV HalfV = FLoad(0.5f);														\
-		const Vec4V minV = _mm_set_ps(0.0f, node->mMinZ[i], node->mMinY[i], node->mMinX[i]);	\
-		const Vec4V maxV = _mm_set_ps(0.0f, node->mMaxZ[i], node->mMaxY[i], node->mMaxX[i]);	\
+		const Vec4V minV = V4LoadXYZW(node->mMinX[i], node->mMinY[i], node->mMinZ[i], 0.0f);	\
+		const Vec4V maxV = V4LoadXYZW(node->mMaxX[i], node->mMaxY[i], node->mMaxZ[i], 0.0f);	\
 		const Vec4V centerV = V4Scale(V4Add(maxV, minV), HalfV);								\
 		const Vec4V extentsV = V4Scale(V4Sub(maxV, minV), HalfV);
 
 	#define OPC_SLABS_GET_CE2NQ(i)																\
-		const Vec4V minV = _mm_set_ps(0.0f, node->mMinZ[i], node->mMinY[i], node->mMinX[i]);	\
-		const Vec4V maxV = _mm_set_ps(0.0f, node->mMaxZ[i], node->mMaxY[i], node->mMaxX[i]);	\
+		const Vec4V minV = V4LoadXYZW(node->mMinX[i], node->mMinY[i], node->mMinZ[i], 0.0f);	\
+		const Vec4V maxV = V4LoadXYZW(node->mMaxX[i], node->mMaxY[i], node->mMaxZ[i], 0.0f);	\
 		const Vec4V centerV = V4Add(maxV, minV);												\
 		const Vec4V extentsV = V4Sub(maxV, minV);
 
-#if PX_PS4
-	// PT: TODO: for some reason using the intrinsics directly produces a compile error on PS4. TODO: find a better fix.
-	PX_FORCE_INLINE __m128i my_mm_srai_epi32(__m128i a, int count)
-	{
-		return _mm_srai_epi32(a, count);
-	}
-
-	PX_FORCE_INLINE __m128i my_mm_slli_epi32(__m128i a, int count)
-	{
-		return _mm_slli_epi32(a, count);
-	}
-#else
-	#define my_mm_srai_epi32	_mm_srai_epi32
-	#define my_mm_slli_epi32	_mm_slli_epi32
-#endif
-
-#define OPC_DEQ4(part2xV, part1xV, mMember, minCoeff, maxCoeff)												\
-{																											\
-	part2xV = V4LoadA(reinterpret_cast<const float*>(tn->mMember));											\
-	part1xV = _mm_castsi128_ps(_mm_and_si128(_mm_castps_si128(part2xV), _mm_set1_epi32(0x0000ffff)));		\
-		part1xV = _mm_castsi128_ps(my_mm_srai_epi32(my_mm_slli_epi32(_mm_castps_si128(part1xV), 16), 16));	\
-	part1xV = V4Mul(_mm_cvtepi32_ps(_mm_castps_si128(part1xV)), minCoeff);									\
-	part2xV = _mm_castsi128_ps(my_mm_srai_epi32(_mm_castps_si128(part2xV), 16));							\
-	part2xV = V4Mul(_mm_cvtepi32_ps(_mm_castps_si128(part2xV)), maxCoeff);									\
+#define OPC_DEQ4(part2xV, part1xV, mMember, minCoeff, maxCoeff)																		\
+{																																	\
+	part2xV = V4LoadA(reinterpret_cast<const float*>(tn->mMember));																	\
+	part1xV = Vec4V_ReinterpretFrom_VecI32V(VecI32V_And(VecI32V_ReinterpretFrom_Vec4V(part2xV), I4Load(0x0000ffff)));				\
+	part1xV = Vec4V_ReinterpretFrom_VecI32V(VecI32V_RightShift(VecI32V_LeftShift(VecI32V_ReinterpretFrom_Vec4V(part1xV),16), 16));	\
+	part1xV = V4Mul(Vec4V_From_VecI32V(VecI32V_ReinterpretFrom_Vec4V(part1xV)), minCoeff);											\
+	part2xV = Vec4V_ReinterpretFrom_VecI32V(VecI32V_RightShift(VecI32V_ReinterpretFrom_Vec4V(part2xV), 16));						\
+	part2xV = V4Mul(Vec4V_From_VecI32V(VecI32V_ReinterpretFrom_Vec4V(part2xV)), maxCoeff);											\
 }
 
 #define SLABS_INIT\
@@ -141,11 +124,11 @@
 	const Vec4V minOfFarsa = V4Min(V4Min(tmaxxa, tmaxya), tmaxza);\
 
 	#define SLABS_TEST2\
-		__m128 ignore4a = _mm_cmpgt_ps(epsFloat4, minOfFarsa);  /* if tfar is negative, ignore since its a ray, not a line */\
-		ignore4a = _mm_or_ps(ignore4a, _mm_cmpgt_ps(maxOfNeasa, maxT4));  /* if tnear is over maxT, ignore this result */\
-		__m128 resa4 = _mm_cmpgt_ps(maxOfNeasa, minOfFarsa); /* if 1 => fail */\
-		resa4 = _mm_or_ps(resa4, ignore4a);\
-		const int code = _mm_movemask_ps(resa4);\
+		BoolV ignore4a = V4IsGrtr(epsFloat4, minOfFarsa);  /* if tfar is negative, ignore since its a ray, not a line */\
+		ignore4a = BOr(ignore4a, V4IsGrtr(maxOfNeasa, maxT4));  /* if tnear is over maxT, ignore this result */\
+		BoolV resa4 = V4IsGrtr(maxOfNeasa, minOfFarsa); /* if 1 => fail */\
+		resa4 = BOr(resa4, ignore4a);\
+		const PxU32 code = BGetBitMask(resa4);\
 		if(code==15)\
 			continue;
 

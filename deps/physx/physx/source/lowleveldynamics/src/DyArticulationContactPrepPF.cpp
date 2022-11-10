@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,24 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #include "foundation/PxPreprocessor.h"
-#include "PsVecMath.h"
-#include "DyArticulationContactPrep.h"
-#include "DySolverConstraintDesc.h"
-#include "DySolverConstraint1D.h"
-#include "DySolverContact.h"
-#include "DySolverContactPF.h"
-#include "DyArticulationHelper.h"
-#include "PxcNpWorkUnit.h"
-#include "PxsMaterialManager.h"
-#include "PxsMaterialCombiner.h"
+#include "foundation/PxVecMath.h"
 #include "DyCorrelationBuffer.h"
 #include "DySolverConstraintExtShared.h"
+#include "DyFeatherstoneArticulation.h"
 
 using namespace physx;
 using namespace Gu;
@@ -56,12 +46,13 @@ namespace Dy
 
 
 bool setupFinalizeExtSolverContactsCoulomb(
-						    const ContactBuffer& buffer,
+						    const PxContactBuffer& buffer,
 							const CorrelationBuffer& c,
 							const PxTransform& bodyFrame0,
 							const PxTransform& bodyFrame1,
 							PxU8* workspace,
 							PxReal invDt,
+							PxReal dtF32,
 							PxReal bounceThresholdF32,
 							const SolverExtBody& b0,
 							const SolverExtBody& b1,
@@ -70,18 +61,31 @@ bool setupFinalizeExtSolverContactsCoulomb(
 							PxReal invMassScale1, PxReal invInertiaScale1,
 							PxReal restDist,
 							PxReal ccdMaxDistance,
-							Cm::SpatialVectorF* Z)
+							Cm::SpatialVectorF* Z,
+							const PxReal solverOffsetSlop)
 {
 	// NOTE II: the friction patches are sparse (some of them have no contact patches, and
 	// therefore did not get written back to the cache) but the patch addresses are dense,
 	// corresponding to valid patches
 
 	const FloatV ccdMaxSeparation = FLoad(ccdMaxDistance);
+	const Vec3V offsetSlop = V3Load(solverOffsetSlop);
 
 	PxU8* PX_RESTRICT ptr = workspace;
 
-	const PxF32 maxPenBias0 = b0.mLinkIndex == PxSolverConstraintDesc::NO_LINK ? b0.mBodyData->penBiasClamp : b0.mArticulation->getLinkMaxPenBias(b0.mLinkIndex);
-	const PxF32 maxPenBias1 = b1.mLinkIndex == PxSolverConstraintDesc::NO_LINK ? b1.mBodyData->penBiasClamp : b1.mArticulation->getLinkMaxPenBias(b1.mLinkIndex);
+	//KS - TODO - this should all be done in SIMD to avoid LHS
+	PxF32 maxPenBias0 = b0.mBodyData->penBiasClamp;
+	PxF32 maxPenBias1 = b1.mBodyData->penBiasClamp;
+
+	if (b0.mLinkIndex != PxSolverConstraintDesc::RIGID_BODY)
+	{
+		maxPenBias0 = b0.mArticulation->getLinkMaxPenBias(b0.mLinkIndex);
+	}
+
+	if (b1.mLinkIndex != PxSolverConstraintDesc::RIGID_BODY)
+	{
+		maxPenBias1 = b1.mArticulation->getLinkMaxPenBias(b1.mLinkIndex);
+	}
 
 	const FloatV maxPenBias = FLoad(PxMax(maxPenBias0, maxPenBias1)/invDt);
 
@@ -95,12 +99,13 @@ bool setupFinalizeExtSolverContactsCoulomb(
 	const FloatV pt8 = FLoad(0.8f);
 
 	const FloatV invDtp8 = FMul(invDtV, pt8);
+	const FloatV dt = FLoad(dtF32);
 
 	const Vec3V bodyFrame0p = V3LoadU(bodyFrame0.p);
 	const Vec3V bodyFrame1p = V3LoadU(bodyFrame1.p);
 
-	Ps::prefetchLine(c.contactID);
-	Ps::prefetchLine(c.contactID, 128);
+	PxPrefetchLine(c.contactID);
+	PxPrefetchLine(c.contactID, 128);
 
 	const PxU32 frictionPatchCount = c.frictionPatchCount;
 
@@ -116,15 +121,17 @@ bool setupFinalizeExtSolverContactsCoulomb(
 
 	PxU8 flags = 0;
 
+	const FloatV cfm = FLoad(PxMax(b0.getCFM(), b1.getCFM()));
+
 	for(PxU32 i=0;i< frictionPatchCount;i++)
 	{
 		const PxU32 contactCount = c.frictionPatchContactCounts[i];
 		if(contactCount == 0)
 			continue;
 
-		const Gu::ContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
+		const PxContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
 
-		const Vec3V normalV = Ps::aos::V3LoadA(contactBase0->normal);
+		const Vec3V normalV = aos::V3LoadA(contactBase0->normal);
 		const Vec3V normal = V3LoadA(contactBase0->normal);
 
 		const PxReal combinedRestitution = contactBase0->restitution;
@@ -133,11 +140,12 @@ bool setupFinalizeExtSolverContactsCoulomb(
 		SolverContactCoulombHeader* PX_RESTRICT header = reinterpret_cast<SolverContactCoulombHeader*>(ptr);
 		ptr += sizeof(SolverContactCoulombHeader);
 
-		Ps::prefetchLine(ptr, 128);
-		Ps::prefetchLine(ptr, 256);
-		Ps::prefetchLine(ptr, 384);
+		PxPrefetchLine(ptr, 128);
+		PxPrefetchLine(ptr, 256);
+		PxPrefetchLine(ptr, 384);
 
 		const FloatV restitution = FLoad(combinedRestitution);
+		const FloatV damping = FLoad(contactBase0->damping);
 
 
 		header->numNormalConstr		= PxU8(contactCount);
@@ -151,24 +159,28 @@ bool setupFinalizeExtSolverContactsCoulomb(
 		header->flags = flags;
 		
 		header->setNormal(normalV);
+
+		const FloatV norVel0 = V3Dot(normalV, vel0.linear);
+		const FloatV norVel1 = V3Dot(normalV, vel1.linear);
 		
 		for(PxU32 patch=c.correlationListHeads[i]; 
 			patch!=CorrelationBuffer::LIST_END; 
 			patch = c.contactPatches[patch].next)
 		{
 			const PxU32 count = c.contactPatches[patch].count;
-			const Gu::ContactPoint* contactBase = buffer.contacts + c.contactPatches[patch].start;
+			const PxContactPoint* contactBase = buffer.contacts + c.contactPatches[patch].start;
 				
 			PxU8* p = ptr;
 			for(PxU32 j=0;j<count;j++)
 			{
-				const Gu::ContactPoint& contact = contactBase[j];
+				const PxContactPoint& contact = contactBase[j];
 
 				SolverContactPointExt* PX_RESTRICT solverContact = reinterpret_cast<SolverContactPointExt*>(p);
 				p += pointStride;
 
-				setupExtSolverContact(b0, b1, d0, d1, angD0, angD1, bodyFrame0p, bodyFrame1p, normal, invDtV, invDtp8, restDistance, maxPenBias, restitution,
-					bounceThreshold, contact, *solverContact, ccdMaxSeparation, Z, vel0, vel1);
+				setupExtSolverContact(b0, b1, d0, d1, angD0, angD1, bodyFrame0p, bodyFrame1p, normal, invDtV, invDtp8, dt, restDistance, maxPenBias, restitution,
+					bounceThreshold, contact, *solverContact, ccdMaxSeparation, Z, vel0, vel1, cfm, offsetSlop,
+					norVel0, norVel1, damping);
 			}			
 			ptr = p;
 		}
@@ -192,7 +204,7 @@ bool setupFinalizeExtSolverContactsCoulomb(
 		header->frictionOffset = PxU16(ptr - ptr2);
 		ptr2 += sizeof(SolverContactCoulombHeader) + header->numNormalConstr * pointStride;
 
-		const Gu::ContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
+		const PxContactPoint* contactBase0 = buffer.contacts + c.contactPatches[c.correlationListHeads[i]].start;
 
 		PxVec3 normal = contactBase0->normal;
 
@@ -201,20 +213,20 @@ bool setupFinalizeExtSolverContactsCoulomb(
 		const bool haveFriction = (disableStrongFriction == 0);
 	
 		SolverFrictionHeader* frictionHeader = reinterpret_cast<SolverFrictionHeader*>(ptr);
-		frictionHeader->numNormalConstr = Ps::to8(c.frictionPatchContactCounts[i]);
-		frictionHeader->numFrictionConstr = Ps::to8(haveFriction ? c.frictionPatchContactCounts[i] * frictionCountPerPoint : 0);
+		frictionHeader->numNormalConstr = PxTo8(c.frictionPatchContactCounts[i]);
+		frictionHeader->numFrictionConstr = PxTo8(haveFriction ? c.frictionPatchContactCounts[i] * frictionCountPerPoint : 0);
 		frictionHeader->flags = flags;
 		ptr += sizeof(SolverFrictionHeader);
 		PxF32* forceBuffer = reinterpret_cast<PxF32*>(ptr);
 		ptr += frictionHeader->getAppliedForcePaddingSize(c.frictionPatchContactCounts[i]);
 		PxMemZero(forceBuffer, sizeof(PxF32) * c.frictionPatchContactCounts[i]);
-		Ps::prefetchLine(ptr, 128);
-		Ps::prefetchLine(ptr, 256);
-		Ps::prefetchLine(ptr, 384);
+		PxPrefetchLine(ptr, 128);
+		PxPrefetchLine(ptr, 256);
+		PxPrefetchLine(ptr, 384);
 
 
 		const PxVec3 t0Fallback1(0.f, -normal.z, normal.y);
-		const PxVec3 t0Fallback2(-normal.y, normal.x, 0.f) ;
+		const PxVec3 t0Fallback2(-normal.y, normal.x, 0.f);
 		const PxVec3 tFallback1 = orthoThreshold > PxAbs(normal.x) ? t0Fallback1 : t0Fallback2;
 		const PxVec3 vrel = b0.getLinVel() - b1.getLinVel();
 		const PxVec3 t0_ = vrel - normal * (normal.dot(vrel));
@@ -235,21 +247,19 @@ bool setupFinalizeExtSolverContactsCoulomb(
 			frictionHeader->angDom1 = invInertiaScale1;
 			frictionHeader->type			= frictionHeaderType;
 			
-			PxU32 totalPatchContactCount = 0;
-		
 			for(PxU32 patch=c.correlationListHeads[i]; 
 				patch!=CorrelationBuffer::LIST_END; 
 				patch = c.contactPatches[patch].next)
 			{
 				const PxU32 count = c.contactPatches[patch].count;
 				const PxU32 start = c.contactPatches[patch].start;
-				const Gu::ContactPoint* contactBase = buffer.contacts + start;
+				const PxContactPoint* contactBase = buffer.contacts + start;
 					
 				PxU8* p = ptr;
 
 				for(PxU32 j =0; j < count; j++)
 				{
-					const Gu::ContactPoint& contact = contactBase[j];
+					const PxContactPoint& contact = contactBase[j];
 					const Vec3V ra = V3Sub(V3LoadA(contact.point), bodyFrame0p);
 					const Vec3V rb = V3Sub(V3LoadA(contact.point), bodyFrame1p);
 						
@@ -276,9 +286,9 @@ bool setupFinalizeExtSolverContactsCoulomb(
 																 b1, resp1, deltaV1, d1, angD1, reinterpret_cast<Cm::SpatialVectorV*>(Z));
 
 						FloatV tv = V3Dot(targetVel, t0);
-						if(b0.mLinkIndex == PxSolverConstraintDesc::NO_LINK)
+						if(b0.mLinkIndex == PxSolverConstraintDesc::RIGID_BODY)
 							tv = FAdd(tv, V3Dot(pVRa, t0));
-						else if(b1.mLinkIndex == PxSolverConstraintDesc::NO_LINK)
+						else if(b1.mLinkIndex == PxSolverConstraintDesc::RIGID_BODY)
 							tv = FSub(tv, V3Dot(pVRb, t0));
 
 						const FloatV recipResponse = FSel(FIsGrtr(unitResponse, FZero()), FRecip(unitResponse), FZero());
@@ -294,9 +304,7 @@ bool setupFinalizeExtSolverContactsCoulomb(
 					}					
 				}
 
-				totalPatchContactCount += c.contactPatches[patch].count;
-				
-				ptr = p;	
+				ptr = p;
 			}
 		}
 	}

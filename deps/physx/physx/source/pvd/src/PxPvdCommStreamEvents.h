@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#ifndef PXPVDSDK_PXPVDCOMMSTREAMEVENTS_H
-#define PXPVDSDK_PXPVDCOMMSTREAMEVENTS_H
+#ifndef PX_PVD_COMM_STREAM_EVENTS_H
+#define PX_PVD_COMM_STREAM_EVENTS_H
 
 #include "foundation/PxVec3.h"
 #include "foundation/PxFlags.h"
+#include "foundation/PxTime.h"
 
 #include "PxPvdObjectModelBaseTypes.h"
-#include "PsTime.h"
 
 namespace physx
 {
@@ -310,8 +309,8 @@ struct StreamInitialization : public EventSerializeable
 	StreamInitialization()
 	: mStreamId(getStreamId())
 	, mStreamVersion(getStreamVersion())
-	, mTimestampNumerator(physx::shdfnd::Time::getCounterFrequency().mNumerator * 10)
-	, mTimestampDenominator(physx::shdfnd::Time::getCounterFrequency().mDenominator)
+	, mTimestampNumerator(physx::PxTime::getCounterFrequency().mNumerator * 10)
+	, mTimestampDenominator(physx::PxTime::getCounterFrequency().mDenominator)
 	, mStreamFlags(sizeof(void*) == 4 ? 0 : 1)
 	{
 	}
@@ -984,4 +983,5 @@ struct OriginShift : public EventSerializeable
 } // pvdsdk
 } // physx
 
-#endif // PXPVDSDK_PXPVDCOMMSTREAMEVENTS_H
+#endif
+

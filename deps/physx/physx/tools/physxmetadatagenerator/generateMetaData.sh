@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,22 +22,26 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
-#!/bin/bash
+#!/bin/bash +x
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PHYSX_ROOT_DIR=$SCRIPT_DIR/../..
 
 export GEN_META_DATA_PARAMETER=$1
 
-if [ -f $PHYSX_ROOT_DIR/buildtools/update_packman.sh ] ; then
-    source $PHYSX_ROOT_DIR/buildtools/update_packman.sh
-    $PHYSX_ROOT_DIR/buildtools/packman/packman pull "$PHYSX_ROOT_DIR/dependencies.xml" --platform linux --include-tag=requiredForMetaGen --postscript $SCRIPT_DIR/helper.sh
-else
-    export PM_PxShared_PATH="$PHYSX_ROOT_DIR/../pxshared"
-    export PM_clangMetadata_PATH="$PHYSX_ROOT_DIR/../externals/clang-physxmetadata/4.0.0"
-    $SCRIPT_DIR/helper.sh
+PACKMAN_CMD="$PHYSX_ROOT_DIR/buildtools/packman/packman"
+if [ ! -f "$PACKMAN_CMD" ]; then
+    PACKMAN_CMD="${PACKMAN_CMD}.sh"
+fi
+export PYTHONPATH="${PM_MODULE_DIR}:${PYTHONPATH}"
+
+
+if [ -f "$PACKMAN_CMD" ] ; then
+    source "$PACKMAN_CMD" init
+    source "$PACKMAN_CMD" pull "$PHYSX_ROOT_DIR/dependencies.xml" --platform linux --include-tag=requiredForMetaGen
+    "${PM_PYTHON}"  $SCRIPT_DIR/generateMetaData.py $GEN_META_DATA_PARAMETER
 fi
 
 status=$? 

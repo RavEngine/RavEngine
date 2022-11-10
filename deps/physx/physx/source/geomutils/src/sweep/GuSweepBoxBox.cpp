@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,13 +32,12 @@
 #include "GuIntersectionRayBox.h"
 #include "GuIntersectionEdgeEdge.h"
 #include "GuSweepSharedTests.h"
-#include "CmMatrix34.h"
+#include "foundation/PxMat34.h"
 #include "GuSweepTriangleUtils.h"
 #include "GuInternal.h"
 
 using namespace physx;
 using namespace Gu;
-using namespace Cm;
 
 namespace
 {
@@ -97,7 +95,7 @@ static void computeBoxWorldEdgeNormal(const Box& box, PxU32 edgeIndex, PxVec3& w
 }
 
 // ### optimize! and refactor. And optimize for aabbs
-bool Gu::sweepBoxBox(const Box& box0, const Box& box1, const PxVec3& dir, PxReal length, PxHitFlags hitFlags, PxSweepHit& sweepHit)
+bool Gu::sweepBoxBox(const Box& box0, const Box& box1, const PxVec3& dir, PxReal length, PxHitFlags hitFlags, PxGeomSweepHit& sweepHit)
 {
 	if(!(hitFlags & PxHitFlag::eASSUME_NO_INITIAL_OVERLAP))
 	{
@@ -131,7 +129,7 @@ bool Gu::sweepBoxBox(const Box& box0, const Box& box1, const PxVec3& dir, PxReal
 		const PxVec3 Max0 = box0.extents;
 
 		// - Vertices1 in Box0 space
-		Matrix34 worldToBox0;
+		PxMat34 worldToBox0;
 		computeWorldToBoxMatrix(worldToBox0, box0);
 
 		// - the dir in Box0 space
@@ -166,7 +164,7 @@ bool Gu::sweepBoxBox(const Box& box0, const Box& box1, const PxVec3& dir, PxReal
 		const PxVec3 Max1 = box1.extents;
 
 		// - Vertices0 in Box1 space
-		Matrix34 worldToBox1;
+		PxMat34 worldToBox1;
 		computeWorldToBoxMatrix(worldToBox1, box1);
 
 		// - the dir in Box1 space
@@ -215,7 +213,7 @@ bool Gu::sweepBoxBox(const Box& box0, const Box& box1, const PxVec3& dir, PxReal
 			// Make it fat ###
 			PxVec3 p1 = boxVertices0[edges0[i*2+0]];
 			PxVec3 p2 = boxVertices0[edges0[i*2+1]];
-			Ps::makeFatEdge(p1, p2, gFatBoxEdgeCoeff);
+			makeFatEdge(p1, p2, gFatBoxEdgeCoeff);
 
 			// Loop through box edges
 			for(PxU32 j=0;j<12;j++)
@@ -234,7 +232,7 @@ bool Gu::sweepBoxBox(const Box& box0, const Box& box1, const PxVec3& dir, PxReal
 				// Make it fat ###
 				PxVec3 p3 = boxVertices1[edges1[j*2+0]];
 				PxVec3 p4 = boxVertices1[edges1[j*2+1]];
-				Ps::makeFatEdge(p3, p4, gFatBoxEdgeCoeff);
+				makeFatEdge(p3, p4, gFatBoxEdgeCoeff);
 
 				PxReal Dist;
 				PxVec3 ip;

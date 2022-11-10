@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -123,14 +122,14 @@
 
 #ifdef BV4_SLABS_FIX
 			if(inflateT)
-				_mm_store_ps(distances4, maxOfNeasa);
+				V4StoreA(maxOfNeasa, &distances4[0]);
 #endif
 
 			SLABS_TEST2
 
 #ifdef BV4_SLABS_SORT
 	#ifdef BV4_SLABS_FIX
-		// PT: for some unknown reason the PS4/Linux/OSX compilers fail to understand this version
+		// PT: for some unknown reason the Linux/OSX compilers fail to understand this version
 /*		#define DO_LEAF_TEST(x)														\
 			{																		\
 				if(!inflateT)														\
@@ -245,7 +244,7 @@
 
 #ifdef BV4_SLABS_SORT
 	#ifdef BV4_SLABS_FIX
-		// PT: for some unknown reason the PS4/Linux/OSX compilers fail to understand this version
+		// PT: for some unknown reason the Linux/OSX compilers fail to understand this version
 /*		#define DO_LEAF_TEST(x)														\
 			{																		\
 				if(!inflateT)														\
@@ -289,7 +288,7 @@
 					}																\
 					else															\
 					{																\
-						code2 |= 1<<x;												\
+						code2 |= 1<<x;	nbHits++;									\
 					}																\
 				}																	\
 			}
@@ -304,7 +303,7 @@
 					}																\
 					else															\
 					{																\
-						code2 |= 1<<x;												\
+						code2 |= 1<<x;	nbHits++;									\
 					}																\
 				}
 	#endif
@@ -399,14 +398,15 @@
 			SLABS_TEST
 
 #ifdef BV4_SLABS_FIX
-			if(inflateT)
-				_mm_store_ps(distances4, maxOfNeasa);
+			if(inflateT)				
+				V4StoreA(maxOfNeasa, &distances4[0]);
 #endif
 
 			SLABS_TEST2
 
 #ifdef BV4_SLABS_SORT
 			PxU32 code2 = 0;
+			PxU32 nbHits = 0;
 			const PxU32 nodeType = getChildType(childData);
 
 			if(!(code&8) && nodeType>1)
@@ -421,7 +421,16 @@
 			if(!(code&1))
 				DO_LEAF_TEST(0)
 
-			SLABS_PNS
+			//SLABS_PNS
+
+			if(nbHits==1)
+			{
+				PNS_BLOCK3(0,1,2,3)
+			}
+			else
+			{
+				SLABS_PNS
+			}
 #else
 			const PxU32 nodeType = getChildType(childData);
 			if(!(code&8) && nodeType>1)
@@ -440,7 +449,7 @@
 		}while(nb);
 	}
 
-#ifdef GU_BV4_COMPILE_NON_QUANTIZED_TREE
+
 	// Kajiya + PNS
 	template<const int inflateT, class LeafTestT, class ParamsT>
 	static void BV4_ProcessStreamKajiyaOrderedNQ(const BVDataPackedNQ* PX_RESTRICT node, PxU32 initData, ParamsT* PX_RESTRICT params)
@@ -506,14 +515,15 @@
 			SLABS_TEST
 
 #ifdef BV4_SLABS_FIX
-			if(inflateT)
-				_mm_store_ps(distances4, maxOfNeasa);
+			if(inflateT)				
+				V4StoreA(maxOfNeasa, &distances4[0]);
 #endif
 
 			SLABS_TEST2
 
 #ifdef BV4_SLABS_SORT
 			PxU32 code2 = 0;
+			PxU32 nbHits = 0;
 			const PxU32 nodeType = getChildType(childData);
 
 			if(!(code&8) && nodeType>1)
@@ -528,7 +538,15 @@
 			if(!(code&1))
 				DO_LEAF_TEST(0)
 
-			SLABS_PNS
+			//SLABS_PNS
+			if(nbHits==1)
+			{
+				PNS_BLOCK3(0,1,2,3)
+			}
+			else
+			{
+				SLABS_PNS
+			}
 #else
 			const PxU32 nodeType = getChildType(childData);
 			if(!(code&8) && nodeType>1)
@@ -546,7 +564,7 @@
 
 		}while(nb);
 	}
-#endif
+
 #undef DO_LEAF_TEST
 
 #endif // GU_BV4_SLABS_KAJIYA_ORDERED_H

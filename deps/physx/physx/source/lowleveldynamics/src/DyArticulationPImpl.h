@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
-
 
 #ifndef DY_ARTICULATION_INTERFACE_H
 #define DY_ARTICULATION_INTERFACE_H
@@ -36,17 +33,9 @@
 
 namespace physx
 {
-
-class PxcConstraintBlockStream;
-class PxcScratchAllocator;
-class PxsConstraintBlockManager;
-struct PxSolverConstraintDesc;
-
 namespace Dy
 {
-	
 	struct ArticulationSolverDesc;
-
 
 class ArticulationPImpl
 {
@@ -54,89 +43,82 @@ public:
 
 	typedef PxU32 (*ComputeUnconstrainedVelocitiesFn)(const ArticulationSolverDesc& desc,
 													 PxReal dt,
-													 PxConstraintAllocator& allocator,
-													 PxSolverConstraintDesc* constraintDesc,
 													 PxU32& acCount,
-													 const PxVec3& gravity, PxU64 contextID,
-													 Cm::SpatialVectorF* Z, Cm::SpatialVectorF* DeltaV);
+													 const PxVec3& gravity, 
+													 Cm::SpatialVectorF* Z, Cm::SpatialVectorF* DeltaV, 
+													 const PxReal invLengthScale);
 
-	typedef void (*UpdateBodiesFn)(const ArticulationSolverDesc& desc, PxReal dt);
+	typedef void (*UpdateBodiesFn)(const ArticulationSolverDesc& desc, Cm::SpatialVectorF* deltaV, PxReal dt);
 
 	typedef void (*SaveVelocityFn)(const ArticulationSolverDesc &m, Cm::SpatialVectorF* deltaV);
 
 	typedef void(*SaveVelocityTGSFn)(const ArticulationSolverDesc& m, PxReal invDtF32);
 
 	typedef PxU32(*SetupInternalConstraintsTGSFn)(const ArticulationSolverDesc& desc,
-		PxcConstraintBlockStream& stream,
-		PxSolverConstraintDesc* constraintDesc,
 		PxReal dt,
 		PxReal invDt,
 		PxReal totalDt,
+		const PxReal biasCoefficient,
 		PxU32& acCount,
-		PxsConstraintBlockManager& constraintBlockManager,
 		Cm::SpatialVectorF* Z);
 
 	typedef void(*ComputeUnconstrainedVelocitiesTGSFn)(const ArticulationSolverDesc& desc,
 		PxReal dt,
-		const PxVec3& gravity, PxU64 contextID, Cm::SpatialVectorF* Z, Cm::SpatialVectorF* DeltaV);
+		const PxVec3& gravity, PxU64 contextID, Cm::SpatialVectorF* Z, Cm::SpatialVectorF* DeltaV,
+		const PxReal invLengthScale);
 
 	typedef void(*UpdateDeltaMotionFn)(const ArticulationSolverDesc &m, const PxReal dt, Cm::SpatialVectorF* DeltaV, const PxReal totalInvDt);
 
 	typedef void(*DeltaMotionToMotionVelFn)(const ArticulationSolverDesc &m, const PxReal dt);
 
-	static ComputeUnconstrainedVelocitiesFn sComputeUnconstrainedVelocities[2];
-	static UpdateBodiesFn sUpdateBodies[2];
-	static UpdateBodiesFn sUpdateBodiesTGS[2];
-	static SaveVelocityFn sSaveVelocity[2];
-	static SaveVelocityTGSFn sSaveVelocityTGS[2];
+	static ComputeUnconstrainedVelocitiesFn sComputeUnconstrainedVelocities;
+	static UpdateBodiesFn sUpdateBodies;
+	static UpdateBodiesFn sUpdateBodiesTGS;
+	static SaveVelocityFn sSaveVelocity;
+	static SaveVelocityTGSFn sSaveVelocityTGS;
 
-	static UpdateDeltaMotionFn sUpdateDeltaMotion[2];
-	static DeltaMotionToMotionVelFn sDeltaMotionToMotionVel[2];
-	static ComputeUnconstrainedVelocitiesTGSFn sComputeUnconstrainedVelocitiesTGS[2];
-	static SetupInternalConstraintsTGSFn sSetupInternalConstraintsTGS[2];
+	static UpdateDeltaMotionFn sUpdateDeltaMotion;
+	static DeltaMotionToMotionVelFn sDeltaMotionToMotionVel;
+	static ComputeUnconstrainedVelocitiesTGSFn sComputeUnconstrainedVelocitiesTGS;
+	static SetupInternalConstraintsTGSFn sSetupInternalConstraintsTGS;
 
 	static PxU32 computeUnconstrainedVelocities(const ArticulationSolverDesc& desc,
-										   PxReal dt,
-										   PxConstraintAllocator& allocator,
-										   PxSolverConstraintDesc* constraintDesc,
-										   PxU32& acCount,
-										   PxcScratchAllocator&,
-										   const PxVec3& gravity, PxU64 contextID,
-										   Cm::SpatialVectorF* Z, Cm::SpatialVectorF* deltaV)
+											PxReal dt,
+											PxU32& acCount,
+											const PxVec3& gravity, 
+											Cm::SpatialVectorF* Z, 
+											Cm::SpatialVectorF* deltaV,
+											const PxReal invLengthScale)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sComputeUnconstrainedVelocities[type]);
-		if (sComputeUnconstrainedVelocities[type])
-			return (sComputeUnconstrainedVelocities[type])(desc, dt, allocator, constraintDesc, acCount,
-				gravity, contextID, Z, deltaV);
+		PX_ASSERT(sComputeUnconstrainedVelocities);
+		if (sComputeUnconstrainedVelocities)
+			return (sComputeUnconstrainedVelocities)(desc, dt,  acCount,
+				gravity, Z, deltaV, invLengthScale);
 		else
 			return 0;
 	}
 
-	static void	updateBodies(const ArticulationSolverDesc& desc,
+	static void	updateBodies(const ArticulationSolverDesc& desc, Cm::SpatialVectorF* tempDeltaV,
 						 PxReal dt)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sUpdateBodies[type]);
-		if (sUpdateBodies[type])
-			(*sUpdateBodies[type])(desc, dt);
+		PX_ASSERT(sUpdateBodies);
+		if (sUpdateBodies)
+			(*sUpdateBodies)(desc, tempDeltaV, dt);
 	}
 
-	static void	updateBodiesTGS(const ArticulationSolverDesc& desc,
+	static void	updateBodiesTGS(const ArticulationSolverDesc& desc, Cm::SpatialVectorF* tempDeltaV,
 		PxReal dt)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sUpdateBodiesTGS[type]);
-		if (sUpdateBodiesTGS[type])
-			(*sUpdateBodiesTGS[type])(desc, dt);
+		PX_ASSERT(sUpdateBodiesTGS);
+		if (sUpdateBodiesTGS)
+			(*sUpdateBodiesTGS)(desc, tempDeltaV, dt);
 	}
 
-	static void	saveVelocity(const ArticulationSolverDesc& desc, Cm::SpatialVectorF* deltaV)
+	static void	saveVelocity(const ArticulationSolverDesc& desc, Cm::SpatialVectorF* tempDeltaV)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sSaveVelocity[type]);
-		if (sSaveVelocity[type])
-			(*sSaveVelocity[type])(desc, deltaV);
+		PX_ASSERT(sSaveVelocity);
+		if (sSaveVelocity)
+			(*sSaveVelocity)(desc, tempDeltaV);
 	}
 
 
@@ -144,52 +126,47 @@ public:
 	{
 		PX_UNUSED(desc);
 		PX_UNUSED(invDtF32);
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sSaveVelocityTGS[type]);
-		if (sSaveVelocityTGS[type])
-			(*sSaveVelocityTGS[type])(desc, invDtF32);
+		PX_ASSERT(sSaveVelocityTGS);
+		if (sSaveVelocityTGS)
+			(*sSaveVelocityTGS)(desc, invDtF32);
 	}
 
 	static void computeUnconstrainedVelocitiesTGS(const ArticulationSolverDesc& desc,
 		PxReal dt,
-		const PxVec3& gravity, PxU64 contextID, Cm::SpatialVectorF* Z, Cm::SpatialVectorF* DeltaV)
+		const PxVec3& gravity, PxU64 contextID, Cm::SpatialVectorF* Z, Cm::SpatialVectorF* DeltaV,
+		const PxReal invLengthScale)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sComputeUnconstrainedVelocitiesTGS[type]);
-		if (sComputeUnconstrainedVelocitiesTGS[type])
-		(sComputeUnconstrainedVelocitiesTGS[type])(desc, dt, gravity, contextID, Z, DeltaV);
+		PX_ASSERT(sComputeUnconstrainedVelocitiesTGS);
+		if (sComputeUnconstrainedVelocitiesTGS)
+			(sComputeUnconstrainedVelocitiesTGS)(desc, dt, gravity, contextID, Z, DeltaV, invLengthScale);
 	}
 
 	static void	updateDeltaMotion(const ArticulationSolverDesc& desc, const PxReal dt, Cm::SpatialVectorF* DeltaV, const PxReal totalInvDt)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sUpdateDeltaMotion[type]);
-		if (sUpdateDeltaMotion[type])
-			(*sUpdateDeltaMotion[type])(desc, dt, DeltaV, totalInvDt);
+		PX_ASSERT(sUpdateDeltaMotion);
+		if (sUpdateDeltaMotion)
+			(*sUpdateDeltaMotion)(desc, dt, DeltaV, totalInvDt);
 	}
 
 	static void	deltaMotionToMotionVel(const ArticulationSolverDesc& desc, const PxReal invDt)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sDeltaMotionToMotionVel[type]);
-		if (sDeltaMotionToMotionVel[type])
+		PX_ASSERT(sDeltaMotionToMotionVel);
+		if (sDeltaMotionToMotionVel)
 			(*sDeltaMotionToMotionVel)(desc, invDt);
 	}
 
 	static PxU32 setupSolverInternalConstraintsTGS(const ArticulationSolverDesc& desc,
-		PxcConstraintBlockStream& stream,
-		PxSolverConstraintDesc* constraintDesc,
 		PxReal dt,
 		PxReal invDt,
 		PxReal totalDt,
+		const PxReal biasCoefficient,
 		PxU32& acCount,
-		PxsConstraintBlockManager& constraintBlockManager,
 		Cm::SpatialVectorF* Z)
 	{
-		PxU32 type = desc.articulation->getType();
-		PX_ASSERT(sSetupInternalConstraintsTGS[type]);
-		if (sSetupInternalConstraintsTGS[type])
-			return sSetupInternalConstraintsTGS[type](desc, stream, constraintDesc, dt, invDt, totalDt, acCount, constraintBlockManager, Z);
+		PX_ASSERT(sSetupInternalConstraintsTGS);
+		if (sSetupInternalConstraintsTGS)
+			return sSetupInternalConstraintsTGS(desc,  dt, invDt, 
+				totalDt, biasCoefficient, acCount,  Z);
 		return 0;
 
 	}
@@ -198,5 +175,5 @@ public:
 
 }
 }
-#endif //DY_ARTICULATION_INTERFACE_H
+#endif
 

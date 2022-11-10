@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,7 +34,7 @@
 #include "GuGJKSimplex.h"
 #include "GuVecConvexHullNoScale.h"
 #include "GuGJKUtil.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 #include "GuGJKType.h"
 
 #define	GJK_VALIDATE 0
@@ -54,19 +53,19 @@ namespace Gu
 		if(aIndices)
 		{
 			PX_ASSERT(bIndices);
-			size_ = Ps::to8(size);
+			size_ = PxTo8(size);
 			for(PxU32 i=0; i<size; ++i)
 			{
-				aIndices[i] = Ps::to8(aInd[i]);
-				bIndices[i] = Ps::to8(bInd[i]);
+				aIndices[i] = PxTo8(aInd[i]);
+				bIndices[i] = PxTo8(bInd[i]);
 			}
 		}
 	}
 
 
-	PX_FORCE_INLINE void validateDuplicateVertex(const Ps::aos::Vec3V* Q, const Ps::aos::Vec3VArg support, const PxU32 size)
+	PX_FORCE_INLINE void validateDuplicateVertex(const aos::Vec3V* Q, const aos::Vec3VArg support, const PxU32 size)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		const FloatV eps = FEps();
 		//Get rid of the duplicate point
@@ -96,11 +95,11 @@ namespace Gu
 	//*         GJK_CONTACT if the algorithm converges, and the distance between the shapes is less than the sum of the margins plus the contactDistance. In this case we return the closest points found
 	//*         GJK_DEGENERATE if the algorithm doesn't converge, we return this flag to indicate the normal and closest point we return might not be accurated
 	template<typename ConvexA, typename ConvexB >
-	PX_NOINLINE GjkStatus gjkPenetration(const ConvexA& a, const ConvexB& b, const Ps::aos::Vec3VArg initialSearchDir, const Ps::aos::FloatVArg contactDist, const bool takeCoreShape, 
-		PxU8* PX_RESTRICT aIndices, PxU8* PX_RESTRICT bIndices, PxU8& warmStartSize,
+	PX_NOINLINE GjkStatus gjkPenetration(const ConvexA& a, const ConvexB& b, const aos::Vec3VArg initialSearchDir, const aos::FloatVArg contactDist, const bool takeCoreShape, 
+		PxU8* PX_RESTRICT aIndices, PxU8* PX_RESTRICT bIndices, aos::Vec3V* PX_RESTRICT aPoints, aos::Vec3V* PX_RESTRICT bPoints, PxU8& warmStartSize,
 		GjkOutput& output)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 
 		//ML: eps is the threshold that uses to determine whether two (shrunk) shapes overlap. We calculate eps2 based on 10% of the minimum margin of two shapes
 		const FloatV minMargin = FMin(a.ConvexA::getMinMargin(), b.ConvexB::getMinMargin());
@@ -144,8 +143,8 @@ namespace Gu
 		Vec3V closest;
 
 		Vec3V Q[4];
-		Vec3V A[4];
-		Vec3V B[4];
+		Vec3V* A = aPoints;
+		Vec3V* B = bPoints;
 		PxI32 aInd[4];
 		PxI32 bInd[4];
 		Vec3V supportA = zeroV, supportB = zeroV, support=zeroV;
@@ -312,7 +311,22 @@ namespace Gu
 			
 		}
 	}
-
+	template<typename ConvexA, typename ConvexB >
+	PX_NOINLINE GjkStatus gjkPenetration(const ConvexA& a, const ConvexB& b, const aos::Vec3VArg initialSearchDir, const aos::FloatVArg contactDist, const bool takeCoreShape,
+		PxU8* PX_RESTRICT aIndices, PxU8* PX_RESTRICT bIndices, PxU8& warmStartSize,
+		GjkOutput& output)
+	{
+		aos::Vec3V aPoints[4], bPoints[4];
+		return gjkPenetration(a, b, initialSearchDir, contactDist, takeCoreShape, aIndices, bIndices, aPoints, bPoints, warmStartSize, output);
+	}
+	template<typename ConvexA, typename ConvexB >
+	PX_NOINLINE GjkStatus gjkPenetration(const ConvexA& a, const ConvexB& b, const aos::Vec3VArg initialSearchDir, const aos::FloatVArg contactDist, const bool takeCoreShape,
+		aos::Vec3V* PX_RESTRICT aPoints, aos::Vec3V* PX_RESTRICT bPoints, PxU8& warmStartSize,
+		GjkOutput& output)
+	{
+		PxU8 aIndices[4], bIndices[4];
+		return gjkPenetration(a, b, initialSearchDir, contactDist, takeCoreShape, aIndices, bIndices, aPoints, bPoints, warmStartSize, output);
+	}
 }//Gu
 
 }//physx

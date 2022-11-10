@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build SceneQuery common
@@ -38,42 +37,23 @@ include(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/Sc
 
 SET(SCENEQUERY_BASE_DIR ${PHYSX_ROOT_DIR}/source/scenequery)
 SET(SCENEQUERY_HEADERS		
+	${SCENEQUERY_BASE_DIR}/include/SqFactory.h
 	${SCENEQUERY_BASE_DIR}/include/SqPruner.h
-	${SCENEQUERY_BASE_DIR}/include/SqPrunerMergeData.h
-	${SCENEQUERY_BASE_DIR}/include/SqPruningStructure.h
-	${SCENEQUERY_BASE_DIR}/include/SqSceneQueryManager.h	
+	${SCENEQUERY_BASE_DIR}/include/SqPrunerData.h
+	${SCENEQUERY_BASE_DIR}/include/SqManager.h
+	${SCENEQUERY_BASE_DIR}/include/SqQuery.h
+	${SCENEQUERY_BASE_DIR}/include/SqTypedef.h
 )
 SOURCE_GROUP(include FILES ${SCENEQUERY_HEADERS})
 
 SET(SCENEQUERY_SOURCE			
-	${SCENEQUERY_BASE_DIR}/src/SqAABBPruner.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqAABBPruner.h
-	${SCENEQUERY_BASE_DIR}/src/SqAABBTree.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqAABBTree.h
-	${SCENEQUERY_BASE_DIR}/src/SqIncrementalAABBPruner.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqIncrementalAABBPruner.h
-	${SCENEQUERY_BASE_DIR}/src/SqIncrementalAABBPrunerCore.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqIncrementalAABBPrunerCore.h
-	${SCENEQUERY_BASE_DIR}/src/SqIncrementalAABBTree.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqIncrementalAABBTree.h
-	${SCENEQUERY_BASE_DIR}/src/SqAABBTreeUpdateMap.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqAABBTreeUpdateMap.h
-	${SCENEQUERY_BASE_DIR}/src/SqBounds.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqBounds.h
+	${SCENEQUERY_BASE_DIR}/src/SqFactory.cpp
 	${SCENEQUERY_BASE_DIR}/src/SqCompoundPruner.cpp
 	${SCENEQUERY_BASE_DIR}/src/SqCompoundPruner.h	
 	${SCENEQUERY_BASE_DIR}/src/SqCompoundPruningPool.cpp
 	${SCENEQUERY_BASE_DIR}/src/SqCompoundPruningPool.h	
-	${SCENEQUERY_BASE_DIR}/src/SqBucketPruner.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqBucketPruner.h
-	${SCENEQUERY_BASE_DIR}/src/SqExtendedBucketPruner.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqExtendedBucketPruner.h
-	${SCENEQUERY_BASE_DIR}/src/SqMetaData.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqPruningPool.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqPruningPool.h
-	${SCENEQUERY_BASE_DIR}/src/SqPruningStructure.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqSceneQueryManager.cpp
-	${SCENEQUERY_BASE_DIR}/src/SqTypedef.h
+	${SCENEQUERY_BASE_DIR}/src/SqManager.cpp
+	${SCENEQUERY_BASE_DIR}/src/SqQuery.cpp
 )
 SOURCE_GROUP(src FILES ${SCENEQUERY_SOURCE})
 
@@ -109,15 +89,9 @@ TARGET_INCLUDE_DIRECTORIES(SceneQuery
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/hf
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/pcm
 	PRIVATE ${PHYSX_SOURCE_DIR}/geomutils/src/ccd
-	
-	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/api/include
 
 	PRIVATE ${PHYSX_SOURCE_DIR}/scenequery/include
-	PRIVATE ${PHYSX_SOURCE_DIR}/simulationcontroller/include
-	
-	PRIVATE ${PHYSX_SOURCE_DIR}/physx/src
-	PRIVATE ${PHYSX_SOURCE_DIR}/physx/src/buffering
-	
+
 	PRIVATE ${PHYSX_SOURCE_DIR}/pvd/include
 )
 
@@ -137,12 +111,21 @@ IF(NV_USE_GAMEWORKS_OUTPUT_DIRS AND SCENEQUERY_LIBTYPE STREQUAL "STATIC")
 	)
 ENDIF()
 
-IF(SCENEQUERY_COMPILE_PDB_NAME_DEBUG)	
+IF(SQ_COMPILE_PDB_NAME_DEBUG)	
 	SET_TARGET_PROPERTIES(SceneQuery PROPERTIES 
-		COMPILE_PDB_NAME_DEBUG "${SCENEQUERY_COMPILE_PDB_NAME_DEBUG}"
-		COMPILE_PDB_NAME_CHECKED "${SCENEQUERY_COMPILE_PDB_NAME_CHECKED}"
-		COMPILE_PDB_NAME_PROFILE "${SCENEQUERY_COMPILE_PDB_NAME_PROFILE}"
-		COMPILE_PDB_NAME_RELEASE "${SCENEQUERY_COMPILE_PDB_NAME_RELEASE}"
+		COMPILE_PDB_NAME_DEBUG "${SQ_COMPILE_PDB_NAME_DEBUG}"
+		COMPILE_PDB_NAME_CHECKED "${SQ_COMPILE_PDB_NAME_CHECKED}"
+		COMPILE_PDB_NAME_PROFILE "${SQ_COMPILE_PDB_NAME_PROFILE}"
+		COMPILE_PDB_NAME_RELEASE "${SQ_COMPILE_PDB_NAME_RELEASE}"
+	)
+ENDIF()
+
+IF(PX_EXPORT_LOWLEVEL_PDB)
+	SET_TARGET_PROPERTIES(SceneQuery PROPERTIES 
+		COMPILE_PDB_OUTPUT_DIRECTORY_DEBUG "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/debug/"
+		COMPILE_PDB_OUTPUT_DIRECTORY_CHECKED "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/checked/"
+		COMPILE_PDB_OUTPUT_DIRECTORY_PROFILE "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/profile/"
+		COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE "${PHYSX_ROOT_DIR}/${PX_ROOT_LIB_DIR}/release/"
 	)
 ENDIF()
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,28 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXC_NPTHREADCONTEXT_H
-#define PXC_NPTHREADCONTEXT_H
+#ifndef PXC_NP_THREAD_CONTEXT_H
+#define PXC_NP_THREAD_CONTEXT_H
 
 #include "geometry/PxGeometry.h"
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
+#include "common/PxRenderOutput.h"
+
+#include "CmRenderBuffer.h"
 
 #include "PxvConfig.h"
 #include "CmScaling.h"
-#include "CmRenderOutput.h"
 #include "PxcNpCacheStreamPair.h"
 #include "PxcConstraintBlockStream.h"
 #include "PxcThreadCoherentCache.h"
-#include "CmBitMap.h"
+#include "PxcScratchAllocator.h"
+#include "foundation/PxBitMap.h"
 #include "../pcm/GuPersistentContactManifold.h"
+#include "../contact/GuContactMethodImpl.h"
 
 namespace physx
 {
@@ -70,7 +72,7 @@ struct PxcDataStreamPool
 		//FD: my expectaton is that reading those variables is atomic, shared indices are non-decreasing, 
 		//so we can only get a false overflow alert because of concurrency issues, which is not a big deal as it means 
 		//it did overflow a bit later  
-		return mSharedDataIndex + mSharedDataIndexGPU >= mDataStreamSize;
+		return (mSharedDataIndex + mSharedDataIndexGPU) > mDataStreamSize;
 	}
 };
 
@@ -84,7 +86,6 @@ struct PxcNpContext
 													mNpMemBlockPool			(mScratchAllocator),
 													mMeshContactMargin		(0.0f),
 													mToleranceLength		(0.0f),
-													mCreateContactStream	(false),
 													mContactStreamPool		(NULL),
 													mPatchStreamPool		(NULL),
 													mForceAndIndiceStreamPool(NULL),
@@ -97,7 +98,6 @@ struct PxcNpContext
 					PxReal						mMeshContactMargin;
 					PxReal						mToleranceLength;
 					Cm::RenderBuffer			mRenderBuffer;
-					bool						mCreateContactStream; // flag to enforce that contacts are stored persistently per workunit. Used for PVD.
 					PxcDataStreamPool*			mContactStreamPool;
 					PxcDataStreamPool*			mPatchStreamPool;
 					PxcDataStreamPool*			mForceAndIndiceStreamPool;
@@ -108,14 +108,11 @@ struct PxcNpContext
 	PX_FORCE_INLINE	void						setToleranceLength(PxReal x)		{ mToleranceLength = x;						}
 	PX_FORCE_INLINE	PxReal						getMeshContactMargin()		const	{ return mMeshContactMargin;				}
 	PX_FORCE_INLINE	void						setMeshContactMargin(PxReal x)		{ mMeshContactMargin = x;					}
-	PX_FORCE_INLINE	bool						getCreateContactStream()			{ return mCreateContactStream;				}
 
 	PX_FORCE_INLINE	PxcNpMemBlockPool&			getNpMemBlockPool()					{ return mNpMemBlockPool;					}
 	PX_FORCE_INLINE	const PxcNpMemBlockPool&	getNpMemBlockPool()			const	{ return mNpMemBlockPool;					}
 	PX_FORCE_INLINE void						setMaterialManager(PxsMaterialManager* m){ mMaterialManager = m;				}
 	PX_FORCE_INLINE PxsMaterialManager*			getMaterialManager() const			{ return mMaterialManager;					}
-
-					Cm::RenderOutput			getRenderOutput()					{ return Cm::RenderOutput(mRenderBuffer);	}
 };
 
 class PxcNpThreadContext : public PxcThreadCoherentCache<PxcNpThreadContext, PxcNpContext>::EntryBase
@@ -127,27 +124,21 @@ public:
 
 #if PX_ENABLE_SIM_STATS
 					void						clearStats();
+#else
+					PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
-
-	PX_FORCE_INLINE void						setCreateContactStream(bool to)					{ mCreateContactStream = to;				}
 
 	PX_FORCE_INLINE void						addLocalNewTouchCount(PxU32 newTouchCMCount)	{ mLocalNewTouchCount += newTouchCMCount;	}
 	PX_FORCE_INLINE void						addLocalLostTouchCount(PxU32 lostTouchCMCount)	{ mLocalLostTouchCount += lostTouchCMCount;	}
 	PX_FORCE_INLINE PxU32						getLocalNewTouchCount()					const	{ return mLocalNewTouchCount;				}
 	PX_FORCE_INLINE PxU32						getLocalLostTouchCount()				const	{ return mLocalLostTouchCount;				}
 
-	PX_FORCE_INLINE void						addLocalFoundPatchCount(PxU32 foundPatchCount)	{ mLocalFoundPatchCount += foundPatchCount;	}
-	PX_FORCE_INLINE void						addLocalLostPatchCount(PxU32 lostPatchCount)	{ mLocalLostPatchCount += lostPatchCount;	}
-	PX_FORCE_INLINE PxU32						getLocalFoundPatchCount()				const	{ return mLocalFoundPatchCount;				}
-	PX_FORCE_INLINE PxU32						getLocalLostPatchCount()				const	{ return mLocalLostPatchCount;				}
 
-	PX_FORCE_INLINE Cm::BitMap&					getLocalChangeTouch()							{ return mLocalChangeTouch;					}
-
-	PX_FORCE_INLINE Cm::BitMap&					getLocalPatchChangeMap()						{ return mLocalPatchCountChange;			}
+	PX_FORCE_INLINE PxBitMap&					getLocalChangeTouch()							{ return mLocalChangeTouch;					}
 
 	void										reset(PxU32 cmCount);
 	// debugging
-					Cm::RenderOutput 			mRenderOutput;
+						PxRenderOutput 			mRenderOutput;
 
 	// dsequeira: Need to think about this block pool allocation a bit more. Ideally we'd be 
 	// taking blocks from a single pool, except that we want to be able to selectively reclaim
@@ -156,6 +147,8 @@ public:
 #if PX_ENABLE_SIM_STATS
 					PxU32						mDiscreteContactPairs	[PxGeometryType::eGEOMETRY_COUNT][PxGeometryType::eGEOMETRY_COUNT];
 					PxU32						mModifiedContactPairs	[PxGeometryType::eGEOMETRY_COUNT][PxGeometryType::eGEOMETRY_COUNT];
+#else
+					PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 					PxcContactBlockStream 		mContactBlockStream;		// constraint block pool
 					PxcNpCacheStreamPair		mNpCacheStreamPair;			// narrow phase pairwise data cache
@@ -163,7 +156,7 @@ public:
 	// Everything below here is scratch state. Most of it can even overlap.
 
 	// temporary contact buffer
-					Gu::ContactBuffer			mContactBuffer;    
+					PxContactBuffer				mContactBuffer;    
 
 	PX_ALIGN(16, Gu::MultiplePersistentContactManifold		mTempManifold); 
 
@@ -171,17 +164,18 @@ public:
 
 	// DS: this stuff got moved here from the PxcNpPairContext. As Pierre says:
 	////////// PT: those members shouldn't be there in the end, it's not necessary
-					Ps::Array<Sc::BodySim*>		mBodySimPool;
+					PxArray<Sc::BodySim*>		mBodySimPool;
 					PxsTransformCache*			mTransformCache;
-					PxReal*						mContactDistance;
+					const PxReal*				mContactDistances;
 					bool						mPCM;
 					bool						mContactCache;
-					bool						mCreateContactStream;	// flag to enforce that contacts are stored persistently per workunit. Used for PVD.
 					bool						mCreateAveragePoint;	// flag to enforce whether we create average points
 #if PX_ENABLE_SIM_STATS
 					PxU32						mCompressedCacheSize;
 					PxU32						mNbDiscreteContactPairsWithCacheHits;
 					PxU32						mNbDiscreteContactPairsWithContacts;
+#else
+					PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 					PxReal						mDt; // AP: still needed for ccd
 					PxU32						mCCDPass;
@@ -199,12 +193,9 @@ public:
 					PxsMaterialManager*			mMaterialManager;
 private:
 		// change touch handling.
-					Cm::BitMap					mLocalChangeTouch;
-					Cm::BitMap					mLocalPatchCountChange;
+					PxBitMap					mLocalChangeTouch;
 					PxU32						mLocalNewTouchCount;
 					PxU32						mLocalLostTouchCount;
-					PxU32						mLocalFoundPatchCount;
-					PxU32						mLocalLostPatchCount;
 };
 
 }

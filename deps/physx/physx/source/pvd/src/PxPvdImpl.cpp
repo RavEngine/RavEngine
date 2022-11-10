@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -32,7 +31,10 @@
 #include "PxPvdProfileZoneClient.h"
 #include "PxPvdProfileZone.h"
 
-#include "PsFoundation.h"
+
+#if PX_SUPPORT_GPU_PHYSX
+#include "gpu/PxGpu.h"
+#endif
 
 #if PX_NVTX
 #include "nvToolsExt.h"
@@ -84,13 +86,14 @@ PvdImpl::PvdImpl()
 , mSharedMetaProvider(NULL)
 , mMemClient(NULL)
 , mIsConnected(false)
+, mGPUProfilingWasConnected(false)
 , mIsNVTXSupportEnabled(true)
 , mNVTXContext(0)
 , mNextStreamId(1)
 , mProfileClient(NULL)
 , mProfileZone(NULL)
 {
-	mProfileZoneManager = &physx::profile::PxProfileZoneManager::createProfileZoneManager(&physx::shdfnd::getAllocator());
+	mProfileZoneManager = &physx::profile::PxProfileZoneManager::createProfileZoneManager(PxGetBroadcastAllocator());
 	mProfileClient = PVD_NEW(PvdProfileZoneClient)(*this);
 }
 
@@ -99,6 +102,12 @@ PvdImpl::~PvdImpl()
 	if((mFlags & PxPvdInstrumentationFlag::ePROFILE) )
 	{
 		PxSetProfilerCallback(NULL);
+#if PX_SUPPORT_GPU_PHYSX
+		if (mGPUProfilingWasConnected)
+		{
+			PxSetPhysXGpuProfilerCallback(NULL);
+		}
+#endif
 	}
 
 	disconnect();
@@ -117,7 +126,7 @@ bool PvdImpl::connect(PxPvdTransport& transport, PxPvdInstrumentationFlags flags
 {
 	if(mIsConnected)
 	{
-		physx::shdfnd::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxPvd::connect - recall connect! Should call disconnect before re-connect.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxPvd::connect - recall connect! Should call disconnect before re-connect.");
 	    return false;
 	}
 
@@ -144,7 +153,7 @@ bool PvdImpl::connect(PxPvdTransport& transport, PxPvdInstrumentationFlags flags
 		if((mFlags & PxPvdInstrumentationFlag::ePROFILE) && mProfileZoneManager)
 		{			
 			mPvdClients.pushBack(mProfileClient);
-			mProfileZone = &physx::profile::PxProfileZone::createProfileZone(&physx::shdfnd::getAllocator(),gSdkName,gProfileNameProvider.getProfileNames());
+			mProfileZone = &physx::profile::PxProfileZone::createProfileZone(PxGetBroadcastAllocator(),gSdkName,gProfileNameProvider.getProfileNames());
 		}
 
 		for(uint32_t i = 0; i < mPvdClients.size(); i++)
@@ -159,6 +168,10 @@ bool PvdImpl::connect(PxPvdTransport& transport, PxPvdInstrumentationFlags flags
 		if ((mFlags & PxPvdInstrumentationFlag::ePROFILE))
 		{
 			PxSetProfilerCallback(this);
+#if PX_SUPPORT_GPU_PHYSX
+			PxSetPhysXGpuProfilerCallback(this);
+			mGPUProfilingWasConnected = true;
+#endif
 		}
 	}
 	return mIsConnected;

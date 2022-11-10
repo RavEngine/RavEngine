@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,28 +22,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxPreprocessor.h"
 
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxAtomic.h"
+#include "foundation/PxIntrinsics.h"
 #include <new>
 #include <stdio.h>
-#include "CmPhysXCommon.h"
 #include "DySolverBody.h"
 #include "DySolverConstraint1D.h"
 #include "DySolverContact.h"
 #include "DyThresholdTable.h"
 #include "DySolverControl.h"
-#include "DyArticulationHelper.h"
-#include "PsAtomic.h"
-#include "PsIntrinsics.h"
 #include "DyArticulationPImpl.h"
-#include "PsThread.h"
+#include "foundation/PxThread.h"
 #include "DySolverConstraintDesc.h"
 #include "DySolverContext.h"
+#include "DyFeatherstoneArticulation.h"
 
 
 namespace physx
@@ -175,7 +173,7 @@ SolverCoreGeneral* SolverCoreGeneral::create(bool fricEveryIteration)
 
 	if (scg)
 	{
-		new (scg) SolverCoreGeneral;
+		PX_PLACEMENT_NEW(scg, SolverCoreGeneral);
 		scg->frictionEveryIteration = fricEveryIteration;
 	}
 
@@ -185,7 +183,7 @@ SolverCoreGeneral* SolverCoreGeneral::create(bool fricEveryIteration)
 void SolverCoreGeneral::destroyV()
 {
 	this->~SolverCoreGeneral();
-	PX_FREE(this);
+	PX_FREE_THIS;
 }
 
 void SolverCoreGeneral::solveV_Blocks(SolverIslandParams& params) const
@@ -217,7 +215,6 @@ void SolverCoreGeneral::solveV_Blocks(SolverIslandParams& params) const
 
 	ArticulationSolverDesc* PX_RESTRICT articulationListStart = params.articulationListStart;
 
-	PX_ASSERT(velocityIterations >= 1);
 	PX_ASSERT(positionIterations >= 1);
 
 	if(numConstraintHeaders == 0)
@@ -234,14 +231,14 @@ void SolverCoreGeneral::solveV_Blocks(SolverIslandParams& params) const
 		//Even thought there are no external constraints, there may still be internal constraints in the articulations...
 		for(PxU32 i = 0; i < positionIterations; ++i)
 			for (PxU32 j = 0; j < articulationListSize; ++j)
-				articulationListStart[j].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, false, false, 0.f);
+				articulationListStart[j].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, false, false, 0.f, 0.8f);
 
 		for (PxU32 i = 0; i < articulationListSize; i++)
 			ArticulationPImpl::saveVelocity(articulationListStart[i], cache.deltaV);
 
 		for (PxU32 i = 0; i < velocityIterations; ++i)
 			for (PxU32 j = 0; j < articulationListSize; ++j)
-				articulationListStart[j].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, true, false, 0.f);
+				articulationListStart[j].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, true, false, 0.f, 0.8f);
 
 		for (PxU32 j = 0; j < articulationListSize; ++j)
 			articulationListStart[j].articulation->writebackInternalConstraints(false);
@@ -264,7 +261,7 @@ void SolverCoreGeneral::solveV_Blocks(SolverIslandParams& params) const
 			cache, contactIterator, iteration == 1 ? gVTableSolveConcludeBlock : gVTableSolveBlock, normalIter);
 
 		for (PxU32 i = 0; i < articulationListSize; ++i)
-			articulationListStart[i].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, false, false, 0.f);
+			articulationListStart[i].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, false, false, 0.f, 0.8f);
 
 		++normalIter;
 	}
@@ -290,7 +287,7 @@ void SolverCoreGeneral::solveV_Blocks(SolverIslandParams& params) const
 			cache, contactIterator, gVTableSolveBlock, normalIter);
 
 		for (PxU32 i = 0; i < articulationListSize; ++i)
-			articulationListStart[i].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, true, false, 0.f);
+			articulationListStart[i].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, true, false, 0.f, 0.8f);
 		++normalIter;
 	}
 
@@ -309,7 +306,7 @@ void SolverCoreGeneral::solveV_Blocks(SolverIslandParams& params) const
 
 		for (PxU32 i = 0; i < articulationListSize; ++i)
 		{
-			articulationListStart[i].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, true, false, 0.f);
+			articulationListStart[i].articulation->solveInternalConstraints(params.dt, params.invDt, cache.Z, cache.deltaV, true, false, 0.f, 0.8f);
 			articulationListStart[i].articulation->writebackInternalConstraints(false);
 		}
 
@@ -320,7 +317,7 @@ void SolverCoreGeneral::solveV_Blocks(SolverIslandParams& params) const
 	if(cache.mThresholdStreamIndex > 0)
 	{
 		//Write back to global buffer
-		PxI32 threshIndex = physx::shdfnd::atomicAdd(outThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
+		PxI32 threshIndex = physx::PxAtomicAdd(outThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
 		for(PxU32 b = 0; b < cache.mThresholdStreamIndex; ++b)
 		{
 			thresholdStream[b + threshIndex] = cache.mThresholdStream[b];
@@ -386,7 +383,7 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 	PX_ASSERT(positionIterations >= 1);
 
 	PxI32 endIndexCount = UnrollCount;
-	PxI32 index = physx::shdfnd::atomicAdd(constraintIndex, UnrollCount) - UnrollCount;
+	PxI32 index = physx::PxAtomicAdd(constraintIndex, UnrollCount) - UnrollCount;
 
 	PxI32 articSolveStart = 0;
 	PxI32 articSolveEnd = 0;
@@ -427,13 +424,13 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 					if(endIndexCount == 0)
 					{
 						endIndexCount = UnrollCount;
-						index = physx::shdfnd::atomicAdd(constraintIndex, UnrollCount) - UnrollCount;
+						index = physx::PxAtomicAdd(constraintIndex, UnrollCount) - UnrollCount;
 					}
 				}
 				if(nbSolved)
 				{
-					Ps::memoryBarrier();
-					physx::shdfnd::atomicAdd(constraintIndex2, nbSolved);
+					PxMemoryBarrier();
+					physx::PxAtomicAdd(constraintIndex2, nbSolved);
 				}
 				targetConstraintIndex += headersPerPartition[b]; //Increment target constraint index by batch count
 			}
@@ -450,21 +447,21 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 				PxI32 nbSolved = 0;
 				while (articSolveStart < endIdx)
 				{
-					articulationListStart[articSolveStart - articIndexCounter].articulation->solveInternalConstraints(dt, invDt, cache.Z, cache.deltaV, false, false, 0.f);
+					articulationListStart[articSolveStart - articIndexCounter].articulation->solveInternalConstraints(dt, invDt, cache.Z, cache.deltaV, false, false, 0.f, 0.8f);
 					articSolveStart++;
 					nbSolved++;
 				}
 
 				if (nbSolved)
 				{
-					physx::shdfnd::atomicAdd(articIndex2, nbSolved);
+					physx::PxAtomicAdd(articIndex2, nbSolved);
 				}
 
 				const PxI32 remaining = articSolveEnd - articSolveStart;
 
 				if (remaining == 0)
 				{
-					articSolveStart = physx::shdfnd::atomicAdd(articIndex, ArticCount) - ArticCount;
+					articSolveStart = physx::PxAtomicAdd(articIndex, ArticCount) - ArticCount;
 					articSolveEnd = articSolveStart + ArticCount;
 				}
 			}
@@ -483,7 +480,7 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 
 	//Save velocity - articulated
 	PxI32 endIndexCount2 = SaveUnrollCount;
-	PxI32 index2 = physx::shdfnd::atomicAdd(bodyListIndex, SaveUnrollCount) - SaveUnrollCount;
+	PxI32 index2 = physx::PxAtomicAdd(bodyListIndex, SaveUnrollCount) - SaveUnrollCount;
 	{
 		WAIT_FOR_PROGRESS(articIndex2, targetArticIndex);
 		WAIT_FOR_PROGRESS(constraintIndex2, targetConstraintIndex);
@@ -498,7 +495,7 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 			}
 			if(endIndexCount2 == 0)
 			{
-				index2 = physx::shdfnd::atomicAdd(bodyListIndex, SaveUnrollCount) - SaveUnrollCount;
+				index2 = physx::PxAtomicAdd(bodyListIndex, SaveUnrollCount) - SaveUnrollCount;
 				endIndexCount2 = SaveUnrollCount;
 			}
 			nbConcluded += remainder;
@@ -514,8 +511,8 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 			endIndexCount2 -= remainder;
 			for(PxI32 b = 0; b < remainder; ++b, ++index2)
 			{
-				Ps::prefetchLine(&bodyListStart[index2 + 8]);
-				Ps::prefetchLine(&motionVelocityArray[index2 + 8]);
+				PxPrefetchLine(&bodyListStart[index2 + 8]);
+				PxPrefetchLine(&motionVelocityArray[index2 + 8]);
 				PxSolverBody& body = bodyListStart[index2];
 				Cm::SpatialVector& motionVel = motionVelocityArray[index2];
 				motionVel.linear = body.linearVelocity;
@@ -529,15 +526,15 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 			//Branch not required because this is the last time we use this atomic variable
 			//if(index2 < articulationListSizePlusbodyListSize)
 			{
-				index2 = physx::shdfnd::atomicAdd(bodyListIndex, SaveUnrollCount) - SaveUnrollCount - articulationListSize;
+				index2 = physx::PxAtomicAdd(bodyListIndex, SaveUnrollCount) - SaveUnrollCount - articulationListSize;
 				endIndexCount2 = SaveUnrollCount;
 			}
 		}
 
 		if(nbConcluded)
 		{
-			Ps::memoryBarrier();
-			physx::shdfnd::atomicAdd(bodyListIndex2, nbConcluded);
+			PxMemoryBarrier();
+			physx::PxAtomicAdd(bodyListIndex2, nbConcluded);
 		}
 	}
 
@@ -565,13 +562,13 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 				if(endIndexCount == 0)
 				{
 					endIndexCount = UnrollCount;
-					index = physx::shdfnd::atomicAdd(constraintIndex, UnrollCount) - UnrollCount;
+					index = physx::PxAtomicAdd(constraintIndex, UnrollCount) - UnrollCount;
 				}
 			}
 			if(nbSolved)
 			{
-				Ps::memoryBarrier();
-				physx::shdfnd::atomicAdd(constraintIndex2, nbSolved);
+				PxMemoryBarrier();
+				physx::PxAtomicAdd(constraintIndex2, nbSolved);
 			}
 			targetConstraintIndex += headersPerPartition[b]; //Increment target constraint index by batch count
 		}
@@ -588,21 +585,21 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 			PxI32 nbSolved = 0;
 			while (articSolveStart < endIdx)
 			{
-				articulationListStart[articSolveStart - articIndexCounter].articulation->solveInternalConstraints(dt, invDt, cache.Z, cache.deltaV, true, false, 0.f);
+				articulationListStart[articSolveStart - articIndexCounter].articulation->solveInternalConstraints(dt, invDt, cache.Z, cache.deltaV, true, false, 0.f, 0.8f);
 				articSolveStart++;
 				nbSolved++;
 			}
 
 			if (nbSolved)
 			{
-				physx::shdfnd::atomicAdd(articIndex2, nbSolved);
+				physx::PxAtomicAdd(articIndex2, nbSolved);
 			}
 
 			const PxI32 remaining = articSolveEnd - articSolveStart;
 
 			if (remaining == 0)
 			{
-				articSolveStart = physx::shdfnd::atomicAdd(articIndex, ArticCount) - ArticCount;
+				articSolveStart = physx::PxAtomicAdd(articIndex, ArticCount) - ArticCount;
 				articSolveEnd = articSolveStart + ArticCount;
 			}
 
@@ -643,13 +640,13 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 				if(endIndexCount == 0)
 				{
 					endIndexCount = UnrollCount;
-					index = physx::shdfnd::atomicAdd(constraintIndex, UnrollCount) - UnrollCount;
+					index = physx::PxAtomicAdd(constraintIndex, UnrollCount) - UnrollCount;
 				}
 			}
 			if(nbSolved)
 			{
-				Ps::memoryBarrier();
-				physx::shdfnd::atomicAdd(constraintIndex2, nbSolved);
+				PxMemoryBarrier();
+				physx::PxAtomicAdd(constraintIndex2, nbSolved);
 			}
 			targetConstraintIndex += headersPerPartition[b]; //Increment target constraint index by batch count
 		}
@@ -666,7 +663,7 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 				PxI32 nbSolved = 0;
 				while (articSolveStart < endIdx)
 				{
-					articulationListStart[articSolveStart - articIndexCounter].articulation->solveInternalConstraints(dt, invDt, cache.Z, cache.deltaV, false, false, 0.f);
+					articulationListStart[articSolveStart - articIndexCounter].articulation->solveInternalConstraints(dt, invDt, cache.Z, cache.deltaV, false, false, 0.f, 0.8f);
 					articulationListStart[articSolveStart - articIndexCounter].articulation->writebackInternalConstraints(false);
 					articSolveStart++;
 					nbSolved++;
@@ -674,14 +671,14 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 
 				if (nbSolved)
 				{
-					physx::shdfnd::atomicAdd(articIndex2, nbSolved);
+					physx::PxAtomicAdd(articIndex2, nbSolved);
 				}
 
 				PxI32 remaining = articSolveEnd - articSolveStart;
 
 				if (remaining == 0)
 				{
-					articSolveStart = physx::shdfnd::atomicAdd(articIndex, ArticCount) - ArticCount;
+					articSolveStart = physx::PxAtomicAdd(articIndex, ArticCount) - ArticCount;
 					articSolveEnd = articSolveStart + ArticCount;
 				}
 			}
@@ -690,7 +687,7 @@ PxI32 SolverCoreGeneral::solveVParallelAndWriteBack
 		if(cache.mThresholdStreamIndex > 0)
 		{
 			//Write back to global buffer
-			PxI32 threshIndex = physx::shdfnd::atomicAdd(outThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
+			PxI32 threshIndex = physx::PxAtomicAdd(outThresholdPairs, PxI32(cache.mThresholdStreamIndex)) - PxI32(cache.mThresholdStreamIndex);
 			for(PxU32 b = 0; b < cache.mThresholdStreamIndex; ++b)
 			{
 				thresholdStream[b + threshIndex] = cache.mThresholdStream[b];

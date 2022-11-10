@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,22 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxMath.h"
 #include "common/PxProfileZone.h"
-#include "CmPhysXCommon.h"
-#include "CmTmpMem.h"
+#include "CmRadixSort.h"
 #include "PxcScratchAllocator.h"
 #include "PxSceneDesc.h"
 #include "BpBroadPhaseSap.h"
 #include "BpBroadPhaseSapAux.h"
-#include "CmRadixSortBuffered.h"
-#include "PsFoundation.h"
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
 //#include <stdio.h>
+
+// PT: reactivated this. Ran UTs with SAP as default BP and nothing broke.
+#define TEST_DELETED_PAIRS
 
 namespace physx
 {
@@ -48,17 +47,54 @@ namespace Bp
 #define DEFAULT_CREATEDDELETED_PAIR_ARRAY_CAPACITY 64
 #define DEFAULT_CREATEDDELETED1AXIS_CAPACITY 8192
 
+	template<typename T, PxU32 stackLimit>
+	class TmpMem
+	{
+	public:
+		PX_FORCE_INLINE TmpMem(PxU32 size):
+		  mPtr(size<=stackLimit?mStackBuf : PX_ALLOCATE(T, size, "char"))
+		{
+		}
+
+		PX_FORCE_INLINE ~TmpMem()
+		{
+			if(mPtr!=mStackBuf)
+				PX_FREE(mPtr);
+		}
+
+		PX_FORCE_INLINE T& operator*() const
+	    {
+			return *mPtr;
+		}
+
+		PX_FORCE_INLINE T* operator->() const
+		{
+			return mPtr;
+		}
+	
+		PX_FORCE_INLINE T& operator[](PxU32 index)
+		{
+			return mPtr[index];
+		}
+
+		T* getBase()
+		{
+			return mPtr;
+		}
+
+	private:
+		T mStackBuf[stackLimit];
+		T* mPtr;
+	};
+
 BroadPhaseSap::BroadPhaseSap(
 	const PxU32 maxNbBroadPhaseOverlaps,
 	const PxU32 maxNbStaticShapes,
 	const PxU32 maxNbDynamicShapes,
 	PxU64 contextID) :
-	mScratchAllocator		(NULL),
-	mSapUpdateWorkTask		(contextID),
-	mSapPostUpdateWorkTask	(contextID),
-	mContextID				(contextID)
+	mScratchAllocator	(NULL),
+	mContextID			(contextID)
 {
-
 	for(PxU32 i=0;i<3;i++)
 		mBatchUpdateTasks[i].setContextId(contextID);
 
@@ -137,9 +173,7 @@ BroadPhaseSap::BroadPhaseSap(
 	mDeletedPairsSize = 0;
 	mActualDeletedPairSize = 0;
 
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-	mLUT = NULL;
-#endif
+	mFilter = NULL;
 }
 
 BroadPhaseSap::~BroadPhaseSap()
@@ -172,13 +206,12 @@ BroadPhaseSap::~BroadPhaseSap()
 
 	mCreatedPairsArray = NULL;
 	mDeletedPairsArray = NULL;
-	
 }
 
-void BroadPhaseSap::destroy()
+void BroadPhaseSap::release()
 {
 	this->~BroadPhaseSap();
-	PX_FREE(this);
+	PX_FREE_THIS;
 }
 
 void BroadPhaseSap::resizeBuffers()
@@ -205,8 +238,29 @@ void BroadPhaseSap::resizeBuffers()
 	mBatchUpdateTasks[2].setNumPairs(0);
 }
 
+static void DeletePairsLists(const PxU32 numActualDeletedPairs, const BroadPhasePair* deletedPairsList, SapPairManager& pairManager)
+{
+	// #### try batch removal here
+	for(PxU32 i=0;i<numActualDeletedPairs;i++)
+	{
+		const BpHandle id0 = deletedPairsList[i].mVolA;
+		const BpHandle id1 = deletedPairsList[i].mVolB;
+#if PX_DEBUG
+		const bool Status = pairManager.RemovePair(id0, id1);
+		PX_ASSERT(Status);
+#else
+		pairManager.RemovePair(id0, id1);
+#endif
+	}
+}
+
 void BroadPhaseSap::freeBuffers()
 {
+	// PT: was: void BroadPhaseSap::deletePairs()
+#ifndef TEST_DELETED_PAIRS
+	DeletePairsLists(mActualDeletedPairSize, mDeletedPairsArray, mPairs);
+#endif
+
 	if(mCreatedPairsArray) mScratchAllocator->free(mCreatedPairsArray);
 	mCreatedPairsArray = NULL;
 	mCreatedPairsSize = 0;
@@ -369,15 +423,9 @@ bool BroadPhaseSap::isValid(const BroadPhaseUpdateData& updateData) const
 			{
 				const SapBox1D& box1d=mBoxEndPts[j][id];
 				if(box1d.mMinMax[0] != BP_INVALID_BP_HANDLE && box1d.mMinMax[0] != PX_REMOVED_BP_HANDLE)
-				{
-					//This box has been added already but without being removed.
-					return false;
-				}
+					return false;	//This box has been added already but without being removed.
 				if(box1d.mMinMax[1] != BP_INVALID_BP_HANDLE && box1d.mMinMax[1] != PX_REMOVED_BP_HANDLE)
-				{
-					//This box has been added already but without being removed.
-					return false;
-				}
+					return false;	//This box has been added already but without being removed.
 			}
 		}
 	}
@@ -389,9 +437,7 @@ bool BroadPhaseSap::isValid(const BroadPhaseUpdateData& updateData) const
 	{
 		const BpHandle id = updated[i];
 		if(id >= mBoxesCapacity)
-		{
 			return false;
-		}
 	}
 
 	//Test that the updated bounds have been been added without being removed.
@@ -404,15 +450,9 @@ bool BroadPhaseSap::isValid(const BroadPhaseUpdateData& updateData) const
 			const SapBox1D& box1d=mBoxEndPts[j][id];
 
 			if(BP_INVALID_BP_HANDLE == box1d.mMinMax[0] || PX_REMOVED_BP_HANDLE == box1d.mMinMax[0])
-			{
-				//This box has either not been added or has been removed
-				return false;
-			}
+				return false;	//This box has either not been added or has been removed
 			if(BP_INVALID_BP_HANDLE == box1d.mMinMax[1] || PX_REMOVED_BP_HANDLE == box1d.mMinMax[1])
-			{
-				//This box has either not been added or has been removed
-				return false;
-			}
+				return false;	//This box has either not been added or has been removed
 		}
 	}
 
@@ -423,9 +463,7 @@ bool BroadPhaseSap::isValid(const BroadPhaseUpdateData& updateData) const
 	{
 		const BpHandle id = removed[i];
 		if(id >= mBoxesCapacity)
-		{
 			return false;
-		}
 	}
 
 	//Test that the removed bounds have already been added and haven't been removed.
@@ -438,29 +476,18 @@ bool BroadPhaseSap::isValid(const BroadPhaseUpdateData& updateData) const
 			const SapBox1D& box1d=mBoxEndPts[j][id];
 
 			if(BP_INVALID_BP_HANDLE == box1d.mMinMax[0] || PX_REMOVED_BP_HANDLE == box1d.mMinMax[0])
-			{
-				//This box has either not been added or has been removed
-				return false;
-			}
+				return false;	//This box has either not been added or has been removed
 			if(BP_INVALID_BP_HANDLE == box1d.mMinMax[1] || PX_REMOVED_BP_HANDLE == box1d.mMinMax[1])
-			{
-				//This box has either not been added or has been removed
-				return false;
-			}
+				return false;	//This box has either not been added or has been removed
 		}
 	}
 	return true;
 }
 #endif
 
-void BroadPhaseSap::update(const PxU32 numCpuTasks, PxcScratchAllocator* scratchAllocator, const BroadPhaseUpdateData& updateData, PxBaseTask* continuation, PxBaseTask* narrowPhaseUnblockTask)
+void BroadPhaseSap::update(PxcScratchAllocator* scratchAllocator, const BroadPhaseUpdateData& updateData, PxBaseTask* /*continuation*/)
 {
-#if PX_CHECKED
 	PX_CHECK_AND_RETURN(scratchAllocator, "BroadPhaseSap::update - scratchAllocator must be non-NULL \n");
-#endif
-
-	if(narrowPhaseUnblockTask)
-		narrowPhaseUnblockTask->removeReference();
 
 	if(setUpdateData(updateData))
 	{
@@ -468,30 +495,6 @@ void BroadPhaseSap::update(const PxU32 numCpuTasks, PxcScratchAllocator* scratch
 
 		resizeBuffers();
 
-		mSapPostUpdateWorkTask.setBroadPhase(this);
-		mSapUpdateWorkTask.setBroadPhase(this);
-
-		mSapPostUpdateWorkTask.set(numCpuTasks);
-		mSapUpdateWorkTask.set(numCpuTasks);
-
-		mSapPostUpdateWorkTask.setContinuation(continuation);
-		mSapUpdateWorkTask.setContinuation(&mSapPostUpdateWorkTask);
-
-		mSapPostUpdateWorkTask.removeReference();
-		mSapUpdateWorkTask.removeReference();
-	}
-}
-
-void BroadPhaseSap::singleThreadedUpdate(PxcScratchAllocator* scratchAllocator, const BroadPhaseUpdateData& updateData)
-{
-#if PX_CHECKED
-	PX_CHECK_AND_RETURN(scratchAllocator, "BroadPhaseSap::singleThreadedUpdate - scratchAllocator must be non-NULL \n");
-#endif
-
-	if(setUpdateData(updateData))
-	{
-		mScratchAllocator = scratchAllocator;
-		resizeBuffers();
 		update();
 		postUpdate();
 	}
@@ -499,11 +502,13 @@ void BroadPhaseSap::singleThreadedUpdate(PxcScratchAllocator* scratchAllocator, 
 
 bool BroadPhaseSap::setUpdateData(const BroadPhaseUpdateData& updateData) 
 {
+	PX_PROFILE_ZONE("BroadPhaseSap::setUpdateData", mContextID);
+
 	PX_ASSERT(0==mCreatedPairsSize);
 	PX_ASSERT(0==mDeletedPairsSize);
 
 #if PX_CHECKED
-	if(!BroadPhaseUpdateData::isValid(updateData, *this))
+	if(!BroadPhaseUpdateData::isValid(updateData, *this, false, mContextID))
 	{
 		PX_CHECK_MSG(false, "Illegal BroadPhaseUpdateData \n");
 		mCreated			= NULL;
@@ -527,9 +532,7 @@ bool BroadPhaseSap::setUpdateData(const BroadPhaseUpdateData& updateData)
 	mRemovedSize		= updateData.getNumRemovedHandles();
 	mBoxBoundsMinMax	= updateData.getAABBs();
 	mBoxGroups			= updateData.getGroups();
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-	mLUT				= updateData.getLUT();
-#endif
+	mFilter				= &updateData.getFilter();
 	mContactDistance	= updateData.getContactDistance();
 
 	//Do we need more memory to store the positions of each box min/max in the arrays of sorted boxes min/max?
@@ -561,8 +564,6 @@ bool BroadPhaseSap::setUpdateData(const BroadPhaseUpdateData& updateData)
 		mBoxEndPts[2] = newBoxEndPts2;
 		mBoxesCapacity = newBoxesCapacity;
 
-		
-
 		PX_FREE(mBoxesUpdated);
 		mBoxesUpdated = reinterpret_cast<PxU8*>(PX_ALLOC(ALIGN_SIZE_16((sizeof(PxU8))*newBoxesCapacity), "Updated Boxes"));
 	}
@@ -584,7 +585,6 @@ bool BroadPhaseSap::setUpdateData(const BroadPhaseUpdateData& updateData)
 
 		mListNext = reinterpret_cast<BpHandle*>(PX_ALLOC(ALIGN_SIZE_16((sizeof(BpHandle)*newEndPointsCapacity)), "NextList"));
 		mListPrev = reinterpret_cast<BpHandle*>(PX_ALLOC(ALIGN_SIZE_16((sizeof(BpHandle)*newEndPointsCapacity)), "Prev"));
-
 
 		for(PxU32 a = 1; a < newEndPointsCapacity; ++a)
 		{
@@ -675,15 +675,13 @@ void BroadPhaseSap::postUpdate()
 		mActualDeletedPairSize,
 		mPairs);
 
-	//DeletePairsLists(mActualDeletedPairSize, mDeletedPairsArray, mPairs);
+#ifdef TEST_DELETED_PAIRS
+	// PT: TODO: why did we move this to another place?
+	DeletePairsLists(mActualDeletedPairSize, mDeletedPairsArray, mPairs);
+#endif
 
 	PX_ASSERT(isSelfConsistent());
 	mBoxesSizePrev=mBoxesSize;
-}
-
-void BroadPhaseSap::deletePairs()
-{
-	DeletePairsLists(mActualDeletedPairSize, mDeletedPairsArray, mPairs);
 }
 
 void BroadPhaseBatchUpdateWorkTask::runInternal()
@@ -773,10 +771,10 @@ void BroadPhaseSap::ComputeSortedLists(	//const PxVec4& globalMin, const PxVec4&
 {
 	//To help us gather the two lists of sorted boxes we are going to use a bitmap and our knowledge of the indices of the new boxes
 	const PxU32 bitmapWordCount = ((mBoxesCapacity*2 + 31) & ~31)/32;
-	Cm::TmpMem<PxU32, 8> bitMapMem(bitmapWordCount);
+	TmpMem<PxU32, 8> bitMapMem(bitmapWordCount);
 	PxU32* bitMapWords = bitMapMem.getBase();
 	PxMemSet(bitMapWords, 0, sizeof(PxU32)*bitmapWordCount);
-	Cm::BitMap bitmap;
+	PxBitMap bitmap;
 	bitmap.setWords(bitMapWords, bitmapWordCount);
 
 	const PxU32 axis0 = 0;
@@ -873,8 +871,8 @@ void BroadPhaseSap::ComputeSortedLists(	//const PxVec4& globalMin, const PxVec4&
 	PX_ASSERT(oldBoxIndicesCount<=((numSortedEndPoints-NUM_SENTINELS)/2));
 }
 
-//#include "PsVecMath.h"
-//using namespace shdfnd::aos;
+//#include "foundation/PxVecMath.h"
+//using namespace aos;
 
 void BroadPhaseSap::batchCreate()
 {
@@ -920,7 +918,7 @@ void BroadPhaseSap::batchCreate()
 	{
 		const PxU32 numEndPoints = numNewBoxes*2;
 
-		Cm::TmpMem<ValType, 32> nepsv(numEndPoints), bv(numEndPoints);
+		TmpMem<ValType, 32> nepsv(numEndPoints), bv(numEndPoints);
 		ValType* newEPSortedValues = nepsv.getBase();
 		ValType* bufferValues = bv.getBase();
 
@@ -989,7 +987,7 @@ void BroadPhaseSap::batchCreate()
 
 	// Perform box-pruning
 	{
-	// PT: TODO: use the scratch allocator in Cm::TmpMem
+	// PT: TODO: use the scratch allocator in TmpMem
 
 	//Number of newly-created boxes (still to be sorted) and number of old boxes (already sorted).
 	const PxU32 numNewBoxes = mCreatedSize;
@@ -999,8 +997,8 @@ void BroadPhaseSap::batchCreate()
 	//one list for new boxes and one list for existing boxes.
 	//Only gather the existing boxes that overlap the bounding box of 
 	//all new boxes.
-	Cm::TmpMem<BpHandle, 8> oldBoxesIndicesSortedMem(numOldBoxes);
-	Cm::TmpMem<BpHandle, 8> newBoxesIndicesSortedMem(numNewBoxes);
+	TmpMem<BpHandle, 8> oldBoxesIndicesSortedMem(numOldBoxes);
+	TmpMem<BpHandle, 8> newBoxesIndicesSortedMem(numNewBoxes);
 	BpHandle* oldBoxesIndicesSorted = oldBoxesIndicesSortedMem.getBase();
 	BpHandle* newBoxesIndicesSorted = newBoxesIndicesSortedMem.getBase();
 	PxU32 oldBoxCount = 0;
@@ -1019,13 +1017,7 @@ void BroadPhaseSap::batchCreate()
 		const AuxData data0(newBoxCount, mBoxEndPts, newBoxesIndicesSorted, mBoxGroups);
 
 		if(!allNewBoxesStatics)
-		{
-			performBoxPruningNewNew(&data0, mScratchAllocator,
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-				mLUT,
-#endif
-				mPairs, mData, mDataSize, mDataCapacity);
-		}
+			performBoxPruningNewNew(&data0, mScratchAllocator, mFilter->getLUT(), mPairs, mData, mDataSize, mDataCapacity);
 
 		// the old boxes are not the first ones in the array
 		if(numOldBoxes)
@@ -1034,11 +1026,7 @@ void BroadPhaseSap::batchCreate()
 			{
 				const AuxData data1(oldBoxCount, mBoxEndPts, oldBoxesIndicesSorted, mBoxGroups);
 
-				performBoxPruningNewOld(&data0, &data1, mScratchAllocator,
-#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-				mLUT,
-#endif
-					mPairs, mData, mDataSize, mDataCapacity);
+				performBoxPruningNewOld(&data0, &data1, mScratchAllocator, mFilter->getLUT(), mPairs, mData, mDataSize, mDataCapacity);
 			}
 		}
 	}
@@ -1090,10 +1078,10 @@ void BroadPhaseSap::batchRemove()
 		const PxU32 Limit = mBoxesSize*2+NUM_SENTINELS;
 		while(ReadIndex!=Limit)
 		{
-			Ps::prefetchLine(&BaseEPData[ReadIndex],128);
+			PxPrefetchLine(&BaseEPData[ReadIndex],128);
 			while(ReadIndex!=Limit && BaseEPData[ReadIndex] == PX_REMOVED_BP_HANDLE)
 			{
-				Ps::prefetchLine(&BaseEPData[ReadIndex],128);
+				PxPrefetchLine(&BaseEPData[ReadIndex],128);
 				ReadIndex++;
 			}
 			if(ReadIndex!=Limit)
@@ -1128,9 +1116,9 @@ void BroadPhaseSap::batchRemove()
 	}
 
 	const PxU32 bitmapWordCount=1+(mBoxesCapacity>>5);
-	Cm::TmpMem<PxU32, 128> bitmapWords(bitmapWordCount);
+	TmpMem<PxU32, 128> bitmapWords(bitmapWordCount);
 	PxMemZero(bitmapWords.getBase(),sizeof(PxU32)*bitmapWordCount);
-	Cm::BitMap bitmap;
+	PxBitMap bitmap;
 	bitmap.setWords(bitmapWords.getBase(),bitmapWordCount);
 	for(PxU32 i=0;i<mRemovedSize;i++)
 	{
@@ -1159,7 +1147,6 @@ static BroadPhasePair* resizeBroadPhasePairArray(const PxU32 oldMaxNb, const PxU
 }
 
 #define PERFORM_COMPARISONS 1
-
 
 void BroadPhaseSap::batchUpdate
 (const PxU32 Axis, BroadPhasePair*& pairs, PxU32& pairsSize, PxU32& pairsCapacity)
@@ -1304,11 +1291,7 @@ void BroadPhaseSap::batchUpdate
 								            boxMinMax0[ownerId].mMinMax[0],boxMinMax0[ownerId].mMinMax[1],boxMinMax1[ownerId].mMinMax[0],boxMinMax1[ownerId].mMinMax[1])
 
 	#if BP_SAP_TEST_GROUP_ID_CREATEUPDATE
-		#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								&& groupFiltering(group, asapBoxGroupIds[ownerId], mLUT)
-		#else
-								&& groupFiltering(group, asapBoxGroupIds[ownerId])
-		#endif
+								&& groupFiltering(group, asapBoxGroupIds[ownerId], mFilter->getLUT())
 	#else
 								&& handle!=ownerId
 	#endif
@@ -1355,11 +1338,7 @@ void BroadPhaseSap::batchUpdate
 								       boxMinMax0[ownerId].mMinMax[0],boxMinMax0[ownerId].mMinMax[1],boxMinMax1[ownerId].mMinMax[0],boxMinMax1[ownerId].mMinMax[1])
 #endif
 #if BP_SAP_TEST_GROUP_ID_CREATEUPDATE
-	#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								&& groupFiltering(group, asapBoxGroupIds[ownerId], mLUT)
-	#else
-								&& groupFiltering(group, asapBoxGroupIds[ownerId])
-	#endif
+								&& groupFiltering(group, asapBoxGroupIds[ownerId], mFilter->getLUT())
 #else
 								&& handle!=ownerId
 #endif
@@ -1431,7 +1410,6 @@ void BroadPhaseSap::batchUpdate
 	pairsSize=numPairs;
 	pairsCapacity=maxNumPairs;
 
-
 	BroadPhaseActivityPocket* pocket = mActivityPockets+1;
 
 	while(pocket <= currentPocket)
@@ -1468,7 +1446,6 @@ void BroadPhaseSap::batchUpdate
 				mListPrev[mListPrev[a]] = remappedIndex;
 				asapBoxes[ownerId].mMinMax[IsMax] = BpHandle(a);
 			}
-			
 		}
 
 		////Reset next and prev ptrs back
@@ -1483,9 +1460,7 @@ void BroadPhaseSap::batchUpdate
 	mListPrev[0] = 0;
 }
 
-
-void BroadPhaseSap::batchUpdateFewUpdates
-(const PxU32 Axis, BroadPhasePair*& pairs, PxU32& pairsSize, PxU32& pairsCapacity)
+void BroadPhaseSap::batchUpdateFewUpdates(const PxU32 Axis, BroadPhasePair*& pairs, PxU32& pairsSize, PxU32& pairsCapacity)
 {
 	PxU32 numPairs=0;
 	PxU32 maxNumPairs=pairsCapacity;
@@ -1549,7 +1524,7 @@ void BroadPhaseSap::batchUpdateFewUpdates
 			mSortedUpdateElements[ind_++] = Object->mMinMax[0];
 			mSortedUpdateElements[ind_++] = Object->mMinMax[1];
 		}
-		Ps::sort(mSortedUpdateElements, ind_);
+		PxSort(mSortedUpdateElements, ind_);
 	}
 	else
 	{
@@ -1646,11 +1621,7 @@ void BroadPhaseSap::batchUpdateFewUpdates
 								Intersect2D_Handle(boxMinMax0[handle].mMinMax[0], boxMinMax0[handle].mMinMax[1], boxMinMax1[handle].mMinMax[0], boxMinMax1[handle].mMinMax[1],
 								       boxMinMax0[ownerId].mMinMax[0],boxMinMax0[ownerId].mMinMax[1],boxMinMax1[ownerId].mMinMax[0],boxMinMax1[ownerId].mMinMax[1])
 	#if BP_SAP_TEST_GROUP_ID_CREATEUPDATE
-		#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								&& groupFiltering(group, asapBoxGroupIds[ownerId], mLUT)
-		#else
-								&& groupFiltering(group, asapBoxGroupIds[ownerId])
-		#endif
+								&& groupFiltering(group, asapBoxGroupIds[ownerId], mFilter->getLUT())
 	#else
 								&& Object!=id1
 	#endif
@@ -1697,11 +1668,7 @@ void BroadPhaseSap::batchUpdateFewUpdates
 								       boxMinMax0[ownerId].mMinMax[0],boxMinMax0[ownerId].mMinMax[1],boxMinMax1[ownerId].mMinMax[0],boxMinMax1[ownerId].mMinMax[1])
 #endif
 #if BP_SAP_TEST_GROUP_ID_CREATEUPDATE
-	#ifdef BP_FILTERING_USES_TYPE_IN_GROUP
-								&& groupFiltering(group, asapBoxGroupIds[ownerId], mLUT)
-	#else
-								&& groupFiltering(group, asapBoxGroupIds[ownerId])
-	#endif
+								&& groupFiltering(group, asapBoxGroupIds[ownerId], mFilter->getLUT())
 #else
 								&& Object!=id1
 #endif
@@ -1776,7 +1743,6 @@ void BroadPhaseSap::batchUpdateFewUpdates
 	pairsSize=numPairs;
 	pairsCapacity=maxNumPairs;
 
-
 	BroadPhaseActivityPocket* pocket = mActivityPockets+1;
 
 	while(pocket <= currentPocket)
@@ -1830,9 +1796,7 @@ void BroadPhaseSap::batchUpdateFewUpdates
 bool BroadPhaseSap::isSelfOrdered() const 
 {
 	if(0==mBoxesSize)
-	{
 		return true;
-	}
 
 	for(PxU32 Axis=0;Axis<3;Axis++)
 	{
@@ -1844,33 +1808,23 @@ bool BroadPhaseSap::isSelfOrdered() const
 			const ValType prevVal=mEndPointValues[Axis][it-1];
 			const ValType currVal=mEndPointValues[Axis][it];
 			if(currVal<prevVal)
-			{
 				return false;
-			}
 
 			//Test the end point array is consistent.
 			const BpHandle ismax=isMax(mEndPointDatas[Axis][it]);
 			const BpHandle ownerId=getOwner(mEndPointDatas[Axis][it]);
 			if(mBoxEndPts[Axis][ownerId].mMinMax[ismax]!=it)
-			{
 				return false;
-			}
 
 			//Test the mins are even, the maxes are odd, and the extents are finite.
 			const ValType boxMin = mEndPointValues[Axis][mBoxEndPts[Axis][ownerId].mMinMax[0]];
 			const ValType boxMax = mEndPointValues[Axis][mBoxEndPts[Axis][ownerId].mMinMax[1]];
 			if(boxMin & 1)
-			{
 				return false;
-			}
 			if(0==(boxMax & 1))
-			{
 				return false;
-			}
 			if(boxMax<=boxMin)
-			{
 				return false;
-			}
 
 			it++;
 		}
@@ -1882,9 +1836,7 @@ bool BroadPhaseSap::isSelfOrdered() const
 bool BroadPhaseSap::isSelfConsistent() const 
 {
 	if(0==mBoxesSize)
-	{
 		return true;
-	}
 
 	for(PxU32 Axis=0;Axis<3;Axis++)
 	{
@@ -1903,19 +1855,13 @@ bool BroadPhaseSap::isSelfConsistent() const
 			const ValType test1=boxMinMaxs[ismax];
 			const ValType test2=mEndPointValues[Axis][it];
 			if(test1!=test2)
-			{
 				return false;
-			}
 			if(test2<prevVal)
-			{
 				return false;
-			}
 			prevVal=test2;
 
 			if(mBoxEndPts[Axis][ownerId].mMinMax[ismax]!=it)
-			{
 				return false;
-			}
 
 			it++;
 		}
@@ -1928,9 +1874,7 @@ bool BroadPhaseSap::isSelfConsistent() const
 		IntegerAABB aabb0(mBoxBoundsMinMax[a], mContactDistance[a]);
 		IntegerAABB aabb1(mBoxBoundsMinMax[b], mContactDistance[b]);
 		if(!aabb0.intersects(aabb1))
-		{
 			return false;
-		}
 	}
 
 	for(PxU32 i=0;i<mDeletedPairsSize;i++)
@@ -1942,9 +1886,7 @@ bool BroadPhaseSap::isSelfConsistent() const
 		for(PxU32 j=0;j<mRemovedSize;j++)
 		{
 			if(a==mRemoved[j] || b==mRemoved[j])
-			{
 				isDeleted=true;
-			}
 		}
 
 		if(!isDeleted)

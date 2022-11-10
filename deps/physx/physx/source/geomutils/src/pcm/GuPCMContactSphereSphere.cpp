@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,37 +22,32 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#include "geomutils/GuContactBuffer.h"
-#include "GuGeometryUnion.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuContactMethodImpl.h"
-#include "PsVecTransform.h"
+#include "foundation/PxVecTransform.h"
 
-namespace physx
-{
-namespace Gu
-{
-bool pcmContactSphereSphere(GU_CONTACT_METHOD_ARGS)
+using namespace physx;
+
+bool Gu::pcmContactSphereSphere(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	using namespace Ps::aos;
-	const PxSphereGeometry& shapeSphere0 = shape0.get<const PxSphereGeometry>();
-	const PxSphereGeometry& shapeSphere1 = shape1.get<const PxSphereGeometry>();
+	using namespace aos;
+	const PxSphereGeometry& shapeSphere0 = checkedCast<PxSphereGeometry>(shape0);
+	const PxSphereGeometry& shapeSphere1 = checkedCast<PxSphereGeometry>(shape1);
 	
 	const FloatV cDist	= FLoad(params.mContactDistance);
 	const Vec3V p0 =  V3LoadA(&transform0.p.x);
 	const Vec3V p1 =  V3LoadA(&transform1.p.x);
 
-	const FloatV r0		= FLoad(shapeSphere0.radius);
-	const FloatV r1		= FLoad(shapeSphere1.radius);
+	const FloatV r0	= FLoad(shapeSphere0.radius);
+	const FloatV r1	= FLoad(shapeSphere1.radius);
 	
-
 	const Vec3V _delta = V3Sub(p0, p1);
 	const FloatV distanceSq = V3Dot(_delta, _delta);
 	const FloatV radiusSum = FAdd(r0, r1);
@@ -68,8 +62,8 @@ bool pcmContactSphereSphere(GU_CONTACT_METHOD_ARGS)
 		const Vec3V point = V3ScaleAdd(normal, r1, p1);
 		const FloatV pen = FSub(dist, radiusSum);
 		
-		PX_ASSERT(contactBuffer.count < ContactBuffer::MAX_CONTACTS);
-		Gu::ContactPoint& contact = contactBuffer.contacts[contactBuffer.count++];
+		PX_ASSERT(contactBuffer.count < PxContactBuffer::MAX_CONTACTS);
+		PxContactPoint& contact = contactBuffer.contacts[contactBuffer.count++];
 		V4StoreA(Vec4V_From_Vec3V(normal), &contact.normal.x);
 		V4StoreA(Vec4V_From_Vec3V(point), &contact.point.x);
 		FStore(pen, &contact.separation);
@@ -80,5 +74,3 @@ bool pcmContactSphereSphere(GU_CONTACT_METHOD_ARGS)
 	}
 	return false;
 }
-}//Gu
-}//physx

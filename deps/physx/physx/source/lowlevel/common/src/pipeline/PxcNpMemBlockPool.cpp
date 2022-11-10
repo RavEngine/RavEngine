@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,22 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxPreprocessor.h"
 #include "foundation/PxMath.h"
 #include "PxcNpMemBlockPool.h"
-#include "PsUserAllocated.h"
-#include "PsInlineArray.h"
-#include "PsFoundation.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxInlineArray.h"
+#include "PxcScratchAllocator.h"
 
 using namespace physx;
 
 PxcNpMemBlockPool::PxcNpMemBlockPool(PxcScratchAllocator& allocator):
-  mConstraints(PX_DEBUG_EXP("PxcNpMemBlockPool::mConstraints")),
-  mExceptionalConstraints(PX_DEBUG_EXP("PxcNpMemBlockPool::mExceptionalConstraints")),
+  mConstraints("PxcNpMemBlockPool::mConstraints"),
+  mExceptionalConstraints("PxcNpMemBlockPool::mExceptionalConstraints"),
   mNpCacheActiveStream(0),
   mFrictionActiveStream(0),
   mCCDCacheActiveStream(0),
@@ -89,10 +88,9 @@ PxU32 PxcNpMemBlockPool::getPeakConstraintBlockCount() const
 	return mPeakConstraintAllocations;
 }
 
-
 void PxcNpMemBlockPool::setBlockCount(PxU32 blockCount)
 {
-	Ps::Mutex::ScopedLock lock(mLock);
+	PxMutex::ScopedLock lock(mLock);
 	PxU32 current = getUsedBlockCount();
 	for(PxU32 i=current;i<blockCount;i++)
 	{
@@ -103,14 +101,14 @@ void PxcNpMemBlockPool::setBlockCount(PxU32 blockCount)
 
 void PxcNpMemBlockPool::releaseUnusedBlocks()
 {
-	Ps::Mutex::ScopedLock lock(mLock);
+	PxMutex::ScopedLock lock(mLock);
 	while(mUnused.size())
 	{
-		PX_FREE(mUnused.popBack());
+		PxcNpMemBlock* ptr = mUnused.popBack();
+		PX_FREE(ptr);
 		mAllocatedBlocks--;
 	}
 }
-
 
 PxcNpMemBlockPool::~PxcNpMemBlockPool()
 {
@@ -147,7 +145,7 @@ void PxcNpMemBlockPool::acquireConstraintMemory()
 
 void PxcNpMemBlockPool::releaseConstraintMemory()
 {
-	Ps::Mutex::ScopedLock lock(mLock);
+	PxMutex::ScopedLock lock(mLock);
 
 	mPeakConstraintAllocations = mConstraintAllocations = 0;
 	
@@ -179,10 +177,9 @@ void PxcNpMemBlockPool::releaseConstraintMemory()
 	}
 }
 
-
 PxcNpMemBlock* PxcNpMemBlockPool::acquire(PxcNpMemBlockArray& trackingArray, PxU32* allocationCount, PxU32* peakAllocationCount, bool isScratchAllocation)
 {
-	Ps::Mutex::ScopedLock lock(mLock);
+	PxMutex::ScopedLock lock(mLock);
 	if(allocationCount && peakAllocationCount)
 	{
 		*peakAllocationCount = PxMax(*allocationCount + 1, *peakAllocationCount);
@@ -199,7 +196,6 @@ PxcNpMemBlock* PxcNpMemBlockPool::acquire(PxcNpMemBlockArray& trackingArray, PxU
 		trackingArray.pushBack(block);
 		return block;
 	}
-
 	
 	if(mUnused.size())
 	{
@@ -210,11 +206,10 @@ PxcNpMemBlock* PxcNpMemBlockPool::acquire(PxcNpMemBlockArray& trackingArray, PxU
 		return block;
 	}	
 
-
 	if(mAllocatedBlocks == mMaxBlocks)
 	{
 #if PX_CHECKED
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
 				"Reached maximum number of allocated blocks so 16k block allocation will fail!");
 #endif
 		return NULL;
@@ -223,7 +218,7 @@ PxcNpMemBlock* PxcNpMemBlockPool::acquire(PxcNpMemBlockArray& trackingArray, PxU
 #if PX_CHECKED
 	if(mInitialBlocks)
 	{
-		Ps::getFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__,
 			"Number of required 16k memory blocks has exceeded the initial number of blocks. Allocator is being called. Consider increasing the number of pre-allocated 16k blocks.");
 	}
 #endif
@@ -250,7 +245,7 @@ PxU8* PxcNpMemBlockPool::acquireExceptionalConstraintMemory(PxU32 size)
 	PxU8* memory = reinterpret_cast<PxU8*>(PX_ALLOC(size, "PxcNpExceptionalMemory"));
 	if(memory)
 	{
-		Ps::Mutex::ScopedLock lock(mLock);
+		PxMutex::ScopedLock lock(mLock);
 		mExceptionalConstraints.pushBack(memory);
 	}
 	return memory;
@@ -258,7 +253,7 @@ PxU8* PxcNpMemBlockPool::acquireExceptionalConstraintMemory(PxU32 size)
 
 void PxcNpMemBlockPool::release(PxcNpMemBlockArray& deadArray, PxU32* allocationCount)
 {
-	Ps::Mutex::ScopedLock lock(mLock);
+	PxMutex::ScopedLock lock(mLock);
 	PX_ASSERT(mUsedBlocks >= deadArray.size());
 	mUsedBlocks -= deadArray.size();
 	if(allocationCount)
@@ -279,9 +274,11 @@ void PxcNpMemBlockPool::release(PxcNpMemBlockArray& deadArray, PxU32* allocation
 void PxcNpMemBlockPool::flushUnused()
 {
 	while(mUnused.size())
-		PX_FREE(mUnused.popBack());
+	{
+		PxcNpMemBlock* ptr = mUnused.popBack();
+		PX_FREE(ptr);
+	}
 }
-
 
 PxcNpMemBlock* PxcNpMemBlockPool::acquireConstraintBlock()
 {
@@ -301,10 +298,9 @@ PxcNpMemBlock* PxcNpMemBlockPool::acquireContactBlock()
 	return acquire(mContacts[mContactIndex], NULL, NULL, true);
 }
 
-
 void PxcNpMemBlockPool::releaseConstraintBlocks(PxcNpMemBlockArray& memBlocks)
 {
-	Ps::Mutex::ScopedLock lock(mLock);
+	PxMutex::ScopedLock lock(mLock);
 	
 	while(memBlocks.size())
 	{
@@ -348,4 +344,3 @@ void PxcNpMemBlockPool::swapNpCacheStreams()
 	release(mNpCache[1-mNpCacheActiveStream]);
 	mNpCacheActiveStream = 1-mNpCacheActiveStream;
 }
-

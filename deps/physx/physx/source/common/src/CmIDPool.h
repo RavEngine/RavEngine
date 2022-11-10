@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_ID_POOL
-#define PX_PHYSICS_COMMON_ID_POOL
+#ifndef CM_ID_POOL_H
+#define CM_ID_POOL_H
 
 #include "foundation/Px.h"
-#include "CmPhysXCommon.h"
-#include "PsArray.h"
-#include "PsUserAllocated.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
 namespace Cm
 {
 	template<class FreeBuffer>
-	class IDPoolBase : public Ps::UserAllocated
+	class IDPoolBase : public PxUserAllocated
 	{
 	protected:
 		PxU32			mCurrentID;
@@ -176,7 +173,7 @@ namespace Cm
 	};
 
 	//Dynamic resize IDPool
-	class IDPool : public IDPoolBase<Ps::Array<PxU32> >
+	class IDPool : public IDPoolBase<PxArray<PxU32> >
 	{
 	};
 
@@ -195,7 +192,7 @@ namespace Cm
 	};
 
 	//Dynamic resize DeferredIDPool
-	class DeferredIDPool : public DeferredIDPoolBase<Ps::Array<PxU32> >
+	class DeferredIDPool : public DeferredIDPoolBase<PxArray<PxU32> >
 	{
 
 	};

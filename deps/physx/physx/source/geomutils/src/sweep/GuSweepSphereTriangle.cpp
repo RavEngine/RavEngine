@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,8 +32,23 @@
 #include "GuIntersectionRayTriangle.h"
 #include "GuCapsule.h"
 #include "GuInternal.h"
-#include "PsUtilities.h"
+#include "foundation/PxUtilities.h"
 #include "GuDistancePointTriangle.h"
+
+//#define PX_2413_FIX	// Works in VT, but UT fails
+
+#ifdef PX_2413_FIX
+	#define FIXUP_UVS	u += du;	v += dv;
+#else
+	#define FIXUP_UVS
+#endif
+
+static const bool gSanityCheck = false;
+//static const float gEpsilon = 0.1f;
+#define gEpsilon	0.1f	// PT: because otherwise compiler complains that this is unused
+
+// PT: alternative version that checks 2 capsules max and avoids the questionable heuristic and the whole du/dv fix
+static const bool gUseAlternativeImplementation = true;
 
 using namespace physx;
 using namespace Gu;
@@ -82,6 +96,50 @@ static PX_FORCE_INLINE PxU32 rayTriSpecial(const PxVec3& orig, const PxVec3& dir
 
 	return 2;
 }
+
+#ifdef PX_2413_FIX
+static PX_FORCE_INLINE PxU32 rayTriSpecial3(const PxVec3& orig, const PxVec3& offset, const PxVec3& dir, const PxVec3& vert0, const PxVec3& edge1, const PxVec3& edge2, PxReal& t, PxReal& u, PxReal& v, PxReal& du, PxReal& dv)
+{
+	// Begin calculating determinant - also used to calculate U parameter
+	const PxVec3 pvec = dir.cross(edge2);
+
+	// If determinant is near zero, ray lies in plane of triangle
+	const PxReal det = edge1.dot(pvec);
+
+	// the non-culling branch
+//	if(det>-GU_CULLING_EPSILON_RAY_TRIANGLE && det<GU_CULLING_EPSILON_RAY_TRIANGLE)
+	if(det>-LOCAL_EPSILON && det<LOCAL_EPSILON)
+		return 0;
+	const PxReal oneOverDet = 1.0f / det;
+
+	// Calculate distance from vert0 to ray origin
+	const PxVec3 tvec = orig - vert0;
+
+	// Calculate U parameter
+	u = (tvec.dot(pvec)) * oneOverDet;
+
+	// prepare to test V parameter
+	const PxVec3 qvec = tvec.cross(edge1);
+
+	// Calculate V parameter
+	v = (dir.dot(qvec)) * oneOverDet;
+
+	if(u<0.0f || u>1.0f || v<0.0f || u+v>1.0f)
+	{
+		du = (offset.dot(pvec)) * oneOverDet;
+
+		const PxVec3 qvec = offset.cross(edge1);
+
+		dv = (dir.dot(qvec)) * oneOverDet;
+		return 1;
+	}
+
+	// Calculate t, ray intersects triangle
+	t = (edge2.dot(qvec)) * oneOverDet;
+
+	return 2;
+}
+#endif
 
 // Returns true if sphere can be tested against triangle vertex, false if edge test should be performed
 //
@@ -163,6 +221,9 @@ bool Gu::sweepSphereVSTri(const PxVec3* PX_RESTRICT triVerts, const PxVec3& norm
 	#define INTERSECT_POINT (triVerts[1]*u) + (triVerts[2]*v) + (triVerts[0] * (1.0f-u-v))
 
 	PxReal u,v;
+#ifdef PX_2413_FIX
+	float du, dv;
+#endif
 	{
 		PxVec3 R = normal * radius;
 		if(dir.dot(R) >= 0.0f)
@@ -173,7 +234,11 @@ bool Gu::sweepSphereVSTri(const PxVec3* PX_RESTRICT triVerts, const PxVec3& norm
 
 		// PT: casting against the extruded triangle in direction R is the same as casting from a ray moved by -R
 		PxReal t;
+#ifdef PX_2413_FIX
+		const PxU32 r = rayTriSpecial3(center-R, R, dir, triVerts[0], edge10, edge20, t, u, v, du, dv);
+#else
 		const PxU32 r = rayTriSpecial(center-R, dir, triVerts[0], edge10, edge20, t, u, v);
+#endif
 		if(!r)
 			return false;
 		if(r==2)
@@ -183,6 +248,34 @@ bool Gu::sweepSphereVSTri(const PxVec3* PX_RESTRICT triVerts, const PxVec3& norm
 			impactDistance = t;
 			directHit = true;
 			return true;
+		}
+	}
+
+	float referenceMinDist = PX_MAX_F32;
+	bool referenceHit = false;
+	if(gSanityCheck)
+	{
+		PxReal t;
+		if(intersectRayCapsule(center, dir, triVerts[0], triVerts[1], radius, t) && t>=0.0f)
+		{
+			referenceHit = true;
+			referenceMinDist = PxMin(referenceMinDist, t);
+		}
+		if(intersectRayCapsule(center, dir, triVerts[1], triVerts[2], radius, t) && t>=0.0f)
+		{
+			referenceHit = true;
+			referenceMinDist = PxMin(referenceMinDist, t);
+		}
+		if(intersectRayCapsule(center, dir, triVerts[2], triVerts[0], radius, t) && t>=0.0f)
+		{
+			referenceHit = true;
+			referenceMinDist = PxMin(referenceMinDist, t);
+		}
+		if(!gUseAlternativeImplementation)
+		{
+			if(referenceHit)
+				impactDistance = referenceMinDist;
+			return referenceHit;
 		}
 	}
 
@@ -214,68 +307,157 @@ bool Gu::sweepSphereVSTri(const PxVec3* PX_RESTRICT triVerts, const PxVec3& norm
 	// switches to edge tests if necessary.
 	//
 
-	bool TestSphere;
-	PxU32 e0,e1;
-	if(u<0.0f)
+	if(gUseAlternativeImplementation)
 	{
-		if(v<0.0f)
+		bool testTwoEdges = false;
+		PxU32 e0,e1,e2=0;
+		if(u<0.0f)
 		{
-			// 0 or 0-1 or 0-2
-			e0 = 0;
-			const PxVec3 intersectPoint = INTERSECT_POINT;
-			TestSphere = edgeOrVertexTest(intersectPoint, triVerts, 0, 1, 2, e1);
-		}
-		else if(u+v>1.0f)
-		{
-			// 2 or 2-0 or 2-1
-			e0 = 2;
-			const PxVec3 intersectPoint = INTERSECT_POINT;
-			TestSphere = edgeOrVertexTest(intersectPoint, triVerts, 2, 0, 1, e1);
-		}
-		else
-		{
-			// 0-2
-			TestSphere = false;
-			e0 = 0;
-			e1 = 2;
-		}
-	}
-	else
-	{
-		if(v<0.0f)
-		{
-			if(u+v>1.0f)
+			if(v<0.0f)
 			{
-				// 1 or 1-0 or 1-2
-				e0 = 1;
-				const PxVec3 intersectPoint = INTERSECT_POINT;
-				TestSphere = edgeOrVertexTest(intersectPoint, triVerts, 1, 0, 2, e1);
+				// 0 or 0-1 or 0-2
+				testTwoEdges = true;
+				e0 = 0;
+				e1 = 1;
+				e2 = 2;
+			}
+			else if(u+v>1.0f)
+			{
+				// 2 or 2-0 or 2-1
+				testTwoEdges = true;
+				e0 = 2;
+				e1 = 0;
+				e2 = 1;
 			}
 			else
 			{
-				// 0-1
-				TestSphere = false;
+				// 0-2
 				e0 = 0;
-				e1 = 1;
+				e1 = 2;
 			}
 		}
 		else
 		{
-			PX_ASSERT(u+v>=1.0f);	// Else hit triangle
-			// 1-2
-			TestSphere = false;
-			e0 = 1;
-			e1 = 2;
+			if(v<0.0f)
+			{
+				if(u+v>1.0f)
+				{
+					// 1 or 1-0 or 1-2
+					testTwoEdges = true;
+					e0 = 1;
+					e1 = 0;
+					e2 = 2;
+				}
+				else
+				{
+					// 0-1
+					e0 = 0;
+					e1 = 1;
+				}
+			}
+			else
+			{
+				PX_ASSERT(u+v>=1.0f);	// Else hit triangle
+				// 1-2
+				e0 = 1;
+				e1 = 2;
+			}
 		}
+
+		bool hit = false;
+		PxReal t;
+		if(intersectRayCapsule(center, dir, triVerts[e0], triVerts[e1], radius, t) && t>=0.0f)
+		{
+			impactDistance = t;
+			hit = true;
+		}
+		if(testTwoEdges && intersectRayCapsule(center, dir, triVerts[e0], triVerts[e2], radius, t) && t>=0.0f)
+		{
+			if(!hit || t<impactDistance)
+			{
+				impactDistance = t;
+				hit = true;
+			}
+		}
+
+		if(gSanityCheck)
+		{
+			PX_ASSERT(referenceHit==hit);
+			if(referenceHit==hit)
+				PX_ASSERT(fabsf(referenceMinDist-impactDistance)<gEpsilon);
+		}
+
+		return hit;
 	}
-	return testRayVsSphereOrCapsule(impactDistance, TestSphere, center, radius, dir, triVerts, e0, e1);
+	else
+	{
+		bool TestSphere;
+		PxU32 e0,e1;
+		if(u<0.0f)
+		{
+			if(v<0.0f)
+			{
+				// 0 or 0-1 or 0-2
+				e0 = 0;
+				FIXUP_UVS
+				const PxVec3 intersectPoint = INTERSECT_POINT;
+				TestSphere = edgeOrVertexTest(intersectPoint, triVerts, 0, 1, 2, e1);
+			}
+			else if(u+v>1.0f)
+			{
+				// 2 or 2-0 or 2-1
+				e0 = 2;
+				FIXUP_UVS
+				const PxVec3 intersectPoint = INTERSECT_POINT;
+				TestSphere = edgeOrVertexTest(intersectPoint, triVerts, 2, 0, 1, e1);
+			}
+			else
+			{
+				// 0-2
+				TestSphere = false;
+				e0 = 0;
+				e1 = 2;
+			}
+		}
+		else
+		{
+			if(v<0.0f)
+			{
+				if(u+v>1.0f)
+				{
+					// 1 or 1-0 or 1-2
+					e0 = 1;
+					FIXUP_UVS
+					const PxVec3 intersectPoint = INTERSECT_POINT;
+					TestSphere = edgeOrVertexTest(intersectPoint, triVerts, 1, 0, 2, e1);
+				}
+				else
+				{
+					// 0-1
+					TestSphere = false;
+					e0 = 0;
+					e1 = 1;
+				}
+			}
+			else
+			{
+				PX_ASSERT(u+v>=1.0f);	// Else hit triangle
+				// 1-2
+				TestSphere = false;
+				e0 = 1;
+				e1 = 2;
+			}
+		}
+
+		return testRayVsSphereOrCapsule(impactDistance, TestSphere, center, radius, dir, triVerts, e0, e1);
+	}
 }
 
 bool Gu::sweepSphereTriangles(	PxU32 nbTris, const PxTriangle* PX_RESTRICT triangles,							// Triangle data
 								const PxVec3& center, const PxReal radius,										// Sphere data
 								const PxVec3& unitDir, PxReal distance,											// Ray data
 								const PxU32* PX_RESTRICT cachedIndex,											// Cache data
-								PxSweepHit& h, PxVec3& triNormalOut,												// Results
+								PxGeomSweepHit& h, PxVec3& triNormalOut,										// Results
 								bool isDoubleSided, bool meshBothSides, bool anyHit, bool testInitialOverlap)	// Query modifiers
 {
 	if(!nbTris)
@@ -320,23 +502,29 @@ bool Gu::sweepSphereTriangles(	PxU32 nbTris, const PxTriangle* PX_RESTRICT trian
 		if(!sweepSphereVSTri(currentTri.verts, triNormal, center, radius, unitDir, currentDistance, unused, testInitialOverlap))
 			continue;
 
-		const PxReal distEpsilon = GU_EPSILON_SAME_DISTANCE; // pick a farther hit within distEpsilon that is more opposing than the previous closest hit
 		const PxReal hitDot = computeAlignmentValue(triNormal, unitDir);
-		if(!keepTriangle(currentDistance, hitDot, curT, bestAlignmentValue, distance, distEpsilon))
-			continue;
-
-		if(currentDistance==0.0f)
+		if(keepTriangle(currentDistance, hitDot, curT, bestAlignmentValue, distance))
 		{
-			triNormalOut = -unitDir;
-			return setInitialOverlapResults(h, unitDir, i);
-		}
+			if(currentDistance==0.0f)
+			{
+				triNormalOut = -unitDir;
+				return setInitialOverlapResults(h, unitDir, i);
+			}
 
-		curT = currentDistance;
-		index = i;		
-		bestAlignmentValue = hitDot; 
-		bestTriNormal = triNormal;
-		if(anyHit)
-			break;
+			curT = PxMin(curT, currentDistance); // exact lower bound
+
+			index = i;		
+			bestAlignmentValue = hitDot; 
+			bestTriNormal = triNormal;
+			if(anyHit)
+				break;
+		}
+		//
+		else if(keepTriangleBasic(currentDistance, curT, distance))
+		{
+			curT = PxMin(curT, currentDistance); // exact lower bound
+		}
+		//
 	}	
 	return computeSphereTriangleImpactData(h, triNormalOut, index, curT, center, unitDir, bestTriNormal, triangles, isDoubleSided, meshBothSides);
 }
@@ -352,19 +540,19 @@ static PX_FORCE_INLINE PxU32 rayQuadSpecial2(const PxVec3& orig, const PxVec3& d
 	// the non-culling branch
 	if(det>-LOCAL_EPSILON && det<LOCAL_EPSILON)
 		return 0;
-	const float OneOverDet = 1.0f / det;
+	const float oneOverDet = 1.0f / det;
 
 	// Calculate distance from vert0 to ray origin
 	const PxVec3 tvec = orig - vert0;
 
 	// Calculate U parameter
-	u = tvec.dot(pvec) * OneOverDet;
+	u = tvec.dot(pvec) * oneOverDet;
 
 	// prepare to test V parameter
 	const PxVec3 qvec = tvec.cross(edge1);
 
 	// Calculate V parameter
-	v = dir.dot(qvec) * OneOverDet;
+	v = dir.dot(qvec) * oneOverDet;
 
 	if(u<0.0f || u>1.0f)
 		return 1;
@@ -372,10 +560,54 @@ static PX_FORCE_INLINE PxU32 rayQuadSpecial2(const PxVec3& orig, const PxVec3& d
 		return 1;
 
 	// Calculate t, ray intersects triangle
-	t = edge2.dot(qvec) * OneOverDet;
+	t = edge2.dot(qvec) * oneOverDet;
 
 	return 2;
 }
+
+#ifdef PX_2413_FIX
+static PX_FORCE_INLINE PxU32 rayQuadSpecial3(const PxVec3& orig, const PxVec3& offset, const PxVec3& dir, const PxVec3& vert0, const PxVec3& edge1, const PxVec3& edge2, float& t, float& u, float& v, float& du, float& dv)
+{
+	// Begin calculating determinant - also used to calculate U parameter
+	const PxVec3 pvec = dir.cross(edge2);
+
+	// If determinant is near zero, ray lies in plane of triangle
+	const float det = edge1.dot(pvec);
+
+	// the non-culling branch
+	if(det>-LOCAL_EPSILON && det<LOCAL_EPSILON)
+		return 0;
+	const float oneOverDet = 1.0f / det;
+
+	// Calculate distance from vert0 to ray origin
+	const PxVec3 tvec = orig - vert0;
+
+	// Calculate U parameter
+	u = tvec.dot(pvec) * oneOverDet;
+
+	// prepare to test V parameter
+	const PxVec3 qvec = tvec.cross(edge1);
+
+	// Calculate V parameter
+	v = dir.dot(qvec) * oneOverDet;
+
+	if(u<0.0f || u>1.0f || v<0.0f || v>1.0f)
+	{
+		du = (offset.dot(pvec)) * oneOverDet;
+
+		const PxVec3 qvec = offset.cross(edge1);
+
+		dv = (dir.dot(qvec)) * oneOverDet;
+
+		return 1;
+	}
+
+	// Calculate t, ray intersects triangle
+	t = edge2.dot(qvec) * oneOverDet;
+
+	return 2;
+}
+#endif
 
 bool Gu::sweepSphereVSQuad(const PxVec3* PX_RESTRICT quadVerts, const PxVec3& normal, const PxVec3& center, float radius, const PxVec3& dir, float& impactDistance)
 {
@@ -425,6 +657,9 @@ bool Gu::sweepSphereVSQuad(const PxVec3* PX_RESTRICT quadVerts, const PxVec3& no
 	}
 
 	float u,v;
+#ifdef PX_2413_FIX
+	float du, dv;
+#endif
 	if(1)
 	{
 		PxVec3 R = normal * radius;
@@ -436,7 +671,11 @@ bool Gu::sweepSphereVSQuad(const PxVec3* PX_RESTRICT quadVerts, const PxVec3& no
 
 		// PT: casting against the extruded quad in direction R is the same as casting from a ray moved by -R
 		float t;
+#ifdef PX_2413_FIX
+		const PxU32 r = rayQuadSpecial3(center-R, R, dir, quadVerts[0], Edge10, Edge20, t, u, v, du, dv);
+#else
 		PxU32 r = rayQuadSpecial2(center-R, dir, quadVerts[0], Edge10, Edge20, t, u, v);
+#endif
 		if(!r)
 			return false;
 		if(r==2)
@@ -448,77 +687,216 @@ bool Gu::sweepSphereVSQuad(const PxVec3* PX_RESTRICT quadVerts, const PxVec3& no
 		}
 	}
 
-	#define INTERSECT_POINT_Q (quadVerts[1]*u) + (quadVerts[2]*v) + (quadVerts[0] * (1.0f-u-v))
-
-	Ps::swap(u,v);
-	bool TestSphere;
-	PxU32 e0,e1;
-	if(u<0.0f)
+	bool referenceHit = false;
+	float referenceMinDist = PX_MAX_F32;
+	if(gSanityCheck)
 	{
-		if(v<0.0f)
+		PxReal t;
+		if(intersectRayCapsule(center, dir, quadVerts[0], quadVerts[1], radius, t) && t>=0.0f)
 		{
-			// 0 or 0-1 or 0-2
-			e0 = 0;
-			const PxVec3 intersectPoint = INTERSECT_POINT_Q;
-			TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 0, 1, 2, e1);
+			referenceHit = true;
+			referenceMinDist = PxMin(referenceMinDist, t);
 		}
-		else if(v>1.0f)
+		if(intersectRayCapsule(center, dir, quadVerts[1], quadVerts[3], radius, t) && t>=0.0f)
 		{
-			// 1 or 1-0 or 1-3
-			e0 = 1;
-			const PxVec3 intersectPoint = INTERSECT_POINT_Q;
-			TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 1, 0, 3, e1);
+			referenceHit = true;
+			referenceMinDist = PxMin(referenceMinDist, t);
 		}
-		else
+		if(intersectRayCapsule(center, dir, quadVerts[3], quadVerts[2], radius, t) && t>=0.0f)
 		{
-			// 0-1
-			TestSphere = false;
-			e0 = 0;
-			e1 = 1;
+			referenceHit = true;
+			referenceMinDist = PxMin(referenceMinDist, t);
+		}
+		if(intersectRayCapsule(center, dir, quadVerts[2], quadVerts[0], radius, t) && t>=0.0f)
+		{
+			referenceHit = true;
+			referenceMinDist = PxMin(referenceMinDist, t);
+		}
+		if(!gUseAlternativeImplementation)
+		{
+			if(referenceHit)
+				impactDistance = referenceMinDist;
+			return referenceHit;
 		}
 	}
-	else if(u>1.0f)
+
+	PxSwap(u, v);
+
+	if(gUseAlternativeImplementation)
 	{
-		if(v<0.0f)
+		bool testTwoEdges = false;
+		PxU32 e0,e1,e2=0;
+
+		if(u<0.0f)
 		{
-			// 2 or 2-0 or 2-3
-			e0 = 2;
-			const PxVec3 intersectPoint = INTERSECT_POINT_Q;
-			TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 2, 0, 3, e1);
+			if(v<0.0f)
+			{
+				// 0 or 0-1 or 0-2
+				testTwoEdges = true;
+				e0 = 0;
+				e1 = 1;
+				e2 = 2;
+			}
+			else if(v>1.0f)
+			{
+				// 1 or 1-0 or 1-3
+				testTwoEdges = true;
+				e0 = 1;
+				e1 = 0;
+				e2 = 3;
+			}
+			else
+			{
+				// 0-1
+				e0 = 0;
+				e1 = 1;
+			}
 		}
-		else if(v>1.0f)
+		else if(u>1.0f)
 		{
-			// 3 or 3-1 or 3-2
-			e0 = 3;
-			const PxVec3 intersectPoint = INTERSECT_POINT_Q;
-			TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 3, 1, 2, e1);
+			if(v<0.0f)
+			{
+				// 2 or 2-0 or 2-3
+				testTwoEdges = true;
+				e0 = 2;
+				e1 = 0;
+				e2 = 3;
+			}
+			else if(v>1.0f)
+			{
+				// 3 or 3-1 or 3-2
+				testTwoEdges = true;
+				e0 = 3;
+				e1 = 1;
+				e2 = 2;
+			}
+			else
+			{
+				// 2-3
+				e0 = 2;
+				e1 = 3;
+			}
 		}
 		else
 		{
-			// 2-3
-			TestSphere = false;
-			e0 = 2;
-			e1 = 3;
+			if(v<0.0f)
+			{
+				// 0-2
+				e0 = 0;
+				e1 = 2;
+			}
+			else
+			{
+				PX_ASSERT(v>=1.0f);	// Else hit quad
+				// 1-3
+				e0 = 1;
+				e1 = 3;
+			}
 		}
+
+		bool hit = false;
+		PxReal t;
+		if(intersectRayCapsule(center, dir, quadVerts[e0], quadVerts[e1], radius, t) && t>=0.0f)
+		{
+			impactDistance = t;
+			hit = true;
+		}
+		if(testTwoEdges && intersectRayCapsule(center, dir, quadVerts[e0], quadVerts[e2], radius, t) && t>=0.0f)
+		{
+			if(!hit || t<impactDistance)
+			{
+				impactDistance = t;
+				hit = true;
+			}
+		}
+
+		if(gSanityCheck)
+		{
+			PX_ASSERT(referenceHit==hit);
+			if(referenceHit==hit)
+				PX_ASSERT(fabsf(referenceMinDist-impactDistance)<gEpsilon);
+		}
+
+		return hit;
 	}
 	else
 	{
-		if(v<0.0f)
+		#define INTERSECT_POINT_Q (quadVerts[1]*u) + (quadVerts[2]*v) + (quadVerts[0] * (1.0f-u-v))
+
+		bool TestSphere;
+		PxU32 e0,e1;
+		if(u<0.0f)
 		{
-			// 0-2
-			TestSphere = false;
-			e0 = 0;
-			e1 = 2;
+			if(v<0.0f)
+			{
+				// 0 or 0-1 or 0-2
+				e0 = 0;
+				FIXUP_UVS
+				const PxVec3 intersectPoint = INTERSECT_POINT_Q;
+				TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 0, 1, 2, e1);
+			}
+			else if(v>1.0f)
+			{
+				// 1 or 1-0 or 1-3
+				e0 = 1;
+				FIXUP_UVS
+				const PxVec3 intersectPoint = INTERSECT_POINT_Q;
+				TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 1, 0, 3, e1);
+			}
+			else
+			{
+				// 0-1
+				TestSphere = false;
+				e0 = 0;
+				e1 = 1;
+			}
+		}
+		else if(u>1.0f)
+		{
+			if(v<0.0f)
+			{
+				// 2 or 2-0 or 2-3
+				e0 = 2;
+				FIXUP_UVS
+				const PxVec3 intersectPoint = INTERSECT_POINT_Q;
+				TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 2, 0, 3, e1);
+			}
+			else if(v>1.0f)
+			{
+				// 3 or 3-1 or 3-2
+				e0 = 3;
+				FIXUP_UVS
+				const PxVec3 intersectPoint = INTERSECT_POINT_Q;
+				TestSphere = edgeOrVertexTest(intersectPoint, quadVerts, 3, 1, 2, e1);
+			}
+			else
+			{
+				// 2-3
+				TestSphere = false;
+				e0 = 2;
+				e1 = 3;
+			}
 		}
 		else
 		{
-			PX_ASSERT(v>=1.0f);	// Else hit quad
-			// 1-3
-			TestSphere = false;
-			e0 = 1;
-			e1 = 3;
+			if(v<0.0f)
+			{
+				// 0-2
+				TestSphere = false;
+				e0 = 0;
+				e1 = 2;
+			}
+			else
+			{
+				PX_ASSERT(v>=1.0f);	// Else hit quad
+				// 1-3
+				TestSphere = false;
+				e0 = 1;
+				e1 = 3;
+			}
 		}
+
+		return testRayVsSphereOrCapsule(impactDistance, TestSphere, center, radius, dir, quadVerts, e0, e1);
 	}
-	return testRayVsSphereOrCapsule(impactDistance, TestSphere, center, radius, dir, quadVerts, e0, e1);
 }
 

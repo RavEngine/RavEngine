@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#include "PsFoundation.h"
-#include "PxsContext.h"
 #include "ScElementSim.h"
 #include "ScElementSimInteraction.h"
-#include "ScSqBoundsManager.h"
 #include "ScSimStats.h"
 
 using namespace physx;
@@ -75,14 +70,70 @@ Sc::ElementSimInteraction* Sc::ElementSim::ElementInteractionReverseIterator::ge
 	return NULL;
 }
 
+namespace
+{
+	class ElemSimPtrTableStorageManager : public Cm::PtrTableStorageManager, public PxUserAllocated
+	{
+		PX_NOCOPY(ElemSimPtrTableStorageManager)
+
+	public:
+		ElemSimPtrTableStorageManager() {}
+		~ElemSimPtrTableStorageManager() {}
+
+		// PtrTableStorageManager
+		virtual	void**	allocate(PxU32 capacity)
+		{
+			return PX_ALLOCATE(void*, capacity, "CmPtrTable pointer array");
+		}
+
+		virtual	void	deallocate(void** addr, PxU32 /*capacity*/)
+		{
+			PX_FREE(addr);
+		}
+
+		virtual	bool canReuse(PxU32 /*originalCapacity*/, PxU32 /*newCapacity*/)
+		{
+			return false;
+		}
+		//~PtrTableStorageManager
+	};
+	ElemSimPtrTableStorageManager gElemSimTableStorageManager;
+}
+
+static PX_FORCE_INLINE void onElementAttach(ElementSim& element, ShapeManager& manager)
+{
+	PX_ASSERT(element.mShapeArrayIndex == 0xffffffff);
+	element.mShapeArrayIndex = manager.mShapes.getCount();
+	manager.mShapes.add(&element, gElemSimTableStorageManager);
+}
+
+void Sc::ShapeManager::onElementDetach(ElementSim& element)
+{
+	const PxU32 index = element.mShapeArrayIndex;
+	PX_ASSERT(index != 0xffffffff);
+	PX_ASSERT(mShapes.getCount());
+	void** ptrs = mShapes.getPtrs();
+	PX_ASSERT(reinterpret_cast<ElementSim*>(ptrs[index]) == &element);
+
+	const PxU32 last = mShapes.getCount() - 1;
+	if (index != last)
+	{
+		ElementSim* moved = reinterpret_cast<ElementSim*>(ptrs[last]);
+		PX_ASSERT(moved->mShapeArrayIndex == last);
+		moved->mShapeArrayIndex = index;
+	}
+	mShapes.replaceWithLast(index, gElemSimTableStorageManager);
+	element.mShapeArrayIndex = 0xffffffff;
+}
+
 Sc::ElementSim::ElementSim(ActorSim& actor) :
-	mNextInActor	(NULL),
 	mActor			(actor),
-	mInBroadPhase	(false)
+	mInBroadPhase	(false),
+	mShapeArrayIndex(0xffffffff)
 {
 	initID();
 
-	actor.onElementAttach(*this);
+	onElementAttach(*this, actor);
 }
 
 Sc::ElementSim::~ElementSim()
@@ -105,27 +156,32 @@ void Sc::ElementSim::setElementInteractionsDirty(InteractionDirtyFlag::Enum flag
 	}
 }
 
-void Sc::ElementSim::addToAABBMgr(PxReal contactDistance, Bp::FilterGroup::Enum group, Ps::IntBool isTrigger)
+void Sc::ElementSim::addToAABBMgr(PxReal contactDistance, Bp::FilterGroup::Enum group, Bp::ElementType::Enum type)
 {
 	Sc::Scene& scene = getScene();
-	if(!scene.getAABBManager()->addBounds(mElementID, contactDistance, group, this, mActor.getActorCore().getAggregateID(), isTrigger ? Bp::ElementType::eTRIGGER : Bp::ElementType::eSHAPE))
+	if(!scene.getAABBManager()->addBounds(mElementID, contactDistance, group, this, mActor.getActorCore().getAggregateID(), type))
 		return;
 
 	mInBroadPhase = true;
 #if PX_ENABLE_SIM_STATS
 	scene.getStatsInternal().incBroadphaseAdds();
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
 }
 
-void Sc::ElementSim::removeFromAABBMgr()
+bool Sc::ElementSim::removeFromAABBMgr()
 {
 	PX_ASSERT(mInBroadPhase);
 	Sc::Scene& scene = getScene();
-	scene.getAABBManager()->removeBounds(mElementID);
+	bool res = scene.getAABBManager()->removeBounds(mElementID);
 	scene.getAABBManager()->getChangedAABBMgActorHandleMap().growAndReset(mElementID);
 
 	mInBroadPhase = false;
 #if PX_ENABLE_SIM_STATS
 	scene.getStatsInternal().incBroadphaseRemoves();
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
 #endif
+	return res;
 }

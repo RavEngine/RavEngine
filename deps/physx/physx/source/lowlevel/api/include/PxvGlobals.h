@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,16 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PXD_INIT_H
-#define PXD_INIT_H
+#ifndef PXV_GLOBALS_H
+#define PXV_GLOBALS_H
 
 #include "PxvConfig.h"
-#include "PsBasicTemplates.h"
+#include "foundation/PxBasicTemplates.h"
 
 namespace physx
 {
@@ -70,17 +68,17 @@ struct PxvOffsetTable
 
 	PX_FORCE_INLINE const PxShape* convertPxsShape2Px(const PxsShapeCore* pxs) const
 	{
-		return shdfnd::pointerOffset<const PxShape*>(pxs, pxsShapeCore2PxShape); 
+		return PxPointerOffset<const PxShape*>(pxs, pxsShapeCore2PxShape); 
 	}
 
 	PX_FORCE_INLINE const PxRigidActor* convertPxsRigidCore2PxRigidBody(const PxsRigidCore* pxs) const
 	{
-		return shdfnd::pointerOffset<const PxRigidActor*>(pxs, pxsRigidCore2PxRigidBody); 
+		return PxPointerOffset<const PxRigidActor*>(pxs, pxsRigidCore2PxRigidBody); 
 	}
 
 	PX_FORCE_INLINE const PxRigidActor* convertPxsRigidCore2PxRigidStatic(const PxsRigidCore* pxs) const
 	{
-		return shdfnd::pointerOffset<const PxRigidActor*>(pxs, pxsRigidCore2PxRigidStatic); 
+		return PxPointerOffset<const PxRigidActor*>(pxs, pxsRigidCore2PxRigidStatic); 
 	}
 
 	ptrdiff_t	pxsShapeCore2PxShape;
@@ -109,6 +107,7 @@ void PxvRegisterHeightFields();
 
 #if PX_SUPPORT_GPU_PHYSX
 class PxPhysXGpu* PxvGetPhysXGpu(bool createIfNeeded);
+void PxvReleasePhysXGpu(PxPhysXGpu*);
 #endif
 
 }

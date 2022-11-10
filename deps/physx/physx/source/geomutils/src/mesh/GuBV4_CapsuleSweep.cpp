@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,12 +31,9 @@
 using namespace physx;
 using namespace Gu;
 
-#if PX_INTEL_FAMILY  && !defined(PX_SIMD_DISABLED)
+#include "foundation/PxVecMath.h"
+using namespace physx::aos;
 
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
-
-#include "GuSIMDHelpers.h"
 #include "GuInternal.h"
 
 #include "GuBV4_BoxOverlap_Internal.h"
@@ -53,6 +49,9 @@ namespace
 		float	mBestAlignmentValue;
 		float	mBestDistance;
 		float	mMaxDist;
+
+//		PX_FORCE_INLINE float	getReportDistance()	const	{ return mStabbedFace.mDistance;	}
+		PX_FORCE_INLINE float	getReportDistance()	const	{ return mBestDistance; }
 	};
 }
 
@@ -73,9 +72,9 @@ namespace
 #define GU_BV4_PROCESS_STREAM_ORDERED
 #include "GuBV4_Internal.h"
 
-Ps::IntBool BV4_CapsuleSweepSingle(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags)
+PxIntBool BV4_CapsuleSweepSingle(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, SweepHit* PX_RESTRICT hit, PxU32 flags)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	CapsuleSweepParams Params;
 	setupCapsuleParams(&Params, capsule, dir, maxDist, &tree, mesh, flags);
@@ -116,7 +115,7 @@ class LeafFunction_CapsuleSweepCB
 {
 public:
 
-	static PX_FORCE_INLINE Ps::IntBool doLeafTest(CapsuleSweepParamsCB* PX_RESTRICT params, PxU32 primIndex)
+	static PX_FORCE_INLINE PxIntBool doLeafTest(CapsuleSweepParamsCB* PX_RESTRICT params, PxU32 primIndex)
 	{
 		PxU32 nbToGo = getNbPrimitives(primIndex);
 		do
@@ -143,7 +142,7 @@ public:
 // PT: for design decisions in this function, refer to the comments of BV4_GenericSweepCB().
 void BV4_CapsuleSweepCB(const Capsule& capsule, const PxVec3& dir, float maxDist, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, SweepUnlimitedCallback callback, void* userData, PxU32 flags, bool nodeSorting)
 {
-	const SourceMesh* PX_RESTRICT mesh = tree.mMeshInterface;
+	const SourceMesh* PX_RESTRICT mesh = static_cast<const SourceMesh*>(tree.mMeshInterface);
 
 	CapsuleSweepParamsCB Params;
 	Params.mCapsuleCB		= capsule;
@@ -170,4 +169,3 @@ void BV4_CapsuleSweepCB(const Capsule& capsule, const PxVec3& dir, float maxDist
 		doBruteForceTests<LeafFunction_CapsuleSweepCB, LeafFunction_CapsuleSweepCB>(mesh->getNbTriangles(), &Params);
 }
 
-#endif

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,19 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_SCP_SIM_STATS
-#define PX_PHYSICS_SCP_SIM_STATS
+#ifndef SC_SIM_STATS_H
+#define SC_SIM_STATS_H
 
 #include "geometry/PxGeometry.h"
 #include "PxSimulationStatistics.h"
-#include "PsAtomic.h"
-#include "PsUserAllocated.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxAtomic.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
@@ -48,7 +45,7 @@ namespace Sc
 	/*
 	Description: contains statistics for the scene.
 	*/
-	class SimStats : public Ps::UserAllocated
+	class SimStats : public PxUserAllocated
 	{
 	public:
 		SimStats();
@@ -80,6 +77,11 @@ namespace Sc
 		typedef PxI32 TriggerPairCountsNonVolatile[PxGeometryType::eCONVEXMESH+1][PxGeometryType::eGEOMETRY_COUNT];
 		typedef volatile TriggerPairCountsNonVolatile TriggerPairCounts;
 		TriggerPairCounts numTriggerPairs;
+
+		PxU64 gpuMemSizeParticles;
+		PxU64 gpuMemSizeSoftBodies;
+		PxU64 gpuMemSizeFEMCloths;
+		PxU64 gpuMemSizeHairSystems;
 	};
 
 } // namespace Sc

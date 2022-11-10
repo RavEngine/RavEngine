@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxSerializer.h"
+#include "foundation/PxHash.h"
+#include "foundation/PxHashMap.h"
+#include "foundation/PxString.h"
 #include "extensions/PxSerialization.h"
 #include "PxPhysics.h"
 #include "PxPhysicsSerialization.h"
 
-#include "PsHash.h"
-#include "PsHashMap.h"
-#include "PsFoundation.h"
-#include "PsString.h"
 #include "SnFile.h"
 #include "SnSerializationContext.h"
 #include "SnConvX_Align.h"
 #include "serialization/SnSerializationRegistry.h"
 #include "serialization/SnSerialUtils.h"
-#include "CmIO.h"
 #include "CmCollection.h"
 
 using namespace physx;
@@ -89,14 +86,14 @@ namespace
 #if PX_CHECKED
 		if (header != PX_MAKE_FOURCC('S','E','B','D'))
 		{
-			Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 				"Buffer contains data with wrong header indicating invalid binary data.");
 			return false;
 		}
 
 		if (!checkCompatibility(binaryVersionGuid))
 		{
-			Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 				"Buffer contains binary data version 0x%s and is incompatible with this PhysX sdk (0x%s).\n", 
 				binaryVersionGuid, getBinaryVersionGuid());
 			return false;
@@ -104,7 +101,7 @@ namespace
 
 		if (platformTag != getBinaryPlatformTag())
 		{
-			Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 				"Buffer contains data with platform mismatch:\nExpected: %s \nActual: %s\n",
 				getBinaryPlatformName(getBinaryPlatformTag()),
 				getBinaryPlatformName(platformTag));
@@ -120,7 +117,7 @@ namespace
 		{
 			if (nbImportReferences > 0)
 			{
-				Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External references needed but no externalRefs collection specified.");
+				PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External references needed but no externalRefs collection specified.");
 				return false;			
 			}
 		}
@@ -134,12 +131,12 @@ namespace
 				PxBase* referencedObject = externalRefs->find(id);
 				if (!referencedObject)
 				{
-					Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External reference %" PX_PRIu64 " expected in externalRefs collection but not found.", id);
+					PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External reference %" PX_PRIu64 " expected in externalRefs collection but not found.", id);
 					return false;
 				}
 				if (referencedObject->getConcreteType() != type)
 				{
-					Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External reference %d type mismatch. Expected %d but found %d in externalRefs collection.", type, referencedObject->getConcreteType());
+					PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External reference %d type mismatch. Expected %d but found %d in externalRefs collection.", type, referencedObject->getConcreteType());
 					return false;
 				}
 			}
@@ -154,7 +151,7 @@ PxCollection* PxSerialization::createCollectionFromBinary(void* memBlock, PxSeri
 #if PX_CHECKED
 	if(size_t(memBlock) & (PX_SERIAL_FILE_ALIGN-1))
 	{
-		Ps::getFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "Buffer must be 128-bytes aligned.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "Buffer must be 128-bytes aligned.");
 		return NULL;
 	}
 #endif
@@ -275,7 +272,7 @@ PxCollection* PxSerialization::createCollectionFromBinary(void* memBlock, PxSeri
 			PxBase* instance = serializer->createObject(address, context);
 			if (!instance)
 			{
-				Ps::getFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+				PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
 					"Cannot create class instance for concrete type %d.", classType);
 				collection->release();
 				return NULL;

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -48,36 +47,13 @@ std::vector<PxVec3> gContactVertices;
 
 namespace
 {
-Snippets::Camera*	sCamera;
-
-void motionCallback(int x, int y)
-{
-	sCamera->handleMotion(x, y);
-}
-
-void keyboardCallback(unsigned char key, int x, int y)
-{
-	if(key==27)
-		exit(0);
-
-	sCamera->handleKey(key, x, y);
-}
-
-void mouseCallback(int button, int state, int x, int y)
-{
-	sCamera->handleMouse(button, state, x, y);
-}
-
-void idleCallback()
-{
-	glutPostRedisplay();
-}
+Snippets::Camera* sCamera;
 
 void renderCallback()
 {
 	stepPhysics(true);
 
-	Snippets::startRender(sCamera->getEye(), sCamera->getDir());
+	Snippets::startRender(sCamera);
 
 	PxScene* scene;
 	PxGetPhysics().getScenes(&scene,1);
@@ -137,17 +113,7 @@ void renderLoop()
 {
 	sCamera = new Snippets::Camera(PxVec3(-1.5f, 6.0f, 14.0f), PxVec3(-0.1f,0.0f,-0.7f));
 
-	Snippets::setupDefaultWindow("PhysX Snippet ContactReport CCD");
-	Snippets::setupDefaultRenderState();
-
-	glutIdleFunc(idleCallback);
-	glutDisplayFunc(renderCallback);
-	glutKeyboardFunc(keyboardCallback);
-	glutMouseFunc(mouseCallback);
-	glutMotionFunc(motionCallback);
-	motionCallback(0,0);
-
-	atexit(exitCallback);
+	Snippets::setupDefault("PhysX Snippet ContactReport CCD", sCamera, NULL, renderCallback, exitCallback);
 
 	initPhysics(true);
 	glutMainLoop();

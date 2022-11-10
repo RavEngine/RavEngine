@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,15 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "GuGeometryUnion.h"
 #include "GuPCMShapeConvex.h"
 #include "GuVecConvexHull.h"
 #include "GuPCMContactGen.h"
-#include "CmRenderOutput.h"
+#include "common/PxRenderOutput.h"
 
 using namespace physx;
 using namespace Gu;
@@ -49,7 +47,6 @@ namespace Gu
 		3, 7, 6, 2,
 		4, 0, 1, 5,
 	};
-
 
    Gu::PCMPolygonalBox::PCMPolygonalBox(const PxVec3& halfSide) : mHalfSide(halfSide)
 	{
@@ -132,15 +129,21 @@ namespace Gu
 		dst->mPolygonVertexRefs		= gPCMBoxPolygonData;
 		dst->mFacesByEdges			= NULL;
 		dst->mVerticesByEdges		= NULL;
+
+		dst->mBigData				= NULL;
+
 		dst->mInternal.mRadius		= 0.0f;
-		dst->mInternal.mExtents[0]	= 0.0f;
-		dst->mInternal.mExtents[1]	= 0.0f;
-		dst->mInternal.mExtents[2]	= 0.0f;
+		dst->mInternal.mExtents[0]	= mHalfSide.x;
+		dst->mInternal.mExtents[1]	= mHalfSide.y;
+		dst->mInternal.mExtents[2]	= mHalfSide.z;
+
+		dst->mScale = PxMeshScale();
 	}
 
-	static void getPCMPolygonalData_Convex(Gu::PolygonalData* PX_RESTRICT dst, const Gu::ConvexHullData* PX_RESTRICT src, const Ps::aos::Mat33V& vertexToShape)
+	static void getPCMPolygonalData_Convex(Gu::PolygonalData* PX_RESTRICT dst, const Gu::ConvexHullData* PX_RESTRICT src, 
+		const aos::Mat33V& vertexToShape)
 	{
-		using namespace Ps::aos;
+		using namespace aos;
 		const Vec3V vertexSpaceCenterOfMass = V3LoadU(src->mCenterOfMass);
 		const Vec3V shapeSpaceCenterOfMass = M33MulV3(vertexToShape, vertexSpaceCenterOfMass);
 		V3StoreU(shapeSpaceCenterOfMass, dst->mCenter);
@@ -156,10 +159,12 @@ namespace Gu
 		dst->mBigData			= src->mBigConvexRawData;
 
 		dst->mInternal			= src->mInternal;
+		
+		dst->mScale				= PxMeshScale();
 	}
 
-
-	static void getPCMPolygonalData_Convex(Gu::PolygonalData* PX_RESTRICT dst, const Gu::ConvexHullData* PX_RESTRICT src, const Cm::FastVertex2ShapeScaling& scaling)
+	static void getPCMPolygonalData_Convex(Gu::PolygonalData* PX_RESTRICT dst, const Gu::ConvexHullData* PX_RESTRICT src, 
+		const Cm::FastVertex2ShapeScaling& scaling, const PxMeshScale& convexScale)
 	{
 		dst->mCenter			= scaling * src->mCenterOfMass;
 		dst->mNbVerts			= src->mNbHullVertices;
@@ -173,8 +178,8 @@ namespace Gu
 
 		dst->mBigData			= src->mBigConvexRawData;
 		dst->mInternal			= src->mInternal;
+		dst->mScale				= convexScale;
 	}
-
 
 	void getPCMConvexData(const Gu::ConvexHullV& convexHull, const bool idtScale, PolygonalData& polyData)
 	{
@@ -186,21 +191,19 @@ namespace Gu
 
 		if(!idtScale)
 			polyData.mInternal.reset();
-
 	}
      
-	bool getPCMConvexData(const Gu::GeometryUnion& shape, Cm::FastVertex2ShapeScaling& scaling, PxBounds3& bounds, PolygonalData& polyData)
+	bool getPCMConvexData(const PxConvexMeshGeometry& shapeConvex, Cm::FastVertex2ShapeScaling& scaling, PxBounds3& bounds, PolygonalData& polyData)
 	{
-		const PxConvexMeshGeometryLL& shapeConvex = shape.get<const PxConvexMeshGeometryLL>();
-
 		const bool idtScale = shapeConvex.scale.isIdentity();
 		if(!idtScale)
 			scaling.init(shapeConvex.scale);
 
-		PX_ASSERT(!shapeConvex.hullData->mAABB.isEmpty());
-		bounds = shapeConvex.hullData->mAABB.transformFast(scaling.getVertex2ShapeSkew());
+		const ConvexHullData* hullData = _getHullData(shapeConvex);
+		PX_ASSERT(!hullData->mAABB.isEmpty());
+		bounds = hullData->mAABB.transformFast(scaling.getVertex2ShapeSkew());
 
-		getPCMPolygonalData_Convex(&polyData, shapeConvex.hullData, scaling);
+		getPCMPolygonalData_Convex(&polyData, hullData, scaling, shapeConvex.scale);
 
 		return idtScale;
 	}

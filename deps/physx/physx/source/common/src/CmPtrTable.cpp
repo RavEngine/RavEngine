@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,25 +22,25 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxAssert.h"
 #include "foundation/PxMemory.h"
 #include "common/PxMetaData.h"
+#include "foundation/PxBitUtils.h"
 #include "CmPtrTable.h"
 #include "CmUtils.h"
-#include "PsBitUtils.h"
 
 using namespace physx;
 using namespace Cm;
 
-PtrTable::PtrTable()
-: mList(NULL)
-, mCount(0)
-, mOwnsMemory(true)
-, mBufferUsed(false)
+PtrTable::PtrTable() :
+	mList		(NULL),
+	mCount		(0),
+	mOwnsMemory	(true),
+	mBufferUsed	(false)
 {
 }
 
@@ -56,8 +55,8 @@ void PtrTable::clear(PtrTableStorageManager& sm)
 {
 	if(mOwnsMemory && mCount>1)
 	{
-		PxU32 implicitCapacity = Ps::nextPowerOfTwo(PxU32(mCount)-1);
-		sm.deallocate(mList, sizeof(void*)*implicitCapacity);
+		const PxU32 implicitCapacity = PxNextPowerOfTwo(PxU32(mCount)-1);
+		sm.deallocate(mList, implicitCapacity);
 	}
 
 	mList = NULL;
@@ -101,11 +100,11 @@ void PtrTable::realloc(PxU32 oldCapacity, PxU32 newCapacity, PtrTableStorageMana
 	if(mOwnsMemory && sm.canReuse(oldCapacity, newCapacity))
 		return;
 
-	void** newMem = sm.allocate(newCapacity * sizeof(void*));
+	void** newMem = sm.allocate(newCapacity);
 	PxMemCopy(newMem, mList, mCount * sizeof(void*));
 
 	if(mOwnsMemory)
-		sm.deallocate(mList, oldCapacity*sizeof(void*));
+		sm.deallocate(mList, oldCapacity);
 
 	mList = newMem;
 	mOwnsMemory = true;
@@ -113,7 +112,7 @@ void PtrTable::realloc(PxU32 oldCapacity, PxU32 newCapacity, PtrTableStorageMana
 
 void PtrTable::add(void* ptr, PtrTableStorageManager& sm)
 {
-	if(mCount == 0)												// 0 -> 1, easy case
+	if(mCount == 0)										// 0 -> 1, easy case
 	{
 		PX_ASSERT(mOwnsMemory);
 		PX_ASSERT(mList == NULL);
@@ -124,13 +123,13 @@ void PtrTable::add(void* ptr, PtrTableStorageManager& sm)
 		return;
 	}
 	
-	if(mCount == 1)												// 1 -> 2, easy case
+	if(mCount == 1)										// 1 -> 2, easy case
 	{
 		PX_ASSERT(mOwnsMemory);
 		PX_ASSERT(mBufferUsed);
 
 		void* single = mSingle;
-		mList = sm.allocate(2*sizeof(void*));
+		mList = sm.allocate(2);
 		mList[0] = single;
 		mBufferUsed = false;
 		mOwnsMemory = true;
@@ -139,11 +138,11 @@ void PtrTable::add(void* ptr, PtrTableStorageManager& sm)
 	{
 		PX_ASSERT(!mBufferUsed);
 
-		if(!mOwnsMemory)										// don't own the memory, must always alloc
-			realloc(0, Ps::nextPowerOfTwo(mCount), sm);			// we're guaranteed nextPowerOfTwo(x) > x
+		if(!mOwnsMemory)								// don't own the memory, must always alloc
+			realloc(0, PxNextPowerOfTwo(mCount), sm);	// we're guaranteed nextPowerOfTwo(x) > x
 
-		else if(Ps::isPowerOfTwo(mCount))						// count is at implicit capacity, so realloc
-			realloc(mCount, PxU32(mCount)*2, sm);				// ... to next higher power of 2
+		else if(PxIsPowerOfTwo(mCount))					// count is at implicit capacity, so realloc
+			realloc(mCount, PxU32(mCount)*2, sm);		// ... to next higher power of 2
 
 		PX_ASSERT(mOwnsMemory);
 	}
@@ -169,7 +168,7 @@ void PtrTable::replaceWithLast(PxU32 index, PtrTableStorageManager& sm)
 		PX_ASSERT(!mBufferUsed);
 		void* ptr = mList[1-index];
 		if(mOwnsMemory)
-			sm.deallocate(mList, 2*sizeof(void*));
+			sm.deallocate(mList, 2);
 		mSingle = ptr;
 		mCount = 1;
 		mBufferUsed = true;
@@ -179,13 +178,13 @@ void PtrTable::replaceWithLast(PxU32 index, PtrTableStorageManager& sm)
 	{
 		PX_ASSERT(!mBufferUsed);
 
-		mList[index] = mList[--mCount];								// remove before adjusting memory
+		mList[index] = mList[--mCount];							// remove before adjusting memory
 
-		if(!mOwnsMemory)											// don't own the memory, must alloc
-			realloc(0, Ps::nextPowerOfTwo(PxU32(mCount)-1), sm);	// if currently a power of 2, don't jump to the next one
+		if(!mOwnsMemory)										// don't own the memory, must alloc
+			realloc(0, PxNextPowerOfTwo(PxU32(mCount)-1), sm);	// if currently a power of 2, don't jump to the next one
 
-		else if(Ps::isPowerOfTwo(mCount))							// own the memory, and implicit capacity requires that we downsize
-			realloc(PxU32(mCount)*2, PxU32(mCount), sm);			// ... from the next power of 2, which was the old implicit capacity
+		else if(PxIsPowerOfTwo(mCount))							// own the memory, and implicit capacity requires that we downsize
+			realloc(PxU32(mCount)*2, PxU32(mCount), sm);		// ... from the next power of 2, which was the old implicit capacity
 
 		PX_ASSERT(mOwnsMemory);
 	}
@@ -199,6 +198,7 @@ void Cm::PtrTable::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, PxU16,	mCount,			0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, bool,		mOwnsMemory,	0)
 	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, bool,		mBufferUsed,	0)
+	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, PxU32,	mFreeSlot,		0)
 
 	//------ Extra-data ------
 

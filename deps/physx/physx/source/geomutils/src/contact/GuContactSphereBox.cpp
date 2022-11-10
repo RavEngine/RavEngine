@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuContactMethodImpl.h"
-#include "GuGeometryUnion.h"
 
 using namespace physx;
 
@@ -156,17 +154,13 @@ static PX_FORCE_INLINE bool ContactSphereBox(const PxVec3& sphereOrigin,
 	}
 }
 
-namespace physx
-{
-namespace Gu
-{
-bool contactSphereBox(GU_CONTACT_METHOD_ARGS)
+bool Gu::contactSphereBox(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
 
-	const PxSphereGeometry& sphereGeom = shape0.get<const PxSphereGeometry>();
-	const PxBoxGeometry& boxGeom = shape1.get<const PxBoxGeometry>();
+	const PxSphereGeometry& sphereGeom = checkedCast<PxSphereGeometry>(shape0);
+	const PxBoxGeometry& boxGeom = checkedCast<PxBoxGeometry>(shape1);
 
 	PxVec3 normal;
 	PxVec3 point;
@@ -177,5 +171,3 @@ bool contactSphereBox(GU_CONTACT_METHOD_ARGS)
 	contactBuffer.contact(point, normal, separation);
 	return true;
 }
-}//Gu
-}//physx

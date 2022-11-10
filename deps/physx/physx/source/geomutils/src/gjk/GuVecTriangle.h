@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -63,9 +62,9 @@ namespace Gu
 		\param[in] p2 Point 2
 		*/
 
-		PX_FORCE_INLINE	TriangleV(const Ps::aos::Vec3VArg p0, const Ps::aos::Vec3VArg p1, const Ps::aos::Vec3VArg p2): ConvexV(ConvexType::eTRIANGLE)									
+		PX_FORCE_INLINE	TriangleV(const aos::Vec3VArg p0, const aos::Vec3VArg p1, const aos::Vec3VArg p2): ConvexV(ConvexType::eTRIANGLE)									
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//const FloatV zero = FZero();
 			const FloatV num = FLoad(0.333333f);
 			center = V3Scale(V3Add(V3Add(p0, p1), p2), num);
@@ -79,7 +78,7 @@ namespace Gu
 
 		PX_FORCE_INLINE	TriangleV(const PxVec3* pts) : ConvexV(ConvexType::eTRIANGLE)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V p0 = V3LoadU(pts[0]);
 			const Vec3V p1 = V3LoadU(pts[1]);
 			const Vec3V p2 = V3LoadU(pts[2]);
@@ -100,7 +99,7 @@ namespace Gu
 		*/
 		PX_FORCE_INLINE			TriangleV(const Gu::TriangleV& triangle) : ConvexV(ConvexType::eTRIANGLE)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			verts[0] = triangle.verts[0];
 			verts[1] = triangle.verts[1];
 			verts[2] = triangle.verts[2];
@@ -117,9 +116,9 @@ namespace Gu
 		{
 		}
 
-		PX_FORCE_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, Ps::aos::Vec3V* vertexs)const
+		PX_FORCE_INLINE void populateVerts(const PxU8* inds, PxU32 numInds, const PxVec3* originalVerts, aos::Vec3V* vertexs)const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 
 			for(PxU32 i=0; i<numInds; ++i)
 			{
@@ -127,14 +126,14 @@ namespace Gu
 			}
 		}
 
-		PX_FORCE_INLINE Ps::aos::FloatV getSweepMargin() const
+		PX_FORCE_INLINE aos::FloatV getSweepMargin() const
 		{
-			return Ps::aos::FMax();
+			return aos::FMax();
 		}
 
-		PX_FORCE_INLINE void setCenter(const Ps::aos::Vec3VArg _center)
+		PX_FORCE_INLINE void setCenter(const aos::Vec3VArg _center)
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			Vec3V offset = V3Sub(_center, center);
 			center = _center;
 			verts[0] = V3Add(verts[0], offset);
@@ -147,9 +146,9 @@ namespace Gu
 
 		\return Triangle normal.
 		*/
-		PX_FORCE_INLINE	Ps::aos::Vec3V	normal() const  
+		PX_FORCE_INLINE	aos::Vec3V	normal() const  
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V ab = V3Sub(verts[1], verts[0]);
 			const Vec3V ac = V3Sub(verts[2], verts[0]);
 			const Vec3V n = V3Cross(ab, ac);
@@ -161,17 +160,17 @@ namespace Gu
 
 		\param[out] _normal Triangle normal (not normalized).
 		*/
-		PX_FORCE_INLINE	void	denormalizedNormal(Ps::aos::Vec3V& _normal) const
+		PX_FORCE_INLINE	void	denormalizedNormal(aos::Vec3V& _normal) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V ab = V3Sub(verts[1], verts[0]);
 			const Vec3V ac = V3Sub(verts[2], verts[0]);
 			_normal = V3Cross(ab, ac);
 		}
 
-		PX_FORCE_INLINE	Ps::aos::FloatV	area() const
+		PX_FORCE_INLINE	aos::FloatV	area() const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const FloatV half = FLoad(0.5f);
 			const Vec3V ba = V3Sub(verts[0], verts[1]);
 			const Vec3V ca = V3Sub(verts[0], verts[2]);
@@ -180,9 +179,9 @@ namespace Gu
 		}
 
 		//dir is in local space, verts in the local space
-		PX_FORCE_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir) const
+		PX_FORCE_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V v0 = verts[0];
 			const Vec3V v1 = verts[1];
 			const Vec3V v2 = verts[2];
@@ -195,9 +194,9 @@ namespace Gu
 			return V3Sel(con0, v0, V3Sel(con1, v1, v2));
 		}
 
-		PX_FORCE_INLINE void supportLocal(const Ps::aos::Vec3VArg dir, Ps::aos::FloatV& min, Ps::aos::FloatV& max) const
+		PX_FORCE_INLINE void supportLocal(const aos::Vec3VArg dir, aos::FloatV& min, aos::FloatV& max) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			const Vec3V v0 = verts[0];
 			const Vec3V v1 = verts[1];
 			const Vec3V v2 = verts[2];
@@ -210,9 +209,9 @@ namespace Gu
 		}
 
 		//dir is in b space
-		PX_FORCE_INLINE Ps::aos::Vec3V supportRelative(const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aToB, const Ps::aos::PsMatTransformV& aTobT) const
+		PX_FORCE_INLINE aos::Vec3V supportRelative(const aos::Vec3VArg dir, const aos::PxMatTransformV& aToB, const aos::PxMatTransformV& aTobT) const
 		{
-			using namespace Ps::aos;
+			using namespace aos;
 			//verts are in local space
 //			const Vec3V _dir = aToB.rotateInv(dir); //transform dir back to a space
 			const Vec3V _dir = aTobT.rotate(dir); //transform dir back to a space
@@ -220,10 +219,10 @@ namespace Gu
 			return aToB.transform(maxPoint);//transform maxPoint to the b space
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportLocal(const Ps::aos::Vec3VArg dir, PxI32& index) const
+		PX_FORCE_INLINE aos::Vec3V supportLocal(const aos::Vec3VArg dir, PxI32& index) const
 		{
 		
-			using namespace Ps::aos;
+			using namespace aos;
 			const VecI32V vZero = VecI32V_Zero();
 			const VecI32V vOne = VecI32V_One();
 			const VecI32V vTwo = VecI32V_Two();
@@ -240,18 +239,18 @@ namespace Gu
 			return V3Sel(con0, v0, V3Sel(con1, v1, v2));
 		}
 
-		PX_FORCE_INLINE Ps::aos::Vec3V supportRelative(	const Ps::aos::Vec3VArg dir, const Ps::aos::PsMatTransformV& aToB,
-														const Ps::aos::PsMatTransformV& aTobT, PxI32& index)const
+		PX_FORCE_INLINE aos::Vec3V supportRelative(	const aos::Vec3VArg dir, const aos::PxMatTransformV& aToB,
+														const aos::PxMatTransformV& aTobT, PxI32& index)const
 		{
 			//don't put margin in the triangle
-			using namespace Ps::aos;
+			using namespace aos;
 			//transfer dir into the local space of triangle
 //			const Vec3V _dir = aToB.rotateInv(dir);
 			const Vec3V _dir = aTobT.rotate(dir);
 			return aToB.transform(supportLocal(_dir, index));//transform the support poin to b space
 		}
 	
-		PX_FORCE_INLINE Ps::aos::Vec3V supportPoint(const PxI32 index)const
+		PX_FORCE_INLINE aos::Vec3V supportPoint(const PxI32 index)const
 		{
 			return verts[index];
 		}
@@ -259,7 +258,7 @@ namespace Gu
 			/**
 		\brief Array of Vertices.
 		*/
-		Ps::aos::Vec3V		verts[3];
+		aos::Vec3V		verts[3];
 	};
 }
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,41 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
      
 
 #include "foundation/PxPreprocessor.h"
-#include "PsVecMath.h"
-#include "PsMathUtils.h"
-#include "DySolverContact.h"
-#include "DySolverContactPF.h"
-#include "DySolverConstraintTypes.h"
+#include "foundation/PxVecMath.h"
 #include "PxcNpWorkUnit.h"
 #include "DyThreadContext.h"
-#include "DyContactPrep.h"
 #include "PxcNpContactPrepShared.h"
-//#include "PxvGeometry.h"
-#include "PxvDynamics.h"
-#include "DyCorrelationBuffer.h"
-#include "DySolverConstraintDesc.h"
-#include "DySolverBody.h"
-#include "DySolverContact4.h"
 #include "DySolverContactPF4.h"
 
-
-#include "PsVecMath.h"
-#include "PxContactModifyCallback.h"
 #include "PxsMaterialManager.h"
-#include "PxsMaterialCombiner.h"
-#include "DySolverExt.h"
-#include "DyArticulationContactPrep.h"
 #include "DyContactPrepShared.h"
-#include "PsFoundation.h"
 
 using namespace physx::Gu;
-using namespace physx::shdfnd::aos;
+using namespace physx::aos;
 
 namespace physx
 {
@@ -69,23 +50,23 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb(
 		ThreadContext& threadContext,
 		PxSolverContactDesc* blockDescs,
 		const PxReal invDtF32,
+		const PxReal dtF32,
 		PxReal bounceThresholdF32,
 		PxReal frictionOffsetThreshold,
 		PxReal correlationDistance,
-		PxReal solverOffsetSlop,
 		PxConstraintAllocator& constraintAllocator,
 		PxFrictionType::Enum frictionType);
 
 static bool setupFinalizeSolverConstraintsCoulomb4(PxSolverContactDesc* PX_RESTRICT descs, PxU8* PX_RESTRICT workspace, 
-											const PxReal invDtF32, PxReal bounceThresholdF32, PxReal solverOffsetSlopF32, CorrelationBuffer& c, const PxU32 numFrictionPerPoint,
+											const PxReal invDtF32, PxReal bounceThresholdF32, CorrelationBuffer& c, const PxU32 numFrictionPerPoint,
 											const PxU32 numContactPoints4, const PxU32 /*solverConstraintByteSize*/,
-											const Ps::aos::Vec4VArg invMassScale0, const Ps::aos::Vec4VArg invInertiaScale0, 
-											const Ps::aos::Vec4VArg invMassScale1, const Ps::aos::Vec4VArg invInertiaScale1)
+											const aos::Vec4VArg invMassScale0, const aos::Vec4VArg invInertiaScale0, 
+											const aos::Vec4VArg invMassScale1, const aos::Vec4VArg invInertiaScale1)
 {
 	//KS - final step. Create the constraints in the place we pre-allocated...
 
-	const Vec4V ccdMaxSeparation = Ps::aos::V4LoadXYZW(descs[0].maxCCDSeparation, descs[1].maxCCDSeparation, descs[2].maxCCDSeparation, descs[3].maxCCDSeparation);
-	const Vec4V solverOffsetSlop = V4Load(solverOffsetSlopF32);
+	const Vec4V ccdMaxSeparation = aos::V4LoadXYZW(descs[0].maxCCDSeparation, descs[1].maxCCDSeparation, descs[2].maxCCDSeparation, descs[3].maxCCDSeparation);
+	const Vec4V solverOffsetSlop = aos::V4LoadXYZW(descs[0].offsetSlop, descs[1].offsetSlop, descs[2].offsetSlop, descs[3].offsetSlop);
 
 	const Vec4V zero = V4Zero();
 
@@ -250,8 +231,8 @@ static bool setupFinalizeSolverConstraintsCoulomb4(PxSolverContactDesc* PX_RESTR
 	PX_TRANSPOSE_44_34(bodyFrame10p4, bodyFrame11p4, bodyFrame12p4, bodyFrame13p4, bodyFrame1pX, bodyFrame1pY, bodyFrame1pZ);
 
 	
-	Ps::prefetchLine(c.contactID);
-	Ps::prefetchLine(c.contactID, 128);
+	PxPrefetchLine(c.contactID);
+	PxPrefetchLine(c.contactID, 128);
 
 	PxU32 frictionIndex0 = 0, frictionIndex1 = 0, frictionIndex2 = 0, frictionIndex3 = 0;
 
@@ -296,10 +277,10 @@ static bool setupFinalizeSolverConstraintsCoulomb4(PxSolverContactDesc* PX_RESTR
 		PxU32 firstPatch2 = c.correlationListHeads[frictionIndex2];
 		PxU32 firstPatch3 = c.correlationListHeads[frictionIndex3];
 
-		const Gu::ContactPoint* contactBase0 = descs[0].contacts + c.contactPatches[firstPatch0].start;
-		const Gu::ContactPoint* contactBase1 = descs[1].contacts + c.contactPatches[firstPatch1].start;
-		const Gu::ContactPoint* contactBase2 = descs[2].contacts + c.contactPatches[firstPatch2].start;
-		const Gu::ContactPoint* contactBase3 = descs[3].contacts + c.contactPatches[firstPatch3].start;
+		const PxContactPoint* contactBase0 = descs[0].contacts + c.contactPatches[firstPatch0].start;
+		const PxContactPoint* contactBase1 = descs[1].contacts + c.contactPatches[firstPatch1].start;
+		const PxContactPoint* contactBase2 = descs[2].contacts + c.contactPatches[firstPatch2].start;
+		const PxContactPoint* contactBase3 = descs[3].contacts + c.contactPatches[firstPatch3].start;
 
 		const Vec4V restitution = V4Merge(FLoad(contactBase0->restitution), FLoad(contactBase1->restitution), FLoad(contactBase2->restitution),
 			FLoad(contactBase3->restitution));
@@ -317,11 +298,11 @@ static bool setupFinalizeSolverConstraintsCoulomb4(PxSolverContactDesc* PX_RESTR
 		ptr2 += sizeof(SolverFrictionHeader4) + sizeof(Vec4V) * numContacts;
 
 
-		header->numNormalConstr0 = Ps::to8(clampedContacts0);
-		header->numNormalConstr1 = Ps::to8(clampedContacts1);
-		header->numNormalConstr2 = Ps::to8(clampedContacts2);
-		header->numNormalConstr3 = Ps::to8(clampedContacts3);
-		header->numNormalConstr = Ps::to8(numContacts);
+		header->numNormalConstr0 = PxTo8(clampedContacts0);
+		header->numNormalConstr1 = PxTo8(clampedContacts1);
+		header->numNormalConstr2 = PxTo8(clampedContacts2);
+		header->numNormalConstr3 = PxTo8(clampedContacts3);
+		header->numNormalConstr = PxTo8(numContacts);
 		header->invMassADom = invMass0_dom0fV;
 		header->invMassBDom = invMass1_dom1fV;
 		header->angD0 = angDom0;
@@ -330,29 +311,28 @@ static bool setupFinalizeSolverConstraintsCoulomb4(PxSolverContactDesc* PX_RESTR
 
 		header->flags[0] = flags[0]; header->flags[1] = flags[1]; header->flags[2] = flags[2]; header->flags[3] = flags[3];
 
-		header->type = Ps::to8(isDynamic ? DY_SC_TYPE_BLOCK_RB_CONTACT : DY_SC_TYPE_BLOCK_STATIC_RB_CONTACT);
-		header->shapeInteraction[0] = descs[0].shapeInteraction; header->shapeInteraction[1] = descs[1].shapeInteraction;
-		header->shapeInteraction[2] = descs[2].shapeInteraction; header->shapeInteraction[3] = descs[3].shapeInteraction;
-
+		header->type = PxTo8(isDynamic ? DY_SC_TYPE_BLOCK_RB_CONTACT : DY_SC_TYPE_BLOCK_STATIC_RB_CONTACT);
+		header->shapeInteraction[0] = getInteraction(descs[0]); header->shapeInteraction[1] = getInteraction(descs[1]);
+		header->shapeInteraction[2] = getInteraction(descs[2]); header->shapeInteraction[3] = getInteraction(descs[3]);
 
 		fricHeader->invMassADom = invMass0_dom0fV;
 		fricHeader->invMassBDom = invMass1_dom1fV;
 		fricHeader->angD0 = angDom0;
 		fricHeader->angD1 = angDom1;
-		fricHeader->numFrictionConstr0 = Ps::to8(clampedFric0);
-		fricHeader->numFrictionConstr1 = Ps::to8(clampedFric1);
-		fricHeader->numFrictionConstr2 = Ps::to8(clampedFric2);
-		fricHeader->numFrictionConstr3 = Ps::to8(clampedFric3);
-		fricHeader->numNormalConstr = Ps::to8(numContacts);
-		fricHeader->numNormalConstr0 = Ps::to8(clampedContacts0);
-		fricHeader->numNormalConstr1 = Ps::to8(clampedContacts1);
-		fricHeader->numNormalConstr2 = Ps::to8(clampedContacts2);
-		fricHeader->numNormalConstr3 = Ps::to8(clampedContacts3);
-		fricHeader->type = Ps::to8(isDynamic ? DY_SC_TYPE_BLOCK_FRICTION : DY_SC_TYPE_BLOCK_STATIC_FRICTION);
+		fricHeader->numFrictionConstr0 = PxTo8(clampedFric0);
+		fricHeader->numFrictionConstr1 = PxTo8(clampedFric1);
+		fricHeader->numFrictionConstr2 = PxTo8(clampedFric2);
+		fricHeader->numFrictionConstr3 = PxTo8(clampedFric3);
+		fricHeader->numNormalConstr = PxTo8(numContacts);
+		fricHeader->numNormalConstr0 = PxTo8(clampedContacts0);
+		fricHeader->numNormalConstr1 = PxTo8(clampedContacts1);
+		fricHeader->numNormalConstr2 = PxTo8(clampedContacts2);
+		fricHeader->numNormalConstr3 = PxTo8(clampedContacts3);
+		fricHeader->type = PxTo8(isDynamic ? DY_SC_TYPE_BLOCK_FRICTION : DY_SC_TYPE_BLOCK_STATIC_FRICTION);
 		fricHeader->staticFriction = staticFriction;
 		fricHeader->frictionPerContact = PxU32(numFrictionPerPoint == 2 ? 1 : 0);
 
-		fricHeader->numFrictionConstr = Ps::to8(numFrictions);
+		fricHeader->numFrictionConstr = PxTo8(numFrictions);
 		
 		Vec4V normal0 = V4LoadA(&contactBase0->normal.x);
 		Vec4V normal1 = V4LoadA(&contactBase1->normal.x);
@@ -446,17 +426,17 @@ static bool setupFinalizeSolverConstraintsCoulomb4(PxSolverContactDesc* PX_RESTR
 		{
 			finished = newFinished;
 			++contactCount;
-			Ps::prefetchLine(p, 384);
-			Ps::prefetchLine(p, 512);
-			Ps::prefetchLine(p, 640);	
+			PxPrefetchLine(p, 384);
+			PxPrefetchLine(p, 512);
+			PxPrefetchLine(p, 640);	
 
 			SolverContact4Base* PX_RESTRICT solverContact = reinterpret_cast<SolverContact4Base*>(p);
 			p += constraintSize;
 
-			const Gu::ContactPoint& con0 = descs[0].contacts[c.contactPatches[patch0].start + contact0];
-			const Gu::ContactPoint& con1 = descs[1].contacts[c.contactPatches[patch1].start + contact1];
-			const Gu::ContactPoint& con2 = descs[2].contacts[c.contactPatches[patch2].start + contact2];
-			const Gu::ContactPoint& con3 = descs[3].contacts[c.contactPatches[patch3].start + contact3];
+			const PxContactPoint& con0 = descs[0].contacts[c.contactPatches[patch0].start + contact0];
+			const PxContactPoint& con1 = descs[1].contacts[c.contactPatches[patch1].start + contact1];
+			const PxContactPoint& con2 = descs[2].contacts[c.contactPatches[patch2].start + contact2];
+			const PxContactPoint& con3 = descs[3].contacts[c.contactPatches[patch3].start + contact3];
 
 			//Now we need to splice these 4 contacts into a single structure
 
@@ -857,14 +837,14 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb1D(
 	ThreadContext& threadContext,
 	PxSolverContactDesc* blockDescs,
 	const PxReal invDtF32,
+	const PxReal dtF32,
 	PxReal bounceThresholdF32,
 	PxReal frictionOffsetThreshold,
 	PxReal correlationDistance,
-	PxReal solverOffsetSlop,
 	PxConstraintAllocator& constraintAllocator)
 {
-	return createFinalizeSolverContacts4Coulomb(outputs, threadContext, blockDescs, invDtF32, bounceThresholdF32, 
-		frictionOffsetThreshold, correlationDistance, solverOffsetSlop, constraintAllocator, PxFrictionType::eONE_DIRECTIONAL);
+	return createFinalizeSolverContacts4Coulomb(outputs, threadContext, blockDescs, invDtF32, dtF32, bounceThresholdF32, 
+		frictionOffsetThreshold, correlationDistance, constraintAllocator, PxFrictionType::eONE_DIRECTIONAL);
 }
 
 SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb2D(
@@ -872,14 +852,14 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb2D(
 	ThreadContext& threadContext,
 	PxSolverContactDesc* blockDescs,
 	const PxReal invDtF32,
+	const PxReal dtF32,
 	PxReal bounceThresholdF32,
 	PxReal frictionOffsetThreshold,
 	PxReal correlationDistance,
-	PxReal solverOffsetSlop,
 	PxConstraintAllocator& constraintAllocator)
 {
-	return createFinalizeSolverContacts4Coulomb(outputs, threadContext, blockDescs, invDtF32, bounceThresholdF32,
-		frictionOffsetThreshold, correlationDistance, solverOffsetSlop, constraintAllocator, PxFrictionType::eTWO_DIRECTIONAL);
+	return createFinalizeSolverContacts4Coulomb(outputs, threadContext, blockDescs, invDtF32, dtF32, bounceThresholdF32,
+		frictionOffsetThreshold, correlationDistance, constraintAllocator, PxFrictionType::eTWO_DIRECTIONAL);
 }
 
 
@@ -888,15 +868,16 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb(
 								 ThreadContext& threadContext,
 								 PxSolverContactDesc* blockDescs,
 								 const PxReal invDtF32,
+								 const PxReal dtF32,
 								 PxReal bounceThresholdF32,
 								 PxReal frictionOffsetThreshold,
 								 PxReal correlationDistance,
-								 PxReal solverOffsetSlop,
 								 PxConstraintAllocator& constraintAllocator,
 								 PxFrictionType::Enum frictionType)
 {
 	PX_UNUSED(frictionOffsetThreshold);
 	PX_UNUSED(correlationDistance);
+	PX_UNUSED(dtF32);
 
 	for(PxU32 i = 0; i < 4; ++i)
 	{
@@ -905,7 +886,7 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb(
 
 	PX_ASSERT(outputs[0]->nbContacts && outputs[1]->nbContacts && outputs[2]->nbContacts && outputs[3]->nbContacts);
 
-	Gu::ContactBuffer& buffer = threadContext.mContactBuffer;
+	PxContactBuffer& buffer = threadContext.mContactBuffer;
 
 	buffer.count = 0;
 
@@ -931,8 +912,8 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb(
 		//blockDesc.startContactIndex = numContacts;
 		blockDesc.contacts = &buffer.contacts[numContacts];
 
-		Ps::prefetchLine(desc.bodyA);
-		Ps::prefetchLine(desc.bodyB);
+		PxPrefetchLine(desc.bodyA);
+		PxPrefetchLine(desc.bodyB);
 
 		if((numContacts + outputs[a]->nbContacts) > 64)
 		{
@@ -997,14 +978,12 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb(
 		desc.constraint = solverConstraint;
 
 		//KS - TODO - add back in counters for axisConstraintCount somewhere...
-		blockDescs[a].axisConstraintCount += Ps::to16(axisConstraintCount[a]);
+		blockDescs[a].axisConstraintCount += PxTo16(axisConstraintCount[a]);
 
-		desc.constraintLengthOver16 = Ps::to16(solverConstraintByteSize/16);
+		desc.constraintLengthOver16 = PxTo16(solverConstraintByteSize/16);
 
-		PxU32 writeBackLength = outputs[a]->nbContacts * sizeof(PxReal);
 		void* writeBack = outputs[a]->contactForces;
 		desc.writeBack = writeBack;
-		setWritebackLength(desc, writeBackLength);
 	}
 
 	const Vec4V iMassScale0 = V4LoadA(invMassScale0); 
@@ -1014,7 +993,7 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb(
 
 
 	bool hasFriction = setupFinalizeSolverConstraintsCoulomb4(blockDescs, solverConstraint, 
-											invDtF32, bounceThresholdF32, solverOffsetSlop, c, numFrictionPerPoint, numContactPoints4, solverConstraintByteSize,
+											invDtF32, bounceThresholdF32, c, numFrictionPerPoint, numContactPoints4, solverConstraintByteSize,
 											iMassScale0, iInertiaScale0, iMassScale1, iInertiaScale1);
 
 	*(reinterpret_cast<PxU32*>(solverConstraint + solverConstraintByteSize)) = 0;

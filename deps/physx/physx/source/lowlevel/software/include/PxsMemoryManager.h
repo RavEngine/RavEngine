@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,37 +22,30 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef PXS_MEMORY_MANAGER_H
 #define PXS_MEMORY_MANAGER_H
 
 #include "foundation/PxPreprocessor.h"
-#include "foundation/PxSimpleTypes.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
-	namespace shdfnd
-	{
-		class VirtualAllocatorCallback;
-	}
+	class PxVirtualAllocatorCallback;
 
-	class PxsMemoryManager
+	class PxsMemoryManager : public PxUserAllocated
 	{
 	public:
-		virtual ~PxsMemoryManager(){}
-		virtual Ps::VirtualAllocatorCallback* createHostMemoryAllocator(const PxU32 gpuComputeVersion = 0) = 0;
-		virtual Ps::VirtualAllocatorCallback* createDeviceMemoryAllocator(const PxU32 gpuComputeVersion = 0) = 0;
-
-		virtual void destroyMemoryAllocator() = 0;
-
+		virtual								~PxsMemoryManager(){}
+		virtual	PxVirtualAllocatorCallback* getHostMemoryAllocator()	= 0;
+		virtual	PxVirtualAllocatorCallback* getDeviceMemoryAllocator()	= 0;
 	};
 
-	PxsMemoryManager* createMemoryManager();
+	// PT: this is for CPU, see createPxgMemoryManager for GPU
+	PxsMemoryManager* createDefaultMemoryManager();
 }
 
 #endif

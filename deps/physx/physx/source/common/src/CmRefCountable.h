@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,62 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_COMMON_REFCOUNTABLE
-#define PX_PHYSICS_COMMON_REFCOUNTABLE
+#ifndef CM_REFCOUNTABLE_H
+#define CM_REFCOUNTABLE_H
 
 #include "foundation/PxAssert.h"
-#include "PsAtomic.h"
+#include "foundation/PxAtomic.h"
+#include "foundation/PxAllocator.h"
+#include "common/PxBase.h"
 
 namespace physx
 {
 namespace Cm
 {
+	// PT: this is used to re-implement RefCountable using the ref-counter in PxBase, i.e. to dissociate
+	// the RefCountable data from the RefCountable code. The goal is to be able to store the ref counter
+	// in the padding bytes of PxBase, and also to avoid two v-table pointers in the class.
+	class RefCountableExt : public PxRefCounted
+	{
+		public:
+
+		RefCountableExt() : PxRefCounted(0, PxBaseFlags(0))	{}
+
+		void	preExportDataReset()
+		{
+			mBuiltInRefCount = 1;
+		}
+
+		void	incRefCount()
+		{
+			volatile PxI32* val = reinterpret_cast<volatile PxI32*>(&mBuiltInRefCount);
+			PxAtomicIncrement(val);
+			// value better be greater than 1, or we've created a ref to an undefined object
+			PX_ASSERT(mBuiltInRefCount>1);
+		}
+
+		void	decRefCount()
+		{
+			PX_ASSERT(mBuiltInRefCount>0);
+			volatile PxI32* val = reinterpret_cast<volatile PxI32*>(&mBuiltInRefCount);
+			if(physx::PxAtomicDecrement(val) == 0)
+				onRefCountZero();
+		}
+
+		PX_FORCE_INLINE PxU32 getRefCount()	const
+		{
+			return mBuiltInRefCount;
+		}
+	};
+
+	PX_FORCE_INLINE void RefCountable_preExportDataReset(PxRefCounted& base)	{ static_cast<RefCountableExt&>(base).preExportDataReset();			}
+	PX_FORCE_INLINE void RefCountable_incRefCount(PxRefCounted& base)			{ static_cast<RefCountableExt&>(base).incRefCount();				}
+	PX_FORCE_INLINE void RefCountable_decRefCount(PxRefCounted& base)			{ static_cast<RefCountableExt&>(base).decRefCount();				}
+	PX_FORCE_INLINE PxU32 RefCountable_getRefCount(const PxRefCounted& base)	{ return static_cast<const RefCountableExt&>(base).getRefCount();	}
 
 	// simple thread-safe reference count
 	// when the ref count is zero, the object is in an undefined state (pending delete)
@@ -70,12 +110,12 @@ namespace Cm
 		*/
 		virtual	void onRefCountZero()
 		{
-			delete this;
+			PX_DELETE_THIS;
 		}
 
 		void incRefCount()
 		{
-			physx::shdfnd::atomicIncrement(&mRefCount);
+			physx::PxAtomicIncrement(&mRefCount);
 			// value better be greater than 1, or we've created a ref to an undefined object
 			PX_ASSERT(mRefCount>1);
 		}
@@ -83,7 +123,7 @@ namespace Cm
 		void decRefCount()
 		{
 			PX_ASSERT(mRefCount>0);
-			if(physx::shdfnd::atomicDecrement(&mRefCount) == 0)
+			if(physx::PxAtomicDecrement(&mRefCount) == 0)
 				onRefCountZero();
 		}
 

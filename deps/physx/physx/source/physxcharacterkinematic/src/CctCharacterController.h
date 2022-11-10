@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,14 +32,12 @@
 //#define USE_CONTACT_NORMAL_FOR_SLOPE_TEST
 
 #include "geometry/PxTriangle.h"
+#include "foundation/PxHashSet.h"
 #include "characterkinematic/PxController.h"
 #include "characterkinematic/PxControllerObstacles.h"
-
 #include "CctCharacterControllerManager.h"
 #include "CctUtils.h"
-#include "PsArray.h"
-#include "PsHashSet.h"
-#include "CmPhysXCommon.h"
+#include "foundation/PxArray.h"
 
 namespace physx
 {
@@ -48,11 +45,7 @@ namespace physx
 struct PxFilterData;
 class PxQueryFilterCallback;
 class PxObstacle;
-
-namespace Cm
-{
-	class RenderBuffer;
-}
+class RenderBuffer;
 
 namespace Cct
 {	    
@@ -76,11 +69,11 @@ namespace Cct
 		bool								mPreventVerticalSlidingAgainstCeiling;
 	};
 
-//	typedef Ps::Array<PxTriangle>	TriArray;
-	typedef Ps::Array<PxU32>		IntArray;
+//	typedef PxArray<PxTriangle>	TriArray;
+	typedef PxArray<PxU32>		IntArray;
 
 	// PT: using private inheritance to control access, and make sure allocations are SIMD friendly
-	class TriArray : private Ps::Array<PxTriangle>
+	class TriArray : private PxArray<PxTriangle>
 	{
 		public:
 
@@ -88,8 +81,8 @@ namespace Cct
 		{
 			// PT: customized version of "reserveContainerMemory"
 
-			const PxU32 maxNbEntries = Ps::Array<PxTriangle>::capacity();
-			const PxU32 realRequiredSize = Ps::Array<PxTriangle>::size() + nbTris;
+			const PxU32 maxNbEntries = PxArray<PxTriangle>::capacity();
+			const PxU32 realRequiredSize = PxArray<PxTriangle>::size() + nbTris;
 			// PT: allocate one more tri to make sure we can safely V4Load the last one...
 			const PxU32 requiredSize = realRequiredSize + 1;
 
@@ -111,12 +104,12 @@ namespace Cct
 				const PxU32 newSize = PxMax(requiredSize, naturalGrowthSize);
 //				const PxU32 newSize = requiredSize;
 
-				Ps::Array<PxTriangle>::reserve(newSize);
+				PxArray<PxTriangle>::reserve(newSize);
 			}
 
-			PxTriangle* buf = Ps::Array<PxTriangle>::end();
+			PxTriangle* buf = PxArray<PxTriangle>::end();
 			// ...but we still want the size to reflect the correct number
-			Ps::Array<PxTriangle>::forceSize_Unsafe(realRequiredSize);
+			PxArray<PxTriangle>::forceSize_Unsafe(realRequiredSize);
 			return buf;
 		}
 
@@ -130,22 +123,22 @@ namespace Cct
 
 		PX_FORCE_INLINE PxU32 size()	const
 		{
-			return Ps::Array<PxTriangle>::size();
+			return PxArray<PxTriangle>::size();
 		}
 
 		PX_FORCE_INLINE const PxTriangle* begin()	const
 		{
-			return Ps::Array<PxTriangle>::begin();
+			return PxArray<PxTriangle>::begin();
 		}
 
 		PX_FORCE_INLINE void clear()
 		{
-			Ps::Array<PxTriangle>::clear();
+			PxArray<PxTriangle>::clear();
 		}
 
 		PX_FORCE_INLINE void forceSize_Unsafe(PxU32 size)
 		{
-			Ps::Array<PxTriangle>::forceSize_Unsafe(size);
+			PxArray<PxTriangle>::forceSize_Unsafe(size);
 		}
 
 		PX_FORCE_INLINE	const PxTriangle&	getTriangle(PxU32 index)	const
@@ -168,6 +161,7 @@ namespace Cct
 			eBOX,
 			eSPHERE,
 			eCAPSULE,
+			eCUSTOM,
 
 			eLAST,
 
@@ -176,11 +170,6 @@ namespace Cct
 	};
 
 	class SweptVolume;
-
-	// PT: apparently .Net aligns some of them on 8-bytes boundaries for no good reason. This is bad.
-	// Whenever a variable points to a field of a specially aligned struct, it has to be declared with __packed (see GHS docu, Structure Packing, page 111).
-	// Every reference to such a field needs the __packed declaration: all function parameters and assignment operators etc.
-#pragma pack(push,4)
 
 	struct TouchedGeom
 	{
@@ -225,14 +214,18 @@ namespace Cct
 		PxF32			mRadius;		//!< Sphere's radius
 	};
 
+	struct TouchedCustom : public TouchedGeom
+	{
+		PxVec3							mCenter;			//!< Custom geometry's center
+		PxCustomGeometry::Callbacks*	mCustomCallbacks;	//!< Custom geometry's callback object
+	};
+
 	struct TouchedCapsule : public TouchedGeom
 	{
 		PxVec3			mP0;		//!< Start of segment
 		PxVec3			mP1;		//!< End of segment
 		PxF32			mRadius;	//!< Capsule's radius
 	};
-
-#pragma pack(pop)
 
 	struct SweptContact
 	{
@@ -364,13 +357,13 @@ namespace Cct
 					void				updateCachedShapesRegistration(PxU32 startIndex, bool unregister);
 
 		// observer notifications
-					void				onObstacleRemoved(ObstacleHandle index);
-					void				onObstacleUpdated(ObstacleHandle index, const PxObstacleContext* context, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance);
-					void				onObstacleAdded(ObstacleHandle index, const PxObstacleContext* context, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance);
+					void				onObstacleRemoved(PxObstacleHandle index);
+					void				onObstacleUpdated(PxObstacleHandle index, const PxObstacleContext* context, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance);
+					void				onObstacleAdded(PxObstacleHandle index, const PxObstacleContext* context, const PxVec3& origin, const PxVec3& unitDir, const PxReal distance);
 
 					void				onOriginShift(const PxVec3& shift);
 
-					Cm::RenderBuffer*	mRenderBuffer;
+					PxRenderBuffer*		mRenderBuffer;
 					PxU32				mRenderFlags;
 					TriArray			mWorldTriangles;
 					IntArray			mTriangleIndices;
@@ -393,7 +386,7 @@ namespace Cct
 					//
 					TouchedObject<PxShape>		mTouchedShape;		// Shape on which the CCT is standing
 					TouchedObject<PxRigidActor>	mTouchedActor;		// Actor from touched shape
-					ObstacleHandle		mTouchedObstacleHandle;	// Obstacle on which the CCT is standing
+					PxObstacleHandle	mTouchedObstacleHandle;	// Obstacle on which the CCT is standing
 					PxVec3				mTouchedPos;		// Last known position of mTouchedShape/mTouchedObstacle
 					// PT: TODO: union those
 					PxVec3				mTouchedPosShape_Local;
@@ -455,7 +448,7 @@ namespace Cct
 		bool					mDynamicShapes;
 		bool					mPreFilter;
 		bool					mPostFilter;
-		Ps::HashSet<PxShape>*	mCCTShapes;
+		PxHashSet<PxShape>*		mCCTShapes;
 	};
 
 	PxU32 getSceneTimestamp(const InternalCBData_FindTouchedGeom* userData);

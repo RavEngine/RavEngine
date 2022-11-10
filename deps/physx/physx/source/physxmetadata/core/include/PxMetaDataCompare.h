@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_METADATACOMPARE_H
 #define PX_METADATACOMPARE_H
 #include "PxMetaDataObjects.h"
-#include "PsInlineArray.h"
+#include "foundation/PxInlineArray.h"
 
 //Implement a basic equality comparison system based on the meta data system.
 //if you implement a particular areequal specialized to exactly your type
@@ -47,6 +46,8 @@ inline bool areEqual( const PxSimulationFilterShader&, const PxSimulationFilterS
 inline bool areEqual( const PxSimulationFilterCallback&, const PxSimulationFilterCallback& ) { return true; }
 inline bool areEqual( const PxConvexMesh&, const PxConvexMesh& ) { return true; }
 inline bool areEqual( const PxTriangleMesh&, const PxTriangleMesh& ) { return true; }
+inline bool areEqual( const PxTetrahedronMesh&, const PxTetrahedronMesh&) { return true; }
+inline bool areEqual( const PxParticleSystemGeometry&, const PxParticleSystemGeometry&) { return true; }
 inline bool areEqual( const PxBVH33TriangleMesh&, const PxBVH33TriangleMesh& ) { return true; }
 inline bool areEqual( const PxBVH34TriangleMesh&, const PxBVH34TriangleMesh& ) { return true; }
 inline bool areEqual( const PxHeightField&, const PxHeightField& ) { return true; }
@@ -112,7 +113,8 @@ struct EqualityOp
     template<PxU32 TKey, typename TObjType, typename TGetPropType>
 	void operator()( const PxReadOnlyPropertyInfo<TKey, TObjType, TGetPropType> & inProp, PxU32 )
 	{
-		if ( hasFailed() ) return;
+		if ( hasFailed() ) 
+			return;
 		TGetPropType lhs( inProp.get( mLhs ) );
 		TGetPropType rhs( inProp.get( mRhs ) );
 		update( areEqual( lhs, rhs, NULL ), inProp.mName );
@@ -121,7 +123,8 @@ struct EqualityOp
 	template<PxU32 TKey, typename TObjType, typename TPropType>
 	void operator()( const PxRangePropertyInfo<TKey, TObjType, TPropType> & inProp, PxU32 )
 	{
-		if ( hasFailed() ) return;
+		if ( hasFailed() ) 
+			return;
 		TPropType lhsl, lhsr, rhsl, rhsr;
 		inProp.get( mLhs, lhsl, lhsr );
 		inProp.get( mRhs, rhsl, rhsr );
@@ -148,16 +151,18 @@ struct EqualityOp
 	template<PxU32 TKey, typename TObjType, typename TIndexType, typename TPropType>
 	void operator()( const PxIndexedPropertyInfo<TKey, TObjType, TIndexType, TPropType> & inProp, PxU32 )
 	{
-		if ( hasFailed() ) return;
+		if ( hasFailed() ) 
+			return;
 		compareIndex( inProp, PxEnumTraits<TIndexType>().NameConversion );
 	}
 	
 	template<PxU32 TKey, typename TObjType, typename TCollectionType>
 	void operator()( const PxReadOnlyCollectionPropertyInfo<TKey, TObjType, TCollectionType> & inProp, PxU32 )
 	{
-		if ( hasFailed() ) return;
-		physx::shdfnd::InlineArray<TCollectionType, 20> lhsArray;
-		physx::shdfnd::InlineArray<TCollectionType, 20> rhsArray;
+		if ( hasFailed() ) 
+			return;
+		physx::PxInlineArray<TCollectionType, 20> lhsArray;
+		physx::PxInlineArray<TCollectionType, 20> rhsArray;
 		PxU32 size = inProp.size( mLhs );
 		if ( size != inProp.size( mRhs ) )
 			update( false, inProp.mName );
@@ -180,8 +185,8 @@ struct EqualityOp
 	void compare( const PxReadOnlyFilteredCollectionPropertyInfo< TKey, TObjType, TFilterType, TCollectionType >& inProp, const PxU32ToName* inNames )
 	{
 		//Exaustively compare all items.
-		physx::shdfnd::InlineArray<TCollectionType*, 20> lhsArray;
-		physx::shdfnd::InlineArray<TCollectionType*, 20> rhsArray;
+		physx::PxInlineArray<TCollectionType*, 20> lhsArray;
+		physx::PxInlineArray<TCollectionType*, 20> rhsArray;
 		for ( const PxU32ToName* theName = inNames;
 			theName->mName != NULL && !hasFailed();
 			++theName )
@@ -222,9 +227,10 @@ struct EqualityOp
 			update( areEqual( lhs, rhs, NULL ), inProp.mName );
 	}
 
-	void operator()( const PxShapeGeometryProperty& inProp, PxU32 )
+	void operator()( const PxShapeGeomProperty& inProp, PxU32 )
 	{
-		if ( hasFailed() ) return;
+		if ( hasFailed() ) 
+			return;
 		PxGeometryType::Enum lhsType( inProp.getGeometryType( mLhs ) );
 		PxGeometryType::Enum rhsType( inProp.getGeometryType( mRhs ) );
 		if ( lhsType != rhsType )
@@ -238,6 +244,8 @@ struct EqualityOp
 			case PxGeometryType::eCAPSULE: compareGeometry<PxCapsuleGeometry>(inProp); break;
 			case PxGeometryType::eBOX: compareGeometry<PxBoxGeometry>(inProp); break;
 			case PxGeometryType::eCONVEXMESH: compareGeometry<PxConvexMeshGeometry>(inProp); break;
+			case PxGeometryType::eTETRAHEDRONMESH: compareGeometry<PxTetrahedronMeshGeometry>(inProp); break;
+			case PxGeometryType::ePARTICLESYSTEM: compareGeometry<PxParticleSystemGeometry>(inProp); break;
 			case PxGeometryType::eTRIANGLEMESH: compareGeometry<PxTriangleMeshGeometry>(inProp); break;
 			case PxGeometryType::eHEIGHTFIELD: compareGeometry<PxHeightFieldGeometry>(inProp); break;
 			default: PX_ASSERT( false ); break;
@@ -248,7 +256,7 @@ struct EqualityOp
 
 inline bool areEqual( const char* lhs, const char* rhs, const char**, const PxUnknownClassInfo& )
 {
-	if ( lhs && rhs ) return strcmp( lhs, rhs ) == 0;
+	if ( lhs && rhs ) return Pxstrcmp( lhs, rhs ) == 0;
 	if ( lhs || rhs ) return false;
 	return true;
 }
@@ -351,7 +359,7 @@ inline bool areEqualPointerCheck( const void* lhs, const void* rhs, const char**
 inline bool areEqualPointerCheck( const char* lhs, const char* rhs, const char** outFailurePropName, bool )
 {
 	bool bRet = true;
-	if ( lhs && rhs ) bRet = strcmp( lhs, rhs ) == 0;
+	if ( lhs && rhs ) bRet = Pxstrcmp( lhs, rhs ) == 0;
 	else if ( lhs || rhs ) bRet = false;
 	
 	return bRet;

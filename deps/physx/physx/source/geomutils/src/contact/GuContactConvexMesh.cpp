@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,11 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
             
-#include "geomutils/GuContactBuffer.h"
+#include "geomutils/PxContactBuffer.h"
 
 #include "GuConvexUtilsInternal.h"
 #include "GuInternal.h"
@@ -40,18 +39,22 @@
 #include "GuTriangleCache.h"
 #include "GuHeightFieldUtil.h"
 #include "GuEntityReport.h"
-#include "GuGeometryUnion.h"
 #include "GuIntersectionTriangleBox.h"
 #include "GuBox.h"
 
 #include "CmUtils.h"
-#include "PsAllocator.h"
-#include "PsFPU.h"
+#include "foundation/PxAlloca.h"
+#include "foundation/PxFPU.h"
+#include "CmMatrix34.h"
 
 using namespace physx;
 using namespace Gu;
-using namespace shdfnd::aos;
+using namespace Cm;
+using namespace aos;
 using namespace intrinsics;
+
+//sizeof(SavedContactData)/sizeof(PxU32) = 17, 1088/17 = 64 triangles in the local array
+#define LOCAL_CONTACTS_SIZE		1088
 
 #define LOCAL_TOUCHED_TRIG_SIZE 192
 
@@ -133,8 +136,8 @@ static PX_FORCE_INLINE bool testNormal(	const PxVec3& sepAxis, PxReal min0, PxRe
 static PX_FORCE_INLINE bool testSepAxis(const PxVec3& sepAxis,
 										const PolygonalData& polyData0,
 										const PxVec3* PX_RESTRICT triangle,
-										const Cm::Matrix34& m0to1,
-										const Cm::FastVertex2ShapeScaling& convexScaling,
+										const PxMat34& m0to1,
+										const FastVertex2ShapeScaling& convexScaling,
 										PxReal& depth, PxReal contactDistance)
 {
 	PxReal min0, max0;
@@ -153,10 +156,10 @@ static PX_FORCE_INLINE bool testSepAxis(const PxVec3& sepAxis,
 }
 
 static bool testFacesSepAxesBackface(	const PolygonalData& polyData0,
-										const Cm::Matrix34& /*world0*/, const Cm::Matrix34& /*world1*/, 
-										const Cm::Matrix34& m0to1, const PxVec3& witness, 
+										const PxMat34& /*world0*/, const PxMat34& /*world1*/, 
+										const PxMat34& m0to1, const PxVec3& witness, 
 										const PxVec3* PX_RESTRICT triangle,
-										const Cm::FastVertex2ShapeScaling& convexScaling,
+										const FastVertex2ShapeScaling& convexScaling,
 										PxU32& numHullIndices,
 										PxU32* hullIndices_, PxReal& dmin, PxVec3& sep, PxU32& id, PxReal contactDistance,
 										bool idtConvexScale
@@ -323,11 +326,11 @@ static PX_FORCE_INLINE bool edgeCulling(const PxPlane& plane, const PxVec3& p0, 
 static bool performEETests(
 						const PolygonalData& polyData0,
 						const PxU8 triFlags,
-						const Cm::Matrix34& m0to1, const Cm::Matrix34& m1to0,
+						const PxMat34& m0to1, const PxMat34& m1to0,
 						const PxVec3* PX_RESTRICT triangle,
 						PxU32 numHullIndices, const PxU32* PX_RESTRICT hullIndices,
 						const PxPlane& localTriPlane,
-						const Cm::FastVertex2ShapeScaling& convexScaling,
+						const FastVertex2ShapeScaling& convexScaling,
 						PxVec3& vec, PxReal& dmin, PxReal contactDistance, PxReal toleranceLength,
 						PxU32 id0, PxU32 /*triangleIndex*/)
 {
@@ -393,7 +396,7 @@ static bool performEETests(
 					const PxVec3 currentHullEdge = m0to1.rotate(convexScaling * (hullVerts[VRef0] - hullVerts[VRef1]));	//matrix mult is distributive!
 
 					PxVec3 sepAxis = currentHullEdge.cross(currentPolyEdge);
-					if(!Ps::isAlmostZero(sepAxis))
+					if(!isAlmostZero(sepAxis))
 						SA.addAxis(sepAxis.getNormalized());
 				}
 			}
@@ -454,8 +457,8 @@ static bool triangleConvexTest(	const PolygonalData& polyData0,
 								PxU32 index, const PxVec3* PX_RESTRICT localPoints,
 								const PxPlane& localPlane,
 								const PxVec3& groupCenterHull,
-								const Cm::Matrix34& world0, const Cm::Matrix34& world1, const Cm::Matrix34& m0to1, const Cm::Matrix34& m1to0,
-								const Cm::FastVertex2ShapeScaling& convexScaling,
+								const PxMat34& world0, const PxMat34& world1, const PxMat34& m0to1, const PxMat34& m1to0,
+								const FastVertex2ShapeScaling& convexScaling,
 								PxReal contactDistance, PxReal toleranceLength,
 								PxVec3& groupAxis, PxReal& groupMinDepth, bool& faceContact,
 								bool idtConvexScale
@@ -533,21 +536,21 @@ namespace
 {
 	struct ConvexMeshContactGeneration
 	{
-		Ps::InlineArray<PxU32,LOCAL_CONTACTS_SIZE>&	mDelayedContacts;
-		Gu::CacheMap<Gu::CachedEdge, 128>			mEdgeCache;
-		Gu::CacheMap<Gu::CachedVertex, 128>			mVertCache;
+		PxInlineArray<PxU32,LOCAL_CONTACTS_SIZE>&	mDelayedContacts;
+		CacheMap<CachedEdge, 128>					mEdgeCache;
+		CacheMap<CachedVertex, 128>					mVertCache;
 
-		const Cm::Matrix34							m0to1;
-		const Cm::Matrix34							m1to0;
+		const Matrix34FromTransform					m0to1;
+		const Matrix34FromTransform					m1to0;
 
 		PxVec3										mHullCenterMesh;
 		PxVec3										mHullCenterWorld;
 
 		const PolygonalData&						mPolyData0;
-		const Cm::Matrix34&							mWorld0;
-		const Cm::Matrix34&							mWorld1;
+		const PxMat34&								mWorld0;
+		const PxMat34&								mWorld1;
 
-		const Cm::FastVertex2ShapeScaling&			mConvexScaling;
+		const FastVertex2ShapeScaling&				mConvexScaling;
 
 		PxReal										mContactDistance;
 		PxReal										mToleranceLength;
@@ -555,20 +558,20 @@ namespace
 		PxReal										mCCDEpsilon;
 		const PxTransform&							mTransform0;
 		const PxTransform&							mTransform1;
-		ContactBuffer&								mContactBuffer;
+		PxContactBuffer&							mContactBuffer;
 		bool										mAnyHits;
 
 		ConvexMeshContactGeneration(
-			Ps::InlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
+			PxInlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
 			const PxTransform& t0to1, const PxTransform& t1to0,
-			const PolygonalData& polyData0, const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-			const Cm::FastVertex2ShapeScaling& convexScaling,
+			const PolygonalData& polyData0, const PxMat34& world0, const PxMat34& world1,
+			const FastVertex2ShapeScaling& convexScaling,
 			PxReal contactDistance,
 			PxReal toleranceLength,
 			bool idtConvexScale,
 			PxReal cCCDEpsilon,
 			const PxTransform& transform0, const PxTransform& transform1,
-			ContactBuffer& contactBuffer
+			PxContactBuffer& contactBuffer
 		);
 
 		void processTriangle(const PxVec3* verts, PxU32 triangleIndex, PxU8 triFlags, const PxU32* vertInds);
@@ -587,25 +590,25 @@ namespace
 // 17 entries. 1088/17 = 64 triangles in the local array
 struct SavedContactData
 {
-	PxU32		mTriangleIndex;
-	PxVec3		mVerts[3];
-	PxU32		mInds[3];
-	PxVec3		mGroupAxis;
-	PxReal		mGroupMinDepth;
+	PxU32		mTriangleIndex;	// 1
+	PxVec3		mVerts[3];		// 10
+	PxU32		mInds[3];		// 13
+	PxVec3		mGroupAxis;		// 16
+	PxReal		mGroupMinDepth;	// 17
 };
 }
 
 ConvexMeshContactGeneration::ConvexMeshContactGeneration(
-	Ps::InlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
+	PxInlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
 	const PxTransform& t0to1, const PxTransform& t1to0,
-	const PolygonalData& polyData0, const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-	const Cm::FastVertex2ShapeScaling& convexScaling,
+	const PolygonalData& polyData0, const PxMat34& world0, const PxMat34& world1,
+	const FastVertex2ShapeScaling& convexScaling,
 	PxReal contactDistance,
 	PxReal toleranceLength,
 	bool idtConvexScale,
 	PxReal cCCDEpsilon,
 	const PxTransform& transform0, const PxTransform& transform1,
-	ContactBuffer& contactBuffer
+	PxContactBuffer& contactBuffer
 ) :
 	mDelayedContacts(delayedContacts),
 	m0to1			(t0to1),
@@ -633,43 +636,43 @@ ConvexMeshContactGeneration::ConvexMeshContactGeneration(
 	mHullCenterWorld = mWorld0.transform(hullCenterLocal);
 }
 
-struct ConvexMeshContactGenerationCallback : MeshHitCallback<PxRaycastHit>
+struct ConvexMeshContactGenerationCallback : MeshHitCallback<PxGeomRaycastHit>
 {
-	ConvexMeshContactGeneration			mGeneration;
-	const Cm::FastVertex2ShapeScaling&	mMeshScaling;
-	const PxU8* PX_RESTRICT				mExtraTrigData;
-	bool								mIdtMeshScale;
-	const TriangleMesh*					mMeshData;
-	const BoxPadded&					mBox;
+	ConvexMeshContactGeneration		mGeneration;
+	const FastVertex2ShapeScaling&	mMeshScaling;
+	const PxU8* PX_RESTRICT			mExtraTrigData;
+	bool							mIdtMeshScale;
+	const TriangleMesh*				mMeshData;
+	const BoxPadded&				mBox;
 
 	ConvexMeshContactGenerationCallback(
-		Ps::InlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
+		PxInlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
 		const PxTransform& t0to1, const PxTransform& t1to0,
-		const PolygonalData& polyData0, const Cm::Matrix34& world0, const Cm::Matrix34& world1,
+		const PolygonalData& polyData0, const PxMat34& world0, const PxMat34& world1,
 		const TriangleMesh* meshData,
 		const PxU8* PX_RESTRICT extraTrigData,
-		const Cm::FastVertex2ShapeScaling& meshScaling,
-		const Cm::FastVertex2ShapeScaling& convexScaling,
+		const FastVertex2ShapeScaling& meshScaling,
+		const FastVertex2ShapeScaling& convexScaling,
 		PxReal contactDistance,
 		PxReal toleranceLength,
 		bool idtMeshScale, bool idtConvexScale,
 		PxReal cCCDEpsilon,
 		const PxTransform& transform0, const PxTransform& transform1,
-		ContactBuffer& contactBuffer,
+		PxContactBuffer& contactBuffer,
 		const BoxPadded& box
 	)	:
-		MeshHitCallback<PxRaycastHit>	(CallbackMode::eMULTIPLE),
-		mGeneration						(delayedContacts, t0to1, t1to0, polyData0, world0, world1, convexScaling, contactDistance, toleranceLength, idtConvexScale, cCCDEpsilon, transform0, transform1, contactBuffer),
-		mMeshScaling					(meshScaling),
-		mExtraTrigData					(extraTrigData),
-		mIdtMeshScale					(idtMeshScale),
-		mMeshData						(meshData),
-		mBox							(box)
+		MeshHitCallback<PxGeomRaycastHit>	(CallbackMode::eMULTIPLE),
+		mGeneration							(delayedContacts, t0to1, t1to0, polyData0, world0, world1, convexScaling, contactDistance, toleranceLength, idtConvexScale, cCCDEpsilon, transform0, transform1, contactBuffer),
+		mMeshScaling						(meshScaling),
+		mExtraTrigData						(extraTrigData),
+		mIdtMeshScale						(idtMeshScale),
+		mMeshData							(meshData),
+		mBox								(box)
 	{
 	}
 
 	virtual PxAgain processHit( // all reported coords are in mesh local space including hit.position
-		const PxRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
+		const PxGeomRaycastHit& hit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal&, const PxU32* vinds)
 	{
 		// PT: this one is safe because incoming vertices from midphase are always safe to V4Load (by design)
 		// PT: TODO: is this test really needed? Not done in midphase already?
@@ -681,8 +684,20 @@ struct ConvexMeshContactGenerationCallback : MeshHitCallback<PxRaycastHit>
 
 		const PxU32 triangleIndex = hit.faceIndex;
 
-		const PxU8 extraData = getConvexEdgeFlags(mExtraTrigData, triangleIndex);
-		mGeneration.processTriangle(verts, triangleIndex, extraData, vinds);
+		PxU8 extraData = getConvexEdgeFlags(mExtraTrigData, triangleIndex);
+
+		const PxU32* vertexIndices = vinds;
+		PxU32 localStorage[3];
+		if(mMeshScaling.flipsNormal())
+		{
+			flipConvexEdgeFlags(extraData);
+			localStorage[0] = vinds[0];
+			localStorage[1] = vinds[2];
+			localStorage[2] = vinds[1];
+			vertexIndices = localStorage;
+		}
+
+		mGeneration.processTriangle(verts, triangleIndex, extraData, vertexIndices);
 		return true;
 	}
 
@@ -742,16 +757,16 @@ PxVec3 contactGenPositionShiftVec = groupAxis * contactGenPositionShift;	//shift
 
 //TODO: make these overwrite orig location if its safe to do so.
 
-Cm::Matrix34 world0_(mWorld0);
+PxMat34 world0_(mWorld0);
 PxTransform transform0_(mTransform0);
 
 world0_.p -= contactGenPositionShiftVec;
 transform0_.p = world0_.p;	//reset this too.
 
-PxTransform t0to1_ = mTransform1.transformInv(transform0_);
-PxTransform t1to0_ = transform0_.transformInv(mTransform1);
-Cm::Matrix34 m0to1_(t0to1_);	
-Cm::Matrix34 m1to0_(t1to0_);
+const PxTransform t0to1_ = mTransform1.transformInv(transform0_);
+const PxTransform t1to0_ = transform0_.transformInv(mTransform1);
+const Matrix34FromTransform m0to1_(t0to1_);	
+const Matrix34FromTransform m1to0_(t1to0_);
 
 	PxVec3* scaledVertices0;
 	PxU8* stackIndices0;
@@ -970,7 +985,7 @@ static FeatureCode computeFeatureCode(const PxVec3& point, const PxVec3* verts)
 //static PX_FORCE_INLINE bool testEdge(PxU32 vref0, PxU32 vref1, PxU32 tvref0, PxU32 tvref1)
 //{
 //	if(tvref0>tvref1)
-//		Ps::swap(tvref0, tvref1);
+//		PxSwap(tvref0, tvref1);
 //
 //	if(tvref0==vref0 && tvref1==vref1)
 //		return false;
@@ -980,7 +995,7 @@ static FeatureCode computeFeatureCode(const PxVec3& point, const PxVec3* verts)
 //static bool validateEdge(PxU32 vref0, PxU32 vref1, const PxU32 count, const ContactPoint* PX_RESTRICT contacts, const TriangleMesh& meshData)
 //{
 //	if(vref0>vref1)
-//		Ps::swap(vref0, vref1);
+//		PxSwap(vref0, vref1);
 //
 //	PxU32 previous = 0xffffffff;
 //	for(PxU32 i=0;i<count;i++)
@@ -1011,7 +1026,7 @@ static FeatureCode computeFeatureCode(const PxVec3& point, const PxVec3* verts)
 //static bool validateEdge(PxU32 vref0, PxU32 vref1, const PxU32* vertIndices, const PxU32 nbIndices)
 //{
 //	if(vref0>vref1)
-//		Ps::swap(vref0, vref1);
+//		PxSwap(vref0, vref1);
 //
 //	for(PxU32 i=0;i<nbIndices;i+=3)
 //	{
@@ -1203,10 +1218,10 @@ void ConvexMeshContactGeneration::generateLastContacts()
 
 /////////////
 
-static bool contactHullMesh2(const PolygonalData& polyData0, const PxBounds3& hullAABB, const PxTriangleMeshGeometryLL& shape1,
+static bool contactHullMesh2(const PolygonalData& polyData0, const PxBounds3& hullAABB, const PxTriangleMeshGeometry& shape1,
 						const PxTransform& transform0, const PxTransform& transform1,
-						const NarrowPhaseParams& params, ContactBuffer& contactBuffer,
-						const Cm::FastVertex2ShapeScaling& convexScaling, const Cm::FastVertex2ShapeScaling& meshScaling,
+						const NarrowPhaseParams& params, PxContactBuffer& contactBuffer,
+						const FastVertex2ShapeScaling& convexScaling, const FastVertex2ShapeScaling& meshScaling,
 						bool idtConvexScale, bool idtMeshScale)
 {
 	//Just a sanity-check in debug-mode
@@ -1214,8 +1229,8 @@ static bool contactHullMesh2(const PolygonalData& polyData0, const PxBounds3& hu
 	////////////////////
 
 	// Compute matrices
-	const Cm::Matrix34 world0(transform0);
-	const Cm::Matrix34 world1(transform1);
+	const Matrix34FromTransform world0(transform0);
+	const Matrix34FromTransform world1(transform1);
 
 	// Compute relative transforms
 	const PxTransform t0to1 = transform1.transformInv(transform0);
@@ -1225,9 +1240,9 @@ static bool contactHullMesh2(const PolygonalData& polyData0, const PxBounds3& hu
 	computeHullOBB(hullOBB, hullAABB, params.mContactDistance, world0, world1, meshScaling, idtMeshScale);
 
 	// Setup the collider
-	const TriangleMesh* PX_RESTRICT meshData = shape1.meshData;
+	const TriangleMesh* PX_RESTRICT meshData = _getMeshData(shape1);
 
-	Ps::InlineArray<PxU32,LOCAL_CONTACTS_SIZE> delayedContacts;
+	PxInlineArray<PxU32,LOCAL_CONTACTS_SIZE> delayedContacts;
 	
 	ConvexMeshContactGenerationCallback blockCallback(
 		delayedContacts,
@@ -1252,18 +1267,19 @@ bool Gu::contactConvexMesh(GU_CONTACT_METHOD_ARGS)
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	const PxTriangleMeshGeometryLL& shapeMesh = shape1.get<const PxTriangleMeshGeometryLL>();
+	const PxConvexMeshGeometry& shapeConvex = checkedCast<PxConvexMeshGeometry>(shape0);
+	const PxTriangleMeshGeometry& shapeMesh = checkedCast<PxTriangleMeshGeometry>(shape1);
 
 	const bool idtScaleMesh = shapeMesh.scale.isIdentity();
 
-	Cm::FastVertex2ShapeScaling meshScaling;
+	FastVertex2ShapeScaling meshScaling;
 	if(!idtScaleMesh)
 		meshScaling.init(shapeMesh.scale);
 
-	Cm::FastVertex2ShapeScaling convexScaling;
+	FastVertex2ShapeScaling convexScaling;
 	PxBounds3 hullAABB;
 	PolygonalData polyData0;
-	const bool idtScaleConvex = getConvexData(shape0, convexScaling, hullAABB, polyData0);
+	const bool idtScaleConvex = getConvexData(shapeConvex, convexScaling, hullAABB, polyData0);
 
 	return contactHullMesh2(polyData0, hullAABB, shapeMesh, transform0, transform1, params, contactBuffer, convexScaling, meshScaling, idtScaleConvex, idtScaleMesh);
 }
@@ -1273,8 +1289,8 @@ bool Gu::contactBoxMesh(GU_CONTACT_METHOD_ARGS)
 	PX_UNUSED(cache);
 	PX_UNUSED(renderOutput);
 
-	const PxBoxGeometry& shapeBox = shape0.get<const PxBoxGeometry>();
-	const PxTriangleMeshGeometryLL& shapeMesh = shape1.get<const PxTriangleMeshGeometryLL>();
+	const PxBoxGeometry& shapeBox = checkedCast<PxBoxGeometry>(shape0);
+	const PxTriangleMeshGeometry& shapeMesh = checkedCast<PxTriangleMeshGeometry>(shape1);
 
 	PolygonalData polyData0;
 	PolygonalBox polyBox(shapeBox.halfExtents);
@@ -1284,11 +1300,11 @@ bool Gu::contactBoxMesh(GU_CONTACT_METHOD_ARGS)
 
 	const bool idtScaleMesh = shapeMesh.scale.isIdentity();
 
-	Cm::FastVertex2ShapeScaling meshScaling;
+	FastVertex2ShapeScaling meshScaling;
 	if(!idtScaleMesh)
 		meshScaling.init(shapeMesh.scale);
 
-	Cm::FastVertex2ShapeScaling idtScaling;
+	FastVertex2ShapeScaling idtScaling;
 	return contactHullMesh2(polyData0, hullAABB, shapeMesh, transform0, transform1, params, contactBuffer, idtScaling, meshScaling, true, idtScaleMesh);
 }
 
@@ -1296,23 +1312,23 @@ bool Gu::contactBoxMesh(GU_CONTACT_METHOD_ARGS)
 
 namespace
 {
-struct ConvexVsHeightfieldContactGenerationCallback : EntityReport<PxU32>
+struct ConvexVsHeightfieldContactGenerationCallback : OverlapReport
 {
 	ConvexMeshContactGeneration mGeneration;
 	HeightFieldUtil&			mHfUtil;
 
 	ConvexVsHeightfieldContactGenerationCallback(
 		HeightFieldUtil& hfUtil,
-		Ps::InlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
+		PxInlineArray<PxU32,LOCAL_CONTACTS_SIZE>& delayedContacts,
 		const PxTransform& t0to1, const PxTransform& t1to0,
-		const PolygonalData& polyData0, const Cm::Matrix34& world0, const Cm::Matrix34& world1,
-		const Cm::FastVertex2ShapeScaling& convexScaling,
+		const PolygonalData& polyData0, const PxMat34& world0, const PxMat34& world1,
+		const FastVertex2ShapeScaling& convexScaling,
 		PxReal contactDistance,
 		PxReal toleranceLength,
 		bool idtConvexScale,
 		PxReal cCCDEpsilon,
 		const PxTransform& transform0, const PxTransform& transform1,
-		ContactBuffer& contactBuffer
+		PxContactBuffer& contactBuffer
 		) : mGeneration(delayedContacts, t0to1, t1to0, polyData0, world0, world1, convexScaling, contactDistance, toleranceLength, idtConvexScale, cCCDEpsilon, transform0,
 			transform1, contactBuffer),
 			mHfUtil(hfUtil)
@@ -1320,7 +1336,7 @@ struct ConvexVsHeightfieldContactGenerationCallback : EntityReport<PxU32>
 	}
 
 	// PT: TODO: refactor/unify with similar code in other places
-	virtual bool onEvent(PxU32 nb, PxU32* indices)
+	virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 	{
 		const PxU8 nextInd[] = {2,0,1};
 
@@ -1377,16 +1393,16 @@ protected:
 
 static bool contactHullHeightfield2(const PolygonalData& polyData0, const PxBounds3& hullAABB, const PxHeightFieldGeometry& shape1,
 						const PxTransform& transform0, const PxTransform& transform1,
-						const NarrowPhaseParams& params, ContactBuffer& contactBuffer,
-						const Cm::FastVertex2ShapeScaling& convexScaling,
+						const NarrowPhaseParams& params, PxContactBuffer& contactBuffer,
+						const FastVertex2ShapeScaling& convexScaling,
 						bool idtConvexScale)
 {
 	//We need to create a callback that fills triangles from the HF
 
 	HeightFieldUtil hfUtil(shape1);
 
-	const Cm::Matrix34 world0(transform0);
-	const Cm::Matrix34 world1(transform1);
+	const Matrix34FromTransform world0(transform0);
+	const Matrix34FromTransform world1(transform1);
 
 	////////////////////
 
@@ -1394,12 +1410,12 @@ static bool contactHullHeightfield2(const PolygonalData& polyData0, const PxBoun
 	const PxTransform t0to1 = transform1.transformInv(transform0);
 	const PxTransform t1to0 = transform0.transformInv(transform1);
 
-	Ps::InlineArray<PxU32, LOCAL_CONTACTS_SIZE> delayedContacts;
+	PxInlineArray<PxU32, LOCAL_CONTACTS_SIZE> delayedContacts;
 
 	ConvexVsHeightfieldContactGenerationCallback blockCallback(hfUtil, delayedContacts, t0to1, t1to0, polyData0, world0, world1, convexScaling, params.mContactDistance, params.mToleranceLength,
 		idtConvexScale, params.mMeshContactMargin, transform0, transform1, contactBuffer);
 
-	hfUtil.overlapAABBTriangles(transform1, PxBounds3::transformFast(t0to1, hullAABB), 0, &blockCallback);
+	hfUtil.overlapAABBTriangles0to1(t0to1, hullAABB, blockCallback);
 
 	blockCallback.mGeneration.generateLastContacts();
 
@@ -1412,12 +1428,13 @@ bool Gu::contactConvexHeightfield(GU_CONTACT_METHOD_ARGS)
 	PX_UNUSED(renderOutput);
 
 	//Create a triangle cache from the HF triangles and then feed triangles to NP mesh methods
-	const physx::PxHeightFieldGeometryLL& shapeMesh = shape1.get<const PxHeightFieldGeometryLL>();
+	const PxConvexMeshGeometry& shapeConvex = checkedCast<PxConvexMeshGeometry>(shape0);
+	const PxHeightFieldGeometry& shapeMesh = checkedCast<PxHeightFieldGeometry>(shape1);
 
-	Cm::FastVertex2ShapeScaling convexScaling;
+	FastVertex2ShapeScaling convexScaling;
 	PxBounds3 hullAABB;
 	PolygonalData polyData0;
-	const bool idtScaleConvex = getConvexData(shape0, convexScaling, hullAABB, polyData0);
+	const bool idtScaleConvex = getConvexData(shapeConvex, convexScaling, hullAABB, polyData0);
 	const PxVec3 inflation(params.mContactDistance);
 	hullAABB.minimum -= inflation;
 	hullAABB.maximum += inflation;
@@ -1431,9 +1448,8 @@ bool Gu::contactBoxHeightfield(GU_CONTACT_METHOD_ARGS)
 	PX_UNUSED(renderOutput);
 
 	//Create a triangle cache from the HF triangles and then feed triangles to NP mesh methods
-	const physx::PxHeightFieldGeometryLL& shapeMesh = shape1.get<const PxHeightFieldGeometryLL>();
-
-	const PxBoxGeometry& shapeBox = shape0.get<const PxBoxGeometry>();
+	const PxHeightFieldGeometry& shapeMesh = checkedCast<PxHeightFieldGeometry>(shape1);
+	const PxBoxGeometry& shapeBox = checkedCast<PxBoxGeometry>(shape0);
 
 	PolygonalData polyData0;
 	PolygonalBox polyBox(shapeBox.halfExtents);
@@ -1443,7 +1459,7 @@ bool Gu::contactBoxHeightfield(GU_CONTACT_METHOD_ARGS)
 
 	const PxBounds3 hullAABB = PxBounds3(-inflatedExtents, inflatedExtents);
 
-	const Cm::FastVertex2ShapeScaling idtScaling;
+	const FastVertex2ShapeScaling idtScaling;
 
 	return contactHullHeightfield2(polyData0, hullAABB, shapeMesh, transform0, transform1, params, contactBuffer, idtScaling, true);
 }

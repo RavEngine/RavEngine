@@ -1,4 +1,3 @@
-##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
 ## are met:
@@ -23,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXCommon common
@@ -43,39 +42,32 @@ include(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/Ph
 
 
 SET(PHYSX_COMMON_SOURCE
-	${COMMON_SRC_DIR}/CmCollection.cpp
 	${COMMON_SRC_DIR}/CmPtrTable.cpp
-	${COMMON_SRC_DIR}/CmRadixSort.cpp
-	${COMMON_SRC_DIR}/CmRadixSortBuffered.cpp
-	${COMMON_SRC_DIR}/CmRenderOutput.cpp
-	${COMMON_SRC_DIR}/CmVisualization.cpp
-	${COMMON_SRC_DIR}/CmBitMap.h
+	${COMMON_SRC_DIR}/CmRenderBuffer.h
 	${COMMON_SRC_DIR}/CmBlockArray.h
 	${COMMON_SRC_DIR}/CmCollection.h
+	${COMMON_SRC_DIR}/CmCollection.cpp
 	${COMMON_SRC_DIR}/CmConeLimitHelper.h
 	${COMMON_SRC_DIR}/CmFlushPool.h
 	${COMMON_SRC_DIR}/CmIDPool.h
-	${COMMON_SRC_DIR}/CmIO.h
 	${COMMON_SRC_DIR}/CmMatrix34.h
-	${COMMON_SRC_DIR}/CmPhysXCommon.h
 	${COMMON_SRC_DIR}/CmPool.h
 	${COMMON_SRC_DIR}/CmPreallocatingPool.h
 	${COMMON_SRC_DIR}/CmPriorityQueue.h
 	${COMMON_SRC_DIR}/CmPtrTable.h
-	${COMMON_SRC_DIR}/CmQueue.h
 	${COMMON_SRC_DIR}/CmRadixSort.h
-	${COMMON_SRC_DIR}/CmRadixSortBuffered.h
+	${COMMON_SRC_DIR}/CmRadixSort.cpp	
+	${COMMON_SRC_DIR}/CmRandom.h
 	${COMMON_SRC_DIR}/CmRefCountable.h
-	${COMMON_SRC_DIR}/CmRenderBuffer.h
-	${COMMON_SRC_DIR}/CmRenderOutput.h
 	${COMMON_SRC_DIR}/CmScaling.h
+	${COMMON_SRC_DIR}/CmSerialize.h
+	${COMMON_SRC_DIR}/CmSerialize.cpp
 	${COMMON_SRC_DIR}/CmSpatialVector.h
 	${COMMON_SRC_DIR}/CmTask.h
-	${COMMON_SRC_DIR}/CmTaskPool.h
-	${COMMON_SRC_DIR}/CmTmpMem.h
 	${COMMON_SRC_DIR}/CmTransformUtils.h
 	${COMMON_SRC_DIR}/CmUtils.h
 	${COMMON_SRC_DIR}/CmVisualization.h
+	${COMMON_SRC_DIR}/CmVisualization.cpp
 )
 SOURCE_GROUP(common\\src FILES ${PHYSX_COMMON_SOURCE})
 
@@ -85,9 +77,10 @@ SET(PHYSXCOMMON_COMMON_HEADERS
 	${PHYSX_ROOT_DIR}/include/common/PxCoreUtilityTypes.h
 	${PHYSX_ROOT_DIR}/include/common/PxMetaData.h
 	${PHYSX_ROOT_DIR}/include/common/PxMetaDataFlags.h
-	${PHYSX_ROOT_DIR}/include/common/PxPhysicsInsertionCallback.h
+	${PHYSX_ROOT_DIR}/include/common/PxInsertionCallback.h
 	${PHYSX_ROOT_DIR}/include/common/PxPhysXCommonConfig.h
 	${PHYSX_ROOT_DIR}/include/common/PxRenderBuffer.h
+	${PHYSX_ROOT_DIR}/include/common/PxRenderOutput.h
 	${PHYSX_ROOT_DIR}/include/common/PxSerialFramework.h
 	${PHYSX_ROOT_DIR}/include/common/PxSerializer.h
 	${PHYSX_ROOT_DIR}/include/common/PxStringTable.h
@@ -102,9 +95,16 @@ SET(PHYSXCOMMON_GEOMETRY_HEADERS
 	${PHYSX_ROOT_DIR}/include/geometry/PxCapsuleGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxConvexMesh.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxConvexMeshGeometry.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxCustomGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometry.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryInternal.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryHelpers.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryHit.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryQuery.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryQueryFlags.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryQueryContext.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxHairSystemDesc.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxHairSystemGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxHeightField.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxHeightFieldDesc.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxHeightFieldFlag.h
@@ -113,18 +113,25 @@ SET(PHYSXCOMMON_GEOMETRY_HEADERS
 	${PHYSX_ROOT_DIR}/include/geometry/PxMeshQuery.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxMeshScale.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxPlaneGeometry.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxReportCallback.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxSimpleTriangleMesh.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxSphereGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxTriangle.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxTriangleMesh.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxTriangleMeshGeometry.h
-	${PHYSX_ROOT_DIR}/include/geometry/PxBVHStructure.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxBVH.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxBVHBuildStrategy.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxTetrahedron.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxTetrahedronMesh.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxTetrahedronMeshGeometry.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxParticleSystemGeometry.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxGjkQuery.h
 )
 SOURCE_GROUP(include\\geometry FILES ${PHYSXCOMMON_GEOMETRY_HEADERS})
 
 SET(PHYSXCOMMON_GEOMUTILS_HEADERS
-	${PHYSX_ROOT_DIR}/include/geomutils/GuContactBuffer.h
-	${PHYSX_ROOT_DIR}/include/geomutils/GuContactPoint.h
+	${PHYSX_ROOT_DIR}/include/geomutils/PxContactBuffer.h
+	${PHYSX_ROOT_DIR}/include/geomutils/PxContactPoint.h
 )
 SOURCE_GROUP(include\\geomutils FILES ${PHYSXCOMMON_GEOMUTILS_HEADERS})
 
@@ -135,59 +142,71 @@ SOURCE_GROUP(include\\collision FILES ${PHYSXCOMMON_COLLISION_HEADERS})
 
 SET(PHYSXCOMMON_GU_HEADERS
 	${GU_SOURCE_DIR}/include/GuBox.h
+	${GU_SOURCE_DIR}/include/GuSphere.h
+	${GU_SOURCE_DIR}/include/GuSegment.h
+	${GU_SOURCE_DIR}/include/GuCapsule.h
+	${GU_SOURCE_DIR}/include/GuCenterExtents.h
+	${GU_SOURCE_DIR}/include/GuBounds.h
 	${GU_SOURCE_DIR}/include/GuDistanceSegmentBox.h
 	${GU_SOURCE_DIR}/include/GuDistanceSegmentSegment.h
 	${GU_SOURCE_DIR}/include/GuIntersectionBoxBox.h
-	${GU_SOURCE_DIR}/include/GuIntersectionTriangleBox.h
+	${GU_SOURCE_DIR}/include/GuIntersectionTetrahedronBox.h
 	${GU_SOURCE_DIR}/include/GuIntersectionTriangleBoxRef.h
+	${GU_SOURCE_DIR}/include/GuIntersectionTriangleTriangle.h
 	${GU_SOURCE_DIR}/include/GuRaycastTests.h
-	${GU_SOURCE_DIR}/include/GuSegment.h
-	${GU_SOURCE_DIR}/include/GuSIMDHelpers.h
+	${GU_SOURCE_DIR}/include/GuOverlapTests.h
+	${GU_SOURCE_DIR}/include/GuSweepTests.h
+	${GU_SOURCE_DIR}/include/GuCachedFuncs.h
+	${GU_SOURCE_DIR}/include/GuPruner.h
+	${GU_SOURCE_DIR}/include/GuPrunerTypedef.h
+	${GU_SOURCE_DIR}/include/GuPrunerPayload.h
+	${GU_SOURCE_DIR}/include/GuPrunerMergeData.h
+	${GU_SOURCE_DIR}/include/GuSqInternal.h
+	${GU_SOURCE_DIR}/include/GuActorShapeMap.h
+	${GU_SOURCE_DIR}/include/GuQuerySystem.h
+	${GU_SOURCE_DIR}/include/GuFactory.h
+	${GU_SOURCE_DIR}/include/GuDistancePointTetrahedron.h
+	${GU_SOURCE_DIR}/include/GuDistancePointTriangle.h
+	${GU_SOURCE_DIR}/include/GuIntersectionTriangleBox.h
+	${GU_SOURCE_DIR}/include/GuCooking.h
 )
-SOURCE_GROUP(geomutils\\headers FILES ${PHYSXCOMMON_GU_HEADERS})
+SOURCE_GROUP(geomutils\\include FILES ${PHYSXCOMMON_GU_HEADERS})
 
-SET(PHYSXCOMMON_GU_PXHEADERS
-	${PHYSX_ROOT_DIR}/include/geomutils/GuContactBuffer.h
-	${PHYSX_ROOT_DIR}/include/geomutils/GuContactPoint.h
-)
-SOURCE_GROUP(geomutils\\include FILES ${PHYSXCOMMON_GU_PXHEADERS})
+#SET(PHYSXCOMMON_GU_PXHEADERS
+#	${PHYSX_ROOT_DIR}/include/geomutils/GuContactBuffer.h
+#	${PHYSX_ROOT_DIR}/include/geomutils/GuContactPoint.h
+#)
+#SOURCE_GROUP(geomutils\\include FILES ${PHYSXCOMMON_GU_PXHEADERS})
 
 SET(PHYSXCOMMON_GU_SOURCE
-	${GU_SOURCE_DIR}/src/GuBounds.cpp
 	${GU_SOURCE_DIR}/src/GuBox.cpp
 	${GU_SOURCE_DIR}/src/GuCapsule.cpp
 	${GU_SOURCE_DIR}/src/GuCCTSweepTests.cpp	
 	${GU_SOURCE_DIR}/src/GuGeometryQuery.cpp
-	${GU_SOURCE_DIR}/src/GuGeometryUnion.cpp
 	${GU_SOURCE_DIR}/src/GuInternal.cpp
 	${GU_SOURCE_DIR}/src/GuMeshFactory.cpp
 	${GU_SOURCE_DIR}/src/GuMetaData.cpp
 	${GU_SOURCE_DIR}/src/GuMTD.cpp
 	${GU_SOURCE_DIR}/src/GuOverlapTests.cpp
 	${GU_SOURCE_DIR}/src/GuRaycastTests.cpp
-	${GU_SOURCE_DIR}/src/GuSerialize.cpp
 	${GU_SOURCE_DIR}/src/GuSweepMTD.cpp
 	${GU_SOURCE_DIR}/src/GuSweepSharedTests.cpp
 	${GU_SOURCE_DIR}/src/GuSweepTests.cpp
-	${GU_SOURCE_DIR}/src/GuBounds.h
-	${GU_SOURCE_DIR}/src/GuCapsule.h
-	${GU_SOURCE_DIR}/src/GuCenterExtents.h
-	${GU_SOURCE_DIR}/src/GuGeometryUnion.h
+	${GU_SOURCE_DIR}/src/GuGeometryChecks.h
 	${GU_SOURCE_DIR}/src/GuInternal.h
 	${GU_SOURCE_DIR}/src/GuMeshFactory.h
 	${GU_SOURCE_DIR}/src/GuMTD.h
-	${GU_SOURCE_DIR}/src/GuOverlapTests.h
-	${GU_SOURCE_DIR}/src/GuSerialize.h
-	${GU_SOURCE_DIR}/src/GuSphere.h
 	${GU_SOURCE_DIR}/src/GuSweepMTD.h
 	${GU_SOURCE_DIR}/src/GuSweepSharedTests.h
-	${GU_SOURCE_DIR}/src/GuSweepTests.h
-	${GU_SOURCE_DIR}/src/GuAABBTreeBuild.cpp
-	${GU_SOURCE_DIR}/src/GuAABBTreeBuild.h
-	${GU_SOURCE_DIR}/src/GuAABBTreeQuery.h
-	${GU_SOURCE_DIR}/src/GuBVHStructure.cpp
-	${GU_SOURCE_DIR}/src/GuBVHStructure.h
-	${GU_SOURCE_DIR}/src/GuBVHTestsSIMD.h
+	${GU_SOURCE_DIR}/src/GuSDF.h
+	${GU_SOURCE_DIR}/src/GuSDF.cpp
+	${GU_SOURCE_DIR}/src/GuCookingSDF.h
+	${GU_SOURCE_DIR}/src/GuCookingSDF.cpp
+	${GU_SOURCE_DIR}/src/GuGjkQuery.cpp
+	${GU_SOURCE_DIR}/src/GuWindingNumber.cpp
+	${GU_SOURCE_DIR}/src/GuWindingNumber.h
+	${GU_SOURCE_DIR}/src/GuWindingNumberCluster.h
+	${GU_SOURCE_DIR}/src/GuWindingNumberT.h
 )
 SOURCE_GROUP(geomutils\\src FILES ${PHYSXCOMMON_GU_SOURCE})
 
@@ -200,12 +219,23 @@ SOURCE_GROUP(geomutils\\src\\ccd FILES ${PHYSXCOMMON_GU_CCD_SOURCE})
 
 SET(PHYSXCOMMON_GU_COMMON_SOURCE
 	${GU_SOURCE_DIR}/src/common/GuBarycentricCoordinates.cpp
-	${GU_SOURCE_DIR}/src/common/GuSeparatingAxes.cpp
 	${GU_SOURCE_DIR}/src/common/GuBarycentricCoordinates.h
 	${GU_SOURCE_DIR}/src/common/GuBoxConversion.h
 	${GU_SOURCE_DIR}/src/common/GuEdgeCache.h
-	${GU_SOURCE_DIR}/src/common/GuEdgeListData.h
+	${GU_SOURCE_DIR}/src/common/GuAdjacencies.h
+	${GU_SOURCE_DIR}/src/common/GuAdjacencies.cpp
+	${GU_SOURCE_DIR}/src/common/GuEdgeList.h
+	${GU_SOURCE_DIR}/src/common/GuEdgeList.cpp
 	${GU_SOURCE_DIR}/src/common/GuSeparatingAxes.h
+	${GU_SOURCE_DIR}/src/common/GuSeparatingAxes.cpp
+	${GU_SOURCE_DIR}/src/common/GuQuantizer.h
+	${GU_SOURCE_DIR}/src/common/GuQuantizer.cpp
+	${GU_SOURCE_DIR}/src/common/GuMeshCleaner.h
+	${GU_SOURCE_DIR}/src/common/GuMeshCleaner.cpp
+	${GU_SOURCE_DIR}/src/common/GuVertexReducer.h
+	${GU_SOURCE_DIR}/src/common/GuVertexReducer.cpp
+    ${GU_SOURCE_DIR}/src/common/GuMeshAnalysis.h
+	${GU_SOURCE_DIR}/src/common/GuMeshAnalysis.cpp
 )
 SOURCE_GROUP(geomutils\\src\\common FILES ${PHYSXCOMMON_GU_COMMON_SOURCE})
 
@@ -226,6 +256,7 @@ SET(PHYSXCOMMON_GU_CONTACT_SOURCE
 	${GU_SOURCE_DIR}/src/contact/GuContactSphereMesh.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactSpherePlane.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactSphereSphere.cpp
+	${GU_SOURCE_DIR}/src/contact/GuContactCustomGeometry.cpp
 	${GU_SOURCE_DIR}/src/contact/GuFeatureCode.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactMethodImpl.h
 	${GU_SOURCE_DIR}/src/contact/GuContactPolygonPolygon.h
@@ -261,6 +292,7 @@ SET(PHYSXCOMMON_GU_DISTANCE_SOURCE
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentBox.cpp
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentSegment.cpp
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentTriangle.cpp
+	${GU_SOURCE_DIR}/src/distance/GuDistancePointTetrahedron.cpp
 	${GU_SOURCE_DIR}/src/distance/GuDistancePointBox.h
 	${GU_SOURCE_DIR}/src/distance/GuDistancePointSegment.h
 	${GU_SOURCE_DIR}/src/distance/GuDistancePointTriangle.h
@@ -268,6 +300,7 @@ SET(PHYSXCOMMON_GU_DISTANCE_SOURCE
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentSegmentSIMD.h
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentTriangle.h
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentTriangleSIMD.h
+	${GU_SOURCE_DIR}/src/distance/GuDistancePointTetrahedron.h
 )
 SOURCE_GROUP(geomutils\\src\\distance FILES ${PHYSXCOMMON_GU_DISTANCE_SOURCE})
 
@@ -292,6 +325,7 @@ SET(PHYSXCOMMON_GU_GJK_SOURCE
 	${GU_SOURCE_DIR}/src/gjk/GuVecPlane.h
 	${GU_SOURCE_DIR}/src/gjk/GuVecSphere.h
 	${GU_SOURCE_DIR}/src/gjk/GuVecTriangle.h
+	${GU_SOURCE_DIR}/src/gjk/GuVecTetrahedron.h
 )
 SOURCE_GROUP(geomutils\\src\\gjk FILES ${PHYSXCOMMON_GU_GJK_SOURCE})
 
@@ -315,7 +349,9 @@ SET(PHYSXCOMMON_GU_INTERSECTION_SOURCE
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRayCapsule.cpp
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRaySphere.cpp
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionSphereBox.cpp
+	${GU_SOURCE_DIR}/src/intersection/GuIntersectionTetrahedronBox.cpp
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionTriangleBox.cpp
+	${GU_SOURCE_DIR}/src/intersection/GuIntersectionTriangleTriangle.cpp
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionCapsuleTriangle.h
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionEdgeEdge.h
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRay.h
@@ -334,6 +370,7 @@ SET(PXCOMMON_BVH4_FILES
 	${GU_SOURCE_DIR}/src/mesh/GuBV4_BoxOverlap.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV4_CapsuleSweep.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV4_CapsuleSweepAA.cpp
+	${GU_SOURCE_DIR}/src/mesh/GuBV4_MeshMeshOverlap.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV4_OBBSweep.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV4_Raycast.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV4_SphereOverlap.cpp
@@ -358,6 +395,7 @@ SET(PHYSXCOMMON_GU_MESH_SOURCE
 	${GU_SOURCE_DIR}/src/mesh/GuTriangleMeshRTree.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV32.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV32Build.cpp
+	${GU_SOURCE_DIR}/src/mesh/GuTetrahedronMesh.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV32.h
 	${GU_SOURCE_DIR}/src/mesh/GuBV32Build.h
 	${GU_SOURCE_DIR}/src/mesh/GuBV4.h
@@ -389,12 +427,13 @@ SET(PHYSXCOMMON_GU_MESH_SOURCE
 	${GU_SOURCE_DIR}/src/mesh/GuRTree.h
 	${GU_SOURCE_DIR}/src/mesh/GuSweepConvexTri.h
 	${GU_SOURCE_DIR}/src/mesh/GuSweepMesh.h
-	${GU_SOURCE_DIR}/src/mesh/GuTriangle32.h
+	${GU_SOURCE_DIR}/src/mesh/GuTriangle.h
 	${GU_SOURCE_DIR}/src/mesh/GuTriangleCache.h
 	${GU_SOURCE_DIR}/src/mesh/GuTriangleMesh.h
 	${GU_SOURCE_DIR}/src/mesh/GuTriangleMeshBV4.h
 	${GU_SOURCE_DIR}/src/mesh/GuTriangleMeshRTree.h
-	${GU_SOURCE_DIR}/src/mesh/GuTriangleVertexPointers.h
+	${GU_SOURCE_DIR}/src/mesh/GuTetrahedron.h
+	${GU_SOURCE_DIR}/src/mesh/GuTetrahedronMesh.h
 )
 SOURCE_GROUP(geomutils\\src\\mesh FILES ${PHYSXCOMMON_GU_MESH_SOURCE})
 
@@ -422,12 +461,14 @@ SET(PHYSXCOMMON_GU_PCM_SOURCE
 	${GU_SOURCE_DIR}/src/pcm/GuPCMContactSphereMesh.cpp
 	${GU_SOURCE_DIR}/src/pcm/GuPCMContactSpherePlane.cpp
 	${GU_SOURCE_DIR}/src/pcm/GuPCMContactSphereSphere.cpp
+	${GU_SOURCE_DIR}/src/pcm/GuPCMContactCustomGeometry.cpp
 	${GU_SOURCE_DIR}/src/pcm/GuPCMShapeConvex.cpp
 	${GU_SOURCE_DIR}/src/pcm/GuPCMTriangleContactGen.cpp
 	${GU_SOURCE_DIR}/src/pcm/GuPersistentContactManifold.cpp
 	${GU_SOURCE_DIR}/src/pcm/GuPCMContactConvexCommon.h
 	${GU_SOURCE_DIR}/src/pcm/GuPCMContactGen.h
 	${GU_SOURCE_DIR}/src/pcm/GuPCMContactGenUtil.h
+	${GU_SOURCE_DIR}/src/pcm/GuPCMContactGenUtil.cpp
 	${GU_SOURCE_DIR}/src/pcm/GuPCMContactMeshCallback.h
 	${GU_SOURCE_DIR}/src/pcm/GuPCMShapeConvex.h
 	${GU_SOURCE_DIR}/src/pcm/GuPCMTriangleContactGen.h
@@ -461,6 +502,78 @@ SET(PHYSXCOMMON_GU_SWEEP_SOURCE
 )
 SOURCE_GROUP(geomutils\\src\\sweep FILES ${PHYSXCOMMON_GU_SWEEP_SOURCE})
 
+SET(PHYSXCOMMON_GU_PRUNERS_SOURCE
+	${GU_SOURCE_DIR}/src/GuBounds.cpp
+	${GU_SOURCE_DIR}/src/GuQuery.h
+	${GU_SOURCE_DIR}/src/GuAABBTree.cpp
+	${GU_SOURCE_DIR}/src/GuAABBTree.h
+	${GU_SOURCE_DIR}/src/GuAABBTreeUpdateMap.h
+	${GU_SOURCE_DIR}/src/GuAABBTreeUpdateMap.cpp
+	${GU_SOURCE_DIR}/src/GuAABBTreeBounds.h
+	${GU_SOURCE_DIR}/src/GuAABBTreeNode.h
+	${GU_SOURCE_DIR}/src/GuAABBTreeBuildStats.h
+	${GU_SOURCE_DIR}/src/GuAABBTreeQuery.h
+	${GU_SOURCE_DIR}/src/GuSqInternal.cpp
+	${GU_SOURCE_DIR}/src/GuIncrementalAABBTree.h
+	${GU_SOURCE_DIR}/src/GuIncrementalAABBTree.cpp
+	${GU_SOURCE_DIR}/src/GuSAH.cpp
+	${GU_SOURCE_DIR}/src/GuSAH.h
+	${GU_SOURCE_DIR}/src/GuBVH.cpp
+	${GU_SOURCE_DIR}/src/GuBVH.h
+	${GU_SOURCE_DIR}/src/GuBVHTestsSIMD.h
+	${GU_SOURCE_DIR}/src/GuIncrementalAABBPrunerCore.h
+	${GU_SOURCE_DIR}/src/GuIncrementalAABBPrunerCore.cpp
+	${GU_SOURCE_DIR}/src/GuIncrementalAABBPruner.h
+	${GU_SOURCE_DIR}/src/GuIncrementalAABBPruner.cpp
+	${GU_SOURCE_DIR}/src/GuPruningPool.h
+	${GU_SOURCE_DIR}/src/GuPruningPool.cpp
+	${GU_SOURCE_DIR}/src/GuBucketPruner.h
+	${GU_SOURCE_DIR}/src/GuBucketPruner.cpp
+	${GU_SOURCE_DIR}/src/GuMaverickNode.h
+	${GU_SOURCE_DIR}/src/GuMaverickNode.cpp
+	${GU_SOURCE_DIR}/src/GuExtendedBucketPruner.h
+	${GU_SOURCE_DIR}/src/GuExtendedBucketPruner.cpp
+	${GU_SOURCE_DIR}/src/GuSecondaryPruner.h
+	${GU_SOURCE_DIR}/src/GuSecondaryPruner.cpp
+	${GU_SOURCE_DIR}/src/GuAABBPruner.h
+	${GU_SOURCE_DIR}/src/GuAABBPruner.cpp
+	${GU_SOURCE_DIR}/src/GuActorShapeMap.cpp
+	${GU_SOURCE_DIR}/src/GuCallbackAdapter.h
+	${GU_SOURCE_DIR}/src/GuQuerySystem.cpp
+	${GU_SOURCE_DIR}/src/GuFactory.cpp
+)
+SOURCE_GROUP(geomutils\\src\\pruners FILES ${PHYSXCOMMON_GU_PRUNERS_SOURCE})
+
+SET(PHYSXCOMMON_GU_COOKING_SOURCE
+	${GU_SOURCE_DIR}/src/cooking/GuRTreeCooking.h
+	${GU_SOURCE_DIR}/src/cooking/GuRTreeCooking.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingBVH.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingHF.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingGrbTriangleMesh.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexMesh.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingTriangleMesh.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingTriangleMesh.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingTetrahedronMesh.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingTetrahedronMesh.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingVolumeIntegration.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingVolumeIntegration.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingQuickHullConvexHullLib.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingQuickHullConvexHullLib.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexPolygonsBuilder.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexPolygonsBuilder.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexMeshBuilder.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexMeshBuilder.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexHullUtils.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexHullUtils.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexHullLib.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexHullLib.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexHullBuilder.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexHullBuilder.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingBigConvexDataBuilder.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingBigConvexDataBuilder.cpp
+)
+SOURCE_GROUP(geomutils\\src\\cooking FILES ${PHYSXCOMMON_GU_COOKING_SOURCE})
+
 ADD_LIBRARY(PhysXCommon ${PHYSXCOMMON_LIBTYPE} 
 	${PHYSX_COMMON_SOURCE}
 	
@@ -472,7 +585,7 @@ ADD_LIBRARY(PhysXCommon ${PHYSXCOMMON_LIBTYPE}
 	${PXCOMMON_PLATFORM_SRC_FILES}
 	
 	${PHYSXCOMMON_GU_HEADERS}
-	${PHYSXCOMMON_GU_PXHEADERS}
+#	${PHYSXCOMMON_GU_PXHEADERS}
 	
 	${PHYSXCOMMON_GU_SOURCE}
 	${PHYSXCOMMON_GU_CCD_SOURCE}
@@ -486,6 +599,8 @@ ADD_LIBRARY(PhysXCommon ${PHYSXCOMMON_LIBTYPE}
 	${PHYSXCOMMON_GU_MESH_SOURCE}
 	${PHYSXCOMMON_GU_PCM_SOURCE}
 	${PHYSXCOMMON_GU_SWEEP_SOURCE}
+	${PHYSXCOMMON_GU_PRUNERS_SOURCE}
+	${PHYSXCOMMON_GU_COOKING_SOURCE}
 )
 
 INSTALL(FILES ${PHYSXCOMMON_GEOMETRY_HEADERS} DESTINATION include/geometry)
@@ -564,7 +679,7 @@ IF(PX_GENERATE_SOURCE_DISTRO)
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GEOMUTILS_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PXCOMMON_PLATFORM_SRC_FILES})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_HEADERS})
-	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_PXHEADERS})
+	#LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_PXHEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_CCD_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_COMMON_SOURCE})
@@ -577,6 +692,8 @@ IF(PX_GENERATE_SOURCE_DISTRO)
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_MESH_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_PCM_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_SWEEP_SOURCE})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_PRUNERS_SOURCE})
+	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GU_COOKING_SOURCE})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_COLLISION_HEADERS})
 ENDIF()
 

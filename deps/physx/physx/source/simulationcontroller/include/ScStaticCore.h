@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_SCP_STATIC_CORE
-#define PX_PHYSICS_SCP_STATIC_CORE
+#ifndef SC_STATIC_CORE_H
+#define SC_STATIC_CORE_H
 
 #include "ScRigidCore.h"
 #include "PxvDynamics.h"
@@ -59,8 +57,8 @@ namespace Sc
 		PX_FORCE_INLINE	const PxTransform&	getActor2World() const	{ return mCore.body2World;	}
 						void				setActor2World(const PxTransform& actor2World);
 
-		PX_FORCE_INLINE	PxsRigidCore&		getCore()				{ return mCore;				}
-		static PX_FORCE_INLINE size_t		getCoreOffset()			{ return PX_OFFSET_OF_RT(StaticCore, mCore); }
+		PX_FORCE_INLINE	PxsRigidCore&		getCore()				{ return mCore;								}
+		static PX_FORCE_INLINE size_t		getCoreOffset()			{ return PX_OFFSET_OF_RT(StaticCore, mCore);}
 
 											StaticCore(const PxEMPTY) :	RigidCore(PxEmpty), mCore(PxEmpty) {}
 		static			void				getBinaryMetaData(PxOutputStream& stream);
@@ -68,6 +66,7 @@ namespace Sc
 						StaticSim*			getSim() const;
 
 		PX_FORCE_INLINE	void				onOriginShift(const PxVec3& shift)	{ mCore.body2World.p -= shift; }
+	
 	private:
 						PxsRigidCore		mCore;
 	};

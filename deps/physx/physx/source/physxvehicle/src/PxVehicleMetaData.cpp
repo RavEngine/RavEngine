@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,7 +37,7 @@
 #include "PxVehicleSuspWheelTire4.h"
 #include "PxVehicleSuspLimitConstraintShader.h"
 
-#include "PsAllocator.h"
+#include "foundation/PxAllocator.h"
 
 using namespace physx;
 
@@ -238,7 +237,7 @@ void PxVehicleNoDrive::importExtraData(PxDeserializationContext& context)
 
 PxVehicleNoDrive* PxVehicleNoDrive::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	PxVehicleNoDrive* obj = new (address) PxVehicleNoDrive(PxBaseFlag::eIS_RELEASABLE);
+	PxVehicleNoDrive* obj = PX_PLACEMENT_NEW(address, PxVehicleNoDrive(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(PxVehicleNoDrive);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -260,7 +259,7 @@ void PxVehicleDrive4W::getBinaryMetaData(PxOutputStream& stream)
 
 PxVehicleDrive4W* PxVehicleDrive4W::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	PxVehicleDrive4W* obj = new (address) PxVehicleDrive4W(PxBaseFlag::eIS_RELEASABLE);
+	PxVehicleDrive4W* obj = PX_PLACEMENT_NEW(address, PxVehicleDrive4W(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(PxVehicleDrive4W);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -279,7 +278,7 @@ void PxVehicleDriveNW::getBinaryMetaData(PxOutputStream& stream)
 
 PxVehicleDriveNW* PxVehicleDriveNW::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	PxVehicleDriveNW* obj = new (address) PxVehicleDriveNW(PxBaseFlag::eIS_RELEASABLE);
+	PxVehicleDriveNW* obj = PX_PLACEMENT_NEW(address, PxVehicleDriveNW(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(PxVehicleDriveNW);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -298,7 +297,7 @@ void PxVehicleDriveTank::getBinaryMetaData(PxOutputStream& stream)
 
 PxVehicleDriveTank* PxVehicleDriveTank::createObject(PxU8*& address, PxDeserializationContext& context)
 {
-	PxVehicleDriveTank* obj = new (address) PxVehicleDriveTank(PxBaseFlag::eIS_RELEASABLE);
+	PxVehicleDriveTank* obj = PX_PLACEMENT_NEW(address, PxVehicleDriveTank(PxBaseFlag::eIS_RELEASABLE));
 	address += sizeof(PxVehicleDriveTank);	
 	obj->importExtraData(context);
 	obj->resolveReferences(context);
@@ -531,6 +530,7 @@ void PxVehicleWheels4DynData::getBinaryMetaData(PxOutputStream& stream)
 	PX_DEF_BIN_METADATA_ITEMS_AUTO(stream,	PxVehicleWheels4DynData,	PxReal, 					mTireLowSideSpeedTimers,		0)
 	PX_DEF_BIN_METADATA_ITEMS_AUTO(stream,	PxVehicleWheels4DynData,	PxU8, 						mQueryOrCachedHitResults,		0)	
 	PX_DEF_BIN_METADATA_ITEMS_AUTO(stream,	PxVehicleWheels4DynData,	PxReal, 					mJounces,						0)
+	PX_DEF_BIN_METADATA_ITEMS_AUTO(stream,	PxVehicleWheels4DynData,	PxReal,						mSteerAngles,						0)
 	PX_DEF_BIN_METADATA_ITEM(stream,		PxVehicleWheels4DynData,	PxVehicleConstraintShader,	mVehicleConstraints,			PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,		PxVehicleWheels4DynData,	PxRaycastQueryResult,		mRaycastResults,				PxMetaDataFlag::ePTR)
 	PX_DEF_BIN_METADATA_ITEM(stream,		PxVehicleWheels4DynData,	PxSweepQueryResult,			mSweepResults,					PxMetaDataFlag::ePTR)

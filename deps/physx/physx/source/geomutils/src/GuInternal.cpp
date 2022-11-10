@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,21 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
 #include "foundation/PxBounds3.h"
 #include "geometry/PxCapsuleGeometry.h"
-#include "PsIntrinsics.h"
+#include "foundation/PxIntrinsics.h"
 #include "GuInternal.h"
 #include "GuBox.h"
 #include "GuVecPlane.h"
-#include "PsMathUtils.h"
-#include "PsVecMath.h"
-using namespace physx::shdfnd::aos;
+#include "foundation/PxVecMath.h"
 
+using namespace physx::aos;
 using namespace physx;
 
 /**
@@ -78,42 +75,10 @@ PxPlane Gu::getPlane(const PxTransform& pose)
 	return PxPlane(n, -pose.p.dot(n)); 
 }
 
-void Gu::computeBoundsAroundVertices(PxBounds3& bounds, PxU32 nbVerts, const PxVec3* PX_RESTRICT verts)
-{
-	// PT: we can safely V4LoadU the first N-1 vertices. We must V3LoadU the last vertex, to make sure we don't read
-	// invalid memory. Since we have to special-case that last vertex anyway, we reuse that code to also initialize
-	// the minV/maxV values (bypassing the need for a 'setEmpty()' initialization).
-
-	if(!nbVerts)
-	{
-		bounds.setEmpty();
-		return;
-	}
-
-	PxU32 nbSafe = nbVerts-1;
-
-	// PT: read last (unsafe) vertex using V3LoadU, initialize minV/maxV
-	const Vec4V lastVertexV = Vec4V_From_Vec3V(V3LoadU(&verts[nbSafe].x));
-	Vec4V minV = lastVertexV;
-	Vec4V maxV = lastVertexV;
-
-	// PT: read N-1 first (safe) vertices using V4LoadU
-	while(nbSafe--)
-	{
-		const Vec4V vertexV = V4LoadU(&verts->x);
-		verts++;
-
-		minV = V4Min(minV, vertexV);
-		maxV = V4Max(maxV, vertexV);
-	}
-
-	StoreBounds(bounds, minV, maxV);
-}
-
 void Gu::computeSweptBox(Gu::Box& dest, const PxVec3& extents, const PxVec3& center, const PxMat33& rot, const PxVec3& unitDir, const PxReal distance)
 {
 	PxVec3 R1, R2;
-	Ps::computeBasis(unitDir, R1, R2);
+	PxComputeBasisVectors(unitDir, R1, R2);
 
 	PxReal dd[3];
 	dd[0] = PxAbs(rot.column0.dot(unitDir));
@@ -135,7 +100,7 @@ void Gu::computeSweptBox(Gu::Box& dest, const PxVec3& extents, const PxVec3& cen
 		ax1=1;
 	}
 	if(dd[ax1]<dd[ax0])
-		Ps::swap(ax0, ax1);
+		PxSwap(ax0, ax1);
 
 	R1 = rot[ax0];
 	R1 -= (R1.dot(unitDir))*unitDir;	// Project to plane whose normal is dir

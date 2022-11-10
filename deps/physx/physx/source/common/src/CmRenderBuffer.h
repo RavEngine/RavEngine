@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,18 +22,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_FOUNDATION_PSRENDERBUFFER_H
-#define PX_FOUNDATION_PSRENDERBUFFER_H
+#ifndef CM_RENDER_BUFFER_H
+#define CM_RENDER_BUFFER_H
 
 #include "common/PxRenderBuffer.h"
-#include "CmPhysXCommon.h"
-#include "PsArray.h"
-#include "PsUserAllocated.h"
+#include "CmUtils.h"
+#include "foundation/PxArray.h"
+#include "foundation/PxUserAllocated.h"
 
 namespace physx
 {
@@ -43,11 +41,11 @@ namespace Cm
 	/**
 	Implementation of PxRenderBuffer.
 	*/
-	class RenderBuffer : public PxRenderBuffer, public Ps::UserAllocated
+	class RenderBuffer : public PxRenderBuffer, public PxUserAllocated
 	{
 
 		template <typename T>
-		void append(Ps::Array<T>& dst, const T* src, PxU32 count)
+		void append(PxArray<T>& dst, const T* src, PxU32 count)
 		{
 			dst.reserve(dst.size() + count);
 			for(const T* end=src+count; src<end; ++src)
@@ -57,29 +55,32 @@ namespace Cm
 	public:
 
 		RenderBuffer() :
-			mPoints(PX_DEBUG_EXP("renderBufferPoints")),
-			mLines(PX_DEBUG_EXP("renderBufferLines")),
-			mTriangles(PX_DEBUG_EXP("renderBufferTriangles")),
-			mTexts(PX_DEBUG_EXP("renderBufferTexts")),
-			mCharBuf(PX_DEBUG_EXP("renderBufferCharBuf"))
+			mPoints("renderBufferPoints"),
+			mLines("renderBufferLines"),
+			mTriangles("renderBufferTriangles")
 		{}
 		
 
 		virtual PxU32 getNbPoints() const { return mPoints.size(); }
 		virtual const PxDebugPoint* getPoints() const { return mPoints.begin(); }
+		virtual void addPoint(const PxDebugPoint& point) { mPoints.pushBack(point); }
+
 		virtual PxU32 getNbLines() const { return mLines.size(); }
 		virtual const PxDebugLine* getLines() const { return mLines.begin(); }
+		virtual void addLine(const PxDebugLine& line) { mLines.pushBack(line); }
+		virtual PxDebugLine* reserveLines(const PxU32 nbLines) {return reserveContainerMemory(mLines, nbLines);}
+
+		virtual PxDebugPoint* reservePoints(const PxU32 nbPoints) { return reserveContainerMemory(mPoints, nbPoints); }
+
 		virtual PxU32 getNbTriangles() const { return mTriangles.size(); }
 		virtual const PxDebugTriangle* getTriangles() const { return mTriangles.begin(); }
-		virtual PxU32 getNbTexts() const { return mTexts.size(); }
-		virtual const PxDebugText* getTexts() const { return mTexts.begin(); }
+		virtual void addTriangle(const PxDebugTriangle& triangle) { mTriangles.pushBack(triangle); }
 
 		virtual void append(const PxRenderBuffer& other)
 		{
 			append(mPoints, other.getPoints(), other.getNbPoints());
 			append(mLines, other.getLines(), other.getNbLines());
 			append(mTriangles, other.getTriangles(), other.getNbTriangles());
-			append(mTexts, other.getTexts(), other.getNbTexts());
 		}
 
 		virtual void clear()
@@ -87,16 +88,14 @@ namespace Cm
 			mPoints.clear(); 
 			mLines.clear();
 			mTriangles.clear();
-			mTexts.clear();
-			mCharBuf.clear();
 		}
 
-		bool empty() const 
+		virtual bool empty() const 
 		{
-			return mPoints.empty() && mLines.empty() && mTriangles.empty() && mTexts.empty()&& mCharBuf.empty();
+			return mPoints.empty() && mLines.empty() && mTriangles.empty();
 		}
 
-		void shift(const PxVec3& delta)
+		virtual void shift(const PxVec3& delta)
 		{
 			for(PxU32 i=0; i < mPoints.size(); i++)
 				mPoints[i].pos += delta;
@@ -113,16 +112,11 @@ namespace Cm
 				mTriangles[i].pos1 += delta;
 				mTriangles[i].pos2 += delta;
 			}
-
-			for(PxU32 i=0; i < mTexts.size(); i++)
-				mTexts[i].position += delta;
 		}
 
-		Ps::Array<PxDebugPoint>		mPoints;
-		Ps::Array<PxDebugLine>		mLines;
-		Ps::Array<PxDebugTriangle>	mTriangles;
-		Ps::Array<PxDebugText>		mTexts;
-		Ps::Array<char>				mCharBuf;
+		PxArray<PxDebugPoint>		mPoints;
+		PxArray<PxDebugLine>		mLines;
+		PxArray<PxDebugTriangle>	mTriangles;
 	};
 
 } // Cm

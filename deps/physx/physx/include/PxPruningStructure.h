@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NX_PRUNING_STRUCTURE
-#define PX_PHYSICS_NX_PRUNING_STRUCTURE
+#ifndef PX_PRUNING_STRUCTURE_H
+#define PX_PRUNING_STRUCTURE_H
 /** \addtogroup physics
 @{ */
 
@@ -58,7 +56,7 @@ doing queries against the newly added actors. This applies to both static and dy
 invalidate the pruning structure. Same happens if shape scene query flags change or shape gets removed from an actor.
 
 @see PxScene::addActors PxCollection
-*/	
+*/
 class PxPruningStructure : public PxBase
 {
 public:
@@ -92,6 +90,30 @@ public:
 	*/
 	virtual PxU32				getNbRigidActors() const = 0;
 
+	/**
+	\brief Gets the merge data for static actors
+
+	This is mainly called by the PxSceneQuerySystem::merge() function to merge a PxPruningStructure
+	with the internal data-structures of the scene-query system.
+
+	\return Implementation-dependent merge data for static actors.
+
+	@see PxSceneQuerySystem::merge()
+	*/
+	virtual	const void*			getStaticMergeData()	const	= 0;
+
+	/**
+	\brief Gets the merge data for dynamic actors
+
+	This is mainly called by the PxSceneQuerySystem::merge() function to merge a PxPruningStructure
+	with the internal data-structures of the scene-query system.
+
+	\return Implementation-dependent merge data for dynamic actors.
+
+	@see PxSceneQuerySystem::merge()
+	*/
+	virtual	const void*			getDynamicMergeData()	const	= 0;
+
 	virtual	const char*			getConcreteTypeName() const	{ return "PxPruningStructure";	}
 protected:
 	PX_INLINE					PxPruningStructure(PxType concreteType, PxBaseFlags baseFlags) : PxBase(concreteType, baseFlags) {}
@@ -106,4 +128,5 @@ protected:
 #endif
 
 /** @} */ 
-#endif // PX_PHYSICS_NX_PRUNING_STRUCTURE
+#endif
+

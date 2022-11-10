@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,30 +22,40 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "geometry/PxSphereGeometry.h"
+#include "geometry/PxCustomGeometry.h"
 #include "GuSweepTests.h"
 #include "GuVecCapsule.h"
 #include "GuVecBox.h"
 #include "GuVecTriangle.h"
 #include "GuSweepTriangleUtils.h"
 #include "GuInternal.h"
-#include "PsFoundation.h"
 #include "GuGJKRaycast.h"
 
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace physx::shdfnd::aos;  
+using namespace physx::aos;  
+
+//#define USE_VIRTUAL_GJK
+#ifdef USE_VIRTUAL_GJK
+static bool virtualGjkRaycastPenetration(const GjkConvex& a, const GjkConvex& b, const aos::Vec3VArg initialDir, const aos::FloatVArg initialLambda, const aos::Vec3VArg s, const aos::Vec3VArg r, aos::FloatV& lambda, 
+		aos::Vec3V& normal, aos::Vec3V& closestA, const PxReal _inflation, const bool initialOverlap)
+{
+	return gjkRaycastPenetration<GjkConvex, GjkConvex >(a, b, initialDir, initialLambda, s, r, lambda, normal, closestA, _inflation, initialOverlap);
+}
+#endif
 
 bool sweepCapsule_BoxGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
 	PX_UNUSED(hitFlags);
+	PX_UNUSED(threadContext);
 
-	using namespace Ps::aos;
+	using namespace aos;
 	PX_ASSERT(geom.getType() == PxGeometryType::eBOX);
 	const PxBoxGeometry& boxGeom = static_cast<const PxBoxGeometry&>(geom);
 
@@ -56,10 +65,10 @@ bool sweepCapsule_BoxGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 	const FloatV dist = FLoad(distance);
 	const Vec3V worldDir = V3LoadU(unitDir);
 
-	const PsTransformV capPos = loadTransformU(capsulePose_);
-	const PsTransformV boxPos = loadTransformU(pose);
+	const PxTransformV capPos = loadTransformU(capsulePose_);
+	const PxTransformV boxPos = loadTransformU(pose);
 
-	const PsMatTransformV aToB(boxPos.transformInv(capPos));
+	const PxMatTransformV aToB(boxPos.transformInv(capPos));
 
 	const FloatV capsuleHalfHeight = FLoad(capsuleGeom_.halfHeight);
 	const FloatV capsuleRadius = FLoad(lss.radius);
@@ -72,14 +81,18 @@ bool sweepCapsule_BoxGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 	const bool isMtd = hitFlags & PxHitFlag::eMTD;
 	FloatV toi = FMax();
 	Vec3V closestA, normal;//closestA and normal is in the local space of box
-	LocalConvex<CapsuleV> convexA(capsule);
-	LocalConvex<BoxV> convexB(box);
+	const LocalConvex<CapsuleV> convexA(capsule);
+	const LocalConvex<BoxV> convexB(box);
 	const Vec3V initialSearchDir = V3Sub(capsule.getCenter(), box.getCenter());
-	if(!gjkRaycastPenetration<LocalConvex<CapsuleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, 
-		closestA, lss.radius + inflation, isMtd))
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, lss.radius + inflation, isMtd))
 		return false;
-
+#else
+	if(!gjkRaycastPenetration<LocalConvex<CapsuleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, lss.radius + inflation, isMtd))
+		return false;
+#endif
 	sweepHit.flags = PxHitFlag::eNORMAL;
+
 	if(FAllGrtrOrEq(zero, toi))
 	{
 		//initial overlap
@@ -114,11 +127,10 @@ bool sweepCapsule_BoxGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 	return true;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 bool sweepBox_SphereGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eSPHERE);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(hitFlags);
 	PX_UNUSED(boxGeom_);
 
@@ -132,26 +144,30 @@ bool sweepBox_SphereGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 
 	const FloatV sphereRadius = FLoad(sphereGeom.radius);
 
-	const PsTransformV spherePos = loadTransformU(pose);
-	const PsTransformV boxPos = loadTransformU(boxPose_);
+	const PxTransformV spherePos = loadTransformU(pose);
+	const PxTransformV boxPos = loadTransformU(boxPose_);
 
-	const PsMatTransformV aToB(boxPos.transformInv(spherePos));
+	const PxMatTransformV aToB(boxPos.transformInv(spherePos));
 
-	BoxV boxV(zeroV, boxExtents);
-	CapsuleV capsuleV(aToB.p, sphereRadius);
+	const BoxV boxV(zeroV, boxExtents);
+	const CapsuleV capsuleV(aToB.p, sphereRadius);
 
 	//transform into b space
 	const Vec3V dir = boxPos.rotateInv(V3Scale(unitDirV, worldDist));
 
-	bool isMtd = hitFlags & PxHitFlag::eMTD;
+	const bool isMtd = hitFlags & PxHitFlag::eMTD;
 	FloatV toi;
 	Vec3V closestA, normal;//closestA and normal is in the local space of box
 	const Vec3V initialSearchDir = V3Sub(capsuleV.getCenter(), boxV.getCenter());
-	LocalConvex<CapsuleV> convexA(capsuleV);
-	LocalConvex<BoxV> convexB(boxV);
-	if(!gjkRaycastPenetration< LocalConvex<CapsuleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, sphereGeom.radius+inflation, isMtd))
+	const LocalConvex<CapsuleV> convexA(capsuleV);
+	const LocalConvex<BoxV> convexB(boxV);
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, sphereGeom.radius+inflation, isMtd))
 		return false;
-
+#else
+	if(!gjkRaycastPenetration<LocalConvex<CapsuleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, sphereGeom.radius+inflation, isMtd))
+		return false;
+#endif
 	sweepHit.flags = PxHitFlag::eNORMAL;
 
 	//initial overlap
@@ -188,8 +204,9 @@ bool sweepBox_SphereGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 
 bool sweepBox_CapsuleGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
-	using namespace Ps::aos;
+	using namespace aos;
 	PX_ASSERT(geom.getType() == PxGeometryType::eCAPSULE);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(hitFlags);
 	PX_UNUSED(boxGeom_);
 
@@ -204,13 +221,13 @@ bool sweepBox_CapsuleGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 	const FloatV worldDist = FLoad(distance);
 	const Vec3V  unitDirV = V3LoadU(unitDir);
 
-	const PsTransformV capPos = loadTransformU(pose);
-	const PsTransformV boxPos = loadTransformU(boxPose_);
+	const PxTransformV capPos = loadTransformU(pose);
+	const PxTransformV boxPos = loadTransformU(boxPose_);
 
-	const PsMatTransformV aToB(boxPos.transformInv(capPos));
+	const PxMatTransformV aToB(boxPos.transformInv(capPos));
 
-	BoxV boxV(zeroV, boxExtents);
-	CapsuleV capsuleV(aToB.p, aToB.rotate(V3Scale(V3UnitX(), capsuleHalfHeight)), capsuleRadius);
+	const BoxV boxV(zeroV, boxExtents);
+	const CapsuleV capsuleV(aToB.p, aToB.rotate(V3Scale(V3UnitX(), capsuleHalfHeight)), capsuleRadius);
 
 	//transform into b space
 	const Vec3V dir = boxPos.rotateInv(V3Scale(unitDirV, worldDist));
@@ -219,11 +236,15 @@ bool sweepBox_CapsuleGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 	FloatV toi;
 	Vec3V closestA, normal;//closestA and normal is in the local space of box
 	const Vec3V initialSearchDir = V3Sub(capsuleV.getCenter(), boxV.getCenter());
-	LocalConvex<CapsuleV> convexA(capsuleV);
-	LocalConvex<BoxV> convexB(boxV);
-	if(!gjkRaycastPenetration< LocalConvex<CapsuleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, capsuleGeom.radius+inflation, isMtd))
+	const LocalConvex<CapsuleV> convexA(capsuleV);
+	const LocalConvex<BoxV> convexB(boxV);
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, capsuleGeom.radius+inflation, isMtd))
 		return false;
-
+#else
+	if(!gjkRaycastPenetration<LocalConvex<CapsuleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, dir, toi, normal, closestA, capsuleGeom.radius+inflation, isMtd))
+		return false;
+#endif
 	sweepHit.flags = PxHitFlag::eNORMAL;
 
 	//initial overlap
@@ -263,6 +284,7 @@ bool sweepBox_CapsuleGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 bool sweepBox_BoxGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
 	PX_ASSERT(geom.getType() == PxGeometryType::eBOX);
+	PX_UNUSED(threadContext);
 	PX_UNUSED(boxGeom_);
 
 	const PxBoxGeometry& boxGeom = static_cast<const PxBoxGeometry&>(geom);
@@ -274,24 +296,28 @@ bool sweepBox_BoxGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 	const FloatV worldDist = FLoad(distance);
 	const Vec3V  unitDirV = V3LoadU(unitDir);
 
-	const PsTransformV boxTrans0 = loadTransformU(pose);
-	const PsTransformV boxTrans1 = loadTransformU(boxPose_);
+	const PxTransformV boxTrans0 = loadTransformU(pose);
+	const PxTransformV boxTrans1 = loadTransformU(boxPose_);
 
-	const PsMatTransformV aToB(boxTrans1.transformInv(boxTrans0));
+	const PxMatTransformV aToB(boxTrans1.transformInv(boxTrans0));
 
-	BoxV box0(zeroV, boxExtents0);
-	BoxV box1(zeroV, boxExtents1);
+	const BoxV box0(zeroV, boxExtents0);
+	const BoxV box1(zeroV, boxExtents1);
 
 	//transform into b space
 	const Vec3V dir = boxTrans1.rotateInv(V3Scale(unitDirV, worldDist));
 	const bool isMtd = hitFlags & PxHitFlag::eMTD;
 	FloatV toi;
 	Vec3V closestA, normal;//closestA and normal is in the local space of box
-	RelativeConvex<BoxV> convexA(box0, aToB);
-	LocalConvex<BoxV> convexB(box1);
+	const RelativeConvex<BoxV> convexA(box0, aToB);
+	const LocalConvex<BoxV> convexB(box1);
+#ifdef USE_VIRTUAL_GJK
+	if(!virtualGjkRaycastPenetration(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
+		return false;
+#else
 	if(!gjkRaycastPenetration<RelativeConvex<BoxV>, LocalConvex<BoxV> >(convexA, convexB, aToB.p, zero, zeroV, dir, toi, normal, closestA, inflation, isMtd))
 		return false;
-	
+#endif	
 	sweepHit.flags = PxHitFlag::eNORMAL;
 	if(FAllGrtrOrEq(zero, toi))
 	{
@@ -337,9 +363,9 @@ bool Gu::sweepBoxTriangles(GU_SWEEP_TRIANGLES_FUNC_PARAMS(PxBoxGeometry))
 	Box box;
 	buildFrom(box, pose.p, geom.halfExtents, pose.q);
 
-	PxSweepHit sweepHit;
+	PxGeomSweepHit sweepHit;
 	// Move to AABB space
-	Matrix34 worldToBox;
+	PxMat34 worldToBox;
 	computeWorldToBoxMatrix(worldToBox, box);
 
 	const PxVec3 localDir = worldToBox.rotate(unitDir);
@@ -350,7 +376,7 @@ bool Gu::sweepBoxTriangles(GU_SWEEP_TRIANGLES_FUNC_PARAMS(PxBoxGeometry))
 	const Vec3V base2 = V3LoadU(worldToBox.m.column2);
 	const Mat33V matV(base0, base1, base2);
 	const Vec3V p	  = V3LoadU(worldToBox.p);
-	const PsMatTransformV worldToBoxV(p, matV);
+	const PxMatTransformV worldToBoxV(p, matV);
 
 	const FloatV zero = FZero();
 	const Vec3V zeroV = V3Zero();
@@ -374,7 +400,7 @@ bool Gu::sweepBoxTriangles(GU_SWEEP_TRIANGLES_FUNC_PARAMS(PxBoxGeometry))
 	PxVec3 bestTriNormal(0.0f);
 	FloatV dist = FLoad(distance);
 
-	const PsTransformV boxPos = loadTransformU(pose);
+	const PxTransformV boxPos = loadTransformU(pose);
 
 	bool status = false;
 
@@ -420,10 +446,14 @@ bool Gu::sweepBoxTriangles(GU_SWEEP_TRIANGLES_FUNC_PARAMS(PxBoxGeometry))
 		
 		FloatV lambda;   
 		Vec3V closestA, normal;//closestA and normal is in the local space of convex hull
-		LocalConvex<TriangleV> convexA(triangleV);
-		LocalConvex<BoxV> convexB(boxV);
+		const LocalConvex<TriangleV> convexA(triangleV);
+		const LocalConvex<BoxV> convexB(boxV);
 		const Vec3V initialSearchDir = V3Sub(triangleV.getCenter(), boxV.getCenter());
+#ifdef USE_VIRTUAL_GJK
+		if(virtualGjkRaycastPenetration(convexA, convexB, initialSearchDir, zero, zeroV, boxLocalMotion, lambda, normal, closestA, inflation, false))
+#else
 		if(gjkRaycastPenetration<LocalConvex<TriangleV>, LocalConvex<BoxV> >(convexA, convexB, initialSearchDir, zero, zeroV, boxLocalMotion, lambda, normal, closestA, inflation, false))
+#endif
 		{
 			//hitCount++;
 		
@@ -495,8 +525,9 @@ bool sweepConvex_ConvexGeom			(GU_CONVEX_SWEEP_FUNC_PARAMS);
 bool sweepConvex_MeshGeom			(GU_CONVEX_SWEEP_FUNC_PARAMS);
 bool sweepConvex_HeightFieldGeom	(GU_CONVEX_SWEEP_FUNC_PARAMS);
 
-static bool sweepCapsule_HeightfieldUnregistered(GU_CAPSULE_SWEEP_FUNC_PARAMS)
+static bool sweepCapsule_InvalidGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(capsuleGeom_);
 	PX_UNUSED(capsulePose_);
 	PX_UNUSED(geom);
@@ -507,11 +538,12 @@ static bool sweepCapsule_HeightfieldUnregistered(GU_CAPSULE_SWEEP_FUNC_PARAMS)
 	PX_UNUSED(sweepHit);
 	PX_UNUSED(hitFlags);
 	PX_UNUSED(inflation);
-	Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "Height Field Sweep test called with height fields unregistered ");
 	return false;
 }
-static bool sweepBox_HeightfieldUnregistered(GU_BOX_SWEEP_FUNC_PARAMS)
+
+static bool sweepBox_InvalidGeom(GU_BOX_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(boxPose_);
 	PX_UNUSED(boxGeom_);
 	PX_UNUSED(geom);
@@ -522,11 +554,12 @@ static bool sweepBox_HeightfieldUnregistered(GU_BOX_SWEEP_FUNC_PARAMS)
 	PX_UNUSED(sweepHit);
 	PX_UNUSED(hitFlags);
 	PX_UNUSED(inflation);
-	Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "Height Field Sweep test called with height fields unregistered ");
 	return false;
 }
-static bool sweepConvex_HeightfieldUnregistered(GU_CONVEX_SWEEP_FUNC_PARAMS)
+
+static bool sweepConvex_InvalidGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 {
+	PX_UNUSED(threadContext);
 	PX_UNUSED(geom);
 	PX_UNUSED(pose);
 	PX_UNUSED(convexGeom);
@@ -536,7 +569,76 @@ static bool sweepConvex_HeightfieldUnregistered(GU_CONVEX_SWEEP_FUNC_PARAMS)
 	PX_UNUSED(sweepHit);
 	PX_UNUSED(hitFlags);
 	PX_UNUSED(inflation);
-	Ps::getFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "Height Field Sweep test called with height fields unregistered ");
+	return false;
+}
+
+static bool sweepCapsule_HeightfieldUnregistered(GU_CAPSULE_SWEEP_FUNC_PARAMS)
+{
+	PX_UNUSED(threadContext);
+	PX_UNUSED(capsuleGeom_);
+	PX_UNUSED(capsulePose_);
+	PX_UNUSED(geom);
+	PX_UNUSED(pose);
+	PX_UNUSED(lss);
+	PX_UNUSED(unitDir);
+	PX_UNUSED(distance);
+	PX_UNUSED(sweepHit);
+	PX_UNUSED(hitFlags);
+	PX_UNUSED(inflation);
+	return PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Height Field Sweep test called with height fields unregistered ");
+}
+
+static bool sweepBox_HeightfieldUnregistered(GU_BOX_SWEEP_FUNC_PARAMS)
+{
+	PX_UNUSED(threadContext);
+	PX_UNUSED(boxPose_);
+	PX_UNUSED(boxGeom_);
+	PX_UNUSED(geom);
+	PX_UNUSED(pose);
+	PX_UNUSED(box);
+	PX_UNUSED(unitDir);
+	PX_UNUSED(distance);
+	PX_UNUSED(sweepHit);
+	PX_UNUSED(hitFlags);
+	PX_UNUSED(inflation);
+	return PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Height Field Sweep test called with height fields unregistered ");
+}
+
+static bool sweepConvex_HeightfieldUnregistered(GU_CONVEX_SWEEP_FUNC_PARAMS)
+{
+	PX_UNUSED(threadContext);
+	PX_UNUSED(geom);
+	PX_UNUSED(pose);
+	PX_UNUSED(convexGeom);
+	PX_UNUSED(convexPose);
+	PX_UNUSED(unitDir);
+	PX_UNUSED(distance);
+	PX_UNUSED(sweepHit);
+	PX_UNUSED(hitFlags);
+	PX_UNUSED(inflation);
+	return PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Height Field Sweep test called with height fields unregistered ");
+}
+
+static bool sweepCapsule_CustomGeom(GU_CAPSULE_SWEEP_FUNC_PARAMS)
+{
+	PX_UNUSED(lss);
+	if(geom.getType() == PxGeometryType::eCUSTOM)
+		return static_cast<const PxCustomGeometry&>(geom).callbacks->sweep(unitDir, distance, geom, pose, capsuleGeom_, capsulePose_, sweepHit, hitFlags, inflation, threadContext);
+	return false;
+}
+
+static bool sweepBox_CustomGeom(GU_BOX_SWEEP_FUNC_PARAMS)
+{
+	PX_UNUSED(box);
+	if(geom.getType() == PxGeometryType::eCUSTOM)
+		return static_cast<const PxCustomGeometry&>(geom).callbacks->sweep(unitDir, distance, geom, pose, boxGeom_, boxPose_, sweepHit, hitFlags, inflation, threadContext);
+	return false;
+}
+
+static bool sweepConvex_CustomGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
+{
+	if(geom.getType() == PxGeometryType::eCUSTOM)
+		return static_cast<const PxCustomGeometry&>(geom).callbacks->sweep(unitDir, distance, geom, pose, convexGeom, convexPose, sweepHit, hitFlags, inflation, threadContext);
 	return false;
 }
 
@@ -548,8 +650,12 @@ Gu::GeomSweepFuncs gGeomSweepFuncs =
 		sweepCapsule_CapsuleGeom,
 		sweepCapsule_BoxGeom,
 		sweepCapsule_ConvexGeom,
+		sweepCapsule_InvalidGeom,
+		sweepCapsule_InvalidGeom,
 		sweepCapsule_MeshGeom,
-		sweepCapsule_HeightfieldUnregistered
+		sweepCapsule_HeightfieldUnregistered,
+		sweepCapsule_InvalidGeom,
+		sweepCapsule_CustomGeom
 	},
 	{
 		sweepCapsule_SphereGeom,
@@ -557,8 +663,12 @@ Gu::GeomSweepFuncs gGeomSweepFuncs =
 		sweepCapsule_CapsuleGeom,
 		sweepCapsule_BoxGeom_Precise,
 		sweepCapsule_ConvexGeom,
+		sweepCapsule_InvalidGeom,
+		sweepCapsule_InvalidGeom,
 		sweepCapsule_MeshGeom ,
-		sweepCapsule_HeightfieldUnregistered
+		sweepCapsule_HeightfieldUnregistered,
+		sweepCapsule_InvalidGeom,
+		sweepCapsule_CustomGeom
 	},
 	{
 		sweepBox_SphereGeom,
@@ -566,8 +676,12 @@ Gu::GeomSweepFuncs gGeomSweepFuncs =
 		sweepBox_CapsuleGeom,
 		sweepBox_BoxGeom,
 		sweepBox_ConvexGeom,
+		sweepBox_InvalidGeom,
+		sweepBox_InvalidGeom,
 		sweepBox_MeshGeom,		
-		sweepBox_HeightfieldUnregistered
+		sweepBox_HeightfieldUnregistered,
+		sweepBox_InvalidGeom,
+		sweepBox_CustomGeom
 	},
 	{
 		sweepBox_SphereGeom_Precise,
@@ -575,8 +689,12 @@ Gu::GeomSweepFuncs gGeomSweepFuncs =
 		sweepBox_CapsuleGeom_Precise,
 		sweepBox_BoxGeom_Precise,
 		sweepBox_ConvexGeom,
+		sweepBox_InvalidGeom,
+		sweepBox_InvalidGeom,
 		sweepBox_MeshGeom,		
-		sweepBox_HeightfieldUnregistered
+		sweepBox_HeightfieldUnregistered,
+		sweepBox_InvalidGeom,
+		sweepBox_CustomGeom
 	},
 	{
 		sweepConvex_SphereGeom,		// 0
@@ -584,8 +702,12 @@ Gu::GeomSweepFuncs gGeomSweepFuncs =
 		sweepConvex_CapsuleGeom,	// 2
 		sweepConvex_BoxGeom,		// 3
 		sweepConvex_ConvexGeom,		// 4
-		sweepConvex_MeshGeom,		// 5			
-		sweepConvex_HeightfieldUnregistered	// 6
+		sweepConvex_InvalidGeom,	// 5
+		sweepConvex_InvalidGeom,	// 6
+		sweepConvex_MeshGeom,		// 7			
+		sweepConvex_HeightfieldUnregistered,	// 8
+		sweepConvex_InvalidGeom,	// 9
+		sweepConvex_CustomGeom		// 10
 	}
 };
 

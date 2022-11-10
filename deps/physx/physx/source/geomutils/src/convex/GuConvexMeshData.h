@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,9 +32,10 @@
 #include "foundation/PxPlane.h"
 #include "foundation/PxBitAndData.h"
 
-#include "PsIntrinsics.h"
-#include "GuSerialize.h"
+#include "foundation/PxIntrinsics.h"
 #include "GuCenterExtents.h"
+#include "CmSerialize.h"
+#include "GuSDF.h"
 
 // Data definition
 
@@ -128,6 +128,9 @@ namespace Gu
 		HullPolygonData*	mPolygons;			//!< Array of mNbPolygons structures
 		BigConvexRawData*	mBigConvexRawData;	//!< Hill climbing data, only for large convexes! else NULL.
 
+		// SDF data
+		SDF*				mSdfData;
+
 // TEST_INTERNAL_OBJECTS
 		InternalObjectsData	mInternal;
 //~TEST_INTERNAL_OBJECTS
@@ -199,9 +202,9 @@ namespace Gu
 
 	};
 	#if PX_P64_FAMILY
-	PX_COMPILE_TIME_ASSERT(sizeof(Gu::ConvexHullData) == 72);
+	PX_COMPILE_TIME_ASSERT(sizeof(Gu::ConvexHullData) == 80);
 	#else
-	PX_COMPILE_TIME_ASSERT(sizeof(Gu::ConvexHullData) == 64);
+	PX_COMPILE_TIME_ASSERT(sizeof(Gu::ConvexHullData) == 68);
 	#endif
 
 	// PT: 'getPaddedBounds()' is only safe if we make sure the bounds member is followed by at least 32bits of data

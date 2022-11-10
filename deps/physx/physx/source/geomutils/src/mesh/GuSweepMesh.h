@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,19 +37,8 @@ namespace physx
 
 namespace Gu
 {
-	// PT: class to make sure we can safely V4Load Matrix34's last column
-	class Matrix34Padded : public Cm::Matrix34
-	{
-		public:
-			PX_FORCE_INLINE	Matrix34Padded(const Matrix34& src) : Matrix34(src)	{}
-			PX_FORCE_INLINE	Matrix34Padded()									{}
-			PX_FORCE_INLINE	~Matrix34Padded()									{}
-			PxU32	padding;
-	};
-	PX_COMPILE_TIME_ASSERT(0==(sizeof(Matrix34Padded)==16));
-
 	// PT: intermediate class containing shared bits of code & members
-	struct SweepShapeMeshHitCallback : MeshHitCallback<PxRaycastHit>
+	struct SweepShapeMeshHitCallback : MeshHitCallback<PxGeomRaycastHit>
 	{
 							SweepShapeMeshHitCallback(CallbackMode::Enum mode, const PxHitFlags& hitFlags, bool flipNormal, float distCoef);
 
@@ -65,8 +53,8 @@ namespace Gu
 
 	struct SweepCapsuleMeshHitCallback : SweepShapeMeshHitCallback
 	{		
-		PxSweepHit&			mSweepHit;
-		const Cm::Matrix34&	mVertexToWorldSkew;		
+		PxGeomSweepHit&		mSweepHit;
+		const PxMat34&		mVertexToWorldSkew;		
 		const PxReal		mTrueSweepDistance;		// max sweep distance that can be used
 		PxReal				mBestAlignmentValue;	// best alignment value for triangle normal
 		PxReal				mBestDist;				// best distance, not the same as sweepHit.distance, can be shorter by epsilon
@@ -75,15 +63,15 @@ namespace Gu
 		const bool			mMeshDoubleSided;	// PT: true if PxMeshGeometryFlag::eDOUBLE_SIDED
 		const bool			mIsSphere;
 
-		SweepCapsuleMeshHitCallback(PxSweepHit& sweepHit, const Cm::Matrix34& worldMatrix, PxReal distance, bool meshDoubleSided,
+		SweepCapsuleMeshHitCallback(PxGeomSweepHit& sweepHit, const PxMat34& worldMatrix, PxReal distance, bool meshDoubleSided,
 									const Capsule& capsule, const PxVec3& unitDir, const PxHitFlags& hitFlags, bool flipNormal, float distCoef);
 
-		virtual PxAgain processHit(const PxRaycastHit& aHit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal& shrunkMaxT, const PxU32*);
+		virtual PxAgain processHit(const PxGeomRaycastHit& aHit, const PxVec3& v0, const PxVec3& v1, const PxVec3& v2, PxReal& shrunkMaxT, const PxU32*);
 
 		// PT: TODO: unify these operators
 		void operator=(const SweepCapsuleMeshHitCallback&) {}
 
-		bool finalizeHit(	PxSweepHit& sweepHit, const Capsule& lss, const PxTriangleMeshGeometry& triMeshGeom,
+		bool finalizeHit(	PxGeomSweepHit& sweepHit, const Capsule& lss, const PxTriangleMeshGeometry& triMeshGeom,
 							const PxTransform& pose, bool isDoubleSided) const;
 	};
 
@@ -94,30 +82,30 @@ namespace Gu
 
 	struct SweepBoxMeshHitCallback : SweepShapeMeshHitCallback
 	{		
-		const Matrix34Padded&		mMeshToBox;
-		PxReal						mDist, mDist0;
-		physx::shdfnd::aos::FloatV	mDistV;
-		const Box&					mBox;
-		const PxVec3&				mLocalDir;
-		const PxVec3&				mWorldUnitDir;
-		PxReal						mInflation;
-		PxTriangle					mHitTriangle;
-		physx::shdfnd::aos::Vec3V	mMinClosestA;
-		physx::shdfnd::aos::Vec3V	mMinNormal;
-		physx::shdfnd::aos::Vec3V	mLocalMotionV;
-		PxU32						mMinTriangleIndex;
-		PxVec3						mOneOverDir;
-		const bool					mBothTriangleSidesCollide;	// PT: true if PxMeshGeometryFlag::eDOUBLE_SIDED || PxHitFlag::eMESH_BOTH_SIDES
+		const PxMat34Padded&	mMeshToBox;
+		PxReal					mDist, mDist0;
+		physx::aos::FloatV		mDistV;
+		const Box&				mBox;
+		const PxVec3&			mLocalDir;
+		const PxVec3&			mWorldUnitDir;
+		PxReal					mInflation;
+		PxTriangle				mHitTriangle;
+		physx::aos::Vec3V		mMinClosestA;
+		physx::aos::Vec3V		mMinNormal;
+		physx::aos::Vec3V		mLocalMotionV;
+		PxU32					mMinTriangleIndex;
+		PxVec3					mOneOverDir;
+		const bool				mBothTriangleSidesCollide;	// PT: true if PxMeshGeometryFlag::eDOUBLE_SIDED || PxHitFlag::eMESH_BOTH_SIDES
 
-		SweepBoxMeshHitCallback(CallbackMode::Enum mode_, const Matrix34Padded& meshToBox, PxReal distance, bool bothTriangleSidesCollide, 
+		SweepBoxMeshHitCallback(CallbackMode::Enum mode_, const PxMat34Padded& meshToBox, PxReal distance, bool bothTriangleSidesCollide, 
 								const Box& box, const PxVec3& localMotion, const PxVec3& localDir, const PxVec3& unitDir,
 								const PxHitFlags& hitFlags, const PxReal inflation, bool flipNormal, float distCoef);
 
 		virtual ~SweepBoxMeshHitCallback() {}
 
-		virtual PxAgain processHit(const PxRaycastHit& meshHit, const PxVec3& lp0, const PxVec3& lp1, const PxVec3& lp2, PxReal& shrinkMaxT, const PxU32*);
+		virtual PxAgain processHit(const PxGeomRaycastHit& meshHit, const PxVec3& lp0, const PxVec3& lp1, const PxVec3& lp2, PxReal& shrinkMaxT, const PxU32*);
 
-		bool	finalizeHit(	PxSweepHit& sweepHit, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
+		bool	finalizeHit(	PxGeomSweepHit& sweepHit, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
 								const PxTransform& boxTransform, const PxVec3& localDir,
 								bool meshBothSides, bool isDoubleSided)	const;
 
@@ -129,12 +117,12 @@ namespace Gu
 	{
 		PxTriangle							mHitTriangle;
 		ConvexHullV							mConvexHull;
-		physx::shdfnd::aos::PsMatTransformV	mMeshToConvex;
-		physx::shdfnd::aos::PsTransformV	mConvexPoseV;
+		physx::aos::PxMatTransformV	mMeshToConvex;
+		physx::aos::PxTransformV	mConvexPoseV;
 		const Cm::FastVertex2ShapeScaling&	mMeshScale;
-		PxSweepHit							mSweepHit; // stores either the closest or any hit depending on value of mAnyHit
-		physx::shdfnd::aos::FloatV			mInitialDistance;
-		physx::shdfnd::aos::Vec3V			mConvexSpaceDir; // convexPose.rotateInv(-unit*distance)
+		PxGeomSweepHit						mSweepHit; // stores either the closest or any hit depending on value of mAnyHit
+		physx::aos::FloatV			mInitialDistance;
+		physx::aos::Vec3V			mConvexSpaceDir; // convexPose.rotateInv(-unit*distance)
 		PxVec3								mUnitDir;
 		PxVec3								mMeshSpaceUnitDir;
 		PxReal								mInflation;
@@ -148,9 +136,9 @@ namespace Gu
 
 		virtual ~SweepConvexMeshHitCallback()	{}
 
-		virtual PxAgain processHit(const PxRaycastHit& hit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal& shrunkMaxT, const PxU32*);
+		virtual PxAgain processHit(const PxGeomRaycastHit& hit, const PxVec3& av0, const PxVec3& av1, const PxVec3& av2, PxReal& shrunkMaxT, const PxU32*);
 
-		bool	finalizeHit(PxSweepHit& sweepHit, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose,
+		bool	finalizeHit(PxGeomSweepHit& sweepHit, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose,
 							const PxConvexMeshGeometry& convexGeom, const PxTransform& convexPose,
 							const PxVec3& unitDir, PxReal inflation,
 							bool isMtd, bool meshBothSides, bool isDoubleSided, bool bothTriangleSidesCollide);

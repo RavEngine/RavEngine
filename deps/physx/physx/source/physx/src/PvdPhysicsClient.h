@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -31,11 +30,11 @@
 #define PVD_PHYSICS_CLIENT_H
 #if PX_SUPPORT_PVD
 #include "foundation/PxErrorCallback.h"
+#include "foundation/PxHashMap.h"
 #include "PxPvdClient.h"
 #include "PvdMetaDataPvdBinding.h"
 #include "NpFactory.h"
-#include "PsHashMap.h"
-#include "PsMutex.h"
+#include "foundation/PxMutex.h"
 #include "PsPvd.h"
 
 namespace physx
@@ -45,7 +44,7 @@ class PxProfileMemoryEventBuffer;
 namespace Vd
 {
 
-class PvdPhysicsClient : public PvdClient, public PxErrorCallback, public NpFactoryListener, public shdfnd::UserAllocated
+class PvdPhysicsClient : public PvdClient, public PxErrorCallback, public NpFactoryListener, public PxUserAllocated
 {
 	PX_NOCOPY(PvdPhysicsClient)
   public:
@@ -63,7 +62,7 @@ class PvdPhysicsClient : public PvdClient, public PxErrorCallback, public NpFact
 	void destroyPvdInstance(const PxPhysics* physics);
 
 	// NpFactoryListener
-	virtual void onGuMeshFactoryBufferRelease(const PxBase* object, PxType typeID);
+	virtual void onMeshFactoryBufferRelease(const PxBase* object, PxType typeID);
 	/// NpFactoryListener
 
 	// PxErrorCallback
@@ -72,6 +71,8 @@ class PvdPhysicsClient : public PvdClient, public PxErrorCallback, public NpFact
   private:
 	void createPvdInstance(const PxTriangleMesh* triMesh);
 	void destroyPvdInstance(const PxTriangleMesh* triMesh);
+	void createPvdInstance(const PxTetrahedronMesh* tetMesh);
+	void destroyPvdInstance(const PxTetrahedronMesh* tetMesh);
 	void createPvdInstance(const PxConvexMesh* convexMesh);
 	void destroyPvdInstance(const PxConvexMesh* convexMesh);
 	void createPvdInstance(const PxHeightField* heightField);
@@ -79,6 +80,18 @@ class PvdPhysicsClient : public PvdClient, public PxErrorCallback, public NpFact
 	void createPvdInstance(const PxMaterial* mat);
 	void destroyPvdInstance(const PxMaterial* mat);
 	void updatePvdProperties(const PxMaterial* mat);
+
+	void createPvdInstance(const PxFEMSoftBodyMaterial* mat);
+	void destroyPvdInstance(const PxFEMSoftBodyMaterial* mat);
+	void updatePvdProperties(const PxFEMSoftBodyMaterial* mat);
+
+	void createPvdInstance(const PxFEMClothMaterial* mat);
+	void destroyPvdInstance(const PxFEMClothMaterial* mat);
+	void updatePvdProperties(const PxFEMClothMaterial* mat);
+
+	void createPvdInstance(const PxPBDMaterial* mat);
+	void destroyPvdInstance(const PxPBDMaterial* mat);
+	void updatePvdProperties(const PxPBDMaterial* mat);
 
 	PsPvd*  mPvd;
 	PvdDataStream* mPvdDataStream;

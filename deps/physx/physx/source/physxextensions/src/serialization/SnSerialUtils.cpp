@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "extensions/PxSerialization.h"
-#include "PxPhysicsVersion.h"
+#include "foundation/PxPhysicsVersion.h"
 
 #include "SnSerialUtils.h"
-#include "PsString.h"
-#include "PsBasicTemplates.h"
+#include "foundation/PxString.h"
+#include "foundation/PxBasicTemplates.h"
 
 using namespace physx;
 
 namespace
 {
 
-#define SN_NUM_BINARY_PLATFORMS 16
+#define SN_NUM_BINARY_PLATFORMS 9
 const PxU32 sBinaryPlatformTags[SN_NUM_BINARY_PLATFORMS] =
 {
 	PX_MAKE_FOURCC('W','_','3','2'),
@@ -48,16 +47,9 @@ const PxU32 sBinaryPlatformTags[SN_NUM_BINARY_PLATFORMS] =
 	PX_MAKE_FOURCC('L','_','6','4'),
 	PX_MAKE_FOURCC('M','_','3','2'),
 	PX_MAKE_FOURCC('M','_','6','4'),
-	PX_MAKE_FOURCC('M','O','C','A'),
-	PX_MAKE_FOURCC('A','N','D','R'),
-	PX_MAKE_FOURCC('A','I','O','S'),
-	PX_MAKE_FOURCC('A','A','6','4'),
-	PX_MAKE_FOURCC('X','O','N','E'),
 	PX_MAKE_FOURCC('N','X','3','2'),
 	PX_MAKE_FOURCC('N','X','6','4'),
-	PX_MAKE_FOURCC('L','A','6','4'),
-	PX_MAKE_FOURCC('W','A','3','2'),
-	PX_MAKE_FOURCC('W','A','6','4'),
+	PX_MAKE_FOURCC('L','A','6','4')
 };
 
 const char* sBinaryPlatformNames[SN_NUM_BINARY_PLATFORMS] =
@@ -68,16 +60,9 @@ const char* sBinaryPlatformNames[SN_NUM_BINARY_PLATFORMS] =
 	"linux64",
 	"mac32",
 	"mac64",
-	"ps4",
-	"android",
-	"ios",
-	"ios64",
-	"xboxone",
 	"switch32",
 	"switch64",
-	"linuxaarch64",
-	"uwparm",
-	"uwparm64",
+	"linuxaarch64"
 };
 
 }
@@ -96,30 +81,14 @@ PxU32 getBinaryPlatformTag()
 	return sBinaryPlatformTags[3];
 #elif PX_OSX && PX_X86
 	return sBinaryPlatformTags[4];
-#elif PX_OSX && PX_X64
+#elif PX_OSX
 	return sBinaryPlatformTags[5];
-#elif PX_PS4
-	return sBinaryPlatformTags[6];
-#elif PX_ANDROID
-	return sBinaryPlatformTags[7];
-#elif PX_IOS && PX_ARM
-	return sBinaryPlatformTags[8];
-#elif PX_IOS && PX_A64
-	return sBinaryPlatformTags[9];
-#elif PX_XBOXONE || PX_XBOX_SERIES_X
-	return sBinaryPlatformTags[10];
 #elif PX_SWITCH && !PX_A64
-	return sBinaryPlatformTags[11];
+	return sBinaryPlatformTags[6];
 #elif PX_SWITCH && PX_A64
-	return sBinaryPlatformTags[12];
+	return sBinaryPlatformTags[7];
 #elif PX_LINUX && PX_A64
-	return sBinaryPlatformTags[13];
-#elif PX_UWP && PX_ARM
-	return sBinaryPlatformTags[14];
-#elif PX_UWP && PX_A64
-	return sBinaryPlatformTags[15];
-#elif _WIN64 && _M_ARM64
-	return sBinaryPlatformTags[15];
+	return sBinaryPlatformTags[8];
 #else
 	#error Unknown binary platform
 #endif

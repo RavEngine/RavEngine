@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,8 +30,8 @@
 #define GU_EDGECACHE_H
 
 #include "foundation/PxMemory.h"
-#include "CmPhysXCommon.h"
-#include "PsHash.h"
+#include "foundation/PxAllocator.h"
+#include "foundation/PxHash.h"
 
 namespace physx
 {
@@ -49,7 +48,7 @@ namespace Gu
 
 		PxU32 hash(PxU32 key)	const
 		{
-			return (NUM_EDGES_IN_CACHE - 1) & Ps::hash(key);		//Only a 16 bit hash would be needed here.
+			return (NUM_EDGES_IN_CACHE - 1) & PxComputeHash(key);		//Only a 16 bit hash would be needed here.
 		}
 
 		bool isInCache(PxU8 vertex0, PxU8 vertex1)

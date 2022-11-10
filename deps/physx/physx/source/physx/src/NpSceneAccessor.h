@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,12 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef PX_PHYSICS_NP_SCENEACCESSOR
-#define PX_PHYSICS_NP_SCENEACCESSOR
+#ifndef NP_SCENE_ACCESSOR_H
+#define NP_SCENE_ACCESSOR_H
 
 #include "PxScene.h"
 
@@ -38,21 +37,18 @@ namespace physx
 
 	class NpSceneAccessor : public PxScene
 	{
-
 		PX_NOCOPY(NpSceneAccessor)
 
 	public:
-		NpSceneAccessor(){}
-		virtual ~NpSceneAccessor(){}
+											NpSceneAccessor()	{}
+		virtual								~NpSceneAccessor()	{}
 
-		virtual	PxsSimulationController*				getSimulationController()							= 0;
-		virtual void									setActiveActors(PxActor** actors, PxU32 nbActors)	= 0;
-		virtual PxActor**								getFrozenActors(PxU32& nbActorsOut)					= 0;
-		virtual void									setFrozenActorFlag(const bool buildFrozenActors)	= 0;
-
-		virtual void									forceSceneQueryRebuild()							= 0;
-		virtual void									frameEnd()											= 0;
-		
+		virtual	PxsSimulationController*	getSimulationController()							= 0;
+		virtual void						setActiveActors(PxActor** actors, PxU32 nbActors)	= 0;
+		virtual PxActor**					getFrozenActors(PxU32& nbActorsOut)					= 0;
+		virtual void						setFrozenActorFlag(const bool buildFrozenActors)	= 0;
+		virtual void						forceSceneQueryRebuild()							= 0;
+		virtual void						frameEnd()											= 0;
 	};
 }
 

@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,10 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
-
 
 #ifndef PXS_RIGID_BODY_H
 #define PXS_RIGID_BODY_H
@@ -57,13 +55,16 @@ class PxsRigidBody
 		// PT: this flag is now only used on the GPU. For the CPU the data is now stored directly in PxsBodyCore.
 		eDISABLE_GRAVITY_GPU	=	1 << 5,
 		eSPECULATIVE_CCD		=	1 << 6,
+		eENABLE_GYROSCROPIC		=	1 << 7,
 		//KS - copied here for GPU simulation to avoid needing to pass another set of flags around.
 		eLOCK_LINEAR_X			=	1 << (PX_INTERNAL_LOCK_FLAG_START),
 		eLOCK_LINEAR_Y			=	1 << (PX_INTERNAL_LOCK_FLAG_START + 1),
 		eLOCK_LINEAR_Z			=	1 << (PX_INTERNAL_LOCK_FLAG_START + 2),
 		eLOCK_ANGULAR_X			=	1 << (PX_INTERNAL_LOCK_FLAG_START + 3),
 		eLOCK_ANGULAR_Y			=	1 << (PX_INTERNAL_LOCK_FLAG_START + 4),
-		eLOCK_ANGULAR_Z			=	1 << (PX_INTERNAL_LOCK_FLAG_START + 5)
+		eLOCK_ANGULAR_Z			=	1 << (PX_INTERNAL_LOCK_FLAG_START + 5),
+		eRETAIN_ACCELERATION	=	1 << 14,
+		eFIRST_BODY_COPY_GPU    =   1 << 15  // Flag to raise to indicate that the body is DMA'd to the GPU for the first time
 	};
 
 	PX_FORCE_INLINE						PxsRigidBody(PxsBodyCore* core, PxReal freeze_count) :
@@ -110,8 +111,8 @@ class PxsRigidBody
 	PX_FORCE_INLINE	PxVec3				getInvInertia()						const	{ return mCore->inverseInertia;		}
 	PX_FORCE_INLINE	PxReal				getMass()							const	{ return 1.0f/mCore->inverseMass;	}
 	PX_FORCE_INLINE	PxVec3				getInertia()						const	{ return PxVec3(1.0f/mCore->inverseInertia.x,
-																										1.0f/mCore->inverseInertia.y,
-																										1.0f/mCore->inverseInertia.z);	}
+																									1.0f/mCore->inverseInertia.y,
+																									1.0f/mCore->inverseInertia.z);	}
 	PX_FORCE_INLINE	PxsBodyCore&		getCore()									{ return *mCore;	}
 	PX_FORCE_INLINE	const PxsBodyCore&	getCore()							const	{ return *mCore;	}
 
@@ -121,7 +122,7 @@ class PxsRigidBody
 	PX_FORCE_INLINE	PxU32				isUnfreezeThisFrame()				const	{ return PxU32(mInternalFlags & eUNFREEZE_THIS_FRAME);		}
 	PX_FORCE_INLINE	void				clearFreezeFlag()							{ mInternalFlags &= ~eFREEZE_THIS_FRAME;					}
 	PX_FORCE_INLINE	void				clearUnfreezeFlag()							{ mInternalFlags &= ~eUNFREEZE_THIS_FRAME;					}
-	PX_FORCE_INLINE	void				clearAllFrameFlags()						{ mInternalFlags &= eFROZEN;								}
+	PX_FORCE_INLINE	void				clearAllFrameFlags()						{ mInternalFlags &= ~(eFREEZE_THIS_FRAME | eUNFREEZE_THIS_FRAME | eACTIVATE_THIS_FRAME | eDEACTIVATE_THIS_FRAME);								}
 
 	// PT: implemented in PxsCCD.cpp:
 					void				advanceToToi(PxReal toi, PxReal dt, bool clip);

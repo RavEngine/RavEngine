@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -439,19 +438,14 @@ public:
 	DEFINE_PVD_PROPERTY_NOP( PxConstraint& )
 	DEFINE_PVD_PROPERTY_NOP( const PxConstraint& )
 	DEFINE_PVD_PROPERTY_NOP( PxAggregate * )
-	DEFINE_PVD_PROPERTY_NOP( PxArticulationBase& )
-	DEFINE_PVD_PROPERTY_NOP( PxArticulation& )
 	DEFINE_PVD_PROPERTY_NOP( PxArticulationReducedCoordinate&)
 	DEFINE_PVD_PROPERTY_NOP( const PxArticulationLink * )
 	DEFINE_PVD_PROPERTY_NOP( const PxRigidDynamic * )
 	DEFINE_PVD_PROPERTY_NOP( const PxRigidStatic * )
-	DEFINE_PVD_PROPERTY_NOP( PxArticulationJointBase * )
 	DEFINE_PVD_PROPERTY_NOP( PxArticulationJointReducedCoordinate * )
-	DEFINE_PVD_PROPERTY_NOP( PxArticulationJoint * )
 	DEFINE_PVD_PROPERTY_NOP( PxBroadPhaseCallback * )
 	DEFINE_PVD_PROPERTY_NOP( const PxBroadPhaseRegion * )
 	DEFINE_PVD_PROPERTY_NOP( PxU32 * )
-
 };
 
 template<typename TOperator>
@@ -528,8 +522,6 @@ inline void visitArticulationLinkPerFrameProperties( TOperator inOperator )
 	PvdPropertyFilter<TOperator> theFilter( inOperator );
 	PxArticulationLinkGeneratedInfo theInfo;
 	theFilter( theInfo.GlobalPose, 0 );
-	theFilter( theInfo.LinearVelocity, 1 );
-	theFilter( theInfo.AngularVelocity, 2 );
 }
 
 }

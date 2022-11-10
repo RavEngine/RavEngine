@@ -1,4 +1,3 @@
-//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -23,23 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2021 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-
-#ifndef PX_PHYSICS_NP_RIGIDDYNAMIC
-#define PX_PHYSICS_NP_RIGIDDYNAMIC
+#ifndef NP_RIGID_DYNAMIC_H
+#define NP_RIGID_DYNAMIC_H
 
 #include "common/PxMetaData.h"
 #include "PxRigidDynamic.h"
 #include "NpRigidBodyTemplate.h"
-#include "ScbBody.h"
 
 namespace physx
 {
-
-class NpRigidDynamic;
 typedef NpRigidBodyTemplate<PxRigidDynamic> NpRigidDynamicT;
 
 class NpRigidDynamic : public NpRigidDynamicT
@@ -66,112 +61,106 @@ public:
 	// PxActor implementation
 	//---------------------------------------------------------------------------------
 
-	virtual		void				release();
+	virtual		void				release()	PX_OVERRIDE;
 
 	//---------------------------------------------------------------------------------
 	// PxRigidDynamic implementation
 	//---------------------------------------------------------------------------------
 
-	virtual		PxActorType::Enum	getType() const { return PxActorType::eRIGID_DYNAMIC; }
+	virtual		PxActorType::Enum	getType() const PX_OVERRIDE	{ return PxActorType::eRIGID_DYNAMIC; }
 
 	// Pose
-	virtual		void 				setGlobalPose(const PxTransform& pose, bool autowake);
+	virtual		void 				setGlobalPose(const PxTransform& pose, bool autowake)	PX_OVERRIDE;
+
 	PX_FORCE_INLINE		PxTransform			getGlobalPoseFast() const
 	{
-		const Scb::Body& body=getScbBodyFast();
+		const Sc::BodyCore& body = getCore();
 		return body.getBody2World() * body.getBody2Actor().getInverse();
 	}
-	virtual		PxTransform			getGlobalPose() const
+	virtual		PxTransform			getGlobalPose() const	PX_OVERRIDE
 	{
-		NP_READ_CHECK(NpActor::getOwnerScene(*this));
+		NP_READ_CHECK(getNpScene());
+		PX_CHECK_SCENE_API_READ_FORBIDDEN_EXCEPT_COLLIDE_AND_RETURN_VAL(getNpScene(), "PxRigidDynamic::getGlobalPose() not allowed while simulation is running (except during PxScene::collide()).", PxTransform(PxIdentity));
 		return getGlobalPoseFast();
 	}
 
-	virtual		void				setKinematicTarget(const PxTransform& destination);
-	virtual		bool				getKinematicTarget(PxTransform& target)	const;
+	virtual		void				setKinematicTarget(const PxTransform& destination)	PX_OVERRIDE;
+	virtual		bool				getKinematicTarget(PxTransform& target)	const	PX_OVERRIDE;
 
 	// Center of mass pose
-	virtual		void				setCMassLocalPose(const PxTransform&);
-
-	// Damping
-	virtual		void				setLinearDamping(PxReal);
-	virtual		PxReal				getLinearDamping() const;
-	virtual		void				setAngularDamping(PxReal);
-	virtual		PxReal				getAngularDamping() const;
+	virtual		void				setCMassLocalPose(const PxTransform&)	PX_OVERRIDE;
 
 	// Velocity
-	virtual		void				setLinearVelocity(const PxVec3&, bool autowake);
-	virtual		void				setAngularVelocity(const PxVec3&, bool autowake);
-	virtual		void				setMaxAngularVelocity(PxReal);
-	virtual		PxReal				getMaxAngularVelocity() const;
-	virtual		void				setMaxLinearVelocity(PxReal);
-	virtual		PxReal				getMaxLinearVelocity() const;
+	virtual		void				setLinearVelocity(const PxVec3&, bool autowake)	PX_OVERRIDE;
+	virtual		void				setAngularVelocity(const PxVec3&, bool autowake)	PX_OVERRIDE;
 
 	// Force/Torque modifiers
-	virtual		void				addForce(const PxVec3&, PxForceMode::Enum mode, bool autowake);
-	virtual		void				clearForce(PxForceMode::Enum mode);
-	virtual		void				addTorque(const PxVec3&, PxForceMode::Enum mode, bool autowake);
-	virtual		void				clearTorque(PxForceMode::Enum mode);
-	virtual		void				setForceAndTorque(const PxVec3& force, const PxVec3& torque, PxForceMode::Enum mode = PxForceMode::eFORCE);
-
-
+	virtual		void				addForce(const PxVec3&, PxForceMode::Enum mode, bool autowake)	PX_OVERRIDE;
+	virtual		void				clearForce(PxForceMode::Enum mode)	PX_OVERRIDE;
+	virtual		void				addTorque(const PxVec3&, PxForceMode::Enum mode, bool autowake)	PX_OVERRIDE;
+	virtual		void				clearTorque(PxForceMode::Enum mode)	PX_OVERRIDE;
+	virtual		void				setForceAndTorque(const PxVec3& force, const PxVec3& torque, PxForceMode::Enum mode = PxForceMode::eFORCE)	PX_OVERRIDE;
 
 	// Sleeping
-	virtual		bool				isSleeping() const;
-	virtual		PxReal				getSleepThreshold() const;
-	virtual		void				setSleepThreshold(PxReal threshold);
-	virtual		PxReal				getStabilizationThreshold() const;
-	virtual		void				setStabilizationThreshold(PxReal threshold);
-	virtual		void				setWakeCounter(PxReal wakeCounterValue);
-	virtual		PxReal				getWakeCounter() const;
-	virtual		void				wakeUp();
-	virtual		void				putToSleep();
+	virtual		bool				isSleeping() const	PX_OVERRIDE;
+	virtual		PxReal				getSleepThreshold() const	PX_OVERRIDE;
+	virtual		void				setSleepThreshold(PxReal threshold)	PX_OVERRIDE;
+	virtual		PxReal				getStabilizationThreshold() const	PX_OVERRIDE;
+	virtual		void				setStabilizationThreshold(PxReal threshold)	PX_OVERRIDE;
+	virtual		void				setWakeCounter(PxReal wakeCounterValue)	PX_OVERRIDE;
+	virtual		PxReal				getWakeCounter() const	PX_OVERRIDE;
+	virtual		void				wakeUp()	PX_OVERRIDE;
+	virtual		void				putToSleep()	PX_OVERRIDE;
 
-	virtual		void				setSolverIterationCounts(PxU32 positionIters, PxU32 velocityIters);
-	virtual		void				getSolverIterationCounts(PxU32 & positionIters, PxU32 & velocityIters) const;
+	virtual		void				setSolverIterationCounts(PxU32 positionIters, PxU32 velocityIters)	PX_OVERRIDE;
+	virtual		void				getSolverIterationCounts(PxU32 & positionIters, PxU32 & velocityIters) const	PX_OVERRIDE;
 
-	virtual		void				setContactReportThreshold(PxReal threshold);
-	virtual		PxReal				getContactReportThreshold() const;
+	virtual		void				setContactReportThreshold(PxReal threshold)	PX_OVERRIDE;
+	virtual		PxReal				getContactReportThreshold() const	PX_OVERRIDE;
 
-	virtual		PxRigidDynamicLockFlags getRigidDynamicLockFlags() const;
-	virtual		void				setRigidDynamicLockFlags(PxRigidDynamicLockFlags flags);
-	virtual		void				setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum flag, bool value);
+	virtual		PxRigidDynamicLockFlags getRigidDynamicLockFlags() const	PX_OVERRIDE;
+	virtual		void				setRigidDynamicLockFlags(PxRigidDynamicLockFlags flags)	PX_OVERRIDE;
+	virtual		void				setRigidDynamicLockFlag(PxRigidDynamicLockFlag::Enum flag, bool value)	PX_OVERRIDE;
 
 	//---------------------------------------------------------------------------------
 	// Miscellaneous
 	//---------------------------------------------------------------------------------
 									NpRigidDynamic(const PxTransform& bodyPose);
 
-	virtual		void				switchToNoSim();
-	virtual		void				switchFromNoSim();
+	virtual		void				switchToNoSim()	PX_OVERRIDE;
+	virtual		void				switchFromNoSim()	PX_OVERRIDE;
 
 	PX_FORCE_INLINE void			wakeUpInternal();
-					void			wakeUpInternalNoKinematicTest(Scb::Body& body, bool forceWakeUp, bool autowake);
+					void			wakeUpInternalNoKinematicTest(bool forceWakeUp, bool autowake);
 
-	static PX_FORCE_INLINE size_t	getScbBodyOffset() { return PX_OFFSET_OF_RT(NpRigidDynamic, mBody); }
-	static PX_FORCE_INLINE size_t			getNpShapeManagerOffset() { return PX_OFFSET_OF_RT(NpRigidDynamic, mShapeManager); }
+	static PX_FORCE_INLINE size_t	getCoreOffset()				{ return PX_OFFSET_OF_RT(NpRigidDynamic, mCore);			}
+	static PX_FORCE_INLINE size_t	getNpShapeManagerOffset()	{ return PX_OFFSET_OF_RT(NpRigidDynamic, mShapeManager);	}
+
+#if PX_CHECKED
+	PX_FORCE_INLINE	bool			checkConstraintValidity() const	{ return true;	}
+#endif
 
 private:
 	PX_FORCE_INLINE	void			setKinematicTargetInternal(const PxTransform& destination);
 
 #if PX_ENABLE_DEBUG_VISUALIZATION
 public:
-				void				visualize(Cm::RenderOutput& out, NpScene* scene);
+				void				visualize(PxRenderOutput& out, NpScene& scene, float scale)	const;
+#else
+	PX_CATCH_UNDEFINED_ENABLE_DEBUG_VISUALIZATION
 #endif
 };
 
-
-
-
 PX_FORCE_INLINE void NpRigidDynamic::wakeUpInternal()
 {
-	PX_ASSERT(NpActor::getOwnerScene(*this));
+	PX_ASSERT(getNpScene());
 
-	Scb::Body& body = getScbBodyFast();
+	const Sc::BodyCore& body = getCore();
+
 	const PxRigidBodyFlags currentFlags = body.getFlags();
 
 	if (!(currentFlags & PxRigidBodyFlag::eKINEMATIC))  // kinematics are only awake when a target is set, else they are asleep
-		wakeUpInternalNoKinematicTest(body, false, true);
+		wakeUpInternalNoKinematicTest(false, true);
 }
 
 
