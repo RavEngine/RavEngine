@@ -194,7 +194,7 @@ FMIDI_API void fmidi_player_goto_time(fmidi_player_t *seq, double time);
 FMIDI_API double fmidi_player_current_speed(const fmidi_player_t *seq);
 FMIDI_API void fmidi_player_set_speed(fmidi_player_t *seq, double speed);
 FMIDI_API void fmidi_player_event_callback(
-    fmidi_player_t *seq, void (*cbfn)(const fmidi_event_t *, void *), void *cbdata);
+    fmidi_player_t *seq, void (*cbfn)(const fmidi_event_t *, void *, fmidi_seq_event_t*), void *cbdata);
 FMIDI_API void fmidi_player_finish_callback(
     fmidi_player_t *seq, void (*cbfn)(void *), void *cbdata);
 

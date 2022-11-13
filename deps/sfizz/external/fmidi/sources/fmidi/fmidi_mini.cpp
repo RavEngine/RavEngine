@@ -22,7 +22,7 @@ struct fmidi_player_context {
     double speed;
     bool have_event;
     fmidi_seq_event_t sqevt;
-    void (*cbfn)(const fmidi_event_t *, void *);
+    void (*cbfn)(const fmidi_event_t *, void *, fmidi_seq_event_t*);
     void *cbdata;
     void (*finifn)(void *);
     void *finidata;
@@ -56,7 +56,7 @@ void fmidi_player_tick(fmidi_player_t *plr, double delta)
 {
     fmidi_player_context &ctx = plr->ctx;
     fmidi_seq_t &seq = *ctx.seq;
-    void (*cbfn)(const fmidi_event_t *, void *) = ctx.cbfn;
+    void (*cbfn)(const fmidi_event_t *, void *, fmidi_seq_event_t*) = ctx.cbfn;
     void *cbdata = ctx.cbdata;
 
     double timepos = ctx.timepos;
@@ -71,7 +71,7 @@ void fmidi_player_tick(fmidi_player_t *plr, double delta)
         while (more && timepos > sqevt.time) {
             const fmidi_event_t &event = *sqevt.event;
             if (cbfn)
-                cbfn(&event, cbdata);
+                cbfn(&event, cbdata, &sqevt);
             have_event = more = fmidi_seq_next_event(&seq, &sqevt);
         }
     }
@@ -163,18 +163,18 @@ void fmidi_player_goto_time(fmidi_player_t *plr, double time)
             evt->data[0] = (0b1011 << 4) | c;
             evt->data[1] = 120;
             evt->data[2] = 0;
-            ctx.cbfn(evt, ctx.cbdata);
+            ctx.cbfn(evt, ctx.cbdata, nullptr);
             // reset all controllers
             evt->datalen = 3;
             evt->data[0] = (0b1011 << 4) | c;
             evt->data[1] = 121;
             evt->data[2] = 0;
-            ctx.cbfn(evt, ctx.cbdata);
+            ctx.cbfn(evt, ctx.cbdata, nullptr);
             // program change
             evt->datalen = 2;
             evt->data[0] = (0b1100 << 4) | c;
             evt->data[1] = programs[c];
-            ctx.cbfn(evt, ctx.cbdata);
+            ctx.cbfn(evt, ctx.cbdata, nullptr);
             // control change
             for (unsigned id = 0; id < 128; ++id) {
                 uint8_t val = controls[c * 128 + id];
@@ -183,7 +183,7 @@ void fmidi_player_goto_time(fmidi_player_t *plr, double time)
                     evt->data[0] = (0b1011 << 4) | c;
                     evt->data[1] = id;
                     evt->data[2] = val;
-                    ctx.cbfn(evt, ctx.cbdata);
+                    ctx.cbfn(evt, ctx.cbdata, nullptr);
                 }
             }
         }
@@ -201,7 +201,7 @@ void fmidi_player_set_speed(fmidi_player_t *plr, double speed)
 }
 
 void fmidi_player_event_callback(
-    fmidi_player_t *plr, void (*cbfn)(const fmidi_event_t *, void *), void *cbdata)
+    fmidi_player_t *plr, void (*cbfn)(const fmidi_event_t *, void *, fmidi_seq_event_t*), void *cbdata)
 {
     fmidi_player_context &ctx = plr->ctx;
     ctx.cbfn = cbfn;

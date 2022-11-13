@@ -11,30 +11,30 @@
 #include <cstdint>
 
 namespace midi {
-constexpr uint8_t statusMask { 0b11110000 };
-constexpr uint8_t channelMask { 0b00001111 };
-constexpr uint8_t noteOff { 0x80 };
-constexpr uint8_t noteOn { 0x90 };
-constexpr uint8_t polyphonicPressure { 0xA0 };
-constexpr uint8_t controlChange { 0xB0 };
-constexpr uint8_t programChange { 0xC0 };
-constexpr uint8_t channelPressure { 0xD0 };
-constexpr uint8_t pitchBend { 0xE0 };
-constexpr uint8_t systemMessage { 0xF0 };
+    constexpr uint8_t statusMask { 0b11110000 };
+    constexpr uint8_t channelMask { 0b00001111 };
+    constexpr uint8_t noteOff { 0x80 };
+    constexpr uint8_t noteOn { 0x90 };
+    constexpr uint8_t polyphonicPressure { 0xA0 };
+    constexpr uint8_t controlChange { 0xB0 };
+    constexpr uint8_t programChange { 0xC0 };
+    constexpr uint8_t channelPressure { 0xD0 };
+    constexpr uint8_t pitchBend { 0xE0 };
+    constexpr uint8_t systemMessage { 0xF0 };
 
-constexpr uint8_t status(uint8_t midiStatusByte)
-{
-    return midiStatusByte & statusMask;
-}
-constexpr uint8_t channel(uint8_t midiStatusByte)
-{
-    return midiStatusByte & channelMask;
-}
+    constexpr uint8_t status(uint8_t midiStatusByte)
+    {
+        return midiStatusByte & statusMask;
+    }
+    constexpr uint8_t channel(uint8_t midiStatusByte)
+    {
+        return midiStatusByte & channelMask;
+    }
 
-constexpr int buildAndCenterPitch(uint8_t firstByte, uint8_t secondByte)
-{
-    return (int)(((unsigned int)secondByte << 7) + (unsigned int)firstByte) - 8192;
-}
+    constexpr int buildAndCenterPitch(uint8_t firstByte, uint8_t secondByte)
+    {
+        return (int)(((unsigned int)secondByte << 7) + (unsigned int)firstByte) - 8192;
+    }
 }
 
 
@@ -129,7 +129,7 @@ struct CallbackData {
     bool finished = false;
 };
 
-void midiCallback(const fmidi_event_t * event, void * cbdata)
+void midiTickCallback(const fmidi_event_t * event, void * cbdata, fmidi_seq_event_t* fulldata)
 {
     auto data = reinterpret_cast<CallbackData*>(cbdata);
 
@@ -212,7 +212,7 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const Filesystem::Path& path, AudioMID
     
     fmidi_player_u midiPlayer { fmidi_player_new(midiFile.get()) };
     CallbackData callbackData { synth };
-    fmidi_player_event_callback(midiPlayer.get(), &midiCallback, &callbackData);
+    fmidi_player_event_callback(midiPlayer.get(), &midiTickCallback, &callbackData);
     fmidi_player_finish_callback(midiPlayer.get(), &finishedCallback, &callbackData);
     
     const auto duration = fmidi_smf_compute_duration(midiFile.get());
