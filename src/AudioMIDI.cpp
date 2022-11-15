@@ -10,6 +10,9 @@
 
 #include <cstdint>
 
+using namespace RavEngine;
+
+
 namespace midi {
     constexpr uint8_t statusMask { 0b11110000 };
     constexpr uint8_t channelMask { 0b00001111 };
@@ -37,137 +40,185 @@ namespace midi {
     }
 }
 
-
-using namespace RavEngine;
-
-void AudioMIDIPlayer::EnqueueEvent(const MidiEvent &evt, uint16_t track){
-    instrumentTrackMap.at(track).events.push(evt);
-}
-
-void AudioMIDIPlayer::Render(buffer_t out_buffer){
-    // pop events off and give to the proper instrument
-    const auto samplesPerSec = AudioPlayer::GetSamplesPerSec();
-    
-    float* scratchbuffer[]{new float[out_buffer.size()], new float[out_buffer.size()]};
-
-    for (auto& instrument : instrumentTrackMap){
-        // set the instrument's callback function
-        instrument.instrument->synthesizer.setSampleRate(samplesPerSec);
-        instrument.instrument->synthesizer.enableFreeWheeling();    //TODO: restore old state after processing is finished
-        
-        while (!instrument.events.empty()){
-            // get the next event (without popping it)
-            auto& nextEvent = instrument.events.top();
-            
-            // convert the start tick time into a buffer index
-            // I had help with these equations
-            auto seconds = (nextEvent.tick) * (1.0/ticksPerQuarterNote) * (1.0/beatsPerMinute) * 60;
-            auto bufferidx = size_t(seconds * AudioPlayer::GetSamplesPerSec()) - playhead;
-            
-            // is this event's start point within the buffer?
-            if (bufferidx < out_buffer.size()){
-                // if so, pop it and provide it to the Instrument
-                if (nextEvent.isNoteOn()){
-                    instrument.instrument->synthesizer.noteOn(bufferidx, nextEvent.getKeyNumber(), nextEvent.getVelocity());
-                }
-                else if (nextEvent.isNoteOff()){
-                    instrument.instrument->synthesizer.noteOff(bufferidx, nextEvent.getKeyNumber(), nextEvent.getVelocity());
-                }
-                
-                // consume the event
-                instrument.events.pop();
-            }
-            else{
-                // otherwise, stop the loop
-                break;
-            }
-        }
-         instrument.instrument->synthesizer.renderBlock(scratchbuffer, out_buffer.size(),1);
-    }
-    // advance playhead, now that this buffer processing has completed
-    playhead += out_buffer.size();
-    delete[] scratchbuffer[0];
-    delete[] scratchbuffer[1];
-}
-
-void AudioMIDIPlayer::SetInstrumentForTrack(uint16_t channel, std::unique_ptr<InstrumentSynth>& instrument){
-    if (instrumentTrackMap.size() <= channel){
-        instrumentTrackMap.resize(closest_multiple_of(channel+1,2));
-    }
-    instrumentTrackMap[channel].instrument = std::move(instrument);
-}
-
-Ref<AudioAsset> AudioMIDIRenderer::Render(MidiFile& file, AudioMIDIPlayer& player){
-        
-    // load up all the events
-    for (int i = 0; i < file.getNumTracks(); i++){
-        const auto& track = file[i];
-        for(int t = 0; t < track.getEventCount(); t++){
-            auto& event = track.getEvent(t);
-            player.EnqueueEvent(event, i);
-        }
-    }
-    player.ticksPerQuarterNote = file.getTicksPerQuarterNote();
-    
-    auto totalSecs = file.getFileDurationInSeconds();
-    
-    const size_t buffsize = AudioPlayer::GetSamplesPerSec() * totalSecs;
-    
-    // create the AudioAsset
-    float* buf = new float[buffsize]{0};   // this will be freed by the AudioAsset
-    auto asset = RavEngine::New<AudioAsset>(buf, buffsize, 1);
-    
-    // render into it
-    player.Render(AudioMIDIPlayer::buffer_t(buf,1024));
-    
-    return asset;
-}
-
-struct CallbackData {
-    sfz::Sfizz& synth;
-    unsigned delay = 0;
-    bool finished = false;
-};
-
-void midiTickCallback(const fmidi_event_t * event, void * cbdata, fmidi_seq_event_t* fulldata)
-{
-    auto data = reinterpret_cast<CallbackData*>(cbdata);
-
+void AudioMIDIPlayer::processEvent(const fmidi_event_t *event, fmidi_seq_event_t *fulldata){
     if (event->type != fmidi_event_type::fmidi_event_message)
         return;
+    
+    uint16_t track = fulldata->track;
+    
+    auto& instrument = instrumentTrackMap.at(track).instrument->synthesizer;
 
     switch (midi::status(event->data[0])) {
         case midi::noteOff:
-            data->synth.noteOff(data->delay, event->data[1], event->data[2]);
+            instrument.noteOff(delay, event->data[1], event->data[2]);
             break;
         case midi::noteOn:
             if (event->data[2] == 0)
-                data->synth.noteOff(data->delay, event->data[1], event->data[2]);
+                instrument.noteOff(delay, event->data[1], event->data[2]);
             else
-                data->synth.noteOn(data->delay, event->data[1], event->data[2]);
+                instrument.noteOn(delay, event->data[1], event->data[2]);
             break;
         case midi::polyphonicPressure:
             break;
         case midi::controlChange:
-            data->synth.cc(data->delay, event->data[1], event->data[2]);
+            instrument.cc(delay, event->data[1], event->data[2]);
             break;
         case midi::programChange:
             break;
         case midi::channelPressure:
             break;
         case midi::pitchBend:
-            data->synth.pitchWheel(data->delay, midi::buildAndCenterPitch(event->data[1], event->data[2]));
+            instrument.pitchWheel(delay, midi::buildAndCenterPitch(event->data[1], event->data[2]));
             break;
         case midi::systemMessage:
             break;
         }
 }
 
+void midiTickCallback(const fmidi_event_t * event, void * cbdata, fmidi_seq_event_t* fulldata)
+{
+    auto data = reinterpret_cast<AudioMIDIPlayer*>(cbdata);
+    data->processEvent(event, fulldata);
+}
+
+//void AudioMIDIPlayer::EnqueueEvent(const MidiEvent &evt, uint16_t track){
+//    instrumentTrackMap.at(track).events.push(evt);
+//}
+//
+//void AudioMIDIPlayer::Render(buffer_t out_buffer){
+//    // pop events off and give to the proper instrument
+//    const auto samplesPerSec = AudioPlayer::GetSamplesPerSec();
+//    
+//    float* scratchbuffer[]{new float[out_buffer.size()], new float[out_buffer.size()]};
+//
+//    for (auto& instrument : instrumentTrackMap){
+//        // set the instrument's callback function
+//        instrument.instrument->synthesizer.setSampleRate(samplesPerSec);
+//        instrument.instrument->synthesizer.enableFreeWheeling();    //TODO: restore old state after processing is finished
+//        
+//        while (!instrument.events.empty()){
+//            // get the next event (without popping it)
+//            auto& nextEvent = instrument.events.top();
+//            
+//            // convert the start tick time into a buffer index
+//            // I had help with these equations
+//            auto seconds = (nextEvent.tick) * (1.0/ticksPerQuarterNote) * (1.0/beatsPerMinute) * 60;
+//            auto bufferidx = size_t(seconds * AudioPlayer::GetSamplesPerSec()) - playhead;
+//            
+//            // is this event's start point within the buffer?
+//            if (bufferidx < out_buffer.size()){
+//                // if so, pop it and provide it to the Instrument
+//                if (nextEvent.isNoteOn()){
+//                    instrument.instrument->synthesizer.noteOn(bufferidx, nextEvent.getKeyNumber(), nextEvent.getVelocity());
+//                }
+//                else if (nextEvent.isNoteOff()){
+//                    instrument.instrument->synthesizer.noteOff(bufferidx, nextEvent.getKeyNumber(), nextEvent.getVelocity());
+//                }
+//                
+//                // consume the event
+//                instrument.events.pop();
+//            }
+//            else{
+//                // otherwise, stop the loop
+//                break;
+//            }
+//        }
+//         instrument.instrument->synthesizer.renderBlock(scratchbuffer, out_buffer.size(),1);
+//    }
+//    // advance playhead, now that this buffer processing has completed
+//    playhead += out_buffer.size();
+//    delete[] scratchbuffer[0];
+//    delete[] scratchbuffer[1];
+//}
+
 void finishedCallback(void * cbdata)
 {
-    auto data = reinterpret_cast<CallbackData*>(cbdata);
-    data->finished = true;
+    auto data = reinterpret_cast<AudioMIDIPlayer*>(cbdata);
+    data->finishedCurrent = true;
 }
+
+void AudioMIDIPlayer::SetMidi(const fmidi_smf_u & midiFile){
+    midiPlayer = fmidi_player_u{std::move(fmidi_player_new(midiFile.get()))};
+    fmidi_player_event_callback(midiPlayer.get(), &midiTickCallback, this);
+    fmidi_player_finish_callback(midiPlayer.get(), &finishedCallback, this);
+    finishedCurrent = false;
+}
+
+void AudioMIDIPlayer::Render(buffer_t out_buffer){
+    
+    unsigned sampleRate { AudioPlayer::GetSamplesPerSec() };
+    auto sampleRateDouble = static_cast<double>(sampleRate);
+    const double increment { 1.0 / sampleRateDouble };
+    
+    // tick player for the size of the buffer
+    for (delay = 0; delay < out_buffer.size() && !finishedCurrent; delay++)
+        fmidi_player_tick(midiPlayer.get(), increment);
+    
+    // this might be a bad idea...
+    stackarray(tempbufferL, decltype(out_buffer)::value_type, out_buffer.size());
+    decltype(out_buffer)::value_type* buffers[]{tempbufferL, tempbufferL};  // initialize both channels to the same buffer
+    
+    // render all the instruments and then add into the out_buffer
+    for(auto& instrument : instrumentTrackMap){
+        instrument.instrument->synthesizer.setSamplesPerBlock(out_buffer.size());
+        instrument.instrument->synthesizer.renderBlock(buffers, out_buffer.size());
+        for(uint64_t i = 0; i < out_buffer.size(); i++){
+            out_buffer[i] += tempbufferL[i];
+        }
+    }
+    
+}
+
+void AudioMIDIPlayer::SetInstrumentForTrack(uint16_t track, std::shared_ptr<InstrumentSynth>& instrument){
+    if (instrumentTrackMap.size() <= track){
+        instrumentTrackMap.resize(closest_multiple_of(track+1,2));
+    }
+    instrumentTrackMap[track].instrument = std::move(instrument);
+}
+
+Ref<AudioAsset> AudioMIDIRenderer::Render(const fmidi_smf_u& file, AudioMIDIPlayer& player){
+    const auto duration = fmidi_smf_compute_duration(file.get());
+    player.SetMidi(file);
+    
+    const size_t totalSamples = duration * AudioPlayer::GetSamplesPerSec();
+    auto assetData = new float[totalSamples]{0};
+    
+    unsigned blockSize { 1024 };
+    
+    uint64_t numFramesWritten { 0 };
+    uint64_t next = blockSize;
+    while(!player.finishedCurrent){
+        player.Render(AudioMIDIPlayer::buffer_t(assetData+numFramesWritten,next));
+        next = std::min<size_t>(blockSize, totalSamples - numFramesWritten);
+        numFramesWritten += next;
+    }
+    
+    auto asset = New<AudioAsset>(assetData,totalSamples,1);
+    return asset;
+}
+
+//Ref<AudioAsset> AudioMIDIRenderer::Render(MidiFile& file, AudioMIDIPlayer& player){
+//        
+//    
+//    auto totalSecs = file.getFileDurationInSeconds();
+//    
+//    const size_t buffsize = AudioPlayer::GetSamplesPerSec() * totalSecs;
+//    
+//    // create the AudioAsset
+//    float* buf = new float[buffsize]{0};   // this will be freed by the AudioAsset
+//    auto asset = RavEngine::New<AudioAsset>(buf, buffsize, 1);
+//    
+//    // render into it
+//    player.Render(AudioMIDIPlayer::buffer_t(buf,1024));
+//    
+//    return asset;
+//}
+
+struct CallbackData {
+    sfz::Sfizz& synth;
+    unsigned delay = 0;
+    bool finished = false;
+};
 
 
 Ref<AudioAsset> AudioMIDIRenderer::Render(const Filesystem::Path& path, AudioMIDIPlayer& player){

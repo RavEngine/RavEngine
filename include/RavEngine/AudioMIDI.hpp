@@ -20,36 +20,68 @@ struct SoundFont{
 class InstrumentSynth{
     sfz::Sfizz synthesizer;
     friend class AudioMIDIPlayer;
+    bool freeWheel = false;
 public:
     InstrumentSynth(const Filesystem::Path& path);
+    void setNumVoices(uint32_t poly){
+        synthesizer.setNumVoices(poly);
+    }
+    void setVolume(int32_t vol){
+        synthesizer.setVolume(vol);
+    }
+    
+    void enableFreewheeling(){
+        synthesizer.enableFreeWheeling();
+        freeWheel = true;
+    }
+    void disableFreewheeling(){
+        synthesizer.disableFreeWheeling();
+        freeWheel = false;
+    }
+    void isFreewheeling(){
+        return freeWheel;
+    }
 };
 
+/**
+ Must be allocated to a stable location in memory
+ */
 class AudioMIDIPlayer{
     // data structure for events
-    struct MIDIComparator{
-        constexpr bool operator() (const MidiEvent& a, const MidiEvent& b){
-            return b.tick < a.tick;
-        };
-    };
+//    struct MIDIComparator{
+//        constexpr bool operator() (const MidiEvent& a, const MidiEvent& b){
+//            return b.tick < a.tick;
+//        };
+//    };
     
     struct InstrumentChannelPair{
-        std::unique_ptr<InstrumentSynth> instrument;
-        std::priority_queue<MidiEvent, std::vector<MidiEvent>, MIDIComparator> events;
+        std::shared_ptr<InstrumentSynth> instrument;
+        //std::priority_queue<MidiEvent, std::vector<MidiEvent>, MIDIComparator> events;
     };
     std::vector<InstrumentChannelPair> instrumentTrackMap;
     
-    uint64_t playhead = 0;  // position in total samples emitted
+    fmidi_player_u midiPlayer;
     
+    //uint64_t playhead = 0;  // position in total samples emitted
+    uint32_t delay = 0;  // tells the synth in the callback function when to start playing the sound
 public:
-    void EnqueueEvent(const MidiEvent& evt, uint16_t track);
-    void SetInstrumentForTrack(uint16_t channel, std::unique_ptr<InstrumentSynth>& instrument);
+    // internal use only
+    bool finishedCurrent = true;
+
+    //void EnqueueEvent(const MidiEvent& evt, uint16_t track);
+    void SetInstrumentForTrack(uint16_t track, std::shared_ptr<InstrumentSynth>& instrument);
+    
+    void SetMidi(const fmidi_smf_u&);
+    
+    // internal use only
+    void processEvent(const fmidi_event_t * event, fmidi_seq_event_t* fulldata);
     
     using buffer_t = std::span<float,std::dynamic_extent>;
     void Render(buffer_t out_buffer);
     
-    void ResetPlayhead(){
-        playhead = 0;
-    }
+//    void ResetPlayhead(){
+//        playhead = 0;
+//    }
     
     int ticksPerQuarterNote = 0;
     float beatsPerMinute = 60;
@@ -57,7 +89,7 @@ public:
 };
     
 struct AudioMIDIRenderer{
-    Ref<AudioAsset> Render(MidiFile& file, AudioMIDIPlayer& player);
+    Ref<AudioAsset> Render(const fmidi_smf_u& file, AudioMIDIPlayer& player);
     Ref<AudioAsset> Render(const Filesystem::Path& path, AudioMIDIPlayer& player);
 };
 
