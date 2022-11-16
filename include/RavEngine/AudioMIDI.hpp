@@ -41,6 +41,9 @@ public:
     void isFreewheeling(){
         return freeWheel;
     }
+    void setSamplesPerBlock(uint32_t samples){
+        synthesizer.setSamplesPerBlock(samples);
+    }
 };
 
 /**

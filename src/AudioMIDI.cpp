@@ -160,7 +160,6 @@ void AudioMIDIPlayer::Render(buffer_t out_buffer){
     
     // render all the instruments and then add into the out_buffer
     for(auto& instrument : instrumentTrackMap){
-        instrument.instrument->synthesizer.setSamplesPerBlock(out_buffer.size());
         instrument.instrument->synthesizer.renderBlock(buffers, out_buffer.size());
         for(uint64_t i = 0; i < out_buffer.size(); i++){
             out_buffer[i] += tempbufferL[i];
