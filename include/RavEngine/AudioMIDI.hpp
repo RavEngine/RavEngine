@@ -44,6 +44,10 @@ public:
     void setSamplesPerBlock(uint32_t samples){
         synthesizer.setSamplesPerBlock(samples);
     }
+    
+    void setSampleQuality(sfz::Sfizz::ProcessMode mode, int quality){
+        synthesizer.setSampleQuality(mode, quality);
+    }
 };
 
 /**
@@ -65,7 +69,6 @@ class AudioMIDIPlayer{
     
     fmidi_player_u midiPlayer;
     
-    //uint64_t playhead = 0;  // position in total samples emitted
     uint32_t delay = 0;  // tells the synth in the callback function when to start playing the sound
 public:
     // internal use only
@@ -82,10 +85,6 @@ public:
     using buffer_t = std::span<float,std::dynamic_extent>;
     void Render(buffer_t out_buffer);
     
-//    void ResetPlayhead(){
-//        playhead = 0;
-//    }
-    
     int ticksPerQuarterNote = 0;
     float beatsPerMinute = 60;
 
@@ -93,7 +92,6 @@ public:
     
 struct AudioMIDIRenderer{
     Ref<AudioAsset> Render(const fmidi_smf_u& file, AudioMIDIPlayer& player);
-    Ref<AudioAsset> Render(const Filesystem::Path& path, AudioMIDIPlayer& player);
 };
 
 }

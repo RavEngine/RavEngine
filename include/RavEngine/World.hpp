@@ -1105,9 +1105,9 @@ namespace RavEngine {
         
         template<typename T>
         inline auto GetAllComponentsOfType(){
-            std::optional<EntitySparseSet<T>*> ret;
+            EntitySparseSet<T>* ret = nullptr;
             if (componentMap.find(CTTI<T>()) != componentMap.end()){
-                ret.emplace(GetRange<T>());
+                ret = GetRange<T>();
             }
             return ret;
         }

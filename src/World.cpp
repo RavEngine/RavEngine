@@ -241,7 +241,7 @@ void World::setupRenderTasks(){
     
 	auto camproc = renderTasks.emplace([this](){
         if (auto allcams = GetAllComponentsOfType<CameraComponent>()){
-            for (auto& cam : *allcams.value()) {
+            for (auto& cam : *allcams) {
                 if (cam.IsActive()) {
 
                     auto size = GetApp()->GetRenderEngine().GetBufferSize();
@@ -306,8 +306,7 @@ void World::setupRenderTasks(){
     }).name("Upate invalidated skinned mesh transforms");
     
     auto updateInvalidatedDirs = renderTasks.emplace([this]{
-        if (auto dirs = GetAllComponentsOfType<DirectionalLight>()){
-            auto ptr = dirs.value();
+        if (auto ptr = GetAllComponentsOfType<DirectionalLight>()){
             for(int i = 0; i < ptr->DenseSize(); i++){
                 auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
                 auto& transform = owner.GetTransform();
@@ -333,8 +332,7 @@ void World::setupRenderTasks(){
     }).name("Update Invalidated DirLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     auto updateInvalidatedSpots = renderTasks.emplace([this]{
-        if (auto dirs = GetAllComponentsOfType<SpotLight>()){
-            auto ptr = dirs.value();
+        if (auto ptr = GetAllComponentsOfType<SpotLight>()){
             for(int i = 0; i < ptr->DenseSize(); i++){
                 auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
                 auto& transform = owner.GetTransform();
@@ -353,8 +351,7 @@ void World::setupRenderTasks(){
     }).name("Update Invalidated SpotLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     auto updateInvalidatedPoints = renderTasks.emplace([this]{
-        if (auto dirs = GetAllComponentsOfType<PointLight>()){
-            auto ptr = dirs.value();
+        if (auto ptr = GetAllComponentsOfType<PointLight>()){
             for(int i = 0; i < ptr->DenseSize(); i++){
                 auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
                 auto& transform = owner.GetTransform();
@@ -373,8 +370,7 @@ void World::setupRenderTasks(){
     }).name("Update Invalidated SpotLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     auto updateInvalidatedAmbients = renderTasks.emplace([this]{
-        if(auto ambs = GetAllComponentsOfType<AmbientLight>()){
-            auto ptr = ambs.value();
+        if(auto ptr = GetAllComponentsOfType<AmbientLight>()){
             for(int i = 0; i < ptr->DenseSize(); i++){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get(i);

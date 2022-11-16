@@ -261,7 +261,7 @@ void RavEngine::NetworkServer::SynchronizeWorldToClient(HSteamNetConnection conn
 		auto identities = world.value()->GetAllComponentsOfType<NetworkIdentity>();
 		// call SpawnEntity on each owner
         
-		for (const auto& identity : *identities.value()) {
+		for (const auto& identity : *identities) {
 			auto entity = identity.GetOwner();
 			auto id = identity.GetNetTypeID();
 			auto& netID = identity.GetNetworkID();
