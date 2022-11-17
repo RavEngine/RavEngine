@@ -40,6 +40,14 @@ public:
 	inline decltype(nchannels) GetNChanels() const {
 		return nchannels;
 	}
+    
+    inline auto GetData() const{
+        return audiodata;
+    }
+    
+    inline auto GetNumSamples() const{
+        return numsamples;
+    }
 };
 
 

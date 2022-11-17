@@ -6,7 +6,6 @@
 #include <sfizz/MathHelpers.h>
 #include <sfizz/SfzHelpers.h>
 #include <sfizz/SIMDHelpers.h>
-#include <sfizz/../../external/st_audiofile/thirdparty/dr_libs/dr_wav.h>
 
 #include <cstdint>
 
