@@ -171,7 +171,7 @@ void AudioMIDIPlayer::SetInstrumentForTrack(uint16_t track, std::shared_ptr<Inst
     if (instrumentTrackMap.size() <= track){
         instrumentTrackMap.resize(closest_multiple_of(track+1,2));
     }
-    instrumentTrackMap[track].instrument = std::move(instrument);
+    instrumentTrackMap[track].instrument = instrument;
 }
 
 Ref<AudioAsset> AudioMIDIRenderer::Render(const fmidi_smf_u& file, AudioMIDIPlayer& player){

@@ -38,7 +38,7 @@ public:
         synthesizer.disableFreeWheeling();
         freeWheel = false;
     }
-    void isFreewheeling(){
+    auto isFreewheeling(){
         return freeWheel;
     }
     void setSamplesPerBlock(uint32_t samples){
