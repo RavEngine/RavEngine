@@ -18,6 +18,28 @@ namespace RavEngine {
 			Bidirectional
 		};
 		RPCComponent(entity_t owner) : ComponentWithOwner(owner){}
+        template<typename ... A>
+        struct RPCMessage{
+            static constexpr size_t bufsize = (RPCMsgUnpacker::TotalSerializedSize<A>() + ...) + RPCMsgUnpacker::header_size;
+        private:
+            std::array<char,bufsize> buffer {0};
+        public:
+            static_assert(bufsize < std::numeric_limits<uint32_t>::max(), "Message is too long!");
+            auto& operator[](size_t idx){
+                return buffer[idx];
+            }
+            auto& operator[](size_t idx) const{
+                return buffer[idx];
+            }
+            auto data(){
+                return buffer.data();
+            }
+            const std::string_view toView() const{
+                return std::string_view(buffer.data(),bufsize);
+            }
+        };
+        
+
 	private:
 		struct rpc_entry {
 			Function<void(RPCMsgUnpacker&, HSteamNetConnection)> func;
@@ -75,7 +97,7 @@ namespace RavEngine {
 		@param value the data to encode
 		*/
 		template<typename T>
-        inline void serializeType(size_t& offset, char* buffer, const T& value) const{
+        static inline void serializeType(size_t& offset, char* buffer, const T& value){
             auto id = CTTI<T>();
 			std::memcpy(buffer + offset, &id, sizeof(ctti_t));
 			std::memcpy(buffer + offset + sizeof(ctti_t), &value, RPCMsgUnpacker::SerializedSize<T>());
@@ -88,23 +110,20 @@ namespace RavEngine {
 		@param args the varargs to encode
 		*/
 		template<typename ... A>
-		inline std::string SerializeRPC(uint16_t id, A&& ... args) const{
-			constexpr size_t totalsize = (RPCMsgUnpacker::TotalSerializedSize<decltype(args)>() + ...) + RPCMsgUnpacker::header_size;
-
+		inline RPCMessage<A...> SerializeRPC(uint16_t id, A&& ... args) const{
 			auto& uuid_bytes = GetOwner().GetComponent<NetworkIdentity>().GetNetworkID();
-			char msg[totalsize];
+            RPCMessage<A...> msg;   // default-init to zeros
 
 			//write message header
-			std::memset(msg, 0, totalsize);
 			msg[0] = NetworkBase::CommandCode::RPC;							//command code
-			std::memcpy(msg + 1, uuid_bytes.raw(), uuid_bytes.size());	//entity uuid
-			std::memcpy(msg + 1 + uuid_bytes.size(), &id, sizeof(id));	//RPC ID
+			std::memcpy(msg.data() + 1, uuid_bytes.raw(), uuid_bytes.size());	//entity uuid
+			std::memcpy(msg.data() + 1 + uuid_bytes.size(), &id, sizeof(id));	//RPC ID
 
 			//write mesage body
 			size_t offset = RPCMsgUnpacker::header_size;
-			(serializeType(offset, msg, args), ...);		//fold expression on all variadics
-			Debug::Assert(offset == totalsize, "Incorrect number of bytes written!");
-			return std::string(msg, totalsize);
+			(serializeType(offset, msg.data(), args), ...);		//fold expression on all variadics
+			Debug::Assert(offset == msg.bufsize, "Incorrect number of bytes written!");
+			return msg;
 		}
 
 		/**
@@ -123,7 +142,7 @@ namespace RavEngine {
 				//invoke that RPC
 				if (table.if_contains(RPC, [&](const rpc_entry& func) {
 					if (cmd.isOwner || func.mode == Directionality::Bidirectional) {
-						auto packer = RPCMsgUnpacker(cmd.msg);
+                        RPCMsgUnpacker packer{cmd.msg};
 						func.func(packer, cmd.origin);
 					}
 					})) {
@@ -166,7 +185,7 @@ namespace RavEngine {
         constexpr inline void InvokeServerRPC(uint16_t id, NetworkBase::Reliability mode, A&& ... args) const{
 			if (data->ServerRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				GetApp()->networkManager.client->SendMessageToServer(msg, mode);
+				GetApp()->networkManager.client->SendMessageToServer(msg.toView(), mode);
 			}
 			else {
 				Debug::Warning("Cannot send Server RPC with ID {}", id);
@@ -188,7 +207,7 @@ namespace RavEngine {
         constexpr inline void InvokeClientRPCToAllExcept(uint16_t id, HSteamNetConnection doNotSend, NetworkBase::Reliability mode, A&& ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				GetApp()->networkManager.server->SendMessageToAllClientsExcept(msg, doNotSend, mode);
+				GetApp()->networkManager.server->SendMessageToAllClientsExcept(msg.toView(), doNotSend, mode);
 			}
 			else {
 				Debug::Warning("Cannot send Client RPC with ID {} to all except {}", id, doNotSend);
@@ -205,7 +224,7 @@ namespace RavEngine {
         constexpr inline void InvokeClientRPC(uint16_t id, NetworkBase::Reliability mode, A&& ... args) const{
 			if (data->ClientRPCs.contains(id)) {
 				auto msg = SerializeRPC(id, args...);
-				GetApp()->networkManager.server->SendMessageToAllClients(msg, mode);
+				GetApp()->networkManager.server->SendMessageToAllClients(msg.toView(), mode);
 			}
 			else {
 				Debug::Warning("Cannot send Client RPC with ID {}", id);
