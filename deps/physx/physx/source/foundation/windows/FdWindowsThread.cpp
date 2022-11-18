@@ -279,7 +279,9 @@ void PxThreadImpl::quit()
 void PxThreadImpl::kill()
 {
 	if(getThread(this)->state == ThreadImpl::Started)
+#if !PX_UWP
 		TerminateThread(getThread(this)->thread, 0);
+#endif
 	getThread(this)->state = ThreadImpl::Stopped;
 }
 

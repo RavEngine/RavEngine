@@ -61,7 +61,7 @@ physx::PhysXIndicator::PhysXIndicator(bool isGpu)
 	char configName[128];
 
 #if _MSC_VER >= 1800
-	if (!IsWindowsVistaOrGreater())
+	if constexpr (false)	// used to be "!isWindowsVistaOrGreater()" but we don't target that old
 #else
 	OSVERSIONINFOEX windowsVersionInfo;
 	windowsVersionInfo.dwOSVersionInfoSize = sizeof (windowsVersionInfo);
@@ -73,8 +73,12 @@ physx::PhysXIndicator::PhysXIndicator(bool isGpu)
 	else
 		NvPhysXToDrv_Build_SectionName(GetCurrentProcessId(), configName);
 	
+#if !PX_UWP
 	mFileHandle = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL,
 		PAGE_READWRITE, 0, sizeof(NvPhysXToDrv_Data_V1), configName);
+#else
+	mFileHandle = nullptr;
+#endif
 
 	if (!mFileHandle || mFileHandle == INVALID_HANDLE_VALUE)
 		return;

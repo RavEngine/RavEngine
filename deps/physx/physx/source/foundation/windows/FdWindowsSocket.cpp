@@ -32,8 +32,14 @@
 #include "foundation/PxThread.h"
 #include "foundation/PxArray.h"
 
+#if !PX_UWP
 #include <Winsock2.h>
 #pragma comment(lib, "Ws2_32")
+#endif
+
+#if PX_UWP
+void WSACleanup() {}
+#endif
 
 namespace physx
 {
@@ -75,20 +81,26 @@ class SocketImpl
 	}
 
   protected:
+#if !PX_UWP
+
 	bool nonBlockingTimeout() const;
 	void setBlockingInternal(SOCKET socket, bool blocking);
 
 	mutable SOCKET mSocket;
 	SOCKET mListenSocket;
+#endif
 	const char* mHost;
 	uint16_t mPort;
 	mutable bool mIsConnected;
 	bool mIsBlocking;
 	bool mListenMode;
 	bool mSocketLayerIntialized;
+
 };
 
 SocketImpl::SocketImpl(bool isBlocking)
+#if !PX_UWP
+
 : mSocket(INVALID_SOCKET)
 , mListenSocket(INVALID_SOCKET)
 , mPort(0)
@@ -103,6 +115,9 @@ SocketImpl::SocketImpl(bool isBlocking)
 	vreq = MAKEWORD(2, 2);
 	mSocketLayerIntialized = (WSAStartup(vreq, &wsaData) == 0);
 }
+#else
+{}
+#endif
 
 SocketImpl::~SocketImpl()
 {
@@ -110,11 +125,13 @@ SocketImpl::~SocketImpl()
 		WSACleanup();
 }
 
+#if !PX_UWP
 void SocketImpl::setBlockingInternal(SOCKET socket, bool blocking)
 {
 	uint32_t mode = uint32_t(blocking ? 0 : 1);
 	ioctlsocket(socket, FIONBIO, (u_long*)&mode);
 }
+#endif
 
 #ifdef PX_VC11
 #pragma warning(push)
@@ -122,6 +139,7 @@ void SocketImpl::setBlockingInternal(SOCKET socket, bool blocking)
 #endif
 bool SocketImpl::connect(const char* host, uint16_t port, uint32_t timeout)
 {
+#if !PX_UWP
 	if(!mSocketLayerIntialized)
 		return false;
 
@@ -180,6 +198,9 @@ bool SocketImpl::connect(const char* host, uint16_t port, uint32_t timeout)
 	mPort = port;
 	mHost = host;
 	return true;
+#else
+	return false;
+#endif
 }
 #ifdef PX_VC11
 #pragma warning(pop)
@@ -187,6 +208,7 @@ bool SocketImpl::connect(const char* host, uint16_t port, uint32_t timeout)
 
 bool SocketImpl::listen(uint16_t port)
 {
+#if !PX_UWP
 	if(!mSocketLayerIntialized)
 		return false;
 
@@ -201,10 +223,14 @@ bool SocketImpl::listen(uint16_t port)
 	addr.sin_port = htons(port);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	return bind(mListenSocket, (sockaddr*)&addr, sizeof(addr)) == 0 && ::listen(mListenSocket, SOMAXCONN) == 0;
+#else
+	return false;
+#endif
 }
 
 bool SocketImpl::accept(bool block)
 {
+#if !PX_UWP
 	if(mIsConnected || !mListenMode)
 		return false;
 
@@ -217,12 +243,13 @@ bool SocketImpl::accept(bool block)
 	mSocket = clientSocket;
 	mIsConnected = true;
 	setBlockingInternal(mSocket, mIsBlocking); // force the mode to whatever the user set
-
+#endif
 	return mIsConnected;
 }
 
 void SocketImpl::disconnect()
 {
+#if !PX_UWP
 	if(mListenSocket != INVALID_SOCKET)
 	{
 		closesocket(mListenSocket);
@@ -238,23 +265,26 @@ void SocketImpl::disconnect()
 	mListenMode = false;
 	mPort = 0;
 	mHost = NULL;
+#endif
 }
-
+#if !PX_UWP
 bool SocketImpl::nonBlockingTimeout() const
 {
 	return !mIsBlocking && WSAGetLastError() == WSAEWOULDBLOCK;
 }
-
+#endif
 // should be cross-platform from here down
 
 void SocketImpl::setBlocking(bool blocking)
 {
+#if !PX_UWP
 	if(blocking != mIsBlocking)
 	{
 		mIsBlocking = blocking;
 		if(isConnected())
 			setBlockingInternal(mSocket, blocking);
 	}
+#endif
 }
 
 bool SocketImpl::flush()
@@ -264,6 +294,7 @@ bool SocketImpl::flush()
 
 uint32_t SocketImpl::write(const uint8_t* data, uint32_t length)
 {
+#if !PX_UWP
 	if(length == 0)
 		return 0;
 
@@ -273,10 +304,14 @@ uint32_t SocketImpl::write(const uint8_t* data, uint32_t length)
 		disconnect();
 
 	return uint32_t(sent > 0 ? sent : 0);
+#else
+	return 0;
+#endif
 }
 
 uint32_t SocketImpl::read(uint8_t* data, uint32_t length)
 {
+#if !PX_UWP
 	if(length == 0)
 		return 0;
 
@@ -286,6 +321,9 @@ uint32_t SocketImpl::read(uint8_t* data, uint32_t length)
 		disconnect();
 
 	return uint32_t(received > 0 ? received : 0);
+#else
+	return 0;
+#endif
 }
 
 class BufferedSocketImpl : public SocketImpl

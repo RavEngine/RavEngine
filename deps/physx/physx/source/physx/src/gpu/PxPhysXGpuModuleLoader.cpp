@@ -119,8 +119,10 @@ namespace physx
 	{
 		static HMODULE s_library;
 
+#if !PX_UWP
 		if (s_library == NULL)
 			s_library = GetModuleHandle(gPhysXGpuLibraryName);
+#endif
 
 		if (s_library == NULL)
 		{

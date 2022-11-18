@@ -189,6 +189,12 @@ define anything not defined on this platform to 0
 	#define PX_VMX 0
 #endif
 
+#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
+#define PX_UWP 1   
+#else
+#define PX_UWP 0
+#endif
+
 /*
 define anything not defined through the command line to 0
 */
