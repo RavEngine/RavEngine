@@ -1,9 +1,9 @@
 # RavEngine
 A C++20 cross-platform game library, with emphasis on performance and ease of use. Notable features:
 1. Fast Parallel ECS
-   - Unique feature: Supports querying by base classes without vtable!
+   - Unique feature: Supports querying by base classes without virtual!
    - Also supports Unity-style scripting with full automatic parallelization
-2. Multithreaded physics simulation (Nvidia PhysX 4.1)
+2. Multithreaded physics simulation (Nvidia PhysX 5.1)
 3. 3D spatialized audio with accurate room reverbation modeling (Google Resonance Audio)
 4. Automatic memory management handled via reference counting 
 5. Supports modern rendering APIs (Metal, DirectX, Vulkan)
@@ -12,8 +12,9 @@ A C++20 cross-platform game library, with emphasis on performance and ease of us
 8. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
 9. Full FSM animation blending tree system
 10. Compute shader mesh skinning with automatic batching
-11. CI/CD-friendly build process powered by CMake
-12. Quality-of-life features like automatic incremental shader compilation
+11. Software instrument synthesis and MIDI playback (sfizz)
+12. CI/CD-friendly build process powered by CMake
+13. Quality-of-life features like automatic incremental shader compilation
 
 Note: RavEngine does not have a graphical editor.
 
@@ -21,7 +22,7 @@ Note: RavEngine does not have a graphical editor.
 Expect bugs and frequent breaking changes. Do not use in serious projects. 
 
 ## Integrating and building
-Integrating this library with CMake is easy. 
+Use CMake:
 ```cmake
 cmake_minimum_required(VERSION 3.23)
 
@@ -81,8 +82,9 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | macOS 10.15+ | Intel, Apple Silicon | Apple Clang | Xcode | Metal |
 | iOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
 | tvOS 14+ | Device + Simulator | Apple Clang | Xcode | Metal |
-| Windows 10 (Win32) | x86_64, aarch64 | MSVC | Visual Studio | DX12, Vulkan |
-| Windows 10 (UWP) | x86_64 aarch64 | MSVC | Visual Studio | DX12 |
+| Windows 10+ (Win32) | x86_64, aarch64 | MSVC | Visual Studio | DX12, Vulkan |
+| Windows 10+ (GDK) | x86_64 | MSVC | Visual Studio | DX12, Vulkan |
+| Windows 10+ (UWP) | x86_64, aarch64 | MSVC | Visual Studio | DX12 |
 | Linux | x86_64, aarch64 | Clang, GCC | Ninja, Make | Vulkan |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
