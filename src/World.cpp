@@ -184,8 +184,14 @@ void World::SetupTaskGraph(){
   
     
     auto copyAudios = audioTasks.emplace([this]{
-        Filter([this](float, AudioSourceComponent& audioSource, Transform& transform){
+        // raster audio
+        Filter([this](float, AudioSourceComponent& audioSource, const Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
+        });
+        
+        // midi audio
+        Filter([this](float, AudioMIDISourceComponent& audioSource, Transform& transform){
+            GetApp()->GetCurrentAudioSnapshot()->midiPointSources.emplace_back(audioSource, transform.GetWorldPosition(), transform.GetWorldRotation());
         });
         
         // now clean up the fire-and-forget audios that have completed
@@ -200,12 +206,16 @@ void World::SetupTaskGraph(){
     }).name("Point Audios").succeed(audioClear);
     
     auto copyAmbients = audioTasks.emplace([this]{
-        if(componentMap.contains(CTTI<AmbientAudioSourceComponent>())){
-            Filter([this](float, AmbientAudioSourceComponent& audioSource){
-                GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
-            });
+        // raster audio
+        Filter([this](float, AmbientAudioSourceComponent& audioSource){
+            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
+        });
+        
+        // midi audio
+        Filter([this](float, AudioMIDIAmbientSourceComponent& audioSource){
+            GetApp()->GetCurrentAudioSnapshot()->ambientMIDIsources.emplace_back(audioSource);
+        });
             
-        }
 
         // now clean up the fire-and-forget audios that have completed
         ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {

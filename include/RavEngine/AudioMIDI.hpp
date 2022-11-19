@@ -89,7 +89,25 @@ public:
     float beatsPerMinute = 60;
 
 };
-    
+
+struct AudioMIDISourceBase : public AutoCTTI{
+    Ref<AudioMIDIPlayer> midiPlayer;
+};
+
+/**
+ For playing MIDI from a point in 3D space
+ */
+struct AudioMIDISourceComponent : public AudioMIDISourceBase, public Queryable<AudioMIDISourceComponent>{};
+
+/**
+ For playing MIDI from anywhere, intended for background audio
+ */
+struct AudioMIDIAmbientSourceComponent : public AudioMIDISourceBase, public Queryable<AudioMIDIAmbientSourceComponent>{};
+
+
+/**
+ For rendering a MIDI song to an AudioAsset
+ */
 struct AudioMIDIRenderer{
     Ref<AudioAsset> Render(const fmidi_smf_u& file, AudioMIDIPlayer& player);
 };
