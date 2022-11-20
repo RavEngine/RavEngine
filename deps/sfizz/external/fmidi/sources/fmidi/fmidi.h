@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <memory>
 #if !defined(__cplusplus)
 # include <stdbool.h>
 #endif
@@ -33,8 +34,10 @@ extern "C" {
 ///////////
 // INPUT //
 ///////////
+///
 
 typedef struct fmidi_smf fmidi_smf_t;
+
 
 FMIDI_API fmidi_smf_t *fmidi_smf_mem_read(const uint8_t *data, size_t length);
 FMIDI_API fmidi_smf_t *fmidi_smf_file_read(const char *filename);
@@ -254,3 +257,13 @@ typedef std::unique_ptr<fmidi_player_t, fmidi_player_deleter> fmidi_player_u;
 # include <system_error>
 FMIDI_API const std::error_category &fmidi_category();
 #endif
+
+struct fmidi_raw_track {
+    std::unique_ptr<uint8_t[]> data;
+    uint32_t length;
+};
+
+struct fmidi_smf {
+    fmidi_smf_info_t info;
+    std::unique_ptr<fmidi_raw_track[]> track;
+};

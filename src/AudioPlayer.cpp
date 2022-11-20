@@ -62,10 +62,14 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
         
         //midi sources
         for(const auto& midisource: SnapshotToRender->midiPointSources){
-            // render the chunk to the shared buffer
-            resetShared();
-            midisource.source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
-            room->AddEmitter(shared_buffer, midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode(), midisource.source.midiPlayer->GetVolume());
+            // is there a player loaded?
+            if (midisource.source.midiPlayer){
+                // render the chunk to the shared buffer
+                resetShared();
+                midisource.source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
+                room->AddEmitter(shared_buffer, midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode(), midisource.source.midiPlayer->GetVolume());
+            }
+            
         }
         
         //now simulate the fire-and-forget audio
@@ -86,7 +90,9 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     
     for (const auto& source : SnapshotToRender->ambientMIDIsources){
         resetShared();
-        source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
+        if (source.midiPlayer){
+            source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
+        }
         blendIn();
     }
 

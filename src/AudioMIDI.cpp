@@ -39,6 +39,10 @@ namespace midi {
     }
 }
 
+void AudioMIDIPlayer::Reset(){
+    fmidi_player_rewind(midiPlayer.get());
+}
+
 void AudioMIDIPlayer::processEvent(const fmidi_event_t *event, fmidi_seq_event_t *fulldata){
     if (event->type != fmidi_event_type::fmidi_event_message)
         return;
@@ -136,7 +140,8 @@ void finishedCallback(void * cbdata)
     data->finishedCurrent = true;
 }
 
-void AudioMIDIPlayer::SetMidi(const fmidi_smf_u & midiFile){
+void AudioMIDIPlayer::SetMidi(const decltype(midiSMF)& midiFile){
+    midiSMF = midiFile;
     midiPlayer = fmidi_player_u{std::move(fmidi_player_new(midiFile.get()))};
     fmidi_player_event_callback(midiPlayer.get(), &midiTickCallback, this);
     fmidi_player_finish_callback(midiPlayer.get(), &finishedCallback, this);
@@ -144,6 +149,10 @@ void AudioMIDIPlayer::SetMidi(const fmidi_smf_u & midiFile){
 }
 
 void AudioMIDIPlayer::RenderBuffer1024OrLess(buffer_t out_buffer){
+    
+    if (!isPlaying){
+        return;
+    }
     
     unsigned sampleRate { AudioPlayer::GetSamplesPerSec() };
     auto sampleRateDouble = static_cast<double>(sampleRate);
@@ -184,9 +193,10 @@ void AudioMIDIPlayer::SetInstrumentForTrack(uint16_t track, std::shared_ptr<Inst
     instrumentTrackMap[track].instrument = instrument;
 }
 
-Ref<AudioAsset> AudioMIDIRenderer::Render(const fmidi_smf_u& file, AudioMIDIPlayer& player){
+Ref<AudioAsset> AudioMIDIRenderer::Render(const Ref<fmidi_smf_t>& file, AudioMIDIPlayer& player){
     const auto duration = fmidi_smf_compute_duration(file.get());
     player.SetMidi(file);
+    player.Play();
     
     const size_t totalSamples = duration * AudioPlayer::GetSamplesPerSec();
     auto assetData = new float[totalSamples]{0};

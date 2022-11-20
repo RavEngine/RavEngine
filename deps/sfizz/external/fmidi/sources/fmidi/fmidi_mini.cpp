@@ -638,16 +638,6 @@ bool Memory_Writer::seek(off_t offset, int whence)
 #include "fmidi/fmidi.h"
 #include <vector>
 
-struct fmidi_raw_track {
-    std::unique_ptr<uint8_t[]> data;
-    uint32_t length;
-};
-
-struct fmidi_smf {
-    fmidi_smf_info_t info;
-    std::unique_ptr<fmidi_raw_track[]> track;
-};
-
 //------------------------------------------------------------------------------
 uintptr_t fmidi_event_pad(uintptr_t size);
 fmidi_event_t *fmidi_event_alloc(std::vector<uint8_t> &buf, uint32_t datalen);

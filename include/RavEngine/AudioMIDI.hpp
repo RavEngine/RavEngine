@@ -68,10 +68,13 @@ class AudioMIDIPlayer{
     std::vector<InstrumentChannelPair> instrumentTrackMap;
     
     fmidi_player_u midiPlayer;
+    Ref<fmidi_smf_t> midiSMF;
     
     uint32_t delay = 0;  // tells the synth in the callback function when to start playing the sound
     
     float volume = 1;
+    
+    bool isPlaying = false;
 public:
     // internal use only
     bool finishedCurrent = true;
@@ -79,7 +82,7 @@ public:
     //void EnqueueEvent(const MidiEvent& evt, uint16_t track);
     void SetInstrumentForTrack(uint16_t track, std::shared_ptr<InstrumentSynth>& instrument);
     
-    void SetMidi(const fmidi_smf_u&);
+    void SetMidi(const decltype(midiSMF)&);
     
     // internal use only
     void processEvent(const fmidi_event_t * event, fmidi_seq_event_t* fulldata);
@@ -105,6 +108,15 @@ public:
         volume = inVol;
     }
     
+    void Play(){
+        isPlaying = true;
+    }
+    void Pause(){
+        isPlaying = false;
+    }
+    
+    void Reset();
+    
     int ticksPerQuarterNote = 0;
     float beatsPerMinute = 60;
 
@@ -129,7 +141,7 @@ struct AudioMIDIAmbientSourceComponent : public AudioMIDISourceBase, public Quer
  For rendering a MIDI song to an AudioAsset
  */
 struct AudioMIDIRenderer{
-    Ref<AudioAsset> Render(const fmidi_smf_u& file, AudioMIDIPlayer& player);
+    Ref<AudioAsset> Render(const Ref<fmidi_smf_t>& file, AudioMIDIPlayer& player);
 };
 
 }
