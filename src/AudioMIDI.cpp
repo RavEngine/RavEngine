@@ -143,7 +143,7 @@ void AudioMIDIPlayer::SetMidi(const fmidi_smf_u & midiFile){
     finishedCurrent = false;
 }
 
-void AudioMIDIPlayer::Render(buffer_t out_buffer){
+void AudioMIDIPlayer::RenderBuffer1024OrLess(buffer_t out_buffer){
     
     unsigned sampleRate { AudioPlayer::GetSamplesPerSec() };
     auto sampleRateDouble = static_cast<double>(sampleRate);
@@ -167,6 +167,16 @@ void AudioMIDIPlayer::Render(buffer_t out_buffer){
     
 }
 
+void AudioMIDIPlayer::Render(buffer_t out_buffer){
+    constexpr uint32_t blockSize = 1024;
+    
+    uint64_t next = blockSize;
+    for(uint64_t numFramesWritten { 0 };  numFramesWritten < out_buffer.size(); numFramesWritten += next){
+        RenderBuffer1024OrLess(AudioMIDIPlayer::buffer_t(out_buffer.data()+numFramesWritten,next));
+        next = std::min<size_t>(blockSize, out_buffer.size() - numFramesWritten);
+    }
+}
+
 void AudioMIDIPlayer::SetInstrumentForTrack(uint16_t track, std::shared_ptr<InstrumentSynth>& instrument){
     if (instrumentTrackMap.size() <= track){
         instrumentTrackMap.resize(closest_multiple_of(track+1,2));
@@ -186,7 +196,7 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const fmidi_smf_u& file, AudioMIDIPlay
     uint64_t numFramesWritten { 0 };
     uint64_t next = blockSize;
     while(!player.finishedCurrent){
-        player.Render(AudioMIDIPlayer::buffer_t(assetData+numFramesWritten,next));
+        player.RenderBuffer1024OrLess(AudioMIDIPlayer::buffer_t(assetData+numFramesWritten,next));
         next = std::min<size_t>(blockSize, totalSamples - numFramesWritten);
         numFramesWritten += next;
     }

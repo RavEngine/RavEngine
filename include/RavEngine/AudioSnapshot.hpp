@@ -20,6 +20,10 @@ struct AudioSnapshot{
         AudioMIDISourceComponent source;    // contains only a
         static_assert(sizeof(AudioMIDISourceComponent) == sizeof(Ref<AudioMIDIPlayer>), "MIDISource is larger than a smart pointer, consider refactoring");
         PointMIDISource(const decltype(source)& source, const decltype(worldpos)& wp, const decltype(worldrot)& wr): source(source), PointSourceBase{wp, wr} {}
+        
+        auto hashcode() const{
+            return std::hash<decltype(source.midiPlayer)>()(source.midiPlayer);
+        }
     };
     
     struct Room{

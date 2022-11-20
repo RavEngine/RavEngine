@@ -22,60 +22,78 @@ STATIC(AudioPlayer::SamplesPerSec);
  @param len the length of the buffer
  */
 void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
-	AudioPlayer* player = static_cast<AudioPlayer*>(udata);
-	
-	std::memset(stream,0,len);		//fill with silence
+    AudioPlayer* player = static_cast<AudioPlayer*>(udata);
+    
+    std::memset(stream,0,len);		//fill with silence
     GetApp()->SwapRenderAudioSnapshot();
-    auto SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
-    auto& sources = SnapshotToRender->sources;
-    auto& rooms = SnapshotToRender->rooms;
-    auto& ambientSources = SnapshotToRender->ambientSources;
-		
+    auto SnapshotToRender = GetApp()->GetRenderAudioSnapshot();     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
+    
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
     
     auto& lpos = SnapshotToRender->listenerPos;
     auto& lrot = SnapshotToRender->listenerRot;
-    stackarray(shared_buffer, float, len / sizeof(float));
-    stackarray(accum_buffer, float, len / sizeof(float));
-    std::memset(accum_buffer, 0, len);
-
-    for (const auto& r : rooms) {
-        auto& room = r.room;
-        room->SetListenerTransform(lpos, lrot);
+    const auto buffers_size = len / sizeof(float);
+    stackarray(shared_buffer, float, buffers_size);
+    float* accum_buffer = reinterpret_cast<float*>(stream);
+    
+    // fill temp buffer with 0s
+    const auto resetShared = [&shared_buffer, len]{
         std::memset(shared_buffer, 0, len);
-        for(const auto& source : sources){
-            // add this source into the room
-            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, len);
-        }
-
-        //now simulate the fire-and-forget audio
-        std::memset(shared_buffer, 0, len);
-
-        //simulate in the room
-        room->Simulate(shared_buffer, len);
-        for (int i = 0; i < len / sizeof(float); i++) {
+    };
+    
+    // add blend temp buffer into output buffer
+    const auto blendIn = [accum_buffer,&shared_buffer, buffers_size]{
+        for (int i = 0; i < buffers_size; i++) {
             //mix with existing
             accum_buffer[i] += shared_buffer[i];
         }
-    }
-
-    for (auto& source : ambientSources) {
-
-        source->GetSampleRegionAndAdvance(shared_buffer, len);
-
-        // mix it in
-        for (int i = 0; i < len / sizeof(float); i++) {
-            accum_buffer[i] += shared_buffer[i];
+    };
+    
+    for (const auto& r : SnapshotToRender->rooms) {
+        auto& room = r.room;
+        room->SetListenerTransform(lpos, lrot);
+        resetShared();
+        
+        // raster sources
+        for(const auto& source : SnapshotToRender->sources){
+            // add this source into the room
+            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, len);
         }
+        
+        //midi sources
+        for(const auto& midisource: SnapshotToRender->midiPointSources){
+            // render the chunk to the shared buffer
+            resetShared();
+            midisource.source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
+            room->AddEmitter(shared_buffer, midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode(), midisource.source.midiPlayer->GetVolume());
+        }
+        
+        //now simulate the fire-and-forget audio
+        resetShared();
+        
+        //simulate in the room
+        room->Simulate(shared_buffer, len);
+        blendIn();
+    }
+    
+    for (auto& source : SnapshotToRender->ambientSources) {
+        resetShared();
+        source->GetSampleRegionAndAdvance(shared_buffer, len);
+        
+        // mix it in
+        blendIn();
+    }
+    
+    for (const auto& source : SnapshotToRender->ambientMIDIsources){
+        resetShared();
+        source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
+        blendIn();
     }
 
     //clipping: clamp all values to [-1,1]
-    for(int i = 0; i < len/sizeof(float); i++){
+    for(int i = 0; i < buffers_size; i++){
         accum_buffer[i] = std::clamp(accum_buffer[i] ,-1.0f,1.0f);
     }
-
-    //update stream pointer with rendered output
-    std::memcpy(stream, accum_buffer, len);
 }
 
 

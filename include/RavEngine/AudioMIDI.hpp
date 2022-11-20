@@ -70,6 +70,8 @@ class AudioMIDIPlayer{
     fmidi_player_u midiPlayer;
     
     uint32_t delay = 0;  // tells the synth in the callback function when to start playing the sound
+    
+    float volume = 1;
 public:
     // internal use only
     bool finishedCurrent = true;
@@ -83,7 +85,25 @@ public:
     void processEvent(const fmidi_event_t * event, fmidi_seq_event_t* fulldata);
     
     using buffer_t = std::span<float,std::dynamic_extent>;
+    
+    /**
+     For internal use only. Use Render()
+     */
+    void RenderBuffer1024OrLess(buffer_t out_buffer);
+    
+    /**
+     Render the state of the player to the provided buffer
+     @param out_buffer the buffer to write to
+     */
     void Render(buffer_t out_buffer);
+    
+    auto GetVolume() const{
+        return volume;
+    }
+    
+    void SetVolume(decltype(volume) inVol){
+        volume = inVol;
+    }
     
     int ticksPerQuarterNote = 0;
     float beatsPerMinute = 60;
