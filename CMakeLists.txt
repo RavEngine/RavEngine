@@ -151,66 +151,63 @@ set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
 
 #SDL2
-if (NOT TARGET_EMSCRIPTEN)
-	set(SDL_VIDEO_OPENGL OFF CACHE INTERNAL "")
-	set(SDL_VIDEO_OPENGLES OFF CACHE INTERNAL "")
-	if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-		set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-		set(IOS ON CACHE INTERNAL "")
-		set(TVOS OFF CACHE INTERNAL "")
-		set(MACOSX OFF CACHE INTERNAL "")
-		set(DARWIN OFF CACHE INTERNAL "")
-	elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
-		set(TVOS ON CACHE INTERNAL "")
-		set(IOS OFF CACHE INTERNAL "")
-		set(MACOSX OFF CACHE INTERNAL "")
-		set(DARWIN OFF CACHE INTERNAL "")
-		set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-	elseif(TARGET_LINUX)
-		set(SDL_VIDEO_OPENGL ON CACHE INTERNAL "")  # Linux-wayland requires OpenGL / OpenGL ES
-		set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-		set(SDL_VIDEO_X11 ON CACHE INTERNAL "")
-		set(SDL_VIDEO_WAYLAND ON CACHE INTERNAL "")
-	elseif(UWP)
-		set(WINDOWS_STORE ON CACHE INTERNAL "")
-	endif()
-
-		#RavEngine manages its own rendering, so disable SDL render drivers
-		if (NOT UWP)
-			set(RENDER_D3D OFF CACHE INTERNAL "")	
-		else()
-			set(RENDER_D3D ON CACHE INTERNAL "") # UWP needs this on
-		endif()
-		set(SDL_RENDER_METAL OFF CACHE INTERNAL "")
-		set(SDL_VIDEO_VULKAN OFF CACHE INTERNAL "")
-		set(SDL_VIDEO_VIVANTE OFF CACHE INTERNAL "")
-		if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-			set(SDL_VIDEO_COCOA ON CACHE INTERNAL "")
-			set(MACOSX ON CACHE INTERNAL "")
-		else()
-			set(VIDEO_COCOA OFF CACHE INTERNAL "")
-		endif()
-		set(SDL_VIDEO_DUMMY OFF CACHE INTERNAL "")
-	if (UWP)
-		set(SDL_SENSOR OFF CACHE INTERNAL "")
-		set(WINDOWS_STORE ON CACHE INTERNAL "")
-	endif()
-	# ensure library is built correctly for static
-	set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
-	set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
-	set(SDL_LIBC ON CACHE BOOL "" FORCE)
-	set(SDL_TEST OFF CACHE INTERNAL "")
-	if(TARGET_EMSCRIPTEN)
-		set(EMSCRIPTEN ON CACHE INTERNAL "")
-	endif()
-	add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
-	set(SDL2STATIC_LIB 	"SDL2-static" CACHE INTERNAL "")
-	if (NOT UWP)
-		set(SDL2MAIN_LIB "SDL2main" CACHE INTERNAL "")
-	endif()
-else()
+if(TARGET_EMSCRIPTEN)
 	add_definitions(-sUSE_SDL=2)
-	set(SDL2STATIC_LIB 	"SDL2" CACHE INTERNAL "")
+	set(SDL2STATIC_LIB "")
+	set(SDL2MAIN_LIB "")
+else()
+set(SDL_VIDEO_OPENGL OFF CACHE INTERNAL "")
+set(SDL_VIDEO_OPENGLES OFF CACHE INTERNAL "")
+if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+	set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
+	set(IOS ON CACHE INTERNAL "")
+	set(TVOS OFF CACHE INTERNAL "")
+	set(MACOSX OFF CACHE INTERNAL "")
+	set(DARWIN OFF CACHE INTERNAL "")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
+	set(TVOS ON CACHE INTERNAL "")
+	set(IOS OFF CACHE INTERNAL "")
+	set(MACOSX OFF CACHE INTERNAL "")
+	set(DARWIN OFF CACHE INTERNAL "")
+	set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
+elseif(TARGET_LINUX)
+    set(SDL_VIDEO_OPENGL ON CACHE INTERNAL "")  # Linux-wayland requires OpenGL / OpenGL ES
+    set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
+    set(SDL_VIDEO_X11 ON CACHE INTERNAL "")
+    set(SDL_VIDEO_WAYLAND ON CACHE INTERNAL "")
+elseif(UWP)
+	set(WINDOWS_STORE ON CACHE INTERNAL "")
+endif()
+
+	#RavEngine manages its own rendering, so disable SDL render drivers
+	if (NOT UWP)
+		set(RENDER_D3D OFF CACHE INTERNAL "")	
+	else()
+		set(RENDER_D3D ON CACHE INTERNAL "") # UWP needs this on
+	endif()
+	set(SDL_RENDER_METAL OFF CACHE INTERNAL "")
+	set(SDL_VIDEO_VULKAN OFF CACHE INTERNAL "")
+	set(SDL_VIDEO_VIVANTE OFF CACHE INTERNAL "")
+	if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+		set(SDL_VIDEO_COCOA ON CACHE INTERNAL "")
+		set(MACOSX ON CACHE INTERNAL "")
+	else()
+		set(VIDEO_COCOA OFF CACHE INTERNAL "")
+	endif()
+	set(SDL_VIDEO_DUMMY OFF CACHE INTERNAL "")
+if (UWP)
+	set(SDL_SENSOR OFF CACHE INTERNAL "")
+	set(WINDOWS_STORE ON CACHE INTERNAL "")
+endif()
+# ensure library is built correctly for static
+set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
+set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
+set(SDL_LIBC ON CACHE BOOL "" FORCE)
+add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
+	set(SDL2STATIC_LIB 	"SDL2-static")
+	if (NOT UWP)
+		set(SDL2MAIN_LIB "SDL2main")
+	endif()
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
@@ -527,15 +524,15 @@ target_link_libraries("${PROJECT_NAME}"
 	"RmlCore"
 	"libnyquist"
 	"GameNetworkingSockets_s"
+	${SDL2MAIN_LIB}
 	"r8brain"
-	${SDL2STATIC_LLIB}
 	PUBLIC
 	"${BOOST_FS_LIB}"
 	"effolkronium_random"
 	"glm"
 	"fmt"
 	"tweeny"
-	${SDL2MAIN_LIB}
+	${SDL2STATIC_LIB}
 	"bgfx"
 	"bx"
 	"bimg"
@@ -730,11 +727,11 @@ group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;Det
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem;\
-Abseil;midifile;sdl_headers_copy;SDL2_test\
+Abseil;midifile\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
-PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController;PhysXVehicle2")
+PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController")
 
 group_in("Libraries/sfizz" "aiff;sfizz_pugixml;sfizz_spline;sfizz_tunings;sfizz_hiir_polyphase_iir2designer;sfizz_kissfft;sfizz_cephes;sfizz_cpuid;sfizz_filesystem_impl;sfizz_fmidi;\
 st_audiofile;st_audiofile_formats;st_info;sfizz_parser;sfizz_messaging;sfizz_import;sfizz_spin_mutex;sfizz_internal;sfizz_match_definitions;sfizz_static;\
