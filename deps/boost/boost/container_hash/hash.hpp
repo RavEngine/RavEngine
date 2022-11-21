@@ -119,7 +119,7 @@ namespace boost
 {
     namespace hash_detail
     {
-#if defined(BOOST_NO_CXX98_FUNCTION_BASE)
+#if defined(BOOST_NO_CXX98_FUNCTION_BASE) || defined(__EMSCRIPTEN__)
         template <typename T>
         struct hash_base
         {

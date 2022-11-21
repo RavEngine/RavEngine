@@ -65,6 +65,15 @@ PX_FORCE_INLINE uint32_t PxComputeHash(const uint32_t key)
 	return uint32_t(k);
 }
 
+// size_t in emscripten is an unsigned long
+#ifdef __EMSCRIPTEN__
+PX_FORCE_INLINE uint32_t PxComputeHash(const unsigned long key)
+{
+ return PxComputeHash(uint32_t(key));
+}
+#endif
+
+
 PX_FORCE_INLINE uint32_t PxComputeHash(const int32_t key)
 {
 	return PxComputeHash(uint32_t(key));

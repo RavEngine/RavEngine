@@ -151,57 +151,67 @@ set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
 
 #SDL2
-set(SDL_VIDEO_OPENGL OFF CACHE INTERNAL "")
-set(SDL_VIDEO_OPENGLES OFF CACHE INTERNAL "")
-if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-	set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-	set(IOS ON CACHE INTERNAL "")
-	set(TVOS OFF CACHE INTERNAL "")
-	set(MACOSX OFF CACHE INTERNAL "")
-	set(DARWIN OFF CACHE INTERNAL "")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
-	set(TVOS ON CACHE INTERNAL "")
-	set(IOS OFF CACHE INTERNAL "")
-	set(MACOSX OFF CACHE INTERNAL "")
-	set(DARWIN OFF CACHE INTERNAL "")
-	set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-elseif(TARGET_LINUX)
-    set(SDL_VIDEO_OPENGL ON CACHE INTERNAL "")  # Linux-wayland requires OpenGL / OpenGL ES
-    set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-    set(SDL_VIDEO_X11 ON CACHE INTERNAL "")
-    set(SDL_VIDEO_WAYLAND ON CACHE INTERNAL "")
-elseif(UWP)
-	set(WINDOWS_STORE ON CACHE INTERNAL "")
-endif()
+if (NOT TARGET_EMSCRIPTEN)
+	set(SDL_VIDEO_OPENGL OFF CACHE INTERNAL "")
+	set(SDL_VIDEO_OPENGLES OFF CACHE INTERNAL "")
+	if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+		set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
+		set(IOS ON CACHE INTERNAL "")
+		set(TVOS OFF CACHE INTERNAL "")
+		set(MACOSX OFF CACHE INTERNAL "")
+		set(DARWIN OFF CACHE INTERNAL "")
+	elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
+		set(TVOS ON CACHE INTERNAL "")
+		set(IOS OFF CACHE INTERNAL "")
+		set(MACOSX OFF CACHE INTERNAL "")
+		set(DARWIN OFF CACHE INTERNAL "")
+		set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
+	elseif(TARGET_LINUX)
+		set(SDL_VIDEO_OPENGL ON CACHE INTERNAL "")  # Linux-wayland requires OpenGL / OpenGL ES
+		set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
+		set(SDL_VIDEO_X11 ON CACHE INTERNAL "")
+		set(SDL_VIDEO_WAYLAND ON CACHE INTERNAL "")
+	elseif(UWP)
+		set(WINDOWS_STORE ON CACHE INTERNAL "")
+	endif()
 
-	#RavEngine manages its own rendering, so disable SDL render drivers
+		#RavEngine manages its own rendering, so disable SDL render drivers
+		if (NOT UWP)
+			set(RENDER_D3D OFF CACHE INTERNAL "")	
+		else()
+			set(RENDER_D3D ON CACHE INTERNAL "") # UWP needs this on
+		endif()
+		set(SDL_RENDER_METAL OFF CACHE INTERNAL "")
+		set(SDL_VIDEO_VULKAN OFF CACHE INTERNAL "")
+		set(SDL_VIDEO_VIVANTE OFF CACHE INTERNAL "")
+		if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+			set(SDL_VIDEO_COCOA ON CACHE INTERNAL "")
+			set(MACOSX ON CACHE INTERNAL "")
+		else()
+			set(VIDEO_COCOA OFF CACHE INTERNAL "")
+		endif()
+		set(SDL_VIDEO_DUMMY OFF CACHE INTERNAL "")
+	if (UWP)
+		set(SDL_SENSOR OFF CACHE INTERNAL "")
+		set(WINDOWS_STORE ON CACHE INTERNAL "")
+	endif()
+	# ensure library is built correctly for static
+	set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
+	set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
+	set(SDL_LIBC ON CACHE BOOL "" FORCE)
+	if(TARGET_EMSCRIPTEN)
+		set(EMSCRIPTEN ON CACHE INTERNAL "")
+	endif()
+	add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
+	set(SDL2STATIC_LIB 	"SDL2-static")
 	if (NOT UWP)
-		set(RENDER_D3D OFF CACHE INTERNAL "")	
-	else()
-		set(RENDER_D3D ON CACHE INTERNAL "") # UWP needs this on
+		set(SDL2MAIN_LIB "SDL2main")
 	endif()
-	set(SDL_RENDER_METAL OFF CACHE INTERNAL "")
-	set(SDL_VIDEO_VULKAN OFF CACHE INTERNAL "")
-	set(SDL_VIDEO_VIVANTE OFF CACHE INTERNAL "")
-	if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-		set(SDL_VIDEO_COCOA ON CACHE INTERNAL "")
-		set(MACOSX ON CACHE INTERNAL "")
-	else()
-		set(VIDEO_COCOA OFF CACHE INTERNAL "")
-	endif()
-	set(SDL_VIDEO_DUMMY OFF CACHE INTERNAL "")
-if (UWP)
-	set(SDL_SENSOR OFF CACHE INTERNAL "")
-	set(WINDOWS_STORE ON CACHE INTERNAL "")
+else()
+	add_definitions(-sUSE_SDL=2)
+	set(SDL2STATIC_LIB 	"SDL2")
+	set(SDL2MAIN_LIB "SDL2main")
 endif()
-# ensure library is built correctly for static
-set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
-set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
-set(SDL_LIBC ON CACHE BOOL "" FORCE)
-if(TARGET_EMSCRIPTEN)
-	set(EMSCRIPTEN ON CACHE INTERNAL "")
-endif()
-add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
 if (NOT TARGET_APPLE AND NOT MSVC AND NOT TARGET_EMSCRIPTEN AND NOT TARGET_ANDROID)
@@ -486,10 +496,6 @@ if(TARGET_LINUX)
 	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
 endif()
 
-if (NOT UWP)
-	set(SDL2MAIN_LIB "SDL2main")
-endif()
-
 if(WINDOWS)
 	set(DXGI_LIB "dxgi.lib")
 endif()
@@ -521,7 +527,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"RmlCore"
 	"libnyquist"
 	"GameNetworkingSockets_s"
-	${SDL2MAIN_LIB}
 	"r8brain"
 	PUBLIC
 	"${BOOST_FS_LIB}"
@@ -529,7 +534,8 @@ target_link_libraries("${PROJECT_NAME}"
 	"glm"
 	"fmt"
 	"tweeny"
-	"SDL2-static"
+	${SDL2STATIC_LLIB}
+	${SDL2MAIN_LIB}
 	"bgfx"
 	"bx"
 	"bimg"

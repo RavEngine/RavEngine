@@ -32,7 +32,7 @@
 #endif
 
 // in some ppc64 linux installations, only the second condition is met
-#if (defined __linux)
+#if (defined __linux) || defined(__EMSCRIPTEN__)
 #undef TF_OS_LINUX
 #define TF_OS_LINUX 1
 #elif (defined __linux__)

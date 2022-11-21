@@ -27,7 +27,7 @@ extern void SteamDatagramGame_AssertFailed( bool bFmt, const char* pstrFile, uns
 #include <signal.h>
 #endif // POSIX
 
-#ifdef LINUX
+#if defined LINUX && !defined(__EMSCRIPTEN__)
 #include <sys/ptrace.h>
 #endif
 
