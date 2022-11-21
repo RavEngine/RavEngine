@@ -199,18 +199,18 @@ if (NOT TARGET_EMSCRIPTEN)
 	set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
 	set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
 	set(SDL_LIBC ON CACHE BOOL "" FORCE)
+	set(SDL_TEST OFF CACHE INTERNAL "")
 	if(TARGET_EMSCRIPTEN)
 		set(EMSCRIPTEN ON CACHE INTERNAL "")
 	endif()
 	add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
-	set(SDL2STATIC_LIB 	"SDL2-static")
+	set(SDL2STATIC_LIB 	"SDL2-static" CACHE INTERNAL "")
 	if (NOT UWP)
-		set(SDL2MAIN_LIB "SDL2main")
+		set(SDL2MAIN_LIB "SDL2main" CACHE INTERNAL "")
 	endif()
 else()
 	add_definitions(-sUSE_SDL=2)
-	set(SDL2STATIC_LIB 	"SDL2")
-	set(SDL2MAIN_LIB "SDL2main")
+	set(SDL2STATIC_LIB 	"SDL2" CACHE INTERNAL "")
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
@@ -528,13 +528,13 @@ target_link_libraries("${PROJECT_NAME}"
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
+	${SDL2STATIC_LLIB}
 	PUBLIC
 	"${BOOST_FS_LIB}"
 	"effolkronium_random"
 	"glm"
 	"fmt"
 	"tweeny"
-	${SDL2STATIC_LLIB}
 	${SDL2MAIN_LIB}
 	"bgfx"
 	"bx"
@@ -730,11 +730,11 @@ group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;Det
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem;\
-Abseil;midifile\
+Abseil;midifile;sdl_headers_copy;SDL2_test\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
-PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController")
+PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController;PhysXVehicle2")
 
 group_in("Libraries/sfizz" "aiff;sfizz_pugixml;sfizz_spline;sfizz_tunings;sfizz_hiir_polyphase_iir2designer;sfizz_kissfft;sfizz_cephes;sfizz_cpuid;sfizz_filesystem_impl;sfizz_fmidi;\
 st_audiofile;st_audiofile_formats;st_info;sfizz_parser;sfizz_messaging;sfizz_import;sfizz_spin_mutex;sfizz_internal;sfizz_match_definitions;sfizz_static;\
