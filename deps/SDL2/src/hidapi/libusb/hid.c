@@ -529,6 +529,22 @@ static struct usb_string_cache_entry *usb_string_cache_insert()
 	return new_entry;
 }
 
+static int usb_string_can_cache(uint16_t vid, uint16_t pid)
+{
+	if (!vid || !pid) {
+		/* We can't cache these, they aren't unique */
+		return 0;
+	}
+
+	if (vid == 0x0f0d && pid == 0x00dc) {
+		/* HORI reuses this VID/PID for many different products */
+		return 0;
+	}
+
+	/* We can cache these strings */
+	return 1;
+}
+
 static const struct usb_string_cache_entry *usb_string_cache_find(struct libusb_device_descriptor *desc, struct libusb_device_handle *handle)
 {
 	struct usb_string_cache_entry *entry = NULL;
@@ -635,6 +651,7 @@ static int is_xbox360(unsigned short vendor_id, const struct libusb_interface_de
 		0x1bad, /* Harmonix */
 		0x20d6, /* PowerA */
 		0x24c6, /* PowerA */
+		0x2c22, /* Qanba */
 	};
 
 	if (intf_desc->bInterfaceClass == LIBUSB_CLASS_VENDOR_SPEC &&
@@ -663,6 +680,7 @@ static int is_xboxone(unsigned short vendor_id, const struct libusb_interface_de
 		0x1532, /* Razer Wildcat */
 		0x20d6, /* PowerA */
 		0x24c6, /* PowerA */
+		0x2dc8, /* 8BitDo */
 		0x2e24, /* Hyperkin */
 	};
 
@@ -682,6 +700,8 @@ static int is_xboxone(unsigned short vendor_id, const struct libusb_interface_de
 
 static int should_enumerate_interface(unsigned short vendor_id, const struct libusb_interface_descriptor *intf_desc)
 {
+	//printf("Checking interface 0x%x %d/%d/%d/%d\n", vendor_id, intf_desc->bInterfaceNumber, intf_desc->bInterfaceClass, intf_desc->bInterfaceSubClass, intf_desc->bInterfaceProtocol);
+
 	if (intf_desc->bInterfaceClass == LIBUSB_CLASS_HID)
 		return 1;
 
@@ -764,7 +784,7 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 										get_usb_string(handle, desc.iSerialNumber);
 
 								/* Manufacturer and Product strings */
-								if (dev_vid && dev_pid) {
+								if (usb_string_can_cache(dev_vid, dev_pid)) {
 									string_cache = usb_string_cache_find(&desc, handle);
 									if (string_cache) {
 										if (string_cache->vendor) {
@@ -994,8 +1014,9 @@ static void LIBUSB_CALL read_callback(struct libusb_transfer *transfer)
 }
 
 
-static int read_thread(void *param)
+static int SDLCALL read_thread(void *param)
 {
+	int res;
 	hid_device *dev = (hid_device *)param;
 	uint8_t *buf;
 	const size_t length = dev->input_ep_max_packet_size;
@@ -1014,14 +1035,18 @@ static int read_thread(void *param)
 
 	/* Make the first submission. Further submissions are made
 	   from inside read_callback() */
-	libusb_submit_transfer(dev->transfer);
+	res = libusb_submit_transfer(dev->transfer);
+	if(res < 0) {
+                LOG("libusb_submit_transfer failed: %d %s. Stopping read_thread from running\n", res, libusb_error_name(res));
+                dev->shutdown_thread = 1;
+                dev->transfer_loop_finished = 1;
+	}
 
 	/* Notify the main thread that the read thread is up and running. */
 	SDL_WaitThreadBarrier(&dev->barrier);
 
 	/* Handle all the events. */
 	while (!dev->shutdown_thread) {
-		int res;
 		res = libusb_handle_events(usb_context);
 		if (res < 0) {
 			/* There was an error. */
@@ -1063,6 +1088,20 @@ static int read_thread(void *param)
 	   they can not be cleaned up here. */
 
 	return 0;
+}
+
+static void init_xbox360(libusb_device_handle *device_handle, unsigned short idVendor, unsigned short idProduct, struct libusb_config_descriptor *conf_desc)
+{
+	if ((idVendor == 0x05ac && idProduct == 0x055b) /* Gamesir-G3w */ ||
+	    (idVendor == 0x0f0d && idProduct == 0x00dc) /* HORIPAD */) {
+		unsigned char data[20];
+
+		/* The HORIPAD FPS for Nintendo Switch requires this to enable input reports.
+		   This VID/PID is also shared with other HORI controllers, but they all seem
+		   to be fine with this as well.
+		 */
+		libusb_control_transfer(device_handle, 0xC1, 0x01, 0x100, 0x0, data, sizeof(data), 100);
+	}
 }
 
 static void init_xboxone(libusb_device_handle *device_handle, unsigned short idVendor, unsigned short idProduct, struct libusb_config_descriptor *conf_desc)
@@ -1182,6 +1221,11 @@ hid_device * HID_API_EXPORT hid_open_path(const char *path, int bExclusive)
 							libusb_close(dev->device_handle);
 							good_open = 0;
 							break;
+						}
+
+						/* Initialize XBox 360 controllers */
+						if (is_xbox360(desc.idVendor, intf_desc)) {
+							init_xbox360(dev->device_handle, desc.idVendor, desc.idProduct, conf_desc);
 						}
 
 						/* Initialize XBox One controllers */
@@ -1497,6 +1541,7 @@ void HID_API_EXPORT hid_close(hid_device *dev)
 
 	/* Clean up the Transfer objects allocated in read_thread(). */
 	free(dev->transfer->buffer);
+	dev->transfer->buffer = NULL;
 	libusb_free_transfer(dev->transfer);
 
 	/* release the interface */

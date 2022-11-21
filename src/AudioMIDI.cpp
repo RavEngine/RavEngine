@@ -211,4 +211,5 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const Ref<fmidi_smf_t>& file, AudioMID
 InstrumentSynth::InstrumentSynth(const Filesystem::Path& pathOnDisk) {
     synthesizer.loadSfzFile(pathOnDisk.string());
     synthesizer.setSampleRate(AudioPlayer::GetSamplesPerSec());
+    synthesizer.setSamplesPerBlock(1024);
 }

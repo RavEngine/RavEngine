@@ -24,27 +24,22 @@
 #include "SDL_hints.h"
 
 #include <pthread.h>
-#include <errno.h>
 
 #if HAVE_PTHREAD_NP_H
 #include <pthread_np.h>
 #endif
 
 #include <signal.h>
+#include <errno.h>
 
 #ifdef __LINUX__
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include "../../core/linux/SDL_dbus.h"
 #endif /* __LINUX__ */
-
-#if __RISCOS__
-#  include <errno.h>
-#endif
 
 #if (defined(__LINUX__) || defined(__MACOSX__) || defined(__IPHONEOS__)) && defined(HAVE_DLOPEN)
 #include <dlfcn.h>

@@ -244,8 +244,8 @@ X11_CreateSystemCursor(SDL_SystemCursor id)
     case SDL_SYSTEM_CURSOR_WAIT:      shape = XC_watch; break;
     case SDL_SYSTEM_CURSOR_CROSSHAIR: shape = XC_tcross; break;
     case SDL_SYSTEM_CURSOR_WAITARROW: shape = XC_watch; break;
-    case SDL_SYSTEM_CURSOR_SIZENWSE:  shape = XC_fleur; break;
-    case SDL_SYSTEM_CURSOR_SIZENESW:  shape = XC_fleur; break;
+    case SDL_SYSTEM_CURSOR_SIZENWSE:  shape = XC_top_left_corner; break;
+    case SDL_SYSTEM_CURSOR_SIZENESW:  shape = XC_top_right_corner; break;
     case SDL_SYSTEM_CURSOR_SIZEWE:    shape = XC_sb_h_double_arrow; break;
     case SDL_SYSTEM_CURSOR_SIZENS:    shape = XC_sb_v_double_arrow; break;
     case SDL_SYSTEM_CURSOR_SIZEALL:   shape = XC_fleur; break;
@@ -358,16 +358,20 @@ static int
 X11_CaptureMouse(SDL_Window *window)
 {
     Display *display = GetDisplay();
+    SDL_Window *mouse_focus = SDL_GetMouseFocus();
 
     if (window) {
         SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
         const unsigned int mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | FocusChangeMask;
+        Window confined = (data->mouse_grabbed ? data->xwindow : None);
         const int rc = X11_XGrabPointer(display, data->xwindow, False,
                                         mask, GrabModeAsync, GrabModeAsync,
-                                        None, None, CurrentTime);
+                                        confined, None, CurrentTime);
         if (rc != GrabSuccess) {
             return SDL_SetError("X server refused mouse capture");
         }
+    } else if (mouse_focus) {
+        SDL_UpdateWindowGrab(mouse_focus);
     } else {
         X11_XUngrabPointer(display, CurrentTime);
     }
@@ -406,6 +410,8 @@ X11_GetGlobalMouseState(int *x, int *y)
                     buttons |= (mask & Button1Mask) ? SDL_BUTTON_LMASK : 0;
                     buttons |= (mask & Button2Mask) ? SDL_BUTTON_MMASK : 0;
                     buttons |= (mask & Button3Mask) ? SDL_BUTTON_RMASK : 0;
+                    /* Use the SDL state for the extended buttons - it's better than nothing */
+                    buttons |= (SDL_GetMouseState(NULL, NULL) & (SDL_BUTTON_X1MASK|SDL_BUTTON_X2MASK));
                     /* SDL_DisplayData->x,y point to screen origin, and adding them to mouse coordinates relative to root window doesn't do the right thing
                      * (observed on dual monitor setup with primary display being the rightmost one - mouse was offset to the right).
                      *
@@ -450,6 +456,16 @@ X11_InitMouse(_THIS)
 void
 X11_QuitMouse(_THIS)
 {
+    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_XInput2DeviceInfo *i;
+    SDL_XInput2DeviceInfo *next;
+
+    for (i = data->mouse_device_info; i != NULL; i = next) {
+        next = i->next;
+        SDL_free(i);
+    }
+    data->mouse_device_info = NULL;
+
     X11_DestroyEmptyCursor();
 }
 

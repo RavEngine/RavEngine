@@ -305,14 +305,22 @@ Wayland_data_source_get_data(SDL_WaylandDataSource *source,
     } else {
         mime_data = mime_data_list_find(&source->mimes, mime_type);
         if (mime_data != NULL && mime_data->length > 0) {
-            buffer = SDL_malloc(mime_data->length);
+            size_t buffer_length = mime_data->length;
+
+            if (null_terminate == SDL_TRUE) {
+                ++buffer_length;
+            }
+            buffer = SDL_malloc(buffer_length);
             if (buffer == NULL) {
                 *length = SDL_OutOfMemory();
             } else {
                 *length = mime_data->length;
                 SDL_memcpy(buffer, mime_data->data, mime_data->length);
+                if (null_terminate) {
+                    *((Uint8 *)buffer + mime_data->length) = 0;
+                }
             }
-       }
+        }
     }
 
     return buffer;
@@ -322,6 +330,10 @@ void
 Wayland_data_source_destroy(SDL_WaylandDataSource *source)
 {
     if (source != NULL) {
+        SDL_WaylandDataDevice *data_device = (SDL_WaylandDataDevice *) source->data_device;
+        if (data_device && (data_device->selection_source == source)) {
+            data_device->selection_source = NULL;
+        }
         wl_data_source_destroy(source->source);
         mime_data_list_free(&source->mimes);
         SDL_free(source);
@@ -449,6 +461,7 @@ Wayland_data_device_set_selection(SDL_WaylandDataDevice *data_device,
                 Wayland_data_source_destroy(data_device->selection_source);
             }
             data_device->selection_source = source;
+            source->data_device = data_device;
         }
     }
 
