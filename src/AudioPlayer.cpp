@@ -43,12 +43,32 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     
     // add blend temp buffer into output buffer
     const auto blendIn = [accum_buffer,&shared_buffer, buffers_size]{
+#pragma omp simd
         for (int i = 0; i < buffers_size; i++) {
             //mix with existing
             accum_buffer[i] += shared_buffer[i];
         }
     };
     
+    //midi sources - inverted logic from Rooms
+    // game thread only adds non-null players
+    auto num = SnapshotToRender->midiPointPlayers.size();
+    for(const auto& midiplayer : SnapshotToRender->midiPointPlayers){
+        resetShared();
+        midiplayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size/2));
+        
+        //TODO: this is not very efficient
+        for (const auto& r : SnapshotToRender->rooms) {
+            int id = 1;
+            for(const auto& midisource: SnapshotToRender->midiPointSources){
+                if (midisource.source.midiPlayer == midiplayer){
+                    r.room->AddEmitter(shared_buffer, midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode() * id, midisource.source.midiPlayer->GetVolume());
+                    id++;
+                }
+            }
+        }
+    }
+
     for (const auto& r : SnapshotToRender->rooms) {
         auto& room = r.room;
         room->SetListenerTransform(lpos, lrot);
@@ -58,18 +78,6 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
         for(const auto& source : SnapshotToRender->sources){
             // add this source into the room
             room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, len);
-        }
-        
-        //midi sources
-        for(const auto& midisource: SnapshotToRender->midiPointSources){
-            // is there a player loaded?
-            if (midisource.source.midiPlayer){
-                // render the chunk to the shared buffer
-                resetShared();
-                midisource.source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
-                room->AddEmitter(shared_buffer, midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode(), midisource.source.midiPlayer->GetVolume());
-            }
-            
         }
         
         //now simulate the fire-and-forget audio
@@ -90,13 +98,12 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     
     for (const auto& source : SnapshotToRender->ambientMIDIsources){
         resetShared();
-        if (source.midiPlayer){
-            source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
-        }
+        source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
         blendIn();
     }
 
     //clipping: clamp all values to [-1,1]
+#pragma omp simd
     for(int i = 0; i < buffers_size; i++){
         accum_buffer[i] = std::clamp(accum_buffer[i] ,-1.0f,1.0f);
     }
@@ -133,9 +140,8 @@ void AudioPlayer::Init(){
     
 	
 	if (!silence){
-		float* data = new float[4096];
-		std::memset(data, 0, sizeof(float) * 4096);
-		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(data, 4096,1));
+        float* data = new float[have.samples]{0};
+		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(data, have.samples,1));
 		silence->SetLoop(true);
 	}
 	

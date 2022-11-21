@@ -115,6 +115,10 @@ public:
         isPlaying = false;
     }
     
+    bool IsPlaying() const{
+        return isPlaying;
+    }
+    
     void Reset();
     
     int ticksPerQuarterNote = 0;

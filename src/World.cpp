@@ -191,7 +191,11 @@ void World::SetupTaskGraph(){
         
         // midi audio
         Filter([this](float, AudioMIDISourceComponent& audioSource, Transform& transform){
-            GetApp()->GetCurrentAudioSnapshot()->midiPointSources.emplace_back(audioSource, transform.GetWorldPosition(), transform.GetWorldRotation());
+            auto snapshot = GetApp()->GetCurrentAudioSnapshot();
+            if (audioSource.midiPlayer && audioSource.midiPlayer->IsPlaying()){
+                snapshot->midiPointSources.emplace_back(audioSource, transform.GetWorldPosition(), transform.GetWorldRotation());
+                snapshot->midiPointPlayers.insert(audioSource.midiPlayer);
+            }
         });
         
         // now clean up the fire-and-forget audios that have completed
@@ -213,7 +217,9 @@ void World::SetupTaskGraph(){
         
         // midi audio
         Filter([this](float, AudioMIDIAmbientSourceComponent& audioSource){
-            GetApp()->GetCurrentAudioSnapshot()->ambientMIDIsources.emplace_back(audioSource);
+            if (audioSource.midiPlayer && audioSource.midiPlayer->IsPlaying()){
+                GetApp()->GetCurrentAudioSnapshot()->ambientMIDIsources.emplace_back(audioSource);
+            }
         });
             
 

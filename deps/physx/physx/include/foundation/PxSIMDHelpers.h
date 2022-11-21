@@ -46,7 +46,7 @@ namespace physx
 			const QuatV qV = V4LoadU(&q.x);
 			Vec3V column0V, column1V, column2V;
 			QuatGetMat33V(qV, column0V, column1V, column2V);
-#if defined(PX_SIMD_DISABLED) || (PX_ARM || PX_A64)
+#if defined(PX_SIMD_DISABLED) || (PX_ARM || PX_A64) || PX_WASM
 			V3StoreU(column0V, column0);
 			V3StoreU(column1V, column1);
 			V3StoreU(column2V, column2);

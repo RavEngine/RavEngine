@@ -40,7 +40,7 @@ void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, cons
     }
     
     audioEngine->SetInterleavedBuffer(src, data, 1, NFRAMES);   // they copy the contents of temp into their own buffer so giving stack memory is fine here
-    audioEngine->SetSourceVolume(src, volume);
+    audioEngine->SetSourceVolume(src, 1);   // the AudioAsset already applied the volume
     audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
     audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
     audioEngine->SetSourceRoomEffectsGain(src, gain);

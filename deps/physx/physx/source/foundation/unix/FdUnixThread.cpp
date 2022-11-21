@@ -30,6 +30,7 @@
 #include "foundation/PxErrorCallback.h"
 #include "foundation/PxAtomic.h"
 #include "foundation/PxThread.h"
+#include <thread>
 
 #include <math.h>
 #if !PX_APPLE_FAMILY && !defined(__CYGWIN__) && !PX_EMSCRIPTEN
@@ -271,7 +272,7 @@ void PxThreadImpl::yieldProcessor()
 {
 #if (PX_ARM || PX_A64)
 	__asm__ __volatile__("yield");
-#else
+#elif (PX_X86 || PX_X64) && !PX_WASM
 	__asm__ __volatile__("pause");
 #endif
 }

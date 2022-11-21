@@ -17,7 +17,7 @@ struct AudioSnapshot{
     };
     
     struct PointMIDISource : PointSourceBase{
-        AudioMIDISourceComponent source;    // contains only a
+        AudioMIDISourceComponent source;    // contains only a pointer
         static_assert(sizeof(AudioMIDISourceComponent) == sizeof(Ref<AudioMIDIPlayer>), "MIDISource is larger than a smart pointer, consider refactoring");
         PointMIDISource(const decltype(source)& source, const decltype(worldpos)& wp, const decltype(worldrot)& wr): source(source), PointSourceBase{wp, wr} {}
         
@@ -37,6 +37,7 @@ struct AudioSnapshot{
     Vector<Ref<AudioPlayerData::Player>> ambientSources;
     Vector<PointMIDISource> midiPointSources;
     Vector<AudioMIDIAmbientSourceComponent> ambientMIDIsources;
+    UnorderedSet<decltype(AudioMIDISourceComponent::midiPlayer)> midiPointPlayers;  // stores only the players, so that we tick them all once total
     
     static_assert(sizeof(AudioMIDIAmbientSourceComponent) == sizeof(Ref<AudioMIDIPlayer>), "AudioMIDIAmbientSourceComponent is larger than a smart pointer, consider refactoring");
 
@@ -51,6 +52,7 @@ struct AudioSnapshot{
         rooms.clear();
         midiPointSources.clear();
         ambientMIDIsources.clear();
+        midiPointPlayers.clear();
     }
 };
 }

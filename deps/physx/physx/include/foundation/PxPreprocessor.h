@@ -120,6 +120,12 @@ Architecture defines, see http://sourceforge.net/p/predef/wiki/Architectures/
 	#error "Unknown architecture"
 #endif
 
+#if defined __EMSCRIPTEN__
+#define PX_WASM 1
+#else
+#define PX_WASM 0
+#endif
+
 /**
 SIMD defines
 */

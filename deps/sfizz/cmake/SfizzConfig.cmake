@@ -4,7 +4,7 @@ include(CheckCXXCompilerFlag)
 include(CheckCXXSourceCompiles)
 include(GNUWarnings)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 99)
 
 # Export the compile_commands.json file
@@ -99,7 +99,7 @@ endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     gw_warn(-Wall -Wextra -Wno-multichar -Werror=return-type)
     if(SFIZZ_SYSTEM_PROCESSOR MATCHES "^(i.86|x86_64)$")
-        add_compile_options(-msse2 -mavx)
+        add_compile_options(-msse2 -mavx -msimd128)
     elseif(SFIZZ_SYSTEM_PROCESSOR MATCHES "^(arm.*)$")
         add_compile_options(-mfpu=neon -mavx)
         if(NOT ANDROID)

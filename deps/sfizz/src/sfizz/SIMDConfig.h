@@ -18,7 +18,7 @@
  */
 
 #if defined(__GNUC__)
-#   if defined(__AVX__)
+#   if defined(__AVX__) && !defined(__EMSCRIPTEN__)
 #       define SFIZZ_DETECT_SSE 1
 #       define SFIZZ_DETECT_SSE2 1
 #       define SFIZZ_DETECT_AVX 1
