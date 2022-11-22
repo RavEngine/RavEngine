@@ -1,0 +1,19 @@
+install(
+  FILES 
+    api.md
+    api_callback.md
+    api_full.md
+    api_misc.md
+    api_simple.md
+    bugs.md
+    download.md
+    faq.md
+    history.md
+    index.md
+    license.md
+    lists.md
+    quality.md
+    win32.md
+    SRC.png
+  DESTINATION
+    ${CMAKE_INSTALL_DOCDIR})

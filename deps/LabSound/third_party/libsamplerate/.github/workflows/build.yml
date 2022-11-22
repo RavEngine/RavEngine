@@ -1,0 +1,93 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [
+        linux-cmake,
+        linux-autotools,
+        macos-cmake,
+        macos-autotools,
+        windows-cmake
+        ]
+        include:
+          - name: linux-cmake
+            os: ubuntu-latest
+            build-system: cmake
+
+          - name: linux-autotools
+            os: ubuntu-latest
+            build-system: autotools
+            configure-options: --enable-sndfile --enable-alsa
+
+          - name: macos-cmake
+            os: macos-latest
+            build-system: cmake
+
+          - name: macos-autotools
+            os: macos-latest
+            build-system: autotools
+            configure-options: --enable-sndfile
+
+          - name: windows-cmake
+            os: windows-latest
+            build-system: cmake
+            configure-options: -DCMAKE_TOOLCHAIN_FILE=c:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Linux dependencies
+      if: startsWith(matrix.os,'ubuntu')
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libsndfile-dev libopus-dev libfftw3-dev libasound2-dev
+
+    - name: Install macOS dependencies
+      if: startsWith(matrix.os,'macos')
+      run: brew install automake fftw
+
+    - name: Install Windows dependencies
+      if: startsWith(matrix.os,'windows')
+      run: |
+        vcpkg install libsndfile:x64-windows opus:x64-windows fftw3:x64-windows
+
+    - name: Create CMake Build Environment
+      if: startsWith(matrix.build-system,'cmake')
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      if: startsWith(matrix.build-system,'cmake')
+      working-directory: ${{runner.workspace}}/build
+      run: cmake ${{github.workspace}} -DCMAKE_BUILD_TYPE=Release ${{matrix.configure-options}}
+
+    - name: Build CMake
+      if: startsWith(matrix.build-system,'cmake')
+      working-directory: ${{runner.workspace}}/build
+      run: cmake --build . --config Release
+
+    - name: Test CMake
+      if: startsWith(matrix.build-system,'cmake')
+      working-directory: ${{runner.workspace}}/build
+      run: ctest -C Release
+
+    - name: Bootstrap Autotools
+      if: startsWith(matrix.build-system,'autotools')
+      run: ./autogen.sh
+
+    - name: Configure Autotools
+      if: startsWith(matrix.build-system,'autotools')
+      run: ./configure ${{matrix.configure-options}}
+
+    - name: Build Autotools
+      if: startsWith(matrix.build-system,'autotools')
+      run: make
+
+    - name: Test Autotools
+      if: startsWith(matrix.build-system,'autotools')
+      run: make distcheck

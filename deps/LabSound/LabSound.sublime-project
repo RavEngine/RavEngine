@@ -1,0 +1,36 @@
+{
+    "folders": [
+        {
+            "follow_symlinks": true,
+            "path": "."
+        }
+    ],
+    "build_systems": [
+        {
+            "name": "Xcode Build",
+            "cmd": [ "xctool", 
+                     "-project", "$project_path/osx/$project_base_name.xcodeproj", 
+                     "-configuration", "Debug",
+                     "-scheme", "LabSound",
+                     "SYMROOT=~/build/Products", "OBJROOT=~/build" ],
+ 
+            "variants": [
+                {
+                    "name": "Xcode Run",
+                    "cmd": [ "$project_path/build/build/Debug/$project_base_name.app/Contents/MacOS/$project_base_name" ],
+                },
+                {
+                    "name": "Xcode Build Release",
+                    "cmd": [ "~/local/bin/xctool", 
+                             "-project", "$project_path/osx/$project_base_name.xcodeproj", 
+                             "-configuration", "Release",
+                             "SYMROOT=~/build", "OBJROOT=~/build" ],
+                },
+                {
+                    "name": "Xcode Run Release",
+                    "cmd": [ "$project_path/build/build/Release/$project_base_name.app/Contents/MacOS/$project_base_name" ],
+                }
+            ]
+        }
+    ]
+}

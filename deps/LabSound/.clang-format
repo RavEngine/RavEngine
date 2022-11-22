@@ -1,0 +1,21 @@
+﻿---
+BasedOnStyle: WebKit
+ConstructorInitializerAllOnOneLineOrOnePerLine: 'false'
+BreakConstructorInitializersBeforeComma: 'false'
+AlignAfterOpenBracket: Align
+AlignOperands: 'true'
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: 'true'
+AllowShortLoopsOnASingleLine: 'true'
+AlwaysBreakAfterDefinitionReturnType: None
+BreakBeforeBraces: Allman
+BreakBeforeTernaryOperators: 'false'
+Cpp11BracedListStyle: 'true'
+IndentCaseLabels: 'true'
+PointerAlignment: Middle
+SpaceAfterCStyleCast: 'true'
+SpaceInEmptyParentheses: 'false'
+SpacesBeforeTrailingComments: '2'
+Standard: Cpp11
+UseTab: Never
+...

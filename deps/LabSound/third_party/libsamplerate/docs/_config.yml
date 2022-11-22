@@ -1,0 +1,8 @@
+---
+author: Erik de Castro Lopo, erikd@mega-nerd.com
+description: An audio Sample Rate Conversion library
+keywords: libsamplerate, sound, resample, audio, dsp, Linux
+version: 0.2.1
+
+markdown: kramdown
+---

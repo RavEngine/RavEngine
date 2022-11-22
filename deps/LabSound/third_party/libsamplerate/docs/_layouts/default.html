@@ -1,0 +1,49 @@
+<!DOCTYPE html">
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{ site.description | page.description }}">
+  <meta name="keywords" content="{{ site.keywords | page.keywords }}">
+  <title>{{ page.title }}</title>
+  <link rel="stylesheet" href="SRC.css" type="text/css" media="all">
+</HEAD>
+
+<body>
+  <footer>
+    <img src="SRC.png" class="image-logo" height=100 width=760 alt="SRC.png">
+  </footer>
+  <div class="container">
+    <div class="navbar">
+      <nav>
+        <a href="index.html">Home</a><br>
+        <a href="license.html">License</a><br>
+        <a href="history.html">History</a><br>
+        <a href="download.html">Download</a><br>
+        <a href="quality.html">Quality</a><br>
+        <a href="api.html">API</a><br>
+        <a href="bugs.html">Bug Reporting</a><br>
+        <a href="win32.html">On Win32</a><br>
+        <a href="faq.html">FAQ</a><br>
+        <a href="lists.html">Mailing Lists</a><br>
+        <a href="https://github.com/libsndfile/libsamplerate/blob/master/ChangeLog">ChangeLog</a><br>
+      </nav>
+      <div class="block">
+        <p>Author:<br>&nbsp;Erik&nbsp;de&nbsp;Castro&nbsp;Lopo</p>
+      </div>
+    </div>
+    <div class="content">
+      <main>
+        <article>
+
+          {{ content }}
+
+        </article>
+      </main>
+    </div>
+  </div>
+
+</body>
+
+</html>

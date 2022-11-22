@@ -1,0 +1,57 @@
+This project is a fork of the WebAudio implementation in Webkit prior to 
+Google's Blink fork. Like WebKit, LabSound mixes BSD 2 clause and BSD 3 
+clause with copyrights in specific files held by the following organizations: 
+
+  * Google Inc.
+  * Apple Inc.
+  * Intel Corporation
+
+Individual files retain the original copyright notice but not the full license text. 
+
+WebKit, 2 Clause BSD
+Copyright (c) The WebKit Authors
+https://github.com/WebKit/webkit
+
+WebKit, 3 Clause BSD
+Copyright (c) The WebKit Authors
+https://github.com/WebKit/webkit
+
+libnyquist, 2 Clause BSD
+Copyright (c) Dimitri Diakopoulos
+https://github.com/ddiakopoulos/libnyquist/blob/master/LICENSE
+
+RtAudio, Non-binding Modified MIT
+Copyright (c) Gary P. Scavone
+https://github.com/thestk/rtaudio
+
+KissFFT, 3 Clause BSD
+Copyright (c) Mark Borgerding
+https://github.com/mborgerding/kissfft/blob/master/COPYING
+
+Ooura FFT Library, Permissive Custom
+Copyright (c) Takuya OOURA
+http://www.kurims.kyoto-u.ac.jp/~ooura/fft.html
+
+SFXR - Sound Effect Generator, MIT License
+Copyright (c) Tomas Pettersson
+https://github.com/grimfang4/sfxr/blob/master/sfxr/LICENSE.txt
+
+ReaderWriterQueue, 2 Clause BSD
+Copyright (c) Cameron Desrocher
+https://github.com/cameron314/readerwriterqueue/blob/master/LICENSE.md
+
+miniaudio, Public Domain
+Authored by David Reid
+https://github.com/dr-soft/miniaudio/blob/master/LICENSE
+
+"Unexpected Token" from Wavepot, MIT License
+Authored by Stagas
+http://wavepot.com/stagas/unexpected-token
+
+Soundpipe, MIT License (exerpts taken for the ConvolverNode backend)
+Copyright (c) 2015 Paul Batchelor
+https://github.com/PaulBatchelor/Soundpipe/blob/master/LICENSE
+
+PolyBLEP, WDL/IPlug License 
+Copyright (c) 2017 Martin Finke (C++ port of the WTFPL licensed PolyBLEP by Tale)
+https://github.com/martinfinke/PolyBLEP

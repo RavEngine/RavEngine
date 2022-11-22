@@ -30,9 +30,11 @@ rm -r fmt/doc fmt/test
 # resonance-audio
 rm -r resonance-audio/docs resonance-audio/matlab resonance-audio/platforms/unity resonance-audio/third_party/eigen/doc resonance-audio/third_party/googletest resonance-audio/third_party/eigen/bench resonance-audio/third_party/eigen/test resonance-audio/third_party/eigen/unsupported
 
+# LabSound
+rm -r LabSound/qmake LabSound/examples LabSound/assets/
 
 # libnyquist
-rm -r libnyquist/examples libnyquist/test_data
+rm -r LabSound/third_party/libnyquist/examples LabSound/third_party/libnyquist/test_data
 
 # GameNetworkingSockets & deps
 rm -r GameNetworkingSockets/openssl-cmake/test GameNetworkingSockets/openssl-cmake/doc

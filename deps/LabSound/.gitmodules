@@ -1,0 +1,9 @@
+[submodule "third_party/libnyquist"]
+	path = third_party/libnyquist
+	url = https://github.com/ddiakopoulos/libnyquist.git
+[submodule "third_party/libsamplerate"]
+	path = third_party/libsamplerate
+	url = https://github.com/libsndfile/libsamplerate.git
+[submodule "third_party/miniaudio"]
+	path = third_party/miniaudio
+	url = https://github.com/mackron/miniaudio.git

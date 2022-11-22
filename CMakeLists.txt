@@ -228,9 +228,11 @@ set(ozz_build_howtos OFF CACHE INTERNAL "")
 set(ozz_build_tests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/ozz-animation" EXCLUDE_FROM_ALL)
 
-# libnyquist
-SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
+# LabSound and libnyquist
+#SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
+#add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
+set(LIBSAMPLERATE_INSTALL OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/LabSound" EXCLUDE_FROM_ALL)
 
 # GNS
 if(UWP)
@@ -532,6 +534,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"glm"
 	"fmt"
 	"tweeny"
+	"LabSound"
 	${SDL2STATIC_LIB}
 	"bgfx"
 	"bx"
@@ -727,11 +730,11 @@ group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;Det
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem;\
-Abseil;midifile\
+Abseil;midifile;sdl_headers_copy;samplerate;LabSound\
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
-PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController")
+PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController;PhysXVehicle2")
 
 group_in("Libraries/sfizz" "aiff;sfizz_pugixml;sfizz_spline;sfizz_tunings;sfizz_hiir_polyphase_iir2designer;sfizz_kissfft;sfizz_cephes;sfizz_cpuid;sfizz_filesystem_impl;sfizz_fmidi;\
 st_audiofile;st_audiofile_formats;st_info;sfizz_parser;sfizz_messaging;sfizz_import;sfizz_spin_mutex;sfizz_internal;sfizz_match_definitions;sfizz_static;\

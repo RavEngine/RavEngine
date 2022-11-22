@@ -1,0 +1,56 @@
+a:link {
+  color: #FB1465;
+}
+
+a:active, a:visited {
+  color: #FB1465;
+}
+
+body {
+  background: black;
+  color: white;
+  font-family: arial, helvetica, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #FB1465;
+}
+
+code, kbd, samp, var {
+  font-family: courier, monospace;
+  font-size: 1em;
+}
+
+main {
+  padding-left: 3%;
+  padding-right: 3%;
+}
+
+pre {
+  font-family: courier, monospace;
+  font-size: 1em;
+}
+
+.image-logo {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1em;
+}
+
+.indent_block {
+  margin-left: 10%;
+  margin-right: 10%;
+}
+
+.nf {
+  font-weight: bold;
+}
+
+.container {
+  display: flex;
+}
+
+.content {
+  flex: 1;
+}
