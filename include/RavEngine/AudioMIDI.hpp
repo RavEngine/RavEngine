@@ -3,21 +3,16 @@
 #include <MidiFile.h>
 #include "AudioSource.hpp"
 #include "Manager.hpp"
-#include <span>
 #include "Filesystem.hpp"
 #include <fmidi/fmidi.h>
+#include "AudioGraph.hpp"
 
 namespace RavEngine{
-class AudioAsset;
 
 using MidiFile = smf::MidiFile;
 using MidiEvent = smf::MidiEvent;
 
-struct SoundFont{
-    struct Manager : public GenericWeakReadThroughCache<std::string,SoundFont>{};
-};
-
-class InstrumentSynth{
+class InstrumentSynth : public AudioGraphComposed{
     sfz::Sfizz synthesizer;
     friend class AudioMIDIPlayer;
     bool freeWheel = false;
@@ -53,7 +48,7 @@ public:
 /**
  Must be allocated to a stable location in memory
  */
-class AudioMIDIPlayer{
+class AudioMIDIPlayer : public AudioGraphComposed{
     // data structure for events
 //    struct MIDIComparator{
 //        constexpr bool operator() (const MidiEvent& a, const MidiEvent& b){
@@ -87,18 +82,16 @@ public:
     // internal use only
     void processEvent(const fmidi_event_t * event, fmidi_seq_event_t* fulldata);
     
-    using buffer_t = std::span<float,std::dynamic_extent>;
-    
     /**
      For internal use only. Use Render()
      */
-    void RenderBuffer1024OrLess(buffer_t out_buffer);
+    void RenderMonoBuffer1024OrLess(InterleavedSampleBuffer out_buffer);
     
     /**
      Render the state of the player to the provided buffer
      @param out_buffer the buffer to write to
      */
-    void Render(buffer_t out_buffer);
+    void RenderMono(InterleavedSampleBuffer out_buffer);
     
     auto GetVolume() const{
         return volume;

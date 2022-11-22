@@ -15,6 +15,16 @@ Ref<AudioPlayerData> AudioPlayer::silence;
 
 STATIC(AudioPlayer::SamplesPerSec);
 
+template<typename T>
+inline static void TMemset(T* data, T value, size_t nData){
+    std::fill(data, data+nData, value);
+}
+
+template<typename T>
+inline static void TZero(T* data, size_t nData){
+    TMemset<T>(data, 0, nData);
+}
+
 /**
  The audio player tick function. Called every time there is an audio update
  @param udata user data for application
@@ -24,7 +34,8 @@ STATIC(AudioPlayer::SamplesPerSec);
 void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     AudioPlayer* player = static_cast<AudioPlayer*>(udata);
     
-    std::memset(stream,0,len);		//fill with silence
+    TZero(stream, len); // fill with silence
+    
     GetApp()->SwapRenderAudioSnapshot();
     auto SnapshotToRender = GetApp()->GetRenderAudioSnapshot();     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
     
@@ -34,11 +45,12 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     auto& lrot = SnapshotToRender->listenerRot;
     const auto buffers_size = len / sizeof(float);
     stackarray(shared_buffer, float, buffers_size);
+    InterleavedSampleBuffer sharedBufferView(shared_buffer,buffers_size);
     float* accum_buffer = reinterpret_cast<float*>(stream);
     
     // fill temp buffer with 0s
-    const auto resetShared = [&shared_buffer, len]{
-        std::memset(shared_buffer, 0, len);
+    const auto resetShared = [&shared_buffer, buffers_size]{
+        TZero(shared_buffer, buffers_size);
     };
     
     // add blend temp buffer into output buffer
@@ -55,7 +67,8 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     auto num = SnapshotToRender->midiPointPlayers.size();
     for(const auto& midiplayer : SnapshotToRender->midiPointPlayers){
         resetShared();
-        midiplayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size/2));
+        //TODO: no divide by 2 here, use number of channels in audio player config
+        midiplayer->RenderMono(InterleavedSampleBuffer(shared_buffer,buffers_size/2));
         
         //TODO: this is not very efficient
         for (const auto& r : SnapshotToRender->rooms) {
@@ -84,13 +97,13 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
         resetShared();
         
         //simulate in the room
-        room->Simulate(shared_buffer, len);
+        room->Simulate(sharedBufferView);
         blendIn();
     }
     
     for (auto& source : SnapshotToRender->ambientSources) {
         resetShared();
-        source->GetSampleRegionAndAdvance(shared_buffer, len);
+        source->GetSampleRegionAndAdvance(sharedBufferView);
         
         // mix it in
         blendIn();
@@ -98,7 +111,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     
     for (const auto& source : SnapshotToRender->ambientMIDIsources){
         resetShared();
-        source.midiPlayer->Render(AudioMIDIPlayer::buffer_t(shared_buffer,buffers_size));
+        source.midiPlayer->RenderMono(InterleavedSampleBuffer(shared_buffer,buffers_size));
         blendIn();
     }
 

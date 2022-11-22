@@ -20,7 +20,7 @@ using RoomMat = vraudio::MaterialName;
 /**
  Renders audio buffers based on its owning world's state
  */
-class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public Queryable<AudioRoom,IDebugRenderable>{
+class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public AudioGraphComposed, public Queryable<AudioRoom,IDebugRenderable>{
 	friend class RavEngine::AudioRoomSyncSystem;
 	friend class RavEngine::AudioPlayer;
     static constexpr uint16_t NFRAMES = 4096;
@@ -90,11 +90,9 @@ public:
         
         /**
          Simulate spacial audio for a set of audio sources
-         @param ptr destination for the calculated audio
-         @param nbytes length of the buffer in bytes
-         @param sources the AudioSource components to calculate for
+         @param buffer destination for the calculated audio
          */
-        void Simulate(float* ptr, size_t nbytes);
+        void Simulate(InterleavedSampleBuffer buffer);
         
         RoomData() : audioEngine(vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100)){}
         ~RoomData(){

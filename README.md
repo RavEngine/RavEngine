@@ -1,5 +1,5 @@
 # RavEngine
-A C++20 cross-platform game library, with emphasis on performance and ease of use. Notable features:
+A C++20 cross-platform game framework, with emphasis on performance and ease of use. Notable features:
 1. Fast Parallel ECS
    - Unique feature: Supports querying by base classes without virtual!
    - Also supports Unity-style scripting with full automatic parallelization
@@ -10,11 +10,12 @@ A C++20 cross-platform game library, with emphasis on performance and ease of us
 6. Flexible and fast declarative user interface system based on HTML and CSS (RmlUi)
 7. Support for SVGs in the UI and for textures
 8. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
-9. Full FSM animation blending tree system
+9.  FSM animation blending tree system
 10. Compute shader mesh skinning with automatic batching
 11. Software instrument synthesis and MIDI playback (sfizz)
-12. CI/CD-friendly build process powered by CMake
-13. Quality-of-life features like automatic incremental shader compilation
+12. Graph-based composable Audio effect system (LabSound)
+13. CI/CD-friendly build process powered by CMake
+14. Quality-of-life features like automatic incremental shader compilation
 
 Note: RavEngine does not have a graphical editor.
 
@@ -72,7 +73,7 @@ You need to declare your shaders, so that RavEngine can automatically compile th
 ```cmake
 declare_shader("shaderName" "${CMAKE_CURRENT_LIST_DIR}/vertexshader.glsl" "${CMAKE_CURRENT_LIST_DIR}/fragmentshader.glsl" "${CMAKE_CURRENT_LIST_DIR}/varying.def.hlsl")
 ```
-When you load a shader, RavEngine will use the name you specify as the first parameter. To learn how to write BGFX shaders, see documentation at [https://github.com/bkaradzic/bgfx](https://github.com/bkaradzic/bgfx)
+When you load a shader, RavEngine will use the name you specify as the first parameter. To learn how to write bgfx shaders, see the documentation at [https://github.com/bkaradzic/bgfx](https://github.com/bkaradzic/bgfx)
 
 Then build with CMake as normal. On Windows, you will need to run your initial configure twice before building. Example scripts are provided. 
 
@@ -85,7 +86,8 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | Windows 10+ (Win32) | x86_64, aarch64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10+ (GDK) | x86_64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10+ (UWP) | x86_64, aarch64 | MSVC | Visual Studio | DX12 |
-| Linux | x86_64, aarch64 | Clang, GCC | Ninja, Make | Vulkan |
+| Linux | x86_64, aarch64 | Clang, gcc | Ninja, Make | Vulkan |
+| Emscripten (build only) | WebAssembly | emcc | Make | -- |
 
 Note for Linux users: You must have the following shared libaries installed on your system:
 - libatomic

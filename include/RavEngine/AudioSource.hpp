@@ -4,6 +4,7 @@
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "Debug.hpp"
+#include "AudioTypes.hpp"
 
 namespace RavEngine{
 
@@ -53,13 +54,14 @@ public:
 
 /**
  This is a marker component to indicate where the "microphone" is in the world. Do not have more than one in a world.
+ Applying an effect graph to the listener will apply the graph to all sounds in the world at once.
  */
 class AudioListener : public Queryable<AudioListener>{};
 
 /**
  Represents a single audio source.
  */
-struct AudioPlayerData {
+struct AudioPlayerData : public AudioGraphComposed {
     struct Player{
         Ref<AudioAsset> asset;
         float volume = 1;
@@ -68,8 +70,13 @@ struct AudioPlayerData {
         bool isPlaying : 1;
         Player(decltype(asset) a) : asset(a), loops(false), isPlaying(false){}
         
-        inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
-            for(size_t i = 0; i < count/sizeof(buffer[0]); i++){
+        /**
+         Get the next region, accounting for looping and volume, of the current track. The playhead advances buffer.size() % (loops? numsamples : 1).
+         If the next region is shorter than the remaining space in the buffer, that space is filled with 0.
+         @param buffer output destination
+         */
+        inline void GetSampleRegionAndAdvance(InterleavedSampleBuffer& buffer){
+            for(size_t i = 0; i < buffer.size(); i++){
                 //is playhead past end of source?
                 if (playhead_pos >= asset->numsamples){
                     if (loops){
@@ -148,17 +155,16 @@ public:
     inline bool IsPlaying() const { return player->isPlaying; }
 
 	/**
-	 Generate an audio data buffer based on the current source
+	 Generate an audio data buffer based on the current source. See AudioPlayerData::Player::GetSampleRegionAndAdvance for more information.
 	 @param buffer destination for the data
-	 @param count the size of the buffer, in bytes
 	 */
-    inline void GetSampleRegionAndAdvance(float* buffer, size_t count){
-        player->GetSampleRegionAndAdvance(buffer,count);
+    inline void GetSampleRegionAndAdvance(InterleavedSampleBuffer& buffer){
+        player->GetSampleRegionAndAdvance(buffer);
 	}
 };
 
 /**
- For attaching a movable source to an Entity. To represent multiple sources, simply attach multiple of this component type to your Entity.
+ For attaching a movable source to an Entity. Affected by Rooms.
  */
 struct AudioSourceComponent : public AudioPlayerData, public Queryable<AudioSourceComponent>, public AutoCTTI{
 	AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a){
@@ -168,12 +174,15 @@ struct AudioSourceComponent : public AudioPlayerData, public Queryable<AudioSour
 	}
 };
 
+/**
+ For playing omnipresent audio in a scene. Not affected by Rooms.
+ */
 struct AmbientAudioSourceComponent : public AudioPlayerData, public Queryable< AmbientAudioSourceComponent>, public AutoCTTI {
 	AmbientAudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a) {}
 };
 
 /**
- Used for Fire-and-forget audio playing. See method on the world for more info
+ Used for Fire-and-forget audio playing. Affected by Rooms. See method on the world for more info
  */
 struct InstantaneousAudioSource : public AudioPlayerData{
 	vector3 source_position;

@@ -50,16 +50,19 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 	if (source->isPlaying){
 		
 		//get appropriate area in source's buffer if it is playing
+        //TODO: don't divide by hardcoded 2, use the number of channels configured by the audio player
         const auto stackarr_size = nbytes/sizeof(float)/2;
 		stackarray(temp, float, stackarr_size);
-		source->GetSampleRegionAndAdvance(temp, nbytes/2);
+        InterleavedSampleBuffer view(temp, nbytes/2/sizeof(InterleavedSampleBuffer::value_type));
+		source->GetSampleRegionAndAdvance(view);
 		
         AddEmitter(temp, pos, rot, roompos, roomrot, std::hash<decltype(source)>()(source), source->volume);
 	}
 }
 
-void AudioRoom::RoomData::Simulate(float *ptr, size_t nbytes){
-	audioEngine->FillInterleavedOutputBuffer(2, NFRAMES, ptr);
+void AudioRoom::RoomData::Simulate(InterleavedSampleBuffer buffer){
+    //TODO: don't hardcode 2, here, use the number of channels configured by the audio player
+	audioEngine->FillInterleavedOutputBuffer(2, buffer.size()/2, buffer.data());
 	
 	// destroy sources
 	for(const auto& source : allSources){
