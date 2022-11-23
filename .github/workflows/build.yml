@@ -66,7 +66,7 @@ jobs:
       - name: Configure
         run: mkdir -p build && cd build; cmake -DCMAKE_TOOLCHAIN_FILE=../emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine --parallel
+        run: cd build; cmake --build . --config Release --target RavEngine
 
   build-mac:
     name: macOS Compile Check

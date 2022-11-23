@@ -98,4 +98,4 @@ Note for Linux users: You must have the following shared libaries installed on y
 In addition the Raspberry Pi currently does not work due to missing support for 32-bit index buffers in Vulkan.
 
 ## Example programs
-View a respository with code samples here: [https://github.com/ravbug/ravengine-samples](https://github.com/ravbug/ravengine-samples)
+View a respository with code samples here: [https://github.com/RavEngine/Samples](https://github.com/RavEngine/Samples)
