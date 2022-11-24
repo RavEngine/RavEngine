@@ -68,7 +68,7 @@ STATIC(RenderEngine::allVerticesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::allIndicesHandle) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::guiMaterial);
 
-static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, shadowMapShaderHandle, shadowVolumeHandleLT;
+static bgfx::ProgramHandle skinningShaderHandle, copyIndicesShaderHandle, shadowMapShaderHandle;
 static bgfx::VertexBufferHandle screenSpaceQuadVert, shadowTriangleVertexBuffer;
 static bgfx::DynamicVertexBufferHandle lightDataHandle = BGFX_INVALID_HANDLE;
 static bgfx::IndexBufferHandle screenSpaceQuadInd, shadowTriangleIndexBuffer;
@@ -433,7 +433,6 @@ void RenderEngine::Init(const AppConfig& config)
 	copyIndicesShaderHandle = Material::loadComputeProgram("indexcopycompute/compute.bin");
     rve_debugShaderHandle = Material::loadShaderProgram("meshOnly");
     shadowMapShaderHandle = Material::loadShaderProgram("shadowvolume");
-    shadowVolumeHandleLT = Material::loadShaderProgram("shadowvolumeLT");
 	
 
 	//create compute shader buffers
@@ -637,7 +636,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	lightingBuffer = bgfx::createFrameBuffer(lightingAttachmentsSize, lightingAttachments, true);
 	bgfx::setName(lightingBuffer, "FB_LightingBuffer");
 
-	const bgfx::TextureFormat::Enum shadowTextureFormats[] = { bgfx::TextureFormat::R32F, bgfx::TextureFormat::D32F };
+	const bgfx::TextureFormat::Enum shadowTextureFormats[] = {bgfx::TextureFormat::D32F };
 	bgfx::TextureHandle shadowTextures[BX_COUNTOF(shadowTextureFormats)];
 	for (int i = 0; i < BX_COUNTOF(shadowTextureFormats); i++) {
 		shadowTextures[i] = gen_framebufferSquare(shadowTextureFormats[i], shadowMapSize, shadowMapSize, BGFX_SAMPLER_BORDER_COLOR(0xFFFFFF) | BGFX_SAMPLER_UVW_BORDER, "TX_ShadowMap");
@@ -646,8 +645,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	depthMapFB = bgfx::createFrameBuffer(BX_COUNTOF(shadowTextureFormats), shadowTextures, true);
 	bgfx::setName(depthMapFB, "FB_DepthmapBuffer");
 
-	shadowSamplers[0] = bgfx::createUniform("s_depthdata", bgfx::UniformType::Sampler);
-	shadowSamplers[1] = gBufferSamplers[3];
+	shadowSamplers[0] = gBufferSamplers[3];
 	
 	if(!bgfx::isValid(gBuffer)){
 		Debug::Fatal("Failed to create gbuffer");
@@ -978,14 +976,10 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 				// bind shadow data map and depth map
 				bgfx::setTexture(0, gBufferSamplers[0], attachments[0]);					// albedo
 				bgfx::setTexture(1, gBufferSamplers[1], attachments[1]);					// normal
-				bgfx::setTexture(4, shadowSamplers[0], bgfx::getTexture(depthMapFB, 0));	// shadow data buffer
-				bgfx::setTexture(3, shadowSamplers[1], bgfx::getTexture(depthMapFB, 1));	// shadow depth buffer
+				bgfx::setTexture(3, shadowSamplers[0], bgfx::getTexture(depthMapFB, 0));	// shadow depth buffer
 				bgfx::setTexture(2, gBufferSamplers[2], attachments[2]);					// geometry position buffer (for transforming points to lightmap)
 				copyMat4(lightViewMtx, &shadowprojviewmtx[16]);
 				bgfx::setTransform(shadowprojviewmtx, 2);				// these become u_model[0] and u_model[1]
-
-				bgfx::setBuffer(12, allVerticesHandle, bgfx::Access::Read);
-				bgfx::setBuffer(13, allIndicesHandle, bgfx::Access::Read);
 
 				//execute instance draw call
 				float uniformData[] = { static_cast<float>(shadowOffset / sizeof(float)), true,0,0 };        // start points for reading shadow data ( beginOffset is in bytes but we want floats, second value is if shadows are enabled

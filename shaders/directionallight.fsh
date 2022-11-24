@@ -7,33 +7,10 @@ SAMPLER2D(s_albedo,0);
 SAMPLER2D(s_normal,1);
 SAMPLER2D(s_pos,2);
 SAMPLER2D(s_depth,3);
-SAMPLER2D(s_depthdata,4);
 uniform vec4 NumObjects;		// y = shadows enabled
-BUFFER_RO(all_vb, float, 12);
-BUFFER_RO(all_ib, uint, 13);
 
 bool outOfRange(float f){
     return f < 0 || f > 1;
-}
-
-float sign (vec2 p1, vec2 p2, vec2 p3)
-{
-    return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-}
-
-bool PointInTriangle (vec2 pt, vec2 v1, vec2 v2, vec2 v3)
-{
-    float d1, d2, d3;
-    bool has_neg, has_pos;
-
-    d1 = sign(pt, v1, v2);
-    d2 = sign(pt, v2, v3);
-    d3 = sign(pt, v3, v1);
-
-    has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-    has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-
-    return !(has_neg && has_pos);
 }
 
 EARLY_DEPTH_STENCIL
@@ -59,46 +36,12 @@ void main()
         sampledPos /= sampledPos.w; // perspective divide
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
         sampledPos.z *= -1;
+        
+        float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture2D(s_depth, sampledPos.xy).x;
 
-        uint count = 0;
-        for(int r = -1; r <= 1; r++){
-            for(int c = -1; c <= 1; c++){
-                vec2 offset = vec2((1.0 / u_viewRect[2]) * r,(1.0 / u_viewRect[3]) * c);
-                float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture2D(s_depth, sampledPos.xy + offset).x;
-                if (sampledDepth.x < sampledPos.z - bias){
-                    count++;
-                }
-            }
-        }
-
-        // known to be covered completely with 100% confidence
-        if (count >= 9){
+        // in shadow
+        if (sampledDepth.x < sampledPos.z - bias){
             enabled = false;
-        }
-        // known to not be covered at all with 100% confidence
-        else if (count == 0){
-            enabled = true;
-        }
-        else{
-            // the pixel may or may not be covered, so do point-in-triangle comparisons
-            const uint h_width = 2;
-            for(int r = -h_width; r <= h_width && enabled; r++){
-                for(int c = -h_width; c <= h_width && enabled; c++){
-                    vec2 offset = vec2((1.0 / u_viewRect[2]) * r,(1.0 / u_viewRect[3]) * c);
-                    float sampledIdx = texture2D(s_depthdata, sampledPos.xy + offset).x * 3;    // 3 indices for each triangle
-                    uint p1i = all_ib[sampledIdx];
-                    uint p2i = all_ib[sampledIdx+1];
-                    uint p3i = all_ib[sampledIdx+2];
-                    vec3 p1 = vec3(all_vb[p1i*3],all_vb[p1i*3+1],all_vb[p1i*3+2]);
-                    vec3 p2 = vec3(all_vb[p2i*3],all_vb[p2i*3+1],all_vb[p2i*3+2]);
-                    vec3 p3 = vec3(all_vb[p3i*3],all_vb[p3i*3+1],all_vb[p3i*3+2]);
-
-                    p1 = mul(vp, p1);
-                    p2 = mul(vp, p2);
-                    p3 = mul(vp, p3);
-                    enabled = !PointInTriangle(projected.xy,p1.xy,p2.xy,p3.xy);
-                }
-            } 
         }
     }
     
