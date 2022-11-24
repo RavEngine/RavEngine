@@ -31,4 +31,4 @@ declare_shader("skincompute" "${CMAKE_CURRENT_LIST_DIR}/skinning_cs.glsl" "" "")
 declare_shader("indexcopycompute" "${CMAKE_CURRENT_LIST_DIR}/index_copy_cs.glsl" "" "")
 
 # shadow volume shader
-declare_shader("shadowvolume" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShader.vsh" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShader.fsh" "${CMAKE_CURRENT_LIST_DIR}/shadowVolumeShader_varying.def.hlsl")
+declare_shader("shadowmap" "${CMAKE_CURRENT_LIST_DIR}/shadowMapShader.vsh" "${CMAKE_CURRENT_LIST_DIR}/shadowMapShader.fsh" "${CMAKE_CURRENT_LIST_DIR}/shadowMapShader_varying.def.hlsl")

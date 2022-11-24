@@ -432,7 +432,7 @@ void RenderEngine::Init(const AppConfig& config)
 	skinningShaderHandle = Material::loadComputeProgram("skincompute/compute.bin");
 	copyIndicesShaderHandle = Material::loadComputeProgram("indexcopycompute/compute.bin");
     rve_debugShaderHandle = Material::loadShaderProgram("meshOnly");
-    shadowMapShaderHandle = Material::loadShaderProgram("shadowvolume");
+    shadowMapShaderHandle = Material::loadShaderProgram("shadowmap");
 	
 
 	//create compute shader buffers
