@@ -484,6 +484,7 @@ if (TARGET_APPLE)
     find_library(METAL_LIB Metal REQUIRED)
     find_library(QZC_LIB QuartzCore REQUIRED)
     find_library(CH_LIB CoreHaptics REQUIRED)
+	find_library(ACCEL_LIB Accelerate REQUIRED)
 	if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   	  find_library(IOKIT_LIB IOKit REQUIRED)
 	endif()
@@ -566,6 +567,7 @@ target_link_libraries("${PROJECT_NAME}"
 	${EM_LINK}
 	${ANDROID_GLUE_LIB}
 	${OPENXR_LOADER}
+	${ACCEL_LIB}
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
