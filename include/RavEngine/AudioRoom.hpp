@@ -20,12 +20,12 @@ using RoomMat = vraudio::MaterialName;
 /**
  Renders audio buffers based on its owning world's state
  */
-class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public AudioGraphComposed, public Queryable<AudioRoom,IDebugRenderable>{
+class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public Queryable<AudioRoom,IDebugRenderable>{
 	friend class RavEngine::AudioRoomSyncSystem;
 	friend class RavEngine::AudioPlayer;
     static constexpr uint16_t NFRAMES = 4096;
 public:
-    struct RoomData{
+    struct RoomData : public AudioGraphComposed{
         UnorderedMap<size_t,vraudio::ResonanceAudioApi::SourceId> allSources;
         
         // Material name of each surface of the shoebox room in this order:

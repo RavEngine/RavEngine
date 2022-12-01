@@ -6,8 +6,20 @@ AudioGraph::AudioGraph(const lab::AudioStreamConfig& config) : audioContext(lab:
     
 }
 
-void AudioGraph::Render(const InterleavedSampleBuffer& out){
-    //TODO: set output destination buffer
+void AudioGraph::Render(InterleavedSampleBuffer& inout, InterleavedSampleBuffer& scratchBuffer){
+    //TODO: set output destination buffer as scratchBuffer
+    //TODO: set input buffer as inout
     
-    audioContext.process(out.size());
+    audioContext.process(inout.size());
+    
+    //inout will now have the results of processing
+    std::swap(inout, scratchBuffer);
+    
+}
+
+
+void AudioGraphComposed::renderImpl(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer){
+    if (effectGraph){
+        effectGraph->Render(inputSamples, intermediateBuffer);
+    }
 }

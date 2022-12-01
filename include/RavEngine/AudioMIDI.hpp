@@ -43,6 +43,8 @@ public:
     void setSampleQuality(sfz::Sfizz::ProcessMode mode, int quality){
         synthesizer.setSampleQuality(mode, quality);
     }
+    
+    void Render(float** scratchBuffer, size_t size, InterleavedSampleBuffer output);
 };
 
 /**

@@ -1,6 +1,7 @@
 #pragma once
 #include <span>
 #include "Ref.hpp"
+#include "DataStructures.hpp"
 
 namespace RavEngine{
     class AudioAsset;
@@ -11,8 +12,63 @@ namespace RavEngine{
      */
     using InterleavedSampleBuffer = std::span<float,std::dynamic_extent>;
 
+
+    inline void AdditiveBlendSamples(InterleavedSampleBuffer A, const InterleavedSampleBuffer B){
+        auto bounds = std::min(A.size(),A.size());
+#pragma omp simd
+        for(decltype(bounds) i = 0; i < bounds; i++){
+            A[i] += B[i];
+        }
+    }
+
     class AudioGraph;
     struct AudioGraphComposed{
+    private:
+        void renderImpl(InterleavedSampleBuffer inputBuffer, InterleavedSampleBuffer scratchBuffer);
+    public:
         Ref<AudioGraph> effectGraph;
+        
+        /**
+         Render the graph in-place, using provided memory for scratch space
+         @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
+         @param intermediateBuffer memory of equal size to inputSamples to store intermediate data. Assumed to be zero-filled.
+         */
+        void Render(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer){
+            renderImpl(inputSamples, intermediateBuffer);
+        }
+        
+        /**
+         Render the graph in-place
+         @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
+         @note This function uses stack space decided at runtime. Be aware of the potential consequences of this.
+         */
+        void Render(InterleavedSampleBuffer inputSamples){
+            stackarray(intermediatebuffer, InterleavedSampleBuffer::value_type, inputSamples.size());
+            Render(inputSamples,InterleavedSampleBuffer(intermediatebuffer,inputSamples.size()));
+        }
+        
+        /**
+         Render the graph, provided a user function to generate the input samples
+         @param outputBuffer the memory to write the result into. Assumed to be zero-filled.
+         @param func user function which will be invoked to provide samples.
+         @note This function uses stack space decided at runtime. Be aware of the potential consequences of this.
+         */
+        template<typename Func_t>
+        void Render(InterleavedSampleBuffer outputBuffer, Func_t&& func){
+            func(outputBuffer);
+            Render(outputBuffer);
+        }
+        
+        /**
+         Render the graph, provided a user function to generate the input samples
+         @param outputBuffer the memory to write the result into. Assumed to be zero-filled.
+         @param intermediateBuffer memory of equal size to inputSamples to store intermediate data. Assumed to be zero-filled.
+         @param func user function which will be invoked to provide samples.
+         */
+        template<typename Func_t>
+        void Render(InterleavedSampleBuffer outputBuffer, InterleavedSampleBuffer intermediateBuffer, Func_t&& func){
+            func(outputBuffer);
+            Render(outputBuffer,intermediateBuffer);
+        }
     };
 }

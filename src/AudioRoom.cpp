@@ -63,6 +63,7 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 void AudioRoom::RoomData::Simulate(InterleavedSampleBuffer buffer){
     //TODO: don't hardcode 2, here, use the number of channels configured by the audio player
 	audioEngine->FillInterleavedOutputBuffer(2, buffer.size()/2, buffer.data());
+    AudioGraphComposed::Render(buffer); // process graph
 	
 	// destroy sources
 	for(const auto& source : allSources){
