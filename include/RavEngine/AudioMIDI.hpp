@@ -5,7 +5,7 @@
 #include "Manager.hpp"
 #include "Filesystem.hpp"
 #include <fmidi/fmidi.h>
-#include "AudioGraph.hpp"
+#include "AudioGraphAsset.hpp"
 
 namespace RavEngine{
 

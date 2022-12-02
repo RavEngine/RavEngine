@@ -1,12 +1,12 @@
-#include "AudioGraph.hpp"
+#include "AudioGraphAsset.hpp"
 
 using namespace RavEngine;
 
-AudioGraph::AudioGraph(const lab::AudioStreamConfig& config) : audioContext(lab::MakeOfflineAudioContext(config)){
+AudioGraphAsset::AudioGraphAsset(const lab::AudioStreamConfig& config) : audioContext(lab::MakeOfflineAudioContext(config)){
     
 }
 
-void AudioGraph::Render(InterleavedSampleBuffer& inout, InterleavedSampleBuffer& scratchBuffer){
+void AudioGraphAsset::Render(InterleavedSampleBuffer& inout, InterleavedSampleBuffer& scratchBuffer){
     //TODO: set output destination buffer as scratchBuffer
     //TODO: set input buffer as inout
     

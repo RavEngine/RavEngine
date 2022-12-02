@@ -4,12 +4,12 @@
 
 namespace RavEngine{
 
-class AudioGraph{
+class AudioGraphAsset{
     
     lab::OfflineContext audioContext;
     
 public:
-    AudioGraph(const lab::AudioStreamConfig& config);
+    AudioGraphAsset(const lab::AudioStreamConfig& config);
     
     /**
      Render the graph given input samples

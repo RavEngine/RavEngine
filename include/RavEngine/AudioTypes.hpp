@@ -21,12 +21,21 @@ namespace RavEngine{
         }
     }
 
-    class AudioGraph;
+    class AudioGraphAsset;
     struct AudioGraphComposed{
+        using effect_graph_ptr_t = Ref<AudioGraphAsset>;
     private:
         void renderImpl(InterleavedSampleBuffer inputBuffer, InterleavedSampleBuffer scratchBuffer);
+        effect_graph_ptr_t effectGraph;
     public:
-        Ref<AudioGraph> effectGraph;
+        
+        void SetGraph(decltype(effectGraph) inGraph){
+            effectGraph = inGraph;
+        }
+        
+        auto GetGraph() const{
+            return effectGraph;
+        }
         
         /**
          Render the graph in-place, using provided memory for scratch space

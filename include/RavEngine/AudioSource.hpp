@@ -61,8 +61,8 @@ class AudioListener : public Queryable<AudioListener>{};
 /**
  Represents a single audio source.
  */
-struct AudioPlayerData : public AudioGraphComposed {
-    struct Player{
+struct AudioPlayerData {
+    struct Player : public AudioGraphComposed{
         Ref<AudioAsset> asset;
         float volume = 1;
         size_t playhead_pos = 0;
@@ -75,7 +75,7 @@ struct AudioPlayerData : public AudioGraphComposed {
          If the next region is shorter than the remaining space in the buffer, that space is filled with 0.
          @param buffer output destination
          */
-        inline void GetSampleRegionAndAdvance(InterleavedSampleBuffer& buffer){
+        inline void GetSampleRegionAndAdvance(InterleavedSampleBuffer& buffer, InterleavedSampleBuffer& scratchSpace){
             for(size_t i = 0; i < buffer.size(); i++){
                 //is playhead past end of source?
                 if (playhead_pos >= asset->numsamples){
@@ -91,6 +91,7 @@ struct AudioPlayerData : public AudioGraphComposed {
                 buffer[i] = asset->audiodata[playhead_pos] * volume;
                 playhead_pos++;
             }
+            AudioGraphComposed::Render(buffer,scratchSpace);
         }
     };
 protected:
@@ -99,7 +100,16 @@ protected:
     Ref<Player> player;
 	
 public:
-	AudioPlayerData(decltype(Player::asset) a ) :  player(std::make_shared<Player>(a)){}
+    
+    void SetGraph(AudioGraphComposed::effect_graph_ptr_t inGraph){
+        player->SetGraph(inGraph);
+    }
+    
+    auto GetGraph() const{
+        return player->GetGraph();
+    }
+    
+	AudioPlayerData(decltype(Player::asset) a ) : player(std::make_shared<Player>(a)){}
 
     inline decltype(player) GetPlayer() const{
         return player;
@@ -154,13 +164,6 @@ public:
 	 */
     inline bool IsPlaying() const { return player->isPlaying; }
 
-	/**
-	 Generate an audio data buffer based on the current source. See AudioPlayerData::Player::GetSampleRegionAndAdvance for more information.
-	 @param buffer destination for the data
-	 */
-    inline void GetSampleRegionAndAdvance(InterleavedSampleBuffer& buffer){
-        player->GetSampleRegionAndAdvance(buffer);
-	}
 };
 
 /**

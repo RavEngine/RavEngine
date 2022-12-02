@@ -45,7 +45,9 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     auto& lrot = SnapshotToRender->listenerRot;
     const auto buffers_size = len / sizeof(float);
     stackarray(shared_buffer, float, buffers_size);
+    stackarray(effect_scratch_buffer, float, buffers_size);
     InterleavedSampleBuffer sharedBufferView(shared_buffer,buffers_size);
+    InterleavedSampleBuffer effectScratchBuffer(effect_scratch_buffer, buffers_size);
     float* accum_buffer = reinterpret_cast<float*>(stream);
     
     // fill temp buffer with 0s
@@ -90,7 +92,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
         // raster sources
         for(const auto& source : SnapshotToRender->sources){
             // add this source into the room
-            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, len);
+            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, len, effectScratchBuffer);
         }
         
         //now simulate the fire-and-forget audio
@@ -103,7 +105,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     
     for (auto& source : SnapshotToRender->ambientSources) {
         resetShared();
-        source->GetSampleRegionAndAdvance(sharedBufferView);
+        source->GetSampleRegionAndAdvance(sharedBufferView, effectScratchBuffer);
         
         // mix it in
         blendIn();
