@@ -5,6 +5,8 @@
 #include "AudioMIDI.hpp"
 
 namespace RavEngine{
+struct AudioGraphAsset;
+
 struct AudioSnapshot{
     struct PointSourceBase{
         vector3 worldpos;
@@ -45,6 +47,7 @@ struct AudioSnapshot{
     Vector<Room> rooms;
     vector3 listenerPos;
     quaternion listenerRot;
+    Ref<AudioGraphAsset> listenerGraph;
     
     void Clear(){
         sources.clear();

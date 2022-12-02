@@ -56,7 +56,7 @@ public:
  This is a marker component to indicate where the "microphone" is in the world. Do not have more than one in a world.
  Applying an effect graph to the listener will apply the graph to all sounds in the world at once.
  */
-class AudioListener : public Queryable<AudioListener>{};
+class AudioListener : public Queryable<AudioListener>, public AudioGraphComposed, public AutoCTTI{};
 
 /**
  Represents a single audio source.

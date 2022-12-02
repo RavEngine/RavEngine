@@ -37,7 +37,8 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     TZero(stream, len); // fill with silence
     
     GetApp()->SwapRenderAudioSnapshot();
-    auto SnapshotToRender = GetApp()->GetRenderAudioSnapshot();     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
+    auto SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
+    static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
     
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
     
@@ -49,18 +50,19 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     InterleavedSampleBuffer sharedBufferView(shared_buffer,buffers_size);
     InterleavedSampleBuffer effectScratchBuffer(effect_scratch_buffer, buffers_size);
     float* accum_buffer = reinterpret_cast<float*>(stream);
+    InterleavedSampleBuffer accumView{accum_buffer,buffers_size};
     
     // fill temp buffer with 0s
-    const auto resetShared = [&shared_buffer, buffers_size]{
-        TZero(shared_buffer, buffers_size);
+    const auto resetShared = [sharedBufferView]{
+        TZero(sharedBufferView.data(), sharedBufferView.size());
     };
     
     // add blend temp buffer into output buffer
-    const auto blendIn = [accum_buffer,&shared_buffer, buffers_size]{
+    const auto blendIn = [accumView,sharedBufferView]{
 #pragma omp simd
-        for (int i = 0; i < buffers_size; i++) {
+        for (int i = 0; i < accumView.size(); i++) {
             //mix with existing
-            accum_buffer[i] += shared_buffer[i];
+            accumView[i] += sharedBufferView[i];
         }
     };
     
@@ -113,14 +115,19 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     
     for (const auto& source : SnapshotToRender->ambientMIDIsources){
         resetShared();
-        source.midiPlayer->RenderMono(InterleavedSampleBuffer(shared_buffer,buffers_size));
+        source.midiPlayer->RenderMono(sharedBufferView);
         blendIn();
     }
 
+    // run the graph on the listener, if present
+    if (SnapshotToRender->listenerGraph){
+        SnapshotToRender->listenerGraph->Render(accumView, effectScratchBuffer);
+    }
+    
     //clipping: clamp all values to [-1,1]
 #pragma omp simd
-    for(int i = 0; i < buffers_size; i++){
-        accum_buffer[i] = std::clamp(accum_buffer[i] ,-1.0f,1.0f);
+    for(int i = 0; i < accumView.size(); i++){
+        accumView[i] = std::clamp(accumView[i] ,-1.0f,1.0f);
     }
 }
 

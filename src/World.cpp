@@ -178,6 +178,7 @@ void World::SetupTaskGraph(){
             auto ptr = GetApp()->GetCurrentAudioSnapshot();
             ptr->listenerPos = transform.GetWorldPosition();
             ptr->listenerRot = transform.GetWorldRotation();
+            ptr->listenerGraph = listener.GetGraph();
         });
     }).name("Clear + Listener");
     
