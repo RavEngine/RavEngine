@@ -768,8 +768,8 @@ group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_
 # pack resources
 function(pack_resources)
 	set(optional )
-	set(args TARGET OUTPUT_FILE)
-	set(list_args SHADERS OBJECTS TEXTURES UIS FONTS SOUNDS)
+	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
+	set(list_args SHADERS OBJECTS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -798,18 +798,44 @@ function(pack_resources)
 	# clear copy-depends
 	set_property(GLOBAL PROPERTY COPY_DEPENDS "")
 
-	# helper for copying to staging directory
-	function(copy_helper FILE_LIST output_dir)
+	function(copy_helper_impl FILE_LIST output_dir root_dir)
 		foreach(FILE ${FILE_LIST})
 			# copy objects pre-build if they are changed
 			get_filename_component(output_name "${FILE}" NAME)
-			set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/${output_dir}/${output_name}")
+			set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/${root_dir}/${output_name}")
 			add_custom_command(PRE_BUILD 
 				OUTPUT "${outname}" 
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
 				DEPENDS ${FILE}
 				)
 			set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
+		endforeach()
+	endfunction()
+
+	# helper for copying to staging directory
+	function(copy_helper FILE_LIST output_dir)
+		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} output_dir)
+	endfunction()
+
+	function(copy_streaming_helper FILE_LIST output_root input_root)
+		foreach(FILE ${FILE_LIST})
+			if (APPLE)
+				# put it in the resources bundle
+				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
+				get_filename_component(relpath "${relpath}" DIRECTORY)
+				target_sources(${ARGS_TARGET} PRIVATE ${FILE})
+				set_property(SOURCE ${FILE} PROPERTY MACOSX_PACKAGE_LOCATION "Resources/${ARGS_TARGET}_Streaming/${relpath}")
+			else()
+				# put it next to the executable
+				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
+				set(outname "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${ARGS_TARGET}_Streaming/${output_root}/${relpath}")
+				add_custom_command(PRE_BUILD 
+					OUTPUT "${outname}" 
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
+					DEPENDS ${FILE}
+				)
+				set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
+			endif()
 		endforeach()
 	endfunction()
 
@@ -821,6 +847,8 @@ function(pack_resources)
 	copy_helper("${ARGS_FONTS}" "fonts")
 	copy_helper("${ENG_FONTS}" "fonts")
 	copy_helper("${ARGS_SOUNDS}" "sounds")
+	
+	copy_streaming_helper("${ARGS_STREAMING_ASSETS}" "" "${ARGS_STREAMING_INPUT_ROOT}")
 
 	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS})
 	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} PROPERTIES HEADER_FILE_ONLY ON)
@@ -829,6 +857,8 @@ function(pack_resources)
 	source_group("Textures" FILES ${ARGS_TEXTURES})
 	source_group("Sounds" FILES ${ARGS_SOUNDS})
 	source_group("UI" FILES ${ARGS_UIS})
+	source_group("Streaming" FILES ${ARGS_STREAMING_ASSETS})
+
 
 	# get dependency outputs
 	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)
