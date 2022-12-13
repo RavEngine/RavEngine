@@ -168,7 +168,7 @@ App::App(const std::string& resourcesName) : App(){
 	//initialize virtual file system library 
 	PHYSFS_init("");
 	
-	Resources.emplace(StrFormat("{}.rvedata",resourcesName));
+	Resources.emplace(resourcesName);
 }
 
 App::App(){

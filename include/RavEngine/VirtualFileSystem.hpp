@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include "Function.hpp"
+#include "Filesystem.hpp"
 #include "DataStructures.hpp"
 #include "Utilities.hpp"
 #include "Debug.hpp"
@@ -75,8 +76,13 @@ public:
 	@param callback function to call on each filename
 	*/
 	void IterateDirectory(const char* path, Function<void(const std::string&)> callback);
+    
+    Filesystem::Path GetStreamingAssetFullRootPath() const{
+        return streamingAssetsPath;
+    }
 	
 protected:
 	std::string rootname;
+    Filesystem::Path streamingAssetsPath;
 };
 }

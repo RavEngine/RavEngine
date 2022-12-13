@@ -6,6 +6,7 @@
 #include <sfizz/MathHelpers.h>
 #include <sfizz/SfzHelpers.h>
 #include <sfizz/SIMDHelpers.h>
+#include "App.hpp"
 
 #include <cstdint>
 
@@ -214,8 +215,14 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const Ref<fmidi_smf_t>& file, AudioMID
     return asset;
 }
 
-InstrumentSynth::InstrumentSynth(const Filesystem::Path& pathOnDisk) {
-    synthesizer.loadSfzFile(pathOnDisk.string());
+InstrumentSynth::InstrumentSynth(const Filesystem::Path& pathOnDisk, bool notStreaming) {
+    if (notStreaming){
+        synthesizer.loadSfzFile(pathOnDisk.string());
+    }
+    else{
+        auto rootpath = GetApp()->GetResources().GetStreamingAssetFullRootPath() / pathOnDisk;
+        synthesizer.loadSfzFile(rootpath.string());
+    }
     synthesizer.setSampleRate(AudioPlayer::GetSamplesPerSec());
     synthesizer.setSamplesPerBlock(1024);
 }

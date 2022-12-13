@@ -814,7 +814,7 @@ function(pack_resources)
 
 	# helper for copying to staging directory
 	function(copy_helper FILE_LIST output_dir)
-		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} output_dir)
+		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} "${output_dir}")
 	endfunction()
 
 	function(copy_streaming_helper FILE_LIST output_root input_root)

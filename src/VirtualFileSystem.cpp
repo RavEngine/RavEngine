@@ -14,7 +14,7 @@ inline const char* PHYSFS_WHY(){
 	return PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode());
 }
 
-VirtualFilesystem::VirtualFilesystem(const std::string& path) {
+VirtualFilesystem::VirtualFilesystem(const std::string& path) : rootname(path) {
 #ifdef __APPLE__
     CFBundleRef AppBundle = CFBundleGetMainBundle();
     CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(AppBundle);
@@ -22,18 +22,23 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	CFStringRef resourcePath = CFURLCopyPath( absoluteResourceURL);
 
     string bundlepath = CFStringGetCStringPtr(resourcePath, kCFStringEncodingUTF8);
-	bundlepath = (bundlepath + path);
+    streamingAssetsPath = bundlepath;
+    auto rvedatapath = StrFormat("{}.rvedata",path);
+	bundlepath = (bundlepath + rvedatapath);
     const char* cstr = bundlepath.c_str();
     
 	CFRelease(absoluteResourceURL);
     CFRelease(resourcePath);
     CFRelease(resourcesURL);
 #else
-    const char* cstr = path.c_str();
+    auto rvedatapath = StrFormat("{}.rvedata",path);;
+    const char* cstr = rvedatapath.c_str();
+    streamingAssetsPath = Filesystem::CurrentWorkingDirectory();
 #endif
 
+    streamingAssetsPath = streamingAssetsPath / StrFormat("{}_Streaming",path);
+
 	//1 means add to end, can put 0 to make it first searched
-	auto pwd = Filesystem::CurrentWorkingDirectory();
 	if (PHYSFS_mount(cstr, "", 1) == 0) {
 		Debug::Fatal("PHYSFS Error: {}",PHYSFS_WHY());
 	}
@@ -41,7 +46,6 @@ VirtualFilesystem::VirtualFilesystem(const std::string& path) {
 	if (*root == NULL) {
 		Debug::Fatal("PHYSFS Error: {}", PHYSFS_WHY());
 	}
-	rootname = Filesystem::Path(path).replace_extension("").string();
 	PHYSFS_freeList(root);
 }
 

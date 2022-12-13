@@ -17,7 +17,7 @@ class InstrumentSynth : public AudioGraphComposed{
     friend class AudioMIDIPlayer;
     bool freeWheel = false;
 public:
-    InstrumentSynth(const Filesystem::Path& path);
+    InstrumentSynth(const Filesystem::Path& path, bool notStreaming = false);
     void setNumVoices(uint32_t poly){
         synthesizer.setNumVoices(poly);
     }
