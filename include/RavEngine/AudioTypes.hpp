@@ -10,27 +10,36 @@ namespace RavEngine{
      Represents audio samples in interleaved float format. For example, dual-channel audio would be represented
      as LRLRLRLR....
      */
-    using InterleavedSampleBuffer = std::span<float,std::dynamic_extent>;
+    using InterleavedSampleBufferView = std::span<float,std::dynamic_extent>;
 
     /**
-     Represents audio samples in planar (separated buffers) format.
-     Each item in the vector represents a single channels's worth of audio samples
+     Represents planar audio by abstracting a single linear buffer.
+     Expected that the single buffer is organized with one channel succeeding the next (with 2 channels: LLLLLLLL....LLRRRR...RR).
+     Does not own the data.
      */
-    class PlanarSampleBuffer{
-        std::vector<std::span<float,std::dynamic_extent>> buffers;
-    public:
-        PlanarSampleBuffer(uint8_t nchannels) : buffers(nchannels){}
-        auto& operator[](size_t i)
-        {
-            return buffers[i];
+    class PlanarSampleBufferInlineView{
+        std::span<float,std::dynamic_extent> combined_buffers;
+        size_t sizeOfOneChannelInFrames = 0;
+        
+        auto channel_at(size_t i) const{
+            return decltype(combined_buffers)(combined_buffers.data()+(i*sizeOfOneChannelInFrames),sizeOfOneChannelInFrames);
         }
-        const auto& operator[](size_t i) const{
-            return buffers[i];
+        
+    public:
+        PlanarSampleBufferInlineView(const decltype(combined_buffers)& buf, decltype(sizeOfOneChannelInFrames) sizeOfOneChannelInFrames) : combined_buffers(buf), sizeOfOneChannelInFrames(sizeOfOneChannelInFrames){}
+        
+        auto operator[](size_t i){
+            return channel_at(i);
+        }
+        const auto operator[](size_t i) const{
+            return channel_at(i);
+        }
+        uint8_t GetNChannels() const{
+            return combined_buffers.size() / sizeOfOneChannelInFrames;
         }
     };
 
-
-    inline void AdditiveBlendSamples(InterleavedSampleBuffer A, const InterleavedSampleBuffer B){
+    inline void AdditiveBlendSamples(InterleavedSampleBufferView A, const InterleavedSampleBufferView B){
         auto bounds = std::min(A.size(),A.size());
 #pragma omp simd
         for(decltype(bounds) i = 0; i < bounds; i++){
@@ -42,7 +51,7 @@ namespace RavEngine{
     struct AudioGraphComposed{
         using effect_graph_ptr_t = Ref<AudioGraphAsset>;
     private:
-        void renderImpl(InterleavedSampleBuffer inputBuffer, InterleavedSampleBuffer scratchBuffer, uint8_t nchannels);
+        void renderImpl(InterleavedSampleBufferView inputBuffer, InterleavedSampleBufferView scratchBuffer, uint8_t nchannels);
         effect_graph_ptr_t effectGraph;
     public:
         
@@ -59,7 +68,7 @@ namespace RavEngine{
          @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
          @param intermediateBuffer memory of equal size to inputSamples to store intermediate data. Assumed to be zero-filled.
          */
-        void Render(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer, uint8_t nchannels){
+        void Render(InterleavedSampleBufferView inputSamples, InterleavedSampleBufferView intermediateBuffer, uint8_t nchannels){
             renderImpl(inputSamples, intermediateBuffer, nchannels);
         }
         
@@ -68,9 +77,9 @@ namespace RavEngine{
          @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
          @note This function uses stack space decided at runtime. Be aware of the potential consequences of this.
          */
-        void Render(InterleavedSampleBuffer inputSamples, uint8_t nchannels){
-            stackarray(intermediatebuffer, InterleavedSampleBuffer::value_type, inputSamples.size());
-            Render(inputSamples,InterleavedSampleBuffer(intermediatebuffer,inputSamples.size()),nchannels);
+        void Render(InterleavedSampleBufferView inputSamples, uint8_t nchannels){
+            stackarray(intermediatebuffer, InterleavedSampleBufferView::value_type, inputSamples.size());
+            Render(inputSamples,InterleavedSampleBufferView(intermediatebuffer,inputSamples.size()),nchannels);
         }
         
         /**
@@ -80,7 +89,7 @@ namespace RavEngine{
          @note This function uses stack space decided at runtime. Be aware of the potential consequences of this.
          */
         template<typename Func_t>
-        void Render(InterleavedSampleBuffer outputBuffer, Func_t&& func, uint8_t nchannels){
+        void Render(InterleavedSampleBufferView outputBuffer, Func_t&& func, uint8_t nchannels){
             func(outputBuffer);
             Render(outputBuffer, nchannels);
         }
@@ -92,7 +101,7 @@ namespace RavEngine{
          @param func user function which will be invoked to provide samples.
          */
         template<typename Func_t>
-        void Render(InterleavedSampleBuffer outputBuffer, InterleavedSampleBuffer intermediateBuffer, Func_t&& func, uint8_t nchannels){
+        void Render(InterleavedSampleBufferView outputBuffer, InterleavedSampleBufferView intermediateBuffer, Func_t&& func, uint8_t nchannels){
             func(outputBuffer);
             Render(outputBuffer,intermediateBuffer, nchannels);
         }

@@ -10,7 +10,7 @@ AudioGraphAsset::AudioGraphAsset(const lab::AudioStreamConfig& config, uint8_t n
 {
 }
 
-void AudioGraphAsset::Render(InterleavedSampleBuffer& inout, InterleavedSampleBuffer& scratchBuffer, uint8_t nchannels){
+void AudioGraphAsset::Render(InterleavedSampleBufferView& inout, InterleavedSampleBufferView& scratchBuffer, uint8_t nchannels){
     assert(this->nchannels == nchannels);
     
     //TODO: setchannelmemory for input and output
@@ -23,7 +23,7 @@ void AudioGraphAsset::Render(InterleavedSampleBuffer& inout, InterleavedSampleBu
 }
 
 
-void AudioGraphComposed::renderImpl(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer, uint8_t nchannels){
+void AudioGraphComposed::renderImpl(InterleavedSampleBufferView inputSamples, InterleavedSampleBufferView intermediateBuffer, uint8_t nchannels){
     if (effectGraph){
         effectGraph->Render(inputSamples, intermediateBuffer, nchannels);
     }

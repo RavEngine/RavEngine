@@ -44,7 +44,7 @@ public:
         synthesizer.setSampleQuality(mode, quality);
     }
     
-    void Render(float** scratchBuffer, size_t size, InterleavedSampleBuffer output, uint8_t nchannels);
+    void Render(float** scratchBuffer, size_t size, InterleavedSampleBufferView output, uint8_t nchannels);
 };
 
 /**
@@ -87,13 +87,13 @@ public:
     /**
      For internal use only. Use Render()
      */
-    void RenderMonoBuffer1024OrLess(InterleavedSampleBuffer out_buffer);
+    void RenderMonoBuffer1024OrLess(InterleavedSampleBufferView out_buffer);
     
     /**
      Render the state of the player to the provided buffer
      @param out_buffer the buffer to write to
      */
-    void RenderMono(InterleavedSampleBuffer out_buffer);
+    void RenderMono(InterleavedSampleBufferView out_buffer);
     
     auto GetVolume() const{
         return volume;

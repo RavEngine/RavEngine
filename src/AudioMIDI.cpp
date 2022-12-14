@@ -149,15 +149,15 @@ void AudioMIDIPlayer::SetMidi(const decltype(midiSMF)& midiFile){
     finishedCurrent = false;
 }
 
-void InstrumentSynth::Render(float** scratchBuffer, size_t size, InterleavedSampleBuffer output, uint8_t nchannels){
+void InstrumentSynth::Render(float** scratchBuffer, size_t size, InterleavedSampleBufferView output, uint8_t nchannels){
     //TODO: respect nchannels
     synthesizer.renderBlock(scratchBuffer, size);
-    InterleavedSampleBuffer proc_input(scratchBuffer[0],size);
+    InterleavedSampleBufferView proc_input(scratchBuffer[0],size);
     AudioGraphComposed::Render(proc_input, nchannels);
     AdditiveBlendSamples(output, proc_input);
 }
 
-void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(InterleavedSampleBuffer out_buffer){
+void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(InterleavedSampleBufferView out_buffer){
     
     if (!isPlaying){
         return;
@@ -182,15 +182,15 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(InterleavedSampleBuffer out_buf
     
     // apply any effect graphs
     // re-use tempbufferL
-    AudioGraphComposed::Render(out_buffer, InterleavedSampleBuffer(tempbufferL,out_buffer.size()),1);
+    AudioGraphComposed::Render(out_buffer, InterleavedSampleBufferView(tempbufferL,out_buffer.size()),1);
 }
 
-void AudioMIDIPlayer::RenderMono(InterleavedSampleBuffer out_buffer){
+void AudioMIDIPlayer::RenderMono(InterleavedSampleBufferView out_buffer){
     constexpr uint32_t blockSize = 1024;
     
     uint64_t next = blockSize;
     for(uint64_t numFramesWritten { 0 };  numFramesWritten < out_buffer.size() && !finishedCurrent; numFramesWritten += next){
-        RenderMonoBuffer1024OrLess(InterleavedSampleBuffer(out_buffer.data()+numFramesWritten,next));
+        RenderMonoBuffer1024OrLess(InterleavedSampleBufferView(out_buffer.data()+numFramesWritten,next));
         next = std::min<size_t>(blockSize, out_buffer.size() - numFramesWritten);
     }
 }
@@ -210,7 +210,7 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const Ref<fmidi_smf_t>& file, AudioMID
     const size_t totalSamples = duration * AudioPlayer::GetSamplesPerSec();
     auto assetData = new float[totalSamples]{0};
     
-    player.RenderMono(InterleavedSampleBuffer(assetData,totalSamples));
+    player.RenderMono(InterleavedSampleBufferView(assetData,totalSamples));
   
     auto asset = New<AudioAsset>(assetData,totalSamples,1);
     return asset;
