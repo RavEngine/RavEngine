@@ -14,6 +14,7 @@ using namespace std;
 Ref<AudioPlayerData> AudioPlayer::silence;
 
 STATIC(AudioPlayer::SamplesPerSec);
+STATIC(AudioPlayer::nchannels);
 
 template<typename T>
 inline static void TMemset(T* data, T value, size_t nData){
@@ -47,10 +48,10 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     const auto buffers_size = len / sizeof(float);
     stackarray(shared_buffer, float, buffers_size);
     stackarray(effect_scratch_buffer, float, buffers_size);
-    InterleavedSampleBuffer sharedBufferView(shared_buffer,buffers_size);
-    InterleavedSampleBuffer effectScratchBuffer(effect_scratch_buffer, buffers_size);
+    InterleavedSampleBufferView sharedBufferView(shared_buffer,buffers_size);
+    InterleavedSampleBufferView effectScratchBuffer(effect_scratch_buffer, buffers_size);
     float* accum_buffer = reinterpret_cast<float*>(stream);
-    InterleavedSampleBuffer accumView{accum_buffer,buffers_size};
+    InterleavedSampleBufferView accumView{accum_buffer,buffers_size};
     
     // fill temp buffer with 0s
     const auto resetShared = [sharedBufferView]{
@@ -71,8 +72,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     auto num = SnapshotToRender->midiPointPlayers.size();
     for(const auto& midiplayer : SnapshotToRender->midiPointPlayers){
         resetShared();
-        //TODO: no divide by 2 here, use number of channels in audio player config
-        midiplayer->RenderMono(InterleavedSampleBuffer(shared_buffer,buffers_size/2));
+        midiplayer->RenderMono(InterleavedSampleBufferView(shared_buffer,buffers_size/nchannels));
         
         //TODO: this is not very efficient
         for (const auto& r : SnapshotToRender->rooms) {
@@ -121,7 +121,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
 
     // run the graph on the listener, if present
     if (SnapshotToRender->listenerGraph){
-        SnapshotToRender->listenerGraph->Render(accumView, effectScratchBuffer);
+        SnapshotToRender->listenerGraph->Render(accumView, effectScratchBuffer, nchannels);
     }
     
     //clipping: clamp all values to [-1,1]
@@ -159,7 +159,7 @@ void AudioPlayer::Init(){
 	}
     
     SamplesPerSec = have.freq;
-    
+    nchannels = have.channels;
 	
 	if (!silence){
         float* data = new float[have.samples]{0};

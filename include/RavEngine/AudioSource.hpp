@@ -75,7 +75,7 @@ struct AudioPlayerData {
          If the next region is shorter than the remaining space in the buffer, that space is filled with 0.
          @param buffer output destination
          */
-        inline void GetSampleRegionAndAdvance(InterleavedSampleBuffer& buffer, InterleavedSampleBuffer& scratchSpace){
+        inline void GetSampleRegionAndAdvance(InterleavedSampleBufferView& buffer, InterleavedSampleBufferView& scratchSpace){
             for(size_t i = 0; i < buffer.size(); i++){
                 //is playhead past end of source?
                 if (playhead_pos >= asset->numsamples){
@@ -91,7 +91,7 @@ struct AudioPlayerData {
                 buffer[i] = asset->audiodata[playhead_pos] * volume;
                 playhead_pos++;
             }
-            AudioGraphComposed::Render(buffer,scratchSpace);
+            AudioGraphComposed::Render(buffer,scratchSpace, asset->GetNChanels());
         }
     };
 protected:

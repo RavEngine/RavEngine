@@ -16,6 +16,7 @@ class AudioPlayer{
 	static Ref<AudioPlayerData> silence;
     
     static uint32_t SamplesPerSec;
+    static uint8_t nchannels;
     
 public:
 	/**
@@ -37,6 +38,10 @@ public:
     
     const static auto GetSamplesPerSec() {
         return SamplesPerSec;
+    }
+    
+    const static auto GetNChannels(){
+        return nchannels;
     }
 	
 	/**
