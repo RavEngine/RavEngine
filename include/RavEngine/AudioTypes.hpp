@@ -12,6 +12,23 @@ namespace RavEngine{
      */
     using InterleavedSampleBuffer = std::span<float,std::dynamic_extent>;
 
+    /**
+     Represents audio samples in planar (separated buffers) format.
+     Each item in the vector represents a single channels's worth of audio samples
+     */
+    class PlanarSampleBuffer{
+        std::vector<std::span<float,std::dynamic_extent>> buffers;
+    public:
+        PlanarSampleBuffer(uint8_t nchannels) : buffers(nchannels){}
+        auto& operator[](size_t i)
+        {
+            return buffers[i];
+        }
+        const auto& operator[](size_t i) const{
+            return buffers[i];
+        }
+    };
+
 
     inline void AdditiveBlendSamples(InterleavedSampleBuffer A, const InterleavedSampleBuffer B){
         auto bounds = std::min(A.size(),A.size());

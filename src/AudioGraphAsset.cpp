@@ -2,13 +2,18 @@
 
 using namespace RavEngine;
 
-AudioGraphAsset::AudioGraphAsset(const lab::AudioStreamConfig& config) : audioContext(lab::MakeOfflineAudioContext(config)){
-    
+AudioGraphAsset::AudioGraphAsset(const lab::AudioStreamConfig& config, uint8_t nchannels) :
+    audioContext(lab::MakeOfflineAudioContext(config)),
+    outputBus(std::make_shared<lab::AudioBus>(nchannels,0,false)),  // we will give it the input data and size when it's time to render
+    inputBus(std::make_shared<lab::AudioBus>(nchannels,0, false)),
+    nchannels(nchannels)
+{
 }
 
 void AudioGraphAsset::Render(InterleavedSampleBuffer& inout, InterleavedSampleBuffer& scratchBuffer, uint8_t nchannels){
-    //TODO: set output destination buffer as scratchBuffer
-    //TODO: set input buffer as inout
+    assert(this->nchannels == nchannels);
+    
+    //TODO: setchannelmemory for input and output
     
     audioContext.process(inout.size());
     

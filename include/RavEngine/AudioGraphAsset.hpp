@@ -7,9 +7,11 @@ namespace RavEngine{
 class AudioGraphAsset{
     
     lab::OfflineContext audioContext;
+    std::shared_ptr<lab::AudioBus> inputBus, outputBus;
+    uint8_t nchannels = 0;
     
 public:
-    AudioGraphAsset(const lab::AudioStreamConfig& config);
+    AudioGraphAsset(const lab::AudioStreamConfig& config, uint8_t nchannels);
     
     /**
      Render the graph given input samples
