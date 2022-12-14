@@ -6,7 +6,7 @@ AudioGraphAsset::AudioGraphAsset(const lab::AudioStreamConfig& config) : audioCo
     
 }
 
-void AudioGraphAsset::Render(InterleavedSampleBuffer& inout, InterleavedSampleBuffer& scratchBuffer){
+void AudioGraphAsset::Render(InterleavedSampleBuffer& inout, InterleavedSampleBuffer& scratchBuffer, uint8_t nchannels){
     //TODO: set output destination buffer as scratchBuffer
     //TODO: set input buffer as inout
     
@@ -18,8 +18,8 @@ void AudioGraphAsset::Render(InterleavedSampleBuffer& inout, InterleavedSampleBu
 }
 
 
-void AudioGraphComposed::renderImpl(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer){
+void AudioGraphComposed::renderImpl(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer, uint8_t nchannels){
     if (effectGraph){
-        effectGraph->Render(inputSamples, intermediateBuffer);
+        effectGraph->Render(inputSamples, intermediateBuffer, nchannels);
     }
 }

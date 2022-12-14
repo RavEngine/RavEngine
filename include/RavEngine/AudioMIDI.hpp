@@ -44,7 +44,7 @@ public:
         synthesizer.setSampleQuality(mode, quality);
     }
     
-    void Render(float** scratchBuffer, size_t size, InterleavedSampleBuffer output);
+    void Render(float** scratchBuffer, size_t size, InterleavedSampleBuffer output, uint8_t nchannels);
 };
 
 /**

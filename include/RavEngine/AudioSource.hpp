@@ -91,7 +91,7 @@ struct AudioPlayerData {
                 buffer[i] = asset->audiodata[playhead_pos] * volume;
                 playhead_pos++;
             }
-            AudioGraphComposed::Render(buffer,scratchSpace);
+            AudioGraphComposed::Render(buffer,scratchSpace, asset->GetNChanels());
         }
     };
 protected:

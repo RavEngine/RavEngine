@@ -25,7 +25,7 @@ namespace RavEngine{
     struct AudioGraphComposed{
         using effect_graph_ptr_t = Ref<AudioGraphAsset>;
     private:
-        void renderImpl(InterleavedSampleBuffer inputBuffer, InterleavedSampleBuffer scratchBuffer);
+        void renderImpl(InterleavedSampleBuffer inputBuffer, InterleavedSampleBuffer scratchBuffer, uint8_t nchannels);
         effect_graph_ptr_t effectGraph;
     public:
         
@@ -42,8 +42,8 @@ namespace RavEngine{
          @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
          @param intermediateBuffer memory of equal size to inputSamples to store intermediate data. Assumed to be zero-filled.
          */
-        void Render(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer){
-            renderImpl(inputSamples, intermediateBuffer);
+        void Render(InterleavedSampleBuffer inputSamples, InterleavedSampleBuffer intermediateBuffer, uint8_t nchannels){
+            renderImpl(inputSamples, intermediateBuffer, nchannels);
         }
         
         /**
@@ -51,9 +51,9 @@ namespace RavEngine{
          @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
          @note This function uses stack space decided at runtime. Be aware of the potential consequences of this.
          */
-        void Render(InterleavedSampleBuffer inputSamples){
+        void Render(InterleavedSampleBuffer inputSamples, uint8_t nchannels){
             stackarray(intermediatebuffer, InterleavedSampleBuffer::value_type, inputSamples.size());
-            Render(inputSamples,InterleavedSampleBuffer(intermediatebuffer,inputSamples.size()));
+            Render(inputSamples,InterleavedSampleBuffer(intermediatebuffer,inputSamples.size()),nchannels);
         }
         
         /**
@@ -63,9 +63,9 @@ namespace RavEngine{
          @note This function uses stack space decided at runtime. Be aware of the potential consequences of this.
          */
         template<typename Func_t>
-        void Render(InterleavedSampleBuffer outputBuffer, Func_t&& func){
+        void Render(InterleavedSampleBuffer outputBuffer, Func_t&& func, uint8_t nchannels){
             func(outputBuffer);
-            Render(outputBuffer);
+            Render(outputBuffer, nchannels);
         }
         
         /**
@@ -75,9 +75,9 @@ namespace RavEngine{
          @param func user function which will be invoked to provide samples.
          */
         template<typename Func_t>
-        void Render(InterleavedSampleBuffer outputBuffer, InterleavedSampleBuffer intermediateBuffer, Func_t&& func){
+        void Render(InterleavedSampleBuffer outputBuffer, InterleavedSampleBuffer intermediateBuffer, Func_t&& func, uint8_t nchannels){
             func(outputBuffer);
-            Render(outputBuffer,intermediateBuffer);
+            Render(outputBuffer,intermediateBuffer, nchannels);
         }
     };
 }

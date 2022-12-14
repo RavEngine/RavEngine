@@ -3,6 +3,7 @@
 #include "AudioSource.hpp"
 #include "DataStructures.hpp"
 #include "Transform.hpp"
+#include "AudioPlayer.hpp"
 
 #include "mathtypes.hpp"
 #include <common/room_effects_utils.h>
@@ -50,8 +51,7 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 	if (source->isPlaying){
 		
 		//get appropriate area in source's buffer if it is playing
-        //TODO: don't divide by hardcoded 2, use the number of channels configured by the audio player
-        const auto stackarr_size = nbytes/sizeof(float)/2;
+        const auto stackarr_size = nbytes/sizeof(float)/AudioPlayer::GetNChannels();
 		stackarray(temp, float, stackarr_size);
         InterleavedSampleBuffer view(temp, nbytes/2/sizeof(InterleavedSampleBuffer::value_type));
 		source->GetSampleRegionAndAdvance(view, effectScratchBuffer);
@@ -61,9 +61,9 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 }
 
 void AudioRoom::RoomData::Simulate(InterleavedSampleBuffer buffer){
-    //TODO: don't hardcode 2, here, use the number of channels configured by the audio player
-	audioEngine->FillInterleavedOutputBuffer(2, buffer.size()/2, buffer.data());
-    AudioGraphComposed::Render(buffer); // process graph
+    auto nchannels = AudioPlayer::GetNChannels();
+	audioEngine->FillInterleavedOutputBuffer(nchannels, buffer.size()/nchannels, buffer.data());
+    AudioGraphComposed::Render(buffer,nchannels); // process graph
 	
 	// destroy sources
 	for(const auto& source : allSources){

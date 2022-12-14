@@ -149,10 +149,11 @@ void AudioMIDIPlayer::SetMidi(const decltype(midiSMF)& midiFile){
     finishedCurrent = false;
 }
 
-void InstrumentSynth::Render(float** scratchBuffer, size_t size, InterleavedSampleBuffer output){
+void InstrumentSynth::Render(float** scratchBuffer, size_t size, InterleavedSampleBuffer output, uint8_t nchannels){
+    //TODO: respect nchannels
     synthesizer.renderBlock(scratchBuffer, size);
     InterleavedSampleBuffer proc_input(scratchBuffer[0],size);
-    AudioGraphComposed::Render(proc_input);
+    AudioGraphComposed::Render(proc_input, nchannels);
     AdditiveBlendSamples(output, proc_input);
 }
 
@@ -176,12 +177,12 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(InterleavedSampleBuffer out_buf
     
     // render all the instruments and then add into the out_buffer
     for(auto& instrument : instrumentTrackMap){
-        instrument.instrument->Render(buffers, out_buffer.size(), out_buffer);
+        instrument.instrument->Render(buffers, out_buffer.size(), out_buffer, 1);
     }
     
     // apply any effect graphs
     // re-use tempbufferL
-    AudioGraphComposed::Render(out_buffer, InterleavedSampleBuffer(tempbufferL,out_buffer.size()));
+    AudioGraphComposed::Render(out_buffer, InterleavedSampleBuffer(tempbufferL,out_buffer.size()),1);
 }
 
 void AudioMIDIPlayer::RenderMono(InterleavedSampleBuffer out_buffer){
