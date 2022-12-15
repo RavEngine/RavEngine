@@ -19,7 +19,7 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 	string path = StrFormat("/sounds/{}", name);
 	auto datavec = GetApp()->GetResources().FileContentsAt<std::vector<uint8_t>>(path.c_str(),false);    // the extra arg signals not to null terminate the file data
 	
-	const int desiredSampleRate = 44100;
+	const int desiredSampleRate = AudioPlayer::GetSamplesPerSec();
 	
 	nqr::NyquistIO loader;
 	auto file_ext = Filesystem::Path(path).extension().string().substr(1);
@@ -64,6 +64,7 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 			nqr::MonoToStereo(data.samples.data(),newSamples.data(), data.samples.size());
 			data.samples = newSamples;
 		}
+        // stereo -> mono
 		else if (desired_channels == 1 && data.channelCount == 2) {
 			decltype(data.samples) newSamples(data.samples.size() / 2);
 			nqr::StereoToMono(data.samples.data(), newSamples.data(), data.samples.size());
@@ -81,11 +82,16 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 
 	
 	lengthSeconds = data.lengthSeconds;
-	frameSize = data.frameSize;
-	numsamples = data.samples.size();
+	numsamplesOneChannel = data.samples.size() / nchannels;
 	
-	audiodata = new float[data.samples.size()];
-	std::memcpy((void*)audiodata, &data.samples[0], data.samples.size() * sizeof(data.samples[0]));
+    audiodata = new float[data.samples.size()]{0};
+    
+    // convert to planar representation
+    PlanarSampleBufferInlineView planarRep{const_cast<float*>(audiodata),data.samples.size(),data.samples.size() / nchannels};
+    for(size_t i = 0; i < planarRep.size(); i++){
+        planarRep[i % nchannels][i/planarRep.sizeOneChannel()] = data.samples[i];
+    }
+    this->data = planarRep;
 }
 
 AudioAsset::~AudioAsset(){

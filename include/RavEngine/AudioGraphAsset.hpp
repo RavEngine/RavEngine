@@ -20,7 +20,7 @@ public:
      @param nchannels the number of channels in the buffers
      @post inout will be swapped with scratchBuffer. This is why they are passed by reference.
      */
-    void Render(InterleavedSampleBufferView& inout, InterleavedSampleBufferView& scratchBuffer, uint8_t nchannels);
+    void Render(PlanarSampleBufferInlineView& inout, PlanarSampleBufferInlineView& scratchBuffer, uint8_t nchannels);
     
     decltype(audioContext.context)& GetContext(){
         return audioContext.context;

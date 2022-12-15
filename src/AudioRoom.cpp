@@ -47,22 +47,30 @@ void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, cons
     audioEngine->SetSourceRoomEffectsGain(src, gain);
 }
 
-void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nbytes, InterleavedSampleBufferView& effectScratchBuffer){
+void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nbytes, PlanarSampleBufferInlineView& effectScratchBuffer){
 	if (source->isPlaying){
 		
 		//get appropriate area in source's buffer if it is playing
+#error stackarr_size is wrong
         const auto stackarr_size = nbytes/sizeof(float)/AudioPlayer::GetNChannels();
 		stackarray(temp, float, stackarr_size);
-        InterleavedSampleBufferView view(temp, nbytes/2/sizeof(InterleavedSampleBufferView::value_type));
+        PlanarSampleBufferInlineView view{temp,stackarr_size,stackarr_size};    // size of 1 frame = nframes for mono audio
 		source->GetSampleRegionAndAdvance(view, effectScratchBuffer);
 		
         AddEmitter(temp, pos, rot, roompos, roomrot, std::hash<decltype(source)>()(source), source->volume);
 	}
 }
 
-void AudioRoom::RoomData::Simulate(InterleavedSampleBufferView buffer){
+void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView buffer){
     auto nchannels = AudioPlayer::GetNChannels();
-	audioEngine->FillInterleavedOutputBuffer(nchannels, buffer.size()/nchannels, buffer.data());
+    
+    // convert to an array of pointers for Resonance
+    stackarray(allchannelptrs, float*, nchannels);
+    for(uint8_t i = 0; i < nchannels; i++){
+        allchannelptrs[i] = buffer[i].data();
+    }
+    
+    audioEngine->FillPlanarOutputBuffer(nchannels, buffer.sizeOneChannel(), allchannelptrs);
     AudioGraphComposed::Render(buffer,nchannels); // process graph
 	
 	// destroy sources

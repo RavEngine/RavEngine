@@ -15,10 +15,10 @@ class AudioAsset{
 private:
 	const float* audiodata;
 	double lengthSeconds = 0;
-	size_t numsamples = 0;
-	size_t frameSize = 0;
+	size_t numsamplesOneChannel = 0;      // number of samples in one channel, not whole data size
 	uint8_t nchannels = 0;
 public:
+    PlanarSampleBufferInlineView data;
 	/**
 	 Construct an AudioAsset given a file path. The AudioAsset will decode the audio into samples.
 	 @param name the file name to load
@@ -32,11 +32,13 @@ public:
 	 @param n_samples the number of samples in the buffer. This number is not sanity-checked.
 	 @param nchannels the number of channels in the buffer. This number is not sanity-checked.
 	 */
-	AudioAsset(const float* data, size_t n_samples, decltype(nchannels) nchannels) : numsamples(n_samples), nchannels(nchannels), audiodata(data){}
+	AudioAsset(const float* data, size_t n_samples, decltype(nchannels) nchannels) : numsamplesOneChannel(n_samples), nchannels(nchannels), audiodata(data){
+        //TODO: fix
+        Debug::Fatal("TODO - does not handle planar audio");
+    }
 	
 	~AudioAsset();
 	
-	inline size_t GetFrameSize() const {return frameSize;}
 	inline double GetLength() const {return lengthSeconds;}
 	inline decltype(nchannels) GetNChanels() const {
 		return nchannels;
@@ -47,7 +49,7 @@ public:
     }
     
     inline auto GetNumSamples() const{
-        return numsamples;
+        return numsamplesOneChannel;
     }
 };
 
@@ -75,20 +77,27 @@ struct AudioPlayerData {
          If the next region is shorter than the remaining space in the buffer, that space is filled with 0.
          @param buffer output destination
          */
-        inline void GetSampleRegionAndAdvance(InterleavedSampleBufferView& buffer, InterleavedSampleBufferView& scratchSpace){
-            for(size_t i = 0; i < buffer.size(); i++){
+        inline void GetSampleRegionAndAdvance(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace){
+            assert(buffer.GetNChannels() == asset->nchannels);  // you are trying to do something that doesn't make sense!!
+            for(size_t i = 0; i < buffer.sizeOneChannel(); i++){
                 //is playhead past end of source?
-                if (playhead_pos >= asset->numsamples){
+                if (playhead_pos >= asset->numsamplesOneChannel){
                     if (loops){
                         playhead_pos = 0;
                     }
                     else{
-                        buffer[i] = 0;
+#pragma omp simd
+                        for(uint8_t c = 0; c < asset->nchannels; c++){
+                            buffer[c][i] = 0;
+                        }
                         isPlaying = false;
                         continue;
                     }
                 }
-                buffer[i] = asset->audiodata[playhead_pos] * volume;
+#pragma omp simd
+                for(uint8_t c = 0; c < asset->nchannels; c++){
+                    buffer[c][i] = asset->data[c][playhead_pos] * volume;
+                }
                 playhead_pos++;
             }
             AudioGraphComposed::Render(buffer,scratchSpace, asset->GetNChanels());

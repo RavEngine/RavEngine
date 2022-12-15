@@ -58,11 +58,11 @@ public:
          @param roomrot the worldspace rotation of the room
          @param nbytes number of bytes to get from the source
          */
-        void AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nbytes, InterleavedSampleBufferView& effectScratchBuffer);
+        void AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nbytes, PlanarSampleBufferInlineView& effectScratchBuffer);
         
         /**
          Add an emitter for this simulation from arbitrary data
-         @param data the data buffer to pass. Must be AudioRoom::NFRAMES in length (not bytes!)
+         @param data the data buffer to pass. Must be AudioRoom::NFRAMES in length and represent MONO audio
          @param pos location to play at
          @param rot rotation of the emitter
          @param roompos the worldspace location of the room
@@ -92,7 +92,7 @@ public:
          Simulate spacial audio for a set of audio sources
          @param buffer destination for the calculated audio
          */
-        void Simulate(InterleavedSampleBufferView buffer);
+        void Simulate(PlanarSampleBufferInlineView buffer);
         
         RoomData() : audioEngine(vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100)){}
         ~RoomData(){

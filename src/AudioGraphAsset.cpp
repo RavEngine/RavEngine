@@ -10,12 +10,15 @@ AudioGraphAsset::AudioGraphAsset(const lab::AudioStreamConfig& config, uint8_t n
 {
 }
 
-void AudioGraphAsset::Render(InterleavedSampleBufferView& inout, InterleavedSampleBufferView& scratchBuffer, uint8_t nchannels){
+void AudioGraphAsset::Render(PlanarSampleBufferInlineView& inout, PlanarSampleBufferInlineView& scratchBuffer, uint8_t nchannels){
     assert(this->nchannels == nchannels);
     
-    //TODO: setchannelmemory for input and output
+    for (decltype(nchannels) i = 0; i < nchannels; i++){
+        inputBus->setChannelMemory(i, inout[i].data(), inout.sizeOneChannel());
+        outputBus->setChannelMemory(i, scratchBuffer[i].data(), scratchBuffer.sizeOneChannel());
+    }
     
-    audioContext.process(inout.size());
+    audioContext.process(inout.sizeOneChannel());
     
     //inout will now have the results of processing
     std::swap(inout, scratchBuffer);
@@ -23,7 +26,7 @@ void AudioGraphAsset::Render(InterleavedSampleBufferView& inout, InterleavedSamp
 }
 
 
-void AudioGraphComposed::renderImpl(InterleavedSampleBufferView inputSamples, InterleavedSampleBufferView intermediateBuffer, uint8_t nchannels){
+void AudioGraphComposed::renderImpl(PlanarSampleBufferInlineView inputSamples, PlanarSampleBufferInlineView intermediateBuffer, uint8_t nchannels){
     if (effectGraph){
         effectGraph->Render(inputSamples, intermediateBuffer, nchannels);
     }
