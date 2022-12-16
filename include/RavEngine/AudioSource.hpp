@@ -15,7 +15,6 @@ class AudioAsset{
 private:
 	const float* audiodata;
 	double lengthSeconds = 0;
-	size_t numsamplesOneChannel = 0;      // number of samples in one channel, not whole data size
 	uint8_t nchannels = 0;
 public:
     PlanarSampleBufferInlineView data;
@@ -32,9 +31,10 @@ public:
 	 @param n_samples the number of samples in the buffer. This number is not sanity-checked.
 	 @param nchannels the number of channels in the buffer. This number is not sanity-checked.
 	 */
-	AudioAsset(const float* data, size_t n_samples, decltype(nchannels) nchannels) : numsamplesOneChannel(n_samples), nchannels(nchannels), audiodata(data){
-        //TODO: fix
-        Debug::Fatal("TODO - does not handle planar audio");
+	AudioAsset(InterleavedSampleBufferView interleavedData, decltype(nchannels) nchannels) : nchannels(nchannels){
+		audiodata = new float[nchannels] {0};
+		data = PlanarSampleBufferInlineView{const_cast<float*>(audiodata),interleavedData.size(),nchannels };
+		data.ImportInterleavedData(interleavedData, nchannels);
     }
 	
 	~AudioAsset();
@@ -49,7 +49,7 @@ public:
     }
     
     inline auto GetNumSamples() const{
-        return numsamplesOneChannel;
+        return data.sizeOneChannel();
     }
 };
 
@@ -78,10 +78,11 @@ struct AudioPlayerData {
          @param buffer output destination
          */
         inline void GetSampleRegionAndAdvance(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace){
+			const auto nsamples = asset->GetNumSamples();
             assert(buffer.GetNChannels() == asset->nchannels);  // you are trying to do something that doesn't make sense!!
             for(size_t i = 0; i < buffer.sizeOneChannel(); i++){
                 //is playhead past end of source?
-                if (playhead_pos >= asset->numsamplesOneChannel){
+                if (playhead_pos >= nsamples){
                     if (loops){
                         playhead_pos = 0;
                     }

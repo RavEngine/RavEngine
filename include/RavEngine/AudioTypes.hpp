@@ -60,6 +60,18 @@ namespace RavEngine{
         auto sizeOneChannel() const{
             return sizeOfOneChannelInFrames;
         }
+
+        /**
+        * Copy interleaved data into a planar representation
+        * @param interleaved the source buffer
+        */
+        void ImportInterleavedData(InterleavedSampleBufferView interleaved, uint8_t nchannels) {
+            sizeOfOneChannelInFrames = interleaved.size() / nchannels;
+#pragma omp simd
+            for (size_t i = 0; i < interleaved.size(); i++) {
+                (*this)[i % nchannels][i / this->sizeOneChannel()] = interleaved[i];
+            }
+        }
     };
 
     inline void AdditiveBlendSamples(InterleavedSampleBufferView A, const InterleavedSampleBufferView B){

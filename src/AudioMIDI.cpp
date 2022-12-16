@@ -213,7 +213,7 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const Ref<fmidi_smf_t>& file, AudioMID
     
     player.RenderMono(PlanarSampleBufferInlineView(assetData,totalSamples,totalSamples));
   
-    auto asset = New<AudioAsset>(assetData,totalSamples,1);
+    auto asset = New<AudioAsset>(InterleavedSampleBufferView{ assetData,totalSamples }, 1);
     return asset;
 }
 

@@ -82,15 +82,12 @@ AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_chan
 
 	
 	lengthSeconds = data.lengthSeconds;
-	numsamplesOneChannel = data.samples.size() / nchannels;
 	
     audiodata = new float[data.samples.size()]{0};
     
     // convert to planar representation
     PlanarSampleBufferInlineView planarRep{const_cast<float*>(audiodata),data.samples.size(),data.samples.size() / nchannels};
-    for(size_t i = 0; i < planarRep.size(); i++){
-        planarRep[i % nchannels][i/planarRep.sizeOneChannel()] = data.samples[i];
-    }
+	planarRep.ImportInterleavedData(InterleavedSampleBufferView{data.samples.data(),data.samples.size()}, nchannels);
     this->data = planarRep;
 }
 

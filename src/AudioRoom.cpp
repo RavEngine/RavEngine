@@ -47,12 +47,11 @@ void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, cons
     audioEngine->SetSourceRoomEffectsGain(src, gain);
 }
 
-void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nbytes, PlanarSampleBufferInlineView& effectScratchBuffer){
+void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nframes, PlanarSampleBufferInlineView& effectScratchBuffer){
 	if (source->isPlaying){
 		
 		//get appropriate area in source's buffer if it is playing
-#error stackarr_size is wrong
-        const auto stackarr_size = nbytes/sizeof(float)/AudioPlayer::GetNChannels();
+        const auto stackarr_size = nframes;
 		stackarray(temp, float, stackarr_size);
         PlanarSampleBufferInlineView view{temp,stackarr_size,stackarr_size};    // size of 1 frame = nframes for mono audio
 		source->GetSampleRegionAndAdvance(view, effectScratchBuffer);

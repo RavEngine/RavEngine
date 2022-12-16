@@ -17,6 +17,8 @@ class AudioPlayer{
     
     static uint32_t SamplesPerSec;
     static uint8_t nchannels;
+
+	void Tick(Uint8*, int);
     
 public:
 	/**
@@ -47,7 +49,7 @@ public:
 	/**
 	 Tick function, used internally
 	 */
-	static void Tick(void *udata, Uint8 *stream, int len);
+	static void TickStatic(void *udata, Uint8 *stream, int len);
 };
 
 }
