@@ -18,6 +18,9 @@ limitations under the License.
 #define RESONANCE_AUDIO_BASE_CONSTANTS_AND_TYPES_H_
 
 #include <cmath>
+#if _WIN32
+#define M_PI 3.14159265358979323846
+#endif
 #include <string>  // for size_t
 
 namespace vraudio {

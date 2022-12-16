@@ -7,11 +7,6 @@
 #include "CTTI.hpp"
 #include <iostream>
 
-//needed on windows
-#ifndef M_PI
-#define M_PI RavEngine::PI
-#endif
-
 //defines the vector and quaternion types
 //can change these to 32 bit float instead of 64 bit
 
