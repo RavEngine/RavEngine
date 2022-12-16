@@ -186,11 +186,11 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView ou
 }
 
 void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView out_buffer){
-    assert(out_buffer.GetNChannels() == 1);
     constexpr uint32_t blockSize = 1024;
-    
+    // treat the buffer as though it were mono even if it has additional space
     uint64_t next = blockSize;
-    for(uint64_t numFramesWritten { 0 };  numFramesWritten < out_buffer.size() && !finishedCurrent; numFramesWritten += next){
+	auto maxsamples = out_buffer.size() / out_buffer.GetNChannels() ;
+    for(uint64_t numFramesWritten { 0 };  numFramesWritten < maxsamples && !finishedCurrent; numFramesWritten += next){
         RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView(out_buffer[0].data()+numFramesWritten,next,next));
         next = std::min<size_t>(blockSize, out_buffer.size() - numFramesWritten);
     }
