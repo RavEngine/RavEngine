@@ -48,8 +48,8 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     const auto buffers_size = len / sizeof(float);
     stackarray(shared_buffer, float, buffers_size);
     stackarray(effect_scratch_buffer, float, buffers_size);
-    InterleavedSampleBufferView sharedBufferView(shared_buffer,buffers_size);
-    InterleavedSampleBufferView effectScratchBuffer(effect_scratch_buffer, buffers_size);
+    PlanarSampleBufferInlineView sharedBufferView(shared_buffer,buffers_size,buffers_size/GetNChannels());
+    PlanarSampleBufferInlineView effectScratchBuffer(effect_scratch_buffer, buffers_size,buffers_size/GetNChannels());
     float* accum_buffer = reinterpret_cast<float*>(stream);
     InterleavedSampleBufferView accumView{accum_buffer,buffers_size};
     
@@ -72,7 +72,7 @@ void AudioPlayer::Tick(void *udata, Uint8 *stream, int len){
     auto num = SnapshotToRender->midiPointPlayers.size();
     for(const auto& midiplayer : SnapshotToRender->midiPointPlayers){
         resetShared();
-        midiplayer->RenderMono(InterleavedSampleBufferView(shared_buffer,buffers_size/nchannels));
+        midiplayer->RenderMono(sharedBufferView);
         
         //TODO: this is not very efficient
         for (const auto& r : SnapshotToRender->rooms) {

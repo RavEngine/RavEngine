@@ -49,6 +49,11 @@ namespace RavEngine{
         auto size() const{
             return combined_buffers.size();
         }
+        
+        auto data() {
+            return combined_buffers.data();
+        }
+        
         /**
          @return the size of a single channel, in frames
          */
