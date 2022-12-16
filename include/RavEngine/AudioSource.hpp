@@ -32,7 +32,7 @@ public:
 	 @param nchannels the number of channels in the buffer. This number is not sanity-checked.
 	 */
 	AudioAsset(InterleavedSampleBufferView interleavedData, decltype(nchannels) nchannels) : nchannels(nchannels){
-		audiodata = new float[nchannels] {0};
+		audiodata = interleavedData.data();
 		data = PlanarSampleBufferInlineView{const_cast<float*>(audiodata),interleavedData.size(),nchannels };
 		data.ImportInterleavedData(interleavedData, nchannels);
     }

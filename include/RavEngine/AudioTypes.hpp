@@ -22,7 +22,9 @@ namespace RavEngine{
         size_t sizeOfOneChannelInFrames = 0;
         
         auto channel_at(size_t i) const{
-            return decltype(combined_buffers)(combined_buffers.data()+(i*sizeOfOneChannelInFrames),sizeOfOneChannelInFrames);
+			auto ptr = combined_buffers.data()+(i*sizeOfOneChannelInFrames);
+			decltype(combined_buffers) retview{ptr,sizeOfOneChannelInFrames};
+			return retview;
         }
         
     public:
@@ -69,7 +71,8 @@ namespace RavEngine{
             sizeOfOneChannelInFrames = interleaved.size() / nchannels;
 #pragma omp simd
             for (size_t i = 0; i < interleaved.size(); i++) {
-                (*this)[i % nchannels][i / this->sizeOneChannel()] = interleaved[i];
+				auto view = (*this)[i % nchannels];
+                view[i % sizeOfOneChannelInFrames] = interleaved[i];
             }
         }
     };

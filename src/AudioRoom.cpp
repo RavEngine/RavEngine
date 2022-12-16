@@ -53,6 +53,7 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 		//get appropriate area in source's buffer if it is playing
         const auto stackarr_size = nframes;
 		stackarray(temp, float, stackarr_size);
+		std::fill(temp, temp+stackarr_size, 0);
         PlanarSampleBufferInlineView view{temp,stackarr_size,stackarr_size};    // size of 1 frame = nframes for mono audio
 		source->GetSampleRegionAndAdvance(view, effectScratchBuffer);
 		
