@@ -828,7 +828,10 @@ function(pack_resources)
 			else()
 				# put it next to the executable
 				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
-				set(outname "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${ARGS_TARGET}_Streaming/${output_root}/${relpath}")
+				if (TARGET_UWP)
+					set(UWP_APPX "AppX")
+				endif()
+				set(outname "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${UWP_APPX}/${ARGS_TARGET}_Streaming/${output_root}/${relpath}")
 				add_custom_command(PRE_BUILD 
 					OUTPUT "${outname}" 
 					COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"

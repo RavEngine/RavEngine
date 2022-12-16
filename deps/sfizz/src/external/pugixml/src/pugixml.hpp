@@ -277,7 +277,7 @@ namespace pugi
 
 	// Forward declarations
 	struct xml_attribute_struct;
-	struct xml_node_struct;
+	struct xml_node_struct2;
 
 	class xml_node_iterator_2;
 	class xml_attribute_iterator_2;
@@ -472,7 +472,7 @@ namespace pugi
 		friend class xml_named_node_iterator_2;
 
 	protected:
-		xml_node_struct* _root;
+		xml_node_struct2* _root;
 
 		typedef void (*unspecified_bool_type)(xml_node***);
 
@@ -481,7 +481,7 @@ namespace pugi
 		xml_node();
 
 		// Constructs node from internal pointer
-		explicit xml_node(xml_node_struct* p);
+		explicit xml_node(xml_node_struct2* p);
 
 		// Safe bool conversion operator
 		operator unspecified_bool_type() const;
@@ -716,7 +716,7 @@ namespace pugi
 		size_t hash_value() const;
 
 		// Get internal pointer
-		xml_node_struct* internal_object() const;
+		xml_node_struct2* internal_object() const;
 	};
 
 #ifdef __BORLANDC__
@@ -730,14 +730,14 @@ namespace pugi
 	{
 		friend class xml_node;
 
-		xml_node_struct* _root;
+		xml_node_struct2* _root;
 
 		typedef void (*unspecified_bool_type)(xml_text***);
 
-		explicit xml_text(xml_node_struct* root);
+		explicit xml_text(xml_node_struct2* root);
 
-		xml_node_struct* _data_new();
-		xml_node_struct* _data_2() const;
+		xml_node_struct2* _data_new();
+		xml_node_struct2* _data_2() const;
 
 	public:
 		// Default constructor. Constructs an empty object.
@@ -825,7 +825,7 @@ namespace pugi
 		mutable xml_node _wrap;
 		xml_node _parent;
 
-		xml_node_iterator_2(xml_node_struct* ref, xml_node_struct* parent);
+		xml_node_iterator_2(xml_node_struct2* ref, xml_node_struct2* parent);
 
 	public:
 		// Iterator traits
@@ -867,7 +867,7 @@ namespace pugi
 		mutable xml_attribute _wrap;
 		xml_node _parent;
 
-		xml_attribute_iterator_2(xml_attribute_struct* ref, xml_node_struct* parent);
+		xml_attribute_iterator_2(xml_attribute_struct* ref, xml_node_struct2* parent);
 
 	public:
 		// Iterator traits
@@ -940,7 +940,7 @@ namespace pugi
 		xml_node _parent;
 		const char_t* _name;
 
-		xml_named_node_iterator_2(xml_node_struct* ref, xml_node_struct* parent, const char_t* name);
+		xml_named_node_iterator_2(xml_node_struct2* ref, xml_node_struct2* parent, const char_t* name);
 	};
 
 	// Abstract tree walker class (see xml_node::traverse)
