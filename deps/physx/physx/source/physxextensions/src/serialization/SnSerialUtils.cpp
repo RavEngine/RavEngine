@@ -71,9 +71,9 @@ namespace physx { namespace Sn {
 
 PxU32 getBinaryPlatformTag()
 {
-#if PX_WIN32
+#if PX_WINDOWS && PX_X86
 	return sBinaryPlatformTags[0];
-#elif PX_WIN64
+#elif PX_WINDOWS && PX_X64
 	return sBinaryPlatformTags[1];
 #elif PX_LINUX && PX_X86
 	return sBinaryPlatformTags[2];
@@ -81,7 +81,7 @@ PxU32 getBinaryPlatformTag()
 	return sBinaryPlatformTags[3];
 #elif PX_OSX && PX_X86
 	return sBinaryPlatformTags[4];
-#elif PX_OSX
+#elif PX_OSX && PX_X64
 	return sBinaryPlatformTags[5];
 #elif PX_SWITCH && !PX_A64
 	return sBinaryPlatformTags[6];

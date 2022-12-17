@@ -32,9 +32,7 @@
 PX_COMPILE_TIME_ASSERT(8 * sizeof(uint32_t) >= sizeof(fenv_t));
 #endif
 
-#define PX_OSX_INTEL PX_OSX && !PX_A64
-
-#if PX_OSX_INTEL
+#if PX_OSX
 // osx defines SIMD as standard for floating point operations.
 #include <xmmintrin.h>
 #endif
@@ -43,7 +41,7 @@ physx::PxFPUGuard::PxFPUGuard()
 {
 #if defined(__CYGWIN__)
 #pragma message "FPUGuard::FPUGuard() is not implemented"
-#elif PX_OSX_INTEL
+#elif PX_OSX
 	mControlWords[0] = _mm_getcsr();
 	// set default (disable exceptions: _MM_MASK_MASK) and FTZ (_MM_FLUSH_ZERO_ON), DAZ (_MM_DENORMALS_ZERO_ON: (1<<6))
 	_mm_setcsr(_MM_MASK_MASK | _MM_FLUSH_ZERO_ON | (1 << 6));
@@ -68,7 +66,7 @@ physx::PxFPUGuard::~PxFPUGuard()
 {
 #if defined(__CYGWIN__)
 #pragma message "PxFPUGuard::~PxFPUGuard() is not implemented"
-#elif PX_OSX_INTEL
+#elif PX_OSX
 	// restore control word and clear exception flags
 	// (setting exception state flags cause exceptions on the first following fp operation)
 	_mm_setcsr(mControlWords[0] & ~_MM_EXCEPT_MASK);
@@ -84,7 +82,7 @@ PX_FOUNDATION_API void physx::PxEnableFPExceptions()
 #if PX_LINUX && !defined(__EMSCRIPTEN__)
 	feclearexcept(FE_ALL_EXCEPT);
 	feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW);
-#elif PX_OSX_INTEL
+#elif PX_OSX
 	// clear any pending exceptions
 	// (setting exception state flags cause exceptions on the first following fp operation)
 	uint32_t control = _mm_getcsr() & ~_MM_EXCEPT_MASK;
@@ -100,7 +98,7 @@ PX_FOUNDATION_API void physx::PxDisableFPExceptions()
 {
 #if PX_LINUX && !defined(__EMSCRIPTEN__)
 	fedisableexcept(FE_ALL_EXCEPT);
-#elif PX_OSX_INTEL
+#elif PX_OSX
 	// clear any pending exceptions
 	// (setting exception state flags cause exceptions on the first following fp operation)
 	uint32_t control = _mm_getcsr() & ~_MM_EXCEPT_MASK;
