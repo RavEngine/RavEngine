@@ -10,8 +10,13 @@ AudioGraphAsset::AudioGraphAsset(uint8_t nchannels) :
         })),
     outputBus(std::make_shared<lab::AudioBus>(nchannels,0,false)),  // we will give it the input data and size when it's time to render
     inputBus(std::make_shared<lab::AudioBus>(nchannels,0, false)),
+    inputNode(std::make_shared<lab::SampledAudioNode>(*audioContext.context.get())),
+    outputNode(std::make_shared<lab::SampledAudioNode>(*audioContext.context.get())),
     nchannels(nchannels)
 {
+    lab::ContextRenderLock r(audioContext.context.get(), "Setup bus");
+    inputNode->setBus(r,inputBus);
+    outputNode->setBus(r,outputBus);
 }
 
 void AudioGraphAsset::Render(PlanarSampleBufferInlineView& inout, PlanarSampleBufferInlineView& scratchBuffer, uint8_t nchannels){
@@ -29,7 +34,7 @@ void AudioGraphAsset::Render(PlanarSampleBufferInlineView& inout, PlanarSampleBu
     
 }
 
-auto RavEngine::AudioGraphAsset::Connect(std::shared_ptr<lab::AudioNode> source, std::shared_ptr<lab::AudioNode> dest)
+void RavEngine::AudioGraphAsset::Connect(std::shared_ptr<lab::AudioNode> source, std::shared_ptr<lab::AudioNode> dest)
 {
     audioContext.context->connect(dest, source);
 }

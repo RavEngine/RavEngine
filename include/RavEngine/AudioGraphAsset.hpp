@@ -12,6 +12,7 @@ class AudioGraphAsset{
     
     lab::OfflineContext audioContext;
     std::shared_ptr<lab::AudioBus> inputBus, outputBus;
+    std::shared_ptr<lab::SampledAudioNode> inputNode, outputNode;
     uint8_t nchannels = 0;
     
 public:
@@ -36,11 +37,11 @@ public:
     }
 
     auto GetInputNode() const {
-        return inputBus;
+        return inputNode;
     }
 
     auto GetOutputNode() const{
-        return outputBus;
+        return outputNode;
     }
 
     /**
@@ -49,7 +50,16 @@ public:
     * @param destination the node to provide data to
     * @note this argument order is reversed comapred to WebAudio
     */
-    auto Connect(std::shared_ptr<lab::AudioNode> source, std::shared_ptr<lab::AudioNode> dest);
+    void Connect(std::shared_ptr<lab::AudioNode> source, std::shared_ptr<lab::AudioNode> dest);
+
+    /**
+    * Create a node within this context. This node may only be used within this context.
+    * @param args parameters for the node
+    */
+    template<typename T, typename ... A>
+    std::shared_ptr<T> CreateNode(A&& ... args) {
+        return std::make_shared<T>(*audioContext.context.get(), args...);
+    }
 };
 
 }
