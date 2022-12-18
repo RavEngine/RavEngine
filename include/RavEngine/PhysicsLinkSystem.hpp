@@ -22,7 +22,7 @@ namespace RavEngine {
 	 */
 	class PhysicsLinkSystemWrite : public AutoCTTI{
 	public:		
-		void operator()(float fpsScale, const PolymorphicGetResult<PhysicsBodyComponent,World::PolymorphicIndirection>&, const PolymorphicGetResult<Transform,World::PolymorphicIndirection>&) const;
+		void operator()(float fpsScale, const RigidBodyStaticComponent&, const Transform&) const;
 	};
 
 	/**

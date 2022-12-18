@@ -107,8 +107,19 @@ namespace RavEngine {
         
         void RemoveReceiver(PhysicsCallback*);
 
+		/**
+		@return the PhysX dynamics pose.
+		@note thread-safe (Locks internally).
+		*/
         std::pair<vector3,quaternion> getDynamicsWorldPose() const;
-        void setDynamicsWorldPose(const vector3&, const quaternion&) const;
+
+		/**
+		Set the world space dynamics transform (via teleport)
+		@param worldpos world-space position
+		@param worldrot world-space rotation
+		@note thread-safe (Locks internally).
+		*/
+        void setDynamicsWorldPose(const vector3& worldpos, const quaternion& worldrot) const;
 
 		void SetGravityEnabled(bool);
 
@@ -193,10 +204,11 @@ namespace RavEngine {
 
 		template<typename T>
 		inline void LockWrite(const T& func){
-            if (rigidActor->getScene()){
-                rigidActor->getScene()->lockWrite();
+			auto scene = rigidActor->getScene();
+            if (scene){
+                scene->lockWrite();
                 func();
-                rigidActor->getScene()->unlockWrite();
+				scene->unlockWrite();
             }
             else{
                 func();
@@ -205,10 +217,11 @@ namespace RavEngine {
         
         template<typename T>
         inline void LockRead(const T& func) const{
-            if(rigidActor->getScene()){
-                rigidActor->getScene()->lockRead();
+			auto scene = rigidActor->getScene();
+            if(scene){
+                scene->lockRead();
                 func();
-                rigidActor->getScene()->unlockRead();
+				scene->unlockRead();
             }
             else{
                 func();

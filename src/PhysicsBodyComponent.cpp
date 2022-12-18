@@ -80,12 +80,17 @@ void PhysicsBodyComponent::RemoveReceiver(PhysicsCallback* ptr){
 }
 
 std::pair<vector3,quaternion> PhysicsBodyComponent::getDynamicsWorldPose() const{
-    auto t = rigidActor->getGlobalPose();
+	PxTransform t;
+	LockRead([&] {
+		t = rigidActor->getGlobalPose();
+	});
     return std::make_pair(vector3{t.p.x, t.p.y, t.p.z}, quaternion{t.q.w, t.q.x,t.q.y,t.q.z});
 }
 
 void PhysicsBodyComponent::setDynamicsWorldPose(const vector3& pos, const quaternion& quat) const{
-    rigidActor->setGlobalPose(PxTransform(convert(pos),convertQuat(quat)));
+	rigidActor->getScene()->lockWrite();
+		rigidActor->setGlobalPose(PxTransform(convert(pos), convertQuat(quat)));
+	rigidActor->getScene()->unlockWrite();
 }
 
 /**
