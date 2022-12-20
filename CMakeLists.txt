@@ -309,7 +309,11 @@ set(SFIZZ_RENDER OFF CACHE INTERNAL "")
 set(SFIZZ_STATIC_DEPENDENCIES OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/sfizz")
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+set(CMAKE_CXX_STANDARD 17)	# workaround g++ issue with C++20 and PhysX
+else()
 set(CMAKE_CXX_STANDARD 20)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # PhysX-specific CMake project setup
