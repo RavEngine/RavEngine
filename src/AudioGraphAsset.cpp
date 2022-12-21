@@ -11,12 +11,13 @@ AudioGraphAsset::AudioGraphAsset(uint8_t nchannels) :
     outputBus(std::make_shared<lab::AudioBus>(nchannels,0,false)),  // we will give it the input data and size when it's time to render
     inputBus(std::make_shared<lab::AudioBus>(nchannels,0, false)),
     inputNode(std::make_shared<lab::SampledAudioNode>(*audioContext.context.get())),
-    outputNode(std::make_shared<lab::SampledAudioNode>(*audioContext.context.get())),
+    outputNode(std::make_shared<lab::RecorderNode>(*audioContext.context.get(), lab::AudioStreamConfig{.device_index=0,.desired_channels=nchannels,.desired_samplerate=static_cast<float>(AudioPlayer::GetSamplesPerSec())})),
     nchannels(nchannels)
 {
     lab::ContextRenderLock r(audioContext.context.get(), "Setup bus");
     inputNode->setBus(r,inputBus);
-    outputNode->setBus(r,outputBus);
+    audioContext.context->addAutomaticPullNode(outputNode);
+    //outputNode->setBus(r,outputBus);
 }
 
 void AudioGraphAsset::Render(PlanarSampleBufferInlineView& inout, PlanarSampleBufferInlineView& scratchBuffer, uint8_t nchannels){
@@ -26,12 +27,14 @@ void AudioGraphAsset::Render(PlanarSampleBufferInlineView& inout, PlanarSampleBu
         inputBus->setChannelMemory(i, inout[i].data(), inout.sizeOneChannel());
         outputBus->setChannelMemory(i, scratchBuffer[i].data(), scratchBuffer.sizeOneChannel());
     }
+    outputNode->startRecording();
+    inputNode->schedule(0);
     
     audioContext.process(inout.sizeOneChannel());
+    outputNode->stopRecording();
     
     //inout will now have the results of processing
-    std::swap(inout, scratchBuffer);
-    
+    std::swap(inout, scratchBuffer);    
 }
 
 void RavEngine::AudioGraphAsset::Connect(std::shared_ptr<lab::AudioNode> source, std::shared_ptr<lab::AudioNode> dest)

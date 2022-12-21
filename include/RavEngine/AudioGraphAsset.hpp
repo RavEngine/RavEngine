@@ -12,7 +12,8 @@ class AudioGraphAsset{
     
     lab::OfflineContext audioContext;
     std::shared_ptr<lab::AudioBus> inputBus, outputBus;
-    std::shared_ptr<lab::SampledAudioNode> inputNode, outputNode;
+    std::shared_ptr<lab::SampledAudioNode> inputNode;
+    std::shared_ptr<lab::RecorderNode> outputNode;
     uint8_t nchannels = 0;
     
 public:
