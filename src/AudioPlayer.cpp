@@ -45,6 +45,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     PlanarSampleBufferInlineView effectScratchBuffer(effect_scratch_buffer, buffers_size, buffers_size / GetNChannels());
     float* accum_buffer = reinterpret_cast<float*>(stream);
     InterleavedSampleBufferView accumView{ accum_buffer,buffers_size };
+    TZero(effectScratchBuffer.data(), effectScratchBuffer.size());
 
     // fill temp buffer with 0s
     auto resetShared = [sharedBufferView]() mutable {

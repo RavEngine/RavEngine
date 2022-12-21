@@ -9,14 +9,42 @@ namespace RavEngine{
 * nodes, see https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
 */
 class AudioGraphAsset{
-    
+    class LiveCaptureNode;
+
     lab::OfflineContext audioContext;
     std::shared_ptr<lab::AudioBus> inputBus, outputBus;
     std::shared_ptr<lab::SampledAudioNode> inputNode;
-    std::shared_ptr<lab::RecorderNode> outputNode;
+    std::shared_ptr<LiveCaptureNode> outputNode;
     uint8_t nchannels = 0;
     
 public:
+
+    class LiveCaptureNode : public lab::AudioNode {
+        virtual double tailTime(lab::ContextRenderLock& r) const final { return 0; }
+        virtual double latencyTime(lab::ContextRenderLock& r) const final { return 0; }
+        std::shared_ptr<lab::AudioBus> outputBus;
+        int renderedSoFar = 0;
+    public:
+        LiveCaptureNode(lab::AudioContext& r, int channelcount);
+        virtual ~LiveCaptureNode() {
+            uninitialize();
+        }
+
+        constexpr static const char* static_name() { return "RVELiveCaptureNode"; }
+        virtual const char* name() const override { return static_name(); }
+
+        void setBus(decltype(outputBus) bus) {
+            outputBus = bus;
+        }
+
+        // AudioNode
+        virtual void process(lab::ContextRenderLock&, int bufferSize) override;
+        virtual void reset(lab::ContextRenderLock&) override {
+            renderedSoFar = 0;
+        } 
+    };
+
+
     /**
     * Create an AudioGraphAsset.
     * @param nchannels the number of channels. It is dependent on where you want to use this Asset. 
