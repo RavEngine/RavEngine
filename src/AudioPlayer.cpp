@@ -97,7 +97,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         resetShared();
 
         //simulate in the room
-        room->Simulate(sharedBufferView);
+        room->Simulate(sharedBufferView,effectScratchBuffer);
         blendIn();
     }
 
