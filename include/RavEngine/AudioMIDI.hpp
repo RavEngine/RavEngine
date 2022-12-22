@@ -93,7 +93,7 @@ public:
      Render the state of the player to the provided buffer
      @param out_buffer the buffer to write to
      */
-    void RenderMono(PlanarSampleBufferInlineView out_buffer);
+    void RenderMono(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer);
     
     auto GetVolume() const{
         return volume;

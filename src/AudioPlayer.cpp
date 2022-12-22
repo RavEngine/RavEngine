@@ -68,7 +68,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     auto num = SnapshotToRender->midiPointPlayers.size();
     for (const auto& midiplayer : SnapshotToRender->midiPointPlayers) {
         resetShared();
-        midiplayer->RenderMono(sharedBufferView);
+        midiplayer->RenderMono(sharedBufferView,effectScratchBuffer);
 
         //TODO: this is not very efficient
         for (const auto& r : SnapshotToRender->rooms) {
@@ -111,7 +111,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
     for (const auto& source : SnapshotToRender->ambientMIDIsources) {
         resetShared();
-        source.midiPlayer->RenderMono(sharedBufferView);
+        source.midiPlayer->RenderMono(sharedBufferView,effectScratchBuffer);
         blendIn();
     }
 
