@@ -61,7 +61,7 @@ void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vect
 	}
 }
 
-void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView buffer){
+void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView& buffer){
     auto nchannels = AudioPlayer::GetNChannels();
     
     // convert to an array of pointers for Resonance
@@ -71,7 +71,9 @@ void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView buffer){
     }
     
     audioEngine->FillPlanarOutputBuffer(nchannels, buffer.sizeOneChannel(), allchannelptrs);
-    AudioGraphComposed::Render(buffer,nchannels); // process graph
+    stackarray(intermediatebuffer, float, buffer.size());
+    PlanarSampleBufferInlineView intermediatebufferview{ intermediatebuffer,buffer.size(),buffer.sizeOneChannel() };
+    AudioGraphComposed::Render(buffer, intermediatebufferview, nchannels); // process graph
 	
 	// destroy sources
 	for(const auto& source : allSources){

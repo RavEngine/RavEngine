@@ -1,49 +1,43 @@
 #pragma once
-#include <LabSound/LabSound.h>
 #include "AudioTypes.hpp"
+#include "DataStructures.hpp"
+#include "Function.hpp"
 
 namespace RavEngine{
+
+struct AudioFilterLayer {
+    virtual void process(const PlanarSampleBufferInlineView, PlanarSampleBufferInlineView) = 0;
+};
+
+/**
+* A simple gain effect layer to illustrate the API
+*/
+struct AudioGainFilterLayer : public AudioFilterLayer {
+    float gain = 1;
+    void process(const PlanarSampleBufferInlineView in, PlanarSampleBufferInlineView out) final {
+        for (int c = 0; c < in.GetNChannels(); c++) {
+            auto channel = in[c];
+#pragma omp simd
+            for (int i = 0; i < channel.size(); i++) {
+                out[c][i] = channel[i] * gain;
+            }
+        }
+    }
+    AudioGainFilterLayer() {}
+    AudioGainFilterLayer(float gain) : gain(gain) {}
+};
 
 /**
 * Represents an audio effect graph processor. For a list of 
 * nodes, see https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
 */
 class AudioGraphAsset{
-    class LiveCaptureNode;
-
-    lab::OfflineContext audioContext;
-    std::shared_ptr<lab::AudioBus> inputBus, outputBus;
-    std::shared_ptr<lab::SampledAudioNode> inputNode;
-    std::shared_ptr<LiveCaptureNode> outputNode;
+   
     uint8_t nchannels = 0;
     
 public:
 
-    class LiveCaptureNode : public lab::AudioNode {
-        virtual double tailTime(lab::ContextRenderLock& r) const final { return 0; }
-        virtual double latencyTime(lab::ContextRenderLock& r) const final { return 0; }
-        std::shared_ptr<lab::AudioBus> outputBus;
-        int renderedSoFar = 0;
-    public:
-        LiveCaptureNode(lab::AudioContext& r, int channelcount);
-        virtual ~LiveCaptureNode() {
-            uninitialize();
-        }
-
-        constexpr static const char* static_name() { return "RVELiveCaptureNode"; }
-        virtual const char* name() const override { return static_name(); }
-
-        void setBus(decltype(outputBus) bus) {
-            outputBus = bus;
-        }
-
-        // AudioNode
-        virtual void process(lab::ContextRenderLock&, int bufferSize) override;
-        virtual void reset(lab::ContextRenderLock&) override {
-            renderedSoFar = 0;
-        } 
-    };
-
+    LinkedList<std::shared_ptr<AudioFilterLayer>> filters;
 
     /**
     * Create an AudioGraphAsset.
@@ -61,34 +55,6 @@ public:
      */
     void Render(PlanarSampleBufferInlineView& inout, PlanarSampleBufferInlineView& scratchBuffer, uint8_t nchannels);
     
-    decltype(audioContext.context)& GetContext(){
-        return audioContext.context;
-    }
-
-    auto GetInputNode() const {
-        return inputNode;
-    }
-
-    auto GetOutputNode() const{
-        return outputNode;
-    }
-
-    /**
-    * Connect two audio nodes within this asset
-    * @param source the node providing data
-    * @param destination the node to provide data to
-    * @note this argument order is reversed comapred to WebAudio
-    */
-    void Connect(std::shared_ptr<lab::AudioNode> source, std::shared_ptr<lab::AudioNode> dest);
-
-    /**
-    * Create a node within this context. This node may only be used within this context.
-    * @param args parameters for the node
-    */
-    template<typename T, typename ... A>
-    std::shared_ptr<T> CreateNode(A&& ... args) {
-        return std::make_shared<T>(*audioContext.context.get(), args...);
-    }
 };
 
 }

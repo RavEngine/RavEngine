@@ -229,10 +229,8 @@ set(ozz_build_tests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/ozz-animation" EXCLUDE_FROM_ALL)
 
 # LabSound and libnyquist
-#SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
-#add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
-set(LIBSAMPLERATE_INSTALL OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/LabSound" EXCLUDE_FROM_ALL)
+SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
 
 # GNS
 if(UWP)
@@ -539,7 +537,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"glm"
 	"fmt"
 	"tweeny"
-	"LabSound"
 	${SDL2STATIC_LIB}
 	"bgfx"
 	"bx"
@@ -736,7 +733,7 @@ group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;Det
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem;\
-Abseil;midifile;sdl_headers_copy;samplerate;LabSound\
+Abseil;midifile;sdl_headers_copy;
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\

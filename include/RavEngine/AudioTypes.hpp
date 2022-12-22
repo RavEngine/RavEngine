@@ -99,7 +99,7 @@ namespace RavEngine{
     struct AudioGraphComposed{
         using effect_graph_ptr_t = Ref<AudioGraphAsset>;
     private:
-        void renderImpl(PlanarSampleBufferInlineView inputBuffer, PlanarSampleBufferInlineView scratchBuffer, uint8_t nchannels);
+        void renderImpl(PlanarSampleBufferInlineView& inputBuffer, PlanarSampleBufferInlineView& scratchBuffer, uint8_t nchannels);
         effect_graph_ptr_t effectGraph;
     public:
         
@@ -116,18 +116,8 @@ namespace RavEngine{
          @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
          @param intermediateBuffer memory of equal size to inputSamples to store intermediate data. Assumed to be zero-filled.
          */
-        void Render(PlanarSampleBufferInlineView inputSamples, PlanarSampleBufferInlineView intermediateBuffer, uint8_t nchannels){
+        void Render(PlanarSampleBufferInlineView& inputSamples, PlanarSampleBufferInlineView& intermediateBuffer, uint8_t nchannels){
             renderImpl(inputSamples, intermediateBuffer, nchannels);
-        }
-        
-        /**
-         Render the graph in-place
-         @param inputSamples the input buffer to apply the effect graph to. Contents will be modified after this function.
-         @note This function uses stack space decided at runtime. Be aware of the potential consequences of this.
-         */
-        void Render(PlanarSampleBufferInlineView inputSamples, uint8_t nchannels){
-            stackarray(intermediatebuffer, decltype(inputSamples)::value_type, inputSamples.size());
-            Render(inputSamples,PlanarSampleBufferInlineView{intermediatebuffer,inputSamples.size(),inputSamples.sizeOneChannel()},nchannels);
         }
     };
 }

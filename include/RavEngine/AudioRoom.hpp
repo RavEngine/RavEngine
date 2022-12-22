@@ -92,7 +92,7 @@ public:
          Simulate spacial audio for a set of audio sources
          @param buffer destination for the calculated audio
          */
-        void Simulate(PlanarSampleBufferInlineView buffer);
+        void Simulate(PlanarSampleBufferInlineView& buffer);
         
         RoomData() : audioEngine(vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100)){}
         ~RoomData(){

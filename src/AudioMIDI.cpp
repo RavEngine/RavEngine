@@ -153,7 +153,9 @@ void InstrumentSynth::Render(float** scratchBuffer, size_t size, PlanarSampleBuf
     //TODO: respect nchannels
     synthesizer.renderBlock(scratchBuffer, size);
     PlanarSampleBufferInlineView proc_input(scratchBuffer[0],size,size);    // TODO: this hardcodes to mono
-    AudioGraphComposed::Render(proc_input, nchannels);
+    stackarray(intermediatebuffer, decltype(output)::value_type, output.size());
+    PlanarSampleBufferInlineView intermediateView(intermediatebuffer, output.size(), output.size());
+    AudioGraphComposed::Render(proc_input, intermediateView, nchannels);
     AdditiveBlendSamples(output, proc_input);
 }
 
@@ -182,7 +184,8 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView ou
     
     // apply any effect graphs
     // re-use tempbufferL
-    AudioGraphComposed::Render(out_buffer, PlanarSampleBufferInlineView(tempbufferL,out_buffer.size(),out_buffer.size()),1);
+    PlanarSampleBufferInlineView tempbuffer(tempbufferL, out_buffer.size(), out_buffer.size());
+    AudioGraphComposed::Render(out_buffer, tempbuffer,1);
 }
 
 void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView out_buffer){
