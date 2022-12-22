@@ -90,7 +90,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         // raster sources
         for (const auto& source : SnapshotToRender->sources) {
             // add this source into the room
-            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, sharedBufferView.sizeOneChannel(), effectScratchBuffer);
+            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, sharedBufferView.sizeOneChannel(), sharedBufferView, effectScratchBuffer);
         }
 
         //now simulate the fire-and-forget audio

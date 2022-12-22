@@ -79,7 +79,7 @@ struct AudioPlayerData {
          */
         inline void GetSampleRegionAndAdvance(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace){
 			const auto nsamples = asset->GetNumSamples();
-            assert(buffer.GetNChannels() == asset->nchannels);  // you are trying to do something that doesn't make sense!!
+            assert(buffer.GetNChannels() >= asset->nchannels);  // you are trying to do something that doesn't make sense!!
             for(size_t i = 0; i < buffer.sizeOneChannel(); i++){
                 //is playhead past end of source?
                 if (playhead_pos >= nsamples){
