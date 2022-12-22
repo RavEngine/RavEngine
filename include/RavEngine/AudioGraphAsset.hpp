@@ -6,7 +6,7 @@
 namespace RavEngine{
 
 struct AudioFilterLayer {
-    virtual void process(const PlanarSampleBufferInlineView, PlanarSampleBufferInlineView) = 0;
+    virtual void process(const PlanarSampleBufferInlineView&, PlanarSampleBufferInlineView&) = 0;
 };
 
 /**
@@ -14,7 +14,7 @@ struct AudioFilterLayer {
 */
 struct AudioGainFilterLayer : public AudioFilterLayer {
     float gain = 1;
-    void process(const PlanarSampleBufferInlineView in, PlanarSampleBufferInlineView out) final {
+    void process(const PlanarSampleBufferInlineView& in, PlanarSampleBufferInlineView& out) final {
         for (int c = 0; c < in.GetNChannels(); c++) {
             auto channel = in[c];
 #pragma omp simd
