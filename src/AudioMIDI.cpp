@@ -159,7 +159,7 @@ void InstrumentSynth::Render(float** scratchBuffer, size_t size, PlanarSampleBuf
     AdditiveBlendSamples(output, proc_input);
 }
 
-void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView out_buffer){
+void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer){
     
     if (!isPlaying){
         return;
@@ -173,9 +173,10 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView ou
     for (delay = 0; delay < out_buffer.size() && !finishedCurrent; delay++)
         fmidi_player_tick(midiPlayer.get(), increment);
     
+    using vtype = std::remove_reference_t<decltype(out_buffer)>::value_type;
+
     // this might be a bad idea...
-    stackarray(tempbufferL, decltype(out_buffer)::value_type, out_buffer.size());
-    decltype(out_buffer)::value_type* buffers[]{tempbufferL, tempbufferL};  // initialize both channels to the same buffer
+    vtype* buffers[]{effectScratchBuffer[0].data(), effectScratchBuffer[0].data() };  // initialize both channels to the same buffer
     
     // render all the instruments and then add into the out_buffer
     for(auto& instrument : instrumentTrackMap){
@@ -184,8 +185,7 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView ou
     
     // apply any effect graphs
     // re-use tempbufferL
-    PlanarSampleBufferInlineView tempbuffer(tempbufferL, out_buffer.size(), out_buffer.size());
-    AudioGraphComposed::Render(out_buffer, tempbuffer,1);
+    AudioGraphComposed::Render(out_buffer, effectScratchBuffer,1);
 }
 
 void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer){
@@ -194,7 +194,10 @@ void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView& out_buffer, Plana
     uint64_t next = blockSize;
 	auto maxsamples = out_buffer.size() / out_buffer.GetNChannels() ;
     for(uint64_t numFramesWritten { 0 };  numFramesWritten < maxsamples && !finishedCurrent; numFramesWritten += next){
-        RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView(out_buffer[0].data()+numFramesWritten,next,next));
+        // slide the view
+        PlanarSampleBufferInlineView out_buffer_subset(out_buffer[0].data() + numFramesWritten, next, next);
+        PlanarSampleBufferInlineView scratch_buffer_subset(effectScratchBuffer[0].data() + numFramesWritten, next, next);
+        RenderMonoBuffer1024OrLess(out_buffer_subset, scratch_buffer_subset);
         next = std::min<size_t>(blockSize, out_buffer.size() - numFramesWritten);
     }
 }

@@ -87,7 +87,7 @@ public:
     /**
      For internal use only. Use Render()
      */
-    void RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView out_buffer);
+    void RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer);
     
     /**
      Render the state of the player to the provided buffer
