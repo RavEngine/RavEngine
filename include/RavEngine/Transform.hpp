@@ -282,28 +282,13 @@ namespace RavEngine {
 
 	inline matrix4 Transform::CalculateWorldMatrix() const{
 		if (isDirty){
-			//figure out the size
-			unsigned short depth = 0;
+            auto result = GenerateLocalMatrix();
             for(auto p = parent; p.IsValid(); p = p->parent){
-				depth++;
-			}
-			
-			stackarray(transforms, matrix4, depth);
-			
-			int tmp = 0;
-			for(auto p = parent; p.IsValid(); p = p->parent){
-				transforms[tmp] = p->GenerateLocalMatrix();
-				++tmp;
-			}
-			
-			matrix4 mat(1);
-			for(int i = depth - 1; i >= 0; --i){
-				mat *= transforms[i];
-			}
-			mat *= GenerateLocalMatrix();
-			matrix = mat;
-			isDirty = false;
-			return mat;
+                result = p->GenerateLocalMatrix() * result;
+            }
+            matrix = result;
+            isDirty = false;
+            return result;
 		}
 		else{
 			return matrix;
