@@ -103,11 +103,11 @@ void AnimatorComponent::UpdateSocket(const std::string& name, Transform& t) cons
 	for (int i = 0; i < skeleton->GetSkeleton()->num_joints(); i++) {
 		auto name = skeleton->GetSkeleton()->joint_names()[i];
 		//TODO: set matrix directly instead of with decompose?
-		quaternion rotation;
-		vector3 translate,unused;
-		vector4 p;
-		auto mat = glm_pose[i];
-		glm::decompose(mat, unused, rotation, translate, unused, p);
+        auto& mat = glm_pose[i];
+
+        auto translate = mat[3];
+        auto rotation = glm::quat_cast(mat);
+		
 		t.SetWorldPosition(translate);
 		t.SetWorldRotation(rotation);
 	}

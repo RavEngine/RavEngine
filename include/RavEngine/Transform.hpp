@@ -225,12 +225,8 @@ namespace RavEngine {
 	*/
 	inline Transform& Transform::LocalRotateDelta(const quaternion& delta) {
 		MarkAsDirty(this);
-		//sum two quaternions by multiplying them
-		quaternion finalrot;
-		vector3 t;
-		vector4 p;
-		glm::decompose(glm::toMat4((quaternion)rotation) * glm::toMat4(delta), t, finalrot, t, t, p);
-		rotation = finalrot;
+        // sum two quaternions by multiplying them
+        rotation *= delta;
         return *this;
 	}
 
@@ -338,16 +334,10 @@ namespace RavEngine {
 		if (!HasParent()) {
 			return GetLocalRotation();
 		}
-		
+        
 		//apply local rotation
 		auto finalMatrix = CalculateWorldMatrix();
-		
-		//decompose the matrix to extract the rotation
-		quaternion finalrot;
-		
-		vector3 t;
-		vector4 p;
-		glm::decompose(finalMatrix, t, finalrot, t, t, p);
-		return finalrot;
+        
+        return glm::quat_cast(finalMatrix);
 	}
 }
