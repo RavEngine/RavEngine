@@ -137,8 +137,6 @@ using namespace std::chrono;
 // pointer to the current app instance
 static App* currentApp = nullptr;
 
-static float currentScale = 0;
-
 // on crash, call this
 void crash_signal_handler(int signum) {
 	::signal(signum, SIG_DFL);
@@ -254,8 +252,7 @@ int App::run(int argc, char** argv) {
 		deltaTimeMicroseconds = std::min(duration_cast<timeDiff>(now - lastFrameTime), maxTimeStep);
         float deltaSeconds = std::chrono::duration<decltype(deltaSeconds)>(deltaTimeMicroseconds).count();
 		time += deltaSeconds;
-		float scale = deltaSeconds * evalNormal;
-		currentScale = scale;
+		currentScale = deltaSeconds * evalNormal;
 
 		auto windowflags = SDL_GetWindowFlags(RenderEngine::GetWindow());
 		while (SDL_PollEvent(&event)) {
@@ -280,9 +277,9 @@ int App::run(int argc, char** argv) {
 			}
 			//process others
 			if (inputManager){
-				inputManager->ProcessInput(event,windowflags,scale);
+				inputManager->ProcessInput(event,windowflags,currentScale);
 #ifndef NDEBUG
-				RenderEngine::debuggerInput->ProcessInput(event,windowflags,scale);
+				RenderEngine::debuggerInput->ProcessInput(event,windowflags,currentScale);
 #endif
 			}
 		}
@@ -380,7 +377,7 @@ int App::run(int argc, char** argv) {
 
 		//tick all worlds
 		for(const auto world : loadedWorlds){
-			world->Tick(scale);
+			world->Tick(currentScale);
 		}
 				
 		//process main thread tasks

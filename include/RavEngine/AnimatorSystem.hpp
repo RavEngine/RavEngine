@@ -1,11 +1,12 @@
 #pragma once
 #include "AnimatorComponent.hpp"
+#include "GetApp.hpp"
 
 namespace RavEngine{
 class AnimatorSystem : public AutoCTTI{
 public:
-    inline void operator()(float fpsScale, AnimatorComponent& c) const {
-		c.Tick(fpsScale);
+    inline void operator()(AnimatorComponent& c) const {
+		c.Tick();
 	}
 };
 }

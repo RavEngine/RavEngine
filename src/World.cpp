@@ -174,7 +174,7 @@ void World::SetupTaskGraph(){
     auto audioClear = audioTasks.emplace([this]{
         GetApp()->GetCurrentAudioSnapshot()->Clear();
         //TODO: currently this selects the LAST listener, but there is no need for this
-        Filter([](float, const AudioListener& listener, const Transform& transform){
+        Filter([](const AudioListener& listener, const Transform& transform){
             auto ptr = GetApp()->GetCurrentAudioSnapshot();
             ptr->listenerPos = transform.GetWorldPosition();
             ptr->listenerRot = transform.GetWorldRotation();
@@ -186,12 +186,12 @@ void World::SetupTaskGraph(){
     
     auto copyAudios = audioTasks.emplace([this]{
         // raster audio
-        Filter([this](float, AudioSourceComponent& audioSource, const Transform& transform){
+        Filter([this](AudioSourceComponent& audioSource, const Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
         });
         
         // midi audio
-        Filter([this](float, AudioMIDISourceComponent& audioSource, Transform& transform){
+        Filter([this](AudioMIDISourceComponent& audioSource, Transform& transform){
             auto snapshot = GetApp()->GetCurrentAudioSnapshot();
             if (audioSource.midiPlayer && audioSource.midiPlayer->IsPlaying()){
                 snapshot->midiPointSources.emplace_back(audioSource, transform.GetWorldPosition(), transform.GetWorldRotation());
@@ -212,12 +212,12 @@ void World::SetupTaskGraph(){
     
     auto copyAmbients = audioTasks.emplace([this]{
         // raster audio
-        Filter([this](float, AmbientAudioSourceComponent& audioSource){
+        Filter([this](AmbientAudioSourceComponent& audioSource){
             GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
         });
         
         // midi audio
-        Filter([this](float, AudioMIDIAmbientSourceComponent& audioSource){
+        Filter([this](AudioMIDIAmbientSourceComponent& audioSource){
             if (audioSource.midiPlayer && audioSource.midiPlayer->IsPlaying()){
                 GetApp()->GetCurrentAudioSnapshot()->ambientMIDIsources.emplace_back(audioSource);
             }
@@ -237,7 +237,7 @@ void World::SetupTaskGraph(){
     }).name("Ambient Audios").succeed(audioClear);
     
     auto copyRooms = audioTasks.emplace([this]{
-        Filter( [this](float, AudioRoom& room, Transform& transform){
+        Filter( [this](AudioRoom& room, Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
         });
         
@@ -277,7 +277,7 @@ void World::setupRenderTasks(){
 	}).name("Camera data");
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
-        Filter([&](float, const StaticMesh& sm, Transform& trns) {
+        Filter([&](const StaticMesh& sm, Transform& trns) {
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
                 auto owner = trns.GetOwner();
@@ -300,7 +300,7 @@ void World::setupRenderTasks(){
     }).name("Update invalidated static mesh transforms");
 
     auto updateRenderDataSkinnedMesh = renderTasks.emplace([this] {
-        Filter([&](float, const SkinnedMeshComponent& sm, const AnimatorComponent& am, Transform& trns) {
+        Filter([&](const SkinnedMeshComponent& sm, const AnimatorComponent& am, Transform& trns) {
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
                 auto owner = trns.GetOwner();
@@ -403,7 +403,7 @@ void World::setupRenderTasks(){
         auto& renderer = GetApp()->GetRenderEngine();
         auto size = renderer.GetBufferSize();
         auto scale = renderer.GetDPIScale();
-        Filter([&](float, GUIComponent& gui) {
+        Filter([&](GUIComponent& gui) {
             if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
                 gui.SetDimensions(size.width, size.height);
                 gui.SetDPIScale(scale);

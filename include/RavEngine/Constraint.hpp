@@ -62,6 +62,6 @@ struct SocketConstraint : public Constraint, public QueryableDelta<Constraint,So
  Executes all Socket Constraints
  */
 struct SocketSystem{
-	void operator()(float, const SocketConstraint&, Transform&);
+	void operator()(const SocketConstraint&, Transform&);
 };
 }

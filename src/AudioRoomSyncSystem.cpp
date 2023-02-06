@@ -9,7 +9,7 @@
 using namespace RavEngine;
 using namespace std;
 
-void AudioRoomSyncSystem::operator()(float fpsScale, AudioRoom& room, Transform& tr) const{
+void AudioRoomSyncSystem::operator()(AudioRoom& room, Transform& tr) const{
     auto pos = tr.GetWorldPosition();
     auto rot = tr.GetWorldRotation();
     auto mtx = tr.CalculateWorldMatrix();

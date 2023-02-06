@@ -22,7 +22,7 @@ namespace RavEngine {
 	 */
 	class PhysicsLinkSystemWrite : public AutoCTTI{
 	public:		
-		void operator()(float fpsScale, const RigidBodyStaticComponent&, const Transform&) const;
+		void operator()(const RigidBodyStaticComponent&, const Transform&) const;
 	};
 
 	/**
@@ -31,6 +31,6 @@ namespace RavEngine {
 	 */
 	class PhysicsLinkSystemRead : public AutoCTTI {
 	public:
-		void operator()(float fpsScale, const RigidBodyDynamicComponent&, Transform&) const;
+		void operator()(const RigidBodyDynamicComponent&, Transform&) const;
 	};
 }

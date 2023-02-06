@@ -12,12 +12,14 @@ inline float distance(const clamped_vec2& p1, const clamped_vec2& p2){
 	return std::sqrt(std::pow(p2.get_x() - p1.get_x(), 2) + std::pow(p2.get_y() - p1.get_y(), 2));
 }
 
-void AnimatorComponent::Tick(float timeScale){
+void AnimatorComponent::Tick(){
 	//skip calculation 
 	if(!isPlaying){
 		return;
 	}
 	
+    auto timeScale = GetApp()->GetCurrentFPSScale();
+    
 	auto currentTime = GetApp()->GetCurrentTime();
 	//if isBlending, need to calculate both states, and blend between them
 	if (isBlending){

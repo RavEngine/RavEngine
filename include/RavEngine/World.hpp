@@ -678,18 +678,18 @@ namespace RavEngine {
         };
                 
         template<typename ... A, typename filterone_t>
-        inline void FilterOne(filterone_t& fom, entity_t i, float scale){
+        inline void FilterOne(filterone_t& fom, entity_t i){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
             if constexpr(filterone_t::nTypes() == 1){
                 if constexpr(!filterone_t::isPolymorphic()){
-                    fom.fm.f(scale,FilterComponentGetDirect<primary_t>(i,fom.ptrs[Index_v<primary_t, A...>]));
+                    fom.fm.f(FilterComponentGetDirect<primary_t>(i,fom.ptrs[Index_v<primary_t, A...>]));
                 }
                 else{
                     //polymorphic query needs to be handled differently, because there can be multiple of a type on an entity
                     auto ptr_c = static_cast<SparseSetForPolymorphic*>(fom.ptrs[Index_v<primary_t, A...>]);
                     auto& indirection_obj = ptr_c->Get(i);
                     indirection_obj.for_each<primary_t>([&](auto comp_ptr){
-                        fom.fm.f(scale,*comp_ptr);
+                        fom.fm.f(*comp_ptr);
                     });
                 }
             }
@@ -706,13 +706,13 @@ namespace RavEngine {
                     (FilterValidityCheck<A,filterone_t::isPolymorphic()>(owner, fom.ptrs[Index_v<A, A...>], satisfies), ...);
                     if (satisfies){
                         if constexpr (!filterone_t::isPolymorphic()){
-                            fom.fm.f(scale,FilterComponentGet<A>(owner,fom.ptrs[Index_v<A, A...>])...);
+                            fom.fm.f(FilterComponentGet<A>(owner,fom.ptrs[Index_v<A, A...>])...);
                         }
                         else{
                             // Because there can be multiple base types per entity, per each Filter type in A,
                             // the user's function must take vectors of A, and decide how to process 
                             // multi-case
-                            fom.fm.f(scale, FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            fom.fm.f(FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
                         }
                     }
                 }
@@ -767,14 +767,13 @@ namespace RavEngine {
                 using argtypes_noref = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
                 // step 2: get it as non-reference types, and slice off the first argument
                 // because it's a float and we don't want it
-                [this,&fm]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t, A...>>) -> void
+                [this,&fm]<typename ... A>(std::type_identity<std::tuple<A...>>) -> void
                 {
-                    auto scale = GetCurrentFPSScale();
                     auto fd = GenFilterData<A...>(fm);
                     auto mainFilter = fd.getMainFilter();
                     FilterOneMode fom(fm, fd.ptrs);
                     for (entity_t i = 0; i < mainFilter->DenseSize(); i++) {
-                        FilterOne<A...>(fom, i, scale);
+                        FilterOne<A...>(fom, i);
                     }
                 }(std::type_identity<argtypes_noref>{});
             }(std::type_identity<argtypes>{});
@@ -845,7 +844,7 @@ namespace RavEngine {
                 // step 2: get it as non-reference types, and slice off the first argument
                 // because it's a float and we don't want it
                 return
-                [this]<typename float_t, typename ... A>(std::type_identity<std::tuple<float_t,A...>>, auto&& ... args) -> auto
+                [this]<typename ... A>(std::type_identity<std::tuple<A...>>, auto&& ... args) -> auto
                 {
                     
                     // use `A...` here
@@ -866,8 +865,7 @@ namespace RavEngine {
                     }).name(StrFormat("{} range update",type_name<T>()));
                     
                     auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i) mutable{
-                        auto scale = GetCurrentFPSScale();
-                        FilterOne<A...>(fom,i,scale);
+                        FilterOne<A...>(fom,i);
                     }).name(StrFormat("{}",type_name<T>().data()));
                     range_update.precede(do_task);
                     

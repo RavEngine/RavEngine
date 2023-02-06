@@ -1083,7 +1083,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	blitShader->Draw(screenSpaceQuadVert, screenSpaceQuadInd, Views::FinalBlit);
 	
 	// render gui
-	auto fng = [](float, GUIComponent& gui) {
+	auto fng = [](GUIComponent& gui) {
 		gui.Render();	//bgfx state is set in renderer before actual draw calls
 	};
 	// update GUIs
@@ -1091,7 +1091,7 @@ void RenderEngine::Draw(Ref<World> worldOwning){
 	
 #ifndef NDEBUG
 	// process debug shapes
-	worldOwning->FilterPolymorphic([](float scale, PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform){
+	worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform){
         for(int i = 0; i < dbg.size(); i++){
             auto& ptr = dbg[i];
             if (ptr.debugEnabled){

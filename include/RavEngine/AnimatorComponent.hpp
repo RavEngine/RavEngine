@@ -290,7 +290,7 @@ public:
 		isPlaying = false;
 	}
 
-    void Tick(float timeScale);
+    void Tick();
 	
     inline decltype(skeleton) GetSkeleton() const{
 		return skeleton;

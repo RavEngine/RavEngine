@@ -82,13 +82,13 @@ int Test_AddDel(){
     e2.EmplaceComponent<FloatComponent>().value = 54.2;
 
     int count = 0;
-    w.Filter([&](float,IntComponent& ic, FloatComponent& fc) {
+    w.Filter([&](IntComponent& ic, FloatComponent& fc) {
         count++;
     });
     assert(count == 0);
     cout << "A 2-filter with 0 possibilities found " << count << " results\n";
 
-    w.Filter([&](float,IntComponent& ic) {
+    w.Filter([&](IntComponent& ic) {
         ic.value *= 2;
     });
     
@@ -99,14 +99,14 @@ int Test_AddDel(){
     e.DestroyComponent<IntComponent>();
     assert(e.HasComponent<IntComponent>() == false);
     count = 0;
-    w.Filter([&](float,FloatComponent& fc) {
+    w.Filter([&](FloatComponent& fc) {
         count++;
     });
     cout << "After deleting the only intcomponent, the floatcomponent count is " << count << "\n";
     assert(count == 1);
 
     count = 0;
-    w.Filter([&](float,IntComponent& fc) {
+    w.Filter([&](IntComponent& fc) {
         count++;
     });
     cout << "After deleting the only intcomponent, the intcomponent count is " << count << "\n";
@@ -126,11 +126,11 @@ int Test_SpawnDestroy(){
    }
    {
        int icount = 0;
-       w.Filter([&](float,IntComponent& fc) {
+       w.Filter([&](IntComponent& fc) {
            icount++;
        });
        int fcount = 0;
-       w.Filter([&](float,FloatComponent& fc) {
+       w.Filter([&](FloatComponent& fc) {
            fcount++;
        });
        cout << "Spawning " << entities.size() << " 2-component entities yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
@@ -145,11 +145,11 @@ int Test_SpawnDestroy(){
    
    {
        int icount = 0;
-       w.Filter([&](float,IntComponent& fc) {
+       w.Filter([&](IntComponent& fc) {
            icount++;
        });
        int fcount = 0;
-       w.Filter([&](float,FloatComponent& fc) {
+       w.Filter([&](FloatComponent& fc) {
            fcount++;
        });
        cout << "After destroying " << iend-ibegin << " 2-component entities, filter yields " << icount << " intcomponents and " << fcount << " floatcomponents\n";
@@ -176,13 +176,13 @@ int Test_MoveBetweenWorlds(){
     }
     
     int w1count = 0;
-    w1.Filter([&](float,IntComponent& ic){
+    w1.Filter([&](IntComponent& ic){
         ic.value = 1;
         w1count++;
     });
     
     int w2count = 0;
-    w2.Filter( [&](float,IntComponent& ic){
+    w2.Filter( [&](IntComponent& ic){
         ic.value = 2;
         w2count++;
     });
@@ -198,13 +198,13 @@ int Test_MoveBetweenWorlds(){
     }
     
     w1count = 0;
-    w1.Filter([&](float,const IntComponent& ic){
+    w1.Filter([&](const IntComponent& ic){
         w1count++;
         cout << ic.value << " ";
     });
     cout << "\n";
     w2count = 0;
-    w2.Filter([&](float,const IntComponent& ic){
+    w2.Filter([&](const IntComponent& ic){
         w2count++;
         cout << ic.value << " ";
     });

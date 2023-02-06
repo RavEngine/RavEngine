@@ -139,6 +139,9 @@ namespace RavEngine {
 		@return the current application tick rate
 		*/
         float CurrentTPS();
+        float GetCurrentFPSScale() const{
+            return currentScale;
+        }
 		
 		Ref<InputManager> inputManager;
 
@@ -270,6 +273,8 @@ namespace RavEngine {
         }
 
 	private:
+        float currentScale = 0.01f;
+        
 		Ref<World> renderWorld;
 	
 		ConcurrentQueue<Function<void(void)>> main_tasks;

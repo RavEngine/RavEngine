@@ -7,7 +7,7 @@ namespace RavEngine{
 struct Transform;
 class AudioRoomSyncSystem : public AutoCTTI {
 public:
-	void operator()(float fpsScale, AudioRoom& c, Transform& tr) const;
+	void operator()(AudioRoom& c, Transform& tr) const;
 };
 
 }
