@@ -93,16 +93,42 @@ if(MSVC)
 endif()
 
 # ==================== Dependencies =====================
-set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
-set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
+set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)" CACHE INTERNAL "")
+
+# ============ build machine tools ==============
 
 # ninja does not use separate config directories for some reason
-if (CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "Unix Makefiles")
-    set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/shaderc" CACHE INTERNAL "")
-    set(PROTOC_CMD "${TOOLS_DIR}/protobuf/protoc" CACHE INTERNAL "")
+if (CMAKE_CROSSCOMPILING)
+	set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
+	if (CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+		set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/shaderc" CACHE INTERNAL "")
+		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/protoc" CACHE INTERNAL "")
+	else()
+		set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/Release/shaderc" CACHE INTERNAL "")
+		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
+	endif()
+
+	file(MAKE_DIRECTORY ${TOOLS_DIR})
+	if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND TARGET_ANDROID))
+		# need to ensure that if cross-compiling, we don't use the cross-compiler for the host tools
+		set(LINUX_HOST_CC "-DCMAKE_C_COMPILER=cc" CACHE INTERNAL "")
+		set(LINUX_HOST_CXX "-DCMAKE_CXX_COMPILER=c++" CACHE INTERNAL "")
+	endif()
+	execute_process(
+		COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" ${LINUX_HOST_CC} ${LINUX_HOST_CXX} -DCMAKE_BUILD_TYPE=Release ${DEPS_DIR}/host-tools/
+		WORKING_DIRECTORY ${TOOLS_DIR}
+	)
+	add_custom_command(
+		PRE_BUILD
+		OUTPUT "${SHADERC_CMD}" 
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target shaderc protoc
+		WORKING_DIRECTORY "${TOOLS_DIR}"
+		VERBATIM
+	)
 else()
-    set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/Release/shaderc" CACHE INTERNAL "")
-    set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
+	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
+	set(SHADERC_PATH "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc" CACHE INTERNAL "")
+	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
 endif()
 
 if(CMAKE_HOST_APPLE OR LINUX)	# don't want target here, this is for the host
@@ -113,35 +139,14 @@ elseif(MSVC)
 	SET(SHADERC_CMD "${SHADERC_PATH}.exe" CACHE INTERNAL "")
 endif()
 
-# ============ build machine tools ==============
-
-# configure build machine tools
-file(MAKE_DIRECTORY ${TOOLS_DIR})
-if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND TARGET_ANDROID))
-	# need to ensure that if cross-compiling, we don't use the cross-compiler for the host tools
-	set(LINUX_HOST_CC "-DCMAKE_C_COMPILER=cc" CACHE INTERNAL "")
-	set(LINUX_HOST_CXX "-DCMAKE_CXX_COMPILER=c++" CACHE INTERNAL "")
-endif()
-execute_process(
-    COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" ${LINUX_HOST_CC} ${LINUX_HOST_CXX} -DCMAKE_BUILD_TYPE=Release ${DEPS_DIR}/host-tools/
-    WORKING_DIRECTORY ${TOOLS_DIR}
-)
-
-# compile build machine tools
-add_custom_command(
-    PRE_BUILD
-    OUTPUT "${SHADERC_CMD}" 
-	COMMAND ${CMAKE_COMMAND} --build . --config Release --target shaderc protoc
-	WORKING_DIRECTORY "${TOOLS_DIR}"
-    VERBATIM
-)
+set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
 
 # no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/tweeny" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/midifile" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/r8brain-cmake" EXCLUDE_FROM_ALL)
@@ -237,8 +242,17 @@ if(UWP)
 	# must use libsodium on UWP instead of openssl due to compiler issues
 	set(GNS_USE_OPENSSL OFF CACHE INTERNAL "")
 endif()
+if(CMAKE_CROSSCOMPILING)
+	set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE INTERNAL "")	# host-tools will build protoc
+else()
+	set(protobuf_BUILD_PROTOC_BINARIES ON CACHE INTERNAL "")	# this instance will build protoc
+endif()
 add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
-add_custom_target("GNS_Deps" DEPENDS "${SHADERC_CMD}")
+if (CMAKE_CROSSCOMPILING)
+	add_custom_target("GNS_Deps" DEPENDS "${SHADERC_CMD}")
+else()
+	add_custom_target("GNS_Deps" DEPENDS "shaderc" "protoc")
+endif()
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 
 # resonance-audio
@@ -259,7 +273,11 @@ set(BGFX_INSTALL OFF CACHE INTERNAL "")
 if (NOT TARGET_LINUX)
 	set(BGFX_AMALGAMATED ON CACHE INTERNAL "")	# amalgamated causes issues with xlib on linux
 endif()
-set(BGFX_BUILD_TOOLS OFF CACHE INTERNAL "")
+if (CMAKE_CROSSCOMPILING)
+	set(BGFX_BUILD_TOOLS OFF CACHE INTERNAL "")	# if cross compiling, make a separate build for host tools
+else()
+	set(BGFX_BUILD_TOOLS ON CACHE INTERNAL "")	# if not cross compiling, make tools locally
+endif()
 set(BX_AMALGAMATED ON CACHE INTERNAL "")
 if(TARGET_EMSCRIPTEN)
 	#set(BGFX_CONFIG_RENDERER_WEBGPU ON CACHE INTERNAL "")
@@ -408,7 +426,15 @@ file(GLOB_RECURSE BOOST_HEADERS "deps/boost/boost/*.hpp" "deps/boost/boost/*.h")
 set(UWP_SDL2MAIN "${DEPS_DIR}/SDL2/src/main/winrt/SDL_winrt_main_NonXAML.cpp" CACHE INTERNAL "")
 add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} ${BOOST_HEADERS} "deps/parallel-hashmap/phmap.natvis")
 rve_enable_IPO(${PROJECT_NAME})
+
+# disable RTTI
 source_group(TREE "${DEPS_DIR}/boost/boost" PREFIX "boost/boost" FILES ${BOOST_HEADERS})
+# target_compile_definitions(${PROJECT_NAME} PUBLIC "BOOST_NO_RTTI" "RMLUI_USE_CUSTOM_RTTI")
+# if (NOT MSVC)
+# 	target_compile_options(${PROJECT_NAME} PUBLIC "-fno-rtti")
+# else()
+# 	target_compile_options(${PROJECT_NAME} PUBLIC "/GR-")
+# endif()
 	
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON

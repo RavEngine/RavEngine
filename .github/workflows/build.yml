@@ -79,7 +79,7 @@ jobs:
       - name: Configure
         run: mkdir -p build && cd build; cmake -G "Xcode" ..
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine
+        run: cd build; cmake --build . --config Release --target RavEngine -- -quiet
  
   build-ios:
     name: iOS Compile Check
@@ -92,7 +92,7 @@ jobs:
       - name: Configure
         run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=OS64COMBINED -DENABLE_ARC=OFF -DDEPLOYMENT_TARGET=14.0 .. 
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine
+        run: cd build; cmake --build . --config Release --target RavEngine -- -quiet
         
   build-tvos:
     name: tvOS Compile Check
@@ -105,7 +105,7 @@ jobs:
       - name: Configure
         run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=TVOSCOMBINED -DENABLE_ARC=OFF -DDEPLOYMENT_TARGET=14.0 ..
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine
+        run: cd build; cmake --build . --config Release --target RavEngine -- -quiet
                 
   build-windows:
     name: Windows x64 Compile Check

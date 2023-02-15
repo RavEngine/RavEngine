@@ -12,6 +12,12 @@ else()
 endif()
 set(RMLUI_VERSION_SHORT ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}${RMLUI_VERSION_SUFFIX})
 
+option(DISABLE_RTTI_AND_EXCEPTIONS "Build with rtti and exceptions disabled." OFF)
+if(DISABLE_RTTI_AND_EXCEPTIONS)
+	list(APPEND CORE_PUBLIC_DEFS -DRMLUI_USE_CUSTOM_RTTI)
+	message("-- C++ RTTI and exceptions will be disabled: Make sure to #define RMLUI_USE_CUSTOM_RTTI before including RmlUi in your project.")
+endif()
+
 # main RML Library (includes debugger)
 file(GLOB_RECURSE RML_SOURCES 
     "RmlUi/Include/*.h" 
@@ -30,6 +36,7 @@ list(APPEND CORE_PRIVATE_DEFS RMLUI_ENABLE_LOTTIE_PLUGIN)
 list(APPEND CORE_PRIVATE_DEFS RMLUI_ENABLE_SVG_PLUGIN)
 target_compile_definitions(RmlCore
     PRIVATE -DRMLUI_VERSION="${RMLUI_VERSION_SHORT}" ${CORE_PRIVATE_DEFS}
+    PUBLIC ${CORE_PUBLIC_DEFS}
 )
 target_compile_features(RmlCore PRIVATE cxx_std_14)
 
