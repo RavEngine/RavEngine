@@ -97,6 +97,16 @@ set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)" CACHE INTERNAL "")
 
 # ============ build machine tools ==============
 
+macro(set_tools)
+	if(CMAKE_HOST_APPLE OR LINUX)	# don't want target here, this is for the host
+		set(SHADERC_NAME "shaderc")
+		SET(SHADERC_CMD "${SHADERC_PATH}" CACHE INTERNAL "")
+	elseif(MSVC)
+		set(SHADERC_NAME "shaderc.exe")
+		SET(SHADERC_CMD "${SHADERC_PATH}.exe" CACHE INTERNAL "")
+	endif()
+endmacro()
+
 # ninja does not use separate config directories for some reason
 if (CMAKE_CROSSCOMPILING)
 	set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
@@ -107,6 +117,8 @@ if (CMAKE_CROSSCOMPILING)
 		set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/Release/shaderc" CACHE INTERNAL "")
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 	endif()
+
+	set_tools()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
 	if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND TARGET_ANDROID))
@@ -131,13 +143,7 @@ else()
 	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
 endif()
 
-if(CMAKE_HOST_APPLE OR LINUX)	# don't want target here, this is for the host
-	set(SHADERC_NAME "shaderc")
-	SET(SHADERC_CMD "${SHADERC_PATH}" CACHE INTERNAL "")
-elseif(MSVC)
-	set(SHADERC_NAME "shaderc.exe")
-	SET(SHADERC_CMD "${SHADERC_PATH}.exe" CACHE INTERNAL "")
-endif()
+set_tools()
 
 set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
