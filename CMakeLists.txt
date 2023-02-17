@@ -93,7 +93,7 @@ if(MSVC)
 endif()
 
 # ==================== Dependencies =====================
-set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)" CACHE INTERNAL "")
+set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
 
 # ============ build machine tools ==============
 
