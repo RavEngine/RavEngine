@@ -107,6 +107,15 @@ macro(set_tools)
 	endif()
 endmacro()
 
+if (NOT CMAKE_CROSSCOMPILING)
+	#double-check, this doesn't always get set properly
+	if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
+		set(CMAKE_CROSSCOMPILING OFF CACHE INTERNAL "")
+	else()
+		set(CMAKE_CROSSCOMPILING ON CACHE INTERNAL "")
+	endif()
+endif()
+
 # ninja does not use separate config directories for some reason
 if (CMAKE_CROSSCOMPILING)
 	set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
