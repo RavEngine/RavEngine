@@ -17,6 +17,11 @@ class AudioPlayer{
     
     static uint32_t SamplesPerSec;
     static uint8_t nchannels;
+    static uint16_t buffer_size;
+    
+    static constexpr uint16_t config_buffersize = 512;
+    static constexpr uint16_t config_samplesPerSec = 44'100;
+    static constexpr uint32_t config_nchannels = 2;
 
 	void Tick(Uint8*, int);
     
@@ -44,6 +49,10 @@ public:
     
     const static auto GetNChannels(){
         return nchannels;
+    }
+    
+    const static auto GetBufferSize(){
+        return buffer_size;
     }
 	
 	/**

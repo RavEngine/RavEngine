@@ -13,8 +13,9 @@ using namespace std;
 
 Ref<AudioPlayerData> AudioPlayer::silence;
 
-STATIC(AudioPlayer::SamplesPerSec);
-STATIC(AudioPlayer::nchannels);
+STATIC(AudioPlayer::SamplesPerSec) = 0;
+STATIC(AudioPlayer::nchannels) = 0;
+STATIC(AudioPlayer::buffer_size) = 0;
 
 template<typename T>
 inline static void TMemset(T* data, T value, size_t nData){
@@ -148,10 +149,10 @@ void AudioPlayer::Init(){
 	SDL_AudioSpec want, have;
 	
 	std::memset(&want, 0, sizeof(want));
-	want.freq = 44100;
+	want.freq = config_samplesPerSec;
 	want.format = AUDIO_F32;
-	want.channels = 2;
-	want.samples = AudioRoom::NFRAMES;
+	want.channels = config_nchannels;
+	want.samples = config_buffersize;
 	want.callback = AudioPlayer::TickStatic;
 	want.userdata = this;
 	
@@ -168,6 +169,7 @@ void AudioPlayer::Init(){
     
     SamplesPerSec = have.freq;
     nchannels = have.channels;
+    buffer_size = have.samples;
 	
 	if (!silence){
         float* data = new float[have.samples]{0};

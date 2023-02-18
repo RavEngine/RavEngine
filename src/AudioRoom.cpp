@@ -11,6 +11,8 @@
 using namespace RavEngine;
 using namespace std;
 
+AudioRoom::RoomData::RoomData() : audioEngine(vraudio::CreateResonanceAudioApi(AudioPlayer::GetNChannels(), AudioPlayer::GetBufferSize(), AudioPlayer::GetSamplesPerSec())){}
+
 void AudioRoom::RoomData::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
 	audioEngine->SetHeadPosition(worldpos.x, worldpos.y, worldpos.z);
 	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
@@ -40,7 +42,7 @@ void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, cons
         src = allSources[code];
     }
     
-    audioEngine->SetInterleavedBuffer(src, data, 1, NFRAMES);   // they copy the contents of temp into their own buffer so giving stack memory is fine here
+    audioEngine->SetInterleavedBuffer(src, data, 1, AudioPlayer::GetBufferSize());   // they copy the contents of temp into their own buffer so giving stack memory is fine here
     audioEngine->SetSourceVolume(src, 1);   // the AudioAsset already applied the volume
     audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
     audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);

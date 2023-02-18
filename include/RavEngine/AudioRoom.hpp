@@ -23,7 +23,6 @@ using RoomMat = vraudio::MaterialName;
 class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public Queryable<AudioRoom,IDebugRenderable>{
 	friend class RavEngine::AudioRoomSyncSystem;
 	friend class RavEngine::AudioPlayer;
-    static constexpr uint16_t NFRAMES = 4096;
 public:
     struct RoomData : public AudioGraphComposed{
         UnorderedMap<size_t,vraudio::ResonanceAudioApi::SourceId> allSources;
@@ -94,7 +93,7 @@ public:
          */
         void Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer);
         
-        RoomData() : audioEngine(vraudio::CreateResonanceAudioApi(2, NFRAMES, 44100)){}
+        RoomData();
         ~RoomData(){
             delete audioEngine;
         }
