@@ -189,7 +189,7 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView& o
 }
 
 void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer){
-    constexpr uint32_t blockSize = 1024;
+    uint32_t blockSize = std::min<decltype(blockSize)>(1024,AudioPlayer::GetBufferSize());
     // treat the buffer as though it were mono even if it has additional space
     uint64_t next = blockSize;
 	auto maxsamples = out_buffer.size() / out_buffer.GetNChannels() ;
@@ -234,5 +234,6 @@ InstrumentSynth::InstrumentSynth(const Filesystem::Path& pathOnDisk, bool notStr
         synthesizer.loadSfzFile(rootpath.string());
     }
     synthesizer.setSampleRate(AudioPlayer::GetSamplesPerSec());
-    synthesizer.setSamplesPerBlock(1024);
+    uint32_t blockSize = std::min<decltype(blockSize)>(1024,AudioPlayer::GetBufferSize());
+    synthesizer.setSamplesPerBlock(blockSize);
 }
