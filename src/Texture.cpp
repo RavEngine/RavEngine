@@ -8,6 +8,7 @@
 #include "Debug.hpp"
 #include <lunasvg.h>
 #include "Filesystem.hpp"
+#include "VirtualFileSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;

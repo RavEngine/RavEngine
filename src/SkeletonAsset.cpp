@@ -14,6 +14,7 @@
 #include <ozz/base/span.h>
 #include <ozz/base/maths/soa_transform.h>
 #include <ozz/animation/runtime/local_to_model_job.h>
+#include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
 using namespace std;

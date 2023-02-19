@@ -1,9 +1,9 @@
 #pragma once
 #include "Ref.hpp"
-#include "AudioSource.hpp"
 #include "Filesystem.hpp"
 
 namespace RavEngine {
+struct AudioAsset;
 
 struct AudioExporter{
     /**

@@ -20,6 +20,8 @@
 #include "World.hpp"
 #include "GetApp.hpp"
 #include "Defines.hpp"
+#include "VirtualFileSystem.hpp"
+#include "AudioPlayer.hpp"
 
 #if XR_AVAILABLE
 #include <openxr/openxr.h>
@@ -166,10 +168,10 @@ App::App(const std::string& resourcesName) : App(){
 	//initialize virtual file system library 
 	PHYSFS_init("");
 	
-	Resources.emplace(resourcesName);
+    Resources = std::make_unique<VirtualFilesystem>(resourcesName);
 }
 
-App::App(){
+App::App() : player(std::make_unique<AudioPlayer>()){
     currentApp = this;
 }
 
@@ -182,7 +184,7 @@ int App::run(int argc, char** argv) {
 	{
 		auto config = OnConfigure(argc, argv);
 
-		Renderer.emplace(config);
+		Renderer = std::make_unique<RenderEngine>(config);
 	}
 #if XR_AVAILABLE
 	if (wantsXR) {
@@ -216,7 +218,7 @@ int App::run(int argc, char** argv) {
 		});
 
 	//setup Audio
-	player.Init();
+	player->Init();
 
 	//setup networking
 	SteamDatagramErrMsg errMsg;
@@ -398,7 +400,7 @@ int App::run(int argc, char** argv) {
 			Renderer->Draw(renderWorld);
 		}
 		
-		player.SetWorld(renderWorld);
+		player->SetWorld(renderWorld);
 		
         //make up the difference
 		//can't use sleep because sleep is not very accurate
@@ -443,7 +445,7 @@ App::~App(){
     MeshAsset::Manager::Clear();
     MeshAssetSkinned::Manager::Clear();
     Texture::Manager::Clear();
-	player.Shutdown();
+	player->Shutdown();
 	networkManager.server.reset();
 	networkManager.client.reset();
 	GameNetworkingSockets_Kill();

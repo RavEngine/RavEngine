@@ -1,6 +1,5 @@
 #pragma once
 #include "Entity.hpp"
-#include "Queryable.hpp"
 #include "Transform.hpp"
 #include "ComponentWithOwner.hpp"
 

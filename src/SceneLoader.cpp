@@ -7,6 +7,7 @@
 #include "Utilities.hpp"
 #include "Filesystem.hpp"
 #include "MeshAsset.hpp"
+#include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
 using namespace std;

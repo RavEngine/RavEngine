@@ -21,6 +21,7 @@
 #include "Utilities.hpp"
 #include "InputManager.hpp"
 #include "AnimatorComponent.hpp"
+#include "Skybox.hpp"
 
 	#if defined __linux__ && !defined(__ANDROID__)
 	#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work

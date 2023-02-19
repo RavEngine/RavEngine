@@ -7,6 +7,7 @@
 #include "Common3D.hpp"
 #include "Debug.hpp"
 #include <SDL_clipboard.h>
+#include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
 using namespace std;

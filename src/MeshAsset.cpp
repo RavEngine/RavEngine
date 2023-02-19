@@ -8,6 +8,7 @@
 #include "App.hpp"
 #include <filesystem>
 #include "Debug.hpp"
+#include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
 

@@ -7,6 +7,7 @@
 #include <assimp/material.h>
 #include <assimp/mesh.h>
 #include "Filesystem.hpp"
+#include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
 using namespace std;

@@ -25,6 +25,9 @@
 #include "Constraint.hpp"
 #include <physfs.h>
 #include "ScriptSystem.hpp"
+#include "RenderEngine.hpp"
+#include "Skybox.hpp"
+#include "PhysicsSolver.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -49,7 +52,7 @@ void RavEngine::World::Tick(float scale) {
 }
 
 
-RavEngine::World::World(){
+RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     SetupTaskGraph();
     EmplacePolymorphicSystem<ScriptSystem>();
     EmplaceSystem<AnimatorSystem>();
@@ -157,7 +160,7 @@ void World::SetupTaskGraph(){
 	auto physicsRootTask = ECSTasks.emplace([] {}).name("PhysicsRootTask");
 
 	auto RunPhysics = ECSTasks.emplace([this]{
-		Solver.Tick(GetCurrentFPSScale());
+		Solver->Tick(GetCurrentFPSScale());
 	}).name("PhysX Execute");
     
     auto read = EmplaceSystem<PhysicsLinkSystemRead>();
@@ -557,5 +560,9 @@ World::~World() {
             DestroyEntity(i); // destroy takes a local ID
         }
     }
+}
+
+void World::DeallocatePhysics(){
+    Solver->DeallocatePhysx();
 }
 

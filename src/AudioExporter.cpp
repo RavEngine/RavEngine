@@ -1,6 +1,7 @@
 #include "AudioExporter.hpp"
 #include <sfizz/../../external/st_audiofile/thirdparty/dr_libs/dr_wav.h>
 #include "AudioPlayer.hpp"
+#include "AudioSource.hpp"
 
 using namespace RavEngine;
 

@@ -1,6 +1,7 @@
 #include "PhysicsTaskDispatcher.hpp"
 #include "App.hpp"
 #include "GetApp.hpp"
+#include "PhysicsSolver.hpp"
 
 using namespace RavEngine;
 

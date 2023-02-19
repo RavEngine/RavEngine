@@ -4,6 +4,7 @@
 #include "InputManager.hpp"
 #include <RmlUi/Debugger.h>
 #include "Uuid.hpp"
+#include "RenderEngine.hpp"
 
 using namespace RavEngine;
 using namespace std;

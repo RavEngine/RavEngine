@@ -6,15 +6,11 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#include "SharedObject.hpp"
-#include "PhysicsSolver.hpp"
-#include "RenderEngine.hpp"
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
 #include "AudioSource.hpp"
 #include "FrameData.hpp"
 #include <taskflow/taskflow.hpp>
-#include "Skybox.hpp"
 #include "Types.hpp"
 #include "AddRemoveAction.hpp"
 #include "PolymorphicIndirection.hpp"
@@ -28,6 +24,9 @@ namespace RavEngine {
 	struct PhysicsCallback;
 	struct StaticMesh;
 	struct SkinnedMeshComponent;
+    struct RenderEngine;
+    struct Skybox;
+    struct PhysicsSolver;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -990,7 +989,7 @@ namespace RavEngine {
 	protected:
         
 		//physics system
-		PhysicsSolver Solver;
+		std::unique_ptr<PhysicsSolver> Solver;
 		
 		//fire-and-forget audio
 		LinkedList<InstantaneousAudioSource> instantaneousToPlay;
@@ -1074,9 +1073,7 @@ namespace RavEngine {
 		/**
 		 Called by GameplayStatics when the final world is being deallocated
 		 */
-		inline void DeallocatePhysics() {
-			Solver.DeallocatePhysx();
-		}
+        inline void DeallocatePhysics();
 
 		/**
 		* Called when this world is made the active world for the App

@@ -23,7 +23,7 @@ static inline PxQuat convertQuat(const quaternion& q) {
 PhysicsBodyComponent::PhysicsBodyComponent(entity_t owner) : ComponentWithOwner(owner){}
 
 void PhysicsBodyComponent::CompleteConstruction(){
-    GetOwner().GetWorld()->Solver.Spawn(*this);
+    GetOwner().GetWorld()->Solver->Spawn(*this);
 }
 
 PhysicsBodyComponent::~PhysicsBodyComponent(){
@@ -34,7 +34,7 @@ void PhysicsBodyComponent::Destroy(){
     //note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
 	if (rigidActor != nullptr) {
 		auto e = GetOwner();
-		e.GetWorld()->Solver.Destroy(*this);
+		e.GetWorld()->Solver->Destroy(*this);
 		rigidActor->userData = nullptr;
 		rigidActor->release();
 

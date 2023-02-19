@@ -10,6 +10,8 @@
 #include "Filesystem.hpp"
 #include <r8bbase.h>
 #include <CDSPResampler.h>
+#include "VirtualFileSystem.hpp"
+#include "AudioPlayer.hpp"
 
 using namespace RavEngine;
 using namespace std;

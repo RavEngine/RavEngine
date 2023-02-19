@@ -11,6 +11,7 @@
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
 using namespace std;

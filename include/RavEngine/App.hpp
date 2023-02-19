@@ -1,28 +1,26 @@
 #pragma once
 #include <chrono>
-#include "RenderEngine.hpp"
-#include "VirtualFileSystem.hpp"
-#include <functional>
 #include <concurrentqueue.h>
 #include "SpinLock.hpp"
 #include <thread>
 #include <taskflow/taskflow.hpp>
-#include "DataStructures.hpp"
-#include "AudioPlayer.hpp"
 #include "NetworkManager.hpp"
-#include "FrameData.hpp"
 #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
 	#undef SDL_MAIN_NEEDED
 	#undef SDL_MAIN_AVAILABLE
 	#define _WINRT 1
 #endif
 #include <SDL_main.h>
-#include <bx/platform.h>
 #include <optional>
 #include "AudioSnapshot.hpp"
 #include "GetApp.hpp"
 
 namespace RavEngine {
+
+struct RenderEngine;
+struct VirtualFilesystem;
+struct FrameData;
+struct AudioPlayer;
 
 	struct AppConfig {
 		enum class RenderBackend {
@@ -45,8 +43,8 @@ namespace RavEngine {
 	class App {
 		friend class NetworkManager;
         
-        std::optional<RenderEngine> Renderer;
-        std::optional<VirtualFilesystem> Resources;
+        std::unique_ptr<RenderEngine> Renderer;
+        std::unique_ptr<VirtualFilesystem> Resources;
 	public:
 		App(const std::string& resourcesName);
         App();  // for unit tests only, do not use
@@ -104,14 +102,14 @@ namespace RavEngine {
 		NetworkManager networkManager;
         
         inline VirtualFilesystem& GetResources(){
-            return Resources.value();
+            return *Resources.get();
         }
         
         inline RenderEngine& GetRenderEngine(){
-            return Renderer.value();
+            return *Renderer.get();
         }
         
-        inline AudioPlayer& GetAudioPlayer(){
+        inline auto& GetAudioPlayer(){
             return player;
         }
         
@@ -294,7 +292,7 @@ namespace RavEngine {
 		virtual AppConfig OnConfigure(int argc, char** argv) { return AppConfig{}; }
 		
 		//plays the audio generated in worlds
-		AudioPlayer player;
+		std::unique_ptr<AudioPlayer> player;
 		
 		/**
 		The startup hook.

@@ -7,6 +7,7 @@
 #include <sfizz/SfzHelpers.h>
 #include <sfizz/SIMDHelpers.h>
 #include "App.hpp"
+#include "VirtualFilesystem.hpp"
 
 #include <cstdint>
 

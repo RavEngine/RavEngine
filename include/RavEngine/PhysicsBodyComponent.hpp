@@ -12,6 +12,7 @@
 #include <PxSimulationEventCallback.h>
 #include "ComponentWithOwner.hpp"
 #include <boost/poly_collection/base_collection.hpp>
+#include "PhysicsCollider.hpp"
 
 namespace RavEngine {
 	struct Transform;

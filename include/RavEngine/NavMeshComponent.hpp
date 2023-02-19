@@ -6,6 +6,7 @@
 #include "Queryable.hpp"
 #include "GetApp.hpp"
 #include "App.hpp"
+#include "RenderEngine.hpp"
 
 namespace RavEngine{
     class NavMeshComponent : public IDebugRenderable, public Queryable<NavMeshComponent,IDebugRenderable>{
