@@ -118,9 +118,13 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         // raster sources
         for (const auto& source : SnapshotToRender->sources) {
             // add this source into the room
-            auto view = source.data->renderData.buffers[buffer_idx].GetDataBufferView();
-            auto hashcode = std::hash<decltype(source.data.get())>()(source.data.get());
-            room->AddEmitter(view.data(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, hashcode, source.data->volume);
+            auto& buffer = source.data->renderData.buffers[buffer_idx];
+            auto view = buffer.GetDataBufferView();
+            auto proc_id = buffer.lastCompletedProcessingIterationID.load();
+            if (proc_id == currentProcessingID){
+                auto hashcode = std::hash<decltype(source.data.get())>()(source.data.get());
+                room->AddEmitter(view.data(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, hashcode, source.data->volume);
+            }
         }
 
         //now simulate the fire-and-forget audio
@@ -132,11 +136,16 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     }
 
     for (auto& source : SnapshotToRender->ambientSources) {
-        resetShared();
-        auto view = source->renderData.buffers[buffer_idx].GetDataBufferView();
-        
-        // mix it in
-        blendBufferIn(view);
+        auto& buffer = source->renderData.buffers[buffer_idx];
+        auto proc_id = buffer.lastCompletedProcessingIterationID.load();
+        if (proc_id == currentProcessingID){
+            resetShared();
+
+            auto view = buffer.GetDataBufferView();
+            
+            // mix it in
+            blendBufferIn(view);
+        }
     }
 
     // run the graph on the listener, if present
