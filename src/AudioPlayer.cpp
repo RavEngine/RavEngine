@@ -28,11 +28,21 @@ inline static void TZero(T* data, size_t nData){
 }
 
 void AudioPlayer::Tick(Uint8* stream, int len) {
-
-    TZero(stream, len); // fill with silence
-
+    
     GetApp()->SwapRenderAudioSnapshot();
-    auto SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
+    SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
+    auto buffer_idx = currentProcessingID % GetBufferCount();
+        
+    // kill all the remaining tasks
+    // if there are any, because that means they missed the deadline
+    tf::Future<void> future;
+    while (theFutures.try_dequeue(future)){
+        future.cancel();
+    }
+    
+    audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
+    TZero(stream, len); // fill with silence
+  
     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
 
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
@@ -68,18 +78,29 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     // game thread only adds non-null players
     auto num = SnapshotToRender->midiPointPlayers.size();
     for (const auto& midiplayer : SnapshotToRender->midiPointPlayers) {
-        resetShared();
-        midiplayer->RenderMono(sharedBufferView,effectScratchBuffer);
-
-        //TODO: this is not very efficient
-        for (const auto& r : SnapshotToRender->rooms) {
-            int id = 1;
-            for (const auto& midisource : SnapshotToRender->midiPointSources) {
-                if (midisource.source.midiPlayer == midiplayer) {
-                    r.room->AddEmitter(shared_buffer, midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode() * id, midisource.source.midiPlayer->GetVolume());
-                    id++;
+        // does this player have up-to-date samples? if so, include it, otherwise skip it
+        auto& buffer = midiplayer->renderData.buffers[buffer_idx];
+        auto proc_id = buffer.lastCompletedProcessingIterationID.load();
+        if (proc_id == currentProcessingID){
+            resetShared();
+            auto bufferview = buffer.GetDataBufferView();
+            
+            //TODO: this is not very efficient - but does it matter?
+            for (const auto& r : SnapshotToRender->rooms) {
+                int id = 1;
+                for (const auto& midisource : SnapshotToRender->midiPointSources) {
+                    if (midisource.source.midiPlayer == midiplayer) {
+                        // because these are mono, buffer.data() is legit
+                        r.room->AddEmitter(bufferview.data(), midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode() * id, midisource.source.midiPlayer->GetVolume());
+                        id++;
+                    }
+                    
                 }
             }
+        }
+        else{
+            // miss!
+            //cout << fmt::format("miss! {} - {}", proc_id, currentProcessingID) << endl;
         }
     }
 
@@ -121,12 +142,38 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         SnapshotToRender->listenerGraph->Render(sharedBufferView, effectScratchBuffer, nchannels);
         blendIn();
     }
-
+    currentProcessingID++;  // advance proc id to mark it as completed
     //clipping: clamp all values to [-1,1]
 #pragma omp simd
     for (int i = 0; i < accumView.size(); i++) {
         accumView[i] = std::clamp(accumView[i], -1.0f, 1.0f);
     }
+}
+
+void AudioPlayer::EnqueueAudioTasks(){
+    if (!SnapshotToRender){
+        return;
+    }
+
+    // render out all the buffers
+    int i = 1;
+    decltype(currentProcessingID) nextID = currentProcessingID + i;   // this is the buffer slot we will render
+    auto buffer_idx = nextID % GetBufferCount();
+    
+    for(const auto& midiplayer : SnapshotToRender->midiPointSources){
+        theFutures.enqueue(audioExecutor.async([&midiplayer,this,buffer_idx,nextID](){
+            auto& renderData = midiplayer.source.midiPlayer->renderData;
+            auto& buffers = renderData.buffers[buffer_idx];
+            auto sharedBufferView = buffers.GetDataBufferView();
+            auto effectScratchBuffer = buffers.GetScratchBufferView();
+            
+            // render the base audio and the effects
+            midiplayer.source.midiPlayer->RenderMono(sharedBufferView,effectScratchBuffer);
+            
+            buffers.lastCompletedProcessingIterationID = nextID;    // mark it as having completed in this iter cycle
+        }));
+    }
+
 }
 
 /**
@@ -178,6 +225,11 @@ void AudioPlayer::Init(){
 	}
 	
 	Debug::LogTemp("Audio Subsystem initialized");
+    
+    audioTaskflow.emplace([this](){
+        EnqueueAudioTasks();
+    });
+    
 	SDL_PauseAudioDevice(device,0);	//begin audio playback
 }
 

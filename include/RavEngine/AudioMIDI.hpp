@@ -6,6 +6,7 @@
 #include "Filesystem.hpp"
 #include <fmidi/fmidi.h>
 #include "AudioGraphAsset.hpp"
+#include "SpinLock.hpp"
 
 namespace RavEngine{
 
@@ -57,12 +58,15 @@ class AudioMIDIPlayer : public AudioGraphComposed{
 //            return b.tick < a.tick;
 //        };
 //    };
-    
+    SpinLock mtx;
+    friend class AudioPlayer;
+    AudioRenderBuffer renderData;
     struct InstrumentChannelPair{
         std::shared_ptr<InstrumentSynth> instrument;
         //std::priority_queue<MidiEvent, std::vector<MidiEvent>, MIDIComparator> events;
     };
     std::vector<InstrumentChannelPair> instrumentTrackMap;
+    
     
     fmidi_player_u midiPlayer;
     Ref<fmidi_smf_t> midiSMF;
@@ -73,6 +77,8 @@ class AudioMIDIPlayer : public AudioGraphComposed{
     
     bool isPlaying = false;
 public:
+    AudioMIDIPlayer();
+
     // internal use only
     bool finishedCurrent = true;
 

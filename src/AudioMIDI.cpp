@@ -7,12 +7,13 @@
 #include <sfizz/SfzHelpers.h>
 #include <sfizz/SIMDHelpers.h>
 #include "App.hpp"
-#include "VirtualFilesystem.hpp"
+#include "VirtualFileSystem.hpp"
 
 #include <cstdint>
 
 using namespace RavEngine;
 
+AudioMIDIPlayer::AudioMIDIPlayer() : renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), 1){}   //TODO: don't hardcode mono
 
 namespace midi {
     constexpr uint8_t statusMask { 0b11110000 };
@@ -169,9 +170,9 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView& o
     unsigned sampleRate { AudioPlayer::GetSamplesPerSec() };
     auto sampleRateDouble = static_cast<double>(sampleRate);
     const double increment { 1.0 / sampleRateDouble };
-    
+    mtx.lock();
     // tick player for the size of the buffer
-    for (delay = 0; delay < out_buffer.size() && !finishedCurrent; delay++)
+    for (delay = 0; delay < out_buffer.sizeOneChannel() && !finishedCurrent; delay++)
         fmidi_player_tick(midiPlayer.get(), increment);
     
     using vtype = std::remove_reference_t<decltype(out_buffer)>::value_type;
@@ -181,8 +182,9 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView& o
     
     // render all the instruments and then add into the out_buffer
     for(auto& instrument : instrumentTrackMap){
-        instrument.instrument->Render(buffers, out_buffer.size(), out_buffer, 1);
+        instrument.instrument->Render(buffers, out_buffer.sizeOneChannel(), out_buffer, 1);
     }
+    mtx.unlock();
     
     // apply any effect graphs
     // re-use tempbufferL
@@ -190,7 +192,7 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView& o
 }
 
 void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer){
-    uint32_t blockSize = std::min<decltype(blockSize)>(1024,AudioPlayer::GetBufferSize());
+    uint32_t blockSize = std::min<decltype(blockSize)>(1024,out_buffer.sizeOneChannel());
     // treat the buffer as though it were mono even if it has additional space
     uint64_t next = blockSize;
 	auto maxsamples = out_buffer.size() / out_buffer.GetNChannels() ;
@@ -199,7 +201,7 @@ void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView& out_buffer, Plana
         PlanarSampleBufferInlineView out_buffer_subset(out_buffer[0].data() + numFramesWritten, next, next);
         PlanarSampleBufferInlineView scratch_buffer_subset(effectScratchBuffer[0].data() + numFramesWritten, next, next);
         RenderMonoBuffer1024OrLess(out_buffer_subset, scratch_buffer_subset);
-        next = std::min<size_t>(blockSize, out_buffer.size() - numFramesWritten);
+        next = std::min<size_t>(blockSize, out_buffer.sizeOneChannel() - numFramesWritten);
     }
 }
 

@@ -61,16 +61,56 @@ public:
 class AudioListener : public Queryable<AudioListener>, public AudioGraphComposed, public AutoCTTI{};
 
 /**
+ A render buffer for audio processing. Allocated and managed internally.
+ */
+struct AudioRenderBuffer{
+    struct SingleRenderBuffer{
+        std::atomic<uint64_t> lastCompletedProcessingIterationID = 0;
+        float* data_impl = nullptr;
+        float* scratch_impl = nullptr;
+        uint8_t nchannels = 0;
+        SingleRenderBuffer(uint16_t nsamples, uint8_t nchannels) : nchannels(nchannels){
+            data_impl = new float[nsamples * nchannels]{0};
+            scratch_impl = new float[nsamples * nchannels]{0};
+        }
+        ~SingleRenderBuffer(){
+            if (data_impl){
+                delete[] data_impl;
+            }
+            if (scratch_impl){
+                delete[] scratch_impl;
+            }
+        }
+        SingleRenderBuffer(SingleRenderBuffer&& other) : nchannels(other.nchannels), data_impl(other.data_impl), scratch_impl(other.scratch_impl){
+            lastCompletedProcessingIterationID.store(other.lastCompletedProcessingIterationID.load());
+            other.data_impl = nullptr;
+            other.scratch_impl = nullptr;
+        }
+        PlanarSampleBufferInlineView GetDataBufferView() const;
+        PlanarSampleBufferInlineView GetScratchBufferView() const;
+    };
+    std::vector<SingleRenderBuffer> buffers;
+    AudioRenderBuffer(uint16_t nBuffers, uint16_t nsamples, uint8_t nchannels){
+        buffers.reserve(nBuffers);
+        for(decltype(nBuffers) i = 0; i < nBuffers; i++){
+            buffers.emplace_back(nsamples, nchannels);
+        }
+    }
+};
+
+
+/**
  Represents a single audio source.
  */
 struct AudioPlayerData {
     struct Player : public AudioGraphComposed{
         Ref<AudioAsset> asset;
+        AudioRenderBuffer renderData;
         float volume = 1;
         size_t playhead_pos = 0;
         bool loops : 1;
         bool isPlaying : 1;
-        Player(decltype(asset) a) : asset(a), loops(false), isPlaying(false){}
+        Player(decltype(asset) a);
         
         /**
          Get the next region, accounting for looping and volume, of the current track. The playhead advances buffer.size() % (loops? numsamples : 1).

@@ -16,6 +16,8 @@
 using namespace RavEngine;
 using namespace std;
 
+AudioPlayerData::Player::Player(decltype(asset) a) : asset(a), loops(false), isPlaying(false), renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels()){}
+
 AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_channels){
 	//expand audio into buffer
 	string path = StrFormat("/sounds/{}", name);
@@ -97,3 +99,14 @@ AudioAsset::~AudioAsset(){
 	delete[] audiodata;
 	audiodata = nullptr;
 }
+
+using namespace RavEngine;
+
+RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::GetDataBufferView() const { 
+    return PlanarSampleBufferInlineView{data_impl, AudioPlayer::GetBufferSize(), static_cast<size_t>(AudioPlayer::GetBufferSize() / nchannels)};
+}
+
+RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::GetScratchBufferView() const { 
+    return PlanarSampleBufferInlineView{scratch_impl, AudioPlayer::GetBufferSize(), static_cast<size_t>(AudioPlayer::GetBufferSize() / nchannels)};
+}
+
