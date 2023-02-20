@@ -63,16 +63,22 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         TZero(sharedBufferView.data(), sharedBufferView.size());
     };
 
-    // add blend temp buffer into output buffer
-    const auto blendIn = [accumView, sharedBufferView] {
-        const auto nchannels = sharedBufferView.GetNChannels();
+    const auto blendBufferIn = [accumView](PlanarSampleBufferInlineView sourceView){
+        const auto nchannels = sourceView.GetNChannels();
 #pragma omp simd
         for (int i = 0; i < accumView.size(); i++) {
             //mix with existing
             // also perform planar-to-interleaved conversion
-            accumView[i] += sharedBufferView[i % nchannels][i / nchannels];
+            accumView[i] += sourceView[i % nchannels][i / nchannels];
         }
     };
+    
+    // add blend temp buffer into output buffer
+    const auto blendIn = [&blendBufferIn,accumView, sharedBufferView] {
+        blendBufferIn(sharedBufferView);
+    };
+    
+  
 
     //midi sources - inverted logic from Rooms
     // game thread only adds non-null players
@@ -127,16 +133,10 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
     for (auto& source : SnapshotToRender->ambientSources) {
         resetShared();
-        source->ProvideBufferData(sharedBufferView, effectScratchBuffer);
-
+        auto view = source->renderData.buffers[buffer_idx].GetDataBufferView();
+        
         // mix it in
-        blendIn();
-    }
-
-    for (const auto& source : SnapshotToRender->ambientMIDIsources) {
-        resetShared();
-        source.midiPlayer->RenderMono(sharedBufferView,effectScratchBuffer);
-        blendIn();
+        blendBufferIn(view);
     }
 
     // run the graph on the listener, if present
@@ -162,31 +162,33 @@ void AudioPlayer::EnqueueAudioTasks(){
     decltype(currentProcessingID) nextID = currentProcessingID + i;   // this is the buffer slot we will render
     auto buffer_idx = nextID % GetBufferCount();
     
+    auto doPlayer = [buffer_idx, nextID](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
+        auto& buffers = renderData->buffers[buffer_idx];
+        auto sharedBufferView = buffers.GetDataBufferView();
+        auto effectScratchBuffer = buffers.GetScratchBufferView();
+        
+        player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
+        buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
+    };
+    
     // midi players
     for(const auto& midiplayer : SnapshotToRender->midiPointSources){
-        theFutures.enqueue(audioExecutor.async([&midiplayer,this,buffer_idx,nextID](){
-            auto& renderData = midiplayer.source.midiPlayer->renderData;
-            auto& buffers = renderData.buffers[buffer_idx];
-            auto sharedBufferView = buffers.GetDataBufferView();
-            auto effectScratchBuffer = buffers.GetScratchBufferView();
-            
-            // render the base audio and the effects
-            midiplayer.source.midiPlayer->RenderMono(sharedBufferView,effectScratchBuffer);
-            
-            buffers.lastCompletedProcessingIterationID = nextID;    // mark it as having completed in this iter cycle
-        }));
+        auto renderData = &midiplayer.source.midiPlayer->renderData;
+        auto player = midiplayer.source.midiPlayer;
+        static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
+        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
     }
     // raster sources
     for (const auto& source : SnapshotToRender->sources) {
-        theFutures.enqueue(audioExecutor.async([&source, this,buffer_idx,nextID](){
-            auto& renderData = source.data->renderData;
-            auto& buffers = renderData.buffers[buffer_idx];
-            auto sharedBufferView = buffers.GetDataBufferView();
-            auto effectScratchBuffer = buffers.GetScratchBufferView();
-            
-            source.data->ProvideBufferData(sharedBufferView, effectScratchBuffer);
-            buffers.lastCompletedProcessingIterationID  = nextID;   // mark it as having completed in this iter cycle
-        }));
+        auto renderData = &source.data->renderData;
+        auto player = source.data;
+        static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
+        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
+    }
+    for (auto& source : SnapshotToRender->ambientSources) {
+        auto renderData = &source->renderData;
+        static_assert(sizeof(source) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
+        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, source));
     }
 
 }

@@ -191,7 +191,7 @@ void AudioMIDIPlayer::RenderMonoBuffer1024OrLess(PlanarSampleBufferInlineView& o
     AudioGraphComposed::Render(out_buffer, effectScratchBuffer,1);
 }
 
-void AudioMIDIPlayer::RenderMono(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer){
+void AudioMIDIPlayer::ProvideBufferData(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer){
     uint32_t blockSize = std::min<decltype(blockSize)>(1024,out_buffer.sizeOneChannel());
     // treat the buffer as though it were mono even if it has additional space
     uint64_t next = blockSize;
@@ -222,7 +222,7 @@ Ref<AudioAsset> AudioMIDIRenderer::Render(const Ref<fmidi_smf_t>& file, AudioMID
     std::vector<float> effectData(totalSamples);
     PlanarSampleBufferInlineView assetView(assetData, totalSamples, totalSamples);
     PlanarSampleBufferInlineView effectView(effectData.data(), totalSamples, totalSamples);
-    player.RenderMono(assetView, effectView);
+    player.ProvideBufferData(assetView, effectView);
   
     auto asset = New<AudioAsset>(InterleavedSampleBufferView{ assetData,totalSamples }, 1);
     return asset;

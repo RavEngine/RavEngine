@@ -51,7 +51,7 @@ public:
 /**
  Must be allocated to a stable location in memory
  */
-class AudioMIDIPlayer : public AudioGraphComposed{
+class AudioMIDIPlayer : public AudioGraphComposed, public AudioDataProvider{
     // data structure for events
 //    struct MIDIComparator{
 //        constexpr bool operator() (const MidiEvent& a, const MidiEvent& b){
@@ -99,7 +99,7 @@ public:
      Render the state of the player to the provided buffer
      @param out_buffer the buffer to write to
      */
-    void RenderMono(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer);
+    void ProvideBufferData(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer) final;
     
     auto GetVolume() const{
         return volume;
