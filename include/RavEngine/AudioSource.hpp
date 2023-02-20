@@ -53,6 +53,10 @@ public:
     }
 };
 
+struct AudioDataProvider{
+    virtual void ProvideBufferData(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer) = 0;
+};
+
 
 /**
  This is a marker component to indicate where the "microphone" is in the world. Do not have more than one in a world.
@@ -103,46 +107,21 @@ struct AudioRenderBuffer{
  Represents a single audio source.
  */
 struct AudioPlayerData {
-    struct Player : public AudioGraphComposed{
+    struct Player : public AudioGraphComposed, public AudioDataProvider{
         Ref<AudioAsset> asset;
         AudioRenderBuffer renderData;
         float volume = 1;
         size_t playhead_pos = 0;
         bool loops : 1;
         bool isPlaying : 1;
-        Player(decltype(asset) a);
+        Player(decltype(asset) a, uint8_t nchannels = 1);
         
         /**
          Get the next region, accounting for looping and volume, of the current track. The playhead advances buffer.size() % (loops? numsamples : 1).
          If the next region is shorter than the remaining space in the buffer, that space is filled with 0.
          @param buffer output destination
          */
-        inline void GetSampleRegionAndAdvance(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace){
-			const auto nsamples = asset->GetNumSamples();
-            assert(buffer.GetNChannels() >= asset->nchannels);  // you are trying to do something that doesn't make sense!!
-            for(size_t i = 0; i < buffer.sizeOneChannel(); i++){
-                //is playhead past end of source?
-                if (playhead_pos >= nsamples){
-                    if (loops){
-                        playhead_pos = 0;
-                    }
-                    else{
-#pragma omp simd
-                        for(uint8_t c = 0; c < asset->nchannels; c++){
-                            buffer[c][i] = 0;
-                        }
-                        isPlaying = false;
-                        continue;
-                    }
-                }
-#pragma omp simd
-                for(uint8_t c = 0; c < asset->nchannels; c++){
-                    buffer[c][i] = asset->data[c][playhead_pos] * volume;
-                }
-                playhead_pos++;
-            }
-            AudioGraphComposed::Render(buffer,scratchSpace, asset->GetNChanels());
-        }
+        void ProvideBufferData(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace) final;
     };
 protected:
 	friend class AudioEngine;
@@ -159,7 +138,7 @@ public:
         return player->GetGraph();
     }
     
-	AudioPlayerData(decltype(Player::asset) a ) : player(std::make_shared<Player>(a)){}
+	AudioPlayerData(decltype(Player::asset) a, uint8_t nchannels ) : player(std::make_shared<Player>(a, nchannels)){}
 
     inline decltype(player) GetPlayer() const{
         return player;
@@ -220,18 +199,14 @@ public:
  For attaching a movable source to an Entity. Affected by Rooms.
  */
 struct AudioSourceComponent : public AudioPlayerData, public Queryable<AudioSourceComponent>, public AutoCTTI{
-	AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a){
-		if (a->GetNChanels() != 1) {
-			Debug::Fatal("Only mono is supported for point-audio sources, got {} channels", a->GetNChanels());
-		}
-	}
+    AudioSourceComponent(Ref<AudioAsset> a);
 };
 
 /**
  For playing omnipresent audio in a scene. Not affected by Rooms.
  */
 struct AmbientAudioSourceComponent : public AudioPlayerData, public Queryable< AmbientAudioSourceComponent>, public AutoCTTI {
-	AmbientAudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a) {}
+    AmbientAudioSourceComponent(Ref<AudioAsset> a);
 };
 
 /**
@@ -240,20 +215,14 @@ struct AmbientAudioSourceComponent : public AudioPlayerData, public Queryable< A
 struct InstantaneousAudioSource : public AudioPlayerData{
 	vector3 source_position;
 	
-	InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol = 1) : AudioPlayerData(a), source_position(position){
-		player->volume = vol;
-		player->isPlaying = true;
-	}
+    InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol = 1);
 };
 
 /**
  Used for Fire-and-forget audio playing, where spatialization is not necessary. See method on the world for more info
  */
 struct InstantaneousAmbientAudioSource : public AudioPlayerData {
-	InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol = 1) : AudioPlayerData(a) {
-		player->volume = vol;
-		player->isPlaying = true;
-	}
+    InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol = 1);
 };
 
 }

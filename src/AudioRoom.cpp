@@ -49,17 +49,6 @@ void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, cons
     audioEngine->SetSourceRoomEffectsGain(src, gain);
 }
 
-void AudioRoom::RoomData::AddEmitter(AudioPlayerData::Player* source, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t nframes, PlanarSampleBufferInlineView& view, PlanarSampleBufferInlineView& effectScratchBuffer){
-	if (source->isPlaying){
-		
-		//get appropriate area in source's buffer if it is playing
-        const auto stackarr_size = nframes;
-		
-		source->GetSampleRegionAndAdvance(view, effectScratchBuffer);
-		
-        AddEmitter(view.data(), pos, rot, roompos, roomrot, std::hash<decltype(source)>()(source), source->volume);
-	}
-}
 
 void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer){
     auto nchannels = AudioPlayer::GetNChannels();

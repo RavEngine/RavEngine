@@ -112,7 +112,9 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         // raster sources
         for (const auto& source : SnapshotToRender->sources) {
             // add this source into the room
-            room->AddEmitter(source.data.get(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, sharedBufferView.sizeOneChannel(), sharedBufferView, effectScratchBuffer);
+            auto view = source.data->renderData.buffers[buffer_idx].GetDataBufferView();
+            auto hashcode = std::hash<decltype(source.data.get())>()(source.data.get());
+            room->AddEmitter(view.data(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, hashcode, source.data->volume);
         }
 
         //now simulate the fire-and-forget audio
@@ -125,7 +127,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
     for (auto& source : SnapshotToRender->ambientSources) {
         resetShared();
-        source->GetSampleRegionAndAdvance(sharedBufferView, effectScratchBuffer);
+        source->ProvideBufferData(sharedBufferView, effectScratchBuffer);
 
         // mix it in
         blendIn();
@@ -160,6 +162,7 @@ void AudioPlayer::EnqueueAudioTasks(){
     decltype(currentProcessingID) nextID = currentProcessingID + i;   // this is the buffer slot we will render
     auto buffer_idx = nextID % GetBufferCount();
     
+    // midi players
     for(const auto& midiplayer : SnapshotToRender->midiPointSources){
         theFutures.enqueue(audioExecutor.async([&midiplayer,this,buffer_idx,nextID](){
             auto& renderData = midiplayer.source.midiPlayer->renderData;
@@ -171,6 +174,18 @@ void AudioPlayer::EnqueueAudioTasks(){
             midiplayer.source.midiPlayer->RenderMono(sharedBufferView,effectScratchBuffer);
             
             buffers.lastCompletedProcessingIterationID = nextID;    // mark it as having completed in this iter cycle
+        }));
+    }
+    // raster sources
+    for (const auto& source : SnapshotToRender->sources) {
+        theFutures.enqueue(audioExecutor.async([&source, this,buffer_idx,nextID](){
+            auto& renderData = source.data->renderData;
+            auto& buffers = renderData.buffers[buffer_idx];
+            auto sharedBufferView = buffers.GetDataBufferView();
+            auto effectScratchBuffer = buffers.GetScratchBufferView();
+            
+            source.data->ProvideBufferData(sharedBufferView, effectScratchBuffer);
+            buffers.lastCompletedProcessingIterationID  = nextID;   // mark it as having completed in this iter cycle
         }));
     }
 
@@ -220,7 +235,7 @@ void AudioPlayer::Init(){
 	
 	if (!silence){
         float* data = new float[have.samples]{0};
-		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(InterleavedSampleBufferView(data, have.samples),1));
+		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(InterleavedSampleBufferView(data, have.samples),1),1);
 		silence->SetLoop(true);
 	}
 	

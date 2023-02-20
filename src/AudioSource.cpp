@@ -16,7 +16,28 @@
 using namespace RavEngine;
 using namespace std;
 
-AudioPlayerData::Player::Player(decltype(asset) a) : asset(a), loops(false), isPlaying(false), renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels()){}
+AudioPlayerData::Player::Player(decltype(asset) a, uint8_t nchannels) : asset(a), loops(false), isPlaying(false), renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), nchannels){}
+
+AudioSourceComponent::AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a, 1){
+    if (a->GetNChanels() != 1) {
+        Debug::Fatal("Only mono is supported for point-audio sources, got {} channels", a->GetNChanels());
+    }
+}
+
+AmbientAudioSourceComponent::AmbientAudioSourceComponent(Ref<AudioAsset> a)  : AudioPlayerData(a, AudioPlayer::GetNChannels()) {}
+
+InstantaneousAudioSource::InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol) : AudioPlayerData(a, 1), source_position(position){
+    if (a->GetNChanels() != 1) {
+        Debug::Fatal("Only mono is supported for point-audio sources, got {} channels", a->GetNChanels());
+    }
+    player->volume = vol;
+    player->isPlaying = true;
+}
+
+InstantaneousAmbientAudioSource::InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol) : AudioPlayerData(a, AudioPlayer::GetNChannels()) {
+    player->volume = vol;
+    player->isPlaying = true;
+}
 
 AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_channels){
 	//expand audio into buffer
@@ -110,3 +131,30 @@ RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::G
     return PlanarSampleBufferInlineView{scratch_impl, AudioPlayer::GetBufferSize(), static_cast<size_t>(AudioPlayer::GetBufferSize() / nchannels)};
 }
 
+
+void AudioPlayerData::Player::ProvideBufferData(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace) {
+    const auto nsamples = asset->GetNumSamples();
+    assert(buffer.GetNChannels() >= asset->nchannels);  // you are trying to do something that doesn't make sense!!
+    for(size_t i = 0; i < buffer.sizeOneChannel(); i++){
+        //is playhead past end of source?
+        if (playhead_pos >= nsamples){
+            if (loops){
+                playhead_pos = 0;
+            }
+            else{
+#pragma omp simd
+                for(uint8_t c = 0; c < asset->nchannels; c++){
+                    buffer[c][i] = 0;
+                }
+                isPlaying = false;
+                continue;
+            }
+        }
+#pragma omp simd
+        for(uint8_t c = 0; c < asset->nchannels; c++){
+            buffer[c][i] = asset->data[c][playhead_pos] * volume;
+        }
+        playhead_pos++;
+    }
+    AudioGraphComposed::Render(buffer,scratchSpace, asset->GetNChanels());
+}
