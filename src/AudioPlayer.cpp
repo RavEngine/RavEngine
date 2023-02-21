@@ -5,6 +5,7 @@
 #include "AudioSource.hpp"
 #include "AudioRoom.hpp"
 #include "DataStructures.hpp"
+#include "AudioGraphAsset.hpp"
 #include "App.hpp"
 #include <algorithm>
 

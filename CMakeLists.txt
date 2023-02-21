@@ -327,19 +327,6 @@ SET(RECASTNAVIGATION_TESTS OFF CACHE INTERNAL "")
 SET(RECASTNAVIGATION_EXAMPLES OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/recastnavigation" EXCLUDE_FROM_ALL)
 
-# sfizz
-set(BUILD_TESTING OFF CACHE INTERNAL "")
-set(SFIZZ_JACK OFF CACHE INTERNAL "")
-set(SFIZZ_LV2 OFF CACHE INTERNAL "")
-set(SFIZZ_LV2_UI OFF CACHE INTERNAL "")
-set(SFIZZ_VST OFF CACHE INTERNAL "")
-set(SFIZZ_AU OFF CACHE INTERNAL "")
-set(SFIZZ_SHARED OFF CACHE INTERNAL "")
-set(ENABLE_LTO OFF CACHE INTERNAL "")
-set(SFIZZ_RENDER OFF CACHE INTERNAL "")
-set(SFIZZ_STATIC_DEPENDENCIES OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/sfizz")
-
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 set(CMAKE_CXX_STANDARD 17)	# workaround g++ issue with C++20 and PhysX
 else()
@@ -506,9 +493,6 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
 	"${DEPS_DIR}/boost"
 	"${DEPS_DIR}/date/include"
-	"${DEPS_DIR}/sfizz/external/abseil-cpp/"
-	"${DEPS_DIR}/sfizz/external/simde/"
-	"${DEPS_DIR}/sfizz/external/filesystem/include/"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
@@ -593,8 +577,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
-	"sfizz_static"
-    "sfizz_fmidi"
 	"midifile"
 	${ICONV_LIB}
 	${COCOA_LIB}
@@ -779,10 +761,6 @@ Abseil;midifile;sdl_headers_copy;
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
 PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController;PhysXVehicle2")
-
-group_in("Libraries/sfizz" "aiff;sfizz_pugixml;sfizz_spline;sfizz_tunings;sfizz_hiir_polyphase_iir2designer;sfizz_kissfft;sfizz_cephes;sfizz_cpuid;sfizz_filesystem_impl;sfizz_fmidi;\
-st_audiofile;st_audiofile_formats;st_info;sfizz_parser;sfizz_messaging;sfizz_import;sfizz_spin_mutex;sfizz_internal;sfizz_match_definitions;sfizz_static;\
-sfizz-generate-git-build-id;sfizz-git-build-id")
 
 group_in("Libraries/Abseil" "absl_base;absl_raw_hash_set;absl_stacktrace;absl_symbolize;absl_failure_signal_handler;absl_demangle_internal;absl_leak_check;\
 absl_leak_check_disable;absl_flags_program_name;absl_flags_internal;absl_hash;absl_int128;absl_status;absl_statusor;absl_strings;absl_cord;absl_synchronization;\

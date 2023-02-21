@@ -12,10 +12,9 @@ A C++20 cross-platform game framework, with emphasis on performance and ease of 
 8. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
 9.  FSM animation blending tree system
 10. Compute shader mesh skinning with automatic batching
-11. Software instrument synthesis and MIDI playback (sfizz)
-12. Programmable audio post-processing system
-13. CI/CD-friendly build process powered by CMake
-14. Quality-of-life features like automatic incremental shader compilation
+11. Programmable audio post-processing system
+12. CI/CD-friendly build process powered by CMake
+13. Quality-of-life features like automatic incremental shader compilation
 
 Note: RavEngine does not have a graphical editor.
 
