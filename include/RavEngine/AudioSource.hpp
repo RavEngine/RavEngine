@@ -11,7 +11,7 @@ namespace RavEngine{
 class AudioAsset{
 	friend class AudioEngine;
 	friend class AudioSyncSystem;
-	friend class AudioPlayerData;
+	friend class AudioSourceBase;
 private:
 	const float* audiodata;
 	double lengthSeconds = 0;
@@ -53,17 +53,6 @@ public:
     }
 };
 
-struct AudioDataProvider{
-    virtual void ProvideBufferData(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer) = 0;
-};
-
-
-/**
- This is a marker component to indicate where the "microphone" is in the world. Do not have more than one in a world.
- Applying an effect graph to the listener will apply the graph to all sounds in the world at once.
- */
-class AudioListener : public Queryable<AudioListener>, public AudioGraphComposed, public AutoCTTI{};
-
 /**
  A render buffer for audio processing. Allocated and managed internally.
  */
@@ -103,116 +92,136 @@ struct AudioRenderBuffer{
 };
 
 
+struct AudioDataProvider{
+    virtual void ProvideBufferData(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer) = 0;
+    
+    AudioDataProvider(uint16_t nbuffers, uint16_t nsamples, uint8_t nchannels) : renderData(nbuffers, nsamples, nchannels){}
+    
+    AudioRenderBuffer renderData;
+    float volume = 1;
+    bool loops : 1 = false;
+    bool isPlaying : 1 = false;
+    
+    /**
+     Starts playing the audio source if it is not playing. Call Pause() to suspend it.
+     */
+    inline void Play(){
+        isPlaying = true;
+    }
+    
+    /**
+     Stop the source if it is playing. Call Play() to resume.
+     */
+    inline void Pause(){
+        isPlaying = false;
+    }
+    
+    virtual void Restart() = 0;
+    
+    
+    inline float GetVolume() const { return volume; }
+    
+    /**
+     Change the volume for this source
+     @param vol new volume for this source.
+     */
+    inline void SetVolume(float vol){volume = vol;}
+    
+    /**
+     Enable or disable looping for this audio source. A looping source will continuously play until manually stopped, whereas
+     non-looping sources will automatically deactivate when finished
+     @param loop new loop setting
+     */
+    inline void SetLoop(bool loop) {this->loops = loop;}
+    
+    /**
+     @return true if the source is currently playing, false otherwise
+     */
+    inline bool IsPlaying() const { return isPlaying; }
+};
+
+
+/**
+ This is a marker component to indicate where the "microphone" is in the world. Do not have more than one in a world.
+ Applying an effect graph to the listener will apply the graph to all sounds in the world at once.
+ */
+class AudioListener : public Queryable<AudioListener>, public AudioGraphComposed, public AutoCTTI{};
+
+/**
+ Player for AudioAssets
+ */
+struct SampledAudioDataProvider : public AudioGraphComposed, public AudioDataProvider{
+    Ref<AudioAsset> asset;
+    
+    size_t playhead_pos = 0;
+    
+    SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels = 1);
+    
+    /**
+    * Change the audio asset in this player
+    * @param a the audio asset
+    */
+    inline void SetAudio(decltype(SampledAudioDataProvider::asset) a) {
+        asset = a;
+    }
+    
+    /**
+     Reset the audio playhead to the beginning of this source. This does not trigger it to begin playing.
+     */
+    void Restart() final{
+        playhead_pos = 0;
+    }
+    
+    /**
+     Get the next region, accounting for looping and volume, of the current track. The playhead advances buffer.size() % (loops? numsamples : 1).
+     If the next region is shorter than the remaining space in the buffer, that space is filled with 0.
+     @param buffer output destination
+     */
+    void ProvideBufferData(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace) final;
+};
+
 /**
  Represents a single audio source.
  */
-struct AudioPlayerData {
-    struct Player : public AudioGraphComposed, public AudioDataProvider{
-        Ref<AudioAsset> asset;
-        AudioRenderBuffer renderData;
-        float volume = 1;
-        size_t playhead_pos = 0;
-        bool loops : 1;
-        bool isPlaying : 1;
-        Player(decltype(asset) a, uint8_t nchannels = 1);
-        
-        /**
-         Get the next region, accounting for looping and volume, of the current track. The playhead advances buffer.size() % (loops? numsamples : 1).
-         If the next region is shorter than the remaining space in the buffer, that space is filled with 0.
-         @param buffer output destination
-         */
-        void ProvideBufferData(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace) final;
-    };
+struct AudioSourceBase {
+   
 protected:
 	friend class AudioEngine;
 	friend class AudioSyncSystem;
-    Ref<Player> player;
+    Ref<AudioDataProvider> player;
 	
 public:
     
-    void SetGraph(AudioGraphComposed::effect_graph_ptr_t inGraph){
-        player->SetGraph(inGraph);
-    }
-    
-    auto GetGraph() const{
-        return player->GetGraph();
-    }
-    
-	AudioPlayerData(decltype(Player::asset) a, uint8_t nchannels ) : player(std::make_shared<Player>(a, nchannels)){}
+	AudioSourceBase(decltype(player) a) : player(a){}
 
+    inline void SetPlayer(decltype(player) p ){
+        player = p;
+    }
+    
     inline decltype(player) GetPlayer() const{
         return player;
     }
-    
-	/**
-	* Change the audio asset in this player
-	* @param a the audio asset
-	*/
-    inline void SetAudio(decltype(Player::asset) a) {
-		player->asset = a;
-	}
-	
-	/**
-	 Starts playing the audio source if it is not playing. Call Pause() to suspend it.
-	 */
-    inline void Play(){
-		player->isPlaying = true;
-	}
-	
-	/**
-	 Stop the source if it is playing. Call Play() to resume.
-	 */
-    inline void Pause(){
-		player->isPlaying = false;
-	}
-	
-	/**
-	 Reset the audio playhead to the beginning of this source. This does not trigger it to begin playing.
-	 */
-    inline void Restart(){
-		player->playhead_pos = 0;
-	}
-	
-    inline float GetVolume() const { return player->volume; }
-	
-	/**
-	 Change the volume for this source
-	 @param vol new volume for this source.
-	 */
-    inline void SetVolume(float vol){player->volume = vol;}
-	
-	/**
-	 Enable or disable looping for this audio source. A looping source will continuously play until manually stopped, whereas
-	 non-looping sources will automatically deactivate when finished
-	 @param loop new loop setting
-	 */
-    inline void SetLoop(bool loop) {player->loops = loop;}
-	
-	/**
-	 @return true if the source is currently playing, false otherwise
-	 */
-    inline bool IsPlaying() const { return player->isPlaying; }
 
 };
 
 /**
  For attaching a movable source to an Entity. Affected by Rooms.
  */
-struct AudioSourceComponent : public AudioPlayerData, public Queryable<AudioSourceComponent>, public AutoCTTI{
-    AudioSourceComponent(Ref<AudioAsset> a);
+struct AudioSourceComponent : public AudioSourceBase, public Queryable<AudioSourceComponent>, public AutoCTTI{
+    AudioSourceComponent(Ref<AudioDataProvider> a);
 };
 
 /**
  For playing omnipresent audio in a scene. Not affected by Rooms.
  */
-struct AmbientAudioSourceComponent : public AudioPlayerData, public Queryable< AmbientAudioSourceComponent>, public AutoCTTI {
-    AmbientAudioSourceComponent(Ref<AudioAsset> a);
+struct AmbientAudioSourceComponent : public AudioSourceBase, public Queryable< AmbientAudioSourceComponent>, public AutoCTTI {
+    AmbientAudioSourceComponent(Ref<AudioDataProvider> a);
 };
 
 /**
  Used for Fire-and-forget audio playing. Affected by Rooms. See method on the world for more info
  */
-struct InstantaneousAudioSource : public AudioPlayerData{
+struct InstantaneousAudioSource : public AudioSourceBase{
 	vector3 source_position;
 	
     InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol = 1);
@@ -221,7 +230,7 @@ struct InstantaneousAudioSource : public AudioPlayerData{
 /**
  Used for Fire-and-forget audio playing, where spatialization is not necessary. See method on the world for more info
  */
-struct InstantaneousAmbientAudioSource : public AudioPlayerData {
+struct InstantaneousAmbientAudioSource : public AudioSourceBase {
     InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol = 1);
 };
 

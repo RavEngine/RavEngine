@@ -16,27 +16,20 @@
 using namespace RavEngine;
 using namespace std;
 
-AudioPlayerData::Player::Player(decltype(asset) a, uint8_t nchannels) : asset(a), loops(false), isPlaying(false), renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), nchannels){}
+SampledAudioDataProvider::SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels) : asset(a), AudioDataProvider(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), nchannels){}
 
-AudioSourceComponent::AudioSourceComponent(Ref<AudioAsset> a) : AudioPlayerData(a, 1){
-    if (a->GetNChanels() != 1) {
-        Debug::Fatal("Only mono is supported for point-audio sources, got {} channels", a->GetNChanels());
-    }
+AudioSourceComponent::AudioSourceComponent(Ref<AudioDataProvider> a) : AudioSourceBase(a){}
+
+AmbientAudioSourceComponent::AmbientAudioSourceComponent(Ref<AudioDataProvider> a)  : AudioSourceBase(a) {}
+
+InstantaneousAudioSource::InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol) : AudioSourceBase(New<SampledAudioDataProvider>(a)), source_position(position){
+    player->SetVolume(vol);
+    player->Play();
 }
 
-AmbientAudioSourceComponent::AmbientAudioSourceComponent(Ref<AudioAsset> a)  : AudioPlayerData(a, AudioPlayer::GetNChannels()) {}
-
-InstantaneousAudioSource::InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol) : AudioPlayerData(a, 1), source_position(position){
-    if (a->GetNChanels() != 1) {
-        Debug::Fatal("Only mono is supported for point-audio sources, got {} channels", a->GetNChanels());
-    }
-    player->volume = vol;
-    player->isPlaying = true;
-}
-
-InstantaneousAmbientAudioSource::InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol) : AudioPlayerData(a, AudioPlayer::GetNChannels()) {
-    player->volume = vol;
-    player->isPlaying = true;
+InstantaneousAmbientAudioSource::InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol) : AudioSourceBase(New<SampledAudioDataProvider>(a)) {
+    player->SetVolume(vol);
+    player->Play();
 }
 
 AudioAsset::AudioAsset(const std::string& name, decltype(nchannels) desired_channels){
@@ -132,9 +125,10 @@ RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::G
 }
 
 
-void AudioPlayerData::Player::ProvideBufferData(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace) {
+void SampledAudioDataProvider::ProvideBufferData(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace) {
     const auto nsamples = asset->GetNumSamples();
-    assert(buffer.GetNChannels() >= asset->nchannels);  // you are trying to do something that doesn't make sense!!
+    const auto nchannels = asset->GetNChanels();
+    assert(buffer.GetNChannels() >= nchannels);  // you are trying to do something that doesn't make sense!!
     for(size_t i = 0; i < buffer.sizeOneChannel(); i++){
         //is playhead past end of source?
         if (playhead_pos >= nsamples){
@@ -143,7 +137,7 @@ void AudioPlayerData::Player::ProvideBufferData(PlanarSampleBufferInlineView& bu
             }
             else{
 #pragma omp simd
-                for(uint8_t c = 0; c < asset->nchannels; c++){
+                for(uint8_t c = 0; c < nchannels; c++){
                     buffer[c][i] = 0;
                 }
                 isPlaying = false;
@@ -151,7 +145,7 @@ void AudioPlayerData::Player::ProvideBufferData(PlanarSampleBufferInlineView& bu
             }
         }
 #pragma omp simd
-        for(uint8_t c = 0; c < asset->nchannels; c++){
+        for(uint8_t c = 0; c < nchannels; c++){
             buffer[c][i] = asset->data[c][playhead_pos] * volume;
         }
         playhead_pos++;

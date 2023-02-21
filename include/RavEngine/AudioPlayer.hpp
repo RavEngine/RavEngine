@@ -8,15 +8,15 @@
 namespace RavEngine{
 
 class World;
-struct AudioPlayerData;
+struct AudioSourceBase;
 struct AudioSnapshot;
+struct AudioDataProvider;
 /**
  Is responsible for making the buffers generated in the Audio Engine class come out your speakers
  */
 class AudioPlayer{
 	SDL_AudioDeviceID device;
 	WeakRef<World> worldToRender;
-	static Ref<AudioPlayerData> silence;
     uint64_t currentProcessingID = 0;
     
     static uint32_t SamplesPerSec;
@@ -37,6 +37,7 @@ class AudioPlayer{
     ConcurrentQueue<tf::Future<void>> theFutures;
     
     void EnqueueAudioTasks();
+    UnorderedSet<Ref<AudioDataProvider>> alreadyTicked;
     
 public:
 	/**

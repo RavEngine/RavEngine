@@ -13,7 +13,7 @@
 
 using namespace RavEngine;
 
-AudioMIDIPlayer::AudioMIDIPlayer() : renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), 1){}   //TODO: don't hardcode mono
+AudioMIDIPlayer::AudioMIDIPlayer() : AudioDataProvider(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), 1){}   //TODO: don't hardcode mono
 
 namespace midi {
     constexpr uint8_t statusMask { 0b11110000 };
@@ -42,7 +42,7 @@ namespace midi {
     }
 }
 
-void AudioMIDIPlayer::Reset(){
+void AudioMIDIPlayer::Restart(){
     fmidi_player_rewind(midiPlayer.get());
 }
 

@@ -14,17 +14,10 @@ struct AudioSnapshot{
     };
     
     struct PointSource : public PointSourceBase{
-        Ref<AudioPlayerData::Player> data;
+        Ref<AudioDataProvider> data;
         PointSource(const decltype(data)& data, const decltype(worldpos)& wp, const decltype(worldrot)& wr): data(data), PointSourceBase{wp, wr} {}
-    };
-    
-    struct PointMIDISource : PointSourceBase{
-        AudioMIDISourceComponent source;    // contains only a pointer
-        static_assert(sizeof(AudioMIDISourceComponent) == sizeof(Ref<AudioMIDIPlayer>), "MIDISource is larger than a smart pointer, consider refactoring");
-        PointMIDISource(const decltype(source)& source, const decltype(worldpos)& wp, const decltype(worldrot)& wr): source(source), PointSourceBase{wp, wr} {}
-        
-        auto hashcode() const{
-            return std::hash<decltype(source.midiPlayer)>()(source.midiPlayer);
+        bool operator==(const PointSource& other) const{
+            return data == other.data && worldpos == other.worldpos && worldrot == other.worldrot;
         }
     };
     
@@ -35,14 +28,8 @@ struct AudioSnapshot{
         Room(const decltype(room)& room,const decltype(worldpos)& wp, const decltype(worldrot)& wr): room(room), worldpos(wp), worldrot(wr){}
     };
     
-    Vector<PointSource> sources;
-    Vector<Ref<AudioPlayerData::Player>> ambientSources;
-    Vector<PointMIDISource> midiPointSources;
-    Vector<AudioMIDIAmbientSourceComponent> ambientMIDIsources;
-    UnorderedSet<decltype(AudioMIDISourceComponent::midiPlayer)> midiPointPlayers;  // stores only the players, so that we tick them all once total
-    
-    static_assert(sizeof(AudioMIDIAmbientSourceComponent) == sizeof(Ref<AudioMIDIPlayer>), "AudioMIDIAmbientSourceComponent is larger than a smart pointer, consider refactoring");
-
+    UnorderedSet<PointSource> sources;
+    UnorderedSet<Ref<AudioDataProvider>> ambientSources;
     
     Vector<Room> rooms;
     vector3 listenerPos;
@@ -53,10 +40,15 @@ struct AudioSnapshot{
         sources.clear();
         ambientSources.clear();
         rooms.clear();
-        midiPointSources.clear();
-        ambientMIDIsources.clear();
-        midiPointPlayers.clear();
     }
 };
 }
 
+namespace std{
+    template<>
+    struct hash<RavEngine::AudioSnapshot::PointSource>{
+        inline size_t operator()(const RavEngine::AudioSnapshot::PointSource& obj){
+            return reinterpret_cast<size_t>(obj.data.get());
+        }
+    };
+}

@@ -61,7 +61,7 @@ public:
         void AddEmitter(const float* data, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t source_hashcode, float volume);
         
 
-        void DestroyEmitterFor(AudioPlayerData* source);
+        void DestroyEmitterFor(AudioSourceBase* source);
         
         /**
          Set the dimensions of the room. A dimension of 0 is interpreted as unbounded.

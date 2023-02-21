@@ -188,53 +188,35 @@ void World::SetupTaskGraph(){
   
     
     auto copyAudios = audioTasks.emplace([this]{
-        // raster audio
         Filter([this](AudioSourceComponent& audioSource, const Transform& transform){
-            GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
-        });
-        
-        // midi audio
-        Filter([this](AudioMIDISourceComponent& audioSource, Transform& transform){
-            auto snapshot = GetApp()->GetCurrentAudioSnapshot();
-            if (audioSource.midiPlayer && audioSource.midiPlayer->IsPlaying()){
-                snapshot->midiPointSources.emplace_back(audioSource, transform.GetWorldPosition(), transform.GetWorldRotation());
-                snapshot->midiPointPlayers.insert(audioSource.midiPlayer);
-            }
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
         });
         
         // now clean up the fire-and-forget audios that have completed
         instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
-            return ! ias.IsPlaying();
+            return ! ias.GetPlayer()->IsPlaying();
         });
         
         // now do fire-and-forget audios that need to play
         for(auto& f : instantaneousToPlay){
-            GetApp()->GetCurrentAudioSnapshot()->sources.emplace_back(f.GetPlayer(),f.source_position,quaternion(0,0,0,1));
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(f.GetPlayer(),f.source_position,quaternion(0,0,0,1));
         }
     }).name("Point Audios").succeed(audioClear);
     
     auto copyAmbients = audioTasks.emplace([this]{
         // raster audio
         Filter([this](AmbientAudioSourceComponent& audioSource){
-            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(audioSource.GetPlayer());
+            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace(audioSource.GetPlayer());
         });
-        
-        // midi audio
-        Filter([this](AudioMIDIAmbientSourceComponent& audioSource){
-            if (audioSource.midiPlayer && audioSource.midiPlayer->IsPlaying()){
-                GetApp()->GetCurrentAudioSnapshot()->ambientMIDIsources.emplace_back(audioSource);
-            }
-        });
-            
 
         // now clean up the fire-and-forget audios that have completed
         ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {
-            return !ias.IsPlaying();
+            return !ias.GetPlayer()->IsPlaying();
         });
         
         // now do fire-and-forget audios that need to play
         for(auto& f : ambientToPlay){
-            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace_back(f.GetPlayer());
+            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace(f.GetPlayer());
         }
         
     }).name("Ambient Audios").succeed(audioClear);

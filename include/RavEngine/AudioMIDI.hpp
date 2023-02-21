@@ -60,7 +60,6 @@ class AudioMIDIPlayer : public AudioGraphComposed, public AudioDataProvider{
 //    };
     SpinLock mtx;
     friend class AudioPlayer;
-    AudioRenderBuffer renderData;
     struct InstrumentChannelPair{
         std::shared_ptr<InstrumentSynth> instrument;
         //std::priority_queue<MidiEvent, std::vector<MidiEvent>, MIDIComparator> events;
@@ -72,10 +71,7 @@ class AudioMIDIPlayer : public AudioGraphComposed, public AudioDataProvider{
     Ref<fmidi_smf_t> midiSMF;
     
     uint32_t delay = 0;  // tells the synth in the callback function when to start playing the sound
-    
-    float volume = 1;
-    
-    bool isPlaying = false;
+        
 public:
     AudioMIDIPlayer();
 
@@ -105,42 +101,12 @@ public:
         return volume;
     }
     
-    void SetVolume(decltype(volume) inVol){
-        volume = inVol;
-    }
-    
-    void Play(){
-        isPlaying = true;
-    }
-    void Pause(){
-        isPlaying = false;
-    }
-    
-    bool IsPlaying() const{
-        return isPlaying;
-    }
-    
-    void Reset();
+    void Restart() final;
     
     int ticksPerQuarterNote = 0;
     float beatsPerMinute = 60;
 
 };
-
-struct AudioMIDISourceBase : public AutoCTTI{
-    Ref<AudioMIDIPlayer> midiPlayer;
-};
-
-/**
- For playing MIDI from a point in 3D space
- */
-struct AudioMIDISourceComponent : public AudioMIDISourceBase, public Queryable<AudioMIDISourceComponent>{};
-
-/**
- For playing MIDI from anywhere, intended for background audio
- */
-struct AudioMIDIAmbientSourceComponent : public AudioMIDISourceBase, public Queryable<AudioMIDIAmbientSourceComponent>{};
-
 
 /**
  For rendering a MIDI song to an AudioAsset

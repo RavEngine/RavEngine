@@ -11,8 +11,6 @@
 using namespace RavEngine;
 using namespace std;
 
-Ref<AudioPlayerData> AudioPlayer::silence;
-
 STATIC(AudioPlayer::SamplesPerSec) = 0;
 STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
@@ -78,37 +76,6 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         blendBufferIn(sharedBufferView);
     };
     
-  
-
-    //midi sources - inverted logic from Rooms
-    // game thread only adds non-null players
-    auto num = SnapshotToRender->midiPointPlayers.size();
-    for (const auto& midiplayer : SnapshotToRender->midiPointPlayers) {
-        // does this player have up-to-date samples? if so, include it, otherwise skip it
-        auto& buffer = midiplayer->renderData.buffers[buffer_idx];
-        auto proc_id = buffer.lastCompletedProcessingIterationID.load();
-        if (proc_id == currentProcessingID){
-            resetShared();
-            auto bufferview = buffer.GetDataBufferView();
-            
-            //TODO: this is not very efficient - but does it matter?
-            for (const auto& r : SnapshotToRender->rooms) {
-                int id = 1;
-                for (const auto& midisource : SnapshotToRender->midiPointSources) {
-                    if (midisource.source.midiPlayer == midiplayer) {
-                        // because these are mono, buffer.data() is legit
-                        r.room->AddEmitter(bufferview.data(), midisource.worldpos, midisource.worldrot, r.worldpos, r.worldrot, midisource.hashcode() * id, midisource.source.midiPlayer->GetVolume());
-                        id++;
-                    }
-                    
-                }
-            }
-        }
-        else{
-            // miss!
-            //cout << fmt::format("miss! {} - {}", proc_id, currentProcessingID) << endl;
-        }
-    }
 
     for (const auto& r : SnapshotToRender->rooms) {
         auto& room = r.room;
@@ -179,21 +146,19 @@ void AudioPlayer::EnqueueAudioTasks(){
         player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
         buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
     };
-    
-    // midi players
-    for(const auto& midiplayer : SnapshotToRender->midiPointSources){
-        auto renderData = &midiplayer.source.midiPlayer->renderData;
-        auto player = midiplayer.source.midiPlayer;
-        static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
-    }
-    // raster sources
+    alreadyTicked.clear();
+    // point sources
     for (const auto& source : SnapshotToRender->sources) {
-        auto renderData = &source.data->renderData;
         auto player = source.data;
-        static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
+        if (!alreadyTicked.contains(player)){
+            alreadyTicked.insert(player);
+            auto renderData = &source.data->renderData;
+            static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
+            theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
+        }
+      
     }
+    // ambient sources
     for (auto& source : SnapshotToRender->ambientSources) {
         auto renderData = &source->renderData;
         static_assert(sizeof(source) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
@@ -243,12 +208,7 @@ void AudioPlayer::Init(){
     SamplesPerSec = have.freq;
     nchannels = have.channels;
     buffer_size = have.samples;
-	
-	if (!silence){
-        float* data = new float[have.samples]{0};
-		silence = std::make_shared<AudioPlayerData>(std::make_shared<AudioAsset>(InterleavedSampleBufferView(data, have.samples),1),1);
-		silence->SetLoop(true);
-	}
+
 	
 	Debug::LogTemp("Audio Subsystem initialized");
     

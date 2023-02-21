@@ -11,7 +11,7 @@
 #include "App.hpp"
 #include <typeindex>
 #include "Debug.hpp"
-#include "VirtualFilesystem.hpp"
+#include "VirtualFileSystem.hpp"
 
 using namespace std;
 using namespace RavEngine;
