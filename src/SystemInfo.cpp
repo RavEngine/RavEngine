@@ -7,6 +7,7 @@
 #include <bx/bx.h>
 #include <cstring>
 #include "Defines.hpp"
+#include "RenderEngine.hpp"
 
 #ifdef _WIN32
     #include <PortableDeviceApi.h>
