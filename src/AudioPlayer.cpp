@@ -8,6 +8,10 @@
 #include "AudioGraphAsset.hpp"
 #include "App.hpp"
 #include <algorithm>
+#if _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
 
 using namespace RavEngine;
 using namespace std;
@@ -15,6 +19,11 @@ using namespace std;
 STATIC(AudioPlayer::SamplesPerSec) = 0;
 STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
+
+// for interruption system
+thread_local std::atomic<bool> isExecuting{ false };
+thread_local std::atomic<bool> wasCancelled{ false };
+thread_local jmp_buf environment;   // used with setjmp
 
 template<typename T>
 inline static void TMemset(T* data, T value, size_t nData){
@@ -39,6 +48,8 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         future.cancel();
     }
     
+    InterruptTasksInFlight();
+
     audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
     TZero(stream, len); // fill with silence
   
@@ -140,12 +151,21 @@ void AudioPlayer::EnqueueAudioTasks(){
     auto buffer_idx = nextID % GetBufferCount();
     
     auto doPlayer = [buffer_idx, nextID](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
-        auto& buffers = renderData->buffers[buffer_idx];
-        auto sharedBufferView = buffers.GetDataBufferView();
-        auto effectScratchBuffer = buffers.GetScratchBufferView();
-        
-        player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
-        buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
+        isExecuting = true;
+        setjmp(environment); // if interrupted, this thread will resume here
+        if (!wasCancelled) {
+            auto& buffers = renderData->buffers[buffer_idx];
+            auto sharedBufferView = buffers.GetDataBufferView();
+            auto effectScratchBuffer = buffers.GetScratchBufferView();
+
+            player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
+            buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
+        }
+        else {
+            wasCancelled = false;
+        }
+      
+        isExecuting = false;
     };
     alreadyTicked.clear();
     // point sources
@@ -166,6 +186,30 @@ void AudioPlayer::EnqueueAudioTasks(){
         theFutures.enqueue(audioExecutor.async(doPlayer, renderData, source));
     }
 
+}
+#if _WIN32
+void APCFn(ULONG_PTR parameter) {
+    if (isExecuting) {
+        wasCancelled = true;
+        longjmp(environment, 0);
+    }
+}
+#endif
+
+void RavEngine::AudioPlayer::InterruptTasksInFlight()
+{
+    auto& workers = audioExecutor.getWorkers();
+    for (auto& thread : workers) {
+       auto handle = thread.native_handle();
+#if _WIN32
+       QueueUserAPC2(
+           APCFn,
+           handle,
+           NULL,
+           QUEUE_USER_APC_FLAGS_SPECIAL_USER_APC    // this flag causes the target thread to immediately interrupt and run the provided function pointer
+       );
+#endif
+    }
 }
 
 /**

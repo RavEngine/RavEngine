@@ -56,7 +56,7 @@ namespace RavEngine {
         RenderEngine(const AppConfig&);
 
 		//render a world, for internal use only
-		void Draw(Ref<World>);
+		void Draw(Ref<RavEngine::World>);
 
 		//get reset bitmask, for internal use only
 		static uint32_t GetResetFlags();

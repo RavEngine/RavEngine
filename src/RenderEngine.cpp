@@ -670,7 +670,7 @@ RavEngine::RenderEngine::~RenderEngine()
 /**
  Render one frame using the current state of every object in the world
  */
-void RenderEngine::Draw(Ref<World> worldOwning){
+void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 
 #ifndef NDEBUG
 	//display debug print messages

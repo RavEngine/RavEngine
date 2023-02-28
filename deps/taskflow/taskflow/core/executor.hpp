@@ -653,6 +653,10 @@ class Executor {
     */
     size_t num_observers() const noexcept;
 
+    auto& getWorkers() {
+        return _threads;
+    }
+
   private:
 
     std::condition_variable _topology_cv;
