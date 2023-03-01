@@ -163,7 +163,6 @@ add_subdirectory("${DEPS_DIR}/tweeny" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/midifile" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/r8brain-cmake" EXCLUDE_FROM_ALL)
 
 # randoms
@@ -577,7 +576,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
-	"midifile"
 	${ICONV_LIB}
 	${COCOA_LIB}
 	${SM_LIB}
@@ -756,7 +754,7 @@ group_in("Libraries" "assimp;assimp_cmd;sodium;DebugUtils;Detour;DetourCrowd;Det
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem;\
-Abseil;midifile;sdl_headers_copy;
+Abseil;sdl_headers_copy;
 ")
 
 group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
