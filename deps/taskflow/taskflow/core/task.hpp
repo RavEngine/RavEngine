@@ -31,8 +31,6 @@ enum class TaskType : int {
   DYNAMIC,
   /** @brief condition task type */
   CONDITION,
-  /** @brief multi-condition task type */
-  MULTI_CONDITION,
   /** @brief module task type */
   MODULE,
   /** @brief asynchronous task type */
@@ -47,14 +45,13 @@ enum class TaskType : int {
 @private
 @brief array of all task types (used for iterating task types)
 */
-inline constexpr std::array<TaskType, 10> TASK_TYPES = {
+inline constexpr std::array<TaskType, 9> TASK_TYPES = {
   TaskType::PLACEHOLDER,
   TaskType::CUDAFLOW,
   TaskType::SYCLFLOW,
   TaskType::STATIC,
   TaskType::DYNAMIC,
   TaskType::CONDITION,
-  TaskType::MULTI_CONDITION,
   TaskType::MODULE,
   TaskType::ASYNC,
   TaskType::RUNTIME
@@ -72,7 +69,6 @@ TaskType::SYCLFLOW        ->  "syclflow"
 TaskType::STATIC          ->  "static"
 TaskType::DYNAMIC         ->  "subflow"
 TaskType::CONDITION       ->  "condition"
-TaskType::MULTI_CONDITION ->  "multi_condition"
 TaskType::MODULE          ->  "module"
 TaskType::ASYNC           ->  "async"
 TaskType::RUNTIME         ->  "runtime"
@@ -89,7 +85,6 @@ inline const char* to_string(TaskType type) {
     case TaskType::STATIC:           val = "static";          break;
     case TaskType::DYNAMIC:          val = "subflow";         break;
     case TaskType::CONDITION:        val = "condition";       break;
-    case TaskType::MULTI_CONDITION:  val = "multi_condition"; break;
     case TaskType::MODULE:           val = "module";          break;
     case TaskType::ASYNC:            val = "async";           break;
     case TaskType::RUNTIME:          val = "runtime";         break;
@@ -346,6 +341,22 @@ class Task {
     @return @c *this
     */
     Task& data(void* data);
+      
+    /**
+    @brief assigns a priority value to the task
+
+    A priority value can be one of the following three levels, 
+    tf::TaskPriority::HIGH (numerically equivalent to 0),
+    tf::TaskPriority::NORMAL (numerically equivalent to 1), and
+    tf::TaskPriority::LOW (numerically equivalent to 2).
+    The smaller the priority value, the higher the priority.
+    */
+    Task& priority(TaskPriority p);
+    
+    /**
+    @brief queries the priority value of the task
+    */
+    TaskPriority priority() const;
 
     /**
     @brief resets the task handle to null
@@ -537,7 +548,7 @@ inline TaskType Task::type() const {
     case Node::STATIC:          return TaskType::STATIC;
     case Node::DYNAMIC:         return TaskType::DYNAMIC;
     case Node::CONDITION:       return TaskType::CONDITION;
-    case Node::MULTI_CONDITION: return TaskType::MULTI_CONDITION;
+    case Node::MULTI_CONDITION: return TaskType::CONDITION;
     case Node::MODULE:          return TaskType::MODULE;
     case Node::ASYNC:           return TaskType::ASYNC;
     case Node::SILENT_ASYNC:    return TaskType::ASYNC;
@@ -605,15 +616,26 @@ Task& Task::work(C&& c) {
   return *this;
 }
 
-// Function: name
+// Function: data
 inline void* Task::data() const {
   return _node->_data;
 }
 
-// Function: name
+// Function: data
 inline Task& Task::data(void* data) {
   _node->_data = data;
   return *this;
+}
+
+// Function: priority
+inline Task& Task::priority(TaskPriority p) {
+  _node->_priority = static_cast<unsigned>(p);
+  return *this;
+}
+
+// Function: priority
+inline TaskPriority Task::priority() const {
+  return static_cast<TaskPriority>(_node->_priority);
 }
 
 // ----------------------------------------------------------------------------
@@ -732,7 +754,7 @@ inline TaskType TaskView::type() const {
     case Node::STATIC:          return TaskType::STATIC;
     case Node::DYNAMIC:         return TaskType::DYNAMIC;
     case Node::CONDITION:       return TaskType::CONDITION;
-    case Node::MULTI_CONDITION: return TaskType::MULTI_CONDITION;
+    case Node::MULTI_CONDITION: return TaskType::CONDITION;
     case Node::MODULE:          return TaskType::MODULE;
     case Node::ASYNC:           return TaskType::ASYNC;
     case Node::SILENT_ASYNC:    return TaskType::ASYNC;

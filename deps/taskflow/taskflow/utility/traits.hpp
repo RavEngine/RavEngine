@@ -27,6 +27,7 @@
 #include <string>
 #include <variant>
 #include <optional>
+#include "os.hpp"
 
 namespace tf {
 
@@ -216,6 +217,56 @@ void visit_tuple(Func func, Tuple& tup, size_t idx) {
     return visit_tuple<Func, Tuple, N + 1>(func, tup, idx);
   }
 }
+
+// ----------------------------------------------------------------------------
+// unroll loop
+// ----------------------------------------------------------------------------
+
+// Template unrolled looping construct.
+template<auto beg, auto end, auto step, bool valid = (beg < end)>
+struct Unroll {
+  template<typename F>
+  static void eval(F f) {
+    f(beg);
+    Unroll<beg + step, end, step>::eval(f);
+  }
+};
+
+template<auto beg, auto end, auto step>
+struct Unroll<beg, end, step, false> {
+  template<typename F>
+  static void eval(F) { }
+};
+
+template<auto beg, auto end, auto step, typename F>
+void unroll(F f) {
+  Unroll<beg, end, step>::eval(f);
+}
+
+// ----------------------------------------------------------------------------
+// make types of variant unique
+// ----------------------------------------------------------------------------
+
+template <typename T, typename... Ts>
+struct filter_duplicates { using type = T; };
+
+template <template <typename...> class C, typename... Ts, typename U, typename... Us>
+struct filter_duplicates<C<Ts...>, U, Us...>
+    : std::conditional_t<(std::is_same_v<U, Ts> || ...)
+                       , filter_duplicates<C<Ts...>, Us...>
+                       , filter_duplicates<C<Ts..., U>, Us...>> {};
+
+template <typename T>
+struct unique_variant;
+
+template <typename... Ts>
+struct unique_variant<std::variant<Ts...>> : filter_duplicates<std::variant<>, Ts...> {};
+
+template <typename T>
+using unique_variant_t = typename unique_variant<T>::type;
+
+
+
 
 
 }  // end of namespace tf. ----------------------------------------------------

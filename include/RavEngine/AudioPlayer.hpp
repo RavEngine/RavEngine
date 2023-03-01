@@ -3,6 +3,7 @@
 #include "Ref.hpp"
 #include "WeakRef.hpp"
 #include <taskflow/taskflow.hpp>
+#include <taskflow/core/worker.hpp>
 #include "DataStructures.hpp"
 
 namespace RavEngine{
@@ -30,7 +31,7 @@ class AudioPlayer{
 
 	void Tick(Uint8*, int);
     
-    tf::Executor audioExecutor{2};  //TODO: make configurable
+    tf::Executor audioExecutor;
     tf::Taskflow audioTaskflow;
     
     AudioSnapshot* SnapshotToRender = nullptr;
@@ -42,6 +43,8 @@ class AudioPlayer{
     void InterruptTasksInFlight();
     
 public:
+    AudioPlayer();
+    
 	/**
 	 Set the current world to output audio for
 	 */

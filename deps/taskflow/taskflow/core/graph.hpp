@@ -1,16 +1,18 @@
 #pragma once
 
+#include "../utility/traits.hpp"
 #include "../utility/iterator.hpp"
 #include "../utility/object_pool.hpp"
-#include "../utility/traits.hpp"
 #include "../utility/os.hpp"
 #include "../utility/math.hpp"
 #include "../utility/small_vector.hpp"
+#include "../utility/serializer.hpp"
 #include "error.hpp"
 #include "declarations.hpp"
 #include "semaphore.hpp"
 #include "environment.hpp"
 #include "topology.hpp"
+#include "tsq.hpp"
 
 /**
 @file graph.hpp
@@ -217,7 +219,7 @@ class Runtime {
   @code{.cpp}
   // complete a subflow synchronously
   taskflow.emplace([](tf::Runtime& rt){
-    rt.run_and_wait([](tf::Runtime& sf){
+    rt.run_and_wait([](tf::Subflow& sf){
       tf::Task A = sf.emplace([](){});
       tf::Task B = sf.emplace([](){});
     }); 
@@ -428,6 +430,8 @@ class Node {
   private:
 
   std::string _name;
+  
+  unsigned _priority {0};
 
   void* _data {nullptr};
 
@@ -489,7 +493,7 @@ Node::Dynamic::Dynamic(C&& c) : work {std::forward<C>(c)} {
 // Constructor
 template <typename C>
 Node::Condition::Condition(C&& c) : work {std::forward<C>(c)} {
-}
+}                                        
 
 // ----------------------------------------------------------------------------
 // Definition for Node::MultiCondition

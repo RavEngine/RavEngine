@@ -39,6 +39,21 @@ void pthreadFn(void*){
 }
 #endif
 
+struct AudioWorker : public tf::WorkerInterface{
+    void scheduler_prologue(tf::Worker& worker) final{
+#ifndef _WIN32
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+        pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);   // this makes the cancellation immediate (runs pthreadFn)
+        pthread_setname_np("Audio Worker");
+#endif
+    }
+    void scheduler_epilogue(tf::Worker& worker, std::exception_ptr ptr) final{};
+};
+
+
+AudioPlayer::AudioPlayer() : audioExecutor{2, std::make_shared<AudioWorker>()}{
+    
+}
 
 template<typename T>
 inline static void TMemset(T* data, T value, size_t nData){
@@ -288,20 +303,6 @@ void AudioPlayer::Init(){
     audioTaskflow.emplace([this](){
         EnqueueAudioTasks();
     });
-    
-    // non-windows: push handlers onto workers
-#ifndef _WIN32
-    for(auto& thread : audioExecutor.getWorkers()){
-        auto handle = thread.native_handle();
-        audioExecutor.silent_async([handle]{
-            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-            pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);   // this makes the cancellation immediate (runs pthreadFn)
-            pthread_setname_np("Audio Worker");
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));    // to prevent a thread from executing multiple of these blocks
-        });
-    }
-#endif
     
 	SDL_PauseAudioDevice(device,0);	//begin audio playback
 }
