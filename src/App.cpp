@@ -467,7 +467,7 @@ void App::SetWindowTitle(const char *title){
 }
 
 void App::OnDropAudioWorklets(uint32_t nDropped){
-    Debug::Warning("");
+    Debug::Warning("Dropped {} audio tasks.", nDropped);
 }
 
 

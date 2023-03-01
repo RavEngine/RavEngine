@@ -101,7 +101,7 @@ struct AudioPlayer;
 #ifdef __EMSCRIPTEN__
         1 // use main thread only on emscripten
 #else
-            std::min<size_t>(std::thread::hardware_concurrency() - 2, 1)    // for audio - TODO: make configurable
+            std::max<size_t>(std::thread::hardware_concurrency() - 2, 1)    // for audio - TODO: make configurable
 #endif
         };
 		

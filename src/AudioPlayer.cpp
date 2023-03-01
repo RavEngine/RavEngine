@@ -27,7 +27,7 @@ struct AudioWorker : public tf::WorkerInterface{
     void scheduler_prologue(tf::Worker& worker) final{
 #ifndef _WIN32
         pthread_setname_np(
-            #if __linux__
+            #if __linux__ || defined(__EMSCRIPTEN__)
                     pthread_self(),
             #endif
                     "Audio Worker"
@@ -63,8 +63,10 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     tf::Future<void> future;
     uint32_t nCancelled = numExecuting;
     while (theFutures.try_dequeue(future)){
-        future.cancel();
-        nCancelled++;
+        if(future.cancel()){
+            nCancelled++;
+        }
+        // otherwise the task has completed, and can't be cancelled, so don't count it
     }
     
     if (nCancelled > 0){
