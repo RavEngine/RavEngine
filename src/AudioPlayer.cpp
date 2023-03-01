@@ -23,6 +23,23 @@ STATIC(AudioPlayer::buffer_size) = 0;
 // for interruption system
 thread_local std::atomic<bool> isExecuting{ false };
 
+void interrupt_current_audio_task() {
+    if (isExecuting) {
+        throw std::exception(); // this will cause the current task to cancel, and trigger stack unwinding
+    }
+}
+
+#if _WIN32
+void APCFn(ULONG_PTR parameter) {
+    interrupt_current_audio_task();
+}
+#else
+void pthreadFn(void*){
+    interrupt_current_audio_task();
+}
+#endif
+
+
 template<typename T>
 inline static void TMemset(T* data, T value, size_t nData){
     std::fill(data, data+nData, value);
@@ -150,6 +167,9 @@ void AudioPlayer::EnqueueAudioTasks(){
     
     auto doPlayer = [buffer_idx, nextID](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
         isExecuting = true;
+#ifndef _WIN32
+        pthread_cleanup_push(pthreadFn, NULL)
+#endif
         try{
             auto& buffers = renderData->buffers[buffer_idx];
             auto sharedBufferView = buffers.GetDataBufferView();
@@ -159,6 +179,9 @@ void AudioPlayer::EnqueueAudioTasks(){
             buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
         }
         catch (std::exception&) {}
+#ifndef _WIN32
+        pthread_cleanup_pop(false);
+#endif
         
         isExecuting = false;
     };
@@ -183,17 +206,6 @@ void AudioPlayer::EnqueueAudioTasks(){
 
 }
 
-void interrupt_current_audio_task() {
-    if (isExecuting) {
-        throw std::exception(); // this will cause the current task to cancel, and trigger stack unwinding
-    }
-}
-
-#if _WIN32
-void APCFn(ULONG_PTR parameter) {
-    interrupt_current_audio_task();
-}
-#endif
 
 void RavEngine::AudioPlayer::InterruptTasksInFlight()
 {
@@ -207,6 +219,8 @@ void RavEngine::AudioPlayer::InterruptTasksInFlight()
            NULL,
            QUEUE_USER_APC_FLAGS_SPECIAL_USER_APC    // this flag causes the target thread to immediately interrupt and run the provided function pointer
        );
+#else
+        pthread_cancel(handle);
 #endif
     }
 }
@@ -221,6 +235,21 @@ void AudioPlayer::TickStatic(void *udata, Uint8 *stream, int len){
     AudioPlayer* player = static_cast<AudioPlayer*>(udata);
     player->Tick(stream, len);
 }
+
+//void rve_pthread_cleanup_push(pthread_t thread, void(*routine)(void*), void* arg){
+//#if __APPLE__
+//    // adapted from pthread.h on macOS
+//    struct __darwin_pthread_handler_rec __handler;
+//    pthread_t __self = pthread_self();
+//    __handler.__routine = routine;
+//    __handler.__arg = arg;
+//    __handler.__next = __self->__cleanup_stack;
+//    __self->__cleanup_stack = &__handler;
+//#elif __linux__
+//#else
+//# This operating system is not supported
+//#endif
+//}
 
 
 void AudioPlayer::Init(){
@@ -259,6 +288,20 @@ void AudioPlayer::Init(){
     audioTaskflow.emplace([this](){
         EnqueueAudioTasks();
     });
+    
+    // non-windows: push handlers onto workers
+#ifndef _WIN32
+    for(auto& thread : audioExecutor.getWorkers()){
+        auto handle = thread.native_handle();
+        audioExecutor.silent_async([handle]{
+            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+            pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);   // this makes the cancellation immediate (runs pthreadFn)
+            pthread_setname_np("Audio Worker");
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));    // to prevent a thread from executing multiple of these blocks
+        });
+    }
+#endif
     
 	SDL_PauseAudioDevice(device,0);	//begin audio playback
 }
