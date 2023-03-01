@@ -70,14 +70,15 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     }
     
     if (nCancelled > 0){
-        // we dropped worklets! notify the user and drop this tick to avoid falling behind
+        // we dropped worklets! notify the user and drop the next tick to avoid falling behind
+        // we will still mix the current tick to avoid dropping too much audio
         GetApp()->OnDropAudioWorklets(nCancelled);
-        TZero(stream, len); // fill with silence
-        return;
+    }
+    else{
+        audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
     }
     
 
-    audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
     TZero(stream, len); // fill with silence
   
     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");

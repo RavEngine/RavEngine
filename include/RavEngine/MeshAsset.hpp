@@ -70,7 +70,7 @@ public:
             }
         }
 
-        auto size() const{
+        typename decltype(buffer32)::size_type size() const{
             switch (mode) {
             case BitWidth::uint16:
                 return buffer16.size();
@@ -80,7 +80,7 @@ public:
             default:
                 Debug::Fatal("Invalid Mode: {}", mode);
             }
-            return 0ul;
+            return 0;
         }
 
         const void* first_element_ptr() const {
