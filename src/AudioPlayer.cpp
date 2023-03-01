@@ -22,8 +22,6 @@ STATIC(AudioPlayer::buffer_size) = 0;
 
 // for interruption system
 thread_local std::atomic<bool> isExecuting{ false };
-thread_local std::atomic<bool> wasCancelled{ false };
-thread_local jmp_buf environment;   // used with setjmp
 
 template<typename T>
 inline static void TMemset(T* data, T value, size_t nData){
@@ -152,8 +150,7 @@ void AudioPlayer::EnqueueAudioTasks(){
     
     auto doPlayer = [buffer_idx, nextID](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
         isExecuting = true;
-        setjmp(environment); // if interrupted, this thread will resume here
-        if (!wasCancelled) {
+        try{
             auto& buffers = renderData->buffers[buffer_idx];
             auto sharedBufferView = buffers.GetDataBufferView();
             auto effectScratchBuffer = buffers.GetScratchBufferView();
@@ -161,10 +158,8 @@ void AudioPlayer::EnqueueAudioTasks(){
             player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
             buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
         }
-        else {
-            wasCancelled = false;
-        }
-      
+        catch (std::exception&) {}
+        
         isExecuting = false;
     };
     alreadyTicked.clear();
@@ -187,12 +182,16 @@ void AudioPlayer::EnqueueAudioTasks(){
     }
 
 }
+
+void interrupt_current_audio_task() {
+    if (isExecuting) {
+        throw std::exception(); // this will cause the current task to cancel, and trigger stack unwinding
+    }
+}
+
 #if _WIN32
 void APCFn(ULONG_PTR parameter) {
-    if (isExecuting) {
-        wasCancelled = true;
-        longjmp(environment, 0);
-    }
+    interrupt_current_audio_task();
 }
 #endif
 

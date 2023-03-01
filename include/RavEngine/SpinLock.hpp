@@ -31,4 +31,17 @@ public:
     inline void operator=(const SpinLock& other){}
 };
 
+// do not dynamic allocate
+template<typename T>
+struct RAIILock {
+    T& lock;
+
+    RAIILock(T& lock) : lock(lock) {
+        lock.lock();
+    }
+    ~RAIILock() {
+        lock.unlock();
+    }
+};
+
 }
