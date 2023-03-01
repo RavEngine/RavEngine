@@ -19,7 +19,7 @@ static inline Rml::Input::KeyIdentifier SDLtoRML(const int scancode){
 	int value = 0;
 	//a-z
 	if (scancode >= SDL_SCANCODE_A && scancode <= SDL_SCANCODE_Z){
-		value = scancode +(Rml::Input::KeyIdentifier::KI_A - SDL_SCANCODE_A);
+        value = scancode +((uint32_t)Rml::Input::KeyIdentifier::KI_A - (uint32_t)SDL_SCANCODE_A);
 	}
 	//arrows and controls
 	else{

@@ -25,7 +25,7 @@ thread_local std::atomic<bool> isExecuting{ false };
 
 void interrupt_current_audio_task() {
     if (isExecuting) {
-        throw std::exception(); // this will cause the current task to cancel, and trigger stack unwinding
+        //throw std::exception(); // this will cause the current task to cancel, and trigger stack unwinding
     }
 }
 
@@ -44,7 +44,12 @@ struct AudioWorker : public tf::WorkerInterface{
 #ifndef _WIN32
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);   // this makes the cancellation immediate (runs pthreadFn)
-        pthread_setname_np("Audio Worker");
+        pthread_setname_np(
+            #if __linux__
+                    pthread_self(),
+            #endif
+                    "Audio Worker"
+                    );
 #endif
     }
     void scheduler_epilogue(tf::Worker& worker, std::exception_ptr ptr) final{};
@@ -184,6 +189,9 @@ void AudioPlayer::EnqueueAudioTasks(){
         isExecuting = true;
 #ifndef _WIN32
         pthread_cleanup_push(pthreadFn, NULL)
+        #if __linux__
+                ;
+        #endif
 #endif
         try{
             auto& buffers = renderData->buffers[buffer_idx];

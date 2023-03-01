@@ -63,7 +63,7 @@ namespace RavEngine{
         
         void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {
             mtx.lock();
-            duDebugDrawNavMesh(&GetApp()->GetRenderEngine(), *navMesh, NULL);
+            duDebugDrawNavMesh(&GetApp()->GetRenderEngine(), *navMesh, 0);
             mtx.unlock();
         }
                 

@@ -80,6 +80,7 @@ public:
             default:
                 Debug::Fatal("Invalid Mode: {}", mode);
             }
+            return 0ul;
         }
 
         const void* first_element_ptr() const {
@@ -92,6 +93,7 @@ public:
             default:
                 Debug::Fatal("Invalid Mode: {}", mode);
             }
+            return nullptr;
         }
 
         size_t size_bytes() const {
@@ -104,6 +106,7 @@ public:
             default:
                 Debug::Fatal("Invalid Mode: {}", mode);
             }
+            return 0;
         }
 
         uint32_t operator[](size_t index) const{
@@ -116,6 +119,7 @@ public:
             default:
                 Debug::Fatal("Invalid Mode: {}", mode);
             }
+            return 0;
         }
     };
     

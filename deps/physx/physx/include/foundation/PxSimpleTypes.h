@@ -44,7 +44,9 @@
 #endif
 
 #if PX_LINUX
+#ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
+#endif
 #endif
 
 #include <stdint.h>
@@ -56,7 +58,9 @@
 #define PX_PRIu64 "I64u"
 #else
 #if !PX_APPLE_FAMILY
+#ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
+#endif
 #endif
 #include <inttypes.h>
 #define PX_PRIu64 PRIu64
