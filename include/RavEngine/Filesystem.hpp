@@ -1,4 +1,7 @@
 #pragma once
+#if __APPLE__
+#include <TargetConditionals.h>
+#endif
 
 // boost::filesystem for legacy systems
 #if (TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED < 130000)

@@ -16,5 +16,5 @@ void PhysicsTaskDispatcher::submitTask(physx::PxBaseTask &task){
 }
 
 uint32_t PhysicsTaskDispatcher::getWorkerCount() const {
-    return GetApp()->executor.num_workers();
+    return static_cast<uint32_t>(GetApp()->executor.num_workers());
 }

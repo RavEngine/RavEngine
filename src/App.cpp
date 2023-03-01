@@ -466,6 +466,10 @@ void App::SetWindowTitle(const char *title){
 	SDL_SetWindowTitle(Renderer->GetWindow(), title);
 }
 
+void App::OnDropAudioWorklets(uint32_t nDropped){
+    Debug::Warning("");
+}
+
 
 App* RavEngine::GetApp()
 {

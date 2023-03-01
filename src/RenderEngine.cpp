@@ -733,7 +733,7 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 
 		// TODO: convert to multidraw indirect
 		for (const auto& command : mdii.commands) {
-			const uint32_t ntransforms = command.transforms.DenseSize();
+			const uint32_t ntransforms = Debug::AssertSize<uint32_t>(command.transforms.DenseSize());
 			const auto mesh = command.mesh.lock();
 			if (ntransforms == 0 || !mesh) {
 				continue;

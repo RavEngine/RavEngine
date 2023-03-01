@@ -39,8 +39,6 @@ class AudioPlayer{
     
     void EnqueueAudioTasks();
     UnorderedSet<Ref<AudioDataProvider>> alreadyTicked;
-
-    void InterruptTasksInFlight();
     
 public:
     AudioPlayer();

@@ -57,6 +57,11 @@ struct AudioPlayer;
          Override this method to provide a custom fatal handler
          */
         virtual void OnFatal(const char* msg){}
+        
+        /**
+         Override to be notified if too much audio work was submitted. The default implementation logs a warning.
+         */
+        virtual void OnDropAudioWorklets(uint32_t ndropped);
 		
 		/**
 		 Signal to gracefully shut down the application
@@ -95,8 +100,9 @@ struct AudioPlayer;
         tf::Executor executor{
 #ifdef __EMSCRIPTEN__
         1 // use main thread only on emscripten
+#else
+            std::min<size_t>(std::thread::hardware_concurrency() - 2, 1)    // for audio - TODO: make configurable
 #endif
-            std::thread::hardware_concurrency() - 2    // for audio - TODO: make configurable
         };
 		
 		//networking interface

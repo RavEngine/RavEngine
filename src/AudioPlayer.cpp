@@ -21,29 +21,11 @@ STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
 
 // for interruption system
-thread_local std::atomic<bool> isExecuting{ false };
-
-void interrupt_current_audio_task() {
-    if (isExecuting) {
-        //throw std::exception(); // this will cause the current task to cancel, and trigger stack unwinding
-    }
-}
-
-#if _WIN32
-void APCFn(ULONG_PTR parameter) {
-    interrupt_current_audio_task();
-}
-#else
-void pthreadFn(void*){
-    interrupt_current_audio_task();
-}
-#endif
+static std::atomic<uint32_t> numExecuting = 0;
 
 struct AudioWorker : public tf::WorkerInterface{
     void scheduler_prologue(tf::Worker& worker) final{
 #ifndef _WIN32
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-        pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);   // this makes the cancellation immediate (runs pthreadFn)
         pthread_setname_np(
             #if __linux__
                     pthread_self(),
@@ -79,11 +61,19 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     // kill all the remaining tasks
     // if there are any, because that means they missed the deadline
     tf::Future<void> future;
+    uint32_t nCancelled = numExecuting;
     while (theFutures.try_dequeue(future)){
         future.cancel();
+        nCancelled++;
     }
     
-    InterruptTasksInFlight();
+    if (nCancelled > 0){
+        // we dropped worklets! notify the user and drop this tick to avoid falling behind
+        GetApp()->OnDropAudioWorklets(nCancelled);
+        TZero(stream, len); // fill with silence
+        return;
+    }
+    
 
     audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
     TZero(stream, len); // fill with silence
@@ -186,27 +176,15 @@ void AudioPlayer::EnqueueAudioTasks(){
     auto buffer_idx = nextID % GetBufferCount();
     
     auto doPlayer = [buffer_idx, nextID](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
-        isExecuting = true;
-#ifndef _WIN32
-        pthread_cleanup_push(pthreadFn, NULL)
-        #if __linux__
-                ;
-        #endif
-#endif
-        try{
-            auto& buffers = renderData->buffers[buffer_idx];
-            auto sharedBufferView = buffers.GetDataBufferView();
-            auto effectScratchBuffer = buffers.GetScratchBufferView();
+        numExecuting++;
+        auto& buffers = renderData->buffers[buffer_idx];
+        auto sharedBufferView = buffers.GetDataBufferView();
+        auto effectScratchBuffer = buffers.GetScratchBufferView();
 
-            player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
-            buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
-        }
-        catch (std::exception&) {}
-#ifndef _WIN32
-        pthread_cleanup_pop(false);
-#endif
-        
-        isExecuting = false;
+        player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
+        buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
+        numExecuting--;
+   
     };
     alreadyTicked.clear();
     // point sources
@@ -229,25 +207,6 @@ void AudioPlayer::EnqueueAudioTasks(){
 
 }
 
-
-void RavEngine::AudioPlayer::InterruptTasksInFlight()
-{
-    auto& workers = audioExecutor.getWorkers();
-    for (auto& thread : workers) {
-       auto handle = thread.native_handle();
-#if _WIN32
-       QueueUserAPC2(
-           APCFn,
-           handle,
-           NULL,
-           QUEUE_USER_APC_FLAGS_SPECIAL_USER_APC    // this flag causes the target thread to immediately interrupt and run the provided function pointer
-       );
-#else
-        pthread_cancel(handle);
-#endif
-    }
-}
-
 /**
  The audio player tick function. Called every time there is an audio update
  @param udata user data for application
@@ -258,22 +217,6 @@ void AudioPlayer::TickStatic(void *udata, Uint8 *stream, int len){
     AudioPlayer* player = static_cast<AudioPlayer*>(udata);
     player->Tick(stream, len);
 }
-
-//void rve_pthread_cleanup_push(pthread_t thread, void(*routine)(void*), void* arg){
-//#if __APPLE__
-//    // adapted from pthread.h on macOS
-//    struct __darwin_pthread_handler_rec __handler;
-//    pthread_t __self = pthread_self();
-//    __handler.__routine = routine;
-//    __handler.__arg = arg;
-//    __handler.__next = __self->__cleanup_stack;
-//    __self->__cleanup_stack = &__handler;
-//#elif __linux__
-//#else
-//# This operating system is not supported
-//#endif
-//}
-
 
 void AudioPlayer::Init(){
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0){
