@@ -689,10 +689,6 @@ class Executor {
     */
     size_t num_observers() const noexcept;
 
-    auto& getWorkers() {
-        return _threads;
-    }
-
   private:
     
     const size_t _MAX_STEALS;

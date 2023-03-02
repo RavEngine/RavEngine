@@ -38,7 +38,7 @@ namespace RavEngine {
 	class GUIMaterialInstance;
 	class InputManager;
     struct Entity;
-    struct World;
+    class World;
 
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
