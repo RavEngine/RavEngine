@@ -56,6 +56,12 @@ add_executable( openssl ${E_SRC} )
 
 target_link_libraries( openssl crypto ssl )
 
+if( ${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" )
+  find_library( SOCKET socket REQUIRED )
+  find_library( NSL nsl REQUIRED )
+  target_link_libraries( openssl socket nsl )
+endif()
+
 install( TARGETS openssl
     RUNTIME DESTINATION bin )
 
