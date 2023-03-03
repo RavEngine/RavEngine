@@ -15,7 +15,10 @@ option(GAMENETWORKINGSOCKETS_BUILD_EXAMPLES "Build the included example chat pro
 option(GAMENETWORKINGSOCKETS_BUILD_TESTS "Build crypto, pki and network connection tests" OFF)
 option(GNS_USE_OPENSSL "Use libsodium instead of OpenSSL" ON)
 
-if(GNS_USE_OPENSSL)
+if (MSVC)
+	set(USE_CRYPTO "BCrypt" CACHE INTERNAL "")
+	set(USE_CRYPTO25519 "Reference" CACHE INTERNAL "")
+elseif(GNS_USE_OPENSSL)
 	set(USE_CRYPTO "OpenSSL" CACHE INTERNAL "")
 	set(USE_CRYPTO25519 "OpenSSL" CACHE INTERNAL "")
 	set(WITH_APPS OFF CACHE INTERNAL "")
