@@ -25,9 +25,9 @@ static std::atomic<uint32_t> numExecuting = 0;
 
 struct AudioWorker : public tf::WorkerInterface{
     void scheduler_prologue(tf::Worker& worker) final{
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
         pthread_setname_np(
-            #if __linux__ || defined(__EMSCRIPTEN__)
+            #if __linux__
                     pthread_self(),
             #endif
                     "Audio Worker"
