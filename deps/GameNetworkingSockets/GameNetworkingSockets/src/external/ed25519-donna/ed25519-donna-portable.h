@@ -9,7 +9,7 @@
 /* platform */
 #if defined(COMPILER_MSVC)
 	#include <intrin.h>
-	#if !defined(_DEBUG)
+	#if !defined(_DEBUG) && !_M_ARM64
 		#undef mul32x32_64		
 		#define mul32x32_64(a,b) __emulu(a,b)
 	#endif
