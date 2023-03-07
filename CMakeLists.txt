@@ -833,12 +833,18 @@ function(pack_resources)
 				if (TARGET_UWP)
 					set(UWP_APPX "AppX")
 				endif()
-				set(outname "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${UWP_APPX}/${ARGS_TARGET}_Streaming/${output_root}/${relpath}")
+				set(asset_relpath "${ARGS_TARGET}_Streaming/${output_root}/${relpath}")
+				set(outname "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${UWP_APPX}/${asset_relpath}")
 				add_custom_command(PRE_BUILD 
 					OUTPUT "${outname}" 
 					COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
 					DEPENDS ${FILE}
 				)
+				target_sources("${ARGS_TARGET}" PRIVATE "${FILE}")
+				source_group("Streaming Assets" FILES ${FILE})
+				set_source_files_properties(${FILE} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "archive.ar")
+				set_property(SOURCE "${FILE}" PROPERTY VS_DEPLOYMENT_CONTENT 1)
+				set_property(SOURCE "${FILE}" PROPERTY VS_DEPLOYMENT_LOCATION "${asset_relpath}")
 				set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
 			endif()
 		endforeach()
