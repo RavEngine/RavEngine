@@ -827,7 +827,7 @@ function(pack_resources)
 				get_filename_component(relpath "${relpath}" DIRECTORY)
 				target_sources(${ARGS_TARGET} PRIVATE ${FILE})
 				set_property(SOURCE ${FILE} PROPERTY MACOSX_PACKAGE_LOCATION "Resources/${ARGS_TARGET}_Streaming/${relpath}")
-			else()
+			elseif(NOT TARGET_EMSCRIPTEN)
 				# put it next to the executable
 				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
 				if (TARGET_UWP)
