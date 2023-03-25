@@ -1,5 +1,5 @@
 # RavEngine
-A C++20 cross-platform game framework, with emphasis on performance and ease of use. Notable features:
+A C++20 cross-platform game framework, with emphasis on addressing pain points in existing game engines. Notable features:
 1. Fast Parallel ECS
    - Unique feature: Supports querying by base classes without virtual!
    - Also supports Unity-style scripting with full automatic parallelization
@@ -12,7 +12,7 @@ A C++20 cross-platform game framework, with emphasis on performance and ease of 
 8. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
 9.  FSM animation blending tree system
 10. Compute shader mesh skinning with automatic batching
-11. Programmable audio post-processing system
+11. Programmable audio processing system
 12. CI/CD-friendly build process powered by CMake
 13. Quality-of-life features like automatic incremental shader compilation
 
