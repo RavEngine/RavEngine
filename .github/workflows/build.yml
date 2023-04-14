@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [ {cc: "/usr/bin/gcc11", cxx: "/usr/bin/g++-11"}, {cc: "/usr/bin/clang-14", cxx: "/usr/bin/clang++-14" } ]
+        compiler: [ {cc: "/usr/bin/gcc-11", cxx: "/usr/bin/g++-11"}, {cc: "/usr/bin/clang-14", cxx: "/usr/bin/clang++-14" } ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
