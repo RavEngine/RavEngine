@@ -1,6 +1,5 @@
 #pragma once
 #include "Material.hpp"
-#include "Uniform.hpp"
 #include "Texture.hpp"
 #include "Common3D.hpp"
 
@@ -12,9 +11,7 @@ namespace RavEngine {
 	class PBRMaterial : public Material {
 	public:
 		PBRMaterial() : Material("pbrmaterial") {}
-		PBRMaterial(const std::string& name) : Material(name){}
-        SamplerUniform albedoTxUniform = SamplerUniform("s_albedoTex");
-        Vector4Uniform albedoColorUniform = Vector4Uniform("albedoColor");
+		PBRMaterial(const std::string& name) : Material(name) {}
 	};
 
     /**
@@ -36,47 +33,5 @@ namespace RavEngine {
 	protected:
 		Ref<Texture> albedo = TextureManager::defaultTexture;
 		ColorRGBA color{1,1,1,1};
-	};
-
-    /**
-     Used internally for debug primitives
-     */
-	class DebugMaterial : public Material{
-	public:
-		DebugMaterial() : Material("debug"){};
-	};
-    /**
-     Used internally for debug primitives
-     */
-	class DebugMaterialInstance : public MaterialInstance<DebugMaterial>{
-	public:
-		DebugMaterialInstance(Ref<DebugMaterial> m ) : MaterialInstance(m){};		
-	};
-
-    class DeferredBlitShader : public Material{
-    public:
-        DeferredBlitShader() : Material("deferred_blit"){}
-    };
-
-	/**
-	 Used internally for rendering GUI
-	 */
-	class GUIMaterial : public Material{
-	public:
-		GUIMaterial() : Material("guishader"){}
-	protected:
-		SamplerUniform sampler = SamplerUniform("s_uitex");
-		bgfx::TextureHandle texture;
-		friend class GUIMaterialInstance;
-	};
-
-	class GUIMaterialInstance : public MaterialInstance<GUIMaterial>{
-	public:
-		GUIMaterialInstance(Ref<GUIMaterial> m) : MaterialInstance(m){}
-		inline void SetTexture(bgfx::TextureHandle texture){
-			mat->texture = texture;
-		}
-		
-		void DrawHook() override;
 	};
 }

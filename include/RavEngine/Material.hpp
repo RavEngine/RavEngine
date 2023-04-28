@@ -2,12 +2,12 @@
 #include "Ref.hpp"
 #include "WeakRef.hpp"
 #include "DataStructures.hpp"
-#include <bgfx/bgfx.h>
 #include "glm/gtc/type_ptr.hpp"
 #include "Common3D.hpp"
 #include "CTTI.hpp"
 #include "Debug.hpp"
 #include "Manager.hpp"
+#include <RGL/RGL.hpp>
 
 namespace RavEngine {
 
@@ -27,12 +27,6 @@ namespace RavEngine {
 		const std::string& GetName() {
 			return name;
 		}
-		
-		/**
-		Enqueue commands to execute on the GPU
-		@param commands the command buffer to write to
-		*/
-		void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, int view = 0);
 		
 		/**
 		 Static singleton for managing materials
@@ -64,20 +58,13 @@ namespace RavEngine {
 		//trying to create a material that already exists will throw an exception
 		Material(const std::string& name);
 		
-		bgfx::ProgramHandle program;
-
 		friend class RenderEngine;
-	private:
-		static bgfx::ProgramHandle loadComputeProgram(const std::string_view& full_path);
-        static bgfx::ShaderHandle loadShaderHandle(const std::string_view& full_path);
-        static bgfx::ProgramHandle loadShaderProgram(const std::string_view& name_path);
 	};
 
 	//for type conversions, do not use directly
 	class MaterialInstanceBase {
 	public:
         bool doubleSided = false;
-		virtual void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) = 0;
 	};
 
 	/**
@@ -92,16 +79,7 @@ namespace RavEngine {
 		virtual void DrawHook() {};
 	public:
 		virtual ~MaterialInstance() {}
-        inline void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
-			DrawHook();
-			float transmat[16];
-            copyMat4((const decimalType*)glm::value_ptr(worldmatrix), transmat);
-			bgfx::setTransform(transmat);
-			mat->Draw(vertexBuffer, indexBuffer, view);
-		}
-		auto GetHandle() const {
-			return mat->program;
-		}
+		
 	protected:
 		MaterialInstance(Ref<T> m) : mat(m) {}
 		Ref<T> mat;

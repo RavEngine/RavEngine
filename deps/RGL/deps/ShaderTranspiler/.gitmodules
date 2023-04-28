@@ -1,0 +1,4 @@
+[submodule "deps/DirectXShaderCompiler"]
+	path = deps/DirectXShaderCompiler
+	url = https://github.com/microsoft/DirectXShaderCompiler
+	branch = main

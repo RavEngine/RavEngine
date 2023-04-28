@@ -2,7 +2,6 @@
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "BuiltinMaterials.hpp"
-#include "Uniform.hpp"
 #include "IDebugRenderable.hpp"
 #include <atomic>
 
@@ -101,13 +100,10 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	 Set BGFX state needed to draw this light
 	 */
 	static inline void SetState(){
+#if 0
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
+#endif
 	}
-	
-	/**
-	 Execute instanced draw call for this light type
-	 */
-	static void Draw(int view);
 };
 
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
@@ -141,7 +137,9 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 	 Set BGFX state needed to draw this light
 	 */
 	static inline void SetState(){
+#if 0
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
+#endif
 	}
 	
 	/**
@@ -161,11 +159,6 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 		// the world-space direction (3 floats)
 		return sizeof(float) * 3;
 	}
-	
-	/**
-	 Execute instanced draw call for this light type
-	 */
-	static void Draw(int view);
 };
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
@@ -188,7 +181,9 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	void AddInstanceData(float* offset) const;
 	
 	static inline void SetState(){
+#if 0
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
+#endif
 	}
 	
 	/**
@@ -220,10 +215,6 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 		return glm::scale(mat, vector3(radius,radius,radius));
 	}
 	
-	/**
-	 Execute instanced draw call for this light type
-	 */
-	static void Draw(int view);
 private:
 	/**
 	 Caclulate the radius of the light using its current intensity
@@ -288,13 +279,10 @@ public:
 		return sizeof(float) * 3;
 	}
 	
-	/**
-	 Execute instanced draw call for this light type
-	 */
-	static void Draw(int view);
-	
 	static inline void SetState(){
+#if 0
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
+#endif
 	}
 	
 	/**
@@ -369,9 +357,6 @@ private:
 	static Ref<AmbientLightShaderInstance> ambientLightShader;
 	static Ref<DirectionalLightShaderInstance> directionalLightShader;
 	static Ref<SpotLightShaderInstance> spotLightShader;
-	
-	static bgfx::VertexBufferHandle screenSpaceQuadVert;
-	static bgfx::IndexBufferHandle screenSpaceQuadInd;
 };
 }
 

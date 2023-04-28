@@ -72,7 +72,7 @@ You need to declare your shaders, so that RavEngine can automatically compile th
 ```cmake
 declare_shader("shaderName" "${CMAKE_CURRENT_LIST_DIR}/vertexshader.glsl" "${CMAKE_CURRENT_LIST_DIR}/fragmentshader.glsl" "${CMAKE_CURRENT_LIST_DIR}/varying.def.hlsl")
 ```
-When you load a shader, RavEngine will use the name you specify as the first parameter. To learn how to write bgfx shaders, see the documentation at [https://github.com/bkaradzic/bgfx](https://github.com/bkaradzic/bgfx)
+When you load a shader, RavEngine will use the name you specify as the first parameter.
 
 Then build with CMake as normal. On Windows, you will need to run your initial configure twice before building. Example scripts are provided. 
 

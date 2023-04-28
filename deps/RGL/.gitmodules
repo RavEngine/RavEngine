@@ -1,0 +1,6 @@
+[submodule "deps/--depth=1"]
+	path = deps/--depth=1
+	url = https://github.com/Ravbug/ShaderTranspiler
+[submodule "deps/ShaderTranspiler"]
+	path = deps/ShaderTranspiler
+	url = https://github.com/Ravbug/ShaderTranspiler

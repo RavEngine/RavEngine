@@ -1,0 +1,48 @@
+#pragma once
+#include <RGL/Types.hpp>
+#if RGL_SINGLE_BACKEND
+    #if RGL_VK_AVAILABLE
+        #include <RGL/../../src/VkDevice.hpp>
+        #include <RGL/../../src/VkSwapchain.hpp>
+        #include <RGL/../../src/VkBuffer.hpp>
+        #include <RGL/../../src/VkCommandBuffer.hpp>
+        #include <RGL/../../src/VkCommandQueue.hpp>
+        #include <RGL/../../src/VkRenderPass.hpp>
+        #include <RGL/../../src/VkRenderPipeline.hpp>
+        #include <RGL/../../src/VkSampler.hpp>
+        #include <RGL/../../src/VkShaderLibrary.hpp>
+        #include <RGL/../../src/VkSurface.hpp>
+        #include <RGL/../../src/VkSynchronization.hpp>
+        #include <RGL/../../src/VkTexture.hpp>
+        #include <RGL/../../src/VkComputePipeline.hpp>
+    #elif RGL_DX12_AVAILABLE
+        #include <RGL/../../src/D3D12Device.hpp>
+        #include <RGL/../../src/D3D12Swapchain.hpp>
+        #include <RGL/../../src/D3D12Buffer.hpp>
+        #include <RGL/../../src/D3D12CommandBuffer.hpp>
+        #include <RGL/../../src/D3D12CommandQueue.hpp>
+        #include <RGL/../../src/D3D12RenderPipeline.hpp>
+        #include <RGL/../../src/D3D12Sampler.hpp>
+        #include <RGL/../../src/D3D12ShaderLibrary.hpp>
+        #include <RGL/../../src/D3D12Surface.hpp>
+        #include <RGL/../../src/D3D12Synchronization.hpp>
+        #include <RGL/../../src/D3D12Texture.hpp>
+        #include <RGL/../../src/D3D12RenderPass.hpp>
+    #elif RGL_MTL_AVAILABLE
+        #include <RGL/../../src/MTLDevice.hpp>
+        #include <RGL/../../src/MTLSwapchain.hpp>
+        #include <RGL/../../src/MTLBuffer.hpp>
+        #include <RGL/../../src/MTLCommandBuffer.hpp>
+        #include <RGL/../../src/MTLCommandQueue.hpp>
+        #include <RGL/../../src/MTLPipeline.hpp>
+        #include <RGL/../../src/MTLSampler.hpp>
+        #include <RGL/../../src/MTLShaderLibrary.hpp>
+        #include <RGL/../../src/MTLSurface.hpp>
+        #include <RGL/../../src/MTLSynchronization.hpp>
+        #include <RGL/../../src/MTLTexture.hpp>
+        #include <RGL/../../src/MTLRenderPass.hpp>
+    #endif
+#endif
+#undef LoadImage
+#undef CreateSemaphore
+

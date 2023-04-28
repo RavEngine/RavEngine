@@ -1,7 +1,4 @@
 #include "Texture.hpp"
-#include <bimg/bimg.h>
-#include <bx/bx.h>
-#include <bx/readerwriter.h>
 #include "App.hpp"
 //#define STB_IMAGE_IMPLEMENTATION // don't define here, because rlottie & bimg define them
 #include <stb_image.h>
@@ -73,11 +70,9 @@ Texture::Texture(const std::string& name){
 	
 }
 
-void Texture::Bind(int id, const SamplerUniform &uniform){
-	bgfx::setTexture(id, uniform, texture);
-}
 
 void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags){
+#if 0
 	uint16_t numChannels = 4;	//TODO: allow n-channel textures
 	bgfx::TextureFormat::Enum format;
 	switch (numChannels) {
@@ -104,4 +99,5 @@ void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayer
 	if(!bgfx::isValid(texture)){
 		Debug::Fatal("Cannot create texture");
 	}
+#endif
 }

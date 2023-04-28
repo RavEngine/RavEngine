@@ -2,7 +2,6 @@
 
 #include "DataStructures.hpp"
 #include "mathtypes.hpp"
-#include <bgfx/bgfx.h>
 #include "Ref.hpp"
 #include "Common3D.hpp"
 #include "WeakRef.hpp"
@@ -165,8 +164,10 @@ public:
 
     
 protected:
+#if 0
 	bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;
+#endif
 
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
@@ -174,16 +175,7 @@ protected:
 	BitWidth indexBufferWidth;
 
 	inline void Destroy(){
-        if (destroyOnDestruction){
-            if (bgfx::isValid(vertexBuffer)){
-                bgfx::destroy(vertexBuffer);
-            }
-            if (bgfx::isValid(indexBuffer)){
-                bgfx::destroy(indexBuffer);
-            }
-        }
-		vertexBuffer = BGFX_INVALID_HANDLE;
-		indexBuffer = BGFX_INVALID_HANDLE;
+       
 	}
 	
 	/**
@@ -264,6 +256,7 @@ public:
 		if (destroyCurrent){
 			Destroy();
 		}
+#if 0
 		vertexBuffer = other->vertexBuffer;
 		indexBuffer = other->indexBuffer;
 		totalVerts = other->totalVerts;
@@ -271,13 +264,7 @@ public:
 		
 		other->vertexBuffer = BGFX_INVALID_HANDLE;
 		other->vertexBuffer = BGFX_INVALID_HANDLE;
-	}
-	
-	constexpr inline const bgfx::VertexBufferHandle getVertexBuffer() const{
-		return vertexBuffer;
-	}
-    constexpr inline const bgfx::IndexBufferHandle getIndexBuffer() const{
-		return indexBuffer;
+#endif
 	}
     
     constexpr inline const decltype(bounds)& GetBounds() const{

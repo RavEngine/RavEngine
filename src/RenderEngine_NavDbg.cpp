@@ -4,8 +4,6 @@
 
 using namespace RavEngine;
 using namespace std;
-STATIC(RenderEngine::debugNavMeshLayout);
-STATIC(RenderEngine::debugNavProgram) = BGFX_INVALID_HANDLE;
 STATIC(RenderEngine::navMeshPolygon);
 
 void RenderEngine::depthMask(bool state){
@@ -21,7 +19,7 @@ void RenderEngine::texture(bool state){
  */
 void RenderEngine::begin(duDebugDrawPrimitives prim, float size){
     navMeshPolygon.clear();
-    
+#if 0
     constexpr auto common = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_DST_ALPHA) ;
     bgfx::discard();
     switch(prim){
@@ -38,7 +36,7 @@ void RenderEngine::begin(duDebugDrawPrimitives prim, float size){
             Debug::Fatal("Quad rendering mode is not supported");
             break;
     }
-    
+#endif
 }
 
 void RenderEngine::vertex(const float *pos, unsigned int color){
@@ -76,9 +74,11 @@ void RenderEngine::end(){
     }
 	auto size = navMeshPolygon.size() * sizeof(decltype(navMeshPolygon)::value_type);
 	assert(size < std::numeric_limits<unsigned int>::max());
+#if 0
     auto memory = bgfx::copy(navMeshPolygon.data(), static_cast<unsigned int>(size));
     auto vb = bgfx::createVertexBuffer(memory, debugNavMeshLayout);
     bgfx::setVertexBuffer(0, vb);
     bgfx::submit(Views::FinalBlit, debugNavProgram);
     bgfx::destroy(vb);
+#endif
 }

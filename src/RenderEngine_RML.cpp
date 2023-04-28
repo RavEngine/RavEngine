@@ -1,6 +1,6 @@
 #include "RenderEngine.hpp"
 #include "App.hpp"
-#include <bgfx/bgfx.h>
+#include <RGL/RGL.hpp>
 #include <stb_image.h>
 #include <Texture.hpp>
 #include "BuiltinMaterials.hpp"
@@ -14,26 +14,31 @@ using namespace std;
 
 //used to store client data for rml
 struct TextureHandleStruct{
+#if 0
 	bgfx::TextureHandle th = BGFX_INVALID_HANDLE;
+#endif
 	
 	~TextureHandleStruct(){
-		bgfx::destroy(th);
 	}
 };
 
 struct CompiledGeoStruct{
+#if 0
 	bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
+#endif
 	Rml::TextureHandle th;
 	
 	~CompiledGeoStruct(){
-		bgfx::destroy(vb);
-		bgfx::destroy(ib);
 		//do not destroy texture here, RML will tell us when to free that separately
 	}
 };
 
-static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, const bgfx::VertexLayout& RmlLayout, bgfx::VertexBufferHandle& out_vb, bgfx::IndexBufferHandle& out_ib){
+static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices
+#if 0
+	, const bgfx::VertexLayout& RmlLayout, bgfx::VertexBufferHandle& out_vb, bgfx::IndexBufferHandle& out_ib
+#endif
+){
 	
 	
 	//create vertex and index buffers
@@ -55,7 +60,9 @@ static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indice
 			
 			convertedv[i].color = color;
 		}
+#if 0
 		out_vb = bgfx::createVertexBuffer(bgfx::copy(convertedv, num_vertices * sizeof(convertedv[0])), RmlLayout);
+#endif
 	}
 	{
 		stackarray(convertedi, uint16_t, num_indices);
@@ -63,7 +70,9 @@ static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indice
 		for(int i = 0; i < num_indices; i++){
 			convertedi[i] = indices[i];
 		}
+#if 0
 		out_ib = bgfx::createIndexBuffer(bgfx::copy(convertedi, num_indices * sizeof(convertedi[0])));
+#endif
 	}
 	
 }
@@ -86,6 +95,7 @@ static inline matrix4 make_matrix(Rml::Vector2f translation){
  @return RML texturehandle which is a pointer to a TextureHandleStruct on the heap
  */
 static inline Rml::TextureHandle createTexture(int width, int height, const Rml::byte* data){
+#if 0
 	auto format = bgfx::TextureFormat::RGBA8;
 	
 	bool hasMipMaps = false;
@@ -99,6 +109,8 @@ static inline Rml::TextureHandle createTexture(int width, int height, const Rml:
 	const bgfx::Memory* textureData = bgfx::copy(data, uncompressed_size);
 	auto th = bgfx::createTexture2D(width,height,hasMipMaps,numLayers,format,flags,textureData);
 	return reinterpret_cast<Rml::TextureHandle>(new TextureHandleStruct{th});
+#endif
+	return {};
 }
 
 double RenderEngine::GetElapsedTime(){
@@ -121,7 +133,7 @@ void RenderEngine::GetClipboardText(Rml::String &text){
 
 /// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
 void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) {
-	
+#if 0
 	bgfx::VertexBufferHandle vbuf = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle ibuf = BGFX_INVALID_HANDLE;
 	
@@ -149,12 +161,12 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 	//destroy buffers
 	bgfx::destroy(vbuf);
 	bgfx::destroy(ibuf);
-
+#endif
 }
 
 /// Called by RmlUi when it wants to compile geometry it believes will be static for the forseeable future.
 Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture){
-	
+#if 0
 	//create the vertex and index buffers
 	bgfx::VertexBufferHandle vbuf = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle ibuf = BGFX_INVALID_HANDLE;
@@ -162,12 +174,13 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 	
 	CompiledGeoStruct* cgs = new CompiledGeoStruct{vbuf,ibuf,texture};
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);
-	
+#endif
+	return {};
 }
 /// Called by RmlUi when it wants to render application-compiled geometry.
 void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation){
 	CompiledGeoStruct* cgs = reinterpret_cast<CompiledGeoStruct*>(geometry);
-	
+#if 0
 	bgfx::TextureHandle tx = BGFX_INVALID_HANDLE;
 	if(cgs->th){
 		auto btexture = reinterpret_cast<TextureHandleStruct*>(cgs->th);
@@ -185,7 +198,7 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
     }
 	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
 	guiMaterial->Draw(cgs->vb, cgs->ib, drawmat, Views::FinalBlit);
-	
+#endif
 	//don't delete here, RML will tell us when to delete cgs
 }
 /// Called by RmlUi when it wants to release application-compiled geometry.

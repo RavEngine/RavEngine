@@ -2,7 +2,6 @@
 #include "MeshAsset.hpp"
 #include "SkeletonAsset.hpp"
 #include "Ref.hpp"
-#include <bgfx/bgfx.h>
 #include "Manager.hpp"
 
 namespace RavEngine{
@@ -16,11 +15,12 @@ public:
 		FixedVector<vw, 4> weights;
 	};
 private:
+#if 0
 	bgfx::VertexBufferHandle weightsHandle = BGFX_INVALID_HANDLE;
+#endif
 public:
 	
 	~MeshAssetSkinned(){
-		bgfx::destroy(weightsHandle);
 	}
 	
 	MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale = 1.0);
@@ -30,10 +30,6 @@ public:
     
     // use this to load assets
     struct Manager : public GenericWeakReadThroughCache<std::string,MeshAssetSkinned>{};
-	
-    constexpr inline const decltype(weightsHandle) GetWeightsHandle() const{
-		return weightsHandle;
-	}
 };
 
 }

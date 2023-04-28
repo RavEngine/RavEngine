@@ -11,12 +11,6 @@ namespace RavEngine {
 
 	// subclass
 	struct ISkyMaterialInstance : public MaterialInstance<ISkyMaterial> {
-		inline void Draw(const bgfx::VertexBufferHandle& vertexBuffer, const bgfx::IndexBufferHandle& indexBuffer, const matrix4& worldmatrix, int view = 0) override{
-			float transmat[16];
-			copyMat4((const decimalType*)glm::value_ptr(worldmatrix), transmat);
-			bgfx::setTransform(transmat);
-			mat->Draw(vertexBuffer, indexBuffer, view);
-		}
 		ISkyMaterialInstance(const Ref<ISkyMaterial> sm) : MaterialInstance(sm) {}
 	};
 
@@ -37,9 +31,6 @@ namespace RavEngine {
 		bool enabled = true;
 		Ref<ISkyMaterialInstance> skyMat;
 		Ref<MeshAsset> skyMesh;
-        inline void Draw(const matrix4& worldmatrix, int view) const{
-			skyMat->Draw(skyMesh->getVertexBuffer(), skyMesh->getIndexBuffer(), worldmatrix, view);
-		}
 
 		// default constructor, loads default sky implementation
 		Skybox();

@@ -2,23 +2,27 @@
 #include <ozz/animation/runtime/skeleton.h>
 #include <ozz/animation/offline/skeleton_builder.h>
 #include <string>
-#include <bgfx/bgfx.h>
 #include "DataStructures.hpp"
 #include "mathtypes.hpp"
 
 namespace RavEngine {
 class SkeletonAsset{
 	ozz::unique_ptr<ozz::animation::Skeleton> skeleton;
+	int bindpose, boneHierarchy;
+#if 0
 	bgfx::VertexBufferHandle bindpose = BGFX_INVALID_HANDLE;
 	bgfx::VertexBufferHandle boneHierarchy = BGFX_INVALID_HANDLE;
+#endif
 	
     RavEngine::Vector<glm::mat4> bindposes;
 public:
 	SkeletonAsset(const std::string& path);
 	
 	~SkeletonAsset(){
+#if 0
 		bgfx::destroy(bindpose);
 		bgfx::destroy(boneHierarchy);
+#endif
 	}
 	
 	/**

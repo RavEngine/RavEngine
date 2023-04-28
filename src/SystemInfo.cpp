@@ -2,9 +2,6 @@
 #include "App.hpp"
 #include <thread>
 #include "Debug.hpp"
-#include <bgfx/bgfx.h>
-#include <bgfx/platform.h>
-#include <bx/bx.h>
 #include <cstring>
 #include "Defines.hpp"
 #include "RenderEngine.hpp"
@@ -186,88 +183,9 @@ uint32_t SystemInfo::SystemRAM(){
     return 0;
 }
 
-#if (_WIN32 && !_UWP) || __linux__
-static std::string vkGetGPUName(void* context) {
-    constexpr auto size = 128;
-    char buffer[size]{0};
-    bgfx::vk::getPhysicalDeviceName(buffer, size);
-
-    return string(buffer,strnlen(buffer, size));
-}
-#endif
-
-#if _UWP || _WIN32
-/**
-* Helper to get the current adapater / description 
-*/
-bool getDX12Adapter(ID3D12Device* d3ddev, DXGI_ADAPTER_DESC& out_desc, IDXGIAdapter*& out_adapter) {
-    auto luid = d3ddev->GetAdapterLuid();   // get local ID
-
-            // use the local id in DXGI to get the name
-    IDXGIFactory4* factory;
-    auto result = CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&factory);
-    if (result != S_OK) {
-        Debug::Fatal("CreateDXGIFactory Failed");
-    }
-
-    IDXGIAdapter* currentAdapter;
-    for (int i = 0; factory->EnumAdapters(i, &currentAdapter) != DXGI_ERROR_NOT_FOUND; ++i) {
-        DXGI_ADAPTER_DESC desc;
-        currentAdapter->GetDesc(&desc);
-        if (desc.AdapterLuid.HighPart == luid.HighPart && desc.AdapterLuid.LowPart == luid.LowPart) {
-            // found it! LUIDs match
-            out_adapter = currentAdapter;
-            out_desc = desc;
-            return true;
-        }
-
-    }
-    return false;
-}
-
-#endif
 
 std::string SystemInfo::GPUBrandString(){
-#ifdef __APPLE__
-    char buffer[128]{0};
-	AppleGPUName(buffer, 128);
-    return string(buffer,strnlen(buffer,128));
-#elif _WIN32
-    auto data = bgfx::getInternalData();
-    switch (bgfx::getRendererType()) {
-        case bgfx::RendererType::Direct3D12:{
-            auto d3ddev = (ID3D12Device*)data->context;
-            DXGI_ADAPTER_DESC desc;
-            IDXGIAdapter* adapter = nullptr;
-            if (getDX12Adapter(d3ddev, desc, adapter)) {
-                // grab the description
-                std::wstring wstr(desc.Description);
-
-                //setup converter
-                using convert_type = std::codecvt_utf8<wchar_t>;
-                std::wstring_convert<convert_type, wchar_t> converter;
-                return converter.to_bytes(wstr);
-            }
-            else {
-                return "Unknown GPU";
-            }
-        }
-        break;
-    #if !_UWP
-        case bgfx::RendererType::Vulkan: {
-            return vkGetGPUName(data->context);
-        }
-    #endif
-        break;
-    }
-    
-    return "Unknown GPU";
-#elif __linux__
-    auto data = bgfx::getInternalData();
-    return vkGetGPUName(data->context);
-#else
-	return "Unknown GPU";
-#endif
+    return "SystemInfo: Unimplemented";
 }
 
 uint32_t SystemInfo::GPUVRAM(){
@@ -315,6 +233,7 @@ uint32_t SystemInfo::GPUVRAMinUse(){
 
 SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
     SystemInfo::GPUFeatures features;
+#if 0
     auto caps = bgfx::getCaps()->supported;
     features.DrawIndirect = caps & BGFX_CAPS_DRAW_INDIRECT;
     features.HDR10 = caps & BGFX_CAPS_HDR10;
@@ -324,11 +243,15 @@ SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
     features.HIDPI = caps & BGFX_CAPS_HIDPI;
     features.Uint10Attribute = caps & BGFX_CAPS_VERTEX_ATTRIB_UINT10;
     features.HalfAttribute = caps & BGFX_CAPS_VERTEX_ATTRIB_HALF;
+#endif
     return features;
 }
 
 SystemInfo::PCIDevice RavEngine::SystemInfo::GPUPCIData()
 {
+#if 0
     SystemInfo::PCIDevice dev{ bgfx::getCaps()->vendorId,bgfx::getCaps()->deviceId };
     return dev;
+#endif
+    return {};
 }

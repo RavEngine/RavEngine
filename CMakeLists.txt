@@ -98,13 +98,7 @@ set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
 # ============ build machine tools ==============
 
 macro(set_tools)
-	if(CMAKE_HOST_APPLE OR LINUX)	# don't want target here, this is for the host
-		set(SHADERC_NAME "shaderc")
-		SET(SHADERC_CMD "${SHADERC_PATH}" CACHE INTERNAL "")
-	elseif(MSVC)
-		set(SHADERC_NAME "shaderc.exe")
-		SET(SHADERC_CMD "${SHADERC_PATH}.exe" CACHE INTERNAL "")
-	endif()
+	
 endmacro()
 
 if (NOT CMAKE_CROSSCOMPILING)
@@ -120,10 +114,8 @@ endif()
 if (CMAKE_CROSSCOMPILING)
 	set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	if (CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "Unix Makefiles")
-		set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/shaderc" CACHE INTERNAL "")
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/protoc" CACHE INTERNAL "")
 	else()
-		set(SHADERC_PATH "${TOOLS_DIR}/bgfx.cmake/Release/shaderc" CACHE INTERNAL "")
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 	endif()
 
@@ -141,14 +133,13 @@ if (CMAKE_CROSSCOMPILING)
 	)
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${SHADERC_CMD}" 
-		COMMAND ${CMAKE_COMMAND} --build . --config Release --target shaderc protoc
+		OUTPUT "${PROTOC_CMD}" 
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
 else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
-	set(SHADERC_PATH "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/shaderc" CACHE INTERNAL "")
 	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
 endif()
 
@@ -247,9 +238,13 @@ set(ozz_build_howtos OFF CACHE INTERNAL "")
 set(ozz_build_tests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/ozz-animation" EXCLUDE_FROM_ALL)
 
-# LabSound and libnyquist
+# libnyquist
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
+
+# RavEngine Graphics Library (RGL)
+set(RGL_ENABLE_RGLC OFF CACHE INTERNAL "")
+add_subdirectory("${DEPS_DIR}/RGL")
 
 
 if(CMAKE_CROSSCOMPILING)
@@ -259,9 +254,9 @@ else()
 endif()
 add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
 if (CMAKE_CROSSCOMPILING)
-	add_custom_target("GNS_Deps" DEPENDS "${SHADERC_CMD}")
+	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}")
 else()
-	add_custom_target("GNS_Deps" DEPENDS "shaderc" "protoc")
+	add_custom_target("GNS_Deps" DEPENDS "rglc" "protoc")
 endif()
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 
@@ -275,38 +270,6 @@ SET(TF_BUILD_CUDA OFF CACHE INTERNAL "")
 SET(TF_BUILD_TESTS OFF CACHE INTERNAL "")
 SET(TF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/taskflow" EXCLUDE_FROM_ALL)
-
-# bgfx
-set(BGFX_BUILD_EXAMPLES OFF CACHE INTERNAL "")
-set(BGFX_INSTALL_EXAMPLES OFF CACHE INTERNAL "")
-set(BGFX_INSTALL OFF CACHE INTERNAL "")
-if (NOT TARGET_LINUX)
-	set(BGFX_AMALGAMATED ON CACHE INTERNAL "")	# amalgamated causes issues with xlib on linux
-endif()
-if (CMAKE_CROSSCOMPILING)
-	set(BGFX_BUILD_TOOLS OFF CACHE INTERNAL "")	# if cross compiling, make a separate build for host tools
-else()
-	set(BGFX_BUILD_TOOLS ON CACHE INTERNAL "")	# if not cross compiling, make tools locally
-endif()
-set(BX_AMALGAMATED ON CACHE INTERNAL "")
-if(TARGET_EMSCRIPTEN)
-	#set(BGFX_CONFIG_RENDERER_WEBGPU ON CACHE INTERNAL "")
-endif()
-
-add_subdirectory("${DEPS_DIR}/bgfx.cmake" EXCLUDE_FROM_ALL)
-# enable the renderers that we actually use
-target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_OPENGL=0 BGFX_CONFIG_RENDERER_DIRECT3D9=0 BGFX_CONFIG_RENDERER_DIRECT3D11=0 BGFX_CONFIG_RENDERER_VULKAN=0 BGFX_CONFIG_RENDERER_METAL=0 BGFX_CONFIG_RENDERER_DIRECT3D12=0 BGFX_CONFIG_RENDERER_GNM=0 BGFX_CONFIG_RENDERER_NVN=0)
-if(TARGET_EMSCRIPTEN)
-	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_OPENGLES=1)
-elseif(UWP OR WINDOWS)
-	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_DIRECT3D12=1)	# UWP and Windows have DX12
-endif()
-if (TARGET_LINUX OR WINDOWS OR TARGET_ANDROID)
-	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_VULKAN=1)		# linux and Windows have Vulkan
-endif()
-if(TARGET_APPLE)
-	target_compile_definitions(bgfx PRIVATE BGFX_CONFIG_RENDERER_METAL=1)		# Apple platforms use Metal only
-endif()
 
 # assimp
 SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
@@ -558,9 +521,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"fmt"
 	"tweeny"
 	${SDL2STATIC_LIB}
-	"bgfx"
-	"bx"
-	"bimg"
+	"RGL"
 	"Recast"
 	"Detour"
 	"DetourCrowd"
@@ -605,12 +566,6 @@ if (WIN32)
 
 endif()
 
-define_property(GLOBAL PROPERTY SC_INCLUDE_DIR
-	BRIEF_DOCS "Shader include path"
-	FULL_DOCS "Shader include path"
-)
-set_property(GLOBAL PROPERTY SC_INCLUDE_DIR "${DEPS_DIR}/bgfx.cmake/bgfx/src")
-
 # globals for managing state
 set(shader_target "default")
 define_property(GLOBAL PROPERTY ALL_SHADERS
@@ -629,90 +584,6 @@ define_property(GLOBAL PROPERTY ENG_DIR
 	FULL_DOCS "Engine Directory"
 )
 set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
-
-function(add_shader_helper api shader_name vertex_src fragment_src varying_src)
-	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
-	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
-
-	if(api STREQUAL "mtl")
-		set(PLATFORM "osx")
-		set(PROFILE_VS "metal")
-		set(PROFILE_FS "metal")
-		set(PROFILE_CS "metal")
-	elseif(api STREQUAL "dx")
-		set(PLATFORM "windows")
-		set(PROFILE_VS "vs_5_0")
-		set(PROFILE_FS "ps_5_0")
-		set(PROFILE_CS "cs_5_0")
-	elseif(api STREQUAL "vk")
-		set(PLATFORM "linux")
-		set(PROFILE_VS "spirv")
-		set(PROFILE_FS "spirv")
-		set(PROFILE_CS "spirv")
-	elseif (api STREQUAL "gl")
-		set(PLATFORM "linux")
-		set(PROFILE_VS "430")
-		set(PROFILE_FS "430")
-		set(PROFILE_CS "430")
-	else()
-		message(FATAL_ERROR "Shader compiler is not supported on this platform")
-	endif()
-	
-	set(OUTPUT_ROOT "${CMAKE_BINARY_DIR}/${shader_target}/shaders/${api}/${shader_name}")
-	set(VS_OUTPUT_NAME "${OUTPUT_ROOT}/vertex.bin")
-	set(FS_OUTPUT_NAME "${OUTPUT_ROOT}/fragment.bin")
-	set(CS_OUTPUT_NAME "${OUTPUT_ROOT}/compute.bin")
-	
-	# if fragment is blank, assume compute shader
-	set(IS_COMPUTE OFF)
-	if(fragment_src STREQUAL "")
-		set(IS_COMPUTE ON)
-	endif()
-	
-	# compile shaders
-	if(NOT IS_COMPUTE)
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${VS_OUTPUT_NAME})
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${FS_OUTPUT_NAME})
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADER_SOURCES ${vertex_src} ${fragment_src} ${varying_src})
-		add_custom_command(
-			PRE_BUILD
-			OUTPUT "${VS_OUTPUT_NAME}" "${FS_OUTPUT_NAME}"
-			DEPENDS "${vertex_src}" "${fragment_src}" "${varying_src}" "GNS_Deps" "${eng_dir}/shaders/ravengine_shader.glsl"
-			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${VS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "vertex" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_VS}" $<$<CONFIG:DEBUG>:--debug>
-			COMMAND "${SHADERC_CMD}" -f "${fragment_src}" -o "${FS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "fragment" --platform "${PLATFORM}" --varyingdef "${varying_src}" --profile "${PROFILE_FS}" $<$<CONFIG:DEBUG>:--debug>
-			COMMENT "Compiling Shader Descriptor ${shader_name} => ${VS_OUTPUT_NAME}, ${FS_OUTPUT_NAME}"
-			VERBATIM
-		)
-	else()
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${CS_OUTPUT_NAME})
-
-		add_custom_command(
-			PRE_BUILD
-			OUTPUT "${CS_OUTPUT_NAME}"
-			DEPENDS "${vertex_src}" "GNS_Deps"
-			COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_ROOT}
-			COMMAND "${SHADERC_CMD}" -f "${vertex_src}" -o "${CS_OUTPUT_NAME}" -i "${sc_include_dir}" -i "${eng_dir}/shaders" --type "compute" --platform "${PLATFORM}" --profile "${PROFILE_CS}" $<$<CONFIG:DEBUG>:--debug>
-			COMMENT "Compiling Compute Shader Descriptor ${shader_name} => ${CS_OUTPUT_NAME}"
-			VERBATIM
-		)
-	endif()
-endfunction()
-
-# Define a shader
-# all paths must be absolute
-function(declare_shader shader_name vertex_src fragment_src varying_src)
-	
-	if(TARGET_APPLE)
-		add_shader_helper("mtl" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
-	elseif(MSVC)
-		add_shader_helper("dx" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
-		add_shader_helper("vk" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
-	elseif(TARGET_LINUX)
-		add_shader_helper("vk" "${shader_name}" "${vertex_src}" "${fragment_src}" "${varying_src}")
-	endif()
-
-endfunction()
 
 define_property(GLOBAL PROPERTY COPY_DEPENDS
 	BRIEF_DOCS "Engine Directory"
@@ -736,7 +607,7 @@ macro(enable_unity targets)
 endmacro()
 
 set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
-ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;edtaa3;etc1;etc2;iqa;pvrtc;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;")
+ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;")
 
 if ((CMAKE_SYSTEM_NAME STREQUAL "Windows"))
 	set(platform_unity "")	 
@@ -760,10 +631,6 @@ group_in("Libraries/ozz" "ozz_animation;ozz_animation_offline;ozz_base;ozz_geome
 group_in("Libraries/ozz/tools" "dump2ozz;gltf2ozz;ozz_animation_tools")
 group_in("Libraries/ozz/fuse" "BUILD_FUSE_ozz_animation;BUILD_FUSE_ozz_animation_offline;BUILD_FUSE_ozz_animation_tools;\
 BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options")
-
-group_in("Libraries/bgfx" "bgfx;bimg;bx")
-group_in("Libraries/bgfx/tools" "shaderc;geometryc;geometryv;texturec;texturev;tools")
-group_in("Libraries/bgfx/3rdparty" "astc;astc-codec;edtaa3;etc1;etc2;fcpp;glcpp;glslang;glsl-optimizer;iqa;mesa;meshoptimizer;nvtt;pvrtc;spirv-cross;spirv-tools;squish;tinyexr")
 
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
 
@@ -1042,3 +909,6 @@ foreach(TGT ${all_targets})
 		endif()
 	endif()
 endforeach()
+
+function(declare_shader)
+endfunction()

@@ -124,8 +124,10 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 
 	InitAll(scene, options);
+#if 0
 	bgfx::setName(vertexBuffer, fmt::format("MeshAsset {} VB", name).c_str());
 	bgfx::setName(indexBuffer, fmt::format("MeshAsset {} IB", name).c_str());
+#endif
 }
 
 MeshAsset::MeshAsset(const Filesystem::Path& path, const MeshAssetOptions& opt){
@@ -138,16 +140,20 @@ MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, cons
 	auto scene = LoadSceneFilesystem(path);
 	
 	InitPart(scene, name, path.string(), opt);
+#if 0
 	bgfx::setName(vertexBuffer, fmt::format("MeshAsset-FS {} VB", name).c_str());
 	bgfx::setName(indexBuffer, fmt::format("MeshAsset-FS {} IB", name).c_str());
+#endif
 }
 
 MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 	
 	InitPart(scene, meshName, name, options);
+#if 0
 	bgfx::setName(vertexBuffer, fmt::format("MeshAsset-FS {} ({}) VB", meshName, name).c_str());
 	bgfx::setName(indexBuffer, fmt::format("MeshAsset-FS {} ({}) IB", meshName, name).c_str());
+#endif
 }
 
 
@@ -248,7 +254,7 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
         auto& i = allMeshes.indices;
         totalVerts = v.size();
         totalIndices = i.size();
-
+#if 0
 		auto format = i.mode == BitWidth::uint32 ? BGFX_BUFFER_INDEX32 : BGFX_BUFFER_NONE;
         
         bgfx::VertexLayout pcvDecl;
@@ -274,5 +280,6 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
         if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
             Debug::Fatal("Buffers could not be created.");
         }
+#endif
     }
 }

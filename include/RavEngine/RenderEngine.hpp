@@ -8,14 +8,9 @@
 
 #include "Ref.hpp"
 #include "WeakRef.hpp"
-#include "Uniform.hpp"
-#include <bgfx/bgfx.h>
-#include <bgfx/defines.h>
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <fmt/format.h>
-#include "Uniform.hpp"
-#include "TransientComputeBuffer.hpp"
 #include <DebugDraw.h>
 #include "Function.hpp"
 #include "Common3D.hpp"
@@ -23,11 +18,6 @@
 #include "Utilities.hpp"
 #include "Defines.hpp"
 #include "PhysXDefines.h"
-#include "../../deps/bgfx.cmake/bgfx/src/config.h"  // TODO: don't do this?
-
-#if XR_AVAILABLE
-#include <openxr/openxr.h>
-#endif
 
 struct SDL_Window;
 
@@ -57,48 +47,7 @@ namespace RavEngine {
 
 		//render a world, for internal use only
 		void Draw(Ref<RavEngine::World>);
-
-		//get reset bitmask, for internal use only
-		static uint32_t GetResetFlags();
         
-        /**
-         Print a string to the debug text overlay. Stubbed in release.
-         Debug messages persist until they are overwritten or cleared.
-         @param row the row to display the text
-         */
-        template<typename ... T>
-        static void DebugPrint(uint16_t row, uint8_t color, const std::string& formatstr, T&& ... args){
-#ifndef NDEBUG
-            dbgmtx.lock();
-            debugprints[row] = {StrFormat(formatstr, args...),color};
-            dbgmtx.unlock();
-#endif
-        }
-        
-        /**
-         Clear a debug print message. Stubbed in release.
-         @param row the row to clear
-         */
-        static void ClearDebugPrint(uint16_t row){
-#ifndef NDEBUG
-            dbgmtx.lock();
-            debugprints.erase(row);
-            dbgmtx.unlock();
-#endif
-        }
-        
-        /**
-         Clear all debug print messages. Stubbed in release.
-         @param row the row to clear
-         */
-        static void ClearAllDebugPrint(){
-#ifndef NDEBUG
-            dbgmtx.lock();
-            debugprints.clear();
-            dbgmtx.unlock();
-#endif
-        }
-
         /**
          @return The name of the current rendering API in use
          */
@@ -166,16 +115,6 @@ namespace RavEngine {
          */
 		void SyncVideoSettings();
 		
-		//to reduce magic numbers
-		struct Views{
-			enum : bgfx::ViewId{
-				DeferredGeo,
-				LightingNoShadows,
-                LightingShadowsFirstView,
-                FinalBlit = BGFX_CONFIG_MAX_VIEWS - 1,       // views are sorted in ascending order, so force this to go at the very end
-			};
-		};
-		
 		// Rml::SystemInterface overrides, used internally
 		double GetElapsedTime() override;
 		void SetMouseCursor(const Rml::String& cursor_name) override;
@@ -233,18 +172,7 @@ namespace RavEngine {
         
     protected:
         static RavEngine::Vector<VertexColorUV> navMeshPolygon;
-        static bgfx::VertexLayout debugNavMeshLayout;
-        static bgfx::ProgramHandle debugNavProgram;
-        bool navDebugDepthEnabled = false;
-        
-#ifndef NDEBUG
-        struct DebugMsg{
-            std::string message;
-            uint8_t color;
-        };
-        static SpinLock dbgmtx;
-        static UnorderedMap<uint16_t,DebugMsg> debugprints;
-#endif
+        bool navDebugDepthEnabled = false; 
 
 #ifdef _WIN32
 		float win_scalefactor = 1;
@@ -255,54 +183,12 @@ namespace RavEngine {
 		static SDL_Window* window;
 		void* metalLayer;
         void Init(const AppConfig&);
-        void InitXR();
     public:
-		static constexpr uint8_t gbufferSize = 4;
-		static constexpr uint8_t lightingAttachmentsSize = 2;
-        struct VRFramebuffer {
-            bgfx::FrameBufferHandle handle = BGFX_INVALID_HANDLE;
-            dim dims;
-        };
+
     protected:
-		bgfx::TextureHandle attachments[gbufferSize];
-			//RGBA (A not used in opaque)
-			//normal vectors
-			//xyz of pixel
-			//depth texture
-		bgfx::UniformHandle gBufferSamplers[gbufferSize];
-
-		bgfx::FrameBufferHandle gBuffer;	//full gbuffer
-		bgfx::FrameBufferHandle lightingBuffer, depthMapFB;	//for lighting, shares depth with main
-		bgfx::TextureHandle lightingAttachments[lightingAttachmentsSize];
-		bgfx::UniformHandle lightingSamplers[lightingAttachmentsSize], shadowSamplers[2];
-
-		TransientComputeBufferReadOnly skinningComputeBuffer;
-		TransientComputeBuffer poseStorageBuffer;
-					
-		static bgfx::VertexBufferHandle opaquemtxhandle;
-        static bgfx::DynamicVertexBufferHandle allVerticesHandle;
-		static bgfx::DynamicIndexBufferHandle allIndicesHandle;
+		
         static Ref<GUIMaterialInstance> guiMaterial;
-
-		static bgfx::VertexLayout skinningOutputLayout, skinningInputLayout;
-		
-		bgfx::FrameBufferHandle createFrameBuffer(bool, bool);
-		
-        Vector4Uniform numRowsUniform, computeOffsetsUniform;
-        std::optional<Vector4Uniform> timeUniform;
-        
-        struct BufferedFramebuffer {
-            VRFramebuffer l_eye, r_eye;
-        };
-        const BufferedFramebuffer GetVRFrameBuffers() const;
-#if XR_AVAILABLE
-        void DoXRFrame(Ref<World>);
-#endif
-
-        void ShutdownXR();
-		
-		static bgfx::VertexLayout RmlLayout;
-		
+				
 		matrix4 currentGUIMatrix;
                 
         struct scissor{
@@ -310,6 +196,5 @@ namespace RavEngine {
             bool enabled = false;
         } RMLScissor;
 	
-		static const std::string_view BackendStringName(bgfx::RendererType::Enum backend);
     };
 }

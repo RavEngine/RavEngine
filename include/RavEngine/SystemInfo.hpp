@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <string>
-#include <bx/bx.h>
 #include <bitset>
 
 namespace RavEngine {

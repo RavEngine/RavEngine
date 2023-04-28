@@ -1,7 +1,6 @@
 #include "App.hpp"
 #include "RenderEngine.hpp"
 #include <SDL_events.h>
-#include <bgfx/bgfx.h>
 #include <algorithm>
 #include "MeshAsset.hpp"
 #include "InputManager.hpp"
@@ -23,104 +22,7 @@
 #include "VirtualFileSystem.hpp"
 #include "AudioPlayer.hpp"
 
-#if XR_AVAILABLE
-#include <openxr/openxr.h>
-static XrSessionState xr_session_state = XR_SESSION_STATE_UNKNOWN;
-extern XrSession rve_xr_session;	//TODO: defined in RenderEngine_XR.cpp, but probably shouldn't be
-extern XrSpace rve_xr_app_space;
-extern XrInstance rve_xr_instance;
-extern XrDebugUtilsMessengerEXT rve_xr_debug;
-extern XrViewConfigurationType rve_app_config_view;
-static struct input_state_t {
-	XrActionSet actionSet;
-	XrAction    poseAction;
-	XrAction    selectAction;
-	XrPath   handSubactionPath[2];
-	XrSpace  handSpace[2];
-	XrPosef  handPose[2];
-	XrBool32 renderHand[2];
-	XrBool32 handSelect[2];
-} xr_input_state;
 
-constexpr static XrPosef xr_pose_identity = { {0,0,0,1}, {0,0,0} };
-
-static void openxr_make_actions() {
-	XrActionSetCreateInfo actionset_info = { XR_TYPE_ACTION_SET_CREATE_INFO };
-	strcpy(actionset_info.actionSetName, "gameplay");
-	strcpy(actionset_info.localizedActionSetName, "Gameplay");
-	XR_CHECK(xrCreateActionSet(rve_xr_instance, &actionset_info, &xr_input_state.actionSet));
-	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/left", &xr_input_state.handSubactionPath[0]));
-	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/right", &xr_input_state.handSubactionPath[1]));
-
-	// Create an action to track the position and orientation of the hands! This is
-	// the controller location, or the center of the palms for actual hands.
-	XrActionCreateInfo action_info = { XR_TYPE_ACTION_CREATE_INFO };
-	action_info.countSubactionPaths = BX_COUNTOF(xr_input_state.handSubactionPath);
-	action_info.subactionPaths = xr_input_state.handSubactionPath;
-	action_info.actionType = XR_ACTION_TYPE_POSE_INPUT;
-	strcpy(action_info.actionName, "hand_pose");
-	strcpy(action_info.localizedActionName, "Hand Pose");
-	XR_CHECK(xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.poseAction));
-
-	// Create an action for listening to the select action! This is primary trigger
-	// on controllers, and an airtap on HoloLens
-	action_info.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-	strcpy(action_info.actionName, "select");
-	strcpy(action_info.localizedActionName, "Select");
-	XR_CHECK(xrCreateAction(xr_input_state.actionSet, &action_info, &xr_input_state.selectAction));
-
-	// Bind the actions we just created to specific locations on the Khronos simple_controller
-	// definition! These are labeled as 'suggested' because they may be overridden by the runtime
-	// preferences. For example, if the runtime allows you to remap buttons, or provides input
-	// accessibility settings.
-	XrPath profile_path;
-	XrPath pose_path[2];
-	XrPath select_path[2];
-	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/left/input/grip/pose", &pose_path[0]));
-	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/right/input/grip/pose", &pose_path[1]));
-	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/left/input/select/click", &select_path[0]));
-	XR_CHECK(xrStringToPath(rve_xr_instance, "/user/hand/right/input/select/click", &select_path[1]));
-	XR_CHECK(xrStringToPath(rve_xr_instance, "/interaction_profiles/khr/simple_controller", &profile_path));
-	XrActionSuggestedBinding bindings[] = {
-		{ xr_input_state.poseAction,   pose_path[0]   },
-		{ xr_input_state.poseAction,   pose_path[1]   },
-		{ xr_input_state.selectAction, select_path[0] },
-		{ xr_input_state.selectAction, select_path[1] }, };
-	XrInteractionProfileSuggestedBinding suggested_binds = { XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING };
-	suggested_binds.interactionProfile = profile_path;
-	suggested_binds.suggestedBindings = &bindings[0];
-	suggested_binds.countSuggestedBindings = BX_COUNTOF(bindings);
-	XR_CHECK(xrSuggestInteractionProfileBindings(rve_xr_instance, &suggested_binds));
-
-	// Create frames of reference for the pose actions
-	for (int32_t i = 0; i < 2; i++) {
-		XrActionSpaceCreateInfo action_space_info = { XR_TYPE_ACTION_SPACE_CREATE_INFO };
-		action_space_info.action = xr_input_state.poseAction;
-		action_space_info.poseInActionSpace = xr_pose_identity;
-		action_space_info.subactionPath = xr_input_state.handSubactionPath[i];
-		XR_CHECK(xrCreateActionSpace(rve_xr_session, &action_space_info, &xr_input_state.handSpace[i]));
-	}
-
-	// Attach the action set we just made to the session
-	XrSessionActionSetsAttachInfo attach_info = { XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO };
-	attach_info.countActionSets = 1;
-	attach_info.actionSets = &xr_input_state.actionSet;
-	XR_CHECK(xrAttachSessionActionSets(rve_xr_session, &attach_info));
-}
-
-static void XrShutdown() {
-	if (xr_input_state.actionSet != XR_NULL_HANDLE) {
-		if (xr_input_state.handSpace[0] != XR_NULL_HANDLE) XR_CHECK(xrDestroySpace(xr_input_state.handSpace[0]));
-		if (xr_input_state.handSpace[1] != XR_NULL_HANDLE) XR_CHECK(xrDestroySpace(xr_input_state.handSpace[1]));
-		XR_CHECK(xrDestroyActionSet(xr_input_state.actionSet));
-
-		if (rve_xr_app_space != XR_NULL_HANDLE) XR_CHECK(xrDestroySpace(rve_xr_app_space));
-		if (rve_xr_session != XR_NULL_HANDLE) XR_CHECK(xrDestroySession(rve_xr_session));
-		
-		if (rve_xr_instance != XR_NULL_HANDLE) XR_CHECK(xrDestroyInstance(rve_xr_instance));
-	}
-}
-#endif
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -186,12 +88,6 @@ int App::run(int argc, char** argv) {
 
 		Renderer = std::make_unique<RenderEngine>(config);
 	}
-#if XR_AVAILABLE
-	if (wantsXR) {
-		// setup actions
-		openxr_make_actions();
-	}
-#endif
 	
 	Skybox::Init();
 
@@ -285,90 +181,6 @@ int App::run(int argc, char** argv) {
 #endif
 			}
 		}
-
-		// process OpenXR actions and events
-#if XR_AVAILABLE
-		if (wantsXR) {
-			if (xr_session_state == XR_SESSION_STATE_FOCUSED) {
-				// process actions
-				{
-					// update action set with new inputs
-					XrActiveActionSet action_set{ };
-					action_set.actionSet = xr_input_state.actionSet;
-					action_set.subactionPath = XR_NULL_PATH;
-
-					XrActionsSyncInfo sync_info{ XR_TYPE_ACTIONS_SYNC_INFO };
-					sync_info.countActiveActionSets = 1;
-					sync_info.activeActionSets = &action_set;
-
-					XR_CHECK(xrSyncActions(rve_xr_session, &sync_info));
-
-
-					for (uint32_t hand = 0; hand < 2; hand++) {
-						XrActionStateGetInfo get_info = { XR_TYPE_ACTION_STATE_GET_INFO };
-						get_info.subactionPath = xr_input_state.handSubactionPath[hand];
-
-						XrActionStatePose pose_state = { XR_TYPE_ACTION_STATE_POSE };
-						get_info.action = xr_input_state.poseAction;
-						XR_CHECK(xrGetActionStatePose(rve_xr_session, &get_info, &pose_state));
-						xr_input_state.renderHand[hand] = pose_state.isActive;
-
-						// Events come with a timestamp
-						XrActionStateBoolean select_state = { XR_TYPE_ACTION_STATE_BOOLEAN };
-						get_info.action = xr_input_state.selectAction;
-						XR_CHECK(xrGetActionStateBoolean(rve_xr_session, &get_info, &select_state));
-						xr_input_state.handSelect[hand] = select_state.currentState && select_state.changedSinceLastSync;
-
-						// If we have a select event, update the hand pose to match the event's timestamp
-						if (xr_input_state.handSelect[hand]) {
-							XrSpaceLocation space_location = { XR_TYPE_SPACE_LOCATION };
-							XrResult res = xrLocateSpace(xr_input_state.handSpace[hand], rve_xr_app_space, select_state.lastChangeTime, &space_location);
-							if (XR_UNQUALIFIED_SUCCESS(res) &&
-								(space_location.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0 &&
-								(space_location.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) != 0) {
-								xr_input_state.handPose[hand] = space_location.pose;
-							}
-						}
-					}
-				}
-			}
-			// process these regardless of focused state
-			{
-				XrEventDataBuffer event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
-				while (xrPollEvent(rve_xr_instance, &event_buffer) == XR_SUCCESS) {
-					switch (event_buffer.type) {
-					case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
-						XrEventDataSessionStateChanged* changed = (XrEventDataSessionStateChanged*)&event_buffer;
-						xr_session_state = changed->state;
-
-						// Session state change is where we can begin and end sessions, as well as find quit messages!
-						switch (xr_session_state) {
-						case XR_SESSION_STATE_READY: {
-							XrSessionBeginInfo begin_info = { XR_TYPE_SESSION_BEGIN_INFO };
-							begin_info.primaryViewConfigurationType = rve_app_config_view;
-							XR_CHECK(xrBeginSession(rve_xr_session, &begin_info));
-						} break;
-						case XR_SESSION_STATE_STOPPING: {
-							exit = true;
-							XR_CHECK(xrEndSession(rve_xr_session));
-						}
-						break;
-						case XR_SESSION_STATE_EXITING:
-						case XR_SESSION_STATE_LOSS_PENDING:
-							exit = true;
-							break;
-						}
-					}
-					break;
-					case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
-						exit = true;
-						break;
-					}
-					event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
-				}
-			}
-		}
-#endif
 	
 #ifndef NDEBUG
 		RenderEngine::debuggerInput->TickAxes();
@@ -390,15 +202,7 @@ int App::run(int argc, char** argv) {
             }
         }
 
-#if XR_AVAILABLE
-		if (wantsXR) {
-			Renderer->DoXRFrame(renderWorld);
-		}
-		else 
-#endif
-		{
-			Renderer->Draw(renderWorld);
-		}
+		Renderer->Draw(renderWorld);
 		
 		player->SetWorld(renderWorld);
 		
@@ -454,10 +258,6 @@ App::~App(){
 	Skybox::Teardown();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
-#if XR_AVAILABLE
-	Renderer->ShutdownXR();
-	XrShutdown();
-#endif
     Renderer.reset();
 	delete fsi;
 }

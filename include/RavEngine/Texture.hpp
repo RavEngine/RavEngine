@@ -1,9 +1,9 @@
 #pragma once
-#include <bgfx/bgfx.h>
-#include "Uniform.hpp"
 #include "Ref.hpp"
 #include "Manager.hpp"
 #include "Filesystem.hpp"
+#include <RGL/Sampler.hpp>
+#include <RGL/Texture.hpp>
 
 namespace RavEngine{
 
@@ -21,15 +21,8 @@ public:
 	Texture(const Filesystem::Path& pathOnDisk);
 	
 	virtual ~Texture(){
-		bgfx::destroy(texture);
 	}
-	
-    constexpr inline bgfx::TextureHandle GetTextureHandle() const{
-		return texture;
-	}
-	
-	void Bind(int id, const SamplerUniform& uniform);
-    
+	    
     /**
      Use the manager to avoid loading duplicate textures
      Works with Runtime textures as well, using the construction arguments to differentiate textures
@@ -37,10 +30,12 @@ public:
     struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{};
 	
 protected:
-	bgfx::TextureHandle texture = BGFX_INVALID_HANDLE;
+#if 0
+	RGLTexturePtr texture;
+#endif
 	Texture(){}
 	
-	void CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = static_cast<int>(BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT));
+	void CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = 0);
 };
 
 class RuntimeTexture : public Texture{
@@ -56,7 +51,7 @@ public:
 	 @param data pointer to the image data. Must be a 4-channel image.
 	 @param flags optional creation flags
 	 */
-	RuntimeTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = static_cast<int>(BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT)) : Texture(){
+	RuntimeTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = 0) : Texture(){
 		CreateTexture(width, height, hasMipMaps, numlayers, data,flags);
 	}
 };
