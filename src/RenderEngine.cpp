@@ -41,22 +41,33 @@
 #include <RGL/RGL.hpp>
 #include <RGL/Device.hpp>
 #include <RGL/Synchronization.hpp>
+#include <RGL/Surface.hpp>
+#include <RGL/Swapchain.hpp>
+#include <RGL/CommandBuffer.hpp>
+#include <RGL/Pipeline.hpp>
+#include <RGL/RenderPass.hpp>
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"
 #endif
 
-#if BX_PLATFORM_WINDOWS
+#if _WIN32 && !_UWP
 #define _WIN32_WINNT _WIN32_WINNT_WIN10
 #include <ShellScalingApi.h>
 #pragma comment(lib, "Shcore.lib")
-#elif BX_PLATFORM_WINRT
+#elif _UWP
 #include <winrt/Windows.Graphics.Display.h>
 using namespace winrt;
 #endif
 
 using namespace std;
 using namespace RavEngine;
+
+constexpr static RGL::TextureFormat
+posTexFormat = RGL::TextureFormat::RGBA32_Sfloat,
+normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
+colorTexFormat = RGL::TextureFormat::RGBA16_Snorm,
+idTexFormat = RGL::TextureFormat::R32_Uint;
 
 SDL_Window* RenderEngine::window = nullptr;
 RenderEngine::vs RenderEngine::VideoSettings;
@@ -203,15 +214,224 @@ Construct a render engine instance
 RenderEngine::RenderEngine(const AppConfig& config) {
 	Init(config);
 
-	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
+	UpdateBufferDims();
+
+	SDL_SysWMinfo wmi;
+	SDL_VERSION(&wmi.version);
+	if (!SDL_GetWindowWMInfo(window, &wmi)) {
+		throw std::runtime_error("Cannot get native window information");
+}
+	surface = RGL::CreateSurfaceFromPlatformHandle(
+#if _UWP
+		{ &wmi.info.winrt.window },
+#elif _WIN32
+		{ &wmi.info.win.window },
+#elif TARGET_OS_IPHONE
+		{ wmi.info.uikit.window },
+#elif __APPLE__
+		{ wmi.info.cocoa.window },
+#elif __linux__
+		{ wmi.info.x11.display, wmi.info.x11.window },
+#else
+#error Unknown platform
+#endif
+		true
+	);
 
 	device = RGL::IDevice::CreateSystemDefaultDevice();
+	mainCommandQueue = device->CreateCommandQueue(RGL::QueueType::AllCommands);
+	swapchain = device->CreateSwapchain(surface, mainCommandQueue, bufferdims.width, bufferdims.height);
+	mainCommandBuffer = mainCommandQueue->CreateCommandBuffer();
+	swapchainFence = device->CreateFence(true);
+
+	createGBuffers();
+
+	// create "fixed-function" pipeline layouts
+	lightRenderPipelineLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+				.binding = 0,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+				{
+				.binding = 1,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+				{
+				.binding = 2,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+				{
+				.binding = 3,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 4,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 5,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 6,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 7,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+		},
+		.boundSamplers = {
+			textureSampler,
+			textureSampler,
+			textureSampler,
+			textureSampler,
+		},
+		.constants = {
+				
+		}
+	});
+
+	// create render passes
+	deferredRenderPass = RGL::CreateRenderPass({
+		   .attachments = {
+			   {
+				   .format = colorTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = posTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = idTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   }
+
+		   },
+		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			   .format = RGL::TextureFormat::D32SFloat,
+			   .loadOp = RGL::LoadAccessOperation::Clear,
+			   .storeOp = RGL::StoreAccessOperation::Store,
+			   .clearColor = {1,1,1,1}
+		   }
+		});
+
+	lightingRenderPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			}
+		},
+		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+		}
+		});
+
+	finalRenderPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = RGL::TextureFormat::BGRA8_Unorm,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+				.clearColor = { 0.4f, 0.6f, 0.9f, 1.0f},
+			},
+		},
+		 .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+		}
+	});
+}
+
+void RavEngine::RenderEngine::createGBuffers()
+{
+	uint32_t width = bufferdims.width;
+	uint32_t height = bufferdims.height;
+	gcTextures.enqueue(depthStencil);
+	gcTextures.enqueue(diffuseTexture);
+	gcTextures.enqueue(normalTexture);
+	gcTextures.enqueue(positionTexture);
+	gcTextures.enqueue(lightingTexture);
+
+	depthStencil = device->CreateTexture({
+		.usage = { .DepthStencilAttachment = true },
+		.aspect = { .HasDepth = true },
+		.width = width,
+		.height = height,
+		.format = RGL::TextureFormat::D32SFloat,
+		.debugName = "Depth Texture"
+		}
+	);
+	diffuseTexture = device->CreateTexture({
+		.usage = { .Sampled = true, .ColorAttachment = true },
+		.aspect = { .HasColor = true },
+		.width = width,
+		.height = height,
+		.format = colorTexFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Color gbuffer"
+		}
+	);
+	normalTexture = device->CreateTexture({
+		.usage = { .Sampled = true, .ColorAttachment = true },
+		.aspect = { .HasColor = true },
+		.width = width,
+		.height = height,
+		.format = normalTexFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Normal gbuffer"
+		}
+	);
+	positionTexture = device->CreateTexture({
+		.usage = { .Sampled = true, .ColorAttachment = true },
+		.aspect = { .HasColor = true },
+		.width = width,
+		.height = height,
+		.format = posTexFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Position gbuffer"
+		}
+	);
+	lightingTexture = device->CreateTexture({
+		.usage = { .Sampled = true, .ColorAttachment = true },
+		.aspect = { .HasColor = true },
+		.width = width,
+		.height = height,
+		.format = colorTexFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Lighting texture"
+		}
+	);
 }
 
 RavEngine::RenderEngine::~RenderEngine()
 {
-	// TODO: wait for the fence
+	swapchainFence->Wait();
 	DestroyUnusedResources();
+	device->BlockUntilIdle();
 }
 
 void RenderEngine::DestroyUnusedResources() {
@@ -233,10 +453,31 @@ void RenderEngine::DestroyUnusedResources() {
  */
 void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 
-	// execute when render fence says its ok
-	DestroyUnusedResources();
-	
+	// queue up the next swapchain image as soon as possible, 
+	// it will become avaiable in the background
+	RGL::SwapchainPresentConfig presentConfig{
+	};
+	swapchain->GetNextImage(&presentConfig.imageIndex);
 
+	// execute when render fence says its ok
+	// did we get the swapchain image yet? if not, block until we do
+
+	swapchainFence->Wait();
+	swapchainFence->Reset();
+	DestroyUnusedResources();
+	mainCommandBuffer->Reset();
+	mainCommandBuffer->Begin();
+
+	auto nextimg = swapchain->ImageAtIndex(presentConfig.imageIndex);
+	auto nextImgSize = nextimg->GetSize();
+
+	// the on-screen render pass
+	// contains the results of the previous stages, as well as the UI and any debugging primitives
+	finalRenderPass->SetAttachmentTexture(0, nextimg);
+	finalRenderPass->SetDepthAttachmentTexture(depthStencil.get());
+
+	mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
+	mainCommandBuffer->BeginRendering(finalRenderPass);
 /*
 	worldOwning->Filter([](GUIComponent& gui) {
 		gui.Render();	// kicks off commands for rendering UI
@@ -264,17 +505,29 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 	*/
 	Im3d::NewFrame();
 #endif
+	mainCommandBuffer->EndRendering();
+	mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::Present, RGL::TransitionPosition::Bottom);
+	mainCommandBuffer->End();
 
+	// show the results to the user
+	RGL::CommitConfig commitconfig{
+			.signalFence = swapchainFence,
+	};
+	mainCommandBuffer->Commit(commitconfig);
+
+	swapchain->Present(presentConfig);
 }
 
 void RenderEngine::resize(){
 	UpdateBufferDims();
-#if BX_PLATFORM_IOS
+	createGBuffers();
+#if TARGET_OS_IPHONE
 	//view must be manually sized on iOS
 	//also this API takes screen points not pixels
 	resizeMetalLayer(metalLayer,windowdims.width, windowdims.height);
 #endif
-
+	mainCommandQueue->WaitUntilCompleted();
+	swapchain->Resize(bufferdims.width, bufferdims.height);
 }
 
 void RenderEngine::SyncVideoSettings(){
@@ -310,7 +563,7 @@ void RenderEngine::UpdateBufferDims(){
 	bufferdims.height = windowdims.height;
 
 	// get the canvas size in pixels
-# if BX_PLATFORM_WINDOWS
+# if _WIN32 && !_UWP
 	
 	SDL_SysWMinfo wmi;
 	SDL_VERSION(&wmi.version);
@@ -325,10 +578,10 @@ void RenderEngine::UpdateBufferDims(){
 	else {
 		Debug::Fatal("GetScaleFactorForMonitor failed");
 	}
-#elif BX_PLATFORM_WINRT
+#elif _UWP
 	auto dinf = Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
 	win_scalefactor = static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
-#elif BX_PLATFORM_IOS || BX_PLATFORM_OSX
+#elif __APPLE__
 	// since iOS and macOS do not use OpenGL we cannot use the GL call here
 	// instead we derive it by querying display data
 	float scale = GetWindowScaleFactor(window);

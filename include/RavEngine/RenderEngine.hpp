@@ -44,10 +44,21 @@ namespace RavEngine {
         uint32_t totalVRAM = 0;
 
 		RGLDevicePtr device;
-		RGLFencePtr mainFence;
+		RGLFencePtr swapchainFence;
+		RGLCommandQueuePtr mainCommandQueue;
+		RGLCommandBufferPtr mainCommandBuffer;
+		RGLSwapchainPtr swapchain;
+		RGLSurfacePtr surface;
+
+		RGLTexturePtr diffuseTexture, normalTexture, positionTexture, depthStencil, lightingTexture;
+		RGLPipelineLayoutPtr lightRenderPipelineLayout;
+		RGLSamplerPtr textureSampler;
+		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
     public:
         virtual ~RenderEngine();
         RenderEngine(const AppConfig&);
+
+		void createGBuffers();
 
 		//render a world, for internal use only
 		void Draw(Ref<RavEngine::World>);
