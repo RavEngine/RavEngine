@@ -21,9 +21,6 @@ namespace RavEngine {
 	};
 
 	struct DefaultSkyMaterialInstance : public  ISkyMaterialInstance {
-		void DrawHook() override {
-			// set uniforms here...
-		}
 		DefaultSkyMaterialInstance(const Ref<ISkyMaterial> smi) : ISkyMaterialInstance(smi) {}
 	};
 

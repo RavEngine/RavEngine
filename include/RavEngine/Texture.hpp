@@ -26,7 +26,9 @@ public:
      Use the manager to avoid loading duplicate textures
      Works with Runtime textures as well, using the construction arguments to differentiate textures
      */
-    struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{};
+    struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{
+		static Ref<class RuntimeTexture> defaultTexture;
+	};
 	
 protected:
 
@@ -53,11 +55,6 @@ public:
 	RuntimeTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = 0) : Texture(){
 		CreateTexture(width, height, hasMipMaps, numlayers, data,flags);
 	}
-};
-
-class TextureManager{
-public:
-	static Ref<RuntimeTexture> defaultTexture;
 };
 
 }

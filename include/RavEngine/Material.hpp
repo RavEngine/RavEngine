@@ -72,11 +72,6 @@ namespace RavEngine {
 	*/
 	template<typename T>
 	class MaterialInstance : public MaterialInstanceBase {
-	protected:
-		/**
-		* Allows you to perform work before Draw executes. Use this to bind uniforms.
-		*/
-		virtual void DrawHook() {};
 	public:
 		virtual ~MaterialInstance() {}
 		

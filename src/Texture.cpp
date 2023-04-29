@@ -14,7 +14,7 @@
 using namespace std;
 using namespace RavEngine;
 
-Ref<RuntimeTexture> TextureManager::defaultTexture;
+STATIC(Texture::Manager::defaultTexture);
 
 inline static bool IsRasterImage(const std::string& filepath){
     // assume that anything not in the whitelist is a raster image

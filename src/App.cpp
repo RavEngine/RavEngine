@@ -133,7 +133,7 @@ int App::run(int argc, char** argv) {
 	{
 		//make the default texture white
 		uint8_t data[] = {0xFF,0xFF,0xFF,0xFF};
-		TextureManager::defaultTexture = make_shared<RuntimeTexture>(1,1,false,1,data);
+		Texture::Manager::defaultTexture = make_shared<RuntimeTexture>(1,1,false,1,data);
 	}
 
 	//invoke startup hook
@@ -248,7 +248,7 @@ App::~App(){
 #endif
     MeshAsset::Manager::Clear();
     MeshAssetSkinned::Manager::Clear();
-	TextureManager::defaultTexture.reset();
+	Texture::Manager::defaultTexture.reset();
     Texture::Manager::Clear();
 	player->Shutdown();
 	networkManager.server.reset();

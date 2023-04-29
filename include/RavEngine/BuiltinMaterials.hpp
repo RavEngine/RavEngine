@@ -29,9 +29,8 @@ namespace RavEngine {
             color = c;
         }
 
-        virtual void DrawHook() override;
 	protected:
-		Ref<Texture> albedo = TextureManager::defaultTexture;
+		Ref<Texture> albedo = Texture::Manager::defaultTexture;
 		ColorRGBA color{1,1,1,1};
 	};
 }
