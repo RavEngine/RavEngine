@@ -3,6 +3,7 @@
 #include "SkeletonAsset.hpp"
 #include "Ref.hpp"
 #include "Manager.hpp"
+#include <RGL/Types.hpp>
 
 namespace RavEngine{
 class MeshAssetSkinned : public MeshAsset{
@@ -15,13 +16,10 @@ public:
 		FixedVector<vw, 4> weights;
 	};
 private:
-#if 0
-	bgfx::VertexBufferHandle weightsHandle = BGFX_INVALID_HANDLE;
-#endif
+	RGLBufferPtr weightsBuffer;
 public:
 	
-	~MeshAssetSkinned(){
-	}
+	~MeshAssetSkinned();
 	
 	MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale = 1.0);
 	

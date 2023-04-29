@@ -39,6 +39,8 @@
 #include <chrono>
 #include <cstdio>
 #include <RGL/RGL.hpp>
+#include <RGL/Device.hpp>
+#include <RGL/Synchronization.hpp>
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"
@@ -139,10 +141,57 @@ void RenderEngine::Init(const AppConfig& config)
 	if (window == NULL){
 		Debug::Fatal("Unable to create main window: {}",SDL_GetError());
 	}
+
+	RGL::API api = RGL::API::PlatformDefault;
+	{
+#if _UWP
+		size_t n_elt;
+		char* envv;
+		_dupenv_s(&envv, &n_elt, "RGL_BACKEND");
+#else
+		auto envv = std::getenv("RGL_BACKEND");
+#endif
+		if (envv == nullptr) {
+			goto cont;
+		}
+		auto backend = std::string_view(envv);
+
+		const std::unordered_map<std::string_view, RGL::API> apis{
+			{"metal", decltype(apis)::value_type::second_type::Metal},
+			{"d3d12", decltype(apis)::value_type::second_type::Direct3D12},
+			{"vulkan", decltype(apis)::value_type::second_type::Vulkan},
+		};
+
+		auto it = apis.find(backend);
+		if (it != apis.end()) {
+			api = (*it).second;
+		}
+		else {
+			std::cerr << "No backend \"" << backend << "\", expected one of:\n";
+			for (const auto& api : apis) {
+				std::cout << "\t - " << RGL::APIToString(api.second) << "\n";
+			}
+		}
+	}
+cont:
+
 	RGL::InitOptions opt{
+		.api = api,
 		.engineName = "RavEngine",
 	};
 	RGL::Init(opt);
+
+	// for debug wireframes
+	auto& data = Im3d::GetAppData();
+	data.drawCallback = &DebugRender;
+
+#if __APPLE__
+	if (!AppleGPUMeetsMinSpec()) {
+		char buf[30]{ 0 };
+		AppleGPUName(buf, 30);
+		Debug::Fatal("Cannot proceed: device \"{}\" is under the minimum spec!", buf);
+	}
+#endif
 	
 }
 
@@ -155,17 +204,59 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	Init(config);
 
 	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
+
+	device = RGL::IDevice::CreateSystemDefaultDevice();
 }
 
 RavEngine::RenderEngine::~RenderEngine()
 {
-	
+	// TODO: wait for the fence
+	DestroyUnusedResources();
 }
+
+void RenderEngine::DestroyUnusedResources() {
+	// deallocate the resources that have been freed
+	RGLBufferPtr gcBuffer;
+	while (gcBuffers.try_dequeue(gcBuffer)) {}
+}
+
 
 /**
  Render one frame using the current state of every object in the world
  */
 void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
+
+	// execute when render fence says its ok
+	DestroyUnusedResources();
+	
+
+/*
+	worldOwning->Filter([](GUIComponent& gui) {
+		gui.Render();	// kicks off commands for rendering UI
+	});
+	*/
+#ifndef NDEBUG
+	// process debug shapes
+	worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
+		for (int i = 0; i < dbg.size(); i++) {
+			auto& ptr = dbg[i];
+			if (ptr.debugEnabled) {
+				ptr.DebugDraw(dbgdraw, transform[0]);
+			}
+		}
+		});
+	Im3d::GetContext().draw();
+	/*
+	if (debuggerContext) {
+		auto& dbg = *debuggerContext;
+		dbg.SetDimensions(bufferdims.width, bufferdims.height);
+		dbg.SetDPIScale(GetDPIScale());
+		dbg.Update();
+		dbg.Render();
+	}
+	*/
+	Im3d::NewFrame();
+#endif
 
 }
 

@@ -8,9 +8,17 @@
 #include <assimp/mesh.h>
 #include "Filesystem.hpp"
 #include "VirtualFileSystem.hpp"
+#include "RenderEngine.hpp"
+#include <RGL/Device.hpp>
+#include <RGL/Buffer.hpp>
 
 using namespace RavEngine;
 using namespace std;
+
+RavEngine::MeshAssetSkinned::~MeshAssetSkinned()
+{
+	GetApp()->GetRenderEngine().gcBuffers.enqueue(weightsBuffer);
+}
 
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
 MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,MeshAssetOptions{false,true,scale}){
@@ -92,7 +100,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 		vweights::vw w[4];
 	};
 	//make gpu version
-    RavEngine::Vector<wrapper> weightsgpu;
+    std::vector<wrapper> weightsgpu;
 	weightsgpu.reserve(allweights.size());
 	std::memset(weightsgpu.data(), 0, weightsgpu.size() * sizeof(weightsgpu[0]));
 	
@@ -109,23 +117,14 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	}
 	
 	//map to GPU
-#if 0
-	bgfx::VertexLayout layout;
-	layout.begin()
-	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-	
-	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-	
-	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-	
-	.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-	.end();
-	
-	auto size = weightsgpu.size() * sizeof(weightsgpu[0]);
-	
-	assert(size < numeric_limits<uint32_t>::max());
-	
-	weightsHandle = bgfx::createVertexBuffer(bgfx::copy(weightsgpu.data(), static_cast<uint32_t>(size)), layout);
-#endif
+	//TODO: make buffer Private
+	weightsBuffer = GetApp()->GetRenderEngine().GetDevice()->CreateBuffer({
+		uint32_t(weightsgpu.size()),
+		{.StorageBuffer = true},
+		sizeof(wrapper),
+		RGL::BufferAccess::Shared,
+		{.Writable = false}
+	});
+	weightsBuffer->SetBufferData({ weightsgpu.data(),weightsgpu.size() * sizeof(decltype(weightsgpu)::value_type)});
 }
 

@@ -18,6 +18,7 @@
 #include "Utilities.hpp"
 #include "Defines.hpp"
 #include "PhysXDefines.h"
+#include <RGL/RGL.hpp>
 
 struct SDL_Window;
 
@@ -41,6 +42,9 @@ namespace RavEngine {
         
         uint32_t currentVRAM = 0;
         uint32_t totalVRAM = 0;
+
+		RGLDevicePtr device;
+		RGLFencePtr mainFence;
     public:
         virtual ~RenderEngine();
         RenderEngine(const AppConfig&);
@@ -169,8 +173,16 @@ namespace RavEngine {
         decltype(totalVRAM) GetTotalVRAM(){
             return totalVRAM;
         }
+
+		// API for interacting with the GPU
+		auto GetDevice() {
+			return device;
+		}
         
+		ConcurrentQueue<RGLBufferPtr> gcBuffers;
+
     protected:
+		void DestroyUnusedResources();
         static RavEngine::Vector<VertexColorUV> navMeshPolygon;
         bool navDebugDepthEnabled = false; 
 

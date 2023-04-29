@@ -9,6 +9,9 @@
 #include <filesystem>
 #include "Debug.hpp"
 #include "VirtualFileSystem.hpp"
+#include "RenderEngine.hpp"
+#include <RGL/Buffer.hpp>
+#include <RGL/Device.hpp>
 
 using namespace RavEngine;
 
@@ -146,6 +149,13 @@ MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, cons
 #endif
 }
 
+RavEngine::MeshAsset::~MeshAsset()
+{
+	auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
+	gcBuffers.enqueue(vertexBuffer);
+	gcBuffers.enqueue(indexBuffer);
+}
+
 MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 	
@@ -254,32 +264,29 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
         auto& i = allMeshes.indices;
         totalVerts = v.size();
         totalIndices = i.size();
-#if 0
-		auto format = i.mode == BitWidth::uint32 ? BGFX_BUFFER_INDEX32 : BGFX_BUFFER_NONE;
-        
-        bgfx::VertexLayout pcvDecl;
-        
-        //vertex format
-        pcvDecl.begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float,true,true)
-        .end();
-        
-        //create buffers
-		auto size_vbm = v.size() * sizeof(vertex_t);
-		assert(size_vbm < numeric_limits<uint32_t>::max());	// too many vertices!
-        auto vbm = bgfx::copy(&v[0],static_cast<uint32_t>(size_vbm));
-        vertexBuffer = bgfx::createVertexBuffer(vbm, pcvDecl);
-        
-		auto size_ibm = i.size_bytes();
-		assert(size_ibm < numeric_limits<uint32_t>::max());	// too many indices!
-        auto ibm = bgfx::copy(i.first_element_ptr(), static_cast<uint32_t>(size_ibm));
-        indexBuffer = bgfx::createIndexBuffer(ibm,format);
-        
-        if(! bgfx::isValid(vertexBuffer) || ! bgfx::isValid(indexBuffer)){
-            Debug::Fatal("Buffers could not be created.");
-        }
-#endif
+
+		auto device = GetApp()->GetRenderEngine().GetDevice();
+
+		//TODO: make these Private buffers, and use copy-to-buffer with a staging buffer
+		vertexBuffer = device->CreateBuffer({
+			uint32_t(totalVerts),
+			{.VertexBuffer = true},
+			sizeof(decltype(allMeshes.vertices)::value_type),
+			RGL::BufferAccess::Shared,
+			{.Writable = false},
+		});
+
+		uint32_t index_stride = i.mode == BitWidth::uint32 ? sizeof(uint32_t) : sizeof(uint16_t);
+
+		indexBuffer = device->CreateBuffer({
+			uint32_t(totalIndices),
+			{.IndexBuffer = true},
+			index_stride,
+			RGL::BufferAccess::Shared,
+			{.Writable = false},
+		});
+
+		vertexBuffer->SetBufferData({ v.data(),v.size_bytes() });
+		indexBuffer->SetBufferData({ i.first_element_ptr(),i.size_bytes() });
     }
 }

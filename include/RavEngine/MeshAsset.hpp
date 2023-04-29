@@ -11,6 +11,7 @@
 #include "Filesystem.hpp"
 #include "Debug.hpp"
 #include <span>
+#include <RGL/Types.hpp>
 
 struct aiMesh;
 struct aiScene;
@@ -164,19 +165,12 @@ public:
 
     
 protected:
-#if 0
-	bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
-	bgfx::IndexBufferHandle indexBuffer = BGFX_INVALID_HANDLE;
-#endif
+    RGLBufferPtr vertexBuffer, indexBuffer;
 
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
 
 	BitWidth indexBufferWidth;
-
-	inline void Destroy(){
-       
-	}
 	
 	/**
 	 Initialize from multiple meshs consisting of a single vertex and index list
@@ -253,27 +247,21 @@ public:
 	 @param other the other MeshAsset, which will become invalid after this call and should not be used.
 	 */
 	inline void Exchange(Ref<MeshAsset> other, bool destroyCurrent = true){
-		if (destroyCurrent){
-			Destroy();
-		}
-#if 0
+
 		vertexBuffer = other->vertexBuffer;
 		indexBuffer = other->indexBuffer;
 		totalVerts = other->totalVerts;
 		totalIndices = other->totalIndices;
 		
-		other->vertexBuffer = BGFX_INVALID_HANDLE;
-		other->vertexBuffer = BGFX_INVALID_HANDLE;
-#endif
+        other->vertexBuffer.reset();
+		other->indexBuffer.reset();
 	}
     
     constexpr inline const decltype(bounds)& GetBounds() const{
         return bounds;
     }
 	
-	virtual ~MeshAsset(){
-		Destroy();
-	}
+    virtual ~MeshAsset();
 
     constexpr inline const decltype(totalVerts) GetNumVerts() const {
 		return totalVerts;

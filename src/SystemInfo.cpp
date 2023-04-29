@@ -5,6 +5,7 @@
 #include <cstring>
 #include "Defines.hpp"
 #include "RenderEngine.hpp"
+#include <RGL/Device.hpp>
 
 #ifdef _WIN32
     #include <PortableDeviceApi.h>
@@ -185,7 +186,7 @@ uint32_t SystemInfo::SystemRAM(){
 
 
 std::string SystemInfo::GPUBrandString(){
-    return "SystemInfo: Unimplemented";
+    return GetApp()->GetRenderEngine().GetDevice()->GetBrandString();
 }
 
 uint32_t SystemInfo::GPUVRAM(){
