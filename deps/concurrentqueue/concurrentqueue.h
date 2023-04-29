@@ -746,6 +746,7 @@ template<typename T, typename Traits = ConcurrentQueueDefaultTraits>
 class ConcurrentQueue
 {
 public:
+	using value_type = T;
 	typedef ::moodycamel::ProducerToken producer_token_t;
 	typedef ::moodycamel::ConsumerToken consumer_token_t;
 	

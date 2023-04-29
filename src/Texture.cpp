@@ -6,6 +6,10 @@
 #include <lunasvg.h>
 #include "Filesystem.hpp"
 #include "VirtualFileSystem.hpp"
+#include <RGL/TextureFormat.hpp>
+#include "RenderEngine.hpp"
+#include <RGL/Device.hpp>
+#include <RGL/Texture.hpp>
 
 using namespace std;
 using namespace RavEngine;
@@ -72,32 +76,22 @@ Texture::Texture(const std::string& name){
 
 
 void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags){
-#if 0
+
 	uint16_t numChannels = 4;	//TODO: allow n-channel textures
-	bgfx::TextureFormat::Enum format;
-	switch (numChannels) {
-	case 1:
-		format = bgfx::TextureFormat::R8;
-		break;
-	case 2:
-		format = bgfx::TextureFormat::RG8;
-		break;
-	case 3:
-		format = bgfx::TextureFormat::RGB8;
-		break;
-	case 4: 
-		format = bgfx::TextureFormat::RGBA8;
-		break;
-	default:
-		Debug::Fatal("Number of channels must be [1,4], got {}",numChannels);
-	}
+	RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
 	
-	auto uncompressed_size = width * height * numChannels * numlayers;
-	const bgfx::Memory* textureData = (data == nullptr) ? nullptr : bgfx::copy(data, uncompressed_size);
-	texture = bgfx::createTexture2D(width,height,hasMipMaps,numlayers,format,flags,textureData);
-	
-	if(!bgfx::isValid(texture)){
-		Debug::Fatal("Cannot create texture");
-	}
-#endif
+	uint32_t uncompressed_size = width * height * numChannels * numlayers;
+
+	auto device = GetApp()->GetRenderEngine().GetDevice();
+	texture = device->CreateTextureWithData({
+		.usage = {.TransferDestination = true, .Sampled = true},
+		.aspect = {.HasColor = true},
+		.width = uint32_t(width),
+		.height = uint32_t(height),
+		.format = format
+		}, { data,uncompressed_size });
+}
+
+Texture::~Texture() {
+	GetApp()->GetRenderEngine().gcTextures.enqueue(texture);
 }

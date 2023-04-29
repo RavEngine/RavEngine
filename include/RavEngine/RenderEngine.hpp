@@ -180,6 +180,7 @@ namespace RavEngine {
 		}
         
 		ConcurrentQueue<RGLBufferPtr> gcBuffers;
+		ConcurrentQueue<RGLTexturePtr> gcTextures;
 
     protected:
 		void DestroyUnusedResources();

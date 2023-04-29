@@ -248,6 +248,7 @@ App::~App(){
 #endif
     MeshAsset::Manager::Clear();
     MeshAssetSkinned::Manager::Clear();
+	TextureManager::defaultTexture.reset();
     Texture::Manager::Clear();
 	player->Shutdown();
 	networkManager.server.reset();

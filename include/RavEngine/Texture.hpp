@@ -3,7 +3,7 @@
 #include "Manager.hpp"
 #include "Filesystem.hpp"
 #include <RGL/Sampler.hpp>
-#include <RGL/Texture.hpp>
+#include <RGL/Types.hpp>
 
 namespace RavEngine{
 
@@ -20,8 +20,7 @@ public:
 
 	Texture(const Filesystem::Path& pathOnDisk);
 	
-	virtual ~Texture(){
-	}
+	virtual ~Texture();
 	    
     /**
      Use the manager to avoid loading duplicate textures
@@ -30,9 +29,9 @@ public:
     struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{};
 	
 protected:
-#if 0
+
 	RGLTexturePtr texture;
-#endif
+
 	Texture(){}
 	
 	void CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = 0);

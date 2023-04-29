@@ -216,8 +216,15 @@ RavEngine::RenderEngine::~RenderEngine()
 
 void RenderEngine::DestroyUnusedResources() {
 	// deallocate the resources that have been freed
-	RGLBufferPtr gcBuffer;
-	while (gcBuffers.try_dequeue(gcBuffer)) {}
+
+	auto clear = [](auto& queue) {
+		typename std::remove_reference_t<decltype(queue)>::value_type item;
+		while (queue.try_dequeue(item)) {}
+
+	};
+
+	clear(gcBuffers);
+	clear(gcTextures);
 }
 
 
