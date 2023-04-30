@@ -34,6 +34,22 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
                     .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
                 }
             }
+        },
+        .colorBlendConfig = {
+            .attachments = {
+                {
+                    .format = RenderEngine::colorTexFormat
+                },
+                {
+                    .format = RenderEngine::normalTexFormat
+                },
+                {
+                    .format = RenderEngine::posTexFormat
+                },
+                {
+                    .format = RenderEngine::idTexFormat
+                }
+            }
         }
 	}
 	) 

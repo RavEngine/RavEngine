@@ -467,12 +467,32 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 	auto nextImgSize = nextimg->GetSize();
 
 	// the on-screen render pass
-	// contains the results of the previous stages, as well as the UI and any debugging primitives
+	// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
 	finalRenderPass->SetAttachmentTexture(0, nextimg);
 	finalRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 
 	mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
 	mainCommandBuffer->BeginRendering(finalRenderPass);
+
+	mainCommandBuffer->SetViewport({
+		.width = static_cast<float>(nextImgSize.width),
+		.height = static_cast<float>(nextImgSize.height),
+	});
+	mainCommandBuffer->SetScissor({
+		.extent = {nextImgSize.width, nextImgSize.height}
+	});
+
+	// start with the skybox
+	mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->mat->renderPipeline);
+	mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
+	mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
+
+	auto& cam = worldOwning->GetComponent<CameraComponent>();
+	auto viewproj = cam.GenerateProjectionMatrix()* cam.GenerateViewMatrix();
+
+	mainCommandBuffer->SetVertexBytes(viewproj , 0);
+	mainCommandBuffer->DrawIndexed(worldOwning->skybox->skyMesh->totalIndices);
+
 /*
 	worldOwning->Filter([](GUIComponent& gui) {
 		gui.Render();	// kicks off commands for rendering UI

@@ -10,8 +10,10 @@ layout(push_constant) uniform UniformBufferObject{
 
 void main()
 {
-	vec4 worldpos = ubo.viewProj * vec4(inPosition, 1);
-	vec4 screenpos = ubo.viewProj * worldpos;
+	// translate the skybox to the camera 
+	vec3 viewTranslate = ubo.viewProj[3].xyz;
+
+	vec4 screenpos = ubo.viewProj * vec4(inPosition + -viewTranslate, 1);
 	
 	// set both to 1 to make render behind everything
 	screenpos.z = 1;

@@ -16,6 +16,7 @@ namespace RavEngine {
 
 	struct MaterialConfig {
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
+		RGL::RenderPipelineDescriptor::ColorBlendConfig colorBlendConfig;
 		bool depthTestEnabled = true;
 		bool depthWriteEnabled = true;
 		RGL::DepthCompareFunction depthCompareFunction = RGL::DepthCompareFunction::Less;
@@ -97,7 +98,10 @@ namespace RavEngine {
 	class MaterialInstance : public MaterialInstanceBase {
 	public:
 		virtual ~MaterialInstance() {}
-		
+		friend class RenderEngine;
+		auto GetMat() {
+			return mat;
+		}
 	protected:
 		MaterialInstance(Ref<T> m) : mat(m) {}
 		Ref<T> mat;

@@ -190,6 +190,8 @@ protected:
 	
 	void InitAll(const aiScene* scene, const MeshAssetOptions& opt);
 	void InitPart(const aiScene* scene, const std::string& name, const std::string& fileName, const MeshAssetOptions& opt);
+
+    friend class RenderEngine;
 	
 public:
 	

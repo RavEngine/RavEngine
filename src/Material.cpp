@@ -128,22 +128,7 @@ Material::Material(const std::string& name, const MaterialConfig& config) : name
         .rasterizerConfig = {
             .windingOrder = RGL::WindingOrder::Counterclockwise,
         },
-        .colorBlendConfig{
-            .attachments = {
-                {
-                    .format = RenderEngine::colorTexFormat
-                },
-                {
-                    .format = RenderEngine::normalTexFormat
-                },
-                {
-                    .format = RenderEngine::posTexFormat
-                },
-                {
-                    .format = RenderEngine::idTexFormat
-                }
-            }
-        },
+        .colorBlendConfig = config.colorBlendConfig,
         .depthStencilConfig = {
             .depthFormat = RGL::TextureFormat::D32SFloat,
             .depthTestEnabled = config.depthTestEnabled,

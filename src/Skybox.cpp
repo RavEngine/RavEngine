@@ -38,7 +38,15 @@ RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(
                 },
             }
         },
-        .depthWriteEnabled = false
+        .colorBlendConfig = {
+            .attachments = {
+                {
+                    .format = RGL::TextureFormat::BGRA8_Unorm
+                },
+            }
+        },
+        .depthWriteEnabled = false,
+        .depthCompareFunction = RGL::DepthCompareFunction::Greater
     }
     )
 {
