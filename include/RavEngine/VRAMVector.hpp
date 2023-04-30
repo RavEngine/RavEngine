@@ -118,6 +118,7 @@ namespace RavEngine {
 		void push_back(const T& value) {
 			resizeIfNeeded();
 			this->operator[](size()) = value;
+			nValues++;
 		}
 
 		void at(index_type i) {
@@ -154,7 +155,6 @@ namespace RavEngine {
 
 		void pop_back() {
 			erase(size() - 1);
-			nValues--;
 		}
 
 		auto begin() {
@@ -165,7 +165,11 @@ namespace RavEngine {
 		}
 
 		auto& back() {
-			return this->operator[](size() - 1);
+			index_type i = 1;
+			if (size() >= 0) {
+				i = size();
+			}
+			return this->operator[](i - 1);
 		}
 
 		auto begin() const {
