@@ -10,18 +10,11 @@ using namespace std;
 
 Ref<MeshAsset> LightManager::pointLightMesh;
 Ref<MeshAsset> LightManager::spotLightMesh;
-Ref<LightManager::PointLightShaderInstance> LightManager::pointLightShader;
-Ref<LightManager::AmbientLightShaderInstance> LightManager::ambientLightShader;
-Ref<LightManager::DirectionalLightShaderInstance> LightManager::directionalLightShader;
-Ref<LightManager::SpotLightShaderInstance> LightManager::spotLightShader;
 
 void LightManager::Init(){
 	pointLightMesh = MeshAsset::Manager::Get("sphere.obj");
 	spotLightMesh = MeshAsset::Manager::Get("lightcone.obj");
-	pointLightShader = make_shared<PointLightShaderInstance>(Material::Manager::Get<PointLightShader>());
-	ambientLightShader = make_shared<AmbientLightShaderInstance>(Material::Manager::Get<AmbientLightShader>());
-	directionalLightShader = make_shared<DirectionalLightShaderInstance>(Material::Manager::Get<DirectionalLightShader>());
-	spotLightShader = make_shared<SpotLightShaderInstance>(Material::Manager::Get<SpotLightShader>());
+
 	
 	constexpr uint16_t indices[] = {0,2,1, 2,3,1};
 	constexpr Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
@@ -40,10 +33,6 @@ void LightManager::Init(){
 void LightManager::Teardown() {
 	pointLightMesh.reset();
 	spotLightMesh.reset();
-	pointLightShader.reset();
-	ambientLightShader.reset();
-	directionalLightShader.reset();
-	spotLightShader.reset();
 }
 
 void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{

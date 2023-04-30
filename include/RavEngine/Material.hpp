@@ -7,9 +7,19 @@
 #include "CTTI.hpp"
 #include "Debug.hpp"
 #include "Manager.hpp"
-#include <RGL/RGL.hpp>
+#include <RGL/Types.hpp>
+#include <RGL/Pipeline.hpp>
+#include <span>
 
 namespace RavEngine {
+	struct Texture;
+
+	struct MaterialConfig {
+		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
+		bool depthTestEnabled = true;
+		bool depthWriteEnabled = true;
+		RGL::DepthCompareFunction depthCompareFunction = RGL::DepthCompareFunction::Less;
+	};
 
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
@@ -22,7 +32,7 @@ namespace RavEngine {
 		Create the default material. Override this constructor in subclasses, and from that, invoke the protected constructor.
 		*/
 
-		virtual ~Material() {}
+		virtual ~Material();
 
 		const std::string& GetName() {
 			return name;
@@ -54,17 +64,30 @@ namespace RavEngine {
 
 	protected:
 		std::string name;
+		RGLShaderLibraryPtr vertShader, fragShader;
+		RGLRenderPipelinePtr renderPipeline;
+		RGLPipelineLayoutPtr pipelineLayout;
 
 		//trying to create a material that already exists will throw an exception
-		Material(const std::string& name);
+		Material(const std::string& name, const MaterialConfig& config);
 		
 		friend class RenderEngine;
+		friend class MaterialInstanceBase;
 	};
 
 	//for type conversions, do not use directly
 	class MaterialInstanceBase {
+	private:
+	protected:
+		constexpr static uint8_t maxBindingSlots = 8;
+		std::array<RGLBufferPtr, maxBindingSlots> bufferBindings;
+		std::array<Ref<Texture>, maxBindingSlots> textureBindings;
 	public:
         bool doubleSided = false;
+		friend class RenderEngine;
+		virtual std::span<std::byte> PushConstantData() {
+			return std::span<std::byte, 0>{};	// a span of size 0 means that the material has no push constants
+		}
 	};
 
 	/**

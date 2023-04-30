@@ -19,6 +19,7 @@
 #include "Defines.hpp"
 #include "PhysXDefines.h"
 #include <RGL/RGL.hpp>
+#include <RGL/TextureFormat.hpp>
 
 struct SDL_Window;
 
@@ -55,6 +56,18 @@ namespace RavEngine {
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
     public:
+		constexpr static RGL::TextureFormat
+			posTexFormat = RGL::TextureFormat::RGBA32_Sfloat,
+			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
+			colorTexFormat = RGL::TextureFormat::RGBA16_Snorm,
+			idTexFormat = RGL::TextureFormat::R32_Uint;
+
+		// the items made available to 
+		// user-defined materials
+		struct DeferredUBO {
+			glm::mat4 viewProj;
+		};
+
         virtual ~RenderEngine();
         RenderEngine(const AppConfig&);
 
@@ -192,6 +205,9 @@ namespace RavEngine {
         
 		ConcurrentQueue<RGLBufferPtr> gcBuffers;
 		ConcurrentQueue<RGLTexturePtr> gcTextures;
+		ConcurrentQueue<RGLPipelineLayoutPtr> gcPipelineLayout;
+		ConcurrentQueue<RGLRenderPipelinePtr> gcRenderPipeline;
+
 
     protected:
 		void DestroyUnusedResources();

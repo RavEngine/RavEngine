@@ -1,11 +1,17 @@
-$input a_position
+#version 460
 
-#include "common.sh"
+layout(location = 0) in vec3 inPosition;
+
+layout(push_constant) uniform UniformBufferObject{
+	mat4 viewProj;
+	//mat4 model;
+	//float timeSinceStart;
+} ubo;
 
 void main()
 {
-	vec4 worldpos = instMul(vec4(a_position, 1),u_model[0]);
-	vec4 screenpos = mul(u_viewProj, worldpos);
+	vec4 worldpos = ubo.viewProj * vec4(inPosition, 1);
+	vec4 screenpos = ubo.viewProj * worldpos;
 	
 	// set both to 1 to make render behind everything
 	screenpos.z = 1;

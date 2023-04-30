@@ -49,7 +49,7 @@ public:
         auto fullpath = StrFormat("{}/{}",rootname,path);
         
         if(!Exists(path)){
-            Debug::Fatal("cannot open {}{}",rootname,path);
+            Debug::Fatal("cannot open {}",fullpath);
         }
         
         auto ptrsize = GetSizeAndPtr(fullpath.c_str());

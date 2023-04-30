@@ -243,7 +243,7 @@ SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
 
 # RavEngine Graphics Library (RGL)
-set(RGL_ENABLE_RGLC OFF CACHE INTERNAL "")
+set(RGL_ENABLE_RGLC ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/RGL")
 
 
@@ -567,7 +567,6 @@ if (WIN32)
 endif()
 
 # globals for managing state
-set(shader_target "default")
 define_property(GLOBAL PROPERTY ALL_SHADERS
 		BRIEF_DOCS "Aggregate shader list"
 		FULL_DOCS "GLOBAL shader list"
@@ -634,6 +633,80 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options")
 
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
 
+macro(shader_compile infile stage api extension binary)
+	if ("${api}" STREQUAL "Vulkan")
+		set(bindir "$<CONFIG>")
+	else()
+		set(bindir "${shader_target}_ShaderIntermediate")
+	endif()
+
+	get_filename_component(name_only ${infile} NAME)
+	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
+	set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${shader_target}/shaders/${api}/")
+	if (${api} MATCHES "Metal")
+		STRING(REPLACE "." "_" name_fixed ${name_only} )
+		set(entrypoint "--entrypoint" "${name_fixed}")
+	endif()
+	list(APPEND all_shaders "${outname}")
+	add_custom_command(
+		PRE_BUILD
+		OUTPUT "${outname}"
+		DEPENDS ${infile} GNS_Deps "${eng_dir}/shaders/ravengine_shader.glsl"
+		COMMAND ${rglc_path} -f "${infile}" -o "${outname}" --api ${api} --stage ${stage} --debug ${binary} ${entrypoint}
+	)
+endmacro()
+
+function(declare_shader infile shader_target)
+	get_filename_component(shader_ext ${infile} EXT)
+
+	if (shader_ext MATCHES "vsh")
+		set(stage "vertex")
+	elseif (shader_ext MATCHES "fsh")
+		set(stage "fragment")
+	elseif (shader_ext MATCHES "csh")
+		set(stage "compute")
+	endif()
+
+	if(RGL_VK_AVAILABLE)
+		shader_compile("${infile}" "${stage}" "Vulkan" "spv" "")
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
+	endif()
+	if(RGL_DX12_AVAILABLE)
+		shader_compile("${infile}" "${stage}" "Direct3D12" "hlsl" "")
+
+		if (stage MATCHES "vertex")
+			set(dxc_type "Vertex")
+		elseif (stage MATCHES "fragment")
+			set(dxc_type "Pixel")
+		elseif (stage MATCHES "compute")
+			set(dxc_type "Compute")
+		endif()
+		target_sources(${shader_target} PUBLIC ${outname})
+		source_group("Generated" FILES "${outname}")
+		set(dx_final_name "${finalrootpath}/${name_only}.cso")
+		set_source_files_properties(${outname} PROPERTIES 
+			GENERATED TRUE
+			VS_SHADER_MODEL "6.4"
+			VS_SHADER_TYPE ${dxc_type}
+			VS_SHADER_ENABLE_DEBUG ON
+			VS_SHADER_DISABLE_OPTIMIZATIONS ON
+			# VS_SHADER_OBJECT_FILE_NAME ${dx_final_name}
+		)
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
+	endif()
+	if(RGL_MTL_AVAILABLE)
+		shader_compile("${infile}" "${stage}" "Metal" "metal" "")
+		set_source_files_properties(${shader_target} PROPERTIES 
+			GENERATED TRUE
+			HEADER_FILE_ONLY OFF
+			LANGUAGE METAL
+			XCODE_EXPLICIT_FILE_TYPE "sourcecode.metal"
+            COMPILE_FLAGS "-gline-tables-only -frecord-sources" # enable shader source debugging
+		)
+		# goes into the bundle Metallib, so we don't need to include the shader in the asset package
+	endif()
+endfunction()
+
 # pack resources
 function(pack_resources)
 	set(optional )
@@ -657,7 +730,7 @@ function(pack_resources)
 	file(GLOB ENG_OBJECTS "${eng_dir}/objects/*")
 
 	# add engine-provided shaders
-	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.cmake")
+	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.vsh" "${eng_dir}/shaders/*.fsh" "${eng_dir}/shaders/*.csh")
 
 	# add engine-provided fonts
 	file(GLOB ENG_FONTS "${eng_dir}/fonts/*.ttf")
@@ -746,13 +819,13 @@ function(pack_resources)
 
 	# setup shader compiler
 	foreach(SHADER ${ENG_SHADERS})
-		set(shader_target "${ARGS_TARGET}")
-		include("${SHADER}")
+		declare_shader("${SHADER}" "${ARGS_TARGET}")
 	endforeach()
+
 	set_property(GLOBAL PROPERTY ALL_SHADER_SOURCES "")
 	foreach(SHADER ${ARGS_SHADERS})
-		set(shader_target "${ARGS_TARGET}")
-		include("${SHADER}")
+		#set(shader_target "${ARGS_TARGET}")
+		#include("${SHADER}")
 	endforeach()
 
 	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
@@ -910,5 +983,3 @@ foreach(TGT ${all_targets})
 	endif()
 endforeach()
 
-function(declare_shader)
-endfunction()

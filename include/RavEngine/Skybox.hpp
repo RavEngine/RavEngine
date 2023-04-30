@@ -6,7 +6,7 @@ namespace RavEngine {
 	
 	// subclass
 	struct ISkyMaterial : public Material {
-		ISkyMaterial(const std::string& shaderpath) : Material(shaderpath) {}
+		ISkyMaterial(const std::string& shaderpath);
 	};
 
 	// subclass

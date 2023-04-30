@@ -10,8 +10,8 @@ namespace RavEngine {
      */
 	class PBRMaterial : public Material {
 	public:
-		PBRMaterial() : Material("pbrmaterial") {}
-		PBRMaterial(const std::string& name) : Material(name) {}
+		PBRMaterial(const std::string& name);
+		PBRMaterial() : PBRMaterial("pbr") {}
 	};
 
     /**
@@ -20,17 +20,18 @@ namespace RavEngine {
      */
 	class PBRMaterialInstance : public MaterialInstance<PBRMaterial> {
 	public:
-		PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) { };
+		PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) { 
+			textureBindings[0] = Texture::Manager::defaultTexture;
+		};
 
 		inline void SetAlbedoTexture(Ref<Texture> texture) {
-			albedo = texture;
+			textureBindings[0] = texture;
 		}
         constexpr inline void SetAlbedoColor(const ColorRGBA& c){
             color = c;
         }
 
 	protected:
-		Ref<Texture> albedo = Texture::Manager::defaultTexture;
 		ColorRGBA color{1,1,1,1};
 	};
 }

@@ -63,12 +63,6 @@ using namespace winrt;
 using namespace std;
 using namespace RavEngine;
 
-constexpr static RGL::TextureFormat
-posTexFormat = RGL::TextureFormat::RGBA32_Sfloat,
-normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-colorTexFormat = RGL::TextureFormat::RGBA16_Snorm,
-idTexFormat = RGL::TextureFormat::R32_Uint;
-
 SDL_Window* RenderEngine::window = nullptr;
 RenderEngine::vs RenderEngine::VideoSettings;
 
@@ -355,7 +349,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.format = RGL::TextureFormat::BGRA8_Unorm,
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
-				.clearColor = { 0.4f, 0.6f, 0.9f, 1.0f},
 			},
 		},
 		 .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
@@ -445,6 +438,8 @@ void RenderEngine::DestroyUnusedResources() {
 
 	clear(gcBuffers);
 	clear(gcTextures);
+	clear(gcPipelineLayout);
+	clear(gcRenderPipeline);
 }
 
 

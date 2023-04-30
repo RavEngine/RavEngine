@@ -1,7 +1,6 @@
-#include "common.sh"
 
-EARLY_DEPTH_STENCIL
+layout(location = 0) out vec4 outcolor;
 void main()
 {
-    gl_FragColor = vec4(0,181/255.0,226/256.0,1);
+    outcolor = vec4(0,181/255.0,226/256.0,1);
 }

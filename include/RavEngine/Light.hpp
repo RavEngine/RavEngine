@@ -310,53 +310,6 @@ public:
 private:
 	static Ref<MeshAsset> pointLightMesh;
 	static Ref<MeshAsset> spotLightMesh;
-	
-	class LightShader : public Material{
-	protected:
-		LightShader(const std::string& name) : Material(name){}
-	};
-	
-	/**
-	 Material to draw point lights
-	 */
-	struct PointLightShader : public LightShader{
-		PointLightShader() : LightShader("pointlightvolume"){}
-	};
-	/**
-	 Holds uniforms for point lights
-	 */
-	struct PointLightShaderInstance : public MaterialInstance<PointLightShader>{
-		PointLightShaderInstance(Ref<PointLightShader> m ) : MaterialInstance(m){}
-	};
-	
-	struct AmbientLightShader : public LightShader{
-	public:
-		AmbientLightShader() : LightShader("ambientlightvolume"){}
-	};
-	struct AmbientLightShaderInstance : public MaterialInstance<AmbientLightShader>{
-		AmbientLightShaderInstance(Ref<AmbientLightShader> m ) : MaterialInstance(m){}
-	};
-	
-	struct DirectionalLightShader : public LightShader{
-		DirectionalLightShader() : LightShader("directionallightvolume"){}
-	};
-	
-	struct DirectionalLightShaderInstance : public MaterialInstance<DirectionalLightShader>{
-		DirectionalLightShaderInstance(Ref<DirectionalLightShader> m ) : MaterialInstance(m){}
-	};
-	
-	struct SpotLightShader : public LightShader{
-		SpotLightShader() : LightShader("spotlightvolume"){}
-	};
-	
-	struct SpotLightShaderInstance : public MaterialInstance<SpotLightShader>{
-		SpotLightShaderInstance(Ref<SpotLightShader> m ) : MaterialInstance(m){}
-	};
-	
-	static Ref<PointLightShaderInstance> pointLightShader;
-	static Ref<AmbientLightShaderInstance> ambientLightShader;
-	static Ref<DirectionalLightShaderInstance> directionalLightShader;
-	static Ref<SpotLightShaderInstance> spotLightShader;
 };
 }
 
