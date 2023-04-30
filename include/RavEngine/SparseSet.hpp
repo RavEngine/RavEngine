@@ -3,14 +3,15 @@
 #include "Common3D.hpp"
 
 namespace RavEngine {
-    template<typename index_t,typename U>
-    class UnorderedSparseSet {
+    template<typename index_t,typename container_t>
+    class UnorderedSparseSetGenericContainer {
     public: 
         constexpr static index_t default_index = std::numeric_limits<index_t>::max();
+        constexpr static index_t INVALID_INDEX = default_index;
         using index_type = index_t;
-        using value_type = U;
+        using value_type = container_t::value_type;
     private:
-        unordered_vector<U> dense_set;
+        container_t dense_set;
         std::vector<index_t> sparse_set{ default_index };
 
     public:
@@ -46,7 +47,7 @@ namespace RavEngine {
             sparse_set[sparse_index] = INVALID_INDEX;
         }
 
-        inline U& GetForSparseIndex(index_t sparse_index) {
+        inline auto& GetForSparseIndex(index_t sparse_index) {
             assert(HasForSparseIndex(sparse_index));
             return dense_set[SparseToDense(sparse_index)];
         }
@@ -76,16 +77,16 @@ namespace RavEngine {
         }
 
         // get by dense index, not by entity ID
-        U& Get(index_t idx) {
+        value_type& Get(index_t idx) {
             return dense_set[idx];
         }
 
         // given a dense index, return its sparse index
-        U& GetSparseIndexForDense(index_t idx) {
+        value_type& GetSparseIndexForDense(index_t idx) {
             return reverse_map[idx];
         }
 
-        const U& Get(index_t idx) const {
+        const value_type& Get(index_t idx) const {
             return Get(idx);
         }
 
@@ -97,8 +98,11 @@ namespace RavEngine {
             return dense_set.data();
         }
 
-        inline const decltype(dense_set)& GetDense() const {
+        inline auto& GetDense() {
             return dense_set;
         }
     };
+
+    template<typename index_t, typename container_t>
+    class UnorderedSparseSet : public UnorderedSparseSetGenericContainer<index_t, unordered_vector<container_t>> {};
 }

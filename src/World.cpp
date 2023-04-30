@@ -28,6 +28,7 @@
 #include "RenderEngine.hpp"
 #include "Skybox.hpp"
 #include "PhysicsSolver.hpp"
+#include "VRAMSparseSet.hpp"
 
 using namespace std;
 using namespace RavEngine;

@@ -16,6 +16,7 @@
 #include "PolymorphicIndirection.hpp"
 #include "SparseSet.hpp"
 #include <boost/callable_traits.hpp>
+#include "VRAMSparseSet.hpp"
 
 namespace RavEngine {
 	struct Entity;
@@ -241,8 +242,8 @@ namespace RavEngine {
         struct MDIICommand {
             struct command {
                 WeakRef<MeshAsset> mesh;
-                UnorderedSparseSet<entity_t,matrix4> transforms;
-                command(decltype(mesh) mesh, decltype(transforms)::index_type index, const decltype(transforms)::value_type& first_value) : mesh(mesh) {
+                VRAMSparseSet<entity_t,matrix4> transforms;
+                command(decltype(mesh) mesh, typename decltype(transforms)::index_type index, typename const decltype(transforms)::value_type& first_value) : mesh(mesh) {
                     transforms.Emplace(index, first_value);
                 }
             };
@@ -253,8 +254,8 @@ namespace RavEngine {
             struct command {
                 WeakRef<MeshAssetSkinned> mesh;
                 WeakRef<SkeletonAsset> skeleton;
-                UnorderedSparseSet<entity_t, matrix4> transforms;
-                command(decltype(mesh) mesh, decltype(skeleton) skeleton, decltype(transforms)::index_type index, const decltype(transforms)::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
+                VRAMSparseSet<entity_t, matrix4> transforms;
+                command(decltype(mesh) mesh, decltype(skeleton) skeleton, typename decltype(transforms)::index_type index, typename const decltype(transforms)::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
                     transforms.Emplace(index, first_value);
                 }
             };

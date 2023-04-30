@@ -19,6 +19,7 @@ public:
     typedef typename decltype(underlying)::const_iterator const_iterator_type;
     typedef typename decltype(underlying)::size_type index_type;
     typedef typename decltype(underlying)::size_type size_type;
+    using value_type = T;
 
     /**
      Erase by iterator. Complexity is O(1).
@@ -33,7 +34,7 @@ public:
     /**
      @return the underlying vector. Do not modify!
      */
-    inline const decltype(underlying)& get_underlying() const{
+    inline auto& get_underlying() {
         return underlying;
     }
 	
