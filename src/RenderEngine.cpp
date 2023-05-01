@@ -308,17 +308,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				   .loadOp = RGL::LoadAccessOperation::Clear,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
-			   {
-				   .format = posTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Clear,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
-			   {
-				   .format = idTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Clear,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   }
-
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
@@ -366,7 +355,6 @@ void RavEngine::RenderEngine::createGBuffers()
 	gcTextures.enqueue(depthStencil);
 	gcTextures.enqueue(diffuseTexture);
 	gcTextures.enqueue(normalTexture);
-	gcTextures.enqueue(positionTexture);
 	gcTextures.enqueue(lightingTexture);
 
 	depthStencil = device->CreateTexture({
@@ -398,16 +386,6 @@ void RavEngine::RenderEngine::createGBuffers()
 		.debugName = "Normal gbuffer"
 		}
 	);
-	positionTexture = device->CreateTexture({
-		.usage = { .Sampled = true, .ColorAttachment = true },
-		.aspect = { .HasColor = true },
-		.width = width,
-		.height = height,
-		.format = posTexFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Position gbuffer"
-		}
-	);
 	lightingTexture = device->CreateTexture({
 		.usage = { .Sampled = true, .ColorAttachment = true },
 		.aspect = { .HasColor = true },
@@ -418,6 +396,19 @@ void RavEngine::RenderEngine::createGBuffers()
 		.debugName = "Lighting texture"
 		}
 	);
+
+	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
+	auto tmpfence = device->CreateFence(false);
+	tmpcmd->Begin();
+	for (const auto& ptr : { diffuseTexture , normalTexture, lightingTexture }) {
+		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
+	}
+
+	tmpcmd->End();
+	tmpcmd->Commit({
+		.signalFence = tmpfence
+		});
+	tmpfence->Wait();
 }
 
 RavEngine::RenderEngine::~RenderEngine()
@@ -454,6 +445,9 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 	};
 	swapchain->GetNextImage(&presentConfig.imageIndex);
 
+	auto& cam = worldOwning->GetComponent<CameraComponent>();
+	auto viewproj = cam.GenerateProjectionMatrix() * cam.GenerateViewMatrix();
+
 	// execute when render fence says its ok
 	// did we get the swapchain image yet? if not, block until we do
 
@@ -463,8 +457,50 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 	mainCommandBuffer->Reset();
 	mainCommandBuffer->Begin();
 
+	// render all the static meshes
+	deferredRenderPass->SetAttachmentTexture(0, diffuseTexture.get());
+	deferredRenderPass->SetAttachmentTexture(1, normalTexture.get());
+	deferredRenderPass->SetDepthAttachmentTexture(depthStencil.get());
+
 	auto nextimg = swapchain->ImageAtIndex(presentConfig.imageIndex);
 	auto nextImgSize = nextimg->GetSize();
+
+	mainCommandBuffer->SetViewport({
+	.width = static_cast<float>(nextImgSize.width),
+	.height = static_cast<float>(nextImgSize.height),
+	});
+	mainCommandBuffer->SetScissor({
+		.extent = {nextImgSize.width, nextImgSize.height}
+	});
+
+	auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {
+		for (const auto& ptr : { diffuseTexture, normalTexture }) {
+			mainCommandBuffer->TransitionResource(ptr.get(), from, to, RGL::TransitionPosition::Top);
+		}
+	};
+
+	transitionGbuffers(RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal);
+
+	mainCommandBuffer->BeginRendering(deferredRenderPass);
+	for (const auto& [materialInstance, drawcommand] : worldOwning->staticMeshRenderData) {
+		// bind the pipeline
+		mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
+		mainCommandBuffer->SetVertexBytes(viewproj,0);
+		for (const auto& command : drawcommand.commands) {
+			// submit the draws for this mesh
+			if (auto mesh = command.mesh.lock()) {
+				mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
+				//TODO: set per-instance data buffer
+				mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
+				mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
+					.nInstances = command.transforms.DenseSize()
+				});
+			}
+		}
+	}
+	mainCommandBuffer->EndRendering();
+
+	transitionGbuffers(RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal);
 
 	// the on-screen render pass
 	// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
@@ -474,21 +510,10 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 	mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
 	mainCommandBuffer->BeginRendering(finalRenderPass);
 
-	mainCommandBuffer->SetViewport({
-		.width = static_cast<float>(nextImgSize.width),
-		.height = static_cast<float>(nextImgSize.height),
-	});
-	mainCommandBuffer->SetScissor({
-		.extent = {nextImgSize.width, nextImgSize.height}
-	});
-
 	// start with the skybox
 	mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->mat->renderPipeline);
 	mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
 	mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
-
-	auto& cam = worldOwning->GetComponent<CameraComponent>();
-	auto viewproj = cam.GenerateProjectionMatrix()* cam.GenerateViewMatrix();
 
 	mainCommandBuffer->SetVertexBytes(viewproj , 0);
 	mainCommandBuffer->DrawIndexed(worldOwning->skybox->skyMesh->totalIndices);

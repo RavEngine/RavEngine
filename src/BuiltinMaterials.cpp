@@ -43,12 +43,6 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
                 {
                     .format = RenderEngine::normalTexFormat
                 },
-                {
-                    .format = RenderEngine::posTexFormat
-                },
-                {
-                    .format = RenderEngine::idTexFormat
-                }
             }
         }
 	}

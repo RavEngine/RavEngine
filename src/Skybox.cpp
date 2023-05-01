@@ -46,7 +46,7 @@ RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(
             }
         },
         .depthWriteEnabled = false,
-        .depthCompareFunction = RGL::DepthCompareFunction::Greater
+        .depthCompareFunction = RGL::DepthCompareFunction::Equal
     }
     )
 {

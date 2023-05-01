@@ -51,7 +51,7 @@ namespace RavEngine {
 		RGLSwapchainPtr swapchain;
 		RGLSurfacePtr surface;
 
-		RGLTexturePtr diffuseTexture, normalTexture, positionTexture, depthStencil, lightingTexture;
+		RGLTexturePtr diffuseTexture, normalTexture, depthStencil, lightingTexture;
 		RGLPipelineLayoutPtr lightRenderPipelineLayout;
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
