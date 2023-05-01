@@ -490,7 +490,6 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 			// submit the draws for this mesh
 			if (auto mesh = command.mesh.lock()) {
 				mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
-				//TODO: set per-instance data buffer
 				auto& perInstanceDataBuffer = command.transforms.GetDense().get_underlying().buffer;
 				mainCommandBuffer->SetVertexBuffer(perInstanceDataBuffer, {
 					.bindingPosition = 1

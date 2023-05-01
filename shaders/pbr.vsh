@@ -19,12 +19,12 @@ layout(location = 1) out vec2 outUV;
 
 void main()
 {
-	mat4 inModel = transpose(mat4(
+	mat4 inModel = mat4(
 		inModelR1,
 		inModelR2,
 		inModelR3,
 		inModelR4
-	));
+	);
 
 	vec4 worldPos = inModel * vec4(inPosition,1);
 
