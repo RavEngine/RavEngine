@@ -27,8 +27,8 @@ namespace RGL {
 	}
 	void ShaderLibraryD3D12::InitFromBytes(const std::span<uint8_t, std::dynamic_extent> bytes)
 	{
-		D3DCreateBlob(bytes.size(), &shaderBlob);
-		std::memcpy(shaderBlob->GetBufferPointer(), bytes.data(), bytes.size());
+		D3DCreateBlob(bytes.size_bytes(), &shaderBlob);
+		std::memcpy(shaderBlob->GetBufferPointer(), bytes.data(), bytes.size_bytes());
 		shaderBytecode = CD3DX12_SHADER_BYTECODE(shaderBlob.Get());
 	}
 }

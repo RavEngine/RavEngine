@@ -482,15 +482,19 @@ void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
 	transitionGbuffers(RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal);
 
 	mainCommandBuffer->BeginRendering(deferredRenderPass);
-	for (const auto& [materialInstance, drawcommand] : worldOwning->staticMeshRenderData) {
+	for (auto& [materialInstance, drawcommand] : worldOwning->staticMeshRenderData) {
 		// bind the pipeline
 		mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
 		mainCommandBuffer->SetVertexBytes(viewproj,0);
-		for (const auto& command : drawcommand.commands) {
+		for (auto& command : drawcommand.commands) {
 			// submit the draws for this mesh
 			if (auto mesh = command.mesh.lock()) {
 				mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
 				//TODO: set per-instance data buffer
+				auto& perInstanceDataBuffer = command.transforms.GetDense().get_underlying().buffer;
+				mainCommandBuffer->SetVertexBuffer(perInstanceDataBuffer, {
+					.bindingPosition = 1
+					});
 				mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
 				mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
 					.nInstances = command.transforms.DenseSize()

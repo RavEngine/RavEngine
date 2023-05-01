@@ -141,7 +141,8 @@ namespace RGL {
         Undefined = 0,
         R32_Uint = 98,
         R32G32_SignedFloat = 103,
-        R32G32B32_SignedFloat = 106
+        R32G32B32_SignedFloat = 106,
+		R32G32B32A32_SignedFloat = 109,
     };
 
     enum class WindingOrder : uint8_t {

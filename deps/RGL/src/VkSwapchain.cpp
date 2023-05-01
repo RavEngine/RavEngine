@@ -141,7 +141,12 @@ void RGL::SwapchainVK::Resize(uint32_t width, uint32_t height)
 
         owningDevice->SetDebugNameForResource(createInfo.image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName.c_str());
 
+
         VK_CHECK(vkCreateImageView(owningDevice->device, &createInfo, nullptr, &swapChainImageViews[i]));
+
+        auto viewDebugName = std::string("swapchain image view ") + std::to_string(i);
+        owningDevice->SetDebugNameForResource(swapChainImageViews[i], VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, viewDebugName.c_str());
+
         auto& texture = RGLTextureResources.emplace_back(swapChainImageViews[i], swapChainImages[i], Dimension{ width,height });
         texture.owningSwapchain = this;
     }

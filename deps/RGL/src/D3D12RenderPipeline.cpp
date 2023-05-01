@@ -11,6 +11,7 @@ namespace RGL {
         case decltype(format)::R32G32B32_SignedFloat:   return DXGI_FORMAT_R32G32B32_FLOAT;
         case decltype(format)::R32G32_SignedFloat:      return DXGI_FORMAT_R32G32_FLOAT;
         case decltype(format)::R32_Uint: return DXGI_FORMAT_R32_UINT;
+        case decltype(format)::R32G32B32A32_SignedFloat: return DXGI_FORMAT_R32G32B32A32_FLOAT;
         default:
             FatalError("Unsupported vertex attribute format");
         }
