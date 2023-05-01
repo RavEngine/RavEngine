@@ -98,6 +98,13 @@ namespace RavEngine {
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
 
+		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+		mainCommandBuffer->SetVertexBuffer(worldOwning->ambientLightData.GetDense().get_underlying().buffer, {
+			.bindingPosition = 1
+		});
+		mainCommandBuffer->Draw(3, {
+			.nInstances = worldOwning->ambientLightData.DenseSize()
+		});
 
 		mainCommandBuffer->EndRendering();
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);

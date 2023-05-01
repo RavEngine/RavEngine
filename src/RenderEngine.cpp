@@ -424,6 +424,23 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto ambientLightFSH = LoadShaderByFilename("ambientlight.fsh", device);
 	auto ambientLightVSH = LoadShaderByFilename("ambientlight.vsh", device);
 	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH);
+
+	// data needed for lights
+	struct Vertex2D {
+		glm::vec2 pos;
+	};
+	constexpr static Vertex2D vertices[] = {
+		{{0, -10}},
+		{{10, 10}},
+		{{-10, 10}}
+	};
+	screenTriVerts = device->CreateBuffer({
+		   {.VertexBuffer = true},
+		   sizeof(Vertex2D),
+		   vertices,
+		   RGL::BufferAccess::Shared
+		});
+	screenTriVerts->SetBufferData(vertices);
 }
 
 void RavEngine::RenderEngine::createGBuffers()
@@ -481,7 +498,6 @@ void RavEngine::RenderEngine::createGBuffers()
 	for (const auto& ptr : { diffuseTexture , normalTexture, lightingTexture }) {
 		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
 	}
-
 	tmpcmd->End();
 	tmpcmd->Commit({
 		.signalFence = tmpfence

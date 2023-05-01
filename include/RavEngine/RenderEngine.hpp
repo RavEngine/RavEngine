@@ -57,6 +57,7 @@ namespace RavEngine {
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline;
+		RGLBufferPtr screenTriVerts;
     public:
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
