@@ -18,10 +18,6 @@ class MaterialInstanceBase;
 struct DirectionalLight;
 
 struct FrameData{
-	//global matrices
-	matrix4 viewmatrix, projmatrix;
-	vector3 cameraWorldpos;
-    vector3 cameraFacingVector{1,1,1};
     
 	template<typename T>
 	struct StoredLight{
@@ -80,8 +76,6 @@ struct FrameData{
 		PackedDL(const DirectionalLight& l, const tinyvec3& tv) : light(l), rotation(tv){}
         PackedDL(){}    // used by World, do not use
 	};
-	
-    double Time = 0;
 	
 };
 }

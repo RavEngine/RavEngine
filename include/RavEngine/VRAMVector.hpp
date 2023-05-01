@@ -139,7 +139,7 @@ namespace RavEngine {
 		}
 
 		void erase(index_type i) {
-			static_cast<T*>(data() + i)->~T();
+			(data() + i)->~T();
 			if (i == size() - 1) {
 				nValues--;
 			}

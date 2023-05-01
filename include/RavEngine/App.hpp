@@ -241,25 +241,6 @@ struct AudioPlayer;
 			return renderWorld;
 		}
 		
-        inline FrameData* GetCurrentFramedata(){
-			return current;
-		}
-		
-		inline FrameData* GetRenderFramedata(){
-			return render;
-		}
-		
-        inline void SwapCurrentFramedata(){
-			swapmtx1.lock();
-			std::swap(current,inactive);
-			swapmtx1.unlock();
-		}
-        inline void SwapRenderFramedata(){
-			swapmtx2.lock();
-			std::swap(inactive,render);
-			swapmtx2.unlock();
-		}
-        
         inline void SwapCurrrentAudioSnapshot(){
             audiomtx1.lock();
             std::swap(acurrent,ainactive);
@@ -288,10 +269,6 @@ struct AudioPlayer;
 		std::chrono::duration<double, std::micro> min_tick_time{ std::chrono::duration<double,std::milli>(1.0 / 90 * 1000)};
 		
 		locked_hashset<Ref<World>,SpinLock> loadedWorlds;
-		
-		//triple-buffer framedata
-		FrameData f1, f2, f3, *current = &f1, *inactive = &f2, *render = &f3;
-		SpinLock swapmtx1, swapmtx2;
         
         AudioSnapshot a1, a2, a3, *acurrent = &a1, *ainactive = &a2, *arender = &a3;
         SpinLock audiomtx1, audiomtx2;

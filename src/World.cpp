@@ -241,26 +241,7 @@ void World::setupRenderTasks(){
 	//render engine data collector
 	//camera matrices
     renderTasks.name("Render");
-    
-	auto camproc = renderTasks.emplace([this](){
-        if (auto allcams = GetAllComponentsOfType<CameraComponent>()){
-            for (auto& cam : *allcams) {
-                if (cam.IsActive()) {
-
-                    auto size = GetApp()->GetRenderEngine().GetBufferSize();
-                    cam.SetTargetSize(size.width, size.height);
-                    auto current = GetApp()->GetCurrentFramedata();
-                    current->viewmatrix = cam.GenerateViewMatrix();
-                    current->projmatrix = cam.GenerateProjectionMatrix();
-                    const auto& ctrns = cam.GetOwner().GetTransform();
-                    current->cameraWorldpos = ctrns.GetWorldPosition();
-                    current->cameraFacingVector = ctrns.WorldForward();
-                    break;
-                }
-            }
-        }
-
-	}).name("Camera data");
+   
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
         Filter([&](const StaticMesh& sm, Transform& trns) {
@@ -384,8 +365,6 @@ void World::setupRenderTasks(){
     }).name("Update Invalidated AmbLights");
 
 	auto tickGUI = renderTasks.emplace([this]() {
-        // also do the time here
-        GetApp()->GetCurrentFramedata()->Time = GetApp()->GetCurrentTime();
         auto& renderer = GetApp()->GetRenderEngine();
         auto size = renderer.GetBufferSize();
         auto scale = renderer.GetDPIScale();
@@ -397,8 +376,6 @@ void World::setupRenderTasks(){
             gui.Update();
         });
 	}).name("UpdateGUI");
-
-	camproc.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     // attatch the renderTasks module to the masterTasks
     renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");
