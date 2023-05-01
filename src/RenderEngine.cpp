@@ -75,11 +75,6 @@ STATIC(RenderEngine::debuggerInput);
 static constexpr uint16_t shadowMapSize = 2048;
 
 
-#ifndef NDEBUG
-static DebugDrawer dbgdraw;	//for rendering debug primitives
-#endif
-
-
 void DebugRender(const Im3d::DrawList& drawList){
 #if 0
 #ifndef NDEBUG
@@ -237,6 +232,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	swapchain = device->CreateSwapchain(surface, mainCommandQueue, bufferdims.width, bufferdims.height);
 	mainCommandBuffer = mainCommandQueue->CreateCommandBuffer();
 	swapchainFence = device->CreateFence(true);
+	textureSampler = device->CreateSampler({});
 
 	createGBuffers();
 
@@ -291,7 +287,9 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			textureSampler,
 		},
 		.constants = {
-				
+			{
+				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+			}
 		}
 	});
 
@@ -346,6 +344,86 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			.storeOp = RGL::StoreAccessOperation::Store,
 		}
 	});
+
+	// create lighting render pipelines
+	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh) {
+		constexpr static uint32_t width = 640, height = 480;
+
+		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex),
+				},
+				{
+					.binding = 1,
+					.stride = sizeof(glm::vec4),
+					.inputRate = RGL::InputRate::Instance
+				}
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = offsetof(Vertex,position),
+					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+				},
+				{
+					.location = 1,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				}
+			}
+		};
+
+		RGL::RenderPipelineDescriptor rpd{
+			.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = vsh,
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = fsh,
+				}
+			},
+			.vertexConfig = vertConfig,
+			.inputAssembly = {
+				.topology = RGL::PrimitiveTopology::TriangleList,
+			},
+			.viewport = {
+				.width = width,
+				.height = height
+			},
+			.scissor = {
+				.extent = {width, height}
+			},
+			.rasterizerConfig = {
+				.windingOrder = RGL::WindingOrder::Counterclockwise,
+			},
+			.colorBlendConfig = {
+				.attachments = {
+					{
+						.format = colorTexFormat
+					},
+				}
+			},
+			.depthStencilConfig = {
+				.depthFormat = RGL::TextureFormat::D32SFloat,
+				.depthTestEnabled = true,
+				.depthWriteEnabled = false,
+				.depthFunction = RGL::DepthCompareFunction::Greater,
+			},
+			.pipelineLayout = lightRenderPipelineLayout,
+		};
+
+		return device->CreateRenderPipeline(rpd);
+	};
+
+	auto ambientLightFSH = LoadShaderByFilename("ambientlight.fsh", device);
+	auto ambientLightVSH = LoadShaderByFilename("ambientlight.vsh", device);
+	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH);
 }
 
 void RavEngine::RenderEngine::createGBuffers()
@@ -358,7 +436,7 @@ void RavEngine::RenderEngine::createGBuffers()
 	gcTextures.enqueue(lightingTexture);
 
 	depthStencil = device->CreateTexture({
-		.usage = { .DepthStencilAttachment = true },
+		.usage = { .Sampled = true, .DepthStencilAttachment = true },
 		.aspect = { .HasDepth = true },
 		.width = width,
 		.height = height,
@@ -431,134 +509,6 @@ void RenderEngine::DestroyUnusedResources() {
 	clear(gcTextures);
 	clear(gcPipelineLayout);
 	clear(gcRenderPipeline);
-}
-
-
-/**
- Render one frame using the current state of every object in the world
- */
-void RenderEngine::Draw(Ref<RavEngine::World> worldOwning){
-
-	// queue up the next swapchain image as soon as possible, 
-	// it will become avaiable in the background
-	RGL::SwapchainPresentConfig presentConfig{
-	};
-	swapchain->GetNextImage(&presentConfig.imageIndex);
-
-	auto& cam = worldOwning->GetComponent<CameraComponent>();
-	auto viewproj = cam.GenerateProjectionMatrix() * cam.GenerateViewMatrix();
-
-	// execute when render fence says its ok
-	// did we get the swapchain image yet? if not, block until we do
-
-	swapchainFence->Wait();
-	swapchainFence->Reset();
-	DestroyUnusedResources();
-	mainCommandBuffer->Reset();
-	mainCommandBuffer->Begin();
-
-	// render all the static meshes
-	deferredRenderPass->SetAttachmentTexture(0, diffuseTexture.get());
-	deferredRenderPass->SetAttachmentTexture(1, normalTexture.get());
-	deferredRenderPass->SetDepthAttachmentTexture(depthStencil.get());
-
-	auto nextimg = swapchain->ImageAtIndex(presentConfig.imageIndex);
-	auto nextImgSize = nextimg->GetSize();
-
-	mainCommandBuffer->SetViewport({
-	.width = static_cast<float>(nextImgSize.width),
-	.height = static_cast<float>(nextImgSize.height),
-	});
-	mainCommandBuffer->SetScissor({
-		.extent = {nextImgSize.width, nextImgSize.height}
-	});
-
-	auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {
-		for (const auto& ptr : { diffuseTexture, normalTexture }) {
-			mainCommandBuffer->TransitionResource(ptr.get(), from, to, RGL::TransitionPosition::Top);
-		}
-	};
-
-	transitionGbuffers(RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal);
-
-	mainCommandBuffer->BeginRendering(deferredRenderPass);
-	for (auto& [materialInstance, drawcommand] : worldOwning->staticMeshRenderData) {
-		// bind the pipeline
-		mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
-		mainCommandBuffer->SetVertexBytes(viewproj,0);
-		for (auto& command : drawcommand.commands) {
-			// submit the draws for this mesh
-			if (auto mesh = command.mesh.lock()) {
-				mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
-				auto& perInstanceDataBuffer = command.transforms.GetDense().get_underlying().buffer;
-				mainCommandBuffer->SetVertexBuffer(perInstanceDataBuffer, {
-					.bindingPosition = 1
-					});
-				mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
-				mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
-					.nInstances = command.transforms.DenseSize()
-				});
-			}
-		}
-	}
-	mainCommandBuffer->EndRendering();
-
-	transitionGbuffers(RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal);
-
-	// the on-screen render pass
-	// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
-	finalRenderPass->SetAttachmentTexture(0, nextimg);
-	finalRenderPass->SetDepthAttachmentTexture(depthStencil.get());
-
-	mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
-	mainCommandBuffer->BeginRendering(finalRenderPass);
-
-	// start with the skybox
-	mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->mat->renderPipeline);
-	mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
-	mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
-
-	mainCommandBuffer->SetVertexBytes(viewproj , 0);
-	mainCommandBuffer->DrawIndexed(worldOwning->skybox->skyMesh->totalIndices);
-
-/*
-	worldOwning->Filter([](GUIComponent& gui) {
-		gui.Render();	// kicks off commands for rendering UI
-	});
-	*/
-#ifndef NDEBUG
-	// process debug shapes
-	worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
-		for (int i = 0; i < dbg.size(); i++) {
-			auto& ptr = dbg[i];
-			if (ptr.debugEnabled) {
-				ptr.DebugDraw(dbgdraw, transform[0]);
-			}
-		}
-		});
-	Im3d::GetContext().draw();
-	/*
-	if (debuggerContext) {
-		auto& dbg = *debuggerContext;
-		dbg.SetDimensions(bufferdims.width, bufferdims.height);
-		dbg.SetDPIScale(GetDPIScale());
-		dbg.Update();
-		dbg.Render();
-	}
-	*/
-	Im3d::NewFrame();
-#endif
-	mainCommandBuffer->EndRendering();
-	mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::Present, RGL::TransitionPosition::Bottom);
-	mainCommandBuffer->End();
-
-	// show the results to the user
-	RGL::CommitConfig commitconfig{
-			.signalFence = swapchainFence,
-	};
-	mainCommandBuffer->Commit(commitconfig);
-
-	swapchain->Present(presentConfig);
 }
 
 void RenderEngine::resize(){

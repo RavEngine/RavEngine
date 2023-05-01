@@ -55,17 +55,22 @@ namespace RavEngine {
 		RGLPipelineLayoutPtr lightRenderPipelineLayout;
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
+
+		RGLRenderPipelinePtr ambientLightRenderPipeline;
     public:
 		constexpr static RGL::TextureFormat
-			posTexFormat = RGL::TextureFormat::RGBA32_Sfloat,
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			colorTexFormat = RGL::TextureFormat::RGBA16_Snorm,
-			idTexFormat = RGL::TextureFormat::R32_Uint;
+			colorTexFormat = RGL::TextureFormat::RGBA16_Snorm;
 
 		// the items made available to 
 		// user-defined materials
 		struct DeferredUBO {
 			glm::mat4 viewProj;
+		};
+
+		struct LightingUBO {
+			glm::ivec4 viewRect;
+			uint32_t numObjects;
 		};
 
         virtual ~RenderEngine();

@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <sstream>
 #include <type_traits>
+#include <RGL/Types.hpp>
 
 namespace RavEngine{
 
@@ -57,5 +58,12 @@ static inline std::string FormatWithSep(T value)
 	
 //random generation
 using Random = effolkronium::random_static;
+
+/**
+Load a shader given its filename (ie "myshader.vsh"). Must include extension.
+@param name filename of the shader
+@return RGLShaderLibrary
+*/
+RGLShaderLibraryPtr LoadShaderByFilename(const std::string& name, RGLDevicePtr device);
 
 }

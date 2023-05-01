@@ -18,36 +18,6 @@
 using namespace std;
 using namespace RavEngine;
 
-
-auto GetShader(const std::string& name) {
-    auto getShaderPathname = [](const std::string& name) {
-        const char* backendPath;
-        const char* extension;
-        switch (RGL::CurrentAPI()) {
-        case RGL::API::Vulkan:
-            backendPath = "Vulkan";
-            extension = ".spv";
-            break;
-        case RGL::API::Direct3D12:
-            backendPath = "Direct3D12";
-            extension = ".cso";
-            break;
-        default:
-            throw std::runtime_error("Shader loading not implemented");
-        }
-        return StrFormat("shaders/{}/{}", backendPath, (name + extension));
-
-    };
-#if __APPLE__
-    // metal uses the Xcode-created metallib in resources, which have a different naming convention
-    auto tempstr = name;
-    std::replace(tempstr.begin(), tempstr.end(), '.', '_');
-	return tempstr;
-#else
-    return getShaderPathname(name);
-#endif
-}
-
 /**
 Create a material given a shader. Also registers it in the material manager
 @param shader the path to the shader
@@ -61,37 +31,8 @@ Material::Material(const std::string& name, const MaterialConfig& config) : name
 	auto vertshaderName = StrFormat("{}.vsh", name);
 	auto fragShaderName = StrFormat("{}.fsh", name);
 
-    auto vertShaderPath = GetShader(vertshaderName);
-    auto fragShaderPath = GetShader(fragShaderName);
-
-    auto& resources = GetApp()->GetResources();
-#if __APPLE__
-    device->CreateShaderLibraryFromName(vertShaderPath);
-    device->CreateShaderLibraryFromName(fragShaderPath);
-#else
-#if 0
-    auto vertex_src = resources.FileContentsAt<std::vector<uint8_t>>(vertShaderPath.c_str());
-    auto fragment_src = resources.FileContentsAt<std::vector<uint8_t>>(fragShaderPath.c_str());
-
-
-
-    vertShader = device->CreateShaderLibraryFromBytes(vertex_src);
-    fragShader = device->CreateShaderLibraryFromBytes(fragment_src);
-#endif
-    //TODO: this is temporary code for shader loading
-    std::filesystem::path vertPath, fragPath;
-    if (RGL::CurrentAPI() == RGL::API::Vulkan) {
-        vertPath = std::filesystem::path("Vulkan") / (vertshaderName + ".spv");
-        fragPath = std::filesystem::path("Vulkan") / (fragShaderName + ".spv");
-    }
-    else {
-        vertPath = (vertshaderName + ".cso");
-        fragPath = (fragShaderName + ".cso");
-    }
-
-    vertShader = device->CreateShaderLibraryFromPath(vertPath);
-    fragShader = device->CreateShaderLibraryFromPath(fragPath);
-#endif
+    vertShader = LoadShaderByFilename(vertshaderName, device);
+    fragShader = LoadShaderByFilename(fragShaderName, device);
 
     pipelineLayout = device->CreatePipelineLayout({
         .constants = {
