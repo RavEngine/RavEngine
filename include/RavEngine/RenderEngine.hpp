@@ -52,11 +52,11 @@ namespace RavEngine {
 		RGLSurfacePtr surface;
 
 		RGLTexturePtr diffuseTexture, normalTexture, depthStencil, lightingTexture;
-		RGLPipelineLayoutPtr lightRenderPipelineLayout;
+		RGLPipelineLayoutPtr lightRenderPipelineLayout, lightToFBPipelineLayout;
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
 
-		RGLRenderPipelinePtr ambientLightRenderPipeline;
+		RGLRenderPipelinePtr ambientLightRenderPipeline, lightToFBRenderPipeline;
 		RGLBufferPtr screenTriVerts;
     public:
 		constexpr static RGL::TextureFormat

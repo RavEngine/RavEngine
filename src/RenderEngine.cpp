@@ -324,8 +324,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	});
 
 	// create lighting render pipelines
-	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride) {
-		constexpr static uint32_t width = 640, height = 480;
+	constexpr static uint32_t width = 640, height = 480;
+	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride) {	
 
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
 			.vertexBindings = {
@@ -407,6 +407,91 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto ambientLightFSH = LoadShaderByFilename("ambientlight.fsh", device);
 	auto ambientLightVSH = LoadShaderByFilename("ambientlight.vsh", device);
 	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH, sizeof(Vertex2D), sizeof(glm::vec4));
+
+
+	// copy shader
+
+	auto lightToFbFSH = LoadShaderByFilename("light_to_fb.fsh",device);
+	auto lightToFbVSH = LoadShaderByFilename("light_to_fb.vsh",device);
+
+	lightToFBPipelineLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+				.binding = 0,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+		},
+		.boundSamplers = {
+			textureSampler,
+		},
+		.constants = {
+			{
+				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+			}
+		}
+	});
+
+	lightToFBRenderPipeline = device->CreateRenderPipeline({
+			.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = lightToFbVSH,
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = lightToFbFSH,
+				}
+			},
+			.vertexConfig = {
+				.vertexBindings = {
+					{
+						.binding = 0,
+						.stride = sizeof(Vertex2D),
+					},
+				},
+				.attributeDescs = {
+					{
+						.location = 0,
+						.binding = 0,
+						.offset = 0,
+						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+					},
+				}
+			},
+			.inputAssembly = {
+				.topology = RGL::PrimitiveTopology::TriangleList,
+			},
+			.viewport = {
+				.width = width,
+				.height = height
+			},
+			.scissor = {
+				.extent = {width, height}
+			},
+			.rasterizerConfig = {
+				.windingOrder = RGL::WindingOrder::Counterclockwise,
+			},
+			.colorBlendConfig = {
+				.attachments = {
+					{
+						.format = RGL::TextureFormat::BGRA8_Unorm
+					},
+				}
+			},
+			.depthStencilConfig = {
+				.depthFormat = RGL::TextureFormat::D32SFloat,
+				.depthTestEnabled = true,
+				.depthWriteEnabled = false,
+				.depthFunction = RGL::DepthCompareFunction::Greater,
+			},
+			.pipelineLayout = lightToFBPipelineLayout,
+		});
 
 	
 	constexpr static Vertex2D vertices[] = {

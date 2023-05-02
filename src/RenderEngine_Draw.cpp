@@ -121,7 +121,14 @@ namespace RavEngine {
 		mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
 		mainCommandBuffer->BeginRendering(finalRenderPass);
 
-		// start with the skybox
+		// start with the results of lighting
+		mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);
+		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+		mainCommandBuffer->SetVertexBytes(lightUBO,0);
+		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, lightingTexture.get(), 0);
+		mainCommandBuffer->Draw(3);
+
+		// then do the skybox
 		mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->mat->renderPipeline);
 		mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
 		mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
