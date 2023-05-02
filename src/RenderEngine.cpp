@@ -249,40 +249,18 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
 				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 			},
-				{
+			{
 				.binding = 2,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
 				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 			},
-				{
+			{
 				.binding = 3,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-			},
-			{
-				.binding = 4,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-			},
-			{
-				.binding = 5,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-			},
-			{
-				.binding = 6,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-			},
-			{
-				.binding = 7,
 				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
 				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 			},
 		},
 		.boundSamplers = {
-			textureSampler,
-			textureSampler,
 			textureSampler,
 			textureSampler,
 		},
@@ -346,18 +324,18 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	});
 
 	// create lighting render pipelines
-	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh) {
+	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride) {
 		constexpr static uint32_t width = 640, height = 480;
 
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
 			.vertexBindings = {
 				{
 					.binding = 0,
-					.stride = sizeof(Vertex),
+					.stride = vertexStride,
 				},
 				{
 					.binding = 1,
-					.stride = sizeof(glm::vec4),
+					.stride = instanceStride,
 					.inputRate = RGL::InputRate::Instance
 				}
 			},
@@ -365,8 +343,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				{
 					.location = 0,
 					.binding = 0,
-					.offset = offsetof(Vertex,position),
-					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
 				},
 				{
 					.location = 1,
@@ -421,14 +399,16 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		return device->CreateRenderPipeline(rpd);
 	};
 
-	auto ambientLightFSH = LoadShaderByFilename("ambientlight.fsh", device);
-	auto ambientLightVSH = LoadShaderByFilename("ambientlight.vsh", device);
-	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH);
-
 	// data needed for lights
 	struct Vertex2D {
 		glm::vec2 pos;
 	};
+
+	auto ambientLightFSH = LoadShaderByFilename("ambientlight.fsh", device);
+	auto ambientLightVSH = LoadShaderByFilename("ambientlight.vsh", device);
+	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH, sizeof(Vertex2D), sizeof(glm::vec4));
+
+	
 	constexpr static Vertex2D vertices[] = {
 		{{0, -10}},
 		{{10, 10}},
@@ -453,7 +433,7 @@ void RavEngine::RenderEngine::createGBuffers()
 	gcTextures.enqueue(lightingTexture);
 
 	depthStencil = device->CreateTexture({
-		.usage = { .Sampled = true, .DepthStencilAttachment = true },
+		.usage = { .DepthStencilAttachment = true },
 		.aspect = { .HasDepth = true },
 		.width = width,
 		.height = height,

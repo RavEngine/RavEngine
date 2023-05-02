@@ -358,7 +358,8 @@ void World::setupRenderTasks(){
             for(int i = 0; i < ptr->DenseSize(); i++){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get(i);
-                ambientLightData.GetForSparseIndex(ownerLocalId) = light;
+                auto& color = light.GetColorRGBA();
+                ambientLightData.GetForSparseIndex(ownerLocalId) = {color.R, color.G, color.B, light.GetIntensity()};
                 light.clearInvalidate();
             }
         }

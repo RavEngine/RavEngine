@@ -271,7 +271,7 @@ namespace RavEngine {
     
         
         UnorderedSparseSet<entity_t, FrameData::PackedDL> directionalLightData;
-        VRAMSparseSet<entity_t, AmbientLight> ambientLightData;
+        VRAMSparseSet<entity_t, glm::vec4> ambientLightData;
         UnorderedSparseSet<entity_t, FrameData::StoredLight<PointLight>> pointLightData;
         UnorderedSparseSet<entity_t, FrameData::StoredLight<SpotLight>> spotLightData;
         

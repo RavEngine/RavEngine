@@ -54,6 +54,10 @@ namespace RavEngine {
 			.extent = {nextImgSize.width, nextImgSize.height}
 			});
 
+		LightingUBO lightUBO{
+			.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
+		};
+
 		auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {
 			for (const auto& ptr : { diffuseTexture, normalTexture }) {
 				mainCommandBuffer->TransitionResource(ptr.get(), from, to, RGL::TransitionPosition::Top);
@@ -96,9 +100,9 @@ namespace RavEngine {
 		mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
 
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+		mainCommandBuffer->SetVertexBytes(lightUBO, 0);
 		mainCommandBuffer->SetVertexBuffer(worldOwning->ambientLightData.GetDense().get_underlying().buffer, {
 			.bindingPosition = 1
 		});

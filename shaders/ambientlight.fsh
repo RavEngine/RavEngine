@@ -1,6 +1,6 @@
 
 layout(location = 0) in vec4 colorintensity;
-layout(location = 1) out vec4 outcolor;
+layout(location = 0) out vec4 outcolor;
 
 layout(push_constant) uniform UniformBufferObject{
 	ivec4 viewRect;
