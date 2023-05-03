@@ -5,8 +5,7 @@
 namespace RavEngine {
 
 	struct VRAMVectorBase {
-		RGLBufferPtr buffer = nullptr;
-		void TrashOldVector();
+		void TrashOldVector(RGLBufferPtr buffer);
 	};
 
 	/**
@@ -15,6 +14,7 @@ namespace RavEngine {
 	*/
 	template<typename T, bool GPUWritable = false>
 	struct VRAMVector : public VRAMVectorBase {
+		RGLBufferPtr buffer = nullptr;
 		using size_type = uint32_t;
 		using index_type = uint32_t;
 
@@ -76,7 +76,7 @@ namespace RavEngine {
 		}
 
 		~VRAMVector() {
-			TrashOldVector();
+			TrashOldVector(buffer);
 		}
 
 		auto data() {
@@ -88,13 +88,17 @@ namespace RavEngine {
 		}
 
 		void resize(size_type newSize) {
-			if (buffer) {
-				TrashOldVector();
-			}
+			auto oldbuffer = buffer;
+			
 			auto settingscpy = settings;
 			settings.nElements = newSize;
 			buffer = owningDevice->CreateBuffer(settingscpy);
 			buffer->MapMemory();
+			if (oldbuffer) {
+				// copy over old data
+				std::memcpy(buffer->GetMappedDataPtr(), oldbuffer->GetMappedDataPtr(), size() * sizeof(T));
+				TrashOldVector(oldbuffer);
+			}
 		}
 
 		void grow() {

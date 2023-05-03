@@ -4,7 +4,7 @@
 #include "RenderEngine.hpp"
 
 namespace RavEngine {
-	void VRAMVectorBase::TrashOldVector()
+	void VRAMVectorBase::TrashOldVector(RGLBufferPtr buffer)
 	{
 		buffer->UnmapMemory();
 		GetApp()->GetRenderEngine().gcBuffers.enqueue(buffer);
