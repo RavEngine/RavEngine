@@ -8,33 +8,6 @@
 using namespace RavEngine;
 using namespace std;
 
-Ref<MeshAsset> LightManager::pointLightMesh;
-Ref<MeshAsset> LightManager::spotLightMesh;
-
-void LightManager::Init(){
-	pointLightMesh = MeshAsset::Manager::Get("sphere.obj");
-	spotLightMesh = MeshAsset::Manager::Get("lightcone.obj");
-
-	
-	constexpr uint16_t indices[] = {0,2,1, 2,3,1};
-	constexpr Vertex vertices[] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
-
-#if 0
-	bgfx::VertexLayout vl;
-	vl.begin()
-	.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-	.end();
-	
-	screenSpaceQuadVert = bgfx::createVertexBuffer(bgfx::copy(vertices, sizeof(vertices)), vl);
-	screenSpaceQuadInd = bgfx::createIndexBuffer(bgfx::copy(indices, sizeof(indices)));
-#endif
-}
-
-void LightManager::Teardown() {
-	pointLightMesh.reset();
-	spotLightMesh.reset();
-}
-
 void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
 	dbg.DrawCapsule(tr.CalculateWorldMatrix(), debug_color, 1, 2);
 }
@@ -74,7 +47,7 @@ void PointLight::AddInstanceData(float* offset) const{
 
 void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
 #ifndef NDEBUG
-	dbg.DrawWireframeMesh(tr.CalculateWorldMatrix(), LightManager::spotLightMesh);
+	//dbg.DrawWireframeMesh(tr.CalculateWorldMatrix(), LightManager::spotLightMesh);
 #endif
 }
 

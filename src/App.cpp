@@ -254,7 +254,6 @@ App::~App(){
 	networkManager.server.reset();
 	networkManager.client.reset();
 	GameNetworkingSockets_Kill();
-	LightManager::Teardown();
 	PHYSFS_deinit();
 	Skybox::Teardown();
 	auto fsi = Rml::GetFileInterface();

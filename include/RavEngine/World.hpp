@@ -275,7 +275,12 @@ namespace RavEngine {
         };
         VRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
         VRAMSparseSet<entity_t, glm::vec4> ambientLightData;
-        UnorderedSparseSet<entity_t, FrameData::StoredLight<PointLight>> pointLightData;
+
+        struct PointLightUploadData {
+            glm::mat4 worldTransform;
+            glm::vec4 colorIntensity;
+        };
+        VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
         UnorderedSparseSet<entity_t, FrameData::StoredLight<SpotLight>> spotLightData;
         
     public:

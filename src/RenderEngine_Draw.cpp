@@ -55,7 +55,13 @@ namespace RavEngine {
 			});
 
 		LightingUBO lightUBO{
+			.viewProj = viewproj,
 			.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
+		};
+		PointLightUBO pointLightUBO{
+			.viewProj = lightUBO.viewProj,
+			.invViewProj = glm::inverse(lightUBO.viewProj),
+			.viewRect = lightUBO.viewRect
 		};
 
 		auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {
@@ -121,8 +127,23 @@ namespace RavEngine {
 			.bindingPosition = 1
 			});
 		mainCommandBuffer->Draw(3, {
-			.nInstances = worldOwning->ambientLightData.DenseSize()
+			.nInstances = worldOwning->directionalLightData.DenseSize()
 			});
+
+		// point lights
+		mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
+		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
+		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
+		mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
+		mainCommandBuffer->SetVertexBuffer(pointLightMesh->vertexBuffer);
+		mainCommandBuffer->SetIndexBuffer(pointLightMesh->indexBuffer);
+		mainCommandBuffer->SetVertexBuffer(worldOwning->pointLightData.GetDense().get_underlying().buffer, {
+			.bindingPosition = 1
+		});
+		mainCommandBuffer->DrawIndexed(pointLightMesh->totalIndices, {
+			.nInstances = worldOwning->pointLightData.DenseSize()
+		});
 
 		mainCommandBuffer->EndRendering();
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);

@@ -3,6 +3,7 @@ layout(location = 0) in vec4 colorintensity;
 layout(location = 0) out vec4 outcolor;
 
 layout(push_constant) uniform UniformBufferObject{
+	 mat4 viewProj;
 	ivec4 viewRect;
 } ubo;
 

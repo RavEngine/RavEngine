@@ -31,6 +31,7 @@ namespace RavEngine {
 	class InputManager;
     struct Entity;
     class World;
+	struct MeshAsset;
 
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
@@ -52,12 +53,14 @@ namespace RavEngine {
 		RGLSurfacePtr surface;
 
 		RGLTexturePtr diffuseTexture, normalTexture, depthStencil, lightingTexture;
-		RGLPipelineLayoutPtr lightRenderPipelineLayout, lightToFBPipelineLayout;
+		RGLPipelineLayoutPtr lightRenderPipelineLayout, lightToFBPipelineLayout, pointLightRenderPipelineLayout;
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
 
-		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, lightToFBRenderPipeline;
+		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, lightToFBRenderPipeline;
 		RGLBufferPtr screenTriVerts;
+
+		static Ref<MeshAsset> pointLightMesh, spotLightMesh;
     public:
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
@@ -70,8 +73,14 @@ namespace RavEngine {
 		};
 
 		struct LightingUBO {
+			glm::mat4 viewProj;
 			glm::ivec4 viewRect;
-			uint32_t numObjects;
+		};
+
+		struct PointLightUBO {
+			glm::mat4 viewProj;
+			glm::mat4 invViewProj;
+			glm::ivec4 viewRect;
 		};
 
         virtual ~RenderEngine();

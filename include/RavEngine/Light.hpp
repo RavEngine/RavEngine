@@ -296,20 +296,5 @@ public:
 	}
 };
 
-class LightManager{
-public:
-	LightManager() = delete;
-	static void Init();
-	static void Teardown();
-	
-	friend struct PointLight;
-	friend struct DirectionalLight;
-	friend struct AmbientLight;
-	friend struct SpotLight;
-	
-private:
-	static Ref<MeshAsset> pointLightMesh;
-	static Ref<MeshAsset> spotLightMesh;
-};
 }
 

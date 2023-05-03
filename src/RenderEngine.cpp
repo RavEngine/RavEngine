@@ -46,6 +46,7 @@
 #include <RGL/CommandBuffer.hpp>
 #include <RGL/Pipeline.hpp>
 #include <RGL/RenderPass.hpp>
+#include "MeshAsset.hpp"
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"
@@ -71,6 +72,9 @@ RenderEngine::vs RenderEngine::VideoSettings;
 static std::optional<GUIComponent> debuggerContext;
 STATIC(RenderEngine::debuggerInput);
 #endif
+
+STATIC(RenderEngine::pointLightMesh);
+STATIC(RenderEngine::spotLightMesh);
 
 static constexpr uint16_t shadowMapSize = 2048;
 
@@ -271,6 +275,51 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		}
 	});
 
+	pointLightRenderPipelineLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+				.binding = 0,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+				{
+				.binding = 1,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+				{
+				.binding = 2,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 3,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 4,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+			{
+				.binding = 5,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+			},
+		},
+		.boundSamplers = {
+			textureSampler,
+			textureSampler,
+			textureSampler,
+		},
+		.constants = {
+			{
+				sizeof(PointLightUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+			}
+		}
+		});
+
 	// create render passes
 	deferredRenderPass = RGL::CreateRenderPass({
 		   .attachments = {
@@ -325,7 +374,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	// create lighting render pipelines
 	constexpr static uint32_t width = 640, height = 480;
-	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc) {	
+	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc, RGLPipelineLayoutPtr layout) {	
 
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
 			.vertexBindings = {
@@ -380,7 +429,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.depthWriteEnabled = false,
 				.depthFunction = RGL::DepthCompareFunction::Greater,
 			},
-			.pipelineLayout = lightRenderPipelineLayout,
+			.pipelineLayout = layout,
 		};
 
 		return device->CreateRenderPipeline(rpd);
@@ -406,7 +455,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.offset = 0,
 					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				}
-		});
+		}, lightRenderPipelineLayout);
 
 	auto dirLightFSH = LoadShaderByFilename("directionallight.fsh", device);
 	auto dirLightVSH = LoadShaderByFilename("directionallight.vsh", device);
@@ -429,10 +478,63 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.offset = offsetof(World::DirLightUploadData, direction),
 					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
 				}
-		});
+		}, lightRenderPipelineLayout);
+
+	auto pointLightFSH = LoadShaderByFilename("pointlight.fsh", device);
+	auto pointLightVSH = LoadShaderByFilename("pointlight.vsh", device);
+
+	pointLightRenderPipeline = createLightingPipeline(pointLightVSH, pointLightFSH, sizeof(VertexNormalUV), sizeof(World::PointLightUploadData), {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+				},
+				{
+					.location = 1,
+					.binding = 0,
+					.offset = offsetof(VertexNormalUV,normal),
+					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+				},
+				{
+					.location = 2,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+				{
+					.location = 3,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 4,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 5,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 6,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 7,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+		}, pointLightRenderPipelineLayout);
 
 	// copy shader
-
 	auto lightToFbFSH = LoadShaderByFilename("light_to_fb.fsh",device);
 	auto lightToFbVSH = LoadShaderByFilename("light_to_fb.vsh",device);
 
@@ -515,7 +617,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			.pipelineLayout = lightToFBPipelineLayout,
 		});
 
-	
+	// lighting meshes
 	constexpr static Vertex2D vertices[] = {
 		{{0, -10}},
 		{{10, 10}},
@@ -540,7 +642,7 @@ void RavEngine::RenderEngine::createGBuffers()
 	gcTextures.enqueue(lightingTexture);
 
 	depthStencil = device->CreateTexture({
-		.usage = { .DepthStencilAttachment = true },
+		.usage = { .Sampled = true, .DepthStencilAttachment = true },
 		.aspect = { .HasDepth = true },
 		.width = width,
 		.height = height,
