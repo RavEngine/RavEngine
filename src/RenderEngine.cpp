@@ -78,6 +78,163 @@ STATIC(RenderEngine::spotLightMesh);
 
 static constexpr uint16_t shadowMapSize = 2048;
 
+UtilityMesh genIcosphere(uint16_t subdivs, RenderEngine& renderer){
+    struct IcoSphereCreator
+    {
+        struct TriangleIndices
+        {
+            int v1;
+            int v2;
+            int v3;
+
+            TriangleIndices(int v1, int v2, int v3) : v1(v1), v2(v2), v3(v3){}
+        };
+        
+        struct tiny_vec3{
+            float x, y, z;
+            tiny_vec3(float x, float y, float z) : x(x), y(y), z(z){}
+        };
+        
+        struct MeshGeometry3D{
+            std::vector<tiny_vec3> Positions;
+            std::vector<uint32_t> TriangleIndices;
+        };
+        
+        using Int64 = int64_t;
+
+        MeshGeometry3D geometry;
+        int index = 0;
+        std::unordered_map<int64_t, int> middlePointIndexCache;
+
+        // add vertex to mesh, fix position to be on unit sphere, return index
+        int addVertex(tiny_vec3 p)
+        {
+            double length = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+            geometry.Positions.emplace_back(p.x/length, p.y/length, p.z/length);
+            return index++;
+        }
+
+        // return index of point in the middle of p1 and p2
+        int getMiddlePoint(int p1, int p2)
+        {
+            // first check if we have it already
+            bool firstIsSmaller = p1 < p2;
+            Int64 smallerIndex = firstIsSmaller ? p1 : p2;
+            Int64 greaterIndex = firstIsSmaller ? p2 : p1;
+            Int64 key = (smallerIndex << 32) + greaterIndex;
+
+            auto it = middlePointIndexCache.find(key);
+            if (it != middlePointIndexCache.end())
+            {
+                return (*it).second;
+            }
+
+            // not in cache, calculate it
+            tiny_vec3 point1 = geometry.Positions[p1];
+            tiny_vec3 point2 = geometry.Positions[p2];
+            tiny_vec3 middle = tiny_vec3(
+                (point1.x + point2.x) / 2.0,
+                (point1.y + point2.y) / 2.0,
+                (point1.z + point2.z) / 2.0);
+
+            // add vertex makes sure point is on unit sphere
+            int i = addVertex(middle);
+
+            // store it, return index
+            middlePointIndexCache.insert(std::make_pair(key, i));
+            return i;
+        }
+
+        MeshGeometry3D Create(int recursionLevel)
+        {
+
+            // create 12 vertices of a icosahedron
+            auto t = (1.0 + std::sqrt(5.0)) / 2.0;
+
+            addVertex(tiny_vec3(-1,  t,  0));
+            addVertex(tiny_vec3( 1,  t,  0));
+            addVertex(tiny_vec3(-1, -t,  0));
+            addVertex(tiny_vec3( 1, -t,  0));
+
+            addVertex(tiny_vec3( 0, -1,  t));
+            addVertex(tiny_vec3( 0,  1,  t));
+            addVertex(tiny_vec3( 0, -1, -t));
+            addVertex(tiny_vec3( 0,  1, -t));
+
+            addVertex(tiny_vec3( t,  0, -1));
+            addVertex(tiny_vec3( t,  0,  1));
+            addVertex(tiny_vec3(-t,  0, -1));
+            addVertex(tiny_vec3(-t,  0,  1));
+
+
+            // create 20 triangles of the icosahedron
+            auto faces = std::vector<TriangleIndices>();
+
+            // 5 faces around point 0
+            faces.emplace_back(0, 11, 5);
+            faces.emplace_back(0, 5, 1);
+            faces.emplace_back(0, 1, 7);
+            faces.emplace_back(0, 7, 10);
+            faces.emplace_back(0, 10, 11);
+
+            // 5 adjacent faces
+            faces.emplace_back(1, 5, 9);
+            faces.emplace_back(5, 11, 4);
+            faces.emplace_back(11, 10, 2);
+            faces.emplace_back(10, 7, 6);
+            faces.emplace_back(7, 1, 8);
+
+            // 5 faces around point 3
+            faces.emplace_back(3, 9, 4);
+            faces.emplace_back(3, 4, 2);
+            faces.emplace_back(3, 2, 6);
+            faces.emplace_back(3, 6, 8);
+            faces.emplace_back(3, 8, 9);
+
+            // 5 adjacent faces
+            faces.emplace_back(4, 9, 5);
+            faces.emplace_back(2, 4, 11);
+            faces.emplace_back(6, 2, 10);
+            faces.emplace_back(8, 6, 7);
+            faces.emplace_back(9, 8, 1);
+
+
+            // refine triangles
+            for (int i = 0; i < recursionLevel; i++)
+            {
+                auto faces2 = std::vector<TriangleIndices>();
+                for (auto& tri : faces)
+                {
+                    // replace triangle by 4 triangles
+                    int a = getMiddlePoint(tri.v1, tri.v2);
+                    int b = getMiddlePoint(tri.v2, tri.v3);
+                    int c = getMiddlePoint(tri.v3, tri.v1);
+
+                    faces2.emplace_back(tri.v1, a, c);
+                    faces2.emplace_back(tri.v2, b, a);
+                    faces2.emplace_back(tri.v3, c, b);
+                    faces2.emplace_back(a, b, c);
+                }
+                faces = faces2;
+            }
+
+            // done, now add triangles to mesh
+            for (auto& tri : faces)
+            {
+                geometry.TriangleIndices.push_back(tri.v1);
+                geometry.TriangleIndices.push_back(tri.v2);
+                geometry.TriangleIndices.push_back(tri.v3);
+            }
+
+            return this->geometry;
+        }
+    };
+    IcoSphereCreator creator;
+    auto data = creator.Create(subdivs);
+
+    return renderer.createUtilityMeshFromData(data.Positions, data.TriangleIndices);
+}
+
 
 void DebugRender(const Im3d::DrawList& drawList){
 #if 0
