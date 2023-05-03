@@ -54,28 +54,5 @@ struct FrameData{
 			return light.CastsShadows();
 		}
 	};
-	
-	struct PackedDL{
-		using light_t = DirectionalLight;
-		DirectionalLight light;
-		struct tinyvec3{
-			float x, y, z;
-		} rotation;
-		
-		inline void AddInstanceData(float* offset) const{
-			offset[4] = rotation.x;
-			offset[5] = rotation.y;
-			offset[6] = rotation.z;
-			light.AddInstanceData(offset);
-		}
-
-		bool CastsShadows() const{
-			return light.CastsShadows();
-		}
-		
-		PackedDL(const DirectionalLight& l, const tinyvec3& tv) : light(l), rotation(tv){}
-        PackedDL(){}    // used by World, do not use
-	};
-	
 };
 }

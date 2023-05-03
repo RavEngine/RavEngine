@@ -297,17 +297,15 @@ void World::setupRenderTasks(){
                 if (transform.isTickDirty){
                     // update transform data if it has changed
                     auto rot = owner.GetTransform().WorldUp();
-                    FrameData::PackedDL::tinyvec3 r{
-                        static_cast<float>(rot.x),
-                        static_cast<float>(rot.y),
-                        static_cast<float>(rot.z)
-                    };
+
                     // use local ID here, no need for local-to-global translation
-                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).rotation = r;
+                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).direction = rot;
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
-                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).light = ptr->Get(i);
+                    auto& lightdata = ptr->Get(i);
+                    auto& color = lightdata.GetColorRGBA();
+                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = {color.R, color.G, color.B, lightdata.GetIntensity()};
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this

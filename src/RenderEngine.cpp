@@ -325,7 +325,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	// create lighting render pipelines
 	constexpr static uint32_t width = 640, height = 480;
-	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride) {	
+	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc) {	
 
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
 			.vertexBindings = {
@@ -339,20 +339,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.inputRate = RGL::InputRate::Instance
 				}
 			},
-			.attributeDescs = {
-				{
-					.location = 0,
-					.binding = 0,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
-				},
-				{
-					.location = 1,
-					.binding = 1,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				}
-			}
+			.attributeDescs = vertexAttributeDesc
 		};
 
 		RGL::RenderPipelineDescriptor rpd{
@@ -406,8 +393,43 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	auto ambientLightFSH = LoadShaderByFilename("ambientlight.fsh", device);
 	auto ambientLightVSH = LoadShaderByFilename("ambientlight.vsh", device);
-	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH, sizeof(Vertex2D), sizeof(glm::vec4));
+	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH, sizeof(Vertex2D), sizeof(glm::vec4), {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+				{
+					.location = 1,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				}
+		});
 
+	auto dirLightFSH = LoadShaderByFilename("directionallight.fsh", device);
+	auto dirLightVSH = LoadShaderByFilename("directionallight.vsh", device);
+	dirLightRenderPipeline = createLightingPipeline(dirLightVSH, dirLightFSH, sizeof(Vertex2D), sizeof(World::DirLightUploadData), {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+				{
+					.location = 1,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 2,
+					.binding = 1,
+					.offset = offsetof(World::DirLightUploadData, direction),
+					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+				}
+		});
 
 	// copy shader
 

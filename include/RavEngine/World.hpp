@@ -269,8 +269,11 @@ namespace RavEngine {
 		void StaticMeshChangedVisibility(const StaticMesh*);
 		void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
     
-        
-        UnorderedSparseSet<entity_t, FrameData::PackedDL> directionalLightData;
+        struct DirLightUploadData {
+            glm::vec4 colorIntensity;
+            glm::vec3 direction;
+        };
+        VRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
         VRAMSparseSet<entity_t, glm::vec4> ambientLightData;
         UnorderedSparseSet<entity_t, FrameData::StoredLight<PointLight>> pointLightData;
         UnorderedSparseSet<entity_t, FrameData::StoredLight<SpotLight>> spotLightData;

@@ -97,6 +97,7 @@ namespace RavEngine {
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
 
 		mainCommandBuffer->BeginRendering(lightingRenderPass);
+		// ambient lights
 		mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
@@ -109,6 +110,19 @@ namespace RavEngine {
 		mainCommandBuffer->Draw(3, {
 			.nInstances = worldOwning->ambientLightData.DenseSize()
 		});
+
+		// directional lights
+		mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
+		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
+		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+		mainCommandBuffer->SetVertexBytes(lightUBO, 0);
+		mainCommandBuffer->SetVertexBuffer(worldOwning->directionalLightData.GetDense().get_underlying().buffer, {
+			.bindingPosition = 1
+			});
+		mainCommandBuffer->Draw(3, {
+			.nInstances = worldOwning->ambientLightData.DenseSize()
+			});
 
 		mainCommandBuffer->EndRendering();
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
