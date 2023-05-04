@@ -19,7 +19,11 @@ namespace RGL {
         if (reason == S_OK) {
             return; // proper shutdown, no need to go further
         }
+#if _UWP
+        OutputDebugStringW(_com_error(reason, nullptr).ErrorMessage());
+#else
         OutputDebugStringA(_com_error(reason, nullptr).ErrorMessage());
+#endif
 
         ComPtr<ID3D12DeviceRemovedExtendedData> pDred;
         DX_CHECK(pDevice->QueryInterface(IID_PPV_ARGS(&pDred)));

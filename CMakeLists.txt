@@ -101,22 +101,32 @@ macro(set_tools)
 	
 endmacro()
 
-if (NOT CMAKE_CROSSCOMPILING)
-	#double-check, this doesn't always get set properly
-	if(NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR} OR (MSVC AND NOT (CMAKE_GENERATOR_PLATFORM STREQUAL CMAKE_HOST_SYSTEM_PROCESSOR)))
-		set(CMAKE_CROSSCOMPILING ON CACHE INTERNAL "")
+if(NOT (CMAKE_VS_PLATFORM_NAME STREQUAL ""))
+	if(CMAKE_VS_PLATFORM_NAME_DEFAULT STREQUAL CMAKE_VS_PLATFORM_NAME)
+		set(VS_CROSSCOMP OFF CACHE INTERNAL "")
 	else()
-		set(CMAKE_CROSSCOMPILING OFF CACHE INTERNAL "")
+		set(VS_CROSSCOMP ON CACHE INTERNAL "")
 	endif()
+else()
+	set(VS_CROSSCOMP OFF CACHE INTERNAL "")
+endif()
+
+if (VS_CROSSCOMP AND CMAKE_HOST_WIN32)
+	set(CMAKE_CROSSCOMPILING ON CACHE INTERNAL "")
 endif()
 
 # ninja does not use separate config directories for some reason
 if (CMAKE_CROSSCOMPILING)
 	set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
+	if (CMAKE_HOST_WIN32)
+		set(rglc_ext ".exe")
+	endif()
 	if (CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "Unix Makefiles")
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/protoc" CACHE INTERNAL "")
+		set(rglc_path "${TOOLS_DIR}/RGL/rglc${rglc_ext}" CACHE INTERNAL "")
 	else()
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
+		set(rglc_path "${TOOLS_DIR}/RGL/Release/rglc${rglc_ext}" CACHE INTERNAL "")
 	endif()
 
 	set_tools()
@@ -133,8 +143,8 @@ if (CMAKE_CROSSCOMPILING)
 	)
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${PROTOC_CMD}" 
-		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc
+		OUTPUT "${PROTOC_CMD}" "${rglc_path}"
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
@@ -243,7 +253,11 @@ SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
 
 # RavEngine Graphics Library (RGL)
-set(RGL_ENABLE_RGLC ON CACHE INTERNAL "")
+if (NOT CMAKE_CROSSCOMPILING)
+	set(RGL_ENABLE_RGLC ON CACHE INTERNAL "")
+else()
+	set(RGL_ENABLE_RGLC OFF CACHE INTERNAL "")
+endif()
 add_subdirectory("${DEPS_DIR}/RGL")
 
 
@@ -254,7 +268,7 @@ else()
 endif()
 add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
 if (CMAKE_CROSSCOMPILING)
-	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}")
+	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}" "${rglc_path}")
 else()
 	add_custom_target("GNS_Deps" DEPENDS "rglc" "protoc")
 endif()

@@ -103,7 +103,7 @@ std::string SystemInfo::OperatingSystemNameString(){
     AppleOSName(buf, sizeof(buf));
     return buf;
 #elif _UWP
-    auto vi = Windows::System::Profile::AnalyticsInfo::VersionInfo();
+    auto vi = winrt::Windows::System::Profile::AnalyticsInfo::VersionInfo();
     return StrFormat("UWP {}",to_string(vi.DeviceFamily()));
 #elif _WIN32
     return "Windows WIN32";
@@ -132,7 +132,7 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
     vers.minor = v.minor;
     vers.patch = v.patch;
 #elif _UWP
-    auto vi = Windows::System::Profile::AnalyticsInfo::VersionInfo();
+    auto vi = winrt::Windows::System::Profile::AnalyticsInfo::VersionInfo();
     auto str = to_string(vi.DeviceFamilyVersion());
     auto asInt = std::stoull(str);
     // convert this int into the four-part version
@@ -169,7 +169,7 @@ uint32_t SystemInfo::SystemRAM(){
 #ifdef __APPLE__
     return GetAppleSystemRAM();
 #elif _UWP
-    auto pk = Windows::System::Diagnostics::SystemDiagnosticInfo::GetForCurrentSystem();
+    auto pk = winrt::Windows::System::Diagnostics::SystemDiagnosticInfo::GetForCurrentSystem();
     auto bytes = pk.MemoryUsage().GetReport().TotalPhysicalSizeInBytes();
     return bytes / 1024 / 1024;
 #elif _WIN32
@@ -191,6 +191,7 @@ std::string SystemInfo::GPUBrandString(){
 
 uint32_t SystemInfo::GPUVRAM(){
 #if _UWP
+#if 0
     auto data = bgfx::getInternalData();
     auto d3ddev = (ID3D12Device*)data->context;
     DXGI_ADAPTER_DESC desc;
@@ -203,6 +204,8 @@ uint32_t SystemInfo::GPUVRAM(){
     else {
         return 0;
     }
+#endif
+    return 0;
 #elif __APPLE__
     return AppleVRAMTotal();
 #else
@@ -212,6 +215,7 @@ uint32_t SystemInfo::GPUVRAM(){
 
 uint32_t SystemInfo::GPUVRAMinUse(){
 #if _UWP
+#if 0
     auto data = bgfx::getInternalData();
     auto d3ddev = (ID3D12Device*)data->context;
     DXGI_ADAPTER_DESC desc;
@@ -224,6 +228,8 @@ uint32_t SystemInfo::GPUVRAMinUse(){
     else {
         return 0;
     }
+#endif
+    return 0;
 #elif __APPLE__
     return AppleVRAMUsed();
 #else

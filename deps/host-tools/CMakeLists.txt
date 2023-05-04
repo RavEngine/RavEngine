@@ -8,6 +8,15 @@ if(MSVC)
   add_definitions(/Qpar)
 endif()
 
+set(RGL_ENABLE_RGLC ON)
+add_subdirectory("../RGL" "${CMAKE_BINARY_DIR}/RGL")
+set_target_properties(rglc
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/RGL"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/RGL"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/RGL"
+)
+
 # protobuf for build machine
 set(protobuf_BUILD_TESTS OFF CACHE INTERNAL "")
 set(protobuf_MODULE_COMPATIBLE ON CACHE INTERNAL "")

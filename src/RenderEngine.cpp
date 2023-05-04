@@ -947,7 +947,7 @@ void RenderEngine::UpdateBufferDims(){
 		Debug::Fatal("GetScaleFactorForMonitor failed");
 	}
 #elif _UWP
-	auto dinf = Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
+	auto dinf = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
 	win_scalefactor = static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
 #elif __APPLE__
 	// since iOS and macOS do not use OpenGL we cannot use the GL call here

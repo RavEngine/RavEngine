@@ -130,6 +130,7 @@ namespace RGL {
         DX_CHECK(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&deviceRemovedFence)));
         deviceRemovedFence->SetEventOnCompletion(UINT64_MAX, deviceRemovedEvent);
 
+#if !_UWP       // RegisterWaitForSingleObject is not supported on UWP
         HANDLE waitHandle;
         RegisterWaitForSingleObject(
             &waitHandle,
@@ -139,6 +140,7 @@ namespace RGL {
             INFINITE, // No timeout
             0 // No flags
         );
+#endif
 
         internalCommandList = internalQueue->CreateCommandList();
         g_RTVDescriptorHeapSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
