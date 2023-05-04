@@ -71,6 +71,7 @@ namespace RavEngine {
 		};
 
 		transitionGbuffers(RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal);
+		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
 
 		// do static meshes
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
@@ -96,6 +97,7 @@ namespace RavEngine {
 		mainCommandBuffer->EndRendering();
 
 		transitionGbuffers(RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal);
+		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
 
 		// do lighting pass
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
@@ -110,6 +112,7 @@ namespace RavEngine {
 
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 		mainCommandBuffer->SetVertexBytes(lightUBO, 0);
+		mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
 		mainCommandBuffer->SetVertexBuffer(worldOwning->ambientLightData.GetDense().get_underlying().buffer, {
 			.bindingPosition = 1
 		});
@@ -123,6 +126,7 @@ namespace RavEngine {
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 		mainCommandBuffer->SetVertexBytes(lightUBO, 0);
+		mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
 		mainCommandBuffer->SetVertexBuffer(worldOwning->directionalLightData.GetDense().get_underlying().buffer, {
 			.bindingPosition = 1
 			});
@@ -136,12 +140,13 @@ namespace RavEngine {
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
 		mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
-		mainCommandBuffer->SetVertexBuffer(pointLightMesh->vertexBuffer);
-		mainCommandBuffer->SetIndexBuffer(pointLightMesh->indexBuffer);
+		mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
+		mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
+		mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
 		mainCommandBuffer->SetVertexBuffer(worldOwning->pointLightData.GetDense().get_underlying().buffer, {
 			.bindingPosition = 1
 		});
-		mainCommandBuffer->DrawIndexed(pointLightMesh->totalIndices, {
+		mainCommandBuffer->DrawIndexed(nPointLightIndices, {
 			.nInstances = worldOwning->pointLightData.DenseSize()
 		});
 

@@ -20,6 +20,9 @@ namespace RGL {
 		Dimension GetSize() const final;
 		virtual ~TextureVk();
 
+		const TextureConfig createdConfig;
+		VkImageAspectFlags createdAspectVk = VK_IMAGE_ASPECT_COLOR_BIT;
+
 		VmaAllocation alloc = VK_NULL_HANDLE;
 	};
 

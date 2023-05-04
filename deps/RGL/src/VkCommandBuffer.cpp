@@ -331,15 +331,41 @@ namespace RGL {
 	void CommandBufferVk::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position)
 	{
 		auto img = static_cast<const TextureVk*>(texture);
+
+		auto decideFlagsForBegin = [img]() {
+			VkAccessFlags writeFlags = 0;
+			if (img->createdConfig.aspect.HasColor) {
+				writeFlags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			}
+			if (img->createdConfig.aspect.HasDepth || img->createdConfig.aspect.HasDepth) {
+				writeFlags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			}
+			return writeFlags;
+		};
+
+		auto decideFlagsForEnd = [img]() {
+			VkPipelineStageFlags writeFlags = 0;
+			if (img->createdConfig.aspect.HasColor) {
+				writeFlags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			}
+			if (img->createdConfig.aspect.HasDepth || img->createdConfig.aspect.HasDepth) {
+				writeFlags |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			}
+			return writeFlags;
+		};
+
+		auto beginFlags = decideFlagsForBegin();
+		auto endFlags = decideFlagsForEnd();	
+
 		encodeResourceTransition(commandBuffer,
 			img->vkImage,
-			position == TransitionPosition::Top ? VK_ACCESS_NONE : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-			position == TransitionPosition::Top ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_NONE,
+			position == TransitionPosition::Top ? VK_ACCESS_NONE : beginFlags,
+			position == TransitionPosition::Top ? beginFlags : VK_ACCESS_NONE,
 			rgl2vkImageLayout(current),
 			rgl2vkImageLayout(target),
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			position == TransitionPosition::Top ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			position == TransitionPosition::Top? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+			img->createdAspectVk,
+			position == TransitionPosition::Top ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : endFlags,
+			position == TransitionPosition::Top? endFlags : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
 		);
 	}
 	void CommandBufferVk::CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer)

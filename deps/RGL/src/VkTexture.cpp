@@ -137,7 +137,7 @@ namespace RGL {
 		endSingleTimeCommands(commandBuffer,graphicsQueue,device,commandPool);
 	}
 
-	TextureVk::TextureVk(decltype(vkImageView) imageView, decltype(vkImage) image, const Dimension& size) : vkImageView(imageView), vkImage(image), ITexture(size)
+	TextureVk::TextureVk(decltype(vkImageView) imageView, decltype(vkImage) image, const Dimension& size) : vkImageView(imageView), vkImage(image), createdConfig({}), ITexture(size)
 	{
 	}
 	TextureVk::TextureVk(decltype(owningDevice) owningDevice, const TextureConfig& config, untyped_span bytes) : TextureVk(owningDevice, config)
@@ -168,7 +168,7 @@ namespace RGL {
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
 		vmaFreeMemory(owningDevice->vkallocator, allocation);
 	}
-	TextureVk::TextureVk(decltype(owningDevice) owningDevice, const TextureConfig& config) : owningDevice(owningDevice), owning(true), ITexture(Dimension{ .width = config.width,.height = config.height })
+	TextureVk::TextureVk(decltype(owningDevice) owningDevice, const TextureConfig& config) : owningDevice(owningDevice), owning(true), ITexture(Dimension{ .width = config.width,.height = config.height }), createdConfig(config)
 	{
 		const auto format = RGL2VkTextureFormat(config.format);
 
@@ -217,8 +217,10 @@ namespace RGL {
 			.baseArrayLayer = 0,
 			.layerCount = 1
 		}
+			
 		};
 		VK_CHECK(vkCreateImageView(owningDevice->device, &createInfo, nullptr, &vkImageView));
+		createdAspectVk = rgl2vkAspectFlags(config.aspect);
 
 		if (config.debugName) {
 			owningDevice->SetDebugNameForResource(vkImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.debugName);

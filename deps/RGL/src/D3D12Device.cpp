@@ -14,6 +14,7 @@
 #include "D3D12ComputePipeline.hpp"
 #include <D3D12MemAlloc.h>
 #include <DescriptorHeap.h>
+#include <WinBase.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>

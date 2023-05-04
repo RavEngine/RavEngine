@@ -318,6 +318,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 
 	spv::SpvBuildLogger logger;
 	glslang::SpvOptions spvOptions;
+	spvOptions.generateDebugInfo = true;
 	glslang::GlslangToSpv(*program.getIntermediate(ShaderType), result.spirvdata, &logger, &spvOptions);
 
 	// get uniform information

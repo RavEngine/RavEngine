@@ -73,12 +73,11 @@ static std::optional<GUIComponent> debuggerContext;
 STATIC(RenderEngine::debuggerInput);
 #endif
 
-STATIC(RenderEngine::pointLightMesh);
 STATIC(RenderEngine::spotLightMesh);
 
 static constexpr uint16_t shadowMapSize = 2048;
 
-UtilityMesh genIcosphere(uint16_t subdivs, RenderEngine& renderer){
+auto genIcosphere(uint16_t subdivs){
     struct IcoSphereCreator
     {
         struct TriangleIndices
@@ -90,13 +89,8 @@ UtilityMesh genIcosphere(uint16_t subdivs, RenderEngine& renderer){
             TriangleIndices(int v1, int v2, int v3) : v1(v1), v2(v2), v3(v3){}
         };
         
-        struct tiny_vec3{
-            float x, y, z;
-            tiny_vec3(float x, float y, float z) : x(x), y(y), z(z){}
-        };
-        
         struct MeshGeometry3D{
-            std::vector<tiny_vec3> Positions;
+            std::vector<glm::vec3> Positions;
             std::vector<uint32_t> TriangleIndices;
         };
         
@@ -107,7 +101,7 @@ UtilityMesh genIcosphere(uint16_t subdivs, RenderEngine& renderer){
         std::unordered_map<int64_t, int> middlePointIndexCache;
 
         // add vertex to mesh, fix position to be on unit sphere, return index
-        int addVertex(tiny_vec3 p)
+        int addVertex(glm::vec3 p)
         {
             double length = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
             geometry.Positions.emplace_back(p.x/length, p.y/length, p.z/length);
@@ -130,12 +124,12 @@ UtilityMesh genIcosphere(uint16_t subdivs, RenderEngine& renderer){
             }
 
             // not in cache, calculate it
-            tiny_vec3 point1 = geometry.Positions[p1];
-            tiny_vec3 point2 = geometry.Positions[p2];
-            tiny_vec3 middle = tiny_vec3(
-                (point1.x + point2.x) / 2.0,
-                (point1.y + point2.y) / 2.0,
-                (point1.z + point2.z) / 2.0);
+            auto point1 = geometry.Positions[p1];
+            auto point2 = geometry.Positions[p2];
+			glm::vec3 middle{
+				(point1.x + point2.x) / 2.0,
+				(point1.y + point2.y) / 2.0,
+				(point1.z + point2.z) / 2.0 };
 
             // add vertex makes sure point is on unit sphere
             int i = addVertex(middle);
@@ -151,20 +145,20 @@ UtilityMesh genIcosphere(uint16_t subdivs, RenderEngine& renderer){
             // create 12 vertices of a icosahedron
             auto t = (1.0 + std::sqrt(5.0)) / 2.0;
 
-            addVertex(tiny_vec3(-1,  t,  0));
-            addVertex(tiny_vec3( 1,  t,  0));
-            addVertex(tiny_vec3(-1, -t,  0));
-            addVertex(tiny_vec3( 1, -t,  0));
+			addVertex({ -1,  t,  0 });
+			addVertex({ 1,  t,  0 });
+			addVertex({ -1, -t,  0 });
+			addVertex({ 1, -t,  0 });
 
-            addVertex(tiny_vec3( 0, -1,  t));
-            addVertex(tiny_vec3( 0,  1,  t));
-            addVertex(tiny_vec3( 0, -1, -t));
-            addVertex(tiny_vec3( 0,  1, -t));
+			addVertex({ 0, -1,  t });
+			addVertex({ 0,  1,  t });
+			addVertex({ 0, -1, -t });
+			addVertex({ 0,  1, -t });
 
-            addVertex(tiny_vec3( t,  0, -1));
-            addVertex(tiny_vec3( t,  0,  1));
-            addVertex(tiny_vec3(-t,  0, -1));
-            addVertex(tiny_vec3(-t,  0,  1));
+			addVertex({ t,  0, -1 });
+			addVertex({ t,  0,  1 });
+			addVertex({ -t,  0, -1 });
+			addVertex({ -t,  0,  1 });
 
 
             // create 20 triangles of the icosahedron
@@ -232,7 +226,7 @@ UtilityMesh genIcosphere(uint16_t subdivs, RenderEngine& renderer){
     IcoSphereCreator creator;
     auto data = creator.Create(subdivs);
 
-    return renderer.createUtilityMeshFromData(data.Positions, data.TriangleIndices);
+    return data;
 }
 
 
@@ -787,6 +781,26 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		   RGL::BufferAccess::Shared
 		});
 	screenTriVerts->SetBufferData(vertices);
+
+	auto pointLightMeshData = genIcosphere(2);
+
+	pointLightVertexBuffer = device->CreateBuffer({
+		uint32_t(pointLightMeshData.Positions.size()),
+		{.VertexBuffer = true},
+		sizeof(glm::vec3),
+		RGL::BufferAccess::Shared
+	});
+
+	pointLightIndexBuffer = device->CreateBuffer({
+		uint32_t(pointLightMeshData.TriangleIndices.size()),
+		{.IndexBuffer = true},
+		sizeof(uint32_t),
+		RGL::BufferAccess::Shared,
+	});
+
+	pointLightVertexBuffer->SetBufferData({ pointLightMeshData.Positions.data(), pointLightMeshData.Positions.size() * sizeof(pointLightMeshData.Positions[0]) });
+	pointLightIndexBuffer->SetBufferData({ pointLightMeshData.TriangleIndices.data(), pointLightMeshData.TriangleIndices.size() * sizeof(pointLightMeshData.TriangleIndices[0]) });
+	nPointLightIndices = pointLightMeshData.TriangleIndices.size();
 }
 
 void RavEngine::RenderEngine::createGBuffers()
@@ -841,7 +855,7 @@ void RavEngine::RenderEngine::createGBuffers()
 	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
 	auto tmpfence = device->CreateFence(false);
 	tmpcmd->Begin();
-	for (const auto& ptr : { diffuseTexture , normalTexture, lightingTexture }) {
+	for (const auto& ptr : { diffuseTexture , normalTexture, lightingTexture, depthStencil }) {
 		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
 	}
 	tmpcmd->End();
