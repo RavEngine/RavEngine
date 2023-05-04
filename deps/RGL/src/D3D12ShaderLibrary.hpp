@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/ShaderLibrary.hpp>
 #include <filesystem>
@@ -10,7 +11,7 @@
 namespace RGL {
 
 	struct ShaderLibraryD3D12 : public IShaderLibrary {
-		ComPtr<ID3DBlob> shaderBlob;
+		Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
 		CD3DX12_SHADER_BYTECODE shaderBytecode;
 
 		ShaderLibraryD3D12();

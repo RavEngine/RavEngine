@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/RenderPass.hpp>
 #include <vector>
 

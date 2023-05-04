@@ -1,4 +1,5 @@
 #pragma once
+#include <RGL/RGL.hpp>
 #include <RGL/Buffer.hpp>
 #include <RGL/Device.hpp>
 

@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Core.hpp>
 #include <RGL/TextureFormat.hpp>
@@ -12,16 +13,13 @@
 inline void DX_CHECK(HRESULT dx_check_hr) {
 	RGL::Assert(!FAILED(dx_check_hr), _com_error(dx_check_hr,nullptr).ErrorMessage());
 }
-//#define DX_CHECK(hr) {}
-
-using namespace Microsoft::WRL;
 
 namespace RGL {
 	void InitD3D12(const RGL::InitOptions&);
 	void DeintD3D12();
 	struct RenderPassConfig;
 
-	ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device2> device,
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device2> device,
 		D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors, D3D12_DESCRIPTOR_HEAP_FLAGS flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 
 	RGLRenderPassPtr CreateRenderPassD3D12(const RenderPassConfig& config);

@@ -4,6 +4,8 @@
 #include "D3D12CommandQueue.hpp"
 #include <D3D12MemAlloc.h>
 
+using namespace Microsoft::WRL;
+
 namespace RGL {
 
 	BufferD3D12::BufferD3D12(decltype(owningDevice) device, const BufferConfig& config) : owningDevice(device), myType(config.type), accessType(config.access)

@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Texture.hpp>
 #include "RGLD3D12.hpp"
@@ -16,7 +17,7 @@ namespace RGL {
 	struct TextureD3D12 : public ITexture {
 		friend class SwapchainD3D12;
 
-		ComPtr<ID3D12Resource> texture;
+		Microsoft::WRL::ComPtr<ID3D12Resource> texture;
 		const std::shared_ptr<DeviceD3D12> owningDevice;
 		D3D12MA::Allocation* allocation = nullptr;
 

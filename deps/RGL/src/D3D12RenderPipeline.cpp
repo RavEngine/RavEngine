@@ -5,6 +5,8 @@
 #include "D3D12Sampler.hpp"
 #include <list>
 
+using namespace Microsoft::WRL;
+
 namespace RGL {
     DXGI_FORMAT rgl2dxgiformat(RGL::VertexAttributeFormat format) {
         switch (format) {

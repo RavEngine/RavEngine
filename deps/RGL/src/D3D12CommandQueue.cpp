@@ -4,6 +4,8 @@
 #include "D3D12Device.hpp"
 #include "D3D12CommandBuffer.hpp"
 
+using namespace Microsoft::WRL;
+
 namespace RGL {
     D3D12_COMMAND_LIST_TYPE rgl2d3d12cmdlist(QueueType type) {
         switch (type) {

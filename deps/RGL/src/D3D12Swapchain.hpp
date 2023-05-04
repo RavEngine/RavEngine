@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Swapchain.hpp>
 #include "D3D12DynamicDescriptorHeap.hpp"
@@ -15,9 +16,9 @@ namespace RGL {
 	struct SwapchainD3D12 : public ISwapchain {
 		constexpr static uint8_t g_NumFrames = 3;
 
-		ComPtr<IDXGISwapChain4> swapchain;
+		Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain;
 		const std::shared_ptr<DeviceD3D12> owningDevice;
-		ComPtr<ID3D12Resource> backbuffers[g_NumFrames];
+		Microsoft::WRL::ComPtr<ID3D12Resource> backbuffers[g_NumFrames];
 		std::vector<TextureD3D12> backbufferTextures;
 		D3D12DynamicDescriptorHeap::index_t rtvIndices[g_NumFrames];
 
@@ -26,8 +27,8 @@ namespace RGL {
 		bool initialized = false;
 
 		SwapchainD3D12(decltype(owningDevice), std::shared_ptr<SurfaceD3D12>, int width, int height, std::shared_ptr<CommandQueueD3D12> presentQueue);
-		void UpdateRenderTargetViews(ComPtr<ID3D12Device2> device,
-			ComPtr<IDXGISwapChain4> swapChain, D3D12DynamicDescriptorHeap& descriptorHeap);
+		void UpdateRenderTargetViews(Microsoft::WRL::ComPtr<ID3D12Device2> device,
+			Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain, D3D12DynamicDescriptorHeap& descriptorHeap);
 
 
 

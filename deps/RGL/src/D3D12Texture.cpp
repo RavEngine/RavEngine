@@ -5,6 +5,8 @@
 #include "D3D12CommandQueue.hpp"
 #include <D3D12MemAlloc.h>
 
+using namespace Microsoft::WRL;
+
 namespace RGL {
 
 	TextureD3D12::TextureD3D12(decltype(texture) image, const Dimension& size, decltype(rtvIDX) offset, decltype(owningDevice) device) : texture(image), ITexture(size), rtvIDX(offset), owningDevice(device)

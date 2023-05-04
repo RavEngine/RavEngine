@@ -18,7 +18,7 @@
 #include "Utilities.hpp"
 #include "Defines.hpp"
 #include "PhysXDefines.h"
-#include <RGL/RGL.hpp>
+#include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
 
 struct SDL_Window;

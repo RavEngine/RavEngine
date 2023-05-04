@@ -3,6 +3,8 @@
 #include "D3D12Device.hpp"
 #include "D3D12CommandQueue.hpp"
 
+using namespace Microsoft::WRL;
+
 namespace RGL {
 	FenceD3D12::FenceD3D12(decltype(owningDevice) device, bool preSignaled) : owningDevice(device)
 	{

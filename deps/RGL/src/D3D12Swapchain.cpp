@@ -11,6 +11,8 @@
 #undef min
 #undef max
 
+using namespace Microsoft::WRL;
+
 namespace RGL {
     // gsync, freesync, etc
     bool CheckTearingSupport()

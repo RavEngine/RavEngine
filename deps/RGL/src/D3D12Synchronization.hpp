@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Synchronization.hpp>
 #include "RGLD3D12.hpp"
@@ -14,7 +15,7 @@ namespace RGL {
 
 		FenceD3D12(decltype(owningDevice), bool preSignaled);
 
-		ComPtr<ID3D12Fence> fence;
+		Microsoft::WRL::ComPtr<ID3D12Fence> fence;
 
 		// IFence
 		void Wait() final;

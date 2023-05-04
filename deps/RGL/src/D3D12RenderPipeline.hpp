@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Pipeline.hpp>
 #include "RGLD3D12.hpp"
@@ -11,7 +12,7 @@ namespace RGL {
 	struct DeviceD3D12;
 	struct PipelineLayoutD3D12 : public IPipelineLayout {
 		const std::shared_ptr<DeviceD3D12> owningDevice;
-		ComPtr<ID3D12RootSignature> rootSignature;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
 		const PipelineLayoutDescriptor config;
 
 		struct bufferBindInfo {
@@ -44,7 +45,7 @@ namespace RGL {
 
 	struct RenderPipelineD3D12 : public IRenderPipeline {
 		const std::shared_ptr<DeviceD3D12> owningDevice;
-		ComPtr<ID3D12PipelineState> pipelineState;
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
 		const std::shared_ptr<PipelineLayoutD3D12> pipelineLayout;
 
 		RenderPipelineD3D12(decltype(owningDevice), const RenderPipelineDescriptor&);

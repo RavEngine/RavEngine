@@ -6,6 +6,7 @@
 //  Copyright © 2020 Ravbug.
 //
 
+#define NOMINMAX
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
 #include "AudioSource.hpp"

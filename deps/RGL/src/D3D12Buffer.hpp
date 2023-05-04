@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Buffer.hpp>
 #include "RGLD3D12.hpp"
@@ -10,7 +11,7 @@ namespace RGL {
 	struct DeviceD3D12;
 
 	struct BufferD3D12 : public IBuffer {
-		ComPtr<ID3D12Resource> buffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 		D3D12_INDEX_BUFFER_VIEW indexBufferView{};	// TODO: Union or something to optimize this
 		BufferConfig::Type myType;

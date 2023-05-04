@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/CommandBuffer.hpp>
 #include "RGLD3D12.hpp"
@@ -10,7 +11,7 @@ namespace RGL {
 	struct TextureD3D12;
 
 	struct CommandBufferD3D12 : public ICommandBuffer {
-		ComPtr<ID3D12GraphicsCommandList2> commandList;
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList;
 		const std::shared_ptr<CommandQueueD3D12> owningQueue;
 
 		std::shared_ptr<struct RenderPassD3D12> currentRenderPass;
