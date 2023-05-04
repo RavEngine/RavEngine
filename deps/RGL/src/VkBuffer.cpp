@@ -27,7 +27,7 @@ namespace RGL {
         return flags;
     }
 
-	BufferVk::BufferVk(decltype(owningDevice) owningDevice, const BufferConfig& config) : owningDevice(owningDevice) {
+	BufferVk::BufferVk(decltype(owningDevice) owningDevice, const BufferConfig& config) : owningDevice(owningDevice), accessType(config.access) {
         
         VkMemoryPropertyFlags memprop = 0;
         switch (config.access) {
@@ -42,7 +42,7 @@ namespace RGL {
         }
 
         auto usage = rgl2vkbufferflags(config.type);
-        if (config.options.TransferDestination) {
+        if (config.options.TransferDestination || config.access == decltype(config.access)::Private) {
             usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         }
 
@@ -61,8 +61,38 @@ namespace RGL {
     }
 
     void BufferVk::SetBufferData(untyped_span data, decltype(BufferConfig::nElements) offset) {
-        UpdateBufferData(data, offset);
-        UnmapMemory();
+        if (accessType == RGL::BufferAccess::Shared) {
+            UpdateBufferData(data, offset);
+            UnmapMemory();
+        }
+        else {
+            // copy to buffer from staging buffer
+            VkBuffer tmpBuffer;
+            auto tmpBufferAlloc = createBuffer(owningDevice.get(), data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tmpBuffer);
+
+            // copy to staging buffer
+            void* mappedPtr = nullptr;
+            vmaMapMemory(owningDevice->vkallocator, tmpBufferAlloc, &mappedPtr);
+            std::memcpy(mappedPtr, ((char*)data.data()) + offset, data.size());
+            vmaUnmapMemory(owningDevice->vkallocator, tmpBufferAlloc);
+
+            // copy staging to real
+            VkFence uploadFence;
+            auto commandBuffer = beginSingleTimeCommands(owningDevice->device, owningDevice->commandPool);
+
+            VkBufferCopy bufferCopyData{
+                .srcOffset = 0,
+                .dstOffset = 0,
+                .size = data.size()
+            };
+
+            vkCmdCopyBuffer(commandBuffer, tmpBuffer, buffer, 1, &bufferCopyData);
+            endSingleTimeCommands(commandBuffer, owningDevice->presentQueue, owningDevice->device, owningDevice->commandPool);
+
+            // free
+            vmaFreeMemory(owningDevice->vkallocator, tmpBufferAlloc);
+        }
+       
     }
 
     decltype(BufferConfig::nElements) BufferVk::getBufferSize() const

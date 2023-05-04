@@ -13,6 +13,7 @@ namespace RGL {
 		const std::shared_ptr<DeviceVk> owningDevice;
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocation allocation = VK_NULL_HANDLE;
+		const RGL::BufferAccess accessType;
 
 		MutableSpan mappedMemory;
 		size_t stride = 0;

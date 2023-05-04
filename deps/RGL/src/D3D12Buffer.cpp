@@ -2,10 +2,11 @@
 #include "D3D12Buffer.hpp"
 #include "D3D12Device.hpp"
 #include "D3D12CommandQueue.hpp"
+#include <D3D12MemAlloc.h>
 
 namespace RGL {
 
-	BufferD3D12::BufferD3D12(decltype(owningDevice) device, const BufferConfig& config) : owningDevice(device), myType(config.type)
+	BufferD3D12::BufferD3D12(decltype(owningDevice) device, const BufferConfig& config) : owningDevice(device), myType(config.type), accessType(config.access)
 	{
         const auto size_bytes = config.nElements * config.stride;
         mappedMemory.size = size_bytes;
@@ -67,9 +68,52 @@ namespace RGL {
 	}
 	void BufferD3D12::SetBufferData(untyped_span data, decltype(BufferConfig::nElements) offset)
 	{
-        MapMemory();
-        UpdateBufferData(data, offset);
-        UnmapMemory();
+        if (accessType == decltype(accessType)::Shared) {
+            UpdateBufferData(data, offset);
+            UnmapMemory();
+        }
+        else {
+            // create the staging buffer
+            D3D12MA::ALLOCATION_DESC textureUploadAllocDesc = {};
+            textureUploadAllocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+            D3D12_RESOURCE_DESC bufferUploadResourceDesc = {};
+            bufferUploadResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            bufferUploadResourceDesc.Alignment = 0;
+            bufferUploadResourceDesc.Width = data.size();
+            bufferUploadResourceDesc.Height = 1;
+            bufferUploadResourceDesc.DepthOrArraySize = 1;
+            bufferUploadResourceDesc.MipLevels = 1;
+            bufferUploadResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+            bufferUploadResourceDesc.SampleDesc.Count = 1;
+            bufferUploadResourceDesc.SampleDesc.Quality = 0;
+            bufferUploadResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            bufferUploadResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+            ComPtr<ID3D12Resource> bufferUpload;
+            D3D12MA::Allocation* bufferUploadAllocation;
+            DX_CHECK(owningDevice->allocator->CreateResource(
+                &textureUploadAllocDesc,
+                &bufferUploadResourceDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr, // pOptimizedClearValue
+                &bufferUploadAllocation,
+                IID_PPV_ARGS(&bufferUpload)));
+            bufferUpload->SetName(L"bufferUpload");
+
+            auto bytesPerRow = data.size();
+            D3D12_SUBRESOURCE_DATA bufferSubresourceData = {};
+            bufferSubresourceData.pData = data.data();
+            bufferSubresourceData.RowPitch = bytesPerRow;
+            bufferSubresourceData.SlicePitch = bytesPerRow * 1;
+            auto commandList = owningDevice->internalQueue->CreateCommandList();
+            UpdateSubresources(commandList.Get(), buffer.Get(), bufferUpload.Get(), 0, 0, 1, &bufferSubresourceData);
+
+            commandList->Close();
+            auto fenceValue = owningDevice->internalQueue->ExecuteCommandList(commandList);
+            owningDevice->internalQueue->WaitForFenceValue(fenceValue);
+
+            bufferUploadAllocation->Release();
+        }
+       
 	}
     decltype(BufferConfig::nElements) BufferD3D12::getBufferSize() const
     {

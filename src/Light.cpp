@@ -12,37 +12,13 @@ void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& t
 	dbg.DrawCapsule(tr.CalculateWorldMatrix(), debug_color, 1, 2);
 }
 
-void DirectionalLight::AddInstanceData(float* offset) const{
-    auto& color = GetColorRGBA();
-	offset[0] = color.R;
-	offset[1] = color.G;
-	offset[2] = color.B;
-	offset[3] = GetIntensity();
-}
-
 void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
 	dbg.DrawSphere(tr.CalculateWorldMatrix(), debug_color, 1);
 }
 
-void AmbientLight::AddInstanceData(float* offset) const{
-    auto& color = GetColorRGBA();
-	offset[0] = color.R;
-	offset[1] = color.G;
-	offset[2] = color.B;
-	offset[3] = GetIntensity();
-}
 
 void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
 	dbg.DrawSphere(tr.CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
-}
-
-void PointLight::AddInstanceData(float* offset) const{
-    auto& color = GetColorRGBA();
-	//[0:11] filled with affine transform
-	offset[12] = color.R;
-	offset[13] = color.G;
-	offset[14] = color.B;
-	offset[15] = GetIntensity();
 }
 
 void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{

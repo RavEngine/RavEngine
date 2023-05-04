@@ -68,28 +68,6 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
-	/**
-	 Structure:
-	 @code
- [0] = color red
- [1] = color green
- [2] = color blue
- [3] = intensity
-	 @endcode
-	 */
-	void AddInstanceData(float* offset) const;
-	
-	/**
-	 Calculate the Stride, or the number of bytes needed for each instance
-	 */
-	static inline constexpr size_t InstancingStride(){
-		//ambient light needs:
-			//light color (3 floats)
-			//light intensity (1 float)
-		
-		return sizeof(float) * 4;
-	}
-
 	static inline constexpr size_t ShadowDataSize() {
 		// ambient light needs:
 		// nothing (does not cast shadows)
@@ -119,19 +97,6 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
-	/**
-	 Structure
-	 @code
- [0] = color red
- [1] = color green
- [2] = color blue
- [3] = intensity
- [4] = rotation x
- [5] = rotation y
- [6] = rotation z
-	 @endcode
-	 */
-	void AddInstanceData(float* view) const;
 	
 	/**
 	 Set BGFX state needed to draw this light
@@ -140,18 +105,6 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 #if 0
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
 #endif
-	}
-	
-	/**
-	 Calculate the Stride, or the number of bytes needed for each instance
-	 */
-	static inline constexpr size_t InstancingStride(){
-		//directional light needs:
-		//light color (3 floats)
-		//light direction (3 floats)
-		//light intensity (1 float)
-		
-		return sizeof(float) * (3+3+1);
 	}
 
 	static inline constexpr size_t ShadowDataSize() {
@@ -166,19 +119,6 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
-	
-	/**
-	 Structure
-	 @code
-	 [0:15] = transform matrix
-	 [16] = color R
-	 [17] = color G
-	 [18] = color B
-	 [19] = intensity
-	 [20] = radius
-	 @endcode
-	 */
-	void AddInstanceData(float* offset) const;
 	
 	static inline void SetState(){
 #if 0

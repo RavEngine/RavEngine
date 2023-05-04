@@ -88,9 +88,19 @@ auto genIcosphere(uint16_t subdivs){
 
             TriangleIndices(int v1, int v2, int v3) : v1(v1), v2(v2), v3(v3){}
         };
+#pragma pack(push, 1)
+		struct vec3 {
+			float x, y, z;
+			vec3(float x, float y, float z) : x(x), y(y), z(z) {}
+		};
+#pragma pack(pop)
+
+		using vec_t = vec3;
+		static_assert(sizeof(vec_t) == sizeof(float) * 3, "vec_t is not the correct size!");
+
         
         struct MeshGeometry3D{
-            std::vector<glm::vec3> Positions;
+            std::vector<vec_t> Positions;
             std::vector<uint32_t> TriangleIndices;
         };
         
@@ -101,7 +111,7 @@ auto genIcosphere(uint16_t subdivs){
         std::unordered_map<int64_t, int> middlePointIndexCache;
 
         // add vertex to mesh, fix position to be on unit sphere, return index
-        int addVertex(glm::vec3 p)
+        int addVertex(vec_t p)
         {
             double length = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
             geometry.Positions.emplace_back(p.x/length, p.y/length, p.z/length);
@@ -126,10 +136,10 @@ auto genIcosphere(uint16_t subdivs){
             // not in cache, calculate it
             auto point1 = geometry.Positions[p1];
             auto point2 = geometry.Positions[p2];
-			glm::vec3 middle{
-				(point1.x + point2.x) / 2.0,
-				(point1.y + point2.y) / 2.0,
-				(point1.z + point2.z) / 2.0 };
+			vec_t middle{
+				(point1.x + point2.x) / 2.0f,
+				(point1.y + point2.y) / 2.0f,
+				(point1.z + point2.z) / 2.0f };
 
             // add vertex makes sure point is on unit sphere
             int i = addVertex(middle);
@@ -143,7 +153,7 @@ auto genIcosphere(uint16_t subdivs){
         {
 
             // create 12 vertices of a icosahedron
-            auto t = (1.0 + std::sqrt(5.0)) / 2.0;
+            float t = (1.0 + std::sqrt(5.0)) / 2.0;
 
 			addVertex({ -1,  t,  0 });
 			addVertex({ 1,  t,  0 });
@@ -570,7 +580,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			.colorBlendConfig = {
 				.attachments = {
 					{
-						.format = colorTexFormat
+						.format = colorTexFormat,
+						.blendEnabled = true
 					},
 				}
 			},
@@ -643,44 +654,32 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				},
 				{
 					.location = 1,
-					.binding = 0,
-					.offset = offsetof(VertexNormalUV,normal),
-					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				},
 				{
 					.location = 2,
-					.binding = 0,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+					.binding = 1,
+					.offset = sizeof(glm::vec4),
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				},
 				{
 					.location = 3,
 					.binding = 1,
-					.offset = 0,
+					.offset = sizeof(glm::vec4) * 2,
 					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				},
 				{
 					.location = 4,
 					.binding = 1,
-					.offset = 0,
+					.offset = sizeof(glm::vec4) * 3,
 					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				},
 				{
 					.location = 5,
 					.binding = 1,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 6,
-					.binding = 1,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 7,
-					.binding = 1,
-					.offset = 0,
+					.offset = sizeof(glm::vec4) * 4,
 					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				},
 		}, pointLightRenderPipelineLayout);
@@ -778,7 +777,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		   {.VertexBuffer = true},
 		   sizeof(Vertex2D),
 		   vertices,
-		   RGL::BufferAccess::Shared
+		   RGL::BufferAccess::Private
 		});
 	screenTriVerts->SetBufferData(vertices);
 
@@ -787,15 +786,15 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	pointLightVertexBuffer = device->CreateBuffer({
 		uint32_t(pointLightMeshData.Positions.size()),
 		{.VertexBuffer = true},
-		sizeof(glm::vec3),
-		RGL::BufferAccess::Shared
+		sizeof(float) * 3,
+		RGL::BufferAccess::Private
 	});
 
 	pointLightIndexBuffer = device->CreateBuffer({
 		uint32_t(pointLightMeshData.TriangleIndices.size()),
 		{.IndexBuffer = true},
 		sizeof(uint32_t),
-		RGL::BufferAccess::Shared,
+		RGL::BufferAccess::Private,
 	});
 
 	pointLightVertexBuffer->SetBufferData({ pointLightMeshData.Positions.data(), pointLightMeshData.Positions.size() * sizeof(pointLightMeshData.Positions[0]) });

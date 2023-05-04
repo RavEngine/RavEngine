@@ -463,7 +463,7 @@ namespace RGL {
 				.dstQueueFamilyIndex = 0,
 				.image = image->vkImage,
 				.subresourceRange = {
-					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+					.aspectMask = image->createdAspectVk,
 					.baseMipLevel = 0,
 					.levelCount = 1,
 					.baseArrayLayer = 0,

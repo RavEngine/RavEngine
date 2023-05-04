@@ -14,6 +14,7 @@ namespace RGL {
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 		D3D12_INDEX_BUFFER_VIEW indexBufferView{};	// TODO: Union or something to optimize this
 		BufferConfig::Type myType;
+		const RGL::BufferAccess accessType;
 
 		const std::shared_ptr<DeviceD3D12> owningDevice;
 		MutableSpan mappedMemory;

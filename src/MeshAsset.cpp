@@ -272,7 +272,7 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
 			uint32_t(totalVerts),
 			{.VertexBuffer = true},
 			sizeof(decltype(allMeshes.vertices)::value_type),
-			RGL::BufferAccess::Shared,
+			RGL::BufferAccess::Private,
 			{.Writable = false},
 		});
 
@@ -282,7 +282,7 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
 			uint32_t(totalIndices),
 			{.IndexBuffer = true},
 			index_stride,
-			RGL::BufferAccess::Shared,
+			RGL::BufferAccess::Private,
 			{.Writable = false},
 		});
 

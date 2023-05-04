@@ -122,7 +122,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 		uint32_t(weightsgpu.size()),
 		{.StorageBuffer = true},
 		sizeof(wrapper),
-		RGL::BufferAccess::Shared,
+		RGL::BufferAccess::Private,
 		{.Writable = false}
 	});
 	weightsBuffer->SetBufferData({ weightsgpu.data(),weightsgpu.size() * sizeof(decltype(weightsgpu)::value_type)});
