@@ -719,7 +719,9 @@ function(declare_shader infile shader_target)
 			XCODE_EXPLICIT_FILE_TYPE "sourcecode.metal"
             COMPILE_FLAGS "-gline-tables-only -frecord-sources" # enable shader source debugging
 		)
-		# goes into the bundle Metallib, so we don't need to include the shader in the asset package
+			# goes into the bundle Metallib, so we don't need to include the shader in the asset package
+		target_sources(${shader_target} PUBLIC ${outname})
+		source_group("Generated" FILES "${outname}")
 	endif()
 endfunction()
 
