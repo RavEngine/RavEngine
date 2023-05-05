@@ -125,6 +125,10 @@ namespace RGL {
     {
         return mappedMemory.data;
     }
+
+    void BufferD3D12::SignalRangeChanged(const Range & range){
+        
+    }
 }
 #endif
 

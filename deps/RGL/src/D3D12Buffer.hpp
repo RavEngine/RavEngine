@@ -47,6 +47,8 @@ namespace RGL {
 		decltype(BufferConfig::nElements) getBufferSize() const;
 
 		void* GetMappedDataPtr() final;
+        
+        void SignalRangeChanged(const Range&) final;
 
 		virtual ~BufferD3D12() {}
 	};

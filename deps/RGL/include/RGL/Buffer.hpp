@@ -39,6 +39,10 @@ namespace RGL {
 		BufferConfig(decltype(type) type, decltype(stride) stride, const T& t, decltype(access) access, decltype(options) options = {}) : BufferConfig(sizeof(T) / stride, type, stride, access, options) {}
 	};
 
+    struct Range{
+        uint32_t offset = 0, length = 0;
+    };
+
 
 	struct IBuffer {
 		/**
@@ -50,6 +54,8 @@ namespace RGL {
 		* Unmap system RAM for updating this buffer.
 		*/
 		virtual void UnmapMemory() = 0;
+        
+        virtual void SignalRangeChanged(const Range&) = 0;
 
 		/**
 		Update the contents of this buffer. If memory is not mapped, it will become mapped. The memory remains mapped. Intended to be used with UniformBuffers or other data that changes frequently.

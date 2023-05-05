@@ -30,7 +30,7 @@ namespace RavEngine {
 			}
 
 			iterator operator+(index_type i) {
-				return iterator(data + i);
+                return iterator{.data = data + i};
 			}
 			
 			T& operator*() {
@@ -97,7 +97,7 @@ namespace RavEngine {
 			buffer->MapMemory();
 			if (oldbuffer) {
 				// copy over old data
-				std::memcpy(buffer->GetMappedDataPtr(), oldbuffer->GetMappedDataPtr(), size() * sizeof(T));
+                buffer->SetBufferData({oldbuffer->GetMappedDataPtr(), size() * sizeof(T)});
 				TrashOldVector(oldbuffer);
 			}
 		}
@@ -131,7 +131,7 @@ namespace RavEngine {
 				return this->operator[](i);
 			}
 			else {
-				throw std::out_of_range();
+				throw std::out_of_range("index out of bounds");
 			}
 		}
 

@@ -388,7 +388,9 @@ endif()
 if(TARGET_APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
-	add_definitions("-x objective-c++")
+	set_source_files_properties(${MM_SOURCES} PROPERTIES
+		COMPILE_FLAGS "-x objective-c++"
+	)
 endif()
 file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )
@@ -719,7 +721,9 @@ function(declare_shader infile shader_target)
 			XCODE_EXPLICIT_FILE_TYPE "sourcecode.metal"
             COMPILE_FLAGS "-gline-tables-only -frecord-sources" # enable shader source debugging
 		)
-		# goes into the bundle Metallib, so we don't need to include the shader in the asset package
+			# goes into the bundle Metallib, so we don't need to include the shader in the asset package
+		target_sources(${shader_target} PUBLIC ${outname})
+		source_group("Generated" FILES "${outname}")
 	endif()
 endfunction()
 

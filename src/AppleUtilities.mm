@@ -1,13 +1,11 @@
 #include "AppleUtilities.h"
 #import <QuartzCore/CAMetalLayer.h>
 #import <Metal/Metal.h>
-#import <MetalKit/MetalKit.h>
-#include <bx/bx.h>
 #include <SDL_syswm.h>
 #include "Debug.hpp"
-#include "SystemInfo.hpp"
 #include <sys/utsname.h>
-#include <bgfx/platform.h>
+#include <RGL/RGL.hpp>
+#include <RGL/Device.hpp>
 
 #if TARGET_OS_IOS || TARGET_OS_TV
 #define TARGET_OS_NONOSX 1
@@ -24,29 +22,6 @@
 #include <sys/sysctl.h>
 #include <mach/machine.h>
 
-/**
- Workaround for deadlock on metal
- */
-void *cbSetupMetalLayer(void *wnd) {
-#if TARGET_OS_OSX
-	NSWindow *window = (NSWindow*)wnd;
-	NSView *contentView = [window contentView];
-	[contentView setWantsLayer:YES];
-	CAMetalLayer *res = [CAMetalLayer layer];
-	[contentView setLayer:res];
-	[res setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-	return res;
-#elif TARGET_OS_NONOSX
-	UIWindow* window = (UIWindow*)wnd;
-	UIView* contentView = [[window subviews] lastObject];
-	
-	CAMetalLayer *res = [CAMetalLayer layer];
-	res.frame = window.bounds;
-	[contentView.layer addSublayer:res];
-	res.needsDisplayOnBoundsChange = true;
-	return res;
-#endif
-}
 
 void resizeMetalLayer(void* ptr, int width, int height){
 	// on mac, auto resizing mask takes care of this
@@ -74,27 +49,27 @@ void enableSmoothScrolling(){
     [[NSUserDefaults standardUserDefaults] setBool: YES forKey: @"AppleMomentumScrollSupported"];
 }
 
-void AppleGPUName(char* buffer, size_t size){
-	auto internalData = bgfx::getInternalData();
-	auto device = (id<MTLDevice>)internalData->context;
-	auto name = [device name];
-	
-	std::memcpy(buffer, [name UTF8String], std::min(size,[name length]));
-}
 
 uint32_t AppleVRAMUsed(){
+    return 0;
+#if 0
     auto internalData = bgfx::getInternalData();
     auto device = (id<MTLDevice>)internalData->context;
     return static_cast<uint32_t>([device currentAllocatedSize] / 1024 / 1024);
+#endif
 }
 
 uint32_t AppleVRAMTotal(){
+    
 #if TARGET_OS_NONOSX
     return GetAppleSystemRAM();
 #else
+#if 0
     auto internalData = bgfx::getInternalData();
     auto device = (id<MTLDevice>)internalData->context;
     return [device recommendedMaxWorkingSetSize] / 1024 / 1024;
+#endif
+    return 0;
 #endif
 }
 
@@ -140,9 +115,10 @@ void AppleCPUName(char* buffer, size_t size){
 	}
 }
 
-bool AppleGPUMeetsMinSpec(){
-    auto internalData = bgfx::getInternalData();
-    auto device = (id<MTLDevice>)internalData->context;
+bool AppleGPUMeetsMinSpec(RGLDevicePtr deviceWrapper){
+    auto internalData = deviceWrapper->GetDeviceData();
+    
+    id<MTLDevice> device = (id<MTLDevice>)internalData.mtlData.device;
 #if TARGET_OS_SIMULATOR
     return true;        // simulator does not properly report features, so assume it will work
 #elif TARGET_OS_IPHONE

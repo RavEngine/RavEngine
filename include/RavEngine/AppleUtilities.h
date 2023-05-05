@@ -1,13 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <cstddef>
-
-/**
- Workaround for deadlock on metal. Manually creates the metal layer.
- @param wnd the Cocoa Window pointer
- @return pointer to the created metal layer.
- */
-void* cbSetupMetalLayer(void *wnd);
+#include <RGL/Types.hpp>
 
 /**
  Resize a metal layer manually. Required on iOS
@@ -43,9 +37,7 @@ uint32_t GetAppleSystemRAM();
 
 void AppleCPUName(char* buffer, size_t size);
 
-void AppleGPUName(char* buffer, size_t size);
-
-bool AppleGPUMeetsMinSpec();
+bool AppleGPUMeetsMinSpec(RGLDevicePtr);
 
 uint32_t AppleVRAMUsed();
 uint32_t AppleVRAMTotal();

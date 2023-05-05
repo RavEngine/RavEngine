@@ -348,15 +348,7 @@ cont:
 
 	// for debug wireframes
 	auto& data = Im3d::GetAppData();
-	data.drawCallback = &DebugRender;
-
-#if __APPLE__
-	if (!AppleGPUMeetsMinSpec()) {
-		char buf[30]{ 0 };
-		AppleGPUName(buf, 30);
-		Debug::Fatal("Cannot proceed: device \"{}\" is under the minimum spec!", buf);
-	}
-#endif
+    data.drawCallback = &DebugRender;
 	
 }
 
@@ -393,6 +385,13 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	);
 
 	device = RGL::IDevice::CreateSystemDefaultDevice();
+    
+#if __APPLE__
+    if (!AppleGPUMeetsMinSpec(device)) {
+        Debug::Fatal("Cannot proceed: device \"{}\" is under the minimum spec!", device->GetBrandString());
+    }
+#endif
+    
 	mainCommandQueue = device->CreateCommandQueue(RGL::QueueType::AllCommands);
 	swapchain = device->CreateSwapchain(surface, mainCommandQueue, bufferdims.width, bufferdims.height);
 	mainCommandBuffer = mainCommandQueue->CreateCommandBuffer();
