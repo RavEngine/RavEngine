@@ -63,9 +63,12 @@ void* BufferMTL::GetMappedDataPtr() {
 }
 
 void BufferMTL::SignalRangeChanged(const Range & range){
+#if TARGET_OS_IPHONE
+#else
     if (mode == MTLResourceStorageModeManaged){
         [buffer didModifyRange:NSMakeRange(range.offset, range.length)];
     }
+#endif
 }
 }
 #endif
