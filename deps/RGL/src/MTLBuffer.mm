@@ -48,6 +48,10 @@ void BufferMTL::UpdateBufferData(untyped_span newData, decltype(BufferConfig::nE
     Assert(data.data != nullptr, "Must call MapMemory before updating a buffer");
     Assert(newData.size() + offset <= data.size, "Data would exceed end of buffer!");
     std::memcpy(static_cast<std::byte*>(data.data) + offset, newData.data(), newData.size());
+    SignalRangeChanged({
+        .offset = offset,
+        .length = static_cast<uint32_t>(newData.size())
+    });
 }
 
 decltype(BufferConfig::nElements) BufferMTL::getBufferSize() const{
@@ -56,6 +60,12 @@ decltype(BufferConfig::nElements) BufferMTL::getBufferSize() const{
 
 void* BufferMTL::GetMappedDataPtr() {
     return data.data;
+}
+
+void BufferMTL::SignalRangeChanged(const Range & range){
+    if (mode == MTLResourceStorageModeManaged){
+        [buffer didModifyRange:NSMakeRange(range.offset, range.length)];
+    }
 }
 }
 #endif

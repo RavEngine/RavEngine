@@ -5,6 +5,7 @@
 #include "RGLMTL.hpp"
 #include "MTLShaderLibrary.hpp"
 #include <simd/simd.h>
+#include <unordered_map>
 
 namespace RGL{
 

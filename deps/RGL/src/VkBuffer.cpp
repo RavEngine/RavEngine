@@ -120,6 +120,10 @@ namespace RGL {
         Assert(data.size() + offset <= mappedMemory.size, "Attempting to write more data than the buffer can hold");
         memcpy(static_cast<std::byte*>(mappedMemory.data) + offset, data.data(), data.size());
     }
+
+    void BufferVk::SignalRangeChanged(const Range & range){
+        
+    }
 }
 
 #endif

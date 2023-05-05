@@ -243,8 +243,9 @@ namespace RavEngine {
         struct MDIICommand {
             struct command {
                 WeakRef<MeshAsset> mesh;
-                VRAMSparseSet<entity_t,matrix4> transforms;
-                command(decltype(mesh) mesh, typename decltype(transforms)::index_type index, typename const decltype(transforms)::value_type& first_value) : mesh(mesh) {
+                using set_t = VRAMSparseSet<entity_t,matrix4>;
+                set_t transforms;
+                command(decltype(mesh) mesh, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh) {
                     transforms.Emplace(index, first_value);
                 }
             };
@@ -255,8 +256,9 @@ namespace RavEngine {
             struct command {
                 WeakRef<MeshAssetSkinned> mesh;
                 WeakRef<SkeletonAsset> skeleton;
-                VRAMSparseSet<entity_t, matrix4> transforms;
-                command(decltype(mesh) mesh, decltype(skeleton) skeleton, typename decltype(transforms)::index_type index, typename const decltype(transforms)::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
+                using set_t = VRAMSparseSet<entity_t,matrix4>;
+                set_t transforms;
+                command(decltype(mesh) mesh, decltype(skeleton) skeleton, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
                     transforms.Emplace(index, first_value);
                 }
             };

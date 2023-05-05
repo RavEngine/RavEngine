@@ -386,7 +386,9 @@ endif()
 if(TARGET_APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
-	add_definitions("-x objective-c++")
+	set_source_files_properties(${MM_SOURCES} PROPERTIES
+		COMPILE_FLAGS "-x objective-c++"
+	)
 endif()
 file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )

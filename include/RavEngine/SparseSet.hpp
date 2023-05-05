@@ -9,7 +9,7 @@ namespace RavEngine {
         constexpr static index_t default_index = std::numeric_limits<index_t>::max();
         constexpr static index_t INVALID_INDEX = default_index;
         using index_type = index_t;
-        using value_type = container_t::value_type;
+        using value_type = typename container_t::value_type;
     private:
         container_t dense_set;
         std::vector<index_t> sparse_set{ default_index };

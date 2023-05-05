@@ -42,8 +42,9 @@ RGLShaderLibraryPtr RavEngine::LoadShaderByFilename(const std::string& name, RGL
 
     auto& resources = GetApp()->GetResources();
 #if __APPLE__
-    device->CreateShaderLibraryFromName(vertShaderPath);
-    device->CreateShaderLibraryFromName(fragShaderPath);
+    auto name_copy = name;
+    std::replace(name_copy.begin(),name_copy.end(),'.','_');
+    device->CreateShaderLibraryFromName(name_copy);
 #else
 #if 0
     auto vertex_src = resources.FileContentsAt<std::vector<uint8_t>>(vertShaderPath.c_str());

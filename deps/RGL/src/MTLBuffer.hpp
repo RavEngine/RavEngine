@@ -21,6 +21,8 @@ namespace RGL{
         void SetBufferData(untyped_span data, decltype(BufferConfig::nElements) offset = 0) ;
         decltype(BufferConfig::nElements) getBufferSize() const final;
         void* GetMappedDataPtr() final;
+        
+        void SignalRangeChanged(const Range&) final;
         virtual ~BufferMTL(){}
     };
 }
