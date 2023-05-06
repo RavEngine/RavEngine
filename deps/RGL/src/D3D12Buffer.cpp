@@ -27,10 +27,19 @@ namespace RGL {
         auto t = CD3DX12_RESOURCE_DESC::Buffer(size_bytes, isWritable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE );
         auto state = D3D12_RESOURCE_STATE_GENERIC_READ;
 
+        if (config.access == RGL::BufferAccess::Private) {
+            state = D3D12_RESOURCE_STATE_COPY_DEST;
+            v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+        }
+
         if (config.options.TransferDestination) {
             state = D3D12_RESOURCE_STATE_COPY_DEST;
             v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
         }
+        if (config.type.IndirectBuffer) {
+            state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+        }
+
         DX_CHECK(device->device->CreateCommittedResource(
             &v,
             D3D12_HEAP_FLAG_NONE,

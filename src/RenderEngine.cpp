@@ -853,9 +853,10 @@ void RavEngine::RenderEngine::createGBuffers()
 	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
 	auto tmpfence = device->CreateFence(false);
 	tmpcmd->Begin();
-	for (const auto& ptr : { diffuseTexture , normalTexture, lightingTexture, depthStencil }) {
+	for (const auto& ptr : { diffuseTexture , normalTexture, lightingTexture }) {
 		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
 	}
+	tmpcmd->TransitionResource(depthStencil.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 	tmpcmd->End();
 	tmpcmd->Commit({
 		.signalFence = tmpfence

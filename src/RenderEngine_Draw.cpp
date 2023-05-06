@@ -71,7 +71,7 @@ namespace RavEngine {
 		};
 
 		transitionGbuffers(RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal);
-		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
+		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
 
 		// do static meshes
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
@@ -97,7 +97,7 @@ namespace RavEngine {
 		mainCommandBuffer->EndRendering();
 
 		transitionGbuffers(RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal);
-		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
+		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 
 		// do lighting pass
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);

@@ -25,13 +25,13 @@ namespace RGL {
 
 		UINT dsvIDX = unallocated, rtvIDX = unallocated, srvIDX = unallocated;
 
-		bool dsvAllocated() {
+		bool dsvAllocated() const{
 			return dsvIDX != unallocated;
 		}
-		bool rtvAllocated() {
+		bool rtvAllocated() const{
 			return rtvIDX != unallocated;
 		}
-		bool srvAllocated() {
+		bool srvAllocated() const{
 			return srvIDX != unallocated;
 		}
 
@@ -40,7 +40,7 @@ namespace RGL {
 		TextureD3D12(decltype(owningDevice), const TextureConfig&, untyped_span bytes);
 		TextureD3D12(decltype(owningDevice), const TextureConfig&);
 
-		void PlaceInHeaps(const std::shared_ptr<RGL::DeviceD3D12>& owningDevice, const DXGI_FORMAT& format, const RGL::TextureConfig& config);
+		void PlaceInHeaps(const std::shared_ptr<RGL::DeviceD3D12>& owningDevice, DXGI_FORMAT format, const RGL::TextureConfig& config);
 
 
 		Dimension GetSize() const final;

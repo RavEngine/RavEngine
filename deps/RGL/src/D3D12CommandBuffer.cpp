@@ -304,6 +304,7 @@ namespace RGL {
 	void CommandBufferD3D12::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position)
 	{
 		auto casted = static_cast<const TextureD3D12*>(texture);
+		
 		auto beforeState = rgl2d3d12resourcestate(current);
 		auto afterState = rgl2d3d12resourcestate(target);
 		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(

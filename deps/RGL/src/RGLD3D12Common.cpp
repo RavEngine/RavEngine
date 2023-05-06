@@ -119,15 +119,19 @@ namespace RGL {
         case decltype(layout)::Reinitialized:
             return D3D12_RESOURCE_STATE_COMMON;
 
-        case decltype(layout)::ColorAttachmentOptimal:
         case decltype(layout)::DepthStencilAttachmentOptimal:
-        case decltype(layout)::DepthAttachmentOptimal:
         case decltype(layout)::StencilAttachmentOptimal:
+        case decltype(layout)::DepthAttachmentOptimal:
+            return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+        case decltype(layout)::ColorAttachmentOptimal:
         case decltype(layout)::AttachmentOptimal:
             return D3D12_RESOURCE_STATE_RENDER_TARGET;
-
+        
+        case decltype(layout)::DepthReadOnlyOptimal:
+        case decltype(layout)::StencilReadOnlyOptimal:
         case decltype(layout)::DepthStencilReadOnlyOptimal:
-            return D3D12_RESOURCE_STATE_DEPTH_READ;
+            return D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
         case decltype(layout)::ShaderReadOnlyOptimal:
             return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
@@ -141,10 +145,6 @@ namespace RGL {
         case decltype(layout)::DepthReadOnlyStencilAttachmentOptimal:
         case decltype(layout)::DepthAttachmentStencilReadOnlyOptimal:
             return D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_RENDER_TARGET;
-
-        case decltype(layout)::DepthReadOnlyOptimal:
-        case decltype(layout)::StencilReadOnlyOptimal:
-            return D3D12_RESOURCE_STATE_DEPTH_READ;
 
         case decltype(layout)::ReadOnlyOptimal:
             return D3D12_RESOURCE_STATE_GENERIC_READ;
