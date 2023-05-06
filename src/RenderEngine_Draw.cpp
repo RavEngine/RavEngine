@@ -170,6 +170,7 @@ namespace RavEngine {
 		mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 		mainCommandBuffer->SetVertexBytes(lightUBO,0);
+		mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, lightingTexture.get(), 0);
 		mainCommandBuffer->Draw(3);
 

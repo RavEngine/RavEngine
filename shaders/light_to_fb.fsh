@@ -2,6 +2,7 @@
 uniform sampler2D s_light;
 
 layout(push_constant) uniform UniformBufferObject{
+	mat4 viewProj;
 	ivec4 viewRect;
 } ubo;
 
