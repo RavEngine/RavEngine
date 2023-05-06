@@ -82,7 +82,7 @@ namespace RGL {
     };
 
 
-    RGLDevicePtr RGL::CreateDefaultDeviceVk() {
+    RGLDevicePtr CreateDefaultDeviceVk() {
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
         // now select and configure a device

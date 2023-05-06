@@ -7,9 +7,10 @@
 #include <stdexcept>
 #include <cstring>
 
+STATIC(RGL::instance) = VK_NULL_HANDLE;
+
 namespace RGL {
 
-    STATIC(RGL::instance) = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
     VmaAllocator vkallocator; 
@@ -66,7 +67,7 @@ namespace RGL {
     }
 
 
-    void RGL::InitVk(const InitOptions& init) {
+    void InitVk(const InitOptions& init) {
         Assert(CanInitAPI(RGL::API::Vulkan), "Vulkan cannot be initialized on this platform.");
         RGL::currentAPI = API::Vulkan;
 
@@ -146,12 +147,12 @@ namespace RGL {
         
     }
 
-    void RGL::DeinitVk() {
+    void DeinitVk() {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         vkDestroyInstance(instance, nullptr);
     }
 
-    SwapChainSupportDetails RGL::querySwapChainSupport(const VkPhysicalDevice device, const VkSurfaceKHR surface) {
+    SwapChainSupportDetails querySwapChainSupport(const VkPhysicalDevice device, const VkSurfaceKHR surface) {
         // inquire surface capabilities
         SwapChainSupportDetails details;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
@@ -175,7 +176,7 @@ namespace RGL {
 
         return details;
     }
-    VkSampleCountFlagBits RGL::RGLMSA2VK(const RGL::MSASampleCount& sc)
+    VkSampleCountFlagBits RGLMSA2VK(const RGL::MSASampleCount& sc)
     {
         auto samplecount = sc;
         {
