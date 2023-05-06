@@ -110,49 +110,55 @@ namespace RavEngine {
 
 		mainCommandBuffer->BeginRendering(lightingRenderPass);
 		// ambient lights
-		mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
-
-		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-		mainCommandBuffer->SetVertexBytes(lightUBO, 0);
-		mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-		mainCommandBuffer->SetVertexBuffer(worldOwning->ambientLightData.GetDense().get_underlying().buffer, {
-			.bindingPosition = 1
-		});
-		mainCommandBuffer->Draw(3, {
-			.nInstances = worldOwning->ambientLightData.DenseSize()
-		});
+        if (worldOwning->ambientLightData.DenseSize() > 0){
+            mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
+            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
+            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+            
+            mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+            mainCommandBuffer->SetVertexBytes(lightUBO, 0);
+            mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
+            mainCommandBuffer->SetVertexBuffer(worldOwning->ambientLightData.GetDense().get_underlying().buffer, {
+                .bindingPosition = 1
+            });
+            mainCommandBuffer->Draw(3, {
+                .nInstances = worldOwning->ambientLightData.DenseSize()
+            });
+        }
 
 		// directional lights
-		mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
-		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-		mainCommandBuffer->SetVertexBytes(lightUBO, 0);
-		mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-		mainCommandBuffer->SetVertexBuffer(worldOwning->directionalLightData.GetDense().get_underlying().buffer, {
-			.bindingPosition = 1
-			});
-		mainCommandBuffer->Draw(3, {
-			.nInstances = worldOwning->directionalLightData.DenseSize()
-			});
+        if (worldOwning->directionalLightData.DenseSize() > 0){
+            mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
+            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
+            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+            mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+            mainCommandBuffer->SetVertexBytes(lightUBO, 0);
+            mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
+            mainCommandBuffer->SetVertexBuffer(worldOwning->directionalLightData.GetDense().get_underlying().buffer, {
+                .bindingPosition = 1
+            });
+            mainCommandBuffer->Draw(3, {
+                .nInstances = worldOwning->directionalLightData.DenseSize()
+            });
+        }
 
 		// point lights
-		mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
-		mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
-		mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
-		mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
-		mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
-		mainCommandBuffer->SetVertexBuffer(worldOwning->pointLightData.GetDense().get_underlying().buffer, {
-			.bindingPosition = 1
-		});
-		mainCommandBuffer->DrawIndexed(nPointLightIndices, {
-			.nInstances = worldOwning->pointLightData.DenseSize()
-		});
+        if (worldOwning->pointLightData.DenseSize() > 0){
+            mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
+            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
+            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
+            mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
+            mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
+            mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
+            mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
+            mainCommandBuffer->SetVertexBuffer(worldOwning->pointLightData.GetDense().get_underlying().buffer, {
+                .bindingPosition = 1
+            });
+            mainCommandBuffer->DrawIndexed(nPointLightIndices, {
+                .nInstances = worldOwning->pointLightData.DenseSize()
+            });
+        }
 
 		mainCommandBuffer->EndRendering();
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);

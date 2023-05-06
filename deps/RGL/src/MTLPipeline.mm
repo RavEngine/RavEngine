@@ -21,6 +21,10 @@ std::pair<MTLVertexFormat,uint32_t>  rgl2mtlvx(VertexAttributeFormat format){
             return std::make_pair(MTLVertexFormatFloat2, sizeof(float)*2);
         case decltype(format)::R32G32B32_SignedFloat:
             return std::make_pair(MTLVertexFormatFloat3, sizeof(float)*3);
+        case decltype(format)::R32G32B32A32_SignedFloat:
+            return std::make_pair(MTLVertexFormatFloat4, sizeof(float)*4);
+        default:
+            FatalError("Format is not implemented");
     }
 }
 

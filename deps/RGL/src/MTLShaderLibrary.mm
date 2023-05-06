@@ -9,6 +9,7 @@ namespace RGL{
 ShaderLibraryMTL::ShaderLibraryMTL(decltype(owningDevice) owningDevice, const std::string_view fnstr_view) : owningDevice(owningDevice){
     NSString* fnstr = [NSString stringWithUTF8String:fnstr_view.data()];
     function = [owningDevice->defaultLibrary newFunctionWithName:fnstr];
+    Assert(function != nil, "Failed to load metal function!");
 }
 ShaderLibraryMTL::ShaderLibraryMTL(decltype(owningDevice) owningDevice, const std::string_view source, const FromSourceConfig& config) : owningDevice(owningDevice){
     auto result = librglc::CompileString(source, librglc::API::Metal, static_cast<librglc::ShaderStage>(config.stage), {

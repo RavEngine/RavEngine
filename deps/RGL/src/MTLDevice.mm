@@ -23,6 +23,7 @@ RGLDevicePtr CreateDefaultDeviceMTL(){
 
 DeviceMTL::DeviceMTL(decltype(device) device)  : device(device){
     defaultLibrary = [device newDefaultLibrary];
+    uploadQueue = [device newCommandQueue];
 }
 
 std::string DeviceMTL::GetBrandString() {

@@ -11,6 +11,7 @@ namespace RGL{
 	struct DeviceMTL : public IDevice, public std::enable_shared_from_this<DeviceMTL>{
 		OBJC_ID(MTLDevice) device = nullptr;
         OBJC_ID(MTLLibrary) defaultLibrary = nullptr;
+        OBJC_ID(MTLCommandQueue) uploadQueue = nullptr;
 	
         DeviceMTL(decltype(device) device);
 		std::string GetBrandString() final;

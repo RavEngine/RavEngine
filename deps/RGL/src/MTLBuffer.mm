@@ -7,16 +7,12 @@
 namespace RGL{
 
 BufferMTL::BufferMTL(decltype(owningDevice) owningDevice, const BufferConfig& config) : owningDevice(owningDevice){
-    //TODO: make access configurable and options
-    mode =
-#if TARGET_OS_IPHONE
-    MTLResourceStorageModeShared;
-#else
-    MTLResourceStorageModeManaged;
-#endif
     
     if (config.access == RGL::BufferAccess::Shared){
         mode = MTLResourceStorageModeShared;
+    }
+    else{
+        mode = MTLResourceStorageModePrivate;
     }
     
     MTL_CHECK(buffer = [owningDevice->device newBufferWithLength:config.nElements * config.stride options: mode]);
@@ -39,13 +35,31 @@ void BufferMTL::UnmapMemory(){
 }
 
 void BufferMTL::SetBufferData(untyped_span data, decltype(BufferConfig::nElements) offset){
-    MapMemory();
-    UpdateBufferData(data, offset);
-    UnmapMemory();
+    if (mode == MTLResourceStorageModeShared){
+        UpdateBufferData(data, offset);
+        UnmapMemory();
+    }
+    else{
+        // create a staging buffer and populate it with the data
+        auto tmpbuffer = [owningDevice->device newBufferWithLength:data.size() options:MTLResourceStorageModeShared];
+        auto dataptr = [tmpbuffer contents];
+        std::memcpy(dataptr, data.data(), data.size());
+        
+        // create copy commands
+        auto commandBuffer = [owningDevice->uploadQueue commandBuffer];
+        auto blitEncoder = [commandBuffer blitCommandEncoder];
+        [blitEncoder copyFromBuffer:tmpbuffer sourceOffset:0 toBuffer:buffer destinationOffset:offset size:data.size()];
+        [blitEncoder endEncoding];
+        
+        [commandBuffer commit];
+        [commandBuffer waitUntilCompleted];
+    }
 }
 
 void BufferMTL::UpdateBufferData(untyped_span newData, decltype(BufferConfig::nElements) offset){
-    Assert(data.data != nullptr, "Must call MapMemory before updating a buffer");
+    if (!data.data){
+        MapMemory();
+    }
     Assert(newData.size() + offset <= data.size, "Data would exceed end of buffer!");
     std::memcpy(static_cast<std::byte*>(data.data) + offset, newData.data(), newData.size());
     SignalRangeChanged({
