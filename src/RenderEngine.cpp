@@ -710,7 +710,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		}
 	});
 
-	lightToFBRenderPipeline = device->CreateRenderPipeline({
+    lightToFBRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 			.stages = {
 				{
 					.type = RGL::ShaderStageDesc::Type::Vertex,
@@ -756,14 +756,14 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 						.format = RGL::TextureFormat::BGRA8_Unorm
 					},
 				}
-			},
+            },
 			.depthStencilConfig = {
 				.depthFormat = RGL::TextureFormat::D32SFloat,
 				.depthTestEnabled = true,
 				.depthWriteEnabled = false,
 				.depthFunction = RGL::DepthCompareFunction::Greater,
 			},
-			.pipelineLayout = lightToFBPipelineLayout,
+            .pipelineLayout = lightToFBPipelineLayout,
 		});
 
 	// lighting meshes
