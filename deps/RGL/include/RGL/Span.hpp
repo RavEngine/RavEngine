@@ -27,7 +27,7 @@ namespace RGL {
     struct untyped_owning_span{
         void* ptr = nullptr;
         size_t size_bytes = 0;
-        constexpr static freer free_fn;
+        constexpr static freer free_fn{};
         
         untyped_owning_span(){}
         untyped_owning_span(decltype(ptr) ptr, decltype(size_bytes) size_bytes) : ptr(ptr), size_bytes(size_bytes) {}
