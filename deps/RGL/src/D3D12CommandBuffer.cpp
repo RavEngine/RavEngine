@@ -232,7 +232,7 @@ namespace RGL {
 
 		commandList->RSSetScissorRects(1, &m_ScissorRect);
 	}
-	void CommandBufferD3D12::SetRenderPipelineBarrier(const BarrierConfig& config)
+	void CommandBufferD3D12::SetResourceBarrier(const ResourceBarrierConfig& config)
 	{
 		auto totalBarriers = config.buffers.size() + config.textures.size();
 		stackarray(barriers, D3D12_RESOURCE_BARRIER, totalBarriers);
@@ -263,6 +263,10 @@ namespace RGL {
 		}
 
 		commandList->ResourceBarrier(totalBarriers, barriers);
+	}
+	void CommandBufferD3D12::SetRenderPipelineBarrier(const PipelineBarrierConfig&)
+	{
+
 	}
 	void CommandBufferD3D12::CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer)
 	{

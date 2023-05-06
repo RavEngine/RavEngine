@@ -64,7 +64,9 @@ struct BufferMTL;
 
         void Commit(const CommitConfig&) final;
         
-        void SetRenderPipelineBarrier(const BarrierConfig&) final;
+        void SetResourceBarrier(const ResourceBarrierConfig&) final;
+
+        void SetRenderPipelineBarrier(const PipelineBarrierConfig&) final;
         
         virtual void ExecuteIndirectIndexed(const IndirectConfig&) final;
         virtual void ExecuteIndirect(const IndirectConfig&) final;

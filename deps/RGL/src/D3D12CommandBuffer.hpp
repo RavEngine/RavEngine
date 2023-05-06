@@ -63,7 +63,9 @@ namespace RGL {
 		void SetViewport(const Viewport&) final;
 		void SetScissor(const Rect&) final;
 
-		void SetRenderPipelineBarrier(const BarrierConfig&) final;
+		void SetResourceBarrier(const ResourceBarrierConfig&) final;
+
+		void SetRenderPipelineBarrier(const PipelineBarrierConfig&) final;
 
 		void CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) final;
 

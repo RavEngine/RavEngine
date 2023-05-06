@@ -270,7 +270,7 @@ void CommandBufferMTL::CopyTextureToBuffer(RGL::ITexture *sourceTexture, const R
     [blitencoder endEncoding];
 }
 
-void CommandBufferMTL::SetRenderPipelineBarrier(const BarrierConfig& config){
+void CommandBufferMTL::SetResourceBarrier(const ResourceBarrierConfig& config){
     auto size = config.buffers.size() + config.textures.size();
     stackarray(resources, id<MTLResource>, size);
     
@@ -285,6 +285,10 @@ void CommandBufferMTL::SetRenderPipelineBarrier(const BarrierConfig& config){
     
     constexpr auto stages = MTLRenderStageVertex | MTLRenderStageFragment;
     [currentCommandEncoder memoryBarrierWithResources:resources count:size afterStages:stages beforeStages:stages];
+}
+
+void CommandBufferMTL::SetRenderPipelineBarrier(const PipelineBarrierConfig&) {
+
 }
 
 void CommandBufferMTL::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) {

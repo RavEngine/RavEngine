@@ -421,7 +421,7 @@ namespace RGL {
 		owningQueue->Submit(this, config);
 		swapchainsToSignal.clear();
 	}
-	void CommandBufferVk::SetRenderPipelineBarrier(const BarrierConfig& config)
+	void CommandBufferVk::SetResourceBarrier(const ResourceBarrierConfig& config)
 	{
 		stackarray(bufferBarriers, VkBufferMemoryBarrier2, config.buffers.size());
 
@@ -484,6 +484,43 @@ namespace RGL {
 			.imageMemoryBarrierCount = static_cast<uint32_t>(config.textures.size()),
 			.pImageMemoryBarriers = textureBarriers
 		};
+		vkCmdPipelineBarrier2(
+			commandBuffer,
+			&depInfo
+		);
+	}
+	void CommandBufferVk::SetRenderPipelineBarrier(const PipelineBarrierConfig& config)
+	{
+		VkPipelineStageFlagBits2 stageFlags = 0;
+		if (config.Vertex) {
+			stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+		}
+		if (config.Fragment) {
+			stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		}
+		if (config.Compute) {
+			stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		}
+
+		VkMemoryBarrier2 memBarrier{
+			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+			.pNext = nullptr,
+			.srcStageMask = 0,				// sync before
+			.srcAccessMask = 0,				// access before
+			.dstStageMask = stageFlags,		// sync after
+			.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,				// access after
+		};
+
+		VkDependencyInfo depInfo{
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.pNext = nullptr,
+			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+			.memoryBarrierCount = 1,
+			.pMemoryBarriers = &memBarrier,
+			.bufferMemoryBarrierCount = 0,
+			.imageMemoryBarrierCount = 0,
+		};
+
 		vkCmdPipelineBarrier2(
 			commandBuffer,
 			&depInfo

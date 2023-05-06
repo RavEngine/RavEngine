@@ -71,7 +71,8 @@ namespace RGL {
 
 		void Commit(const CommitConfig&) final;
 
-		void SetRenderPipelineBarrier(const BarrierConfig&) final;
+		void SetResourceBarrier(const ResourceBarrierConfig&) final;
+		void SetRenderPipelineBarrier(const PipelineBarrierConfig&) final;
 
 		void ExecuteIndirectIndexed(const IndirectConfig&) final;
 		void ExecuteIndirect(const IndirectConfig&) final;

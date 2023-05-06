@@ -104,6 +104,10 @@ namespace RavEngine {
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
 
+		mainCommandBuffer->SetRenderPipelineBarrier({
+			.Fragment = true
+		});
+
 		mainCommandBuffer->BeginRendering(lightingRenderPass);
 		// ambient lights
 		mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
@@ -151,7 +155,7 @@ namespace RavEngine {
 		});
 
 		mainCommandBuffer->EndRendering();
-		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
+		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
 
 		// the on-screen render pass
 		// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
@@ -159,6 +163,7 @@ namespace RavEngine {
 		finalRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 
 		mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
+
 		mainCommandBuffer->BeginRendering(finalRenderPass);
 
 		// start with the results of lighting
