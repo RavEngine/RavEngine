@@ -75,6 +75,18 @@ namespace RavEngine {
 			this->owningDevice = owningDevice;
 			resize(initialSize);
 		}
+        
+        VRAMVector(){
+            
+        }
+        
+        VRAMVector(const VRAMVector&) = delete; // disallow copying
+        
+        VRAMVector(VRAMVector&& other){         // move construction
+            buffer = std::move(other.buffer);
+            nValues = other.nValues;
+            settings = other.settings;
+        }
 
 		~VRAMVector() {
 			TrashOldVector(buffer);

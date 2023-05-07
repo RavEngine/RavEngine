@@ -258,7 +258,8 @@ void World::setupRenderTasks(){
                     assert(it != row.commands.end());
                     auto& vec = *it;
                     // write new matrix
-                    vec.transforms.GetForSparseIndex(owner.GetIdInWorld()) = trns.CalculateWorldMatrix();
+                    auto& mtx = vec.transforms.GetForSparseIndex(owner.GetIdInWorld());
+                    mtx = trns.CalculateWorldMatrix();
                 });
 
                 trns.ClearTickDirty();
