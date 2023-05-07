@@ -269,24 +269,25 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 	}
 	//perform drawing here
 	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
-	const auto verts = drawList.m_vertexCount;
+	const auto nverts = drawList.m_vertexCount;
 
 	auto vertBuffer = device->CreateBuffer({
-		verts,
+		uint32_t(nverts),
 		{.VertexBuffer = true},
 		sizeof(Im3d::VertexData),
-		RGL::BufferAccess::Private,
+		RGL::BufferAccess::Shared,
 	});
-	vertBuffer->SetBufferData({ vertexdata, verts });
+	vertBuffer->SetBufferData({ vertexdata, nverts });
 
 	auto viewProj = *static_cast<glm::mat4*>(Im3d::GetAppData().m_appData);
 
 	mainCommandBuffer->SetVertexBytes(viewProj,0);
 	mainCommandBuffer->SetVertexBuffer(vertBuffer);
-	mainCommandBuffer->Draw(verts);
+	mainCommandBuffer->Draw(nverts);
 
 	// trash the buffer now that we're done with it
 	gcBuffers.enqueue(vertBuffer);
 
 #endif
+
 }
