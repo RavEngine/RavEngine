@@ -239,6 +239,7 @@ auto genIcosphere(uint16_t subdivs){
 }
 
 // adapted from: https://gist.github.com/andresfelipemendez/ef4f832084822bcf400600879c3b02e1
+// creates a cone with tip at (0,0,0) extending along -y
 auto generateCone(float radius, float height, int numberOfSides)
 {
 	using Vector3 = glm::vec3;
@@ -257,18 +258,17 @@ auto generateCone(float radius, float height, int numberOfSides)
 	auto Rotate = [](Vector3 o, float r) {
 		float ca = std::cos(r);
 		float sa = std::sin(r);
-		return Vector3(ca * o.x - sa * o.y, 0,  sa * o.x + ca * o.y);
+		return Vector3(ca * o.x - sa * o.z, o.y,  sa * o.x + ca * o.z);
 	};
 
-	Vector3 h(0, 0, height);
 	float angle = 360 / numberOfSides;
 	for (int i = 0; i < numberOfSides; i++) {
-		sides.push_back(Rotate(Vector3(0, 0, radius), (angle * i) * deg2rad));
+		sides.push_back(Rotate(Vector3(0, -height, radius), (angle * i) * deg2rad));
 	}
 
 	vertices = sides;	// copy
 	vertices.emplace_back(0,0,0);
-	vertices.push_back(h);
+	vertices.emplace_back(0,-height,0);
 
 	int bottomIndex = vertices.size() - 2;
 	int heightIndex = vertices.size() - 1;
