@@ -160,6 +160,24 @@ namespace RavEngine {
             });
         }
 
+		// spot lights
+		if (worldOwning->spotLightData.DenseSize() > 0) {
+			mainCommandBuffer->BindRenderPipeline(spotLightRenderPipeline);
+			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
+			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
+			mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
+			mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
+			mainCommandBuffer->SetVertexBuffer(spotLightVertexBuffer);
+			mainCommandBuffer->SetIndexBuffer(spotLightIndexBuffer);
+			mainCommandBuffer->SetVertexBuffer(worldOwning->spotLightData.GetDense().get_underlying().buffer, {
+				.bindingPosition = 1
+			});
+			mainCommandBuffer->DrawIndexed(nSpotLightIndices, {
+				.nInstances = worldOwning->spotLightData.DenseSize()
+			});
+		}
+
 		mainCommandBuffer->EndRendering();
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
 

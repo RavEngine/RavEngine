@@ -10,7 +10,6 @@
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
 #include "AudioSource.hpp"
-#include "FrameData.hpp"
 #include <taskflow/taskflow.hpp>
 #include "Types.hpp"
 #include "AddRemoveAction.hpp"
@@ -18,6 +17,10 @@
 #include "SparseSet.hpp"
 #include <boost/callable_traits.hpp>
 #include "VRAMSparseSet.hpp"
+#include "MeshAsset.hpp"
+#include "MeshAssetSkinned.hpp"
+#include "BuiltinMaterials.hpp"
+#include "Light.hpp"
 
 namespace RavEngine {
 	struct Entity;
@@ -283,8 +286,15 @@ namespace RavEngine {
             glm::mat4 worldTransform;
             glm::vec4 colorIntensity;
         };
+
+        struct SpotLightDataUpload {
+            glm::mat4 worldTransform;
+            glm::vec4 colorIntensity;
+            glm::vec2 coneAndPenumbra;
+        };
+
         VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
-        UnorderedSparseSet<entity_t, FrameData::StoredLight<SpotLight>> spotLightData;
+        VRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
         
     public:
         struct PolymorphicIndirection{

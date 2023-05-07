@@ -57,11 +57,10 @@ namespace RavEngine {
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
 
-		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, lightToFBRenderPipeline;
-		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer;
-		uint32_t nPointLightIndices;
+		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline;
+		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer;
+		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
 
-		static Ref<MeshAsset> spotLightMesh;
     public:
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,

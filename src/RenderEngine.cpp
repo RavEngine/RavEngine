@@ -47,6 +47,7 @@
 #include <RGL/Pipeline.hpp>
 #include <RGL/RenderPass.hpp>
 #include "MeshAsset.hpp"
+#include <numbers>
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"
@@ -72,8 +73,6 @@ RenderEngine::vs RenderEngine::VideoSettings;
 static std::optional<GUIComponent> debuggerContext;
 STATIC(RenderEngine::debuggerInput);
 #endif
-
-STATIC(RenderEngine::spotLightMesh);
 
 static constexpr uint16_t shadowMapSize = 2048;
 
@@ -238,6 +237,62 @@ auto genIcosphere(uint16_t subdivs){
 
     return data;
 }
+
+// adapted from: https://gist.github.com/andresfelipemendez/ef4f832084822bcf400600879c3b02e1
+auto generateCone(float radius, float height, int numberOfSides)
+{
+	using Vector3 = glm::vec3;
+
+	std::vector<Vector3> sides;
+	std::vector<Vector3> vertices;
+	std::vector<uint16_t> triangles;
+
+	struct Mesh {
+		decltype(vertices) vertices;
+		decltype(triangles) indices;
+	};
+
+	constexpr auto deg2rad = (std::numbers::pi * 2) / 360.f;
+
+	auto Rotate = [](Vector3 o, float r) {
+		float ca = std::cos(r);
+		float sa = std::sin(r);
+		return Vector3(ca * o.x - sa * o.y, 0,  sa * o.x + ca * o.y);
+	};
+
+	Vector3 h(0, 0, height);
+	float angle = 360 / numberOfSides;
+	for (int i = 0; i < numberOfSides; i++) {
+		sides.push_back(Rotate(Vector3(0, 0, radius), (angle * i) * deg2rad));
+	}
+
+	vertices = sides;	// copy
+	vertices.emplace_back(0,0,0);
+	vertices.push_back(h);
+
+	int bottomIndex = vertices.size() - 2;
+	int heightIndex = vertices.size() - 1;
+
+	for (int i = 0; i < sides.size(); i++)
+	{
+		int nextVertexCicle = (i + 1) % sides.size();
+
+		triangles.push_back(nextVertexCicle);
+		triangles.push_back(i);
+		triangles.push_back(bottomIndex);
+
+		triangles.push_back(i);
+		triangles.push_back(nextVertexCicle);
+		triangles.push_back(heightIndex);
+	}
+
+	Mesh cube;
+	cube.vertices = std::move(vertices);
+	cube.indices = std::move(triangles);
+
+	return cube;
+}
+
 
 
 void DebugRender(const Im3d::DrawList& drawList){
@@ -683,6 +738,57 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				},
 		}, pointLightRenderPipelineLayout);
 
+	auto spotLightFSH = LoadShaderByFilename("spotlight.fsh", device);
+	auto spotLightVSH = LoadShaderByFilename("spotlight.vsh", device);
+
+	spotLightRenderPipeline = createLightingPipeline(spotLightVSH, spotLightFSH, sizeof(VertexNormalUV), sizeof(World::SpotLightDataUpload), {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+				},
+				// per-instance attrs - matrix
+				{
+					.location = 1,
+					.binding = 1,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 2,
+					.binding = 1,
+					.offset = sizeof(glm::vec4),
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 3,
+					.binding = 1,
+					.offset = sizeof(glm::vec4) * 2,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				{
+					.location = 4,
+					.binding = 1,
+					.offset = sizeof(glm::vec4) * 3,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				// colorintensity
+				{
+					.location = 5,
+					.binding = 1,
+					.offset = sizeof(glm::vec4) * 4,
+					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+				},
+				// penumbra angle
+				{
+					.location = 6,
+					.binding = 1,
+					.offset = sizeof(glm::vec4) * 5,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+		}, pointLightRenderPipelineLayout);
+
 	// copy shader
 	auto lightToFbFSH = LoadShaderByFilename("light_to_fb.fsh",device);
 	auto lightToFbVSH = LoadShaderByFilename("light_to_fb.vsh",device);
@@ -799,6 +905,26 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	pointLightVertexBuffer->SetBufferData({ pointLightMeshData.Positions.data(), pointLightMeshData.Positions.size() * sizeof(pointLightMeshData.Positions[0]) });
 	pointLightIndexBuffer->SetBufferData({ pointLightMeshData.TriangleIndices.data(), pointLightMeshData.TriangleIndices.size() * sizeof(pointLightMeshData.TriangleIndices[0]) });
 	nPointLightIndices = pointLightMeshData.TriangleIndices.size();
+
+	auto coneMesh = generateCone(1, 1, 16);
+
+	spotLightVertexBuffer = device->CreateBuffer({
+		uint32_t(coneMesh.vertices.size()),
+		{.VertexBuffer = true},
+		sizeof(float) * 3,
+		RGL::BufferAccess::Private
+	});
+
+	spotLightIndexBuffer = device->CreateBuffer({
+		uint32_t(coneMesh.indices.size()),
+		{.IndexBuffer = true},
+		sizeof(uint16_t),
+		RGL::BufferAccess::Private
+	});
+
+	spotLightVertexBuffer->SetBufferData({coneMesh.vertices.data(), coneMesh.vertices.size() * sizeof(coneMesh.vertices[0])});
+	spotLightIndexBuffer->SetBufferData({coneMesh.indices.data(), coneMesh.indices.size() * sizeof(coneMesh.indices[0])});
+	nSpotLightIndices = coneMesh.indices.size();
 }
 
 void RavEngine::RenderEngine::createGBuffers()

@@ -320,11 +320,15 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    spotLightData.GetForSparseIndex(ptr->GetOwner(i)).transform = transform.CalculateWorldMatrix();
+                    spotLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
-                    spotLightData.GetForSparseIndex(ptr->GetOwner(i)).light = ptr->Get(i);
+                    auto& lightData = ptr->Get(i);
+                    auto& colorData = lightData.GetColorRGBA();
+                    auto& denseData = spotLightData.GetForSparseIndex(ptr->GetOwner(i));
+                    denseData.coneAndPenumbra = { lightData.GetConeAngle(), lightData.GetPenumbraAngle() };
+                    denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
