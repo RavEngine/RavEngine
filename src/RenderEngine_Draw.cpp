@@ -220,7 +220,9 @@ namespace RavEngine {
 					ptr.DebugDraw(dbgdraw, transform[0]);
 				}
 			}
-			});
+		});
+		Im3d::AppData& data = Im3d::GetAppData();
+		data.m_appData = &lightUBO.viewProj;
 		Im3d::GetContext().draw();
 		/*
 		if (debuggerContext) {
@@ -245,4 +247,46 @@ namespace RavEngine {
 
 		swapchain->Present(presentConfig);
 	}
+}
+
+void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
+{
+
+#ifndef NDEBUG
+	switch (drawList.m_primType) {
+	case Im3d::DrawPrimitive_Triangles:
+		mainCommandBuffer->BindRenderPipeline(im3dTriangleRenderPipeline);
+		break;
+	case Im3d::DrawPrimitive_Lines:
+		mainCommandBuffer->BindRenderPipeline(im3dLineRenderPipeline);
+		break;
+	case Im3d::DrawPrimitive_Points:
+		mainCommandBuffer->BindRenderPipeline(im3dPointRenderPipeline);
+		break;
+	default:
+		Debug::Fatal("Invalid Im3d state");
+		break;
+	}
+	//perform drawing here
+	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
+	const auto verts = drawList.m_vertexCount;
+
+	auto vertBuffer = device->CreateBuffer({
+		verts,
+		{.VertexBuffer = true},
+		sizeof(Im3d::VertexData),
+		RGL::BufferAccess::Private,
+	});
+	vertBuffer->SetBufferData({ vertexdata, verts });
+
+	auto viewProj = *static_cast<glm::mat4*>(Im3d::GetAppData().m_appData);
+
+	mainCommandBuffer->SetVertexBytes(viewProj,0);
+	mainCommandBuffer->SetVertexBuffer(vertBuffer);
+	mainCommandBuffer->Draw(verts);
+
+	// trash the buffer now that we're done with it
+	gcBuffers.enqueue(vertBuffer);
+
+#endif
 }

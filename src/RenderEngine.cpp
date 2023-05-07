@@ -293,56 +293,8 @@ auto generateCone(float radius, float height, int numberOfSides)
 	return cube;
 }
 
-
-
-void DebugRender(const Im3d::DrawList& drawList){
-#if 0
-#ifndef NDEBUG
-	switch(drawList.m_primType){
-		case Im3d::DrawPrimitive_Triangles:
-			//Set BGFX state to triangles
-			bgfx::setState(BGFX_STATE_DEFAULT);
-			break;
-		case Im3d::DrawPrimitive_Lines:
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z /*| BGFX_STATE_DEPTH_TEST_LESS*/ | BGFX_STATE_CULL_CW | BGFX_STATE_LINEAA | BGFX_STATE_PT_LINES);
-			//set BGFX state to lines
-			break;
-		case Im3d::DrawPrimitive_Points:
-			//set BGFX state to points
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA | BGFX_STATE_PT_POINTS);
-			break;
-		default:
-			Debug::Fatal("Invalid Im3d state");
-			break;
-	}
-	//perform drawing here
-	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
-	const auto verts = drawList.m_vertexCount;
-	
-	bgfx::VertexBufferHandle vbuf;
-	{
-		maybestackarray(converted, VertexColor, verts)
-		for (uint32_t x = 0; x < verts; x++) {
-			Im3d::VertexData d = vertexdata[x];
-			converted[x] = { d.m_positionSize.x,d.m_positionSize.y,d.m_positionSize.z,d.m_color };
-		}
-		vbuf = bgfx::createVertexBuffer(bgfx::copy(&converted[0], verts * sizeof(converted[0])), debuglayout);
-	}
-	
-	bgfx::IndexBufferHandle ibuf;
-	{
-		maybestackarray(indices, uint16_t, verts)
-		for (uint32_t i = 0; i < verts; i++) {
-			indices[i] = i;
-		}
-		ibuf = bgfx::createIndexBuffer(bgfx::copy(&indices[0], verts * sizeof(indices[0])));
-	}
-	
-	mat->Draw(vbuf,ibuf,matrix4(1),RenderEngine::Views::FinalBlit);
-	bgfx::destroy(vbuf);
-	bgfx::destroy(ibuf);
-#endif
-#endif
+void DebugRenderWrapper(const Im3d::DrawList& drawList){
+	GetApp()->GetRenderEngine().DebugRender(drawList);
 }
 
 /**
@@ -403,7 +355,7 @@ cont:
 
 	// for debug wireframes
 	auto& data = Im3d::GetAppData();
-    data.drawCallback = &DebugRender;
+    data.drawCallback = &DebugRenderWrapper;
 	
 }
 
@@ -925,6 +877,80 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	spotLightVertexBuffer->SetBufferData({coneMesh.vertices.data(), coneMesh.vertices.size() * sizeof(coneMesh.vertices[0])});
 	spotLightIndexBuffer->SetBufferData({coneMesh.indices.data(), coneMesh.indices.size() * sizeof(coneMesh.indices[0])});
 	nSpotLightIndices = coneMesh.indices.size();
+
+	// debug render pipelines
+#ifndef NDEBUG
+	auto debugVSH = LoadShaderByFilename("debug.vsh", device);
+	auto debugFSH = LoadShaderByFilename("debug.fsh", device);
+	auto createDebugRenderPipeline = [this, debugVSH, debugFSH](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
+		RGL::RenderPipelineDescriptor rpd{
+			.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = debugVSH,
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = debugFSH,
+				}
+			},
+			.vertexConfig = {
+				.vertexBindings = {
+					{
+						.binding = 0,
+						.stride = sizeof(Im3d::VertexData),
+					},
+				},
+				.attributeDescs = {
+					{
+						.location = 0,
+						.binding = 0,
+						.offset = 0,
+						.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+					},
+					{
+						.location = 1,
+						.binding = 0,
+						.offset = sizeof(glm::vec3),
+						.format = RGL::VertexAttributeFormat::R32_Uint,
+					},
+				}
+			},
+			.inputAssembly = {
+				.topology = topology,
+			},
+			.viewport = {
+				.width = width,
+				.height = height
+			},
+			.scissor = {
+				.extent = {width, height}
+			},
+			.rasterizerConfig = {
+				.polygonOverride = RGL::PolygonOverride::Line,
+				.windingOrder = RGL::WindingOrder::Counterclockwise,
+			},
+			.colorBlendConfig = {
+				.attachments = {
+					{
+						.format = RGL::TextureFormat::BGRA8_Unorm
+					},
+				}
+			},
+			.depthStencilConfig = {
+				.depthFormat = RGL::TextureFormat::D32SFloat,
+				.depthTestEnabled = false,
+				.depthWriteEnabled = false,
+				.depthFunction = RGL::DepthCompareFunction::Greater,
+			},
+			.pipelineLayout = lightToFBPipelineLayout,
+		};
+		return device->CreateRenderPipeline(rpd);
+	};
+	im3dLineRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::TriangleList);
+	im3dPointRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Point, RGL::PrimitiveTopology::TriangleList);
+	im3dTriangleRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
+#endif
 }
 
 void RavEngine::RenderEngine::createGBuffers()
@@ -1088,7 +1114,7 @@ void RenderEngine::UpdateBufferDims(){
 void RenderEngine::InitDebugger() const{
 	if (!debuggerContext){
 		Im3d::AppData& data = Im3d::GetAppData();
-		data.drawCallback = &DebugRender;
+		data.drawCallback = &DebugRenderWrapper;
 		
 		debuggerContext.emplace(10,10);
 		auto ctxd = (*debuggerContext).GetData();

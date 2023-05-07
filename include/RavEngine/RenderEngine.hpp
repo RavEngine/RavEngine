@@ -7,21 +7,20 @@
 //
 
 #include "Ref.hpp"
-#include "WeakRef.hpp"
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
-#include <fmt/format.h>
 #include <DebugDraw.h>
-#include "Function.hpp"
 #include "Common3D.hpp"
-#include "SpinLock.hpp"
-#include "Utilities.hpp"
 #include "Defines.hpp"
 #include "PhysXDefines.h"
 #include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
 
 struct SDL_Window;
+
+namespace Im3d {
+	struct DrawList;
+};
 
 namespace RavEngine {
 
@@ -57,7 +56,8 @@ namespace RavEngine {
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass;
 
-		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline;
+		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
 
@@ -204,6 +204,8 @@ namespace RavEngine {
         void vertex(const float* pos, unsigned int color, const float* uv) final;
         void vertex(const float x, const float y, const float z, unsigned int color, const float u, const float v) final;
         void end() final;
+
+		void DebugRender(const Im3d::DrawList&);
         
         decltype(currentVRAM) GetCurrentVRAMUse(){
             return currentVRAM;
