@@ -149,7 +149,7 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 	});
 
 	auto ibuf = device->CreateBuffer({
-		 uint32_t(num_vertices),
+		 uint32_t(num_indices),
 		{.IndexBuffer = true},
 		sizeof(int),
 		RGL::BufferAccess::Private
