@@ -111,7 +111,7 @@ jobs:
               sudo apt-get update
               sudo add-apt-repository ppa:ubuntu-toolchain-r/test
               sudo apt-get update
-              sudo apt-get install cmake g++-11 ninja-build libgl1-mesa-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends 
+              sudo apt-get install cmake g++-11 gobjc-11 gobjc++-11 ninja-build vulkan-sdk libgl1-mesa-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends 
       - name: Build and Test
         run: |
                 cd test 
