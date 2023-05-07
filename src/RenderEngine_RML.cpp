@@ -7,6 +7,7 @@
 #include "Common3D.hpp"
 #include "Debug.hpp"
 #include <SDL_clipboard.h>
+#include <RGL/Texture.hpp>
 #include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
@@ -14,68 +15,25 @@ using namespace std;
 
 //used to store client data for rml
 struct TextureHandleStruct{
-#if 0
-	bgfx::TextureHandle th = BGFX_INVALID_HANDLE;
-#endif
-	
-	~TextureHandleStruct(){
+	RGLTexturePtr th;
+	void Destroy(RenderEngine* renderer) {
+		renderer->gcTextures.enqueue(th);
 	}
 };
 
 struct CompiledGeoStruct{
-#if 0
-	bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
-	bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
-#endif
+	RGLBufferPtr vb, ib;
 	Rml::TextureHandle th;
+
+	void Destroy(RenderEngine* renderer) {
+		renderer->gcBuffers.enqueue(vb);
+		renderer->gcBuffers.enqueue(ib);
+	}
 	
 	~CompiledGeoStruct(){
 		//do not destroy texture here, RML will tell us when to free that separately
 	}
 };
-
-static inline void RML2BGFX(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices
-#if 0
-	, const bgfx::VertexLayout& RmlLayout, bgfx::VertexBufferHandle& out_vb, bgfx::IndexBufferHandle& out_ib
-#endif
-){
-	
-	
-	//create vertex and index buffers
-	{
-		struct SVec2{
-			float x, y, u, v;
-			color_t color;
-		};
-		stackarray(convertedv, SVec2, num_vertices);
-		
-		for(int i = 0; i < num_vertices; i++){
-			Rml::Vertex v = vertices[i];
-			convertedv[i].x = v.position.x;
-			convertedv[i].y = v.position.y;
-			convertedv[i].u = v.tex_coord.x;
-			convertedv[i].v = v.tex_coord.y;
-			
-			color_t color = (v.colour.alpha << 24) + (v.colour.blue << 16) + (v.colour.green << 8) + v.colour.red;
-			
-			convertedv[i].color = color;
-		}
-#if 0
-		out_vb = bgfx::createVertexBuffer(bgfx::copy(convertedv, num_vertices * sizeof(convertedv[0])), RmlLayout);
-#endif
-	}
-	{
-		stackarray(convertedi, uint16_t, num_indices);
-		
-		for(int i = 0; i < num_indices; i++){
-			convertedi[i] = indices[i];
-		}
-#if 0
-		out_ib = bgfx::createIndexBuffer(bgfx::copy(convertedi, num_indices * sizeof(convertedi[0])));
-#endif
-	}
-	
-}
 
 static inline matrix4 make_matrix(Rml::Vector2f translation){
 	matrix4 mat(1);	//start with identity
@@ -94,23 +52,25 @@ static inline matrix4 make_matrix(Rml::Vector2f translation){
  @param data the bytes representing the texture
  @return RML texturehandle which is a pointer to a TextureHandleStruct on the heap
  */
-static inline Rml::TextureHandle createTexture(int width, int height, const Rml::byte* data){
-#if 0
-	auto format = bgfx::TextureFormat::RGBA8;
-	
-	bool hasMipMaps = false;
+static inline Rml::TextureHandle createTexture(uint32_t width, uint32_t height, const Rml::byte* data, RGLDevicePtr device){
 	int numLayers = 1;
 	int numChannels = 4;
-	
+
 	auto uncompressed_size = width * height * numChannels * numLayers;
 	
-	int flags = static_cast<decltype(flags)>(BGFX_TEXTURE_SRGB | BGFX_SAMPLER_POINT);
-	
-	const bgfx::Memory* textureData = bgfx::copy(data, uncompressed_size);
-	auto th = bgfx::createTexture2D(width,height,hasMipMaps,numLayers,format,flags,textureData);
+	auto th = device->CreateTextureWithData(
+		{
+			.usage = {.TransferDestination = true, .Sampled = true},
+			.aspect {.HasColor = true},
+			.width = width,
+			.height = height,
+			.format = RGL::TextureFormat::RGBA8_Unorm
+		}, 
+		{ data, uncompressed_size }
+	);
+
 	return reinterpret_cast<Rml::TextureHandle>(new TextureHandleStruct{th});
-#endif
-	return {};
+
 }
 
 double RenderEngine::GetElapsedTime(){
@@ -166,16 +126,25 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 
 /// Called by RmlUi when it wants to compile geometry it believes will be static for the forseeable future.
 Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture){
-#if 0
-	//create the vertex and index buffers
-	bgfx::VertexBufferHandle vbuf = BGFX_INVALID_HANDLE;
-	bgfx::IndexBufferHandle ibuf = BGFX_INVALID_HANDLE;
-	RML2BGFX(vertices, num_vertices, indices, num_indices, RmlLayout, vbuf, ibuf);
-	
-	CompiledGeoStruct* cgs = new CompiledGeoStruct{vbuf,ibuf,texture};
+	auto vbuf = device->CreateBuffer({
+		 uint32_t(num_vertices),
+		{.VertexBuffer = true},
+		sizeof(Rml::Vertex),
+		RGL::BufferAccess::Private
+	});
+
+	auto ibuf = device->CreateBuffer({
+		 uint32_t(num_vertices),
+		{.IndexBuffer = true},
+		sizeof(int),
+		RGL::BufferAccess::Private
+	});
+
+	vbuf->SetBufferData({vertices, uint32_t(num_vertices)});
+	ibuf->SetBufferData({indices, uint32_t(num_indices)});
+
+	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, texture };
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);
-#endif
-	return {};
 }
 /// Called by RmlUi when it wants to render application-compiled geometry.
 void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation){
@@ -204,7 +173,8 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 /// Called by RmlUi when it wants to release application-compiled geometry.
 void RenderEngine::ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry) {
 	CompiledGeoStruct* cgs = reinterpret_cast<CompiledGeoStruct*>(geometry);
-	delete cgs; 	//destructor calls bgfx::destroy on appropriate members
+	cgs->Destroy(this);	// enqueue buffers for deletion on the next frame
+	delete cgs; 	//destructor decrements refcounts as needed
 }
 
 /// Called by RmlUi when it wants to enable or disable scissoring to clip content.
@@ -236,21 +206,22 @@ bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i
 	texture_dimensions.x = width;
 	texture_dimensions.y = height;
 	
-	texture_handle = createTexture(texture_dimensions.x, texture_dimensions.y, bytes);
+	texture_handle = createTexture(texture_dimensions.x, texture_dimensions.y, bytes, device);
 	
 	return true;
 }
 /// Called by RmlUi when a texture is required to be built from an internally-generated sequence of pixels.
 bool RenderEngine::GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source, const Rml::Vector2i& source_dimensions) {
 	
-	texture_handle = createTexture(source_dimensions.x, source_dimensions.y, source);
+	texture_handle = createTexture(source_dimensions.x, source_dimensions.y, source, device);
 	
 	return true;
 }
 /// Called by RmlUi when a loaded texture is no longer required.
 void RenderEngine::ReleaseTexture(Rml::TextureHandle texture_handle) {
 	TextureHandleStruct* ths = reinterpret_cast<TextureHandleStruct*>(texture_handle);
-	delete ths;	//destructor calls bgfx::destroy
+	ths->Destroy(this);	// enqueue texture for deletion
+	delete ths;
 }
 
 /// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
