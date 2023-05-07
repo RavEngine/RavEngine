@@ -8,6 +8,7 @@
 #include "Debug.hpp"
 #include <SDL_clipboard.h>
 #include <RGL/Texture.hpp>
+#include <RGL/CommandBuffer.hpp>
 #include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
@@ -24,6 +25,7 @@ struct TextureHandleStruct{
 struct CompiledGeoStruct{
 	RGLBufferPtr vb, ib;
 	Rml::TextureHandle th;
+	const int nindices = 0;
 
 	void Destroy(RenderEngine* renderer) {
 		renderer->gcBuffers.enqueue(vb);
@@ -93,35 +95,48 @@ void RenderEngine::GetClipboardText(Rml::String &text){
 
 /// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
 void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) {
-#if 0
-	bgfx::VertexBufferHandle vbuf = BGFX_INVALID_HANDLE;
-	bgfx::IndexBufferHandle ibuf = BGFX_INVALID_HANDLE;
-	
-	RML2BGFX(vertices, num_vertices, indices, num_indices, RmlLayout, vbuf, ibuf);
-		
-	//create the texture
-	bgfx::TextureHandle tx = BGFX_INVALID_HANDLE;
-	if (texture){
+
+	auto vbuf = device->CreateBuffer({
+		 uint32_t(num_vertices),
+		{.VertexBuffer = true},
+		sizeof(Rml::Vertex),
+		RGL::BufferAccess::Private
+		});
+
+	auto ibuf = device->CreateBuffer({
+		 uint32_t(num_vertices),
+		{.IndexBuffer = true},
+		sizeof(int),
+		RGL::BufferAccess::Private
+		});
+
+	vbuf->SetBufferData({ vertices, uint32_t(num_vertices) });
+	ibuf->SetBufferData({ indices, uint32_t(num_indices) });
+
+	RGLTexturePtr tx;
+	if (texture) {
 		auto btexture = reinterpret_cast<TextureHandleStruct*>(texture);
 		tx = btexture->th;
 	}
-	else{
-		tx = TextureManager::defaultTexture->GetTextureHandle();
+	else {
+		tx = Texture::Manager::defaultTexture->GetRHITexturePointer();
 	}
-	
-	guiMaterial->SetTexture(tx);
-	
 	auto drawmat = make_matrix(translation);
-    if (RMLScissor.enabled){
-        bgfx::setScissor(RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height);
-    }
-	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
-	guiMaterial->Draw(vbuf, ibuf, drawmat, Views::FinalBlit);
-	
-	//destroy buffers
-	bgfx::destroy(vbuf);
-	bgfx::destroy(ibuf);
-#endif
+
+	mainCommandBuffer->BindRenderPipeline(guiRenderPipeline);
+	if (RMLScissor.enabled) {
+		mainCommandBuffer->SetScissor({ RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height });
+	}
+
+	mainCommandBuffer->SetVertexBuffer(vbuf);
+	mainCommandBuffer->SetIndexBuffer(ibuf);
+	mainCommandBuffer->SetVertexBytes(drawmat, 0);
+	mainCommandBuffer->SetCombinedTextureSampler(textureSampler, tx.get(), 0);
+	mainCommandBuffer->DrawIndexed(num_indices);
+
+	// trash buffers
+	gcBuffers.enqueue(vbuf);
+	gcBuffers.enqueue(ibuf);
 }
 
 /// Called by RmlUi when it wants to compile geometry it believes will be static for the forseeable future.
@@ -143,31 +158,37 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 	vbuf->SetBufferData({vertices, uint32_t(num_vertices)});
 	ibuf->SetBufferData({indices, uint32_t(num_indices)});
 
-	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, texture };
+	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, texture, num_indices };
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);
 }
 /// Called by RmlUi when it wants to render application-compiled geometry.
 void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation){
 	CompiledGeoStruct* cgs = reinterpret_cast<CompiledGeoStruct*>(geometry);
 #if 0
-	bgfx::TextureHandle tx = BGFX_INVALID_HANDLE;
-	if(cgs->th){
+
+	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
+#endif
+	RGLTexturePtr tx;
+	if (cgs->th) {
 		auto btexture = reinterpret_cast<TextureHandleStruct*>(cgs->th);
 		tx = btexture->th;
 	}
-	else{
-		tx = TextureManager::defaultTexture->GetTextureHandle();
+	else {
+		tx = Texture::Manager::defaultTexture->GetRHITexturePointer();
+	}
+	mainCommandBuffer->BindRenderPipeline(guiRenderPipeline);
+	if (RMLScissor.enabled) {
+		mainCommandBuffer->SetScissor({ RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height });
 	}
 	
-	guiMaterial->SetTexture(tx);
+	glm::mat4 model{ 1 };
 
-	auto drawmat = make_matrix(translation);
-    if (RMLScissor.enabled){
-        bgfx::setScissor(RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height);
-    }
-	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
-	guiMaterial->Draw(cgs->vb, cgs->ib, drawmat, Views::FinalBlit);
-#endif
+	mainCommandBuffer->SetVertexBuffer(cgs->vb);
+	mainCommandBuffer->SetIndexBuffer(cgs->ib);
+	mainCommandBuffer->SetVertexBytes(model, 0);
+	mainCommandBuffer->SetCombinedTextureSampler(textureSampler, tx.get(), 0);
+	mainCommandBuffer->DrawIndexed(cgs->nindices);
+
 	//don't delete here, RML will tell us when to delete cgs
 }
 /// Called by RmlUi when it wants to release application-compiled geometry.

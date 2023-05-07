@@ -70,7 +70,7 @@ namespace RGL {
 			IID_PPV_ARGS(&textureUpload)));
 		textureUpload->SetName(L"textureUpload");
 
-		auto bytesPerRow = bytes.size() / config.width;;
+		auto bytesPerRow = bytes.size() / config.width;
 		D3D12_SUBRESOURCE_DATA textureSubresourceData = {};
 		textureSubresourceData.pData = bytes.data();
 		textureSubresourceData.RowPitch = bytesPerRow;

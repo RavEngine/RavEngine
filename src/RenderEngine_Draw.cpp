@@ -8,6 +8,7 @@
 #include "DebugDraw.h"
 #include "DebugDrawer.hpp"
 #include <im3d.h>
+#include <GUI.hpp>
 
 namespace RavEngine {
 
@@ -205,12 +206,7 @@ namespace RavEngine {
 
 		mainCommandBuffer->SetVertexBytes(viewproj, 0);
 		mainCommandBuffer->DrawIndexed(worldOwning->skybox->skyMesh->totalIndices);
-
-		/*
-			worldOwning->Filter([](GUIComponent& gui) {
-				gui.Render();	// kicks off commands for rendering UI
-			});
-			*/
+	
 #ifndef NDEBUG
 			// process debug shapes
 		worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
@@ -224,6 +220,10 @@ namespace RavEngine {
 		Im3d::AppData& data = Im3d::GetAppData();
 		data.m_appData = &lightUBO.viewProj;
 		Im3d::GetContext().draw();
+
+		worldOwning->Filter([](GUIComponent& gui) {
+			gui.Render();	// kicks off commands for rendering UI
+		});
 		/*
 		if (debuggerContext) {
 			auto& dbg = *debuggerContext;

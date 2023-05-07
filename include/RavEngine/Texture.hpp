@@ -29,6 +29,10 @@ public:
     struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{
 		static Ref<class RuntimeTexture> defaultTexture;
 	};
+
+	auto GetRHITexturePointer() const {
+		return texture;
+	}
 	
 protected:
 

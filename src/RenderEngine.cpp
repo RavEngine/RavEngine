@@ -824,6 +824,80 @@ RenderEngine::RenderEngine(const AppConfig& config) {
             .pipelineLayout = lightToFBPipelineLayout,
 		});
 
+	auto guiVSH = LoadShaderByFilename("gui.vsh", device);
+	auto guiFSH = LoadShaderByFilename("gui.fsh", device);
+
+	guiRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+			.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = guiVSH,
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = guiFSH,
+				}
+			},
+			.vertexConfig = {
+				.vertexBindings = {
+					{
+						.binding = 0,
+						.stride = sizeof(Rml::Vertex),
+					},
+				},
+				.attributeDescs = {
+					{
+						.location = 0,
+						.binding = 0,
+						.offset = 0,
+						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+					},
+					{
+						.location = 1,
+						.binding = 0,
+						.offset = sizeof(glm::vec2),
+						.format = RGL::VertexAttributeFormat::R32_Uint,
+					},
+					{
+						.location = 2,
+						.binding = 0,
+						.offset = sizeof(glm::vec2) + sizeof(uint32_t),
+						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+					},
+				}
+			},
+			.inputAssembly = {
+				.topology = RGL::PrimitiveTopology::TriangleList,
+			},
+			.viewport = {
+				.width = width,
+				.height = height
+			},
+			.scissor = {
+				.extent = {width, height}
+			},
+			.rasterizerConfig = {
+				.windingOrder = RGL::WindingOrder::Counterclockwise,
+			},
+			.colorBlendConfig = {
+				.attachments = {
+					{
+						.format = RGL::TextureFormat::BGRA8_Unorm,
+						.sourceAlphaBlendFactor = RGL::BlendFactor::SourceAlpha,
+						.destinationAlphaBlendFactor = RGL::BlendFactor::OneMinusDestAlpha,
+						.blendEnabled = true,
+					},
+				}
+			},
+			.depthStencilConfig = {
+				.depthFormat = RGL::TextureFormat::D32SFloat,
+				.depthTestEnabled = true,
+				.depthWriteEnabled = false,
+				.depthFunction = RGL::DepthCompareFunction::Greater,
+			},
+			.pipelineLayout = lightToFBPipelineLayout,
+		});
+
 	// lighting meshes
 	constexpr static Vertex2D vertices[] = {
 		{{0, -10}},
