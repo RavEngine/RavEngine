@@ -27,7 +27,7 @@ void main()
 	);
 
 	vec4 worldPos = inModel * vec4(inPosition,1);
+	outNormal = normalize(transpose(mat3(inModel)) * inNormal);
 
 	gl_Position = ubo.viewProj * worldPos;
-	outNormal = inNormal;
 }

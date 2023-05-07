@@ -90,6 +90,7 @@ namespace RGL {
             endSingleTimeCommands(commandBuffer, owningDevice->presentQueue, owningDevice->device, owningDevice->commandPool);
 
             // free
+            vkDestroyBuffer(owningDevice->device, tmpBuffer, nullptr);
             vmaFreeMemory(owningDevice->vkallocator, tmpBufferAlloc);
         }
        

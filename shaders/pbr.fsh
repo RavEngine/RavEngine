@@ -6,6 +6,6 @@ layout(location = 1) out vec4 outnormal;
 void main()
 {
 	outcolor = vec4(1,1,1,1);
-	outnormal = vec4(inNormal, 0);
+	outnormal = vec4(inNormal, 1);
 }
 
