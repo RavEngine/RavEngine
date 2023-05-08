@@ -10,7 +10,7 @@ class MeshAssetSkinned : public MeshAsset{
 public:
 	struct vweights {
 		struct vw {
-			float joint_idx = 0;
+			uint32_t joint_idx = 0;
 			float influence = 0;
 		};
 		FixedVector<vw, 4> weights;

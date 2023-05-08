@@ -77,13 +77,13 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 			if (it == sk->joint_names().end()){
 				continue;
 			}
-			auto idx = std::distance(sk->joint_names().begin(), it);
+			uint32_t idx = std::distance(sk->joint_names().begin(), it);
 			
 			//copy (index + current_offset) and influence
 			for(int j = 0; j < bone->mNumWeights; j++){
 				auto weightval = bone->mWeights[j];
 				
-				allweights[weightval.mVertexId + current_offset].weights.push_back({vweights::vw{static_cast<float>(idx),weightval.mWeight}});
+				allweights[weightval.mVertexId + current_offset].weights.push_back({vweights::vw{idx,weightval.mWeight}});
 			}
 			
 		}
