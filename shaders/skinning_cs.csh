@@ -1,10 +1,10 @@
 
-layout(std430, binding = 2) buffer matrixOutputMatrixBuffer
+layout(std430, binding = 0) buffer matrixOutputMatrixBuffer
 {
     mat4 matrixOutput[];
 };
 
-layout(std430, binding = 3) readonly buffer poseMatrixBuffer
+layout(std430, binding = 1) readonly buffer poseMatrixBuffer
 {
     mat4 pose[];
 };
@@ -14,7 +14,7 @@ struct weight{
 	float influence;
 };
 
-layout(std430, binding = 4) readonly buffer weightsBuffer
+layout(std430, binding = 2) readonly buffer weightsBuffer
 {
     weight weights[];				// index, influence
 };

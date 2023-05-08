@@ -137,9 +137,9 @@ namespace RavEngine {
 
 				mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
 				mainCommandBuffer->SetComputeBytes(ubo, 0);
-				mainCommandBuffer->BindComputeBuffer(skinningOutputBuffer, 2);
-				mainCommandBuffer->BindComputeBuffer(skinningPoseBuffer, 3);
-				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 4);
+				mainCommandBuffer->BindComputeBuffer(skinningOutputBuffer, 0);
+				mainCommandBuffer->BindComputeBuffer(skinningPoseBuffer, 1);
+				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 2);
 				mainCommandBuffer->DispatchCompute(std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);
 				mainCommandBuffer->EndCompute();
 
