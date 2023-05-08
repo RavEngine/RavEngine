@@ -77,6 +77,12 @@ namespace RGL {
 		void ExecuteIndirectIndexed(const IndirectConfig&) final;
 		void ExecuteIndirect(const IndirectConfig&) final;
 
+		void BeginRenderDebugMarker(const std::string& label) final;
+		void BeginComputeDebugMarker(const std::string& label) final;
+
+		void EndRenderDebugMarker() final;
+		void EndComputeDebugMarker() final;
+
 	private:
 		void GenericBindBuffer(RGLBufferPtr& buffer, const uint32_t& offsetIntoBuffer, const uint32_t& bindingOffset, VkPipelineBindPoint bindPoint);
 	};

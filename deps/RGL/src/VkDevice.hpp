@@ -28,6 +28,9 @@ namespace RGL {
 		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR;	// device-tied extension function
 		PFN_vkDebugMarkerSetObjectNameEXT rgl_vkDebugMarkerSetObjectNameEXT;
 
+		PFN_vkCmdEndDebugUtilsLabelEXT rgl_vkCmdEndDebugUtilsLabelEXT;
+		PFN_vkCmdBeginDebugUtilsLabelEXT rgl_vkCmdBeginDebugUtilsLabelEXT;
+
 		virtual ~DeviceVk();
 		DeviceVk(decltype(physicalDevice) physicalDevice);
 

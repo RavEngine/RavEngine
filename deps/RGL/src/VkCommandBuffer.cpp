@@ -536,6 +536,26 @@ namespace RGL {
 			sizeof(IndirectCommand)
 		);
 	}
+	void CommandBufferVk::BeginRenderDebugMarker(const std::string& label)
+	{
+		VkDebugUtilsLabelEXT markerInfo = {
+			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+			.pLabelName = label.c_str()
+		};
+		owningQueue->owningDevice->rgl_vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &markerInfo);
+	}
+	void CommandBufferVk::BeginComputeDebugMarker(const std::string& label)
+	{
+		BeginRenderDebugMarker(label);
+	}
+	void CommandBufferVk::EndRenderDebugMarker()
+	{
+		owningQueue->owningDevice->rgl_vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+	}
+	void CommandBufferVk::EndComputeDebugMarker()
+	{
+		EndRenderDebugMarker();
+	}
 	void CommandBufferVk::ExecuteIndirectIndexed(const IndirectConfig& config)
 	{
 		const auto buffer = std::static_pointer_cast<BufferVk>(config.indirectBuffer);

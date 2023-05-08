@@ -6,6 +6,7 @@
 #include <RGL/Buffer.hpp>
 #include <RGL/Synchronization.hpp>
 #include <span>
+#include <string>
 
 struct DrawInstancedConfig{
     uint32_t
@@ -144,5 +145,11 @@ namespace RGL {
 
 		virtual void ExecuteIndirectIndexed(const IndirectConfig&) = 0;
 		virtual void ExecuteIndirect(const IndirectConfig&) = 0;
+
+		virtual void BeginRenderDebugMarker(const std::string& label) = 0;
+		virtual void BeginComputeDebugMarker(const std::string& label) = 0;
+
+		virtual void EndRenderDebugMarker() = 0;
+		virtual void EndComputeDebugMarker() = 0;
 	};
 }

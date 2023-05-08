@@ -67,6 +67,7 @@ namespace RavEngine {
 		};
 		
 		// dispatch skinning shaders
+		mainCommandBuffer->BeginComputeDebugMarker("Skinning Compute Shader");
 		for (const auto& [_,drawdata] : worldOwning->skinnedMeshRenderData) {
 			uint32_t computeOffsetIndex = 0;
 			uint32_t bufferBegin = 0;
@@ -152,9 +153,10 @@ namespace RavEngine {
 			numRowsUniform.SetValues(&values, 1);
 			bgfx::setBuffer(11, skinningComputeBuffer.GetHandle(), bgfx::Access::Read);
 			*/
-			
 		}
-		
+		mainCommandBuffer->EndComputeDebugMarker();
+		mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
+		mainCommandBuffer->BeginRenderDebugMarker("Transition Gbuffers");
 		auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {
 			for (const auto& ptr : { diffuseTexture, normalTexture }) {
 				mainCommandBuffer->TransitionResource(ptr.get(), from, to, RGL::TransitionPosition::Top);
@@ -163,7 +165,9 @@ namespace RavEngine {
 
 		transitionGbuffers(RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal);
 		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
+		mainCommandBuffer->EndRenderDebugMarker();
 
+		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 		// do static meshes
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
 		for (auto& [materialInstance, drawcommand] : worldOwning->staticMeshRenderData) {
@@ -185,8 +189,10 @@ namespace RavEngine {
 				}
 			}
 		}
+		mainCommandBuffer->EndRenderDebugMarker();
 
 		// do skinned meshes
+		mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
 		for (auto& [materialInstance, drawcommand] : worldOwning->skinnedMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
@@ -207,12 +213,16 @@ namespace RavEngine {
 			}
 		}
 		mainCommandBuffer->EndRendering();
+		mainCommandBuffer->EndRenderDebugMarker();
+		mainCommandBuffer->EndRenderDebugMarker();
 
+		mainCommandBuffer->BeginRenderDebugMarker("Transition Gbuffers");
 		transitionGbuffers(RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal);
 		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 
 		// do lighting pass
 		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
+		mainCommandBuffer->EndRenderDebugMarker();
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
 
@@ -221,8 +231,10 @@ namespace RavEngine {
 		});
 
 		mainCommandBuffer->BeginRendering(lightingRenderPass);
+		mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 		// ambient lights
         if (worldOwning->ambientLightData.DenseSize() > 0){
+			mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
             mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
@@ -236,10 +248,12 @@ namespace RavEngine {
             mainCommandBuffer->Draw(3, {
                 .nInstances = worldOwning->ambientLightData.DenseSize()
             });
+			mainCommandBuffer->EndRenderDebugMarker();
         }
 
 		// directional lights
         if (worldOwning->directionalLightData.DenseSize() > 0){
+			mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
             mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
@@ -252,10 +266,12 @@ namespace RavEngine {
             mainCommandBuffer->Draw(3, {
                 .nInstances = worldOwning->directionalLightData.DenseSize()
             });
+			mainCommandBuffer->EndRenderDebugMarker();
         }
 
 		// point lights
         if (worldOwning->pointLightData.DenseSize() > 0){
+			mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
             mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
@@ -270,10 +286,12 @@ namespace RavEngine {
             mainCommandBuffer->DrawIndexed(nPointLightIndices, {
                 .nInstances = worldOwning->pointLightData.DenseSize()
             });
+			mainCommandBuffer->EndRenderDebugMarker();
         }
 
 		// spot lights
 		if (worldOwning->spotLightData.DenseSize() > 0) {
+			mainCommandBuffer->BeginRenderDebugMarker("Render Spot Lights");
 			mainCommandBuffer->BindRenderPipeline(spotLightRenderPipeline);
 			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
 			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
@@ -288,20 +306,25 @@ namespace RavEngine {
 			mainCommandBuffer->DrawIndexed(nSpotLightIndices, {
 				.nInstances = worldOwning->spotLightData.DenseSize()
 			});
+			mainCommandBuffer->EndRenderDebugMarker();
 		}
 
 		mainCommandBuffer->EndRendering();
-		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
+		mainCommandBuffer->EndRenderDebugMarker();
 
 		// the on-screen render pass
 		// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
 		finalRenderPass->SetAttachmentTexture(0, nextimg);
 		finalRenderPass->SetDepthAttachmentTexture(depthStencil.get());
-
+		mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");
+		mainCommandBuffer->BeginRenderDebugMarker("Transition Lighting texture");
+		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
 		mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
+		mainCommandBuffer->EndRenderDebugMarker();
+		
 
 		mainCommandBuffer->BeginRendering(finalRenderPass);
-
+		mainCommandBuffer->BeginRenderDebugMarker("Blit and Skybox");
 		// start with the results of lighting
 		mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
@@ -317,6 +340,7 @@ namespace RavEngine {
 
 		mainCommandBuffer->SetVertexBytes(viewproj, 0);
 		mainCommandBuffer->DrawIndexed(worldOwning->skybox->skyMesh->totalIndices);
+		mainCommandBuffer->EndRenderDebugMarker();
 	
 #ifndef NDEBUG
 			// process debug shapes
@@ -328,10 +352,13 @@ namespace RavEngine {
 				}
 			}
 		});
+		mainCommandBuffer->BeginRenderDebugMarker("Debug Wireframes");
 		Im3d::AppData& data = Im3d::GetAppData();
 		data.m_appData = &lightUBO.viewProj;
-		Im3d::GetContext().draw();
 
+		Im3d::GetContext().draw();
+		mainCommandBuffer->EndRenderDebugMarker();
+		mainCommandBuffer->BeginRenderDebugMarker("GUI");
 		worldOwning->Filter([](GUIComponent& gui) {
 			gui.Render();	// kicks off commands for rendering UI
 		});
@@ -344,6 +371,8 @@ namespace RavEngine {
 			dbg.Render();
 		}
 		*/
+		mainCommandBuffer->EndRenderDebugMarker();
+		mainCommandBuffer->EndRenderDebugMarker();
 		Im3d::NewFrame();
 #endif
 		mainCommandBuffer->EndRendering();
