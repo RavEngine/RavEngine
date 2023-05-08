@@ -86,7 +86,6 @@ namespace RavEngine {
 				auto emptySpace = numverts * numobjects * sizeof(glm::mat4);
 				assert(emptySpace < std::numeric_limits<uint32_t>::max());
 
-				bufferBegin += emptySpace;
 
 				computeOffsetIndex = bufferBegin;
 
@@ -142,6 +141,8 @@ namespace RavEngine {
 				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 2);
 				mainCommandBuffer->DispatchCompute(std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);
 				mainCommandBuffer->EndCompute();
+
+				bufferBegin += emptySpace;	// for the next iteration
 
 			}
 

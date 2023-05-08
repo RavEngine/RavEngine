@@ -39,9 +39,9 @@ void main()
 		const uint vertID = gl_GlobalInvocationID.y;
 		const uint objID = gl_GlobalInvocationID.x;
 		
-		const uint weightsid = vertID * 2;		//2x vec4 elements elements per vertex, is always the same per vertex
+		const uint weightsid = vertID;		//1x vec4 elements elements per vertex, is always the same per vertex
 		
-		const uint bone_begin = numBones * objID * 4 + ubo.NumObjects.w * 4; //offset to the bone for the correct object
+		const uint bone_begin = numBones * objID + ubo.NumObjects.w; //offset to the bone for the correct object
 				
 		//will become the pose matrix
 		mat4 totalmtx = mat4(vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0));
@@ -54,12 +54,12 @@ void main()
 			float weight = weightdataBuffer.influence;
 
 			//get the pose and bindpose of the target joint
-			mat4 posed_mtx = pose[bone_begin + joint_idx * 4];
+			mat4 posed_mtx = pose[bone_begin + joint_idx];
 			totalmtx += weight * posed_mtx;	
 		}
 		
 		//destination to write the matrix
-		const uint offset = (vertID * 4 + objID * numVerts * 4) + ubo.ComputeOffsets.x;	//1x mat4 elements per object
+		const uint offset = (vertID + objID * numVerts) + ubo.ComputeOffsets.x;	//1x mat4 elements per object
 	
 		//write matrix
 		matrixOutput[offset] = totalmtx;
