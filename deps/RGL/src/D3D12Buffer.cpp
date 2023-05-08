@@ -8,6 +8,24 @@ using namespace Microsoft::WRL;
 
 namespace RGL {
 
+    D3D12_RESOURCE_STATES typeToState(RGL::BufferConfig::Type type) {
+        if (type.StorageBuffer) {
+            return D3D12_RESOURCE_STATE_GENERIC_READ;
+        }
+        else if (type.IndexBuffer) {
+            return D3D12_RESOURCE_STATE_INDEX_BUFFER;
+        }
+        else if (type.VertexBuffer) {
+            return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+        }
+        else if (type.IndirectBuffer) {
+            return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+        }
+        else {
+            return D3D12_RESOURCE_STATE_COPY_DEST;
+        }
+    }
+
 	BufferD3D12::BufferD3D12(decltype(owningDevice) device, const BufferConfig& config) : owningDevice(device), myType(config.type), accessType(config.access)
 	{
         const auto size_bytes = config.nElements * config.stride;
@@ -25,10 +43,9 @@ namespace RGL {
         auto v = isWritable ? CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT) : CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
         // writable is marked as a UAV
         auto t = CD3DX12_RESOURCE_DESC::Buffer(size_bytes, isWritable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE );
-        auto state = D3D12_RESOURCE_STATE_GENERIC_READ;
+        auto state = typeToState(myType);
 
         if (config.access == RGL::BufferAccess::Private) {
-            state = D3D12_RESOURCE_STATE_COPY_DEST;
             v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
         }
 
@@ -36,8 +53,9 @@ namespace RGL {
             state = D3D12_RESOURCE_STATE_COPY_DEST;
             v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
         }
-        if (config.type.IndirectBuffer) {
-            state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+
+        if (!isWritable) {
+            state = D3D12_RESOURCE_STATE_GENERIC_READ;
         }
 
         DX_CHECK(device->device->CreateCommittedResource(
@@ -116,7 +134,24 @@ namespace RGL {
             bufferSubresourceData.RowPitch = bytesPerRow;
             bufferSubresourceData.SlicePitch = bytesPerRow * 1;
             auto commandList = owningDevice->internalQueue->CreateCommandList();
+
+            auto state = D3D12_RESOURCE_STATE_GENERIC_READ;
+
+            auto beginTransition = CD3DX12_RESOURCE_BARRIER::Transition(
+                buffer.Get(),
+                state,
+                D3D12_RESOURCE_STATE_COPY_DEST
+            );
+            commandList->ResourceBarrier(1, &beginTransition);
+
             UpdateSubresources(commandList.Get(), buffer.Get(), bufferUpload.Get(), 0, 0, 1, &bufferSubresourceData);
+
+            auto endTransition = CD3DX12_RESOURCE_BARRIER::Transition(
+                buffer.Get(),
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                state
+            );
+            commandList->ResourceBarrier(1, &endTransition);
 
             commandList->Close();
             auto fenceValue = owningDevice->internalQueue->ExecuteCommandList(commandList);

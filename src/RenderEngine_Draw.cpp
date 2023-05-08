@@ -386,7 +386,7 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 		uint32_t(nverts),
 		{.VertexBuffer = true},
 		sizeof(Im3d::VertexData),
-		RGL::BufferAccess::Shared,
+		RGL::BufferAccess::Private,
 	});
 	vertBuffer->SetBufferData({ vertexdata, nverts });
 
