@@ -231,7 +231,7 @@ add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
-if (NOT TARGET_APPLE AND NOT MSVC AND NOT TARGET_EMSCRIPTEN AND NOT TARGET_ANDROID)
+if (NOT TARGET_APPLE AND NOT TARGET_WINDOWS AND NOT TARGET_EMSCRIPTEN AND NOT TARGET_ANDROID)
 	find_package(ALSA)
 	find_package(PulseAudio)                                    
 	if (NOT ALSA_FOUND AND NOT PulseAudio_FOUND)
@@ -908,7 +908,7 @@ function(pack_resources)
 	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_LOCATION "")	# tells the deployment to put the assets zip in the AppX root directory
 	
 	# copy to target dir on Win
-	if((MSVC AND NOT UWP) OR TARGET_LINUX)
+	if((TARGET_WINDOWS AND NOT UWP) OR TARGET_LINUX)
 		get_filename_component(outfile ${outpack} NAME)
 		SET(outfile "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}")
 		add_custom_command(
