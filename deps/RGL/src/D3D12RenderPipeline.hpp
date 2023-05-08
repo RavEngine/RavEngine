@@ -47,6 +47,7 @@ namespace RGL {
 		const std::shared_ptr<DeviceD3D12> owningDevice;
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
 		const std::shared_ptr<PipelineLayoutD3D12> pipelineLayout;
+		const D3D12_PRIMITIVE_TOPOLOGY overrideMode;
 
 		RenderPipelineD3D12(decltype(owningDevice), const RenderPipelineDescriptor&);
 	};

@@ -1022,7 +1022,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		return device->CreateRenderPipeline(rpd);
 	};
 	im3dLineRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::LineList);
-	im3dPointRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Point, RGL::PrimitiveTopology::TriangleList);
+	im3dPointRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Point, RGL::PrimitiveTopology::PointList);
 	im3dTriangleRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
 #endif
 

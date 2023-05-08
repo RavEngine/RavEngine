@@ -8,6 +8,46 @@
 using namespace Microsoft::WRL;
 
 namespace RGL {
+    D3D12_PRIMITIVE_TOPOLOGY rgl2d3dtopology(RGL::PrimitiveTopology mode) {
+        switch (mode) {
+        case decltype(mode)::LineList: return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        case decltype(mode)::LineListAdjacency : return D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ;
+        case decltype(mode)::LineStrip : return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+        case decltype(mode)::LineStripAdjacency : return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ;
+        case decltype(mode)::PatchList : return D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST;
+        case decltype(mode)::PointList : return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+        case decltype(mode)::TriangleFan : return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        case decltype(mode)::TriangleList : return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        case decltype(mode)::TriangleListAdjacency  : return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ;
+        case decltype(mode)::TriangleStrip  : return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        case decltype(mode)::TriangleStripAdjacency  : return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ;
+        default:
+            FatalError("Unsupported topology mode");
+        }
+    }
+
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE rgl2d3dtopology_family(RGL::PrimitiveTopology mode) {
+        switch (mode) {
+        case decltype(mode)::LineList:
+        case decltype(mode)::LineListAdjacency: 
+        case decltype(mode)::LineStrip:
+        case decltype(mode)::LineStripAdjacency:
+            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+        case decltype(mode)::PatchList: 
+            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+        case decltype(mode)::PointList:
+            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+        case decltype(mode)::TriangleFan: 
+        case decltype(mode)::TriangleList: 
+        case decltype(mode)::TriangleListAdjacency: 
+        case decltype(mode)::TriangleStrip: 
+        case decltype(mode)::TriangleStripAdjacency:
+            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        default:
+            FatalError("Unsupported topology mode");
+        }
+    }
+
     DXGI_FORMAT rgl2dxgiformat(RGL::VertexAttributeFormat format) {
         switch (format) {
         case decltype(format)::R32G32B32_SignedFloat:   return DXGI_FORMAT_R32G32B32_FLOAT;
@@ -179,7 +219,7 @@ namespace RGL {
 	}
 
 
-    RenderPipelineD3D12::RenderPipelineD3D12(decltype(owningDevice) owningDevice, const RenderPipelineDescriptor& desc) : owningDevice(owningDevice), pipelineLayout(std::static_pointer_cast<PipelineLayoutD3D12>(desc.pipelineLayout))
+    RenderPipelineD3D12::RenderPipelineD3D12(decltype(owningDevice) owningDevice, const RenderPipelineDescriptor& desc) : owningDevice(owningDevice), pipelineLayout(std::static_pointer_cast<PipelineLayoutD3D12>(desc.pipelineLayout)), overrideMode(rgl2d3dtopology(desc.inputAssembly.topology))
     {
         auto device = owningDevice->device;
         D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc{};
@@ -247,7 +287,7 @@ namespace RGL {
         // describe the pipeline state object
         pipelineStateDesc.pRootSignature = std::static_pointer_cast<PipelineLayoutD3D12>(desc.pipelineLayout)->rootSignature.Get();
         pipelineStateDesc.InputLayout = { inputLayout, static_cast<uint32_t>(nattributes) };
-        pipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        pipelineStateDesc.PrimitiveTopologyType = rgl2d3dtopology_family(desc.inputAssembly.topology);
         pipelineStateDesc.VS = vertFunc->shaderBytecode;
         pipelineStateDesc.PS = fragFunc->shaderBytecode;
         pipelineStateDesc.DSVFormat = rgl2dxgiformat_texture(desc.depthStencilConfig.depthFormat);

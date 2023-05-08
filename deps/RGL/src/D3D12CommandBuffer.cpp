@@ -32,7 +32,6 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::Begin()
 	{
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
 	void CommandBufferD3D12::End()
 	{
@@ -89,6 +88,7 @@ namespace RGL {
 		currentRenderPipeline = std::static_pointer_cast<RenderPipelineD3D12>(in_pipeline);
 		commandList->SetPipelineState(currentRenderPipeline->pipelineState.Get());
 		commandList->SetGraphicsRootSignature(currentRenderPipeline->pipelineLayout->rootSignature.Get());
+		commandList->IASetPrimitiveTopology(currentRenderPipeline->overrideMode);
 	}
 	void CommandBufferD3D12::BeginCompute(RGLComputePipelinePtr in_pipeline)
 	{
