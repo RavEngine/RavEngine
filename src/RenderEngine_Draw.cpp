@@ -64,7 +64,19 @@ namespace RavEngine {
 			.invViewProj = glm::inverse(lightUBO.viewProj),
 			.viewRect = lightUBO.viewRect
 		};
-
+		
+		// dispatch skinning shaders
+		{
+			SkinningUBO ubo;
+			mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
+			mainCommandBuffer->SetComputeBytes(ubo, 0);
+			mainCommandBuffer->BindComputeBuffer(skinningOutputBuffer,2);
+			mainCommandBuffer->BindComputeBuffer(skinningPoseBuffer,3);
+			mainCommandBuffer->BindComputeBuffer(skinningWeightsBuffer,4);
+			mainCommandBuffer->DispatchCompute(1, 1, 1);
+			mainCommandBuffer->EndCompute();
+		}
+		
 		auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {
 			for (const auto& ptr : { diffuseTexture, normalTexture }) {
 				mainCommandBuffer->TransitionResource(ptr.get(), from, to, RGL::TransitionPosition::Top);

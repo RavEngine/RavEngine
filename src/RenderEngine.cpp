@@ -1025,6 +1025,58 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	im3dPointRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Point, RGL::PrimitiveTopology::TriangleList);
 	im3dTriangleRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
 #endif
+
+	// skinned mesh compute pipeline
+	auto skinnedCSH = LoadShaderByFilename("skinning_cs.csh", device);
+	auto skinnedPipelineLayout = device->CreatePipelineLayout({
+		 .bindings = {
+				{
+					.binding = 2,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = true
+				},
+				{
+					.binding = 3,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = false
+				},
+				{
+					.binding = 4,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = false
+				},
+			},
+			.constants = {{ sizeof(SkinningUBO), 0, RGL::StageVisibility::Compute}}
+	});
+	skinnedMeshComputePipeline = device->CreateComputePipeline(RGL::ComputePipelineDescriptor{
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = skinnedCSH
+		},
+		.pipelineLayout = skinnedPipelineLayout
+	});
+	skinningOutputBuffer = device->CreateBuffer({
+		256,
+		{ .StorageBuffer = 1},
+		sizeof(glm::mat4),
+		RGL::BufferAccess::Private,
+		{.Writable = true}
+	});
+	skinningPoseBuffer = device->CreateBuffer({
+		256,
+		{.StorageBuffer = 1},
+		sizeof(glm::mat4),
+		RGL::BufferAccess::Shared,
+	});
+	skinningWeightsBuffer = device->CreateBuffer({
+		256,
+		{.StorageBuffer = 1},
+		sizeof(JointInfluence),
+		RGL::BufferAccess::Shared,
+	});
 }
 
 void RavEngine::RenderEngine::createGBuffers()
