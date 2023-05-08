@@ -980,12 +980,12 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 						.location = 0,
 						.binding = 0,
 						.offset = 0,
-						.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+						.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 					},
 					{
 						.location = 1,
 						.binding = 0,
-						.offset = sizeof(glm::vec3),
+						.offset = sizeof(glm::vec4),
 						.format = RGL::VertexAttributeFormat::R32_Uint,
 					},
 				}
@@ -1021,7 +1021,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		};
 		return device->CreateRenderPipeline(rpd);
 	};
-	im3dLineRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::TriangleList);
+	im3dLineRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::LineList);
 	im3dPointRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Point, RGL::PrimitiveTopology::TriangleList);
 	im3dTriangleRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
 #endif

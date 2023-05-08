@@ -417,7 +417,7 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 		sizeof(Im3d::VertexData),
 		RGL::BufferAccess::Private,
 	});
-	vertBuffer->SetBufferData({ vertexdata, nverts });
+	vertBuffer->SetBufferData({ vertexdata, nverts * sizeof(Im3d::VertexData) });
 
 	auto viewProj = *static_cast<glm::mat4*>(Im3d::GetAppData().m_appData);
 
