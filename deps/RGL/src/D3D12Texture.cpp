@@ -64,7 +64,7 @@ namespace RGL {
 		DX_CHECK(owningDevice->allocator->CreateResource(
 			&textureUploadAllocDesc,
 			&textureUploadResourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
+			D3D12_RESOURCE_STATE_GENERIC_READ | D3D12_RESOURCE_STATE_COPY_SOURCE,
 			nullptr, // pOptimizedClearValue
 			&textureUploadAllocation,
 			IID_PPV_ARGS(&textureUpload)));
@@ -76,8 +76,30 @@ namespace RGL {
 		textureSubresourceData.RowPitch = bytesPerRow;
 		textureSubresourceData.SlicePitch = bytes.size();	// TODO: for 3D textures, this should be the size of one layer
 
-		UpdateSubresources(commandList.Get(), texture.Get(), textureUpload.Get(), 0, 0, 1, &textureSubresourceData);
+		//UpdateSubresources(commandList.Get(), texture.Get(), textureUpload.Get(), 0, 0, 1, &textureSubresourceData);
 
+		D3D12_TEXTURE_COPY_LOCATION dst{
+			.pResource = texture.Get(),
+			.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+			.SubresourceIndex = 0,
+		};
+
+		D3D12_TEXTURE_COPY_LOCATION src{
+			.pResource = textureUpload.Get(),
+			.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+			.PlacedFootprint = {
+				.Offset = 0,
+				.Footprint = {
+					.Format = rgl2dxgiformat_texture(config.format),
+					.Width = 1,
+					.Height = 1,
+					.Depth = 1,
+					.RowPitch = UINT(ceil(bytesPerRow/float(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)) * D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)	// needs to be a multiple of D3D12_TEXTURE_DATA_PITCH_ALIGNMENT 
+				}
+			},
+		};
+
+		commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
 		D3D12_RESOURCE_BARRIER textureBarrier = {};
 		textureBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

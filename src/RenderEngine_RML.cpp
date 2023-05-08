@@ -100,14 +100,14 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 		 uint32_t(num_vertices),
 		{.VertexBuffer = true},
 		sizeof(Rml::Vertex),
-		RGL::BufferAccess::Private
+		RGL::BufferAccess::Shared
 		});
 
 	auto ibuf = device->CreateBuffer({
 		 uint32_t(num_vertices),
 		{.IndexBuffer = true},
 		sizeof(int),
-		RGL::BufferAccess::Private
+		RGL::BufferAccess::Shared
 		});
 
 	vbuf->SetBufferData({ vertices, uint32_t(num_vertices) });
@@ -145,14 +145,14 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 		 uint32_t(num_vertices),
 		{.VertexBuffer = true},
 		sizeof(Rml::Vertex),
-		RGL::BufferAccess::Private
+		RGL::BufferAccess::Shared
 	});
 
 	auto ibuf = device->CreateBuffer({
 		 uint32_t(num_indices),
 		{.IndexBuffer = true},
 		sizeof(int),
-		RGL::BufferAccess::Private
+		RGL::BufferAccess::Shared
 	});
 
 	vbuf->SetBufferData({vertices, uint32_t(num_vertices)});
