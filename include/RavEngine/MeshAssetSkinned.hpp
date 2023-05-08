@@ -28,6 +28,10 @@ public:
     
     // use this to load assets
     struct Manager : public GenericWeakReadThroughCache<std::string,MeshAssetSkinned>{};
+
+	 auto GetWeightsBuffer() const {
+		 return weightsBuffer;
+	}
 };
 
 }

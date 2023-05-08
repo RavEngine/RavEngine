@@ -9,6 +9,7 @@
 #include "DebugDrawer.hpp"
 #include <im3d.h>
 #include <GUI.hpp>
+#include <AnimatorComponent.hpp>
 
 namespace RavEngine {
 
@@ -66,15 +67,91 @@ namespace RavEngine {
 		};
 		
 		// dispatch skinning shaders
-		{
-			SkinningUBO ubo;
-			mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
-			mainCommandBuffer->SetComputeBytes(ubo, 0);
-			mainCommandBuffer->BindComputeBuffer(skinningOutputBuffer,2);
-			mainCommandBuffer->BindComputeBuffer(skinningPoseBuffer,3);
-			mainCommandBuffer->BindComputeBuffer(skinningWeightsBuffer,4);
-			mainCommandBuffer->DispatchCompute(1, 1, 1);
-			mainCommandBuffer->EndCompute();
+		for (const auto& [_,drawdata] : worldOwning->skinnedMeshRenderData) {
+			uint32_t computeOffsetIndex = 0;
+			uint32_t bufferBegin = 0;
+			float values[4];
+			for (const auto& command : drawdata.commands) {
+				// seed compute shader for skinning
+				// input buffer A: skeleton bind pose
+				auto skeleton = command.skeleton.lock();
+				// input buffer B: vertex weights by bone ID
+				auto mesh = command.mesh.lock();
+				// input buffer C: unposed vertices in mesh
+
+				// output buffer A: posed output transformations for vertices
+				auto numverts = mesh->GetNumVerts();
+				const auto numobjects = command.transforms.DenseSize();
+
+				auto emptySpace = numverts * numobjects * sizeof(glm::mat4);
+				assert(emptySpace < std::numeric_limits<uint32_t>::max());
+
+				bufferBegin += emptySpace;
+
+				computeOffsetIndex = bufferBegin;
+
+				//pose SOA values
+				//convert to float from double
+				size_t totalsize = 0;
+				for (const auto& ownerid : command.transforms.reverse_map) {
+					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
+					totalsize += animator.GetSkinningMats().size();
+				}
+				typedef Array<float, 16> arrtype;
+				stackarray(pose_float, arrtype, totalsize);
+				size_t index = 0;
+				for (const auto& ownerid : command.transforms.reverse_map) {
+					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
+					auto& array = animator.GetSkinningMats();
+					//in case of double mode, need to convert to float
+					for (int i = 0; i < array.size(); i++) {
+						//populate stack array values
+						auto ptr = glm::value_ptr(array[i]);
+						for (int offset = 0; offset < 16; offset++) {
+							pose_float[index][offset] = static_cast<float>(ptr[offset]);
+						}
+						index++;
+					}
+				}
+				assert(totalsize < std::numeric_limits<uint32_t>::max());	// pose buffer is too big!
+
+				auto totalByteSize = totalsize * sizeof(glm::mat4);
+
+				std::memcpy(static_cast<char*>(skinningPoseBuffer->GetMappedDataPtr()) + bufferBegin, pose_float, totalByteSize);
+
+				// set skinning uniform
+				SkinningUBO ubo{
+					.NumObjects = {
+						numobjects,
+						numverts,
+						skeleton->GetBindposes().size(),
+						bufferBegin
+					},
+					.ComputeOffsets = {
+						computeOffsetIndex,
+						0,
+						0,
+						0
+					}
+				};
+
+				mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
+				mainCommandBuffer->SetComputeBytes(ubo, 0);
+				mainCommandBuffer->BindComputeBuffer(skinningOutputBuffer, 2);
+				mainCommandBuffer->BindComputeBuffer(skinningPoseBuffer, 3);
+				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 4);
+				mainCommandBuffer->DispatchCompute(std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);
+				mainCommandBuffer->EndCompute();
+
+			}
+
+			// was executed between every call to DispatchCompute on the old renderer:
+			/*
+			values[3] = static_cast<float>(computeOffsetIndex);
+			numRowsUniform.SetValues(&values, 1);
+			bgfx::setBuffer(11, skinningComputeBuffer.GetHandle(), bgfx::Access::Read);
+			*/
+			
 		}
 		
 		auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {

@@ -1071,12 +1071,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		sizeof(glm::mat4),
 		RGL::BufferAccess::Shared,
 	});
-	skinningWeightsBuffer = device->CreateBuffer({
-		256,
-		{.StorageBuffer = 1},
-		sizeof(JointInfluence),
-		RGL::BufferAccess::Shared,
-	});
+	skinningPoseBuffer->MapMemory();
 }
 
 void RavEngine::RenderEngine::createGBuffers()
