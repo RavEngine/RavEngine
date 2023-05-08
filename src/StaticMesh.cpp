@@ -15,7 +15,7 @@ void RavEngine::StaticMesh::updateMaterialInWorldRenderData(Ref<PBRMaterialInsta
 	
 }
 
-void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(Ref<MaterialInstanceBase> to)
+void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> to)
 {
 	// if mesh is not enabled, it does not have render data in the world
 	if (GetEnabled()){

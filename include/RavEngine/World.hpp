@@ -268,7 +268,7 @@ namespace RavEngine {
             Vector<command> commands;
         };
         locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand,phmap::NullMutex> staticMeshRenderData;
-        locked_node_hashmap<Ref<MaterialInstanceBase>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
+        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
 
         void updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
         void updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);

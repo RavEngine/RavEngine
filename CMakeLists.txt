@@ -394,7 +394,7 @@ if(TARGET_APPLE)
 endif()
 file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )
-file(GLOB SHADERS "shaders/*.glsl" "shaders/*.vsh" "shaders/*.fsh" "shaders/*.sc" "shaders/*.glsl" "shaders/*.hlsl")
+file(GLOB SHADERS "shaders/*.glsl" "shaders/*.csh" "shaders/*.vsh" "shaders/*.fsh" "shaders/*.sc" "shaders/*.glsl" "shaders/*.hlsl")
 set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
 
 # add deps headers to project so symbol lookup works

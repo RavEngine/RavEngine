@@ -184,6 +184,27 @@ namespace RavEngine {
 				}
 			}
 		}
+
+		// do skinned meshes
+		for (auto& [materialInstance, drawcommand] : worldOwning->skinnedMeshRenderData) {
+			// bind the pipeline
+			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
+			mainCommandBuffer->SetVertexBytes(viewproj, 0);
+			for (auto& command : drawcommand.commands) {
+				// submit the draws for this mesh
+				if (auto mesh = command.mesh.lock()) {
+					mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
+					auto& perInstanceDataBuffer = command.transforms.GetDense().get_underlying().buffer;
+					mainCommandBuffer->SetVertexBuffer(perInstanceDataBuffer, {
+						.bindingPosition = 1
+						});
+					mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
+					mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
+						.nInstances = command.transforms.DenseSize()
+						});
+				}
+			}
+		}
 		mainCommandBuffer->EndRendering();
 
 		transitionGbuffers(RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal);

@@ -74,7 +74,7 @@ namespace RGL {
 		D3D12_SUBRESOURCE_DATA textureSubresourceData = {};
 		textureSubresourceData.pData = bytes.data();
 		textureSubresourceData.RowPitch = bytesPerRow;
-		textureSubresourceData.SlicePitch = bytesPerRow * config.height;
+		textureSubresourceData.SlicePitch = bytes.size();	// TODO: for 3D textures, this should be the size of one layer
 
 		UpdateSubresources(commandList.Get(), texture.Get(), textureUpload.Get(), 0, 0, 1, &textureSubresourceData);
 

@@ -1031,19 +1031,19 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto skinnedPipelineLayout = device->CreatePipelineLayout({
 		 .bindings = {
 				{
-					.binding = 2,
+					.binding = 0,
 					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
 					.writable = true
 				},
 				{
-					.binding = 3,
+					.binding = 1,
 					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
 					.writable = false
 				},
 				{
-					.binding = 4,
+					.binding = 2,
 					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
 					.writable = false
@@ -1059,14 +1059,14 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.pipelineLayout = skinnedPipelineLayout
 	});
 	skinningOutputBuffer = device->CreateBuffer({
-		256,
+		uint32_t(1e7),
 		{ .StorageBuffer = 1},
 		sizeof(glm::mat4),
 		RGL::BufferAccess::Private,
 		{.Writable = true}
 	});
 	skinningPoseBuffer = device->CreateBuffer({
-		256,
+		uint32_t(1e7),
 		{.StorageBuffer = 1},
 		sizeof(glm::mat4),
 		RGL::BufferAccess::Shared,

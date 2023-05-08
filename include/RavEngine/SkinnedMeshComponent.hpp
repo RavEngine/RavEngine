@@ -10,8 +10,8 @@ namespace RavEngine {
 
 class SkinnedMeshComponent : public ComponentWithOwner, public Queryable<SkinnedMeshComponent>, public Disableable{
 private:
-	std::tuple<Ref<MeshAssetSkinned>, Ref<MaterialInstanceBase>,Ref<SkeletonAsset>> tuple;
-	void updateMaterialInWorldRenderData(Ref<MaterialInstanceBase> newMat);
+	std::tuple<Ref<MeshAssetSkinned>, Ref<PBRMaterialInstance>,Ref<SkeletonAsset>> tuple;
+	void updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> newMat);
 public:
 	
 	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner){
@@ -27,7 +27,7 @@ public:
 	/**
 	 @returns the currently assigned material
 	 */
-	inline Ref<MaterialInstanceBase> GetMaterial() const{
+	inline auto GetMaterial() const{
 		return std::get<1>(tuple);
 	}
 	
