@@ -99,6 +99,60 @@ namespace RGL {
         }
     }
 
+    D3D12_BLEND rgl2d3d12blendfactor(RGL::BlendFactor op) {
+        switch (op) {
+        case decltype(op)::Zero: return D3D12_BLEND_ZERO;
+        case decltype(op)::One: return D3D12_BLEND_ONE;
+        case decltype(op)::SourceColor: return D3D12_BLEND_SRC_COLOR;
+        case decltype(op)::OneMinusSourceColor: return D3D12_BLEND_INV_SRC_COLOR;
+        case decltype(op)::SourceAlpha: return D3D12_BLEND_SRC_ALPHA;
+        case decltype(op)::OneMinusSourceAlpha: return D3D12_BLEND_INV_SRC_ALPHA;
+        case decltype(op)::DestAlpha: return D3D12_BLEND_DEST_ALPHA;
+        case decltype(op)::OneMinusDestAlpha: return D3D12_BLEND_INV_DEST_ALPHA;
+        case decltype(op)::DestColor: return D3D12_BLEND_DEST_COLOR;
+        case decltype(op)::OneMinusDestColor: return D3D12_BLEND_INV_DEST_COLOR;
+        case decltype(op)::SourceAlphaSaturate: return D3D12_BLEND_SRC_ALPHA_SAT;
+        case decltype(op)::Source1Color: return D3D12_BLEND_SRC1_COLOR;
+        case decltype(op)::OneMinusSource1Color: return D3D12_BLEND_INV_SRC1_COLOR;
+        case decltype(op)::Source1Alpha: return D3D12_BLEND_SRC1_ALPHA;
+        case decltype(op)::OneMinusSource1Alpha: return D3D12_BLEND_INV_SRC1_ALPHA;
+        default:
+            FatalError("Unsupported blend factor");
+        }
+    }
+    D3D12_LOGIC_OP rgl2d3d12logicop(RGL::RenderPipelineDescriptor::ColorBlendConfig::LogicalOperation op) {
+        switch (op) {
+        case decltype(op)::Clear: return D3D12_LOGIC_OP_CLEAR;
+        case decltype(op)::Set: return D3D12_LOGIC_OP_SET;
+        case decltype(op)::Copy: return D3D12_LOGIC_OP_COPY;
+        case decltype(op)::CopyInverted: return D3D12_LOGIC_OP_COPY_INVERTED;
+        case decltype(op)::Noop: return D3D12_LOGIC_OP_NOOP;
+        case decltype(op)::Invert: return D3D12_LOGIC_OP_INVERT;
+        case decltype(op)::AND: return D3D12_LOGIC_OP_AND;
+        case decltype(op)::NAND: return D3D12_LOGIC_OP_NAND;
+        case decltype(op)::OR: return D3D12_LOGIC_OP_OR;
+        case decltype(op)::NOR: return D3D12_LOGIC_OP_NOR;
+        case decltype(op)::XOR: return D3D12_LOGIC_OP_XOR;
+        case decltype(op)::Equivalent: return D3D12_LOGIC_OP_EQUIV;
+        case decltype(op)::AND_Reverse: return D3D12_LOGIC_OP_AND_REVERSE;
+        case decltype(op)::ANDInverted: return D3D12_LOGIC_OP_AND_INVERTED;
+        case decltype(op)::ORReverse: return D3D12_LOGIC_OP_OR_REVERSE;
+        case decltype(op)::ORInverted: return D3D12_LOGIC_OP_OR_INVERTED;
+        }
+    }
+
+    D3D12_BLEND_OP rgl2d3d12blendop(RGL::BlendOperation op) {
+        switch (op) {
+        case decltype(op)::Add: return D3D12_BLEND_OP_ADD;
+        case decltype(op)::Max : return D3D12_BLEND_OP_MAX;
+        case decltype(op)::Min : return D3D12_BLEND_OP_MIN;
+        case decltype(op)::ReverseSubtract : return D3D12_BLEND_OP_REV_SUBTRACT;
+        case decltype(op)::Subtract : return D3D12_BLEND_OP_SUBTRACT;
+        }
+    }
+
+
+
 	PipelineLayoutD3D12::PipelineLayoutD3D12(decltype(owningDevice) owningDevice, const PipelineLayoutDescriptor& desc) : owningDevice(owningDevice), config(desc)
 	{
         auto device = owningDevice->device;
@@ -241,9 +295,28 @@ namespace RGL {
 
         pipelineStateDesc.NumRenderTargets = static_cast<UINT>(nattachments);
 
+        D3D12_BLEND_DESC colorBlendingConfig{
+            .AlphaToCoverageEnable = false,
+            .IndependentBlendEnable = true,
+        };
+
         Assert(nattachments < std::size(pipelineStateDesc.RTVFormats), "Too many attachments!");
         for (int i = 0; i < nattachments; i++) {
-            pipelineStateDesc.RTVFormats[i] = rgl2dxgiformat_texture(desc.colorBlendConfig.attachments[i].format);
+            auto& attachment = desc.colorBlendConfig.attachments[i];
+            pipelineStateDesc.RTVFormats[i] = rgl2dxgiformat_texture(attachment.format);
+
+            colorBlendingConfig.RenderTarget[i] = {
+                .BlendEnable = attachment.blendEnabled,
+                .LogicOpEnable = desc.colorBlendConfig.logicalOpEnabled,
+                .SrcBlend = rgl2d3d12blendfactor(attachment.sourceColorBlendFactor),
+                .DestBlend = rgl2d3d12blendfactor(attachment.destinationColorBlendFactor),
+                .BlendOp = rgl2d3d12blendop(attachment.colorBlendOperation),
+                .SrcBlendAlpha = rgl2d3d12blendfactor(attachment.sourceAlphaBlendFactor),
+                .DestBlendAlpha = rgl2d3d12blendfactor(attachment.destinationAlphaBlendFactor),
+                .BlendOpAlpha = rgl2d3d12blendop(attachment.alphaBlendOperation),
+                .LogicOp = rgl2d3d12logicop(desc.colorBlendConfig.logicalOperation),
+                .RenderTargetWriteMask = static_cast<UINT8>(attachment.colorWriteMask)
+            };
         }
 
         CD3DX12_RASTERIZER_DESC rasterizerDesc{ D3D12_DEFAULT };
@@ -267,7 +340,7 @@ namespace RGL {
         pipelineStateDesc.PS = fragFunc->shaderBytecode;
         pipelineStateDesc.DSVFormat = rgl2dxgiformat_texture(desc.depthStencilConfig.depthFormat);
         pipelineStateDesc.RasterizerState = rasterizerDesc;
-        pipelineStateDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+        pipelineStateDesc.BlendState = colorBlendingConfig;
         pipelineStateDesc.DepthStencilState = depthStencilDesc;
         pipelineStateDesc.SampleMask = UINT_MAX;
         pipelineStateDesc.SampleDesc.Count = 1;
