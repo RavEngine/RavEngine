@@ -827,6 +827,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto guiVSH = LoadShaderByFilename("gui.vsh", device);
 	auto guiFSH = LoadShaderByFilename("gui.fsh", device);
 
+	static_assert(sizeof(Rml::Vertex::colour) == sizeof(uint32_t));
+
 	guiRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 			.stages = {
 				{
@@ -849,19 +851,19 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					{
 						.location = 0,
 						.binding = 0,
-						.offset = 0,
+						.offset = offsetof(Rml::Vertex, position),
 						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
 					},
 					{
 						.location = 1,
 						.binding = 0,
-						.offset = sizeof(glm::vec2),
+						.offset = offsetof(Rml::Vertex, colour),
 						.format = RGL::VertexAttributeFormat::R32_Uint,
 					},
 					{
 						.location = 2,
 						.binding = 0,
-						.offset = sizeof(glm::vec2) + sizeof(uint32_t),
+						.offset = offsetof(Rml::Vertex, tex_coord),
 						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
 					},
 				}
@@ -883,15 +885,17 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.attachments = {
 					{
 						.format = RGL::TextureFormat::BGRA8_Unorm,
-						.sourceAlphaBlendFactor = RGL::BlendFactor::SourceAlpha,
-						.destinationAlphaBlendFactor = RGL::BlendFactor::OneMinusDestAlpha,
+						.sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
+						.destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceAlpha,
+						.alphaBlendOperation = RGL::BlendOperation::Add,
+						.colorWriteMask = RGL::ColorWriteMask::RGB,
 						.blendEnabled = true,
 					},
 				}
 			},
 			.depthStencilConfig = {
 				.depthFormat = RGL::TextureFormat::D32SFloat,
-				.depthTestEnabled = true,
+				.depthTestEnabled = false,
 				.depthWriteEnabled = false,
 				.depthFunction = RGL::DepthCompareFunction::Greater,
 			},

@@ -104,14 +104,14 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 		});
 
 	auto ibuf = device->CreateBuffer({
-		 uint32_t(num_vertices),
+		 uint32_t(num_indices),
 		{.IndexBuffer = true},
 		sizeof(int),
 		RGL::BufferAccess::Private
 		});
 
-	vbuf->SetBufferData({ vertices, uint32_t(num_vertices) });
-	ibuf->SetBufferData({ indices, uint32_t(num_indices) });
+	vbuf->SetBufferData({ vertices, uint32_t(num_vertices * sizeof(Rml::Vertex))});
+	ibuf->SetBufferData({ indices, uint32_t(num_indices * sizeof(int)) });
 
 	RGLTexturePtr tx;
 	if (texture) {
@@ -155,8 +155,8 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 		RGL::BufferAccess::Private
 	});
 
-	vbuf->SetBufferData({vertices, uint32_t(num_vertices)});
-	ibuf->SetBufferData({indices, uint32_t(num_indices)});
+	vbuf->SetBufferData({vertices, uint32_t(num_vertices * sizeof(Rml::Vertex))});
+	ibuf->SetBufferData({indices, uint32_t(num_indices * sizeof(int))});
 
 	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, texture, num_indices };
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);
@@ -180,12 +180,11 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 	if (RMLScissor.enabled) {
 		mainCommandBuffer->SetScissor({ RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height });
 	}
-	
-	glm::mat4 model{ 1 };
+	auto drawmat = make_matrix(translation);
 
 	mainCommandBuffer->SetVertexBuffer(cgs->vb);
 	mainCommandBuffer->SetIndexBuffer(cgs->ib);
-	mainCommandBuffer->SetVertexBytes(model, 0);
+	mainCommandBuffer->SetVertexBytes(drawmat, 0);
 	mainCommandBuffer->SetCombinedTextureSampler(textureSampler, tx.get(), 0);
 	mainCommandBuffer->DrawIndexed(cgs->nindices);
 

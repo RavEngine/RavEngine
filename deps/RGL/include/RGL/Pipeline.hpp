@@ -44,6 +44,15 @@ namespace RGL {
 		Vertex, Instance
 	};
 
+	enum class ColorWriteMask : uint8_t {
+		Red = 0b0001,
+		Green = 0b0010,
+		Blue = 0b0100,
+		Alpha = 0b1000,
+		RGB = Red | Green | Blue,
+		RGBA = RGB | Alpha
+	};
+
 	struct PipelineLayoutDescriptor {
 		struct LayoutBindingDesc {
 			uint32_t binding = 0;
@@ -232,14 +241,7 @@ namespace RGL {
 
 				BlendOperation colorBlendOperation = BlendOperation::Add, alphaBlendOperation = BlendOperation::Add;
 
-				enum class ColorWriteMask : uint8_t{
-					Red		= 0b0001,
-					Green	= 0b0010,
-					Blue	= 0b0100,
-					Alpha	= 0b1000,
-					RGB = Red | Green | Blue,
-					RGBA = RGB | Alpha
-				} colorWriteMask = ColorWriteMask::RGBA;
+				ColorWriteMask colorWriteMask = ColorWriteMask::RGBA;
 
 				bool blendEnabled : 1 = false;
 			};
