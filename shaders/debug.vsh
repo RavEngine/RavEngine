@@ -8,7 +8,6 @@ layout(push_constant) uniform UniformBufferObject{
 	ivec4 viewRect;
 } ubo;
 
-
 void main()
 {
 	gl_Position = ubo.viewProj * vec4(inPosition.xyz, 1.0);

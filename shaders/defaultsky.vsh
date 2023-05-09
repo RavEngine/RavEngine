@@ -10,10 +10,10 @@ layout(push_constant) uniform UniformBufferObject{
 
 void main()
 {
-	// translate the skybox to the camera 
-	vec3 viewTranslate = ubo.viewProj[3].xyz;
+	// we are only interested in the non-translation part of the matrix
+	mat3 rotScaleOnly = mat3(ubo.viewProj);
 
-	vec4 screenpos = ubo.viewProj * vec4(inPosition + -viewTranslate, 1);
+	vec4 screenpos = vec4(rotScaleOnly * inPosition,1);
 	
 	// set both to 1 to make render behind everything
 	screenpos.z = 1;
