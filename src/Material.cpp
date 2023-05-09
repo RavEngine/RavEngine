@@ -34,12 +34,25 @@ Material::Material(const std::string& name, const MaterialConfig& config) : name
     vertShader = LoadShaderByFilename(vertshaderName, device);
     fragShader = LoadShaderByFilename(fragShaderName, device);
 
+    auto samplerPtr = GetApp()->GetRenderEngine().textureSampler;
+
     pipelineLayout = device->CreatePipelineLayout({
+        .bindings = config.bindings,
+        .boundSamplers = {
+            samplerPtr,
+            samplerPtr,
+            samplerPtr,
+            samplerPtr,
+            samplerPtr,
+            samplerPtr,
+            samplerPtr,
+            samplerPtr
+        },
         .constants = {
             {
-                sizeof(RenderEngine::DeferredUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+               sizeof(RenderEngine::DeferredUBO) + config.pushConstantSize, 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
             }
-        }
+        },
     });
 
     constexpr static uint32_t width = 640, height = 480;

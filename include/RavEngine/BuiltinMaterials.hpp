@@ -20,6 +20,9 @@ namespace RavEngine {
      */
 	class PBRMaterialInstance : public MaterialInstance<PBRMaterial> {
 	public:
+		struct PushConstantData {
+			ColorRGBA color{ 1,1,1,1 };
+		};
 		PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) { 
 			textureBindings[0] = Texture::Manager::defaultTexture;
 		};
@@ -28,10 +31,14 @@ namespace RavEngine {
 			textureBindings[0] = texture;
 		}
         constexpr inline void SetAlbedoColor(const ColorRGBA& c){
-            color = c;
+            pcd.color = c;
         }
 
+		virtual const RGL::untyped_span GetPushConstantData() const override {
+			return pcd;
+		}
+
 	protected:
-		ColorRGBA color{1,1,1,1};
+		PushConstantData pcd;
 	};
 }

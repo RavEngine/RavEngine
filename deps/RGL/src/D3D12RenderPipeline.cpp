@@ -175,31 +175,6 @@ namespace RGL {
 
             }
         }
-#if 0
-        stackarray(samplerStates, D3D12_STATIC_SAMPLER_DESC, nsamplers);
-        {
-            uint32_t i = 0;
-            for (const auto& isampler : desc.boundSamplers) {
-                auto sampler = std::static_pointer_cast<SamplerD3D12>(isampler);
-                auto& samplerDesc = sampler->samplerDesc;
-                samplerStates[i] = {
-                    .Filter = samplerDesc.Filter,
-                    .AddressU = samplerDesc.AddressU,
-                    .AddressV = samplerDesc.AddressV,
-                    .AddressW = samplerDesc.AddressW,
-                    .MipLODBias = samplerDesc.MipLODBias,
-                    .MaxAnisotropy = samplerDesc.MaxAnisotropy,
-                    .ComparisonFunc = samplerDesc.ComparisonFunc,
-                    .BorderColor = {},
-                    .MinLOD = samplerDesc.MinLOD,
-                    .MaxLOD = samplerDesc.MaxLOD,
-                    .ShaderRegister = i,
-                    .RegisterSpace = 0,             //TODO: set register
-                    .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
-                };
-            }
-        }
-#endif
 
         CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
         rootSignatureDescription.Init_1_1(rootParameters.size(), rootParameters.data(), 0, nullptr, rootSignatureFlags);

@@ -2,6 +2,7 @@
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
+	vec4 colorTint;
 } ubo;
 
 
@@ -28,6 +29,8 @@ void main()
 
 	vec4 worldPos = inModel * vec4(inPosition,1);
 	outNormal = normalize(transpose(mat3(inModel)) * inNormal);
+
+	outUV = inUV;
 
 	gl_Position = ubo.viewProj * worldPos;
 }

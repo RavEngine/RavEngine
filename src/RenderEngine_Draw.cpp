@@ -173,7 +173,34 @@ namespace RavEngine {
 		for (auto& [materialInstance, drawcommand] : worldOwning->staticMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
-			mainCommandBuffer->SetVertexBytes(viewproj, 0);
+
+			// set push constant data
+			auto pushConstantData = materialInstance->GetPushConstantData();
+
+			auto pushConstantTotalSize = sizeof(viewproj) + pushConstantData.size();
+
+			stackarray(totalPushConstantBytes, std::byte, pushConstantTotalSize);
+			std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
+			if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
+				std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
+			}
+
+			mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+
+			// bind textures and buffers
+			auto& bufferBindings = materialInstance->GetBufferBindings();
+			auto& textureBindings = materialInstance->GetTextureBindings();
+			for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
+				auto& buffer = bufferBindings[i];
+				auto& texture = textureBindings[i];
+				if (buffer) {
+					mainCommandBuffer->BindBuffer(buffer, i);
+				}
+				if (texture) {
+					mainCommandBuffer->SetCombinedTextureSampler(textureSampler, texture->GetRHITexturePointer().get(), i);
+				}
+			}
+
 			for (auto& command : drawcommand.commands) {
 				// submit the draws for this mesh
 				if (auto mesh = command.mesh.lock()) {
@@ -183,6 +210,7 @@ namespace RavEngine {
 						.bindingPosition = 1
 						});
 					mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
+
 					mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
 						.nInstances = command.transforms.DenseSize()
 						});
@@ -196,7 +224,32 @@ namespace RavEngine {
 		for (auto& [materialInstance, drawcommand] : worldOwning->skinnedMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
-			mainCommandBuffer->SetVertexBytes(viewproj, 0);
+			auto pushConstantData = materialInstance->GetPushConstantData();
+
+			auto pushConstantTotalSize = sizeof(viewproj) + pushConstantData.size();
+
+			stackarray(totalPushConstantBytes, std::byte, pushConstantTotalSize);
+			std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
+			if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
+				std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
+			}
+
+			mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+
+			// bind textures and buffers
+			auto& bufferBindings = materialInstance->GetBufferBindings();
+			auto& textureBindings = materialInstance->GetTextureBindings();
+			for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
+				auto& buffer = bufferBindings[i];
+				auto& texture = textureBindings[i];
+				if (buffer) {
+					mainCommandBuffer->BindBuffer(buffer, i);
+				}
+				if (texture) {
+					mainCommandBuffer->SetCombinedTextureSampler(textureSampler, texture->GetRHITexturePointer().get(), i);
+				}
+			}
+
 			for (auto& command : drawcommand.commands) {
 				// submit the draws for this mesh
 				if (auto mesh = command.mesh.lock()) {

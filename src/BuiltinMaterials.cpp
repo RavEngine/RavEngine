@@ -77,7 +77,20 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
                     .format = RenderEngine::normalTexFormat
                 },
             }
-        }
+        },
+        .bindings = {
+            {
+                .binding = 0,
+                .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+                .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+            },
+             {
+                .binding = 0,
+                .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+                .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+            }
+        },
+        .pushConstantSize = sizeof(PBRMaterialInstance::PushConstantData)
 	}
 	) 
 {

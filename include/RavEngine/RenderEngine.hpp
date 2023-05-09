@@ -61,7 +61,7 @@ namespace RavEngine {
 		RGLComputePipelinePtr skinnedMeshComputePipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer, skinningOutputBuffer, skinningPoseBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
-
+		friend class Material;
     public:
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,

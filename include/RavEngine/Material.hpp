@@ -9,6 +9,7 @@
 #include "Manager.hpp"
 #include <RGL/Types.hpp>
 #include <RGL/Pipeline.hpp>
+#include <RGL/Span.hpp>
 #include <span>
 
 namespace RavEngine {
@@ -20,6 +21,9 @@ namespace RavEngine {
 		bool depthTestEnabled = true;
 		bool depthWriteEnabled = true;
 		RGL::DepthCompareFunction depthCompareFunction = RGL::DepthCompareFunction::Less;
+
+		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
+		uint32_t pushConstantSize = 0;
 	};
 
 	/**
@@ -77,17 +81,28 @@ namespace RavEngine {
 	};
 
 	//for type conversions, do not use directly
-	class MaterialInstanceBase {
-	private:
-	protected:
+	struct MaterialInstanceBase {
 		constexpr static uint8_t maxBindingSlots = 8;
+	protected:
 		std::array<RGLBufferPtr, maxBindingSlots> bufferBindings;
 		std::array<Ref<Texture>, maxBindingSlots> textureBindings;
 	public:
         bool doubleSided = false;
-		friend class RenderEngine;
-		virtual std::span<std::byte> PushConstantData() {
-			return std::span<std::byte, 0>{};	// a span of size 0 means that the material has no push constants
+		
+		/**
+		@return a byte view to the push constant data for the material. The data is appended after the viewProj mat4. 
+		Returning a span of size 0, or with a nullptr pointer means that the material has no additional push constants.
+		*/
+		virtual const RGL::untyped_span GetPushConstantData() const{
+			return { nullptr, 0 };
+		}
+
+		const auto& GetBufferBindings() const {
+			return bufferBindings;
+		}
+
+		const auto& GetTextureBindings() const {
+			return textureBindings;
 		}
 	};
 
