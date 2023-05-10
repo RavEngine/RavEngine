@@ -651,7 +651,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto pointLightFSH = LoadShaderByFilename("pointlight.fsh", device);
 	auto pointLightVSH = LoadShaderByFilename("pointlight.vsh", device);
 
-	pointLightRenderPipeline = createLightingPipeline(pointLightVSH, pointLightFSH, sizeof(VertexNormalUV), sizeof(World::PointLightUploadData), {
+	pointLightRenderPipeline = createLightingPipeline(pointLightVSH, pointLightFSH, sizeof(glm::vec3), sizeof(World::PointLightUploadData), {
 				{
 					.location = 0,
 					.binding = 0,
@@ -693,7 +693,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto spotLightFSH = LoadShaderByFilename("spotlight.fsh", device);
 	auto spotLightVSH = LoadShaderByFilename("spotlight.vsh", device);
 
-	spotLightRenderPipeline = createLightingPipeline(spotLightVSH, spotLightFSH, sizeof(VertexNormalUV), sizeof(World::SpotLightDataUpload), {
+	spotLightRenderPipeline = createLightingPipeline(spotLightVSH, spotLightFSH, sizeof(glm::vec3), sizeof(World::SpotLightDataUpload), {
 				{
 					.location = 0,
 					.binding = 0,
