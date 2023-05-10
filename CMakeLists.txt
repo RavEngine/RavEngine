@@ -714,7 +714,7 @@ function(declare_shader infile shader_target)
 	endif()
 	if(RGL_MTL_AVAILABLE)
 		shader_compile("${infile}" "${stage}" "Metal" "metal" "")
-		set_source_files_properties(${shader_target} PROPERTIES 
+		set_source_files_properties(${outname} PROPERTIES 
 			GENERATED TRUE
 			HEADER_FILE_ONLY OFF
 			LANGUAGE METAL

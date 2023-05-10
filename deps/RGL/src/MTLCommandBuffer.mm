@@ -295,6 +295,22 @@ void CommandBufferMTL::TransitionResource(const ITexture* texture, RGL::Resource
     // no effect on Metal
 }
 
+void CommandBufferMTL::BeginRenderDebugMarker(const std::string &label){
+    [currentCommandEncoder pushDebugGroup:[NSString stringWithUTF8String:label.c_str()]];
+}
+
+void CommandBufferMTL::BeginComputeDebugMarker(const std::string &label){
+    [currentComputeCommandEncoder pushDebugGroup:[NSString stringWithUTF8String:label.c_str()]];
+}
+
+void CommandBufferMTL::EndRenderDebugMarker(){
+    [currentCommandEncoder popDebugGroup];
+}
+
+void CommandBufferMTL::EndComputeDebugMarker(){
+    [currentComputeCommandEncoder popDebugGroup];
+}
+
 void CommandBufferMTL::ExecuteIndirectIndexed(const RGL::IndirectConfig & config) {
     auto buffer = std::static_pointer_cast<BufferMTL>(config.indirectBuffer);
     assert(indexBuffer != nil); // did you forget to call SetIndexBuffer?

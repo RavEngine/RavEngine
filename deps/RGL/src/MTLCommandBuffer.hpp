@@ -72,6 +72,12 @@ struct BufferMTL;
         virtual void ExecuteIndirect(const IndirectConfig&) final;
         
         virtual ~CommandBufferMTL(){}
+        
+        void BeginRenderDebugMarker(const std::string& label) final;
+        void BeginComputeDebugMarker(const std::string& label) final;
+
+        void EndRenderDebugMarker() final;
+        void EndComputeDebugMarker() final;
     };
 
 }

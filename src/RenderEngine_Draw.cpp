@@ -186,6 +186,7 @@ namespace RavEngine {
 			}
 
 			mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+            mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
 
 			// bind textures and buffers
 			auto& bufferBindings = materialInstance->GetBufferBindings();
@@ -235,6 +236,7 @@ namespace RavEngine {
 			}
 
 			mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+            mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
 
 			// bind textures and buffers
 			auto& bufferBindings = materialInstance->GetBufferBindings();
@@ -444,7 +446,6 @@ namespace RavEngine {
 
 void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 {
-
 #ifndef NDEBUG
 	switch (drawList.m_primType) {
 	case Im3d::DrawPrimitive_Triangles:
@@ -473,8 +474,12 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 	vertBuffer->SetBufferData({ vertexdata, nverts * sizeof(Im3d::VertexData) });
 
 	auto viewProj = *static_cast<glm::mat4*>(Im3d::GetAppData().m_appData);
+    
+    LightingUBO ubo{
+        .viewProj = viewProj
+    };
 
-	mainCommandBuffer->SetVertexBytes(viewProj,0);
+	mainCommandBuffer->SetVertexBytes(ubo,0);
 	mainCommandBuffer->SetVertexBuffer(vertBuffer);
 	mainCommandBuffer->Draw(nverts);
 
