@@ -28,9 +28,6 @@ namespace RavEngine {
 		};
 		swapchain->GetNextImage(&presentConfig.imageIndex);
 
-		auto& cam = worldOwning->GetComponent<CameraComponent>();
-		auto viewproj = cam.GenerateProjectionMatrix() * cam.GenerateViewMatrix();
-
 		// execute when render fence says its ok
 		// did we get the swapchain image yet? if not, block until we do
 
@@ -47,6 +44,9 @@ namespace RavEngine {
 
 		auto nextimg = swapchain->ImageAtIndex(presentConfig.imageIndex);
 		auto nextImgSize = nextimg->GetSize();
+
+		auto& cam = worldOwning->GetComponent<CameraComponent>();
+		auto viewproj = cam.GenerateProjectionMatrix(nextImgSize.width, nextImgSize.height) * cam.GenerateViewMatrix();
 
 		mainCommandBuffer->SetViewport({
 		.width = static_cast<float>(nextImgSize.width),

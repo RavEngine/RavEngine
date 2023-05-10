@@ -28,16 +28,6 @@ namespace RavEngine {
 			return active;
 		}
 
-		/**
-		Set the size of the camera. This will recalculate its projection.
-		@param width the width of the target, in pixels
-		@param height the height of the target, in pixels
-		*/
-        constexpr void SetTargetSize(unsigned int inwidth, unsigned int inheight){
-            width = inwidth;
-            height = inheight;
-        }
-
 		enum class Mode {
 			Perspective,
 			Orthographic
@@ -46,7 +36,7 @@ namespace RavEngine {
 		/**
 		@return the projection matrix to use when rendering objects. For internal use only.
 		*/
-		constexpr inline matrix4 GenerateProjectionMatrix() const{
+		constexpr inline matrix4 GenerateProjectionMatrix(uint32_t width, uint32_t height) const{
 			switch(projection){
 				case Mode::Perspective:
 					return matrix4(glm::perspective(deg_to_rad(FOV), (float)width / height, nearClip, farClip));
@@ -73,8 +63,8 @@ namespace RavEngine {
          @param point in pixel coordinates
          @return vector3 representing world-space projected point
          */
-        inline vector3 ScreenPointToWorldPoint(const vector3& point) const{
-            auto projmat = GenerateProjectionMatrix();
+        inline vector3 ScreenPointToWorldPoint(const vector3& point, uint32_t width, uint32_t height) const{
+            auto projmat = GenerateProjectionMatrix(width, height);
             auto viewmat = GenerateViewMatrix();
             auto G = glm::inverse(projmat * viewmat);
             return glm::unProject(point, G, projmat, vector4(0,0,width,height));
@@ -85,16 +75,16 @@ namespace RavEngine {
 		 @param point in [0,1] space
 		 @return vector3 representing world-space projected point
 		 */
-		inline vector3 NormalizedScreenPointToWorldPoint(const vector3& point) const {
-			return ScreenPointToWorldPoint(vector3(point.x * width, point.y * height, point.z));
+		inline vector3 NormalizedScreenPointToWorldPoint(const vector3& point, uint32_t width, uint32_t height) const {
+			return ScreenPointToWorldPoint(vector3(point.x * width, point.y * height, point.z), width, height);
 		}
 
-		inline std::pair<vector3,vector3> ScreenPointToRay(vector2 point) const {
+		inline std::pair<vector3,vector3> ScreenPointToRay(vector2 point, uint32_t width, uint32_t height) const {
 			vector2 scaledWindowsSize = vector2(width, height);
 			point.y = height - point.y;	// invert Y
 			point = (point / scaledWindowsSize ) * 2.0f - vector2(1.0f);
 
-			auto viewProjection = GenerateProjectionMatrix() * GenerateViewMatrix();
+			auto viewProjection = GenerateProjectionMatrix(width, height) * GenerateViewMatrix();
 			auto invViewProjection = glm::inverse(viewProjection);
 
 			vector4 originClipSpace{ point,-1,1 };
@@ -114,8 +104,6 @@ namespace RavEngine {
 
 	protected:
         Mode projection = Mode::Perspective;
-        unsigned int width = 800;
-        unsigned int height = 480;
 		bool active = false;
 	};
 }
