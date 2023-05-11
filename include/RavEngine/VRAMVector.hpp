@@ -2,6 +2,7 @@
 #include <RGL/RGL.hpp>
 #include <RGL/Buffer.hpp>
 #include <RGL/Device.hpp>
+#include <cassert>
 
 namespace RavEngine {
 
@@ -103,33 +104,37 @@ namespace RavEngine {
 		void resize(size_type newSize) {
 			auto oldbuffer = buffer;
 			
-			auto settingscpy = settings;
 			settings.nElements = newSize;
-			buffer = owningDevice->CreateBuffer(settingscpy);
+			buffer = owningDevice->CreateBuffer(settings);
 			buffer->MapMemory();
 			if (oldbuffer) {
 				// copy over old data
-                buffer->SetBufferData({oldbuffer->GetMappedDataPtr(), size() * sizeof(T)});
+                buffer->UpdateBufferData({oldbuffer->GetMappedDataPtr(), size() * sizeof(T)});
 				TrashOldVector(oldbuffer);
 			}
+            assert(buffer->GetMappedDataPtr() != nullptr);  // BUG: buffer resize did not leave underlying in mapped state. Check buffer trashing logic
 		}
 
 		void grow() {
 			resize(settings.nElements * 2);
 		}
 
-		void resizeIfNeeded() {
+		bool resizeIfNeeded() {
 			if (nValues == settings.nElements) {
 				grow();
+                return true;
 			}
+            return false;
 		}
 
 		template<typename ... Args>
 		auto& emplace_back(Args&& ... args) {
-			resizeIfNeeded();
-			auto value = new(data() + size()) T{ args... };
+			auto didResize = resizeIfNeeded();
+            T* newAddr = data() + size();
+			auto valueptr = new(newAddr) T{ args... };
+            assert(newAddr == valueptr);    // BUG: new did not return the pointer it was passed
 			nValues++;
-			return *value;
+			return *valueptr;
 		}
 
 		void push_back(const T& value) {
