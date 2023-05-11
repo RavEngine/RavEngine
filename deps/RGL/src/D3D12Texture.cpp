@@ -48,24 +48,6 @@ namespace RGL {
 
 		upload.Begin();
 
-		auto desc = CD3DX12_RESOURCE_DESC(
-			D3D12_RESOURCE_DIMENSION_TEXTURE2D,
-			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-			config.width, config.height, 1, 1,
-			rgl2dxgiformat_texture(config.format),
-			1, 0,
-			D3D12_TEXTURE_LAYOUT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE);
-
-		CD3DX12_HEAP_PROPERTIES defaultHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
-
-		DX_CHECK(owningDevice->device->CreateCommittedResource(
-			&defaultHeapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&desc,
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			nullptr,
-			IID_PPV_ARGS(texture.ReleaseAndGetAddressOf())));
-
 		D3D12_SUBRESOURCE_DATA initData = { bytes.data(), config.width * config.height, 0};
 		upload.Upload(texture.Get(), 0, &initData, 1);
 

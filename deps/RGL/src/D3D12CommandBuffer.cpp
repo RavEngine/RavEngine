@@ -10,7 +10,11 @@
 #include "D3D12Sampler.hpp"
 #include "D3D12RenderPass.hpp"
 #include "D3D12ComputePipeline.hpp"
+
+#if __has_include(<pix3.h>)
 #include <pix3.h>
+#define PIX_SUPPORTED
+#endif
 
 namespace RGL {
 
@@ -355,7 +359,9 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::BeginRenderDebugMarker(const std::string& label)
 	{
+#ifdef PIX_SUPPORTED
 		PIXBeginEvent(commandList.Get(), 0, label.c_str());
+#endif
 	}
 	void CommandBufferD3D12::BeginComputeDebugMarker(const std::string& label)
 	{
@@ -363,7 +369,9 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::EndRenderDebugMarker()
 	{
+#ifdef PIX_SUPPORTED
 		PIXEndEvent(commandList.Get());
+#endif
 	}
 	void CommandBufferD3D12::EndComputeDebugMarker()
 	{
