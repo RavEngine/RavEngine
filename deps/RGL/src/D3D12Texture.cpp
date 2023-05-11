@@ -48,7 +48,7 @@ namespace RGL {
 
 		upload.Begin();
 
-		D3D12_SUBRESOURCE_DATA initData = { bytes.data(), config.width * config.height, 0};
+		D3D12_SUBRESOURCE_DATA initData = { bytes.data(), bytes.size() / config.width, bytes.size()};
 		upload.Upload(texture.Get(), 0, &initData, 1);
 
 		upload.Transition(texture.Get(),

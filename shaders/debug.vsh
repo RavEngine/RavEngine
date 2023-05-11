@@ -1,4 +1,4 @@
-layout(location = 0) in vec4 inPosition;		// w (unused) is the size
+layout(location = 0) in vec4 inPosition;		// w is the size
 layout(location = 1) in uint inColor;
 
 layout(location = 0) out vec4 outColor;
@@ -12,4 +12,5 @@ void main()
 {
 	gl_Position = ubo.viewProj * vec4(inPosition.xyz, 1.0);
 	outColor = unpackUnorm4x8(inColor);
+	gl_PointSize = inPosition.w;
 }

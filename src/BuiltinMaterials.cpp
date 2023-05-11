@@ -85,7 +85,7 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
                 .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
             },
              {
-                .binding = 0,
+                .binding = 1,
                 .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
                 .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
             }
