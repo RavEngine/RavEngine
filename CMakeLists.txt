@@ -231,7 +231,7 @@ add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
-if (NOT TARGET_APPLE AND NOT TARGET_WINDOWS AND NOT TARGET_EMSCRIPTEN AND NOT TARGET_ANDROID)
+if (NOT TARGET_APPLE AND NOT TARGET_WINDOWS AND NOT TARGET_UWP AND NOT TARGET_EMSCRIPTEN AND NOT TARGET_ANDROID)
 	find_package(ALSA)
 	find_package(PulseAudio)                                    
 	if (NOT ALSA_FOUND AND NOT PulseAudio_FOUND)
