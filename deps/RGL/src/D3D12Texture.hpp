@@ -16,7 +16,7 @@ namespace RGL {
 	struct DeviceD3D12;
 	struct TextureD3D12 : public ITexture {
 		friend class SwapchainD3D12;
-
+		D3D12_RESOURCE_STATES initialState;
 		Microsoft::WRL::ComPtr<ID3D12Resource> texture;
 		const std::shared_ptr<DeviceD3D12> owningDevice;
 		D3D12MA::Allocation* allocation = nullptr;

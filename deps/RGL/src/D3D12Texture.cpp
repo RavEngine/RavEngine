@@ -4,6 +4,7 @@
 #include "D3D12Device.hpp"
 #include "D3D12CommandQueue.hpp"
 #include <D3D12MemAlloc.h>
+#include <ResourceUploadBatch.h>
 
 using namespace Microsoft::WRL;
 
@@ -42,79 +43,38 @@ namespace RGL {
 	}
 	TextureD3D12::TextureD3D12(decltype(owningDevice) owningDevice, const TextureConfig& config, untyped_span bytes) : TextureD3D12(owningDevice, config)
 	{
-		auto commandList = owningDevice->internalQueue->CreateCommandList();
 
-		// create the staging buffer
-		D3D12MA::ALLOCATION_DESC textureUploadAllocDesc = {};
-		textureUploadAllocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC textureUploadResourceDesc = {};
-		textureUploadResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		textureUploadResourceDesc.Alignment = 0;
-		textureUploadResourceDesc.Width = bytes.size();
-		textureUploadResourceDesc.Height = 1;
-		textureUploadResourceDesc.DepthOrArraySize = 1;
-		textureUploadResourceDesc.MipLevels = 1;
-		textureUploadResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-		textureUploadResourceDesc.SampleDesc.Count = 1;
-		textureUploadResourceDesc.SampleDesc.Quality = 0;
-		textureUploadResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		textureUploadResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		ComPtr<ID3D12Resource> textureUpload;
-		D3D12MA::Allocation* textureUploadAllocation;
-		DX_CHECK(owningDevice->allocator->CreateResource(
-			&textureUploadAllocDesc,
-			&textureUploadResourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ | D3D12_RESOURCE_STATE_COPY_SOURCE,
-			nullptr, // pOptimizedClearValue
-			&textureUploadAllocation,
-			IID_PPV_ARGS(&textureUpload)));
-		textureUpload->SetName(L"textureUpload");
+		DirectX::ResourceUploadBatch upload(owningDevice->device.Get());
 
-		auto bytesPerRow = bytes.size() / config.width;
-		D3D12_SUBRESOURCE_DATA textureSubresourceData = {};
-		textureSubresourceData.pData = bytes.data();
-		textureSubresourceData.RowPitch = bytesPerRow;
-		textureSubresourceData.SlicePitch = bytes.size();	// TODO: for 3D textures, this should be the size of one layer
+		upload.Begin();
 
-		//UpdateSubresources(commandList.Get(), texture.Get(), textureUpload.Get(), 0, 0, 1, &textureSubresourceData);
+		auto desc = CD3DX12_RESOURCE_DESC(
+			D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+			config.width, config.height, 1, 1,
+			rgl2dxgiformat_texture(config.format),
+			1, 0,
+			D3D12_TEXTURE_LAYOUT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE);
 
-		D3D12_TEXTURE_COPY_LOCATION dst{
-			.pResource = texture.Get(),
-			.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
-			.SubresourceIndex = 0,
-		};
+		CD3DX12_HEAP_PROPERTIES defaultHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
 
-		D3D12_TEXTURE_COPY_LOCATION src{
-			.pResource = textureUpload.Get(),
-			.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
-			.PlacedFootprint = {
-				.Offset = 0,
-				.Footprint = {
-					.Format = rgl2dxgiformat_texture(config.format),
-					.Width = 1,
-					.Height = 1,
-					.Depth = 1,
-					.RowPitch = UINT(ceil(bytesPerRow/float(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)) * D3D12_TEXTURE_DATA_PITCH_ALIGNMENT)	// needs to be a multiple of D3D12_TEXTURE_DATA_PITCH_ALIGNMENT 
-				}
-			},
-		};
+		DX_CHECK(owningDevice->device->CreateCommittedResource(
+			&defaultHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(texture.ReleaseAndGetAddressOf())));
 
-		commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+		D3D12_SUBRESOURCE_DATA initData = { bytes.data(), config.width * config.height, 0};
+		upload.Upload(texture.Get(), 0, &initData, 1);
 
-		D3D12_RESOURCE_BARRIER textureBarrier = {};
-		textureBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureBarrier.Transition.pResource = texture.Get();
-		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		textureBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-		textureBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		commandList->ResourceBarrier(1, &textureBarrier);
+		upload.Transition(texture.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-
-		commandList->Close();
-		auto fenceValue = owningDevice->internalQueue->ExecuteCommandList(commandList);
-		owningDevice->internalQueue->WaitForFenceValue(fenceValue);
-
-		textureUploadAllocation->Release();	// no longer need this so get rid of it
+		auto finish = upload.End(owningDevice->internalQueue->m_d3d12CommandQueue.Get());
+		finish.wait();
 
 	}
 	TextureD3D12::TextureD3D12(decltype(owningDevice) owningDevice, const TextureConfig& config) : owningDevice(owningDevice), ITexture({ config.width,config.height })
@@ -149,7 +109,7 @@ namespace RGL {
 			.Format = format,
 		};
 
-		D3D12_RESOURCE_STATES initialState = rgl2d3d12resourcestate(config.initialLayout);
+		initialState = rgl2d3d12resourcestate(config.initialLayout);
 		if (isDS) {
 			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 			optimizedClearValue.DepthStencil = { 1,0 };
