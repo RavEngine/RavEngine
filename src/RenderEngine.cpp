@@ -249,7 +249,7 @@ auto generateCone(float radius, float height, int numberOfSides)
 	std::vector<uint16_t> triangles;
 
 	struct Mesh {
-		decltype(vertices) vertices;
+		decltype(vertices) verts;
 		decltype(triangles) indices;
 	};
 
@@ -287,7 +287,7 @@ auto generateCone(float radius, float height, int numberOfSides)
 	}
 
 	Mesh cube;
-	cube.vertices = std::move(vertices);
+	cube.verts = std::move(vertices);
 	cube.indices = std::move(triangles);
 
 	return cube;
@@ -939,7 +939,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto coneMesh = generateCone(1, 1, 16);
 
 	spotLightVertexBuffer = device->CreateBuffer({
-		uint32_t(coneMesh.vertices.size()),
+		uint32_t(coneMesh.verts.size()),
 		{.VertexBuffer = true},
 		sizeof(float) * 3,
 		RGL::BufferAccess::Private
@@ -952,7 +952,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		RGL::BufferAccess::Private
 	});
 
-	spotLightVertexBuffer->SetBufferData({coneMesh.vertices.data(), coneMesh.vertices.size() * sizeof(coneMesh.vertices[0])});
+	spotLightVertexBuffer->SetBufferData({coneMesh.verts.data(), coneMesh.verts.size() * sizeof(coneMesh.verts[0])});
 	spotLightIndexBuffer->SetBufferData({coneMesh.indices.data(), coneMesh.indices.size() * sizeof(coneMesh.indices[0])});
 	nSpotLightIndices = coneMesh.indices.size();
 
