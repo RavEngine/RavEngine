@@ -29,6 +29,33 @@ add_subdirectory("${ST_DEPS_DIR}/SPIRV-Tools" EXCLUDE_FROM_ALL)
 
 add_subdirectory("${ST_DEPS_DIR}/SPIRV-Reflect" EXCLUDE_FROM_ALL)
 
+set(TINT_BUILD_WGSL_READER OFF CACHE INTERNAL "")
+set(TINT_BUILD_GLSL_WRITER OFF CACHE INTERNAL "")
+set(TINT_BUILD_HLSL_WRITER OFF CACHE INTERNAL "")
+set(TINT_BUILD_MSL_WRITER OFF CACHE INTERNAL "")
+set(TINT_BUILD_SPV_WRITER OFF CACHE INTERNAL "")
+set(TINT_BUILD_SAMPLES OFF CACHE INTERNAL "")
+set(TINT_BUILD_IR OFF CACHE INTERNAL "")
+set(TINT_BUILD_SPV_READER ON CACHE INTERNAL "")
+set(TINT_BUILD_SPV_WRITER OFF CACHE INTERNAL "")
+set(TINT_BUILD_WGSL_WRITER ON CACHE INTERNAL "")
+function(tint_default_compile_options TARGET)   
+    # stub this out because we don't want it
+endfunction()
+if (WIN32)
+    set(TINT_OS_CC_SUFFIX "windows")
+elseif(UNIX)
+    set(TINT_OS_CC_SUFFIX "posix")
+else()
+    set(TINT_OS_CC_SUFFIX "other")
+endif()
+add_subdirectory("${ST_DEPS_DIR}/tint/src/tint" EXCLUDE_FROM_ALL)
+target_include_directories(tint_diagnostic_utils PUBLIC "${ST_DEPS_DIR}/tint")
+target_include_directories(libtint PUBLIC "${ST_DEPS_DIR}/tint/include")
+target_compile_features(tint_diagnostic_utils PUBLIC cxx_std_20)
+target_compile_features(libtint PUBLIC cxx_std_20)
+target_compile_definitions(libtint PUBLIC TINT_BUILD_SPV_READER=1 TINT_BUILD_WGSL_WRITER=1)
+
 if(ST_BUNDLED_DXC)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "")
     set(LLVM_APPEND_VC_REV ON CACHE BOOL "") 
@@ -89,6 +116,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
     spirv-cross-reflect
     SPIRV-Tools
     SPIRV-Reflect
+    libtint
     ${FOUNDATION_LIB}
 )
 if(ST_BUNDLED_DXC)

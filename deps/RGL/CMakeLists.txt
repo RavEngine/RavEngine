@@ -112,6 +112,14 @@ else()
 	set(RGL_MTL_AVAILABLE OFF CACHE INTERNAL "RGL Metal")
 endif()
 
+if (CMAKE_SYSTEM_NAME MATCHES "Emscripten")
+	set(RGL_WEBGPU_AVAILABLE ON CACHE INTERNAL "RGL WebGPU")
+	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_WEBGPU_AVAILABLE=1)
+else()
+	set(RGL_WEBGPU_AVAILABLE OFF CACHE INTERNAL "RGL WebGPU")
+	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_WEBGPU_AVAILABLE=0)
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE 
 	${VK_LIBS}
 	${DX12_LIBRARIES}
@@ -138,7 +146,7 @@ set_target_properties("RGL" ${rglc_exe} "librglc" PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
 
-set_target_properties("SPIRV-Reflect" "ShaderTranspiler" PROPERTIES 
+set_target_properties("SPIRV-Reflect" "ShaderTranspiler" "libtint" "tint_diagnostic_utils" PROPERTIES 
 	FOLDER "RGL/Libraries"
 )
 
@@ -197,7 +205,7 @@ endif()
 
 
 
-if (RGL_VK_AVAILABLE OR RGL_DX12_AVAILABLE OR RGL_MTL_AVAILABLE)
+if (RGL_VK_AVAILABLE OR RGL_DX12_AVAILABLE OR RGL_MTL_AVAILABLE OR RGL_WEBGPU_AVAILABLE)
 else()
 message(FATAL_ERROR "No backends are enabled! Check that all required SDKs are installed.")
 endif()

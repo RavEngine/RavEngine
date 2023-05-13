@@ -192,13 +192,13 @@ namespace RGL {
 
 		struct ViewportDesc {		// we only support one viewport and one scissor for now
 			float x = 0, y = 0,
-				width = 0, height = 0,
+				width = 640, height = 480,
 				minDepth = 0, maxDepth = 1;  // depth values must be within [0,1] but minDepth does not need to be lower than maxDepth
 		} viewport;
 
 		struct ScissorDesc {
 			std::pair<int, int> offset = { 0, 0 };
-			std::pair<uint32_t, uint32_t>	extent = { 0, 0 };
+			std::pair<uint32_t, uint32_t>	extent = { 640, 480 };
 		} scissor;
 
 		struct RasterizerConfig {

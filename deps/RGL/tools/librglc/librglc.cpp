@@ -18,6 +18,7 @@ shadert::TargetAPI rgl2shadert_source(librglc::API api) {
 	switch (api) {
 	case decltype(api)::Direct3D12: return TargetAPI::HLSL;
 	case decltype(api)::Metal: return TargetAPI::Metal;
+	case decltype(api)::WebGPU: return TargetAPI::WGSL;
 	default:
 		throw std::runtime_error("Cannot create a source target for API");
 	}
@@ -34,6 +35,7 @@ shadert::TargetAPI rgl2shadert_binary(librglc::API api) {
 #ifdef __APPLE__
 	case decltype(api)::Metal: return TargetAPI::MetalBinary;
 #endif
+	case decltype(api)::WebGPU: return TargetAPI::WGSL;
 	default:
 		throw std::runtime_error("Cannot create a binary target for API");
 	}
@@ -43,6 +45,7 @@ namespace librglc {
 	auto CompileAny(auto task, API toAPI, ShaderStage input_stage, const Config& config) {
 		shadert::Options opt;
 		opt.mobile = false;
+		opt.debug = config.enableDebug;
 		opt.entryPoint = config.entrypointOutputName;
 		if (toAPI == API::Vulkan) {
 			opt.version = 15;
@@ -53,6 +56,9 @@ namespace librglc {
 		else if (toAPI == API::Metal) {
 			opt.version = 30;
             opt.pushConstantSettings.firstIndex = MTL_FIRST_BUFFER;    // the [[stage_input]] consumes slot 0, extra vertex buffers consume the next slots
+		}
+		else if (toAPI == API::WebGPU) {
+			opt.version = 13;
 		}
 
 		ShaderTranspiler s;

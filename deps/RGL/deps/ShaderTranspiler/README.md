@@ -1,6 +1,6 @@
 # ShaderTranspiler
-A clean and simple C++ library to convert GLSL shaders to HLSL, Metal, and Vulkan. It leverages [glslang](https://github.com/KhronosGroup/glslang), 
-[SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross), and [SPIRV-Tools](https://github.com/KhronosGroup/SPIRV-Tools) to handle cross-compilation of shaders. 
+A clean and simple C++ library to convert GLSL shaders to HLSL, Metal, Vulkan, and WebGPU. It leverages [glslang](https://github.com/KhronosGroup/glslang), 
+[SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross), [SPIRV-Tools](https://github.com/KhronosGroup/SPIRV-Tools), [Tint](https://dawn.googlesource.com/tint), and [dxcompiler](https://github.com/microsoft/DirectXShaderCompiler) to handle cross-compilation of shaders. 
 
 ## Supported APIs:
 - GLSL -> ESSL (OpenGL ES) 
@@ -9,6 +9,7 @@ A clean and simple C++ library to convert GLSL shaders to HLSL, Metal, and Vulka
 - GLSL -> MSL (Metal, mobile and desktop)
 - GLSL -> MSL Binary (macOS host only, requires Xcode to be installed)
 - GLSL -> SPIR-V (Vulkan)
+- GLSL -> WGSL (WebGPU)
 
 
 ## How to use

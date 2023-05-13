@@ -29,6 +29,7 @@ enum class TargetAPI{
 	OpenGL,
 	Vulkan,
 	HLSL,
+	WGSL,
 #ifdef ST_DXIL_ENABLED
 	DXIL,
 #endif
@@ -112,6 +113,7 @@ struct CompileResult{
 struct Options{
 	uint32_t version;
 	bool mobile;
+	bool debug = false;
 	std::string entryPoint = "frag";
 	struct UniformBufferSettings{
 		std::string newBufferName;
@@ -141,5 +143,7 @@ public:
 	 @return A CompileResult representing the result of the compile.
 	 */
 	CompileResult CompileTo(const MemoryCompileTask& task, const TargetAPI platform, const Options& options);
+
+	~ShaderTranspiler();
 };
 }

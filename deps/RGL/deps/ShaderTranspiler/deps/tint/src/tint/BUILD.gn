@@ -1,0 +1,2279 @@
+# Copyright 2021 The Tint Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build_overrides/build.gni")
+
+import("../../scripts/dawn_overrides_with_defaults.gni")
+import("../../tint_overrides_with_defaults.gni")
+
+if (tint_build_unittests) {
+  import("//testing/test.gni")
+}
+
+###############################################################################
+# Common - Configs, etc. shared across targets
+###############################################################################
+
+config("tint_common_config") {
+  include_dirs = [
+    "${target_gen_dir}",
+    "${tint_root_dir}/",
+    "${tint_spirv_headers_dir}/include",
+    "${tint_spirv_tools_dir}/",
+    "${tint_spirv_tools_dir}/include",
+  ]
+}
+
+config("tint_public_config") {
+  defines = []
+  if (tint_build_spv_reader) {
+    defines += [ "TINT_BUILD_SPV_READER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_SPV_READER=0" ]
+  }
+
+  if (tint_build_spv_writer) {
+    defines += [ "TINT_BUILD_SPV_WRITER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_SPV_WRITER=0" ]
+  }
+
+  if (tint_build_wgsl_reader) {
+    defines += [ "TINT_BUILD_WGSL_READER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_WGSL_READER=0" ]
+  }
+
+  if (tint_build_wgsl_writer) {
+    defines += [ "TINT_BUILD_WGSL_WRITER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_WGSL_WRITER=0" ]
+  }
+
+  if (tint_build_msl_writer) {
+    defines += [ "TINT_BUILD_MSL_WRITER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_MSL_WRITER=0" ]
+  }
+
+  if (tint_build_hlsl_writer) {
+    defines += [ "TINT_BUILD_HLSL_WRITER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_HLSL_WRITER=0" ]
+  }
+
+  if (tint_build_glsl_writer) {
+    defines += [ "TINT_BUILD_GLSL_WRITER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_GLSL_WRITER=0" ]
+  }
+
+  if (tint_build_syntax_tree_writer) {
+    defines += [ "TINT_BUILD_SYNTAX_TREE_WRITER=1" ]
+  } else {
+    defines += [ "TINT_BUILD_SYNTAX_TREE_WRITER=0" ]
+  }
+
+  if (tint_build_ir) {
+    defines += [ "TINT_BUILD_IR=1" ]
+  } else {
+    defines += [ "TINT_BUILD_IR=0" ]
+  }
+
+  include_dirs = [
+    "${tint_root_dir}/",
+    "${tint_root_dir}/include/",
+    "${tint_spirv_headers_dir}/include",
+  ]
+}
+
+config("tint_config") {
+  include_dirs = []
+  if (tint_build_spv_reader || tint_build_spv_writer) {
+    include_dirs += [ "${tint_spirv_tools_dir}/include/" ]
+  }
+}
+
+group("abseil") {
+  # When build_with_chromium=true we need to include "//third_party/abseil-cpp:absl" while
+  # it's beneficial to be more specific with standalone Dawn, especially when it comes to
+  # including it as a dependency in other projects (such as Skia).
+  if (build_with_chromium) {
+    public_deps = [ "$dawn_abseil_dir:absl" ]
+  } else {
+    public_deps = [ "${dawn_root}/third_party/gn/abseil-cpp:strings" ]
+  }
+}
+
+###############################################################################
+# Helper library for IO operations
+# Only to be used by tests and sample executable
+###############################################################################
+source_set("tint_utils_io") {
+  sources = [
+    "utils/io/command.h",
+    "utils/io/tmpfile.h",
+  ]
+
+  if (is_linux || is_mac) {
+    sources += [ "utils/io/command_posix.cc" ]
+    sources += [ "utils/io/tmpfile_posix.cc" ]
+  } else if (is_win) {
+    sources += [ "utils/io/command_windows.cc" ]
+    sources += [ "utils/io/tmpfile_windows.cc" ]
+  } else {
+    sources += [ "utils/io/command_other.cc" ]
+    sources += [ "utils/io/tmpfile_other.cc" ]
+  }
+
+  deps = [ ":libtint_utils_src" ]
+}
+
+###############################################################################
+# Helper library for validating generated shaders
+# As this depends on tint_utils_io, this is only to be used by tests and sample
+# executable
+###############################################################################
+source_set("tint_val") {
+  sources = [
+    "val/hlsl.cc",
+    "val/msl.cc",
+    "val/val.h",
+  ]
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_program_src",
+    ":libtint_utils_src",
+    ":tint_utils_io",
+  ]
+}
+
+###############################################################################
+# Library - Tint core and optional modules of libtint
+###############################################################################
+# Targets that want to use tint as a library should depend on ":libtint" and
+# use the build flags to control what is included, instead of trying to specify
+# the subsets that they want.
+
+template("libtint_source_set") {
+  source_set(target_name) {
+    forward_variables_from(invoker, "*", [ "configs" ])
+
+    if (!defined(invoker.deps)) {
+      deps = []
+    }
+    deps += [
+      "${tint_spirv_headers_dir}:spv_headers",
+      "${tint_spirv_tools_dir}:spvtools_core_enums_unified1",
+      "${tint_spirv_tools_dir}:spvtools_core_tables_unified1",
+      "${tint_spirv_tools_dir}:spvtools_headers",
+      "${tint_spirv_tools_dir}:spvtools_language_header_cldebuginfo100",
+      "${tint_spirv_tools_dir}:spvtools_language_header_debuginfo",
+      "${tint_spirv_tools_dir}:spvtools_language_header_vkdebuginfo100",
+    ]
+
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    configs += [ ":tint_common_config" ]
+    if (build_with_chromium) {
+      configs -= [ "//build/config/compiler:chromium_code" ]
+      configs += [ "//build/config/compiler:no_chromium_code" ]
+    }
+
+    if (!defined(invoker.public_configs)) {
+      public_configs = []
+    }
+    public_configs += [ ":tint_public_config" ]
+  }
+}
+
+libtint_source_set("libtint_symbols_src") {
+  sources = [
+    "number.cc",
+    "number.h",
+    "program_id.cc",
+    "program_id.h",
+    "reflection.h",
+    "scope_stack.h",
+    "symbol.cc",
+    "symbol.h",
+    "symbol_table.cc",
+    "symbol_table.h",
+  ]
+  deps = [
+    ":libtint_builtins_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_utils_src") {
+  sources = [
+    "debug.cc",
+    "debug.h",
+    "diagnostic/diagnostic.cc",
+    "diagnostic/diagnostic.h",
+    "diagnostic/formatter.cc",
+    "diagnostic/formatter.h",
+    "diagnostic/printer.cc",
+    "diagnostic/printer.h",
+    "source.cc",
+    "source.h",
+    "switch.h",
+    "utils/bitcast.h",
+    "utils/bitset.h",
+    "utils/block_allocator.h",
+    "utils/bump_allocator.h",
+    "utils/castable.cc",
+    "utils/castable.h",
+    "utils/compiler_macros.h",
+    "utils/concat.h",
+    "utils/crc32.h",
+    "utils/debugger.cc",
+    "utils/debugger.h",
+    "utils/defer.h",
+    "utils/enum_set.h",
+    "utils/foreach_macro.h",
+    "utils/hash.h",
+    "utils/hashmap.h",
+    "utils/hashmap_base.h",
+    "utils/hashset.h",
+    "utils/map.h",
+    "utils/math.h",
+    "utils/predicates.h",
+    "utils/scoped_assignment.h",
+    "utils/slice.h",
+    "utils/string.cc",
+    "utils/string.h",
+    "utils/string_stream.cc",
+    "utils/string_stream.h",
+    "utils/traits.h",
+    "utils/unicode.cc",
+    "utils/unicode.h",
+    "utils/unique_allocator.h",
+    "utils/unique_vector.h",
+    "utils/vector.h",
+  ]
+
+  if (is_linux || is_mac) {
+    sources += [ "diagnostic/printer_posix.cc" ]
+  } else if (is_win) {
+    sources += [ "diagnostic/printer_windows.cc" ]
+  } else {
+    sources += [ "diagnostic/printer_other.cc" ]
+  }
+}
+
+libtint_source_set("libtint_clone_context_hdrs") {
+  sources = [ "clone_context.h" ]
+  deps = [
+    ":libtint_symbols_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_program_src") {
+  sources = [
+    "clone_context.cc",
+    "program.cc",
+    "program_builder.cc",
+    "resolver/builtin_structs.cc",
+    "resolver/builtin_structs.h",
+    "resolver/const_eval.cc",
+    "resolver/const_eval.h",
+    "resolver/ctor_conv_intrinsic.cc",
+    "resolver/ctor_conv_intrinsic.h",
+    "resolver/dependency_graph.cc",
+    "resolver/dependency_graph.h",
+    "resolver/intrinsic_table.cc",
+    "resolver/intrinsic_table.h",
+    "resolver/intrinsic_table.inl",
+    "resolver/resolver.cc",
+    "resolver/sem_helper.cc",
+    "resolver/sem_helper.h",
+    "resolver/uniformity.cc",
+    "resolver/uniformity.h",
+    "resolver/validator.cc",
+    "resolver/validator.h",
+  ]
+  public = [
+    "program.h",
+    "program_builder.h",
+    "resolver/resolver.h",
+  ]
+  friend = [
+    ":tint_unittests_resolver_src",  # For resolver test access
+  ]
+
+  public_deps = [ ":libtint_clone_context_hdrs" ]
+
+  deps = [
+    ":libtint_ast_hdrs",
+    ":libtint_builtins_src",
+    ":libtint_constant_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_initializer_src") {
+  sources = [ "tint.cc" ]
+}
+
+libtint_source_set("libtint_inspector_src") {
+  sources = [
+    "inspector/entry_point.cc",
+    "inspector/entry_point.h",
+    "inspector/inspector.cc",
+    "inspector/inspector.h",
+    "inspector/resource_binding.cc",
+    "inspector/resource_binding.h",
+    "inspector/scalar.cc",
+    "inspector/scalar.h",
+  ]
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_transform_src") {
+  sources = [
+    "transform/add_block_attribute.cc",
+    "transform/add_block_attribute.h",
+    "transform/add_empty_entry_point.cc",
+    "transform/add_empty_entry_point.h",
+    "transform/array_length_from_uniform.cc",
+    "transform/array_length_from_uniform.h",
+    "transform/binding_remapper.cc",
+    "transform/binding_remapper.h",
+    "transform/builtin_polyfill.cc",
+    "transform/builtin_polyfill.h",
+    "transform/calculate_array_length.cc",
+    "transform/calculate_array_length.h",
+    "transform/canonicalize_entry_point_io.cc",
+    "transform/canonicalize_entry_point_io.h",
+    "transform/clamp_frag_depth.cc",
+    "transform/clamp_frag_depth.h",
+    "transform/combine_samplers.cc",
+    "transform/combine_samplers.h",
+    "transform/decompose_memory_access.cc",
+    "transform/decompose_memory_access.h",
+    "transform/decompose_strided_array.cc",
+    "transform/decompose_strided_array.h",
+    "transform/decompose_strided_matrix.cc",
+    "transform/decompose_strided_matrix.h",
+    "transform/demote_to_helper.cc",
+    "transform/demote_to_helper.h",
+    "transform/direct_variable_access.cc",
+    "transform/direct_variable_access.h",
+    "transform/disable_uniformity_analysis.cc",
+    "transform/disable_uniformity_analysis.h",
+    "transform/expand_compound_assignment.cc",
+    "transform/expand_compound_assignment.h",
+    "transform/first_index_offset.cc",
+    "transform/first_index_offset.h",
+    "transform/for_loop_to_loop.cc",
+    "transform/for_loop_to_loop.h",
+    "transform/localize_struct_array_assignment.cc",
+    "transform/localize_struct_array_assignment.h",
+    "transform/manager.cc",
+    "transform/manager.h",
+    "transform/merge_return.cc",
+    "transform/merge_return.h",
+    "transform/module_scope_var_to_entry_point_param.cc",
+    "transform/module_scope_var_to_entry_point_param.h",
+    "transform/multiplanar_external_texture.cc",
+    "transform/multiplanar_external_texture.h",
+    "transform/num_workgroups_from_uniform.cc",
+    "transform/num_workgroups_from_uniform.h",
+    "transform/packed_vec3.cc",
+    "transform/packed_vec3.h",
+    "transform/pad_structs.cc",
+    "transform/pad_structs.h",
+    "transform/preserve_padding.cc",
+    "transform/preserve_padding.h",
+    "transform/promote_initializers_to_let.cc",
+    "transform/promote_initializers_to_let.h",
+    "transform/promote_side_effects_to_decl.cc",
+    "transform/promote_side_effects_to_decl.h",
+    "transform/remove_continue_in_switch.cc",
+    "transform/remove_continue_in_switch.h",
+    "transform/remove_phonies.cc",
+    "transform/remove_phonies.h",
+    "transform/remove_unreachable_statements.cc",
+    "transform/remove_unreachable_statements.h",
+    "transform/renamer.cc",
+    "transform/renamer.h",
+    "transform/robustness.cc",
+    "transform/robustness.h",
+    "transform/simplify_pointers.cc",
+    "transform/simplify_pointers.h",
+    "transform/single_entry_point.cc",
+    "transform/single_entry_point.h",
+    "transform/spirv_atomic.cc",
+    "transform/spirv_atomic.h",
+    "transform/std140.cc",
+    "transform/std140.h",
+    "transform/substitute_override.cc",
+    "transform/substitute_override.h",
+    "transform/texture_1d_to_2d.cc",
+    "transform/texture_1d_to_2d.h",
+    "transform/transform.cc",
+    "transform/transform.h",
+    "transform/truncate_interstage_variables.cc",
+    "transform/truncate_interstage_variables.h",
+    "transform/unshadow.cc",
+    "transform/unshadow.h",
+    "transform/utils/get_insertion_point.cc",
+    "transform/utils/get_insertion_point.h",
+    "transform/utils/hoist_to_decl_before.cc",
+    "transform/utils/hoist_to_decl_before.h",
+    "transform/var_for_dynamic_index.cc",
+    "transform/var_for_dynamic_index.h",
+    "transform/vectorize_matrix_conversions.cc",
+    "transform/vectorize_matrix_conversions.h",
+    "transform/vectorize_scalar_matrix_initializers.cc",
+    "transform/vectorize_scalar_matrix_initializers.h",
+    "transform/vertex_pulling.cc",
+    "transform/vertex_pulling.h",
+    "transform/while_to_loop.cc",
+    "transform/while_to_loop.h",
+    "transform/zero_init_workgroup_memory.cc",
+    "transform/zero_init_workgroup_memory.h",
+  ]
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_ast_hdrs") {
+  sources = [
+    "ast/accessor_expression.h",
+    "ast/alias.h",
+    "ast/assignment_statement.h",
+    "ast/attribute.h",
+    "ast/binary_expression.h",
+    "ast/binding_attribute.h",
+    "ast/bitcast_expression.h",
+    "ast/block_statement.h",
+    "ast/bool_literal_expression.h",
+    "ast/break_if_statement.h",
+    "ast/break_statement.h",
+    "ast/builtin_attribute.h",
+    "ast/call_expression.h",
+    "ast/call_statement.h",
+    "ast/case_selector.h",
+    "ast/case_statement.h",
+    "ast/compound_assignment_statement.h",
+    "ast/const.h",
+    "ast/const_assert.h",
+    "ast/continue_statement.h",
+    "ast/diagnostic_attribute.h",
+    "ast/diagnostic_control.h",
+    "ast/diagnostic_directive.h",
+    "ast/diagnostic_rule_name.h",
+    "ast/disable_validation_attribute.h",
+    "ast/discard_statement.h",
+    "ast/enable.h",
+    "ast/expression.h",
+    "ast/extension.h",
+    "ast/float_literal_expression.h",
+    "ast/for_loop_statement.h",
+    "ast/function.h",
+    "ast/group_attribute.h",
+    "ast/id_attribute.h",
+    "ast/identifier.h",
+    "ast/identifier_expression.h",
+    "ast/if_statement.h",
+    "ast/increment_decrement_statement.h",
+    "ast/index_accessor_expression.h",
+    "ast/int_literal_expression.h",
+    "ast/internal_attribute.h",
+    "ast/interpolate_attribute.h",
+    "ast/invariant_attribute.h",
+    "ast/let.h",
+    "ast/literal_expression.h",
+    "ast/location_attribute.h",
+    "ast/loop_statement.h",
+    "ast/member_accessor_expression.h",
+    "ast/module.h",
+    "ast/must_use_attribute.h",
+    "ast/node.h",
+    "ast/node_id.h",
+    "ast/override.h",
+    "ast/parameter.h",
+    "ast/phony_expression.h",
+    "ast/pipeline_stage.h",
+    "ast/return_statement.h",
+    "ast/stage_attribute.h",
+    "ast/statement.h",
+    "ast/stride_attribute.h",
+    "ast/struct.h",
+    "ast/struct_member.h",
+    "ast/struct_member_align_attribute.h",
+    "ast/struct_member_offset_attribute.h",
+    "ast/struct_member_size_attribute.h",
+    "ast/switch_statement.h",
+    "ast/templated_identifier.h",
+    "ast/traverse_expressions.h",
+    "ast/type.h",
+    "ast/type_decl.h",
+    "ast/unary_op.h",
+    "ast/unary_op_expression.h",
+    "ast/var.h",
+    "ast/variable.h",
+    "ast/variable_decl_statement.h",
+    "ast/while_statement.h",
+    "ast/workgroup_attribute.h",
+  ]
+  deps = [
+    ":libtint_builtins_src",
+    ":libtint_clone_context_hdrs",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_ast_src") {
+  sources = [
+    "ast/accessor_expression.cc",
+    "ast/alias.cc",
+    "ast/assignment_statement.cc",
+    "ast/attribute.cc",
+    "ast/binary_expression.cc",
+    "ast/binding_attribute.cc",
+    "ast/bitcast_expression.cc",
+    "ast/block_statement.cc",
+    "ast/bool_literal_expression.cc",
+    "ast/break_if_statement.cc",
+    "ast/break_statement.cc",
+    "ast/builtin_attribute.cc",
+    "ast/call_expression.cc",
+    "ast/call_statement.cc",
+    "ast/case_selector.cc",
+    "ast/case_statement.cc",
+    "ast/compound_assignment_statement.cc",
+    "ast/const.cc",
+    "ast/const_assert.cc",
+    "ast/continue_statement.cc",
+    "ast/diagnostic_attribute.cc",
+    "ast/diagnostic_control.cc",
+    "ast/diagnostic_directive.cc",
+    "ast/diagnostic_rule_name.cc",
+    "ast/disable_validation_attribute.cc",
+    "ast/discard_statement.cc",
+    "ast/enable.cc",
+    "ast/expression.cc",
+    "ast/extension.cc",
+    "ast/float_literal_expression.cc",
+    "ast/for_loop_statement.cc",
+    "ast/function.cc",
+    "ast/group_attribute.cc",
+    "ast/id_attribute.cc",
+    "ast/identifier.cc",
+    "ast/identifier_expression.cc",
+    "ast/if_statement.cc",
+    "ast/increment_decrement_statement.cc",
+    "ast/index_accessor_expression.cc",
+    "ast/int_literal_expression.cc",
+    "ast/internal_attribute.cc",
+    "ast/interpolate_attribute.cc",
+    "ast/invariant_attribute.cc",
+    "ast/let.cc",
+    "ast/literal_expression.cc",
+    "ast/location_attribute.cc",
+    "ast/loop_statement.cc",
+    "ast/member_accessor_expression.cc",
+    "ast/module.cc",
+    "ast/must_use_attribute.cc",
+    "ast/node.cc",
+    "ast/override.cc",
+    "ast/parameter.cc",
+    "ast/phony_expression.cc",
+    "ast/pipeline_stage.cc",
+    "ast/return_statement.cc",
+    "ast/stage_attribute.cc",
+    "ast/statement.cc",
+    "ast/stride_attribute.cc",
+    "ast/struct.cc",
+    "ast/struct_member.cc",
+    "ast/struct_member_align_attribute.cc",
+    "ast/struct_member_offset_attribute.cc",
+    "ast/struct_member_size_attribute.cc",
+    "ast/switch_statement.cc",
+    "ast/templated_identifier.cc",
+    "ast/type.cc",
+    "ast/type_decl.cc",
+    "ast/unary_op.cc",
+    "ast/unary_op_expression.cc",
+    "ast/var.cc",
+    "ast/variable.cc",
+    "ast/variable_decl_statement.cc",
+    "ast/while_statement.cc",
+    "ast/workgroup_attribute.cc",
+  ]
+  public_deps = [ ":libtint_ast_hdrs" ]
+  deps = [
+    ":libtint_builtins_src",
+    ":libtint_program_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_sem_src") {
+  sources = [
+    "sem/array_count.cc",
+    "sem/array_count.h",
+    "sem/behavior.cc",
+    "sem/behavior.h",
+    "sem/binding_point.h",
+    "sem/block_statement.cc",
+    "sem/block_statement.h",
+    "sem/break_if_statement.cc",
+    "sem/break_if_statement.h",
+    "sem/builtin.cc",
+    "sem/builtin.h",
+    "sem/builtin_enum_expression.cc",
+    "sem/builtin_enum_expression.h",
+    "sem/call.cc",
+    "sem/call.h",
+    "sem/call_target.cc",
+    "sem/call_target.h",
+    "sem/evaluation_stage.h",
+    "sem/expression.cc",
+    "sem/expression.h",
+    "sem/external_texture.h",
+    "sem/for_loop_statement.cc",
+    "sem/for_loop_statement.h",
+    "sem/function.cc",
+    "sem/function.h",
+    "sem/function_expression.cc",
+    "sem/function_expression.h",
+    "sem/if_statement.cc",
+    "sem/if_statement.h",
+    "sem/index_accessor_expression.cc",
+    "sem/index_accessor_expression.h",
+    "sem/info.cc",
+    "sem/info.h",
+    "sem/load.cc",
+    "sem/load.h",
+    "sem/loop_statement.cc",
+    "sem/loop_statement.h",
+    "sem/materialize.cc",
+    "sem/materialize.h",
+    "sem/member_accessor_expression.cc",
+    "sem/member_accessor_expression.h",
+    "sem/module.cc",
+    "sem/module.h",
+    "sem/node.cc",
+    "sem/node.h",
+    "sem/parameter_usage.cc",
+    "sem/parameter_usage.h",
+    "sem/pipeline_stage_set.h",
+    "sem/sampler_texture_pair.h",
+    "sem/statement.cc",
+    "sem/statement.h",
+    "sem/struct.cc",
+    "sem/struct.h",
+    "sem/switch_statement.cc",
+    "sem/switch_statement.h",
+    "sem/type_expression.cc",
+    "sem/type_expression.h",
+    "sem/type_mappings.h",
+    "sem/value_constructor.cc",
+    "sem/value_constructor.h",
+    "sem/value_conversion.cc",
+    "sem/value_conversion.h",
+    "sem/value_expression.cc",
+    "sem/value_expression.h",
+    "sem/variable.cc",
+    "sem/variable.h",
+    "sem/while_statement.cc",
+    "sem/while_statement.h",
+  ]
+
+  deps = [
+    ":libtint_ast_hdrs",
+    ":libtint_builtins_src",
+    ":libtint_constant_src",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_builtins_src") {
+  sources = [
+    "builtin/access.cc",
+    "builtin/access.h",
+    "builtin/address_space.cc",
+    "builtin/address_space.h",
+    "builtin/attribute.cc",
+    "builtin/attribute.h",
+    "builtin/builtin.cc",
+    "builtin/builtin.h",
+    "builtin/builtin_value.cc",
+    "builtin/builtin_value.h",
+    "builtin/diagnostic_rule.cc",
+    "builtin/diagnostic_rule.h",
+    "builtin/diagnostic_severity.cc",
+    "builtin/diagnostic_severity.h",
+    "builtin/extension.cc",
+    "builtin/extension.h",
+    "builtin/function.cc",
+    "builtin/function.h",
+    "builtin/interpolation.h",
+    "builtin/interpolation_sampling.cc",
+    "builtin/interpolation_sampling.h",
+    "builtin/interpolation_type.cc",
+    "builtin/interpolation_type.h",
+    "builtin/texel_format.cc",
+    "builtin/texel_format.h",
+  ]
+  deps = [ ":libtint_utils_src" ]
+}
+
+libtint_source_set("libtint_type_src") {
+  sources = [
+    "type/abstract_float.cc",
+    "type/abstract_float.h",
+    "type/abstract_int.cc",
+    "type/abstract_int.h",
+    "type/abstract_numeric.cc",
+    "type/abstract_numeric.h",
+    "type/array.cc",
+    "type/array.h",
+    "type/array_count.cc",
+    "type/array_count.h",
+    "type/atomic.cc",
+    "type/atomic.h",
+    "type/bool.cc",
+    "type/bool.h",
+    "type/clone_context.h",
+    "type/depth_multisampled_texture.cc",
+    "type/depth_multisampled_texture.h",
+    "type/depth_texture.cc",
+    "type/depth_texture.h",
+    "type/external_texture.cc",
+    "type/external_texture.h",
+    "type/f16.cc",
+    "type/f16.h",
+    "type/f32.cc",
+    "type/f32.h",
+    "type/i32.cc",
+    "type/i32.h",
+    "type/manager.cc",
+    "type/manager.h",
+    "type/matrix.cc",
+    "type/matrix.h",
+    "type/multisampled_texture.cc",
+    "type/multisampled_texture.h",
+    "type/node.cc",
+    "type/node.h",
+    "type/pointer.cc",
+    "type/pointer.h",
+    "type/reference.cc",
+    "type/reference.h",
+    "type/sampled_texture.cc",
+    "type/sampled_texture.h",
+    "type/sampler.cc",
+    "type/sampler.h",
+    "type/sampler_kind.cc",
+    "type/sampler_kind.h",
+    "type/storage_texture.cc",
+    "type/storage_texture.h",
+    "type/struct.cc",
+    "type/struct.h",
+    "type/texture.cc",
+    "type/texture.h",
+    "type/texture_dimension.cc",
+    "type/texture_dimension.h",
+    "type/type.cc",
+    "type/type.h",
+    "type/u32.cc",
+    "type/u32.h",
+    "type/unique_node.cc",
+    "type/unique_node.h",
+    "type/vector.cc",
+    "type/vector.h",
+    "type/void.cc",
+    "type/void.h",
+  ]
+
+  deps = [
+    ":libtint_builtins_src",
+    ":libtint_symbols_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_constant_src") {
+  sources = [
+    "constant/clone_context.h",
+    "constant/composite.cc",
+    "constant/composite.h",
+    "constant/node.cc",
+    "constant/node.h",
+    "constant/scalar.cc",
+    "constant/scalar.h",
+    "constant/splat.cc",
+    "constant/splat.h",
+    "constant/value.cc",
+    "constant/value.h",
+  ]
+  deps = [
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_reader_src") {
+  sources = [
+    "reader/reader.cc",
+    "reader/reader.h",
+  ]
+
+  public_deps = [
+    ":libtint_program_src",
+    ":libtint_transform_src",
+  ]
+}
+
+libtint_source_set("libtint_spv_reader_src") {
+  sources = [
+    "reader/spirv/attributes.h",
+    "reader/spirv/construct.cc",
+    "reader/spirv/construct.h",
+    "reader/spirv/entry_point_info.cc",
+    "reader/spirv/entry_point_info.h",
+    "reader/spirv/enum_converter.cc",
+    "reader/spirv/enum_converter.h",
+    "reader/spirv/fail_stream.h",
+    "reader/spirv/function.cc",
+    "reader/spirv/function.h",
+    "reader/spirv/namer.cc",
+    "reader/spirv/namer.h",
+    "reader/spirv/parser.cc",
+    "reader/spirv/parser.h",
+    "reader/spirv/parser_impl.cc",
+    "reader/spirv/parser_impl.h",
+    "reader/spirv/parser_type.cc",
+    "reader/spirv/parser_type.h",
+    "reader/spirv/usage.cc",
+    "reader/spirv/usage.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_program_src",
+    ":libtint_reader_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    "${tint_spirv_tools_dir}/:spvtools_opt",
+  ]
+
+  public_configs = [ "${tint_spirv_tools_dir}/:spvtools_internal_config" ]
+}
+
+libtint_source_set("libtint_writer_src") {
+  sources = [
+    "writer/append_vector.cc",
+    "writer/append_vector.h",
+    "writer/array_length_from_uniform_options.cc",
+    "writer/array_length_from_uniform_options.h",
+    "writer/binding_point.h",
+    "writer/binding_remapper_options.cc",
+    "writer/binding_remapper_options.h",
+    "writer/check_supported_extensions.cc",
+    "writer/check_supported_extensions.h",
+    "writer/external_texture_options.cc",
+    "writer/external_texture_options.h",
+    "writer/flatten_bindings.cc",
+    "writer/flatten_bindings.h",
+    "writer/float_to_string.cc",
+    "writer/float_to_string.h",
+    "writer/text.cc",
+    "writer/text.h",
+    "writer/text_generator.cc",
+    "writer/text_generator.h",
+    "writer/writer.cc",
+    "writer/writer.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_inspector_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_transform_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_spv_writer_src") {
+  sources = [
+    "writer/spirv/binary_writer.cc",
+    "writer/spirv/binary_writer.h",
+    "writer/spirv/builder.cc",
+    "writer/spirv/builder.h",
+    "writer/spirv/function.cc",
+    "writer/spirv/function.h",
+    "writer/spirv/generator.cc",
+    "writer/spirv/generator.h",
+    "writer/spirv/generator_impl.cc",
+    "writer/spirv/generator_impl.h",
+    "writer/spirv/instruction.cc",
+    "writer/spirv/instruction.h",
+    "writer/spirv/module.cc",
+    "writer/spirv/module.h",
+    "writer/spirv/operand.cc",
+    "writer/spirv/operand.h",
+    "writer/spirv/scalar_constant.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_constant_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_transform_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    ":libtint_writer_src",
+  ]
+
+  if (tint_build_ir) {
+    sources += [
+      "writer/spirv/generator_impl_ir.cc",
+      "writer/spirv/generator_impl_ir.h",
+    ]
+    deps += [
+      ":libtint_ir_builder_src",
+      ":libtint_ir_src",
+    ]
+  }
+}
+
+libtint_source_set("libtint_wgsl_reader_src") {
+  sources = [
+    "reader/wgsl/classify_template_args.cc",
+    "reader/wgsl/classify_template_args.h",
+    "reader/wgsl/lexer.cc",
+    "reader/wgsl/lexer.h",
+    "reader/wgsl/parser.cc",
+    "reader/wgsl/parser.h",
+    "reader/wgsl/parser_impl.cc",
+    "reader/wgsl/parser_impl.h",
+    "reader/wgsl/parser_impl_detail.h",
+    "reader/wgsl/token.cc",
+    "reader/wgsl/token.h",
+  ]
+
+  deps = [
+    ":abseil",
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_program_src",
+    ":libtint_reader_src",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_wgsl_writer_src") {
+  sources = [
+    "writer/wgsl/generator.cc",
+    "writer/wgsl/generator.h",
+    "writer/wgsl/generator_impl.cc",
+    "writer/wgsl/generator_impl.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    ":libtint_writer_src",
+  ]
+}
+
+libtint_source_set("libtint_msl_writer_src") {
+  sources = [
+    "writer/msl/generator.cc",
+    "writer/msl/generator.h",
+    "writer/msl/generator_impl.cc",
+    "writer/msl/generator_impl.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_constant_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_transform_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    ":libtint_writer_src",
+  ]
+}
+
+libtint_source_set("libtint_hlsl_writer_src") {
+  sources = [
+    "writer/hlsl/generator.cc",
+    "writer/hlsl/generator.h",
+    "writer/hlsl/generator_impl.cc",
+    "writer/hlsl/generator_impl.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_constant_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_transform_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    ":libtint_writer_src",
+  ]
+}
+
+libtint_source_set("libtint_glsl_writer_src") {
+  sources = [
+    "writer/glsl/generator.cc",
+    "writer/glsl/generator.h",
+    "writer/glsl/generator_impl.cc",
+    "writer/glsl/generator_impl.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_constant_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_transform_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    ":libtint_writer_src",
+  ]
+}
+
+libtint_source_set("libtint_syntax_tree_writer_src") {
+  sources = [
+    "writer/syntax_tree/generator.cc",
+    "writer/syntax_tree/generator.h",
+    "writer/syntax_tree/generator_impl.cc",
+    "writer/syntax_tree/generator_impl.h",
+  ]
+
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_builtins_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    ":libtint_writer_src",
+  ]
+}
+
+libtint_source_set("libtint_ir_builder_src") {
+  sources = [
+    "ir/builder_impl.cc",
+    "ir/builder_impl.h",
+    "ir/from_program.cc",
+    "ir/from_program.h",
+  ]
+  deps = [
+    ":libtint_ast_src",
+    ":libtint_constant_src",
+    ":libtint_ir_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+libtint_source_set("libtint_ir_src") {
+  sources = [
+    "ir/binary.cc",
+    "ir/binary.h",
+    "ir/bitcast.cc",
+    "ir/bitcast.h",
+    "ir/block.cc",
+    "ir/block.h",
+    "ir/builder.cc",
+    "ir/builder.h",
+    "ir/builtin.cc",
+    "ir/builtin.h",
+    "ir/call.cc",
+    "ir/call.h",
+    "ir/constant.cc",
+    "ir/constant.h",
+    "ir/construct.cc",
+    "ir/construct.h",
+    "ir/convert.cc",
+    "ir/convert.h",
+    "ir/debug.cc",
+    "ir/debug.h",
+    "ir/disassembler.cc",
+    "ir/disassembler.h",
+    "ir/discard.cc",
+    "ir/discard.h",
+    "ir/flow_node.cc",
+    "ir/flow_node.h",
+    "ir/function.cc",
+    "ir/function.h",
+    "ir/function_terminator.cc",
+    "ir/function_terminator.h",
+    "ir/if.cc",
+    "ir/if.h",
+    "ir/instruction.cc",
+    "ir/instruction.h",
+    "ir/loop.cc",
+    "ir/loop.h",
+    "ir/module.cc",
+    "ir/module.h",
+    "ir/root_terminator.cc",
+    "ir/root_terminator.h",
+    "ir/store.cc",
+    "ir/store.h",
+    "ir/switch.cc",
+    "ir/switch.h",
+    "ir/unary.cc",
+    "ir/unary.h",
+    "ir/user_call.cc",
+    "ir/user_call.h",
+    "ir/value.cc",
+    "ir/value.h",
+    "ir/var.cc",
+    "ir/var.h",
+  ]
+
+  deps = [
+    ":libtint_builtins_src",
+    ":libtint_constant_src",
+    ":libtint_symbols_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+  ]
+}
+
+source_set("libtint") {
+  public_deps = [
+    ":libtint_ast_src",
+    ":libtint_constant_src",
+    ":libtint_initializer_src",
+    ":libtint_inspector_src",
+    ":libtint_program_src",
+    ":libtint_sem_src",
+    ":libtint_symbols_src",
+    ":libtint_transform_src",
+    ":libtint_type_src",
+    ":libtint_utils_src",
+    ":libtint_writer_src",
+  ]
+
+  if (tint_build_spv_reader) {
+    public_deps += [ ":libtint_spv_reader_src" ]
+  }
+
+  if (tint_build_spv_writer) {
+    public_deps += [ ":libtint_spv_writer_src" ]
+  }
+
+  if (tint_build_wgsl_reader) {
+    public_deps += [ ":libtint_wgsl_reader_src" ]
+  }
+
+  if (tint_build_wgsl_writer) {
+    public_deps += [ ":libtint_wgsl_writer_src" ]
+  }
+
+  if (tint_build_msl_writer) {
+    public_deps += [ ":libtint_msl_writer_src" ]
+  }
+
+  if (tint_build_hlsl_writer) {
+    public_deps += [ ":libtint_hlsl_writer_src" ]
+  }
+
+  if (tint_build_glsl_writer) {
+    public_deps += [ ":libtint_glsl_writer_src" ]
+  }
+
+  if (tint_build_syntax_tree_writer) {
+    public_deps += [ ":libtint_syntax_tree_writer_src" ]
+  }
+
+  if (tint_build_ir) {
+    assert(!build_with_chromium,
+           "tint_build_ir cannot be used when building Chromium")
+    public_deps += [
+      ":libtint_ir_builder_src",
+      ":libtint_ir_src",
+    ]
+  }
+
+  configs += [ ":tint_common_config" ]
+  public_configs = [ ":tint_public_config" ]
+
+  if (build_with_chromium) {
+    configs -= [ "//build/config/compiler:chromium_code" ]
+    configs += [ "//build/config/compiler:no_chromium_code" ]
+  }
+}
+
+if (tint_build_unittests) {
+  ###############################################################################
+  # Gtest Gmock - Handle building inside and outside of Chromium.
+  ###############################################################################
+  # When building outside of Chromium we need to define our own targets for GTest
+  # and GMock. However when compiling inside of Chromium we need to reuse the
+  # existing targets, both because Chromium has a special harness for swarming
+  # and because otherwise the "gn check" fails.
+
+  if (!build_with_chromium) {
+    # When we aren't in Chromium we define out own targets based on the location
+    # of the googletest repo.
+    config("gtest_config") {
+      include_dirs = [
+        "${tint_googletest_dir}/googletest",
+        "${tint_googletest_dir}/googletest/include",
+      ]
+    }
+    static_library("gtest") {
+      testonly = true
+      sources = [ "${tint_googletest_dir}/googletest/src/gtest-all.cc" ]
+      public_configs = [ ":gtest_config" ]
+    }
+
+    config("gmock_config") {
+      include_dirs = [
+        "${tint_googletest_dir}/googlemock",
+        "${tint_googletest_dir}/googlemock/include",
+        "${tint_googletest_dir}/googletest/include",
+      ]
+    }
+
+    static_library("gmock") {
+      testonly = true
+      sources = [ "${tint_googletest_dir}/googlemock/src/gmock-all.cc" ]
+      public_configs = [ ":gmock_config" ]
+    }
+
+    group("gmock_and_gtest") {
+      testonly = true
+      public_deps = [
+        ":gmock",
+        ":gtest",
+      ]
+    }
+  } else {
+    # When we are in Chromium we reuse its targets, and also add some deps that
+    # are needed to launch the test in swarming mode.
+    group("gmock_and_gtest") {
+      testonly = true
+      public_deps = [
+        "//base",
+        "//base/test:test_support",
+        "//testing/gmock",
+        "//testing/gtest",
+        "//third_party/googletest:gmock",
+      ]
+    }
+  }
+
+  ###############################################################################
+  # Wrapping of Chromium targets
+  ###############################################################################
+  # These targets are separated because they are Chromium sources files that
+  # can't use the tint_internal config, otherwise Tint's warning flags get
+  # applied while compiling a bunch of Chromium's //base (via header inclusion)
+  source_set("tint_unittests_main") {
+    testonly = true
+    deps = [ ":gmock_and_gtest" ]
+    if (build_with_chromium) {
+      sources = [ "//gpu/tint_unittests_main.cc" ]
+    } else {
+      sources = [ "test_main.cc" ]
+      configs += [ ":tint_unittests_config" ]
+      deps += [ ":libtint" ]
+
+      if (tint_build_hlsl_writer) {
+        deps += [ ":tint_unittests_hlsl_writer_src" ]
+      }
+
+      if (tint_build_msl_writer) {
+        deps += [ ":tint_unittests_msl_writer_src" ]
+      }
+
+      if (tint_build_spv_reader) {
+        deps += [ ":tint_unittests_spv_reader_src" ]
+      }
+    }
+  }
+
+  ###############################################################################
+  # Tests - For libtint core and optional modules
+  ###############################################################################
+  config("tint_unittests_config") {
+    include_dirs = [
+      "${tint_googletest_dir}/googlemock/include",
+      "${tint_googletest_dir}/googletest/include",
+    ]
+
+    configs = [
+      ":tint_common_config",
+      ":tint_public_config",
+    ]
+  }
+
+  template("tint_unittests_source_set") {
+    source_set(target_name) {
+      forward_variables_from(invoker, "*", [ "configs" ])
+
+      if (defined(invoker.configs)) {
+        configs += invoker.configs
+      }
+      configs += [ ":tint_unittests_config" ]
+      if (build_with_chromium) {
+        configs -= [ "//build/config/compiler:chromium_code" ]
+        configs += [ "//build/config/compiler:no_chromium_code" ]
+      }
+
+      testonly = true
+
+      if (!defined(invoker.deps)) {
+        deps = []
+      }
+      deps += [
+        ":gmock_and_gtest",
+        ":libtint",
+        ":tint_utils_io",
+      ]
+    }
+  }
+
+  tint_unittests_source_set("libtint_unittests_ast_helper") {
+    sources = [
+      "ast/test_helper.h",
+      "ast/test_helper_test.cc",
+    ]
+    deps = [ ":libtint_ast_src" ]
+  }
+
+  tint_unittests_source_set("tint_unittests_ast_src") {
+    sources = [
+      "ast/alias_test.cc",
+      "ast/assignment_statement_test.cc",
+      "ast/binary_expression_test.cc",
+      "ast/binding_attribute_test.cc",
+      "ast/bitcast_expression_test.cc",
+      "ast/block_statement_test.cc",
+      "ast/bool_literal_expression_test.cc",
+      "ast/break_if_statement_test.cc",
+      "ast/break_statement_test.cc",
+      "ast/builtin_attribute_test.cc",
+      "ast/builtin_texture_helper_test.cc",
+      "ast/builtin_texture_helper_test.h",
+      "ast/call_expression_test.cc",
+      "ast/call_statement_test.cc",
+      "ast/case_selector_test.cc",
+      "ast/case_statement_test.cc",
+      "ast/compound_assignment_statement_test.cc",
+      "ast/const_assert_test.cc",
+      "ast/continue_statement_test.cc",
+      "ast/diagnostic_attribute_test.cc",
+      "ast/diagnostic_control_test.cc",
+      "ast/diagnostic_directive_test.cc",
+      "ast/diagnostic_rule_name_test.cc",
+      "ast/discard_statement_test.cc",
+      "ast/enable_test.cc",
+      "ast/float_literal_expression_test.cc",
+      "ast/for_loop_statement_test.cc",
+      "ast/function_test.cc",
+      "ast/group_attribute_test.cc",
+      "ast/id_attribute_test.cc",
+      "ast/identifier_expression_test.cc",
+      "ast/identifier_test.cc",
+      "ast/if_statement_test.cc",
+      "ast/increment_decrement_statement_test.cc",
+      "ast/index_accessor_expression_test.cc",
+      "ast/int_literal_expression_test.cc",
+      "ast/interpolate_attribute_test.cc",
+      "ast/location_attribute_test.cc",
+      "ast/loop_statement_test.cc",
+      "ast/member_accessor_expression_test.cc",
+      "ast/module_test.cc",
+      "ast/phony_expression_test.cc",
+      "ast/return_statement_test.cc",
+      "ast/stage_attribute_test.cc",
+      "ast/stride_attribute_test.cc",
+      "ast/struct_member_align_attribute_test.cc",
+      "ast/struct_member_offset_attribute_test.cc",
+      "ast/struct_member_size_attribute_test.cc",
+      "ast/struct_member_test.cc",
+      "ast/struct_test.cc",
+      "ast/switch_statement_test.cc",
+      "ast/templated_identifier_test.cc",
+      "ast/traverse_expressions_test.cc",
+      "ast/unary_op_expression_test.cc",
+      "ast/variable_decl_statement_test.cc",
+      "ast/variable_test.cc",
+      "ast/while_statement_test.cc",
+      "ast/workgroup_attribute_test.cc",
+    ]
+    deps = [
+      ":libtint_ast_src",
+      ":libtint_builtins_src",
+      ":libtint_transform_src",
+      ":libtint_unittests_ast_helper",
+      ":libtint_utils_src",
+    ]
+
+    if (tint_build_wgsl_reader && tint_build_wgsl_writer) {
+      # This AST test relies on the WGSL reader and writer
+      sources += [ "ast/module_clone_test.cc" ]
+    }
+  }
+
+  tint_unittests_source_set("tint_unittests_builtins_src") {
+    sources = [
+      "builtin/access_test.cc",
+      "builtin/address_space_test.cc",
+      "builtin/attribute_test.cc",
+      "builtin/builtin_test.cc",
+      "builtin/builtin_value_test.cc",
+      "builtin/diagnostic_rule_test.cc",
+      "builtin/diagnostic_severity_test.cc",
+      "builtin/extension_test.cc",
+      "builtin/interpolation_sampling_test.cc",
+      "builtin/interpolation_type_test.cc",
+      "builtin/texel_format_test.cc",
+    ]
+    deps = [ ":libtint_builtins_src" ]
+  }
+
+  tint_unittests_source_set("tint_unittests_diagnostic_src") {
+    sources = [
+      "diagnostic/diagnostic_test.cc",
+      "diagnostic/formatter_test.cc",
+      "diagnostic/printer_test.cc",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_inspector_src") {
+    sources = [
+      "inspector/inspector_test.cc",
+      "inspector/test_inspector_builder.cc",
+      "inspector/test_inspector_builder.h",
+      "inspector/test_inspector_runner.cc",
+      "inspector/test_inspector_runner.h",
+    ]
+    deps = [ ":libtint_inspector_src" ]
+  }
+
+  tint_unittests_source_set("tint_unittests_resolver_src") {
+    sources = [
+      "resolver/address_space_layout_validation_test.cc",
+      "resolver/address_space_validation_test.cc",
+      "resolver/alias_analysis_test.cc",
+      "resolver/array_accessor_test.cc",
+      "resolver/assignment_validation_test.cc",
+      "resolver/atomics_test.cc",
+      "resolver/atomics_validation_test.cc",
+      "resolver/attribute_validation_test.cc",
+      "resolver/bitcast_validation_test.cc",
+      "resolver/builtin_enum_test.cc",
+      "resolver/builtin_structs_test.cc",
+      "resolver/builtin_test.cc",
+      "resolver/builtin_validation_test.cc",
+      "resolver/builtins_validation_test.cc",
+      "resolver/call_test.cc",
+      "resolver/call_validation_test.cc",
+      "resolver/compound_assignment_validation_test.cc",
+      "resolver/compound_statement_test.cc",
+      "resolver/const_assert_test.cc",
+      "resolver/const_eval_binary_op_test.cc",
+      "resolver/const_eval_bitcast_test.cc",
+      "resolver/const_eval_builtin_test.cc",
+      "resolver/const_eval_construction_test.cc",
+      "resolver/const_eval_conversion_test.cc",
+      "resolver/const_eval_indexing_test.cc",
+      "resolver/const_eval_member_access_test.cc",
+      "resolver/const_eval_runtime_semantics_test.cc",
+      "resolver/const_eval_test.h",
+      "resolver/const_eval_unary_op_test.cc",
+      "resolver/control_block_validation_test.cc",
+      "resolver/dependency_graph_test.cc",
+      "resolver/diagnostic_control_test.cc",
+      "resolver/entry_point_validation_test.cc",
+      "resolver/evaluation_stage_test.cc",
+      "resolver/expression_kind_test.cc",
+      "resolver/f16_extension_test.cc",
+      "resolver/function_validation_test.cc",
+      "resolver/host_shareable_validation_test.cc",
+      "resolver/increment_decrement_validation_test.cc",
+      "resolver/inferred_type_test.cc",
+      "resolver/intrinsic_table_test.cc",
+      "resolver/is_host_shareable_test.cc",
+      "resolver/is_storeable_test.cc",
+      "resolver/load_test.cc",
+      "resolver/materialize_test.cc",
+      "resolver/override_test.cc",
+      "resolver/ptr_ref_test.cc",
+      "resolver/ptr_ref_validation_test.cc",
+      "resolver/resolver_behavior_test.cc",
+      "resolver/resolver_test.cc",
+      "resolver/resolver_test_helper.cc",
+      "resolver/resolver_test_helper.h",
+      "resolver/root_identifier_test.cc",
+      "resolver/side_effects_test.cc",
+      "resolver/struct_address_space_use_test.cc",
+      "resolver/struct_layout_test.cc",
+      "resolver/struct_pipeline_stage_use_test.cc",
+      "resolver/type_validation_test.cc",
+      "resolver/uniformity_test.cc",
+      "resolver/unresolved_identifier_test.cc",
+      "resolver/validation_test.cc",
+      "resolver/validator_is_storeable_test.cc",
+      "resolver/value_constructor_validation_test.cc",
+      "resolver/variable_test.cc",
+      "resolver/variable_validation_test.cc",
+    ]
+    deps = [
+      ":libtint_builtins_src",
+      ":libtint_transform_src",
+      ":libtint_utils_src",
+      ":tint_unittests_ast_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_sem_src") {
+    sources = [
+      "sem/builtin_test.cc",
+      "sem/diagnostic_severity_test.cc",
+      "sem/struct_test.cc",
+      "sem/value_expression_test.cc",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_constant_src") {
+    sources = [
+      "constant/composite_test.cc",
+      "constant/scalar_test.cc",
+      "constant/splat_test.cc",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_type_src") {
+    sources = [
+      "type/atomic_test.cc",
+      "type/bool_test.cc",
+      "type/depth_multisampled_texture_test.cc",
+      "type/depth_texture_test.cc",
+      "type/external_texture_test.cc",
+      "type/f16_test.cc",
+      "type/f32_test.cc",
+      "type/i32_test.cc",
+      "type/manager_test.cc",
+      "type/matrix_test.cc",
+      "type/multisampled_texture_test.cc",
+      "type/pointer_test.cc",
+      "type/reference_test.cc",
+      "type/sampled_texture_test.cc",
+      "type/sampler_test.cc",
+      "type/storage_texture_test.cc",
+      "type/struct_test.cc",
+      "type/texture_test.cc",
+      "type/type_test.cc",
+      "type/u32_test.cc",
+      "type/vector_test.cc",
+    ]
+    deps = [ ":libtint_builtins_src" ]
+  }
+
+  tint_unittests_source_set("tint_unittests_transform_src") {
+    sources = [
+      "transform/add_block_attribute_test.cc",
+      "transform/add_empty_entry_point_test.cc",
+      "transform/array_length_from_uniform_test.cc",
+      "transform/binding_remapper_test.cc",
+      "transform/builtin_polyfill_test.cc",
+      "transform/calculate_array_length_test.cc",
+      "transform/canonicalize_entry_point_io_test.cc",
+      "transform/clamp_frag_depth_test.cc",
+      "transform/combine_samplers_test.cc",
+      "transform/decompose_memory_access_test.cc",
+      "transform/decompose_strided_array_test.cc",
+      "transform/decompose_strided_matrix_test.cc",
+      "transform/demote_to_helper_test.cc",
+      "transform/direct_variable_access_test.cc",
+      "transform/disable_uniformity_analysis_test.cc",
+      "transform/expand_compound_assignment_test.cc",
+      "transform/first_index_offset_test.cc",
+      "transform/for_loop_to_loop_test.cc",
+      "transform/localize_struct_array_assignment_test.cc",
+      "transform/merge_return_test.cc",
+      "transform/module_scope_var_to_entry_point_param_test.cc",
+      "transform/multiplanar_external_texture_test.cc",
+      "transform/num_workgroups_from_uniform_test.cc",
+      "transform/packed_vec3_test.cc",
+      "transform/pad_structs_test.cc",
+      "transform/preserve_padding_test.cc",
+      "transform/promote_initializers_to_let_test.cc",
+      "transform/promote_side_effects_to_decl_test.cc",
+      "transform/remove_continue_in_switch_test.cc",
+      "transform/remove_phonies_test.cc",
+      "transform/remove_unreachable_statements_test.cc",
+      "transform/renamer_test.cc",
+      "transform/robustness_test.cc",
+      "transform/simplify_pointers_test.cc",
+      "transform/single_entry_point_test.cc",
+      "transform/spirv_atomic_test.cc",
+      "transform/std140_exhaustive_test.cc",
+      "transform/std140_f16_test.cc",
+      "transform/std140_f32_test.cc",
+      "transform/std140_test.cc",
+      "transform/substitute_override_test.cc",
+      "transform/test_helper.h",
+      "transform/texture_1d_to_2d_test.cc",
+      "transform/transform_test.cc",
+      "transform/truncate_interstage_variables_test.cc",
+      "transform/unshadow_test.cc",
+      "transform/utils/get_insertion_point_test.cc",
+      "transform/utils/hoist_to_decl_before_test.cc",
+      "transform/var_for_dynamic_index_test.cc",
+      "transform/vectorize_matrix_conversions_test.cc",
+      "transform/vectorize_scalar_matrix_initializers_test.cc",
+      "transform/vertex_pulling_test.cc",
+      "transform/while_to_loop_test.cc",
+      "transform/zero_init_workgroup_memory_test.cc",
+    ]
+
+    deps = [
+      ":libtint_builtins_src",
+      ":libtint_transform_src",
+      ":libtint_unittests_ast_helper",
+      ":libtint_utils_src",
+      ":libtint_wgsl_reader_src",
+      ":libtint_wgsl_writer_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_utils_src") {
+    sources = [
+      "debug_test.cc",
+      "source_test.cc",
+      "switch_test.cc",
+      "utils/bitcast_test.cc",
+      "utils/bitset_test.cc",
+      "utils/block_allocator_test.cc",
+      "utils/bump_allocator_test.cc",
+      "utils/castable_test.cc",
+      "utils/crc32_test.cc",
+      "utils/defer_test.cc",
+      "utils/enum_set_test.cc",
+      "utils/hash_test.cc",
+      "utils/hashmap_test.cc",
+      "utils/hashset_test.cc",
+      "utils/io/command_test.cc",
+      "utils/io/tmpfile_test.cc",
+      "utils/map_test.cc",
+      "utils/math_test.cc",
+      "utils/predicates_test.cc",
+      "utils/result_test.cc",
+      "utils/reverse_test.cc",
+      "utils/scoped_assignment_test.cc",
+      "utils/slice_test.cc",
+      "utils/string_stream_test.cc",
+      "utils/string_test.cc",
+      "utils/traits_test.cc",
+      "utils/transform_test.cc",
+      "utils/unicode_test.cc",
+      "utils/unique_allocator_test.cc",
+      "utils/unique_vector_test.cc",
+      "utils/vector_test.cc",
+    ]
+    deps = [ ":libtint_utils_src" ]
+  }
+
+  tint_unittests_source_set("tint_unittests_writer_src") {
+    sources = [
+      "writer/append_vector_test.cc",
+      "writer/check_supported_extensions_test.cc",
+      "writer/flatten_bindings_test.cc",
+      "writer/float_to_string_test.cc",
+      "writer/text_generator_test.cc",
+    ]
+    deps = [
+      ":libtint_unittests_ast_helper",
+      ":libtint_utils_src",
+      ":libtint_writer_src",
+    ]
+  }
+
+  # Note, this includes the source files along with the test as otherwise the cmd helpers wouldn't
+  # be included in the binary.
+  tint_unittests_source_set("tint_unittests_cmd_src") {
+    sources = [
+      "cmd/generate_external_texture_bindings.cc",
+      "cmd/generate_external_texture_bindings.h",
+      "cmd/generate_external_texture_bindings_test.cc",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_spv_reader_src") {
+    sources = [
+      "reader/spirv/enum_converter_test.cc",
+      "reader/spirv/fail_stream_test.cc",
+      "reader/spirv/function_arithmetic_test.cc",
+      "reader/spirv/function_bit_test.cc",
+      "reader/spirv/function_call_test.cc",
+      "reader/spirv/function_cfg_test.cc",
+      "reader/spirv/function_composite_test.cc",
+      "reader/spirv/function_conversion_test.cc",
+      "reader/spirv/function_decl_test.cc",
+      "reader/spirv/function_glsl_std_450_test.cc",
+      "reader/spirv/function_logical_test.cc",
+      "reader/spirv/function_memory_test.cc",
+      "reader/spirv/function_misc_test.cc",
+      "reader/spirv/function_var_test.cc",
+      "reader/spirv/namer_test.cc",
+      "reader/spirv/parser_impl_barrier_test.cc",
+      "reader/spirv/parser_impl_constant_test.cc",
+      "reader/spirv/parser_impl_convert_member_decoration_test.cc",
+      "reader/spirv/parser_impl_convert_type_test.cc",
+      "reader/spirv/parser_impl_function_decl_test.cc",
+      "reader/spirv/parser_impl_get_decorations_test.cc",
+      "reader/spirv/parser_impl_handle_test.cc",
+      "reader/spirv/parser_impl_import_test.cc",
+      "reader/spirv/parser_impl_module_var_test.cc",
+      "reader/spirv/parser_impl_named_types_test.cc",
+      "reader/spirv/parser_impl_test.cc",
+      "reader/spirv/parser_impl_test_helper.cc",
+      "reader/spirv/parser_impl_test_helper.h",
+      "reader/spirv/parser_impl_user_name_test.cc",
+      "reader/spirv/parser_test.cc",
+      "reader/spirv/parser_type_test.cc",
+      "reader/spirv/spirv_tools_helpers_test.cc",
+      "reader/spirv/spirv_tools_helpers_test.h",
+      "reader/spirv/usage_test.cc",
+    ]
+
+    deps = [
+      ":libtint_builtins_src",
+      ":libtint_spv_reader_src",
+      ":libtint_wgsl_writer_src",
+      "${tint_spirv_tools_dir}/:spvtools_opt",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_spv_writer_src") {
+    sources = [
+      "writer/spirv/binary_writer_test.cc",
+      "writer/spirv/builder_accessor_expression_test.cc",
+      "writer/spirv/builder_assign_test.cc",
+      "writer/spirv/builder_binary_expression_test.cc",
+      "writer/spirv/builder_bitcast_expression_test.cc",
+      "writer/spirv/builder_block_test.cc",
+      "writer/spirv/builder_builtin_test.cc",
+      "writer/spirv/builder_builtin_texture_test.cc",
+      "writer/spirv/builder_call_test.cc",
+      "writer/spirv/builder_const_assert_test.cc",
+      "writer/spirv/builder_constructor_expression_test.cc",
+      "writer/spirv/builder_discard_test.cc",
+      "writer/spirv/builder_entry_point_test.cc",
+      "writer/spirv/builder_format_conversion_test.cc",
+      "writer/spirv/builder_function_attribute_test.cc",
+      "writer/spirv/builder_function_test.cc",
+      "writer/spirv/builder_function_variable_test.cc",
+      "writer/spirv/builder_global_variable_test.cc",
+      "writer/spirv/builder_ident_expression_test.cc",
+      "writer/spirv/builder_if_test.cc",
+      "writer/spirv/builder_literal_test.cc",
+      "writer/spirv/builder_loop_test.cc",
+      "writer/spirv/builder_return_test.cc",
+      "writer/spirv/builder_switch_test.cc",
+      "writer/spirv/builder_test.cc",
+      "writer/spirv/builder_type_test.cc",
+      "writer/spirv/builder_unary_op_expression_test.cc",
+      "writer/spirv/instruction_test.cc",
+      "writer/spirv/module_test.cc",
+      "writer/spirv/operand_test.cc",
+      "writer/spirv/scalar_constant_test.cc",
+      "writer/spirv/spv_dump.cc",
+      "writer/spirv/spv_dump.h",
+      "writer/spirv/test_helper.h",
+    ]
+
+    deps = [
+      ":libtint_builtins_src",
+      ":libtint_spv_writer_src",
+      ":libtint_utils_src",
+      ":tint_unittests_ast_src",
+      "${tint_spirv_tools_dir}/:spvtools",
+    ]
+
+    if (tint_build_ir) {
+      sources += [
+        "writer/spirv/generator_impl_binary_test.cc",
+        "writer/spirv/generator_impl_constant_test.cc",
+        "writer/spirv/generator_impl_function_test.cc",
+        "writer/spirv/generator_impl_ir_test.cc",
+        "writer/spirv/generator_impl_type_test.cc",
+      ]
+      deps += [ ":libtint_ir_src" ]
+    }
+  }
+
+  tint_unittests_source_set("tint_unittests_wgsl_reader_src") {
+    sources = [
+      "reader/wgsl/classify_template_args_test.cc",
+      "reader/wgsl/lexer_test.cc",
+      "reader/wgsl/parser_impl_additive_expression_test.cc",
+      "reader/wgsl/parser_impl_argument_expression_list_test.cc",
+      "reader/wgsl/parser_impl_assignment_stmt_test.cc",
+      "reader/wgsl/parser_impl_bitwise_expression_test.cc",
+      "reader/wgsl/parser_impl_break_stmt_test.cc",
+      "reader/wgsl/parser_impl_bug_cases_test.cc",
+      "reader/wgsl/parser_impl_call_stmt_test.cc",
+      "reader/wgsl/parser_impl_compound_stmt_test.cc",
+      "reader/wgsl/parser_impl_const_literal_test.cc",
+      "reader/wgsl/parser_impl_continue_stmt_test.cc",
+      "reader/wgsl/parser_impl_continuing_stmt_test.cc",
+      "reader/wgsl/parser_impl_core_lhs_expression_test.cc",
+      "reader/wgsl/parser_impl_diagnostic_attribute_test.cc",
+      "reader/wgsl/parser_impl_diagnostic_control_test.cc",
+      "reader/wgsl/parser_impl_diagnostic_directive_test.cc",
+      "reader/wgsl/parser_impl_enable_directive_test.cc",
+      "reader/wgsl/parser_impl_error_msg_test.cc",
+      "reader/wgsl/parser_impl_error_resync_test.cc",
+      "reader/wgsl/parser_impl_expression_test.cc",
+      "reader/wgsl/parser_impl_for_stmt_test.cc",
+      "reader/wgsl/parser_impl_function_attribute_list_test.cc",
+      "reader/wgsl/parser_impl_function_attribute_test.cc",
+      "reader/wgsl/parser_impl_function_decl_test.cc",
+      "reader/wgsl/parser_impl_function_header_test.cc",
+      "reader/wgsl/parser_impl_global_constant_decl_test.cc",
+      "reader/wgsl/parser_impl_global_decl_test.cc",
+      "reader/wgsl/parser_impl_global_variable_decl_test.cc",
+      "reader/wgsl/parser_impl_if_stmt_test.cc",
+      "reader/wgsl/parser_impl_increment_decrement_stmt_test.cc",
+      "reader/wgsl/parser_impl_lhs_expression_test.cc",
+      "reader/wgsl/parser_impl_loop_stmt_test.cc",
+      "reader/wgsl/parser_impl_math_expression_test.cc",
+      "reader/wgsl/parser_impl_multiplicative_expression_test.cc",
+      "reader/wgsl/parser_impl_param_list_test.cc",
+      "reader/wgsl/parser_impl_paren_expression_test.cc",
+      "reader/wgsl/parser_impl_primary_expression_test.cc",
+      "reader/wgsl/parser_impl_relational_expression_test.cc",
+      "reader/wgsl/parser_impl_require_directive_test.cc",
+      "reader/wgsl/parser_impl_reserved_keyword_test.cc",
+      "reader/wgsl/parser_impl_shift_expression_test.cc",
+      "reader/wgsl/parser_impl_singular_expression_test.cc",
+      "reader/wgsl/parser_impl_statement_test.cc",
+      "reader/wgsl/parser_impl_statements_test.cc",
+      "reader/wgsl/parser_impl_struct_attribute_decl_test.cc",
+      "reader/wgsl/parser_impl_struct_body_decl_test.cc",
+      "reader/wgsl/parser_impl_struct_decl_test.cc",
+      "reader/wgsl/parser_impl_struct_member_attribute_decl_test.cc",
+      "reader/wgsl/parser_impl_struct_member_attribute_test.cc",
+      "reader/wgsl/parser_impl_struct_member_test.cc",
+      "reader/wgsl/parser_impl_switch_body_test.cc",
+      "reader/wgsl/parser_impl_switch_stmt_test.cc",
+      "reader/wgsl/parser_impl_test.cc",
+      "reader/wgsl/parser_impl_test_helper.cc",
+      "reader/wgsl/parser_impl_test_helper.h",
+      "reader/wgsl/parser_impl_type_alias_test.cc",
+      "reader/wgsl/parser_impl_type_decl_test.cc",
+      "reader/wgsl/parser_impl_unary_expression_test.cc",
+      "reader/wgsl/parser_impl_variable_attribute_list_test.cc",
+      "reader/wgsl/parser_impl_variable_attribute_test.cc",
+      "reader/wgsl/parser_impl_variable_decl_test.cc",
+      "reader/wgsl/parser_impl_variable_ident_decl_test.cc",
+      "reader/wgsl/parser_impl_variable_qualifier_test.cc",
+      "reader/wgsl/parser_impl_variable_stmt_test.cc",
+      "reader/wgsl/parser_impl_while_stmt_test.cc",
+      "reader/wgsl/parser_test.cc",
+      "reader/wgsl/token_test.cc",
+    ]
+
+    deps = [
+      ":libtint_builtins_src",
+      ":libtint_unittests_ast_helper",
+      ":libtint_wgsl_reader_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_wgsl_writer_src") {
+    sources = [
+      "writer/wgsl/generator_impl_alias_type_test.cc",
+      "writer/wgsl/generator_impl_array_accessor_test.cc",
+      "writer/wgsl/generator_impl_assign_test.cc",
+      "writer/wgsl/generator_impl_binary_test.cc",
+      "writer/wgsl/generator_impl_bitcast_test.cc",
+      "writer/wgsl/generator_impl_block_test.cc",
+      "writer/wgsl/generator_impl_break_test.cc",
+      "writer/wgsl/generator_impl_call_test.cc",
+      "writer/wgsl/generator_impl_case_test.cc",
+      "writer/wgsl/generator_impl_cast_test.cc",
+      "writer/wgsl/generator_impl_const_assert_test.cc",
+      "writer/wgsl/generator_impl_constructor_test.cc",
+      "writer/wgsl/generator_impl_continue_test.cc",
+      "writer/wgsl/generator_impl_diagnostic_test.cc",
+      "writer/wgsl/generator_impl_discard_test.cc",
+      "writer/wgsl/generator_impl_enable_test.cc",
+      "writer/wgsl/generator_impl_function_test.cc",
+      "writer/wgsl/generator_impl_global_decl_test.cc",
+      "writer/wgsl/generator_impl_identifier_test.cc",
+      "writer/wgsl/generator_impl_if_test.cc",
+      "writer/wgsl/generator_impl_literal_test.cc",
+      "writer/wgsl/generator_impl_loop_test.cc",
+      "writer/wgsl/generator_impl_member_accessor_test.cc",
+      "writer/wgsl/generator_impl_return_test.cc",
+      "writer/wgsl/generator_impl_switch_test.cc",
+      "writer/wgsl/generator_impl_test.cc",
+      "writer/wgsl/generator_impl_type_test.cc",
+      "writer/wgsl/generator_impl_unary_op_test.cc",
+      "writer/wgsl/generator_impl_variable_decl_statement_test.cc",
+      "writer/wgsl/generator_impl_variable_test.cc",
+      "writer/wgsl/test_helper.h",
+    ]
+
+    deps = [
+      ":libtint_builtins_src",
+      ":libtint_utils_src",
+      ":libtint_wgsl_writer_src",
+      ":tint_unittests_ast_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_msl_writer_src") {
+    sources = [
+      "writer/msl/generator_impl_array_accessor_test.cc",
+      "writer/msl/generator_impl_assign_test.cc",
+      "writer/msl/generator_impl_binary_test.cc",
+      "writer/msl/generator_impl_bitcast_test.cc",
+      "writer/msl/generator_impl_block_test.cc",
+      "writer/msl/generator_impl_break_test.cc",
+      "writer/msl/generator_impl_builtin_test.cc",
+      "writer/msl/generator_impl_builtin_texture_test.cc",
+      "writer/msl/generator_impl_call_test.cc",
+      "writer/msl/generator_impl_case_test.cc",
+      "writer/msl/generator_impl_cast_test.cc",
+      "writer/msl/generator_impl_const_assert_test.cc",
+      "writer/msl/generator_impl_constructor_test.cc",
+      "writer/msl/generator_impl_continue_test.cc",
+      "writer/msl/generator_impl_discard_test.cc",
+      "writer/msl/generator_impl_function_test.cc",
+      "writer/msl/generator_impl_identifier_test.cc",
+      "writer/msl/generator_impl_if_test.cc",
+      "writer/msl/generator_impl_import_test.cc",
+      "writer/msl/generator_impl_loop_test.cc",
+      "writer/msl/generator_impl_member_accessor_test.cc",
+      "writer/msl/generator_impl_module_constant_test.cc",
+      "writer/msl/generator_impl_return_test.cc",
+      "writer/msl/generator_impl_sanitizer_test.cc",
+      "writer/msl/generator_impl_switch_test.cc",
+      "writer/msl/generator_impl_test.cc",
+      "writer/msl/generator_impl_type_test.cc",
+      "writer/msl/generator_impl_unary_op_test.cc",
+      "writer/msl/generator_impl_variable_decl_statement_test.cc",
+      "writer/msl/test_helper.h",
+    ]
+
+    deps = [
+      ":libtint_msl_writer_src",
+      ":libtint_utils_src",
+      ":tint_unittests_ast_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_hlsl_writer_src") {
+    sources = [
+      "writer/hlsl/generator_impl_array_accessor_test.cc",
+      "writer/hlsl/generator_impl_assign_test.cc",
+      "writer/hlsl/generator_impl_binary_test.cc",
+      "writer/hlsl/generator_impl_bitcast_test.cc",
+      "writer/hlsl/generator_impl_block_test.cc",
+      "writer/hlsl/generator_impl_break_test.cc",
+      "writer/hlsl/generator_impl_builtin_test.cc",
+      "writer/hlsl/generator_impl_builtin_texture_test.cc",
+      "writer/hlsl/generator_impl_call_test.cc",
+      "writer/hlsl/generator_impl_case_test.cc",
+      "writer/hlsl/generator_impl_cast_test.cc",
+      "writer/hlsl/generator_impl_const_assert_test.cc",
+      "writer/hlsl/generator_impl_constructor_test.cc",
+      "writer/hlsl/generator_impl_continue_test.cc",
+      "writer/hlsl/generator_impl_discard_test.cc",
+      "writer/hlsl/generator_impl_function_test.cc",
+      "writer/hlsl/generator_impl_identifier_test.cc",
+      "writer/hlsl/generator_impl_if_test.cc",
+      "writer/hlsl/generator_impl_import_test.cc",
+      "writer/hlsl/generator_impl_loop_test.cc",
+      "writer/hlsl/generator_impl_member_accessor_test.cc",
+      "writer/hlsl/generator_impl_module_constant_test.cc",
+      "writer/hlsl/generator_impl_return_test.cc",
+      "writer/hlsl/generator_impl_sanitizer_test.cc",
+      "writer/hlsl/generator_impl_switch_test.cc",
+      "writer/hlsl/generator_impl_test.cc",
+      "writer/hlsl/generator_impl_type_test.cc",
+      "writer/hlsl/generator_impl_unary_op_test.cc",
+      "writer/hlsl/generator_impl_variable_decl_statement_test.cc",
+      "writer/hlsl/generator_impl_workgroup_var_test.cc",
+      "writer/hlsl/test_helper.h",
+    ]
+
+    deps = [
+      ":libtint_hlsl_writer_src",
+      ":libtint_transform_src",
+      ":libtint_utils_src",
+      ":tint_unittests_ast_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_glsl_writer_src") {
+    sources = [
+      "writer/glsl/generator_impl_array_accessor_test.cc",
+      "writer/glsl/generator_impl_assign_test.cc",
+      "writer/glsl/generator_impl_binary_test.cc",
+      "writer/glsl/generator_impl_bitcast_test.cc",
+      "writer/glsl/generator_impl_block_test.cc",
+      "writer/glsl/generator_impl_break_test.cc",
+      "writer/glsl/generator_impl_builtin_test.cc",
+      "writer/glsl/generator_impl_builtin_texture_test.cc",
+      "writer/glsl/generator_impl_call_test.cc",
+      "writer/glsl/generator_impl_case_test.cc",
+      "writer/glsl/generator_impl_cast_test.cc",
+      "writer/glsl/generator_impl_constructor_test.cc",
+      "writer/glsl/generator_impl_continue_test.cc",
+      "writer/glsl/generator_impl_discard_test.cc",
+      "writer/glsl/generator_impl_function_test.cc",
+      "writer/glsl/generator_impl_identifier_test.cc",
+      "writer/glsl/generator_impl_if_test.cc",
+      "writer/glsl/generator_impl_import_test.cc",
+      "writer/glsl/generator_impl_loop_test.cc",
+      "writer/glsl/generator_impl_member_accessor_test.cc",
+      "writer/glsl/generator_impl_module_constant_test.cc",
+      "writer/glsl/generator_impl_return_test.cc",
+      "writer/glsl/generator_impl_sanitizer_test.cc",
+      "writer/glsl/generator_impl_storage_buffer_test.cc",
+      "writer/glsl/generator_impl_switch_test.cc",
+      "writer/glsl/generator_impl_test.cc",
+      "writer/glsl/generator_impl_type_test.cc",
+      "writer/glsl/generator_impl_unary_op_test.cc",
+      "writer/glsl/generator_impl_uniform_buffer_test.cc",
+      "writer/glsl/generator_impl_variable_decl_statement_test.cc",
+      "writer/glsl/generator_impl_workgroup_var_test.cc",
+      "writer/glsl/test_helper.h",
+    ]
+
+    deps = [
+      ":libtint_glsl_writer_src",
+      ":libtint_symbols_src",
+      ":libtint_transform_src",
+      ":libtint_utils_src",
+      ":tint_unittests_ast_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_symbols_src") {
+    sources = [
+      "number_test.cc",
+      "reflection_test.cc",
+      "scope_stack_test.cc",
+      "symbol_table_test.cc",
+      "symbol_test.cc",
+    ]
+    deps = [ ":libtint_symbols_src" ]
+  }
+
+  tint_unittests_source_set("tint_unittests_core_src") {
+    sources = [
+      "clone_context_test.cc",
+      "program_builder_test.cc",
+      "program_test.cc",
+    ]
+
+    deps = [
+      ":libtint_unittests_ast_helper",
+      ":tint_unittests_ast_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_ir_src") {
+    sources = [
+      "ir/binary_test.cc",
+      "ir/bitcast_test.cc",
+      "ir/builder_impl_binary_test.cc",
+      "ir/builder_impl_call_test.cc",
+      "ir/builder_impl_literal_test.cc",
+      "ir/builder_impl_materialize_test.cc",
+      "ir/builder_impl_store_test.cc",
+      "ir/builder_impl_test.cc",
+      "ir/builder_impl_unary_test.cc",
+      "ir/builder_impl_var_test.cc",
+      "ir/constant_test.cc",
+      "ir/discard_test.cc",
+      "ir/module_test.cc",
+      "ir/store_test.cc",
+      "ir/test_helper.h",
+      "ir/unary_test.cc",
+    ]
+
+    deps = [
+      ":libtint_ir_builder_src",
+      ":libtint_ir_src",
+    ]
+  }
+
+  if (build_with_chromium) {
+    tint_unittests_source_set("tint_unittests_fuzzer_src") {
+      sources = [ "fuzzers/random_generator_test.cc" ]
+
+      deps = [
+        ":tint_unittests_core_src",
+        "fuzzers:tint_fuzzer_common_src",
+      ]
+    }
+  }
+
+  source_set("tint_unittests_src") {
+    testonly = true
+
+    deps = [
+      ":libtint_wgsl_reader_src",
+      ":libtint_wgsl_writer_src",
+      ":tint_unittests_ast_src",
+      ":tint_unittests_builtins_src",
+      ":tint_unittests_cmd_src",
+      ":tint_unittests_constant_src",
+      ":tint_unittests_core_src",
+      ":tint_unittests_diagnostic_src",
+      ":tint_unittests_inspector_src",
+      ":tint_unittests_resolver_src",
+      ":tint_unittests_sem_src",
+      ":tint_unittests_symbols_src",
+      ":tint_unittests_transform_src",
+      ":tint_unittests_type_src",
+      ":tint_unittests_utils_src",
+      ":tint_unittests_writer_src",
+    ]
+
+    if (tint_build_spv_reader) {
+      deps += [ ":tint_unittests_spv_reader_src" ]
+    }
+
+    if (tint_build_spv_writer) {
+      deps += [ ":tint_unittests_spv_writer_src" ]
+    }
+
+    if (tint_build_wgsl_reader) {
+      deps += [ ":tint_unittests_wgsl_reader_src" ]
+    }
+
+    if (tint_build_wgsl_writer) {
+      deps += [ ":tint_unittests_wgsl_writer_src" ]
+    }
+
+    if (tint_build_msl_writer) {
+      deps += [ ":tint_unittests_msl_writer_src" ]
+    }
+
+    if (tint_build_hlsl_writer) {
+      deps += [ ":tint_unittests_hlsl_writer_src" ]
+    }
+
+    if (tint_build_glsl_writer) {
+      deps += [ ":tint_unittests_glsl_writer_src" ]
+    }
+
+    if (tint_build_ir) {
+      deps += [ ":tint_unittests_ir_src" ]
+    }
+
+    if (build_with_chromium) {
+      deps += [ ":tint_unittests_fuzzer_src" ]
+    }
+
+    configs += [ ":tint_unittests_config" ]
+
+    if (build_with_chromium) {
+      configs -= [ "//build/config/compiler:chromium_code" ]
+      configs += [ "//build/config/compiler:no_chromium_code" ]
+    }
+  }
+
+  test("tint_unittests") {
+    deps = [
+      ":gmock_and_gtest",
+      ":tint_unittests_src",
+      "${tint_spirv_tools_dir}/:spvtools",
+      "${tint_spirv_tools_dir}/:spvtools_opt",
+      "${tint_spirv_tools_dir}/:spvtools_val",
+    ]
+
+    deps += [ ":tint_unittests_main" ]
+
+    configs += [ ":tint_unittests_config" ]
+
+    if (build_with_chromium) {
+      configs -= [ "//build/config/compiler:chromium_code" ]
+      configs += [ "//build/config/compiler:no_chromium_code" ]
+    }
+
+    if (is_win && is_debug) {
+      # TODO(crbug.com/tint/1749): both msvc and clang builds stack overflow on debug builds.
+      # Increase the initial stack size to 4 MB (default is 1MB).
+      ldflags = [ "/STACK:4194304" ]
+    }
+
+    testonly = true
+  }
+}

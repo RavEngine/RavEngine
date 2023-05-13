@@ -11,7 +11,8 @@ namespace RGL {
 		Noop,					// this API does nothing
 		Metal,					// Apple Metal
 		Direct3D12,				// Microsoft DirectX 12
-		Vulkan					// Vulkan
+		Vulkan,					// Vulkan
+		WebGPU					// WebGPU (NOT WebGL!)
 	};
 
 	constexpr static API APIsAvailable[] = {
@@ -23,6 +24,9 @@ namespace RGL {
 #endif
 #if RGL_VK_AVAILABLE
 		API::Vulkan,
+#endif
+#if RGL_WEBGPU_AVAILABLE
+		API::WebGPU,
 #endif
 		API::Noop,
 	};

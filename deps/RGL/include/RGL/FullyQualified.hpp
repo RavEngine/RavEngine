@@ -41,6 +41,9 @@
         #include <RGL/../../src/MTLSynchronization.hpp>
         #include <RGL/../../src/MTLTexture.hpp>
         #include <RGL/../../src/MTLRenderPass.hpp>
+    #elif RGL_SINGLE_BACKEND
+        #include <RGL/../../src/WGDevice.hpp>
+        #include <RGL/../../src/WGCommandQueue.hpp>
     #endif
 #endif
 #undef LoadImage

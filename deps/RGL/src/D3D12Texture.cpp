@@ -91,11 +91,13 @@ namespace RGL {
 			.Format = format,
 		};
 
-		initialState = rgl2d3d12resourcestate(config.initialLayout);
+		initialState = rgl2d3d12resourcestate(ResourceLayout::Undefined);
 		if (isDS) {
 			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 			optimizedClearValue.DepthStencil = { 1,0 };
-			//initialState |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			if (!config.usage.Sampled) {
+				initialState |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			}
 		}
 
 		if (config.usage.ColorAttachment) {

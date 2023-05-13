@@ -49,14 +49,15 @@ namespace RGL {
             v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
         }
 
+        if (!isWritable) {
+            state = D3D12_RESOURCE_STATE_GENERIC_READ;
+        }
+
         if (config.options.TransferDestination) {
             state = D3D12_RESOURCE_STATE_COPY_DEST;
             v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
         }
 
-        if (!isWritable) {
-            state = D3D12_RESOURCE_STATE_GENERIC_READ;
-        }
 
         DX_CHECK(device->device->CreateCommittedResource(
             &v,

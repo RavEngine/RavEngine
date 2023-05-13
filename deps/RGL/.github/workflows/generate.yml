@@ -1,0 +1,25 @@
+name: generate
+on: workflow_dispatch 
+
+jobs:
+    generate:
+        name: Generate Download
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v3
+              with:
+                submodules: recursive
+            - name: Remove Unused
+              run: |
+                rm -rf deps/ShaderTranspiler/deps/DirectXShaderCompiler
+                find . -name .git -type d -exec rm -rf {} \;
+                find . -name .git -exec rm {} \;
+                find . -name .git -type d -exec rm -rf {} \;
+                find . -name .git -exec rm {} \;
+            - name: Upload
+              if: always()
+              uses: actions/upload-artifact@v3
+              with: 
+                 name: RGL
+                 path: ${{ github.workspace }}

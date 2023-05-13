@@ -86,7 +86,8 @@ endif()
 # Remove 'lib' prefix for shared libraries on Windows
 if(MSVC)
 	set(CMAKE_SHARED_LIBRARY_PREFIX "")
-	add_definitions(/MP)
+	add_definitions(/MP)			# parallelize each target
+	add_definitions(-maxcpucount)	# build multiple targets in parallel
 	if (UWP)
 		add_definitions(/sdl-)
 	endif()

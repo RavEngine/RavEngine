@@ -55,8 +55,6 @@ Material::Material(const std::string& name, const MaterialConfig& config) : name
         },
     });
 
-    constexpr static uint32_t width = 640, height = 480;
-
     RGL::RenderPipelineDescriptor rpd{
         .stages = {
             {
@@ -71,13 +69,6 @@ Material::Material(const std::string& name, const MaterialConfig& config) : name
         .vertexConfig = config.vertConfig,
         .inputAssembly = {
             .topology = RGL::PrimitiveTopology::TriangleList,
-        },
-        .viewport = {
-            .width = width,
-            .height = height
-        },
-        .scissor = {
-            .extent = {width, height}
         },
         .rasterizerConfig = {
             .windingOrder = RGL::WindingOrder::Counterclockwise,

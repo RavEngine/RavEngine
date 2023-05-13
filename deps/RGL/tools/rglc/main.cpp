@@ -104,7 +104,8 @@ int main(int argc, const char** argv) {
 		static const unordered_map<string, apiData> apiMap{
 			{"Vulkan", {decltype(api)::Vulkan}},
 			{"Metal", {decltype(api)::Metal}},
-			{"Direct3D12", {decltype(api)::Direct3D12}}
+			{"Direct3D12", {decltype(api)::Direct3D12}},
+			{"WebGPU", {decltype(api)::WebGPU}}
 		};
 		try {
 			auto& data = apiMap.at(apiString);

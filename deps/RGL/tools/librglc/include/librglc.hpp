@@ -12,7 +12,8 @@ namespace librglc {
 	enum class API : uint8_t {
 		Vulkan,
 		Direct3D12,
-		Metal
+		Metal,
+		WebGPU
 	};
 
 	enum class ShaderStage : uint8_t {
