@@ -82,7 +82,7 @@ namespace RGL {
 
             VkBufferCopy bufferCopyData{
                 .srcOffset = 0,
-                .dstOffset = 0,
+                .dstOffset = offset,
                 .size = data.size()
             };
 

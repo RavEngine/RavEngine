@@ -3,6 +3,7 @@
 #include "D3D12Device.hpp"
 #include "D3D12CommandQueue.hpp"
 #include <D3D12MemAlloc.h>
+#include <ResourceUploadBatch.h>
 
 using namespace Microsoft::WRL;
 
@@ -103,21 +104,26 @@ namespace RGL {
             UnmapMemory();
         }
         else {
+
             // create the staging buffer
-            D3D12MA::ALLOCATION_DESC textureUploadAllocDesc = {};
-            textureUploadAllocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-            D3D12_RESOURCE_DESC bufferUploadResourceDesc = {};
-            bufferUploadResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            bufferUploadResourceDesc.Alignment = 0;
-            bufferUploadResourceDesc.Width = data.size();
-            bufferUploadResourceDesc.Height = 1;
-            bufferUploadResourceDesc.DepthOrArraySize = 1;
-            bufferUploadResourceDesc.MipLevels = 1;
-            bufferUploadResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-            bufferUploadResourceDesc.SampleDesc.Count = 1;
-            bufferUploadResourceDesc.SampleDesc.Quality = 0;
-            bufferUploadResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-            bufferUploadResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+            D3D12MA::ALLOCATION_DESC textureUploadAllocDesc{
+                .HeapType = D3D12_HEAP_TYPE_UPLOAD
+            };
+            D3D12_RESOURCE_DESC bufferUploadResourceDesc{
+                .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+                .Alignment = 0,
+                .Width = data.size(),
+                .Height = 1,
+                .DepthOrArraySize = 1,
+                .MipLevels = 1,
+                .Format = DXGI_FORMAT_UNKNOWN,
+                .SampleDesc = {
+                    .Count = 1,
+                    .Quality = 0,
+                },
+                .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+                .Flags = D3D12_RESOURCE_FLAG_NONE
+            };
             ComPtr<ID3D12Resource> bufferUpload;
             D3D12MA::Allocation* bufferUploadAllocation;
             DX_CHECK(owningDevice->allocator->CreateResource(
@@ -129,23 +135,27 @@ namespace RGL {
                 IID_PPV_ARGS(&bufferUpload)));
             bufferUpload->SetName(L"bufferUpload");
 
-            auto bytesPerRow = data.size();
-            D3D12_SUBRESOURCE_DATA bufferSubresourceData = {};
-            bufferSubresourceData.pData = data.data();
-            bufferSubresourceData.RowPitch = bytesPerRow;
-            bufferSubresourceData.SlicePitch = bytesPerRow * 1;
+            // put the data in the staging buffer
+            void* writePtr;
+            D3D12_RANGE range{
+                .Begin = 0,
+                .End = data.size()
+            };
+            bufferUpload->Map(0, &range, &writePtr);
+            std::memcpy(writePtr, data.data(), data.size());
+            bufferUpload->Unmap(0, &range);
+
+            // upload the data to the GPU
             auto commandList = owningDevice->internalQueue->CreateCommandList();
 
             auto state = D3D12_RESOURCE_STATE_GENERIC_READ;
-
             auto beginTransition = CD3DX12_RESOURCE_BARRIER::Transition(
                 buffer.Get(),
                 state,
                 D3D12_RESOURCE_STATE_COPY_DEST
             );
             commandList->ResourceBarrier(1, &beginTransition);
-
-            UpdateSubresources(commandList.Get(), buffer.Get(), bufferUpload.Get(), 0, 0, 1, &bufferSubresourceData);
+            commandList->CopyBufferRegion(buffer.Get(), offset, bufferUpload.Get(), 0, data.size());
 
             auto endTransition = CD3DX12_RESOURCE_BARRIER::Transition(
                 buffer.Get(),

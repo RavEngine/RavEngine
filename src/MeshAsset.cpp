@@ -267,7 +267,6 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
 
 		auto device = GetApp()->GetRenderEngine().GetDevice();
 
-		//TODO: make these Private buffers, and use copy-to-buffer with a staging buffer
 		vertexBuffer = device->CreateBuffer({
 			uint32_t(totalVerts),
 			{.VertexBuffer = true},
