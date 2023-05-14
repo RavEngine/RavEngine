@@ -45,6 +45,11 @@ namespace RavEngine {
 		auto nextimg = swapchain->ImageAtIndex(presentConfig.imageIndex);
 		auto nextImgSize = nextimg->GetSize();
 
+		auto allCameras = worldOwning->GetAllComponentsOfType<CameraComponent>();
+		if (!allCameras)
+		{
+			Debug::Fatal("Cannot render: World does not have a camera!");
+		}
 		auto& cam = worldOwning->GetComponent<CameraComponent>();
 		auto viewproj = cam.GenerateProjectionMatrix(nextImgSize.width, nextImgSize.height) * cam.GenerateViewMatrix();
 
@@ -413,6 +418,7 @@ namespace RavEngine {
 
 		Im3d::GetContext().draw();
 		mainCommandBuffer->EndRenderDebugMarker();
+
 		mainCommandBuffer->BeginRenderDebugMarker("GUI");
 		worldOwning->Filter([](GUIComponent& gui) {
 			gui.Render();	// kicks off commands for rendering UI
