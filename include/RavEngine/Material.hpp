@@ -2,10 +2,8 @@
 #include "Ref.hpp"
 #include "WeakRef.hpp"
 #include "DataStructures.hpp"
-#include "glm/gtc/type_ptr.hpp"
 #include "Common3D.hpp"
 #include "CTTI.hpp"
-#include "Debug.hpp"
 #include "Manager.hpp"
 #include <RGL/Types.hpp>
 #include <RGL/Pipeline.hpp>

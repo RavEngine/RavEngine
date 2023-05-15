@@ -1,6 +1,7 @@
 #include "Constraint.hpp"
 #include "AnimatorComponent.hpp"
 #include "SkeletonAsset.hpp"
+#include "Debug.hpp"
 
 using namespace RavEngine;
 using namespace std;

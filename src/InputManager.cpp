@@ -5,6 +5,7 @@
 #include <RenderEngine.hpp>
 #include "Debug.hpp"
 #include "App.hpp"
+#include <phmap.h>
 
 using namespace std;
 using namespace RavEngine;

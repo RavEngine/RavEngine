@@ -23,6 +23,7 @@
 #include "AudioPlayer.hpp"
 #include "MeshAssetSkinned.hpp"
 #include <csignal>
+#include "Debug.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -228,6 +229,79 @@ float App::CurrentTPS() {
 	return App::evalNormal / currentScale;
 }
 
+/**
+Set the current world to tick automatically
+@param newWorld the new world
+*/
+
+void RavEngine::App::SetRenderedWorld(Ref<World> newWorld) {
+	if (!loadedWorlds.contains(newWorld)) {
+		Debug::Fatal("Cannot render an inactive world");
+	}
+	if (renderWorld) {
+		renderWorld->OnDeactivate();
+		renderWorld->isRendering = false;
+	}
+	renderWorld = newWorld;
+	renderWorld->isRendering = true;
+	renderWorld->OnActivate();
+}
+
+/**
+Add a world to be ticked
+@param world the world to tick
+*/
+
+void RavEngine::App::AddWorld(Ref<World> world) {
+	loadedWorlds.insert(world);
+	if (!renderWorld) {
+		SetRenderedWorld(world);
+	}
+
+	// synchronize network if necessary
+	if (networkManager.IsClient() && !networkManager.IsServer()) {
+		networkManager.client->SendSyncWorldRequest(world);
+	}
+}
+
+/**
+Remove a world from the tick list
+@param world the world to tick
+*/
+
+void RavEngine::App::RemoveWorld(Ref<World> world) {
+	loadedWorlds.erase(world);
+	if (renderWorld == world) {
+		renderWorld->OnDeactivate();
+		renderWorld.reset();    //this will cause nothing to render, so set a different world as rendered
+	}
+}
+
+/**
+* Unload all worlds
+*/
+
+void RavEngine::App::RemoveAllWorlds() {
+	for (const auto& world : loadedWorlds) {
+		RemoveWorld(world);
+	}
+}
+
+/**
+Replace a loaded world with a different world, transferring render state if necessary
+@param oldWorld the world to replace
+@param newWorld the world to replace with. Cannot be already loaded.
+*/
+
+void RavEngine::App::AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld) {
+	AddWorld(newWorld);
+	bool updateRender = renderWorld == oldWorld;
+	RemoveWorld(oldWorld);
+	if (updateRender) {
+		SetRenderedWorld(newWorld);
+	}
+}
+
 void App::Quit(){
 	SDL_Event event;
 	event.type = SDL_QUIT;
@@ -261,6 +335,18 @@ App::~App(){
 
 void App::SetWindowTitle(const char *title){
 	SDL_SetWindowTitle(Renderer->GetWindow(), title);
+}
+
+std::optional<Ref<World>> RavEngine::App::GetWorldByName(const std::string& name) {
+	std::optional<Ref<World>> value;
+	for (const auto& world : loadedWorlds) {
+		// because std::string "world\0\0" != "world", we need to use strncmp
+		if (std::strncmp(world->worldID.data(), name.data(), World::id_size) == 0) {
+			value.emplace(world);
+			break;
+		}
+	}
+	return value;
 }
 
 void App::OnDropAudioWorklets(uint32_t nDropped){

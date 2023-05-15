@@ -2,7 +2,6 @@
 #include <chrono>
 #include <concurrentqueue.h>
 #include "SpinLock.hpp"
-#include <thread>
 #include <taskflow/taskflow.hpp>
 #include "NetworkManager.hpp"
 #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
@@ -154,69 +153,31 @@ struct AudioPlayer;
 		Set the current world to tick automatically
 		@param newWorld the new world
 		*/
-		void SetRenderedWorld(Ref<World> newWorld) {
-			if (!loadedWorlds.contains(newWorld)) {
-				Debug::Fatal("Cannot render an inactive world");
-			}
-			if (renderWorld) {
-				renderWorld->OnDeactivate();
-				renderWorld->isRendering = false;
-			}
-			renderWorld = newWorld;
-			renderWorld->isRendering = true;
-			renderWorld->OnActivate();
-		}
+		void SetRenderedWorld(Ref<World> newWorld);
 		
 		/**
 		 Add a world to be ticked
 		 @param world the world to tick
 		 */
-		void AddWorld(Ref<World> world) {
-			loadedWorlds.insert(world);
-			if (!renderWorld) {
-				SetRenderedWorld(world);
-			}
-
-			// synchronize network if necessary
-			if (networkManager.IsClient() && !networkManager.IsServer()) {
-				networkManager.client->SendSyncWorldRequest(world);
-			}
-		}
+		void AddWorld(Ref<World> world);
 
 		/**
 		Remove a world from the tick list
 		@param world the world to tick
 		*/
-		void RemoveWorld(Ref<World> world) {
-			loadedWorlds.erase(world);
-			if (renderWorld == world) {
-				renderWorld->OnDeactivate();
-				renderWorld.reset();    //this will cause nothing to render, so set a different world as rendered
-			}
-		}
+		void RemoveWorld(Ref<World> world);
 
 		/**
 		* Unload all worlds
 		*/
-        void RemoveAllWorlds() {
-			for (const auto& world : loadedWorlds) {
-				RemoveWorld(world);
-			}
-		}
+        void RemoveAllWorlds();
 		
 		/**
 		 Replace a loaded world with a different world, transferring render state if necessary
 		 @param oldWorld the world to replace
 		 @param newWorld the world to replace with. Cannot be already loaded.
 		 */
-		void AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld){
-			AddWorld(newWorld);
-			bool updateRender = renderWorld == oldWorld;
-			RemoveWorld(oldWorld);
-			if (updateRender){
-				SetRenderedWorld(newWorld);
-			}
-		}
+		void AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld);
 		
 		/**
 		 Set the window titlebar text
@@ -225,17 +186,7 @@ struct AudioPlayer;
 		 */
         void SetWindowTitle(const char* title);
 		
-		std::optional<Ref<World>> GetWorldByName(const std::string& name) {
-			std::optional<Ref<World>> value;
-			for (const auto& world : loadedWorlds) {
-				// because std::string "world\0\0" != "world", we need to use strncmp
-				if (std::strncmp(world->worldID.data(), name.data(), World::id_size) == 0) {
-					value.emplace(world);
-					break;
-				}
-			}
-			return value;
-		}
+		std::optional<Ref<World>> GetWorldByName(const std::string& name);
 
 		auto GetCurrentRenderWorld()  {
 			return renderWorld;

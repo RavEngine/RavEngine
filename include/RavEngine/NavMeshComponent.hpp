@@ -1,20 +1,18 @@
 #pragma once
-#include "MeshAsset.hpp"
-#include "IDebugRenderable.hpp"
-#include <DetourNavMeshQuery.h>
-#include <DetourDebugDraw.h>
 #include "Queryable.hpp"
-#include "GetApp.hpp"
-#include "App.hpp"
-#include "RenderEngine.hpp"
+#include "IDebugRenderable.hpp"
+
+class dtNavMesh;
+class dtNavMeshQuery;
 
 namespace RavEngine{
+
     class NavMeshComponent : public IDebugRenderable, public Queryable<NavMeshComponent,IDebugRenderable>{
     private:
-        class dtNavMesh* navMesh = nullptr;
+        dtNavMesh* navMesh = nullptr;
         dtNavMeshQuery* navMeshQuery = nullptr;
         unsigned char* navData = nullptr;
-        MeshAsset::Bounds bounds;
+        Bounds bounds;
         mutable SpinLock mtx;
 
     public:
@@ -61,11 +59,7 @@ namespace RavEngine{
          */
         RavEngine::Vector<vector3> CalculatePath(const vector3& start, const vector3& end, uint16_t maxPoints = std::numeric_limits<uint16_t>::max());
         
-        void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {
-            mtx.lock();
-            duDebugDrawNavMesh(&GetApp()->GetRenderEngine(), *navMesh, 0);
-            mtx.unlock();
-        }
+        void DebugDraw(class RavEngine::DebugDrawer& dbg, const struct RavEngine::Transform& tr) const override;
                 
         virtual ~NavMeshComponent();
     };

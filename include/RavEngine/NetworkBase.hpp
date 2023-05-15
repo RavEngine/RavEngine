@@ -1,14 +1,11 @@
 #pragma once
 #include <atomic>
 #include <thread>
-#include <string>
 #include "Uuid.hpp"
-#include "CTTI.hpp"
-#include "NetworkIdentity.hpp"
-#include "Ref.hpp"
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
-#include "ComponentHandle.hpp"
+#include "Entity.hpp"
+#include <steam/steamnetworkingtypes.h>
 
 namespace RavEngine{
 

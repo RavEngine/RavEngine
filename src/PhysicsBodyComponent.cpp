@@ -4,6 +4,9 @@
 #include <foundation/PxTransform.h>
 #include <foundation/PxVec3.h>
 #include <PxRigidBody.h>
+#include <PxRigidDynamic.h>
+#include <PxRigidStatic.h>
+#include <PxSimulationEventCallback.h>
 #include "Transform.hpp"
 #include "Entity.hpp"
 #include "PhysicsCallback.hpp"
@@ -53,6 +56,11 @@ RigidBodyDynamicComponent::RigidBodyDynamicComponent(entity_t owner) : PhysicsBo
     Entity e(owner);
     assert(e.HasComponent<Transform>());    // must already have a transform!
     setDynamicsWorldPose(e.GetTransform().GetWorldPosition(), e.GetTransform().GetWorldRotation());
+}
+
+void RavEngine::PhysicsBodyComponent::OnDestroyDetatchCollider(RavEngine::PhysicsCollider& collider)
+{
+	rigidActor->detachShape(*collider.collider);
 }
 
 void RavEngine::PhysicsBodyComponent::AddReceiver(decltype(receivers)::value_type& obj)
@@ -316,3 +324,9 @@ RigidBodyStaticComponent::RigidBodyStaticComponent(entity_t owner) : PhysicsBody
 RigidBodyStaticComponent::~RigidBodyStaticComponent() {
 	//note: do not need to delete the rigid actor here. The PhysicsSolver will delete it
 }
+
+RavEngine::ContactPairPoint::ContactPairPoint(const physx::PxContactPairPoint& pxcpp) :
+	position(pxcpp.position.x, pxcpp.position.y, pxcpp.position.z),
+	normal(pxcpp.normal.x, pxcpp.normal.y, pxcpp.normal.z),
+	impulse(pxcpp.impulse.x, pxcpp.impulse.y, pxcpp.impulse.z),
+	separation(pxcpp.separation) {}

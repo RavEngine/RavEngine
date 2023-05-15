@@ -18,6 +18,7 @@
 #include "VRAMSparseSet.hpp"
 #include "BuiltinMaterials.hpp"
 #include "Light.hpp"
+#include "Utilities.hpp"
 
 namespace RavEngine {
 	struct Entity;
@@ -1059,6 +1060,7 @@ namespace RavEngine {
 		bool physicsActive = false;
 		
     public:
+
         // returns the "first" of a component type
         template<typename T>
         inline T& GetComponent(){

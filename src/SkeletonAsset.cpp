@@ -15,6 +15,7 @@
 #include <ozz/base/maths/soa_transform.h>
 #include <ozz/animation/runtime/local_to_model_job.h>
 #include "VirtualFileSystem.hpp"
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace RavEngine;
 using namespace std;

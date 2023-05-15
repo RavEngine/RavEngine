@@ -1,8 +1,18 @@
 #include "RMLFileInterface.hpp"
+#include "VirtualFileSystem.hpp"
 #include "App.hpp"
 #include "Debug.hpp"
 
 using namespace RavEngine;
+
+struct VFShandle {
+	RavEngine::Vector<uint8_t> filedata;
+	long offset = 0;
+
+	inline size_t size_bytes() const {
+		return filedata.size() * sizeof(decltype(filedata)::value_type);
+	}
+};
 
 // Opens a file.
 Rml::FileHandle VFSInterface::Open(const Rml::String& path){

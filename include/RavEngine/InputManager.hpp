@@ -9,6 +9,7 @@
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
 #include <RavEngine/mathtypes.hpp>
+#include "WeakRef.hpp"
 
 namespace RavEngine {
 	enum ActionState{

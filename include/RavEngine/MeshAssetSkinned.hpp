@@ -1,11 +1,12 @@
 #pragma once
 #include "MeshAsset.hpp"
-#include "SkeletonAsset.hpp"
 #include "Ref.hpp"
 #include "Manager.hpp"
 #include <RGL/Types.hpp>
 
 namespace RavEngine{
+	class SkeletonAsset;
+
 class MeshAssetSkinned : public MeshAsset{
 public:
 	struct vweights {

@@ -14,6 +14,8 @@
 #include "MeshAsset.hpp"
 #include "SkeletonAsset.hpp"
 #include "Texture.hpp"
+#include "Debug.hpp"
+#include <glm/gtc/type_ptr.hpp>
 
 namespace RavEngine {
 

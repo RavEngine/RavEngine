@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <phmap.h>
-#include <functional>
 
 namespace RavEngine {
 

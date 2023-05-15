@@ -10,6 +10,7 @@
 #include <RGL/Texture.hpp>
 #include <RGL/CommandBuffer.hpp>
 #include "VirtualFileSystem.hpp"
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace RavEngine;
 using namespace std;

@@ -1,5 +1,5 @@
 #pragma once
-#include <string>
+#include <string_view>
 
 namespace RavEngine{
     namespace Dialog{
@@ -8,6 +8,6 @@ namespace RavEngine{
             Warning,
             Error
         };
-        void ShowBasic(const std::string& title, const std::string& msg, MessageBoxType type);
+        void ShowBasic(const std::string_view& title, const std::string_view& msg, MessageBoxType type);
     }
 }

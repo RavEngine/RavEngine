@@ -3,6 +3,8 @@
 #include "Debug.hpp"
 #include "InputManager.hpp"
 #include <RmlUi/Debugger.h>
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core.h>
 #include "Uuid.hpp"
 #include "RenderEngine.hpp"
 
@@ -150,6 +152,10 @@ GUIComponent::GUIComponent(int width, int height, float DPIScale){
 	data->context->SetDensityIndependentPixelRatio(DPIScale);
 }
 
+void RavEngine::GUIComponent::SetDPIScale(float scale) {
+	data->context->SetDensityIndependentPixelRatio(scale);
+}
+
 Rml::ElementDocument* GUIComponent::GetDocument(const std::string &name) const{
 	if (!IsDocumentLoaded(name)){
 		Debug::Fatal("Cannot get pointer to {} because it is not loaded.",name);
@@ -157,6 +163,13 @@ Rml::ElementDocument* GUIComponent::GetDocument(const std::string &name) const{
 	return data->documents.at(name);
 }
 
+
+RavEngine::GUIComponent::GUIData::~GUIData() {
+	for (const auto& pair : documents) {
+		context->UnloadDocument(pair.second);        //destroy all the documents
+	}
+	Rml::RemoveContext(context->GetName());
+}
 
 void GUIComponent::GUIData::AnyActionDown(const int charcode){
 	//If is a modifier, add to the bitmask

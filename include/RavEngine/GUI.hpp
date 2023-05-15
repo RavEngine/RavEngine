@@ -1,28 +1,28 @@
 #pragma once
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core.h>
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
 #include "Queryable.hpp"
 #include "IInputListener.hpp"
 #include "Function.hpp"
 #include "Ref.hpp"
+#include <RmlUi/Core/ElementDocument.h>
+
+namespace Rml {
+	class Context;
+	class ElementDocument;
+}
 
 namespace RavEngine{
 class GUIComponent : public AutoCTTI{
 protected:
 	friend class RenderEngine;
+	struct GUIData;
 	
     struct GUIData : public RavEngine::IInputListener{
         Rml::Context* context = nullptr;
         locked_hashmap<std::string, Rml::ElementDocument*, SpinLock> documents;
-        ~GUIData(){
-            for (const auto& pair : documents) {
-                context->UnloadDocument(pair.second);        //destroy all the documents
-            }
-            Rml::RemoveContext(context->GetName());
-        }
+        ~GUIData();
         
         ConcurrentQueue<Function<void(void)>> q_a, q_b;
         std::atomic<decltype(q_a)*> current = &q_a, inactive = &q_b;
@@ -34,8 +34,10 @@ protected:
         void AnyActionDown(const int charcode) override;
         
         void AnyActionUp(const int charcode) override;
-                
-        Rml::Vector2f MousePos;
+        
+		struct {
+			float x = 0, y = 0;
+		} MousePos;
         
         template<typename T>
         inline void ExclusiveAccess(const T& func){
@@ -83,9 +85,7 @@ public:
 	 */
 	GUIComponent(int width, int height, float DPI = 1);
 	
-	inline void SetDPIScale(float scale){
-		data->context->SetDensityIndependentPixelRatio(scale);
-	}
+	void SetDPIScale(float scale);
 	
 	/**
 	 Load a document from disk with a name

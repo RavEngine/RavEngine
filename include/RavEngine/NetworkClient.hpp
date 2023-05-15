@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "NetworkBase.hpp"
 #include <steam/isteamnetworkingsockets.h>
-#include <thread>
+#include "ComponentHandle.hpp"
 #include "Function.hpp"
 #include "Ref.hpp"
 
@@ -11,15 +11,12 @@ namespace RavEngine {
 	class World;
 	struct Entity;
 	class World;
+	struct NetworkIdentity;
 
 class NetworkClient : public NetworkBase{
     UnorderedMap<ctti_t, Function<void(Entity, Ref<World>)>> OnNetSpawnHooks;
-	inline void RevokeOwnership(ComponentHandle<NetworkIdentity> id) {
-		id->Owner = k_HSteamListenSocket_Invalid;
-	}
-	inline void GainOwnership(ComponentHandle<NetworkIdentity> id) {
-		id->Owner = 30;	//any number = this machine has ownership
-	}
+	void RevokeOwnership(ComponentHandle<NetworkIdentity> id);
+	void GainOwnership(ComponentHandle<NetworkIdentity> id);
 public:
 	NetworkClient();
 	void Connect(const std::string& addr, uint16_t port);
@@ -31,13 +28,7 @@ public:
 
 	void OnRPC(const std::string_view& cmd);
 
-	void SendSyncWorldRequest(Ref<World> world) {
-		// sending this command code + the world ID to spawn
-		char buffer[1 + World::id_size]{ 0 };
-		buffer[0] = CommandCode::ClientRequestingWorldSynchronization;
-		std::memcpy(buffer + 1, world->worldID.data(), world->worldID.size());
-		SendMessageToServer(std::string_view(buffer, sizeof(buffer)), Reliability::Reliable);
-	}
+	void SendSyncWorldRequest(Ref<World> world);
 
 	template<typename T>
     constexpr inline void SetNetSpawnHook(const decltype(OnNetSpawnHooks)::value_type::second_type& func) {

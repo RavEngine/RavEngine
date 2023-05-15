@@ -1,7 +1,6 @@
 #pragma once
 #include "WeakRef.hpp"
 #include "DataStructures.hpp"
-#include "SharedObject.hpp"
 #include "ComponentHandle.hpp"
 #include "Types.hpp"
 #include "AddRemoveAction.hpp"

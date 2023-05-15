@@ -2,7 +2,6 @@
 #include "Ref.hpp"
 #include "Manager.hpp"
 #include "Filesystem.hpp"
-#include <RGL/Sampler.hpp>
 #include <RGL/Types.hpp>
 
 namespace RavEngine{

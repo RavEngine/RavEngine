@@ -118,3 +118,8 @@ struct soatransform{
 	vector3 translate, scale;
 	quaternion rotate;
 };
+
+struct Bounds {
+    float min[3]{ 0,0,0 };
+    float max[3]{ 0,0,0 };
+};

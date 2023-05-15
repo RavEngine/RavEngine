@@ -6,16 +6,17 @@
 //  Copyright © 2020 Ravbug.
 //
 
-#include "PhysXDefines.h"
-#include "PhysicsBodyComponent.hpp"
 #include "CTTI.hpp"
-#include "PolymorphicIndirection.hpp"
 
 namespace phsyx{
     class PxScene;
 }
 
 namespace RavEngine {
+	struct RigidBodyStaticComponent;
+	struct RigidBodyDynamicComponent;
+	struct Transform;
+
 	/**
 	 This System copies the Entity's transform to the physics simulation transform.
 	 It must run after any transform modifications in other systems, ideally at the end of the pipeline.

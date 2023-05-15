@@ -1,18 +1,9 @@
 #pragma once
 #include <RmlUi/Core/FileInterface.h>
-#include "VirtualFileSystem.hpp"
 
 namespace RavEngine{
 class VFSInterface : public Rml::FileInterface{
-private:
-	struct VFShandle{
-        RavEngine::Vector<uint8_t> filedata;
-		long offset = 0;
-
-		inline size_t size_bytes() const{
-			return filedata.size() * sizeof(decltype(filedata)::value_type);
-		}
-	};
+	
 public:
 	// Opens a file.
 	Rml::FileHandle Open(const Rml::String& path) override;

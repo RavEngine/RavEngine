@@ -1,18 +1,19 @@
 #pragma once
 #include "PhysXDefines.h"
-#include <PxRigidBody.h>
-#include <PxRigidDynamic.h>
-#include <PxRigidStatic.h>
-#include <PxScene.h>
 #include "Function.hpp"
 #include "mathtypes.hpp"
 #include "PhysicsCallback.hpp"
-#include <phmap.h>
 #include "Queryable.hpp"
-#include <PxSimulationEventCallback.h>
+#include <PxScene.h>
+#include <PxRigidActor.h>
 #include "ComponentWithOwner.hpp"
 #include <boost/poly_collection/base_collection.hpp>
 #include "PhysicsCollider.hpp"
+
+namespace physx {
+	class PxRigidActor;
+	struct PxContactPairPoint;
+}
 
 namespace RavEngine {
 	struct Transform;
@@ -21,11 +22,7 @@ namespace RavEngine {
 		vector3 position, normal, impulse;
 		decimalType separation;
 
-		ContactPairPoint(const physx::PxContactPairPoint& pxcpp) :
-			position(pxcpp.position.x, pxcpp.position.y, pxcpp.position.z),
-			normal(pxcpp.normal.x, pxcpp.normal.y, pxcpp.normal.z),
-			impulse(pxcpp.impulse.x, pxcpp.impulse.y, pxcpp.impulse.z),
-			separation(pxcpp.separation) {}
+		ContactPairPoint(const physx::PxContactPairPoint& pxcpp);
 		
 		// default constructor
 		ContactPairPoint(){}
@@ -75,13 +72,15 @@ namespace RavEngine {
             for(auto it = colliders.begin(); it != colliders.end(); it++){
                 auto& collider = *it;
                 if (collider.collider == handle.id){
-                    rigidActor->detachShape(*collider.collider);
+					OnDestroyDetatchCollider(collider);
                     colliders.erase(it);
                     return true;
                 }
             }
             return false;
         }
+
+		void OnDestroyDetatchCollider(RavEngine::PhysicsCollider& collider);
         
         template<typename T>
         T& GetColliderForHandle(ColliderHandle<T> handle){

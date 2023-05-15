@@ -11,6 +11,7 @@
 
 namespace RavEngine {
 	struct Entity;
+	struct NetworkIdentity;
 
 class NetworkServer : public NetworkBase{
 public:

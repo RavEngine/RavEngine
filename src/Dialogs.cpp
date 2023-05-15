@@ -1,6 +1,7 @@
 #include "Dialogs.hpp"
 #include "App.hpp"
 #include <SDL_messagebox.h>
+#include "Debug.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -18,6 +19,6 @@ static inline auto MessageBoxToSDLFlag(Dialog::MessageBoxType type){
     }
 }
 
-void Dialog::ShowBasic(const std::string& title, const std::string& msg, MessageBoxType type){
-    SDL_ShowSimpleMessageBox(MessageBoxToSDLFlag(type), title.c_str(), msg.c_str(), nullptr);
+void Dialog::ShowBasic(const std::string_view& title, const std::string_view& msg, MessageBoxType type){
+    SDL_ShowSimpleMessageBox(MessageBoxToSDLFlag(type), title.data(), msg.data(), nullptr);
 }

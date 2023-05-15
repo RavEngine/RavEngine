@@ -7,9 +7,18 @@
 #include <string_view>
 #include <cstring>
 #include <limits>
+#include "NetworkIdentity.hpp"
 
 using namespace RavEngine;
 NetworkClient* NetworkClient::currentClient = nullptr;
+
+void RavEngine::NetworkClient::RevokeOwnership(ComponentHandle<NetworkIdentity> id) {
+	id->Owner = k_HSteamListenSocket_Invalid;
+}
+
+void RavEngine::NetworkClient::GainOwnership(ComponentHandle<NetworkIdentity> id) {
+	id->Owner = 30;	//any number = this machine has ownership
+}
 
 NetworkClient::NetworkClient(){
 	net_interface = SteamNetworkingSockets();
@@ -274,4 +283,12 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 	if (!success) {
 		Debug::Warning("Cannot relay RPC, entity with ID {} does not exist", id.to_string());
 	}
+}
+
+void RavEngine::NetworkClient::SendSyncWorldRequest(Ref<World> world) {
+	// sending this command code + the world ID to spawn
+	char buffer[1 + World::id_size]{ 0 };
+	buffer[0] = CommandCode::ClientRequestingWorldSynchronization;
+	std::memcpy(buffer + 1, world->worldID.data(), world->worldID.size());
+	SendMessageToServer(std::string_view(buffer, sizeof(buffer)), Reliability::Reliable);
 }

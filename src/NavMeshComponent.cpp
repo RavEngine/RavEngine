@@ -5,7 +5,11 @@
 #include <DetourNavMeshBuilder.h>
 #include <DetourCommon.h>
 #include <DetourCrowd.h>
+#include <DetourNavMeshQuery.h>
+#include <DetourDebugDraw.h>
 #include "App.hpp"
+#include "MeshAsset.hpp"
+#include "RenderEngine.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -312,4 +316,10 @@ RavEngine::Vector<vector3> NavMeshComponent::CalculatePath(const vector3 &start,
 
 
     return path;
+}
+
+void RavEngine::NavMeshComponent::DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const {
+    mtx.lock();
+    duDebugDrawNavMesh(&GetApp()->GetRenderEngine(), *navMesh, 0);
+    mtx.unlock();
 }

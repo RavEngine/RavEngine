@@ -11,6 +11,7 @@
 #include "RenderEngine.hpp"
 #include <RGL/Device.hpp>
 #include <RGL/Buffer.hpp>
+#include "SkeletonAsset.hpp"
 
 using namespace RavEngine;
 using namespace std;

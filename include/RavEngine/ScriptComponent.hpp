@@ -1,11 +1,11 @@
 #pragma once
-#include "Transform.hpp"
 #include "Queryable.hpp"
-#include "Entity.hpp"
+#include "Types.hpp"
 #include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
 	class World;
+	struct Transform;
 	/**
 	Define an Entity-side Script which can contain code. Subclass to add behavior. Be sure to invoke the base class constructor!
 	*/
@@ -25,7 +25,7 @@ namespace RavEngine {
 		virtual void Start() {};
 
 		/**
-		Called by the world when the owning entity has been despawned, but before despawn work has begun. It may not be deallocated immediately after depending on reference counts. However it is best to stop or destroy anything possible.
+		Called by the world when the owning entity has been despawned, but before despawn work has begun.
 		*/
 		virtual void Stop() {}
 

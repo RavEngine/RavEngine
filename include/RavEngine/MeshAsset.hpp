@@ -4,8 +4,6 @@
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "Common3D.hpp"
-#include "WeakRef.hpp"
-#include "SpinLock.hpp"
 #include "Manager.hpp"
 #include <boost/container_hash/hash.hpp>
 #include "Filesystem.hpp"
@@ -158,10 +156,7 @@ public:
 	*/
 	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat, BitWidth mode);
     
-    struct Bounds{
-        float min[3] = {0,0,0};
-        float max[3] = {0,0,0};
-    };
+    
 
     
 protected:

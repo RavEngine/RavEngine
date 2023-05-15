@@ -1,8 +1,8 @@
 #pragma once
 #include "Material.hpp"
-#include "MeshAsset.hpp"
 
 namespace RavEngine {
+	struct MeshAsset;
 	
 	// subclass
 	struct ISkyMaterial : public Material {
