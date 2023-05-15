@@ -1,15 +1,23 @@
 #pragma once
-#include <phmap.h>
 #include "Ref.hpp"
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
-#include <ozz/animation/runtime/animation.h>
 #include <ozz/base/containers/vector.h>
-#include <ozz/base/maths/soa_transform.h>
 #include <ozz/animation/runtime/sampling_job.h>
-#include "SkeletonAsset.hpp"
+#include <ozz/base/memory/unique_ptr.h>
+
+namespace ozz::animation {
+	struct Skeleton;
+	struct Animation;
+}
+
+namespace ozz::math {
+	struct SoaTransform;
+}
 
 namespace RavEngine{
+
+	class SkeletonAsset;
 
 struct IAnimGraphable{
 	/**

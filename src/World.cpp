@@ -54,6 +54,11 @@ void RavEngine::World::Tick(float scale) {
 
 
 RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
+    // init render data if the render engine is online
+    if (GetApp()->GetRenderEngine().GetDevice()) {
+        renderData.emplace();
+    }
+
     SetupTaskGraph();
     EmplacePolymorphicSystem<ScriptSystem>();
     EmplaceSystem<AnimatorSystem>();
@@ -249,9 +254,9 @@ void World::setupRenderTasks(){
                 // update
                 auto owner = trns.GetOwner();
 
-                assert(staticMeshRenderData.contains(sm.GetMaterial()));
+                assert(renderData->staticMeshRenderData.contains(sm.GetMaterial()));
                 auto meshToUpdate = sm.GetMesh();
-                staticMeshRenderData.if_contains(sm.GetMaterial(), [owner,&meshToUpdate,&trns](MDIICommand& row) {
+                renderData->staticMeshRenderData.if_contains(sm.GetMaterial(), [owner,&meshToUpdate,&trns](MDIICommand& row) {
                     auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
                         return value.mesh.lock() == meshToUpdate;
                     });
@@ -273,10 +278,10 @@ void World::setupRenderTasks(){
                 // update
                 auto owner = trns.GetOwner();
 
-                assert(skinnedMeshRenderData.contains(sm.GetMaterial()));
+                assert(renderData->skinnedMeshRenderData.contains(sm.GetMaterial()));
                 auto meshToUpdate = sm.GetMesh();
                 auto skeletonToUpdate = sm.GetSkeleton();
-                skinnedMeshRenderData.if_contains(sm.GetMaterial(), [owner, &meshToUpdate, &trns, &skeletonToUpdate](MDIICommandSkinned& row) {
+                renderData->skinnedMeshRenderData.if_contains(sm.GetMaterial(), [owner, &meshToUpdate, &trns, &skeletonToUpdate](MDIICommandSkinned& row) {
                     auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
                         return value.mesh.lock() == meshToUpdate && value.skeleton.lock() == skeletonToUpdate;
                     });
@@ -300,13 +305,13 @@ void World::setupRenderTasks(){
                     auto rot = owner.GetTransform().WorldUp();
 
                     // use local ID here, no need for local-to-global translation
-                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).direction = rot;
+                    renderData->directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).direction = rot;
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightdata = ptr->Get(i);
                     auto& color = lightdata.GetColorRGBA();
-                    directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = {color.R, color.G, color.B, lightdata.GetIntensity()};
+                    renderData->directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = {color.R, color.G, color.B, lightdata.GetIntensity()};
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -321,13 +326,13 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    spotLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
+                    renderData->spotLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    auto& denseData = spotLightData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& denseData = renderData->spotLightData.GetForSparseIndex(ptr->GetOwner(i));
                     denseData.coneAndPenumbra = { lightData.GetConeAngle(), lightData.GetPenumbraAngle() };
                     denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
                     ptr->Get(i).clearInvalidate();
@@ -344,13 +349,13 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    pointLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
+                    renderData->pointLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    pointLightData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    renderData->pointLightData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -364,7 +369,7 @@ void World::setupRenderTasks(){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get(i);
                 auto& color = light.GetColorRGBA();
-                ambientLightData.GetForSparseIndex(ownerLocalId) = {color.R, color.G, color.B, light.GetIntensity()};
+                renderData->ambientLightData.GetForSparseIndex(ownerLocalId) = {color.R, color.G, color.B, light.GetIntensity()};
                 light.clearInvalidate();
             }
         }
@@ -394,11 +399,16 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     });
 }
 
-void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh)
+void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(RenderData::staticMeshRenderData)::key_type oldMat, decltype(RenderData::staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh)
 {
+    // do nothing if renderer is not online
+    if (!renderData) {
+        return;
+    }
+
     // if the material has changed, need to reset the old one
     if (oldMat != nullptr) {
-        staticMeshRenderData.if_contains(oldMat, [&](decltype(staticMeshRenderData)::mapped_type& value) {
+        renderData->staticMeshRenderData.if_contains(oldMat, [&](decltype(RenderData::staticMeshRenderData)::mapped_type& value) {
             // find the Mesh
             for (auto& command : value.commands) {
                 auto cmpMesh = command.mesh.lock();
@@ -412,7 +422,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(stati
     // add the new mesh & its transform to the hashmap 
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
     auto& transform = GetComponent<Transform>(localId);
-    auto& set = ( * (staticMeshRenderData.try_emplace(newMat, decltype(staticMeshRenderData)::mapped_type()).first)).second;
+    auto& set = ( * (renderData->staticMeshRenderData.try_emplace(newMat, decltype(RenderData::staticMeshRenderData)::mapped_type()).first)).second;
     bool found = false;
     for (auto& command : set.commands) {
         auto cmpMesh = command.mesh.lock();
@@ -427,11 +437,16 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(stati
     }
 }
 
-void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton)
+void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(RenderData::skinnedMeshRenderData)::key_type oldMat, decltype(RenderData::skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton)
 {
+    // if render engine is not online, do nothing
+    if (!renderData) {
+        return;
+    }
+
     // if the material has changed, need to reset the old one
     if (oldMat != nullptr) {
-        skinnedMeshRenderData.if_contains(oldMat, [&](decltype(skinnedMeshRenderData)::mapped_type& value) {
+        renderData->skinnedMeshRenderData.if_contains(oldMat, [&](decltype(RenderData::skinnedMeshRenderData)::mapped_type& value) {
             // find the Mesh
             for (auto& command : value.commands) {
                 auto cmpMesh = command.mesh.lock();
@@ -446,7 +461,7 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(skin
     // add the new mesh, its skeleton, & its transform to the hashmap entry
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
     auto& transform = GetComponent<Transform>(localId);
-    auto& set = (*(skinnedMeshRenderData.try_emplace(newMat, decltype(skinnedMeshRenderData)::mapped_type()).first)).second;
+    auto& set = (*(renderData->skinnedMeshRenderData.try_emplace(newMat, decltype(RenderData::skinnedMeshRenderData)::mapped_type()).first)).second;
     bool found = false;
     for (auto& command : set.commands) {
         auto cmpMesh = command.mesh.lock();
@@ -464,7 +479,11 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(skin
 
 void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entity_t local_id)
 {
-    staticMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(staticMeshRenderData)::mapped_type& data) {
+    if (!renderData) {
+        return;
+    }
+
+    renderData->staticMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(RenderData::staticMeshRenderData)::mapped_type& data) {
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return other.mesh.lock() == mesh.GetMesh();
         });
@@ -475,7 +494,11 @@ void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entit
 }
 
 void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entity_t local_id) {
-    skinnedMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(skinnedMeshRenderData)::mapped_type& data) {
+    if (!renderData) {
+        return;
+    }
+
+    renderData->skinnedMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(RenderData::skinnedMeshRenderData)::mapped_type& data) {
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return other.mesh.lock() == mesh.GetMesh() && other.skeleton.lock() == mesh.GetSkeleton();
         });
@@ -526,6 +549,14 @@ World::~World() {
             DestroyEntity(i); // destroy takes a local ID
         }
     }
+}
+
+void RavEngine::World::PlaySound(const InstantaneousAudioSource& ias) {
+    instantaneousToPlay.push_back(ias);
+}
+
+void RavEngine::World::PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {
+    ambientToPlay.push_back(iaas);
 }
 
 void World::DeallocatePhysics(){

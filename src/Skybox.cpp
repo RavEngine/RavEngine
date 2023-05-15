@@ -9,18 +9,8 @@
 using namespace RavEngine;
 using namespace std;
 
-STATIC(Skybox::defaultSkyMesh);
-constexpr static uint32_t width = 640, height = 480;
 
-void Skybox::Init() {
-	defaultSkyMesh = MeshAsset::Manager::Get("skydome.obj");
-}
-
-void Skybox::Teardown() {
-	defaultSkyMesh.reset();
-}
-
-Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::Get<DefaultSkyMaterial>())), skyMesh(defaultSkyMesh) {}
+Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::Get<DefaultSkyMaterial>())) {}
 
 RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(shaderpath, 
     {

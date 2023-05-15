@@ -1,9 +1,7 @@
 #pragma once
 #include "Queryable.hpp"
 #include "Common3D.hpp"
-#include "BuiltinMaterials.hpp"
 #include "IDebugRenderable.hpp"
-#include <atomic>
 
 namespace RavEngine{
 class MeshAsset;

@@ -9,7 +9,6 @@
 #define NOMINMAX
 #include "DataStructures.hpp"
 #include "SpinLock.hpp"
-#include "AudioSource.hpp"
 #include <taskflow/taskflow.hpp>
 #include "Types.hpp"
 #include "AddRemoveAction.hpp"
@@ -17,8 +16,6 @@
 #include "SparseSet.hpp"
 #include <boost/callable_traits.hpp>
 #include "VRAMSparseSet.hpp"
-#include "MeshAsset.hpp"
-#include "MeshAssetSkinned.hpp"
 #include "BuiltinMaterials.hpp"
 #include "Light.hpp"
 
@@ -32,6 +29,11 @@ namespace RavEngine {
     struct RenderEngine;
     struct Skybox;
     struct PhysicsSolver;
+    class MeshAsset;
+    class MeshAssetSkinned;
+    class SkeletonAsset;
+    struct InstantaneousAudioSource;
+    struct InstantaneousAmbientAudioSource;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -267,20 +269,12 @@ namespace RavEngine {
             };
             Vector<command> commands;
         };
-        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand,phmap::NullMutex> staticMeshRenderData;
-        locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
-
-        void updateStaticMeshMaterial(entity_t localId, decltype(staticMeshRenderData)::key_type oldMat, decltype(staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
-        void updateSkinnedMeshMaterial(entity_t localId, decltype(skinnedMeshRenderData)::key_type oldMat, decltype(skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
-		void StaticMeshChangedVisibility(const StaticMesh*);
-		void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
     
         struct DirLightUploadData {
             glm::vec4 colorIntensity;
             glm::vec3 direction;
         };
-        VRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
-        VRAMSparseSet<entity_t, glm::vec4> ambientLightData;
+
 
         struct PointLightUploadData {
             glm::mat4 worldTransform;
@@ -293,8 +287,22 @@ namespace RavEngine {
             glm::vec2 coneAndPenumbra;
         };
 
-        VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
-        VRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
+        // data for the render engine
+        struct RenderData{
+            VRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
+            VRAMSparseSet<entity_t, glm::vec4> ambientLightData;
+            VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
+            VRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
+            locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
+            locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
+        };
+
+        std::optional<RenderData> renderData;
+
+        void updateStaticMeshMaterial(entity_t localId, decltype(RenderData::staticMeshRenderData)::key_type oldMat, decltype(RenderData::staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh);
+        void updateSkinnedMeshMaterial(entity_t localId, decltype(RenderData::skinnedMeshRenderData)::key_type oldMat, decltype(RenderData::skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
+        void StaticMeshChangedVisibility(const StaticMesh*);
+        void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
         
     public:
         struct PolymorphicIndirection{
@@ -515,16 +523,24 @@ namespace RavEngine {
             
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
-                directionalLightData.Emplace(local_id,decltype(directionalLightData)::value_type{});
+                if (renderData) {
+                    renderData->directionalLightData.Emplace(local_id, decltype(RenderData::directionalLightData)::value_type{});
+                }
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
-                ambientLightData.Emplace(local_id);
+                if (renderData) {
+                    renderData->ambientLightData.Emplace(local_id);
+                }
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                pointLightData.Emplace(local_id,decltype(pointLightData)::value_type{});
+                if (renderData) {
+                    renderData->pointLightData.Emplace(local_id, decltype(RenderData::pointLightData)::value_type{});
+                }
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
-                spotLightData.Emplace(local_id,decltype(spotLightData)::value_type{});
+                if (renderData) {
+                    renderData->spotLightData.Emplace(local_id, decltype(RenderData::spotLightData)::value_type{});
+                }
             }
             
             //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
@@ -582,16 +598,24 @@ namespace RavEngine {
             
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
-                directionalLightData.EraseAtSparseIndex(local_id);
+                if (renderData) {
+                    renderData->directionalLightData.EraseAtSparseIndex(local_id);
+                }
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
-                ambientLightData.EraseAtSparseIndex(local_id);
+                if (renderData) {
+                    renderData->ambientLightData.EraseAtSparseIndex(local_id);
+                }
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                pointLightData.EraseAtSparseIndex(local_id);
+                if (renderData) {
+                    renderData->pointLightData.EraseAtSparseIndex(local_id);
+                }
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
-                spotLightData.EraseAtSparseIndex(local_id);
+                if (renderData) {
+                    renderData->spotLightData.EraseAtSparseIndex(local_id);
+                }
             }
             
             setptr->Destroy(local_id);
@@ -1084,13 +1108,9 @@ namespace RavEngine {
 			skybox = sk;
 		}
 
-        inline void PlaySound(const InstantaneousAudioSource& ias){
-			instantaneousToPlay.push_back(ias);
-		}
+        void PlaySound(const InstantaneousAudioSource& ias);
 
-        inline void PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {
-			ambientToPlay.push_back(iaas);
-		}
+        void PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas);
 		
 		/**
 		 Called by GameplayStatics when the final world is being deallocated

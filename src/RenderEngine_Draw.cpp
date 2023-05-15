@@ -10,6 +10,9 @@
 #include <im3d.h>
 #include <GUI.hpp>
 #include <AnimatorComponent.hpp>
+#include "MeshAssetSkinned.hpp"
+#include "MeshAsset.hpp"
+#include "SkeletonAsset.hpp"
 
 namespace RavEngine {
 
@@ -73,7 +76,7 @@ namespace RavEngine {
 		
 		// dispatch skinning shaders
 		mainCommandBuffer->BeginComputeDebugMarker("Skinning Compute Shader");
-		for (const auto& [_,drawdata] : worldOwning->skinnedMeshRenderData) {
+		for (const auto& [_,drawdata] : worldOwning->renderData->skinnedMeshRenderData) {
 			uint32_t computeOffsetIndex = 0;
 			uint32_t bufferBegin = 0;
 			float values[4];
@@ -175,7 +178,7 @@ namespace RavEngine {
 		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 		// do static meshes
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
-		for (auto& [materialInstance, drawcommand] : worldOwning->staticMeshRenderData) {
+		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
 
@@ -227,7 +230,7 @@ namespace RavEngine {
 
 		// do skinned meshes
 		mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-		for (auto& [materialInstance, drawcommand] : worldOwning->skinnedMeshRenderData) {
+		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
 			auto pushConstantData = materialInstance->GetPushConstantData();
@@ -293,7 +296,7 @@ namespace RavEngine {
 		mainCommandBuffer->BeginRendering(lightingRenderPass);
 		mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 		// ambient lights
-        if (worldOwning->ambientLightData.DenseSize() > 0){
+        if (worldOwning->renderData->ambientLightData.DenseSize() > 0){
 			mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
             mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
@@ -302,17 +305,17 @@ namespace RavEngine {
             mainCommandBuffer->SetVertexBuffer(screenTriVerts);
             mainCommandBuffer->SetVertexBytes(lightUBO, 0);
             mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-            mainCommandBuffer->SetVertexBuffer(worldOwning->ambientLightData.GetDense().get_underlying().buffer, {
+            mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->ambientLightData.GetDense().get_underlying().buffer, {
                 .bindingPosition = 1
             });
             mainCommandBuffer->Draw(3, {
-                .nInstances = worldOwning->ambientLightData.DenseSize()
+                .nInstances = worldOwning->renderData->ambientLightData.DenseSize()
             });
 			mainCommandBuffer->EndRenderDebugMarker();
         }
 
 		// directional lights
-        if (worldOwning->directionalLightData.DenseSize() > 0){
+        if (worldOwning->renderData->directionalLightData.DenseSize() > 0){
 			mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
             mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
@@ -320,17 +323,17 @@ namespace RavEngine {
             mainCommandBuffer->SetVertexBuffer(screenTriVerts);
             mainCommandBuffer->SetVertexBytes(lightUBO, 0);
             mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-            mainCommandBuffer->SetVertexBuffer(worldOwning->directionalLightData.GetDense().get_underlying().buffer, {
+            mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->directionalLightData.GetDense().get_underlying().buffer, {
                 .bindingPosition = 1
             });
             mainCommandBuffer->Draw(3, {
-                .nInstances = worldOwning->directionalLightData.DenseSize()
+                .nInstances = worldOwning->renderData->directionalLightData.DenseSize()
             });
 			mainCommandBuffer->EndRenderDebugMarker();
         }
 
 		// point lights
-        if (worldOwning->pointLightData.DenseSize() > 0){
+        if (worldOwning->renderData->pointLightData.DenseSize() > 0){
 			mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
             mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
@@ -340,17 +343,17 @@ namespace RavEngine {
             mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
             mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
             mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
-            mainCommandBuffer->SetVertexBuffer(worldOwning->pointLightData.GetDense().get_underlying().buffer, {
+            mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->pointLightData.GetDense().get_underlying().buffer, {
                 .bindingPosition = 1
             });
             mainCommandBuffer->DrawIndexed(nPointLightIndices, {
-                .nInstances = worldOwning->pointLightData.DenseSize()
+                .nInstances = worldOwning->renderData->pointLightData.DenseSize()
             });
 			mainCommandBuffer->EndRenderDebugMarker();
         }
 
 		// spot lights
-		if (worldOwning->spotLightData.DenseSize() > 0) {
+		if (worldOwning->renderData->spotLightData.DenseSize() > 0) {
 			mainCommandBuffer->BeginRenderDebugMarker("Render Spot Lights");
 			mainCommandBuffer->BindRenderPipeline(spotLightRenderPipeline);
 			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
@@ -360,11 +363,11 @@ namespace RavEngine {
 			mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
 			mainCommandBuffer->SetVertexBuffer(spotLightVertexBuffer);
 			mainCommandBuffer->SetIndexBuffer(spotLightIndexBuffer);
-			mainCommandBuffer->SetVertexBuffer(worldOwning->spotLightData.GetDense().get_underlying().buffer, {
+			mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->spotLightData.GetDense().get_underlying().buffer, {
 				.bindingPosition = 1
 			});
 			mainCommandBuffer->DrawIndexed(nSpotLightIndices, {
-				.nInstances = worldOwning->spotLightData.DenseSize()
+				.nInstances = worldOwning->renderData->spotLightData.DenseSize()
 			});
 			mainCommandBuffer->EndRenderDebugMarker();
 		}
@@ -393,15 +396,26 @@ namespace RavEngine {
 		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, lightingTexture.get(), 0);
 		mainCommandBuffer->Draw(3);
 
-		// then do the skybox
-		mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->mat->renderPipeline);
-		mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
-		mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
+		// then do the skybox, if one is defined.
+		if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->mat->renderPipeline) {
+			mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->mat->renderPipeline);
+			uint32_t totalIndices = 0;
+			// if a custom mesh is supplied, render that. Otherwise, render the builtin icosphere.
+			if (worldOwning->skybox->skyMesh) {
+				mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
+				mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
+				totalIndices = worldOwning->skybox->skyMesh->totalIndices;
+			}
+			else {
+				mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
+				mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
+				totalIndices = nPointLightIndices;
+			}
+			mainCommandBuffer->SetVertexBytes(viewproj, 0);
+			mainCommandBuffer->DrawIndexed(totalIndices);
+			mainCommandBuffer->EndRenderDebugMarker();
+		}
 
-		mainCommandBuffer->SetVertexBytes(viewproj, 0);
-		mainCommandBuffer->DrawIndexed(worldOwning->skybox->skyMesh->totalIndices);
-		mainCommandBuffer->EndRenderDebugMarker();
-	
 #ifndef NDEBUG
 			// process debug shapes
 		worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {

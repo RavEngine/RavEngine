@@ -5,6 +5,8 @@
 #include <ozz/animation/runtime/blending_job.h>
 #include <ozz/animation/offline/raw_animation.h>
 #include <ozz/animation/offline/animation_builder.h>
+#include <ozz/base/maths/soa_transform.h>
+#include <ozz/animation/runtime/animation.h>
 #include "DataStructures.hpp"
 #include <ozz/base/span.h>
 #include "Filesystem.hpp"
@@ -12,6 +14,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "VirtualFileSystem.hpp"
+#include "SkeletonAsset.hpp"
+
 
 using namespace RavEngine;
 using namespace std;

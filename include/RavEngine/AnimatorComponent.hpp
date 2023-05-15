@@ -4,16 +4,17 @@
 #include <ozz/base/maths/soa_transform.h>
 #include "AnimationAsset.hpp"
 #include "DataStructures.hpp"
-#include "SkeletonAsset.hpp"
 #include "Ref.hpp"
 #include <algorithm>
 #include "Tween.hpp"
 #include "App.hpp"
 #include "Function.hpp"
-#include "Transform.hpp"
 
 namespace RavEngine{
+
 struct Transform;
+class SkeletonAsset;
+
 class clamped_vec2{
 	float x, y;
 public:
@@ -215,47 +216,14 @@ public:
 	 Create an AnimatorComponent with a SkeletonAsset
 	 @param sk the skeleton asset
 	 */
-	AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : ComponentWithOwner(owner), isPlaying(false), isBlending(false){
-		UpdateSkeletonData(sk);
-	}
+	AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk);
 		
 	/**
 	 Transitions to the new state. If the current state has a transition to the target state, that transition is played.
 	 Otherwise, the state machine simply jumps to the target state without a transition.
 	 @param newState the state to switch to
 	 */
-    inline void Goto(id_t newState, bool skipTransition = false){
-		auto prevState = currentState;
-		if (newState != currentState) {
-			states[currentState].DoEnd(newState);
-		}
-		if (skipTransition || !(states.contains(newState) && states.at(currentState).exitTransitions.contains(newState))){	//just jump to the new state
-			currentState = newState;
-		}
-		else{
-			//want to blend to the new state, so set up the blendingclip
-			stateBlend.from = currentState;
-			stateBlend.to = newState;
-			
-			//copy time or reset time on target?
-			auto& ns = states.at(currentState).exitTransitions.at(newState);
-			
-			switch (ns.type) {
-			case State::Transition::TimeMode::BeginNew:
-				states.at(newState).lastPlayTime = GetApp()->GetCurrentTime();
-				break;
-				default: break;
-			}
-			
-			//seek tween back to beginning
-			stateBlend.currentTween = ns.transition;
-			stateBlend.currentTween.seek(0);
-			
-			isBlending = true;
-			currentState = newState;
-		}
-		states[currentState].DoBegin(prevState);
-	}
+    void Goto(id_t newState, bool skipTransition = false);
 	
 	/**
 	 Add a state to the state machine
@@ -269,26 +237,9 @@ public:
 	 Begin playing this AnimatorController
 	 @param resetPlayhead true if the time of this animator should be reset (for nonlooping animations), false to resume where paused (for looping animations)
 	 */
-    constexpr inline void Play(float resetPlayhead = false){
-		// need to maintain offset from previous play time
-		if (!isPlaying){
-			if (resetPlayhead){
-				lastPlayTime = GetApp()->GetCurrentTime();
-			}
-			else{
-				lastPlayTime = GetApp()->GetCurrentTime() - lastPlayTime;
-			}
-			isPlaying = true;
-		}
-	}
+    void Play(float resetPlayhead = false);
 	
-    constexpr inline void Pause(){
-		// record pause time so that resume begins in the correct place
-		if(isPlaying){
-			lastPlayTime = GetApp()->GetCurrentTime();
-		}
-		isPlaying = false;
-	}
+    void Pause();
 
     void Tick();
 	
@@ -320,19 +271,7 @@ protected:
 	/**
 	 Update buffer sizes for current skeleton
 	 */
-	void UpdateSkeletonData(Ref<SkeletonAsset> sk){
-		skeleton = sk;
-		const auto n_joints_soa = skeleton->GetSkeleton()->num_soa_joints();
-		transforms.resize(n_joints_soa);
-		transformsSecondaryBlending.resize(n_joints_soa);
-		
-		const auto n_joints = skeleton->GetSkeleton()->num_joints();
-		models.resize(n_joints);
-		cache->Resize(n_joints);
-		glm_pose.resize(n_joints);
-		local_pose.resize(n_joints);
-		skinningmats.resize(n_joints);
-	}
+	void UpdateSkeletonData(Ref<SkeletonAsset> sk);
 	
 	bool isPlaying : 1;
 	bool isBlending : 1;
@@ -357,44 +296,9 @@ public:
 	 Get the current pose of the animation in world space
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
 	 */
-	inline const decltype(glm_pose)& GetPose() const{
-		decimalType matrix[16];
-        auto worldMat = GetOwner().GetTransform().CalculateWorldMatrix();
-		for(int i = 0; i < models.size(); i++){
-			auto& t = models[i];
-			for(int r = 0; r < 4; r++){
-				float result[4];
-				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
-				decimalType dresult[4];
-				for(int j = 0; j < 4; j++){
-					dresult[j] = result[j];
-				}
-				//_mm_store_ps(result,p.cols[r]);
-				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
-			}
-			glm_pose[i] = worldMat * glm::make_mat4(matrix);
-		}
-		return glm_pose;
-	}
+	const decltype(glm_pose)& GetPose() const;
 	
-	inline const decltype(local_pose)& GetLocalPose(){
-		decimalType matrix[16];
-		for(int i = 0; i < models.size(); i++){
-			auto& t = models[i];
-			for(int r = 0; r < 4; r++){
-				float result[4];
-				std::memcpy(result,t.cols + r,sizeof(t.cols[r]));
-				decimalType dresult[4];
-				for(int j = 0; j < 4; j++){
-					dresult[j] = result[j];
-				}
-				//_mm_store_ps(result,p.cols[r]);
-				std::memcpy(matrix + r*4,dresult,sizeof(dresult));
-			}
-			local_pose[i] = glm::make_mat4(matrix);
-		}
-		return local_pose;
-	}
+	const decltype(local_pose)& GetLocalPose();
 	
 	inline const decltype(skinningmats)& GetSkinningMats(){
 		return skinningmats;

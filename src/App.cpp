@@ -21,7 +21,7 @@
 #include "Defines.hpp"
 #include "VirtualFileSystem.hpp"
 #include "AudioPlayer.hpp"
-
+#include "MeshAssetSkinned.hpp"
 
 
 #ifdef _WIN32
@@ -89,8 +89,6 @@ int App::run(int argc, char** argv) {
 		Renderer = std::make_unique<RenderEngine>(config);
 	}
 	
-	Skybox::Init();
-
 	//setup GUI rendering
 	Rml::SetSystemInterface(&GetRenderEngine());
 	Rml::SetRenderInterface(&GetRenderEngine());
@@ -255,7 +253,6 @@ App::~App(){
 	networkManager.client.reset();
 	GameNetworkingSockets_Kill();
 	PHYSFS_deinit();
-	Skybox::Teardown();
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
     Renderer.reset();
