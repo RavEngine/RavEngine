@@ -1,6 +1,5 @@
 #pragma once
 #include "Material.hpp"
-#include "Texture.hpp"
 #include "Common3D.hpp"
 
 namespace RavEngine {
@@ -23,9 +22,7 @@ namespace RavEngine {
 		struct PushConstantData {
 			ColorRGBA color{ 1,1,1,1 };
 		};
-		PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) { 
-			textureBindings[0] = Texture::Manager::defaultTexture;
-		};
+		PBRMaterialInstance(Ref<PBRMaterial> m);;
 
 		inline void SetAlbedoTexture(Ref<Texture> texture) {
 			textureBindings[0] = texture;

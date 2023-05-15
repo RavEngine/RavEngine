@@ -3,6 +3,7 @@
 #include <RGL/Pipeline.hpp>
 #include "RenderEngine.hpp"
 #include "mathtypes.hpp"
+#include "Texture.hpp"
 
 using namespace RavEngine;
 
@@ -94,4 +95,8 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
 	}
 	) 
 {
+}
+
+RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
+    textureBindings[0] = Texture::Manager::defaultTexture;
 }

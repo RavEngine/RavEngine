@@ -22,7 +22,7 @@
 #include "VirtualFileSystem.hpp"
 #include "AudioPlayer.hpp"
 #include "MeshAssetSkinned.hpp"
-
+#include <csignal>
 
 #ifdef _WIN32
 	#include <Windows.h>

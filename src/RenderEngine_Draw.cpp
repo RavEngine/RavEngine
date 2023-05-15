@@ -13,6 +13,7 @@
 #include "MeshAssetSkinned.hpp"
 #include "MeshAsset.hpp"
 #include "SkeletonAsset.hpp"
+#include "Texture.hpp"
 
 namespace RavEngine {
 

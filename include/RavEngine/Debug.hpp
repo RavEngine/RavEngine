@@ -1,10 +1,7 @@
 #pragma once
 #include "SpinLock.hpp"
-#include <chrono>
 #include "PhysXDefines.h"
-#include <csignal>
 #include "Utilities.hpp"
-#include <date/date.h>
 
 namespace RavEngine {
 
@@ -14,12 +11,7 @@ private:
 	static SpinLock mtx;
 	constexpr static uint16_t bufsize = 512;
 
-	static inline void LogHelper(FILE* output, const char* message, const char* type){
-		auto date = date::format("%F %T", std::chrono::system_clock::now());
-		mtx.lock();
-		fprintf(output,"[%s] %s - %s\n",date.c_str(),type,message);
-		mtx.unlock();
-	}
+	static void LogHelper(FILE* output, const char* message, const char* type);
     
     static void InvokeUserHandler(const char* msg);
 	

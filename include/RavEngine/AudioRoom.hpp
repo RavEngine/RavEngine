@@ -3,11 +3,10 @@
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "ComponentWithOwner.hpp"
-#include "SpinLock.hpp"
 #include "Queryable.hpp"
 #include "AudioRoomMaterial.hpp"
 #include "AudioSource.hpp"
-#include "Entity.hpp"
+#include "Types.hpp"
 #include "DebugDrawer.hpp"
 
 namespace RavEngine{

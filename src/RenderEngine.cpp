@@ -48,6 +48,7 @@
 #include <RGL/RenderPass.hpp>
 #include "MeshAsset.hpp"
 #include <numbers>
+#include "Texture.hpp"
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"
