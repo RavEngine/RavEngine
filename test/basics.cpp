@@ -8,6 +8,8 @@
 #include <functional>
 #include <RavEngine/Uuid.hpp>
 #include <string_view>
+#include <RavEngine/Debug.hpp>
+#include <cassert>
 
 using namespace RavEngine;
 using namespace std;

@@ -56,7 +56,7 @@ void RavEngine::World::Tick(float scale) {
 
 RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     // init render data if the render engine is online
-    if (GetApp()->GetRenderEngine().GetDevice()) {
+    if (GetApp() && GetApp()->HasRenderEngine() && GetApp()->GetRenderEngine().GetDevice()) {
         renderData.emplace();
     }
 
