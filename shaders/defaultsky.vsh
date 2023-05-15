@@ -12,6 +12,11 @@ void main()
 {
 	// we are only interested in the non-translation part of the matrix
 	mat3 rotScaleOnly = mat3(ubo.viewProj);
+	rotScaleOnly *= mat3(
+		2,0,0,
+		0,2,0,
+		0,0,2
+	);
 
 	vec4 screenpos = vec4(rotScaleOnly * inPosition,1);
 	

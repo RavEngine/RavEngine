@@ -46,6 +46,7 @@
 #include <RGL/CommandBuffer.hpp>
 #include <RGL/Pipeline.hpp>
 #include <RGL/RenderPass.hpp>
+#include <RGL/Sampler.hpp>
 #include "MeshAsset.hpp"
 #include <numbers>
 #include "Texture.hpp"

@@ -16,6 +16,7 @@
 #include <ozz/animation/runtime/local_to_model_job.h>
 #include "VirtualFileSystem.hpp"
 #include <glm/gtc/type_ptr.hpp>
+#include "RenderEngine.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -151,15 +152,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	else{
 		Debug::Fatal("No skeleton at {}",path);
 	}
-#if 0
-	bgfx::VertexLayout layout;
-	layout.begin()
-		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
-		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
-		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
-		.add(bgfx::Attrib::Position, 4, bgfx::AttribType::Float)
-	.end();
-#endif
+
 	bindposes.resize(skeleton->joint_names().size());
 	stackarray(bindpose_ozz, ozz::math::Float4x4, skeleton->joint_names().size());
 	
@@ -186,30 +179,26 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	}
 	
 	assert(bindposes.size() * sizeof(bindposes[0]) < numeric_limits<uint32_t>::max());
-#if 0
-	auto bindposedata = bgfx::copy(bindposes.data(), static_cast<uint32_t>(bindposes.size() * sizeof(bindposes[0])));
-	
-	bindpose = bgfx::createVertexBuffer(bindposedata, layout);
-	
-	//upload the hierarchy data
-	bgfx::VertexLayout hierarchyLayout;
-	hierarchyLayout.begin()
-		.add(bgfx::Attrib::Position, 1, bgfx::AttribType::Float)
-	.end();
-#endif
+
+	bindpose = GetApp()->GetRenderEngine().GetDevice()->CreateBuffer({
+		uint32_t(bindposes.size()),
+		{.StorageBuffer = true},
+		sizeof(bindposes[0]),
+		RGL::BufferAccess::Private
+	});
+	bindpose->SetBufferData({ bindposes.data(), bindposes.size() * sizeof(bindposes[0]) });
 	
 	// populate hierarchy
 	auto parents = skeleton->joint_parents();
 	
-	stackarray(hierarchy, float, parents.size());
-	
-	for(int i = 0; i < parents.size(); i++){
-		hierarchy[i] = parents[i];
-	}
-	assert(sizeof(hierarchy) < numeric_limits<uint32_t>::max());	//joint hierarchy is too big!
-#if 0
-	boneHierarchy = bgfx::createVertexBuffer(bgfx::copy(hierarchy, static_cast<uint32_t>(sizeof(hierarchy))), hierarchyLayout);
-#endif
+
+	boneHierarchy = GetApp()->GetRenderEngine().GetDevice()->CreateBuffer({
+		uint32_t(parents.size()),
+		{.StorageBuffer = true},
+		sizeof(parents[0]),
+		RGL::BufferAccess::Private
+	});
+	boneHierarchy->SetBufferData({parents.data(), parents.size() * sizeof(parents[0])});
 }
 
 
