@@ -8,6 +8,7 @@
 #include "Debug.hpp"
 #include "Entity.hpp"
 #include "App.hpp"
+#include "NetworkIdentity.hpp"
 #include <steam/isteamnetworkingsockets.h>
 
 namespace RavEngine {
