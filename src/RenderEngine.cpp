@@ -1078,6 +1078,9 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		RGL::BufferAccess::Shared,
 	});
 	skinningPoseBuffer->MapMemory();
+
+	ReallocateVertexAllocationToSize(initialVerts);
+	ReallocateIndexAllocationToSize(initialIndices);
 }
 
 void RavEngine::RenderEngine::createGBuffers()

@@ -15,6 +15,9 @@
 #include "PhysXDefines.h"
 #include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
+#include <span>
+#include <SpinLock.hpp>
+#include <unordered_set>
 
 struct SDL_Window;
 
@@ -59,8 +62,12 @@ namespace RavEngine {
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline;
-		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer, skinningOutputBuffer, skinningPoseBuffer;
+		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer, skinningOutputBuffer, skinningPoseBuffer,
+			sharedVertexBuffer, sharedIndexBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
+
+		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
+
 		friend class Material;
     public:
 		constexpr static RGL::TextureFormat
@@ -236,8 +243,30 @@ namespace RavEngine {
 		ConcurrentQueue<RGLPipelineLayoutPtr> gcPipelineLayout;
 		ConcurrentQueue<RGLRenderPipelinePtr> gcRenderPipeline;
 
+		struct MeshRange {
+			Range vertRange, indexRange;
+		};
+
+		MeshRange AllocateMesh(std::span<VertexNormalUV> vertices, std::span<uint32_t> index_bytes);
+
+		void DeallocateMesh(const MeshRange& range);
 
     protected:
+	
+		using allocation_freelist_t = std::vector<Range>;
+		using allocation_allocatedlist_t = allocation_freelist_t;
+
+		allocation_freelist_t vertexFreeList{ 1, Range{.start = 0, .count = initialVerts}};
+		allocation_freelist_t indexFreeList{ 1, Range{.start = 0, .count = initialIndices}};
+		allocation_allocatedlist_t vertexAllocatedList, indexAllocatedList;
+		uint32_t currentVertexSize = initialVerts, currentIndexSize = initialIndices;
+		
+		void ReallocateVertexAllocationToSize(uint32_t newSize);
+		void ReallocateIndexAllocationToSize(uint32_t newSize);
+
+
+		SpinLock allocationLock;
+
 		void DestroyUnusedResources();
         static RavEngine::Vector<VertexColorUV> navMeshPolygon;
         bool navDebugDepthEnabled = false; 

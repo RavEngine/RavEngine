@@ -91,3 +91,7 @@ template<typename S>
 inline auto Slerp(const quaternion& x, const quaternion& y, decimalType a, S k){
     return glm::slerp(x,y,a,k);
 }
+
+struct Range {
+	uint32_t start = 0, count = 0;
+};
