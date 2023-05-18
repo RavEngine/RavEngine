@@ -1,14 +1,14 @@
-#pragma once
 #include "RenderEngine.hpp"
 #include <RGL/Span.hpp>
 #include <mutex>
+#include <RGL/RGL.hpp>
 #include <RGL/Buffer.hpp>
 #include <RGL/Device.hpp>
 
 namespace RavEngine {
 	RenderEngine::MeshRange RenderEngine::AllocateMesh(std::span<VertexNormalUV> vertices, std::span<uint32_t> indices)
 	{
-		std::lock_guard(allocationLock);
+        std::lock_guard{allocationLock};
 		auto const vertexBytes = std::as_bytes(vertices);
 		auto const indexBytes = std::as_bytes( indices );
 
@@ -79,7 +79,7 @@ namespace RavEngine {
 	}
 	void RenderEngine::DeallocateMesh(const MeshRange& range)
 	{
-		std::lock_guard(allocationLock);
+        std::lock_guard{allocationLock};
 		
 		auto deallocateData = [](Range range, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freeList) {
 			freeList.push_back(range);

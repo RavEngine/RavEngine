@@ -21,6 +21,17 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <mach/machine.h>
+#import <Foundation/NSAutoreleasePool.h>
+
+thread_local NSAutoreleasePool *pool;
+
+void AppleAutoreleasePoolInit(){
+    pool = [[NSAutoreleasePool alloc] init];
+}
+
+void AppleAutoreleasePoolDrain(){
+    [pool drain];
+}
 
 
 void resizeMetalLayer(void* ptr, int width, int height){

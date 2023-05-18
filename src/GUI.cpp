@@ -4,7 +4,6 @@
 #include "InputManager.hpp"
 #include <RmlUi/Debugger.h>
 #include <RmlUi/Core/Context.h>
-#include <RmlUi/Core.h>
 #include "Uuid.hpp"
 #include "RenderEngine.hpp"
 

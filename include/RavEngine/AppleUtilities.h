@@ -41,3 +41,6 @@ bool AppleGPUMeetsMinSpec(RGLDevicePtr);
 
 uint32_t AppleVRAMUsed();
 uint32_t AppleVRAMTotal();
+
+void AppleAutoreleasePoolInit();
+void AppleAutoreleasePoolDrain();

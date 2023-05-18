@@ -1,5 +1,5 @@
 #pragma once
-
+#include <RmlUi/Core.h>
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
 #include "Queryable.hpp"

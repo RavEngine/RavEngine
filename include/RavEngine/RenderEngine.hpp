@@ -16,7 +16,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
 #include <span>
-#include <SpinLock.hpp>
+#include "SpinLock.hpp"
 #include <unordered_set>
 
 struct SDL_Window;

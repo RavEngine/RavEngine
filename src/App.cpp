@@ -139,10 +139,14 @@ int App::run(int argc, char** argv) {
 	OnStartup(argc, argv);
 	
 	lastFrameTime = clocktype::now();
-	
+    
 	bool exit = false;
 	SDL_Event event;
 	while (!exit) {
+#if __APPLE__
+        //AppleAutoreleasePoolInit();
+#endif
+        
 		//setup framerate scaling for next frame
 		auto now = clocktype::now();
 		//will cause engine to run in slow motion if the frame rate is <= 1fps
@@ -220,6 +224,9 @@ int App::run(int argc, char** argv) {
 	skip_xr_frame:
 
 		lastFrameTime = now;
+#if __APPLE__
+       // AppleAutoreleasePoolDrain();
+#endif
 	}
 	
     return OnShutdown();

@@ -665,7 +665,6 @@ macro(shader_compile infile stage api extension binary)
 		STRING(REPLACE "." "_" name_fixed ${name_only} )
 		set(entrypoint "--entrypoint" "${name_fixed}")
 	endif()
-	list(APPEND all_shaders "${outname}")
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${outname}"
@@ -838,14 +837,13 @@ function(pack_resources)
 	set_property(GLOBAL PROPERTY ALL_SHADERS "")
 
 	# setup shader compiler
-	foreach(SHADER ${ENG_SHADERS})
+	foreach(SHADER ${ENG_SHADERS} ${ARGS_SHADERS})
 		declare_shader("${SHADER}" "${ARGS_TARGET}")
 	endforeach()
 
 	set_property(GLOBAL PROPERTY ALL_SHADER_SOURCES "")
 	foreach(SHADER ${ARGS_SHADERS})
-		#set(shader_target "${ARGS_TARGET}")
-		#include("${SHADER}")
+		list(APPEND all_shader_sources "${SHADER}")
 	endforeach()
 
 	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
@@ -857,14 +855,13 @@ function(pack_resources)
 	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine")
 
 	# add files to IDE sidebar for convenience
-	get_property(all_shaders_sources GLOBAL PROPERTY ALL_SHADER_SOURCES)
-	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shaders_sources})
-	set_source_files_properties(${ARGS_UIS} ${all_shaders_sources} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevents visual studio from trying to build these
-	set_source_files_properties(${all_shaders_sources} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.glsl")
+	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shader_sources})
+	set_source_files_properties(${ARGS_UIS} ${all_shader_sources} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevents visual studio from trying to build these
+	set_source_files_properties(${all_shader_sources} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.glsl")
 	set_source_files_properties(${ARGS_UIS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "text.html")
 	set_source_files_properties(${ARGS_OBJECTS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "compiled")
 	set_source_files_properties(${ARGS_SOUNDS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "audio.wav")
-	source_group("Shaders" FILES ${all_shaders_sources})
+	source_group("Shaders" FILES ${all_shader_sources})
 
 	# on UWP, need an additional file w/ compile options for SDLmain to work
 	if(UWP)
