@@ -126,28 +126,42 @@ namespace RavEngine {
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
 	{
-		auto oldBuffer = sharedVertexBuffer;
+		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, sizeof(VertexNormalUV), { .VertexBuffer = true });
+	}
+	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
+	{
+		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, sizeof(uint32_t), {.IndexBuffer = true});
+	}
+	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_freelist_t& allocatedList, uint32_t stride, RGL::BufferConfig::Type bufferType)
+	{
+		auto oldBuffer = reallocBuffer;
 		// trash old buffer
-		gcBuffers.enqueue(oldBuffer);
-		sharedVertexBuffer = device->CreateBuffer({
+		reallocBuffer = device->CreateBuffer({
 			newSize,
-			{.VertexBuffer = true},
-			sizeof(VertexNormalUV),
+			bufferType,
+			stride,
 			RGL::BufferAccess::Private
 			});
-		currentVertexSize = newSize;
+		reallocBufferSize = newSize;
 
-		//TODO: compaction pass goes here
+		// no copying needed if the buffer began empty
+		if (oldBuffer == nullptr) {
+			return;
+		}
 
+		gcBuffers.enqueue(oldBuffer);
+
+
+		// begin compaction
 		std::vector<Range*> sortList;
-		sortList.reserve(vertexAllocatedList.size());
-		for (auto& range : vertexAllocatedList) {
+		sortList.reserve(allocatedList.size());
+		for (auto& range : allocatedList) {
 			sortList.push_back(&range);
 		}
 
 		std::sort(sortList.begin(), sortList.end(), [](Range* a, Range* b) {
 			return b->start - a->start;
-		});
+			});
 
 		auto commandbuffer = mainCommandQueue->CreateCommandBuffer();
 		auto fence = device->CreateFence({});
@@ -158,24 +172,25 @@ namespace RavEngine {
 			uint32_t offset = 0;
 			for (auto ptr : sortList) {
 				auto oldstart = ptr->start;
-				// copy buffers from:oldBuffer, offset:oldstart, size: ptr->count, to:sharedVertexBuffer offset:offset, size: ptr->count
+				// copy buffers from:oldBuffer, offset:oldstart, to:sharedVertexBuffer offset:offset, size: ptr->count
+				commandbuffer->CopyBufferToBuffer(
+					{
+						.buffer = oldBuffer,
+						.offset = oldstart,
+					},
+			{
+				.buffer = reallocBuffer,
+				.offset = offset,
+			},
+			ptr->count
+			);
 				ptr->start = offset;
 				offset += ptr->count;
 			}
 		}
 		// submit and wait
 		commandbuffer->End();
-		commandbuffer->Commit({fence});
+		commandbuffer->Commit({ fence });
 		fence->Wait();
-	}
-	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
-	{
-		sharedIndexBuffer = device->CreateBuffer({
-			newSize,
-			{.IndexBuffer = true},
-			sizeof(uint32_t),
-			RGL::BufferAccess::Private
-		});
-		currentIndexSize = newSize;
 	}
 }

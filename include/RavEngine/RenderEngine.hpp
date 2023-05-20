@@ -15,6 +15,7 @@
 #include "PhysXDefines.h"
 #include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
+#include <RGL/Buffer.hpp>
 #include <span>
 #include "SpinLock.hpp"
 #include <unordered_set>
@@ -263,7 +264,7 @@ namespace RavEngine {
 		
 		void ReallocateVertexAllocationToSize(uint32_t newSize);
 		void ReallocateIndexAllocationToSize(uint32_t newSize);
-
+		void ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_freelist_t& allocatedList, uint32_t stride, RGL::BufferConfig::Type bufferType);
 
 		SpinLock allocationLock;
 
