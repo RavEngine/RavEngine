@@ -291,6 +291,10 @@ void CommandBufferMTL::SetRenderPipelineBarrier(const PipelineBarrierConfig&) {
 
 }
 
+void CommandBufferMTL::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size){
+
+}
+
 void CommandBufferMTL::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) {
     // no effect on Metal
 }

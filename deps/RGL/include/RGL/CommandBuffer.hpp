@@ -131,6 +131,12 @@ namespace RGL {
 
 		virtual void CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) = 0;
 
+		struct BufferCopyConfig {
+			RGLBufferPtr buffer;
+			uint32_t offset = 0;
+		};
+		virtual void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) = 0;
+
 		// submit onto the queue that created this command buffer
 		virtual void Commit(const CommitConfig&) = 0;
 

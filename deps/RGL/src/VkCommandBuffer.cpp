@@ -396,6 +396,17 @@ namespace RGL {
 
 		vkCmdCopyImageToBuffer(commandBuffer, casted->vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, castedDest->buffer, 1, &region);
 	}
+	void CommandBufferVk::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size)
+	{
+		VkBufferCopy bufferCopyData{
+				   .srcOffset = from.offset,
+				   .dstOffset = to.offset,
+				   .size = size
+		};
+		auto fromBuffer = std::static_pointer_cast<BufferVk>(from.buffer);
+		auto toBuffer = std::static_pointer_cast<BufferVk>(to.buffer);
+		vkCmdCopyBuffer(commandBuffer, fromBuffer->buffer, toBuffer->buffer, 1, &bufferCopyData);
+	}
 	void CommandBufferVk::SetViewport(const Viewport& viewport)
 	{
 		VkViewport vp{

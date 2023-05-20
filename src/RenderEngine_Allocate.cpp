@@ -4,6 +4,7 @@
 #include <RGL/RGL.hpp>
 #include <RGL/Buffer.hpp>
 #include <RGL/Device.hpp>
+#include <RGL/CommandBuffer.hpp>
 
 namespace RavEngine {
 	RenderEngine::MeshRange RenderEngine::AllocateMesh(std::span<VertexNormalUV> vertices, std::span<uint32_t> indices)
@@ -125,16 +126,47 @@ namespace RavEngine {
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
 	{
-		//TODO: compaction pass goes here
-
+		auto oldBuffer = sharedVertexBuffer;
+		// trash old buffer
+		gcBuffers.enqueue(oldBuffer);
 		sharedVertexBuffer = device->CreateBuffer({
 			newSize,
 			{.VertexBuffer = true},
 			sizeof(VertexNormalUV),
 			RGL::BufferAccess::Private
-		});
+			});
 		currentVertexSize = newSize;
-		
+
+		//TODO: compaction pass goes here
+
+		std::vector<Range*> sortList;
+		sortList.reserve(vertexAllocatedList.size());
+		for (auto& range : vertexAllocatedList) {
+			sortList.push_back(&range);
+		}
+
+		std::sort(sortList.begin(), sortList.end(), [](Range* a, Range* b) {
+			return b->start - a->start;
+		});
+
+		auto commandbuffer = mainCommandQueue->CreateCommandBuffer();
+		auto fence = device->CreateFence({});
+		commandbuffer->Begin();
+
+		// fill holes and copy data
+		{
+			uint32_t offset = 0;
+			for (auto ptr : sortList) {
+				auto oldstart = ptr->start;
+				// copy buffers from:oldBuffer, offset:oldstart, size: ptr->count, to:sharedVertexBuffer offset:offset, size: ptr->count
+				ptr->start = offset;
+				offset += ptr->count;
+			}
+		}
+		// submit and wait
+		commandbuffer->End();
+		commandbuffer->Commit({fence});
+		fence->Wait();
 	}
 	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
 	{

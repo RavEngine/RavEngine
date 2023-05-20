@@ -310,6 +310,12 @@ namespace RGL {
 
 		commandList->CopyTextureRegion(&destination, 0, 0, 0, &source, &srcBox);
 	}
+	void CommandBufferD3D12::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size)
+	{
+		auto fromBuffer = std::static_pointer_cast<BufferD3D12>(from.buffer);
+		auto toBuffer = std::static_pointer_cast<BufferD3D12>(to.buffer);
+		commandList->CopyBufferRegion(toBuffer->buffer.Get(), to.offset, fromBuffer->buffer.Get(), from.offset, size);
+	}
 	void CommandBufferD3D12::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position)
 	{
 		auto casted = static_cast<const TextureD3D12*>(texture);
