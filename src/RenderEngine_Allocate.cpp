@@ -8,7 +8,7 @@
 namespace RavEngine {
 	RenderEngine::MeshRange RenderEngine::AllocateMesh(std::span<VertexNormalUV> vertices, std::span<uint32_t> indices)
 	{
-        std::lock_guard{allocationLock};
+        std::lock_guard mtx{allocationLock};
 		auto const vertexBytes = std::as_bytes(vertices);
 		auto const indexBytes = std::as_bytes( indices );
 
@@ -76,29 +76,46 @@ namespace RavEngine {
 			{ indexBytes.data(), indexBytes.size() }, indexPlacement.start
 		);
 		
+		return {
+			vertexPlacement, indexPlacement
+		};
 	}
 	void RenderEngine::DeallocateMesh(const MeshRange& range)
 	{
-        std::lock_guard{allocationLock};
+        std::lock_guard mtx{allocationLock};
 		
 		auto deallocateData = [](Range range, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freeList) {
-			freeList.push_back(range);
 
-			uint32_t foundRangeIndex = 0;
+			uint32_t foundRangeIndex = -1;
+			Range foundRange;
 			for (; foundRangeIndex < allocatedList.size(); foundRangeIndex++) {
 				const auto& nextRange = allocatedList[foundRangeIndex];
 				if (nextRange.start >= range.start && nextRange.count >= range.count) {
+					foundRange = allocatedList[foundRangeIndex];
+					allocatedList.erase(allocatedList.begin() + foundRangeIndex);
 					break;
 				}
 			}
 
-			// 3 options:
-			// 1: input range coincides with the beginning of the found range but is smaller
-			// 2: input range splits the found range
-			// 3: input range coincides with the end of the found range but starts 
-			
-			// on pushing a new range onto the freelist:
-				// does this range encompass the final range in the freelist? if so, only update that one
+			// xxxxx------xxxxx --> ----------xxxxx --> ----------------
+
+			//does this range border any other ranges? If so, don't push a new range onto the freelist, isntead merge the existing ranges
+			bool overlapFound = false;
+			for (auto& range : freeList) {
+				// the found range overlaps with the preceding range
+				if (range.start + range.count == foundRange.start) {
+					range.count += foundRange.count;
+					overlapFound = true;
+				}
+				// the found range overlaps with the suceeding range
+				if (foundRange.start + foundRange.count == range.start) {
+					range.start -= foundRange.count;
+					overlapFound = true;
+				}
+			}
+			if (!overlapFound) {
+				freeList.push_back(range);
+			}
 
 		};
 
