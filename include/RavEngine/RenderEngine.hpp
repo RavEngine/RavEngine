@@ -244,8 +244,11 @@ namespace RavEngine {
 		ConcurrentQueue<RGLPipelineLayoutPtr> gcPipelineLayout;
 		ConcurrentQueue<RGLRenderPipelinePtr> gcRenderPipeline;
 
+		using allocation_freelist_t = LinkedList<Range>;
+		using allocation_allocatedlist_t = allocation_freelist_t;
+
 		struct MeshRange {
-			Range vertRange, indexRange;
+			allocation_allocatedlist_t::iterator vertRange, indexRange;
 		};
 
 		MeshRange AllocateMesh(std::span<VertexNormalUV> vertices, std::span<uint32_t> index_bytes);
@@ -254,8 +257,7 @@ namespace RavEngine {
 
     protected:
 	
-		using allocation_freelist_t = std::vector<Range>;
-		using allocation_allocatedlist_t = allocation_freelist_t;
+		
 
 		allocation_freelist_t vertexFreeList{ 1, Range{.start = 0, .count = initialVerts}};
 		allocation_freelist_t indexFreeList{ 1, Range{.start = 0, .count = initialIndices}};

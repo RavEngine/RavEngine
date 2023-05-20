@@ -14,47 +14,49 @@ namespace RavEngine {
 		auto const indexBytes = std::as_bytes( indices );
 
 	
+		using alloc_iterator_t = allocation_allocatedlist_t::iterator;
+		using freelist_iterator_t = allocation_freelist_t::iterator;
+
 		/**
 		Find a Range that can fit the current allocation. If one does not exist, returns -1 (aka uint max)
 		*/
 		auto findPlacement = [](uint32_t requestedSize, const allocation_freelist_t& freeList) {
-			uint32_t bestRangeIndex = -1;
-			for (uint32_t i = 0; i < freeList.size(); i++) {
-				auto& nextRange = freeList[i];
-				if (requestedSize <= freeList[bestRangeIndex].count) {
-					bestRangeIndex = i;
-					break;
+			std::remove_reference_t<decltype(freeList)>::iterator bestRangeIndex = freeList.begin();
+			for (auto it = freeList.begin(); it != freeList.end(); it++) {
+				auto& nextRange = *it;
+				if (requestedSize <= (*bestRangeIndex).count) {
+					return it;
 				}
 			}
-			return bestRangeIndex;
+			return freeList.end();
 		};
 
-		auto getAllocationLocation = [&findPlacement](uint32_t& allocation, uint32_t size, const uint32_t& currentSize, const allocation_freelist_t& freeList, auto realloc_fn) {
-			allocation = -1;
+		auto getAllocationLocation = [&findPlacement](uint32_t size, const uint32_t& currentSize, const allocation_freelist_t& freeList, auto realloc_fn) {
+			auto allocation = freeList.end();
 			do {
 				allocation = findPlacement(size, freeList);
-				if (allocation == -1) {
+				if (allocation == freeList.end()) {
 					// resize to fit
 					realloc_fn(currentSize + size);
 				}
 
-			} while (allocation != -1);
+			} while (allocation == freeList.end());
+			return allocation;
 		};
 
 		// figure out where to put the new data, resizing the buffer as needed
-		uint32_t vertexAllocation = -1, indexAllocation = -1;
-		getAllocationLocation(vertexAllocation, vertexBytes.size(), currentVertexSize, vertexFreeList,[this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
-		getAllocationLocation(indexAllocation, indexBytes.size(), currentIndexSize, indexFreeList,  [this](uint32_t newSize) {ReallocateIndexAllocationToSize(newSize); });
+		auto vertexAllocation = getAllocationLocation(vertexBytes.size(), currentVertexSize, vertexFreeList,[this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
+		auto indexAllocation = getAllocationLocation(indexBytes.size(), currentIndexSize, indexFreeList,  [this](uint32_t newSize) {ReallocateIndexAllocationToSize(newSize); });
 
 		// now we have the location to place the vertex and index data in the buffer
 		// these numbers are stable because, if the buffer resized, then the only place it could be stored is at the end.
 		// if the new data fits, then the buffer was not resized, so the indices are stable.
 
-		auto consumeRange = [](uint32_t allocation, uint32_t allocatedSize, allocation_freelist_t& freeList, allocation_allocatedlist_t& allocatedList) {
-			auto& rangeToUpdate = freeList.at(allocation);
+		auto consumeRange = [](alloc_iterator_t allocation, uint32_t allocatedSize, allocation_freelist_t& freeList, allocation_allocatedlist_t& allocatedList) {
+			auto& rangeToUpdate = *allocation;
 			// if it fits exactly, delete it
 			if (rangeToUpdate.count == allocatedSize) {
-				freeList.erase(freeList.begin() + allocation);
+				freeList.erase(allocation);
 			}
 			else {
 				// otherwise, modify it to represent the new shrunken size
@@ -78,7 +80,7 @@ namespace RavEngine {
 		);
 		
 		return {
-			vertexPlacement, indexPlacement
+			vertexAllocation, indexAllocation
 		};
 	}
 	void RenderEngine::DeallocateMesh(const MeshRange& range)
@@ -87,13 +89,12 @@ namespace RavEngine {
 		
 		auto deallocateData = [](Range range, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freeList) {
 
-			uint32_t foundRangeIndex = -1;
 			Range foundRange;
-			for (; foundRangeIndex < allocatedList.size(); foundRangeIndex++) {
-				const auto& nextRange = allocatedList[foundRangeIndex];
+			for (auto it = allocatedList.begin(); it != allocatedList.end(); it++) {
+				const auto& nextRange = *it;
 				if (nextRange.start >= range.start && nextRange.count >= range.count) {
-					foundRange = allocatedList[foundRangeIndex];
-					allocatedList.erase(allocatedList.begin() + foundRangeIndex);
+					foundRange = nextRange;
+					allocatedList.erase(it);
 					break;
 				}
 			}
@@ -120,8 +121,8 @@ namespace RavEngine {
 
 		};
 
-		deallocateData(range.vertRange, vertexAllocatedList, vertexFreeList);
-		deallocateData(range.indexRange, indexAllocatedList, indexFreeList);
+		deallocateData(*range.vertRange, vertexAllocatedList, vertexFreeList);
+		deallocateData(*range.indexRange, indexAllocatedList, indexFreeList);
 	}
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
@@ -153,15 +154,6 @@ namespace RavEngine {
 
 
 		// begin compaction
-		std::vector<Range*> sortList;
-		sortList.reserve(allocatedList.size());
-		for (auto& range : allocatedList) {
-			sortList.push_back(&range);
-		}
-
-		std::sort(sortList.begin(), sortList.end(), [](Range* a, Range* b) {
-			return b->start - a->start;
-			});
 
 		auto commandbuffer = mainCommandQueue->CreateCommandBuffer();
 		auto fence = device->CreateFence({});
@@ -170,8 +162,8 @@ namespace RavEngine {
 		// fill holes and copy data
 		{
 			uint32_t offset = 0;
-			for (auto ptr : sortList) {
-				auto oldstart = ptr->start;
+			for (auto& ptr : allocatedList) {
+				auto oldstart = ptr.start;
 				// copy buffers from:oldBuffer, offset:oldstart, to:sharedVertexBuffer offset:offset, size: ptr->count
 				commandbuffer->CopyBufferToBuffer(
 					{
@@ -182,10 +174,10 @@ namespace RavEngine {
 				.buffer = reallocBuffer,
 				.offset = offset,
 			},
-			ptr->count
+			ptr.count
 			);
-				ptr->start = offset;
-				offset += ptr->count;
+				ptr.start = offset;
+				offset += ptr.count;
 			}
 		}
 		// submit and wait
