@@ -1108,6 +1108,12 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
 					.writable = true
 				},
+				{
+					.binding = 4,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = true
+				},
 			},
 			.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}
 	});
@@ -1118,6 +1124,14 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			.shaderModule = defaultCullCSH
 		},
 		.pipelineLayout = defaultCullingLayout
+	});
+
+	atomicMemoryBuffer = device->CreateBuffer({
+		4,
+		{.StorageBuffer = true},
+		sizeof(uint32_t),
+		RGL::BufferAccess::Private,
+		{.Writable = true}
 	});
 }
 

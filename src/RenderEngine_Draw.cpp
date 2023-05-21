@@ -231,9 +231,9 @@ namespace RavEngine {
 				}
 			}
 
-			//TODO: dispatch culling shaders
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer,1);
+			mainCommandBuffer->BindComputeBuffer(atomicMemoryBuffer, 4);
 			CullingUBO cubo{
 				.viewProj = viewproj,
 				.currentDrawCall = 0,
@@ -247,6 +247,17 @@ namespace RavEngine {
 						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
 						mainCommandBuffer->DispatchCompute(std::ceil(command.entities.DenseSize() / 64.f), 1, 1);
+						mainCommandBuffer->SetRenderPipelineBarrier({
+							.Compute = true
+							});
+						/*
+						mainCommandBuffer->SetResourceBarrier({
+							.buffers = {
+								drawcommand.cullingBuffer,
+								drawcommand.drawcallBuffer
+							}
+						});
+						*/
 					}
 					cubo.currentDrawCall++;
 				}
