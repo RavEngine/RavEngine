@@ -45,6 +45,9 @@ namespace RGL {
         if (config.options.TransferDestination || config.access == decltype(config.access)::Private) {
             usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         }
+        if (config.options.Transfersource) {
+            usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        }
 
         allocation = createBuffer(owningDevice.get(), config.nElements * config.stride, usage, memprop, buffer);
 

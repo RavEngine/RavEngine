@@ -66,6 +66,7 @@ static const aiScene* LoadSceneFilesystem(const Filesystem::Path& path){
 	return scene;
 }
 
+#if 0
 static MeshAsset::BitWidth GetRequiredBitwidth(const aiScene* scene, const aiNode* rootNode = nullptr) {
 	uint32_t totalVertCount = 0;
 	if (rootNode == nullptr) {
@@ -83,16 +84,17 @@ static MeshAsset::BitWidth GetRequiredBitwidth(const aiScene* scene, const aiNod
 		return MeshAsset::BitWidth::uint16;
 	}
 }
+#endif
 
 void MeshAsset::InitAll(const aiScene* scene, const MeshAssetOptions& options){
 	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
-	indexBufferWidth = GetRequiredBitwidth(scene);
+	//indexBufferWidth = GetRequiredBitwidth(scene);
 	//generate the vertex and index lists
 	RavEngine::Vector<MeshPart> meshes;
 	meshes.reserve(scene->mNumMeshes);
 	for(int i = 0; i < scene->mNumMeshes; i++){
 		aiMesh* mesh = scene->mMeshes[i];
-		auto mp = AIMesh2MeshPart(mesh, scalemat,indexBufferWidth);
+		auto mp = AIMesh2MeshPart(mesh, scalemat);
 		meshes.push_back(std::move(mp));
 	}
 	
@@ -109,12 +111,12 @@ void MeshAsset::InitPart(const aiScene* scene, const std::string& meshName, cons
 		Debug::Fatal("No mesh with name {} in scene {}",meshName, fileName);
 	}
 	else{
-		indexBufferWidth = GetRequiredBitwidth(scene,node);
+		//indexBufferWidth = GetRequiredBitwidth(scene,node);
 		RavEngine::Vector<MeshPart> meshes;
 		meshes.reserve(node->mNumMeshes);
 		for(int i = 0; i < node->mNumMeshes; i++){
 			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-			auto mp = AIMesh2MeshPart(mesh, scalemat,indexBufferWidth);
+			auto mp = AIMesh2MeshPart(mesh, scalemat);
 			meshes.push_back(std::move(mp));
 		}
 		//free afterward
@@ -154,6 +156,7 @@ RavEngine::MeshAsset::~MeshAsset()
 	auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
 	gcBuffers.enqueue(vertexBuffer);
 	gcBuffers.enqueue(indexBuffer);
+	GetApp()->GetRenderEngine().DeallocateMesh(meshAllocation);
 }
 
 MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
@@ -167,10 +170,10 @@ MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAsset
 }
 
 
-MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat, BitWidth indexBufferWidth)
+MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
 {
 	MeshPart mp;
-	mp.indices.mode = indexBufferWidth;
+	//mp.indices.mode = indexBufferWidth;
 
 	mp.indices.reserve(mesh->mNumFaces * 3);
 	mp.vertices.reserve(mesh->mNumVertices);
@@ -221,7 +224,7 @@ void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart
 	
 	MeshPart allMeshes;
 	allMeshes.vertices.reserve(tv);
-	allMeshes.indices.mode = indexBufferWidth;
+	//allMeshes.indices.mode = indexBufferWidth;
 	allMeshes.indices.reserve(ti);
 	
 	uint32_t baseline_index = 0;
@@ -275,7 +278,7 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
 			{.Writable = false},
 		});
 
-		uint32_t index_stride = i.mode == BitWidth::uint32 ? sizeof(uint32_t) : sizeof(uint16_t);
+		uint32_t index_stride = sizeof(uint32_t);
 
 		indexBuffer = device->CreateBuffer({
 			uint32_t(totalIndices),
@@ -286,6 +289,8 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
 		});
 
 		vertexBuffer->SetBufferData({ v.data(),v.size_bytes() });
-		indexBuffer->SetBufferData({ i.first_element_ptr(),i.size_bytes() });
+		indexBuffer->SetBufferData({ i.data(), i.size_bytes() });
+
+		meshAllocation = GetApp()->GetRenderEngine().AllocateMesh(v, i);
     }
 }

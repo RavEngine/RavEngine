@@ -18,6 +18,7 @@
 #include <RGL/Buffer.hpp>
 #include <span>
 #include "SpinLock.hpp"
+#include "MeshAllocation.hpp"
 #include <unordered_set>
 
 struct SDL_Window;
@@ -244,14 +245,8 @@ namespace RavEngine {
 		ConcurrentQueue<RGLPipelineLayoutPtr> gcPipelineLayout;
 		ConcurrentQueue<RGLRenderPipelinePtr> gcRenderPipeline;
 
-		using allocation_freelist_t = LinkedList<Range>;
-		using allocation_allocatedlist_t = allocation_freelist_t;
 
-		struct MeshRange {
-			allocation_allocatedlist_t::iterator vertRange, indexRange;
-		};
-
-		MeshRange AllocateMesh(std::span<VertexNormalUV> vertices, std::span<uint32_t> index_bytes);
+		MeshRange AllocateMesh(const std::span<const VertexNormalUV> vertices, const std::span<const uint32_t> index_bytes);
 
 		void DeallocateMesh(const MeshRange& range);
 
@@ -266,7 +261,7 @@ namespace RavEngine {
 		
 		void ReallocateVertexAllocationToSize(uint32_t newSize);
 		void ReallocateIndexAllocationToSize(uint32_t newSize);
-		void ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_freelist_t& allocatedList, uint32_t stride, RGL::BufferConfig::Type bufferType);
+		void ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType);
 
 		SpinLock allocationLock;
 

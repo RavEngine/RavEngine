@@ -10,6 +10,7 @@
 #include "Debug.hpp"
 #include <span>
 #include <RGL/Types.hpp>
+#include "MeshAllocation.hpp"
 
 struct aiMesh;
 struct aiScene;
@@ -29,101 +30,10 @@ struct MeshAssetOptions{
 class MeshAsset {
 public:
 	typedef VertexNormalUV vertex_t;
-
-	enum class BitWidth : uint8_t {
-		undefined,
-		uint16,
-		uint32
-	};
-
-    template<template<typename...> class T>
-    struct MeshPartIndex {
-        T<uint32_t> buffer32;
-        T<uint16_t> buffer16;
-        BitWidth mode;
-
-        void reserve(size_t size) {
-            switch (mode) {
-            case BitWidth::uint16:
-                buffer16.reserve(size);
-                break;
-            case BitWidth::uint32:
-                buffer32.reserve(size);
-                break;
-            default:
-                Debug::Fatal("Invalid Mode: {}",mode);
-            }
-        }
-
-        void push_back(uint32_t index) {
-            switch (mode) {
-            case BitWidth::uint16:
-                buffer16.push_back(index);
-                break;
-            case BitWidth::uint32:
-                buffer32.push_back(index);
-                break;
-            default:
-                Debug::Fatal("Invalid Mode: {}", mode);
-            }
-        }
-
-        typename decltype(buffer32)::size_type size() const{
-            switch (mode) {
-            case BitWidth::uint16:
-                return buffer16.size();
-            case BitWidth::uint32:
-                return buffer32.size();
-                break;
-            default:
-                Debug::Fatal("Invalid Mode: {}", mode);
-            }
-            return 0;
-        }
-
-        const void* first_element_ptr() const {
-            switch (mode) {
-            case BitWidth::uint16:
-                return static_cast<const void*>(& buffer16[0]);
-            case BitWidth::uint32:
-                return static_cast<const void*>(&buffer32[0]);
-                break;
-            default:
-                Debug::Fatal("Invalid Mode: {}", mode);
-            }
-            return nullptr;
-        }
-
-        size_t size_bytes() const {
-            switch (mode) {
-            case BitWidth::uint16:
-                    return buffer16.size() * sizeof(typename decltype(buffer16)::value_type);
-            case BitWidth::uint32:
-                    return buffer32.size() * sizeof(typename decltype(buffer32)::value_type);
-                break;
-            default:
-                Debug::Fatal("Invalid Mode: {}", mode);
-            }
-            return 0;
-        }
-
-        uint32_t operator[](size_t index) const{
-            switch (mode) {
-            case BitWidth::uint16:
-                return buffer16[index];
-            case BitWidth::uint32:
-                return buffer32[index];
-                break;
-            default:
-                Debug::Fatal("Invalid Mode: {}", mode);
-            }
-            return 0;
-        }
-    };
     
     template<template<typename...> class T>
     struct MeshPartBase{
-        MeshPartIndex<T> indices;
+        T<uint32_t> indices;
         T<vertex_t> vertices;
     };
 	struct MeshPart : public MeshPartBase<RavEngine::Vector>{};
@@ -137,10 +47,8 @@ public:
     struct MeshPartView : public MeshPartBase<basic_immutable_span>{
         MeshPartView(){}
         MeshPartView(const MeshPart& other){
-            vertices = decltype(vertices)(other.vertices.data(),other.vertices.size());
-            indices.mode = other.indices.mode;
-            indices.buffer32 = decltype(indices.buffer32)(other.indices.buffer32.data(),other.indices.size());
-            indices.buffer16 = decltype(indices.buffer16)(other.indices.buffer16.data(),other.indices.size());
+			vertices = { other.vertices.data(),other.vertices.size() };
+			indices = { other.indices.data(), other.indices.size() };
         }
     };
 
@@ -154,7 +62,7 @@ public:
 	@param scaleMat the matrix to apply to each vertex of the mesh
 	@return converted MeshPart
 	*/
-	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat, BitWidth mode);
+	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
     
     
 
@@ -165,7 +73,7 @@ protected:
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
 
-	BitWidth indexBufferWidth;
+    MeshRange meshAllocation;
 	
 	/**
 	 Initialize from multiple meshs consisting of a single vertex and index list

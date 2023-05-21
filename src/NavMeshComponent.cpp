@@ -80,8 +80,8 @@ void NavMeshComponent::UpdateNavMesh(Ref<MeshAsset> mesh, Options opt){
 
     const int* idxptr = nullptr;
     std::vector<int> convertedIndices;
-    if (rawData.indices.mode == MeshAsset::BitWidth::uint32) {
-        idxptr = reinterpret_cast<const int*>(rawData.indices.first_element_ptr());
+    if (true/* rawData.indices.mode == MeshAsset::BitWidth::uint32*/) {
+        idxptr = reinterpret_cast<const int*>(rawData.indices.data());
     }
     else {
         convertedIndices.reserve(rawData.indices.size());

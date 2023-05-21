@@ -74,7 +74,7 @@ void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset
 
 		// user chooses if we load this mesh
 		if (filterFunc(pa)) {
-			auto mp = MeshAsset::AIMesh2MeshPart(scene->mMeshes[i],identity,scene->mMeshes[i]->mNumVertices > std::numeric_limits<uint16_t>::max() ? MeshAsset::BitWidth::uint32 : MeshAsset::BitWidth::uint16);
+			auto mp = MeshAsset::AIMesh2MeshPart(scene->mMeshes[i],identity);
 			auto asset = New<MeshAsset>(std::move(mp));
 
 			// load the material data

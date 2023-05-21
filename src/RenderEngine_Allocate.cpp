@@ -7,7 +7,7 @@
 #include <RGL/CommandBuffer.hpp>
 
 namespace RavEngine {
-	RenderEngine::MeshRange RenderEngine::AllocateMesh(std::span<VertexNormalUV> vertices, std::span<uint32_t> indices)
+	MeshRange RenderEngine::AllocateMesh(const std::span<const VertexNormalUV> vertices, const std::span<const uint32_t> indices)
 	{
         std::lock_guard mtx{allocationLock};
 		auto const vertexBytes = std::as_bytes(vertices);
@@ -21,7 +21,7 @@ namespace RavEngine {
 		Find a Range that can fit the current allocation. If one does not exist, returns -1 (aka uint max)
 		*/
 		auto findPlacement = [](uint32_t requestedSize, const allocation_freelist_t& freeList) {
-			std::remove_reference_t<decltype(freeList)>::iterator bestRangeIndex = freeList.begin();
+			auto bestRangeIndex = freeList.begin();
 			for (auto it = freeList.begin(); it != freeList.end(); it++) {
 				auto& nextRange = *it;
 				if (requestedSize <= (*bestRangeIndex).count) {
@@ -72,10 +72,10 @@ namespace RavEngine {
 		auto indexPlacement = consumeRange(indexAllocation, indexBytes.size(), indexFreeList, indexAllocatedList);
 
 		// upload buffer data
-		sharedVertexBuffer->UpdateBufferData(
+		sharedVertexBuffer->SetBufferData(
 			{ vertexBytes.data(), vertexBytes.size() }, vertexPlacement.start
 		);
-		sharedIndexBuffer->UpdateBufferData(
+		sharedIndexBuffer->SetBufferData(
 			{ indexBytes.data(), indexBytes.size() }, indexPlacement.start
 		);
 		
@@ -127,13 +127,13 @@ namespace RavEngine {
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, sizeof(VertexNormalUV), { .VertexBuffer = true });
+		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .VertexBuffer = true });
 	}
 	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, sizeof(uint32_t), {.IndexBuffer = true});
+		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, indexFreeList, sizeof(uint32_t), {.IndexBuffer = true});
 	}
-	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_freelist_t& allocatedList, uint32_t stride, RGL::BufferConfig::Type bufferType)
+	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType)
 	{
 		auto oldBuffer = reallocBuffer;
 		// trash old buffer
@@ -141,12 +141,24 @@ namespace RavEngine {
 			newSize,
 			bufferType,
 			stride,
-			RGL::BufferAccess::Private
+			RGL::BufferAccess::Private,
+			{.TransferDestination = true, .Transfersource = true}
 			});
 		reallocBufferSize = newSize;
 
+		auto extendLastRange = [&freelist,reallocBufferSize]() {
+			auto lastIt = freelist.begin();
+			for (auto it = freelist.begin(); it != freelist.end(); it++) {
+				if (it->start > lastIt->start) {
+					lastIt = it;
+				}
+			}
+			lastIt->count = reallocBufferSize - lastIt->start;
+		};
+
 		// no copying needed if the buffer began empty
 		if (oldBuffer == nullptr) {
+			extendLastRange();
 			return;
 		}
 
@@ -183,6 +195,7 @@ namespace RavEngine {
 		// submit and wait
 		commandbuffer->End();
 		commandbuffer->Commit({ fence });
+		extendLastRange();
 		fence->Wait();
 	}
 }
