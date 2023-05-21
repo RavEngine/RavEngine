@@ -243,6 +243,7 @@ namespace RavEngine {
 				if (auto mesh = command.mesh.lock()) {
 					uint32_t lodsForThisMesh = 1;	//TODO: when LODs are implemented, update this
 					for (uint32_t i = 0; i < lodsForThisMesh; i++) {
+						cubo.numObjects = command.entities.DenseSize();
 						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
 						mainCommandBuffer->DispatchCompute(std::ceil(command.entities.DenseSize() / 64.f), 1, 1);
