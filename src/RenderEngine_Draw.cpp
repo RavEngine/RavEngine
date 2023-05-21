@@ -178,12 +178,79 @@ namespace RavEngine {
 		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
 		mainCommandBuffer->EndRenderDebugMarker();
 
+		mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
+		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
+			//prepass: get number of LODs and entities
+			uint32_t numLODs = 0, numEntities = 0;
+			for (const auto& command : drawcommand.commands) {
+				numLODs += 1;	//TODO: when LOD support is added, increment this by the number of LODs
+				numEntities += command.entities.DenseSize();
+			}
+
+			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, bool writable) {
+				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
+					// trash old buffer if it exists
+					if (buffer) {
+						gcBuffers.enqueue(buffer);
+					}
+					buffer = device->CreateBuffer({
+						size_count,
+						{.StorageBuffer = true},
+						stride,
+						access,
+						{.Writable = writable}
+					});
+					if (access == RGL::BufferAccess::Shared) {
+						buffer->MapMemory();
+					}
+				}
+			};
+
+			reallocBuffer(drawcommand.cullingBuffer, numEntities, sizeof(entity_t), RGL::BufferAccess::Private, true);
+			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, true);
+
+			// initial populate of drawcall buffer
+			{
+				auto drawCallPtr = static_cast<RGL::IndirectIndexedCommand*>(drawcommand.drawcallBuffer->GetMappedDataPtr());
+				for (const auto& command : drawcommand.commands) {
+					if (auto mesh = command.mesh.lock()) {
+						*drawCallPtr = {
+							.indexCount = uint32_t(mesh->totalIndices),
+							.instanceCount = 0,
+							.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+							.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+							.baseInstance = 0,
+						};
+
+					}
+					else {
+						*drawCallPtr = { 0,0,0,0,0 };
+					}
+					
+					drawCallPtr++;
+				}
+			}
+
+			//TODO: dispatch culling shaders
+			for (const auto& command : drawcommand.commands) {
+				if (auto mesh = command.mesh.lock()) {
+					uint32_t lodsForThisMesh = 1;	//TODO: when LODs are implemented, update this
+					for (uint32_t i = 0; i < lodsForThisMesh; i++) {
+
+					}
+				}
+			}
+			
+
+			
+		}
+		mainCommandBuffer->EndComputeDebugMarker();
+
 		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 		// do static meshes
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
 		mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
 		mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-
 		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
@@ -200,7 +267,7 @@ namespace RavEngine {
 			}
 
 			mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-            mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+			mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
 
 			// bind textures and buffers
 			auto& bufferBindings = materialInstance->GetBufferBindings();
@@ -216,25 +283,16 @@ namespace RavEngine {
 				}
 			}
 
-			for (auto& command : drawcommand.commands) {
-				// submit the draws for this mesh
-				if (auto mesh = command.mesh.lock()) {
-					//mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
 
+			// bind the culling buffer and the transform buffer
+			mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
+			mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->worldTransforms.buffer, { .bindingPosition = 2 });
 
-					auto& perInstanceDataBuffer = command.transforms.GetDense().get_underlying().buffer;
-					mainCommandBuffer->SetVertexBuffer(perInstanceDataBuffer, {
-						.bindingPosition = 1
-						});
-					//mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
-
-					mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
-						.nInstances = command.transforms.DenseSize(),
-						.firstIndex = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
-						.startVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
-						});
-				}
-			}
+			// do the indirect command
+			mainCommandBuffer->ExecuteIndirectIndexed({
+				.indirectBuffer = drawcommand.drawcallBuffer,
+				.nDraws = uint32_t(drawcommand.drawcallBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))
+			});
 		}
 		mainCommandBuffer->EndRenderDebugMarker();
 

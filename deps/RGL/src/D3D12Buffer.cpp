@@ -184,6 +184,12 @@ namespace RGL {
     void BufferD3D12::SignalRangeChanged(const Range & range){
         
     }
+    BufferD3D12::~BufferD3D12()
+    {
+        if (mappedMemory.data != nullptr) {
+            UnmapMemory();
+        }
+    }
 }
 #endif
 

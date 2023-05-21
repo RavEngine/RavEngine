@@ -50,6 +50,6 @@ namespace RGL {
         
         void SignalRangeChanged(const Range&) final;
 
-		virtual ~BufferD3D12() {}
+		virtual ~BufferD3D12();
 	};
 }

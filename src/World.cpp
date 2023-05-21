@@ -254,18 +254,18 @@ void World::setupRenderTasks(){
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
                 auto owner = trns.GetOwner();
+                renderData->worldTransforms[owner.GetIdInWorld()] = trns.CalculateWorldMatrix();
 
                 assert(renderData->staticMeshRenderData.contains(sm.GetMaterial()));
                 auto meshToUpdate = sm.GetMesh();
-                renderData->staticMeshRenderData.if_contains(sm.GetMaterial(), [owner,&meshToUpdate,&trns](MDIICommand& row) {
+                renderData->staticMeshRenderData.if_contains(sm.GetMaterial(), [owner,&meshToUpdate,&trns,this](MDIICommand& row) {
                     auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
                         return value.mesh.lock() == meshToUpdate;
                     });
                     assert(it != row.commands.end());
                     auto& vec = *it;
                     // write new matrix
-                    auto& mtx = vec.transforms.GetForSparseIndex(owner.GetIdInWorld());
-                    mtx = trns.CalculateWorldMatrix();
+                    renderData->worldTransforms[owner.GetIdInWorld()] = trns.CalculateWorldMatrix();
                 });
 
                 trns.ClearTickDirty();
@@ -414,7 +414,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(Rende
             for (auto& command : value.commands) {
                 auto cmpMesh = command.mesh.lock();
                 if (cmpMesh == mesh) {
-                    command.transforms.EraseAtSparseIndex(localId);
+                    command.entities.EraseAtSparseIndex(localId);
                 }
             }
         });
@@ -422,19 +422,18 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(Rende
 
     // add the new mesh & its transform to the hashmap 
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
-    auto& transform = GetComponent<Transform>(localId);
     auto& set = ( * (renderData->staticMeshRenderData.try_emplace(newMat, decltype(RenderData::staticMeshRenderData)::mapped_type()).first)).second;
     bool found = false;
     for (auto& command : set.commands) {
         auto cmpMesh = command.mesh.lock();
         if (cmpMesh == mesh) {
             found = true;
-            command.transforms.Emplace(localId,transform.CalculateWorldMatrix());
+            command.entities.Emplace(localId,localId);
         }
     }
     // otherwise create a new entry
     if (!found) {
-        set.commands.emplace_back(mesh, localId, transform.CalculateWorldMatrix());
+        set.commands.emplace_back(mesh, localId, localId);
     }
 }
 
@@ -488,8 +487,8 @@ void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entit
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return other.mesh.lock() == mesh.GetMesh();
         });
-        if (it != data.commands.end() && (*it).transforms.HasForSparseIndex(local_id)) {
-            (*it).transforms.EraseAtSparseIndex(local_id);
+        if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
+            (*it).entities.EraseAtSparseIndex(local_id);
         }
     });
 }

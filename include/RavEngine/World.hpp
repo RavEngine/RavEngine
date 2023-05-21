@@ -249,13 +249,14 @@ namespace RavEngine {
         struct MDIICommand {
             struct command {
                 WeakRef<MeshAsset> mesh;
-                using set_t = VRAMSparseSet<entity_t,matrix4>;
-                set_t transforms;
+                using set_t = VRAMSparseSet<entity_t,entity_t>;
+                set_t entities;
                 command(decltype(mesh) mesh, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh) {
-                    transforms.Emplace(index, first_value);
+                    entities.Emplace(index, first_value);
                 }
             };
             Vector<command> commands;
+            RGLBufferPtr drawcallBuffer, cullingBuffer;
         };
 
         struct MDIICommandSkinned {
@@ -294,6 +295,10 @@ namespace RavEngine {
             VRAMSparseSet<entity_t, glm::vec4> ambientLightData;
             VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
             VRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
+
+            // uses world-local ID
+            VRAMVector<matrix4> worldTransforms;
+
             locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
             locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
         };
