@@ -6,26 +6,25 @@ layout(push_constant) uniform UniformBufferObject{
 } ubo;
 
 
+layout(std430, binding = 2) readonly buffer modelMatrixBuffer
+{
+	mat4 model[];
+};
+
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUV;
 
-layout(location = 3) in vec4 inModelR1;
-layout(location = 4) in vec4 inModelR2;
-layout(location = 5) in vec4 inModelR3;
-layout(location = 6) in vec4 inModelR4;
+// per-instance
+layout(location = 3) in uint inEntityID;
 
 layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec2 outUV;
 
 void main()
 {
-	mat4 inModel = mat4(
-		inModelR1,
-		inModelR2,
-		inModelR3,
-		inModelR4
-	);
+	mat4 inModel = model[inEntityID];
 
 	vec4 worldPos = inModel * vec4(inPosition,1);
 	outNormal = normalize(transpose(mat3(inModel)) * inNormal);

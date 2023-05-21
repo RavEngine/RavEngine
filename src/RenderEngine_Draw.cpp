@@ -187,7 +187,7 @@ namespace RavEngine {
 				numEntities += command.entities.DenseSize();
 			}
 
-			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, bool writable) {
+			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
 					// trash old buffer if it exists
 					if (buffer) {
@@ -195,10 +195,10 @@ namespace RavEngine {
 					}
 					buffer = device->CreateBuffer({
 						size_count,
-						{.StorageBuffer = true},
+						type,
 						stride,
 						access,
-						{.Writable = writable}
+						{.Writable = true}
 					});
 					if (access == RGL::BufferAccess::Shared) {
 						buffer->MapMemory();
@@ -206,8 +206,8 @@ namespace RavEngine {
 				}
 			};
 
-			reallocBuffer(drawcommand.cullingBuffer, numEntities, sizeof(entity_t), RGL::BufferAccess::Private, true);
-			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, true);
+			reallocBuffer(drawcommand.cullingBuffer, numEntities, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true });
+			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true, .IndirectBuffer = true });
 
 			// initial populate of drawcall buffer
 			{
@@ -286,7 +286,7 @@ namespace RavEngine {
 
 			// bind the culling buffer and the transform buffer
 			mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
-			mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->worldTransforms.buffer, { .bindingPosition = 2 });
+			mainCommandBuffer->BindBuffer(worldOwning->renderData->worldTransforms.buffer, 2);
 
 			// do the indirect command
 			mainCommandBuffer->ExecuteIndirectIndexed({

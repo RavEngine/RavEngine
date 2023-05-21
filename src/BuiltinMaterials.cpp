@@ -47,26 +47,8 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
                     .location = 3,
                     .binding = 1,
                     .offset = 0,
-                    .format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
+                    .format = RGL::VertexAttributeFormat::R32_Uint,
                 },
-                {
-                    .location = 4,
-                    .binding = 1,
-                    .offset = sizeof(glm::vec4),
-                    .format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-                },
-                {
-                    .location = 5,
-                    .binding = 1,
-                    .offset = sizeof(glm::vec4) * 2,
-                    .format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-                },
-                {
-                    .location = 6,
-                    .binding = 1,
-                    .offset = sizeof(glm::vec4) * 3,
-                    .format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-                }
             }
         },
         .colorBlendConfig = {
@@ -89,6 +71,11 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
                 .binding = 1,
                 .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
                 .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+            },
+            {
+                .binding = 2,
+                .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+                .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Vertex
             }
         },
         .pushConstantSize = sizeof(PBRMaterialInstance::PushConstantData)

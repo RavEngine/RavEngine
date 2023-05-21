@@ -58,6 +58,7 @@ RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     // init render data if the render engine is online
     if (GetApp() && GetApp()->HasRenderEngine() && GetApp()->GetRenderEngine().GetDevice()) {
         renderData.emplace();
+        renderData->worldTransforms.InitialSetup(GetApp()->GetRenderEngine().GetDevice());
     }
 
     SetupTaskGraph();
