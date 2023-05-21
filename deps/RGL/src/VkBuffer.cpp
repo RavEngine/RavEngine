@@ -76,7 +76,7 @@ namespace RGL {
             // copy to staging buffer
             void* mappedPtr = nullptr;
             vmaMapMemory(owningDevice->vkallocator, tmpBufferAlloc, &mappedPtr);
-            std::memcpy(mappedPtr, ((char*)data.data()) + offset, data.size());
+            std::memcpy(mappedPtr, data.data(), data.size());
             vmaUnmapMemory(owningDevice->vkallocator, tmpBufferAlloc);
 
             // copy staging to real

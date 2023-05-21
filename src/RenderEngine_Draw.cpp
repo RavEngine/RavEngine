@@ -181,6 +181,9 @@ namespace RavEngine {
 		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 		// do static meshes
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
+		mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+		mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+
 		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
@@ -216,15 +219,19 @@ namespace RavEngine {
 			for (auto& command : drawcommand.commands) {
 				// submit the draws for this mesh
 				if (auto mesh = command.mesh.lock()) {
-					mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
+					//mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
+
+
 					auto& perInstanceDataBuffer = command.transforms.GetDense().get_underlying().buffer;
 					mainCommandBuffer->SetVertexBuffer(perInstanceDataBuffer, {
 						.bindingPosition = 1
 						});
-					mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
+					//mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
 
 					mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
-						.nInstances = command.transforms.DenseSize()
+						.nInstances = command.transforms.DenseSize(),
+						.firstIndex = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+						.startVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
 						});
 				}
 			}

@@ -19,8 +19,9 @@ namespace RavEngine {
 
 		/**
 		Find a Range that can fit the current allocation. If one does not exist, returns -1 (aka uint max)
+		@return an interator into the freelist.
 		*/
-		auto findPlacement = [](uint32_t requestedSize, const allocation_freelist_t& freeList) {
+		auto findPlacement = [](uint32_t requestedSize, allocation_freelist_t& freeList) {
 			auto bestRangeIndex = freeList.begin();
 			for (auto it = freeList.begin(); it != freeList.end(); it++) {
 				auto& nextRange = *it;
@@ -31,7 +32,11 @@ namespace RavEngine {
 			return freeList.end();
 		};
 
-		auto getAllocationLocation = [&findPlacement](uint32_t size, const uint32_t& currentSize, const allocation_freelist_t& freeList, auto realloc_fn) {
+		/**
+		* Given a byte size, find a possible block, resizing the underlying memory if necessary.
+		* @returns an iterator into the freelist
+		*/
+		auto getAllocationLocation = [&findPlacement](uint32_t size, const uint32_t& currentSize, allocation_freelist_t& freeList, auto realloc_fn) {
 			auto allocation = freeList.end();
 			do {
 				allocation = findPlacement(size, freeList);
@@ -45,14 +50,21 @@ namespace RavEngine {
 		};
 
 		// figure out where to put the new data, resizing the buffer as needed
-		auto vertexAllocation = getAllocationLocation(vertexBytes.size(), currentVertexSize, vertexFreeList,[this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
-		auto indexAllocation = getAllocationLocation(indexBytes.size(), currentIndexSize, indexFreeList,  [this](uint32_t newSize) {ReallocateIndexAllocationToSize(newSize); });
+		auto vertexAllocation = getAllocationLocation(vertexBytes.size_bytes(), currentVertexSize, vertexFreeList,[this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
+		auto indexAllocation = getAllocationLocation(indexBytes.size_bytes(), currentIndexSize, indexFreeList,  [this](uint32_t newSize) {ReallocateIndexAllocationToSize(newSize); });
 
 		// now we have the location to place the vertex and index data in the buffer
 		// these numbers are stable because, if the buffer resized, then the only place it could be stored is at the end.
 		// if the new data fits, then the buffer was not resized, so the indices are stable.
 
 		auto consumeRange = [](alloc_iterator_t allocation, uint32_t allocatedSize, allocation_freelist_t& freeList, allocation_allocatedlist_t& allocatedList) {
+			// construct a range to match the current allocation
+			auto range = *allocation;
+			range.count = allocatedSize;
+			// mark as allocated (copy into)
+			allocatedList.push_back(range);
+
+			// update the freelist
 			auto& rangeToUpdate = *allocation;
 			// if it fits exactly, delete it
 			if (rangeToUpdate.count == allocatedSize) {
@@ -60,27 +72,28 @@ namespace RavEngine {
 			}
 			else {
 				// otherwise, modify it to represent the new shrunken size
+				// we allocate aligned with the start of the range
 				rangeToUpdate.start += allocatedSize;
+				rangeToUpdate.count -= allocatedSize;
 			}
-			// mark as allocated (copy into)
-			allocatedList.push_back(rangeToUpdate);
-			return rangeToUpdate;
+			
+			return --allocatedList.end();
 		};
 
 		// mark the ranges as consumed
-		auto vertexPlacement = consumeRange(vertexAllocation, vertexBytes.size(), vertexFreeList, vertexAllocatedList);
-		auto indexPlacement = consumeRange(indexAllocation, indexBytes.size(), indexFreeList, indexAllocatedList);
+		auto vertexPlacement = consumeRange(vertexAllocation, vertexBytes.size_bytes(), vertexFreeList, vertexAllocatedList);
+		auto indexPlacement = consumeRange(indexAllocation, indexBytes.size_bytes(), indexFreeList, indexAllocatedList);
 
 		// upload buffer data
 		sharedVertexBuffer->SetBufferData(
-			{ vertexBytes.data(), vertexBytes.size() }, vertexPlacement.start
+			{ vertexBytes.data(), vertexBytes.size_bytes() }, vertexPlacement->start
 		);
 		sharedIndexBuffer->SetBufferData(
-			{ indexBytes.data(), indexBytes.size() }, indexPlacement.start
+			{ indexBytes.data(), indexBytes.size_bytes() }, indexPlacement->start
 		);
 		
 		return {
-			vertexAllocation, indexAllocation
+			vertexPlacement, indexPlacement
 		};
 	}
 	void RenderEngine::DeallocateMesh(const MeshRange& range)
@@ -104,14 +117,15 @@ namespace RavEngine {
 			//does this range border any other ranges? If so, don't push a new range onto the freelist, isntead merge the existing ranges
 			bool overlapFound = false;
 			for (auto& range : freeList) {
-				// the found range overlaps with the preceding range
+				// the found range overlaps with a range to the left of it
 				if (range.start + range.count == foundRange.start) {
 					range.count += foundRange.count;
 					overlapFound = true;
 				}
-				// the found range overlaps with the suceeding range
+				// the found range overlaps with a range to the right of it
 				if (foundRange.start + foundRange.count == range.start) {
 					range.start -= foundRange.count;
+					range.count += foundRange.count;
 					overlapFound = true;
 				}
 			}
@@ -133,7 +147,7 @@ namespace RavEngine {
 	{
 		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, indexFreeList, sizeof(uint32_t), {.IndexBuffer = true});
 	}
-	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType)
+	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& targetBufferCurrentSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType)
 	{
 		auto oldBuffer = reallocBuffer;
 		// trash old buffer
@@ -144,17 +158,24 @@ namespace RavEngine {
 			RGL::BufferAccess::Private,
 			{.TransferDestination = true, .Transfersource = true}
 			});
-		reallocBufferSize = newSize;
 
-		auto extendLastRange = [&freelist,reallocBufferSize]() {
+		auto extendLastRange = [&freelist,newSize,targetBufferCurrentSize]() {
+			if (freelist.size() == 0) {
+				// add a new range representing the space that has been made available
+				freelist.emplace_back(targetBufferCurrentSize, newSize - targetBufferCurrentSize);
+				return;
+			}
+			// otherwise find the last range and extend its length
 			auto lastIt = freelist.begin();
 			for (auto it = freelist.begin(); it != freelist.end(); it++) {
 				if (it->start > lastIt->start) {
 					lastIt = it;
 				}
 			}
-			lastIt->count = reallocBufferSize - lastIt->start;
+			lastIt->count = newSize - lastIt->start;
 		};
+		targetBufferCurrentSize = newSize;
+
 
 		// no copying needed if the buffer began empty
 		if (oldBuffer == nullptr) {
