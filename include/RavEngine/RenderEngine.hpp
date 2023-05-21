@@ -63,7 +63,7 @@ namespace RavEngine {
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
-		RGLComputePipelinePtr skinnedMeshComputePipeline;
+		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer, skinningOutputBuffer, skinningPoseBuffer,
 			sharedVertexBuffer, sharedIndexBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
@@ -101,6 +101,11 @@ namespace RavEngine {
 		struct JointInfluence {
 			uint32_t joint_index;
 			float influence;
+		};
+
+		struct CullingUBO {
+			glm::mat4 viewProj;
+			uint32_t currentDrawCall;
 		};
 
         virtual ~RenderEngine();

@@ -1081,6 +1081,44 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	ReallocateVertexAllocationToSize(initialVerts);
 	ReallocateIndexAllocationToSize(initialIndices);
+
+	auto defaultCullingLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+					.binding = 0,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = true
+				},
+				{
+					.binding = 1,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = false
+				},
+				{
+					.binding = 2,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = true
+				},
+				{
+					.binding = 3,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = true
+				},
+			},
+			.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}
+	});
+	auto defaultCullCSH = LoadShaderByFilename("defaultcull.csh", device);
+	defaultCullingComputePipeline = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = defaultCullCSH
+		},
+		.pipelineLayout = defaultCullingLayout
+	});
 }
 
 void RavEngine::RenderEngine::createGBuffers()

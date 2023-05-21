@@ -232,16 +232,26 @@ namespace RavEngine {
 			}
 
 			//TODO: dispatch culling shaders
-			for (const auto& command : drawcommand.commands) {
+			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer,1);
+			CullingUBO cubo{
+				.viewProj = viewproj,
+				.currentDrawCall = 0,
+			};
+			for (auto& command : drawcommand.commands) {
+				mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
+				mainCommandBuffer->BindComputeBuffer(drawcommand.drawcallBuffer, 3);
 				if (auto mesh = command.mesh.lock()) {
 					uint32_t lodsForThisMesh = 1;	//TODO: when LODs are implemented, update this
 					for (uint32_t i = 0; i < lodsForThisMesh; i++) {
-
+						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+						mainCommandBuffer->SetComputeBytes(cubo, 0);
+						mainCommandBuffer->DispatchCompute(std::ceil(command.entities.DenseSize() / 64.f), 1, 1);
 					}
+					cubo.currentDrawCall++;
 				}
 			}
-			
-
+			mainCommandBuffer->EndCompute();
 			
 		}
 		mainCommandBuffer->EndComputeDebugMarker();
