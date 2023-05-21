@@ -1125,14 +1125,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		},
 		.pipelineLayout = defaultCullingLayout
 	});
-
-	atomicMemoryBuffer = device->CreateBuffer({
-		4,
-		{.StorageBuffer = true},
-		sizeof(uint32_t),
-		RGL::BufferAccess::Private,
-		{.Writable = true}
-	});
 }
 
 void RavEngine::RenderEngine::createGBuffers()

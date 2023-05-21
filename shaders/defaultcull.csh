@@ -2,6 +2,7 @@
 layout(push_constant) uniform UniformBufferObject{
 	mat4 viewProj;
 	uint currentDrawCall;
+	uint numObjects;
 } ubo;
 
 layout(std430, binding = 0) readonly buffer idBuffer
@@ -33,21 +34,11 @@ layout(std430, binding = 3) buffer drawcallBuffer
 	IndirectCommand commands[];
 };
 
-layout(std430, binding = 4) buffer atomicMemoryBuffer
-{
-	uint atomicMemoryData[];
-};
-
-layout(binding = 4) uniform atomic_uint instanceCountAtomic;
-layout(binding = 4) uniform atomic_uint baseInstanceAtomic;
-
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
-
-	// reset atomics
-	if (gl_GlobalInvocationID.x == 0) {
-		atomicCounterExchange(instanceCountAtomic, 0);
-		atomicCounterExchange(baseInstanceAtomic, 0);
+	// bail
+	if (gl_GlobalInvocationID.x > ubo.numObjects - 1) {
+		return;
 	}
 
 	const uint entityID = entityIDs[gl_GlobalInvocationID.x];
@@ -61,13 +52,8 @@ void main() {
 
 	// if both checks are true, atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
 	if (isOnCamera && isInThisLod) {
-		uint idx = atomicCounterIncrement(instanceCountAtomic);
+		uint idx = atomicAdd(commands[ubo.currentDrawCall].instanceCount,1);
 		entityIDsToRender[idx] = entityID;
 	}
 
-	// copy atomics
-	if (gl_GlobalInvocationID.x == 0) {
-		commands[ubo.currentDrawCall].instanceCount = atomicCounter(instanceCountAtomic);
-		commands[ubo.currentDrawCall].baseInstance = atomicCounter(baseInstanceAtomic);
-	}
 }

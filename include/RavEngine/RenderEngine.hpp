@@ -65,7 +65,7 @@ namespace RavEngine {
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer, skinningOutputBuffer, skinningPoseBuffer,
-			sharedVertexBuffer, sharedIndexBuffer, atomicMemoryBuffer;
+			sharedVertexBuffer, sharedIndexBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
@@ -105,7 +105,8 @@ namespace RavEngine {
 
 		struct CullingUBO {
 			glm::mat4 viewProj;
-			uint32_t currentDrawCall;
+			uint32_t currentDrawCall = 0;
+			uint32_t numObjects = 0;
 		};
 
         virtual ~RenderEngine();

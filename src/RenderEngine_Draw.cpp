@@ -233,7 +233,6 @@ namespace RavEngine {
 
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer,1);
-			mainCommandBuffer->BindComputeBuffer(atomicMemoryBuffer, 4);
 			CullingUBO cubo{
 				.viewProj = viewproj,
 				.currentDrawCall = 0,
