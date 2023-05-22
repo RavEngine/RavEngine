@@ -308,6 +308,7 @@ namespace RavEngine {
 		mainCommandBuffer->EndRenderDebugMarker();
 
 		// do skinned meshes
+#if 0
 		mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
 		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 			// bind the pipeline
@@ -354,6 +355,7 @@ namespace RavEngine {
 				}
 			}
 		}
+#endif
 		mainCommandBuffer->EndRendering();
 		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->EndRenderDebugMarker();

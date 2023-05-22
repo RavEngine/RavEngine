@@ -85,6 +85,8 @@ namespace RGL {
            .End = mappedMemory.size
         };
         buffer->Unmap(0, &range);
+        mappedMemory.data = nullptr;
+        mappedMemory.size = 0;
 	}
 	void BufferD3D12::UpdateBufferData(untyped_span data, decltype(BufferConfig::nElements) offset)
 	{
