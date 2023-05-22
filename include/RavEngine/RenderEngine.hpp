@@ -103,7 +103,7 @@ namespace RavEngine {
 			float influence;
 		};
 
-		struct CullingUBO {
+		struct alignas(16) CullingUBO {
 			glm::mat4 viewProj;
 			uint32_t currentDrawCall = 0;
 			uint32_t numObjects = 0;

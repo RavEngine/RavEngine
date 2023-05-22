@@ -292,7 +292,11 @@ void CommandBufferMTL::SetRenderPipelineBarrier(const PipelineBarrierConfig&) {
 }
 
 void CommandBufferMTL::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size){
-
+    auto blitEncoder = [currentCommandBuffer blitCommandEncoder];
+    auto fromBuffer = std::static_pointer_cast<BufferMTL>(from.buffer);
+    auto toBuffer = std::static_pointer_cast<BufferMTL>(to.buffer);
+    [blitEncoder copyFromBuffer:fromBuffer->buffer sourceOffset:from.offset toBuffer:toBuffer->buffer destinationOffset:to.offset size:size];
+    [blitEncoder endEncoding];
 }
 
 void CommandBufferMTL::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) {

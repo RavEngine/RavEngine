@@ -162,7 +162,7 @@ namespace RavEngine {
 		auto extendLastRange = [&freelist,newSize,targetBufferCurrentSize]() {
 			if (freelist.size() == 0) {
 				// add a new range representing the space that has been made available
-				freelist.emplace_back(targetBufferCurrentSize, newSize - targetBufferCurrentSize);
+                freelist.push_back(Range{targetBufferCurrentSize, newSize - targetBufferCurrentSize});
 				return;
 			}
 			// otherwise find the last range and extend its length
