@@ -207,27 +207,28 @@ namespace RavEngine {
 			};
 
 			reallocBuffer(drawcommand.cullingBuffer, numEntities, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true });
-			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true, .IndirectBuffer = true });
+			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true });
 
 			// initial populate of drawcall buffer
 			{
-				auto drawCallPtr = static_cast<RGL::IndirectIndexedCommand*>(drawcommand.drawcallBuffer->GetMappedDataPtr());
+				uint32_t i = 0;
 				for (const auto& command : drawcommand.commands) {
+					RGL::IndirectIndexedCommand initData;
 					if (auto mesh = command.mesh.lock()) {
-						*drawCallPtr = {
+
+						 initData = {
 							.indexCount = uint32_t(mesh->totalIndices),
 							.instanceCount = 0,
 							.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
 							.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
 							.baseInstance = 0,
 						};
-
 					}
 					else {
-						*drawCallPtr = { 0,0,0,0,0 };
+						initData = { 0,0,0,0,0 };
 					}
-					
-					drawCallPtr++;
+					drawcommand.drawcallBuffer->SetBufferData(initData, i * sizeof(initData));
+					i++;
 				}
 			}
 
@@ -246,18 +247,7 @@ namespace RavEngine {
 						cubo.numObjects = command.entities.DenseSize();
 						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
-						mainCommandBuffer->DispatchCompute(std::ceil(command.entities.DenseSize() / 64.f), 1, 1);
-						mainCommandBuffer->SetRenderPipelineBarrier({
-							.Compute = true
-							});
-						/*
-						mainCommandBuffer->SetResourceBarrier({
-							.buffers = {
-								drawcommand.cullingBuffer,
-								drawcommand.drawcallBuffer
-							}
-						});
-						*/
+						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1);
 					}
 					cubo.currentDrawCall++;
 				}

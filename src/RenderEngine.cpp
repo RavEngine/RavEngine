@@ -1088,7 +1088,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.binding = 0,
 					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
-					.writable = true
+					.writable = false
 				},
 				{
 					.binding = 1,
@@ -1104,12 +1104,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				},
 				{
 					.binding = 3,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
-					.writable = true
-				},
-				{
-					.binding = 4,
 					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
 					.writable = true

@@ -41,30 +41,27 @@ namespace RGL {
         }
         const bool isWritable = config.options.Writable;
 
-        auto v = isWritable ? CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT) : CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        // writable is marked as a UAV
-        auto t = CD3DX12_RESOURCE_DESC::Buffer(size_bytes, isWritable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE );
-        auto state = typeToState(myType);
+        CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);    // default to PRIVATE
+        D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+        // if writable, must be constructed with a UAV, otherwise use a standard SRV
+        auto resourceDescriptor = CD3DX12_RESOURCE_DESC::Buffer(size_bytes, isWritable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE);
 
-        if (config.access == RGL::BufferAccess::Private) {
-            v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+        // decide the heap type
+        if (config.options.ReadbackTarget) {
+            // readback requires D3D12_RESOURCE_STATE_COPY_DEST and cannot be transitioned away from this state
+            heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+            initialState = D3D12_RESOURCE_STATE_COPY_DEST;
         }
-
-        if (!isWritable) {
-            state = D3D12_RESOURCE_STATE_GENERIC_READ;
+        else if (config.access == RGL::BufferAccess::Shared) {
+            heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+            initialState = D3D12_RESOURCE_STATE_GENERIC_READ;   // UPLOAD requires this state, and resources cannot leave this state
         }
-
-        if (config.options.TransferDestination) {
-            state = D3D12_RESOURCE_STATE_COPY_DEST;
-            v = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
-        }
-
 
         DX_CHECK(device->device->CreateCommittedResource(
-            &v,
+            &heapProperties,
             D3D12_HEAP_FLAG_NONE,
-            &t,
-            state,
+            &resourceDescriptor,
+            initialState,
             nullptr,
             IID_PPV_ARGS(&buffer)));
 
