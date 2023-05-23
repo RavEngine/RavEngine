@@ -8,6 +8,8 @@ namespace RavEngine {
 
 	struct VRAMVectorBase {
 		void TrashOldVector(RGLBufferPtr buffer);
+        RGLDevicePtr owningDevice = nullptr;
+        VRAMVectorBase();
 	};
 
 	/**
@@ -68,17 +70,11 @@ namespace RavEngine {
 			RGL::BufferAccess::Shared,
 			{.Writable = GPUWritable}
 		};
-		RGLDevicePtr owningDevice = nullptr;
 
 		size_type nValues = 0;	// current capacity is stored in the Settings struct
-
-		void InitialSetup(RGLDevicePtr owningDevice) {
-			this->owningDevice = owningDevice;
-			resize(initialSize);
-		}
         
         VRAMVector(){
-            
+            resize(initialSize);
         }
         
         VRAMVector(const VRAMVector&) = delete; // disallow copying

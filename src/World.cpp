@@ -58,7 +58,6 @@ RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     // init render data if the render engine is online
     if (GetApp() && GetApp()->HasRenderEngine() && GetApp()->GetRenderEngine().GetDevice()) {
         renderData.emplace();
-        renderData->worldTransforms.InitialSetup(GetApp()->GetRenderEngine().GetDevice());
     }
 
     SetupTaskGraph();
@@ -249,8 +248,16 @@ void World::setupRenderTasks(){
 	//camera matrices
     renderTasks.name("Render");
    
+    auto resizeBuffer = renderTasks.emplace([this]{
+        // can the world transform list hold that many objects?
+        auto ntransforms = GetAllComponentsOfType<Transform>()->DenseSize();
+        if (ntransforms > renderData->worldTransforms.size()){
+            renderData->worldTransforms.resize(ntransforms);
+        }
+    });
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
+        
         Filter([&](const StaticMesh& sm, Transform& trns) {
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
@@ -296,6 +303,8 @@ void World::setupRenderTasks(){
             }
         });
     }).name("Upate invalidated skinned mesh transforms");
+    
+    resizeBuffer.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     auto updateInvalidatedDirs = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<DirectionalLight>()){

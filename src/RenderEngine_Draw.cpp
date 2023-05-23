@@ -249,8 +249,8 @@ namespace RavEngine {
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
 						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1);
 					}
-					cubo.currentDrawCall++;
 				}
+                cubo.currentDrawCall++;
 			}
 			mainCommandBuffer->EndCompute();
 			
