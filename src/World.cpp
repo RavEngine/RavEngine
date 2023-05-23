@@ -251,7 +251,8 @@ void World::setupRenderTasks(){
     auto resizeBuffer = renderTasks.emplace([this]{
         // can the world transform list hold that many objects?
         auto ntransforms = GetAllComponentsOfType<Transform>()->DenseSize();
-        if (ntransforms > renderData->worldTransforms.size()){
+        auto currentBufferSize = renderData->worldTransforms.size();
+        if (ntransforms > currentBufferSize){
             renderData->worldTransforms.resize(ntransforms);
         }
     });
@@ -261,19 +262,18 @@ void World::setupRenderTasks(){
         Filter([&](const StaticMesh& sm, Transform& trns) {
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
-                auto owner = trns.GetOwner();
-                renderData->worldTransforms[owner.GetIdInWorld()] = trns.CalculateWorldMatrix();
-
                 assert(renderData->staticMeshRenderData.contains(sm.GetMaterial()));
                 auto meshToUpdate = sm.GetMesh();
-                renderData->staticMeshRenderData.if_contains(sm.GetMaterial(), [owner,&meshToUpdate,&trns,this](MDIICommand& row) {
+                renderData->staticMeshRenderData.if_contains(sm.GetMaterial(), [&meshToUpdate,&trns,this](MDIICommand& row) {
                     auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
                         return value.mesh.lock() == meshToUpdate;
                     });
                     assert(it != row.commands.end());
                     auto& vec = *it;
                     // write new matrix
-                    renderData->worldTransforms[owner.GetIdInWorld()] = trns.CalculateWorldMatrix();
+                    auto owner = trns.GetOwner();
+                    auto ownerIDInWorld = owner.GetIdInWorld();
+                    renderData->worldTransforms[ownerIDInWorld] = trns.CalculateWorldMatrix();
                 });
 
                 trns.ClearTickDirty();

@@ -248,6 +248,10 @@ namespace RavEngine {
 						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
 						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1);
+						//TODO: don't do this! find a way to run LODs in parallel
+						mainCommandBuffer->SetResourceBarrier({
+							.buffers = {drawcommand.drawcallBuffer, drawcommand.cullingBuffer}
+						});
 					}
 				}
                 cubo.currentDrawCall++;
@@ -294,7 +298,10 @@ namespace RavEngine {
 				}
 			}
 
-
+			// ensure the culling stage is done
+			mainCommandBuffer->SetResourceBarrier({
+					.buffers = {drawcommand.drawcallBuffer, drawcommand.cullingBuffer}
+			});
 			// bind the culling buffer and the transform buffer
 			mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
 			mainCommandBuffer->BindBuffer(worldOwning->renderData->worldTransforms.buffer, 2);

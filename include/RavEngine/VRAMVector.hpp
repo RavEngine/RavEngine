@@ -74,7 +74,7 @@ namespace RavEngine {
 		size_type nValues = 0;	// current capacity is stored in the Settings struct
         
         VRAMVector(){
-            resize(initialSize);
+            reserve(initialSize);
         }
         
         VRAMVector(const VRAMVector&) = delete; // disallow copying
@@ -97,7 +97,11 @@ namespace RavEngine {
 			return nValues;
 		}
 
-		void resize(size_type newSize) {
+		/**
+		* Make space for more elements, but the current count remains
+		* @param newSize the size in elements (not bytes)
+		*/
+		void reserve(size_type newSize) {
 			auto oldbuffer = buffer;
 			
 			settings.nElements = newSize;
@@ -108,14 +112,23 @@ namespace RavEngine {
                 buffer->UpdateBufferData({oldbuffer->GetMappedDataPtr(), size() * sizeof(T)});
 				TrashOldVector(oldbuffer);
 			}
-            assert(buffer->GetMappedDataPtr() != nullptr);  // BUG: buffer resize did not leave underlying in mapped state. Check buffer trashing logic
+            assert(buffer->GetMappedDataPtr() != nullptr);  // BUG: buffer reserve did not leave underlying in mapped state. Check buffer trashing logic
+		}
+
+		/**
+		* Make space for more elements, and mark them as consumed
+		* @param newSize the size in elements (not bytes)
+		*/
+		void resize(size_type newSize) {
+			reserve(newSize);
+			nValues = newSize;
 		}
 
 		void grow() {
-			resize(settings.nElements * 2);
+			reserve(settings.nElements * 2);
 		}
 
-		bool resizeIfNeeded() {
+		bool reserveIfNeeded() {
 			if (nValues == settings.nElements) {
 				grow();
                 return true;
@@ -125,7 +138,7 @@ namespace RavEngine {
 
 		template<typename ... Args>
 		auto& emplace_back(Args&& ... args) {
-			auto didResize = resizeIfNeeded();
+			auto didreserve = reserveIfNeeded();
             T* newAddr = data() + size();
 			auto valueptr = new(newAddr) T{ args... };
             assert(newAddr == valueptr);    // BUG: new did not return the pointer it was passed
@@ -134,7 +147,7 @@ namespace RavEngine {
 		}
 
 		void push_back(const T& value) {
-			resizeIfNeeded();
+			reserveIfNeeded();
 			this->operator[](size()) = value;
 			nValues++;
 		}
