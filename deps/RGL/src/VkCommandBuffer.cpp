@@ -38,34 +38,7 @@ namespace RGL {
 		VkPipelineStageFlags srcStageMask,
 		VkPipelineStageFlags dstStageMask
 	) {
-		const VkImageMemoryBarrier image_memory_barrier_begin{
-					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-					.srcAccessMask = srcAccessMask,
-					.dstAccessMask = dstAccessMask,
-					.oldLayout = oldLayout,
-					.newLayout = newLayout,
-					.image = image,
-					.subresourceRange = {
-					  .aspectMask = aspectMask,
-					  .baseMipLevel = 0,
-					  .levelCount = 1,
-					  .baseArrayLayer = 0,
-					  .layerCount = 1,
-					}
-		};
-
-		vkCmdPipelineBarrier(
-			commandBuffer,
-			srcStageMask,  // srcStageMask
-			dstStageMask, // dstStageMask
-			0,
-			0,
-			nullptr,
-			0,
-			nullptr,
-			1, // imageMemoryBarrierCount
-			&image_memory_barrier_begin // pImageMemoryBarriers
-		);
+		
 	}
 
 	void RGL::CommandBufferVk::Reset()
@@ -330,44 +303,81 @@ namespace RGL {
 	}
 	void CommandBufferVk::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position)
 	{
-		auto img = static_cast<const TextureVk*>(texture);
-
-		auto decideFlagsForBegin = [img]() {
-			VkAccessFlags writeFlags = 0;
-			if (img->createdConfig.aspect.HasColor) {
-				writeFlags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			}
-			if (img->createdConfig.aspect.HasDepth || img->createdConfig.aspect.HasDepth) {
-				writeFlags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			}
-			return writeFlags;
-		};
-
-		auto decideFlagsForEnd = [img]() {
-			VkPipelineStageFlags writeFlags = 0;
-			if (img->createdConfig.aspect.HasColor) {
-				writeFlags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			}
-			if (img->createdConfig.aspect.HasDepth || img->createdConfig.aspect.HasDepth) {
-				writeFlags |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			}
-			return writeFlags;
-		};
-
-		auto beginFlags = decideFlagsForBegin();
-		auto endFlags = decideFlagsForEnd();	
-
-		encodeResourceTransition(commandBuffer,
-			img->vkImage,
-			position == TransitionPosition::Top ? VK_ACCESS_NONE : beginFlags,
-			position == TransitionPosition::Top ? beginFlags : VK_ACCESS_NONE,
-			rgl2vkImageLayout(current),
-			rgl2vkImageLayout(target),
-			img->createdAspectVk,
-			position == TransitionPosition::Top ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : endFlags,
-			position == TransitionPosition::Top? endFlags : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
-		);
+		TransitionResources({
+			{
+				.texture = texture,
+				.from = current,
+				.to = target
+			},
+		}, position);
 	}
+	void CommandBufferVk::TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position)
+	{
+		//const auto transitionCount = transitions.size();
+		//TODO: batch transitions
+		//stackarray(allTransitions, VkImageMemoryBarrier, transitionCount);
+		uint32_t i = 0;
+		for (const auto& transition : transitions) {
+			auto img = static_cast<const TextureVk*>(transition.texture);
+
+			auto decideFlagsForBegin = [img]() {
+				VkAccessFlags writeFlags = 0;
+				if (img->createdConfig.aspect.HasColor) {
+					writeFlags |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				}
+				if (img->createdConfig.aspect.HasDepth || img->createdConfig.aspect.HasDepth) {
+					writeFlags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				}
+				return writeFlags;
+			};
+
+			auto decideFlagsForEnd = [img]() {
+				VkPipelineStageFlags writeFlags = 0;
+				if (img->createdConfig.aspect.HasColor) {
+					writeFlags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				}
+				if (img->createdConfig.aspect.HasDepth || img->createdConfig.aspect.HasDepth) {
+					writeFlags |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+				}
+				return writeFlags;
+			};
+
+			auto beginFlags = decideFlagsForBegin();
+			auto endFlags = decideFlagsForEnd();
+
+			VkImageMemoryBarrier imageMemoryBarrier{
+					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+					.srcAccessMask = position == TransitionPosition::Top ? VK_ACCESS_NONE : beginFlags,
+					.dstAccessMask = position == TransitionPosition::Top ? beginFlags : VK_ACCESS_NONE,
+					.oldLayout = rgl2vkImageLayout(transition.from),
+					.newLayout = rgl2vkImageLayout(transition.to),
+					.image = img->vkImage,
+					.subresourceRange = {
+					  .aspectMask = img->createdAspectVk,
+					  .baseMipLevel = 0,
+					  .levelCount = 1,
+					  .baseArrayLayer = 0,
+					  .layerCount = 1,
+					}
+			};
+			vkCmdPipelineBarrier(
+				commandBuffer,
+				position == TransitionPosition::Top ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : endFlags,  // srcStageMask
+				position == TransitionPosition::Top ? endFlags : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, // dstStageMask
+				0,
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1, // imageMemoryBarrierCount
+				&imageMemoryBarrier // pImageMemoryBarriers
+			);
+			i++;
+		}
+		
+		
+	}
+
 	void CommandBufferVk::CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer)
 	{
 		auto casted = static_cast<TextureVk*>(sourceTexture);

@@ -72,7 +72,7 @@ RenderEngine::vs RenderEngine::VideoSettings;
 
 
 #ifndef NDEBUG
-static std::optional<GUIComponent> debuggerContext;
+STATIC(RenderEngine::debuggerContext);
 STATIC(RenderEngine::debuggerInput);
 #endif
 

@@ -167,16 +167,20 @@ namespace RavEngine {
 		}
 		mainCommandBuffer->EndComputeDebugMarker();
 		mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
-		mainCommandBuffer->BeginRenderDebugMarker("Transition Gbuffers");
-		auto transitionGbuffers = [this](RGL::ResourceLayout from, RGL::ResourceLayout to) {
-			for (const auto& ptr : { diffuseTexture, normalTexture }) {
-				mainCommandBuffer->TransitionResource(ptr.get(), from, to, RGL::TransitionPosition::Top);
-			}
-		};
 
-		transitionGbuffers(RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal);
+		mainCommandBuffer->TransitionResources({
+			{
+				.texture = diffuseTexture.get(),
+				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
+			},
+			{
+				.texture = normalTexture.get(),
+				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
+			},
+			}, RGL::TransitionPosition::Top);
 		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
-		mainCommandBuffer->EndRenderDebugMarker();
 
 		mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
 		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
@@ -299,9 +303,11 @@ namespace RavEngine {
 			}
 
 			// ensure the culling stage is done
+			/*
 			mainCommandBuffer->SetResourceBarrier({
 					.buffers = {drawcommand.drawcallBuffer, drawcommand.cullingBuffer}
 			});
+			*/
 			// bind the culling buffer and the transform buffer
 			mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
 			mainCommandBuffer->BindBuffer(worldOwning->renderData->worldTransforms.buffer, 2);
@@ -315,8 +321,8 @@ namespace RavEngine {
 		mainCommandBuffer->EndRenderDebugMarker();
 
 		// do skinned meshes
-#if 0
 		mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
+#if 0
 		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 			// bind the pipeline
 			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
@@ -367,13 +373,25 @@ namespace RavEngine {
 		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->EndRenderDebugMarker();
 
-		mainCommandBuffer->BeginRenderDebugMarker("Transition Gbuffers");
-		transitionGbuffers(RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal);
+		mainCommandBuffer->TransitionResources({
+			{
+				.texture = diffuseTexture.get(),
+				.from = RGL::ResourceLayout::ColorAttachmentOptimal,
+				.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+			},
+			{
+				.texture = normalTexture.get(),
+				.from = RGL::ResourceLayout::ColorAttachmentOptimal,
+				.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+			},
+			{
+				.texture = lightingTexture.get(),
+				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
+			},
+			}, RGL::TransitionPosition::Top);
 		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
-
 		// do lighting pass
-		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
-		mainCommandBuffer->EndRenderDebugMarker();
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
 
@@ -525,7 +543,7 @@ namespace RavEngine {
 		worldOwning->Filter([](GUIComponent& gui) {
 			gui.Render();	// kicks off commands for rendering UI
 		});
-		/*
+		
 		if (debuggerContext) {
 			auto& dbg = *debuggerContext;
 			dbg.SetDimensions(bufferdims.width, bufferdims.height);
@@ -533,7 +551,7 @@ namespace RavEngine {
 			dbg.Update();
 			dbg.Render();
 		}
-		*/
+		
 		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->EndRenderDebugMarker();
 		Im3d::NewFrame();

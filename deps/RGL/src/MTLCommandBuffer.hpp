@@ -62,6 +62,7 @@ struct BufferMTL;
         void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
 
         void TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) final;
+        void TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position) final;
 
         void Commit(const CommitConfig&) final;
         

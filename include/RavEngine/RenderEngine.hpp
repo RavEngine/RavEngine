@@ -36,6 +36,7 @@ namespace RavEngine {
     struct Entity;
     class World;
 	struct MeshAsset;
+	struct GUIComponent;
 
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
@@ -217,6 +218,7 @@ namespace RavEngine {
 		void SetTransform(const Rml::Matrix4f* transform) override;
 
 #ifndef NDEBUG
+		static std::optional<GUIComponent> debuggerContext;
 		void InitDebugger() const;
 		void DeactivateDebugger() const;
 		static std::unique_ptr<InputManager> debuggerInput;

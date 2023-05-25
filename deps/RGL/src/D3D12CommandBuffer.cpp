@@ -318,17 +318,31 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position)
 	{
-		auto casted = static_cast<const TextureD3D12*>(texture);
-		
-		auto beforeState = rgl2d3d12resourcestate(current);
-		auto afterState = rgl2d3d12resourcestate(target);
-		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			casted->texture.Get(),
-			beforeState, 
-			afterState
-		);
-		commandList->ResourceBarrier(1, &barrier);
+		TransitionResources({
+			{
+				.texture = texture,
+				.from = current,
+				.to = target
+			},
+			}, position);
 	}
+	void CommandBufferD3D12::TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position)
+	{
+		auto count = transitions.size();
+		stackarray(barriers, CD3DX12_RESOURCE_BARRIER, count);
+		uint32_t i = 0;
+		for (const auto& transition : transitions) {
+			auto casted = static_cast<const TextureD3D12*>(transition.texture);
+			barriers[i] = CD3DX12_RESOURCE_BARRIER::Transition(
+				casted->texture.Get(),
+				rgl2d3d12resourcestate(transition.from),
+				rgl2d3d12resourcestate(transition.to)
+			);
+			i++;
+		}
+		commandList->ResourceBarrier(count, barriers);
+	}
+
 	void CommandBufferD3D12::Commit(const CommitConfig& config)
 	{
 		owningQueue->ExecuteCommandList(commandList);

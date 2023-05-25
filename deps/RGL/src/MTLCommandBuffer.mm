@@ -302,6 +302,10 @@ void CommandBufferMTL::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfi
 void CommandBufferMTL::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) {
     // no effect on Metal
 }
+void CommandBufferMTL::TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position)
+{
+    // no effect on Metal
+}
 
 void CommandBufferMTL::BeginRenderDebugMarker(const std::string &label){
     [currentCommandEncoder pushDebugGroup:[NSString stringWithUTF8String:label.c_str()]];
