@@ -314,7 +314,21 @@ namespace RGL {
 	{
 		auto fromBuffer = std::static_pointer_cast<BufferD3D12>(from.buffer);
 		auto toBuffer = std::static_pointer_cast<BufferD3D12>(to.buffer);
+
+		auto preBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			toBuffer->buffer.Get(),
+			toBuffer->initialState,
+			D3D12_RESOURCE_STATE_COPY_DEST 
+		);
+		commandList->ResourceBarrier(1, &preBarrier);
 		commandList->CopyBufferRegion(toBuffer->buffer.Get(), to.offset, fromBuffer->buffer.Get(), from.offset, size);
+
+		auto postBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			toBuffer->buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			toBuffer->initialState
+		);
+		commandList->ResourceBarrier(1, &postBarrier);
 	}
 	void CommandBufferD3D12::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position)
 	{

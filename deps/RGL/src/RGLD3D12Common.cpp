@@ -50,10 +50,11 @@ namespace RGL {
         DX_CHECK(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
         debugInterface->EnableDebugLayer();
 
+        /*
         ComPtr<ID3D12Debug1> spDebugController1;
         DX_CHECK(debugInterface->QueryInterface(IID_PPV_ARGS(&spDebugController1)));
         spDebugController1->SetEnableGPUBasedValidation(true);
-
+        */
         // enable DRED 
         ComPtr<ID3D12DeviceRemovedExtendedDataSettings> pDredSettings;
         DX_CHECK(D3D12GetDebugInterface(IID_PPV_ARGS(&pDredSettings)));

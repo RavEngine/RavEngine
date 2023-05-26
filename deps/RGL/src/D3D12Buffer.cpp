@@ -42,7 +42,7 @@ namespace RGL {
         const bool isWritable = config.options.Writable;
 
         CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);    // default to PRIVATE
-        D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+        initialState = D3D12_RESOURCE_STATE_COMMON;
         // if writable, must be constructed with a UAV, otherwise use a standard SRV
         auto resourceDescriptor = CD3DX12_RESOURCE_DESC::Buffer(size_bytes, isWritable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE);
 
@@ -57,6 +57,10 @@ namespace RGL {
             initialState = D3D12_RESOURCE_STATE_GENERIC_READ;   // UPLOAD requires this state, and resources cannot leave this state
         }
 
+        if (config.type.IndirectBuffer) {
+            initialState |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+        }
+
         DX_CHECK(device->device->CreateCommittedResource(
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,
@@ -64,6 +68,13 @@ namespace RGL {
             initialState,
             nullptr,
             IID_PPV_ARGS(&buffer)));
+
+        if (config.options.debugName) {
+            std::wstring wide;
+            wide.resize(config.options.debugName == nullptr ? 0 : strlen(config.options.debugName));
+            MultiByteToWideChar(CP_UTF8, 0, config.options.debugName, -1, wide.data(), wide.size());
+            buffer->SetName(wide.c_str());
+        }
 
         vertexBufferView.BufferLocation = buffer->GetGPUVirtualAddress();
         indexBufferView.BufferLocation = vertexBufferView.BufferLocation;   //NOTE: if this is made a union, check this
@@ -147,7 +158,7 @@ namespace RGL {
             // upload the data to the GPU
             auto commandList = owningDevice->internalQueue->CreateCommandList();
 
-            auto state = D3D12_RESOURCE_STATE_GENERIC_READ;
+            auto state = initialState;
             auto beginTransition = CD3DX12_RESOURCE_BARRIER::Transition(
                 buffer.Get(),
                 state,

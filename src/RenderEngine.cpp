@@ -1119,6 +1119,12 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		},
 		.pipelineLayout = defaultCullingLayout
 	});
+
+	auto cullingInitLayout = device->CreatePipelineLayout({
+		.bindings = {
+		},
+		.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}
+	});
 }
 
 void RavEngine::RenderEngine::createGBuffers()

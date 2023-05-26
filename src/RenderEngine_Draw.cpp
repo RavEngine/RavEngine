@@ -191,7 +191,7 @@ namespace RavEngine {
 				numEntities += command.entities.DenseSize();
 			}
 
-			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type) {
+			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
 					// trash old buffer if it exists
 					if (buffer) {
@@ -202,7 +202,7 @@ namespace RavEngine {
 						type,
 						stride,
 						access,
-						{.Writable = true}
+						flags
 					});
 					if (access == RGL::BufferAccess::Shared) {
 						buffer->MapMemory();
@@ -210,8 +210,9 @@ namespace RavEngine {
 				}
 			};
 
-			reallocBuffer(drawcommand.cullingBuffer, numEntities, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true });
-			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true });
+			reallocBuffer(drawcommand.cullingBuffer, numEntities, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName =  "Culling Buffer" });
+			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
+			reallocBuffer(drawcommand.drawcallStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "CullingStagingBuffer" });
 
 			// initial populate of drawcall buffer
 			{
@@ -231,10 +232,19 @@ namespace RavEngine {
 					else {
 						initData = { 0,0,0,0,0 };
 					}
-					drawcommand.drawcallBuffer->SetBufferData(initData, i * sizeof(initData));
+					drawcommand.drawcallStagingBuffer->UpdateBufferData(initData, i * sizeof(RGL::IndirectIndexedCommand));
 					i++;
 				}
 			}
+			mainCommandBuffer->CopyBufferToBuffer(
+				{
+					.buffer = drawcommand.drawcallStagingBuffer,
+					.offset = 0
+				}, 
+				{
+					.buffer = drawcommand.drawcallBuffer,
+					.offset = 0
+				}, drawcommand.drawcallStagingBuffer->getBufferSize());
 
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer,1);

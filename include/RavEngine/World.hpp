@@ -256,7 +256,7 @@ namespace RavEngine {
                 }
             };
             Vector<command> commands;
-            RGLBufferPtr drawcallBuffer, cullingBuffer;
+            RGLBufferPtr drawcallBuffer, cullingBuffer, drawcallStagingBuffer;
         };
 
         struct MDIICommandSkinned {
