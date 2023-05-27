@@ -494,12 +494,22 @@ namespace RGL {
 			i++;
 		}
 
+		//TODO: don't use all_commands or all_stages bit because it's inefficient
+		VkMemoryBarrier2 memBarrier{
+			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+			.pNext = nullptr,
+			.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// wait for all work submitted before
+			.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,			// make writes available
+			.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// all work submitted after needs to wait for the results of this barrier
+			.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,			// make reads available
+		};
+
 		VkDependencyInfo depInfo{
 			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
 			.pNext = nullptr,
 			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-			.memoryBarrierCount = 0,
-			.pMemoryBarriers = nullptr,
+			.memoryBarrierCount = 1,
+			.pMemoryBarriers = &memBarrier,
 			.bufferMemoryBarrierCount = static_cast<uint32_t>(config.buffers.size()),
 			.pBufferMemoryBarriers = bufferBarriers,
 			.imageMemoryBarrierCount = static_cast<uint32_t>(config.textures.size()),

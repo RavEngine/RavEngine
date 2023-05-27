@@ -187,8 +187,10 @@ namespace RavEngine {
 			//prepass: get number of LODs and entities
 			uint32_t numLODs = 0, numEntities = 0;
 			for (const auto& command : drawcommand.commands) {
-				numLODs += 1;	//TODO: when LOD support is added, increment this by the number of LODs
-				numEntities += command.entities.DenseSize();
+				if (auto mesh = command.mesh.lock()) {
+					numLODs += mesh->GetNumLods();
+					numEntities += command.entities.DenseSize();
+				}
 			}
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
@@ -209,8 +211,8 @@ namespace RavEngine {
 					}
 				}
 			};
-
-			reallocBuffer(drawcommand.cullingBuffer, numEntities, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName =  "Culling Buffer" });
+			const auto cullingbufferTotalSlots = numEntities * numLODs;
+			reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName =  "Culling Buffer" });
 			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
 			reallocBuffer(drawcommand.drawcallStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "CullingStagingBuffer" });
 
@@ -246,29 +248,29 @@ namespace RavEngine {
 					.offset = 0
 				}, drawcommand.drawcallStagingBuffer->getBufferSize());
 
+			mainCommandBuffer->SetResourceBarrier({
+				.buffers = {drawcommand.drawcallBuffer}
+			});
+
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer,1);
 			CullingUBO cubo{
 				.viewProj = viewproj,
-				.currentDrawCall = 0,
+				.drawcallBufferOffset = 0,
 			};
 			for (auto& command : drawcommand.commands) {
 				mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
 				mainCommandBuffer->BindComputeBuffer(drawcommand.drawcallBuffer, 3);
+
 				if (auto mesh = command.mesh.lock()) {
-					uint32_t lodsForThisMesh = 1;	//TODO: when LODs are implemented, update this
-					for (uint32_t i = 0; i < lodsForThisMesh; i++) {
-						cubo.numObjects = command.entities.DenseSize();
-						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-						mainCommandBuffer->SetComputeBytes(cubo, 0);
-						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1);
-						//TODO: don't do this! find a way to run LODs in parallel
-						mainCommandBuffer->SetResourceBarrier({
-							.buffers = {drawcommand.drawcallBuffer, drawcommand.cullingBuffer}
-						});
-					}
+					uint32_t lodsForThisMesh = mesh->GetNumLods();
+
+					cubo.numObjects = command.entities.DenseSize();
+					mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+					mainCommandBuffer->SetComputeBytes(cubo, 0);
+					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1);
+					cubo.drawcallBufferOffset += lodsForThisMesh;
 				}
-                cubo.currentDrawCall++;
 			}
 			mainCommandBuffer->EndCompute();
 			
@@ -311,13 +313,7 @@ namespace RavEngine {
 					mainCommandBuffer->SetCombinedTextureSampler(textureSampler, texture->GetRHITexturePointer().get(), i);
 				}
 			}
-
-			// ensure the culling stage is done
-			/*
-			mainCommandBuffer->SetResourceBarrier({
-					.buffers = {drawcommand.drawcallBuffer, drawcommand.cullingBuffer}
-			});
-			*/
+			
 			// bind the culling buffer and the transform buffer
 			mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
 			mainCommandBuffer->BindBuffer(worldOwning->renderData->worldTransforms.buffer, 2);

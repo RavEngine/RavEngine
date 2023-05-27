@@ -64,7 +64,9 @@ public:
 	*/
 	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
     
-    
+	uint32_t GetNumLods() const {
+		return 1;	// TODO: lods are not yet supported
+	}
 
     
 protected:
