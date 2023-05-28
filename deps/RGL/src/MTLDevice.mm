@@ -101,7 +101,7 @@ void DeviceMTL::BlockUntilIdle() {
 RGL::DeviceData DeviceMTL::GetDeviceData() {
     return {
         .mtlData{
-            .device = (void*)device
+            .device = (__bridge void*)device
         }
     };
 }

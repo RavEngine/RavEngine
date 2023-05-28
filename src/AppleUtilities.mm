@@ -23,14 +23,14 @@
 #include <mach/machine.h>
 #import <Foundation/NSAutoreleasePool.h>
 
-thread_local NSAutoreleasePool *pool;
+//thread_local NSAutoreleasePool *pool;
 
 void AppleAutoreleasePoolInit(){
-    pool = [[NSAutoreleasePool alloc] init];
+    //pool = [[NSAutoreleasePool alloc] init];
 }
 
 void AppleAutoreleasePoolDrain(){
-    [pool drain];
+    //[pool drain];
 }
 
 
@@ -129,7 +129,7 @@ void AppleCPUName(char* buffer, size_t size){
 bool AppleGPUMeetsMinSpec(RGLDevicePtr deviceWrapper){
     auto internalData = deviceWrapper->GetDeviceData();
     
-    id<MTLDevice> device = (id<MTLDevice>)internalData.mtlData.device;
+    id<MTLDevice> device = (__bridge id<MTLDevice>)internalData.mtlData.device;
 #if TARGET_OS_SIMULATOR
     return true;        // simulator does not properly report features, so assume it will work
 #elif TARGET_OS_IPHONE

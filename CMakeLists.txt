@@ -40,7 +40,7 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Android")
 endif()
 
 if (TARGET_APPLE)
-	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0)	# silence warning when building ARM fat library on Apple platforms
+	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0 -fobjc-arc)	# silence warning when building ARM fat library on Apple platforms, enable arc
 elseif(TARGET_EMSCRIPTEN)
 	# required for higher memory, atomics, and threads
 	add_definitions(-pthread)
@@ -389,7 +389,7 @@ if(TARGET_APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
 	set_source_files_properties(${MM_SOURCES} PROPERTIES
-		COMPILE_FLAGS "-x objective-c++"
+		COMPILE_FLAGS "-x objective-c++ "
 	)
 endif()
 file(GLOB SOURCES "src/*.cpp" "src/*.hpp")
@@ -741,6 +741,10 @@ function(pack_resources)
 
 	if(${ARGS_UNPARSED_ARGUMENTS})
 		message(WARNING "Unparsed arguments: ${ARGS_UNPARSED_ARGUMENTS}")
+	endif()
+
+	if(TARGET_APPLE)
+	set_property(TARGET ${ARGS_TARGET} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
 	endif()
 
 	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
