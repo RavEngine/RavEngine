@@ -211,7 +211,7 @@ namespace RGL {
         {
             auto node = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
             while (node) {
-                debugLog(std::format("DRED Breadcrumb Data:\n\tCommand List:\t{}\n\tCommand Queue:\t{}\n", node->pCommandListDebugNameA == nullptr ? "[Unnamed CommandList" : node->pCommandListDebugNameA, node->pCommandQueueDebugNameA == nullptr? "[Unnamed CommandQueue]" : node->pCommandQueueDebugNameA));
+                debugLog(std::format("DRED Breadcrumb Data:\n\tCommand List:\t{}\n\tCommand Queue:\t{}\n", node->pCommandListDebugNameA == nullptr ? "[Unnamed CommandList]" : node->pCommandListDebugNameA, node->pCommandQueueDebugNameA == nullptr? "[Unnamed CommandQueue]" : node->pCommandQueueDebugNameA));
                 for (UINT32 i = 0; i < node->BreadcrumbCount; i++) {
                     auto& command = node->pCommandHistory[i];
                     auto str = D3D12AutoBreadcrumbOpToString(command);
@@ -225,18 +225,18 @@ namespace RGL {
             }
         }
 
-        debugLog(std::format("DRED Page Fault Output:\n\tVirtual Address: {}", DredPageFaultOutput.PageFaultVA));
+        debugLog(std::format("DRED Page Fault Output:\n\tVirtual Address: {:X}", DredPageFaultOutput.PageFaultVA));
         {
             auto node = DredPageFaultOutput.pHeadExistingAllocationNode;
             while (node) {
-                debugLog(std::format("\tDRED Page Fault Existing Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n",node->ObjectNameA, D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
+                debugLog(std::format("\tDRED Page Fault Existing Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n",node->ObjectNameA ? node->ObjectNameA : "[Unnamed Object]", D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
                 node = node->pNext;
             }
         }
         {
             auto node = DredPageFaultOutput.pHeadRecentFreedAllocationNode;
             while (node) {
-                debugLog(std::format("\tDRED Page Fault Recent Freed Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n", node->ObjectNameA, D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
+                debugLog(std::format("\tDRED Page Fault Recent Freed Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n", node->ObjectNameA ? node->ObjectNameA : "[Unnamed Object]", D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
                 node = node->pNext;
             }
         }

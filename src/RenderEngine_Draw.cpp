@@ -213,8 +213,8 @@ namespace RavEngine {
 			};
 			const auto cullingbufferTotalSlots = numEntities * numLODs;
 			reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName =  "Culling Buffer" });
-			reallocBuffer(drawcommand.drawcallBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
-			reallocBuffer(drawcommand.drawcallStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "CullingStagingBuffer" });
+			reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
+			reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
 
 			// initial populate of drawcall buffer
 			{
@@ -234,33 +234,33 @@ namespace RavEngine {
 					else {
 						initData = { 0,0,0,0,0 };
 					}
-					drawcommand.drawcallStagingBuffer->UpdateBufferData(initData, i * sizeof(RGL::IndirectIndexedCommand));
+					drawcommand.indirectStagingBuffer->UpdateBufferData(initData, i * sizeof(RGL::IndirectIndexedCommand));
 					i++;
 				}
 			}
 			mainCommandBuffer->CopyBufferToBuffer(
 				{
-					.buffer = drawcommand.drawcallStagingBuffer,
+					.buffer = drawcommand.indirectStagingBuffer,
 					.offset = 0
 				}, 
 				{
-					.buffer = drawcommand.drawcallBuffer,
+					.buffer = drawcommand.indirectBuffer,
 					.offset = 0
-				}, drawcommand.drawcallStagingBuffer->getBufferSize());
+				}, drawcommand.indirectStagingBuffer->getBufferSize());
 
 			mainCommandBuffer->SetResourceBarrier({
-				.buffers = {drawcommand.drawcallBuffer}
+				.buffers = {drawcommand.indirectBuffer}
 			});
 
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer,1);
 			CullingUBO cubo{
 				.viewProj = viewproj,
-				.drawcallBufferOffset = 0,
+				.indirectBufferOffset = 0,
 			};
 			for (auto& command : drawcommand.commands) {
 				mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
-				mainCommandBuffer->BindComputeBuffer(drawcommand.drawcallBuffer, 3);
+				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
 
 				if (auto mesh = command.mesh.lock()) {
 					uint32_t lodsForThisMesh = mesh->GetNumLods();
@@ -269,11 +269,11 @@ namespace RavEngine {
 					mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
 					mainCommandBuffer->SetComputeBytes(cubo, 0);
 					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1);
-					cubo.drawcallBufferOffset += lodsForThisMesh;
+					cubo.indirectBufferOffset += lodsForThisMesh;
 				}
 			}
 			mainCommandBuffer->EndCompute();
-			
+			mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
 		}
 		mainCommandBuffer->EndComputeDebugMarker();
 
@@ -320,8 +320,8 @@ namespace RavEngine {
 
 			// do the indirect command
 			mainCommandBuffer->ExecuteIndirectIndexed({
-				.indirectBuffer = drawcommand.drawcallBuffer,
-				.nDraws = uint32_t(drawcommand.drawcallBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))
+				.indirectBuffer = drawcommand.indirectBuffer,
+				.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))
 			});
 		}
 		mainCommandBuffer->EndRenderDebugMarker();

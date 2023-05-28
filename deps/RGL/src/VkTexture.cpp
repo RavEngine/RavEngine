@@ -224,6 +224,7 @@ namespace RGL {
 
 		if (config.debugName) {
 			owningDevice->SetDebugNameForResource(vkImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.debugName);
+			owningDevice->SetDebugNameForResource(vkImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
 		}
 
 	}

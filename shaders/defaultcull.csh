@@ -1,7 +1,7 @@
 
 layout(push_constant) uniform UniformBufferObject{
 	mat4 viewProj;
-	uint drawcallBufferOffset;
+	uint indirectBufferOffset;
 	uint numObjects;
 } ubo;
 
@@ -31,7 +31,7 @@ struct IndirectCommand {
 
 layout(std430, binding = 3) buffer drawcallBuffer
 {
-	IndirectCommand commands[];
+	IndirectCommand indirectBuffer[];
 };
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -53,7 +53,7 @@ void main() {
 
 	// if both checks are true, atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
 	if (isOnCamera) {
-		uint idx = atomicAdd(commands[ubo.drawcallBufferOffset + lodID].instanceCount,1);
+		uint idx = atomicAdd(indirectBuffer[ubo.indirectBufferOffset + lodID].instanceCount,1);
 		uint idxLODOffset = ubo.numObjects * lodID;
 		entityIDsToRender[idx + idxLODOffset] = entityID;
 	}
