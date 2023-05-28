@@ -37,7 +37,7 @@ void AppleAutoreleasePoolDrain(){
 void resizeMetalLayer(void* ptr, int width, int height){
 	// on mac, auto resizing mask takes care of this
 #if TARGET_OS_NONOSX
-	CAMetalLayer* layer = (CAMetalLayer*)ptr;
+    CAMetalLayer* layer = (__bridge CAMetalLayer*)ptr;
 	layer.frame = CGRectMake(0, 0, width, height);
 #endif
 }
