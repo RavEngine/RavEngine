@@ -19,7 +19,7 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
                 },
                 {
                     .binding = 1,
-                    .stride = sizeof(glm::mat4),
+                    .stride = sizeof(uint32_t),
                     .inputRate = RGL::InputRate::Instance,
                 }
             },
