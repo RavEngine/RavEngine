@@ -536,6 +536,10 @@ namespace RavEngine {
 			mainCommandBuffer->EndRenderDebugMarker();
 		}
 
+		mainCommandBuffer->BeginRenderDebugMarker("GUI");
+		worldOwning->Filter([](GUIComponent& gui) {
+			gui.Render();	// kicks off commands for rendering UI
+		});
 #ifndef NDEBUG
 			// process debug shapes
 		worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
@@ -552,11 +556,6 @@ namespace RavEngine {
 
 		Im3d::GetContext().draw();
 		mainCommandBuffer->EndRenderDebugMarker();
-
-		mainCommandBuffer->BeginRenderDebugMarker("GUI");
-		worldOwning->Filter([](GUIComponent& gui) {
-			gui.Render();	// kicks off commands for rendering UI
-		});
 		
 		if (debuggerContext) {
 			auto& dbg = *debuggerContext;
