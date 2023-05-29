@@ -179,8 +179,12 @@ namespace RavEngine {
 				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
 			},
+			{
+				.texture = depthStencil.get(),
+				.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
+				.to = RGL::ResourceLayout::DepthAttachmentOptimal
+			}
 			}, RGL::TransitionPosition::Top);
-		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
 
 		mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
 		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
@@ -395,8 +399,12 @@ namespace RavEngine {
 				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
 			},
+			{
+				.texture = depthStencil.get(),
+				.from = RGL::ResourceLayout::DepthAttachmentOptimal,
+				.to = RGL::ResourceLayout::DepthReadOnlyOptimal,
+			}
 			}, RGL::TransitionPosition::Top);
-		mainCommandBuffer->TransitionResource(depthStencil.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 		// do lighting pass
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
