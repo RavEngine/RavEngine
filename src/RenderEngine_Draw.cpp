@@ -151,7 +151,7 @@ namespace RavEngine {
 				mainCommandBuffer->BindComputeBuffer(skinningOutputBuffer, 0);
 				mainCommandBuffer->BindComputeBuffer(skinningPoseBuffer, 1);
 				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 2);
-				mainCommandBuffer->DispatchCompute(std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1);
+				mainCommandBuffer->DispatchCompute(std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1, 8, 32, 1);
 				mainCommandBuffer->EndCompute();
 
 				bufferBegin += emptySpace;	// for the next iteration
@@ -272,7 +272,7 @@ namespace RavEngine {
 					cubo.numObjects = command.entities.DenseSize();
 					mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
 					mainCommandBuffer->SetComputeBytes(cubo, 0);
-					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1);
+					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 					cubo.indirectBufferOffset += lodsForThisMesh;
 				}
 			}

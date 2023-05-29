@@ -148,8 +148,8 @@ void CommandBufferMTL::EndCompute(){
     [currentComputeCommandEncoder endEncoding];
 }
 
-void CommandBufferMTL::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ){
-    [currentComputeCommandEncoder dispatchThreadgroups:MTLSizeMake(threadsX, threadsY, threadsZ) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+void CommandBufferMTL::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ, uint32_t threadsPerThreadgroupX, uint32_t threadsPerThreadgroupY, uint32_t threadsPerThreadgroupZ){
+    [currentComputeCommandEncoder dispatchThreadgroups:MTLSizeMake(threadsX, threadsY, threadsZ) threadsPerThreadgroup:MTLSizeMake(threadsPerThreadgroupX, threadsPerThreadgroupY, threadsPerThreadgroupZ)];
 }
 
 void CommandBufferMTL::BeginRendering(RGLRenderPassPtr renderPass){

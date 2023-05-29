@@ -160,7 +160,7 @@ namespace RGL {
 	{
 		currentComputePipeline = nullptr;
 	}
-	void CommandBufferVk::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ)
+	void CommandBufferVk::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ,  uint32_t threadsPerThreadgroupX, uint32_t threadsPerThreadgroupY, uint32_t threadsPerThreadgroupZ)
 	{
 		vkCmdDispatch(commandBuffer, threadsX, threadsY, threadsZ);
 	}

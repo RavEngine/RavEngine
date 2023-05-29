@@ -37,7 +37,7 @@ namespace RGL {
 		void BindRenderPipeline(RGLRenderPipelinePtr) final;
 		void BeginCompute(RGLComputePipelinePtr) final;
 		void EndCompute() final;
-		void DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ) final;
+		void DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ, uint32_t threadsPerThreadgroupX=1, uint32_t threadsPerThreadgroupY=1, uint32_t threadsPerThreadgroupZ=1) final;
 
 		void BindBuffer(RGLBufferPtr buffer, uint32_t bindingOffset, uint32_t offsetIntoBuffer = 0) final;
 		void BindComputeBuffer(RGLBufferPtr buffer, uint32_t binding, uint32_t offsetIntoBuffer = 0) final;

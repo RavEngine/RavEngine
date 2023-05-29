@@ -104,7 +104,7 @@ namespace RGL {
 	{
 		currentComputePipeline.reset();
 	}
-	void CommandBufferD3D12::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ)
+	void CommandBufferD3D12::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ,  uint32_t threadsPerThreadgroupX, uint32_t threadsPerThreadgroupY, uint32_t threadsPerThreadgroupZ)
 	{
 		commandList->Dispatch(threadsX, threadsY, threadsZ);
 	}
