@@ -130,6 +130,18 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	librglc
 )
 
+set(AFTERMATH_DIR "AftermathSDK")
+if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/deps/${AFTERMATH_DIR}")
+	target_include_directories(${PROJECT_NAME} PRIVATE "deps/${AFTERMATH_DIR}/include")
+	file(GLOB AFTERMATH_LIBS "deps/${AFTERMATH_DIR}/lib/x64/*.lib")
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${AFTERMATH_LIBS})
+	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_AFTERMATH_AVAILABLE=1)
+	message("Aftermath SDK enabled")
+else()
+	message("Aftermath SDK disabled")
+	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_AFTERMATH_AVAILABLE=0)
+endif()
+
 target_include_directories(${PROJECT_NAME} 
 	PRIVATE
 		${X11_INCLUDE_DIR}

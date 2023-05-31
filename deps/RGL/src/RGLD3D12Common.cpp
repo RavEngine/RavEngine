@@ -3,6 +3,7 @@
 #include "RGLD3D12.hpp"
 #include "RGLCommon.hpp"
 #include "D3D12RenderPass.hpp"
+#include "AftermathIntegration.hpp"
 #include <d3d12sdklayers.h>
 #include <wrl.h>
 #include <format>
@@ -275,11 +276,12 @@ namespace RGL {
         Assert(CanInitAPI(RGL::API::Direct3D12), "Direct3D12 cannot be initialized on this platform.");
         RGL::currentAPI = API::Direct3D12;
         EnableDebugLayer();
+        InitializeAftermath();
     }
 
     void RGL::DeintD3D12()
     {
-        // as of now, do nothing
+        DeinitAftermath();
     }
 
     ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device2> device,
