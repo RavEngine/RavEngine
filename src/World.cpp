@@ -252,12 +252,13 @@ void World::setupRenderTasks(){
         // can the world transform list hold that many objects?
         // to avoid an indirection, we assume all entities may have a transform
         // this wastes some VRAM
-        auto nEntities = localToGlobal.size() + 1;  // hack: if I don't add 1, then the shader OOBs, not sure why
+        auto nEntities = localToGlobal.size() + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
         auto currentBufferSize = renderData->worldTransforms.size();
         if (nEntities > currentBufferSize){
             auto newSize = closest_power_of(nEntities, 16);
             renderData->worldTransforms.resize(newSize);
         }
+        nCreatedThisTick = 0;
     });
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
@@ -551,6 +552,7 @@ entity_t World::CreateEntity(){
     else{
         id = static_cast<decltype(id)>(localToGlobal.size());
         localToGlobal.push_back(INVALID_ENTITY);
+        nCreatedThisTick++;
     }
     localToGlobal[id] = Registry::CreateEntity(this, id);
     return localToGlobal[id];

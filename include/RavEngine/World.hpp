@@ -396,6 +396,7 @@ namespace RavEngine {
 			}
         };
     private:
+        int nCreatedThisTick = 0;
         class SparseSetForPolymorphic{
             using U = PolymorphicIndirection;
             unordered_vector<U> dense_set;
