@@ -66,6 +66,15 @@ constexpr static inline void copyMat4(const T* input, U* output, int size = 16) 
 inline constexpr int closest_multiple_of(int x, int B) {
 	return ((x - 1) | (B - 1)) + 1;
 }
+
+/**
+ @param x the number to round
+ @param p the power
+ @return x rounded up to the nearest power of p
+*/
+inline uint32_t closest_power_of(uint32_t x, uint32_t p) {
+	return pow(p, ceil(log(x) / log(p)));
+}
 }
 
 /**

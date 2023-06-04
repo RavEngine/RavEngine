@@ -38,7 +38,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
 	// bail
 	const uint currentEntity = gl_GlobalInvocationID.x;
-	if (currentEntity > ubo.numObjects - 1) {
+	if (currentEntity >= ubo.numObjects) {
 		return;
 	}
 

@@ -710,6 +710,7 @@ function(declare_shader infile shader_target)
 			VS_SHADER_TYPE ${dxc_type}
 			VS_SHADER_ENABLE_DEBUG ON
 			VS_SHADER_DISABLE_OPTIMIZATIONS ON
+			# VS_SHADER_FLAGS "/Fd ${CMAKE_BINARY_DIR}/$<CONFIG>/"
 			# VS_SHADER_OBJECT_FILE_NAME ${dx_final_name}
 		)
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})

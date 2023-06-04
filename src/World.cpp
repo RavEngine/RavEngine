@@ -250,10 +250,13 @@ void World::setupRenderTasks(){
    
     auto resizeBuffer = renderTasks.emplace([this]{
         // can the world transform list hold that many objects?
-        auto ntransforms = GetAllComponentsOfType<Transform>()->DenseSize();
+        // to avoid an indirection, we assume all entities may have a transform
+        // this wastes some VRAM
+        auto nEntities = localToGlobal.size() + 1;  // hack: if I don't add 1, then the shader OOBs, not sure why
         auto currentBufferSize = renderData->worldTransforms.size();
-        if (ntransforms > currentBufferSize){
-            renderData->worldTransforms.resize(ntransforms);
+        if (nEntities > currentBufferSize){
+            auto newSize = closest_power_of(nEntities, 16);
+            renderData->worldTransforms.resize(newSize);
         }
     });
 
