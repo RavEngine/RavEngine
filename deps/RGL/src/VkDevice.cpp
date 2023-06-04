@@ -22,7 +22,7 @@ namespace RGL {
     void loadVulkanFunction(VkDevice device, T& ptr, const char* fnname) {
         ptr = (std::remove_reference_t<decltype(ptr)>) vkGetDeviceProcAddr(device, fnname);
         if (!ptr) {
-            FatalError("Cannot get Vulkan function pointer");
+            FatalError(std::string("Cannot get Vulkan function pointer: ") + fnname);
         }
     }
 
@@ -184,7 +184,9 @@ namespace RGL {
         }
 
         std::vector<const char*> runtimeExtensions{std::begin(deviceExtensions),std::end(deviceExtensions)};
+#ifndef NDEBUG
         runtimeExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+#endif
 
         VkDeviceCreateInfo deviceCreateInfo{
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -203,9 +205,11 @@ namespace RGL {
 
         // load extra functions
         loadVulkanFunction(device, vkCmdPushDescriptorSetKHR, "vkCmdPushDescriptorSetKHR");
+#ifndef NDEBUG
         loadVulkanFunction(device, rgl_vkDebugMarkerSetObjectNameEXT, "vkDebugMarkerSetObjectNameEXT");
         loadVulkanFunction(device, rgl_vkCmdBeginDebugUtilsLabelEXT, "vkCmdBeginDebugUtilsLabelEXT");
         loadVulkanFunction(device, rgl_vkCmdEndDebugUtilsLabelEXT, "vkCmdEndDebugUtilsLabelEXT");
+#endif
         
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
         VK_VALID(presentQueue);
@@ -236,6 +240,7 @@ namespace RGL {
 
     void DeviceVk::SetDebugNameForResource(void* resource, VkDebugReportObjectTypeEXT type, const char* debugName)
     {
+#ifndef NDEBUG
         VkDebugMarkerObjectNameInfoEXT objectName{
            .sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT,
            .pNext = nullptr,
@@ -245,6 +250,7 @@ namespace RGL {
         };
 
         VK_CHECK(this->rgl_vkDebugMarkerSetObjectNameEXT(this->device, &objectName));
+#endif
     }
 
     RGL::DeviceVk::~DeviceVk() {

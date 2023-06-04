@@ -544,11 +544,13 @@ namespace RGL {
 	}
 	void CommandBufferVk::BeginRenderDebugMarker(const std::string& label)
 	{
+#ifndef NDEBUG
 		VkDebugUtilsLabelEXT markerInfo = {
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
 			.pLabelName = label.c_str()
 		};
 		owningQueue->owningDevice->rgl_vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &markerInfo);
+#endif
 	}
 	void CommandBufferVk::BeginComputeDebugMarker(const std::string& label)
 	{
@@ -556,7 +558,9 @@ namespace RGL {
 	}
 	void CommandBufferVk::EndRenderDebugMarker()
 	{
+#ifndef NDEBUG
 		owningQueue->owningDevice->rgl_vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+#endif
 	}
 	void CommandBufferVk::EndComputeDebugMarker()
 	{

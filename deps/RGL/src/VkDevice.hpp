@@ -25,11 +25,11 @@ namespace RGL {
 		VkQueue presentQueue = VK_NULL_HANDLE;	// do not need to be destroyed
 		VkCommandPool commandPool = VK_NULL_HANDLE;
 		VmaAllocator vkallocator;
-		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR;	// device-tied extension function
-		PFN_vkDebugMarkerSetObjectNameEXT rgl_vkDebugMarkerSetObjectNameEXT;
+		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;	// device-tied extension function
+		PFN_vkDebugMarkerSetObjectNameEXT rgl_vkDebugMarkerSetObjectNameEXT = nullptr;
 
-		PFN_vkCmdEndDebugUtilsLabelEXT rgl_vkCmdEndDebugUtilsLabelEXT;
-		PFN_vkCmdBeginDebugUtilsLabelEXT rgl_vkCmdBeginDebugUtilsLabelEXT;
+		PFN_vkCmdEndDebugUtilsLabelEXT rgl_vkCmdEndDebugUtilsLabelEXT = nullptr;
+		PFN_vkCmdBeginDebugUtilsLabelEXT rgl_vkCmdBeginDebugUtilsLabelEXT = nullptr;
 
 		virtual ~DeviceVk();
 		DeviceVk(decltype(physicalDevice) physicalDevice);

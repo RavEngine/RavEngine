@@ -9,7 +9,7 @@
 #include <vulkan/vk_enum_string_helper.h> 
 #include <cassert>
 
-#define VK_CHECK(a) {auto VK_CHECK_RESULT = a; Assert(VK_CHECK_RESULT == VK_SUCCESS, std::string("Vulkan assertion failed: ") + string_VkResult(VK_CHECK_RESULT));}
+#define VK_CHECK(a) {auto VK_CHECK_RESULT = a; Assert(VK_CHECK_RESULT == VK_SUCCESS, std::string("Vulkan assertion failed: ") + # a + " -> " + string_VkResult(VK_CHECK_RESULT));}
 #define VK_VALID(a) {assert(a != VK_NULL_HANDLE);}
 
 constexpr bool enableValidationLayers =
