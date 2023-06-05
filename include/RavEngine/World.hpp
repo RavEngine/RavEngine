@@ -246,7 +246,11 @@ namespace RavEngine {
         friend class SkinnedMeshComponent;
         friend class RenderEngine;
         // renderer-friendly representation of static meshes
-        struct MDIICommand {
+        struct MDICommandBase {
+            RGLBufferPtr indirectBuffer, cullingBuffer, indirectStagingBuffer;
+        };
+
+        struct MDIICommand : public MDICommandBase {
             struct command {
                 WeakRef<MeshAsset> mesh;
                 using set_t = VRAMSparseSet<entity_t,entity_t>;
@@ -256,17 +260,16 @@ namespace RavEngine {
                 }
             };
             Vector<command> commands;
-            RGLBufferPtr indirectBuffer, cullingBuffer, indirectStagingBuffer;
         };
 
-        struct MDIICommandSkinned {
+        struct MDIICommandSkinned : public MDICommandBase {
             struct command {
                 WeakRef<MeshAssetSkinned> mesh;
                 WeakRef<SkeletonAsset> skeleton;
-                using set_t = VRAMSparseSet<entity_t,matrix4>;
-                set_t transforms;
+                using set_t = VRAMSparseSet<entity_t,entity_t>;
+                set_t entities;
                 command(decltype(mesh) mesh, decltype(skeleton) skeleton, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
-                    transforms.Emplace(index, first_value);
+                    entities.Emplace(index, first_value);
                 }
             };
             Vector<command> commands;

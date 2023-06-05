@@ -93,7 +93,7 @@ namespace RavEngine {
 
 				// output buffer A: posed output transformations for vertices
 				auto numverts = mesh->GetNumVerts();
-				const auto numobjects = command.transforms.DenseSize();
+				const auto numobjects = command.entities.DenseSize();
 
 				auto emptySpace = numverts * numobjects * sizeof(glm::mat4);
 				assert(emptySpace < std::numeric_limits<uint32_t>::max());
@@ -104,14 +104,14 @@ namespace RavEngine {
 				//pose SOA values
 				//convert to float from double
 				size_t totalsize = 0;
-				for (const auto& ownerid : command.transforms.reverse_map) {
+				for (const auto& ownerid : command.entities.reverse_map) {
 					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
 					totalsize += animator.GetSkinningMats().size();
 				}
 				typedef Array<float, 16> arrtype;
 				stackarray(pose_float, arrtype, totalsize);
 				size_t index = 0;
-				for (const auto& ownerid : command.transforms.reverse_map) {
+				for (const auto& ownerid : command.entities.reverse_map) {
 					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
 					auto& array = animator.GetSkinningMats();
 					//in case of double mode, need to convert to float
@@ -186,206 +186,172 @@ namespace RavEngine {
 			}
 			}, RGL::TransitionPosition::Top);
 
-		mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
-		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
-			//prepass: get number of LODs and entities
-			uint32_t numLODs = 0, numEntities = 0;
-			for (const auto& command : drawcommand.commands) {
-				if (auto mesh = command.mesh.lock()) {
-					numLODs += mesh->GetNumLods();
-					numEntities += command.entities.DenseSize();
-				}
-			}
+		auto worldTransformBuffer = worldOwning->renderData->worldTransforms.buffer;
 
-			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
-				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
-					// trash old buffer if it exists
-					if (buffer) {
-						gcBuffers.enqueue(buffer);
-					}
-					buffer = device->CreateBuffer({
-						size_count,
-						type,
-						stride,
-						access,
-						flags
-					});
-					if (access == RGL::BufferAccess::Shared) {
-						buffer->MapMemory();
-					}
-				}
-			};
-			const auto cullingbufferTotalSlots = numEntities * numLODs;
-			reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName =  "Culling Buffer" });
-			reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
-			reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
-
-			// initial populate of drawcall buffer
-			// we need one command per mesh per LOD
-			{
-				uint32_t meshID = 0;
-				uint32_t baseInstance = 0;
-				for (const auto& command : drawcommand.commands) {			// for each mesh
-					const auto nEntitiesInThisCommand = command.entities.DenseSize();
-					RGL::IndirectIndexedCommand initData;
+		auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer](auto& renderData) {
+			for (auto& [materialInstance, drawcommand] : renderData) {
+				//prepass: get number of LODs and entities
+				uint32_t numLODs = 0, numEntities = 0;
+				for (const auto& command : drawcommand.commands) {
 					if (auto mesh = command.mesh.lock()) {
-						for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
-							initData = {
-								.indexCount = uint32_t(mesh->totalIndices),
-								.instanceCount = 0,
-								.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
-								.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
-								.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
-							};
-							baseInstance += nEntitiesInThisCommand;
-							drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
-						}
-						 
+						numLODs += mesh->GetNumLods();
+						numEntities += command.entities.DenseSize();
 					}
-					meshID++;
 				}
-			}
-			mainCommandBuffer->CopyBufferToBuffer(
+
+				auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
+					if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
+						// trash old buffer if it exists
+						if (buffer) {
+							gcBuffers.enqueue(buffer);
+						}
+						buffer = device->CreateBuffer({
+							size_count,
+							type,
+							stride,
+							access,
+							flags
+							});
+						if (access == RGL::BufferAccess::Shared) {
+							buffer->MapMemory();
+						}
+					}
+				};
+				const auto cullingbufferTotalSlots = numEntities * numLODs;
+				reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName = "Culling Buffer" });
+				reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
+				reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
+
+				// initial populate of drawcall buffer
+				// we need one command per mesh per LOD
 				{
-					.buffer = drawcommand.indirectStagingBuffer,
-					.offset = 0
-				}, 
+					uint32_t meshID = 0;
+					uint32_t baseInstance = 0;
+					for (const auto& command : drawcommand.commands) {			// for each mesh
+						const auto nEntitiesInThisCommand = command.entities.DenseSize();
+						RGL::IndirectIndexedCommand initData;
+						if (auto mesh = command.mesh.lock()) {
+							for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+								initData = {
+									.indexCount = uint32_t(mesh->totalIndices),
+									.instanceCount = 0,
+									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+									.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+									.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
+								};
+								baseInstance += nEntitiesInThisCommand;
+								drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
+							}
+
+						}
+						meshID++;
+					}
+				}
+				mainCommandBuffer->CopyBufferToBuffer(
+					{
+						.buffer = drawcommand.indirectStagingBuffer,
+						.offset = 0
+					},
 				{
 					.buffer = drawcommand.indirectBuffer,
 					.offset = 0
 				}, drawcommand.indirectStagingBuffer->getBufferSize());
 
-			mainCommandBuffer->SetResourceBarrier({
-				.buffers = {drawcommand.indirectBuffer}
-			});
+				mainCommandBuffer->SetResourceBarrier({
+					.buffers = {drawcommand.indirectBuffer}
+					});
 
-			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer,1);
-			CullingUBO cubo{
-				.viewProj = viewproj,
-				.indirectBufferOffset = 0,
-			};
-			for (auto& command : drawcommand.commands) {
-				mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
-				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
+				mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+				mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
+				CullingUBO cubo{
+					.viewProj = viewproj,
+					.indirectBufferOffset = 0,
+				};
+				for (auto& command : drawcommand.commands) {
+					mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
+					mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
 
-				if (auto mesh = command.mesh.lock()) {
-					uint32_t lodsForThisMesh = mesh->GetNumLods();
+					if (auto mesh = command.mesh.lock()) {
+						uint32_t lodsForThisMesh = mesh->GetNumLods();
 
-					cubo.numObjects = command.entities.DenseSize();
-					mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-					mainCommandBuffer->SetComputeBytes(cubo, 0);
-					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
-					cubo.indirectBufferOffset += lodsForThisMesh;
-					cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
+						cubo.numObjects = command.entities.DenseSize();
+						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+						mainCommandBuffer->SetComputeBytes(cubo, 0);
+						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
+						cubo.indirectBufferOffset += lodsForThisMesh;
+						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
+					}
 				}
+				mainCommandBuffer->EndCompute();
+				mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
 			}
-			mainCommandBuffer->EndCompute();
-			mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
-		}
+		};
+		auto renderTheRenderData = [this,&viewproj,&worldTransformBuffer](auto& renderData) {
+			// do static meshes
+			mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+			mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+			for (auto& [materialInstance, drawcommand] : renderData) {
+				// bind the pipeline
+				mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
+
+				// set push constant data
+				auto pushConstantData = materialInstance->GetPushConstantData();
+
+				auto pushConstantTotalSize = sizeof(viewproj) + pushConstantData.size();
+
+				stackarray(totalPushConstantBytes, std::byte, pushConstantTotalSize);
+				std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
+				if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
+					std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
+				}
+
+				mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+				mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+
+				// bind textures and buffers
+				auto& bufferBindings = materialInstance->GetBufferBindings();
+				auto& textureBindings = materialInstance->GetTextureBindings();
+				for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
+					auto& buffer = bufferBindings[i];
+					auto& texture = textureBindings[i];
+					if (buffer) {
+						mainCommandBuffer->BindBuffer(buffer, i);
+					}
+					if (texture) {
+						mainCommandBuffer->SetCombinedTextureSampler(textureSampler, texture->GetRHITexturePointer().get(), i);
+					}
+				}
+
+				// bind the culling buffer and the transform buffer
+				mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
+				mainCommandBuffer->BindBuffer(worldTransformBuffer, 2);
+
+				// do the indirect command
+				mainCommandBuffer->ExecuteIndirectIndexed({
+					.indirectBuffer = drawcommand.indirectBuffer,
+					.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))
+					});
+			}
+		};
+
+		// do culling operations
+		mainCommandBuffer->BeginComputeDebugMarker("Cull Meshes");
+		cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
+		cullTheRenderData(worldOwning->renderData->skinnedMeshRenderData);
 		mainCommandBuffer->EndComputeDebugMarker();
 
-		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-		// do static meshes
+		// do rendering operations
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
-		mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
-		mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->staticMeshRenderData) {
-			// bind the pipeline
-			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
-
-			// set push constant data
-			auto pushConstantData = materialInstance->GetPushConstantData();
-
-			auto pushConstantTotalSize = sizeof(viewproj) + pushConstantData.size();
-
-			stackarray(totalPushConstantBytes, std::byte, pushConstantTotalSize);
-			std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
-			if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
-				std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
-			}
-
-			mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-			mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-
-			// bind textures and buffers
-			auto& bufferBindings = materialInstance->GetBufferBindings();
-			auto& textureBindings = materialInstance->GetTextureBindings();
-			for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
-				auto& buffer = bufferBindings[i];
-				auto& texture = textureBindings[i];
-				if (buffer) {
-					mainCommandBuffer->BindBuffer(buffer, i);
-				}
-				if (texture) {
-					mainCommandBuffer->SetCombinedTextureSampler(textureSampler, texture->GetRHITexturePointer().get(), i);
-				}
-			}
-			
-			// bind the culling buffer and the transform buffer
-			mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
-			mainCommandBuffer->BindBuffer(worldOwning->renderData->worldTransforms.buffer, 2);
-
-			// do the indirect command
-			mainCommandBuffer->ExecuteIndirectIndexed({
-				.indirectBuffer = drawcommand.indirectBuffer,
-				.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))
-			});
-		}
+		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
+		renderTheRenderData(worldOwning->renderData->staticMeshRenderData);
 		mainCommandBuffer->EndRenderDebugMarker();
-
-		// do skinned meshes
 		mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-#if 0
-		for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
-			// bind the pipeline
-			mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
-			auto pushConstantData = materialInstance->GetPushConstantData();
-
-			auto pushConstantTotalSize = sizeof(viewproj) + pushConstantData.size();
-
-			stackarray(totalPushConstantBytes, std::byte, pushConstantTotalSize);
-			std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
-			if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
-				std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
-			}
-
-			mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-            mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-
-			// bind textures and buffers
-			auto& bufferBindings = materialInstance->GetBufferBindings();
-			auto& textureBindings = materialInstance->GetTextureBindings();
-			for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
-				auto& buffer = bufferBindings[i];
-				auto& texture = textureBindings[i];
-				if (buffer) {
-					mainCommandBuffer->BindBuffer(buffer, i);
-				}
-				if (texture) {
-					mainCommandBuffer->SetCombinedTextureSampler(textureSampler, texture->GetRHITexturePointer().get(), i);
-				}
-			}
-
-			for (auto& command : drawcommand.commands) {
-				// submit the draws for this mesh
-				if (auto mesh = command.mesh.lock()) {
-					mainCommandBuffer->SetVertexBuffer(mesh->vertexBuffer);
-					auto& perInstanceDataBuffer = command.transforms.GetDense().get_underlying().buffer;
-					mainCommandBuffer->SetVertexBuffer(perInstanceDataBuffer, {
-						.bindingPosition = 1
-						});
-					mainCommandBuffer->SetIndexBuffer(mesh->indexBuffer);
-					mainCommandBuffer->DrawIndexed(mesh->totalIndices, {
-						.nInstances = command.transforms.DenseSize()
-						});
-				}
-			}
-		}
-#endif
+		renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData);
+		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->EndRendering();
+
 		mainCommandBuffer->EndRenderDebugMarker();
-		mainCommandBuffer->EndRenderDebugMarker();
+
 
 		mainCommandBuffer->TransitionResources({
 			{

@@ -294,14 +294,15 @@ void World::setupRenderTasks(){
                 assert(renderData->skinnedMeshRenderData.contains(sm.GetMaterial()));
                 auto meshToUpdate = sm.GetMesh();
                 auto skeletonToUpdate = sm.GetSkeleton();
-                renderData->skinnedMeshRenderData.if_contains(sm.GetMaterial(), [owner, &meshToUpdate, &trns, &skeletonToUpdate](MDIICommandSkinned& row) {
+                renderData->skinnedMeshRenderData.if_contains(sm.GetMaterial(), [owner, &meshToUpdate, &trns, &skeletonToUpdate, this](MDIICommandSkinned& row) {
                     auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
                         return value.mesh.lock() == meshToUpdate && value.skeleton.lock() == skeletonToUpdate;
                     });
                     assert(it != row.commands.end());
                     auto& vec = *it;
                     // write new matrix
-                    vec.transforms.GetForSparseIndex(owner.GetIdInWorld()) = trns.CalculateWorldMatrix();
+                    auto ownerIDInWorld = owner.GetIdInWorld();
+                    renderData->worldTransforms[ownerIDInWorld] = trns.CalculateWorldMatrix();
 				});
                 trns.ClearTickDirty();
             }
@@ -466,7 +467,7 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(Rend
                 auto cmpMesh = command.mesh.lock();
                 auto cmpSkeleton = command.skeleton.lock();
                 if (cmpMesh == mesh && cmpSkeleton == skeleton) {
-                    command.transforms.EraseAtSparseIndex(localId);
+                    command.entities.EraseAtSparseIndex(localId);
                 }
             }
         });
@@ -482,12 +483,12 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(Rend
         auto cmpSkeleton = command.skeleton.lock();
         if (cmpMesh == mesh && cmpSkeleton == skeleton) {
             found = true;
-            command.transforms.Emplace(localId, transform.CalculateWorldMatrix());
+            command.entities.Emplace(localId, localId);
         }
     }
     // otherwise create a new entry
     if (!found) {
-        set.commands.emplace_back(mesh, skeleton, localId, transform.CalculateWorldMatrix());
+        set.commands.emplace_back(mesh, skeleton, localId, localId);
     }
 }
 
@@ -516,8 +517,8 @@ void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entit
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return other.mesh.lock() == mesh.GetMesh() && other.skeleton.lock() == mesh.GetSkeleton();
         });
-        if (it != data.commands.end() && (*it).transforms.HasForSparseIndex(local_id)) {
-            (*it).transforms.EraseAtSparseIndex(local_id);
+        if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
+            (*it).entities.EraseAtSparseIndex(local_id);
         }
     });
 }
