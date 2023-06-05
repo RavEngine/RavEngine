@@ -3,6 +3,7 @@ layout(push_constant) uniform UniformBufferObject{
 	mat4 viewProj;
 	uint indirectBufferOffset;
 	uint numObjects;
+	uint cullingBufferOffset;
 } ubo;
 
 layout(std430, binding = 0) readonly buffer idBuffer
@@ -54,7 +55,7 @@ void main() {
 	// if both checks are true, atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
 	if (isOnCamera) {
 		uint idx = atomicAdd(indirectBuffer[ubo.indirectBufferOffset + lodID].instanceCount,1);
-		uint idxLODOffset = ubo.numObjects * lodID;
+		uint idxLODOffset = ubo.numObjects * lodID + ubo.cullingBufferOffset;
 		entityIDsToRender[idx + idxLODOffset] = entityID;
 	}
 

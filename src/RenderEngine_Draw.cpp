@@ -221,25 +221,28 @@ namespace RavEngine {
 			reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
 
 			// initial populate of drawcall buffer
+			// we need one command per mesh per LOD
 			{
-				uint32_t i = 0;
-				for (const auto& command : drawcommand.commands) {
+				uint32_t meshID = 0;
+				uint32_t baseInstance = 0;
+				for (const auto& command : drawcommand.commands) {			// for each mesh
+					const auto nEntitiesInThisCommand = command.entities.DenseSize();
 					RGL::IndirectIndexedCommand initData;
 					if (auto mesh = command.mesh.lock()) {
-
-						 initData = {
-							.indexCount = uint32_t(mesh->totalIndices),
-							.instanceCount = 0,
-							.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
-							.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
-							.baseInstance = 0,
-						};
+						for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+							initData = {
+								.indexCount = uint32_t(mesh->totalIndices),
+								.instanceCount = 0,
+								.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+								.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+								.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
+							};
+							baseInstance += nEntitiesInThisCommand;
+							drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
+						}
+						 
 					}
-					else {
-						initData = { 0,0,0,0,0 };
-					}
-					drawcommand.indirectStagingBuffer->UpdateBufferData(initData, i * sizeof(RGL::IndirectIndexedCommand));
-					i++;
+					meshID++;
 				}
 			}
 			mainCommandBuffer->CopyBufferToBuffer(
@@ -274,6 +277,7 @@ namespace RavEngine {
 					mainCommandBuffer->SetComputeBytes(cubo, 0);
 					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 					cubo.indirectBufferOffset += lodsForThisMesh;
+					cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
 				}
 			}
 			mainCommandBuffer->EndCompute();

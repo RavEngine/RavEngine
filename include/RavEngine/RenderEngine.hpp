@@ -108,6 +108,7 @@ namespace RavEngine {
 			glm::mat4 viewProj;
 			uint32_t indirectBufferOffset = 0;
 			uint32_t numObjects = 0;
+			uint32_t cullingBufferOffset = 0;
 		};
 
         virtual ~RenderEngine();
