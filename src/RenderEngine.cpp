@@ -1120,10 +1120,25 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.pipelineLayout = defaultCullingLayout
 	});
 
-	auto cullingInitLayout = device->CreatePipelineLayout({
+	auto skinningDrawCallPrepareLayout = device->CreatePipelineLayout({
 		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+				.writable = true
+			}
 		},
-		.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}
+		.constants = {{ sizeof(SkinningPrepareUBO), 0, RGL::StageVisibility::Compute}}
+	});
+
+	auto drawcallPrepareCSH = LoadShaderByFilename("skinned_mesh_drawcall.csh",device);
+	skinningDrawCallPreparePipeline = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = drawcallPrepareCSH,
+		},
+		.pipelineLayout = skinningDrawCallPrepareLayout
 	});
 }
 

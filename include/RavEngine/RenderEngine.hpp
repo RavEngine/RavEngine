@@ -64,7 +64,7 @@ namespace RavEngine {
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
-		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline;
+		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer, skinningOutputBuffer, skinningPoseBuffer,
 			sharedVertexBuffer, sharedIndexBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
@@ -109,6 +109,15 @@ namespace RavEngine {
 			uint32_t indirectBufferOffset = 0;
 			uint32_t numObjects = 0;
 			uint32_t cullingBufferOffset = 0;
+		};
+
+		struct SkinningPrepareUBO {
+			uint32_t indexBufferOffset;
+			uint32_t vertexBufferOffset;
+			uint32_t nIndicesInThisMesh;
+			uint32_t nVerticesInThisMesh;
+			uint32_t nTotalObjects;
+			uint32_t drawCallBufferOffset;
 		};
 
         virtual ~RenderEngine();
