@@ -77,95 +77,7 @@ namespace RavEngine {
 			.viewRect = lightUBO.viewRect
 		};
 		
-		// dispatch skinning shaders
-		mainCommandBuffer->BeginComputeDebugMarker("Skinning Compute Shader");
-		for (const auto& [_,drawdata] : worldOwning->renderData->skinnedMeshRenderData) {
-			uint32_t computeOffsetIndex = 0;
-			uint32_t bufferBegin = 0;
-			float values[4];
-			for (const auto& command : drawdata.commands) {
-				// seed compute shader for skinning
-				// input buffer A: skeleton bind pose
-				auto skeleton = command.skeleton.lock();
-				// input buffer B: vertex weights by bone ID
-				auto mesh = command.mesh.lock();
-				// input buffer C: unposed vertices in mesh
-
-				// output buffer A: posed output transformations for vertices
-				auto numverts = mesh->GetNumVerts();
-				const auto numobjects = command.entities.DenseSize();
-
-				auto emptySpace = numverts * numobjects * sizeof(glm::mat4);
-				assert(emptySpace < std::numeric_limits<uint32_t>::max());
-
-
-				computeOffsetIndex = bufferBegin;
-
-				//pose SOA values
-				//convert to float from double
-				size_t totalsize = 0;
-				for (const auto& ownerid : command.entities.reverse_map) {
-					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
-					totalsize += animator.GetSkinningMats().size();
-				}
-				typedef Array<float, 16> arrtype;
-				stackarray(pose_float, arrtype, totalsize);
-				size_t index = 0;
-				for (const auto& ownerid : command.entities.reverse_map) {
-					auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
-					auto& array = animator.GetSkinningMats();
-					//in case of double mode, need to convert to float
-					for (int i = 0; i < array.size(); i++) {
-						//populate stack array values
-						auto ptr = glm::value_ptr(array[i]);
-						for (int offset = 0; offset < 16; offset++) {
-							pose_float[index][offset] = static_cast<float>(ptr[offset]);
-						}
-						index++;
-					}
-				}
-				assert(totalsize < std::numeric_limits<uint32_t>::max());	// pose buffer is too big!
-
-				auto totalByteSize = totalsize * sizeof(glm::mat4);
-
-				std::memcpy(static_cast<char*>(skinningPoseBuffer->GetMappedDataPtr()) + bufferBegin, pose_float, totalByteSize);
-
-				// set skinning uniform
-				SkinningUBO ubo{
-					.NumObjects = {
-						numobjects,
-						numverts,
-						skeleton->GetBindposes().size(),
-						bufferBegin
-					},
-					.ComputeOffsets = {
-						computeOffsetIndex,
-						0,
-						0,
-						0
-					}
-				};
-
-				mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
-				mainCommandBuffer->SetComputeBytes(ubo, 0);
-				mainCommandBuffer->BindComputeBuffer(skinningOutputBuffer, 0);
-				mainCommandBuffer->BindComputeBuffer(skinningPoseBuffer, 1);
-				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 2);
-				mainCommandBuffer->DispatchCompute(std::ceil(numobjects / 8.0), std::ceil(numverts / 32.0), 1, 8, 32, 1);
-				mainCommandBuffer->EndCompute();
-
-				bufferBegin += emptySpace;	// for the next iteration
-
-			}
-
-			// was executed between every call to DispatchCompute on the old renderer:
-			/*
-			values[3] = static_cast<float>(computeOffsetIndex);
-			numRowsUniform.SetValues(&values, 1);
-			bgfx::setBuffer(11, skinningComputeBuffer.GetHandle(), bgfx::Access::Read);
-			*/
-		}
-		mainCommandBuffer->EndComputeDebugMarker();
+		// dispatch skinning shaders		
 		mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
 
 		mainCommandBuffer->TransitionResources({
@@ -337,8 +249,88 @@ namespace RavEngine {
 		// do culling operations
 		mainCommandBuffer->BeginComputeDebugMarker("Cull Meshes");
 		cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
-		cullTheRenderData(worldOwning->renderData->skinnedMeshRenderData);
 		mainCommandBuffer->EndComputeDebugMarker();
+
+
+		// do skeletal operations
+		{
+			// count objects
+			uint32_t totalVertsToSkin = 0;
+			uint32_t totalJointsToSkin = 0;
+			uint32_t totalObjectsToSkin = 0;	// also the number of draw calls in the indirect buffer
+
+			// resize buffers if they need to be resized
+			auto resizeSkeletonBuffer = [this](RGLBufferPtr& buffer, uint32_t stride, uint32_t neededSize, RGL::BufferConfig::Type type, RGL::BufferAccess access) {
+				uint32_t currentCount = 0;
+				if (!buffer || buffer->getBufferSize() / stride < neededSize) {
+					if (buffer) {
+						currentCount = buffer->getBufferSize() / stride;
+						gcBuffers.enqueue(buffer);
+					}
+					auto newSize = closest_power_of(neededSize, 2);
+					buffer = device->CreateBuffer({
+						newSize,
+						type,
+						stride,
+						access,
+						});
+				}
+			};
+
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+				uint32_t totalEntitiesForThisCommand = 0;
+				for (auto& command : drawcommand.commands) {
+					auto subCommandEntityCount = command.entities.DenseSize();
+					totalObjectsToSkin += subCommandEntityCount;
+					totalEntitiesForThisCommand += subCommandEntityCount;
+
+					if (auto mesh = command.mesh.lock()) {
+						totalVertsToSkin += mesh->GetNumVerts();
+					}
+
+					if (auto skeleton = command.skeleton.lock()) {
+						totalJointsToSkin += skeleton->GetSkeleton()->num_joints();
+					}
+				}
+
+				resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private);
+			}
+
+			resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true}, RGL::BufferAccess::Shared);
+			resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private);
+
+			// dispatch compute 
+			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
+			SkinningPrepareUBO ubo;
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+				
+				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
+				for (auto& command : drawcommand.commands) {
+					const auto objectCount = command.entities.DenseSize();
+					const auto mesh = command.mesh.lock();
+					const auto vertexCount = mesh->GetNumVerts();
+
+					ubo.nVerticesInThisMesh = vertexCount;
+					ubo.nTotalObjects = objectCount;
+					ubo.indexBufferOffset = mesh->meshAllocation.indexRange->start;
+					ubo.nIndicesInThisMesh = mesh->GetNumIndices();
+
+					mainCommandBuffer->SetComputeBytes(ubo,0);
+					mainCommandBuffer->DispatchCompute(std::ceil(objectCount / 8.0f), std::ceil(vertexCount / 32.0f), 1, 8, 32, 1);
+
+					ubo.vertexBufferOffset += vertexCount;
+					ubo.drawCallBufferOffset += objectCount;
+				}
+			}
+			mainCommandBuffer->EndCompute();
+#if 0
+			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+			mainCommandBuffer->EndCompute();
+
+			mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
+			mainCommandBuffer->EndCompute();
+#endif
+		}
 
 		// do rendering operations
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
@@ -346,7 +338,7 @@ namespace RavEngine {
 		renderTheRenderData(worldOwning->renderData->staticMeshRenderData);
 		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-		renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData);
+		//renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData);
 		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->EndRendering();
 

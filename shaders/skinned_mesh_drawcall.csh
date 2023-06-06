@@ -20,6 +20,7 @@ layout(std430, binding = 0) buffer indirectDrawBuffer
 	IndirectCommand commands[];
 };
 
+layout(local_size_x = 8, local_size_y = 32, local_size_z = 1) in;	//x = object #, y = vertex #
 void main(){
     const uint objectID = gl_GlobalInvocationID.x;
     // bail

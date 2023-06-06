@@ -75,6 +75,8 @@ protected:
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
 
+	friend class RenderEngine;
+
     MeshRange meshAllocation;
 	
 	/**
