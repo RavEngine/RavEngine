@@ -141,7 +141,7 @@ namespace RavEngine {
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .VertexBuffer = true });
+		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .StorageBuffer = true, .VertexBuffer = true });
 	}
 	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
 	{

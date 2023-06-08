@@ -34,6 +34,6 @@ void main(){
         1,                      // instanceCount (we may end up with many zero-instance draws but that is OK for now)
         ubo.indexBufferOffset + ubo.nIndicesInThisMesh * objectID,  // indexStart,
         ubo.vertexBufferOffset + ubo.nVerticesInThisMesh * objectID,    // baseVertex,
-        baseInstanceOffset                                       // baseInstance
+        ubo.baseInstanceOffset                                       // baseInstance
     );
 }
