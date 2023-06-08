@@ -5,6 +5,7 @@ layout(push_constant) uniform UniformBufferObject{
     uint nVerticesInThisMesh;
     uint nTotalObjects;
     uint drawCallBufferOffset;
+    uint baseInstanceOffset;
 } ubo;
 
 struct IndirectCommand {
@@ -20,7 +21,7 @@ layout(std430, binding = 0) buffer indirectDrawBuffer
 	IndirectCommand commands[];
 };
 
-layout(local_size_x = 8, local_size_y = 32, local_size_z = 1) in;	//x = object #, y = vertex #
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;	//x = object #
 void main(){
     const uint objectID = gl_GlobalInvocationID.x;
     // bail
@@ -30,9 +31,9 @@ void main(){
 
     commands[ubo.drawCallBufferOffset + objectID] = IndirectCommand(
         ubo.nIndicesInThisMesh, // indexCount
-        0,                      // instanceCount (we may end up with many zero-instance draws but that is OK for now)
+        1,                      // instanceCount (we may end up with many zero-instance draws but that is OK for now)
         ubo.indexBufferOffset + ubo.nIndicesInThisMesh * objectID,  // indexStart,
         ubo.vertexBufferOffset + ubo.nVerticesInThisMesh * objectID,    // baseVertex,
-        objectID                                       // baseInstance
+        baseInstanceOffset                                       // baseInstance
     );
 }

@@ -198,9 +198,9 @@ namespace RavEngine {
 				mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
 			}
 		};
-		auto renderTheRenderData = [this,&viewproj,&worldTransformBuffer](auto& renderData) {
+		auto renderTheRenderData = [this,&viewproj,&worldTransformBuffer](auto& renderData, RGLBufferPtr vertexBuffer) {
 			// do static meshes
-			mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+			mainCommandBuffer->SetVertexBuffer(vertexBuffer);
 			mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 			for (auto& [materialInstance, drawcommand] : renderData) {
 				// bind the pipeline
@@ -241,13 +241,13 @@ namespace RavEngine {
 				// do the indirect command
 				mainCommandBuffer->ExecuteIndirectIndexed({
 					.indirectBuffer = drawcommand.indirectBuffer,
-					.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))
-					});
+					.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
+				});
 			}
 		};
 
 		// do culling operations
-		mainCommandBuffer->BeginComputeDebugMarker("Cull Meshes");
+		mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
 		cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
 		mainCommandBuffer->EndComputeDebugMarker();
 
@@ -274,6 +274,9 @@ namespace RavEngine {
 						stride,
 						access,
 						});
+					if (access == RGL::BufferAccess::Shared) {
+						buffer->MapMemory();
+					}
 				}
 			};
 
@@ -294,14 +297,19 @@ namespace RavEngine {
 				}
 
 				resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private);
+				//TODO: skinned meshes do not support LOD groups
+				resizeSkeletonBuffer(drawcommand.cullingBuffer, sizeof(entity_t), totalEntitiesForThisCommand, { .StorageBuffer = true }, RGL::BufferAccess::Shared);
 			}
 
 			resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true}, RGL::BufferAccess::Shared);
 			resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private);
 
-			// dispatch compute 
+			// dispatch compute to build the indirect buffer for finally rendering the skinned meshes
+			// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
+			mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
 			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
 			SkinningPrepareUBO ubo;
+			uint32_t baseInstance = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 				
 				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
@@ -316,29 +324,91 @@ namespace RavEngine {
 					ubo.nIndicesInThisMesh = mesh->GetNumIndices();
 
 					mainCommandBuffer->SetComputeBytes(ubo,0);
-					mainCommandBuffer->DispatchCompute(std::ceil(objectCount / 8.0f), std::ceil(vertexCount / 32.0f), 1, 8, 32, 1);
+					mainCommandBuffer->DispatchCompute(std::ceil(objectCount / 32.0f), 1, 1, 32, 1, 1);
 
 					ubo.vertexBufferOffset += vertexCount;
 					ubo.drawCallBufferOffset += objectCount;
+					ubo.baseInstanceOffset += objectCount;
 				}
 			}
 			mainCommandBuffer->EndCompute();
-#if 0
+			mainCommandBuffer->EndComputeDebugMarker();
+
+			// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
+
+			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+			mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+				CullingUBO cubo{
+					.viewProj = viewproj,
+					.indirectBufferOffset = 0,
+				};
+				for (auto& command : drawcommand.commands) {
+					mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
+					mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
+
+					if (auto mesh = command.mesh.lock()) {
+						uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
+
+						cubo.numObjects = command.entities.DenseSize();
+						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+						mainCommandBuffer->SetComputeBytes(cubo, 0);
+						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
+						cubo.indirectBufferOffset += lodsForThisMesh;
+						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
+					}
+				}
+				
+			}
+			mainCommandBuffer->EndComputeDebugMarker();
 			mainCommandBuffer->EndCompute();
 
+			mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
 			mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
+			mainCommandBuffer->BindComputeBuffer(sharedSkinnedMeshVertexBuffer,0);
+			mainCommandBuffer->BindComputeBuffer(sharedVertexBuffer,1);
+			mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer,2);
+			using mat_t = glm::mat4;
+			std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+				SkinningUBO subo;
+				for (auto& command : drawcommand.commands) {
+					auto skeleton = command.skeleton.lock();
+					auto mesh = command.mesh.lock();
+					auto& entities = command.entities;
+					mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 3);
+
+					subo.numObjects = command.entities.DenseSize();
+					subo.numVertices = mesh->GetNumVerts();
+					subo.numBones = skeleton->GetSkeleton()->num_joints();
+					subo.vertexReadOffset = mesh->meshAllocation.vertRange->start;
+
+					// write joint transform matrices into buffer and update uniform offset
+					for (const auto& ownerid : command.entities.reverse_map) {
+						auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
+						const auto& skinningMats = animator.GetSkinningMats();
+						std::copy(skinningMats.begin(), skinningMats.end(), matbufMem.begin() + subo.boneReadOffset);
+					}
+					subo.boneReadOffset += subo.numBones * subo.numObjects;
+
+					mainCommandBuffer->SetComputeBytes(subo, 0);
+					mainCommandBuffer->DispatchCompute(std::ceil(subo.numObjects / 8.0f), std::ceil(subo.numVertices / 32.0f), 1, 8, 32, 1);
+					subo.vertexWriteOffset += subo.numVertices * subo.numObjects;	// one copy of the vertex data per object
+				}
+			}
 			mainCommandBuffer->EndCompute();
-#endif
+			mainCommandBuffer->EndComputeDebugMarker();
+
 		}
 
 		// do rendering operations
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
 		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-		renderTheRenderData(worldOwning->renderData->staticMeshRenderData);
+		renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer);
 		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-		//renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData);
+		renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData,sharedSkinnedMeshVertexBuffer);
 		mainCommandBuffer->EndRenderDebugMarker();
 		mainCommandBuffer->EndRendering();
 

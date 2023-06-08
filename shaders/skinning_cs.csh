@@ -1,10 +1,22 @@
 
-layout(std430, binding = 0) buffer matrixOutputMatrixBuffer
-{
-    mat4 matrixOutput[];
+struct VertexNormalUV {
+	vec3 pos;
+	vec2 uv;
+	vec3 normal;
 };
 
-layout(std430, binding = 1) readonly buffer poseMatrixBuffer
+layout(std430, binding = 0) buffer matrixOutputMatrixBuffer
+{
+	VertexNormalUV vertexOutput[];
+};
+
+layout(std430, binding = 1) readonly buffer vertexInputBuffer
+{
+	VertexNormalUV inputVerts[];
+};
+
+
+layout(std430, binding = 2) readonly buffer poseMatrixBuffer
 {
     mat4 pose[];
 };
@@ -14,15 +26,19 @@ struct weight{
 	float influence;
 };
 
-layout(std430, binding = 2) readonly buffer weightsBuffer
+layout(std430, binding = 3) readonly buffer weightsBuffer
 {
     weight weights[];				// index, influence
 };
 
 
 layout(push_constant) uniform UniformBufferObject{
-	ivec4 NumObjects;			// x = num objects, y = num vertices, z = num bones, w = offset into transient buffer
-	ivec4 ComputeOffsets;		// x = matrixOutput offset, y = unused, z = unused, w = unused
+	uint numObjects;
+	uint numVertices;
+	uint numBones;
+	uint boneReadOffset;
+	uint vertexWriteOffset;	
+	uint vertexReadOffset;
 } ubo;
 
 #define NUM_INFLUENCES 4
@@ -31,17 +47,17 @@ layout (local_size_x = 8, local_size_y = 32, local_size_z = 1) in;	//x = object 
 void main()
 {
 	//prevent out-of-bounds
-	if (gl_GlobalInvocationID.y < ubo.NumObjects.y && gl_GlobalInvocationID.x < ubo.NumObjects.x){
+	if (gl_GlobalInvocationID.y < ubo.numVertices && gl_GlobalInvocationID.x < ubo.numObjects){
 		// for readability
-		const uint NumObjects = ubo.NumObjects.x;
-		const uint numVerts = ubo.NumObjects.y;
-		const uint numBones = ubo.NumObjects.z;
+		const uint NumObjects = ubo.numObjects;
+		const uint numVerts = ubo.numVertices;
+		const uint numBones = ubo.numBones;
 		const uint vertID = gl_GlobalInvocationID.y;
 		const uint objID = gl_GlobalInvocationID.x;
 		
 		const uint weightsid = vertID;		//1x vec4 elements elements per vertex, is always the same per vertex
 		
-		const uint bone_begin = numBones * objID + ubo.NumObjects.w; //offset to the bone for the correct object
+		const uint bone_begin = numBones * objID + ubo.boneReadOffset; //offset to the bone for the correct object
 				
 		//will become the pose matrix
 		mat4 totalmtx = mat4(vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0));
@@ -59,9 +75,15 @@ void main()
 		}
 		
 		//destination to write the matrix
-		const uint offset = (vertID + objID * numVerts) + ubo.ComputeOffsets.x;	//1x mat4 elements per object
+		const uint writeOffset = (vertID + objID * numVerts) + ubo.vertexWriteOffset;	//1x mat4 elements per object
 	
+		const uint readOffset = (vertID) + ubo.vertexReadOffset;	// there is only one copy of the vertex read data because it comes from the unified mesh data buffer
+
+		VertexNormalUV readVertex = inputVerts[readOffset];
+		readVertex.pos = (totalmtx * vec4(readVertex.pos,1)).xyz;
+		readVertex.normal = mat3(totalmtx) * readVertex.normal;
+
 		//write matrix
-		matrixOutput[offset] = totalmtx;
+		vertexOutput[writeOffset] = readVertex;
 	}
 }

@@ -95,8 +95,12 @@ namespace RavEngine {
 		};
 
 		struct SkinningUBO {
-			glm::ivec4 NumObjects;
-			glm::ivec4 ComputeOffsets;
+			uint32_t numObjects = 0;
+			uint32_t numVertices = 0;
+			uint32_t numBones = 0;
+			uint32_t boneReadOffset = 0;
+			uint32_t vertexWriteOffset = 0;
+			uint32_t vertexReadOffset = 0;
 		};
 
 		struct JointInfluence {
@@ -118,6 +122,7 @@ namespace RavEngine {
 			uint32_t nVerticesInThisMesh = 0;
 			uint32_t nTotalObjects = 0;
 			uint32_t drawCallBufferOffset = 0;
+			uint32_t baseInstanceOffset = 0;
 		};
 
         virtual ~RenderEngine();

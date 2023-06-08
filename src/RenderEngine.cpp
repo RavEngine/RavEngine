@@ -1054,6 +1054,12 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
 					.writable = false
 				},
+				{
+					.binding = 3,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.writable = false
+				},
 			},
 			.constants = {{ sizeof(SkinningUBO), 0, RGL::StageVisibility::Compute}}
 	});
