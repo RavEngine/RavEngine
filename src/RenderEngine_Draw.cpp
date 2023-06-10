@@ -390,10 +390,10 @@ namespace RavEngine {
 						const auto& skinningMats = animator.GetSkinningMats();
 						std::copy(skinningMats.begin(), skinningMats.end(), matbufMem.begin() + subo.boneReadOffset);
 					}
-					subo.boneReadOffset += subo.numBones * subo.numObjects;
 
 					mainCommandBuffer->SetComputeBytes(subo, 0);
 					mainCommandBuffer->DispatchCompute(std::ceil(subo.numObjects / 8.0f), std::ceil(subo.numVertices / 32.0f), 1, 8, 32, 1);
+					subo.boneReadOffset += subo.numBones * subo.numObjects;
 					subo.vertexWriteOffset += subo.numVertices * subo.numObjects;	// one copy of the vertex data per object
 				}
 			}
