@@ -371,8 +371,8 @@ namespace RavEngine {
 			mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer,2);
 			using mat_t = glm::mat4;
 			std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
+			SkinningUBO subo;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
-				SkinningUBO subo;
 				for (auto& command : drawcommand.commands) {
 					auto skeleton = command.skeleton.lock();
 					auto mesh = command.mesh.lock();

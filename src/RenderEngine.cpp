@@ -1070,20 +1070,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		},
 		.pipelineLayout = skinnedPipelineLayout
 	});
-	skinningOutputBuffer = device->CreateBuffer({
-		uint32_t(1e7),
-		{ .StorageBuffer = 1},
-		sizeof(glm::mat4),
-		RGL::BufferAccess::Private,
-		{.Writable = true}
-	});
-	skinningPoseBuffer = device->CreateBuffer({
-		uint32_t(1e7),
-		{.StorageBuffer = 1},
-		sizeof(glm::mat4),
-		RGL::BufferAccess::Shared,
-	});
-	skinningPoseBuffer->MapMemory();
 
 	ReallocateVertexAllocationToSize(initialVerts);
 	ReallocateIndexAllocationToSize(initialIndices);

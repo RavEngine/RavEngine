@@ -7,9 +7,6 @@ typedef uint32_t color_t;
 struct Vertex
 {
 	float position[3];
-	inline Vertex operator-(const Vertex& other) {
-		return Vertex{ position[0] - other.position[0],  position[1] - other.position[1], position[2] - other.position[2] };
-	}
 };
 
 struct UV
@@ -17,17 +14,27 @@ struct UV
     float uv[2];
 };
 
-struct VertexNormalUV : public Vertex, public UV{
+struct VertexNormalUV{
+	float position[3];
 	float normal[3];
+	float uv[2];
 };
 
-struct VertexUV : public Vertex, public UV{};
+struct VertexUV{
+	float position[3];
+	float uv[2];
+};
 
-struct VertexColor : public Vertex{
+struct VertexColor{
+	float position[3];
 	color_t color;
 };
 
-struct VertexColorUV : public VertexColor, public UV{};
+struct VertexColorUV {
+	float position[3];
+	float uv[2];
+	color_t color;
+};
 
 struct Transformation{
 	vector3 position = vector3(0,0,0);

@@ -1,16 +1,16 @@
 
 struct VertexNormalUV {
-	vec3 pos;
-	vec2 uv;
-	vec3 normal;
+	float pos_1, pos_2, pos_3;
+	float normal_1, normal_2, normal_3;
+	float uv_1, uv_2;
 };
 
-layout(std430, binding = 0) buffer matrixOutputMatrixBuffer
+layout(std140, binding = 0) buffer matrixOutputMatrixBuffer
 {
 	VertexNormalUV vertexOutput[];
 };
 
-layout(std430, binding = 1) readonly buffer vertexInputBuffer
+layout(std140, binding = 1) readonly buffer vertexInputBuffer
 {
 	VertexNormalUV inputVerts[];
 };
@@ -79,9 +79,18 @@ void main()
 	
 		const uint readOffset = (vertID) + ubo.vertexReadOffset;	// there is only one copy of the vertex read data because it comes from the unified mesh data buffer
 
+		// read and apply
 		VertexNormalUV readVertex = inputVerts[readOffset];
-		readVertex.pos = (totalmtx * vec4(readVertex.pos,1)).xyz;
-		readVertex.normal = mat3(totalmtx) * readVertex.normal;
+		vec3 pos = vec3(readVertex.pos_1, readVertex.pos_2, readVertex.pos_3);
+		pos = (totalmtx * vec4(pos,1)).xyz;
+		vec3 normal = vec3(readVertex.normal_1, readVertex.normal_2, readVertex.normal_3);
+		normal = mat3(totalmtx) * normal;
+		readVertex.pos_1 = pos.x;
+		readVertex.pos_2 = pos.y;
+		readVertex.pos_3 = pos.z;
+		readVertex.normal_1 = normal.x;
+		readVertex.normal_2 = normal.y;
+		readVertex.normal_3 = normal.z;
 
 		//write matrix
 		vertexOutput[writeOffset] = readVertex;

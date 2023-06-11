@@ -31,7 +31,7 @@ void main(){
 
     commands[ubo.drawCallBufferOffset + objectID] = IndirectCommand(
         ubo.nIndicesInThisMesh, // indexCount
-        1,                      // instanceCount (we may end up with many zero-instance draws but that is OK for now)
+        0,                      // instanceCount (we may end up with many zero-instance draws but that is OK for now)
         ubo.indexBufferOffset + ubo.nIndicesInThisMesh * objectID,  // indexStart,
         ubo.vertexBufferOffset + ubo.nVerticesInThisMesh * objectID,    // baseVertex,
         ubo.baseInstanceOffset + objectID                                       // baseInstance
