@@ -59,10 +59,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with: 
-            python-version: '3.10' 
       - name: Configure
         run: mkdir -p build && cd build; cmake -G "Xcode" ..
       - name: Build
@@ -80,10 +76,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with: 
-            python-version: '3.10' 
       - name: Configure
         run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=${{ matrix.platform }} -DENABLE_ARC=OFF -DDEPLOYMENT_TARGET=14.0 .. 
       - name: Build
@@ -146,10 +138,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with: 
-            python-version: '3.10' 
       - name: Build and Test
         run: cd test && ./test-mac.sh
       - name: Output test logs
