@@ -21,14 +21,20 @@ layout(std430, binding = 2) readonly buffer poseMatrixBuffer
     mat4 pose[];
 };
 
+#define NUM_INFLUENCES 4
+
 struct weight{
 	uint joint_index;
 	float influence;
 };
 
+struct VertexJointBinding {
+	weight weights[NUM_INFLUENCES];
+};
+
 layout(std430, binding = 3) readonly buffer weightsBuffer
 {
-    weight weights[];				// index, influence
+	VertexJointBinding weights[];				// index, influence
 };
 
 
@@ -41,7 +47,6 @@ layout(push_constant) uniform UniformBufferObject{
 	uint vertexReadOffset;
 } ubo;
 
-#define NUM_INFLUENCES 4
 
 layout (local_size_x = 8, local_size_y = 32, local_size_z = 1) in;	//x = object #, y = vertex #
 void main()
@@ -62,9 +67,9 @@ void main()
 		//will become the pose matrix
 		mat4 totalmtx = mat4(vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0),vec4(0,0,0,0));
 		
+		VertexJointBinding weightsForThisVert = weights[vertID];
 		for(uint i = 0; i < NUM_INFLUENCES; i++){
-			const uint idx = weightsid + i;
-			const weight weightdataBuffer = weights[idx];
+			const weight weightdataBuffer = weightsForThisVert.weights[i];
 
 			uint joint_idx = weightdataBuffer.joint_index;
 			float weight = weightdataBuffer.influence;
