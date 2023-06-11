@@ -403,6 +403,11 @@ namespace RavEngine {
 		}
 
 		// do rendering operations
+		mainCommandBuffer->SetResourceBarrier({
+			.buffers = {
+				sharedSkinnedMeshVertexBuffer,
+			}
+		});
 		mainCommandBuffer->BeginRendering(deferredRenderPass);
 		mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 		renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer);
