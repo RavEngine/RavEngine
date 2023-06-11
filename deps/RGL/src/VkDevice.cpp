@@ -157,8 +157,14 @@ namespace RGL {
         VkPhysicalDeviceFeatures deviceFeatures{
             .samplerAnisotropy = VK_TRUE,   // need to explicity request it
         };
+
+        VkPhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayout{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES,
+            .pNext = nullptr
+        };
         VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Feature{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+            .pNext = &scalarBlockLayout
         };
         VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingfeature{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
@@ -181,6 +187,9 @@ namespace RGL {
         }
         if (synchronization2Feature.synchronization2 == VK_FALSE) {
             FatalError("Cannot init - synchronization2 is not supported");
+        }
+        if (scalarBlockLayout.scalarBlockLayout == VK_FALSE) {
+            FatalError("Cannot init - ScalarBlockLayout is not supported");
         }
 
         std::vector<const char*> runtimeExtensions{std::begin(deviceExtensions),std::end(deviceExtensions)};

@@ -1,16 +1,18 @@
+#version 460
+#extension GL_EXT_scalar_block_layout : enable
 
 struct VertexNormalUV {
-	float pos_1, pos_2, pos_3;
-	float normal_1, normal_2, normal_3;
-	float uv_1, uv_2;
+	vec3 pos;
+	vec3 normal;
+	vec2 uv;
 };
 
-layout(std140, binding = 0) buffer matrixOutputMatrixBuffer
+layout(scalar, binding = 0) buffer matrixOutputMatrixBuffer
 {
 	VertexNormalUV vertexOutput[];
 };
 
-layout(std140, binding = 1) readonly buffer vertexInputBuffer
+layout(scalar, binding = 1) readonly buffer vertexInputBuffer
 {
 	VertexNormalUV inputVerts[];
 };
@@ -86,16 +88,8 @@ void main()
 
 		// read and apply
 		VertexNormalUV readVertex = inputVerts[readOffset];
-		vec3 pos = vec3(readVertex.pos_1, readVertex.pos_2, readVertex.pos_3);
-		pos = (totalmtx * vec4(pos,1)).xyz;
-		vec3 normal = vec3(readVertex.normal_1, readVertex.normal_2, readVertex.normal_3);
-		normal = mat3(totalmtx) * normal;
-		readVertex.pos_1 = pos.x;
-		readVertex.pos_2 = pos.y;
-		readVertex.pos_3 = pos.z;
-		readVertex.normal_1 = normal.x;
-		readVertex.normal_2 = normal.y;
-		readVertex.normal_3 = normal.z;
+		readVertex.pos = (totalmtx * vec4(readVertex.pos,1)).xyz;
+		readVertex.normal = mat3(totalmtx) * readVertex.normal;
 
 		//write matrix
 		vertexOutput[writeOffset] = readVertex;
