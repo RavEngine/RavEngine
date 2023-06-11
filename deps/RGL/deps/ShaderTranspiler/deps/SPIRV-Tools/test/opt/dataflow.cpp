@@ -17,7 +17,6 @@
 #include <map>
 #include <set>
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "opt/function_utils.h"
 #include "source/opt/build_module.h"
@@ -66,7 +65,7 @@ struct BackwardReachability : public ForwardDataFlowAnalysis {
 
   VisitResult Visit(Instruction* inst) override {
     // Conditional branches can be enqueued from labels, so skip them.
-    if (inst->opcode() != SpvOpLabel)
+    if (inst->opcode() != spv::Op::OpLabel)
       return DataFlowAnalysis::VisitResult::kResultFixed;
     uint32_t id = inst->result_id();
     VisitResult ret = DataFlowAnalysis::VisitResult::kResultFixed;

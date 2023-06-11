@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "OpenCLDebugInfo100.h"
@@ -229,12 +228,12 @@ TEST_F(IRContextTest, KillMemberName) {
 
   // Make sure all of the name are removed.
   for (auto& inst : context->debugs2()) {
-    EXPECT_EQ(inst.opcode(), SpvOpNop);
+    EXPECT_EQ(inst.opcode(), spv::Op::OpNop);
   }
 
   // Make sure all of the decorations are removed.
   for (auto& inst : context->annotations()) {
-    EXPECT_EQ(inst.opcode(), SpvOpNop);
+    EXPECT_EQ(inst.opcode(), spv::Op::OpNop);
   }
 }
 
@@ -276,17 +275,17 @@ TEST_F(IRContextTest, KillGroupDecoration) {
 
   // Check the OpDecorate instruction
   auto inst = context->annotation_begin();
-  EXPECT_EQ(inst->opcode(), SpvOpDecorate);
+  EXPECT_EQ(inst->opcode(), spv::Op::OpDecorate);
   EXPECT_EQ(inst->GetSingleWordInOperand(0), 3);
 
   // Check the OpDecorationGroup Instruction
   ++inst;
-  EXPECT_EQ(inst->opcode(), SpvOpDecorationGroup);
+  EXPECT_EQ(inst->opcode(), spv::Op::OpDecorationGroup);
   EXPECT_EQ(inst->result_id(), 3);
 
   // Check that %5 is no longer part of the group.
   ++inst;
-  EXPECT_EQ(inst->opcode(), SpvOpGroupDecorate);
+  EXPECT_EQ(inst->opcode(), spv::Op::OpGroupDecorate);
   EXPECT_EQ(inst->NumInOperands(), 2);
   EXPECT_EQ(inst->GetSingleWordInOperand(0), 3);
   EXPECT_EQ(inst->GetSingleWordInOperand(1), 4);
@@ -340,12 +339,12 @@ TEST_F(IRContextTest, KillGroupDecorationWitNoDecorations) {
 
   // Check the OpDecorationGroup Instruction
   auto inst = context->annotation_begin();
-  EXPECT_EQ(inst->opcode(), SpvOpDecorationGroup);
+  EXPECT_EQ(inst->opcode(), spv::Op::OpDecorationGroup);
   EXPECT_EQ(inst->result_id(), 3);
 
   // Check that %5 is no longer part of the group.
   ++inst;
-  EXPECT_EQ(inst->opcode(), SpvOpGroupDecorate);
+  EXPECT_EQ(inst->opcode(), spv::Op::OpGroupDecorate);
   EXPECT_EQ(inst->NumInOperands(), 2);
   EXPECT_EQ(inst->GetSingleWordInOperand(0), 3);
   EXPECT_EQ(inst->GetSingleWordInOperand(1), 4);
@@ -1147,41 +1146,92 @@ OpFunctionEnd)";
   dbg_decl = ctx->get_def_use_mgr()->GetDef(25);
   EXPECT_EQ(dbg_decl->GetSingleWordOperand(kDebugDeclareOperandVariableIndex),
             20);
-
-  // No DebugValue should be added because result id '26' is not used for
-  // DebugDeclare.
-  ctx->get_debug_info_mgr()->AddDebugValueIfVarDeclIsVisible(dbg_decl, 26, 22,
-                                                             dbg_decl, nullptr);
-  EXPECT_EQ(dbg_decl->NextNode()->opcode(), SpvOpReturn);
-
-  // DebugValue should be added because result id '20' is used for DebugDeclare.
-  ctx->get_debug_info_mgr()->AddDebugValueIfVarDeclIsVisible(dbg_decl, 20, 22,
-                                                             dbg_decl, nullptr);
-  EXPECT_EQ(dbg_decl->NextNode()->GetOpenCL100DebugOpcode(),
-            OpenCLDebugInfo100DebugValue);
-
-  // Replace all uses of result it '20' with '26'
-  EXPECT_EQ(dbg_decl->GetSingleWordOperand(kDebugDeclareOperandVariableIndex),
-            20);
-  EXPECT_TRUE(ctx->ReplaceAllUsesWith(20, 26));
-  EXPECT_EQ(dbg_decl->GetSingleWordOperand(kDebugDeclareOperandVariableIndex),
-            26);
-
-  // No DebugValue should be added because result id '20' is not used for
-  // DebugDeclare.
-  ctx->get_debug_info_mgr()->AddDebugValueIfVarDeclIsVisible(dbg_decl, 20, 7,
-                                                             dbg_decl, nullptr);
-  Instruction* dbg_value = dbg_decl->NextNode();
-  EXPECT_EQ(dbg_value->GetOpenCL100DebugOpcode(), OpenCLDebugInfo100DebugValue);
-  EXPECT_EQ(dbg_value->GetSingleWordOperand(kDebugValueOperandValueIndex), 22);
-
-  // DebugValue should be added because result id '26' is used for DebugDeclare.
-  ctx->get_debug_info_mgr()->AddDebugValueIfVarDeclIsVisible(dbg_decl, 26, 7,
-                                                             dbg_decl, nullptr);
-  dbg_value = dbg_decl->NextNode();
-  EXPECT_EQ(dbg_value->GetOpenCL100DebugOpcode(), OpenCLDebugInfo100DebugValue);
-  EXPECT_EQ(dbg_value->GetSingleWordOperand(kDebugValueOperandValueIndex), 7);
 }
+
+struct TargetEnvCompareTestData {
+  spv_target_env later_env, earlier_env;
+};
+
+using TargetEnvCompareTest = ::testing::TestWithParam<TargetEnvCompareTestData>;
+
+TEST_P(TargetEnvCompareTest, Case) {
+  // If new environments are added, then we must update the list of tests.
+  ASSERT_EQ(SPV_ENV_VULKAN_1_3 + 1, SPV_ENV_MAX);
+
+  const auto& tc = GetParam();
+
+  std::unique_ptr<Module> module(new Module());
+  IRContext localContext(tc.later_env, std::move(module),
+                         spvtools::MessageConsumer());
+  EXPECT_TRUE(localContext.IsTargetEnvAtLeast(tc.earlier_env));
+
+  if (tc.earlier_env != tc.later_env) {
+    std::unique_ptr<Module> module(new Module());
+    IRContext localContext(tc.earlier_env, std::move(module),
+                           spvtools::MessageConsumer());
+    EXPECT_FALSE(localContext.IsTargetEnvAtLeast(tc.later_env));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    TestCase, TargetEnvCompareTest,
+    ::testing::Values(
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_0, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_1, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_2, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_3, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_4, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_1, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_2, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_3, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_4, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_2, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_3, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_4, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_3, SPV_ENV_UNIVERSAL_1_3},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_4, SPV_ENV_UNIVERSAL_1_3},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_UNIVERSAL_1_3},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_UNIVERSAL_1_3},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_4, SPV_ENV_UNIVERSAL_1_4},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_UNIVERSAL_1_4},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_UNIVERSAL_1_4},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_UNIVERSAL_1_5},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_UNIVERSAL_1_5},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_UNIVERSAL_1_6},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_0, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_1, SPV_ENV_VULKAN_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_2, SPV_ENV_VULKAN_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_3, SPV_ENV_VULKAN_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_4, SPV_ENV_VULKAN_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_VULKAN_1_0},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_VULKAN_1_0},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_1, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_1, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_1, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_1, SPV_ENV_UNIVERSAL_1_3},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_4, SPV_ENV_VULKAN_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_5, SPV_ENV_VULKAN_1_1},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_VULKAN_1_1},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_2, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_2, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_2, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_2, SPV_ENV_UNIVERSAL_1_3},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_2, SPV_ENV_UNIVERSAL_1_4},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_2, SPV_ENV_UNIVERSAL_1_5},
+        TargetEnvCompareTestData{SPV_ENV_UNIVERSAL_1_6, SPV_ENV_VULKAN_1_2},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_3, SPV_ENV_UNIVERSAL_1_0},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_3, SPV_ENV_UNIVERSAL_1_1},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_3, SPV_ENV_UNIVERSAL_1_2},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_3, SPV_ENV_UNIVERSAL_1_3},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_3, SPV_ENV_UNIVERSAL_1_4},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_3, SPV_ENV_UNIVERSAL_1_5},
+        TargetEnvCompareTestData{SPV_ENV_VULKAN_1_3, SPV_ENV_UNIVERSAL_1_6}));
 
 }  // namespace
 }  // namespace opt

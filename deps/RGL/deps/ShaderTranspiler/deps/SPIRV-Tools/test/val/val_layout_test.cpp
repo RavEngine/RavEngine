@@ -14,9 +14,7 @@
 
 // Validation tests for Logical Layout
 
-#include <algorithm>
 #include <functional>
-#include <sstream>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -56,13 +54,6 @@ struct Range {
  private:
   bool inverse_;
 };
-
-template <typename... T>
-spv_result_t InvalidSet(int order) {
-  for (spv_result_t val : {T(true)(order)...})
-    if (val != SPV_SUCCESS) return val;
-  return SPV_SUCCESS;
-}
 
 // SPIRV source used to test the logical layout
 const std::vector<std::string>& getInstructions() {
@@ -666,6 +657,98 @@ TEST_F(ValidateLayout, ModuleProcessedInvalidInBasicBlock) {
 }
 
 // TODO(umar): Test optional instructions
+
+TEST_F(ValidateLayout, ValidNVBindlessTexturelayout) {
+  std::string str = R"(
+         OpCapability Shader
+         OpCapability BindlessTextureNV
+         OpExtension "SPV_NV_bindless_texture"
+         OpMemoryModel Logical GLSL450
+         OpSamplerImageAddressingModeNV 64
+         OpEntryPoint GLCompute %func "main"
+%voidt = OpTypeVoid
+%uintt = OpTypeInt 32 0
+%funct = OpTypeFunction %voidt
+%func  = OpFunction %voidt None %funct
+%entry = OpLabel
+%udef  = OpUndef %uintt
+         OpReturn
+         OpFunctionEnd
+)";
+
+  CompileSuccessfully(str);
+  ASSERT_EQ(SPV_SUCCESS, ValidateInstructions());
+}
+
+TEST_F(ValidateLayout, InvalidValidNVBindlessTexturelayout) {
+  std::string str = R"(
+         OpCapability Shader
+         OpCapability BindlessTextureNV
+         OpExtension "SPV_NV_bindless_texture"
+         OpMemoryModel Logical GLSL450
+         OpEntryPoint GLCompute %func "main"
+         OpSamplerImageAddressingModeNV 64
+%voidt = OpTypeVoid
+%uintt = OpTypeInt 32 0
+%funct = OpTypeFunction %voidt
+%func  = OpFunction %voidt None %funct
+%entry = OpLabel
+%udef  = OpUndef %uintt
+         OpReturn
+         OpFunctionEnd
+)";
+
+  CompileSuccessfully(str);
+  ASSERT_EQ(SPV_ERROR_INVALID_LAYOUT,
+            ValidateInstructions(SPV_ENV_UNIVERSAL_1_3));
+  EXPECT_THAT(
+      getDiagnosticString(),
+      HasSubstr(
+          "SamplerImageAddressingModeNV is in an invalid layout section"));
+}
+
+TEST_F(ValidateLayout, MissingNVBindlessAddressModeFromLayout) {
+  std::string str = R"(
+         OpCapability Shader
+         OpCapability BindlessTextureNV
+         OpExtension "SPV_NV_bindless_texture"
+         OpMemoryModel Logical GLSL450
+         OpEntryPoint GLCompute %func "main"
+%voidt = OpTypeVoid
+%uintt = OpTypeInt 32 0
+%funct = OpTypeFunction %voidt
+%func  = OpFunction %voidt None %funct
+%entry = OpLabel
+%udef  = OpUndef %uintt
+         OpReturn
+         OpFunctionEnd
+)";
+
+  CompileSuccessfully(str);
+  ASSERT_EQ(SPV_ERROR_INVALID_LAYOUT,
+            ValidateInstructions(SPV_ENV_UNIVERSAL_1_3));
+  EXPECT_THAT(
+      getDiagnosticString(),
+      HasSubstr("Missing required OpSamplerImageAddressingModeNV instruction"));
+}
+
+TEST_F(ValidateLayout, NVBindlessAddressModeFromLayoutSpecifiedTwice) {
+  std::string str = R"(
+        OpCapability Shader
+        OpCapability BindlessTextureNV
+        OpExtension "SPV_NV_bindless_texture"
+        OpMemoryModel Logical GLSL450
+        OpSamplerImageAddressingModeNV 64
+        OpSamplerImageAddressingModeNV 64
+)";
+
+  CompileSuccessfully(str);
+  ASSERT_EQ(SPV_ERROR_INVALID_LAYOUT,
+            ValidateInstructions(SPV_ENV_UNIVERSAL_1_3));
+  EXPECT_THAT(
+      getDiagnosticString(),
+      HasSubstr("OpSamplerImageAddressingModeNV should only be provided once"));
+}
 
 }  // namespace
 }  // namespace val

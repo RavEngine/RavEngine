@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "gmock/gmock.h"
 #include "source/opt/build_module.h"
 #include "source/opt/ir_context.h"
 #include "source/opt/pass_manager.h"
@@ -91,7 +89,7 @@ class RemoveDuplicatesTest : public ::testing::Test {
   std::string GetErrorMessage() const { return error_message_; }
 
   std::string ToText(const std::vector<Instruction*>& inst) {
-    std::vector<uint32_t> binary = {SpvMagicNumber, 0x10200, 0u, 2u, 0u};
+    std::vector<uint32_t> binary = {spv::MagicNumber, 0x10200, 0u, 2u, 0u};
     for (const Instruction* i : inst)
       i->ToBinaryWithoutAttachedDebugInsts(&binary);
     std::string text;

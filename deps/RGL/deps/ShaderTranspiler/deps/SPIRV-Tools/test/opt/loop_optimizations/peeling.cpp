@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "effcee/effcee.h"
@@ -765,7 +764,7 @@ TEST_F(PeelingTest, PeelingUncountable) {
     EXPECT_EQ(ld.NumLoops(), 1u);
 
     Instruction* loop_count = context->get_def_use_mgr()->GetDef(16);
-    EXPECT_EQ(loop_count->opcode(), SpvOpLoad);
+    EXPECT_EQ(loop_count->opcode(), spv::Op::OpLoad);
 
     LoopPeeling peel(&*ld.begin(), loop_count);
     EXPECT_TRUE(peel.CanPeelLoop());
@@ -817,7 +816,7 @@ CHECK-NEXT: OpLoopMerge
     EXPECT_EQ(ld.NumLoops(), 1u);
 
     Instruction* loop_count = context->get_def_use_mgr()->GetDef(16);
-    EXPECT_EQ(loop_count->opcode(), SpvOpLoad);
+    EXPECT_EQ(loop_count->opcode(), spv::Op::OpLoad);
 
     LoopPeeling peel(&*ld.begin(), loop_count);
     EXPECT_TRUE(peel.CanPeelLoop());
@@ -1090,7 +1089,7 @@ TEST_F(PeelingTest, PeelingLoopWithStore) {
     EXPECT_EQ(ld.NumLoops(), 1u);
 
     Instruction* loop_count = context->get_def_use_mgr()->GetDef(15);
-    EXPECT_EQ(loop_count->opcode(), SpvOpLoad);
+    EXPECT_EQ(loop_count->opcode(), spv::Op::OpLoad);
 
     LoopPeeling peel(&*ld.begin(), loop_count);
     EXPECT_TRUE(peel.CanPeelLoop());
@@ -1142,7 +1141,7 @@ CHECK-NEXT: OpLoopMerge
     EXPECT_EQ(ld.NumLoops(), 1u);
 
     Instruction* loop_count = context->get_def_use_mgr()->GetDef(15);
-    EXPECT_EQ(loop_count->opcode(), SpvOpLoad);
+    EXPECT_EQ(loop_count->opcode(), spv::Op::OpLoad);
 
     LoopPeeling peel(&*ld.begin(), loop_count);
     EXPECT_TRUE(peel.CanPeelLoop());

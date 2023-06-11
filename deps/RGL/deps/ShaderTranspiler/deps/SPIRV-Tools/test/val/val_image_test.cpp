@@ -149,6 +149,7 @@ OpDecorate %input_flat_u32 Location 0
 %u32vec4 = OpTypeVector %u32 4
 %s32vec4 = OpTypeVector %s32 4
 %f32vec4 = OpTypeVector %f32 4
+%boolvec4 = OpTypeVector %bool 4
 
 %f32_0 = OpConstant %f32 0
 %f32_1 = OpConstant %f32 1
@@ -174,6 +175,8 @@ OpDecorate %input_flat_u32 Location 0
 
 %u64_0 = OpConstant %u64 0
 %u64_1 = OpConstant %u64 1
+
+%bool_t = OpConstantTrue %bool
 
 %u32vec2arr4 = OpTypeArray %u32vec2 %u32_4
 %u32vec2arr3 = OpTypeArray %u32vec2 %u32_3
@@ -216,6 +219,8 @@ OpDecorate %input_flat_u32 Location 0
 %f32vec3_hhh = OpConstantComposite %f32vec3 %f32_0_5 %f32_0_5 %f32_0_5
 
 %f32vec4_0000 = OpConstantComposite %f32vec4 %f32_0 %f32_0 %f32_0 %f32_0
+
+%boolvec4_tttt = OpConstantComposite %boolvec4 %bool_t %bool_t %bool_t %bool_t
 
 %const_offsets = OpConstantComposite %u32vec2arr4 %u32vec2_01 %u32vec2_12 %u32vec2_01 %u32vec2_12
 %const_offsets3x2 = OpConstantComposite %u32vec2arr3 %u32vec2_01 %u32vec2_12 %u32vec2_01
@@ -351,7 +356,8 @@ OpFunctionEnd)";
 
 std::string GenerateKernelCode(
     const std::string& body,
-    const std::string& capabilities_and_extensions = "") {
+    const std::string& capabilities_and_extensions = "",
+    const std::string& declarations = "") {
   std::ostringstream ss;
   ss << R"(
 OpCapability Addresses
@@ -431,7 +437,11 @@ OpMemoryModel Physical32 OpenCL
 %type_sampler = OpTypeSampler
 %ptr_sampler = OpTypePointer UniformConstant %type_sampler
 %uniform_sampler = OpVariable %ptr_sampler UniformConstant
+)";
 
+  ss << declarations;
+
+  ss << R"(
 %main = OpFunction %void None %func
 %main_entry = OpLabel
 )";
@@ -475,10 +485,10 @@ OpCapability Int64
 OpCapability Float64
 )";
 
-  ss << capabilities_and_extensions;
   if (!include_entry_point) {
-    ss << "OpCapability Linkage";
+    ss << "OpCapability Linkage\n";
   }
+  ss << capabilities_and_extensions;
 
   ss << R"(
 OpMemoryModel Logical GLSL450
@@ -774,6 +784,279 @@ TEST_F(ValidateImage, TypeImageWrongArrayForSubpassDataVulkan) {
               AnyVUID("VUID-StandaloneSpirv-OpTypeImage-06214"));
   EXPECT_THAT(getDiagnosticString(),
               HasSubstr("Dim SubpassData requires Arrayed to be 0"));
+}
+
+TEST_F(ValidateImage, TypeImageWrongSampledTypeForTileImageDataEXT) {
+  const std::string code = GetShaderHeader(
+                               "OpCapability TileImageColorReadAccessEXT\n"
+                               "OpExtension \"SPV_EXT_shader_tile_image\"\n",
+                               false) +
+                           R"(
+%img_type = OpTypeImage %void TileImageDataEXT 0 0 0 2 Unknown
+)";
+
+  CompileSuccessfully(code.c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(
+      getDiagnosticString(),
+      HasSubstr(
+          "Dim TileImageDataEXT requires Sampled Type to be not OpTypeVoid"));
+}
+
+TEST_F(ValidateImage, TypeImageWrongSampledForTileImageDataEXT) {
+  const std::string code = GetShaderHeader(
+                               "OpCapability TileImageColorReadAccessEXT\n"
+                               "OpExtension \"SPV_EXT_shader_tile_image\"\n",
+                               false) +
+                           R"(
+%img_type = OpTypeImage %f32 TileImageDataEXT 0 0 0 1 Unknown
+)";
+
+  CompileSuccessfully(code.c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Dim TileImageDataEXT requires Sampled to be 2"));
+}
+
+TEST_F(ValidateImage, TypeImageWrongFormatForTileImageDataEXT) {
+  const std::string code = GetShaderHeader(
+                               "OpCapability TileImageColorReadAccessEXT\n"
+                               "OpExtension \"SPV_EXT_shader_tile_image\"\n",
+                               false) +
+                           R"(
+%img_type = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Rgba32f
+)";
+
+  CompileSuccessfully(code.c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Dim TileImageDataEXT requires format Unknown"));
+}
+
+TEST_F(ValidateImage, TypeImageWrongDepthForTileImageDataEXT) {
+  const std::string code = GetShaderHeader(
+                               "OpCapability TileImageColorReadAccessEXT\n"
+                               "OpExtension \"SPV_EXT_shader_tile_image\"\n",
+                               false) +
+                           R"(
+%img_type = OpTypeImage %f32 TileImageDataEXT 1 0 0 2 Unknown
+)";
+
+  CompileSuccessfully(code.c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Dim TileImageDataEXT requires Depth to be 0"));
+}
+
+TEST_F(ValidateImage, TypeImageWrongArrayedForTileImageDataEXT) {
+  const std::string code = GetShaderHeader(
+                               "OpCapability TileImageColorReadAccessEXT\n"
+                               "OpExtension \"SPV_EXT_shader_tile_image\"\n",
+                               false) +
+                           R"(
+%img_type = OpTypeImage %f32 TileImageDataEXT 0 1 0 2 Unknown
+)";
+
+  CompileSuccessfully(code.c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Dim TileImageDataEXT requires Arrayed to be 0"));
+}
+
+TEST_F(ValidateImage, TypeSampledImage_TileImageDataEXT_Error) {
+  const std::string code = GetShaderHeader(
+                               "OpCapability TileImageColorReadAccessEXT\n"
+                               "OpExtension \"SPV_EXT_shader_tile_image\"\n",
+                               false) +
+                           R"(
+%img_type = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Unknown
+%simg_type = OpTypeSampledImage %img_type
+)";
+
+  CompileSuccessfully(code.c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Sampled image type requires an image type with "
+                        "\"Sampled\" operand set to 0 or 1"));
+}
+
+TEST_F(ValidateImage, ImageTexelPointerImageDimTileImageDataEXTBad) {
+  const std::string body = R"(
+%texel_ptr = OpImageTexelPointer %ptr_Image_u32 %tile_image_u32_tid_0002 %u32_0 %u32_0
+%sum = OpAtomicIAdd %u32 %texel_ptr %u32_1 %u32_0 %u32_1
+)";
+  const std::string decl = R"(
+%type_image_u32_tid_0002 = OpTypeImage %u32 TileImageDataEXT 0 0 0 2 Unknown
+%ptr_image_u32_tid_0002 = OpTypePointer TileImageEXT %type_image_u32_tid_0002
+%tile_image_u32_tid_0002 = OpVariable %ptr_image_u32_tid_0002 TileImageEXT
+)";
+
+  const std::string extra = R"(
+OpCapability TileImageColorReadAccessEXT
+OpExtension "SPV_EXT_shader_tile_image"
+)";
+
+  CompileSuccessfully(GenerateShaderCode(body, extra, "Fragment", "",
+                                         SPV_ENV_UNIVERSAL_1_5, "GLSL450", decl)
+                          .c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Image Dim TileImageDataEXT cannot be used with "
+                        "OpImageTexelPointer"));
+}
+
+TEST_F(ValidateImage, ReadTileImageDataEXT) {
+  const std::string body = R"(
+%img = OpLoad %type_image_f32_tid_0002 %uniform_image_f32_tid_0002
+%res1 = OpImageRead %f32vec4 %img %u32vec2_01
+)";
+
+  const std::string decl = R"(
+%type_image_f32_tid_0002 = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Unknown
+%ptr_image_f32_tid_0002 = OpTypePointer UniformConstant %type_image_f32_tid_0002
+%uniform_image_f32_tid_0002 = OpVariable %ptr_image_f32_tid_0002 UniformConstant
+)";
+
+  const std::string extra = R"(
+OpCapability StorageImageReadWithoutFormat
+OpCapability TileImageColorReadAccessEXT
+OpExtension "SPV_EXT_shader_tile_image"
+)";
+
+  CompileSuccessfully(GenerateShaderCode(body, extra, "Fragment", "",
+                                         SPV_ENV_UNIVERSAL_1_5, "GLSL450", decl)
+                          .c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(
+      getDiagnosticString(),
+      HasSubstr("Image Dim TileImageDataEXT cannot be used with ImageRead"));
+}
+
+TEST_F(ValidateImage, WriteTileImageDataEXT) {
+  const std::string body = R"(
+%img = OpLoad %type_image_f32_tid_0002 %uniform_image_f32_tid_0002
+OpImageWrite %img %u32vec2_01 %f32vec4_0000
+)";
+
+  const std::string decl = R"(
+%type_image_f32_tid_0002 = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Unknown
+%ptr_image_f32_tid_0002 = OpTypePointer UniformConstant %type_image_f32_tid_0002
+%uniform_image_f32_tid_0002 = OpVariable %ptr_image_f32_tid_0002 UniformConstant
+)";
+
+  const std::string extra = R"(
+OpCapability TileImageColorReadAccessEXT
+OpExtension "SPV_EXT_shader_tile_image"
+)";
+
+  CompileSuccessfully(GenerateShaderCode(body, extra, "Fragment", "",
+                                         SPV_ENV_UNIVERSAL_1_5, "GLSL450", decl)
+                          .c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Image 'Dim' cannot be TileImageDataEXT"));
+}
+
+TEST_F(ValidateImage, QueryFormatTileImageDataEXT) {
+  const std::string body = R"(
+%img = OpLoad %type_image_f32_tid_0002 %uniform_image_f32_tid_0002
+%res1 = OpImageQueryFormat %u32 %img
+)";
+
+  const std::string decl = R"(
+%type_image_f32_tid_0002 = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Unknown
+%ptr_image_f32_tid_0002 = OpTypePointer UniformConstant %type_image_f32_tid_0002
+%uniform_image_f32_tid_0002 = OpVariable %ptr_image_f32_tid_0002 UniformConstant
+)";
+
+  const std::string extra = R"(
+OpCapability TileImageColorReadAccessEXT
+OpExtension "SPV_EXT_shader_tile_image"
+)";
+
+  CompileSuccessfully(GenerateKernelCode(body, extra, decl).c_str());
+
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Image 'Dim' cannot be TileImageDataEXT"));
+}
+
+TEST_F(ValidateImage, QueryOrderTileImageDataEXT) {
+  const std::string body = R"(
+%img = OpLoad %type_image_f32_tid_0002 %uniform_image_f32_tid_0002
+%res1 = OpImageQueryOrder %u32 %img
+)";
+
+  const std::string decl = R"(
+%type_image_f32_tid_0002 = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Unknown
+%ptr_image_f32_tid_0002 = OpTypePointer UniformConstant %type_image_f32_tid_0002
+%uniform_image_f32_tid_0002 = OpVariable %ptr_image_f32_tid_0002 UniformConstant
+)";
+
+  const std::string extra = R"(
+OpCapability TileImageColorReadAccessEXT
+OpExtension "SPV_EXT_shader_tile_image"
+)";
+
+  CompileSuccessfully(GenerateKernelCode(body, extra, decl).c_str());
+
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Image 'Dim' cannot be TileImageDataEXT"));
+}
+
+TEST_F(ValidateImage, SparseFetchTileImageDataEXT) {
+  const std::string body = R"(
+%img = OpLoad %type_image_f32_tid_0002 %uniform_image_f32_tid_0002
+%res1 = OpImageSparseFetch %struct_u32_f32vec4 %img %u32vec2_01
+)";
+
+  const std::string decl = R"(
+%type_image_f32_tid_0002 = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Unknown
+%ptr_image_f32_tid_0002 = OpTypePointer UniformConstant %type_image_f32_tid_0002
+%uniform_image_f32_tid_0002 = OpVariable %ptr_image_f32_tid_0002 UniformConstant
+)";
+
+  const std::string extra = R"(
+OpCapability StorageImageReadWithoutFormat
+OpCapability TileImageColorReadAccessEXT
+OpExtension "SPV_EXT_shader_tile_image"
+)";
+
+  CompileSuccessfully(GenerateShaderCode(body, extra, "Fragment", "",
+                                         SPV_ENV_UNIVERSAL_1_5, "GLSL450", decl)
+                          .c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Expected Image 'Sampled' parameter to be 1"));
+}
+
+TEST_F(ValidateImage, SparseReadTileImageDataEXT) {
+  const std::string body = R"(
+%img = OpLoad %type_image_f32_tid_0002 %uniform_image_f32_tid_0002
+%res1 = OpImageSparseRead %struct_u32_f32vec4 %img %u32vec2_01
+)";
+
+  const std::string decl = R"(
+%type_image_f32_tid_0002 = OpTypeImage %f32 TileImageDataEXT 0 0 0 2 Unknown
+%ptr_image_f32_tid_0002 = OpTypePointer UniformConstant %type_image_f32_tid_0002
+%uniform_image_f32_tid_0002 = OpVariable %ptr_image_f32_tid_0002 UniformConstant
+)";
+
+  const std::string extra = R"(
+OpCapability StorageImageReadWithoutFormat
+OpCapability TileImageColorReadAccessEXT
+OpExtension "SPV_EXT_shader_tile_image"
+)";
+
+  CompileSuccessfully(GenerateShaderCode(body, extra, "Fragment", "",
+                                         SPV_ENV_UNIVERSAL_1_5, "GLSL450", decl)
+                          .c_str());
+  ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
+  EXPECT_THAT(
+      getDiagnosticString(),
+      HasSubstr(
+          "Image Dim TileImageDataEXT cannot be used with ImageSparseRead"));
 }
 
 TEST_F(ValidateImage, TypeImage_OpenCL_Sampled0_OK) {
@@ -1120,8 +1403,9 @@ TEST_F(ValidateImage, ImageTexelPointerImageNotResultTypePointer) {
 
   CompileSuccessfully(GenerateShaderCode(body).c_str());
   ASSERT_EQ(SPV_ERROR_INVALID_ID, ValidateInstructions());
-  EXPECT_THAT(getDiagnosticString(), HasSubstr("Operand 145[%145] cannot be a "
-                                               "type"));
+  EXPECT_THAT(getDiagnosticString(),
+              HasSubstr("Operand '148[%148]' cannot be a "
+                        "type"));
 }
 
 TEST_F(ValidateImage, ImageTexelPointerImageNotImage) {
@@ -1893,8 +2177,6 @@ TEST_F(ValidateImage, SampleImplicitLodVulkanMoreThanOneOffset) {
   CompileSuccessfully(
       GenerateShaderCode(body, "", "Fragment", "", SPV_ENV_VULKAN_1_0).c_str());
   ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions(SPV_ENV_VULKAN_1_0));
-  EXPECT_THAT(getDiagnosticString(),
-              AnyVUID("VUID-StandaloneSpirv-Offset-04662"));
   EXPECT_THAT(
       getDiagnosticString(),
       HasSubstr("Image Operands Offset, ConstOffset, ConstOffsets, Offsets "
@@ -3746,6 +4028,17 @@ OpImageWrite %img %u32_1 %u32vec4_0123
                         "but given only 1"));
 }
 
+TEST_F(ValidateImage, WriteTexelScalarSuccess) {
+  const std::string body = R"(
+%img = OpLoad %type_image_u32_2d_0002 %uniform_image_u32_2d_0002
+OpImageWrite %img %u32vec2_01 %u32_2
+)";
+
+  const std::string extra = "\nOpCapability StorageImageWriteWithoutFormat\n";
+  CompileSuccessfully(GenerateShaderCode(body, extra).c_str());
+  ASSERT_EQ(SPV_SUCCESS, ValidateInstructions());
+}
+
 TEST_F(ValidateImage, WriteTexelWrongType) {
   const std::string body = R"(
 %img = OpLoad %type_image_u32_2d_0002 %uniform_image_u32_2d_0002
@@ -3759,17 +4052,17 @@ OpImageWrite %img %u32vec2_01 %img
               HasSubstr("Expected Texel to be int or float vector or scalar"));
 }
 
-TEST_F(ValidateImage, DISABLED_WriteTexelNotVector4) {
+TEST_F(ValidateImage, WriteTexelNonNumericalType) {
   const std::string body = R"(
 %img = OpLoad %type_image_u32_2d_0002 %uniform_image_u32_2d_0002
-OpImageWrite %img %u32vec2_01 %u32vec3_012
+OpImageWrite %img %u32vec2_01 %boolvec4_tttt
 )";
 
   const std::string extra = "\nOpCapability StorageImageWriteWithoutFormat\n";
   CompileSuccessfully(GenerateShaderCode(body, extra).c_str());
   ASSERT_EQ(SPV_ERROR_INVALID_DATA, ValidateInstructions());
   EXPECT_THAT(getDiagnosticString(),
-              HasSubstr("Expected Texel to have 4 components"));
+              HasSubstr("Expected Texel to be int or float vector or scalar"));
 }
 
 TEST_F(ValidateImage, WriteTexelWrongComponentType) {
@@ -6246,6 +6539,138 @@ OpFunctionEnd
 
   CompileSuccessfully(text, SPV_ENV_UNIVERSAL_1_6);
   EXPECT_EQ(SPV_SUCCESS, ValidateInstructions(SPV_ENV_UNIVERSAL_1_6));
+}
+
+TEST_F(ValidateImage, NVBindlessSamplerBuiltins) {
+  const std::string text = R"(
+              OpCapability Shader
+              OpCapability Int64
+              OpCapability Image1D
+              OpCapability BindlessTextureNV
+              OpExtension "SPV_NV_bindless_texture"
+         %1 = OpExtInstImport "GLSL.std.450"
+              OpMemoryModel Logical GLSL450
+              OpSamplerImageAddressingModeNV 64
+              OpEntryPoint Fragment %main "main"
+              OpExecutionMode %main OriginUpperLeft
+              OpSource GLSL 450
+              OpName %main "main"
+              OpName %s2D "s2D"
+              OpName %textureHandle "textureHandle"
+              OpName %i1D "i1D"
+              OpName %s "s"
+              OpName %temp "temp"
+      %void = OpTypeVoid
+         %3 = OpTypeFunction %void
+     %float = OpTypeFloat 32
+         %7 = OpTypeImage %float 2D 0 0 0 1 Unknown
+         %8 = OpTypeSampledImage %7
+%_ptr_Function_8 = OpTypePointer Function %8
+     %ulong = OpTypeInt 64 0
+%_ptr_Private_ulong = OpTypePointer Private %ulong
+%textureHandle = OpVariable %_ptr_Private_ulong Private
+        %16 = OpTypeImage %float 1D 0 0 0 2 Rgba32f
+%_ptr_Function_16 = OpTypePointer Function %16
+        %21 = OpTypeSampler
+%_ptr_Function_21 = OpTypePointer Function %21
+%_ptr_Function_ulong = OpTypePointer Function %ulong
+      %main = OpFunction %void None %3
+         %5 = OpLabel
+       %s2D = OpVariable %_ptr_Function_8 Function
+       %i1D = OpVariable %_ptr_Function_16 Function
+         %s = OpVariable %_ptr_Function_21 Function
+      %temp = OpVariable %_ptr_Function_ulong Function
+        %14 = OpLoad %ulong %textureHandle
+        %15 = OpConvertUToSampledImageNV %8 %14
+              OpStore %s2D %15
+        %19 = OpLoad %ulong %textureHandle
+        %20 = OpConvertUToImageNV %16 %19
+              OpStore %i1D %20
+        %24 = OpLoad %ulong %textureHandle
+        %25 = OpConvertUToSamplerNV %21 %24
+              OpStore %s %25
+        %28 = OpLoad %8 %s2D
+        %29 = OpConvertSampledImageToUNV %ulong %28
+              OpStore %temp %29
+        %30 = OpLoad %16 %i1D
+        %31 = OpConvertImageToUNV %ulong %30
+              OpStore %temp %31
+        %32 = OpLoad %21 %s
+        %33 = OpConvertSamplerToUNV %ulong %32
+              OpStore %temp %33
+              OpReturn
+              OpFunctionEnd
+)";
+
+  CompileSuccessfully(text, SPV_ENV_UNIVERSAL_1_3);
+  EXPECT_EQ(SPV_SUCCESS, ValidateInstructions(SPV_ENV_UNIVERSAL_1_3));
+}
+
+TEST_F(ValidateImage, NVBindlessAddressingMode64) {
+  std::string text = R"(
+         OpCapability Shader
+         OpCapability BindlessTextureNV
+         OpExtension "SPV_NV_bindless_texture"
+         OpMemoryModel Logical GLSL450
+         OpSamplerImageAddressingModeNV 64
+         OpEntryPoint GLCompute %func "main"
+%voidt = OpTypeVoid
+%uintt = OpTypeInt 32 0
+%funct = OpTypeFunction %voidt
+%func  = OpFunction %voidt None %funct
+%entry = OpLabel
+%udef  = OpUndef %uintt
+         OpReturn
+         OpFunctionEnd
+)";
+  CompileSuccessfully(text, SPV_ENV_UNIVERSAL_1_3);
+  EXPECT_EQ(SPV_SUCCESS, ValidateInstructions(SPV_ENV_UNIVERSAL_1_3));
+}
+
+TEST_F(ValidateImage, NVBindlessAddressingMode32) {
+  std::string text = R"(
+         OpCapability Shader
+         OpCapability BindlessTextureNV
+         OpExtension "SPV_NV_bindless_texture"
+         OpMemoryModel Logical GLSL450
+         OpSamplerImageAddressingModeNV 32
+         OpEntryPoint GLCompute %func "main"
+%voidt = OpTypeVoid
+%uintt = OpTypeInt 32 0
+%funct = OpTypeFunction %voidt
+%func  = OpFunction %voidt None %funct
+%entry = OpLabel
+%udef  = OpUndef %uintt
+         OpReturn
+         OpFunctionEnd
+)";
+  CompileSuccessfully(text, SPV_ENV_UNIVERSAL_1_3);
+  EXPECT_EQ(SPV_SUCCESS, ValidateInstructions(SPV_ENV_UNIVERSAL_1_3));
+}
+
+TEST_F(ValidateImage, NVBindlessInvalidAddressingMode) {
+  std::string text = R"(
+         OpCapability Shader
+         OpCapability BindlessTextureNV
+         OpExtension "SPV_NV_bindless_texture"
+         OpMemoryModel Logical GLSL450
+         OpSamplerImageAddressingModeNV 0
+         OpEntryPoint GLCompute %func "main"
+%voidt = OpTypeVoid
+%uintt = OpTypeInt 32 0
+%funct = OpTypeFunction %voidt
+%func  = OpFunction %voidt None %funct
+%entry = OpLabel
+%udef  = OpUndef %uintt
+         OpReturn
+         OpFunctionEnd
+)";
+  CompileSuccessfully(text, SPV_ENV_UNIVERSAL_1_3);
+  EXPECT_EQ(SPV_ERROR_INVALID_DATA,
+            ValidateInstructions(SPV_ENV_UNIVERSAL_1_3));
+  EXPECT_THAT(
+      getDiagnosticString(),
+      HasSubstr("OpSamplerImageAddressingModeNV bitwidth should be 64 or 32"));
 }
 
 }  // namespace

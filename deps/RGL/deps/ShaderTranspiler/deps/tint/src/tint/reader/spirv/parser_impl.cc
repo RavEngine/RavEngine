@@ -1276,7 +1276,7 @@ bool ParserImpl::RegisterTypes() {
     if ((builtin_position_.struct_type_id != 0) &&
         (builtin_position_.position_member_pointer_type_id == 0)) {
         builtin_position_.position_member_pointer_type_id = type_mgr_->FindPointerToType(
-            builtin_position_.position_member_type_id, static_cast<SpvStorageClass>(builtin_position_.storage_class));
+            builtin_position_.position_member_type_id, spv::StorageClass(static_cast<SpvStorageClass>(builtin_position_.storage_class)));
         ConvertType(builtin_position_.position_member_pointer_type_id);
     }
     return success_;

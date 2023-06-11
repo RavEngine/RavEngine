@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "source/opt/scalar_analysis.h"
+
 #include <memory>
-#include <string>
-#include <unordered_set>
 #include <vector>
 
 #include "gmock/gmock.h"
-#include "source/opt/iterator.h"
-#include "source/opt/loop_descriptor.h"
 #include "source/opt/pass.h"
-#include "source/opt/scalar_analysis.h"
-#include "source/opt/tree_iterator.h"
 #include "test/opt/assembly_builder.h"
 #include "test/opt/function_utils.h"
 #include "test/opt/pass_fixture.h"
@@ -109,10 +105,10 @@ TEST_F(ScalarAnalysisTest, BasicEvolutionTest) {
   const Instruction* store = nullptr;
   const Instruction* load = nullptr;
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 11)) {
-    if (inst.opcode() == SpvOp::SpvOpStore) {
+    if (inst.opcode() == spv::Op::OpStore) {
       store = &inst;
     }
-    if (inst.opcode() == SpvOp::SpvOpLoad) {
+    if (inst.opcode() == spv::Op::OpLoad) {
       load = &inst;
     }
   }
@@ -236,7 +232,7 @@ TEST_F(ScalarAnalysisTest, LoadTest) {
 
   const Instruction* load = nullptr;
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 28)) {
-    if (inst.opcode() == SpvOp::SpvOpLoad) {
+    if (inst.opcode() == spv::Op::OpLoad) {
       load = &inst;
     }
   }
@@ -352,7 +348,7 @@ TEST_F(ScalarAnalysisTest, SimplifySimple) {
 
   const Instruction* load = nullptr;
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 21)) {
-    if (inst.opcode() == SpvOp::SpvOpLoad && inst.result_id() == 33) {
+    if (inst.opcode() == spv::Op::OpLoad && inst.result_id() == 33) {
       load = &inst;
     }
   }
@@ -506,11 +502,11 @@ TEST_F(ScalarAnalysisTest, Simplify) {
   int store_count = 0;
 
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 22)) {
-    if (inst.opcode() == SpvOp::SpvOpLoad) {
+    if (inst.opcode() == spv::Op::OpLoad) {
       loads[load_count] = &inst;
       ++load_count;
     }
-    if (inst.opcode() == SpvOp::SpvOpStore) {
+    if (inst.opcode() == spv::Op::OpStore) {
       stores[store_count] = &inst;
       ++store_count;
     }
@@ -745,11 +741,11 @@ TEST_F(ScalarAnalysisTest, SimplifyMultiplyInductions) {
   int store_count = 0;
 
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 31)) {
-    if (inst.opcode() == SpvOp::SpvOpLoad) {
+    if (inst.opcode() == spv::Op::OpLoad) {
       loads[load_count] = &inst;
       ++load_count;
     }
-    if (inst.opcode() == SpvOp::SpvOpStore) {
+    if (inst.opcode() == spv::Op::OpStore) {
       stores[store_count] = &inst;
       ++store_count;
     }
@@ -880,7 +876,7 @@ TEST_F(ScalarAnalysisTest, SimplifyNegativeSteps) {
   int load_count = 0;
 
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 29)) {
-    if (inst.opcode() == SpvOp::SpvOpLoad) {
+    if (inst.opcode() == spv::Op::OpLoad) {
       loads[load_count] = &inst;
       ++load_count;
     }
@@ -1025,10 +1021,10 @@ TEST_F(ScalarAnalysisTest, SimplifyInductionsAndLoads) {
   std::vector<const Instruction*> stores{};
 
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 30)) {
-    if (inst.opcode() == SpvOp::SpvOpLoad) {
+    if (inst.opcode() == spv::Op::OpLoad) {
       loads.push_back(&inst);
     }
-    if (inst.opcode() == SpvOp::SpvOpStore) {
+    if (inst.opcode() == spv::Op::OpStore) {
       stores.push_back(&inst);
     }
   }
@@ -1194,7 +1190,7 @@ TEST_F(ScalarAnalysisTest, InductionWithVariantStep) {
   std::vector<const Instruction*> phis{};
 
   for (const Instruction& inst : *spvtest::GetBasicBlock(f, 21)) {
-    if (inst.opcode() == SpvOp::SpvOpPhi) {
+    if (inst.opcode() == spv::Op::OpPhi) {
       phis.push_back(&inst);
     }
   }
@@ -1202,7 +1198,6 @@ TEST_F(ScalarAnalysisTest, InductionWithVariantStep) {
   EXPECT_EQ(phis.size(), 2u);
   SENode* phi_node_1 = analysis.AnalyzeInstruction(phis[0]);
   SENode* phi_node_2 = analysis.AnalyzeInstruction(phis[1]);
-  phi_node_1->DumpDot(std::cout, true);
   EXPECT_NE(phi_node_1, nullptr);
   EXPECT_NE(phi_node_2, nullptr);
 

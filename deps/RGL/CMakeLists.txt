@@ -166,22 +166,6 @@ set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OGLCompil
 	FOLDER "RGL/Libraries/glslang"
 )
 
-set_target_properties(
-	"spirv-tools-build-version" 
-	"spirv-tools-header-DebugInfo" 
-	"spirv-tools-header-NonSemanticShaderDebugInfo100" 
-	"spirv-tools-header-OpenCLDebugInfo100" 
-	"spv-tools-cldi100" 
-	"spv-tools-clspvreflection" 
-	"spv-tools-debuginfo"
-	"spv-tools-shdi100"
-	"spv-tools-spv-amd-gs"
-	"spv-tools-spv-amd-sb"
-	"spv-tools-spv-amd-stm"
-	"spv-tools-spv-amd-sevp"
-	PROPERTIES 
-	FOLDER "RGL/Libraries/SPIRV-Tools build"
-)
 
 set_target_properties(
 	"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static"
@@ -190,9 +174,6 @@ set_target_properties(
 )
 
 set_target_properties(
-	"core_tables"
-	"enum_string_mapping"
-	"extinst_tables"
 	"spirv-cross-core"
 	"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect"
 	PROPERTIES 

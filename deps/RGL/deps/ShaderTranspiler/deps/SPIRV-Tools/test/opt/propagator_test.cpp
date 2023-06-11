@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "source/opt/propagator.h"
+
 #include <map>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "gmock/gmock.h"
@@ -22,8 +23,6 @@
 #include "source/opt/build_module.h"
 #include "source/opt/cfg.h"
 #include "source/opt/ir_context.h"
-#include "source/opt/pass.h"
-#include "source/opt/propagator.h"
 
 namespace spvtools {
 namespace opt {
@@ -107,11 +106,11 @@ TEST_F(PropagatorTest, LocalPropagate) {
 
   const auto visit_fn = [this](Instruction* instr, BasicBlock** dest_bb) {
     *dest_bb = nullptr;
-    if (instr->opcode() == SpvOpStore) {
+    if (instr->opcode() == spv::Op::OpStore) {
       uint32_t lhs_id = instr->GetSingleWordOperand(0);
       uint32_t rhs_id = instr->GetSingleWordOperand(1);
       Instruction* rhs_def = ctx_->get_def_use_mgr()->GetDef(rhs_id);
-      if (rhs_def->opcode() == SpvOpConstant) {
+      if (rhs_def->opcode() == spv::Op::OpConstant) {
         uint32_t val = rhs_def->GetSingleWordOperand(2);
         values_[lhs_id] = val;
         return SSAPropagator::kInteresting;
@@ -175,15 +174,15 @@ TEST_F(PropagatorTest, PropagateThroughPhis) {
   const auto visit_fn = [this, &phi_instr](Instruction* instr,
                                            BasicBlock** dest_bb) {
     *dest_bb = nullptr;
-    if (instr->opcode() == SpvOpLoad) {
+    if (instr->opcode() == spv::Op::OpLoad) {
       uint32_t rhs_id = instr->GetSingleWordOperand(2);
       Instruction* rhs_def = ctx_->get_def_use_mgr()->GetDef(rhs_id);
-      if (rhs_def->opcode() == SpvOpConstant) {
+      if (rhs_def->opcode() == spv::Op::OpConstant) {
         uint32_t val = rhs_def->GetSingleWordOperand(2);
         values_[instr->result_id()] = val;
         return SSAPropagator::kInteresting;
       }
-    } else if (instr->opcode() == SpvOpPhi) {
+    } else if (instr->opcode() == spv::Op::OpPhi) {
       phi_instr = instr;
       SSAPropagator::PropStatus retval;
       for (uint32_t i = 2; i < instr->NumOperands(); i += 2) {

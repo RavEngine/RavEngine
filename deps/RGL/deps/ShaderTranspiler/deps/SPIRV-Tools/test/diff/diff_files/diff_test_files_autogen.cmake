@@ -36,10 +36,13 @@ list(APPEND DIFF_TEST_FILES
 "diff_files/large_functions_small_diffs_autogen.cpp"
 "diff_files/multiple_different_entry_points_autogen.cpp"
 "diff_files/multiple_same_entry_points_autogen.cpp"
+"diff_files/ray_query_types_autogen.cpp"
 "diff_files/reordered_if_blocks_autogen.cpp"
 "diff_files/reordered_switch_blocks_autogen.cpp"
 "diff_files/small_functions_small_diffs_autogen.cpp"
 "diff_files/spec_constant_array_size_autogen.cpp"
 "diff_files/spec_constant_composite_autogen.cpp"
+"diff_files/spec_constant_op_autogen.cpp"
+"diff_files/spec_constant_specid_autogen.cpp"
 "diff_files/unrelated_shaders_autogen.cpp"
 )

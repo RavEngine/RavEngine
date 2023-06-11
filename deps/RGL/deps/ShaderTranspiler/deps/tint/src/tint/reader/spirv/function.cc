@@ -4512,7 +4512,7 @@ TypedExpression FunctionEmitter::MakeAccessChain(const spvtools::opt::Instructio
                        << ": " << pointee_type_inst->PrettyPrint();
                 return {};
         }
-        const auto pointer_type_id = type_mgr_->FindPointerToType(pointee_type_id, SpvStorageClass(address_space));
+        const auto pointer_type_id = type_mgr_->FindPointerToType(pointee_type_id, address_space);
         auto* type = parser_impl_.ConvertType(pointer_type_id, PtrAs::Ref);
         TINT_ASSERT(Reader, type && type->Is<Reference>());
         current_expr = TypedExpression{type, next_expr};

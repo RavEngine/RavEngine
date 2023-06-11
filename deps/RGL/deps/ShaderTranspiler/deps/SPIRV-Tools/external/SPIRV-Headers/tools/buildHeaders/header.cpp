@@ -574,17 +574,11 @@ namespace {
 
     // C++ printer
     class TPrinterCPP : public TPrinterCBase {
-    private:
-        void printPrologue(std::ostream& out) const override {
-            TPrinterCBase::printPrologue(out);
-            out << "namespace spv {\n\n";
-        }
-
-        void printEpilogue(std::ostream& out) const override {
+    protected:
+        void printMaskOperators(std::ostream& out, const std::string& specifiers) const {
             const Json::Value& enums = spvRoot["spv"]["enum"];
 
-            // Create overloaded operator| for mask types
-            out << "// Overload operator| for mask bit combining\n\n";
+            out << "// Overload bitwise operators for mask bit combining\n\n";
 
             for (auto opClass = enums.begin(); opClass != enums.end(); ++opClass) {
                 const bool isMask   = (*opClass)["Type"].asString() == "Bit";
@@ -593,11 +587,29 @@ namespace {
                 if (isMask) {
                     const auto typeName = opName + styleStr(enumMask);
 
-                    out << "inline " + typeName + " operator|(" + typeName + " a, " + typeName + " b) { return " +
-                        typeName + "(unsigned(a) | unsigned(b)); }\n";
+                    // Overload operator|
+                    out << specifiers << " " << typeName << " operator|(" << typeName << " a, " << typeName << " b) { return " <<
+                        typeName << "(unsigned(a) | unsigned(b)); }\n";
+                    // Overload operator&
+                    out << specifiers << " " << typeName << " operator&(" << typeName << " a, " << typeName << " b) { return " <<
+                        typeName << "(unsigned(a) & unsigned(b)); }\n";
+                    // Overload operator^
+                    out << specifiers << " " << typeName << " operator^(" << typeName << " a, " << typeName << " b) { return " <<
+                        typeName << "(unsigned(a) ^ unsigned(b)); }\n";
+                    // Overload operator~
+                    out << specifiers << " " << typeName << " operator~(" << typeName << " a) { return " <<
+                        typeName << "(~unsigned(a)); }\n";
                 }
             }
+        }
+    private:
+        void printPrologue(std::ostream& out) const override {
+            TPrinterCBase::printPrologue(out);
+            out << "namespace spv {\n\n";
+        }
 
+        void printEpilogue(std::ostream& out) const override {
+            printMaskOperators(out, "inline");
             out << "\n}  // end namespace spv\n\n";
             out << "#endif  // #ifndef spirv_" << headerGuardSuffix() << std::endl;
         }
@@ -633,6 +645,11 @@ namespace {
     // C++11 printer (uses enum classes)
     class TPrinterCPP11 final : public TPrinterCPP {
     private:
+        void printEpilogue(std::ostream& out) const override {
+            printMaskOperators(out, "constexpr");
+            out << "\n}  // end namespace spv\n\n";
+            out << "#endif  // #ifndef spirv_" << headerGuardSuffix() << std::endl;
+        }
         std::string enumBeg(const std::string& s, enumStyle_t style) const override {
             return std::string("enum class ") + s + styleStr(style) + " : unsigned {\n";
         }

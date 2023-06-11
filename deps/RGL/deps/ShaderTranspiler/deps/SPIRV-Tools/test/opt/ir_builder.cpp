@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
+#include "source/opt/ir_builder.h"
+
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "effcee/effcee.h"
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "source/opt/basic_block.h"
 #include "source/opt/build_module.h"
 #include "source/opt/instruction.h"
-#include "source/opt/ir_builder.h"
 #include "source/opt/type_manager.h"
 #include "spirv-tools/libspirv.hpp"
 
@@ -201,7 +199,7 @@ TEST_F(IRBuilderTest, TestCondBranchAddition) {
     // TODO(1841): Handle id overflow.
     fn.begin().InsertBefore(std::unique_ptr<BasicBlock>(
         new BasicBlock(std::unique_ptr<Instruction>(new Instruction(
-            context.get(), SpvOpLabel, 0, context->TakeNextId(), {})))));
+            context.get(), spv::Op::OpLabel, 0, context->TakeNextId(), {})))));
     BasicBlock& bb_true = *fn.begin();
     {
       InstructionBuilder builder(context.get(), &*bb_true.begin());
@@ -211,7 +209,7 @@ TEST_F(IRBuilderTest, TestCondBranchAddition) {
     // TODO(1841): Handle id overflow.
     fn.begin().InsertBefore(std::unique_ptr<BasicBlock>(
         new BasicBlock(std::unique_ptr<Instruction>(new Instruction(
-            context.get(), SpvOpLabel, 0, context->TakeNextId(), {})))));
+            context.get(), spv::Op::OpLabel, 0, context->TakeNextId(), {})))));
     BasicBlock& bb_cond = *fn.begin();
 
     InstructionBuilder builder(context.get(), &bb_cond);
