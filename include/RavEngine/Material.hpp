@@ -36,10 +36,6 @@ namespace RavEngine {
 		*/
 
 		virtual ~Material();
-
-		const std::string& GetName() {
-			return name;
-		}
 		
 		/**
 		 Static singleton for managing materials
@@ -66,13 +62,12 @@ namespace RavEngine {
 		};
 
 	protected:
-		std::string name;
 		RGLShaderLibraryPtr vertShader, fragShader;
 		RGLRenderPipelinePtr renderPipeline;
 		RGLPipelineLayoutPtr pipelineLayout;
 
-		//trying to create a material that already exists will throw an exception
-		Material(const std::string& name, const MaterialConfig& config);
+		Material(const std::string_view name, const MaterialConfig& config);
+		Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config);
 		
 		friend class RenderEngine;
 		friend class MaterialInstanceBase;

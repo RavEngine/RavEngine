@@ -22,14 +22,15 @@ using namespace RavEngine;
 Create a material given a shader. Also registers it in the material manager
 @param shader the path to the shader
 */
-Material::Material(const std::string& name, const MaterialConfig& config) : name(name) {
+Material::Material(const std::string_view name, const MaterialConfig& config) : Material(name,name,config) {}
 
-	auto device = GetApp()->GetRenderEngine().GetDevice();
+RavEngine::Material::Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config)
+{
+    auto device = GetApp()->GetRenderEngine().GetDevice();
 
-
-	//get all shader files for this programs
-	auto vertshaderName = StrFormat("{}.vsh", name);
-	auto fragShaderName = StrFormat("{}.fsh", name);
+    //get all shader files for this programs
+    auto vertshaderName = StrFormat("{}.vsh", vsh_name);
+    auto fragShaderName = StrFormat("{}.fsh", fsh_name);
 
     vertShader = LoadShaderByFilename(vertshaderName, device);
     fragShader = LoadShaderByFilename(fragShaderName, device);
@@ -53,7 +54,7 @@ Material::Material(const std::string& name, const MaterialConfig& config) : name
                sizeof(RenderEngine::DeferredUBO) + config.pushConstantSize, 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
             }
         },
-    });
+        });
 
     RGL::RenderPipelineDescriptor rpd{
         .stages = {
