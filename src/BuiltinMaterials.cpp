@@ -9,7 +9,7 @@ using namespace RavEngine;
 
 constexpr static uint32_t width = 640, height = 480;
 
-RavEngine::PBRMaterial::PBRMaterial(const std::string& name) : Material(name,
+RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name) : Material(vsh_name,fsh_name,MaterialConfig
     {
         .vertConfig = {
             .vertexBindings = {

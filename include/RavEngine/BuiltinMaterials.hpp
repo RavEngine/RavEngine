@@ -9,7 +9,8 @@ namespace RavEngine {
      */
 	class PBRMaterial : public Material {
 	public:
-		PBRMaterial(const std::string& name);
+		PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name);
+		PBRMaterial(const std::string_view name) : PBRMaterial(name, name) {}
 		PBRMaterial() : PBRMaterial("pbr") {}
 	};
 
