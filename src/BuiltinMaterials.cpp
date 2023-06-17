@@ -78,7 +78,7 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
                 .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Vertex
             }
         },
-        .pushConstantSize = sizeof(PBRMaterialInstance::PushConstantData)
+        .pushConstantSize = sizeof(PBRPushConstantData)
 	}
 	) 
 {

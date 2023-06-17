@@ -16,27 +16,26 @@ namespace RavEngine {
 
     /**
      Allows attaching a PBR material to an object.
-     Subclass to expose additional fields in a custom shader
+     Don't subclass this if you have a custom material. Instead,
+	 subclass MaterialInstance<YourMaterialType>
      */
-	class PBRMaterialInstance : public MaterialInstance<PBRMaterial> {
+	struct PBRPushConstantData {
+		ColorRGBA color{ 1,1,1,1 };
+	};
+	class PBRMaterialInstance : public MaterialInstance<PBRMaterial, PBRPushConstantData> {
 	public:
-		struct PushConstantData {
-			ColorRGBA color{ 1,1,1,1 };
-		};
-		PBRMaterialInstance(Ref<PBRMaterial> m);;
+		
+		PBRMaterialInstance(Ref<PBRMaterial> m);
 
 		inline void SetAlbedoTexture(Ref<Texture> texture) {
 			textureBindings[0] = texture;
 		}
         constexpr inline void SetAlbedoColor(const ColorRGBA& c){
-            pcd.color = c;
+            pushConstantData.color = c;
         }
 
 		virtual const RGL::untyped_span GetPushConstantData() const override {
-			return pcd;
+			return pushConstantData;
 		}
-
-	protected:
-		PushConstantData pcd;
 	};
 }

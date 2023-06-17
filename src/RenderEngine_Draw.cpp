@@ -260,7 +260,7 @@ namespace RavEngine {
 		uint32_t totalObjectsToSkin = 0;	// also the number of draw calls in the indirect buffer
 
 		// resize buffers if they need to be resized
-		auto resizeSkeletonBuffer = [this](RGLBufferPtr& buffer, uint32_t stride, uint32_t neededSize, RGL::BufferConfig::Type type, RGL::BufferAccess access) {
+		auto resizeSkeletonBuffer = [this](RGLBufferPtr& buffer, uint32_t stride, uint32_t neededSize, RGL::BufferConfig::Type type, RGL::BufferAccess access, RGL::BufferFlags options = {}) {
 			uint32_t currentCount = 0;
 			if (!buffer || buffer->getBufferSize() / stride < neededSize) {
 				if (buffer) {
@@ -276,6 +276,7 @@ namespace RavEngine {
 					type,
 					stride,
 					access,
+					options
 					});
 				if (access == RGL::BufferAccess::Shared) {
 					buffer->MapMemory();
@@ -305,7 +306,7 @@ namespace RavEngine {
 		}
 
 		resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true }, RGL::BufferAccess::Shared);
-		resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private);
+		resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, {.Writable = true});
 
 		// dispatch compute to build the indirect buffer for finally rendering the skinned meshes
 		// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.

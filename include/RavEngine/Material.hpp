@@ -29,7 +29,7 @@ namespace RavEngine {
 	*/
 	class Material : public AutoCTTI {
 	public:
-		template<typename T>
+		template<typename T, typename P_T>
 		friend class MaterialInstance;
 		/**
 		Create the default material. Override this constructor in subclasses, and from that, invoke the protected constructor.
@@ -102,7 +102,9 @@ namespace RavEngine {
 	/**
 	* Represents the settings of a material. Subclass to expose more properties.
 	*/
-	template<typename T>
+	struct DummyPushConstantData {};
+
+	template<typename T, typename P_T = DummyPushConstantData>
 	class MaterialInstance : public MaterialInstanceBase {
 	public:
 		virtual ~MaterialInstance() {}
@@ -111,6 +113,7 @@ namespace RavEngine {
 			return mat;
 		}
 	protected:
+		P_T pushConstantData;
 		MaterialInstance(Ref<T> m) : mat(m) {}
 		Ref<T> mat;
 	};
