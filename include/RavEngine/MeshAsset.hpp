@@ -161,7 +161,9 @@ public:
 		indexBuffer = other->indexBuffer;
 		totalVerts = other->totalVerts;
 		totalIndices = other->totalIndices;
+		meshAllocation = other->meshAllocation;
 		
+		other->meshAllocation = {};
         other->vertexBuffer.reset();
 		other->indexBuffer.reset();
 	}
