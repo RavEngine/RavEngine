@@ -326,7 +326,7 @@ namespace RavEngine {
 
 					ubo.nVerticesInThisMesh = vertexCount;
 					ubo.nTotalObjects = objectCount;
-					ubo.indexBufferOffset = mesh->meshAllocation.indexRange->start;
+					ubo.indexBufferOffset = mesh->meshAllocation.indexRange->start / sizeof(uint32_t);
 					ubo.nIndicesInThisMesh = mesh->GetNumIndices();
 
 					mainCommandBuffer->SetComputeBytes(ubo, 0);
@@ -388,7 +388,7 @@ namespace RavEngine {
 					subo.numObjects = command.entities.DenseSize();
 					subo.numVertices = mesh->GetNumVerts();
 					subo.numBones = skeleton->GetSkeleton()->num_joints();
-					subo.vertexReadOffset = mesh->meshAllocation.vertRange->start;
+					subo.vertexReadOffset = mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV);
 
 					// write joint transform matrices into buffer and update uniform offset
 					for (const auto& ownerid : command.entities.reverse_map) {

@@ -713,7 +713,7 @@ function(declare_shader infile shader_target)
 			# VS_SHADER_FLAGS "/Fd ${CMAKE_BINARY_DIR}/$<CONFIG>/"
 			# VS_SHADER_OBJECT_FILE_NAME ${dx_final_name}
 		)
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
+		#set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
 	endif()
 	if(RGL_MTL_AVAILABLE)
 		shader_compile("${infile}" "${stage}" "Metal" "metal" "")
