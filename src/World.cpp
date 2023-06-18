@@ -422,14 +422,24 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(Rende
         return;
     }
 
+    // detect the case of the material set to itself
+    if (oldMat == newMat) {
+        return;
+    }
+
     // if the material has changed, need to reset the old one
     if (oldMat != nullptr) {
         renderData->staticMeshRenderData.if_contains(oldMat, [&](decltype(RenderData::staticMeshRenderData)::mapped_type& value) {
             // find the Mesh
-            for (auto& command : value.commands) {
+            for (auto it = value.commands.begin(); it != value.commands.end(); ++it) {
+                auto& command = *it;
                 auto cmpMesh = command.mesh.lock();
                 if (cmpMesh == mesh) {
                     command.entities.EraseAtSparseIndex(localId);
+                    if (command.entities.DenseSize() == 0) {
+                        value.commands.erase(it);
+                    }
+                    break;
                 }
             }
         });
@@ -459,15 +469,25 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(Rend
         return;
     }
 
+    // detect the case of the material set to itself
+    if (oldMat == newMat) {
+        return;
+    }
+
     // if the material has changed, need to reset the old one
     if (oldMat != nullptr) {
         renderData->skinnedMeshRenderData.if_contains(oldMat, [&](decltype(RenderData::skinnedMeshRenderData)::mapped_type& value) {
             // find the Mesh
-            for (auto& command : value.commands) {
+            for (auto it = value.commands.begin(); it != value.commands.end(); ++it) {
+                auto& command = *it;
                 auto cmpMesh = command.mesh.lock();
                 auto cmpSkeleton = command.skeleton.lock();
                 if (cmpMesh == mesh && cmpSkeleton == skeleton) {
                     command.entities.EraseAtSparseIndex(localId);
+                    if (command.entities.DenseSize() == 0) {
+                        value.commands.erase(it);
+                    }
+                    break;
                 }
             }
         });
