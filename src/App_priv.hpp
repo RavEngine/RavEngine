@@ -63,19 +63,16 @@ static void DebugOutput( ESteamNetworkingSocketsDebugOutputType eType, const cha
 	}
 }
 
-App::App(const std::string& resourcesName) : App(){
+App::App() : player(std::make_unique<AudioPlayer>()){
+    currentApp = this;
 	// crash signal handlers
 	::signal(SIGSEGV, &crash_signal_handler);
 	::signal(SIGABRT, &crash_signal_handler);
 
 	//initialize virtual file system library 
 	PHYSFS_init("");
-	
-    Resources = std::make_unique<VirtualFilesystem>(resourcesName);
-}
 
-App::App() : player(std::make_unique<AudioPlayer>()){
-    currentApp = this;
+	Resources = std::make_unique<VirtualFilesystem>();
 }
 
 int App::run(int argc, char** argv) {

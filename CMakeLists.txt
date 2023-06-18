@@ -885,6 +885,22 @@ function(pack_resources)
 		target_compile_features(${rve_cmrc_resource_name} PRIVATE cxx_std_20)
 	endif()
 
+	set(rve_externs_cpp "${CMAKE_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/externs.cpp")
+	file(GENERATE OUTPUT "${rve_externs_cpp}" CONTENT "
+	#include <string_view>
+	const std::string_view RVE_VFS_get_name(){
+		return \"${ARGS_TARGET}\";
+	}
+	")
+	set(rve_externs_lib "${ARGS_TARGET}_Externs")
+	add_library(${rve_externs_lib} "${rve_externs_cpp}")
+	target_compile_features(${rve_externs_lib} PRIVATE cxx_std_20)
+	target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_externs_lib}")
+
+	set_target_properties(${rve_cmrc_resource_name} "${ARGS_TARGET}_CompileShaders" ${rve_externs_lib} PROPERTIES
+		FOLDER "RavEngine Auxillary"
+	)
+
 	# add files to IDE sidebar for convenience
 	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shader_sources})
 	set_source_files_properties(${ARGS_UIS} ${all_shader_sources} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevents visual studio from trying to build these

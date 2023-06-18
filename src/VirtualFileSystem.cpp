@@ -8,7 +8,10 @@
     #include <CoreFoundation/CFBundle.h>
 #endif
 
+// defined in client user libraries automatically by cmake
+// if the user does not define these, the library will not link
 extern const std::span<const char> cmrc_get_file_data(const std::string_view& path);
+extern const std::string_view RVE_VFS_get_name();
 
 using namespace RavEngine;
 using namespace std;
@@ -17,7 +20,9 @@ inline const char* PHYSFS_WHY(){
 	return PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode());
 }
 
-VirtualFilesystem::VirtualFilesystem(const std::string& path) : rootname(path) {
+VirtualFilesystem::VirtualFilesystem() {
+	auto path = RVE_VFS_get_name();
+	rootname = path;
 #ifdef __APPLE__
     CFBundleRef AppBundle = CFBundleGetMainBundle();
     CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(AppBundle);

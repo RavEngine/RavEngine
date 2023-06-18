@@ -45,8 +45,7 @@ struct AudioPlayer;
         std::unique_ptr<RenderEngine> Renderer;
         std::unique_ptr<VirtualFilesystem> Resources;
 	public:
-		App(const std::string& resourcesName);
-        App();  // for unit tests only, do not use
+        App();
 		virtual ~App();
 
 		// set this to true in app constructor if XR is desired
