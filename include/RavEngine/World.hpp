@@ -259,7 +259,7 @@ namespace RavEngine {
                     entities.Emplace(index, first_value);
                 }
             };
-            Vector<command> commands;
+            unordered_vector<command> commands;
         };
 
         struct MDIICommandSkinned : public MDICommandBase {
@@ -272,7 +272,7 @@ namespace RavEngine {
                     entities.Emplace(index, first_value);
                 }
             };
-            Vector<command> commands;
+            unordered_vector<command> commands;
         };
     
         struct DirLightUploadData {

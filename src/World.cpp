@@ -448,7 +448,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(Rende
     }
     // otherwise create a new entry
     if (!found) {
-        set.commands.emplace_back(mesh, localId, localId);
+        set.commands.emplace(mesh, localId, localId);
     }
 }
 
@@ -488,7 +488,7 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(Rend
     }
     // otherwise create a new entry
     if (!found) {
-        set.commands.emplace_back(mesh, skeleton, localId, localId);
+        set.commands.emplace(mesh, skeleton, localId, localId);
     }
 }
 
@@ -504,6 +504,10 @@ void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entit
         });
         if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
             (*it).entities.EraseAtSparseIndex(local_id);
+            // if empty, remove from the larger container
+            if ((*it).entities.DenseSize() == 0) {
+                data.commands.erase(it);
+            }
         }
     });
 }
@@ -519,6 +523,10 @@ void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entit
         });
         if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
             (*it).entities.EraseAtSparseIndex(local_id);
+            // if empty, remove from the larger container
+            if ((*it).entities.DenseSize() == 0) {
+                data.commands.erase(it);
+            }
         }
     });
 }
