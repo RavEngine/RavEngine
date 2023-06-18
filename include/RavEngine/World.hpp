@@ -258,6 +258,9 @@ namespace RavEngine {
                 command(decltype(mesh) mesh, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh) {
                     entities.Emplace(index, first_value);
                 }
+                command(const command& other) = delete;
+                command(command&& other) : entities(std::move(other.entities)), mesh(std::move(other.mesh)){
+                }
             };
             unordered_vector<command> commands;
         };
@@ -270,6 +273,9 @@ namespace RavEngine {
                 set_t entities;
                 command(decltype(mesh) mesh, decltype(skeleton) skeleton, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
                     entities.Emplace(index, first_value);
+                }
+                command(const command& other) = delete;
+                command(command&& other) : entities(std::move(other.entities)), mesh(std::move(other.mesh)), skeleton(std::move(other.skeleton)){
                 }
             };
             unordered_vector<command> commands;
