@@ -5,6 +5,7 @@
 #include "DataStructures.hpp"
 #include "Utilities.hpp"
 #include "Debug.hpp"
+#include <span>
 
 struct PHYSFS_File;
 
@@ -80,6 +81,8 @@ public:
     Filesystem::Path GetStreamingAssetFullRootPath() const{
         return streamingAssetsPath;
     }
+
+    const std::span<const char> GetShaderData(const std::string_view name);
 	
 protected:
 	std::string rootname;

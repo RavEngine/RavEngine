@@ -21,7 +21,7 @@ static std::vector<uint8_t> readFile(const std::filesystem::path& filename) {
 }
 
 namespace RGL {
-	static void ShaderLibraryFromBytes(VkDevice device, VkShaderModule& module, const std::span<uint8_t, std::dynamic_extent> code) {
+	static void ShaderLibraryFromBytes(VkDevice device, VkShaderModule& module, const std::span<const uint8_t, std::dynamic_extent> code) {
 		VkShaderModuleCreateInfo createInfo{
 		   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 		   .codeSize = code.size(),    // in bytes, not multiples of uint32
@@ -34,7 +34,7 @@ namespace RGL {
 	{
 		FatalError("Default library is not available on Vulkan");
 	}
-	ShaderLibraryVk::ShaderLibraryVk(decltype(owningDevice) device, const std::span<uint8_t, std::dynamic_extent> code): owningDevice(device)
+	ShaderLibraryVk::ShaderLibraryVk(decltype(owningDevice) device, const std::span<const uint8_t, std::dynamic_extent> code): owningDevice(device)
 	{
 		ShaderLibraryFromBytes(owningDevice->device,shaderModule, code);
 	}
@@ -45,7 +45,7 @@ namespace RGL {
 			.entrypointOutputName = "main"
 		});
 		
-		ShaderLibraryFromBytes(owningDevice->device, shaderModule, std::span<uint8_t>(reinterpret_cast<uint8_t*>(result.data()), result.size()));
+		ShaderLibraryFromBytes(owningDevice->device, shaderModule, std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(result.data()), result.size()));
 	}
 	ShaderLibraryVk::ShaderLibraryVk(decltype(owningDevice) device, const std::filesystem::path& path) : owningDevice(device)
 	{

@@ -8,7 +8,7 @@ namespace RGL {
 	{
 		FatalError("Not implemented");
 	}
-	ShaderLibraryD3D12::ShaderLibraryD3D12(const std::span<uint8_t, std::dynamic_extent> bytes)
+	ShaderLibraryD3D12::ShaderLibraryD3D12(const std::span<const uint8_t, std::dynamic_extent> bytes)
 	{
 		InitFromBytes(bytes);
 	}
@@ -23,9 +23,10 @@ namespace RGL {
 	ShaderLibraryD3D12::ShaderLibraryD3D12(const std::filesystem::path& path)
 	{
 		DX_CHECK(D3DReadFileToBlob(path.c_str(), &shaderBlob));
+		auto size = shaderBlob->GetBufferSize();
 		shaderBytecode = CD3DX12_SHADER_BYTECODE(shaderBlob.Get());
 	}
-	void ShaderLibraryD3D12::InitFromBytes(const std::span<uint8_t, std::dynamic_extent> bytes)
+	void ShaderLibraryD3D12::InitFromBytes(const std::span<const uint8_t, std::dynamic_extent> bytes)
 	{
 		D3DCreateBlob(bytes.size_bytes(), &shaderBlob);
 		std::memcpy(shaderBlob->GetBufferPointer(), bytes.data(), bytes.size_bytes());

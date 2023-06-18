@@ -3,6 +3,7 @@
 #include <RGL/Device.hpp>
 #include "App.hpp"
 #include "RenderEngine.hpp"
+#include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
 
@@ -46,15 +47,21 @@ RGLShaderLibraryPtr RavEngine::LoadShaderByFilename(const std::string& name, RGL
     std::replace(name_copy.begin(),name_copy.end(),'.','_');
     return device->CreateShaderLibraryFromName(name_copy);
 #else
-#if 0
-    auto vertex_src = resources.FileContentsAt<std::vector<uint8_t>>(vertShaderPath.c_str());
-    auto fragment_src = resources.FileContentsAt<std::vector<uint8_t>>(fragShaderPath.c_str());
 
+#if 1
+    const char* ext = "";
+    if (RGL::CurrentAPI() == RGL::API::Vulkan) {
+        ext = ".spv";
+    }
+    else if (RGL::CurrentAPI() == RGL::API::Direct3D12) {
+        ext = ".cso";
+    }
 
-
-    vertShader = device->CreateShaderLibraryFromBytes(vertex_src);
-    fragShader = device->CreateShaderLibraryFromBytes(fragment_src);
-#endif
+    auto path = StrFormat("{}/{}{}", RGL::APIToString(RGL::CurrentAPI()), name, ext);
+    auto shaderBytes = resources.GetShaderData(path);
+    //auto shaderBytes = resources.FileContentsAt<std::vector<uint8_t>>(path.c_str(),false);
+    return device->CreateShaderLibraryFromBytes({ reinterpret_cast<const uint8_t*>(shaderBytes.data()), shaderBytes.size()});
+#else
     //TODO: this is temporary code for shader loading
     std::filesystem::path shaderPath;
     if (RGL::CurrentAPI() == RGL::API::Vulkan) {
@@ -66,5 +73,7 @@ RGLShaderLibraryPtr RavEngine::LoadShaderByFilename(const std::string& name, RGL
 
     return device->CreateShaderLibraryFromPath(shaderPath);
 #endif
-
+#endif
+    Debug::Fatal("Failed to load shader: engine is not compiled correctly");
+    return nullptr;
 }

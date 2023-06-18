@@ -58,7 +58,7 @@ RGLShaderLibraryPtr DeviceMTL::CreateShaderLibraryFromName(const std::string_vie
     return std::make_shared<ShaderLibraryMTL>(shared_from_this(), name);
 }
 
-RGLShaderLibraryPtr DeviceMTL::CreateShaderLibraryFromBytes(const std::span<uint8_t>) {
+RGLShaderLibraryPtr DeviceMTL::CreateShaderLibraryFromBytes(const std::span<const uint8_t>) {
     FatalError("Not Implemented");
 }
 

@@ -42,6 +42,8 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Android")
 	set(TARGET_ANDROID ON)
 endif()
 
+include(deps/cmrc/CMakeRC.cmake)
+
 if (TARGET_APPLE)
 	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0 -fobjc-arc)	# silence warning when building ARM fat library on Apple platforms, enable arc
 elseif(TARGET_EMSCRIPTEN)
@@ -655,15 +657,11 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options")
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
 
 macro(shader_compile infile stage api extension binary)
-	if ("${api}" STREQUAL "Vulkan")
-		set(bindir "$<CONFIG>")
-	else()
-		set(bindir "${shader_target}_ShaderIntermediate")
-	endif()
+	set(bindir "${shader_target}_ShaderIntermediate")
 
 	get_filename_component(name_only ${infile} NAME)
 	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
-	set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${shader_target}/shaders/${api}/")
+	set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}")
 	if (${api} MATCHES "Metal")
 		STRING(REPLACE "." "_" name_fixed ${name_only} )
 		set(entrypoint "--entrypoint" "${name_fixed}")
@@ -703,7 +701,7 @@ function(declare_shader infile shader_target)
 		endif()
 		target_sources(${shader_target} PUBLIC ${outname})
 		source_group("Generated" FILES "${outname}")
-		set(dx_final_name "${finalrootpath}/${name_only}.cso")
+		set(dx_final_name "${finalrootpath}.cso")
 		set_source_files_properties(${outname} PROPERTIES 
 			GENERATED TRUE
 			VS_SHADER_MODEL "6.4"
@@ -711,9 +709,10 @@ function(declare_shader infile shader_target)
 			VS_SHADER_ENABLE_DEBUG ON
 			VS_SHADER_DISABLE_OPTIMIZATIONS ON
 			# VS_SHADER_FLAGS "/Fd ${CMAKE_BINARY_DIR}/$<CONFIG>/"
-			# VS_SHADER_OBJECT_FILE_NAME ${dx_final_name}
+			VS_SHADER_OBJECT_FILE_NAME ${dx_final_name}
 		)
-		#set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
+		set_source_files_properties(dx_final_name PROPERTIES GENERATED TRUE)
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
 	endif()
 	if(RGL_MTL_AVAILABLE)
 		shader_compile("${infile}" "${stage}" "Metal" "metal" "")
@@ -862,6 +861,30 @@ function(pack_resources)
 	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
 	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine")
 
+	if(NOT APPLE)
+		set(rve_cmrc_resource_name "${ARGS_TARGET}_ShaderResources")
+		cmrc_add_resource_library("${rve_cmrc_resource_name}" WHENCE "${CMAKE_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/" ${all_shaders_property} )
+		target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_cmrc_resource_name}")
+		set(cmrc_shader_libfn_cpp "${CMAKE_BINARY_DIR}/__cmrc_${rve_cmrc_resource_name}/lib_extern.cpp")
+		file(GENERATE OUTPUT "${cmrc_shader_libfn_cpp}" CONTENT "
+		#include <cmrc/cmrc.hpp>
+		#include <span>
+		#include <string_view>
+		#include <string>
+		CMRC_DECLARE(${rve_cmrc_resource_name});
+		#define CMRC_NS cmrc::${rve_cmrc_resource_name}
+
+		const std::span<const char> cmrc_get_file_data(const std::string_view& path){
+			auto fs = CMRC_NS::get_filesystem();
+			auto file = fs.open(std::string(path));
+
+			return {file.begin(),file.size()};
+		}
+		")
+		target_sources(${rve_cmrc_resource_name} PRIVATE "${cmrc_shader_libfn_cpp}")
+		target_compile_features(${rve_cmrc_resource_name} PRIVATE cxx_std_20)
+	endif()
+
 	# add files to IDE sidebar for convenience
 	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shader_sources})
 	set_source_files_properties(${ARGS_UIS} ${all_shader_sources} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevents visual studio from trying to build these
@@ -888,7 +911,7 @@ function(pack_resources)
 		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)
 
-	set(assets ${ARGS_OBJECTS} ${all_shaders_property} ${ENG_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
+	set(assets ${ARGS_OBJECTS} ${ENG_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
 
 	# the command to pack into a zip
 	add_custom_command(

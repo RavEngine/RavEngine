@@ -309,7 +309,7 @@ namespace RGL {
         return std::make_shared<ShaderLibraryVk>(shared_from_this());
     }
 
-    RGLShaderLibraryPtr RGL::DeviceVk::CreateShaderLibraryFromBytes(const std::span<uint8_t> data)
+    RGLShaderLibraryPtr RGL::DeviceVk::CreateShaderLibraryFromBytes(const std::span<const uint8_t> data)
     {
         return std::make_shared<ShaderLibraryVk>(shared_from_this(), data);
     }

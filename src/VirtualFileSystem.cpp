@@ -2,10 +2,13 @@
 #include <physfs.h>
 #include <fmt/format.h>
 #include "Filesystem.hpp"
+#include <span>
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
 #endif
+
+extern const std::span<const char> cmrc_get_file_data(const std::string_view& path);
 
 using namespace RavEngine;
 using namespace std;
@@ -77,4 +80,15 @@ void RavEngine::VirtualFilesystem::IterateDirectory(const char* path, Function<v
 		callback(StrFormat("{}/{}",path,*(all+i)));
 	}
 	PHYSFS_freeList(all);
+}
+
+const std::span<const char> RavEngine::VirtualFilesystem::GetShaderData(const std::string_view name)
+{
+#if __APPLE__
+	return {};
+#else
+	auto filedata = cmrc_get_file_data(name);
+
+	return filedata;
+#endif
 }

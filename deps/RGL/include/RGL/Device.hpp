@@ -42,7 +42,7 @@ namespace RGL {
 
         virtual RGLShaderLibraryPtr CreateShaderLibraryFromName(const std::string_view& name) = 0;
 		virtual RGLShaderLibraryPtr CreateDefaultShaderLibrary() = 0;
-		virtual RGLShaderLibraryPtr CreateShaderLibraryFromBytes(const std::span<uint8_t>) = 0;
+		virtual RGLShaderLibraryPtr CreateShaderLibraryFromBytes(const std::span<const uint8_t>) = 0;
 		virtual RGLShaderLibraryPtr CreateShaderLibrarySourceCode(const std::string_view, const FromSourceConfig& config) = 0;
 		virtual RGLShaderLibraryPtr CreateShaderLibraryFromPath(const std::filesystem::path&) = 0;
 

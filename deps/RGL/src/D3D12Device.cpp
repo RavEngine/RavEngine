@@ -237,7 +237,7 @@ namespace RGL {
     {
         return std::make_shared<ShaderLibraryD3D12>();
     }
-    RGLShaderLibraryPtr RGL::DeviceD3D12::CreateShaderLibraryFromBytes(const std::span<uint8_t> bytes)
+    RGLShaderLibraryPtr RGL::DeviceD3D12::CreateShaderLibraryFromBytes(const std::span<const uint8_t> bytes)
     {
         return std::make_shared<ShaderLibraryD3D12>(bytes);
     }
