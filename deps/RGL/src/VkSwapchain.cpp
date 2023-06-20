@@ -3,6 +3,8 @@
 #include "RGLVk.hpp"
 #include "VkSynchronization.hpp"
 #include <algorithm>
+#undef min
+#undef max
 
 RGL::SwapchainVK::~SwapchainVK(){
     DestroySwapchainIfNeeded();
