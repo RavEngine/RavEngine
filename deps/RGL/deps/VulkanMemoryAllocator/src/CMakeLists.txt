@@ -44,7 +44,7 @@ target_compile_definitions(
     VMA_RECORDING_ENABLED=$<BOOL:${VMA_RECORDING_ENABLED}>
 )
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/install_target.cmake)
+#include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/install_target.cmake)
 
 if(VMA_BUILD_SAMPLE)
     if(WIN32)

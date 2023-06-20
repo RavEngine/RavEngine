@@ -6,6 +6,8 @@
 #include "TextureFormat.hpp"
 #include <RGL/ShaderLibrary.hpp>
 #include <RGL/Types.hpp>
+#undef Always
+#undef None
 
 namespace RGL {
 

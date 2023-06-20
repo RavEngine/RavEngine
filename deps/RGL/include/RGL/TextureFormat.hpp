@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#undef None
 
 namespace RGL {
     enum class ResourceLayout : uint8_t {

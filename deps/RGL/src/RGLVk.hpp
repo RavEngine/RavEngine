@@ -6,7 +6,7 @@
 #include <RGL/Pipeline.hpp>
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
-#include <vulkan/vk_enum_string_helper.h> 
+#include <vk_enum_string_helper.h> 
 #include <cassert>
 
 #define VK_CHECK(a) {auto VK_CHECK_RESULT = a; Assert(VK_CHECK_RESULT == VK_SUCCESS, std::string("Vulkan assertion failed: ") + # a + " -> " + string_VkResult(VK_CHECK_RESULT));}
