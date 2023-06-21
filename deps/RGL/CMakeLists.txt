@@ -193,7 +193,7 @@ set_target_properties(
 endif()
 
 if (RGL_VK_AVAILABLE)
-	set_target_properties(VulkanMemoryAllocator vulkan vvl loader-opt asm_offset loader-unknown-chain PROPERTIES FOLDER "RGL/Libraries")
+	set_target_properties(VulkanMemoryAllocator vulkan vvl loader-opt loader-unknown-chain VkLayer_utils loader_asm_gen_files PROPERTIES FOLDER "RGL/Libraries")
 endif()
 if (RGL_DX12_AVAILABLE)
 	set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER "RGL/Libraries")
