@@ -27,7 +27,7 @@ set(Vulkan_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/Vulkan-Headers/include" "${CM
 
 
 add_library(${PROJECT_NAME} INTERFACE)
-target_link_libraries(${PROJECT_NAME} INTERFACE Vulkan::Headers vulkan vvl)
+target_link_libraries(${PROJECT_NAME} INTERFACE Vulkan::Headers vulkan)
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
 
 INSTALL(TARGETS vulkan EXPORT vulkan DESTINATION "${CMAKE_INSTALL_PREFIX}")
