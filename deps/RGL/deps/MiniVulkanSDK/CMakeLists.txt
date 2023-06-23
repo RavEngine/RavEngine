@@ -21,6 +21,7 @@ set(USE_MASM OFF)
 set(USE_GAS OFF)
 set(ASSEMBLER_WORKS OFF)
 set(USE_ASSEMBLY_FALLBACK ON)
+set(BUILD_WSI_WAYLAND_SUPPORT OFF)
 add_subdirectory(Vulkan-ValidationLayers EXCLUDE_FROM_ALL)
 
 set(Vulkan_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/Vulkan-Headers/include" "${CMAKE_CURRENT_LIST_DIR}/Vulkan-ValidationLayers/layers/vulkan/generated" PARENT_SCOPE)
