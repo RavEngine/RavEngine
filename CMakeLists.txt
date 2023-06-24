@@ -679,10 +679,13 @@ function(declare_shader infile shader_target)
 
 	if (shader_ext MATCHES "vsh")
 		set(stage "vertex")
+		set(dxc_profile "v")
 	elseif (shader_ext MATCHES "fsh")
 		set(stage "fragment")
+		set(dxc_profile "p")
 	elseif (shader_ext MATCHES "csh")
 		set(stage "compute")
+		set(dxc_profile "c")
 	endif()
 
 	if(RGL_VK_AVAILABLE)
@@ -704,6 +707,7 @@ function(declare_shader infile shader_target)
 		set(dx_final_name "${finalrootpath}.cso")
 		set_source_files_properties(${outname} PROPERTIES 
 			GENERATED TRUE
+			HEADER_FILE_ONLY ON
 			VS_SHADER_MODEL "6.4"
 			VS_SHADER_TYPE ${dxc_type}
 			VS_SHADER_ENABLE_DEBUG ON
@@ -713,6 +717,13 @@ function(declare_shader infile shader_target)
 		)
 		set_source_files_properties(dx_final_name PROPERTIES GENERATED TRUE)
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
+		# manually invoke dxc.exe
+		add_custom_command(
+			PRE_BUILD 
+			OUTPUT "${dx_final_name}"
+			DEPENDS "${outname}"
+			COMMAND dxc.exe -Fo \"${dx_final_name}\" -Zi -Od -T ${dxc_profile}s_6_4 \"${outname}\"
+		)
 	endif()
 	if(RGL_MTL_AVAILABLE)
 		shader_compile("${infile}" "${stage}" "Metal" "metal" "")
