@@ -260,18 +260,18 @@ void World::setupRenderTasks(){
         }
         nCreatedThisTick = 0;
     });
-
-    auto updateRenderDataStaticMesh = renderTasks.emplace([this] {
-        
-        Filter([&](const StaticMesh& sm, Transform& trns) {
+    
+    auto updateRenderDataGeneric = [this]<typename SM_T, typename ... Aux_T>(const SM_T* sm_t_holder, auto& renderDataSource, auto&& captureLambda, auto&& iteratorComparator, const Aux_T* ... axillaryParams){
+        Filter([this,&renderDataSource,&captureLambda,&iteratorComparator](const SM_T& sm, const Aux_T& ..., Transform& trns) {
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
-                assert(renderData->staticMeshRenderData.contains(sm.GetMaterial()));
-                auto meshToUpdate = sm.GetMesh();
-                renderData->staticMeshRenderData.if_contains(sm.GetMaterial(), [&meshToUpdate,&trns,this](MDIICommand& row) {
-                    auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
-                        return value.mesh.lock() == meshToUpdate;
-                    });
+                assert(renderDataSource.contains(sm.GetMaterial()));
+                auto valuesToCompare = captureLambda(sm);
+                renderDataSource.if_contains(sm.GetMaterial(), [&trns,this, &iteratorComparator, &valuesToCompare](auto& row) {
+                    auto it = iteratorComparator(row, valuesToCompare);
+                    if (it == row.commands.end()){
+                        return;
+                    }
                     assert(it != row.commands.end());
                     auto& vec = *it;
                     // write new matrix
@@ -283,30 +283,30 @@ void World::setupRenderTasks(){
                 trns.ClearTickDirty();
             }
         });
+    };
+
+    auto updateRenderDataStaticMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
+        StaticMesh* ptrForTemplate;
+        updateRenderDataGeneric(ptrForTemplate,renderData->staticMeshRenderData, [](auto& sm){
+            return sm.GetMesh();
+        }, [](auto& row, auto& meshToUpdate){
+            return std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
+                return value.mesh.lock() == meshToUpdate;
+            });
+        });
+       
     }).name("Update invalidated static mesh transforms");
 
-    auto updateRenderDataSkinnedMesh = renderTasks.emplace([this] {
-        Filter([&](const SkinnedMeshComponent& sm, const AnimatorComponent& am, Transform& trns) {
-            if (trns.isTickDirty && sm.GetEnabled()) {
-                // update
-                auto owner = trns.GetOwner();
-
-                assert(renderData->skinnedMeshRenderData.contains(sm.GetMaterial()));
-                auto meshToUpdate = sm.GetMesh();
-                auto skeletonToUpdate = sm.GetSkeleton();
-                renderData->skinnedMeshRenderData.if_contains(sm.GetMaterial(), [owner, &meshToUpdate, &trns, &skeletonToUpdate, this](MDIICommandSkinned& row) {
-                    auto it = std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
-                        return value.mesh.lock() == meshToUpdate && value.skeleton.lock() == skeletonToUpdate;
-                    });
-                    assert(it != row.commands.end());
-                    auto& vec = *it;
-                    // write new matrix
-                    auto ownerIDInWorld = owner.GetIdInWorld();
-                    renderData->worldTransforms[ownerIDInWorld] = trns.CalculateWorldMatrix();
-				});
-                trns.ClearTickDirty();
-            }
-        });
+    auto updateRenderDataSkinnedMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
+        SkinnedMeshComponent* ptrForTemplate;
+        AnimatorComponent* ptrForTemplate2;
+        updateRenderDataGeneric(ptrForTemplate,renderData->skinnedMeshRenderData, [](auto& sm){
+            return std::make_pair(sm.GetMesh(), sm.GetSkeleton());
+        }, [](auto& row, auto& valuesToCompare){
+            return std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
+                return value.mesh.lock() == valuesToCompare.first && value.skeleton.lock() == valuesToCompare.second;
+            });
+        }, ptrForTemplate2);
     }).name("Upate invalidated skinned mesh transforms");
     
     resizeBuffer.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
@@ -415,6 +415,57 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     });
 }
 
+void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
+    
+    bool removeContains = false;
+    renderData.modify_if(material, [local_id,&mesh, &removeContains, &iteratorComparator](auto& data) {
+        auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
+            return iteratorComparator(other);
+        });
+        if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
+            (*it).entities.EraseAtSparseIndex(local_id);
+            // if empty, remove from the larger container
+            if ((*it).entities.DenseSize() == 0) {
+                data.commands.erase(it);
+            }
+            if (data.commands.size() == 0){
+                removeContains = true;
+            }
+        }
+    });
+    if (removeContains){
+        renderData.erase(material);
+    }
+    
+}
+
+void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat, auto newMat, auto mesh, auto&& deletionComparator, auto&& comparator, auto&& newConstructionFunction){
+    
+    // detect the case of the material set to itself
+    if (oldMat == newMat) {
+        return;
+    }
+
+    // remove render data for the old mesh
+    DestroyMeshRenderDataGeneric(mesh, oldMat, renderData, localID, deletionComparator);
+        
+    // add the new mesh & its transform to the hashmap
+    auto& set = ( * (renderData.try_emplace(newMat, typename std::remove_reference_t<decltype(renderData)>::mapped_type()).first)).second;
+    bool found = false;
+    for (auto& command : set.commands) {
+        bool found = comparator(command);
+        if (found) {
+            found = true;
+            command.entities.Emplace(localID,localID);
+        }
+    }
+    // otherwise create a new entry
+    if (!found) {
+        newConstructionFunction(set.commands);
+    }
+    
+}
+
 void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(RenderData::staticMeshRenderData)::key_type oldMat, decltype(RenderData::staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh)
 {
     // do nothing if renderer is not online
@@ -422,44 +473,19 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(Rende
         return;
     }
 
-    // detect the case of the material set to itself
-    if (oldMat == newMat) {
-        return;
-    }
-
-    // if the material has changed, need to reset the old one
-    if (oldMat != nullptr) {
-        renderData->staticMeshRenderData.if_contains(oldMat, [&](decltype(RenderData::staticMeshRenderData)::mapped_type& value) {
-            // find the Mesh
-            for (auto it = value.commands.begin(); it != value.commands.end(); ++it) {
-                auto& command = *it;
-                auto cmpMesh = command.mesh.lock();
-                if (cmpMesh == mesh) {
-                    command.entities.EraseAtSparseIndex(localId);
-                    if (command.entities.DenseSize() == 0) {
-                        value.commands.erase(it);
-                    }
-                    break;
-                }
-            }
-        });
-    }
-
-    // add the new mesh & its transform to the hashmap 
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
-    auto& set = ( * (renderData->staticMeshRenderData.try_emplace(newMat, decltype(RenderData::staticMeshRenderData)::mapped_type()).first)).second;
-    bool found = false;
-    for (auto& command : set.commands) {
-        auto cmpMesh = command.mesh.lock();
-        if (cmpMesh == mesh) {
-            found = true;
-            command.entities.Emplace(localId,localId);
+    updateMeshMaterialGeneric(renderData->staticMeshRenderData, localId, oldMat, newMat, mesh,
+        [mesh](auto&& other){
+            return other.mesh.lock() == mesh;
+        },
+        [mesh](auto&& command){
+            auto cmpMesh = command.mesh.lock();
+            return cmpMesh == mesh;
+        },
+        [mesh, localId](auto&& commands){
+            commands.emplace(mesh, localId, localId);
         }
-    }
-    // otherwise create a new entry
-    if (!found) {
-        set.commands.emplace(mesh, localId, localId);
-    }
+    );
 }
 
 void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(RenderData::skinnedMeshRenderData)::key_type oldMat, decltype(RenderData::skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton)
@@ -468,48 +494,20 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(Rend
     if (!renderData) {
         return;
     }
-
-    // detect the case of the material set to itself
-    if (oldMat == newMat) {
-        return;
-    }
-
-    // if the material has changed, need to reset the old one
-    if (oldMat != nullptr) {
-        renderData->skinnedMeshRenderData.if_contains(oldMat, [&](decltype(RenderData::skinnedMeshRenderData)::mapped_type& value) {
-            // find the Mesh
-            for (auto it = value.commands.begin(); it != value.commands.end(); ++it) {
-                auto& command = *it;
-                auto cmpMesh = command.mesh.lock();
-                auto cmpSkeleton = command.skeleton.lock();
-                if (cmpMesh == mesh && cmpSkeleton == skeleton) {
-                    command.entities.EraseAtSparseIndex(localId);
-                    if (command.entities.DenseSize() == 0) {
-                        value.commands.erase(it);
-                    }
-                    break;
-                }
-            }
-        });
-    }
-
-    // add the new mesh, its skeleton, & its transform to the hashmap entry
+    
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
-    auto& transform = GetComponent<Transform>(localId);
-    auto& set = (*(renderData->skinnedMeshRenderData.try_emplace(newMat, decltype(RenderData::skinnedMeshRenderData)::mapped_type()).first)).second;
-    bool found = false;
-    for (auto& command : set.commands) {
-        auto cmpMesh = command.mesh.lock();
-        auto cmpSkeleton = command.skeleton.lock();
-        if (cmpMesh == mesh && cmpSkeleton == skeleton) {
-            found = true;
-            command.entities.Emplace(localId, localId);
+    updateMeshMaterialGeneric(renderData->skinnedMeshRenderData, localId, oldMat, newMat, mesh,
+        [mesh, skeleton](auto&& other){
+            return other.mesh.lock() == mesh && other.skeleton.lock() == skeleton;
+        },
+        [mesh, skeleton](auto&& command){
+            auto cmpMesh = command.mesh.lock();
+            return cmpMesh == mesh && command.skeleton.lock() == skeleton;
+        },
+        [mesh, skeleton, localId](auto&& commands){
+            commands.emplace(mesh, skeleton, localId, localId);
         }
-    }
-    // otherwise create a new entry
-    if (!found) {
-        set.commands.emplace(mesh, skeleton, localId, localId);
-    }
+    );
 }
 
 void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entity_t local_id)
@@ -517,18 +515,10 @@ void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entit
     if (!renderData) {
         return;
     }
-
-    renderData->staticMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(RenderData::staticMeshRenderData)::mapped_type& data) {
-        auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
-            return other.mesh.lock() == mesh.GetMesh();
-        });
-        if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
-            (*it).entities.EraseAtSparseIndex(local_id);
-            // if empty, remove from the larger container
-            if ((*it).entities.DenseSize() == 0) {
-                data.commands.erase(it);
-            }
-        }
+    
+    auto meshData = mesh.GetMesh();
+    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData->staticMeshRenderData, local_id, [meshData](auto&& other){
+        return other.mesh.lock() == meshData;
     });
 }
 
@@ -536,18 +526,11 @@ void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entit
     if (!renderData) {
         return;
     }
-
-    renderData->skinnedMeshRenderData.modify_if(mesh.GetMaterial(), [local_id,&mesh](decltype(RenderData::skinnedMeshRenderData)::mapped_type& data) {
-        auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
-            return other.mesh.lock() == mesh.GetMesh() && other.skeleton.lock() == mesh.GetSkeleton();
-        });
-        if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
-            (*it).entities.EraseAtSparseIndex(local_id);
-            // if empty, remove from the larger container
-            if ((*it).entities.DenseSize() == 0) {
-                data.commands.erase(it);
-            }
-        }
+    
+    auto skeleton = mesh.GetSkeleton();
+    auto meshData = mesh.GetMesh();
+    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData->skinnedMeshRenderData, local_id, [meshData, skeleton](auto&& other){
+        return other.mesh.lock() == meshData && other.skeleton.lock() == skeleton;
     });
 }
 
