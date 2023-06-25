@@ -86,6 +86,9 @@ if(ST_BUNDLED_DXC)
     set(DXCLIBS "dxcompiler")
 else()
     set(DXCLIBS "dxcompiler.lib")
+    if (WINDOWS_STORE)
+        set(DXCLIBS "") # can't use it on UWP
+    endif()
 endif()
 
 # make library

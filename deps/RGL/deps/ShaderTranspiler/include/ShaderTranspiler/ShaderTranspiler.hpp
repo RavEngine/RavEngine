@@ -3,9 +3,7 @@
 #include <vector>
 #include <array>
 #include <filesystem>
-#if ST_BUNDLED_DXC == 1 || defined _MSC_VER
-	#define ST_DXIL_ENABLED
-#endif
+
 
 namespace spirv_cross{
 struct Resource;
@@ -30,9 +28,7 @@ enum class TargetAPI{
 	Vulkan,
 	HLSL,
 	WGSL,
-#ifdef ST_DXIL_ENABLED
 	DXIL,
-#endif
 	Metal,
 #ifdef __APPLE__
 	MetalBinary,	// requires xcrun 

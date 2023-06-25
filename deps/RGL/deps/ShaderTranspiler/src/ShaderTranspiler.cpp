@@ -18,6 +18,10 @@
 #define _UWP 0
 #endif
 
+#if (ST_BUNDLED_DXC == 1 || defined _MSC_VER && !_UWP) && !_UWP
+#define ST_DXIL_ENABLED
+#endif
+
 #define NEW_DXC (ST_BUNDLED_DXC || _WIN32)
 
 #if NEW_DXC
@@ -414,10 +418,10 @@ IMResult SPIRVToHLSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMo
 	return {hlsl.compile(), "", getReflectData(hlsl,bin)};
 }
 
-#ifdef ST_DXIL_ENABLED
+
 IMResult SPIRVToDXIL(const spirvbytes& bin, const Options& opt, spv::ExecutionModel model){
 	auto hlsl = SPIRVToHLSL(bin,opt,model);
-	
+#ifdef ST_DXIL_ENABLED
 #if NEW_DXC
 
 	auto compileWithNewDxc = [&] {
@@ -568,10 +572,13 @@ IMResult SPIRVToDXIL(const spirvbytes& bin, const Options& opt, spv::ExecutionMo
 #else
 	#error DXIL is not available on this platform
 #endif
-	
-	return hlsl;
-}
+#else
+	throw std::runtime_error("DXIL generation is not supported on this platform");
 #endif
+
+	return hlsl;
+
+}
 
 /**
  Decompile SPIR-V to Metal shader

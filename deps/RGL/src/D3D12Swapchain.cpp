@@ -41,7 +41,7 @@ namespace RGL {
         return allowTearing == TRUE;
     }
 
-    ComPtr<IDXGISwapChain4> CreateSwapChain(HWND hWnd,
+    ComPtr<IDXGISwapChain4> CreateSwapChain(void* hWndPtr,
         ComPtr<ID3D12CommandQueue> commandQueue,
         uint32_t width, uint32_t height, uint32_t bufferCount)
     {
@@ -70,17 +70,29 @@ namespace RGL {
         swapChainDesc.Flags = CheckTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
         ComPtr<IDXGISwapChain1> swapChain1;
+
+#if !_UWP
+        auto hwnd = *static_cast<HWND*>(hWndPtr);
         DX_CHECK(dxgiFactory4->CreateSwapChainForHwnd(
             commandQueue.Get(),
-            hWnd,
+            hwnd,
             &swapChainDesc,
             nullptr,
             nullptr,
             &swapChain1));
 
         // Disable the Alt+Enter fullscreen toggle feature. Switching to fullscreen
-        // will be handled manually.
-        DX_CHECK(dxgiFactory4->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER));
+       // will be handled manually.
+        DX_CHECK(dxgiFactory4->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER));
+#else
+        DX_CHECK(dxgiFactory4->CreateSwapChainForCoreWindow(
+            commandQueue.Get(),
+            static_cast<IUnknown*>(hWndPtr),
+            &swapChainDesc,
+            nullptr,
+            &swapChain1
+        ));
+#endif
 
         DX_CHECK(swapChain1.As(&dxgiSwapChain4));
 

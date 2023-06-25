@@ -5,8 +5,7 @@ using namespace RGL;
 
 RGLSurfacePtr RGL::CreateD3D12SurfaceFromPlatformData(void* HWNDptr)
 {
-	auto hwnd = *static_cast<HWND*>(HWNDptr);
-	return std::make_shared<SurfaceD3D12>(hwnd);
+	return std::make_shared<SurfaceD3D12>(HWNDptr);
 }
 
 RGL::SurfaceD3D12::~SurfaceD3D12()

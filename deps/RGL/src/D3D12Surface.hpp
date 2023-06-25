@@ -9,7 +9,7 @@
 namespace RGL {
 
 	struct SurfaceD3D12 : public ISurface {
-		HWND windowHandle;
+		void* windowHandle;
 		SurfaceD3D12(decltype(windowHandle) handle) : windowHandle(handle) {}
 		~SurfaceD3D12();
 	};
