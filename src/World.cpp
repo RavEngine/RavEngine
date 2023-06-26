@@ -286,7 +286,7 @@ void World::setupRenderTasks(){
     };
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
-        StaticMesh* ptrForTemplate;
+        constexpr static StaticMesh* ptrForTemplate = nullptr;
         updateRenderDataGeneric(ptrForTemplate,renderData->staticMeshRenderData, [](auto& sm){
             return sm.GetMesh();
         }, [](auto& row, auto& meshToUpdate){
@@ -298,8 +298,8 @@ void World::setupRenderTasks(){
     }).name("Update invalidated static mesh transforms");
 
     auto updateRenderDataSkinnedMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
-        SkinnedMeshComponent* ptrForTemplate;
-        AnimatorComponent* ptrForTemplate2;
+        constexpr static SkinnedMeshComponent* ptrForTemplate = nullptr;
+        constexpr static AnimatorComponent* ptrForTemplate2 = nullptr;
         updateRenderDataGeneric(ptrForTemplate,renderData->skinnedMeshRenderData, [](auto& sm){
             return std::make_pair(sm.GetMesh(), sm.GetSkeleton());
         }, [](auto& row, auto& valuesToCompare){

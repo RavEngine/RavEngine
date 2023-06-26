@@ -875,6 +875,10 @@ function(pack_resources)
 	if(NOT APPLE)
 		set(rve_cmrc_resource_name "${ARGS_TARGET}_ShaderResources")
 		cmrc_add_resource_library("${rve_cmrc_resource_name}" WHENCE "${CMAKE_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/" ${all_shaders_property} )
+		set_target_properties("${rve_cmrc_resource_name}" PROPERTIES
+			LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
+			ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
+		)
 		target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_cmrc_resource_name}")
 		set(cmrc_shader_libfn_cpp "${CMAKE_BINARY_DIR}/__cmrc_${rve_cmrc_resource_name}/lib_extern.cpp")
 		file(GENERATE OUTPUT "${cmrc_shader_libfn_cpp}" CONTENT "
@@ -905,6 +909,10 @@ function(pack_resources)
 	")
 	set(rve_externs_lib "${ARGS_TARGET}_Externs")
 	add_library(${rve_externs_lib} "${rve_externs_cpp}")
+	set_target_properties("${rve_externs_lib}" PROPERTIES
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
+	)
 	target_compile_features(${rve_externs_lib} PRIVATE cxx_std_20)
 	target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_externs_lib}")
 
