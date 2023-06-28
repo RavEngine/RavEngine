@@ -453,10 +453,10 @@ void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat,
     auto& set = ( * (renderData.try_emplace(newMat, typename std::remove_reference_t<decltype(renderData)>::mapped_type()).first)).second;
     bool found = false;
     for (auto& command : set.commands) {
-        bool found = comparator(command);
+        found = comparator(command);
         if (found) {
-            found = true;
             command.entities.Emplace(localID,localID);
+            break;
         }
     }
     // otherwise create a new entry
@@ -590,3 +590,10 @@ void World::DeallocatePhysics(){
     Solver->DeallocatePhysx();
 }
 
+RavEngine::World::MDICommandBase::~MDICommandBase()
+{
+    auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
+    gcBuffers.enqueue(indirectBuffer);
+    gcBuffers.enqueue(cullingBuffer);
+    gcBuffers.enqueue(indirectStagingBuffer);
+}

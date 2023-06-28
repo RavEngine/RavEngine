@@ -248,6 +248,7 @@ namespace RavEngine {
         // renderer-friendly representation of static meshes
         struct MDICommandBase {
             RGLBufferPtr indirectBuffer, cullingBuffer, indirectStagingBuffer;
+            ~MDICommandBase();
         };
 
         struct MDIICommand : public MDICommandBase {

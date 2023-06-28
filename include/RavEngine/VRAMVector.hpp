@@ -68,7 +68,10 @@ namespace RavEngine {
 			{.StorageBuffer = true, .VertexBuffer = true},
 			sizeof(T),
 			RGL::BufferAccess::Shared,
-			{.Writable = GPUWritable}
+			{
+				.Writable = GPUWritable,
+				.debugName = "VRAMVector Buffer"
+			}
 		};
 
 		size_type nValues = 0;	// current capacity is stored in the Settings struct
