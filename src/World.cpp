@@ -418,7 +418,9 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
     
     bool removeContains = false;
-    renderData.modify_if(material, [local_id,&mesh, &removeContains, &iteratorComparator](auto& data) {
+    auto data_it = renderData.find(material);
+    if (data_it != renderData.end()){
+        auto& data = (*data_it).second;
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return iteratorComparator(other);
         });
@@ -432,7 +434,7 @@ void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& render
                 removeContains = true;
             }
         }
-    });
+    }
     if (removeContains){
         renderData.erase(material);
     }

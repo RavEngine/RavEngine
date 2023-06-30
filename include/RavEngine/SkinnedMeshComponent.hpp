@@ -10,37 +10,32 @@ namespace RavEngine {
 
 class SkinnedMeshComponent : public ComponentWithOwner, public Queryable<SkinnedMeshComponent>, public Disableable{
 private:
-	std::tuple<Ref<MeshAssetSkinned>, Ref<PBRMaterialInstance>,Ref<SkeletonAsset>> tuple;
+    Ref<MeshAssetSkinned> mesh;
+    Ref<PBRMaterialInstance> mat;
+    Ref<SkeletonAsset> skeleton;
 	void updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> newMat);
 public:
 	
-	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner){
-		std::get<2>(tuple) = sk;
-		std::get<0>(tuple) = mesh;
-	}
+	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
 	
 	inline void SetMaterial(Ref<PBRMaterialInstance> newMat){
 		updateMaterialInWorldRenderData(newMat);
-		std::get<1>(tuple) = newMat;
+		mat = newMat;
 	}
 		
 	/**
 	 @returns the currently assigned material
 	 */
 	inline auto GetMaterial() const{
-		return std::get<1>(tuple);
+		return mat;
 	}
 	
 	inline Ref<MeshAssetSkinned> GetMesh() const{
-		return std::get<0>(tuple);
+		return mesh;
 	}
 
 	inline Ref<SkeletonAsset> GetSkeleton() const {
-		return std::get<2>(tuple);
-	}
-	
-    constexpr inline const decltype(tuple)& getTuple() const{
-		return tuple;
+		return skeleton;
 	}
 	
 	// shadow Disableable::SetEnabled

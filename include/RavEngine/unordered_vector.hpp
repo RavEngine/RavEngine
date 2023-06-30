@@ -25,7 +25,7 @@ public:
      @param it the iterator to erase
      */
     inline const_iterator_type erase(iterator_type it){
-        new (&(*it)) T(std::move(underlying.back()));
+        *it = std::move(underlying.back());
         underlying.pop_back();
         return it;
 	}
