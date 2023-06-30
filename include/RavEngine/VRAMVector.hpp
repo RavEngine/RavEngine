@@ -87,6 +87,15 @@ namespace RavEngine {
             nValues = other.nValues;
             settings = other.settings;
         }
+        
+        VRAMVector& operator=(VRAMVector&& other){
+            if (&other != this){
+                buffer = std::move(other.buffer);
+                nValues = other.nValues;
+                settings = other.settings;
+            }
+            return *this;
+        }
 
 		~VRAMVector() {
 			TrashOldVector(buffer);
