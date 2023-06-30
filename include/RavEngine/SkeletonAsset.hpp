@@ -6,6 +6,7 @@
 #include "mathtypes.hpp"
 #include <RGL/Types.hpp>
 
+
 namespace RavEngine {
 class SkeletonAsset{
 	ozz::unique_ptr<ozz::animation::Skeleton> skeleton;
@@ -14,6 +15,7 @@ class SkeletonAsset{
     RavEngine::Vector<glm::mat4> bindposes;
 public:
 	SkeletonAsset(const std::string& path);
+	~SkeletonAsset();
 	
 	
 	/**

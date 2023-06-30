@@ -201,6 +201,13 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	boneHierarchy->SetBufferData({parents.data(), parents.size() * sizeof(parents[0])});
 }
 
+RavEngine::SkeletonAsset::~SkeletonAsset()
+{
+	auto& gcbuffers = GetApp()->GetRenderEngine().gcBuffers;
+	gcbuffers.enqueue(bindpose);
+	gcbuffers.enqueue(boneHierarchy);
+}
+
 
 bool SkeletonAsset::HasBone(const std::string& boneName) const{
 	for (int i = 0; i < skeleton->num_joints(); i++) {

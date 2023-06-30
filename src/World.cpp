@@ -497,14 +497,14 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(Rend
     
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
     updateMeshMaterialGeneric(renderData->skinnedMeshRenderData, localId, oldMat, newMat, mesh,
-        [mesh, skeleton](auto&& other){
+        [mesh, &skeleton](auto&& other){
             return other.mesh.lock() == mesh && other.skeleton.lock() == skeleton;
         },
-        [mesh, skeleton](auto&& command){
+        [mesh, &skeleton](auto&& command){
             auto cmpMesh = command.mesh.lock();
             return cmpMesh == mesh && command.skeleton.lock() == skeleton;
         },
-        [mesh, skeleton, localId](auto&& commands){
+        [mesh, &skeleton, localId](auto&& commands){
             commands.emplace(mesh, skeleton, localId, localId);
         }
     );
@@ -529,7 +529,7 @@ void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entit
     
     auto skeleton = mesh.GetSkeleton();
     auto meshData = mesh.GetMesh();
-    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData->skinnedMeshRenderData, local_id, [meshData, skeleton](auto&& other){
+    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData->skinnedMeshRenderData, local_id, [&meshData, &skeleton](auto&& other){
         return other.mesh.lock() == meshData && other.skeleton.lock() == skeleton;
     });
 }
