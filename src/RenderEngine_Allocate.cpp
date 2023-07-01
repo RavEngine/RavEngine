@@ -134,9 +134,12 @@ namespace RavEngine {
 			}
 
 		};
-
-		deallocateData(*range.vertRange, vertexAllocatedList, vertexFreeList);
-		deallocateData(*range.indexRange, indexAllocatedList, indexFreeList);
+		if (range.vertRange.getNodePointer() != nullptr) {
+			deallocateData(*range.vertRange, vertexAllocatedList, vertexFreeList);
+		}
+		if (range.indexRange.getNodePointer() != nullptr) {
+			deallocateData(*range.indexRange, indexAllocatedList, indexFreeList);
+		}
 	}
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)

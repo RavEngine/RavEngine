@@ -1125,7 +1125,9 @@ public:
 
 		friend class list;
 
-
+		auto getNodePointer() const {
+			return node_pointer;
+		}
 
 		inline PLF_LIST_FORCE_INLINE bool operator == (const list_iterator rh) const PLF_LIST_NOEXCEPT
 		{
