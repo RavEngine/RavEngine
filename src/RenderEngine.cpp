@@ -1199,6 +1199,7 @@ void RavEngine::RenderEngine::createGBuffers()
 
 RavEngine::RenderEngine::~RenderEngine()
 {
+	mainCommandQueue->WaitUntilCompleted();
 	swapchainFence->Wait();
 	DestroyUnusedResources();
 	device->BlockUntilIdle();
