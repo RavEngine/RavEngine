@@ -83,6 +83,9 @@ namespace RavEngine {
         VRAMVector(const VRAMVector&) = delete; // disallow copying
         
         VRAMVector(VRAMVector&& other){         // move construction
+			if (buffer) {
+				TrashOldVector(buffer);
+			}
             buffer = std::move(other.buffer);
             nValues = other.nValues;
             settings = other.settings;
@@ -90,6 +93,9 @@ namespace RavEngine {
         
         VRAMVector& operator=(VRAMVector&& other){
             if (&other != this){
+				if (buffer) {
+					TrashOldVector(buffer);
+				}
                 buffer = std::move(other.buffer);
                 nValues = other.nValues;
                 settings = other.settings;

@@ -2,7 +2,7 @@
 #include "World.hpp"
 #include "SkinnedMeshComponent.hpp"
 
-void RavEngine::StaticMesh::updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> to)
+void RavEngine::StaticMesh::updateMaterialInWorldRenderData(Ref<MaterialInstance> to)
 {
 	// if mesh is not enabled, it does not have render data in the world
 	if (GetEnabled()){
@@ -15,7 +15,7 @@ void RavEngine::StaticMesh::updateMaterialInWorldRenderData(Ref<PBRMaterialInsta
 	
 }
 
-void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> to)
+void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(Ref<MaterialInstance> to)
 {
 	// if mesh is not enabled, it does not have render data in the world
 	if (GetEnabled()){

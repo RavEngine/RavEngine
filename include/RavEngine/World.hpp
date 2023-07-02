@@ -303,8 +303,8 @@ namespace RavEngine {
             // uses world-local ID
             VRAMVector<matrix4> worldTransforms;
 
-            locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
-            locked_node_hashmap<Ref<PBRMaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
+            locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
+            locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
         };
 
         std::optional<RenderData> renderData;

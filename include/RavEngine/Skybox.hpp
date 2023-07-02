@@ -10,7 +10,7 @@ namespace RavEngine {
 	};
 
 	// subclass
-	struct ISkyMaterialInstance : public MaterialInstance<ISkyMaterial> {
+	struct ISkyMaterialInstance : public MaterialInstance {
 		ISkyMaterialInstance(const Ref<ISkyMaterial> sm) : MaterialInstance(sm) {}
 	};
 

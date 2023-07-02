@@ -11,14 +11,14 @@ namespace RavEngine {
 class SkinnedMeshComponent : public ComponentWithOwner, public Queryable<SkinnedMeshComponent>, public Disableable{
 private:
     Ref<MeshAssetSkinned> mesh;
-    Ref<PBRMaterialInstance> mat;
+    Ref<MaterialInstance> mat;
     Ref<SkeletonAsset> skeleton;
-	void updateMaterialInWorldRenderData(Ref<PBRMaterialInstance> newMat);
+	void updateMaterialInWorldRenderData(Ref<MaterialInstance> newMat);
 public:
 	
 	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
 	
-	inline void SetMaterial(Ref<PBRMaterialInstance> newMat){
+	inline void SetMaterial(Ref<MaterialInstance> newMat){
 		updateMaterialInWorldRenderData(newMat);
 		mat = newMat;
 	}
