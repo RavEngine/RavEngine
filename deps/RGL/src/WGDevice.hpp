@@ -20,7 +20,7 @@ namespace RGL{
 
         RGLShaderLibraryPtr CreateShaderLibraryFromName(const std::string_view& name) final;
         RGLShaderLibraryPtr CreateDefaultShaderLibrary() final;
-        RGLShaderLibraryPtr CreateShaderLibraryFromBytes(const std::span<uint8_t>) final;
+        RGLShaderLibraryPtr CreateShaderLibraryFromBytes(const std::span<const uint8_t>) final;
         RGLShaderLibraryPtr CreateShaderLibrarySourceCode(const std::string_view, const FromSourceConfig& config) final;
         RGLShaderLibraryPtr CreateShaderLibraryFromPath(const std::filesystem::path&) final;
 

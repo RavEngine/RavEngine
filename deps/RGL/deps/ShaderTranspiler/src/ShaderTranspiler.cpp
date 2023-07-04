@@ -246,7 +246,7 @@ struct CompileGLSLResult {
 
 constexpr int textureBindingOffset = 16;
 
-const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLanguage ShaderType, const std::vector<std::filesystem::path>& includePaths, bool debug, bool noPushConstants = false) {
+const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLanguage ShaderType, const std::vector<std::filesystem::path>& includePaths, bool debug, bool performWebGPUModifications = false) {
 	//initialize. Do only once per process!
 	if (!glslAngInitialized)
 	{
@@ -266,12 +266,44 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 	shader.setShiftBinding(glslang::EResSampler, textureBindingOffset);
 	shader.setShiftBinding(glslang::EResImage, textureBindingOffset);
     shader.setEnvInputVulkanRulesRelaxed(); // use GL_EXT_vulkan_glsl_relaxed TODO: make this configurable
-	if (noPushConstants) {
-		constexpr static const char* globalUniformBlockName = "RVE_PushConstantBuffer";
-		shader.setGlobalUniformBlockName(globalUniformBlockName);
-		shader.addBlockStorageOverride(globalUniformBlockName, glslang::TBlockStorageClass::EbsStorageBuffer);
-	}
-	
+    
+    // remap push constants to uniform buffer
+	if (performWebGPUModifications) {
+        auto remapper = [&](){
+            // awful string parsing to find the name of the Uniform block
+            auto pushconstant_loc = source.find("push_constant");
+            if (pushconstant_loc == std::string::npos){
+                return;
+            }
+            auto uniform_loc = source.find("uniform",pushconstant_loc);
+            if (uniform_loc == std::string::npos){
+                return;
+            }
+            
+            auto brace_loc = source.find("{", uniform_loc);
+            if (brace_loc == std::string::npos){
+                return;
+            }
+            auto substr_begin = uniform_loc + sizeof("uniform")-1;
+            auto substr_size = brace_loc - (uniform_loc + sizeof("uniform")-1);
+            // 'trim' adjust ranges
+            for( ; substr_begin < brace_loc && std::isspace(source[substr_begin]); substr_begin++){
+                substr_size --;
+            }
+            for( ; substr_size > 0 && std::isspace(source[substr_begin + substr_size]); substr_size--){}
+            
+            auto blockname = source.substr(substr_begin, substr_size);
+            
+            std::string globalUniformBlockName(blockname);
+            
+            
+            shader.addBlockStorageOverride(globalUniformBlockName.c_str(), glslang::TBlockStorageClass::EbsStorageBuffer);
+        };
+        remapper();
+        
+        // WGSL
+    }
+
 
 	//=========== vulkan versioning (should alow this to be passed in, or find out from the system) ========
 	const int DefaultVersion = 460;
@@ -335,7 +367,9 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 	spvOptions.generateDebugInfo = debug;
 	spvOptions.disableOptimizer = debug;
 	spvOptions.stripDebugInfo = !debug;
-	glslang::GlslangToSpv(*program.getIntermediate(ShaderType), result.spirvdata, &logger, &spvOptions);
+    auto& intermediate = *program.getIntermediate(ShaderType);
+    
+	glslang::GlslangToSpv(intermediate, result.spirvdata, &logger, &spvOptions);
 
 	// get uniform information
 	program.buildReflection();

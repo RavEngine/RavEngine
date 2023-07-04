@@ -387,6 +387,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		{ wmi.info.cocoa.window },
 #elif __linux__
 		{ wmi.info.x11.display, wmi.info.x11.window },
+#elif __EMSCRIPTEN__
+	{nullptr, nullptr},
 #else
 #error Unknown platform
 #endif

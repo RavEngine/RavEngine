@@ -147,7 +147,7 @@ RGLShaderLibraryPtr DeviceWG::CreateDefaultShaderLibrary() {
 RGLShaderLibraryPtr DeviceWG::CreateShaderLibraryFromName(const std::string_view& name){
 }
 
-RGLShaderLibraryPtr DeviceWG::CreateShaderLibraryFromBytes(const std::span<uint8_t>) {
+RGLShaderLibraryPtr DeviceWG::CreateShaderLibraryFromBytes(const std::span<const uint8_t>) {
     FatalError("Not Implemented");
 }
 
