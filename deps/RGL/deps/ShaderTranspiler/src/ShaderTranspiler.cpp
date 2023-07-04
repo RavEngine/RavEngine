@@ -246,7 +246,7 @@ struct CompileGLSLResult {
 
 constexpr int textureBindingOffset = 16;
 
-const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLanguage ShaderType, const std::vector<std::filesystem::path>& includePaths, bool debug) {
+const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLanguage ShaderType, const std::vector<std::filesystem::path>& includePaths, bool debug, bool noPushConstants = false) {
 	//initialize. Do only once per process!
 	if (!glslAngInitialized)
 	{
@@ -266,6 +266,12 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 	shader.setShiftBinding(glslang::EResSampler, textureBindingOffset);
 	shader.setShiftBinding(glslang::EResImage, textureBindingOffset);
     shader.setEnvInputVulkanRulesRelaxed(); // use GL_EXT_vulkan_glsl_relaxed TODO: make this configurable
+	if (noPushConstants) {
+		constexpr static const char* globalUniformBlockName = "RVE_PushConstantBuffer";
+		shader.setGlobalUniformBlockName(globalUniformBlockName);
+		shader.addBlockStorageOverride(globalUniformBlockName, glslang::TBlockStorageClass::EbsStorageBuffer);
+	}
+	
 
 	//=========== vulkan versioning (should alow this to be passed in, or find out from the system) ========
 	const int DefaultVersion = 460;
@@ -358,7 +364,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
  @param filename the file to compile
  @param ShaderType the type of shader to compile
  */
-const CompileGLSLResult CompileGLSLFromFile(const FileCompileTask& task, const EShLanguage ShaderType, bool debug){
+const CompileGLSLResult CompileGLSLFromFile(const FileCompileTask& task, const EShLanguage ShaderType, bool debug, bool noPushConstants){
 	
 	
 	//Load GLSL into a string
@@ -375,7 +381,7 @@ const CompileGLSLResult CompileGLSLFromFile(const FileCompileTask& task, const E
 	// add current directory
 	std::vector<std::filesystem::path> pathsWithParent(std::move(task.includePaths));
 	pathsWithParent.push_back(task.filename.parent_path());
-	return CompileGLSL(InputGLSL, ShaderType, pathsWithParent, debug);
+	return CompileGLSL(InputGLSL, ShaderType, pathsWithParent, debug, noPushConstants);
 }
 
 /**
@@ -805,7 +811,8 @@ CompileResult ShaderTranspiler::CompileTo(const FileCompileTask& task, TargetAPI
 	auto types = ShaderStageToInternal(task.stage);
 
 	//generate spirv
-	auto spirv = CompileGLSLFromFile(task, types.type, opt.debug);
+	bool noPushConstants = api == TargetAPI::WGSL;
+	auto spirv = CompileGLSLFromFile(task, types.type, opt.debug, noPushConstants);
 	auto compres = CompileSpirVTo(spirv.spirvdata, api, opt, types);
 	compres.data.uniformData = std::move(spirv.uniforms);
 	compres.data.attributeData = std::move(spirv.attributes);
@@ -813,8 +820,9 @@ CompileResult ShaderTranspiler::CompileTo(const FileCompileTask& task, TargetAPI
 }
 
 CompileResult ShaderTranspiler::CompileTo(const MemoryCompileTask& task, TargetAPI api, const Options& opt) {
+	bool noPushConstants = api == TargetAPI::WGSL;
 	auto types = ShaderStageToInternal(task.stage);
-	auto spirv = CompileGLSL(task.source, types.type, task.includePaths, opt.debug);
+	auto spirv = CompileGLSL(task.source, types.type, task.includePaths, opt.debug, noPushConstants);
 	auto compres = CompileSpirVTo(spirv.spirvdata, api, opt, types);
 	compres.data.uniformData = std::move(spirv.uniforms);
 	compres.data.attributeData = std::move(spirv.attributes);
