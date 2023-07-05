@@ -27,7 +27,7 @@ void main()
 	mat4 inModel = model[inEntityID];
 
 	vec4 worldPos = inModel * vec4(inPosition,1);
-	outNormal = normalize(transpose(mat3(inModel)) * inNormal);
+	outNormal = normalize(mat3(inModel) * inNormal);
 
 	outUV = inUV;
 
