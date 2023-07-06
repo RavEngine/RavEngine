@@ -545,7 +545,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	// create lighting render pipelines
 	constexpr static uint32_t width = 640, height = 480;
-	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc, RGLPipelineLayoutPtr layout) {	
+	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc, RGLPipelineLayoutPtr layout, RGL::WindingOrder windingorder = RGL::WindingOrder::Counterclockwise) {
 
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
 			.vertexBindings = {
@@ -585,7 +585,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.extent = {width, height}
 			},
 			.rasterizerConfig = {
-				.windingOrder = RGL::WindingOrder::Counterclockwise,
+				.windingOrder = windingorder,
 			},
 			.colorBlendConfig = {
 				.attachments = {
@@ -692,7 +692,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.offset = sizeof(glm::vec4) * 4,
 					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				},
-		}, pointLightRenderPipelineLayout);
+		}, pointLightRenderPipelineLayout, RGL::WindingOrder::Clockwise);
 
 	auto spotLightFSH = LoadShaderByFilename("spotlight.fsh", device);
 	auto spotLightVSH = LoadShaderByFilename("spotlight.vsh", device);
@@ -743,7 +743,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.offset = sizeof(glm::vec4) * 5,
 					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
 				},
-		}, pointLightRenderPipelineLayout);
+		}, pointLightRenderPipelineLayout, RGL::WindingOrder::Clockwise);
 
 	// copy shader
 	auto lightToFbFSH = LoadShaderByFilename("light_to_fb.fsh",device);
