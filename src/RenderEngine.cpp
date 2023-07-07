@@ -591,6 +591,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.attachments = {
 					{
 						.format = colorTexFormat,
+						.destinationColorBlendFactor = RGL::BlendFactor::One,
 						.blendEnabled = true
 					},
 				}
