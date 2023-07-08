@@ -40,17 +40,17 @@ void main()
 	// extend the cone by intensity
 	// the top of the cone is at (0,0,0) and so does not get scaled
 	float len = length(a_position);
-	a_position *= (inColorIntensity.w / (len == 0 ? 1 : len)) * 2;
+	a_position *= (inColorIntensity.w / (len == 0 ? 1 : len)) * 4;
 	
 	vec4 worldpos = model * vec4(a_position, 1.0);
 	
 	gl_Position = ubo.viewProj * worldpos;
 
-	mat3 rotScaleOnly = transpose(mat3(model));
+	mat3 rotScaleOnly = mat3(model);
 
 	forward = normalize(rotScaleOnly * vec3(0, -1, 0));	// spot lights point down by default
 	
-	outPositionRadius = vec4(worldpos.xyz, cos(radians(coneAngle)));
+	outPositionRadius = vec4(vec3(model[3][0], model[3][1], model[3][2]), cos(radians(coneAngle)));
 	float penumbraAngle = radians(inConeAngleAndPenumbra.y);
 	outPenumbra = cos(radians(coneAngle) - penumbraAngle);	// to avoid calculating in each pixel
 	outColorIntensity = inColorIntensity;
