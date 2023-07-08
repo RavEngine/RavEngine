@@ -50,7 +50,7 @@ void main()
 
 	forward = normalize(rotScaleOnly * vec3(0, -1, 0));	// spot lights point down by default
 	
-	outPositionRadius = vec4(model[3][0], model[3][1], model[3][2], cos(radians(coneAngle)));
+	outPositionRadius = vec4(worldpos.xyz, cos(radians(coneAngle)));
 	float penumbraAngle = radians(inConeAngleAndPenumbra.y);
 	outPenumbra = cos(radians(coneAngle) - penumbraAngle);	// to avoid calculating in each pixel
 	outColorIntensity = inColorIntensity;

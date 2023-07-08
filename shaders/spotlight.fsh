@@ -20,6 +20,7 @@ float remap(float value, float min1, float max1, float min2, float max2) {
 }
 
 vec4 ComputeClipSpacePosition(vec2 pos, float depth){
+	pos.y = 1.0 - pos.y;
 	vec4 positionCS = vec4(pos * 2.0 - 1.0, depth, 1);
 	return positionCS;
 }
@@ -29,7 +30,6 @@ vec3 ComputeWorldSpacePos(vec2 positionNDC, float depth, mat4 invViewProj){
 	vec4 hpositionWS = invViewProj * positionCS;
 	return (hpositionWS / hpositionWS.w).xyz;
 }
-
 
 void main()
 {

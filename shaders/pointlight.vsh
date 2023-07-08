@@ -9,8 +9,10 @@ layout(location = 4) in vec4 inTransformR4;
 layout(location = 5) in vec4 inColorIntensity;
 
 
-layout(location = 0) out vec4 outColorIntensity;
-layout(location = 1) out vec4 outPositionRadius;
+layout(location = 0) out flat vec3 lightColor;
+layout(location = 1) out flat float radius;
+layout(location = 2) out flat vec3 lightPosition;
+layout(location = 3) out flat float intensity;
 
 
 layout(push_constant) uniform UniformBufferObject{
@@ -32,8 +34,8 @@ void main()
 
 	//calculate the radius
 	
-	float intensity = inColorIntensity[3];
-	float radius = intensity * intensity;
+	intensity = inColorIntensity[3];
+	radius = intensity * intensity;
     
     model = model * mat4(
                         vec4(radius,0,0,0),
@@ -46,6 +48,6 @@ void main()
 	
 	gl_Position = ubo.viewProj * worldpos;
     
-	outColorIntensity = inColorIntensity;
-	outPositionRadius = vec4(model[3][0], model[3][1], model[3][2], radius);
+	lightColor = inColorIntensity.rgb;
+	lightPosition = vec3(model[3][0], model[3][1], model[3][2]);
 }
