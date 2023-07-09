@@ -1249,12 +1249,12 @@ const string_view RenderEngine::GetCurrentBackendName(){
 
 float RavEngine::RenderEngine::GetCurrentFPS()
 {
-	return 1.0f / currentFrameTime;
+	return 1.0f / ((GetLastFrameTime() / 1000.f)/1000);
 }
 
 float RavEngine::RenderEngine::GetLastFrameTime()
 {
-	return currentFrameTime * 1000;
+	return currentFrameTime;
 }
 
 

@@ -16,6 +16,7 @@
 #include "Texture.hpp"
 #include "Debug.hpp"
 #include <glm/gtc/type_ptr.hpp>
+#include <chrono>
 
 namespace RavEngine {
 
@@ -27,6 +28,7 @@ namespace RavEngine {
  Render one frame using the current state of every object in the world
  */
 	void RenderEngine::Draw(Ref<RavEngine::World> worldOwning) {
+		auto start = std::chrono::high_resolution_clock::now();
 
 		// queue up the next swapchain image as soon as possible, 
 		// it will become avaiable in the background
@@ -229,27 +231,20 @@ namespace RavEngine {
 			poseSkeletalMeshes();
 
 			prepareSkeletalCullingBuffer();
-
-
-			cullSkeletalMeshes(viewproj);
 		}
-
 
 		// render all the static meshes
 		deferredRenderPass->SetAttachmentTexture(0, diffuseTexture.get());
 		deferredRenderPass->SetAttachmentTexture(1, normalTexture.get());
 		deferredRenderPass->SetDepthAttachmentTexture(depthStencil.get());
-		
 
 		mainCommandBuffer->SetViewport({
-		.width = static_cast<float>(nextImgSize.width),
-		.height = static_cast<float>(nextImgSize.height),
-			});
+			.width = static_cast<float>(nextImgSize.width),
+			.height = static_cast<float>(nextImgSize.height),
+		});
 		mainCommandBuffer->SetScissor({
 			.extent = {nextImgSize.width, nextImgSize.height}
-			});
-
-	
+		});
 
 		mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
 
@@ -269,10 +264,11 @@ namespace RavEngine {
 				.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
 				.to = RGL::ResourceLayout::DepthAttachmentOptimal
 			}
-			}, RGL::TransitionPosition::Top);
+			}, RGL::TransitionPosition::Top
+		);
 
 
-		auto renderFromPerspective = [this,&worldTransformBuffer,&worldOwning,&skeletalPrepareResult](matrix4 viewproj) {
+		auto renderFromPerspective = [this,&worldTransformBuffer,&worldOwning,&skeletalPrepareResult,&cullSkeletalMeshes](matrix4 viewproj) {
 			
 			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer](auto& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
@@ -424,16 +420,19 @@ namespace RavEngine {
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
 			cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
 			mainCommandBuffer->EndComputeDebugMarker();
+			if (skeletalPrepareResult.skeletalMeshesExist) {
+				cullSkeletalMeshes(viewproj);
+			}
 
-
-			// do rendering operations
 			if (sharedSkinnedMeshVertexBuffer) {
 				mainCommandBuffer->SetResourceBarrier({
 					.buffers = {
 						sharedSkinnedMeshVertexBuffer,
 					}
-					});
+				});
 			}
+
+			// do rendering operations
 			mainCommandBuffer->BeginRendering(deferredRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 			renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer);
@@ -449,7 +448,6 @@ namespace RavEngine {
 		};
 
 		renderFromPerspective(viewproj);
-
 
 		mainCommandBuffer->TransitionResources({
 			{
@@ -472,7 +470,9 @@ namespace RavEngine {
 				.from = RGL::ResourceLayout::DepthAttachmentOptimal,
 				.to = RGL::ResourceLayout::DepthReadOnlyOptimal,
 			}
-			}, RGL::TransitionPosition::Top);
+			}, RGL::TransitionPosition::Top
+		);
+
 		// do lighting pass
 		LightingUBO lightUBO{
 			.viewProj = viewproj,
@@ -657,6 +657,10 @@ namespace RavEngine {
 		mainCommandBuffer->Commit(commitconfig);
 
 		swapchain->Present(presentConfig);
+
+		auto end = std::chrono::high_resolution_clock::now();
+		auto duration = duration_cast<std::chrono::microseconds>(end - start);
+		currentFrameTime = duration.count();
 	}
 }
 

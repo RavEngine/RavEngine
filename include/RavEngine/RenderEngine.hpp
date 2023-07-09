@@ -159,7 +159,7 @@ namespace RavEngine {
 		float GetCurrentFPS();
         
         /**
-         @return the time in miliseconds to render the last frame
+         @return the time in microseconds to render the last frame (begin-to-present)
          */
 		float GetLastFrameTime();
 		
@@ -296,7 +296,7 @@ namespace RavEngine {
 		float win_scalefactor = 1;
 #endif
 		
-		float currentFrameTime;
+		uint32_t currentFrameTime;
 
 		static SDL_Window* window;
 		void* metalLayer;
