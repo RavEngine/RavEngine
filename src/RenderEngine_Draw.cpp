@@ -121,38 +121,7 @@ namespace RavEngine {
 		};
 		auto skeletalPrepareResult = prepareSkeletalMeshBuffers();
 
-		// dispatch compute to build the indirect buffer for finally rendering the skinned meshes
-		// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
-		// don't do operations if there's nothing to skin
-		if (skeletalPrepareResult.skeletalMeshesExist) {
-			mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
-			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
-			SkinningPrepareUBO ubo;
-			uint32_t baseInstance = 0;
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
-
-				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
-				for (auto& command : drawcommand.commands) {
-					const auto objectCount = command.entities.DenseSize();
-					const auto mesh = command.mesh.lock();
-					const auto vertexCount = mesh->GetNumVerts();
-
-					ubo.nVerticesInThisMesh = vertexCount;
-					ubo.nTotalObjects = objectCount;
-					ubo.indexBufferOffset = mesh->meshAllocation.indexRange->start / sizeof(uint32_t);
-					ubo.nIndicesInThisMesh = mesh->GetNumIndices();
-
-					mainCommandBuffer->SetComputeBytes(ubo, 0);
-					mainCommandBuffer->DispatchCompute(std::ceil(objectCount / 32.0f), 1, 1, 32, 1, 1);
-
-					ubo.vertexBufferOffset += vertexCount;
-					ubo.drawCallBufferOffset += objectCount;
-					ubo.baseInstanceOffset += objectCount;
-				}
-			}
-			mainCommandBuffer->EndCompute();
-			mainCommandBuffer->EndComputeDebugMarker();
-
+		auto cullSkeletalMeshes = [this,&worldTransformBuffer,&worldOwning](matrix4 viewproj) {
 			// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
 
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
@@ -182,6 +151,43 @@ namespace RavEngine {
 			}
 			mainCommandBuffer->EndComputeDebugMarker();
 			mainCommandBuffer->EndCompute();
+		};
+
+		// dispatch compute to build the indirect buffer for finally rendering the skinned meshes
+		// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
+		// don't do operations if there's nothing to skin
+		if (skeletalPrepareResult.skeletalMeshesExist) {
+
+
+			mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
+			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
+			SkinningPrepareUBO ubo;
+			uint32_t baseInstance = 0;
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+
+				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
+				for (auto& command : drawcommand.commands) {
+					const auto objectCount = command.entities.DenseSize();
+					const auto mesh = command.mesh.lock();
+					const auto vertexCount = mesh->GetNumVerts();
+
+					ubo.nVerticesInThisMesh = vertexCount;
+					ubo.nTotalObjects = objectCount;
+					ubo.indexBufferOffset = mesh->meshAllocation.indexRange->start / sizeof(uint32_t);
+					ubo.nIndicesInThisMesh = mesh->GetNumIndices();
+
+					mainCommandBuffer->SetComputeBytes(ubo, 0);
+					mainCommandBuffer->DispatchCompute(std::ceil(objectCount / 32.0f), 1, 1, 32, 1, 1);
+
+					ubo.vertexBufferOffset += vertexCount;
+					ubo.drawCallBufferOffset += objectCount;
+					ubo.baseInstanceOffset += objectCount;
+				}
+			}
+			mainCommandBuffer->EndCompute();
+			mainCommandBuffer->EndComputeDebugMarker();
+
+			cullSkeletalMeshes(viewproj);
 
 			mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
 			mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
