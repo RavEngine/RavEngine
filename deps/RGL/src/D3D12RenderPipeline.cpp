@@ -337,7 +337,9 @@ namespace RGL {
         pipelineStateDesc.InputLayout = { inputLayout, static_cast<uint32_t>(nattributes) };
         pipelineStateDesc.PrimitiveTopologyType = rgl2d3dtopology_family(desc.inputAssembly.topology);
         pipelineStateDesc.VS = vertFunc->shaderBytecode;
-        pipelineStateDesc.PS = fragFunc->shaderBytecode;
+        if (fragFunc) {
+            pipelineStateDesc.PS = fragFunc->shaderBytecode;
+        }
         pipelineStateDesc.DSVFormat = rgl2dxgiformat_texture(desc.depthStencilConfig.depthFormat);
         pipelineStateDesc.RasterizerState = rasterizerDesc;
         pipelineStateDesc.BlendState = colorBlendingConfig;

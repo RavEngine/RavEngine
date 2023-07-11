@@ -32,8 +32,8 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
     auto vertshaderName = StrFormat("{}.vsh", vsh_name);
     auto fragShaderName = StrFormat("{}.fsh", fsh_name);
 
-    vertShader = LoadShaderByFilename(vertshaderName, device);
-    fragShader = LoadShaderByFilename(fragShaderName, device);
+    auto vertShader = LoadShaderByFilename(vertshaderName, device);
+    auto fragShader = LoadShaderByFilename(fragShaderName, device);
 
     auto samplerPtr = GetApp()->GetRenderEngine().textureSampler;
 
@@ -85,6 +85,12 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
     };
 
     renderPipeline = device->CreateRenderPipeline(rpd);
+
+    // invert some settings for the shadow pipeline
+    rpd.stages.pop_back();  // no fragment shader
+    rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
+    shadowRenderPipeline = device->CreateRenderPipeline(rpd);
+
 }
 
 Material::~Material() {

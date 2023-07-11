@@ -268,7 +268,7 @@ namespace RavEngine {
 		);
 
 
-		auto renderFromPerspective = [this,&worldTransformBuffer,&worldOwning,&skeletalPrepareResult,&cullSkeletalMeshes](matrix4 viewproj) {
+		auto renderFromPerspective = [this,&worldTransformBuffer,&worldOwning,&skeletalPrepareResult,&cullSkeletalMeshes](matrix4 viewproj, RGLRenderPassPtr renderPass, auto pipelineSelectorFunction) {
 			
 			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer](auto& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
@@ -368,13 +368,14 @@ namespace RavEngine {
 					mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
 				}
 			};
-			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer](auto& renderData, RGLBufferPtr vertexBuffer) {
+			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction](auto& renderData, RGLBufferPtr vertexBuffer) {
 				// do static meshes
 				mainCommandBuffer->SetVertexBuffer(vertexBuffer);
 				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 				for (auto& [materialInstance, drawcommand] : renderData) {
 					// bind the pipeline
-					mainCommandBuffer->BindRenderPipeline(materialInstance->GetMat()->renderPipeline);
+					auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
+					mainCommandBuffer->BindRenderPipeline(pipeline);
 
 					// set push constant data
 					auto pushConstantData = materialInstance->GetPushConstantData();
@@ -433,7 +434,7 @@ namespace RavEngine {
 			}
 
 			// do rendering operations
-			mainCommandBuffer->BeginRendering(deferredRenderPass);
+			mainCommandBuffer->BeginRendering(renderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 			renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer);
 			mainCommandBuffer->EndRenderDebugMarker();
@@ -447,7 +448,9 @@ namespace RavEngine {
 			mainCommandBuffer->EndRenderDebugMarker();
 		};
 
-		renderFromPerspective(viewproj);
+		renderFromPerspective(viewproj, deferredRenderPass, [this](Ref<Material>&& mat) {
+			return mat->GetMainRenderPipeline();
+		});
 
 		mainCommandBuffer->TransitionResources({
 			{
@@ -594,8 +597,8 @@ namespace RavEngine {
 		mainCommandBuffer->Draw(3);
 
 		// then do the skybox, if one is defined.
-		if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->mat->renderPipeline) {
-			mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->mat->renderPipeline);
+		if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
+			mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
 			uint32_t totalIndices = 0;
 			// if a custom mesh is supplied, render that. Otherwise, render the builtin icosphere.
 			if (worldOwning->skybox->skyMesh) {

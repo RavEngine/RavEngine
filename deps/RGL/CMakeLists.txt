@@ -23,19 +23,18 @@ if (CMAKE_VS_PLATFORM_NAME STREQUAL "ARM64")
 endif()
 
 #setup main library
-file(GLOB_RECURSE MM_SOURCES "src/*.mm")
+if(APPLE)
+	file(GLOB_RECURSE MM_SOURCES "src/*.mm")
+endif()
+
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.hpp" "include/*.hpp" "src/*.h" )
 add_library(${PROJECT_NAME} ${SOURCES} ${MM_SOURCES})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 if (APPLE)
-set_source_files_properties(${MM_SOURCES} PROPERTIES
-	COMPILE_FLAGS "-x objective-c++"
-)
-
-if (linux)
-endif()
-
+	set_source_files_properties(${MM_SOURCES} PROPERTIES
+		COMPILE_FLAGS "-x objective-c++"
+	)
 endif()
 
 # setup compiler

@@ -60,20 +60,28 @@ namespace RavEngine {
             }
 		};
 
+		auto GetMainRenderPipeline() {
+			return renderPipeline;
+		}
+
+		auto GetShadowRenderPipeline() {
+			return shadowRenderPipeline;
+		}
+
 	protected:
-		RGLShaderLibraryPtr vertShader, fragShader;
-		RGLRenderPipelinePtr renderPipeline;
+		RGLRenderPipelinePtr renderPipeline, shadowRenderPipeline;
 		RGLPipelineLayoutPtr pipelineLayout;
 
 		Material(const std::string_view name, const MaterialConfig& config);
 		Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config);
 		
 		friend class RenderEngine;
-		friend class MaterialInstanceBase;
 	};
 
-	//for type conversions, do not use directly
-	struct MaterialInstanceBase {
+	/**
+	* Represents the settings of a material. Subclass to expose more properties.
+	*/	
+	struct MaterialInstance {
 		constexpr static uint8_t maxBindingSlots = 8;
 	protected:
 		std::array<RGLBufferPtr, maxBindingSlots> bufferBindings;
@@ -96,19 +104,12 @@ namespace RavEngine {
 		const auto& GetTextureBindings() const {
 			return textureBindings;
 		}
-	};
 
-	/**
-	* Represents the settings of a material. Subclass to expose more properties.
-	*/
-
-	class MaterialInstance : public MaterialInstanceBase {
-	public:
 		virtual ~MaterialInstance() {}
-		friend class RenderEngine;
 		auto GetMat() {
 			return mat;
 		}
+
 	protected:
 		MaterialInstance(Ref<Material> m) : mat(m) {}
 		Ref<Material> mat;
