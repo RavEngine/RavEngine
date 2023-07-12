@@ -263,14 +263,20 @@ namespace RavEngine {
 				.texture = depthStencil.get(),
 				.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
 				.to = RGL::ResourceLayout::DepthAttachmentOptimal
-			}
+			},
+			/*
+			{
+				.texture = shadowTexture.get(),
+				.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
+				.to = RGL::ResourceLayout::DepthAttachmentOptimal,
+			}*/
 			}, RGL::TransitionPosition::Top
 		);
 
 
-		auto renderFromPerspective = [this,&worldTransformBuffer,&worldOwning,&skeletalPrepareResult,&cullSkeletalMeshes](matrix4 viewproj, RGLRenderPassPtr renderPass, auto pipelineSelectorFunction) {
+		auto renderFromPerspective = [this,&worldTransformBuffer,&worldOwning,&skeletalPrepareResult,&cullSkeletalMeshes](matrix4 viewproj, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Dimension viewportScissorSize) {
 			
-			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer](auto& renderData) {
+			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
 					//prepass: get number of LODs and entities
 					uint32_t numLODs = 0, numEntities = 0;
@@ -368,8 +374,15 @@ namespace RavEngine {
 					mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
 				}
 			};
-			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction](auto& renderData, RGLBufferPtr vertexBuffer) {
+			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction,&viewportScissorSize](auto&& renderData, RGLBufferPtr vertexBuffer) {
 				// do static meshes
+				mainCommandBuffer->SetViewport({
+					.width = static_cast<float>(viewportScissorSize.width),
+					.height = static_cast<float>(viewportScissorSize.height),
+					});
+				mainCommandBuffer->SetScissor({
+					.extent = {viewportScissorSize.width, viewportScissorSize.height}
+				});
 				mainCommandBuffer->SetVertexBuffer(vertexBuffer);
 				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 				for (auto& [materialInstance, drawcommand] : renderData) {
@@ -448,9 +461,15 @@ namespace RavEngine {
 			mainCommandBuffer->EndRenderDebugMarker();
 		};
 
-		renderFromPerspective(viewproj, deferredRenderPass, [this](Ref<Material>&& mat) {
+		renderFromPerspective(viewproj, deferredRenderPass, [](Ref<Material>&& mat) {
 			return mat->GetMainRenderPipeline();
-		});
+		}, nextImgSize);
+
+		shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
+
+		renderFromPerspective(viewproj, shadowRenderPass, [](Ref<Material>&& mat) {
+			return mat->GetShadowRenderPipeline();
+			}, {2048,2048});
 
 		mainCommandBuffer->TransitionResources({
 			{
@@ -486,6 +505,14 @@ namespace RavEngine {
 			.invViewProj = glm::inverse(lightUBO.viewProj),
 			.viewRect = lightUBO.viewRect
 		};
+		//reset viewport and scissor
+		mainCommandBuffer->SetViewport({
+			.width = static_cast<float>(nextImgSize.width),
+			.height = static_cast<float>(nextImgSize.height),
+			});
+		mainCommandBuffer->SetScissor({
+			.extent = {nextImgSize.width, nextImgSize.height}
+			});
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
 

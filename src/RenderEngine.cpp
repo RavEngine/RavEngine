@@ -411,6 +411,25 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	createGBuffers();
 
+	shadowTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .DepthStencilAttachment = true },
+		.aspect = {.HasDepth = true },
+		.width = 2048,
+		.height = 2048,
+		.format = RGL::TextureFormat::D32SFloat,
+		.debugName = "Shadow Texture"
+	});
+
+	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
+	auto tmpfence = device->CreateFence(false);
+	tmpcmd->Begin();
+	tmpcmd->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
+	tmpcmd->End();
+	tmpcmd->Commit({
+		.signalFence = tmpfence
+		});
+	tmpfence->Wait();
+
 	// create "fixed-function" pipeline layouts
 	lightRenderPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
@@ -540,6 +559,16 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			.format = RGL::TextureFormat::D32SFloat,
 			.loadOp = RGL::LoadAccessOperation::Load,
 			.storeOp = RGL::StoreAccessOperation::Store,
+		}
+	});
+
+	shadowRenderPass = RGL::CreateRenderPass({
+		.attachments = {},
+		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Clear,
+			.storeOp = RGL::StoreAccessOperation::Store,
+			.clearColor = {1,1,1,1}
 		}
 	});
 
