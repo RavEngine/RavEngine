@@ -16,7 +16,7 @@ project(RGL)
 
 option(RGL_ENABLE_RGLC "Enable the separate compiler executable" ON)
 option(RGL_DISABLE_VK "Force-disable the Vulkan backend" OFF)
-option(RGL_USE_MINIVKSDK "Use MiniVulkanSDK instead of the installed Vulkan SDK" OFF)
+option(RGL_USE_MINIVKSDK "Use MiniVulkanSDK instead of the installed Vulkan SDK" ON)
 option(RGL_DISABLE_DX "Force-disable the D3D12 backend" OFF)
 
 if (CMAKE_VS_PLATFORM_NAME STREQUAL "ARM64")
