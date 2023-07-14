@@ -90,9 +90,7 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
     rpd.stages.pop_back();  // no fragment shader
     rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
     rpd.colorBlendConfig.attachments.clear();                           // only write to depth
-    rpd.rasterizerConfig.rasterizerDiscardEnable = true;                // vulkan requires when omitting the fragment shader
     shadowRenderPipeline = device->CreateRenderPipeline(rpd);
-
 }
 
 Material::~Material() {
@@ -100,4 +98,5 @@ Material::~Material() {
     auto& renderer = GetApp()->GetRenderEngine();
     renderer.gcPipelineLayout.enqueue(pipelineLayout);
     renderer.gcRenderPipeline.enqueue(renderPipeline);
+    renderer.gcRenderPipeline.enqueue(shadowRenderPipeline);
 }

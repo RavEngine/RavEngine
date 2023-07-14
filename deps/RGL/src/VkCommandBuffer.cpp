@@ -109,8 +109,17 @@ namespace RGL {
 		}
 
 		// repeat for depth stencil attachment
-
-		auto texSize = renderPass->textures[0]->GetSize();
+		RGL::Dimension texSize{};
+		if (renderPass->textures.size() > 0) {
+			texSize = renderPass->textures[0]->GetSize();
+		}
+		else if (renderPass->depthTexture) {
+			texSize = renderPass->depthTexture->GetSize();
+		}
+		else {
+			FatalError("No rendertargets are bound, cannot get texture size for beginRendering");
+		}
+		
 		VkRenderingAttachmentInfoKHR* depthAttachmentinfo = nullptr;
 		VkRenderingAttachmentInfoKHR depthAttachmentInfoData{};
 

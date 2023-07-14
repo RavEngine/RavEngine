@@ -457,8 +457,6 @@ namespace RavEngine {
 				mainCommandBuffer->EndRenderDebugMarker();
 			}
 			mainCommandBuffer->EndRendering();
-
-			mainCommandBuffer->EndRenderDebugMarker();
 		};
 
 		renderFromPerspective(viewproj, deferredRenderPass, [](Ref<Material>&& mat) {
