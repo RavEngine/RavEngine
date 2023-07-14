@@ -271,6 +271,7 @@ void CommandBufferMTL::CopyTextureToBuffer(RGL::ITexture *sourceTexture, const R
 }
 
 void CommandBufferMTL::SetResourceBarrier(const ResourceBarrierConfig& config){
+#if 0
     auto size = config.buffers.size() + config.textures.size();
     stackarray(resources, id<MTLResource>, size);
     
@@ -285,6 +286,7 @@ void CommandBufferMTL::SetResourceBarrier(const ResourceBarrierConfig& config){
     
     constexpr auto stages = MTLRenderStageVertex | MTLRenderStageFragment;
     [currentCommandEncoder memoryBarrierWithResources:resources count:size afterStages:stages beforeStages:stages];
+#endif
 }
 
 void CommandBufferMTL::SetRenderPipelineBarrier(const PipelineBarrierConfig&) {

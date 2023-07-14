@@ -503,14 +503,6 @@ namespace RavEngine {
 			.invViewProj = glm::inverse(lightUBO.viewProj),
 			.viewRect = lightUBO.viewRect
 		};
-		//reset viewport and scissor
-		mainCommandBuffer->SetViewport({
-			.width = static_cast<float>(nextImgSize.width),
-			.height = static_cast<float>(nextImgSize.height),
-			});
-		mainCommandBuffer->SetScissor({
-			.extent = {nextImgSize.width, nextImgSize.height}
-			});
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
 
@@ -519,6 +511,14 @@ namespace RavEngine {
 		});
 
 		mainCommandBuffer->BeginRendering(lightingRenderPass);
+        //reset viewport and scissor
+        mainCommandBuffer->SetViewport({
+            .width = static_cast<float>(nextImgSize.width),
+            .height = static_cast<float>(nextImgSize.height),
+            });
+        mainCommandBuffer->SetScissor({
+            .extent = {nextImgSize.width, nextImgSize.height}
+            });
 		mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 		// ambient lights
         if (worldOwning->renderData->ambientLightData.DenseSize() > 0){
