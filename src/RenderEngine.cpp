@@ -423,38 +423,85 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
 	auto tmpfence = device->CreateFence(false);
 	tmpcmd->Begin();
-	tmpcmd->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
+	tmpcmd->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 	tmpcmd->End();
 	tmpcmd->Commit({
 		.signalFence = tmpfence
 		});
 	tmpfence->Wait();
 
+
 	// create "fixed-function" pipeline layouts
-	lightRenderPipelineLayout = device->CreatePipelineLayout({
+	ambientLightRenderPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
-				{
+			{
 				.binding = 0,
 				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
 				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 			},
-				{
+			{
 				.binding = 1,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-			},
-			{
-				.binding = 2,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-			},
-			{
-				.binding = 3,
 				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
 				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 			},
 		},
 		.boundSamplers = {
+			textureSampler,
+		},
+		.constants = {
+			{
+				sizeof(AmbientLightUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+			}
+		}
+	});
+
+	lightRenderPipelineLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+					.binding = 0,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+				{
+					.binding = 1,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+				{
+					.binding = 2,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+				{
+					.binding = 3,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+				{
+					.binding = 4,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+				{
+					.binding = 5,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+				{
+					.binding = 6,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+				{
+					.binding = 7,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				},
+
+		},
+		.boundSamplers = {
+			textureSampler,
+			textureSampler,
 			textureSampler,
 			textureSampler,
 		},

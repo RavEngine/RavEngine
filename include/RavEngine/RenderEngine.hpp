@@ -58,7 +58,7 @@ namespace RavEngine {
 		RGLSurfacePtr surface;
 
 		RGLTexturePtr diffuseTexture, normalTexture, depthStencil, lightingTexture, shadowTexture;
-		RGLPipelineLayoutPtr lightRenderPipelineLayout, lightToFBPipelineLayout, pointLightRenderPipelineLayout;
+		RGLPipelineLayoutPtr ambientLightRenderPipelineLayout, lightRenderPipelineLayout, lightToFBPipelineLayout, pointLightRenderPipelineLayout;
 		RGLSamplerPtr textureSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass, shadowRenderPass;
 
@@ -83,8 +83,14 @@ namespace RavEngine {
 			glm::mat4 viewProj;
 		};
 
+		struct AmbientLightUBO {
+			glm::ivec4 viewRect;
+		};
+
 		struct LightingUBO {
 			glm::mat4 viewProj;
+			glm::mat4 invViewProj;
+			glm::mat4 lightViewProj;
 			glm::ivec4 viewRect;
 		};
 

@@ -1,3 +1,4 @@
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
 #include "RenderEngine.hpp"
 #include <RGL/CommandBuffer.hpp>
 #include <RGL/Swapchain.hpp>
@@ -54,7 +55,8 @@ namespace RavEngine {
 			Debug::Fatal("Cannot render: World does not have a camera!");
 		}
 		auto& cam = worldOwning->GetComponent<CameraComponent>();
-		auto viewproj = cam.GenerateProjectionMatrix(nextImgSize.width, nextImgSize.height) * cam.GenerateViewMatrix();
+		const auto viewproj = cam.GenerateProjectionMatrix(nextImgSize.width, nextImgSize.height) * cam.GenerateViewMatrix();
+		const auto invviewproj = glm::inverse(viewproj);
 		auto worldTransformBuffer = worldOwning->renderData->worldTransforms.buffer;
 
 		// do skeletal operations
@@ -463,12 +465,6 @@ namespace RavEngine {
 			return mat->GetMainRenderPipeline();
 		}, nextImgSize);
 
-		shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
-
-		renderFromPerspective(viewproj, shadowRenderPass, [](Ref<Material>&& mat) {
-			return mat->GetShadowRenderPipeline();
-			}, {2048,2048});
-
 		mainCommandBuffer->TransitionResources({
 			{
 				.texture = diffuseTexture.get(),
@@ -494,13 +490,18 @@ namespace RavEngine {
 		);
 
 		// do lighting pass
+		AmbientLightUBO ambientUBO{
+			.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
+		};
+
 		LightingUBO lightUBO{
 			.viewProj = viewproj,
+			.invViewProj = invviewproj,
 			.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
 		};
 		PointLightUBO pointLightUBO{
-			.viewProj = lightUBO.viewProj,
-			.invViewProj = glm::inverse(lightUBO.viewProj),
+			.viewProj = viewproj,
+			.invViewProj =invviewproj,
 			.viewRect = lightUBO.viewRect
 		};
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
@@ -510,26 +511,18 @@ namespace RavEngine {
 			.Fragment = true
 		});
 
-		mainCommandBuffer->BeginRendering(lightingRenderPass);
-        //reset viewport and scissor
-        mainCommandBuffer->SetViewport({
-            .width = static_cast<float>(nextImgSize.width),
-            .height = static_cast<float>(nextImgSize.height),
-            });
-        mainCommandBuffer->SetScissor({
-            .extent = {nextImgSize.width, nextImgSize.height}
-            });
 		mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 		// ambient lights
         if (worldOwning->renderData->ambientLightData.DenseSize() > 0){
+			mainCommandBuffer->BeginRendering(lightingRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
             mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
             
             mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-            mainCommandBuffer->SetVertexBytes(lightUBO, 0);
-            mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
+            mainCommandBuffer->SetVertexBytes(ambientUBO, 0);
+            mainCommandBuffer->SetFragmentBytes(ambientUBO, 0);
             mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->ambientLightData.GetDense().get_underlying().buffer, {
                 .bindingPosition = 1
             });
@@ -537,11 +530,63 @@ namespace RavEngine {
                 .nInstances = worldOwning->renderData->ambientLightData.DenseSize()
             });
 			mainCommandBuffer->EndRenderDebugMarker();
+			mainCommandBuffer->EndRendering();
         }
 
 		// directional lights
         if (worldOwning->renderData->directionalLightData.DenseSize() > 0){
+			// render shadows for directional lights
+			shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
 			mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
+			auto& dirlightStore = worldOwning->renderData->directionalLightData;
+			for (uint32_t i = 0; i < dirlightStore.DenseSize(); i++) {
+				const auto& light = dirlightStore.GetDense()[i];
+				auto dirvec = light.direction;
+
+				auto lightProj = glm::ortho<float>(-10, 10, -10, 10, -100, 100);
+				auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
+				auto lightSpaceMatrix = lightProj * lightView;
+
+				mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
+
+				renderFromPerspective(lightSpaceMatrix, shadowRenderPass, [](Ref<Material>&& mat) {
+					return mat->GetShadowRenderPipeline();
+					}, { 2048,2048 });
+
+				lightUBO.lightViewProj = lightSpaceMatrix;
+
+				mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
+				//reset viewport and scissor
+				mainCommandBuffer->SetViewport({
+					.width = static_cast<float>(nextImgSize.width),
+					.height = static_cast<float>(nextImgSize.height),
+					});
+				mainCommandBuffer->SetScissor({
+					.extent = {nextImgSize.width, nextImgSize.height}
+				});
+				mainCommandBuffer->BeginRendering(lightingRenderPass);
+				mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
+				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
+				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
+				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, shadowTexture.get(), 3);
+				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+				mainCommandBuffer->SetVertexBytes(lightUBO, 0);
+				mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
+				mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->directionalLightData.GetDense().get_underlying().buffer, {
+					.bindingPosition = 1,
+					.offsetIntoBuffer = uint32_t(sizeof(World::DirLightUploadData) * i)
+				});
+				mainCommandBuffer->Draw(3, {
+					.nInstances = 1
+				});
+				mainCommandBuffer->EndRenderDebugMarker();
+				mainCommandBuffer->EndRendering();
+			}
+
+			//TODO: submit unshadowed dirlights
+#if 0
+			mainCommandBuffer->BeginRendering(lightingRenderPass);
             mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
@@ -555,10 +600,13 @@ namespace RavEngine {
                 .nInstances = worldOwning->renderData->directionalLightData.DenseSize()
             });
 			mainCommandBuffer->EndRenderDebugMarker();
+			mainCommandBuffer->EndRendering();
+#endif
         }
 
 		// point lights
         if (worldOwning->renderData->pointLightData.DenseSize() > 0){
+			mainCommandBuffer->BeginRendering(lightingRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
             mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
             mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
@@ -575,10 +623,12 @@ namespace RavEngine {
                 .nInstances = worldOwning->renderData->pointLightData.DenseSize()
             });
 			mainCommandBuffer->EndRenderDebugMarker();
+			mainCommandBuffer->EndRendering();
         }
 
 		// spot lights
 		if (worldOwning->renderData->spotLightData.DenseSize() > 0) {
+			mainCommandBuffer->BeginRendering(lightingRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Spot Lights");
 			mainCommandBuffer->BindRenderPipeline(spotLightRenderPipeline);
 			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
@@ -595,9 +645,9 @@ namespace RavEngine {
 				.nInstances = worldOwning->renderData->spotLightData.DenseSize()
 			});
 			mainCommandBuffer->EndRenderDebugMarker();
+			mainCommandBuffer->EndRendering();
 		}
 
-		mainCommandBuffer->EndRendering();
 		mainCommandBuffer->EndRenderDebugMarker();
 
 		// the on-screen render pass
