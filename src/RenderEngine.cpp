@@ -497,6 +497,11 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 				},
+				{
+					.binding = 8,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
+					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				}
 
 		},
 		.boundSamplers = {
@@ -982,6 +987,23 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			},
 			.pipelineLayout = lightToFBPipelineLayout,
 		});
+
+	//TODO: on unified memory systems, don't make a staging buffer, and mark the transientBuffer as shared
+	transientBuffer = device->CreateBuffer({
+		65535,
+		{.StorageBuffer = true},
+		sizeof(char),
+		RGL::BufferAccess::Private,
+		{.TransferDestination = true, .debugName = "Transient Buffer" }
+	});
+	transientStagingBuffer = device->CreateBuffer({
+		65535,
+		{.StorageBuffer = true},
+		sizeof(char),
+		RGL::BufferAccess::Shared,
+		{.Transfersource = true, .debugName = "Transient Staging Buffer" }
+	});
+	transientStagingBuffer->MapMemory();
 
 	// lighting meshes
 	constexpr static Vertex2D vertices[] = {

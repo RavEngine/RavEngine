@@ -5,6 +5,7 @@
 #include <RGL/Buffer.hpp>
 #include <RGL/Device.hpp>
 #include <RGL/CommandBuffer.hpp>
+#include "Debug.hpp"
 
 namespace RavEngine {
 	MeshRange RenderEngine::AllocateMesh(const std::span<const VertexNormalUV> vertices, const std::span<const uint32_t> indices)
@@ -140,6 +141,33 @@ namespace RavEngine {
 		if (range.indexRange.getNodePointer() != nullptr) {
 			deallocateData(*range.indexRange, indexAllocatedList, indexFreeList);
 		}
+	}
+
+	uint32_t RenderEngine::WriteTransient(RGL::untyped_span data)
+	{
+		auto start = transientOffset;
+
+		if (start + data.size() > transientSizeBytes) {
+			Debug::Fatal("Not enough space left in transient buffer");
+		}
+
+		// TODO: on unified memory systems, don't make a staging buffer
+		std::memcpy(transientStagingBuffer->GetMappedDataPtr(),data.data(),data.size());
+		mainCommandBuffer->CopyBufferToBuffer(
+			{
+				.buffer = transientStagingBuffer,
+				.offset = 0
+			},
+			{
+				.buffer = transientBuffer,
+				.offset = start
+			},
+			data.size()
+		);
+
+		transientOffset += data.size();
+
+		return start;
 	}
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)

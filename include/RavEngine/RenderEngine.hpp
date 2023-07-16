@@ -89,8 +89,6 @@ namespace RavEngine {
 
 		struct LightingUBO {
 			glm::mat4 viewProj;
-			glm::mat4 invViewProj;
-			glm::mat4 lightViewProj;
 			glm::ivec4 viewRect;
 		};
 
@@ -281,7 +279,16 @@ namespace RavEngine {
 
     protected:
 	
+		constexpr static uint32_t transientSizeBytes = 65536;
+		RGLBufferPtr transientBuffer, transientStagingBuffer;
+		uint32_t transientOffset = 0;
 		
+		/**
+		* Add data to the transient buffer.
+		* The transient buffer is reset every frame. 
+		* @return the offset in bytes to the transient buffer
+		*/
+		uint32_t WriteTransient(RGL::untyped_span data);
 
 		allocation_freelist_t vertexFreeList{ 1, Range{.start = 0, .count = initialVerts}};
 		allocation_freelist_t indexFreeList{ 1, Range{.start = 0, .count = initialIndices}};

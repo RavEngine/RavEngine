@@ -30,6 +30,7 @@ namespace RavEngine {
  */
 	void RenderEngine::Draw(Ref<RavEngine::World> worldOwning) {
 		auto start = std::chrono::high_resolution_clock::now();
+		transientOffset = 0;
 
 		// queue up the next swapchain image as soon as possible, 
 		// it will become avaiable in the background
@@ -496,7 +497,6 @@ namespace RavEngine {
 
 		LightingUBO lightUBO{
 			.viewProj = viewproj,
-			.invViewProj = invviewproj,
 			.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
 		};
 		PointLightUBO pointLightUBO{
@@ -543,6 +543,11 @@ namespace RavEngine {
 				const auto& light = dirlightStore.GetDense()[i];
 				auto dirvec = light.direction;
 
+				struct  {
+					glm::mat4 invViewProj;
+					glm::mat4 lightViewProj;
+				} dirlightExtras;
+
 				auto lightProj = glm::ortho<float>(-10, 10, -10, 10, -100, 100);
 				auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
 				auto lightSpaceMatrix = lightProj * lightView;
@@ -553,7 +558,10 @@ namespace RavEngine {
 					return mat->GetShadowRenderPipeline();
 					}, { 2048,2048 });
 
-				lightUBO.lightViewProj = lightSpaceMatrix;
+				dirlightExtras.lightViewProj = lightSpaceMatrix;
+				dirlightExtras.invViewProj = invviewproj;
+
+				auto transientOffset = WriteTransient(dirlightExtras);
 
 				mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 				//reset viewport and scissor
@@ -570,6 +578,7 @@ namespace RavEngine {
 				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
 				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
 				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, shadowTexture.get(), 3);
+				mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->SetVertexBytes(lightUBO, 0);
 				mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
