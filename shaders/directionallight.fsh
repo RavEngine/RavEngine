@@ -53,7 +53,6 @@ void main()
     vec3 toLight = normalize(lightdir.xyz);
 
     int enabled = 1;
-    const float bias = 0.005; //TODO: calcuate as a function of the difference between the normal and the light dir
 #if 1
     //TODO: check if shadow is enabled
         float sampledDepthForPos = texture(s_depth, texcoord).x;
@@ -61,11 +60,12 @@ void main()
         sampledPos = constants[0].lightViewProj * sampledPos;    // where is this on the light
         sampledPos /= sampledPos.w; // perspective divide
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
+        sampledPos.y = 1 - sampledPos.y;
 
         float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture(s_depthshadow, sampledPos.xy).x;
 
         // in shadow
-        if (sampledDepth.x < sampledPos.z - bias){
+        if (sampledDepth.x < sampledPos.z){
             enabled = 0;
         }
 #endif

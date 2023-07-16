@@ -58,6 +58,7 @@ namespace RavEngine {
 		auto& cam = worldOwning->GetComponent<CameraComponent>();
 		const auto viewproj = cam.GenerateProjectionMatrix(nextImgSize.width, nextImgSize.height) * cam.GenerateViewMatrix();
 		const auto invviewproj = glm::inverse(viewproj);
+		const auto camPos = cam.GetOwner().GetTransform().GetWorldPosition();
 		auto worldTransformBuffer = worldOwning->renderData->worldTransforms.buffer;
 
 		// do skeletal operations
@@ -548,8 +549,12 @@ namespace RavEngine {
 					glm::mat4 lightViewProj;
 				} dirlightExtras;
 
-				auto lightProj = glm::ortho<float>(-10, 10, -10, 10, -100, 100);
+				constexpr auto lightArea = 40;
+
+				auto lightProj = glm::ortho<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
 				auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
+				const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z)};
+				lightView = glm::translate(lightView, reposVec);
 				auto lightSpaceMatrix = lightProj * lightView;
 
 				mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
