@@ -8,7 +8,7 @@ layout(location = 0) out vec4 outcolor;
 layout(binding = 0) uniform sampler2D s_albedo;
 layout(binding = 1) uniform sampler2D s_normal;
 layout(binding = 2) uniform sampler2D s_depth;
-layout(binding = 3) uniform sampler2D s_depthshadow;
+layout(binding = 3) uniform sampler2DShadow s_depthshadow;
 
 struct DirLightExtraConstants{
     mat4 invViewProj;
@@ -19,11 +19,6 @@ layout(scalar, binding = 8) readonly buffer pushConstantSpill
 {
 	DirLightExtraConstants constants[];
 };
-
-
-bool outOfRange(float f){
-    return f < 0 || f > 1;
-}
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
@@ -52,7 +47,7 @@ void main()
     vec3 normal = texture(s_normal, texcoord).xyz;
     vec3 toLight = normalize(lightdir.xyz);
 
-    int enabled = 1;
+    float pcfFactor = 1;
 #if 1
     //TODO: check if shadow is enabled
         float sampledDepthForPos = texture(s_depth, texcoord).x;
@@ -62,12 +57,7 @@ void main()
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
         sampledPos.y = 1 - sampledPos.y;
 
-        float sampledDepth = (outOfRange(sampledPos.x) || outOfRange(sampledPos.y)) ? 1 : texture(s_depthshadow, sampledPos.xy).x;
-
-        // in shadow
-        if (sampledDepth.x < sampledPos.z){
-            enabled = 0;
-        }
+       pcfFactor = texture(s_depthshadow, sampledPos.xyz, 0).x;
 #endif
     
     float intensity = colorintensity[3];
@@ -77,6 +67,6 @@ void main()
     float nDotL = max(dot(normal, toLight), 0);
     
     vec3 diffuseLight = albedo * nDotL;
-    outcolor = vec4(intensity * colorintensity.xyz * diffuseLight * enabled, enabled);
+    outcolor = vec4(intensity * colorintensity.xyz * diffuseLight * pcfFactor, 1);
 	
 }

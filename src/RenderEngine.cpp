@@ -408,6 +408,12 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	mainCommandBuffer = mainCommandQueue->CreateCommandBuffer();
 	swapchainFence = device->CreateFence(true);
 	textureSampler = device->CreateSampler({});
+	shadowSampler = device->CreateSampler({
+		.addressModeU = RGL::SamplerAddressMode::Border,
+		.addressModeV = RGL::SamplerAddressMode::Border,
+		.borderColor = {1,1,1,1},
+		.compareFunction = RGL::DepthCompareFunction::Greater
+	});
 
 	createGBuffers();
 
@@ -484,17 +490,17 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				},
 				{
 					.binding = 5,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 				},
 				{
 					.binding = 6,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 				},
 				{
 					.binding = 7,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
+					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
 					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
 				},
 				{
@@ -508,7 +514,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			textureSampler,
 			textureSampler,
 			textureSampler,
-			textureSampler,
+			shadowSampler,
 		},
 		.constants = {
 			{

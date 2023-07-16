@@ -6,6 +6,17 @@
 #undef max
 
 namespace RGL {
+
+	D3D12_TEXTURE_ADDRESS_MODE rgl2d3d12addressmode(SamplerAddressMode mode) {
+		switch (mode) {
+		case decltype(mode)::Wrap: return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		case decltype(mode)::Mirror: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+		case decltype(mode)::Clamp: return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		case decltype(mode)::Border: return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		case decltype(mode)::MirrorOnce: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+		}
+	}
+
 	SamplerD3D12::SamplerD3D12(decltype(owningDevice) owningDevice, const SamplerConfig& config) : owningDevice(owningDevice),
 		descriptorIndex(owningDevice->SamplerHeap->AllocateSingle())
 	{
@@ -14,13 +25,13 @@ namespace RGL {
 
 		 samplerDesc = {
 			.Filter = D3D12_FILTER_ANISOTROPIC,
-			.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-			.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-			.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+			.AddressU = rgl2d3d12addressmode(config.addressModeU),
+			.AddressV = rgl2d3d12addressmode(config.addressModeV),
+			.AddressW = rgl2d3d12addressmode(config.addressModeW),
 			.MipLODBias = 0,
 			.MaxAnisotropy = 1,
-			.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS,
-			.BorderColor = {0,0,0,1},
+			.ComparisonFunc = rgl2d3dcompfn(config.compareFunction),
+			.BorderColor = {config.borderColor[0],config.borderColor[1],config.borderColor[2],config.borderColor[3]},
 			.MinLOD = 0,
 			.MaxLOD = std::numeric_limits<decltype(samplerDesc.MaxLOD)>::max(),
 

@@ -59,7 +59,7 @@ namespace RavEngine {
 
 		RGLTexturePtr diffuseTexture, normalTexture, depthStencil, lightingTexture, shadowTexture;
 		RGLPipelineLayoutPtr ambientLightRenderPipelineLayout, lightRenderPipelineLayout, lightToFBPipelineLayout, pointLightRenderPipelineLayout;
-		RGLSamplerPtr textureSampler;
+		RGLSamplerPtr textureSampler, shadowSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, finalRenderPass, shadowRenderPass;
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,

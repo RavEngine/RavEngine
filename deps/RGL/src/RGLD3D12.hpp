@@ -3,6 +3,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/Core.hpp>
 #include <RGL/TextureFormat.hpp>
+#include <RGL/Common.hpp>
 #include "RGLCommon.hpp"
 #include <cassert>
 #include <comdef.h>
@@ -26,6 +27,7 @@ namespace RGL {
 
 	DXGI_FORMAT rgl2dxgiformat_texture(RGL::TextureFormat format);
 	D3D12_RESOURCE_STATES rgl2d3d12resourcestate(RGL::ResourceLayout layout);
+	D3D12_COMPARISON_FUNC rgl2d3dcompfn(RGL::DepthCompareFunction depthFunction);
 
 	void RGLDeviceRemovedHandler(PVOID context, BOOLEAN);
 }
