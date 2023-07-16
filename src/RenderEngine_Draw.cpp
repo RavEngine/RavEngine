@@ -564,15 +564,15 @@ namespace RavEngine {
 				auto transientOffset = WriteTransient(dirlightExtras);
 
 				mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
-				//reset viewport and scissor
-				mainCommandBuffer->SetViewport({
-					.width = static_cast<float>(nextImgSize.width),
-					.height = static_cast<float>(nextImgSize.height),
-					});
-				mainCommandBuffer->SetScissor({
-					.extent = {nextImgSize.width, nextImgSize.height}
-				});
 				mainCommandBuffer->BeginRendering(lightingRenderPass);
+                //reset viewport and scissor
+                mainCommandBuffer->SetViewport({
+                    .width = static_cast<float>(nextImgSize.width),
+                    .height = static_cast<float>(nextImgSize.height),
+                    });
+                mainCommandBuffer->SetScissor({
+                    .extent = {nextImgSize.width, nextImgSize.height}
+                });
 				mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
 				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
 				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
