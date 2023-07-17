@@ -412,7 +412,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.addressModeU = RGL::SamplerAddressMode::Border,
 		.addressModeV = RGL::SamplerAddressMode::Border,
 		.borderColor = {1,1,1,1},
-		.compareFunction = RGL::DepthCompareFunction::Greater
+		.compareFunction = RGL::DepthCompareFunction::Less
 	});
 
 	createGBuffers();
