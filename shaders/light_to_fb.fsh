@@ -1,5 +1,6 @@
 
-uniform sampler2D s_light;
+layout(binding = 0) uniform sampler g_sampler;
+layout(binding = 1) uniform texture2D t_light;
 
 layout(push_constant) uniform UniformBufferObject{
 	mat4 viewProj;
@@ -12,6 +13,6 @@ void main()
 {
 	vec2 texcoord = vec2(gl_FragCoord.x / ubo.viewRect.z, gl_FragCoord.y / ubo.viewRect.w);
 	
-	vec3 light = texture(s_light, texcoord).xyz;
+	vec3 light = texture(sampler2D(t_light, g_sampler), texcoord).xyz;
     outcolor = vec4(light, 1);
 }

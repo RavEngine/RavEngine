@@ -442,17 +442,14 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.bindings = {
 			{
 				.binding = 0,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
 			{
 				.binding = 1,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
-		},
-		.boundSamplers = {
-			textureSampler,
 		},
 		.constants = {
 			{
@@ -465,56 +462,40 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.bindings = {
 				{
 					.binding = 0,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
 					.binding = 1,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
 					.binding = 2,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
 					.binding = 3,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
 					.binding = 4,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
 					.binding = 5,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-				},
-				{
-					.binding = 6,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-				},
-				{
-					.binding = 7,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
 					.binding = 8,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Fragment,
 				}
 
-		},
-		.boundSamplers = {
-			textureSampler,
-			textureSampler,
-			textureSampler,
-			shadowSampler,
 		},
 		.constants = {
 			{
@@ -527,39 +508,29 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.bindings = {
 				{
 				.binding = 0,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
 				{
 				.binding = 1,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
-				{
+			{
 				.binding = 2,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
 			{
 				.binding = 3,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
 			{
 				.binding = 4,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
-			{
-				.binding = 5,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
-			},
-		},
-		.boundSamplers = {
-			textureSampler,
-			textureSampler,
-			textureSampler,
 		},
 		.constants = {
 			{
@@ -715,7 +686,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.offset = 0,
 					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				}
-		}, lightRenderPipelineLayout);
+		}, ambientLightRenderPipelineLayout);
 
 	auto dirLightFSH = LoadShaderByFilename("directionallight.fsh", device);
 	auto dirLightVSH = LoadShaderByFilename("directionallight.vsh", device);
@@ -841,17 +812,14 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.bindings = {
 				{
 				.binding = 0,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
 			{
 				.binding = 1,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
-		},
-		.boundSamplers = {
-			textureSampler,
 		},
 		.constants = {
 			{
@@ -1145,26 +1113,26 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		 .bindings = {
 				{
 					.binding = 0,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = true
 				},
 				{
 					.binding = 1,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
 				{
 					.binding = 2,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
 				{
 					.binding = 3,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
 			},
@@ -1185,26 +1153,26 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.bindings = {
 				{
 					.binding = 0,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
 				{
 					.binding = 1,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
 				{
 					.binding = 2,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = true
 				},
 				{
 					.binding = 3,
-					.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-					.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = true
 				},
 			},
@@ -1223,8 +1191,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.bindings = {
 			{
 				.binding = 0,
-				.type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-				.stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Compute,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
 				.writable = true
 			}
 		},

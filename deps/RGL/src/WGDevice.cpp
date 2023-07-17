@@ -5,6 +5,8 @@
 #include "WGCommandQueue.hpp"
 #include <cassert>
 #include <format>
+#include <iostream>
+#include <semaphore>
 
 namespace RGL{
     /**
@@ -19,6 +21,7 @@ namespace RGL{
         struct UserData {
             WGPUAdapter adapter = nullptr;
             bool requestEnded = false;
+            std::binary_semaphore sem{0};
         };
         UserData userData;
 
@@ -31,12 +34,16 @@ namespace RGL{
         // provided as the last argument of wgpuInstanceRequestAdapter and received
         // by the callback as its last argument.
         auto onAdapterRequestEnded = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, char const * message, void * pUserData) {
+            std::cout << "in callback" << std::endl;
             UserData& userData = *reinterpret_cast<UserData*>(pUserData);
             if (status == WGPURequestAdapterStatus_Success) {
                 userData.adapter = adapter;
+                std::cout << "got adapter" << std::endl;
             } else {
+                std::cout << "no adapter" << std::endl;
                 FatalError(std::string("Could not get WebGPU adapter: ") + message);
             }
+            userData.sem.release();
             userData.requestEnded = true;
         };
 
@@ -47,6 +54,8 @@ namespace RGL{
             onAdapterRequestEnded,
             (void*)&userData
         );
+        std::cout << "waiting for adapter" << std::endl;
+        userData.sem.acquire();
 
         // In theory we should wait until onAdapterReady has been called, which
         // could take some time (what the 'await' keyword does in the JavaScript

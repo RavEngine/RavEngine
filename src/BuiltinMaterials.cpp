@@ -69,18 +69,18 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
         .bindings = {
             {
                 .binding = 0,
-                .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::CombinedImageSampler,
-                .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment,
             },
              {
                 .binding = 1,
-                .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::SampledImage,
-                .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Fragment,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
             },
             {
                 .binding = 2,
-                .type = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::Type::StorageBuffer,
-                .stageFlags = RGL::PipelineLayoutDescriptor::LayoutBindingDesc::StageFlags::Vertex
+                .type = RGL::BindingType::StorageBuffer,
+                .stageFlags = RGL::BindingVisibility::Vertex
             }
         },
         .pushConstantSize = sizeof(PBRPushConstantData)
@@ -90,5 +90,5 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
 }
 
 RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
-    textureBindings[0] = Texture::Manager::defaultTexture;
+    textureBindings[1] = Texture::Manager::defaultTexture;
 }

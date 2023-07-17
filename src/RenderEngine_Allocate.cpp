@@ -152,11 +152,11 @@ namespace RavEngine {
 		}
 
 		// TODO: on unified memory systems, don't make a staging buffer
-		std::memcpy(transientStagingBuffer->GetMappedDataPtr(),data.data(),data.size());
+		std::memcpy((char*)(transientStagingBuffer->GetMappedDataPtr()) + start,data.data(),data.size());
 		mainCommandBuffer->CopyBufferToBuffer(
 			{
 				.buffer = transientStagingBuffer,
-				.offset = 0
+				.offset = start
 			},
 			{
 				.buffer = transientBuffer,

@@ -45,23 +45,24 @@ namespace RGL {
 		RGBA = RGB | Alpha
 	};
 
+	enum class BindingType : uint8_t {
+		Sampler, SampledImage = 2, StorageImage, UniformTexelBuffer, StorageTexelBuffer, UniformBuffer, StorageBuffer, UniformBufferDynamic, StorageBufferDynamic, InputAttachment
+	};	// note: no support for CombinedImageSampler!
+
+	enum class BindingVisibility {
+		Vertex = 0x00000001,
+		Fragment = 0x00000010,
+		Compute = 0x00000020,
+	};
+
 	struct PipelineLayoutDescriptor {
 		struct LayoutBindingDesc {
 			uint32_t binding = 0;
-			enum class Type : uint8_t {
-				Sampler, CombinedImageSampler, SampledImage, StorageImage, UniformTexelBuffer, StorageTexelBuffer, UniformBuffer, StorageBuffer, UniformBufferDynamic, StorageBufferDynamic, InputAttachment
-			} type;
-			enum class StageFlags {
-				Vertex = 0x00000001,
-				Fragment = 0x00000010,
-				Compute = 0x00000020,
-			} stageFlags;
+			BindingType type;
+			BindingVisibility stageFlags;
             bool writable = false;
-			//TODO: support image samplers
 		};
 		std::vector<LayoutBindingDesc> bindings;
-
-		std::vector<RGLSamplerPtr> boundSamplers;
 
 		struct ConstantConfig {
 			size_t size_bytes;

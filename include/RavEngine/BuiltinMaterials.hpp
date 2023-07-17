@@ -34,7 +34,7 @@ namespace RavEngine {
 		PBRMaterialInstance(Ref<PBRMaterial> m);
 
 		inline void SetAlbedoTexture(Ref<Texture> texture) {
-			textureBindings[0] = texture;
+			textureBindings[1] = texture;
 		}
         constexpr inline void SetAlbedoColor(const ColorRGBA& c){
             pushConstantData.color = c;

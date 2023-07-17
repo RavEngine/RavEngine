@@ -3,9 +3,11 @@ layout(location = 1) in vec4 positionradius;
 layout(location = 2) in float penumbra;
 layout(location = 3) in vec3 forward;
 
-layout(binding = 0) uniform sampler2D s_albedo;
-layout(binding = 1) uniform sampler2D s_normal;
-layout(binding = 2) uniform sampler2D s_depth;
+layout(binding = 0) uniform sampler g_sampler;
+layout(binding = 1) uniform sampler shadowSampler;
+layout(binding = 2) uniform texture2D t_albedo;
+layout(binding = 3) uniform texture2D t_normal;
+layout(binding = 4) uniform texture2D t_depth;
 
 layout(location = 0) out vec4 outcolor;
 
@@ -43,9 +45,9 @@ void main()
 	float intensity = colorintensity[3];
 	float coneDotFactor = positionradius.w;
 	
-	vec3 albedo = texture(s_albedo, texcoord).xyz;
-	vec3 normal = texture(s_normal, texcoord).xyz;
-	float depth = texture(s_depth, texcoord).x;
+	vec3 albedo = texture(sampler2D(t_albedo, g_sampler), texcoord).xyz;
+	vec3 normal = texture(sampler2D(t_normal, g_sampler), texcoord).xyz;
+	float depth = texture(sampler2D(t_depth, g_sampler), texcoord).x;
 	vec3 pos = ComputeWorldSpacePos(texcoord,depth,ubo.invViewProj);
 	
 	vec3 toLight = normalize(positionradius.xyz - pos);

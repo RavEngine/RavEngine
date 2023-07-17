@@ -262,7 +262,6 @@ namespace RGL {
         std::vector<VkDescriptorSetLayoutBinding> layoutbindings;
         layoutbindings.reserve(desc.bindings.size());        
 
-        uint32_t lastBoundSampler = 0;
         for (const auto& binding : desc.bindings) {
             const auto type = static_cast<VkDescriptorType>(binding.type);
             const auto stageFlags = static_cast<VkShaderStageFlags>(binding.stageFlags);
@@ -272,7 +271,7 @@ namespace RGL {
                   .descriptorType = type,
                   .descriptorCount = 1,
                   .stageFlags = stageFlags,
-                  .pImmutableSamplers = (binding.type == decltype(binding.type)::Sampler) ? &std::static_pointer_cast<SamplerVk>(desc.boundSamplers[lastBoundSampler++])->sampler : nullptr       // used for image samplers
+                  .pImmutableSamplers = nullptr
                 }
             );
         }

@@ -5,10 +5,12 @@ layout(location = 1) in vec4 colorintensity;
 
 layout(location = 0) out vec4 outcolor;
 
-layout(binding = 0) uniform sampler2D s_albedo;
-layout(binding = 1) uniform sampler2D s_normal;
-layout(binding = 2) uniform sampler2D s_depth;
-layout(binding = 3) uniform sampler2DShadow s_depthshadow;
+layout(binding = 0) uniform sampler g_sampler;
+layout(binding = 1) uniform sampler shadowSampler;
+layout(binding = 2) uniform texture2D t_albedo;
+layout(binding = 3) uniform texture2D t_normal;
+layout(binding = 4) uniform texture2D t_depth;
+layout(binding = 5) uniform texture2D t_depthshadow;
 
 struct DirLightExtraConstants{
     mat4 invViewProj;
@@ -44,25 +46,25 @@ void main()
     
     // is this pixel visible to the light? if not, discard
 
-    vec3 normal = texture(s_normal, texcoord).xyz;
+    vec3 normal = texture(sampler2D(t_normal,g_sampler), texcoord).xyz;
     vec3 toLight = normalize(lightdir.xyz);
 
     float pcfFactor = 1;
 #if 1
     //TODO: check if shadow is enabled
-        float sampledDepthForPos = texture(s_depth, texcoord).x;
+        float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
         vec4 sampledPos = vec4(ComputeWorldSpacePos(texcoord,sampledDepthForPos, constants[0].invViewProj),1);
         sampledPos = constants[0].lightViewProj * sampledPos;    // where is this on the light
         sampledPos /= sampledPos.w; // perspective divide
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
         sampledPos.y = 1 - sampledPos.y;
 
-       pcfFactor = texture(s_depthshadow, sampledPos.xyz, 0).x;
+       pcfFactor = texture(sampler2DShadow(t_depthshadow,shadowSampler), sampledPos.xyz, 0).x;
 #endif
     
     float intensity = colorintensity[3];
     
-    vec3 albedo = texture(s_albedo, texcoord).xyz;   
+    vec3 albedo = texture(sampler2D(t_albedo,g_sampler), texcoord).xyz;   
     
     float nDotL = max(dot(normal, toLight), 0);
     

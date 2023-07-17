@@ -39,16 +39,6 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
 
     pipelineLayout = device->CreatePipelineLayout({
         .bindings = config.bindings,
-        .boundSamplers = {
-            samplerPtr,
-            samplerPtr,
-            samplerPtr,
-            samplerPtr,
-            samplerPtr,
-            samplerPtr,
-            samplerPtr,
-            samplerPtr
-        },
         .constants = {
             {
                sizeof(RenderEngine::DeferredUBO) + config.pushConstantSize, 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)

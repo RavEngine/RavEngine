@@ -120,8 +120,6 @@ namespace RGL {
         
         virtual void SetVertexTexture(const ITexture* texture, uint32_t index) = 0;
         virtual void SetFragmentTexture(const ITexture* texture, uint32_t index) = 0;
-
-		virtual void SetCombinedTextureSampler(RGLSamplerPtr sampler, const ITexture* texture, uint32_t index) = 0;
         
         virtual void Draw(uint32_t nVertices, const DrawInstancedConfig& = {}) = 0;
         virtual void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig& = {}) = 0;

@@ -162,13 +162,13 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index)
 	{
-		index = currentRenderPipeline->pipelineLayout->slotForSamplerIdx(index);
 		auto thisSampler = std::static_pointer_cast<SamplerD3D12>(sampler);
+		const auto pipelineLayout = currentRenderPipeline->pipelineLayout;
+		const auto samplerSlot = pipelineLayout->slotForSamplerIdx(index);
 		auto& samplerHeap = thisSampler->owningDevice->SamplerHeap;
-		ID3D12DescriptorHeap* heapForThis = samplerHeap->Heap();
-		auto handle = samplerHeap->GetGpuHandle(thisSampler->descriptorIndex);
-		commandList->SetDescriptorHeaps(1, &heapForThis);
-		commandList->SetGraphicsRootDescriptorTable(index, handle);
+		ID3D12DescriptorHeap* heapForThis[] = { samplerHeap->Heap() };
+		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
+		commandList->SetGraphicsRootDescriptorTable(samplerSlot, samplerHeap->GetGpuHandle(thisSampler->descriptorIndex));
 	}
 	void CommandBufferD3D12::SetVertexTexture(const ITexture* texture, uint32_t index)
 	{
@@ -176,33 +176,12 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::SetFragmentTexture(const ITexture* texture, uint32_t index)
 	{
-		index += currentRenderPipeline->pipelineLayout->slotForSamplerIdx(index);;
-		auto thisTexture = static_cast<const TextureD3D12*>(texture);
-		auto& heapForThis = thisTexture->owningDevice->CBV_SRV_UAVHeap.value();
-		auto ptr = heapForThis.Heap();
-		commandList->SetDescriptorHeaps(1, &ptr);
-		commandList->SetGraphicsRootDescriptorTable(index, heapForThis.GetGpuHandle(thisTexture->srvIDX));
-	}
-	void CommandBufferD3D12::SetCombinedTextureSampler(RGLSamplerPtr sampler, const ITexture* texture, uint32_t index)
-	{
-		// combined image samplers are indexed in pairs (sampler, texture) starting after the constants
-		// the index is into the descriptor table array
-		// example (if firstSamplerIdx is 1):
-		// 0 -> (1,2)
-		// 1 -> (3,4)
-		// 2 -> (5,6)
-		// etc
 		const auto pipelineLayout = currentRenderPipeline->pipelineLayout;
-		auto thisSampler = std::static_pointer_cast<SamplerD3D12>(sampler);
+		const auto textureSlot = pipelineLayout->slotForTextureIdx(index);
 		auto thisTexture = static_cast<const TextureD3D12*>(texture);
 		auto& srvheap = thisTexture->owningDevice->CBV_SRV_UAVHeap;
-		auto& samplerHeap = thisSampler->owningDevice->SamplerHeap;
-		ID3D12DescriptorHeap* heapForThis[2] = { samplerHeap->Heap(), srvheap->Heap()};
+		ID3D12DescriptorHeap* heapForThis[] = { srvheap->Heap() };
 		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
-
-		const auto samplerSlot = pipelineLayout->slotForSamplerIdx(index);
-		const auto textureSlot = pipelineLayout->slotForTextureIdx(index);
-		commandList->SetGraphicsRootDescriptorTable(samplerSlot, samplerHeap->GetGpuHandle(thisSampler->descriptorIndex));
 		commandList->SetGraphicsRootDescriptorTable(textureSlot, srvheap->GetGpuHandle(thisTexture->srvIDX));
 	}
 	void CommandBufferD3D12::Draw(uint32_t nVertices, const DrawInstancedConfig& config)

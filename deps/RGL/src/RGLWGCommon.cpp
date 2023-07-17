@@ -12,6 +12,7 @@ namespace RGL{
             .nextInChain = nullptr
         };
 
+        // see: https://github.com/emscripten-core/emscripten/issues/19349
         instance = wgpuCreateInstance(&desc);
     }
 

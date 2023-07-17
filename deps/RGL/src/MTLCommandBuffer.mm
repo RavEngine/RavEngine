@@ -245,11 +245,6 @@ void CommandBufferMTL::SetVertexTexture(const ITexture* texture, uint32_t index)
 void CommandBufferMTL::SetFragmentTexture(const ITexture* texture, uint32_t index){
     [currentCommandEncoder setFragmentTexture:static_cast<const TextureMTL*>(texture)->texture atIndex:index];
 }
-void CommandBufferMTL::SetCombinedTextureSampler(RGLSamplerPtr sampler, const RGL::ITexture *texture, uint32_t index) { 
-    [currentCommandEncoder setFragmentTexture:static_cast<const TextureMTL*>(texture)->texture atIndex:index];
-    [currentCommandEncoder setFragmentSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:index];
-
-}
 
 void CommandBufferMTL::CopyTextureToBuffer(RGL::ITexture *sourceTexture, const RGL::Rect &sourceRect, size_t offset, RGLBufferPtr destBuffer) {
     auto blitencoder = [currentCommandBuffer blitCommandEncoder];

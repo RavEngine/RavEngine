@@ -257,22 +257,44 @@ namespace RGL {
 	}
 	void CommandBufferVk::SetVertexSampler(RGLSamplerPtr sampler, uint32_t index)
 	{
-		
+		SetVertexSampler(sampler,index);
 	}
 	void CommandBufferVk::SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index)
 	{
+		VkDescriptorImageInfo imginfo{
+					.sampler = std::static_pointer_cast<SamplerVk>(sampler)->sampler,
+					.imageView = VK_NULL_HANDLE,
+					.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		};
+		VkWriteDescriptorSet writeinfo{
+				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.dstSet = VK_NULL_HANDLE,
+				.dstBinding = index,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+				.pImageInfo = &imginfo,
+				.pBufferInfo = nullptr,
+				.pTexelBufferView = nullptr
+		};
+		owningQueue->owningDevice->vkCmdPushDescriptorSetKHR(
+			commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			currentRenderPipeline->pipelineLayout->layout,
+			0,
+			1,
+			&writeinfo
+		);
 	}
 	void CommandBufferVk::SetVertexTexture(const ITexture* texture, uint32_t index)
 	{
+		SetFragmentTexture(texture, index);
 	}
 	void CommandBufferVk::SetFragmentTexture(const ITexture* texture, uint32_t index)
 	{
-	}
-	void CommandBufferVk::SetCombinedTextureSampler(RGLSamplerPtr sampler, const ITexture* texture, uint32_t index)
-	{
 		auto castedImage = static_cast<const TextureVk*>(texture);
 		VkDescriptorImageInfo imginfo{
-					.sampler = std::static_pointer_cast<SamplerVk>(sampler)->sampler,
+					.sampler = VK_NULL_HANDLE,
 					.imageView = castedImage->vkImageView,
 					.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		};
@@ -282,7 +304,7 @@ namespace RGL {
 				.dstBinding = index,
 				.dstArrayElement = 0,
 				.descriptorCount = 1,
-				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 				.pImageInfo = &imginfo,
 				.pBufferInfo = nullptr,
 				.pTexelBufferView = nullptr
@@ -300,7 +322,6 @@ namespace RGL {
 		if (castedImage->owningSwapchain) {
 			swapchainsToSignal.insert(castedImage->owningSwapchain);
 		}
-
 	}
 	void CommandBufferVk::Draw(uint32_t nVertices, const DrawInstancedConfig& config)
 	{

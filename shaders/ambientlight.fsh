@@ -6,7 +6,8 @@ layout(push_constant) uniform UniformBufferObject{
 	ivec4 viewRect;
 } ubo;
 
-uniform sampler2D s_albedo;
+layout(binding = 0) uniform sampler g_sampler;
+layout(binding = 1) uniform texture2D t_albedo;
 
 layout(early_fragment_tests) in;
 void main()
@@ -18,7 +19,7 @@ void main()
 	
 	float intensity = lightColor[3];
 	
-	vec3 albedo = texture(s_albedo, texcoord).xyz;
+	vec3 albedo = texture(sampler2D(t_albedo,g_sampler), texcoord).xyz;
 	
 	outcolor = vec4(albedo * intensity * lightColor.xyz, 1);
 }

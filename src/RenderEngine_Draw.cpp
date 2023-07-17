@@ -418,7 +418,8 @@ namespace RavEngine {
 							mainCommandBuffer->BindBuffer(buffer, i);
 						}
 						if (texture) {
-							mainCommandBuffer->SetCombinedTextureSampler(textureSampler, texture->GetRHITexturePointer().get(), i);
+							mainCommandBuffer->SetFragmentSampler(textureSampler, 0); // TODO: don't hardcode this
+							mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer().get(), i);
 						}
 					}
 
@@ -518,8 +519,8 @@ namespace RavEngine {
 			mainCommandBuffer->BeginRendering(lightingRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
             mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
-            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+            mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 1);
             
             mainCommandBuffer->SetVertexBuffer(screenTriVerts);
             mainCommandBuffer->SetVertexBytes(ambientUBO, 0);
@@ -579,10 +580,13 @@ namespace RavEngine {
                     .extent = {nextImgSize.width, nextImgSize.height}
                 });
 				mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
-				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
-				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
-				mainCommandBuffer->SetCombinedTextureSampler(textureSampler, shadowTexture.get(), 3);
+				mainCommandBuffer->SetFragmentSampler(textureSampler,0);
+				mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
+
+				mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
+				mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
+				mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
+				mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
 				mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->SetVertexBytes(lightUBO, 0);
@@ -623,9 +627,10 @@ namespace RavEngine {
 			mainCommandBuffer->BeginRendering(lightingRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
             mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
-            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
-            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
+			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+            mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
+            mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
+            mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
             mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
             mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
             mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
@@ -645,9 +650,11 @@ namespace RavEngine {
 			mainCommandBuffer->BeginRendering(lightingRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Spot Lights");
 			mainCommandBuffer->BindRenderPipeline(spotLightRenderPipeline);
-			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
-			mainCommandBuffer->SetCombinedTextureSampler(textureSampler, depthStencil.get(), 2);
+
+			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+			mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
+			mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
+			mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
 			mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
 			mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
 			mainCommandBuffer->SetVertexBuffer(spotLightVertexBuffer);
@@ -682,7 +689,8 @@ namespace RavEngine {
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 		mainCommandBuffer->SetVertexBytes(lightUBO,0);
 		mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-		mainCommandBuffer->SetCombinedTextureSampler(textureSampler, lightingTexture.get(), 0);
+		mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+		mainCommandBuffer->SetFragmentTexture(lightingTexture.get(), 1);
 		mainCommandBuffer->Draw(3);
 
 		// then do the skybox, if one is defined.

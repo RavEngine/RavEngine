@@ -182,7 +182,7 @@ namespace RGL {
         {
             for (const auto& item : desc.bindings) {
                 switch (item.type) {
-                case decltype(item.type)::CombinedImageSampler:
+                case decltype(item.type)::Sampler:
                     {
                         auto& range = ranges.emplace_back(D3D12_DESCRIPTOR_RANGE1{
                             .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
@@ -194,7 +194,9 @@ namespace RGL {
                         samplerBindingtoRootSlot[item.binding] = rootParameters.size();
                         rootParameters.emplace_back().InitAsDescriptorTable(1, &range);
                     }
-
+                    break;
+                case decltype(item.type)::SampledImage:
+                
                     // SRV
                     {
                         auto& range = ranges.emplace_back(D3D12_DESCRIPTOR_RANGE1{
