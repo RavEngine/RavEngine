@@ -561,7 +561,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		   }
 		});
 
-	lightingRenderPass = RGL::CreateRenderPass({
+	ambientLightRenderPass = RGL::CreateRenderPass({
 		.attachments = {
 			{
 				.format = colorTexFormat,
@@ -574,7 +574,22 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 			.loadOp = RGL::LoadAccessOperation::Load,
 			.storeOp = RGL::StoreAccessOperation::Store,
 		}
-		});
+	});
+
+	lightingRenderPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			}
+		},
+		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+		}
+	});
 
 	finalRenderPass = RGL::CreateRenderPass({
 		.attachments = {
@@ -650,6 +665,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					{
 						.format = colorTexFormat,
 						.destinationColorBlendFactor = RGL::BlendFactor::One,
+						.destinationAlphaBlendFactor = RGL::BlendFactor::One,
 						.blendEnabled = true
 					},
 				}

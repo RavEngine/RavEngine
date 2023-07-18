@@ -508,6 +508,8 @@ namespace RavEngine {
 		};
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
+		ambientLightRenderPass->SetDepthAttachmentTexture(depthStencil.get());
+		ambientLightRenderPass->SetAttachmentTexture(0, lightingTexture.get());
 
 		mainCommandBuffer->SetRenderPipelineBarrier({
 			.Fragment = true
@@ -516,7 +518,7 @@ namespace RavEngine {
 		mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 		// ambient lights
         if (worldOwning->renderData->ambientLightData.DenseSize() > 0){
-			mainCommandBuffer->BeginRendering(lightingRenderPass);
+			mainCommandBuffer->BeginRendering(ambientLightRenderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
             mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
 			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
@@ -550,7 +552,7 @@ namespace RavEngine {
 					glm::mat4 lightViewProj;
 				} dirlightExtras;
 
-				constexpr auto lightArea = 40;
+				constexpr auto lightArea = 30;
 
 				auto lightProj = glm::ortho<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
 				auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
