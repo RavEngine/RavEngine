@@ -50,6 +50,11 @@ namespace RavEngine {
 			static inline Ref<T> Get(A&& ... args){
                 return GenericWeakReadThroughCache<ctti_t,T,false>::Get(CTTI<T>(),args...);
 			}
+
+			template<typename T, typename ... A>
+			static inline Ref<T> GetWithKey(RavEngine::CacheBase::unique_key_t key, A&& ... args) {
+				return GenericWeakReadThroughCache<ctti_t, T, false>::GetWithKey(CTTI<T>(), key, args...);
+			}
             
             /**
              Shrink memory usage by removing expired entries
