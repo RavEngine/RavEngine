@@ -57,7 +57,10 @@ namespace RGL {
 			
 			auto rtv = tx->owningDevice->RTVHeap->GetCpuHandle(tx->rtvIDX);
 
-			commandList->ClearRenderTargetView(rtv, attachment.clearColor.data(), 0, nullptr);
+			if (currentRenderPass->config.attachments[i].loadOp == RGL::LoadAccessOperation::Clear) {
+				commandList->ClearRenderTargetView(rtv, attachment.clearColor.data(), 0, nullptr);
+			}
+
 
 			rtvs[i] = rtv;
 
