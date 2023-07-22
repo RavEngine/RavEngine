@@ -23,8 +23,13 @@ namespace RGL {
 
 		auto handle = owningDevice->SamplerHeap->GetCpuHandle(descriptorIndex);
 
+		auto filter = D3D12_FILTER_ANISOTROPIC;
+		if (config.compareFunction != DepthCompareFunction::Always) {
+			filter = D3D12_FILTER_COMPARISON_ANISOTROPIC;
+		}
+
 		 samplerDesc = {
-			.Filter = D3D12_FILTER_ANISOTROPIC,
+			.Filter = filter,
 			.AddressU = rgl2d3d12addressmode(config.addressModeU),
 			.AddressV = rgl2d3d12addressmode(config.addressModeV),
 			.AddressW = rgl2d3d12addressmode(config.addressModeW),

@@ -12,6 +12,10 @@ namespace RGL{
         MirrorOnce
     };
 
+    enum class FilterMode : uint8_t {
+
+    };
+
     struct SamplerConfig{
         SamplerAddressMode 
             addressModeU = SamplerAddressMode::Wrap, 
