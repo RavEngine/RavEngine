@@ -39,9 +39,6 @@ namespace RavEngine{
     using UnorderedSet = phmap::flat_hash_set<T>;
 
     template<typename T,size_t N>
-    using SmallVector = boost::container::small_vector<T,N>;
-
-    template<typename T,size_t N>
     using FixedVector = boost::container::static_vector<T,N>;
 
     template<typename T>

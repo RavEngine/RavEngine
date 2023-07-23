@@ -5,7 +5,6 @@
 #include "Ref.hpp"
 #include "Common3D.hpp"
 #include "Manager.hpp"
-#include <boost/container_hash/hash.hpp>
 #include "Filesystem.hpp"
 #include "Debug.hpp"
 #include <span>
@@ -199,17 +198,4 @@ public:
 	}
 };
 
-}
-
-namespace boost{
-    template<>
-struct hash<RavEngine::MeshAssetOptions>{
-    inline size_t operator()(const RavEngine::MeshAssetOptions& opt){
-            size_t seed = 0;
-            boost::hash_combine(seed,opt.keepInSystemRAM);
-            boost::hash_combine(seed,opt.uploadToGPU);
-            boost::hash_combine(seed,opt.scale);
-            return seed;
-        }
-    };
 }
