@@ -14,11 +14,11 @@
 #include "AddRemoveAction.hpp"
 #include "PolymorphicIndirection.hpp"
 #include "SparseSet.hpp"
-#include <boost/callable_traits.hpp>
 #include "VRAMSparseSet.hpp"
 #include "BuiltinMaterials.hpp"
 #include "Light.hpp"
 #include "Utilities.hpp"
+#include "CallableTraits.hpp"
 
 namespace RavEngine {
 	struct Entity;
@@ -816,7 +816,7 @@ namespace RavEngine {
 
         template<typename funcmode_t>
         inline void FilterGeneric(const funcmode_t& fm) {
-            using argtypes = boost::callable_traits::args_t<decltype(fm.f)>;
+            using argtypes = decltype(arguments(fm.f));
             // step 1: get it as types
             [this,&fm] <typename... Ts>(std::type_identity<std::tuple<Ts...>>) -> void
             {
@@ -890,7 +890,7 @@ namespace RavEngine {
         template<bool polymorphic, typename T, typename ... Args>
         inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args&& ... args){
             
-            using argtypes = boost::callable_traits::args_t<T>;
+            using argtypes = functor_args_t<T>;
             
             return
             // step 1: get it as types
