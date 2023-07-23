@@ -1,8 +1,15 @@
 #include "Uuid.hpp"
+#include <string>
 
 #ifdef _WIN32
 #include <rpc.h>
 #include <rpcdce.h>
+#elif __APPLE__
+#include <uuid/uuid.h>
+#elif __linux__ || __EMSCRIPTEN__
+#include <uuid.h>
+#else
+#error UUID: Unsupported platform
 #endif
 
 namespace RavEngine {
@@ -15,8 +22,14 @@ namespace RavEngine {
 
 		UUID win_id;
 		[[maybe_unused]] auto retval =  UuidCreate(&win_id);
-		std::memcpy(id.data.data(), &win_id, sizeof(id));
-		
+		std::memcpy(id.data.data(), &win_id, id.size());
+#elif __APPLE__ || __linux__ || __EMSCRIPTEN__
+        static_assert(sizeof(uuid_t) == 16, "POSIX UUID is not the correct size!");
+        uuid_t posix_id;
+        uuid_generate(posix_id);
+        
+        std::memcpy(id.data.data(), &posix_id, id.size());
+        
 #endif
 		return id;
 	}
@@ -26,12 +39,12 @@ namespace RavEngine {
 
 		auto uuid = data.data();
 
-		sprintf(str,
+		snprintf(str, std::size(str),
 			"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
 			uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7],
 			uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]
 		);
 
-		return std::string(str, 37);
+		return std::string(str, std::size(str));
 	}
 }

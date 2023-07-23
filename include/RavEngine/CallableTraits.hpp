@@ -32,23 +32,23 @@ namespace RavEngine {
 	};
 
 	template<is_functor T>
-	using functor_args_t = signature<decltype(&decay_t<T>::operator())>::type;
+    using functor_args_t = typename signature<decltype(&decay_t<T>::operator())>::type;
 
 	template<is_functor T>
-	auto arguments(T&& t) -> signature<decltype(&decay_t<T>::operator())>::type;
+    auto arguments(T&& t) -> typename signature<decltype(&decay_t<T>::operator())>::type;
 
 	template<is_functor T>
-	auto arguments(const T& t) -> signature<decltype(&decay_t<T>::operator())>::type;
+    auto arguments(const T& t) -> typename signature<decltype(&decay_t<T>::operator())>::type;
 
 	// template<is_fun T>
 	// auto arguments(T&& t)->signature<T>::type;
 
 	template<is_fun T>
-	auto arguments(const T& t) -> signature<T>::type;
+	auto arguments(const T& t) -> typename signature<T>::type;
 
 	template<is_mem_fun T>
-	auto arguments(T&& t) -> signature<decay_t<T>>::type;
-
+    auto arguments(T&& t) -> typename signature<decay_t<T>>::type;
+    
 	template<is_mem_fun T>
-	auto arguments(const T& t) -> signature<decay_t<T>>::type;
+    auto arguments(const T& t) -> typename signature<decay_t<T>>::type;
 }
