@@ -2980,7 +2980,9 @@ public:
 
 	inline colony & operator = (const colony &source)
 	{
-		assert (&source != this);
+        if (&source == this){
+            return *this;
+        }
 
 		#ifdef PLF_COLONY_MOVE_SEMANTICS_SUPPORT
 			destroy_all_data();

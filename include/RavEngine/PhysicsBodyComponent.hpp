@@ -7,7 +7,7 @@
 #include <PxScene.h>
 #include <PxRigidActor.h>
 #include "ComponentWithOwner.hpp"
-#include <boost/poly_collection/base_collection.hpp>
+#include "DataStructures.hpp"
 #include "PhysicsCollider.hpp"
 
 namespace physx {
@@ -32,7 +32,7 @@ namespace RavEngine {
 	{
 	protected:
         UnorderedSet<std::shared_ptr<PhysicsCallback>> receivers;
-        boost::base_collection<PhysicsCollider> colliders;
+        Colony<std::shared_ptr<PhysicsCollider>> colliders;
         void CompleteConstruction();
 	public:
 		using Queryable<PhysicsBodyComponent,IDebugRenderable>::GetQueryTypes;
@@ -50,48 +50,24 @@ namespace RavEngine {
         
         void Destroy();
         
-        template<typename T>
         struct ColliderHandle{
-            void* id;
+            decltype(colliders)::iterator id;
         };
         
         template<typename T, typename ... A>
-        ColliderHandle<T> EmplaceCollider(A&& ... args){
-            auto collider_iter = colliders.emplace<T>(this,args...);
+        ColliderHandle EmplaceCollider(A&& ... args){
+            auto collider_iter = colliders.emplace(std::make_shared<T>(this,args...));
             
-            return ColliderHandle<T>{static_cast<void*>((*collider_iter).collider)};
-        }
-        
-        template<typename T, typename ... A>
-        ColliderHandle<T> UpdateCollider(ColliderHandle<T> handle){
-            
+            return ColliderHandle{collider_iter};
         }
         
         template<typename T>
-        bool DestroyCollider(ColliderHandle<T> handle){
-            for(auto it = colliders.begin(); it != colliders.end(); it++){
-                auto& collider = *it;
-                if (collider.collider == handle.id){
-					OnDestroyDetatchCollider(collider);
-                    colliders.erase(it);
-                    return true;
-                }
-            }
-            return false;
+        void DestroyCollider(ColliderHandle handle){
+            colliders.erase(handle.id);
         }
 
 		void OnDestroyDetatchCollider(RavEngine::PhysicsCollider& collider);
         
-        template<typename T>
-        T& GetColliderForHandle(ColliderHandle<T> handle){
-            for(auto& collider : colliders){
-                if (collider.collider == handle.id){
-                    return static_cast<T&>(collider);
-                }
-            }
-            // not found, this is an invalid use
-            Debug::Fatal("Component with ID {} not found",handle.id);
-        }
         
 		/**
 		Add a recipient for collision events. Must implement IPhysicsActor.
@@ -195,7 +171,7 @@ namespace RavEngine {
 		void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const {
 			LockRead([&] {
 				for (const auto& collider : colliders) {
-					collider.DebugDraw(dbg, debug_color, tr);
+                    collider->DebugDraw(dbg, debug_color, tr);
 				}
 			});
 		}
