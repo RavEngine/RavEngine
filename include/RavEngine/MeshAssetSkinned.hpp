@@ -14,7 +14,7 @@ public:
 			uint32_t joint_idx = 0;
 			float influence = 0;
 		};
-		FixedVector<vw, 4> weights;
+		Vector<vw> weights;
 	};
 private:
 	RGLBufferPtr weightsBuffer;

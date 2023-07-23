@@ -2,8 +2,6 @@
 #include <mutex>
 #include <phmap.h>
 #include <concurrentqueue.h>
-#include <boost/container/small_vector.hpp>
-#include <boost/container/static_vector.hpp>
 #include <vector>
 #include <plf_list.h>
 #include <plf_colony.h>
@@ -37,9 +35,6 @@ namespace RavEngine{
 
     template<typename T>
     using UnorderedSet = phmap::flat_hash_set<T>;
-
-    template<typename T,size_t N>
-    using FixedVector = boost::container::static_vector<T,N>;
 
     template<typename T>
     using LinkedList = plf::list<T>;
