@@ -2,10 +2,8 @@
 #include <mutex>
 #include <phmap.h>
 #include <concurrentqueue.h>
-#include <boost/container/vector.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/container/static_vector.hpp>
-#include <boost/array.hpp>
 #include <vector>
 #include <plf_list.h>
 #include <plf_colony.h>
@@ -29,7 +27,7 @@ namespace RavEngine{
 	using ConcurrentQueue = moodycamel::ConcurrentQueue<T>;
 
     template<typename T>
-    using Vector = boost::container::vector<T>;
+    using Vector = std::vector<T>;
 
     template<typename T, typename U>
     using UnorderedMap = phmap::flat_hash_map<T,U>;
