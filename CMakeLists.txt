@@ -506,6 +506,7 @@ endif()
 
 if(WINDOWS)
 	set(DXGI_LIB "dxgi.lib")
+	set(WIN32_LIBS "Rpcrt4.lib")
 endif()
 
 target_link_libraries("${PROJECT_NAME}" 
@@ -556,6 +557,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
+	${WIN32_LIBS}
 	${ICONV_LIB}
 	${COCOA_LIB}
 	${SM_LIB}
