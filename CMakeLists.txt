@@ -371,12 +371,6 @@ if(TARGET_EMSCRIPTEN OR ( (TARGET_WINDOWS OR TARGET_UWP) AND CMAKE_C_COMPILER_AR
 	target_compile_definitions("physfs-static" PUBLIC "MY_CPU_LE")
 endif()
 
-# boost_filesystem
-if (NOT TARGET_UWP)
-	#add_subdirectory(deps/boost/libs/filesystem)
-	#set(BOOST_FS_LIB "boost_filesystem")
-endif()
-
 # OpenXR - available on Windows only
 if(TARGET_WINDOWS )
 	set(DYNAMIC_LOADER OFF)
@@ -402,17 +396,13 @@ file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" 
 file(GLOB SHADERS "shaders/*.glsl" "shaders/*.csh" "shaders/*.vsh" "shaders/*.fsh" "shaders/*.sc" "shaders/*.glsl" "shaders/*.hlsl")
 set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
 
-# add deps headers to project so symbol lookup works
-file(GLOB_RECURSE BOOST_HEADERS "deps/boost/boost/*.hpp" "deps/boost/boost/*.h")
-
 # register the library
 set(UWP_SDL2MAIN "${DEPS_DIR}/SDL2/src/main/winrt/SDL_winrt_main_NonXAML.cpp" CACHE INTERNAL "")
-add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} ${BOOST_HEADERS} "deps/parallel-hashmap/phmap.natvis")
+add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} "deps/parallel-hashmap/phmap.natvis")
 rve_enable_IPO(${PROJECT_NAME})
 
 # disable RTTI
-source_group(TREE "${DEPS_DIR}/boost/boost" PREFIX "boost/boost" FILES ${BOOST_HEADERS})
-# target_compile_definitions(${PROJECT_NAME} PUBLIC "BOOST_NO_RTTI" "RMLUI_USE_CUSTOM_RTTI")
+# target_compile_definitions(${PROJECT_NAME} PUBLIC "RMLUI_USE_CUSTOM_RTTI")
 # if (NOT MSVC)
 # 	target_compile_options(${PROJECT_NAME} PUBLIC "-fno-rtti")
 # else()
@@ -435,7 +425,6 @@ if (NOT TARGET_APPLE AND NOT UWP)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
-    "<boost/container/vector.hpp>"
 	"<algorithm>"
 	"<functional>"
 	"<thread>"
@@ -472,7 +461,6 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/resonance-audio/third_party/eigen"
 	"${DEPS_DIR}/resonance-audio/"
 	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
-	"${DEPS_DIR}/boost"
 	"${DEPS_DIR}/date/include"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
@@ -539,7 +527,6 @@ target_link_libraries("${PROJECT_NAME}"
 	${SDL2MAIN_LIB}
 	"r8brain"
 	PUBLIC
-	"${BOOST_FS_LIB}"
 	"effolkronium_random"
 	"glm"
 	"fmt"
@@ -644,7 +631,7 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;boost_filesystem;\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
 sdl_headers_copy;libprotoc;protoc;
 ")
 
