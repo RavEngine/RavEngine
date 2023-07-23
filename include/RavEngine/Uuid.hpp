@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <string>
 
 namespace RavEngine {
 	namespace uuids {

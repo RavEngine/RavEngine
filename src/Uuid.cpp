@@ -1,5 +1,4 @@
 #include "Uuid.hpp"
-#include <string>
 
 #ifdef _WIN32
 #include <rpc.h>
