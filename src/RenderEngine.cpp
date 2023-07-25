@@ -76,8 +76,6 @@ STATIC(RenderEngine::debuggerContext);
 STATIC(RenderEngine::debuggerInput);
 #endif
 
-static constexpr uint16_t shadowMapSize = 2048;
-
 auto genIcosphere(uint16_t subdivs){
     struct IcoSphereCreator
     {
@@ -420,8 +418,8 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	shadowTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .DepthStencilAttachment = true },
 		.aspect = {.HasDepth = true },
-		.width = 2048,
-		.height = 2048,
+		.width = shadowMapSize,
+		.height = shadowMapSize,
 		.format = RGL::TextureFormat::D32SFloat,
 		.debugName = "Shadow Texture"
 	});

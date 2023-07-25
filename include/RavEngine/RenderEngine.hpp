@@ -71,6 +71,8 @@ namespace RavEngine {
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
 
+		static constexpr uint16_t shadowMapSize = 4096;
+
 		friend class Material;
     public:
 		constexpr static RGL::TextureFormat

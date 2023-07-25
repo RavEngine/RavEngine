@@ -564,7 +564,7 @@ namespace RavEngine {
 
 				renderFromPerspective(lightSpaceMatrix, shadowRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetShadowRenderPipeline();
-					}, { 2048,2048 });
+					}, { shadowMapSize,shadowMapSize });
 
 				dirlightExtras.lightViewProj = lightSpaceMatrix;
 				dirlightExtras.invViewProj = invviewproj;
