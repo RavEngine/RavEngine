@@ -543,8 +543,12 @@ namespace RavEngine {
 			shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
 			mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
 			auto& dirlightStore = worldOwning->renderData->directionalLightData;
+			lightUBO.isRenderingShadows = true;
 			for (uint32_t i = 0; i < dirlightStore.DenseSize(); i++) {
 				const auto& light = dirlightStore.GetDense()[i];
+				if (!light.castsShadows) {
+					continue;
+				}
 				auto dirvec = light.direction;
 
 				struct  {
@@ -589,7 +593,9 @@ namespace RavEngine {
 				mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
 				mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
 				mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
+
 				mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
+
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->SetVertexBytes(lightUBO, 0);
 				mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
@@ -604,12 +610,20 @@ namespace RavEngine {
 				mainCommandBuffer->EndRendering();
 			}
 
-			//TODO: submit unshadowed dirlights
-#if 0
+			lightUBO.isRenderingShadows = false;
 			mainCommandBuffer->BeginRendering(lightingRenderPass);
             mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
-            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, diffuseTexture.get(), 0);
-            mainCommandBuffer->SetCombinedTextureSampler(textureSampler, normalTexture.get(), 1);
+
+			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+			mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
+
+			mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
+			mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
+			mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
+			mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
+
+			mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
+
             mainCommandBuffer->SetVertexBuffer(screenTriVerts);
             mainCommandBuffer->SetVertexBytes(lightUBO, 0);
             mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
@@ -621,7 +635,6 @@ namespace RavEngine {
             });
 			mainCommandBuffer->EndRenderDebugMarker();
 			mainCommandBuffer->EndRendering();
-#endif
         }
 
 		// point lights

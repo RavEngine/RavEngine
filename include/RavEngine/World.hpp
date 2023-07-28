@@ -279,6 +279,7 @@ namespace RavEngine {
         struct DirLightUploadData {
             glm::vec4 colorIntensity;
             glm::vec3 direction;
+            int castsShadows;
         };
 
 

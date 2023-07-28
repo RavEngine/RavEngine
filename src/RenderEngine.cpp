@@ -722,6 +722,12 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.binding = 1,
 					.offset = offsetof(World::DirLightUploadData, direction),
 					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+				},
+				{
+					.location = 3,
+					.binding = 1,
+					.offset = offsetof(World::DirLightUploadData, castsShadows),
+					.format = RGL::VertexAttributeFormat::R32_Uint,
 				}
 		}, lightRenderPipelineLayout);
 
