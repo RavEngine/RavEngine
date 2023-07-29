@@ -66,6 +66,9 @@ namespace RGL {
 		RGLCommandQueuePtr CreateCommandQueue(QueueType type) final;
 		RGLFencePtr CreateFence(bool preSignaled) final;
 		void BlockUntilIdle() final;
+
+		size_t GetTotalVRAM() const final;
+		size_t GetCurrentVRAMInUse() const final;
 	};
 
 	RGLDevicePtr CreateDefaultDeviceD3D12();

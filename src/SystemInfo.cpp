@@ -190,51 +190,11 @@ std::string SystemInfo::GPUBrandString(){
 }
 
 uint32_t SystemInfo::GPUVRAM(){
-#if _UWP
-#if 0
-    auto data = bgfx::getInternalData();
-    auto d3ddev = (ID3D12Device*)data->context;
-    DXGI_ADAPTER_DESC desc;
-    IDXGIAdapter* adapter = nullptr;
-    if (getDX12Adapter(d3ddev, desc, adapter)) {
-        DXGI_QUERY_VIDEO_MEMORY_INFO meminfo;
-        static_cast<IDXGIAdapter3*>(adapter)->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &meminfo);
-        return static_cast<uint32_t>(meminfo.Budget / 1024 / 1024);
-    }
-    else {
-        return 0;
-    }
-#endif
-    return 0;
-#elif __APPLE__
-    return AppleVRAMTotal();
-#else
     return GetApp()->GetRenderEngine().GetTotalVRAM();
-#endif
 }
 
 uint32_t SystemInfo::GPUVRAMinUse(){
-#if _UWP
-#if 0
-    auto data = bgfx::getInternalData();
-    auto d3ddev = (ID3D12Device*)data->context;
-    DXGI_ADAPTER_DESC desc;
-    IDXGIAdapter* adapter = nullptr;
-    if (getDX12Adapter(d3ddev, desc, adapter)) {
-        DXGI_QUERY_VIDEO_MEMORY_INFO meminfo;
-        static_cast<IDXGIAdapter3*>(adapter)->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &meminfo);
-        return static_cast<uint32_t>(meminfo.CurrentUsage / 1024 / 1024);
-    }
-    else {
-        return 0;
-    }
-#endif
-    return 0;
-#elif __APPLE__
-    return AppleVRAMUsed();
-#else
     return GetApp()->GetRenderEngine().GetCurrentVRAMUse();
-#endif
 }
 
 

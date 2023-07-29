@@ -46,9 +46,6 @@ namespace RavEngine {
 		} bufferdims, windowdims;
 		
 		void UpdateBufferDims();
-        
-        uint32_t currentVRAM = 0;
-        uint32_t totalVRAM = 0;
 
 		RGLDevicePtr device;
 		RGLFencePtr swapchainFence;
@@ -257,13 +254,9 @@ namespace RavEngine {
 
 		void DebugRender(const Im3d::DrawList&);
         
-        decltype(currentVRAM) GetCurrentVRAMUse(){
-            return currentVRAM;
-        }
+		size_t GetCurrentVRAMUse();
         
-        decltype(totalVRAM) GetTotalVRAM(){
-            return totalVRAM;
-        }
+		size_t GetTotalVRAM();
 
 		// API for interacting with the GPU
 		auto GetDevice() {

@@ -1433,3 +1433,13 @@ void RenderEngine::SetWindowMode(WindowMode mode){
     }
     SDL_SetWindowFullscreen(window, flag);
 }
+
+size_t RavEngine::RenderEngine::GetCurrentVRAMUse()
+{
+	return device->GetCurrentVRAMInUse() / 1024 / 1024;
+}
+
+size_t RavEngine::RenderEngine::GetTotalVRAM()
+{
+	return device->GetTotalVRAM() / 1024 / 1024;
+}

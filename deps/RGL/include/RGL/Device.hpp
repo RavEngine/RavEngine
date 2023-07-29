@@ -55,6 +55,9 @@ namespace RGL {
 
 		virtual RGLComputePipelinePtr CreateComputePipeline(const struct ComputePipelineDescriptor&) = 0;
 
+		virtual size_t GetTotalVRAM() const = 0;
+		virtual size_t GetCurrentVRAMInUse() const = 0;
+
 		virtual DeviceData GetDeviceData() = 0;
 
 		virtual RGLFencePtr CreateFence(bool preSignaled) = 0;

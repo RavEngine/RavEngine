@@ -34,7 +34,8 @@ namespace RGL {
            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
            VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
-           VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME
+           VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+           VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
     };
 
     bool checkDeviceExtensionSupport(const VkPhysicalDevice device) {
@@ -158,6 +159,7 @@ namespace RGL {
         VkPhysicalDeviceFeatures deviceFeatures{
             .samplerAnisotropy = VK_TRUE,   // need to explicity request it
         };
+
         VkPhysicalDeviceCustomBorderColorFeaturesEXT customBorderColor{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
             .pNext = nullptr
@@ -238,7 +240,7 @@ namespace RGL {
         VK_CHECK(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool));
 
         VmaAllocatorCreateInfo allocInfo{
-            .flags = 0,
+            .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
             .physicalDevice = physicalDevice,
             .device = device,
             .preferredLargeHeapBlockSize = 0,   // default
@@ -375,6 +377,20 @@ namespace RGL {
     void DeviceVk::BlockUntilIdle()
     {
         vkDeviceWaitIdle(device);
+    }
+    size_t DeviceVk::GetTotalVRAM() const
+    {
+        VmaBudget budgets;
+        vmaGetHeapBudgets(vkallocator, &budgets);
+
+        return budgets.budget;
+    }
+    size_t DeviceVk::GetCurrentVRAMInUse() const
+    {
+        VmaBudget budgets;
+        vmaGetHeapBudgets(vkallocator, &budgets);
+
+        return budgets.usage;
     }
 }
 

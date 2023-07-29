@@ -294,6 +294,20 @@ namespace RGL {
         Flush();
     }
 
+    size_t DeviceD3D12::GetTotalVRAM() const
+    {
+        DXGI_QUERY_VIDEO_MEMORY_INFO meminfo;
+        adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &meminfo);
+        return meminfo.Budget;
+    }
+
+    size_t DeviceD3D12::GetCurrentVRAMInUse() const
+    {
+        DXGI_QUERY_VIDEO_MEMORY_INFO meminfo;
+        adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &meminfo);
+        return meminfo.CurrentUsage;
+    }
+
     void DeviceD3D12::Flush() {
         internalQueue->Flush();
     }

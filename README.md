@@ -82,6 +82,7 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | Windows 10+ (Win32) | x86_64, aarch64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10+ (GDK) | x86_64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10+ (UWP) | x86_64, aarch64 | MSVC | Visual Studio | DX12 |
+| Xbox Series (UWP) | x86_64 | MSVC | Visual Studio | DX12 |
 | Linux | x86_64, aarch64 | Clang, gcc | Ninja, Make | Vulkan |
 | Emscripten (Early WIP) | WebAssembly | emcc | Make | WebGPU |
 

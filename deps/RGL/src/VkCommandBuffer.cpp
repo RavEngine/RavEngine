@@ -445,6 +445,7 @@ namespace RGL {
 	void CommandBufferVk::Commit(const CommitConfig& config)
 	{
 		owningQueue->Submit(this, config);
+		vmaSetCurrentFrameIndex(owningQueue->owningDevice->vkallocator, owningQueue->owningDevice->frameIndex++);
 		swapchainsToSignal.clear();
 	}
 	void CommandBufferVk::SetResourceBarrier(const ResourceBarrierConfig& config)
