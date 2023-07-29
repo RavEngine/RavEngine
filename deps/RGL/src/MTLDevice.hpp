@@ -40,6 +40,9 @@ namespace RGL{
         RGLFencePtr CreateFence(bool preSignaled) final;
         void BlockUntilIdle() final;
         
+        size_t GetTotalVRAM() const final;
+        size_t GetCurrentVRAMInUse() const final;
+        
         virtual ~DeviceMTL(){}
 	};
 

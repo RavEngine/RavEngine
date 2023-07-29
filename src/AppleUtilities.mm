@@ -60,30 +60,6 @@ void enableSmoothScrolling(){
     [[NSUserDefaults standardUserDefaults] setBool: YES forKey: @"AppleMomentumScrollSupported"];
 }
 
-
-uint32_t AppleVRAMUsed(){
-    return 0;
-#if 0
-    auto internalData = bgfx::getInternalData();
-    auto device = (id<MTLDevice>)internalData->context;
-    return static_cast<uint32_t>([device currentAllocatedSize] / 1024 / 1024);
-#endif
-}
-
-uint32_t AppleVRAMTotal(){
-    
-#if TARGET_OS_NONOSX
-    return GetAppleSystemRAM();
-#else
-#if 0
-    auto internalData = bgfx::getInternalData();
-    auto device = (id<MTLDevice>)internalData->context;
-    return [device recommendedMaxWorkingSetSize] / 1024 / 1024;
-#endif
-    return 0;
-#endif
-}
-
 AppleOSVersion GetAppleOSVersion(){
     auto p = [[NSProcessInfo processInfo] operatingSystemVersion];
 
