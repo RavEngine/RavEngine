@@ -62,7 +62,7 @@ STATIC(RavEngine::defaultColorBlendConfig) {
     }
 };
 
-RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name) : Material(vsh_name,fsh_name,MaterialConfig
+RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name, PBRMaterialOptions options) : Material(vsh_name,fsh_name,MaterialConfig
     {
         .vertConfig = defaultVertexConfig,
         .colorBlendConfig = defaultColorBlendConfig,
@@ -83,7 +83,8 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
                 .stageFlags = RGL::BindingVisibility::Vertex
             }
         },
-        .pushConstantSize = sizeof(PBRPushConstantData)
+        .pushConstantSize = sizeof(PBRPushConstantData),
+        .cullMode = options.cullMode
 	}
 	) 
 {

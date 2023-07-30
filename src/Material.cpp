@@ -62,6 +62,7 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
             .topology = RGL::PrimitiveTopology::TriangleList,
         },
         .rasterizerConfig = {
+            .cullMode = config.cullMode,
             .windingOrder = RGL::WindingOrder::Counterclockwise,
         },
         .colorBlendConfig = config.colorBlendConfig,

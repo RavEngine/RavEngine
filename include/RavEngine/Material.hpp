@@ -22,6 +22,7 @@ namespace RavEngine {
 
 		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
 		uint32_t pushConstantSize = 0;
+		RGL::CullMode cullMode = RGL::CullMode::Back;
 	};
 
 	/**
@@ -92,7 +93,6 @@ namespace RavEngine {
 		std::array<RGLBufferPtr, maxBindingSlots> bufferBindings;
 		std::array<Ref<Texture>, maxBindingSlots> textureBindings;
 	public:
-        bool doubleSided = false;
 		
 		/**
 		@return a byte view to the push constant data for the material. The data is appended after the viewProj mat4. 
