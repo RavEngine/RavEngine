@@ -537,56 +537,84 @@ namespace RavEngine {
 			mainCommandBuffer->EndRendering();
         }
 
+
+		struct lightViewProjResult {
+			glm::mat4 lightProj, lightView;
+		};
+
 		// directional lights
-        if (worldOwning->renderData->directionalLightData.DenseSize() > 0){
-			// render shadows for directional lights
-			shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
-			mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
-			auto& dirlightStore = worldOwning->renderData->directionalLightData;
-			lightUBO.isRenderingShadows = true;
-			for (uint32_t i = 0; i < dirlightStore.DenseSize(); i++) {
-				const auto& light = dirlightStore.GetDense()[i];
-				if (!light.castsShadows) {
-					continue;
+		auto renderLight = [this,&renderFromPerspective,invviewproj,&lightUBO,&nextImgSize](auto&& lightStore, auto&& genLightViewProj) {
+			if (lightStore.DenseSize() > 0) {
+				// render shadows for directional lights
+				shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
+				mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
+				lightUBO.isRenderingShadows = true;
+				for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
+					const auto& light = lightStore.GetDense()[i];
+					if (!light.castsShadows) {
+						continue;
+					}
+
+					struct {
+						glm::mat4 invViewProj;
+						glm::mat4 lightViewProj;
+					} dirlightExtras;
+
+					lightViewProjResult lightMats = genLightViewProj(light);
+
+					auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
+
+					mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
+
+					renderFromPerspective(lightSpaceMatrix, shadowRenderPass, [](Ref<Material>&& mat) {
+						return mat->GetShadowRenderPipeline();
+						}, { shadowMapSize,shadowMapSize });
+
+					dirlightExtras.lightViewProj = lightSpaceMatrix;
+					dirlightExtras.invViewProj = invviewproj;
+
+					auto transientOffset = WriteTransient(dirlightExtras);
+
+					mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
+					mainCommandBuffer->BeginRendering(lightingRenderPass);
+					//reset viewport and scissor
+					mainCommandBuffer->SetViewport({
+						.width = static_cast<float>(nextImgSize.width),
+						.height = static_cast<float>(nextImgSize.height),
+						});
+					mainCommandBuffer->SetScissor({
+						.extent = {nextImgSize.width, nextImgSize.height}
+						});
+					mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
+					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+					mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
+
+					mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
+					mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
+					mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
+					mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
+
+					mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
+
+					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+					mainCommandBuffer->SetVertexBytes(lightUBO, 0);
+					mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
+					mainCommandBuffer->SetVertexBuffer(lightStore.GetDense().get_underlying().buffer, {
+						.bindingPosition = 1,
+						.offsetIntoBuffer = uint32_t(sizeof(World::DirLightUploadData) * i)
+						});
+					mainCommandBuffer->Draw(3, {
+						.nInstances = 1
+						});
+					mainCommandBuffer->EndRenderDebugMarker();
+					mainCommandBuffer->EndRendering();
 				}
-				auto dirvec = light.direction;
 
-				struct  {
-					glm::mat4 invViewProj;
-					glm::mat4 lightViewProj;
-				} dirlightExtras;
-
-				constexpr auto lightArea = 30;
-
-				auto lightProj = glm::ortho<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
-				auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-				const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z)};
-				lightView = glm::translate(lightView, reposVec);
-				auto lightSpaceMatrix = lightProj * lightView;
-
-				mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
-
-				renderFromPerspective(lightSpaceMatrix, shadowRenderPass, [](Ref<Material>&& mat) {
-					return mat->GetShadowRenderPipeline();
-					}, { shadowMapSize,shadowMapSize });
-
-				dirlightExtras.lightViewProj = lightSpaceMatrix;
-				dirlightExtras.invViewProj = invviewproj;
-
-				auto transientOffset = WriteTransient(dirlightExtras);
-
-				mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
+				lightUBO.isRenderingShadows = false;
 				mainCommandBuffer->BeginRendering(lightingRenderPass);
-                //reset viewport and scissor
-                mainCommandBuffer->SetViewport({
-                    .width = static_cast<float>(nextImgSize.width),
-                    .height = static_cast<float>(nextImgSize.height),
-                    });
-                mainCommandBuffer->SetScissor({
-                    .extent = {nextImgSize.width, nextImgSize.height}
-                });
 				mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
-				mainCommandBuffer->SetFragmentSampler(textureSampler,0);
+
+				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 				mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
 
 				mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
@@ -599,43 +627,33 @@ namespace RavEngine {
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->SetVertexBytes(lightUBO, 0);
 				mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-				mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->directionalLightData.GetDense().get_underlying().buffer, {
-					.bindingPosition = 1,
-					.offsetIntoBuffer = uint32_t(sizeof(World::DirLightUploadData) * i)
-				});
+				mainCommandBuffer->SetVertexBuffer(lightStore.GetDense().get_underlying().buffer, {
+					.bindingPosition = 1
+					});
 				mainCommandBuffer->Draw(3, {
-					.nInstances = 1
-				});
+					.nInstances = lightStore.DenseSize()
+					});
 				mainCommandBuffer->EndRenderDebugMarker();
 				mainCommandBuffer->EndRendering();
 			}
+		};
 
-			lightUBO.isRenderingShadows = false;
-			mainCommandBuffer->BeginRendering(lightingRenderPass);
-            mainCommandBuffer->BindRenderPipeline(dirLightRenderPipeline);
+		renderLight(worldOwning->renderData->directionalLightData, [&camPos](const RavEngine::World::DirLightUploadData& light) {
+			auto dirvec = light.direction;
 
-			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-			mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
+			constexpr auto lightArea = 30;
 
-			mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
-			mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
-			mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
-			mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
+			auto lightProj = glm::ortho<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
+			auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
+			const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
+			lightView = glm::translate(lightView, reposVec);
 
-			mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
-
-            mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-            mainCommandBuffer->SetVertexBytes(lightUBO, 0);
-            mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-            mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->directionalLightData.GetDense().get_underlying().buffer, {
-                .bindingPosition = 1
-            });
-            mainCommandBuffer->Draw(3, {
-                .nInstances = worldOwning->renderData->directionalLightData.DenseSize()
-            });
-			mainCommandBuffer->EndRenderDebugMarker();
-			mainCommandBuffer->EndRendering();
-        }
+			return lightViewProjResult{
+				.lightProj = lightProj,
+				.lightView = lightView
+			};
+		});
+        
 
 		// point lights
         if (worldOwning->renderData->pointLightData.DenseSize() > 0){
