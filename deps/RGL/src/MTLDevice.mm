@@ -98,6 +98,21 @@ void DeviceMTL::BlockUntilIdle() {
     
 }
 
+size_t DeviceMTL::GetTotalVRAM() const
+{
+#if TARGET_OS_IPHONE
+    return [[NSProcessInfo processInfo] physicalMemory];
+#else
+    
+    return [device recommendedMaxWorkingSetSize];
+#endif
+}
+
+size_t DeviceMTL::GetCurrentVRAMInUse() const
+{
+    [device currentAllocatedSize];
+}
+
 RGL::DeviceData DeviceMTL::GetDeviceData() {
     return {
         .mtlData{
