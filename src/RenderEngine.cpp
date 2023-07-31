@@ -904,8 +904,36 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		},
 		.constants = {
 			{
-				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+				sizeof(LightToFBUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
 			}
+		}
+	});
+
+	auto debugPipelineLayout = device->CreatePipelineLayout({
+		.constants = {
+			{
+				sizeof(DebugUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+			}
+		}
+	});
+
+	auto guiPipelineLayout = device->CreatePipelineLayout({
+	.bindings = {
+				{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {
+			{
+				sizeof(GUIUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+				}
 		}
 	});
 
@@ -1040,7 +1068,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.depthWriteEnabled = false,
 				.depthFunction = RGL::DepthCompareFunction::Greater,
 			},
-			.pipelineLayout = lightToFBPipelineLayout,
+			.pipelineLayout = guiPipelineLayout,
 		});
 
 	//TODO: on unified memory systems, don't make a staging buffer, and mark the transientBuffer as shared
@@ -1118,7 +1146,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 #ifndef NDEBUG
 	auto debugVSH = LoadShaderByFilename("debug.vsh", device);
 	auto debugFSH = LoadShaderByFilename("debug.fsh", device);
-	auto createDebugRenderPipeline = [this, debugVSH, debugFSH, lightToFBPipelineLayout](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
+	auto createDebugRenderPipeline = [this, debugVSH, debugFSH, debugPipelineLayout](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
 		RGL::RenderPipelineDescriptor rpd{
 			.stages = {
 				{
@@ -1179,7 +1207,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.depthWriteEnabled = false,
 				.depthFunction = RGL::DepthCompareFunction::Greater,
 			},
-			.pipelineLayout = lightToFBPipelineLayout,
+			.pipelineLayout = debugPipelineLayout,
 		};
 		return device->CreateRenderPipeline(rpd);
 	};

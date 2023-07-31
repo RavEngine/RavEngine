@@ -3,7 +3,6 @@ layout(binding = 0) uniform sampler g_sampler;
 layout(binding = 1) uniform texture2D t_light;
 
 layout(push_constant) uniform UniformBufferObject{
-	mat4 viewProj;
 	ivec4 viewRect;
 } ubo;
 

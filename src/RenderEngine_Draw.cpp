@@ -493,18 +493,18 @@ namespace RavEngine {
 		);
 
 		// do lighting pass
+
+		glm::ivec4 viewRect {0, 0, nextImgSize.width, nextImgSize.height};
+
 		AmbientLightUBO ambientUBO{
-			.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
+			.viewRect = viewRect
 		};
 
-		LightingUBO lightUBO{
-			.viewProj = viewproj,
-			.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
-		};
+		
 		PointLightUBO pointLightUBO{
 			.viewProj = viewproj,
 			.invViewProj =invviewproj,
-			.viewRect = lightUBO.viewRect
+			.viewRect = ambientUBO.viewRect
 		};
 		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
 		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
@@ -542,8 +542,13 @@ namespace RavEngine {
 			glm::mat4 lightProj, lightView;
 		};
 
-		auto renderLight = [this,&renderFromPerspective,&lightUBO,&nextImgSize](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+		auto renderLight = [this,&renderFromPerspective,&viewproj, &nextImgSize](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 			if (lightStore.DenseSize() > 0) {
+				LightingUBO lightUBO{
+					.viewProj = viewproj,
+					.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
+				};
+
 				shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
 				lightUBO.isRenderingShadows = true;
 				for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
@@ -718,13 +723,17 @@ namespace RavEngine {
 		mainCommandBuffer->EndRenderDebugMarker();
 		
 
+		LightToFBUBO fbubo{
+			.viewRect = viewRect
+		};
+
 		mainCommandBuffer->BeginRendering(finalRenderPass);
 		mainCommandBuffer->BeginRenderDebugMarker("Blit and Skybox");
 		// start with the results of lighting
 		mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-		mainCommandBuffer->SetVertexBytes(lightUBO,0);
-		mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
+		mainCommandBuffer->SetVertexBytes(fbubo,0);
+		mainCommandBuffer->SetFragmentBytes(fbubo, 0);
 		mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 		mainCommandBuffer->SetFragmentTexture(lightingTexture.get(), 1);
 		mainCommandBuffer->Draw(3);
@@ -765,7 +774,7 @@ namespace RavEngine {
 		});
 		mainCommandBuffer->BeginRenderDebugMarker("Debug Wireframes");
 		Im3d::AppData& data = Im3d::GetAppData();
-		data.m_appData = &lightUBO.viewProj;
+		data.m_appData = (void*) &viewproj;
 
 		Im3d::GetContext().draw();
 		mainCommandBuffer->EndRenderDebugMarker();
@@ -831,7 +840,7 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 
 	auto viewProj = *static_cast<glm::mat4*>(Im3d::GetAppData().m_appData);
     
-    LightingUBO ubo{
+    DebugUBO ubo{
         .viewProj = viewProj
     };
 

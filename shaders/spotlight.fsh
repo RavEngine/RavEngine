@@ -64,6 +64,10 @@ void main()
 	float depth = texture(sampler2D(t_depth, g_sampler), texcoord).x;
 	 mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
 	vec3 pos = ComputeWorldSpacePos(texcoord,depth, invViewProj);
+
+	if (ubo.isRenderingShadows){
+		//TODO: shadow sampling
+	}
 	
 	vec3 toLight = normalize(positionradius.xyz - pos);
 	

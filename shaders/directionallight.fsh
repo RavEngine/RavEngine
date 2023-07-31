@@ -52,8 +52,7 @@ void main()
     vec3 toLight = normalize(lightdir.xyz);
 
     float pcfFactor = 1;
-#if 1
-    //TODO: check if shadow is enabled
+if (ubo.isRenderingShadows){
         float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
         mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
         vec4 sampledPos = vec4(ComputeWorldSpacePos(texcoord,sampledDepthForPos, invViewProj),1);
@@ -63,7 +62,7 @@ void main()
         sampledPos.y = 1 - sampledPos.y;
 
        pcfFactor = texture(sampler2DShadow(t_depthshadow,shadowSampler), sampledPos.xyz, 0).x;
-#endif
+}
     
     float intensity = colorintensity[3];
     

@@ -85,6 +85,18 @@ namespace RavEngine {
 			glm::ivec4 viewRect;
 		};
 
+		struct LightToFBUBO {
+			glm::ivec4 viewRect;
+		};
+
+		struct GUIUBO {
+			glm::mat4 viewProj;
+		};
+
+		struct DebugUBO {
+			glm::mat4 viewProj;
+		};
+
 		struct LightingUBO {
 			glm::mat4 viewProj;
 			glm::ivec4 viewRect;
