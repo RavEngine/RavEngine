@@ -1,3 +1,5 @@
+#extension GL_EXT_scalar_block_layout : enable
+
 layout(location = 0) in vec4 colorintensity;
 layout(location = 1) in vec4 positionradius;
 layout(location = 2) in float penumbra;
@@ -8,14 +10,26 @@ layout(binding = 1) uniform sampler shadowSampler;
 layout(binding = 2) uniform texture2D t_albedo;
 layout(binding = 3) uniform texture2D t_normal;
 layout(binding = 4) uniform texture2D t_depth;
+layout(binding = 5) uniform texture2D t_depthshadow;
 
 layout(location = 0) out vec4 outcolor;
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
-	mat4 invViewProj;
     ivec4 viewRect;
+    bool isRenderingShadows;
 } ubo;
+
+
+struct SpotLightExtraConstants{
+    mat4 invViewProj;
+    mat4 lightViewProj;
+};
+
+layout(scalar, binding = 8) readonly buffer pushConstantSpill
+{
+	SpotLightExtraConstants constants[];
+};
 
 float remap(float value, float min1, float max1, float min2, float max2) {
   return clamp(min2 + (value - min1) * (max2 - min2) / (max1 - min1),min2,max2);
@@ -48,7 +62,7 @@ void main()
 	vec3 albedo = texture(sampler2D(t_albedo, g_sampler), texcoord).xyz;
 	vec3 normal = texture(sampler2D(t_normal, g_sampler), texcoord).xyz;
 	float depth = texture(sampler2D(t_depth, g_sampler), texcoord).x;
-	vec3 pos = ComputeWorldSpacePos(texcoord,depth,ubo.invViewProj);
+	vec3 pos = ComputeWorldSpacePos(texcoord,depth, constants[0].invViewProj);
 	
 	vec3 toLight = normalize(positionradius.xyz - pos);
 	

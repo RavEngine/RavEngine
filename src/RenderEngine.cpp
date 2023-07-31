@@ -436,7 +436,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 
 	// create "fixed-function" pipeline layouts
-	ambientLightRenderPipelineLayout = device->CreatePipelineLayout({
+	auto ambientLightRenderPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
 			{
 				.binding = 0,
@@ -456,7 +456,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		}
 	});
 
-	lightRenderPipelineLayout = device->CreatePipelineLayout({
+	auto lightRenderPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
 				{
 					.binding = 0,
@@ -502,7 +502,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		}
 	});
 
-	pointLightRenderPipelineLayout = device->CreatePipelineLayout({
+	auto spotLightRenderPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
 				{
 				.binding = 0,
@@ -529,6 +529,61 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 				.type = RGL::BindingType::SampledImage,
 				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
+			{
+				.binding = 5,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 8,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			}
+		},
+		.constants = {
+			{
+				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+			}
+		}
+	});
+
+	auto pointLightRenderPipelineLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+				{
+				.binding = 1,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 3,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 4,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 5,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 8,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			}
 		},
 		.constants = {
 			{
@@ -822,13 +877,19 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 					.offset = sizeof(glm::vec4) * 5,
 					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
 				},
+				{
+					.location = 7,
+					.binding = 1,
+					.offset = offsetof(World::SpotLightDataUpload, castsShadows),
+					.format = RGL::VertexAttributeFormat::R32_Uint,
+				}
 		}, pointLightRenderPipelineLayout, RGL::WindingOrder::Clockwise);
 
 	// copy shader
 	auto lightToFbFSH = LoadShaderByFilename("light_to_fb.fsh",device);
 	auto lightToFbVSH = LoadShaderByFilename("light_to_fb.vsh",device);
 
-	lightToFBPipelineLayout = device->CreatePipelineLayout({
+	auto lightToFBPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
 				{
 				.binding = 0,
@@ -1057,7 +1118,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 #ifndef NDEBUG
 	auto debugVSH = LoadShaderByFilename("debug.vsh", device);
 	auto debugFSH = LoadShaderByFilename("debug.fsh", device);
-	auto createDebugRenderPipeline = [this, debugVSH, debugFSH](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
+	auto createDebugRenderPipeline = [this, debugVSH, debugFSH, lightToFBPipelineLayout](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
 		RGL::RenderPipelineDescriptor rpd{
 			.stages = {
 				{

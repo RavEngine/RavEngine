@@ -25,6 +25,7 @@ layout(scalar, binding = 8) readonly buffer pushConstantSpill
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
+    bool isRenderingShadows;
 } ubo;
 
 vec4 ComputeClipSpacePosition(vec2 pos, float depth){

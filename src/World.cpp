@@ -353,7 +353,8 @@ void World::setupRenderTasks(){
                     auto& denseData = renderData->spotLightData.GetForSparseIndex(ptr->GetOwner(i));
                     denseData.coneAndPenumbra = { lightData.GetConeAngle(), lightData.GetPenumbraAngle() };
                     denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
-                    ptr->Get(i).clearInvalidate();
+                    denseData.castsShadows = lightData.CastsShadows();
+                    lightData.clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
             }

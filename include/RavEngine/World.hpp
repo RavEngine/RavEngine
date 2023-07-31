@@ -292,6 +292,7 @@ namespace RavEngine {
             glm::mat4 worldTransform;
             glm::vec4 colorIntensity;
             glm::vec2 coneAndPenumbra;
+            int castsShadows;
         };
 
         // data for the render engine

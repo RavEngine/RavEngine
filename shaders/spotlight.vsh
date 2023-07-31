@@ -6,6 +6,7 @@ layout(location = 3) in vec4 inTransformR3;
 layout(location = 4) in vec4 inTransformR4;
 layout(location = 5) in vec4 inColorIntensity;
 layout(location = 6) in vec2 inConeAngleAndPenumbra;	// [0] = cone angle, [1] = penumbra angle
+layout(location = 7) in uint inCastsShadows;
 
 layout(location = 0) out vec4 outColorIntensity;
 layout(location = 1) out vec4 outPositionRadius;
@@ -15,8 +16,13 @@ layout(location = 3) out vec3 forward;
 layout(push_constant) uniform UniformBufferObject{
 	mat4 viewProj;
 	mat4 invViewProj;
-	ivec4 viewRect;
+	bool isRenderingShadows;
 } ubo;
+
+// https://stackoverflow.com/questions/37532640/making-a-nan-on-purpose-in-webgl
+float makeNaN(float nonneg) {
+    return sqrt(-nonneg-1.0);
+}
 
 void main()
 {
@@ -44,7 +50,8 @@ void main()
 	
 	vec4 worldpos = model * vec4(a_position, 1.0);
 	
-	gl_Position = ubo.viewProj * worldpos;
+	float NaN = makeNaN(1.0);
+	gl_Position = (bool(inCastsShadows) == ubo.isRenderingShadows) ? ubo.viewProj * worldpos : vec4(NaN,NaN,NaN,NaN);
 
 	mat3 rotScaleOnly = mat3(model);
 
