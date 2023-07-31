@@ -1049,7 +1049,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		{.StorageBuffer = true},
 		sizeof(char),
 		RGL::BufferAccess::Private,
-		{.TransferDestination = true, .debugName = "Transient Buffer" }
+		{.TransferDestination = true, .PixelShaderResource = true, .debugName = "Transient Buffer" }
 	});
 	transientStagingBuffer = device->CreateBuffer({
 		65535,

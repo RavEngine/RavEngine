@@ -2,6 +2,8 @@
 
 layout(location = 0) in vec3 lightdir;
 layout(location = 1) in vec4 colorintensity;
+layout(location = 2) in flat vec4[4] invViewProj_elts; 
+
 
 layout(location = 0) out vec4 outcolor;
 
@@ -13,7 +15,6 @@ layout(binding = 4) uniform texture2D t_depth;
 layout(binding = 5) uniform texture2D t_depthshadow;
 
 struct DirLightExtraConstants{
-    mat4 invViewProj;
     mat4 lightViewProj;
 };
 
@@ -54,7 +55,8 @@ void main()
 #if 1
     //TODO: check if shadow is enabled
         float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
-        vec4 sampledPos = vec4(ComputeWorldSpacePos(texcoord,sampledDepthForPos, constants[0].invViewProj),1);
+        mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
+        vec4 sampledPos = vec4(ComputeWorldSpacePos(texcoord,sampledDepthForPos, invViewProj),1);
         sampledPos = constants[0].lightViewProj * sampledPos;    // where is this on the light
         sampledPos /= sampledPos.w; // perspective divide
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 

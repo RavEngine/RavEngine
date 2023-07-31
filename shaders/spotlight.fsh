@@ -4,6 +4,7 @@ layout(location = 0) in vec4 colorintensity;
 layout(location = 1) in vec4 positionradius;
 layout(location = 2) in float penumbra;
 layout(location = 3) in vec3 forward;
+layout(location = 4) in flat vec4[4] invViewProj_elts; 
 
 layout(binding = 0) uniform sampler g_sampler;
 layout(binding = 1) uniform sampler shadowSampler;
@@ -22,7 +23,6 @@ layout(push_constant) uniform UniformBufferObject{
 
 
 struct SpotLightExtraConstants{
-    mat4 invViewProj;
     mat4 lightViewProj;
 };
 
@@ -62,7 +62,8 @@ void main()
 	vec3 albedo = texture(sampler2D(t_albedo, g_sampler), texcoord).xyz;
 	vec3 normal = texture(sampler2D(t_normal, g_sampler), texcoord).xyz;
 	float depth = texture(sampler2D(t_depth, g_sampler), texcoord).x;
-	vec3 pos = ComputeWorldSpacePos(texcoord,depth, constants[0].invViewProj);
+	 mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
+	vec3 pos = ComputeWorldSpacePos(texcoord,depth, invViewProj);
 	
 	vec3 toLight = normalize(positionradius.xyz - pos);
 	

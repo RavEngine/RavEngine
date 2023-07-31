@@ -12,10 +12,11 @@ layout(location = 0) out vec4 outColorIntensity;
 layout(location = 1) out vec4 outPositionRadius;
 layout(location = 2) out float outPenumbra;
 layout(location = 3) out vec3 forward;
+layout(location = 4) out flat vec4[4] outInvViewProj; 
 
 layout(push_constant) uniform UniformBufferObject{
 	mat4 viewProj;
-	mat4 invViewProj;
+	ivec4 viewRect;
 	bool isRenderingShadows;
 } ubo;
 
@@ -52,6 +53,10 @@ void main()
 	
 	float NaN = makeNaN(1.0);
 	gl_Position = (bool(inCastsShadows) == ubo.isRenderingShadows) ? ubo.viewProj * worldpos : vec4(NaN,NaN,NaN,NaN);
+
+	mat4 invViewProj = inverse(ubo.viewProj);
+
+    outInvViewProj = vec4[4](invViewProj[0],invViewProj[1],invViewProj[2],invViewProj[3]);
 
 	mat3 rotScaleOnly = mat3(model);
 

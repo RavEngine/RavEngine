@@ -61,6 +61,10 @@ namespace RGL {
             initialState |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
         }
 
+        if (config.options.PixelShaderResource) {
+            initialState |= (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
+
         DX_CHECK(device->device->CreateCommittedResource(
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,

@@ -542,7 +542,7 @@ namespace RavEngine {
 			glm::mat4 lightProj, lightView;
 		};
 
-		auto renderLight = [this,&renderFromPerspective,invviewproj,&lightUBO,&nextImgSize](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+		auto renderLight = [this,&renderFromPerspective,&lightUBO,&nextImgSize](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 			if (lightStore.DenseSize() > 0) {
 				shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
 				lightUBO.isRenderingShadows = true;
@@ -553,7 +553,6 @@ namespace RavEngine {
 					}
 
 					struct {
-						glm::mat4 invViewProj;
 						glm::mat4 lightViewProj;
 					} lightExtras;
 
@@ -568,7 +567,6 @@ namespace RavEngine {
 						}, { shadowMapSize,shadowMapSize });
 
 					lightExtras.lightViewProj = lightSpaceMatrix;
-					lightExtras.invViewProj = invviewproj;
 
 					auto transientOffset = WriteTransient(lightExtras);
 
@@ -671,7 +669,15 @@ namespace RavEngine {
 				});
 			},
 			[](const RavEngine::World::SpotLightDataUpload& light) {
-				return lightViewProjResult{};
+
+				auto lightProj = glm::perspective<float>(deg_to_rad(light.coneAndPenumbra.x / 2), 1, 0.1, 100);
+
+				auto viewMat = glm::inverse(light.worldTransform);
+
+				return lightViewProjResult{
+					.lightProj = lightProj,
+					.lightView = viewMat
+				};
 			}
 		);
 		mainCommandBuffer->EndRenderDebugMarker();

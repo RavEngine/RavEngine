@@ -8,6 +8,7 @@ namespace RGL {
 		bool TransferDestination : 1 = false;
 		bool Transfersource : 1 = false;
 		bool ReadbackTarget : 1 = false;
+		bool PixelShaderResource : 1 = false;
 		bool Writable : 1 = false;
 		const char* debugName = nullptr;
 	};
