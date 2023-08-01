@@ -18,7 +18,7 @@ layout(location = 0) out vec4 outcolor;
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
-    bool isRenderingShadows;
+    int isRenderingShadows;
 } ubo;
 
 
@@ -65,7 +65,7 @@ void main()
 	 mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
 	vec3 pos = ComputeWorldSpacePos(texcoord,depth, invViewProj);
 
-	if (ubo.isRenderingShadows){
+	if (bool(ubo.isRenderingShadows)){
 		//TODO: shadow sampling
 	}
 	

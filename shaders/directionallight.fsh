@@ -26,7 +26,7 @@ layout(scalar, binding = 8) readonly buffer pushConstantSpill
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
-    bool isRenderingShadows;
+    int isRenderingShadows;
 } ubo;
 
 vec4 ComputeClipSpacePosition(vec2 pos, float depth){
@@ -52,7 +52,7 @@ void main()
     vec3 toLight = normalize(lightdir.xyz);
 
     float pcfFactor = 1;
-if (ubo.isRenderingShadows){
+if (bool(ubo.isRenderingShadows)){
         float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
         mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
         vec4 sampledPos = vec4(ComputeWorldSpacePos(texcoord,sampledDepthForPos, invViewProj),1);

@@ -100,7 +100,7 @@ namespace RavEngine {
 		struct LightingUBO {
 			glm::mat4 viewProj;
 			glm::ivec4 viewRect;
-			bool isRenderingShadows = false;
+			uint32_t isRenderingShadows = uint32_t(false);
 		};
 
 		struct PointLightUBO {

@@ -14,7 +14,7 @@ layout(location = 2) out flat vec4[4] outInvViewProj;
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
-    bool isRenderingShadows;
+    uint isRenderingShadows;
 } ubo;
 
 // https://stackoverflow.com/questions/37532640/making-a-nan-on-purpose-in-webgl
@@ -33,5 +33,5 @@ void main()
 
     outInvViewProj = vec4[4](invViewProj[0],invViewProj[1],invViewProj[2],invViewProj[3]);
 
-    gl_Position = (bool(inCastsShadows) == ubo.isRenderingShadows) ? vec4(a_position, 1, 1.0) : vec4(NaN,NaN,NaN,NaN);	//depth = 1
+    gl_Position = (inCastsShadows == ubo.isRenderingShadows) ? vec4(a_position, 1, 1.0) : vec4(NaN,NaN,NaN,NaN);	//depth = 1
 }
