@@ -65,10 +65,18 @@ void main()
 	 mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
 	vec3 pos = ComputeWorldSpacePos(texcoord,depth, invViewProj);
 
-	if (bool(ubo.isRenderingShadows)){
-		//TODO: shadow sampling
-	}
-	
+    float pcfFactor = 1;
+if (bool(ubo.isRenderingShadows)){
+        float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
+        mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
+        vec4 sampledPos = vec4(ComputeWorldSpacePos(texcoord,sampledDepthForPos, invViewProj),1);
+        sampledPos = constants[0].lightViewProj * sampledPos;    // where is this on the light
+        sampledPos /= sampledPos.w; // perspective divide
+        sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
+        sampledPos.y = 1 - sampledPos.y;
+
+       pcfFactor = texture(sampler2DShadow(t_depthshadow,shadowSampler), sampledPos.xyz, 0).x;
+}
 	vec3 toLight = normalize(positionradius.xyz - pos);
 	
 	float dist = distance(pos,positionradius.xyz);
@@ -90,5 +98,5 @@ void main()
 	float epsilon = penumbra - coneDotFactor;
 	float penumbraFactor = clamp((pixelAngle - coneDotFactor) / epsilon, 0, 1);
 	
-	outcolor = vec4(attenuation * colorintensity.xyz * diffuseLight * penumbraFactor * enabled, enabled);
+	outcolor = vec4(attenuation * colorintensity.xyz * diffuseLight * penumbraFactor * pcfFactor * enabled, 1);
 }
