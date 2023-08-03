@@ -676,10 +676,10 @@ namespace RavEngine {
 			},
 			[](const RavEngine::World::SpotLightDataUpload& light) {
 
-				auto lightProj = glm::perspective<float>(deg_to_rad(light.coneAndPenumbra.x * 2), 1, 0.1, 100);
+				auto lightProj = glm::perspective<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
 
 				// -y is forward for spot lights, so we need to rotate to compensate
-				auto rotmat = glm::toMat4(quaternion(1,std::numbers::pi_v<float>/2,0,0));
+				auto rotmat = glm::toMat4(quaternion(1,-std::numbers::pi_v<float>/2,0,0));
 				auto combinedMat = light.worldTransform * rotmat;
 
 				auto viewMat = glm::inverse(combinedMat);
