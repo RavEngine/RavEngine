@@ -360,12 +360,17 @@ namespace RavEngine {
 						.viewProj = viewproj,
 						.indirectBufferOffset = 0,
 					};
+					static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
 					for (auto& command : drawcommand.commands) {
 						mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
 						mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
 
 						if (auto mesh = command.mesh.lock()) {
 							uint32_t lodsForThisMesh = mesh->GetNumLods();
+							auto& bounds = mesh->bounds;
+
+							cubo.bbmin = { bounds.min[0],bounds.min[1],bounds.min[2] };
+							cubo.bbmax = { bounds.max[0],bounds.max[1],bounds.max[2] };
 
 							cubo.numObjects = command.entities.DenseSize();
 							mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);

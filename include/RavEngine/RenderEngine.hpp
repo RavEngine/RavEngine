@@ -123,9 +123,11 @@ namespace RavEngine {
 			float influence;
 		};
 
-		struct alignas(16) CullingUBO {
+		struct CullingUBO {
 			glm::mat4 viewProj;
-			uint32_t indirectBufferOffset = 0;
+			glm::vec3 bbmin;
+			uint32_t indirectBufferOffset = 0;	// needs to be like this because of padding / alignment
+			glm::vec3 bbmax;
 			uint32_t numObjects = 0;
 			uint32_t cullingBufferOffset = 0;
 		};
