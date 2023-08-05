@@ -279,9 +279,9 @@ namespace RavEngine {
 		);
 
 
-		auto renderFromPerspective = [this,&worldTransformBuffer,&worldOwning,&skeletalPrepareResult,&cullSkeletalMeshes](matrix4 viewproj, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Dimension viewportScissorSize) {
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Dimension viewportScissorSize) {
 			
-			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer](auto&& renderData) {
+			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer,&camPos](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
 					//prepass: get number of LODs and entities
 					uint32_t numLODs = 0, numEntities = 0;
@@ -359,6 +359,7 @@ namespace RavEngine {
 					CullingUBO cubo{
 						.viewProj = viewproj,
 						.indirectBufferOffset = 0,
+						.camPos = camPos
 					};
 					static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
 					for (auto& command : drawcommand.commands) {
@@ -470,7 +471,7 @@ namespace RavEngine {
 			mainCommandBuffer->EndRendering();
 		};
 
-		renderFromPerspective(viewproj, deferredRenderPass, [](Ref<Material>&& mat) {
+		renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 			return mat->GetMainRenderPipeline();
 		}, nextImgSize);
 
@@ -546,6 +547,7 @@ namespace RavEngine {
 
 		struct lightViewProjResult {
 			glm::mat4 lightProj, lightView;
+			glm::vec3 camPos = glm::vec3{ 0,0,0 };
 		};
 
 		auto renderLight = [this,&renderFromPerspective,&viewproj, &nextImgSize](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
@@ -573,7 +575,7 @@ namespace RavEngine {
 
 					mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
 
-					renderFromPerspective(lightSpaceMatrix, shadowRenderPass, [](Ref<Material>&& mat) {
+					renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 						return mat->GetShadowRenderPipeline();
 						}, { shadowMapSize,shadowMapSize });
 
@@ -689,9 +691,12 @@ namespace RavEngine {
 
 				auto viewMat = glm::inverse(combinedMat);
 
+				auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
+
 				return lightViewProjResult{
 					.lightProj = lightProj,
-					.lightView = viewMat
+					.lightView = viewMat,
+					.camPos = camPos
 				};
 			}
 		);

@@ -129,6 +129,7 @@ namespace RavEngine {
 			uint32_t indirectBufferOffset = 0;	// needs to be like this because of padding / alignment
 			glm::vec3 bbmax;
 			uint32_t numObjects = 0;
+			glm::vec3 camPos;
 			uint32_t cullingBufferOffset = 0;
 		};
 

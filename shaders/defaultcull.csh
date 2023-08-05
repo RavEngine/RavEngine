@@ -6,6 +6,7 @@ layout(push_constant) uniform UniformBufferObject{
 	uint indirectBufferOffset;			// needs to be like this because of padding / alignment
 	vec3 bbmax;
 	uint numObjects;
+	vec3 camPos;
 	uint cullingBufferOffset;
 } ubo;
 
@@ -38,11 +39,26 @@ layout(std430, binding = 3) buffer drawcallBuffer
 	IndirectCommand indirectBuffer[];
 };
 
+// point must be in NDC
 bool pointIsOnCamera(vec3 point){
 	return 
 		point.x >= -1 && point.x <= 1
 		&& point.y >= -1 && point.y <= 1
 		&& point.z >= -1 && point.z <= 1;
+}
+
+// a point is in an AABB if it is less than the max and greater than the min, component-wise
+// point must be in the same coordinate space as the AABB.
+bool pointIsInAABB(vec3 point, vec3 bbmin, vec3 bbmax){
+	if (point.x < bbmin.x || point.y < bbmin.y || point.z < bbmin.z) {
+        return false;
+    }
+
+	 if (point.x > bbmax.x || point.y > bbmax.y || point.z > bbmax.z) {
+        return false;
+    }
+
+    return true;
 }
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -70,6 +86,7 @@ void main() {
 		vec3(-bbmax.x, bbmax.y, bbmax.z),
 		vec3(-bbmax.x, -bbmax.y, bbmax.z),
 		vec3(bbmax.x, bbmax.y, -bbmax.z),
+		(bbmin + bbmax)	/ 2			// object's center
 	};
 
 	bool isOnCamera = false;
@@ -81,7 +98,11 @@ void main() {
 
 		isOnCamera = isOnCamera || pointIsOnCamera(point.xyz / point.w);
 	}
-	// TODO: is considered on camera if the camera is inside the bounding box of the object
+	// is considered on camera if the camera is inside the bounding box of the object
+	mat4 worldToObject = inverse(model);
+	vec3 cameraInObjectSpace = (worldToObject * vec4(ubo.camPos,1)).xyz;
+
+	isOnCamera = isOnCamera || pointIsInAABB(cameraInObjectSpace, bbmin, bbmax);
 
 	// check 2: what LOD am I in
 	uint lodID = 0;	//TODO: when multi-LOD support is added
