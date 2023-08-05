@@ -60,7 +60,7 @@ void main() {
 	vec3 bbmax = ubo.bbmax;
 
 	// check 1: am I on camera?
-	const vec3 bbox[8] = {
+	const vec3 bbox[] = {
 		bbmin,							// 'min' side
 		vec3(-bbmin.x, bbmin.y, bbmin.z),
 		vec3(-bbmin.x, -bbmin.y, bbmin.z),
@@ -74,13 +74,14 @@ void main() {
 
 	bool isOnCamera = false;
 	// is considered on camera if any point in the bounding box is on camera
-	for(uint i = 0; i < 6; i++){
+	for(uint i = 0; i < bbox.length(); i++){
 		vec4 point = vec4(bbox[i],1.0);
 		point = model * point;
 		point = ubo.viewProj * point;
 
 		isOnCamera = isOnCamera || pointIsOnCamera(point.xyz / point.w);
 	}
+	// TODO: is considered on camera if the camera is inside the bounding box of the object
 
 	// check 2: what LOD am I in
 	uint lodID = 0;	//TODO: when multi-LOD support is added
