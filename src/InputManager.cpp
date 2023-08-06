@@ -115,7 +115,7 @@ void InputManager::CleanupBindings(){
 	});
 }
 
-void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, float scale){
+void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, float scale, int windowWidth, int windowHeight){
 	switch (event.type) {
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
@@ -124,8 +124,7 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			break;
 		case SDL_MOUSEMOTION:
 			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
-				int width, height;
-				SDL_GetWindowSize(RenderEngine::GetWindow(), &width, &height);
+				int width = windowWidth, height = windowHeight;
 				
 				float velscale = 1 / scale;
 				

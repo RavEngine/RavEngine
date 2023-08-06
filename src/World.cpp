@@ -394,18 +394,6 @@ void World::setupRenderTasks(){
         }
     }).name("Update Invalidated AmbLights");
 
-	auto tickGUI = renderTasks.emplace([this]() {
-        auto& renderer = GetApp()->GetRenderEngine();
-        auto size = renderer.GetBufferSize();
-        auto scale = renderer.GetDPIScale();
-        Filter([&](GUIComponent& gui) {
-            if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
-                gui.SetDimensions(size.width, size.height);
-                gui.SetDPIScale(scale);
-            }
-            gui.Update();
-        });
-	}).name("UpdateGUI");
     
     // attatch the renderTasks module to the masterTasks
     renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");

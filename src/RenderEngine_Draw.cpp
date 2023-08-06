@@ -29,27 +29,18 @@ namespace RavEngine {
 	/**
  Render one frame using the current state of every object in the world
  */
-	void RenderEngine::Draw(Ref<RavEngine::World> worldOwning) {
+	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const RenderTargetCollection& target, dim backbufferSize) {
 		auto start = std::chrono::high_resolution_clock::now();
 		transientOffset = 0;
 
-		// queue up the next swapchain image as soon as possible, 
-		// it will become avaiable in the background
-		RGL::SwapchainPresentConfig presentConfig{
-		};
-		swapchain->GetNextImage(&presentConfig.imageIndex);
-
-		// execute when render fence says its ok
-		// did we get the swapchain image yet? if not, block until we do
-
-		swapchainFence->Wait();
-		swapchainFence->Reset();
+		currentRenderSize = backbufferSize;
+		
 		DestroyUnusedResources();
 		mainCommandBuffer->Reset();
 		mainCommandBuffer->Begin();
 
-		auto nextimg = swapchain->ImageAtIndex(presentConfig.imageIndex);
-		auto nextImgSize = nextimg->GetSize();
+		
+		auto nextImgSize = backbufferSize;
 
 		auto allCameras = worldOwning->GetAllComponentsOfType<CameraComponent>();
 		if (!allCameras)
@@ -239,9 +230,9 @@ namespace RavEngine {
 		}
 
 		// render all the static meshes
-		deferredRenderPass->SetAttachmentTexture(0, diffuseTexture.get());
-		deferredRenderPass->SetAttachmentTexture(1, normalTexture.get());
-		deferredRenderPass->SetDepthAttachmentTexture(depthStencil.get());
+		deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
+		deferredRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
+		deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 
 		mainCommandBuffer->SetViewport({
 			.width = static_cast<float>(nextImgSize.width),
@@ -255,17 +246,17 @@ namespace RavEngine {
 
 		mainCommandBuffer->TransitionResources({
 			{
-				.texture = diffuseTexture.get(),
+				.texture = target.diffuseTexture.get(),
 				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
 			},
 			{
-				.texture = normalTexture.get(),
+				.texture = target.normalTexture.get(),
 				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
 			},
 			{
-				.texture = depthStencil.get(),
+				.texture = target.depthStencil.get(),
 				.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
 				.to = RGL::ResourceLayout::DepthAttachmentOptimal
 			},
@@ -473,26 +464,26 @@ namespace RavEngine {
 
 		renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 			return mat->GetMainRenderPipeline();
-		}, nextImgSize);
+			}, { nextImgSize.width, nextImgSize.height });
 
 		mainCommandBuffer->TransitionResources({
 			{
-				.texture = diffuseTexture.get(),
+				.texture = target.diffuseTexture.get(),
 				.from = RGL::ResourceLayout::ColorAttachmentOptimal,
 				.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 			},
 			{
-				.texture = normalTexture.get(),
+				.texture = target.normalTexture.get(),
 				.from = RGL::ResourceLayout::ColorAttachmentOptimal,
 				.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 			},
 			{
-				.texture = lightingTexture.get(),
+				.texture = target.lightingTexture.get(),
 				.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 				.to = RGL::ResourceLayout::ColorAttachmentOptimal,
 			},
 			{
-				.texture = depthStencil.get(),
+				.texture = target.depthStencil.get(),
 				.from = RGL::ResourceLayout::DepthAttachmentOptimal,
 				.to = RGL::ResourceLayout::DepthReadOnlyOptimal,
 			}
@@ -513,10 +504,10 @@ namespace RavEngine {
 			.invViewProj =invviewproj,
 			.viewRect = ambientUBO.viewRect
 		};
-		lightingRenderPass->SetDepthAttachmentTexture(depthStencil.get());
-		lightingRenderPass->SetAttachmentTexture(0, lightingTexture.get());
-		ambientLightRenderPass->SetDepthAttachmentTexture(depthStencil.get());
-		ambientLightRenderPass->SetAttachmentTexture(0, lightingTexture.get());
+		lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+		lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
+		ambientLightRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+		ambientLightRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
 
 		mainCommandBuffer->SetRenderPipelineBarrier({
 			.Fragment = true
@@ -529,7 +520,7 @@ namespace RavEngine {
 			mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
             mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
 			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-            mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 1);
+            mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 1);
             
             mainCommandBuffer->SetVertexBuffer(screenTriVerts);
             mainCommandBuffer->SetVertexBytes(ambientUBO, 0);
@@ -550,7 +541,7 @@ namespace RavEngine {
 			glm::vec3 camPos = glm::vec3{ 0,0,0 };
 		};
 
-		auto renderLight = [this,&renderFromPerspective,&viewproj, &nextImgSize](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+		auto renderLight = [this,&renderFromPerspective,&viewproj, &nextImgSize,target](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 			if (lightStore.DenseSize() > 0) {
 				LightingUBO lightUBO{
 					.viewProj = viewproj,
@@ -597,9 +588,9 @@ namespace RavEngine {
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 					mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
 
-					mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
-					mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
-					mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
+					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 2);
+					mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
+					mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
 					mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
 
 					mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
@@ -622,9 +613,9 @@ namespace RavEngine {
 				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 				mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
 
-				mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
-				mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
-				mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
+				mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 2);
+				mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
+				mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
 				mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
 
 				mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
@@ -708,9 +699,9 @@ namespace RavEngine {
 			mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
             mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
 			mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-            mainCommandBuffer->SetFragmentTexture(diffuseTexture.get(), 2);
-            mainCommandBuffer->SetFragmentTexture(normalTexture.get(), 3);
-            mainCommandBuffer->SetFragmentTexture(depthStencil.get(), 4);
+            mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 2);
+            mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
+            mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
             mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
             mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
             mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
@@ -729,12 +720,12 @@ namespace RavEngine {
 
 		// the on-screen render pass
 		// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
-		finalRenderPass->SetAttachmentTexture(0, nextimg);
-		finalRenderPass->SetDepthAttachmentTexture(depthStencil.get());
+		finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer);
+		finalRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 		mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");
 		mainCommandBuffer->BeginRenderDebugMarker("Transition Lighting texture");
-		mainCommandBuffer->TransitionResource(lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
-		mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
+		mainCommandBuffer->TransitionResource(target.lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
+		mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
 		mainCommandBuffer->EndRenderDebugMarker();
 		
 
@@ -750,7 +741,7 @@ namespace RavEngine {
 		mainCommandBuffer->SetVertexBytes(fbubo,0);
 		mainCommandBuffer->SetFragmentBytes(fbubo, 0);
 		mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-		mainCommandBuffer->SetFragmentTexture(lightingTexture.get(), 1);
+		mainCommandBuffer->SetFragmentTexture(target.lightingTexture.get(), 1);
 		mainCommandBuffer->Draw(3);
 
 		// then do the skybox, if one is defined.
@@ -796,8 +787,8 @@ namespace RavEngine {
 		
 		if (debuggerContext) {
 			auto& dbg = *debuggerContext;
-			dbg.SetDimensions(bufferdims.width, bufferdims.height);
-			dbg.SetDPIScale(GetDPIScale());
+			dbg.SetDimensions(backbufferSize.width, backbufferSize.height);
+			dbg.SetDPIScale(1);	//TODO: fix hardcoded constant
 			dbg.Update();
 			dbg.Render();
 		}
@@ -807,20 +798,14 @@ namespace RavEngine {
 		Im3d::NewFrame();
 #endif
 		mainCommandBuffer->EndRendering();
-		mainCommandBuffer->TransitionResource(nextimg, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::Present, RGL::TransitionPosition::Bottom);
+		mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::Present, RGL::TransitionPosition::Bottom);
 		mainCommandBuffer->End();
-
-		// show the results to the user
-		RGL::CommitConfig commitconfig{
-				.signalFence = swapchainFence,
-		};
-		mainCommandBuffer->Commit(commitconfig);
-
-		swapchain->Present(presentConfig);
 
 		auto end = std::chrono::high_resolution_clock::now();
 		auto duration = duration_cast<std::chrono::microseconds>(end - start);
 		currentFrameTime = duration.count();
+
+		return mainCommandBuffer;
 	}
 }
 

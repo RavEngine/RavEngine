@@ -38,9 +38,9 @@ struct CompiledGeoStruct{
 	}
 };
 
-static inline matrix4 make_matrix(Rml::Vector2f translation){
+matrix4 RenderEngine::make_gui_matrix(Rml::Vector2f translation){
 	matrix4 mat(1);	//start with identity
-	auto size = GetApp()->GetRenderEngine().GetBufferSize();
+	auto size = currentRenderSize;
 	mat = glm::scale(mat, vector3(1,-1,1));	//flip
 	mat = glm::scale(mat, vector3(1.0/(size.width/2.0),1.0/(size.height/2.0),1));	//scale into view space
 	mat = glm::translate(mat, vector3(-size.width/2.0,-size.height/2.0,0));			//translate to origin-center
@@ -122,7 +122,7 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 	else {
 		tx = Texture::Manager::defaultTexture->GetRHITexturePointer();
 	}
-	auto drawmat = make_matrix(translation);
+	auto drawmat = make_gui_matrix(translation);
 
 	mainCommandBuffer->BindRenderPipeline(guiRenderPipeline);
 	if (RMLScissor.enabled) {
@@ -182,7 +182,7 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 	if (RMLScissor.enabled) {
 		mainCommandBuffer->SetScissor({ RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height });
 	}
-	auto drawmat = make_matrix(translation);
+	auto drawmat = make_gui_matrix(translation);
 
 	mainCommandBuffer->SetVertexBuffer(cgs->vb);
 	mainCommandBuffer->SetIndexBuffer(cgs->ib);

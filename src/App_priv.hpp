@@ -22,6 +22,9 @@
 #include "VirtualFileSystem.hpp"
 #include "AudioPlayer.hpp"
 #include "MeshAssetSkinned.hpp"
+#include "Window.hpp"
+#include <RGL/Swapchain.hpp>
+#include <RGL/CommandBuffer.hpp>
 #include <csignal>
 #include "Debug.hpp"
 
@@ -84,7 +87,55 @@ int App::run(int argc, char** argv) {
 	{
 		auto config = OnConfigure(argc, argv);
 
+		// initialize RGL and the global Device
+		RGL::API api = RGL::API::PlatformDefault;
+		{
+#if _UWP
+			size_t n_elt;
+			char* envv;
+			_dupenv_s(&envv, &n_elt, "RGL_BACKEND");
+#else
+			auto envv = std::getenv("RGL_BACKEND");
+#endif
+			if (envv == nullptr) {
+				goto cont;
+			}
+			auto backend = std::string_view(envv);
+
+			const std::unordered_map<std::string_view, RGL::API> apis{
+				{"metal", decltype(apis)::value_type::second_type::Metal},
+				{ "d3d12", decltype(apis)::value_type::second_type::Direct3D12 },
+				{ "vulkan", decltype(apis)::value_type::second_type::Vulkan },
+			};
+
+			auto it = apis.find(backend);
+			if (it != apis.end()) {
+				api = (*it).second;
+			}
+			else {
+				std::cerr << "No backend \"" << backend << "\", expected one of:\n";
+				for (const auto& api : apis) {
+					std::cout << "\t - " << RGL::APIToString(api.second) << "\n";
+				}
+			}
+		}
+	cont:
+
+		RGL::InitOptions opt{
+			.api = api,
+			.engineName = "RavEngine",
+		};
+		RGL::Init(opt);
+
 		Renderer = std::make_unique<RenderEngine>(config);
+
+		//TODO: app creates the Device
+		device = Renderer->GetDevice();
+
+		collection = Renderer->CreateRenderTargetCollection({ 960,540 });
+		window = std::make_unique<Window>(960, 540, "RavEngine", device, Renderer->mainCommandQueue);
+
+
 	}
 	
 	//setup GUI rendering
@@ -152,7 +203,7 @@ int App::run(int argc, char** argv) {
 		time += deltaSeconds;
 		currentScale = deltaSeconds * evalNormal;
 
-		auto windowflags = SDL_GetWindowFlags(RenderEngine::GetWindow());
+		auto windowflags = SDL_GetWindowFlags(window->window);
 		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
 				case SDL_QUIT:
@@ -164,7 +215,9 @@ int App::run(int argc, char** argv) {
 					switch (wev.event) {
 						case SDL_WINDOWEVENT_RESIZED:
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
-							Renderer->resize();
+							Renderer->mainCommandQueue->WaitUntilCompleted();
+							window->NotifySizeChanged(wev.data1, wev.data2);
+							Renderer->ResizeRenderTargetCollection(collection, {uint32_t(wev.data1), uint32_t(wev.data2)});
 							break;
 
 						case SDL_WINDOWEVENT_CLOSE:
@@ -175,9 +228,9 @@ int App::run(int argc, char** argv) {
 			}
 			//process others
 			if (inputManager) {
-				inputManager->ProcessInput(event,windowflags,currentScale);
+				inputManager->ProcessInput(event,windowflags,currentScale, window->windowdims.width, window->windowdims.height);
 #ifndef NDEBUG
-				RenderEngine::debuggerInput->ProcessInput(event,windowflags,currentScale);
+				RenderEngine::debuggerInput->ProcessInput(event,windowflags,currentScale, window->windowdims.width, window->windowdims.height);
 #endif
 			}
 		}
@@ -189,9 +242,19 @@ int App::run(int argc, char** argv) {
 			inputManager->TickAxes();
 		}
 
+		auto windowSize = window->bufferdims;
+		auto scale = window->GetDPIScale();
+
 		//tick all worlds
 		for (const auto world : loadedWorlds) {
 			world->Tick(currentScale);
+			world->Filter([=](GUIComponent& gui) {
+				if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
+					gui.SetDimensions(windowSize.width, windowSize.height);
+					gui.SetDPIScale(scale);
+				}
+				gui.Update();
+			});
 		}
 
 		//process main thread tasks
@@ -202,7 +265,18 @@ int App::run(int argc, char** argv) {
 			}
 		}
 
-		Renderer->Draw(renderWorld);
+		auto nextTexture = window->GetNextSwapchainImage();
+		collection.finalFramebuffer = nextTexture.texture;
+
+		auto mainCommandBuffer = Renderer->Draw(renderWorld, collection, { uint32_t(windowSize.width), uint32_t(windowSize.height)});
+
+		// show the results to the user
+		RGL::CommitConfig commitconfig{
+			.signalFence = window->swapchainFence,
+		};
+		mainCommandBuffer->Commit(commitconfig);
+
+		window->swapchain->Present(nextTexture.presentConfig);
 
 		player->SetWorld(renderWorld);
 
@@ -335,10 +409,12 @@ App::~App(){
 	Rml::Shutdown();
     Renderer.reset();
 	delete fsi;
+
+	currentApp = nullptr;
 }
 
 void App::SetWindowTitle(const char *title){
-	SDL_SetWindowTitle(Renderer->GetWindow(), title);
+	SDL_SetWindowTitle(window->window, title);
 }
 
 std::optional<Ref<World>> RavEngine::App::GetWorldByName(const std::string& name) {

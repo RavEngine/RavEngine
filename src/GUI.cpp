@@ -142,7 +142,7 @@ bool GUIComponent::Render(){
 	return result;
 }
 
-GUIComponent::GUIComponent() : GUIComponent(GetApp()->GetRenderEngine().GetBufferSize().width, GetApp()->GetRenderEngine().GetBufferSize().height, GetApp()->GetRenderEngine().GetDPIScale()){}
+GUIComponent::GUIComponent() : GUIComponent(960, 540, 1){}
 
 GUIComponent::GUIComponent(int width, int height, float DPIScale){
 	auto uuid = uuids::uuid::create();

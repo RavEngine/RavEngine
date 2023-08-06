@@ -13,12 +13,15 @@
 #include <optional>
 #include "AudioSnapshot.hpp"
 #include "GetApp.hpp"
+#include <RGL/Types.hpp>
+#include "RenderTargetCollection.hpp"
 
 namespace RavEngine {
 
 struct RenderEngine;
 struct VirtualFilesystem;
 struct FrameData;
+struct Window;
 struct AudioPlayer;
 
 	struct AppConfig {
@@ -223,6 +226,10 @@ struct AudioPlayer;
         AudioSnapshot a1, a2, a3, *acurrent = &a1, *ainactive = &a2, *arender = &a3;
         SpinLock audiomtx1, audiomtx2;
 	protected:
+		RGLDevicePtr device;
+		std::unique_ptr<Window> window;
+		RenderTargetCollection collection;
+
 		virtual AppConfig OnConfigure(int argc, char** argv) { return AppConfig{}; }
 		
 		//plays the audio generated in worlds

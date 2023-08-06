@@ -285,7 +285,7 @@ namespace RavEngine {
 		/**
 		 Prcocess an input from SDL
 		 */
-		void ProcessInput(const SDL_Event&, uint32_t windowflags, float scale);
+		void ProcessInput(const SDL_Event&, uint32_t windowflags, float scale, int windowWidth, int windowHeight);
 
 		/**
 		 Create an action mapping entry. Action mappings correspond to items that have two states: pressed and released.

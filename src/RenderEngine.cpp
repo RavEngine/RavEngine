@@ -67,7 +67,6 @@ using namespace winrt;
 using namespace std;
 using namespace RavEngine;
 
-SDL_Window* RenderEngine::window = nullptr;
 RenderEngine::vs RenderEngine::VideoSettings;
 
 
@@ -302,61 +301,9 @@ Initialize static singletons. Invoked automatically if needed.
 */
 void RenderEngine::Init(const AppConfig& config)
 {
-	//setup RGL if it is not already setup
-	if (window != nullptr)
-	{
-		return;
-	}
-	
-	window = SDL_CreateWindow("RavEngine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, VideoSettings.width, VideoSettings.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-	
-	if (window == NULL){
-		Debug::Fatal("Unable to create main window: {}",SDL_GetError());
-	}
-
-	RGL::API api = RGL::API::PlatformDefault;
-	{
-#if _UWP
-		size_t n_elt;
-		char* envv;
-		_dupenv_s(&envv, &n_elt, "RGL_BACKEND");
-#else
-		auto envv = std::getenv("RGL_BACKEND");
-#endif
-		if (envv == nullptr) {
-			goto cont;
-		}
-		auto backend = std::string_view(envv);
-
-		const std::unordered_map<std::string_view, RGL::API> apis{
-			{"metal", decltype(apis)::value_type::second_type::Metal},
-			{"d3d12", decltype(apis)::value_type::second_type::Direct3D12},
-			{"vulkan", decltype(apis)::value_type::second_type::Vulkan},
-		};
-
-		auto it = apis.find(backend);
-		if (it != apis.end()) {
-			api = (*it).second;
-		}
-		else {
-			std::cerr << "No backend \"" << backend << "\", expected one of:\n";
-			for (const auto& api : apis) {
-				std::cout << "\t - " << RGL::APIToString(api.second) << "\n";
-			}
-		}
-	}
-cont:
-
-	RGL::InitOptions opt{
-		.api = api,
-		.engineName = "RavEngine",
-	};
-	RGL::Init(opt);
-
 	// for debug wireframes
 	auto& data = Im3d::GetAppData();
-    data.drawCallback = &DebugRenderWrapper;
-	
+    data.drawCallback = &DebugRenderWrapper;	
 }
 
 
@@ -367,32 +314,6 @@ Construct a render engine instance
 RenderEngine::RenderEngine(const AppConfig& config) {
 	Init(config);
 
-	UpdateBufferDims();
-
-	SDL_SysWMinfo wmi;
-	SDL_VERSION(&wmi.version);
-	if (!SDL_GetWindowWMInfo(window, &wmi)) {
-		throw std::runtime_error("Cannot get native window information");
-}
-	surface = RGL::CreateSurfaceFromPlatformHandle(
-#if _UWP
-		{ wmi.info.winrt.window },
-#elif _WIN32
-		{ &wmi.info.win.window },
-#elif TARGET_OS_IPHONE
-		{ wmi.info.uikit.window },
-#elif __APPLE__
-		{ wmi.info.cocoa.window },
-#elif __linux__
-		{ wmi.info.x11.display, wmi.info.x11.window },
-#elif __EMSCRIPTEN__
-	{nullptr, nullptr},
-#else
-#error Unknown platform
-#endif
-		true
-	);
-
 	device = RGL::IDevice::CreateSystemDefaultDevice();
     
 #if __APPLE__
@@ -402,9 +323,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 #endif
     
 	mainCommandQueue = device->CreateCommandQueue(RGL::QueueType::AllCommands);
-	swapchain = device->CreateSwapchain(surface, mainCommandQueue, bufferdims.width, bufferdims.height);
 	mainCommandBuffer = mainCommandQueue->CreateCommandBuffer();
-	swapchainFence = device->CreateFence(true);
 	textureSampler = device->CreateSampler({});
 	shadowSampler = device->CreateSampler({
 		.addressModeU = RGL::SamplerAddressMode::Border,
@@ -412,8 +331,6 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 		.borderColor = {1,1,1,1},
 		.compareFunction = RGL::DepthCompareFunction::Less
 	});
-
-	createGBuffers();
 
 	shadowTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .DepthStencilAttachment = true },
@@ -1318,16 +1235,14 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 	});
 }
 
-void RavEngine::RenderEngine::createGBuffers()
+RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size)
 {
-	uint32_t width = bufferdims.width;
-	uint32_t height = bufferdims.height;
-	gcTextures.enqueue(depthStencil);
-	gcTextures.enqueue(diffuseTexture);
-	gcTextures.enqueue(normalTexture);
-	gcTextures.enqueue(lightingTexture);
+	uint32_t width = size.width;
+	uint32_t height = size.height;
+	
+	RenderTargetCollection collection;
 
-	depthStencil = device->CreateTexture({
+	collection.depthStencil = device->CreateTexture({
 		.usage = { .Sampled = true, .DepthStencilAttachment = true },
 		.aspect = { .HasDepth = true },
 		.width = width,
@@ -1336,7 +1251,7 @@ void RavEngine::RenderEngine::createGBuffers()
 		.debugName = "Depth Texture"
 		}
 	);
-	diffuseTexture = device->CreateTexture({
+	collection.diffuseTexture = device->CreateTexture({
 		.usage = { .Sampled = true, .ColorAttachment = true },
 		.aspect = { .HasColor = true },
 		.width = width,
@@ -1346,7 +1261,7 @@ void RavEngine::RenderEngine::createGBuffers()
 		.debugName = "Color gbuffer"
 		}
 	);
-	normalTexture = device->CreateTexture({
+	collection.normalTexture = device->CreateTexture({
 		.usage = { .Sampled = true, .ColorAttachment = true },
 		.aspect = { .HasColor = true },
 		.width = width,
@@ -1356,7 +1271,7 @@ void RavEngine::RenderEngine::createGBuffers()
 		.debugName = "Normal gbuffer"
 		}
 	);
-	lightingTexture = device->CreateTexture({
+	collection.lightingTexture = device->CreateTexture({
 		.usage = { .Sampled = true, .ColorAttachment = true },
 		.aspect = { .HasColor = true },
 		.width = width,
@@ -1370,21 +1285,33 @@ void RavEngine::RenderEngine::createGBuffers()
 	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
 	auto tmpfence = device->CreateFence(false);
 	tmpcmd->Begin();
-	for (const auto& ptr : { diffuseTexture , normalTexture, lightingTexture }) {
+	for (const auto& ptr : { collection.diffuseTexture , collection.normalTexture, collection.lightingTexture }) {
 		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
 	}
-	tmpcmd->TransitionResource(depthStencil.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
+	tmpcmd->TransitionResource(collection.depthStencil.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 	tmpcmd->End();
 	tmpcmd->Commit({
 		.signalFence = tmpfence
 		});
 	tmpfence->Wait();
+
+	return collection;
+}
+
+void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size)
+{
+	gcTextures.enqueue(collection.depthStencil);
+	gcTextures.enqueue(collection.diffuseTexture);
+	gcTextures.enqueue(collection.normalTexture);
+	gcTextures.enqueue(collection.lightingTexture);
+
+	auto newcol = CreateRenderTargetCollection(size);
+	collection = newcol;
 }
 
 RavEngine::RenderEngine::~RenderEngine()
 {
 	mainCommandQueue->WaitUntilCompleted();
-	swapchainFence->Wait();
 	DestroyUnusedResources();
 	device->BlockUntilIdle();
 }
@@ -1404,22 +1331,6 @@ void RenderEngine::DestroyUnusedResources() {
 	clear(gcRenderPipeline);
 }
 
-void RenderEngine::resize(){
-	UpdateBufferDims();
-	createGBuffers();
-#if TARGET_OS_IPHONE
-	//view must be manually sized on iOS
-	//also this API takes screen points not pixels
-	resizeMetalLayer(metalLayer,windowdims.width, windowdims.height);
-#endif
-	mainCommandQueue->WaitUntilCompleted();
-	swapchain->Resize(bufferdims.width, bufferdims.height);
-}
-
-void RenderEngine::SyncVideoSettings(){
-	SDL_SetWindowSize(window, VideoSettings.width, VideoSettings.height);
-}
-
 /**
 @return the name of the current rendering API
 */
@@ -1436,44 +1347,6 @@ float RavEngine::RenderEngine::GetCurrentFPS()
 float RavEngine::RenderEngine::GetLastFrameTime()
 {
 	return currentFrameTime;
-}
-
-
-void RenderEngine::UpdateBufferDims(){
-	// on non-apple platforms this is in pixels, on apple platforms it is in "screen points"
-	// which will be dealt with later
-	SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
-
-	// update bufferdims
-	bufferdims.width = windowdims.width;
-	bufferdims.height = windowdims.height;
-
-	// get the canvas size in pixels
-# if _WIN32 && !_UWP
-	
-	SDL_SysWMinfo wmi;
-	SDL_VERSION(&wmi.version);
-	if (!SDL_GetWindowWMInfo(window, &wmi)) {
-		Debug::Fatal("Cannot get native window information");
-	}
-	auto monitor = MonitorFromWindow(wmi.info.win.window, MONITOR_DEFAULTTONEAREST);
-	DEVICE_SCALE_FACTOR fac;
-	if (GetScaleFactorForMonitor(monitor,&fac) == S_OK) {
-		win_scalefactor = (static_cast<int>(fac) / 100.0);
-	}
-	else {
-		Debug::Fatal("GetScaleFactorForMonitor failed");
-	}
-#elif _UWP
-	auto dinf = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
-	win_scalefactor = static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
-#elif __APPLE__
-	// since iOS and macOS do not use OpenGL we cannot use the GL call here
-	// instead we derive it by querying display data
-	float scale = GetWindowScaleFactor(window);
-	bufferdims.width = windowdims.width * scale;
-	bufferdims.height = windowdims.height * scale;
-#endif
 }
 
 #ifndef NDEBUG
@@ -1507,21 +1380,6 @@ void RenderEngine::DeactivateDebugger() const{
 }
 #endif
 
-void RenderEngine::SetWindowMode(WindowMode mode){
-    int flag;
-    switch(mode){
-        case WindowMode::Windowed:
-            flag = 0;
-            break;
-        case WindowMode::BorderlessFullscreen:
-            flag = SDL_WINDOW_FULLSCREEN_DESKTOP;
-            break;
-        case WindowMode::Fullscreen:
-            flag = SDL_WINDOW_FULLSCREEN;
-            break;
-    }
-    SDL_SetWindowFullscreen(window, flag);
-}
 
 size_t RavEngine::RenderEngine::GetCurrentVRAMUse()
 {
