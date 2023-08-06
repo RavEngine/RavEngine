@@ -277,7 +277,7 @@ namespace RavEngine {
 	public:
         InputManager();
 
-		static vector2i GetMousePosPixels();
+		static vector2i GetMousePosPixels(float dpiScaleFactor);
 		
 		//process axis maps
 		void TickAxes();

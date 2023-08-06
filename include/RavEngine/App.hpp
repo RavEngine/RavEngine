@@ -256,6 +256,9 @@ struct AudioPlayer;
 		auto GetDevice() {
 			return device;
 		}
+        const auto& GetMainWindow() const{
+            return window;
+        }
 	};
 }
 #ifdef _WINRT

@@ -16,12 +16,12 @@ InputManager::InputManager() {
 	SDL_GameControllerEventState(SDL_ENABLE);
 }
 
-vector2i RavEngine::InputManager::GetMousePosPixels()
+vector2i RavEngine::InputManager::GetMousePosPixels(float scaleFactor)
 {
 	vector2i pos;
 	SDL_GetMouseState(&pos.x, &pos.y);
 #ifdef __APPLE__
-	pos *= GetApp()->GetRenderEngine().GetDPIScale();
+	pos *= scaleFactor;
 #endif
 	return pos;
 }

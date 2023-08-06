@@ -2,11 +2,15 @@
 #include <SDL.h>
 #include "Debug.hpp"
 #include <SDL_syswm.h>
+#include <RGL/RGL.hpp>
 #include <RGL/Surface.hpp>
 #include <RGL/Device.hpp>
 #include <RGL/Swapchain.hpp>
+#include <RGL/CommandQueue.hpp>
+#if _WIN32
 #include <shtypes.h>
 #include <ShellScalingApi.h>
+#endif
 
 namespace RavEngine {
 	Window::Window(int width, int height, const std::string_view title, RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue)
@@ -84,7 +88,7 @@ namespace RavEngine {
 #elif __APPLE__
 	// since iOS and macOS do not use OpenGL we cannot use the GL call here
 	// instead we derive it by querying display data
-		float scale = GetWindowScaleFactor(window);
+		float scale = GetDPIScale();
 		bufferdims.width = windowdims.width * scale;
 		bufferdims.height = windowdims.height * scale;
 #endif

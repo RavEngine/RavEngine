@@ -1,6 +1,7 @@
 #pragma once
 #include <RGL/Types.hpp>
 #include <RGL/Swapchain.hpp>
+#include <string_view>
 
 struct SDL_Window;
 
