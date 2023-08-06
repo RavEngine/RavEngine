@@ -25,6 +25,8 @@
 #include "Window.hpp"
 #include <RGL/Swapchain.hpp>
 #include <RGL/CommandBuffer.hpp>
+#include "CameraComponent.hpp"
+#include "OpenXRIntegration.hpp"
 #include <csignal>
 #include "Debug.hpp"
 
@@ -131,8 +133,18 @@ int App::run(int argc, char** argv) {
 
 		Renderer = std::make_unique<RenderEngine>(config, device);
 
-		collection = Renderer->CreateRenderTargetCollection({ 960,540 });
+		mainWindowView = { Renderer->CreateRenderTargetCollection({ 960,540 }) };
 		window = std::make_unique<Window>(960, 540, "RavEngine", device, Renderer->mainCommandQueue);
+
+#ifdef RVE_XR_AVAILABLE
+		if (wantsXR) {
+			OpenXRIntegration::init_openxr({
+				.device = device,
+				.commandQueue = Renderer->mainCommandQueue
+			});
+			xrRenderViewCollections = OpenXRIntegration::CreateRenderTargetCollections();
+		}
+#endif
 	}
 	
 	//setup GUI rendering
@@ -214,7 +226,7 @@ int App::run(int argc, char** argv) {
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
 							Renderer->mainCommandQueue->WaitUntilCompleted();
 							window->NotifySizeChanged(wev.data1, wev.data2);
-							Renderer->ResizeRenderTargetCollection(collection, {uint32_t(wev.data1), uint32_t(wev.data2)});
+							Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {uint32_t(wev.data1), uint32_t(wev.data2)});
 							break;
 
 						case SDL_WINDOWEVENT_CLOSE:
@@ -263,9 +275,32 @@ int App::run(int argc, char** argv) {
 		}
 
 		auto nextTexture = window->GetNextSwapchainImage();
-		collection.finalFramebuffer = nextTexture.texture;
+		mainWindowView.collection.finalFramebuffer = nextTexture.texture;
 
-		auto mainCommandBuffer = Renderer->Draw(renderWorld, collection, { uint32_t(windowSize.width), uint32_t(windowSize.height)},scale);
+		// get the camera to render
+		auto allCameras = renderWorld->GetAllComponentsOfType<CameraComponent>();
+		if (!allCameras)
+		{
+			Debug::Fatal("Cannot render: World does not have a camera!");
+		}
+		auto& cam = renderWorld->GetComponent<CameraComponent>();
+		mainWindowView.viewProj = cam.GenerateProjectionMatrix(windowSize.width, windowSize.height) * cam.GenerateViewMatrix();
+		mainWindowView.camPos = cam.GetOwner().GetTransform().GetWorldPosition();
+
+		std::vector<RenderViewCollection> allViews;
+		allViews.push_back(mainWindowView);
+
+#ifdef RVE_XR_AVAILABLE
+		// update OpenXR data if it is requested
+		std::pair<std::vector<XrView>, XrFrameState> xrBeginData;
+		if (wantsXR) {
+			xrBeginData = OpenXRIntegration::BeginXRFrame();
+			OpenXRIntegration::UpdateXRTargetCollections(xrRenderViewCollections, xrBeginData.first);
+			allViews.insert(allViews.end(), xrRenderViewCollections.begin(), xrRenderViewCollections.end());
+		}
+#endif
+
+		auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews, { uint32_t(windowSize.width), uint32_t(windowSize.height)},scale);
 
 		// show the results to the user
 		RGL::CommitConfig commitconfig{
@@ -274,6 +309,12 @@ int App::run(int argc, char** argv) {
 		mainCommandBuffer->Commit(commitconfig);
 
 		window->swapchain->Present(nextTexture.presentConfig);
+
+#ifdef RVE_XR_AVAILABLE
+		if (wantsXR) {
+			OpenXRIntegration::EndXRFrame(xrBeginData.second);
+		}
+#endif
 
 		player->SetWorld(renderWorld);
 

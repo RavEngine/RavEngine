@@ -228,7 +228,9 @@ struct AudioPlayer;
 	protected:
 		RGLDevicePtr device;
 		std::unique_ptr<Window> window;
-		RenderTargetCollection collection;
+		RenderViewCollection mainWindowView;
+
+		std::vector<RenderViewCollection> xrRenderViewCollections;
 
 		virtual AppConfig OnConfigure(int argc, char** argv) { return AppConfig{}; }
 		

@@ -145,11 +145,11 @@ namespace RavEngine {
         virtual ~RenderEngine();
         RenderEngine(const AppConfig&, RGLDevicePtr device);
 
-		RenderTargetCollection CreateRenderTargetCollection(dim size);
+		RenderTargetCollection CreateRenderTargetCollection(dim size, bool createDepth = true);
 		void ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size);
 
 		//render a world, for internal use only
-		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const RenderTargetCollection& target, dim backbufferSize, float guiScaleFactor);
+		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const std::vector<RenderViewCollection>& targets, dim backbufferSize, float guiScaleFactor);
         
         /**
          @return The name of the current rendering API in use

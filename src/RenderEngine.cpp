@@ -1233,25 +1233,27 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 }
 
-RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size)
+RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
 {
 	uint32_t width = size.width;
 	uint32_t height = size.height;
-	
+
 	RenderTargetCollection collection;
 
-	collection.depthStencil = device->CreateTexture({
-		.usage = { .Sampled = true, .DepthStencilAttachment = true },
-		.aspect = { .HasDepth = true },
-		.width = width,
-		.height = height,
-		.format = RGL::TextureFormat::D32SFloat,
-		.debugName = "Depth Texture"
-		}
-	);
+	if (createDepth) {
+		collection.depthStencil = device->CreateTexture({
+			.usage = {.Sampled = true, .DepthStencilAttachment = true },
+			.aspect = {.HasDepth = true },
+			.width = width,
+			.height = height,
+			.format = RGL::TextureFormat::D32SFloat,
+			.debugName = "Depth Texture"
+			}
+		);
+	}
 	collection.diffuseTexture = device->CreateTexture({
-		.usage = { .Sampled = true, .ColorAttachment = true },
-		.aspect = { .HasColor = true },
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
 		.width = width,
 		.height = height,
 		.format = colorTexFormat,
@@ -1260,8 +1262,8 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		}
 	);
 	collection.normalTexture = device->CreateTexture({
-		.usage = { .Sampled = true, .ColorAttachment = true },
-		.aspect = { .HasColor = true },
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
 		.width = width,
 		.height = height,
 		.format = normalTexFormat,
@@ -1270,8 +1272,8 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		}
 	);
 	collection.lightingTexture = device->CreateTexture({
-		.usage = { .Sampled = true, .ColorAttachment = true },
-		.aspect = { .HasColor = true },
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
 		.width = width,
 		.height = height,
 		.format = colorTexFormat,
@@ -1286,7 +1288,9 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 	for (const auto& ptr : { collection.diffuseTexture , collection.normalTexture, collection.lightingTexture }) {
 		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
 	}
-	tmpcmd->TransitionResource(collection.depthStencil.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
+	if (createDepth){
+		tmpcmd->TransitionResource(collection.depthStencil.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
+	}
 	tmpcmd->End();
 	tmpcmd->Commit({
 		.signalFence = tmpfence
