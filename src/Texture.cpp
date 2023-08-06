@@ -82,7 +82,7 @@ void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayer
 	
 	uint32_t uncompressed_size = width * height * numChannels * numlayers;
 
-	auto device = GetApp()->GetRenderEngine().GetDevice();
+	auto device = GetApp()->GetDevice();
 	texture = device->CreateTextureWithData({
 		.usage = {.TransferDestination = true, .Sampled = true},
 		.aspect = {.HasColor = true},
@@ -93,5 +93,7 @@ void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayer
 }
 
 Texture::~Texture() {
-	GetApp()->GetRenderEngine().gcTextures.enqueue(texture);
+	if (auto app = GetApp()) {
+		app->GetRenderEngine().gcTextures.enqueue(texture);
+	}
 }

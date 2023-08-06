@@ -311,10 +311,8 @@ void RenderEngine::Init(const AppConfig& config)
 Construct a render engine instance
 @param w the owning world for this engine instance
 */
-RenderEngine::RenderEngine(const AppConfig& config) {
+RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : device(device) {
 	Init(config);
-
-	device = RGL::IDevice::CreateSystemDefaultDevice();
     
 #if __APPLE__
     if (!AppleGPUMeetsMinSpec(device)) {
@@ -588,7 +586,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 
 	// create lighting render pipelines
 	constexpr static uint32_t width = 640, height = 480;
-	auto createLightingPipeline = [this](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc, RGLPipelineLayoutPtr layout, RGL::WindingOrder windingorder = RGL::WindingOrder::Counterclockwise) {
+	auto createLightingPipeline = [this, device](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc, RGLPipelineLayoutPtr layout, RGL::WindingOrder windingorder = RGL::WindingOrder::Counterclockwise) {
 
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
 			.vertexBindings = {
@@ -1063,7 +1061,7 @@ RenderEngine::RenderEngine(const AppConfig& config) {
 #ifndef NDEBUG
 	auto debugVSH = LoadShaderByFilename("debug.vsh", device);
 	auto debugFSH = LoadShaderByFilename("debug.fsh", device);
-	auto createDebugRenderPipeline = [this, debugVSH, debugFSH, debugPipelineLayout](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
+	auto createDebugRenderPipeline = [this, debugVSH, debugFSH, debugPipelineLayout, device](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
 		RGL::RenderPipelineDescriptor rpd{
 			.stages = {
 				{

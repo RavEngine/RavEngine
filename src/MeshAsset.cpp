@@ -153,10 +153,13 @@ MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, cons
 
 RavEngine::MeshAsset::~MeshAsset()
 {
-	auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
-	gcBuffers.enqueue(vertexBuffer);
-	gcBuffers.enqueue(indexBuffer);
-	GetApp()->GetRenderEngine().DeallocateMesh(meshAllocation);
+	if (auto app = GetApp()) {
+		auto& gcBuffers = app->GetRenderEngine().gcBuffers;
+		gcBuffers.enqueue(vertexBuffer);
+		gcBuffers.enqueue(indexBuffer);
+		app->GetRenderEngine().DeallocateMesh(meshAllocation);
+	}
+	
 }
 
 MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
@@ -268,7 +271,7 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
         totalVerts = v.size();
         totalIndices = i.size();
 
-		auto device = GetApp()->GetRenderEngine().GetDevice();
+		auto device = GetApp()->GetDevice();
 
 		vertexBuffer = device->CreateBuffer({
 			uint32_t(totalVerts),

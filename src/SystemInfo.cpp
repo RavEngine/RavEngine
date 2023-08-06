@@ -186,7 +186,7 @@ uint32_t SystemInfo::SystemRAM(){
 
 
 std::string SystemInfo::GPUBrandString(){
-    return GetApp()->GetRenderEngine().GetDevice()->GetBrandString();
+    return GetApp()->GetDevice()->GetBrandString();
 }
 
 uint32_t SystemInfo::GPUVRAM(){

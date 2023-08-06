@@ -143,7 +143,7 @@ namespace RavEngine {
 		};
 
         virtual ~RenderEngine();
-        RenderEngine(const AppConfig&);
+        RenderEngine(const AppConfig&, RGLDevicePtr device);
 
 		RenderTargetCollection CreateRenderTargetCollection(dim size);
 		void ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size);
@@ -224,16 +224,10 @@ namespace RavEngine {
         
 		size_t GetTotalVRAM();
 
-		// API for interacting with the GPU
-		auto GetDevice() {
-			return device;
-		}
-        
 		ConcurrentQueue<RGLBufferPtr> gcBuffers;
 		ConcurrentQueue<RGLTexturePtr> gcTextures;
 		ConcurrentQueue<RGLPipelineLayoutPtr> gcPipelineLayout;
 		ConcurrentQueue<RGLRenderPipelinePtr> gcRenderPipeline;
-
 
 		MeshRange AllocateMesh(const std::span<const VertexNormalUV> vertices, const std::span<const uint32_t> index_bytes);
 

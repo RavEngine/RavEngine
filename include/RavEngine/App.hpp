@@ -252,6 +252,10 @@ struct AudioPlayer;
 		const timeDiff maxTimeStep = std::chrono::milliseconds((long)1000);
 		
 		double time = 0;
+	public:
+		auto GetDevice() {
+			return device;
+		}
 	};
 }
 #ifdef _WINRT

@@ -127,15 +127,12 @@ int App::run(int argc, char** argv) {
 		};
 		RGL::Init(opt);
 
-		Renderer = std::make_unique<RenderEngine>(config);
+		device = RGL::IDevice::CreateSystemDefaultDevice();
 
-		//TODO: app creates the Device
-		device = Renderer->GetDevice();
+		Renderer = std::make_unique<RenderEngine>(config, device);
 
 		collection = Renderer->CreateRenderTargetCollection({ 960,540 });
 		window = std::make_unique<Window>(960, 540, "RavEngine", device, Renderer->mainCommandQueue);
-
-
 	}
 	
 	//setup GUI rendering

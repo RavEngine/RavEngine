@@ -56,7 +56,7 @@ void RavEngine::World::Tick(float scale) {
 
 RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     // init render data if the render engine is online
-    if (GetApp() && GetApp()->HasRenderEngine() && GetApp()->GetRenderEngine().GetDevice()) {
+    if (GetApp() && GetApp()->GetDevice()) {
         renderData.emplace();
     }
 
@@ -585,8 +585,11 @@ void World::DeallocatePhysics(){
 
 RavEngine::World::MDICommandBase::~MDICommandBase()
 {
-    auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
-    gcBuffers.enqueue(indirectBuffer);
-    gcBuffers.enqueue(cullingBuffer);
-    gcBuffers.enqueue(indirectStagingBuffer);
+    if (auto app = GetApp()) {
+        auto& gcBuffers = app->GetRenderEngine().gcBuffers;
+        gcBuffers.enqueue(indirectBuffer);
+        gcBuffers.enqueue(cullingBuffer);
+        gcBuffers.enqueue(indirectStagingBuffer);
+    }
+  
 }

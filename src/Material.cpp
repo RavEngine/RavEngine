@@ -26,7 +26,7 @@ Material::Material(const std::string_view name, const MaterialConfig& config) : 
 
 RavEngine::Material::Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config)
 {
-    auto device = GetApp()->GetRenderEngine().GetDevice();
+    auto device = GetApp()->GetDevice();
 
     //get all shader files for this programs
     auto vertshaderName = StrFormat("{}.vsh", vsh_name);

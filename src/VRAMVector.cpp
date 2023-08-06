@@ -9,7 +9,9 @@ namespace RavEngine {
 	{
         if (buffer){
             buffer->UnmapMemory();
-            GetApp()->GetRenderEngine().gcBuffers.enqueue(buffer);
+            if (auto app = GetApp()) {
+                app->GetRenderEngine().gcBuffers.enqueue(buffer);
+            }
             buffer = nullptr;
         }
 	}
@@ -18,6 +20,6 @@ namespace RavEngine {
         if (!GetApp() || !GetApp()->HasRenderEngine()){
             Debug::Fatal("Cannot create VRAMVector -- Render engine has not been initialized yet");
         }
-        owningDevice = GetApp()->GetRenderEngine().GetDevice();
+        owningDevice = GetApp()->GetDevice();
     }
 }

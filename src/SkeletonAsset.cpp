@@ -180,7 +180,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	
 	assert(bindposes.size() * sizeof(bindposes[0]) < numeric_limits<uint32_t>::max());
 
-	bindpose = GetApp()->GetRenderEngine().GetDevice()->CreateBuffer({
+	bindpose = GetApp()->GetDevice()->CreateBuffer({
 		uint32_t(bindposes.size()),
 		{.StorageBuffer = true},
 		sizeof(bindposes[0]),
@@ -192,7 +192,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	auto parents = skeleton->joint_parents();
 	
 
-	boneHierarchy = GetApp()->GetRenderEngine().GetDevice()->CreateBuffer({
+	boneHierarchy = GetApp()->GetDevice()->CreateBuffer({
 		uint32_t(parents.size()),
 		{.StorageBuffer = true},
 		sizeof(parents[0]),

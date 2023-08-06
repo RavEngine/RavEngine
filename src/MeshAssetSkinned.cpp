@@ -18,7 +18,9 @@ using namespace std;
 
 RavEngine::MeshAssetSkinned::~MeshAssetSkinned()
 {
-	GetApp()->GetRenderEngine().gcBuffers.enqueue(weightsBuffer);
+	if (auto app = GetApp()) {
+		app->GetRenderEngine().gcBuffers.enqueue(weightsBuffer);
+	}
 }
 
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
@@ -119,7 +121,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	
 	//map to GPU
 	//TODO: make buffer Private
-	weightsBuffer = GetApp()->GetRenderEngine().GetDevice()->CreateBuffer({
+	weightsBuffer = GetApp()->GetDevice()->CreateBuffer({
 		uint32_t(weightsgpu.size()),
 		{.StorageBuffer = true},
 		sizeof(wrapper),
