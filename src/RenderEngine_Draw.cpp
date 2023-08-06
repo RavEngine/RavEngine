@@ -29,7 +29,7 @@ namespace RavEngine {
 	/**
  Render one frame using the current state of every object in the world
  */
-	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const RenderTargetCollection& target, dim backbufferSize) {
+	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const RenderTargetCollection& target, dim backbufferSize, float guiScaleFactor) {
 		auto start = std::chrono::high_resolution_clock::now();
 		transientOffset = 0;
 
@@ -788,7 +788,7 @@ namespace RavEngine {
 		if (debuggerContext) {
 			auto& dbg = *debuggerContext;
 			dbg.SetDimensions(backbufferSize.width, backbufferSize.height);
-			dbg.SetDPIScale(1);	//TODO: fix hardcoded constant
+			dbg.SetDPIScale(guiScaleFactor);
 			dbg.Update();
 			dbg.Render();
 		}

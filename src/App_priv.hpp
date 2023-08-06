@@ -268,7 +268,7 @@ int App::run(int argc, char** argv) {
 		auto nextTexture = window->GetNextSwapchainImage();
 		collection.finalFramebuffer = nextTexture.texture;
 
-		auto mainCommandBuffer = Renderer->Draw(renderWorld, collection, { uint32_t(windowSize.width), uint32_t(windowSize.height)});
+		auto mainCommandBuffer = Renderer->Draw(renderWorld, collection, { uint32_t(windowSize.width), uint32_t(windowSize.height)},scale);
 
 		// show the results to the user
 		RGL::CommitConfig commitconfig{

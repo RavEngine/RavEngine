@@ -40,7 +40,7 @@ struct CompiledGeoStruct{
 
 matrix4 RenderEngine::make_gui_matrix(Rml::Vector2f translation){
 	matrix4 mat(1);	//start with identity
-	auto size = currentRenderSize;
+	dim_t<int> size = { currentRenderSize.width, currentRenderSize.height };
 	mat = glm::scale(mat, vector3(1,-1,1));	//flip
 	mat = glm::scale(mat, vector3(1.0/(size.width/2.0),1.0/(size.height/2.0),1));	//scale into view space
 	mat = glm::translate(mat, vector3(-size.width/2.0,-size.height/2.0,0));			//translate to origin-center

@@ -42,9 +42,12 @@ namespace RavEngine {
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
 	private:
-		struct dim {
-			uint32_t width, height;
+		template<typename T>
+		struct dim_t {
+			T width = 0, height = 0;
 		};
+
+		using dim = dim_t<uint32_t>;
 
 		RGLDevicePtr device;
 		RGLCommandQueuePtr mainCommandQueue;
@@ -146,7 +149,7 @@ namespace RavEngine {
 		void ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size);
 
 		//render a world, for internal use only
-		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const RenderTargetCollection& target, dim backbufferSize);
+		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const RenderTargetCollection& target, dim backbufferSize, float guiScaleFactor);
         
         /**
          @return The name of the current rendering API in use
