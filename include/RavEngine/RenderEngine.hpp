@@ -169,6 +169,8 @@ namespace RavEngine {
 		static struct vs {
 			bool vsync = true;
 		} VideoSettings;
+
+		void SyncVideoSettings();
 		
 		// Rml::SystemInterface overrides, used internally
 		double GetElapsedTime() override;

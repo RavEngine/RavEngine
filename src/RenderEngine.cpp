@@ -1388,3 +1388,8 @@ size_t RavEngine::RenderEngine::GetTotalVRAM()
 {
 	return device->GetTotalVRAM() / 1024 / 1024;
 }
+
+void RavEngine::RenderEngine::SyncVideoSettings()
+{
+	//TODO: implement
+}
