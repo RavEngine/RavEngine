@@ -182,6 +182,7 @@ namespace RGL {
 		const auto pipelineLayout = currentRenderPipeline->pipelineLayout;
 		const auto textureSlot = pipelineLayout->slotForTextureIdx(index);
 		auto thisTexture = static_cast<const TextureD3D12*>(texture);
+		assert(thisTexture->srvAllocated(), "Cannot bind this texture because it is not in a heap!");
 		auto& srvheap = thisTexture->owningDevice->CBV_SRV_UAVHeap;
 		ID3D12DescriptorHeap* heapForThis[] = { srvheap->Heap() };
 		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
