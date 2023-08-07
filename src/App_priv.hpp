@@ -284,8 +284,7 @@ int App::run(int argc, char** argv) {
 			Debug::Fatal("Cannot render: World does not have a camera!");
 		}
 		auto& cam = renderWorld->GetComponent<CameraComponent>();
-		mainWindowView.viewProj = cam.GenerateProjectionMatrix(windowSize.width, windowSize.height) * cam.GenerateViewMatrix();
-		mainWindowView.camPos = cam.GetOwner().GetTransform().GetWorldPosition();
+		mainWindowView.camDatas = { {.viewProj = cam.GenerateProjectionMatrix(windowSize.width, windowSize.height) * cam.GenerateViewMatrix(), .camPos = cam.GetOwner().GetTransform().GetWorldPosition()} };
 		mainWindowView.pixelDimensions = window->bufferdims;
 
 		std::vector<RenderViewCollection> allViews;

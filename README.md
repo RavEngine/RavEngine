@@ -14,8 +14,9 @@ A C++20 cross-platform game framework, with emphasis on addressing pain points i
 10.  FSM animation blending tree system
 11. Compute shader mesh skinning with automatic batching
 12. Programmable audio processing system
-13. CI/CD-friendly build process powered by CMake
-14. Quality-of-life features like automatic incremental shader compilation
+13. AR/VR support via OpenXR integration
+14. CI/CD-friendly build process powered by CMake
+15. Quality-of-life features like automatic incremental shader compilation
 
 Note: RavEngine does not have a graphical editor.
 

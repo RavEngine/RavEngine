@@ -102,6 +102,19 @@ namespace RavEngine {
 		float nearClip;
 		float farClip;
 
+		struct ViewportOverride {
+			glm::vec2 originFactor {0, 0};
+			glm::vec2 sizeFactor {0, 0};
+		} viewportOverride;	// additively applied. 0 = no change, 0.5 = increase by 50%
+
+
+		enum class DisplayMode : uint8_t {
+			Exclusive,		
+			Splitscreen			// incompatible with render textures
+		} mode = DisplayMode::Exclusive;
+
+		constexpr static bool isRenderTexture = false;
+
 	protected:
         Mode projection = Mode::Perspective;
 		bool active = false;

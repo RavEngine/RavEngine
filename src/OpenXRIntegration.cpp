@@ -495,12 +495,11 @@ namespace RavEngine {
 				const auto& viewState = views[i];
 
 				// update the collection's viewProj
-				collections[i].viewProj = genProjMat(xr.projectionViews[i].fov, float(xr.viewConfigurationViews[i].recommendedImageRectWidth), float(xr.viewConfigurationViews[i].recommendedImageRectHeight)) * genViewMat(xr.projectionViews[i].pose);
+				collections[i].camDatas = {{ .viewProj = genProjMat(xr.projectionViews[i].fov, float(xr.viewConfigurationViews[i].recommendedImageRectWidth), float(xr.viewConfigurationViews[i].recommendedImageRectHeight)) * genViewMat(xr.projectionViews[i].pose), .camPos = genCamPos(xr.projectionViews[i].pose)} };
 
 				// update the collection's textures
 				collections[i].collection.finalFramebuffer = xr.rglSwapchainImages[i][color_acquired_index].get();
 				collections[i].collection.depthStencil = xr.rglDepthSwapchainImages[i][depth_acquired_index];
-				collections[i].camPos = genCamPos(xr.projectionViews[i].pose);
 
 				XrSwapchainImageReleaseInfo release_info{
 					.type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO,
