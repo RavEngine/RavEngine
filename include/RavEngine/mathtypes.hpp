@@ -123,3 +123,8 @@ struct Bounds {
     float min[3]{ 0,0,0 };
     float max[3]{ 0,0,0 };
 };
+
+template<typename T>
+struct dim_t {
+    T width = 0, height = 0;
+};

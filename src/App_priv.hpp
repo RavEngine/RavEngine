@@ -286,6 +286,7 @@ int App::run(int argc, char** argv) {
 		auto& cam = renderWorld->GetComponent<CameraComponent>();
 		mainWindowView.viewProj = cam.GenerateProjectionMatrix(windowSize.width, windowSize.height) * cam.GenerateViewMatrix();
 		mainWindowView.camPos = cam.GetOwner().GetTransform().GetWorldPosition();
+		mainWindowView.pixelDimensions = window->bufferdims;
 
 		std::vector<RenderViewCollection> allViews;
 		allViews.push_back(mainWindowView);
@@ -300,7 +301,7 @@ int App::run(int argc, char** argv) {
 		}
 #endif
 
-		auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews, { uint32_t(windowSize.width), uint32_t(windowSize.height)},scale);
+		auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews,scale);
 
 		// show the results to the user
 		RGL::CommitConfig commitconfig{

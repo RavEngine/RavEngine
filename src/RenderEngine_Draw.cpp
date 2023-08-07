@@ -29,18 +29,14 @@ namespace RavEngine {
 	/**
  Render one frame using the current state of every object in the world
  */
-	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::vector<RenderViewCollection>& targets, dim backbufferSize, float guiScaleFactor) {
+	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::vector<RenderViewCollection>& targets, float guiScaleFactor) {
 		auto start = std::chrono::high_resolution_clock::now();
 		transientOffset = 0;
 
-		currentRenderSize = backbufferSize;
 		
 		DestroyUnusedResources();
 		mainCommandBuffer->Reset();
 		mainCommandBuffer->Begin();
-
-		
-		auto nextImgSize = backbufferSize;
 		
 		auto worldTransformBuffer = worldOwning->renderData->worldTransforms.buffer;
 
@@ -221,6 +217,9 @@ namespace RavEngine {
 		}
 
 		for (const auto& view : targets) {
+			currentRenderSize = view.pixelDimensions;
+			auto nextImgSize = view.pixelDimensions;
+
 			auto& target = view.collection;
 			const auto viewproj = view.viewProj;
 			const auto invviewproj = glm::inverse(viewproj);
@@ -236,7 +235,7 @@ namespace RavEngine {
 				.height = static_cast<float>(nextImgSize.height),
 				});
 			mainCommandBuffer->SetScissor({
-				.extent = {nextImgSize.width, nextImgSize.height}
+				.extent = {uint32_t(nextImgSize.width), uint32_t(nextImgSize.height)}
 				});
 
 			mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
@@ -461,7 +460,7 @@ namespace RavEngine {
 
 			renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 				return mat->GetMainRenderPipeline();
-				}, { nextImgSize.width, nextImgSize.height });
+				}, { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) });
 
 			mainCommandBuffer->TransitionResources({
 				{
@@ -579,7 +578,7 @@ namespace RavEngine {
 							.height = static_cast<float>(nextImgSize.height),
 							});
 						mainCommandBuffer->SetScissor({
-							.extent = {nextImgSize.width, nextImgSize.height}
+							.extent = {uint32_t(nextImgSize.width), uint32_t(nextImgSize.height)}
 							});
 						mainCommandBuffer->BindRenderPipeline(lightPipeline);
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
@@ -784,7 +783,7 @@ namespace RavEngine {
 
 			if (debuggerContext) {
 				auto& dbg = *debuggerContext;
-				dbg.SetDimensions(backbufferSize.width, backbufferSize.height);
+				dbg.SetDimensions(view.pixelDimensions.width, view.pixelDimensions.height);
 				dbg.SetDPIScale(guiScaleFactor);
 				dbg.Update();
 				dbg.Render();

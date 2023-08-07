@@ -2,6 +2,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/Swapchain.hpp>
 #include <string_view>
+#include "mathtypes.hpp"
 
 struct SDL_Window;
 
@@ -22,9 +23,7 @@ namespace RavEngine {
 		};
 		SwapchainResult GetNextSwapchainImage();
 
-		struct dim {
-			int width = 0, height = 0;
-		} bufferdims, windowdims;
+		dim_t<int> bufferdims, windowdims;
 
 #ifdef _WIN32
 		float win_scalefactor = 1;

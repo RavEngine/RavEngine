@@ -12,5 +12,6 @@ namespace RavEngine{
 		RenderTargetCollection collection;
 		glm::mat4 viewProj;
 		glm::vec3 camPos;
+		dim_t<int> pixelDimensions;
 	};
 }

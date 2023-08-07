@@ -42,10 +42,6 @@ namespace RavEngine {
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
 	private:
-		template<typename T>
-		struct dim_t {
-			T width = 0, height = 0;
-		};
 
 		using dim = dim_t<uint32_t>;
 
@@ -149,7 +145,7 @@ namespace RavEngine {
 		void ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size);
 
 		//render a world, for internal use only
-		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const std::vector<RenderViewCollection>& targets, dim backbufferSize, float guiScaleFactor);
+		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const std::vector<RenderViewCollection>& targets, float guiScaleFactor);
         
         /**
          @return The name of the current rendering API in use
@@ -236,7 +232,7 @@ namespace RavEngine {
 		void DeallocateMesh(const MeshRange& range);
 
     protected:
-		dim currentRenderSize;
+		dim_t<int> currentRenderSize;
 		matrix4 make_gui_matrix(Rml::Vector2f translation);
 
 		constexpr static uint32_t transientSizeBytes = 65536;

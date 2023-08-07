@@ -435,8 +435,12 @@ namespace RavEngine {
 			auto& renderer = GetApp()->GetRenderEngine();
 
 			for (const auto& view : xr.viewConfigurationViews) {
-				auto collection = renderer.CreateRenderTargetCollection({ view.recommendedImageRectWidth,view.recommendedImageRectHeight });
-				collections.push_back({ collection });
+				dim_t<int> size = { view.recommendedImageRectWidth,view.recommendedImageRectHeight };
+				auto collection = renderer.CreateRenderTargetCollection({ uint32_t(size.width),uint32_t(size.height) });
+				collections.push_back(RenderViewCollection{
+					.collection = collection,
+					.pixelDimensions = size,
+				});
 			}
 			return collections;
 		}
