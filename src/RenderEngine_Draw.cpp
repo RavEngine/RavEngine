@@ -232,13 +232,21 @@ namespace RavEngine {
 				deferredRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
 				deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 
+				RGL::Rect renderArea{
+					.offset = {100,100},
+					.extent = {uint32_t(nextImgSize.width * 0.5), uint32_t(nextImgSize.height * 0.5)},
+				};
+
 				RGL::Viewport fullSizeViewport{
-					.width = static_cast<float>(nextImgSize.width),
-					.height = static_cast<float>(nextImgSize.height),
+					.x = float(renderArea.offset[0]),
+					.y = float(renderArea.offset[1]),
+					.width = static_cast<float>(renderArea.extent[0]),
+					.height = static_cast<float>(renderArea.extent[1]),
 				};
 
 				RGL::Rect fullSizeScissor{
-					.extent = { uint32_t(fullSizeViewport.width), uint32_t(fullSizeViewport.height) }
+					.offset = {0,0},
+					.extent = { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) }
 				};
 
 				mainCommandBuffer->SetViewport(fullSizeViewport);
@@ -272,7 +280,7 @@ namespace RavEngine {
 				);
 
 
-				auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Dimension viewportScissorSize) {
+				auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor) {
 
 					auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos](auto&& renderData) {
 						for (auto& [materialInstance, drawcommand] : renderData) {
@@ -378,15 +386,15 @@ namespace RavEngine {
 							mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
 						}
 					};
-					auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissorSize](auto&& renderData, RGLBufferPtr vertexBuffer) {
+					auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer) {
 						// do static meshes
 						mainCommandBuffer->SetViewport({
-							.width = static_cast<float>(viewportScissorSize.width),
-							.height = static_cast<float>(viewportScissorSize.height),
+							.x = float(viewportScissor.offset[0]),
+							.y = float(viewportScissor.offset[1]),
+							.width = static_cast<float>(viewportScissor.extent[0]),
+							.height = static_cast<float>(viewportScissor.extent[1]),
 							});
-						mainCommandBuffer->SetScissor({
-							.extent = {viewportScissorSize.width, viewportScissorSize.height}
-							});
+						mainCommandBuffer->SetScissor(viewportScissor);
 						mainCommandBuffer->SetVertexBuffer(vertexBuffer);
 						mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 						for (auto& [materialInstance, drawcommand] : renderData) {
@@ -466,7 +474,7 @@ namespace RavEngine {
 
 				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();
-					}, { uint32_t(fullSizeViewport.width), uint32_t(fullSizeViewport.height) });
+					}, renderArea);
 
 				mainCommandBuffer->TransitionResources({
 					{
@@ -493,8 +501,16 @@ namespace RavEngine {
 				);
 
 				// do lighting pass
-
+				// these run in window coordinates, even if in split screen
+				// but are confined by the scissor rect
 				glm::ivec4 viewRect {0, 0, nextImgSize.width, nextImgSize.height};
+
+				RGL::Viewport lightingViewport{
+					.x = 0,
+					.y = 0,
+					.width = float(viewRect[2]),
+					.height = float(viewRect[3]),
+				};
 
 				AmbientLightUBO ambientUBO{
 					.viewRect = viewRect
@@ -521,6 +537,8 @@ namespace RavEngine {
 					mainCommandBuffer->BeginRendering(ambientLightRenderPass);
 					mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
 					mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
+					mainCommandBuffer->SetViewport(lightingViewport);
+					mainCommandBuffer->SetScissor(fullSizeScissor);
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 1);
 
@@ -543,11 +561,11 @@ namespace RavEngine {
 					glm::vec3 camPos = glm::vec3{ 0,0,0 };
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &nextImgSize, target,&fullSizeScissor,&fullSizeViewport](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target,&fullSizeScissor,&lightingViewport](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 					if (lightStore.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
-							.viewRect = {0,0,nextImgSize.width,nextImgSize.height}
+							.viewRect = viewRect
 						};
 
 						shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
@@ -570,7 +588,7 @@ namespace RavEngine {
 
 							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 								return mat->GetShadowRenderPipeline();
-								}, { shadowMapSize,shadowMapSize });
+								}, { 0, 0, shadowMapSize,shadowMapSize });
 
 							lightExtras.lightViewProj = lightSpaceMatrix;
 
@@ -579,7 +597,7 @@ namespace RavEngine {
 							mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 							mainCommandBuffer->BeginRendering(lightingRenderPass);
 							//reset viewport and scissor
-							mainCommandBuffer->SetViewport(fullSizeViewport);
+							mainCommandBuffer->SetViewport(lightingViewport);
 							mainCommandBuffer->SetScissor(fullSizeScissor);
 							mainCommandBuffer->BindRenderPipeline(lightPipeline);
 							mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
@@ -734,6 +752,8 @@ namespace RavEngine {
 				mainCommandBuffer->BeginRenderDebugMarker("Blit and Skybox");
 				// start with the results of lighting
 				mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);
+				mainCommandBuffer->SetViewport(fullSizeViewport);
+				mainCommandBuffer->SetScissor(fullSizeScissor);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->SetVertexBytes(fbubo, 0);
 				mainCommandBuffer->SetFragmentBytes(fbubo, 0);
@@ -764,7 +784,7 @@ namespace RavEngine {
 				mainCommandBuffer->BeginRenderDebugMarker("GUI");
 				worldOwning->Filter([](GUIComponent& gui) {
 					gui.Render();	// kicks off commands for rendering UI
-					});
+				});
 #ifndef NDEBUG
 				// process debug shapes
 				worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
