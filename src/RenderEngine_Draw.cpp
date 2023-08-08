@@ -226,6 +226,7 @@ namespace RavEngine {
 				const auto viewproj = camdata.viewProj;
 				const auto invviewproj = glm::inverse(viewproj);
 				const auto camPos = camdata.camPos;
+				const auto viewportOverride = camdata.viewportOverride;
 
 				// render all the static meshes
 				deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
@@ -233,8 +234,8 @@ namespace RavEngine {
 				deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 
 				RGL::Rect renderArea{
-					.offset = {100,100},
-					.extent = {uint32_t(nextImgSize.width * 0.5), uint32_t(nextImgSize.height * 0.5)},
+					.offset = {int32_t(nextImgSize.width * viewportOverride.originFactor.x),int32_t(nextImgSize.height * viewportOverride.originFactor.y)},
+					.extent = {uint32_t(nextImgSize.width * viewportOverride.sizeFactor.x), uint32_t(nextImgSize.height * viewportOverride.sizeFactor.x)},
 				};
 
 				RGL::Viewport fullSizeViewport{

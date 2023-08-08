@@ -16,7 +16,7 @@ namespace RavEngine{
 
 			struct ViewportOverride {
 				glm::vec2 originFactor {0, 0};
-				glm::vec2 sizeFactor {0, 0};
+				glm::vec2 sizeFactor {1, 1};
 			} viewportOverride;
 		};
 		std::vector<camData> camDatas;

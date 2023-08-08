@@ -104,8 +104,8 @@ namespace RavEngine {
 
 		struct ViewportOverride {
 			glm::vec2 originFactor {0, 0};
-			glm::vec2 sizeFactor {0, 0};
-		} viewportOverride;	// additively applied. 0 = no change, 0.5 = increase by 50%
+			glm::vec2 sizeFactor {1, 1};
+		} viewportOverride;
 
 
 		enum class DisplayMode : uint8_t {
