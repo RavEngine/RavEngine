@@ -561,11 +561,12 @@ namespace RavEngine {
 					glm::vec3 camPos = glm::vec3{ 0,0,0 };
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target,&fullSizeScissor,&lightingViewport](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target,&fullSizeScissor,&lightingViewport,&renderArea](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 					if (lightStore.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
-							.viewRect = viewRect
+							.viewRect = viewRect,
+							.viewRegion = {renderArea.offset[0],renderArea.offset[1],renderArea.extent[0],renderArea.extent[1]}
 						};
 
 						shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());

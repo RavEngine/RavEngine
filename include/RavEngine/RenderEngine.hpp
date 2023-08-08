@@ -95,6 +95,7 @@ namespace RavEngine {
 		struct LightingUBO {
 			glm::mat4 viewProj;
 			glm::ivec4 viewRect;
+			glm::ivec4 viewRegion;
 			uint32_t isRenderingShadows = uint32_t(false);
 		};
 

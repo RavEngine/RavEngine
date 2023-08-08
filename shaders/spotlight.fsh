@@ -18,6 +18,7 @@ layout(location = 0) out vec4 outcolor;
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
+	ivec4 viewRegion;   // for the virtual screen
     int isRenderingShadows;
 } ubo;
 
@@ -69,7 +70,10 @@ void main()
 if (bool(ubo.isRenderingShadows)){
         float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
         mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
-        vec4 sampledPos = vec4(ComputeWorldSpacePos(texcoord,sampledDepthForPos, invViewProj),1);
+
+ 		vec2 viewTexcoord = (gl_FragCoord.xy - ubo.viewRegion.xy) / ubo.viewRegion.zw;
+
+        vec4 sampledPos = vec4(ComputeWorldSpacePos(viewTexcoord,sampledDepthForPos, invViewProj),1);
         sampledPos = constants[0].lightViewProj * sampledPos;    // where is this on the light
         sampledPos /= sampledPos.w; // perspective divide
         sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
