@@ -12,6 +12,7 @@ ShaderLibraryMTL::ShaderLibraryMTL(decltype(owningDevice) owningDevice, const st
     Assert(function != nil, "Failed to load metal function!");
 }
 ShaderLibraryMTL::ShaderLibraryMTL(decltype(owningDevice) owningDevice, const std::string_view source, const FromSourceConfig& config) : owningDevice(owningDevice){
+#ifdef RGL_CAN_RUNTIME_COMPILE  // defined in CMake
     auto result = librglc::CompileString(source, librglc::API::Metal, static_cast<librglc::ShaderStage>(config.stage), {
         .entrypointOutputName = "transient_fn"
     });
@@ -27,6 +28,9 @@ ShaderLibraryMTL::ShaderLibraryMTL(decltype(owningDevice) owningDevice, const st
     }
     
     function = [library newFunctionWithName:@"transient_fn"];
+#else
+    FatalError("RGL was not built with runtime shader compilation support");
+#endif
 
 }
 }

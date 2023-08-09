@@ -18,6 +18,11 @@ option(RGL_ENABLE_RGLC "Enable the separate compiler executable" ON)
 option(RGL_DISABLE_VK "Force-disable the Vulkan backend" OFF)
 option(RGL_USE_MINIVKSDK "Use MiniVulkanSDK instead of the installed Vulkan SDK" OFF)
 option(RGL_DISABLE_DX "Force-disable the D3D12 backend" OFF)
+option(RGL_RUNTIME_COMPILATION "Enable runtime shader compilation" OFF)
+
+if (RGL_RUNTIME_COMPILATION)
+set(RGL_RUNTIME_COMPILER_LIB "librglc")
+endif()
 
 if (CMAKE_VS_PLATFORM_NAME STREQUAL "ARM64")
 	set(RGL_DISABLE_VK ON CACHE INTERNAL "")
@@ -144,7 +149,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${METAL_LIB}
 	${QZC_LIB}
 	${X11_LIBRARIES}
+    ${RGL_RUNTIME_COMPILER_LIB}
 )
+
+if (APPLE)
+target_include_directories(${PROJECT_NAME} PRIVATE "tools/librglc/include/")
+if (RGL_RUNTIME_COMPILATION)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE "RGL_CAN_RUNTIME_COMPILE")
+endif()
+endif()
 
 set(AFTERMATH_DIR "AftermathSDK")
 if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/deps/${AFTERMATH_DIR}")

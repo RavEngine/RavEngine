@@ -1,4 +1,5 @@
 #include "OpenXRIntegration.hpp"
+#ifdef RVE_XR_AVAILABLE
 #include "Debug.hpp"
 #include <RGL/RGL.hpp>
 #include <RGL/Device.hpp>
@@ -578,3 +579,4 @@ namespace RavEngine {
 		}
 	}
 }
+#endif
