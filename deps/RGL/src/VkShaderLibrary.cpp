@@ -2,7 +2,10 @@
 #include "VkShaderLibrary.hpp"
 #include "RGLCommon.hpp"
 #include "RGLVk.hpp"
+#if __has_include(<librglc.hpp>)
 #include <librglc.hpp>
+#define RGL_CAN_RUNTIME_COMPILE
+#endif
 #include <fstream>
 
 static std::vector<uint8_t> readFile(const std::filesystem::path& filename) {
@@ -40,12 +43,16 @@ namespace RGL {
 	}
 	ShaderLibraryVk::ShaderLibraryVk(decltype(owningDevice) device, const std::string_view source, const FromSourceConfig& config) : owningDevice(device)
 	{
+#if RGL_CAN_RUNTIME_COMPILE
 		auto result = librglc::CompileString(source, librglc::API::Vulkan, static_cast<librglc::ShaderStage>(config.stage), {
 			.outputBinary = true,
 			.entrypointOutputName = "main"
 		});
 		
 		ShaderLibraryFromBytes(owningDevice->device, shaderModule, std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(result.data()), result.size()));
+#else
+		FatalError("RGL was not built with runtime shader compilation support");
+#endif
 	}
 	ShaderLibraryVk::ShaderLibraryVk(decltype(owningDevice) device, const std::filesystem::path& path) : owningDevice(device)
 	{

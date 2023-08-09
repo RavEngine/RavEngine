@@ -1,7 +1,11 @@
 #if RGL_DX12_AVAILABLE
 #include "D3D12ShaderLibrary.hpp"
 #include <d3dcompiler.h>
+
+#if __has_include(<librglc.hpp>)
 #include <librglc.hpp>
+#define RGL_CAN_RUNTIME_COMPILE
+#endif
 
 namespace RGL {
 	ShaderLibraryD3D12::ShaderLibraryD3D12()
@@ -14,11 +18,15 @@ namespace RGL {
 	}
 	ShaderLibraryD3D12::ShaderLibraryD3D12(const std::string_view source, const FromSourceConfig& config)
 	{
+#if RGL_CAN_RUNTIME_COMPILE
 		auto result = librglc::CompileString(source, librglc::API::Direct3D12, static_cast<librglc::ShaderStage>(config.stage), {
 			.outputBinary = true,
 			.entrypointOutputName = "main",
 		});
 		InitFromBytes(std::span<uint8_t>{reinterpret_cast<uint8_t*>(result.data()), result.size()});
+#else
+		FatalError("RGL was not built with runtime shader compilation support");
+#endif
 	}
 	ShaderLibraryD3D12::ShaderLibraryD3D12(const std::filesystem::path& path)
 	{

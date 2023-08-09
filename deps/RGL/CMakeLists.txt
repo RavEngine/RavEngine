@@ -144,7 +144,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${METAL_LIB}
 	${QZC_LIB}
 	${X11_LIBRARIES}
-	librglc
 )
 
 set(AFTERMATH_DIR "AftermathSDK")
