@@ -490,7 +490,7 @@ namespace RavEngine {
 				};
 
 				auto genProjMat = [](const XrFovf& fov, float width, float height) {
-					return glm::mat4(glm::perspective<float>(fov.angleRight * 2, (float)width / height, 0.1, 100));	//TODO: fix hardcoded clipping planes
+					return glm::mat4(RMath::perspectiveProjection<float>(fov.angleRight * 2, (float)width / height, 0.1, 100));	//TODO: fix hardcoded clipping planes
 				};
 				// calculate the viewproj matrix
 				const auto& viewState = views[i];

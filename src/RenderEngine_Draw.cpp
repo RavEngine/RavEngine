@@ -20,6 +20,7 @@
 #include <chrono>
 #include <numbers>
 
+
 namespace RavEngine {
 
 #ifndef NDEBUG
@@ -664,7 +665,7 @@ namespace RavEngine {
 
 						constexpr auto lightArea = 30;
 
-						auto lightProj = glm::ortho<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
+						auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
 						auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
 						const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
 						lightView = glm::translate(lightView, reposVec);
@@ -691,7 +692,7 @@ namespace RavEngine {
 					},
 					[](const RavEngine::World::SpotLightDataUpload& light) {
 
-						auto lightProj = glm::perspective<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
+						auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
 
 						// -y is forward for spot lights, so we need to rotate to compensate
 						auto rotmat = glm::toMat4(quaternion(1, -std::numbers::pi_v<float> / 2, 0, 0));
