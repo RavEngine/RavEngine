@@ -277,14 +277,24 @@ int App::run(int argc, char** argv) {
 		auto nextTexture = window->GetNextSwapchainImage();
 		mainWindowView.collection.finalFramebuffer = nextTexture.texture;
 
-		// get the camera to render
+		// get the cameras to render
 		auto allCameras = renderWorld->GetAllComponentsOfType<CameraComponent>();
+
 		if (!allCameras)
 		{
 			Debug::Fatal("Cannot render: World does not have a camera!");
 		}
-		auto& cam = renderWorld->GetComponent<CameraComponent>();
-		mainWindowView.camDatas = { {.viewProj = cam.GenerateProjectionMatrix(windowSize.width, windowSize.height) * cam.GenerateViewMatrix(), .camPos = cam.GetOwner().GetTransform().GetWorldPosition()} };
+		mainWindowView.camDatas.clear();
+		for (const auto& camera : *allCameras) {
+			if (!camera.IsActive()) {
+				continue;
+			}
+			auto viewProj = camera.GenerateProjectionMatrix(windowSize.width, windowSize.height) * camera.GenerateViewMatrix();
+			auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
+			auto viewportOverride = camera.viewportOverride;
+			mainWindowView.camDatas.emplace_back(viewProj, camPos, viewportOverride);
+		}
+
 		mainWindowView.pixelDimensions = window->bufferdims;
 
 		std::vector<RenderViewCollection> allViews;

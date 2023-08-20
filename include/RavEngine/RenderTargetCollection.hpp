@@ -3,6 +3,11 @@
 #include "mathtypes.hpp"
 
 namespace RavEngine{
+	struct ViewportOverride {
+		glm::vec2 originFactor {0, 0};
+		glm::vec2 sizeFactor {1, 1};
+	};
+
 	struct RenderTargetCollection {
 		RGLTexturePtr diffuseTexture, normalTexture, depthStencil, lightingTexture;
 		RGL::ITexture* finalFramebuffer;
@@ -14,10 +19,7 @@ namespace RavEngine{
 			glm::mat4 viewProj;
 			glm::vec3 camPos;
 
-			struct ViewportOverride {
-				glm::vec2 originFactor {0, 0};
-				glm::vec2 sizeFactor {1, 1};
-			} viewportOverride;
+			ViewportOverride viewportOverride;
 		};
 		std::vector<camData> camDatas;
 		dim_t<int> pixelDimensions;

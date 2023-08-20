@@ -2,6 +2,7 @@
 #include "Entity.hpp"
 #include "Transform.hpp"
 #include "ComponentWithOwner.hpp"
+#include "RenderTargetCollection.hpp"
 
 namespace RavEngine {
 	class RenderEngine;
@@ -102,10 +103,7 @@ namespace RavEngine {
 		float nearClip;
 		float farClip;
 
-		struct ViewportOverride {
-			glm::vec2 originFactor {0, 0};
-			glm::vec2 sizeFactor {1, 1};
-		} viewportOverride;
+		ViewportOverride viewportOverride;
 
 
 		enum class DisplayMode : uint8_t {
