@@ -450,7 +450,6 @@ namespace RavEngine {
 					.Fragment = true
 					});
 
-				mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 				// ambient lights
 				if (worldOwning->renderData->ambientLightData.DenseSize() > 0) {
 					mainCommandBuffer->BeginRendering(ambientLightRenderPass);
@@ -651,7 +650,6 @@ namespace RavEngine {
 					mainCommandBuffer->EndRendering();
 				}
 
-				mainCommandBuffer->EndRenderDebugMarker();
 			};
 
 			auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
@@ -824,6 +822,7 @@ namespace RavEngine {
 			mainCommandBuffer->EndRenderDebugMarker();
 
 			// lighting pass
+			mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 			lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 			lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
 			ambientLightRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
@@ -836,6 +835,7 @@ namespace RavEngine {
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLightingPass);
 			}
+			mainCommandBuffer->EndRenderDebugMarker();
 
 			// final render pass
 			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer);
