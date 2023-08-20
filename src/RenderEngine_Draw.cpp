@@ -220,288 +220,214 @@ namespace RavEngine {
 		for (const auto& view : targets) {
 			currentRenderSize = view.pixelDimensions;
 			auto nextImgSize = view.pixelDimensions;
-
 			auto& target = view.collection;
 
-			for (const auto& camdata : view.camDatas) {
-				const auto viewproj = camdata.viewProj;
-				const auto invviewproj = glm::inverse(viewproj);
-				const auto camPos = camdata.camPos;
-				const auto viewportOverride = camdata.viewportOverride;
 
-				// render all the static meshes
-				deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
-				deferredRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
-				deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor) {
 
-				RGL::Rect renderArea{
-					.offset = {int32_t(nextImgSize.width * viewportOverride.originFactor.x),int32_t(nextImgSize.height * viewportOverride.originFactor.y)},
-					.extent = {uint32_t(nextImgSize.width * viewportOverride.sizeFactor.x), uint32_t(nextImgSize.height * viewportOverride.sizeFactor.x)},
-				};
+				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos](auto&& renderData) {
+					for (auto& [materialInstance, drawcommand] : renderData) {
+						//prepass: get number of LODs and entities
+						uint32_t numLODs = 0, numEntities = 0;
+						for (const auto& command : drawcommand.commands) {
+							if (auto mesh = command.mesh.lock()) {
+								numLODs += mesh->GetNumLods();
+								numEntities += command.entities.DenseSize();
+							}
+						}
 
-				RGL::Viewport fullSizeViewport{
-					.x = float(renderArea.offset[0]),
-					.y = float(renderArea.offset[1]),
-					.width = static_cast<float>(renderArea.extent[0]),
-					.height = static_cast<float>(renderArea.extent[1]),
-				};
+						auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
+							if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
+								// trash old buffer if it exists
+								if (buffer) {
+									gcBuffers.enqueue(buffer);
+								}
+								buffer = device->CreateBuffer({
+									size_count,
+									type,
+									stride,
+									access,
+									flags
+									});
+								if (access == RGL::BufferAccess::Shared) {
+									buffer->MapMemory();
+								}
+							}
+						};
+						const auto cullingbufferTotalSlots = numEntities * numLODs;
+						reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName = "Culling Buffer" });
+						reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
+						reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
 
-				RGL::Rect fullSizeScissor{
-					.offset = {0,0},
-					.extent = { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) }
-				};
-
-				mainCommandBuffer->SetViewport(fullSizeViewport);
-				mainCommandBuffer->SetScissor(fullSizeScissor);
-
-				mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
-
-				mainCommandBuffer->TransitionResources({
-					{
-						.texture = target.diffuseTexture.get(),
-						.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-						.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-					},
-					{
-						.texture = target.normalTexture.get(),
-						.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-						.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-					},
-					{
-						.texture = target.depthStencil.get(),
-						.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
-						.to = RGL::ResourceLayout::DepthAttachmentOptimal
-					},
-					/*
-					{
-						.texture = shadowTexture.get(),
-						.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
-						.to = RGL::ResourceLayout::DepthAttachmentOptimal,
-					}*/
-					}, RGL::TransitionPosition::Top
-				);
-
-
-				auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor) {
-
-					auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos](auto&& renderData) {
-						for (auto& [materialInstance, drawcommand] : renderData) {
-							//prepass: get number of LODs and entities
-							uint32_t numLODs = 0, numEntities = 0;
-							for (const auto& command : drawcommand.commands) {
+						// initial populate of drawcall buffer
+						// we need one command per mesh per LOD
+						{
+							uint32_t meshID = 0;
+							uint32_t baseInstance = 0;
+							for (const auto& command : drawcommand.commands) {			// for each mesh
+								const auto nEntitiesInThisCommand = command.entities.DenseSize();
+								RGL::IndirectIndexedCommand initData;
 								if (auto mesh = command.mesh.lock()) {
-									numLODs += mesh->GetNumLods();
-									numEntities += command.entities.DenseSize();
+									for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+										initData = {
+											.indexCount = uint32_t(mesh->totalIndices),
+											.instanceCount = 0,
+											.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+											.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+											.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
+										};
+										baseInstance += nEntitiesInThisCommand;
+										drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
+									}
+
 								}
+								meshID++;
 							}
-
-							auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
-								if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
-									// trash old buffer if it exists
-									if (buffer) {
-										gcBuffers.enqueue(buffer);
-									}
-									buffer = device->CreateBuffer({
-										size_count,
-										type,
-										stride,
-										access,
-										flags
-										});
-									if (access == RGL::BufferAccess::Shared) {
-										buffer->MapMemory();
-									}
-								}
-							};
-							const auto cullingbufferTotalSlots = numEntities * numLODs;
-							reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName = "Culling Buffer" });
-							reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
-							reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
-
-							// initial populate of drawcall buffer
-							// we need one command per mesh per LOD
+						}
+						mainCommandBuffer->CopyBufferToBuffer(
 							{
-								uint32_t meshID = 0;
-								uint32_t baseInstance = 0;
-								for (const auto& command : drawcommand.commands) {			// for each mesh
-									const auto nEntitiesInThisCommand = command.entities.DenseSize();
-									RGL::IndirectIndexedCommand initData;
-									if (auto mesh = command.mesh.lock()) {
-										for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
-											initData = {
-												.indexCount = uint32_t(mesh->totalIndices),
-												.instanceCount = 0,
-												.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
-												.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
-												.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
-											};
-											baseInstance += nEntitiesInThisCommand;
-											drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
-										}
-
-									}
-									meshID++;
-								}
-							}
-							mainCommandBuffer->CopyBufferToBuffer(
-								{
-									.buffer = drawcommand.indirectStagingBuffer,
-									.offset = 0
-								},
+								.buffer = drawcommand.indirectStagingBuffer,
+								.offset = 0
+							},
 				{
 					.buffer = drawcommand.indirectBuffer,
 					.offset = 0
 				}, drawcommand.indirectStagingBuffer->getBufferSize());
 
-							mainCommandBuffer->SetResourceBarrier({
-								.buffers = {drawcommand.indirectBuffer}
-								});
-
-							mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-							mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-							CullingUBO cubo{
-								.viewProj = viewproj,
-								.indirectBufferOffset = 0,
-								.camPos = camPos
-							};
-							static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
-							for (auto& command : drawcommand.commands) {
-								mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
-								mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
-
-								if (auto mesh = command.mesh.lock()) {
-									uint32_t lodsForThisMesh = mesh->GetNumLods();
-									auto& bounds = mesh->bounds;
-
-									cubo.bbmin = { bounds.min[0],bounds.min[1],bounds.min[2] };
-									cubo.bbmax = { bounds.max[0],bounds.max[1],bounds.max[2] };
-
-									cubo.numObjects = command.entities.DenseSize();
-									mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-									mainCommandBuffer->SetComputeBytes(cubo, 0);
-									mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
-									cubo.indirectBufferOffset += lodsForThisMesh;
-									cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
-								}
-							}
-							mainCommandBuffer->EndCompute();
-							mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
-						}
-					};
-					auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer) {
-						// do static meshes
-						mainCommandBuffer->SetViewport({
-							.x = float(viewportScissor.offset[0]),
-							.y = float(viewportScissor.offset[1]),
-							.width = static_cast<float>(viewportScissor.extent[0]),
-							.height = static_cast<float>(viewportScissor.extent[1]),
-							});
-						mainCommandBuffer->SetScissor(viewportScissor);
-						mainCommandBuffer->SetVertexBuffer(vertexBuffer);
-						mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-						for (auto& [materialInstance, drawcommand] : renderData) {
-							// bind the pipeline
-							auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
-							mainCommandBuffer->BindRenderPipeline(pipeline);
-
-							// set push constant data
-							auto pushConstantData = materialInstance->GetPushConstantData();
-
-							auto pushConstantTotalSize = sizeof(viewproj) + pushConstantData.size();
-
-							stackarray(totalPushConstantBytes, std::byte, pushConstantTotalSize);
-							std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
-							if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
-								std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
-							}
-
-							mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-							mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-
-							// bind textures and buffers
-							auto& bufferBindings = materialInstance->GetBufferBindings();
-							auto& textureBindings = materialInstance->GetTextureBindings();
-							for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
-								auto& buffer = bufferBindings[i];
-								auto& texture = textureBindings[i];
-								if (buffer) {
-									mainCommandBuffer->BindBuffer(buffer, i);
-								}
-								if (texture) {
-									mainCommandBuffer->SetFragmentSampler(textureSampler, 0); // TODO: don't hardcode this
-									mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer().get(), i);
-								}
-							}
-
-							// bind the culling buffer and the transform buffer
-							mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
-							mainCommandBuffer->BindBuffer(worldTransformBuffer, 2);
-
-							// do the indirect command
-							mainCommandBuffer->ExecuteIndirectIndexed({
-								.indirectBuffer = drawcommand.indirectBuffer,
-								.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
-								});
-						}
-					};
-
-					// do culling operations
-					mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
-					cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
-					mainCommandBuffer->EndComputeDebugMarker();
-					if (skeletalPrepareResult.skeletalMeshesExist) {
-						cullSkeletalMeshes(viewproj);
-					}
-
-					if (sharedSkinnedMeshVertexBuffer) {
 						mainCommandBuffer->SetResourceBarrier({
-							.buffers = {
-								sharedSkinnedMeshVertexBuffer,
+							.buffers = {drawcommand.indirectBuffer}
+							});
+
+						mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+						mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
+						CullingUBO cubo{
+							.viewProj = viewproj,
+							.indirectBufferOffset = 0,
+							.camPos = camPos
+						};
+						static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
+						for (auto& command : drawcommand.commands) {
+							mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
+							mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
+
+							if (auto mesh = command.mesh.lock()) {
+								uint32_t lodsForThisMesh = mesh->GetNumLods();
+								auto& bounds = mesh->bounds;
+
+								cubo.bbmin = { bounds.min[0],bounds.min[1],bounds.min[2] };
+								cubo.bbmax = { bounds.max[0],bounds.max[1],bounds.max[2] };
+
+								cubo.numObjects = command.entities.DenseSize();
+								mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+								mainCommandBuffer->SetComputeBytes(cubo, 0);
+								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
+								cubo.indirectBufferOffset += lodsForThisMesh;
+								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
 							}
+						}
+						mainCommandBuffer->EndCompute();
+						mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
+					}
+				};
+				auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer) {
+					// do static meshes
+					mainCommandBuffer->SetViewport({
+						.x = float(viewportScissor.offset[0]),
+						.y = float(viewportScissor.offset[1]),
+						.width = static_cast<float>(viewportScissor.extent[0]),
+						.height = static_cast<float>(viewportScissor.extent[1]),
+						});
+					mainCommandBuffer->SetScissor(viewportScissor);
+					mainCommandBuffer->SetVertexBuffer(vertexBuffer);
+					mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+					for (auto& [materialInstance, drawcommand] : renderData) {
+						// bind the pipeline
+						auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
+						mainCommandBuffer->BindRenderPipeline(pipeline);
+
+						// set push constant data
+						auto pushConstantData = materialInstance->GetPushConstantData();
+
+						auto pushConstantTotalSize = sizeof(viewproj) + pushConstantData.size();
+
+						stackarray(totalPushConstantBytes, std::byte, pushConstantTotalSize);
+						std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
+						if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
+							std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
+						}
+
+						mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+						mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+
+						// bind textures and buffers
+						auto& bufferBindings = materialInstance->GetBufferBindings();
+						auto& textureBindings = materialInstance->GetTextureBindings();
+						for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
+							auto& buffer = bufferBindings[i];
+							auto& texture = textureBindings[i];
+							if (buffer) {
+								mainCommandBuffer->BindBuffer(buffer, i);
+							}
+							if (texture) {
+								mainCommandBuffer->SetFragmentSampler(textureSampler, 0); // TODO: don't hardcode this
+								mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer().get(), i);
+							}
+						}
+
+						// bind the culling buffer and the transform buffer
+						mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
+						mainCommandBuffer->BindBuffer(worldTransformBuffer, 2);
+
+						// do the indirect command
+						mainCommandBuffer->ExecuteIndirectIndexed({
+							.indirectBuffer = drawcommand.indirectBuffer,
+							.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
 							});
 					}
-
-					// do rendering operations
-					mainCommandBuffer->BeginRendering(renderPass);
-					mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-					renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer);
-					mainCommandBuffer->EndRenderDebugMarker();
-					if (skeletalPrepareResult.skeletalMeshesExist) {
-						mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-						renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer);
-						mainCommandBuffer->EndRenderDebugMarker();
-					}
-					mainCommandBuffer->EndRendering();
 				};
+
+				// do culling operations
+				mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
+				cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
+				mainCommandBuffer->EndComputeDebugMarker();
+				if (skeletalPrepareResult.skeletalMeshesExist) {
+					cullSkeletalMeshes(viewproj);
+				}
+
+				if (sharedSkinnedMeshVertexBuffer) {
+					mainCommandBuffer->SetResourceBarrier({
+						.buffers = {
+							sharedSkinnedMeshVertexBuffer,
+						}
+						});
+				}
+
+				// do rendering operations
+				mainCommandBuffer->BeginRendering(renderPass);
+				mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
+				renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer);
+				mainCommandBuffer->EndRenderDebugMarker();
+				if (skeletalPrepareResult.skeletalMeshesExist) {
+					mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
+					renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer);
+					mainCommandBuffer->EndRenderDebugMarker();
+				}
+				mainCommandBuffer->EndRendering();
+			};
+
+			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				// render all the static meshes
+				mainCommandBuffer->SetViewport(fullSizeViewport);
+				mainCommandBuffer->SetScissor(fullSizeScissor);
 
 				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();
 					}, renderArea);
 
-				mainCommandBuffer->TransitionResources({
-					{
-						.texture = target.diffuseTexture.get(),
-						.from = RGL::ResourceLayout::ColorAttachmentOptimal,
-						.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					},
-					{
-						.texture = target.normalTexture.get(),
-						.from = RGL::ResourceLayout::ColorAttachmentOptimal,
-						.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					},
-					{
-						.texture = target.lightingTexture.get(),
-						.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-						.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-					},
-					{
-						.texture = target.depthStencil.get(),
-						.from = RGL::ResourceLayout::DepthAttachmentOptimal,
-						.to = RGL::ResourceLayout::DepthReadOnlyOptimal,
-					}
-					}, RGL::TransitionPosition::Top
-				);
+				
+			};
 
+			auto renderLightingPass = [this, &target, &renderFromPerspective, &nextImgSize, &worldOwning](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// do lighting pass
 				// these run in window coordinates, even if in split screen
 				// but are confined by the scissor rect
@@ -509,25 +435,23 @@ namespace RavEngine {
 
 				RGL::Viewport lightingViewport{
 					.x = 0,
-					.y = 0,
-					.width = float(viewRect[2]),
-					.height = float(viewRect[3]),
+						.y = 0,
+						.width = float(viewRect[2]),
+						.height = float(viewRect[3]),
 				};
 
 				AmbientLightUBO ambientUBO{
 					.viewRect = viewRect
 				};
 
+				auto invviewproj = glm::inverse(viewproj);
 
 				PointLightUBO pointLightUBO{
 					.viewProj = viewproj,
 					.invViewProj = invviewproj,
 					.viewRect = ambientUBO.viewRect
 				};
-				lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
-				lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
-				ambientLightRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
-				ambientLightRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
+				
 
 				mainCommandBuffer->SetRenderPipelineBarrier({
 					.Fragment = true
@@ -563,7 +487,7 @@ namespace RavEngine {
 					glm::vec3 camPos = glm::vec3{ 0,0,0 };
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target,&fullSizeScissor,&lightingViewport,&renderArea](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &lightingViewport, &renderArea](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 					if (lightStore.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
@@ -735,17 +659,13 @@ namespace RavEngine {
 				}
 
 				mainCommandBuffer->EndRenderDebugMarker();
+			};
 
+			auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// the on-screen render pass
-				// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
-				finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer);
-				finalRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
-				mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");
-				mainCommandBuffer->BeginRenderDebugMarker("Transition Lighting texture");
-				mainCommandBuffer->TransitionResource(target.lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
-				mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
-				mainCommandBuffer->EndRenderDebugMarker();
-
+// contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
+				
+				glm::ivec4 viewRect {0, 0, nextImgSize.width, nextImgSize.height};
 
 				LightToFBUBO fbubo{
 					.viewRect = viewRect
@@ -787,7 +707,7 @@ namespace RavEngine {
 				mainCommandBuffer->BeginRenderDebugMarker("GUI");
 				worldOwning->Filter([](GUIComponent& gui) {
 					gui.Render();	// kicks off commands for rendering UI
-				});
+					});
 #ifndef NDEBUG
 				// process debug shapes
 				worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
@@ -813,13 +733,138 @@ namespace RavEngine {
 					dbg.Render();
 				}
 
-				mainCommandBuffer->EndRenderDebugMarker();
-				mainCommandBuffer->EndRenderDebugMarker();
 				Im3d::NewFrame();
+				mainCommandBuffer->EndRenderDebugMarker();
 #endif
 				mainCommandBuffer->EndRendering();
-				mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::Present, RGL::TransitionPosition::Bottom);
+			};
+
+			auto doPassWithCamData = [this,&target,&nextImgSize](auto&& camdata, auto&& function) {
+				const auto viewproj = camdata.viewProj;
+				const auto invviewproj = glm::inverse(viewproj);
+				const auto camPos = camdata.camPos;
+				const auto viewportOverride = camdata.viewportOverride;
+
+				RGL::Rect renderArea{
+					.offset = { int32_t(nextImgSize.width * viewportOverride.originFactor.x),int32_t(nextImgSize.height * viewportOverride.originFactor.y) },
+						.extent = { uint32_t(nextImgSize.width * viewportOverride.sizeFactor.x), uint32_t(nextImgSize.height * viewportOverride.sizeFactor.x) },
+				};
+
+				RGL::Viewport fullSizeViewport{
+					.x = float(renderArea.offset[0]),
+						.y = float(renderArea.offset[1]),
+						.width = static_cast<float>(renderArea.extent[0]),
+						.height = static_cast<float>(renderArea.extent[1]),
+				};
+
+				RGL::Rect fullSizeScissor{
+					.offset = { 0,0 },
+						.extent = { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) }
+				};
+
+				function(viewproj, camPos, fullSizeViewport, fullSizeScissor, renderArea);
+			};
+
+			// deferred pass
+			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
+			deferredRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
+			deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+
+			deferredClearRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
+			deferredClearRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
+			deferredClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+
+			mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
+
+			mainCommandBuffer->TransitionResources({
+				{
+					.texture = target.diffuseTexture.get(),
+					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
+				},
+				{
+					.texture = target.normalTexture.get(),
+					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
+				},
+				{
+					.texture = target.depthStencil.get(),
+					.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
+					.to = RGL::ResourceLayout::DepthAttachmentOptimal
+				},
+				/*
+				{
+					.texture = shadowTexture.get(),
+					.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
+					.to = RGL::ResourceLayout::DepthAttachmentOptimal,
+				}*/
+				}, RGL::TransitionPosition::Top
+			);
+			mainCommandBuffer->BeginRendering(deferredClearRenderPass);
+			mainCommandBuffer->EndRendering();
+			for (const auto& camdata : view.camDatas) {
+				doPassWithCamData(camdata, renderDeferredPass);
 			}
+			mainCommandBuffer->TransitionResources({
+				{
+					.texture = target.diffuseTexture.get(),
+					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
+					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+				},
+				{
+					.texture = target.normalTexture.get(),
+					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
+					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+				},
+				{
+					.texture = target.lightingTexture.get(),
+					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
+					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
+				},
+				{
+					.texture = target.depthStencil.get(),
+					.from = RGL::ResourceLayout::DepthAttachmentOptimal,
+					.to = RGL::ResourceLayout::DepthReadOnlyOptimal,
+				}
+				}, RGL::TransitionPosition::Top
+			);
+			mainCommandBuffer->EndRenderDebugMarker();
+
+			// lighting pass
+			lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
+			ambientLightRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			ambientLightRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
+
+			lightingClearRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
+			lightingClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			mainCommandBuffer->BeginRendering(lightingClearRenderPass);	// clears the framebuffer
+			mainCommandBuffer->EndRendering();
+			for (const auto& camdata : view.camDatas) {
+				doPassWithCamData(camdata, renderLightingPass);
+			}
+
+			// final render pass
+			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer);
+			finalRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+
+			finalClearRenderPass->SetAttachmentTexture(0, target.finalFramebuffer);
+			finalClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+
+			mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");
+			mainCommandBuffer->BeginRenderDebugMarker("Transition Lighting texture");
+			mainCommandBuffer->TransitionResource(target.lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
+			mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
+			mainCommandBuffer->EndRenderDebugMarker();
+
+			mainCommandBuffer->BeginRendering(finalClearRenderPass);
+			mainCommandBuffer->EndRendering();
+
+			for (const auto& camdata : view.camDatas) {
+				doPassWithCamData(camdata, renderFinalPass);
+			}
+			mainCommandBuffer->EndRenderDebugMarker();
+			mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::Present, RGL::TransitionPosition::Bottom);
 
 		}
 		mainCommandBuffer->End();

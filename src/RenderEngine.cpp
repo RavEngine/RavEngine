@@ -512,6 +512,28 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   .attachments = {
 			   {
 				   .format = colorTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+		   },
+		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			   .format = RGL::TextureFormat::D32SFloat,
+			   .loadOp = RGL::LoadAccessOperation::Load,
+			   .storeOp = RGL::StoreAccessOperation::Store,
+			   .clearColor = {1,1,1,1}
+		   }
+		});
+
+	deferredClearRenderPass = RGL::CreateRenderPass(
+		{
+		   .attachments = {
+			   {
+				   .format = colorTexFormat,
 				   .loadOp = RGL::LoadAccessOperation::Clear,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
@@ -527,9 +549,26 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			   .storeOp = RGL::StoreAccessOperation::Store,
 			   .clearColor = {1,1,1,1}
 		   }
-		});
+		}
+	);
 
 	ambientLightRenderPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			}
+		},
+		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+		}
+	});
+
+	// dummy pass that clears framebuffers
+	lightingClearRenderPass = RGL::CreateRenderPass({
 		.attachments = {
 			{
 				.format = colorTexFormat,
@@ -563,7 +602,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.attachments = {
 			{
 				.format = RGL::TextureFormat::BGRA8_Unorm,
-				.loadOp = RGL::LoadAccessOperation::Clear,
+				.loadOp = RGL::LoadAccessOperation::Load,
 				.storeOp = RGL::StoreAccessOperation::Store,
 			},
 		},
@@ -573,6 +612,21 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.storeOp = RGL::StoreAccessOperation::Store,
 		}
 	});
+
+	finalClearRenderPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = RGL::TextureFormat::BGRA8_Unorm,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		},
+		 .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+		}
+		});
 
 	shadowRenderPass = RGL::CreateRenderPass({
 		.attachments = {},

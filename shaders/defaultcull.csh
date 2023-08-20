@@ -102,9 +102,7 @@ void main() {
 	mat4 worldToObject = inverse(model);
 	vec3 cameraInObjectSpace = (worldToObject * vec4(ubo.camPos,1)).xyz;
 
-	//isOnCamera = isOnCamera || pointIsInAABB(cameraInObjectSpace, bbmin, bbmax);
-
-	isOnCamera = true;
+	isOnCamera = isOnCamera || pointIsInAABB(cameraInObjectSpace, bbmin, bbmax);
 
 	// check 2: what LOD am I in
 	uint lodID = 0;	//TODO: when multi-LOD support is added

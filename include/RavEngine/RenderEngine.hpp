@@ -51,7 +51,7 @@ namespace RavEngine {
 
 		RGLTexturePtr shadowTexture;
 		RGLSamplerPtr textureSampler, shadowSampler;
-		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, ambientLightRenderPass, finalRenderPass, shadowRenderPass;
+		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, ambientLightRenderPass, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass;
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
