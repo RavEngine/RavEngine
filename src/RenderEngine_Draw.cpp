@@ -433,13 +433,6 @@ namespace RavEngine {
 				// but are confined by the scissor rect
 				glm::ivec4 viewRect {0, 0, nextImgSize.width, nextImgSize.height};
 
-				RGL::Viewport lightingViewport{
-					.x = 0,
-						.y = 0,
-						.width = float(viewRect[2]),
-						.height = float(viewRect[3]),
-				};
-
 				AmbientLightUBO ambientUBO{
 					.viewRect = viewRect
 				};
@@ -463,7 +456,7 @@ namespace RavEngine {
 					mainCommandBuffer->BeginRendering(ambientLightRenderPass);
 					mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
 					mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
-					mainCommandBuffer->SetViewport(lightingViewport);
+					mainCommandBuffer->SetViewport(fullSizeViewport);
 					mainCommandBuffer->SetScissor(fullSizeScissor);
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 1);
@@ -487,7 +480,7 @@ namespace RavEngine {
 					glm::vec3 camPos = glm::vec3{ 0,0,0 };
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &lightingViewport, &renderArea](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 					if (lightStore.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
@@ -524,7 +517,7 @@ namespace RavEngine {
 							mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 							mainCommandBuffer->BeginRendering(lightingRenderPass);
 							//reset viewport and scissor
-							mainCommandBuffer->SetViewport(lightingViewport);
+							mainCommandBuffer->SetViewport(fullSizeViewport);
 							mainCommandBuffer->SetScissor(fullSizeScissor);
 							mainCommandBuffer->BindRenderPipeline(lightPipeline);
 							mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
