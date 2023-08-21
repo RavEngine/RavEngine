@@ -417,8 +417,6 @@ namespace RavEngine {
 
 			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// render all the static meshes
-				mainCommandBuffer->SetViewport(fullSizeViewport);
-				mainCommandBuffer->SetScissor(fullSizeScissor);
 
 				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();

@@ -292,7 +292,7 @@ int App::run(int argc, char** argv) {
 			auto viewProj = camera.GenerateProjectionMatrix(windowSize.width, windowSize.height) * camera.GenerateViewMatrix();
 			auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
 			auto viewportOverride = camera.viewportOverride;
-			mainWindowView.camDatas.emplace_back(viewProj, camPos, viewportOverride);
+            mainWindowView.camDatas.push_back(RenderViewCollection::camData{viewProj, camPos, viewportOverride});
 		}
 
 		mainWindowView.pixelDimensions = window->bufferdims;
