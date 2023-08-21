@@ -187,6 +187,8 @@ MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, co
 		scaled = scalemat * scaled;
 
 		auto normal = mesh->mNormals[vi];
+		auto tangent = mesh->mTangents[vi];
+		auto bitangent = mesh->mBitangents[vi];
 
 		//does mesh have uvs?
 		float uvs[2] = { 0 };
@@ -195,11 +197,13 @@ MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, co
 			uvs[1] = mesh->mTextureCoords[0][vi].y;
 		}
 
-		mp.vertices.push_back({
-			static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z),	//coordinates
-			normal.x,normal.y,normal.z,																//normals
-			uvs[0],uvs[1]																			//UVs
-			});
+		mp.vertices.push_back(VertexNormalUV{
+			.position = {static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z)},
+			.normal = {normal.x,normal.y,normal.z},
+			.tangent = {tangent.x, tangent.y, tangent.z},
+			.bitangent = {bitangent.x,bitangent.y,bitangent.z},
+			.uv = {uvs[0],uvs[1]}
+		});
 	}
 
 	for (int ii = 0; ii < mesh->mNumFaces; ii++) {

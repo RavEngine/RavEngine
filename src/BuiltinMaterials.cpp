@@ -35,15 +35,26 @@ STATIC(RavEngine::defaultVertexConfig) {
                 .offset = offsetof(VertexNormalUV,normal),
                 .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
             },
-            {
+             {
                 .location = 2,
+                .binding = 0,
+                .offset = offsetof(VertexNormalUV,tangent),
+                .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+            },
+            {
+                .location = 3,
+                .binding = 0,
+                .offset = offsetof(VertexNormalUV,bitangent),
+                .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+            },
+            {
+                .location = 4,
                 .binding = 0,
                 .offset = offsetof(VertexNormalUV,uv),
                 .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
             },
-
             {
-                .location = 3,
+                .location = 10,
                 .binding = 1,
                 .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32_Uint,
@@ -77,8 +88,13 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
                 .type = RGL::BindingType::SampledImage,
                 .stageFlags = RGL::BindingVisibility::Fragment,
             },
-            {
+             {
                 .binding = 2,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 10,
                 .type = RGL::BindingType::StorageBuffer,
                 .stageFlags = RGL::BindingVisibility::Vertex
             }
@@ -92,4 +108,5 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
 
 RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
     textureBindings[1] = Texture::Manager::defaultTexture;
+    textureBindings[2] = Texture::Manager::defaultNormalTexture;
 }

@@ -376,7 +376,7 @@ namespace RavEngine {
 
 						// bind the culling buffer and the transform buffer
 						mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
-						mainCommandBuffer->BindBuffer(worldTransformBuffer, 2);
+						mainCommandBuffer->BindBuffer(worldTransformBuffer, 10);
 
 						// do the indirect command
 						mainCommandBuffer->ExecuteIndirectIndexed({

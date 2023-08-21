@@ -15,9 +15,11 @@ struct UV
 };
 
 struct VertexNormalUV{
-	float position[3];
-	float normal[3];
-	float uv[2];
+	float position[3]{ 0 };
+	float normal[3]{ 0 };
+	float tangent[3]{ 0 };
+	float bitangent[3]{ 0 };
+	float uv[2]{ 0 };
 };
 
 struct VertexUV{

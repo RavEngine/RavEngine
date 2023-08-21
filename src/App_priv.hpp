@@ -190,6 +190,9 @@ int App::run(int argc, char** argv) {
 		//make the default texture white
 		uint8_t data[] = {0xFF,0xFF,0xFF,0xFF};
 		Texture::Manager::defaultTexture = make_shared<RuntimeTexture>(1,1,false,1,data);
+		
+		uint8_t normalData[] = {256/2,256/2, 0xFF,0xFF};
+		Texture::Manager::defaultNormalTexture = New<RuntimeTexture>(1,1,false,1, normalData);
 	}
 
 	//invoke startup hook

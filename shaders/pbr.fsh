@@ -1,12 +1,13 @@
 
-layout(location = 0) in vec3 inNormal;
-layout(location = 1) in vec2 inUV;
+layout(location = 0) in vec2 inUV;
+layout(location = 1) in vec3[3] inTBN;
 
 layout(location = 0) out vec4 outcolor;
 layout(location = 1) out vec4 outnormal;
 
 layout(binding = 0) uniform sampler g_sampler; 
 layout(binding = 1) uniform texture2D t_diffuse; 
+layout(binding = 2) uniform texture2D t_normal; 
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
@@ -16,6 +17,10 @@ layout(push_constant) uniform UniformBufferObject{
 void main()
 {
 	outcolor = texture(sampler2D(t_diffuse, g_sampler), inUV) * ubo.colorTint;
-	outnormal = vec4(inNormal, 1);
+	vec3 normal = texture(sampler2D(t_normal, g_sampler), inUV).rgb;
+	normal = normal * 2.0 - 1.0;
+
+	mat3 TBN = mat3(inTBN[0],inTBN[1],inTBN[2]);
+	outnormal = vec4(normalize(TBN * normal),1);
 }
 

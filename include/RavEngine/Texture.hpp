@@ -26,7 +26,7 @@ public:
      Works with Runtime textures as well, using the construction arguments to differentiate textures
      */
     struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{
-		static Ref<class RuntimeTexture> defaultTexture;
+		static Ref<class RuntimeTexture> defaultTexture, defaultNormalTexture;
 	};
 
 	auto GetRHITexturePointer() const {

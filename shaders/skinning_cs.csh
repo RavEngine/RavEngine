@@ -4,6 +4,8 @@
 struct VertexNormalUV {
 	vec3 pos;
 	vec3 normal;
+	vec3 tangent;
+	vec3 bitangent;
 	vec2 uv;
 };
 
