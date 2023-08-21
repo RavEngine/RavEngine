@@ -502,10 +502,10 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.constants = {
 			{
-				sizeof(PointLightUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
 			}
 		}
-		});
+	});
 
 	// create render passes
 	deferredRenderPass = RGL::CreateRenderPass({

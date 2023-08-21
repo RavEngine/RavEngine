@@ -1,23 +1,36 @@
+#extension GL_EXT_scalar_block_layout : enable
 
 layout(location = 0) in flat vec3 lightColor;
 layout(location = 1) in flat float radius;
 layout(location = 2) in flat vec3 inPosition;
 layout(location = 3) in flat float intensity;
+layout(location = 4) in flat vec4[4] invViewProj_elts; 
 
 layout(binding = 0) uniform sampler g_sampler;
 layout(binding = 1) uniform sampler shadowSampler;
 layout(binding = 2) uniform texture2D t_albedo;
 layout(binding = 3) uniform texture2D t_normal;
 layout(binding = 4) uniform texture2D t_depth;
-
+layout(binding = 5) uniform texture2D t_depthshadow;
 
 layout(location = 0) out vec4 outcolor;
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
-	mat4 invViewProj;
     ivec4 viewRect;
+	ivec4 viewRegion;   // for the virtual screen
+    int isRenderingShadows;
 } ubo;
+
+struct PointLightExtraConstants{
+    mat4 lightViewProj;
+};
+
+layout(scalar, binding = 8) readonly buffer pushConstantSpill
+{
+	PointLightExtraConstants constants[];
+};
+
 
 vec4 ComputeClipSpacePosition(vec2 pos, float depth){
 	pos.y = 1.0 - pos.y;
@@ -39,10 +52,13 @@ void main()
     // is this pixel visible to the light? if not, discard
 	int enabled = 1;
 	
+	 mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
 	vec3 albedo = texture(sampler2D(t_albedo, g_sampler), texcoord).xyz;
 	vec3 normal = texture(sampler2D(t_normal, g_sampler), texcoord).xyz;
 	float depth = texture(sampler2D(t_depth, g_sampler), texcoord).x;
-	vec3 pos = ComputeWorldSpacePos(texcoord,depth,ubo.invViewProj);
+
+	vec2 viewTexcoord = (gl_FragCoord.xy - ubo.viewRegion.xy) / ubo.viewRegion.zw;
+	vec3 pos = ComputeWorldSpacePos(viewTexcoord,depth, invViewProj);
 	
 	vec3 toLight = normalize(inPosition - pos);
 	

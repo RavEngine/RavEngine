@@ -286,6 +286,7 @@ namespace RavEngine {
         struct PointLightUploadData {
             glm::mat4 worldTransform;
             glm::vec4 colorIntensity;
+            int castsShadows;
         };
 
         struct SpotLightDataUpload {

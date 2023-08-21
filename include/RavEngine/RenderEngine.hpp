@@ -99,12 +99,6 @@ namespace RavEngine {
 			uint32_t isRenderingShadows = uint32_t(false);
 		};
 
-		struct PointLightUBO {
-			glm::mat4 viewProj;
-			glm::mat4 invViewProj;
-			glm::ivec4 viewRect;
-		};
-
 		struct SkinningUBO {
 			uint32_t numObjects = 0;
 			uint32_t numVertices = 0;

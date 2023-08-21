@@ -437,13 +437,6 @@ namespace RavEngine {
 
 				auto invviewproj = glm::inverse(viewproj);
 
-				PointLightUBO pointLightUBO{
-					.viewProj = viewproj,
-					.invViewProj = invviewproj,
-					.viewRect = ambientUBO.viewRect
-				};
-				
-
 				mainCommandBuffer->SetRenderPipelineBarrier({
 					.Fragment = true
 					});
@@ -602,7 +595,7 @@ namespace RavEngine {
 					[this](RGLCommandBufferPtr mainCommandBuffer, uint32_t nInstances) {
 						mainCommandBuffer->DrawIndexed(nSpotLightIndices, {
 							.nInstances = nInstances
-							});
+						});
 					},
 					[](const RavEngine::World::SpotLightDataUpload& light) {
 
@@ -625,28 +618,33 @@ namespace RavEngine {
 				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
-				// point lights
-				if (worldOwning->renderData->pointLightData.DenseSize() > 0) {
-					mainCommandBuffer->BeginRendering(lightingRenderPass);
-					mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
-					mainCommandBuffer->BindRenderPipeline(pointLightRenderPipeline);
-					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 2);
-					mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
-					mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
-					mainCommandBuffer->SetVertexBytes(pointLightUBO, 0);
-					mainCommandBuffer->SetFragmentBytes(pointLightUBO, 0);
-					mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
-					mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
-					mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->pointLightData.GetDense().get_underlying().buffer, {
-						.bindingPosition = 1
+				mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
+				renderLight(worldOwning->renderData->pointLightData, pointLightRenderPipeline, sizeof(World::PointLightUploadData),
+					[this](RGLCommandBufferPtr mainCommandBuffer){
+						mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
+						mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
+					},
+					[this](RGLCommandBufferPtr mainCommandBuffer, uint32_t nInstances) {
+						mainCommandBuffer->DrawIndexed(nPointLightIndices, {
+							.nInstances = nInstances
 						});
-					mainCommandBuffer->DrawIndexed(nPointLightIndices, {
-						.nInstances = worldOwning->renderData->pointLightData.DenseSize()
-						});
-					mainCommandBuffer->EndRenderDebugMarker();
-					mainCommandBuffer->EndRendering();
-				}
+					},
+					[](const RavEngine::World::PointLightUploadData& light) {
+						// TODO: need to do this 6 times and make a cubemap
+						auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
+
+						auto viewMat = glm::inverse(light.worldTransform);
+
+						auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
+
+						return lightViewProjResult{
+							.lightProj = lightProj,
+							.lightView = viewMat,
+							.camPos = camPos
+						};
+					}
+					);
+				mainCommandBuffer->EndRenderDebugMarker();
 
 			};
 
