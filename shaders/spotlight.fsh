@@ -63,15 +63,16 @@ void main()
 	vec3 albedo = texture(sampler2D(t_albedo, g_sampler), texcoord).xyz;
 	vec3 normal = texture(sampler2D(t_normal, g_sampler), texcoord).xyz;
 	float depth = texture(sampler2D(t_depth, g_sampler), texcoord).x;
-	 mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
-	vec3 pos = ComputeWorldSpacePos(texcoord,depth, invViewProj);
+	mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
+
+	vec2 viewTexcoord = (gl_FragCoord.xy - ubo.viewRegion.xy) / ubo.viewRegion.zw;
+	vec3 pos = ComputeWorldSpacePos(viewTexcoord,depth, invViewProj);
 
     float pcfFactor = 1;
 if (bool(ubo.isRenderingShadows)){
         float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
         mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
 
- 		vec2 viewTexcoord = (gl_FragCoord.xy - ubo.viewRegion.xy) / ubo.viewRegion.zw;
 
         vec4 sampledPos = vec4(ComputeWorldSpacePos(viewTexcoord,sampledDepthForPos, invViewProj),1);
         sampledPos = constants[0].lightViewProj * sampledPos;    // where is this on the light
