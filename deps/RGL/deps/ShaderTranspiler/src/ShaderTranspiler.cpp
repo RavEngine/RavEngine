@@ -246,7 +246,7 @@ struct CompileGLSLResult {
 
 constexpr int textureBindingOffset = 16;
 
-const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLanguage ShaderType, const std::vector<std::filesystem::path>& includePaths, bool debug, bool performWebGPUModifications = false) {
+const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLanguage ShaderType, const std::vector<std::filesystem::path>& includePaths, bool debug, bool enableInclude, bool performWebGPUModifications = false) {
 	//initialize. Do only once per process!
 	if (!glslAngInitialized)
 	{
@@ -254,13 +254,18 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 		glslAngInitialized = true;
 	}
 
-	const char* InputCString = source.data();
-
 	//determine the stage
 	glslang::TShader shader(ShaderType);
 
-	//set the associated strings (in this case one, but shader meta JSON can describe more. Pass as a C array and a size.
-	shader.setStrings(&InputCString, 1);
+	std::vector<const char*> strings;
+	if (enableInclude) {
+		strings.push_back("#extension GL_GOOGLE_include_directive : enable\n");
+	}
+
+	strings.push_back(source.data());
+
+	//set the associated strings
+	shader.setStrings(strings.data(), strings.size());
 	shader.setAutoMapBindings(true);
 	shader.setShiftBinding(glslang::EResTexture, textureBindingOffset);
 	shader.setShiftBinding(glslang::EResSampler, textureBindingOffset);
@@ -398,7 +403,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
  @param filename the file to compile
  @param ShaderType the type of shader to compile
  */
-const CompileGLSLResult CompileGLSLFromFile(const FileCompileTask& task, const EShLanguage ShaderType, bool debug, bool noPushConstants){
+const CompileGLSLResult CompileGLSLFromFile(const FileCompileTask& task, const EShLanguage ShaderType, bool debug, bool enableInclude, bool noPushConstants){
 	
 	
 	//Load GLSL into a string
@@ -415,7 +420,7 @@ const CompileGLSLResult CompileGLSLFromFile(const FileCompileTask& task, const E
 	// add current directory
 	std::vector<std::filesystem::path> pathsWithParent(std::move(task.includePaths));
 	pathsWithParent.push_back(task.filename.parent_path());
-	return CompileGLSL(InputGLSL, ShaderType, pathsWithParent, debug, noPushConstants);
+	return CompileGLSL(InputGLSL, ShaderType, pathsWithParent, debug, enableInclude, noPushConstants);
 }
 
 /**
@@ -846,7 +851,7 @@ CompileResult ShaderTranspiler::CompileTo(const FileCompileTask& task, TargetAPI
 
 	//generate spirv
 	bool noPushConstants = api == TargetAPI::WGSL;
-	auto spirv = CompileGLSLFromFile(task, types.type, opt.debug, noPushConstants);
+	auto spirv = CompileGLSLFromFile(task, types.type, opt.debug, opt.enableInclude, noPushConstants);
 	auto compres = CompileSpirVTo(spirv.spirvdata, api, opt, types);
 	compres.data.uniformData = std::move(spirv.uniforms);
 	compres.data.attributeData = std::move(spirv.attributes);
@@ -856,7 +861,7 @@ CompileResult ShaderTranspiler::CompileTo(const FileCompileTask& task, TargetAPI
 CompileResult ShaderTranspiler::CompileTo(const MemoryCompileTask& task, TargetAPI api, const Options& opt) {
 	bool noPushConstants = api == TargetAPI::WGSL;
 	auto types = ShaderStageToInternal(task.stage);
-	auto spirv = CompileGLSL(task.source, types.type, task.includePaths, opt.debug, noPushConstants);
+	auto spirv = CompileGLSL(task.source, types.type, task.includePaths, opt.debug, opt.enableInclude, noPushConstants);
 	auto compres = CompileSpirVTo(spirv.spirvdata, api, opt, types);
 	compres.data.uniformData = std::move(spirv.uniforms);
 	compres.data.attributeData = std::move(spirv.attributes);

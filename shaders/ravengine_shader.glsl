@@ -1,4 +1,3 @@
-#version 450
 
 layout(std430, binding = 11) readonly buffer rvsPoseBuffer
 {

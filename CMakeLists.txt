@@ -447,6 +447,7 @@ endif()
 target_include_directories("${PROJECT_NAME}" 
 	PUBLIC 
 	"include/"
+	"shaders/"
 	"${DEPS_DIR}/physx/physx/include/" 
 	"${DEPS_DIR}/physx/pxshared/include/" 
 	"${DEPS_DIR}/physx/physx/snippets/"
@@ -647,6 +648,7 @@ group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_
 
 macro(shader_compile infile stage api extension binary)
 	set(bindir "${shader_target}_ShaderIntermediate")
+	set(shader_inc_dir "${eng_dir}/shaders")
 
 	get_filename_component(name_only ${infile} NAME)
 	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
@@ -658,8 +660,8 @@ macro(shader_compile infile stage api extension binary)
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${outname}"
-		DEPENDS ${infile} GNS_Deps "${eng_dir}/shaders/ravengine_shader.glsl"
-		COMMAND ${rglc_path} -f "${infile}" -o "${outname}" --api ${api} --stage ${stage} --debug ${binary} ${entrypoint}
+		DEPENDS ${infile} GNS_Deps "${eng_dir}/shaders/ravengine_shader.glsl" "${eng_dir}/shaders/ravengine_fsh.h" "${eng_dir}/shaders/ravengine_vsh.h" "${eng_dir}/shaders/ravengine_s.h"
+		COMMAND ${rglc_path} -f "${infile}" -o "${outname}" --api ${api} --stage ${stage} --include "${shader_inc_dir}" --debug ${binary} ${entrypoint}
 	)
 endmacro()
 

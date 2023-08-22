@@ -92,6 +92,15 @@ int main(int argc, const char** argv) {
 		FATAL("shader stage not provided")
 	}
 
+	// get include directories
+	std::vector<filesystem::path> includepaths;
+	try {
+		includepaths = args["include"].as<decltype(includepaths)>();
+	}
+	catch (exception& e) {
+		FATAL("could not load include paths");
+	}
+
 	// get the target API
 	librglc::API api;
 	const char* entryPoint = nullptr;
@@ -138,7 +147,7 @@ int main(int argc, const char** argv) {
 	try 
 #endif
 	{
-		auto result = librglc::CompileFile(inputFile, api, inputStage, { .outputBinary = binary, .enableDebug = debug, .entrypointOutputName = entrypoint });
+		auto result = librglc::CompileFile(inputFile, api, inputStage, { .include_paths = includepaths, .outputBinary = binary, .enableDebug = debug, .entrypointOutputName = entrypoint });
 		std::filesystem::create_directories(outputFile.parent_path());		// make all the folders necessary
 		ofstream out(outputFile, ios::out | ios::binary);
 		out.write(result.data(), result.size() * sizeof(decltype(result)::value_type));

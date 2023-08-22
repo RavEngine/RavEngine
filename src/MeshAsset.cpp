@@ -186,6 +186,9 @@ MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, co
 
 		scaled = scalemat * scaled;
 
+		Debug::Assert(mesh->mTangents,"Mesh does not have tangents!");
+		Debug::Assert(mesh->mBitangents,"Mesh does not have bitangents!");
+
 		auto normal = mesh->mNormals[vi];
 		auto tangent = mesh->mTangents[vi];
 		auto bitangent = mesh->mBitangents[vi];

@@ -110,6 +110,7 @@ struct Options{
 	uint32_t version;
 	bool mobile;
 	bool debug = false;
+	bool enableInclude = true;
 	std::string entryPoint = "frag";
 	struct UniformBufferSettings{
 		std::string newBufferName;

@@ -1,28 +1,14 @@
-#version 450
+#include "ravengine_vsh.h"
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
 	vec4 colorTint;
 } ubo;
 
-
-layout(std430, binding = 10) readonly buffer modelMatrixBuffer
-{
-	mat4 model[];
-};
-
-
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inNormal;
-layout(location = 2) in vec3 inTangent;
-layout(location = 3) in vec3 inBitangent;
-layout(location = 4) in vec2 inUV;
-
-// per-instance
-layout(location = 10) in uint inEntityID;
+VS_INPUTS()
 
 layout(location = 0) out vec2 outUV;
-layout(location = 1) out flat vec3[3] outTBN;
+layout(location = 1) out vec3[3] outTBN;
 
 void main()
 {

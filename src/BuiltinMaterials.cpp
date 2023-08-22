@@ -5,6 +5,7 @@
 #include "mathtypes.hpp"
 #include "Texture.hpp"
 #include "Utilities.hpp"
+#include <ravengine_shader_defs.h>
 
 using namespace RavEngine;
 
@@ -54,7 +55,7 @@ STATIC(RavEngine::defaultVertexConfig) {
                 .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
             },
             {
-                .location = 10,
+                .location = ENTITY_INPUT_LOCATION,
                 .binding = 1,
                 .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32_Uint,
@@ -94,7 +95,7 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
                 .stageFlags = RGL::BindingVisibility::Fragment,
             },
             {
-                .binding = 10,
+                .binding = MODEL_MATRIX_BINDING,
                 .type = RGL::BindingType::StorageBuffer,
                 .stageFlags = RGL::BindingVisibility::Vertex
             }
