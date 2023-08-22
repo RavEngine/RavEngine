@@ -6,14 +6,8 @@ layout(location = 2) in float penumbra;
 layout(location = 3) in vec3 forward;
 layout(location = 4) in flat vec4[4] invViewProj_elts; 
 
-layout(binding = 0) uniform sampler g_sampler;
-layout(binding = 1) uniform sampler shadowSampler;
-layout(binding = 2) uniform texture2D t_albedo;
-layout(binding = 3) uniform texture2D t_normal;
-layout(binding = 4) uniform texture2D t_depth;
-layout(binding = 5) uniform texture2D t_depthshadow;
-
-layout(location = 0) out vec4 outcolor;
+#include "lightingbindings_shared.h"
+#include "ravengine_shader.glsl"
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
@@ -32,21 +26,6 @@ layout(scalar, binding = 8) readonly buffer pushConstantSpill
 	SpotLightExtraConstants constants[];
 };
 
-float remap(float value, float min1, float max1, float min2, float max2) {
-  return clamp(min2 + (value - min1) * (max2 - min2) / (max1 - min1),min2,max2);
-}
-
-vec4 ComputeClipSpacePosition(vec2 pos, float depth){
-	pos.y = 1.0 - pos.y;
-	vec4 positionCS = vec4(pos * 2.0 - 1.0, depth, 1);
-	return positionCS;
-}
-
-vec3 ComputeWorldSpacePos(vec2 positionNDC, float depth, mat4 invViewProj){
-	vec4 positionCS = ComputeClipSpacePosition(positionNDC, depth);
-	vec4 hpositionWS = invViewProj * positionCS;
-	return (hpositionWS / hpositionWS.w).xyz;
-}
 
 void main()
 {

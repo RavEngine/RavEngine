@@ -9,7 +9,7 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr diffuseTexture, normalTexture, depthStencil, lightingTexture;
+		RGLTexturePtr diffuseTexture, normalTexture, metallicTexture, roughnessTexture, specularTexture, depthStencil, lightingTexture;
 		RGL::ITexture* finalFramebuffer;
 	};
 

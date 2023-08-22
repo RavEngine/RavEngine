@@ -5,14 +5,8 @@ layout(location = 1) in vec4 colorintensity;
 layout(location = 2) in flat vec4[4] invViewProj_elts; 
 
 
-layout(location = 0) out vec4 outcolor;
-
-layout(binding = 0) uniform sampler g_sampler;
-layout(binding = 1) uniform sampler shadowSampler;
-layout(binding = 2) uniform texture2D t_albedo;
-layout(binding = 3) uniform texture2D t_normal;
-layout(binding = 4) uniform texture2D t_depth;
-layout(binding = 5) uniform texture2D t_depthshadow;
+#include "lightingbindings_shared.h"
+#include "ravengine_shader.glsl"
 
 struct DirLightExtraConstants{
     mat4 lightViewProj;
@@ -30,17 +24,6 @@ layout(push_constant) uniform UniformBufferObject{
     int isRenderingShadows;
 } ubo;
 
-vec4 ComputeClipSpacePosition(vec2 pos, float depth){
-	pos.y = 1.0 - pos.y;
-	vec4 positionCS = vec4(pos * 2.0 - 1.0, depth, 1);
-	return positionCS;
-}
-
-vec3 ComputeWorldSpacePos(vec2 positionNDC, float depth, mat4 invViewProj){
-	vec4 positionCS = ComputeClipSpacePosition(positionNDC, depth);
-	vec4 hpositionWS = invViewProj * positionCS;
-	return (hpositionWS / hpositionWS.w).xyz;
-}
 
 void main()
 {

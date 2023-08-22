@@ -71,6 +71,15 @@ STATIC(RavEngine::defaultColorBlendConfig) {
                 {
                     .format = RenderEngine::normalTexFormat
                 },
+                {
+                    .format = RenderEngine::normalTexFormat
+                },
+                {
+                    .format = RenderEngine::normalTexFormat
+                },
+                {
+                    .format = RenderEngine::normalTexFormat
+                },
     }
 };
 

@@ -520,6 +520,21 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
@@ -540,6 +555,21 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			   {
 				   .format = normalTexFormat,
 				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = normalTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
 		   },
@@ -1325,6 +1355,37 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		.debugName = "Normal gbuffer"
 		}
 	);
+	collection.metallicTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
+		.width = width,
+		.height = height,
+		.format = normalTexFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Metallic gbuffer"
+		}
+	);
+	collection.roughnessTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
+		.width = width,
+		.height = height,
+		.format = normalTexFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Roughness gbuffer"
+		}
+	);
+	collection.specularTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
+		.width = width,
+		.height = height,
+		.format = normalTexFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Specular gbuffer"
+		}
+	);
+
 	collection.lightingTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },
 		.aspect = {.HasColor = true },
@@ -1339,7 +1400,7 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
 	auto tmpfence = device->CreateFence(false);
 	tmpcmd->Begin();
-	for (const auto& ptr : { collection.diffuseTexture , collection.normalTexture, collection.lightingTexture }) {
+	for (const auto& ptr : { collection.diffuseTexture , collection.normalTexture, collection.lightingTexture, collection.roughnessTexture, collection.metallicTexture, collection.specularTexture }) {
 		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
 	}
 	if (createDepth){
