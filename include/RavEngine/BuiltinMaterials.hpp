@@ -46,6 +46,18 @@ namespace RavEngine {
 		inline void SetAlbedoTexture(Ref<Texture> texture) {
 			textureBindings[1] = texture;
 		}
+		inline void SetNormalTexture(Ref<Texture> texture) {
+			textureBindings[2] = texture;
+		}
+		inline void SetSpecularTexture(Ref<Texture> texture) {
+			textureBindings[3] = texture;
+		}
+		inline void SetMetallicTexture(Ref<Texture> texture) {
+			textureBindings[4] = texture;
+		}
+		inline void SetRoughnessTexture(Ref<Texture> texture) {
+			textureBindings[5] = texture;
+		}
         constexpr inline void SetAlbedoColor(const ColorRGBA& c){
             pushConstantData.color = c;
         }

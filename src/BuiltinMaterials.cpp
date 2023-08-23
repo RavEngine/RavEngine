@@ -104,6 +104,21 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
                 .stageFlags = RGL::BindingVisibility::Fragment,
             },
             {
+                .binding = 3,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 4,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 5,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
                 .binding = MODEL_MATRIX_BINDING,
                 .type = RGL::BindingType::StorageBuffer,
                 .stageFlags = RGL::BindingVisibility::Vertex
@@ -119,4 +134,7 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
 RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
     textureBindings[1] = Texture::Manager::defaultTexture;
     textureBindings[2] = Texture::Manager::defaultNormalTexture;
+    textureBindings[3] = Texture::Manager::defaultTexture;
+    textureBindings[4] = Texture::Manager::defaultTexture;
+    textureBindings[5] = Texture::Manager::defaultTexture;
 }

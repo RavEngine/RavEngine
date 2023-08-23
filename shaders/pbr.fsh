@@ -8,6 +8,9 @@ FS_OUTPUTS()
 layout(binding = 0) uniform sampler g_sampler; 
 layout(binding = 1) uniform texture2D t_diffuse; 
 layout(binding = 2) uniform texture2D t_normal; 
+layout(binding = 3) uniform texture2D t_specular; 
+layout(binding = 4) uniform texture2D t_metallic; 
+layout(binding = 5) uniform texture2D t_roughness; 
 
 layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
@@ -26,8 +29,12 @@ void main()
 	mat3 TBN = mat3(inTBN[0],inTBN[1],inTBN[2]);
 	outnormal = vec4(normalize(TBN * normal),1);
 
-	outspecular = vec4(ubo.specularTint,1);
-	outroughness = vec4(ubo.roughnessTint,1);
-	outmetallic = vec4(ubo.metallicTint,1);
+	vec4 specular = vec4(texture(sampler2D(t_specular, g_sampler), inUV).rgb, 1);
+	vec4 metallic = vec4(texture(sampler2D(t_metallic, g_sampler), inUV).rgb, 1);
+	vec4 roughness = vec4(texture(sampler2D(t_roughness, g_sampler), inUV).rgb,1);
+
+	outspecular = specular * vec4(ubo.specularTint,1);
+	outmetallic = metallic * vec4(ubo.metallicTint,1);
+	outroughness = roughness * vec4(ubo.roughnessTint,1);
 }
 
