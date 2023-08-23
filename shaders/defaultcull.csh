@@ -1,4 +1,3 @@
-#extension GL_EXT_scalar_block_layout : enable
 
 layout(push_constant) uniform UniformBufferObject{
 	mat4 viewProj;

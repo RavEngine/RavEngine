@@ -1,14 +1,18 @@
 #include "ravengine_vsh.h"
 
-layout(push_constant) uniform UniformBufferObject{
+layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
 	vec4 colorTint;
+	vec3 metallicTint;
+	vec3 roughnessTint;
+	vec3 specularTint;
 } ubo;
 
 VS_INPUTS()
 
 layout(location = 0) out vec2 outUV;
 layout(location = 1) out vec3[3] outTBN;
+
 
 void main()
 {

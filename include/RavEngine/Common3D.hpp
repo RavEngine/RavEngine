@@ -54,6 +54,10 @@ struct ColorRGBA{
 	float A;
 };
 
+struct ColorRGB {
+	float R = 0, G = 0, B = 0;
+};
+
 /**
  Copy an array of type T to an array of type U
  @param input the source array

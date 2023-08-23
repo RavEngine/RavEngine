@@ -14,6 +14,11 @@ namespace RavEngine {
 
 	struct PBRPushConstantData {
 		ColorRGBA color{ 1,1,1,1 };
+		ColorRGB metallicTint;
+		uint32_t padding1;
+		ColorRGB roughnessTint = { 0.4,0.4,0.4 };
+		uint32_t padding2;
+		ColorRGB specularTint = { 0.5,0.5,0.5 };
 	};
 	class PBRMaterial : public Material {
 	public:
@@ -44,6 +49,15 @@ namespace RavEngine {
         constexpr inline void SetAlbedoColor(const ColorRGBA& c){
             pushConstantData.color = c;
         }
+		constexpr inline void SetMetallicTint(const ColorRGB& c) {
+			pushConstantData.metallicTint = c;
+		}
+		constexpr inline void SetSpecularTint(const ColorRGB& c) {
+			pushConstantData.specularTint = c;
+		}
+		constexpr inline void SetRoughnessTint(const ColorRGB& c) {
+			pushConstantData.roughnessTint = c;
+		}
 
 		virtual const RGL::untyped_span GetPushConstantData() const override {
 			return pushConstantData;

@@ -1,4 +1,3 @@
-#extension GL_EXT_scalar_block_layout : enable
 
 layout(location = 0) in flat vec3 lightColor;
 layout(location = 1) in flat float radius;

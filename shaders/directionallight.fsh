@@ -1,4 +1,3 @@
-#extension GL_EXT_scalar_block_layout : enable
 
 layout(location = 0) in vec3 lightdir;
 layout(location = 1) in vec4 colorintensity;

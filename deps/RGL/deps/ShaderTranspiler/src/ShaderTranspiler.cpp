@@ -259,7 +259,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 
 	std::vector<const char*> strings;
 	if (enableInclude) {
-		strings.push_back("#extension GL_GOOGLE_include_directive : enable\n");
+		strings.push_back("#extension GL_GOOGLE_include_directive : enable\n#extension GL_EXT_scalar_block_layout : enable\n");
 	}
 
 	strings.push_back(source.data());
