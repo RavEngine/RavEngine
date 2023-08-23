@@ -3,9 +3,9 @@
 layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
 	vec4 colorTint;
-	vec3 metallicTint;
-	vec3 roughnessTint;
-	vec3 specularTint;
+	float metallicTint;
+	float roughnessTint;
+	float specularTint;
 } ubo;
 
 VS_INPUTS()

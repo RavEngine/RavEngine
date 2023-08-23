@@ -755,16 +755,12 @@ namespace RavEngine {
 			// deferred pass
 			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
 			deferredRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
-			deferredRenderPass->SetAttachmentTexture(2, target.specularTexture.get());
-			deferredRenderPass->SetAttachmentTexture(3, target.metallicTexture.get());
-			deferredRenderPass->SetAttachmentTexture(4, target.roughnessTexture.get());
+			deferredRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture.get());;
 			deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 
 			deferredClearRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
 			deferredClearRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
-			deferredClearRenderPass->SetAttachmentTexture(2, target.specularTexture.get());
-			deferredClearRenderPass->SetAttachmentTexture(3, target.metallicTexture.get());
-			deferredClearRenderPass->SetAttachmentTexture(4, target.roughnessTexture.get());
+			deferredClearRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture.get());
 			deferredClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
@@ -781,17 +777,7 @@ namespace RavEngine {
 					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
 				},
 				{
-					.texture = target.specularTexture.get(),
-					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-				},
-				{
-					.texture = target.metallicTexture.get(),
-					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-				},
-				{
-					.texture = target.roughnessTexture.get(),
+					.texture = target.roughnessSpecularMetallicAOTexture.get(),
 					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
 				},
@@ -819,17 +805,7 @@ namespace RavEngine {
 					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 				},
 				{
-					.texture = target.specularTexture.get(),
-					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
-					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-				},
-				{
-					.texture = target.roughnessTexture.get(),
-					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
-					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-				},
-				{
-					.texture = target.metallicTexture.get(),
+					.texture = target.roughnessSpecularMetallicAOTexture.get(),
 					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
 					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
 				},

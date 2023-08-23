@@ -11,13 +11,14 @@ layout(binding = 2) uniform texture2D t_normal;
 layout(binding = 3) uniform texture2D t_specular; 
 layout(binding = 4) uniform texture2D t_metallic; 
 layout(binding = 5) uniform texture2D t_roughness; 
+layout(binding = 6) uniform texture2D t_ao;
 
 layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
 	vec4 colorTint;
-	vec3 metallicTint;
-	vec3 roughnessTint;
-	vec3 specularTint;
+	float metallicTint;
+	float roughnessTint;
+	float specularTint;
 } ubo;
 
 void main()
@@ -29,12 +30,11 @@ void main()
 	mat3 TBN = mat3(inTBN[0],inTBN[1],inTBN[2]);
 	outnormal = vec4(normalize(TBN * normal),1);
 
-	vec4 specular = vec4(texture(sampler2D(t_specular, g_sampler), inUV).rgb, 1);
-	vec4 metallic = vec4(texture(sampler2D(t_metallic, g_sampler), inUV).rgb, 1);
-	vec4 roughness = vec4(texture(sampler2D(t_roughness, g_sampler), inUV).rgb,1);
+	float specular = texture(sampler2D(t_specular, g_sampler), inUV).r;
+	float metallic = texture(sampler2D(t_metallic, g_sampler), inUV).r;
+	float roughness = texture(sampler2D(t_roughness, g_sampler), inUV).r;
+	float ao = texture(sampler2D(t_ao, g_sampler), inUV).r;
 
-	outspecular = specular * vec4(ubo.specularTint,1);
-	outmetallic = metallic * vec4(ubo.metallicTint,1);
-	outroughness = roughness * vec4(ubo.roughnessTint,1);
+	outRoughnessSpecularMetalicAO = vec4(roughness * ubo.roughnessTint, specular * ubo.specularTint,metallic * ubo.metallicTint,ao);
 }
 
