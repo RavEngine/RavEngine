@@ -493,6 +493,7 @@ namespace RavEngine {
 							lightViewProjResult lightMats = genLightViewProj(light);
 
 							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
+							lightUBO.camPos = lightMats.camPos;
 
 							mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
 
@@ -517,6 +518,7 @@ namespace RavEngine {
 							mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
 							mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
 							mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
+							mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture.get(), 6);
 
 							mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
 
@@ -579,7 +581,8 @@ namespace RavEngine {
 
 						return lightViewProjResult{
 							.lightProj = lightProj,
-							.lightView = lightView
+							.lightView = lightView,
+							.camPos = camPos
 						};
 					}
 				);

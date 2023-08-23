@@ -11,10 +11,11 @@ layout(location = 0) out vec3 outLightDir;
 layout(location = 1) out vec4 outColorIntensity;
 layout(location = 2) out flat vec4[4] outInvViewProj; 
 
-layout(push_constant) uniform UniformBufferObject{
+layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
     ivec4 viewRegion;   // for the virtual screen
+    vec3 camPos;
     uint isRenderingShadows;
 } ubo;
 

@@ -404,6 +404,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
+				.binding = 6,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
 					.binding = 8,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Fragment,
@@ -450,6 +455,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
 			{
+				.binding = 6,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
 				.binding = 8,
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Fragment,
@@ -491,6 +501,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			},
 			{
 				.binding = 5,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 6,
 				.type = RGL::BindingType::SampledImage,
 				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
