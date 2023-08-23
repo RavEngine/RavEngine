@@ -7,11 +7,13 @@ layout(location = 4) in flat vec4[4] invViewProj_elts;
 
 #include "lightingbindings_shared.h"
 #include "ravengine_shader.glsl"
+#include "BRDF.glsl"
 
 layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
 	ivec4 viewRegion;   // for the virtual screen
+	vec3 camPos;
     int isRenderingShadows;
 } ubo;
 
@@ -28,58 +30,24 @@ layout(scalar, binding = 8) readonly buffer pushConstantSpill
 
 void main()
 {
-	//calculate sampling positions using fragment pos and view dimensions
-	vec2 texcoord = vec2(gl_FragCoord.x / ubo.viewRect[2], gl_FragCoord.y / ubo.viewRect[3]);
+	#include "lighting_preamble.glsl"
 
-	 // is this pixel visible to the light? if not, discard
-	int enabled = 1;
+	vec3 toLight = normalize(positionradius.xyz - sampledPos.xyz);
 
-	
-	float intensity = colorintensity[3];
-	float coneDotFactor = positionradius.w;
-	
-	vec3 albedo = texture(sampler2D(t_albedo, g_sampler), texcoord).xyz;
-	vec3 normal = texture(sampler2D(t_normal, g_sampler), texcoord).xyz;
-	float depth = texture(sampler2D(t_depth, g_sampler), texcoord).x;
-	mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
+	float dist = distance(sampledPos.xyz, positionradius.xyz);
 
-	vec2 viewTexcoord = (gl_FragCoord.xy - ubo.viewRegion.xy) / ubo.viewRegion.zw;
-	vec3 pos = ComputeWorldSpacePos(viewTexcoord,depth, invViewProj);
+    vec3 result = CalculateLightRadiance(normal, ubo.camPos, sampledPos.xyz, albedo, metallic, roughness, toLight, 1.0 / (dist * dist), colorintensity.xyz * colorintensity.w);
 
     float pcfFactor = 1;
-if (bool(ubo.isRenderingShadows)){
-        float sampledDepthForPos = texture(sampler2D(t_depth,g_sampler), texcoord).x;
-        mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
-
-
-        vec4 sampledPos = vec4(ComputeWorldSpacePos(viewTexcoord,sampledDepthForPos, invViewProj),1);
-        sampledPos = constants[0].lightViewProj * sampledPos;    // where is this on the light
-        sampledPos /= sampledPos.w; // perspective divide
-        sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
-        sampledPos.y = 1 - sampledPos.y;
-
-       pcfFactor = texture(sampler2DShadow(t_depthshadow,shadowSampler), sampledPos.xyz, 0).x;
-}
-	vec3 toLight = normalize(positionradius.xyz - pos);
-	
-	float dist = distance(pos,positionradius.xyz);
-	
-	int falloffpower = 2;	//1 for linear, 2 for quadratic, 3 for cubic, ...
-	
-	float attenuation = 1/pow(dist,falloffpower);
-	
-	float nDotL = max(dot(normal, toLight), 0);
-	
-	vec3 diffuseLight = albedo * nDotL;
+	if (bool(ubo.isRenderingShadows)){
+		pcfFactor = pcfForShadow(sampledPos, constants[0].lightViewProj, shadowSampler, t_depthshadow);
+	}
 
 	// is it inside the light?
+	float coneDotFactor = positionradius.w;
 	float pixelAngle = dot(-forward,toLight);
-	enabled = enabled * (int(pixelAngle > coneDotFactor));
+	pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));
 
-	// x is inner, y is outer
+	outcolor = vec4(result * pcfFactor, 1);
 
-	float epsilon = penumbra - coneDotFactor;
-	float penumbraFactor = clamp((pixelAngle - coneDotFactor) / epsilon, 0, 1);
-	
-	outcolor = vec4(attenuation * colorintensity.xyz * diffuseLight * penumbraFactor * pcfFactor * enabled, 1);
-}
+	}

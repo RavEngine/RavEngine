@@ -16,3 +16,13 @@ vec3 ComputeWorldSpacePos(vec2 positionNDC, float depth, mat4 invViewProj){
 float remap(float value, float min1, float max1, float min2, float max2) {
   return clamp(min2 + (value - min1) * (max2 - min2) / (max1 - min1),min2,max2);
 }
+
+float pcfForShadow(vec3 pixelWorldPos, mat4 lightViewProj, sampler shadowSampler, texture2D t_depthshadow){
+	vec4 sampledPos = vec4(pixelWorldPos,1);
+	sampledPos = lightViewProj * sampledPos;    // where is this on the light
+	sampledPos /= sampledPos.w; // perspective divide
+	sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
+	sampledPos.y = 1 - sampledPos.y;
+
+    return texture(sampler2DShadow(t_depthshadow,shadowSampler), sampledPos.xyz, 0).x;
+}

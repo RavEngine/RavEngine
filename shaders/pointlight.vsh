@@ -19,6 +19,7 @@ layout(push_constant) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;
 	ivec4 viewRegion;   // for the virtual screen
+	vec3 camPos;
     int isRenderingShadows;
 } ubo;
 
