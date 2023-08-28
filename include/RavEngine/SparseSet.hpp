@@ -25,7 +25,7 @@ namespace RavEngine {
                 dense_set.emplace(args...);
                 reverse_map.emplace_back(sparse_index);
                 if (sparse_index >= sparse_set.size()) {
-                    sparse_set.resize(closest_multiple_of(sparse_index + 1, 2), default_index);  //ensure there is enough space for this id
+                    sparse_set.resize(closest_multiple_of<int>(sparse_index + 1, 2), default_index);  //ensure there is enough space for this id
                 }
                 sparse_set[sparse_index] = static_cast<typename decltype(sparse_set)::value_type>(dense_set.size() - 1);
             }

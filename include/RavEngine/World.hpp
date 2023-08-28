@@ -103,7 +103,7 @@ namespace RavEngine {
                 auto& ret = dense_set.emplace(args...);
                 aux_set.emplace(local_id);
                 if (local_id >= sparse_set.size()){
-                    sparse_set.resize(closest_multiple_of(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
+                    sparse_set.resize(closest_multiple_of<int>(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                 }
                 
 				sparse_set[local_id] = static_cast<typename decltype(sparse_set)::value_type>(dense_set.size()-1);
@@ -419,7 +419,7 @@ namespace RavEngine {
                 if (!HasForEntity(local_id)){
                     dense_set.emplace(local_id,world);
                     if (local_id >= sparse_set.size()){
-                        sparse_set.resize(closest_multiple_of(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
+                        sparse_set.resize(closest_multiple_of<entity_t>(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                     }
                     sparse_set[local_id] = static_cast<decltype(sparse_set)::value_type>(dense_set.size()-1);
                 }

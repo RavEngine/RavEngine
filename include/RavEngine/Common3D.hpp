@@ -76,7 +76,8 @@ constexpr static inline void copyMat4(const T* input, U* output, int size = 16) 
  @param B the multiple base
  @return the closest multiple of B to x in the upwards direction. If x is already a multiple of B, returns x.
  */
-inline constexpr int closest_multiple_of(int x, int B) {
+template<typename T>
+inline constexpr T closest_multiple_of(T x, T B) {
 	return ((x - 1) | (B - 1)) + 1;
 }
 
