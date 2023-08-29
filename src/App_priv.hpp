@@ -133,8 +133,9 @@ int App::run(int argc, char** argv) {
 
 		Renderer = std::make_unique<RenderEngine>(config, device);
 
-		mainWindowView = { Renderer->CreateRenderTargetCollection({ 960,540 }) };
 		window = std::make_unique<Window>(960, 540, "RavEngine", device, Renderer->mainCommandQueue);
+        auto size = window->GetSizeInPixels();
+        mainWindowView = { Renderer->CreateRenderTargetCollection({ static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height) })};
 
 #ifdef RVE_XR_AVAILABLE
 		if (wantsXR) {
@@ -229,7 +230,11 @@ int App::run(int argc, char** argv) {
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
 							Renderer->mainCommandQueue->WaitUntilCompleted();
 							window->NotifySizeChanged(wev.data1, wev.data2);
-							Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {uint32_t(wev.data1), uint32_t(wev.data2)});
+                            {
+                                uint32_t width = wev.data1 * window->GetDPIScale();
+                                uint32_t height = wev.data2 * window->GetDPIScale();
+                                Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {width, height});
+                            }
 							break;
 
 						case SDL_WINDOWEVENT_CLOSE:
@@ -254,7 +259,7 @@ int App::run(int argc, char** argv) {
 			inputManager->TickAxes();
 		}
 
-		auto windowSize = window->bufferdims;
+		auto windowSize = window->GetSizeInPixels();
 		auto scale = window->GetDPIScale();
 
 		//tick all worlds
@@ -298,7 +303,7 @@ int App::run(int argc, char** argv) {
             mainWindowView.camDatas.push_back(RenderViewCollection::camData{viewProj, camPos, viewportOverride});
 		}
 
-		mainWindowView.pixelDimensions = window->bufferdims;
+		mainWindowView.pixelDimensions = window->GetSizeInPixels();
 
 		std::vector<RenderViewCollection> allViews;
 		allViews.push_back(mainWindowView);

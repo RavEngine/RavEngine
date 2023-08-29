@@ -16,6 +16,8 @@ namespace RavEngine {
 		Window(int width, int height, const std::string_view title, RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue);
 
 		void NotifySizeChanged(int width, int height);
+        
+        void RefreshBufferDims(int width, int height);
 
 		struct SwapchainResult {
 			RGL::ITexture* texture;
@@ -23,22 +25,18 @@ namespace RavEngine {
 		};
 		SwapchainResult GetNextSwapchainImage();
 
-		dim_t<int> bufferdims, windowdims;
+		dim_t<int> windowdims;
+        
+        dim_t<int> GetSizeInPixels() const;
 
 #ifdef _WIN32
-		float win_scalefactor = 1;
+		constexpr static float win_scalefactor = 1;
 #endif
 
 		/**
  @return the High DPI scale factor. Only applicable on macOS.
  */
-		constexpr float GetDPIScale() const {
-#ifndef _WIN32
-			return (float)bufferdims.width / windowdims.width;
-#else
-			return win_scalefactor;
-#endif
-		}
+        float GetDPIScale() const;
 
 
 		enum class WindowMode {
