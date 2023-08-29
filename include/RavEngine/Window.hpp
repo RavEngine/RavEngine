@@ -17,8 +17,6 @@ namespace RavEngine {
 
 		void NotifySizeChanged(int width, int height);
         
-        void RefreshBufferDims(int width, int height);
-
 		struct SwapchainResult {
 			RGL::ITexture* texture;
 			RGL::SwapchainPresentConfig presentConfig;
@@ -29,14 +27,15 @@ namespace RavEngine {
         
         dim_t<int> GetSizeInPixels() const;
 
-#ifdef _WIN32
 		constexpr static float win_scalefactor = 1;
-#endif
+        float currentScaleFactor = win_scalefactor;
 
 		/**
  @return the High DPI scale factor. Only applicable on macOS.
  */
-        float GetDPIScale() const;
+        float GetDPIScale() const{
+            return currentScaleFactor;
+        }
 
 
 		enum class WindowMode {
@@ -49,6 +48,8 @@ namespace RavEngine {
 		 @param mode the new mode to use
 		 */
 		void SetWindowMode(WindowMode mode);
+    private:
+        float QueryScaleFactor() const;
 	};
 
 

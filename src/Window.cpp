@@ -46,35 +46,36 @@ namespace RavEngine {
 #endif
 			true
 		);
-        RefreshBufferDims(width,height);
-
+        windowdims = {width, height};
+        currentScaleFactor = QueryScaleFactor();
         auto size = GetSizeInPixels();
 		swapchain = device->CreateSwapchain(surface, mainCommandQueue, size.width, size.height);
-        NotifySizeChanged(size.width, size.height);
+        NotifySizeChanged(width, height);
 		swapchainFence = device->CreateFence(true);
 	}
 	void Window::NotifySizeChanged(int width, int height)
 {
+        currentScaleFactor = QueryScaleFactor();
 #if TARGET_OS_IPHONE
         //view must be manually sized on iOS
         //also this API takes screen points not pixels
         resizeMetalLayer(metalLayer, windowdims.width, windowdims.height);
 #endif
-        swapchain->Resize(width, height);
+        auto pixelSize = GetSizeInPixels();
+        swapchain->Resize(pixelSize.width, pixelSize.height);
+        windowdims = {width, height};
     }
-    void Window::RefreshBufferDims(int width, int height){
-		// on non-apple platforms this is in pixels, on apple platforms it is in "screen points"
-// which will be dealt with later
-		SDL_GetWindowSize(window, &windowdims.width, &windowdims.height);
-
-	}
 
     dim_t<int> Window::GetSizeInPixels() const{
+#if __APPLE__
         float scale = GetDPIScale();
+#else
+        float scale = win_scalefactor;
+#endif
         return {static_cast<int>(windowdims.width * scale), static_cast<int>(windowdims.height * scale)};
     }
 
-    float Window::GetDPIScale() const{
+    float Window::QueryScaleFactor() const{
 # if _WIN32 && !_UWP
 
         SDL_SysWMinfo wmi;
