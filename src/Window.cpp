@@ -56,6 +56,7 @@ namespace RavEngine {
 	void Window::NotifySizeChanged(int width, int height)
 {
         currentScaleFactor = QueryScaleFactor();
+		windowdims = { width, height };
 #if TARGET_OS_IPHONE
         //view must be manually sized on iOS
         //also this API takes screen points not pixels
@@ -63,7 +64,6 @@ namespace RavEngine {
 #endif
         auto pixelSize = GetSizeInPixels();
         swapchain->Resize(pixelSize.width, pixelSize.height);
-        windowdims = {width, height};
     }
 
     dim_t<int> Window::GetSizeInPixels() const{

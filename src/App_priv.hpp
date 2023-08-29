@@ -231,9 +231,8 @@ int App::run(int argc, char** argv) {
 							Renderer->mainCommandQueue->WaitUntilCompleted();
 							window->NotifySizeChanged(wev.data1, wev.data2);
                             {
-                                uint32_t width = wev.data1 * window->GetDPIScale();
-                                uint32_t height = wev.data2 * window->GetDPIScale();
-                                Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {width, height});
+								auto size = window->GetSizeInPixels();
+                                Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {uint32_t(size.width), uint32_t(size.height)});
                             }
 							break;
 
