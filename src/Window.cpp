@@ -7,9 +7,14 @@
 #include <RGL/Device.hpp>
 #include <RGL/Swapchain.hpp>
 #include <RGL/CommandQueue.hpp>
-#if _WIN32
+
+
+#if _WIN32 && !_UWP
 #include <shtypes.h>
 #include <ShellScalingApi.h>
+#elif _UWP
+#include <winrt/Windows.Graphics.Display.h>
+using namespace winrt;
 #elif __APPLE__
 #include "AppleUtilities.h"
 #endif
@@ -93,7 +98,7 @@ namespace RavEngine {
         }
 #elif _UWP
         auto dinf = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
-        return = static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
+        return static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
 #elif __APPLE__
         // since iOS and macOS do not use OpenGL we cannot use the GL call here
         // instead we derive it by querying display data
