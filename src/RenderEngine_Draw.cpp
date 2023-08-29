@@ -349,7 +349,12 @@ namespace RavEngine {
 						auto pushConstantData = materialInstance->GetPushConstantData();
 
                         // Metal requires 16-byte alignment, so we bake that into the required size
-						size_t pushConstantTotalSize = closest_multiple_of<ssize_t>(sizeof(viewproj) + pushConstantData.size(),16);
+						size_t pushConstantTotalSize =
+#if __APPLE__
+							closest_multiple_of<ssize_t>(sizeof(viewproj) + pushConstantData.size(), 16);
+#else
+							sizeof(viewproj) + pushConstantData.size();
+#endif
                         
                         // AMD on vulkan cannot accept push constants > 128 bytes so we cap it there for all platforms
                         std::byte totalPushConstantBytes[128]{};

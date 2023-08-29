@@ -142,3 +142,10 @@ namespace RMath {
         return glm::perspectiveRH_ZO(fovy, aspect, zNear, zFar);
     }
 }
+
+//ssize_t on MSVC
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+#include <intsafe.h>
+typedef SSIZE_T ssize_t;
+#endif
