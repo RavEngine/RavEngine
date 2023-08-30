@@ -11,8 +11,8 @@
 namespace RavEngine {
     class StaticMesh : public ComponentWithOwner, public Disableable{
     private:
-        Ref<MeshAsset> meshAsset;
-        Ref<MaterialInstance> materialInstance;
+        Ref<MeshAsset> mesh;
+        Ref<MaterialInstance> material;
         StaticMesh(entity_t owner, Ref<MeshAsset> m) : ComponentWithOwner(owner){
             SetMesh(m);
         }
@@ -46,7 +46,7 @@ namespace RavEngine {
         @returns the currently assigned material
         */
         inline auto GetMaterial() const{
-			return std::get<1>(tuple);
+            return material;
         }
     
 		

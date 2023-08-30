@@ -926,18 +926,17 @@ function(pack_resources)
 		#include <span>
 		#include <string_view>
 		#include <string>
-		CMRC_DECLARE(${rve_cmrc_resource_name})"
-"
+		CMRC_DECLARE(${rve_cmrc_resource_name});
+
 		#define CMRC_NS cmrc::${rve_cmrc_resource_name}
 
 		const std::span<const char> cmrc_get_file_data(const std::string_view& path){
-			auto fs = CMRC_NS::get_filesystem()"
-"
-			auto file = fs.open(std::string(path))"
-"
+			auto fs = CMRC_NS::get_filesystem();
 
-			return {file.begin(),file.size()}"
-"
+			auto file = fs.open(std::string(path));
+
+
+			return {file.begin(),file.size()};
 		}
 		")
 		target_sources(${rve_cmrc_resource_name} PRIVATE "${cmrc_shader_libfn_cpp}")
@@ -948,8 +947,7 @@ function(pack_resources)
 	file(GENERATE OUTPUT "${rve_externs_cpp}" CONTENT "
 	#include <string_view>
 	const std::string_view RVE_VFS_get_name(){
-		return \"${ARGS_TARGET}\""
-"
+		return \"${ARGS_TARGET}\";
 	}
 	")
 	set(rve_externs_lib "${ARGS_TARGET}_Externs")
@@ -986,8 +984,7 @@ function(pack_resources)
 	set_target_properties(${ARGS_TARGET} PROPERTIES 
 		MACOSX_BUNDLE TRUE
 		#XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH $<$<OR:$<CONFIG:DEBUG>,$<CONFIG:CHECKED>,$<CONFIG:PROFILE>>:YES>
-		OSX_ARCHITECTURES "arm64"
-"x86_64"
+		OSX_ARCHITECTURES "arm64;x86_64"
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)
