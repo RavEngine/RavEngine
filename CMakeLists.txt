@@ -646,29 +646,8 @@ macro(enable_unity targets)
 endmacro()
 
 set(all_unity 
-	"LowLevel"
-	"FastXml"
-	"SceneQuery"
-	"SimulationController"
-	"PhysXTask"
-	"PhysXCharacterKinematic"
-	"im3d"
-	"SadieHrtfsObj"
-	"ResonanceAudioObj"
-	"libnyquist"
-	"Detour"
-	"ozz_animation"
-	"ozz_animation_offline"
-	"ozz_animation_tools"
-	"ozz_base"
-	"ozz_geometry"
-	"ozz_options"
-	"json"
-	"libopus"
-	"DebugUtils"
-	"DetourCrowd"
-	"DetourTileCache"
-	"harfbuzz"
+"LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
+ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;"
 )
 
 if ((CMAKE_SYSTEM_NAME STREQUAL "Windows"))
@@ -680,95 +659,28 @@ enable_unity("${all_unity}"
 
 # project organization
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
-group_in("Libraries" 
-	"assimp"
-	"assimp_cmd"
-	"DebugUtils"
-	"Detour"
-	"DetourCrowd"
-	"DetourTileCache"
-	"fmt"
-	"freetype"
-	"GameNetworkingSockets_s"
-	"GNS_Deps"
-	"im3d"
-	"libnyquist"
-	"libopus"
-	"libprotobuf"
-	"libprotobuf-lite"
-	"libwavpack"
-	"openssl"
-	"PffftObj"
-	"physfs"
-	"physfs-static"
-	"BUILD_FUSE_ALL"
-	"Recast"
-	"ResonanceAudioObj"
-	"ResonanceAudioShared"
-	"ResonanceAudioStatic"
-	"lunasvg"
-	"rlottie"
-	"rlottie-image-loader"
-	"RmlCore"
-	"SadieHrtfsObj"
-	"ssl"
-	"test_physfs"
-	"tweeny-dummy"
-	"zlib"
-	"zlibstatic"
-	"SDL2-static"
-	"json"
-	"physfs_uninstall"
-	"dist"
-	"SDL2main"
-	"BUILD_CLANG_FORMAT"
-	"crypto"
-	"r8brain"
-	"harfbuzz"
-	"harfbuzz-subset"
-	"sdl_headers_copy"
-	"libprotoc"
-	"protoc"
-)
+
+group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
+im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
+Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
+sdl_headers_copy;libprotoc;protoc;
+")
 
 group_in("Libraries/PhysX SDK" 
-	"FastXml"
-	"LowLevel"
-	"LowLevelAABB"
-	"LowLevelDynamics"
-	"PhysX"
-	"PhysXCharacterKinematic"
-	"PhysXCommon"
-	"PhysXCooking"
-	"PhysXExtensions"
-	"PhysXFoundation"
-	"PhysXPvdSDK"
-	"PhysXTask"
-	"PhysXVehicle"
-	"SceneQuery"
-	"SimulationController"
-	"PhysXVehicle2"
+"FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
+PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController;PhysXVehicle2"
 )
 
 group_in("Libraries/ozz" 
-	"ozz_animation"
-	"ozz_animation_offline"
-	"ozz_base"
-	"ozz_geometry"
-	"ozz_options"
+	"ozz_animation;ozz_animation_offline;ozz_base;ozz_geometry;ozz_options"
 )
 group_in("Libraries/ozz/tools" 
-	"dump2ozz"
-	"gltf2ozz"
-	"ozz_animation_tools"
+	"dump2ozz;gltf2ozz;ozz_animation_tools"
 )
 group_in("Libraries/ozz/fuse"
-	"BUILD_FUSE_ozz_animation"
-	"BUILD_FUSE_ozz_animation_offline"
-	"BUILD_FUSE_ozz_animation_tools"
-	"BUILD_FUSE_ozz_base"
-	"BUILD_FUSE_ozz_geometry"
-	"BUILD_FUSE_ozz_options"
+"BUILD_FUSE_ozz_animation;BUILD_FUSE_ozz_animation_offline;BUILD_FUSE_ozz_animation_tools;\
+BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options"
 )
 
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
