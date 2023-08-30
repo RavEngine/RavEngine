@@ -10,6 +10,7 @@
 #include <string_view>
 #include <RavEngine/Debug.hpp>
 #include <cassert>
+#include <span>
 
 using namespace RavEngine;
 using namespace std;
@@ -17,6 +18,9 @@ using namespace std;
 // needed for linker
 const std::string_view RVE_VFS_get_name(){
     return "";
+}
+const std::span<const char> cmrc_get_file_data(const std::string_view& path) {
+    return {};
 }
 
 #undef assert
