@@ -50,7 +50,7 @@ namespace RavEngine {
 			std::vector<std::vector<XrSwapchainImage>> swapchainImages;
 			std::vector<std::vector<std::unique_ptr<RGL::ITexture>>> rglSwapchainImages;
 			std::vector<std::vector<XrSwapchainImage>> depthSwapchainImages;
-			std::vector<std::vector<std::shared_ptr<RGL::ITexture>>> rglDepthSwapchainImages;
+			std::vector<std::vector<RGLTexturePtr>> rglDepthSwapchainImages;
 			// one swapchain per eye, plus depth
 			int64_t swapchain_format, depth_swapchain_format = -1;
 			std::vector<XrSwapchain> swapchains;
